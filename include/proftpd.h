@@ -24,7 +24,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.22 2002-06-11 16:18:07 castaglia Exp $
+ * $Id: proftpd.h,v 1.23 2002-06-11 17:09:45 castaglia Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -149,7 +149,7 @@ typedef struct {
   struct config_struc *anon_config;	/* Anonymous FTP configuration */
   char *anon_user;			/* E-mail address sent to us */
   
-  unsigned long restart_pos;		/* Restart marked position */
+  off_t restart_pos;			/* Restart marked position */
 
   struct {
     struct pool *p;
@@ -164,15 +164,15 @@ typedef struct {
     int bufsize,buflen;
 
     struct timeval start_time;		/* Time current transfer started */
-    unsigned long file_size;		/* Total size of file (if known) */
-    unsigned long total_bytes;		/* Total bytes transfered */
+    off_t file_size;			/* Total size of file (if known) */
+    off_t total_bytes;			/* Total bytes transfered */
 
     int (*get_data)(struct IO_File*,char*,int);
     int (*complete)(struct IO_File*);
     int (*abort)(struct IO_File*,int err);
   } xfer;
 
-  unsigned long total_bytes;          /* Total bytes transfered for this session */
+  off_t total_bytes;          /* Total bytes transfered for this session */
 
 } session_t;
 

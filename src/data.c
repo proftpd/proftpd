@@ -25,7 +25,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.32 2002-06-11 16:18:07 castaglia Exp $
+ * $Id: data.c,v 1.33 2002-06-11 17:09:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -141,7 +141,7 @@ static void _data_new_xfer(char *filename, int direction) {
   session.xfer.buflen = 0;
 }
 
-static int _data_pasv_open(char *reason, unsigned long size) {
+static int _data_pasv_open(char *reason, off_t size) {
   conn_t *c;
   int rev;
   
@@ -170,10 +170,10 @@ static int _data_pasv_open(char *reason, unsigned long size) {
     if (session.xfer.xfer_type != STOR_UNIQUE) { 
       if (size)
         send_response(R_150, "Opening %s mode data connection for %s "
-          "(%lu bytes)", MODE_STRING, reason, size);
+          "(%" PR_LU " bytes)", MODE_STRING, reason, size);
       else
-      send_response(R_150,"Opening %s mode data connection for %s",
-		    MODE_STRING, reason);
+        send_response(R_150,"Opening %s mode data connection for %s",
+          MODE_STRING, reason);
 
     } else {
 
@@ -202,10 +202,8 @@ static int _data_pasv_open(char *reason, unsigned long size) {
     return 0;
   }
   
-  /* Check for error conditions.
-   * - MacGyver
-   */
-  if(c && c->mode == CM_ERROR) {
+  /* Check for error conditions. */
+  if (c && c->mode == CM_ERROR) {
     log_pri(LOG_ERR,
 	    "Error: unable to accept an incoming data connection (%s)",
 	    strerror(c->xerrno));
@@ -218,7 +216,7 @@ static int _data_pasv_open(char *reason, unsigned long size) {
   return -1;
 }
 
-static int _data_active_open(char *reason, unsigned long size) {
+static int _data_active_open(char *reason, off_t size) {
   conn_t *c;
   int rev;
   
@@ -261,10 +259,10 @@ static int _data_active_open(char *reason, unsigned long size) {
     if (session.xfer.xfer_type != STOR_UNIQUE) {
       if (size)
         send_response(R_150, "Opening %s mode data connection for %s "
-          "(%lu bytes)", MODE_STRING, reason, size);
+          "(%" PR_LU " bytes)", MODE_STRING, reason, size);
       else
         send_response(R_150, "Opening %s mode data connection for %s",
-		    MODE_STRING,reason);
+          MODE_STRING, reason);
 
     } else {
 
@@ -323,8 +321,7 @@ void data_init(char *filename, int direction) {
   }
 }
 
-int data_open(char *filename, char *reason, int direction,
-	      unsigned long size) {
+int data_open(char *filename, char *reason, int direction, off_t size) {
   struct sigaction	act;
   int			ret = 0;
   

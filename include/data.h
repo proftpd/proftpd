@@ -24,7 +24,7 @@
  */
 
 /* Data connection management prototypes
- * $Id: data.h,v 1.8 2002-05-21 20:47:15 castaglia Exp $
+ * $Id: data.h,v 1.9 2002-06-11 17:09:45 castaglia Exp $
  */
 
 #ifndef __DATACONN_H
@@ -32,7 +32,7 @@
 
 void data_init(char *, int);
 void data_cleanup(void);
-int data_open(char *, char *, int, unsigned long);
+int data_open(char *, char *, int, off_t);
 void data_close(int);
 void data_abort(int, int);
 int data_xfer(char *, int);

@@ -25,7 +25,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.68 2002-06-11 16:18:07 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.69 2002-06-11 17:09:47 castaglia Exp $
  */
 
 /* History Log:
@@ -131,7 +131,7 @@ static float _rate_diffusec(struct timeval tlast, struct timeval t) {
  *              rate_bps:       max byte / sec bandwidth allowed
  *              rate_hardbps:   if FALSE then forces BPS only after FreeBytes
  */
-static void _rate_throttle(unsigned long rate_pos, long rate_bytes,
+static void _rate_throttle(off_t rate_pos, long rate_bytes,
 			   struct timeval rate_tvlast,
 			   long rate_freebytes, long rate_bps,
 			   int rate_hardbps)
@@ -216,7 +216,7 @@ static int _transmit_normal(char *buf, long bufsize) {
 }
 
 #ifdef HAVE_SENDFILE
-static int _transmit_sendfile(int rate_bps, unsigned long count, off_t *offset,
+static int _transmit_sendfile(int rate_bps, off_t count, off_t *offset,
 			       pr_sendfile_t *retval) {
   
   /* We don't use sendfile() if:
@@ -272,7 +272,7 @@ static int _transmit_sendfile(int rate_bps, unsigned long count, off_t *offset,
 }
 #endif /* HAVE_SENDFILE */
 
-static long _transmit_data(int rate_bps, unsigned long count, off_t offset,
+static long _transmit_data(int rate_bps, off_t count, off_t offset,
 			   char *buf, long bufsize) {
 #ifdef HAVE_SENDFILE
   pr_sendfile_t retval;
@@ -659,7 +659,7 @@ MODRET cmd_stor(cmd_rec *cmd)
   char *lbuf;
   int bufsize,len;
   struct stat sbuf;
-  unsigned long respos = 0;
+  off_t respos = 0;
   privdata_t *p, *p_hidden;
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
@@ -943,7 +943,7 @@ MODRET cmd_retr(cmd_rec *cmd)
   privdata_t *p;
   long bufsize, len = 0;
   long rate_hardbps = 0;
-  unsigned long respos = 0,cnt = 0,cnt_steps = 0,cnt_next = 0;
+  off_t respos = 0,cnt = 0,cnt_steps = 0,cnt_next = 0;
   long rate_bytes = 0, rate_freebytes = 0, rate_bps = 0;
   
   if((rate_bps = get_param_int(CURRENT_CONF, "RateReadBPS", FALSE)) == -1)
@@ -994,7 +994,7 @@ MODRET cmd_retr(cmd_rec *cmd)
     data_init(cmd->arg,IO_WRITE);
     
     session.xfer.path = pstrdup(session.xfer.p,dir);
-    session.xfer.file_size = (unsigned long) sbuf.st_size;
+    session.xfer.file_size = sbuf.st_size;
     cnt_steps = session.xfer.file_size / 100;
     if(cnt_steps == 0)
       cnt_steps = 1;

@@ -26,7 +26,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.9 2002-05-21 20:47:15 castaglia Exp $
+ * $Id: log.h,v 1.10 2002-06-11 17:09:45 castaglia Exp $
  */
 
 #ifndef __LOG_H
@@ -148,7 +148,6 @@ int log_close_run(void);
 void log_rm_run(void);
 int log_open_xfer(const char *);
 void log_close_xfer(void);
-int log_xfer(int, char *, unsigned long, char *, char, char, char,
-  char *, char);
+int log_xfer(int, char *, off_t, char *, char, char, char, char *, char);
 
 #endif /* __LOG_H */

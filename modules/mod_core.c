@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.87 2002-06-11 16:18:07 castaglia Exp $
+ * $Id: mod_core.c,v 1.88 2002-06-11 17:09:45 castaglia Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -2106,7 +2106,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs)
   fsdir_t *fp;
   char buf[1024] = {'\0'};
   int len, max, fd, classes_enabled;
-  unsigned long fs_size = 0;
+  off_t fs_size = 0;
   pool *p;
   xaset_t *s;
   config_rec *c = NULL;
@@ -2119,7 +2119,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs)
 
 #if defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
   fs_size = get_fs_size((fs ? (char*)fs : (char*)fn));
-  snprintf(mg_size, sizeof(mg_size), "%lu", fs_size);
+  snprintf(mg_size, sizeof(mg_size), "%" PR_LU, fs_size);
 #endif
 
   if((fp = fs_open_canon(fn,O_RDONLY,&fd)) == NULL)
@@ -2130,7 +2130,8 @@ int core_display_file(const char *numeric, const char *fn, const char *fs)
   s = (session.anon_config ? session.anon_config->subset : main_server->conf);
 
   mg_time = fmt_time(time(NULL));
-  snprintf(mg_size, sizeof(mg_size), "%lu",fs_size);
+  snprintf(mg_size, sizeof(mg_size), "%" PR_LU, fs_size);
+
   max = get_param_int(s,"MaxClients",FALSE);
   snprintf(mg_cur, sizeof(mg_cur), "%d",(int)get_param_int(main_server->conf,
           "CURRENT-CLIENTS",FALSE)+1);
@@ -2148,23 +2149,22 @@ int core_display_file(const char *numeric, const char *fn, const char *fs)
 	snprintf(mg_class_limit, sizeof(mg_class_limit), "%u",max);
   }
    
-  snprintf(mg_xfer_bytes, sizeof(mg_xfer_bytes), "%lu",
+  snprintf(mg_xfer_bytes, sizeof(mg_xfer_bytes), "%" PR_LU,
 	   session.total_bytes >> 10);
-  
-  snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%luB",
+  snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "B",
 	   session.total_bytes);
-  
+
   if(session.total_bytes >= 10240) {
-    snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%lukB",
+    snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "kB",
 	     session.total_bytes >> 10);
   } else if ((session.total_bytes >> 10) >= 10240) {
-    snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%luMB",
+    snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "MB",
 	     session.total_bytes >> 20);
   } else if ((session.total_bytes >> 20) >= 10240) {
-    snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%luGB",
+    snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "GB",
 	     session.total_bytes >> 30);
   }
-
+  
   if(max != -1)
     snprintf(mg_max, sizeof(mg_max), "%d",max);
 
@@ -2892,7 +2892,6 @@ MODRET cmd_size(cmd_rec *cmd)
 {
   char *path;
   struct stat sbuf;
-  unsigned long st_size;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
@@ -2906,30 +2905,9 @@ MODRET cmd_size(cmd_rec *cmd)
     if(!S_ISREG(sbuf.st_mode)) {
       add_response_err(R_550,"%s: not a regular file.",cmd->arg);
       return ERROR(cmd);
-    } else {
-      st_size = sbuf.st_size;
-#if 0
-      /* This code disabled in 1.1.6pl2, it allowed a possible DoS when sizeing
-       * large files in ascii mode.
-       */
-      if(session.flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
-        int fd,cnt;
-	char buf[4096];
-
-        if((fp = fs_open(path,O_RDONLY,&fd)) != NULL) {
-          st_size = 0;
-          while((cnt = fs_read(fp,fd,buf,sizeof(buf))) > 0) {
-            st_size += cnt;
-            while(cnt--)
-              if(buf[cnt] == '\n') st_size++;
-          }
-          
-          fs_close(fp,fd);
-        }
-      }
-#endif
-      add_response(R_213,"%lu",st_size);
     }
+    else
+      add_response(R_213, "%" PR_LU, sbuf.st_size);
   }
 
   return HANDLED(cmd);

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.183 2002-06-11 16:18:06 castaglia Exp $
+$Id: NEWS,v 1.184 2002-06-11 17:09:42 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -10,6 +10,7 @@ CVS
              functions are executed synchronously, not asynchronously
 - Bug 1463 - Added reporting of dispatching to auth handlers at debug level 6
 - Bug 1258 - Added STOU command handler
+- Bug 1534 - Added LFS support
 
 1.2.5 - Released 2002-06-08
 ---------------------------------

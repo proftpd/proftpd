@@ -57,6 +57,12 @@ AC_PROG_MAKE_SET
 AC_PROG_INSTALL
 AC_PROG_RANLIB
 
+dnl This test must come as early as possible after the compiler
+dnl configuration tests, because the choice of the file model can (in
+dnl principle) affect whether functions and headers are available,
+dnl whether they work, etc.
+AC_SYS_LARGEFILE  
+
 # The native HP-UX 10 compiler needs -Ae to enable Extended ANSI compliance
 # (-Ae is the default in the native compiler under HP-UX 11).
 if test $ac_cv_prog_gcc = no -a "$OSTYPE" = "-DHPUX10"; then

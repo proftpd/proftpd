@@ -25,7 +25,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.29 2002-05-21 20:47:23 castaglia Exp $
+ * $Id: support.c,v 1.30 2002-06-11 17:09:48 castaglia Exp $
  */
 
 /* History Log:
@@ -827,10 +827,10 @@ char *sreplace(pool *p, char *s, ...)
  */
 
 static
-unsigned long _calc_fs(unsigned long blocks, unsigned long bsize)
+off_t _calc_fs(size_t blocks, size_t bsize)
 {
-  unsigned long bl_lo,bl_hi;
-  unsigned long res_lo,res_hi,tmp;
+  off_t bl_lo,bl_hi;
+  off_t res_lo,res_hi,tmp;
 
   bl_lo = blocks & 0x0000ffff;
   bl_hi = blocks & 0xffff0000;
@@ -847,7 +847,7 @@ unsigned long _calc_fs(unsigned long blocks, unsigned long bsize)
 }
 
 #ifdef HAVE_SYS_STATVFS_H
-unsigned long get_fs_size(char *s)
+off_t get_fs_size(char *s)
 {
   struct statvfs vfs;
 
@@ -857,7 +857,7 @@ unsigned long get_fs_size(char *s)
   return _calc_fs(vfs.f_bavail,vfs.f_frsize);
 }
 #elif defined(HAVE_SYS_VFS_H)
-unsigned long get_fs_size(char *s)
+off_t get_fs_size(char *s)
 {
   struct statfs vfs;
 

@@ -25,7 +25,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.23 2002-05-21 20:47:17 castaglia Exp $
+ * $Id: mod_log.c,v 1.24 2002-06-11 17:09:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -475,8 +475,8 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
     
   case META_BYTES_SENT:
     argp = arg;
-    if(session.xfer.p)
-      snprintf(argp, sizeof(arg), "%lu",session.xfer.total_bytes);
+    if (session.xfer.p)
+      snprintf(argp, sizeof(arg), "%" PR_LU, session.xfer.total_bytes);
     else
       sstrncpy(argp, "-", sizeof(arg));
 
@@ -607,8 +607,8 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
         end_time.tv_sec--;
       }
 
-      snprintf(argp, sizeof(arg), "%lu.%03lu", (unsigned long) end_time.tv_sec,
-	       (unsigned long) (end_time.tv_usec / 1000));
+      snprintf(argp, sizeof(arg), "%ld.%03ld", (time_t) end_time.tv_sec,
+	       (time_t) (end_time.tv_usec / 1000));
     } else {
       sstrncpy(argp,"-",sizeof(arg));
     }
