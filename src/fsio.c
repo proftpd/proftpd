@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.6 2002-12-13 19:33:08 castaglia Exp $
+ * $Id: fsio.c,v 1.7 2002-12-31 20:05:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1181,7 +1181,7 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
       if (S_ISLNK(sbuf.st_mode)) {
         /* Detect an obvious recursive symlink */
         if (sbuf.st_ino && (ino_t) sbuf.st_ino == last_inode) {
-          errno = ENOENT;
+          errno = ELOOP;
           return -1;
         }
 

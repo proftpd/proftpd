@@ -1,4 +1,10 @@
-$Id: NEWS,v 1.336 2002-12-28 18:23:42 castaglia Exp $
+$Id: NEWS,v 1.337 2002-12-31 20:05:58 castaglia Exp $
+
+CVS
+---------------------------------
+- Bug 1894 - Double chdir into self-referencing symlink fails with
+  "No such file or directory".  The errno value has been changed from
+   ENOENT to ELOOP.
 
 1.2.8rc1 - Released 28-Dec-2002
 ---------------------------------
