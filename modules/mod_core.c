@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.46 2001-01-26 23:15:13 flood Exp $
+ * $Id: mod_core.c,v 1.47 2001-01-28 18:33:36 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -382,7 +382,9 @@ MODRET set_maxclients(cmd_rec *cmd)
     c = add_config_param("MaxClients",2,(void*)max,NULL);
     c->argv[1] = pstrdup(permanent_pool,cmd->argv[2]);   
   } else
-    add_config_param("MaxClients",1,(void*)max);
+    c = add_config_param("MaxClients",1,(void*)max);
+
+  c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
 }
@@ -411,9 +413,11 @@ MODRET set_maxhostclients(cmd_rec *cmd)
     c = add_config_param("MaxClientsPerHost", 2, (void *) max, NULL);
     c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
   } else {
-    add_config_param("MaxClientsPerHost", 1, (void *) max);
+    c = add_config_param("MaxClientsPerHost", 1, (void *) max);
   }
   
+  c->flags |= CF_MERGEDOWN;
+ 
   return HANDLED(cmd);
 }
 
@@ -441,9 +445,11 @@ MODRET set_maxhostsperuser(cmd_rec *cmd)
     c = add_config_param("MaxHostsPerUser", 2, (void *) max, NULL);
     c->argv[1] = pstrdup(c->pool, cmd->argv[2]);   
   } else {
-    add_config_param("MaxHostsPerUser", 1, (void *) max);
+    c = add_config_param("MaxHostsPerUser", 1, (void *) max);
   }
   
+  c->flags |= CF_MERGEDOWN;
+ 
   return HANDLED(cmd);
 }
 
