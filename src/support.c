@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.65 2003-11-09 23:32:08 castaglia Exp $
+ * $Id: support.c,v 1.66 2003-12-02 02:54:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -842,6 +842,26 @@ char *sstrcat(char *dest, const char *src, size_t n) {
 
   *d = 0;
   return dest;
+}
+
+struct tm *pr_gmtime(pool *p, const time_t *t) {
+  struct tm *sys_tm, *dup_tm;
+
+  sys_tm = gmtime(t);
+  dup_tm = pcalloc(p, sizeof(struct tm));
+  memcpy(dup_tm, sys_tm, sizeof(struct tm));
+
+  return dup_tm;
+}
+
+struct tm *pr_localtime(pool *p, const time_t *t) {
+  struct tm *sys_tm, *dup_tm;
+
+  sys_tm = localtime(t);
+  dup_tm = pcalloc(p, sizeof(struct tm));
+  memcpy(dup_tm, sys_tm, sizeof(struct tm));
+
+  return dup_tm;
 }
 
 const char *pr_strtime(time_t t) {

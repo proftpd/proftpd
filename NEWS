@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.513 2003-11-19 20:13:08 castaglia Exp $
+$Id: NEWS,v 1.514 2003-12-02 02:54:28 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -56,6 +56,7 @@ CVS
 - Bug 1635 - Older systems' chown(1) does not support -h option.  The solution
   is to prevent this error from stopping the 'make install' process, as it
   is a harmless error on such systems.
+- Bug 2290 - gmtime() static storage may be overwritten by modules.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------

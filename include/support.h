@@ -25,11 +25,13 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.21 2003-11-09 22:19:45 castaglia Exp $
+ * $Id: support.h,v 1.22 2003-12-02 02:54:28 castaglia Exp $
  */
 
 #ifndef PR_SUPPORT_H
 #define PR_SUPPORT_H
+
+#include <time.h>
 
 #define CHOP(s)		strip_end((s),"\r\n")
 
@@ -94,6 +96,8 @@ int check_shutmsg(time_t *, time_t *, time_t *, char *, size_t);
 
 void pr_memscrub(void *, size_t);
 
+struct tm *pr_gmtime(pool *, const time_t *);
+struct tm *pr_localtime(pool *, const time_t *);
 const char *pr_strtime(time_t);
 
 char *sstrcat(char *, const char *, size_t);

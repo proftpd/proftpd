@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.100 2003-11-09 23:10:56 castaglia Exp $
+ * $Id: mod_ls.c,v 1.101 2003-12-02 02:54:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -341,9 +341,9 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
     mtime = st.st_mtime;
 
     if (list_times_gmt)
-      t = gmtime((time_t *) &mtime);
+      t = pr_gmtime(p, (time_t *) &mtime);
     else
-      t = localtime((time_t *) &mtime);
+      t = pr_localtime(p, (time_t *) &mtime);
 
     if (!t) {
       pr_response_add_err(R_421, "Fatal error (localtime() returned NULL?!?)");
