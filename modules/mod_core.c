@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.141 2002-12-17 01:12:12 castaglia Exp $
+ * $Id: mod_core.c,v 1.142 2002-12-17 01:52:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -89,6 +89,14 @@ static struct {
   { C_NOOP, "(no operation)",			TRUE },
   { C_FEAT, "(returns feature list)",		TRUE },
   { C_OPTS, "<sp> command [<sp> options]",	TRUE },
+  { C_ADAT, "<sp> mechanism-name",		FALSE },
+  { C_AUTH, "<sp> base64-data",			FALSE },
+  { C_CCC,  "(clears protection level)",	FALSE },
+  { C_CONF, "<sp> base64-data",			FALSE },
+  { C_ENC,  "<sp> base64-data",			FALSE },
+  { C_MIC,  "<sp> base64-data",			FALSE },
+  { C_PBSZ, "<sp> protection buffer size",	FALSE },
+  { C_PROT, "<sp> protection code",		FALSE },
   { NULL,   NULL,          			FALSE }
 };
 
