@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.76 2002-11-25 17:33:50 castaglia Exp $
+ * $Id: dirtree.c,v 1.77 2002-12-02 18:16:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -326,13 +326,12 @@ unsigned char dir_hide_file(const char *path) {
 
   if (have_user_regex || have_group_regex ||
       have_class_regex || have_all_regex) {
-    int res;
 
     log_debug(DEBUG4, "checking HideFiles pattern for current %s",
       have_user_regex ? "user" : have_group_regex ? "group" :
       have_class_regex ? "class" : "session");
 
-    if ((res = regexec(regexp, file_name, 0, NULL, 0)) != 0) {
+    if (regexec(regexp, file_name, 0, NULL, 0) != 0) {
 
       /* The file failed to match the HideFiles regex, which means it should
        * be treated as a "visible" file.  If the regex was 'inverted', though,
@@ -351,7 +350,7 @@ unsigned char dir_hide_file(const char *path) {
   }
 
   return FALSE;
-#endif
+#endif /* !HAVE_REGEX_H and !HAVE_REGCOMP */
 
   /* return FALSE by default
    */
