@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.157 2004-03-11 02:18:57 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.158 2004-04-11 20:35:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1868,49 +1868,6 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
   return 0;
 }
 
-static int xfer_init(void) {
- 
-  /* Add the commands handled by this module to the HELP list. */
-  pr_help_add(C_TYPE, "<sp> type-code (A, I, L 7, L 8)", TRUE);
-  pr_help_add(C_STRU, "is not implemented (always F)", TRUE);
-  pr_help_add(C_MODE, "is not implemented (always S)", TRUE);
-  pr_help_add(C_RETR, "<sp> pathname", TRUE);
-  pr_help_add(C_STOR, "<sp> pathname", TRUE);
-  pr_help_add(C_STOU, "(store unique filename)", TRUE);
-  pr_help_add(C_APPE, "<sp> pathname", TRUE);
-  pr_help_add(C_REST, "<sp> byte-count", TRUE);
-  pr_help_add(C_ABOR, "(abort current operation)", TRUE);
-
-  return 0;
-}
-
-static int xfer_sess_init(void) {
-  config_rec *c = NULL;
-
-  /* Check for a server-specific TimeoutNoTransfer */
-  if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutNoTransfer",
-      FALSE)) != NULL)
-    TimeoutNoXfer = *((int *) c->argv[0]);
-
-  /* Setup TimeoutNoXfer timer */
-  if (TimeoutNoXfer)
-    add_timer(TimeoutNoXfer, TIMER_NOXFER, &xfer_module, noxfer_timeout_cb);
-
-  /* Check for a server-specific TimeoutStalled */
-  if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutStalled",
-      FALSE)) != NULL)
-    TimeoutStalled = *((int *) c->argv[0]);
-
-  /* Note: timers for handling TimeoutStalled timeouts are handled in the
-   * data transfer routines, not here.
-   */
-
-  /* Exit handler for HiddenStores cleanup */
-  pr_exit_register_handler(xfer_exit_cb);
-
-  return 0;
-}
-
 /* Configuration handlers
  */
 
@@ -2324,6 +2281,83 @@ MODRET set_transferrate(cmd_rec *cmd) {
 
 MODRET set_ratedeprecated(cmd_rec *cmd) {
   CONF_ERROR(cmd, "deprecated.  Use TransferRate instead");
+}
+
+/* Event handlers
+ */
+
+static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
+
+  /* Only do this if we're currently downloading. Note that this is a hack
+   * put in to support mod_shaper's antics.  A true TransferRate rescan
+   * would happen on the upload commands as well (but then, trying to
+   * throttle uploads is not that effective).
+   */
+  if (strcmp(session.curr_cmd, C_RETR) == 0) {
+    pool *p = make_sub_pool(session.pool);
+    cmd_rec *cmd = pr_cmd_alloc(p, 1, C_RETR);
+
+    /* Rescan the config tree for TransferRates, picking up any possible
+     * changes.  Make sure to preserve the current/old TransferRate
+     * values, in case there were not any TransferRate changes in the config
+     * tree.
+     */
+    pr_log_debug(DEBUG2, "rechecking TransferRates");
+    xfer_rate_lookup(cmd);
+
+    destroy_pool(p);
+  }
+
+  return;
+}
+
+/* Initialization routines
+ */
+
+static int xfer_init(void) {
+
+  /* Add the commands handled by this module to the HELP list. */
+  pr_help_add(C_TYPE, "<sp> type-code (A, I, L 7, L 8)", TRUE);
+  pr_help_add(C_STRU, "is not implemented (always F)", TRUE);
+  pr_help_add(C_MODE, "is not implemented (always S)", TRUE);
+  pr_help_add(C_RETR, "<sp> pathname", TRUE);
+  pr_help_add(C_STOR, "<sp> pathname", TRUE);
+  pr_help_add(C_STOU, "(store unique filename)", TRUE);
+  pr_help_add(C_APPE, "<sp> pathname", TRUE);
+  pr_help_add(C_REST, "<sp> byte-count", TRUE);
+  pr_help_add(C_ABOR, "(abort current operation)", TRUE);
+
+  return 0;
+}
+
+static int xfer_sess_init(void) {
+  config_rec *c = NULL;
+
+  /* Check for a server-specific TimeoutNoTransfer */
+  if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutNoTransfer",
+      FALSE)) != NULL)
+    TimeoutNoXfer = *((int *) c->argv[0]);
+
+  /* Setup TimeoutNoXfer timer */
+  if (TimeoutNoXfer)
+    add_timer(TimeoutNoXfer, TIMER_NOXFER, &xfer_module, noxfer_timeout_cb);
+
+  /* Check for a server-specific TimeoutStalled */
+  if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutStalled",
+      FALSE)) != NULL)
+    TimeoutStalled = *((int *) c->argv[0]);
+
+  /* Note: timers for handling TimeoutStalled timeouts are handled in the
+   * data transfer routines, not here.
+   */
+
+  /* Exit handler for HiddenStores cleanup */
+  pr_exit_register_handler(xfer_exit_cb);
+
+  pr_event_register(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev,
+    NULL);
+
+  return 0;
 }
 
 /* Module API tables
