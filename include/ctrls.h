@@ -23,7 +23,7 @@
  */
 
 /* Controls API definitions
- * $Id: ctrls.h,v 1.1 2003-11-09 01:55:28 castaglia Exp $
+ * $Id: ctrls.h,v 1.2 2004-04-15 23:16:00 castaglia Exp $
  */
 
 #ifndef PR_CTRLS_H
@@ -132,8 +132,9 @@ typedef struct ctrls_obj {
 #define PR_CTRLS_ACT_SOLITARY		0x00010
 #define PR_CTRLS_ACT_DISABLED		0x00020
 
-#define CTRLS_GET_ACTION		7
-#define CTRLS_GET_DESC			8
+#define CTRLS_GET_ACTION_ALL		7
+#define CTRLS_GET_ACTION_ENABLED	8
+#define CTRLS_GET_DESC			9
 
 /* Controls API prototypes
  */
