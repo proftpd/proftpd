@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.641 2005-01-01 18:37:42 castaglia Exp $
+$Id: NEWS,v 1.642 2005-01-25 19:30:44 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -106,6 +106,7 @@ CVS
 - Bug 2549 - Allow contrib modules to be built from multiple source files.
 - Bug 1651 - Add contrib module to limit connection acceptance based on system
   load.  mod_load is now one of the provided contrib/ modules.
+- Bug 2503 - Bundled libcap library does not compile on IA64 machine.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

@@ -1,5 +1,5 @@
 /*
- * $Id: cap_sys.c,v 1.1 2003-01-03 02:16:17 jwm Exp $
+ * $Id: cap_sys.c,v 1.2 2005-01-25 19:30:55 castaglia Exp $
  *
  * Copyright (c) 1997-8 Andrew G. Morgan   <morgan@linux.kernel.org>
  *
@@ -11,17 +11,13 @@
 #define __LIBRARY__
 #include <linux/unistd.h>
 
-_syscall2(int, capget,
-	  cap_user_header_t, header,
-	  cap_user_data_t, data)
-
-_syscall2(int, capset,
-	  cap_user_header_t, header,
-	  const cap_user_data_t, data)
-
 /*
  * $Log: cap_sys.c,v $
- * Revision 1.1  2003-01-03 02:16:17  jwm
+ * Revision 1.2  2005-01-25 19:30:55  castaglia
+ *
+ * Bug#2503 - Bundled libcap library does not compile on IA64 machine.
+ *
+ * Revision 1.1  2003/01/03 02:16:17  jwm
  *
  * Turning mod_linuxprivs into a core module, mod_cap. This is by no means
  * complete.
