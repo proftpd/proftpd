@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.241 2004-08-07 20:58:19 castaglia Exp $
+ * $Id: main.c,v 1.242 2004-08-07 22:21:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -427,10 +427,14 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
     char *user;
     time_t now;
     char *msg;
-    const char *serveraddress = main_server->ServerAddress;
+    const char *serveraddress;
     config_rec *c = NULL;
     unsigned char *authenticated = get_param_ptr(main_server->conf,
       "authenticated", FALSE);
+
+    serveraddress = (session.c && session.c->local_addr) ?
+      pr_netaddr_get_ipstr(session.c->local_addr) :
+      main_server->ServerAddress;
 
     if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
         FALSE)) != NULL) {
@@ -1239,7 +1243,11 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     if (!deny || deny <= now) {
       config_rec *c = NULL;
       char *reason = NULL;
-      const char *serveraddress = main_server->ServerAddress;
+      const char *serveraddress;
+
+      serveraddress = (session.c && session.c->local_addr) ?
+        pr_netaddr_get_ipstr(session.c->local_addr) :
+        main_server->ServerAddress;
 
       if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
         FALSE)) != NULL) {
