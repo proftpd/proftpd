@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (C) 1999, MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
+ * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,10 +20,15 @@
 
 /*
  * $Libraries: -lldap -llber$
- * LDAP lookup module for ProFTPD (mod_ldap v2.0-RELEASE)
+ * ldap password lookup module for ProFTPD (mod_ldap v2.5.2)
  * Author: John Morrissey <jwm@horde.net>
  *
- * $Id: mod_ldap.c,v 1.5 1999-12-27 03:03:52 macgyver Exp $
+ * Thanks for patches to:
+ * Peter Fabian <fabian@staff.matavnet.hu> - LDAPAuthBinds
+ * Bert Vermeulen <bert@be.easynet.net> - LDAPHomedirOnDemand,
+ *                                        LDAPDefaultAuthScheme
+ *
+ * $Id: mod_ldap.c,v 1.6 2000-02-26 21:34:39 macgyver Exp $
  */
 
 #include "conf.h"
@@ -54,19 +59,15 @@ static xaset_t *gid_table[HASH_TABLE_SIZE];
 static char *ldap_server,
 			*ldap_dn, *ldap_dnpass,
 			*ldap_auth_prefix, *ldap_uid_prefix, *ldap_gid_prefix,
-			*ldap_defaultauthscheme;
+			*ldap_defaultauthscheme, *ldap_authbind_dn;
 static int ldap_doauth = 0, ldap_douid = 0, ldap_dogid = 0,
-		   ldap_negcache = -1, ldap_querytimeout = -1,
+		   ldap_authbinds = 0, ldap_negcache = 0, ldap_querytimeout = 0,
            ldap_defaultuid = -1, ldap_defaultgid = -1,
 		   ldap_homedirondemand = 0;
 
-static LDAP *ld;
+static LDAP *ld, *ld_auth;
 
-/* authentication types */
-#define LDAP_AUTHTYPE_CLEAR 1
-#define LDAP_AUTHTYPE_CRYPT 2
-
-/* Mode to use when creating home directory on demand */
+/* Mode to use when creating home directory on demand. */
 #define HOMEDIR_MODE 0755
 
 
@@ -81,12 +82,12 @@ static void p_ldap_connect()
 	log_pri(LOG_ERR, "mod_ldap: p_ldap_connect(): ldap_open() to %s failed", ldap_server);
 	return;
   }
-  if (ldap_simple_bind(ld, ldap_dn, ldap_dnpass) == -1) {
+  if (ldap_simple_bind_s(ld, ldap_dn, ldap_dnpass) != LDAP_SUCCESS) {
 	log_pri(LOG_ERR, "mod_ldap: p_ldap_connect(): ldap_simple_bind() as %s failed", ldap_dn);
 	return;
   }
 
-  if (ldap_querytimeout != -1) {
+  if (ldap_querytimeout) {
     tp.tv_sec = ldap_querytimeout;
     tp.tv_usec = 0;
 
@@ -108,7 +109,7 @@ static struct passwd *ldap_user_lookup(char *filter, char *ldap_attrs[], char *p
 {
   LDAPMessage *result, *e;
   char **values;
-  unsigned short int i = 1;
+  unsigned short int i = 0;
   struct passwd *pw;
   struct stat st;
 
@@ -139,21 +140,13 @@ static struct passwd *ldap_user_lookup(char *filter, char *ldap_attrs[], char *p
     return NULL; /* No LDAP entries for this user */
   }
 
-  /* We'll look for the string FTP anywhere in this user's allowedServices
-     attribute. If it's not there, we'll return NULL (and therefore deny
-     them access). */
-
-  values = ldap_get_values(ld, e, "allowedServices");
-  if (values != NULL) { /* If this user even has an allowedServices entry */
-    if (strstr(values[0], "FTP") == NULL) {
-      ldap_value_free(values);
-      return NULL;
-    }
-  }
-
-  ldap_value_free(values);
-
   pw = pcalloc(session.pool, sizeof(struct passwd));
+
+  /* If we're doing auth binds, save the DN of this entry so we can
+     bind to the LDAP server as it later. */
+  if (ldap_authbinds && (! ldap_authbind_dn)) {
+    ldap_authbind_dn = ldap_get_dn(ld, e);
+  }
 
   while (ldap_attrs[i] != NULL) {
     if ((values = ldap_get_values(ld, e, ldap_attrs[i])) == NULL) {
@@ -183,6 +176,28 @@ static struct passwd *ldap_user_lookup(char *filter, char *ldap_attrs[], char *p
         }
       }
 
+      /* If we're doing authenticated binds, this record won't have a
+         userPassword attr, so just skip this attr by continuing the loop. */
+      if ( (strcasecmp(ldap_attrs[i], "userPassword") == 0) &&
+           ldap_authbinds) {
+        ++i;
+        continue;
+      }
+
+      /* We may not always have an allowedServices entry. If it's not
+         there, don't worry. */
+      if (strcasecmp(ldap_attrs[i], "allowedServices") == 0) {
+        ++i;
+        continue;
+      }
+
+      /* We may not always have a loginShell entry. If it's not
+         there, don't worry. */
+      if (strcasecmp(ldap_attrs[i], "loginShell") == 0) {
+        ++i;
+        continue;
+      }
+
       /* We only restart the while loop above if we can fill in the
          [ug]id in question with a Default[UG]ID. If no [ug]idNumber
          attr was found and we don't have a Default[UG]ID configured,
@@ -210,6 +225,18 @@ static struct passwd *ldap_user_lookup(char *filter, char *ldap_attrs[], char *p
       pw->pw_dir = pstrdup(session.pool, values[0]);
     else if (strcasecmp(ldap_attrs[i], "loginShell") == 0)
       pw->pw_shell = pstrdup(session.pool, values[0]);
+    else if (strcasecmp(ldap_attrs[i], "allowedServices") == 0) {
+      /* We'll look for the string FTP anywhere in this user's allowedServices
+       attribute. If it's not there, we'll return NULL (and therefore deny
+       them access). */
+
+      if (strstr(values[0], "FTP") == NULL) {
+        log_pri(LOG_ERR, "mod_ldap: user with filter %s denied (FTP not in allowedServices attr)", filter);
+        ldap_value_free(values);
+        ldap_msgfree(result);
+        return NULL;
+      }
+    }
     else
       log_pri(LOG_WARNING, "mod_ldap: ldap_user_lookup(): ldap_get_values() loop found unknown attr %s", ldap_attrs[i]);
 
@@ -308,28 +335,28 @@ static struct group *ldap_group_lookup(char *filter, char *ldap_attrs[])
 
 static struct group *p_ldap_getgrnam(cmd_rec *cmd, const char *name)
 {
-    char *filter, *group_attrs[] = {"cn", "gidNumber", "memberUid", NULL};
+	char *filter, *group_attrs[] = {"cn", "gidNumber", "memberUid", NULL};
 
-    filter = pstrcat(cmd->tmp_pool, "cn=", name, NULL);
-    return(ldap_group_lookup(filter, group_attrs));
+	filter = pstrcat(cmd->tmp_pool, "cn=", name, NULL);
+	return(ldap_group_lookup(filter, group_attrs));
 }
 
 static struct group *p_ldap_getgrgid(cmd_rec *cmd, gid_t gid)
 {
-    char *filter, gidstr[BUFSIZ],
-         *group_attrs[] = {"cn", "gidNumber", "memberUid", NULL};
+	char *filter, gidstr[BUFSIZ],
+		 *group_attrs[] = {"cn", "gidNumber", "memberUid", NULL};
 
-    snprintf(gidstr, sizeof(gidstr), "%d", gid);
-    filter = pstrcat(cmd->tmp_pool, "gidNumber=", gidstr, NULL);
-    return(ldap_group_lookup(filter, group_attrs));
+	snprintf(gidstr, sizeof(gidstr), "%d", gid);
+	filter = pstrcat(cmd->tmp_pool, "gidNumber=", gidstr, NULL);
+	return(ldap_group_lookup(filter, group_attrs));
 }
 
 static struct passwd *p_ldap_getpwnam(cmd_rec *cmd, const char *name)
 {
   struct passwd *pw;
   char *filter,
-       *name_attrs[] = {"allowedServices", "userPassword", "uidNumber",
-                        "gidNumber", "homeDirectory", "loginShell", NULL};
+       *name_attrs[] = {"userPassword", "uidNumber", "gidNumber",
+       					"homeDirectory", "loginShell", "allowedServices", NULL};
 
   filter = pstrcat(cmd->tmp_pool, "uid=", name, NULL);
 
@@ -416,16 +443,14 @@ MODRET ldap_endpwent(cmd_rec *cmd)
 MODRET ldap_getpwuid(cmd_rec *cmd)
 {
   struct passwd *pw;
-  uid_t uid;
 
   if (! ldap_douid)
     return DECLINED(cmd);
 
-  uid = (uid_t)cmd->argv[0];
-  pw = p_ldap_getpwuid(cmd,uid);
-
-  if(pw)
+  if ((pw = p_ldap_getpwuid(cmd, (int)cmd->argv[0]))) {
+    pw->pw_uid = (int)cmd->argv[0];
     return mod_create_data(cmd,pw);
+  }
   else
     return DECLINED(cmd);
 }
@@ -433,16 +458,14 @@ MODRET ldap_getpwuid(cmd_rec *cmd)
 MODRET ldap_getpwnam(cmd_rec *cmd)
 {
   struct passwd *pw;
-  const char *name;
 
   if (! ldap_doauth)
     return DECLINED(cmd);
 
-  name = cmd->argv[0];
-  pw = p_ldap_getpwnam(cmd,name);
-
-  if(pw)
+  if ((pw = p_ldap_getpwnam(cmd, cmd->argv[0]))) {
+    pw->pw_name = pstrdup(session.pool, cmd->argv[0]);
     return mod_create_data(cmd,pw);
+  }
   else
     return DECLINED(cmd);
 }
@@ -450,16 +473,14 @@ MODRET ldap_getpwnam(cmd_rec *cmd)
 MODRET ldap_getgrnam(cmd_rec *cmd)
 {
   struct group *gr;
-  const char *name;
 
   if (! ldap_dogid)
     return DECLINED(cmd);
 
-  name = cmd->argv[0];
-  gr = p_ldap_getgrnam(cmd,name);
-
-  if(gr)
+  if ((gr = p_ldap_getgrnam(cmd, cmd->argv[0]))) {
+    gr->gr_name = pstrdup(session.pool, cmd->argv[0]);
     return mod_create_data(cmd,gr);
+  }
   else
     return DECLINED(cmd);
 }
@@ -467,16 +488,14 @@ MODRET ldap_getgrnam(cmd_rec *cmd)
 MODRET ldap_getgrgid(cmd_rec *cmd)
 {
   struct group *gr;
-  gid_t gid;
 
   if (! ldap_dogid)
     return DECLINED(cmd);
 
-  gid = (gid_t)cmd->argv[0];
-  gr = p_ldap_getgrgid(cmd,gid);
-
-  if(gr)
+  if ((gr = p_ldap_getgrgid(cmd, (int)cmd->argv[0]))) {
+    gr->gr_gid = (int)cmd->argv[0];
     return mod_create_data(cmd,gr);
+  }
   else
     return DECLINED(cmd);
 }
@@ -490,41 +509,40 @@ MODRET ldap_getgrgid(cmd_rec *cmd)
 
 MODRET ldap_is_auth(cmd_rec *cmd)
 {
-  time_t now;
-  time_t lstchg = -1, max = -1, inact = -1, disable = -11;
   const char *name;
-
   struct passwd *pw;
-  char *filter, *pass_attrs[] = {"allowedServices", "userPassword", NULL};
+  char *filter, *pass_attrs[] = {"userPassword", NULL};
 
   if (! ldap_doauth)
     return DECLINED(cmd);
 
   name = cmd->argv[0];
-  time(&now);
 
-  /* OK, here's the scoop. If don't find an entry for the user at all
-     (or there's an error gathering the LDAP info), we decline, so other
-     modules can have a shot at it. If we do find an entry for the user,
-     but there's no password, we return AUTH_NOPWD. */
+  /* FIXME: If we pass "" to auth_check, the mod_unixpw auth handler gets
+            called before the mod_ldap auth handler, so mod_unixpw will
+            allow in any LDAP auth-bind user with an incorrect password.
+            Can we kludge around this by setting the directive to not
+            allow empty passwords? (its name escapes me right now)
+            For now, we'll kludge around this by passing "*", which
+            mod_unixpw will happily deny auth to. */
+  /* If we're doing auth binds, cut right to the chase and auth them. */
+  if (ldap_authbinds) {
+    if (auth_check(cmd->tmp_pool, "*", cmd->argv[0], cmd->argv[1]))
+/*      return ERROR_INT(cmd, AUTH_BADPWD);*/
+      return DECLINED(cmd);
+
+    return HANDLED(cmd);
+  }
 
   filter = pstrcat(cmd->tmp_pool, "uid=", name, NULL);
   if ((pw = ldap_user_lookup(filter, pass_attrs, ldap_auth_prefix)) == NULL)
-    return DECLINED(cmd);
+    return DECLINED(cmd); /* Can't find the user in the LDAP db. */
 
-  if(!pw->pw_passwd)
-    return ERROR_INT(cmd,AUTH_NOPWD);
+  if (! pw->pw_passwd)
+    return ERROR_INT(cmd, AUTH_NOPWD);
 
-  if(auth_check(cmd->tmp_pool,pw->pw_passwd,cmd->argv[0],cmd->argv[1]))
-    return ERROR_INT(cmd,AUTH_BADPWD);
-
-  if(lstchg > (time_t)0 && max > (time_t)0 &&
-     inact > (time_t)0)
-    if(now > lstchg + max + inact)
-      return ERROR_INT(cmd,AUTH_AGEPWD);
-
-  if(disable > (time_t)0 && now > disable)
-    return ERROR_INT(cmd,AUTH_DISABLEDPWD);
+  if (auth_check(cmd->tmp_pool, pw->pw_passwd, cmd->argv[0], cmd->argv[1]))
+    return ERROR_INT(cmd, AUTH_BADPWD);
 
   return HANDLED(cmd);
 }
@@ -537,7 +555,7 @@ MODRET ldap_is_auth(cmd_rec *cmd)
 
 MODRET ldap_check(cmd_rec *cmd)
 {
-  static char *pw,*cpw;
+  static char *pw, *cpw;
   int encname_len;
 
   if (! ldap_doauth)
@@ -545,6 +563,24 @@ MODRET ldap_check(cmd_rec *cmd)
 
   cpw = cmd->argv[0];
   pw = cmd->argv[2];
+
+  if (ldap_authbinds) {
+    if ( (pw == NULL) || (strlen(pw) == 0) ||
+         (ldap_authbind_dn == NULL) || ((ldap_authbind_dn) == 0) )
+      return DECLINED(cmd);
+
+/*    ldap_authbind_dn = pstrcat(cmd->tmp_pool, "cn=", cmd->argv[1], ",", ldap_auth_prefix, NULL);*/
+
+    if ((ld_auth = ldap_open(ldap_server, LDAP_PORT)) == NULL) {
+	  log_pri(LOG_ERR, "mod_ldap: ldap_is_auth(): ldap_open() to %s failed", ldap_server);
+      return DECLINED(cmd);
+    }
+
+    if (ldap_simple_bind_s(ld_auth, ldap_authbind_dn, cmd->argv[2]) != LDAP_SUCCESS)
+      return DECLINED(cmd);
+
+    return HANDLED(cmd);
+  }
 
   /* Get the length of "scheme" in the leading {scheme} so we can skip it
      in the password comparison. */
@@ -555,7 +591,7 @@ MODRET ldap_check(cmd_rec *cmd)
   if (encname_len == strlen(cpw + 1)) { /* No leading {scheme} */
     if (ldap_defaultauthscheme && (strcmp(ldap_defaultauthscheme, "clear") == 0)) {
 	  if (strcmp(pw, cpw) != 0)
-	    return(ERROR(cmd));
+	    return ERROR(cmd);
     }
     else { /* else, assume crypt */
 	  if (strcmp(crypt(pw,cpw),cpw) != 0)
@@ -708,6 +744,23 @@ MODRET set_ldap_dninfo(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
+MODRET set_ldap_authbinds(cmd_rec *cmd)
+{
+  int b;
+  config_rec *c;
+
+  CHECK_ARGS(cmd,1);
+  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if ((b = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "LDAPAuthBinds: expected boolean argument.");
+
+  c = add_config_param("LDAPAuthBinds", 1, (void *) b);
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
 MODRET set_ldap_querytimeout(cmd_rec *cmd)
 {
   config_rec *c;
@@ -851,48 +904,59 @@ MODRET set_ldap_defaultauthscheme(cmd_rec *cmd)
   return(HANDLED(cmd));
 }
 
-static int ldap_getconf()
+static int ldap_getconf(void)
 {
   char *conf_timeout;
   config_rec *c;
-  char *defauth;
 
   /* If ldap_server is NULL, ldap_open() will connect to localhost. */
   ldap_server = (char *)get_param_ptr(main_server->conf, "LDAPServer", FALSE);
 
-  c = find_config(CURRENT_CONF, CONF_PARAM, "LDAPDNInfo", FALSE);
-  ldap_dn = pstrdup(session.pool, c->argv[0]);
-  ldap_dnpass = pstrdup(session.pool, c->argv[1]);
+  if ((c = find_config(CURRENT_CONF, CONF_PARAM, "LDAPDNInfo", FALSE)) != NULL) {
+  	ldap_dn = pstrdup(session.pool, c->argv[0]);
+  	ldap_dnpass = pstrdup(session.pool, c->argv[1]);
+  }
 
-  ldap_querytimeout = get_param_int(main_server->conf, "LDAPQueryTimeout", FALSE);
+  if (get_param_int(main_server->conf,"LDAPAuthBinds", FALSE) > 0)
+    ldap_authbinds = 1;
 
-  c = find_config(CURRENT_CONF, CONF_PARAM, "LDAPDoAuth", FALSE);
-  ldap_doauth = (int)c->argv[0];
-  ldap_auth_prefix = pstrdup(session.pool, c->argv[1]);
+  if (get_param_int(main_server->conf, "LDAPQueryTimeout", FALSE) > 0)
+    ldap_querytimeout = 1;
 
-  c = find_config(CURRENT_CONF, CONF_PARAM, "LDAPDoUIDLookups", FALSE);
-  ldap_douid = (int)c->argv[0];
-  ldap_uid_prefix = pstrdup(session.pool, c->argv[1]);
+  if ((c = find_config(CURRENT_CONF, CONF_PARAM, "LDAPDoAuth", FALSE)) != NULL) {
+    if ( (int)c->argv[0] > 0) {
+      ldap_doauth = 1;
+      ldap_auth_prefix = pstrdup(session.pool, c->argv[1]);
+    }
+  }
 
-  c = find_config(CURRENT_CONF, CONF_PARAM, "LDAPDoGIDLookups", FALSE);
-  ldap_dogid = (int)c->argv[0];
-  ldap_gid_prefix = pstrdup(session.pool, c->argv[1]);
+  if ((c = find_config(CURRENT_CONF, CONF_PARAM, "LDAPDoUIDLookups", FALSE)) != NULL) {
+    if ( (int)c->argv[0] > 0) {
+      ldap_douid = 1;
+      ldap_uid_prefix = pstrdup(session.pool, c->argv[1]);
+    }
+  }
+
+  if ((c = find_config(CURRENT_CONF, CONF_PARAM, "LDAPDoGIDLookups", FALSE)) != NULL) {
+    if ( (int)c->argv[0] > 0) {
+      ldap_dogid = 1;
+      ldap_gid_prefix = pstrdup(session.pool, c->argv[1]);
+    }
+  }
 
   ldap_defaultuid = get_param_int(main_server->conf, "LDAPDefaultUID", FALSE);
   ldap_defaultgid = get_param_int(main_server->conf, "LDAPDefaultGID", FALSE);
 
-  ldap_negcache = get_param_int(main_server->conf,"LDAPNegativeCache",FALSE);
-  if (ldap_negcache == -1)
-    ldap_negcache = 0; /* Don't do negative caching by default. */
+  if (get_param_int(main_server->conf,"LDAPNegativeCache",FALSE) > 0)
+    ldap_negcache = 1;
 
-  ldap_homedirondemand = get_param_int(main_server->conf, "LDAPHomedirOnDemand", FALSE);
-  if (ldap_homedirondemand == -1)
-    ldap_homedirondemand = 0; /* No homedir on demand by default. */
+  if (get_param_int(main_server->conf, "LDAPHomedirOnDemand", FALSE) > 0)
+    ldap_homedirondemand = 1;
 
   /* If ldap_defaultauthscheme is NULL, ldap_check() will assume crypt. */
   ldap_defaultauthscheme = (char *)get_param_ptr(main_server->conf, "LDAPDefaultAuthScheme", FALSE);
 
-  log_pri(LOG_ERR, "mod_ldap: ldap_getconf: douser: %d, dogid: %d, uidbase: %s, gidbase: %s, defaultuid: %d, defaultgid %d, querytimeout %d, homedirondemand: %d, defaultauthscheme: %s", ldap_douid, ldap_dogid, ldap_uid_prefix, ldap_gid_prefix, ldap_defaultuid, ldap_defaultgid, ldap_querytimeout, ldap_homedirondemand, ldap_defaultauthscheme);
+/*  log_pri(LOG_ERR, "mod_ldap: ldap_getconf: doauth: %d, douser: %d, dogid: %d, authbase: %s, uidbase: %s, gidbase: %s, defaultuid: %d, defaultgid %d, querytimeout %d, homedirondemand: %d, defaultauthscheme: %s, authbinds: %d", ldap_doauth, ldap_douid, ldap_dogid, ldap_auth_prefix, ldap_uid_prefix, ldap_gid_prefix, ldap_defaultuid, ldap_defaultgid, ldap_querytimeout, ldap_homedirondemand, ldap_defaultauthscheme, ldap_authbinds);*/
 
   return 0;
 }
@@ -900,6 +964,7 @@ static int ldap_getconf()
 static conftable ldap_config[] = {
   { "LDAPServer",            set_ldap_server,            NULL },
   { "LDAPDNInfo",            set_ldap_dninfo,            NULL },
+  { "LDAPAuthBinds",         set_ldap_authbinds,         NULL },
   { "LDAPQueryTimeout",      set_ldap_querytimeout,      NULL },
   { "LDAPNegativeCache",     set_ldap_negcache,          NULL },
   { "LDAPDoAuth",            set_ldap_doauth,            NULL },
