@@ -608,10 +608,17 @@ for module in $ac_addl_modules; do
 	cd $olddir
     fi
 
-    alib=`cat $srcdir/modules/$src | grep "\\\$Libraries:" | sed -e 's/^.*\$Libraries: \(.*\)\\$/\1/'`
+    srclib=`cat $srcdir/modules/$src | grep "\\\$Libraries:" | sed -e 's/^.*\$Libraries: \(.*\)\\$/\1/'`
+
+    if test -f $srcdir/include/$srcinc ; then
+        inclib=`cat $srcdir/include/$srcinc | grep "\\\$Libraries:" | sed -e 's/^.*\$Libraries: \(.*\)\\$/\1/'`
+    else
+        inclib= 
+    fi
+
 
     dnl Test for duplicate libraries, just in case.
-    for thelib in $alib; do
+    for thelib in $srclib $inclib; do
 	dup="no"
 
 	for somelib in $ac_addl_libs $LIBS; do
