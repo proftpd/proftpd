@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.7 2003-11-09 03:41:07 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.8 2003-11-09 04:53:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -240,7 +240,7 @@ MODRET start_ifctxt(cmd_rec *cmd) {
     argv = cmd->argv;
   }
 
-  acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
+  acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
 
   c = add_config_param(name, 0);
 
@@ -310,10 +310,10 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
           mergein = TRUE;
 
         else if (session.groups) {
-          register int i = 0;
+          register int j = 0;
 
-          for (i = session.groups->nelts-1; i >= 0; i--)
-            if (regexec(preg, *(((char **) session.groups->elts) + i), 0,
+          for (j = session.groups->nelts-1; j >= 0; j--)
+            if (regexec(preg, *(((char **) session.groups->elts) + j), 0,
                 NULL, 0) == 0)
               mergein = TRUE;
         }
@@ -321,14 +321,14 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
 #endif /* HAVE_REGEX_H && HAVE_REGCOMP */
     
       if (*((unsigned char *) list->argv[0]) == PR_EXPR_EVAL_OR &&
-          pr_group_or_expression((char **) &list->argv[1]))
+          pr_expr_eval_group_or((char **) &list->argv[1]))
         mergein = TRUE;
 
       else if (*((unsigned char *) list->argv[0]) == PR_EXPR_EVAL_AND &&
-          pr_group_and_expression((char **) &list->argv[1]))
+          pr_expr_eval_group_and((char **) &list->argv[1]))
         mergein = TRUE;
  
-      if (pr_group_and_expression((char **) &list->argv[0]))
+      if (pr_expr_eval_group_and((char **) &list->argv[0]))
         mergein = TRUE;
 
       if (mergein) {
@@ -387,11 +387,11 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
 #endif /* HAVE_REGEX_H && HAVE_REGCOMP */
 
       if (*((unsigned char *) list->argv[0]) == PR_EXPR_EVAL_OR &&
-          pr_user_or_expression((char **) &list->argv[1]))
+          pr_expr_eval_user_or((char **) &list->argv[1]))
         mergein = TRUE;
 
       else if (*((unsigned char *) list->argv[0]) == PR_EXPR_EVAL_AND &&
-          pr_user_and_expression((char **) &list->argv[1]))
+          pr_expr_eval_user_and((char **) &list->argv[1]))
         mergein = TRUE;
 
       if (mergein) {
@@ -456,11 +456,11 @@ static int ifsess_sess_init(void) {
 #endif /* HAVE_REGEX_H && HAVE_REGCOMP */
 
       if (*((unsigned char *) list->argv[0]) == PR_EXPR_EVAL_OR &&
-          pr_class_or_expression((char **) &list->argv[1]))
+          pr_expr_eval_class_or((char **) &list->argv[1]))
         mergein = TRUE;
 
       else if (*((unsigned char *) list->argv[0]) == PR_EXPR_EVAL_AND &&
-          pr_class_and_expression((char **) &list->argv[1]))
+          pr_expr_eval_class_and((char **) &list->argv[1]))
         mergein = TRUE;
 
       if (mergein) {
