@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.19 2004-05-02 15:05:26 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.20 2004-09-05 00:43:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -87,6 +87,8 @@ typedef struct {
   char **txt_values;
   unsigned int txt_nents; 
 } rewrite_map_txt_t;
+
+module rewrite_module;
 
 /* Module variables */
 static unsigned char rewrite_engine = FALSE;
@@ -2068,15 +2070,15 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
   return DECLINED(cmd);
 }
 
-/* Initialization functions
+/* Events handlers
  */
 
-static void rewrite_exit(void) {
+static void rewrite_exit_ev(const void *event_data, void *user_data) {
   rewrite_closelog();
   return;
 }
 
-static void rewrite_rehash_cb(void *data) {
+static void rewrite_restart_ev(const void *event_data, void *user_data) {
   if (rewrite_regexes) {
     register unsigned int i = 0;
     regex_t **regexes = (regex_t **) rewrite_regexes->elts;
@@ -2095,8 +2097,12 @@ static void rewrite_rehash_cb(void *data) {
 
     /* Re-allocate a pool for this module's use. */
     rewrite_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(rewrite_pool, MOD_REWRITE_VERSION);
   }
 }
+
+/* Initialization functions
+ */
 
 static int rewrite_sess_init(void) {
   config_rec *c = NULL;
@@ -2115,7 +2121,7 @@ static int rewrite_sess_init(void) {
   rewrite_openlog();
 
   /* Make sure proper cleanup is done when a child exits. */
-  pr_exit_register_handler(rewrite_exit);
+  pr_event_register(&rewrite_module, "core.exit", rewrite_exit_ev, NULL);
 
   /* Loop through all the RewriteMap config_recs for this server, and for
    * all FIFO maps, open FIFO file descriptors.  This has to be done here,
@@ -2143,11 +2149,14 @@ static int rewrite_sess_init(void) {
 static int rewrite_init(void) {
 
   /* Allocate a pool for this module's use. */
-  if (!rewrite_pool)
+  if (!rewrite_pool) {
     rewrite_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(rewrite_pool, MOD_REWRITE_VERSION);
+  }
 
-  /* Add a rehash handler. */
-  pr_rehash_register_handler(NULL, rewrite_rehash_cb);
+  /* Add a restart handler. */
+  pr_event_register(&rewrite_module, "core.restart", rewrite_restart_ev,
+    NULL);
 
   return 0;
 }
