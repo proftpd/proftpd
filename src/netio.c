@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.17 2003-10-17 06:15:38 castaglia Exp $
+ * $Id: netio.c,v 1.18 2003-10-31 18:46:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -841,7 +841,7 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
     } else
       toread = pbuf->buflen - pbuf->remaining;
 
-    while (buflen && *pbuf->current != '\n' && toread--) {
+    while (buflen && toread > 0 && *pbuf->current != '\n' && toread--) {
       cp = *pbuf->current++;
       pbuf->remaining++;
 

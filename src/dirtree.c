@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.122 2003-10-18 22:14:14 castaglia Exp $
+ * $Id: dirtree.c,v 1.123 2003-10-31 18:46:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2138,7 +2138,7 @@ void build_dyn_config(pool *p, char *_path, struct stat *_sbuf,
       path = NULL;
 
     if (path) {
-      if (*(path + strlen(path) - 1) == '*')
+      if (*path && *(path + strlen(path) - 1) == '*')
         *(path +strlen(path) - 1) = '\0';
 
       dynpath = pdircat(p, path, "/.ftpaccess", NULL);

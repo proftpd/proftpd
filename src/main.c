@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.202 2003-10-22 07:40:38 castaglia Exp $
+ * $Id: main.c,v 1.203 2003-10-31 18:46:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -564,15 +564,18 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
 
       if (MODRET_ISHANDLED(mr))
         success = 1;
+
       else if (MODRET_ISERROR(mr)) {
-        if (cmd_type == POST_CMD || cmd_type == LOG_CMD ||
-                                   cmd_type == LOG_CMD_ERR) {
+        if (cmd_type == POST_CMD ||
+            cmd_type == LOG_CMD ||
+            cmd_type == LOG_CMD_ERR) {
           if (MODRET_ERRMSG(mr))
             log_pri(PR_LOG_NOTICE, "%s", MODRET_ERRMSG(mr));
 
         } else if (send_error) {
           if (MODRET_ERRNUM(mr) && MODRET_ERRMSG(mr))
             pr_response_add_err(MODRET_ERRNUM(mr), "%s", MODRET_ERRMSG(mr));
+
           else if (MODRET_ERRMSG(mr))
             pr_response_send_raw("%s", MODRET_ERRMSG(mr));
         }
@@ -613,8 +616,6 @@ void pr_cmd_dispatch(cmd_rec *cmd) {
 
   if (!cmd->class)
     cmd->class = get_command_class(cmd->argv[0]);
-
-  /* debug_print_dispatch(cmd); */
 
   /* First, dispatch to wildcard PRE_CMD handlers. */
   success = _dispatch(cmd, PRE_CMD, FALSE, C_ANY);
@@ -668,8 +669,8 @@ void pr_cmd_dispatch(cmd_rec *cmd) {
 
 static cmd_rec *make_ftp_cmd(pool *p, char *buf) {
   char *cp = buf, *wrd;
-  cmd_rec *newcmd;
-  pool *newpool;
+  cmd_rec *cmd;
+  pool *subpool;
   array_header *tarr;
 
   /* Be pedantic (and RFC-compliant) by not allowing leading whitespace
@@ -678,32 +679,31 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf) {
   if (isspace((int) buf[0]))
     return NULL;
 
-  /* Nothing there...bail out.
-   */
+  /* Nothing there...bail out. */
   if ((wrd = get_word(&cp, TRUE)) == NULL)
     return NULL;
 
-  newpool = make_sub_pool(p);
-  newcmd = (cmd_rec *) pcalloc(newpool,sizeof(cmd_rec));
-  newcmd->pool = newpool;
-  newcmd->stash_index = -1;
+  subpool = make_sub_pool(p);
+  cmd = (cmd_rec *) pcalloc(subpool, sizeof(cmd_rec));
+  cmd->pool = subpool;
+  cmd->tmp_pool = NULL;
+  cmd->stash_index = -1;
 
-  tarr = make_array(newpool, 2, sizeof(char *));
+  tarr = make_array(cmd->pool, 2, sizeof(char *));
 
-  *((char **) push_array(tarr)) = pstrdup(newpool, wrd);
-  newcmd->argc++;
-  newcmd->arg = pstrdup(newpool, cp);
+  *((char **) push_array(tarr)) = pstrdup(cmd->pool, wrd);
+  cmd->argc++;
+  cmd->arg = pstrdup(cmd->pool, cp);
 
-  while((wrd = get_word(&cp, TRUE)) != NULL) {
-    *((char **) push_array(tarr)) = pstrdup(newpool, wrd);
-    newcmd->argc++;
+  while ((wrd = get_word(&cp, TRUE)) != NULL) {
+    *((char **) push_array(tarr)) = pstrdup(cmd->pool, wrd);
+    cmd->argc++;
   }
 
   *((char **) push_array(tarr)) = NULL;
+  cmd->argv = (char **) tarr->elts;
 
-  newcmd->argv = (char **) tarr->elts;
-
-  return newcmd;
+  return cmd;
 }
 
 static int idle_timeout_cb(CALLBACK_FRAME) {
@@ -816,16 +816,19 @@ static void cmd_loop(server_rec *server, conn_t *c) {
     i = strlen(buf);
 
     if (i && (buf[i-1] == '\n' || buf[i-1] == '\r')) {
-      buf[i-1] = '\0'; i--;
+      buf[i-1] = '\0';
+      i--;
+
       if (i && (buf[i-1] == '\n' || buf[i-1] =='\r'))
         buf[i-1] = '\0';
     }
 
     cp = buf;
-    if (*cp == '\r') cp++;
+    if (*cp == '\r')
+      cp++;
 
     if (*cp) {
-      cmd_rec *cmd = make_ftp_cmd(permanent_pool, cp);
+      cmd_rec *cmd = make_ftp_cmd(session.pool, cp);
 
       if (cmd) {
         pr_cmd_dispatch(cmd);

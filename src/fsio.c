@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.27 2003-10-22 06:49:39 castaglia Exp $
+ * $Id: fsio.c,v 1.28 2003-10-31 18:46:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2545,14 +2545,15 @@ char *pr_fsio_gets(char *buf, size_t size, pr_fh_t *fh) {
     } else
       toread = pbuf->buflen - pbuf->remaining;
 
-    while (size && *pbuf->current != '\n' && toread--) {
+    while (size && toread > 0 && *pbuf->current != '\n' && toread--) {
       *bp++ = *pbuf->current++;
       size--;
       pbuf->remaining++;
     }
 
     if (size && toread && *pbuf->current == '\n') {
-      size--; toread--;
+      size--;
+      toread--;
       *bp++ = *pbuf->current++;
       pbuf->remaining++;
       break;

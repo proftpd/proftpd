@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.70 2003-10-06 03:53:49 castaglia Exp $
+ * $Id: data.c,v 1.71 2003-10-31 18:46:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -149,17 +149,22 @@ static unsigned int xlate_ascii_write(char **buf, unsigned int *buflen,
    * never be less than zero).
    */
   if ((res = (bufsize - tmplen - lfcount)) <= 0) {
-    pool *copy_pool = make_sub_pool(session.xfer.p);
-    char *copy_buf = pcalloc(copy_pool, tmplen);
+    char *copybuf = malloc(tmplen);
+    if (!copybuf) {
+      log_pri(PR_LOG_ERR, "fatal: memory exhausted");
+      exit(1);
+    }
 
-    memcpy(copy_buf, tmpbuf, tmplen);
+    memcpy(copybuf, tmpbuf, tmplen);
 
     /* Allocate a new session.xfer.buf of the needed size. */
     session.xfer.bufsize = tmplen + lfcount + 1;
     session.xfer.buf = pcalloc(session.xfer.p, session.xfer.bufsize);
 
-    memcpy(session.xfer.buf, copy_buf, tmplen);
-    destroy_pool(copy_pool);
+    memcpy(session.xfer.buf, copybuf, tmplen);
+
+    free(copybuf);
+    copybuf = NULL;
 
     tmpbuf = session.xfer.buf;
     bufsize = session.xfer.bufsize;
