@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.20 1999-10-27 01:58:03 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.21 1999-10-27 05:44:46 macgyver Exp $
  */
 
 /* History Log:
@@ -711,7 +711,16 @@ MODRET cmd_retr(cmd_rec *cmd)
 		errno, strerror(errno));
 	switch (errno) {
 	case EAGAIN:
+	case EINTR:
+	  /* Interrupted call, or the other side wasn't ready yet.
+	   */
 	  continue;
+	  
+	case EPIPE:
+	  /* Other side broke the connection.
+	   */
+	  break;
+	  
 	default:
 	  log_pri(LOG_ERR, "Unknown data_sendfile() error %d: %s.",
 		  errno, strerror(errno));
