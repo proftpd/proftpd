@@ -535,7 +535,7 @@ else
     if test "$ac_cv_func_pstat" = "yes"; then
 	AC_DEFINE(PF_ARGV_TYPE, PF_ARGV_PSTAT)
     else
-	AC_DEFINE(PF_ARGV_TYPE, PF_ARGV_WRITABLE)
+	AC_DEFINE(PF_ARGV_TYPE, PF_ARGV_WRITEABLE)
     fi
 
     pf_argv_set="yes"

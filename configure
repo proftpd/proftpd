@@ -7724,7 +7724,7 @@ EOF
 
     else
 	cat >>confdefs.h <<\EOF
-#define PF_ARGV_TYPE PF_ARGV_WRITABLE
+#define PF_ARGV_TYPE PF_ARGV_WRITEABLE
 EOF
 
     fi

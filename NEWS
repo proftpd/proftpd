@@ -1,8 +1,11 @@
-$Id: NEWS,v 1.163 2002-05-10 17:28:54 castaglia Exp $
+$Id: NEWS,v 1.164 2002-05-10 17:53:27 castaglia Exp $
 
 1.2.5rc2 - CVS
 ---------------------------------
-- Bug 1608 - src/dirtree.c produces two unnecessary warnings
+- Bug 1546 - PF_ARGV_WRITABLE, PF_ARGV_WRITEABLE are used mixed.  Fixed to
+             use PF_ARGV_WRITEABLE consistently (less changes to make).
+- Bug 1608 - src/dirtree.c produces two unnecessary warnings.  Fixed to
+             cast to mode_t for initialization of variables.
 - Bug 1610 - compiling mod_core.c gives an unneeded/dazzling msg
 - Removed legacy documentation from /docs/, updated the template licence 
   file, updated the licence in ftp.h to include the SSL clause. (ML)
