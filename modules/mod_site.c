@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.20 2002-09-28 02:04:54 castaglia Exp $
+ * $Id: mod_site.c,v 1.21 2002-09-30 15:56:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -326,63 +326,35 @@ MODRET site_chmod(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET site_help(cmd_rec *cmd)
-{
-  int i,c = 0;
-  char buf[9] = {'\0'};
+MODRET site_help(cmd_rec *cmd) {
+  register unsigned int i = 0;
 
-  if(cmd->argc == 1 || (cmd->argc == 2 && !strcasecmp(cmd->argv[1],"SITE"))) {
-    char *outa[8];
-    char *outs = "";
+  if (cmd->argc == 1 ||
+      (cmd->argc == 2 &&
+       !strcasecmp(cmd->argv[0], "SITE") &&
+       !strcasecmp(cmd->argv[1], "HELP"))) {
 
-    memset(outa, '\0', sizeof(outa));
-
-    add_response(R_214,
-    "The following SITE commands are recognized (* =>'s unimplemented).");
-    for(i = 0; _help[i].cmd; i++) {
-      if(_help[i].implemented)
-        outa[c++] = _help[i].cmd;
+    for (i = 0; _help[i].cmd; i++) {
+      if (_help[i].implemented)
+        add_response(R_DUP, "%s", _help[i].cmd);
       else
-        outa[c++] = pstrcat(cmd->tmp_pool,_help[i].cmd,"*",NULL);
-
-      /* 8 rows */
-      if(((i+1) % 8 == 0) || !_help[i+1].cmd) {
-        int j;
-
-        for(j = 0; j < 8; j++) {
-          if(outa[j]) {
-            snprintf(buf, sizeof(buf), "%-8s",outa[j]);
-            outs = pstrcat(cmd->tmp_pool,outs,buf,NULL);
-          } else
-            break;
-        }	
-
-        if(*outs)
-          add_response(R_214,"%s",outs);
-        outs = "";
-        c = 0;
-
-        memset(outa, '\0', sizeof(outa));
-      }
+        add_response(R_DUP, "%s", pstrcat(cmd->pool, _help[i].cmd, "*", NULL));
     }
 
-    add_response(R_214,"Direct comments to %s.",
-                         (cmd->server->ServerAdmin ? cmd->server->ServerAdmin :
-                          "ftp-admin"));
   } else {
-    char *cp;
+    char *cp = NULL;
 
-    for(cp = cmd->argv[1]; *cp; cp++)
+    for (cp = cmd->argv[1]; *cp; cp++)
       *cp = toupper(*cp);
 
-    for(i = 0; _help[i].cmd; i++)
-      if(!strcasecmp(cmd->argv[1], _help[i].cmd)) {
-        add_response(R_214, "Syntax: SITE %s %s", cmd->argv[1],
-		     _help[i].syntax);
+    for (i = 0; _help[i].cmd; i++)
+      if (!strcasecmp(cmd->argv[1], _help[i].cmd)) {
+        add_response(R_214, "Syntax: SITE %s %s",
+          cmd->argv[1], _help[i].syntax);
         return HANDLED(cmd);
       }
 
-    add_response_err(R_502, "Unknown command 'SITE %s'.", cmd->arg);
+    add_response_err(R_502, "Unknown command 'SITE %s'", cmd->arg);
     return ERROR(cmd);
   }
 
@@ -400,38 +372,107 @@ static cmdtable site_commands[] = {
   { 0, NULL }
 };
 
-modret_t *site_dispatch(cmd_rec *cmd)
-{
-  int i;
+modret_t *site_dispatch(cmd_rec *cmd) {
+  register unsigned int i = 0;
 
   if (!cmd->argc) {
-    add_response_err(R_500,"'SITE' requires argument.");
+    add_response_err(R_500, "'SITE' requires argument");
     return ERROR(cmd);
   }
 
-  for(i = 0; site_commands[i].command; i++)
-    if(!strcmp(cmd->argv[0],site_commands[i].command))
-      return site_commands[i].handler(cmd);
+  for (i = 0; site_commands[i].command; i++)
+    if (!strcmp(cmd->argv[0], site_commands[i].command)) {
+      if (site_commands[i].requires_auth && cmd_auth_chk &&
+          !cmd_auth_chk(cmd)) {
+        send_response(R_530, "Please login with USER and PASS.");
+        return ERROR(cmd);
 
-  add_response_err(R_500,"'SITE %s' not understood.",cmd->argv[0]);
+      } else
+        return site_commands[i].handler(cmd);
+    }
+
+  add_response_err(R_500, "'SITE %s' not understood", cmd->argv[0]);
   return ERROR(cmd);
 }
 
-/* Configuration directives table */
+/* Command handlers
+ */
+
+MODRET site_pre_cmd(cmd_rec *cmd) {
+  if (!strcasecmp(cmd->argv[1], "help"))
+    add_response(R_214,
+      "The following SITE commands are recognized (* =>'s unimplemented).");
+  return DECLINED(cmd);
+ }
+
+MODRET site_cmd(cmd_rec *cmd) {
+  char *cp = NULL;
+  cmd_rec *tmpcmd = NULL;
+  MODRET ret;
+
+  /* Make a copy of the cmd structure for passing to call_module */
+  tmpcmd = pcalloc(cmd->tmp_pool, sizeof(cmd_rec));
+  memcpy(tmpcmd, cmd, sizeof(cmd_rec));
+
+  tmpcmd->argc--;
+  tmpcmd->argv++;
+
+  if (tmpcmd->argc)
+    for (cp = tmpcmd->argv[0]; *cp; cp++)
+      *cp = toupper(*cp);
+
+  ret = site_dispatch(tmpcmd);
+
+  /* Copy private data back to original cmd */
+  cmd->private = tmpcmd->private;
+  cmd->privarr = tmpcmd->privarr;
+
+  return ret;
+}
+
+MODRET site_post_cmd(cmd_rec *cmd) {
+  if (!strcasecmp(cmd->argv[1], "help"))
+    add_response(R_214, "Direct comments to %s.",
+      (cmd->server->ServerAdmin ? cmd->server->ServerAdmin : "ftp-admin"));
+  return DECLINED(cmd);
+}
+
+/* Module API tables
+ */
 
 static conftable site_conftab[] = {
   { NULL, 		NULL,			NULL }
 };
 
-/* Module interface */
+static cmdtable site_cmdtab[] = {
+  { PRE_CMD,  C_SITE, G_NONE, site_pre_cmd,   FALSE,  FALSE },
+  { CMD,      C_SITE, G_NONE, site_cmd,       FALSE,  FALSE,  CL_MISC },
+  { POST_CMD, C_SITE, G_NONE, site_post_cmd,  FALSE,  FALSE },
+  { 0, NULL }
+};
 
 module site_module = {
-  NULL,NULL,			/* Always NULL */
-  0x20,				/* API Version 1.0 */
+  /* Always NULL */
+  NULL, NULL,
+
+  /* Module API version */
+  0x20,
+
+  /* Module name */
   "site",
+
+  /* Module configuration table */
   site_conftab,
+
+  /* Module command handler table */
+  site_cmdtab,
+
+  /* Module auth handler table */
   NULL,
+
+  /* Module initialization function */
   NULL,
-  NULL,
+
+  /* Session initialization function */
   NULL
 };

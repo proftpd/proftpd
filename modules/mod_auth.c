@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.87 2002-09-26 17:52:34 castaglia Exp $
+ * $Id: mod_auth.c,v 1.88 2002-09-30 15:56:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -66,10 +66,10 @@ static int lockdown(char *newroot) {
   return 0;
 }
 
-/* check_auth is hooked into the main server's auth_hook function,
+/* auth_cmd_chk_cb() is hooked into the main server's auth_hook function,
  * so that we can deny all commands until authentication is complete.
  */
-int check_auth(cmd_rec *cmd) {
+static int auth_cmd_chk_cb(cmd_rec *cmd) {
   if (get_param_int(cmd->server->conf, "authenticated", FALSE) != 1) {
     send_response(R_530, "Please login with USER and PASS.");
     return FALSE;
@@ -190,8 +190,10 @@ static int auth_sess_init(void) {
 }
 
 static int auth_init(void) {
+
   /* By default, enable auth checking */
-  set_auth_check(check_auth);
+  set_auth_check(auth_cmd_chk_cb);
+
   return 0;
 }
 

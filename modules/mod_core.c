@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.110 2002-09-25 23:43:20 castaglia Exp $
+ * $Id: mod_core.c,v 1.111 2002-09-30 15:56:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3432,32 +3432,6 @@ MODRET cmd_rnfr(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET cmd_site(cmd_rec *cmd)
-{
-  char *cp;
-  cmd_rec *tmpcmd;
-  MODRET ret;
-  
-  /* Make a copy of the cmd structure for passing to call_module */
-  tmpcmd = pcalloc(cmd->tmp_pool,sizeof(cmd_rec));
-  memcpy(tmpcmd,cmd,sizeof(cmd_rec));
-  
-  tmpcmd->argc--;
-  tmpcmd->argv++;
-
-  if(tmpcmd->argc)
-    for(cp = tmpcmd->argv[0]; *cp; cp++)
-      *cp = toupper(*cp);
-
-  ret = call_module(&site_module,site_dispatch,tmpcmd);
-
-  /* Copy private data back to original cmd */
-  cmd->private = tmpcmd->private;
-  cmd->privarr = tmpcmd->privarr;
-
-  return ret;
-}
-
 MODRET cmd_noop(cmd_rec *cmd)
 {
   add_response(R_200,"NOOP command successful.");
@@ -3835,7 +3809,7 @@ static cmdtable core_cmdtab[] = {
   { CMD, C_HELP, G_NONE,  cmd_help,	FALSE,	FALSE, CL_INFO },
   { CMD, C_PORT, G_NONE,  cmd_port,	TRUE,	FALSE, CL_MISC },
   { CMD, C_PASV, G_NONE,  cmd_pasv,	TRUE,	FALSE, CL_MISC },
-  { CMD, C_SYST, G_NONE,  cmd_syst,	TRUE,	FALSE, CL_INFO },
+  { CMD, C_SYST, G_NONE,  cmd_syst,	FALSE,	FALSE, CL_INFO },
   { CMD, C_PWD,	 G_DIRS,  cmd_pwd,	TRUE,	FALSE, CL_INFO|CL_DIRS },
   { CMD, C_XPWD, G_DIRS,  cmd_pwd,	TRUE,	FALSE, CL_INFO|CL_DIRS },
   { CMD, C_CWD,	 G_DIRS,  cmd_cwd,	TRUE,	FALSE, CL_DIRS },
@@ -3846,7 +3820,6 @@ static cmdtable core_cmdtab[] = {
   { CMD, C_XRMD, G_WRITE, cmd_rmd,	TRUE,	FALSE, CL_DIRS|CL_WRITE },
   { CMD, C_CDUP, G_DIRS,  cmd_cdup,	TRUE,	FALSE, CL_DIRS },
   { CMD, C_XCUP, G_DIRS,  cmd_cdup,	TRUE,	FALSE, CL_DIRS },
-  { CMD, C_SITE, G_NONE,  cmd_site,	TRUE,	FALSE, CL_MISC },
   { CMD, C_DELE, G_WRITE, cmd_dele,	TRUE,	FALSE, CL_WRITE },
   { CMD, C_MDTM, G_DIRS,  cmd_mdtm,	TRUE,	FALSE, CL_INFO },
   { CMD, C_RNFR, G_DIRS,  cmd_rnfr,	TRUE,	FALSE, CL_MISC },

@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.118 2002-09-26 17:09:54 castaglia Exp $
+ * $Id: main.c,v 1.119 2002-09-30 15:56:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -137,7 +137,6 @@ static unsigned long child_listlen = 0;
 
 response_t *resp_list = NULL,*resp_err_list = NULL;
 static pool *resp_pool = NULL;
-static int (*main_check_auth)(cmd_rec*) = NULL;
 static char sbuf[1024] = {'\0'};
 static char _ml_numeric[4] = {'\0'};
 static char **Argv = NULL;
@@ -596,9 +595,8 @@ void send_response_ml_end(const char *fmt, ...) {
   pr_netio_printf(session.c->outstrm, "%s %s\r\n", _ml_numeric, sbuf);
 }
 
-void set_auth_check(int (*ck)(cmd_rec*))
-{
-  main_check_auth = ck;
+void set_auth_check(int (*chk)(cmd_rec*)) {
+  cmd_auth_chk = chk;
 }
 
 static void end_login_noexit(void) {
@@ -748,7 +746,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
       if(c->group)
         cmd->group = pstrdup(cmd->pool,c->group);
 
-      if (c->requires_auth && main_check_auth && !main_check_auth(cmd))
+      if (c->requires_auth && cmd_auth_chk && !cmd_auth_chk(cmd))
         return -1;
 
       cmd->tmp_pool = make_named_sub_pool(cmd->pool,"temp - dispatch pool");
@@ -2968,9 +2966,9 @@ int main(int argc, char **argv, char **envp)
   init_modules();
 
   init_conf_stacks();
-  if(parse_config_file(config_filename) == -1) {
-    log_pri(LOG_ERR,"Fatal: unable to read configuration file '%s'.",
-            config_filename);
+  if (parse_config_file(config_filename) == -1) {
+    log_pri(LOG_ERR, "Fatal: unable to read configuration file '%s'",
+      config_filename);
     exit(1);
   }
 
@@ -2979,11 +2977,11 @@ int main(int argc, char **argv, char **envp)
 
   /* We're only doing a syntax check of the configuration file.
    */
-  if(check_config_syntax) {
+  if (check_config_syntax) {
     printf("Syntax check complete.\n");
     exit(0);
   }
-  
+ 
   /* After configuration is complete, make sure that passwd, group
    * aren't held open (unnecessary fds for master daemon)
    */

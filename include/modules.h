@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.11 2002-09-06 00:59:04 castaglia Exp $
+ * $Id: modules.h,v 1.12 2002-09-30 15:56:42 castaglia Exp $
  */
 
 #ifndef __MODULES_H
@@ -140,12 +140,20 @@ typedef struct {
 #define LOG_CMD_ERR			6
 
 typedef struct {
-  int cmd_type;				/* see above for cmd types */
+
+  /* See above for cmd types. */
+  unsigned char cmd_type;
   char *command;
-  char *group;				/* Command grouping */
+
+  /* Command group. */
+  char *group;
   modret_t *(*handler)(cmd_rec*);
-  int requires_auth;			/* Authenication required? */
-  int interrupt_xfer;			/* Allowed to issue during xfer? */
+
+  /* Does this command require authentication? */
+  unsigned char requires_auth;
+
+  /* Can this command be issued during a transfer? (Now obsolete) */
+  unsigned char interrupt_xfer;
 
   int class;
   module *m;
@@ -199,6 +207,8 @@ authtable *mod_find_auth_symbol(char *, int *, authtable *);
 
 /* This function is in main.c, but is prototyped here */
 void set_auth_check(int (*ck)(cmd_rec *));
+int (*cmd_auth_chk)(cmd_rec *);
+
 void xfer_set_data_port(p_in_addr_t *, int);
 
 /* For use from inside module handler functions */
