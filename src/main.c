@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.191 2003-09-08 00:56:07 castaglia Exp $
+ * $Id: main.c,v 1.192 2003-09-10 14:02:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1374,9 +1374,7 @@ static void daemon_loop(void) {
 
   time(&last_error);
 
-#ifndef PR_DEVEL_NO_DAEMON
   while (TRUE) {
-#endif /* PR_DEVEL_NO_DAEMON */
     run_schedule();
 
     FD_ZERO(&listen_fds);
@@ -1431,9 +1429,7 @@ static void daemon_loop(void) {
 
     if (i == -1 && errno == EINTR) {
       pr_signals_handle();
-#ifndef PR_DEVEL_NO_DAEMON
       continue;
-#endif /* PR_DEVEL_NO_DAEMON */
     }
 
     if (have_dead_child) {
@@ -1492,10 +1488,8 @@ static void daemon_loop(void) {
               strerror(errno));
     }
 
-#ifndef PR_DEVEL_NO_DAEMON
     if (i == 0)
       continue;
-#endif /* PR_DEVEL_NO_DAEMON */
 
     /* Reset the connection counter.  Take into account this current
      * connection, which does not (yet) have an entry in the child list.
@@ -1551,9 +1545,11 @@ static void daemon_loop(void) {
       } else
         fork_server(fd, listen_conn, FALSE);
     }
-#ifndef PR_DEVEL_NO_DAEMON
-  }
+#ifdef PR_DEVEL_NO_DAEMON
+    /* Do not continue the while() loop here if not daemonizing. */
+    break;
 #endif /* PR_DEVEL_NO_DAEMON */
+  }
 }
 
 /* This function is to handle the dispatching of actions based on
