@@ -1,13 +1,4 @@
-                      Internet RFC/STD/FYI/BCP Archives
 
-
-
-                                   RFC2389
-
-             [ Index | Search | What's New | Comments | Help ]
-
-              Alternate Formats: rfc2389.txt | rfc2389.txt.pdf
-  ------------------------------------------------------------------------
 
 Network Working Group                                         P. Hethmon
 Request for Comments: 2389                              Hethmon Brothers
@@ -376,9 +367,3 @@ Full Copyright Statement
    HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
    MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
 
-  ------------------------------------------------------------------------
-             [ Index | Search | What's New | Comments | Help ]
-
-              Alternate Formats: rfc2389.txt | rfc2389.txt.pdf
-
-  Comments/Questions about this archive ? Send mail to rfc-admin@faqs.org

@@ -1,9 +1,5 @@
 
 
-
-
-
-
 Network Working Group                                          M. Allman
 Request for Comments: 2428                  NASA Lewis/Sterling Software
 Category: Standards Track                                   S. Ostermann

@@ -1,9 +1,5 @@
 
 
-
-
-
-
 Network Working Group                                        M. Horowitz
 Request for Comments: 2228                              Cygnus Solutions
 Updates: 959                                                     S. Lunt
