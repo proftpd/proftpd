@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.2 2003-11-16 00:55:53 castaglia Exp $
+ * $Id: netacl.c,v 1.3 2003-11-16 01:25:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -49,7 +49,7 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
       pr_log_debug(DEBUG10, "NetACL: matched 'ALL'");
       return 1;
 
-    case PR-NETACL_TYPE_NONE:
+    case PR_NETACL_TYPE_NONE:
       pr_log_debug(DEBUG10, "NetACL: matched 'NONE'");
       return -1;
 
