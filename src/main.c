@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.196 2003-10-01 06:25:07 castaglia Exp $
+ * $Id: main.c,v 1.197 2003-10-01 06:35:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1875,18 +1875,19 @@ static void install_signal_handlers(void) {
 
   /* Should the master server (only applicable in standalone mode)
    * kill off children if we receive a signal that causes termination?
-   * hmmmm... Maybe this needs to be rethought, but I've done it in
+   * Hmmmm... maybe this needs to be rethought, but I've done it in
    * such a way as to only kill off our children if we receive a SIGTERM,
-   * meaning that the admin wants us dead (and prolly our kids too).
+   * meaning that the admin wants us dead (and probably our kids too).
    */
 
   /* The sub-pool for the child list is created the first time we fork
    * off a child.  To conserve memory, the pool and list is destroyed
    * when our last child dies (to prevent the list from eating more and
-   * more memory on long uptimes)
+   * more memory on long uptimes).
    */
 
   sigemptyset(&sig_set);
+
   sigaddset(&sig_set, SIGCHLD);
   sigaddset(&sig_set, SIGINT);
   sigaddset(&sig_set, SIGQUIT);
@@ -1896,6 +1897,8 @@ static void install_signal_handlers(void) {
   sigaddset(&sig_set, SIGSEGV);
   sigaddset(&sig_set, SIGALRM);
   sigaddset(&sig_set, SIGTERM);
+  sigaddset(&sig_set, SIGHUP);
+  sigaddset(&sig_set, SIGUSR2);
 #ifdef SIGSTKFLT
   sigaddset(&sig_set, SIGSTKFLT);
 #endif /* SIGSTKFLT */
@@ -1905,14 +1908,10 @@ static void install_signal_handlers(void) {
 #ifdef SIGBUS
   sigaddset(&sig_set, SIGBUS);
 #endif /* SIGBUS */
-  sigaddset(&sig_set, SIGHUP);
-  sigaddset(&sig_set, SIGUSR2);
 
   signal(SIGCHLD, sig_child);
   signal(SIGHUP, sig_rehash);
   signal(SIGUSR2, sig_debug);
-
-#ifndef DEVEL_NO_SIG
   signal(SIGINT, sig_terminate);
   signal(SIGQUIT, sig_terminate);
   signal(SIGILL, sig_terminate);
@@ -1921,21 +1920,16 @@ static void install_signal_handlers(void) {
   signal(SIGSEGV, sig_terminate);
   signal(SIGTERM, sig_terminate);
   signal(SIGXCPU, sig_terminate);
+  signal(SIGURG, SIG_IGN);
 #ifdef SIGSTKFLT
   signal(SIGSTKFLT, sig_terminate);
 #endif /* SIGSTKFLT */
 #ifdef SIGIO
-  signal(SIGIO, sig_terminate);
+  signal(SIGIO, SIG_IGN);
 #endif /* SIGIO */
 #ifdef SIGBUS
   signal(SIGBUS, sig_terminate);
 #endif /* SIGBUS */
-#endif /* DEVEL_NO_SIG */
-
-#ifdef SIGIO
-  signal(SIGIO, SIG_IGN);
-#endif /* SIGIO */
-  signal(SIGURG, SIG_IGN);
 
   /* In case our parent left signals blocked (as happens under some
    * poor inetd implementations)
