@@ -568,7 +568,7 @@ int module_preparse_init(void) {
 
   for (i = 0; static_modules[i]; i++) {
     m = static_modules[i];
-    m->priority = m->auth_priority = i;
+    m->priority = i;
 
     if (m->api_version < PR_MODULE_API_VERSION) {
       log_pri(PR_LOG_ERR, "Fatal: module '%s' API version (0x%x) is too old "
