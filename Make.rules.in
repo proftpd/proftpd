@@ -62,8 +62,8 @@ BUILD_FTPCOUNT_OBJS=utils/ftpcount.o utils/scoreboard.o
 FTPSHUT_OBJS=ftpshut.o
 BUILD_FTPSHUT_OBJS=utils/ftpshut.o
 
-FTPTOP_OBJS=ftptop.o scoreboard.o
-BUILD_FTPTOP_OBJS=utils/ftptop.o utils/scoreboard.o
+FTPTOP_OBJS=ftptop.o scoreboard.o misc.o
+BUILD_FTPTOP_OBJS=utils/ftptop.o utils/scoreboard.o utils/misc.o
 
 FTPWHO_OBJS=ftpwho.o scoreboard.o
 BUILD_FTPWHO_OBJS=utils/ftpwho.o utils/scoreboard.o
