@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.172 2004-10-27 01:49:37 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.173 2004-10-30 20:45:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1872,8 +1872,8 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
   pr_response_send_async(R_421, "No Transfer Timeout (%d seconds): closing "
     "control connection.", TimeoutNoXfer);
 
-  remove_timer(TIMER_IDLE, ANY_MODULE);
-  remove_timer(TIMER_LOGIN, ANY_MODULE);
+  pr_timer_remove(TIMER_IDLE, ANY_MODULE);
+  pr_timer_remove(TIMER_LOGIN, ANY_MODULE);
 
   session_exit(PR_LOG_NOTICE, "FTP no transfer timeout, disconnected", 0, NULL);
   return 0;
@@ -2368,7 +2368,7 @@ static int xfer_sess_init(void) {
 
   /* Setup TimeoutNoXfer timer */
   if (TimeoutNoXfer)
-    add_timer(TimeoutNoXfer, TIMER_NOXFER, &xfer_module, noxfer_timeout_cb);
+    pr_timer_add(TimeoutNoXfer, TIMER_NOXFER, &xfer_module, noxfer_timeout_cb);
 
   /* Check for a server-specific TimeoutStalled */
   if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutStalled",

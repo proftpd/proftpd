@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.88 2004-10-12 03:07:00 castaglia Exp $
+ * $Id: inet.c,v 1.89 2004-10-30 20:45:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -349,7 +349,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
         pr_signals_unblock();
       }
 
-      timer_sleep(1);
+      pr_timer_sleep(1);
 
       if (port != INPORT_ANY && port < 1024) {
         pr_signals_block();

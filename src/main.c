@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.253 2004-10-26 23:25:01 castaglia Exp $
+ * $Id: main.c,v 1.254 2004-10-30 20:45:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -729,8 +729,8 @@ static int idle_timeout_cb(CALLBACK_FRAME) {
     "connection.", TimeoutIdle);
   session_exit(PR_LOG_INFO, "FTP session idle timeout, disconnected.", 0, NULL);
 
-  remove_timer(TIMER_LOGIN, ANY_MODULE);
-  remove_timer(TIMER_NOXFER, ANY_MODULE);
+  pr_timer_remove(TIMER_LOGIN, ANY_MODULE);
+  pr_timer_remove(TIMER_NOXFER, ANY_MODULE);
   return 0;
 }
 
@@ -756,7 +756,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
 
   /* Setup the main idle timer */
   if (TimeoutIdle)
-    add_timer(TimeoutIdle, TIMER_IDLE, NULL, idle_timeout_cb);
+    pr_timer_add(TimeoutIdle, TIMER_IDLE, NULL, idle_timeout_cb);
 
   if ((masq_c = find_config(server->conf, CONF_PARAM, "MasqueradeAddress",
       FALSE)) != NULL) {
@@ -808,7 +808,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
 
     /* Data received, reset idle timer */
     if (TimeoutIdle)
-      reset_timer(TIMER_IDLE, NULL);
+      pr_timer_reset(TIMER_IDLE, NULL);
 
     if (cmd_buf_size == -1) {
       long *buf_size = get_param_ptr(main_server->conf,

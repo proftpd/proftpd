@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.81 2004-10-09 20:46:21 castaglia Exp $
+ * $Id: data.c,v 1.82 2004-10-30 20:45:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -240,7 +240,7 @@ static int data_pasv_open(char *reason, off_t size) {
    * open from taking too long
    */
   if (TimeoutStalled)
-    add_timer(TimeoutStalled, TIMER_STALLED, NULL, stalled_timeout_cb);
+    pr_timer_add(TimeoutStalled, TIMER_STALLED, NULL, stalled_timeout_cb);
 
   /* We save the state of our current disposition for doing reverse
    * lookups, and then set it to what the configuration wants it to
@@ -337,7 +337,7 @@ static int data_active_open(char *reason, off_t size) {
    * open from taking too long
    */
   if (TimeoutStalled)
-    add_timer(TimeoutStalled, TIMER_STALLED, NULL, stalled_timeout_cb);
+    pr_timer_add(TimeoutStalled, TIMER_STALLED, NULL, stalled_timeout_cb);
 
   rev = pr_netaddr_set_reverse_dns(ServerUseReverseDNS);
 
@@ -499,7 +499,7 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
     session.sf_flags |= SF_XFER;
 
     if (TimeoutNoXfer)
-      reset_timer(TIMER_NOXFER, ANY_MODULE);
+      pr_timer_reset(TIMER_NOXFER, ANY_MODULE);
 
     /* Allow aborts. */
 
@@ -546,10 +546,10 @@ void pr_data_close(int quiet) {
   signal(SIGURG, SIG_IGN);
 
   if (TimeoutNoXfer)
-    reset_timer(TIMER_NOXFER, ANY_MODULE);
+    pr_timer_reset(TIMER_NOXFER, ANY_MODULE);
 
   if (TimeoutStalled)
-    remove_timer(TIMER_STALLED, ANY_MODULE);
+    pr_timer_remove(TIMER_STALLED, ANY_MODULE);
 
   session.sf_flags &= (SF_ALL^SF_PASSIVE);
   session.sf_flags &= (SF_ALL^(SF_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
@@ -600,10 +600,10 @@ void pr_data_abort(int err, int quiet) {
   }
 
   if (TimeoutNoXfer)
-    reset_timer(TIMER_NOXFER, ANY_MODULE);
+    pr_timer_reset(TIMER_NOXFER, ANY_MODULE);
 
   if (TimeoutStalled)
-    remove_timer(TIMER_STALLED, ANY_MODULE);
+    pr_timer_remove(TIMER_STALLED, ANY_MODULE);
 
   session.sf_flags &= (SF_ALL^SF_PASSIVE);
   session.sf_flags &= (SF_ALL^(SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
@@ -613,7 +613,7 @@ void pr_data_abort(int err, int quiet) {
   signal(SIGURG, SIG_IGN);
 
   if (TimeoutNoXfer)
-    reset_timer(TIMER_NOXFER, ANY_MODULE);
+    pr_timer_reset(TIMER_NOXFER, ANY_MODULE);
 
   if (!quiet) {
     char	*respcode = R_426;
@@ -800,7 +800,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 	    buflen += len;
 
 	    if (TimeoutStalled)
-	      reset_timer(TIMER_STALLED, ANY_MODULE);
+	      pr_timer_reset(TIMER_STALLED, ANY_MODULE);
 	  }
 
 	  /* if buflen > 0, data remains in the buffer to be copied. */
@@ -859,9 +859,9 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
       } else if ((len = pr_netio_read(session.d->instrm, cl_buf,
           cl_size, 1)) > 0) {
 
-        /* Non-ascii mode doesn't need to use session.xfer.buf */
+        /* Non-ASCII mode doesn't need to use session.xfer.buf */
         if (TimeoutStalled)
-          reset_timer(TIMER_STALLED, ANY_MODULE);
+          pr_timer_reset(TIMER_STALLED, ANY_MODULE);
 
         total += len;
       }
@@ -896,7 +896,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
         return -1;
 
       if (TimeoutStalled)
-        reset_timer(TIMER_STALLED, ANY_MODULE);
+        pr_timer_reset(TIMER_STALLED, ANY_MODULE);
 
       cl_size -= buflen;
       cl_buf += buflen;
@@ -907,7 +907,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
   }
 
   if (total && TimeoutIdle)
-    reset_timer(TIMER_IDLE, ANY_MODULE);
+    pr_timer_reset(TIMER_IDLE, ANY_MODULE);
 
   session.xfer.total_bytes += total;
   session.total_bytes += total;
@@ -960,10 +960,10 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, size_t count) {
       /* Only reset the timers if data have actually been written out. */
       if (len > 0) {
         if (TimeoutStalled)
-          reset_timer(TIMER_STALLED, ANY_MODULE);
+          pr_timer_reset(TIMER_STALLED, ANY_MODULE);
 
         if (TimeoutIdle)
-          reset_timer(TIMER_IDLE, ANY_MODULE);
+          pr_timer_reset(TIMER_IDLE, ANY_MODULE);
       }
 
       session.xfer.total_bytes += len;
@@ -1035,10 +1035,10 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, size_t count) {
 	*offset += len;
 	
 	if (TimeoutStalled)
-	  reset_timer(TIMER_STALLED, ANY_MODULE);
+	  pr_timer_reset(TIMER_STALLED, ANY_MODULE);
 	
 	if (TimeoutIdle)
-	  reset_timer(TIMER_IDLE, ANY_MODULE);
+	  pr_timer_reset(TIMER_IDLE, ANY_MODULE);
 	
 	session.xfer.total_bytes += len;
 	session.total_bytes += len;
@@ -1061,10 +1061,10 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, size_t count) {
     fcntl(PR_NETIO_FD(session.d->outstrm), F_SETFL, flags);
 
   if (TimeoutStalled)
-    reset_timer(TIMER_STALLED, ANY_MODULE);
+    pr_timer_reset(TIMER_STALLED, ANY_MODULE);
 
   if (TimeoutIdle)
-    reset_timer(TIMER_IDLE, ANY_MODULE);
+    pr_timer_reset(TIMER_IDLE, ANY_MODULE);
 
   session.xfer.total_bytes += len;
   session.total_bytes += len;

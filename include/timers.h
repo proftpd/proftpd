@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001, 2002, 2003, 2004 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,31 +23,49 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id*
+ * $Id: timers.h,v 1.11 2004-10-30 20:45:51 castaglia Exp $
  */
 
 #ifndef PR_TIMERS_H
 #define PR_TIMERS_H
 
-typedef struct timer_struc {
-  struct timer_struc *next,*prev;
+/* Schedule a timer for the given amount of seconds.  The timerno argument
+ * specifies a unique ID for the scheduled timer; passing -1 will have
+ * a unique ID automatically assigned, and is generally recommended.
+ * The module parameter identifies the module that owns the scheduled
+ * timer.  The callback_t parameter specifies a function to be called
+ * when the timer expires.
+ *
+ * Return 0 if the timer was successfully created, or -1 if there was
+ * an error.  In the case of an error, errno will be set to an appropriate
+ * reason.
+ */
+int pr_timer_add(int secs, int timerno, module *m, callback_t cb);
 
-  long count;			/* Amount of time remaining */
-  long interval;		/* Original length of timer */
+/* Remove the timer indicated by the timerno parameter, and owned by the
+ * given module.  Note that if the caller does not know the module,
+ * the value ANY_MODULE can be given.
+ *
+ * Return 0 on success, -1 on failure.
+ */
+int pr_timer_remove(int timerno, module *m);
 
-  int timerno;			/* Caller dependent timer number */
-  module *mod;			/* Module owning this timer */
-  callback_t callback;		/* Function to callback */
-  char remove;			/* Internal use */
-} timer_t;
+/* Resets the scheduled timer, setting it back to its full scheduled
+ * interval.  If the caller does not know the owning module, the
+ * value ANY_MODULE can be given.
+ *
+ * Returns 0 on success, -1 on failure.
+ */
+int pr_timer_reset(int timerno, module *m);
 
+/* This is a convenience function that can be used to "sleep" for the
+ * given number of seconds.  This function can be used instead of
+ * the sleep(3) function, for it cannot be interrupted by signals or
+ * other timers.
+ */
+int pr_timer_sleep(int secs);
 
-/* Prototypes */
-int add_timer(int, int, module *, callback_t);
-int remove_timer(int, module *);
-int reset_timer(int, module *);
-int timer_sleep(int);
+/* For internal use only. */
 void handle_alarm(void);
-void set_sig_alarm(void);
 
-#endif /* __TIMERS_H */
+#endif /* PR_TIMERS_H */

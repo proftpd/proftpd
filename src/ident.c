@@ -25,7 +25,7 @@
 
 /*
  * Ident (RFC1413) protocol support
- * $Id: ident.c,v 1.20 2003-11-09 23:32:07 castaglia Exp $
+ * $Id: ident.c,v 1.21 2004-10-30 20:45:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -51,7 +51,7 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
   pool *tmp_pool = NULL;
   conn_t *ident_conn = NULL, *ident_io = NULL;
   char buf[256] = {'\0'}, *tok = NULL, *tmp = NULL;
-  int timer,i = 0;
+  int timerno, i = 0;
   int ident_port = pr_inet_getservport(p, "ident", "tcp");
 
   tmp_pool = make_sub_pool(p);
@@ -64,8 +64,9 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
   }
 
   /* Set up our timer before going any further. */
-  if ((timer = add_timer(PR_TUNABLE_TIMEOUTIDENT, -1, NULL,
-      (callback_t) ident_timeout_cb)) <= 0) {
+  timerno = pr_timer_add(PR_TUNABLE_TIMEOUTIDENT, -1, NULL,
+    (callback_t) ident_timeout_cb);
+  if (timerno <= 0) {
     destroy_pool(tmp_pool);
     return pstrdup(p, ret);
   }
@@ -76,7 +77,7 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
 
   if ((i = pr_inet_connect_nowait(tmp_pool, ident_conn, c->remote_addr,
       ident_port)) < 0) {
-    remove_timer(timer, NULL);
+    pr_timer_remove(timerno, ANY_MODULE);
     pr_inet_close(tmp_pool, ident_conn);
     pr_log_debug(DEBUG6, "ident connection failed: %s", strerror(errno));
     destroy_pool(tmp_pool);
@@ -94,7 +95,7 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
       /* Aborted, timed out */
       case 1:
         if (ident_timeout) {
-          remove_timer(timer, NULL);
+          pr_timer_remove(timerno, ANY_MODULE);
           pr_netio_close(nstrm);
           pr_inet_close(tmp_pool, ident_conn);
           pr_log_debug(DEBUG6, "ident lookup timed out, returning '%s'", ret);
@@ -105,7 +106,7 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
 
       /* Error. */
       case -1:
-        remove_timer(timer, NULL);
+        pr_timer_remove(timerno, ANY_MODULE);
         pr_netio_close(nstrm);
         pr_inet_close(tmp_pool, ident_conn);
         pr_log_debug(DEBUG6, "ident lookup failed (%s), returning '%s'",
@@ -118,7 +119,7 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
         ident_conn->mode = CM_OPEN;
 
         if (pr_inet_get_conn_info(ident_conn, ident_conn->listen_fd) < 0) {
-          remove_timer(timer, NULL);
+          pr_timer_remove(timerno, ANY_MODULE);
           pr_netio_close(nstrm);
           pr_inet_close(tmp_pool, ident_conn);
           pr_log_debug(DEBUG2, "ident lookup timed out, returning '%s'", ret);
@@ -131,7 +132,7 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
 
   if ((ident_io = pr_inet_openrw(tmp_pool, ident_conn, NULL, PR_NETIO_STRM_OTHR,
       -1, -1, -1, FALSE)) == NULL) {
-    remove_timer(timer, NULL);
+    pr_timer_remove(timerno, ANY_MODULE);
     pr_inet_close(tmp_pool, ident_conn);
     destroy_pool(tmp_pool);
     return pstrdup(p, ret);
@@ -185,7 +186,7 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
     }
   }
 
-  remove_timer(timer, NULL);
+  pr_timer_remove(timerno, ANY_MODULE);
   pr_inet_close(tmp_pool, ident_io);
   pr_inet_close(tmp_pool, ident_conn);
   destroy_pool(tmp_pool);
