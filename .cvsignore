@@ -2,10 +2,12 @@ config.log
 config.h
 config.cache
 config.status
+autom4te.cache
 proftpd
 ftpshut
 ftpwho
 ftpcount
+ftptop
 Makefile
 Make.rules
 Make.modules
