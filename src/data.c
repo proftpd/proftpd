@@ -20,7 +20,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.6 1999-10-05 05:37:21 macgyver Exp $
+ * $Id: data.c,v 1.7 1999-11-29 05:26:40 macgyver Exp $
  */
 
 #include "conf.h"
@@ -546,7 +546,7 @@ data_sendfile(int retr_fd, off_t *offset, size_t count)
     if(fcntl(session.d->outf->fd, F_SETFL, flags ^ O_NONBLOCK) == -1)
       return -1;
   
-  log_pri(DEBUG4, "data_sendfile(%d,%d,%d)", retr_fd, *offset, count);
+  log_debug(DEBUG4, "data_sendfile(%d,%d,%d)", retr_fd, *offset, count);
 #if defined(HAVE_LINUX_SENDFILE)
   if ((len = sendfile(session.d->outf->fd, retr_fd, offset, count)) == -1) {
 #elif defined(HAVE_BSD_SENDFILE)
@@ -560,7 +560,7 @@ data_sendfile(int retr_fd, off_t *offset, size_t count)
     return -1;
   }
   
-  log_pri(DEBUG4, "data_sendfile: %ld", len);
+  log_debug(DEBUG4, "data_sendfile: %ld", len);
   
   if (flags & O_NONBLOCK)
     fcntl(session.d->outf->fd, F_SETFL, flags);

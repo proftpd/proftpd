@@ -1,4 +1,13 @@
-$Id: NEWS,v 1.14 1999-10-27 03:01:18 macgyver Exp $
+$Id: NEWS,v 1.15 1999-11-29 05:26:40 macgyver Exp $
+
+1.2.0pre10 - Released: ???
+--------------------------
+- sendfile() handles errors and non-optimal conditions The Right Way(tm).
+
+- install_group works right in warped cases of having more than one GID 0
+  group defined.  No, don't ask. :)
+
+- sendfile() doesn't log spurious messages unless it's in debug mode now.
 
 1.2.0pre9 - Released: 10/27/99
 ------------------------------
