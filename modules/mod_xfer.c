@@ -26,11 +26,13 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.105 2002-12-06 21:05:04 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.106 2002-12-06 21:25:08 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
+
+#include <signal.h>
 
 #ifdef HAVE_SYS_SENDFILE_H
 #include <sys/sendfile.h>
@@ -52,6 +54,17 @@ void xfer_abort(pr_netio_stream_t *, int);
 /* Variables for this module */
 static pr_fh_t *retr_fh = NULL;
 static pr_fh_t *stor_fh = NULL;
+
+/* Transfer rate variables */
+static long double xfer_rate_kbps = 0.0, xfer_rate_bps = 0.0;
+static off_t xfer_rate_freebytes = 0.0;
+static unsigned char have_xfer_rate = FALSE;
+
+/* Transfer rate functions */
+static void xfer_rate_lookup(cmd_rec *);
+static unsigned char xfer_rate_parse_cmdlist(config_rec *, char *);
+static void xfer_rate_sigmask(unsigned char);
+static void xfer_rate_throttle(off_t);
 
 module xfer_module;
 
@@ -211,7 +224,7 @@ static unsigned long parse_max_nbytes(char *nbytes_str, char *units_str) {
 
 static void _log_transfer(char direction, char abort_flag) {
   struct timeval end_time;
-  char *fullpath;
+  char *fullpath = NULL;
 
   gettimeofday(&end_time, NULL);
 
@@ -244,110 +257,330 @@ static void _log_transfer(char direction, char abort_flag) {
 	    (unsigned long)(end_time.tv_usec / 10000));
 }
 
-/* This routine counts the difference in usec between timeval's
+/* Code borrowed from src/dirtree.c's get_word() -- modified to separate
+ * words on commas as well as spaces.
  */
-static float _rate_diffusec(struct timeval tlast, struct timeval t) {
-    float diffsec, diffusec;
+static char *get_cmd_from_list(char **list) {
+  char *res = NULL, *dst = NULL;
+  unsigned char quote_mode = FALSE;
 
-    diffsec  = t.tv_sec - tlast.tv_sec;
-    diffusec = t.tv_usec- tlast.tv_usec;
-    log_debug(DEBUG5,
-	      "_rate_diffusec: last=%ld %ld  now=%ld %ld  diff=%f %f  res=%f.",
-	      tlast.tv_sec, tlast.tv_usec, t.tv_sec, t.tv_usec,
-	      diffsec, diffusec, (diffsec * 10e5 + diffusec));
-    return(diffsec * 10e5 + diffusec);
+  while (**list && isspace((int) **list))
+    (*list)++;
+
+  if (!**list)
+    return NULL;
+
+  res = dst = *list;
+
+  if (**list == '\"') {
+    quote_mode = TRUE;
+    (*list)++;
+  }
+
+  while (**list && **list != ',' &&
+      (quote_mode ? (**list != '\"') : (!isspace((int) **list)))) {
+
+    if (**list == '\\' && quote_mode) {
+
+      /* escaped char */
+      if (*((*list) + 1))
+        *dst = *(++(*list));
+    }
+
+    *dst++ = **list;
+    ++(*list);
+  }
+
+  if (**list)
+    (*list)++;
+
+  *dst = '\0';
+
+  return res;
 }
 
-/* Bandwidth Throttling. <grin@tolna.net>
- *
- * If the rate sent were too high throttles the required amount (max 100 sec).
- * No throttling for the first FreeBytes bytes
- *   (but this includes REST as well).
- *
- * If HardBPS then forces BPS throughout FreeBytes as well.
- *
- * input: 	rate_pos:	position in file
- *              rate_bytes:     bytes xferred (same as rate_pos if !REST)
- *              rate_tvlast:    when the transfer was started
- *              rate_freebytes: no throttling unless that many xferred
- *              rate_bps:       max byte / sec bandwidth allowed
- *              rate_hardbps:   if FALSE then forces BPS only after FreeBytes
- */
-static void _rate_throttle(off_t rate_pos, off_t rate_bytes,
-			   struct timeval rate_tvlast,
-			   long rate_freebytes, long rate_bps,
-			   int rate_hardbps)
-{
-  /* rate_tv:        now (the diff of those gives the time spent)
-   */
-  struct timeval rate_tv;
-  float dtime, wtime;
+static void xfer_rate_lookup(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  char *xfer_cmd = NULL;
+  unsigned char have_user_rate = FALSE, have_group_rate = FALSE,
+    have_class_rate = FALSE, have_all_rate = FALSE;
+  unsigned int precedence = 0;
 
-  log_debug(DEBUG5,
-            "_rate_throttle: rate_bytes=%" PR_LU " rate_pos=%" PR_LU " "
-            "rate_freebytes=%ld rate_bps=%ld rate_hardbps=%i.",
-            rate_bytes, rate_pos, rate_freebytes, rate_bps, rate_hardbps);
-
-  /* no rate control unless more than free bytes DL'ed */
-  if(rate_pos < rate_freebytes)
+  /* Do nothing if values are already cached. */
+  if (have_xfer_rate)
     return;
-  
-  while (1) {
-    gettimeofday(&rate_tv, NULL);
-  
-    if(!rate_hardbps)
-      rate_bytes -= rate_freebytes;
-  
-    dtime = _rate_diffusec(rate_tvlast, rate_tv);
-    wtime = 10e5 * rate_bytes / rate_bps;
-  
-    /* Setup for the select.
-    */
-    memset(&rate_tv, 0, sizeof(rate_tv));
-  
-    if(wtime > dtime) {
-      /* too fast, doze a little */
-      log_debug(DEBUG5, "_rate_throttle: wtime=%f  dtime=%f.", wtime, dtime);
 
-      if(wtime - dtime > 10e7) {
-        /* >100sec, umm that'd timeout */
-        log_debug(DEBUG5, "Sleeping 100 seconds.");
-        rate_tv.tv_usec = 10e7;
-        log_debug(DEBUG5, "Sleeping 100 seconds done!");
-      } else {
-        log_debug(DEBUG5, "Sleeping %f sec.", (wtime - dtime) / 10e5);
-        rate_tv.tv_usec = wtime - dtime;
-        log_debug(DEBUG5, "Sleeping %f sec done!", (wtime - dtime) / 10e5);
-      }
-    
-      /* For completeness, break it up into seconds and microseconds -- some
-       * platforms have problems dealing with large values for microseconds.
-       *
-       * Due to a bug in GCC/EGCS, we can't say x % 10e5, so we spell it out...
-       */
-      rate_tv.tv_sec = rate_tv.tv_usec / 1000000;
-      rate_tv.tv_usec = rate_tv.tv_usec % 1000000;
-    
-      /* We use select() instead of usleep() because it seems to be far more
-       * portable across platforms.
-       */
+  /* Make sure the variables are (re)initialized */
+  xfer_rate_kbps = xfer_rate_bps = 0.0;
+  xfer_rate_freebytes = 0;
+  have_xfer_rate = FALSE;
 
-      /* Look for EINTR and restart the entire loop if necessary.
-       * jss 2/20/01
-       */
-    
-      if (select(0, NULL, NULL, NULL, &rate_tv) < 0) {
-        if(errno != EINTR) {
-          log_pri(PR_LOG_WARNING, "Unable to throttle bandwidth: %s.",
-	          strerror(errno));
-        } else {
-          pr_handle_signals();
-          continue;
-        }
+  c = find_config(CURRENT_CONF, CONF_PARAM, "TransferRate", FALSE);
+
+  /* Note: need to cycle through all the matching config_recs, and using
+   * the information from the current config_rec only if it matches
+   * the target *and* has a higher precedence than any of the previously
+   * found config_recs.
+   */
+  while (c) {
+    char **cmdlist = (char **) c->argv[0];
+    unsigned char matched_cmd = FALSE;
+
+    /* Does this TransferRate apply to the current command?  Note: this
+     * could be made more efficient by using bitmasks rather than string
+     * comparisons.
+     */
+    for (xfer_cmd = *cmdlist; xfer_cmd; xfer_cmd = *(cmdlist++)) {
+      if (!strcasecmp(xfer_cmd, cmd->argv[0])) {
+        matched_cmd = TRUE;
+        break;
       }
     }
-    break;
+
+    /* No -- continue on to the next TransferRate. */
+    if (!matched_cmd) {
+      c = find_config_next(c, c->next, CONF_PARAM, "TransferRate", FALSE);
+      continue;
+    }
+
+    if (c->argc > 4) {
+      if (!strcmp(c->argv[4], "user")) {
+
+        if (user_expression((char **) &c->argv[5]) &&
+            *((unsigned int *) c->argv[3]) > precedence) {
+
+          /* Set the precedence. */
+          precedence = *((unsigned int *) c->argv[3]);
+
+          xfer_rate_kbps = *((long double *) c->argv[1]);
+          xfer_rate_freebytes = *((off_t *) c->argv[2]);
+          have_xfer_rate = TRUE;
+          have_user_rate = TRUE;
+          have_group_rate = have_class_rate = have_all_rate = FALSE;
+        }
+
+      } else if (!strcmp(c->argv[4], "group")) {
+
+        if (group_expression((char **) &c->argv[5]) &&
+            *((unsigned int *) c->argv[3]) > precedence) {
+
+          /* Set the precedence. */
+          precedence = *((unsigned int *) c->argv[3]);
+
+          xfer_rate_kbps = *((long double *) c->argv[1]);
+          xfer_rate_freebytes = *((off_t *) c->argv[2]);
+          have_xfer_rate = TRUE;
+          have_group_rate = TRUE;
+          have_user_rate = have_class_rate = have_all_rate = FALSE;
+        }
+
+      } else if (!strcmp(c->argv[4], "class")) {
+
+        if (session.class && session.class->name &&
+           !strcmp(session.class->name, c->argv[5]) &&
+          *((unsigned int *) c->argv[3]) > precedence) {
+
+          /* Set the precedence. */
+          precedence = *((unsigned int *) c->argv[3]);
+
+          xfer_rate_kbps = *((long double *) c->argv[1]);
+          xfer_rate_freebytes = *((off_t *) c->argv[2]);
+          have_xfer_rate = TRUE;
+          have_class_rate = TRUE;
+          have_user_rate = have_group_rate = have_all_rate = FALSE;
+        }
+      }
+
+    } else {
+
+      if (*((unsigned int *) c->argv[3]) > precedence) {
+
+        /* Set the precedence. */
+        precedence = *((unsigned int *) c->argv[3]);
+
+        xfer_rate_kbps = *((long double *) c->argv[1]);
+        xfer_rate_freebytes = *((off_t *) c->argv[2]);
+        have_xfer_rate = TRUE;
+        have_all_rate = TRUE;
+        have_user_rate = have_group_rate = have_class_rate = FALSE;
+      }
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "TransferRate", FALSE);
   }
+
+  /* Print out a helpful debugging message. */
+  if (have_xfer_rate) {
+    log_debug(DEBUG3, "TransferRate (%.3Lf KB/s, %" PR_LU
+        " bytes free) in effect%s", xfer_rate_kbps, xfer_rate_freebytes,
+      have_user_rate ? " for current user" :
+      have_group_rate ? " for current group" :
+      have_class_rate ? " for current class" : "");
+
+    /* Convert the configured Kbps to bytes per usec, for use later.
+     * The 1024.0 factor converts for Kbytes to bytes, and the
+     * 1000000.0 factor converts from secs to usecs.
+     */
+    xfer_rate_bps = xfer_rate_kbps * 1024.0;
+  }
+}
+
+static unsigned char xfer_rate_parse_cmdlist(config_rec *c, char *cmdlist) {
+  char *cmd = NULL;
+  array_header *cmds = NULL;
+
+  /* Allocate an array_header. */
+  cmds = make_array(c->pool, 0, sizeof(char *));
+
+  /* Add each command to the array, checking for invalid commands or
+   * duplicates.
+   */
+  while ((cmd = get_cmd_from_list(&cmdlist)) != NULL) {
+
+    /* Is the given command a valid one for this directive? */
+    if (strcasecmp(cmd, C_APPE) && strcasecmp(cmd, C_RETR) &&
+        strcasecmp(cmd, C_STOR) && strcasecmp(cmd, C_STOU)) {
+      log_debug(DEBUG0, "invalid TransferRate command: %s", cmd);
+      return FALSE;
+    }
+
+    *((char **) push_array(cmds)) = pstrdup(c->pool, cmd);
+  }
+
+  /* Terminate the array with a NULL. */
+  *((char **) push_array(cmds)) = NULL;
+
+  /* Store the array of commands in the config_rec. */
+  c->argv[0] = (void *) cmds->elts;
+
+  return TRUE;
+}
+
+/* Very similar to the {block,unblock}_signals() function, this masks most
+ * of the same signals -- except for TERM.  This allows a throttling process
+ * to be killed by the admin.
+ */
+static void xfer_rate_sigmask(unsigned char block) {
+  static sigset_t sigset;
+
+  if (block) {
+    sigemptyset(&sigset);
+
+    sigaddset(&sigset, SIGCHLD);
+    sigaddset(&sigset, SIGUSR1);
+    sigaddset(&sigset, SIGINT);
+    sigaddset(&sigset, SIGQUIT);
+    sigaddset(&sigset, SIGALRM);
+#ifdef SIGIO
+    sigaddset(&sigset, SIGIO);
+#endif
+#ifdef SIGBUS
+    sigaddset(&sigset, SIGBUS);
+#endif
+    sigaddset(&sigset, SIGHUP);
+
+    sigprocmask(SIG_BLOCK, &sigset, NULL);
+
+  } else
+    sigprocmask(SIG_UNBLOCK, &sigset, NULL);
+}
+
+/* Returns the difference, in secs, between the given timeval and now. */
+static long xfer_rate_since(struct timeval *then) {
+  struct timeval now;
+  gettimeofday(&now, NULL);
+
+  return ((now.tv_sec - then->tv_sec) * 1000000L +
+    (now.tv_usec - then->tv_usec));
+}
+
+static void xfer_rate_throttle(off_t xferlen) {
+  long ideal = 0.0, elapsed = 0.0;
+
+  /* Calculate the time interval since the transfer of data started. */
+  elapsed = xfer_rate_since(&session.xfer.start_time);
+
+  /* Perform no throttling if no throttling has been configured. */
+  if (!have_xfer_rate) {
+
+    /* Update the scoreboard. */
+    pr_scoreboard_update_entry(getpid(),
+      PR_SCORE_XFER_LEN, xferlen,
+      PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
+      NULL);
+
+    return;
+  }
+
+  /* Give credit for any configured freebytes. */
+  if (xferlen && xfer_rate_freebytes) {
+
+    if (xfer_rate_freebytes >= xferlen) {
+       /* Decrement the number of freebytes by the total number of bytes
+        * sent.  Since there are still more freebytes to be used, just
+        * return now, after updating the timeval struc.
+        */
+       xfer_rate_freebytes -= xferlen;
+
+      /* Update the scoreboard. */
+      pr_scoreboard_update_entry(getpid(),
+        PR_SCORE_XFER_LEN, xferlen,
+        PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
+        NULL);
+
+       return;
+
+    } else {
+      xferlen -= xfer_rate_freebytes;
+
+      /* Make sure that, the next time through, the freebytes are not
+       * credited again.
+       */
+      xfer_rate_freebytes = 0;
+    }
+  }
+
+  ideal = xferlen * 1000000.0 / xfer_rate_bps;
+
+  if (ideal > elapsed) {
+    struct timeval tv;
+
+    /* Setup for the select.  We use select() instead of usleep() because it
+     * seems to be far more portable across platforms.
+     */
+    tv.tv_usec = ideal - elapsed;
+    tv.tv_sec = tv.tv_usec / 1000000L;
+    tv.tv_usec = tv.tv_usec % 1000000L;
+
+    log_debug(DEBUG7, "transferring too fast, delaying %ld sec%s, %ld usecs",
+      tv.tv_sec, tv.tv_sec == 1 ? "" : "s", tv.tv_usec);
+
+    /* No interruptions, please... */
+    xfer_rate_sigmask(TRUE);
+
+    if (select(0, NULL, NULL, NULL, &tv) < 0)
+      log_pri(LOG_WARNING, "warning: unable to throttle bandwidth: %s",
+        strerror(errno));
+
+    xfer_rate_sigmask(FALSE);
+    pr_handle_signals();
+
+    /* Update the scoreboard. */
+    pr_scoreboard_update_entry(getpid(),
+      PR_SCORE_XFER_LEN, xferlen,
+      PR_SCORE_XFER_ELAPSED, (unsigned long) ideal,
+      NULL);
+
+  } else {
+
+    /* Update the scoreboard. */
+    pr_scoreboard_update_entry(getpid(),
+      PR_SCORE_XFER_LEN, xferlen,
+      PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
+      NULL);
+  }
+
+  return;
 }
 
 static int _transmit_normal(char *buf, long bufsize) {
@@ -360,15 +593,15 @@ static int _transmit_normal(char *buf, long bufsize) {
 }
 
 #ifdef HAVE_SENDFILE
-static int _transmit_sendfile(int rate_bps, off_t count, off_t *offset,
-			       pr_sendfile_t *retval) {
+static int _transmit_sendfile(off_t count, off_t *offset,
+    pr_sendfile_t *retval) {
   
   /* We don't use sendfile() if:
    * - We're using bandwidth throttling.
    * - We're transmitting an ASCII file.
    * - There's no data left to transmit.
    */
-  if(rate_bps ||
+  if (have_xfer_rate ||
      !(session.xfer.file_size - count) ||
      (session.flags & (SF_ASCII | SF_ASCII_OVERRIDE))) {
     return 0;
@@ -417,12 +650,11 @@ static int _transmit_sendfile(int rate_bps, off_t count, off_t *offset,
 }
 #endif /* HAVE_SENDFILE */
 
-static long _transmit_data(int rate_bps, off_t count, off_t offset,
-			   char *buf, long bufsize) {
+static long _transmit_data(off_t count, off_t offset, char *buf, long bufsize) {
 #ifdef HAVE_SENDFILE
   pr_sendfile_t retval;
   
-  if (!_transmit_sendfile(rate_bps, count, &offset, &retval))
+  if (!_transmit_sendfile(count, &offset, &retval))
     return _transmit_normal(buf, bufsize);
   else
     return (long) retval;
@@ -552,6 +784,14 @@ static void xfer_exit_cb(void) {
       /* A download is occurring... */
       retr_abort();
   }
+}
+
+/* This function clears any cached TransferRate values, as TransferRates
+ * may be set on a directory-by-directory basis.
+ */
+MODRET xfer_reset_rate(cmd_rec *cmd) {
+  have_xfer_rate = FALSE;
+  return DECLINED(cmd);
 }
 
 /* This is a PRE_CMD handler that checks security, etc, and places the full
@@ -852,22 +1092,9 @@ MODRET xfer_stor(cmd_rec *cmd) {
   int ret;
 #endif /* REGEX */
 
-  long rate_pos=0, rate_bytes=0, rate_freebytes=0, rate_bps=0;
-  int rate_hardbps=0;
-  struct timeval rate_tvstart;
+  /* this function sets static module variables for later throttling */
+  xfer_rate_lookup(cmd);
 
-  if( (rate_bps = get_param_int(CURRENT_CONF,"RateWriteBPS",FALSE)) == -1 ) { rate_bps=0; }
-  if( (rate_freebytes = get_param_int(CURRENT_CONF,"RateWriteFreeBytes",FALSE)) == -1 ) { rate_freebytes=0; }
-  rate_hardbps = get_param_int(CURRENT_CONF,"RateWriteHardBPS",FALSE) == 1;
-      
-  if( rate_bps != 0 ) {
-      /* I am not sure this _is_ allowed in ftp protocol... ideas, anyone?
-       add_response(R_211,"Allowed bandwidth is %ld bps (starting at %ld).",rate_bps,rate_freebytes);
-       */
-      log_debug(DEBUG2, "Allowed bandwidth is %ld bps (starting at %ld).",
-		rate_bps, rate_freebytes);
-  }
-  
   p_hidden = NULL;
   p = mod_privdata_find(cmd, "stor_filename", NULL);
 
@@ -949,7 +1176,6 @@ MODRET xfer_stor(cmd_rec *cmd) {
     }
     
     respos = session.restart_pos;
-    rate_pos = respos;
     session.restart_pos = 0L;
   }
 
@@ -1011,9 +1237,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
     main_server->tcp_rwin : PR_TUNABLE_BUFFER_SIZE);
   lbuf = (char*) palloc(cmd->tmp_pool, bufsize);
   
-  gettimeofday(&rate_tvstart, NULL);
   while ((len = data_xfer(lbuf, bufsize)) > 0) {
-    if(XFER_ABORTED)
+    if (XFER_ABORTED)
       break;
 
     nbytes_stored += len;
@@ -1044,12 +1269,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
       return ERROR(cmd);
     }
 
-    if(rate_bps) {
-        rate_pos += len;
-        rate_bytes += len;
-       _rate_throttle(rate_pos, rate_bytes, rate_tvstart, rate_freebytes,
-			 rate_bps, rate_hardbps);
-    }
+    /* If no throttling is configured, this does nothing. */
+    xfer_rate_throttle(len);
   }
 
   if (XFER_ABORTED) {
@@ -1063,6 +1284,10 @@ MODRET xfer_stor(cmd_rec *cmd) {
     return ERROR(cmd);
 
   } else {
+
+    /* If no throttling is configured, this does nothing. */
+    xfer_rate_throttle(len);
+
     stor_complete();
 
     if (session.xfer.path && session.xfer.path_hidden) {
@@ -1175,31 +1400,16 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 MODRET xfer_retr(cmd_rec *cmd) {
   char *dir = NULL, *lbuf;
   struct stat sbuf;
-  struct timeval rate_tvstart;
   off_t nbytes_max_retrieve = 0;
   unsigned char have_limit = FALSE;
   privdata_t *p;
   long bufsize, len = 0;
-  long rate_hardbps = 0;
-  off_t respos = 0, cnt = 0, cnt_steps = 0, cnt_next = 0, rate_bytes = 0;
-  long rate_freebytes = 0, rate_bps = 0;
-  
-  if((rate_bps = get_param_int(CURRENT_CONF, "RateReadBPS", FALSE)) == -1)
-    rate_bps = 0;
-
-  if((rate_freebytes = get_param_int(CURRENT_CONF,
-				     "RateReadFreeBytes", FALSE)) == -1)
-    rate_freebytes = 0;
-  
-  rate_hardbps = get_param_int(CURRENT_CONF,"RateReadHardBPS",FALSE) == 1;
-  
-  if(rate_bps != 0) {
-      /* I am not sure this _is_ allowed in ftp protocol... ideas, anyone?
-	 add_response(R_211,"Allowed bandwidth is %ld bps (starting at %ld).",rate_bps,rate_freebytes);
-      */
-    log_debug(DEBUG2, "Allowed bandwidth is %ld bps (starting at %ld).",
-	      rate_bps, rate_freebytes);
-  }
+  off_t respos = 0, cnt = 0, cnt_steps = 0, cnt_next = 0;
+ 
+  /* This function sets static module variables for later potential
+   * throttling of the transfer.
+   */
+  xfer_rate_lookup(cmd); 
   
   p = mod_privdata_find(cmd, "retr_filename", NULL);
   
@@ -1298,13 +1508,11 @@ MODRET xfer_retr(cmd_rec *cmd) {
     PR_SCORE_XFER_DONE, 0,
     NULL);
 
-  gettimeofday(&rate_tvstart, NULL);
-    
   while (cnt != session.xfer.file_size) {
     if (XFER_ABORTED)
       break;
       
-    if ((len = _transmit_data(rate_bps, cnt, respos, lbuf, bufsize)) == 0)
+    if ((len = _transmit_data(cnt, respos, lbuf, bufsize)) == 0)
       break;
       
     if (len < 0) {
@@ -1314,8 +1522,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     }
 
     cnt += len;
-    rate_bytes += len;
-      
+
     if ((cnt / cnt_steps) != cnt_next) {
       cnt_next = cnt / cnt_steps;
 
@@ -1323,11 +1530,9 @@ MODRET xfer_retr(cmd_rec *cmd) {
         PR_SCORE_XFER_DONE, cnt,
         NULL);
     }
-      
-    if (rate_bps) {
-      _rate_throttle(cnt, rate_bytes, rate_tvstart, rate_freebytes,
-        rate_bps, rate_hardbps);
-    }
+
+    /* If no throttling is configured, this simply updates the scoreboard. */
+    xfer_rate_throttle(cnt);
   }
     
   if (XFER_ABORTED) {
@@ -1341,6 +1546,10 @@ MODRET xfer_retr(cmd_rec *cmd) {
     return ERROR(cmd);
 
   } else {
+
+    /* If no throttling is configured, this simply updates the scoreboard. */
+    xfer_rate_throttle(cnt);
+
     retr_complete();
     data_close(FALSE);
   }
@@ -1747,52 +1956,6 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET add_ratenum(cmd_rec *cmd) {
-  config_rec *c;
-  long ratenum;
-  char *endp;
-
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_DIR | CONF_GLOBAL);
-
-  if(cmd->argc != 2 )
-      CONF_ERROR(cmd,"invalid number of arguments");
-
-  if (!strcasecmp(cmd->argv[1],"none"))
-    ratenum = 0;
-  else {
-    ratenum = (int)strtol(cmd->argv[1],&endp,10);
-
-    if((endp && *endp) || ratenum < 0)
-      CONF_ERROR(cmd,"argument must be 'none' or a positive integer.");
-  }
-
-  log_debug(DEBUG5, "add_ratenum: %s %ld.", cmd->argv[0], ratenum);
-
-  c = add_config_param( cmd->argv[0], 1, (void*)ratenum );
-  c->flags |= CF_MERGEDOWN;
-
-  return HANDLED(cmd);
-}
-
-MODRET add_ratebool(cmd_rec *cmd) {
-  config_rec *c;
-  int b;
-
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_DIR | CONF_GLOBAL);
-
-  if((b = get_boolean(cmd,1)) == -1)
-    CONF_ERROR(cmd,"expected boolean argument.");
-
-  log_debug(DEBUG5, "add_ratebool: %s %d.", cmd->argv[0], b);
-
-  c = add_config_param( cmd->argv[0], 1, (void*)b );
-  c->flags |= CF_MERGEDOWN;
-
-  return HANDLED(cmd);
-}
-
 MODRET set_storeuniqueprefix(cmd_rec *cmd) {
   config_rec *c = NULL;
 
@@ -1851,6 +2014,152 @@ MODRET set_timeoutstalled(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+/* usage: TransferRate cmds kbps[:free-bytes] ["user"|"group"|"class"
+ *          expression]
+ */
+MODRET set_transferrate(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  char *tmp = NULL, *endp = NULL;
+  long double rate = 0.0;
+  off_t freebytes = 0;
+  unsigned int precedence = 0;
+
+  int ctxt = (cmd->config && cmd->config->config_type != CONF_PARAM ?
+     cmd->config->config_type : cmd->server->config_type ?
+     cmd->server->config_type : CONF_ROOT);
+
+  /* Must have two or four parameters */
+  if (cmd->argc-1 != 2 && cmd->argc-1 != 4)
+    CONF_ERROR(cmd, "wrong number of parameters");
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
+    CONF_DIR|CONF_DYNDIR);
+
+  /* Set the precedence for this config_rec based on its configuration
+   * context.
+   */
+  if (ctxt & CONF_GLOBAL)
+    precedence = 1;
+
+  /* These will never appear simultaneously */
+  else if (ctxt & CONF_ROOT || ctxt & CONF_VIRTUAL)
+    precedence = 2;
+
+  else if (ctxt & CONF_ANON)
+    precedence = 3;
+
+  else if (ctxt & CONF_DIR)
+    precedence = 4;
+
+  /* Note: by tweaking this value to be lower than the precedence for
+   * <Directory> appearances of this directive, I can effectively cause
+   * any .ftpaccess appearances not to override...
+   */
+  else if (ctxt & CONF_DYNDIR)
+    precedence = 5;
+
+  /* Check for a valid classifier. */
+  if (cmd->argc-1 > 2) {
+    if (!strcmp(cmd->argv[3], "user") ||
+        !strcmp(cmd->argv[3], "group") ||
+        !strcmp(cmd->argv[3], "class"))
+      /* do nothing */
+      ;
+    else
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown classifier requested: '",
+        cmd->argv[3], "'", NULL));
+  }
+
+  if ((tmp = strchr(cmd->argv[2], ':')) != NULL)
+    *tmp = '\0';
+
+  /* Parse the 'kbps' part */
+  rate = strtoul(cmd->argv[2], &endp, 10);
+
+  if (rate == 0)
+    CONF_ERROR(cmd, "rate must be greater than zero");
+
+  if (endp && *endp)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid number: '",
+      cmd->argv[2], "'", NULL));
+
+  /* Parse any 'free-bytes' part */
+  if (tmp) {
+    cmd->argv[2] = ++tmp;
+
+    if ((freebytes = strtoul(cmd->argv[2], &endp, 10)) < 0)
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "negative values not allowed: '", cmd->argv[2], "'", NULL));
+
+    if (endp && *endp)
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid number: '",
+        cmd->argv[2], "'", NULL));
+  }
+
+  /* Construct the config_rec */
+  if (cmd->argc-1 == 2) {
+    c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
+
+    /* Parse the command list. */
+    if (!xfer_rate_parse_cmdlist(c, cmd->argv[1]))
+      CONF_ERROR(cmd, "error with command list");
+
+    c->argv[1] = pcalloc(c->pool, sizeof(long double));
+    *((long double *) c->argv[1]) = rate;
+    c->argv[2] = pcalloc(c->pool, sizeof(off_t));
+    *((off_t *) c->argv[2]) = freebytes;
+    c->argv[3] = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[3]) = precedence;
+
+  } else {
+    array_header *acl = NULL;
+    int argc = cmd->argc - 4;
+    char **argv = cmd->argv + 3;
+
+    acl = parse_group_expression(cmd->tmp_pool, &argc, argv);
+
+    c = add_config_param(cmd->argv[0], 0);
+
+    /* Parse the command list. */
+
+    /* The five additional slots are for: cmd-list, bps, free-bytes, precedence,
+     * user/group/class.
+     */
+    c->argc = argc + 5;
+
+    c->argv = pcalloc(c->pool, ((c->argc + 1) * sizeof(char *)));
+    argv = (char **) c->argv;
+
+    if (!xfer_rate_parse_cmdlist(c, cmd->argv[1]))
+      CONF_ERROR(cmd, "error with command list");
+
+    /* Note: the command list is at index 0, hence this increment. */
+    argv++;
+
+    *argv = pcalloc(c->pool, sizeof(long double));
+    *((long double *) *argv++) = rate;
+    *argv = pcalloc(c->pool, sizeof(off_t));
+    *((unsigned long *) *argv++) = freebytes;
+    *argv = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) *argv++) = precedence;
+
+    *argv++ = pstrdup(c->pool, cmd->argv[3]);
+
+    if (argc && acl) {
+      while (argc--) {
+        *argv++ = pstrdup(c->pool, *((char **) acl->elts));
+        acl->elts = ((char **) acl->elts) + 1;
+      }
+    }
+
+    /* don't forget the terminating NULL */
+    *argv = NULL;
+  }
+
+  c->flags |= CF_MERGEDOWN_MULTI;
+  return HANDLED(cmd);
+}
+
 /* Module API tables
  */
 
@@ -1863,15 +2172,10 @@ static conftable xfer_conftab[] = {
   { "HiddenStores",		set_hiddenstores,		NULL },
   { "MaxRetrieveFileSize",	set_maxfilesize,		NULL },
   { "MaxStoreFileSize",		set_maxfilesize,		NULL },
-  { "RateReadBPS",		add_ratenum,                 },
-  { "RateReadFreeBytes",	add_ratenum,	             },
-  { "RateReadHardBPS",		add_ratebool,                },
-  { "RateWriteBPS",		add_ratenum,                 },
-  { "RateWriteFreeBytes",	add_ratenum,	             },
-  { "RateWriteHardBPS",		add_ratebool,                },
   { "StoreUniquePrefix",	set_storeuniqueprefix,		NULL },
   { "TimeoutNoTransfer",	set_timeoutnoxfer,		NULL },
   { "TimeoutStalled",		set_timeoutstalled,		NULL },
+  { "TransferRate",		set_transferrate,		NULL },
   { NULL }
 };
 
@@ -1900,6 +2204,10 @@ static cmdtable xfer_cmdtab[] = {
   { LOG_CMD_ERR, C_APPE,G_NONE,  xfer_err_cleanup,  FALSE,  FALSE },
   { CMD,     C_ABOR,	G_NONE,	 xfer_abor,	TRUE,	TRUE,  CL_MISC  },
   { CMD,     C_REST,	G_NONE,	 xfer_rest,	TRUE,	FALSE, CL_MISC  },
+  { PRE_CMD, C_CDUP,	G_NONE,  xfer_reset_rate, TRUE,	FALSE },
+  { PRE_CMD, C_CWD,	G_NONE,  xfer_reset_rate, TRUE,	FALSE },
+  { PRE_CMD, C_XCUP,	G_NONE,  xfer_reset_rate, TRUE,	FALSE },
+  { PRE_CMD, C_XCWD,	G_NONE,  xfer_reset_rate, TRUE,	FALSE },
   { 0,NULL }
 };
 

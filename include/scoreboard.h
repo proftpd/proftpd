@@ -24,7 +24,7 @@
 
 /* Scoreboard routines.
  *
- * $Id: scoreboard.h,v 1.5 2002-10-23 23:53:55 castaglia Exp $
+ * $Id: scoreboard.h,v 1.6 2002-12-06 21:25:08 castaglia Exp $
  */
 
 #ifndef PR_SCOREBOARD_H
@@ -70,7 +70,8 @@ typedef struct {
   char sce_cwd[PR_TUNABLE_SCOREBOARD_BUFFER_SIZE];
   char sce_cmd[PR_TUNABLE_SCOREBOARD_BUFFER_SIZE];
   time_t sce_begin_idle, sce_begin_session;
-  off_t sce_xfer_size, sce_xfer_done;
+  off_t sce_xfer_size, sce_xfer_done, sce_xfer_len;
+  unsigned long sce_xfer_elapsed;
 
 } pr_scoreboard_entry_t;
 
@@ -91,6 +92,8 @@ typedef struct {
 #define PR_SCORE_XFER_SIZE	11
 #define PR_SCORE_BEGIN_IDLE	12
 #define PR_SCORE_BEGIN_SESSION	13
+#define PR_SCORE_XFER_LEN	14
+#define PR_SCORE_XFER_ELAPSED	15
 
 /* Scoreboard error values */
 #define PR_SCORE_ERR_BAD_MAGIC		-2

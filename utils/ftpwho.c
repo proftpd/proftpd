@@ -27,7 +27,7 @@
 /* Shows a count of "who" is online via proftpd.  Uses the /var/run/proftpd*
  * log files.
  *
- * $Id: ftpwho.c,v 1.7 2002-12-02 18:29:23 castaglia Exp $
+ * $Id: ftpwho.c,v 1.8 2002-12-06 21:25:10 castaglia Exp $
  */
 
 #include "utils.h"
@@ -216,7 +216,7 @@ int main(int argc, char **argv) {
   int c = 0, res = 0;
   struct scoreboard_class classes[MAX_CLASSES];  
   char *cp, *progname = *argv;
-  const char *cmdopts = "f:ho:v";
+  const char *cmdopts = "c:f:ho:v";
   unsigned char verbose = FALSE;
   unsigned long outform = 0;
    
@@ -372,19 +372,30 @@ int main(int argc, char **argv) {
           score->sce_user, show_time(&score->sce_begin_session));
         printf("%6s %s", show_time(&score->sce_begin_idle), score->sce_cmd);
 
+        if (verbose)
+          printf("\n");
+
       } else {
 
         printf("%5d %-8s [%6s] (%3s%%) %s", (int) score->sce_pid,
           score->sce_user, show_time(&score->sce_begin_session),
           percent_complete(score->sce_xfer_size, score->sce_xfer_done),
           score->sce_cmd);
+
+        if (verbose) {
+          printf("%sKB/s: %3.2f%s",
+            (outform & OF_ONELINE) ? " " : "\n\t",
+            (score->sce_xfer_len / 1024.0) /
+              (score->sce_xfer_elapsed / 1000000.0),
+            (outform & OF_ONELINE) ? "" : "\n");
+        }
       }
 
       /* Display additional information, if requested. */
       if (verbose) {
         if (score->sce_client_addr[0])
           printf("%sclient: %s%s",
-            (outform & OF_ONELINE) ? " " : "\n\t",
+            (outform & OF_ONELINE) ? " " : "\t",
             score->sce_client_addr,
             (outform & OF_ONELINE) ? "" : "\n");
 

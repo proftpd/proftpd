@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.310 2002-12-06 00:50:41 castaglia Exp $
+$Id: NEWS,v 1.311 2002-12-06 21:25:07 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -32,6 +32,8 @@ CVS
 - Bug 1403 - per-server system logs via ServerLog directive.
 - Bug 1605 - MKD and RMD do not log filepaths with %f or %F option in
   ExtendedLog.
+- Removing the RateRead* and RateWrite* configuration directives, and replacing
+  them with a single new directive, TransferRate.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------

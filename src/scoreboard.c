@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.9 2002-11-03 16:40:08 jwm Exp $
+ * $Id: scoreboard.c,v 1.10 2002-12-06 21:25:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -590,6 +590,14 @@ int pr_scoreboard_update_entry(pid_t pid, ...) {
 
       case PR_SCORE_XFER_SIZE:
         entry.sce_xfer_size = va_arg(ap, off_t);
+        break;
+
+      case PR_SCORE_XFER_LEN:
+        entry.sce_xfer_len = va_arg(ap, off_t);
+        break;
+
+      case PR_SCORE_XFER_ELAPSED:
+        entry.sce_xfer_elapsed = va_arg(ap, unsigned long);
         break;
 
       default:
