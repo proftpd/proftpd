@@ -765,6 +765,10 @@ ac_env_CPPFLAGS_set=${CPPFLAGS+set}
 ac_env_CPPFLAGS_value=$CPPFLAGS
 ac_cv_env_CPPFLAGS_set=${CPPFLAGS+set}
 ac_cv_env_CPPFLAGS_value=$CPPFLAGS
+ac_env_LIBS_set=${LIBS+set}
+ac_env_LIBS_value=$LIBS
+ac_cv_env_LIBS_set=${LIBS+set}
+ac_cv_env_LIBS_value=$LIBS
 ac_env_CPP_set=${CPP+set}
 ac_env_CPP_value=$CPP
 ac_cv_env_CPP_set=${CPP+set}
@@ -927,6 +931,8 @@ Some influential environment variables:
               nonstandard directory <lib dir>
   CPPFLAGS    C/C++ preprocessor flags, e.g. -I<include dir> if you have
               headers in a nonstandard directory <include dir>
+  LIBS        linker flags, e.g. -l<lib>.{a,so} if you have nonstandard
+              libraries to link
   CPP         C preprocessor
 
 Use these variables to override the choices made by `configure' or to help
@@ -2948,6 +2954,8 @@ echo "${ECHO_T}yes" >&6
 echo "${ECHO_T}no" >&6
    fi
    rm -f conftest*
+
+
 
 
 
