@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.75 2004-05-09 20:05:20 castaglia Exp $
+ * $Id: data.c,v 1.76 2004-05-15 17:25:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -112,6 +112,8 @@ static int xlate_ascii_read(char *buf, int *bufsize, int *adjlen) {
  *           and should be the difference between buflen's original
  *           value and its value when this function returns
  */
+
+static int have_dangling_cr = FALSE;
 static unsigned int xlate_ascii_write(char **buf, unsigned int *buflen,
     unsigned int bufsize) {
   char *tmpbuf = *buf;
@@ -123,12 +125,19 @@ static unsigned int xlate_ascii_write(char **buf, unsigned int *buflen,
   register unsigned int i = 0;
 
   /* First, determine how many bare LFs are present. */
-  if (tmpbuf[0] == '\n')
+  if (!have_dangling_cr && tmpbuf[0] == '\n')
     lfcount++;
 
   for (i = 1; i < tmplen; i++)
     if (tmpbuf[i] == '\n' && tmpbuf[i-1] != '\r')
       lfcount++;
+
+  /* If the last character in the buffer is CR, then we have a dangling CR.
+   * The first character in the next buffer could be an LF, and without
+   * this flag, that LF would be treated as a bare LF, thus resulting in
+   * an added extraneous CR in the stream.
+   */
+  have_dangling_cr = (tmpbuf[tmplen-1] == '\r') ? TRUE : FALSE;
 
   if (lfcount == 0)
     /* No translation needed. */
