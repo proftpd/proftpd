@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.22 2004-08-01 19:02:51 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.23 2004-09-14 17:49:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,7 +35,7 @@
 # include <crypt.h>
 #endif
 
-#define MOD_AUTH_FILE_VERSION	"mod_auth_file/0.8.2"
+#define MOD_AUTH_FILE_VERSION	"mod_auth_file/0.8.3"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001020702
@@ -629,7 +629,7 @@ MODRET authfile_getpwnam(cmd_rec *cmd) {
 
 MODRET authfile_getpwuid(cmd_rec *cmd) {
   struct passwd *pwd = NULL;
-  uid_t uid = (uid_t) cmd->argv[0];
+  uid_t uid = *((uid_t *) cmd->argv[0]);
 
   /* Do not handle *pw* requests unless we can do so. */
   if (!af_handle_pw)
@@ -655,7 +655,7 @@ MODRET authfile_name2uid(cmd_rec *cmd) {
 
   pwd = af_getpwnam(af_current_user_file, cmd->argv[0]);
 
-  return pwd ? mod_create_data(cmd, (void *) pwd->pw_uid) : DECLINED(cmd);
+  return pwd ? mod_create_data(cmd, (void *) &pwd->pw_uid) : DECLINED(cmd);
 }
 
 MODRET authfile_setpwent(cmd_rec *cmd) {
@@ -683,7 +683,7 @@ MODRET authfile_uid2name(cmd_rec *cmd) {
   if (!af_setpwent())
     return DECLINED(cmd);
 
-  pwd = af_getpwuid(af_current_user_file, (uid_t) cmd->argv[0]);
+  pwd = af_getpwuid(af_current_user_file, *((uid_t *) cmd->argv[0]));
 
   return pwd ? mod_create_data(cmd, pwd->pw_name) : DECLINED(cmd);
 }
@@ -716,7 +716,7 @@ MODRET authfile_getgrent(cmd_rec *cmd) {
 
 MODRET authfile_getgrgid(cmd_rec *cmd) {
   struct group *grp = NULL;
-  gid_t gid = (gid_t) cmd->argv[0];
+  gid_t gid = *((gid_t *) cmd->argv[0]);
 
   /* Do not handle *gr* requests unless we can do so. */
   if (!af_handle_gr)
@@ -821,10 +821,10 @@ MODRET authfile_getgroups(cmd_rec *cmd) {
   }
 
   if (gids && gids->nelts > 0)
-    return mod_create_data(cmd, (void *) gids->nelts);
+    return mod_create_data(cmd, (void *) &gids->nelts);
 
   else if (groups && groups->nelts > 0)
-    return mod_create_data(cmd, (void *) groups->nelts);
+    return mod_create_data(cmd, (void *) &groups->nelts);
 
   return DECLINED(cmd);
 }
@@ -839,7 +839,7 @@ MODRET authfile_gid2name(cmd_rec *cmd) {
   if (!af_setgrent())
     return DECLINED(cmd);
 
-  grp = af_getgrgid(af_current_group_file, (gid_t) cmd->argv[0]);
+  grp = af_getgrgid(af_current_group_file, *((gid_t *) cmd->argv[0]));
 
   return grp ? mod_create_data(cmd, grp->gr_name) : DECLINED(cmd);
 }
@@ -856,7 +856,7 @@ MODRET authfile_name2gid(cmd_rec *cmd) {
 
   grp = af_getgrnam(af_current_group_file, cmd->argv[0]);
 
-  return grp ? mod_create_data(cmd, (void *) grp->gr_gid) : DECLINED(cmd);
+  return grp ? mod_create_data(cmd, (void *) &grp->gr_gid) : DECLINED(cmd);
 }
 
 MODRET authfile_setgrent(cmd_rec *cmd) {
@@ -1244,9 +1244,9 @@ static authtable authfile_authtab[] = {
   { 0, "getpwent",	authfile_getpwent },
   { 0, "getpwnam",	authfile_getpwnam },
   { 0, "getpwuid",	authfile_getpwuid },
-  { 0, "name_uid",	authfile_name2uid },
+  { 0, "name2uid",	authfile_name2uid },
   { 0, "setpwent",	authfile_setpwent },
-  { 0, "uid_name",	authfile_uid2name },
+  { 0, "uid2name",	authfile_uid2name },
 
   /* Group information callbacks */
   { 0, "endgrent",	authfile_endgrent },
@@ -1254,8 +1254,8 @@ static authtable authfile_authtab[] = {
   { 0, "getgrgid",	authfile_getgrgid },
   { 0, "getgrnam",	authfile_getgrnam },
   { 0, "getgroups",	authfile_getgroups },
-  { 0, "gid_name",	authfile_gid2name },
-  { 0, "name_gid",	authfile_name2gid },
+  { 0, "gid2name",	authfile_gid2name },
+  { 0, "name2gid",	authfile_name2gid },
   { 0, "setgrent",	authfile_setgrent },
 
   /* Miscellaneous callbacks */

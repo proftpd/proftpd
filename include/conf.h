@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.51 2004-09-05 02:37:17 castaglia Exp $
+ * $Id: conf.h,v 1.52 2004-09-14 17:49:42 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -319,9 +319,11 @@ extern char *alloca();
 #endif
 
 #if defined(HAVE_LLU) && SIZEOF_OFF_T == 8
-# define PR_LU	"llu"
+# define PR_LU		"llu"
+# define pr_off_t	unsigned long long
 #else
-# define PR_LU	"lu"
+# define PR_LU		"lu"
+# define pr_off_t	unsigned log
 #endif
 
 /********************************************************************

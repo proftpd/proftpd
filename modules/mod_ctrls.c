@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.19 2004-07-15 00:08:32 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.20 2004-09-14 17:49:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -281,7 +281,7 @@ static void ctrls_set_group_acl(pool *grp_acl_pool, ctrls_grp_acl_t *grp_acl,
       return;
 
     } else {
-      if ((gid = auth_name_gid(tmp_pool, group)) == (gid_t) -1)
+      if ((gid = auth_name2gid(tmp_pool, group)) == (gid_t) -1)
         continue;
     }
 
@@ -330,7 +330,7 @@ static void ctrls_set_user_acl(pool *usr_acl_pool, ctrls_usr_acl_t *usr_acl,
       return;
 
     } else {
-      if ((uid = auth_name_uid(tmp_pool, user)) == (uid_t) -1)
+      if ((uid = auth_name2uid(tmp_pool, user)) == (uid_t) -1)
         continue;
     }
 
@@ -595,9 +595,9 @@ static pr_ctrls_cl_t *ctrls_add_cl(int cl_fd, uid_t cl_uid, gid_t cl_gid,
 
   cl->cl_fd = cl_fd;
   cl->cl_uid = cl_uid;
-  cl->cl_user = auth_uid_name(cl->cl_pool, cl->cl_uid);
+  cl->cl_user = auth_uid2name(cl->cl_pool, cl->cl_uid);
   cl->cl_gid = cl_gid;
-  cl->cl_group = auth_gid_name(cl->cl_pool, cl->cl_gid);
+  cl->cl_group = auth_gid2name(cl->cl_pool, cl->cl_gid);
   cl->cl_pid = cl_pid;
   cl->cl_flags = cl_flags;
 
@@ -1539,7 +1539,7 @@ MODRET set_ctrlssocketowner(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  if ((uid = auth_name_uid(cmd->tmp_pool, cmd->argv[1])) == (uid_t) -1) {
+  if ((uid = auth_name2uid(cmd->tmp_pool, cmd->argv[1])) == (uid_t) -1) {
     if (errno != EINVAL)
       pr_log_debug(DEBUG0, "%s: %s has UID of -1", cmd->argv[0],
         cmd->argv[1]);
@@ -1551,7 +1551,7 @@ MODRET set_ctrlssocketowner(cmd_rec *cmd) {
   } else
     ctrls_sock_uid = uid;
 
-  if ((gid = auth_name_gid(cmd->tmp_pool, cmd->argv[2])) == (gid_t) -1) {
+  if ((gid = auth_name2gid(cmd->tmp_pool, cmd->argv[2])) == (gid_t) -1) {
     if (errno != EINVAL)
       pr_log_debug(DEBUG0, "%s: %s has GID of -1", cmd->argv[0],
         cmd->argv[2]);

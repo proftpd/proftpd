@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.188 2004-09-04 22:53:48 castaglia Exp $
+ * $Id: mod_auth.c,v 1.189 2004-09-14 17:49:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -377,10 +377,10 @@ static config_rec *_auth_group(pool *p, char *user, char **group,
   if (ournamep && ourname)
     *ournamep = ourname;
 
-  c = find_config(main_server->conf,CONF_PARAM,"GroupPassword",TRUE);
+  c = find_config(main_server->conf, CONF_PARAM, "GroupPassword", TRUE);
 
   if (c) do {
-    grp = auth_getgrnam(p,c->argv[0]);
+    grp = auth_getgrnam(p, c->argv[0]);
 
     if (!grp)
       continue;
@@ -815,7 +815,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
   }
 
   session.user = pstrdup(p, pw->pw_name);
-  session.group = pstrdup(p, auth_gid_name(p, pw->pw_gid));
+  session.group = pstrdup(p, auth_gid2name(p, pw->pw_gid));
 
   /* Set the login_uid and login_uid */
   session.login_uid = pw->pw_uid;
@@ -1096,10 +1096,10 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     }
 
     sstrncpy(session.cwd, "/", sizeof(session.cwd));
-    xferlog = get_param_ptr(c->subset,"TransferLog",FALSE);
+    xferlog = get_param_ptr(c->subset, "TransferLog", FALSE);
 
     if (anongroup) {
-      grp = auth_getgrnam(p,anongroup);
+      grp = auth_getgrnam(p, anongroup);
       if (grp) {
         pw->pw_gid = grp->gr_gid;
         session.group = pstrdup(p,grp->gr_name);
@@ -1111,10 +1111,10 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     char *homedir;
 
     if (ugroup) {
-      grp = auth_getgrnam(p,ugroup);
+      grp = auth_getgrnam(p, ugroup);
       if (grp) {
         pw->pw_gid = grp->gr_gid;
-        session.group = pstrdup(p,grp->gr_name);
+        session.group = pstrdup(p, grp->gr_name);
       }
     }
 

@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.82 2004-09-05 02:23:18 castaglia Exp $
+ * $Id: mod_sql.c,v 1.83 2004-09-14 17:49:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2963,7 +2963,7 @@ MODRET cmd_uid2name(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_uid2name");
 
-  lpw.pw_uid = (uid_t) cmd->argv[0];
+  lpw.pw_uid = *((uid_t *) cmd->argv[0]);
   lpw.pw_name = NULL;
 
   /* check to see if we're looking up the current user */
@@ -3013,7 +3013,7 @@ MODRET cmd_gid2name(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_gid2name");
 
-  lgr.gr_gid = (gid_t) cmd->argv[0];
+  lgr.gr_gid = *((gid_t *) cmd->argv[0]);
   lgr.gr_name = NULL;
   gr = _sql_getgroup(cmd, &lgr);
 
@@ -3073,7 +3073,7 @@ MODRET cmd_name2uid(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_name2uid");
 
-  return mod_create_data(cmd, (void *) pw->pw_uid);
+  return mod_create_data(cmd, (void *) &pw->pw_uid);
 }
 
 MODRET cmd_name2gid(cmd_rec *cmd) {
@@ -3099,7 +3099,7 @@ MODRET cmd_name2gid(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_name2gid");
 
-  return mod_create_data(cmd, (void *) gr->gr_gid);
+  return mod_create_data(cmd, (void *) &gr->gr_gid);
 }
 
 MODRET cmd_getgroups(cmd_rec *cmd) {
@@ -3122,7 +3122,7 @@ MODRET cmd_getgroups(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgroups");
 
-  return mod_create_data(cmd, (void *) res);
+  return mod_create_data(cmd, (void *) &res);
 }
 
 MODRET cmd_getstats(cmd_rec *cmd) {
@@ -4391,10 +4391,10 @@ static authtable sql_authtab[] = {
   {0, "getgrgid",	cmd_getgrgid	},
   {0, "auth",		cmd_auth	},
   {0, "check",		cmd_check	},
-  {0, "uid_name",	cmd_uid2name	},
-  {0, "gid_name",	cmd_gid2name	},
-  {0, "name_uid",	cmd_name2uid	},
-  {0, "name_gid",	cmd_name2gid	},
+  {0, "uid2name",	cmd_uid2name	},
+  {0, "gid2name",	cmd_gid2name	},
+  {0, "name2uid",	cmd_name2uid	},
+  {0, "name2gid",	cmd_name2gid	},
   {0, "getgroups",	cmd_getgroups	},
 
   /* Note: these should be HOOKs, and in the cmdtab. */

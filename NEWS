@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.602 2004-09-05 21:34:22 castaglia Exp $
+$Id: NEWS,v 1.603 2004-09-14 17:49:37 castaglia Exp $
 
 CVS
 --------------------------------
@@ -11,6 +11,7 @@ CVS
   compile-time settings.
 - Bug 2455 - Allow fine-tuning of how often mod_xfer updates the scoreboard.
   This adds an --enable-scoreboard-updates configure option.
+- Bug 2389 - 64-bit compilation warnings.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

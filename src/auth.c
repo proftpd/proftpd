@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.36 2004-07-20 17:39:59 castaglia Exp $
+ * $Id: auth.c,v 1.37 2004-09-14 17:49:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -252,7 +252,7 @@ struct passwd *auth_getpwuid(pool *p, uid_t uid) {
   modret_t *mr = NULL;
   struct passwd *res = NULL;
 
-  cmd = make_cmd(p, 1, (void *) uid);
+  cmd = make_cmd(p, 1, (void *) &uid);
   mr = dispatch_auth(cmd, "getpwuid");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
@@ -319,7 +319,7 @@ struct group *auth_getgrgid(pool *p, gid_t gid) {
   modret_t *mr = NULL;
   struct group *res = NULL;
 
-  cmd = make_cmd(p, 1, (void *) gid);
+  cmd = make_cmd(p, 1, (void *) &gid);
   mr = dispatch_auth(cmd, "getgrgid");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
@@ -386,7 +386,7 @@ int auth_check(pool *p, const char *cpw, const char *name, const char *pw) {
   return res;
 }
 
-const char *auth_uid_name(pool *p, uid_t uid) {
+const char *auth_uid2name(pool *p, uid_t uid) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   static char namebuf[64];
@@ -394,8 +394,8 @@ const char *auth_uid_name(pool *p, uid_t uid) {
 
   memset(namebuf, '\0', sizeof(namebuf));
 
-  cmd = make_cmd(p, 1, (void *) uid);
-  mr = dispatch_auth(cmd, "uid_name");
+  cmd = make_cmd(p, 1, (void *) &uid);
+  mr = dispatch_auth(cmd, "uid2name");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
     res = mr->data;
@@ -411,7 +411,7 @@ const char *auth_uid_name(pool *p, uid_t uid) {
   return res;
 }
 
-const char *auth_gid_name(pool *p, gid_t gid) {
+const char *auth_gid2name(pool *p, gid_t gid) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   static char namebuf[64];
@@ -419,8 +419,8 @@ const char *auth_gid_name(pool *p, gid_t gid) {
 
   memset(namebuf, '\0', sizeof(namebuf));
 
-  cmd = make_cmd(p, 1, (void *) gid);
-  mr = dispatch_auth(cmd, "gid_name");
+  cmd = make_cmd(p, 1, (void *) &gid);
+  mr = dispatch_auth(cmd, "gid2name");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
     res = mr->data;
@@ -436,16 +436,16 @@ const char *auth_gid_name(pool *p, gid_t gid) {
   return res;
 }
 
-uid_t auth_name_uid(pool *p, const char *name) {
+uid_t auth_name2uid(pool *p, const char *name) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
-  uid_t res = -1;
+  uid_t res = (uid_t) -1;
 
   cmd = make_cmd(p, 1, name);
-  mr = dispatch_auth(cmd, "name_uid");
+  mr = dispatch_auth(cmd, "name2uid");
 
   if (MODRET_ISHANDLED(mr))
-    res = (uid_t) mr->data;
+    res = *((uid_t *) mr->data);
   else
     errno = EINVAL;
 
@@ -457,16 +457,16 @@ uid_t auth_name_uid(pool *p, const char *name) {
   return res;
 }
 
-gid_t auth_name_gid(pool *p, const char *name) {
+gid_t auth_name2gid(pool *p, const char *name) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
-  gid_t res = -1;
+  gid_t res = (gid_t) -1;
 
   cmd = make_cmd(p, 1, name);
-  mr = dispatch_auth(cmd, "name_gid");
+  mr = dispatch_auth(cmd, "name2gid");
 
   if (MODRET_ISHANDLED(mr))
-    res = (gid_t) mr->data;
+    res = *((gid_t *) mr->data);
   else
     errno = EINVAL;
 
@@ -498,7 +498,7 @@ int auth_getgroups(pool *p, const char *name, array_header **group_ids,
   mr = dispatch_auth(cmd, "getgroups");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
-    res = (int) mr->data;
+    res = *((int *) mr->data);
 
     /* Note: the number of groups returned should, barring error,
      * always be at least 1, as per getgroups(2) behavior.  This one

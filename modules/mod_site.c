@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.41 2004-02-23 23:27:15 castaglia Exp $
+ * $Id: mod_site.c,v 1.42 2004-09-14 17:49:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -117,7 +117,8 @@ MODRET site_chgrp(cmd_rec *cmd) {
   if (tmp && *tmp) {
 
     /* Try the parameter as a user name. */
-    if ((gid = auth_name_gid(cmd->tmp_pool, cmd->argv[1])) == -1) {
+    gid = auth_name2gid(cmd->tmp_pool, cmd->argv[1]);
+    if (gid == (gid_t) -1) {
       pr_response_add_err(R_550, "%s: %s", arg, strerror(EINVAL));
       return ERROR(cmd);
     }

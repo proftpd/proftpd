@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.245 2004-08-04 18:52:13 castaglia Exp $
+ * $Id: mod_core.c,v 1.246 2004-09-14 17:49:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1006,7 +1006,8 @@ MODRET set_user(cmd_rec *cmd) {
    */
 
   if (!cmd->config || cmd->config->config_type != CONF_ANON) {
-    if ((pw = auth_getpwnam(cmd->tmp_pool, cmd->argv[1])) == NULL) {
+    pw = auth_getpwnam(cmd->tmp_pool, cmd->argv[1]);
+    if (pw == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "Unknown user '",
         cmd->argv[1], "'.", NULL));
     }
@@ -1079,7 +1080,8 @@ MODRET set_group(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   if (!cmd->config || cmd->config->config_type != CONF_ANON) {
-    if ((grp = auth_getgrnam(cmd->tmp_pool, cmd->argv[1])) == NULL) {
+    grp = auth_getgrnam(cmd->tmp_pool, cmd->argv[1]);
+    if (grp == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "Unknown group '",
         cmd->argv[1], "'.", NULL));
     }
@@ -2804,7 +2806,7 @@ static void format_size_str(char *buf, size_t buflen, off_t size) {
   }
 
   /* Now, prepare the buffer. */
-  snprintf(buf, buflen, "%.3" PR_LU "%cB", size, units[i]);
+  snprintf(buf, buflen, "%.3" PR_LU "%cB", (pr_off_t) size, units[i]);
 }
 
 /* Display a file via a given response numeric.  File is displayed
@@ -2835,10 +2837,10 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
 
 #if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
   fs_size = pr_fs_getsize((fs ? (char*)fs : (char*)fn));
-  snprintf(mg_size, sizeof(mg_size), "%" PR_LU, fs_size);
+  snprintf(mg_size, sizeof(mg_size), "%" PR_LU, (pr_off_t) fs_size);
   format_size_str(mg_size_units, sizeof(mg_size_units), fs_size);
 #else
-  snprintf(mg_size, sizeof(mg_size), "%" PR_LU, fs_size);
+  snprintf(mg_size, sizeof(mg_size), "%" PR_LU, (pr_off_t) fs_size);
   format_size_str(mg_size_units, sizeof(mg_size_units), fs_size);
 #endif
 
@@ -2908,21 +2910,21 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
   }
 
   snprintf(mg_xfer_bytes, sizeof(mg_xfer_bytes), "%" PR_LU,
-    session.total_bytes >> 10);
+    (pr_off_t) session.total_bytes >> 10);
   snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "B",
-    session.total_bytes);
+    (pr_off_t) session.total_bytes);
 
   if (session.total_bytes >= 10240) {
     snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "kB",
-      session.total_bytes >> 10);
+      (pr_off_t) session.total_bytes >> 10);
 
   } else if ((session.total_bytes >> 10) >= 10240) {
     snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "MB",
-      session.total_bytes >> 20);
+      (pr_off_t) session.total_bytes >> 20);
 
   } else if ((session.total_bytes >> 20) >= 10240) {
     snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "GB",
-      session.total_bytes >> 30);
+      (pr_off_t) session.total_bytes >> 30);
   }
 
   snprintf(mg_max, sizeof(mg_max), "%u", max_clients ? *max_clients : 0);
@@ -4042,9 +4044,9 @@ MODRET core_size(cmd_rec *cmd) {
     if (!S_ISREG(sbuf.st_mode)) {
       pr_response_add_err(R_550, "%s: not a regular file", cmd->arg);
       return ERROR(cmd);
-    }
-    else
-      pr_response_add(R_213, "%" PR_LU, sbuf.st_size);
+
+    } else
+      pr_response_add(R_213, "%" PR_LU, (pr_off_t) sbuf.st_size);
   }
 
   return HANDLED(cmd);
@@ -4486,7 +4488,7 @@ static int core_sess_init(void) {
     const char *auth_syms[] = {
       "setpwent", "endpwent", "setgrent", "endgrent", "getpwent", "getgrent",
       "getpwnam", "getgrnam", "getpwuid", "getgrgid", "auth", "check",
-      "uid_name", "gid_name", "name_uid", "name_gid", "getgroups", NULL
+      "uid2name", "gid2name", "name2uid", "name2gid", "getgroups", NULL
     };
 
     pr_log_debug(DEBUG3, "AuthOrder in effect, resetting auth module order");

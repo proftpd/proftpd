@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.22 2004-09-05 00:16:07 castaglia Exp $
+ * $Id: mod_radius.c,v 1.23 2004-09-14 17:49:42 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.8rc2"
@@ -2121,7 +2121,7 @@ MODRET radius_getgroups(cmd_rec *cmd) {
     if (radius_have_user_info)
       radius_addl_group_count++;
 
-    return mod_create_data(cmd, (void *) radius_addl_group_count);
+    return mod_create_data(cmd, (void *) &radius_addl_group_count);
   }
 
   return DECLINED(cmd);
@@ -2168,7 +2168,7 @@ MODRET radius_getpwuid(cmd_rec *cmd) {
   if (radius_have_user_info)
 
     /* Check that given UID matches faked UID before returning. */
-    if ((uid_t) cmd->argv[0] == radius_passwd.pw_uid)
+    if (*((uid_t *) cmd->argv[0]) == radius_passwd.pw_uid)
 
       /* Return the faked user information. */
       return mod_create_data(cmd, &radius_passwd);
@@ -2808,10 +2808,10 @@ static authtable radius_authtab[] = {
   { 0, "getgroups", radius_getgroups },
   { 0, "auth",      radius_auth     },
   { 0, "check",     radius_check    },
-  { 0, "uid_name",  radius_uid2name },
-  { 0, "gid_name",  radius_gid2name },
-  { 0, "name_uid",  radius_name2uid },
-  { 0, "name_gid",  radius_name2gid },
+  { 0, "uid2name",  radius_uid2name },
+  { 0, "gid2name",  radius_gid2name },
+  { 0, "name2uid",  radius_name2uid },
+  { 0, "name2gid",  radius_name2gid },
   { 0, NULL }
 };
 
@@ -2839,5 +2839,8 @@ module radius_module = {
   radius_init,
 
   /* Module session initialization function */
-  radius_sess_init
+  radius_sess_init,
+
+  /* Module version */
+  MOD_RADIUS_VERSION
 };

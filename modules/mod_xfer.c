@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.168 2004-09-05 21:29:00 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.169 2004-09-14 17:49:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -262,7 +262,7 @@ static void _log_transfer(char direction, char abort_flag) {
 
   pr_log_debug(DEBUG1, "Transfer %s %" PR_LU " bytes in %ld.%02lu seconds",
     abort_flag == 'c' ? "completed:" : "aborted after",
-    session.xfer.total_bytes, (long) end_time.tv_sec,
+    (pr_off_t) session.xfer.total_bytes, (long) end_time.tv_sec,
     (unsigned long)(end_time.tv_usec / 10000));
 }
 
@@ -417,7 +417,8 @@ static void xfer_rate_lookup(cmd_rec *cmd) {
   /* Print out a helpful debugging message. */
   if (have_xfer_rate) {
     pr_log_debug(DEBUG3, "TransferRate (%.3Lf KB/s, %" PR_LU
-        " bytes free) in effect%s", xfer_rate_kbps, xfer_rate_freebytes,
+        " bytes free) in effect%s", xfer_rate_kbps,
+      (pr_off_t) xfer_rate_freebytes,
       have_user_rate ? " for current user" :
       have_group_rate ? " for current group" :
       have_class_rate ? " for current class" : "");
@@ -1341,7 +1342,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   if (have_limit && nbytes_max_store == 0) {
 
     pr_log_pri(PR_LOG_INFO, "MaxStoreFileSize (%" PR_LU " byte%s) reached: "
-      "aborting transfer of '%s'", nbytes_max_store,
+      "aborting transfer of '%s'", (pr_off_t) nbytes_max_store,
       nbytes_max_store != 1 ? "s" : "", dir);
 
     /* Abort the transfer. */
@@ -1370,7 +1371,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     if (have_limit && nbytes_stored > nbytes_max_store) {
 
       pr_log_pri(PR_LOG_INFO, "MaxStoreFileSize (%" PR_LU " bytes) reached: "
-        "aborting transfer of '%s'", nbytes_max_store, dir);
+        "aborting transfer of '%s'", (pr_off_t) nbytes_max_store, dir);
 
       /* Unlink the file being written. */
       pr_fsio_unlink(dir);
@@ -1473,7 +1474,7 @@ MODRET xfer_rest(cmd_rec *cmd) {
   session.restart_pos = pos;
 
   pr_response_add(R_350, "Restarting at %" PR_LU ". Send STORE or RETRIEVE to "
-    "initiate transfer", pos);
+    "initiate transfer", (pr_off_t) pos);
   return HANDLED(cmd);
 }
 
@@ -1623,7 +1624,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
       ((nbytes_max_retrieve == 0) || (sbuf.st_size > nbytes_max_retrieve))) {
 
     pr_log_pri(PR_LOG_INFO, "MaxRetrieveFileSize (%" PR_LU " byte%s) reached: "
-      "aborting transfer of '%s'", nbytes_max_retrieve,
+      "aborting transfer of '%s'", (pr_off_t) nbytes_max_retrieve,
       nbytes_max_retrieve != 1 ? "s" : "", dir);
 
     /* Abort the transfer. */

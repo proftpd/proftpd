@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.18 2004-09-05 00:31:41 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.19 2004-09-14 17:49:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -366,7 +366,7 @@ MODRET pw_getpwuid(cmd_rec *cmd) {
   struct passwd *pw;
   uid_t uid;
 
-  uid = (uid_t)cmd->argv[0];
+  uid = *((uid_t *) cmd->argv[0]);
   if (PERSISTENT_PASSWD)
     pw = p_getpwuid(uid);
   else
@@ -405,7 +405,7 @@ MODRET pw_getgrgid(cmd_rec *cmd) {
   struct group *gr;
   gid_t gid;
 
-  gid = (gid_t)cmd->argv[0];
+  gid = *((gid_t *) cmd->argv[0]);
   if (PERSISTENT_GROUP)
     gr = p_getgrgid(gid);
   else
@@ -760,7 +760,7 @@ MODRET pw_uid2name(cmd_rec *cmd) {
   idauth_t id;
   struct passwd *pw;
 
-  id.uid = (uid_t) cmd->argv[0];
+  id.uid = *((uid_t *) cmd->argv[0]);
   m = _auth_lookup_id(uid_table, id);
 
   if (!m->name) {
@@ -788,7 +788,7 @@ MODRET pw_gid2name(cmd_rec *cmd) {
   idauth_t id;
   struct group *gr;
 
-  id.gid = (gid_t) cmd->argv[0];
+  id.gid = *((gid_t *) cmd->argv[0]);
 
   m = _auth_lookup_id(gid_table, id);
 
@@ -821,7 +821,7 @@ MODRET pw_name2uid(cmd_rec *cmd) {
   else
     pw = getpwnam(name);
 
-  return pw ? mod_create_data(cmd, (void *) pw->pw_uid) : DECLINED(cmd);
+  return pw ? mod_create_data(cmd, (void *) &pw->pw_uid) : DECLINED(cmd);
 }
 
 MODRET pw_name2gid(cmd_rec *cmd) {
@@ -835,7 +835,7 @@ MODRET pw_name2gid(cmd_rec *cmd) {
   else
     gr = getgrnam(name);
 
-  return gr ? mod_create_data(cmd, (void *) gr->gr_gid) : DECLINED(cmd);
+  return gr ? mod_create_data(cmd, (void *) &gr->gr_gid) : DECLINED(cmd);
 }
 
 /* cmd->argv[0] = name
@@ -914,10 +914,10 @@ MODRET pw_getgroups(cmd_rec *cmd) {
   }
 
   if (gids && gids->nelts > 0)
-    return mod_create_data(cmd, (void *) gids->nelts);
+    return mod_create_data(cmd, (void *) &gids->nelts);
 
   else if (groups && groups->nelts > 0)
-    return mod_create_data(cmd, (void *) groups->nelts);
+    return mod_create_data(cmd, (void *) &groups->nelts);
 
   return DECLINED(cmd);
 }
@@ -1004,10 +1004,10 @@ static authtable auth_unix_authtab[] = {
   { 0,  "getgrgid",     pw_getgrgid },
   { 0,  "auth",         pw_auth	},
   { 0,  "check",	pw_check },
-  { 0,  "uid_name",	pw_uid2name },
-  { 0,  "gid_name",	pw_gid2name },
-  { 0,  "name_uid",	pw_name2uid },
-  { 0,  "name_gid",	pw_name2gid },
+  { 0,  "uid2name",	pw_uid2name },
+  { 0,  "gid2name",	pw_gid2name },
+  { 0,  "name2uid",	pw_name2uid },
+  { 0,  "name2gid",	pw_name2gid },
   { 0,  "getgroups",	pw_getgroups },
   { 0,  NULL }
 };

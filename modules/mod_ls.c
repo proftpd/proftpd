@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.114 2004-09-04 22:51:41 castaglia Exp $
+ * $Id: mod_ls.c,v 1.115 2004-09-14 17:49:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -34,8 +34,8 @@
 #define GLOB_ABORTED GLOB_ABEND
 #endif
 
-#define MAP_UID(x)	(fakeuser ? fakeuser : auth_uid_name(cmd->tmp_pool,(x)))
-#define MAP_GID(x)	(fakegroup ? fakegroup : auth_gid_name(cmd->tmp_pool,(x)))
+#define MAP_UID(x)	(fakeuser ? fakeuser : auth_uid2name(cmd->tmp_pool,(x)))
+#define MAP_GID(x)	(fakegroup ? fakegroup : auth_gid2name(cmd->tmp_pool,(x)))
 
 static void addfile(cmd_rec *, const char *, const char *, time_t);
 static int outputfiles(cmd_rec *);
@@ -277,7 +277,7 @@ static char units[6][2] =
 
 static void ls_fmt_filesize(char *buf, size_t buflen, off_t sz) {
   if (!opt_h || sz < 1000) {
-    snprintf(buf, buflen, "%8" PR_LU, sz);
+    snprintf(buf, buflen, "%8" PR_LU, (pr_off_t) sz);
 
   } else {
     register unsigned int i = 0;
@@ -1797,7 +1797,7 @@ MODRET ls_stat(cmd_rec *cmd) {
 
     if (session.total_bytes)
       pr_response_add(R_DUP, "Total bytes transferred for session: %" PR_LU,
-        session.total_bytes);
+        (pr_off_t) session.total_bytes);
 
     if (session.sf_flags & SF_XFER) {
 
@@ -1812,12 +1812,13 @@ MODRET ls_stat(cmd_rec *cmd) {
       if (session.xfer.file_size)
         pr_response_add(R_DUP, "%s %s (%" PR_LU "/%" PR_LU ")",
           session.xfer.direction == PR_NETIO_IO_RD ? C_STOR : C_RETR,
-          session.xfer.path, session.xfer.file_size, session.xfer.total_bytes);
+          session.xfer.path, (pr_off_t) session.xfer.file_size,
+          (pr_off_t) session.xfer.total_bytes);
 
       else
         pr_response_add(R_DUP, "%s %s (%" PR_LU ")",
           session.xfer.direction == PR_NETIO_IO_RD ? C_STOR : C_RETR,
-          session.xfer.path, session.xfer.total_bytes);
+          session.xfer.path, (pr_off_t) session.xfer.total_bytes);
 
     } else
       pr_response_add(R_DUP, "No data connection");

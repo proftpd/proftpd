@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.79 2004-08-25 18:08:46 castaglia Exp $
+ * $Id: data.c,v 1.80 2004-09-14 17:49:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -279,7 +279,7 @@ static int data_pasv_open(char *reason, off_t size) {
     if (session.xfer.xfer_type != STOR_UNIQUE) {
       if (size)
         pr_response_send(R_150, "Opening %s mode data connection for %s "
-          "(%" PR_LU " bytes)", MODE_STRING, reason, size);
+          "(%" PR_LU " bytes)", MODE_STRING, reason, (pr_off_t) size);
       else
         pr_response_send(R_150, "Opening %s mode data connection for %s",
           MODE_STRING, reason);
@@ -379,7 +379,7 @@ static int data_active_open(char *reason, off_t size) {
     if (session.xfer.xfer_type != STOR_UNIQUE) {
       if (size)
         pr_response_send(R_150, "Opening %s mode data connection for %s "
-          "(%" PR_LU " bytes)", MODE_STRING, reason, size);
+          "(%" PR_LU " bytes)", MODE_STRING, reason, (pr_off_t) size);
       else
         pr_response_send(R_150, "Opening %s mode data connection for %s",
           MODE_STRING, reason);

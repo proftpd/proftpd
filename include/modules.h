@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.40 2004-07-20 17:39:59 castaglia Exp $
+ * $Id: modules.h,v 1.41 2004-09-14 17:49:42 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -250,10 +250,10 @@ struct group *auth_getgrnam(pool *, const char *);
 struct group *auth_getgrgid(pool *, gid_t);
 int auth_authenticate(pool *, const char *, const char *);
 int auth_check(pool *, const char *, const char *, const char *);
-const char *auth_uid_name(pool *, uid_t);
-const char *auth_gid_name(pool *, gid_t);
-uid_t auth_name_uid(pool *, const char *);
-gid_t auth_name_gid(pool *, const char *);
+const char *auth_uid2name(pool *, uid_t);
+const char *auth_gid2name(pool *, gid_t);
+uid_t auth_name2uid(pool *, const char *);
+gid_t auth_name2gid(pool *, const char *);
 int auth_getgroups(pool *, const char *, array_header **, array_header **);
 
 int set_groups(pool *, gid_t, array_header *);

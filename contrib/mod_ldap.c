@@ -45,7 +45,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.33 2004-07-22 00:11:22 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.34 2004-09-14 17:49:42 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -1132,7 +1132,7 @@ return_groups:
     ldap_msgfree(result);
 
   if (gids->nelts > 0)
-    return mod_create_data(cmd, (void *)gids->nelts);
+    return mod_create_data(cmd, (void *) &gids->nelts);
   return DECLINED(cmd);
 }
 
@@ -1340,7 +1340,7 @@ handle_ldap_uid_name(cmd_rec *cmd)
   if (! ldap_douid)
     return DECLINED(cmd);
 
-  id.uid = (uid_t)cmd->argv[0];
+  id.uid = *((uid_t *) cmd->argv[0]);
   m = _auth_lookup_id(uid_table, id);
 
   if (! m->name) {
@@ -1375,7 +1375,7 @@ handle_ldap_gid_name(cmd_rec *cmd)
   if (! ldap_dogid)
     return DECLINED(cmd);
 
-  id.gid = (gid_t)cmd->argv[0];
+  id.gid = *((gid_t *) cmd->argv[0]);
   m = _auth_lookup_id(gid_table, id);
 
   if (! m->name) {
@@ -1408,10 +1408,10 @@ handle_ldap_name_uid(cmd_rec *cmd)
     return DECLINED(cmd);
 
   if (pw && pw->pw_name && strcasecmp(pw->pw_name, cmd->argv[0]) == 0)
-    return mod_create_data(cmd, (void *)pw->pw_uid);
+    return mod_create_data(cmd, (void *) &pw->pw_uid);
 
   if ((pw = pr_ldap_getpwnam(cmd->tmp_pool, cmd->argv[0])))
-    return mod_create_data(cmd, (void *)pw->pw_uid);
+    return mod_create_data(cmd, (void *) &pw->pw_uid);
 
   return DECLINED(cmd);
 }
@@ -1423,10 +1423,10 @@ handle_ldap_name_gid(cmd_rec *cmd)
     return DECLINED(cmd);
 
   if (gr && strcasecmp(gr->gr_name, cmd->argv[0]) == 0)
-    return mod_create_data(cmd, (void *)gr->gr_gid);
+    return mod_create_data(cmd, (void *) &gr->gr_gid);
 
   if ((gr = pr_ldap_getgrnam(cmd->tmp_pool, cmd->argv[0])))
-    return mod_create_data(cmd, (void *)gr->gr_gid);
+    return mod_create_data(cmd, (void *) &gr->gr_gid);
 
   return DECLINED(cmd);
 }
@@ -1944,10 +1944,10 @@ static authtable ldap_auth[] = {
   { 0, "getgrgid",  handle_ldap_getgrgid  },
   { 0, "auth",      handle_ldap_is_auth   },
   { 0, "check",     handle_ldap_check     },
-  { 0, "uid_name",  handle_ldap_uid_name  },
-  { 0, "gid_name",  handle_ldap_gid_name  },
-  { 0, "name_uid",  handle_ldap_name_uid  },
-  { 0, "name_gid",  handle_ldap_name_gid  },
+  { 0, "uid2name",  handle_ldap_uid_name  },
+  { 0, "gid2name",  handle_ldap_gid_name  },
+  { 0, "name2uid",  handle_ldap_name_uid  },
+  { 0, "name2gid",  handle_ldap_name_gid  },
   { 0, "getgroups", handle_ldap_getgroups },
   { 0, NULL }
 };
