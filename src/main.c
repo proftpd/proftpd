@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.195 2003-09-29 00:00:50 castaglia Exp $
+ * $Id: main.c,v 1.196 2003-10-01 06:25:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -454,12 +454,12 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
 		   "%V", main_server->ServerName,
                    NULL );
 
-    pr_response_send_async(R_421, "FTP server shutting down - %s",msg);
+    pr_response_send_async(R_421, "FTP server shutting down - %s", msg);
 
     session_exit(PR_LOG_NOTICE, msg, 0, NULL);
   }
 
-  signal(SIGUSR1,sig_disconnect);
+  signal(SIGUSR1, sig_disconnect);
 }
 
 static int get_command_class(const char *name) {
@@ -1354,8 +1354,12 @@ static void disc_children(void) {
 
     sigprocmask(SIG_BLOCK, &sig_set, NULL);
 
+    /* Note: I don't think these PRIVS macros are necessary here.  The
+     * daemon process has the necessary privs for sending signals to the
+     * session processes.
+     */
     PRIVS_ROOT
-    for (cp = (pidrec_t*) child_list->xas_list; cp; cp=cp->next)
+    for (cp = (pidrec_t *) child_list->xas_list; cp; cp = cp->next)
       kill(cp->pid, SIGUSR1);
     PRIVS_RELINQUISH
 
