@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.38 2000-07-26 09:36:28 macgyver Exp $
+ * $Id: main.c,v 1.39 2000-07-26 11:12:04 macgyver Exp $
  */
 
 /*
@@ -1446,6 +1446,7 @@ void server_loop()
   int i,err_count = 0;
   time_t last_error;
   struct timeval tv;
+  static int running = 0;
 
   set_proc_title("proftpd (accepting connections)");
 
@@ -1469,6 +1470,32 @@ void server_loop()
       tv.tv_usec = 0L;
       tv.tv_sec = 30L;
     }
+
+    /* If running (a flag signaling whether proftpd is just starting up)
+     * AND shutdownp (a flag signalling the present of /etc/shutmsg) are
+     * true, then log an error stating this -- but don't stop the server.
+     */
+    if(shutdownp && !running) {
+      /* Check the value of the deny time_t struct w/ the current time.
+       * If the deny time has passed, log that all incoming connections
+       * will be refused.  If not, note the date at which they will be
+       * refused in the future. -- TJS
+       */
+      double difference;
+      time_t currentTime = time(NULL);
+      
+      if((difference = difftime(deny, currentTime)) < 0.0) {
+        log_pri(LOG_ERR,
+		"/etc/shutmsg present: all incoming connections will "
+		"be refused.");
+      } else {
+        log_pri(LOG_ERR,
+		"/etc/shutmsg present: incoming connections will be "
+		"denied starting %s", CHOP(ctime(&deny)));
+      }
+    }
+    
+    running = 1;
 
     i = select(max_fd + 1, &rfd, NULL, NULL,&tv);
 
