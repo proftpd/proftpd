@@ -1,3 +1,70 @@
+2000-08-18 15:16  macgyver
+
+	* README.PAM (1.5): Updated PAM documentation for FreeBSD.
+
+2000-08-18 10:54  macgyver
+
+	* src/dirtree.c (1.20): Don't only partially match directory names.
+	 This annoying bug allowed for directory-level configurations to
+	sometimes not work right.
+
+2000-08-18 01:02  macgyver
+
+	* configure (1.49), configure.in (1.50): Fixed a small typo in PAM
+	detection.
+
+2000-08-18 00:44  macgyver
+
+	* acconfig.h (1.10), config.h.in (1.22), configure (1.48),
+	configure.in (1.49): PAM and path modifications.
+
+2000-08-18 00:26  macgyver
+
+	* modules/mod_pam.c (1.27): Updated to use HAVE_PAM.
+
+2000-08-13 10:19  macgyver
+
+	* Make.rules.in (1.10), acconfig.h (1.9), config.h.in (1.21),
+	configure (1.47), configure.in (1.48), include/conf.h (1.7): Some
+	configure and compilation cleanups.
+
+2000-08-13 05:36  macgyver
+
+	* contrib/mod_quota.c (1.5): Cleaned up use of lstat() to
+	fs_lstat() to be more portable.
+
+2000-08-07 19:54  macgyver
+
+	* include/data.h (1.6), modules/mod_xfer.c (1.42), src/data.c
+	(1.18): Cleaned up sendfile() implementation to make it simpler and
+	more managable.
+
+2000-08-07 18:17  macgyver
+
+	* modules/mod_core.c (1.43): Fixed a typo in set_sysloglevel.
+
+2000-08-04 23:44  macgyver
+
+	* modules/mod_auth.c (1.45): Be a little more anal retentive about
+	cleaning up after ourselves when it comes to USER/PASS attempts.
+
+2000-08-04 23:43  macgyver
+
+	* src/data.c (1.17): Formatting cleanups.
+
+2000-08-04 23:42  macgyver
+
+	* modules/mod_xfer.c (1.41): Removed spurious #if 0.
+
+2000-08-04 10:17  macgyver
+
+	* configure (1.46), configure.in (1.47): Updated HP/UX sendfile()
+	to only actually check on HP/UX platforms. :)
+
+2000-08-04 10:07  macgyver
+
+	* ChangeLog (1.29): Updated ChangeLog.
+
 2000-08-04 10:07  macgyver
 
 	* doc/Undocumented.txt (1.14): Updated undocumented functions list
