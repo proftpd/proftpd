@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.109 2002-09-13 23:14:41 castaglia Exp $
+ * $Id: mod_core.c,v 1.110 2002-09-25 23:43:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -444,12 +444,13 @@ MODRET set_usereversedns(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET set_scoreboardpath(cmd_rec *cmd)
-{
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT);
+MODRET set_scoreboardfile(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
 
-  log_run_setpath(cmd->argv[1]);
+  if (pr_set_scoreboard(cmd->argv[1]) < 0)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unable to use '",
+      cmd->argv[1], "': ", strerror(errno), NULL));
 
   return HANDLED(cmd);
 }
@@ -2996,7 +2997,10 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
 
   sstrncpy(session.cwd,fs_getcwd(),sizeof(session.cwd));
   sstrncpy(session.vwd,fs_getvwd(),sizeof(session.vwd));
-  log_run_cwd(session.cwd);
+
+  pr_scoreboard_update_entry(getpid(),
+    PR_SCORE_CWD, session.cwd,
+    NULL);
 
   if(session.dir_config)
     display = (char*)get_param_ptr(session.dir_config->subset,
@@ -3799,7 +3803,7 @@ static conftable core_conftab[] = {
   { "RLimitCPU",		set_rlimitcpu,			NULL },
   { "RLimitMemory",		set_rlimitmemory,		NULL },
   { "RLimitOpenFiles",		set_rlimitopenfiles,		NULL },
-  { "ScoreboardPath",		set_scoreboardpath,		NULL },
+  { "ScoreboardFile",		set_scoreboardfile,		NULL },
   { "ServerAdmin",		set_serveradmin,		NULL },
   { "ServerIdent",		set_serverident,		NULL },
   { "ServerName",		set_servername, 		NULL },

@@ -20,6 +20,7 @@ BUILD=$(BUILD_OBJS) $(BUILD_MODULES) modules/module_glue.o
 FTPCOUNT=$(BUILD_FTPCOUNT_OBJS)
 FTPWHO=$(BUILD_FTPWHO_OBJS)
 FTPSHUT=$(BUILD_FTPSHUT_OBJS)
+FTPTOP=$(BUILD_FTPTOP_OBJS)
 INSTALL=@INSTALL@
 EXEEXT=@EXEEXT@
 
@@ -31,7 +32,7 @@ INSTALL_SBIN=$(INSTALL) -s -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0755
 INSTALL_MAN=$(INSTALL) -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0644
 #
 
-all: proftpd$(EXEEXT) utils
+all: proftpd$(EXEEXT) ftpcount$(EXEEXT) ftpshut$(EXEEXT) ftptop$(EXEEXT) ftpwho$(EXEEXT)
 
 force-buildstamp:
 	echo \#define BUILD_STAMP \"`date`\" > include/buildstamp.h
@@ -56,24 +57,29 @@ dirs: include/buildstamp.h dummy
 	  if [ -d "$$dir" ]; then cd $$dir; $(MAKE); fi; \
 	done
 
+utils: include/buildstamp.h dummy
+	cd utils; $(MAKE) utils
+
 proftpd$(EXEEXT): lib src modules dirs
 	$(CC) $(LDFLAGS) -o $@ $(BUILD) $(LIBS)
 
-ftpcount$(EXEEXT): lib src
-	$(CC) $(LDFLAGS) -o $@ $(FTPCOUNT) $(LIBS)
+ftpcount$(EXEEXT): utils
+	$(CC) -o $@ $(FTPCOUNT)
 
-ftpwho$(EXEEXT): lib src
-	$(CC) $(LDFLAGS) -o $@ $(FTPWHO) $(LIBS)
+ftpshut$(EXEEXT): utils
+	$(CC) -o $@ $(FTPSHUT)
 
-ftpshut$(EXEEXT): lib src
-	$(CC) $(LDFLAGS) -o $@ $(FTPSHUT) $(LIBS)
+ftptop$(EXEEXT): utils
+	$(CC) $(LDFLAGS) -o $@ $(FTPTOP) $(LIBS)
 
-utils: ftpcount$(EXEEXT) ftpwho$(EXEEXT) ftpshut$(EXEEXT)
+ftpwho$(EXEEXT): utils
+	$(CC) -o $@ $(FTPWHO)
 
 clean:
 	cd src ; $(MAKE) clean
 	cd modules; $(MAKE) clean
 	cd lib; $(MAKE) clean
+	cd utils; $(MAKE) clean
 	@dirs="$(DIRS)"; \
 	for dir in $$dirs; do \
 	  if [ -d "$$dir" ]; then cd $$dir; $(MAKE) clean; fi; \
@@ -100,8 +106,9 @@ install-proftpd: proftpd $(DESTDIR)$(localstatedir) $(DESTDIR)$(sysconfdir) $(DE
 
 install-utils: $(DESTDIR)$(sbindir) $(DESTDIR)$(bindir)
 	$(INSTALL_BIN) ftpcount $(DESTDIR)$(bindir)/ftpcount
-	$(INSTALL_BIN) ftpwho $(DESTDIR)$(bindir)/ftpwho
 	$(INSTALL_SBIN) ftpshut $(DESTDIR)$(sbindir)/ftpshut
+	$(INSTALL_BIN) ftptop $(DESTDIR)$(bindir)/ftptop
+	$(INSTALL_BIN) ftpwho $(DESTDIR)$(bindir)/ftpwho
 
 install-conf: $(DESTDIR)$(sysconfdir)
 	if [ ! -f $(DESTDIR)$(sysconfdir)/proftpd.conf ] ; then \
@@ -112,9 +119,9 @@ install-conf: $(DESTDIR)$(sysconfdir)
 
 install-man: $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/man5 $(DESTDIR)$(mandir)/man8
 	$(INSTALL_MAN) $(top_srcdir)/src/proftpd.8 $(DESTDIR)$(mandir)/man8
-	$(INSTALL_MAN) $(top_srcdir)/src/ftpshut.8 $(DESTDIR)$(mandir)/man8
-	$(INSTALL_MAN) $(top_srcdir)/src/ftpwho.1 $(DESTDIR)$(mandir)/man1
-	$(INSTALL_MAN) $(top_srcdir)/src/ftpcount.1 $(DESTDIR)$(mandir)/man1
+	$(INSTALL_MAN) $(top_srcdir)/utils/ftpshut.8 $(DESTDIR)$(mandir)/man8
+	$(INSTALL_MAN) $(top_srcdir)/utils/ftpwho.1 $(DESTDIR)$(mandir)/man1
+	$(INSTALL_MAN) $(top_srcdir)/utils/ftpcount.1 $(DESTDIR)$(mandir)/man1
 	$(INSTALL_MAN) $(top_srcdir)/src/xferlog.5 $(DESTDIR)$(mandir)/man5
 
 install-all: install-proftpd install-utils install-conf install-man

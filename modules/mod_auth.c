@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.85 2002-09-13 21:35:26 castaglia Exp $
+ * $Id: mod_auth.c,v 1.86 2002-09-25 23:43:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,7 +44,7 @@ static int auth_tries = 0;
 static char *auth_pass_resp_code = R_230;
 static unsigned int TimeoutSession = 0;
 
-static void _do_user_counts(void);
+static void auth_scan_scoreboard(void);
 
 /* Perform a chroot or equivalent action to lockdown the process into a
  * particular directory.
@@ -157,9 +157,34 @@ static int auth_sess_init(void) {
     PRIVS_SETUP(server_uid, server_gid);
   }
 
+  PRIVS_ROOT
+  if (pr_open_scoreboard(O_RDWR, NULL) < 0)
+    log_debug(DEBUG0, "error opening scoreboard: %s", strerror(errno));
+  PRIVS_RELINQUISH
+
+  /* Create an entry in the scoreboard for this session. */
+  if (pr_scoreboard_add_entry() < 0)
+    log_pri(LOG_NOTICE, "notice: unable to add scoreboard entry: %s",
+      strerror(errno));
+
+  pr_scoreboard_update_entry(getpid(),
+    PR_SCORE_USER, "(none)",
+    PR_SCORE_SERVER_NAME, main_server->ServerName,
+    PR_SCORE_SERVER_IP, main_server->ipaddr,
+    PR_SCORE_SERVER_PORT, main_server->ServerPort,
+    PR_SCORE_ADDR, session.c->remote_name, session.c->remote_ipaddr,
+    PR_SCORE_CLASS, (session.class && session.class->name) ?
+      session.class->name: "",
+    PR_SCORE_BEGIN_SESSION, time(NULL),
+    NULL);
+
+  /* If DisplayConnect is configured, we'll need to scan the scoreboard
+   * now, in order to tally up certain values for substituting in any
+   * of the DisplayConnect's file variables.
+   */
   if (get_param_ptr(main_server->conf, "DisplayConnect", FALSE) != NULL)
-    _do_user_counts();
-   
+    auth_scan_scoreboard();
+
   return 0;
 }
 
@@ -1054,19 +1079,19 @@ static int _setup_environment(pool *p, char *user, char *pass)
     session.wtmp_log = TRUE;
   }
 
-  /* Open the /var/run log for later writing */
-  log_open_run(mpid, FALSE, TRUE);
-  /* Open /var/log/ files */
-  if(!xferlog) {
-    if(c)
+  /* Open any TransferLogs */
+  if (!xferlog) {
+    if (c)
       xferlog = get_param_ptr(c->subset, "TransferLog", FALSE);
-    if(!xferlog)
+
+    if (!xferlog)
       xferlog = get_param_ptr(main_server->conf, "TransferLog", FALSE);
-    if(!xferlog)
+
+    if (!xferlog)
       xferlog = XFERLOG_PATH;
   }
 
-  if(strcasecmp(xferlog, "NONE") == 0)
+  if (strcasecmp(xferlog, "NONE") == 0)
     log_open_xfer(NULL);
   else
     log_open_xfer(xferlog);
@@ -1279,8 +1304,12 @@ static int _setup_environment(pool *p, char *user, char *pass)
    * timer.
    */
 
-  log_run_address(session.c->remote_name, session.c->remote_ipaddr);
-  log_run_cwd(session.cwd);
+  /* Update the scoreboard entry */
+  pr_scoreboard_update_entry(getpid(),
+    PR_SCORE_USER, session.user,
+    PR_SCORE_CWD, session.cwd,
+    NULL);
+
   main_set_idle();
 
   remove_timer(TIMER_LOGIN, &auth_module);
@@ -1308,35 +1337,41 @@ auth_failure:
 }
 
 /* This function counts the number of connected users. It only fills in the 
-   CURRENT_CLASS based counters and an estimate for the number of clients. The
-   primary prupose is to make it so that the %N/%y escapes work in a 
-   DisplayConnect greeting */
-static void _do_user_counts(void)
-{
-  logrun_t *l;
+ * Class-based counters and an estimate for the number of clients. The primary
+ * purpose is to make it so that the %N/%y escapes work in a DisplayConnect
+ * greeting.
+ */
+static void auth_scan_scoreboard(void) {
+  pr_scoreboard_entry_t *score = NULL;
   int cur = -1, ccur = -1;
   char config_class_users[128] = {'\0'};
   xaset_t *conf = NULL;
   
-  if(get_param_int(main_server->conf, "Classes", FALSE) != 1)
+  if (get_param_int(main_server->conf, "Classes", FALSE) != 1)
     return;
 
   if (!session.class)
     return;
   
   /* Determine how many users are currently connected */
-  PRIVS_ROOT
-  while((l = log_read_run(NULL)) != NULL)
-      /* Make sure it matches our current server */
-      if(l->server_ip.s_addr == main_server->ipaddr->s_addr &&
-         l->server_port == main_server->ServerPort) {
+  pr_rewind_scoreboard();
+  while ((score = pr_scoreboard_read_entry()) != NULL) {
+
+    /* Make sure it matches our current server */
+    if (score->sce_server_ip->s_addr == main_server->ipaddr->s_addr &&
+        score->sce_server_port == main_server->ServerPort) {
 	 
-	cur++;
-        if(strcasecmp(l->class, session.class->name) == 0)
-        	ccur++;
-      }
-  PRIVS_RELINQUISH
-  
+      cur++;
+
+      /* Note: the class member of the scoreboard entry will never be
+       * NULL.  At most, it may be the empty string.
+       */
+      if (strcasecmp(score->sce_class, session.class->name) == 0)
+        ccur++;
+    }
+  }
+  pr_restore_scoreboard();
+ 
   /* This silliness is needed to get past the broken HP/UX 11.x compiler.
    */
   conf = CURRENT_CONF;
@@ -1352,13 +1387,13 @@ static void _do_user_counts(void)
   add_config_param_set(&conf, config_class_users, 1, ccur);
 }
 
-static void _auth_check_count(cmd_rec *cmd, char *user) {
+static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
+  pr_scoreboard_entry_t *score = NULL;
   long cur = 0, hcur = 0, ccur = 0, hostsperuser = 0, usersessions = 0;
-  logrun_t *l;
   config_rec *c, *maxc;
   char *origuser, config_class_users[128] = {'\0'};
   int classes_enabled = 0;
-  
+ 
   if((classes_enabled = get_param_int(main_server->conf,
 				      "Classes", FALSE)) != 1)
     classes_enabled = 0;
@@ -1380,58 +1415,59 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
 
   /* Gather our statistics.
    */
-  if(user) {
-    PRIVS_ROOT
-    
-    while((l = log_read_run(NULL)) != NULL) {
-      int samehost = 0;
-      
+  if (user) {
+    pr_rewind_scoreboard(); 
+    while ((score = pr_scoreboard_read_entry()) != NULL) {
+      unsigned char same_host = FALSE;
+
       /* Make sure it matches our current server.
        */
-      if(l->server_ip.s_addr == main_server->ipaddr->s_addr &&
-         l->server_port == main_server->ServerPort) {
-        if((c && c->config_type == CONF_ANON && !strcmp(l->user, user)) ||
-	   !c) {
+      if (score->sce_server_ip->s_addr == main_server->ipaddr->s_addr &&
+          score->sce_server_port == main_server->ServerPort) {
+
+        if ((c && c->config_type == CONF_ANON &&
+            !strcmp(score->sce_user, user)) || !c) {
           char *s, *d, ip[32] = {'\0'};
           int mpos = sizeof(ip) - 1;
 	  
           cur++;
 	  
-          s = strchr(l->address, '[');
+          s = strchr(score->sce_addr, '[');
           d = ip;
 	  
-          if(s != NULL)
+          if (s != NULL)
 	    s++;
 	  
-          while(*s && *s != ']' && d < ip + mpos)
+          while (*s && *s != ']' && d < ip + mpos)
 	    *d++ = *s++;
 	  
           *d = '\0';
 	  
 	  /* Count up sessions on a per-host basis.
 	   */
-          if(!strcmp(ip, inet_ntoa(*session.c->remote_ipaddr))) {
-	    samehost++;
+          if (!strcmp(ip, inet_ntoa(*session.c->remote_ipaddr))) {
+	    same_host = TRUE;
             hcur++;
 	  }
 	  
 	  /* Take a per-user count of connections.
 	   */
-	  if(!strcmp(l->user, user)) {
+	  if (!strcmp(score->sce_user, user)) {
 	    usersessions++;
 	    
 	    /* Count up unique hosts.
 	     */
-	    if(!samehost)
+	    if (!same_host)
 	      hostsperuser++;
 	  }
         }
 	
-        if(classes_enabled && strcasecmp(l->class, session.class->name) == 0)
-        	ccur++;
+        if (classes_enabled &&
+            !strcasecmp(score->sce_class, session.class->name))
+          ccur++;
       }
     }
-    
+    pr_restore_scoreboard(); 
     PRIVS_RELINQUISH
   }
   
@@ -1565,11 +1601,9 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
   }
 }
 
-/* close the passwd and group databases, because libc won't let us see new
- * entries to these files without this (only in PersistentPasswd mode)
- * jss 3/14/2001
+/* Close the passwd and group databases, because libc won't let us see new
+ * entries to these files without this (only in PersistentPasswd mode).
  */
-
 MODRET pre_cmd_user(cmd_rec *cmd) {
   auth_endpwent(cmd->tmp_pool);
   auth_endgrent(cmd->tmp_pool);
@@ -1656,7 +1690,7 @@ MODRET cmd_user(cmd_rec *cmd) {
     }
   }
   
-  _auth_check_count(cmd, origuser);
+  auth_count_scoreboard(cmd, origuser);
   
   if(c && user && get_param_int(c->subset, "AnonRequirePassword", FALSE) != 1)
     nopass++;
@@ -1675,10 +1709,8 @@ MODRET cmd_user(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-/* close the passwd and group databases (see pre_cmd_user)
- * jss 3/14/2001
+/* Close the passwd and group databases, similar to pre_cmd_user().
  */
-
 MODRET pre_cmd_pass(cmd_rec *cmd) {
   auth_endpwent(cmd->tmp_pool);
   auth_endgrent(cmd->tmp_pool);
@@ -1701,7 +1733,7 @@ MODRET cmd_pass(cmd_rec *cmd) {
     return ERROR_MSG(cmd, R_503, "Login with USER first.");
   }
   
-  _auth_check_count(cmd, user);
+  auth_count_scoreboard(cmd, user);
   
   if ((res = _setup_environment(cmd->tmp_pool, user, cmd->arg)) == 1) {
     char *display = NULL, *grantmsg = NULL;

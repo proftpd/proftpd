@@ -26,7 +26,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.36 2002-09-10 16:01:06 castaglia Exp $
+ * $Id: support.c,v 1.37 2002-09-25 23:43:20 castaglia Exp $
  */
 
 /* History Log:
@@ -723,15 +723,28 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
   return 0;
 }
 
-char *make_arg_str(pool *p,int argc,char **argv)
-{
+/* Make sure we don't display any sensitive information via argstr. Note:
+ * make this a separate function in the future (get_full_cmd() or somesuch),
+ * and have that function deal with creating a displayable string.  Once
+ * RFC2228 support is added, PASS won't be the only command whose parameters
+ * should not be displayed.
+ */
+char *make_arg_str(pool *p, int argc, char **argv) {
   char *res = "";
 
-  while(argc--)
-    if(*res)
-      res = pstrcat(p,res," ",*argv++,NULL);
+  /* Check for "sensitive" commands. */
+  if (!strcmp(argv[0], "PASS") ||
+      !strcmp(argv[0], "ADAT")) {
+    argc = 2;
+    argv[1] = "(hidden)";
+  }
+
+  while (argc--) {
+    if (*res)
+      res = pstrcat(p, res," ", *argv++, NULL);
     else
-      res = pstrcat(p,res,*argv++,NULL);
+      res = pstrcat(p, res, *argv++, NULL);
+  } 
 
   return res;
 }

@@ -240,6 +240,7 @@ if test "$pr_cv_var__pw_stayopen" = "yes"; then
 fi
 
 AC_CHECK_LIB(security, set_auth_parameters)
+
 AC_CHECK_HEADERS(sys/security.h)
 AC_CHECK_HEADERS(krb.h)
 AC_CHECK_HEADERS(prot.h)
@@ -330,6 +331,7 @@ AC_CHECK_HEADERS(dirent.h ndir.h sys/ndir.h sys/dir.h vmsdir.h)
 AC_CHECK_HEADERS(utmpx.h)
 AC_CHECK_HEADERS(regex.h)
 AC_CHECK_HEADER(syslog.h,have_syslog_h="yes",)
+AC_CHECK_HEADERS(ncurses.h)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -542,6 +544,8 @@ fi
   esac
 fi
 
+AC_CHECK_LIB(ncurses, initscr, [LIBS="$LIBS -lncurses"])
+
 dnl Check for various argv[] replacing functions on various OSs
 AC_CHECK_FUNCS(setproctitle)
 AC_CHECK_HEADERS(libutil.h)
@@ -710,6 +714,6 @@ AC_SUBST(VERSION)
 
 AC_CONFIG_HEADER(config.h)
 
-AC_OUTPUT(lib/Makefile src/Makefile modules/Makefile Makefile Make.rules
-            Make.modules contrib/dist/rpm/proftpd.spec,
+AC_OUTPUT(lib/Makefile src/Makefile modules/Makefile utils/Makefile
+          Makefile Make.rules Make.modules contrib/dist/rpm/proftpd.spec,
           [echo timestamp > stamp-h])

@@ -24,11 +24,11 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* $Id: privs.h,v 1.8 2002-06-23 19:03:22 castaglia Exp $
+/* $Id: privs.h,v 1.9 2002-09-25 23:43:19 castaglia Exp $
  */
 
-#ifndef __PRIVS_H
-#define __PRIVS_H
+#ifndef PR_PRIVS_H
+#define PR_PRIVS_H
 
 /* Macros for manipulating saved, real and effective uid for easy 
  * switching from/to root.
@@ -168,4 +168,4 @@
 
 #endif /* HAVE_SETEUID */
 
-#endif /* __PRIVS_H */
+#endif /* PR_PRIVS_H */

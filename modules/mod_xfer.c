@@ -26,7 +26,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.85 2002-09-25 02:13:52 jwm Exp $
+ * $Id: mod_xfer.c,v 1.86 2002-09-25 23:43:20 castaglia Exp $
  */
 
 /* History Log:
@@ -1270,9 +1270,11 @@ MODRET cmd_retr(cmd_rec *cmd)
   lbuf = (char *) palloc(cmd->tmp_pool, bufsize);
 
   cnt = respos;
-  log_add_run(mpid, NULL, session.user,
-    (session.class && session.class->name) ? session.class->name : "",
-    NULL, 0, session.xfer.file_size, 0, NULL);
+
+  pr_scoreboard_update_entry(getpid(),
+    PR_SCORE_XFER_SIZE, session.xfer.file_size,
+    PR_SCORE_XFER_DONE, 0,
+    NULL);
 
   gettimeofday(&rate_tvstart, NULL);
     
@@ -1280,7 +1282,6 @@ MODRET cmd_retr(cmd_rec *cmd)
     if (XFER_ABORTED)
       break;
       
-    /* INSERT CODE HERE */
     if ((len = _transmit_data(rate_bps, cnt, respos, lbuf, bufsize)) == 0)
       break;
       
@@ -1295,9 +1296,10 @@ MODRET cmd_retr(cmd_rec *cmd)
       
     if ((cnt / cnt_steps) != cnt_next) {
       cnt_next = cnt / cnt_steps;
-      log_add_run(mpid, NULL, session.user,
-        (session.class && session.class->name) ?  session.class->name : "",
-        NULL, 0, session.xfer.file_size, cnt, NULL);
+
+      pr_scoreboard_update_entry(getpid(),
+        PR_SCORE_XFER_DONE, cnt,
+        NULL);
     }
       
     if (rate_bps) {

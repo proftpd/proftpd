@@ -27,11 +27,11 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.13 2002-09-05 20:09:58 castaglia Exp $
+ * $Id: log.h,v 1.14 2002-09-25 23:43:19 castaglia Exp $
  */
 
-#ifndef __LOG_H
-#define __LOG_H
+#ifndef PR_LOG_H
+#define PR_LOG_H
 
 #ifndef LOG_AUTHPRIV
 #define LOG_AUTHPRIV LOG_AUTH
@@ -40,33 +40,6 @@
 #if !defined(WTMP_FILE) && defined(_PATH_WTMP)
 #define WTMP_FILE _PATH_WTMP
 #endif
-
-/* Structure used as a header for /var/run/proftpd-*
- */
-
-#define LOGRUN_MAGIC			0xdeadbeef
-
-typedef struct {
-  unsigned long r_magic;		/* always 0xdeadbeef */
-  unsigned long r_version;		/* version of proftpd created with */
-  unsigned long r_size;			/* Size of each entry (including first) */
-} logrun_header_t;
-
-/* Structure used for writing to /var/run/proftpd-*
- */
-
-typedef struct {
-  pid_t	pid;
-  uid_t uid;
-  gid_t gid;
-  p_in_addr_t server_ip;
-  unsigned short server_port;
-  time_t idle_since;
-  char user[100],op[200];
-  unsigned long transfer_size,transfer_complete;
-  char address[80],cwd[100];
-  char class[32], spare[100];
-} logrun_t;
 
 /* These are the debug levels, higher numbers print more debugging
  * info.  DEBUG0 (the default) prints nothing.
@@ -87,8 +60,7 @@ typedef struct {
 #define LOG_WRITEABLE_DIR	-2
 #define LOG_SYMLINK		-3
 
-/* log modes */
-#define LOG_SCOREBOARD_MODE     0644
+/* Log file modes */
 #define LOG_SYSTEM_MODE         0640
 #define LOG_XFER_MODE           0644
 
@@ -125,20 +97,10 @@ void log_debug(int, char *, ...)
 
 void log_discard(void);
 void init_log(void);
-void log_run_setpath(const char *);
-const char *log_run_getpath(void);
-int log_open_checkpath(void);
-int log_run_checkpath(void);
-void log_run_address(const char *, const p_in_addr_t *);
-void log_run_cwd(const char *);
-int log_add_run(pid_t, time_t *, char *, char *, p_in_addr_t *, unsigned short,
-  unsigned long, unsigned long, char *, ...);
-logrun_t *log_read_run(pid_t *);
-int log_open_run(pid_t, int, int);
-int log_close_run(void);
-void log_rm_run(void);
+
+/* TransferLog routines */
 int log_open_xfer(const char *);
 void log_close_xfer(void);
 int log_xfer(int, char *, off_t, char *, char, char, char, char *, char);
 
-#endif /* __LOG_H */
+#endif /* PR_LOG_H */

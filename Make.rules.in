@@ -58,21 +58,24 @@ CFLAGS=@CFLAGS@
 #CFLAGS=-g -pedantic -DUSESHADOW -DDEBUG_NOFORK
 
 OBJS=main.o timers.o sets.o pool.o regexp.o dirtree.o support.o inet.o log.o \
-     netio.o ident.o data.o modules.o auth.o fs.o
+     scoreboard.o netio.o ident.o data.o modules.o auth.o fs.o
 BUILD_OBJS=src/main.o src/timers.o src/sets.o src/pool.o src/regexp.o \
-           src/dirtree.o src/support.o src/inet.o src/log.o src/netio.o \
-           src/ident.o src/data.o src/modules.o src/auth.o src/fs.o
+           src/dirtree.o src/support.o src/inet.o src/log.o src/scoreboard.o \
+           src/netio.o src/ident.o src/data.o src/modules.o src/auth.o src/fs.o
 
 LIB_OBJS=getopt.o getopt1.o pr_fnmatch.o strsep.o vsnprintf.o glibc-glob.o \
          glibc-mkstemp.o pr-syslog.o pwgrent.o
 
-FTPCOUNT_OBJS=ftpcount.o pool.o log.o utils.o
-BUILD_FTPCOUNT_OBJS=src/ftpcount.o src/pool.o src/log.o src/utils.o
-
-FTPWHO_OBJS=ftpwho.o pool.o log.o utils.o
-BUILD_FTPWHO_OBJS=src/ftpwho.o src/pool.o src/log.o src/utils.o
+FTPCOUNT_OBJS=ftpcount.o scoreboard.o
+BUILD_FTPCOUNT_OBJS=utils/ftpcount.o utils/scoreboard.o
 
 FTPSHUT_OBJS=ftpshut.o
-BUILD_FTPSHUT_OBJS=src/ftpshut.o
+BUILD_FTPSHUT_OBJS=utils/ftpshut.o
+
+FTPTOP_OBJS=ftptop.o scoreboard.o
+BUILD_FTPTOP_OBJS=utils/ftptop.o utils/scoreboard.o
+
+FTPWHO_OBJS=ftpwho.o scoreboard.o
+BUILD_FTPWHO_OBJS=utils/ftpwho.o utils/scoreboard.o
 
 DEFINES=$(OPTIONS) $(PLATFORM)

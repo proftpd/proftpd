@@ -27,16 +27,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.43 2002-09-05 20:09:58 castaglia Exp $
- */
-
-/* History Log:
- *
- * 4/24/97 0.99.0pl1
- *   Added log_debug() and log_setdebuglevel() in order to facilitate
- *   altering the amount of debugging info printed or syslogged.
- *   Also added a command line argument (-d,--debug) to alter the
- *   debug level at runtime.  See main.c.
+ * $Id: log.c,v 1.44 2002-09-25 23:43:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -55,12 +46,6 @@ static int set_facility = -1;
 static char systemlog_fn[MAX_PATH_LEN] = {'\0'};
 static char systemlog_host[256] = {'\0'};
 static int systemlog_fd = -1;
-static int runfd = -1;
-static char scoreboard_path[MAX_PATH_LEN] = RUN_DIR;
-static char *runfn = NULL;
-static char *runcwd = NULL;
-static char *address = NULL;
-static size_t runsize = 0;
 static int xferfd = -1;
 
 char *fmt_time(time_t t)
@@ -135,470 +120,13 @@ int log_xfer(int xfertime, char *remhost, off_t fsize, char *fname,
   return(write(xferfd, buf, strlen(buf)));
 }
 
-void log_rm_run(void)
-{
-  if(runfd > -1)
-    close(runfd);
-  if(runfn)
-    unlink(runfn);
-
-  runfd = -1;
-}
-
-int log_close_run(void)
-{
-  if(runfd == -1)
-    return 0;
-
-  close(runfd);
-  runfd = -1;
-  return 0;
-}
-
-const char *log_run_getpath(void)
-{
-  return scoreboard_path;
-}
-
-void log_run_setpath(const char *path)
-{
-  sstrncpy(scoreboard_path,path,sizeof(scoreboard_path));
-  if(scoreboard_path[strlen(scoreboard_path)-1] == '/')
-    scoreboard_path[strlen(scoreboard_path)-1] = '\0';
-}
-
-/* this function is meant to be used before opening any scoreboard file; the
- * following function is only called by ftpcount at the moment.
- */
-int log_open_checkpath(void) {
-  struct stat sbuf;
-
-  if (stat(scoreboard_path, &sbuf) < 0)
-    return -1;
-
-  if (!S_ISDIR(sbuf.st_mode)) {
-    errno = ENOTDIR;
-    return -1;
-  }
-
-  /* never write to a world-writeable directory */
-  if (sbuf.st_mode & S_IWOTH) {
-    errno = EPERM;
-    return -1;
-  }
-
-  return 0;
-}
-
-int log_run_checkpath(void)
-{
-  struct stat sbuf;
-
-  if(stat(scoreboard_path,&sbuf) < 0)
-    return -1;
-
-  if(!S_ISDIR(sbuf.st_mode)) {
-    errno = ENOTDIR;
-    return -1;
-  }
-
-  return 0;
-}
-
-int log_open_run(pid_t mpid, int trunc, int allow_update)
-{
-  char fname[MAXPATHLEN + 1] = {'\0'};
-  logrun_header_t hdr;
-  struct stat sbuf;
-  int i;
-
-  if(runfd > -1)
-    return 0;
-
-  if (! runfn) {
-    if(!mpid)
-      snprintf(fname, sizeof(fname), "%s/proftpd-inetd",scoreboard_path);
-    else
-      snprintf(fname, sizeof(fname), "%s/proftpd-%d",scoreboard_path,(int)mpid);
-    fname[sizeof(fname)-1] = '\0';
-
-    runfn = pstrdup(permanent_pool,fname);
-  }
-
-  /* check the scoreboard path */
-  if (log_open_checkpath() < 0)
-    return -1;
-
-  /* prevent writing to a symlink while avoiding a race condition: open
-   * the file name O_RDWR|O_CREAT first, then check to see if it's a symlink.
-   * If so, close the file and error out.  If not, truncate as necessary,
-   * and continue.
-   */
-  if ((runfd = open(runfn, O_RDWR|O_CREAT, LOG_SCOREBOARD_MODE)) == -1)
-    return -1;
-
-  if (fstat(runfd, &sbuf) < 0) {
-    close(runfd);
-    runfd = -1;
-    return -1;
-  }
-
-  if (S_ISLNK(sbuf.st_mode)) {
-    close(runfd);
-    runfd = -1;
-    return -1;
-  }
-
-  if (trunc)
-    ftruncate(runfd, 0);
-
-  /* Attempt to read header */
-  i = read(runfd, &hdr, sizeof(hdr));
-
-  /* Note: AIX seems to needs this st_size check.  Weird.  It won't (read:
-   * _shouldn't_) hurt any other platforms.
-   */
-  if (i <= 0 || sbuf.st_size == 0) {
-    char buf[sizeof(logrun_t)] = {'\0'};
-    runsize = sizeof(logrun_t);
-    
-    hdr.r_magic = LOGRUN_MAGIC;
-    hdr.r_version = INTERNAL_VERSION;
-    hdr.r_size = sizeof(logrun_t);
-    memset(buf,'\0',sizeof(logrun_t));
-    memcpy(buf,&hdr,sizeof(hdr));
-    write(runfd,buf,runsize);
-    fsync(runfd);
-
-    return runfd;
-  }
-
-  if (i < sizeof(hdr)) {
-    /* File is corrupt, etc, silently rm it */
-    if(allow_update) {
-      log_rm_run();
-      return log_open_run(mpid,trunc,allow_update);
-    }
-    return -1;
-  }
-
-  if(hdr.r_magic != LOGRUN_MAGIC) {
-    /* Old version or corrupt */
-    log_pri(LOG_NOTICE,"run-time scoreboard file '%s' is corrupted or old version.",fname);
-    if(allow_update) {
-      log_rm_run();
-      return log_open_run(mpid,trunc,allow_update);
-    }
-    return -1;
-  }
-
-  if(hdr.r_version < INTERNAL_VERSION) {
-    log_pri(LOG_NOTICE,"run-time scoreboard file '%s' is old version.",fname);
-    if(allow_update) {
-      log_rm_run();
-      return log_open_run(mpid,trunc,allow_update);
-    }
-    return -1;
-  }
-
-  if(hdr.r_version > INTERNAL_VERSION) {
-    log_pri(LOG_NOTICE,"run-time scoreboard file '%s' appears to be from a newer version of proftpd (%s).",
-            fname,VERSION);
-    log_close_run();
-    return -1;
-  }
-
-  runsize = (size_t)hdr.r_size;
-  return runfd;
-}
-
-/* There was some conditional code in here for LINUX which stat'd the /proc fs
- * for the pid.  Not sure why it was there, seems useless and redundant to me.
- * If someone can explain, please do...
- *
- * jss 2/20/2001
- */
-static int _pid_exists(pid_t pid)
-{
-#if 0 /* previously #ifdef LINUX */
-  char procfn[20] = {'\0'};
-  struct stat sbuf;
-#endif
-  int res;
-
-  /* We used to kill(pid,SIGCONT) here, but kill(pid,0) is much better, as it
-   * doesn't result in a signal actually being sent.  jss 2/20/2001
-   */
-  res = kill(pid,0);
-#if 0 /* previously #ifdef LINUX */
-  snprintf(procfn, sizeof(procfn), "/proc/%d",pid);    
-  if( (res == -1 && errno == EPERM) || !res ||
-    stat(procfn,&sbuf) != -1)
-#else
-  if( (res == -1) && errno != EPERM )
-#endif
-    return 0;
-  return 1;
-}
-
-static size_t _read_hdr(int fd)
-{
-  logrun_header_t hdr;
-
-  if(read(fd,&hdr,sizeof(hdr)) != sizeof(hdr))
-    return 0;
-
-  if(hdr.r_magic != LOGRUN_MAGIC)
-    /* Old version or corrupt */
-    return 0;
-
-  if(hdr.r_version != INTERNAL_VERSION)
-    return 0;
-
-  lseek(fd, hdr.r_size, SEEK_SET);
-  return (size_t)hdr.r_size;
-}
-
-static int _read_run(int fd, size_t size, logrun_t *ent)
-{
-  unsigned char *buf;
-  
-  if((buf = (unsigned char *) malloc(size)) == NULL)
-    return -1;
-  
-  while(read(fd, buf, size) == size) {
-    if(((logrun_t *) buf)->pid) {
-      /* Try to determine if the process still exists.
-       */
-      memcpy(ent, (logrun_t *) buf, sizeof(logrun_t));
-      free(buf);
-      return _pid_exists(ent->pid);
-    }
-  }
-  
-  free(buf);
-  return -1;
-}
-
-logrun_t *log_read_run(pid_t *mpid)
-{
-  static DIR *dir = NULL;
-  static struct dirent *dent = NULL;
-  static int fd = -1;
-  static logrun_t ent;
-  static size_t size = 0;
-  char *cp, buf[MAXPATHLEN + 1] = {'\0'};
-
-  errno = 0;
-  if(!dir) {
-    dir = opendir(scoreboard_path);
-    if(!dir)
-      return NULL;
-  }
-
-  while(fd != -1) {
-    switch(_read_run(fd,size,&ent)) {
-    case 1:
-      errno = 0;
-      return &ent;
-    case -1:
-      close(fd); fd = -1; break;
-    }
-  }
-
-  while((dent = readdir(dir)) != NULL)
-    if(strncmp(dent->d_name,"proftpd",7) == 0) {
-      cp = rindex(dent->d_name,'-');
-      if(cp) {
-        cp++;
-        if(mpid)
-          *mpid = (pid_t)atoi(cp);
-        snprintf(buf, sizeof(buf), "%s/%s",scoreboard_path,dent->d_name);
-	buf[sizeof(buf)-1] = '\0';
-
-        fd = open(buf,O_RDONLY,0644);
-        if(fd != -1) {
-          size = _read_hdr(fd);
-          if(!size) {
-            close(fd);
-            fd = -1;
-          }
-
-          while(fd != -1) {
-            switch(_read_run(fd,size,&ent)) {
-            case 1: errno = 0; return &ent;
-            case -1: close(fd); fd = -1; errno = 0;
-            }
-          }
-        } else
-          return NULL;
-      }
-    }
-
-  closedir(dir);
-  dir = NULL;
-
-  return NULL;
-}
-
-void log_run_address(const char *remote_name, const p_in_addr_t *remote_ipaddr)
-{
-  char buf[LOGBUFFER_SIZE] = {'\0'};
-
-  snprintf(buf, sizeof(buf), "%s [%s]",
-	   remote_name, inet_ntoa(*remote_ipaddr));
-  buf[sizeof(buf) - 1] = '\0';
-  address = pstrdup(permanent_pool,buf);
-}
-
-void log_run_cwd(const char *cwd)
-{
-  if(!runcwd)
-    runcwd = pcalloc(permanent_pool,MAX_PATH_LEN);
-  
-  sstrncpy(runcwd,cwd,MAX_PATH_LEN);
-}
-
-/* log_add_run() logs the current process and connection information to
- * the scoreboard_path/proftpd-[master_daemon_pid] file.  If an existing record
- * for the current pid is found, it is overwritten.  Passing user ==
- * NULL clears the entry.
- */
-
-int log_add_run(pid_t mpid, time_t *idle_since, char *user,char *class,
-                p_in_addr_t *server_ip, unsigned short server_port, 
-                unsigned long tx_size, unsigned long tx_done, char *op, ...)
-{
-  logrun_t ent,fent;
-  int res = 0,c,first = -1;
-  va_list msg;
-  char buf[1500] = {'\0'};
-
-#ifndef HAVE_FLOCK
-  struct flock arg;
-#endif
-
-  c = runsize;
-
-  if(op) {
-    va_start(msg,op);
-    vsnprintf(buf,sizeof(buf),op,msg);
-    va_end(msg);
-    buf[sizeof(buf)-1] = '\0';
-  }
-
-  if(runfd == -1)
-    log_open_run(mpid,FALSE,FALSE);
-
-  if(runfd == -1)
-    return -1;
-
-  memset(&ent,0,sizeof(ent));
-  ent.pid = getpid();
-  ent.uid = geteuid();
-  ent.gid = getegid();
-
-#ifdef HAVE_FLOCK
-  flock(runfd,LOCK_EX);
-#else
-  arg.l_type = F_WRLCK; arg.l_whence = arg.l_start = arg.l_len = 0;
-  fcntl(runfd, F_SETLKW, &arg);
-#endif
-
-  if(lseek(runfd,runsize,SEEK_SET) != -1) {
-    while(read(runfd,(char*)&fent,sizeof(fent)) == sizeof(fent) &&
-          fent.pid != ent.pid) {
-      if((!fent.pid || !_pid_exists(fent.pid)) && first == -1)
-        first = c;
-      c += sizeof(fent);
-    }
-
-    if(fent.pid == ent.pid) {
-      memcpy(&ent,&fent,sizeof(ent));
-      first = -1;
-      lseek(runfd,c,SEEK_SET);
-    } else
-      lseek(runfd,runsize,SEEK_END);
-  }
-
-  if(idle_since)
-    ent.idle_since = *idle_since;
-  else
-    ent.idle_since = 0;
-
-  if(user) {
-    memset(ent.user,0,sizeof(ent.user));
-    sstrncpy(ent.user,user,sizeof(ent.user));
-  }
-  if(class) {
-    memset(ent.class,0,sizeof(ent.class));
-    sstrncpy(ent.class,class,sizeof(ent.class));
-  }
-  if(buf[0]) {
-    memset(ent.op,0,sizeof(ent.op));
-    sstrncpy(ent.op,buf,sizeof(ent.op));
-  }
-
-  if(server_ip)
-    memcpy(&ent.server_ip,server_ip,sizeof(ent.server_ip));
-  if(server_port)
-    ent.server_port = server_port;
-
-  if(tx_size) {
-    ent.transfer_size = tx_size;
-    ent.transfer_complete = tx_done;
-  } else {
-    ent.transfer_size = 0;
-    ent.transfer_complete = 0;
-  }
-
-  if(runcwd) {
-    sstrncpy(ent.cwd,runcwd,sizeof(ent.cwd));
-    ent.cwd[sizeof(ent.cwd)-1] = '\0';
-  } else
-    memset(ent.cwd,0,sizeof(ent.cwd));
-
-  if(address) {
-    sstrncpy(ent.address,address,sizeof(ent.address));
-    ent.address[sizeof(ent.address)-1] = '\0';
-  } else
-    memset(ent.address,0,sizeof(ent.address));
-
-  if(!user) {
-    if(fent.pid == ent.pid) {
-      memset(&ent,0,sizeof(ent));
-      res = write(runfd,(char*)&ent,sizeof(ent));
-    }
-  } else {
-    if(first != -1)
-      lseek(runfd,first,SEEK_SET);
-    res = write(runfd,(char*)&ent,sizeof(ent));
-  }
-
-  /* 11/16/97 - fsync() causes the kernel to flush related file buffers to
-   * disk, not necessary here.
-   */
-
-  /* fsync(runfd); */
-
-#ifdef HAVE_FLOCK
-  flock(runfd,LOCK_UN);
-#else
-  arg.l_type = F_UNLCK; arg.l_whence = arg.l_start = arg.l_len = 0;
-  fcntl(runfd, F_SETLKW, &arg);
-#endif
-
-  return res;
-}
-
 /* This next function logs an entry to wtmp, it MUST be called as
  * root BEFORE a chroot occurs.
  * Note: This has some portability ifdefs in it.  They *should* work,
  * but I haven't been able to test them.
  */
 
-int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip)
-{
+int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip) {
   struct stat buf;
   struct utmp ut;
   int res = 0;
@@ -717,9 +245,9 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
     return -1;
   }
 
-  /* make a temporary copy of log_file in case it's a constant */
+  /* Make a temporary copy of log_file in case it's a constant */
   pool = make_sub_pool(permanent_pool);
-  lf = pstrdup(pool,log_file);
+  lf = pstrdup(pool, log_file);
   
   if ((tmp = strrchr(lf, '/')) == NULL) {
     log_debug(DEBUG0, "inappropriate log file: %s", lf);
@@ -739,14 +267,14 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
     return -1;
   }
 
-  /* the path must be in a valid directory */
+  /* The path must be in a valid directory */
   if (!S_ISDIR(sbuf.st_mode)) {
     log_debug(DEBUG0, "error: %s is not a directory", lf);
     destroy_pool(pool);
     return -1;
   }
 
-  /* do not log to world-writeable directories */
+  /* Do not log to world-writeable directories */
   if (sbuf.st_mode & S_IWOTH) {
     log_debug(DEBUG0, "error: %s is a world writeable directory", lf);
     destroy_pool(pool);
@@ -769,7 +297,7 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
       return -1;
     }
     
-    /* stat the file using the descriptor, not the path */
+    /* Stat the file using the descriptor, not the path */
     if (fstat(*log_fd, &sbuf) != -1 && S_ISLNK(sbuf.st_mode)) {
       log_debug(DEBUG0, "error: %s is a symbolic link", lf);
       close(*log_fd);

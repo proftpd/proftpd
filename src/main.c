@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.114 2002-09-23 16:17:27 castaglia Exp $
+ * $Id: main.c,v 1.115 2002-09-25 23:43:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -429,18 +429,13 @@ static void set_proc_title(const char *fmt, ...) {
 #endif /* HAVE_SETPROCTITLE */
 }
   
-void main_set_idle(void)
-{
-  time_t now;
+void main_set_idle(void) {
 
-  time(&now);
+  pr_scoreboard_update_entry(getpid(),
+    PR_SCORE_BEGIN_IDLE, time(NULL),
+    PR_SCORE_CMD, "%s", "(idle)", NULL,
+    NULL);
 
-  log_add_run(mpid, &now,session.user,
-	      (session.class && session.class->name) ?
-	      session.class->name : "",
-              main_server->ipaddr, (unsigned short) main_server->ServerPort,
-              0, 0, "proftpd: %s - %s: IDLE",
-	      session.user,session.proc_prefix);
   set_proc_title("%s - %s: IDLE", session.user, session.proc_prefix);
 }
 
@@ -611,6 +606,10 @@ static void end_login_noexit(void) {
   /* Run all the exit handlers */
   run_exit_handlers();
 
+  /* Clear the scoreboard entry. */
+  if (pr_scoreboard_del_entry() < 0)
+    log_pri(LOG_NOTICE, "error deleting scoreboard entry: %s", strerror(errno));
+
   /* If session.user is set, we have a valid login */
   if(session.user) {
 #if (defined(BSD) && (BSD >= 199103))
@@ -624,8 +623,6 @@ static void end_login_noexit(void) {
       log_wtmp(sbuf,"",
         (session.c && session.c->remote_name ? session.c->remote_name : ""),
         (session.c && session.c->remote_ipaddr ? session.c->remote_ipaddr : NULL));
-    log_add_run(mpid,NULL,NULL,NULL,NULL,0,0,0,NULL);
-    log_close_run();
   }
 
   /* These are necessary in order that cleanups associated with these pools
@@ -647,8 +644,7 @@ void end_login(int exitcode) {
   _exit(exitcode);
 }
 
-void main_exit(void *pv, void *lv, void *ev, void *dummy)
-{
+void main_exit(void *pv, void *lv, void *ev, void *dummy) {
   int pri = (int) pv;
   char *log = (char *) lv;
   int exitcode = (int) ev;
@@ -656,12 +652,14 @@ void main_exit(void *pv, void *lv, void *ev, void *dummy)
   log_pri(pri, "%s", log);
   
   if (is_standalone && is_master) {
-    log_pri(LOG_NOTICE, "ProFTPD %s standalone mode SHUTDOWN", VERSION);
-    if(!nodaemon) {
-      PRIVS_ROOT
+    log_pri(LOG_NOTICE, "ProFTPD " PROFTPD_VERSION_TEXT
+      " standalone mode SHUTDOWN");
+
+    PRIVS_ROOT
+    pr_delete_scoreboard();
+    if (!nodaemon)
       unlink(PidPath);
-      PRIVS_RELINQUISH
-    }
+    PRIVS_RELINQUISH
   }
   
   end_login(exitcode);
@@ -709,11 +707,8 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
   signal(SIGUSR1,sig_disconnect);
 }
 
-static int get_command_class(const char *name)
-{
-  cmdtable *c;
-
-  c = mod_find_cmd_symbol((char*)name, NULL, NULL);
+static int get_command_class(const char *name) {
+  cmdtable *c = mod_find_cmd_symbol((char*)name, NULL, NULL);
 
   while(c && c->cmd_type != CMD)
     c = mod_find_cmd_symbol((char*)name, NULL, c);
@@ -723,7 +718,7 @@ static int get_command_class(const char *name)
 
 static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
 {
-  char *argstr;
+  char *argstr = NULL;
   cmdtable *c;
   modret_t *mr;
   int success = 0;
@@ -753,37 +748,28 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
       if(c->group)
         cmd->group = pstrdup(cmd->pool,c->group);
 
-      if(c->requires_auth && main_check_auth && !main_check_auth(cmd))
+      if (c->requires_auth && main_check_auth && !main_check_auth(cmd))
         return -1;
-
-#if 0
-      if(!c->interrupt_xfer && (session.flags & SF_XFER)) {
-        if(send_error)
-          add_response_err(R_451,"Cannot accept command, transfer is in progress.");
-        success = -1;
-        break;
-      }
-#endif
 
       cmd->tmp_pool = make_named_sub_pool(cmd->pool,"temp - dispatch pool");
 
-      /* make sure we don't display any sensitive information via argstr
-       * -tj 2001-08-18
-       */
-      if (!strcasecmp(cmd->argv[0], "PASS"))
-        argstr = "PASS (hidden)";
-      else
-      argstr = make_arg_str(cmd->tmp_pool,cmd->argc,cmd->argv);
+      argstr = make_arg_str(cmd->tmp_pool, cmd->argc, cmd->argv);
 
-      if(session.user && (session.flags & SF_XFER) == 0 &&
-         cmd_type == CMD) {
-        log_add_run(mpid, NULL, session.user,
-		    (session.class && session.class->name) ?
-		    session.class->name : "",
-		    NULL, 0, 0, 0, "proftpd: %s - %s: %s",
-                    session.user, session.proc_prefix, argstr);
-        set_proc_title("%s - %s: %s",
-                       session.user, session.proc_prefix, argstr);
+      if (cmd_type == CMD) {
+
+        /* The client has successfully authenticated.. */
+        if (session.user) {
+          pr_scoreboard_update_entry(getpid(),
+            PR_SCORE_CMD, "%s", argstr, NULL,
+            NULL);
+          set_proc_title("%s - %s: %s", session.user, session.proc_prefix,
+            argstr);
+
+        /* ...else the client has not yet authenticated */
+        } else
+          set_proc_title("%s:%d: %s", session.c->remote_ipaddr ?
+            inet_ntoa(*session.c->remote_ipaddr) : "?",
+            session.c->remote_port ? session.c->remote_port : 0, argstr);
       }
 
       log_debug(DEBUG4, "dispatching %s command '%s' to mod_%s",
@@ -825,7 +811,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
         success = -1;
       }
 
-      if(session.user && (session.flags & SF_XFER) == 0 && cmd_type == CMD)
+      if (session.user && !(session.flags & SF_XFER) && cmd_type == CMD)
         main_set_idle();
 
       destroy_pool(cmd->tmp_pool);
@@ -1005,9 +991,9 @@ static void cmd_loop(server_rec *server, conn_t *c) {
     if(id && id->argc > 1)
       send_response("220","%s",(char*)id->argv[1]);
     else if(get_param_int(server->conf,"DeferWelcome",FALSE) == 1)
-      send_response("220", "ProFTPD " VERSION " Server ready.");
+      send_response("220", "ProFTPD " PROFTPD_VERSION_TEXT " Server ready.");
     else
-      send_response("220", "ProFTPD " VERSION " Server (%s) [%s]",
+      send_response("220", "ProFTPD " PROFTPD_VERSION_TEXT " Server (%s) [%s]",
            server->ServerName,serveraddress);
   } else {
     send_response("220", "%s FTP server ready.", serveraddress);
@@ -2070,10 +2056,6 @@ static void finish_terminate(void) {
   if (is_master && mpid == getpid()) {
     PRIVS_ROOT
 
-    /* Clean up the scoreboard file. */
-    log_close_run();
-    log_rm_run();
-
     /* Do not need the pidfile any longer. */
     if (is_standalone && !nodaemon)
       unlink(PidPath);
@@ -2095,8 +2077,15 @@ static void finish_terminate(void) {
 
     PRIVS_RELINQUISH
 
-    if (is_standalone)
-      log_pri(LOG_NOTICE, "ProFTPD " VERSION " standalone mode SHUTDOWN");
+    if (is_standalone) {
+      log_pri(LOG_NOTICE, "ProFTPD " PROFTPD_VERSION_TEXT
+        " standalone mode SHUTDOWN");
+
+      /* Clean up the scoreboard */
+      PRIVS_ROOT
+      pr_delete_scoreboard();
+      PRIVS_RELINQUISH
+    }
   }
 
 #ifdef DEBUG_CORE
@@ -2499,12 +2488,34 @@ static void addl_bindings(server_rec *s) {
 
 static void inetd_main(void) {
   server_rec *s;
-  int isdefault;
+  int isdefault, res = 0;
 
+  /* Make sure the scoreboard file exists. */
   PRIVS_ROOT
-  log_open_run(0,FALSE,TRUE);
-  log_close_run();
+  if ((res = pr_open_scoreboard(O_RDWR, NULL)) < 0) {
+    PRIVS_RELINQUISH
+
+    switch (res) {
+      case -1:
+        log_pri(LOG_ERR, "error: unable to open scoreboard: %s",
+          strerror(errno));
+        return;
+
+      case PR_SCORE_ERR_BAD_MAGIC:
+        log_pri(LOG_ERR, "error: scoreboard is corrupted or old");
+        return;
+
+      case PR_SCORE_ERR_OLDER_VERSION:
+        log_pri(LOG_ERR, "error: scoreboard is too old");
+        return;
+
+      case PR_SCORE_ERR_NEWER_VERSION:
+        log_pri(LOG_ERR, "error: scoreboard is too new");
+        return;
+    }
+  }
   PRIVS_RELINQUISH
+  pr_close_scoreboard();
 
   main_server->listen = 
     inet_create_connection(main_server->pool,servers,STDIN_FILENO,
@@ -2562,6 +2573,7 @@ static void standalone_main(void) {
   config_rec *c = NULL;
   server_rec *s = NULL;
   unsigned char default_server = FALSE;
+  int res = 0;
 
   is_standalone = TRUE;
 
@@ -2578,9 +2590,31 @@ static void standalone_main(void) {
   mpid = getpid();
 
   PRIVS_ROOT
-  log_open_run(mpid,TRUE,TRUE);
-  log_close_run();
+  pr_delete_scoreboard();
+  if ((res = pr_open_scoreboard(O_RDWR, NULL)) < 0) {
+    PRIVS_RELINQUISH
+
+    switch (res) {
+      case -1:
+        log_pri(LOG_ERR, "error: unable to open scoreboard: %s",
+          strerror(errno));
+        return;
+
+      case PR_SCORE_ERR_BAD_MAGIC:
+        log_pri(LOG_ERR, "error: scoreboard is corrupted or old");
+        return;
+
+      case PR_SCORE_ERR_OLDER_VERSION:
+        log_pri(LOG_ERR, "error: scoreboard is too old");
+        return;
+
+      case PR_SCORE_ERR_NEWER_VERSION:
+        log_pri(LOG_ERR, "error: scoreboard is too new");
+        return;
+    }
+  }
   PRIVS_RELINQUISH
+  pr_close_scoreboard();
 
   /* check for a configured DefaultAddress for the main_server */
   if ((c = find_config(main_server->conf, CONF_PARAM, "DefaultAddress",
@@ -2654,8 +2688,8 @@ static void standalone_main(void) {
       addl_bindings(s);
     }
 
-  log_pri(LOG_NOTICE,"ProFTPD %s (built %s) standalone mode STARTUP",
-                      VERSION_STATUS,BUILD_STAMP);
+  log_pri(LOG_NOTICE, "ProFTPD %s (built %s) standalone mode STARTUP",
+    PROFTPD_VERSION_TEXT " " PR_STATUS, BUILD_STAMP);
 
   pr_write_pid();
   server_loop();
@@ -2906,17 +2940,17 @@ int main(int argc, char **argv, char **envp)
     }
   }
 
-  if(show_version) {
-    if(show_version == 1)
-      log_pri(LOG_NOTICE,"ProFTPD Version " VERSION);
+  if (show_version) {
+    if (show_version == 1)
+      log_pri(LOG_NOTICE, "ProFTPD Version " PROFTPD_VERSION_TEXT);
+
     else {
-      log_pri(LOG_NOTICE,"         Version: %s",
-              VERSION_STATUS);
-      log_pri(LOG_NOTICE,"Internal Version: %08x",
-              INTERNAL_VERSION);
-      log_pri(LOG_NOTICE,"     Build Stamp: %s",
-              BUILD_STAMP);
+      log_pri(LOG_NOTICE, "         Version: %s",
+        PROFTPD_VERSION_TEXT " " PR_STATUS);
+      log_pri(LOG_NOTICE, "Scoreboard Version: %08x", PR_SCOREBOARD_VERSION);
+      log_pri(LOG_NOTICE, "     Build Stamp: %s", BUILD_STAMP);
     }
+
     exit(0);
   }
   

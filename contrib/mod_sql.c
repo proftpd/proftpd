@@ -1468,12 +1468,24 @@ static char *resolve_tag(cmd_rec *cmd, char tag)
     break;
   case 'f':
     argp = arg;
-    if(session.xfer.p && session.xfer.path) {
-      char *fullpath;
-      fullpath = dir_abs_path(cmd->tmp_pool,session.xfer.path,TRUE);
+    if (session.xfer.p && session.xfer.path) {
+      char *fullpath = dir_abs_path(cmd->tmp_pool, session.xfer.path, TRUE);
       sstrncpy(argp, fullpath, sizeof(arg));
+
     } else {
-      sstrncpy(argp, "-", sizeof(arg));
+
+      /* Some commands (i.e. DELE, MKD, RMD, XMKD, and XRMD) have associated
+       * filenames that are not stored in the session.xfer structure; these
+       * should be expanded properly as well.
+       */
+      if (!strcmp(cmd->argv[0], "DELE") || !strcmp(cmd->argv[0], "MKD") ||
+          !strcmp(cmd->argv[0], "RMD") || !strcmp(cmd->argv[0], "XMKD") ||
+          !strcmp(cmd->argv[0], "XRMD"))
+        sstrncpy(arg, cmd->arg, sizeof(arg));
+
+      else
+        /* All other situations get a "-".  */
+        sstrncpy(argp, "-", sizeof(arg));
     }
     
     break;

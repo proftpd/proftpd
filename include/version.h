@@ -1,12 +1,8 @@
 #include "buildstamp.h"
 
-#define VERSION                 "1.2.7rc1"
+#define PROFTPD_VERSION_NUMBER		0x0001020701
+#define PROFTPD_VERSION_TEXT		"1.2.7rc1"
 
-/* VERSION_STATUS is reported by --version-status
- * don't ask why
+/* PR_STATUS is reported by --version-status -- don't ask why
  */
-#define VERSION_STATUS          "1.2.7rc1 (CVS)"
-
-/* INTERNAL_VERSION is used for checking for scoreboard compatibility
- */
-#define INTERNAL_VERSION        0x01030000
+#define PR_STATUS          		"(CVS)"
