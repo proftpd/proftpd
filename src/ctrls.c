@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.5 2004-04-05 18:01:33 castaglia Exp $
+ * $Id: ctrls.c,v 1.6 2004-04-06 01:50:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -879,7 +879,7 @@ int pr_ctrls_connect(const char *socket_file) {
    */
 
   cl_sock.sun_family = AF_UNIX;
-  sprintf(cl_sock.sun_path, "%s%05d", "/tmp/ftp.cl", getpid());
+  sprintf(cl_sock.sun_path, "%s%05u", "/tmp/ftp.cl", (unsigned int) getpid());
   len = strlen(cl_sock.sun_path) + sizeof(cl_sock.sun_family);
 
   /* Make sure the file doesn't already exist */
