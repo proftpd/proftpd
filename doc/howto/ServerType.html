@@ -1,4 +1,4 @@
-<!-- $Id: ServerType.html,v 1.3 2004-04-10 18:01:18 castaglia Exp $ -->
+<!-- $Id: ServerType.html,v 1.4 2004-06-08 23:08:42 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/ServerType.html,v $ -->
 
 <html>
@@ -64,7 +64,8 @@ except that it has &quot;tcp6&quot; rather than &quot;tcp&quot;.  For
 <code>proftpd</code> to function properly in such cases, that &quot;tcp6&quot;
 will need to be changed to &quot;tcp&quot;.  Solaris uses the <code>tcp6</code>
 keyword to have its <code>inetd</code> pass IPv6 sockets to the called program;
-<code>proftpd</code> is not yet IPv6-capable.
+<code>proftpd</code> must have been configured with the
+<code>--enable-ipv6</code> option to handle such sockets.
 
 <p><a name="InetdPorts"></a>
 <b>Inetd Mode and Non-standard Ports</b><br>
@@ -185,7 +186,7 @@ is there.
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-04-10 18:01:18 $</i><br>
+Last Updated: <i>$Date: 2004-06-08 23:08:42 $</i><br>
 <hr>
 
 </body>
