@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.1 2003-11-08 22:19:30 castaglia Exp $
+ * $Id: event.c,v 1.2 2003-11-08 22:32:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -128,7 +128,8 @@ int pr_event_unregister(module *m, const char *event,
 
         for (evh = evl->handlers; evh;) {
 
-          if (evh->cb == cb) {
+          if (evh->cb == cb &&
+              (m == NULL || evh->module == m)) {
             struct event_handler *tmp = evh->next;
 
             if (evh->prev)
