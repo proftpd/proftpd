@@ -39,7 +39,7 @@ Modules always included:
 
 Modules automatically included when supported by the OS:
 
-    mod_pam
+    mod_auth_pam
         PAM (Pluggable Authentication Modules) authentication.
         See README.PAM.
         Originally contributed by MacGyver <macgyver@tos.net>.
