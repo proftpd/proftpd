@@ -21,7 +21,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.29 2004-01-11 21:33:26 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.30 2004-05-08 03:21:46 castaglia Exp $
  */
 
 /*
@@ -88,8 +88,8 @@
  * connection policy, connections may be closed at any time and may need
  * to be reopened for any call.
  *
- * All backends should register an exit handler, to close any open
- * connections.  See the function _sql_shutdown() as an example.
+ * All backends should register an event handler for "core.exit", to close
+ * any open connections.  See the function sql_mysql_exit_ev() as an example.
  *
  * CONNECTION TIMERS
  *
@@ -288,22 +288,18 @@ static int _sql_timer_callback(CALLBACK_FRAME) {
   return 0;
 }
 
-/* 
- * _sql_shutdown: walks the connection cache and closes every
+/* sql_mysql_exit_ev: walks the connection cache and closes every
  *  open connection, resetting their connection counts to 0.
  */
-static void _sql_shutdown(void)
-{
-  conn_entry_t *entry = NULL;
-  int cnt = 0;
-  cmd_rec *cmd;
+static void sql_mysql_exit_ev(const void *event_data, void *user_data) {
+  register unsigned int i = 0;
 
-  for (cnt=0; cnt < conn_cache->nelts; cnt++) {
-    entry = ((conn_entry_t **) conn_cache->elts)[cnt];
+  for (i = 0; i < conn_cache->nelts; i++) {
+    conn_entry_t *entry = ((conn_entry_t **) conn_cache->elts)[i];
 
     if (entry->connections > 0) {
-      cmd = _sql_make_cmd( conn_pool, 2, entry->name, "1" );
-      cmd_close( cmd );
+      cmd_rec *cmd = _sql_make_cmd(conn_pool, 2, entry->name, "1");
+      cmd_close(cmd);
       SQL_FREE_CMD(cmd);
     }
   }
@@ -1360,19 +1356,15 @@ cmdtable sql_cmdtable[] = {
 };
 
 /*
- * sql_mysql_init: Used to initialize the connection cache and register
+ * sql_mysql_sess_init: Used to initialize the connection cache and register
  *  the exit handler.
  */
-static int sql_mysql_init(void) {
+static int sql_mysql_sess_init(void) {
+  conn_pool = make_sub_pool(session.pool);
+  conn_cache = make_array(make_sub_pool(session.pool), DEF_CONN_POOL_SIZE,
+    sizeof(conn_entry_t));
 
-  if (!conn_pool)
-    conn_pool = make_sub_pool(session.pool);
-
-  if (!conn_cache)
-    conn_cache = make_array(make_sub_pool(session.pool), DEF_CONN_POOL_SIZE,
-      sizeof(conn_entry_t));
-
-  pr_exit_register_handler( _sql_shutdown );
+  pr_event_register(&sql_mysql_module, "core.exit", sql_mysql_exit_ev, NULL);  
 
   return 0;
 }
@@ -1384,12 +1376,27 @@ static int sql_mysql_init(void) {
  *  to extend the init functions to initialize other internal variables.
  */
 module sql_mysql_module = {
-  NULL, NULL,                   /* Always NULL */
-  0x20,                         /* API Version 2.0 */
+  /* Always NULL */
+  NULL, NULL,
+
+  /* Module API version */
+  0x20,
+
+  /* Module name */
   "sql_mysql",
-  NULL,                         /* SQL configuration handler table */
-  NULL,                         /* SQL command handler table */
-  NULL,                         /* SQL authentication handler table */
-  NULL,                         /* Pre-fork "daemon mode" init */
-  sql_mysql_init                /* Post-fork "child mode" init */
+
+  /* Module configuration directive handlers */
+  NULL,
+
+  /* Module command handlers */
+  NULL,
+
+  /* Module authentication handlers */
+  NULL,
+
+  /* Module initialization */
+  NULL,
+
+  /* Session initialization */
+  sql_mysql_sess_init
 };
