@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.83 2002-06-11 14:49:27 castaglia Exp $
+ * $Id: main.c,v 1.84 2002-06-11 14:54:41 castaglia Exp $
  */
 
 /*
@@ -183,7 +183,6 @@ static void handle_xcpu(void);
 static void handle_terminate(void);
 static void handle_terminate_other(void);
 static void finish_terminate(void);
-static int signals_timer(CALLBACK_FRAME);
 
 #ifdef DEBUG_CORE
 static int abort_core = 0;
