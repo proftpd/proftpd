@@ -20,7 +20,7 @@
 
 /*
  * $Libraries: -lldap -llber$
- * ldap password lookup module for ProFTPD (mod_ldap v2.7.2)
+ * ldap password lookup module for ProFTPD (mod_ldap v2.7.3)
  * Copyright (c) 1999-2000, John Morrissey <jwm@horde.net>
  *
  * Thanks for patches to:
@@ -29,7 +29,7 @@
  * Bert Vermeulen <bert@be.easynet.net> - LDAPHomedirOnDemand,
  *                                        LDAPDefaultAuthScheme
  *
- * $Id: mod_ldap.c,v 1.12 2000-07-28 22:17:13 macgyver Exp $
+ * $Id: mod_ldap.c,v 1.13 2000-08-03 15:36:18 macgyver Exp $
  */
 
 /* Default mode to use when creating home directory on demand. */
@@ -907,19 +907,6 @@ MODRET set_ldap_searchscope(cmd_rec *cmd)
   return(HANDLED(cmd));
 }
 
-MODRET set_ldap_searchfilter(cmd_rec *cmd)
-{
-  config_rec *c;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-
-  c = add_config_param_str("LDAPSearchFilter", 1, cmd->argv[1]);
-  c->flags |= CF_MERGEDOWN;
-
-  return(HANDLED(cmd));
-}
-
 MODRET set_ldap_doauth(cmd_rec *cmd)
 {
   int b;
@@ -1149,7 +1136,6 @@ static conftable ldap_config[] = {
   { "LDAPAuthBinds",             set_ldap_authbinds,             NULL },
   { "LDAPQueryTimeout",          set_ldap_querytimeout,          NULL },
   { "LDAPSearchScope",           set_ldap_searchscope,           NULL },
-  { "LDAPSearchFilter",          set_ldap_searchfilter,          NULL },
   { "LDAPNegativeCache",         set_ldap_negcache,              NULL },
   { "LDAPDoAuth",                set_ldap_doauth,                NULL },
   { "LDAPDoUIDLookups",          set_ldap_douid,                 NULL },
