@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.261 2004-11-23 03:30:17 castaglia Exp $
+ * $Id: mod_core.c,v 1.262 2004-12-01 18:08:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3453,8 +3453,9 @@ MODRET core_epsv(cmd_rec *cmd) {
        * normal behavior (using INPORT_ANY), and log the failure.  This
        * indicates a too-small range configuration.
        */
-      pr_log_pri(LOG_WARNING, "unable to find open port in PassivePorts range "
-              "%d-%d: defaulting to INPORT_ANY", pasv_min_port, pasv_max_port);
+      pr_log_pri(PR_LOG_WARNING, "unable to find open port in "
+        "PassivePorts range %d-%d: defaulting to INPORT_ANY",
+        pasv_min_port, pasv_max_port);
     }
   }
 

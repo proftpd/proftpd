@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.179 2004-11-15 00:21:33 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.180 2004-12-01 18:08:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -596,7 +596,7 @@ static void xfer_rate_throttle(off_t xferlen, unsigned int xfer_ending) {
     xfer_rate_sigmask(TRUE);
 
     if (select(0, NULL, NULL, NULL, &tv) < 0)
-      pr_log_pri(LOG_WARNING, "warning: unable to throttle bandwidth: %s",
+      pr_log_pri(PR_LOG_WARNING, "warning: unable to throttle bandwidth: %s",
         strerror(errno));
 
     xfer_rate_sigmask(FALSE);

@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.20 2004-09-05 00:43:29 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.21 2004-12-01 18:08:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1474,7 +1474,7 @@ static void rewrite_openlog(void) {
   pr_signals_unblock();
 
   if (res < 0)
-    pr_log_pri(LOG_NOTICE, MOD_REWRITE_VERSION
+    pr_log_pri(PR_LOG_NOTICE, MOD_REWRITE_VERSION
       ": error: unable to open log file '%s': %s", rewrite_logfile,
       strerror(errno));
 
@@ -1488,7 +1488,7 @@ static void rewrite_closelog(void) {
     return;
 
   if (close(rewrite_logfd) < 0) {
-    pr_log_pri(LOG_ERR, MOD_REWRITE_VERSION
+    pr_log_pri(PR_LOG_ERR, MOD_REWRITE_VERSION
       ": error closing RewriteLog '%s': %s", rewrite_logfile, strerror(errno));
     return;
   }
@@ -1525,7 +1525,7 @@ static void rewrite_log(char *format, ...) {
 
   if (rewrite_logfd > 0) {
     if (write(rewrite_logfd, entry, strlen(entry)) < strlen(entry))
-      pr_log_pri(LOG_ERR, "error writing to RewriteLog '%s': %s",
+      pr_log_pri(PR_LOG_ERR, "error writing to RewriteLog '%s': %s",
         rewrite_logfile, strerror(errno));
 
   } else
