@@ -358,8 +358,9 @@ static RSA *tls_tmp_rsa = NULL;
 
 /* SSL/TLS support functions */
 static void tls_closelog(void);
-static void tls_end_session(SSL *);
+static void tls_end_session(SSL *, int);
 static char *tls_get_subj_name(void);
+static void tls_handle_error(int, int);
 
 static int tls_log(const char *, ...)
 #ifdef __GNUC__
@@ -505,7 +506,7 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
     } else if (tls_renegotiate_required) {
       tls_log("%s", "requested TLS renegotiation timed out on control channel");
       tls_log("%s", "shutting down control channel TLS session");
-      tls_end_session(ctrl_ssl);
+      tls_end_session(ctrl_ssl, PR_NETIO_STRM_CTRL);
       tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
         ctrl_ssl = NULL;
     }
@@ -521,7 +522,7 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
     } else if (tls_renegotiate_required) {
       tls_log("%s", "requested TLS renegotiation timed out on data channel");
       tls_log("%s", "shutting down data channel TLS session");
-      tls_end_session((SSL *) tls_data_wr_nstrm->strm_data);
+      tls_end_session((SSL *) tls_data_wr_nstrm->strm_data, PR_NETIO_STRM_DATA);
       tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = NULL;
     }
   }
@@ -922,7 +923,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
     if (tls_handshake_timed_out) {
       tls_log("TLS negotiation timed out (%u seconds)", tls_handshake_timeout);
-      tls_end_session(ssl);
+      tls_end_session(ssl, on_data ? PR_NETIO_STRM_DATA : PR_NETIO_STRM_CTRL);
       return -4;
     }
 
@@ -930,7 +931,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       goto retry;
 
     tls_log("unable to accept TLS connection: %s", ERR_error_string(err, NULL));
-    tls_end_session(ssl);
+    tls_end_session(ssl, on_data ? PR_NETIO_STRM_DATA : PR_NETIO_STRM_CTRL);
     return -3;
   }
 
@@ -1013,13 +1014,42 @@ static void tls_cleanup(void) {
   EVP_cleanup();
 }
 
-static void tls_end_session(SSL *ssl) {
+static void tls_end_session(SSL *ssl, int strms) {
   if (!ssl)
     return;
 
-  if (SSL_shutdown(ssl) == 0)
-    /* Call SSL_shutdown() again */
-    SSL_shutdown(ssl);
+  if (SSL_shutdown(ssl) == 0) {
+
+    /* Try calling SSL_shutdown() again.  First, though, send a TCP FIN
+     * to trigger the remote end's close_notify SSL message, via shutdown().
+     */
+    if (strms & PR_NETIO_STRM_CTRL) {
+      pr_netio_shutdown(session.c->outstrm, 1);
+
+      if (session.c->instrm != session.c->outstrm)
+        pr_netio_shutdown(session.c->instrm, 1);
+    }
+
+    if (strms & PR_NETIO_STRM_DATA) {
+      pr_netio_shutdown(session.d->outstrm, 1);
+
+      if (session.d->instrm != session.d->outstrm)
+        pr_netio_shutdown(session.d->instrm, 1);
+    }
+
+#if 0
+    /* This is probably a hack, but it seems necessary with some buggy
+     * clients.
+     */
+    SSL_set_shutdown(ssl, SSL_RECEIVED_SHUTDOWN);
+#endif
+
+    /* Now call SSL_shutdown again. */
+    if (SSL_shutdown(ssl) == -1) {
+      tls_log("error shutting down TLS session");
+      tls_handle_error(SSL_get_error(ssl, -1), __LINE__);
+    }
+  }
 
   SSL_free(ssl);
 }
@@ -1036,7 +1066,7 @@ static char *tls_get_subj_name(void) {
   return NULL;
 }
 
-static void tls_handle_error(int error) {
+static void tls_handle_error(int error, int lineno) {
   char *errstr = ERR_error_string(error, NULL);
 
   switch (error) {
@@ -1044,38 +1074,38 @@ static void tls_handle_error(int error) {
       return;
 
     case SSL_ERROR_SSL:
-      tls_log("panic: SSL_ERROR_SSL on " __FILE__ ": %s", errstr);
+      tls_log("panic: SSL_ERROR_SSL at %d: %s", lineno, errstr);
       break;
 
     case SSL_ERROR_WANT_READ:
-      tls_log("panic: SSL_ERROR_WANT_READ on " __FILE__ ": %s", errstr);
+      tls_log("panic: SSL_ERROR_WANT_READ at %d: %s", lineno, errstr);
       break;
 
     case SSL_ERROR_WANT_WRITE:
-      tls_log("panic: SSL_ERROR_WANT_WRITE on " __FILE__ ": %s", errstr);
+      tls_log("panic: SSL_ERROR_WANT_WRITE at %d: %s", lineno, errstr);
       break;
 
     case SSL_ERROR_WANT_X509_LOOKUP:
-      tls_log("panic: SSL_ERROR_WANT_X509_LOOKUP on " __FILE__ ": %s", errstr);
+      tls_log("panic: SSL_ERROR_WANT_X509_LOOKUP at %d: %s", lineno, errstr);
       break;
 
     case SSL_ERROR_SYSCALL:
       if (errno == ECONNRESET)
         return;
 
-      tls_log("panic: SSL_ERROR_SYSCALL on " __FILE__ ": %s", errstr);
+      tls_log("panic: SSL_ERROR_SYSCALL at %d: %s", lineno, errstr);
       break;
 
     case SSL_ERROR_ZERO_RETURN:
-      tls_log("panic: SSL_ERROR_ZERO_RETURN on " __FILE__ ": %s", errstr);
+      tls_log("panic: SSL_ERROR_ZERO_RETURN at %d: %s", lineno, errstr);
       break;
 
     case SSL_ERROR_WANT_CONNECT:
-      tls_log("panic: SSL_ERROR_WANT_CONNECT on " __FILE__ ": %s", errstr);
+      tls_log("panic: SSL_ERROR_WANT_CONNECT at %d: %s", lineno, errstr);
       break;
 
     default:
-      tls_log("panic: SSL_ERROR %d (%s) on " __FILE__, error, errstr);
+      tls_log("panic: SSL_ERROR %d (%s) at %d", error, errstr, lineno);
       break;
   }
 
@@ -1210,8 +1240,12 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
            */
           break;
 
+      case SSL_ERROR_ZERO_RETURN:
+        tls_log("read EOF from client");
+        break;
+
       default:
-        tls_handle_error(err);
+        tls_handle_error(err, __LINE__);
         break;
     }
   }
@@ -1787,7 +1821,7 @@ static ssize_t tls_write(SSL *ssl, const void *buf, size_t len) {
         break;
 
       default:
-        tls_handle_error(err);
+        tls_handle_error(err, __LINE__);
         break;
     }
   }
@@ -1841,15 +1875,19 @@ static int tls_netio_close_cb(pr_netio_stream_t *nstrm) {
   int res = 0;
 
   if (nstrm->strm_data) {
-    tls_end_session((SSL *) nstrm->strm_data);
+    tls_end_session((SSL *) nstrm->strm_data, nstrm->strm_type);
 
-    if (nstrm->strm_type == PR_NETIO_STRM_CTRL)
+    if (nstrm->strm_type == PR_NETIO_STRM_CTRL) {
       tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
         nstrm->strm_data = NULL;
+      tls_ctrl_netio = NULL;
+    }
 
-    if (nstrm->strm_type == PR_NETIO_STRM_DATA)
+    if (nstrm->strm_type == PR_NETIO_STRM_DATA) {
       tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data =
         nstrm->strm_data = NULL;
+      tls_data_netio = NULL;
+    }
   }
 
   res = close(nstrm->strm_fd);
@@ -1952,7 +1990,7 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
         if (X509_cmp(ctrl_cert, data_cert)) {
 
           /* Properly shutdown the SSL session. */
-          tls_end_session((SSL *) nstrm->strm_data);
+          tls_end_session((SSL *) nstrm->strm_data, nstrm->strm_type);
 
           tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data =
             nstrm->strm_data = NULL;
@@ -2893,7 +2931,7 @@ MODRET set_tlsverifydepth(cmd_rec *cmd) {
 /* Initialization routines
  */
 
-static void tls_sess_exit(void) {
+static void tls_sess_exit_cb(void) {
 
   /* OpenSSL cleanup */
   tls_cleanup();
@@ -3019,7 +3057,7 @@ static int tls_sess_init(void) {
   /* Install our data channel NetIO handlers. */
   tls_netio_install_data();
 
-  pr_exit_register_handler(tls_sess_exit);
+  pr_exit_register_handler(tls_sess_exit_cb);
 
   /* NOTE: fail session init if TLS server init fails (e.g. res < 0)? */
   /* Initialize the OpenSSL context for this server's configuration. */

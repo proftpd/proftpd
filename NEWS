@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.409 2003-03-21 06:46:14 castaglia Exp $
+$Id: NEWS,v 1.410 2003-03-24 06:14:00 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -75,6 +75,8 @@ CVS
 - New mod_radius directives: RadiusGroupInfo, RadiusVendor.  mod_radius
   now looks for custom response information in Vendor-Specific Attributes
   (VSAs) rather than the normal RADIUS attributes; VSAs are more flexible.
+- Fixed a bug with mod_tls' use of SSL_shutdown(), to prevent it from hanging
+  when interacting with some buggy FTPS clients (e.g FlashFXP, SmartFTP)
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------
