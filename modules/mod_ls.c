@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.12 1999-09-17 07:31:44 macgyver Exp $
+ * $Id: mod_ls.c,v 1.13 1999-09-18 18:23:07 macgyver Exp $
  */
 
 #include "conf.h"
@@ -174,17 +174,17 @@ void ls_done(cmd_rec *cmd)
 static
 int listfile(cmd_rec *cmd, pool *p, const char *name)
 {
-  int		rval = 0;
+  int		rval = 0, len;
   time_t	mtime;
   char		m[1024],l[1024];
   struct	stat st;
   char		months[12][4] =
   { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
-
+  
   struct	tm *t;
   char		suffix[2];
-
+  
   if(!p) p = cmd->tmp_pool;
   
   if(fs_lstat(name,&st) == 0) {
@@ -196,17 +196,27 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
 
       if(fs_stat(name,&l_st) != -1) {
         memcpy(&st,&l_st,sizeof(st));
-        m[fs_readlink(name,m,sizeof(m))] = '\0';
+	if((len = fs_readlink(name, m, sizeof(m))) < 0)
+	  return 0;
+	
+	m[len] = '\0';
+	
         if(!ls_perms_full(p,cmd,m,NULL))
           return 0;
-      } else
+      } else {
         return 0;
+      }
     } else if(S_ISLNK(st.st_mode)) {
-      l[fs_readlink(name,l,sizeof(l))] = '\0';
+      if((len = fs_readlink(name, l, sizeof(l))) < 0)
+	return 0;
+      
+      l[len] = '\0';
+      
       if(!ls_perms_full(p,cmd,l,NULL))
         return 0;
-    } else if(!ls_perms(p,cmd,name,NULL))
+    } else if(!ls_perms(p,cmd,name,NULL)) {
       return 0;
+    }
 
     mtime = st.st_mtime;
     t = localtime((time_t*)&mtime);
@@ -1002,85 +1012,83 @@ int nlstfile(cmd_rec *cmd, const char *file)
  * error returned if data conn cannot be opened or is aborted.
  */
 
-static
-int nlstdir(cmd_rec *cmd, const char *dir)
-{
-	char	**list,*p,*f,file[MAXPATHLEN];
-	char	cwd[MAXPATHLEN];
-	pool	*workp;
-	int	curdir = 0,i,symhold,count = 0;
-	mode_t	mode;
-
-	workp = make_sub_pool(cmd->tmp_pool);
-
-	if(!*dir || (*dir == '.' && !dir[1]) || strncmp(dir,"./",2) == 0) {
-		curdir = 1;
-		dir = "";
-	} else
-		push_cwd(cwd,&symhold);
-	
-	if(fs_chdir_canon(dir,showsymlinks)) {
-		destroy_pool(workp);
-		return 0;
+static int nlstdir(cmd_rec *cmd, const char *dir) {
+  char **list, *p, *f, file[MAXPATHLEN];
+  char cwd[MAXPATHLEN];
+  pool *workp;
+  int curdir = 0, i, symhold, count = 0;
+  mode_t mode;
+  
+  workp = make_sub_pool(cmd->tmp_pool);
+  
+  if(!*dir || (*dir == '.' && !dir[1]) || strncmp(dir,"./",2) == 0) {
+    curdir = 1;
+    dir = "";
+  } else {
+    push_cwd(cwd,&symhold);
+  }
+  
+  if(fs_chdir_canon(dir,showsymlinks)) {
+    destroy_pool(workp);
+    return 0;
+  }
+  
+  if((list = sreaddir(workp,".",FALSE)) == NULL) {
+    if(!curdir)
+      pop_cwd(cwd,&symhold);
+    destroy_pool(workp);
+    return 0;
+  }
+  
+  while(*list && count >= 0) {
+    p = *list; list++;
+    
+    if(*p == '.' && (((p[1] == '\0') || ((p[2] == '.') &&
+					 (p[3] == '\0')))) )
+      continue;
+    
+    if(*p == '.' && showdotfiles != 1)
+      continue;
+    
+    if((i = fs_readlink(p, file, sizeof(file))) > 0) {
+      file[i] = '\0';
+      f = file;
+    } else {
+      f = p;
+    }
+    
+    if(ls_perms(workp,cmd,f,NULL)) {
+      /* If the data connection isn't open, open it now. */
+      if((session.flags & SF_XFER) == 0) {
+	if(data_open(NULL,"file list",IO_WRITE,0) < 0) {
+	  data_reset();
+	  count = -1;
+	  continue;
 	}
-	
-	if((list = sreaddir(workp,".",FALSE)) == NULL) {
-		if(!curdir)
-			pop_cwd(cwd,&symhold);
-		destroy_pool(workp);
-		return 0;
-	}
-
-	while(*list && count >= 0) {
-		p = *list; list++;
-
-		if(*p == '.' && (
-			((p[1] == '\0') ||
-			((p[2] == '.') &&
-			 (p[3] == '\0')))) )
-			continue;
-
-		if(*p == '.' && showdotfiles != 1)
-			continue;
-		
-		if((i = fs_readlink(p,file,sizeof(file))) > 0) {
-			file[i] = '\0';
-			f = file;
-		} else
-			f = p;
-	
-		if(ls_perms(workp,cmd,f,NULL)) {
-			/* If the data connection isn't open, open it now. */
-			if((session.flags & SF_XFER) == 0) {
-				if(data_open(NULL,"file list",IO_WRITE,0) < 0) {
-					data_reset();
-					count = -1;
-					continue;
-				}
-				session.flags |= SF_ASCII_OVERRIDE;
-			}
-
-			if((mode = file_mode(f)) == 0)
-				continue;
-		
-			if(!curdir) {
-				if(sendline("%s/%s\n",dir,p) < 0)
-					count = -1;
-				else count++;
-			} else {
-				if(sendline("%s\n",p) < 0)
-					count = -1;
-				else count++;
-			}
-		}
-	}
-	
-	if(!curdir)
-		pop_cwd(cwd,&symhold);
-
-	destroy_pool(workp);
-
-	return count;
+	session.flags |= SF_ASCII_OVERRIDE;
+      }
+      
+      if((mode = file_mode(f)) == 0)
+	continue;
+      
+      if(!curdir) {
+	if(sendline("%s/%s\n",dir,p) < 0)
+	  count = -1;
+	else count++;
+      } else {
+	if(sendline("%s\n",p) < 0)
+	  count = -1;
+	else count++;
+      }
+    }
+  }
+  
+  if(!curdir)
+    pop_cwd(cwd,&symhold);
+  
+  destroy_pool(workp);
+  
+  return count;
 }
 
 MODRET genericlist(cmd_rec *cmd)
