@@ -23,7 +23,7 @@
  */
 
 /* Regular expression management
- * $Id: regexp.h,v 1.4 2003-01-02 17:28:18 castaglia Exp $
+ * $Id: regexp.h,v 1.5 2003-09-28 22:43:35 castaglia Exp $
  */
 
 #ifndef PR_REGEXP_H
@@ -32,9 +32,9 @@
 #ifdef HAVE_REGEX_H
 #include <regex.h>
 
+void init_regexp(void);
 regex_t *pr_regexp_alloc(void);
 void pr_regexp_free(regex_t *);
-void pr_init_regexp(void);
 
 #endif /* HAVE_REGEX_H */
 

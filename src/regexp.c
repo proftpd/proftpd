@@ -26,7 +26,7 @@
 
 /*
  * Regex management code
- * $Id: regexp.c,v 1.8 2003-01-16 06:08:52 castaglia Exp $
+ * $Id: regexp.c,v 1.9 2003-09-28 22:43:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -113,7 +113,8 @@ void pr_regexp_free(regex_t *regex) {
   }
 }
 
-void pr_init_regexp(void) {
+void init_regexp(void) {
+
   /* Register a rehash handler for the regexp pool, so that when rehashing,
    * regfree(3) is called on each of the regex_t pointers in a
    * regex_t-tracking array, thus preventing memory leaks on a long-running

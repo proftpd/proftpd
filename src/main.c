@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.193 2003-09-27 22:13:45 castaglia Exp $
+ * $Id: main.c,v 1.194 2003-09-28 22:43:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2612,7 +2612,7 @@ int main(int argc, char *argv[], char **envp) {
 
   /* Initialize sub-systems */
   init_pools();
-  pr_init_regexp();
+  init_regexp();
   init_log();
   pr_init_inet();
   pr_init_netio();
