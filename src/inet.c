@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.72 2003-08-13 05:28:57 castaglia Exp $
+ * $Id: inet.c,v 1.73 2003-08-29 05:44:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -744,7 +744,7 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
 
 #ifdef IPTOS_THROUGHPUT
   if (throughput)
-    tos |= IPTOS_THROUGHPUT;
+    tos = IPTOS_THROUGHPUT;
 #endif /* IPTOS_THROUGHPUT */
 
 #ifdef IP_TOS
