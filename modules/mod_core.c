@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.219 2004-02-20 18:34:38 castaglia Exp $
+ * $Id: mod_core.c,v 1.220 2004-02-24 16:52:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3741,7 +3741,7 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
       core_display_file(R_250, display, session.cwd);
   }
 
-  pr_response_add(R_250, "%s command successful", cmd->arg);
+  pr_response_add(R_250, "%s command successful", cmd->argv[0]);
   return HANDLED(cmd);
 }
 
@@ -4025,7 +4025,7 @@ MODRET core_dele(cmd_rec *cmd) {
       (session.sf_flags & SF_ASCII ? 'a' : 'b'), 'd', 'r', session.user, 'c');
   }
 
-  pr_response_add(R_250, "%s command successful.", cmd->argv[0]);
+  pr_response_add(R_250, "%s command successful", cmd->argv[0]);
   return HANDLED(cmd);
 }
 
