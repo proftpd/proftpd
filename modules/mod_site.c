@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.38 2003-08-01 01:05:25 castaglia Exp $
+ * $Id: mod_site.c,v 1.39 2003-11-09 23:10:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -86,7 +86,7 @@ MODRET site_chgrp(cmd_rec *cmd) {
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
   if (preg && regexec(preg, arg, 0, NULL, 0) != 0) {
-    log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
+    pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, "%s: Forbidden filename", arg);
     return ERROR(cmd);
@@ -95,7 +95,7 @@ MODRET site_chgrp(cmd_rec *cmd) {
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
   if (preg && regexec(preg, arg, 0, NULL, 0) == 0) {
-    log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
+    pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, "%s: Forbidden filename", arg);
     return ERROR(cmd);
@@ -156,7 +156,7 @@ MODRET site_chmod(cmd_rec *cmd) {
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
   if (preg && regexec(preg, arg, 0, NULL, 0) != 0) {
-    log_debug(DEBUG2, "'%s %s %s' denied by PathAllowFilter", cmd->argv[0],
+    pr_log_debug(DEBUG2, "'%s %s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->argv[1], arg);
     pr_response_add_err(R_550, "%s: Forbidden filename", arg);
     return ERROR(cmd);
@@ -165,7 +165,7 @@ MODRET site_chmod(cmd_rec *cmd) {
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
   if (preg && regexec(preg, arg, 0, NULL, 0) == 0) {
-    log_debug(DEBUG2, "'%s %s %s' denied by PathDenyFilter", cmd->argv[0],
+    pr_log_debug(DEBUG2, "'%s %s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->argv[1], arg);
     pr_response_add_err(R_550, "%s: Forbidden filename", arg);
     return ERROR(cmd);

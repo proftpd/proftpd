@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -Llib/libcap -lcap$
  * $Directories: lib/libcap$
- * $Id: mod_cap.c,v 1.10 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: mod_cap.c,v 1.11 2003-11-09 23:10:55 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -83,7 +83,7 @@ static void lp_debug(void) {
     return;
   }
 
-  log_debug(DEBUG1, MOD_CAP_VERSION ": capabilities '%s'", res);
+  pr_log_debug(DEBUG1, MOD_CAP_VERSION ": capabilities '%s'", res);
   cap_free(res);
 
   if (cap_free(caps) < 0)
@@ -288,7 +288,8 @@ static int cap_sess_init(void) {
                                               "CapabilitiesEngine", FALSE);
 
     if (cap_engine && *cap_engine == FALSE) {
-      log_debug(DEBUG3, MOD_CAP_VERSION ": lowering of capabilities disabled");
+      pr_log_debug(DEBUG3, MOD_CAP_VERSION
+        ": lowering of capabilities disabled");
       use_capabilities = FALSE;
     }
   }
@@ -302,7 +303,7 @@ static int cap_sess_init(void) {
     {
       /* use_cap_chown is stored in c->argv[0] */
       if (*((unsigned char *) c->argv[0]) == FALSE) {
-        log_debug(DEBUG3, MOD_CAP_VERSION ": removing CAP_CHOWN capability");
+        pr_log_debug(DEBUG3, MOD_CAP_VERSION ": removing CAP_CHOWN capability");
         use_cap_chown = FALSE;
       }
     }
@@ -320,7 +321,7 @@ static int cap_module_init(void) {
    */
   res = cap_get_proc();
   if (res == NULL && errno == ENOSYS) {
-    log_debug(DEBUG2, MOD_CAP_VERSION
+    pr_log_debug(DEBUG2, MOD_CAP_VERSION
               ": kernel does not support capabilities, disabling module");
     use_capabilities = FALSE;
   }

@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.59 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: mod_log.c,v 1.60 2003-11-09 23:10:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1062,7 +1062,8 @@ MODRET log_post_pass(cmd_rec *cmd) {
     for (lf = logs; lf; lf = lf->next) {
       if (lf->lf_fd != -1 && lf->lf_fd != EXTENDED_LOG_SYSLOG &&
           lf->lf_conf && lf->lf_conf->config_type == CONF_ANON) {
-        log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s'", lf->lf_filename);
+        pr_log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s'",
+          lf->lf_filename);
         close(lf->lf_fd);
         lf->lf_fd = -1;
       }
@@ -1075,7 +1076,8 @@ MODRET log_post_pass(cmd_rec *cmd) {
     for (lf = logs; lf; lf = lf->next) {
       if (lf->lf_fd != -1 && lf->lf_fd != EXTENDED_LOG_SYSLOG &&
           lf->lf_conf && lf->lf_conf != session.anon_config) {
-        log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s'", lf->lf_filename);
+        pr_log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s'",
+          lf->lf_filename);
         close(lf->lf_fd);
         lf->lf_fd = -1;
       }
@@ -1094,7 +1096,7 @@ MODRET log_post_pass(cmd_rec *cmd) {
         for (lfi = logs; lfi; lfi = lfi->next) {
           if (lfi->lf_fd != -1 && lfi->lf_fd != EXTENDED_LOG_SYSLOG &&
               !lfi->lf_conf && !strcmp(lfi->lf_filename, lf->lf_filename)) {
-            log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s'",
+            pr_log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s'",
               lf->lf_filename);
             close(lfi->lf_fd);
             lfi->lf_fd = -1;
@@ -1104,7 +1106,7 @@ MODRET log_post_pass(cmd_rec *cmd) {
         /* Go ahead and close the log if it's CL_NONE */
         if (lf->lf_fd != -1 && lf->lf_fd != EXTENDED_LOG_SYSLOG &&
             lf->lf_classes == CL_NONE) {
-          log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s'",
+          pr_log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s'",
             lf->lf_filename);
           close(lf->lf_fd);
           lf->lf_fd = -1;
@@ -1141,7 +1143,8 @@ static int log_sess_init(void) {
       if (strncasecmp(lf->lf_filename, "syslog:", 7) != 0) {
         int res = 0;
 
-        log_debug(DEBUG7, "mod_log: opening ExtendedLog '%s'", lf->lf_filename);
+        pr_log_debug(DEBUG7, "mod_log: opening ExtendedLog '%s'",
+          lf->lf_filename);
 
         pr_signals_block();
         PRIVS_ROOT

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.208 2003-11-09 22:51:23 castaglia Exp $
+ * $Id: mod_core.c,v 1.209 2003-11-09 23:10:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -186,19 +186,20 @@ static void scrub_scoreboard(void *data) {
   struct flock lock;
   pr_scoreboard_entry_t entry;
 
-  log_debug(DEBUG9, "scrubbing scoreboard");
+  pr_log_debug(DEBUG9, "scrubbing scoreboard");
 
   /* Manually open the scoreboard.  It won't hurt if the process already
    * has a descriptor opened on the scoreboard file.
    */
   PRIVS_ROOT
-  if ((fd = open(pr_get_scoreboard(), O_RDWR)) < 0) {
-    PRIVS_RELINQUISH
-    log_debug(DEBUG1, "unable to scrub ScoreboardFile '%s': %s",
+  fd = open(pr_get_scoreboard(), O_RDWR);
+  PRIVS_RELINQUISH
+
+  if (fd < 0) {
+    pr_log_debug(DEBUG1, "unable to scrub ScoreboardFile '%s': %s",
       pr_get_scoreboard(), strerror(errno));
     return;
   }
-  PRIVS_RELINQUISH
 
   /* Lock the entire scoreboard. */
   lock.l_type = F_WRLCK;
@@ -229,7 +230,7 @@ static void scrub_scoreboard(void *data) {
     if (kill(entry.sce_pid, 0) < 0 && errno == ESRCH) {
 
       /* OK, the recorded PID is no longer valid. */
-      log_debug(DEBUG9, "scrubbing scoreboard slot for PID %u",
+      pr_log_debug(DEBUG9, "scrubbing scoreboard slot for PID %u",
         (unsigned int) entry.sce_pid);
    
       /* Rewind to the start of this slot. */ 
@@ -241,7 +242,8 @@ static void scrub_scoreboard(void *data) {
           pr_signals_handle();
           continue;
         } else
-          log_debug(DEBUG0, "error scrubbing scoreboard: %s", strerror(errno));
+          pr_log_debug(DEBUG0, "error scrubbing scoreboard: %s",
+            strerror(errno));
       }
     }
 
@@ -295,11 +297,13 @@ MODRET start_ifdefine(cmd_rec *cmd) {
    * configuration lines.
    */
   if ((!not_define && defined) || (not_define && !defined)) {
-    log_debug(DEBUG3, "%s: found '%s' definition", cmd->argv[0], cmd->argv[1]);
+    pr_log_debug(DEBUG3, "%s: found '%s' definition", cmd->argv[0],
+      cmd->argv[1]);
     return HANDLED(cmd);
 
   } else
-    log_debug(DEBUG3, "%s: skipping '%s' section", cmd->argv[0], cmd->argv[1]);
+    pr_log_debug(DEBUG3, "%s: skipping '%s' section", cmd->argv[0],
+      cmd->argv[1]);
 
   /* Rather than communicating with parse_config_file() via some global
    * variable/flag the need to skip configuration lines, if the requested
@@ -351,11 +355,12 @@ MODRET start_ifmodule(cmd_rec *cmd) {
    * configuration lines.
    */
   if ((!not_module && found_module) || (not_module && !found_module)) {
-    log_debug(DEBUG3, "%s: found '%s' module", cmd->argv[0], cmd->argv[1]);
+    pr_log_debug(DEBUG3, "%s: found '%s' module", cmd->argv[0], cmd->argv[1]);
     return HANDLED(cmd);
 
   } else
-    log_debug(DEBUG3, "%s: skipping '%s' section", cmd->argv[0], cmd->argv[1]);
+    pr_log_debug(DEBUG3, "%s: skipping '%s' section", cmd->argv[0],
+      cmd->argv[1]);
 
   /* Rather than communicating with parse_config_file() via some global
    * variable/flag the need to skip configuration lines, if the requested
@@ -476,7 +481,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
       (cmd->argv)[0], ": unable to resolve \"", cmd->argv[1], "\"",
       NULL));
 
-  log_debug(DEBUG0, "setting default address to %s",
+  pr_log_debug(DEBUG0, "setting default address to %s",
     pr_netaddr_get_ipstr(main_addr));
 
   main_server->addr = main_addr;
@@ -1578,9 +1583,9 @@ MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR|
     CONF_DYNDIR);
 
-  log_debug(DEBUG4, "Compiling %s regex '%s'.", type, cmd->argv[1]);
+  pr_log_debug(DEBUG4, "Compiling %s regex '%s'.", type, cmd->argv[1]);
   preg = pr_regexp_alloc();
-  log_debug(DEBUG4, "Allocated %s regex at location %p.", type, preg);
+  pr_log_debug(DEBUG4, "Allocated %s regex at location %p.", type, preg);
 
   if ((res = regcomp(preg, cmd->argv[1], REG_EXTENDED|REG_NOSUB)) != 0) {
     char errstr[200] = {'\0'};
@@ -1775,7 +1780,7 @@ MODRET add_directory(cmd_rec *cmd) {
   c->config_type = CONF_DIR;
   c->flags |= flags;
 
-  log_debug(DEBUG2, "<Directory %s>: adding section for resolved path '%s'",
+  pr_log_debug(DEBUG2, "<Directory %s>: adding section for resolved path '%s'",
     cmd->argv[1], dir);
 
   return HANDLED(cmd);
@@ -1812,7 +1817,7 @@ MODRET set_hidefiles(cmd_rec *cmd) {
    * HideFiles configurations from parent directories.
    */
   if (!strcasecmp(cmd->argv[1], "none")) {
-    log_debug(DEBUG4, "setting %s to NULL", cmd->argv[0]);
+    pr_log_debug(DEBUG4, "setting %s to NULL", cmd->argv[0]);
     c = add_config_param(cmd->argv[0], 1, NULL);
     c->flags |= CF_MERGEDOWN_MULTI;
     return HANDLED(cmd);
@@ -2141,7 +2146,7 @@ MODRET end_directory(cmd_rec *cmd) {
   end_sub_config(&empty_ctxt);
 
   if (empty_ctxt)
-    log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
+    pr_log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
 
   return HANDLED(cmd);
 }
@@ -2188,7 +2193,7 @@ MODRET end_anonymous(cmd_rec *cmd) {
   end_sub_config(&empty_ctxt);
 
   if (empty_ctxt)
-    log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
+    pr_log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
 
   return HANDLED(cmd);
 }
@@ -2214,7 +2219,7 @@ MODRET end_global(cmd_rec *cmd) {
   end_sub_config(&empty_ctxt);
 
   if (empty_ctxt)
-    log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
+    pr_log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
 
   return HANDLED(cmd);
 }
@@ -2500,7 +2505,7 @@ MODRET end_limit(cmd_rec *cmd) {
   end_sub_config(&empty_ctxt);
 
   if (empty_ctxt)
-    log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
+    pr_log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
 
   return HANDLED(cmd);
 }
@@ -2876,7 +2881,7 @@ MODRET regex_filters(cmd_rec *cmd) {
 
   if (allow_regex && cmd->arg &&
       regexec(allow_regex, cmd->arg, 0, NULL, 0) != 0) {
-    log_debug(DEBUG2, "'%s %s' denied by AllowFilter", cmd->argv[0],
+    pr_log_debug(DEBUG2, "'%s %s' denied by AllowFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, "%s: Forbidden command argument", cmd->arg);
     return ERROR(cmd);
@@ -2887,7 +2892,7 @@ MODRET regex_filters(cmd_rec *cmd) {
 
   if (deny_regex && cmd->arg &&
       regexec(deny_regex, cmd->arg, 0, NULL, 0) == 0) {
-    log_debug(DEBUG2, "'%s %s' denied by DenyFilter", cmd->argv[0],
+    pr_log_debug(DEBUG2, "'%s %s' denied by DenyFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, "%s: Forbidden command argument", cmd->arg);
     return ERROR(cmd);
@@ -3041,7 +3046,7 @@ MODRET core_pasv(cmd_rec *cmd) {
     if (*tmp == '.')
       *tmp = ',';
 
-  log_debug(DEBUG1, "Entering Passive Mode (%s,%u,%u).", addrstr,
+  pr_log_debug(DEBUG1, "Entering Passive Mode (%s,%u,%u).", addrstr,
     (port >> 8) & 255, port & 255);
 
   pr_response_add(R_227, "Entering Passive Mode (%s,%u,%u).", addrstr,
@@ -3082,7 +3087,7 @@ MODRET core_port(cmd_rec *cmd) {
    */
   if ((privsdrop = get_param_ptr(TOPLEVEL_CONF, "RootRevoke",
       FALSE)) != NULL && *privsdrop == TRUE && session.c->local_port < 1025) {
-    log_debug(DEBUG0, "RootRevoke in effect, unable to bind to local "
+    pr_log_debug(DEBUG0, "RootRevoke in effect, unable to bind to local "
       "port %d for active transfer", session.c->local_port);
     pr_response_add_err(R_500, "Unable to service PORT commands");
     return ERROR(cmd);
@@ -3091,14 +3096,14 @@ MODRET core_port(cmd_rec *cmd) {
   /* Format is h1,h2,h3,h4,p1,p2 (ASCII in network order) */
   if (sscanf(cmd->argv[1], "%u,%u,%u,%u,%u,%u", &h1, &h2, &h3, &h4, &p1,
       &p2) != 6) {
-    log_debug(DEBUG2, "PORT '%s' is not syntactically valid", cmd->argv[1]);
+    pr_log_debug(DEBUG2, "PORT '%s' is not syntactically valid", cmd->argv[1]);
     pr_response_add_err(R_501, "Illegal PORT command");
     return ERROR(cmd);
   }
 
   if (h1 > 255 || h2 > 255 || h3 > 255 || h4 > 255 || p1 > 255 || p2 > 255 ||
       (h1|h2|h3|h4) == 0 || (p1|p2) == 0) {
-    log_debug(DEBUG2, "PORT '%s' has invalid value(s)", cmd->arg);
+    pr_log_debug(DEBUG2, "PORT '%s' has invalid value(s)", cmd->arg);
     pr_response_add_err(R_501, "Illegal PORT command");
     return ERROR(cmd);
   }
@@ -3114,7 +3119,7 @@ MODRET core_port(cmd_rec *cmd) {
 
   port_addr = pr_netaddr_get_addr(cmd->tmp_pool, buf, NULL);
   if (port_addr == NULL) {
-    log_debug(DEBUG1, "error getting sockaddr for '%s': %s", buf,
+    pr_log_debug(DEBUG1, "error getting sockaddr for '%s': %s", buf,
       strerror(errno)); 
     pr_response_add_err(R_501, "Illegal PORT command");
     return ERROR(cmd);
@@ -3214,7 +3219,7 @@ MODRET core_eprt(cmd_rec *cmd) {
    */
   if ((privsdrop = get_param_ptr(TOPLEVEL_CONF, "RootRevoke",
       FALSE)) != NULL && *privsdrop == TRUE && session.c->local_port < 1025) {
-    log_debug(DEBUG0, "RootRevoke in effect, unable to bind to local "
+    pr_log_debug(DEBUG0, "RootRevoke in effect, unable to bind to local "
       "port %d for active transfer", session.c->local_port);
     pr_response_add_err(R_500, "Unable to service EPRT commands");
     return ERROR(cmd);
@@ -3264,7 +3269,7 @@ MODRET core_eprt(cmd_rec *cmd) {
   }
 
   if ((tmp = strchr(argstr, delim)) == NULL) {
-    log_debug(DEBUG3, "badly formatted EPRT argument: '%s'", cmd->argv[1]);
+    pr_log_debug(DEBUG3, "badly formatted EPRT argument: '%s'", cmd->argv[1]);
     pr_response_add_err(R_501, "Illegal EPRT command");
     return ERROR(cmd);
   }
@@ -3284,7 +3289,7 @@ MODRET core_eprt(cmd_rec *cmd) {
       pr_netaddr_set_family(&na, AF_INET);
       pr_netaddr_get_sockaddr(&na)->sa_family = AF_INET;
       if (pr_inet_pton(AF_INET, argstr, pr_netaddr_get_inaddr(&na)) <= 0) {
-        log_debug(DEBUG2, "error converting IPv4 address '%s': %s",
+        pr_log_debug(DEBUG2, "error converting IPv4 address '%s': %s",
           argstr, strerror(errno));
         pr_response_add_err(R_501, "Illegal EPRT command");
         return ERROR(cmd);
@@ -3296,7 +3301,7 @@ MODRET core_eprt(cmd_rec *cmd) {
       pr_netaddr_set_family(&na, AF_INET6);
       pr_netaddr_get_sockaddr(&na)->sa_family = AF_INET6;
       if (pr_inet_pton(AF_INET6, argstr, pr_netaddr_get_inaddr(&na)) <= 0) {
-        log_debug(DEBUG2, "error converting IPv6 address '%s': %s",
+        pr_log_debug(DEBUG2, "error converting IPv6 address '%s': %s",
           argstr, strerror(errno));
         pr_response_add_err(R_501, "Illegal EPRT command");
         return ERROR(cmd);
@@ -3317,7 +3322,7 @@ MODRET core_eprt(cmd_rec *cmd) {
    * parameter.
    */
   if (*argstr != delim) {
-    log_debug(DEBUG3, "badly formatted EPRT argument: '%s'", cmd->argv[1]);
+    pr_log_debug(DEBUG3, "badly formatted EPRT argument: '%s'", cmd->argv[1]);
     pr_response_add_err(R_501, "Illegal EPRT command");
     return ERROR(cmd);
   }
@@ -3504,7 +3509,7 @@ MODRET core_epsv(cmd_rec *cmd) {
       FALSE)) != NULL)
    addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
 
-  log_debug(DEBUG1, "Entering Extended Passive Mode (||%s|%u|)",
+  pr_log_debug(DEBUG1, "Entering Extended Passive Mode (||%s|%u|)",
     addrstr, (unsigned int) session.data_port);
   pr_response_add(R_229, "Entering Extended Passive Mode (||%s|%u|)",
     addrstr, (unsigned int) session.data_port);
@@ -3725,7 +3730,7 @@ MODRET core_rmd(cmd_rec *cmd) {
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
-    log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
+    pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550,"%s: Forbidden filename",cmd->arg);
     return ERROR(cmd);
@@ -3734,7 +3739,7 @@ MODRET core_rmd(cmd_rec *cmd) {
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
-    log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
+    pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
@@ -3775,7 +3780,7 @@ MODRET core_mkd(cmd_rec *cmd) {
     preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
     if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
-      log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
+      pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
         cmd->arg);
       pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
       return ERROR(cmd);
@@ -3784,7 +3789,7 @@ MODRET core_mkd(cmd_rec *cmd) {
     preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
     if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
-      log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
+      pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
         cmd->arg);
       pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
       return ERROR(cmd);
@@ -3820,11 +3825,11 @@ MODRET core_mkd(cmd_rec *cmd) {
 
     else {
       if (session.fsgid != (gid_t) -1)
-        log_debug(DEBUG2, "root chown(%s) to uid %lu, gid %lu successful",
+        pr_log_debug(DEBUG2, "root chown(%s) to uid %lu, gid %lu successful",
           dir, (unsigned long) session.fsuid, (unsigned long) session.fsgid);
 
       else
-        log_debug(DEBUG2, "root chown(%s) to uid %lu successful", dir,
+        pr_log_debug(DEBUG2, "root chown(%s) to uid %lu successful", dir,
           (unsigned long) session.fsuid);
     }
 
@@ -3835,7 +3840,7 @@ MODRET core_mkd(cmd_rec *cmd) {
       pr_log_pri(PR_LOG_WARNING, "chown() failed: %s", strerror(errno));
 
     else
-      log_debug(DEBUG2, "chown(%s) to gid %lu successful", dir,
+      pr_log_debug(DEBUG2, "chown(%s) to gid %lu successful", dir,
         (unsigned long) session.fsgid);
   }
 
@@ -3949,7 +3954,7 @@ MODRET core_dele(cmd_rec *cmd) {
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
-    log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
+    pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
@@ -3958,7 +3963,7 @@ MODRET core_dele(cmd_rec *cmd) {
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
-    log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
+    pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
@@ -4022,7 +4027,7 @@ MODRET core_rnto(cmd_rec *cmd) {
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
-    log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
+    pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
@@ -4031,7 +4036,7 @@ MODRET core_rnto(cmd_rec *cmd) {
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
-    log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
+    pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
@@ -4047,7 +4052,7 @@ MODRET core_rnto(cmd_rec *cmd) {
    */
   if ((!allow_overwrite || *allow_overwrite == FALSE) &&
       pr_fsio_stat(path, &st) == 0) {
-    log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
+    pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
     pr_response_add_err(R_550, "%s: Rename permission denied", cmd->arg);
     return ERROR(cmd);
   }
@@ -4082,7 +4087,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
-    log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
+    pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
@@ -4091,7 +4096,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
-    log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
+    pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
@@ -4391,7 +4396,7 @@ MODRET set_class(cmd_rec *cmd) {
     if (ret < 0)
       ret = 100;
     n->max_connections = ret;
-    log_debug(DEBUG4, "Class '%s' maxconnections set to %d.",
+    pr_log_debug(DEBUG4, "Class '%s' maxconnections set to %d.",
               n->name, n->max_connections);
   } else if (strcasecmp(cmd->argv[2], "regex") == 0) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
@@ -4430,7 +4435,7 @@ MODRET set_class(cmd_rec *cmd) {
     res = pr_netaddr_get_addr(cmd->pool, ipaddress, NULL);
     if (res != NULL) {
       add_cdir(n, ntohl(pr_netaddr_get_addrno(res)), bits);
-      log_debug(DEBUG4, "Class '%s' ipmask %p/%d added.",
+      pr_log_debug(DEBUG4, "Class '%s' ipmask %p/%d added.",
                 cmd->argv[1], res, bits);
     } else {
       pr_log_pri(PR_LOG_ERR, "Class '%s' ip could not parse '%s'.",
@@ -4507,7 +4512,7 @@ static int core_sess_init(void) {
       "uid_name", "gid_name", "name_uid", "name_gid", "getgroups", NULL
     };
 
-    log_debug(DEBUG3, "AuthOrder in effect, resetting auth module order");
+    pr_log_debug(DEBUG3, "AuthOrder in effect, resetting auth module order");
 
     modulec = auth_module_order->nelts;
     modulev = (char **) auth_module_order->elts;

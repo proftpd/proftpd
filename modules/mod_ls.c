@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.99 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: mod_ls.c,v 1.100 2003-11-09 23:10:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -241,7 +241,7 @@ static int sendline(char *fmt, ...) {
   /* A NULL fmt argument is the signal to flush the buffer */
   if (!fmt) {
     if ((res = pr_data_xfer(listbuf, strlen(listbuf))) < 0)
-      log_debug(DEBUG3, "pr_data_xfer returned %d, error = %s.", res,
+      pr_log_debug(DEBUG3, "pr_data_xfer returned %d, error = %s.", res,
         strerror(PR_NETIO_ERRNO(session.d->outstrm)));
 
     memset(listbuf, '\0', sizeof(listbuf));
@@ -257,7 +257,7 @@ static int sendline(char *fmt, ...) {
   /* If buf won't fit completely into listbuf, flush listbuf */
   if (strlen(buf) >= (sizeof(listbuf) - strlen(listbuf))) {
     if ((res = pr_data_xfer(listbuf, strlen(listbuf))) < 0)
-      log_debug(DEBUG3, "pr_data_xfer returned %d, error = %s.", res,
+      pr_log_debug(DEBUG3, "pr_data_xfer returned %d, error = %s.", res,
         strerror(PR_NETIO_ERRNO(session.d->outstrm)));
 
     memset(listbuf, '\0', sizeof(listbuf));
@@ -288,7 +288,8 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
       list_nfiles.curr >= list_nfiles.max) {
 
     if (!list_nfiles.logged) {
-      log_debug(DEBUG8, "ListOptions maxfiles (%u) reached", list_nfiles.max);
+      pr_log_debug(DEBUG8, "ListOptions maxfiles (%u) reached",
+        list_nfiles.max);
       list_nfiles.logged = TRUE;
     }
  
@@ -755,8 +756,8 @@ static char **sreaddir(const char *dirname, const int sort) {
   dir_fd = 0;
 #endif
   if ((ssize = get_name_max((char *) dirname, dir_fd)) < 1 ) {
-    log_debug(DEBUG1, "get_name_max(%s, %d) = %d, using %d",
-              dirname, dir_fd, ssize, NAME_MAX_GUESS);
+    pr_log_debug(DEBUG1, "get_name_max(%s, %d) = %d, using %d", dirname,
+      dir_fd, ssize, NAME_MAX_GUESS);
     ssize = NAME_MAX_GUESS;
   }
 
@@ -784,7 +785,7 @@ static char **sreaddir(const char *dirname, const int sort) {
        * in the directory and thus next time we will want to NULL-terminate
        * the array.
        */
-      log_debug(DEBUG0, "Reallocating sreaddir buffer from %d entries to %d "
+      pr_log_debug(DEBUG0, "Reallocating sreaddir buffer from %d entries to %d "
         "entries", dsize, dsize * 2);
 
       /* Allocate bigger array for pointers to filenames */
@@ -830,7 +831,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
 
     if (!list_ndepth.logged) {
       /* Don't forget to take away the one we add to maxdepth internally. */
-      log_debug(DEBUG8, "ListOptions maxdepth (%u) reached",
+      pr_log_debug(DEBUG8, "ListOptions maxdepth (%u) reached",
         list_ndepth.max - 1);
       list_ndepth.logged = TRUE;
     }
@@ -842,7 +843,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
       list_ndirs.curr >= list_ndirs.max) {
 
     if (!list_ndirs.logged) {
-      log_debug(DEBUG8, "ListOptions maxdirs (%u) reached", list_ndirs.max);
+      pr_log_debug(DEBUG8, "ListOptions maxdirs (%u) reached", list_ndirs.max);
       list_ndirs.logged = TRUE;
     }
 
@@ -949,7 +950,8 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
           list_ndirs.curr >= list_ndirs.max) {
 
         if (!list_ndirs.logged) {
-          log_debug(DEBUG8, "ListOptions maxdirs (%u) reached", list_ndirs.max);
+          pr_log_debug(DEBUG8, "ListOptions maxdirs (%u) reached",
+            list_ndirs.max);
           list_ndirs.logged = TRUE;
         }
 
@@ -960,7 +962,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
           list_nfiles.curr >= list_nfiles.max) {
 
         if (!list_nfiles.logged) {
-          log_debug(DEBUG8, "ListOptions maxfiles (%u) reached",
+          pr_log_debug(DEBUG8, "ListOptions maxfiles (%u) reached",
             list_nfiles.max);
           list_nfiles.logged = TRUE;
         }
@@ -1480,7 +1482,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
 
     if (!list_ndepth.logged) {
       /* Don't forget to take away the one we add to maxdepth internally. */
-      log_debug(DEBUG8, "ListOptions maxdepth (%u) reached",
+      pr_log_debug(DEBUG8, "ListOptions maxdepth (%u) reached",
         list_ndepth.max - 1);
       list_ndepth.logged = TRUE;
     }
@@ -1492,7 +1494,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
       list_ndirs.curr >= list_ndirs.max) {
 
     if (!list_ndirs.logged) {
-      log_debug(DEBUG8, "ListOptions maxdirs (%u) reached", list_ndirs.max);
+      pr_log_debug(DEBUG8, "ListOptions maxdirs (%u) reached", list_ndirs.max);
       list_ndirs.logged = TRUE;
     }
 
@@ -1582,7 +1584,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
               list_nfiles.curr >= list_nfiles.max) {
 
             if (!list_nfiles.logged) {
-              log_debug(DEBUG8, "ListOptions maxfiles (%u) reached",
+              pr_log_debug(DEBUG8, "ListOptions maxfiles (%u) reached",
                 list_nfiles.max);
               list_nfiles.logged = TRUE;
             }
@@ -1603,7 +1605,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
               list_nfiles.curr >= list_nfiles.max) {
 
             if (!list_nfiles.logged) {
-              log_debug(DEBUG8, "ListOptions maxfiles (%u) reached",
+              pr_log_debug(DEBUG8, "ListOptions maxfiles (%u) reached",
                 list_nfiles.max);
               list_nfiles.logged = TRUE;
             }
@@ -1975,7 +1977,7 @@ MODRET ls_post_pass(cmd_rec *cmd) {
 
   if ((globbing = get_param_ptr(TOPLEVEL_CONF, "UseGlobbing",
       FALSE)) != NULL && *globbing == FALSE) {
-    log_debug(DEBUG3, "UseGlobbing: disabling globbing functionality");
+    pr_log_debug(DEBUG3, "UseGlobbing: disabling globbing functionality");
     use_globbing = FALSE;
   }
 

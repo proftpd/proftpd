@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.149 2003-11-09 22:19:46 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.150 2003-11-09 23:10:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -152,7 +152,7 @@ static unsigned long find_max_nbytes(char *directive) {
   if (max_nbytes > 0UL &&
       (have_user_limit || have_group_limit ||
        have_class_limit || have_all_limit)) {
-    log_debug(DEBUG5, "%s (%lu bytes) in effect for %s",
+    pr_log_debug(DEBUG5, "%s (%lu bytes) in effect for %s",
       directive, max_nbytes,
       have_user_limit ? "user " : have_group_limit ? "group " :
       have_class_limit ? "class " : "all");
@@ -257,7 +257,7 @@ static void _log_transfer(char direction, char abort_flag) {
       'r', session.user, abort_flag);
   }
 
-  log_debug(DEBUG1, "Transfer %s %" PR_LU " bytes in %ld.%02lu seconds",
+  pr_log_debug(DEBUG1, "Transfer %s %" PR_LU " bytes in %ld.%02lu seconds",
     abort_flag == 'c' ? "completed:" : "aborted after",
     session.xfer.total_bytes, (long) end_time.tv_sec,
     (unsigned long)(end_time.tv_usec / 10000));
@@ -412,7 +412,7 @@ static void xfer_rate_lookup(cmd_rec *cmd) {
 
   /* Print out a helpful debugging message. */
   if (have_xfer_rate) {
-    log_debug(DEBUG3, "TransferRate (%.3Lf KB/s, %" PR_LU
+    pr_log_debug(DEBUG3, "TransferRate (%.3Lf KB/s, %" PR_LU
         " bytes free) in effect%s", xfer_rate_kbps, xfer_rate_freebytes,
       have_user_rate ? " for current user" :
       have_group_rate ? " for current group" :
@@ -441,7 +441,7 @@ static unsigned char xfer_rate_parse_cmdlist(config_rec *c, char *cmdlist) {
     /* Is the given command a valid one for this directive? */
     if (strcasecmp(cmd, C_APPE) && strcasecmp(cmd, C_RETR) &&
         strcasecmp(cmd, C_STOR) && strcasecmp(cmd, C_STOU)) {
-      log_debug(DEBUG0, "invalid TransferRate command: %s", cmd);
+      pr_log_debug(DEBUG0, "invalid TransferRate command: %s", cmd);
       return FALSE;
     }
 
@@ -570,7 +570,7 @@ static void xfer_rate_throttle(off_t xferlen) {
     tv.tv_sec = tv.tv_usec / 1000000L;
     tv.tv_usec = tv.tv_usec % 1000000L;
 
-    log_debug(DEBUG7, "transferring too fast, delaying %ld sec%s, %ld usecs",
+    pr_log_debug(DEBUG7, "transferring too fast, delaying %ld sec%s, %ld usecs",
       (long int) tv.tv_sec, tv.tv_sec == 1 ? "" : "s", (long int) tv.tv_usec);
 
     /* No interruptions, please... */
@@ -736,12 +736,12 @@ static void _stor_chown(void) {
     else {
 
       if (session.fsgid != (gid_t) -1)
-        log_debug(DEBUG2, "root chown(%s) to uid %lu, gid %lu successful",
+        pr_log_debug(DEBUG2, "root chown(%s) to uid %lu, gid %lu successful",
           xfer_path, (unsigned long) session.fsuid,
           (unsigned long) session.fsgid);
 
       else
-        log_debug(DEBUG2, "root chown(%s) to uid %lu successful", xfer_path,
+        pr_log_debug(DEBUG2, "root chown(%s) to uid %lu successful", xfer_path,
           (unsigned long) session.fsuid);
 
       pr_fs_clear_cache();
@@ -763,10 +763,10 @@ static void _stor_chown(void) {
       PRIVS_RELINQUISH
 
       if (iserr)
-        log_debug(DEBUG0, "root chmod(%s) to %04o failed: %s", xfer_path,
+        pr_log_debug(DEBUG0, "root chmod(%s) to %04o failed: %s", xfer_path,
           (unsigned int) sbuf.st_mode, strerror(errno));
       else
-        log_debug(DEBUG2, "root chmod(%s) to %04o successful", xfer_path,
+        pr_log_debug(DEBUG2, "root chmod(%s) to %04o successful", xfer_path,
           (unsigned int) sbuf.st_mode);
     }
 
@@ -778,14 +778,14 @@ static void _stor_chown(void) {
 
     else {
 
-      log_debug(DEBUG2, "chown(%s) to gid %lu successful", xfer_path,
+      pr_log_debug(DEBUG2, "chown(%s) to gid %lu successful", xfer_path,
         (unsigned long) session.fsgid);
 
       pr_fs_clear_cache();
       pr_fsio_stat(xfer_path, &sbuf);
 
       if (pr_fsio_chmod(xfer_path, sbuf.st_mode) < 0)
-        log_debug(DEBUG0, "chmod(%s) to %04o failed: %s", xfer_path,
+        pr_log_debug(DEBUG0, "chmod(%s) to %04o failed: %s", xfer_path,
           (unsigned int) sbuf.st_mode, strerror(errno));
     }
   }
@@ -878,7 +878,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
 
   if (fmode && (session.xfer.xfer_type != STOR_APPEND) &&
       (!allow_overwrite || *allow_overwrite == FALSE)) {
-    log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
+    pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
     pr_response_add_err(R_550, "%s: Overwrite permission denied", cmd->arg);
     return ERROR(cmd);
   }
@@ -1079,7 +1079,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
 
   if (mode && session.xfer.xfer_type != STOR_APPEND &&
       (!allow_overwrite || *allow_overwrite == FALSE)) {
-    log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
+    pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
     pr_response_add_err(R_550, "%s: Overwrite permission denied", cmd->arg);
     return ERROR(cmd);
   }
@@ -1175,14 +1175,14 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
   if (preg) {
     if ((ret = regexec(preg,cmd->arg, 0, NULL, 0)) != 0) {
-      log_debug(DEBUG2, "'%s' denied by PathAllowFilter", cmd->arg);
+      pr_log_debug(DEBUG2, "'%s' denied by PathAllowFilter", cmd->arg);
       pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
       return ERROR(cmd);
 
     } else {
       char errmsg[200];
       regerror(ret, preg, errmsg, sizeof(errmsg));
-      log_debug(DEBUG8, "'%s' allowed by PathAllowFilter (%s)", cmd->arg,
+      pr_log_debug(DEBUG8, "'%s' allowed by PathAllowFilter (%s)", cmd->arg,
         errmsg);
     }
   }
@@ -1191,14 +1191,14 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
   if (preg) {
     if ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) == 0) {
-      log_debug(DEBUG2, "'%s' denied by PathDenyFilter", cmd->arg);
+      pr_log_debug(DEBUG2, "'%s' denied by PathDenyFilter", cmd->arg);
       pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
       return ERROR(cmd);
 
     } else {
       char errmsg[200];
       regerror(ret, preg, errmsg, sizeof(errmsg));
-      log_debug(DEBUG8, "'%s' allowed by PathDenyFilter (%s)", cmd->arg,
+      pr_log_debug(DEBUG8, "'%s' allowed by PathDenyFilter (%s)", cmd->arg,
         errmsg);
     }
   }
@@ -1252,7 +1252,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   }
 
   if (!stor_fh) {
-    log_debug(DEBUG4, "unable to open '%s' for writing: %s", cmd->arg,
+    pr_log_debug(DEBUG4, "unable to open '%s' for writing: %s", cmd->arg,
       strerror(errno));
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);

@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.4 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.5 2003-11-09 23:10:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -432,7 +432,7 @@ char *ctrls_unregister_module_actions(ctrls_acttab_t *acttab,
     }
 
     if (have_action) {
-      log_debug(DEBUG4, "mod_%s.c: removing '%s' control", mod->name,
+      pr_log_debug(DEBUG4, "mod_%s.c: removing '%s' control", mod->name,
         acttab[i].act_action);
       pr_ctrls_unregister(mod, acttab[i].act_action);
       destroy_pool(acttab[i].act_acl->acl_pool);
@@ -950,7 +950,7 @@ static int ctrls_listen(const char *sock_file) {
   len = strlen(sock.sun_path) + sizeof(sock.sun_family);
 
   /* Bind the name to the descriptor */
-  log_debug(DEBUG3, MOD_CTRLS_VERSION ": binding ctrls socket to '%s'",
+  pr_log_debug(DEBUG3, MOD_CTRLS_VERSION ": binding ctrls socket to '%s'",
     sock.sun_path);
   if (bind(sockfd, (struct sockaddr *) &sock, len) < 0) {
     pr_signals_unblock();
@@ -1475,7 +1475,7 @@ MODRET set_ctrlssocket(cmd_rec *cmd) {
     CONF_ERROR(cmd, "must be an absolute path");
 
   /* Close the socket. */
-  log_debug(DEBUG3, MOD_CTRLS_VERSION ": closing ctrls socket '%s'",
+  pr_log_debug(DEBUG3, MOD_CTRLS_VERSION ": closing ctrls socket '%s'",
     ctrls_sock_file);
 
   close(ctrls_sockfd);
@@ -1531,18 +1531,24 @@ MODRET set_ctrlssocketowner(cmd_rec *cmd) {
 
   if ((uid = auth_name_uid(cmd->tmp_pool, cmd->argv[1])) == (uid_t) -1) {
     if (errno != EINVAL)
-      log_debug(DEBUG0, "%s: %s has UID of -1", cmd->argv[0], cmd->argv[1]);
+      pr_log_debug(DEBUG0, "%s: %s has UID of -1", cmd->argv[0],
+        cmd->argv[1]);
+
     else
-      log_debug(DEBUG0, "%s: no such user '%s'", cmd->argv[0], cmd->argv[1]);
+      pr_log_debug(DEBUG0, "%s: no such user '%s'", cmd->argv[0],
+        cmd->argv[1]);
 
   } else
     ctrls_sock_uid = uid;
 
   if ((gid = auth_name_gid(cmd->tmp_pool, cmd->argv[2])) == (gid_t) -1) {
     if (errno != EINVAL)
-      log_debug(DEBUG0, "%s: %s has GID of -1", cmd->argv[0], cmd->argv[2]);
+      pr_log_debug(DEBUG0, "%s: %s has GID of -1", cmd->argv[0],
+        cmd->argv[2]);
+
     else
-      log_debug(DEBUG0, "%s: no such group '%s'", cmd->argv[0], cmd->argv[2]);
+      pr_log_debug(DEBUG0, "%s: no such group '%s'", cmd->argv[0],
+        cmd->argv[2]);
 
   } else
     ctrls_sock_gid = gid;

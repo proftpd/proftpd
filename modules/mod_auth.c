@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.171 2003-11-09 22:19:45 castaglia Exp $
+ * $Id: mod_auth.c,v 1.172 2003-11-09 23:10:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -56,7 +56,7 @@ static void auth_count_scoreboard(cmd_rec *, char *);
  * particular directory.
  */
 static int lockdown(char *newroot) {
-  log_debug(DEBUG1, "Preparing to chroot() the environment, path = '%s'",
+  pr_log_debug(DEBUG1, "Preparing to chroot() the environment, path = '%s'",
     newroot);
 
   PRIVS_ROOT
@@ -68,7 +68,7 @@ static int lockdown(char *newroot) {
   }
   PRIVS_RELINQUISH
 
-  log_debug(DEBUG1, "Environment successfully chroot()ed.");
+  pr_log_debug(DEBUG1, "Environment successfully chroot()ed.");
   return 0;
 }
 
@@ -131,19 +131,19 @@ static int auth_sess_init(void) {
   if ((res = pr_open_scoreboard(O_RDWR)) < 0) {
     switch (res) {
       case PR_SCORE_ERR_BAD_MAGIC:
-        log_debug(DEBUG0, "error opening scoreboard: bad/corrupted file");
+        pr_log_debug(DEBUG0, "error opening scoreboard: bad/corrupted file");
         break;
 
       case PR_SCORE_ERR_OLDER_VERSION:
-        log_debug(DEBUG0, "error opening scoreboard: bad version (too old)");
+        pr_log_debug(DEBUG0, "error opening scoreboard: bad version (too old)");
         break;
 
       case PR_SCORE_ERR_NEWER_VERSION:
-        log_debug(DEBUG0, "error opening scoreboard: bad version (too new)");
+        pr_log_debug(DEBUG0, "error opening scoreboard: bad version (too new)");
         break;
 
       default:
-        log_debug(DEBUG0, "error opening scoreboard: %s", strerror(errno));
+        pr_log_debug(DEBUG0, "error opening scoreboard: %s", strerror(errno));
         break;
     }
   }
@@ -321,7 +321,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
 
   if (have_user_timeout || have_group_timeout ||
       have_class_timeout || have_all_timeout) {
-    log_debug(DEBUG4, "setting TimeoutSession of %u seconds for current %s",
+    pr_log_debug(DEBUG4, "setting TimeoutSession of %u seconds for current %s",
       TimeoutSession,
       have_user_timeout ? "user" : have_group_timeout ? "group" :
       have_class_timeout ? "class" : "all");
@@ -344,9 +344,9 @@ MODRET auth_post_pass(cmd_rec *cmd) {
      * will need to occur in mod_core's cmd_port() function.
      */
     if (session.c->local_port < 1025)
-      log_debug(DEBUG0, "RootRevoke in effect, disabling active transfers");
+      pr_log_debug(DEBUG0, "RootRevoke in effect, disabling active transfers");
 
-    log_debug(DEBUG0, "RootRevoke in effect, dropped root privs");
+    pr_log_debug(DEBUG0, "RootRevoke in effect, dropped root privs");
   }
 
   return HANDLED(cmd);
@@ -412,7 +412,7 @@ static config_rec *_auth_anonymous_group(pool *p, char *user) {
    */
   if (!session.gids && !session.groups &&
       (ret = auth_getgroups(p, user, &session.gids, &session.groups)) < 1)
-    log_debug(DEBUG2, "no supplemental groups found for user '%s'", user);
+    pr_log_debug(DEBUG2, "no supplemental groups found for user '%s'", user);
 
   c = find_config(main_server->conf, CONF_PARAM, "AnonymousGroup", FALSE);
 
@@ -815,7 +815,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
   if (!session.gids && !session.groups &&
       (res = auth_getgroups(p, pw->pw_name, &session.gids,
        &session.groups)) < 1)
-    log_debug(DEBUG2, "no supplemental groups found for user '%s'",
+    pr_log_debug(DEBUG2, "no supplemental groups found for user '%s'",
       pw->pw_name);
 
   /* If c != NULL from this point on, we have an anonymous login */
@@ -1306,7 +1306,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
 
     if (session.chroot_path != NULL || defroot) {
 
-      log_debug(DEBUG2, "unable to chdir to %s (%s), defaulting to chroot "
+      pr_log_debug(DEBUG2, "unable to chdir to %s (%s), defaulting to chroot "
         "directory %s", session.cwd, strerror(errno),
         (session.chroot_path ? session.chroot_path : defroot));
 
@@ -1322,7 +1322,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
       /* If we've got defchdir, failure is ok as well, simply switch to
        * user's homedir.
        */
-      log_debug(DEBUG2, "unable to chdir to %s (%s), defaulting to home "
+      pr_log_debug(DEBUG2, "unable to chdir to %s (%s), defaulting to home "
         "directory %s", session.cwd, strerror(errno), pw->pw_dir);
 
       if (pr_fsio_chdir_canon(pw->pw_dir, !showsymlinks) == -1) {

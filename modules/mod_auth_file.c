@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.18 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.19 2003-11-09 23:10:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -287,14 +287,14 @@ static unsigned char af_allow_grent(authfile_file_t *groupf,
   if (groupf->af_restricted_ids) {
 
     if (grp->gr_gid < groupf->af_min_id.gid) {
-      log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping group '%s': "
+      pr_log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping group '%s': "
         "GID (%u) below the minimum allowed (%u)", grp->gr_name,
         (unsigned int) grp->gr_gid, (unsigned int) groupf->af_min_id.gid);
       return FALSE;
     }
 
     if (grp->gr_gid > groupf->af_max_id.gid) {
-      log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping group '%s': "
+      pr_log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping group '%s': "
         "GID (%u) above the maximum allowed (%u)", grp->gr_name,
         (unsigned int) grp->gr_gid, (unsigned int) groupf->af_max_id.gid);
       return FALSE;
@@ -308,7 +308,7 @@ static unsigned char af_allow_grent(authfile_file_t *groupf,
 
     if ((res != 0 && !groupf->af_name_regex_inverted) ||
         (res == 0 && groupf->af_name_regex_inverted)) {
-      log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping group '%s': "
+      pr_log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping group '%s': "
         "name '%s' does not meet allowed filter '%s'", grp->gr_name,
         grp->gr_name, groupf->af_name_filter);
       return FALSE;
@@ -414,7 +414,7 @@ static unsigned char af_setgrent(void) {
       continue;
 
     } else {
-      log_debug(DEBUG7, MOD_AUTH_FILE_VERSION ": using group file '%s'",
+      pr_log_debug(DEBUG7, MOD_AUTH_FILE_VERSION ": using group file '%s'",
         af_current_group_file->af_path);
       return TRUE;
     }
@@ -430,14 +430,14 @@ static unsigned char af_allow_pwent(authfile_file_t *passwdf,
   if (passwdf->af_restricted_ids) {
 
     if (pwd->pw_uid < passwdf->af_min_id.uid) {
-      log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping user '%s': "
+      pr_log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping user '%s': "
         "UID (%u) below the minimum allowed (%u)", pwd->pw_name,
         (unsigned int) pwd->pw_uid, (unsigned int) passwdf->af_min_id.uid);
       return FALSE;
     }
 
     if (pwd->pw_uid > passwdf->af_max_id.gid) {
-      log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping user '%s': "
+      pr_log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping user '%s': "
         "UID (%u) above the maximum allowed (%u)", pwd->pw_name,
         (unsigned int) pwd->pw_uid, (unsigned int) passwdf->af_max_id.uid);
       return FALSE;
@@ -451,7 +451,7 @@ static unsigned char af_allow_pwent(authfile_file_t *passwdf,
 
     if ((res != 0 && !passwdf->af_name_regex_inverted) ||
         (res == 0 && passwdf->af_name_regex_inverted)) {
-      log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping user '%s': "
+      pr_log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping user '%s': "
         "name '%s' does not meet allowed filter '%s'", pwd->pw_name,
         pwd->pw_name, passwdf->af_name_filter);
       return FALSE;
@@ -465,7 +465,7 @@ static unsigned char af_allow_pwent(authfile_file_t *passwdf,
 
     if ((res != 0 && !passwdf->af_home_regex_inverted) ||
         (res == 0 && passwdf->af_home_regex_inverted)) {
-      log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping user '%s': "
+      pr_log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping user '%s': "
         "home '%s' does not meet allowed filter '%s'", pwd->pw_name,
         pwd->pw_dir, passwdf->af_home_filter);
       return FALSE;
@@ -568,7 +568,7 @@ static unsigned char af_setpwent(void) {
       continue;
 
     } else {
-      log_debug(DEBUG7, MOD_AUTH_FILE_VERSION ": using passwd file '%s'",
+      pr_log_debug(DEBUG7, MOD_AUTH_FILE_VERSION ": using passwd file '%s'",
         af_current_user_file->af_path);
       return TRUE;
     }
@@ -667,7 +667,7 @@ MODRET authfile_setpwent(cmd_rec *cmd) {
   if (af_setpwent())
     return HANDLED(cmd);
 
-  log_debug(DEBUG2,
+  pr_log_debug(DEBUG2,
     MOD_AUTH_FILE_VERSION ": unable to find useable AuthUserFile");
 
   return DECLINED(cmd);
@@ -868,7 +868,7 @@ MODRET authfile_setgrent(cmd_rec *cmd) {
   if (af_setgrent())
     return HANDLED(cmd);
 
-  log_debug(DEBUG2,
+  pr_log_debug(DEBUG2,
     MOD_AUTH_FILE_VERSION ": unable to find useable AuthGroupFile");
 
   return DECLINED(cmd);
