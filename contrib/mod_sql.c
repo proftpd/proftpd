@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.50 2003-04-01 20:22:30 castaglia Exp $
+ * $Id: mod_sql.c,v 1.51 2003-05-20 18:00:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -750,15 +750,15 @@ static void show_group(struct group *g) {
 
 static void show_passwd(struct passwd *p) {
   if (p == NULL ) {
-    sql_log(DEBUG_INFO, "%s", "NULL group to show_passwd");
+    sql_log(DEBUG_INFO, "%s", "NULL passwd to show_passwd()");
     return;
   }
 
   sql_log(DEBUG_INFO, "+ pwd.pw_name  : %s", p->pw_name);
   sql_log(DEBUG_INFO, "+ pwd.pw_uid   : %u", p->pw_uid);
   sql_log(DEBUG_INFO, "+ pwd.pw_gid   : %u", p->pw_gid);
-  sql_log(DEBUG_INFO, "+ pwd.pw_shell : %s", p->pw_shell);
   sql_log(DEBUG_INFO, "+ pwd.pw_dir   : %s", p->pw_dir);
+  sql_log(DEBUG_INFO, "+ pwd.pw_shell : %s", p->pw_shell);
 
   return;
 }
@@ -1072,7 +1072,6 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
     dir = sd->data[i++];
 
   if (cmap.shellfield) {
-    i++;
     if (sd->fnum < i || !sd->data[i]) {
 
       /* Make sure that, if configured, the shell value is valid, and scream
