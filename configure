@@ -10190,8 +10190,8 @@ ADDL_DIRS="$ac_addl_dirs"
 
 INCLUDES="$ac_build_addl_includes"
 LIBRARIES="$ac_build_addl_libraries"
-MODULES="$ac_core_modules $ac_addl_modules"
-BUILD_MODULES="$ac_build_core_modules $ac_build_addl_modules"
+MODULE_OBJS="$ac_core_modules $ac_addl_modules"
+BUILD_MODULE_OBJS="$ac_build_core_modules $ac_build_addl_modules"
 VERSION=`cat $srcdir/include/version.h | grep "#define VERSION " | sed -e 's/^.*\"\(.*\)\"/\1/'`
 
 savedPrefix="$prefix"
@@ -10234,7 +10234,7 @@ fi
 
 ac_config_headers="$ac_config_headers config.h"
 
-ac_config_files="$ac_config_files lib/Makefile src/Makefile modules/Makefile utils/Makefile Makefile Make.rules Make.modules"
+ac_config_files="$ac_config_files lib/Makefile src/Makefile modules/Makefile utils/Makefile Makefile Make.rules"
 ac_config_commands="$ac_config_commands default"
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -10551,10 +10551,9 @@ do
   "utils/Makefile" ) CONFIG_FILES="$CONFIG_FILES utils/Makefile" ;;
   "Makefile" ) CONFIG_FILES="$CONFIG_FILES Makefile" ;;
   "Make.rules" ) CONFIG_FILES="$CONFIG_FILES Make.rules" ;;
-  "Make.modules" ) CONFIG_FILES="$CONFIG_FILES Make.modules" ;;
   "default" ) CONFIG_COMMANDS="$CONFIG_COMMANDS default" ;;
   "config.h" ) CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
-  *) { { echo "$as_me:10557: error: invalid argument: $ac_config_target" >&5
+  *) { { echo "$as_me:10556: error: invalid argument: $ac_config_target" >&5
 echo "$as_me: error: invalid argument: $ac_config_target" >&2;}
    { (exit 1); exit 1; }; };;
   esac
@@ -10669,8 +10668,8 @@ s,@install_group@,$install_group,;t t
 s,@ALLOCA@,$ALLOCA,;t t
 s,@INSTALL_STRIP@,$INSTALL_STRIP,;t t
 s,@LIB_OBJS@,$LIB_OBJS,;t t
-s,@MODULES@,$MODULES,;t t
-s,@BUILD_MODULES@,$BUILD_MODULES,;t t
+s,@MODULE_OBJS@,$MODULE_OBJS,;t t
+s,@BUILD_MODULE_OBJS@,$BUILD_MODULE_OBJS,;t t
 s,@ADDL_DIRS@,$ADDL_DIRS,;t t
 s,@INCLUDES@,$INCLUDES,;t t
 s,@LIBRARIES@,$LIBRARIES,;t t
@@ -10790,7 +10789,7 @@ done; }
   esac
 
   if test x"$ac_file" != x-; then
-    { echo "$as_me:10793: creating $ac_file" >&5
+    { echo "$as_me:10792: creating $ac_file" >&5
 echo "$as_me: creating $ac_file" >&6;}
     rm -f "$ac_file"
   fi
@@ -10808,7 +10807,7 @@ echo "$as_me: creating $ac_file" >&6;}
       -) echo $tmp/stdin ;;
       [\\/$]*)
          # Absolute (can't be DOS-style, as IFS=:)
-         test -f "$f" || { { echo "$as_me:10811: error: cannot find input file: $f" >&5
+         test -f "$f" || { { echo "$as_me:10810: error: cannot find input file: $f" >&5
 echo "$as_me: error: cannot find input file: $f" >&2;}
    { (exit 1); exit 1; }; }
          echo $f;;
@@ -10821,7 +10820,7 @@ echo "$as_me: error: cannot find input file: $f" >&2;}
            echo $srcdir/$f
          else
            # /dev/null tree
-           { { echo "$as_me:10824: error: cannot find input file: $f" >&5
+           { { echo "$as_me:10823: error: cannot find input file: $f" >&5
 echo "$as_me: error: cannot find input file: $f" >&2;}
    { (exit 1); exit 1; }; }
          fi;;
@@ -10882,7 +10881,7 @@ for ac_file in : $CONFIG_HEADERS; do test "x$ac_file" = x: && continue
   * )   ac_file_in=$ac_file.in ;;
   esac
 
-  test x"$ac_file" != x- && { echo "$as_me:10885: creating $ac_file" >&5
+  test x"$ac_file" != x- && { echo "$as_me:10884: creating $ac_file" >&5
 echo "$as_me: creating $ac_file" >&6;}
 
   # First look for the input files in the build tree, otherwise in the
@@ -10893,7 +10892,7 @@ echo "$as_me: creating $ac_file" >&6;}
       -) echo $tmp/stdin ;;
       [\\/$]*)
          # Absolute (can't be DOS-style, as IFS=:)
-         test -f "$f" || { { echo "$as_me:10896: error: cannot find input file: $f" >&5
+         test -f "$f" || { { echo "$as_me:10895: error: cannot find input file: $f" >&5
 echo "$as_me: error: cannot find input file: $f" >&2;}
    { (exit 1); exit 1; }; }
          echo $f;;
@@ -10906,7 +10905,7 @@ echo "$as_me: error: cannot find input file: $f" >&2;}
            echo $srcdir/$f
          else
            # /dev/null tree
-           { { echo "$as_me:10909: error: cannot find input file: $f" >&5
+           { { echo "$as_me:10908: error: cannot find input file: $f" >&5
 echo "$as_me: error: cannot find input file: $f" >&2;}
    { (exit 1); exit 1; }; }
          fi;;
@@ -11023,7 +11022,7 @@ cat >>$CONFIG_STATUS <<\EOF
   rm -f $tmp/in
   if test x"$ac_file" != x-; then
     if cmp -s $ac_file $tmp/config.h 2>/dev/null; then
-      { echo "$as_me:11026: $ac_file is unchanged" >&5
+      { echo "$as_me:11025: $ac_file is unchanged" >&5
 echo "$as_me: $ac_file is unchanged" >&6;}
     else
       ac_dir=`$as_expr X"$ac_file" : 'X\(.*[^/]\)//*[^/][^/]*/*$' \| \
