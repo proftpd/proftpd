@@ -20,7 +20,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.15 2000-07-11 13:36:52 macgyver Exp $
+ * $Id: mod_log.c,v 1.16 2000-08-01 21:23:39 macgyver Exp $
  */
 
 #include "conf.h"
@@ -730,9 +730,7 @@ int log_init()
   return 0;
 }
 
-static
-void get_extendedlogs()
-{
+static void get_extendedlogs() {
   config_rec *c;
   char *logfname;
   int logclasses = CL_ALL;
@@ -750,7 +748,12 @@ void get_extendedlogs()
       if(c->argc > 2)
         logfmt_s = c->argv[2];
     }
-
+    
+    /* No logging for this round.
+     */
+    if(logclasses == CL_NONE)
+      goto loop_extendedlogs;
+    
     if(logfmt_s) {
       /* search for the format-nickname */
       for(logfmt = formats; logfmt; logfmt=logfmt->next)
@@ -762,23 +765,24 @@ void get_extendedlogs()
                            logfmt_s);
         goto loop_extendedlogs;
       }
-    } else
+    } else {
       logfmt = formats;
-
-    logf = (logfile_t*)pcalloc(permanent_pool,sizeof(logfile_t));
+    }
+    
+    logf = (logfile_t *) pcalloc(permanent_pool, sizeof(logfile_t));
     logf->lf_fd = -1;
     logf->lf_classes = logclasses;
-    logf->lf_filename = pstrdup(permanent_pool,logfname);
+    logf->lf_filename = pstrdup(permanent_pool, logfname);
     logf->lf_format = logfmt;
     logf->lf_conf = c->parent;
     if(!log_set)
-      log_set = xaset_create(permanent_pool,NULL);
+      log_set = xaset_create(permanent_pool, NULL);
 
-    xaset_insert(log_set,(xasetmember_t*)logf);
-    logs = (logfile_t*)log_set->xas_list;
+    xaset_insert(log_set, (xasetmember_t *) logf);
+    logs = (logfile_t *) log_set->xas_list;
 
 loop_extendedlogs:
-    c = find_config_next(c,c->next,CONF_PARAM,"ExtendedLog",TRUE);
+    c = find_config_next(c, c->next, CONF_PARAM, "ExtendedLog", TRUE);
   }
 }
 
