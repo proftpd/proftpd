@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.213 2003-12-02 03:06:26 castaglia Exp $
+ * $Id: mod_core.c,v 1.214 2004-01-16 00:45:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2699,8 +2699,8 @@ MODRET end_virtualhost(cmd_rec *cmd) {
 
       } else if (pr_netaddr_cmp(addr, serv_addr) == 0 &&
           cmd->server->ServerPort == s->ServerPort) {
-        pr_log_pri(PR_LOG_ERR,
-          "error: \"%s\" address/port (%s:%d) already in use by \"%s\"",
+        pr_log_pri(PR_LOG_WARNING,
+          "warning: \"%s\" address/port (%s:%d) already in use by \"%s\"",
           cmd->server->ServerName ? cmd->server->ServerName : "ProFTPD",
           pr_netaddr_get_ipstr(addr), cmd->server->ServerPort,
           s->ServerName ? s->ServerName : "ProFTPD");
