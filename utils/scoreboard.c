@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support (modified for use by external utilities).
  *
- * $Id: scoreboard.c,v 1.1 2002-09-25 23:45:24 castaglia Exp $
+ * $Id: scoreboard.c,v 1.2 2002-10-02 15:19:55 castaglia Exp $
  */
 
 #include "utils.h"
@@ -226,6 +226,7 @@ pr_scoreboard_entry_t *util_scoreboard_read_entry(void) {
   memset(&scan_entry, '\0', sizeof(scan_entry));
 
   /* NOTE: use readv(2)? */
+  errno = 0;
   while (TRUE) {
     while ((res = read(util_scoreboard_fd, &scan_entry,
         sizeof(scan_entry))) <= 0) {
@@ -236,7 +237,7 @@ pr_scoreboard_entry_t *util_scoreboard_read_entry(void) {
         unlock_scoreboard();
 
         if (errno)
-          fprintf(stdout, "ftpwho: error reading scoreboard entry: %s\n",
+          fprintf(stdout, "error reading scoreboard entry: %s\n",
             strerror(errno));
         return NULL;
       }
