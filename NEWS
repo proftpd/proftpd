@@ -1,10 +1,11 @@
-$Id: NEWS,v 1.597 2004-09-04 22:53:48 castaglia Exp $
+$Id: NEWS,v 1.598 2004-09-04 22:56:30 castaglia Exp $
 
 CVS
 --------------------------------
 - Bug 2449 - ProFTPD silently ignores extra command-line parameters
 - Bug 2457 - Directory listing provides bad info when path ends with /.
 - Bug 2458 - Bad handling of CreateHome parameters.
+- Bug 2463 - mod_xfer doesn't check how many bytes it has written to disk.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

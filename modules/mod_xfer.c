@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.165 2004-08-24 22:24:18 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.166 2004-09-04 22:56:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1356,6 +1356,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
   lbuf = (char *) palloc(cmd->tmp_pool, bufsize);
 
   while ((len = pr_data_xfer(lbuf, bufsize)) > 0) {
+    int res;
+
     if (XFER_ABORTED)
       break;
 
@@ -1380,10 +1382,15 @@ MODRET xfer_stor(cmd_rec *cmd) {
       return ERROR(cmd);
     }
 
-    if ((len = pr_fsio_write(stor_fh, lbuf, len)) < 0) {
-      int s_errno = errno;
+    res = pr_fsio_write(stor_fh, lbuf, len);
+    if (res != len) {
+      int xerrno = EIO;
+
+      if (res < 0)
+        xerrno = errno;
+
       stor_abort();
-      pr_data_abort(s_errno, FALSE);
+      pr_data_abort(xerrno, FALSE);
       return ERROR(cmd);
     }
 
