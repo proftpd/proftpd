@@ -25,7 +25,7 @@
  */
 
 /* Network IO stream layer
- * $Id: netio.h,v 1.8 2003-10-17 06:15:37 castaglia Exp $
+ * $Id: netio.h,v 1.9 2004-10-09 20:46:21 castaglia Exp $
  */
 
 #ifndef PR_NETIO_H
@@ -143,9 +143,11 @@ typedef struct {
 /* Network IO function prototypes */
 
 void pr_netio_abort(pr_netio_stream_t *);
+int pr_netio_lingering_abort(pr_netio_stream_t *, long);
 
 int pr_netio_close(pr_netio_stream_t *);
 int pr_netio_lingering_close(pr_netio_stream_t *, long);
+#define NETIO_LINGERING_CLOSE_FL_NO_SHUTDOWN	0x00001
 
 char *pr_netio_gets(char *, size_t, pr_netio_stream_t *);
 

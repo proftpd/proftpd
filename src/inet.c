@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.86 2004-04-22 01:32:22 castaglia Exp $
+ * $Id: inet.c,v 1.87 2004-10-09 20:46:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -509,6 +509,29 @@ void pr_inet_lingering_close(pool *p, conn_t *c, long linger) {
 
   c->outstrm = NULL;
   c->instrm = NULL;
+
+  destroy_pool(c->pool);
+}
+
+/* Similar to a lingering close, perform a lingering abort. */
+void pr_inet_lingering_abort(pool *p, conn_t *c, long linger) {
+  pr_inet_set_block(p, c);
+
+  if (c->instrm)
+    pr_netio_lingering_abort(c->instrm, linger);
+
+  /* Only close the output stream if it is actually a different stream
+   * than the input stream.
+   *
+   * Note: we do not call pr_netio_lingering_abort() on the input stream
+   * since doing so would result in two 426 responses sent; we only
+   * want and need one.
+   */
+  if (c->outstrm != c->instrm)
+    pr_netio_lingering_close(c->outstrm, linger);
+
+  c->instrm = NULL;
+  c->outstrm = NULL;
 
   destroy_pool(c->pool);
 }

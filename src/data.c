@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2004 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.80 2004-09-14 17:49:43 castaglia Exp $
+ * $Id: data.c,v 1.81 2004-10-09 20:46:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -590,7 +590,12 @@ void pr_data_abort(int err, int quiet) {
   nstrm = NULL;
 
   if (session.d) {
-    pr_inet_lingering_close(session.pool, session.d, timeout_linger);
+    if (!true_abort)
+      pr_inet_lingering_close(session.pool, session.d, timeout_linger);
+
+    else
+      pr_inet_lingering_abort(session.pool, session.d, timeout_linger);
+
     session.d = NULL;
   }
 
@@ -757,8 +762,12 @@ void pr_data_abort(int err, int quiet) {
 	msg = msgbuf;
     }
 
-    pr_response_add_err(respcode, fmt ? fmt : "Transfer aborted. %s",
-      msg ? msg : "");
+    /* If we are aborting, then a 426 response has already been sent,
+     * and we don't want to add another to the error queue.
+     */
+    if (!true_abort)
+      pr_response_add_err(respcode, fmt ? fmt : "Transfer aborted. %s",
+        msg ? msg : "");
   }
 
   if (true_abort)

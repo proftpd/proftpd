@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.20 2004-06-15 16:45:21 castaglia Exp $
+ * $Id: netio.c,v 1.21 2004-10-09 20:46:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -229,7 +229,9 @@ int pr_netio_close(pr_netio_stream_t *nstrm) {
   return res;
 }
 
-int pr_netio_lingering_close(pr_netio_stream_t *nstrm, long linger) {
+static int netio_lingering_close(pr_netio_stream_t *nstrm, long linger,
+    int flags) {
+
   int res;
   struct timeval tv;
   fd_set rs;
@@ -240,7 +242,8 @@ int pr_netio_lingering_close(pr_netio_stream_t *nstrm, long linger) {
     return -1;
   }
 
-  pr_netio_shutdown(nstrm, 1);
+  if (!(flags & NETIO_LINGERING_CLOSE_FL_NO_SHUTDOWN))
+    pr_netio_shutdown(nstrm, 1);
 
   tv.tv_sec = linger;
   tv.tv_usec = 0L;
@@ -255,12 +258,13 @@ int pr_netio_lingering_close(pr_netio_stream_t *nstrm, long linger) {
     FD_ZERO(&rs);
     FD_SET(nstrm->strm_fd, &rs);
 
-    if ((res = select(nstrm->strm_fd+1, &rs, NULL, NULL, &tv)) == -1) {
+    res = select(nstrm->strm_fd+1, &rs, NULL, NULL, &tv);
+    if (res == -1) {
       if (errno == EINTR) {
         time_t now = time(NULL);
         pr_signals_handle();
 
-        /* Still here? If the requested five minutes hasn't passed,
+        /* Still here? If the requested lingering interval hasn't passed,
          * continue lingering.  Reset the timeval struct's fields to
          * linger for the interval remaining in the given period of time.
          */
@@ -275,7 +279,6 @@ int pr_netio_lingering_close(pr_netio_stream_t *nstrm, long linger) {
         return -1;
       }
     }
-
 
     break;
   }
@@ -294,6 +297,59 @@ int pr_netio_lingering_close(pr_netio_stream_t *nstrm, long linger) {
 
   errno = EPERM;
   return -1;
+}
+
+int pr_netio_lingering_abort(pr_netio_stream_t *nstrm, long linger) {
+  int res;
+  struct timeval tv;
+  fd_set rs;
+
+  if (!nstrm) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  pr_netio_shutdown(nstrm, 1);
+
+  /* Wait for just a little while for the shutdown to take effect. */
+  tv.tv_sec = 0L;
+  tv.tv_usec = 300000L;
+
+  while (TRUE) {
+    run_schedule();
+
+    FD_ZERO(&rs);
+    FD_SET(nstrm->strm_fd, &rs);
+
+    res = select(nstrm->strm_fd+1, &rs, NULL, NULL, &tv);
+    if (res == -1) {
+      if (errno == EINTR) {
+        pr_signals_handle();
+
+        /* Linger some more. */
+        tv.tv_sec = 0L;
+        tv.tv_usec = 300000L;
+        continue;
+
+      } else {
+        nstrm->strm_errno = errno;
+        return -1;
+      }
+    }
+
+    break;
+  }
+
+  /* Send an appropriate response code down the stream asychronously. */
+  pr_response_send_async(R_426, "Transfer aborted. Data connection closed.");
+
+  /* Now continue with a normal lingering close. */
+  return netio_lingering_close(nstrm, linger,
+    NETIO_LINGERING_CLOSE_FL_NO_SHUTDOWN);  
+}
+
+int pr_netio_lingering_close(pr_netio_stream_t *nstrm, long linger) {
+  return netio_lingering_close(nstrm, linger, 0);
 }
 
 pr_netio_stream_t *pr_netio_open(pool *parent_pool, int strm_type, int fd,
