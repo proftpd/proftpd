@@ -1,6 +1,6 @@
-$Id: NEWS,v 1.490 2003-10-10 05:49:39 castaglia Exp $
+$Id: NEWS,v 1.491 2003-10-15 19:53:02 castaglia Exp $
 
-CVS
+1.2.9rc3 - Released 15-Oct-2003
 ---------------------------------
 - Bug 2167 - getnameinfo() on FreeBSD doesn't support IP address lookups.
 - Bug 2176 - getnameinfo() error on Cygwin during startup.
