@@ -1,8 +1,9 @@
-$Id: NEWS,v 1.296 2002-12-05 19:11:40 castaglia Exp $
+$Id: NEWS,v 1.297 2002-12-05 19:20:15 castaglia Exp $
 
 CVS
 ---------------------------------
 - Bug 1597 - Problems with HP-UX 10/11 trusted systems, mod_pam, and mod_unixpw.
+- Bug 1482 - Add new %U meta to LogFormat, for logging original username.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------

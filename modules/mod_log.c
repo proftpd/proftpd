@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.33 2002-11-21 16:20:21 castaglia Exp $
+ * $Id: mod_log.c,v 1.34 2002-12-05 19:20:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -75,11 +75,12 @@ struct logfile_struc {
 #define META_LOCAL_IP		14
 #define META_LOCAL_FQDN		15
 #define META_USER		16
-#define META_RESPONSE_CODE	17
-#define META_CLASS		18
-#define META_ANON_PASS		19
-#define META_METHOD		20
-#define META_XFER_PATH		21
+#define META_ORIGINAL_USER	17
+#define META_RESPONSE_CODE	18
+#define META_CLASS		19
+#define META_ANON_PASS		20
+#define META_METHOD		21
+#define META_XFER_PATH		22
 
 static pool			*log_pool;
 static logformat_t		*formats = NULL;
@@ -107,6 +108,7 @@ static xaset_t			*log_set = NULL;
    %{format}t		- Formatted time (strftime(3) format)
    %T			- Time taken to serve request, in seconds
    %u			- Local user
+   %U                   - Original username sent by client
    %v			- ServerName of server serving request
    %V                   - DNS name of server serving request
 */
@@ -251,6 +253,10 @@ void logformat(char *nickname, char *fmts)
 
         case 'u':
           add_meta(&outs, META_USER, 0);
+          break;
+
+        case 'U':
+          add_meta(&outs, META_ORIGINAL_USER, 0);
           break;
 
         case 'v':
@@ -699,6 +705,20 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
 
     m++;
     break;
+
+  case META_ORIGINAL_USER:
+    {
+      char *login_user = get_param_ptr(main_server->conf, C_USER, FALSE);
+      argp = arg;
+
+      if (login_user)
+        sstrncpy(argp, login_user, sizeof(arg));
+      else
+        sstrncpy(argp, "(none)", sizeof(arg));   
+
+      m++;
+      break;
+    }
 
   case META_RESPONSE_CODE:
     {
