@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.315 2002-12-07 21:57:12 jwm Exp $
+$Id: NEWS,v 1.316 2002-12-07 22:09:08 jwm Exp $
 
 CVS
 ---------------------------------
@@ -42,7 +42,7 @@ CVS
   directive can now take a "path" of the form: "syslog:level", where the
   "syslog:" prefix tells mod_log to log that ExtendedLog data via syslog,
   and the "level" informs mod_log of which syslog level to use.
-- AIX sendfile support
+- AIX sendfile support. Thanks to Andy Igoshin <ai@vsu.ru> for the patch.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------
