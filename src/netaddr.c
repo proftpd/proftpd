@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.41 2004-01-29 03:19:08 castaglia Exp $
+ * $Id: netaddr.c,v 1.42 2004-01-30 23:09:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -252,19 +252,19 @@ void pr_netaddr_clear(pr_netaddr_t *na) {
 }
 
 pr_netaddr_t *pr_netaddr_dup(pool *p, pr_netaddr_t *na) {
-  pr_netaddr_t *dup;
+  pr_netaddr_t *dup_na;
 
   if (!p || !na) {
     errno = EINVAL;
     return NULL;
   }
 
-  dup = pr_netaddr_alloc(p);
+  dup_na = pr_netaddr_alloc(p);
 
-  pr_netaddr_set_family(dup, pr_netaddr_get_family(na));
-  pr_netaddr_set_sockaddr(dup, pr_netaddr_get_sockaddr(na));  
+  pr_netaddr_set_family(dup_na, pr_netaddr_get_family(na));
+  pr_netaddr_set_sockaddr(dup_na, pr_netaddr_get_sockaddr(na));  
 
-  return dup;
+  return dup_na;
 }
 
 pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
