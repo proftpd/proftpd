@@ -1,6 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
+ * Copyright (C) 1999, MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,12 +20,16 @@
  
 /*
  * Data connection management functions
- * $Id
+ * $Id: data.c,v 1.5 1999-10-01 07:55:01 macgyver Exp $
  */
 
 #include "conf.h"
 
 #include <signal.h>
+
+#ifdef HAVE_SYS_SENDFILE_H
+#include <sys/sendfile.h>
+#endif /* HAVE_SYS_SENDFILE_H */
 
 /* local macro */
 
@@ -501,5 +506,54 @@ int data_xfer(char *cl_buf, int cl_size)
 		reset_timer(TIMER_IDLE,ANY_MODULE);
 
 	session.xfer.total_bytes += total;
+	session.total_bytes += total;
 	return len;
 }
+
+#ifdef HAVE_SENDFILE
+/* data_sendfile actually transfers the data on the data connection.
+ * ascii translation is not performed.
+ * return 0 if reading and data connection closes, or -1 if error
+ */
+int data_sendfile(int retr_fd, off_t *offset, size_t count)
+{
+  int flags, error, len = 0;
+  
+  if(session.xfer.direction == IO_READ)
+    return -1;
+  
+  if((flags = fcntl(session.d->outf->fd, F_GETFL)) == -1)
+    return -1;
+  
+  /* set fd to blocking-mode for sendfile() */
+  if (flags & O_NONBLOCK)
+    if(fcntl(session.d->outf->fd, F_SETFL, flags ^ O_NONBLOCK) == -1)
+      return -1;
+  
+  log_pri(LOG_ERR, "data_sendfile(%d,%d,%d)", retr_fd, *offset, count);
+  
+  if ((len = sendfile(session.d->outf->fd, retr_fd, offset, count)) == -1) {
+    error = errno;
+    fcntl(session.d->outf->fd, F_SETFL, flags);
+    errno = error;
+    
+    return -1;
+  }
+  
+  log_pri(LOG_ERR, "data_sendfile: %d", len);
+  
+  if (flags & O_NONBLOCK)
+    fcntl(session.d->outf->fd, F_SETFL, flags);
+  
+  if(TimeoutStalled)
+    reset_timer(TIMER_STALLED, ANY_MODULE);
+  
+  if(TimeoutIdle)
+    reset_timer(TIMER_IDLE, ANY_MODULE);
+  
+  session.xfer.total_bytes += len;
+  session.total_bytes += len;
+  
+  return len;
+}
+#endif /* HAVE_SENDFILE */
