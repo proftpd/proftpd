@@ -24,7 +24,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lwrap -lnsl$
- * $Id: mod_wrap.c,v 1.7 2002-12-05 21:16:48 castaglia Exp $
+ * $Id: mod_wrap.c,v 1.8 2002-12-11 16:50:01 castaglia Exp $
  */
 
 #define MOD_WRAP_VERSION "mod_wrap/1.2.3"
@@ -448,7 +448,7 @@ MODRET add_tcpgroupaccessfiles(cmd_rec *cmd) {
 
   c = add_config_param("TCPGroupAccessFiles", 0);
 
-  group_acl = parse_group_expression(cmd->tmp_pool, &group_argc, &cmd->argv[0]);
+  group_acl = parse_expression(cmd->tmp_pool, &group_argc, &cmd->argv[0]);
 
   /* build the desired config_rec manually */
   c->argc = group_argc + 2;
@@ -564,7 +564,7 @@ MODRET add_tcpuseraccessfiles(cmd_rec *cmd) {
 
   c = add_config_param_str("TCPUserAccessFiles", 0);
 
-  user_acl = parse_user_expression(cmd->tmp_pool, &user_argc, &cmd->argv[0]);
+  user_acl = parse_expression(cmd->tmp_pool, &user_argc, &cmd->argv[0]);
 
   /* build the desired config_rec manually */
   c->argc = user_argc + 2;

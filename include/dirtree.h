@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.27 2002-12-10 21:01:35 castaglia Exp $
+ * $Id: dirtree.h,v 1.28 2002-12-11 16:50:02 castaglia Exp $
  */
 
 #ifndef __DIRTREE_H
@@ -204,10 +204,12 @@ void find_config_set_top(config_rec *);
 int remove_config(xaset_t *, const char *, int);
 class_t *find_class(p_in_addr_t *, char *);
 
-array_header *parse_group_expression(pool *, int *, char **);
-array_header *parse_user_expression(pool *, int *, char **);
-int group_expression(char **);
-int user_expression(char **);
+array_header *parse_expression(pool *, int *, char **);
+unsigned char class_or_expression(char **);
+unsigned char group_and_expression(char **);
+unsigned char group_or_expression(char **);
+unsigned char user_and_expression(char **);
+unsigned char user_or_expression(char **);
 
 long get_param_int(xaset_t *, const char *, int);
 long get_param_int_next(const char *, int);

@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.31 2002-12-10 21:01:59 castaglia Exp $
+ * $Id: mod_site.c,v 1.32 2002-12-11 16:50:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -140,29 +140,29 @@ MODRET site_chmod(cmd_rec *cmd) {
   }
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathAllowFilter",FALSE);
+  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
 
-  if (preg && regexec(preg,cmd->argv[2],0,NULL,0) != 0) {
+  if (preg && regexec(preg, cmd->argv[2], 0, NULL, 0) != 0) {
     log_debug(DEBUG2, "'%s %s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->argv[1], cmd->argv[2]);
-    add_response_err(R_550,"%s: Forbidden filename",cmd->argv[2]);
+    add_response_err(R_550, "%s: Forbidden filename", cmd->argv[2]);
     return ERROR(cmd);
   }
 
-  preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathDenyFilter",FALSE);
+  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathDenyFilter", FALSE);
 
-  if (preg && regexec(preg,cmd->argv[2],0,NULL,0) == 0) {
+  if (preg && regexec(preg, cmd->argv[2], 0, NULL, 0) == 0) {
     log_debug(DEBUG2, "'%s %s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->argv[1], cmd->argv[2]);
-    add_response_err(R_550,"%s: Forbidden filename",cmd->argv[2]);
+    add_response_err(R_550, "%s: Forbidden filename", cmd->argv[2]);
     return ERROR(cmd);
   }
 #endif
 
-  dir = dir_realpath(cmd->tmp_pool,cmd->argv[2]);
+  dir = dir_realpath(cmd->tmp_pool, cmd->argv[2]);
 
   if (!dir) {
-    add_response_err(R_550,"%s: %s",cmd->argv[2],strerror(errno));
+    add_response_err(R_550, "%s: %s", cmd->argv[2], strerror(errno));
     return ERROR(cmd);
   }
 

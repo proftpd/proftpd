@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.88 2002-12-10 21:02:05 castaglia Exp $
+ * $Id: dirtree.c,v 1.89 2002-12-11 16:50:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -60,7 +60,7 @@ extern pool *global_config_pool;
 /* Used by find_config_* */
 xaset_t *find_config_top = NULL;
 
-static void _mergedown(xaset_t*,int);
+static void _mergedown(xaset_t *, int);
 
 /* Used by get_param_int_next & get_param_ptr_next as "placeholders" */
 static config_rec *_last_param_int = NULL;
@@ -103,7 +103,7 @@ static int allow_dyn_config(void) {
     if (c->argc == 3) {
       if (!strcmp(c->argv[2], "user")) {
 
-        if (user_expression((char **) &c->argv[3])) {
+        if (user_or_expression((char **) &c->argv[3])) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
             /* Set the context precedence. */
@@ -118,7 +118,7 @@ static int allow_dyn_config(void) {
 
       } else if (!strcmp(c->argv[2], "group")) {
 
-        if (group_expression((char **) &c->argv[3])) {
+        if (group_and_expression((char **) &c->argv[3])) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
             /* Set the context precedence. */
@@ -133,9 +133,7 @@ static int allow_dyn_config(void) {
 
       } else if (!strcmp(c->argv[2], "class")) {
 
-        if (session.class && session.class->name &&
-            !strcmp(session.class->name, c->argv[3])) {
-
+        if (class_or_expression((char **) &c->argv[3])) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
             /* Set the context precedence. */
@@ -255,7 +253,7 @@ unsigned char dir_hide_file(const char *path) {
 
       /* check for a specified "user" classifier first... */
       if (!strcmp(c->argv[3], "user")) {
-        if (user_expression((char **) &c->argv[4])) {
+        if (user_or_expression((char **) &c->argv[4])) {
 
           if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
             ctxt_precedence = *((unsigned int *) c->argv[2]);
@@ -270,7 +268,7 @@ unsigned char dir_hide_file(const char *path) {
 
       /* ...then for a "group" classifier... */
       } else if (!strcmp(c->argv[3], "group")) {
-        if (group_expression((char **) &c->argv[4])) {
+        if (group_and_expression((char **) &c->argv[4])) {
           if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
             ctxt_precedence = *((unsigned int *) c->argv[2]);
 
@@ -288,8 +286,7 @@ unsigned char dir_hide_file(const char *path) {
        * need to be updated to process class-expressions.
        */
       } else if (!strcmp(c->argv[3], "class")) {
-        if (session.class && session.class->name &&
-            !strcmp(session.class->name, c->argv[4])) {
+        if (class_or_expression((char **) &c->argv[4])) {
           if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
             ctxt_precedence = *((unsigned int *) c->argv[2]);
 
@@ -691,6 +688,7 @@ config_rec *start_sub_config(const char *name) {
   /* Now insert another level onto the stack */
   if (!*conf.curconfig)
     *conf.curconfig = c;
+
   else {
     conf.curconfig = (config_rec**)push_array(conf.cstack);
     *conf.curconfig = c;
@@ -787,40 +785,64 @@ config_rec *add_config(const char *name) {
   return c;
 }
 
-array_header *parse_group_expression(pool *p, int *argc, char **argv)
-{
+array_header *parse_expression(pool *p, int *argc, char **argv) {
   array_header *acl = NULL;
   int cnt = *argc;
-  char *s,*ent;
+  char *s, *ent;
 
   if (cnt) {
-    acl = make_array(p,cnt,(sizeof(char*)));
-    while(cnt-- && *(++argv)) {
-      s = pstrdup(p,*argv);
-      while((ent = get_token(&s,",")) != NULL)
+    acl = make_array(p, cnt, sizeof(char *));
+
+    while (cnt-- && *(++argv)) {
+      s = pstrdup(p, *argv);
+
+      while ((ent = get_token(&s, ",")) != NULL)
         if (*ent)
-          *((char**)push_array(acl)) = ent;
+          *((char **) push_array(acl)) = ent;
     }
 
     *argc = acl->nelts;
+
   } else
     *argc = 0;
 
   return acl;
 }
 
-array_header *parse_user_expression(pool *p, int *argc, char **argv)
-{
-  return parse_group_expression(p,argc,argv);
+/* Boolean "class-expression" OR matching, returns TRUE if the expression
+ * evaluates to TRUE.
+ */
+unsigned char class_or_expression(char **expr) {
+  unsigned char found;
+  char *class;
+
+  if (!session.class)
+    return FALSE;
+
+  for (; *expr; expr++) {
+    class = *expr;
+    found = FALSE;
+
+    if (*class == '!') {
+      found = !found;
+      class++;
+    }
+
+    if (strcmp(session.class->name, class) == 0)
+      found = !found;
+
+    if (found)
+      return TRUE;
+  }
+
+  return FALSE;
 }
 
-/* boolean "group-expression" matching, returns 1 if the expression
- * matches
+/* Boolean "group-expression" AND matching, returns TRUE if the expression
+ * evaluates to TRUE.
  */
-
-int group_expression(char **expr)
-{
-  int cnt,found;
+unsigned char group_and_expression(char **expr) {
+  unsigned char found;
   char *grp;
 
   for (; *expr; expr++) {
@@ -832,33 +854,67 @@ int group_expression(char **expr)
       grp++;
     }
 
-    if (session.group && strcmp(session.group,grp) == 0)
+    if (session.group && strcmp(session.group, grp) == 0)
       found = !found;
-    else if (session.groups)
-      for (cnt = session.groups->nelts-1; cnt >= 0; cnt--)
-        if (strcmp(*(((char**)session.groups->elts)+cnt),grp) == 0) {
-          found = !found; break;
-        }
 
-    if (!found) {
-      expr = NULL;
-      break;
+    else if (session.groups) {
+      register int i = 0;
+
+      for (i = session.groups->nelts-1; i >= 0; i--)
+        if (strcmp(*(((char **) session.groups->elts) + i), grp) == 0) {
+          found = !found;
+          break;
+        }
     }
+
+    if (!found)
+      return FALSE;
   }
 
-  if (expr)
-    return TRUE;
+  return TRUE;
+}
+
+/* Boolean "group-expression" OR matching, returns TRUE if the expression
+ * evaluates to TRUE.
+ */
+unsigned char group_or_expression(char **expr) {
+  unsigned char found;
+  char *grp;
+
+  for (; *expr; expr++) {
+    grp = *expr;
+    found = FALSE;
+
+    if (*grp == '!') {
+      found = !found;
+      grp++;
+    }
+
+    if (session.group && strcmp(session.group, grp) == 0)
+      found = !found;
+
+    else if (session.groups) {
+      register int i = 0;
+
+      for (i = session.groups->nelts-1; i >= 0; i--)
+        if (strcmp(*(((char **) session.groups->elts) + i), grp) == 0) {
+          found = !found;
+          break;
+        }
+    }
+
+    if (found)
+      return TRUE;
+  }
 
   return FALSE;
 }
 
-/* boolean "user-expression" matching, returns 1 if the expression
- * matches
+/* Boolean "user-expression" AND matching, returns TRUE if the expression
+ * evaluates to TRUE.
  */
-
-int user_expression(char **expr)
-{
-  int found;
+unsigned char user_and_expression(char **expr) {
+  unsigned char found;
   char *user;
 
   for (; *expr; expr++) {
@@ -870,21 +926,41 @@ int user_expression(char **expr)
       user++;
     }
 
-    if (strcmp(session.user,user) == 0)
+    if (strcmp(session.user, user) == 0)
       found = !found;
 
-    if (!found) {
-      expr = NULL;
-      break;
-    }
+    if (!found) 
+      return FALSE;
   }
 
-  if (expr)
-    return TRUE;
+  return TRUE;
+}
+
+/* Boolean "user-expression" OR matching, returns TRUE if the expression
+ * evaluates to TRUE.
+ */
+unsigned char user_or_expression(char **expr) {
+  unsigned char found;
+  char *user;
+
+  for (; *expr; expr++) {
+    user = *expr;
+    found = FALSE;
+
+    if (*user == '!') {
+      found = !found;
+      user++;
+    }
+
+    if (strcmp(session.user, user) == 0)
+      found = !found;
+
+    if (found)
+      return TRUE;
+  }
 
   return FALSE;
 }
-
 /* Per-directory configuration */
 
 static int _strmatch(register char *s1, register char *s2)
@@ -1136,10 +1212,25 @@ static int _check_user_access(xaset_t *set, char *name) {
   config_rec *c = find_config(set, CONF_PARAM, name, FALSE);
 
   while (c) {
-    res = user_expression((char **) c->argv);
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+    if (c->argc == 2 && c->argv[0] == NULL) {
+      regex_t *preg = (regex_t *) c->argv[1];
 
-    if (res)
-      break;
+      if (regexec(preg, session.user, 0, NULL, 0) == 0) {
+        res = TRUE;
+        break;
+      }
+
+    } else {
+#endif /* HAVE_REGEX_H and HAVE_REGCOMP */
+      res = user_or_expression((char **) c->argv);
+
+      if (res)
+        break;
+
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+    }
+#endif /* HAVE_REGEX_H and HAVE_REGCOMP */
 
     c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
@@ -1152,10 +1243,36 @@ static int _check_group_access(xaset_t *set, char *name) {
   config_rec *c = find_config(set, CONF_PARAM, name, FALSE);
 
   while (c) {
-    res = group_expression((char **) c->argv);
 
-    if (res)
-      break;
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+    if (c->argc == 2 && c->argv[0] == NULL) {
+      regex_t *preg = (regex_t *) c->argv[1];
+      
+      if (session.group && regexec(preg, session.group, 0, NULL, 0) == 0) {
+        res = TRUE;
+        break;
+
+      } else if (session.groups) {
+        register int i = 0;
+
+        for (i = session.groups->nelts-1; i >= 0; i--)
+          if (regexec(preg, *(((char **) session.groups->elts) + i), 0,
+              NULL, 0) == 0) {
+            res = TRUE;
+            break;
+          }
+      }
+    
+    } else {
+#endif /* HAVE_REGEX_H and HAVE_REGCOMP */
+      res = group_and_expression((char **) c->argv);
+
+      if (res)
+        break;
+
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+    }
+#endif /* HAVE_REGEX_H and HAVE_REGCOMP */
 
     c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
@@ -1576,7 +1693,7 @@ static int _check_limits(xaset_t *set, char *cmd, int hidden) {
       if (i == lc->argc)
         continue;
 	
-      /* Found a limit directive associated with the current command.
+      /* Found a <Limit> directive associated with the current command.
        * ignore_hidden defaults to -1, if an explicit IgnoreHidden off is seen,
        * it is set to 0 and the check will not be done again up the chain.  If
        * an explicit "IgnoreHidden on" is seen, checking short-circuits and we
