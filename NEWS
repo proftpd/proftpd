@@ -1,7 +1,15 @@
-$Id: NEWS,v 1.54 2000-07-11 14:10:33 macgyver Exp $
+$Id: NEWS,v 1.55 2000-07-21 05:37:41 macgyver Exp $
 
 1.2.0 - Released: ???
 ---------------------
+- Made sure ServerUseReverseDNS was honored.
+- Compile problems on various problems.
+- Added descriptions for more errors to be more RFC compliant.
+- UID/GID handling is more portable now on systems with unusual UID/GID sizes.
+- PAM handles should be persistent across jailed environments.
+
+1.2.0RCl - Released: 07/11/2000
+-------------------------------
 - Fixed a bug in mod_ls that could cause a crash.
 - Fixed a minor bug related to group permissions.
 - Fixed a bug in calculating file system size when using statvfs.
