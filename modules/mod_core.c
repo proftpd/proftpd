@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.170 2003-04-15 06:22:24 castaglia Exp $
+ * $Id: mod_core.c,v 1.171 2003-04-15 22:56:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1726,7 +1726,8 @@ MODRET set_hidefiles(cmd_rec *cmd) {
    */
   if (!strcasecmp(cmd->argv[1], "none")) {
     log_debug(DEBUG4, "setting %s to NULL", cmd->argv[0]);
-    add_config_param(cmd->argv[0], 1, NULL);
+    c = add_config_param(cmd->argv[0], 1, NULL);
+    c->flags |= CF_MERGEDOWN_MULTI;
     return HANDLED(cmd);
   }
 
