@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#define MOD_SQL_VERSION "mod_sql/3.2.3"
+#define MOD_SQL_VERSION "mod_sql/3.2.4"
 
 /* This is mod_sql, contrib software for proftpd 1.2.0rc3 and above.
    Originally written and maintained as 'mod_sqlpw' by Johnie 
@@ -2164,7 +2164,7 @@ MODRET auth_cmd_getgrgid(cmd_rec * cmd)
 
 MODRET auth_cmd_auth(cmd_rec * cmd)
 {
-  char *realuser, *user;
+  char *user;
   int userlen;
   struct passwd lpw, *pw;
 
@@ -2174,20 +2174,22 @@ MODRET auth_cmd_auth(cmd_rec * cmd)
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_auth", MOD_SQL_VERSION);
 
   /* escape our username */
-  realuser = cmd->argv[0];
-  userlen = (strlen(realuser) * 2) + 1;
+  userlen = (strlen(cmd->argv[0]) * 2) + 1;
   user = pcalloc(cmd->tmp_pool, userlen);
-  sql_backend_escape_string(user, realuser, strlen(realuser));
+  sql_backend_escape_string(user, cmd->argv[0], strlen(cmd->argv[0]));
 
   lpw.pw_uid = -1;
   lpw.pw_name = pstrdup( cmd->tmp_pool, cmd->argv[0]);
 
-  /* check to see if we're looking up the current user */
-  pw = _sql_getpasswd(cmd, &lpw);
 
-  log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_auth", MOD_SQL_VERSION);
-
-  return ( pw == NULL ) ? ( cmap.authoritative ? ERROR(cmd) : DECLINED(cmd) ) : HANDLED(cmd);
+  if ((pw = _sql_getpasswd(cmd, &lpw)) && 
+      !auth_check(cmd->tmp_pool, pw->pw_passwd, cmd->argv[0], cmd->argv[1])) {
+    log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_auth", MOD_SQL_VERSION);
+    return HANDLED(cmd);
+  } else {
+    log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_auth", MOD_SQL_VERSION);
+    return ( cmap.authoritative ? ERROR(cmd) : DECLINED(cmd) );
+  }
 }
 
 MODRET auth_cmd_check(cmd_rec * cmd)
