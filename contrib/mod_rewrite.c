@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.17 2003-11-09 21:20:34 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.18 2004-02-13 22:47:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -33,8 +33,8 @@
 #define MOD_REWRITE_VERSION "mod_rewrite/0.6.7"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001020801
-# error "ProFTPD 1.2.8rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001021001
+# error "ProFTPD 1.2.10rc1 or later required"
 #endif
 
 #ifdef HAVE_REGEX_H
@@ -156,7 +156,7 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
     const char *var) {
   if (!strcmp(var, "%c")) {
     REWRITE_CHECK_VAR(session.class, "%c");
-    return (session.class ? session.class->name : NULL);
+    return (session.class ? session.class->cls_name : NULL);
 
   } else if (!strcmp(var, "%F")) {
 
