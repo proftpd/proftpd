@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.33 2003-01-17 16:46:22 castaglia Exp $
+ * $Id: dirtree.h,v 1.34 2003-02-26 04:30:06 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -205,6 +205,7 @@ int remove_config(xaset_t *, const char *, int);
 class_t *find_class(p_in_addr_t *, char *);
 
 array_header *pr_parse_expression(pool *, int *, char **);
+unsigned char pr_class_and_expression(char **);
 unsigned char pr_class_or_expression(char **);
 unsigned char pr_group_and_expression(char **);
 unsigned char pr_group_or_expression(char **);

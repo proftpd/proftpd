@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.100 2003-02-24 02:37:18 castaglia Exp $
+ * $Id: dirtree.c,v 1.101 2003-02-26 04:30:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -819,6 +819,35 @@ array_header *pr_parse_expression(pool *p, int *argc, char **argv) {
     *argc = 0;
 
   return acl;
+}
+
+/* Boolean "class-expression" AND matching, returns TRUE if the expression
+ * evaluates to TRUE.
+ */
+unsigned char pr_class_and_expression(char **expr) {
+  unsigned char found;
+  char *class;
+
+  if (!session.class)
+    return FALSE;
+
+  for (; *expr; expr++) {
+    class = *expr;
+    found = FALSE;
+
+    if (*class == '!') {
+      found = !found;
+      class++;
+    }
+
+    if (strcmp(session.class->name, class) == 0)
+      found = !found;
+
+    if (!found)
+      return FALSE;
+  }
+
+  return TRUE;
 }
 
 /* Boolean "class-expression" OR matching, returns TRUE if the expression
