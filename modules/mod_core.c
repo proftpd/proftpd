@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.41 2000-08-02 05:25:24 macgyver Exp $
+ * $Id: mod_core.c,v 1.42 2000-08-02 21:46:15 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -270,6 +270,8 @@ MODRET set_sysloglevel(cmd_rec *cmd) {
     CONF_ERROR(cmd, "SyslogLevel requires level keyword: one of "
 	       "emerg/alert/crit/error/warn/notice/info/debug");
   }
+  
+  return HANDLED(cmd);
 }
 
 MODRET set_serverident(cmd_rec *cmd) {
