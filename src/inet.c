@@ -26,6 +26,7 @@
 
 /*
  * Inet support functions, many wrappers for netdb functions
+ * $Id: inet.c,v 1.68 2003-06-12 02:08:13 castaglia Exp $
  */
 
 
