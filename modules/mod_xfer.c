@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.126 2003-02-19 00:01:29 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.127 2003-02-24 18:39:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -487,17 +487,19 @@ static void xfer_rate_sigmask(unsigned char block) {
     sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
 }
 
-/* Returns the difference, in secs, between the given timeval and now. */
+/* Returns the difference, in milliseconds, between the given timeval and
+ * now.
+ */
 static long xfer_rate_since(struct timeval *then) {
   struct timeval now;
   gettimeofday(&now, NULL);
 
-  return ((now.tv_sec - then->tv_sec) * 1000000L +
-    (now.tv_usec - then->tv_usec));
+  return (((now.tv_sec - then->tv_sec) * 1000L) +
+    ((now.tv_usec - then->tv_usec) / 1000L));
 }
 
 static void xfer_rate_throttle(off_t xferlen) {
-  long ideal = 0.0, elapsed = 0.0;
+  long ideal = 0, elapsed = 0;
 
   /* Calculate the time interval since the transfer of data started. */
   elapsed = xfer_rate_since(&session.xfer.start_time);
@@ -542,7 +544,7 @@ static void xfer_rate_throttle(off_t xferlen) {
     }
   }
 
-  ideal = xferlen * 1000000.0 / xfer_rate_bps;
+  ideal = xferlen * 1000L / xfer_rate_bps;
 
   if (ideal > elapsed) {
     struct timeval tv;
