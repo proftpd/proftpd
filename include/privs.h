@@ -24,7 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* $Id: privs.h,v 1.23 2003-11-09 22:59:28 castaglia Exp $
+/* $Id: privs.h,v 1.24 2004-03-10 01:31:30 castaglia Exp $
  */
 
 #ifndef PR_PRIVS_H
@@ -145,7 +145,7 @@
             "setregid(session.gid, PR_ROOT_GID): %s", strerror(errno)); \
       } \
       if (setregid(session.gid, session.gid)) \
-        pr_log_pri(PR_LOG_ERR, "PRIVS_RELINQUISH: unable to setregid(session.jid, " \
+        pr_log_pri(PR_LOG_ERR, "PRIVS_RELINQUISH: unable to setregid(session.gid, " \
           "session.gid): %s", strerror(errno)); \
       if (geteuid() != PR_ROOT_UID) { \
         if (setreuid(session.uid, PR_ROOT_UID)) \
