@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_quotatab_sql.c,v 1.2 2003-12-09 19:57:16 castaglia Exp $
+ * $Id: mod_quotatab_sql.c,v 1.3 2004-05-22 23:59:42 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -642,7 +642,7 @@ static int sqltab_sess_init(void) {
 
     /* Make sure the file exists. */
     PRIVS_ROOT
-    if (unlink(sqltab_lock_file) < 0)
+    if (unlink(sqltab_lock_file) < 0 && errno != ENONENT)
       quotatab_log("error: unable to delete QuotaLock '%s': %s",
         sqltab_lock_file, strerror(errno));
     if ((sqltab_lock_fd = open(sqltab_lock_file, O_RDWR|O_CREAT, 0600)) < 0) {
