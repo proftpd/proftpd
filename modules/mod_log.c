@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.47 2003-01-14 03:31:01 castaglia Exp $
+ * $Id: mod_log.c,v 1.48 2003-01-16 02:04:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -591,19 +591,36 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
   case META_DIR_PATH:
     argp = arg;
 
-    if (!strcmp(cmd->argv[0], C_CDUP) || !strcmp(cmd->argv[0], C_CWD) ||
-        !strcmp(cmd->argv[0], C_MKD) || !strcmp(cmd->argv[0], C_RMD) ||
-        !strcmp(cmd->argv[0], C_XCWD) || !strcmp(cmd->argv[0], C_XCUP) ||
+    if (!strcmp(cmd->argv[0], C_CDUP) || !strcmp(cmd->argv[0], C_MKD) ||
+        !strcmp(cmd->argv[0], C_RMD) || !strcmp(cmd->argv[0], C_XCUP) ||
         !strcmp(cmd->argv[0], C_XMKD) || !strcmp(cmd->argv[0], C_XRMD)) {
+      sstrncpy(argp, dir_abs_path(p, cmd->arg, TRUE), sizeof(arg));
 
-      char *fullpath = dir_abs_path(p, cmd->arg, TRUE);
-      sstrncpy(argp, fullpath, sizeof(arg));
+    } else if (!strcmp(cmd->argv[0], C_CWD) || !strcmp(cmd->argv[0], C_XCWD)) {
+
+      /* Note: by this point in the dispatch cycle, the current working
+       * directory has already been changed.  For the CWD/XCWD commands,
+       * this means that dir_abs_path() may return an improper path,
+       * with the target directory being reported twice.  To deal with this,
+       * don't use dir_abs_path(), and use pr_fs_getvwd()/pr_fs_getcwd()
+       * instead.
+       */
+
+      if (session.chroot_path) { 
+        /* Chrooted session. */
+        sstrncpy(arg, strcmp(pr_fs_getvwd(), "/") ?
+          pdircat(p, session.chroot_path, pr_fs_getvwd(), NULL) :
+          session.chroot_path, sizeof(arg));
+
+      } else
+
+        /* Non-chrooted session. */
+        sstrncpy(arg, pr_fs_getcwd(), sizeof(arg));
 
     } else
       sstrncpy(argp, "", sizeof(arg));
 
     m++;
-
     break;
 
   case META_FILENAME:
@@ -697,7 +714,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
   case META_LOCAL_IP:
     argp = arg;
-    sstrncpy(argp, inet_ntoa(*session.c->remote_ipaddr), sizeof(arg));
+    sstrncpy(argp, inet_ntoa(*session.c->local_ipaddr), sizeof(arg));
     m++;
     break;
 

@@ -25,7 +25,7 @@
 
 /* Utility module linked to utilities to provide functions normally
  * present in full src tree.
- * $Id: misc.c,v 1.3 2003-01-05 01:31:35 jwm Exp $
+ * $Id: misc.c,v 1.4 2003-01-16 02:04:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -38,10 +38,10 @@ char *inet_validate(char *buf) {
 
   /* Validate anything returned from a DNS.
    */
-  for(p = buf; p && *p; p++) {
+  for (p = buf; p && *p; p++) {
     /* Per RFC requirements, these are all that are valid from a DNS.
      */
-    if(!isalnum(*p) && *p != '.' && *p != '-') {
+    if (!isalnum((int) *p) && *p != '.' && *p != '-') {
       /* We set it to _ because we know that's an invalid, yet safe, option
        * for a DNS entry.
        */
@@ -59,9 +59,10 @@ char *inet_validate(char *buf) {
 char *sstrcat(char *dest, const char *src, size_t n) {
   register char *d;
 
-  for(d = dest; *d && n > 1; d++, n--) ;
+  for (d = dest; *d && n > 1; d++, n--)
+    ;
 
-  while(n-- > 1 && *src)
+  while (n-- > 1 && *src)
     *d++ = *src++;
 
   *d = 0;
@@ -74,11 +75,11 @@ char *sstrcat(char *dest, const char *src, size_t n) {
 char *sstrncpy(char *dest, const char *src, size_t n) {
   register char *d = dest;
 
-  if(!dest)
+  if (!dest)
     return NULL;
 
-  if(src && *src) {
-    for(; *src && n > 1; n--)
+  if (src && *src) {
+    for (; *src && n > 1; n--)
       *d++ = *src++;
   }
 

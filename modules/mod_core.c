@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.153 2003-01-14 04:43:25 castaglia Exp $
+ * $Id: mod_core.c,v 1.154 2003-01-16 02:04:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2922,7 +2922,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
     }
   } else {
     /* virtualize the chdir */
-    ndir = dir_virtual_chdir(cmd->tmp_pool,ndir);
+    ndir = dir_canonical_vpath(cmd->tmp_pool,ndir);
     dir = dir_realpath(cmd->tmp_pool,ndir);
 
     if (!dir || !dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
@@ -2936,7 +2936,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
                  "%s%s%s", (char *) cdpath->argv[0],
                 ((char *)cdpath->argv[0])[strlen(cdpath->argv[0]) - 1] == '/' ? "" : "/",
                 ndir);
-        ndir = dir_virtual_chdir(cmd->tmp_pool,cdir);
+        ndir = dir_canonical_vpath(cmd->tmp_pool,cdir);
         dir = dir_realpath(cmd->tmp_pool,ndir);
         free(cdir);
         if (dir &&
@@ -3272,6 +3272,9 @@ MODRET core_dele(cmd_rec *cmd) {
 
 MODRET core_rnto(cmd_rec *cmd) {
   char *path;
+  unsigned char *allow_overwrite = NULL;
+  struct stat st;
+
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *preg;
 #endif
@@ -3284,7 +3287,7 @@ MODRET core_rnto(cmd_rec *cmd) {
       memset(&session.xfer, '\0', sizeof(session.xfer));
     }
 
-    pr_response_add_err(R_503,"Bad sequence of commands.");
+    pr_response_add_err(R_503, "Bad sequence of commands");
     return ERROR(cmd);
   }
 
@@ -3314,18 +3317,30 @@ MODRET core_rnto(cmd_rec *cmd) {
   }
 #endif
 
-  path = dir_canonical_path(cmd->tmp_pool,cmd->arg);
+  path = dir_canonical_path(cmd->tmp_pool, cmd->arg);
+
+  allow_overwrite = get_param_ptr(CURRENT_CONF, "AllowOverwrite", FALSE);
+
+  /* Deny the rename if AllowOverwrites are not allowed, and the destination
+   * rename file already exists.
+   */
+  if ((!allow_overwrite || *allow_overwrite == FALSE) &&
+      pr_fsio_stat(path, &st) == 0) {
+    log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
+    pr_response_add_err(R_550, "%s: Rename permission denied", cmd->arg);
+    return ERROR(cmd);
+  }
 
   if (!path || !dir_check_canon(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL)
      || pr_fsio_rename(session.xfer.path, path) == -1) {
-    pr_response_add_err(R_550, "rename: %s", strerror(errno));
+    pr_response_add_err(R_550, "Rename: %s", strerror(errno));
     destroy_pool(session.xfer.p);
     memset(&session.xfer, '\0', sizeof(session.xfer));
 
     return ERROR(cmd);
   }
 
-  pr_response_add(R_250, "rename successful");
+  pr_response_add(R_250, "Rename successful");
 
   destroy_pool(session.xfer.p);
   memset(&session.xfer, '\0', sizeof(session.xfer));

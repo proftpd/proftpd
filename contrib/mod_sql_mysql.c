@@ -1243,7 +1243,7 @@ MODRET cmd_escapestring(cmd_rec * cmd)
  *  HANDLED(cmd)                        -- passwords match
  *  ERROR_INT(cmd, PR_AUTH_NOPWD)       -- missing password
  *  ERROR_INT(cmd, PR_AUTH_BADPWD)      -- passwords don't match
- *  ERROR_INT(cmd, PR_ AUTH_DISABLEPWD) -- password is disabled
+ *  ERROR_INT(cmd, PR_AUTH_DISABLEPWD) -- password is disabled
  *  ERROR_INT(cmd, PR_AUTH_AGEPWD)      -- password is aged
  *  ERROR(cmd)                          -- unknown error
  *

@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.55 2003-01-02 18:25:28 castaglia Exp $
+ * $Id: support.c,v 1.56 2003-01-16 02:04:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -327,20 +327,7 @@ char *dir_canonical_path(pool *p, const char *path) {
   return pstrdup(p, buf);
 }
 
-/* dir_realpath() is needed to properly dereference symlinks (getcwd() may
- * not work if permissions cause problems somewhere up the tree).
- */
-
-char *dir_realpath(pool *p, const char *path) {
-  char buf[MAXPATHLEN + 1] = {'\0'};
-
-  if (pr_fs_resolve_partial(path, buf, MAXPATHLEN, 0) == -1)
-    return NULL;
-
-  return pstrdup(p, buf);
-}
-
-char *dir_virtual_chdir(pool *p, const char *path) {
+char *dir_canonical_vpath(pool *p, const char *path) {
   char buf[MAXPATHLEN + 1]  = {'\0'};
   char work[MAXPATHLEN + 1] = {'\0'};
 
@@ -352,6 +339,19 @@ char *dir_virtual_chdir(pool *p, const char *path) {
     pr_fs_dircat(work, sizeof(work), pr_fs_getvwd(), path);
 
   pr_fs_clean_path(work, buf, MAXPATHLEN);
+  return pstrdup(p, buf);
+}
+
+/* dir_realpath() is needed to properly dereference symlinks (getcwd() may
+ * not work if permissions cause problems somewhere up the tree).
+ */
+
+char *dir_realpath(pool *p, const char *path) {
+  char buf[MAXPATHLEN + 1] = {'\0'};
+
+  if (pr_fs_resolve_partial(path, buf, MAXPATHLEN, 0) == -1)
+    return NULL;
+
   return pstrdup(p, buf);
 }
 

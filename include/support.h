@@ -25,7 +25,7 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.17 2003-01-02 18:25:18 castaglia Exp $
+ * $Id: support.h,v 1.18 2003-01-16 02:04:46 castaglia Exp $
  */
 
 #ifndef PR_SUPPORT_H
@@ -67,8 +67,8 @@ char *dir_interpolate(pool *, const char *);
 char *dir_abs_path(pool *, const char *, int);
 char *dir_realpath(pool *, const char *);
 char *dir_canonical_path(pool *, const char *);
+char *dir_canonical_vpath(pool *, const char *);
 char *dir_best_path(pool *, const char *);
-char *dir_virtual_chdir(pool *, const char *);
 
 void pr_exit_register_handler(void (*)(void));
 void remove_exit_handlers(void);
