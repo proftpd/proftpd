@@ -2975,7 +2975,7 @@ SYSCONFDIR=`eval echo $sysconfdir`
 
 
 
-ac_lib_objs="pr_fnmatch.o strsep.o vsnprintf.o glibc-glob.o glibc-mkstemp.o pr-syslog.o pwgrent.o"
+ac_lib_objs="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-mkstemp.o pr-syslog.o pwgrent.o"
 ac_pr_check_getopt="yes"
 
 
