@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.26 2003-10-18 23:48:26 castaglia Exp $
+ * $Id: fsio.c,v 1.27 2003-10-22 06:49:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -508,7 +508,7 @@ pr_fs_t *pr_create_fs(pool *p, const char *name) {
   fs->fs_pool = rec_pool;
 
   /* Once layered pr_fs_ts are fully supported, this will be used/set,
-   * probably in insert_fs(), as a linked-list of pr_fs_t's interested
+   * probably in pr_insert_fs(), as a linked list of pr_fs_t's interested
    * in the same path.
    */
   fs->fs_next = fs->fs_prev = NULL;
@@ -585,6 +585,7 @@ int pr_insert_fs(pr_fs_t *fs, const char *path) {
       if (strcmp(fsi->fs_path, cleaned_path) == 0) {
         log_pri(LOG_DEBUG, "error: duplicate fs paths not allowed: '%s'",
           cleaned_path);
+        errno = EEXIST;
         return FALSE;
       }
     }
