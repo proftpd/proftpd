@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.94 2002-08-12 17:30:04 castaglia Exp $
+ * $Id: main.c,v 1.95 2002-08-14 16:17:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1004,7 +1004,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
   log_pri(LOG_INFO, "FTP session opened.");
 
   while(1) {
-    handle_signals();
+    pr_handle_signals();
 
     if (io_telnet_gets(buf, sizeof(buf)-1, session.c->inf,
         session.c->outf) == NULL) {
@@ -1703,7 +1703,7 @@ static void server_loop(void) {
       if (errno == EINTR) {
 
         /* A signal was received; make sure it is properly handled. */
-        handle_signals();
+        pr_handle_signals();
         continue;
       }
 
@@ -1736,7 +1736,7 @@ static void server_loop(void) {
 	}
     }
 
-    handle_signals();
+    pr_handle_signals();
 
     /* Fork off servers to handle each connection
      * our job is to get back to answering connections asap,
@@ -1760,7 +1760,7 @@ static void server_loop(void) {
  * race conditions.
  */
 
-void handle_signals(void) {
+void pr_handle_signals(void) {
 
   while (recvd_signal_flags) {
 

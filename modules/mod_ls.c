@@ -24,7 +24,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.59 2002-08-12 17:30:04 castaglia Exp $
+ * $Id: mod_ls.c,v 1.60 2002-08-14 16:17:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,7 +44,8 @@ static int listdir(cmd_rec*, pool*, const char *name);
 
 static int matches = 0;
 static char *default_options;
-static int showsymlinks, showsymlinks_hold, timesgmt = 0;
+static unsigned char list_show_symlinks = TRUE, list_times_gmt = FALSE;
+static unsigned char show_symlinks_hold;
 static int cmp(const void *a, const void *b);
 static char *fakeuser, *fakegroup;
 static mode_t fakemode;
@@ -121,27 +122,26 @@ static config_rec *_find_ls_limit(char *ftp_cmd) {
   return NULL;
 }
 
-static void push_cwd(char *_cwd, int *symhold) {
-  if(!_cwd)
+static void push_cwd(char *_cwd, unsigned char *symhold) {
+  if (!_cwd)
     _cwd = cwd;
 
-  if(!symhold)
-    symhold = &showsymlinks_hold;
+  if (!symhold)
+    *symhold = show_symlinks_hold;
 
   sstrncpy(_cwd, fs_getcwd(), MAXPATHLEN + 1);
-  *symhold = showsymlinks;
+  *symhold = list_show_symlinks;
 }
 
-static void pop_cwd(char *_cwd, int *symhold)
-{
-  if(!_cwd)
+static void pop_cwd(char *_cwd, unsigned char *symhold) {
+  if (!_cwd)
     _cwd = cwd;
 
-  if(!symhold)
-    symhold = &showsymlinks_hold;
+  if (!symhold)
+    *symhold = show_symlinks_hold;
 
-  fs_chdir(_cwd,*symhold);
-  showsymlinks = *symhold;
+  fs_chdir(_cwd, *symhold);
+  list_show_symlinks = *symhold;
 }
 
 static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden)
@@ -165,12 +165,12 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden)
   else
     ret = dir_check(p,cmd->argv[0],cmd->group,fullpath,hidden);
   
-  if(session.dir_config) {
-    showsymlinks = get_param_int(session.dir_config->subset,
-                                 "ShowSymlinks",FALSE);
+  if (session.dir_config) {
+    unsigned char *tmp = get_param_ptr(session.dir_config->subset,
+      "ShowSymlinks", FALSE);
 
-    if(showsymlinks == -1)
-      showsymlinks = 1;
+    if (tmp)
+      list_show_symlinks = *tmp;
   }
 
   _fakemode = get_param_int(CURRENT_CONF,"DirFakeMode",FALSE);
@@ -204,12 +204,12 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden)
   
   ret = dir_check(p,cmd->argv[0],cmd->group,fullpath,hidden);
 
-  if(session.dir_config) {
-    showsymlinks = get_param_int(session.dir_config->subset,
-                                 "ShowSymlinks",FALSE);
+  if (session.dir_config) {
+    unsigned char *tmp = get_param_ptr(session.dir_config->subset,
+      "ShowSymlinks",FALSE);
 
-    if(showsymlinks == -1)
-      showsymlinks = 1;
+    if (tmp)
+      list_show_symlinks = *tmp;
   }
 
   _fakemode = get_param_int(CURRENT_CONF,"DirFakeMode",FALSE);
@@ -269,7 +269,7 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
   if(fs_lstat(name,&st) == 0) {
     suffix[0] = suffix[1] = '\0';
 
-    if(S_ISLNK(st.st_mode) && (opt_L || !showsymlinks)) {
+    if(S_ISLNK(st.st_mode) && (opt_L || !list_show_symlinks)) {
       /* attempt to fully dereference symlink */
       struct stat l_st;
 
@@ -306,12 +306,13 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
       return 0;
 
     mtime = st.st_mtime;
-    if(timesgmt)
-      t = gmtime((time_t*) &mtime);
+
+    if (list_times_gmt)
+      t = gmtime((time_t *) &mtime);
     else 
-      t = localtime((time_t*) &mtime);
+      t = localtime((time_t *) &mtime);
     
-    if(!t) {
+    if (!t) {
       add_response_err(R_421,"Fatal error (localtime() returned NULL?!?)");
       return -1;
     }
@@ -876,7 +877,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name)
     r = dir;
     while (opt_R && r != s) {
       char cwd[MAXPATHLEN + 1] = {'\0'};
-      int symhold;
+      unsigned char symhold;
 
       if (*r && (strcmp(*r, ".") == 0 || strcmp(*r, "..") == 0)) {
         r++;
@@ -886,12 +887,12 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name)
       /* Add some signal processing to this while loop, as it can
        * potentially recurse deeply.
        */
-      handle_signals();      
+      pr_handle_signals();      
 
       push_cwd(cwd, &symhold);
      
       if (*r && ls_perms_full(workp,cmd,(char*)*r,NULL) &&
-          !fs_chdir_canon(*r, !opt_L && showsymlinks)) {
+          !fs_chdir_canon(*r, !opt_L && list_show_symlinks)) {
         char *subdir;
 
 	if (strcmp(name,".") == 0)
@@ -1005,11 +1006,10 @@ void _parse_options(char **opt, int *glob_flags)
   }
 }
 
-/* The main work for LIST and STAT (not NLST).
-   Return -1 on error, 0 if successful.  */
-static
-int dolist(cmd_rec *cmd, const char *opt, int clearflags)
-{
+/* The main work for LIST and STAT (not NLST).  Returns -1 on error, 0 if
+ * successful.
+ */
+static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
   int skiparg = 0;
   int glob_flags = GLOB_PERIOD;
   char *arg = (char*)opt;
@@ -1117,7 +1117,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
 	  target_mode = st.st_mode;
 
           if(S_ISLNK(st.st_mode) && (lmode = file_mode((char*)*path)) != 0) {
-            if(opt_L || !showsymlinks)
+            if(opt_L || !list_show_symlinks)
               st.st_mode = lmode;
             target_mode = lmode;
           }
@@ -1148,7 +1148,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
       while(path && *path) {
         if(**path && ls_perms_full(cmd->tmp_pool,cmd,*path,NULL)) {
           char cwd[MAXPATHLEN + 1] = {'\0'};
-          int symhold;
+          unsigned char symhold;
 
           if (!justone) {
             if (opt_STAT) {
@@ -1159,9 +1159,9 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
               sendline("\n%s:\n", *path);
           }
 
-          push_cwd(cwd,&symhold);
+          push_cwd(cwd, &symhold);
 
-          if(!fs_chdir_canon(*path, !opt_L && showsymlinks)) {
+          if(!fs_chdir_canon(*path, !opt_L && list_show_symlinks)) {
             int ret = listdir(cmd, NULL, *path);
             pop_cwd(cwd, &symhold);
 
@@ -1260,7 +1260,8 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
        file[MAXPATHLEN + 1] = {'\0'};
   char cwd[MAXPATHLEN + 1]  = {'\0'};
   pool *workp;
-  int curdir = 0, i, symhold, count = 0, hidden = 0;
+  unsigned char symhold;
+  int curdir = 0, i, count = 0, hidden = 0;
   mode_t mode;
   
   config_rec *c = NULL;
@@ -1271,11 +1272,11 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   if (!*dir || (*dir == '.' && !dir[1]) || strcmp(dir, "./") == 0) {
     curdir = 1;
     dir = "";
-  } else {
-    push_cwd(cwd,&symhold);
-  }
+
+  } else
+    push_cwd(cwd, &symhold);
   
-  if (fs_chdir_canon(dir, !opt_L && showsymlinks)) {
+  if (fs_chdir_canon(dir, !opt_L && list_show_symlinks)) {
     destroy_pool(workp);
     return 0;
   }
@@ -1356,15 +1357,13 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
 }
 
 /* The LIST command.  */
-MODRET genericlist(cmd_rec *cmd)
-{
-  int err;
+MODRET genericlist(cmd_rec *cmd) {
+  int res = 0;
   long _fakemode;
+  unsigned char *tmp = NULL;
 
-  showsymlinks = get_param_int(TOPLEVEL_CONF,"ShowSymlinks",FALSE);
-
-  if(showsymlinks == -1)
-    showsymlinks = 1;
+  if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE)) != NULL)
+    list_show_symlinks = *tmp;
 
   default_options = get_param_ptr(TOPLEVEL_CONF,"LsDefaultOptions",FALSE);
 
@@ -1383,23 +1382,29 @@ MODRET genericlist(cmd_rec *cmd)
     fakegroup = session.group;
 
   _fakemode = (long)get_param_int(TOPLEVEL_CONF,"DirFakeMode",FALSE);
-  timesgmt = get_param_int(TOPLEVEL_CONF, "TimesGMT", FALSE);
-  
-  if(_fakemode != -1) {
+
+  if (_fakemode != -1) {
     fakemode = (mode_t)_fakemode;
     fakemodep = 1;
+
   } else
     fakemodep = 0;
 
-  err = dolist(cmd,cmd->arg,TRUE);
-  if(XFER_ABORTED) {
-    data_abort(0,0);
-    err = -1;
+  if ((tmp = get_param_ptr(TOPLEVEL_CONF, "TimesGMT", FALSE)) != NULL)
+    list_times_gmt = *tmp;
+
+  res = dolist(cmd, cmd->arg, TRUE);
+
+  if (XFER_ABORTED) {
+    data_abort(0, 0);
+    res = -1;
+
   } else if(session.flags & SF_XFER)
     ls_done(cmd);
 
   opt_l = 0;
-  return (err == -1 ? ERROR(cmd) : HANDLED(cmd));
+
+  return (res == -1 ? ERROR(cmd) : HANDLED(cmd));
 }
 
 MODRET fini_nlst(cmd_rec *cmd)
@@ -1414,10 +1419,10 @@ MODRET list_cleanup(cmd_rec *cmd)
   return DECLINED(cmd);
 }
 
-MODRET cmd_stat(cmd_rec *cmd)
-{
+MODRET cmd_stat(cmd_rec *cmd) {
   char *arg = cmd->arg;
   long _fakemode;
+  unsigned char *tmp = NULL;
 
   if(cmd->argc < 2) {
     add_response_err(R_500,"'%s' not understood.",get_full_cmd(cmd));
@@ -1431,10 +1436,8 @@ MODRET cmd_stat(cmd_rec *cmd)
   
   while(arg && *arg && isspace((UCHAR)*arg)) arg++;
   
-  showsymlinks = get_param_int(TOPLEVEL_CONF,"ShowSymlinks",FALSE);
-
-  if(showsymlinks == -1)
-    showsymlinks = 1;
+  if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE)) != NULL)
+    list_show_symlinks = *tmp;
 
   default_options = get_param_ptr(TOPLEVEL_CONF,"LsDefaultOptions",FALSE);
 
@@ -1453,13 +1456,15 @@ MODRET cmd_stat(cmd_rec *cmd)
     fakegroup = session.group;
 
   _fakemode = (long)get_param_int(TOPLEVEL_CONF,"DirFakeMode",FALSE);
-  timesgmt = get_param_int(TOPLEVEL_CONF, "TimesGMT", FALSE);
   
   if(_fakemode != -1) {
     fakemode = (mode_t)_fakemode;
     fakemodep = 1;
   } else
     fakemodep = 0;
+
+  if ((tmp = get_param_ptr(TOPLEVEL_CONF, "TimesGMT", FALSE)) != NULL)
+    list_times_gmt = *tmp;
 
   opt_C = opt_d = opt_F = opt_R;
   opt_a = opt_l = opt_STAT = 1;
@@ -1484,163 +1489,163 @@ MODRET cmd_list(cmd_rec *cmd)
  * matching the glob(s).
  */
 
-MODRET cmd_nlst(cmd_rec *cmd)
-{
-	char	*target,line[MAXPATHLEN + 1] = {'\0'};
-	int	count = 0,ret = 0, hidden = 0;
+MODRET cmd_nlst(cmd_rec *cmd) {
+  char *target,line[MAXPATHLEN + 1] = {'\0'};
+  int count = 0,ret = 0, hidden = 0;
+  unsigned char *tmp = NULL;
 
-	/* In case the client used NLST instead of LIST
-	 */
+  /* In case the client used NLST instead of LIST
+   */
+  if (cmd->argc > 1 && cmd->argv[1][0] == '-')
+    return genericlist(cmd);
 
-	if(cmd->argc > 1 && cmd->argv[1][0] == '-')
-		return genericlist(cmd);
-
-	showsymlinks = get_param_int(TOPLEVEL_CONF,"ShowSymlinks",FALSE);
-
-	if(showsymlinks == -1)
-		showsymlinks = 1;
+  if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE)) != NULL)
+    list_show_symlinks = *tmp;
 	
-	if(cmd->argc == 1)
-		target = ".";
-	else
-		target = cmd->arg;
+  if (cmd->argc == 1)
+    target = ".";
+  else
+    target = cmd->arg;
 	
-	/* If the target starts with '~' ... */
-	if(*target == '~') {
-		char pb[MAXPATHLEN + 1] = {'\0'};
-		struct passwd *pw;
-		int i;
-		const char *p;
+  /* If the target starts with '~' ... */
+  if(*target == '~') {
+    char pb[MAXPATHLEN + 1] = {'\0'};
+    struct passwd *pw = NULL;
+    int i = 0;
+    const char *p = target;
 
-		i = 0;
-		p = target;
-		p++;
+    p++;
 
-		while(*p && *p !='/' && i<MAXPATHLEN)
-			pb[i++] = *p++;
-		pb[i] = '\0';
+    while (*p && *p !='/' && i < MAXPATHLEN)
+      pb[i++] = *p++;
+    pb[i] = '\0';
 
-		if((pw = auth_getpwnam(cmd->tmp_pool,i ? pb : session.user))) {
-		  snprintf(pb, sizeof(pb), "%s%s",pw->pw_dir,p);
-		  sstrncpy(line, pb, sizeof(line));
-		  target = line;
-		}
-	}
+    if ((pw = auth_getpwnam(cmd->tmp_pool,i ? pb : session.user))) {
+      snprintf(pb, sizeof(pb), "%s%s", pw->pw_dir, p);
+      sstrncpy(line, pb, sizeof(line));
+      target = line;
+    }
+  }
 	
-	/* If the target is a glob, get the listing of files/dirs to send
-	 */
+  /* If the target is a glob, get the listing of files/dirs to send
+   */
+  if (use_globbing && strpbrk(target, "{[*?") != NULL) {
+    glob_t g;
+    char **path,*p;
 
-	if (use_globbing && strpbrk(target, "{[*?") != NULL) {
-		glob_t g;
-		char **path,*p;
+    /* Make sure the glob_t is initialized */
+    memset(&g, '\0', sizeof(glob_t));
 
-                /* make sure the glob_t is initialized */
-                memset(&g, '\0', sizeof(glob_t));
+    if (fs_glob(target, GLOB_PERIOD,NULL, &g) != 0) {
+      add_response_err(R_550, "No files found");
+      return ERROR(cmd);
+    }
 
-		
-		if(fs_glob(target,GLOB_PERIOD,NULL,&g) != 0) {
-			add_response_err(R_550,"No files found.");
-			return ERROR(cmd);
-		}
+    /* Iterate through each matching entry */
+    path = g.gl_pathv;
+    while (path && *path && ret >= 0) {
+      struct stat st;
+      int hidden = 0;
 
-		/* Iterate through each matching entry */
-		path = g.gl_pathv;
-		while(path && *path && ret >= 0) {
-			struct stat st;
-                        int hidden = 0;
+      p = *path;
+      path++;
 
-			p = *path; path++;
+      if (*p == '.' && (!opt_A || is_dotdir(p)))
+        continue;
 
-			if(*p == '.' && (!opt_A || is_dotdir(p)))
-				continue;
+      if (fs_stat(p, &st) == 0) {
+        /* If it's a directory, hand off to nlstdir */
+        if (S_ISDIR(st.st_mode))
+          ret = nlstdir(cmd, p);
 
-			if(fs_stat(p,&st) == 0) {
-				/* If it's a directory, hand off to nlstdir */
-				if(S_ISDIR(st.st_mode))
-					ret = nlstdir(cmd,p);
-				else if(S_ISREG(st.st_mode) &&
-						ls_perms(cmd->tmp_pool,cmd,p,&hidden)) {
-                                        /* Don't display hidden files */
-                                        if(hidden)
-                                          continue;
+        else if (S_ISREG(st.st_mode) &&
+            ls_perms(cmd->tmp_pool, cmd, p, &hidden)) {
+          /* Don't display hidden files */
+          if (hidden)
+            continue;
                                         
-					ret = nlstfile(cmd,p);
-                                }
-				if(ret > 0)
-					count += ret;
-			}
-		}
-		fs_globfree(&g);
-	} else {
-		/* A single target, if it's a directory, list the contents,
-		 * if it's a file, just list the file.
-		 */
-		struct stat st;
+          ret = nlstfile(cmd,p);
+        }
+
+        if (ret > 0)
+          count += ret;
+      }
+    }
+
+    fs_globfree(&g);
+
+  } else {
+
+    /* A single target. If it's a directory, list the contents; if it's a
+     * file, just list the file.
+     */
+    struct stat st;
 		
-		if(!ls_perms(cmd->tmp_pool,cmd,target,&hidden)) {
-                    add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
-		    return ERROR(cmd);
-		}
+    if (!ls_perms(cmd->tmp_pool, cmd, target, &hidden)) {
+      add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+      return ERROR(cmd);
+    }
 
+    /* Don't display hidden files */
+    if (hidden) {
+      config_rec *c = NULL;
+
+      if ((c = _find_ls_limit(target)) != NULL &&
+          get_param_int(c->subset, "IgnoreHidden", FALSE) == TRUE)
+        add_response_err(R_550, "%s: %s", cmd->arg, strerror(ENOENT));
+      else
+        add_response_err(R_550, "%s: %s", cmd->arg, strerror(EACCES));
+
+      return ERROR(cmd);
+    }
                 
-                /* Don't display hidden files */
-                if(hidden) {
-                  config_rec *c;
+    /* Make sure the target is a file or directory,
+     * and that we have access to it.
+     */
+    if (fs_stat(target, &st) < 0) {
+      add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+      return ERROR(cmd);
+    }
 
-                  if((c = _find_ls_limit(target)) != NULL &&
-                      get_param_int(c->subset, "IgnoreHidden", FALSE) == TRUE)
-                    add_response_err(R_550,"%s: %s", cmd->arg, strerror(ENOENT));
-                  else
-                    add_response_err(R_550,"%s: %s", cmd->arg, strerror(EACCES));
+    if (S_ISREG(st.st_mode))
+      ret = nlstfile(cmd, target);
 
-                  return ERROR(cmd);
-                }
-                
-		/* Make sure the target is a file or directory,
-		 * and that we have access to it.
-		 */
-		if(fs_stat(target,&st) < 0) {
-			add_response_err(R_550,"%s: %s",
-					cmd->arg,strerror(errno));
-			return ERROR(cmd);
-		}
+    else if (S_ISDIR(st.st_mode)) {
+      if (access_check(target, R_OK) != 0) {
+        add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+        return ERROR(cmd);
+      }
 
-		if(S_ISREG(st.st_mode))
-			ret = nlstfile(cmd,target);
-		else if(S_ISDIR(st.st_mode)) {
-			if(access_check(target,R_OK) != 0) {
-				add_response_err(R_550,"%s: %s",
-						cmd->arg,strerror(errno));
-				return ERROR(cmd);
-			}
-			ret = nlstdir(cmd,target);
-		} else {
-			add_response_err(R_550, "%s: Not a regular file",
-					cmd->arg);
-			return ERROR(cmd);
-		}
+      ret = nlstdir(cmd,target);
+
+    } else {
+      add_response_err(R_550, "%s: Not a regular file", cmd->arg);
+      return ERROR(cmd);
+    }
 		
-		if(ret > 0)
-			count += ret;
-	}
-	
-	if(XFER_ABORTED) {
-		data_abort(0,0);
-		ret = -1;
-	} else {
-		if(ret == 0 && !count && (session.flags & SF_XFER) == 0) {
-			add_response_err(R_550,"No files found.");
-			ret = -1;
-		} else if(session.flags & SF_XFER)
-			ls_done(cmd);
+    if (ret > 0)
+      count += ret;
+  }
 
-		/* Note that the data connection is NOT cleared here,
-		 * as an error in NLST still leaves data ready for
-		 * another command
-		 */
-	}
+  if (XFER_ABORTED) {
+    data_abort(0, 0);
+    ret = -1;
 
-	return (ret < 0 ? ERROR(cmd) : HANDLED(cmd));
+  } else {
+    if (ret == 0 && !count && (session.flags & SF_XFER) == 0) {
+      add_response_err(R_550, "No files found");
+      ret = -1;
+
+    } else if (session.flags & SF_XFER)
+
+      /* Note that the data connection is NOT cleared here,
+       * as an error in NLST still leaves data ready for
+       * another command
+       */
+      ls_done(cmd);
+  }
+
+  return (ret < 0 ? ERROR(cmd) : HANDLED(cmd));
 }
 
 MODRET ls_chk_glob(cmd_rec *cmd) {
@@ -1730,6 +1735,24 @@ MODRET set_lsdefaultoptions(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+MODRET set_showsymlinks(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
 MODRET set_useglobbing(cmd_rec *cmd) {
   int bool = -1;
   config_rec *c = NULL;
@@ -1751,6 +1774,7 @@ static conftable ls_conftab[] = {
   { "DirFakeGroup",	set_dirfakegroup,			NULL },
   { "DirFakeMode",	set_dirfakemode,			NULL },
   { "LsDefaultOptions",	set_lsdefaultoptions,			NULL },
+  { "ShowSymlinks",	set_showsymlinks,			NULL },
   { "UseGlobbing",	set_useglobbing,			NULL },
   { NULL,		NULL,					NULL }
 };

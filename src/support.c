@@ -26,7 +26,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.34 2002-07-26 17:02:13 castaglia Exp $
+ * $Id: support.c,v 1.35 2002-08-14 16:17:35 castaglia Exp $
  */
 
 /* History Log:
@@ -99,13 +99,12 @@ typedef struct _sched {
 static xaset_t *scheds = NULL;
 static xaset_t *exits = NULL;
 
-/* performs "hard block" of all important signals (as opposed to 
- * block_alarms) */
-static void _block_signals(int block)
-{
+/* Masks/unmasks all important signals (as opposed to * block_alarms)
+ */
+static void mask_signals(unsigned char block) {
   static sigset_t sigset;
 
-  if(block) {
+  if (block) {
     sigemptyset(&sigset);
 
     sigaddset(&sigset,SIGTERM);
@@ -123,18 +122,23 @@ static void _block_signals(int block)
     sigaddset(&sigset,SIGHUP);
 
     sigprocmask(SIG_BLOCK,&sigset,NULL);
-  } else
+
+  } else {
     sigprocmask(SIG_UNBLOCK,&sigset,NULL);
+
+    /* If unmasking, handle any signals that may have been delivered while
+     * masked.
+     */
+    pr_handle_signals();
+  }
 }
 
-void block_signals(void)
-{
-  _block_signals(1);
+void block_signals(void) {
+  mask_signals(TRUE);
 }
 
-void unblock_signals(void)
-{
-  _block_signals(0);
+void unblock_signals(void) {
+  mask_signals(FALSE);
 }
 
 void add_exit_handler(void (*exit)()) {

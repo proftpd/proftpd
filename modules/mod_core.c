@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.97 2002-07-24 22:20:20 castaglia Exp $
+ * $Id: mod_core.c,v 1.98 2002-08-14 16:17:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1143,22 +1143,6 @@ MODRET set_syslogfacility(cmd_rec *cmd)
   CONF_ERROR(cmd, "argument must be a valid syslog facility");
 }
 
-MODRET set_showsymlinks(cmd_rec *cmd) {
-  int bool = -1;
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-
-  if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
-
-  c = add_config_param(cmd->argv[0], 1, bool);
-  c->flags |= CF_MERGEDOWN;
-
-  return HANDLED(cmd);
-}
-
 MODRET set_timesgmt(cmd_rec *cmd) {
   int bool = -1;
   config_rec *c = NULL;
@@ -1167,9 +1151,12 @@ MODRET set_timesgmt(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
-  c = add_config_param(cmd->argv[0], 1, (void*) bool);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
+
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
@@ -1220,26 +1207,32 @@ MODRET set_denyfilter(cmd_rec *cmd) {
 
 MODRET set_passiveports(cmd_rec *cmd) {
   int pasv_min_port, pasv_max_port;
+  config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  pasv_min_port = atoi((char*)cmd->argv[1]);
-  pasv_max_port = atoi((char*)cmd->argv[2]);
+  pasv_min_port = atoi(cmd->argv[1]);
+  pasv_max_port = atoi(cmd->argv[2]);
 
   /* Sanity check */
-  if(pasv_min_port <= 0 || pasv_min_port > 65535)
+  if (pasv_min_port <= 0 || pasv_min_port > 65535)
     CONF_ERROR(cmd, "min port must be allowable port number");
-  if(pasv_max_port <= 0 || pasv_max_port > 65535)
+
+  if (pasv_max_port <= 0 || pasv_max_port > 65535)
     CONF_ERROR(cmd, "max port must be allowable port number");
 
-  if(pasv_min_port < 1024 || pasv_max_port < 1024)
+  if (pasv_min_port < 1024 || pasv_max_port < 1024)
     CONF_ERROR(cmd, "port numbers must be above 1023");
 
-  if(pasv_max_port < pasv_min_port)
+  if (pasv_max_port < pasv_min_port)
     CONF_ERROR(cmd, "min port must be equal to or less than max port");
 
-  add_config_param(cmd->argv[0], 2, (void*)pasv_min_port, (void*)pasv_max_port);
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = pasv_min_port;
+  c->argv[1] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[1]) = pasv_max_port;
 
   return HANDLED(cmd);
 }
@@ -1262,7 +1255,10 @@ MODRET set_allowforeignaddress(cmd_rec *cmd) {
   if ((bool = get_boolean(cmd,1)) == -1)
     CONF_ERROR(cmd,"expected boolean argument.");
 
-  c = add_config_param(cmd->argv[0], 1, (void *) bool);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
+
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
@@ -2143,8 +2139,7 @@ MODRET cmd_pwd(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET cmd_pasv(cmd_rec *cmd)
-{
+MODRET cmd_pasv(cmd_rec *cmd) {
   union {
     p_in_addr_t addr;
     unsigned char u[4];
@@ -2156,25 +2151,23 @@ MODRET cmd_pasv(cmd_rec *cmd)
   } port;
 
   config_rec *c = NULL;
-  int pasv_min_port,pasv_max_port;
   
   CHECK_CMD_ARGS(cmd, 1);
 
-  /* If we already have a passive listen data connection open, kill it.
-   */
-  if(session.d) {
+  /* If we already have a passive listen data connection open, kill it. */
+  if (session.d) {
     inet_close(session.d->pool, session.d);
     session.d = NULL;
   }
 
-  if ((c = find_config(main_server->conf, CONF_PARAM, "PassivePorts", FALSE)) !=
-      NULL) {
-    pasv_min_port = (int)c->argv[0];
-    pasv_max_port = (int)c->argv[1];
+  if ((c = find_config(main_server->conf, CONF_PARAM, "PassivePorts",
+      FALSE)) != NULL) {
+    int pasv_min_port = *((int *) c->argv[0]);
+    int pasv_max_port = *((int *) c->argv[1]);
 
-    if(!(session.d = inet_create_connection_portrange(session.pool, NULL,
-				    session.c->local_ipaddr,
-				    pasv_min_port,pasv_max_port))) {
+    if (!(session.d = inet_create_connection_portrange(session.pool,
+        NULL, session.c->local_ipaddr, pasv_min_port,pasv_max_port))) {
+
       /* If not able to open a passive port in the given range, default to
        * normal behavior (using INPORT_ANY), and log the failure.  This
        * indicates a too-small range configuration.
@@ -2183,18 +2176,16 @@ MODRET cmd_pasv(cmd_rec *cmd)
 	      "%d-%d: defaulting to INPORT_ANY", pasv_min_port, pasv_max_port);
     }
   }
-
   
-  /* Open up the connection and pass it back.
-   */
-  if(!session.d)
+  /* Open up the connection and pass it back. */
+  if (!session.d)
     session.d = inet_create_connection(session.pool, NULL, -1,
-				       session.c->local_ipaddr,
-				       INPORT_ANY, FALSE);
+      session.c->local_ipaddr, INPORT_ANY, FALSE);
   
-  if(!session.d)
-    return ERROR_MSG(cmd,R_425,
-                     "Unable to build data connection: Internal error.");
+  if (!session.d) {
+    add_response_err(R_425, "Unable to build data connection: Internal error");
+    return ERROR(cmd);
+  }
   
   inet_setblock(session.pool, session.d);
   inet_listen(session.pool, session.d, 1);
@@ -2207,7 +2198,7 @@ MODRET cmd_pasv(cmd_rec *cmd)
   
   addr.addr = *session.d->local_ipaddr;
 
-  /* check for a MasqueradeAddress configuration record, and return that
+  /* Check for a MasqueradeAddress configuration record, and return that
    * addr if appropriate.
    */
   if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
@@ -2227,8 +2218,7 @@ MODRET cmd_pasv(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET cmd_port(cmd_rec *cmd)
-{
+MODRET cmd_port(cmd_rec *cmd) {
   union {
     p_in_addr_t addr;
     unsigned char u[4];
@@ -2241,7 +2231,7 @@ MODRET cmd_port(cmd_rec *cmd)
 
   char *a,*endp,*arg;
   int i,cnt = 0;
-  int allow_foreign_addr = 0;
+  unsigned char *allow_foreign_addr = NULL;
 
   CHECK_CMD_ARGS(cmd, 2);
 
@@ -2267,20 +2257,23 @@ MODRET cmd_port(cmd_rec *cmd)
       port.u[cnt++ - 4] = (unsigned char)i;
   }
 
-  if(cnt != 6 || (a && *a))
-    return ERROR_MSG(cmd,R_501,"Illegal PORT command.");
+  if (cnt != 6 || (a && *a)) {
+    add_response_err(R_501, "Illegal PORT command");
+    return ERROR(cmd);
+  }
 
-  /* Make sure that the address specified matches the address
-   * that the control connection is coming from.
+  /* Make sure that the address specified matches the address from which
+   * the control connection is coming.
    */
 
-  allow_foreign_addr = get_param_int(TOPLEVEL_CONF,"AllowForeignAddress",FALSE);
+  allow_foreign_addr = get_param_ptr(TOPLEVEL_CONF, "AllowForeignAddress",
+    FALSE);
 
-  if(allow_foreign_addr != 1) {
-    if(addr.addr.s_addr != session.c->remote_ipaddr->s_addr ||
-       !port.port) {
-      log_pri(LOG_WARNING, "Refused PORT %s (address mismatch).", cmd->arg);
-      return ERROR_MSG(cmd, R_500, "Illegal PORT command.");
+  if (allow_foreign_addr && *allow_foreign_addr == FALSE) {
+    if (addr.addr.s_addr != session.c->remote_ipaddr->s_addr || !port.port) {
+      log_pri(LOG_WARNING, "Refused PORT %s (address mismatch)", cmd->arg);
+      add_response_err(R_500, "Illegal PORT command");
+      return ERROR(cmd);
     }
   }
 
@@ -2288,25 +2281,25 @@ MODRET cmd_port(cmd_rec *cmd)
    * numbered" port, to avoid bounce attacks
    */
 
-  if(ntohs(port.port) < 1024) {
-    log_pri(LOG_WARNING, "Refused PORT %s (bounce attack).", cmd->arg);
-    return ERROR_MSG(cmd,R_500,"Illegal PORT command.");
+  if (ntohs(port.port) < 1024) {
+    log_pri(LOG_WARNING, "Refused PORT %s (bounce attack)", cmd->arg);
+    add_response_err(R_500, "Illegal PORT command");
+    return ERROR(cmd);
   }
 
   memcpy(&session.data_addr, &addr.addr, sizeof(session.data_addr));
   session.data_port = ntohs(port.port);
   session.flags &= (SF_ALL^SF_PASSIVE);
 
-  /* If we already have a data connection open, kill it.
-   */
-
-  if(session.d) {
-    inet_close(session.d->pool,session.d);
+  /* If we already have a data connection open, kill it. */
+  if (session.d) {
+    inet_close(session.d->pool, session.d);
     session.d = NULL;
   }
   
   session.flags |= SF_PORT;
-  add_response(R_200,"PORT command successful.");
+  add_response(R_200, "PORT command successful");
+
   return HANDLED(cmd);
 }
 
@@ -2390,20 +2383,19 @@ int core_chmod(cmd_rec *cmd, char *dir, mode_t mode) {
   return fs_chmod(dir,mode);
 }
 
-MODRET _chdir(cmd_rec *cmd,char *ndir)
-{
+MODRET _chdir(cmd_rec *cmd,char *ndir) {
   char *display = NULL;
   char *dir,*odir,*cdir;
   config_rec *cdpath;
-  int showsymlinks;
+  unsigned char show_symlinks = TRUE, *tmp = NULL;
   
   odir = ndir;
-  showsymlinks = get_param_int(TOPLEVEL_CONF,"ShowSymlinks",FALSE);
 
-  if(showsymlinks == -1)
-    showsymlinks = 1;
+  if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks",
+      FALSE)) != NULL)
+    show_symlinks = *tmp;
 
-  if(showsymlinks) {
+  if (show_symlinks) {
     dir = dir_realpath(cmd->tmp_pool,ndir);
 
     if(!dir || !dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
@@ -2656,8 +2648,7 @@ MODRET cmd_cdup(cmd_rec *cmd)
  * not be correct.
  */
 
-MODRET cmd_mdtm(cmd_rec *cmd)
-{
+MODRET cmd_mdtm(cmd_rec *cmd) {
   char *path;
   char buf[16] = {'\0'};
   struct tm *tm;
@@ -2671,21 +2662,29 @@ MODRET cmd_mdtm(cmd_rec *cmd)
      fs_stat(path,&sbuf) == -1) {
     add_response_err(R_550,"%s: %s",cmd->argv[1],strerror(errno));
     return ERROR(cmd);
+
   } else {
-    if(!S_ISREG(sbuf.st_mode)) {
+
+    if (!S_ISREG(sbuf.st_mode)) {
       add_response_err(R_550,"%s: not a plain file.",cmd->argv[1]);
       return ERROR(cmd);
+
     } else {
-      if (get_param_int(TOPLEVEL_CONF,"TimesGMT",FALSE))
+      unsigned char *times_gmt = get_param_ptr(TOPLEVEL_CONF,
+        "TimesGMT", FALSE);
+
+      if (times_gmt && *times_gmt == TRUE)
          tm = gmtime(&sbuf.st_mtime);
       else 
          tm = localtime(&sbuf.st_mtime);
-      if(tm)
+
+      if (tm)
         snprintf(buf, sizeof(buf), "%04d%02d%02d%02d%02d%02d",
                 tm->tm_year+1900,tm->tm_mon+1,tm->tm_mday,
                 tm->tm_hour,tm->tm_min,tm->tm_sec);
       else
         snprintf(buf, sizeof(buf), "00000000000000");        
+
       add_response(R_213,"%s",buf);
     }
   }
@@ -3240,7 +3239,6 @@ static conftable core_conftab[] = {
   { "ServerIdent",		set_serverident,		NULL },
   { "ServerName",		set_servername, 		NULL },
   { "ServerType",		set_servertype,			NULL },
-  { "ShowSymlinks",		set_showsymlinks,		NULL },
   { "SocketBindTight",		set_socketbindtight,		NULL },
   { "SyslogFacility",		set_syslogfacility,		NULL },
   { "SyslogLevel",		set_sysloglevel,		NULL },

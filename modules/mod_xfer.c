@@ -26,7 +26,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.76 2002-07-22 22:17:06 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.77 2002-08-14 16:17:35 castaglia Exp $
  */
 
 /* History Log:
@@ -199,7 +199,7 @@ static void _rate_throttle(off_t rate_pos, off_t rate_bytes,
           log_pri(LOG_WARNING, "Unable to throttle bandwidth: %s.",
 	          strerror(errno));
         } else {
-          handle_signals();
+          pr_handle_signals();
           continue;
         }
       }

@@ -518,7 +518,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
       hold_errno = errno;
 
       if (res == -1 && errno == EINTR) {
-        handle_signals();
+        pr_handle_signals();
 	i++;
 	continue;
       }
@@ -890,7 +890,7 @@ int inet_listen(pool *pool, conn_t *c, int backlog)
   while (1)
     if (listen(c->listen_fd, backlog) == -1) {
       if (errno == EINTR) {
-        handle_signals();
+        pr_handle_signals();
         continue; 
       }
 
@@ -932,7 +932,7 @@ int inet_connect(pool *pool, conn_t *c, p_in_addr_t *addr, int port)
   while (TRUE) {
     if ((ret = connect(c->listen_fd, (struct sockaddr *) &remaddr,
         sizeof(remaddr))) == -1 && errno == EINTR) {
-      handle_signals();
+      pr_handle_signals();
       continue;
 
     } else
@@ -1032,31 +1032,33 @@ int inet_accept_nowait(pool *pool, conn_t *c)
  * it, or NULL upon error.
  */
 conn_t *inet_accept(pool *pool, conn_t *d, conn_t *c, int rfd, int wfd,
-		    int resolve) {
+    unsigned char resolve) {
   conn_t *res = NULL;
-  int newfd = -1, allow_foreign_addr = -1;
+  unsigned char *allow_foreign_addr = NULL;
+  int newfd = -1;
   struct sockaddr_in addr;
   int addrlen = sizeof(addr);
   
   d->mode = CM_ACCEPT;
-  allow_foreign_addr = get_param_int(TOPLEVEL_CONF, "AllowForeignAddress",
-				     FALSE);
+
+  allow_foreign_addr = get_param_ptr(TOPLEVEL_CONF,
+    "AllowForeignAddress", FALSE);
   
   for(;;) {
-    if((newfd = accept(d->listen_fd, (struct sockaddr *) &addr,
-		       &addrlen)) != -1) {
-      if((allow_foreign_addr != 1) &&
+    if ((newfd = accept(d->listen_fd, (struct sockaddr *) &addr,
+        &addrlen)) != -1) {
+      if ((allow_foreign_addr && *allow_foreign_addr == FALSE) &&
 	 (getpeername(newfd, (struct sockaddr *) &addr, &addrlen) != -1)) {
-	if(addr.sin_addr.s_addr != c->remote_ipaddr->s_addr) {
-	  log_pri(LOG_NOTICE,
-		  "SECURITY VIOLATION: Passive connection from %s rejected.",
-		  inet_ntoa(addr.sin_addr));
+	if (addr.sin_addr.s_addr != c->remote_ipaddr->s_addr) {
+	  log_pri(LOG_NOTICE, "SECURITY VIOLATION: Passive connection from "
+            "%s rejected.", inet_ntoa(addr.sin_addr));
 	  close(newfd);
 	  continue;
 	}
       }
       d->mode = CM_OPEN;
       res = inet_openrw(pool, d, NULL, newfd, rfd, wfd, resolve);
+
     } else {
       d->mode = CM_ERROR;
       d->xerrno = errno;
