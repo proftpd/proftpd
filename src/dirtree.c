@@ -19,7 +19,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.7 1999-09-26 05:36:01 macgyver Exp $
+ * $Id: dirtree.c,v 1.8 1999-09-29 20:45:52 macgyver Exp $
  */
 
 /* History:
@@ -756,6 +756,7 @@ int match_ip(p_in_addr_t *addr, char *name, const char *match)
 
   if(*match == '.') {
     *mask++ = '*';
+    *mask = '\0';
     sstrcat(buf, match, sizeof(buf));
   } else if(*(match + strlen(match) - 1) == '.') {
     sstrcat(buf, match, sizeof(buf));
