@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.45 2004-05-31 18:58:01 castaglia Exp $
+ * $Id: modules.c,v 1.46 2004-05-31 19:33:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -312,7 +312,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
   switch (sym_type) {
     case PR_SYM_CONF: {
       int idx = -1;
-      conftable *tab = NULL;
+      conftable *tab;
 
       tab = pr_stash_get_symbol(PR_SYM_CONF, sym_name, NULL, &idx);
 
@@ -331,7 +331,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
           destroy_pool(curr_sym->sym_pool);
         }
 
-        tab = pr_stash_get_symbol(PR_SYM_CONF, sym_name, NULL, &idx);
+        tab = pr_stash_get_symbol(PR_SYM_CONF, sym_name, tab, &idx);
       }
 
       break;
@@ -339,7 +339,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
 
     case PR_SYM_CMD: {
       int idx = -1;
-      cmdtable *tab = NULL;
+      cmdtable *tab;
 
       tab = pr_stash_get_symbol(PR_SYM_CMD, sym_name, NULL, &idx);
 
@@ -357,7 +357,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
           destroy_pool(curr_sym->sym_pool);
         }
 
-        tab = pr_stash_get_symbol(PR_SYM_CMD, sym_name, NULL, &idx);
+        tab = pr_stash_get_symbol(PR_SYM_CMD, sym_name, tab, &idx);
       }
 
       break;
@@ -365,7 +365,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
 
     case PR_SYM_AUTH: {
       int idx = -1;
-      authtable *tab = NULL;
+      authtable *tab;
 
       tab = pr_stash_get_symbol(PR_SYM_AUTH, sym_name, NULL, &idx);
 
@@ -383,7 +383,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
           destroy_pool(curr_sym->sym_pool);
         }
 
-        tab = pr_stash_get_symbol(PR_SYM_AUTH, sym_name, NULL, &idx);
+        tab = pr_stash_get_symbol(PR_SYM_AUTH, sym_name, tab, &idx);
       }
 
       break;
@@ -391,7 +391,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
 
     case PR_SYM_HOOK: {
       int idx = -1;
-      cmdtable *tab = NULL;
+      cmdtable *tab;
 
       tab = pr_stash_get_symbol(PR_SYM_HOOK, sym_name, NULL, &idx);
 
@@ -404,7 +404,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
           destroy_pool(curr_sym->sym_pool);
         }
 
-        tab = pr_stash_get_symbol(PR_SYM_HOOK, sym_name, NULL, &idx);
+        tab = pr_stash_get_symbol(PR_SYM_HOOK, sym_name, tab, &idx);
       }
 
       break;
