@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.268 2004-12-05 08:12:37 castaglia Exp $
+ * $Id: main.c,v 1.269 2004-12-16 18:13:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -81,6 +81,7 @@ unsigned char persistent_passwd = FALSE;
 
 /* From modules/module_glue.c */
 extern module *static_modules[];
+extern module *loaded_modules;
 
 extern xaset_t *server_list;
 
@@ -887,6 +888,7 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
   struct rehash *rh = NULL;
 
   if (is_master && mpid) {
+    module *m = NULL, *mi = NULL;
     int maxfd;
     fd_set childfds;
 
@@ -926,6 +928,28 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     }
 
     free_bindings();
+
+    /* Unload any module that isn't in the static module list. */
+    for (mi = loaded_modules; mi; mi = m) {
+      register unsigned int i;
+      int is_static = FALSE;
+
+      m = mi->next;
+
+      for (i = 0; static_modules[i]; i++) {
+        if (strcmp(mi->name, static_modules[i]->name) == 0) {
+          is_static = TRUE;
+          break;
+        }
+      }
+
+      if (!is_static) {
+        pr_log_debug(DEBUG7, "unloading 'mod_%s.c'", mi->name);
+        if (pr_module_unload(mi) < 0)
+          pr_log_pri(PR_LOG_INFO, "error unloaded 'mod_%s.c': %s",
+            mi->name, strerror(errno));
+      }
+    }
 
     /* Run through the list of registered rehash callbacks. */
     pr_event_generate("core.restart", NULL);
