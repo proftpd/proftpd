@@ -511,10 +511,10 @@ AC_ARG_ENABLE(transfer-buffer-size,
   [
     if test "$enableval" = "yes" || test "$enableval" = "no" ; then
       AC_MSG_WARN(transfer buffer size defaulting to regular buffer size)
-      AC_DEFINE_UNQUOTED(PR_TUNABLE_BUFFER_SIZE, 1024,
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_XFER_BUFFER_SIZE, 1024,
       [Default buffer size])
     else
-      AC_DEFINE_UNQUOTED(PR_TUNABLE_BUFFER_SIZE, $enableval,
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_XFER_BUFFER_SIZE, $enableval,
       [Specified transfer buffer size])
     fi
   ])

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.440 2003-06-02 22:16:11 castaglia Exp $
+$Id: NEWS,v 1.441 2003-06-03 16:04:59 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -13,6 +13,9 @@ CVS
 - Bug 2075 - LIST / fails under Cygwin.  This was due to the addition of
   an additional path separator character; Cygwin treats paths that start
   with "//" differently than paths that start with "/".
+- Bug 2076 - The --enable-transfer-buffer-size configure option doesn't work
+  properly.  It was overriding the --enable-buffer-size option, rather than
+  the corresponding tunable buffer size.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------
