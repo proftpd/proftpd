@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.43 2001-01-24 22:02:04 flood Exp $
+ * $Id: main.c,v 1.44 2001-01-24 22:50:51 flood Exp $
  */
 
 /*
@@ -664,7 +664,7 @@ void main_exit(void *pv, void *lv, void *ev, void *dummy)
   char *log = (char *) lv;
   int exitcode = (int) ev;
   
-  log_pri(pri, log);
+  log_pri(pri, "%s", log);
   
   if(standalone && master) {
     log_pri(LOG_NOTICE, "ProFTPD %s standalone mode SHUTDOWN", VERSION);

@@ -387,7 +387,7 @@ pre_cmd_retr (cmd_rec * cmd)
 
   if (stats.frate && stats.files < 1)
     {
-      add_response_err (R_550, g.filemsg);
+      add_response_err (R_550, "%s", g.filemsg);
       add_response_err (R_550,
 			"%s: FILE RATIO: %s  Down: %i  Up: only %i!",
 			cmd->arg, stats.ftext, stats.fretr, stats.fstor);
@@ -404,7 +404,7 @@ pre_cmd_retr (cmd_rec * cmd)
 
       if ((stats.bytes - (fsize / 1024)) < 0)
 	{
-	  add_response_err (R_550, g.bytemsg);
+	  add_response_err (R_550, "%s", g.bytemsg);
 	  add_response_err (R_550,
 			    "%s: BYTE RATIO: %s  Down: %imb  Up: only %imb!",
 	cmd->arg, stats.btext, (stats.bretr / 1024), (stats.bstor / 1024));
@@ -561,9 +561,9 @@ ratio_cmd (cmd_rec * cmd)
 	{
 	  add_response (r, "%s%s%s", sbuf1, sbuf2, sbuf3);
 	  if (stats.frate && stats.files < 0)
-	    add_response (r, g.filemsg);
+	    add_response (r, "%s", g.filemsg);
 	  if (stats.brate && stats.bytes < 0)
-	    add_response (r, g.bytemsg);
+	    add_response (r, "%s", g.bytemsg);
 	}
       else
 	add_response (r, "%s%s%s", sbuf1, g.leechmsg ? "  " : "", g.leechmsg);

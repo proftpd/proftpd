@@ -1,2476 +1,2188 @@
-2000-08-18 15:16  macgyver
+2001-01-24 17:02  flood
 
-	* README.PAM (1.5): Updated PAM documentation for FreeBSD.
+	* src/: dirtree.c, log.c, main.c: Bug #408 (1) - add_config_set fix
+	to prevent USER/pool overwrite DoS Bug #408 (2) - scoreboard memory
+	leak in log_open_run fixed Bug #408 (3) - Fixed potential format
+	string bug in main.c Bug #434	  - Added pool to pidrec_t to fix
+	large server memory leak
 
-2000-08-18 10:54  macgyver
+2000-10-08 18:24  macgyver
 
-	* src/dirtree.c (1.20): Don't only partially match directory names.
-	 This annoying bug allowed for directory-level configurations to
+	* acconfig.h, config.h.in, configure, configure.in,
+	include/support.h, modules/mod_ls.c, src/support.c: Correctly use
+	NAME_MAX and fpathconf() when appropriate.
+
+2000-10-08 18:11  macgyver
+
+	* src/ftpshut.c: Handle the month calculation correctly.
+
+2000-10-08 17:45  macgyver
+
+	* contrib/mod_sqlpw.c: Use salt values correctly.
+
+2000-10-08 17:36  macgyver
+
+	* contrib/: README.mod_wrap, mod_wrap.c, mod_wrap.html: Added in
+	mod_wrap into contrib.
+
+2000-10-08 17:22  macgyver
+
+	* modules/mod_core.c: Correctly log the full path of deleted files.
+
+2000-10-08 17:11  macgyver
+
+	* modules/: mod_auth.c, mod_core.c: Added in support for
+	MaxHostsPerUser and fixed a problem with AnonRequirePassword.
+
+2000-10-08 16:55  macgyver
+
+	* src/inet.c: Lots of little cleanups.
+
+2000-10-08 16:54  macgyver
+
+	* contrib/mod_ratio.c: Fixed a bounds issue when checking the SITE
+	command.
+
+2000-08-19 15:02  macgyver
+
+	* configure, configure.in: Fixed ordering in library duplication
+	detection code.
+
+2000-08-18 16:25  macgyver
+
+	* NEWS: Updates.
+
+2000-08-18 16:25  macgyver
+
+	* ChangeLog: Updated ChangeLog.
+
+2000-08-18 16:16  macgyver
+
+	* README.PAM: Updated PAM documentation for FreeBSD.
+
+2000-08-18 11:54  macgyver
+
+	* src/dirtree.c: Don't only partially match directory names.  This
+	annoying bug allowed for directory-level configurations to
 	sometimes not work right.
 
-2000-08-18 01:02  macgyver
+2000-08-18 02:02  macgyver
 
-	* configure (1.49), configure.in (1.50): Fixed a small typo in PAM
-	detection.
+	* configure, configure.in: Fixed a small typo in PAM detection.
 
-2000-08-18 00:44  macgyver
+2000-08-18 01:44  macgyver
 
-	* acconfig.h (1.10), config.h.in (1.22), configure (1.48),
-	configure.in (1.49): PAM and path modifications.
+	* acconfig.h, config.h.in, configure, configure.in: PAM and path
+	modifications.
 
-2000-08-18 00:26  macgyver
+2000-08-18 01:26  macgyver
 
-	* modules/mod_pam.c (1.27): Updated to use HAVE_PAM.
+	* modules/mod_pam.c: Updated to use HAVE_PAM.
 
-2000-08-13 10:19  macgyver
+2000-08-13 11:19  macgyver
 
-	* Make.rules.in (1.10), acconfig.h (1.9), config.h.in (1.21),
-	configure (1.47), configure.in (1.48), include/conf.h (1.7): Some
-	configure and compilation cleanups.
+	* Make.rules.in, acconfig.h, config.h.in, configure, configure.in,
+	include/conf.h: Some configure and compilation cleanups.
 
-2000-08-13 05:36  macgyver
+2000-08-13 06:36  macgyver
 
-	* contrib/mod_quota.c (1.5): Cleaned up use of lstat() to
-	fs_lstat() to be more portable.
+	* contrib/mod_quota.c: Cleaned up use of lstat() to fs_lstat() to
+	be more portable.
 
-2000-08-07 19:54  macgyver
+2000-08-07 20:54  macgyver
 
-	* include/data.h (1.6), modules/mod_xfer.c (1.42), src/data.c
-	(1.18): Cleaned up sendfile() implementation to make it simpler and
-	more managable.
+	* include/data.h, modules/mod_xfer.c, src/data.c: Cleaned up
+	sendfile() implementation to make it simpler and more managable.
 
-2000-08-07 18:17  macgyver
+2000-08-07 19:17  macgyver
 
-	* modules/mod_core.c (1.43): Fixed a typo in set_sysloglevel.
+	* modules/mod_core.c: Fixed a typo in set_sysloglevel.
 
-2000-08-04 23:44  macgyver
+2000-08-05 00:44  macgyver
 
-	* modules/mod_auth.c (1.45): Be a little more anal retentive about
+	* modules/mod_auth.c: Be a little more anal retentive about
 	cleaning up after ourselves when it comes to USER/PASS attempts.
 
-2000-08-04 23:43  macgyver
+2000-08-05 00:43  macgyver
 
-	* src/data.c (1.17): Formatting cleanups.
+	* src/data.c: Formatting cleanups.
 
-2000-08-04 23:42  macgyver
+2000-08-05 00:42  macgyver
 
-	* modules/mod_xfer.c (1.41): Removed spurious #if 0.
+	* modules/mod_xfer.c: Removed spurious #if 0.
 
-2000-08-04 10:17  macgyver
+2000-08-04 11:17  macgyver
 
-	* configure (1.46), configure.in (1.47): Updated HP/UX sendfile()
-	to only actually check on HP/UX platforms. :)
+	* configure, configure.in: Updated HP/UX sendfile() to only
+	actually check on HP/UX platforms. :)
 
-2000-08-04 10:07  macgyver
+2000-08-04 11:07  macgyver
 
-	* ChangeLog (1.29): Updated ChangeLog.
+	* ChangeLog: Updated ChangeLog.
 
-2000-08-04 10:07  macgyver
+2000-08-04 11:07  macgyver
 
-	* doc/Undocumented.txt (1.14): Updated undocumented functions list
-	(none left! :)).
+	* doc/Undocumented.txt: Updated undocumented functions list (none
+	left! :)).
 
-2000-08-04 10:05  macgyver
+2000-08-04 11:05  macgyver
 
-	* doc/: GetConf (1.3), ShowUndocumented (1.5): Small updates to
-	configuration scripts.
-
-2000-08-04 09:57  macgyver
-
-	* doc/Configuration.html (1.32): Updated documentation.
-
-2000-08-03 10:40  macgyver
-
-	* doc/Undocumented.txt (1.13): Updated undocumented functions list.
-
-2000-08-03 10:39  macgyver
-
-	* contrib/: README.ratio (1.2), mod_ratio.c (1.13): Updated to
-	mod_ratio.
-
-2000-08-03 10:36  macgyver
-
-	* contrib/mod_ldap.c (1.13): Updated to mod_ldap 2.7.3 to remove
-	LDAPSearchFilter.
-
-2000-08-03 10:24  macgyver
-
-	* modules/mod_auth.c (1.44): Oops...more compilation fixes for
-	jail(). :)
-
-2000-08-03 09:10  macgyver
-
-	* doc/Undocumented.txt (1.12): Updated undocumented
-	functions...only two left, wow!
-
-2000-08-03 09:09  macgyver
-
-	* doc/Configuration.html (1.31): Updated documentation.
-
-2000-08-03 09:05  macgyver
-
-	* modules/mod_auth.c (1.43): Correctly obtain the IP address in
-	jail().
-
-2000-08-03 00:50  macgyver
-
-	* modules/mod_auth.c (1.42): Typos in jail() support.
-
-2000-08-02 22:01  macgyver
-
-	* ChangeLog (1.28): Updated ChangeLog.
-
-2000-08-02 21:59  macgyver
-
-	* modules/mod_auth.c (1.41): Added some debug logging to
-	lockdown().
-
-2000-08-02 21:46  macgyver
-
-	* NEWS (1.70), config.h.in (1.20), configure (1.45), configure.in
-	(1.46), modules/mod_auth.c (1.40): Added in support for jail() on
-	platforms that support it (currently FreeBSD 4.x+).
-
-2000-08-02 20:35  macgyver
-
-	* modules/mod_pam.c (1.26): More Solaris tweaks.
-
-2000-08-02 20:30  macgyver
-
-	* ChangeLog (1.27), NEWS (1.69): Updated ChangeLog and NEWS.
-
-2000-08-02 20:29  macgyver
-
-	* src/fs.c (1.11): Fixed a problem where files that began with ~
-	weren't being handled properly.
-
-2000-08-02 18:36  macgyver
-
-	* contrib/mod_quota.c (1.4): Fixed a crash when using mod_quota and
-	not defining QuotaExempt.
-
-2000-08-02 18:34  macgyver
-
-	* doc/Configuration.html (1.30): Updated documentation.
-
-2000-08-02 18:28  macgyver
-
-	* ChangeLog (1.26), NEWS (1.68): Updated NEWS and ChangeLog.
-
-2000-08-02 18:26  macgyver
-
-	* Make.rules.in (1.9), configure (1.44), configure.in (1.45): Added
-	in --with-libraries for posterity.
-
-2000-08-02 18:13  macgyver
-
-	* configure.in (1.44): Added copyright info to the configure
+	* doc/: GetConf, ShowUndocumented: Small updates to configuration
 	scripts.
 
-2000-08-02 18:07  macgyver
+2000-08-04 10:57  macgyver
 
-	* src/log.c (1.21): Only log to WTMP or WTMPX, not both.  Modern
-	systems should all use WTMPX.
+	* doc/Configuration.html: Updated documentation.
 
-2000-08-02 17:57  macgyver
+2000-08-03 11:40  macgyver
 
-	* modules/mod_pam.c (1.25): Updated Solaris compatibility fix for
-	mod_pam.
+	* doc/Undocumented.txt: Updated undocumented functions list.
 
-2000-08-02 17:38  macgyver
+2000-08-03 11:39  macgyver
 
-	* stamp-h.in (1.1): Added in stamp-h.in support.
+	* contrib/: README.ratio, mod_ratio.c: Updated to mod_ratio.
 
-2000-08-02 17:38  macgyver
+2000-08-03 11:36  macgyver
 
-	* .cvsignore (1.3), Makefile.in (1.9), configure (1.43),
-	configure.in (1.43): Added support for stamp-h.in and automagic
-	rebuilds whenever configure is updated.
+	* contrib/mod_ldap.c: Updated to mod_ldap 2.7.3 to remove
+	LDAPSearchFilter.
 
-2000-08-02 16:46  macgyver
+2000-08-03 11:24  macgyver
 
-	* acconfig.h (1.8), config.h.in (1.19), configure (1.42),
-	configure.in (1.42): More sendfile detection tweaks. :)
+	* modules/mod_auth.c: Oops...more compilation fixes for jail(). :)
 
-2000-08-02 16:46  macgyver
+2000-08-03 10:10  macgyver
 
-	* modules/mod_core.c (1.42): Forgot to return HANDLED in
-	add_sysloglevel.
+	* doc/Undocumented.txt: Updated undocumented functions...only two
+	left, wow!
 
-2000-08-02 08:58  macgyver
+2000-08-03 10:09  macgyver
 
-	* ChangeLog (1.25): Updated ChangeLog.
+	* doc/Configuration.html: Updated documentation.
 
-2000-08-02 01:44  macgyver
+2000-08-03 10:05  macgyver
 
-	* configure (1.41), configure.in (1.41): Reworked sendfile
-	detection to be cleaner and better cached.
+	* modules/mod_auth.c: Correctly obtain the IP address in jail().
 
-2000-08-02 01:18  macgyver
+2000-08-03 01:50  macgyver
 
-	* Make.rules.in (1.8), NEWS (1.67), configure (1.40), configure.in
-	(1.40): Added in --with-includes and made the PAM check for -ldl
-	cache its results.
+	* modules/mod_auth.c: Typos in jail() support.
 
-2000-08-02 00:28  macgyver
+2000-08-02 23:01  macgyver
 
-	* modules/mod_pam.c (1.24): ifdef out the PAM_TTY code needed for
-	Solaris so other systems don't have to work around this issue.
+	* ChangeLog: Updated ChangeLog.
 
-2000-08-02 00:25  macgyver
+2000-08-02 22:59  macgyver
 
-	* NEWS (1.66), include/conf.h (1.6), include/data.h (1.5),
-	include/default_paths.h (1.4), include/dirtree.h (1.8),
-	include/fs.h (1.3), include/ftp.h (1.2), include/ident.h (1.2),
-	include/inet.h (1.4), include/io.h (1.3), include/libsupp.h (1.3),
-	include/log.h (1.4), include/modules.h (1.2), include/options.h
-	(1.3), include/pool.h (1.4), include/privs.h (1.4),
-	include/proftpd.h (1.13), include/sets.h (1.2), include/timers.h
-	(1.3), modules/mod_core.c (1.41), src/log.c (1.20), src/utils.c
-	(1.8): Added SyslogLevel directive, and cleaned up some header
-	files.
+	* modules/mod_auth.c: Added some debug logging to lockdown().
 
-2000-08-01 17:20  macgyver
+2000-08-02 22:46  macgyver
 
-	* modules/mod_core.c (1.40), src/main.c (1.42): Added support for
-	the PidFile directive, to make ProFTPD more Apache-like.
+	* NEWS, config.h.in, configure, configure.in, modules/mod_auth.c:
+	Added in support for jail() on platforms that support it (currently
+	FreeBSD 4.x+).
 
-2000-08-01 16:52  macgyver
+2000-08-02 21:35  macgyver
 
-	* ChangeLog (1.24): Updated ChangeLog.
+	* modules/mod_pam.c: More Solaris tweaks.
 
-2000-08-01 16:51  macgyver
+2000-08-02 21:30  macgyver
 
-	* include/proftpd.h (1.12), modules/mod_auth.c (1.39), src/main.c
-	(1.41): AnonRequirePassword should prevent the password from being
+	* ChangeLog, NEWS: Updated ChangeLog and NEWS.
+
+2000-08-02 21:29  macgyver
+
+	* src/fs.c: Fixed a problem where files that began with ~ weren't
+	being handled properly.
+
+2000-08-02 19:36  macgyver
+
+	* contrib/mod_quota.c: Fixed a crash when using mod_quota and not
+	defining QuotaExempt.
+
+2000-08-02 19:34  macgyver
+
+	* doc/Configuration.html: Updated documentation.
+
+2000-08-02 19:28  macgyver
+
+	* ChangeLog, NEWS: Updated NEWS and ChangeLog.
+
+2000-08-02 19:26  macgyver
+
+	* Make.rules.in, configure, configure.in: Added in --with-libraries
+	for posterity.
+
+2000-08-02 19:13  macgyver
+
+	* configure.in: Added copyright info to the configure scripts.
+
+2000-08-02 19:07  macgyver
+
+	* src/log.c: Only log to WTMP or WTMPX, not both.  Modern systems
+	should all use WTMPX.
+
+2000-08-02 18:57  macgyver
+
+	* modules/mod_pam.c: Updated Solaris compatibility fix for mod_pam.
+
+2000-08-02 18:38  macgyver
+
+	* stamp-h.in: Added in stamp-h.in support.
+
+2000-08-02 18:38  macgyver
+
+	* .cvsignore, Makefile.in, configure, configure.in: Added support
+	for stamp-h.in and automagic rebuilds whenever configure is
+	updated.
+
+2000-08-02 17:46  macgyver
+
+	* acconfig.h, config.h.in, configure, configure.in: More sendfile
+	detection tweaks. :)
+
+2000-08-02 17:46  macgyver
+
+	* modules/mod_core.c: Forgot to return HANDLED in add_sysloglevel.
+
+2000-08-02 09:58  macgyver
+
+	* ChangeLog: Updated ChangeLog.
+
+2000-08-02 02:44  macgyver
+
+	* configure, configure.in: Reworked sendfile detection to be
+	cleaner and better cached.
+
+2000-08-02 02:18  macgyver
+
+	* Make.rules.in, NEWS, configure, configure.in: Added in
+	--with-includes and made the PAM check for -ldl cache its results.
+
+2000-08-02 01:28  macgyver
+
+	* modules/mod_pam.c: ifdef out the PAM_TTY code needed for Solaris
+	so other systems don't have to work around this issue.
+
+2000-08-02 01:25  macgyver
+
+	* NEWS, include/conf.h, include/data.h, include/default_paths.h,
+	include/dirtree.h, include/fs.h, include/ftp.h, include/ident.h,
+	include/inet.h, include/io.h, include/libsupp.h, include/log.h,
+	include/modules.h, include/options.h, include/pool.h,
+	include/privs.h, include/proftpd.h, include/sets.h,
+	include/timers.h, modules/mod_core.c, src/log.c, src/utils.c: Added
+	SyslogLevel directive, and cleaned up some header files.
+
+2000-08-01 18:20  macgyver
+
+	* modules/mod_core.c, src/main.c: Added support for the PidFile
+	directive, to make ProFTPD more Apache-like.
+
+2000-08-01 17:52  macgyver
+
+	* ChangeLog: Updated ChangeLog.
+
+2000-08-01 17:51  macgyver
+
+	* include/proftpd.h, modules/mod_auth.c, src/main.c:
+	AnonRequirePassword should prevent the password from being
 	displayed in ftpwho/ftpcount/ps.
 
-2000-08-01 16:30  macgyver
+2000-08-01 17:30  macgyver
 
-	* ChangeLog (1.23): Updated ChangeLog.
+	* ChangeLog: Updated ChangeLog.
 
-2000-08-01 16:30  macgyver
+2000-08-01 17:30  macgyver
 
-	* modules/mod_pam.c (1.23): Give ProFTPD it's own entry under /dev.
+	* modules/mod_pam.c: Give ProFTPD it's own entry under /dev.
 
-2000-08-01 16:23  macgyver
+2000-08-01 17:23  macgyver
 
-	* NEWS (1.65), modules/mod_log.c (1.16): Honor ExtendedLog NONE.
+	* NEWS, modules/mod_log.c: Honor ExtendedLog NONE.
 
-2000-08-01 15:41  macgyver
+2000-08-01 16:41  macgyver
 
-	* NEWS (1.64), doc/Configuration.html (1.29), modules/mod_site.c
-	(1.10): AllowChmod defaults to 'on' now, to be backward compatible.
+	* NEWS, doc/Configuration.html, modules/mod_site.c: AllowChmod
+	defaults to 'on' now, to be backward compatible.
 
-2000-08-01 15:41  macgyver
+2000-08-01 16:41  macgyver
 
-	* modules/mod_pam.c (1.22): More information about PAM and Solaris
+	* modules/mod_pam.c: More information about PAM and Solaris
 	interaction.
 
-2000-08-01 15:20  macgyver
+2000-08-01 16:20  macgyver
 
-	* ChangeLog (1.22): Updated ChangeLog.
+	* ChangeLog: Updated ChangeLog.
 
-2000-08-01 15:13  macgyver
+2000-08-01 16:13  macgyver
 
-	* NEWS (1.63), modules/mod_auth.c (1.38): Moved code around to
-	eliminate a race with MaxClients.
+	* NEWS, modules/mod_auth.c: Moved code around to eliminate a race
+	with MaxClients.
 
-2000-08-01 14:51  macgyver
+2000-08-01 15:51  macgyver
 
-	* NEWS (1.62), contrib/mod_ratio.c (1.12), modules/mod_site.c
-	(1.9): Fixed a minor bug in SITE HELP.
+	* NEWS, contrib/mod_ratio.c, modules/mod_site.c: Fixed a minor bug
+	in SITE HELP.
 
-2000-08-01 13:59  macgyver
+2000-08-01 14:59  macgyver
 
-	* NEWS (1.61), modules/mod_core.c (1.39), modules/mod_xfer.c
-	(1.40): Added in DeleteAbortedStores and did some minor cleanups.
+	* NEWS, modules/mod_core.c, modules/mod_xfer.c: Added in
+	DeleteAbortedStores and did some minor cleanups.
 
-2000-08-01 13:43  macgyver
+2000-08-01 14:43  macgyver
 
-	* contrib/mod_quota.c (1.3): unlink should never be called directly
-	-- use fs_unlink instead.
+	* contrib/mod_quota.c: unlink should never be called directly --
+	use fs_unlink instead.
 
-2000-08-01 13:32  macgyver
+2000-08-01 14:32  macgyver
 
-	* NEWS (1.60), modules/mod_pam.c (1.21): Solaris requires you to
-	have PAM_TTY and PAM_RHOST defined before you call
-	pam_open_session.  No, it doesn't make sense to me either. :)
+	* NEWS, modules/mod_pam.c: Solaris requires you to have PAM_TTY and
+	PAM_RHOST defined before you call pam_open_session.  No, it doesn't
+	make sense to me either. :)
 
-2000-07-28 17:27  macgyver
+2000-07-28 18:27  macgyver
 
-	* lib/pr_fnmatch.c (1.2): Optimizations for fnmatch()
-	implementation.
+	* lib/pr_fnmatch.c: Optimizations for fnmatch() implementation.
 
-2000-07-28 17:17  macgyver
+2000-07-28 18:17  macgyver
 
-	* contrib/mod_ldap.c (1.12): Updated mod_ldap to 2.7.2.
+	* contrib/mod_ldap.c: Updated mod_ldap to 2.7.2.
 
-2000-07-28 16:56  macgyver
+2000-07-28 17:56  macgyver
 
-	* modules/mod_xfer.c (1.39): Don't check for PORT in cmd_stor if
-	we're in passive mode.
+	* modules/mod_xfer.c: Don't check for PORT in cmd_stor if we're in
+	passive mode.
 
-2000-07-28 08:50  macgyver
+2000-07-28 09:50  macgyver
 
-	* NEWS (1.59), modules/mod_site.c (1.8): AllowChmod now works in
-	almost any context.
+	* NEWS, modules/mod_site.c: AllowChmod now works in almost any
+	context.
+
+2000-07-28 02:47  macgyver
+
+	* ChangeLog: Updated ChangeLog.
+
+2000-07-28 01:52  macgyver
+
+	* NEWS, modules/mod_site.c: AllowChmod works right now.
 
 2000-07-28 01:47  macgyver
 
-	* ChangeLog (1.21, R1_2_0RC2): Updated ChangeLog.
+	* NEWS, acconfig.h, config.h.in, configure, configure.in,
+	src/data.c: Added --disable-pam, allowing you to disable PAM at
+	configure-time.  Reorganized sendfile detection a bit and added
+	support for HP/UX.
 
-2000-07-28 00:52  macgyver
+2000-07-27 12:07  macgyver
 
-	* NEWS (1.58), modules/mod_site.c (1.7) (utags: R1_2_0RC2):
-	AllowChmod works right now.
+	* modules/mod_auth.c: Work around HP/UX's broken compiler in
+	_do_user_counts().
 
-2000-07-28 00:47  macgyver
+2000-07-27 00:14  macgyver
 
-	* NEWS (1.57), acconfig.h (1.7, R1_2_0RC2), config.h.in (1.18,
-	R1_2_0RC2), configure (1.39, R1_2_0RC2), configure.in (1.39,
-	R1_2_0RC2), src/data.c (1.16, R1_2_0RC2): Added --disable-pam,
-	allowing you to disable PAM at configure-time.	Reorganized
-	sendfile detection a bit and added support for HP/UX.
+	* contrib/mod_ldap.c: Updated mod_ldap to latest/greatest.
 
-2000-07-27 11:07  macgyver
+2000-07-26 19:47  macgyver
 
-	* modules/mod_auth.c (1.37, R1_2_0RC2): Work around HP/UX's broken
-	compiler in _do_user_counts().
-
-2000-07-26 23:14  macgyver
-
-	* contrib/mod_ldap.c (1.11, R1_2_0RC2): Updated mod_ldap to
-	latest/greatest.
-
-2000-07-26 18:47  macgyver
-
-	* modules/mod_pam.c (1.20, R1_2_0RC2): Moved around PAM calls to be
-	Sun Compliant(tm), since anything that isn't strictly in that order
+	* modules/mod_pam.c: Moved around PAM calls to be Sun
+	Compliant(tm), since anything that isn't strictly in that order
 	seems to cause Solaris environments to puke.
 	
 	Set PAM_RHOST, when we can.
 
-2000-07-26 18:09  macgyver
+2000-07-26 19:09  macgyver
 
-	* src/main.c (1.40, R1_2_0RC2): Remove spurious \r\n from various
-	send_response()s.
+	* src/main.c: Remove spurious \r\n from various send_response()s.
 
-2000-07-26 06:12  macgyver
+2000-07-26 07:12  macgyver
 
-	* src/main.c (1.39): Be verbose about /etc/shutmsg.
+	* src/main.c: Be verbose about /etc/shutmsg.
 
-2000-07-26 06:03  macgyver
+2000-07-26 07:03  macgyver
 
-	* include/proftpd.h (1.11, R1_2_0RC2), modules/mod_core.c (1.38,
-	R1_2_0RC2), modules/mod_ls.c (1.31, R1_2_0RC2), modules/mod_xfer.c
-	(1.38, R1_2_0RC2), src/data.c (1.15), src/io.c (1.6, R1_2_0RC2),
-	src/log.c (1.19, R1_2_0RC2): Fixed a crash when STOR called before
-	PORT being issued.  Fixed a crash related to STAT.
+	* include/proftpd.h, modules/mod_core.c, modules/mod_ls.c,
+	modules/mod_xfer.c, src/data.c, src/io.c, src/log.c: Fixed a crash
+	when STOR called before PORT being issued.  Fixed a crash related
+	to STAT.
 
-2000-07-26 04:49  macgyver
+2000-07-26 05:49  macgyver
 
-	* lib/pwgrent.c (1.6, R1_2_0RC2): Fixed some warnings on FreeBSD.
+	* lib/pwgrent.c: Fixed some warnings on FreeBSD.
 
-2000-07-26 04:36  macgyver
+2000-07-26 05:36  macgyver
 
-	* src/main.c (1.38): Better checking for empty strings before
-	attempting to call a regex.  Handle empty commands cleaner.
+	* src/main.c: Better checking for empty strings before attempting
+	to call a regex.  Handle empty commands cleaner.
 
-2000-07-26 03:21  macgyver
+2000-07-26 04:21  macgyver
 
-	* README.LDAP (1.4, R1_2_0RC2), contrib/mod_ldap.c (1.10): Updated
-	mod_ldap to 2.7.1.
+	* README.LDAP, contrib/mod_ldap.c: Updated mod_ldap to 2.7.1.
 
-2000-07-26 03:19  macgyver
+2000-07-26 04:19  macgyver
 
-	* lib/: pr_fnmatch.c (1.1), pr_fnmatch_loop.c (1.1) (utags:
-	R1_2_0RC2): fnmatch.c was renamed to pr_fnmatch.c, as well as
-	importing the new fnmatch code from glibc.
+	* lib/: pr_fnmatch.c, pr_fnmatch_loop.c: fnmatch.c was renamed to
+	pr_fnmatch.c, as well as importing the new fnmatch code from glibc.
 
-2000-07-26 03:18  macgyver
+2000-07-26 04:18  macgyver
 
-	* lib/fnmatch.c (1.2): fnmatch.c has now become pr_fnmatch.c.
+	* lib/fnmatch.c: fnmatch.c has now become pr_fnmatch.c.
 
-2000-07-26 03:16  macgyver
+2000-07-26 04:16  macgyver
 
-	* Make.rules.in (1.7, R1_2_0RC2), config.h.in (1.17), configure
-	(1.38), configure.in (1.38), include/libsupp.h (1.2, R1_2_0RC2),
-	lib/Makefile.in (1.2, R1_2_0RC2), lib/glob.c (1.3, R1_2_0RC2),
-	modules/Makefile.in (1.6, R1_2_0RC2), src/Makefile.in (1.3,
-	R1_2_0RC2), src/dirtree.c (1.19, R1_2_0RC2), src/fs.c (1.10,
-	R1_2_0RC2): New fnmatch code in ProFTPD.  Updated from the latest
-	and greatest glibc code.  ProFTPD now always uses our builtin
-	fnmatch to eliminate problems with incompatible implementations as
-	well as namespace collisions.
+	* Make.rules.in, config.h.in, configure, configure.in,
+	include/libsupp.h, lib/Makefile.in, lib/glob.c,
+	modules/Makefile.in, src/Makefile.in, src/dirtree.c, src/fs.c: New
+	fnmatch code in ProFTPD.  Updated from the latest and greatest
+	glibc code.  ProFTPD now always uses our builtin fnmatch to
+	eliminate problems with incompatible implementations as well as
+	namespace collisions.
 
-2000-07-26 02:36  macgyver
+2000-07-26 03:36  macgyver
 
-	* contrib/mod_ratio.c (1.11, R1_2_0RC2): Transitioned to the new
-	fnmatch() function, and corrected an error where hosts were being
-	treated in a case-sensitive fashion.
+	* contrib/mod_ratio.c: Transitioned to the new fnmatch() function,
+	and corrected an error where hosts were being treated in a
+	case-sensitive fashion.
 
-2000-07-25 23:41  macgyver
+2000-07-26 00:41  macgyver
 
-	* configure (1.37), configure.in (1.37): Made fnmatch check more
-	robust and cleaned up gcc detection a bit.
+	* configure, configure.in: Made fnmatch check more robust and
+	cleaned up gcc detection a bit.
 
-2000-07-25 23:11  macgyver
+2000-07-26 00:11  macgyver
 
-	* configure (1.36), configure.in (1.36), src/dirtree.c (1.18):
-	Hostname checks should be case insensitive.  Added FNM_CASEFOLD to
-	fnmatch check.
+	* configure, configure.in, src/dirtree.c: Hostname checks should be
+	case insensitive.  Added FNM_CASEFOLD to fnmatch check.
 
-2000-07-25 22:48  macgyver
+2000-07-25 23:48  macgyver
 
-	* doc/ShowUndocumented (1.4, R1_2_0RC2): Make the grep case
-	insensitive.
+	* doc/ShowUndocumented: Make the grep case insensitive.
 
-2000-07-25 22:42  macgyver
+2000-07-25 23:42  macgyver
 
-	* config.guess (1.4), config.sub (1.4) (utags: R1_2_0RC2): Updated
-	config.guess and config.sub scripts.
+	* config.guess, config.sub: Updated config.guess and config.sub
+	scripts.
 
-2000-07-21 13:45  macgyver
+2000-07-21 14:45  macgyver
 
-	* ChangeLog (1.20): Updated changelog.
+	* ChangeLog: Updated changelog.
 
-2000-07-21 13:44  macgyver
+2000-07-21 14:44  macgyver
 
-	* ChangeLog (1.19), NEWS (1.56), config.h.in (1.16), configure
-	(1.35), configure.in (1.35), modules/mod_auth.c (1.36),
-	modules/mod_unixpw.c (1.7, R1_2_0RC2): Portability fixes and
+	* ChangeLog, NEWS, config.h.in, configure, configure.in,
+	modules/mod_auth.c, modules/mod_unixpw.c: Portability fixes and
 	additions on various platforms.  Also corrected a problem in
 	configure where a piece of code was completely bypassed.
 
-2000-07-21 01:19  macgyver
+2000-07-21 02:19  macgyver
 
-	* doc/Configuration.html (1.28, R1_2_0RC2): Updated configuration
-	documentation.
+	* doc/Configuration.html: Updated configuration documentation.
 
-2000-07-21 01:11  macgyver
+2000-07-21 02:11  macgyver
 
-	* src/main.c (1.37): Check for getopt_long was backwards.
+	* src/main.c: Check for getopt_long was backwards.
 
-2000-07-21 01:09  macgyver
+2000-07-21 02:09  macgyver
 
-	* src/ftpcount.c (1.9, R1_2_0RC2): Handle systems without
-	getopt_long properly.
+	* src/ftpcount.c: Handle systems without getopt_long properly.
 
-2000-07-21 00:59  macgyver
+2000-07-21 01:59  macgyver
 
-	* modules/mod_core.c (1.37): Removed unused variables thanks to gcc
-	-Wall.
+	* modules/mod_core.c: Removed unused variables thanks to gcc -Wall.
 
-2000-07-21 00:57  macgyver
+2000-07-21 01:57  macgyver
 
-	* src/main.c (1.36): Removed 2 printfs that were just plain wrong
-	in a situation where a site is administratively shutdown (ala
-	shutmsg, etc).	Also corrected a getopt_long related issue in
-	show_usage.
+	* src/main.c: Removed 2 printfs that were just plain wrong in a
+	situation where a site is administratively shutdown (ala shutmsg,
+	etc).  Also corrected a getopt_long related issue in show_usage.
 
-2000-07-21 00:38  macgyver
+2000-07-21 01:38  macgyver
 
-	* modules/mod_pam.c (1.19): Don't close PAM handle until we exit so
-	we survive across jailed environments.
+	* modules/mod_pam.c: Don't close PAM handle until we exit so we
+	survive across jailed environments.
 
-2000-07-21 00:37  macgyver
+2000-07-21 01:37  macgyver
 
-	* NEWS (1.55): Updated news.
+	* NEWS: Updated news.
 
-2000-07-21 00:37  macgyver
+2000-07-21 01:37  macgyver
 
-	* ChangeLog (1.18): Updated changelog.
+	* ChangeLog: Updated changelog.
 
-2000-07-21 00:18  macgyver
+2000-07-21 01:18  macgyver
 
-	* src/main.c (1.35): Command line options are constants.
+	* src/main.c: Command line options are constants.
 
-2000-07-21 00:18  macgyver
+2000-07-21 01:18  macgyver
 
-	* src/main.c (1.34): Be mindful of systems without getopt_long.
+	* src/main.c: Be mindful of systems without getopt_long.
 
-2000-07-21 00:06  macgyver
+2000-07-21 01:06  macgyver
 
-	* modules/mod_pam.c (1.18): Typo with AuthPAMConfig and PAMConfig.
+	* modules/mod_pam.c: Typo with AuthPAMConfig and PAMConfig.
 
-2000-07-21 00:05  macgyver
+2000-07-21 01:05  macgyver
 
-	* configure (1.34), configure.in (1.34): Added in better PAM
-	detection for -ldl.
+	* configure, configure.in: Added in better PAM detection for -ldl.
 
-2000-07-20 23:58  macgyver
+2000-07-21 00:58  macgyver
 
-	* README.LDAP (1.3), contrib/mod_ldap.c (1.9),
-	doc/Configuration.html (1.27): Latest LDAP updates (mod_ldap 2.7).
+	* README.LDAP, contrib/mod_ldap.c, doc/Configuration.html: Latest
+	LDAP updates (mod_ldap 2.7).
 
-2000-07-20 23:52  macgyver
+2000-07-21 00:52  macgyver
 
-	* src/data.c (1.14): Added many more descriptions around various
-	error conditions for better RFC compliance.
+	* src/data.c: Added many more descriptions around various error
+	conditions for better RFC compliance.
 
-2000-07-20 23:52  macgyver
+2000-07-21 00:52  macgyver
 
-	* modules/mod_pam.c (1.17): Fix potential strdup madness.
+	* modules/mod_pam.c: Fix potential strdup madness.
 
-2000-07-20 23:47  macgyver
+2000-07-21 00:47  macgyver
 
-	* modules/mod_unixpw.c (1.6): Reworked UID/GID hash tables to be
-	more portable across implementations with different sizes for UID
-	and GID fields.
+	* modules/mod_unixpw.c: Reworked UID/GID hash tables to be more
+	portable across implementations with different sizes for UID and
+	GID fields.
 
-2000-07-11 13:44  macgyver
+2000-07-11 14:44  macgyver
 
-	* modules/mod_core.c (1.36): Fixed a minor typo when there is no
-	regex engine around.
+	* modules/mod_core.c: Fixed a minor typo when there is no regex
+	engine around.
 
-2000-07-11 09:13  macgyver
+2000-07-11 10:13  macgyver
 
-	* ChangeLog (1.17): Updated ChangeLog.
+	* ChangeLog: Updated ChangeLog.
 
-2000-07-11 09:10  macgyver
+2000-07-11 10:10  macgyver
 
-	* NEWS (1.54), src/data.c (1.13), src/main.c (1.33): Don't ignore
-	ServerUseReverseDNS.
+	* NEWS, src/data.c, src/main.c: Don't ignore ServerUseReverseDNS.
 
-2000-07-11 08:36  macgyver
+2000-07-11 09:36  macgyver
 
-	* ChangeLog (1.16), contrib/mod_ldap.c (1.8), contrib/mod_quota.c
-	(1.2, R1_2_0RC2), contrib/mod_ratio.c (1.10), contrib/mod_sqlpw.c
-	(1.7, R1_2_0RC2), contrib/libcap/cap_text.c (1.3, R1_2_0RC2),
-	lib/pwgrent.c (1.5), lib/vsnprintf.c (1.4, R1_2_0RC2),
-	modules/mod_auth.c (1.35), modules/mod_core.c (1.35),
-	modules/mod_log.c (1.15, R1_2_0RC2), modules/mod_ls.c (1.30),
-	modules/mod_pam.c (1.16), modules/mod_readme.c (1.7, R1_2_0RC2),
-	modules/mod_site.c (1.6), modules/mod_tar.c (1.7, R1_2_0RC2),
-	modules/mod_test.c (1.4, R1_2_0RC2), modules/mod_unixpw.c (1.5),
-	modules/mod_xfer.c (1.37), src/auth.c (1.5, R1_2_0RC2),
-	src/dirtree.c (1.17), src/fs.c (1.9), src/ftpcount.c (1.8),
-	src/ident.c (1.4, R1_2_0RC2), src/inet.c (1.11, R1_2_0RC2),
-	src/io.c (1.5), src/log.c (1.18), src/pool.c (1.12, R1_2_0RC2),
-	src/support.c (1.18, R1_2_0RC2): Minor updates and buffer cleanups.
+	* ChangeLog, contrib/mod_ldap.c, contrib/mod_quota.c,
+	contrib/mod_ratio.c, contrib/mod_sqlpw.c,
+	contrib/libcap/cap_text.c, lib/pwgrent.c, lib/vsnprintf.c,
+	modules/mod_auth.c, modules/mod_core.c, modules/mod_log.c,
+	modules/mod_ls.c, modules/mod_pam.c, modules/mod_readme.c,
+	modules/mod_site.c, modules/mod_tar.c, modules/mod_test.c,
+	modules/mod_unixpw.c, modules/mod_xfer.c, src/auth.c,
+	src/dirtree.c, src/fs.c, src/ftpcount.c, src/ident.c, src/inet.c,
+	src/io.c, src/log.c, src/pool.c, src/support.c: Minor updates and
+	buffer cleanups.
 
-2000-07-11 08:35  macgyver
+2000-07-11 09:35  macgyver
 
-	* include/default_paths.h (1.3, R1_2_0RC2), src/main.c (1.32):
-	Added in support for core file debugging.
+	* include/default_paths.h, src/main.c: Added in support for core
+	file debugging.
 
-2000-07-11 08:31  macgyver
+2000-07-11 09:31  macgyver
 
-	* doc/Configuration.html (1.26): Latest and greatest documentation
+	* doc/Configuration.html: Latest and greatest documentation
 	updates.
 
-2000-07-09 02:01  macgyver
+2000-07-09 03:01  macgyver
 
-	* include/log.h (1.3, R1_2_0RC2), modules/mod_core.c (1.34),
-	modules/mod_xfer.c (1.36), src/log.c (1.17), src/xferlog.5 (1.3,
-	R1_2_0RC2): Added in support for a completion field in xferlog.
+	* include/log.h, modules/mod_core.c, modules/mod_xfer.c, src/log.c,
+	src/xferlog.5: Added in support for a completion field in xferlog.
 
-2000-07-09 02:01  macgyver
+2000-07-09 03:01  macgyver
 
-	* doc/Configuration.html (1.25): Updated LDAP documentation.
+	* doc/Configuration.html: Updated LDAP documentation.
 
-2000-07-09 02:00  macgyver
+2000-07-09 03:00  macgyver
 
-	* contrib/libcap/include/sys/capability.h (1.2, R1_2_0RC2): Added a
-	#define for the kernel.
+	* contrib/libcap/include/sys/capability.h: Added a #define for the
+	kernel.
 
-2000-07-09 01:59  macgyver
+2000-07-09 02:59  macgyver
 
-	* contrib/mod_ldap.c (1.7): Added in -lresolv.
+	* contrib/mod_ldap.c: Added in -lresolv.
 
-2000-07-09 01:59  macgyver
+2000-07-09 02:59  macgyver
 
-	* modules/mod_pam.c (1.15): Added a little more sanity cleanup.
+	* modules/mod_pam.c: Added a little more sanity cleanup.
 
-2000-07-09 01:58  macgyver
+2000-07-09 02:58  macgyver
 
-	* src/support.c (1.17): Try to address potential memory issues with
-	people trying to overflow large path buffers.
+	* src/support.c: Try to address potential memory issues with people
+	trying to overflow large path buffers.
 
-2000-07-08 11:26  macgyver
+2000-07-08 12:26  macgyver
 
-	* modules/mod_pam.c (1.14): Forgot to add in AuthPAM to the
-	configuration tables.
+	* modules/mod_pam.c: Forgot to add in AuthPAM to the configuration
+	tables.
 
-2000-07-08 03:15  macgyver
+2000-07-08 04:15  macgyver
 
-	* src/inet.c (1.10): Added in some sanity checking so things like
+	* src/inet.c: Added in some sanity checking so things like
 	getsockname() don't crash on Solaris when called with invalid
 	descriptors.
 
-2000-07-08 03:02  macgyver
+2000-07-08 04:02  macgyver
 
-	* modules/mod_pam.c (1.13): I must be braindamaged to have let
-	someone else convince me my original code and logic was incorrect
-	about mod_pam.	There was no aforementioned memory leak, and PAM
-	does work exactly as advertised.
+	* modules/mod_pam.c: I must be braindamaged to have let someone
+	else convince me my original code and logic was incorrect about
+	mod_pam.  There was no aforementioned memory leak, and PAM does
+	work exactly as advertised.
 
-2000-07-07 16:11  macgyver
+2000-07-07 17:11  macgyver
 
-	* contrib/mod_sqlpw.c (1.6): Fixed a bug in SQLAuthoritative
-	detection.
+	* contrib/mod_sqlpw.c: Fixed a bug in SQLAuthoritative detection.
 
-2000-07-07 02:12  macgyver
+2000-07-07 03:12  macgyver
 
-	* ChangeLog (1.15), include/version.h (1.10, R1_2_0RC2): Updated
-	ChangeLog as well as version.
+	* ChangeLog, include/version.h: Updated ChangeLog as well as
+	version.
 
-2000-07-07 02:09  macgyver
+2000-07-07 03:09  macgyver
 
-	* contrib/: README.ratio (1.1, R1_2_0RC2), mod_ratio.c (1.9):
-	Updated to mod_ratio.
+	* contrib/: README.ratio, mod_ratio.c: Updated to mod_ratio.
 
-2000-07-07 01:41  macgyver
+2000-07-07 02:41  macgyver
 
-	* NEWS (1.53), modules/mod_ls.c (1.29), modules/mod_tar.c (1.6),
-	src/auth.c (1.4), src/data.c (1.12), src/fs.c (1.8), src/log.c
-	(1.16), src/support.c (1.16): Fixed various MAXPATHLEN buffers.
+	* NEWS, modules/mod_ls.c, modules/mod_tar.c, src/auth.c,
+	src/data.c, src/fs.c, src/log.c, src/support.c: Fixed various
+	MAXPATHLEN buffers.
 
-2000-07-07 01:21  macgyver
+2000-07-07 02:21  macgyver
 
-	* modules/mod_ls.c (1.28): Use access_check to properly check
-	permissions.  More consistent handling of '.' and '..'.  I can't
-	wait to rewrite this module.
+	* modules/mod_ls.c: Use access_check to properly check permissions.
+	 More consistent handling of '.' and '..'.  I can't wait to rewrite
+	this module.
 
-2000-07-07 01:18  macgyver
+2000-07-07 02:18  macgyver
 
-	* modules/mod_core.c (1.33), src/support.c (1.15): Handle symlinks
-	more appropriately...follow the link, not the file.
+	* modules/mod_core.c, src/support.c: Handle symlinks more
+	appropriately...follow the link, not the file.
 
-2000-07-06 20:19  macgyver
+2000-07-06 21:19  macgyver
 
-	* NEWS (1.52), include/support.h (1.4, R1_2_0RC2), src/dirtree.c
-	(1.16), src/support.c (1.14): Added access_check() to handle
-	correct permission checking.
+	* NEWS, include/support.h, src/dirtree.c, src/support.c: Added
+	access_check() to handle correct permission checking.
 
-2000-07-06 19:26  macgyver
+2000-07-06 20:26  macgyver
 
-	* src/auth.c (1.3): Minor correction to auth_uid_name and
-	auth_gid_name.
+	* src/auth.c: Minor correction to auth_uid_name and auth_gid_name.
 
-2000-07-06 19:00  macgyver
+2000-07-06 20:00  macgyver
 
-	* src/log.c (1.15): Documented design decision behind utmp entries
-	and strings.
+	* src/log.c: Documented design decision behind utmp entries and
+	strings.
 
-2000-07-06 18:44  macgyver
+2000-07-06 19:44  macgyver
 
-	* doc/Configuration.html (1.24): Updates to documentation.
+	* doc/Configuration.html: Updates to documentation.
 
-2000-07-06 18:42  macgyver
+2000-07-06 19:42  macgyver
 
-	* modules/Makefile.in (1.5): Removed mod_mysql.h dependency.
+	* modules/Makefile.in: Removed mod_mysql.h dependency.
 
-2000-07-06 15:19  macgyver
+2000-07-06 16:19  macgyver
 
-	* contrib/mod_sqlpw.c (1.5): Added SQLKeyField, SQLKey and
+	* contrib/mod_sqlpw.c: Added SQLKeyField, SQLKey and
 	SQLAuthoritative directives.
 
-2000-07-06 15:08  macgyver
+2000-07-06 16:08  macgyver
 
-	* NEWS (1.51), doc/Configuration.html (1.23), include/proftpd.h
-	(1.10), modules/mod_core.c (1.32), modules/mod_xfer.c (1.35): Fixed
-	GroupOwner and added UserOwner.
+	* NEWS, doc/Configuration.html, include/proftpd.h,
+	modules/mod_core.c, modules/mod_xfer.c: Fixed GroupOwner and added
+	UserOwner.
 
-2000-07-06 14:29  macgyver
+2000-07-06 15:29  macgyver
 
-	* NEWS (1.50), config.h.in (1.15), configure (1.33), configure.in
-	(1.33), src/main.c (1.31), modules/mod_auth.c (1.34): Added in
-	support to handle large groups efficiently.  This should take care
-	of the 'hangs forever on login' bug.
+	* NEWS, config.h.in, configure, configure.in, src/main.c,
+	modules/mod_auth.c: Added in support to handle large groups
+	efficiently.  This should take care of the 'hangs forever on login'
+	bug.
 
-2000-07-06 13:33  macgyver
+2000-07-06 14:33  macgyver
 
-	* modules/mod_auth.c (1.33): Fixed a bug when classes weren't
-	enabled and DisplayConnect is used.
+	* modules/mod_auth.c: Fixed a bug when classes weren't enabled and
+	DisplayConnect is used.
 
-2000-07-06 08:33  macgyver
+2000-07-06 09:33  macgyver
 
-	* include/inet.h (1.3, R1_2_0RC2), src/data.c (1.11), src/inet.c
-	(1.9): AllowForeignAddress directives now work on passive
-	connections as well.
+	* include/inet.h, src/data.c, src/inet.c: AllowForeignAddress
+	directives now work on passive connections as well.
 
-2000-07-06 07:58  macgyver
+2000-07-06 08:58  macgyver
 
-	* modules/mod_site.c (1.5): Typo in AllowChmod implementation. :)
+	* modules/mod_site.c: Typo in AllowChmod implementation. :)
 
-2000-07-06 07:44  macgyver
+2000-07-06 08:44  macgyver
 
-	* Make.rules.in (1.6): Minor cleanups.
+	* Make.rules.in: Minor cleanups.
 
-2000-07-06 01:59  macgyver
+2000-07-06 02:59  macgyver
 
-	* src/main.c (1.30): Added in set_proc_title duirng login.
+	* src/main.c: Added in set_proc_title duirng login.
 
-2000-07-06 01:53  macgyver
+2000-07-06 02:53  macgyver
 
-	* modules/: mod_auth.c (1.32), mod_core.c (1.31), mod_xfer.c
-	(1.34): Stubs for unimplemented commands.  Bleh...we need to
-	overhaul this protocol.
+	* modules/: mod_auth.c, mod_core.c, mod_xfer.c: Stubs for
+	unimplemented commands.  Bleh...we need to overhaul this protocol.
 
-2000-07-06 01:46  macgyver
+2000-07-06 02:46  macgyver
 
-	* doc/Configuration.html (1.22): Updated classes documentation.
+	* doc/Configuration.html: Updated classes documentation.
 
-2000-07-06 01:45  macgyver
+2000-07-06 02:45  macgyver
 
-	* NEWS (1.49), modules/mod_xfer.c (1.33): Minor typo in cmd_stor.
+	* NEWS, modules/mod_xfer.c: Minor typo in cmd_stor.
 
-2000-07-06 01:42  macgyver
+2000-07-06 02:42  macgyver
 
-	* modules/mod_auth.c (1.31): Fixed a minor race condition in
-	classes.
+	* modules/mod_auth.c: Fixed a minor race condition in classes.
 
-2000-07-06 01:18  macgyver
+2000-07-06 02:18  macgyver
 
-	* NEWS (1.48), modules/mod_ls.c (1.27): Fixed a minor permissions
-	display problem when DirFakeMode is not in use.
+	* NEWS, modules/mod_ls.c: Fixed a minor permissions display problem
+	when DirFakeMode is not in use.
 
-2000-07-06 01:13  macgyver
+2000-07-06 02:13  macgyver
 
-	* src/proftpd.8 (1.6, R1_2_0RC2): Added documentation for -t
-	option.
+	* src/proftpd.8: Added documentation for -t option.
 
-2000-07-06 01:08  macgyver
+2000-07-06 02:08  macgyver
 
-	* src/main.c (1.29): Fixed use of 500 instead of R_500.
+	* src/main.c: Fixed use of 500 instead of R_500.
 
-2000-07-06 00:58  macgyver
+2000-07-06 01:58  macgyver
 
-	* NEWS (1.47), config.h.in (1.14), configure (1.32), configure.in
-	(1.32), lib/vsnprintf.c (1.3), src/ftpcount.c (1.7): Made portable
-	*snprintf libraries more so by supporting floating point operations
-	and updated ftpcount accordingly.
+	* NEWS, config.h.in, configure, configure.in, lib/vsnprintf.c,
+	src/ftpcount.c: Made portable *snprintf libraries more so by
+	supporting floating point operations and updated ftpcount
+	accordingly.
 
-2000-07-06 00:57  macgyver
+2000-07-06 01:57  macgyver
 
-	* modules/mod_pam.c (1.12): Added in session control management.
+	* modules/mod_pam.c: Added in session control management.
 
-2000-07-05 23:51  macgyver
+2000-07-06 00:51  macgyver
 
-	* lib/pwgrent.c (1.4): A fix for dealing with FreeBSD's (IMO
-	**BROKEN**) passwd scheme that allows comments and blank lines in
-	passwd files.
+	* lib/pwgrent.c: A fix for dealing with FreeBSD's (IMO **BROKEN**)
+	passwd scheme that allows comments and blank lines in passwd files.
 
-2000-07-05 23:41  macgyver
+2000-07-06 00:41  macgyver
 
-	* NEWS (1.46), modules/mod_site.c (1.4): Added AllowChmod
-	directive.
+	* NEWS, modules/mod_site.c: Added AllowChmod directive.
 
-2000-07-05 23:24  macgyver
+2000-07-06 00:24  macgyver
 
-	* NEWS (1.45), doc/Configuration.html (1.21), modules/mod_ls.c
-	(1.26), modules/mod_readme.c (1.6): DisplayReadme now accepts
-	patterns.
+	* NEWS, doc/Configuration.html, modules/mod_ls.c,
+	modules/mod_readme.c: DisplayReadme now accepts patterns.
 
-2000-07-05 22:55  macgyver
+2000-07-05 23:55  macgyver
 
-	* Make.rules.in (1.5), NEWS (1.44), include/default_paths.h (1.2),
-	src/main.c (1.28), src/proftpd.8 (1.5): A PID file is now created
-	in standalone mode.
+	* Make.rules.in, NEWS, include/default_paths.h, src/main.c,
+	src/proftpd.8: A PID file is now created in standalone mode.
 
-2000-07-05 22:32  macgyver
+2000-07-05 23:32  macgyver
 
-	* acconfig.h (1.6), config.h.in (1.13), configure (1.31),
-	configure.in (1.31), include/conf.h (1.5, R1_2_0RC2),
-	modules/mod_ls.c (1.25): Fixed a POSIX issue regarding NAME_MAX
-	usage.
+	* acconfig.h, config.h.in, configure, configure.in, include/conf.h,
+	modules/mod_ls.c: Fixed a POSIX issue regarding NAME_MAX usage.
 
-2000-07-05 22:31  macgyver
+2000-07-05 23:31  macgyver
 
-	* NEWS (1.43): Updated news.
+	* NEWS: Updated news.
 
-2000-07-05 22:31  macgyver
+2000-07-05 23:31  macgyver
 
-	* INSTALL (1.6, R1_2_0RC2): Updated documentation.
+	* INSTALL: Updated documentation.
 
-2000-07-03 13:25  macgyver
+2000-07-03 14:25  macgyver
 
-	* modules/mod_ls.c (1.24): Fixed potential buffer problem in
-	dolist().
+	* modules/mod_ls.c: Fixed potential buffer problem in dolist().
 
-2000-07-03 11:25  macgyver
+2000-07-03 12:25  macgyver
 
-	* modules/mod_log.c (1.14): Cleaned up mod_log slightly, and added
-	in some comments about potential buffer problems to be fixed after
-	1.2.0.
+	* modules/mod_log.c: Cleaned up mod_log slightly, and added in some
+	comments about potential buffer problems to be fixed after 1.2.0.
 
-2000-07-03 11:03  macgyver
+2000-07-03 12:03  macgyver
 
-	* README.PAM (1.4, R1_2_0RC2): Updated PAM documentation to reflect
-	AuthPAM.
+	* README.PAM: Updated PAM documentation to reflect AuthPAM.
 
-2000-07-03 10:55  macgyver
+2000-07-03 11:55  macgyver
 
-	* modules/mod_pam.c (1.11): Changed PAMConfig to AuthPAMConfig for
+	* modules/mod_pam.c: Changed PAMConfig to AuthPAMConfig for
 	compatability reasons going forward.  Added in AuthPAM directive to
 	selectively activate/deactivate PAM.  Cleaned up PAM functions a
 	bit and made some checks more strict.  Removed a minor potential
 	memory leak.
 
-2000-07-03 09:30  macgyver
+2000-07-03 10:30  macgyver
 
-	* src/main.c (1.27): Security fix in setproctitle().
+	* src/main.c: Security fix in setproctitle().
 
-2000-05-15 10:08  macgyver
+2000-05-15 11:08  macgyver
 
-	* contrib/mod_sqlpw.c (1.4): Fixed the 'password shows up instead
-	of the username' problem with SQL passwords
+	* contrib/mod_sqlpw.c: Fixed the 'password shows up instead of the
+	username' problem with SQL passwords
 
-2000-03-06 01:11  macgyver
+2000-03-06 02:11  macgyver
 
-	* CREDITS (1.2, R1_2_0RC2): Updated CREDITS
+	* CREDITS: Updated CREDITS
 
-2000-03-06 00:44  macgyver
+2000-03-06 01:44  macgyver
 
-	* INSTALL (1.5): An even cooler INSTALL file
+	* INSTALL: An even cooler INSTALL file
 
-2000-03-06 00:38  macgyver
+2000-03-06 01:38  macgyver
 
-	* INSTALL (1.4), doc/Configuration.html (1.20): Documentation
-	updates
+	* INSTALL, doc/Configuration.html: Documentation updates
 
-2000-03-06 00:25  macgyver
+2000-03-06 01:25  macgyver
 
-	* NEWS (1.42), modules/mod_ls.c (1.23): Added in -L option for
-	things like mirror to work with symlinks
+	* NEWS, modules/mod_ls.c: Added in -L option for things like mirror
+	to work with symlinks
 
-2000-03-05 23:32  macgyver
+2000-03-06 00:32  macgyver
 
-	* configure (1.30), configure.in (1.30): Fixed a bug in
-	link-testing for -ldl
+	* configure, configure.in: Fixed a bug in link-testing for -ldl
 
-2000-03-03 15:10  macgyver
+2000-03-03 16:10  macgyver
 
-	* config.h.in (1.12), configure (1.29), configure.in (1.29),
-	modules/mod_pam.c (1.10): Minor cleanups of configure scripts to
-	remove dependencies on -ldl
+	* config.h.in, configure, configure.in, modules/mod_pam.c: Minor
+	cleanups of configure scripts to remove dependencies on -ldl
 
-2000-03-02 09:32  macgyver
+2000-03-02 10:32  macgyver
 
-	* src/: ftpcount.1 (1.3, R1_2_0RC2), ftpshut.8 (1.3, R1_2_0RC2),
-	ftpwho.1 (1.3, R1_2_0RC2), proftpd.8 (1.4), xferlog.5 (1.2):
+	* src/: ftpcount.1, ftpshut.8, ftpwho.1, proftpd.8, xferlog.5:
 	Cleaned up man pages a bit.  Lots more work still needed, though.
 
-2000-03-01 00:13  macgyver
+2000-03-01 01:13  macgyver
 
-	* NEWS (1.41), modules/mod_ls.c (1.22): Put in a better optimized
-	sreaddir function
+	* NEWS, modules/mod_ls.c: Put in a better optimized sreaddir
+	function
 
-2000-03-01 00:13  macgyver
+2000-03-01 01:13  macgyver
 
-	* modules/mod_auth.c (1.30): Cleanup of a couple of typos, and
-	removed some redundant code
+	* modules/mod_auth.c: Cleanup of a couple of typos, and removed
+	some redundant code
 
-2000-03-01 00:12  macgyver
+2000-03-01 01:12  macgyver
 
-	* include/conf.h (1.4), modules/mod_tar.c (1.5): Moved the NAME_MAX
-	stuff into conf.h, for portability
+	* include/conf.h, modules/mod_tar.c: Moved the NAME_MAX stuff into
+	conf.h, for portability
 
-2000-03-01 00:11  macgyver
+2000-03-01 01:11  macgyver
 
-	* src/pool.c (1.11): Commented out references to symbol information
-	in pool allocations
+	* src/pool.c: Commented out references to symbol information in
+	pool allocations
 
-2000-02-29 01:25  macgyver
+2000-02-29 02:25  macgyver
 
-	* NEWS (1.40), acconfig.h (1.5), config.h.in (1.11), configure
-	(1.28), configure.in (1.28), src/main.c (1.26): Added in support
-	for tzset, to preserve timezone information across a chroot
+	* NEWS, acconfig.h, config.h.in, configure, configure.in,
+	src/main.c: Added in support for tzset, to preserve timezone
+	information across a chroot
 
-2000-02-29 01:25  macgyver
+2000-02-29 02:25  macgyver
 
-	* src/ftpcount.c (1.6): Cleaned up a couple of compile-time
-	warnings
+	* src/ftpcount.c: Cleaned up a couple of compile-time warnings
 
-2000-02-28 19:11  macgyver
+2000-02-28 20:11  macgyver
 
-	* NEWS (1.39), lib/vsnprintf.c (1.2), src/log.c (1.14): Removed
-	spurious alloca calls
+	* NEWS, lib/vsnprintf.c, src/log.c: Removed spurious alloca calls
 
-2000-02-28 18:30  macgyver
+2000-02-28 19:30  macgyver
 
-	* modules/mod_tar.c (1.4): Make mod_tar more portable
+	* modules/mod_tar.c: Make mod_tar more portable
 
-2000-02-28 14:19  macgyver
+2000-02-28 15:19  macgyver
 
-	* NEWS (1.38), doc/Configuration.html (1.19), modules/mod_auth.c
-	(1.29), modules/mod_log.c (1.13): Added in %A, %F, and %m to
-	LogFormat so we can do CLF-style logs now
+	* NEWS, doc/Configuration.html, modules/mod_auth.c,
+	modules/mod_log.c: Added in %A, %F, and %m to LogFormat so we can
+	do CLF-style logs now
 
-2000-02-28 14:02  macgyver
+2000-02-28 15:02  macgyver
 
-	* ChangeLog (1.14), NEWS (1.37), src/dirtree.c (1.15), src/main.c
-	(1.25): Added -t option to allow for syntax checking of a config
-	file and made config file errors give line and file information on
-	failure
+	* ChangeLog, NEWS, src/dirtree.c, src/main.c: Added -t option to
+	allow for syntax checking of a config file and made config file
+	errors give line and file information on failure
 
-2000-02-28 13:06  macgyver
+2000-02-28 14:06  macgyver
 
-	* modules/: mod_auth.c (1.28), mod_core.c (1.30): Minor cosmetic
-	cleanups
+	* modules/: mod_auth.c, mod_core.c: Minor cosmetic cleanups
 
-2000-02-28 12:57  macgyver
+2000-02-28 13:57  macgyver
 
-	* NEWS (1.36), modules/mod_core.c (1.29): Add %k directive to show
-	amount of data in a user-friendly way in DisplayQuit
+	* NEWS, modules/mod_core.c: Add %k directive to show amount of data
+	in a user-friendly way in DisplayQuit
 
-2000-02-28 12:56  macgyver
+2000-02-28 13:56  macgyver
 
-	* modules/mod_auth.c (1.27): Make root logins louder
+	* modules/mod_auth.c: Make root logins louder
 
-2000-02-28 05:15  macgyver
+2000-02-28 06:15  macgyver
 
-	* NEWS (1.35), README.Unixware (1.1, R1_2_0RC2), config.guess
-	(1.3), config.sub (1.3): Unixware support and updated config.guess,
-	config.sub files
+	* NEWS, README.Unixware, config.guess, config.sub: Unixware support
+	and updated config.guess, config.sub files
 
-2000-02-28 04:50  macgyver
+2000-02-28 05:50  macgyver
 
-	* NEWS (1.34), src/inet.c (1.8): FreeBSD 4.0 support added
+	* NEWS, src/inet.c: FreeBSD 4.0 support added
 
-2000-02-28 04:46  macgyver
+2000-02-28 05:46  macgyver
 
-	* modules/: mod_pam.c (1.9), mod_unixpw.c (1.4): Fixed a minor typo
-	in pw_auth
+	* modules/: mod_pam.c, mod_unixpw.c: Fixed a minor typo in pw_auth
 
-2000-02-28 04:42  macgyver
+2000-02-28 05:42  macgyver
 
-	* NEWS (1.33), contrib/mod_quota.c (1.1): Added mod_quota
+	* NEWS, contrib/mod_quota.c: Added mod_quota
 
-2000-02-28 04:37  macgyver
+2000-02-28 05:37  macgyver
 
-	* modules/mod_xfer.c (1.32): Include sys/sendfile.h
+	* modules/mod_xfer.c: Include sys/sendfile.h
 
-2000-02-28 04:32  macgyver
+2000-02-28 05:32  macgyver
 
-	* modules/mod_core.c (1.28): Minor cleanups of unused variables
+	* modules/mod_core.c: Minor cleanups of unused variables
 
-2000-02-28 04:25  macgyver
+2000-02-28 05:25  macgyver
 
-	* NEWS (1.32), modules/mod_log.c (1.12): Logging of transfer times
-	is more precise
+	* NEWS, modules/mod_log.c: Logging of transfer times is more
+	precise
 
-2000-02-28 04:19  macgyver
+2000-02-28 05:19  macgyver
 
-	* modules/mod_core.c (1.27): Fixed a typo that called VirtualHost a
+	* modules/mod_core.c: Fixed a typo that called VirtualHost a
 	VirtualServer
 
-2000-02-28 04:16  macgyver
+2000-02-28 05:16  macgyver
 
-	* NEWS (1.31), modules/mod_log.c (1.11): Add a warning for invalid
-	classes in ExtendedLog
+	* NEWS, modules/mod_log.c: Add a warning for invalid classes in
+	ExtendedLog
 
-2000-02-28 04:14  macgyver
+2000-02-28 05:14  macgyver
 
-	* NEWS (1.30), src/main.c (1.24): Save environment before doing
-	anything with set_proc_title.
+	* NEWS, src/main.c: Save environment before doing anything with
+	set_proc_title.
 
-2000-02-26 15:34  macgyver
+2000-02-26 16:34  macgyver
 
-	* NEWS (1.29), contrib/mod_ldap.c (1.6): Updated mod_ldap to 2.5.2.
+	* NEWS, contrib/mod_ldap.c: Updated mod_ldap to 2.5.2.
 
-2000-02-26 15:31  macgyver
+2000-02-26 16:31  macgyver
 
-	* NEWS (1.28), modules/mod_xfer.c (1.31): Updated bandwidth code to
-	use select instead of usleep.
+	* NEWS, modules/mod_xfer.c: Updated bandwidth code to use select
+	instead of usleep.
 
-2000-02-15 18:33  macgyver
+2000-02-15 19:33  macgyver
 
-	* NEWS (1.27), src/dirtree.c (1.14): Fixed Umask handling for
-	directories.
+	* NEWS, src/dirtree.c: Fixed Umask handling for directories.
 
-2000-02-15 18:09  macgyver
+2000-02-15 19:09  macgyver
 
-	* NEWS (1.26), modules/mod_xfer.c (1.30): Correct the case where
-	there is no second argument to TYPE L X.
+	* NEWS, modules/mod_xfer.c: Correct the case where there is no
+	second argument to TYPE L X.
 
-2000-02-15 17:48  macgyver
+2000-02-15 18:48  macgyver
 
-	* src/support.c (1.13): Correct calc_fs to actually make the right
+	* src/support.c: Correct calc_fs to actually make the right
 	calculation when using statvfs.
 
-2000-02-01 10:59  macgyver
+2000-02-01 11:59  macgyver
 
-	* modules/mod_auth.c (1.26): Fixed a NULL dereference when
-	AuthUsingAlias is used outside of <Anonymous> directives.
+	* modules/mod_auth.c: Fixed a NULL dereference when AuthUsingAlias
+	is used outside of <Anonymous> directives.
 
-2000-01-23 23:59  macgyver
+2000-01-24 00:59  macgyver
 
-	* NEWS (1.25), modules/mod_auth.c (1.25): Fixed a small group
-	permissions problem.
+	* NEWS, modules/mod_auth.c: Fixed a small group permissions
+	problem.
 
-2000-01-23 23:47  macgyver
+2000-01-24 00:47  macgyver
 
-	* src/: dirtree.c (1.13), main.c (1.23): Removed references to the
-	fastpathing of limits.	This topic is too complex to deal with for
-	1.2.0.
+	* src/: dirtree.c, main.c: Removed references to the fastpathing of
+	limits.  This topic is too complex to deal with for 1.2.0.
 
-2000-01-23 19:15  macgyver
+2000-01-23 20:15  macgyver
 
-	* src/main.c (1.22): This is a stupid message...just disabled my
+	* src/main.c: This is a stupid message...just disabled my
 	fastpath...needs more work, and I need to step out for a while. :)
 
-2000-01-23 19:03  macgyver
+2000-01-23 20:03  macgyver
 
-	* src/main.c (1.21): Added a fastpath for denying commands in the
-	dispatch loop.
+	* src/main.c: Added a fastpath for denying commands in the dispatch
+	loop.
 
-2000-01-23 18:46  macgyver
+2000-01-23 19:46  macgyver
 
-	* include/proftpd.h (1.9), modules/mod_auth.c (1.24),
-	modules/mod_core.c (1.26), src/ftpcount.c (1.5): Support for class
-	listing in ftpcount.  Support for full use of % options in
-	DisplayConnect.
+	* include/proftpd.h, modules/mod_auth.c, modules/mod_core.c,
+	src/ftpcount.c: Support for class listing in ftpcount.	Support for
+	full use of % options in DisplayConnect.
 
-2000-01-23 17:37  macgyver
+2000-01-23 18:37  macgyver
 
-	* doc/Undocumented.txt (1.11, R1_2_0RC2): Updated Undocumented.txt.
+	* doc/Undocumented.txt: Updated Undocumented.txt.
 
-2000-01-23 17:37  macgyver
+2000-01-23 18:37  macgyver
 
-	* doc/Configuration.html (1.18): Documentation for Include
-	directive.
+	* doc/Configuration.html: Documentation for Include directive.
 
-2000-01-23 17:31  macgyver
+2000-01-23 18:31  macgyver
 
-	* modules/mod_core.c (1.25): Added 'Include' directive.
+	* modules/mod_core.c: Added 'Include' directive.
 
-2000-01-23 17:12  macgyver
+2000-01-23 18:12  macgyver
 
-	* modules/mod_pam.c (1.8): Re-add -ldl to mod_pam.
+	* modules/mod_pam.c: Re-add -ldl to mod_pam.
 
-2000-01-23 16:55  macgyver
+2000-01-23 17:55  macgyver
 
-	* modules/mod_core.c (1.24): DisplayConnect now supports all the %
+	* modules/mod_core.c: DisplayConnect now supports all the %
 	options.  Correct a bug with %z printing in classes.
 
-2000-01-23 16:49  macgyver
+2000-01-23 17:49  macgyver
 
-	* modules/mod_ls.c (1.21): Added TimesGMT, and made our listing
-	output more consistent.
+	* modules/mod_ls.c: Added TimesGMT, and made our listing output
+	more consistent.
 
-2000-01-23 16:48  macgyver
+2000-01-23 17:48  macgyver
 
-	* doc/Configuration.html (1.17): Added documentation for
-	Class/Classes and TimeGMT.
+	* doc/Configuration.html: Added documentation for Class/Classes and
+	TimeGMT.
 
-2000-01-23 12:38  macgyver
+2000-01-23 13:38  macgyver
 
-	* NEWS (1.24), modules/mod_ls.c (1.20): Fix a stupid dereference in
-	mod_ls.
+	* NEWS, modules/mod_ls.c: Fix a stupid dereference in mod_ls.
 
-2000-01-17 21:16  macgyver
+2000-01-17 22:16  macgyver
 
-	* CREDITS (1.1, R1_2_0pre10): Added a CREDITS file.
+	* CREDITS: Added a CREDITS file.
 
-2000-01-17 21:15  macgyver
+2000-01-17 22:15  macgyver
 
-	* README (1.5, R1_2_0RC2, R1_2_0pre10): Updated with new web site.
+	* README: Updated with new web site.
 
-2000-01-17 21:14  macgyver
+2000-01-17 22:14  macgyver
 
-	* contrib/dist/rpm/proftpd.spec.in (1.4, R1_2_0RC2, R1_2_0pre10):
-	Updated for new web site.
+	* contrib/dist/rpm/proftpd.spec.in: Updated for new web site.
 
-2000-01-17 21:08  macgyver
+2000-01-17 22:08  macgyver
 
-	* ChangeLog (1.13, R1_2_0pre10): Updated for pre10.
+	* ChangeLog: Updated for pre10.
 
-2000-01-17 21:04  macgyver
+2000-01-17 22:04  macgyver
 
-	* include/version.h (1.9, R1_2_0pre10): Updated for pre10.
+	* include/version.h: Updated for pre10.
 
-2000-01-17 21:01  macgyver
+2000-01-17 22:01  macgyver
 
-	* NEWS (1.23, R1_2_0pre10): Updated for pre10 release.
+	* NEWS: Updated for pre10 release.
 
-2000-01-17 20:07  macgyver
+2000-01-17 21:07  macgyver
 
-	* doc/Configuration.html (1.16), include/dirtree.h (1.7,
-	R1_2_0RC2), modules/mod_core.c (1.23), src/dirtree.c (1.12) (utags:
-	R1_2_0pre10): Corrected some errors in .ftpaccess handling.
+	* doc/Configuration.html, include/dirtree.h, modules/mod_core.c,
+	src/dirtree.c: Corrected some errors in .ftpaccess handling.
 
-2000-01-17 20:00  macgyver
+2000-01-17 21:00  macgyver
 
-	* config.sub (1.2, R1_2_0pre10): Recognize BSDI on an UltraSPaRC
+	* config.sub: Recognize BSDI on an UltraSPaRC
 
-2000-01-17 18:41  macgyver
+2000-01-17 19:41  macgyver
 
-	* NEWS (1.22), src/inet.c (1.7, R1_2_0pre10): inet_getname no
-	longer returns NULL in bad host entry cases.
+	* NEWS, src/inet.c: inet_getname no longer returns NULL in bad host
+	entry cases.
 
-2000-01-17 18:27  macgyver
+2000-01-17 19:27  macgyver
 
-	* NEWS (1.21), src/fs.c (1.7, R1_2_0pre10): Corrected ~ reporting.
+	* NEWS, src/fs.c: Corrected ~ reporting.
 
-2000-01-15 16:54  macgyver
+2000-01-15 17:54  macgyver
 
-	* lib/pwgrent.c (1.3, R1_2_0pre10): Corrected an allocation error
-	in pwgrent.
+	* lib/pwgrent.c: Corrected an allocation error in pwgrent.
 
-2000-01-03 15:28  macgyver
+2000-01-03 16:28  macgyver
 
-	* include/privs.h (1.3, R1_2_0RC2), include/proftpd.h (1.8),
-	modules/mod_auth.c (1.23) (utags: R1_2_0pre10): Added Simon's patch
-	to handle chdir-ing properly into user accounts.
+	* include/privs.h, include/proftpd.h, modules/mod_auth.c: Added
+	Simon's patch to handle chdir-ing properly into user accounts.
 
-2000-01-03 14:17  macgyver
+2000-01-03 15:17  macgyver
 
-	* modules/mod_xfer.c (1.29, R1_2_0pre10): Handle a case with a
-	zero-length file for BSD.
+	* modules/mod_xfer.c: Handle a case with a zero-length file for
+	BSD.
 
-1999-12-30 13:06  macgyver
+1999-12-30 14:06  macgyver
 
-	* src/data.c (1.10, R1_2_0pre10): Fixed total calculation.
+	* src/data.c: Fixed total calculation.
 
-1999-12-30 12:41  macgyver
+1999-12-30 13:41  macgyver
 
-	* NEWS (1.20), include/dirtree.h (1.6), modules/mod_auth.c (1.22),
-	modules/mod_core.c (1.22): Fixed error messages in cases where it's
-	an invalid number of arguments.
+	* NEWS, include/dirtree.h, modules/mod_auth.c, modules/mod_core.c:
+	Fixed error messages in cases where it's an invalid number of
+	arguments.
 
-1999-12-30 00:27  macgyver
+1999-12-30 01:27  macgyver
 
-	* ChangeLog (1.12), src/data.c (1.9): Added a fix for BSD's strange
-	sendfile behavior.
+	* ChangeLog, src/data.c: Added a fix for BSD's strange sendfile
+	behavior.
 
-1999-12-29 14:08  macgyver
+1999-12-29 15:08  macgyver
 
-	* src/data.c (1.8): Minor correction to sendfile() semantics on
-	FreeBSD.
+	* src/data.c: Minor correction to sendfile() semantics on FreeBSD.
 
-1999-12-28 09:54  macgyver
+1999-12-28 10:54  macgyver
 
-	* contrib/mod_linuxprivs.c (1.6, R1_2_0RC2, R1_2_0pre10),
-	contrib/mod_sqlpw.c (1.3, R1_2_0pre10), modules/mod_auth.c (1.21),
-	modules/mod_core.c (1.21), modules/mod_log.c (1.10, R1_2_0pre10),
-	modules/mod_ls.c (1.19, R1_2_0pre10), modules/mod_readme.c (1.5,
-	R1_2_0pre10), modules/mod_site.c (1.3, R1_2_0pre10),
-	modules/mod_xfer.c (1.28): Ensured that cmdtable structs remained
-	static to the files they're defined in.
+	* contrib/mod_linuxprivs.c, contrib/mod_sqlpw.c,
+	modules/mod_auth.c, modules/mod_core.c, modules/mod_log.c,
+	modules/mod_ls.c, modules/mod_readme.c, modules/mod_site.c,
+	modules/mod_xfer.c: Ensured that cmdtable structs remained static
+	to the files they're defined in.
 
-1999-12-28 09:43  macgyver
+1999-12-28 10:43  macgyver
 
-	* ChangeLog (1.11): Updated ChangeLog.
+	* ChangeLog: Updated ChangeLog.
 
-1999-12-28 09:43  macgyver
+1999-12-28 10:43  macgyver
 
-	* src/: support.c (1.12), utils.c (1.7, R1_2_0RC2) (utags:
-	R1_2_0pre10): Cleaned up sstrncpy properly and backed out previous
-	incorrect cleanup.
+	* src/: support.c, utils.c: Cleaned up sstrncpy properly and backed
+	out previous incorrect cleanup.
 
-1999-12-28 01:45  macgyver
+1999-12-28 02:45  macgyver
 
-	* NEWS (1.19): Updated again.
+	* NEWS: Updated again.
 
-1999-12-28 01:43  macgyver
+1999-12-28 02:43  macgyver
 
-	* NEWS (1.18): Updated NEWS.
+	* NEWS: Updated NEWS.
 
-1999-12-28 01:33  macgyver
+1999-12-28 02:33  macgyver
 
-	* src/: support.c (1.11), utils.c (1.6): Cleaned up the
-	implementation of sstrncpy slightly.
+	* src/: support.c, utils.c: Cleaned up the implementation of
+	sstrncpy slightly.
 
-1999-12-28 01:27  macgyver
+1999-12-28 02:27  macgyver
 
-	* modules/mod_xfer.c (1.27): Disable sendfile() if we're using
-	bandwidth control.
+	* modules/mod_xfer.c: Disable sendfile() if we're using bandwidth
+	control.
 
-1999-12-28 01:18  macgyver
+1999-12-28 02:18  macgyver
 
-	* modules/mod_auth.c (1.20): Fixed a missing variable in a log_auth
-	entry.
+	* modules/mod_auth.c: Fixed a missing variable in a log_auth entry.
 
-1999-12-28 00:32  macgyver
+1999-12-28 01:32  macgyver
 
-	* INSTALL (1.3, R1_2_0pre10), README (1.4), doc/Configuration.html
-	(1.15): Updated documentation to reflect new web site.
+	* INSTALL, README, doc/Configuration.html: Updated documentation to
+	reflect new web site.
 
-1999-12-28 00:26  macgyver
+1999-12-28 01:26  macgyver
 
-	* configure (1.27), configure.in (1.27) (utags: R1_2_0pre10): Fixed
-	the detection of hpsecurity.h
+	* configure, configure.in: Fixed the detection of hpsecurity.h
 
-1999-12-28 00:24  macgyver
+1999-12-28 01:24  macgyver
 
-	* modules/mod_readme.c (1.4): A minor Y2K correction in handling
-	READMEs.
+	* modules/mod_readme.c: A minor Y2K correction in handling READMEs.
 
-1999-12-26 21:03  macgyver
+1999-12-26 22:03  macgyver
 
-	* NEWS (1.17), README.LDAP (1.2, R1_2_0pre10), contrib/mod_ldap.c
-	(1.5, R1_2_0pre10), doc/Configuration.html (1.14): Updated
-	mod_ldap.
+	* NEWS, README.LDAP, contrib/mod_ldap.c, doc/Configuration.html:
+	Updated mod_ldap.
 
-1999-12-26 20:53  macgyver
+1999-12-26 21:53  macgyver
 
-	* configure (1.26), configure.in (1.26): Fixed a minor typo in a
-	test case.
+	* configure, configure.in: Fixed a minor typo in a test case.
 
-1999-12-26 20:48  macgyver
+1999-12-26 21:48  macgyver
 
-	* modules/mod_auth.c (1.19): Group handling fixed for complex
-	groups.
+	* modules/mod_auth.c: Group handling fixed for complex groups.
 
-1999-12-26 20:43  macgyver
+1999-12-26 21:43  macgyver
 
-	* modules/mod_xfer.c (1.26): Corrected a minor misdefinition in
+	* modules/mod_xfer.c: Corrected a minor misdefinition in
 	xfer_init_parent.
 
-1999-12-23 00:05  macgyver
+1999-12-23 01:05  macgyver
 
-	* NEWS (1.16), lib/pwgrent.c (1.2): Generate a meaningful error for
-	bad group entries.
+	* NEWS, lib/pwgrent.c: Generate a meaningful error for bad group
+	entries.
 
-1999-12-23 00:04  macgyver
+1999-12-23 01:04  macgyver
 
-	* modules/mod_xfer.c (1.25): Added more caught cases in sendfile().
+	* modules/mod_xfer.c: Added more caught cases in sendfile().
 
-1999-12-09 08:54  macgyver
+1999-12-09 09:54  macgyver
 
-	* src/support.c (1.10): Small Y2K fix.
+	* src/support.c: Small Y2K fix.
 
-1999-11-28 23:26  macgyver
+1999-11-29 00:26  macgyver
 
-	* NEWS (1.15), src/data.c (1.7): sendfile() doesn't log spurious
-	errors unless in debug mode.
+	* NEWS, src/data.c: sendfile() doesn't log spurious errors unless
+	in debug mode.
 
-1999-10-27 15:45  macgyver
+1999-10-27 16:45  macgyver
 
-	* configure (1.25), configure.in (1.25): Corrected intall_group
-	handling.
+	* configure, configure.in: Corrected intall_group handling.
 
-1999-10-27 15:43  macgyver
+1999-10-27 16:43  macgyver
 
-	* modules/mod_xfer.c (1.24): Minor optimization in sendfile()
-	detection on Linux.
+	* modules/mod_xfer.c: Minor optimization in sendfile() detection on
+	Linux.
 
-1999-10-27 01:26  macgyver
+1999-10-27 02:26  macgyver
 
-	* modules/mod_xfer.c (1.23): Minor log cleanup for data_sendfile.
+	* modules/mod_xfer.c: Minor log cleanup for data_sendfile.
 
-1999-10-27 01:24  macgyver
+1999-10-27 02:24  macgyver
 
-	* modules/mod_xfer.c (1.22): Moved around some logging for
-	data_sendfile.
+	* modules/mod_xfer.c: Moved around some logging for data_sendfile.
 
-1999-10-27 00:45  macgyver
+1999-10-27 01:45  macgyver
 
-	* contrib/.cvsignore (1.4, R1_2_0RC2, R1_2_0pre10): Updated for
-	proftpd.spec.
+	* contrib/.cvsignore: Updated for proftpd.spec.
 
-1999-10-27 00:45  macgyver
+1999-10-27 01:45  macgyver
 
-	* contrib/dist/rpm/.cvsignore (1.1, R1_2_0RC2, R1_2_0pre10): New
-	file.
+	* contrib/dist/rpm/.cvsignore: New file.
 
-1999-10-27 00:44  macgyver
+1999-10-27 01:44  macgyver
 
-	* modules/mod_xfer.c (1.21): sendfile() should take a more graceful
-	and tolerant approach to slow connections.  It seems that the
-	problem is that its too fast.
+	* modules/mod_xfer.c: sendfile() should take a more graceful and
+	tolerant approach to slow connections.	It seems that the problem
+	is that its too fast.
 
-1999-10-27 00:43  macgyver
+1999-10-27 01:43  macgyver
 
-	* Makefile.in (1.8, R1_2_0RC2, R1_2_0pre10): Minor path correction
-	for proftpd.spec.
+	* Makefile.in: Minor path correction for proftpd.spec.
 
-1999-10-26 22:06  macgyver
+1999-10-26 23:06  macgyver
 
-	* ChangeLog (1.10): Updated.
+	* ChangeLog: Updated.
 
-1999-10-26 22:01  macgyver
+1999-10-26 23:01  macgyver
 
-	* NEWS (1.14), contrib/dist/rpm/proftpd.spec.in (1.3) (utags:
-	R1_2_0pre9): Minor cleanups.
+	* NEWS, contrib/dist/rpm/proftpd.spec.in: Minor cleanups.
 
-1999-10-26 21:36  macgyver
+1999-10-26 22:36  macgyver
 
-	* NEWS (1.13), README.LDAP (1.1, R1_2_0pre9),
-	doc/Configuration.html (1.13, R1_2_0pre9), include/version.h (1.8,
-	R1_2_0pre9): Documentation updates and version bump to pre9.
+	* NEWS, README.LDAP, doc/Configuration.html, include/version.h:
+	Documentation updates and version bump to pre9.
 
-1999-10-26 21:20  macgyver
+1999-10-26 22:20  macgyver
 
-	* contrib/dist/rpm/proftpd.spec.in (1.2): Updated to reflect new
-	paths.
+	* contrib/dist/rpm/proftpd.spec.in: Updated to reflect new paths.
 
-1999-10-26 20:58  macgyver
+1999-10-26 21:58  macgyver
 
-	* modules/mod_xfer.c (1.20, R1_2_0pre9): Added support for TYPE L
-	for RFC 959 compliance.
+	* modules/mod_xfer.c: Added support for TYPE L for RFC 959
+	compliance.
 
-1999-10-26 20:43  macgyver
+1999-10-26 21:43  macgyver
 
-	* doc/rfc/: draft-bonachea-sftp-00.txt (1.1),
-	draft-ietf-ftpext-mlst-08.txt (1.1),
-	draft-ietf-ftpext-sec-consider-02.txt (1.1), rfc0959.txt (1.1),
-	rfc2228.txt (1.1) (utags: R1_2_0RC2, R1_2_0pre10, R1_2_0pre9):
+	* doc/rfc/: draft-bonachea-sftp-00.txt,
+	draft-ietf-ftpext-mlst-08.txt,
+	draft-ietf-ftpext-sec-consider-02.txt, rfc0959.txt, rfc2228.txt:
 	Added RFCs to the documentation.
 
-1999-10-26 20:08  macgyver
+1999-10-26 21:08  macgyver
 
-	* configure (1.24), configure.in (1.24) (utags: R1_2_0pre9): Fixed
-	my stupid typo in FreeBSD setpassent.
+	* configure, configure.in: Fixed my stupid typo in FreeBSD
+	setpassent.
 
-1999-10-26 20:02  macgyver
+1999-10-26 21:02  macgyver
 
-	* doc/: Configuration.html (1.12), Undocumented.txt (1.10,
-	R1_2_0pre10, R1_2_0pre9): Added more directives.
+	* doc/: Configuration.html, Undocumented.txt: Added more
+	directives.
 
-1999-10-25 15:13  macgyver
+1999-10-25 16:13  macgyver
 
-	* doc/: Configuration.html (1.11), ShowUndocumented (1.3,
-	R1_2_0pre10, R1_2_0pre9), Undocumented.txt (1.9): More additions,
-	courtesy of Ben Ritcey.
+	* doc/: Configuration.html, ShowUndocumented, Undocumented.txt:
+	More additions, courtesy of Ben Ritcey.
 
-1999-10-23 00:24  macgyver
+1999-10-23 01:24  macgyver
 
-	* NEWS (1.12): Added AuthUsingAlias.
+	* NEWS: Added AuthUsingAlias.
 
-1999-10-23 00:18  macgyver
+1999-10-23 01:18  macgyver
 
-	* doc/Configuration.html (1.10), modules/mod_auth.c (1.18,
-	R1_2_0pre9), modules/mod_core.c (1.20, R1_2_0pre9): Added in
-	AuthUsingAlias.
+	* doc/Configuration.html, modules/mod_auth.c, modules/mod_core.c:
+	Added in AuthUsingAlias.
 
-1999-10-22 23:07  macgyver
+1999-10-23 00:07  macgyver
 
-	* configure (1.23), configure.in (1.23), contrib/ftp.pamd (1.2),
-	contrib/proftpd.spec.in (1.6), contrib/dist/rpm/ftp.pamd (1.1,
-	R1_2_0RC2, R1_2_0pre10, R1_2_0pre9),
-	contrib/dist/rpm/proftpd.init.d (1.1, R1_2_0RC2, R1_2_0pre10,
-	R1_2_0pre9), contrib/dist/rpm/proftpd.spec.in (1.1),
-	doc/Undocumented.txt (1.8): Moved around RPM build files.
+	* configure, configure.in, contrib/ftp.pamd,
+	contrib/proftpd.spec.in, contrib/dist/rpm/ftp.pamd,
+	contrib/dist/rpm/proftpd.init.d, contrib/dist/rpm/proftpd.spec.in,
+	doc/Undocumented.txt: Moved around RPM build files.
 
-1999-10-22 22:53  macgyver
+1999-10-22 23:53  macgyver
 
-	* ChangeLog (1.9, R1_2_0pre9): Updated.
+	* ChangeLog: Updated.
 
-1999-10-22 22:52  macgyver
+1999-10-22 23:52  macgyver
 
-	* NEWS (1.11), modules/mod_xfer.c (1.19): Minor updates.
+	* NEWS, modules/mod_xfer.c: Minor updates.
 
-1999-10-22 22:39  macgyver
+1999-10-22 23:39  macgyver
 
-	* contrib/proftpd.spec.in (1.5): Updated spec file to produce
-	standalone and inetd packages.
+	* contrib/proftpd.spec.in: Updated spec file to produce standalone
+	and inetd packages.
 
-1999-10-22 22:34  macgyver
+1999-10-22 23:34  macgyver
 
-	* contrib/libcap/.cvsignore (1.3, R1_2_0RC2, R1_2_0pre10,
-	R1_2_0pre9): Updated ignored files.
+	* contrib/libcap/.cvsignore: Updated ignored files.
 
-1999-10-22 22:21  macgyver
+1999-10-22 23:21  macgyver
 
-	* NEWS (1.10), README (1.3, R1_2_0pre9), acconfig.h (1.4,
-	R1_2_0pre10, R1_2_0pre9), config.h.in (1.10, R1_2_0pre10,
-	R1_2_0pre9), configure (1.22), configure.in (1.22),
-	modules/mod_auth.c (1.17): Updates for FreeBSD's brokenness with
-	respect to setpassent.
+	* NEWS, README, acconfig.h, config.h.in, configure, configure.in,
+	modules/mod_auth.c: Updates for FreeBSD's brokenness with respect
+	to setpassent.
 
-1999-10-22 22:21  macgyver
+1999-10-22 23:21  macgyver
 
-	* modules/mod_xfer.c (1.18): FreeBSD cleanups for sendfile().
+	* modules/mod_xfer.c: FreeBSD cleanups for sendfile().
 
-1999-10-22 21:48  macgyver
+1999-10-22 22:48  macgyver
 
-	* contrib/mod_ldap.c (1.4, R1_2_0pre9): Updated mod_ldap.
+	* contrib/mod_ldap.c: Updated mod_ldap.
 
-1999-10-20 23:37  macgyver
+1999-10-21 00:37  macgyver
 
-	* modules/mod_pam.c (1.7, R1_2_0pre10, R1_2_0pre9): Minor
-	cleanups/updates.
+	* modules/mod_pam.c: Minor cleanups/updates.
 
-1999-10-20 23:36  macgyver
+1999-10-21 00:36  macgyver
 
-	* doc/: Configuration.html (1.9), ShowUndocumented (1.2),
-	Undocumented.txt (1.7): Updated configuration documentation.
+	* doc/: Configuration.html, ShowUndocumented, Undocumented.txt:
+	Updated configuration documentation.
 
-1999-10-18 00:12  macgyver
+1999-10-18 01:12  macgyver
 
-	* NEWS (1.9), doc/Configuration.html (1.8), include/dirtree.h (1.5,
-	R1_2_0pre9), modules/mod_core.c (1.19), src/dirtree.c (1.11,
-	R1_2_0pre9): Added a second argument to the Umask directive to
-	handle directories.
+	* NEWS, doc/Configuration.html, include/dirtree.h,
+	modules/mod_core.c, src/dirtree.c: Added a second argument to the
+	Umask directive to handle directories.
 
-1999-10-18 00:11  macgyver
+1999-10-18 01:11  macgyver
 
-	* modules/mod_xfer.c (1.17): sendfile() now deprecates politely on
-	Linux 2.0.x.
+	* modules/mod_xfer.c: sendfile() now deprecates politely on Linux
+	2.0.x.
 
-1999-10-17 15:09  macgyver
+1999-10-17 16:09  macgyver
 
-	* doc/Configuration.html (1.7): Added in documentation for
-	DisplayReadme.
+	* doc/Configuration.html: Added in documentation for DisplayReadme.
 
-1999-10-17 14:11  macgyver
+1999-10-17 15:11  macgyver
 
-	* contrib/genuser.pl (1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9):
-	Added in genuser.pl to facilitiate the creation of
-	username:password AuthUserFile entries.
+	* contrib/genuser.pl: Added in genuser.pl to facilitiate the
+	creation of username:password AuthUserFile entries.
 
-1999-10-12 00:28  macgyver
+1999-10-12 01:28  macgyver
 
-	* src/ftpwho.c (1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9): Added in
-	ftpwho.c.
+	* src/ftpwho.c: Added in ftpwho.c.
 
-1999-10-11 22:40  macgyver
+1999-10-11 23:40  macgyver
 
-	* modules/mod_pam.c (1.6): Fixed AuthPAMAuthoritative.
+	* modules/mod_pam.c: Fixed AuthPAMAuthoritative.
 
-1999-10-11 06:14  macgyver
+1999-10-11 07:14  macgyver
 
-	* contrib/: mod_pgsql.c (1.4, R1_2_0RC2, R1_2_0pre10), mod_sqlpw.c
-	(1.2) (utags: R1_2_0pre9): Minor code cleanups.
+	* contrib/: mod_pgsql.c, mod_sqlpw.c: Minor code cleanups.
 
-1999-10-11 02:28  macgyver
+1999-10-11 03:28  macgyver
 
-	* NEWS (1.8), config.h.in (1.9), configure (1.21), configure.in
-	(1.21), include/conf.h (1.3, R1_2_0pre10, R1_2_0pre9): Added in
-	support for setgroupent.
+	* NEWS, config.h.in, configure, configure.in, include/conf.h: Added
+	in support for setgroupent.
 
-1999-10-11 02:20  macgyver
+1999-10-11 03:20  macgyver
 
-	* modules/mod_auth.c (1.16): Fixed the 'no names, just UIDs' bug.
+	* modules/mod_auth.c: Fixed the 'no names, just UIDs' bug.
 
-1999-10-11 00:07  macgyver
+1999-10-11 01:07  macgyver
 
-	* ChangeLog (1.8): Updated.
+	* ChangeLog: Updated.
 
-1999-10-10 23:45  macgyver
+1999-10-11 00:45  macgyver
 
-	* Make.rules.in (1.4, R1_2_0pre10, R1_2_0pre9), Makefile.in (1.7,
-	R1_2_0pre9), NEWS (1.7), src/Makefile.in (1.2, R1_2_0pre10,
-	R1_2_0pre9), src/ftpcount.c (1.4, R1_2_0pre10, R1_2_0pre9):
-	Corrected a couple of grammatical errors in ftpcount/ftpwho, and
-	seperated them into their own binaries.
+	* Make.rules.in, Makefile.in, NEWS, src/Makefile.in,
+	src/ftpcount.c: Corrected a couple of grammatical errors in
+	ftpcount/ftpwho, and seperated them into their own binaries.
 
-1999-10-10 22:13  macgyver
+1999-10-10 23:13  macgyver
 
-	* NEWS (1.6), configure (1.20), contrib/mod_ldap.c (1.3),
-	contrib/mod_linuxprivs.c (1.5, R1_2_0pre9), contrib/mod_ratio.c
-	(1.8, R1_2_0pre10, R1_2_0pre9), modules/mod_auth.c (1.15),
-	modules/mod_core.c (1.18), modules/mod_log.c (1.9, R1_2_0pre9),
-	modules/mod_ls.c (1.18, R1_2_0pre9), modules/mod_pam.c (1.5),
-	modules/mod_readme.c (1.3, R1_2_0pre9), modules/mod_xfer.c (1.16),
-	src/log.c (1.13, R1_2_0pre10, R1_2_0pre9), src/main.c (1.20,
-	R1_2_0pre10, R1_2_0pre9), src/utils.c (1.5, R1_2_0pre9): Updated
-	logging to be more consistent, and generally be more informative.
+	* NEWS, configure, contrib/mod_ldap.c, contrib/mod_linuxprivs.c,
+	contrib/mod_ratio.c, modules/mod_auth.c, modules/mod_core.c,
+	modules/mod_log.c, modules/mod_ls.c, modules/mod_pam.c,
+	modules/mod_readme.c, modules/mod_xfer.c, src/log.c, src/main.c,
+	src/utils.c: Updated logging to be more consistent, and generally
+	be more informative.
 
-1999-10-10 22:10  macgyver
+1999-10-10 23:10  macgyver
 
-	* README.PAM (1.3, R1_2_0pre10, R1_2_0pre9): Updated some
-	information for FreeBSD, SuSE, and others.
+	* README.PAM: Updated some information for FreeBSD, SuSE, and
+	others.
 
-1999-10-10 13:33  macgyver
+1999-10-10 14:33  macgyver
 
-	* NEWS (1.5), configure.in (1.20): install_group slightly more
-	portable.
+	* NEWS, configure.in: install_group slightly more portable.
 
-1999-10-10 05:05  macgyver
+1999-10-10 06:05  macgyver
 
-	* contrib/mod_ldap.c (1.2): Updated author/copyright info.
+	* contrib/mod_ldap.c: Updated author/copyright info.
 
-1999-10-10 05:01  macgyver
+1999-10-10 06:01  macgyver
 
-	* contrib/mod_ldap.c (1.1), doc/Configuration.html (1.6): Added in
-	mod_ldap.
+	* contrib/mod_ldap.c, doc/Configuration.html: Added in mod_ldap.
 
-1999-10-07 13:10  macgyver
+1999-10-07 14:10  macgyver
 
-	* NEWS (1.4): Updated.
+	* NEWS: Updated.
 
-1999-10-07 13:10  macgyver
+1999-10-07 14:10  macgyver
 
-	* modules/mod_pam.c (1.4): Removed Log RCS ID.
+	* modules/mod_pam.c: Removed Log RCS ID.
 
-1999-10-06 22:25  macgyver
+1999-10-06 23:25  macgyver
 
-	* modules/mod_auth.c (1.14), modules/mod_core.c (1.17), src/main.c
-	(1.19): Added in some better/clearer logging support.
+	* modules/mod_auth.c, modules/mod_core.c, src/main.c: Added in some
+	better/clearer logging support.
 
-1999-10-06 00:26  macgyver
+1999-10-06 01:26  macgyver
 
-	* NEWS (1.3), README.PAM (1.2): Fixed FreeBSD documentation.
+	* NEWS, README.PAM: Fixed FreeBSD documentation.
 
-1999-10-05 22:48  macgyver
+1999-10-05 23:48  macgyver
 
-	* modules/mod_auth.c (1.13): Fixed potential segfault in
+	* modules/mod_auth.c: Fixed potential segfault in
 	group_expression().
 
-1999-10-05 22:47  macgyver
+1999-10-05 23:47  macgyver
 
-	* doc/Configuration.html (1.5): Removed Bandwidth from docs.
+	* doc/Configuration.html: Removed Bandwidth from docs.
 
-1999-10-05 22:40  macgyver
+1999-10-05 23:40  macgyver
 
-	* NEWS (1.2): Updated.
+	* NEWS: Updated.
 
-1999-10-05 22:39  macgyver
+1999-10-05 23:39  macgyver
 
-	* modules/mod_pam.c (1.3): AuthPAMAuthoritative now defaults to
-	False.
+	* modules/mod_pam.c: AuthPAMAuthoritative now defaults to False.
 
-1999-10-05 00:39  macgyver
+1999-10-05 01:39  macgyver
 
-	* NEWS (1.1): Added a news file.
+	* NEWS: Added a news file.
 
-1999-10-05 00:37  macgyver
+1999-10-05 01:37  macgyver
 
-	* acconfig.h (1.3), config.h.in (1.8), configure (1.19),
-	configure.in (1.19), doc/Undocumented.txt (1.6), include/data.h
-	(1.4, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9), src/data.c (1.6,
-	R1_2_0pre9): Added in support for sendfile on BSD platforms.
+	* acconfig.h, config.h.in, configure, configure.in,
+	doc/Undocumented.txt, include/data.h, src/data.c: Added in support
+	for sendfile on BSD platforms.
 
-1999-10-04 23:28  macgyver
+1999-10-05 00:28  macgyver
 
-	* ChangeLog (1.7), Makefile.in (1.6), doc/Undocumented.txt (1.5),
-	doc/mod_sample.c (1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9),
-	modules/mod_sample.c (1.4): Miscellaneous reshuffling.
+	* ChangeLog, Makefile.in, doc/Undocumented.txt, doc/mod_sample.c,
+	modules/mod_sample.c: Miscellaneous reshuffling.
 
-1999-10-04 19:07  macgyver
+1999-10-04 20:07  macgyver
 
-	* configure (1.18), configure.in (1.18): Fixed a small typo.
+	* configure, configure.in: Fixed a small typo.
 
-1999-10-04 18:58  macgyver
+1999-10-04 19:58  macgyver
 
-	* ChangeLog (1.6): Updated.
+	* ChangeLog: Updated.
 
-1999-10-04 18:57  macgyver
+1999-10-04 19:58  macgyver
 
-	* changelog (1.21), doc/Changes-1.2.0pre3 (1.1, R1_2_0RC2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8): Moved the old changelog to
+	* ChangeLog: [no log message]
+
+1999-10-04 19:57  macgyver
+
+	* changelog, doc/Changes-1.2.0pre3: Moved the old changelog to
 	doc/Changes-1.2.0pre3 to avoid any confusion.
 
-1999-10-04 18:54  macgyver
+1999-10-04 19:54  macgyver
 
-	* ChangeLog (1.4): Updated the ChangeLog.
+	* ChangeLog: Updated the ChangeLog.
 
-1999-10-04 18:41  macgyver
+1999-10-04 19:41  macgyver
 
-	* contrib/mod_pgsql.c (1.3, R1_2_0pre8): Fixed a bad path in
-	includes.
+	* contrib/mod_pgsql.c: Fixed a bad path in includes.
 
-1999-10-04 18:39  macgyver
+1999-10-04 19:39  macgyver
 
-	* contrib/mod_ratio.c (1.7, R1_2_0pre8): Fixed a typo in an
-	snprintf.
+	* contrib/mod_ratio.c: Fixed a typo in an snprintf.
 
-1999-10-04 18:35  macgyver
+1999-10-04 19:35  macgyver
 
-	* include/version.h (1.7, R1_2_0pre8): Updated to pre8.
+	* include/version.h: Updated to pre8.
 
-1999-10-04 18:35  macgyver
+1999-10-04 19:35  macgyver
 
-	* configure (1.17), configure.in (1.17) (utags: R1_2_0pre8):
-	Enhanced configure to automagically create the necessary symlinks.
+	* configure, configure.in: Enhanced configure to automagically
+	create the necessary symlinks.
 
-1999-10-04 18:34  macgyver
+1999-10-04 19:34  macgyver
 
-	* contrib/: mod_mysql.c (1.4, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8), mod_pgsql.c (1.2): Fixed references to absolute paths.
+	* contrib/: mod_mysql.c, mod_pgsql.c: Fixed references to absolute
+	paths.
 
-1999-10-04 18:09  macgyver
+1999-10-04 19:09  macgyver
 
-	* contrib/: mod_mysql.c (1.3), mod_mysql.h (1.2), mod_pgsql.c
-	(1.1), mod_ratio.c (1.6), mod_sqlpw.c (1.1, R1_2_0pre8): Added in
-	Johnie Ingram's latest mod_*sql patches, along with some slight
-	buffer fixes of my own.
+	* contrib/: mod_mysql.c, mod_mysql.h, mod_pgsql.c, mod_ratio.c,
+	mod_sqlpw.c: Added in Johnie Ingram's latest mod_*sql patches,
+	along with some slight buffer fixes of my own.
 
-1999-10-01 18:52  macgyver
+1999-10-01 19:52  macgyver
 
-	* src/support.c (1.9, R1_2_0pre9, R1_2_0pre8): Fixed a typo with
-	statvfs.
+	* src/support.c: Fixed a typo with statvfs.
 
-1999-10-01 10:57  macgyver
+1999-10-01 11:57  macgyver
 
-	* doc/Undocumented.txt (1.4, R1_2_0pre8): Updated undocumented
-	directives.
+	* doc/Undocumented.txt: Updated undocumented directives.
 
-1999-10-01 03:13  macgyver
+1999-10-01 04:13  macgyver
 
-	* ChangeLog (1.3, R1_2_0pre8): Moved to cvs2cl generation of
-	ChangeLogs.
+	* ChangeLog: Moved to cvs2cl generation of ChangeLogs.
 
-1999-10-01 02:58  macgyver
+1999-10-01 03:58  macgyver
 
-	* ChangeLog (1.2): Updated ChangeLog
+	* ChangeLog: Updated ChangeLog
 
-1999-10-01 02:57  macgyver
+1999-10-01 03:57  macgyver
 
-	* config.h.in (1.7, R1_2_0pre8), configure (1.16), configure.in
-	(1.16), include/data.h (1.3, R1_2_0pre8), include/dirtree.h (1.4,
-	R1_2_0pre8), include/log.h (1.2, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8), include/proftpd.h (1.7, R1_2_0pre9, R1_2_0pre8),
-	modules/mod_auth.c (1.12, R1_2_0pre8), modules/mod_core.c (1.16,
-	R1_2_0pre8), modules/mod_log.c (1.8, R1_2_0pre8),
-	modules/mod_xfer.c (1.15, R1_2_0pre8), src/io.c (1.4, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8), src/log.c (1.12, R1_2_0pre8), src/main.c
-	(1.18, R1_2_0pre8): Added classes support, new bandwidth support,
-	and sendfile support.
+	* config.h.in, configure, configure.in, include/data.h,
+	include/dirtree.h, include/log.h, include/proftpd.h,
+	modules/mod_auth.c, modules/mod_core.c, modules/mod_log.c,
+	modules/mod_xfer.c, src/io.c, src/log.c, src/main.c: Added classes
+	support, new bandwidth support, and sendfile support.
 
-1999-10-01 02:55  macgyver
+1999-10-01 03:55  macgyver
 
-	* src/data.c (1.5, R1_2_0pre8): Added support for sendfile().
+	* src/data.c: Added support for sendfile().
 
-1999-09-30 23:08  macgyver
+1999-10-01 00:08  macgyver
 
-	* doc/Undocumented.txt (1.3): Regenerated the undocumented
-	directives.
+	* doc/Undocumented.txt: Regenerated the undocumented directives.
 
-1999-09-30 22:49  macgyver
+1999-09-30 23:49  macgyver
 
-	* include/privs.h (1.2, R1_2_0pre9, R1_2_0pre8), modules/mod_auth.c
-	(1.11): Added in support for setresuid on HP/UX.
+	* include/privs.h, modules/mod_auth.c: Added in support for
+	setresuid on HP/UX.
 
-1999-09-30 22:36  macgyver
+1999-09-30 23:36  macgyver
 
-	* doc/Configuration.html (1.4, R1_2_0pre8), modules/mod_xfer.c
-	(1.14): Added new Bandwidth code and documentation.
+	* doc/Configuration.html, modules/mod_xfer.c: Added new Bandwidth
+	code and documentation.
 
-1999-09-30 22:35  macgyver
+1999-09-30 23:35  macgyver
 
-	* modules/mod_auth.c (1.10): Corrected a tricky bug with parsing of
+	* modules/mod_auth.c: Corrected a tricky bug with parsing of
 	configuration files.  Thanks Klaus.
 
-1999-09-30 22:34  macgyver
+1999-09-30 23:34  macgyver
 
-	* modules/mod_ls.c (1.17, R1_2_0pre8): Fixed a silly typo with
-	snprintf.
+	* modules/mod_ls.c: Fixed a silly typo with snprintf.
 
-1999-09-30 22:33  macgyver
+1999-09-30 23:33  macgyver
 
-	* modules/mod_unixpw.c (1.3, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8):
-	Added support for HP/UX-style security.
+	* modules/mod_unixpw.c: Added support for HP/UX-style security.
 
-1999-09-30 22:33  macgyver
+1999-09-30 23:33  macgyver
 
-	* modules/mod_core.c (1.15): Removed old and naieve bandwidth code.
+	* modules/mod_core.c: Removed old and naieve bandwidth code.
 
-1999-09-30 22:32  macgyver
+1999-09-30 23:32  macgyver
 
-	* src/dirtree.c (1.10, R1_2_0pre8), include/dirtree.h (1.3): Remove
-	old and naieve bandwidth code.
+	* src/dirtree.c, include/dirtree.h: Remove old and naieve bandwidth
+	code.
 
-1999-09-30 22:31  macgyver
+1999-09-30 23:31  macgyver
 
-	* config.h.in (1.6), configure (1.15), configure.in (1.15): HP/UX
-	security detection added.
+	* config.h.in, configure, configure.in: HP/UX security detection
+	added.
 
-1999-09-30 01:10  macgyver
+1999-09-30 02:10  macgyver
 
-	* modules/mod_auth.c (1.9): Fix a potential security hole.
+	* modules/mod_auth.c: Fix a potential security hole.
 
-1999-09-30 01:10  macgyver
+1999-09-30 02:10  macgyver
 
-	* modules/mod_ls.c (1.16): DirFakeMode available inside <Directory>
+	* modules/mod_ls.c: DirFakeMode available inside <Directory>
 	blocks.
 
-1999-09-30 01:04  macgyver
+1999-09-30 02:04  macgyver
 
-	* configure (1.14), configure.in (1.14): Corrected configure
-	portability issues.
+	* configure, configure.in: Corrected configure portability issues.
 
-1999-09-30 01:03  macgyver
+1999-09-30 02:03  macgyver
 
-	* modules/mod_ls.c (1.15): Corrected static declarations.
+	* modules/mod_ls.c: Corrected static declarations.
 
-1999-09-30 00:54  macgyver
+1999-09-30 01:54  macgyver
 
-	* contrib/mod_linuxprivs.c (1.4, R1_2_0pre8): Added support for
-	PowerPC architectures.
+	* contrib/mod_linuxprivs.c: Added support for PowerPC
+	architectures.
 
-1999-09-30 00:54  macgyver
+1999-09-30 01:54  macgyver
 
-	* src/dirtree.c (1.9): Corrected a couple of problems related to IP
-	LIMIT directives.
+	* src/dirtree.c: Corrected a couple of problems related to IP LIMIT
+	directives.
 
-1999-09-30 00:28  macgyver
+1999-09-30 01:28  macgyver
 
-	* contrib/mod_readme.c (1.2): Deleted spurious mod_readme file.
+	* contrib/mod_readme.c: Deleted spurious mod_readme file.
 
-1999-09-30 00:13  macgyver
+1999-09-30 01:13  macgyver
 
-	* modules/mod_core.c (1.14): Fixed compliance with RFC 929 with
-	respect to RNTO.
+	* modules/mod_core.c: Fixed compliance with RFC 929 with respect to
+	RNTO.
 
-1999-09-29 15:46  macgyver
+1999-09-29 16:46  macgyver
 
-	* modules/: mod_auth.c (1.8), mod_ls.c (1.14): Minor bug fixes.
+	* modules/: mod_auth.c, mod_ls.c: Minor bug fixes.
 
-1999-09-29 15:45  macgyver
+1999-09-29 16:45  macgyver
 
-	* src/dirtree.c (1.8): Fixed a bug in match_ip that was causing
-	some LIMIT directives to fail.
+	* src/dirtree.c: Fixed a bug in match_ip that was causing some
+	LIMIT directives to fail.
 
-1999-09-28 18:09  macgyver
+1999-09-28 19:09  macgyver
 
-	* src/inet.c (1.6, R1_2_0pre9, R1_2_0pre8): Corrected an incorrect
-	call to inet_validate in inet_getaddr.
+	* src/inet.c: Corrected an incorrect call to inet_validate in
+	inet_getaddr.
 
-1999-09-26 16:42  macgyver
+1999-09-26 17:42  macgyver
 
-	* doc/Configuration.html (1.3): Fixed a small typo.
+	* doc/Configuration.html: Fixed a small typo.
 
-1999-09-26 12:03  macgyver
+1999-09-26 13:03  macgyver
 
-	* ChangeLog (1.1): Added in a real ChangeLog.
+	* ChangeLog: Added in a real ChangeLog.
 
-1999-09-26 05:02  macgyver
+1999-09-26 06:02  macgyver
 
-	* doc/Undocumented.txt (1.2), modules/mod_core.c (1.13): Added in
+	* doc/Undocumented.txt, modules/mod_core.c: Added in
 	CommandBufferSize.
 
-1999-09-26 01:00  macgyver
+1999-09-26 02:00  macgyver
 
-	* src/log.c (1.11, R1_2_0pre7): Corrected minor syslog errors.
+	* src/log.c: Corrected minor syslog errors.
 
-1999-09-26 00:36  macgyver
+1999-09-26 01:36  macgyver
 
-	* src/dirtree.c (1.7, R1_2_0pre7): Fixed a C++ style comment.
+	* src/dirtree.c: Fixed a C++ style comment.
 
-1999-09-26 00:32  macgyver
+1999-09-26 01:32  macgyver
 
-	* src/utils.c (1.4, R1_2_0pre8, R1_2_0pre7): Compilation issues on
-	other Unix platforms addressed.
+	* src/utils.c: Compilation issues on other Unix platforms
+	addressed.
 
-1999-09-26 00:08  macgyver
+1999-09-26 01:08  macgyver
 
-	* doc/Configuration.html (1.2, R1_2_0pre7): Added in updated
-	configuration directives.
+	* doc/Configuration.html: Added in updated configuration
+	directives.
 
-1999-09-18 13:26  macgyver
+1999-09-18 14:26  macgyver
 
-	* src/: dirtree.c (1.6), fs.c (1.6, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7): Cleaned up usage of fs_readlink.
+	* src/: dirtree.c, fs.c: Cleaned up usage of fs_readlink.
 
-1999-09-18 13:25  macgyver
+1999-09-18 14:25  macgyver
 
-	* src/log.c (1.10): Code cleanups.
+	* src/log.c: Code cleanups.
 
-1999-09-18 13:25  macgyver
+1999-09-18 14:25  macgyver
 
-	* src/: pool.c (1.10, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8),
-	support.c (1.8) (utags: R1_2_0pre7): Minor code beautification.
+	* src/: pool.c, support.c: Minor code beautification.
 
-1999-09-18 13:23  macgyver
+1999-09-18 14:23  macgyver
 
-	* modules/mod_ls.c (1.13, R1_2_0pre7): Fixed some bad code calling
-	fs_readlink.
+	* modules/mod_ls.c: Fixed some bad code calling fs_readlink.
 
-1999-09-17 02:36  macgyver
+1999-09-17 03:36  macgyver
 
-	* Makefile.in (1.5, R1_2_0pre8, R1_2_0pre7): Fixed symbolic link
-	installation.
+	* Makefile.in: Fixed symbolic link installation.
 
-1999-09-17 02:31  macgyver
+1999-09-17 03:31  macgyver
 
-	* contrib/mod_mysql.c (1.2, R1_2_0pre7), contrib/mod_ratio.c (1.5,
-	R1_2_0pre7), include/support.h (1.3, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7), modules/mod_auth.c (1.7, R1_2_0pre7),
-	modules/mod_core.c (1.12, R1_2_0pre7), modules/mod_log.c (1.7,
-	R1_2_0pre7), modules/mod_ls.c (1.12), modules/mod_pam.c (1.2,
-	R1_2_0pre8, R1_2_0pre7), modules/mod_tar.c (1.3, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7), modules/mod_test.c (1.3,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7),
-	modules/mod_xfer.c (1.13, R1_2_0pre7), src/auth.c (1.2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7), src/dirtree.c
-	(1.5), src/fs.c (1.5), src/ftpcount.c (1.3, R1_2_0pre8,
-	R1_2_0pre7), src/log.c (1.9), src/main.c (1.17, R1_2_0pre7),
-	src/pool.c (1.9), src/support.c (1.7), src/utils.c (1.3):
-	Implemented sstrncpy to handle proper buffer copying issues on all
-	platforms.
+	* contrib/mod_mysql.c, contrib/mod_ratio.c, include/support.h,
+	modules/mod_auth.c, modules/mod_core.c, modules/mod_log.c,
+	modules/mod_ls.c, modules/mod_pam.c, modules/mod_tar.c,
+	modules/mod_test.c, modules/mod_xfer.c, src/auth.c, src/dirtree.c,
+	src/fs.c, src/ftpcount.c, src/log.c, src/main.c, src/pool.c,
+	src/support.c, src/utils.c: Implemented sstrncpy to handle proper
+	buffer copying issues on all platforms.
 
-1999-09-16 23:14  macgyver
+1999-09-17 00:14  macgyver
 
-	* modules/mod_ls.c (1.11): gcc cleanups.
+	* modules/mod_ls.c: gcc cleanups.
 
-1999-09-16 23:14  macgyver
+1999-09-17 00:14  macgyver
 
-	* modules/mod_log.c (1.6): Eliminated some potential problems with
+	* modules/mod_log.c: Eliminated some potential problems with
 	logging.
 
-1999-09-16 23:13  macgyver
+1999-09-17 00:13  macgyver
 
-	* modules/mod_xfer.c (1.12): gcc cleanups and a more informative
-	error message added.
+	* modules/mod_xfer.c: gcc cleanups and a more informative error
+	message added.
 
-1999-09-16 23:06  macgyver
+1999-09-17 00:06  macgyver
 
-	* src/log.c (1.8): More intelligent handling of logfiles to avoid a
+	* src/log.c: More intelligent handling of logfiles to avoid a
 	potential race condition.
 
-1999-09-16 23:05  macgyver
+1999-09-17 00:05  macgyver
 
-	* modules/mod_core.c (1.11): General regex cleanups.  Added
+	* modules/mod_core.c: General regex cleanups.  Added
 	AllowFilter/DenyFilter.  More intelligent handling of logfiles. 
 	gcc cleanups.  wu-ftp style logging of deleted files.
 
-1999-09-16 23:00  macgyver
+1999-09-17 00:00  macgyver
 
-	* src/pool.c (1.8): Fixed gcc warnings.
+	* src/pool.c: Fixed gcc warnings.
 
-1999-09-16 22:59  macgyver
+1999-09-16 23:59  macgyver
 
-	* src/main.c (1.16): Added AllowFilter/DenyFilter.  Fixed a small
-	typo with newlines.  Corrected a slight problem with memory
-	debugging.  Fixed several gcc warnings.
+	* src/main.c: Added AllowFilter/DenyFilter.  Fixed a small typo
+	with newlines.	Corrected a slight problem with memory debugging. 
+	Fixed several gcc warnings.
 
-1999-09-16 22:57  macgyver
+1999-09-16 23:57  macgyver
 
-	* src/utils.c (1.2): Check for bad DNS entries.
+	* src/utils.c: Check for bad DNS entries.
 
-1999-09-16 22:56  macgyver
+1999-09-16 23:56  macgyver
 
-	* include/inet.h (1.2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8),
-	src/inet.c (1.5) (utags: R1_2_0pre7): Check for any potential DNS
-	spoofing attacks from the outside.
+	* include/inet.h, src/inet.c: Check for any potential DNS spoofing
+	attacks from the outside.
 
-1999-09-16 22:55  macgyver
+1999-09-16 23:55  macgyver
 
-	* include/version.h (1.6, R1_2_0pre7): Bumped version number.
+	* include/version.h: Bumped version number.
 
-1999-09-16 22:54  macgyver
+1999-09-16 23:54  macgyver
 
-	* sample-configurations/complex-virtual.conf (1.1, R1_2_0RC2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7): Added in a new
-	sample configuration.
+	* sample-configurations/complex-virtual.conf: Added in a new sample
+	configuration.
 
-1999-09-16 22:54  macgyver
+1999-09-16 23:54  macgyver
 
-	* contrib/libcap/cap_extint.c (1.3, R1_2_0RC2, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7): Corrected gcc warning.
+	* contrib/libcap/cap_extint.c: Corrected gcc warning.
 
-1999-09-16 22:53  macgyver
+1999-09-16 23:53  macgyver
 
-	* contrib/proftpd.spec.in (1.4, R1_2_0pre8, R1_2_0pre7): Added in
-	mod_readme.
+	* contrib/proftpd.spec.in: Added in mod_readme.
 
-1999-09-16 22:45  macgyver
+1999-09-16 23:45  macgyver
 
-	* .cvsignore (1.2, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9),
-	contrib/.cvsignore (1.3, R1_2_0pre9), contrib/libcap/.cvsignore
-	(1.2) (utags: R1_2_0pre7, R1_2_0pre8): Added some more files to
-	ignore.
+	* .cvsignore, contrib/.cvsignore, contrib/libcap/.cvsignore: Added
+	some more files to ignore.
 
-1999-09-16 12:20  macgyver
+1999-09-16 13:20  macgyver
 
-	* src/main.c (1.15): Changed an argument reversal.
+	* src/main.c: Changed an argument reversal.
 
-1999-09-16 02:45  macgyver
+1999-09-16 03:45  macgyver
 
-	* src/log.c (1.7): Cleaned up some ugly code.
+	* src/log.c: Cleaned up some ugly code.
 
-1999-09-16 02:42  macgyver
+1999-09-16 03:42  macgyver
 
-	* src/main.c (1.14): Fixed a silly, yet insidious, way to overflow
-	a buffer.
+	* src/main.c: Fixed a silly, yet insidious, way to overflow a
+	buffer.
 
-1999-09-14 13:36  macgyver
+1999-09-14 14:36  macgyver
 
-	* modules/mod_xfer.c (1.11): Corrected a minor typo .in -> .in.
+	* modules/mod_xfer.c: Corrected a minor typo .in -> .in.
 
-1999-09-14 03:43  macgyver
+1999-09-14 04:43  macgyver
 
-	* changelog (1.20, R1_2_0pre8, R1_2_0pre7), include/proftpd.h (1.6,
-	R1_2_0pre7), modules/mod_core.c (1.10), modules/mod_xfer.c (1.10):
-	Implemented HiddenStor.
+	* changelog, include/proftpd.h, modules/mod_core.c,
+	modules/mod_xfer.c: Implemented HiddenStor.
 
-1999-09-12 16:11  macgyver
+1999-09-12 17:11  macgyver
 
-	* README.Solaris2.5x (1.2, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7): Additional information regarding Solaris
+	* README.Solaris2.5x: Additional information regarding Solaris
 	2.5.x systems added.
 
-1999-09-12 15:28  macgyver
+1999-09-12 16:28  macgyver
 
-	* config.h.in (1.5, R1_2_0pre7), configure (1.13, R1_2_0pre7),
-	configure.in (1.13, R1_2_0pre7), include/conf.h (1.2, R1_2_0pre8,
-	R1_2_0pre7), src/log.c (1.6): Added in support for utmpx under
-	Solaris and like-minded platforms.
+	* config.h.in, configure, configure.in, include/conf.h, src/log.c:
+	Added in support for utmpx under Solaris and like-minded platforms.
 
-1999-09-12 12:04  macgyver
+1999-09-12 13:04  macgyver
 
-	* doc/: Configuration.html (1.1), FAQ-config.html (1.1, R1_2_0RC2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7), GetConf (1.2,
-	R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7),
-	ShowUndocumented (1.1, R1_2_0pre8, R1_2_0pre7), Undocumented.txt
-	(1.1, R1_2_0pre7): Added configuration documentation and 'un'
-	documentation.
+	* doc/: Configuration.html, FAQ-config.html, GetConf,
+	ShowUndocumented, Undocumented.txt: Added configuration
+	documentation and 'un' documentation.
 
-1999-09-12 11:30  macgyver
+1999-09-12 12:30  macgyver
 
-	* contrib/mod_ratio.c (1.4), doc/GetConf (1.1), modules/mod_auth.c
-	(1.6), modules/mod_core.c (1.9), modules/mod_log.c (1.5),
-	modules/mod_ls.c (1.10), modules/mod_readme.c (1.2, R1_2_0pre8,
-	R1_2_0pre7), modules/mod_sample.c (1.3, R1_2_0pre8, R1_2_0pre7):
-	Initial import of GetConf, and slight cleanup in all modules.
+	* contrib/mod_ratio.c, doc/GetConf, modules/mod_auth.c,
+	modules/mod_core.c, modules/mod_log.c, modules/mod_ls.c,
+	modules/mod_readme.c, modules/mod_sample.c: Initial import of
+	GetConf, and slight cleanup in all modules.
 
-1999-09-11 19:08  macgyver
+1999-09-11 20:08  macgyver
 
-	* changelog (1.19), contrib/libcap/Makefile (1.4, R1_2_0RC2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7), src/ftpcount.1
-	(1.2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7),
-	src/ftpshut.8 (1.2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7), src/ftpwho.1 (1.2, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7), src/proftpd.8 (1.3, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7) (utags: R1_2_0pre6): Corrected
-	mailing list addresses.
+	* changelog, contrib/libcap/Makefile, src/ftpcount.1,
+	src/ftpshut.8, src/ftpwho.1, src/proftpd.8: Corrected mailing list
+	addresses.
 
-1999-09-11 19:05  macgyver
+1999-09-11 20:05  macgyver
 
-	* contrib/proftpd.spec.in (1.3), include/version.h (1.5) (utags:
-	R1_2_0pre6): Corrected versioning info.
+	* contrib/proftpd.spec.in, include/version.h: Corrected versioning
+	info.
 
-1999-09-11 15:50  macgyver
+1999-09-11 16:50  macgyver
 
-	* configure (1.12), configure.in (1.12) (utags: R1_2_0pre6): Forgot
-	the 'id' issue.
+	* configure, configure.in: Forgot the 'id' issue.
 
-1999-09-11 15:45  macgyver
+1999-09-11 16:45  macgyver
 
-	* contrib/proftpd.spec.in (1.2): Cleanup of spec file.
+	* contrib/proftpd.spec.in: Cleanup of spec file.
 
-1999-09-11 15:44  macgyver
+1999-09-11 16:44  macgyver
 
-	* configure (1.11), configure.in (1.11): A couple of more configure
-	fixes.
+	* configure, configure.in: A couple of more configure fixes.
+
+1999-09-10 17:17  macgyver
+
+	* README.PAM, src/log.c: Added PAM README, and modified log.c to
+	handle log_xfer more like WU-FTPd.
 
 1999-09-10 16:17  macgyver
 
-	* README.PAM (1.1, R1_2_0pre8, R1_2_0pre7), src/log.c (1.5) (utags:
-	R1_2_0pre6): Added PAM README, and modified log.c to handle
-	log_xfer more like WU-FTPd.
+	* INSTALL, README, contrib/mod_pam.c, modules/mod_pam.c: Moved PAM
+	into the main module set.  It's now a 'core' feature.
 
-1999-09-10 15:17  macgyver
+1999-09-10 15:49  macgyver
 
-	* INSTALL (1.2, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6),
-	README (1.2, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6), contrib/mod_pam.c
-	(1.5), modules/mod_pam.c (1.1, R1_2_0pre6): Moved PAM into the main
-	module set.  It's now a 'core' feature.
+	* src/main.c: Added CommandBufferSize option.
 
-1999-09-10 14:49  macgyver
+1999-09-10 15:08  macgyver
 
-	* src/main.c (1.13, R1_2_0pre6): Added CommandBufferSize option.
+	* configure, configure.in: Fixed a small typo with shadow use.
 
-1999-09-10 14:08  macgyver
+1999-09-10 04:21  macgyver
 
-	* configure (1.10), configure.in (1.10): Fixed a small typo with
-	shadow use.
+	* configure, configure.in: Updated support for Solaris, and made
+	PAM sleep quietly when told to do so.
 
-1999-09-10 03:21  macgyver
+1999-09-10 03:46  macgyver
 
-	* configure (1.9), configure.in (1.9): Updated support for Solaris,
-	and made PAM sleep quietly when told to do so.
+	* src/support.c: Fixed remaining buffer issues in sreplace.
 
-1999-09-10 02:46  macgyver
+1999-09-10 01:36  macgyver
 
-	* src/support.c (1.6, R1_2_0pre6): Fixed remaining buffer issues in
-	sreplace.
+	* src/pool.c: Corrected alignment issues on 64-bit platforms. 
+	Thanks to Todd C. Miller <millert@ee.ethz.ch> for the patch.
 
-1999-09-10 00:36  macgyver
+1999-09-10 01:27  macgyver
 
-	* src/pool.c (1.7, R1_2_0pre6): Corrected alignment issues on
-	64-bit platforms.  Thanks to Todd C. Miller <millert@ee.ethz.ch>
-	for the patch.
+	* src/ftpshut.c: Cleaned up ftpshut options to return more
+	meaningful errors.
 
-1999-09-10 00:27  macgyver
+1999-09-09 23:44  macgyver
 
-	* src/ftpshut.c (1.2, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6): Cleaned up ftpshut options to
-	return more meaningful errors.
+	* src/pool.c: Fix for improper strncpy.
 
-1999-09-09 22:44  macgyver
+1999-09-08 23:18  macgyver
 
-	* src/pool.c (1.6): Fix for improper strncpy.
+	* src/support.c: Corrected a length bug in sreplace.
 
-1999-09-08 22:18  macgyver
+1999-09-08 04:35  macgyver
 
-	* src/support.c (1.5): Corrected a length bug in sreplace.
+	* configure, configure.in, contrib/mod_pam.c: Updates to
+	auto-configuring for PAM on *BSD.
 
-1999-09-08 03:35  macgyver
+1999-09-08 04:03  macgyver
 
-	* configure (1.8), configure.in (1.8), contrib/mod_pam.c (1.4)
-	(utags: R1_2_0pre5): Updates to auto-configuring for PAM on *BSD.
+	* configure, configure.in: Fixed setproctitle detection on *BSD
+	platforms.
 
-1999-09-08 03:03  macgyver
+1999-09-08 03:48  macgyver
 
-	* configure (1.7), configure.in (1.7): Fixed setproctitle detection
-	on *BSD platforms.
+	* configure, configure.in: Fixed an extra 'fi' statement.
 
-1999-09-08 02:48  macgyver
+1999-09-08 03:43  macgyver
 
-	* configure (1.6), configure.in (1.6): Fixed an extra 'fi'
-	statement.
+	* configure, configure.in: Fixed a small typo in PAM detection.
 
-1999-09-08 02:43  macgyver
+1999-09-08 03:42  macgyver
 
-	* configure (1.5), configure.in (1.5): Fixed a small typo in PAM
-	detection.
+	* Make.rules.in, config.h.in: Added memory debugging support.
 
-1999-09-08 02:42  macgyver
+1999-09-08 03:15  macgyver
 
-	* Make.rules.in (1.3, R1_2_0pre8, R1_2_0pre7), config.h.in (1.4)
-	(utags: R1_2_0pre6, R1_2_0pre5): Added memory debugging support.
+	* contrib/: mod_mysql.c, mod_mysql.h: Initial import of mod_mysql,
+	with some buffer fixes.
 
-1999-09-08 02:15  macgyver
+1999-09-08 03:09  macgyver
 
-	* contrib/: mod_mysql.c (1.1), mod_mysql.h (1.1, R1_2_0pre7)
-	(utags: R1_2_0pre6, R1_2_0pre5): Initial import of mod_mysql, with
-	some buffer fixes.
+	* modules/Makefile.in: Updated for mod_mysql.
 
-1999-09-08 02:09  macgyver
+1999-09-08 03:06  macgyver
 
-	* modules/Makefile.in (1.4, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5): Updated for mod_mysql.
+	* config.guess: Added in StrongARM support.
 
-1999-09-08 02:06  macgyver
+1999-09-08 03:04  macgyver
 
-	* config.guess (1.2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5): Added in StrongARM support.
+	* contrib/libcap/capability.h: Moved in the new capability source
+	tree.
 
-1999-09-08 02:04  macgyver
+1999-09-08 02:59  macgyver
 
-	* contrib/libcap/capability.h (1.2): Moved in the new capability
-	source tree.
+	* src/main.c: Added in some debugging code to assist in tracking
+	down memory problems.
 
-1999-09-08 01:59  macgyver
+1999-09-08 02:58  macgyver
 
-	* src/main.c (1.12, R1_2_0pre5): Added in some debugging code to
-	assist in tracking down memory problems.
+	* src/pool.c: Fixed a couple of bugs introduced by silly typos.
 
-1999-09-08 01:58  macgyver
+1999-09-08 02:57  macgyver
 
-	* src/pool.c (1.5, R1_2_0pre5): Fixed a couple of bugs introduced
-	by silly typos.
+	* src/log.c: Minor buffer cleanups.
 
-1999-09-08 01:57  macgyver
+1999-09-08 02:55  macgyver
 
-	* src/log.c (1.4, R1_2_0pre5): Minor buffer cleanups.
+	* src/inet.c: Added a helper message for people who misconfigure
+	their servers.
 
-1999-09-08 01:55  macgyver
+1999-09-07 19:29  macgyver
 
-	* src/inet.c (1.4, R1_2_0pre6, R1_2_0pre5): Added a helper message
-	for people who misconfigure their servers.
+	* Makefile.in, config.h.in, configure, configure.in,
+	include/dirtree.h, include/fs.h, include/version.h, lib/glob.c,
+	src/dirtree.c, src/fs.c, src/ftpcount.c, src/inet.c, src/log.c,
+	src/main.c, src/modules.c, src/pool.c, src/support.c: Removed lots
+	of unsafe buffer copies, as well as addressed a couple of Y2K
+	issues.
 
-1999-09-07 18:29  macgyver
+1999-09-07 19:22  macgyver
 
-	* Makefile.in (1.4, R1_2_0pre6, R1_2_0pre5), config.h.in (1.3),
-	configure (1.4), configure.in (1.4), include/dirtree.h (1.2,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5), include/fs.h (1.2, R1_2_0RC2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5), include/version.h (1.4, R1_2_0pre5), lib/glob.c (1.2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5), src/dirtree.c (1.4, R1_2_0pre6, R1_2_0pre5), src/fs.c
-	(1.4, R1_2_0pre6, R1_2_0pre5), src/ftpcount.c (1.2, R1_2_0pre6,
-	R1_2_0pre5), src/inet.c (1.3), src/log.c (1.3), src/main.c (1.11),
-	src/modules.c (1.3, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5), src/pool.c (1.4),
-	src/support.c (1.4, R1_2_0pre5): Removed lots of unsafe buffer
-	copies, as well as addressed a couple of Y2K issues.
+	* contrib/.cvsignore: Removed README.linux-privs
 
-1999-09-07 18:22  macgyver
+1999-09-07 19:17  macgyver
 
-	* contrib/.cvsignore (1.2, R1_2_0pre6, R1_2_0pre5): Removed
-	README.linux-privs
-
-1999-09-07 18:17  macgyver
-
-	* contrib/: ftp.pamd (1.1, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6),
-	proftpd.spec.in (1.1) (utags: R1_2_0pre5): Added in RPM spec and
+	* contrib/: ftp.pamd, proftpd.spec.in: Added in RPM spec and
 	ProFTPD PAM file.
 
-1999-09-07 18:14  macgyver
+1999-09-07 19:14  macgyver
 
-	* contrib/mod_linuxprivs.c (1.3, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5): Updated capabilities code to newer release.
+	* contrib/mod_linuxprivs.c: Updated capabilities code to newer
+	release.
 
-1999-09-07 18:14  macgyver
+1999-09-07 19:14  macgyver
 
-	* contrib/libcap/: Makefile (1.3), _makenames.c (1.2, R1_2_0RC2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6),
-	cap_alloc.c (1.2, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6), cap_extint.c (1.2, R1_2_0pre6), cap_file.c
-	(1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7,
-	R1_2_0pre6), cap_flag.c (1.2, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6), cap_proc.c (1.2, R1_2_0RC2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6),
-	cap_sys.c (1.3, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6), cap_text.c (1.2, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6), libcap.h (1.2, R1_2_0RC2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6),
-	include/sys/capability.h (1.1, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6) (utags: R1_2_0pre5): Updated capabilities
-	library and model.
+	* contrib/libcap/: Makefile, _makenames.c, cap_alloc.c,
+	cap_extint.c, cap_file.c, cap_flag.c, cap_proc.c, cap_sys.c,
+	cap_text.c, libcap.h, include/sys/capability.h: Updated
+	capabilities library and model.
 
-1999-09-07 18:13  macgyver
+1999-09-07 19:13  macgyver
 
-	* contrib/mod_ratio.c (1.3, R1_2_0pre6, R1_2_0pre5): Fixed some
-	potential buffer issues.
+	* contrib/mod_ratio.c: Fixed some potential buffer issues.
 
-1999-09-07 18:13  macgyver
+1999-09-07 19:13  macgyver
 
-	* contrib/mod_pam.c (1.3): Some minor security updates to fix
-	potential buffer problems.
+	* contrib/mod_pam.c: Some minor security updates to fix potential
+	buffer problems.
 
-1999-09-07 18:09  macgyver
+1999-09-07 19:09  macgyver
 
-	* modules/: mod_auth.c (1.5), mod_log.c (1.4), mod_ls.c (1.9),
-	mod_site.c (1.2, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7), mod_tar.c
-	(1.2), mod_test.c (1.2), mod_unixpw.c (1.2, R1_2_0pre7), mod_xfer.c
-	(1.9) (utags: R1_2_0pre6, R1_2_0pre5): Removed unsafe buffer copies
+	* modules/: mod_auth.c, mod_log.c, mod_ls.c, mod_site.c, mod_tar.c,
+	mod_test.c, mod_unixpw.c, mod_xfer.c: Removed unsafe buffer copies
 	that may have been potential problems.	Implemented the 'real'
 	patch for the MKD/log security issues.
 
-1999-09-07 18:08  macgyver
+1999-09-07 19:08  macgyver
 
-	* modules/mod_core.c (1.8, R1_2_0pre6, R1_2_0pre5): Added in
-	Bandwidth patch for bandwidth control.	Security cleanups --
-	removed lots of unsafe buffer copies.
+	* modules/mod_core.c: Added in Bandwidth patch for bandwidth
+	control.  Security cleanups -- removed lots of unsafe buffer
+	copies.
 
-1999-09-07 18:06  macgyver
+1999-09-07 19:06  macgyver
 
-	* modules/Makefile.in (1.3): Updated Makefile for new capabilities
-	code.
+	* modules/Makefile.in: Updated Makefile for new capabilities code.
 
-1999-08-30 20:31  flood
+1999-08-30 21:31  flood
 
-	* changelog (1.18, R1_2_0pre5), contrib/mod_linuxprivs.c (1.2),
-	contrib/libcap/Makefile (1.2), contrib/libcap/cap_sys.c (1.2),
-	include/options.h (1.2, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5), include/pool.h
-	(1.3, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7,
-	R1_2_0pre6, R1_2_0pre5), modules/mod_core.c (1.7), modules/mod_ls.c
-	(1.8), modules/mod_xfer.c (1.8), src/log.c (1.2), src/main.c
-	(1.10), src/modules.c (1.2), src/pool.c (1.3): Mucho patches.
+	* changelog, contrib/mod_linuxprivs.c, contrib/libcap/Makefile,
+	contrib/libcap/cap_sys.c, include/options.h, include/pool.h,
+	modules/mod_core.c, modules/mod_ls.c, modules/mod_xfer.c,
+	src/log.c, src/main.c, src/modules.c, src/pool.c: Mucho patches.
 
-1999-03-11 19:58  flood
+1999-03-11 20:58  flood
 
-	* changelog (1.17), modules/mod_xfer.c (1.7): TYPE A N
+	* changelog, modules/mod_xfer.c: TYPE A N
 
-1999-03-11 19:37  flood
+1999-03-11 20:37  flood
 
-	* changelog (1.16), src/inet.c (1.2): OpenBSD SO_REUSEADDR patch.
+	* changelog, src/inet.c: OpenBSD SO_REUSEADDR patch.
 
-1999-03-09 19:19  flood
+1999-03-09 20:19  flood
 
-	* changelog (1.15), include/version.h (1.3) (utags: R1_2_0pre3):
-	Version 1.2.0pre3
+	* changelog, include/version.h: Version 1.2.0pre3
 
-1999-03-07 11:18  flood
+1999-03-07 12:18  flood
 
-	* changelog (1.14), include/proftpd.h (1.5, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3), modules/mod_core.c (1.6, R1_2_0pre3), src/dirtree.c
-	(1.3, R1_2_0pre3), src/main.c (1.9, R1_2_0pre3): Added
-	`MultilineRFC2228' directive and changed `ServerIdent'.
+	* changelog, include/proftpd.h, modules/mod_core.c, src/dirtree.c,
+	src/main.c: Added `MultilineRFC2228' directive and changed
+	`ServerIdent'.
 
-1999-03-05 11:55  flood
+1999-03-05 12:55  flood
 
-	* modules/mod_xfer.c (1.6), src/timers.c (1.3, R1_2_0RC2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5) (utags: R1_2_0pre3): Oops.	Last nights commit royally
-	screwed timers.
+	* modules/mod_xfer.c, src/timers.c: Oops.  Last nights commit
+	royally screwed timers.
 
-1999-03-04 21:34  flood
+1999-03-04 22:34  flood
 
-	* Make.rules.in (1.2, R1_2_0pre3), Makefile.in (1.3, R1_2_0pre3),
-	acconfig.h (1.2, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3), changelog (1.13), config.h.in (1.2, R1_2_0pre3),
-	configure (1.3, R1_2_0pre3), configure.in (1.3, R1_2_0pre3),
-	contrib/mod_pam.c (1.2, R1_2_0pre3), include/proftpd.h (1.4),
-	modules/Makefile.in (1.2, R1_2_0pre3), modules/mod_core.c (1.5),
-	src/data.c (1.4, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3),
-	src/main.c (1.8): MacGyver's patch to do argv[] rewriting the Right
-	Way<tm>, and some minor socket error handling fixes.
+	* Make.rules.in, Makefile.in, acconfig.h, changelog, config.h.in,
+	configure, configure.in, contrib/mod_pam.c, include/proftpd.h,
+	modules/Makefile.in, modules/mod_core.c, src/data.c, src/main.c:
+	MacGyver's patch to do argv[] rewriting the Right Way<tm>, and some
+	minor socket error handling fixes.
 
-1999-03-04 20:53  flood
+1999-03-04 21:53  flood
 
-	* changelog (1.12), include/io.h (1.2, R1_2_0RC2, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3), modules/mod_xfer.c (1.5), src/ident.c (1.3,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3), src/io.c (1.3, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3), src/main.c (1.7): Fixed ident & i/o
-	(hanging) problems.
+	* changelog, include/io.h, modules/mod_xfer.c, src/ident.c,
+	src/io.c, src/main.c: Fixed ident & i/o (hanging) problems.
 
-1999-03-04 18:44  flood
+1999-03-04 19:44  flood
 
-	* changelog (1.11), modules/mod_xfer.c (1.4): what did I fix?
+	* changelog, modules/mod_xfer.c: what did I fix?
 
-1999-03-04 18:29  flood
+1999-03-04 19:29  flood
 
-	* include/timers.h (1.2, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3),
-	modules/mod_auth.c (1.4, R1_2_0pre3), src/main.c (1.6),
-	src/support.c (1.3, R1_2_0pre3), src/timers.c (1.2): timer code
-	fixed
+	* include/timers.h, modules/mod_auth.c, src/main.c, src/support.c,
+	src/timers.c: timer code fixed
 
-1999-02-13 20:36  flood
+1999-02-13 21:36  flood
 
-	* modules/mod_ls.c (1.7, R1_2_0pre3, R1_2_0pre2): Ugg.. Yet another
-	mod_ls quickfix.
+	* modules/mod_ls.c: Ugg.. Yet another mod_ls quickfix.
 
-1999-02-13 19:47  flood
+1999-02-13 20:47  flood
 
-	* modules/mod_auth.c (1.3, R1_2_0pre2): Ooops.	add_userdir should
-	have tested for > 0.
+	* modules/mod_auth.c: Ooops.  add_userdir should have tested for >
+	0.
 
-1999-02-13 18:55  flood
+1999-02-13 19:55  flood
 
-	* changelog (1.10), include/version.h (1.2) (utags: R1_2_0pre2):
-	Version 1.2.0pre2
+	* changelog, include/version.h: Version 1.2.0pre2
 
-1999-02-12 13:37  flood
+1999-02-12 14:37  flood
 
-	* Makefile.in (1.2, R1_2_0pre2), changelog (1.9),
-	modules/mod_auth.c (1.2), modules/mod_core.c (1.4, R1_2_0pre2),
-	modules/mod_ls.c (1.6), modules/mod_xfer.c (1.3, R1_2_0pre2),
-	src/main.c (1.5, R1_2_0pre2), src/proftpd.8 (1.2, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2): Mondo changes.
+	* Makefile.in, changelog, modules/mod_auth.c, modules/mod_core.c,
+	modules/mod_ls.c, modules/mod_xfer.c, src/main.c, src/proftpd.8:
+	Mondo changes.
 
-1999-01-27 16:06  flood
+1999-01-27 17:06  flood
 
-	* changelog (1.8), include/support.h (1.2, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2), modules/mod_ls.c (1.5), src/fs.c (1.3,
-	R1_2_0pre3, R1_2_0pre2), src/support.c (1.2, R1_2_0pre2): More
-	possibly MKD/CWD 'sploits fixed, and mod_ls workin well.
+	* changelog, include/support.h, modules/mod_ls.c, src/fs.c,
+	src/support.c: More possibly MKD/CWD 'sploits fixed, and mod_ls
+	workin well.
 
-1999-01-21 10:32  flood
+1999-01-21 11:32  flood
 
-	* modules/mod_ls.c (1.4), src/ident.c (1.2, R1_2_0pre2): NLST now
-	works properly! woo!
+	* modules/mod_ls.c, src/ident.c: NLST now works properly! woo!
 
-1999-01-18 21:00  flood
+1999-01-18 22:00  flood
 
-	* modules/mod_readme.c (1.1, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2): mod_readme.c added to CVS
+	* modules/mod_readme.c: mod_readme.c added to CVS
 
-1999-01-18 19:34  flood
+1999-01-18 20:34  flood
 
-	* changelog (1.7), include/data.h (1.2, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), modules/mod_ls.c (1.3),
-	src/data.c (1.3, R1_2_0pre2), src/fs.c (1.2), src/io.c (1.2,
-	R1_2_0pre2), src/main.c (1.4): Still working on NLST RFC959
+	* changelog, include/data.h, modules/mod_ls.c, src/data.c,
+	src/fs.c, src/io.c, src/main.c: Still working on NLST RFC959
 	compliane issue.  ncftp client still showing problems.
 
-1998-11-01 13:08  flood
+1998-11-01 14:08  flood
 
-	* changelog (1.6), configure (1.2, R1_2_0pre2), configure.in (1.2,
-	R1_2_0pre2), contrib/README (1.2, R1_2_0RC2, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2), contrib/mod_pam.c (1.1, R1_2_0pre2),
-	contrib/mod_ratio.c (1.2, R1_2_0pre3, R1_2_0pre2),
-	contrib/mod_readme.c (1.1, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2), include/proftpd.h (1.3, R1_2_0pre2),
-	modules/mod_core.c (1.3), modules/mod_sample.c (1.2, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), modules/mod_xfer.c (1.2),
-	src/dirtree.c (1.2, R1_2_0pre2): APPE, mod_pam & mod_readme added
+	* changelog, configure, configure.in, contrib/README,
+	contrib/mod_pam.c, contrib/mod_ratio.c, contrib/mod_readme.c,
+	include/proftpd.h, modules/mod_core.c, modules/mod_sample.c,
+	modules/mod_xfer.c, src/dirtree.c: APPE, mod_pam & mod_readme added
 
-1998-10-29 19:38  flood
+1998-10-29 20:38  flood
 
-	* changelog (1.5), include/proftpd.h (1.2), modules/mod_log.c (1.3,
-	R1_2_0pre3, R1_2_0pre2), src/main.c (1.3): Fix Debian bug #28641
+	* changelog, include/proftpd.h, modules/mod_log.c, src/main.c: Fix
+	Debian bug #28641
 
-1998-10-29 18:59  flood
+1998-10-29 19:59  flood
 
-	* changelog (1.4), modules/mod_core.c (1.2), src/data.c (1.2):
-	Fixes to PASV/PORT.
+	* changelog, modules/mod_core.c, src/data.c: Fixes to PASV/PORT.
 
-1998-10-26 19:53  flood
+1998-10-26 20:53  flood
 
-	* changelog (1.3), modules/mod_log.c (1.2): %{} argument fix in
-	mod_log.c
+	* changelog, modules/mod_log.c: %{} argument fix in mod_log.c
 
-1998-10-23 06:21  flood
+1998-10-23 07:21  flood
 
-	* changelog (1.2), include/pool.h (1.2, R1_2_0pre3, R1_2_0pre2),
-	modules/mod_ls.c (1.2), src/main.c (1.2), src/pool.c (1.2,
-	R1_2_0pre3, R1_2_0pre2): memory leak in mod_ls fixed
+	* changelog, include/pool.h, modules/mod_ls.c, src/main.c,
+	src/pool.c: memory leak in mod_ls fixed
 
-1998-10-17 21:24  flood
+1998-10-17 22:24  flood
 
-	* .cvsignore (1.1), COPYING (1.1), INSTALL (1.1), Make.modules.in
-	(1.1), Make.rules.in (1.1), Makefile.in (1.1), README (1.1),
-	README.Solaris2.5x (1.1), README.linux-privs (1.1), acconfig.h
-	(1.1), changelog (1.1), config.guess (1.1), config.h.in (1.1),
-	config.sub (1.1), configure (1.1), configure.in (1.1), install-sh
-	(1.1), contrib/.cvsignore (1.1), contrib/README (1.1),
-	contrib/mod_linuxprivs.c (1.1), contrib/mod_ratio.c (1.1),
-	contrib/xferstats.holger-preiss (1.1), contrib/libcap/.cvsignore
-	(1.1), contrib/libcap/Makefile (1.1), contrib/libcap/_makenames.c
-	(1.1), contrib/libcap/cap_alloc.c (1.1),
-	contrib/libcap/cap_extint.c (1.1), contrib/libcap/cap_flag.c (1.1),
-	contrib/libcap/cap_proc.c (1.1), contrib/libcap/cap_sys.c (1.1),
-	contrib/libcap/cap_text.c (1.1), contrib/libcap/capability.h (1.1),
-	contrib/libcap/libcap.h (1.1), doc/API (1.1), doc/development.notes
-	(1.1), doc/license.txt (1.1), include/conf.h (1.1), include/data.h
-	(1.1), include/default_paths.h (1.1), include/dirtree.h (1.1),
-	include/fs.h (1.1), include/ftp.h (1.1), include/ident.h (1.1),
-	include/inet.h (1.1), include/io.h (1.1), include/libsupp.h (1.1),
-	include/log.h (1.1), include/modules.h (1.1), include/options.h
-	(1.1), include/pool.h (1.1), include/privs.h (1.1),
-	include/proftpd.h (1.1), include/sets.h (1.1), include/support.h
-	(1.1), include/timers.h (1.1), include/version.h (1.1),
-	lib/.cvsignore (1.1), lib/Makefile.in (1.1), lib/fnmatch.c (1.1),
-	lib/getopt.c (1.1), lib/getopt.h (1.1), lib/getopt1.c (1.1),
-	lib/glob.c (1.1), lib/glob.h (1.1), lib/pwgrent.c (1.1),
-	lib/strsep.c (1.1), lib/vsnprintf.c (1.1), modules/.cvsignore
-	(1.1), modules/Makefile.in (1.1), modules/glue.sh (1.1),
-	modules/mod_auth.c (1.1), modules/mod_core.c (1.1),
-	modules/mod_log.c (1.1), modules/mod_ls.c (1.1),
-	modules/mod_sample.c (1.1), modules/mod_site.c (1.1),
-	modules/mod_tar.c (1.1), modules/mod_test.c (1.1),
-	modules/mod_unixpw.c (1.1), modules/mod_xfer.c (1.1),
-	modules/module_glue.c.tmpl (1.1),
-	sample-configurations/anonymous.conf (1.1),
-	sample-configurations/basic.conf (1.1),
-	sample-configurations/virtual.conf (1.1), src/.cvsignore (1.1),
-	src/Makefile.in (1.1), src/auth.c (1.1), src/data.c (1.1),
-	src/dirtree.c (1.1), src/fs.c (1.1), src/ftpcount.1 (1.1),
-	src/ftpcount.c (1.1), src/ftpshut.8 (1.1), src/ftpshut.c (1.1),
-	src/ftpwho.1 (1.1), src/ident.c (1.1), src/inet.c (1.1), src/io.c
-	(1.1), src/log.c (1.1), src/main.c (1.1), src/modules.c (1.1),
-	src/pool.c (1.1), src/proftpd.8 (1.1), src/sets.c (1.1),
-	src/support.c (1.1), src/timers.c (1.1), src/utils.c (1.1),
-	src/xferlog.5 (1.1): Initial revision
+	* .cvsignore, COPYING, INSTALL, Make.modules.in, Make.rules.in,
+	Makefile.in, README, README.Solaris2.5x, README.linux-privs,
+	acconfig.h, changelog, config.guess, config.h.in, config.sub,
+	configure, configure.in, install-sh, contrib/.cvsignore,
+	contrib/README, contrib/mod_linuxprivs.c, contrib/mod_ratio.c,
+	contrib/xferstats.holger-preiss, contrib/libcap/.cvsignore,
+	contrib/libcap/Makefile, contrib/libcap/_makenames.c,
+	contrib/libcap/cap_alloc.c, contrib/libcap/cap_extint.c,
+	contrib/libcap/cap_flag.c, contrib/libcap/cap_proc.c,
+	contrib/libcap/cap_sys.c, contrib/libcap/cap_text.c,
+	contrib/libcap/capability.h, contrib/libcap/libcap.h, doc/API,
+	doc/development.notes, doc/license.txt, include/conf.h,
+	include/data.h, include/default_paths.h, include/dirtree.h,
+	include/fs.h, include/ftp.h, include/ident.h, include/inet.h,
+	include/io.h, include/libsupp.h, include/log.h, include/modules.h,
+	include/options.h, include/pool.h, include/privs.h,
+	include/proftpd.h, include/sets.h, include/support.h,
+	include/timers.h, include/version.h, lib/.cvsignore,
+	lib/Makefile.in, lib/fnmatch.c, lib/getopt.c, lib/getopt.h,
+	lib/getopt1.c, lib/glob.c, lib/glob.h, lib/pwgrent.c, lib/strsep.c,
+	lib/vsnprintf.c, modules/.cvsignore, modules/Makefile.in,
+	modules/glue.sh, modules/mod_auth.c, modules/mod_core.c,
+	modules/mod_log.c, modules/mod_ls.c, modules/mod_sample.c,
+	modules/mod_site.c, modules/mod_tar.c, modules/mod_test.c,
+	modules/mod_unixpw.c, modules/mod_xfer.c,
+	modules/module_glue.c.tmpl, sample-configurations/anonymous.conf,
+	sample-configurations/basic.conf,
+	sample-configurations/virtual.conf, src/.cvsignore,
+	src/Makefile.in, src/auth.c, src/data.c, src/dirtree.c, src/fs.c,
+	src/ftpcount.1, src/ftpcount.c, src/ftpshut.8, src/ftpshut.c,
+	src/ftpwho.1, src/ident.c, src/inet.c, src/io.c, src/log.c,
+	src/main.c, src/modules.c, src/pool.c, src/proftpd.8, src/sets.c,
+	src/support.c, src/timers.c, src/utils.c, src/xferlog.5: Initial
+	revision
 
-1998-10-17 21:24  flood
+1998-10-17 22:24  flood
 
-	* .cvsignore (1.1.1.1, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2), COPYING (1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2), INSTALL (1.1.1.1, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	Make.modules.in (1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2), Make.rules.in (1.1.1.1, R1_2_0pre2), Makefile.in
-	(1.1.1.1), README (1.1.1.1, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	README.Solaris2.5x (1.1.1.1, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2), README.linux-privs (1.1.1.1, R1_2_0RC2, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2), acconfig.h (1.1.1.1, R1_2_0pre2),
-	changelog (1.1.1.1), config.guess (1.1.1.1, R1_2_0pre3,
-	R1_2_0pre2), config.h.in (1.1.1.1, R1_2_0pre2), config.sub
-	(1.1.1.1, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), configure (1.1.1.1),
-	configure.in (1.1.1.1), install-sh (1.1.1.1, R1_2_0RC2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), contrib/.cvsignore (1.1.1.1,
-	R1_2_0pre3, R1_2_0pre2), contrib/README (1.1.1.1),
-	contrib/mod_linuxprivs.c (1.1.1.1, R1_2_0pre3, R1_2_0pre2),
-	contrib/mod_ratio.c (1.1.1.1), contrib/xferstats.holger-preiss
-	(1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	contrib/libcap/.cvsignore (1.1.1.1, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2), contrib/libcap/Makefile (1.1.1.1,
-	R1_2_0pre3, R1_2_0pre2), contrib/libcap/_makenames.c (1.1.1.1,
-	R1_2_0pre3, R1_2_0pre2), contrib/libcap/cap_alloc.c (1.1.1.1,
-	R1_2_0pre3, R1_2_0pre2), contrib/libcap/cap_extint.c (1.1.1.1,
-	R1_2_0pre3, R1_2_0pre2), contrib/libcap/cap_flag.c (1.1.1.1,
-	R1_2_0pre3, R1_2_0pre2), contrib/libcap/cap_proc.c (1.1.1.1,
-	R1_2_0pre3, R1_2_0pre2), contrib/libcap/cap_sys.c (1.1.1.1,
-	R1_2_0pre3, R1_2_0pre2), contrib/libcap/cap_text.c (1.1.1.1,
-	R1_2_0pre3, R1_2_0pre2), contrib/libcap/capability.h (1.1.1.1,
-	R1_2_0pre3, R1_2_0pre2), contrib/libcap/libcap.h (1.1.1.1,
-	R1_2_0pre3, R1_2_0pre2), doc/API (1.1.1.1, R1_2_0RC2, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2), doc/development.notes (1.1.1.1, R1_2_0RC2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), doc/license.txt (1.1.1.1,
-	R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7,
-	R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), include/conf.h
-	(1.1.1.1, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	include/data.h (1.1.1.1), include/default_paths.h (1.1.1.1,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), include/dirtree.h (1.1.1.1,
-	R1_2_0pre3, R1_2_0pre2), include/fs.h (1.1.1.1, R1_2_0pre3,
-	R1_2_0pre2), include/ftp.h (1.1.1.1, R1_2_0RC2, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2), include/ident.h (1.1.1.1, R1_2_0RC2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), include/inet.h (1.1.1.1,
-	R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), include/io.h
-	(1.1.1.1, R1_2_0pre2), include/libsupp.h (1.1.1.1, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2), include/log.h (1.1.1.1, R1_2_0pre7,
-	R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), include/modules.h
-	(1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	include/options.h (1.1.1.1, R1_2_0pre3, R1_2_0pre2), include/pool.h
-	(1.1.1.1), include/privs.h (1.1.1.1, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), include/proftpd.h (1.1.1.1),
-	include/sets.h (1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2), include/support.h (1.1.1.1), include/timers.h
-	(1.1.1.1, R1_2_0pre2), include/version.h (1.1.1.1), lib/.cvsignore
-	(1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	lib/Makefile.in (1.1.1.1, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	lib/fnmatch.c (1.1.1.1, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	lib/getopt.c (1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2), lib/getopt.h (1.1.1.1, R1_2_0RC2, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2), lib/getopt1.c (1.1.1.1, R1_2_0RC2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), lib/glob.c (1.1.1.1,
-	R1_2_0pre3, R1_2_0pre2), lib/glob.h (1.1.1.1, R1_2_0RC2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), lib/pwgrent.c (1.1.1.1,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2), lib/strsep.c (1.1.1.1, R1_2_0RC2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), lib/vsnprintf.c (1.1.1.1,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), modules/.cvsignore (1.1.1.1,
-	R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7,
-	R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	modules/Makefile.in (1.1.1.1, R1_2_0pre2), modules/glue.sh
-	(1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	modules/mod_auth.c (1.1.1.1), modules/mod_core.c (1.1.1.1),
-	modules/mod_log.c (1.1.1.1), modules/mod_ls.c (1.1.1.1),
-	modules/mod_sample.c (1.1.1.1), modules/mod_site.c (1.1.1.1,
-	R1_2_0pre3, R1_2_0pre2), modules/mod_tar.c (1.1.1.1, R1_2_0pre3,
-	R1_2_0pre2), modules/mod_test.c (1.1.1.1, R1_2_0pre3, R1_2_0pre2),
-	modules/mod_unixpw.c (1.1.1.1, R1_2_0pre3, R1_2_0pre2),
-	modules/mod_xfer.c (1.1.1.1), modules/module_glue.c.tmpl (1.1.1.1,
-	R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7,
-	R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	sample-configurations/anonymous.conf (1.1.1.1, R1_2_0RC2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	sample-configurations/basic.conf (1.1.1.1, R1_2_0RC2, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2), sample-configurations/virtual.conf
-	(1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	src/.cvsignore (1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2), src/Makefile.in (1.1.1.1, R1_2_0pre8, R1_2_0pre7,
-	R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), src/auth.c
-	(1.1.1.1, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	src/data.c (1.1.1.1), src/dirtree.c (1.1.1.1), src/fs.c (1.1.1.1),
-	src/ftpcount.1 (1.1.1.1, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	src/ftpcount.c (1.1.1.1, R1_2_0pre3, R1_2_0pre2), src/ftpshut.8
-	(1.1.1.1, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), src/ftpshut.c
-	(1.1.1.1, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), src/ftpwho.1
-	(1.1.1.1, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), src/ident.c
-	(1.1.1.1), src/inet.c (1.1.1.1, R1_2_0pre3, R1_2_0pre2), src/io.c
-	(1.1.1.1), src/log.c (1.1.1.1, R1_2_0pre3, R1_2_0pre2), src/main.c
-	(1.1.1.1), src/modules.c (1.1.1.1, R1_2_0pre3, R1_2_0pre2),
-	src/pool.c (1.1.1.1), src/proftpd.8 (1.1.1.1), src/sets.c (1.1.1.1,
-	R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7,
-	R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), src/support.c
-	(1.1.1.1), src/timers.c (1.1.1.1, R1_2_0pre2), src/utils.c
-	(1.1.1.1, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	src/xferlog.5 (1.1.1.1, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2) (utags:
-	R1_2_0pre1, start): Imported source for proftpd 1.2.0
+	* .cvsignore, COPYING, INSTALL, Make.modules.in, Make.rules.in,
+	Makefile.in, README, README.Solaris2.5x, README.linux-privs,
+	acconfig.h, changelog, config.guess, config.h.in, config.sub,
+	configure, configure.in, install-sh, contrib/.cvsignore,
+	contrib/README, contrib/mod_linuxprivs.c, contrib/mod_ratio.c,
+	contrib/xferstats.holger-preiss, contrib/libcap/.cvsignore,
+	contrib/libcap/Makefile, contrib/libcap/_makenames.c,
+	contrib/libcap/cap_alloc.c, contrib/libcap/cap_extint.c,
+	contrib/libcap/cap_flag.c, contrib/libcap/cap_proc.c,
+	contrib/libcap/cap_sys.c, contrib/libcap/cap_text.c,
+	contrib/libcap/capability.h, contrib/libcap/libcap.h, doc/API,
+	doc/development.notes, doc/license.txt, include/conf.h,
+	include/data.h, include/default_paths.h, include/dirtree.h,
+	include/fs.h, include/ftp.h, include/ident.h, include/inet.h,
+	include/io.h, include/libsupp.h, include/log.h, include/modules.h,
+	include/options.h, include/pool.h, include/privs.h,
+	include/proftpd.h, include/sets.h, include/support.h,
+	include/timers.h, include/version.h, lib/.cvsignore,
+	lib/Makefile.in, lib/fnmatch.c, lib/getopt.c, lib/getopt.h,
+	lib/getopt1.c, lib/glob.c, lib/glob.h, lib/pwgrent.c, lib/strsep.c,
+	lib/vsnprintf.c, modules/.cvsignore, modules/Makefile.in,
+	modules/glue.sh, modules/mod_auth.c, modules/mod_core.c,
+	modules/mod_log.c, modules/mod_ls.c, modules/mod_sample.c,
+	modules/mod_site.c, modules/mod_tar.c, modules/mod_test.c,
+	modules/mod_unixpw.c, modules/mod_xfer.c,
+	modules/module_glue.c.tmpl, sample-configurations/anonymous.conf,
+	sample-configurations/basic.conf,
+	sample-configurations/virtual.conf, src/.cvsignore,
+	src/Makefile.in, src/auth.c, src/data.c, src/dirtree.c, src/fs.c,
+	src/ftpcount.1, src/ftpcount.c, src/ftpshut.8, src/ftpshut.c,
+	src/ftpwho.1, src/ident.c, src/inet.c, src/io.c, src/log.c,
+	src/main.c, src/modules.c, src/pool.c, src/proftpd.8, src/sets.c,
+	src/support.c, src/timers.c, src/utils.c, src/xferlog.5: Imported
+	source for proftpd 1.2.0
         
 
