@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.142 2003-05-19 22:28:50 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.143 2003-05-22 15:01:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1963,6 +1963,9 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
 
   else if (ctxt & CONF_DIR)
     precedence = 4;
+
+  else if (ctxt & CONF_DYNDIR)
+    precedence = 5;
 
   /* If the directive was used with four arguments, it means the optional
    * classifiers and expression were used.  Make sure the classifier is a valid
