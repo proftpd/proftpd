@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.525 2004-01-30 03:37:42 castaglia Exp $
+$Id: NEWS,v 1.526 2004-02-01 20:51:48 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -74,6 +74,10 @@ CVS
   The fix is to include <sys/types.h>, if present, sooner in the check.
 - Bug 1925 - Clean up of Class code.  See README.classes for more details.
 - Bug 2295 - mod_tls returns multiline response to AUTH commands.
+- Bug 2322 - NLST -a returns listing formatted for LIST -a.  RFC959 does not
+  explicitly allow dash-style options for LIST or NLST, although many clients
+  attempt to use them.  De facto FTP server behaviors handle options for LIST;
+  options for NLST will be explicitly rejected.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------

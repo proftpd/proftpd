@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.101 2003-12-02 02:54:28 castaglia Exp $
+ * $Id: mod_ls.c,v 1.102 2004-02-01 20:51:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1813,8 +1813,10 @@ MODRET ls_nlst(cmd_rec *cmd) {
   list_nfiles.logged = list_ndirs.logged = list_ndepth.logged = FALSE;
 
   /* In case the client used NLST instead of LIST. */
-  if (cmd->argc > 1 && cmd->argv[1][0] == '-')
-    return genericlist(cmd);
+  if (cmd->argc > 1 && cmd->argv[1][0] == '-') {
+    pr_response_add_err(R_501, "%s: options not supported", cmd->argv[0]);
+    return ERROR(cmd);
+  }
 
   if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE)) != NULL)
     list_show_symlinks = *tmp;
