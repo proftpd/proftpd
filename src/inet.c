@@ -510,7 +510,7 @@ conn_t *inet_create_connection(pool *p, xaset_t *servers, int fd,
      */
 
     len = sizeof(servaddr);
-    if(getsockname(fd, (struct sockaddr*)&servaddr, &len) != -1) {
+    if(fd >= 0 && getsockname(fd, (struct sockaddr*)&servaddr, &len) != -1) {
       if(!c->local_ipaddr)
         c->local_ipaddr = (p_in_addr_t*)pcalloc(c->pool,sizeof(p_in_addr_t));
       *c->local_ipaddr = servaddr.sin_addr;
@@ -906,23 +906,30 @@ int inet_get_conn_info(conn_t *c, int fd)
 {
   static struct sockaddr_in servaddr;
   int len = sizeof(servaddr);
-
+  
+  /* Sanity check.
+   */
+  if(fd < 0)
+    return -1;
+  
   if(getsockname(fd,(struct sockaddr*)&servaddr,&len) != -1) {
     if(!c->local_ipaddr)
       c->local_ipaddr = (p_in_addr_t*)pcalloc(c->pool,sizeof(p_in_addr_t));     
     *c->local_ipaddr = servaddr.sin_addr;
     c->local_port = ntohs(servaddr.sin_port);
-  } else
+  } else {
     return -1;
-
+  }
+  
   len = sizeof(servaddr);
 
   if(getpeername(fd,(struct sockaddr*)&servaddr,&len) != -1) {
     c->remote_ipaddr = (p_in_addr_t*)pcalloc(c->pool,sizeof(p_in_addr_t));
     *c->remote_ipaddr = servaddr.sin_addr;
     c->remote_port = ntohs(servaddr.sin_port);
-  } else
+  } else {
     return -1;
+  }
 
   return 0;
 }
