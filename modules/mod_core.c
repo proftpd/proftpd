@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.56 2001-03-01 03:18:43 flood Exp $
+ * $Id: mod_core.c,v 1.57 2001-03-09 18:49:51 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -697,6 +697,14 @@ MODRET add_grouppassword(cmd_rec *cmd)
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
 
   add_config_param_str("GroupPassword",2,cmd->argv[1],cmd->argv[2]);
+  return HANDLED(cmd);
+}
+
+MODRET set_accessdenymsg(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+
+  add_config_param_str("AccessDenyMsg", 1, cmd->argv[1]);
   return HANDLED(cmd);
 }
 
@@ -2826,6 +2834,7 @@ static conftable core_conftable[] = {
   { "</Limit>", 		end_limit, 			NULL },
   { "<VirtualHost>",		add_virtualhost,		NULL },
   { "</VirtualHost>",		end_virtualhost,		NULL },
+  { "AccessDenyMsg",		set_accessdenymsg,		NULL },
   { "AccessGrantMsg",		set_accessgrantmsg,		NULL },
   { "Allow",			add_allow,			NULL },
   { "AllowAll",			set_allowall,			NULL },
