@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_load -- a module for refusing connections based on system load
  *
- * Copyright (c) 2001-2003 TJ Saunders
+ * Copyright (c) 2001-2005 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * This is mod_load, contrib software for proftpd 1.2 and above.
+ * This is mod_load, contrib software for proftpd 1.2.x and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
  * Based on the getloadavg.c file included in GNU make-3.79, which carries
@@ -31,14 +31,14 @@
  *   Copyright (C) 1985, 86, 87, 88, 89, 91, 92, 93, 1994, 1995, 1997
  *     Free Software Foundation, Inc.
  * 
- * $Id: mod_load.c,v 1.1 2005-01-01 18:37:42 castaglia Exp $
+ * $Id: mod_load.c,v 1.2 2005-01-01 18:49:30 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_load.h"
 
-#define MOD_LOAD_VERSION "mod_load/1.0.1"
+#define MOD_LOAD_VERSION	"mod_load/1.0.1"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001020804
@@ -937,7 +937,7 @@ int getloadavg(double *loadavg, int nelem) {
 static double load_get_system_load() {
   double loadavg = -1.0;
 
-  /* it is necessary on some platforms (such as Solaris) to have root
+  /* It is necessary on some platforms (such as Solaris) to have root
    * privs when doing this, as the information is determined by reading
    * the image of the running kernel (yikes!)
    */
@@ -954,6 +954,7 @@ static double load_get_system_load() {
 /* Configuration handlers
  */
 
+/* usage: MaxLoad max [mesg] */
 MODRET set_maxload(cmd_rec *cmd) {
   double loadval = 0.0;
   config_rec *c = NULL;
@@ -963,17 +964,20 @@ MODRET set_maxload(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (!strcasecmp(cmd->argv[1], "none"))
+  if (strcasecmp(cmd->argv[1], "none") == 0)
     loadval = -1.0;
-  else
-    if ((loadval = atof(cmd->argv[1])) < 0.0)
+  else {
+    loadval = atof(cmd->argv[1]);
+    if (loadval < 0.0)
       CONF_ERROR(cmd, "positive load limit required");
+  }
 
   c = add_config_param(cmd->argv[0], cmd->argc-1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(double));
 
   if (loadval < 0.0)
     c->argv[0] = NULL;
+
   else
     *((double *) c->argv[0]) = loadval;
 
@@ -987,31 +991,34 @@ MODRET set_maxload(cmd_rec *cmd) {
 
 /* Initialization functions
  */
-static int load_child_init(void) {
-  config_rec *c = NULL;
-  double max_load = 0.0, current_load = 0.0;
 
-  /* lookup any configured load limit */
-  if ((c = find_config(main_server->conf, CONF_PARAM, "MaxLoad",
-      FALSE)) == NULL)
+static int load_sess_init(void) {
+  config_rec *c = NULL;
+  double max_load = 0.0, curr_load = 0.0;
+
+  /* Lookup any configured load limit. */
+  c = find_config(main_server->conf, CONF_PARAM, "MaxLoad", FALSE);
+  if (!c)
     return 0;
 
-  /* if the config_rec is present, but argv[0] is NULL, do nothing */
+  /* If the config_rec is present, but argv[0] is NULL, do nothing */
   if (!c->argv[0])
     return 0;
-
   max_load = *((double *) c->argv[0]);
-  if ((current_load = load_get_system_load()) < 0) {
-    log_pri(LOG_NOTICE, "notice: unable to determine system load average: %s",
-      strerror(errno));
+
+  curr_load = load_get_system_load();
+  if (curr_load < 0) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "notice: unable to determine system load average: %s", strerror(errno));
     return 0;
   }
 
-  log_debug(DEBUG5, MOD_LOAD_VERSION ": current system load: %lf",
-    current_load);
+  pr_log_debug(DEBUG5, MOD_LOAD_VERSION ": current system load: %.2lf",
+    curr_load);
 
-  if (current_load >= max_load) {
-    log_pri(LOG_INFO, "MaxLoad (%.2f) reached: connection denied", max_load);
+  if (curr_load >= max_load) {
+    pr_log_pri(PR_LOG_INFO, "MaxLoad (%.2lf) reached: connection denied",
+      max_load);
 
     if (c->argc == 2)
       pr_response_send(R_421, "%s", c->argv[1]);
@@ -1038,21 +1045,24 @@ module load_module = {
   /* Module API version 2.0 */
   0x20,
 
-  /* the module name */
+  /* Module name */
   "load",
 
-  /* module configuration handler table */
+  /* Module configuration handler table */
   load_conftab,
 
-  /* module command handler table */
+  /* Module command table */
   NULL,
 
-  /* module authentication handler table */
+  /* Module authentication handler table */
   NULL,
 
-  /* module initialization function */
+  /* Module initialization function */
   NULL,
 
-  /* module "child mode" post-fork initialization function */
-  load_child_init
+  /* Session initialization function */
+  load_sess_init,
+
+  /* Module version */
+  MOD_LOAD_VERSION
 };
