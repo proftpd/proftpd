@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.4 2004-11-21 20:26:57 castaglia Exp $
+ * $Id: mod_delay.c,v 1.5 2004-11-21 23:36:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -195,6 +195,39 @@ static long delay_get_median(pool *p, unsigned int rownum, long interval) {
   return delay_select_k(((list->nelts + 1) / 2), list);
 }
 
+static void delay_mask_signals(unsigned char block) {
+  static sigset_t mask_sigset;
+
+  if (block) {
+    sigemptyset(&mask_sigset);
+
+    sigaddset(&mask_sigset, SIGCHLD);
+    sigaddset(&mask_sigset, SIGUSR1);
+    sigaddset(&mask_sigset, SIGINT);
+    sigaddset(&mask_sigset, SIGQUIT);
+    sigaddset(&mask_sigset, SIGALRM);
+#ifdef SIGIO
+    sigaddset(&mask_sigset, SIGIO);
+#endif
+#ifdef SIGBUS
+    sigaddset(&mask_sigset, SIGBUS);
+#endif
+    sigaddset(&mask_sigset, SIGHUP);
+
+    sigprocmask(SIG_BLOCK, &mask_sigset, NULL);
+
+  } else
+    sigprocmask(SIG_UNBLOCK, &mask_sigset, NULL);
+}
+
+static void delay_signals_block(void) {
+  delay_mask_signals(TRUE);
+}
+
+static void delay_signals_unblock(void) {
+  delay_mask_signals(FALSE);
+}
+
 static void delay_delay(long interval) {
   struct timeval tv;
   long rand_usec;
@@ -212,9 +245,9 @@ static void delay_delay(long interval) {
   pr_log_debug(DEBUG0, MOD_DELAY_VERSION ": delaying for %ld usecs",
     (tv.tv_sec * 1000000) + tv.tv_usec);
 
-  pr_signals_block();
+  delay_signals_block();
   (void) select(0, NULL, NULL, NULL, &tv);
-  pr_signals_unblock();
+  delay_signals_unblock();
 }
 
 static void delay_table_add_interval(unsigned int rownum, long interval) {
