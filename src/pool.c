@@ -244,7 +244,7 @@ static long __walk_pools(pool *p, int level)
   long total = 0;
 
   if(!p)
-    return;
+    return 0;
 
   if(level > 1) {
     memset(_levelpad,' ',sizeof(_levelpad)-1);
