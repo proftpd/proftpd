@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.286 2002-11-22 19:19:10 jwm Exp $
+$Id: NEWS,v 1.287 2002-11-23 05:20:52 jwm Exp $
 
 CVS
 ---------------------------------
@@ -18,6 +18,8 @@ CVS
   if linking against curses.
 - Bug 1839 - undefined reference to `get_fs_size'. Expand BSD
   statfs()/statvfs() support beyond FreeBSD.
+- Bug 1680 - Error in startup script. Add /usr/local/sbin/ to the included
+  rc script's $PATH
 
 1.2.7rc3 - Released 15-11-2002
 ---------------------------------

@@ -13,7 +13,7 @@
 # config: /etc/proftpd.conf
 #
 # By: Osman Elliyasa <osman@Cable.EU.org>
-# $Id: proftpd.init.d,v 1.5 2002-05-18 14:59:56 jwm Exp $
+# $Id: proftpd.init.d,v 1.6 2002-11-23 05:20:52 jwm Exp $
 
 # Source function library.
 . /etc/rc.d/init.d/functions
@@ -22,6 +22,7 @@ if [ -f /etc/sysconfig/proftpd ]; then
       . /etc/sysconfig/proftpd
 fi
 
+PATH="$PATH:/usr/local/sbin"
 FTPSHUT=/usr/sbin/ftpshut
 
 # See how we were called.
