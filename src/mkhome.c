@@ -23,7 +23,7 @@
  */
 
 /* Home-on-demand support
- * $Id: mkhome.c,v 1.6 2004-05-13 01:13:57 castaglia Exp $
+ * $Id: mkhome.c,v 1.7 2004-09-26 17:57:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -85,6 +85,8 @@ static int create_path(pool *p, const char *path, const char *user, uid_t uid,
     errno = EEXIST;
     return -1;
   }
+
+  pr_event_generate("core.create-home", user);
 
   pr_log_debug(DEBUG3, "creating home directory '%s' for user '%s'", path,
     user);
@@ -253,7 +255,7 @@ int create_home(pool *p, const char *home, const char *user, uid_t uid,
     char *skel_dir = c->argv[3];
 
     /* Populate the home directory with files from the configured
-     * skeleton (a al /etc/skel) directory.
+     * skeleton (a la /etc/skel) directory.
      */
 
     pr_log_debug(DEBUG4, "CreateHome: copying skel files from '%s' into '%s'",
