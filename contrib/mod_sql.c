@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.47 2003-03-22 04:49:42 castaglia Exp $
+ * $Id: mod_sql.c,v 1.48 2003-03-23 18:15:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1014,9 +1014,16 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
     ah = (array_header *) mr->data;
 
     /* Assume the query only returned 1 row. */
-    sd->rnum = 1;
     sd->fnum = ah->nelts;
-    sd->data = (char **) ah->elts;
+
+    if (sd->fnum) {
+      sd->rnum = 1;
+      sd->data = (char **) ah->elts;
+
+    } else {
+      sd->rnum = 0;
+      sd->data = NULL;
+    }
   }
 
   /* if we have no data.. */
