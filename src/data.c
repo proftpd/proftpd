@@ -20,7 +20,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.5 1999-10-01 07:55:01 macgyver Exp $
+ * $Id: data.c,v 1.6 1999-10-05 05:37:21 macgyver Exp $
  */
 
 #include "conf.h"
@@ -30,6 +30,10 @@
 #ifdef HAVE_SYS_SENDFILE_H
 #include <sys/sendfile.h>
 #endif /* HAVE_SYS_SENDFILE_H */
+
+#ifdef HAVE_SYS_UIO_H
+#include <sys/uio.h>
+#endif /* HAVE_SYS_UIO_H */
 
 /* local macro */
 
@@ -515,9 +519,21 @@ int data_xfer(char *cl_buf, int cl_size)
  * ascii translation is not performed.
  * return 0 if reading and data connection closes, or -1 if error
  */
-int data_sendfile(int retr_fd, off_t *offset, size_t count)
+#if defined(HAVE_LINUX_SENDFILE)
+ssize_t
+#elif defined(HAVE_BSD_SENDFILE)
+off_t
+#else
+#error "You have an unknown sendfile implementation."
+#endif /* HAVE_LINUX_SENDFILE */
+data_sendfile(int retr_fd, off_t *offset, size_t count)
 {
-  int flags, error, len = 0;
+  int flags, error;
+#if defined(HAVE_LINUX_SENDFILE)
+  ssize_t len = 0;
+#elif defined(HAVE_BSD_SENDFILE)
+  off_t len = 0;
+#endif /* HAVE_LINUX_SENDFILE */
   
   if(session.xfer.direction == IO_READ)
     return -1;
@@ -530,9 +546,13 @@ int data_sendfile(int retr_fd, off_t *offset, size_t count)
     if(fcntl(session.d->outf->fd, F_SETFL, flags ^ O_NONBLOCK) == -1)
       return -1;
   
-  log_pri(LOG_ERR, "data_sendfile(%d,%d,%d)", retr_fd, *offset, count);
-  
+  log_pri(DEBUG4, "data_sendfile(%d,%d,%d)", retr_fd, *offset, count);
+#if defined(HAVE_LINUX_SENDFILE)
   if ((len = sendfile(session.d->outf->fd, retr_fd, offset, count)) == -1) {
+#elif defined(HAVE_BSD_SENDFILE)
+  if (sendfile(retr_fd, session.d->outf->fd, *offset, count, NULL, &len,
+    flags) == -1) {
+#endif /* HAVE_LINUX_SENDFILE */
     error = errno;
     fcntl(session.d->outf->fd, F_SETFL, flags);
     errno = error;
@@ -540,7 +560,7 @@ int data_sendfile(int retr_fd, off_t *offset, size_t count)
     return -1;
   }
   
-  log_pri(LOG_ERR, "data_sendfile: %d", len);
+  log_pri(DEBUG4, "data_sendfile: %ld", len);
   
   if (flags & O_NONBLOCK)
     fcntl(session.d->outf->fd, F_SETFL, flags);

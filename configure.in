@@ -136,6 +136,10 @@ AC_ARG_ENABLE(autoshadow,
       use_shadow="-DUSESHADOW -DAUTOSHADOW"
       force_shadow="yes"
     fi ])
+
+AC_ARG_ENABLE(sendfile,
+  [  --enable-sendfile       enable sendfile support (default=yes)])
+
 AC_CHECK_LIB(security, set_auth_parameters, LIBS="$LIBS -lsecurity")
 AC_CHECK_HEADERS(sys/security.h)
 AC_CHECK_HEADERS(krb.h)
@@ -175,7 +179,7 @@ AC_CHECK_HEADERS(security/pam_appl.h,
     fi ])
 
 AC_CHECK_HEADERS(ctype.h getopt.h crypt.h bstring.h strings.h)
-AC_CHECK_HEADERS(sys/types.h sys/param.h sys/file.h)
+AC_CHECK_HEADERS(sys/types.h sys/param.h sys/file.h sys/uio.h)
 AC_CHECK_HEADERS(netdb.h netinet/in.h netinet/tcp.h arpa/inet.h sys/stat.h)
 AC_CHECK_HEADERS(errno.h sys/socket.h sys/termios.h sys/termio.h)
 AC_CHECK_HEADERS(sys/statvfs.h sys/vfs.h sys/select.h sys/sendfile.h)
@@ -313,12 +317,48 @@ AC_PROG_GCC_TRADITIONAL
 AC_FUNC_SETPGRP
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS(getcwd gethostname gettimeofday mkdir rmdir select sendfile socket strerror strtol)
+AC_CHECK_FUNCS(getcwd gethostname gettimeofday mkdir rmdir select socket strerror strtol)
 AC_CHECK_FUNCS(strchr memcpy bcopy flock getopt getopt_long strsep)
-AC_CHECK_FUNCS(vsnprintf __vsnprintf snprintf __snprintf)
+# __snprintf and __vsnprintf are only on solaris and _really_ broken there.
+AC_CHECK_FUNCS(vsnprintf snprintf)
 AC_CHECK_FUNCS(setsid setpassent seteuid setegid crypt fgetpwent fgetgrent)
 AC_CHECK_FUNCS(inet_aton siginterrupt setpgid)
 AC_CHECK_FUNCS(regcomp)
+
+if test x"$enable_sendfile" != xno ; then
+AC_CHECK_FUNCS(sendfile,[
+  AC_MSG_CHECKING(weather we have Linux or BSD sendfile())
+  AC_CACHE_VAL(pr_cv_linux_sendfile,
+    AC_TRY_COMPILE([
+#include <unistd.h>
+#include <sys/sendfile.h>
+],[
+int i;
+off_t o;
+size_t c;
+(void)sendfile(i,i,&o,c);
+      ], pr_cv_linux_sendfile=yes, pr_cv_linux_sendfile=no))
+  AC_CACHE_VAL(pr_cv_bsd_sendfile,
+    AC_TRY_COMPILE([
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/uio.h>
+],[
+int i;
+off_t o;
+size_t n;
+struct sf_hdtr h;
+(void)sendfile(i,i,o,n,&h,&o,i);
+       ], pr_cv_bsd_sendfile=yes, pr_cv_bsd_sendfile=no))
+  if test x"$pr_cv_linux_sendfile" = xyes ; then
+    AC_DEFINE(HAVE_LINUX_SENDFILE)
+	AC_MSG_RESULT(Linux)
+  elif test x"$pr_cv_bsd_sendfile" = xyes ; then
+    AC_DEFINE(HAVE_BSD_SENDFILE)
+	AC_MSG_RESULT(BSD)
+  fi
+])
+fi
 
 dnl Only check for glob if we have glob.h, GLOB_PERIOD, and GLOB_ALTDIRFUNC
 if test "$have_glob_h" = "yes" && \
