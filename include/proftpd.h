@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.34 2002-12-06 21:04:56 castaglia Exp $
+ * $Id: proftpd.h,v 1.35 2002-12-06 21:43:46 jwm Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -44,10 +44,10 @@
 #include <assert.h>
 #define MAX_PATH_LEN			256
 
-typedef unsigned long LPARAM;		/* Longest bitsize compatible with
-                                         * a scalar and largest pointer
-					 * (platform dependant)
-					 */
+typedef unsigned long LPARAM;   /* Longest bitsize compatible with
+                                 * a scalar and largest pointer
+                                 * (platform dependant)
+                                 */
 
 /* adjust per platform */
 /* unsigned 32 bit integer */
