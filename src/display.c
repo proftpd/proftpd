@@ -24,7 +24,7 @@
 
 /*
  * Display of files
- * $Id: display.c,v 1.4 2004-12-04 06:59:52 castaglia Exp $
+ * $Id: display.c,v 1.5 2004-12-04 07:39:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -218,6 +218,8 @@ int pr_display_file(const char *path, const char *fs, const char *code) {
       "%y", mg_cur_class,
       "%z", mg_class_limit,
       NULL);
+
+    sstrncpy(buf, outs, sizeof(buf));
 
     /* Check for any Variable-type strings. */
     tmp = strstr(outs, "%{");
