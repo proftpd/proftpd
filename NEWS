@@ -1,4 +1,13 @@
-$Id: NEWS,v 1.622 2004-11-09 02:45:54 castaglia Exp $
+$Id: NEWS,v 1.623 2004-11-09 19:17:08 castaglia Exp $
+
+-----------------------------------------------------------------------------
+  More details on the bugs listed below can be found by using the bug number
+  indicated in the following URL:
+
+    http://bugs.proftpd.org/show_bug.cgi?id=N
+
+  where `N' is the bug number.
+-----------------------------------------------------------------------------
 
 CVS
 --------------------------------
