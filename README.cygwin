@@ -1,0 +1,97 @@
+                      ProFTPD README.Cygwin
+                      =====================
+
+Introduction
+------------
+
+Cygwin is a UNIX-like environment framework for Microsoft Windows
+98/NT/2000/XP operating systems. Most programs that you are used to using
+can compile and behave exacttly the same way as on your favorite Unix
+system. However, there are some minor differences and compatibility issues.
+
+
+Configuring and Compiling 
+-------------------------
+
+In standard Cygwin setup, there's no such username as 'root'. Hence you have
+to specify the installer username, usually 'Administrator'. The rest is as
+usual.
+
+    install_user=Administrator ./configure
+    make
+    make install
+
+Installing as Windows service
+-----------------------------
+
+Create a shell script and put it somewhere, with the following contents:
+
+--8<--Cut here--
+#!/bin/sh
+# File: proftpd-config.sh
+# Purpose: Installs proftpd daemon as a Windows service
+
+cygrunsrv --install proftpd \
+          --path /usr/local/sbin/proftpd.exe \
+          --args "--nodaemon" \
+          --type manual \
+          --disp "Cygwin proftpd" \
+          --desc "ProFTPd FTP daemon"
+--8<--Cut here--
+
+The --nodaemon option is important. It prevents the process from detouching.
+Thus you can always shut it down with "net stop proftpd" command.
+
+After running this script, you may run the daemon with "net start proftpd"
+command. Or, change the type from "manual" to "auto", and it will run on the
+system startup.
+
+You can remove the service with the command:
+    cygrunsrv --remove proftpd
+
+Installing as inetd service
+-----------------------------
+Edit the corresponding line in /etc/inetd.conf:
+
+    ftp stream tcp nowait root /usr/local/sbin/in.proftpd in.proftpd
+
+You can specify an alternative configuration file with -c option.
+
+Configuration File
+------------------
+
+The default configuration file resides in /usr/local/etc/proftpd.conf.
+However, the default version of the proftpd.conf created by the installation
+script is unusable within the Cygwin environment.
+
+Some configuration directives need to be changed as follows:
+
+    ServerType standalone|inetd
+
+        Needs to be set correctly. Having standalone when running from inetd
+        produces daemon processes which are difficult or impossible to kill.
+
+    User   SYSTEM
+    Group  Everyone
+
+        By default, a Windows service runs as the SYSTEM user, and if User
+        directive specifies some other user, ProFTPD fails to change to that
+        user.  Also, if no User directive given, the daemon tries to change
+        the uid to 'root', which also fails.
+
+    <Anonymous directory_name>
+
+        The user specified in User directive should exist as a Windows
+        account. In Windows User Manager, this login can be even disabled. 
+        As usual, make sure you have this entry in the Cygwin /etc/passwd
+        file (produced by mkpasswd.exe).
+
+    UserPassword username encrypted_passwd
+
+        The encrypted password can be produced with the "openssl passwd"
+        command.
+
+Author:
+Stanislav Sinyagin
+CCIE #5478
+ssinyagin@yahoo.com
