@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.19 2004-04-11 22:38:02 castaglia Exp $
+ * $Id: options.h,v 1.20 2004-09-05 21:29:00 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -158,6 +158,16 @@
 
 #ifndef PR_TUNABLE_SCOREBOARD_SCRUB_TIMER
 # define PR_TUNABLE_SCOREBOARD_SCRUB_TIMER	30
+#endif
+
+/* Maximum number of attempted updates to the scoreboard during a
+ * file transfer before an actual write is done.  This is to allow
+ * an optimization where the scoreboard is not updated on every loop
+ * through the transfer buffer.
+ */
+
+#ifndef PR_TUNABLE_XFER_SCOREBOARD_UPDATES
+# define PR_TUNABLE_XFER_SCOREBOARD_UPDATES	10
 #endif
 
 /* Max number of recursion/directory levels to support when globbing.

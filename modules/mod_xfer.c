@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.167 2004-09-05 00:36:05 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.168 2004-09-05 21:29:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -55,12 +55,13 @@ static unsigned char have_prot = FALSE;
 static long double xfer_rate_kbps = 0.0, xfer_rate_bps = 0.0;
 static off_t xfer_rate_freebytes = 0.0;
 static unsigned char have_xfer_rate = FALSE;
+static unsigned int xfer_rate_scoreboard_updates = 0;
 
 /* Transfer rate functions */
 static void xfer_rate_lookup(cmd_rec *);
 static unsigned char xfer_rate_parse_cmdlist(config_rec *, char *);
 static void xfer_rate_sigmask(unsigned char);
-static void xfer_rate_throttle(off_t);
+static void xfer_rate_throttle(off_t, unsigned int);
 
 module xfer_module;
 
@@ -317,6 +318,7 @@ static void xfer_rate_lookup(cmd_rec *cmd) {
   /* Make sure the variables are (re)initialized */
   xfer_rate_kbps = xfer_rate_bps = 0.0;
   xfer_rate_freebytes = 0;
+  xfer_rate_scoreboard_updates = 0;
   have_xfer_rate = FALSE;
 
   c = find_config(CURRENT_CONF, CONF_PARAM, "TransferRate", FALSE);
@@ -514,7 +516,7 @@ static long xfer_rate_since(struct timeval *then) {
     ((now.tv_usec - then->tv_usec) / 1000L));
 }
 
-static void xfer_rate_throttle(off_t xferlen) {
+static void xfer_rate_throttle(off_t xferlen, unsigned int xfer_ending) {
   long ideal = 0, elapsed = 0;
   off_t orig_xferlen = xferlen;
 
@@ -523,12 +525,18 @@ static void xfer_rate_throttle(off_t xferlen) {
 
   /* Perform no throttling if no throttling has been configured. */
   if (!have_xfer_rate) {
+    xfer_rate_scoreboard_updates++;
 
-    /* Update the scoreboard. */
-    pr_scoreboard_update_entry(getpid(),
-      PR_SCORE_XFER_LEN, orig_xferlen,
-      PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
-      NULL);
+    if (xfer_ending ||
+        xfer_rate_scoreboard_updates % PR_TUNABLE_XFER_SCOREBOARD_UPDATES == 0) {
+      /* Update the scoreboard. */
+      pr_scoreboard_update_entry(getpid(),
+        PR_SCORE_XFER_LEN, orig_xferlen,
+        PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
+        NULL);
+
+      xfer_rate_scoreboard_updates = 0;
+    }
 
     return;
   }
@@ -544,14 +552,21 @@ static void xfer_rate_throttle(off_t xferlen) {
       xferlen -= xfer_rate_freebytes;
 
     else {
+      xfer_rate_scoreboard_updates++;
 
       /* The number of bytes transferred is less than the freebytes.  Just
        * update the scoreboard -- no throttling needed.
        */
-      pr_scoreboard_update_entry(getpid(),
-        PR_SCORE_XFER_LEN, orig_xferlen,
-        PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
-        NULL);
+
+      if (xfer_ending ||
+          xfer_rate_scoreboard_updates % PR_TUNABLE_XFER_SCOREBOARD_UPDATES == 0) {
+        pr_scoreboard_update_entry(getpid(),
+          PR_SCORE_XFER_LEN, orig_xferlen,
+          PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
+          NULL);
+
+        xfer_rate_scoreboard_updates = 0;
+      }
 
       return;
     }
@@ -1381,7 +1396,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     }
 
     /* If no throttling is configured, this does nothing. */
-    xfer_rate_throttle(nbytes_stored);
+    xfer_rate_throttle(nbytes_stored, FALSE);
   }
 
   if (XFER_ABORTED) {
@@ -1397,7 +1412,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   } else {
 
     /* If no throttling is configured, this does nothing. */
-    xfer_rate_throttle(nbytes_stored);
+    xfer_rate_throttle(nbytes_stored, TRUE);
 
     stor_complete();
 
@@ -1659,7 +1674,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
      * former does not.  (When handling STOR, this is not an issue: different
      * end-of-loop conditions).
      */
-    xfer_rate_throttle(session.xfer.total_bytes);
+    xfer_rate_throttle(session.xfer.total_bytes, FALSE);
   }
 
   if (XFER_ABORTED) {
@@ -1680,7 +1695,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
      * former does not.  (When handling STOR, this is not an issue: different
      * end-of-loop conditions).
      */
-    xfer_rate_throttle(session.xfer.total_bytes);
+    xfer_rate_throttle(session.xfer.total_bytes, TRUE);
 
     retr_complete();
     pr_data_close(FALSE);
