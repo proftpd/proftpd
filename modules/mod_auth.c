@@ -19,7 +19,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.1 1998-10-18 02:24:41 flood Exp $
+ * $Id: mod_auth.c,v 1.2 1999-02-12 19:37:58 flood Exp $
  */
 
 #include "conf.h"
@@ -258,7 +258,7 @@ static config_rec *_auth_resolve_user(pool *p,char **user,
 
   c = find_config(main_server->conf,CONF_PARAM,"UserAlias",TRUE);
   if(c) do {
-    if(!strcmp(c->argv[0],*user)) {
+    if(!strcmp(c->argv[0], "*") || !strcmp(c->argv[0],*user)) {
       is_alias = 1;
       break;
     }  
@@ -272,7 +272,7 @@ static config_rec *_auth_resolve_user(pool *p,char **user,
     is_alias = 0;
     find_config_set_top(topc);
     c = find_config_next(c,c->next,CONF_PARAM,"UserAlias",TRUE);
-    if(c && strcmp(c->argv[0],*user))
+    if(c && (!strcmp(c->argv[0],"*") || !strcmp(c->argv[0],*user)))
       is_alias = 1;
   }
 
@@ -694,8 +694,21 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
   if(c) {
     struct group *grp;
+    int add_userdir;
+    char *u;
+    
+    u = (char *) get_param_int(main_server->conf,C_USER,FALSE);               
+                                                                              
+    add_userdir = get_param_int((c ? c->subset : main_server->conf),
+				"UserDirRoot",FALSE);
 
-    session.anon_root = dir_realpath(session.pool,c->name);
+    if(add_userdir && strcmp(u, user)) {
+      session.anon_root = dir_realpath(session.pool, pdircat(session.pool,
+							     c->name, u, NULL));
+    } else {
+      session.anon_root = dir_realpath(session.pool,c->name);
+    }
+    
     session.anon_user = pstrdup(session.pool,pass);
 
     if(!session.anon_root) {
@@ -1372,11 +1385,21 @@ MODRET add_defaultchdir(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
+MODRET add_userdirroot (cmd_rec *cmd)
+{
+  CHECK_ARGS(cmd,1);
+  CHECK_CONF (cmd, CONF_ANON);
+
+  add_config_param("UserDirRoot",1,(void*)get_boolean(cmd,1));
+  return HANDLED(cmd);
+}
+
 conftable auth_config[] = {
   { "RootLogin",		set_rootlogin,			NULL },
   { "LoginPasswordPrompt",	set_loginpasswordprompt,	NULL },
   { "DefaultRoot",		add_defaultroot,		NULL },
   { "DefaultChdir",		add_defaultchdir,		NULL },
+  { "UserDirRoot",		add_userdirroot,		NULL },
   { NULL,			NULL,				NULL }
 };
 

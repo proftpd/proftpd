@@ -19,7 +19,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.4 1999-01-19 01:34:55 flood Exp $
+ * $Id: main.c,v 1.5 1999-02-12 19:38:02 flood Exp $
  */
 
 /*
@@ -754,17 +754,30 @@ void cmd_loop(server_rec *server, conn_t *c)
 {
   char buf[1024];
   char *cp;
+  char *display;
   int i;
 
   /* Setup the main idle timer */
   if(TimeoutIdle)
     add_timer(TimeoutIdle,TIMER_IDLE,NULL,_idle_timeout);
 
-  if(get_param_int(server->conf,"DeferWelcome",FALSE) == 1)
-    send_response("220", "ProFTPD " VERSION " Server ready.");
-  else
-    send_response("220", "ProFTPD " VERSION " Server (%s) [%s]",
+  display = (char*)get_param_ptr(server->conf,"DisplayConnect",FALSE);
+  if(display) {
+      core_display_file(R_220,display);
+  }
+
+  if(get_param_int(server->conf,"ServerIdent",FALSE) != 1)
+  {
+    if(get_param_int(server->conf,"DeferWelcome",FALSE) == 1)
+      send_response("220", "ProFTPD " VERSION " Server ready.");
+    else
+      send_response("220", "ProFTPD " VERSION " Server (%s) [%s]",
            server->ServerName,server->ServerAddress);
+  }
+  else
+  {
+    send_response("220", "%s FTP server ready.", server->ServerAddress);
+  }
 
   /* make sure we can receive OOB data */
   inet_setasync(session.pool,session.c);
@@ -988,7 +1001,6 @@ void fork_server(int fd,conn_t *l,int nofork)
       return;
     }
   }
-
 #ifdef HAVE_SETPGID
   setpgid(0,getpid());
 #else

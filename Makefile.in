@@ -69,14 +69,14 @@ clean:
 	rm -f proftpd ftpcount ftpwho ftpshut core *~
 
 # BSD install -d doesn't work, so ...
-$(localstatedir) $(sysconfdir) $(rundir) $(sbindir) $(mandir) $(mandir)/man1 $(mandir)/man5 $(mandir)/man8:
+$(localstatedir) $(sysconfdir) $(rundir) $(bindir) $(sbindir) $(mandir) $(mandir)/man1 $(mandir)/man5 $(mandir)/man8:
 	@if [ ! -d $@ ]; then \
 		mkdir $@; \
-		chown $(INSTALL_USER).$(INSTALL_GROUP) $@; \
+		chown $(INSTALL_USER):$(INSTALL_GROUP) $@; \
 		chmod 0755 $@; \
 	fi
 
-install-proftpd: $(localstatedir) $(sysconfdir) $(rundir) $(sbindir)
+install-proftpd: proftpd $(localstatedir) $(sysconfdir) $(rundir) $(sbindir)
 	$(INSTALL_SBIN) proftpd $(sbindir)/proftpd
 	if [ ! -f $(sbindir)/in.proftpd ] ; then \
 	  ln -s $(sbindir)/proftpd $(sbindir)/in.proftpd; \
@@ -91,7 +91,7 @@ install-conf: $(sysconfdir)
 	if [ ! -f $(sysconfdir)/proftpd.conf ] ; then \
 	  $(INSTALL) -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0644 \
 		$(top_srcdir)/sample-configurations/basic.conf \
-        	$(sysconfdir)/proftpd.conf ; \
+	       	$(sysconfdir)/proftpd.conf ; \
 	fi
 
 install-man: $(mandir) $(mandir)/man1 $(mandir)/man5 $(mandir)/man8

@@ -19,7 +19,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.2 1998-11-01 19:08:25 flood Exp $
+ * $Id: mod_xfer.c,v 1.3 1999-02-12 19:38:01 flood Exp $
  */
 
 /* History Log:
@@ -162,7 +162,7 @@ MODRET pre_cmd_stor(cmd_rec *cmd)
   }
 
   if(fmode && !S_ISREG(fmode)) {
-    add_response_err(R_553,"%s: Not a regular file",cmd->arg);
+    add_response_err(R_550,"%s: Not a regular file",cmd->arg);
     return ERROR(cmd);
   }
 

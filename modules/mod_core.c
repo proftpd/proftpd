@@ -20,6 +20,9 @@
 /*
  * Core FTPD module
  * $Id
+ *
+ * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
+ * 			wu-ftpd style CDPath support.
  */
 
 #include "conf.h"
@@ -217,6 +220,21 @@ MODRET set_deferwelcome(cmd_rec *cmd)
     CONF_ERROR(cmd,"expected boolean argument.");
 
   add_config_param("DeferWelcome",1,(void*)b);
+
+  return HANDLED(cmd);
+}
+
+MODRET set_serverident(cmd_rec *cmd)
+{
+  int b;
+
+  CHECK_ARGS(cmd,1);
+  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if((b = get_boolean(cmd,1)) == -1)
+    CONF_ERROR(cmd,"expected boolean argument.");
+
+  add_config_param("ServerIdent",1,(void*)!b);
 
   return HANDLED(cmd);
 }
@@ -725,6 +743,16 @@ MODRET set_allowforeignaddress(cmd_rec *cmd)
     CONF_ERROR(cmd,"expected boolean argument.");
 
   add_config_param("AllowForeignAddress",1,(void*)b);
+
+  return HANDLED(cmd);
+}
+
+MODRET add_cdpath(cmd_rec *cmd)
+{
+  CHECK_ARGS(cmd,1);
+  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+
+  add_config_param_str("CDPath",1,(void*)cmd->argv[1]);
 
   return HANDLED(cmd);
 }
@@ -1257,6 +1285,18 @@ MODRET set_displaylogin(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
+MODRET set_displayconnect(cmd_rec *cmd)
+{
+  config_rec *c;
+
+  CHECK_ARGS(cmd,1);
+  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param_str("DisplayConnect",1,(void*)cmd->argv[1]);
+  c->flags |= CF_MERGEDOWN;
+  return HANDLED(cmd);
+}
+
 MODRET set_displayfirstchdir(cmd_rec *cmd)
 {
   config_rec *c;
@@ -1329,6 +1369,7 @@ int core_display_file(const char *numeric, const char *fn)
   xaset_t *s;
   char *outs,*mg_time,mg_size[12],mg_max[12] = "unlimited";
   char mg_cur[12];
+  short first = 1;
 
 #if defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
   fs_size = get_fs_size((char*)fn);
@@ -1373,7 +1414,13 @@ int core_display_file(const char *numeric, const char *fn)
              "%N",mg_cur,
 	     "%E",main_server->ServerAdmin,
              NULL);
-    add_response(numeric,"%s",outs);
+
+	if(first) {
+      send_response_raw("%s-%s",numeric,outs);
+	  first=0;
+    }
+	else
+       send_response_raw("%s",outs);
   }
 
   fs_close(fp,fd);
@@ -1637,7 +1684,8 @@ int core_chmod(cmd_rec *cmd, char *dir, mode_t mode)
 MODRET _chdir(cmd_rec *cmd,char *ndir)
 {
   char *display = NULL;
-  char *dir,*odir;
+  char *dir,*odir,*cdir;
+  config_rec *cdpath;
   int showsymlinks;
   
   odir = ndir;
@@ -1651,8 +1699,25 @@ MODRET _chdir(cmd_rec *cmd,char *ndir)
 
     if(!dir || !dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
         fs_chdir(dir,0) == -1) {
-      add_response_err(R_550,"%s: %s",odir,strerror(errno));
-      return ERROR(cmd);
+      for(cdpath = find_config(main_server->conf,CONF_PARAM,"CDPath",TRUE);
+	  cdpath != NULL; cdpath =
+	    find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
+	cdir = (char *) malloc(strlen(cdpath->argv[0]) + strlen(ndir) + 2);
+	sprintf(cdir,"%s%s%s",cdpath->argv[0],
+		((char *)cdpath->argv[0])[strlen(cdpath->argv[0]) - 1] == '/' ? "" : "/",
+		ndir);
+	dir = dir_realpath(cmd->tmp_pool,cdir);
+	free(cdir);
+	if(dir &&
+	   dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) &&
+	   fs_chdir(dir,0) != -1) {
+	  break;
+	}
+      }
+      if(!cdpath) {
+	add_response_err(R_550,"%s: %s",odir,strerror(errno));
+	return ERROR(cmd);
+      }
     }
   } else {
     /* virtualize the chdir */
@@ -1661,8 +1726,27 @@ MODRET _chdir(cmd_rec *cmd,char *ndir)
 
     if(!dir || !dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
         fs_chdir_canon(ndir,1) == -1) {
-      add_response_err(R_550,"%s: %s",odir,strerror(errno));
-      return ERROR(cmd);
+
+      for(cdpath = find_config(main_server->conf,CONF_PARAM,"CDPath",TRUE);
+	  cdpath != NULL; cdpath =
+	    find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
+	cdir = (char *) malloc(strlen(cdpath->argv[0]) + strlen(ndir) + 2);
+	sprintf(cdir,"%s%s%s",cdpath->argv[0],
+		((char *)cdpath->argv[0])[strlen(cdpath->argv[0]) - 1] == '/' ? "" : "/",
+		ndir);
+	ndir = dir_virtual_chdir(cmd->tmp_pool,cdir);
+	dir = dir_realpath(cmd->tmp_pool,ndir);
+	free(cdir);
+	if(dir &&
+	   dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) &&
+	   fs_chdir_canon(ndir,1) != -1) {
+	  break;
+	}
+      }
+      if(!cdpath) {
+	add_response_err(R_550,"%s: %s",odir,strerror(errno));
+	return ERROR(cmd);
+      }
     }
   }
 
@@ -2070,6 +2154,7 @@ MODRET cmd_noop(cmd_rec *cmd)
 
 conftable core_conftable[] = {
   { "ServerName",		set_servername, 		NULL },
+  { "ServerIdent",		set_serverident,		NULL },
   { "ServerType",		set_servertype,			NULL },
   { "ServerAdmin",		set_serveradmin,		NULL },
   { "UseReverseDNS",		set_usereversedns,		NULL },
@@ -2107,6 +2192,7 @@ conftable core_conftable[] = {
   { "<VirtualHost>",		add_virtualhost,		NULL },
   { "</VirtualHost>",		end_virtualhost,		NULL },
   { "<Directory>",		add_directory,			NULL },
+  { "CDPath",			add_cdpath,			NULL },
   { "HideNoAccess",		add_hidenoaccess,		NULL },
   { "HideUser",			add_hideuser,			NULL },
   { "HideGroup",		add_hidegroup,			NULL },
@@ -2130,6 +2216,7 @@ conftable core_conftable[] = {
   { "DenyAll",			set_denyall,			NULL },
   { "</Limit>", 		end_limit, 			NULL },
   { "DisplayLogin",		set_displaylogin,		NULL },
+  { "DisplayConnect",	set_displayconnect,		NULL },
   { "<Anonymous>",		add_anonymous,			NULL },
   { "UserAlias",		add_useralias, 			NULL },
   { "AnonRequirePassword",	set_anonrequirepassword,	NULL },

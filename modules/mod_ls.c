@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.5 1999-01-27 22:06:50 flood Exp $
+ * $Id: mod_ls.c,v 1.6 1999-02-12 19:38:00 flood Exp $
  */
 
 #include "conf.h"
@@ -54,6 +54,7 @@ int opt_a = 0,
     opt_F = 0,
     opt_l = 0,
     opt_R = 0,
+    opt_r = 0,
     opt_t = 0,
     opt_STAT = 0;
 
@@ -218,7 +219,7 @@ int listfile(cmd_rec *cmd, const char *name)
       else if(S_ISDIR(st.st_mode)) {
         suffix[0] = '/';
         rval = 1;
-      } else if(st.st_mode & 010101 )
+      } else if(st.st_mode & 0111)
         suffix[0] = '*';
     }
 
@@ -249,19 +250,19 @@ int listfile(cmd_rec *cmd, const char *name)
           m[1] = 'r';
         if(mode & 128)
           m[2] = 'w';
-        if(mode & 64)
+        if(mode & 64 || ((mode & 256) && S_ISDIR(st.st_mode)))
           m[3] = 'x';
         if(mode & 32)
           m[4] = 'r';
         if(mode & 16)
           m[5] = 'w';
-        if(mode & 8)
+        if(mode & 8 || ((mode & 32) && S_ISDIR(st.st_mode)))
           m[6] = 'x';
         if(mode & 4)
           m[7] = 'r';
         if(mode & 2)
           m[8] = 'w';
-        if(mode & 1)
+        if(mode & 1 || ((mode & 4) && S_ISDIR(st.st_mode)))
           m[9] = 'x';
 
         if(ls_curtime - mtime > 180 * 24 * 60 * 60)
@@ -284,7 +285,7 @@ int listfile(cmd_rec *cmd, const char *name)
               suffix[0] = '@';
             else if(S_ISDIR(st.st_mode))
               suffix[0] = '/';
-            else if(S_ISDIR(st.st_mode & 010101))
+            else if(st.st_mode & 0111)
               suffix[0] = '*';
           }
 
@@ -400,6 +401,13 @@ int _compare_file_mtime(const struct sort_filename *f1,
 }
 
 static
+int _compare_file_mtime_reversed(const struct sort_filename *f1,
+                        const struct sort_filename *f2)
+{
+  return -_compare_file_mtime(f1, f2);
+}
+
+static
 void sortfiles(cmd_rec *cmd)
 {
   struct sort_filename *s;
@@ -407,7 +415,8 @@ void sortfiles(cmd_rec *cmd)
 
   if(opt_t && sort_arr) {
     qsort(sort_arr->elts, sort_arr->nelts, sizeof(struct sort_filename),
-          (int (*)(const void*,const void*))_compare_file_mtime);
+          (int (*)(const void*,const void*))
+	  (opt_r ? _compare_file_mtime_reversed : _compare_file_mtime));
 
     opt_t = 0;
     for(i = 0, s = (struct sort_filename*)sort_arr->elts; i < sort_arr->nelts; i++, s++)
@@ -728,6 +737,9 @@ void _parse_options(char **opt, int *glob_flags)
       case 'F':
         opt_F++;
         break;
+      case 'r':
+        opt_r++;
+        break;
       case 'R':
         opt_R++;
         break;
@@ -758,7 +770,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
   ls_curtime = time(NULL);
 
   if(clearflags)
-    opt_a = opt_C = opt_d = opt_F = opt_R = opt_t = opt_STAT = 0;
+    opt_a = opt_C = opt_d = opt_F = opt_r = opt_R = opt_t = opt_STAT = 0;
 
   if(default_options)
     _parse_options(&default_options,&glob_flags);
