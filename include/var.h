@@ -23,11 +23,16 @@
  */
 
 /* Variables API definition
- * $Id: var.h,v 1.1 2004-10-31 18:53:05 castaglia Exp $
+ * $Id: var.h,v 1.2 2004-11-01 17:12:27 castaglia Exp $
  */
 
 #ifndef PR_VAR_H
 #define PR_VAR_H
+
+/* Deletes the named variable from the Variables table.  Returns 0 on
+ * success, -1 on failure (e.g. the given variable was not in the table).
+ */
+int pr_var_delete(const char *name);
 
 /* Returns TRUE if the given variable name exists in the Variables table,
  * FALSE if not.  A return value of -1 indicates an error, in which case
