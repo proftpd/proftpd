@@ -24,13 +24,13 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.18 2004-02-13 22:47:32 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.19 2004-05-02 15:05:26 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_REWRITE_VERSION "mod_rewrite/0.6.7"
+#define MOD_REWRITE_VERSION "mod_rewrite/0.6.8"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001021001
@@ -1197,6 +1197,52 @@ static int rewrite_utf8_to_ucs4(unsigned long *ucs4_buf,
  * probably will) modify their key arguments.
  */
 
+static char *rewrite_map_int_replaceall(pool *map_pool, char *key) {
+  char sep = *key;
+  char *value = NULL, *src = NULL, *dst = NULL;
+  char *tmp = NULL;
+
+  /* Due to the way in which this internal function works, the first
+   * character of the given key is used as a delimiter separating
+   * the given key, and the sequences to replace for this function.
+   */
+  char *str = pstrdup(map_pool, key + 1);
+  
+  tmp = strchr(str , sep);
+  if (tmp == NULL) {
+    rewrite_log("rewrite_map_int_replace(): badly formatted input key");
+    return NULL;
+  }
+
+  *tmp = '\0';
+  value = str;
+  rewrite_log("rewrite_map_int_replace(): actual key: '%s'", value); 
+ 
+  str = tmp + 1;
+
+  tmp = strchr(str, sep);
+  if (tmp == NULL) {
+    rewrite_log("rewrite_map_int_replace(): badly formatted input key");
+    return NULL;
+  }
+
+  *tmp = '\0';
+  src = str;
+  dst = tmp + 1;
+  
+  rewrite_log("rewrite_map_int_replace(): replacing '%s' with '%s'", src,
+    dst);
+
+  /* Make sure the source sequence is present in the given key. */
+  if (strstr(value, src) == NULL) {
+    rewrite_log("rewrite_map_int_replace(): '%s' does not occur in given "
+      "key '%s'", src, value);
+    return NULL;
+  }
+
+  return sreplace(map_pool, value, src, dst, NULL);
+}
+
 static char *rewrite_map_int_tolower(pool *map_pool, char *key) {
   register unsigned int i = 0;
   char *value = pstrdup(map_pool, key);
@@ -1708,18 +1754,20 @@ MODRET set_rewritemap(cmd_rec *cmd) {
   if (!strcmp(cmd->argv[2], "int")) {
     c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
 
-    /* Check that the given function is a valid internal mapping function
-     */
-    if (!strcmp(mapsrc, "tolower")) {
+    /* Check that the given function is a valid internal mapping function. */
+    if (strcmp(mapsrc, "replaceall") == 0) {
+      map = (void *) rewrite_map_int_replaceall;
+
+    } else if (strcmp(mapsrc, "tolower") == 0) {
       map = (void *) rewrite_map_int_tolower;
 
-    } else if (!strcmp(mapsrc, "toupper")) {
+    } else if (strcmp(mapsrc, "toupper") == 0) {
       map = (void *) rewrite_map_int_toupper;
 
-    } else if (!strcmp(mapsrc, "unescape")) {
+    } else if (strcmp(mapsrc, "unescape") == 0) {
       map = (void *) rewrite_map_int_unescape;
 
-    } else if (!strcmp(mapsrc, "utf8trans")) {
+    } else if (strcmp(mapsrc, "utf8trans") == 0) {
       map = (void *) rewrite_map_int_utf8trans;
 
     } else
