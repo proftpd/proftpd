@@ -944,12 +944,21 @@ fi
 dnl Custom-rolled macro for checking return type of setgrent(3)
 PR_FUNC_SETGRENT_VOID
 
-AC_CHECK_LIB(curses, initscr,
-  [CURSES_LIBS="-lcurses"
-   AC_DEFINE(HAVE_LIBCURSES, 1, [Define if you have curses])])
-AC_CHECK_LIB(ncurses, initscr,
-  [CURSES_LIBS="-lncurses"
-   AC_DEFINE(HAVE_LIBNCURSES, 1, [Define if you have ncurses])])
+dnl Perform checks for curses/ncurses libraries only if the corresponding
+dnl headers have been found.
+if test x"$ac_cv_header_curses_h" == xyes; then
+  AC_CHECK_LIB(curses, initscr,
+    [ CURSES_LIBS="-lcurses"
+      AC_DEFINE(HAVE_LIBCURSES, 1, [Define if you have curses])
+    ])
+fi
+
+if test x"$ac_cv_header_ncurses_h" == xyes; then
+  AC_CHECK_LIB(ncurses, initscr,
+    [ CURSES_LIBS="-lncurses"
+      AC_DEFINE(HAVE_LIBNCURSES, 1, [Define if you have ncurses])
+    ])
+fi
 
 if test x"$enable_curses" != xno ; then
   AC_DEFINE(USE_CURSES)
