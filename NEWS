@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.635 2004-12-12 22:00:18 castaglia Exp $
+$Id: NEWS,v 1.636 2004-12-12 22:56:49 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -98,6 +98,7 @@ CVS
   for details.
 - Bug 2229 - NLST and LIST behave differently e.g. when listing an empty
   directory.
+- Bug 2534 - Add suport for -S ListOption, for sorting files by file size.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

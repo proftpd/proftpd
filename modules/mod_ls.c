@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.119 2004-12-12 22:00:19 castaglia Exp $
+ * $Id: mod_ls.c,v 1.120 2004-12-12 22:56:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -40,7 +40,7 @@
 #define MAP_GID(x) \
   (fakegroup ? fakegroup : pr_auth_gid2name(cmd->tmp_pool, (x)))
 
-static void addfile(cmd_rec *, const char *, const char *, time_t);
+static void addfile(cmd_rec *, const char *, const char *, time_t, off_t);
 static int outputfiles(cmd_rec *);
 
 static int listfile(cmd_rec *, pool *, const char *);
@@ -82,6 +82,7 @@ static int
     opt_n = 0,
     opt_R = 0,
     opt_r = 0,
+    opt_S = 0,
     opt_t = 0,
     opt_STAT = 0;
 
@@ -101,8 +102,7 @@ static config_rec *_find_ls_limit(char *ftp_cmd) {
   if (!session.dir_config)
     return NULL;
 
-  /* determine whether this command is <Limit>'ed
-   */
+  /* Determine whether this command is <Limit>'ed. */
   for (c = session.dir_config; c; c = c->parent) {
 
     if (c->subset) {
@@ -516,12 +516,14 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
         if (opt_STAT)
           pr_response_add(R_211, "%s%s", nameline, suffix);
         else
-          addfile(cmd, nameline, suffix, mtime);
+          addfile(cmd, nameline, suffix, mtime, st.st_size);
       }
 
     } else {
-      if (S_ISREG(st.st_mode) || S_ISDIR(st.st_mode) || S_ISLNK(st.st_mode))
-           addfile(cmd, name, suffix, mtime);
+      if (S_ISREG(st.st_mode) ||
+          S_ISDIR(st.st_mode) ||
+          S_ISLNK(st.st_mode))
+           addfile(cmd, name, suffix, mtime, st.st_size);
     }
   }
 
@@ -540,7 +542,9 @@ struct filename {
 
 struct sort_filename {
   time_t mtime;
-  char *name,*suffix;
+  off_t size;
+  char *name;
+  char *suffix;
 };
 
 static struct filename *head = NULL;
@@ -549,7 +553,7 @@ static array_header *sort_arr = NULL;
 static pool *fpool = NULL;
 
 static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
-    time_t mtime) {
+    time_t mtime, off_t size) {
   struct filename *p;
   int l;
 
@@ -561,16 +565,17 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
     pr_pool_tag(fpool, "mod_ls: addfile() fpool");
   }
 
-  if (opt_t) {
+  if (opt_S || opt_t) {
     struct sort_filename *s;
 
     if (!sort_arr)
-      sort_arr = make_array(fpool,50,sizeof(struct sort_filename));
+      sort_arr = make_array(fpool, 50, sizeof(struct sort_filename));
 
-    s = (struct sort_filename*)push_array(sort_arr);
+    s = (struct sort_filename *) push_array(sort_arr);
     s->mtime = mtime;
-    s->name = pstrdup(fpool,name);
-    s->suffix = pstrdup(fpool,suffix);
+    s->size = size;
+    s->name = pstrdup(fpool, name);
+    s->suffix = pstrdup(fpool, suffix);
 
     return;
   }
@@ -581,7 +586,7 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
   if (l > colwidth)
     colwidth = l;
 
-  p = (struct filename*) pcalloc(fpool, sizeof(struct filename) + l + 1);
+  p = (struct filename *) pcalloc(fpool, sizeof(struct filename) + l + 1);
 
   snprintf(p->line, l + 1, "%s%s", name, suffix);
 
@@ -595,7 +600,7 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
   filenames++;
 }
 
-static int file_mtime_cmp( const struct sort_filename *f1,
+static int file_mtime_cmp(const struct sort_filename *f1,
     const struct sort_filename *f2) {
 
   if (f1->mtime > f2->mtime)
@@ -612,23 +617,60 @@ static int file_mtime_reverse_cmp(const struct sort_filename *f1,
   return -file_mtime_cmp(f1, f2);
 }
 
+static int file_size_cmp(const struct sort_filename *f1,
+    const struct sort_filename *f2) {
+
+  if (f1->size > f2->size)
+    return -1;
+
+  else if (f1->size < f2->size)
+    return 1;
+
+  return 0;
+}
+
+static int file_size_reverse_cmp(const struct sort_filename *f1,
+    const struct sort_filename *f2) {
+  return -file_size_cmp(f1, f2);
+}
+
 static void sortfiles(cmd_rec *cmd) {
   struct sort_filename *s = NULL;
 
-  if (opt_t && sort_arr) {
-    register unsigned int i = 0;
+  if (sort_arr) {
 
-    qsort(sort_arr->elts, sort_arr->nelts, sizeof(struct sort_filename),
-      (int (*)(const void *, const void *))
-        (opt_r ? file_mtime_reverse_cmp : file_mtime_cmp));
+    /* Sort by modification time? */
+    if (opt_t) {
+      register unsigned int i = 0;
 
-    opt_t = 0;
+      qsort(sort_arr->elts, sort_arr->nelts, sizeof(struct sort_filename),
+        (int (*)(const void *, const void *))
+          (opt_r ? file_mtime_reverse_cmp : file_mtime_cmp));
 
-    for (i = 0, s = (struct sort_filename *)sort_arr->elts;
-        i < sort_arr->nelts; i++, s++)
-      addfile(cmd, s->name, s->suffix, s->mtime);
+      opt_t = 0;
 
-    opt_t = 1;
+      for (i = 0, s = (struct sort_filename *) sort_arr->elts;
+          i < sort_arr->nelts; i++, s++)
+        addfile(cmd, s->name, s->suffix, s->mtime, s->size);
+
+      opt_t = 1;
+
+    /* Sort by file size? */
+    } else if (opt_S) {
+      register unsigned int i = 0;
+
+      qsort(sort_arr->elts, sort_arr->nelts, sizeof(struct sort_filename),
+        (int (*)(const void *, const void *))
+          (opt_r ? file_size_reverse_cmp : file_size_cmp));
+
+      opt_S = 0;
+
+      for (i = 0, s = (struct sort_filename *) sort_arr->elts;
+          i < sort_arr->nelts; i++, s++)
+        addfile(cmd, s->name, s->suffix, s->mtime, s->size);
+
+      opt_S = 1;
+    }
   }
 
   sort_arr = NULL;
@@ -638,7 +680,7 @@ static int outputfiles(cmd_rec *cmd) {
   int n;
   struct filename *p = NULL, *q = NULL;
 
-  if (opt_t)
+  if (opt_S || opt_t)
     sortfiles(cmd);
 
   if (!head)		/* nothing to display */
@@ -1154,6 +1196,10 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           opt_r = 1;
           break;
 
+        case 'S':
+          opt_S = 1;
+          break;
+
         case 't':
           opt_t = 1;
           if (glob_flags)
@@ -1219,6 +1265,10 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
 
         case 'r':
           opt_r = 0;
+          break;
+
+        case 'S':
+          opt_S = 0;
           break;
 
         case 't':
@@ -1970,8 +2020,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
   }
 
   /* Clear the listing option flags. */
-  opt_a = opt_C = opt_d = opt_F = opt_n = opt_r = opt_R = opt_t = opt_STAT =
-    opt_L = 0;
+  opt_a = opt_C = opt_d = opt_F = opt_n = opt_r = opt_R = opt_S = opt_t =
+    opt_STAT = opt_L = 0;
 
   if (!list_strict_opts) {
     parse_list_opts(&target, &glob_flags, FALSE);
