@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.99 2002-11-25 15:52:45 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.100 2002-11-25 17:08:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1267,7 +1267,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   if (have_limit &&
       ((nbytes_max_retrieve == 0) || (sbuf.st_size > nbytes_max_retrieve))) {
 
-    log_pri(LOG_INFO, "MaxRetrieveFileSize (%lu byte%s) reached: "
+    log_pri(LOG_INFO, "MaxRetrieveFileSize (%" PR_LU " byte%s) reached: "
       "aborting transfer of '%s'", nbytes_max_retrieve,
       nbytes_max_retrieve != 1 ? "s" : "", dir);
 
