@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.106 2004-03-23 18:37:38 castaglia Exp $
+ * $Id: mod_ls.c,v 1.107 2004-03-23 18:40:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1295,6 +1295,11 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
     if (!a) {
       char **path;
 
+      /* If recursion has not been explicitly requested, then act as if the
+       * -d option (list directory entries instead of contents) has been
+       * requested.  This prevents inadvertent recursion via listdir() on
+       * directory paths.
+       */
       if (!opt_R)
         opt_d = 1;
 
