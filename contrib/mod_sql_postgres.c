@@ -2,6 +2,7 @@
  * ProFTPD: mod_sql_postgres -- Support for connecting to Postgres databases.
  * Time-stamp: <1999-10-04 03:21:21 root>
  * Copyright (c) 2001 Andrew Houghton
+ * Copyright (c) 2004 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.21 2004-09-05 02:23:18 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.22 2004-09-26 18:09:11 castaglia Exp $
  */
 
 /*
@@ -94,8 +95,8 @@ typedef struct conn_entry_struct conn_entry_t;
 
 #define DEF_CONN_POOL_SIZE 10
 
-pool *conn_pool = NULL;
-array_header *conn_cache = NULL;
+static pool *conn_pool = NULL;
+static array_header *conn_cache = NULL;
 
 /*
  *  _sql_get_connection: walks the connection cache looking for the named
@@ -1193,13 +1194,12 @@ MODRET cmd_identify(cmd_rec * cmd) {
   return mod_create_data(cmd, (void *) sd);
 }  
 
-/* 
- * sql_cmdtable: mod_sql requires each backend module to define a cmdtable
+/* SQL cmdtable: mod_sql requires each backend module to define a cmdtable
  *  with this exact name. ALL these functions must be defined; mod_sql checks
  *  that they all exist on startup and ProFTPD will refuse to start if they
  *  aren't defined.
  */
-cmdtable sql_cmdtable[] = {
+static cmdtable sql_postgres_cmdtable[] = {
   { CMD, "sql_open",             G_NONE, cmd_open,             FALSE, FALSE },
   { CMD, "sql_close",            G_NONE, cmd_close,            FALSE, FALSE },
   { CMD, "sql_defineconnection", G_NONE, cmd_defineconnection, FALSE, FALSE },
@@ -1215,10 +1215,49 @@ cmdtable sql_cmdtable[] = {
   { 0, NULL }
 };
 
-/*
- * sql_postgres_init: Used to initialize the connection cache and register
- *  the exit handler.
+/* Event handlers
+ *
+
+static void sql_postgres_mod_load_ev(const void *event_data,
+    void *user_data) {
+
+  if (strcmp("mod_sql_postgres.c", (const char *) event_data) == 0) {
+    /* Register ourselves with mod_sql. */
+    if (sql_register_backend("postgres", sql_postgres_cmdtable) < 0) {
+      pr_log_pri(PR_LOG_NOTICE, MOD_SQL_POSTGRES_VERSION
+        ": notice: error registering backend: %s", strerror(errno));
+      end_login(1);
+    }
+  }
+}
+
+static void sql_postgres_mod_unload_ev(const void *event_data,
+    void *user_data) {
+
+  if (strcmp("mod_sql_postgres.c", (const char *) event_data) == 0) {
+    /* Unegister ourselves with mod_sql. */
+    if (sql_unregister_backend("postgres") < 0) {
+      pr_log_pri(PR_LOG_NOTICE, MOD_SQL_POSTGRES_VERSION
+        ": notice: error unregistering backend: %s", strerror(errno));
+      end_login(1);
+    }
+  }
+}
+
+/* Initialization routines
  */
+
+static int sql_postgres_init(void) {
+
+  /* Register listeners for the load and unload events. */
+  pr_event_register(&sql_postgres_module, "core.module-load",
+    sql_postgres_mod_load_ev, NULL);
+  pr_event_register(&sql_postgres_module, "core.module-unload",
+    sql_postgres_mod_unload_ev, NULL);
+
+  return 0;
+}
+
 static int sql_postgres_sess_init(void) {
   conn_pool = make_sub_pool(session.pool);
   conn_cache = make_array(make_sub_pool(session.pool), DEF_CONN_POOL_SIZE,
@@ -1255,8 +1294,11 @@ module sql_postgres_module = {
   NULL,
 
   /* Module initialization */
-  NULL,
+  sql_postgres_init,
 
   /* Session initialization */
-  sql_postgres_sess_init
+  sql_postgres_sess_init,
+
+  /* Module version */
+  MOD_SQL_POSTGRES_VERSION
 };

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.605 2004-09-23 21:37:00 castaglia Exp $
+$Id: NEWS,v 1.606 2004-09-26 18:09:11 castaglia Exp $
 
 CVS
 --------------------------------
@@ -17,6 +17,7 @@ CVS
   <VirtualHost> address/port collisions.
 - Bug 2488 - Wrong order of privs calls on HP generates "unable to setregid()"
   error (Bug #2317 revisited).
+- Bug 2392 - mod_sql needs better handling of its backend modules.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

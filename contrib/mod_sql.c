@@ -2,6 +2,7 @@
  * ProFTPD: mod_sql -- SQL frontend
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton.
+ * Copyright (c) 2004 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,14 +23,14 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.83 2004-09-14 17:49:42 castaglia Exp $
+ * $Id: mod_sql.c,v 1.84 2004-09-26 18:09:11 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_sql.h"
 
-#define MOD_SQL_VERSION			"mod_sql/4.11"
+#define MOD_SQL_VERSION			"mod_sql/4.2"
 
 #if defined(HAVE_CRYPT_H) && !defined(AIX4) && !defined(AIX5)
 # include <crypt.h>
@@ -113,7 +114,7 @@ MODRET cmd_getgrent(cmd_rec *);
 MODRET cmd_setgrent(cmd_rec *);
 MODRET sql_lookup(cmd_rec *);
 
-pool *sql_pool;
+static pool *sql_pool = NULL;
 
 /*
  * cache typedefs
@@ -213,6 +214,16 @@ static struct {
   char *grpfields;
 }
 cmap;
+
+struct sql_backend {
+  struct sql_backend *next, *prev;
+  const char *backend;
+  cmdtable *cmdtab;
+};
+
+static struct sql_backend *sql_backends = NULL;
+static unsigned int sql_nbackends = 0;
+static cmdtable *sql_cmdtable = NULL;
 
 /*
  * cache functions
@@ -390,6 +401,114 @@ static modret_t *_sql_dispatch(cmd_rec *cmd, char *cmdname) {
 
   sql_log(DEBUG_WARN, "unknown backend handler '%s'", cmdname);
   return ERROR(cmd);
+}
+
+static struct sql_backend *sql_get_backend(const char *backend) {
+  struct sql_backend *sb;
+
+  if (!sql_backends)
+    return NULL;
+
+  for (sb = sql_backends; sb; sb = sb->next) {
+    if (strcasecmp(sb->backend, backend) == 0)
+      return sb;
+  }
+
+  return NULL;
+}
+
+/* This function is used by mod_sql backends, to register their
+ * individual backend command tables with the main mod_sql module.
+ */
+int sql_register_backend(const char *backend, cmdtable *cmdtab) {
+  struct sql_backend *sb;
+
+  if (!backend || !cmdtab) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (!sql_pool) {
+    sql_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(sql_pool, MOD_SQL_VERSION);
+  }
+
+  /* Check to see if this backend has already been registered. */
+  sb = sql_get_backend(backend);
+  if (sb) {
+    errno = EEXIST;
+    return -1;
+  }
+
+  sb = pcalloc(sql_pool, sizeof(struct sql_backend));
+  sb->backend = backend;
+  sb->cmdtab = cmdtab;
+
+  if (sql_backends)
+    sb->next = sql_backends;
+
+  else
+    sb->next = NULL;
+
+  sql_backends = sb;
+  sql_nbackends++;
+
+  return 0;
+}
+
+/* Used by mod_sql backends to unregister their backend command tables
+ * from the main mod_sql module.
+ */
+int sql_unregister_backend(const char *backend) {
+  struct sql_backend *sb;
+
+  if (!backend) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Check to see if this backend has been registered. */
+  sb = sql_get_backend(backend);
+  if (!sb) {
+    errno = ENOENT;
+    return -1;
+  }
+
+  /* If there is only one registered backend, it cannot be removed.
+   */
+  if (sql_nbackends == 1) {
+    errno = EPERM;
+    return -1;
+  }
+
+  /* Be sure to handle the case where this is the currently active backend. */
+  if (sql_cmdtable &&
+      sb->cmdtab == sql_cmdtable) {
+    errno = EACCES;
+    return -1;
+  }
+
+  /* Remove this backend from the linked list. */
+  if (sb->prev)
+    sb->prev->next = sb->next;
+  else
+    /* This backend is the start of the sql_backends list (prev is NULL),
+     * so we need to update the list head pointer as well.
+     */
+    sql_backends = sb->next;
+
+  if (sb->next)
+    sb->next->prev = sb->prev;
+
+  sb->prev = sb->next = NULL;
+
+  sql_nbackends--;
+
+  /* NOTE: a counter should be kept of the number of unregistrations,
+   * as the memory for a registration is not freed on unregistration.
+   */
+
+  return 0;
 }
 
 /*****************************************************************
@@ -3502,7 +3621,7 @@ MODRET set_sqlshowinfo(cmd_rec * cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_sqlauthenticate(cmd_rec * cmd) {
+MODRET set_sqlauthenticate(cmd_rec *cmd) {
   config_rec *c = NULL;
   char *arg = NULL;
   int authmask = 0;
@@ -3749,6 +3868,15 @@ MODRET set_sqlauthtypes(cmd_rec * cmd) {
   return HANDLED(cmd);
 }
 
+/* usage: SQLBackend name */
+MODRET set_sqlbackend(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
+
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  return HANDLED(cmd);
+}
+
 MODRET set_sqlminid(cmd_rec * cmd) {
   config_rec *c;
   unsigned long val;
@@ -3960,13 +4088,26 @@ static void sql_exit_ev(const void *event_data, void *user_data) {
   return;
 }
 
-/*****************************************************************
- *
- * INITIALIZATION / FORK HANDLERS
- *
- *****************************************************************/
+static void sql_preparse_ev(const void *event_data, void *user_data) {
 
-static int sql_getconf(void) {
+  /* If no backends have been registered, croak. */
+  if (sql_nbackends == 0) {
+    pr_log_pri(PR_LOG_NOTICE, MOD_SQL_VERSION
+      ": notice: no backend modules have been registered");
+    exit(1);
+  }
+
+}
+
+/* Initialization routines
+ */
+
+static int sql_init(void) {
+  pr_event_register(&sql_module, "core.preparse", sql_preparse_ev, NULL);
+  return 0;
+}
+
+static int sql_sess_init(void) {
   char *authstr = NULL;
   config_rec *c = NULL;
   void *temp_ptr = NULL;
@@ -3996,6 +4137,51 @@ static int sql_getconf(void) {
           "cannot log to a symbolic link");
   }
 
+  /* Determine which backend to use.
+   *
+   * If there is only one registered backend to use, the decision is easy.
+   *
+   * If there are more than one backends, default to using the first
+   * entry in the linked list (last backend module registered).  Check
+   * for a configured SQLBackend directive, to see if a specific backend
+   * has been requested.
+   */
+  if (sql_nbackends == 1) {
+    sql_log(DEBUG_INFO, "defaulting to '%s' backend", sql_backends->backend);
+    sql_cmdtable = sql_backends->cmdtab;
+
+  } else if (sql_nbackends > 1) {
+    temp_ptr = get_param_ptr(main_server->conf, "SQLBackend", FALSE);
+    
+    if (temp_ptr) {
+      struct sql_backend *b;
+
+      for (b = sql_backends; b; b = b->next) {
+        if (strcasecmp(b->backend, (char *) temp_ptr) == 0) {
+          sql_log(DEBUG_INFO, "using SQLBackend '%s'", (char *) temp_ptr);
+          sql_cmdtable = b->cmdtab;
+          break;
+        }
+      }
+
+      /* If no match is found, default to using the first entry in
+       * the list.
+       */
+      if (!sql_cmdtable) {
+        sql_log(DEBUG_INFO,
+          "SQLBackend '%s' not found, defaulting to '%s' backend",
+          (char *) temp_ptr, sql_backends->backend);
+        sql_cmdtable = sql_backends->cmdtab;
+      }
+
+    } else {
+      /* Default to using the first entry in the list. */
+      sql_log(DEBUG_INFO, "defaulting to '%s' backend",
+        sql_backends->backend);
+      sql_cmdtable = sql_backends->cmdtab;
+    }
+  }
+ 
   /* Get our backend info and toss it up */
   cmd = _sql_make_cmd(tmp_pool, 1, "foo");
   mr = _sql_dispatch(cmd, "sql_identify");
@@ -4008,9 +4194,12 @@ static int sql_getconf(void) {
 
   SQL_FREE_CMD(cmd);
 
-  sql_log(DEBUG_FUNC, "%s", ">>> sql_getconf");
+  sql_log(DEBUG_FUNC, "%s", ">>> sql_sess_init");
 
-  sql_pool = make_sub_pool(session.pool);
+  if (!sql_pool) {
+    sql_pool = make_sub_pool(session.pool);
+    pr_pool_tag(sql_pool, MOD_SQL_VERSION);
+  }
 
   group_name_cache = make_cache(sql_pool, _group_name, _groupcmp);
   passwd_name_cache = make_cache(sql_pool, _passwd_name, _passwdcmp);
@@ -4310,7 +4499,7 @@ static int sql_getconf(void) {
     sql_log(DEBUG_INFO, "sql_bcred          : %s", cmap.sql_bcred);
   }
 
-  sql_log(DEBUG_FUNC, "%s", "<<< sql_getconf");
+  sql_log(DEBUG_FUNC, "%s", "<<< sql_sess_init");
 
   /* get rid of the temp pool */
   destroy_pool( tmp_pool );
@@ -4328,10 +4517,10 @@ static int sql_getconf(void) {
  *****************************************************************/
 
 static conftable sql_conftab[] = {
-  {"SQLAuthenticate", set_sqlauthenticate, NULL},
-
-  {"SQLConnectInfo", set_sqlconnectinfo, NULL},
-  {"SQLAuthTypes", set_sqlauthtypes, NULL},
+  { "SQLAuthenticate",	set_sqlauthenticate,	NULL },
+  { "SQLAuthTypes",	set_sqlauthtypes,	NULL },
+  { "SQLBackend",	set_sqlbackend,		NULL },
+  { "SQLConnectInfo",	set_sqlconnectinfo,	NULL },
 
   {"SQLUserInfo", set_sqluserinfo, NULL},
   {"SQLUserWhereClause", set_sqluserwhereclause, NULL},
@@ -4425,9 +4614,12 @@ module sql_module = {
   sql_authtab,
 
   /* Module initialization */
-  NULL,
+  sql_init,
 
   /* Session initialization */
-  sql_getconf
+  sql_sess_init,
+
+  /* Module version */
+  MOD_SQL_VERSION
 };
 

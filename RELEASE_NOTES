@@ -9,8 +9,19 @@ files.
 
 1.2.11rc1
 ---------
+  + New configuration directives:
+      mod_sql now supports a SQLBackend configuration directive, for
+      selecting the specific database backend module to use on a per-vhost
+      basis.  Previously, mod_sql could only be compiled with one
+      backend module at a time; the module has been enhanced to support
+      multiple backend modules.  Since multiple backends are now
+      possible, SQLBackend was added so that the administrator could
+      specify which to use.  If only one backend module is used,
+      e.g. mod_sql_mysql, then that backend is used by default, and
+      no SQLBackend directive is required.
+
   + New command-line options:
       The new -V, --settings display various compile-time settings.
 
 
-Last Updated: $Date: 2004-09-05 21:24:03 $
+Last Updated: $Date: 2004-09-26 18:09:11 $

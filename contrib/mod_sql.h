@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.h,v 1.5 2003-03-20 23:23:15 castaglia Exp $
+ * $Id: mod_sql.h,v 1.6 2004-09-26 18:09:11 castaglia Exp $
  */
 
 #ifndef MOD_SQL_H
@@ -32,7 +32,8 @@
 /* mod_sql helper functions */
 int sql_log(int, const char *, ...);
 cmd_rec *_sql_make_cmd(pool * cp, int argc, ...);
-void _sql_free_cmd( cmd_rec * );
+int sql_register_backend(const char *, cmdtable *);
+int sql_unregister_backend(const char *);
 
 /* data passing structure */
 struct sql_data_struct {
@@ -42,9 +43,6 @@ struct sql_data_struct {
 };
 
 typedef struct sql_data_struct sql_data_t;
-
-/* backend command table */
-extern cmdtable sql_cmdtable[];
 
 /* on the assumption that logging will turn into a bitmask later */
 #define DEBUG_FUNC DEBUG5
@@ -69,12 +67,13 @@ extern cmdtable sql_cmdtable[];
 
 /* API versions */
 
-/* MOD_SQL_API_V1: guarantees to correctly implement cmd_open, cmd_close,
+/* MOD_SQL_API_V2: guarantees to correctly implement cmd_open, cmd_close,
  *  cmd_defineconnection, cmd_select, cmd_insert, cmd_update, cmd_escapestring,
- *  cmd_query, cmd_checkauth, and cmd_identify.
+ *  cmd_query, cmd_checkauth, and cmd_identify.  Also guarantees to
+ *  perform proper registration of the cmdtable.
  */
 
-#define MOD_SQL_API_V1 "mod_sql_api_v1"
+#define MOD_SQL_API_V1 "mod_sql_api_v2"
 
 /* MOD_SQL_API_V2: MOD_SQL_API_V1 && guarantees to correctly implement 
  *  cmd_procedure.
