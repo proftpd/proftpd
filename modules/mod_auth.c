@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.125 2002-12-17 23:11:25 castaglia Exp $
+ * $Id: mod_auth.c,v 1.126 2002-12-31 00:35:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1503,8 +1503,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
 
   if ((maxc = find_config((anon_config ? anon_config->subset :
       cmd->server->conf), CONF_PARAM, "MaxClientsPerHost", FALSE)) != NULL) {
-    char *maxstr = "Sorry, the maximum number clients (%m) from your host are "
-      "already connected.";
+    char *maxstr = "Sorry, the maximum number of clients (%m) from your host "
+      "are already connected.";
     unsigned int *max = maxc->argv[0];
 
     if (maxc->argc > 1)
