@@ -40,7 +40,7 @@
 */
 
 #include "conf.h"
-#include <mysql.h>
+#include <mysql/mysql.h>
 
 /* *INDENT-OFF* */
 

@@ -1,9 +1,15 @@
-$Id: NEWS,v 1.81 2001-02-28 17:07:50 flood Exp $
+$Id: NEWS,v 1.82 2001-03-01 03:18:42 flood Exp $
 
-1.2.0pl1 - CVS
+1.2.1 - CVS
 ---------------------------------
-- Defaults CFLAGS changed from "-g3 -O6" to "-g3 -O2" because it is reported
-  that -O6 is highly experimental.
+- A relatively major issue was discovered with session.groups which may cause
+  any group-expressions inside of <Limit> (DenyGroup, etc) to malfunction.
+- Default CFLAGS changed from "-g3 -O6" to "-O2" because it is reported
+  that -O6 is highly experimental, and including debugging really isn't all
+  the useful, as someone _really_ interested in debugging can edit Make.rules.
+- Defining classes without an explicit "Classes On" now generates a log
+  warning.
+- New mod_sql and mod_ldap from their respective maintainers.
 
 1.2.0-final - Released 02/26/2001
 ---------------------------------

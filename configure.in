@@ -59,7 +59,7 @@ LDFLAGS="-Llib $LDFLAGS"
 
 if test $ac_cv_prog_gcc = yes; then
   if test x"$CFLAGS" = "x-g -O2"; then
-    fullCFLAGS="-g3 -O2"
+    fullCFLAGS="-O2"
   else
     fullCFLAGS="$CFLAGS"
   fi

@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#define MOD_SQL_VERSION "mod_sql/3.1.1"
+#define MOD_SQL_VERSION "mod_sql/3.1.2"
 
 /* This is mod_sql, contrib software for proftpd 1.2.0rc3 and above.
    Originally written and maintained as 'mod_sqlpw' by Johnie 
@@ -1847,49 +1847,32 @@ MODRET auth_cmd_check(cmd_rec * cmd)
 
 MODRET auth_cmd_uid_name(cmd_rec * cmd)
 {
-  modret_t *mr = NULL;
-  char *query = NULL;
-  sqldata_t *sd = NULL;
-  char *username = NULL;
-
-  char uidstr[BUFSIZE] = { '\0' };
+  struct passwd *pw;
+  struct passwd lpw;
 
   if (!cmap.doauth)
     return DECLINED(cmd);
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_uid_name", MOD_SQL_VERSION);
 
-  snprintf(uidstr, BUFSIZE, "%d", (uid_t) cmd->argv[0]);
+  lpw.pw_uid = (uid_t) cmd->argv[0];
+  lpw.pw_name = NULL;
+  pw = _sql_getpasswd(cmd, &lpw);
 
-  query = pstrcat(cmd->tmp_pool, "select ", cmap.usrfield, " from ",
-                  cmap.usrtable, " where ", cmap.uidfield, " = ",
-                  uidstr, " limit 1", NULL);
-
-  mr = modsql_select(cmd, query);
-
-  if (!MODRET_HASDATA(mr))
-    return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
-
-  sd = (sqldata_t *) mr->data;
-
-  if ((!sd) || (!sd->data) || (!sd->data[0])) {
+  if (pw == NULL) {
+    log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_uid_name", MOD_SQL_VERSION);
     return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
   }
 
-  username = sd->data[0];
-
   log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_uid_name", MOD_SQL_VERSION);
-  return mod_create_data(cmd, username);
+
+  return mod_create_data(cmd, pw->pw_name);
 }
 
 MODRET auth_cmd_gid_name(cmd_rec * cmd)
 {
-  modret_t *mr = NULL;
-  char *query = NULL;
-  sqldata_t *sd;
-  char *groupname = NULL;
-
-  char gidstr[BUFSIZE] = { '\0' };
+  struct group *gr;
+  struct group lgr;
 
   if (!cmap.doauth)
     return DECLINED(cmd);
@@ -1899,55 +1882,48 @@ MODRET auth_cmd_gid_name(cmd_rec * cmd)
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_gid_name", MOD_SQL_VERSION);
 
-  snprintf(gidstr, BUFSIZE, "%d", (gid_t) cmd->argv[0]);
+  lgr.gr_gid = (gid_t) cmd->argv[0];
+  lgr.gr_name = NULL;
+  gr = _sql_getgroup(cmd, &lgr);
 
-  query = pstrcat(cmd->tmp_pool, "select ", cmap.grpfield, " from ",
-                  cmap.grptable, " where ", cmap.grpgidfield, " = ",
-                  gidstr, " limit 1", NULL);
-
-  mr = modsql_select(cmd, query);
-
-  if (!MODRET_HASDATA(mr))
-    return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
-
-  sd = (sqldata_t *) mr->data;
-
-  if ((!sd) || (!sd->data) || (!sd->data[0])) {
+  if (gr == NULL) {
+    log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_gid_name", MOD_SQL_VERSION);
     return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
   }
 
-  groupname = sd->data[0];
-
   log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_gid_name", MOD_SQL_VERSION);
-  return mod_create_data(cmd, groupname);
+
+  return mod_create_data(cmd, gr->gr_name);
 }
 
 MODRET auth_cmd_name_uid(cmd_rec * cmd)
 {
-  char *uid;
+  struct passwd *pw;
+  struct passwd lpw;
 
   if (!cmap.doauth)
     return DECLINED(cmd);
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_name_uid", MOD_SQL_VERSION);
 
-  uid = _uservar(cmd, cmd->argv[0], cmap.uidfield);
+  lpw.pw_uid = -1;
+  lpw.pw_name = pstrdup( cmd->tmp_pool, cmd->argv[0]);
+  pw = _sql_getpasswd(cmd, &lpw);
 
-  log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_name_uid", MOD_SQL_VERSION);
-
-  if (!uid) {
+  if (pw == NULL) {
+    log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_name_uid", MOD_SQL_VERSION);
     return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
   }
 
-  return mod_create_data(cmd, (void *) atol(uid));
+  log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_name_gid", MOD_SQL_VERSION);
+
+  return mod_create_data(cmd, (void *) pw->pw_uid);
 }
 
 MODRET auth_cmd_name_gid(cmd_rec * cmd)
 {
-  modret_t *mr = NULL;
-  char *query = NULL;
-  sqldata_t *sd;
-  gid_t groupid;
+  struct group *gr;
+  struct group lgr;
 
   if (!cmap.doauth)
     return DECLINED(cmd);
@@ -1957,25 +1933,18 @@ MODRET auth_cmd_name_gid(cmd_rec * cmd)
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_name_gid", MOD_SQL_VERSION);
 
-  query = pstrcat(cmd->tmp_pool, "select ", cmap.grpgidfield, " from ",
-                  cmap.grptable, " where ", cmap.grpfield, " = ",
-                  cmd->argv[0], " limit 1", NULL);
+  lgr.gr_gid = -1;
+  lgr.gr_name = pstrdup( cmd->tmp_pool, cmd->argv[0]);
+  gr = _sql_getgroup(cmd, &lgr);
 
-  mr = modsql_select(cmd, query);
-
-  if (!MODRET_HASDATA(mr))
-    return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
-
-  sd = (sqldata_t *) mr->data;
-
-  if ((!sd) || (!sd->data) || (!sd->data[0])) {
+  if (gr == NULL) {
+    log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_name_gid", MOD_SQL_VERSION);
     return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
   }
 
-  groupid = atol(sd->data[0]);
-
   log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_name_gid", MOD_SQL_VERSION);
-  return mod_create_data(cmd, (void *) groupid);
+
+  return mod_create_data(cmd, (void *) gr->gr_gid);
 }
 
 MODRET auth_cmd_getstats(cmd_rec * cmd)

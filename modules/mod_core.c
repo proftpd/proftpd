@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.55 2001-02-22 22:39:41 flood Exp $
+ * $Id: mod_core.c,v 1.56 2001-03-01 03:18:43 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -2738,6 +2738,13 @@ MODRET set_class(cmd_rec *cmd)
 
   CHECK_ARGS(cmd,3);
   CHECK_CONF(cmd,CONF_ROOT);
+
+  /* check to see that Classes have been enabled, and issue a warning
+   * if not enabled
+   */
+  if (get_param_int(cmd->server->conf, "Classes", FALSE) != TRUE)
+    log_pri(LOG_WARNING, "warning: Classes disabled - Class directive "
+      "not in effect");
 
   /* setup "default" class if necesarry */
   if((n = get_class("default")) == NULL)

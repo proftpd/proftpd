@@ -1,8 +1,8 @@
 #include "buildstamp.h"
 
-#define VERSION                 "1.2.0pl1"
+#define VERSION                 "1.2.1"
 /* VERSION_STATUS is reported by --version-status
  * don't ask why
  */
-#define VERSION_STATUS          "1.2.0-final (CVS)"
+#define VERSION_STATUS          "1.2.1 (CVS)"
 #define INTERNAL_VERSION        0x01020001
