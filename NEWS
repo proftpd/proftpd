@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.549 2004-03-23 18:37:37 castaglia Exp $
+$Id: NEWS,v 1.550 2004-03-24 21:55:42 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -131,6 +131,8 @@ CVS
 - Bug 2367 - LIST *.* strange behaviour.  The builtin listing mechanism
   was inadvertently recursing into globbed directories when recursion was
   not actually requested.
+- Bug 2371 - ftpasswd should have option to compare password against value
+  in passwd file.  ftpasswd now supports a --not-previous-password option.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------

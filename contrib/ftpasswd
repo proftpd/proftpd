@@ -21,7 +21,7 @@
 # format, or AuthGroupFile, in group(5) format.  The idea is somewhat similar
 # to Apache's htpasswd program.
 #
-#  $Id: ftpasswd,v 1.8 2004-02-20 17:10:54 castaglia Exp $
+#  $Id: ftpasswd,v 1.9 2004-03-24 21:55:44 castaglia Exp $
 #
 # ---------------------------------------------------------------------------
 
@@ -62,6 +62,7 @@ GetOptions(\%opts,
   'md5',
   'm|member=s@',
   'name=s',
+  'not-previous-password',
   'not-system-password',
   'passwd',
   'shell=s',
@@ -383,6 +384,27 @@ sub get_passwd {
 
       } else {
         print STDOUT "Please use a password that is different from your current password.\n";
+        return get_passwd(name => $name);
+      }
+    }
+  }
+
+  if (defined($name) && defined($opts{'not-previous-password'})) {
+    # retrieve the user's current passwd and compare
+    my ($currpasswd) = find_passwd_entry(name => $name);
+
+    my $hash = crypt($passwd, $currpasswd);
+
+    if (($hash && $currpasswd) && $hash eq $currpasswd) {
+      if (defined($opts{'stdin'})) {
+
+        # cannot prompt again if automated.  Simply print an error message
+        # and exit.
+        print STDOUT "$program: error: password matches previous password\n";
+        exit 4;
+
+      } else {
+        print STDOUT "Please use a password that is different from your previous password.\n";
         return get_passwd(name => $name);
       }
     }
@@ -741,6 +763,12 @@ usage: $program [--help] [--hash|--group|--passwd]
     --delete-user
  
                 Remove the entry for the given user name from the file.
+
+    --not-previous-password
+
+                Double-checks the given password against the previous password
+                for the user, and requests that a new password be given if
+                the entered password is the same as the previous password.
 
     --not-system-password
 
