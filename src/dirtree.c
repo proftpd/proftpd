@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.38 2001-09-26 15:34:10 flood Exp $
+ * $Id: dirtree.c,v 1.39 2001-10-18 16:51:26 flood Exp $
  */
 
 /* History:
@@ -1062,20 +1062,18 @@ static int _check_ip_access(xaset_t *conf, char *name)
   config_rec *c = find_config(conf,CONF_PARAM,name,FALSE);
 
   while(c) {
-    res = _check_ip_negative(c);
-
     /* If the negative check failed (default is success), short-circuit and
      * return FALSE
      */
-    if(res != TRUE)
-      return res;
-    
-    /* Otherwise, continue on with boolean or check */
-    if((res = _check_ip_positive(c)) != TRUE)
+    if(_check_ip_negative(c) != TRUE)
       return FALSE;
     
-    /* Continue on, in case there are other acls that need to be checked (acls
-     * are boolean ANDed)
+    /* Otherwise, continue on with boolean or check */
+    if(_check_ip_positive(c) == TRUE)
+      res = TRUE;
+    
+    /* Continue on, in case there are other acls that need to be checked 
+     * (multiple acls are logically OR'd)
      */
     c = find_config_next(c,c->next,CONF_PARAM,name,FALSE);
   }
