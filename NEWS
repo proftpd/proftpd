@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.518 2003-12-26 15:59:03 jwm Exp $
+$Id: NEWS,v 1.519 2004-01-02 15:27:30 jwm Exp $
 
 CVS
 ---------------------------------
@@ -65,6 +65,7 @@ CVS
 - Bug 2305 - Compile Problems since > 1.2.9
   Fix the build under Solaris - ftpdctl needs to be linked against libsocket
   and libnsl
+- Bug 2267 - Broken IP subnet matching. Added new ACL parsing/matching code.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------
