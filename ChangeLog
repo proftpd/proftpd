@@ -1,3 +1,7 @@
+1999-10-04 19:07  macgyver
+
+	* configure (1.18), configure.in (1.18): Fixed a small typo.
+
 1999-10-04 18:54  macgyver
 
 	* ChangeLog (1.4): Updated the ChangeLog.
@@ -6,6 +10,10 @@
 
 	* changelog (1.21), doc/Changes-1.2.0pre3 (1.1, R1_2_0pre8): Moved
 	the old changelog to doc/Changes-1.2.0pre3 to avoid any confusion.
+
+1999-10-04 18:54  macgyver
+
+	* ChangeLog (1.6): Updated.
 
 1999-10-04 18:39  macgyver
 

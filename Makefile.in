@@ -119,6 +119,7 @@ distclean: clean depend
 	rm -f Makefile lib/Makefile modules/Makefile src/Makefile
 	rm -rf `find . -name "CVS"`
 	rm -rf `find . -name "*~"`
+	rm -rf `find . -name "*.bak"`
 
 cvsclean: clean
 	cd src; rm -f Makefile Makefile.bak Makefile.in.bak
