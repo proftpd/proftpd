@@ -1,3 +1,120 @@
+1999-12-28 01:43  macgyver
+
+	* NEWS (1.18): Updated NEWS.
+
+1999-12-28 01:43  macgyver
+
+	* NEWS (1.19): Updated again.
+
+1999-12-28 01:33  macgyver
+
+	* src/: support.c (1.11), utils.c (1.6): Cleaned up the
+	implementation of sstrncpy slightly.
+
+1999-12-28 01:27  macgyver
+
+	* modules/mod_xfer.c (1.27): Disable sendfile() if we're using
+	bandwidth control.
+
+1999-12-28 01:18  macgyver
+
+	* modules/mod_auth.c (1.20): Fixed a missing variable in a log_auth
+	entry.
+
+1999-12-28 00:32  macgyver
+
+	* INSTALL (1.3), README (1.4), doc/Configuration.html (1.15):
+	Updated documentation to reflect new web site.
+
+1999-12-28 00:24  macgyver
+
+	* modules/mod_readme.c (1.4): A minor Y2K correction in handling
+	READMEs.
+
+1999-12-28 00:24  macgyver
+
+	* configure (1.27), configure.in (1.27): Fixed the detection of
+	hpsecurity.h
+
+1999-12-26 21:03  macgyver
+
+	* NEWS (1.17), README.LDAP (1.2), contrib/mod_ldap.c (1.5),
+	doc/Configuration.html (1.14): Updated mod_ldap.
+
+1999-12-26 20:53  macgyver
+
+	* configure (1.26), configure.in (1.26): Fixed a minor typo in a
+	test case.
+
+1999-12-26 20:48  macgyver
+
+	* modules/mod_auth.c (1.19): Group handling fixed for complex
+	groups.
+
+1999-12-26 20:43  macgyver
+
+	* modules/mod_xfer.c (1.26): Corrected a minor misdefinition in
+	xfer_init_parent.
+
+1999-12-23 00:04  macgyver
+
+	* NEWS (1.16), lib/pwgrent.c (1.2): Generate a meaningful error for
+	bad group entries.
+
+1999-12-23 00:04  macgyver
+
+	* modules/mod_xfer.c (1.25): Added more caught cases in sendfile().
+
+1999-12-09 08:54  macgyver
+
+	* src/support.c (1.10): Small Y2K fix.
+
+1999-11-28 23:26  macgyver
+
+	* NEWS (1.15), src/data.c (1.7): sendfile() doesn't log spurious
+	errors unless in debug mode.
+
+1999-10-27 15:43  macgyver
+
+	* configure (1.25), configure.in (1.25): Corrected intall_group
+	handling.
+
+1999-10-27 15:43  macgyver
+
+	* modules/mod_xfer.c (1.24): Minor optimization in sendfile()
+	detection on Linux.
+
+1999-10-27 01:24  macgyver
+
+	* modules/mod_xfer.c (1.23): Minor log cleanup for data_sendfile.
+
+1999-10-27 01:24  macgyver
+
+	* modules/mod_xfer.c (1.22): Moved around some logging for
+	data_sendfile.
+
+1999-10-27 00:43  macgyver
+
+	* Makefile.in (1.8): Minor path correction for proftpd.spec.
+
+1999-10-27 00:43  macgyver
+
+	* contrib/dist/rpm/.cvsignore (1.1): New file.
+
+1999-10-27 00:43  macgyver
+
+	* modules/mod_xfer.c (1.21): sendfile() should take a more graceful
+	and tolerant approach to slow connections.  It seems that the
+	problem is that its too fast.
+
+1999-10-27 00:43  macgyver
+
+	* contrib/.cvsignore (1.4): Updated for proftpd.spec.
+
+1999-10-26 22:06  macgyver
+
+	* ChangeLog (1.10): Updated.
+
 1999-10-26 22:01  macgyver
 
 	* NEWS (1.14), contrib/dist/rpm/proftpd.spec.in (1.3) (utags:
