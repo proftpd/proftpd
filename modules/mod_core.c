@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.93 2002-07-15 15:39:01 castaglia Exp $
+ * $Id: mod_core.c,v 1.94 2002-07-18 23:01:44 castaglia Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -449,17 +449,16 @@ MODRET set_serverport(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET set_deferwelcome(cmd_rec *cmd)
-{
-  int b;
+MODRET set_deferwelcome(cmd_rec *cmd) {
+  int bool = -1;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if((b = get_boolean(cmd,1)) == -1)
-    CONF_ERROR(cmd,"expected boolean argument.");
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
-  add_config_param("DeferWelcome",1,(void*)b);
+  add_config_param(cmd->argv[0], 1, (void *) bool);
 
   return HANDLED(cmd);
 }
@@ -468,7 +467,7 @@ MODRET set_pidfile(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  add_config_param_str("PidFile", 1, cmd->argv[1]);
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return HANDLED(cmd);
 }
 
@@ -510,48 +509,46 @@ MODRET set_sysloglevel(cmd_rec *cmd) {
 }
 
 MODRET set_serverident(cmd_rec *cmd) {
-  int b;
-  config_rec *c;
+  int bool = -1;
+  config_rec *c = NULL;
   
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-
-  if(cmd->argc < 2 || cmd->argc > 3)
-    CONF_ERROR(cmd,"invalid number of arguments");
+  if (cmd->argc < 2 || cmd->argc > 3)
+    CONF_ERROR(cmd, "wrong number of parameters");
   
-  if((b = get_boolean(cmd,1)) == -1)
-    CONF_ERROR(cmd,"expected boolean argument.");
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if(b && cmd->argc == 3) {
-    c = add_config_param("ServerIdent",2,(void*)!b,NULL);
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
+
+  if (bool && cmd->argc == 3) {
+    c = add_config_param(cmd->argv[0], 2, (void *) !bool, NULL);
     c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
-  } else {
-    add_config_param("ServerIdent", 1, (void *) !b);
-  }
+
+  } else
+    add_config_param(cmd->argv[0], 1, (void *) !bool);
   
   return HANDLED(cmd);
 }
 
-MODRET set_defaultserver(cmd_rec *cmd)
-{
-  int b;
-  server_rec *s;
+MODRET set_defaultserver(cmd_rec *cmd) {
+  int bool = -1;
+  server_rec *s = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
-  if((b = get_boolean(cmd,1)) == -1)
-    CONF_ERROR(cmd,"expected boolean argument.");
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
-  if(!b)
+  if (!bool)
     return HANDLED(cmd);
 
   /* DefaultServer is not allowed if already set somewhere */
-  for(s = (server_rec*)servers->xas_list; s; s=s->next)
-    if(find_config(s->conf,CONF_PARAM,"DefaultServer",FALSE)) {
-      CONF_ERROR(cmd,"DefaultServer has already been set.");
-    }
+  for (s = (server_rec *) servers->xas_list; s; s = s->next)
+    if (find_config(s->conf, CONF_PARAM, cmd->argv[0], FALSE))
+      CONF_ERROR(cmd, "DefaultServer has already been set.");
 
-  add_config_param("DefaultServer",1,(void*)b);
+  add_config_param(cmd->argv[0], 1, (void *) bool);
   return HANDLED(cmd);
 }
 
@@ -613,95 +610,99 @@ MODRET _set_timeout(int *v, cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET set_maxclients(cmd_rec *cmd)
-{
+MODRET set_maxclients(cmd_rec *cmd) {
   int max;
-  char *endp;
-  config_rec *c;
+  config_rec *c = NULL;
 
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  if (cmd->argc < 2 || cmd->argc > 3)
+    CONF_ERROR(cmd, "wrong number of parameters");
 
-  if(cmd->argc < 2 || cmd->argc > 3)
-    CONF_ERROR(cmd,"invalid number of arguments");
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if(!strcasecmp(cmd->argv[1],"none"))
+  if (!strcasecmp(cmd->argv[1], "none"))
     max = -1;
-  else {
-    max = (int)strtol(cmd->argv[1],&endp,10);
 
-    if((endp && *endp) || max < 1) 
-      CONF_ERROR(cmd,"argument must be 'none' or a number greater than 0.");
+  else {
+    char *endp = NULL;
+
+    max = (int) strtol(cmd->argv[1], &endp, 10);
+
+    if ((endp && *endp) || max < 1) 
+      CONF_ERROR(cmd, "parameter must be 'none' or a number greater than 0");
   }
 
-  if(cmd->argc == 3) {
-    c = add_config_param("MaxClients",2,(void*)max,NULL);
-    c->argv[1] = pstrdup(c->pool,cmd->argv[2]);   
+  if (cmd->argc == 3) {
+    c = add_config_param(cmd->argv[0], 2, (void *) max, NULL);
+    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
+
   } else
-    c = add_config_param("MaxClients",1,(void*)max);
+    c = add_config_param(cmd->argv[0], 1, (void *) max);
 
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
 }
 
-MODRET set_maxhostclients(cmd_rec *cmd)
-{
+MODRET set_maxhostclients(cmd_rec *cmd) {
   int max;
-  char *endp;
-  config_rec *c;
+  config_rec *c = NULL;
 
-  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_GLOBAL);
+  if (cmd->argc < 2 || cmd->argc > 3)
+    CONF_ERROR(cmd, "wrong number of parameters");
   
-  if(cmd->argc < 2 || cmd->argc > 3)
-    CONF_ERROR(cmd, "invalid number of arguments");
-  
-  if(!strcasecmp(cmd->argv[1], "none")) {
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_GLOBAL);
+
+  if (!strcasecmp(cmd->argv[1], "none"))
     max = -1;
-  } else {
+
+  else {
+    char *endp = NULL;
+
     max = (int) strtol(cmd->argv[1], &endp, 10);
     
-    if((endp && *endp) || max < 1)
-      CONF_ERROR(cmd, "argument must be 'none' or a number greater than 0.");
+    if ((endp && *endp) || max < 1)
+      CONF_ERROR(cmd, "parameter must be 'none' or a number greater than 0");
   }
   
-  if(cmd->argc == 3) {
-    c = add_config_param("MaxClientsPerHost", 2, (void *) max, NULL);
+  if (cmd->argc == 3) {
+    c = add_config_param(cmd->argv[0], 2, (void *) max, NULL);
     c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
-  } else {
-    c = add_config_param("MaxClientsPerHost", 1, (void *) max);
-  }
+
+  } else
+    c = add_config_param(cmd->argv[0], 1, (void *) max);
   
   c->flags |= CF_MERGEDOWN;
  
   return HANDLED(cmd);
 }
 
-MODRET set_maxhostsperuser(cmd_rec *cmd)
-{
+MODRET set_maxhostsperuser(cmd_rec *cmd) {
   int max;
-  char *endp;
-  config_rec *c;
+  config_rec *c = NULL;
 
-  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if(cmd->argc < 2 || cmd->argc > 3)
-    CONF_ERROR(cmd, "invalid number of arguments");
+  if (cmd->argc < 2 || cmd->argc > 3)
+    CONF_ERROR(cmd, "wrong number of parameters");
   
-  if(!strcasecmp(cmd->argv[1], "none")) {
+  if (!strcasecmp(cmd->argv[1], "none"))
     max = -1;
-  } else {
+
+  else {
+    char *endp = NULL;
+
     max = (int) strtol(cmd->argv[1], &endp, 10);
     
-    if((endp && *endp) || max < 1)
-      CONF_ERROR(cmd, "argument must be 'none' or a number greater than 0.");
+    if ((endp && *endp) || max < 1)
+      CONF_ERROR(cmd, "parameter must be 'none' or a number greater than 0");
   }
   
-  if(cmd->argc == 3) {
-    c = add_config_param("MaxHostsPerUser", 2, (void *) max, NULL);
-    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);   
-  } else {
-    c = add_config_param("MaxHostsPerUser", 1, (void *) max);
-  }
+  if (cmd->argc == 3) {
+    c = add_config_param(cmd->argv[0], 2, (void *) max, NULL);
+    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
+
+  } else
+    c = add_config_param(cmd->argv[0], 1, (void *) max);
   
   c->flags |= CF_MERGEDOWN;
  
@@ -710,18 +711,19 @@ MODRET set_maxhostsperuser(cmd_rec *cmd)
 
 MODRET set_maxloginattempts(cmd_rec *cmd) {
   int max;
-  char *endp = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if(!strcasecmp(cmd->argv[1],"none"))
+  if (!strcasecmp(cmd->argv[1],"none"))
     max = 0;
-  else {
-    max = (int)strtol(cmd->argv[1],&endp,10);
 
-    if((endp && *endp) || max < 1)
-      CONF_ERROR(cmd,"argument must be 'none' or a number greater than 0.");
+  else {
+    char *endp = NULL;
+    max = (int) strtol(cmd->argv[1], &endp, 10);
+
+    if ((endp && *endp) || max < 1)
+      CONF_ERROR(cmd, "parameter must be 'none' or a number greater than 0");
   }
 
   add_config_param(cmd->argv[0], 1, (void*)max);
@@ -857,16 +859,17 @@ MODRET set_tcpsendwindow(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET set_tcpnodelay(cmd_rec *cmd)
-{
-  int bool;
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+MODRET set_tcpnodelay(cmd_rec *cmd) {
+  int bool = -1;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
 
-  add_config_param("tcpNoDelay", 1, bool);
+  add_config_param(cmd->argv[0], 1, (void *) bool);
+
   return HANDLED(cmd);
 }
 
@@ -985,27 +988,27 @@ MODRET set_umask(cmd_rec *cmd) {
   
   tmp_umask = (mode_t) strtol(cmd->argv[1], &endp, 8);
   
-  if(endp && *endp)
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' is not "
-			    "a valid umask.", NULL));
+  if (endp && *endp)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
+      "' is not a valid umask", NULL));
   
-  c = add_config_param("Umask", 1, NULL);
+  c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(mode_t));
   *((mode_t *) c->argv[0]) = tmp_umask;
   c->flags |= CF_MERGEDOWN;
   
   /* Have we specified a directory umask as well?
    */
-  if(CHECK_HASARGS(cmd, 2)) {
+  if (CHECK_HASARGS(cmd, 2)) {
 
     /* allocate space for another mode_t.  Don't worry -- the previous
      * pointer was recorded in the Umask config_rec
      */
     tmp_umask = (mode_t) strtol(cmd->argv[2], &endp, 8);
     
-    if(endp && *endp)
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[2], "' is not "
-			      "a valid umask.", NULL));
+    if (endp && *endp)
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[2],
+        "' is not a valid umask", NULL));
     
     c = add_config_param("DirUmask", 1, NULL);
     c->argv[0] = pcalloc(c->pool, sizeof(mode_t));
@@ -3139,19 +3142,19 @@ MODRET set_defaulttransfermode(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_classes(cmd_rec *cmd)
-{
-  int b;
-  config_rec *c;
+MODRET set_classes(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if ((b = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
-  c = add_config_param("Classes",1,(void*)b);
+  c = add_config_param(cmd->argv[0], 1, (void *) bool);
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 

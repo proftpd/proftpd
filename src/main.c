@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.89 2002-07-09 22:20:10 castaglia Exp $
+ * $Id: main.c,v 1.90 2002-07-18 23:01:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2690,9 +2690,12 @@ int main(int argc, char **argv, char **envp)
       
     case 'p':
     {
-      extern int persistent;
 
-      if(!optarg || ((persistent = atoi(optarg)) != 1 && persistent != 0)) {
+      /* From mod_unixpw.c */
+      extern int unixpw_persistent;
+
+      if (!optarg ||
+          ((unixpw_persistent = atoi(optarg)) != 1 && unixpw_persistent != 0)) {
         log_pri(LOG_ERR,"Fatal: -p requires boolean (0|1) argument.");
         exit(1);
       }
