@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001, 2002, 2003, 2004 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.63 2004-09-14 17:49:43 castaglia Exp $
+ * $Id: mod_log.c,v 1.64 2004-10-31 20:24:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -794,8 +794,8 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
           end_time.tv_sec--;
         }
 
-        snprintf(argp, sizeof(arg), "%ld.%03ld", (time_t) end_time.tv_sec,
-          (time_t) (end_time.tv_usec / 1000));
+        snprintf(argp, sizeof(arg), "%ld.%03ld", (long) end_time.tv_sec,
+          (long) (end_time.tv_usec / 1000));
 
       } else
         sstrncpy(argp, "-", sizeof(arg));
