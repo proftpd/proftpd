@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.13 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.14 2004-04-10 02:30:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -662,7 +662,7 @@ MODRET pw_check(cmd_rec *cmd) {
 
 #ifdef COMSEC
   if (iscomsec()) {
-    if (strcmp(bigcrypt(pw, cpw), cpw) != 0)
+    if (strcmp(bigcrypt((char *) pw, (char *) cpw), cpw) != 0)
       return ERROR(cmd);
 
   } else {
