@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.21 2000-01-24 01:03:12 macgyver Exp $
+ * $Id: main.c,v 1.22 2000-01-24 01:15:19 macgyver Exp $
  */
 
 /*
@@ -837,6 +837,7 @@ static void dispatch_cmd(cmd_rec *cmd)
   for(cp = cmd->argv[0]; *cp; cp++)
     *cp = toupper(*cp);
 
+#if 0
   /* Fastpath explicit deny directives for commands.
    */
   if(dir_check_limits(TOPLEVEL_CONF, cmd->argv[0], 0) < 0) {
@@ -844,7 +845,8 @@ static void dispatch_cmd(cmd_rec *cmd)
     send_response_list(&resp_err_list);
     return;
   }
-  
+#endif
+
   /* debug_print_dispatch(cmd); */
 
   /* first dispatch PRE_CMD with wildcard */
