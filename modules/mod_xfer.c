@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.134 2003-03-09 22:28:16 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.135 2003-03-17 16:41:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -610,7 +610,7 @@ static int _transmit_sendfile(off_t count, off_t *offset,
    */
   if (have_xfer_rate ||
      !(session.xfer.file_size - count) ||
-     (session.sf_flags & (SF_ASCII | SF_ASCII_OVERRIDE))) {
+     (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE))) {
     return 0;
   }
 
@@ -622,8 +622,8 @@ static int _transmit_sendfile(off_t count, off_t *offset,
     switch (errno) {
     case EAGAIN:
     case EINTR:
-      /* Interrupted call, or the other side wasn't ready yet.
-       */
+      /* Interrupted call, or the other side wasn't ready yet. */
+      pr_signals_handle();
       goto retry;
 
     case EPIPE:
@@ -639,8 +639,7 @@ static int _transmit_sendfile(off_t count, off_t *offset,
 #endif /* ENOSYS */
 
     case EINVAL:
-      /* No sendfile support, apparently.  Try it the normal way.
-       */
+      /* No sendfile support, apparently.  Try it the normal way. */
       return 0;
       break;
 
