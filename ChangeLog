@@ -1,3 +1,279 @@
+2002-10-21 11:40  castaglia
+
+	* contrib/mod_wrap.c: 
+	Fixed a minor file descriptor leak in mod_wrap (affects only the
+	child process, not the daemon process).
+
+2002-10-21 10:10  castaglia
+
+	* configure: 
+	Updating configure script for added --enable* options.
+
+2002-10-21 10:06  castaglia
+
+	* NEWS, config.h.in, configure.in, contrib/mod_radius.c,
+	contrib/mod_ratio.c, contrib/mod_sql.c, contrib/mod_sql_mysql.c,
+	contrib/mod_sql_postgres.c, doc/license.txt, include/dirtree.h,
+	include/options.h, include/pool.h, lib/pr-syslog.c, lib/pwgrent.c,
+	modules/mod_auth.c, modules/mod_core.c, modules/mod_ls.c,
+	modules/mod_pam.c, modules/mod_site.c, modules/mod_unixpw.c,
+	modules/mod_xfer.c, src/data.c, src/dirtree.c, src/fs.c,
+	src/ident.c, src/inet.c, src/log.c, src/main.c, src/modules.c,
+	src/netio.c, src/pool.c, src/regexp.c, src/support.c: 
+	Large style cleanup:   - added PR_ prefix to TUNABLE_ macros   -
+	renamed command handlers in some modules (from cmd_* to
+	<module-name>_*)     in order to better exemplify module namespace
+	conventions   - removed extraneous make_named_sub_pool() (added
+	macro for backward     compatibility for contrib modules)   - lots
+	of trivial whitespace changes
+	
+	Hopefully I didn't break anything too major with this.
+
+2002-10-19 08:16  flyhmstr
+
+	* doc/faq.html: ML: new FAQ issue
+
+2002-10-18 15:20  castaglia
+
+	* src/auth.c: 
+	Fixed a bad bug, introduced with the Cygwin changes (I think). 
+	setgid() will not be called if the platform doesn't have
+	setgroups() due to the placement of the HAVE_SETGROUPS #ifdefs.  I
+	don't know if this change will break stuff under Cygwin, but the
+	current placement of those #ifdefs won't do.
+
+2002-10-18 12:50  castaglia
+
+	* NEWS, modules/mod_core.c: 
+	Fixed typo in NEWS Added handler for ScoreboardPath directive,
+	which will report on the  deprecated nature of the directive, and
+	inform the admin of using the  newer ScoreboardFile instead. 
+	Hopefully this will help ease (somewhat)  the upgrade to 1.2.7.
+
+2002-10-18 12:43  castaglia
+
+	* NEWS, utils/ftptop.c: 
+	Bug#1778 - 1.2.7rc1 fails to link on OpenBSD 3.2-current
+
+2002-10-18 10:59  flyhmstr
+
+	* doc/Configuration.html: ML: updated to include mod_radius stuff
+
+2002-10-18 10:15  flyhmstr
+
+	* doc/: Configuration.html, faq.html: ML: updated directivelist and
+	faq
+
+2002-10-18 08:14  castaglia
+
+	* NEWS, modules/mod_ls.c, src/fs.c: 
+	Bug#1785 - Bad handling of symlinks
+
+2002-10-16 17:37  castaglia
+
+	* src/: auth.c, data.c, dirtree.c, inet.c, log.c, main.c,
+	modules.c, pool.c, regexp.c, scoreboard.c, support.c: 
+	Cleanliness/style: changing core code to use PR_LOG_* instead of
+	LOG_*.	Contrib modules may need to be changed to use PR_LOG_* in
+	the future.
+
+2002-10-16 11:14  castaglia
+
+	* NEWS, modules/mod_log.c: 
+	Bug#1644 - LogFormat local IP and FQDN tags missing
+
+2002-10-15 15:18  castaglia
+
+	* README.AIX: 
+	Updating this README with the CFLAGS that seem to work with the
+	newer proftpd versions.
+
+2002-10-15 10:08  castaglia
+
+	* modules/mod_xfer.c: 
+	Missed the assignment of session.xfer.path in cmd_stor() in the
+	previous commit.
+
+2002-10-15 10:01  castaglia
+
+	* include/proftpd.h, modules/mod_xfer.c, src/data.c: 
+	Removing some cruft from session.xfer, fixing some whitespace
+	styling.  Significant change is moving session.xfer.path so that it
+	is not allocated from session.xfer.p (a pool with a bad name =P),
+	but rather is the string originally allocated in the PRE_CMD
+	handler, from cmd->pool.  There is no reason for the path to be
+	reallocated again from session.xfer.p (unless any functions
+	manipulate that buffer, which they shouldn't, and which none
+	currently do), and, in some cases, ASCII CRLF handling was causing
+	corruption of that buffer.
+
+2002-10-14 17:11  castaglia
+
+	* src/log.c: 
+	Make sure log_openfile() returns the same error values as #defined
+	in include/log.h.
+
+2002-10-14 17:04  castaglia
+
+	* src/auth.c: 
+	Need to handle case in set_groups() where suppl_gids might be
+	non-NULL, but the contained number of gids (suppl_gids->nelts) is
+	zero.  This was causing a segfault, for memory was being allocated
+	(of length zero) which was then being cleared.
+
+2002-10-14 11:26  castaglia
+
+	* NEWS, modules/mod_auth.c, modules/mod_unixpw.c, src/main.c,
+	src/modules.c: 
+	Changing place in code where switching to the User/Group for a
+	vhost occurs, so that it happens prior to the calling of any
+	modules' session initialization callbacks.
+
+2002-10-10 08:00  castaglia
+
+	* NEWS, modules/mod_auth.c: 
+	Bug#1770 - Forgetting to check for no IP in string
+
+2002-10-09 09:55  castaglia
+
+	* NEWS, modules/mod_auth.c, src/auth.c, src/dirtree.c,
+	src/support.c: 
+	Bug#1769 - Lack of supplemental groups can cause segfault.
+
+2002-10-09 09:12  flyhmstr
+
+	* doc/Configuration.html: ML: updated directive list ready for
+	1.2.7rc2
+
+2002-10-08 14:19  castaglia
+
+	* modules/mod_xfer.c: 
+	Oops.  Should always use the FS API functions for FS operations.
+
+2002-10-08 08:05  castaglia
+
+	* modules/mod_xfer.c: 
+	Clean up files created by mkstemp(3) if other checks (e.g. <Limit>)
+	fail.  Discrepancy noticed by Joao Gouveia <tharbad@kaotik.org>.
+
+2002-10-08 07:35  castaglia
+
+	* NEWS, src/main.c: 
+	Bug#1759 - ftpwho shows much more connections than realy is.
+
+2002-10-07 18:04  jwm
+
+	* README, README.AIX, README.modules: 
+	style nit
+
+2002-10-07 17:18  castaglia
+
+	* CREDITS, INSTALL, Makefile.in, README, README.AIX,
+	README.linux-privs, README.mod_sql, README.modules, README.ports: 
+	Updating documentation, fixing 'make clean' target.  Thanks to
+	Michael Renner for these patches.
+
+2002-10-07 14:40  castaglia
+
+	* INSTALL, README.modules: 
+	Removing references to crufty old mod_test.
+
+2002-10-07 10:17  castaglia
+
+	* INSTALL: 
+	Changing mention of ScoreboardPath to ScoreboardFile.
+
+2002-10-07 10:14  castaglia
+
+	* sample-configurations/complex-virtual.conf: 
+	Updating more example configs.
+
+2002-10-07 10:01  castaglia
+
+	* sample-configurations/PFTEST.shadow: 
+	Match username 'proftpd' in the test passwd file.
+
+2002-10-07 09:59  castaglia
+
+	* sample-configurations/PFTEST.conf.in: 
+	Updating config for 1.2.7 release cycle (ScoreboardPath ->
+	ScoreboardFile).
+
+2002-10-04 15:51  castaglia
+
+	* utils/ftptop.c: 
+	Adding kludge to ftptop that scans the config file for a
+	non-default ScoreboardFile directive.
+
+2002-10-04 12:08  castaglia
+
+	* src/scoreboard.c: 
+	Amend the addition of using fchmod() on the scoreboard to make the
+	mode 0644, rather than 0444.  This allows for non-root daemons to
+	still be able to use the scoreboard.  Thanks to Michael Renner for
+	noting this.
+
+2002-10-04 07:41  castaglia
+
+	* NEWS, modules/mod_xfer.c: 
+	Bug#1735 - Proftpd 1.2.6 compiled on FreeBSD 4.6.2 exits on signal
+	11
+
+2002-10-03 17:36  castaglia
+
+	* src/scoreboard.c: 
+	Addition borne of paranoia inspired by recent Apache scoreboarding
+	vulnerability.
+
+2002-10-03 12:15  castaglia
+
+	* modules/mod_auth.c: 
+	Fixing off-by-one error in MaxClientsPerHost check.
+
+2002-10-03 08:44  castaglia
+
+	* CREDITS: 
+	Adding thanks/credits for unnamed users who contribute to the
+	project.
+
+2002-10-03 08:30  castaglia
+
+	* modules/mod_site.c, src/main.c: 
+	Some style-related cleanups.  Still working on that HELP SITE code
+	- had the tertiary operator parameters in the wrong order (and it
+	was apparently causing a segfault).
+
+2002-10-02 13:49  castaglia
+
+	* NEWS, src/netio.c: 
+	Bug#1757 - non-ANSI Syntax in netio.c
+
+2002-10-02 13:35  castaglia
+
+	* include/version.h: 
+	Updating the version, preparing for the next CVS/release.
+
+2002-10-02 11:13  castaglia
+
+	* modules/mod_site.c: 
+	Fixing support for 'HELP SITE' (common) in addition to 'SITE HELP'
+	(proper).
+
+2002-10-02 09:18  castaglia
+
+	* src/main.c: 
+	Cleaning up a badly-written preprocessor directive (my fault).
+
+2002-10-02 08:19  castaglia
+
+	* utils/scoreboard.c: 
+	Prevent egregious ENOENT error when reading the scoreboard.
+
+2002-10-01 11:59  castaglia
+
+	* ChangeLog, NEWS, include/version.h: 
+	Preparing for release of 1.2.7rc1.
+
 2002-10-01 09:23  castaglia
 
 	* modules/mod_auth.c: 
