@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.458 2003-08-07 00:55:42 castaglia Exp $
+$Id: NEWS,v 1.459 2003-08-07 20:16:45 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -51,6 +51,7 @@ CVS
   mod_sql's handling of cookies is now updated to match mod_log.
 - Bug 1711 - IPv6 support.  Support for EPRT and EPSV added.  To enable IPv6
   support, use the new --enable-ipv6 configure option.
+- Bug 2130 - %y in DisplayLogin is not updated correctly.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------

@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.158 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: mod_auth.c,v 1.159 2003-08-07 20:16:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -173,12 +173,10 @@ static int auth_sess_init(void) {
   else
     auth_create_home = FALSE;
 
-  /* If DisplayConnect is configured, we'll need to scan the scoreboard
-   * now, in order to tally up certain values for substituting in any
-   * of the Display* file variables.
+  /* Scan the scoreboard now, in order to tally up certain values for
+   * substituting in any of the Display* file variables.
    */
-  if (get_param_ptr(main_server->conf, "DisplayConnect", FALSE) != NULL)
-    auth_scan_scoreboard();
+  auth_scan_scoreboard();
 
   return 0;
 }
