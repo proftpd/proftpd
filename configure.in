@@ -166,9 +166,10 @@ AC_CHECK_HEADERS(shadow.h,
 AC_CHECK_HEADERS(security/pam_appl.h,
   [ if test "$use_shadow" != ""; then
       use_shadow=""
-	  if test `echo $ac_addl_modules | grep -c mod_pam` = "0"; then
+	fi
+	if test `echo $ac_addl_modules | grep -c mod_pam` = "0"; then
 		ac_addl_modules="mod_pam.o $ac_addl_modules"
-      	ac_build_addl_modules="modules/mod_pam.o $ac_build_addl_modules"
+		ac_build_addl_modules="modules/mod_pam.o $ac_build_addl_modules"
 	  fi
     fi ])
 
