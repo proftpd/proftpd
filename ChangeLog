@@ -1,3 +1,48 @@
+2001-03-24 10:56  flood
+
+	* NEWS, modules/mod_auth.c: Bug #1085: better logging of two auth
+	messages in mod_auth.
+
+2001-03-24 10:46  flood
+
+	* NEWS, doc/Configuration.html, modules/mod_xfer.c: Bug #1043:
+	Possible inf. loop in throttle code.  Bug #1074: Doc fixes Bug
+	#1070: Doc fixes
+
+2001-03-23 08:17  flood
+
+	* NEWS, README.mod_sql, contrib/mod_sql.c, contrib/mod_sql_mysql.c,
+	include/proftpd.h, modules/mod_core.c, src/dirtree.c, src/main.c:
+	Bug #1075 - Fix for short copy of sub-contexts from <Global> New
+	mod_sql and mod_sql docs from maintainer New RLimit* directives
+	used to control resource limits
+
+2001-03-23 07:54  flood
+
+	* modules/mod_core.c, src/auth.c, src/main.c: Slightly better
+	handling of uid/gid type casts and conversions.
+
+2001-03-22 16:43  flood
+
+	* NEWS, modules/mod_auth.c: Bug #1049 - passwd/group files are now
+	close/re-opened at USER/PASS.
+
+2001-03-22 15:56  flood
+
+	* src/dirtree.c: Added debugging to umask code.
+
+2001-03-21 19:12  flood
+
+	* include/glibc-glob.h: glibc glob header should now be more
+	portable
+
+2001-03-17 15:34  flood
+
+	* Make.rules.in, NEWS, acconfig.h, config.h.in, configure.in,
+	include/conf.h, include/glibc-glob.h, include/libsupp.h,
+	lib/glibc-glob.c, lib/glob.c, lib/glob.h, src/fs.c: Bug #1066 - new
+	GNU glob which protects against DoS attacks.
+
 2001-03-12 19:22  flood
 
 	* contrib/mod_sql.c: New mod_sql from maintainer.
