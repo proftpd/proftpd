@@ -19,7 +19,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.9 1999-09-30 05:54:01 macgyver Exp $
+ * $Id: dirtree.c,v 1.10 1999-10-01 03:32:17 macgyver Exp $
  */
 
 /* History:
@@ -244,8 +244,6 @@ server_rec *start_new_server(const char *addr)
   if(addr)
     s->ServerAddress = pstrdup(s->pool,addr);
   s->ServerPort = -1;
-
-  s->Bandwidth = 0;
 
   conf.curserver = (server_rec**)push_array(conf.sstack);
   *conf.curserver = s;

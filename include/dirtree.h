@@ -20,7 +20,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.2 1999-09-07 23:29:07 macgyver Exp $
+ * $Id: dirtree.h,v 1.3 1999-10-01 03:32:18 macgyver Exp $
  */
 
 #ifndef __DIRTREE_H
@@ -44,7 +44,6 @@ typedef struct server_struc {
   char *ServerFQDN;		/* Fully Qualified Domain Name */
 
   int ServerPort;		/* Port # to run on */
-  int Bandwidth;
   int tcp_rwin,tcp_swin;	/* Receive/Send windows */
   int tcp_rwin_override;	/* Specifically override tcp rwin */
   int tcp_swin_override;	/* Specifically override tcp swin */
