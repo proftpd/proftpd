@@ -1219,8 +1219,17 @@ MODRET cmd_escapestring(cmd_rec * cmd)
   unescaped = cmd->argv[1];
   escaped = (char *) pcalloc( cmd->tmp_pool, sizeof(char) * 
 			      (strlen(unescaped) * 2) + 1);
+
+  /* Note: the mysql_real_escape_string() function appeared in the C API
+   * as of MySQL 3.23.14; this macro allows functioning with older mysql
+   * installations.
+   */
+#if MYSQL_VERSION_ID >= 32314
   mysql_real_escape_string( conn->mysql, escaped, unescaped, 
 			    strlen(unescaped) );
+#else
+  mysql_escape_string( escaped, unescaped, strlen(unescaped) );
+#endif
 
   log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_escapestring");
   return mod_create_data(cmd, (void *) escaped);

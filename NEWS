@@ -1,8 +1,15 @@
-$Id: NEWS,v 1.176 2002-06-06 16:14:53 castaglia Exp $
+$Id: NEWS,v 1.177 2002-06-09 02:38:26 castaglia Exp $
 
-CVS
+1.2.4 - Released 2002-06-08
 ---------------------------------
 New mod_sql (4.08)
+- Bug 1379 - Changed mod_sql.c to use memset() instead of bzero()
+- Bug 1576 - Checks for a NULL pointer in a border case involving use of
+             SQLHomedirOnDemand
+- Bug 1586 - Fixed bad assumption concerning row count involving SQL-provided
+             group information
+- Bug 1625 - Adds compatibility fix to mod_sql_mysql for older MySQL libraries
+             (a function name changed in MySQL 3.23.14)
 
 1.2.5rc3 - Released 2002-05-30
 ---------------------------------

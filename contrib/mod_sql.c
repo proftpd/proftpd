@@ -1153,7 +1153,10 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
   _sql_check_response(mr);
   
   sd = (sql_data_t *) mr->data;
-  
+ 
+  /* if we have no data... */
+  if (sd->rnum == 0) return NULL;
+ 
   rows = sd->data;
   numrows = sd->rnum;
   
@@ -1435,7 +1438,7 @@ static modret_t *_process_named_query(cmd_rec *cmd, char *name)
   c = find_config(main_server->conf, CONF_PARAM, query, FALSE);
   if (c) {
     /* select string fixup */
-    bzero(outs, sizeof(outs));
+    memset(outs, '\0', sizeof(outs));
     outsp = outs;
 
     for (tmp = c->argv[1]; *tmp; ) {
@@ -1702,7 +1705,7 @@ MODRET info_master(cmd_rec * cmd)
      */
 
     do {
-      bzero(outs, sizeof(outs));
+      memset(outs, '\0', sizeof(outs));
       outsp = outs;
 
       for (tmp = c->argv[1]; *tmp; ) {
@@ -1776,7 +1779,7 @@ MODRET info_master(cmd_rec * cmd)
      */
 
     do {
-      bzero(outs, sizeof(outs));
+      memset(outs, '\0', sizeof(outs));
       outsp = outs;
 
       for (tmp = c->argv[1]; *tmp; ) {
@@ -1868,7 +1871,7 @@ MODRET errinfo_master(cmd_rec * cmd)
      */
 
     do {
-      bzero(outs, sizeof(outs));
+      memset(outs, '\0', sizeof(outs));
       outsp = outs;
 
       for (tmp = c->argv[1]; *tmp; ) {
@@ -1942,7 +1945,7 @@ MODRET errinfo_master(cmd_rec * cmd)
      */
 
     do {
-      bzero(outs, sizeof(outs));
+      memset(outs, '\0', sizeof(outs));
       outsp = outs;
 
       for (tmp = c->argv[1]; *tmp; ) {
@@ -2610,8 +2613,6 @@ MODRET cmd_check(cmd_rec * cmd)
     }
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_check");
-
   if (success) {
     /* this and the associated hack in cmd_uid_name are to support
      * uid reuse in the database -- people (for whatever reason) are
@@ -2629,7 +2630,7 @@ MODRET cmd_check(cmd_rec * cmd)
      * finally, build the user's homedir if necessary 
      */
     
-    if (cmap.buildhomedir &&
+    if (cmap.buildhomedir && cmap.authpasswd &&
 	(stat(cmap.authpasswd->pw_dir, &st) == -1 && errno == ENOENT)) {
       build_homedir(cmd, cmap.authpasswd->pw_dir, 
 		    S_IRWXU | S_IRWXG | S_IRWXO, 
@@ -2637,8 +2638,11 @@ MODRET cmd_check(cmd_rec * cmd)
 		    cmap.authpasswd->pw_gid);
     }
     
+    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_check");
     return HANDLED(cmd);
   }
+
+  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_check");
 
   if (!success)
     return SQL_USERGOD ? ERROR(cmd) : DECLINED(cmd);
