@@ -1,3 +1,407 @@
+2002-07-02 10:01  castaglia
+
+	* include/inet.h, include/io.h, include/options.h, src/data.c,
+	src/inet.c, src/io.c: 
+	Fixing consequences of Bug#1502 and ABOR causing some clients to
+	wait indefinitely.
+
+2002-07-01 11:28  castaglia
+
+	* NEWS, contrib/mod_sql.c: 
+	Bug#1543 - Usernames with spaces, problems to authenticate
+
+2002-07-01 11:18  castaglia
+
+	* NEWS, contrib/mod_sql.c: 
+	Bug#1628 - group mods (DefaultRoot) only work for primary group
+	w/mysql
+
+2002-06-30 09:48  castaglia
+
+	* src/inet.c: 
+	Fixed potential loop problem I inadvertently introduced in the
+	previous check-in.  Oops.
+
+2002-06-28 11:43  castaglia
+
+	* include/proftpd.h, modules/mod_xfer.c, src/data.c, src/inet.c,
+	src/io.c, src/main.c: 
+	Fixing consequences of signal handler changes of Bug#1556, allowing
+	for child processes to process their received signals as well (all
+	noted in the bug report).
+
+2002-06-27 20:16  castaglia
+
+	* contrib/mod_sql.c: 
+	Correctly check cmap.grpgidfield, rather than cmap.gidfield, when
+	looking up groups by ID.  This was my fault.
+
+2002-06-27 15:39  castaglia
+
+	* configure: 
+	Updated configure script
+
+2002-06-27 15:36  castaglia
+
+	* NEWS, config.h.in, configure.in, modules/mod_unixpw.c: 
+	Bug#1667 - Move USESHADOW, AUTOSHADOW defines from command line
+	into config.h
+
+2002-06-27 15:09  castaglia
+
+	* contrib/mod_sql.c: 
+	Convert some of the configuration handlers to allocating memory for
+	passing numeric values, rather than squeezing them into void *. 
+	This fixes a border case where using 0 as the value for
+	SQLDefault{UID,GID} or SQLMinUser{ID,UID,GID} would cause that
+	directive setting to not be honored; a value of zero cast as a void
+	* means that that void * would most likely be interpreted as NULL
+	upon retrieval.
+
+2002-06-27 14:18  castaglia
+
+	* contrib/mod_sql.c: 
+	Removed extraneous parameters from logging calls (caught by
+	__attribute__).
+
+2002-06-27 12:27  castaglia
+
+	* NEWS, contrib/mod_quota.c: 
+	Removed mod_quota.c due to lack of maintainership, bugs.
+
+2002-06-27 12:24  flyhmstr
+
+	* doc/ShowUndocumented: ML: removing the showundocumented script as
+	it's no longer useful in this repository
+
+2002-06-27 12:23  flyhmstr
+
+	* doc/Configuration.html: ML:	Updated directive list
+
+2002-06-27 11:35  flyhmstr
+
+	* modules/mod_core.c: ML: fixing minor typo :)
+
+2002-06-27 00:31  castaglia
+
+	* include/log.h, include/proftpd.h, modules/mod_auth.c,
+	modules/mod_xfer.c: 
+	Committed the use of gcc's __attribute__ pragma for printf-style
+	function argument checking from Bug#1643.  Fixed the minor printf
+	issues this pragma subsequently found in the TimeoutSession code,
+	throttling code.
+
+2002-06-26 19:33  castaglia
+
+	* NEWS, contrib/mod_sql.c: 
+	Bug#1664 - mod_sql segfaults on cache miss for bogus user.
+
+2002-06-26 16:10  castaglia
+
+	* src/inet.c: 
+	Use the IPPROTO_TCP macro (that's what it's there for!) for
+	initializing the value of tcp_proto, instead of manually setting it
+	to 6.
+
+2002-06-26 10:32  jwm
+
+	* Makefile.in: 
+	#1569 - EXEEXT support
+
+2002-06-25 19:54  castaglia
+
+	* NEWS, include/inet.h, include/io.h, src/data.c, src/inet.c,
+	src/io.c: 
+	Bug#1502 - 226 Transfer Complete sent out before data connection is
+	closed
+
+2002-06-25 14:58  castaglia
+
+	* NEWS, modules/mod_ls.c: 
+	Bug#1655 - Add -n listing option to mod_ls
+
+2002-06-25 13:56  castaglia
+
+	* config.h.in: 
+	Solaris already defines _FILE_OFFSET_BITS in its system headers (at
+	least 2.8 does); check for a defined _FILE_OFFSET_BITS before
+	redefining it.
+
+2002-06-25 13:42  castaglia
+
+	* src/: main.c, support.c: 
+	Put proper #ifdefs around things to avoid some compiler warnings.
+
+2002-06-25 10:56  castaglia
+
+	* config.h.in: 
+	Added lines for endprotoent, setgroups, setprotoent detection
+	performed by autoconf, removed duplicate HAVE_SETPROCTITLE line.
+
+2002-06-25 10:35  castaglia
+
+	* include/conf.h: 
+	Add checking of SIZEOF_UNSIGNED_LONG_LONG to the list of macros
+	used for determining when to use %lu and when to use %llu.  FreeBSD
+	does not require the other macros used (_FILE_OFFSET_BITS or
+	_LARGE_FILES), and so this additional check (which assumes that if
+	the size of an unsigned long long is 8 bytes, the underlying
+	platform will support use of %llu -- and we all know what happens
+	when one assumes) is required for proper LFS detection and support
+	on FreeBSD (and perhaps other platforms?).
+
+2002-06-25 10:17  castaglia
+
+	* contrib/mod_sql.c: 
+	Added LFS-specific format macro, fixed NULL/'\0' comparison (was
+	causing a compiler warning).
+
+2002-06-25 09:52  castaglia
+
+	* modules/mod_xfer.c: 
+	One more minor LFS-related modification.
+
+2002-06-25 09:37  castaglia
+
+	* src/auth.c: 
+	Fixed minor indentation/spacing.
+
+2002-06-24 21:27  jwm
+
+	* contrib/mod_ldap.c: 
+	#1659 - LDAP config handlers should use c->pool instead of
+	permanent_pool
+
+2002-06-24 17:38  castaglia
+
+	* modules/mod_unixpw.c: 
+	Fixed compiler warning on FreeBSD concerning return value of the
+	setgrent(3) function.
+
+2002-06-24 16:24  castaglia
+
+	* modules/: mod_auth.c, mod_core.c: 
+	Changed use of permanent_pool to c->pool in configuration handlers
+	where appropriate.
+
+2002-06-24 08:23  castaglia
+
+	* modules/mod_ls.c: 
+	Forgot to remove the ShowDotFiles configuration handler function.
+
+2002-06-24 08:19  castaglia
+
+	* NEWS, modules/mod_ls.c, modules/mod_site.c: 
+	Removed the deprecated AllowChmod and ShowDotFiles directives.
+
+2002-06-23 15:14  castaglia
+
+	* NEWS, include/dirtree.h, src/dirtree.c: 
+	Bug#1171 - Add ability to handle backslash-escaped lines in
+	configuration file
+
+2002-06-23 15:12  jwm
+
+	* NEWS: 
+	where the hell did I get 1304? this is #1569...
+
+2002-06-23 15:10  jwm
+
+	* NEWS: 
+	updates
+
+2002-06-23 14:56  castaglia
+
+	* NEWS: 
+	Noting addition/work on Cygwin stuff.
+
+2002-06-23 12:09  castaglia
+
+	* README.cygwin: 
+	Minor spelling correction.
+
+2002-06-23 12:07  jwm
+
+	* configure: 
+	updated configure for #1304 - Cygwin support
+
+2002-06-23 12:06  jwm
+
+	* README.cygwin: 
+	#1304 - README.cygwin Thanks to Stanislav Sinyagin
+	<ssinyagin@yahoo.com>
+
+2002-06-23 12:03  castaglia
+
+	* include/conf.h, include/data.h, include/default_paths.h,
+	include/dirtree.h, include/fs.h, include/ident.h, include/inet.h,
+	include/io.h, include/libsupp.h, include/log.h, include/modules.h,
+	include/options.h, include/pool.h, include/privs.h,
+	include/proftpd.h, include/sets.h, include/support.h,
+	include/timers.h, src/auth.c, src/data.c, src/dirtree.c, src/fs.c,
+	src/ftpcount.c, src/ftpshut.c, src/ftpwho.c, src/ident.c,
+	src/inet.c, src/io.c, src/log.c, src/main.c, src/modules.c,
+	src/pool.c, src/sets.c, src/support.c, src/timers.c, src/utils.c: 
+	Updated copyrights.
+
+2002-06-23 11:56  jwm
+
+	* src/log.c, configure.in, src/inet.c, src/auth.c: 
+	cleaned up versions of #1304 - Cygwin support
+
+2002-06-22 13:17  jwm
+
+	* modules/mod_xfer.c: 
+	minor LFS fix
+
+2002-06-22 11:13  jwm
+
+	* config.guess, config.sub: 
+	update config.guess and config.sub from
+	http://subversions.gnu.org/cgi-bin/viewcvs/config/config/;
+	parisc-linux support wasn't in our copies
+
+2002-06-22 00:02  castaglia
+
+	* src/: ftpcount.1, ftpshut.8, ftpwho.1, proftpd.8: 
+	Minor corrections to man pages.
+
+2002-06-21 18:06  castaglia
+
+	* NEWS, lib/Makefile.in, lib/glibc-glob.c, src/data.c,
+	src/dirtree.c, src/ftpcount.c, src/io.c, src/log.c, src/main.c,
+	src/pool.c, src/timers.c: 
+	Bug#1650 - Code cleanup
+
+2002-06-21 17:54  castaglia
+
+	* modules/mod_auth.c: 
+	Fixed bad patching of the new TimeoutSession code.
+
+2002-06-21 17:47  castaglia
+
+	* NEWS, include/proftpd.h, modules/mod_auth.c: 
+	Bug#1306 - Add timeout for entire session
+
+2002-06-21 17:24  castaglia
+
+	* modules/mod_auth.c, modules/mod_core.c, modules/mod_log.c,
+	modules/mod_ls.c, modules/mod_site.c, modules/mod_xfer.c,
+	src/dirtree.c: 
+	In the aftermath of Bug#1650, I went through most of the
+	configuration directive handlers, looking for similar possible
+	mergedown bugs.  I corrected the lurking mergedown bugs I saw, and
+	fixed other cases where merging down was inappropriately being
+	requested.  More cleanup and code consolidation is possible, and
+	indeed recommended.
+
+2002-06-21 12:36  castaglia
+
+	* modules/mod_core.c: 
+	Fixed instance of pstrcat() call that did not properly have NULL as
+	the last argument.
+
+2002-06-21 11:54  castaglia
+
+	* NEWS, modules/mod_ls.c: 
+	Bug#1650 - LsDefaultOptions doesn't work inside anon context
+
+2002-06-20 17:40  castaglia
+
+	* NEWS, modules/mod_ls.c: 
+	Bug#1647 - Unnecessary use of umode_t in mod_ls
+
+2002-06-14 09:41  jwm
+
+	* Makefile.in: 
+	these symlinks aren't needed
+
+2002-06-14 09:36  jwm
+
+	* contrib/mod_ldap.c: 
+	LDAPHomedirOnDemand cleanup/fixes
+
+2002-06-14 09:19  castaglia
+
+	* Makefile.in: 
+	Added .cvsignore files to the list of files cleaned up by 'make
+	distclean'
+
+2002-06-14 08:55  jwm
+
+	* doc/: API, development.notes: 
+	removing old cruft
+
+2002-06-12 12:11  castaglia
+
+	* modules/mod_ls.c: 
+	Corrected spacing
+
+2002-06-11 10:13  castaglia
+
+	* configure: 
+	Updated configure script for LFS support detection.
+
+2002-06-11 10:09  castaglia
+
+	* NEWS, config.h.in, configure.in, include/conf.h, include/data.h,
+	include/log.h, include/proftpd.h, include/support.h,
+	modules/mod_core.c, modules/mod_log.c, modules/mod_ls.c,
+	modules/mod_xfer.c, src/data.c, src/log.c, src/support.c: 
+	Bug#1534 - Large File Support
+
+2002-06-11 09:19  castaglia
+
+	* configure: 
+	Updated configure script
+
+2002-06-11 09:18  castaglia
+
+	* Make.rules.in, NEWS, config.h.in, configure.in,
+	include/libsupp.h, include/proftpd.h, lib/glibc-mkstemp.c,
+	modules/mod_core.c, modules/mod_xfer.c, src/data.c: 
+	Bug#1258 - STOU not implemented
+
+2002-06-11 08:34  castaglia
+
+	* NEWS, src/auth.c: 
+	Bug#1463 - Add auth handler dispatch reporting at new debug level
+	(level 6)
+
+2002-06-11 07:54  castaglia
+
+	* src/main.c: 
+	Removed relic function prototype (not needed).
+
+2002-06-11 07:49  castaglia
+
+	* NEWS, include/options.h, modules/mod_auth.c, modules/mod_core.c,
+	modules/mod_ls.c, modules/mod_xfer.c, src/dirtree.c, src/log.c,
+	src/main.c, src/pool.c: 
+	Bug#1556 - Signal handlers use unsafe functions
+
+2002-06-11 07:36  castaglia
+
+	* NEWS, include/dirtree.h, include/modules.h, modules/mod_core.c,
+	src/dirtree.c, src/main.c, src/modules.c, src/proftpd.8: 
+	Added Define, <IfDefine>, <IfModule> configuration directives, -D
+	command-line option
+
+2002-06-11 07:30  castaglia
+
+	* NEWS, include/version.h, modules/mod_xfer.c, src/data.c: 
+	
+	Bug#1407 - ftp protocol differences
+
+2002-06-08 19:55  castaglia
+
+	* NEWS: Fixed version number.  Sheesh.
+
+2002-06-08 19:40  castaglia
+
+	* ChangeLog: 
+	Updated ChangeLog
+
 2002-06-08 19:38  castaglia
 
 	* NEWS, contrib/mod_sql.c, contrib/mod_sql_mysql.c,
