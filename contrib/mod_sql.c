@@ -23,7 +23,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-#define _MOD_VERSION "mod_sql/4.08"
+#define _MOD_VERSION "mod_sql/4.09"
 
 #ifdef HAVE_CRYPT_H
 #include <crypt.h>
@@ -45,34 +45,34 @@
 #include "conf.h"
 #include "privs.h"
 #include "fs.h"
-#include "../contrib/mod_sql.h"
+#include "mod_sql.h"
 
 /* default information for tables and fields */
-#define MODSQL_DEF_USERTABLE         "users"
-#define MODSQL_DEF_USERNAMEFIELD     "userid"
-#define MODSQL_DEF_USERUIDFIELD      "uid"
-#define MODSQL_DEF_USERGIDFIELD      "gid"
-#define MODSQL_DEF_USERPASSWORDFIELD "password"
-#define MODSQL_DEF_USERSHELLFIELD    "shell"
-#define MODSQL_DEF_USERHOMEDIRFIELD  "homedir"
+#define MOD_SQL_DEF_USERTABLE         "users"
+#define MOD_SQL_DEF_USERNAMEFIELD     "userid"
+#define MOD_SQL_DEF_USERUIDFIELD      "uid"
+#define MOD_SQL_DEF_USERGIDFIELD      "gid"
+#define MOD_SQL_DEF_USERPASSWORDFIELD "password"
+#define MOD_SQL_DEF_USERSHELLFIELD    "shell"
+#define MOD_SQL_DEF_USERHOMEDIRFIELD  "homedir"
 
-#define MODSQL_DEF_GROUPTABLE        "groups"
-#define MODSQL_DEF_GROUPNAMEFIELD    "groupname"
-#define MODSQL_DEF_GROUPGIDFIELD     "gid"
-#define MODSQL_DEF_GROUPMEMBERSFIELD "members"
+#define MOD_SQL_DEF_GROUPTABLE        "groups"
+#define MOD_SQL_DEF_GROUPNAMEFIELD    "groupname"
+#define MOD_SQL_DEF_GROUPGIDFIELD     "gid"
+#define MOD_SQL_DEF_GROUPMEMBERSFIELD "members"
 
 /* default minimum id / default uid / default gid info. 
- * uids and gids less than MODSQL_MIN_USER_UID and
- * MODSQL_MIN_USER_GID, respectively, get automatically
+ * uids and gids less than MOD_SQL_MIN_USER_UID and
+ * MOD_SQL_MIN_USER_GID, respectively, get automatically
  * mapped to the defaults, below.  These can be
  * overridden using directives
  */
-#define MODSQL_MIN_USER_UID 999
-#define MODSQL_MIN_USER_GID 999
-#define MODSQL_DEF_UID 65533
-#define MODSQL_DEF_GID 65533
+#define MOD_SQL_MIN_USER_UID 999
+#define MOD_SQL_MIN_USER_GID 999
+#define MOD_SQL_DEF_UID 65533
+#define MOD_SQL_DEF_GID 65533
 
-#define MODSQL_BUFSIZE 32
+#define MOD_SQL_BUFSIZE 32
 
 /* Named Query defines */
 #define SQL_SELECT_C "SELECT"
@@ -105,7 +105,8 @@
  */
 extern response_t *resp_list,*resp_err_list;
 static char *_sql_where(pool *p, int cnt, ...);
-
+MODRET cmd_getgrent(cmd_rec *);
+MODRET cmd_setgrent(cmd_rec *);
 
 pool *sql_pool;
 
@@ -930,7 +931,7 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
   sql_data_t * sd = NULL;
   modret_t *mr = NULL;
   struct passwd *pwd = NULL;
-  char uidstr[MODSQL_BUFSIZE] = { '\0' };
+  char uidstr[MOD_SQL_BUFSIZE] = { '\0' };
   char *usrwhere, *where;
   char *realname;
   int index = 0;
@@ -975,7 +976,7 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
 
   } else {
     /* assume we have a uid */
-    snprintf(uidstr, MODSQL_BUFSIZE, "%d", (uid_t) p->pw_uid);
+    snprintf(uidstr, MOD_SQL_BUFSIZE, "%d", (uid_t) p->pw_uid);
     log_debug( DEBUG_WARN, _MOD_VERSION ": cache miss for uid '%s'", uidstr );
 
     if (cmap.uidfield)
@@ -1101,7 +1102,7 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
   int cnt = 0;
   sql_data_t *sd = NULL;
   char *groupname = NULL;
-  char gidstr[MODSQL_BUFSIZE] = { '\0' };
+  char gidstr[MOD_SQL_BUFSIZE] = { '\0' };
   char **rows = NULL;
   int numrows = 0;
   array_header *ah = NULL;
@@ -1133,7 +1134,7 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
 
   } else {
     /* get groupname from gid */
-    snprintf(gidstr, MODSQL_BUFSIZE, "%d", (gid_t) g->gr_gid);
+    snprintf(gidstr, MOD_SQL_BUFSIZE, "%d", (gid_t) g->gr_gid);
 
     log_debug( DEBUG_WARN, _MOD_VERSION ": cache miss for gid '%s'", gidstr );
 
@@ -1208,7 +1209,8 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
     /* for each member in the list, toss 'em into the array.  no
      * need to copy the string -- _sql_addgroup will do it for us 
      */
-    for (member = strsep(&iterator, " ,"); member; member = strsep(&iterator, " ,")) {
+    for (member = strsep(&iterator, ","); member;
+        member = strsep(&iterator, ",")) {
       if (*member=='\0') continue;
       *((char **) push_array(ah)) = member;
     }      
@@ -1241,6 +1243,106 @@ static void _setstats(cmd_rec * cmd, int fstor, int fretr,
 				query, where ), "sql_update" );
   _sql_check_response(mr);
 
+}
+
+static int _sql_getgroups(cmd_rec * cmd)
+{
+  struct passwd *pw = NULL, lpw;
+  struct group *grp, lgr;
+  char *grpwhere = NULL, *where = NULL, **rows = NULL;
+  sql_data_t *sd = NULL;
+  modret_t *mr = NULL;
+  array_header *gids = NULL, *groups = NULL;
+  char *name = cmd->argv[0];
+  int numrows = 0;
+  register unsigned int i = 0;
+
+  /* check for NULL values */
+  if (cmd->argv[1])
+    gids = (array_header *) cmd->argv[1];
+
+  if (cmd->argv[2])
+    groups = (array_header *) cmd->argv[2];
+
+  lpw.pw_uid = -1;
+  lpw.pw_name = name;
+  
+  /* Retrieve the necessary info */
+  if (!name || !(pw = _sql_getpasswd(cmd, &lpw)))
+    return -1;
+
+  /* Populate the first group ID and name */
+  if (gids)
+    *((gid_t *) push_array(gids)) = pw->pw_gid;
+
+  lgr.gr_gid = pw->pw_gid;
+  lgr.gr_name = NULL;
+
+  if (groups && (grp = _sql_getgroup(cmd, &lgr)) != NULL)
+    *((char **) push_array(groups)) = pstrdup(permanent_pool, grp->gr_name);
+
+  /* Use a single SELECT:
+   *
+   *  SELECT groupname,gid,members FROM groups
+   *    WHERE members LIKE '%,<user>,%' OR LIKE '<user>,%' OR LIKE '%,<user>';
+   *
+   */
+
+  grpwhere = pstrcat(cmd->tmp_pool,
+    cmap.grpmembersfield, " = '", name, "' OR ",
+    cmap.grpmembersfield, " LIKE '", name, ",%' OR ",
+    cmap.grpmembersfield, " LIKE '%,", name, "' OR ",
+    cmap.grpmembersfield, " LIKE '%,", name, ",%'", NULL);
+
+  where = _sql_where(cmd->tmp_pool, 2, grpwhere, cmap.groupwhere);
+  
+  mr = _sql_dispatch( _sql_make_cmd( cmd->tmp_pool, 4,
+                                     "default",
+                                     cmap.grptable,
+                                     cmap.grpfields,
+                                     where ),
+                      "sql_select" );
+  _sql_check_response(mr);
+  
+  sd = (sql_data_t *) mr->data;
+
+  /* if we have no data... */
+  if (sd->rnum == 0) return -1;
+
+  rows = sd->data;
+  numrows = sd->rnum;
+
+  for (i = 0; i < numrows; i++) {
+    char *groupname = sd->data[(i * 3)];
+    gid_t gid = (gid_t) atoi(sd->data[(i * 3) +1]);
+    char *memberstr = sd->data[(i * 3) + 2], *member = NULL;
+    array_header *members = make_array(cmd->tmp_pool, 2, sizeof(char *));
+
+    *((gid_t *) push_array(gids)) = gid;
+    *((char **) push_array(groups)) = pstrdup(permanent_pool, groupname);
+
+    /* For each member in the list, toss 'em into the array.  no
+     * need to copy the string -- _sql_addgroup will do it for us
+     */
+    for (member = strsep(&memberstr, ","); member;
+        member = strsep(&memberstr, ",")) {
+      if (*member == '\0')
+        continue;
+      *((char **) push_array(members)) = member;
+    }
+
+    /* Add this group data to the group cache. */
+    _sql_addgroup( cmd, groupname, gid, members );
+  }
+
+  if (gids && gids->nelts > 0)
+    return gids->nelts;
+
+  else if (groups && groups->nelts)
+    return groups->nelts;
+
+  /* default */
+  return -1;
 }
 
 /*****************************************************************
@@ -2682,7 +2784,7 @@ MODRET cmd_uid_name(cmd_rec * cmd)
 {
   struct passwd *pw;
   struct passwd lpw;
-  char uidstr[MODSQL_BUFSIZE] = {'\0'};
+  char uidstr[MOD_SQL_BUFSIZE] = {'\0'};
 
   _sql_check_cmd(cmd, "cmd_uid_name");
 
@@ -2708,7 +2810,7 @@ MODRET cmd_uid_name(cmd_rec * cmd)
     if (!SQL_USERGOD)
       return DECLINED(cmd);
 
-    snprintf( uidstr, MODSQL_BUFSIZE, "%d", (uid_t) cmd->argv[0]);
+    snprintf( uidstr, MOD_SQL_BUFSIZE, "%d", (uid_t) cmd->argv[0]);
     return mod_create_data(cmd, uidstr);
   }
 
@@ -2719,7 +2821,7 @@ MODRET cmd_gid_name(cmd_rec * cmd)
 {
   struct group *gr;
   struct group lgr;
-  char gidstr[MODSQL_BUFSIZE]={'\0'};
+  char gidstr[MOD_SQL_BUFSIZE]={'\0'};
 
   _sql_check_cmd(cmd, "cmd_gid_name");
 
@@ -2739,7 +2841,7 @@ MODRET cmd_gid_name(cmd_rec * cmd)
     if (!SQL_GROUPGOD)
       return DECLINED(cmd);
 
-    snprintf( gidstr, MODSQL_BUFSIZE, "%d", (gid_t) cmd->argv[0]);
+    snprintf( gidstr, MOD_SQL_BUFSIZE, "%d", (gid_t) cmd->argv[0]);
     return mod_create_data(cmd, gidstr);
   }
 
@@ -2776,7 +2878,7 @@ MODRET cmd_name_uid(cmd_rec * cmd)
     return SQL_USERGOD ? ERROR(cmd) : DECLINED(cmd);
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_name_gid");
+  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_name_uid");
 
   return mod_create_data(cmd, (void *) pw->pw_uid);
 }
@@ -2806,6 +2908,30 @@ MODRET cmd_name_gid(cmd_rec * cmd)
   log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_name_gid");
 
   return mod_create_data(cmd, (void *) gr->gr_gid);
+}
+
+MODRET cmd_getgroups(cmd_rec * cmd)
+{
+  int res;
+
+  _sql_check_cmd(cmd, "cmd_getgroups");
+
+  if (!SQL_GROUPS) {
+    return DECLINED(cmd);
+  }
+
+  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_getgroups");
+
+  res = _sql_getgroups(cmd);
+
+  if (res < 0) {
+    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_getgroups");
+    return SQL_GROUPGOD ? ERROR(cmd) : DECLINED(cmd); 
+  }
+
+  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_getgroups");
+
+  return mod_create_data(cmd, (void *) res);
 }
 
 MODRET cmd_getstats(cmd_rec * cmd)
@@ -3608,13 +3734,13 @@ static int sql_getconf()
   /* if we have no SQLUserTable, SQLUserInfo was not used -- default all */
   
   if (!temp_ptr) {
-    cmap.usrtable = MODSQL_DEF_USERTABLE;
-    cmap.usrfield = MODSQL_DEF_USERNAMEFIELD;
-    cmap.pwdfield = MODSQL_DEF_USERPASSWORDFIELD;
-    cmap.uidfield = MODSQL_DEF_USERUIDFIELD;
-    cmap.gidfield = MODSQL_DEF_USERGIDFIELD;
-    cmap.homedirfield = MODSQL_DEF_USERHOMEDIRFIELD;
-    cmap.shellfield = MODSQL_DEF_USERSHELLFIELD;
+    cmap.usrtable = MOD_SQL_DEF_USERTABLE;
+    cmap.usrfield = MOD_SQL_DEF_USERNAMEFIELD;
+    cmap.pwdfield = MOD_SQL_DEF_USERPASSWORDFIELD;
+    cmap.uidfield = MOD_SQL_DEF_USERUIDFIELD;
+    cmap.gidfield = MOD_SQL_DEF_USERGIDFIELD;
+    cmap.homedirfield = MOD_SQL_DEF_USERHOMEDIRFIELD;
+    cmap.shellfield = MOD_SQL_DEF_USERSHELLFIELD;
   } else {
     cmap.usrtable = temp_ptr;
     cmap.usrfield = get_param_ptr(main_server->conf, "SQLUsernameField", FALSE);
@@ -3641,10 +3767,10 @@ static int sql_getconf()
   
   /* if we have no temp_ptr, SQLGroupInfo was not used - default all */
   if (!temp_ptr) {
-    cmap.grptable = MODSQL_DEF_GROUPTABLE;
-    cmap.grpfield = MODSQL_DEF_GROUPNAMEFIELD;
-    cmap.grpgidfield = MODSQL_DEF_GROUPGIDFIELD;
-    cmap.grpmembersfield = MODSQL_DEF_GROUPMEMBERSFIELD;
+    cmap.grptable = MOD_SQL_DEF_GROUPTABLE;
+    cmap.grpfield = MOD_SQL_DEF_GROUPNAMEFIELD;
+    cmap.grpgidfield = MOD_SQL_DEF_GROUPGIDFIELD;
+    cmap.grpmembersfield = MOD_SQL_DEF_GROUPMEMBERSFIELD;
   } else {
     cmap.grptable = get_param_ptr(main_server->conf, "SQLGroupTable", FALSE);
     cmap.grpfield = get_param_ptr(main_server->conf, "SQLGroupnameField", FALSE);
@@ -3673,17 +3799,17 @@ static int sql_getconf()
 
   } else {
     temp_ptr = get_param_ptr(main_server->conf, "SQLMinUserUID", FALSE);
-    cmap.minuseruid = temp_ptr ? *((uid_t *) temp_ptr) : MODSQL_MIN_USER_UID;
+    cmap.minuseruid = temp_ptr ? *((uid_t *) temp_ptr) : MOD_SQL_MIN_USER_UID;
 
     temp_ptr = get_param_ptr(main_server->conf, "SQLMinUserGID", FALSE);
-    cmap.minusergid = temp_ptr ? *((gid_t *) temp_ptr) : MODSQL_MIN_USER_GID;
+    cmap.minusergid = temp_ptr ? *((gid_t *) temp_ptr) : MOD_SQL_MIN_USER_GID;
   }
 
   temp_ptr = get_param_ptr(main_server->conf, "SQLDefaultUID", FALSE);
-  cmap.defaultuid = temp_ptr ? *((uid_t *) temp_ptr) : MODSQL_DEF_UID;
+  cmap.defaultuid = temp_ptr ? *((uid_t *) temp_ptr) : MOD_SQL_DEF_UID;
 
   temp_ptr = get_param_ptr(main_server->conf, "SQLDefaultGID", FALSE);
-  cmap.defaultgid = temp_ptr ? *((gid_t *) temp_ptr) : MODSQL_DEF_GID;
+  cmap.defaultgid = temp_ptr ? *((gid_t *) temp_ptr) : MOD_SQL_DEF_GID;
 
   if ((c = find_config(main_server->conf, CONF_PARAM, "SQLRatioStats", FALSE))) {
     cmap.sql_fstor = c->argv[0];
@@ -3956,6 +4082,7 @@ static authtable sql_authtab[] = {
   {0, "gid_name", cmd_gid_name},
   {0, "name_uid", cmd_name_uid},
   {0, "name_gid", cmd_name_gid},
+  {0, "getgroups", cmd_getgroups},
   {0, "getstats", cmd_getstats},
   {0, "getratio", cmd_getratio},
   {0, NULL, NULL}

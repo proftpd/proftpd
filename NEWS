@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.198 2002-06-27 22:36:25 castaglia Exp $
+$Id: NEWS,v 1.199 2002-07-01 18:18:01 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -31,6 +31,10 @@ CVS
   http://bugs.proftpd.org for a list of the mod_quota bugs.
 - Bug 1667 - Moved definition of USE_SHADOW, AUTO_SHADOW macros from command
              line into config.h, with the other macros.
+- Bug 1628 - Added getgroups auth handler to mod_sql.  The lack of this was
+             causing some DefaultRoot directives (those that relied on
+             group-expressions) not be correctly honored, as mod_sql was
+             not supplying the groups for the users.
 
 1.2.5 - Released 2002-06-08
 ---------------------------------
