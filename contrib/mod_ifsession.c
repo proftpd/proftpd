@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.5 2003-08-09 08:09:28 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.6 2003-08-15 01:33:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -277,7 +277,13 @@ MODRET end_ifctxt(cmd_rec *cmd) {
  */
 
 MODRET ifsess_post_pass(cmd_rec *cmd) {
+  register unsigned int i = 0;
   config_rec *c = NULL;
+  pool *tmp_pool = make_sub_pool(session.pool);
+  array_header *group_remove_list = make_array(tmp_pool, 1,
+    sizeof(config_rec *));
+  array_header *user_remove_list = make_array(tmp_pool, 1,
+    sizeof(config_rec *));
 
   /* Unfortunately, I can't assign my own context types for these custom
    * contexts, otherwise the existing directives would not be allowed in
@@ -294,7 +300,6 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
   c = find_config(main_server->conf, -1, IFSESS_GROUP_TEXT, FALSE);
 
   while (c) {
-    unsigned char removed_c = FALSE;
     config_rec *list = NULL;
 
     if ((list = find_config(c->subset, IFSESS_GROUP_NUMBER, NULL,
@@ -335,8 +340,10 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
           ": merging <IfGroup> directives in");
         ifsess_dup_set(main_server->pool, main_server->conf, c->subset);
 
-        xaset_remove(main_server->conf, (xasetmember_t *) c);
-        removed_c = TRUE; 
+        /* Add this config_rec pointer to the list of pointers to be
+         * removed later.
+         */
+        *((config_rec **) push_array(group_remove_list)) = c;
 
         resolve_deferred_dirs(main_server);
         fixup_dirs(main_server, CF_DEFER);
@@ -358,10 +365,15 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
     c = find_config_next(c, c->next, -1, IFSESS_GROUP_TEXT, FALSE);
   }
 
+  /* Now, remove any <IfGroup> config_recs that have been merged in. */
+  for (i = 0; i < group_remove_list->nelts; i++) {
+    c = ((config_rec **) group_remove_list->elts)[i];
+    xaset_remove(main_server->conf, (xasetmember_t *) c);
+  }
+
   c = find_config(main_server->conf, -1, IFSESS_USER_TEXT, FALSE);
 
   while (c) {
-    unsigned char removed_c = FALSE;
     config_rec *list = NULL;
 
     if ((list = find_config(c->subset, IFSESS_USER_NUMBER, NULL,
@@ -391,8 +403,10 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
           ": merging <IfUser> directives in");
         ifsess_dup_set(main_server->pool, main_server->conf, c->subset);
 
-        xaset_remove(main_server->conf, (xasetmember_t *) c);
-        removed_c = TRUE;
+        /* Add this config_rec pointer to the list of pointers to be
+         * removed later.
+         */
+        *((config_rec **) push_array(user_remove_list)) = c;
 
         resolve_deferred_dirs(main_server);
         fixup_dirs(main_server, CF_DEFER);
@@ -405,6 +419,13 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
     c = find_config_next(c, c->next, -1, IFSESS_USER_TEXT, FALSE);
   }
 
+  /* Now, remove any <IfUser> config_recs that have been merged in. */
+  for (i = 0; i < user_remove_list->nelts; i++) {
+    c = ((config_rec **) user_remove_list->elts)[i];
+    xaset_remove(main_server->conf, (xasetmember_t *) c);
+  }
+
+  destroy_pool(tmp_pool);
   return DECLINED(cmd);
 }
 
@@ -412,12 +433,15 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
  */
 
 static int ifsess_sess_init(void) {
+  register unsigned int i = 0;
   config_rec *c = NULL;
+  pool *tmp_pool = make_sub_pool(session.pool);
+  array_header *class_remove_list = make_array(tmp_pool, 1,
+    sizeof(config_rec *));
 
   c = find_config(main_server->conf, -1, IFSESS_CLASS_TEXT, FALSE);
 
   while (c) {
-    unsigned char removed_c = FALSE;
     config_rec *list = NULL;
 
     if ((list = find_config(c->subset, IFSESS_CLASS_NUMBER, NULL,
@@ -448,8 +472,10 @@ static int ifsess_sess_init(void) {
           ": merging <IfClass> directives in");
         ifsess_dup_set(main_server->pool, main_server->conf, c->subset);
 
-        xaset_remove(main_server->conf, (xasetmember_t *) c);
-        removed_c = TRUE;
+        /* Add this config_rec pointer to the list of pointers to be
+         * removed later.
+         */
+        *((config_rec **) push_array(class_remove_list)) = c;
 
         resolve_deferred_dirs(main_server);
         fixup_dirs(main_server, CF_DEFER);
@@ -462,6 +488,13 @@ static int ifsess_sess_init(void) {
     c = find_config_next(c, c->next, -1, IFSESS_CLASS_TEXT, FALSE);
   }
 
+  /* Now, remove any <IfClass> config_recs that have been merged in. */
+  for (i = 0; i < class_remove_list->nelts; i++) {
+    c = ((config_rec **) class_remove_list->elts)[i];
+    xaset_remove(main_server->conf, (xasetmember_t *) c);
+  }
+
+  destroy_pool(tmp_pool);
   return 0;
 }
 
