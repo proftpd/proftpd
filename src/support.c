@@ -20,7 +20,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.14 2000-07-07 01:19:27 macgyver Exp $
+ * $Id: support.c,v 1.15 2000-07-07 06:18:35 macgyver Exp $
  */
 
 /* History Log:
@@ -351,10 +351,15 @@ char *dir_abs_path(pool *p, const char *path, int interpolate)
   return res;
 }
 
+/* Return the mode (including the file type)
+   of the file pointed to by symlink PATH, or 0 if it doesn't exist.
+   Catch symlink loops using LAST_INODE and RCOUNT.  */
+
 static mode_t _symlink(char *path, ino_t last_inode, int rcount)
 {
-  char buf[255];
+  char buf[MAXPATHLEN + 1];
   struct stat sbuf;
+  int i;
 
   if(++rcount >= 32) {
     errno = ELOOP;
@@ -363,8 +368,10 @@ static mode_t _symlink(char *path, ino_t last_inode, int rcount)
 
   bzero(buf,sizeof(buf));
 
-  if(fs_readlink(path,buf,sizeof(buf)) == -1)
+  i = fs_readlink(path,buf,sizeof(buf) - 1);
+  if(i == -1)
     return (mode_t)0;
+  buf[i] = '\0';
 
   if(fs_lstat(buf,&sbuf) != -1) {
     if(sbuf.st_ino && (ino_t)sbuf.st_ino == last_inode) {
@@ -385,9 +392,13 @@ mode_t file_mode(char *path)
   struct stat sbuf;
   mode_t res = 0;
 
-  if(fs_stat(path,&sbuf) != -1) {
-    if(S_ISLNK(sbuf.st_mode))
+  if(fs_lstat(path,&sbuf) != -1) {
+    if(S_ISLNK(sbuf.st_mode)) {
       res = _symlink(path,(ino_t)0,0);
+      if (res == 0)
+	/* a dangling symlink, but it exists to rename or delete. */
+	res = sbuf.st_mode;
+    }
     else
       res = sbuf.st_mode;
   }
@@ -395,7 +406,10 @@ mode_t file_mode(char *path)
   return res;
 }
 
-/* dirp == -1, don't care if file or directory */
+/* If DIRP == 1, fail unless PATH is an existing directory.
+   If DIRP == 0, fail unless PATH is an existing non-directory.
+   If DIRP == -1, fail unless PATH exists; the caller doesn't care whether
+   PATH is a file or a directory. */
 
 static int _exists(char *path, int dirp)
 {

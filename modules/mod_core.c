@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.32 2000-07-06 20:08:01 macgyver Exp $
+ * $Id: mod_core.c,v 1.33 2000-07-07 06:18:35 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -2012,7 +2012,9 @@ MODRET cmd_rmd(cmd_rec *cmd)
   }
 #endif
 
-  dir = dir_realpath(cmd->tmp_pool,cmd->arg);
+  /* If told to rmdir a symlink to a directory, don't;
+     you can't rmdir a symlink, you delete it.  */
+  dir = dir_canonical_path(cmd->tmp_pool,cmd->arg);
 
   if(!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
      rmdir(dir) == -1) {
@@ -2216,7 +2218,8 @@ MODRET cmd_dele(cmd_rec *cmd)
   }
 #endif
 
-  path = dir_realpath(cmd->tmp_pool,cmd->arg);
+  /* If told to delete a symlink, don't delete the file it points to!  */
+  path = dir_canonical_path(cmd->tmp_pool,cmd->arg);
   if(!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) ||
      fs_unlink(path) == -1) {
     add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
@@ -2313,7 +2316,8 @@ MODRET cmd_rnfr(cmd_rec *cmd)
   }
 #endif
 
-  path = dir_realpath(cmd->tmp_pool,cmd->arg);
+  /* Allow renaming a symlink, even a dangling one.  */
+  path = dir_canonical_path(cmd->tmp_pool,cmd->arg);
 
   if(!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) ||
      !exists(path)) {
