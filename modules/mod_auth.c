@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.81 2002-09-05 21:13:04 castaglia Exp $
+ * $Id: mod_auth.c,v 1.82 2002-09-06 00:59:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -40,6 +40,7 @@ module auth_module;
 
 static int logged_in = 0;
 static int auth_tries = 0;
+static char *auth_pass_resp_code = R_230;
 static unsigned int TimeoutSession = 0;
 
 static void _do_user_counts(void);
@@ -47,24 +48,20 @@ static void _do_user_counts(void);
 /* Perform a chroot or equivalent action to lockdown the process into a
  * particular directory.
  */
-static int lockdown(char *newroot)
-{
-  PRIVS_ROOT
-  
+static int lockdown(char *newroot) {
   log_debug(DEBUG1, "Preparing to chroot() the environment, path = '%s'",
-	    newroot);
+    newroot);
   
+  PRIVS_ROOT
   if (chroot(newroot) == -1) {
     PRIVS_RELINQUISH
-    log_pri(LOG_ERR, "%s chroot(\"%s\"): %s", session.user,
-	    newroot, strerror(errno));
+    log_pri(LOG_ERR, "%s chroot(\"%s\"): %s", session.user, newroot,
+      strerror(errno));
     return -1;
   }
-  
   PRIVS_RELINQUISH
 
   log_debug(DEBUG1, "Environment successfully chroot()ed.");
-
   return 0;
 }
 
@@ -72,32 +69,22 @@ static int lockdown(char *newroot)
  * so that we can deny all commands until authentication is complete.
  */
 int check_auth(cmd_rec *cmd) {
-  if(get_param_int(cmd->server->conf,"authenticated",FALSE) != 1) {
-    send_response(R_530,"Please login with USER and PASS.");
+  if (get_param_int(cmd->server->conf, "authenticated", FALSE) != 1) {
+    send_response(R_530, "Please login with USER and PASS.");
     return FALSE;
   }
   
   return TRUE;
 }
 
-int _auth_shutdown(CALLBACK_FRAME) {
-  log_pri(LOG_ERR, "scheduled main_exit() never ran "
-	  "[from auth:_login_timeout], terminating.");
-  end_login(1);
-  return 0;				/* Avoid compiler warning */
-}
-
 /* As for 1.2.0, timer callbacks are now non-reentrant, so it's
  * safe to call main_exit()
  */
 
-int _login_timeout(CALLBACK_FRAME)
-{
+static int auth_login_timeout_cb(CALLBACK_FRAME) {
   /* Is this the proper behavior when timing out? */
-  send_response_async(R_421,
-		      "Login Timeout (%d seconds): "
-		      "closing control connection.",
-                      TimeoutLogin);
+  send_response_async(R_421, "Login Timeout (%d seconds): "
+    "closing control connection.", TimeoutLogin);
   
   main_exit((void*) LOG_NOTICE, "FTP login timed out, disconnected.",
 	    (void*) 0, NULL);
@@ -106,7 +93,7 @@ int _login_timeout(CALLBACK_FRAME)
   return 0;
 }
 
-static int session_timeout(CALLBACK_FRAME) {
+static int auth_session_timeout_cb(CALLBACK_FRAME) {
 
   send_response_async(R_421, "Session Timeout (%u seconds): "
     "closing control connection", TimeoutSession);
@@ -126,7 +113,7 @@ static int auth_child_init(void) {
   /* Start the login timer */
   if (TimeoutLogin) {
     remove_timer(TIMER_LOGIN, &auth_module);
-    add_timer(TimeoutLogin, TIMER_LOGIN, &auth_module, _login_timeout);
+    add_timer(TimeoutLogin, TIMER_LOGIN, &auth_module, auth_login_timeout_cb);
   }
 
   /* Set the privs for the configured User/Group of this server */
@@ -158,7 +145,7 @@ static int auth_child_init(void) {
     PRIVS_SETUP(server_uid, server_gid);
   }
 
-  if ((char*)get_param_ptr(main_server->conf,"DisplayConnect",FALSE) != NULL)
+  if (get_param_ptr(main_server->conf, "DisplayConnect", FALSE) != NULL)
     _do_user_counts();
    
   return 0;
@@ -286,7 +273,8 @@ MODRET post_cmd_pass(cmd_rec *cmd) {
       TimeoutSession,
       have_user_timeout ? "user" : have_group_timeout ? "group" :
       have_class_timeout ? "class" : "all");
-    add_timer(TimeoutSession, TIMER_SESSION, &auth_module, session_timeout);
+    add_timer(TimeoutSession, TIMER_SESSION, &auth_module,
+      auth_session_timeout_cb);
   }
 
   return HANDLED(cmd);
@@ -780,7 +768,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   }
 
   if(!c || get_param_int(c->subset,"AnonRequirePassword",FALSE) == 1) {
-    int authcode;
+    int auth_code;
     char *user_name;
 
     user_name = user;
@@ -795,65 +783,70 @@ static int _setup_environment(pool *p, char *user, char *pass)
 	       user, user_name);
     }
     
-    if(c)
-      authcode = _do_auth(p,c->subset,user_name,pass);
-    else
-      authcode = _do_auth(p,main_server->conf,user_name,pass);
+    auth_code = _do_auth(p, c ? c->subset : main_server->conf, user_name, pass);
 
-    if(authcode) {
+    if (auth_code) {
       /* Normal authentication has failed, see if group authentication
        * passes
        */
 
-      if((c = _auth_group(p,user,&anongroup,&ourname,&anonname,pass)) != NULL) {
-        if(c->config_type != CONF_ANON) {
+      if ((c = _auth_group(p, user, &anongroup, &ourname, &anonname,
+          pass)) != NULL) {
+        if (c->config_type != CONF_ANON) {
           c = NULL;
-          ugroup = anongroup; anongroup = NULL;
+          ugroup = anongroup;
+          anongroup = NULL;
         }
 
-        authcode = 0;
+        auth_code = AUTH_OK;
       }
     }
     
     memset(pass, '\0', strlen(pass));  
 
-    switch(authcode) {
-    case AUTH_NOPWD:
-      log_auth(LOG_NOTICE, "USER %s (Login failed): No such user found.",
-	       user);
-      goto auth_failure;
+    switch(auth_code) {
+
+      /* Use an RFC2228 response code if authenticated by an RFC2228 module. */
+      case AUTH_RFC2228_OK:
+        auth_pass_resp_code = R_232;
+        break;
+
+      case AUTH_OK:
+        auth_pass_resp_code = R_230;
+        break;
+
+      case AUTH_NOPWD:
+        log_auth(LOG_NOTICE, "USER %s (Login failed): No such user found.",
+          user);
+        goto auth_failure;
       
-    case AUTH_BADPWD:
-      log_auth(LOG_NOTICE, "USER %s (Login failed): Incorrect password.",
-	       origuser);
-      goto auth_failure;
+      case AUTH_BADPWD:
+        log_auth(LOG_NOTICE, "USER %s (Login failed): Incorrect password.",
+          origuser);
+        goto auth_failure;
 
-    case AUTH_AGEPWD:
-      log_auth(LOG_NOTICE, "USER %s (Login failed): Password expired.",
-	       user);
-      goto auth_failure;
+      case AUTH_AGEPWD:
+        log_auth(LOG_NOTICE, "USER %s (Login failed): Password expired.",
+          user);
+        goto auth_failure;
 
-    case AUTH_DISABLEDPWD:
-      log_auth(LOG_NOTICE, "USER %s (Login failed): Account disabled.",
-	       user);
-      goto auth_failure;
+      case AUTH_DISABLEDPWD:
+        log_auth(LOG_NOTICE, "USER %s (Login failed): Account disabled.",
+          user);
+        goto auth_failure;
 
-    default:
-      break;
+      default:
+        break;
     };
-    
-    if(authcode != 0)
+
+    /* Catch the case where we forgot to handle a bad auth code above. */    
+    if (auth_code < 0)
       goto auth_failure;
+
   } else if(c && get_param_int(c->subset, "AnonRequirePassword", FALSE) != 1) {
     session.hide_password = FALSE;
   }
   
-/* Flood - 7/10/97, not sure what setutent() was used for, but it
- * certainly looks unnecessary now.
- */
-
- /* setutent(); */
-
   auth_setgrent(p);
 
   if(!_auth_check_shell((c ? c->subset : main_server->conf),pw->pw_shell)) {
@@ -1681,16 +1674,15 @@ MODRET pre_cmd_pass(cmd_rec *cmd) {
 }
 
 MODRET cmd_pass(cmd_rec *cmd) {
-  char *display = NULL;
-  char *user, *grantmsg;
+  char *user = NULL;
   int res = 0;
   
-  if(logged_in)
+  if (logged_in)
     return ERROR_MSG(cmd, R_503, "You are already logged in!");
   
-  user = (char *) get_param_ptr(cmd->server->conf, C_USER, FALSE);
+  user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
   
-  if(!user) {
+  if (!user) {
     remove_config(cmd->server->conf, C_USER, FALSE);
     remove_config(cmd->server->conf, C_PASS, FALSE);
     
@@ -1699,39 +1691,41 @@ MODRET cmd_pass(cmd_rec *cmd) {
   
   _auth_check_count(cmd, user);
   
-  if((res = _setup_environment(cmd->tmp_pool,user,cmd->arg)) == 1) {
-    add_config_param_set(&cmd->server->conf,"authenticated",1,(void*)1);
+  if ((res = _setup_environment(cmd->tmp_pool, user, cmd->arg)) == 1) {
+    char *display = NULL, *grantmsg = NULL;
+
+    add_config_param_set(&cmd->server->conf, "authenticated", 1, (void *) TRUE);
     set_auth_check(NULL);
 
     remove_config(cmd->server->conf, C_PASS, FALSE);
 
-    if(session.flags & SF_ANON) {
+    if (session.flags & SF_ANON) {
       add_config_param_set(&cmd->server->conf, C_PASS, 1,
-			   pstrdup(cmd->server->pool, cmd->arg));
-      display = (char*) get_param_ptr(session.anon_config->subset,
-				      "DisplayLogin", FALSE);
+        pstrdup(cmd->server->pool, cmd->arg));
+      display = get_param_ptr(session.anon_config->subset, "DisplayLogin",
+        FALSE);
     }
     
-    if(!display)
-      display = (char*) get_param_ptr(cmd->server->conf,
-				      "DisplayLogin", FALSE);
+    if (!display)
+      display = get_param_ptr(cmd->server->conf, "DisplayLogin", FALSE);
 
-    if(display)
-      core_display_file(R_230, display, NULL);
+    if (display)
+      core_display_file(auth_pass_resp_code, display, NULL);
     
-    if ((grantmsg = (char *)get_param_ptr((session.anon_config ?
+    if ((grantmsg = get_param_ptr((session.anon_config ?
         session.anon_config->subset : cmd->server->conf),
-        "AccessGrantMsg",FALSE)) != NULL) {
+        "AccessGrantMsg", FALSE)) != NULL) {
       grantmsg = sreplace(cmd->tmp_pool, grantmsg, "%u", user, NULL);
 
-      add_response(R_230, "%s", grantmsg);
+      add_response(auth_pass_resp_code, "%s", grantmsg);
 
     } else {
 
       if (session.flags & SF_ANON)
-        add_response(R_230, "Anonymous access granted, restrictions apply.");
+        add_response(auth_pass_resp_code,
+          "Anonymous access granted, restrictions apply.");
       else
-        add_response(R_230, "User %s logged in.", user);
+        add_response(auth_pass_resp_code, "User %s logged in.", user);
     }
     
     logged_in = 1;
@@ -1741,19 +1735,19 @@ MODRET cmd_pass(cmd_rec *cmd) {
   remove_config(cmd->server->conf, C_USER, FALSE);
   remove_config(cmd->server->conf, C_PASS, FALSE);
   
-  if(res == 0) {
+  if (res == 0) {
     int max;
     char *denymsg = NULL;
 
     /* check for AccessDenyMsg */
-    if ((denymsg = (char *) get_param_ptr((session.anon_config ?
+    if ((denymsg = get_param_ptr((session.anon_config ?
         session.anon_config->subset : cmd->server->conf),
         "AccessDenyMsg", FALSE)) != NULL) {
       denymsg = sreplace(cmd->tmp_pool, denymsg, "%u", user, NULL);
     }
 
     max = get_param_int(main_server->conf,"MaxLoginAttempts",FALSE);
-    if(max == -1)
+    if (max == -1)
       max = 3;
 
     if (++auth_tries >= max) {
@@ -1766,10 +1760,7 @@ MODRET cmd_pass(cmd_rec *cmd) {
       end_login(0);
     }
 
-    if (denymsg)
-      return ERROR_MSG(cmd, R_530, denymsg);
-    else
-    return ERROR_MSG(cmd,R_530,"Login incorrect.");
+    return ERROR_MSG(cmd, R_530, denymsg ? denymsg : "Login incorrect.");
   }
 
   return HANDLED(cmd);

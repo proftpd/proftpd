@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.15 2002-09-04 18:55:09 castaglia Exp $
+ * $Id: auth.c,v 1.16 2002-09-06 00:59:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -337,46 +337,45 @@ struct group *auth_getgrgid(pool *p, gid_t gid)
   return ret;
 }
 
-int auth_authenticate(pool *p, const char *name, const char *pw)
-{
-  cmd_rec *c;
-  modret_t *mr;
-  int ret = AUTH_NOPWD;
+int auth_authenticate(pool *p, const char *name, const char *pw) {
+  cmd_rec *c = NULL;
+  modret_t *mr = NULL;
+  int res = AUTH_NOPWD;
 
-  c = _make_cmd(p,2,name,pw);
-  mr = _dispatch_auth(c,"auth");
+  c = _make_cmd(p, 2, name, pw);
+  mr = _dispatch_auth(c, "auth");
 
-  if(MODRET_ISHANDLED(mr))
-    ret = 0;
-  else if(MODRET_ISERROR(mr))
-    ret = MODRET_ERROR(mr);
+  if (MODRET_ISHANDLED(mr))
+    res = MODRET_HASDATA(mr) ? AUTH_RFC2228_OK : AUTH_OK;
 
-  if(c->tmp_pool) {
+  else if (MODRET_ISERROR(mr))
+    res = MODRET_ERROR(mr);
+
+  if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
     c->tmp_pool = NULL;
   }
 
-  return ret;
+  return res;
 }
 
-int auth_check(pool *p, const char *cpw, const char *name, const char *pw)
-{
-  cmd_rec *c;
-  modret_t *mr;
-  int ret = AUTH_BADPWD;
+int auth_check(pool *p, const char *cpw, const char *name, const char *pw) {
+  cmd_rec *c = NULL;
+  modret_t *mr = NULL;
+  int res = AUTH_BADPWD;
 
-  c = _make_cmd(p,3,cpw,name,pw);
-  mr = _dispatch_auth(c,"check");
+  c = _make_cmd(p, 3, cpw, name, pw);
+  mr = _dispatch_auth(c, "check");
 
-  if(MODRET_ISHANDLED(mr))
-    ret = 0;
+  if (MODRET_ISHANDLED(mr))
+    res = MODRET_HASDATA(mr) ? AUTH_RFC2228_OK : AUTH_OK;
 
-  if(c->tmp_pool) {
+  if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
     c->tmp_pool = NULL;
   }
 
-  return ret;
+  return res;
 }
 
 const char *auth_uid_name(pool *p, uid_t uid)

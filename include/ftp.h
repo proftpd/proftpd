@@ -26,7 +26,7 @@
 
 /* FTP commands and responses (may not all be implemented)
  *
- * $Id: ftp.h,v 1.4 2002-05-10 16:52:39 flyhmstr Exp $
+ * $Id: ftp.h,v 1.5 2002-09-06 00:59:04 castaglia Exp $
  */
 
 #ifndef __FTP_H
@@ -74,6 +74,16 @@
 #define C_HELP	"HELP"		/* Help */
 #define C_NOOP	"NOOP"		/* Returns 200 and does nothing */
 
+/* RFC2228 FTP Security commands */
+#define C_ADAT  "ADAT"		/* Authentication/security data */
+#define C_AUTH  "AUTH"		/* Authentication/security mechanism */
+#define C_CCC   "CCC"		/* Clear command channel */
+#define C_CONF  "CONF"		/* Confidentiality protected command */
+#define C_ENC   "ENC"		/* Privacy protected command */
+#define C_MIC   "MIC"		/* Integrity protected command */
+#define C_PBSZ  "PBSZ"		/* Protection buffer size */
+#define C_PROT  "PROT"		/* Data channel protection level */
+
 #define C_ANY	"*"		/* Special "wildcard" matching command */
 
 /* Command groupings */
@@ -102,14 +112,22 @@
 #define R_226	"226"		/* Closing data connection.  File transfer/abort successful */
 #define R_227	"227"		/* Entering passive mode (h1,h2,h3,h4,p1,p2) */
 #define R_230	"230"		/* User logged in, proceed */
+#define R_232   "232"		/* User logged in, authorized by security data */
+#define R_234   "234"		/* Security data exchange complete */
+#define R_235   "235"		/* Security exchange successful */
+
 #define R_250	"250"		/* Requested file action okay, completed. */
 #define R_257	"257"		/* "PATHNAME" created. */
 #define R_331	"331"		/* User name okay, need password. */
 #define R_332	"332"		/* Need account for login. */
+#define R_334   "334"		/* Security data required */
+#define R_335   "335"		/* Additional security data required */
+#define R_336   "336"		/* Username OK, need password; presenting challenge */
 #define R_350	"350"		/* Requested file action pending further info */
 #define R_421	"421"		/* Service not available, closing control connection (service is about to be shutdown) */
 #define R_425	"425"		/* Can't open data connection */
 #define R_426	"426"		/* Connection closed; transfer aborted */
+#define R_431   "431"		/* Necessary security resource is unavailable */
 #define R_450	"450"		/* Requested file action not taken (file unavailable; busy) */
 #define R_451	"451"		/* Requested action aborted; local error in processing */
 #define R_452	"452"		/* Requested action not taken; insufficient storage space */
@@ -120,6 +138,11 @@
 #define R_504	"504"		/* Command not implemented for that parameter */
 #define R_530	"530"		/* Not logged in */
 #define R_532	"532"		/* Need account for storing files */
+#define R_533   "533"		/* Integrity protected command required by policy */
+#define R_534   "534"		/* Unwilling to accept security arguments */
+#define R_535   "535"		/* Data failed security check */
+#define R_536   "536"		/* Unsupported data channel protection level */
+#define R_537   "537"		/* Unsupported command protection by security mechanism */
 #define R_550	"550"		/* Requested action not taken. No access, etc */
 #define R_551	"551"		/* Requested action not taken, page type unknown */
 #define R_552	"552"		/* Requested file action aborted, exceeding storage allocation */

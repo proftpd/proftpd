@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.10 2002-06-23 19:03:22 castaglia Exp $
+ * $Id: modules.h,v 1.11 2002-09-06 00:59:04 castaglia Exp $
  */
 
 #ifndef __MODULES_H
@@ -43,15 +43,24 @@ struct modret_struc {
   void	 *data;				/* add'l data -- undefined */
 };
 
-/* Possible error codes for auth handlers
+/* Possible return codes for auth handlers
  */
+
+/* Account authenticated by RFC2228 security data exchange */
+#define AUTH_RFC2228_OK			1
+
+/* Account authenticated normally */
+#define AUTH_OK				0
 
 /* Account does not exist */
 #define AUTH_NOPWD			-1
+
 /* Password mismatch */
 #define AUTH_BADPWD			-2
+
 /* Password hasn't been changed recently enough */
 #define AUTH_AGEPWD			-3
+
 /* Account has been disabled */
 #define AUTH_DISABLEDPWD		-4
 
