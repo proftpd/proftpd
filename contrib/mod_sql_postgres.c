@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.14 2003-03-20 23:23:16 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.15 2003-05-29 07:29:43 castaglia Exp $
  */
 
 /*
@@ -94,8 +94,8 @@ typedef struct conn_entry_struct conn_entry_t;
 
 #define DEF_CONN_POOL_SIZE 10
 
-array_header *conn_cache;
-pool *conn_pool;
+pool *conn_pool = NULL;
+array_header *conn_cache = NULL;
 
 /*
  *  _sql_get_connection: walks the connection cache looking for the named
@@ -1243,9 +1243,12 @@ cmdtable sql_cmdtable[] = {
  *  the exit handler.
  */
 static int sql_postgres_init(void) {
-  conn_pool  = make_sub_pool(session.pool);
-  conn_cache = make_array(session.pool, DEF_CONN_POOL_SIZE,
-			  sizeof(conn_entry_t));
+  if (!conn_pool)
+    conn_pool = make_sub_pool(session.pool);
+
+  if (!conn_cache)
+    conn_cache = make_array(make_sub_pool(session.pool), DEF_CONN_POOL_SIZE,
+      sizeof(conn_entry_t));
 
   pr_exit_register_handler( _sql_shutdown );
 
