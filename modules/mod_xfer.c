@@ -19,7 +19,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.10 1999-09-14 08:44:00 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.11 1999-09-14 18:36:24 macgyver Exp $
  */
 
 /* History Log:
@@ -231,7 +231,7 @@ MODRET pre_cmd_stor(cmd_rec *cmd) {
 
     if (! foundslash) {
       /* Simple local file name */
-      strncpy(p_hidden->value.str_val, ".in", maxlen);
+      strncpy(p_hidden->value.str_val, ".in.", maxlen);
       sstrcat(p_hidden->value.str_val, dir, maxlen);
       sstrcat(p_hidden->value.str_val, ".", maxlen);
       log_pri(LOG_DEBUG,"Local path, will rename %s to %s",
