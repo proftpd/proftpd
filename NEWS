@@ -1,6 +1,6 @@
-$Id: NEWS,v 1.92 2001-03-24 15:56:25 flood Exp $
+$Id: NEWS,v 1.93 2001-03-27 02:57:54 flood Exp $
 
-1.2.2 - CVS
+1.2.2rc1 - Released 03/24/2001
 ---------------------------------
 - Bug 1085 - Better logging of "User is not a UserAlias" and "Can't find
   user."
