@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.249 2004-10-29 01:10:05 castaglia Exp $
+ * $Id: mod_core.c,v 1.250 2004-10-29 19:17:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -406,7 +406,7 @@ MODRET set_debuglevel(cmd_rec *cmd) {
     CONF_ERROR(cmd, "not a valid number");
 
   /* Make sure the number is within the valid debug level range. */
-  if (debuglevel < 0 || debuglevel > 9)
+  if (debuglevel < 0 || debuglevel > 10)
     CONF_ERROR(cmd, "invalid debug level configured");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
