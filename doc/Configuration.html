@@ -1,0 +1,2355 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html>
+
+<head>
+<meta http-equiv="Content-Type"
+content="text/html; charset=iso-8859-1">
+<meta name="GENERATOR" content="Microsoft FrontPage 2.0">
+<title>ProFTPD Configuration Directives</title>
+</head>
+
+<body bgcolor="#E7E4D8">
+
+<h1><img src="images/proftpd.gif" width="215" height="50"><br>
+Configuration Directives</h1>
+
+<p>The following configuration parameters control ProFTPD
+features and configuration:</p>
+
+<ul>
+    <li><a href="#AccessGrantMsg">AccessGrantMsg</a></li>
+    <li><a href="#Allow">Allow</a></li>
+    <li><a href="#AllowAll">AllowAll</a></li>
+    <li><a href="#AllowForeignAddress">AllowForeignAddress</a></li>
+    <li><a href="#AllowGroup">AllowGroup</a></li>
+    <li><a href="#AllowUser">AllowUser</a></li>
+    <li><a href="#AllowOverwrite">AllowOverwrite</a></li>
+    <li><a href="#AllowRetrieveRestart">AllowRetrieveRestart</a></li>
+    <li><a href="#AllowStoreRestart">AllowStoreRestart</a></li>
+    <li><a href="#AnonRequirePassword">AnonRequirePassword</a></li>
+    <li><a href="#Anonymous">&lt;Anonymous&gt;</a></li>
+    <li><a href="#AnonymousGroup">AnonymousGroup</a></li>
+    <li><a href="#AuthAliasOnly">AuthAliasOnly</a></li>
+    <li><a href="#AuthGroupFile">AuthGroupFile</a></li>
+    <li><a href="#AuthUserFile">AuthUserFile</a></li>
+    <li><a href="#Bind">Bind</a></li>
+    <li><a href="#DefaultRoot">DefaultRoot</a></li>
+    <li><a href="#DefaultServer">DefaultServer</a></li>
+    <li><a href="#DeferWelcome">DeferWelcome</a></li>
+    <li><a href="#Deny">Deny</a></li>
+    <li><a href="#DenyAll">DenyAll</a></li>
+    <li><a href="#DenyGroup">DenyGroup</a></li>
+    <li><a href="#DenyUser">DenyUser</a></li>
+    <li><a href="#Directory">&lt;Directory&gt;</a></li>
+    <li><a href="#DirFakeGroup">DirFakeGroup</a></li>
+    <li><a href="#DirFakeMode">DirFakeMode</a></li>
+    <li><a href="#DirFakeUser">DirFakeUser</a></li>
+    <li><a href="#DisplayFirstChdir">DisplayFirstChdir</a></li>
+    <li><a href="#DisplayLogin">DisplayLogin</a></li>
+    <li><a href="#ExtendedLog">ExtendedLog</a></li>
+    <li><a href="#Global">&lt;Global&gt;</a></li>
+    <li><a href="#Group">Group</a></li>
+    <li><a href="#GroupOwner">GroupOwner</a></li>
+    <li><a href="#GroupPassword">GroupPassword</a></li>
+    <li><a href="#HideGroup">HideGroup</a></li>
+    <li><a href="#HideNoAccess">HideNoAccess</a></li>
+    <li><a href="#HideUser">HideUser</a></li>
+    <li><a href="#IdentLookups">IdentLookups</a></li>
+    <li><a href="#IgnoreHidden">IgnoreHidden</a></li>
+    <li><a href="#Limit">&lt;Limit&gt;</a></li>
+    <li><a href="#LogFormat">LogFormat</a></li>
+    <li><a href="#LsDefaultOptions">LsDefaultOptions</a></li>
+    <li><a href="#MaxClients">MaxClients</a></li>
+    <li><a href="#MaxClientsPerHost">MaxClientsPerHost</a></li>
+    <li><a href="#MaxInstances">MaxInstances</a></li>
+    <li><a href="#MaxLoginAttempts">MaxLoginAttempts</a></li>
+    <li><a href="#Order">Order</a></li>
+    <li><a href="#PathAllowFilter">PathAllowFilter</a></li>
+    <li><a href="#PathDenyFilter">PathDenyFilter</a></li>
+    <li><a href="#PersistentPasswd">PersistentPasswd</a></li>
+    <li><a href="#Port">Port</a></li>
+    <li><a href="#RequireValidShell">RequireValidShell</a></li>
+    <li><a href="#RootLogin">RootLogin</a></li>
+    <li><a href="#ScoreboardPath">ScoreboardPath</a></li>
+    <li><a href="#ServerAdmin">ServerAdmin</a></li>
+    <li><a href="#ServerName">ServerName</a></li>
+    <li><a href="#ServerType">ServerType</a></li>
+    <li><a href="#ShowSymlinks">ShowSymlinks</a></li>
+    <li><a href="#SocketBindTight">SocketBindTight</a></li>
+    <li><a href="#SyslogFacility">SyslogFacility</a></li>
+    <li><a href="#SystemLog">SystemLog</a></li>
+    <li><a href="#tcpBackLog">tcpBackLog</a></li>
+    <li><a href="#tcpReceiveWindow">tcpReceiveWindow</a></li>
+    <li><a href="#tcpSendWindow">tcpSendWindow</a></li>
+    <li><a href="#TimeoutIdle">TimeoutIdle</a></li>
+    <li><a href="#TimeoutLogin">TimeoutLogin</a></li>
+    <li><a href="#TimeoutNoTransfer">TimeoutNoTransfer</a></li>
+    <li><a href="#TimeoutStalled">TimeoutStalled</a></li>
+    <li><a href="#TransferLog">TransferLog</a></li>
+    <li><a href="#Umask">Umask</a></li>
+    <li><a href="#UseFtpUsers">UseFtpUsers</a></li>
+    <li><a href="#UseReverseDNS">UseReverseDNS</a></li>
+    <li><a href="#User">User</a></li>
+    <li><a href="#UserAlias">UserAlias</a></li>
+    <li><a href="#UserPassword">UserPassword</a></li>
+    <li><a href="#VirtualHost">&lt;VirtualHost&gt;</a></li>
+    <li><a href="#WtmpLog">WtmpLog</a></li>
+</ul>
+
+<hr>
+
+<h2><a name="AccessGrantMsg">AccessGrantMsg</a></h2>
+
+<p><strong>Syntax:</strong> AccessGrantMsg <em>message</em><br>
+<strong>Default:</strong> Dependent on login type<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 0.99.0pl5 and later</p>
+
+<p>Normally, a 230 response message is sent to an FTP client
+immediately after authentication, with a standard message
+indicating that the user has either logged in or that anonymous
+access has been granted. This <em><strong>message</strong></em>
+can be customized with the AccessGrantMsg directive. In the
+message argument, the magic cookie '%u' is replaced with the
+username specified by the client during login. Example:</p>
+
+<p><code>AccessGrantMsg &quot;Guest access granted for %u.&quot;</code></p>
+
+<hr>
+
+<h2><a name="Allow">Allow</a></h2>
+
+<p><strong>Syntax:</strong> Allow <em>[&quot;from&quot;]
+&quot;all&quot;|&quot;none&quot;|host|network[,host|network[,...]]</em><br>
+<strong>Default:</strong> <code>Allow from all</code><br>
+<strong>Context:</strong> &lt;Limit&gt;<br>
+<strong>Compatibility:</strong> 0.99.0pl6 and later</p>
+
+<p>The Allow directive is used inside a <a href="#Limit">&lt;Limit&gt;</a>
+context to explicitly specify which hosts and/or networks have
+access to the commands or operations being limited. Allow is
+typically used in conjuction with <a href="#Order">Order</a> and <a
+href="#Deny">Deny</a> in order to create sophisticated (or
+perhaps not-so-sophisticated) access control rules. Allow takes
+an optional first argument; the keyword <em><strong>from</strong></em>.
+Using <em><strong>from</strong></em> is purely cosmetic. The
+remaining arguments are expected to be a list of hosts and
+networks which will be explicitly granted access. The magic
+keyword <em><strong>all</strong></em> can be used to indicate
+that all hosts will explicitly be granted access (analogous to
+the AllowAll directive, except with a lower priority).
+Additionally, the magic keyword <em><strong>none</strong></em>
+can be used to indicate that no hosts or networks will be
+explicitly granted access (although this does not prevent them
+from <em>implicitly</em> being granted access). If <em><strong>all</strong></em>
+or <em><strong>none</strong></em> is used, no other hosts or
+networks can be supplied.</p>
+
+<p>Host and network addresses can be specified by name or numeric
+address. <strong>For security reasons, it is recommended that all
+address information be supplied numerically. Relying solely on
+named addresses causes security to depend a great deal upon DNS
+servers which may themselves be vulnerable to attack or spoofing.</strong>
+Numeric addresses which specify an entire network should end in a
+trailing period (i.e. 10.0.0. for the entire 10.0.0 subnet).
+Named address which specify an entire network should begin with a
+trailing period (i.e. .proftpd.org for the entire proftpd.org
+domain).</p>
+
+<p>Example:</p>
+
+<p><code>&lt;Limit LOGIN&gt;<br>
+Order Allow,Deny<br>
+Allow from
+128.44.26.,128.44.26.,myhost.mydomain.edu,.trusted-domain.org<br>
+Deny from all<br>
+&lt;/Limit&gt;</code></p>
+
+<hr>
+
+<h2><a name="AllowAll">AllowAll</a></h2>
+
+<p><strong>Syntax:</strong> AllowAll<br>
+<strong>Default:</strong> Default is to implicitly AllowAll, but
+not explicitly<br>
+<strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;,
+&lt;Limit&gt;, .ftpaccess<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The AllowAll directive <strong>explicitly</strong> allows
+access to a <a href="reference.html#Directory">&lt;Directory&gt;</a>,
+<a href="reference.html#Anonymous">&lt;Anonymous&gt;</a> or <a
+href="reference.html#Limit">&lt;Limit&gt;</a> block. Although
+proftpd's default behavior is to allow access to a particular
+object, the default is an implicit allow. AllowAll creates an
+explicit allow, overriding any higher level denial directives.</p>
+
+<hr>
+
+<h2><a name="AllowForeignAddress">AllowForeignAddress</a></h2>
+
+<p><strong>Syntax:</strong> AllowForeignAddress <em>on|off</em><br>
+<strong>Default:</strong> <code>AllowForeignAddress off</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.1.7 and later</p>
+
+<p>Normally, proftpd disallows clients from using the ftp PORT command
+with anything other than their own address (the source address of
+the ftp control connection), as well as preventing the use of PORT
+to specify a low-numbered (&lt; 1024) port.  In either case, the
+client is sent an &quot;Invalid port&quot; error and a message is syslog'd
+indicating either &quot;address mismatch&quot; or &quot;bounce attack&quot;.
+By enabling this directive, proftpd will allow clients to transmit
+foreign data connection addresses that do not match the client's address.
+This allows such tricks as permitting a client to transfer a file between
+two FTP servers without involving itself in the actual data connection.
+Generally it's considered a bad idea, security-wise, to permit this
+sort of thing.</p>
+
+<p>AllowForeignAddress <strong>only</strong>
+affects data connection addresses; not tcp ports. There is no
+way (and no valid reason) to allow a client to use a low-numbered
+port in it's PORT command.</p>
+
+<hr>
+
+<h2><a name="AllowGroup">AllowGroup</a></h2>
+
+<p><strong>Syntax:</strong> AllowGroup <em>group-expression</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &lt;Limit&gt;<br>
+<strong>Compatibility:</strong> 1.1.1 and later</p>
+
+<p>AllowGroup specifies a <em><strong>group-expression</strong></em>
+that is specifically permitted within the context of the <a
+href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em><strong>group-expression</strong></em>
+has the same format as that used in <a href="#DefaultRoot">DefaultRoot</a>,
+in that it should contain a comma seperated list of groups or
+&quot;not&quot; groups (by prefixing a group name with the `!'
+character) that are to be allowed access to the block. The
+expression is parsed as a boolean &quot;and&quot; list, meaning
+that ALL elements of the expression must evaluate to logically
+true in order for the explicit allow to apply.</p>
+
+<p>See Also: <a href="#DenyGroup">DenyGroup</a>,
+<a href="#DenyUser">DenyUser</a>,
+<a href="#AllowUser">AllowUser</a></p>
+
+<hr>
+
+<h2><a name="AllowUser">AllowUser</a></h2>
+
+<p><strong>Syntax:</strong> AllowUser <em>user-expression</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &lt;Limit&gt;<br>
+<strong>Compatibility:</strong> 1.1.7 and later</p>
+
+<p>AllowUser specifies a <em><strong>user-expression</strong></em>
+that is specifically permitted access within the context of the
+<a href="#Limit">&lt;Limit&gt;</a> block it is applied to.
+<em><strong>user-expression</strong></em> has a similar syntax as
+that used in <a href="#AllowGroup">AllowGroup</a>, in that it should
+contain a comma delimited list of users or &quot;not&quot; users
+(by prefixing a user name with the `!' character) that are to be
+allowed access to the block. The expression is parsed as a boolean
+&quot;and&quot; list, meaning that ALL elements of the expression
+must evaluate to logically true in order to the explicit allow
+to apply.</p>
+
+<p>See also: <a href="#DenyUser">DenyUser</a>,
+<a href="#DenyGroup">DenyGroup</a>,
+<a href="#AllowGroup">AllowGroup</a></p>
+
+<hr>
+
+<h2><a name="AllowOverwrite">AllowOverwrite</a></h2>
+
+<p><strong>Syntax:</strong> AllowOverwrite <em>on|off</em><br>
+<strong>Default:</strong> <code>AllowOverwrite off</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Directory&gt;, &lt;Global&gt;, .ftpaccess<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The AllowOverwrite directive permits newly transfered files to
+overwrite existing files. By default, ftp clients cannot
+overwrite existing files.</p>
+
+<hr>
+
+<h2><a name="AnonRequirePassword">AnonRequirePassword</a></h2>
+
+<p><strong>Syntax:</strong> AnonRequirePassword <em>on|off</em><br>
+<strong>Default:</strong> <code>AnonRequirePassword off</code><br>
+<strong>Context:</strong> &lt;Anonymous&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>Normally, anonymous FTP logins do not require the client to
+authenticate themselves via the normal method of a transmitted
+cleartext password which is hashed and matched against an
+existing system user's password. Instead, anonymous logins are
+expected to enter their e-mail address when prompted for a
+password. Enabling the AnonRequirePassword directive requires
+anonymous logins to enter a valid password which must match the
+password of the user that the anonymous daemon runs as. This can
+be used to create &quot;guest&quot; accounts, which function
+exactly as normal anonymous logins do (and thus present a
+&quot;chrooted&quot; protected file system to the client), but
+require a valid password on the server's host system.</p>
+
+<p>Example of a &quot;guest&quot; account configuration:</p>
+
+<blockquote>
+    <p><code>&lt;Anonymous ~roger&gt;<br>
+    User roger<br>
+    Group other<br>
+    UserAlias proftpd roger<br>
+    AnonRequirePassword on<br>
+    # Deny write operations to all directories, underneath
+    root-dir<br>
+    # Default is to allow, so we don't need a &lt;Limit&gt; for
+    read operations.<br>
+    &lt;Directory *&gt;<br>
+    &lt;Limit WRITE&gt;<br>
+    DenyAll<br>
+    &lt;/Limit&gt;<br>
+    &lt;/Directory&gt;<br>
+    # Deny all read/write operations in incoming. Because these
+    are command-group<br>
+    # limits, we can explicitly permit certain operations which
+    will take precedance<br>
+    # over our group limit.<br>
+    &lt;Directory incoming&gt;<br>
+    &lt;Limit READ WRITE&gt;<br>
+    DenyAll<br>
+    &lt;/Limit&gt;<br>
+    # The only command allowed in incoming is STOR (transfer file
+    from client to server)<br>
+    &lt;Limit STOR&gt;<br>
+    AllowAll<br>
+    &lt;/Limit&gt;<br>
+    &lt;/Directory&gt;<br>
+    &lt;/Anonymous&gt;</code></p>
+</blockquote>
+
+<hr>
+
+<h2><a name="AllowRetrieveRestart">AllowRetrieveRestart</a></h2>
+
+<p><strong>Syntax:</strong> AllowRetrieveRestart <em>on|off</em><br>
+<strong>Default:</strong> <code>AllowRetrieveRestart on</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Directory&gt;, &lt;Global&gt;, .ftpaccess<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The AllowRetrieveRestart directive permits or denies clients
+from performing &quot;restart&quot; retrieve file transfers via
+the FTP REST command. By default this is enabled, so that clients
+may resume interrupted file transfers at a later time without
+losing previously collected data.</p>
+
+<hr>
+
+<h2><a name="AllowStoreRestart">AllowStoreRestart</a></h2>
+
+<p><strong>Syntax:</strong> AllowStoreRestart <em>on|off</em><br>
+<strong>Default:</strong> <code>AllowStoreRestart off</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Directory&gt;, &lt;Global&gt;, .ftpaccess<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The AllowStoreRestart directive permits or denies clients from
+&quot;restarting&quot; interrupted store file transfers (those
+sent from client to server). By default restarting (via the REST
+command) is not permitted when sending files to the server. Care
+should be taken to disallow anonymous ftp &quot;incoming&quot;
+transfers to be restarted, as this will allow clients to corrupt
+or increase the size of previously stored files (even if not
+their own).</p>
+
+<hr>
+
+<h2><a name="Anonymous">&lt;Anonymous&gt;</a></h2>
+
+<p><strong>Syntax:</strong> &lt;Anonymous <em>root-directory</em>&gt;<br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config,&lt;VirtualHost&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The Anonymous configuration block is used to create an
+anonymous FTP login, and is terminated by a matching
+&lt;/Anonymous&gt; directive. The root-directory parameters
+specifies which directory the daemon will first chdir to, and
+then chroot, immediately after login. Once the chroot operation
+successfully completes, higher level directories are no longer
+accessible to the running child daemon (and thus the logged in
+user). By default, proftpd assumes an anonymous login if the
+remote client attempts to login as the currently running user;
+unless the current user is root, in which case anonymous logins
+are not allowed regardless of the presence of an
+&lt;Anonymous&gt; block. To force anonymous logins to be bound to
+a user other than the current user, see the <a
+href="reference.html#User">User</a> and <a
+href="reference.html#Group">Group</a> directives. In addition, if
+a <a href="reference.html#User">User</a> or <a
+href="reference.html#Group">Group</a> directive is present in an
+&lt;Anonymous&gt; block, the daemon permanently switches to the
+specified uid/gid before chroot()ing.</p>
+
+<p>Normally, anonymous logins are not required to authenticate
+with a password, but are expected to enter a valid e-mail address
+in place of a normal password (which is logged). If this behavior
+is undesirable for a given &lt;Anonymous&gt; configuration block,
+it can be overridden via the <a
+href="reference.html#AnonRequirePassword">AnonRequirePassword</a>
+directive.</p>
+
+<p><u>Note: Chroot()ed anonymous directories do </u><strong><u>not</u></strong><u>
+need to have supplemental system files in them, nor do they need
+to have any sort of specific directory structure.</u> This is
+because proftpd is designed to acquire as much system information
+as possible <strong>before</strong> the chroot, and to leave open
+those files which are needed for normal operation and reside
+outside the new root directory.</p>
+
+<p>Example of a typical anonymous FTP configuration:</p>
+
+<blockquote>
+    <p align="left"><code>&lt;Anonymous /home/ftp&gt;<br>
+    User ftp # After anonymous login, daemon runs as user ftp.<br>
+    Group ftp # After anonymous login, daemon runs as group ftp.<br>
+    UserAlias anonymous ftp # Client login as 'anonymous' is
+    aliased to 'ftp'.<br>
+    # Deny write operations to all directories, underneath
+    root-dir<br>
+    # Default is to allow, so we don't need a &lt;Limit&gt; for
+    read operations.<br>
+    &lt;Directory *&gt;<br>
+    &lt;Limit WRITE&gt;<br>
+    DenyAll<br>
+    &lt;/Limit&gt;<br>
+    &lt;/Directory&gt;<br>
+    &lt;Directory incoming&gt;<br>
+    &lt;Limit READ WRITE&gt;<br>
+    DenyAll<br>
+    &lt;/Limit&gt;<br>
+    &lt;Limit STOR&gt;<br>
+    AllowAll<br>
+    &lt;/Limit&gt;<br>
+    &lt;/Directory&gt;<br>
+    &lt;/Anonymous&gt;</code></p>
+</blockquote>
+
+<hr>
+
+<h2><a name="AnonymousGroup">AnonymousGroup</a></h2>
+
+<p><strong>Syntax:</strong> AnonymousGroup <em>group-expression</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.1.3 and later</p>
+
+<p>The AnonymousGroup directive specifies a <em><strong>group-expression</strong></em>
+to which all matching users will be considered anonymous logins.
+The <em><strong>group-expression</strong></em> argument is a
+boolean logically ANDed list of groups to which the user must be
+a member of (or non-member if the group name is prefixed with a
+`!' character). For more information on group-expressions see the
+<a href="#DefaultRoot">DefaultRoot</a> directive.</p>
+
+<p>If the authenticating user is matched by an AnonymousGroup
+directive, no valid password is required, and a special dynamic
+anonymous configuration is created, with the user's home
+directory as the default root directory. If a <a
+href="#DefaultRoot">DefaultRoot</a> directive also applies to the
+user, this directory is used instead of the user's home dir.</p>
+
+<p><em><strong>Great care should be taken when using
+AnonymousGroup, as improper configuration can open up user home
+directories to full read/write access to the entire world.</strong></em></p>
+
+<hr>
+
+<h2><a name="AuthAliasOnly">AuthAliasOnly</a></h2>
+
+<p><strong>Syntax:</strong> AuthAliasOnly <em>on|off</em><br>
+<strong>Default:</strong> <code>AuthAliasOnly off</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.1.3 and later</p>
+
+<p>AuthAliasOnly restricts authenication to &quot;aliased&quot;
+logins only; i.e. those usernames provided by clients which are
+&quot;mapped&quot; to a real userid by the <a href="#UserAlias">UserAlias</a>
+directive. Turning AuthAliasOnly `<em><strong>on</strong></em>'
+in a particular context will cause proftpd to completely ignore
+all non-aliased logins for the entire context. If no contexts are
+available without AuthAliasOnly set to `<em><strong>on</strong></em>',
+proftpd rejects the client login and sends an appropriate message
+to syslog.</p>
+
+<hr>
+
+<h2><a name="AuthGroupFile">AuthGroupFile</a></h2>
+
+<p><strong>Syntax:</strong> AuthGroupFile <em>path</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.0.3/1.1.1 and later</p>
+
+<p>AuthGroupFile specifies an alternate groups file, having the
+same format as the system /etc/group file, and if specified is
+used during authentication and group lookups for directory/access
+control operations. The <em><strong>path</strong></em> argument
+should be the <strong>full path</strong> to the specified file.
+AuthGroupFile can be configured on a per-VirtualHost basis, so
+that virtual FTP servers can each have their own authentication
+database (most often used in conjuction with <a
+href="#AuthUserFile">AuthUserFile</a>).</p>
+
+<p><strong>Note that this file need not reside inside a
+chroot()ed directory structure for Anonymous or DefaultRoot
+logins, as it is help open for the duration of client
+connections.</strong></p>
+
+<hr>
+
+<h2><a name="AuthUserFile">AuthUserFile</a></h2>
+
+<p><strong>Syntax:</strong> AuthUserFile <em>path</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config,&lt;VirtualHost&gt;,
+&lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.0.3/1.1.1 and later</p>
+
+<p>AuthUserFile specifies an alternate passwd file, having the
+same format as the system /etc/passwd file, and if specified is
+used during authentication and user lookups for directory/access
+control operations. The <em><strong>path</strong></em> argument
+should be the <strong>full path</strong> to the specified file.
+AuthUserFile can be configured on a per-VirtualHost basis, so
+that virtual FTP servers can each have their own authentication
+database (most often used in conjuction with <a
+href="#AuthGroupFile">AuthGroupFile</a>).</p>
+
+<p><strong>Note that this file need not reside inside a
+chroot()ed directory structure for Anonymous or DefaultRoot
+logins, as it is help open for the duration of client
+connections.</strong></p>
+
+<hr>
+
+<h2><a name="Bind">Bind</a></h2>
+
+<p><strong>Syntax:</strong> Bind <em>address</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;<br>
+<strong>Compatibility:</strong> 1.1.6 and later</p>
+
+<p>The Bind directive allows additional IP addresses to be bound to a
+main or <a href="#VirtualHost">VirtualHost</a> configuration.  Multiple
+Bind directives can be used to bind multiple addresses.  The
+<strong><em>address</em></strong> argument should be either a fully
+qualified domain name or a numeric dotted-quad IP address.  Incoming
+connections destined to an additional address added by Bind are serviced
+by the context containing the directive.  Additionally, if
+<a href="#SocketBindTight">SocketBindTight</a> is set to
+<strong><em>on</em></strong>, a specific listen connection is created 
+for each additional address.</p>
+
+<hr>
+
+<h2><a name="DefaultRoot">DefaultRoot</a></h2>
+
+<p><strong>Syntax:</strong> DefaultRoot <em>directory
+[group-expression]</em><br>
+<strong>Default:</strong> <code>DefaultRoot /</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 0.99.0pl7 and later</p>
+
+<p>The DefaultRoot directive controls the default root directory
+assigned to a user upon login. If DefaultRoot is set to a
+directory other than &quot;/&quot;, a chroot operation is
+performed immediately after a client authenticates. This can be
+used to effectively isolate the client from a portion of the host
+system filespace. The specified root directory must begin with a
+/ or can be the magic character '~'; meaning that the client is
+chroot jailed into their home directory. If the DefaultRoot
+directive specifies a directory which disallows access to the
+logged-in user's home directory, the user's current working
+directory after login is set to the DefaultRoot instead of their
+normal home directory. DefaultRoot cannot be used in <a
+href="#Anonymous">&lt;Anonymous&gt;</a> configuration blocks, as
+the <a href="#Anonymous">&lt;Anonymous&gt;</a> directive
+explicitly contains a root directory used for <a
+href="#Anonymous">Anonymous</a> logins.</p>
+
+<p>The special character '~' is replaced with the authenticating
+user's home directory immediately after login. Note that the
+default root may be a subdirectory of the home directory, such as
+&quot;~/anon-ftp&quot;.</p>
+
+<p>The optional <em><strong>group-expression</strong></em>
+argument can be used to restrict the DefaultRoot directive to a
+unix group, groups or subset of groups. The expression takes the
+format: [!]group-name1[,[!]group-name2[,...]]. The expression is
+parsed in a logical boolean AND fashion, such that each member of
+the expression must evaluate to logically TRUE in order for the
+DefaultRoot directive to apply. The special character '!' is used
+to negate group membership.</p>
+
+<p>Care should be taken when using DefaultRoot. Chroot
+&quot;jails&quot; should not be used as methods for implementing
+general system security as there are potentially ways that a user
+can &quot;escape&quot; the jail.</p>
+
+<p>Example of a DefaultRoot configuration:</p>
+
+<blockquote>
+    <p><code>ServerName &quot;A test ProFTPD Server&quot;<br>
+    ServerType inetd<br>
+    User ftp<br>
+    Group ftp<br>
+    #<br>
+    # This causes proftpd to perform a chroot into the
+    authenticating user's directory immediately after login.<br>
+    # Once this happens, the user is unable to &quot;see&quot;
+    higher level directories.<br>
+    # Because a group-expression is included, only users who are
+    a member of<br>
+    # the group 'users' and NOT a member of 'staff' will have
+    their default<br>
+    # root directory set to '~'.<br>
+    DefaultRoot ~ users,!staff<br>
+    ... </code></p>
+</blockquote>
+
+<hr>
+
+<h2><a name="DefaultServer">DefaultServer</a></h2>
+
+<p><strong>Syntax:</strong> DefaultServer <em>on|off</em><br>
+<strong>Default:</strong> <code>DefaultServer off</code><br>
+<strong>Context:</strong> server config,&lt;VirtualHost&gt;<br>
+<strong>Compatibility:</strong> 0.99.0pl6 and later</p>
+
+<p>The DefaultServer directive controls which server
+configuration is used as the default when an incoming connection
+is destined for an IP address which is neither the host's primary
+IP address or one of the addresses specified in a <a
+href="#VirtualHost">&lt;VirtualHost&gt;</a> configuration block.
+Normally such &quot;unknown&quot; connections are issued a
+&quot;no server available to service your request&quot; message
+and disconnected. When DefaultServer is turned <em><strong>on</strong></em>
+for either the primary server configuration or a virtual server,
+all unknown destination connections are serviced by the default
+server. Only a single server configuration can be set to default.</p>
+
+<hr>
+
+<h2><a name="DeferWelcome">DeferWelcome</a></h2>
+
+<p><strong>Syntax:</strong> DeferWelcome <em>on|off</em><br>
+<strong>Default:</strong> <code>DeferWelcome off</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The DeferWelcome directive configures a master or <a
+href="reference.html#VirtualHost">virtual server</a> to delay
+transmitting the <a href="reference.html#ServerName">ServerName</a>
+and address to new connections, until a client has successfully
+authenticated. If enabled, the initial welcome message will be
+exceedingly generic and will not give away any type of
+information about the host that the daemon is actively running
+on. This can be used by security-conscious administrators to
+limit the amount of &quot;probing&quot; possible from non-trusted
+networks/hosts.</p>
+
+<hr>
+
+<h2><a name="Deny">Deny</a></h2>
+
+<p><strong>Syntax:</strong> Deny <em>[&quot;from&quot;]
+&quot;all&quot;|&quot;none&quot;|host|network[,host|network[,...]]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &lt;Limit&gt;<br>
+<strong>Compatibility:</strong> 0.99.0pl6 and later</p>
+
+<p>The Deny directive is used to create a list of hosts and/or
+networks which will explicitly be denied access to a given <a
+href="#Limit">&lt;Limit&gt;</a> context block. The magic keywords
+<em><strong>all</strong></em> and <em><strong>none</strong></em>
+can be used to indicate that all hosts are denied access, or that
+no hosts are explicitly denied (respectively). For more
+information on the syntax and usage of Deny see: <a href="#Allow">Allow</a>
+and <a href="#Order">Order</a>.</p>
+
+<hr>
+
+<h2><a name="DenyAll">DenyAll</a></h2>
+
+<p><strong>Syntax:</strong> DenyAll<br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;,
+&lt;Limit&gt;, .ftpaccess<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The DenyAll directive is analogous to a combination of &quot;<em>order
+deny,allow</em> &lt;cr&gt; <em>deny from all</em>&quot;, with the
+exception that it has a higher precendance when parsed. It is
+provided as a convenient method of completely denying access to a
+directory, anonymous ftp or limit block. Because of it's
+precedance, it should not be intermixed with normal <a
+href="reference.html#Order">Order</a>/<a
+href="reference.html#Deny">Deny</a> directives. The DenyAll
+directive can be overridden at a lower level directory by using <a
+href="reference.html#AllowAll">AllowAll</a>. DenyAll and <a
+href="reference.html#AllowAll">AllowAll</a> are mutually
+exclusive.</p>
+
+<hr>
+
+<h2><a name="DenyGroup">DenyGroup</a></h2>
+
+<p><strong>Syntax:</strong> DenyGroup <em>group-expression</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &lt;Limit&gt;<br>
+<strong>Compatibility:</strong> 1.1.1 and later</p>
+
+<p>DenyGroup specifies a <em><strong>group-expression</strong></em>
+that is specifically denied within the context of the <a
+href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em><strong>group-expression</strong></em>
+has the same format as that used in <a href="#DefaultRoot">DefaultRoot</a>,
+in that it should contain a comma seperated list of groups or
+&quot;not&quot; groups (by prefixing a group name with the `!'
+character) that are to be denied access to the block. The
+expression is parsed as a boolean &quot;and&quot; list, meaning
+that ALL elements of the expression must evaluate to logically
+true in order for the explicit deny to apply.</p>
+
+<p>See Also: <a href="#AllowGroup">AllowGroup</a>,
+<a href="#AllowUser">AllowUser</a>,
+<a href="#DenyUser">DenyUser<a></p>
+
+<hr>
+
+<h2><a name="DenyUser">DenyUser</a></h2>
+
+<p><strong>Syntax:</strong> DenyUser <em>user-expression</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &lt;Limit&gt;<br>
+<strong>Compatibility:</strong> 1.1.7 and later</p>
+
+<p>DenyUser specifies a <em><strong>user-expression</strong></em>
+that is specifically denied within the context of the <a
+href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em>
+<strong>user-expression</strong></em> is a comma delimited list
+of users or &quot;not&quot; users (by prefixing a user name with the
+`!' character).  The expression is parsed as a boolean &quot;and&quot;
+list, meaning that all elements of the expression must evaluate to
+logically true in order for the explicit deny to apply.</p>
+
+<p>See also: <a href="#AllowUser">AllowUser</a>,
+<a href="#DenyGroup">DenyGroup</a>,
+<a href="#AllowGroup">AllowGroup</a></p>
+
+<hr>
+
+<h2><a name="Directory">&lt;Directory&gt;</a></h2>
+
+<p><strong>Syntax:</strong> &lt;Directory <em>pathname&gt;</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>This directive creates a block of configuration directives
+which applies only to the specified directory and it's
+sub-directories. The block is ended with &lt;/Directory&gt;.
+Per-directory configuration is enabled during run-time with a
+&quot;closest&quot; match algorithm, meaning that the
+&lt;Directory&gt; directive with the closest matching path to the
+actual pathname of the file or directory in question is used.
+Per-directory configuration is inherited by all sub-directories
+until a closer matching &lt;Directory&gt; is encountered, at
+which time the original per-directory configuration is replaced
+with the closer match. Note that this does not apply to <a
+href="reference.html#Limit">&lt;Limit&gt;</a> &lt;/Limit&gt;
+blocks, which are inherited by all sub-directories until a
+&lt;Limit&gt; block is reached in a closer match.</p>
+
+<blockquote>
+    <p>Example:<br>
+    <code>&lt;Directory /users/robroy/private&gt;<br>
+    HideNoAccess<br>
+    &lt;/Directory&gt;</code></p>
+</blockquote>
+
+<p>A trailing slash and wildcard (&quot;/*&quot;) can be appended
+to the directory, specifying that the configuration block applies
+only to the contents (and sub-contents), not to the actual
+directory itself. Such wildcard matches always take precedence
+over non-wildcard &lt;Directory&gt; configuration blocks.
+&lt;Directory&gt; blocks cannot be nested (they are automatically
+nested at run-time based on their pathnames). Pathnames must
+always be absolute (except inside <a
+href="reference.html#Anonymous">&lt;Anonymous&gt;</a>), and
+should not reference symbolic links. Pathnames inside an <a
+href="reference.html#Anonymous">&lt;Anonymous&gt;</a> block can
+be relative, indicating that they are based on the anonymous root
+directory.</p>
+
+<p><strong>[Notes for ProFTPD 1.1.3 and later only]</strong><br>
+Pathnames that begin with the special character '~' <strong>and
+do not specify a username immediately after</strong> ~ are put
+into a special defered mode. When in defered mode, the directory
+context is not hashed and sorted into the configuration tree at
+boot time, but rather this hashing is defered until a user
+authenticates, at which time the '~' character is replaced with
+the user's home directory. This allows a global &lt;Directory&gt;
+block which applies to all user's home directories, or
+sub-directories thereof.</p>
+
+<blockquote>
+    <p>Example:<br>
+    <code>&lt;Directory ~/anon-ftp&gt;<br>
+    &lt;Limit WRITE&gt;<br>
+    DenyAll<br>
+    &lt;/Limit READ&gt;<br>
+    &lt;/Directory&gt;</code></p>
+</blockquote>
+
+<hr>
+
+<h2><a name="DirFakeGroup">DirFakeGroup</a></h2>
+
+<p><strong>Syntax:</strong> DirFakeGroup <em>On|Off [groupname]</em><br>
+<strong>Default:</strong> <code>DirFakeGroup
+Off</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.1.5</p>
+
+<p>DirFakeGroup and it's companion directive, <a
+href="#DirFakeUser">DirFakeUser</a>, can be used to hide the true
+group and user owners of files in a directory listing. If simply
+turned On, DirFakeGroup will display all files as being owned by
+group 'ftp'. Optionally, the <em><strong>groupname</strong></em>
+argument can be used to specify a specific group other than
+'ftp'. <strong>Both DirFakeGroup and </strong><a
+href="#DirFakeUser"><strong>DirFakeUser</strong></a><strong> are
+completely cosmetic; the groupname or username specified need not
+exists on the system, and neither directive affects permissions,
+real ownership or access control in any way.</strong></p>
+
+<hr>
+
+<h2><a name="DirFakeMode">DirFakeMode</a></h2>
+
+<p><strong>Syntax:</strong> DirFakeMode <em>octal-mode</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.1.6</p>
+
+<p>The DirFakeMode directive configures a mode (or permissions) which
+will be displayed for ALL files and directories in directory listings.
+For each subset of permissions (user, group, other), the "execute" permission
+for directories is added in listings if the "read" permission is specified
+by this directive.  For example:</p>
+
+<p><code>DirFakeMode 0640</code></p>
+
+<p>Will result in:</p>
+
+<p><code>
+-rw-r-----     ...  arbitrary.file<br>
+drwxr-x---     ...  arbitrary.directory
+</code></p>
+
+<p>As with <a href="#DirFakeUser">DirFakeUser</a>, and
+<a href="#DirFakeGroup">DirFakeGroup</a>, the "fake" permissions shown
+in directory listings are cosmetic only, they do not affect real permissions
+or access control in any way.</p>
+
+<hr>
+
+<h2><a name="DirFakeUser">DirFakeUser</a></h2>
+
+<p><strong>Syntax:</strong> DirFakeUser <em>On|Off [username]</em><br>
+<strong>Default:</strong> <code>DirFakeUser Off</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.1.5</p>
+
+<p>See <a href="#DirFakeGroup">DirFakeGroup</a></p>
+
+<hr>
+
+<h2><a name="DisplayFirstChdir">DisplayFirstChdir</a></h2>
+
+<p><strong>Syntax:</strong> DisplayFirstChdir <em>filename</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Directory&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later, magic cookies
+only in 0.99.0pl10 and later</p>
+
+<p>The DisplayFirstChdir directive configures an ascii text
+filename which will be displayed to the user the first time they
+change into a directory (via CWD) per a given session. The file
+will also be displayed if proftpd detects that it's last
+modification time has changed since the previoius CWD into a
+given directory. If the filename is relative, it is looked for in
+the new directory that the user has changed into. <u>Note that
+for anonymous ftp logins (see </u><a
+href="reference.html#Anonymous"><u>&lt;Anonymous&gt;</u></a><u>),
+the file must reside inside the chroot()ed file system space.</u>
+If the file cannot be found or accessed, no error occurs and
+nothing is logged or displayed to the client.</p>
+
+<p>Both DisplayFirstChdir and <a href="#DisplayLogin">DisplayLogin</a>
+support the following &quot;magic cookies&quot; (<strong>only in
+0.99.0pl10 and later</strong>), which are replaced with their
+respective strings before being displayed to the user.</p>
+<div align="left">
+
+<table border="0" cellpadding="3" cellspacing="0" width="50%">
+    <tr>
+        <td align="right" width="20%"><strong>%T</strong></td>
+        <td>&nbsp;</td>
+        <td>Current Time</td>
+    </tr>
+    <tr>
+        <td align="right"><strong>%F</strong></td>
+        <td>&nbsp;</td>
+        <td>Available space on file system</td>
+    </tr>
+    <tr>
+        <td align="right"><strong>%C</strong></td>
+        <td>&nbsp;</td>
+        <td>Current working directory</td>
+    </tr>
+    <tr>
+        <td align="right"><strong>%R</strong></td>
+        <td>&nbsp;</td>
+        <td>Remote host name</td>
+    </tr>
+    <tr>
+        <td align="right"><strong>%L</strong></td>
+        <td>&nbsp;</td>
+        <td>Local host name</td>
+    </tr>
+    <tr>
+        <td align="right"><strong>%u</strong></td>
+        <td>&nbsp;</td>
+        <td>Username reported by ident protocol</td>
+    </tr>
+    <tr>
+        <td align="right"><strong>%U</strong></td>
+        <td>&nbsp;</td>
+        <td>Username originally used in login</td>
+    </tr>
+    <tr>
+        <td align="right"><strong>%M</strong></td>
+        <td>&nbsp;</td>
+        <td>Max number of connections</td>
+    </tr>
+    <tr>
+        <td align="right"><strong>%N</strong></td>
+        <td>&nbsp;</td>
+        <td>Current number of connections</td>
+    </tr>
+    <tr>
+        <td align="right"><strong>%E</strong></td>
+        <td>&nbsp;</td>
+        <td>Server admin's e-mail address</td>
+    </tr>
+</table>
+</div>
+
+<hr>
+
+<h2><a name="DisplayLogin">DisplayLogin</a></h2>
+
+<p><strong>Syntax:</strong> DisplayLogin <em>filename</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The DisplayLogin directive configures an ascii text filename
+which will be displayed to the user when they initially login.
+The filename can be either relative or absolute. In the case of a
+relative filename, the file is searched for in the initial
+directory a user is placed in immediately after login (home
+directory for unix user logins, anonymous-root directory for <a
+href="reference.html#Anonymous">anonymous</a> logins). <u>Note
+that for anonymous logins, the file must reside inside the
+chroot()ed file system space.</u> If the file cannot be found or
+accessed, no error occurs and nothing is logged or displayed to
+the client.</p>
+
+<p>DisplayLogin supports the same &quot;magic cookies&quot; as <a
+href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
+
+<hr>
+
+<h2><a name="ExtendedLog">ExtendedLog</a></h2>
+
+<p><strong>Syntax:</strong> <em>filename [[command-classes] format-nickname]</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt; &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.1.6pl1 and later</p>
+
+<p>The ExtendedLog directive allows customizable logfiles to be generated,
+either globally or per <a href="#VirtualHost">VirtualHost</a>.  The
+<strong><em>filename</em></strong> argument must contain an absolute
+pathname to a logfile which will be appended to when proftpd starts.
+Multiple logfiles (potentially with different command classes and
+formats) can be created.</p>
+
+<p>Optionally, the <strong><em>command-classes</em></strong> argument
+can be used to control which types of commands are logged.  If not
+command classes are specified, proftpd logs <strong>all</strong> commands
+by default (passwords are hidden).  <strong><em>command-classes</em></strong>
+is a comma delimited (no whitespace!) list of which commands to log.  The
+following are valid classes:</p>
+
+<ul>
+   <li><strong>NONE</strong><br>
+       No commands</li>
+   <li><strong>AUTH</strong><br>
+       Authentication commands (USER, PASS)</li>
+   <li><strong>INFO</strong><br>
+       Informational commands (PWD, SYST, etc)</li>
+   <li><strong>DIRS</strong><br>
+       Directory commands (LIST, CWD, MKD, etc)</li>
+   <li><strong>READ</strong><br>
+       File reading (RETR)</li>
+   <li><strong>WRITE</strong><br>
+       File/directory writing or creation</li>
+   <li><strong>MISC</strong><br>
+       Miscellaneous commands (SITE, etc)</li>
+   <li><strong>ALL</strong><br>
+       All commands (default)</li>
+</ul>
+
+<p>If a <strong><em>format-nickname</em></strong> argument is supplied,
+ExtendedLog will use the predefined logformat (created by
+<a href="#LogFormat">LogFormat</a>).  Otherwise, the default format
+of &quot;%h %l %u %t \&quot;%r\&quot; %s %b&quot; is used.</p>
+
+<p>For example, to log all read and write operations to /var/log/ftp.log
+(using the default format), you could:</p>
+
+<p><code>ExtendedLog /var/log/ftp.log read,write</code></p>
+
+<p>See also: <a href="#LogFormat">LogFormat</a>,
+<a href="#TransferLog">TransferLog</a></p>
+
+<hr>
+
+<h2><a name="Global">&lt;Global&gt;</a></h2>
+
+<p><strong>Syntax:</strong> &lt;Global&gt;<br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;<br>
+<strong>Compatibility:</strong> 1.1.6 and later</p>
+
+<p>The Global configuration block is used to create a set of configuration
+directives which is applied universally to both the main server configuration
+and all <a href="#VirtualHost">VirtualHost</a> configurations.  Most, but
+not <strong>all</strong> other directives can be used inside a Global
+block.</p>
+
+<p>In addition, multiple &lt;Global&gt; blocks can be created.  At runtime,
+all Global blocks are merged together and finally into each server's
+configuration.  Global blocks are terminated by a matching &lt;/Global&gt;
+directive.</p>
+
+<hr>
+
+<h2><a name="Group">Group</a></h2>
+
+<p><strong>Syntax:</strong> Group <em>groupid</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The Group directive configures which group the server daemon
+will normally run at. See <a href="reference.html#User">User</a>
+for more details.</p>
+
+<hr>
+
+<h2><a name="GroupOwner">GroupOwner</a></h2>
+
+<p><strong>Syntax:</strong> GroupOwner <em>groupid</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &lt;Anonymous&gt;, &lt;Directory&gt;,
+.ftpaccess<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The GroupOwner directive configures which group all newly
+created directories and files will be owned by, within the
+context that GroupOwner is applied to. Note that GroupOwner
+cannot be used to override the host OS/file system user/group
+paradigm. If the current user is not a member of the specified
+group, new files and directories will not be able to be chown()ed
+to the GroupOwner group. If this happens, file STOR (send file
+from client to server) and MKD (mkdir) operations will succeed
+normally, however the new directory entries will be owned by the
+current user's default group (a warning message is also logged)
+instead of by the desired group.</p>
+
+<hr>
+
+<h2><a name="GroupPassword">GroupPassword</a></h2>
+
+<p><strong>Syntax:</strong> GroupPassword <em>groupid
+hashed-password</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 0.99.0pl5 and later</p>
+
+<p>The GroupPassword directive creates a special
+&quot;group&quot; password which allows all users in the
+specified group to authenticate using a single password. The
+group/password supplied is only effective inside the context to
+which GroupPassword is applied. The <em><strong>hashed-password</strong></em>
+argument is a standard cleartext password which has been passed
+through the standard unix crypt() library function. <strong>Extreme
+care should be taken when using GroupPassword, as serious
+security problems may arise if group membership is not carefully
+controlled.</strong></p>
+
+<p>See Also: <a href="#UserPassword">UserPassword</a></p>
+
+<hr>
+
+<h2><a name="HideGroup">HideGroup</a></h2>
+
+<p><strong>Syntax:</strong> HideGroup <em>groupid</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The HideGroup directive configures a <a
+href="reference.html#Directory">&lt;Directory&gt;</a> or &lt;<a
+href="reference.html#Anonymous">Anonymous&gt;</a> block to hide
+all directory entries owned by the specified group, unless the
+group is the <strong>primary group</strong> of the currently
+logged-in, authenticated user . Normally, hidden directories and
+files cannot be seen via LIST or NLST commands but <strong>can</strong>
+be operated on via other FTP commands (CWD, DELE, RETR, etc).
+This behavior can be modified via the <a
+href="reference.html#IgnoreHidden">IgnoreHidden</a> directive.</p>
+
+<p>See also: <a href="reference.html#HideUser">HideUser</a>, <a
+href="reference.html#HideNoAccess">HideNoAccess</a>, <a
+href="reference.html#IgnoreHidden">IgnoreHidden</a></p>
+
+<hr>
+
+<h2><a name="HideNoAccess">HideNoAccess</a></h2>
+
+<p><strong>Syntax:</strong> HideNoAccess<br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &lt;Directory&gt;,&lt;Anonymous&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The HideNoAccess directive configures a <a
+href="reference.html#Directory">&lt;Directory&gt;</a> or <a
+href="reference.html#Anonymous">&lt;Anonymous&gt;</a> block to
+hide all directory entries in a directory listing (via the LIST
+or NLST FTP commands) to which the current logged-in,
+authenticated user has no access to. Normal Unix-style
+permissions always apply, so that although a user may not be able
+to see a directory entry that has HideNoAccess applied, they will
+receive a normal &quot;Permission denied&quot; error message when
+attempting to blindly manipulate the file system object. The
+directory or file can be made completely invisible to all FTP
+commands by applying <a href="reference.html#IgnoreHidden">IgnoreHidden</a>
+in conjunction with HideNoAccess.</p>
+
+<p>See also: <a href="reference.html#HideUser">HideUser</a>, <a
+href="reference.html#HideGroup">HideGroup</a>, <a
+href="reference.html#IgnoreHidden">IgnoreHidden</a></p>
+
+<hr>
+
+<h2><a name="HideUser">HideUser</a></h2>
+
+<p><strong>Syntax:</strong> HideUser <em>userid</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The HideUser directive configures a <a
+href="reference.html#Directory">&lt;Directory&gt;</a> or &lt;<a
+href="reference.html#Anonymous">Anonymous&gt;</a> block to hide
+all directory entries owned by the specified user, unless the
+owning user is the currently logged-in, authenticated user.
+Normally, hidden directories and files cannot be seen via LIST or
+NLST commands but <strong>can</strong> be operated on via other
+FTP commands (CWD, DELE, RETR, etc). This behavior can be
+modified via the <a href="reference.html#IgnoreHidden">IgnoreHidden</a>
+directive.</p>
+
+<p>See also: <a href="reference.html#HideGroup">HideGroup</a>, <a
+href="reference.html#HideNoAccess">HideNoAccess</a>, <a
+href="reference.html#IgnoreHidden">IgnoreHidden</a></p>
+
+<hr>
+
+<h2><a name="IdentLookups">IdentLookups</a></h2>
+
+<p><strong>Syntax:</strong> IdentLookups <em>on|off</em><br>
+<strong>Default:</strong> <code>IdentLookups on</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.1.5 and later</p>
+
+<p>Normally, when a client initially connects to proftpd, the
+ident protocol (RFC1413) is used to attempt to identify the
+remote username. This can be controlled via the IdentLookups
+directive.</p>
+
+<hr>
+
+<h2><a name="IgnoreHidden">IgnoreHidden</a></h2>
+
+<p><strong>Syntax:</strong> IgnoreHidden <em>on|off</em><br>
+<strong>Default:</strong> <code>IgnoreHidden off</code><br>
+<strong>Context:</strong> &lt;Limit&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>Normally, files hidden via <a
+href="reference.html#HideNoAccess">HideNoAccess</a>, <a
+href="reference.html#HideUser">HideUser</a> or <a
+href="reference.html#HideGroup">HideGroup</a> can be operated on
+by all FTP commands (assuming Unix file permissions allow
+access), even though they do not appear in directory listings.
+Additionally, even when normal file system permissions disallow
+access, proftpd returns a &quot;Permission denied&quot; error to
+the client, indicating that the requested object does exist, even
+if it cannot be acted upon. IgnoreHidden configures a <a
+href="reference.html#Limit">&lt;Limit&gt;</a> block to completely
+ignore any hidden directory entries for the set of limited FTP
+commands. This has the effect of returning an error similar to
+&quot;No such file or directory&quot; when the client attempts to
+use the limited command upon a hidden directory or file.</p>
+
+<hr>
+
+<h2><a name="Limit">&lt;Limit&gt;</a></h2>
+
+<p><strong>Syntax:</strong> &lt;Limit <em>command|command-group
+[command2 ..]</em>&gt;<br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Global&gt;, .ftpaccess<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The Limit configuration block is used to place access
+restrictions on one or more FTP commands, within a given context.
+Limits flow downward, so that a Limit configuration in the server
+config context applies to all <a href="reference.html#Directory">&lt;Directory&gt;</a>
+and <a href="reference.html#Anonymous">&lt;Anonymous&gt;</a>
+blocks that also reside in the configuration; until it is
+overridden by a &quot;lower&quot; &lt;Limit&gt; block. Any number
+of <em><strong>command</strong></em> parameters can be specified,
+against which the contents of the &lt;Limit&gt; block will be
+applied. <em><strong>command</strong></em> can be any valid FTP
+command, but is generally one of the following:</p>
+
+<ul>
+    <li><strong>CWD</strong> (Change Working Directory)<br>
+        Sent by client when changing directories. <u>Note that
+        limits placed on this command </u><strong><u>also</u></strong><u>
+        apply to the </u><strong><u>CDUP</u></strong><u> command
+        (Change Directory UP).</u></li>
+    <li><strong>MKD</strong> (MaKe Directory)<br>
+        Sent by client to create a new directory.</li>
+    <li><strong>RNFR</strong> (ReName FRom), <strong>RNTO</strong>
+        (ReName TO)<br>
+        Sent as a pair by client to rename a directory entry.</li>
+    <li><strong>DELE</strong> (DELEte)<br>
+        Sent by client to delete a file.</li>
+    <li><strong>RMD</strong> (ReMove Directory)<br>
+        Sent by client to remove a directory.</li>
+    <li><strong>RETR</strong> (RETRieve)<br>
+        Transfer a file from the server to the client.</li>
+    <li><strong>STOR</strong> (STORe)<br>
+        Transfer a file from the client to the server.</li>
+</ul>
+
+<p>In addtion, the following <em><strong>command-groups</strong></em>
+are accepted. They have a lower precedence than real commands,
+meaning that a real command limit will always be applied instead
+of the <em><strong>command-group</strong></em>.</p>
+
+<ul>
+    <li><strong>READ</strong><br>
+        All FTP commands which deal with file reading (directory
+        listing not included). i.e. RETR, STAT, etc.</li>
+    <li><strong>WRITE</strong><br>
+        All FTP commands which deal with file or directory
+        write/creation/deletion (MKD and RMD included).</li>
+    <li><strong>DIRS</strong><br>
+        All FTP commands which deal with directory listing. i.e
+        LIST and NLST.</li>
+    <li><strong>ALL</strong><br>
+        <em>ALL</em> FTP commands (identical to READ WRITE DIRS).</li>
+</ul>
+
+<p>Finally, a special command is allowed which can be used to
+control login access:</p>
+
+<ul>
+    <li><strong>LOGIN</strong><br>
+        Connection or login to the server. Applying a
+        &lt;Limit&gt; to this pseudo-command can be used to allow
+        or deny initial connection or login to the context. It
+        has no effect, and is ignored, when used in a context
+        other than server config, <a href="#VirtualHost">&lt;VirtualHost&gt;</a>
+        or <a href="#Anonymous">&lt;Anonymous&gt;</a> (i.e. using
+        it in a <a href="#Directory">&lt;Directory&gt;</a>
+        context is meaningless).</li>
+</ul>
+
+<p>&lt;Limit&gt; command restrictions should not be confused with
+file/directory access permission. While limits can be used to
+restrict a command on a certain directory, they cannot be used to
+override the file permissions inherent to the base operating/file
+system.</p>
+
+<p>See also: <a href="reference.html#IgnoreHidden">IgnoreHidden</a></p>
+
+<hr>
+
+<h2><a name="LogFormat">LogFormat</a></h2>
+
+<p><strong>Syntax:</strong> LogFormat <em>nickname &quot;format-string&quot;</em><br>
+<strong>Default:</strong> <code>LogFormat default
+&quot;%h %l %u %t \&quot;%r\&quot; %s %b&quot;</code><br>
+<strong>Context:</strong> server config<br>
+<strong>Compatibility:</strong> 1.1.6pl1 and later</p>
+
+<p>The LogFormat directive can be used to create a custom logging format
+for use with the <a href="#ExtendedLog">ExtendedLog</a> directive.  Once
+created, the format can be referenced by the specified <strong><em>nickname</em></strong>.</p>
+
+<p>The <strong><em>format-string</em></strong> argument can consist of any
+combination of letters, numbers and symbols.  The special character
+<strong>%</strong> is used to start a meta-sequence (see below).  To
+insert a literal % character, use %%.  The following meta sequences are
+available and are replaced as indicated when logging.</p>
+
+<div align="left">
+
+<table border="0" cellpadding="3" cellspacing="0" width="50%">
+    <tr>
+        <td align="right" width="20%"><strong>%b</strong></td>
+        <td>&nbsp;</td>
+        <td>Bytes sent for request</td>
+    </tr>
+    <tr>
+        <td align="right" width="20%"><strong>%f</strong></td>
+        <td>&nbsp;</td>
+        <td>Filename stored or retrieved</td>
+    </tr>
+    <tr>
+        <td align="right" width="20%"><strong>%{FOOBAR}e</strong></td>
+        <td>&nbsp;</td>
+        <td>Contents of environment variable FOOBAR</td>
+    </tr>
+    <tr>
+        <td align="right" width="20%"><strong>%h</strong></td>
+        <td>&nbsp;</td>
+        <td>Remote host name</td>
+    </tr>
+    <tr>
+        <td align="right" width="20%"><strong>%a</strong></td>
+        <td>&nbsp;</td>
+        <td>Remote IP address</td>
+    </tr>
+    <tr>
+        <td align="right" width="20%"><strong>%l</strong></td>
+        <td>&nbsp;</td>
+        <td>Remote username (from ident)</td>
+    </tr>
+    <tr>
+        <td align="right" width="20%"><strong>%p</strong></td>
+        <td>&nbsp;</td>
+        <td>Local server port number</td>
+    </tr>
+    <tr>
+        <td align="right" width="20%"><strong>%v</strong></td>
+        <td>&nbsp;</td>
+        <td>Local server name</td>
+    </tr>
+    <tr>
+        <td align="right" width="20%"><strong>%P</strong></td>
+        <td>&nbsp;</td>
+        <td>Local server process id (pid)</td>
+    </tr> 
+    <tr>
+        <td align="right" width="20%"><strong>%r</strong></td>
+        <td>&nbsp;</td>
+        <td>Full command line received from client</td>
+    </tr>
+    <tr>
+        <td align="right" width="20%"><strong>%t</strong></td>
+        <td>&nbsp;</td>
+        <td>Current local time</td>
+    </tr>
+    <tr>
+        <td align="right" width="20%"><strong>%{format}t</strong></td>
+        <td>&nbsp;</td>
+        <td>Current local time formatted (strftime(3) format)</td>
+    </tr>
+    <tr>
+        <td align="right" width="20%"><strong>%T</strong></td>
+        <td>&nbsp;</td>
+        <td>Time taken to transmit/receive file, in seconds
+    </tr>
+    <tr>
+        <td align="right" width="20%"><strong>%s</strong></td>
+        <td>&nbsp;</td>
+        <td>Numeric FTP response code (status)</td>
+    </tr>
+    <tr>
+        <td align="right" width="20%"><strong>%u</strong></td>
+        <td>&nbsp;</td>
+        <td>Local authenticated userid</td>
+    </tr>
+</table>
+
+<p>See also: <a href="#ExtendedLog">ExtendedLog</a>,
+<a href="#TransferLog">TransferLog</a></p>
+
+<hr>
+
+<h2><a name="LsDefaultOptions">LsDefaultOptions</a></h2>
+
+<p><strong>Syntax:</strong> LsDefaultOptions <em>"options string"</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.1.6 and later</p>
+
+<p>Normally, FTP commands involving directory listings (NLST, LIST and
+STAT) use the arguments (options) passed by the client to determine what files
+are displayed and the format they are displayed in.  Using the LsDefaultOptions
+directive can alter the default behavior of such listings, but implying
+that a certain option (or options) is always present.  For example, to force
+all directory listings to <strong>always</strong> display ".dotfiles",
+one might:</p>
+
+<p><code>LsDefaultOptions "-a"</code></p>
+
+<hr>
+
+<h2><a name="MaxClients">MaxClients</a></h2>
+
+<p><strong>Syntax:</strong> MaxClients <em>number|none message</em><br>
+<strong>Default:</strong> <code>MaxClients none</code><br>
+<strong>Context:</strong> server config, &lt;Anonymous&gt;,
+&lt;VirtualHost&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The MaxClients directive configures the maximum number of
+authenticated clients which may be logged into a server or
+anonymous account. Once this limit is reached, additional clients
+attempting to authenticate will be disconnected.</p>
+
+<p>The special value <em><strong>none</strong></em> may be
+supplied which removes all maximum connection limits from the
+applicable configuration context. Additionally, an optional <em><strong>message</strong></em>
+argument may be used which will be displayed to a client
+attempting to exceed the maximum value; immediately before
+disconnection. The <em><strong>message</strong></em> argument is
+parsed for the magic string <strong>&quot;%m&quot;</strong>,
+which is replaced with the configured maximum value. If <em><strong>message</strong></em>
+is not supplied, a system-wide default message is used.</p>
+
+<p>Example:</p>
+
+<p><code>MaxClients 5 &quot;Sorry, the maximum number of allowed
+users are already connected (%m)&quot;</code></p>
+
+<p>Results in:</p>
+
+<p><code>530 Sorry, the maximum number of allowed users are
+already connected (5)</code></p>
+
+<hr>
+
+<h2><a name="MaxClientsPerHost">MaxClientsPerHost</a></h2>
+
+<p><strong>Syntax:</strong> MaxClientsPerHost <em>number|none message</em><br>
+<strong>Default:</strong> <code>MaxClientsPerHost none</code><br>
+<strong>Context:</strong> server config, &lt;Anonymous&gt;,
+&lt;VirtualHost&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.1.7 and later</p>
+
+<p>The MaxClientsPerHost directive configures the maximum number of clients
+allowed to connect per host.  The optional argument <strong><em>message</em></strong>
+may be used which will be displayed to a client attempting to exceed the maximum
+value.  If <strong><em>message</em></strong> is not supplied, a system-wide
+default message is used.<p>
+
+<p>Example:</p>
+
+<p><code>MaxClientsPerHost 1 &quot;Sorry, you may not connect more than one time.&quot;</code></p>
+
+<p>Results in:</p>
+
+<p><code>530 Sorry, you may not connect more than one time.</code></p>
+
+<hr>
+
+<h2><a name="MaxInstances">MaxInstances</a></h2>
+
+<p><strong>Syntax:</strong> MaxInstances <em>number</em><br>
+<strong>Default:</strong> <code>MaxInstances none</code><br>
+<strong>Context:</strong> server config<br>
+<strong>Compatibility:</strong> 1.1.6pl1</p>
+
+<p>The MaxInstances directive configures the maximum number of child
+processes that may be spawned by a parent proftpd process in
+<strong><em>standalone</em></strong> mode.  The directive has no
+effect when used on a server running in <strong><em>inetd</em></strong>
+mode.</p>
+
+<p>Because each child proftpd process represents a single client connection,
+this directive also controls the maximum number of simultaneous connections
+allowed.  Additional connections beyond the configured limit are syslog'd
+and silently disconnected.  The MaxInstances directive can be used to
+prevent undesireable denial-of-service attacks (repeatedly connecting
+to the ftp port, causing proftpd to fork-bomb).  By default, no limit
+is placed on the number of child processes that may run at one time.</p>
+
+<hr>
+
+<h2><a name="MaxLoginAttempts">MaxLoginAttempts</a></h2>
+
+<p><strong>Syntax:</strong> MaxLoginAttempts <em>number</em><br>
+<strong>Default:</strong> <code>MaxLoginAttempts 3</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The MaxLoginAttempts directive configures the maximum number
+of times a client may attempt to authenticate to the server
+during a given connection. After the number of attempts exceeds
+this value, the user is disconnected and an appropriate message
+is logged via the syslog mechanism.</p>
+
+<hr>
+
+<h2><a name="Order">Order</a></h2>
+
+<p><strong>Syntax:</strong> Order <em>allow,deny|deny,allow</em><br>
+<strong>Default:</strong> <code>Order allow,deny</code><br>
+<strong>Context:</strong> &lt;Limit&gt;<br>
+<strong>Compatibility:</strong> 0.99.0pl6 and later</p>
+
+<p>The Order directive configures the order in which <a
+href="#Allow">Allow</a> and <a href="#Deny">Deny</a> directives
+are checked inside of a <a href="#Limit">&lt;Limit&gt;</a> block.
+Because <a href="#Allow">Allow</a> directives are permissive, and
+<a href="#Deny">Deny</a> directives restrictive, the order in
+which they are examined can significantly alter the way security
+functions.</p>
+
+<p>If the default setting of <em><strong>allow,deny</strong></em>
+is used, &quot;allowed&quot; access permissions are checked
+first. If an <a href="#Allow">Allow</a> directive explicitly
+allows access to the <a href="#Limit">&lt;Limit&gt;</a> context,
+access is granted and any <a href="#Deny">Deny</a> directives are
+never checked. If <a href="#Allow">Allow</a> did not explicitly
+permit access, <a href="#Deny">Deny</a> directives are checked.
+If any <a href="#Deny">Deny</a> directive applies, access is
+explicitly denied. Otherwise, access is granted.</p>
+
+<p>When <em><strong>deny,allow</strong></em> is used,
+&quot;deny&quot; access restrictions are checked first. If any
+restriction applies, access is denied immediately. If nothing is
+denied, <a href="#Allow">Allow</a> permissions are checked. If an
+<a href="#Allow">Allow</a> explicitly permits access, access to
+the entire context is permited; otherwise access is implicitly
+denied.</p>
+
+<p>For clarification, the following illustrates the steps used
+when checking Allow/Deny access:</p>
+
+<blockquote>
+    <p><font size="4"><strong><u>Order allow,deny</u></strong></font></p>
+</blockquote>
+
+<ol>
+    <li>Check Allow directives. If one or more apply, exit with
+        result: <strong>ALLOW</strong></li>
+    <li>Check Deny directives. If one or more apply, exit with
+        result: <strong>DENY</strong></li>
+    <li>Exit with default implicit <strong>ALLOW</strong></li>
+</ol>
+
+<blockquote>
+    <p><font size="4"><strong><u>Order deny,allow</u></strong></font></p>
+</blockquote>
+
+<ol>
+    <li>Check Deny directives. If one or more apply, exit with
+        result: <strong>DENY</strong></li>
+    <li>Check Allow directives. If one or more apply, exit with
+        result: <strong>ALLOW</strong></li>
+    <li>Exit with default implicit: <strong>DENY</strong></li>
+</ol>
+
+<hr>
+
+<h2><a name="PathAllowFilter">PathAllowFilter</a></h2>
+
+<p><strong>Syntax:</strong> PathAllowFilter <em>regular-expression</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.1.7 and later</p>
+
+<p>PathAllowFilter allows the configuration of a regular expression that
+<strong>must</strong> be matched for all newly uploaded (stored) files.
+The regular expression is applied against the entire pathname specified
+by the client, so care must be taken when creating a proper regex.  Paths
+that fail the regex match result in a "Forbidden filename" error being
+returned to the client.</p>
+
+<p>If the <strong><i>regular-expression</i></strong> argument contains
+whitespace, it must be enclosed in quotes.</p>
+
+<p>Example:</p>
+
+<p><code># Only allow filenames containing alphanumeric characters<br>
+PathAllowFilter &quot;.*/[a-zA-Z0-9]+$&quot;</code></p>
+
+<hr>
+
+
+<h2><a name="PathDenyFilter">PathDenyFilter</a></h2>
+
+<p><strong>Syntax:</strong> PathDenyFilter <em>regular-expression</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.1.7 and later</p>
+
+<p>Similar to <a href="#PathAllowFilter">PathAllowFilter</a>, PathDenyFilter
+specifies a regular expression which must <strong>not</strong> match
+any uploaded pathnames.  If the regex does match, a "Forbidden filename"
+error is returned to the client.  This can be especially useful for
+forbidding .ftpaccess or .htaccess files.</p>
+
+<p>Example:</p>
+
+<p><code># We don't want .ftpaccess or .htaccess files to be uploaded<br>
+PathDenyFilter &quot;(\.ftpaccess)|(\.htaccess)$&quot;</code></p>
+
+<hr>
+
+<h2><a name="PersistentPasswd">PersistentPasswd</a></h2>
+
+<p><strong>Syntax:</strong> PersistentPasswd <em>on|off</em><br>
+<strong>Default:</strong> Platform dependent<br>
+<strong>Context:</strong> server config<br>
+<strong>Compatibility:</strong> 1.1.5 and later</p>
+
+<p>The PersistentPasswd directive controls how proftpd handles
+authentication, user/group lookups, and user/group to name
+mapping. If set to On, proftpd will attempt to open the
+system-wide /etc/passwd, /etc/group (and /etc/shadow,
+potentially) files itself, holding them open even during a
+chroot()ed login (note that /etc/shadow is never held open, for
+security reasons). On some platforms, you must turn this option
+on, as the libc functions are incapable of accessing these
+databases from inside of a chroot(). At configure-time, the
+configuration script will attempt to detect whether or not you
+need this support, and make it the default. However, such
+&quot;guessing&quot; may fail, and you will have to manually
+enable or disable the feature. If you cannot see user or group
+names when performing a directory listing inside an anonymous
+chrooted login, this indicates you must enable the directive. Use
+of the <a href="#AuthUserFile">AuthUserFile</a> or <a
+href="#AuthGroupFile">AuthGroupFile</a> directives will force
+partial support for persistent user or group database files;
+regardless of PersistentPasswd's setting.</p>
+
+<p><strong>Note: NIS or NIS+ users will most likely want to
+disable this feature, regardless of proftpd's detected
+configuration defaults. Failure to disable this will make your
+NIS/NIS+ maps not work!</strong></p>
+
+<hr>
+
+<h2><a name="Port">Port</a></h2>
+
+<p><strong>Syntax:</strong> Port <em>port-number</em><br>
+<strong>Default:</strong> <code>Port 21</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The Port directive configures the tcp port which proftpd will
+listen on while running in <em><strong>standalone</strong></em>
+mode. It has no effect when used upon a server running in <em><strong>inetd</strong></em>
+mode (see <a href="reference.html#ServerType">ServerType</a>).
+The directive can be used in conjuction with <a
+href="#VirtualHost">&lt;VirtualHost&gt;</a> in
+order to run a virtual server on the same IP address as the
+master server, but listening on a different port.</p>
+
+<hr>
+
+<h2><a name="RequireValidShell">RequireValidShell</a></h2>
+
+<p><strong>Syntax:</strong> RequireValidShell <em>on|off</em><br>
+<strong>Default:</strong> <code>RequireValidShell on</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The RequireValidShell directive configures the server, virtual
+host or anonymous login to allow or deny logins which do not have
+a shell binary listed in /etc/shells. By defualt, proftpd
+disallows logins if the user's default shell is not listed in
+/etc/shells. If /etc/shells cannot be found, all default shells
+are assumed to be valid.</p>
+
+<hr>
+
+<h2><a name="RootLogin">RootLogin</a></h2>
+
+<p><strong>Syntax:</strong> RootLoginl <em>on|off</em><br>
+<strong>Default:</strong> <code>RootLogin off</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.1.5 and later</p>
+
+<p>Normally, proftpd disallows root logins under any
+circumstance. If a client attempts to login as root, using the
+correct password, a special security message is sent to syslog.
+When the RootLogin directive is turned On, the root user may
+authenticate just as any other user could (assuming no other
+access control measures deny access); however the root login
+security message is still sysloged. <strong>Obviously, </strong><strong><u>extreme</u></strong><strong>
+care should be taken when using this directive.</strong></p>
+
+<hr>
+
+<h2><a name="ScoreboardPath">ScoreboardPath</a></h2>
+
+<p><strong>Syntax:</strong> ScoreboardPath <em>path</em><br>
+<strong>Default:</strong> <code>ScoreboardPath /var/run</code><br>
+<strong>Context:</strong> server config<br>
+<strong>Compatibility:</strong> 1.1.6 and later</p>
+
+<p>The ScoreboardPath directive sets the directory where proftpd run-time
+scoreboard files (proftpd-*) are kept.  These file(s) are necessary for
+<a href="#MaxClients">MaxClients</a> to work properly, as well as other
+utilities (such as ftpwho and ftpcount).
+</p>
+
+<hr>
+
+<h2><a name="ServerAdmin">ServerAdmin</a></h2>
+
+<p><strong>Syntax:</strong> ServerAdmin <em>&quot;admin-email-address&quot;</em><br>
+<strong>Default:</strong> <code>ServerAdmin root@[ServerName]</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;<br>
+<strong>Compatibility:</strong> 0.99.0pl10 and later</p>
+
+<p>The ServerAdmin directive sets the email address of the
+administrator for the server or virtualhost. This address is
+displayed in magic cookie replacements (see <a
+href="#DisplayLogin">DisplayLogin</a> and <a
+href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
+
+<hr>
+
+<h2><a name="ServerName">ServerName</a></h2>
+
+<p><strong>Syntax:</strong> ServerName <em>&quot;name&quot;</em><br>
+<strong>Default:</strong> <code>ServerName &quot;ProFTPD Server
+[version]&quot;</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The ServerName directive configures the string that will be
+displayed to a user connecting to the server (or virtual server
+if the directive is located in a <a href="#VirtualHost">&lt;VirtualHost&gt;</a>
+block). </p>
+
+<p><strong>See Also:</strong> <a href="#VirtualHost">&lt;VirtualHost&gt;</a></p>
+
+<hr>
+
+<h2><a name="ServerType">ServerType</a></h2>
+
+<p><strong>Syntax:</strong> ServerType <em>type-identifier</em><br>
+<strong>Default:</strong> <code>ServerType standalone</code><br>
+<strong>Context:</strong> server config<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The ServerType directive configures the server daemon's
+operating mode. The <em>type-identifier</em> can be one of two
+values:</p>
+
+<ul>
+    <li><em><strong>inetd</strong></em><br>
+        The daemon will expect to be run from the inetd
+        &quot;super server.&quot; New connections are passed from
+        inetd to proftpd and serviced immediately.</li>
+    <li><em><strong>standalone</strong></em><br>
+        The daemon starts and begins listening to the configured <a
+        href="reference.html#port">port</a> for incoming
+        connections. New connections result in spawned child
+        processes dedicated to servicing all requests from the
+        newly connected client.</li>
+</ul>
+
+<hr>
+
+<h2><a name="ShowSymlinks">ShowSymlinks</a></h2>
+
+<p><strong>Syntax:</strong> ShowSymlinks <em>on|off</em><br>
+<strong>Default: (versions previous to 1.1.5) </strong><code>Off
+for anonymous logins, On for normal logins</code><br>
+<strong>Default: (versions 1.1.5 and beyond) </strong><code>ShowSymlinks
+On</code><strong><br>
+Context:</strong> server
+config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<strong><br>
+Compatibility:</strong> 0.99.0pl6 and later</p>
+
+<p>Symbolic links (if supported on the host OS and filesystem)
+can be either shown in directory listings (including the target
+of the link) or can be &quot;hidden&quot; (proftpd dereferences
+symlinks and reports the target's permissions and ownership). The
+default behavior is to show all symbolic links when normal users
+are logged in, and hide them for anonymous sessions. If a
+symbolic link cannot be dereferenced for any reason (permissions,
+target does not exist, etc) and ShowSymlinks is off, proftpd
+displays the link as a directory entry of type 'l' (link) with
+the ownership and permissions of the actual link.</p>
+
+<p>Under ProFTPD versions 1.1.5 and higher, the default behavior
+in regard to ShowSymlinks has been changed so that symbolic links
+are always displayed as such (in all cases), unless ShowSymlinks
+off is explicitly set.</p>
+
+<hr>
+
+<h2><a name="SocketBindTight">SocketBindTight</a></h2>
+
+<p><strong>Syntax:</strong> SocketBindTight <em>on|off</em><br>
+<strong>Default:</strong> <code>SocketBindTight off</code><br>
+<strong>Context:</strong> server config<br>
+<strong>Compatibility:</strong> 0.99.0pl6 and later</p>
+
+<p>The SocketBindTight directive controls how proftpd creates and
+binds it's initial tcp listen sockets in <em><strong>standalone</strong></em>
+mode (see <a href="#ServerType">ServerType</a>). The directive
+has no effect upon servers running in <em><strong>inetd</strong></em>
+mode, because listen sockets are not needed or created. When
+SocketBindTight is set to <em><strong>off</strong></em> (the
+default), a single listening socket is created for each port that
+the server must listen on, regardless of the number of IP
+addresses being used by <a href="#VirtualHost">&lt;VirtualHost&gt;</a>
+configurations. This has the benefit of typically requiring a
+relatively small number of file descriptors for the master daemon
+process, even if a large number of virtual servers are
+configured. If SocketBindTight is set to <em><strong>on</strong></em>,
+a listen socket is created and bound to a specific IP address for
+the master server and all configured virtual servers. This allows
+for situations where an administrator may wish to have a
+particular port be used by both proftpd (on one IP address) and
+another daemon (on a different IP address). The drawback is that
+considerably more file descriptors will be required if a large
+number of virtual servers must be supported.</p>
+
+<p>Example: Two servers have been configured (one master and one
+virtual), with the IP addresses 10.0.0.1 and 10.0.0.2,
+respectively. The 10.0.0.1 server runs on port 21, while 10.0.0.2
+runs on port 2001.</p>
+
+<p><code>SocketBindTight off #default<br>
+# proftpd creates two sockets, both bound to ALL available
+addresses.<br>
+# one socket listens on port 21, the other on 2001. Because each
+socket is<br>
+# bound to all available addresses, no other daemon or user
+process will be<br>
+# allowed to bind to ports 21 or 2001.<br>
+...<br>
+SocketBindTight on<br>
+# proftpd creates two sockets again, however one is bound to
+10.0.0.1, port 21<br>
+# and the other to 10.0.0.2, port 2001. Because these sockets are
+&quot;tightly&quot;<br>
+# bound to IP addresses, port 21 can be reused on any address
+OTHER than<br>
+# 10.0.0.1, and visa-versa with 10.0.0.2, port 2001.</code></p>
+
+<p>One side-effect of setting SocketBindTight to <em><strong>on</strong></em>
+is that connections to non-bound addresses will result in a
+&quot;connection refused&quot; message rather than the typical
+&quot;500 Sorry, no server available to handle request on
+xxx.xxx.xxx.xxx.&quot;, due to the fact that no listen socket has
+been bound to the particular address/port pair. This may or may
+not be aesthetically desireable, depending on your circumstances.</p>
+
+<hr>
+
+<h2><a name="SyslogFacility"><strong>SyslogFacility</strong></a></h2>
+
+<p><strong>Syntax:</strong> SyslogFacility <em>facility-level</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config<br>
+<strong>Compatibility:</strong> 1.1.6 and later</p>
+
+<p>Proftpd logs it's activity via the Unix syslog mechanism,
+which allows for several different general classifications of logging messages,
+known as "facilities."  Normally, all authentication related messages
+are logged with the AUTHPRIV (or AUTH) facility [intended to be secure,
+and never seen by unwanted eyes], while normal operational messages are
+logged with the DAEMON facility.  The SyslogFacility directive allows ALL
+logging messages to be directed to a different facility than the default.
+When this directive is used, ALL logging is done with the specificed facility,
+both authentication (secure) and otherwise.</p>
+
+<p>The <strong><em>facility-level</em></strong> argument must be one of
+the following:
+<strong>AUTH</strong> (or <strong>AUTHPRIV</strong>)<strong>, CRON,
+DAEMON, KERN, LPR, MAIL, NEWS, USER, UUCP, LOCAL0, LOCAL1, LOCAL2,
+LOCAL3, LOCAL4, LOCAL5, LOCAL6 or LOCAL7.</strong></p>
+
+<p>See also: <a href="#SystemLog">SystemLog</a></p>
+
+<hr>
+
+<h2><a name="SystemLog"><strong>SystemLog</strong></a></h2>
+
+<p><strong>Syntax:</strong> SystemLog <em>filename|NONE</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config<br>
+<strong>Compatibility:</strong> 1.1.6pl1 and later</p>
+
+<p>The SystemLog directive disables proftpd's use of the syslog
+mechanism and instead redirects all logging output to the specified
+<strong><em>filename</em></strong>.  The <strong><em>filename</em></strong>
+argument should contain an absolute path.  Use of this directive overrides
+any facility set by the <a href="SyslogFacility">SyslogFacility</a>
+directive.</p>
+
+<p>Additionally, the special keyword <strong><em>NONE</em></strong>
+can be used which disables all syslog style logging for the entire
+configuration.</p>
+
+<hr>
+
+<h2><a name="tcpBackLog"><strong>tcpBackLog</strong></a></h2>
+
+<p><strong>Syntax:</strong> tcpBackLog <em>backlog-size</em><br>
+<strong>Default:</strong> <code>tcpBackLog 5</code><br>
+<strong>Context:</strong> server config<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The tcpBackLog directive controls the tcp &quot;backlog
+queue&quot; when listening for connections in <em><strong>standalone</strong></em>
+mode (see <a href="reference.html#ServerType">ServerType</a>). It
+has no affect upon servers in <em><strong>inetd</strong></em>
+mode. When a tcp connection is established by the tcp/ip stack
+inside the kernel, there is a short period of time between the
+actual establishment of the connection and the acceptance of the
+connection by a user-space program. The duration of this latency
+period is widely variable, and can depend upon several factors
+(hardware, system load, etc). During this period tcp connections
+cannot be accepted, as the port that was previouisly
+&quot;listening&quot; has become filled with the new connection.
+Under heavy connection load this can result in occasional (or
+even frequent!) &quot;connection refused&quot; messages returned
+to the incoming client, even when there is a service available to
+handle requests. To eliminate this problem, most modern tcp/ip
+stacks implement a &quot;backlog queue&quot; which is simply a
+pre-allocation of resources necessary to handle <em><strong>backlog-size</strong></em>
+connections during the latency period. The larger the backlog
+queue, the more connections can be established in a very short
+time period. The trade-off, of course, is kernel memory and/or
+other kernel resources.</p>
+
+<p>Generally it is not necessary to use a tcpBackLog directive,
+unless you intend to service a large number of virtual hosts (see
+<a href="reference.html#VirtualHost">&lt;VirtualHost&gt;</a>), or
+have a consistantly heavy system load. If you begin to notice or
+hear of &quot;connection refused&quot; messages from remote
+clients, try setting a slightly higher value to this directive.</p>
+
+<hr>
+
+<h2><a name="tcpReceiveWindow">tcpReceiveWindow</a></h2>
+
+<p><strong>Syntax:</strong> tcpReceiveWindow <em>window-size</em><br>
+<strong>Default:</strong> <code>tcpReceiveWindow 8192</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The tcpReceiveWindow directive configures the size (in octets)
+of all data connections' tcp receive windows. It is only used
+when receiving a file from a client over the data connection.
+Typically, a given tcp/ip implementation will use a relatively
+small receive window size (the number of octets that can be
+received at the tcp layer before a &quot;turnaround&quot;
+acknowledgement is required). When transfering a large amount of
+data over fast digital transmission lines which have a relatively
+high latency, a small receive window can dramatically affect
+perceived throughput because of the necessity to completely stop
+the transfer occasionally in order to wait for the remote
+endpoint to receive the acknowledgement and continue
+transmission. For example, on a T1 line (assuming full 1.544Mbps
+endpoint-to-endpoint throughput) with 100 ms latency, a 4k
+receive buffer will very dramatically reduce the perceived
+throughput. The default value of 8192 octets (8k) should be
+reasonable in common network configurations.</p>
+
+<p>Additionally, proftpd allocates its internal buffers to match
+the receive/send window sizes; in order to maximize the
+reception/transmission performance (reducing the number of times
+data must be transfered from proftpd to the kernel tcp/ip stack).
+The tradeoff, of course, is memory; both kernel- and user-space.
+If running proftpd on a memory tight host (and on a low-bandwidth
+connection), it might be advisable to decrease both the
+tcpReceiveWindow and <a href="reference.html#tcpSendWindow">tcpSendWindow</a>
+sizes.</p>
+
+<hr>
+
+<h2><a name="tcpSendWindow">tcpSendWindow</a></h2>
+
+<p><strong>Syntax:</strong> tcpSendWindow <em>window-size</em><br>
+<strong>Default:</strong> <code>tcpSendWindow 8192</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The tcpSendWindow directive configures the size (in octets) of
+all data connections' tcp send windows. It is only used when
+sending a file from the server to a client on the data
+connection. For a detailed description of receive/send window
+sizes see <a href="reference.html#tcpReceiveWindow">tcpReceiveWindow</a>.</p>
+
+<hr>
+
+<h2><a name="TimeoutIdle">TimeoutIdle</a></h2>
+
+<p><strong>Syntax:</strong> TimeoutIdle <em>seconds</em><br>
+<strong>Default:</strong> <code>TimeoutIdle 600</code><br>
+<strong>Context:</strong> server config<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The TimeoutIdle directive configures the maximum number of
+seconds that proftpd will allow clients to stay connected without
+receiving any data on either the control or data connection. If
+data is received on either connection, the idle timer is reset.
+Setting TimeoutIdle to 0 disables the idle timer completely
+(clients can stay connected for ever, without sending data). This
+is generally a bad idea as a &quot;hung&quot; tcp connection
+which is never properly disconnected (the remote network may have
+become disconnected from the Internet, etc) will cause a child
+server to never exit (at least not for a considerable period of
+time) until manually killed</p>
+
+<p>See also: <a href="reference.html#TimeoutLogin">TimeoutLogin</a>,
+<a href="reference.html#TimeoutNoTransfer">TimeoutNoTransfer</a></p>
+
+<hr>
+
+<h2><a name="TimeoutLogin">TimeoutLogin</a></h2>
+
+<p><strong>Syntax:</strong> TimeoutLogin <em>seconds</em><br>
+<strong>Default:</strong> <code>TimeoutLogin 300</code><br>
+<strong>Context:</strong> server config<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The TimeoutLogin directive configures the maximum number of
+seconds a client is allowed to spend authenticating. The login
+timer is not reset when a client transmits data, and is only
+removed once a client has transmitted an acceptable USER/PASS
+command combination.</p>
+
+<p>See Also: <a href="reference.html#TimeoutIdle">TimeoutIdle</a>,
+<a href="reference.html#TimeoutNoTransfer">TimeoutNoTransfer</a></p>
+
+<hr>
+
+<h2><a name="TimeoutNoTransfer">TimeoutNoTransfer</a></h2>
+
+<p><strong>Syntax:</strong> TimeoutNoTransfer <em>seconds</em><br>
+<strong>Default:</strong> <code>TimeoutNoTransfer 600</code><br>
+<strong>Context:</strong> server config<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The TimeoutNoTransfer directive configures the maximum number
+of seconds a client is allowed to spend connected, after
+authentication, without issuing a command which results in
+creating an active or passive data connection (i.e.
+sending/receiving a file, or receiving a directory listing).</p>
+
+<p>See Also: <a href="reference.html#TimeoutIdle">TimeoutIdle</a>,
+<a href="reference.html#TimeoutLogin">TimeoutLogin</a></p>
+
+<hr>
+
+<h2><a name="TimeoutStalled">TimeoutStalled</a></h2>
+
+<p><strong>Syntax:</strong> TimeoutStalled <em>seconds</em><br>
+<strong>Default:</strong> <code>TimeoutStalled 0</code><br>
+<strong>Context:</strong> server config<br>
+<strong>Compatibility:</strong> 1.1.6 and later</p>
+
+<p>The TimeoutStalled directive sets the maximum number of seconds a data
+connection between the proftpd server and an FTP client can exist but have no
+actual data transferred (i.e. &quot;stalled&quot;).  If the
+<strong><em>seconds</em></strong> argument is set to <strong>0</strong>,
+data transfers are allowed to stall indefinitely (the default).</p>
+
+<hr>
+
+<h2><a name="TransferLog">TransferLog</a></h2>
+
+<p><strong>Syntax:</strong> TransferLog <em>filename|NONE</em><br>
+<strong>Default:</strong> <code>TransferLog /var/log/xferlog</code><br>
+<strong>Context:</strong> server config, &lt;Anonymous&gt;,
+&lt;VirtualHost&gt;, &lt;Global&gt;<br>
+<strong>Compatiblity:</strong> 1.1.4 and later</p>
+
+<p>The TransferLog directive configures the full path to the
+&quot;wu-ftpd style&quot; file transfer log.  Seperate log files can be
+created for each <a href="#Anonymous">Anonymous</a> and/or
+<a href="#VirtualHost">VirtualHost</a>.</p>
+
+<p>Additionally, the special keyword <strong><em>NONE</em></strong>
+can be used, which disables wu-ftpd style transfer logging for the
+context in which the directive is used (<em>only applicable to
+version 1.1.7 and later</em>).</p>
+
+<p>See also: <a href="#ExtendedLog">ExtendedLog,
+<a href="#LogFormat">LogFormat</a></p>
+
+<hr>
+
+<h2><a name="Umask">Umask</a></h2>
+
+<p><strong>Syntax:</strong> Umask <em>octal-mask</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;Anonymous&gt;,
+&lt;VirtualHost&gt;, &lt;Directory&gt;, &lt;Global&gt;, .ftpaccess<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>Umask sets the mask applied to newly created file and
+directory permissions within a given context. By default, the
+Umask in the server configuration, <a href="#VirtualHost">&lt;VirtualHost&gt;</a>
+or <a href="#Anonymous">&lt;Anonymous&gt;</a> block is used,
+unless overridden by a &quot;per-directory&quot; Umask setting.
+The argument supplied must be an octal number, in the format
+0xxx. For more information on umasks, consult your operating
+system documentation/man pages.</p>
+
+<hr>
+
+<h2><a name="UseFtpUsers">UseFtpUsers</a></h2>
+
+<p><strong>Syntax:</strong> UseFtpUsers <em>on|off</em><br>
+<strong>Default:</strong> <code>UseFtpUsers on</code><br>
+<strong>Context:</strong> server config, &lt;Anonymous&gt;,
+&lt;VirtualHost&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>Legacy FTP servers generally check a special authorization
+file (typically /etc/ftpusers) when a client attempts to
+authenticate. If the user's name is found in this file, FTP
+access is denied. For compatibility sake, proftpd defaults to
+checking this file during authentication. This behavior can be
+supressed using the UseFtpUsers configuration directive.</p>
+
+<hr>
+
+<h2><a name="UseReverseDNS">UseReverseDNS</a></h2>
+
+<p><strong>Syntax:</strong> UseReverseDNS <em>on|off</em><br>
+<strong>Default:</strong> <code>UseReverseDNS on</code><br>
+<strong>Context:</strong> server config<br>
+<strong>Compatibility:</strong> 1.1.7 and later</p>
+
+<p>Normally, incoming active mode data connections and outgoing
+passive mode data connections have a reverse DNS lookup performed
+on the remote host's IP address.  In a chroot environment (such
+as <a href="#Anonymous">&lt;Anonymous&gt;</a> or
+<a href="#DefaultRoot">DefaultRoot</a>), the /etc/hosts file cannot
+be checked and the only possible resolution is via DNS.  If for some
+reason, DNS is not available or improperly configured this can result
+in proftpd blocking (&quot;stalling&quot;) until the libc resolver
+code times out.  Disabling this directive prevents proftpd from
+attempting to reverse-lookup data connection IP addresses.<p>
+
+<hr>
+
+<h2><a name="User">User</a></h2>
+
+<p><strong>Syntax:</strong> User <em>userid</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The User directive configures which user the proftpd daemon
+will <strong>normally</strong> run as. By default, proftpd runs
+as root which is considered undesireable in all but the most
+trustful network configurations. The User directive used in
+conjuction with the <a href="reference.html#Group">Group</a>
+directive instructs the daemon to switch to the specified user
+and group as quickly as possible after startup. On some unix
+variants, the daemon will occasionally switch back to root in
+order to accomplish a task which requires super-user access. Once
+the task is completed, root privileges are relinquished and the
+server continues to run as the specified user and group. When
+applied to a <a href="reference.html#VirtualServer">&lt;VirtualServer&gt;</a>
+block, proftpd will run as the specified user/group on
+connections destined for the virtual server's address or port. If
+either User or <a href="reference.html#Group">Group</a> is
+applied to an <a href="reference.html#Anonymous">&lt;Anonymous&gt;</a>
+block, proftpd will establish an anonymous login when a user
+attempts to login with the specified userid, as well as
+permanently switching to the corresponding uid/gid (matching the
+User/Group parameters found in the anonymous block) after login.</p>
+
+<p><u>Note: When an authorized unix user is authenticated and
+logs in, all former privileges are released, the daemon switches
+permanently to the logged in user's uid/gid, and is never again
+capable of switching back to root or any other user/group.</u></p>
+
+<hr>
+
+<h2><a name="UserAlias">UserAlias</a></h2>
+
+<p><strong>Syntax:</strong> UserAlias <em>login-user userid</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The UserAlias directive creates a mapping from a login name
+transmitted by a client (<em><strong>login-user</strong></em>) to
+a real system userid (<em><strong>userid</strong></em>). If the
+user logs in as the alias, authentication is performed as though
+they were actually logging in as the real user. This directive is
+often used inside an <a href="reference.html#Anonymous">&lt;Anonymous&gt;</a>
+block in order to allow multiple login names to activate an
+anonymous login. <u>Note: If the </u><em><strong><u>login-user</u></strong></em><u>
+parameter is the same as a real system userid, the real userid
+will no longer be recognized by proftpd.</u></p>
+
+<hr>
+
+<h2><a name="UserPassword">UserPassword</a></h2>
+
+<p><strong>Syntax:</strong> UserPassword <em>userid
+hashed-password</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 0.99.0pl5 and later</p>
+
+<p>The UserPassword directive creates a password for a particular
+user which overrides the user's normal password in /etc/passwd
+(or /etc/shadow). The override is only effective inside the
+context to which UserPassword is applied. The <em><strong>hashed-password</strong></em>
+argument is a cleartext string which has been passed through the
+standard unix crypt() function. <strong>Do NOT use a cleartext
+password.</strong> This can be useful when combined with
+UserAlias to provide multiple logins to an Anonymous FTP site.</p>
+
+<p>See Also: <a href="#GroupPassword">GroupPassword</a></p>
+
+<hr>
+
+<h2><a name="VirtualHost">&lt;VirtualHost&gt;</a></h2>
+
+<p><strong>Syntax:</strong> &lt;VirtualHost <em>address</em>&gt;<br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config<br>
+<strong>Compatibility:</strong> 0.99.0 and later</p>
+
+<p>The VirtualHost configuration block is used to create an
+independent set of configuration directives that apply to a
+particular hostname or IP address. It is often used in conjuction
+with system level IP aliasing or dummy network interfaces in
+order to establish one or more &quot;virtual&quot; servers which
+all run on the same physical machine. The block is terminated
+with a &lt;/VirtualHost&gt; directive. By utilizing the <a
+href="reference.html#Port">Port</a> directive inside a
+VirtualHost block, it is possible to create a virtual server
+which uses the same address as the master server, but listens on
+a seperate tcp port (incompatible with <a
+href="reference.html#ServerType">ServerType</a> <em><strong>inetd</strong></em>).</p>
+
+<p>When proftpd starts, virtual server connections are handled in
+one of two ways, depending on the <a
+href="reference.html#ServerType">ServerType</a> setting:</p>
+
+<ul>
+    <li><em><strong>inetd</strong></em><br>
+        The daemon examines the destination address and port of
+        the incoming connection handed off from inetd. If the
+        connection matches one of the configured virtual hosts,
+        the connection is serviced based on the appropriate
+        configuration. If no virtual host matches, and the main
+        server does not match, the client is informed that no
+        server is available to service their requests and
+        disconnected.</li>
+    <li><em><strong>standalone</strong></em><br>
+        After parsing the configuration file, the daemon begins
+        listening for connections on all configured ports,
+        spawning child processes as necessary to handle
+        connections for either the main server or any virtual
+        servers.</li>
+</ul>
+
+<p>Because of the method that the daemon uses to listen for
+connections when in <em><strong>standalone</strong></em> mode, it
+is possible to support an exceedingly large number of virtual
+servers, potentially exceeding the number of per-process file
+descriptors. This is due to the fact that a single file
+descriptor is used to listen to each configured port, regardless
+of the number of addresses being monitored. <u>Note that it may
+be necessary to increase the </u><a
+href="reference.html#tcpBackLog"><u>tcpBackLog</u></a><u> value
+on heavily loaded servers in order to avoid kernel rejected
+client connections (&quot;Connection refused&quot;).</u></p>
+</body>
+</html>
+
+<hr>
+
+<h2><a name="WtmpLog">WtmpLog</a></h2>
+
+<p><strong>Syntax:</strong> WtmpLog <em>on|off|NONE</em><br>
+<strong>Default:</strong> <code>WtmpLog on</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.1.7 and later</p>
+
+<p>The WtmpLog directive controls proftpd's logging of ftp connections
+to the host system's wtmp file (used by such commands as `last').
+By default, all connections are logged via wtmp.</p>
