@@ -1,3 +1,4 @@
+
                 ProFTPD 1.2.0 Installation Instructions
                 =======================================
 
@@ -31,6 +32,8 @@ Note that a sample RPM spec file has been included in contrib/dist/rpm/.
 NOTE TO PACKAGE MAINTAINERS:
         Please, do NOT remove the ELF .comment and .note sections.
 
+If you install ProFTPD on a slightly uncommon (or really new or old) platform,
+please consider recording and sharing your experience.
 
 
 ------------------
@@ -56,17 +59,20 @@ Installation Instructions
     and the other README.* and contrib/README.* files.
 
     Note that the following modules are included by default and need not
-    be added explicitly: mod_core, mod_auth, mod_xfer, mod_site, mod_ls,
-    mod_unixpw, and mod_log.  Also, if libpam is detected by configure,
-    the mod_pam module will be included automatically.
+    be added explicitly: mod_auth, mod_core, mod_log, mod_ls, mod_site,
+    mod_unixpw and mod_xfer.  Also, if PAM is detected by configure,
+    the mod_pam module will be included automatically.  However, it has
+    been reported that some systems still require it to be added explicitly.
+    Further note that the contrib/mod_test module is not functional, and you
+    should not attempt to use it.
 
     You may need to specify the shared library search path on your system.
     See your system and compiler documentation.  Frequently, the -R or -rpath
-    options are used for this operation.  Be very careful to set the path on
-    AIX systems using the -blibpath option.  See README.AIX.
+    options are used for this operation.  Be especially careful to set the
+    path on AIX systems.  See README.AIX.
 
     Hint: if your configure command line becomes long or complicated,
-    try storing it in a sh script file, say '.configcmd'.
+    you might try storing it in a sh script file, say '.configcmd'.
 
 
 1.  Configure the software.
@@ -79,9 +85,9 @@ Installation Instructions
         $ ./configure
 
     By default the ProFTPD files will be installed as user 'root' and the
-    first gid=0 group listed in /etc/group, usually either 'root' or 'wheel'.
-    If you wish to install using a different user or group ownership, set the
-    install_user and install_group environment variables before running
+    first group with gid 0 listed in /etc/group, usually 'root' or 'wheel'.
+    If you wish to install using a different user or group ownership, set
+    the install_user and install_group environment variables before running
     configure.  Using a Bourne-ish style shell (e.g. sh, ksh, bash), you can
     do this on the command line like this:
 
@@ -112,24 +118,27 @@ Installation Instructions
         $ ./configure --sysconfdir=/etc --localstatedir=/var
 
     Optional ProFTPD modules can be included using '--with-modules=LIST',
-    where 'LIST' is a comma-separated list of module names.  This applies
+    where 'LIST' is a colon-separated list of module names.  This applies
     only to optional modules, such as those found in the contrib/ directory
     (the core modules in the modules/ directory are either mandatory or
-    included by default, with the exception of the non-functional mod_tar
-    and mod_test modules).  For example, if you wish to include both the
-    readme and ldap modules, you would use:
+    included by default).  For example, if you wish to include both the
+    readme and LDAP modules, you would use:
 
         $ ./configure --with-modules=mod_readme:mod_ldap
 
-    Note that if your system uses shadow password files which you wish
-    to be used for user authentication, you probably need to use either
-    '--enable-autoshadow' or '--enable-shadow'.  Also, if you wish to use
-    the sqlpw module, you also must specify either the sqlpw or pgsql module
-    later in the module list, e.g. '--with-modules=mod_sqlpw:mod_mysql'.
-    It won't work if the ordering is reversed.
+    Some operating systems require you to use either '--enable-autoshadow'
+    or '--enable-shadow' if you wish to use the system's shadow password
+    file for user authentication.  Using autoshadow allows proftpd to work
+    with either shadow or traditional password files.
 
-    Be aware that if you ever need to rerun the configure script,
-    you first should run 'make distclean'.
+    If you wish to use SQL for user authentication, you must specify mod_sql
+    and one SQL backend module, either mod_sql_mysql or mod_sql_postgres.
+    Further, the backend module must be specified *later* in the module list,
+    e.g. '--with-modules=mod_sql:mod_sql_postgres'.  Otherwise, compilation
+    will succeed, but SQL authentication will not work.
+
+    Be aware that if you ever need to rerun the configure script, you first
+    should run 'make distclean'.
 
 
 2.  Verify correct configure operation.
@@ -149,7 +158,7 @@ Installation Instructions
 
 4.  Test the software.
     As of ProFTPD 1.2.0, there are no automated regression tests.
-    However, you may wish to perform your own ad-hoc, manual tests.
+    However, you are encouraged to perform your own ad-hoc, manual tests.
 
     Note that you can start proftpd directly from your shell prompt, but do
     remember that it must run as root for all functions to operate properly.
@@ -157,11 +166,36 @@ Installation Instructions
     An alternate configuration file can be specified using the '-c' command
     line switch.  In the configuration file, the TCP ports may be changed
     from the standard default ftp (21) and ftp-data (20) ports, and an
-    alternate passwd file may be specified.
+    alternate passwd file may be specified.  Since such a daemon will not be
+    able to change its uid, you also must specify the user and group names
+    to match those used to start the daemon.
 
-        $ rm -f /tmp/TEST.passwd /tmp/PFTEST.group
-        $ cp -p sample-configurations/PFTEST.[pg]* /tmp
-        $ ./proftpd -c sample-configurations/PFTEST.conf
+    To demonstrate this process, a set of example config files have been
+    included in the sample-configurations subdirectory.
+
+        % sh sample-configurations/PFTEST.install
+        Sample test files successfully installed in /tmp/PFTEST.
+        % ./proftpd -n -d 5 -c /tmp/PFTEST/PFTEST.conf
+
+    Then, in another window, connect to the unprivileged port.  PFTEST.conf
+    uses port 2021, and PFTEST.passwd defines a user "proftpd" with password
+    "proftpd".  Using the traditional Unix ftp client, it might look something
+    like this:
+
+        % ftp -n -d
+        ftp> open <hostname> 2021
+        ftp> user proftpd
+        ---> USER proftpd
+        331 Password required for proftpd.
+        Password: [proftpd]
+        ---> PASS proftpd
+        230 User proftpd logged in.
+        ftp>
+
+    The supplied PFTEST.passwd is in traditional Unix format.  Your system
+    may use a different file format, so you may have to create your own.
+    Further, you may have to use another method to insert your user and group
+    names into the PFTEST.conf file, if the PFTEST.install script fails.
 
     If you encounter any problems, be sure to see the "Troubleshooting" and
     "Help" sections below.
@@ -173,12 +207,13 @@ Installation Instructions
 
 
 6.  Install the software.
-    Note: this and the remaining steps likely require root privilets.
+    Note: this and the following steps likely require root privileges.
     Unless a system specific installation package was created, e.g. an RPM,
     run 'make install' from the top-level build directory.  This installs
     the ProFTPD executables, man pages, and a basic configuration file,
-    'sample-configurations/basic.conf'.  The full path to the configuration
-    file will be '/usr/local/etc/proftpd.conf', unless changed in Step 1.
+    copied from 'sample-configurations/basic.conf'.  The full path to the
+    configuration file will be '/usr/local/etc/proftpd.conf', unless it was
+    changed in Step 1.
 
     If an installation package was created, install the ProFTPD package
     according to procedures appropriate for that packaging system.
@@ -197,10 +232,10 @@ Installation Instructions
 
 8.  Modify the inetd superserver configuration file.
     Edit /etc/inetd.conf and then send the inetd process the -HUP signal,
-    so that it will reread it's now modified configuration file.  On some
-    systems there are other mechanisms to signal inetd to reread its
-    configuration file, e.g. 'refresh -s inetd' is used on AIX.  Check your
-    system documentation to see what is appropriate.
+    so that it will reread the updated configuration file.  On some systems
+    there are other mechanisms to tell inetd to reread its configuration file,
+    e.g. 'refresh -s inetd' on AIX.  Check your system documentation to see
+    what command is appropriate.
 
     If proftpd is to be run from inetd, find the line in /etc/inetd.conf
     that looks something like:
@@ -231,15 +266,18 @@ Installation Instructions
 
 
 10. Create the runtime state directory.
-    In order for MaxClients, MaxClientsPerHost and the ftpwho/ftpcount
-    utilities to work, you need to specify a scoreboard path for proftpd's
-    scoreboard files.  The default is '/usr/local/var/proftpd/', but this
-    path may have been redefined in the configuration process in Step 1.
-    The ScoreboardPath directive in proftpd.conf will override the default
-    directory location.  Whichever directory is used, it must exist prior
-    to starting proftpd, so you must create it manually if it does not
-    already exist.  No special permissions are needed on the directory,
-    unless you wish to restrict who is allowed to run ftpwho and ftpcount.
+    In order for the MaxClients and MaxClientsPerHost directives and the
+    ftpwho and ftpcount utilities to work, proftpd must have a directory to
+    hold its scoreboard files.  The default is '/usr/local/var/proftpd/',
+    though it may have been changed in the configuration process in Step 1.
+    The default location also can be overriden at run-time by using the
+    ScoreboardPath directive in the proftpd.conf configuration file.
+    Whatever diretory is used, it must exist prior to starting proftpd.
+    If you have installed from an installation package, the installation
+    scripts may have created the default directory.  Nonetheless, if it does
+    not already exist you must create it manually.  No special permissions
+    are needed on the directory, unless you wish to restrict who is allowed
+    to run ftpwho and ftpcount.
 
 
 11. Verify operation.
@@ -283,33 +321,39 @@ Good luck!
 Troubleshooting
 ---------------
 
-T1. Compile time problems are often easy to sort out by giving the right
-    options and search paths to the compiler.  However, other times they
-    can be rather distressing to debug.  Often they have to do with
-    header files or C preprocessor name space conflicts.  A few packages
-    have been known to install conf.h headers in /usr/local/include.
-    Occasionally, one must resort to looking at the preprocessor output,
-    e.g. `cc -E file.c`.
+This section is far from comprehensive.  See the FAQ and other resourses
+for further assistance.
 
-    Some common error messages are:
+
+T1. Compile time problems are often easy to sort out by giving the right
+    options and search paths to the compiler.  However, at other times they
+    can be rather difficult to debug.  Problems often result from header
+    file or C preprocessor macro name conflicts.  A few packages have been
+    known to install conf.h headers in /usr/local/include.  Occasionally,
+    one must resort to looking at the preprocessor output.  Consult your
+    compiler documentation for how to do this, though a command similar
+    to `cc -E file.c` often works.
+
+    Some common error messages include:
 
         o "symbol ap_signal undefined in main.o"
-	  This usually means that the fnmatch.h header is including
-	  the Apache ap_config.h header, though proftpd does not link
-	  with the Apache library.  This mostly happens on Solaris 8,
-	  though on RH6.0 <hsregex.h> causes the problem.
+          This usually means that the fnmatch.h header is including
+          the Apache ap_config.h header, though proftpd does not link
+          with the Apache library.  This mostly happens on Solaris 8,
+          though a similar problem has been reported on Red Hat 6.0
+          systems with the <hsregex.h> header.
 
 
-T2. If you encounter runtime problems, first check your syslog messages.
-    The proftpd daemon logs all error conditions it encounters, including
-    problems parsing the configuration file.  Authentication related
+T2. If you encounter run-time problems, first check your syslog messages.
+    The proftpd daemon logs all the error conditions that it encounters,
+    including problems parsing the configuration file.  Authentication related
     messages are logged using the syslog facility "auth" or, if available,
-    "authpriv", while all other messages use the syslog "daemon" facility,
-    unless redirected by the "-n" command line switch or by the configuration
-    file directives SyslogFacility or SystemLog.  Check your syslogd.conf
-    to see what syslogd does with these messages.
+    "authpriv".  All other messages use the syslog "daemon" facility, unless
+    redirected by the "-n" command line switch or by the SyslogFacility or
+    SystemLog directives.  Check your syslogd.conf to see what syslogd does
+    with these messages.
 
-    Some common error messages are:
+    Some common error messages include:
 
         o "inet_create_connection() failed: Operation not permitted"
           This usually means that proftpd was not started as root.
@@ -326,7 +370,26 @@ T2. If you encounter runtime problems, first check your syslog messages.
           "ProFTPD terminating (signal 11)"
           This usually means that shadow passwd file support is required
           but was not compiled in.  Try starting the build over at Step 1,
-          adding either '--enable-autoshadow' or '--enable-shadow'.
+          adding either '--enable-autoshadow' or '--enable-shadow' to
+          the configure command line.
+
+        o "Fatal: unknown configuration directive 'AuthPAMAuthoritative'
+          on line NN of '/etc/proftpd.conf'."
+          This means that either 'AuthPAMAuthoritative' was misspelld or
+          mod_pam was not compiled in to ProFTPD.  If the latter, you may
+          need to reconfigure and recompile proftpd, explicitly adding
+          mod_pam with the "./configure --with-modules=mod_pam ...".
+
+    If users can not login and your system uses PAM authentication, you may
+    need to configure PAM to work for FTP.  For further details, consult your
+    system PAM documentation.  If you have installed from a package, hopefully
+    this was done automatically.  On Linux systems, the following may work:
+
+        % cp -p contrib/dist/rpm/ftp.pamd /etc/pam.d/ftp
+
+    If your client sees something like "server error 500, server shut down",
+    that probably means that you have a stale /etc/shutmsg file, which you
+    should delete.
 
 
 T3. You can generate additional debugging messages by starting the proftpd
@@ -357,18 +420,18 @@ T5. If your system has a system call trace utility, you may wish to use it
             http://hpux.cs.utah.edu/hppd/hpux/Sysadmin/trace-1.6/
             http://devresource.hp.com/devresource/Tools/ToolLibrary.html#perfhp
         o syscalls, trace (AIX 4.x); sctrace (AIX: [$$$] http://www.tkg.com)
-        o par (Irix)
+        o par (IRIX)
         o alpha-trace (Digital Unix: ftp://ftp.mrc-lmb.cam.ac.uk/pub/jkb/)
         o ktrace/kdump (NetBSD, OpenBSD)
-        o ktrace/kdump, strace, ltrace (Linux)
+        o strace, ktrace/kdump, ltrace (Linux)
 
 
 T6. Another diagnostic technique is to monitor the FTP protocol communication
     between the proftpd server and the ftp client.  Many ftp clients have a
     debug or trace option.  Though requiring detailed knowledge of the FTP
     protocol, telnet can be used to connect and directly converse with the
-    proftpd server.  Lastly, the FTP converstation can be observed using a
-    network monitoring tool, such as tcpdump, snoop or netsnoop.
+    proftpd server.  Lastly, the FTP converstation can be traced using a
+    network monitoring tool, such as tcpdump, etherfind, snoop or netsnoop.
 
 
 T7. Further debugging probably will require the use of a debugger,
@@ -383,8 +446,11 @@ Help
 
 H1. Before asking for help on the mailing list, look through the available
     documentation, including the FAQ and the searchable archives of the
-    mailing lists.  Many common questions are answered in those documents.
-    See the "Resources" section below for pointers and links.
+    mailing lists.  Not only are many common questions answered in those
+    documents, but they will often yield answers faster than a question
+    sent to the mailing list.
+
+    See the "Resources" section below for documentation pointers and links.
 
 
 H2. When posting to the mailing list, try to be clear and concise, but give
@@ -398,36 +464,38 @@ H2. When posting to the mailing list, try to be clear and concise, but give
 
     So, at a minimum, you should include:
         o OS type and version (e.g. `uname -a`)
-        o ProFTPD version (`proftpd -v`)
+        o ProFTPD extended version (`proftpd -vv`)
         o ProFTPD module list (`proftpd -l`)
 
     The following may help to further identify compilation information,
     especially if you are installing a vendor supplied package rather than
     building from sources yourself:
-        o `what proftp` or `ident proftpd`
+        o `what proftpd` or `ident proftpd`
 
     And still more compilation information may be available if your system
     uses the ELF object file format:
-        o `objdump -f proftp` or `dump -v -f proftp`
-        o `objdump -j .comment proftp` or `dump -n .comment proftp`
-        o `mcs -p proftp`
-        o `objdump -j .note proftp` or `dump -v -n .note proftp`
-	  or `mcs -p -n .note proftp`
+        o `objdump -f proftpd` or `dump -v -f proftpd`
+          or `elfdump -v -f proftpd`
+        o `objdump -j .comment proftpd` or `dump -n .comment proftpd`
+          or `elfdump -n .comment proftpd`
+        o `mcs -p proftpd`
+        o `objdump -j .note proftpd` or `dump -v -n .note proftpd`
+           or `elfdump -v -n .note proftpd` or `mcs -p -n .note proftpd`
 
 
 H3. Please, please, do not use the bug reporting system for compilation or
     configuration problems and questions.  Those should be sent to the
     mailing list.
 
-    In order conserve to development resources, please only submit bug reports
-    when you have some reasonable confidence that there is an actual code bug,
+    In order conserve development resources, please only submit bug reports
+    when you have reasonable confidence that there is an actual code bug,
     a portability problem, or problems with the build and compilation system.
     Even then, please first search the bug system to see if your bug has been
     reported already.  If it has, use your own best judgement about adding
     comments to the existing report, especially either to confirm the bug's
     existence or to provide additional diagnostic and debugging information.
 
-    For some more suggestions about bug reporting, see:
+    For some more suggestions about reporting bugs, see:
         http://bugs.proftpd.org/bugwritinghelp.html
 
 
@@ -448,30 +516,16 @@ R1. Basics.
 
 
 R2. ProFTPD Documentation Project.
+    Documents include a Configuration Reference, draft User Guide, and FAQ.
+    Formats include linked and single HTML files, PostScript, PDF and text.
+
+    Note that this Configuration Reference may refer to a newer code base
+    than you are using.  So, referring to doc/Configuration.html file in
+    your source distribution may be less confusing.
 
               (main): http://pdd.sourceforge.net/
             (mirror): http://hamster.wibble.org/proftpd/
             (mirror): http://www.flyhmstr.demon.co.uk/proftpd/
-
-    Config Reference: http://pdd.sourceforge.net/html/Configuration.html
-                      http://pdd.sourceforge.net/directives/linked/r1.html
-                      http://pdd.sourceforge.net/directives/all_directives.html
-                      http://pdd.sourceforge.net/directives/all_directives.ps
-                      http://pdd.sourceforge.net/directives/all_directives.pdf
-
-                      NOTE: This Configuration.html may refer to a newer
-                      code base than the one in your source distribution.
-
-  User Guide (draft): http://pdd.sourceforge.net/userguide/linked/userguide.html
-                      http://pdd.sourceforge.net/userguide/other/userguide_full.html
-                      http://pdd.sourceforge.net/userguide/other/userguide.ps
-                      http://pdd.sourceforge.net/userguide/other/userguide.pdf
-
-   FAQ (hyperlinked): http://pdd.sourceforge.net/faq/proftpdfaq.html
-   FAQ (single file): http://pdd.sourceforge.net/faq/proftpdfaq-full.html
-                      http://pdd.sourceforge.net/faq/proftpdfaq.ps
-                      http://pdd.sourceforge.net/faq/proftpdfaq.pdf
-                      http://pdd.sourceforge.net/faq/proftpdfaq.txt
 
 
 R3. E-Mail Lists.
@@ -515,3 +569,4 @@ R6. Statement about proftpd.org and proftpd.net.
     mirrors of one another.  The official proftpd site is www.proftpd.org,
     however www.proftpd.net will remain in operation at a physically remote
     location in order to provide redundancy.
+

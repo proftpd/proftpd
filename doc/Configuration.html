@@ -5,17 +5,17 @@
 
 <H2>Notes</H2>
     <ol>
-      <li>There are no directives which can be used multiple times
-	within a given context</li>
-    </ol>
+	<LI>This document is valid for 1.2.0-final only.
+
+	<LI>SQL support was moved from three to a single module
+    (mod_sql) after 1.2.0rc3
+
+    </OL>
 
     <h2>Alphabetical List of Directives</h2>
 
 <p>The following configuration parameters control ProFTPD features and
 configuration:</p>
-
-<P><EM>Note: A number of the configuration directives are listed but
-not fully documented yet..</EM></P>
 
 <HR>
 
@@ -117,11 +117,6 @@ not fully documented yet..</EM></P>
   <li><a href="#MultilineRFC2228">MultilineRFC2228</a></li>
   <LI><A HREF="#MySQLInfo">MySQLInfo</A></LI>
   <li><a href="#Order">Order</a></li>
-<!-- commented out by ML to clean up for 1.2.0 -->
-<!--
-  <li>PAMConfig <EM>Removed as of 1.2.0rc1,<BR> see <A
-HREF="#AuthPAMConfig">AuthPAMConfig</A></EM>
--->
   <li><A href="#PassivePorts">PassivePorts</A>
   <li><a href="#PathAllowFilter">PathAllowFilter</a></li>
   <li><a href="#PathDenyFilter">PathDenyFilter</a></li>
@@ -156,12 +151,23 @@ HREF="#AuthPAMConfig">AuthPAMConfig</A></EM>
   <li><a href="#ShowDotFiles">ShowDotFiles</a></li>
   <li><a href="#ShowSymlinks">ShowSymlinks</a></li>
   <li><a href="#SocketBindTight">SocketBindTight</a></li>
+  <LI><A HREF="#SQLAuthTypes">SQLAuthTypes</A>
   <li><A HREF="#SQLAuthoritative">SQLAuthoritative</A> </li>
+  <LI><A HREF="#SQLConnectInfo">SQLConnectInfo</A>
+  <LI><A HREF="#SQLConnectInfo">SQLDefaultGID</A>
+  <LI><A HREF="#SQLDefaultUID">SQLDefaultUID</A>
+  <LI><A HREF="#SQLDoAuth">SQLDoAuth</A>
+  <LI><A HREF="#SQLDoGroupAuth">SQLDoGroupAuth</A>
   <li><A HREF="#SQLEmptyPasswords">SQLEmptyPasswords</A>
   <li><A HREF="#SQLEncryptedPasswords">SQLEncryptedPasswords</A>
-  <li><A HREF="#SQLGidField">SQLGidField</A>
+  <li><A HREF="#SQLGIDField">SQLGidField</A>
+  <li><A HREF="#SQLGroupGidField">SQLGroupGidField</A>
+  <LI><A HRef="#SQLGroupMembersField">SQLGroupMembersField</A>
+  <LI><A href="#SQLGroupnameField">SQLGroupnameField</A>
+  <LI><A href="#SQLGroupTable">SQLGroupTable</A>
   <li><A HREF="#SQLHomedir">SQLHomedir</A>
   <li><A HREF="#SQLHomedirField">SQLHomedirField</A>
+  <LI><A href="#SQLHomedirOnDemand">SQLHomedirOnDemand</A>
   <li><A HREF="#SQLKey">SQLKey</A></LI>
   <li><A HREF="#SQLKeyField">SQLKeyField</A> </li>
   <li><A HREF="#SQLLogDirs">SQLLogDirs</A>
@@ -169,12 +175,15 @@ HREF="#AuthPAMConfig">AuthPAMConfig</A></EM>
   <li><A HREF="#SQLLogHosts">SQLLogHosts</A>
   <li><A HREF="#SQLLoginCountField">SQLLoginCountField</A>
   <li><A HREF="#SQLLogStats">SQLLogStats</A>
+  <LI><A href="#SQLMinID">SQLMinID</A>
   <li><A HREF="#SQLPasswordField">SQLPasswordField</A>
   <li><A HREF="#SQLPlaintextPasswords">SQLPlaintextPasswords</A>
   <li><A HREF="#SQLRatios">SQLRatios</A> <EM>Incomplete</EM></li>
+  <LI><A href="#SQLShellField">SQLShellField</A>
   <li><A HREF="#SQLUidField">SQLUidField</A>
   <li><A HREF="#SQLUserTable">SQLUserTable</A>
   <li><A HREF="#SQLUsernameField">SQLUsernameField</A>
+  <LI><A href="#SQLWhereClause">SQLWhereClause</A>
   <li><a href="#SyslogFacility">SyslogFacility</a></li>
   <li><a href="#SyslogLevel">SyslogLevel</a></li>
   <li><a href="#SystemLog">SystemLog</a></li>
@@ -321,19 +330,25 @@ href="#Limit">&lt;Limit&gt;</a> block. Although proftpd's default
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 1.1.7 and later</p>
-<p>Normally, proftpd disallows clients from using the ftp PORT command with anything 
-  other than their own address (the source address of the ftp control connection), 
-  as well as preventing the use of PORT to specify a low-numbered (&lt; 1024) 
-  port. In either case, the client is sent an &quot;Invalid port&quot; error and 
-  a message is syslog'd indicating either &quot;address mismatch&quot; or &quot;bounce 
-  attack&quot;. By enabling this directive, proftpd will allow clients to transmit 
-  foreign data connection addresses that do not match the client's address. This 
-  allows such tricks as permitting a client to transfer a file between two FTP 
-  servers without involving itself in the actual data connection. Generally it's 
-  considered a bad idea, security-wise, to permit this sort of thing.</p>
-<p>AllowForeignAddress <strong>only</strong> affects data connection addresses; 
-  not tcp ports. There is no way (and no valid reason) to allow a client to use 
-  a low-numbered port in its PORT command.</p>
+
+  <p>Normally, proftpd disallows clients from using the ftp PORT
+  command with anything other than their own address (the source
+  address of the ftp control connection), as well as preventing the
+  use of PORT to specify a low-numbered (&lt; 1024) port. In either
+  case, the client is sent an &quot;Invalid port&quot; error and a
+  message is syslog'd indicating either &quot;address mismatch&quot;
+  or &quot;bounce attack&quot;. By enabling this directive, proftpd
+  will allow clients to transmit foreign data connection addresses
+  that do not match the client's address. This allows such tricks as
+  permitting a client to transfer a file between two FTP servers
+  without involving itself in the actual data connection. Generally
+  it's considered a bad idea, security-wise, to permit this sort of
+  thing.</p>
+
+  <p>AllowForeignAddress <strong>only</strong> affects data connection
+  addresses; not tcp ports. There is no way (and no valid reason) to
+  allow a client to use a low-numbered port in its PORT command.</p>
+
 <hr>
 <h2><a name="AllowGroup">AllowGroup</a></h2>
 <p><strong>Syntax:</strong> AllowGroup <em>group-expression</em><br>
@@ -341,15 +356,19 @@ href="#Limit">&lt;Limit&gt;</a> block. Although proftpd's default
   <strong>Context:</strong> &lt;Limit&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 1.1.1 and later</p>
-<p>AllowGroup specifies a <em><strong>group-expression</strong></em> that is specifically 
-  permitted within the context of the <a
-href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em><strong>group-expression</strong></em> 
-  has the same format as that used in <a href="#DefaultRoot">DefaultRoot</a>, 
-  in that it should contain a comma separated list of groups or &quot;not&quot; 
-  groups (by prefixing a group name with the `!' character) that are to be allowed 
-  access to the block. The expression is parsed as a boolean &quot;and&quot; list, 
-  meaning that ALL elements of the expression must evaluate to logically true 
-  in order for the explicit allow to apply.</p>
+
+  <p>AllowGroup specifies a <em><strong>group-expression</strong></em>
+  that is specifically permitted within the context of the <a
+  href="#Limit">&lt;Limit&gt;</a> block it is applied
+  to. <em><strong>group-expression</strong></em> has the same format
+  as that used in <a href="#DefaultRoot">DefaultRoot</a>, in that it
+  should contain a comma separated list of groups or &quot;not&quot;
+  groups (by prefixing a group name with the `!' character) that are
+  to be allowed access to the block. The expression is parsed as a
+  boolean &quot;and&quot; list, meaning that ALL elements of the
+  expression must evaluate to logically true in order for the explicit
+  allow to apply.</p>
+
 <p><strong>See Also:</strong> <a href="#DenyGroup">DenyGroup</a>, <a href="#DenyUser">DenyUser</a>, 
   <a href="#AllowUser">AllowUser</a></p>
 
@@ -362,6 +381,7 @@ href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em><strong>group-expres
   <strong>Compatibility:</strong> 0.99.0 and later</p>
 <p>The AllowOverwrite directive permits newly transfered files to overwrite existing 
   files. By default, ftp clients cannot overwrite existing files.</p>
+
 <hr>
 <h2><a name="AllowUser">AllowUser</a></h2>
 <p><strong>Syntax:</strong> AllowUser <em>user-expression</em><br>
@@ -381,6 +401,34 @@ meaning that ALL elements of the expression must evaluate to logically
 true in order to the explicit allow to apply.</p>
 <p><strong>See Also:</strong> <a href="#DenyUser">DenyUser</a>, <a href="#DenyGroup">DenyGroup</a>, 
   <a href="#AllowGroup">AllowGroup</a></p>
+
+<hr>
+<h2><a name="AllowRetrieveRestart">AllowRetrieveRestart</a></h2>
+    <p><strong>Syntax:</strong> <code>AllowRetrieveRestart <em>on|off</em></code><br>
+  <strong>Default:</strong> on<br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
+  &lt;Directory&gt;, &lt;Global&gt;, .ftpaccess<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
+  <strong>Compatibility:</strong> 0.99.0 and later</p>
+<p>The AllowRetrieveRestart directive permits or denies clients from performing 
+  &quot;restart&quot; retrieve file transfers via the FTP REST command. By default 
+  this is enabled, so that clients may resume interrupted file transfers at a 
+  later time without losing previously collected data.</p>
+<hr>
+<h2><a name="AllowStoreRestart">AllowStoreRestart</a></h2>
+    <p><strong>Syntax:</strong> <code>AllowStoreRestart <em>on|off</em></code><br>
+  <strong>Default:</strong> off<br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
+  &lt;Directory&gt;, &lt;Global&gt;, .ftpaccess<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
+  <strong>Compatibility:</strong> 0.99.0 and later</p>
+<p>The AllowStoreRestart directive permits or denies clients from &quot;restarting&quot; 
+  interrupted store file transfers (those sent from client to server). By default 
+  restarting (via the REST command) is not permitted when sending files to the 
+  server. Care should be taken to disallow anonymous ftp &quot;incoming&quot; 
+  transfers to be restarted, as this will allow clients to corrupt or increase 
+  the size of previously stored files (even if not their own).</p>
+
 <hr>
 <h2><a name="AnonRequirePassword">AnonRequirePassword</a></h2>
     <p><strong>Syntax:</strong> <code>AnonRequirePassword <em>on|off</em></code><br>
@@ -430,32 +478,8 @@ true in order to the explicit allow to apply.</p>
     &lt;/Directory&gt;<br>
     &lt;/Anonymous&gt;</code></p>
 </blockquote>
-<hr>
-<h2><a name="AllowRetrieveRestart">AllowRetrieveRestart</a></h2>
-    <p><strong>Syntax:</strong> <code>AllowRetrieveRestart <em>on|off</em></code><br>
-  <strong>Default:</strong> on<br>
-  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  &lt;Directory&gt;, &lt;Global&gt;, .ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_core<BR>
-  <strong>Compatibility:</strong> 0.99.0 and later</p>
-<p>The AllowRetrieveRestart directive permits or denies clients from performing 
-  &quot;restart&quot; retrieve file transfers via the FTP REST command. By default 
-  this is enabled, so that clients may resume interrupted file transfers at a 
-  later time without losing previously collected data.</p>
-<hr>
-<h2><a name="AllowStoreRestart">AllowStoreRestart</a></h2>
-    <p><strong>Syntax:</strong> <code>AllowStoreRestart <em>on|off</em></code><br>
-  <strong>Default:</strong> off<br>
-  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  &lt;Directory&gt;, &lt;Global&gt;, .ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_core<BR>
-  <strong>Compatibility:</strong> 0.99.0 and later</p>
-<p>The AllowStoreRestart directive permits or denies clients from &quot;restarting&quot; 
-  interrupted store file transfers (those sent from client to server). By default 
-  restarting (via the REST command) is not permitted when sending files to the 
-  server. Care should be taken to disallow anonymous ftp &quot;incoming&quot; 
-  transfers to be restarted, as this will allow clients to corrupt or increase 
-  the size of previously stored files (even if not their own).</p>
+
+
 <hr>
 <h2><a name="AnonRatio">AnonRatio</a></h2>
     <p><strong>Syntax:</strong> <code>AnonRatio <em>foo1 foo2 foo3</em></code><br>
@@ -2153,8 +2177,11 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
   <p><strong>Syntax:</strong> MySQLInfo <em>hostname sqluser sqlpass dbname</em><br>
     <strong>Default:</strong> none<br>
     <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
-  <STRONG>Module:</STRONG> mod_mysql<BR>
+  <STRONG>Module:</STRONG> mod_sql<BR>
     <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <P>This directive is deprecated, use <A HREF="#SQLConnectInfo">SQLConnectInfo</A>
+  instead.</P>
 
   <p>Configures the MySQL database driver (the database may be
   remote).  A connection isn't made until use of a SQL feature
@@ -2355,8 +2382,11 @@ href="#VirtualHost">&lt;VirtualHost&gt;</a> in order to run a virtual server on
 <p><strong>Syntax:</strong> PostgresInfo <em>hostname sqluser sqlpass dbname</em><br>
   <strong>Default:</strong> none<BR>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;<br>
-  <STRONG>Module:</STRONG> mod_pgsql<BR>
+  <STRONG>Module:</STRONG> mod_sql<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <P>This directive is deprecated, use <A HREF="#SQLConnectInfo">SQLConnectInfo</A>
+  instead.</P>
 
    <P>Configures the  Posgresql  database driver (the  database may be
    remote).    A  connection isn't  made until  use  of  a SQL feature
@@ -2370,8 +2400,11 @@ href="#VirtualHost">&lt;VirtualHost&gt;</a> in order to run a virtual server on
 <p><strong>Syntax:</strong> PostgresPort <em>port-number</em><br>
   <strong>Default:</strong> 5432<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;VirtualHost&gt;<br>
-  <STRONG>Module:</STRONG> mod_pgsql<BR>
+  <STRONG>Module:</STRONG> mod_sql<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <P>This directive is deprecated, use <A HREF="#SQLConnectInfo">SQLConnectInfo</A>
+  instead.</P>
 
   <P>Specifies which TCP/IP port to use for connecting.  Default is
   5432, or UNIX socket for localhost.
@@ -2667,7 +2700,7 @@ href="#DisplayLogin">DisplayLogin</a> and <a
 href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <hr>
   <h2><a name="ServerIdent">ServerIdent</a></h2>
-  <p><strong>Syntax:</strong> <em>On|Off [identification string]</em><br>
+  <p><strong>Syntax:</strong> <em>off|on [identification string]</em><br>
     <strong>Default:</strong> ProFTPD [version] Server (server name) [hostname]<br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
@@ -2802,25 +2835,194 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
     pair. This may or may not be aesthetically desirable, depending on
     your circumstances.</p>
 
+
+<hr>
+<h2><a name="SQLAuthTypes">SQLAuthTypes</a></h2>
+<p><strong>Syntax:</strong> SQLAuthTypes <em>OpenSSL|Crypt|Backend|Plaintext|Empty</em><br>
+  <strong>Default:</strong> none<br>
+  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+  <P>This directive deprecates 'SQLEmptyPasswords',
+  'SQLScrambledPasswords', 'SQLSSLHashedPasswords',
+  'SQLPlaintextPasswords', and 'SQLEncryptedPasswords'.
+
+  <P>Specifies the allowed authentication types and their check order.
+  <STRONG>There must be at least one authentication method specified</STRONG>
+
+  <P><code>SQLAuthTypes Crypt Empty</code></P>
+
+  <P>The above configuration fragment means check whether the password
+  in the database matches in UNIX crypt() format; if that fails, check
+  to see if the password in the database is empty (matching ANY given
+  password); if that fails, mod_sql refuses to authenticate the user.
+
+  <P>Currently supported types
+
+  <DL>
+  <DT>Plaintext
+  <DD>Allows passwords in the database to be in plaintext
+
+  <DT>OpenSSL
+  <DD>Allows passwords in the database to be of the form
+  '{digestname}hashedvalue'.  This check is only available if you
+  define 'HAVE_OPENSSL' when you compile proftd and you link with the
+  OpenSSL 'crypto' library.
+
+  <DT>Crypt
+  <DD>Allows passwords in the database to be in UNIX crypt() form
+
+  <DT>Backend
+  <DD>A database-specific backend check function.  Not all backends
+  support this.  Specifically, the MySQL backend uses this type to
+  authenticate MySQL 'PASSWORD()' encrypted passwords.  The Postgres
+  backend does nothing.
+
+  <DT>Empty
+
+  <DD>Allows empty passwords in the database, which match against
+  <strong>anything</strong> the user types in.  The database field
+  must be a truly empty string -- that is, NULL values are never
+  accepted.  <strong>Extreme caution is advised with this
+  authentication type and it's general use is not recommended unless
+  you understand the full implications of how it works</strong>    
+  </DL>
+
 <hr>
 <h2><a name="SQLAuthoritative">SQLAuthoritative</a></h2>
 <p><strong>Syntax:</strong> SQLAuthoritative <em>on|off</em><br>
   <strong>Default:</strong> off<br>
   <strong>Context:</strong> server config<br>
-  <strong>Module:</strong> mod_sqlpw<BR>
-  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0rc2 and later</p>
 
   <P>Specifies whether authentication stops at mod_mysql, or whether
   other possibilites (like standard UNIX logins) are tried.  Default
-  is off - others are tried.
+  is off - other handlers will be tried.
+
+  <P>This is a *very* powerful directive.  If SQLAuthoritative is set,
+  *all* authorization goes through your SQL database -- group lookups, uid
+  lookups, etc.  See the 'SQLDoAuth' and 'SQLDoGroupAuth' directives, too.
+
+
+<hr>
+<h2><a name="SQLConnectInfo">SQLConnectInfo</a></h2>
+<p><strong>Syntax:</strong> SQLConnectInfo <em>connection-info [username] [password]</em><br>
+  <strong>Default:</strong> none<br>
+  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+<P>This directive deprecates 'MySQLInfo', 'PostgresInfo', and
+'PostgresPort'.
+
+  <P>Specifies connection information.  Connection-info specifies the
+  database, host, port, and other backend-specific information.
+  username and password specify the username and password to connect
+  as, respectively.  Both default to NULL, which the backend will
+  treat in some backend-specific manner. If you specify a password,
+  you MUST specify a username.
+
+  <P>Any given backend has the opportunity (but not the
+  responsibility) to check for syntax errors in the connection-info
+  field at proftpd startup, but you shouldn't expect semantic errors
+  (i.e., can't connect to the database) to be caught until mod_sql
+  attempts to connect for a given host.
+ 
+  <P>The MySQL and Postgres backends connection-info is expected to be
+  of the form:
+
+  <P><code>database[@hostname][:port]</code></p>
+
+  <P>hostname will default to a backend-specific hostname (which
+  happens to be 'localhost' for both the MySQL and Postgres backends),
+  and port will default to a backend-specific default port (3306 for
+  the MySQL backend, 5432 for the Postgres backend).
+
+  <P>For example
+  <DL>
+  <DT>SQLConnectInfo  ftpusers@foo.com
+
+  <DD>means "Try connecting to the database 'ftpuser' via the default
+  port at 'foo.com'.  Use a NULL username and a NULL password."
+
+  <DT>SQLConnectInfo  ftpusers:3000 admin
+
+  <DD>means "Try connecting to the database 'ftpuser' via port 3000 at
+  'localhost'.  Use the username 'admin' and a NULL password."
+
+  <DT>SQLConnectInfo  ftpusers@foo.com:3000 admin mypassword
+
+  <DD>means "Try connecting to the database 'ftpuser' via port 3000 at
+  'foo.com'.  Use the username 'admin' and the password 'mypassword'"
+  </DL>
+<P>Backends may require different information in the connection-info
+field; check your backend module for specifics.
+</P>
+
+<hr>
+<h2><a name="SQLDefaultGID">SQLDefaultGID</a></h2>
+<p><strong>Syntax:</strong> SQLDefaultGID <em>number</em><br>
+  <strong>Default:</strong> 65533<br>
+  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+<P>Sets the default GID for users.  Must be greater than SQLMinID. </P>
+  
+<hr>
+<h2><a name="SQLDefaultUID">SQLDefaultUID</a></h2>
+<p><strong>Syntax:</strong> SQLDefaultUID <em>number</em><br>
+  <strong>Default:</strong> 65533<br>
+  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+<P>Sets the default UID for users.  Must be greater than SQLMinID. </P>
+
+<hr>
+<h2><a name="SQLDoAuth">SQLDoAuth</a></h2>
+<p><strong>Syntax:</strong> SQLDoAuth <em>on|off</em><br>
+  <strong>Default:</strong> on<br>
+  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+<P>Activates SQL authentication.  This overrides all other directives --
+SQLDoGroupAuth and SQLAuthoritative are ineffectual if SQLDoAuth is off.
+
+<hr>
+<h2><a name="SQLDoGroupAuth">SQLDoGroupAuth</a></h2>
+<p><strong>Syntax:</strong> SQLDoGroupAuth <em>on|off</em><br>
+  <strong>Default:</strong> on<br>
+  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+<P>This directive causes mod_sql to pretend it has no group information.
+It necessarily breaks ALL CONFIG FILES up to 1.2.0rc2, since mod_sql
+now assumes that group information is available UNLESS this directive
+is set to OFF.
+
+<P>This DOESN'T override SQLAuthoritative -- if SQLAuthoritative is set
+to 'On' but SQLDoGroupAuth is set to 'Off', all group-related queries
+will fail without giving other modules the opportunity to handle them.
+
+<P>Prior to 1.2.0, there was no way to provide group information from
+the database.  This caused a few bugs, and reduced the functionality of
+this module.
 
 <hr>
 <h2><a name="SQLEmptyPasswords">SQLEmptyPasswords</a></h2>
 <p><strong>Syntax:</strong> SQLEmptyPasswords <em>on|off</em><br>
   <strong>Default:</strong> off<br>
   <strong>Context:</strong> server config<br>
-  <strong>Module:</strong> mod_sqlpw<BR>
-  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0rc2 and later</p>
+
+  <P>This directive is DEPRECATED.  Please use <A
+  HREF="SQLAuthTypes">SQLAuthTypes</A> instead.
 
   <P>Specifies whether an empty (non-NULL but zero-length) password is
   acceped from the database.  Default is no, and truly NULL passwords
@@ -2835,8 +3037,11 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
 <p><strong>Syntax:</strong> SQLEncryptedPasswords <em>on|off</em><br>
   <strong>Default:</strong> on<br>
   <strong>Context:</strong> server config<br>
-  <strong>Module:</strong> mod_sqlpw<BR>
-  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0rc2 and later</p>
+
+  <P>This directive is DEPRECATED.  Please use <A
+  HREF="SQLAuthTypes">SQLAuthTypes</A> instead.
 
   <P>Specifies whether the password in the database may be in UNIX
   crypt() format.  Default is true, with this being the only check
@@ -2846,27 +3051,71 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <P>Example:</P>
   <P><code>SQLEncryptedPasswords off</code></P>
 <hr>
-<h2><a name="SQLGidField">SQLGidField</a></h2>
-<p><strong>Syntax:</strong> SQLGidField <em>fieldname</em><br>
-  <strong>Default:</strong> none, GID is 65533<br>
+<h2><a name="SQLGIDField">SQLGIDField</a></h2>
+<p><strong>Syntax:</strong> SQLGIDField <em>fieldname</em><br>
+  <strong>Default:</strong> gid<br>
   <strong>Context:</strong> server config<br>
-  <strong>Module:</strong> mod_sqlpw<BR>
-  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0rc2 and later</p>
 
-  <P>Specifes what field holds the gid number, for users authenticated
-  with this module.  Default is to use the compiled-in default 65533.
-  If the retrieved gid is in the range reserved for admin accounts
-  (0-9999), 65533 is used instead.
+  <P>Specifies the field in the user table that holds the user's GID.  When
+  a GID is retrieved from the database it is checked against the value
+  of SQLMinID.  If the database has no value (missing column) or the
+  retrieved value is less than SQLMinID, the user's GID is set to
+  SQLDefaultGID.
 
   <P>Example:</P>
   <P><code>SQLGidField custgid</code></P>
+
+<hr>
+<h2><a name="SQLGroupGIDField">SQLGroupGIDField</a></h2>
+<p><strong>Syntax:</strong> SQLGroupGIDField <em>fieldname</em><br>
+  <strong>Default:</strong> gid<br>
+  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+  <P>Specifies the field in the group table that holds the group's GID.</P>
+
+<hr>
+<h2><a name="SQLGroupMembersField">SQLGroupMembersField</a></h2>
+<p><strong>Syntax:</strong> SQLGroupMembersField <em>fieldname</em><br>
+  <strong>Default:</strong> gid<br>
+  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+  <P>Specifies the field in the group table that holds the group's member
+  list. 
+
+
+<hr>
+<h2><a name="SQLGroupTable">SQLGroupTable</a></h2>
+<p><strong>Syntax:</strong> SQLGroupTable <em>table</em><br>
+  <strong>Default:</strong> groups<br>
+  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+<P>Specifies the name of the table that holds group information.</P>
+
+<hr>
+<h2><a name="SQLGroupnameField">SQLGroupnameField</a></h2>
+<p><strong>Syntax:</strong> SQLGroupnameField <em>fieldname</em><br>
+  <strong>Default:</strong> groupname<br>
+  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+<P>Specifies the field in the group table that holds the group name.</P>  
+  
 <hr>
 <h2><a name="SQLHomedir">SQLHomedir</a></h2>
 <p><strong>Syntax:</strong> SQLHomedir <em>/path/to/virtual/site</em><br>
-  <strong>Default:</strong> nonw<br>
+  <strong>Default:</strong> none<br>
   <strong>Context:</strong> server config<br>
-  <strong>Module:</strong> mod_sqlpw<BR>
-  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0rc2 and later</p>
 
   <P>Specifies the homedir to use for all users authenticated with
   this module, overriding any SQLHomedirField directive.  If no
@@ -2874,13 +3123,14 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
 
   <P>Example:</P>
   <P><code>SQLHomedir /ftp/vhost/ftp.example.com/</code></P>
+  
   <hr>
 <h2><a name="SQLHomedirField">SQLHomedirField</a></h2>
 <p><strong>Syntax:</strong> SQLHomedirField <em>fieldname</em><br>
   <strong>Default:</strong> none<br>
   <strong>Context:</strong> server config<br>
-  <strong>Module:</strong> mod_sqlpw<BR>
-  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0rc2 and later</p>
 
   <P>Specifies what field holds the home directory, for users
   authenticated with this module.  The directory can also be defined
@@ -2889,14 +3139,27 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
 
   <P>Example:</P>
   <P><code>SQLHomedirField home</code></P>
-<hr>
 
+<hr>
+<h2><a name="SQLHomedirOnDemand">SQLHomedirOnDemand</a></h2>
+<p><strong>Syntax:</strong> SQLHomedirOnDemand <em>on|off</em><br>
+  <strong>Default:</strong> off<br>
+  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+<P>Specifies whether to automatically create a user's home directory if
+it doesn't exist at login.
+
+<hr>
 <h2><a name="SQLKey">SQLKey</a></h2>
 <p><strong>Syntax:</strong> SQLKey <em>key-value</em><br>
   <strong>Default:</strong> none<BR>
   <strong>Context:</strong> server config, Global, VirtualHost<br>
-  <strong>Module:</strong> mod_sqlpw<BR>
+  <strong>Module:</strong> mod_sql<BR>
   <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+  <P>This directive is DEPRECATED.  Please use SQLWhereClause instead.
 
   <P>SQLKey <key-value> (ROOT, GLOBAL, VIRTUAL) sets the value that the
   SQLKeyField column needs to match.</P>
@@ -2905,8 +3168,10 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
 <p><strong>Syntax:</strong> SQLKeyField <em>column-name</em><br>
   <strong>Default:</strong> none<BR>
   <strong>Context:</strong> server config, Global, VirtualHost<br>
-  <strong>Module:</strong> mod_sqlpw<BR>
+  <strong>Module:</strong> mod_sql<BR>
   <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+  <P>This directive is DEPRECATED.  Please use SQLWhereClause instead.
 
   <P>SQLKeyField <column-name> (ROOT, GLOBAL) designates a table field
   that's used to distinguish what logins belong to what virtual host.</P>
@@ -2916,10 +3181,10 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
 <h2><a name="SQLLogDirs">SQLLogDirs</a></h2>
 <p><strong>Syntax:</strong> SQLLogDirs <em>on</em><br>
   <strong>Syntax:</strong> SQLLogDirs <em>fieldname</em><br>
-  <strong>Default:</strong> off, or `fcdir' if field unspecified<br>
+  <strong>Default:</strong> off<br>
   <strong>Context:</strong> server config<br>
-  <strong>Module:</strong> mod_sqlpw<BR>
-  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0rc2 and later</p>
 
   <P>Activates logging of the last directory the user changed to.
   This is done after every CHDIR command - the initial login to "/"
@@ -2938,7 +3203,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <strong>Syntax:</strong> SQLLogHits <em>hit-table filename-field hits-field dir-field</em><br>
   <strong>Default:</strong> off, or `filename, hits' if fields unspecified<br>
   <strong>Context:</strong> server config<br>
-  <strong>Module:</strong> mod_sqlpw<BR>
+  <strong>Module:</strong> mod_sql<BR>
   <strong>Compatibility:</strong> only available with the Debian package.</P>
 
   <P>Activates logging of RETR commands on a file to a separate table
@@ -2962,7 +3227,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <strong>Syntax:</strong> SQLLogHosts host-field ipaddr-field time-field<br>
   <strong>Default:</strong> off, or (`fhost faddr ftime') if fields unspecified<br>
   <strong>Context:</strong> server config<br>
-  <strong>Module:</strong> mod_sqlpw<BR>
+  <strong>Module:</strong> mod_sql<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <P>Activates logging of host, IP, and last-login timestamp to the
@@ -2971,12 +3236,23 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
 
   <P>Example:</P>
   <P><code>SQLLogHosts on</code></P>
+
+<hr>
+<h2><a name="SQLLogStats">SQLLogStats</a></h2>
+<p>
+  <strong>Syntax:</strong> SQLLogHosts <em>on|off</em><br>
+  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+<P>No details yet
+  
 <hr>
 <h2><a name="SQLLoginCountField">SQLLoginCountField</a></h2>
 <p><strong>Syntax:</strong> SQLLoginCountField <em>fieldname</em><br>
   <strong>Default:</strong> none<br>
-  <strong>Context:</strong> server config<br>
-  <strong>Module:</strong> mod_sqlpw<BR>
+  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
+  <strong>Module:</strong> mod_sql<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <P>Activates incrementation of a login count for the user, done with
@@ -2991,7 +3267,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <strong>Syntax:</strong> SQLLogStats <em>F-stor-field F-retr-field B-stor-field B-retr-field</em><br>
   <strong>Default:</strong> off, or `fstor fretr bstor bretr"' if fields unspecified<br>
   <strong>Context:</strong> server config<br>
-  <strong>Module:</strong> mod_sqlpw<BR>
+  <strong>Module:</strong> mod_sql<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <P>Activates logging of upload/download statistics for this user.
@@ -3006,10 +3282,10 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
 <hr>
 <h2><a name="SQLPasswordField">SQLPasswordField</a></h2>
 <p><strong>Syntax:</strong> SQLPasswordField <em>fieldname</em><br>
-  <strong>Default:</strong> None known<br>
+  <strong>Default:</strong> password<br>
   <strong>Context:</strong> server config<br>
-  <strong>Module:</strong> mod_sqlpw<BR>
-  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0rc2 and later</p>
 
   <P>Using this directive activates SQL authentication functions, if a
   database driver is configured.  It specifies which field holds the
@@ -3017,13 +3293,29 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
 
   <P>Example:</P>
   <P><code>SQLPasswordField passwd</code></P>
+
+<hr>
+<h2><a name="SQLMinID">SQLMinID</a></h2>
+<p><strong>Syntax:</strong> SQLMinID <em>minumumid</em><br>
+  <strong>Default:</strong> 999<br>
+  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+<P>SQLMinID is checked whenever retrieving a user's GID or UID.  If the
+retrieved values for GID or UID are less than the value of SQLMinID,
+they are reported as the values of, respectively, 'SQLDefaultGID' and
+'SQLDefaultUID'.
+
 <hr>
 <h2><a name="SQLPlaintextPasswords">SQLPlaintextPasswords</a></h2>
 <p><strong>Syntax:</strong> SQLPlaintextPasswords <em>on|off</em><br>
   <strong>Default:</strong> off<br>
   <strong>Context:</strong> server config<br>
-  <strong>Module:</strong> mod_sqlpw<BR>
+  <strong>Module:</strong> mod_sql<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <P>This directive is DEPRECATED.  Please use SQLAuthTypes instead.
 
   <P>Specifies whether the two passwords should be compared as
   plaintext.  Default is no - passwords must be UNIX DES-encrypted
@@ -3037,19 +3329,33 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;,
 	    &lt;Limit&gt;, .ftpaccess<br>
-  <strong>Module:</strong> mod_sqlpw<BR>
+  <strong>Module:</strong> mod_sql<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The SQLRatios directive .... INCOMPLETE</P>
 
   <P>Example:</P>
   <P><code>SQLRatios</code></P>
+
+<hr>
+<h2><a name="SQLShellField">SQLShellField</a></h2>
+<p><strong>Syntax:</strong> SQLShellField <em>fieldname</em><br>
+  <strong>Default:</strong> shell<br>
+  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+  <P>Specifies the field in the user table that holds the user's shell.  If
+  this field doesn't exist or the result of the query is NULL, the shell
+  is reported as "".
+
+  
 <hr>
 <h2><a name="SQLUidField">SQLUidField</a></h2>
 <p><strong>Syntax:</strong> SQLUidField <em>fieldname</em><br>
   <strong>Default:</strong> none, UID is 655533<br>
   <strong>Context:</strong> server config<br>
-  <strong>Module:</strong> mod_sqlpw<BR>
+  <strong>Module:</strong> mod_sql<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <P>Specifes what field holds the uid number, for users authenticated
@@ -3063,9 +3369,9 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
 <h2><a name="SQLUserTable">SQLUserTable</a></h2>
 <p><strong>Syntax:</strong> SQLUserTable <em>tablename</em><br>
   <strong>Default:</strong> users<br>
-  <strong>Context:</strong> server config<br>
-  <strong>Module:</strong> mod_sqlpw<BR>
-  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0rc2 and later</p>
 
   <P>Specifies the table used to look up the other information,
   defaults to `users'.
@@ -3076,15 +3382,44 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
 <h2><a name="SQLUsernameField">SQLUsernameField</a></h2>
 <p><strong>Syntax:</strong> SQLUsernameField <em>fieldname</em><br>
   <strong>Default:</strong> userid<br>
-  <strong>Context:</strong> server config<br>
-  <strong>Module:</strong> mod_sqlpw<BR>
-  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
+  <strong>Module:</strong> mod_sql<BR>
+  <strong>Compatibility:</strong> 1.2.0rc2 and later</p>
 
   <P>Specifies the name of the username field, defaults to `userid'.
   This is used in a WHERE clause for all other operations.
 
   <P>Example:</P>
   <P><code>SQLUsernameField customerid</code></P>
+
+  <HR>
+  <h2><a name="SQLWhereClause"><strong>SQLWhereClause</strong></a></h2>
+  <p><strong>Syntax:</strong> <em>whereclause</em><br>
+    <strong>Default:</strong> none<br>
+    <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
+  <STRONG>Module:</STRONG> mod_sql<BR>
+    <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+  <P>This directive deprecates 'SQLKey' and 'SQLKeyField'.
+
+  Specifies a where clause that is added to every user query (this has
+  no effect on group queries).  The where clause *must* contain all
+  relevant punctuation, and *must not* contain a leading 'and'.
+
+  As an example of switching from the old-style 'SQLKey' and
+  'SQLKeyField' directives, if you had:
+
+  SQLKey           true
+  SQLKeyfield      LoginAllowed
+
+  You would now use:
+
+  SQLWhereClause   "LoginAllowed = 'true'"
+
+  This would be appended to every user-related query as the string 
+
+  " and (LoginAllowed = 'true')"
+
 
   <hr>
   <h2><a name="SyslogFacility"><strong>SyslogFacility</strong></a></h2>
@@ -3404,7 +3739,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <P><EM>Example:</EM> UseHostsAllowFile /etc/ftpd.allow</P>
 
   <hr>
-<h2><a name="">UseHostsDenyFile</a></h2>
+<h2><a name="UseHostsDenyFile">UseHostsDenyFile</a></h2>
 <p><strong>Syntax:</strong> UseHostsDenyFile <em>filename</em><br>
   <strong>Default:</strong> /etc/hosts.deny<br>
   <strong>Context:</strong> server, &lt;Anonymous&gt;, &lt;VirtualHost&gt; <BR>

@@ -1,0 +1,134 @@
+
+                        ProFTPD 1.2.0 README.modules
+                        ============================
+
+
+
+Core ProFTPD Modules (modules subdirectory)
+-------------------------------------------
+
+Modules always included:
+
+    mod_auth
+        Implements FTP authentication commands (USER, PASS, ACCT, REIN).
+
+    mod_core
+        Implements core configuration directives and most RFC-959 FTP commands
+        (CWD, CDUP, MKD, PWD, RMD, DELE, RNTO, RNFR, PASV, PORT, SYST, HELP,
+        QUIT, NOOP), and the MDTM and SIZE extensions.
+
+    mod_log
+        Interface to Unix message logging (syslog or file).
+
+    mod_ls
+        Implements the FTP LIST, NLST and STAT commands.
+
+    mod_site
+        Implements the FTP SITE command, and the HELP and CHMOD subcommands.
+
+    mod_unixpw
+        Interface to the native Unix password system.
+
+    mod_xfer
+        Implements FTP file transfer commands (STOR, RETR, APPE, REST,
+        ABOR, TYPE, STRU, MODE, ALLO, SMNT, STOU).
+
+
+Modules automatically included when supported by the OS:
+
+    mod_pam
+        PAM (Pluggable Authentication Modules) authentication.
+        See README.PAM.
+        Originally contributed by MacGyver <macgyver@tos.net>.
+
+
+Optional modules:
+
+    mod_readme
+        Display "readme" files, controlled by the "DisplayReadme" directive.
+        See the comments in contrib/mod_readme.c.
+        Originally contributed by <jan.menzel@gmx.de>.
+
+
+
+Contributed ProFTPD Modules (contrib subdirectory)
+--------------------------------------------------
+
+Also, see contrib/README.
+
+Authentication modules:
+
+    mod_ldap
+        LDAP (Light-weight Directory Access Protocol) authentication.
+        See README.LDAP.
+        Contributed by John Morrissey <jwm@horde.net>.
+
+    mod_sql, mod_sql_mysql, mod_sql_postgres
+        (formerly known as mod_sqlpw, mod_mysql, mod_pgsql)
+        SQL (Structured Query Language) database authentication and
+        other functions, with backends for MySQL and PostgreSQL.
+        See contrib/README.mod_sql.
+        Contributed by Johnie Ingram <johnie@netgod.net>.
+        Maintained by Andrew Houghton <aah@acm.org>.
+
+
+Feature modules:
+
+    mod_linuxprivs, libcap
+        POSIX 1e (IEEE 1003.1e draft) security model enhancements
+        (capabilities and capability sets), available for Linux
+        kernels 2.1.104 and later.
+        See README.linux-privs.
+
+    mod_quota
+        Directory tree based disk quotas.
+        Contributed by Eric Estabrooks <eric@urbanrage.com>.
+
+    mod_ratio
+        User upload/download ratios.
+        See contrib/README.ratio and the comments in mod_ratio.c.
+        Contributed by Johnie Ingram <johnie@netgod.net>
+        and Jim Dogopoulos <jd@dynw.com>/<jd@downcity.net>.
+
+    mod_wrap
+        TCP Wrappers.
+        See contrib/README.mod_wrap and contrib/mod_wrap.html.
+        Contributed by TJ Saunders <tj@digisle.net>.
+
+
+Note that the mod_test module is non-functional.
+Do not attempt to compile or use it.
+
+
+
+
+Other ProFTPD modules (not included in the source distribution)
+---------------------------------------------------------------
+
+These modules (and patches) are neither evaluated nor sanctioned in any way.
+Draw no implication based on inclusion or non-inclusion in this list.
+
+A more complete and current list may be found on the web site:
+
+        http://www.proftpd.org/docs/
+        http://www.proftpd.org/links.html
+
+
+Authentication modules:
+
+    mod_dbauth
+        Berkeley DB 1.x authentication.
+        ftp://pooh.urbanrage.com/pub/c/
+        Eric Estabrooks <eric@urbanrage.com>
+
+    mod_pwcheck
+        Checks anonymous passwords and connections.
+        ftp://ftp.eos.hokudai.ac.jp/pub/pck/release/
+        Akihiko Yamamoto <star@eos.hokudai.ac.jp>
+
+    mod_opie
+        OPIE (One-time Passwords In Everything) authentication.
+        ftp://pooh.urbanrage.com/pub/c/
+        Eric Estabrooks <eric@urbanrage.com>
+
+

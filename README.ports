@@ -1,0 +1,100 @@
+
+                        ProFTPD 1.2 README.ports
+                        ========================
+
+
+See the web site for a more complete and current list:
+
+        http://www.proftpd.org/ports.html
+
+If you have successfully built and run ProFTPD on a platform not listed,
+you are invited to share your experience.  Please include your platform
+name and version (e.g. `uname -a`), compiler and version, the proftpd
+version (e.g `./proftpd -v`), any optional modules that you are using
+(e.g. `./proftpd -l`), and any special instructions or notes.
+
+        proftpd-devel@proftpd.org
+        http://www.proftpd.org/<<???>>
+
+
+Note: the Linux compilation environment depends on:
+        kernel
+        glibc
+        gcc
+        libpam
+So, please either report the versions of these components, or the
+distribution name, version and any patches affecting the compilation
+environment.
+
+
+ProFTPD 1.2.0 has been reported to build on the following:
+
+    OS                 Compiler  Notes
+    -----------------  --------  ----------------------------------------
+    AIX 4.2.1          gcc       see README.AIX
+    AIX 4.2.1          cc        see README.AIX
+   ?AIX 4.3.3                    see README.AIX
+   ?BSD/OS 4.1
+   ?BSD/OS 4.2
+   ?Compaq Tru64 5.0A
+   ?Compaq Tru64 5.0B
+   ?Digital UNIX 4.0A
+   ?FreeBSD 3.5                  see README.FreeBSD
+   ?FreeBSD 4.1
+   ?FreeBSD 4.2
+   ?HP/UX 10.x
+   ?HP/UX 11.x
+    IRIX 6.5           cc        lib/Makefile ranlib
+   ?IRIX 6.5           gcc       lib/Makefile ranlib
+   ?Linux                        kernel 2.0.x, 2.2.x or 2.4.x
+                                 glibc2 (libc6) required
+   ?MacOS X
+   ?NetBSD 1.4
+   ?NetBSD 1.5
+   ?OpenBSD 2.6
+   ?OpenBSD 2.7
+   ?OpenBSD 2.8
+    Solaris 2.5        gcc       see README.Solaris2.5x
+   ?Solaris 2.5.1      gcc       see README.Solaris2.5x
+   ?Solaris 2.6
+   ?Solaris 7
+    Solaris 8          cc
+   ?Solaris 8          gcc
+   ?UnixWare 7
+
+Linux distros:
+   ?Caldera
+   ?Conectiva
+   ?Debian 2.2
+   ?Immunix 6.2
+   ?Mandrake
+   ?Red Hat 6.2
+   ?Red Hat 7.0
+   ?Slackware 7
+   ?SuSE
+   ?Trustix                      bundled
+   ?TurboLinux
+
+
+
+ProFTPD 1.2.0pre3 has been reported to build on the following:
+
+    OS                 Compiler  Notes
+    -----------------  --------  ----------------------------------------
+    AIX 3.2                      native compiler
+    AIX 4.2                      tested
+    BSDI 2.x                     possibly
+    BSDI 3.1                     tested; use gmake instead of make
+    BSDI 4.0
+    DEC OFS/1                    native compiler
+    Digital UNIX 4.0A
+    FreeBSD 2.2.7                tested see README.FreeBSD
+    FreeBSD 3.3                  see README.FreeBSD
+    IRIX 6.2
+    IRIX 6.3                     native compiler or gcc
+    IRIX 6.4                     tested
+    Linux                        kernel 2.0.x or 2.2.x; glibc2 (libc6) required
+    OpenBSD 2.2/2.3              tested
+    Solaris 2.5.1                see README.Solaris2.5x
+    Solaris 2.6
+

@@ -1,0 +1,10 @@
+
+			ProFTPD 1.2 README.FreeBSD
+			==========================
+
+FreeBSD releases 2.0 through 3.3-RELEASE have a libc bug with setpassent().
+If you know that you have a fixed libc you can use the configure command line
+option '--enable-force-setpassent' to use it with one of these fixed releases,
+otherwise ProFTPD will use its internal persistent password support.  If you
+would like more information, this bug is described in FreeBSD PR #14201.
+
