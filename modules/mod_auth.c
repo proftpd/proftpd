@@ -19,7 +19,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.2 1999-02-12 19:37:58 flood Exp $
+ * $Id: mod_auth.c,v 1.3 1999-02-14 01:47:24 flood Exp $
  */
 
 #include "conf.h"
@@ -702,7 +702,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
     add_userdir = get_param_int((c ? c->subset : main_server->conf),
 				"UserDirRoot",FALSE);
 
-    if(add_userdir && strcmp(u, user)) {
+    if(add_userdir > 0 && strcmp(u, user)) {
       session.anon_root = dir_realpath(session.pool, pdircat(session.pool,
 							     c->name, u, NULL));
     } else {
