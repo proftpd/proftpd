@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.51 2003-05-20 18:00:42 castaglia Exp $
+ * $Id: mod_sql.c,v 1.52 2003-05-31 00:37:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -464,34 +464,30 @@ static modret_t *check_auth_openssl(cmd_rec *cmd, const char *c_clear,
    *           value, of the form {digest}hash 
    */
 
-  EVP_MD_CTX mdctx;
-  EVP_ENCODE_CTX EVP_Encode;
+  EVP_MD_CTX md_ctxt;
+  EVP_ENCODE_CTX base64_ctxt;
   const EVP_MD *md;
-  unsigned char md_value[EVP_MAX_MD_SIZE];
-  int md_len, returnValue;
+  unsigned char mdval[EVP_MAX_MD_SIZE];
+  int mdlen, res;
 
-  char buff[EVP_MAX_KEY_LENGTH];
+  char buf[EVP_MAX_KEY_LENGTH];
 
   char *digestname;             /* ptr to name of the digest function */
   char *hashvalue;              /* ptr to hashed value we're comparing to */
   char *copyhash;               /* temporary copy of the c_hash string */
 
-  if (c_hash[0] != '{') {
+  if (c_hash[0] != '{') 
     return ERROR_INT(cmd, PR_AUTH_BADPWD);
-  }
 
-  /*
-   * we need a copy of c_hash 
-   */
+  /* We need a copy of c_hash. */
   copyhash = pstrdup(cmd->tmp_pool, c_hash);
 
   digestname = copyhash + 1;
 
   hashvalue = (char *) strchr(copyhash, '}');
 
-  if (hashvalue == NULL) {
+  if (hashvalue == NULL)
     return ERROR_INT(cmd, PR_AUTH_BADPWD);
-  }
 
   *hashvalue = '\0';
   hashvalue++;
@@ -500,20 +496,19 @@ static modret_t *check_auth_openssl(cmd_rec *cmd, const char *c_clear,
 
   md = EVP_get_digestbyname(digestname);
 
-  if (!md) {
+  if (!md)
     return ERROR_INT(cmd, PR_AUTH_BADPWD);
-  }
 
-  EVP_DigestInit(&mdctx, md);
-  EVP_DigestUpdate(&mdctx, c_clear, strlen(c_clear));
-  EVP_DigestFinal(&mdctx, md_value, &md_len);
+  EVP_DigestInit(&md_ctxt, md);
+  EVP_DigestUpdate(&md_ctxt, c_clear, strlen(c_clear));
+  EVP_DigestFinal(&md_ctxt, mdval, &mdlen);
 
-  EVP_EncodeInit(&EVP_Encode);
-  EVP_EncodeBlock(buff, md_value, md_len);
+  EVP_EncodeInit(&base64_ctxt);
+  EVP_EncodeBlock(buf, mdval, mdlen);
 
-  returnValue = strcmp(buff, hashvalue);
+  res = strcmp(buf, hashvalue);
 
-  return returnValue ? ERROR_INT(cmd, PR_AUTH_BADPWD) : HANDLED(cmd);
+  return res ? ERROR_INT(cmd, PR_AUTH_BADPWD) : HANDLED(cmd);
 }
 #endif
 
@@ -1517,6 +1512,11 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
     } else {
       sstrncpy(argp, "-", sizeof(arg));
     }
+    break;
+
+  case 'J':
+    argp = arg;
+    sstrncpy(argp, cmd->arg, sizeof(arg));
     break;
 
   case 'h':

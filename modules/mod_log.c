@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.50 2003-03-04 21:46:05 castaglia Exp $
+ * $Id: mod_log.c,v 1.51 2003-05-31 00:37:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -93,6 +93,7 @@ struct logfile_struc {
 #define META_XFER_PATH		22
 #define META_DIR_NAME		23
 #define META_DIR_PATH		24
+#define META_CMD_PARAMS		25
 
 static pool			*log_pool;
 static logformat_t		*formats = NULL;
@@ -111,9 +112,10 @@ static xaset_t			*log_set = NULL;
    %F			- Transfer path (filename for client)
    %f			- Filename
    %h			- Remote client DNS name
+   %J                   - Request (command) arguments (file.txt, etc)
    %L                   - Local server IP address
    %l			- Remote logname (from identd)
-   %m			- Request (command) method (RETR, etc.)
+   %m			- Request (command) method (RETR, etc)
    %P			- Process ID of child serving request
    %p			- Port of server serving request
    %r			- Full request (command)
@@ -235,6 +237,10 @@ void logformat(char *nickname, char *fmts)
           add_meta(&outs, META_REMOTE_HOST, 0);
           break;
 
+        case 'J':
+          add_meta(&outs, META_CMD_PARAMS, 0);
+          break;
+
         case 'l':
           add_meta(&outs, META_IDENT_USER, 0);
           break;
@@ -324,8 +330,7 @@ MODRET set_logformat(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-static int _parse_classes(char *s)
-{
+static int _parse_classes(char *s) {
   int classes = 0;
   char *nextp = NULL;
 
@@ -799,6 +804,12 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       sstrncpy(argp, "PASS (hidden)", sizeof(arg));
     else
       sstrncpy(argp, get_full_cmd(cmd), sizeof(arg));
+    m++;
+    break;
+
+  case META_CMD_PARAMS:
+    argp = arg;
+    sstrncpy(argp, cmd->arg, sizeof(arg));
     m++;
     break;
 
