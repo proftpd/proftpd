@@ -20,7 +20,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.24 2001-01-31 20:51:37 flood Exp $
+ * $Id: dirtree.c,v 1.25 2001-02-13 03:05:11 flood Exp $
  */
 
 /* History:
@@ -1490,7 +1490,8 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path)
     /* at this point, check to see if HideNoAccess has been enabled.  If
      * so, and if op_hidden is TRUE, then handle the scenario here.
      */
-    if (op_hidden && get_param_int(c->subset, "HideNoAccess", FALSE)) {
+    if (op_hidden && (get_param_int(c->subset, "HideNoAccess",
+        FALSE) == TRUE)) {
       errno = ENOENT;
       res = 0;
   }
@@ -1609,7 +1610,8 @@ int dir_check(pool *pp, char *cmd, char *group, char *path)
     /* at this point, check to see if HideNoAccess has been enabled.  If
      * so, and if op_hidden is TRUE, then handle the scenario here.
      */
-    if (op_hidden && get_param_int(c->subset, "HideNoAccess", FALSE)) {
+    if (op_hidden && (get_param_int(c->subset, "HideNoAccess",
+        FALSE) == TRUE)) {
       errno = ENOENT;
       res = 0;
     }

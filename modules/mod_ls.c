@@ -19,7 +19,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.33 2001-01-31 20:51:37 flood Exp $
+ * $Id: mod_ls.c,v 1.34 2001-02-13 03:05:10 flood Exp $
  */
 
 #include "conf.h"
@@ -774,7 +774,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name)
 	 * check to see whether hidden files should be ignored
    */
 	if ((c = _find_ls_limit(cmd->argv[0])) != NULL &&
-      get_param_int(c->set, "IgnoreHidden", FALSE))
+      get_param_int(c->subset, "IgnoreHidden", FALSE))
     ignore_hidden = TRUE;
 
   if(dir) {
@@ -1224,7 +1224,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
    * check to see whether hidden files should be ignored
    */
   if ((c = _find_ls_limit(cmd->argv[0])) != NULL)
-    ignore_hidden = get_param_int(c->subset, "IgnoreHidden", FALSE);
+    ignore_hidden = (get_param_int(c->subset, "IgnoreHidden", FALSE) == TRUE);
 
   while(*list && count >= 0) {
     p = *list; list++;
