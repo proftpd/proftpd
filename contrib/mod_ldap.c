@@ -20,7 +20,7 @@
 
 /*
  * $Libraries: -lldap -llber$
- * ldap password lookup module for ProFTPD (mod_ldap v2.7.1)
+ * ldap password lookup module for ProFTPD (mod_ldap v2.7.2)
  * Copyright (c) 1999-2000, John Morrissey <jwm@horde.net>
  *
  * Thanks for patches to:
@@ -29,7 +29,7 @@
  * Bert Vermeulen <bert@be.easynet.net> - LDAPHomedirOnDemand,
  *                                        LDAPDefaultAuthScheme
  *
- * $Id: mod_ldap.c,v 1.11 2000-07-27 04:14:41 macgyver Exp $
+ * $Id: mod_ldap.c,v 1.12 2000-07-28 22:17:13 macgyver Exp $
  */
 
 /* Default mode to use when creating home directory on demand. */
@@ -110,7 +110,7 @@ static void p_ldap_connect()
 	return;
   }
 
-  ldap_querytimeout_tp.tv_sec = (ldap_querytimeout ? ldap_querytimeout : 5);
+  ldap_querytimeout_tp.tv_sec = (ldap_querytimeout > 0 ? ldap_querytimeout : 5);
   ldap_querytimeout_tp.tv_usec = 0;
 }
 
