@@ -283,9 +283,10 @@ configuration:</p>
   addresses causes security to depend a great deal upon DNS servers
   which may themselves be vulnerable to attack or spoofing.</strong>
   Numeric addresses which specify an entire network should end in a
-  trailing period (i.e. 10.0.0. for the entire 10.0.0 subnet). Named
-  address which specify an entire network should begin with a trailing
-  period (i.e. .proftpd.org for the entire proftpd.org domain).</p>
+  trailing period (i.e. 10.0.0. for the entire 10.0.0 subnet) or be
+  specified in CIDR format.. Named address which specify an entire network
+  should begin with a trailing period (i.e. .proftpd.org for the entire
+  proftpd.org domain).</p>
 
   <P>The selection made can be selectively negated using the ! operator,
   this allows a large block of hosts or IPs to be selected while still
@@ -295,6 +296,7 @@ configuration:</p>
 <p><code>&lt;Limit LOGIN&gt;<br>
   Order Allow,Deny<br>
   Allow from 128.44.26.,128.44.26.,myhost.mydomain.edu,.trusted-domain.org<br>
+  Allow from 10.2.0.0/22<br>
   Deny from all<br>
   &lt;/Limit&gt;</code></p>
 <hr>
@@ -1102,16 +1104,19 @@ href="#Limit">&lt;Limit&gt;</a> &lt;/Limit&gt; blocks, which are
     HideNoAccess<br>
     &lt;/Directory&gt;</code></p>
 </blockquote>
-<p>A trailing slash and wildcard (&quot;/*&quot;) can be appended to the directory, 
-  specifying that the configuration block applies only to the contents (and sub-contents), 
-  not to the actual directory itself. Such wildcard matches always take precedence 
-  over non-wildcard &lt;Directory&gt; configuration blocks. &lt;Directory&gt; 
-  blocks cannot be nested (they are automatically nested at run-time based on 
-  their pathnames). Pathnames must always be absolute (except inside <a
-href="#Anonymous">&lt;Anonymous&gt;</a>), and should not reference 
-  symbolic links. Pathnames inside an <a
-href="#Anonymous">&lt;Anonymous&gt;</a> block can be relative, indicating 
-  that they are based on the anonymous root directory.</p>
+
+  <p>A trailing slash and wildcard (&quot;/*&quot;) can be appended
+  to the directory, specifying that the configuration block applies
+  only to the contents (and sub-contents), not to the actual directory
+  itself. Such wildcard matches always take precedence over non-wildcard
+  &lt;Directory&gt; configuration blocks. &lt;Directory&gt; blocks
+  cannot be nested (they are automatically nested at run-time
+  based on their pathnames). Pathnames must always be absolute
+  (except inside <a href="#Anonymous">&lt;Anonymous&gt;</a>),
+  and should not reference symbolic links. Pathnames inside an <a
+  href="#Anonymous">&lt;Anonymous&gt;</a> block can be relative to the
+  root of the server</p>
+  
 <p><strong>[Notes for ProFTPD 1.1.3 and later only]</strong><br>
   Pathnames that begin with the special character '~' <strong>and do not specify 
   a username immediately after</strong> ~ are put into a special deferred mode. 
@@ -1512,6 +1517,11 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
   used while they're still in the progress of being uploaded. <em><strong>Note:</strong></em> 
   if the temporary file name is already in use (e.g., a server crash during upload), 
   it will prevent the file from being uploaded.</p>
+
+<p>The REST (Restart STOR) command is automatically blocked when
+  HiddenStor is enabled, with the server returning a 501 error code to
+  the client.
+
 <hr>
 <h2><a name="HideGroup">HideGroup</a></h2>
 <p><strong>Syntax:</strong> HideGroup <em>groupid</em><br>
@@ -1554,6 +1564,25 @@ href="#Anonymous">&lt;Anonymous&gt;</a> block to hide all directory
   HideNoAccess.</p> <p><strong>See Also:</strong> <a
   href="#HideUser">HideUser</a>, <a href="#HideGroup">HideGroup</a>,
   <a href="#IgnoreHidden">IgnoreHidden</a></p>
+
+<hr>
+<h2><a name="HideUser">HideUser</a></h2>
+<p><strong>Syntax:</strong> HideUser <em>userid</em><br>
+  <strong>Default:</strong> None<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
+  <strong>Compatibility:</strong> 0.99.0 and later</p>
+<p>The HideUser directive configures a <a
+href="#Directory">&lt;Directory&gt;</a> or &lt;<a
+href="#Anonymous">Anonymous&gt;</a> block to hide all directory 
+  entries owned by the specified user, unless the owning user is the currently 
+  logged-in, authenticated user. Normally, hidden directories and files cannot 
+  be seen via LIST or NLST commands but <strong>can</strong> be operated on via 
+  other FTP commands (CWD, DELE, RETR, etc). This behavior can be modified via 
+  the <a href="#IgnoreHidden">IgnoreHidden</a> directive.</p>
+<p><strong>See Also:</strong> <a href="#HideGroup">HideGroup</a>, <a
+href="#HideNoAccess">HideNoAccess</a>, <a
+href="#IgnoreHidden">IgnoreHidden</a></p>
 
 <hr>
 
@@ -1607,25 +1636,6 @@ href="#Anonymous">&lt;Anonymous&gt;</a> block to hide all directory
   href="#HostsAllowSyslogLevel">HostsAllowSyslogLevel</a></p>
 
   <P><EM>Example:</EM> <code>HostsDenySyslogLevel local3</code></P>
-
-<hr>
-<h2><a name="HideUser">HideUser</a></h2>
-<p><strong>Syntax:</strong> HideUser <em>userid</em><br>
-  <strong>Default:</strong> None<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;<br>
-  <STRONG>Module:</STRONG> mod_core<BR>
-  <strong>Compatibility:</strong> 0.99.0 and later</p>
-<p>The HideUser directive configures a <a
-href="#Directory">&lt;Directory&gt;</a> or &lt;<a
-href="#Anonymous">Anonymous&gt;</a> block to hide all directory 
-  entries owned by the specified user, unless the owning user is the currently 
-  logged-in, authenticated user. Normally, hidden directories and files cannot 
-  be seen via LIST or NLST commands but <strong>can</strong> be operated on via 
-  other FTP commands (CWD, DELE, RETR, etc). This behavior can be modified via 
-  the <a href="#IgnoreHidden">IgnoreHidden</a> directive.</p>
-<p><strong>See Also:</strong> <a href="#HideGroup">HideGroup</a>, <a
-href="#HideNoAccess">HideNoAccess</a>, <a
-href="#IgnoreHidden">IgnoreHidden</a></p>
 
 <hr>
 <h2><a name="IdentLookups">IdentLookups</a></h2>
@@ -2142,37 +2152,6 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
     time.&quot;</code></p>
   <p>Results in:</p>
   <p><code>530 Sorry, you may not connect more than one time.</code></p>
-
-  <hr>
-  <h2><a name="MaxClientsPerUser">MaxClientsPerUser</a></h2>
-  <p><strong>Syntax:</strong> MaxClientsPerUser <em>number|none [message]</em><br>
-    <strong>Default:</strong> none<br>
-    <strong>Context:</strong> server config, &lt;Anonymous&gt;, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <STRONG>Module:</STRONG> mod_core<BR>
-    <strong>Compatibility:</strong> 1.2.0 and later</p>
-
-  <p>The MaxClientsPerUser directive configures the maximum number of
-  authenticated clients that can log into the server for any given
-  user.  This is to limit the effect of some of the more popular ftp
-  clients which can open multiple connections to a server and perform
-  parallel downloads. Once the limit is reached additional
-  authentication attempts will be disconnected.</p>
-
-  <p>An optional <em><strong>message</strong></em> argument may be
-  used which will be displayed to a client attempting to exceed the
-  maximum value; immediately before disconnection. The
-  <em><strong>message</strong></em> argument is parsed for the magic
-  string <strong>&quot;%m&quot;</strong>, which is replaced with the
-  configured maximum value. If <em><strong>message</strong></em> is
-  not supplied, a system-wide default message is used.</p>
-
-  <p>Example:</p>
-  <p><code>MaxClientsPerUser 1 &quot;Please do not abuse this facility
-	  you are already connected %m times from your host.&quot;</code></p>
-  <p>Results in:</p>
-  <p><code>530 Please do not abuse this facility you are already
-	  connected 1 times from your host.</code></p> 
-
 
   <hr>
   <h2><a name="MaxInstances">MaxInstances</a></h2>

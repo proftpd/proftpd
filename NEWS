@@ -1,7 +1,9 @@
-$Id: NEWS,v 1.112 2001-06-19 18:51:51 flood Exp $
+$Id: NEWS,v 1.113 2001-06-20 01:13:59 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+- Bugs 1164,1020,1134,1190,1207
+  Documentation updates
 - Bug 1210 - Possible silent truncation in net-ascii mode
 - Bug 1212 - special files (devices, etc) didn't show up in directory
   listings.
