@@ -18,7 +18,7 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.1 1998-10-18 02:24:41 flood Exp $
+ * $Id: support.h,v 1.2 1999-01-27 22:06:49 flood Exp $
  */
 
 #ifndef __SUPPORT_H
@@ -75,6 +75,7 @@ char *get_token(char**,char*);
 char *safe_token(char**);
 int check_shutmsg(time_t*,time_t*,time_t*,char*,size_t);
 
+char *sstrcat(char *dest, const char *src, size_t n);
 char *sreplace(pool*,char*,...);
 
 #if defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)

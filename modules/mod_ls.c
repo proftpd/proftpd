@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.4 1999-01-21 16:32:39 flood Exp $
+ * $Id: mod_ls.c,v 1.5 1999-01-27 22:06:50 flood Exp $
  */
 
 #include "conf.h"
@@ -535,6 +535,14 @@ char **sreaddir(pool *workp, const char *dirname, const int sort)
   char		*s;
   int		dsize;
 
+  if(fs_stat(dirname,&st) < 0) 
+    return NULL;
+
+  if(!S_ISDIR(st.st_mode)) {
+    errno = ENOTDIR;
+    return NULL;
+  }
+
   if((d = opendir(dirname)) == NULL)
     return NULL;
 
@@ -822,7 +830,9 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
            * ./ and ../
            */
 
-          if(**path == '.' && !opt_a && showdotfiles != 1) {
+          if(**path == '.' && !opt_a && showdotfiles != 1 && 
+	     (*path)[1] != '\0'  && ((*path)[1] != '.' ||
+				     ((*path)[1] == '.' && (*path)[2] != '\0'))) {
             **path = '\0';
             path++;
             continue;
@@ -1047,12 +1057,11 @@ int nlstdir(cmd_rec *cmd, const char *dir)
 	return count;
 }
 
-MODRET cmd_list(cmd_rec *cmd)
+MODRET genericlist(cmd_rec *cmd)
 {
   int err;
   long _fakemode;
 
-  opt_l = 1;
   showsymlinks = get_param_int(TOPLEVEL_CONF,"ShowSymlinks",FALSE);
 
   if(showsymlinks == -1)
@@ -1135,6 +1144,12 @@ MODRET cmd_stat(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
+MODRET cmd_list(cmd_rec *cmd)
+{
+  opt_l = 1;
+  return genericlist(cmd);
+}
+
 /* NLST is a very simplistic directory listing, unlike LIST (which
  * emululates ls), it only sends a list of all files/directories
  * matching the glob(s).
@@ -1150,7 +1165,7 @@ MODRET cmd_nlst(cmd_rec *cmd)
 	 */
 
 	if(cmd->argc > 1 && cmd->argv[1][0] == '-')
-		return cmd_list(cmd);
+		return genericlist(cmd);
 
 	showsymlinks = get_param_int(TOPLEVEL_CONF,"ShowSymlinks",FALSE);
 

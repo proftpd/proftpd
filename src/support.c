@@ -19,7 +19,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.1 1998-10-18 02:24:41 flood Exp $
+ * $Id: support.c,v 1.2 1999-01-27 22:06:52 flood Exp $
  */
 
 /* History Log:
@@ -665,3 +665,20 @@ unsigned long get_fs_size(char *s)
   return _calc_fs(vfs.f_bavail,vfs.f_bsize);
 }
 #endif /* HAVE_SYS_STATVFS/HAVE_SYS_VFS */
+
+/* "safe" strcat, saves room for \0 at end of dest, and refuses to copy
+ * more than "n" bytes.
+ */
+
+char *sstrcat(char *dest, const char *src, size_t n)
+{
+	register char *d;
+
+	for(d = dest; *d && n > 1; d++, n--) ;
+
+	while(n-- > 1 && *src)
+		*d++ = *src++;
+	
+	*d = 0;
+	return dest;
+}
