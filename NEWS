@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.468 2003-08-28 00:37:12 jwm Exp $
+$Id: NEWS,v 1.469 2003-08-28 00:43:18 jwm Exp $
 
 CVS
 ---------------------------------
@@ -67,6 +67,12 @@ CVS
   mod_modname arguments during the build process.
 - Bug 2127 - Entry in the file section
   The RPM spec's %files section now honors the install prefix.
+- Bug 2108 - IgnoreHidden should not hide dotfiles
+  Dotfiles are now displayed when the -a argument is supplied, even when the
+  IgnoreHidden directive is enabled. To replicate the old behavior of hiding
+  dotfiles no matter what, use either of the following directives:
+    ListOptions "" strict
+    HideFiles ^\..*
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------
