@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.6 2002-12-06 21:04:51 castaglia Exp $
+ * $Id: mod_radius.c,v 1.7 2002-12-12 19:57:26 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.7rc5"
@@ -185,6 +185,11 @@ static int radius_uid_attr_id = 0;
 static int radius_gid_attr_id = 0;
 static int radius_home_attr_id = 0;
 static int radius_shell_attr_id = 0;
+
+/* For tracking the ID of the last accounting packet (to prevent the
+ * same ID from being reused).
+ */
+static unsigned char radius_last_acct_pkt_id = 0;
 
 /* Convenience macros. */
 #define RADIUS_IS_VAR(str) \
@@ -1272,8 +1277,7 @@ static void radius_build_packet(radius_packet_t *packet, const char *user,
   packet->length = htons(RADIUS_HEADER_LEN);
 
   /* Obtain a random digest. */
-  if (packet->code != RADIUS_ACCT_REQUEST)
-    radius_get_rnd_digest(packet);
+  radius_get_rnd_digest(packet);
 
   /* Set the ID for the packet. */
   packet->id = packet->digest[0];
@@ -1452,6 +1456,7 @@ static int radius_send_packet(int sockfd, radius_packet_t *packet,
   return 0;
 }
 
+
 static unsigned char radius_start_accting(void) {
   int sockfd = -1, acct_status = htonl(RADIUS_ACCT_STATUS_START);
   radius_packet_t *request = NULL, *response = NULL;
@@ -1492,6 +1497,8 @@ static unsigned char radius_start_accting(void) {
     radius_build_packet(request,
       radius_realm ? pstrcat(radius_pool, session.user, radius_realm, NULL) :
       session.user, NULL, acct_server->secret);
+
+    radius_last_acct_pkt_id = request->id;
 
     /* Add accounting attributes. */
     radius_add_attrib(request, RADIUS_ACCT_STATUS_TYPE,
@@ -1596,6 +1603,12 @@ static unsigned char radius_stop_accting(void) {
     radius_build_packet(request,
       radius_realm ? pstrcat(radius_pool, session.user, radius_realm, NULL) :
       session.user, NULL, acct_server->secret);
+
+    /* Use the ID of the last accounting packet sent, plus one.  Be sure
+     * to handle the datatype overflow case.
+     */
+    if ((request->id = radius_last_acct_pkt_id + 1) == 0)
+      request->id = 1;
 
     /* Add accounting attributes. */
     radius_add_attrib(request, RADIUS_ACCT_STATUS_TYPE,

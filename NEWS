@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.322 2002-12-12 18:17:04 castaglia Exp $
+$Id: NEWS,v 1.323 2002-12-12 19:57:26 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -57,6 +57,7 @@ CVS
 - Bug 1881 - Bug in Function MaxClients.  This was caused by an off-by-one
   bug in the handling of non-anonymous settings.
 - Bug 1886 - Ftpwho uses too many lines when authenticating.
+- Bug 1875 - same radius packet id for start- and stop-accounting record.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------
