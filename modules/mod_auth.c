@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.183 2004-04-24 01:17:33 castaglia Exp $
+ * $Id: mod_auth.c,v 1.184 2004-05-01 18:27:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1615,19 +1615,24 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
    * be exceeded.
    */
 
-  if ((maxc = find_config(cmd->server->conf, CONF_PARAM, "MaxClientsPerClass",
-      FALSE)) != NULL) {
+  maxc = find_config(cmd->server->conf, CONF_PARAM, "MaxClientsPerClass",
+    FALSE);
+  while (session.class && maxc) {
     char *maxstr = "Sorry, the maximum number of clients (%m) from your class "
       "are already connected.";
     unsigned int *max = maxc->argv[1];
+
+    if (strcmp(maxc->argv[0], session.class->cls_name) != 0) {
+      maxc = find_config_next(maxc, maxc->next, CONF_PARAM,
+        "MaxClientsPerClass", FALSE);
+      continue;
+    }
 
     if (maxc->argc > 2)
       maxstr = maxc->argv[2];
 
     if (*max &&
-        ccur > *max &&
-        session.class && 
-        strcmp(maxc->argv[0], session.class->cls_name) == 0) {
+        ccur > *max) {
       char maxn[20] = {'\0'};
 
       pr_event_generate("mod_auth.max-clients-per-class",
@@ -1641,6 +1646,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
         session.class->cls_name);
       end_login(0);
     }
+
+    break;
   }
 
   if ((maxc = find_config((anon_config ? anon_config->subset :
