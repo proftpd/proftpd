@@ -1290,7 +1290,7 @@ conn_t *inet_openrw(pool *p, conn_t *c, p_in_addr_t *addr,
   res->mode = CM_OPEN;
 
 #if defined(HAVE_STROPTS_H) && defined(I_SRDOPT) && defined(RPROTDIS) && \
-    (defined(SOLARIS2)
+    defined(SOLARIS2)
   /* This is needed to work around control messages in STREAMS devices
    * (as on Solaris 9/NFS).
    */
