@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.624 2004-11-10 18:19:56 castaglia Exp $
+$Id: NEWS,v 1.625 2004-11-10 18:32:24 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -67,6 +67,8 @@ CVS
 - Bug 2518 - Ability to log SSL/TLS commands in an ExtendedLog.  A
   new "SEC" logging class has been added for use in ExtendedLog directives,
   e.g 'ExtendedLog /path/to/rfc2228.log SEC'.
+- Bug 2507 - Enable use of sendfile by default.  Use the new UseSendfile
+  directive to disable, e.g. 'UseSendfile off'.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

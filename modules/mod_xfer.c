@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.176 2004-11-04 22:48:17 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.177 2004-11-10 18:32:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -50,6 +50,7 @@ static pr_fh_t *retr_fh = NULL;
 static pr_fh_t *stor_fh = NULL;
 
 static unsigned char have_prot = FALSE;
+static unsigned char use_sendfile = TRUE;
 
 /* Transfer rate variables */
 static long double xfer_rate_kbps = 0.0, xfer_rate_bps = 0.0;
@@ -637,11 +638,13 @@ static int transmit_sendfile(off_t count, off_t *offset,
    * - We're transmitting an ASCII file.
    * - We're using RFC2228 data channel protection
    * - There's no data left to transmit.
+   * - UseSendfile is set to off.
    */
   if (have_xfer_rate ||
      !(session.xfer.file_size - count) ||
      (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) ||
-     have_prot)
+     have_prot ||
+     !use_sendfile)
     return 0;
 
  retry:
@@ -2293,6 +2296,25 @@ MODRET set_transferrate(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+/* usage: UseSendfile on|off */
+MODRET set_usesendfile(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
+
+  return HANDLED(cmd);
+}
+
 /* Event handlers
  */
 
@@ -2378,6 +2400,11 @@ static int xfer_sess_init(void) {
    * data transfer routines, not here.
    */
 
+  /* Check for UseSendfile. */
+  c = find_config(main_server->conf, CONF_PARAM, "UseSendfile", FALSE);
+  if (c)
+    use_sendfile = *((unsigned char *) c->argv[0]);
+
   /* Exit handler for HiddenStores cleanup */
   pr_event_register(&xfer_module, "core.exit", xfer_exit_ev, NULL);
 
@@ -2403,6 +2430,7 @@ static conftable xfer_conftab[] = {
   { "TimeoutNoTransfer",	set_timeoutnoxfer,		NULL },
   { "TimeoutStalled",		set_timeoutstalled,		NULL },
   { "TransferRate",		set_transferrate,		NULL },
+  { "UseSendfile",		set_usesendfile,		NULL },
 
   { NULL }
 };
