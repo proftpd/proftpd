@@ -25,7 +25,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.20 2001-10-18 17:10:47 flood Exp $
+ * $Id: mod_log.c,v 1.21 2001-12-13 20:35:50 flood Exp $
  */
 
 #include "conf.h"
@@ -929,7 +929,7 @@ int log_child_init()
          */
         if ((lf->lf_fd = open(lf->lf_filename, O_APPEND|O_CREAT|O_WRONLY,
             0644)) == -1) {
-      PRIVS_RELINQUISH
+          PRIVS_RELINQUISH
           unblock_signals();
           log_pri(LOG_NOTICE, "Unable to open ExtendedLog '%s': %s",
             lf->lf_filename, strerror(errno));

@@ -24,7 +24,7 @@
 
 /* 
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.4 2001-06-18 17:12:45 flood Exp $
+ * $Id: timers.c,v 1.5 2001-12-13 20:35:50 flood Exp $
  */
 
 #include <signal.h>
@@ -78,7 +78,9 @@ static int _reset_timers(int elapsed)
 
       if( (t->count -= elapsed) <= 0) {
         if(t->remove ||
-           t->callback(0,t->timerno,t->interval - t->count,NULL) == 0) {
+           t->callback(t->interval, t->timerno, t->interval - t->count,
+             t->mod) == 0) {
+
           /* Move the timer onto the free_timers chain, for later
            * reuse
            */

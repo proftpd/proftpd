@@ -1,18 +1,31 @@
-$Id: NEWS,v 1.142 2001-11-30 17:34:16 flood Exp $
+$Id: NEWS,v 1.143 2001-12-13 20:35:49 flood Exp $
 
 1.2.5rc1 - CVS
 ---------------------------------
 - New mod_sql (4.07)
 - New mod_wrap (1.2.2)
-- Bug 1113 Make.rules for HPUX incorrectly generated
-- Bug 1334 (should have been in 1.2.4, but was missed somehow)
-           MaxClients none in VirtualHost forbids connect
-- Bug 1368 umask bug is hopefully squashed for good
-- Bug 1389 fixed hang on PWD
-- Bug 1355 Added POST_CMD_ERR handler to API
-- Bug 1396 DenyFilter works only in server config scope
-- Bug 1410 SIGIO now conditionally compiled
-- Bug 1281 Improper checking of server context
+- Bug 1113 - Make.rules for HPUX incorrectly generated
+- Bug 1334 - (should have been in 1.2.4, but was missed somehow)
+             MaxClients none in VirtualHost forbids connect
+- Bug 1368 - umask bug is hopefully squashed for good
+- Bug 1389 - fixed hang on PWD
+- Bug 1355 - Added POST_CMD_ERR handler to API
+- Bug 1396 - DenyFilter works only in server config scope
+- Bug 1410 - SIGIO now conditionally compiled
+- Bug 1281 - Improper checking of server context
+- Bug 1364 - Immediate chown() after file creation
+- Bug 1415 - Change allowed contexts for Include
+- Bug 1430 - Possible bad handling of Directory contexts
+- Bug 1426 - sigsegv on `ls ///////////'
+- Bug 1360 - Add getgroups abstraction for auth modules
+- Bug 1289 - Increase information passed to timer callbacks
+- Bug 1341 - Bad tracking of forked processes
+- Bug 1400 - Improper use of MODRET_HASDATA macro
+- Bug 1416 - PidFile in <Global> context is unnecessary, even wasteful
+- Bug 1429 - Trivial fixes to dispatch reporting
+- Bug 1419 - Remove unnecessary colons from PRIVS_ macros
+- Bug 1418 - Slight change to exithandler handling to allow module
+             finalization slot
 
 1.2.4 - Released 10/19/2001
 ---------------------------------

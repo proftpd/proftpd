@@ -25,7 +25,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.63 2001-11-08 17:24:26 flood Exp $
+ * $Id: mod_auth.c,v 1.64 2001-12-13 20:35:50 flood Exp $
  */
 
 #include "conf.h"
@@ -47,19 +47,19 @@ static void _do_user_counts();
  */
 static int lockdown(char *newroot)
 {
-  PRIVS_ROOT;
+  PRIVS_ROOT
   
   log_debug(DEBUG1, "Preparing to chroot() the environment, path = '%s'",
 	    newroot);
   
-  if(chroot(newroot) == -1) {
-    PRIVS_RELINQUISH;
+  if (chroot(newroot) == -1) {
+    PRIVS_RELINQUISH
     log_pri(LOG_ERR, "%s chroot(\"%s\"): %s", session.user,
 	    newroot, strerror(errno));
     return -1;
   }
   
-  PRIVS_RELINQUISH;
+  PRIVS_RELINQUISH
 
   log_debug(DEBUG1, "Environment successfully chroot()ed.");
 
@@ -211,7 +211,7 @@ static config_rec *_auth_anonymous_group(pool *p, char *user)
    * may work properly
    */
   if (!session.gids && !session.groups &&
-      (ret = get_groups(p, user, &session.gids, &session.groups)) < 1)
+      (ret = auth_getgroups(p, user, &session.gids, &session.groups)) < 1)
     log_debug(DEBUG2, "no supplemental groups found for user '%s'", user);
 
   c = find_config(main_server->conf,CONF_PARAM,"AnonymousGroup",FALSE);
@@ -328,9 +328,9 @@ static int _auth_check_ftpusers(xaset_t *s, const char *user)
   char *u,buf[256] = {'\0'};
 
   if(get_param_int(s,"UseFtpUsers",FALSE) != 0) {
-    PRIVS_ROOT;
+    PRIVS_ROOT
     fp = fopen(FTPUSERS_PATH,"r");
-    PRIVS_RELINQUISH;
+    PRIVS_RELINQUISH
 
     if(!fp)
       return res;
@@ -457,11 +457,11 @@ static char *_get_default_root(pool *p)
       ** directive) as can not traverse down, we can still have the default
       ** root as ~/public_html/
       */
-      PRIVS_USER;
+      PRIVS_USER
 
       realdir = dir_realpath(p,dir);
 
-      PRIVS_RELINQUISH;
+      PRIVS_RELINQUISH
 
       if(realdir)
         dir = realdir;
@@ -572,7 +572,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
   
   /* Get the supplemental groups */
   if (!session.gids && !session.groups &&
-      (res = get_groups(p, pw->pw_name, &session.gids, &session.groups)) < 1)
+      (res = auth_getgroups(p, pw->pw_name, &session.gids,
+       &session.groups)) < 1)
     log_debug(DEBUG2, "no supplemental groups found for user '%s'",
       pw->pw_name);
 
@@ -725,7 +726,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
     block_signals();
     
-    PRIVS_ROOT;
+    PRIVS_ROOT
     if ((res = set_groups(p, pw->pw_gid, session.gids)) < 0)
       log_pri(LOG_ERR, "error: unable to set groups: %s",
         strerror(errno));
@@ -736,7 +737,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
     setuid(0);
     setgid(0);
 #endif
-    PRIVS_SETUP(pw->pw_uid,pw->pw_gid);
+    PRIVS_SETUP(pw->pw_uid, pw->pw_gid)
     
     if(add_userdir > 0 && strcmp(u, user))
       session.anon_root = dir_realpath(p, pdircat(p, c->name,
@@ -754,7 +755,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
       session.anon_root = pstrdup(session.pool,session.anon_root);
     
     /* return all privileges back to that of the daemon, for now */
-    PRIVS_ROOT;
+    PRIVS_ROOT
     if ((res = set_groups(p, daemon_gid, daemon_gids)) < 0)
       log_pri(LOG_ERR, "error: unable to set groups: %s",
         strerror(errno));
@@ -765,7 +766,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
     setuid(0);
     setgid(0);
 #endif
-    PRIVS_SETUP(daemon_uid, daemon_gid);
+    PRIVS_SETUP(daemon_uid, daemon_gid)
 
     unblock_signals();
     
@@ -774,7 +775,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
     if(getegid() != daemon_gid ||
        geteuid() != daemon_uid) {
 
-      PRIVS_RELINQUISH;
+      PRIVS_RELINQUISH
       
       log_pri(LOG_ERR,"changing from %s back to daemon uid/gid: %s",
             session.user, strerror(errno));
@@ -880,7 +881,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   if(wtmp_log == -1)
     wtmp_log = get_param_int(main_server->conf, "WtmpLog", FALSE);
 
-  PRIVS_ROOT;
+  PRIVS_ROOT
 
   if(wtmp_log != 0) {
     log_wtmp(ttyname, session.user, session.c->remote_name,
@@ -909,7 +910,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
     log_pri(LOG_ERR, "error: unable to set groups: %s",
       strerror(errno));
 
-  PRIVS_RELINQUISH;
+  PRIVS_RELINQUISH
 
   /* Now check to see if the user has an applicable DefaultRoot */
   if(!c && (defroot = _get_default_root(session.pool))) {
@@ -952,25 +953,25 @@ static int _setup_environment(pool *p, char *user, char *pass)
 #ifndef __hpux
   block_signals();
 
-  PRIVS_ROOT;
+  PRIVS_ROOT
 
   setuid(0);
   setgid(0);
 
-  PRIVS_SETUP(pw->pw_uid,pw->pw_gid);
+  PRIVS_SETUP(pw->pw_uid, pw->pw_gid)
 
   unblock_signals();
 #else
   session.uid = session.ouid = pw->pw_uid;
   session.gid = pw->pw_gid;
-  PRIVS_RELINQUISH;
+  PRIVS_RELINQUISH
 #endif
 
 #ifdef HAVE_GETEUID
   if(getegid() != pw->pw_gid ||
      geteuid() != pw->pw_uid) {
 
-    PRIVS_RELINQUISH;
+    PRIVS_RELINQUISH
 
     add_response_err(R_530, "Unable to set user privileges.");
     log_pri(LOG_ERR, "%s setregid() or setreuid(): %s",
@@ -1144,7 +1145,7 @@ static void _do_user_counts()
     return;
   
   /* Determine how many users are currently connected */
-  PRIVS_ROOT;
+  PRIVS_ROOT
   while((l = log_read_run(NULL)) != NULL)
       /* Make sure it matches our current server */
       if(l->server_ip.s_addr == main_server->ipaddr->s_addr &&
@@ -1154,7 +1155,7 @@ static void _do_user_counts()
         if(strcasecmp(l->class, session.class->name) == 0)
         	ccur++;
       }
-  PRIVS_RELINQUISH;
+  PRIVS_RELINQUISH
   
   /* This silliness is needed to get past the broken HP/UX 11.x compiler.
    */
@@ -1200,7 +1201,7 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
   /* Gather our statistics.
    */
   if(user) {
-    PRIVS_ROOT;
+    PRIVS_ROOT
     
     while((l = log_read_run(NULL)) != NULL) {
       int samehost = 0;
@@ -1251,7 +1252,7 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
       }
     }
     
-    PRIVS_RELINQUISH;
+    PRIVS_RELINQUISH
   }
   
   remove_config(cmd->server->conf, "CURRENT-CLIENTS", FALSE);

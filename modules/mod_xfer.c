@@ -25,7 +25,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.57 2001-08-16 19:54:04 flood Exp $
+ * $Id: mod_xfer.c,v 1.58 2001-12-13 20:35:50 flood Exp $
  */
 
 /* History Log:
@@ -286,33 +286,31 @@ static long _transmit_data(int rate_bps, unsigned long count, off_t offset,
 #endif /* HAVE_SENDFILE */
 }
 
-static void _stor_done() {
+static void _stor_chown() {
   struct stat sbuf;
   
-  fs_close(stor_file,stor_fd);
-  stor_file = NULL;
-
   /* session.fsgid defaults to -1, so chown(2) won't chgrp unless specifically
    * requested via GroupOwner
    * jss - 07/04/2001
    */
-  if((session.fsuid != -1) && session.xfer.path) {
+  if((session.fsuid != (uid_t) -1) && session.xfer.path) {
     int err = 0,iserr = 0;
     
     fs_stat(session.xfer.path,&sbuf);
     
-    PRIVS_ROOT;
+    PRIVS_ROOT
     if(fs_chown(session.xfer.path,session.fsuid,session.fsgid) == -1) {
       iserr++;
       err = errno;
     }
-    PRIVS_RELINQUISH;
+    PRIVS_RELINQUISH
+
+    if (iserr) {
+      log_pri(LOG_WARNING, "chown(%s) as root failed: %s", session.xfer.path,
+        strerror(err));
     
-    if(iserr)
-      log_pri(LOG_WARNING, "chown(%s) as root failed: %s.",
-              session.xfer.path, strerror(err));
-    else {
-      if(session.fsgid != -1)
+    } else {
+      if(session.fsgid != (gid_t) -1)
         log_debug(DEBUG2, "root chown(%s) to uid %lu, gid %lu successful",
                   session.xfer.path,
                   (unsigned long)session.fsuid,
@@ -324,18 +322,26 @@ static void _stor_done() {
       
       fs_chmod(session.xfer.path,sbuf.st_mode);
     }
-  } else if((session.fsgid != -1) && session.xfer.path) {
+
+  } else if((session.fsgid != (gid_t) -1) && session.xfer.path) {
     fs_stat(session.xfer.path,&sbuf);
-    if(fs_chown(session.xfer.path,(uid_t)-1,(gid_t)session.fsgid) == -1)
-      log_pri(LOG_WARNING, "chown(%s) failed: %s.",
-              session.xfer.path, strerror(errno));
-    else {
+
+    if (fs_chown(session.xfer.path, (uid_t)-1, session.fsgid) == -1) {
+      log_pri(LOG_WARNING, "chown(%s) failed: %s", session.xfer.path,
+         strerror(errno));
+
+    } else {
       log_debug(DEBUG2, "chown(%s) to gid %lu successful",
                 session.xfer.path,
                 (unsigned long)session.fsgid);
       fs_chmod(session.xfer.path,sbuf.st_mode);
     }
   }
+}
+
+static void _stor_done() {
+  fs_close(stor_file, stor_fd);
+  stor_file = NULL;
 }
 
 static void _retr_done() {
@@ -653,6 +659,12 @@ MODRET cmd_stor(cmd_rec *cmd)
     return ERROR(cmd);
   } else {
     /* perform the actual transfer now */
+
+    /* first, make sure the uploaded file has the requested ownership
+     * -tj, 2001-10-18
+     */
+    _stor_chown();
+
     data_init(cmd->arg,IO_READ);
 
     session.xfer.path = pstrdup(session.xfer.p,dir);

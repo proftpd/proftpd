@@ -336,13 +336,13 @@ int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port)
 #ifdef SOLARIS2
   if(port != INPORT_ANY && port < 1024) {
     block_signals();
-    PRIVS_ROOT;
+    PRIVS_ROOT
   }
 #endif
   s = socket(AF_INET, SOCK_STREAM, 0);
 #ifdef SOLARIS2
   if(port != INPORT_ANY && port < 1024) {
-    PRIVS_RELINQUISH;
+    PRIVS_RELINQUISH
     unblock_signals();
   }
 #endif
@@ -361,7 +361,7 @@ int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port)
   
   if(port != INPORT_ANY && port < 1024) {
     block_signals();
-    PRIVS_ROOT;
+    PRIVS_ROOT
   }
 
   for(tries = 1; tries < 10; tries++) {
@@ -370,20 +370,20 @@ int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port)
     if(errno != EADDRINUSE) break;
 
     if(port != INPORT_ANY && port < 1024) {
-      PRIVS_RELINQUISH;
+      PRIVS_RELINQUISH
       unblock_signals();
     }
     timer_sleep(tries);
     if(port != INPORT_ANY && port < 1024) {
       block_signals();
-      PRIVS_ROOT;
+      PRIVS_ROOT
     }
   }
 
   save_errno = errno;
 
   if(port != INPORT_ANY && port < 1024) {
-    PRIVS_RELINQUISH;
+    PRIVS_RELINQUISH
     unblock_signals();
   }
 
@@ -455,7 +455,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     if(port != INPORT_ANY && port < 1024) {
 # endif
       block_signals();
-      PRIVS_ROOT;
+      PRIVS_ROOT
 # ifdef SOLARIS2
     }
 # endif
@@ -469,7 +469,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
 # ifdef SOLARIS2
     if(port != INPORT_ANY && port < 1024) {
 # endif
-      PRIVS_RELINQUISH;
+      PRIVS_RELINQUISH
       unblock_signals();
 # ifdef SOLARIS2
     }
@@ -505,7 +505,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     
     if(port != INPORT_ANY && port < 1024) {
       block_signals();
-      PRIVS_ROOT;
+      PRIVS_ROOT
     }
     
     /* According to one expert, the very nature of the FTP protocol,
@@ -529,7 +529,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
         break;
       
       if(port != INPORT_ANY && port < 1024) {
-        PRIVS_RELINQUISH;
+        PRIVS_RELINQUISH
         unblock_signals();
       }
       
@@ -537,13 +537,13 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
       
       if(port != INPORT_ANY && port < 1024) {
         block_signals();
-        PRIVS_ROOT;
+        PRIVS_ROOT
       }
     }
     
     if(res == -1) {
       if(port != INPORT_ANY && port < 1024) {
-        PRIVS_RELINQUISH;
+        PRIVS_RELINQUISH
         unblock_signals();
       }
 
@@ -561,7 +561,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     }
     
     if(port != INPORT_ANY && port < 1024) {
-      PRIVS_RELINQUISH;
+      PRIVS_RELINQUISH
       unblock_signals();
     }
     

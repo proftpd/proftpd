@@ -25,7 +25,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.25 2001-11-29 18:54:13 flood Exp $
+ * $Id: support.c,v 1.26 2001-12-13 20:35:50 flood Exp $
  */
 
 /* History Log:
@@ -78,10 +78,12 @@
 #include <sys/statfs.h>
 #endif
 
+static pool *exithandler_pool = NULL;
+
 typedef struct _exithandler {
   struct _exithandler *next,*prev;
 
-  void (*f)();
+  void (*exit)();
 } exithandler_t;
 
 typedef struct _sched {
@@ -133,27 +135,39 @@ void unblock_signals()
   _block_signals(0);
 }
 
-void add_exit_handler(void (*f)())
-{
-  exithandler_t *e;
+void add_exit_handler(void (*exit)()) {
+  exithandler_t *e = NULL;
 
-  if(!exits)
-    exits = xaset_create(permanent_pool,NULL);
+  if (!exithandler_pool)
+    exithandler_pool = make_sub_pool(permanent_pool);
 
-  e = pcalloc(permanent_pool,sizeof(exithandler_t));
-  e->f = f;
-  xaset_insert(exits,(xasetmember_t*)e);
+  if (!exits)
+    exits = xaset_create(exithandler_pool, NULL);
+
+  e = pcalloc(exithandler_pool, sizeof(exithandler_t));
+  e->exit = exit;
+
+  xaset_insert(exits, (xasetmember_t *) e);
 }
 
-void run_exit_handlers()
-{
-  exithandler_t *e;
+void remove_exit_handlers() {
+  if (exits)
+    exits = NULL;
 
-  if(!exits)
+  if (exithandler_pool) {
+    destroy_pool(exithandler_pool);
+    exithandler_pool = NULL;
+  }
+}
+
+void run_exit_handlers() {
+  exithandler_t *e = NULL;
+
+  if (!exits)
     return;
 
-  for(e = (exithandler_t*)exits->xas_list; e; e=e->next)
-    e->f();
+  for (e = (exithandler_t *) exits->xas_list; e; e = e->next)
+    e->exit();
 }
 
 void schedule(void (*f)(void*,void*,void*,void*),int nloops,

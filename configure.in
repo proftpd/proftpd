@@ -587,12 +587,20 @@ dnl Module handling.
 for module in $ac_addl_modules; do
   addonlibs=""
   src=`echo "$module" | sed -e 's/\.o$//'`.c;
+  srcinc=`echo "$module" | sed -e 's/\.o$//'`.h;
   if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
 
     if test ! -f $srcdir/modules/$src; then
 	olddir=`pwd`
 	cd $srcdir/modules
 	ln -s ../contrib/$src $src
+	cd $olddir
+    fi
+
+    if test ! -f $srcdir/include/$srcinc -a -f $srcdir/contrib/$srcinc ; then
+	olddir=`pwd`
+	cd $srcdir/include
+	ln -s ../contrib/$srcinc $srcinc
 	cd $olddir
     fi
 

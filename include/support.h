@@ -24,7 +24,7 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.6 2001-06-18 17:12:45 flood Exp $
+ * $Id: support.h,v 1.7 2001-12-13 20:35:50 flood Exp $
  */
 
 #ifndef __SUPPORT_H
@@ -71,6 +71,7 @@ char *dir_best_path(pool*,const char*);
 char *dir_virtual_chdir(pool*,const char*);
 
 void add_exit_handler(void (*f)());
+void remove_exit_handlers();
 void run_exit_handlers();
 
 void schedule(void (*f)(void*,void*,void*,void*),int nloops,

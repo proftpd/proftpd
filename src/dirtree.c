@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.42 2001-11-29 18:54:13 flood Exp $
+ * $Id: dirtree.c,v 1.43 2001-12-13 20:35:50 flood Exp $
  */
 
 /* History:
@@ -739,7 +739,7 @@ static int _dir_check_op(pool *p,xaset_t *c,int op,
     /* loop through the user's auxiliary groups, checking if these
      * memberships match that of the file
      */
-    for (i = session.gids->nelts, gidp = (int *) session.gids->elts;
+    for (i = session.gids->nelts, gidp = (gid_t *) session.gids->elts;
          i; i--, gidp++) {
 
       /* matched an auxiliary GID against the file GID
@@ -1498,7 +1498,7 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
 int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
 {
   char *fullpath, *owner;
-  config_rec *c;
+  config_rec *c = NULL, *old_dir_config = NULL;
   struct stat sbuf;
   pool *p;
   mode_t _umask = -1;
@@ -1532,7 +1532,10 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
     bzero(&sbuf, sizeof(sbuf));
   
   build_dyn_config(p,path,&sbuf,1);
-  
+ 
+  /* keep track of the old dir_config pointer */
+  old_dir_config = session.dir_config;
+
   session.dir_config = c = dir_match_path(p,fullpath);
 
   if(!c && session.anon_config)
@@ -1568,7 +1571,9 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
     }
   }
   
-  session.fsuid = session.fsgid = -1;
+  session.fsuid = (uid_t) -1;
+  session.fsgid = (gid_t) -1;
+
   if((owner = get_param_ptr(CURRENT_CONF,"UserOwner",FALSE)) != NULL) {
     /* attempt chown on all new files */
     struct passwd *pw;
@@ -1625,6 +1630,9 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
   if(hidden)
     *hidden = op_hidden;
 
+  /* restore the old dir_config pointer */
+  session.dir_config = old_dir_config;
+
   return res;
 }
 
@@ -1636,7 +1644,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
 int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
 {
   char *fullpath, *owner;
-  config_rec *c;
+  config_rec *c = NULL, *old_dir_config = NULL;
   struct stat sbuf;
   pool *p;
   mode_t _umask = -1;
@@ -1663,6 +1671,9 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
     bzero(&sbuf, sizeof(sbuf));
 
   build_dyn_config(p, path, &sbuf, 0);
+
+  /* keep track of the old dir_config pointer */
+  old_dir_config = session.dir_config;
 
   session.dir_config = c = dir_match_path(p, fullpath);
 
@@ -1699,7 +1710,9 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
     }
   }
 
-  session.fsuid = session.fsgid = -1;
+  session.fsuid = (uid_t) -1;
+  session.fsgid = (gid_t) -1;
+
   if((owner = get_param_ptr(CURRENT_CONF,"UserOwner",FALSE)) != NULL) {
     /* attempt chown on all new files */
     struct passwd *pw;
@@ -1751,6 +1764,10 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
 
   if(hidden)
     *hidden = op_hidden;
+
+  /* restore the old dir_config pointer */
+  session.dir_config = old_dir_config;
+
   return res;
 }
 

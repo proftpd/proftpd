@@ -24,7 +24,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.9 2001-06-18 17:12:45 flood Exp $
+ * $Id: auth.c,v 1.10 2001-12-13 20:35:50 flood Exp $
  */
 
 #include "conf.h"
@@ -435,8 +435,10 @@ uid_t auth_name_uid(pool *p, const char *name)
   c = _make_cmd(p,1,name);
   mr = _dispatch_auth(c,"name_uid");
 
-  if(MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
-    ret = (uid_t)mr->data;
+  if (MODRET_ISHANDLED(mr))
+    ret = (uid_t) mr->data;
+  else
+    errno = EINVAL;
 
   if(c->tmp_pool) {
     destroy_pool(c->tmp_pool);
@@ -455,8 +457,10 @@ gid_t auth_name_gid(pool *p, const char *name)
   c = _make_cmd(p,1,name);
   mr = _dispatch_auth(c,"name_gid");
 
-  if(MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
-    ret = (gid_t)mr->data;
+  if (MODRET_ISHANDLED(mr))
+    ret = (gid_t) mr->data;
+  else
+    errno = EINVAL;
 
   if(c->tmp_pool) {
     destroy_pool(c->tmp_pool);
@@ -466,77 +470,50 @@ gid_t auth_name_gid(pool *p, const char *name)
   return ret;
 }
 
-int get_groups(pool *p, const char *name, array_header **group_ids,
+int auth_getgroups(pool *p, const char *name, array_header **group_ids,
                array_header **group_names) {
 
-  struct passwd *pw = NULL;
-  struct group *gr = NULL;
-  array_header *gids = NULL, *groups = NULL;
-  char **gr_member = NULL;
+  cmd_rec *cmd = NULL;
+  modret_t *mr = NULL;
+  int res = -1;
   
-  /* allocate space.  Use permanent_pool, rather than the given pool,
-   * for permanent things.
+  /* allocate memory for the array_headers of GIDs and group names
    */
-  gids = make_array(p, 2, sizeof(gid_t));
-  groups = make_array(p, 2, sizeof(char *));
-
-  /* retrieve the necessary info
-   */  
-  if (!name || !(pw = (struct passwd *) auth_getpwnam(p, name))) {
     if (group_ids)
-      *group_ids = NULL;
-    if (group_names)
-      *group_names = NULL;
-    return 0;
-  }
+    *group_ids = make_array(permanent_pool, 2, sizeof(gid_t));
   
-  /* populate the first group name
-   */
-  if ((gr = auth_getgrgid(p, pw->pw_gid)) != NULL)
-    *((char **) push_array(groups)) = pstrdup(p, gr->gr_name);
+  if (group_names)
+    *group_names = make_array(permanent_pool, 2, sizeof(char *));
   
-  auth_setgrent(p);
-  
-  /* This is where things get slow, expensive, and ugly.
-   * Loop through everything, checking to make sure we haven't already added
-   * it.
-   */
-  while ((gr = auth_getgrent(p)) != NULL && gr->gr_mem) {
+  cmd = _make_cmd(p, 3, name, group_ids ? *group_ids : NULL,
+    group_names ? *group_names : NULL);
 
-    /* loop through each member name listed
-     */
-    for (gr_member = gr->gr_mem; *gr_member; gr_member++) {
+  mr = _dispatch_auth(cmd, "getgroups");
 
-      /* if it matches the given user name...
-       */
-      if (!strcmp(*gr_member, pw->pw_name)) {
+  if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
+    res = (int) mr->data;
 
-        /* ...add the group ID and name
+    /* NOTE: the number of groups returned should, barring error,
+     * always be at least 1, as per getgroups(2) behavior.  This one
+     * ID is present because it is the primary group membership set in
+     * struct passwd, from /etc/passwd.  This will need to be documented
+     * for the benefit of auth_getgroup() implementors.
+     * -tj, 2001-10-12
          */
-        *((gid_t *) push_array(gids)) = gr->gr_gid;
-        if(pw->pw_gid != gr->gr_gid)
-          *((char **) push_array(groups)) = pstrdup(p, gr->gr_name);
-
-        break;
-      }
-    }
   }
  
-  /* sanity checks */ 
-  if (group_ids)
-    *group_ids = gids;
-  if (group_names)
-    *group_names = groups;
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+    cmd->tmp_pool = NULL;
+  }
 
-  /* return the number of groups
-   */
-  return gids->nelts;
+  return res;
 }
 
 int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
   gid_t *process_gids = NULL, *group_ids = NULL;
   size_t ngids = 0;
-  int i = 0, result = 0;
+  int i = 0, res = 0;
 
   /* sanity check */
   if (!suppl_gids)
@@ -544,7 +521,7 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
 
   ngids = suppl_gids->nelts;
   group_ids = suppl_gids->elts;
-  process_gids = palloc(p, sizeof(gid_t) * (ngids + 2));
+  process_gids = palloc(p, sizeof(gid_t) * (ngids + 1));
 
   /* From FreeBSD: /usr/src/lib/libc/gen/getgrouplist.c
    *
@@ -553,21 +530,20 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
    * and will be overwritten when a setgid file is executed.
    */
   process_gids[0] = primary_gid;
-  process_gids[1] = primary_gid;
 
   for (i = 0; i < ngids; i++)
-    process_gids[i + 2] = group_ids[i];
+    process_gids[i + 1] = group_ids[i];
 
   /* set the supplemental groups...
    */
-  if ((result = setgroups(ngids + 2, process_gids)) < 0)
-    return result;
+  if ((res = setgroups(ngids + 1, process_gids)) < 0)
+    return res;
 
   /* ...and if that worked OK, set the primary GID of the process
    */
-  if ((result = setgid(primary_gid)) < 0)
-    return result;
+  if ((res = setgid(primary_gid)) < 0)
+    return res;
  
-  return result;
+  return res;
 }
 

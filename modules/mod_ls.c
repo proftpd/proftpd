@@ -24,7 +24,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.45 2001-09-26 15:32:47 flood Exp $
+ * $Id: mod_ls.c,v 1.46 2001-12-13 20:35:50 flood Exp $
  */
 
 #include "conf.h"
@@ -1018,7 +1018,10 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
     glob_t g;
     int    a;
     char   pbuffer[MAXPATHLEN + 1] = "";
-      
+     
+    /* make sure the glob_t is initialized */
+    memset(&g, '\0', sizeof(glob_t));
+ 
     if(*arg == '~') {
       struct passwd *pw;
       int i;
@@ -1491,6 +1494,10 @@ MODRET cmd_nlst(cmd_rec *cmd)
 	if(strpbrk(target,"{[*?") != NULL) {
 		glob_t g;
 		char **path,*p;
+
+                /* make sure the glob_t is initialized */
+                memset(&g, '\0', sizeof(glob_t));
+
 		
 		if(fs_glob(target,GLOB_PERIOD,NULL,&g) != 0) {
 			add_response_err(R_550,"No files found.");

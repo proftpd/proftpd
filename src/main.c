@@ -25,7 +25,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.71 2001-11-29 18:54:13 flood Exp $
+ * $Id: main.c,v 1.72 2001-12-13 20:35:50 flood Exp $
  */
 
 /*
@@ -136,7 +136,7 @@ time_t shut = (time_t)0,deny = (time_t)0, disc = (time_t)0;
 char shutmsg[81] = {'\0'};
 
 xaset_t *children = NULL;
-static int child_count = 0,child_flag = 0;
+static int n_children = 0, have_dead_child = FALSE;
 
 response_t *resp_list = NULL,*resp_err_list = NULL;
 static pool *resp_pool = NULL;
@@ -694,9 +694,9 @@ void main_exit(void *pv, void *lv, void *ev, void *dummy)
   if(standalone && master) {
     log_pri(LOG_NOTICE, "ProFTPD %s standalone mode SHUTDOWN", VERSION);
     if(!nodaemon) {
-      PRIVS_ROOT;
+      PRIVS_ROOT
       unlink(PidPath);
-      PRIVS_RELINQUISH;
+      PRIVS_RELINQUISH
     }
   }
   
@@ -823,15 +823,15 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
                        session.user, session.proc_prefix, argstr);
       }
 
-      if (send_error)
-        log_debug(DEBUG4, "dispatching %s command '%s' to mod_%s",
-          (cmd_type == PRE_CMD ? "PRE_CMD" :
-           cmd_type == CMD ? "CMD" :
-           cmd_type == POST_CMD ? "POST_CMD" : 
-           cmd_type == POST_CMD_ERR ? "POST_CMD_ERR" : 
-           cmd_type == LOG_CMD ? "LOG_CMD" :
-           "(unknown)"),
-          argstr, c->m->name);
+      log_debug(DEBUG4, "dispatching %s command '%s' to mod_%s",
+        (cmd_type == PRE_CMD ? "PRE_CMD" :
+         cmd_type == CMD ? "CMD" :
+         cmd_type == POST_CMD ? "POST_CMD" : 
+         cmd_type == POST_CMD_ERR ? "POST_CMD_ERR" : 
+         cmd_type == LOG_CMD ? "LOG_CMD" :
+         cmd_type == LOG_CMD_ERR ? "LOG_CMD_ERR" :
+         "(unknown)"),
+        argstr, c->m->name);
 
       cmd->class |= c->class;
 
@@ -1367,7 +1367,7 @@ void fork_server(int fd,conn_t *l,int nofork)
       cpid->sempipe = sempipe[0];
       cpid->pool = pidrec_pool;
       xaset_insert(children,(xasetmember_t*)cpid);
-      child_count++;
+      n_children++;
 
       close(sempipe[1]);
       /* Unblock the signals now as sig_child() will catch
@@ -1702,7 +1702,7 @@ void server_loop()
 
     i = select(max_fd + 1, &rfd, NULL, NULL,&tv);
 
-    if(child_flag) {
+    if (have_dead_child) {
       sigset_t sigset;
       pidrec_t *cp,*cpnext;
 
@@ -1712,7 +1712,7 @@ void server_loop()
       block_alarms();
       sigprocmask(SIG_BLOCK,&sigset,NULL);
 
-      child_flag = 0;
+      have_dead_child = FALSE;
       if(children) {
         for(cp = (pidrec_t*)children->xas_list; cp; cp=cpnext) {
           cpnext = cp->next;
@@ -1780,7 +1780,7 @@ void server_loop()
 
     listen = accept_binding(&rfd, &fd);
     if(listen) {
-      if(ServerMaxInstances && child_count >= ServerMaxInstances) {
+      if(ServerMaxInstances && n_children >= ServerMaxInstances) {
         log_pri(LOG_WARNING,"MaxInstances (%d) reached, new connection denied.",ServerMaxInstances);
         close(fd);
       } else
@@ -1845,12 +1845,12 @@ static RETSIGTYPE sig_child(int sig)
    */
 
   while((cpid = waitpid(-1,NULL,WNOHANG)) > 0) {
-    child_count--; child_flag = 1;
     if(children) {
       for(cp = (pidrec_t*)children->xas_list; cp; cp=cpnext) {
         cpnext = cp->next;
         if(cp->pid == cpid) {
-          child_flag++;
+          n_children--;
+          have_dead_child = TRUE;
           cp->dead = 1;
         }
       }
@@ -1904,21 +1904,21 @@ static void _internal_abort()
 }
 #endif /* DEBUG_CORE */
 
-static RETSIGTYPE sig_terminate(int sig)
-{
-  pidrec_t *pid;
+static RETSIGTYPE sig_terminate(int sig) {
+  pidrec_t *pid = NULL;
 
   /* If we caught SIGSEGV, restore the default signal handler.
    * jss 3/9/2001
    */
-  if(sig == SIGSEGV)
+  if (sig == SIGSEGV)
     signal(SIGSEGV,SIG_DFL);
   
-  if(sig == SIGTERM) {
+  if (sig == SIGTERM) {
+
     /* Don't log if we are a child that has been terminated */
-    if(master) {
-      /* Send a SIGKILL to all our children */
-      if(children) {
+    if (master) {
+      /* Send a SIGTERM to all our children */
+      if (children) {
         PRIVS_ROOT
         for(pid = (pidrec_t*)children->xas_list; pid; pid=pid->next)
           kill(pid->pid,SIGTERM);
@@ -1934,15 +1934,36 @@ static RETSIGTYPE sig_terminate(int sig)
   } else
     log_pri(LOG_ERR,"ProFTPD terminating (signal %d)",sig);
 
-  if(master && mpid == getpid()) {
+  if (master && mpid == getpid()) {
     PRIVS_ROOT
+
+    /* clean up the scoreboard file */
     log_close_run();
     log_rm_run();
-    if(standalone && !nodaemon)
+
+    /* do not need the pidfile any longer */
+    if (standalone && !nodaemon)
       unlink(PidPath);
+
+    /* run any exit handlers registered in the master process here, so that
+     * they may have the benefit of root privs.  More than likely these
+     * exit handlers were registered by modules' module initialization
+     * functions, which also occur under root priv conditions. (If an
+     * exit handler is registered after the fork(), it won't be run here --
+     * that registration occurs in a different process space.
+     */
+    run_exit_handlers();
+
+    /* remove the registered exit handlers now, so that the ensuing
+     * end_login() call (outside the root privs condition) does not call
+     * the exit handlers for the master process again
+     */
+    remove_exit_handlers();
+
     PRIVS_RELINQUISH
-    if(standalone)
-      log_pri(LOG_NOTICE,"ProFTPD %s standalone mode SHUTDOWN",VERSION);
+
+    if (standalone)
+      log_pri(LOG_NOTICE, "ProFTPD " VERSION " standalone mode SHUTDOWN");
   }
 
 #ifdef DEBUG_CORE
@@ -2154,7 +2175,7 @@ void start_daemon()
   if(!PidPath || !*PidPath)
     PidPath = PID_FILE_PATH;
   
-  PRIVS_ROOT;
+  PRIVS_ROOT
   if((pidf = fopen(PidPath, "w")) == NULL) {
     perror(PidPath);
     exit(1);
@@ -2163,7 +2184,7 @@ void start_daemon()
   fprintf(pidf, "%lu\n", (unsigned long) getpid());
   fclose(pidf);
   pidf = NULL;
-  PRIVS_RELINQUISH;
+  PRIVS_RELINQUISH
   
   /* Close the three big boys */
   close(fileno(stdin));
@@ -2635,10 +2656,10 @@ int main(int argc, char **argv, char **envp)
 
   /* Security */
   daemon_uid = (uid_t) get_param_int(main_server->conf,"User",FALSE);
-  if(daemon_uid == -1)
+  if (daemon_uid == (uid_t) -1)
     daemon_uid = 0;
   daemon_gid = (gid_t) get_param_int(main_server->conf,"Group",FALSE);
-  if(daemon_gid == -1)
+  if (daemon_gid == (gid_t) -1)
     daemon_gid = 0;
 
   if (daemon_uid) {
@@ -2646,7 +2667,7 @@ int main(int argc, char **argv, char **envp)
      */
     daemon_gids = make_array(permanent_pool, 2, sizeof(gid_t));
 
-    if (get_groups(permanent_pool, (const char *) get_param_ptr(
+    if (auth_getgroups(permanent_pool, (const char *) get_param_ptr(
         main_server->conf, "UserName", FALSE), &daemon_gids, NULL) < 0)
       log_debug(DEBUG2, "unable to retrieve daemon supplemental groups");
 
@@ -2655,18 +2676,18 @@ int main(int argc, char **argv, char **envp)
         strerror(errno));
   }
  
-   main_umask = (mode_t *) get_param_ptr(main_server->conf, "Umask", FALSE);
-   if (main_umask == NULL)
-     *main_umask = (mode_t) 0022; 
-
-  umask(*main_umask);
+   if ((main_umask = (mode_t *) get_param_ptr(main_server->conf, "Umask",
+       FALSE)) == NULL)
+     umask((mode_t) 0022);
+   else
+     umask(*main_umask);
 
   /* Give up root and save our uid/gid for later use (if supported)
    * If we aren't currently root, PRIVS_SETUP will get rid of setuid
    * granted root and prevent further uid switching from being attempted.
    */
 
-  PRIVS_SETUP(daemon_uid,daemon_gid)
+  PRIVS_SETUP(daemon_uid, daemon_gid)
 
   /* Test to make sure that our uid/gid is correct.  Try to do this in
    * a portable fashion *gah!*
