@@ -1,9 +1,116 @@
-2002-05-08 12:44  castaglia
+2002-05-10 08:51  jwm
+
+	* contrib/mod_ldap.c: 
+	updating to 2.8.3
+
+2002-05-10 08:49  jwm
+
+	* README.LDAP: 
+	new mod_ldap README
+
+2002-05-10 04:05  castaglia
+
+	* src/: ident.c, inet.c: 
+	
+	TJ: dealing with consequences of Bug#1588 fix, which happens to
+	affect	   identd lookups.  Hopefully these changes clear up any
+	remaining     difficulties while still retaining the efficacy of
+	Bug#1588's patch.
+
+2002-05-09 18:59  castaglia
+
+	* src/ident.c: 
+	
+	TJ: cleaned up get_ident(), adding proper cleanup/resource-freeing
+	code	 at various exit points from the function
+
+2002-05-09 17:29  castaglia
+
+	* src/ident.c: 
+	
+	TJ: fixed get_ident() to check for NULL return value from
+	inet_openrw();	   this was causing segfaults in the case where an
+	identd server was not	  returning a response
+
+2002-05-09 16:42  castaglia
+
+	* src/main.c: 
+	
+	TJ: mistakenly changed default setting of IdentLookups to "off"
+	with prior     changes, setting default back to "on"
+
+2002-05-09 16:15  castaglia
+
+	* modules/mod_auth.c, modules/mod_core.c, src/main.c, src/timers.c:
+	
+	
+	TJ: fixed remove_timer() call to check for NULL timers list before
+	cycling       through the list	   changed IdentLookups handler to
+	use pointers (and thus avoid compiler	    warnings about
+	typecasts)     minor reformatting
+
+2002-05-09 13:42  castaglia
 
 	* NEWS: 
 	
-	added NEWS entries for recently committed patches for (fixed?)
-	bug reports
+	TJ: updated NEWS
+
+2002-05-09 13:36  castaglia
+
+	* configure, configure.in, include/log.h, include/modules.h,
+	include/privs.h, modules/mod_auth.c, modules/mod_core.c,
+	modules/mod_unixpw.c, src/dirtree.c, src/main.c: 
+	
+	#1544 - Daemon does not switch to configured User/Group identity in
+		<VirtualHost> as documented #1581 - uid_t and get_param_int
+	result size
+
+2002-05-08 16:55  flyhmstr
+
+	* NEWS: ML: news update
+
+2002-05-08 16:51  flyhmstr
+
+	* doc/Configuration.html: ML: adding new version of the directive
+	list
+
+2002-05-08 16:50  flyhmstr
+
+	* doc/Configuration.html: ML: removing old version of directive
+	list
+
+2002-05-08 16:34  castaglia
+
+	* ChangeLog: 
+	
+	Updated ChangeLog
+
+2002-05-08 15:44  castaglia
+
+	* NEWS: 
+	
+	TJ: added NEWS entries for recently committed patches for (fixed?)
+	bug	reports
+
+2002-05-08 15:21  castaglia
+
+	* modules/mod_auth.c, src/dirtree.c, src/inet.c, src/main.c,
+	src/pool.c: 
+	
+	#1523 - "Umask" presented in <Global> block messes up file
+	permissions #1566 - FXP not working properly #1578 - RootLogin
+	directive does not mergedown properly
+
+2002-05-08 14:39  castaglia
+
+	* contrib/dist/rpm/proftpd.init.d, modules/mod_auth.c,
+	modules/mod_core.c, src/dirtree.c, src/inet.c: 
+	
+	#1563 - Proftpd 1.2.4. keeps core dumping sig11 on start #1567 -
+	AuthAliasOnly parsed incorrectly #1570 - MasqueradeAddress contexts
+	do not match documentation #1579 - Contrib init.d script makes
+	inappropriate use of ftpshut #1588 - Port scan of TCP/21 causes
+	segmentation fault #1601 - Rename terminates ProFTPD (signal 11)
 
 2002-05-08 12:21  castaglia
 
