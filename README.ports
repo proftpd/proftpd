@@ -58,6 +58,7 @@ ProFTPD has been reported to build on the following:
     FreeBSD 4.6        gcc
     FreeBSD 4.7        gcc
     FreeBSD 4.8        gcc
+    FreeBSD 4.9-PRERELEASE
     FreeBSD 5.0        gcc
 
     HP/UX 10.x
