@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.607 2004-09-26 18:17:54 castaglia Exp $
+$Id: NEWS,v 1.608 2004-09-26 18:24:26 castaglia Exp $
 
 CVS
 --------------------------------
@@ -20,6 +20,9 @@ CVS
 - Bug 2392 - mod_sql needs better handling of its backend modules.
 - Daniel Weuthen <dw@megabit.net> contributed a SuSE-specific init.d script
   for ProFTPD.
+- Bug 2485 - SQL backend modules close all open connections too early.
+  This fixes a bug where a "signal 11" would be reported, when a session
+  ends, if the "EXIT" SQLLog command was configured.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.84 2004-09-26 18:09:11 castaglia Exp $
+ * $Id: mod_sql.c,v 1.85 2004-09-26 18:24:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4038,7 +4038,9 @@ MODRET set_sqldefaultgid(cmd_rec * cmd) {
  */
 
 static void sql_exit_ev(const void *event_data, void *user_data) {
-  config_rec *c = NULL;
+  config_rec *c;
+  cmd_rec *cmd;
+  modret_t *mr;
 
   /* Note: most of this code hacked out of log_master(), which
    * brings to mind the idea of reorganizing the code a little, so
@@ -4083,6 +4085,10 @@ static void sql_exit_ev(const void *event_data, void *user_data) {
 
     c = find_config_next(c, c->next, CONF_PARAM, "SQLLog_EXIT", FALSE);
   }
+
+  cmd = _sql_make_cmd(session.pool, 0);
+  mr = _sql_dispatch(cmd, "sql_exit");
+  _sql_check_response(mr);
 
   sql_closelog();
   return;

@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.22 2004-09-26 18:09:11 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.23 2004-09-26 18:24:26 castaglia Exp $
  */
 
 /*
@@ -189,25 +189,6 @@ static int _sql_timer_callback(CALLBACK_FRAME) {
   }
 
   return 0;
-}
-
-/* sql_postgres_exit_ev: walks the connection cache and closes every
- *  open connection, resetting their connection counts to 0.
- */
-static void sql_postgres_exit_ev(const void *event_data, void *user_data) {
-  register unsigned int i = 0;
-
-  for (i = 0; i < conn_cache->nelts; i++) {
-    conn_entry_t *entry = ((conn_entry_t **) conn_cache->elts)[i];
-
-    if (entry->connections > 0) {
-      cmd_rec *cmd = _sql_make_cmd(conn_pool, 2, entry->name, "1");
-      cmd_close(cmd);
-      SQL_FREE_CMD(cmd);
-    }
-  }
-
-  return;
 }
 
 /* 
@@ -546,6 +527,35 @@ MODRET cmd_defineconnection(cmd_rec *cmd) {
   sql_log(DEBUG_INFO, "  ttl: '%d'", entry->ttl);
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_defineconnection");
+  return HANDLED(cmd);
+}
+
+/*
+ * cmd_exit: closes all open connections.
+ *
+ * Inputs:
+ *  None
+ *
+ * Returns:
+ *  A simple non-error modret_t.
+ */
+static modret_t *cmd_exit(cmd_rec *cmd) {
+  register unsigned int i = 0;
+
+  sql_log(DEBUG_FUNC, "%s", "entering \tpostgres cmd_exit");
+
+  for (i = 0; i < conn_cache->nelts; i++) {
+    conn_entry_t *entry = ((conn_entry_t **) conn_cache->elts)[i];
+
+    if (entry->connections > 0) {
+      cmd_rec *cmd = _sql_make_cmd(conn_pool, 2, entry->name, "1");
+      cmd_close(cmd);
+      destroy_pool(cmd->pool);
+    }
+  }
+
+  sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_exit");
+
   return HANDLED(cmd);
 }
 
@@ -1203,6 +1213,7 @@ static cmdtable sql_postgres_cmdtable[] = {
   { CMD, "sql_open",             G_NONE, cmd_open,             FALSE, FALSE },
   { CMD, "sql_close",            G_NONE, cmd_close,            FALSE, FALSE },
   { CMD, "sql_defineconnection", G_NONE, cmd_defineconnection, FALSE, FALSE },
+  { CMD, "sql_exit",             G_NONE, cmd_exit,             FALSE, FALSE },
   { CMD, "sql_select",           G_NONE, cmd_select,           FALSE, FALSE },
   { CMD, "sql_insert",           G_NONE, cmd_insert,           FALSE, FALSE },
   { CMD, "sql_update",           G_NONE, cmd_update,           FALSE, FALSE },
@@ -1263,8 +1274,6 @@ static int sql_postgres_sess_init(void) {
   conn_cache = make_array(make_sub_pool(session.pool), DEF_CONN_POOL_SIZE,
     sizeof(conn_entry_t));
 
-  pr_event_register(&sql_postgres_module, "core.exit", sql_postgres_exit_ev,
-    NULL);
   return 0;
 }
 
