@@ -759,13 +759,14 @@ static int tls_init_server(void) {
       if (cacertf) {
         X509 *x509 = PEM_read_X509(cacertf, NULL, NULL, NULL);
 
-        if (x509) {
+        if (x509)
           SSL_CTX_add_client_CA(ssl_ctx, x509);
-          fclose(cacertf);
 
-        } else
+        else
           tls_log("unable to add '%s' to client CA list: %s", tls_ca_cert,
             ERR_error_string(ERR_get_error(), NULL));
+
+        fclose(cacertf);
 
       } else
         tls_log("unable to open '%s': %s", tls_ca_cert, strerror(errno));
@@ -794,13 +795,14 @@ static int tls_init_server(void) {
           if (cacertf) {
             X509 *x509 = PEM_read_X509(cacertf, NULL, NULL, NULL);
 
-            if (x509) {
+            if (x509)
               SSL_CTX_add_client_CA(ssl_ctx, x509);
-              fclose(cacertf);
 
-            } else
+            else
               tls_log("unable to add '%s' to client CA list: %s",
                 cacertname, ERR_error_string(ERR_get_error(), NULL));
+
+            fclose(cacertf);
 
           } else
             tls_log("unable to open '%s': %s", cacertname, strerror(errno));

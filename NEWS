@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.454 2003-07-29 15:15:49 castaglia Exp $
+$Id: NEWS,v 1.455 2003-07-30 01:34:14 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -45,6 +45,8 @@ CVS
   contexts.
 - Bug 2119 - FEAT response format does not conform to RFC2389.  Extraneous
   leading whitespace removed.
+- Fixed file descriptor leaks that occur if mod_tls encounters errors when
+  handling CA certificate files.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------
