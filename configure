@@ -707,7 +707,7 @@ test -f mod_pam.c || ln -s ../contrib/mod_pam.c mod_pam.c
 test -f mod_readme.c || ln -s ../contrib/mod_readme.c mod_readme.c
 
 cd ../contrib
-test -f README.linux-privs || ln -s ../README.linux-privs
+test -f README.linux-privs || ln -s ../README.linux-privs README.linux-privs
 cd $olddir
 
 OSTYPE=-D`echo $build_os | sed 's/\..*$//g' | sed 's/-.*//g' | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ`
@@ -4560,7 +4560,7 @@ fi
 done
 
     
-    if "$ac_cv_func_pstat" = "yes"; then
+    if test "$ac_cv_func_pstat" = "yes"; then
 	cat >> confdefs.h <<\EOF
 #define PF_ARGV_TYPE PF_ARGV_PSTAT
 EOF
