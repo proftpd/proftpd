@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.215 2002-09-05 23:04:42 castaglia Exp $
+$Id: NEWS,v 1.216 2002-09-06 00:42:51 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -8,6 +8,7 @@ CVS
 - Bug 1682 - Broken SyslogFacility requires custom syslog code
 - Bug 1076 - Toggle parsing of .ftpaccess files with a AllowOverride
 - Bug 1724 - AuthPAM off does not work beginning 1.2.5
+- Bug 1592 - mod_sql doesn't cache failed uid lookups
 
 1.2.6 - Released 2002-09-04
 ---------------------------------

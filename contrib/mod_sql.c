@@ -111,7 +111,7 @@ MODRET cmd_setgrent(cmd_rec *);
 pool *sql_pool;
 
 /*
- * cache functions and typedefs
+ * cache typedefs
  */
 
 #define CACHE_SIZE         13
@@ -121,6 +121,94 @@ typedef struct cache_entry {
   struct cache_entry *bucket_next;
   void *data;
 } cache_entry_t;
+
+/* this struct holds invariant information for the current session */
+
+static struct
+{
+  /*
+   * info valid after getpwnam
+   */
+
+  char *authuser;               /* current authorized user */
+  struct passwd *authpasswd;    /* and their passwd struct */
+
+  /*
+   * generic status information
+   */
+
+  int status;                   /* is mod_sql on? */
+  int authmask;                 /* authentication mask.
+                                 * see set_sqlauthenticate for info */
+
+  /*
+   * user table and field information
+   */
+
+  char *usrtable;               /* user info table name */
+  char *usrfield;               /* user name field */
+  char *pwdfield;               /* user password field */
+  char *uidfield;               /* user uid field */
+  char *gidfield;               /* user gid field */
+  char *homedirfield;           /* user homedir field */
+  char *shellfield;             /* user login shell field */
+  char *userwhere;              /* users where clause */
+
+  /*
+   * group table and field information
+   */
+
+  char *grptable;               /* group info table name */
+  char *grpfield;               /* group name field */
+  char *grpgidfield;            /* group gid field */
+  char *grpmembersfield;        /* group members field */
+  char *groupwhere;             /* groups where clause */
+
+  /*
+   * other information
+   */
+
+  array_header *authlist;       /* auth handler list */
+  char *defaulthomedir;         /* default homedir if no field specified */
+  int buildhomedir;             /* create homedir if it doesn't exist? */
+
+  uid_t minid;                  /* users UID must be this or greater */
+  uid_t minuseruid;             /* users UID must be this or greater */
+  gid_t minusergid;             /* users UID must be this or greater */
+  uid_t defaultuid;             /* default UID if none in database */
+  gid_t defaultgid;             /* default GID if none in database */
+
+  cache_entry_t *curr_group;    /* next group in group array for getgrent */
+  cache_entry_t *curr_passwd;   /* next passwd in passwd array for getpwent */
+  int group_cache_filled;
+  int passwd_cache_filled;
+  unsigned char negative_cache; /* cache negative as well as positive lookups */
+
+  /*
+   * mod_ratio data -- someday this needs to be removed from mod_sql
+   */
+
+  char *sql_fstor;              /* fstor int(11) NOT NULL DEFAULT '0', */
+  char *sql_fretr;              /* fretr int(11) NOT NULL DEFAULT '0', */
+  char *sql_bstor;              /* bstor int(11) NOT NULL DEFAULT '0', */
+  char *sql_bretr;              /* bretr int(11) NOT NULL DEFAULT '0', */
+
+  char *sql_frate;              /* frate int(11) NOT NULL DEFAULT '5', */
+  char *sql_fcred;              /* fcred int(2) NOT NULL DEFAULT '15', */
+  char *sql_brate;              /* brate int(11) NOT NULL DEFAULT '5', */
+  char *sql_bcred;              /* bcred int(2) NOT NULL DEFAULT '150000', */
+
+  /*
+   * precomputed strings
+   */
+  char *usrfields;
+  char *grpfields;
+}
+cmap;
+
+/*
+ * cache functions
+ */
 
 typedef unsigned int ( * val_func ) ( const void * ); 
 typedef int ( * cmp_func ) ( const void *, const void * );
@@ -174,7 +262,8 @@ static cache_entry_t *cache_addentry( cache_t *cache, void *data )
   cache_entry_t *entry;
   int hashval;
 
-  if ( ( cache == NULL ) || ( data == NULL ) ) return NULL;
+  if ( ( cache == NULL ) || ( data == NULL ) )
+    return NULL;
 
   /* create the entry */
   entry = ( cache_entry_t * ) pcalloc( cache->pool, 
@@ -223,90 +312,6 @@ static void *cache_findvalue( cache_t *cache, void *data )
 
   return ( ( entry == NULL ) ? NULL : entry->data );
 }
-
-
-/* this struct holds invariant information for the current session */
-
-static struct
-{
-  /*
-   * info valid after getpwnam 
-   */
-
-  char *authuser;               /* current authorized user */
-  struct passwd *authpasswd;    /* and their passwd struct */
-
-  /*
-   * generic status information 
-   */
-
-  int status;                   /* is mod_sql on? */
-  int authmask;                 /* authentication mask.  
-				 * see set_sqlauthenticate for info */
-
-  /*
-   * user table and field information 
-   */
-
-  char *usrtable;               /* user info table name */
-  char *usrfield;               /* user name field */
-  char *pwdfield;               /* user password field */
-  char *uidfield;               /* user uid field */
-  char *gidfield;               /* user gid field */
-  char *homedirfield;           /* user homedir field */
-  char *shellfield;             /* user login shell field */
-  char *userwhere;              /* users where clause */
-
-  /*
-   * group table and field information 
-   */
-
-  char *grptable;               /* group info table name */
-  char *grpfield;               /* group name field */
-  char *grpgidfield;            /* group gid field */
-  char *grpmembersfield;        /* group members field */
-  char *groupwhere;             /* groups where clause */
-
-  /*
-   * other information 
-   */
-
-  array_header *authlist;       /* auth handler list */
-  char *defaulthomedir;         /* default homedir if no field specified */
-  int buildhomedir;             /* create homedir if it doesn't exist? */
-
-  uid_t minid;                  /* users UID must be this or greater */
-  uid_t minuseruid;             /* users UID must be this or greater */
-  gid_t minusergid;             /* users UID must be this or greater */
-  uid_t defaultuid;             /* default UID if none in database */
-  gid_t defaultgid;             /* default GID if none in database */
-
-  cache_entry_t *curr_group;    /* next group in group array for getgrent */
-  cache_entry_t *curr_passwd;   /* next passwd in passwd array for getpwent */
-  int group_cache_filled;
-  int passwd_cache_filled;
-
-  /*
-   * mod_ratio data -- someday this needs to be removed from mod_sql
-   */
-
-  char *sql_fstor;              /* fstor int(11) NOT NULL DEFAULT '0', */
-  char *sql_fretr;              /* fretr int(11) NOT NULL DEFAULT '0', */
-  char *sql_bstor;              /* bstor int(11) NOT NULL DEFAULT '0', */
-  char *sql_bretr;              /* bretr int(11) NOT NULL DEFAULT '0', */
-
-  char *sql_frate;              /* frate int(11) NOT NULL DEFAULT '5', */
-  char *sql_fcred;              /* fcred int(2) NOT NULL DEFAULT '15', */
-  char *sql_brate;              /* brate int(11) NOT NULL DEFAULT '5', */
-  char *sql_bcred;              /* bcred int(2) NOT NULL DEFAULT '150000', */
-
-  /*
-   * precomputed strings
-   */
-  char *usrfields;
-  char *grpfields;
-}
-cmap;
 
 cmd_rec *_sql_make_cmd(pool * cp, int argc, ...)
 {
@@ -899,14 +904,20 @@ static struct passwd *_sql_addpasswd(cmd_rec *cmd, char *username,
     log_debug( DEBUG_INFO, _MOD_VERSION ": cache hit for user '%s'", pwd->pw_name );
   } else {
     pwd = pcalloc(sql_pool, sizeof(struct passwd));
-    pwd->pw_name = pstrdup(sql_pool, username);
-    pwd->pw_passwd = pstrdup(sql_pool, password);
+
+    if (username)
+      pwd->pw_name = pstrdup(sql_pool, username);
+
+    if (password)
+      pwd->pw_passwd = pstrdup(sql_pool, password);
     
     pwd->pw_uid = uid;
     pwd->pw_gid = gid;
-    
-    pwd->pw_shell = pstrdup(sql_pool, shell);
-    pwd->pw_dir = pstrdup(sql_pool, dir);
+   
+    if (shell) 
+      pwd->pw_shell = pstrdup(sql_pool, shell);
+    if (dir)
+      pwd->pw_dir = pstrdup(sql_pool, dir);
     
     cache_addentry( passwd_name_cache, pwd );
     cache_addentry( passwd_uid_cache, pwd );
@@ -950,6 +961,16 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
        ((pwd = (struct passwd *) 
 	 cache_findvalue( passwd_uid_cache, p )) != NULL )) {
     log_debug( DEBUG_AUTH, _MOD_VERSION ": cache hit for user '%s'", pwd->pw_name );
+
+    /* check for negatively cached passwds, which will have NULL
+     * passwd/home/shell
+     */
+    if ( !pwd->pw_dir ) {
+      log_debug( DEBUG_AUTH, _MOD_VERSION
+        ": negative cache entry for user '%s'", pwd->pw_name );
+      return NULL;
+    }
+
     return pwd;
   }
 
@@ -999,7 +1020,19 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
   sd = (sql_data_t *) mr->data;
 
   /* if we have no data.. */
-  if (sd->rnum == 0) return NULL;
+  if (sd->rnum == 0) {
+    if (!cmap.negative_cache) {
+      return NULL;
+
+    } else {
+
+      /* if doing caching of negative lookups, cache this failed lookup.
+       * Use the default UID and GID.
+       */
+      return _sql_addpasswd( cmd, username, NULL, p->pw_uid, p->pw_gid,
+        NULL, NULL );
+    }
+  }
 
   index = 0;
 
@@ -1058,6 +1091,7 @@ static struct group *_sql_addgroup(cmd_rec *cmd, char *groupname, gid_t gid,
   int cnt = 0;
 
   grp = pcalloc(cmd->tmp_pool, sizeof(struct group));
+
   grp->gr_name = groupname;
 
   /* check to make sure the entry doesn't exist in the cache */
@@ -1066,7 +1100,10 @@ static struct group *_sql_addgroup(cmd_rec *cmd, char *groupname, gid_t gid,
     log_debug( DEBUG_INFO, _MOD_VERSION ": cache hit for group '%s'", grp->gr_name );
   } else {
     grp = pcalloc(sql_pool, sizeof(struct group));
-    grp->gr_name = pstrdup(sql_pool, groupname);
+
+    if (groupname)
+      grp->gr_name = pstrdup(sql_pool, groupname);
+
     grp->gr_gid = gid;
 
     /* finish filling in the group */
@@ -1075,6 +1112,7 @@ static struct group *_sql_addgroup(cmd_rec *cmd, char *groupname, gid_t gid,
     for ( cnt = 0; cnt < ah->nelts; cnt++ ) {
       grp->gr_mem[cnt] = pstrdup(sql_pool, ((char **) ah->elts)[cnt]);
     }
+
     grp->gr_mem[ ah->nelts ]='\0';
 
     cache_addentry( group_name_cache, grp );
@@ -1116,6 +1154,14 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
       ((grp = (struct group *) cache_findvalue(group_gid_cache, g))!=NULL)) {
     log_debug( DEBUG_AUTH, _MOD_VERSION
 	       ": cache hit for group %s", grp->gr_name );
+
+    /* check for negatively cached groups, which will have NULL gr_mem. */
+    if ( !grp->gr_mem ) {
+      log_debug( DEBUG_AUTH, _MOD_VERSION
+        ": negative cache entry for group '%s'", grp->gr_name );
+      return NULL;
+    }
+
     return grp;
   }
 
@@ -1174,9 +1220,18 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
   _sql_check_response(mr);
   
   sd = (sql_data_t *) mr->data;
- 
-  /* if we have no data... */
-  if (sd->rnum == 0) return NULL;
+
+  /* if we have no data.. */
+  if (sd->rnum == 0) {
+    if (!cmap.negative_cache) {
+      return NULL;
+
+    } else {
+
+      /* if doing caching of negative lookups, cache this failed lookup. */
+      return _sql_addgroup( cmd, groupname, g->gr_gid, NULL );
+    }
+  }
  
   rows = sd->data;
   numrows = sd->rnum;
@@ -2774,6 +2829,7 @@ MODRET cmd_check(cmd_rec * cmd)
 
 MODRET cmd_uid_name(cmd_rec * cmd)
 {
+  char *uid_name = NULL;
   struct passwd *pw;
   struct passwd lpw;
   char uidstr[MOD_SQL_BUFSIZE] = {'\0'};
@@ -2806,11 +2862,24 @@ MODRET cmd_uid_name(cmd_rec * cmd)
     return mod_create_data(cmd, uidstr);
   }
 
-  return mod_create_data(cmd, pw->pw_name);
+  /* in the caes of a lookup of a negatively cached UID, the pw_name
+   * member will be NULL, which causes an undesired handling by
+   * the core code.  Handle this case separately.
+   */
+  if (pw->pw_name)
+    uid_name = pw->pw_name;
+
+  else {
+    snprintf( uidstr, MOD_SQL_BUFSIZE, "%d", (uid_t) cmd->argv[0]);
+    uid_name = uidstr;
+  }
+
+  return mod_create_data(cmd, uid_name);
 }
 
 MODRET cmd_gid_name(cmd_rec * cmd)
 {
+  char *gid_name = NULL;
   struct group *gr;
   struct group lgr;
   char gidstr[MOD_SQL_BUFSIZE]={'\0'};
@@ -2837,7 +2906,19 @@ MODRET cmd_gid_name(cmd_rec * cmd)
     return mod_create_data(cmd, gidstr);
   }
 
-  return mod_create_data(cmd, gr->gr_name);
+  /* in the caes of a lookup of a negatively cached GID, the gr_name
+   * member will be NULL, which causes an undesired handling by
+   * the core code.  Handle this case separately.
+   */
+  if (gr->gr_name)
+    gid_name = gr->gr_name;
+
+  else {
+    snprintf( gidstr, MOD_SQL_BUFSIZE, "%d", (gid_t) cmd->argv[0]);
+    gid_name = gidstr;
+  }
+
+  return mod_create_data(cmd, gid_name);
 }
 
 MODRET cmd_name_uid(cmd_rec * cmd)
@@ -3030,6 +3111,24 @@ MODRET set_sqlratiostats(cmd_rec * cmd)
                          (void *) cmd->argv[1], (void *) cmd->argv[2],
                          (void *) cmd->argv[3], (void *) cmd->argv[4]);
   }
+
+  return HANDLED(cmd);
+}
+
+MODRET set_sqlnegativecache(cmd_rec * cmd)
+{
+  int bool = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_GLOBAL );
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected a Boolean parameter");
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
 
   return HANDLED(cmd);
 }
@@ -3659,11 +3758,12 @@ static int sql_init(void)
   return 0;
 }
 
-static int sql_getconf()
+static int sql_getconf(void)
 {
   char *authstr = NULL;
   config_rec *c = NULL;
   void *temp_ptr = NULL;
+  unsigned char *negative_cache = NULL;
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   sql_data_t *sd = NULL;
@@ -3710,6 +3810,13 @@ static int sql_getconf()
   cmap.authmask = get_param_int(main_server->conf, "SQLAuthenticate", FALSE);
   if (cmap.authmask == -1) 
     cmap.authmask = SQL_AUTH_GROUPS | SQL_AUTH_USERS | SQL_AUTH_GROUPSET | SQL_AUTH_USERSET;
+
+  if ((negative_cache = get_param_ptr(main_server->conf, "SQLNegativeCache",
+      FALSE)) != NULL)
+    cmap.negative_cache = *negative_cache;
+
+  else
+    cmap.negative_cache = FALSE;
 
   /* SQLHomedirOnDemand defaults to NO */
   temp_ptr = get_param_ptr(main_server->conf, "SQLHomedirOnDemand", FALSE);
@@ -3863,6 +3970,9 @@ static int sql_getconf()
   log_debug(DEBUG_INFO, _MOD_VERSION ": mod_sql status     : %s",
 	    cmap.status ? "on" : "off" );
 
+  log_debug(DEBUG_INFO, _MOD_VERSION ": negative_cache     : %s",
+            cmap.negative_cache ? "on" : "off" );
+
   authstr = "";
 
   if (SQL_USERS) {
@@ -4004,6 +4114,8 @@ static conftable sql_conftab[] = {
   {"SQLMinUserGID", set_sqlminusergid, NULL},
   {"SQLDefaultUID", set_sqldefaultuid, NULL},
   {"SQLDefaultGID", set_sqldefaultgid, NULL},
+
+  {"SQLNegativeCache", set_sqlnegativecache, NULL},
 
   {"SQLRatios", set_sqlratios, NULL},
   {"SQLRatioStats", set_sqlratiostats, NULL},
