@@ -1,0 +1,11 @@
+
+DSO (Dynamically Shared Object)
+-------------------------------
+
+Support for dynamically loadable modules, known as DSO modules or "shared"
+modules, is now available in ProFTPD 1.3.0.
+
+  --enable-dso
+  --with-shared
+  --libexecdir/ModulePath
+  LoadModule, ModuleOrder
