@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.173 2004-10-30 20:45:52 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.174 2004-10-31 19:03:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -619,17 +619,17 @@ static void xfer_rate_throttle(off_t xferlen, unsigned int xfer_ending) {
   return;
 }
 
-static int _transmit_normal(char *buf, long bufsize) {
-  long count;
+static int transmit_normal(char *buf, long bufsz) {
+  long sz = pr_fsio_read(retr_fh, buf, bufsz);
 
-  if ((count = pr_fsio_read(retr_fh, buf, bufsize)) <= 0)
+  if (sz <= 0)
     return 0;
 
-  return pr_data_xfer(buf, count);
+  return pr_data_xfer(buf, sz);
 }
 
 #ifdef HAVE_SENDFILE
-static int _transmit_sendfile(off_t count, off_t *offset,
+static int transmit_sendfile(off_t count, off_t *offset,
     pr_sendfile_t *retval) {
 
   /* We don't use sendfile() if:
@@ -675,8 +675,8 @@ static int _transmit_sendfile(off_t count, off_t *offset,
 
     default:
       pr_log_pri(PR_LOG_ERR,
-              "_transmit_sendfile error "
-              "(reverting to normal data transmission) %d: %s.",
+              "transmit_sendfile() error "
+              "(reverting to normal data transmission) %d: %s",
               errno, strerror(errno));
       return 0;
     }
@@ -686,7 +686,7 @@ static int _transmit_sendfile(off_t count, off_t *offset,
 }
 #endif /* HAVE_SENDFILE */
 
-static long _transmit_data(off_t count, off_t offset, char *buf, long bufsize) {
+static long transmit_data(off_t count, off_t offset, char *buf, long bufsz) {
   long res;
 
 #ifdef TCP_CORK
@@ -708,12 +708,12 @@ static long _transmit_data(off_t count, off_t offset, char *buf, long bufsize) {
 #endif /* TCP_CORK */
 
 #ifdef HAVE_SENDFILE
-  if (!_transmit_sendfile(count, &offset, &retval))
-    res = _transmit_normal(buf, bufsize);
+  if (!transmit_sendfile(count, &offset, &retval))
+    res = transmit_normal(buf, bufsz);
   else
     res = (long) retval;
 #else
-  res = _transmit_normal(buf, bufsize);
+  res = transmit_normal(buf, bufsz);
 #endif /* HAVE_SENDFILE */
 
 #ifdef TCP_CORK
@@ -727,7 +727,7 @@ static long _transmit_data(off_t count, off_t offset, char *buf, long bufsize) {
 }
 
 static void stor_chown(void) {
-  struct stat sbuf;
+  struct stat st;
   char *xfer_path = NULL;
 
   if (session.xfer.xfer_type == STOR_HIDDEN)
@@ -764,7 +764,7 @@ static void stor_chown(void) {
           (unsigned long) session.fsuid);
 
       pr_fs_clear_cache();
-      pr_fsio_stat(xfer_path, &sbuf);
+      pr_fsio_stat(xfer_path, &st);
 
       /* The chmod happens after the chown because chown will remove
        * the S{U,G}ID bits on some files (namely, directories); the subsequent
@@ -777,16 +777,16 @@ static void stor_chown(void) {
        */
       iserr = 0;
       PRIVS_ROOT
-      if (pr_fsio_chmod(xfer_path, sbuf.st_mode) < 0)
+      if (pr_fsio_chmod(xfer_path, st.st_mode) < 0)
         iserr++;
       PRIVS_RELINQUISH
 
       if (iserr)
         pr_log_debug(DEBUG0, "root chmod(%s) to %04o failed: %s", xfer_path,
-          (unsigned int) sbuf.st_mode, strerror(errno));
+          (unsigned int) st.st_mode, strerror(errno));
       else
         pr_log_debug(DEBUG2, "root chmod(%s) to %04o successful", xfer_path,
-          (unsigned int) sbuf.st_mode);
+          (unsigned int) st.st_mode);
     }
 
   } else if ((session.fsgid != (gid_t) -1) && xfer_path) {
@@ -801,11 +801,11 @@ static void stor_chown(void) {
         (unsigned long) session.fsgid);
 
       pr_fs_clear_cache();
-      pr_fsio_stat(xfer_path, &sbuf);
+      pr_fsio_stat(xfer_path, &st);
 
-      if (pr_fsio_chmod(xfer_path, sbuf.st_mode) < 0)
+      if (pr_fsio_chmod(xfer_path, st.st_mode) < 0)
         pr_log_debug(DEBUG0, "chmod(%s) to %04o failed: %s", xfer_path,
-          (unsigned int) sbuf.st_mode, strerror(errno));
+          (unsigned int) st.st_mode, strerror(errno));
     }
   }
 }
@@ -1186,10 +1186,10 @@ MODRET xfer_pre_appe(cmd_rec *cmd) {
 MODRET xfer_stor(cmd_rec *cmd) {
   char *dir;
   char *lbuf;
-  int bufsize,len;
+  int bufsz,len;
   off_t nbytes_stored, nbytes_max_store = 0;
   unsigned char have_limit = FALSE;
-  struct stat sbuf;
+  struct stat st;
   off_t respos = 0;
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
@@ -1265,7 +1265,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     if (pr_fsio_lseek(stor_fh, session.restart_pos, SEEK_SET) == -1)
       xerrno = errno;
 
-    else if (pr_fsio_stat(dir, &sbuf) == -1)
+    else if (pr_fsio_stat(dir, &st) == -1)
       xerrno = errno;
 
     if (xerrno) {
@@ -1277,7 +1277,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     /* Make sure that the requested offset is valid (within the size of the
      * file being resumed.
      */
-    if (stor_fh && session.restart_pos > sbuf.st_size) {
+    if (stor_fh && session.restart_pos > st.st_size) {
       pr_response_add_err(R_554, "%s: invalid REST argument", cmd->arg);
       (void) pr_fsio_close(stor_fh);
       stor_fh = NULL;
@@ -1348,11 +1348,11 @@ MODRET xfer_stor(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  bufsize = (main_server->tcp_rcvbuf_len > 0 ?  main_server->tcp_rcvbuf_len :
+  bufsz = (main_server->tcp_rcvbuf_len > 0 ?  main_server->tcp_rcvbuf_len :
     PR_TUNABLE_XFER_BUFFER_SIZE);
-  lbuf = (char *) palloc(cmd->tmp_pool, bufsize);
+  lbuf = (char *) palloc(cmd->tmp_pool, bufsz);
 
-  while ((len = pr_data_xfer(lbuf, bufsize)) > 0) {
+  while ((len = pr_data_xfer(lbuf, bufsz)) > 0) {
     int res;
 
     if (XFER_ABORTED)
@@ -1527,10 +1527,10 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 
 MODRET xfer_retr(cmd_rec *cmd) {
   char *dir = NULL, *lbuf;
-  struct stat sbuf;
+  struct stat st;
   off_t nbytes_max_retrieve = 0;
   unsigned char have_limit = FALSE;
-  long bufsize, len = 0;
+  long bufsz, len = 0;
   off_t respos = 0, nbytes_sent = 0, cnt_steps = 0, cnt_next = 0;
 
   /* This function sets static module variables for later potential
@@ -1547,7 +1547,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  if (pr_fsio_stat(dir, &sbuf) < 0) {
+  if (pr_fsio_stat(dir, &st) < 0) {
     /* Error stat'ing the file. */
     int xerrno = errno;
     pr_fsio_close(retr_fh);
@@ -1563,7 +1563,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     /* Make sure that the requested offset is valid (within the size of the
      * file being resumed.
      */
-    if (session.restart_pos > sbuf.st_size) {
+    if (session.restart_pos > st.st_size) {
       pr_response_add_err(R_554, "%s: invalid REST argument", cmd->arg);
       pr_fsio_close(retr_fh);
       retr_fh = NULL;
@@ -1586,13 +1586,13 @@ MODRET xfer_retr(cmd_rec *cmd) {
   pr_data_init(cmd->arg, PR_NETIO_IO_WR);
 
   session.xfer.path = dir;
-  session.xfer.file_size = sbuf.st_size;
+  session.xfer.file_size = st.st_size;
 
   cnt_steps = session.xfer.file_size / 100;
   if (cnt_steps == 0)
     cnt_steps = 1;
 
-  if (pr_data_open(cmd->arg, NULL, PR_NETIO_IO_WR, sbuf.st_size - respos) < 0) {
+  if (pr_data_open(cmd->arg, NULL, PR_NETIO_IO_WR, st.st_size - respos) < 0) {
     retr_abort();
     pr_data_abort(0, TRUE);
     return ERROR(cmd);
@@ -1609,7 +1609,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
    * then signal an error and abort the transfer now.
    */
   if (have_limit &&
-      ((nbytes_max_retrieve == 0) || (sbuf.st_size > nbytes_max_retrieve))) {
+      ((nbytes_max_retrieve == 0) || (st.st_size > nbytes_max_retrieve))) {
 
     pr_log_pri(PR_LOG_INFO, "MaxRetrieveFileSize (%" PR_LU " byte%s) reached: "
       "aborting transfer of '%s'", (pr_off_t) nbytes_max_retrieve,
@@ -1623,9 +1623,9 @@ MODRET xfer_retr(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  bufsize = (main_server->tcp_sndbuf_len > 0 ?  main_server->tcp_sndbuf_len :
+  bufsz = (main_server->tcp_sndbuf_len > 0 ?  main_server->tcp_sndbuf_len :
     PR_TUNABLE_XFER_BUFFER_SIZE);
-  lbuf = (char *) palloc(cmd->tmp_pool, bufsize);
+  lbuf = (char *) palloc(cmd->tmp_pool, bufsz);
 
   nbytes_sent = respos;
 
@@ -1638,7 +1638,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     if (XFER_ABORTED)
       break;
 
-    if ((len = _transmit_data(nbytes_sent, respos, lbuf, bufsize)) == 0)
+    if ((len = transmit_data(nbytes_sent, respos, lbuf, bufsz)) == 0)
       break;
 
     if (len < 0) {

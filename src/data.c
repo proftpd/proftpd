@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.82 2004-10-30 20:45:52 castaglia Exp $
+ * $Id: data.c,v 1.83 2004-10-31 19:03:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -78,7 +78,7 @@ static RETSIGTYPE data_urgent(int sig) {
   signal(SIGURG, data_urgent);
 }
 
-static int xlate_ascii_read(char *buf, int *bufsize, int *adjlen) {
+static int xfrm_ascii_read(char *buf, int *bufsize, int *adjlen) {
   char *dest = buf,*src = buf;
   int thislen = *bufsize;
 
@@ -117,7 +117,7 @@ static int xlate_ascii_read(char *buf, int *bufsize, int *adjlen) {
  */
 
 static int have_dangling_cr = FALSE;
-static unsigned int xlate_ascii_write(char **buf, unsigned int *buflen,
+static unsigned int xfrm_ascii_write(char **buf, unsigned int *buflen,
     unsigned int bufsize) {
   char *tmpbuf = *buf;
   unsigned int tmplen = *buflen;
@@ -812,13 +812,13 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 	     * adjlen is returned as the number of characters unprocessed in
 	     *        the buffer (to be dealt with later)
 	     *
-	     * We skip the call to xlate_ascii_read() in one case:
+	     * We skip the call to xfrm_ascii_read() in one case:
 	     * when we have one character in the buffer and have reached
-	     * end of data, this is so that xlate_ascii_read() won't sit
+	     * end of data, this is so that xfrm_ascii_read() won't sit
 	     * forever waiting for the next character after a final '\r'.
 	     */
 	    if (len > 0 || buflen > 1)
-	      xlate_ascii_read(buf, &buflen, &adjlen);
+	      xfrm_ascii_read(buf, &buflen, &adjlen);
 	
 	    /* now copy everything we can into cl_buf */
 	    if (buflen > cl_size) {
@@ -847,7 +847,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 	
 	  /* Restart if data was returned by pr_netio_read() (len > 0) but
 	   * no data was copied to the client buffer (buflen = 0).
-	   * This indicates that xlate_ascii_read() needs more data
+	   * This indicates that xfrm_ascii_read() needs more data
 	   * in order to translate, so we need to call pr_netio_read() again.
            */
 	} while (len > 0 && buflen == 0);
@@ -888,7 +888,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
          * will be adjusted so that it contains the length of data in
          * the internal buffer, including any added CRs.
          */
-        xlate_ascii_write(&session.xfer.buf, &xferbuflen, session.xfer.bufsize);
+        xfrm_ascii_write(&session.xfer.buf, &xferbuflen, session.xfer.bufsize);
       }
 
       if (pr_netio_write(session.d->outstrm, session.xfer.buf,
