@@ -267,7 +267,7 @@ AC_ARG_ENABLE(auth-pam,
       AC_MSG_ERROR([You cannot run configure with --disable-auth-pam and include mod_auth_pam in --with-modules at the same time])
     fi ])
 
-dnl Workaround for broken getaddrinfo on some systems
+dnl Optional workaround for broken getaddrinfo on some systems (e.g. HP-UX 11.x)
 AC_ARG_ENABLE(builtin-getaddrinfo,
   [AC_HELP_STRING(
     [--enable-builtin-getaddrinfo],
@@ -279,7 +279,14 @@ AC_ARG_ENABLE(builtin-getaddrinfo,
     fi
   ])
 
-dnl Workaround for borken getnameinfo on some systems
+dnl Since getaddrinfo() is broken on HP-UX 11.x, we automatically use the
+dnl builtin version.
+if test "$OSTYPE" = "-DHPUX11"; then
+  AC_MSG_WARN([HP-UX 11 has broken getaddrinfo(), using builtin version])
+  AC_DEFINE(PR_USE_GETADDRINFO, 1, [Define if using builtin getaddrinfo()])
+fi
+
+dnl Workaround for broken getnameinfo on some systems
 AC_ARG_ENABLE(builtin-getnameinfo,
   [AC_HELP_STRING(
     [--enable-builtin-getnameinfo],
