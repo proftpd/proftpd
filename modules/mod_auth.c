@@ -19,7 +19,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.8 1999-09-29 20:46:13 macgyver Exp $
+ * $Id: mod_auth.c,v 1.9 1999-09-30 06:10:42 macgyver Exp $
  */
 
 #include "conf.h"
@@ -1005,6 +1005,9 @@ static int _setup_environment(pool *p, char *user, char *pass)
             
     session.flags = 0;
   }
+
+  /* Make sure passwd file is closed after login to avoid leaking information */
+  auth_endpwent(p);
 
   /* Default transfer mode is ASCII */
   session.flags |= SF_ASCII;
