@@ -31,8 +31,7 @@
 
 /* Manage free storage blocks */
 
-union align
-{
+union align {
   char *cp;
   void (*f)();
   long l;
@@ -42,8 +41,7 @@ union align
 
 #define CLICK_SZ (sizeof(union align))
 
-union block_hdr
-{
+union block_hdr {
   union align a;
 
   /* Actual header */
@@ -58,14 +56,13 @@ union block_hdr
 union block_hdr *block_freelist = NULL;
 
 /* Statistics */
-unsigned int stat_malloc = 0;	/* incr when malloc required */
-unsigned int stat_freehit = 0;	/* incr when freelist used */
+static unsigned int stat_malloc = 0;	/* incr when malloc required */
+static unsigned int stat_freehit = 0;	/* incr when freelist used */
 
 /* Lowest level memory allocation functions
  */
 
-static void *null_alloc(size_t size)
-{
+static void *null_alloc(size_t size) {
   void *ret = 0;
 
   if(size == 0)
@@ -78,8 +75,7 @@ static void *null_alloc(size_t size)
   return ret;
 }
 
-void *xmalloc(size_t size)
-{
+void *xmalloc(size_t size) {
   void *ret;
 
   ret = malloc(size);
@@ -88,8 +84,7 @@ void *xmalloc(size_t size)
   return ret;
 }
 
-void *xcalloc(size_t num, size_t size)
-{
+void *xcalloc(size_t num, size_t size) {
   void *ret;
 
   ret = calloc(num,size);
@@ -98,8 +93,7 @@ void *xcalloc(size_t num, size_t size)
   return ret;
 }
 
-void *xrealloc(void *p, size_t size)
-{
+void *xrealloc(void *p, size_t size) {
   if(p == 0)
     return xmalloc(size);
   p = realloc(p,size);
@@ -109,11 +103,10 @@ void *xrealloc(void *p, size_t size)
 }
 
 /* Grab a completely new block from the system pool.  Relies on malloc()
- * to return truely aligned memory.
+ * to return truly aligned memory.
  */
 
-union block_hdr *malloc_block(int size)
-{
+static union block_hdr *malloc_block(int size) {
   union block_hdr *blok =
     (union block_hdr*)xmalloc(size + sizeof(union block_hdr));
 
@@ -124,8 +117,7 @@ union block_hdr *malloc_block(int size)
   return blok;
 }
 
-void chk_on_blk_list(union block_hdr *blok, union block_hdr *free_blk)
-{
+static void chk_on_blk_list(union block_hdr *blok, union block_hdr *free_blk) {
   /* Debug code */
 
   while(free_blk) {
@@ -140,8 +132,7 @@ void chk_on_blk_list(union block_hdr *blok, union block_hdr *free_blk)
 
 /* Free a chain of blocks -- _must_ call with alarms blocked. */
 
-void free_blocks(union block_hdr *blok)
-{
+static void free_blocks(union block_hdr *blok) {
   /* Puts new blocks at head of block list, point next pointer of
    * last block in chain to free blocks we already had.
    */
@@ -170,8 +161,7 @@ void free_blocks(union block_hdr *blok)
  * a new one.  *BLOCK ALARMS BEFORE CALLING*
  */
 
-union block_hdr *new_block(int min_size)
-{
+static union block_hdr *new_block(int min_size) {
   int biggest = 0;
   union block_hdr **lastptr = &block_freelist;
   union block_hdr *blok = block_freelist;
@@ -200,9 +190,8 @@ union block_hdr *new_block(int min_size)
 
 /* accounting */
 
-long bytes_in_block_list(union block_hdr *blok)
-{
-  long size = 0;
+static unsigned long bytes_in_block_list(union block_hdr *blok) {
+  unsigned long size = 0;
 
   while(blok) {
     size += blok->h.endp - (char*)(blok+1);
@@ -287,7 +276,7 @@ static long __walk_pools(pool *p, int level)
   return total;
 }
 
-void debug_pool_info(void) {
+static void debug_pool_info(void) {
   if (block_freelist)
     log_pri(LOG_NOTICE, "Free block list: 0x%08lx bytes",
       bytes_in_block_list(block_freelist));

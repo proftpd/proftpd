@@ -25,7 +25,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.33 2002-06-11 17:09:47 castaglia Exp $
+ * $Id: data.c,v 1.34 2002-06-22 01:06:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -66,7 +66,7 @@ static int stalled_timeout(CALLBACK_FRAME) {
 /* this signal is raised if we get OOB data on the control connection, and
  * a data transfer is in progress
  */
-RETSIGTYPE data_urgent(int sig) {
+static RETSIGTYPE data_urgent(int sig) {
   if(curf) {
     session.flags |= SF_ABORT;
     io_abort(curf);

@@ -26,7 +26,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.37 2002-06-11 17:09:48 castaglia Exp $
+ * $Id: log.c,v 1.38 2002-06-22 01:06:09 castaglia Exp $
  */
 
 /* History Log:
@@ -821,8 +821,7 @@ void log_discard(void)
   syslog_discard = TRUE;
 }
 
-void log(int priority, int f, char *s)
-{
+static void log(int priority, int f, char *s) {
   int maxpriority;
   char serverinfo[1024];
   
@@ -840,15 +839,15 @@ void log(int priority, int f, char *s)
     }
   }
   
-  if(logstderr) {
+  if (logstderr) {
     fprintf(stderr, "%s - %s\n", serverinfo, s);
     return;
   }
   
-  if(syslog_discard)
+  if (syslog_discard)
     return;
   
-  if(syslog_fd != -1) {
+  if (syslog_fd != -1) {
     char buf[LOGBUFFER_SIZE] = {'\0'};
     time_t tt = time(NULL);
     struct tm *t;
@@ -857,7 +856,7 @@ void log(int priority, int f, char *s)
     strftime(buf, sizeof(buf), "%b %d %H:%M:%S ", t);
     buf[sizeof(buf) - 1] = '\0';
     
-    if(serverinfo && *serverinfo) {
+    if (*serverinfo) {
       snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
 	       "%s proftpd[%u] %s: %s\n", syslog_hostname,
 	       (unsigned int) getpid(), serverinfo, s);
@@ -872,25 +871,25 @@ void log(int priority, int f, char *s)
     return;
   }
   
-  if(set_facility != -1)
+  if (set_facility != -1)
     f = set_facility;
 
-  if(f != facility || !syslog_open)
+  if (f != facility || !syslog_open)
     openlog("proftpd", LOG_NDELAY | LOG_PID, f);
   
-  if((maxpriority = get_param_int(main_server->conf, "SyslogLevel",
+  if ((maxpriority = get_param_int(main_server->conf, "SyslogLevel",
 				  FALSE)) != -1)
-    if(priority > maxpriority)
+    if (priority > maxpriority)
       return;
   
-  if(serverinfo && *serverinfo)
+  if (*serverinfo)
     syslog(priority, "%s - %s\n", serverinfo, s);
   else
     syslog(priority, "%s\n", s);
   
-  if(!syslog_open)
+  if (!syslog_open)
     closelog();
-  else if(f != facility)
+  else if (f != facility)
     openlog("proftpd", LOG_NDELAY | LOG_PID, facility);
 }
 

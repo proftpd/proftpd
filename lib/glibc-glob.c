@@ -54,7 +54,6 @@ char *alloca ();
 
 #include <stdio.h>		/* Needed on stupid SunOS for assert.  */
 
-
 /* Comment out all this code if we are using the GNU C Library, and are not
    actually compiling the library itself.  This code is part of the GNU C
    Library, but also included in many other GNU distributions.  Compiling
@@ -65,7 +64,6 @@ char *alloca ();
 
 /* Proftpd modification: always undefine __GNU_LIBRARY__ because we are not
  * compiling as part of glibc.
- * jss - 3/17/2001
  */
 
 #undef __GNU_LIBRARY__
@@ -180,7 +178,6 @@ extern int errno;
   CONVERT_D_TYPE (d64, d32)
 #endif
 
-
 #if (defined POSIX || defined WINDOWS32) && !defined __GNU_LIBRARY__
 /* Posix does not require that the d_ino field be present, and some
    systems do not provide it. */
@@ -253,9 +250,7 @@ static void *
 #  else
 static char *
 # endif
-my_realloc (p, n)
-     char *p;
-     unsigned int n;
+my_realloc (void *p, size_t n)
 {
   /* These casts are the for sake of the broken Ultrix compiler,
      which warns of illegal pointer combinations otherwise.  */
@@ -266,7 +261,6 @@ my_realloc (p, n)
 # define	realloc	my_realloc
 # endif /* __SASC */
 #endif /* __GNU_LIBRARY__ */
-
 
 #if !defined __alloca && !defined __GNU_LIBRARY__
 
@@ -374,18 +368,16 @@ static int glob_in_dir __P ((const char *pattern, const char *directory,
 			     glob_t *pglob));
 
 /* Prototype __glob_pattern_p to avoid compiler warning.
- * jss - 3/17/2001
  */
 #if !defined _LIBC || !defined NO_GLOB_PATTERN_P
 /* Return nonzero if PATTERN contains any metacharacters.
    Metacharacters can be quoted with backslashes if QUOTE is nonzero.  */
-int __glob_pattern_p (const char *pattern, int quote);
+static int __glob_pattern_p (const char *pattern, int quote);
 #endif /* NO_GLOB_PATTERN_P */
 
 #if !defined _LIBC || !defined GLOB_ONLY_P
 static int prefix_array __P ((const char *prefix, char **array, size_t n));
 static int collated_compare __P ((const __ptr_t, const __ptr_t));
-
 
 /* Find the end of the sub-pattern in a brace expression.  We define
    this as an inline function if the compiler permits.  */
@@ -394,8 +386,7 @@ static
 inline
 #endif
 const char *
-next_brace_sub (begin)
-     const char *begin;
+next_brace_sub (const char *begin)
 {
   unsigned int depth = 0;
   const char *cp = begin;
@@ -433,7 +424,6 @@ next_brace_sub (begin)
 }
 
 #endif /* !GLOB_ONLY_P */
-
 
 /* Do glob searching for PATTERN, placing results in PGLOB.
    The bits defined above may be set in FLAGS.
@@ -1263,12 +1253,11 @@ prefix_array (const char *dirname, char **array, size_t n)
   return 0;
 }
 
-
 /* We must not compile this function twice.  */
 #if !defined _LIBC || !defined NO_GLOB_PATTERN_P
 /* Return nonzero if PATTERN contains any metacharacters.
    Metacharacters can be quoted with backslashes if QUOTE is nonzero.  */
-int
+static int
 __glob_pattern_p (const char *pattern, int quote)
 {
   register const char *p;
@@ -1304,7 +1293,6 @@ weak_alias (__glob_pattern_p, glob_pattern_p)
 #endif
 
 #endif /* !GLOB_ONLY_P */
-
 
 /* Like `glob', but PATTERN is a final pathname component,
    and matches are searched for in DIRECTORY.

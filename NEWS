@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.187 2002-06-22 00:47:07 castaglia Exp $
+$Id: NEWS,v 1.188 2002-06-22 01:06:09 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -15,6 +15,7 @@ CVS
 - Bug 1650 - Mergedown bug with LsDefaultOptions directive fixed.
 - Bug 1306 - Added a TimeoutSession directive that can be used to set a maximum
              time limit on an entire session.
+- Bug 1643 - Cleaned up several source code files.
 
 1.2.5 - Released 2002-06-08
 ---------------------------------

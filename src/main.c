@@ -26,21 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.84 2002-06-11 14:54:41 castaglia Exp $
- */
-
-/*
- * History Log:
- *
- * 9/21/97 current: 0.99.0pl6, next: 0.99.0pl7
- *   Removed the -o (--core) option, because some kernels won't
- *   produce a core dump after the euid/egid have changed.  If
- *   anyone knows a way around this, please let me know.
- * 4/28/97 current: 0.99.0pl1, next: 0.99.0pl2
- *   Added checking for <Limit LOGIN> in fork_server(), in order
- *   to disconnect any connections which can never be authorized.
- * 4/24/97 current: 0.99.0pl1, next: 0.99.0pl2
- *   Removed include/proftpd_conf.h; unnecessary header file
+ * $Id: main.c,v 1.85 2002-06-22 01:06:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -116,29 +102,34 @@ typedef struct _binding {
   char       islocalhost;		/* if handles localhost */
 } binding_t;
 
-void addl_bindings(server_rec*);
+static void addl_bindings(server_rec *);
 
 extern xaset_t *servers;
 
 session_t session;
-int master = TRUE;			/* Master daemon in standalone mode */
-int standalone = 0;			/* If in standalone mode */
+
+/* Is this daemon operating in standalone mode? */
+static unsigned char is_standalone = FALSE;
+
+/* Is this process the master standalone daemon process? */
+static unsigned char is_master = TRUE;
+
 pid_t mpid = 0;				/* Master pid */
 int rehash = 0;				/* Performing rehash? */
 struct rehash *rehash_list = NULL;	/* Pre-rehash callbacks */
-binding_t *bind_list = NULL;
-pool *bind_pool = NULL;
+static binding_t *bind_list = NULL;
+static pool *bind_pool = NULL;
 
 uid_t daemon_uid;
 gid_t daemon_gid;
 array_header *daemon_gids;
 
-time_t shut = (time_t)0,deny = (time_t)0, disc = (time_t)0;
-char shutmsg[81] = {'\0'};
+static time_t shut = 0, deny = 0, disc = 0;
+static char shutmsg[81] = {'\0'};
 
-xaset_t *children = NULL;
+static xaset_t *child_list = NULL;
 static unsigned char have_dead_child = FALSE;
-static unsigned long n_children = 0;
+static unsigned long child_listlen = 0;
 
 response_t *resp_list = NULL,*resp_err_list = NULL;
 static pool *resp_pool = NULL;
@@ -188,12 +179,11 @@ static void finish_terminate(void);
 static int abort_core = 0;
 #endif /* DEBUG_CORE */
 
-char *config_filename = CONFIG_FILE_PATH;
+static char *config_filename = CONFIG_FILE_PATH;
 
-int add_binding(server_rec *server, p_in_addr_t *ipaddr, conn_t *listen,
-                char isdefault, char islocalhost)
-{
-  binding_t *b;
+static int add_binding(server_rec *server, p_in_addr_t *ipaddr, conn_t *listen,
+    char isdefault, char islocalhost) {
+  binding_t *b = NULL;
 
   for(b = bind_list; b; b=b->next)
     if(b->ipaddr.s_addr == ipaddr->s_addr &&
@@ -205,7 +195,7 @@ int add_binding(server_rec *server, p_in_addr_t *ipaddr, conn_t *listen,
       return -1;
     }
 
-  if(!bind_pool)
+  if (!bind_pool)
     bind_pool = make_sub_pool(permanent_pool);
 
   b = palloc(bind_pool,sizeof(binding_t));
@@ -222,8 +212,7 @@ int add_binding(server_rec *server, p_in_addr_t *ipaddr, conn_t *listen,
   return 0;
 }
 
-server_rec *find_binding(p_in_addr_t *ipaddr, int port)
-{
+static server_rec *find_binding(p_in_addr_t *ipaddr, int port) {
   binding_t *b,*local_b = NULL,*default_b = NULL;
 
   for(b = bind_list; b; b=b->next) {
@@ -263,8 +252,7 @@ server_rec *find_binding(p_in_addr_t *ipaddr, int port)
   return NULL;
 }
 
-conn_t *accept_binding(fd_set *rfd, int *lfd)
-{
+static conn_t *accept_binding(fd_set *rfd, int *lfd) {
   binding_t *b;
   int fd;
 
@@ -293,8 +281,7 @@ conn_t *accept_binding(fd_set *rfd, int *lfd)
   return NULL;
 }
 
-int listen_binding(fd_set *rfd, int max_fd)
-{
+static int listen_binding(fd_set *rfd, int max_fd) {
   binding_t *b;
 
   for(b = bind_list; b; b=b->next) {
@@ -319,8 +306,8 @@ static int semaphore_fds(fd_set *rfd, int max_fd)
 {
   pidrec_t *p;
 
-  if (children)
-    for(p = (pidrec_t*)children->xas_list; p; p=p->next) {
+  if (child_list)
+    for(p = (pidrec_t*) child_list->xas_list; p; p=p->next) {
       if(p->sempipe != -1) {
 	FD_SET(p->sempipe,rfd);
 	if(p->sempipe > max_fd)
@@ -631,8 +618,8 @@ void set_auth_check(int (*ck)(cmd_rec*))
   main_check_auth = ck;
 }
 
-void end_login_noexit(void)
-{
+static void end_login_noexit(void) {
+
   /* Run all the exit handlers */
   run_exit_handlers();
 
@@ -672,7 +659,7 @@ void main_exit(void *pv, void *lv, void *ev, void *dummy)
   
   log_pri(pri, "%s", log);
   
-  if(standalone && master) {
+  if (is_standalone && is_master) {
     log_pri(LOG_NOTICE, "ProFTPD %s standalone mode SHUTDOWN", VERSION);
     if(!nodaemon) {
       PRIVS_ROOT
@@ -684,9 +671,8 @@ void main_exit(void *pv, void *lv, void *ev, void *dummy)
   end_login(exitcode);
 }
 
-void shutdown_exit(void *d1, void *d2, void *d3, void *d4)
-{
-  if(check_shutmsg(&shut,&deny,&disc,shutmsg,sizeof(shutmsg)) == 1) {
+static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
+  if (check_shutmsg(&shut, &deny, &disc, shutmsg, sizeof(shutmsg)) == 1) {
     char *user;
     time_t now;
     char *msg;
@@ -706,17 +692,17 @@ void shutdown_exit(void *d1, void *d2, void *d3, void *d4)
     else
       user = "NONE";
 
-    msg = sreplace(permanent_pool,shutmsg,
-                   "%s",pstrdup(permanent_pool,fmt_time(shut)),
-                   "%r",pstrdup(permanent_pool,fmt_time(deny)),
-                   "%d",pstrdup(permanent_pool,fmt_time(disc)),
-		   "%C",(session.cwd[0] ? session.cwd : "(none)"),
-		   "%L",serveraddress,
-		   "%R",(session.c && session.c->remote_name ?
+    msg = sreplace(permanent_pool, shutmsg,
+                   "%s", pstrdup(permanent_pool, fmt_time(shut)),
+                   "%r", pstrdup(permanent_pool, fmt_time(deny)),
+                   "%d", pstrdup(permanent_pool, fmt_time(disc)),
+		   "%C", (session.cwd[0] ? session.cwd : "(none)"),
+		   "%L", serveraddress,
+		   "%R", (session.c && session.c->remote_name ?
                          session.c->remote_name : "(unknown)"),
-		   "%T",pstrdup(permanent_pool,fmt_time(now)),
-		   "%U",user,
-		   "%V",main_server->ServerName,
+		   "%T", pstrdup(permanent_pool,fmt_time(now)),
+		   "%U", user,
+		   "%V", main_server->ServerName,
                    NULL );
 
     send_response_async(R_421,"FTP server shutting down - %s",msg);
@@ -982,8 +968,7 @@ static int _idle_timeout(CALLBACK_FRAME)
   return 0;
 }
 
-void cmd_loop(server_rec *server, conn_t *c)
-{
+static void cmd_loop(server_rec *server, conn_t *c) {
   static int CmdBufSize = -1;
   config_rec *id;
   char buf[1024] = {'\0'};
@@ -1103,8 +1088,7 @@ void register_rehash(void *data, void (*fp)(void*))
   rehash_list = r;
 }
 
-void main_rehash(void *d1,void *d2,void *d3,void *d4)
-{
+static void main_rehash(void *d1, void *d2, void *d3, void *d4) {
   struct rehash *rh;
   server_rec *s,*snext,*old_main;
   xaset_t *old_servers;
@@ -1117,7 +1101,7 @@ void main_rehash(void *d1,void *d2,void *d3,void *d4)
   old_servers = servers;
   old_main = main_server;
 
-  if(master && mpid) {
+  if (is_master && mpid) {
     log_pri(LOG_NOTICE,"received SIGHUP -- master server rehashing configuration file.");
 
     /* Make sure none of our children haven't completed start up */
@@ -1132,7 +1116,7 @@ void main_rehash(void *d1,void *d2,void *d3,void *d4)
 	i = select(max_fd + 1, &rfd, NULL, NULL, NULL);
 
 	if(i > 0)
-	  for(cp = (pidrec_t*)children->xas_list; cp; cp = cp->next)
+	  for(cp = (pidrec_t*) child_list->xas_list; cp; cp = cp->next)
 	    if(cp->sempipe != -1 && FD_ISSET(cp->sempipe,&rfd)) {
 	      close(cp->sempipe);
 	      cp->sempipe = -1;
@@ -1256,7 +1240,7 @@ static int _dup_low_fd(int fd)
   return fd;
 }
 
-void fork_server(int fd, conn_t *l, int nofork) {
+static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   server_rec *s = NULL, *s_saved = NULL, *serv = NULL;
   conn_t *conn = NULL;
   unsigned char *ident_lookups = NULL;
@@ -1268,7 +1252,7 @@ void fork_server(int fd, conn_t *l, int nofork) {
   sigset_t sigset;
   pool *pidrec_pool = NULL, *set_pool = NULL;
 
-  if(!nofork) {
+  if (!nofork) {
     pidrec_t *cpid;
 
     /* A race condition exists on heavily loaded servers where the parent
@@ -1306,31 +1290,37 @@ void fork_server(int fd, conn_t *l, int nofork) {
 
     switch((pid = fork())) {
     case 0: /* child */
-      master = FALSE;		/* We aren't the master anymore */
+
+      /* No longer the master process. */
+      is_master = FALSE;
       sigprocmask(SIG_UNBLOCK,&sigset,NULL);
 
-      /* don't need the read side of the semaphore pipe */
+      /* No longer need the read side of the semaphore pipe. */
       close(sempipe[0]);
       break;
+
     case -1:
       sigprocmask(SIG_UNBLOCK,&sigset,NULL);
-      log_pri(LOG_ERR,"fork(): %s",strerror(errno));
+      log_pri(LOG_ERR,"fork(): %s", strerror(errno));
 
-      /* the parent doesn't need the socket open */
-      close(fd); close(sempipe[0]); close(sempipe[1]);
+      /* The parent doesn't need the socket open. */
+      close(fd);
+      close(sempipe[0]);
+      close(sempipe[1]);
 
       return;
+
     default: /* parent */
       /* The parent doesn't need the socket open */
       close(fd);
 
-      if (!children) {
+      if (!child_list) {
 
         /* allocate a subpool from permanent_pool for the set
          */
         set_pool = make_sub_pool(permanent_pool);
-        children = xaset_create(set_pool, NULL);
-        children->mempool = set_pool;
+        child_list = xaset_create(set_pool, NULL);
+        child_list->mempool = set_pool;
 
         /* now, make a subpool for the pidrec_t to be allocated
          */
@@ -1340,15 +1330,15 @@ void fork_server(int fd, conn_t *l, int nofork) {
 
         /* allocate a subpool for the pidrec_t to be allocated
          */
-        pidrec_pool = make_sub_pool(children->mempool);
+        pidrec_pool = make_sub_pool(child_list->mempool);
       }
 
       cpid = (pidrec_t *) pcalloc(pidrec_pool, sizeof(pidrec_t));
       cpid->pid = pid;
       cpid->sempipe = sempipe[0];
       cpid->pool = pidrec_pool;
-      xaset_insert(children,(xasetmember_t*)cpid);
-      n_children++;
+      xaset_insert(child_list,(xasetmember_t*)cpid);
+      child_listlen++;
 
       close(sempipe[1]);
       /* Unblock the signals now as sig_child() will catch
@@ -1502,7 +1492,7 @@ void fork_server(int fd, conn_t *l, int nofork) {
   }
 
   /* Check and see if we are shutdown */
-  if(shutdownp) {
+  if (shutdownp) {
     time_t now;
 
     time(&now);
@@ -1518,17 +1508,17 @@ void fork_server(int fd, conn_t *l, int nofork) {
         serveraddress = pstrdup(main_server->pool, inet_ntoa(*masq_addr));
       }
 
-      reason = sreplace(permanent_pool,shutmsg,
-                   "%s",pstrdup(permanent_pool,fmt_time(shut)),
-                   "%r",pstrdup(permanent_pool,fmt_time(deny)),
-                   "%d",pstrdup(permanent_pool,fmt_time(disc)),
-		   "%C",(session.cwd[0] ? session.cwd : "(none)"),
-		   "%L",serveraddress,
-		   "%R",(session.c && session.c->remote_name ?
+      reason = sreplace(permanent_pool, shutmsg,
+                   "%s", pstrdup(permanent_pool, fmt_time(shut)),
+                   "%r", pstrdup(permanent_pool, fmt_time(deny)),
+                   "%d", pstrdup(permanent_pool, fmt_time(disc)),
+		   "%C", (session.cwd[0] ? session.cwd : "(none)"),
+		   "%L", serveraddress,
+		   "%R", (session.c && session.c->remote_name ?
                          session.c->remote_name : "(unknown)"),
-		   "%T",pstrdup(permanent_pool,fmt_time(now)),
-		   "%U","NONE",
-		   "%V",main_server->ServerName,
+		   "%T", pstrdup(permanent_pool, fmt_time(now)),
+		   "%U", "NONE",
+		   "%V", main_server->ServerName,
                    NULL );
 
       log_auth(LOG_NOTICE, "connection refused (%s) from %s [%s]",
@@ -1605,12 +1595,11 @@ void fork_server(int fd, conn_t *l, int nofork) {
   cmd_loop(serv,conn);
 }
 
-void disc_children(void)
-{
+static void disc_children(void) {
   sigset_t sigset;
   pidrec_t *cp;
 
-  if(disc && disc <= time(NULL) && children) {
+  if(disc && disc <= time(NULL) && child_list) {
     sigemptyset(&sigset);
     sigaddset(&sigset,SIGTERM);
     sigaddset(&sigset,SIGCHLD);
@@ -1620,7 +1609,7 @@ void disc_children(void)
     sigprocmask(SIG_BLOCK,&sigset,NULL);
 
     PRIVS_ROOT
-    for(cp = (pidrec_t*)children->xas_list; cp; cp=cp->next)
+    for(cp = (pidrec_t*) child_list->xas_list; cp; cp=cp->next)
       kill(cp->pid,SIGUSR1);
     PRIVS_RELINQUISH
 
@@ -1628,8 +1617,7 @@ void disc_children(void)
   }
 }
 
-void server_loop(void)
-{
+static void server_loop(void) {
   fd_set rfd;
   conn_t *listen;
   int fd, max_fd;
@@ -1647,11 +1635,12 @@ void server_loop(void)
 
     FD_ZERO(&rfd); max_fd = 0;
     max_fd = listen_binding(&rfd,max_fd);
+
     /* Monitor children pipes */
     max_fd = semaphore_fds(&rfd,max_fd);
     
     /* Check for ftp shutdown message file */
-    switch(check_shutmsg(&shut,&deny,&disc,shutmsg,sizeof(shutmsg))) {
+    switch (check_shutmsg(&shut, &deny, &disc, shutmsg, sizeof(shutmsg))) {
     case 1: if(!shutdownp) disc_children(); shutdownp = 1; break;
     case 0: shutdownp = 0; deny = disc = (time_t)0; break;
     }
@@ -1674,19 +1663,18 @@ void server_loop(void)
       /* Check the value of the deny time_t struct w/ the current time.
        * If the deny time has passed, log that all incoming connections
        * will be refused.  If not, note the date at which they will be
-       * refused in the future. -- TJS
+       * refused in the future.
        */
       double difference;
       time_t currentTime = time(NULL);
       
-      if((difference = difftime(deny, currentTime)) < 0.0) {
-        log_pri(LOG_ERR,
-		"/etc/shutmsg present: all incoming connections will "
-		"be refused.");
+      if ((difference = difftime(deny, currentTime)) < 0.0) {
+        log_pri(LOG_ERR, SHUTMSG_PATH " present: all incoming connections will "
+          "be refused.");
+
       } else {
-        log_pri(LOG_ERR,
-		"/etc/shutmsg present: incoming connections will be "
-		"denied starting %s", CHOP(ctime(&deny)));
+        log_pri(LOG_ERR, SHUTMSG_PATH " present: incoming connections will be "
+          "denied starting %s", CHOP(ctime(&deny)));
       }
     }
     
@@ -1705,8 +1693,8 @@ void server_loop(void)
       sigprocmask(SIG_BLOCK,&sigset,NULL);
 
       have_dead_child = FALSE;
-      if(children) {
-        for(cp = (pidrec_t*)children->xas_list; cp; cp=cpnext) {
+      if (child_list) {
+        for(cp = (pidrec_t*) child_list->xas_list; cp; cp=cpnext) {
           cpnext = cp->next;
 
           /* if the pidrec_t is marked "dead", remove it from the set,
@@ -1715,16 +1703,16 @@ void server_loop(void)
           if (cp->dead) {
 	    if(cp->sempipe != -1)
 	      close(cp->sempipe);
-            xaset_remove(children,(xasetmember_t*)cp);
+            xaset_remove(child_list, (xasetmember_t *) cp);
             destroy_pool(cp->pool);
+          }
         }
-      }
       }
 
       /* Don't need the pool anymore */
-      if(!children->xas_list) {
-        destroy_pool(children->mempool);
-        children = NULL;
+      if (!child_list->xas_list) {
+        destroy_pool(child_list->mempool);
+        child_list = NULL;
       }
 
       sigprocmask(SIG_UNBLOCK,&sigset,NULL);
@@ -1760,10 +1748,10 @@ void server_loop(void)
       continue;
     
     /* See if child semaphore pipes have signaled */
-    if (children) {
+    if (child_list) {
       pidrec_t *cp = NULL;
 
-      for(cp = (pidrec_t*)children->xas_list; cp; cp = cp->next)
+      for(cp = (pidrec_t*) child_list->xas_list; cp; cp = cp->next)
 	if(cp->sempipe != -1 && FD_ISSET(cp->sempipe,&rfd)) {
 	  close(cp->sempipe);
 	  cp->sempipe = -1;
@@ -1780,11 +1768,11 @@ void server_loop(void)
 
     listen = accept_binding(&rfd, &fd);
     if(listen) {
-      if(ServerMaxInstances && n_children >= ServerMaxInstances) {
+      if(ServerMaxInstances && child_listlen >= ServerMaxInstances) {
         log_pri(LOG_WARNING,"MaxInstances (%d) reached, new connection denied.",ServerMaxInstances);
         close(fd);
       } else
-        fork_server(fd,listen,FALSE);
+        fork_server(fd, listen, FALSE);
     }
   }
 }
@@ -1864,7 +1852,6 @@ static void handle_signals(void) {
  * in order to re-read configuration files, and is sent to all
  * children by the master.
  */
-
 static RETSIGTYPE sig_rehash(int signo) {
   recvd_signal_flags |= RECEIVED_SIG_REHASH;
   signal(SIGHUP, sig_rehash);
@@ -1872,7 +1859,6 @@ static RETSIGTYPE sig_rehash(int signo) {
 
 /* sig_debug outputs some basic debugging info
  */
-
 static RETSIGTYPE sig_debug(int signo) {
   recvd_signal_flags |= RECEIVED_SIG_DEBUG;
   signal(SIGHUP, sig_debug);
@@ -1884,7 +1870,6 @@ static RETSIGTYPE sig_debug(int signo) {
  * dies, otherwise a function is scheduled to attempt to display
  * the shutdown reason.
  */
-
 static RETSIGTYPE sig_disconnect(int signo) {
 
   /* If this is an anonymous session, or a transfer is in progress,
@@ -1986,11 +1971,11 @@ static void handle_chld(void) {
    * child list while modifying it.
    */
   while ((child_pid = waitpid(-1, NULL, WNOHANG)) > 0) {
-    if (children) {
-      for (child = (pidrec_t *) children->xas_list; child; child = child_next) {
+    if (child_list) {
+      for (child = (pidrec_t *) child_list->xas_list; child; child = child_next) {
         child_next = child->next;
         if (child->pid == child_pid) {
-          n_children--;
+          child_listlen--;
           have_dead_child = TRUE;
           child->dead = TRUE;
         }
@@ -2016,12 +2001,12 @@ static void handle_terminate(void) {
   pidrec_t *pid = NULL;
 
   /* Do not log if we are a child that has been terminated. */
-  if (master) {
+  if (is_master) {
 
     /* Send a SIGTERM to all our children */
-    if (children) {
+    if (child_list) {
       PRIVS_ROOT
-      for (pid = (pidrec_t *) children->xas_list; pid; pid = pid->next)
+      for (pid = (pidrec_t *) child_list->xas_list; pid; pid = pid->next)
         kill(pid->pid, SIGTERM);
       PRIVS_RELINQUISH
     }
@@ -2034,7 +2019,7 @@ static void handle_terminate(void) {
 
 static void finish_terminate(void) {
 
-  if (master && mpid == getpid()) {
+  if (is_master && mpid == getpid()) {
     PRIVS_ROOT
 
     /* Clean up the scoreboard file. */
@@ -2042,7 +2027,7 @@ static void finish_terminate(void) {
     log_rm_run();
 
     /* Do not need the pidfile any longer. */
-    if (standalone && !nodaemon)
+    if (is_standalone && !nodaemon)
       unlink(PidPath);
 
     /* Run any exit handlers registered in the master process here, so that
@@ -2062,7 +2047,7 @@ static void finish_terminate(void) {
 
     PRIVS_RELINQUISH
 
-    if (standalone)
+    if (is_standalone)
       log_pri(LOG_NOTICE, "ProFTPD " VERSION " standalone mode SHUTDOWN");
   }
 
@@ -2258,8 +2243,7 @@ void pr_write_pid(void)
   PRIVS_RELINQUISH
 }
   
-void start_daemon(void)
-{
+static void daemonize(void) {
 #ifndef HAVE_SETSID
   int ttyfd;
 #endif
@@ -2306,11 +2290,10 @@ void start_daemon(void)
 # endif
 #endif
 
-  fs_chdir("/",0);
+  fs_chdir("/", 0);
 }
 
-void addl_bindings(server_rec *s)
-{
+static void addl_bindings(server_rec *s) {
   config_rec *c;
   conn_t *listen;
   p_in_addr_t *ipaddr;
@@ -2342,8 +2325,7 @@ void addl_bindings(server_rec *s)
   }
 }
 
-void inetd_main(void)
-{
+static void inetd_main(void) {
   server_rec *s;
   int isdefault;
 
@@ -2395,28 +2377,29 @@ void inetd_main(void)
   }
 
   /* Check our shutdown status */
-  if(check_shutmsg(&shut,&deny,&disc,shutmsg,sizeof(shutmsg)) == 1)
+  if (check_shutmsg(&shut, &deny, &disc, shutmsg, sizeof(shutmsg)) == 1)
     shutdownp = 1;
 
   /* Finally, call right into fork_server() to start servicing the
    * connection immediately
    */
-  fork_server(STDIN_FILENO,main_server->listen,TRUE);
+  fork_server(STDIN_FILENO, main_server->listen, TRUE);
 }
 
-void standalone_main(void)
-{
-  server_rec *s;
-  int isdefault;
+static void standalone_main(void) {
+  server_rec *s = NULL;
+  unsigned char default_server = FALSE;
 
-  standalone = 1;
-  if(nodaemon) {
+  is_standalone = TRUE;
+
+  if (nodaemon) {
     log_stderr(TRUE);
     close(fileno(stdin));
     close(fileno(stdout));
+
   } else {
     log_stderr(FALSE);
-    start_daemon();
+    daemonize();
   }
 
   mpid = getpid();
@@ -2436,13 +2419,13 @@ void standalone_main(void)
   else
     main_server->listen = NULL;
 
-  isdefault = get_param_int(main_server->conf, "DefaultServer", FALSE);
-  if(isdefault != 1)
-    isdefault = 0;
+  default_server = get_param_int(main_server->conf, "DefaultServer", FALSE);
+  if (default_server != TRUE)
+    default_server = FALSE;
 
-  if(main_server->ServerPort || isdefault) {
+  if (main_server->ServerPort || default_server) {
     add_binding(main_server, main_server->ipaddr, main_server->listen,
-                isdefault,1);
+                default_server, 1);
 
     addl_bindings(main_server);
   }
@@ -2451,9 +2434,9 @@ void standalone_main(void)
     if(s->ServerPort != main_server->ServerPort || SocketBindTight ||
        !main_server->listen) {
 
-      isdefault = get_param_int(s->conf,"DefaultServer",FALSE);
-      if(isdefault != 1)
-        isdefault = 0;
+      default_server = get_param_int(s->conf,"DefaultServer",FALSE);
+      if (default_server != TRUE)
+        default_server = FALSE;
 
       if(s->ServerPort) {
 
@@ -2461,29 +2444,32 @@ void standalone_main(void)
                       s->pool,servers,-1,
 	  	      (SocketBindTight ? s->ipaddr : NULL),
                       s->ServerPort,FALSE);        
-        add_binding(s,s->ipaddr,s->listen,isdefault,0);
+        add_binding(s,s->ipaddr,s->listen,default_server,0);
         addl_bindings(s);
-      } else if(isdefault) {
+
+      } else if (default_server) {
         s->listen = NULL;
-        add_binding(s,s->ipaddr,s->listen,isdefault,0);
+        add_binding(s,s->ipaddr,s->listen,default_server,0);
         addl_bindings(s);
+
       } else
         s->listen = NULL;
+
     } else {
       /* Because this server is sharing the connection with the
        * main server, we need a cleanup handler to remove
        * the server's reference when the original connection's
        * pool is destroyed.
        */
-      isdefault = get_param_int(s->conf,"DefaultServer",FALSE);
-      if(isdefault != 1)
-        isdefault = 0;
+      default_server = get_param_int(s->conf,"DefaultServer",FALSE);
+      if (default_server != TRUE)
+        default_server = FALSE;
        
       s->listen = main_server->listen;
       register_cleanup(s->listen->pool,&s->listen,
                        _server_conn_cleanup,
                        _server_conn_cleanup);
-      add_binding(s,s->ipaddr,NULL,isdefault,0);
+      add_binding(s,s->ipaddr,NULL,default_server,0);
       addl_bindings(s);
     }
 
@@ -2497,7 +2483,7 @@ void standalone_main(void)
 extern char *optarg;
 extern int optind,opterr,optopt;
 
-struct option opts[] = {
+static struct option opts[] = {
   { "nodaemon",	  0, NULL, 'n' },
   { "debug",	  1, NULL, 'd' },
   { "define",	  1, NULL, 'D' },
@@ -2514,7 +2500,7 @@ struct option opts[] = {
   { NULL,	0, NULL,  0  }
 };
 
-struct option_help {
+static struct option_help {
   char *long_opt,*short_opt,*desc;
 } opts_help[] = {
   { "--help", "-h",
@@ -2543,8 +2529,7 @@ struct option_help {
   { NULL, NULL, NULL }
 };
 
-void show_usage(int exit_code)
-{
+static void show_usage(int exit_code) {
   struct option_help *h;
 
   printf("usage: proftpd [options]\n");
@@ -2844,9 +2829,12 @@ int main(int argc, char **argv, char **envp)
   install_signal_handlers();
   set_rlimits();
 
-  switch(ServerType) {
-  case SERVER_STANDALONE: standalone_main();
-  case SERVER_INETD:      inetd_main();
+  switch (ServerType) {
+    case SERVER_STANDALONE:
+      standalone_main();
+
+    case SERVER_INETD:
+      inetd_main();
   }
 
   return 0;

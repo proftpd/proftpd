@@ -1,5 +1,6 @@
 CC=@CC@
 RANLIB=@RANLIB@
+AR=ar
 
 top_srcdir=@top_srcdir@
 srcdir=@srcdir@
@@ -13,7 +14,7 @@ include ../Make.rules
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
 libsupp.a: $(LIB_OBJS)
-	ar rc libsupp.a $(LIB_OBJS)
+	$(AR) rc libsupp.a $(LIB_OBJS)
 	$(RANLIB) libsupp.a
 
 all:

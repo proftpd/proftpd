@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.56 2002-06-22 00:24:50 castaglia Exp $
+ * $Id: dirtree.c,v 1.57 2002-06-22 01:06:09 castaglia Exp $
  */
 
 /* History:
@@ -73,7 +73,7 @@ array_header *server_defines = NULL;
 
 /* Used only while reading configuration files */
 
-struct {
+static struct {
   pool *tpool;
   array_header *sstack,*cstack;
   server_rec **curserver;
@@ -294,8 +294,8 @@ char *get_config_line(char *buf, size_t len) {
   return NULL;
 }
 
-cmd_rec *get_config_cmd(pool *ppool) {
-  char buf[TUNABLE_BUFFER_SIZE] = {'\0'}, *word;
+static cmd_rec *get_config_cmd(pool *ppool) {
+  char buf[TUNABLE_BUFFER_SIZE] = {'\0'}, *word = NULL;
   cmd_rec *new_cmd = NULL;
   pool *new_pool = NULL;
   array_header *tarr = NULL;
@@ -355,8 +355,7 @@ cmd_rec *get_config_cmd(pool *ppool) {
   return NULL;
 }
 
-void init_dyn_stacks(pool *p,config_rec *top)
-{
+static void init_dyn_stacks(pool *p, config_rec *top) {
   conf.sstack = make_array(p,1,sizeof(server_rec*));
   conf.curserver = (server_rec**)push_array(conf.sstack);
   *conf.curserver = main_server;
@@ -367,8 +366,11 @@ void init_dyn_stacks(pool *p,config_rec *top)
   *conf.curconfig = top;
 }
 
-void init_conf_stacks(void)
-{
+static void free_dyn_stacks(void) {
+  memset(&conf, '\0', sizeof(conf));
+}
+
+void init_conf_stacks(void) {
   pool *pool = make_sub_pool(permanent_pool);
 
   conf.tpool = pool;
@@ -380,15 +382,9 @@ void init_conf_stacks(void)
   *conf.curconfig = NULL;
 }
 
-void free_dyn_stacks(void)
-{
-  memset(&conf, 0, sizeof(conf));
-}
-
-void free_conf_stacks(void)
-{
+void free_conf_stacks(void) {
   destroy_pool(conf.tpool);
-  memset(&conf, 0, sizeof(conf));
+  memset(&conf, '\0', sizeof(conf));
 }
 
 /* Used by modules to start/end configuration sections */
@@ -785,34 +781,6 @@ config_rec *dir_match_path(pool *p, char *path)
   return res;
 }
 
-int dir_get_param(pool *pp,char *path,char *param)
-{
-  char *fullpath,*tmp;
-  pool *p;
-  config_rec *c;
-
-  p = make_sub_pool(pp);
-
-  if(*path != '/')
-    fullpath = pstrcat(p,session.cwd,"/",path,NULL);
-  else
-    fullpath = path;
-
-  if((tmp = dir_realpath(p,fullpath)) != NULL)
-    fullpath = tmp;
-
-  if(session.anon_root)
-    fullpath = pdircat(p,session.anon_root,fullpath,NULL);
-
-  c = dir_match_path(p,fullpath);
-
-  destroy_pool(p);
-
-  if(c)
-    return get_param_int(c->subset,param,FALSE);
-  return -1;
-}
-
 static int _dir_check_op(pool *p, xaset_t *c, int op, uid_t uid, gid_t gid,
     mode_t mode) {
   int i, res = 1, user_perms = 0;
@@ -949,16 +917,6 @@ int dir_check_op_mode(pool *p,char *path,int op,
     res = _dir_check_op(p,c,op,uid,gid,mode);
 
   return res;  
-}
-
-int dir_check_op(pool *pp,char *path,int op)
-{
-  struct stat sbuf;
-
-  if(fs_stat(path,&sbuf) == -1)
-    return 1;
-
-  return dir_check_op_mode(pp,path,op,sbuf.st_uid,sbuf.st_gid,sbuf.st_mode);
 }
 
 static int _check_user_access(xaset_t *conf, char *name)
@@ -2010,17 +1968,16 @@ static void _reorder_dirs(xaset_t *set, int mask)
       _reorder_dirs(c->subset,mask);
 }
 
-void debug_dump_config(xaset_t *s,char *indent)
-{
-  config_rec *c;
+static void debug_dump_config(xaset_t *s,char *indent) {
+  config_rec *c = NULL;
 
-  if(!indent)
+  if (!indent)
     indent = "";
 
-  for(c = (config_rec*)s->xas_list; c; c=c->next) {
-    log_debug(DEBUG5,"%s%s",indent,c->name);
-    if(c->subset)
-      debug_dump_config(c->subset,pstrcat(permanent_pool,indent," ",NULL));
+  for (c = (config_rec *) s->xas_list; c; c = c->next) {
+    log_debug(DEBUG5, "%s%s", indent, c->name);
+    if (c->subset)
+      debug_dump_config(c->subset, pstrcat(permanent_pool, indent," ", NULL));
   }
 }
 
@@ -2171,10 +2128,9 @@ void _copy_global_to_all(xaset_t *set)
       _copy_recur(&s->conf,s->pool,c,NULL);
 }
 
-void fixup_globals(void)
-{
-  server_rec *s,*smain;
-  config_rec *c,*cnext;
+static void fixup_globals(void) {
+  server_rec *s = NULL, *smain = NULL;
+  config_rec *c = NULL, *cnext = NULL;
 
   smain = (server_rec*)servers->xas_list;
   for(s = smain; s; s=s->next) {

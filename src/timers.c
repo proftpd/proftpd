@@ -24,7 +24,7 @@
 
 /* 
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.9 2002-05-21 20:47:23 castaglia Exp $
+ * $Id: timers.c,v 1.10 2002-06-22 01:06:09 castaglia Exp $
  */
 
 #include <signal.h>
@@ -115,7 +115,7 @@ static int _reset_timers(int elapsed) {
   return (timers->xas_list ? ((timer_t*)timers->xas_list)->count : 0);
 }
 
-void sig_alarm(int signum) {
+static void sig_alarm(int signo) {
   struct sigaction act;
 
   _alarm_received++;
