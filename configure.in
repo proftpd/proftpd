@@ -727,7 +727,7 @@ fi
 
 AC_CHECK_HEADERS(ctype.h getopt.h crypt.h bstring.h limits.h)
 AC_CHECK_HEADERS(strings.h stropts.h)
-AC_CHECK_HEADERS(sys/file.h sys/types.h sys/uio.h)
+AC_CHECK_HEADERS(sys/file.h sys/mman.h sys/types.h sys/uio.h)
 
 dnl These particular checks are done a little differently because on some
 dnl platforms, <sys/mount.h> wants <sys/param.h> to be included first.
