@@ -12,6 +12,8 @@ LIB_DEPS=@LIB_DEPS@
 LIB_OBJS=@LIB_OBJS@
 RANLIB=@RANLIB@
 
+"":
+
 dummy:
 
 all:
