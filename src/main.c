@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.58 2001-03-23 13:17:52 flood Exp $
+ * $Id: main.c,v 1.59 2001-04-11 19:10:50 flood Exp $
  */
 
 /*
@@ -869,6 +869,11 @@ static void dispatch_cmd(cmd_rec *cmd)
   resp_list = resp_err_list = NULL;
   resp_pool = cmd->pool;
   
+  for(cp = cmd->argv[0]; *cp; cp++)
+    *cp = toupper(*cp);
+
+  /* debug_print_dispatch(cmd); */
+
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   /* Check for valid arguments.
    */
@@ -882,6 +887,11 @@ static void dispatch_cmd(cmd_rec *cmd)
     regerror(ret, preg, errmsg, 200);
     log_debug(DEBUG2, "'%s' didn't pass regex: %s", cmd->arg, errmsg);
     add_response_err(R_550, "%s: Forbidden command argument", cmd->arg);
+    /* Make sure logging occurs
+     * jss - 3/26/01
+     */
+    _dispatch(cmd,LOG_CMD_ERR,FALSE,"*");
+    _dispatch(cmd,LOG_CMD_ERR,FALSE,NULL);
     send_response_list(&resp_err_list);
     return;
   }
@@ -890,15 +900,12 @@ static void dispatch_cmd(cmd_rec *cmd)
   
   if(preg && cmd->arg && ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) == 0)) {
     add_response_err(R_550, "%s: Forbidden command argument", cmd->arg);
+    _dispatch(cmd,LOG_CMD_ERR,FALSE,"*");
+    _dispatch(cmd,LOG_CMD_ERR,FALSE,NULL);
     send_response_list(&resp_err_list);
     return;
   }
 #endif
-
-  for(cp = cmd->argv[0]; *cp; cp++)
-    *cp = toupper(*cp);
-
-  /* debug_print_dispatch(cmd); */
 
   /* first dispatch PRE_CMD with wildcard */
   success = _dispatch(cmd,PRE_CMD,FALSE,"*");
@@ -907,6 +914,8 @@ static void dispatch_cmd(cmd_rec *cmd)
     success = _dispatch(cmd,PRE_CMD,FALSE,NULL);
 
   if(success < 0) {
+    _dispatch(cmd,LOG_CMD_ERR,FALSE,"*");
+    _dispatch(cmd,LOG_CMD_ERR,FALSE,NULL);
     send_response_list(&resp_err_list);
     return;
   }

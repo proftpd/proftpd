@@ -278,6 +278,10 @@ extern char *alloca ();
 
 #endif
 
+#ifdef IRIX6
+#include <alloca.h>
+#endif
+
 #ifndef __GNU_LIBRARY__
 # define __stat stat
 # ifdef STAT_MACROS_BROKEN

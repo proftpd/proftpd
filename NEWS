@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.94 2001-04-11 18:57:41 flood Exp $
+$Id: NEWS,v 1.95 2001-04-11 19:10:50 flood Exp $
 
 1.2.2rc2 - CVS
 ---------------------------------
@@ -6,6 +6,9 @@ $Id: NEWS,v 1.94 2001-04-11 18:57:41 flood Exp $
 - Bug 1094 - AuthUserFile/AuthGroupFile disallow relative paths.
 - Bug 1096 - Case sensitivity issues in config, better checking of
   RLimit* directive arguments.
+- Bug 1090 - AllowFilter/DenyFilter now logs correctly.
+- Bug 1119 - glibc-glob compilation issue on IRIX6.
+- Bug 1090 - ExtendedLog should now report ALL events (even errors)
 
 1.2.2rc1 - Released 03/24/2001
 ---------------------------------
