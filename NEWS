@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.379 2003-02-25 18:56:35 castaglia Exp $
+$Id: NEWS,v 1.380 2003-03-03 00:31:36 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -42,6 +42,7 @@ CVS
   read() get EAGAIN and closes connection.  This turned out to be caused
   by control messages in the STREAMS device (and thus relevant only to
   systems that use STREAMS).
+- Portability fixes for FreeBSD-5.0.
 
 1.2.8rc2 - Released 29-Jan-2003
 ---------------------------------
