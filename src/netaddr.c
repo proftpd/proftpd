@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.37 2003-11-15 23:49:52 castaglia Exp $
+ * $Id: netaddr.c,v 1.38 2003-11-17 18:58:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -38,6 +38,17 @@ static int reverse_dns = 1;
 
 #ifdef HAVE_GETHOSTBYNAME2
 static void *get_v4inaddr(pr_netaddr_t *na) {
+
+  /* This function is specifically for IPv4 clients (when gethostbyname2(2) is
+   * present) that have an IPv4-mapped IPv6 address, when performing reverse
+   * DNS checks.  This function is called iff the given netaddr object is
+   * indeed an IPv4-mapped IPv6 address.  IPv6 address have 128 bits in their
+   * sin6_addr field.  For IPv4-mapped IPv6 addresses, the relevant 32 bits
+   * are the last of those 128 bits (or, alternatively, the last 4 bytes of
+   * those 16 bytes); hence the read of 12 bytes after the start of the
+   * sin6_addr pointer.
+   */
+
   return (((char *) pr_netaddr_get_inaddr(na)) + 12);
 }
 #endif /* HAVE_GETHOSTBYNAME2 */
