@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.21 1999-10-27 05:44:46 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.22 1999-10-27 06:24:23 macgyver Exp $
  */
 
 /* History Log:
@@ -707,8 +707,6 @@ MODRET cmd_retr(cmd_rec *cmd)
       
       len = data_sendfile(retr_fd, &off, session.xfer.file_size - cnt);
       if(len == -1) {
-	log_pri(LOG_ERR, "data_sendfile error: %d:%s.",
-		errno, strerror(errno));
 	switch (errno) {
 	case EAGAIN:
 	case EINTR:
@@ -722,8 +720,12 @@ MODRET cmd_retr(cmd_rec *cmd)
 	  break;
 	  
 	default:
+	  log_pri(LOG_ERR, "data_sendfile error: %d:%s.",
+		  errno, strerror(errno));
+#if 0
 	  log_pri(LOG_ERR, "Unknown data_sendfile() error %d: %s.",
 		  errno, strerror(errno));
+#endif
 	}
       }
 
