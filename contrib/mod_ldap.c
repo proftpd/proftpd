@@ -19,6 +19,23 @@
  * Furthermore, John Morrissey gives permission to link this program with
  * OpenSSL, and distribute the resulting executable, without including the
  * source code for OpenSSL in the source distribution.
+ *
+ * As of mod_ldap 2.8.10, you MUST send me a postcard at the following
+ * address if you use mod_ldap. If you do not send a postcard, you are in
+ * violation of mod_ldap's licensing. I'm not trying to be needlessly
+ * uptight about this, all it boils down to is that I want to know that
+ * people are using mod_ldap and that they appreciate the effort I put into
+ * working on it (and providing free support, I might add). I tried making
+ * this optional on some of my other software, but it's been several months
+ * and I've yet to receive even a single postcard. If you don't have(?) or
+ * don't want to send a postcard, send a photograph of your local area or of
+ * something geographically close to you that you find interesting. It'll
+ * only cost you a dollar or two. Please do me a favor and send it.
+ *
+ * John Morrissey
+ * P.O. Box 209
+ * Henrietta, NY 14534-2638
+ * USA
  */
 
 /*
@@ -43,7 +60,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  * 
- * $Id: mod_ldap.c,v 1.25 2002-08-31 00:45:02 jwm Exp $
+ * $Id: mod_ldap.c,v 1.26 2002-09-21 02:09:36 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
