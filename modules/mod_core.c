@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.100 2002-09-05 21:13:04 castaglia Exp $
+ * $Id: mod_core.c,v 1.101 2002-09-06 01:06:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2490,6 +2490,13 @@ MODRET cmd_syst(cmd_rec *cmd)
 {
   add_response(R_215,"UNIX Type: L8");
   return HANDLED(cmd);
+}
+
+int core_chgrp(cmd_rec *cmd, char *dir, uid_t uid, gid_t gid) {
+  if (!dir_check(cmd->tmp_pool, "SITE_CHGRP", "WRITE", dir, NULL)) 
+    return -1;
+
+  return fs_chown(dir, uid, gid);
 }
 
 int core_chmod(cmd_rec *cmd, char *dir, mode_t mode) {

@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.17 2002-08-14 16:25:29 castaglia Exp $
+ * $Id: mod_site.c,v 1.18 2002-09-06 01:06:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,6 +35,7 @@
 
 /* From mod_core.c */
 extern int core_chmod(cmd_rec *cmd, char *dir, mode_t mode);
+extern int core_chgrp(cmd_rec *cmd, char *dir, uid_t uid, gid_t gid);
 
 static struct {
   char *cmd;
@@ -42,6 +43,7 @@ static struct {
   int implemented;
 } _help[] = {
   { "HELP",	"[<sp> site-command]",			TRUE },
+  { "CHGRP",	"<sp> group <sp> pathname",		TRUE },
   { "CHMOD",	"<sp> mode <sp> pathname",		TRUE },
   { NULL,	NULL,					FALSE }
 };
@@ -58,6 +60,66 @@ static char *_get_full_cmd(cmd_rec *cmd)
     res[strlen(res)-1] = '\0';
 
   return res;
+}
+
+MODRET site_chgrp(cmd_rec *cmd) {
+  gid_t gid;
+  char *path = NULL;
+
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+  regex_t *preg;
+#endif
+
+  if (cmd->argc != 3) {
+    add_response_err(R_500,"'SITE %s' not understood.", _get_full_cmd(cmd));
+    return NULL;
+  }
+
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
+
+  if (preg && regexec(preg, cmd->argv[2], 0, NULL, 0) != 0) {
+    log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
+      cmd->arg);
+    add_response_err(R_550, "%s: Forbidden filename", cmd->argv[2]);
+    return ERROR(cmd);
+  }
+
+  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathDenyFilter", FALSE);
+
+  if (preg && regexec(preg, cmd->argv[2], 0, NULL, 0) == 0) {
+    log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
+      cmd->arg);
+    add_response_err(R_550, "%s: Forbidden filename", cmd->argv[2]);
+    return ERROR(cmd);
+  }
+#endif
+
+  path = dir_realpath(cmd->tmp_pool, cmd->argv[2]);
+
+  if (!path) {
+    add_response_err(R_550, "%s: %s", cmd->argv[2], strerror(errno));
+    return ERROR(cmd);
+  }
+
+  /* Map the given group argument, if a string, to a GID.  If already a
+   * number, pass through as is.
+   */
+  if (sscanf(cmd->argv[1], "%u", &gid) != 1) {
+    if ((gid = auth_name_gid(cmd->tmp_pool, cmd->argv[1])) == -1) {
+      add_response_err(R_550, "%s: %s", cmd->argv[2], strerror(EINVAL));
+      return ERROR(cmd);
+    }
+  }
+
+  if (core_chgrp(cmd, path, (uid_t) -1, gid) == -1) {
+    add_response_err(R_550, "%s: %s", cmd->argv[2], strerror(errno));
+    return ERROR(cmd);
+
+  } else
+    add_response(R_200, "SITE %s command successful.", cmd->argv[0]);
+
+  return HANDLED(cmd);
 }
 
 MODRET site_chmod(cmd_rec *cmd) {
@@ -329,6 +391,7 @@ MODRET site_help(cmd_rec *cmd)
 
 static cmdtable site_commands[] = {
   { CMD, "HELP",	G_NONE,		site_help,	FALSE, FALSE },
+  { CMD, "CHGRP",	G_NONE,		site_chgrp,	FALSE, FALSE },
   { CMD, "CHMOD",	G_NONE,		site_chmod,	FALSE, FALSE },
   { 0, NULL }
 };
