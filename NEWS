@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.349 2003-01-13 01:27:36 castaglia Exp $
+$Id: NEWS,v 1.350 2003-01-13 04:21:27 jwm Exp $
 
 CVS
 ---------------------------------
@@ -24,6 +24,8 @@ CVS
   to the <Directory> handler that reports on the given/resolved paths used.
 - Bug 1910 - ProFTPD hangs on SIGHUP.  This was triggered by mixing stdio
   and regular I/O library calls related to password and group entries.
+- Add -Wundef and -Wfloat-equal to CFLAGS (Suggested by Steve Grubb
+  <linux_4ever@yahoo.com>)
 
 1.2.8rc1 - Released 28-Dec-2002
 ---------------------------------
