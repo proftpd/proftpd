@@ -1,10 +1,12 @@
-$Id: NEWS,v 1.171 2002-05-19 20:50:13 castaglia Exp $
+$Id: NEWS,v 1.172 2002-05-21 18:59:15 castaglia Exp $
 
 CVS
 ---------------------------------
 - Bug 1612 - Fixed logging of RFC931 usernames in xferlog
 - Bug 1595 - Transfers that result in error conditions no longer cause
              the data connection to be closed prematurely via data_cleanup()
+- Bug 1627 - Fixed bug in timer code where timers were being blocked
+             indefinitely, manifesting as non-functioning idle timeouts
 
 1.2.5rc2 - Released 2002-05-13
 ---------------------------------

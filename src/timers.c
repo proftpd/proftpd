@@ -24,7 +24,7 @@
 
 /* 
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.7 2002-05-09 20:15:14 castaglia Exp $
+ * $Id: timers.c,v 1.8 2002-05-21 18:59:15 castaglia Exp $
  */
 
 #include <signal.h>
@@ -76,11 +76,9 @@ static int _reset_timers(int elapsed) {
       next = t->next;
 
       if (t->remove) {
-        /* Move the timer onto the free_timers chain, for later
-         * reuse
-         */
-        xaset_remove(timers,(xasetmember_t*)t);
-        xaset_insert(free_timers,(xasetmember_t*)t);
+        /* Move the timer onto the free_timers chain, for later reuse. */
+        xaset_remove(timers, (xasetmember_t *) t);
+        xaset_insert(free_timers, (xasetmember_t *) t);
 
       } else if ((t->count -= elapsed) <= 0) {
         if (t->callback(t->interval, t->timerno, t->interval - t->count,
@@ -104,7 +102,6 @@ static int _reset_timers(int elapsed) {
 
   /* Put the recycled timers back into the main timer list */
   while ((t = (timer_t*)recycled->xas_list) != NULL) {
-    /*log_debug(DEBUG5,"moving timer %d off recycled list.",t->timerno);*/
     xaset_remove(recycled, (xasetmember_t*)t);
     xaset_insert_sort(timers, (xasetmember_t*)t,TRUE);
   }
@@ -183,7 +180,6 @@ void handle_sig_alarm() {
       _total_time = 0;
       new_timeout = _reset_timers(new_timeout);
 
-      /*log_debug(DEBUG5,"alarm(%d)",new_timeout);*/
       _alarmed_time = time(NULL);
       alarm(_current_timeout = new_timeout);
 
@@ -221,11 +217,11 @@ int reset_timer(int timerno, module *mod) {
 int remove_timer(int timerno, module *mod) {
   timer_t *t = NULL;
 
-  block_alarms();
-
   /* If there are no timers currently registered, do nothing. */
   if (!timers)
     return 0;
+
+  block_alarms();
 
   for (t = (timer_t *) timers->xas_list; t; t = t->next)
     if (t->timerno == timerno && (t->mod == mod || mod == ANY_MODULE)) {
