@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.1 2002-12-05 21:16:52 castaglia Exp $
+ * $Id: fsio.c,v 1.2 2002-12-06 21:32:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -38,7 +38,7 @@
 # include <sys/statvfs.h>
 #elif defined(HAVE_SYS_VFS_H)
 # include <sys/vfs.h>
-#elif defined(__FreeBSD__) && defined(HAVE_STATFS)
+#elif defined(HAVE_SYS_MOUNT_H)
 # include <sys/mount.h>
 #endif
 
@@ -2473,11 +2473,11 @@ static off_t calc_fs_size(size_t blocks, size_t bsize) {
 off_t pr_fs_getsize(char *path) {
 # if defined(HAVE_SYS_STATVFS_H)
   struct statvfs fs;
- 
+
   if (statvfs(path, &fs) != 0)
     return 0;
 
-  return calc_fs_size(fs.f_bavail, fs.f_frsize);
+  return _calc_fs(fs.f_bavail, fs.f_frsize);
 
 # elif defined(HAVE_SYS_VFS_H)
   struct statfs fs;
@@ -2485,14 +2485,14 @@ off_t pr_fs_getsize(char *path) {
   if (statfs(path, &fs) != 0)
     return 0;
 
-  return calc_fs_size(fs.f_bavail, fs.f_bsize);
+  return _calc_fs(fs.f_bavail, fs.f_bsize);
 # elif defined(HAVE_STATFS)
   struct statfs fs;
 
   if (statfs(path, &fs) != 0)
     return 0;
 
-  return calc_fs_size(fs.f_bavail, fs.f_bsize);
+  return _calc_fs(fs.f_bavail, fs.f_bsize);
 # endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
 }
 #endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
