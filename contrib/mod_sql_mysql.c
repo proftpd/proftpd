@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#define MOD_SQL_MYSQL_VERSION "mod_sql_mysql/3.1"
+#define MOD_SQL_MYSQL_VERSION "mod_sql_mysql/3.2"
 
 /* -- DO NOT MODIFY THE LINE BELOW UNLESS YOU FEEL LIKE IT --
  * $Libraries: -lm -lmysqlclient $
@@ -80,7 +80,7 @@ MODRET sql_cmd_close(cmd_rec * cmd)
   log_debug(DEBUG5, "%s: close [%i] for %s", MOD_SQL_MYSQL_VERSION, g.opens,
             cmd->argv[0]);
 
-  if (!g.ok || g.opens--)
+  if (!g.ok || --g.opens)
     return DECLINED(cmd);
 
   if (mysqldb) {
@@ -89,7 +89,7 @@ MODRET sql_cmd_close(cmd_rec * cmd)
     mysql_close(mysqldb);
   }
   mysqldb = NULL;
-  return DECLINED(cmd);
+  return HANDLED(cmd);
 }
 
 MODRET sql_cmd_open(cmd_rec * cmd)
@@ -97,13 +97,13 @@ MODRET sql_cmd_open(cmd_rec * cmd)
   if (!g.ok)
     return DECLINED(cmd);
 
+  if (g.opens > 0)
+    return HANDLED(cmd);
+
   g.opens++;
 
   log_debug(DEBUG5, "%s: open [%i] for %s", MOD_SQL_MYSQL_VERSION, g.opens,
             cmd->argv[0]);
-
-  if (g.opens > 1)
-    return HANDLED(cmd);
 
   mysql_init(&mod_mysql_server);
   mysqldb = mysql_real_connect(&mod_mysql_server, g.sql_host,
@@ -175,6 +175,11 @@ MODRET sql_cmd_update(cmd_rec * cmd)
   return _do_query(cmd, cmd->argv[1], TRUE);
 }
 
+MODRET sql_cmd_insert(cmd_rec * cmd)
+{
+  return _do_query(cmd, cmd->argv[1], TRUE);
+}   
+
 MODRET sql_cmd_select(cmd_rec * cmd)
 {
   MODRET mr;
@@ -215,6 +220,7 @@ static authtable mysql_authtab[] = {
   {0, "dbd_close", sql_cmd_close},
   {0, "dbd_update", sql_cmd_update},
   {0, "dbd_select", sql_cmd_select},
+  {0, "dbd_insert", sql_cmd_insert},
 
   {0, NULL, NULL}
 };

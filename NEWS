@@ -1,7 +1,8 @@
-$Id: NEWS,v 1.104 2001-05-21 21:14:45 flood Exp $
+$Id: NEWS,v 1.105 2001-05-31 16:08:08 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+- New mod_sql (and friends) from upstream maintainer
 - Bug 1175 - GNU HURD portability
 - Bug 1176 - PWD/XPWD can now be <Limit>ed
 - Bug 1177 - mod_readme moved to contrib/

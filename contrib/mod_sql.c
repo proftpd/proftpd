@@ -1,5 +1,5 @@
 /*
- * ProFTPD: mod_sql -- SQL frontend and user interface.
+ * ProFTPD: mod_sql -- SQL frontend
  * Time-stamp: <1999-10-04 03:58:01 root>
  * Copyright (c) 1998-1999 Johnie Ingram.
  *  
@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#define MOD_SQL_VERSION "mod_sql/3.1.5"
+#define MOD_SQL_VERSION "mod_sql/3.2.0B"
 
 /* This is mod_sql, contrib software for proftpd 1.2.0rc3 and above.
    Originally written and maintained as 'mod_sqlpw' by Johnie 
@@ -109,6 +109,9 @@ typedef struct sqldata_struc sqldata_t;
 #define SQL_DEFAULT_GID 65533
 
 #define BUFSIZE 32
+
+/* for logging */
+extern response_t *resp_list,*resp_err_list;
 
 typedef struct cache_entry {
   struct cache_entry *list_next;
@@ -426,6 +429,20 @@ MODRET modsql_update(cmd_rec * cmd, const char *query)
   return mr;
 }
 
+MODRET modsql_insert(cmd_rec * cmd, const char *query)
+{
+  cmd_rec *c;
+  modret_t *mr;
+
+  c = _make_cmd(cmd->tmp_pool, 1, query);
+  mr = _dispatch_sql(c, "dbd_insert");
+
+  if (c->tmp_pool)
+    destroy_pool(c->tmp_pool);
+
+  return mr;
+}
+
 MODRET modsql_select(cmd_rec * cmd, const char *query)
 {
   cmd_rec *c;
@@ -689,6 +706,25 @@ static auth_type_entry *get_auth_entry(char *name)
  * INTERNAL HELPER FUNCTIONS
  *
  *****************************************************************/
+
+/* find who core thinks is the user, and return a (backend-escaped) version of that name */
+char *sql_realuser( cmd_rec *cmd )
+{
+  char *user = NULL;
+  char *realuser = NULL;
+  int userlen;
+
+  /* this is the userid given by the user */
+  user = (char *) get_param_ptr(cmd->server->conf, C_USER, FALSE);
+
+  /* IF WE NEED TO CHECK FOR USERALIAS -- see mod_time.c, get_user_cmd_times() */
+
+  userlen = (strlen(user) * 2) + 1;
+  realuser = pcalloc(cmd->tmp_pool, userlen);
+  sql_backend_escape_string(realuser, user, (userlen-1)/2);
+
+  return realuser;
+}
 
 char *sql_where(pool *p, int cnt, ...)
 {
@@ -1069,7 +1105,8 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
   } else {
     temp_ptr = _uservar(cmd, username, cmap.homedirfield);
   }
-  pwd->pw_dir = pstrdup(session.pool, temp_ptr);
+  /*  pw_dir can't be NULL */
+  pwd->pw_dir = pstrdup(session.pool, (temp_ptr==NULL?"\0":temp_ptr));
 
   pwd->pw_name = pstrdup(session.pool, realname);
 
@@ -1327,7 +1364,7 @@ static void _setstats(cmd_rec * cmd, int fstor, int fretr,
            cmap.sql_bstor, cmap.sql_bstor, bstor, cmap.sql_bretr,
            cmap.sql_bretr, bretr);
 
-  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", cmap.authuser, "'", NULL);
+  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", sql_realuser(cmd), "'", NULL);
   where = sql_where(cmd->tmp_pool, 2, usrwhere, cmap.where );
 
 
@@ -1407,7 +1444,7 @@ MODRET log_cmd_pass(cmd_rec * cmd)
 
   log_debug(DEBUG_FUNC, "%s: entering log_cmd_pass", MOD_SQL_VERSION);
 
-  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", cmap.authuser, "'", NULL);
+  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", sql_realuser(cmd), "'", NULL);
   where = sql_where(cmd->tmp_pool,2,  usrwhere, cmap.where );
 
   if (cmap.sql_fhost) {
@@ -1438,7 +1475,7 @@ MODRET log_cmd_pass(cmd_rec * cmd)
 
   /*
    * if ( !cmap.sql_fstor && !cmap.sql_fcdir && !cmap.sql_hittable )
-   *     modsql_close( cmd );
+   *     modsql_close(cmd);
    */
 
   log_debug(DEBUG_FUNC, "%s: exiting  log_cmd_pass", MOD_SQL_VERSION);
@@ -1453,7 +1490,7 @@ MODRET log_cmd_cwd(cmd_rec * cmd)
 
   log_debug(DEBUG_FUNC, "%s: entering log_cmd_cwd", MOD_SQL_VERSION);
 
-  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", cmap.authuser, "'", NULL);
+  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", sql_realuser(cmd), "'", NULL);
   where = sql_where(cmd->tmp_pool, 2, usrwhere, cmap.where );
 
   if (cmap.sql_fcdir) {
@@ -1466,6 +1503,201 @@ MODRET log_cmd_cwd(cmd_rec * cmd)
 
   log_debug(DEBUG_FUNC, "%s: exiting  log_cmd_cwd", MOD_SQL_VERSION);
 
+  return DECLINED(cmd);
+}
+
+MODRET log_master(cmd_rec * cmd)
+{
+  char *query = NULL;
+  char *name, *tmp, *pass;
+  config_rec *c;
+  char outs[4096] = {'\0'}, *outsp;
+  char arg[256] = {'\0'}, *argp;
+  char esc_arg[513];
+
+  name = pstrcat(cmd->tmp_pool, "SQLLog_", cmd->argv[0], NULL);
+  
+  c = find_config(main_server->conf, CONF_PARAM, name, TRUE);
+  if (c) {
+    log_debug(DEBUG_FUNC, "%s: entering log_master", MOD_SQL_VERSION);
+
+    do {
+      /* format string fixup */
+      bzero(outs, 4096);
+      outsp = outs;
+
+      outsp = strchr( outs, '\0' );
+
+      for (tmp = c->argv[2]; *tmp; ) {
+	if(*tmp == '%') {
+	  bzero(arg, 256);
+	  tmp++;
+
+	  switch(*tmp) {
+	  case 'A':
+	    argp=arg;
+	    pass=get_param_ptr(cmd->server->conf, C_PASS, FALSE);
+	    if (!pass)
+	      pass = "UNKNOWN";
+	    
+	    sstrncpy( argp, pass, sizeof(arg));
+	    break;
+	  case 'b':
+	    argp=arg;
+	    if (session.xfer.p)
+	      snprintf(argp, sizeof(arg), "%lu", session.xfer.total_bytes);
+	    else
+	      sstrncpy( argp, "0", sizeof(arg));
+	    break;
+	  case 'c':
+	    argp=arg;
+	    if (get_param_int(TOPLEVEL_CONF, "Classes", FALSE) > 0)
+	      sstrncpy(argp, session.class->name, sizeof(arg));
+	    else
+	      sstrncpy(argp, "-", sizeof(arg));
+	    break;
+	  case 'd':
+	    argp = session.cwd;
+	    if (!argp)
+	      argp="-";
+	    break;
+	  case 'f':
+	    argp = arg;
+	    if(session.xfer.p && session.xfer.path) {
+	      char *fullpath;
+	      fullpath = dir_abs_path(cmd->tmp_pool,session.xfer.path,TRUE);
+	      sstrncpy(argp, fullpath, sizeof(arg));
+	    } else {
+	      sstrncpy(argp, "-", sizeof(arg));
+	    }
+	    
+	    break;
+	  case 'F':
+	    argp = arg;
+	    if(session.xfer.p && session.xfer.path) {
+	      sstrncpy(argp, session.xfer.path, sizeof(arg));
+	    } else {
+	      sstrncpy(argp, "-", sizeof(arg));
+	    }
+	    
+	    break;
+	  case 'h':
+	    argp = arg;
+	    sstrncpy(argp, session.c->remote_name, sizeof(arg));
+	    break;
+	  case 'a':
+	    argp = arg;
+	    sstrncpy(argp, inet_ntoa(*session.c->remote_ipaddr), sizeof(arg));
+	    break;
+	  case 'l':
+	    argp = arg;
+	    sstrncpy(argp, session.ident_user, sizeof(arg));
+	    break;
+	  case 'm':
+	    argp = arg;
+	    sstrncpy(argp, cmd->argv[0], sizeof(arg));
+	    break;
+	  case 'p': 
+	    argp = arg;
+	    snprintf(argp, sizeof(arg), "%d", cmd->server->ServerPort);
+	    break;
+	  case 'P':
+	    argp = arg;
+	    snprintf(argp, sizeof(arg), "%u",(unsigned int)getpid());
+	    break;
+	  case 'u':
+	    argp = arg;
+	    
+	    if(!session.user) {
+	      char *u;
+	      
+	      u = get_param_ptr(cmd->server->conf,"UserName",FALSE);
+	      if(!u)
+		u = "root";
+	      
+	      sstrncpy(argp, u, sizeof(arg));
+	    } else {
+	      sstrncpy(argp, session.user, sizeof(arg));
+	    }
+	    break;
+	  case 'r':
+	    argp = arg;
+	    if(!strcasecmp(cmd->argv[0],"PASS") && session.hide_password)
+	      sstrncpy(argp, "PASS (hidden)", sizeof(arg));
+	    else
+	      sstrncpy(argp, get_full_cmd(cmd), sizeof(arg));
+	    break;
+	  case 's':
+	    argp = arg;
+	    {
+	      response_t *r;
+	      
+	      r = (resp_list ? resp_list : resp_err_list);
+	      
+	      for(; r && !r->num; r=r->next) ;
+	      if(r && r->num)
+		sstrncpy(argp,r->num,sizeof(arg));
+	      else
+		sstrncpy(argp,"-",sizeof(arg));
+	    }
+	    break;
+          case 'T':
+	    argp = arg;
+	    if(session.xfer.p) {
+	      struct timeval end_time;
+	      
+	      gettimeofday(&end_time,NULL);
+	      end_time.tv_sec -= session.xfer.start_time.tv_sec;
+	      if(end_time.tv_usec >= session.xfer.start_time.tv_usec)
+		end_time.tv_usec -= session.xfer.start_time.tv_usec;
+	      else {
+		end_time.tv_usec = 1000000L - (session.xfer.start_time.tv_usec -
+					       end_time.tv_usec);
+		end_time.tv_sec--;
+	      }
+	      
+	      snprintf(argp, sizeof(arg), "%lu.%03lu", (unsigned long) end_time.tv_sec,
+		       (unsigned long) (end_time.tv_usec / 1000));
+	    } else {
+	      sstrncpy(argp,"0.0",sizeof(arg));
+	    }
+	    break;
+	  case 'v':
+	    argp = arg;
+	    sstrncpy(argp,cmd->server->ServerName,sizeof(arg));
+	    break;
+	  case '%':
+	    argp = "%";
+	    break;
+	  default:
+	    argp="?FORMAT?";
+	    break;
+	  }
+	  
+	  sql_backend_escape_string(esc_arg, argp, strlen(argp));
+	  strcat( outs, esc_arg );
+	  outsp += strlen(esc_arg);
+
+	  tmp++;
+	} else {
+	  *outsp++ = *tmp++;
+	}
+      }
+      
+      *outsp++ = 0;
+
+      if (strcasecmp(c->argv[0], "insert") == 0) {
+	query = pstrcat( cmd->tmp_pool, "insert into ", c->argv[1], " values (", outs, ")", NULL );
+	modsql_insert(cmd, query);
+      } else {
+	query = pstrcat( cmd->tmp_pool, "update " , c->argv[1], " set ", outs, NULL );
+	modsql_update(cmd, query);
+      }
+    } while((c = find_config_next(c, c->next, CONF_PARAM, name, TRUE)) != NULL);
+
+    log_debug(DEBUG_FUNC, "%s: exiting  log_master", MOD_SQL_VERSION);
+  }
+ 
   return DECLINED(cmd);
 }
 
@@ -1562,7 +1794,7 @@ MODRET auth_cmd_getpwent(cmd_rec * cmd)
 
   /* make sure our passwd cache is complete  */
   if ( !cmap.passwd_cache_filled ) {
-    mr = auth_cmd_setpwent( cmd );
+    mr = auth_cmd_setpwent(cmd);
     if ( mr->data == ( void * ) 0 ) {
       /* something didn't work in the setpwent call */
       log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_getpwent", MOD_SQL_VERSION);
@@ -1617,7 +1849,7 @@ MODRET auth_cmd_setgrent(cmd_rec * cmd)
     return DECLINED(cmd);
 
   if ( !cmap.dogroupauth )
-    return cmap.authoritative ? ERROR (cmd) : DECLINED( cmd );
+    return cmap.authoritative ? ERROR (cmd) : DECLINED(cmd);
 
   if (!cmap.processgrent)
     return (cmap.authoritative ? mod_create_data(cmd,(void *)0):DECLINED(cmd));
@@ -1687,7 +1919,7 @@ MODRET auth_cmd_getgrent(cmd_rec * cmd)
     return DECLINED(cmd);
 
   if ( !cmap.dogroupauth )
-    return cmap.authoritative ? ERROR (cmd) : DECLINED( cmd );
+    return cmap.authoritative ? ERROR (cmd) : DECLINED(cmd);
 
   if (!cmap.processgrent)
     return (cmap.authoritative ? mod_create_data(cmd,(void *)NULL):DECLINED(cmd));
@@ -1696,7 +1928,7 @@ MODRET auth_cmd_getgrent(cmd_rec * cmd)
 
   /* make sure our group cache is complete  */
   if ( !cmap.group_cache_filled ) {
-    mr = auth_cmd_setgrent( cmd );
+    mr = auth_cmd_setgrent(cmd);
     if ( mr->data == ( void * ) 0 ) {
       /* something didn't work in the setgrent call */
       log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_getgrent", MOD_SQL_VERSION);
@@ -1725,7 +1957,7 @@ MODRET auth_cmd_endgrent(cmd_rec * cmd)
     return DECLINED(cmd);
 
   if ( !cmap.dogroupauth )
-    return cmap.authoritative ? ERROR (cmd) : DECLINED( cmd );
+    return cmap.authoritative ? ERROR (cmd) : DECLINED(cmd);
 
   if (!cmap.processgrent)
     return (cmap.authoritative ? mod_create_data(cmd,(void *)0):DECLINED(cmd));
@@ -1911,8 +2143,6 @@ MODRET auth_cmd_check(cmd_rec * cmd)
   int success = 0;
   int cnt = 0;
   struct passwd lpw;
-  char *authuser;
-  int userlen;
 
   if (!cmap.doauth)
     return DECLINED(cmd);
@@ -1944,11 +2174,6 @@ MODRET auth_cmd_check(cmd_rec * cmd)
   log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_check", MOD_SQL_VERSION);
 
   if (success) {
-    userlen = (strlen(cmd->argv[1]) * 2) + 1;
-    authuser = pcalloc(cmd->tmp_pool, userlen);
-    sql_backend_escape_string(authuser, cmd->argv[1], (userlen-1)/2);
-    cmap.authuser = pstrdup(session.pool, authuser);
-
     /* this and the associated hack in auth_cmd_uid_name are to support
      * uid reuse in the database -- people (for whatever reason) are
      * reusing uids/gids multiple times, and the displayed owner in a 
@@ -2104,7 +2329,7 @@ MODRET auth_cmd_getstats(cmd_rec * cmd)
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_getstats", MOD_SQL_VERSION);
 
-  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", cmap.authuser, "'", NULL);
+  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", sql_realuser(cmd), "'", NULL);
   where = sql_where(cmd->tmp_pool, 2, usrwhere, cmap.where );
 
   if (cmap.sql_fstor) {
@@ -2142,7 +2367,7 @@ MODRET auth_cmd_getratio(cmd_rec * cmd)
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_getratio", MOD_SQL_VERSION);
 
-  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", cmap.authuser, "'", NULL);
+  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", sql_realuser(cmd), "'", NULL);
   where = sql_where(cmd->tmp_pool, 2, usrwhere, cmap.where );
 
   if (cmap.sql_frate) {
@@ -2298,17 +2523,17 @@ MODRET set_sqlratios(cmd_rec * cmd)
   return HANDLED(cmd);
 }
 
-MODRET add_virtualstr(cmd_rec * cmd)
+MODRET add_virtualstr(char * name, cmd_rec * cmd)
 {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT | CONF_GLOBAL | CONF_VIRTUAL);
 
-  add_config_param_str(cmd->argv[0], 1, (void *) cmd->argv[1]);
+  add_config_param_str(name, 1, (void *) cmd->argv[1]);
 
   return HANDLED(cmd);
 }
 
-MODRET add_virtualbool(cmd_rec * cmd)
+MODRET add_virtualbool(char * name, cmd_rec * cmd)
 {
   int b;
   config_rec *c;
@@ -2320,7 +2545,7 @@ MODRET add_virtualbool(cmd_rec * cmd)
   if (b == -1)
     CONF_ERROR(cmd, "requires a boolean value");
 
-  c = add_config_param(cmd->argv[0], 1, (void *) b);
+  c = add_config_param(name, 1, (void *) b);
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
@@ -2328,86 +2553,125 @@ MODRET add_virtualbool(cmd_rec * cmd)
 
 MODRET set_sqlusertablefield(cmd_rec * cmd)
 {
-  return add_virtualstr(cmd);
+  return add_virtualstr( "SQLUserTable", cmd);
 }
 
 MODRET set_sqlusernamefield(cmd_rec * cmd)
 {
-  return add_virtualstr(cmd);
+  return add_virtualstr( "SQLUsernameField", cmd);
 }
 
 MODRET set_sqluidfield(cmd_rec * cmd)
 {
-  return add_virtualstr(cmd);
+  return add_virtualstr( "SQLUidField", cmd);
 }
 
 MODRET set_sqlgidfield(cmd_rec * cmd)
 {
-  return add_virtualstr(cmd);
+  return add_virtualstr( "SQLGidField", cmd);
 }
 
 MODRET set_sqlpasswordfield(cmd_rec * cmd)
 {
-  return add_virtualstr(cmd);
+  return add_virtualstr( "SQLPasswordField", cmd);
 }
 
 MODRET set_sqlhomedirfield(cmd_rec * cmd)
 {
-  return add_virtualstr(cmd);
+  return add_virtualstr( "SQLHomedirField", cmd);
 }
 
 MODRET set_sqllogincountfield(cmd_rec * cmd)
 {
-  return add_virtualstr(cmd);
+  return add_virtualstr( "SQLLoginCountField", cmd);
 }
 
 MODRET set_sqlshellfield(cmd_rec * cmd)
 {
-  return add_virtualstr(cmd);
+  return add_virtualstr( "SQLShellField", cmd);
 }
 
 MODRET set_sqlhomedir(cmd_rec * cmd)
 {
-  return add_virtualstr(cmd);
+  return add_virtualstr( "SQLHomedir", cmd);
 }
 
 MODRET set_sqlhomedirondemand(cmd_rec * cmd)
 {
-  return add_virtualbool(cmd);
+  return add_virtualbool( "SQLHomedirOnDemand", cmd);
 }
 
 MODRET set_sqllog(cmd_rec * cmd)
 {
-  /* SQLLog table fieldset [commandclass] [logdirectives] [whereclause] */
+  /* SQLLog cmdlist {insert | update} table logcmd */
 
-  return add_virtualstr(cmd);
+  char command[64] = {'\0'};
+  char *cp;
+  char *entry;
+  config_rec * c;
+  char *cmds;
+
+  /* we do no parsing of the logcmd;  it's up to the user to make sure it's
+   * correct in relation to the clause */
+
+  CHECK_ARGS(cmd, 4);
+  CHECK_CONF(cmd, CONF_ROOT | CONF_GLOBAL | CONF_VIRTUAL);
+
+  /* make sure we're being asked to do an insert or an update */
+  if (strcasecmp("insert", cmd->argv[2]) && strcasecmp("update", cmd->argv[2])) {
+    CONF_ERROR( cmd, "SQLLog expects 'insert' or 'update' for argument 2");
+  }
+  
+  /* for each element in the command list, add a 'SQLLog_CMD' config_rec..
+   * this is an optimization that speeds up logging and also simplifies the
+   * logging code, since there's no need to run through and parse a bunch
+   * of potenitally unused SQLLog statements each time any command is run.
+   */
+  
+  cmds= cmd->argv[1];
+  if (cmds[0]=='*')
+    cmds=pstrdup(permanent_pool, "ABOR,ACCT,ALLO,APPE,CDUP,CWD,DELE,HELP,LIST,MDTM,MKD,MODE,NLST,NOOP,PASS,PASV,PORT,PWD,QUIT,REIN,REST,RETR,RMD,RNFR,RNTO,SITE,SIZE,SMNT,STAT,STOR,STOU,STRU,SYST,TYPE,USER,XCUP,XCWD,XMKD,XPWD,XRMD");
+
+  for (entry = strtok( cmds, "," ); entry; entry = strtok(NULL, ",")) {
+    /* convert the entry to uppercase */
+    for (cp = entry; *cp != '\0'; cp++) {
+      *cp =  toupper( *cp );
+    }
+    
+    strcpy( command, "SQLLog_" );
+    strncat( command, entry, 56);
+    
+    c = add_config_param_str(command, 3, cmd->argv[2], cmd->argv[3], cmd->argv[4]);
+  }
+  
+  return HANDLED(cmd);
 }
 
 MODRET set_sqlprocessgrent(cmd_rec * cmd)
 {
-  return add_virtualbool(cmd);
+  return add_virtualbool( "SQLProcessGrEnt", cmd);
 }
 
 MODRET set_sqlprocesspwent(cmd_rec * cmd)
 {
-  return add_virtualbool(cmd);
+  return add_virtualbool( "SQLProcessPwEnt", cmd);
 }
 
 /* start of deprecated directives */
 
 MODRET set_sqlauthoritative(cmd_rec * cmd)
 {
-  return add_virtualbool(cmd);
+  return add_virtualbool( "SQLAuthoritative", cmd);
 }
 
 MODRET set_sqldoauth(cmd_rec * cmd)
 {
-  return add_virtualbool(cmd);
+  return add_virtualbool( "SQLDoAuth", cmd);
 }
 
 MODRET set_sqldogroupauth(cmd_rec * cmd)
 {
-  return add_virtualbool(cmd);
+  return add_virtualbool( "SQLDoGroupAuth", cmd);
 }
 
 MODRET set_sqlconnectinfo(cmd_rec * cmd)
@@ -2450,22 +2714,22 @@ MODRET set_sqlconnectinfo(cmd_rec * cmd)
 
 MODRET set_sqlgrouptable(cmd_rec * cmd)
 {
-  return add_virtualstr(cmd);
+  return add_virtualstr( "SQLGroupTable", cmd);
 }
 
 MODRET set_sqlgroupnamefield(cmd_rec * cmd)
 {
-  return add_virtualstr(cmd);
+  return add_virtualstr( "SQLGroupnameField", cmd);
 }
 
 MODRET set_sqlgroupgidfield(cmd_rec * cmd)
 {
-  return add_virtualstr(cmd);
+  return add_virtualstr( "SQLGroupGIDField", cmd);
 }
 
 MODRET set_sqlgroupmembersfield(cmd_rec * cmd)
 {
-  return add_virtualstr(cmd);
+  return add_virtualstr( "SQLGroupMembersField", cmd);
 }
 
 MODRET set_sqlauthtypes(cmd_rec * cmd)
@@ -2538,12 +2802,12 @@ MODRET set_sqlwhereclause(cmd_rec * cmd)
     CONF_ERROR(cmd, conf_warning);
   }
 
-  return add_virtualstr(cmd);
+  return add_virtualstr( "SQLWhereClause", cmd);
 }
 
 MODRET set_sqlgroupwhereclause(cmd_rec * cmd)
 {
-  return add_virtualstr(cmd);
+  return add_virtualstr( "SQLGroupWhereClause", cmd);
 }
 
 MODRET set_sqlminid(cmd_rec * cmd)
@@ -2713,7 +2977,7 @@ MODRET set_sqlscrambledpasswords(cmd_rec * cmd)
     CONF_ERROR(cmd, conf_warning);
   }
 
-  return add_virtualbool(cmd);
+  return add_virtualbool( "SQLScrambledPasswords", cmd);
 }
 
 #ifdef HAVE_OPENSSL
@@ -2732,7 +2996,7 @@ MODRET set_sqlsslhashedpasswords(cmd_rec * cmd)
     CONF_ERROR(cmd, conf_warning);
   }
 
-  return add_virtualbool(cmd);
+  return add_virtualbool( "SQLSSLHashedPasswords", cmd);
 }
 #endif
 
@@ -2751,7 +3015,7 @@ MODRET set_sqlencryptedpasswords(cmd_rec * cmd)
     CONF_ERROR(cmd, conf_warning);
   }
 
-  return add_virtualbool(cmd);
+  return add_virtualbool( "SQLEncryptedPasswords", cmd);
 }
 
 MODRET set_sqlplaintextpasswords(cmd_rec * cmd)
@@ -2769,7 +3033,7 @@ MODRET set_sqlplaintextpasswords(cmd_rec * cmd)
     CONF_ERROR(cmd, conf_warning);
   }
 
-  return add_virtualbool(cmd);
+  return add_virtualbool( "SQLPlaintextPasswords", cmd);
 }
 
 MODRET set_sqlkeyfield(cmd_rec * cmd)
@@ -2787,7 +3051,7 @@ MODRET set_sqlkeyfield(cmd_rec * cmd)
     CONF_ERROR(cmd, conf_warning);
   }
 
-  return add_virtualstr(cmd);
+  return add_virtualstr( "SQLKeyField", cmd);
 }
 
 MODRET set_sqlkey(cmd_rec * cmd)
@@ -2805,7 +3069,7 @@ MODRET set_sqlkey(cmd_rec * cmd)
     CONF_ERROR(cmd, conf_warning);
   }
 
-  return add_virtualstr(cmd);
+  return add_virtualstr( "SQLKey", cmd);
 }
 
 MODRET set_sqlemptypasswords(cmd_rec * cmd)
@@ -2823,7 +3087,7 @@ MODRET set_sqlemptypasswords(cmd_rec * cmd)
     CONF_ERROR(cmd, conf_warning);
   }
 
-  return add_virtualbool(cmd);
+  return add_virtualbool( "SQLEmptyPasswords", cmd);
 }
 
 MODRET set_mysqlinfo(cmd_rec * cmd)
@@ -3353,6 +3617,7 @@ static cmdtable sql_cmdtab[] = {
   {LOG_CMD, C_PASS, G_NONE, log_cmd_pass, FALSE, FALSE},
   {LOG_CMD, C_CWD, G_NONE, log_cmd_cwd, FALSE, FALSE},
   {LOG_CMD, C_CDUP, G_NONE, log_cmd_cwd, FALSE, FALSE},
+  {LOG_CMD, "*", G_NONE, log_master, FALSE, FALSE},
   {0, NULL}
 };
 

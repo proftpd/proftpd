@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#define MOD_SQL_POSTGRES_VERSION "mod_sql_postgres/3.01"
+#define MOD_SQL_POSTGRES_VERSION "mod_sql_postgres/3.2"
 
 /* -- DO NOT MODIFY THE LINE BELOW UNLESS YOU FEEL LIKE IT --
  * $Libraries: -lm -lpq $
@@ -190,6 +190,14 @@ MODRET sql_cmd_update(cmd_rec * cmd)
   return mr;
 }
 
+MODRET sql_cmd_insert(cmd_rec * cmd)
+{
+  MODRET mr;
+  mr = _do_query(cmd, cmd->argv[1], TRUE);
+  PQclear(g.res);
+  return mr;
+}
+
 MODRET sql_cmd_select(cmd_rec * cmd)
 {
   MODRET mr;
@@ -230,7 +238,7 @@ static authtable sql_postgres_authtab[] = {
   {0, "dbd_close", sql_cmd_close},
   {0, "dbd_update", sql_cmd_update},
   {0, "dbd_select", sql_cmd_select},
-
+  {0, "dbd_insert", sql_cmd_insert},
   {0, NULL, NULL}
 };
 
@@ -327,8 +335,7 @@ unsigned int sql_backend_escape_string(char *to, char *from, unsigned int len)
 {
   strncpy(to, from, len);
 
-  if (strlen(from) >= len)
-    to[len - 1] = '\0';
+  to[len] = '\0';
 
   return strlen(from);
 }
