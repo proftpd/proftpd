@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.103 2002-09-06 18:51:17 castaglia Exp $
+ * $Id: mod_core.c,v 1.104 2002-09-07 00:25:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -707,8 +707,6 @@ MODRET set_maxconnrate(cmd_rec *cmd) {
     CONF_ERROR(cmd, "connection rate must be positive");
 
   max_connects = conn_max;
-
-log_debug(DEBUG0, "%s: %lu", cmd->argv[0], max_connects);
 
   /* If the optional interval parameter is given, parse it. */
   if (cmd->argc-1 == 2) {
