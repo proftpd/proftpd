@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.37 2002-12-06 00:50:41 castaglia Exp $
+ * $Id: mod_log.c,v 1.38 2002-12-06 01:03:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -490,9 +490,7 @@ struct tm *_get_gmtoff(int *tz)
 }
 #endif /* HAVE_GMTOFF */
 
-static
-char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
-{
+static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
   unsigned char *m;
   char arg[512] = {'\0'}, *argp = NULL, *pass;
   
@@ -546,10 +544,10 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
   case META_DIR_NAME:
     argp = arg;
 
-    if (!strcmp(cmd->argv[0], "CDUP") || !strcmp(cmd->argv[0], "CWD") ||
-        !strcmp(cmd->argv[0], "MKD") || !strcmp(cmd->argv[0], "RMD") ||
-        !strcmp(cmd->argv[0], "XCWD") || !strcmp(cmd->argv[0], "XCUP") ||
-        !strcmp(cmd->argv[0], "XMKD") || !strcmp(cmd->argv[0], "XRMD")) {
+    if (!strcmp(cmd->argv[0], C_CDUP) || !strcmp(cmd->argv[0], C_CWD) ||
+        !strcmp(cmd->argv[0], C_MKD) || !strcmp(cmd->argv[0], C_RMD) ||
+        !strcmp(cmd->argv[0], C_XCWD) || !strcmp(cmd->argv[0], C_XCUP) ||
+        !strcmp(cmd->argv[0], C_XMKD) || !strcmp(cmd->argv[0], C_XRMD)) {
       char *tmp = strrchr(cmd->arg, '/');
 
       if (tmp)
@@ -567,10 +565,10 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
   case META_DIR_PATH:
     argp = arg;
 
-    if (!strcmp(cmd->argv[0], "CDUP") || !strcmp(cmd->argv[0], "CWD") ||
-        !strcmp(cmd->argv[0], "MKD") || !strcmp(cmd->argv[0], "RMD") ||
-        !strcmp(cmd->argv[0], "XCWD") || !strcmp(cmd->argv[0], "XCUP") ||
-        !strcmp(cmd->argv[0], "XMKD") || !strcmp(cmd->argv[0], "XRMD")) {
+    if (!strcmp(cmd->argv[0], C_CDUP) || !strcmp(cmd->argv[0], C_CWD) ||
+        !strcmp(cmd->argv[0], C_MKD) || !strcmp(cmd->argv[0], C_RMD) ||
+        !strcmp(cmd->argv[0], C_XCWD) || !strcmp(cmd->argv[0], C_XCUP) ||
+        !strcmp(cmd->argv[0], C_XMKD) || !strcmp(cmd->argv[0], C_XRMD)) {
 
       char *fullpath = dir_abs_path(p, cmd->arg, TRUE);
       sstrncpy(argp, fullpath, sizeof(arg));
@@ -596,9 +594,9 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
        * filenames that are not stored in the session.xfer structure; these
        * should be expanded properly as well.
        */
-      if (!strcmp(cmd->argv[0], "DELE") || !strcmp(cmd->argv[0], "MKD") ||
-          !strcmp(cmd->argv[0], "RMD") || !strcmp(cmd->argv[0], "XMKD") ||
-          !strcmp(cmd->argv[0], "XRMD"))
+      if (!strcmp(cmd->argv[0], C_DELE) || !strcmp(cmd->argv[0], C_MKD) ||
+          !strcmp(cmd->argv[0], C_RMD) || !strcmp(cmd->argv[0], C_XMKD) ||
+          !strcmp(cmd->argv[0], C_XRMD))
         sstrncpy(arg, cmd->arg, sizeof(arg));
 
       else
@@ -735,7 +733,7 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
   case META_COMMAND:
     argp = arg;
 
-    if(!strcasecmp(cmd->argv[0],"PASS") && session.hide_password)
+    if(!strcasecmp(cmd->argv[0], C_PASS) && session.hide_password)
       sstrncpy(argp, "PASS (hidden)", sizeof(arg));
     else
       sstrncpy(argp, get_full_cmd(cmd), sizeof(arg));
@@ -792,10 +790,8 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
       if(r && r->num)
         sstrncpy(argp,r->num,sizeof(arg));
 
-      /* hack to add return code for proper logging of QUIT command
-       * -tj 2001-10-03
-       */
-      else if (!strcasecmp(cmd->argv[0], "QUIT"))
+      /* Hack to add return code for proper logging of QUIT command. */
+      else if (!strcasecmp(cmd->argv[0], C_QUIT))
         sstrncpy(argp, R_221, sizeof(arg));
 
       else
@@ -854,8 +850,7 @@ static void do_log(cmd_rec *cmd, logfile_t *lf) {
   write(lf->lf_fd, logbuf, strlen(logbuf));
 }
 
-MODRET log_command(cmd_rec *cmd)
-{
+MODRET log_command(cmd_rec *cmd) {
   logfile_t *lf;
   /* If not in anon mode, only handle logs for main servers */
 
