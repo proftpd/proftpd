@@ -1,4 +1,10 @@
-$Id: NEWS,v 1.497 2003-10-31 08:10:34 castaglia Exp $
+$Id: NEWS,v 1.498 2003-10-31 18:55:18 castaglia Exp $
+
+CVS
+---------------------------------
+- Bug 2135 - Add ability to handle passphrase-protected server keys.  mod_tls
+  can now properly prompt for passphrases for protected server certificate
+  keys when the daemon is starting up.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------

@@ -43,7 +43,11 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 
-#define MOD_TLS_VERSION		"mod_tls/2.0.6"
+#ifdef HAVE_MLOCK
+# include <sys/mman.h>
+#endif
+
+#define MOD_TLS_VERSION		"mod_tls/2.0.7"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001020801 
@@ -51,6 +55,7 @@
 #endif
 
 extern session_t session;
+extern xaset_t *server_list;
 
 /* DH parameters */
 static unsigned char dh512_p[] = {
@@ -279,9 +284,27 @@ extern int ServerUseReverseDNS;
 
 module tls_module;
 
+typedef struct tls_pkey_obj {
+  struct tls_pkey_obj *next;
+
+  char *rsa_pkey;
+  char *dsa_pkey;
+  size_t pkeysz;
+  unsigned int flags;
+
+  server_rec *server;
+
+} tls_pkey_t;
+
+#define TLS_PKEY_USE_RSA		0x0100
+#define TLS_PKEY_USE_DSA		0x0200
+
+static tls_pkey_t *tls_pkey_list = NULL;
+
 /* Module variables */
 static unsigned char tls_engine = FALSE;
 static unsigned long tls_flags = 0UL, tls_opts = 0UL;
+static tls_pkey_t *tls_pkey = NULL;
 static int tls_logfd = -1;
 static char *tls_logname = NULL;
 static char *tls_protocol = NULL;
@@ -491,9 +514,220 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
   return TRUE;
 }
 
+struct tls_pkey_data {
+  char *buf;
+  size_t buflen;
+  const char *prompt;
+};
+
+static int tls_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
+  static int need_banner = TRUE;
+  int pwlen = 0;
+  struct tls_pkey_data *pdata = d;
+  register unsigned int attempt;
+
+  tls_log("requesting passphrase");
+
+  /* Similar to Apache's mod_ssl, we want to be nice, and display an
+   * informative message to the proftpd admin, telling them for what
+   * server they are being requested to provide a passphrase.  
+   */
+
+  if (need_banner) {
+    fprintf(stderr, "\nPlease provide passphrases for these encrypted certificate keys:\n");
+    need_banner = FALSE;
+  }
+
+  /* You get three attempts at entering the passphrase correctly. */
+  for (attempt = 0; attempt < 3; attempt++) {
+    int res;
+
+    /* Always handle signals in a loop. */
+    pr_signals_handle();
+
+    res = EVP_read_pw_string(buf, buflen, pdata->prompt, TRUE);
+
+    /* A return value of zero from EVP_read_pw_string() means success; -1
+     * means a system error occurred, and 1 means user interaction problems.
+     */
+    if (res != 0) {
+       fprintf(stderr, "\nPassphrases do not match.  Please try again.\n");
+       continue;
+    }
+
+    pwlen = strlen(buf);
+    if (pwlen < 1)
+      fprintf(stderr, "Error: passphrase must be at least one character\n");
+
+    else {
+      sstrncpy(pdata->buf, buf, pdata->buflen);
+      return pwlen;
+    }
+  }
+
+  PEMerr(PEM_F_DEF_CALLBACK, PEM_R_PROBLEMS_GETTING_PASSWORD);
+  pr_memscrub(buf, buflen);
+  return -1;
+}
+
+static int tls_get_passphrase(const char *path, const char *prompt, char *buf,
+    size_t buflen) {
+  FILE *keyf;
+  EVP_PKEY *pkey;
+  int prompt_fd = -1;
+  struct tls_pkey_data pdata;
+  register unsigned int attempt;
+
+  /* Open an fp on the cert file. */
+  PRIVS_ROOT
+  keyf = fopen(path, "r");
+  PRIVS_RELINQUISH
+
+  if (!keyf) {
+    SYSerr(SYS_F_FOPEN, errno);
+    return -1;
+  }
+
+  pdata.buf = buf;
+  pdata.buflen = buflen;
+  pdata.prompt = prompt;
+
+  /* Reconnect stderr to the term because proftpd connects stderr, earlier,
+   * to the general stderr logfile.
+   */
+  prompt_fd = open("/dev/null", O_WRONLY);
+  if (prompt_fd == -1)
+    /* This is an arbitrary, meaningless placeholder number. */
+    prompt_fd = 76;
+
+  dup2(STDERR_FILENO, prompt_fd);
+  dup2(STDOUT_FILENO, STDERR_FILENO);
+
+  /* The user gets three tries to enter the correct passphrase. */
+  for (attempt = 0; attempt < 3; attempt++) {
+
+    /* Always handle signals in a loop. */
+    pr_signals_handle();
+
+    pkey = PEM_read_PrivateKey(keyf, NULL, tls_passphrase_cb, &pdata);
+    if (pkey)
+      break;
+
+    fseek(keyf, 0, SEEK_SET);
+    ERR_clear_error();
+    fprintf(stderr, "\nWrong passphrase for this key.  Please try again.\n");
+  }
+  fclose(keyf);
+
+  /* Restore the normal stderr logging. */
+  dup2(prompt_fd, STDERR_FILENO);
+  close(prompt_fd);
+
+  if (pkey == NULL)
+    return -1;
+
+#ifdef HAVE_MLOCK
+   PRIVS_ROOT
+   if (mlock(buf, buflen) < 0)
+     tls_log("error locking passphrase into memory: %s", strerror(errno));
+   else
+     tls_log("passphrase locked into memory");
+   PRIVS_RELINQUISH
+#endif
+
+  EVP_PKEY_free(pkey);
+  return 0;
+}
+
 static int tls_handshake_timeout_cb(CALLBACK_FRAME) {
   tls_handshake_timed_out = TRUE;
   return 0;
+}
+
+static tls_pkey_t *tls_lookup_pkey(void) {
+  tls_pkey_t *k, *pkey = NULL;
+
+  for (k = tls_pkey_list; k; k = k->next) {
+
+    /* If this pkey matches the current server_rec, mark it and move on. */
+    if (k->server == main_server) {
+
+#ifdef HAVE_MLOCK
+      /* mlock() the passphrase memory areas again; page locks are not
+       * inherited across forks.
+       */
+      PRIVS_ROOT
+      if (k->rsa_pkey)
+        if (mlock(k->rsa_pkey, k->pkeysz) < 0)
+          tls_log("error locking passphrase into memory: %s", strerror(errno));
+
+      if (k->dsa_pkey)
+        if (mlock(k->dsa_pkey, k->pkeysz) < 0)
+          tls_log("error locking passphrase into memory: %s", strerror(errno));
+      PRIVS_RELINQUISH
+#endif /* HAVE_MLOCK */
+
+      pkey = k;
+      continue;
+    }
+
+    /* Otherwise, scrub the passphrase's memory areas. */
+    if (k->rsa_pkey) {
+      pr_memscrub(k->rsa_pkey, k->pkeysz);
+      free(k->rsa_pkey);
+    }
+
+    if (k->dsa_pkey) {
+      pr_memscrub(k->dsa_pkey, k->pkeysz);
+      free(k->dsa_pkey);
+    }
+  }
+
+  return pkey;
+}
+
+static int tls_pkey_cb(char *buf, int buflen, int rwflag, void *data) {
+  tls_pkey_t *k;
+
+  if (!data)
+    return 0;
+
+  k = (tls_pkey_t *) data;
+
+  if ((k->flags & TLS_PKEY_USE_RSA) && k->rsa_pkey) {
+    strncpy(buf, k->rsa_pkey, buflen);
+    buf[buflen - 1] = '\0';
+    return strlen(buf);
+  }
+
+  if ((k->flags & TLS_PKEY_USE_DSA) && k->dsa_pkey) {
+    strncpy(buf, k->dsa_pkey, buflen);
+    buf[buflen - 1] = '\0';
+    return strlen(buf);
+  }
+
+  return 0;
+}
+
+static void tls_scrub_pkeys(void) {
+  tls_pkey_t *k;
+
+  /* Scrub and free all passphrases in memory. */
+  if (tls_pkey_list)
+    log_debug(DEBUG5, MOD_TLS_VERSION
+      ": scrubbing all passphrases from memory");
+
+  for (k = tls_pkey_list; k; k = k->next) {
+    if (k->rsa_pkey) {
+      pr_memscrub(k->rsa_pkey, k->pkeysz);
+      free(k->rsa_pkey);
+    }
+
+    if (k->dsa_pkey) {
+      pr_memscrub(k->dsa_pkey, k->pkeysz);
+      free(k->dsa_pkey);
+    }
+  }
 }
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
@@ -833,10 +1067,10 @@ static int tls_init_server(void) {
 
   PRIVS_ROOT
   if (tls_rsa_cert_file) {
-    int err = SSL_CTX_use_certificate_file(ssl_ctx, tls_rsa_cert_file,
+    int res = SSL_CTX_use_certificate_file(ssl_ctx, tls_rsa_cert_file,
       X509_FILETYPE_PEM);
 
-    if (err <= 0) {
+    if (res <= 0) {
       PRIVS_RELINQUISH
 
       tls_log("error: '%s': %s", tls_rsa_cert_file,
@@ -848,10 +1082,15 @@ static int tls_init_server(void) {
   }
 
   if (tls_rsa_key_file) {
-    int err = SSL_CTX_use_PrivateKey_file(ssl_ctx, tls_rsa_key_file,
+    int res;
+
+    tls_pkey->flags |= TLS_PKEY_USE_RSA;
+    tls_pkey->flags &= ~TLS_PKEY_USE_DSA;
+
+    res = SSL_CTX_use_PrivateKey_file(ssl_ctx, tls_rsa_key_file,
       X509_FILETYPE_PEM);
 
-    if (err <= 0) {
+    if (res <= 0) {
       PRIVS_RELINQUISH
 
       tls_log("error: '%s': %s", tls_rsa_key_file,
@@ -861,10 +1100,10 @@ static int tls_init_server(void) {
   }
 
   if (tls_dsa_cert_file) {
-    int err = SSL_CTX_use_certificate_file(ssl_ctx, tls_dsa_cert_file,
+    int res = SSL_CTX_use_certificate_file(ssl_ctx, tls_dsa_cert_file,
       X509_FILETYPE_PEM);
 
-    if (err <= 0) {
+    if (res <= 0) {
       PRIVS_RELINQUISH
 
       tls_log("error: '%s' %s", tls_dsa_cert_file,
@@ -874,10 +1113,15 @@ static int tls_init_server(void) {
   }
 
   if (tls_dsa_key_file) {
-    int err = SSL_CTX_use_PrivateKey_file(ssl_ctx, tls_dsa_key_file,
+    int res;
+
+    tls_pkey->flags &= ~TLS_PKEY_USE_RSA;
+    tls_pkey->flags |= TLS_PKEY_USE_DSA;
+
+    res = SSL_CTX_use_PrivateKey_file(ssl_ctx, tls_dsa_key_file,
       X509_FILETYPE_PEM);
 
-    if (err <= 0) {
+    if (res <= 0) {
       PRIVS_RELINQUISH
 
       tls_log("error: '%s': %s", tls_dsa_key_file,
@@ -2971,6 +3215,99 @@ MODRET set_tlsverifydepth(cmd_rec *cmd) {
 /* Initialization routines
  */
 
+static int tls_postparse_cb(void) {
+  server_rec *s = NULL;
+  char buf[256];
+
+  for (s = (server_rec *) server_list; s; s = s->next) {
+    config_rec *rsa = NULL, *dsa = NULL;
+    tls_pkey_t *k = NULL;
+
+    /* Find any TLS{D,R}SACertificateKeyFile directives.  If they aren't
+     * present, look for TLS{D,R}SACertificateFile directives.
+     */
+    rsa = find_config(s->conf, CONF_PARAM, "TLSRSACertificateKeyFile", FALSE);
+    if (!rsa)
+      rsa = find_config(s->conf, CONF_PARAM, "TLSRSACertificateFile", FALSE);
+
+    dsa = find_config(s->conf, CONF_PARAM, "TLSDSACertificateKeyFile", FALSE);
+    if (!dsa)
+      dsa = find_config(s->conf, CONF_PARAM, "TLSDSACertificateFile", FALSE);
+
+    if (!rsa && !dsa)
+      continue;
+
+    k = pcalloc(s->pool, sizeof(tls_pkey_t));
+    k->pkeysz = PEM_BUFSIZE;
+    k->server = s;
+
+    if (rsa) {
+      snprintf(buf, sizeof(buf)-1, "RSA key for the %s:%d (%s) server: ",
+        pr_netaddr_get_ipstr(s->addr), s->ServerPort, s->ServerName);
+      buf[sizeof(buf)-1] = '\0';
+
+      k->rsa_pkey = calloc(1, k->pkeysz);
+      if (k->rsa_pkey == NULL) {
+        log_pri(PR_LOG_ERR, "out of memory!");
+        exit(1);
+      }
+
+      if (tls_get_passphrase(rsa->argv[0], buf, k->rsa_pkey, k->pkeysz) < 0) {
+        tls_log("error reading RSA passphrase: %s",
+          ERR_error_string(ERR_get_error(), NULL));
+
+        log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use "
+          "RSA certificate key in '%s', exiting", (char *) rsa->argv[0]);
+        end_login(1);
+      }
+    }
+
+    if (dsa) {
+      snprintf(buf, sizeof(buf)-1, "DSA key for the %s:%d (%s) server: ",
+        pr_netaddr_get_ipstr(s->addr), s->ServerPort, s->ServerName);
+      buf[sizeof(buf)-1] = '\0';
+
+      k->dsa_pkey = calloc(1, k->pkeysz);
+      if (k->dsa_pkey == NULL) {
+        log_pri(PR_LOG_ERR, "out of memory!");
+        exit(1);
+      }
+
+      if (tls_get_passphrase(dsa->argv[0], buf, k->dsa_pkey, k->pkeysz) < 0) {
+        tls_log("error reading DSA passphrase: %s",
+          ERR_error_string(ERR_get_error(), NULL));
+
+        log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use "
+          "DSA certificate key '%s', exiting", (char *) dsa->argv[0]);
+        end_login(1);
+      }
+    }
+
+    k->next = tls_pkey_list;
+    tls_pkey_list = k;
+  }
+
+  return 0;
+}
+
+/* Daemon PID */
+extern pid_t mpid;
+
+static void tls_daemon_exit_cb(void) {
+  if (mpid == getpid())
+    tls_scrub_pkeys();
+}
+
+static void tls_rehash_cb(void *data) {
+  tls_scrub_pkeys();
+  tls_pkey_list = NULL;
+
+  /* Re-register the postparse callback, to handle the (possibly changed)
+   * configuration and (re-)prompt for passphrases, if needed.
+   */
+  pr_register_postparse_init(tls_postparse_cb);
+}
+
 static void tls_sess_exit_cb(void) {
 
   /* OpenSSL cleanup */
@@ -2987,6 +3324,25 @@ static void tls_sess_exit_cb(void) {
   if (tls_data_netio)
     destroy_pool(tls_data_netio->pool);
 
+  if (tls_pkey && (mpid != getpid())) {
+
+    /* Scrub and free any passphrases.  We don't worry about unlocking the
+     * memory, as that will happen by default.
+     */
+ 
+    if (tls_pkey->rsa_pkey) { 
+      tls_log("scrubbing RSA passphrase from memory");
+      pr_memscrub(tls_pkey->rsa_pkey, tls_pkey->pkeysz);
+      free(tls_pkey->rsa_pkey);
+    }
+
+    if (tls_pkey->dsa_pkey) {
+      tls_log("scrubbing DSA passphrase from memory");
+      pr_memscrub(tls_pkey->dsa_pkey, tls_pkey->pkeysz);
+      free(tls_pkey->dsa_pkey);
+    }
+  }
+
   tls_closelog();
   return;
 }
@@ -2999,6 +3355,17 @@ static int tls_init(void) {
 
   /* Initialize the OpenSSL context. */
   res = tls_init_ctxt();
+
+  /* Register a postparse callback, for handling any passphrase-protected
+   * key files.
+   */
+  pr_register_postparse_init(tls_postparse_cb);
+
+  /* Register a rehash handler, for handling SIGHUPs. */
+  pr_rehash_register_handler(NULL, tls_rehash_cb);
+
+  /* Register an exit callback, for handling any locked memory. */
+  pr_exit_register_handler(tls_daemon_exit_cb);
 
   return 0;
 }
@@ -3099,6 +3466,13 @@ static int tls_sess_init(void) {
 
   pr_exit_register_handler(tls_sess_exit_cb);
 
+  /* Check to see if a passphrase has been entered for this server. */
+  tls_pkey = tls_lookup_pkey();
+  if (tls_pkey != NULL) {
+    SSL_CTX_set_default_passwd_cb(ssl_ctx, tls_pkey_cb);
+    SSL_CTX_set_default_passwd_cb_userdata(ssl_ctx, (void *) tls_pkey);
+  }
+  
   /* NOTE: fail session init if TLS server init fails (e.g. res < 0)? */
   /* Initialize the OpenSSL context for this server's configuration. */
   res = tls_init_server();
