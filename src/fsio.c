@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.33 2004-04-09 16:58:23 castaglia Exp $
+ * $Id: fsio.c,v 1.34 2004-04-12 17:14:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2676,14 +2676,27 @@ char *pr_fsio_getline(char *buf, int buflen, pr_fh_t *fh,
 
     inlen = strlen(buf);
 
-    if (inlen >= 1 && buf[inlen - 1] == '\n') {
-      (*lineno)++;
+    if (inlen >= 1) {
+      if (buf[inlen - 1] == '\n') {
+        (*lineno)++;
 
-      if (inlen >= 2 && buf[inlen - 2] == '\\') {
-        inlen -= 2;
+        if (inlen >= 2 && buf[inlen - 2] == '\\') {
+          char *bufp;
 
-      } else
-        return start;
+          inlen -= 2;
+      
+          /* Watch for commented lines when handling line continuations.
+           * Advance past any leading whitespace, to see if the first
+           * non-whitespace character is the comment character.
+           */
+          for (bufp = buf; *bufp && isspace((int) *bufp); bufp++);
+
+          if (*bufp == '#')
+             continue;
+ 
+        } else
+          return start;
+      }
     }
 
     /* Be careful of reading too much. */
