@@ -32,7 +32,9 @@ features and configuration:</p>
     <li><a href="#AuthAliasOnly">AuthAliasOnly</a></li>
     <li><a href="#AuthGroupFile">AuthGroupFile</a></li>
     <li><a href="#AuthUserFile">AuthUserFile</a></li>
+    <li><a href="#Bandwidth">Bandwidth</a></li>
     <li><a href="#Bind">Bind</a></li>
+    <li><a href="#CDPath">CDPath</a></li>
     <li><a href="#DefaultRoot">DefaultRoot</a></li>
     <li><a href="#DefaultServer">DefaultServer</a></li>
     <li><a href="#DeferWelcome">DeferWelcome</a></li>
@@ -44,6 +46,7 @@ features and configuration:</p>
     <li><a href="#DirFakeGroup">DirFakeGroup</a></li>
     <li><a href="#DirFakeMode">DirFakeMode</a></li>
     <li><a href="#DirFakeUser">DirFakeUser</a></li>
+    <li><a href="#DisplayConnect">DisplayConnect</a></li>
     <li><a href="#DisplayFirstChdir">DisplayFirstChdir</a></li>
     <li><a href="#DisplayLogin">DisplayLogin</a></li>
     <li><a href="#ExtendedLog">ExtendedLog</a></li>
@@ -51,6 +54,7 @@ features and configuration:</p>
     <li><a href="#Group">Group</a></li>
     <li><a href="#GroupOwner">GroupOwner</a></li>
     <li><a href="#GroupPassword">GroupPassword</a></li>
+    <li><a href="#HiddenStor">HiddenStor</a></li>
     <li><a href="#HideGroup">HideGroup</a></li>
     <li><a href="#HideNoAccess">HideNoAccess</a></li>
     <li><a href="#HideUser">HideUser</a></li>
@@ -63,6 +67,7 @@ features and configuration:</p>
     <li><a href="#MaxClientsPerHost">MaxClientsPerHost</a></li>
     <li><a href="#MaxInstances">MaxInstances</a></li>
     <li><a href="#MaxLoginAttempts">MaxLoginAttempts</a></li>
+    <li><a href="#MultilineRFC2228">MultilineRFC2228</a></li>
     <li><a href="#Order">Order</a></li>
     <li><a href="#PathAllowFilter">PathAllowFilter</a></li>
     <li><a href="#PathDenyFilter">PathDenyFilter</a></li>
@@ -72,6 +77,7 @@ features and configuration:</p>
     <li><a href="#RootLogin">RootLogin</a></li>
     <li><a href="#ScoreboardPath">ScoreboardPath</a></li>
     <li><a href="#ServerAdmin">ServerAdmin</a></li>
+    <li><a href="#ServerIdent">ServerIdent</a></li>
     <li><a href="#ServerName">ServerName</a></li>
     <li><a href="#ServerType">ServerType</a></li>
     <li><a href="#ShowSymlinks">ShowSymlinks</a></li>
@@ -79,6 +85,7 @@ features and configuration:</p>
     <li><a href="#SyslogFacility">SyslogFacility</a></li>
     <li><a href="#SystemLog">SystemLog</a></li>
     <li><a href="#tcpBackLog">tcpBackLog</a></li>
+    <li><a href="#tcpNoDelay">tcpNoDelay</a></li>
     <li><a href="#tcpReceiveWindow">tcpReceiveWindow</a></li>
     <li><a href="#tcpSendWindow">tcpSendWindow</a></li>
     <li><a href="#TimeoutIdle">TimeoutIdle</a></li>
@@ -541,6 +548,34 @@ connections.</strong></p>
 
 <hr>
 
+<h2><a name="Bandwidth">Bandwidth</a></h2>
+
+<p><strong>Syntax:</strong> Bandwidth <em>&lt;speed in Kbps, between 1
+and 2048&gt;</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;<br>
+<strong>Compatibility:</strong> 1.2.0pre5 and later</p>
+
+<p>
+The Bandwidth directive controls the maximum throughput for a given
+server. Different limits can be set on a per-server basis, this
+directive is applicable to the main server and/or virtual servers.
+<br><br>
+Example usage:
+<pre>
+&lt;VirtualHost xx.xx.xx.xx&gt;
+  Port xxxx
+  ServerName "My Virtual Server"
+  # Limit the Bandwidth to 256 Kbps
+  Bandwidth 256
+  DefaultRoot /home/ftp/something
+</pre>
+  etc...
+
+</p>
+
+<hr>
+
 <h2><a name="Bind">Bind</a></h2>
 
 <p><strong>Syntax:</strong> Bind <em>address</em><br>
@@ -558,6 +593,28 @@ by the context containing the directive.  Additionally, if
 <a href="#SocketBindTight">SocketBindTight</a> is set to
 <strong><em>on</em></strong>, a specific listen connection is created 
 for each additional address.</p>
+
+<hr>
+
+<h2><a name="CDPath">CDPath</a></h2>
+
+<p><strong>Syntax:</strong> CDPath <em>directory</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.2.0pre2 and later</p>
+
+<p>Adds an entry to a search path that is used when changing
+directories. For example:
+<pre>
+  CDPath    /home/public
+  CDPath    /var/devel
+</pre>
+This allows a user to cd into any directory directly under /home/public
+or /var/devel, provided they have the appropriate rights. So, if
+/home/public/proftpd exists, <code>cd proftpd</code> will bring the user
+to that directory, regardless of where they currently are in the
+directory tree.</p> 
 
 <hr>
 
@@ -888,6 +945,31 @@ or access control in any way.</p>
 
 <hr>
 
+<h2><a name="DisplayConnect">DisplayConnect</a></h2>
+
+<p><strong>Syntax:</strong> DisplayConnect <em>filename</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.2.0pre2 and later</p>
+
+<p>The DisplayConnect directive configures an ascii text filename which
+will be displayed to the user when they initially connect but before
+they login. The filename can be either relative or absolute. In the case
+of a relative filename, the file is searched for starting in the home
+directory of the user the server is running as. As this can lead
+confusion, absolute pathnames are suggested. If the file cannot be found
+or accessed, no error occurs and nothing is logged or displayed to the
+client.</p> 
+
+<p>DisplayConnect supports a subset of the &quot;magic cookies&quot;
+used by <a href="#DisplayLogin">DisplayLogin</a> and <a
+href="#DisplayFirstChdir">DisplayFirstChdir</a>: %T, %F, %R, %L and %u
+(see <a href="#DisplayFirstChdir">DisplayFirstChdir</a> for
+details).</p> 
+
+<hr>
+
 <h2><a name="DisplayFirstChdir">DisplayFirstChdir</a></h2>
 
 <p><strong>Syntax:</strong> DisplayFirstChdir <em>filename</em><br>
@@ -967,6 +1049,13 @@ respective strings before being displayed to the user.</p>
         <td>&nbsp;</td>
         <td>Server admin's e-mail address</td>
     </tr>
+<!-- This doesn't work?  It appears in mod_core.c 
+    <tr>
+        <td align="right"><strong>%V</strong></td>
+        <td>&nbsp;</td>
+        <td>Name of virtual host (if any)</td>
+    </tr>
+-->
 </table>
 </div>
 
@@ -1130,6 +1219,27 @@ security problems may arise if group membership is not carefully
 controlled.</strong></p>
 
 <p>See Also: <a href="#UserPassword">UserPassword</a></p>
+
+<hr>
+
+<h2><a name="HiddenStor">HiddenStor</a></h2>
+
+<p><strong>Syntax:</strong> HiddenStor <em>on|off</em><br>
+<strong>Default:</strong> <code>HiddenStor off</code><br>
+<strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;,
+&lt;VirtualHost&gt;,
+&lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.2.0pre5 and later</p>
+
+<p>The HiddenStor directive enables two-step file uploads: files are
+uploaded as &quot;<code>.in.<em>filename</em>.</code>&quot; and once the
+upload is complete, renamed to just
+&quot;<code><em>filename</em></code>&quot;. This provides a degree of
+atomicity and helps prevent 1) incomplete uploads and 2) files being
+used while they're still in the progress of being uploaded.
+<em><strong>Note:</strong></em> if the temporary file name is already in
+use (e.g., a server crash during upload), it will prevent the file from
+being uploaded.</p> 
 
 <hr>
 
@@ -1553,6 +1663,38 @@ is logged via the syslog mechanism.</p>
 
 <hr>
 
+<h2><a name="MultilineRFC2228">MultilineRFC2228</a></h2>
+
+<p><strong>Syntax:</strong> MultilineRFC2228 <em>on|off</em><br>
+<strong>Default:</strong> <code>MultilineRFC2228 off</code><br>
+<strong>Context:</strong> server config<br>
+<strong>Compatibility:</strong> 1.2.0pre3 and later</p>
+
+<p> By default, proftpd sends multiline responses as per <a
+href="ftp://ftp.ietf.org/rfc/rfc0959.txt">RFC 959</a>, i.e.:
+<pre>
+  200-First line
+   More lines...
+  200 Last line
+</pre>
+<a href="ftp://ftp.ietf.org/rfc/rfc2228.txt">RFC 2228</a> specifies that
+"6xy" response codes will be sent as follows:
+<pre>
+  600-First line
+  600-More lines...
+  600 Last line
+</pre>
+Note that 2228 <em>ONLY</em> specifies this for response codes starting
+with '6'. Enabling this directive causes <em>ALL</em> responses to be
+sent in this format, which may be more compatible with certain web
+browsers and clients. Also note that this is <em>NOT</em> the same as
+wu-ftpd's multiline responses, which do not comply with any RFC. Using
+this method of multilines is more likely to be compatible with all
+clients, although it isn't strictly RFC, and is thus not enabled by
+default.</p> 
+
+<hr>
+
 <h2><a name="Order">Order</a></h2>
 
 <p><strong>Syntax:</strong> Order <em>allow,deny|deny,allow</em><br>
@@ -1780,6 +1922,27 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
 
 <hr>
 
+<h2><a name="ServerIdent">ServerIdent</a></h2>
+
+<p><strong>Syntax:</strong> ServerIdent <em>On|Off [identification
+string]</em><br>
+<strong>Default:</strong> <code>ServerIdent ProFTPD [version] Server
+(server name) [hostname]</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.2.0pre2 and later</p>
+
+<p>The ServerIdent directive sets the default message displayed when a
+new client connects. Setting this to <em><strong>off</strong></em>
+displays "<code>[hostname] FTP server ready.</code>" If set to
+<em><strong>on</strong></em>, the directive can take an optional string
+argument, which will be displayed instead of the default text. Sites
+desiring to give out minimal information will probably want a setting
+like <code>ServerIdent "FTP Server ready."</code>, which won't even
+reveal the hostname. 
+
+<hr>
+
 <h2><a name="ServerName">ServerName</a></h2>
 
 <p><strong>Syntax:</strong> ServerName <em>&quot;name&quot;</em><br>
@@ -1996,6 +2159,24 @@ unless you intend to service a large number of virtual hosts (see
 have a consistantly heavy system load. If you begin to notice or
 hear of &quot;connection refused&quot; messages from remote
 clients, try setting a slightly higher value to this directive.</p>
+
+<hr>
+
+<h2><a name="tcpNoDelay"><strong>tcpNoDelay</strong></a></h2>
+
+<p><strong>Syntax:</strong> tcpNoDelay <em>on|off</em><br>
+<strong>Default:</strong> <code>tcpNoDelay on</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.2.0pre3a and later</p>
+
+<p>The tcpNoDelay directive controls the use of the TCP_NODELAY socket
+option (which disables the Nagle algorithm). ProFTPd uses TCP_NODELAY by
+default, which usually is a benefit but this can ocassionally lead to
+problems with some clients, so tcpNoDelay is provided as a way to
+disable this option. You will not normally need to use this directive
+but if you have clients reporting unusually slow connections, try
+setting this to <em><strong>off</strong></em>. </p> 
 
 <hr>
 
