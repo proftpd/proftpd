@@ -1,4 +1,8 @@
-$Id: NEWS,v 1.585 2004-07-13 18:32:54 castaglia Exp $
+$Id: NEWS,v 1.586 2004-07-13 23:57:22 castaglia Exp $
+
+1.2.10rc3 - Released 13-Jul-2004
+--------------------------------
+- Fixed typo that prevented 1.2.10rc2 from compiling.
 
 1.2.10rc2 - Released 13-Jul-2004
 ---------------------------------
