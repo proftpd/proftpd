@@ -1,3 +1,20 @@
+2001-02-22 19:35  flood
+
+	* INSTALL, README, README.AIX, README.FreeBSD, README.modules,
+	README.ports, configure.in, doc/Configuration.html,
+	sample-configurations/PFTEST.conf.in,
+	sample-configurations/PFTEST.group,
+	sample-configurations/PFTEST.install,
+	sample-configurations/PFTEST.passwd,
+	sample-configurations/PFTEST.shadow: Bug #1006 - Fixes in
+	configure.in  Bug #1022 - Docs updated for mod_sql. Bug #1024 -
+	Updated INSTALL, README and new READMEs and PFTEST files.
+
+2001-02-22 18:32  flood
+
+	* modules/mod_ls.c: Bug #1016 - Listing "." files should work again
+	+ tweak to IgnoreHidden.
+
 2001-02-22 17:39  flood
 
 	* NEWS, include/dirtree.h, modules/mod_core.c, modules/mod_ls.c,
