@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.171 2003-03-20 02:19:38 castaglia Exp $
+ * $Id: main.c,v 1.172 2003-03-21 03:26:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -950,7 +950,6 @@ static void set_server_privs(void) {
 }
 
 static void fork_server(int fd, conn_t *l, unsigned char nofork) {
-  server_rec *s = NULL, *s_saved = NULL, *serv = NULL;
   conn_t *conn = NULL;
   unsigned char *ident_lookups = NULL;
   int i, rev;
@@ -1084,10 +1083,10 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 #endif /* DEVEL_NO_FORK */
 
   /* Child is running here */
-  signal(SIGUSR1,sig_disconnect);
-  signal(SIGUSR2,sig_debug);
-  signal(SIGCHLD,SIG_DFL);
-  signal(SIGHUP,SIG_IGN);
+  signal(SIGUSR1, sig_disconnect);
+  signal(SIGUSR2, sig_debug);
+  signal(SIGCHLD, SIG_DFL);
+  signal(SIGHUP, SIG_IGN);
 
   /* From this point on, syslog stays open. We close it first so that the
    * logger will pick up our new PID.
@@ -1127,42 +1126,41 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   inet_set_proto_opts(permanent_pool,conn, 0, 1, 1, 0, 0);
 
   /* Find the server for this connection. */
-  serv = pr_ipbind_get_server(conn->local_ipaddr, conn->local_port);
+  main_server = pr_ipbind_get_server(conn->local_ipaddr, conn->local_port);
 
-#ifndef PR_HACK_DISABLE_VHOST_MEM_FREE
-  /* To conserve memory, free all other servers and associated
-   * configurations
+  /* The follow code was ostensibly used to conserve memory, to free all other
+   * servers and associated configurations.  However, when large numbers of
+   * servers are configured, this process adds significant time to the
+   * establishment of a session.  More importantly, I do not think it is
+   * really necessary; copy-on-write semantics mean that those portions of
+   * memory won't actually be in this process' space until changed.  And if
+   * those configurations will never be reached, the only time the associated
+   * memory would change is now, when it is attempted to be freed.
+   *
+   * s = main_server;
+   * while (s) {
+   *   s_saved = s->next;
+   *   if (s != serv) {
+   *     if (s->listen && s->listen != l) {
+   *       if (s->listen->listen_fd == conn->rfd ||
+   *           s->listen->listen_fd == conn->wfd)
+   *         s->listen->listen_fd = -1;
+   *       else
+   *         inet_close(s->pool,s->listen);
+   *     }
+   *
+   *     if (s->listen) {
+   *       if (s->listen->listen_fd == conn->rfd ||
+   *          s->listen->listen_fd == conn->wfd)
+   *            s->listen->listen_fd = -1;
+   *     }
+   *
+   *     xaset_remove(server_list,(xasetmember_t*)s);
+   *     destroy_pool(s->pool);
+   *   }
+   *   s = s_saved;
+   * }
    */
-  s = main_server;
-  while (s) {
-    s_saved = s->next;
-    if (s != serv) {
-      if (s->listen && s->listen != l) {
-	/* If our former listen socket was stdin or stdout (0 or 1),
-         * inet_close() will attempt to close it, and in the process
-         * close our read/write sockets for this connection.
-         */
-        if (s->listen->listen_fd == conn->rfd ||
-           s->listen->listen_fd == conn->wfd)
-          s->listen->listen_fd = -1;
-        else
-          inet_close(s->pool,s->listen);
-      }
-
-      if (s->listen) {
-        if (s->listen->listen_fd == conn->rfd ||
-           s->listen->listen_fd == conn->wfd)
-             s->listen->listen_fd = -1;
-      }
-
-      xaset_remove(server_list,(xasetmember_t*)s);
-      destroy_pool(s->pool);
-    }
-    s = s_saved;
-  }
-#endif
-
-  main_server = serv;
 
   session.pool = permanent_pool;
   session.c = conn;
@@ -1226,31 +1224,29 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   /* If no server is configured to handle the addr the user is
    * connected to, drop them.
    */
-  if (!serv) {
+  if (!main_server) {
     pr_response_send(R_500, "Sorry, no server available to handle request on "
       "%s", inet_getname(conn->pool, conn->local_ipaddr));
     exit(0);
   }
 
-  if (serv->listen) {
-    if (serv->listen->listen_fd == conn->rfd ||
-        serv->listen->listen_fd == conn->wfd)
-          serv->listen->listen_fd = -1;
+  if (main_server->listen) {
+    if (main_server->listen->listen_fd == conn->rfd ||
+        main_server->listen->listen_fd == conn->wfd)
+      main_server->listen->listen_fd = -1;
 
-    destroy_pool(serv->listen->pool);
-    serv->listen = NULL;
+    destroy_pool(main_server->listen->pool);
+    main_server->listen = NULL;
   }
 
   /* Check config tree for <Limit LOGIN> directives */
-  if (!login_check_limits(serv->conf, TRUE, FALSE, &i)) {
+  if (!login_check_limits(main_server->conf, TRUE, FALSE, &i)) {
     log_pri(PR_LOG_NOTICE, "Connection from %s [%s] denied.",
             session.c->remote_name, inet_ntoa(*session.c->remote_ipaddr));
     exit(0);
   }
 
-  /* Use the ident protocol (RFC1413) to try to get remote ident_user
-   */
-
+  /* Use the ident protocol (RFC1413) to try to get remote ident_user */
   if ((ident_lookups = get_param_ptr(main_server->conf, "IdentLookups",
      FALSE)) == NULL || *ident_lookups == TRUE) {
     session.ident_lookups = TRUE;
@@ -1294,7 +1290,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   /* set the per-child resource limits */
   set_session_rlimits();
 
-  cmd_loop(serv, conn);
+  cmd_loop(main_server, conn);
 }
 
 static void disc_children(void) {
@@ -2557,6 +2553,15 @@ int main(int argc, char *argv[], char **envp) {
   init_config();
   pr_init_stash();
   module_preparse_init();
+
+  /* Now, once the modules have had a chance to initialize themselves
+   * but before the configuration stream is actually parsed, check
+   * that the given configuration path is valid.
+   */
+  if (pr_fs_valid_path(config_filename) < 0) {
+    log_pri(PR_LOG_ERR, "Fatal: -c requires an absolute path");
+    exit(1);
+  }
 
   /* Now, once the modules have had a chance to initialize themselves
    * but before the configuration stream is actually parsed, check
