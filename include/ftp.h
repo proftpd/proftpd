@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001, 2002, 2003, 2004 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* FTP commands and responses (may not all be implemented)
  *
- * $Id: ftp.h,v 1.10 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: ftp.h,v 1.11 2004-10-30 20:44:41 castaglia Exp $
  */
 
 #ifndef PR_FTP_H
@@ -77,6 +77,7 @@
 #define C_NOOP	"NOOP"		/* Returns 200 and does nothing */
 #define C_FEAT	"FEAT"		/* Request list of server-supported features */
 #define C_OPTS	"OPTS"		/* Specify options for FTP commands */
+#define C_LANG	"LANG"		/* Request a specific language */
 
 /* RFC2228 FTP Security commands */
 #define C_ADAT  "ADAT"		/* Authentication/security data */
