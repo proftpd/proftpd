@@ -147,6 +147,8 @@ dist: depend distclean
 	rm -fr `find . -name '*.bak'`
 	# RPM needs this in the top-level directory in order to support '-t'
 	mv -f contrib/dist/rpm/proftpd.spec .
+	# Other users may need to execute these scripts
+	chmod a+x configure config.sub install-sh modules/glue.sh
 
 
 # autoheader might not change config.h.in, so touch a stamp file.
