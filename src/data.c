@@ -20,7 +20,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.12 2000-07-07 06:41:08 macgyver Exp $
+ * $Id: data.c,v 1.13 2000-07-11 14:10:33 macgyver Exp $
  */
 
 #include "conf.h"
@@ -128,12 +128,14 @@ int _data_pasv_open(char *reason, unsigned long size)
 		add_timer(TimeoutStalled, TIMER_STALLED,
 				NULL, stalled_timeout);
 
+	/* We save the state of our current disposition for doing reverse
+	 * lookups, and then set it to what the configuration wants it to
+	 * be.
+	 */
         rev = inet_reverse_dns(session.xfer.p,ServerUseReverseDNS);
-
 	c = inet_accept(session.xfer.p, session.d, session.c, -1, -1, TRUE);
-
 	inet_reverse_dns(session.xfer.p,rev);
-
+	
 	if(c && c->mode != CM_ERROR) {
 		inet_close(session.pool,session.d);
 		inet_setnonblock(session.pool,c);

@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.32 2000-07-11 13:35:34 macgyver Exp $
+ * $Id: main.c,v 1.33 2000-07-11 14:10:33 macgyver Exp $
  */
 
 /*
@@ -1169,7 +1169,7 @@ void fork_server(int fd,conn_t *l,int nofork)
 {
   server_rec *s,*serv = NULL;
   conn_t *conn;
-  int i;
+  int i, rev;
 
 #ifndef DEBUG_NOFORK
   pid_t pid;
@@ -1257,12 +1257,17 @@ void fork_server(int fd,conn_t *l,int nofork)
   unblock_signals();
 
   /* It's safe to call inet_openrw now (it might block),
-   * because the parent is off answering new connections
+   * because the parent is off answering new connections.
+   *
+   * We save the state of our current disposition for doing reverse
+   * lookups, and then set it to what the configuration wants it to
+   * be.
    */
-
-  conn = inet_openrw(permanent_pool,l,NULL,fd,
-                     STDIN_FILENO,STDOUT_FILENO,TRUE);
-
+  rev = inet_reverse_dns(permanent_pool, ServerUseReverseDNS);
+  conn = inet_openrw(permanent_pool, l, NULL, fd,
+                     STDIN_FILENO, STDOUT_FILENO, TRUE);
+  inet_reverse_dns(permanent_pool, rev);
+  
   if(!conn) {
     log_pri(LOG_ERR,"Fatal: unable to open incoming connection: %s",
                    strerror(errno));
