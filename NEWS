@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.520 2004-01-11 21:33:26 castaglia Exp $
+$Id: NEWS,v 1.521 2004-01-13 23:47:09 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -64,9 +64,9 @@ CVS
   used; a return value was not being checked to see if it was an error value.
 - Bug 2305 - Compile Problems since > 1.2.9
   Fix the build under Solaris - ftpdctl needs to be linked against libsocket
-  and libnsl
+  and libnsl.
 - Bug 2267 - Broken IP subnet matching. Added new ACL parsing/matching code.
-- Bug 2307 - MySQL 4.1.1 API change causes mod_sql_mysql compilation failure
+- Bug 2307 - MySQL 4.1.1 API change causes mod_sql_mysql compilation failure.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------
@@ -107,7 +107,8 @@ CVS
 - Bug 2024 - DefaultServer not functioning properly.
   The addition of the Bindings API in 1.2.8rc1 inadvertently caused the
   DefaultServer directive to not be properly honored in some configurations.
-- Bug 2183 - Directory configuration lookups broken in 1.2.9rc2.
+- Bug 2183 - Directory configuration lookups broken in 1.2.9rc2 (same as
+  bug 2165).
 - Bug 2191 - Segfault in mod_sql_mysql when using 'Backend' SQLAuthType.
   This happens only with MySQL 4.1.  In MySQL 4.1, the way in which MySQL
   handles its passwords changed, and mod_sql_mysql was using the new
