@@ -1,3 +1,12 @@
+1999-10-04 18:54  macgyver
+
+	* ChangeLog (1.4): Updated the ChangeLog.
+
+1999-10-04 18:54  macgyver
+
+	* changelog (1.21), doc/Changes-1.2.0pre3 (1.1): Moved the old
+	changelog to doc/Changes-1.2.0pre3 to avoid any confusion.
+
 1999-10-04 18:39  macgyver
 
 	* contrib/mod_pgsql.c (1.3, R1_2_0pre8): Fixed a bad path in
