@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.104 2002-09-09 14:40:44 jwm Exp $
+ * $Id: main.c,v 1.105 2002-09-09 20:01:15 uid43859 Exp $
  */
 
 #include "conf.h"
@@ -373,7 +373,7 @@ static void set_proc_title(char *fmt,...)
   vsnprintf(statbuf, sizeof(statbuf), fmt, msg);
 
 #ifdef HAVE_SETPROCTITLE
-#ifdef FREEBSD4
+#ifdef __FreeBSD__ >= 4 && !defined(FREEBSD4_0) && !defined(FREEBSD4_1)
   /* FreeBSD's setproctitle() automatically prepends the process name. */
   setproctitle("%s", statbuf);
 #else
