@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.38 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: conf.h,v 1.39 2003-08-12 05:59:48 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -331,7 +331,15 @@ typedef struct {
   char na_dnsstr[256];
   int na_have_dnsstr;
 
-  char na_ipstr[INET6_ADDRSTRLEN];
+  /* Ideally, this buffer would be defined in terms of INET_ADDRSTRLEN or
+   * INET6_ADDRSTRLEN.  However, this struct needs to be typedef'd before
+   * including the other headers, so we'll just do this the hard way.
+   */
+#ifdef USE_IPV6
+  char na_ipstr[46];
+#else
+  char na_ipstr[16];
+#endif /* USE_IPV6 */
   int na_have_ipstr;
 
   union {
