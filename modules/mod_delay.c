@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.5 2004-11-21 23:36:48 castaglia Exp $
+ * $Id: mod_delay.c,v 1.6 2004-11-25 19:03:57 jwm Exp $
  */
 
 #include "conf.h"
@@ -38,6 +38,8 @@
 #if PROFTPD_VERSION_NUMBER < 0x0001021001
 # error "ProFTPD 1.2.10rc1 or later required"
 #endif
+
+#include <signal.h>
 
 #ifdef HAVE_SYS_MMAN_H
 # include <sys/mman.h>
