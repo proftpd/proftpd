@@ -26,7 +26,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.42 2002-11-22 19:19:10 jwm Exp $
+ * $Id: support.c,v 1.43 2002-11-25 17:33:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -597,24 +597,23 @@ char *get_token(char **s, char *sep)
  * in the source string.
  */
 
-char *safe_token(char **s)
-{
+char *safe_token(char **s) {
   char *res = "";
 
   if(!s || !*s)
     return res;
 
-  while(isspace((UCHAR)**s) && **s) (*s)++;
+  while (isspace((int) **s) && **s) (*s)++;
 
   if(**s) {
     res = *s;
 
-    while(!isspace((UCHAR)**s) && **s) (*s)++;
+    while (!isspace((int) **s) && **s) (*s)++;
 
     if(**s)
       *(*s)++ = '\0';
 
-    while(isspace((UCHAR)**s) && **s) (*s)++;
+    while (isspace((int) **s) && **s) (*s)++;
   }
 
   return res;

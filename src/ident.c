@@ -153,13 +153,13 @@ char *get_ident(pool *p, conn_t *c) {
     tmp = buf;
     tok = get_token(&tmp, ":");
     if (tok && (tok = get_token(&tmp, ":"))) {
-      while(*tok && isspace((UCHAR)*tok))
+      while (*tok && isspace((int) *tok))
         tok++;
       strip_end(tok, " \t");
 
       if (strcasecmp(tok, "ERROR") == 0) {
-        if(tmp) {
-          while(*tmp && isspace((UCHAR)*tmp))
+        if (tmp) {
+          while (*tmp && isspace((int) *tmp))
             tmp++;
 	  strip_end(tmp, " \t");
           if (strcasecmp(tmp, "HIDDEN-USER") == 0)
@@ -169,7 +169,7 @@ char *get_ident(pool *p, conn_t *c) {
       } else if (strcasecmp(tok, "USERID") == 0) {
         if (tmp && (tok = get_token(&tmp, ":"))) {
           if (tmp) {
-            while (*tmp && isspace((UCHAR)*tmp))
+            while (*tmp && isspace((int) *tmp))
               tmp++;
             strip_end(tmp, " \t");
             ret = tmp;

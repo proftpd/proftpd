@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.106 2002-11-19 17:57:48 castaglia Exp $
+ * $Id: mod_auth.c,v 1.107 2002-11-25 17:33:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -482,7 +482,7 @@ static unsigned char auth_check_ftpusers(xaset_t *s, const char *user) {
     while (fgets(buf, sizeof(buf)-1, ftpusersf)) {
       buf[sizeof(buf)-1] = '\0'; CHOP(buf);
 
-      u = buf; while(isspace((UCHAR)*u) && *u) u++;
+      u = buf; while (isspace((int) *u) && *u) u++;
 
       if (!*u || *u == '#')
         continue;

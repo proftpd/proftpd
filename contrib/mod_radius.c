@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.2 2002-10-21 17:06:09 castaglia Exp $
+ * $Id: mod_radius.c,v 1.3 2002-11-25 17:33:48 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.7rc5"
@@ -228,7 +228,7 @@ static char *radius_argsep(char **arg) {
   if (!arg || !*arg || !**arg)
     return NULL;
 
-  while (**arg && isspace((UCHAR) **arg))
+  while (**arg && isspace((int) **arg))
     (*arg)++;
 
   if (!**arg)
@@ -242,7 +242,7 @@ static char *radius_argsep(char **arg) {
   }
 
   while (**arg && **arg != ',' &&
-      (quote_mode ? (**arg != '\"') : (!isspace((UCHAR) **arg)))) {
+      (quote_mode ? (**arg != '\"') : (!isspace((int) **arg)))) {
 
     if (**arg == '\\' && quote_mode) {
 

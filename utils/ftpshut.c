@@ -41,14 +41,14 @@ static void show_usage(char *progname)
 
 static int isnumeric(char *str)
 {
-  while(str && isspace((UCHAR)*str))
+  while (str && isspace((int) *str))
     str++;
   
   if(!str || !*str)
     return 0;
   
   for(; str && *str; str++) {
-    if(!isdigit((UCHAR)*str))
+    if (!isdigit((int) *str))
       return 0;
   }
   
@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
   if(strcasecmp(shut,"now") != 0) {
     if(*shut == '+') {
       shut++;
-      while(shut && *shut && isspace((UCHAR)*shut)) shut++;
+      while (shut && *shut && isspace((int) *shut)) shut++;
 
       if(!isnumeric(shut)) {
 	fprintf(stderr, "%s: Invalid time interval specified.\n", progname);

@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.68 2002-11-25 17:22:53 castaglia Exp $
+ * $Id: mod_ls.c,v 1.69 2002-11-25 17:33:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -950,11 +950,11 @@ static void ls_terminate(void) {
 }
 
 static void _parse_options(char **opt, int *glob_flags) {
-  while(isspace((UCHAR)**opt))
+  while (isspace((int) **opt))
     (*opt)++;
 
-  while(*opt && **opt == '-') {
-    while((*opt)++ && isalnum((UCHAR)**opt)) {
+  while (*opt && **opt == '-') {
+    while ((*opt)++ && isalnum((int) **opt)) {
       switch(**opt) {
       case 'a':
         opt_a = 1;
@@ -998,7 +998,7 @@ static void _parse_options(char **opt, int *glob_flags) {
         break;
       }
     }
-    while(isspace((UCHAR)**opt)) 
+    while (isspace((int) **opt)) 
       (*opt)++;
 
   }
@@ -1434,9 +1434,9 @@ MODRET ls_stat(cmd_rec *cmd) {
   /* Get to the actual argument.
    */
   if(*arg == '-')
-    while(arg && *arg && !isspace((UCHAR)*arg)) arg++;
+    while(arg && *arg && !isspace((int) *arg)) arg++;
   
-  while(arg && *arg && isspace((UCHAR)*arg)) arg++;
+  while(arg && *arg && isspace((int) *arg)) arg++;
   
   if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE)) != NULL)
     list_show_symlinks = *tmp;

@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.75 2002-11-19 17:57:49 castaglia Exp $
+ * $Id: dirtree.c,v 1.76 2002-11-25 17:33:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -384,15 +384,14 @@ void kludge_enable_umask(void) {
   _kludge_disable_umask = FALSE;
 }
 
-char *get_word(char **cp)
-{
+char *get_word(char **cp) {
   char *ret,*dst;
   char quote_mode = 0;
 
   if(!cp || !*cp || !**cp)
     return NULL;
 
-  while(**cp && isspace((UCHAR)**cp)) (*cp)++;
+  while (**cp && isspace((int) **cp)) (*cp)++;
 
   if(!**cp)
     return NULL;
@@ -408,8 +407,8 @@ char *get_word(char **cp)
     (*cp)++;
   }
 
-  while(**cp && (quote_mode ? (**cp != '\"') : !isspace((UCHAR)**cp))) {
-    if(**cp == '\\' && quote_mode) {
+  while (**cp && (quote_mode ? (**cp != '\"') : !isspace((int) **cp))) {
+    if (**cp == '\\' && quote_mode) {
       /* escaped char */
       if(*((*cp)+1))
         *dst = *(++(*cp));
