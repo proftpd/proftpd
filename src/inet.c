@@ -384,7 +384,7 @@ conn_t *inet_create_connection(pool *p, xaset_t *servers, int fd,
  * the socket is created as root.
  */
 
-#if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3)
+#if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || defined(OPENBSD2)
 # ifdef SOLARIS2
     if(port != INPORT_ANY && port < 1024) {
 # endif
@@ -395,7 +395,7 @@ conn_t *inet_create_connection(pool *p, xaset_t *servers, int fd,
 # endif
 #endif
     fd = socket(AF_INET, SOCK_STREAM, tcp_proto);
-#if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3)
+#if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || defined(OPENBSD2)
 # ifdef SOLARIS2
     if(port != INPORT_ANY && port < 1024) {
 # endif
@@ -443,6 +443,8 @@ conn_t *inet_create_connection(pool *p, xaset_t *servers, int fd,
 
     for(i = 10; i; i--) {
       res = bind(fd,(struct sockaddr*)&servaddr,sizeof(servaddr));
+      hold_errno = errno;
+      if(res == -1 && errno == EINTR) { i++; continue; }
       if(res != -1 || errno != EADDRINUSE || (port != INPORT_ANY && !retry_bind))
         break;
 
@@ -457,7 +459,6 @@ conn_t *inet_create_connection(pool *p, xaset_t *servers, int fd,
       }
     }
 
-    hold_errno = errno;
     if(res == -1) {
       if(port != INPORT_ANY && port < 1024) {
         PRIVS_RELINQUISH
