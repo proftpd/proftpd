@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.340 2003-01-03 04:00:38 jwm Exp $
+$Id: NEWS,v 1.341 2003-01-03 04:31:50 jwm Exp $
 
 CVS
 ---------------------------------
@@ -10,7 +10,8 @@ CVS
   contexts.
 - Bug 1671 - new directive SQLLogFile.
 - mod_linuxprivs has been renamed to mod_cap and is now built into ProFTPD
-  by default if the host OS (Linux) supports it
+  by default if the host OS (Linux) supports it. autoconf detection code
+  based on a submission by Mihai RUSU <dizzy@roedu.net>
 
 1.2.8rc1 - Released 28-Dec-2002
 ---------------------------------
