@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.29 2003-03-09 01:04:03 castaglia Exp $
+ * $Id: modules.h,v 1.30 2003-03-09 03:09:55 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -197,10 +197,13 @@ unsigned char module_exists(const char *);
 void list_modules(void);
 
 /* Module daemon-startup initialization */
+int module_daemon_startup(void);
 int module_preparse_init(void);
 int module_postparse_init(void);
 int module_session_init(void);
+void module_remove_daemon_startups(void);
 void module_remove_postparse_inits(void);
+void pr_register_daemon_startup(int (*)(void));
 void pr_register_postparse_init(int (*)(void));
 
 modret_t *call_module(module *, modret_t *(*)(cmd_rec *), cmd_rec *);

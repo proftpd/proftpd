@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.165 2003-03-05 19:20:26 castaglia Exp $
+ * $Id: main.c,v 1.166 2003-03-09 03:09:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2225,6 +2225,9 @@ static void inetd_main(void) {
   }
   PRIVS_RELINQUISH
   pr_close_scoreboard();
+
+  module_daemon_startup();
+  module_remove_daemon_startups();
 
   pr_init_bindings();
 
