@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.79 2003-09-09 05:37:26 castaglia Exp $
+ * $Id: inet.c,v 1.80 2003-10-08 04:48:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -662,6 +662,11 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
 #else
   int tcp_level = tcp_proto;
 #endif /* SOL_TCP */
+
+  /* Some of these setsockopt() calls may fail when they operate on IPv6
+   * sockets, rather than on IPv4 sockets; I'm already seeing some IP_TOS
+   * EINVAL failures on FreeBSD, but only for IPv6 vhosts.
+   */
 
 #ifdef TCP_NODELAY
   unsigned char *no_delay = get_param_ptr(main_server->conf, "tcpNoDelay",
