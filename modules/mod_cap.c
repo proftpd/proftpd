@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -Llib/libcap -lcap$
  * $Directories: lib/libcap$
- * $Id: mod_cap.c,v 1.6 2003-01-09 04:27:52 jwm Exp $
+ * $Id: mod_cap.c,v 1.7 2003-04-23 06:53:23 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -196,6 +196,7 @@ MODRET cap_post_pass(cmd_rec *cmd) {
 
   pr_signals_block();
 
+#ifndef PR_DEVEL_COREDUMP
   /* glibc2.1 is BROKEN, seteuid() no longer lets one set euid to uid,
    * so we can't use PRIVS_ROOT/PRIVS_RELINQUISH. setreuid() is the
    * workaround.
@@ -206,6 +207,7 @@ MODRET cap_post_pass(cmd_rec *cmd) {
     pr_signals_unblock();
     return DECLINED(cmd);
   }
+#endif /* PR_DEVEL_COREDUMP */
 
   /* The only capability we need is CAP_NET_BIND_SERVICE (bind
    * ports < 1024).  Everything else can be discarded.  We set this

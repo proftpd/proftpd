@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.28 2003-01-18 06:06:54 castaglia Exp $
+ * $Id: auth.c,v 1.29 2003-04-23 06:53:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -562,6 +562,7 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
   }
 #endif /* !HAVE_SETGROUPS */
 
+#ifndef PR_DEVEL_COREDUMP
   /* Set the primary GID of the process.
    */
   if ((res = setgid(primary_gid)) < 0) {
@@ -569,6 +570,7 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
       destroy_pool(tmp_pool);
     return res;
   }
+#endif /* PR_DEVEL_COREDUMP */
 
   if (tmp_pool)
     destroy_pool(tmp_pool);

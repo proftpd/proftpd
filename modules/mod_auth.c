@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.147 2003-04-22 23:05:02 castaglia Exp $
+ * $Id: mod_auth.c,v 1.148 2003-04-23 06:53:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -39,7 +39,7 @@
 
 #ifdef HAVE_REGEX_H
 # include <regex.h>
-#endif
+#endif /* HAVE_REGEX_H */
 
 /* From the core module */
 extern int core_display_file(const char *,const char *,const char *);
@@ -1006,13 +1006,17 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     if ((res = set_groups(p, pw->pw_gid, session.gids)) < 0)
       log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
         strerror(errno));
-#ifdef __hpux
-    setresuid(0,0,0);
-    setresgid(0,0,0);
-#else
+
+#ifndef PR_DEVEL_COREDUMP
+# ifdef __hpux
+    setresuid(0, 0, 0);
+    setresgid(0, 0, 0);
+# else
     setuid(0);
     setgid(0);
-#endif
+# endif /* __hpux */
+#endif /* PR_DEVEL_COREDUMP */
+
     PRIVS_SETUP(pw->pw_uid, pw->pw_gid)
 
     if ((add_userdir && *add_userdir == TRUE) && strcmp(u, user))
@@ -1034,13 +1038,17 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     if ((res = set_groups(p, daemon_gid, daemon_gids)) < 0)
       log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
         strerror(errno));
-#ifdef __hpux
-    setresuid(0,0,0);
-    setresgid(0,0,0);
-#else
+
+#ifndef PR_DEVEL_COREDUMP
+# ifdef __hpux
+    setresuid(0, 0, 0);
+    setresgid(0, 0, 0);
+# else
     setuid(0);
     setgid(0);
-#endif
+# endif /* __hpux */
+#endif /* PR_DEVEL_COREDUMP */
+
     PRIVS_SETUP(daemon_uid, daemon_gid)
 
     pr_signals_unblock();
@@ -1240,8 +1248,10 @@ static int _setup_environment(pool *p, char *user, char *pass) {
 
   PRIVS_ROOT
 
+# ifndef PR_DEVEL_COREDUMP
   setuid(0);
   setgid(0);
+# endif /* PR_DEVEL_COREDUMP */
 
   PRIVS_SETUP(pw->pw_uid, pw->pw_gid)
 
@@ -1250,7 +1260,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
   session.uid = session.ouid = pw->pw_uid;
   session.gid = pw->pw_gid;
   PRIVS_RELINQUISH
-#endif
+#endif /* __hpux */
 
 #ifdef HAVE_GETEUID
   if (getegid() != pw->pw_gid ||

@@ -335,8 +335,23 @@ AC_ARG_ENABLE(devel,
     [enable code of interest to developers])
   ],
   [
-    if test x"$enableval" = xyes ; then
+    if test x"$enableval" != xno ; then
       devel="yes"
+
+      dnl Check to see if specific developer flags were requested
+
+      if test `echo $enableval | grep -c coredump` = "1" ; then
+        ac_devel_cflags="-DPR_DEVEL_COREDUMP $ac_devel_cflags"
+      fi
+
+      if test `echo $enableval | grep -c nodaemon` = "1" ; then
+        ac_devel_cflags="-DPR_DEVEL_NO_DAEMON $ac_devel_cflags"
+      fi
+
+      if test `echo $enableval | grep -c nofork` = "1" ; then
+        ac_devel_cflags="-DPR_DEVEL_NO_FORK $ac_devel_cflags"
+      fi
+
     else
       devel="no"
     fi

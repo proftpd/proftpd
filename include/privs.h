@@ -24,7 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* $Id: privs.h,v 1.18 2003-03-05 01:23:16 castaglia Exp $
+/* $Id: privs.h,v 1.19 2003-04-23 06:53:22 castaglia Exp $
  */
 
 #ifndef PR_PRIVS_H
@@ -46,16 +46,34 @@
  */
 
 #ifdef __hpux
-#define setreuid(x,y) setresuid(x,y,0)
-#endif
+# define setreuid(x,y) setresuid(x,y,0)
+#endif /* __hpux */
 
-#if !defined(HAVE_SETEUID)
+#ifdef PR_DEVEL_COREDUMP
+/* Unix kernels can be notoriously picky about dumping the core for
+ * processes that have fiddled with their effective/actual UID and GID.
+ * So, to make it possible for people to have their proftpd processes
+ * actually be able to coredump, these PRIVS macros, which switch
+ * privileges, are effectively disabled.
+ *
+ * Hence it is not a Good Idea to run a proftpd built with PR_DEVEL_COREDUMP
+ * defined in production.
+ */
+
+# define PRIVS_SETUP(u, g)
+# define PRIVS_ROOT
+# define PRIVS_USER
+# define PRIVS_RELINQUISH
+# define PRIVS_REVOKE
+
+#else
+
+# if !defined(HAVE_SETEUID)
 
 /* Use setreuid() to perform uid swapping.
  */
 
-#define PRIVS_SETUP(u, g) \
-  { \
+#  define PRIVS_SETUP(u, g) { \
     log_debug(DEBUG9, "SETUP PRIVS at %s:%d", __FILE__, __LINE__); \
     if (getuid()) { \
       session.ouid = session.uid = getuid(); \
@@ -79,8 +97,7 @@
     } \
   }
 
-#define PRIVS_ROOT \
-  { \
+#  define PRIVS_ROOT { \
     log_debug(DEBUG9, "ROOT PRIVS at %s:%d", __FILE__, __LINE__); \
     if (!session.disable_id_switching) { \
       if (setregid(session.gid,0)) \
@@ -93,8 +110,7 @@
       log_debug(DEBUG9, "ROOT PRIVS: ID switching disabled"); \
   }
 
-#define PRIVS_USER \
-  { \
+#  define PRIVS_USER { \
     log_debug(DEBUG9, "USER PRIVS %d at %s:%d", (int) session.login_uid, \
       __FILE__, __LINE__); \
     if (!session.disable_id_switching) { \
@@ -108,8 +124,7 @@
       log_debug(DEBUG9, "ROOT PRIVS: ID switching disabled"); \
   }
 
-#define PRIVS_RELINQUISH  \
-  { \
+#  define PRIVS_RELINQUISH  { \
     log_debug(DEBUG9, "RELINQUISH PRIVS at %s:%d", __FILE__, __LINE__); \
     if (!session.disable_id_switching) { \
       if (getegid() != 0) { \
@@ -132,8 +147,7 @@
       log_debug(DEBUG9, "ROOT PRIVS: ID switching disabled"); \
   }
 
-#define PRIVS_REVOKE \
-  { \
+#  define PRIVS_REVOKE { \
     log_debug(DEBUG9, "REVOKE PRIVS at %s:%d", __FILE__, __LINE__); \
     if (setreuid(0, 0)) \
       log_pri(PR_LOG_ERR, "PRIVS_REVOKE: unable to setreuid(0, 0): %s", \
@@ -146,7 +160,7 @@
         strerror(errno)); \
   }
 
-#else /* HAVE_SETEUID */
+# else /* HAVE_SETEUID */
 
 /* Set the saved uid/gid using setuid/seteuid().  setreuid() is
  * no longer used as it is considered obsolete on many systems.
@@ -158,8 +172,7 @@
  *   real/eff/saved group : <group>
  */
 
-#define PRIVS_SETUP(u, g) \
-  { \
+#  define PRIVS_SETUP(u, g) { \
     log_debug(DEBUG9, "SETUP PRIVS at %s:%d", __FILE__, __LINE__); \
     if (getuid()) { \
       session.ouid = session.uid = getuid(); \
@@ -191,7 +204,7 @@
 
 /* Switch back to root privs.
  */
-#define PRIVS_ROOT \
+#  define PRIVS_ROOT \
   if (!session.disable_id_switching) { \
     log_debug(DEBUG9, "ROOT PRIVS at %s:%d", __FILE__, __LINE__); \
     if (seteuid(0)) \
@@ -205,7 +218,7 @@
 
 /* Switch to the privs of the login user.
  */
-#define PRIVS_USER \
+#  define PRIVS_USER \
   if (!session.disable_id_switching) { \
     if (session.login_uid == 0) { \
       log_debug(DEBUG1, "Use of PRIVS_USER before session.login_uid set " \
@@ -225,7 +238,7 @@
 
 /* Relinquish privs granted by PRIVS_ROOT or PRIVS_USER.
  */
-#define PRIVS_RELINQUISH \
+#  define PRIVS_RELINQUISH \
   if (!session.disable_id_switching) { \
     if (geteuid() != 0) { \
       if (seteuid(0)) \
@@ -244,8 +257,7 @@
 
 /* Revoke all privs.
  */
-#define PRIVS_REVOKE \
-  { \
+#  define PRIVS_REVOKE { \
     log_debug(DEBUG9, "REVOKE PRIVS at %s:%d", __FILE__, __LINE__); \
     if (seteuid(0)) \
       log_pri(PR_LOG_ERR, "PRIVS_REVOKE: unable to seteuid(): %s", \
@@ -258,6 +270,7 @@
         strerror(errno)); \
   }
 
-#endif /* HAVE_SETEUID */
+# endif /* HAVE_SETEUID */
+#endif /* PR_DEVEL_COREDUMP */
 
 #endif /* PR_PRIVS_H */

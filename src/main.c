@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.177 2003-04-15 06:42:13 castaglia Exp $
+ * $Id: main.c,v 1.178 2003-04-23 06:53:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -759,12 +759,12 @@ static void cmd_loop(server_rec *server, conn_t *c) {
         /* Simple interrupted syscall */
 	continue;
 
-#ifndef DEVEL_NO_DAEMON
+#ifndef PR_DEVEL_NO_DAEMON
       /* Otherwise, EOF */
       end_login(0);
 #else
       return;
-#endif /* DEVEL_NO_DAEMON */
+#endif /* PR_DEVEL_NO_DAEMON */
     }
 
     /* Data received, reset idle timer */
@@ -902,7 +902,7 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     log_pri(PR_LOG_ERR, "received SIGHUP, cannot rehash child process");
 }
 
-#ifndef DEVEL_NO_FORK
+#ifndef PR_DEVEL_NO_FORK
 static int dup_low_fd(int fd) {
   int i,need_close[3] = {-1, -1, -1};
 
@@ -918,7 +918,7 @@ static int dup_low_fd(int fd) {
 
   return fd;
 }
-#endif /* DEVEL_NO_FORK */
+#endif /* PR_DEVEL_NO_FORK */
 
 static void set_server_privs(void) {
   uid_t server_uid, current_euid = geteuid();
@@ -958,7 +958,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   int i, rev;
   int sempipe[2] = { -1, -1 };
 
-#ifndef DEVEL_NO_FORK
+#ifndef PR_DEVEL_NO_FORK
   pid_t pid;
   sigset_t sig_set;
   pool *pidrec_pool = NULL, *set_pool = NULL;
@@ -1083,7 +1083,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   /* Reseed pseudo-randoms */
   srand(time(NULL));
 
-#endif /* DEVEL_NO_FORK */
+#endif /* PR_DEVEL_NO_FORK */
 
   /* Child is running here */
   signal(SIGUSR1, sig_disconnect);
@@ -1333,9 +1333,9 @@ static void daemon_loop(void) {
 
   time(&last_error);
 
-#ifndef DEVEL_NO_DAEMON
+#ifndef PR_DEVEL_NO_DAEMON
   while (TRUE) {
-#endif
+#endif /* PR_DEVEL_NO_DAEMON */
     run_schedule();
 
     FD_ZERO(&listen_fds);
@@ -1390,9 +1390,9 @@ static void daemon_loop(void) {
 
     if (i == -1 && errno == EINTR) {
       pr_signals_handle();
-#ifndef DEVEL_NO_DAEMON
+#ifndef PR_DEVEL_NO_DAEMON
       continue;
-#endif
+#endif /* PR_DEVEL_NO_DAEMON */
     }
 
     if (have_dead_child) {
@@ -1451,10 +1451,10 @@ static void daemon_loop(void) {
               strerror(errno));
     }
 
-#ifndef DEVEL_NO_DAEMON
+#ifndef PR_DEVEL_NO_DAEMON
     if (i == 0)
       continue;
-#endif
+#endif /* PR_DEVEL_NO_DAEMON */
 
     /* Reset the connection counter.  Take into account this current
      * connection, which does not (yet) have an entry in the child list.
@@ -1510,9 +1510,9 @@ static void daemon_loop(void) {
       } else
         fork_server(fd, listen_conn, FALSE);
     }
-#ifndef DEVEL_NO_DAEMON
+#ifndef PR_DEVEL_NO_DAEMON
   }
-#endif
+#endif /* PR_DEVEL_NO_DAEMON */
 }
 
 /* This function is to handle the dispatching of actions based on
@@ -1656,7 +1656,7 @@ static RETSIGTYPE sig_child(int signo) {
   signal(SIGCHLD, sig_child);
 }
 
-#ifdef USE_DEVEL
+#ifdef PR_DEVEL_COREDUMP
 static char *prepare_core(void) {
   static char dir[256] = {'\0'};
 
@@ -1670,7 +1670,7 @@ static char *prepare_core(void) {
     log_pri(PR_LOG_ERR, "unable to create '%s': %s", dir, strerror(errno));
   return dir;
 }
-#endif /* USE_DEVEL */
+#endif /* PR_DEVEL_COREDUMP */
 
 static RETSIGTYPE sig_abort(int signo) {
   recvd_signal_flags |= RECEIVED_SIG_ABORT;
@@ -1679,12 +1679,12 @@ static RETSIGTYPE sig_abort(int signo) {
 
 static void handle_abort(void) {
 
-#ifdef USE_DEVEL
+#ifdef PR_DEVEL_COREDUMP
   log_pri(PR_LOG_NOTICE, "ProFTPD received SIGABRT signal, generating core "
     "file in %s", prepare_core());
 #else
   log_pri(PR_LOG_NOTICE, "ProFTPD received SIGABRT signal, no core dump");
-#endif /* USE_DEVEL */
+#endif /* PR_DEVEL_COREDUMP */
 
   end_login_noexit();
   abort();
@@ -1906,11 +1906,11 @@ void set_daemon_rlimits(void) {
     log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_CORE): %s", strerror(errno));
 
   else {
-#ifdef USE_DEVEL
+#ifdef PR_DEVEL_COREDUMP
     rlim.rlim_cur = rlim.rlim_max = RLIM_INFINITY;
 #else
     rlim.rlim_cur = rlim.rlim_max = 0;
-#endif /* USE_DEVEL */
+#endif /* PR_DEVEL_COREDUMP */
 
     PRIVS_ROOT
     if (setrlimit(RLIMIT_CORE, &rlim) == -1) {
@@ -2650,6 +2650,7 @@ int main(int argc, char *argv[], char **envp) {
 
   PRIVS_SETUP(daemon_uid, daemon_gid)
 
+#ifndef PR_DEVEL_COREDUMP
   /* Test to make sure that our uid/gid is correct.  Try to do this in
    * a portable fashion *gah!*
    */
@@ -2665,13 +2666,14 @@ int main(int argc, char *argv[], char **envp) {
 		    (unsigned long)daemon_gid,(unsigned long)getegid());
     exit(1);
   }
+#endif /* PR_DEVEL_COREDUMP */
 
-  /* Install a signal handlers/abort handler */
+  /* Install signal handlers */
   install_signal_handlers();
 
-#ifndef DEVEL_NO_DAEMON
+#ifndef PR_DEVEL_NO_DAEMON
   set_daemon_rlimits();
-#endif
+#endif /* PR_DEVEL_NO_DAEMON */
 
   switch (ServerType) {
     case SERVER_STANDALONE:
@@ -2683,10 +2685,10 @@ int main(int argc, char *argv[], char **envp) {
       break;
   }
 
-#ifdef DEVEL_NO_DAEMON
+#ifdef PR_DEVEL_NO_DAEMON
   PRIVS_ROOT
   chdir(RUN_DIR);
-#endif
+#endif /* PR_DEVEL_NO_DAEMON */
 
   return 0;
 }
