@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.160 2004-04-11 22:13:02 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.161 2004-04-27 16:58:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1426,8 +1426,7 @@ MODRET xfer_rest(cmd_rec *cmd) {
   unsigned char *hidden_stores = NULL;
 
   if (cmd->argc != 2) {
-    pr_response_add_err(R_500, "'%s': command not understood",
-      get_full_cmd(cmd));
+    pr_response_add_err(R_500, "'%s' not understood", get_full_cmd(cmd));
     return ERROR(cmd);
   }
 
