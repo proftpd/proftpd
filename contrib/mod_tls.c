@@ -3218,7 +3218,7 @@ static int tls_postparse_cb(void) {
   server_rec *s = NULL;
   char buf[256];
 
-  for (s = (server_rec *) server_list; s; s = s->next) {
+  for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
     config_rec *rsa = NULL, *dsa = NULL;
     tls_pkey_t *k = NULL;
 
