@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.167 2003-03-09 03:55:46 castaglia Exp $
+ * $Id: main.c,v 1.168 2003-03-09 16:23:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2348,7 +2348,7 @@ static void show_usage(int exit_code) {
   printf("usage: proftpd [options]\n");
   for (h = opts_help; h->long_opt; h++) {
 #ifdef HAVE_GETOPT_LONG
-    printf(" %s, %s\n ", h->long_opt, h->short_opt);
+    printf(" %s, %s\n ", h->short_opt, h->long_opt);
 #else /* HAVE_GETOPT_LONG */
     printf(" %s\n", h->short_opt);
 #endif /* HAVE_GETOPT_LONG */

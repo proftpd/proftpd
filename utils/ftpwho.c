@@ -26,7 +26,7 @@
 
 /* Shows a count of "who" is online via proftpd.  Uses the scoreboard file.
  *
- * $Id: ftpwho.c,v 1.21 2003-03-05 21:55:55 castaglia Exp $
+ * $Id: ftpwho.c,v 1.22 2003-03-09 16:23:50 castaglia Exp $
  */
 
 #include "utils.h"
@@ -226,7 +226,7 @@ static void show_usage(const char *progname, int exit_code) {
   printf("usage: %s [options]\n", progname);
   for (h = opts_help; h->long_opt; h++) {
 #ifdef HAVE_GETOPT_LONG
-    printf("  %s, %s\n", h->long_opt, h->short_opt);
+    printf("  %s, %s\n", h->short_opt, h->long_opt);
 #else /* HAVE_GETOPT_LONG */
     printf("  %s\n", h->short_opt);
 #endif
