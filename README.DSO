@@ -6,7 +6,10 @@ Support for dynamically loadable modules, known as DSO modules or "shared"
 modules, is now available in ProFTPD 1.3.0.
 
 To use this feature, you must first compile your proftpd server with
-support for DSO modules, using the --enable-dso configure option.
+support for DSO modules, using the --enable-dso configure option.  This
+option causes the mod_dso module to be included in your proftpd server.
+Documentation for the mod_dso module can be found under the doc/ directory
+of the source distribution, as doc/modules/mod_dso.html.
 
 Once --enable-dso is used, you can then compile any module as a DSO module
 using the --with-shared configure option.  --with-shared is just like
