@@ -16,6 +16,9 @@
 /* Define to `mode_t' if <sys/types.h> doesn't define. */
 #undef umode_t
 
+/* Define to `int' if <sys/socket.h> doesn't define. */
+#undef socklen_t
+
 /* Define if you have AIX send_file() semantics */
 #undef HAVE_AIX_SENDFILE
 

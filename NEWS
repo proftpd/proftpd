@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.323 2002-12-12 19:57:26 castaglia Exp $
+$Id: NEWS,v 1.324 2002-12-15 18:05:09 jwm Exp $
 
 CVS
 ---------------------------------
@@ -58,6 +58,8 @@ CVS
   bug in the handling of non-anonymous settings.
 - Bug 1886 - Ftpwho uses too many lines when authenticating.
 - Bug 1875 - same radius packet id for start- and stop-accounting record.
+- Bug 1883 - socklen_t patch. Thanks to Andy Igoshin <ai@vsu.ru> for the
+  patch.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------

@@ -396,7 +396,8 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
   array_header *tmp;
   server_rec *s;
   struct sockaddr_in servaddr;
-  int res = 0, len, one = 1, hold_errno;
+  int res = 0, one = 1, hold_errno;
+  socklen_t len;
 
   CHECK_INET_POOL;
 
@@ -744,7 +745,8 @@ int inet_set_proto_options(pool *p, conn_t *c, int nodelay, int lowdelay,
 
 int inet_setoptions(pool *p, conn_t *c, int rcvbuf, int sndbuf) {
   int no_keep_alive = 0;
-  int len, crcvbuf, csndbuf;
+  int crcvbuf, csndbuf;
+  socklen_t len;
 
   if (c->wfd != -1) {
     setsockopt(c->wfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &no_keep_alive,
@@ -993,7 +995,7 @@ int inet_connect_nowait(pool *p, conn_t *c, p_in_addr_t *addr, int port) {
 int inet_accept_nowait(pool *p, conn_t *c) {
   int fd;
   struct sockaddr_in servaddr;
-  int len = sizeof(servaddr);
+  socklen_t len = sizeof(servaddr);
 
   if (c->mode == CM_LISTEN)
     inet_setnonblock(c->pool, c);
@@ -1028,7 +1030,7 @@ conn_t *inet_accept(pool *p, conn_t *d, conn_t *c, int rfd, int wfd,
   unsigned char *allow_foreign_addr = NULL;
   int newfd = -1;
   struct sockaddr_in addr;
-  int addrlen = sizeof(addr);
+  socklen_t addrlen = sizeof(addr);
 
   d->mode = CM_ACCEPT;
 
@@ -1065,7 +1067,7 @@ conn_t *inet_accept(pool *p, conn_t *d, conn_t *c, int rfd, int wfd,
 
 int inet_get_conn_info(conn_t *c, int fd) {
   static struct sockaddr_in servaddr;
-  int len = sizeof(servaddr);
+  socklen_t len = sizeof(servaddr);
 
   /* Sanity check.
    */
@@ -1107,7 +1109,7 @@ conn_t *inet_associate(pool *p, conn_t *c, p_in_addr_t *addr,
     pr_netio_stream_t *in, pr_netio_stream_t *out, int resolve) {
   int rfd, wfd;
   int socktype;
-  int socktype_len = sizeof(socktype);
+  socklen_t socktype_len = sizeof(socktype);
   conn_t *res;
 
   rfd = PR_NETIO_FD(in);

@@ -557,6 +557,12 @@ AC_STRUCT_TM
 dnl Check for generic typedefs
 AC_CHECK_TYPE(umode_t,mode_t)
 AC_CHECK_TYPE(ino_t,ino_t)
+AC_CHECK_TYPES(socklen_t,,AC_DEFINE(socklen_t,int),[
+#if HAVE_NETDB_H
+#include <netdb.h>
+#endif
+#include <sys/socket.h>
+#include <sys/types.h>])
 
 dnl See what type of utmp exists
 AC_CHECK_HEADERS(utmp.h, have_utmp=1, have_utmp=0)
