@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.33 2004-05-11 16:56:30 castaglia Exp $
+ * $Id: modules.h,v 1.34 2004-05-13 14:02:00 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -198,10 +198,7 @@ void list_modules(void);
 
 /* Module daemon-startup initialization */
 int module_preparse_init(void);
-int module_postparse_init(void);
 int module_session_init(void);
-void module_remove_postparse_inits(void);
-void pr_register_postparse_init(int (*)(void));
 
 modret_t *call_module(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
 

@@ -50,8 +50,8 @@
 #define MOD_TLS_VERSION		"mod_tls/2.0.7"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001020801 
-# error "ProFTPD 1.2.8rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001021001 
+# error "ProFTPD 1.2.10rc1 or later required"
 #endif
 
 extern session_t session;
@@ -3327,10 +3327,10 @@ MODRET set_tlsverifydepth(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-/* Initialization routines
+/* Event handlers
  */
 
-static int tls_postparse_cb(void) {
+static void tls_postparse_ev(const void *event_data, void *user_data) {
   server_rec *s = NULL;
   char buf[256];
 
@@ -3402,28 +3402,28 @@ static int tls_postparse_cb(void) {
     tls_pkey_list = k;
   }
 
-  return 0;
+  return;
 }
 
 /* Daemon PID */
 extern pid_t mpid;
 
-static void tls_daemon_exit_cb(void) {
+static void tls_daemon_exit_ev(const void *event_data, void *user_data) {
   if (mpid == getpid())
     tls_scrub_pkeys();
 }
 
-static void tls_rehash_cb(void *data) {
+static void tls_restart_ev(const void *event_data, void *user_data) {
   tls_scrub_pkeys();
   tls_pkey_list = NULL;
 
   /* Re-register the postparse callback, to handle the (possibly changed)
    * configuration and (re-)prompt for passphrases, if needed.
    */
-  pr_register_postparse_init(tls_postparse_cb);
+  pr_event_register(&tls_module, "core.restart", tls_postparse_ev, NULL);
 }
 
-static void tls_sess_exit_cb(void) {
+static void tls_sess_exit_ev(const void *event_data, void *user_data) {
 
   /* OpenSSL cleanup */
   tls_cleanup();
@@ -3462,6 +3462,9 @@ static void tls_sess_exit_cb(void) {
   return;
 }
 
+/* Initialization routines
+ */
+
 static int tls_init(void) {
   int res = 0;
 
@@ -3473,16 +3476,9 @@ static int tls_init(void) {
 
   pr_log_debug(DEBUG2, MOD_TLS_VERSION ": using " OPENSSL_VERSION_TEXT);
 
-  /* Register a postparse callback, for handling any passphrase-protected
-   * key files.
-   */
-  pr_register_postparse_init(tls_postparse_cb);
-
-  /* Register a rehash handler, for handling SIGHUPs. */
-  pr_rehash_register_handler(NULL, tls_rehash_cb);
-
-  /* Register an exit callback, for handling any locked memory. */
-  pr_exit_register_handler(tls_daemon_exit_cb);
+  pr_event_register(&tls_module, "core.postparse", tls_postparse_ev, NULL);
+  pr_event_register(&tls_module, "core.restart", tls_restart_ev, NULL);
+  pr_event_register(&tls_module, "core.exit", tls_daemon_exit_ev, NULL);
 
   return 0;
 }
@@ -3558,7 +3554,8 @@ static int tls_sess_init(void) {
     tls_handshake_timeout = *((unsigned int *) c->argv[0]);
 
   /* Open the TLSLog, if configured */
-  if ((res = tls_openlog()) < 0) {
+  res = tls_openlog();
+  if (res < 0) {
     if (res == -1)
       pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
         ": notice: unable to open TLSLog: %s", strerror(errno));
@@ -3581,7 +3578,7 @@ static int tls_sess_init(void) {
   /* Install our data channel NetIO handlers. */
   tls_netio_install_data();
 
-  pr_exit_register_handler(tls_sess_exit_cb);
+  pr_event_register(&tls_module, "core.exit", tls_sess_exit_ev, NULL);
 
   /* Check to see if a passphrase has been entered for this server. */
   tls_pkey = tls_lookup_pkey();

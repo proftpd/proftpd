@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.229 2004-05-12 02:20:49 castaglia Exp $
+ * $Id: main.c,v 1.230 2004-05-13 14:02:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -929,8 +929,7 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     /* XXX What should be done if fixup_servers() returns -1? */
     fixup_servers();
 
-    module_postparse_init();
-    module_remove_postparse_inits();
+    pr_event_generate("core.postparse", NULL);
 
     /* Recreate the listen connection.  Can an inetd-spawned server accept
      * and process HUP?
@@ -2631,9 +2630,6 @@ int main(int argc, char *argv[], char **envp) {
       config_filename);
     exit(1);
   }
-
-  module_postparse_init();
-  module_remove_postparse_inits();
 
   /* We're only doing a syntax check of the configuration file. */
   if (syntax_check) {
