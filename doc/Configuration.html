@@ -3,10 +3,15 @@
 <body bgcolor="#E7E4D8">
 <h1>Configuration Directives</h1>
 
-<p>The following configuration parameters control ProFTPD features and configuration:</p>
+<p>The following configuration parameters control ProFTPD features and
+configuration:</p>
 
-<P><EM>Note: A number of the configuration directives are listed but not fully documented yet..</EM></P>
+<P><EM>Note: A number of the configuration directives are listed but
+not fully documented yet..</EM></P>
 
+<HR>
+
+<MULTICOL COLS=2>
 <ul>
   <li><a href="#AccessGrantMsg">AccessGrantMsg</a></LI>
   <li><a href="#Allow">Allow</a></LI>
@@ -37,13 +42,13 @@
   <li><a href="#Classes">Classes</a></li>
   <li><a href="#CommandBufferSize">CommandBufferSize</a></li>
   <li><A HREF="#CwdRatioMsg">CwdRatioMsg</A><EM>Incomplete</EM></LI>
-  <li><a href="#DefaultChdir">DefaultChdir</a></li>
-  <LI><A HREF="#DefaultQuota">DefaultQuota</A><EM>Incomplete</EM>
+  <li><a href="#DefaultChdir">DefaultChdir</A></li>
+  <LI><A HREF="#DefaultQuota">DefaultQuota</A></LI>
   <li><a href="#DefaultRoot">DefaultRoot</a></li>
   <li><a href="#DefaultServer">DefaultServer</a></li>
   <li><a href="#DefaultTransferMode">DefaultTransferMode</a></li>
   <li><a href="#DeferWelcome">DeferWelcome</a></li>
-  <li><a href="#DeleteAbortedStores">DeleteAbortedStores</a> <EM>incomplete</em></li>
+  <li><a href="#DeleteAbortedStores">DeleteAbortedStores</a></li>
   <li><a href="#Deny">Deny</a></li>
   <li><a href="#DenyAll">DenyAll</a></li>
   <li><a href="#DenyFilter">DenyFilter</a></li>
@@ -62,7 +67,7 @@
   <li><a href="#ExtendedLog">ExtendedLog</a></li>
   <li><a href="#FileRatioErrMsg">FileRatioErrMsg</a> <em>Incomplete</em></li>
   <li><a href="#FooBarDirective">FooBarDirective</a></li>
-  <li><a href="#Global">&lt;Global&gt;</a></li>
+  <li><a href="#Global">Global</a></li>
   <li><a href="#Group">Group</a></li>
   <li><a href="#GroupOwner">GroupOwner</a></li>
   <li><a href="#GroupPassword">GroupPassword</a></li>
@@ -101,28 +106,29 @@
   <li><a href="#MultilineRFC2228">MultilineRFC2228</a></li>
   <LI><A HREF="#MySQLInfo">MySQLInfo</A> <EM>Incomplete</EM></LI>
   <li><a href="#Order">Order</a></li>
-  <li>PAMConfig <EM>Removed as of 1.2.0, see <A HREF="#AuthPAMConfig">AuthPAMConfig</A></EM>
+  <li>PAMConfig <EM>Removed as of 1.2.0rc1,<BR> see <A HREF="#AuthPAMConfig">AuthPAMConfig</A></EM>
   <li><a href="#PathAllowFilter">PathAllowFilter</a></li>
   <li><a href="#PathDenyFilter">PathDenyFilter</a></li>
   <li><a href="#PersistentPasswd">PersistentPasswd</a></li>
+  <LI><A HREF="#PidFile">PidFile</A></LI>
   <li><a href="#Port">Port</a></li>
   <LI><A HREF="#PostgresInfo">PostgresInfo</A> <EM>Incomplete</EM>
   <LI><A HREF="#PostgresPort">PostgresPort</A> <EM>Incomplete</EM>
-  <LI><A HREF="#Quotas">Quotas</A> <EM>Incomplete</EM>
-  <LI><A HREF="#QuotaBlockSize">QuotaBlockSize</A> <EM>Incomplete</EM>
-  <LI><A HREF="#QuotaBlockName">QuotaBlockName</A> <EM>Incomplete</EM>
-  <LI><A HREF="#QuotaCalc">QuotaCalc</A> <EM>Incomplete</EM>
-  <LI><A HREF="#QuotaExempt">QuotaExempt</A> <EM>Incomplete</EM>
-  <LI><A HREF="#QuotaType">QuotaType</A> <EM>Incomplete</EM>
-  <li><a href="#RateReadBPS">RateReadBPS</a></li>
-  <li><a href="#RateReadFreeBytes">RateReadFreeBytes</a></li>
-  <li><a href="#RateReadHardBPS">RateReadHardBPS</a></li>
-  <li><a href="#RateWriteBPS">RateWriteBPS</a></li>
-  <li><a href="#RateWriteFreeBytes">RateWriteFreeBytes</a></li>
-  <li><a href="#RateWriteHardBPS">RateWriteHardBPS</a></li>
+  <LI><A HREF="#Quotas">Quotas</A></LI>
+  <LI><A HREF="#QuotaBlockSize">QuotaBlockSize</A></LI>
+  <LI><A HREF="#QuotaBlockName">QuotaBlockName</A></LI>
+  <LI><A HREF="#QuotaCalc">QuotaCalc</A></LI>
+  <LI><A HREF="#QuotaExempt">QuotaExempt</A></LI>
+  <LI><A HREF="#QuotaType">QuotaType</A></LI>
+  <li><a href="#RateReadBPS">RateReadBPS</A></li>
+  <li><a href="#RateReadFreeBytes">RateReadFreeBytes</A></LI>
+  <li><a href="#RateReadHardBPS">RateReadHardBPS</A></li>
+  <li><a href="#RateWriteBPS">RateWriteBPS</A></LI>
+  <li><a href="#RateWriteFreeBytes">RateWriteFreeBytes</A></LI>
+  <li><a href="#RateWriteHardBPS">RateWriteHardBPS</A></LI>
   <li><A HREF="#RatioFile">RatioFile</A> <EM>Incomplete</EM>
   <li><A HREF="#Ratios">Ratios</A> <EM>Incomplete</EM>
-  <li><A HREF="#RatioTempFile">RatioTempFile</A> (mod_ratio) <EM>Incomplete</EM>
+  <li><A HREF="#RatioTempFile">RatioTempFile</A> <EM>Incomplete</EM>
   <li><a href="#RequireValidShell">RequireValidShell</a></li>
   <li><a href="#RootLogin">RootLogin</a></li>
   <li><A HREF="#SaveRatios">SaveRatios</A> <EM>Incomplete</EM>
@@ -178,6 +184,7 @@
   <li><a href="#VirtualHost">VirtualHost</a></li>
   <li><a href="#WtmpLog">WtmpLog</a></li>
 </ul>
+</MULTICOL>
 
 <hr>
 <h2><a name="AccessGrantMsg">AccessGrantMsg</a></h2>
@@ -257,7 +264,7 @@ href="#Limit">&lt;Limit&gt;</a> block. Although proftpd's default
   <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;, 
   &lt;Anonymous&gt;, &lt;Global&gt;<br> 
   <STRONG>Module:</STRONG> mod_site<BR>
-  <strong>Compatibility:</strong> 1.2.0 and later</p>
+  <strong>Compatibility:</strong> 1.2.0rc1 and later</p>
 
   <P>AllowChmod allows control over whether the &quot;SITE CHMOD&quot;
   command is allowed to clients.</P>
@@ -592,7 +599,7 @@ href="#AuthUserFile">AuthUserFile</a>).</p>
   <strong>Default:</strong> ftp<br>
   <strong>Context:</strong> server config,&lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_pam<BR>
-  <strong>Compatibility:</strong> 1.2.0 and later</p>
+  <strong>Compatibility:</strong> 1.2.0rc1 and later</p>
 
   <p>This directive allows you to specify the PAM service name used in
   authentication. PAM allows you to specify a service name to use when
@@ -792,16 +799,22 @@ This creates two classes, local and default, with local being everything in
 
 <hr>
 <h2><a name="DefaultQuota">DefaultQuota</a></h2>
-<p><strong>Syntax:</strong> DefaultQuota <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p><strong>Syntax:</strong> DefaultQuota <em>value in bytes</em><br>
+  <strong>Default:</strong> <CODE>0</CODE><BR>
+  <strong>Context:</strong> server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;<br>
   <STRONG>Module:</STRONG> mod_quota<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The DefaultQuota directive ....</P>
+  <p>The DefaultQuota directive sets the default quota in bytes, this
+      value is used if the .quota file does not exist.</P>
 
   <P>Example:</P>
-  <P><code>DefaultQuota</code></P>
+  <P><code>
+#
+# Set default to 1kb
+#
+DefaultQuota 1024 
+</code></P>
 
 <hr>
 
@@ -900,7 +913,8 @@ href="#VirtualHost">virtual server</a> to delay transmitting the
 <h2><a name="DeleteAbortedStores">DeleteAbortedStores</a></h2>
 <p><strong>Syntax:</strong> DeleteAbortedStores <em>on|off</em><br>
   <strong>Default:</strong> <code>off</code><br>
-  <strong>Context:</strong> **check**
+  <strong>Context:</strong> server, &lt;VirtualHost&gt;,
+      &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Global&gt;, .ftpaccess
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 1.2.0rc2 and later</p>
 
@@ -1464,22 +1478,25 @@ href="#IgnoreHidden">IgnoreHidden</a></p>
   <strong>Context:</strong> &lt;Directory&gt;,&lt;Anonymous&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 0.99.0 and later</p>
+
 <p>The HideNoAccess directive configures a <a
 href="#Directory">&lt;Directory&gt;</a> or <a
 href="#Anonymous">&lt;Anonymous&gt;</a> block to hide all directory 
-  entries in a directory listing (via the LIST or NLST FTP commands) to which 
-  the current logged-in, authenticated user has no access to. Normal Unix-style 
-  permissions always apply, so that although a user may not be able to see a directory 
-  entry that has HideNoAccess applied, they will receive a normal &quot;Permission 
-  denied&quot; error message when attempting to blindly manipulate the file system 
-  object. The directory or file can be made completely invisible to all FTP commands 
-  by applying <a href="#IgnoreHidden">IgnoreHidden</a> in conjunction 
-  with HideNoAccess.</p>
-<p><strong>See Also:</strong> <a href="#HideUser">HideUser</a>, <a
-href="#HideGroup">HideGroup</a>, <a
-href="#IgnoreHidden">IgnoreHidden</a></p>
+  entries in a directory listing (via the LIST or NLST FTP commands)
+  to which the current logged-in, authenticated user has no access
+  to. Normal Unix-style permissions always apply, so that although a
+  user may not be able to see a directory entry that has HideNoAccess
+  applied, they will receive a normal &quot;Permission denied&quot;
+  error message when attempting to blindly manipulate the file system
+  object. The directory or file can be made completely invisible to
+  all FTP commands by applying <a
+  href="#IgnoreHidden">IgnoreHidden</a> in conjunction with
+  HideNoAccess.</p> <p><strong>See Also:</strong> <a
+  href="#HideUser">HideUser</a>, <a href="#HideGroup">HideGroup</a>,
+  <a href="#IgnoreHidden">IgnoreHidden</a></p>
 
 <hr>
+
 <h2><a name="HostRatio">HostRatio</a></h2>
 <p><strong>Syntax:</strong> HostRatio <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
@@ -2168,6 +2185,27 @@ href="#AuthGroupFile">AuthGroupFile</a> directives will force partial support
     regardless of proftpd's detected configuration defaults. Failure to disable 
     this will make your NIS/NIS+ maps not work!</strong></p>
   <hr>
+
+  <h2><a name="PidFile">PidFile</a></h2>
+  <p><strong>Syntax:</strong> PidFile <em>filename</em><br>
+    <strong>Default:</strong> <code>none</code><br>
+    <strong>Context:</strong> server config, &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
+    <strong>Compatibility:</strong> 1.2.0rc2 and later</P>
+
+  <P>The PidFile directive sets the file to which the server records
+  the process id of the daemon. The filename should be relative to the
+  system root, ie /var/run/proftpd/pidfile. The PidFile is only used
+  in standalone mode.</P>
+
+  <P>It is often useful to be able to send the server a signal, so
+  that it closes and then reopens its ErrorLog and TransferLog, and
+  re-reads its configuration files. This is done by sending a SIGHUP
+  (kill -1) signal to the process id of the master daemon listed in
+  the PidFile.</P>
+
+  <HR>
+
   <h2><a name="Port">Port</a></h2>
   <p><strong>Syntax:</strong> Port <em>port-number</em><br>
     <strong>Default:</strong> <code>Port 21</code><br>
@@ -2207,76 +2245,85 @@ href="#VirtualHost">&lt;VirtualHost&gt;</a> in order to run a virtual server on
   <P><code>PostgresPort</code></P>
 <hr>
 <h2><a name="Quotas">Quotas</a></h2>
-<p><strong>Syntax:</strong> Quotas <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p><strong>Syntax:</strong> Quotas <em>on|off</em><br>
+  <strong>Default:</strong> <CODE>none</CODE><br>
+  <strong>Context:</strong> server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;<br>
   <STRONG>Module:</STRONG> mod_quota<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The Quotas directive ....</P>
+  <p>The Quotas directive enables or disables Quota support.</P>
 
   <P>Example:</P>
-  <P><code>Quotas</code></P>
+  <P><code>Quotas on</code></P>
 <hr>
 <h2><a name="QuotaBlockSize">QuotaBlockSize</a></h2>
-<p><strong>Syntax:</strong> QuotaBlockSize <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p><strong>Syntax:</strong> QuotaBlockSize <em>number of bytes</em><br>
+  <strong>Default:</strong> <CODE>None</CODE><br>
+  <strong>Context:</strong> server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;<BR>
   <STRONG>Module:</STRONG> mod_quota<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The QuotaBlockSize directive ....</P>
+  <p>The QuotaBlockSize directive is used in conjuntion with the <a
+  href="#QuotaBlockName">QuotaBlockName</a> directive to control how
+  the user output is handled.  QuotaBlockSize specifies the factor by
+  which the values in the user reports are divided before display.</P>
 
   <P>Example:</P>
-  <P><code>QuotaBlockSize</code></P>
+  <P><code>QuotaBlockSize 1024</code></P>
   <hr>
 <h2><a name="QuotaBlockName">QuotaBlockName</a></h2>
-<p><strong>Syntax:</strong> QuotaBlockName <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p><strong>Syntax:</strong> QuotaBlockName <em>name</em><br>
+  <strong>Default:</strong> <code>byte</code><br>
+  <strong>Context:</strong> server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;<BR>
   <STRONG>Module:</STRONG> mod_quota<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The QuotaBlockName directive ....</P>
+  <p>The QuotaBlockName directive is used in conjunction with the <a
+  href="#QuotaBlockSize">QuotaBlockSize</a> directive to control user
+  output from the module.  This directive specifies the name given to
+  the values displayed (ie byte, kilobyte, kb etc etc).  </P>
 
   <P>Example:</P>
-  <P><code>QuotaBlockName</code></P>
+  <P><code>QuotaBlockName kb</code></P>
 <hr>
 <h2><a name="QuotaCalc">QuotaCalc</a></h2>
 <p><strong>Syntax:</strong> QuotaCalc <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Default:</strong> None<br>
+  <strong>Context:</strong> server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;<BR>
   <STRONG>Module:</STRONG> mod_quota<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The QuotaCalc directive ....</P>
+  <p>The QuotaCalc directive controls whether calculation is done on
+  the fly.  If the directive is set to 'on' and either there is no
+  .quota file or the quota would go negative then calculation is done
+  on the fly rather than at the end of the session.</P>
 
-  <P>Example:</P>
-  <P><code>QuotaCalc</code></P>
 <hr>
 <h2><a name="QuotaExempt">QuotaExempt</a></h2>
-<p><strong>Syntax:</strong> QuotaExempt <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p><strong>Syntax:</strong> QuotaExempt <em>uid, uid, uid</EM><BR>
+  <strong>Default:</strong> None<br>
+  <strong>Context:</strong> server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;<BR>
   <STRONG>Module:</STRONG> mod_quota<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The QuotaExempt directive ....</P>
+  <p>The QuotaExempt directive lists the UIDs which are not subject to
+  quota controls, using UIDs rather than symbolic user names speeds up
+  the loading and resolution process.</P>
 
   <P>Example:</P>
-  <P><code>QuotaExempt</code></P>
+  <P><code>QuotaExempt 3000,3401,500</code></P>
 <hr>
 <h2><a name="QuotaType">QuotaType</a></h2>
 <p><strong>Syntax:</strong> QuotaType <em>soft|hard</em><br>
   <strong>Default:</strong> soft<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Context:</strong> server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;<br>
   <STRONG>Module:</STRONG> mod_quota<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The QuotaType directive defines what happens to files which break 
-	the quota limits as they are uploaded.  Setting the type to
-	hard ensures that the file which violates the quota is deleted.</P>
-	uploaded  ....</P>
+  the quota limits as they are uploaded.  Setting the type to hard
+  ensures that the file which violates the quota is deleted.</P>
+  uploaded.</P>
 
   <hr>
   <h2><a name="RateReadBPS">RateReadBPS</a></h2>
@@ -2857,8 +2904,38 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
     <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 1.2.0rc2 later</p>
   
-  <P>The SyslogLevel directive specifies to which level the Syslog
-  messages are sent</P>
+  <P>SyslogLevel adjusts the verbosity of the messages recorded in the
+  error logs.  The following <EM>level</EM>s are available, in order
+  of decreasing significance:
+
+<P><TABLE>
+  <TR><TH ALIGN="LEFT"><STRONG>Level</STRONG>
+      <TH ALIGN="LEFT"><STRONG>Description</STRONG>
+  <TR><TD><CODE>emerg</CODE>
+      <TD>Emergencies - system is unusable.
+  <TR><TD><CODE>alert</CODE>
+      <TD>Action must be taken immediately.
+  <TR><TD><CODE>crit</CODE>
+      <TD>Critical Conditions.
+  <TR><TD><CODE>error</CODE>
+      <TD>Error conditions.
+  <TR><TD><CODE>warn</CODE>
+      <TD>Warning conditions.
+  <TR><TD><CODE>notice</CODE>
+      <TD>Normal but significant condition.
+  <TR><TD><CODE>info</CODE>
+      <TD>Informational.
+  <TR><TD><CODE>debug</CODE>
+      <TD>Debug-level messages
+</TABLE>
+
+  <P>When a particular level is specified, messages from all other
+  levels of higher significance will be reported as well.
+  <EM>E.g.</EM>, when <CODE>SyslogLevel info</CODE> is specified, then
+  messages with log levels of <CODE>notice</CODE> and
+  <CODE>warn</CODE> will also be posted.
+  
+  <P>Using a level of at least <CODE>crit</CODE> is recommended.
 
   <hr>
   <h2><a name="SystemLog"><strong>SystemLog</strong></a></h2>
