@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.103 2002-09-07 19:02:56 castaglia Exp $
+ * $Id: main.c,v 1.104 2002-09-09 14:40:44 jwm Exp $
  */
 
 #include "conf.h"
@@ -322,49 +322,36 @@ static void init_set_proc_title(int argc, char *argv[], char *envp[])
   
   /* Move the environment so setproctitle can use the space.
    */
-  for(i = envpsize = 0; envp[i] != NULL; i++)
+  for (i = envpsize = 0; envp[i] != NULL; i++)
     envpsize += strlen(envp[i]) + 1;
   
-  if((p = (char **) malloc((i + 1) * sizeof(char *))) != NULL ) {
+  if ((p = (char **)malloc((i + 1) * sizeof(char *))) != NULL) {
     environ = p;
 
-    for(i = 0; envp[i] != NULL; i++) {
-      if((environ[i] = malloc(strlen(envp[i]) + 1)) != NULL)
-	strcpy(environ[i], envp[i]);
-    }
+    for (i = 0; envp[i] != NULL; i++)
+      if ((environ[i] = malloc(strlen(envp[i]) + 1)) != NULL)
+        strcpy(environ[i], envp[i]);
     
     environ[i] = NULL;
   }
   
   Argv = argv;
   
-  for(i = 0; i < argc; i++) {
-    if(!i || (LastArgv + 1 == argv[i]))
+  for (i = 0; i < argc; i++)
+    if (!i || (LastArgv + 1 == argv[i]))
       LastArgv = argv[i] + strlen(argv[i]);
-  }
   
-  for(i = 0; envp[i] != NULL; i++) {
-    if((LastArgv + 1) == envp[i])
+  for (i = 0; envp[i] != NULL; i++)
+    if ((LastArgv + 1) == envp[i])
       LastArgv = envp[i] + strlen(envp[i]);
-  }
   
 #ifdef HAVE___PROGNAME
-  /* Set the __progname and __progname_full variables so glibc and company don't
-   * go nuts. - MacGyver
+  /* Set the __progname and __progname_full variables so glibc and company
+   * don't go nuts.
    */
-  __progname = strdup("proftpd");
+  __progname      = strdup("proftpd");
   __progname_full = strdup(argv[0]);
 #endif /* HAVE___PROGNAME */
-  
-#if 0
-  /* Save argument/environment globals for use by set_proc_title */
-
-  Argv = argv;
-  while(*envp)
-    envp++;
-
-  LastArgv = envp[-1] + strlen(envp[-1]);
-#endif
 }    
 
 static void set_proc_title(char *fmt,...)
@@ -386,19 +373,12 @@ static void set_proc_title(char *fmt,...)
   vsnprintf(statbuf, sizeof(statbuf), fmt, msg);
 
 #ifdef HAVE_SETPROCTITLE
-  /* On systems with setproctitle(), v*printf are used on the arguments.
-   * Prevent any possible format attacks.
-   */
-
-  /* Note: nasty portability hack to workaround FreeBSD's setproctitle()
-   * semantics.
-   */
-#if defined(FREEBSD4_2) || defined(FREEBSD4_3) || defined(FREEBSD4_3) || defined(FREEBSD4_4) || defined(FREEBSD4_5)
+#ifdef FREEBSD4
+  /* FreeBSD's setproctitle() automatically prepends the process name. */
   setproctitle("%s", statbuf);
 #else
-  setproctitle("%s", statbuf);
-#endif
-
+  setproctitle("proftpd: %s", statbuf);
+#endif /* FREEBSD4 */
 #endif /* HAVE_SETPROCTITLE */
 
   va_end(msg);
@@ -451,8 +431,7 @@ void main_set_idle(void)
               main_server->ipaddr, (unsigned short) main_server->ServerPort,
               0, 0, "proftpd: %s - %s: IDLE",
 	      session.user,session.proc_prefix);
-
-  set_proc_title("proftpd: %s - %s: IDLE", session.user, session.proc_prefix);
+  set_proc_title("%s - %s: IDLE", session.user, session.proc_prefix);
 }
 
 static void send_response_list(response_t **head)
@@ -788,7 +767,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
 		    session.class->name : "",
 		    NULL, 0, 0, 0, "proftpd: %s - %s: %s",
                     session.user, session.proc_prefix, argstr);
-        set_proc_title("proftpd: %s - %s: %s",
+        set_proc_title("%s - %s: %s",
                        session.user, session.proc_prefix, argstr);
       }
 
@@ -986,11 +965,10 @@ static void cmd_loop(server_rec *server, conn_t *c) {
   config_rec *masq_c = NULL;
   int i;
 
-  set_proc_title("proftpd: connected: %s (%s:%d)",
-  		c->remote_name ? c->remote_name : "?",
-		c->remote_ipaddr ? inet_ntoa(*c->remote_ipaddr) : "?",
-		c->remote_port ? c->remote_port : 0
-		);
+  set_proc_title("connected: %s (%s:%d)",
+                 c->remote_name   ? c->remote_name               : "?",
+                 c->remote_ipaddr ? inet_ntoa(*c->remote_ipaddr) : "?",
+                 c->remote_port   ? c->remote_port               : 0);
 
   /* Setup the main idle timer */
   if (TimeoutIdle)
@@ -1614,7 +1592,7 @@ static void server_loop(void) {
   struct timeval tv;
   static int running = 0;
 
-  set_proc_title("proftpd (accepting connections)");
+  set_proc_title("(accepting connections)");
 
   time(&last_error);
 
