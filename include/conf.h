@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.40 2003-08-12 17:07:09 castaglia Exp $
+ * $Id: conf.h,v 1.41 2003-09-05 19:42:09 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -393,5 +393,9 @@ typedef struct {
 #define PR_RESPONSE_BUFFER_SIZE	 (PR_TUNABLE_BUFFER_SIZE + PR_TUNABLE_PATH_MAX)
 
 #endif /* __PROFTPD_SUPPORT_LIBRARY */
+
+#ifdef WITH_DMALLOC
+# include <dmalloc.h>
+#endif /* WITH_DMALLOC */
 
 #endif /* PR_CONF_H */
