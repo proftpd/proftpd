@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.121 2002-12-11 23:33:19 castaglia Exp $
+ * $Id: mod_auth.c,v 1.122 2002-12-11 23:35:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1399,6 +1399,13 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
           char *s, *d, ip[32] = {'\0'};
           int mpos = sizeof(ip) - 1;
 
+          /* This small hack makes sure that cur is incremented properly
+           * when dealing with anonymous logins (the timing of anonymous
+           * login updates to the scoreboard makes this...odd).
+           */
+          if (c && c->config_type == CONF_ANON && cur == 0)
+              cur = 1;
+
           cur++;
 
           s = strchr(score->sce_client_addr, '[');
@@ -1501,12 +1508,13 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     char *maxstr = "Sorry, the maximum number clients (%m) from your host are "
       "already connected.";
     unsigned int *max = maxc->argv[0];
-    char maxn[20] = {'\0'};
 
     if (maxc->argc > 1)
       maxstr = maxc->argv[1];
 
     if (*max && hcur > *max) {
+      char maxn[20] = {'\0'};
+
       snprintf(maxn, sizeof(maxn), "%u", *max);
       send_response(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
@@ -1522,12 +1530,13 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     char *maxstr = "Sorry, maximum number of clients (%m) for this user are "
       "already connected.";
     unsigned int *max = maxc->argv[0];
-    char maxn[20] = {'\0'};
 
     if (maxc->argc > 1)
       maxstr = maxc->argv[1];
 
     if (*max && usersessions >= *max) {
+      char maxn[20] = {'\0'};
+
       snprintf(maxn, sizeof(maxn), "%u", *max);
       send_response(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
@@ -1542,12 +1551,13 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     char *maxstr = "Sorry, the maximum number of allowed clients (%m) are "
       "already connected.";
     unsigned int *max = maxc->argv[0];
-    char maxn[20] = {'\0'};
 
     if (maxc->argc > 1)
       maxstr = maxc->argv[1];
 
     if (*max && cur > *max) {
+      char maxn[20] = {'\0'};
+
       snprintf(maxn, sizeof(maxn), "%u", *max);
       send_response(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
@@ -1561,12 +1571,13 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     char *maxstr = "Sorry, the maximum number of hosts (%m) for this user are "
       "already connected.";
     unsigned int *max = maxc->argv[0];
-    char maxn[20] = {'\0'};
 
     if (maxc->argc > 1)
       maxstr = maxc->argv[1];
 
     if (*max && hostsperuser > *max) {
+      char maxn[20] = {'\0'};
+
       snprintf(maxn, sizeof(maxn), "%u", *max);
       send_response(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
