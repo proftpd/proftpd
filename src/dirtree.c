@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.105 2003-03-14 15:51:45 castaglia Exp $
+ * $Id: dirtree.c,v 1.106 2003-03-14 15:54:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -204,11 +204,15 @@ xaset_t *get_dir_ctxt(char *dir_path) {
   char *full_path = dir_path;
   pool *tmp_pool = make_sub_pool(permanent_pool);
 
-  if (session.chroot_path)
-    full_path = pdircat(tmp_pool, session.chroot_path, session.cwd, dir_path,
-    NULL);
+  if (session.chroot_path) {
+    if (*dir_path != '/')
+      full_path = pdircat(tmp_pool, session.chroot_path, session.cwd, dir_path,
+      NULL);
 
-  else if (*dir_path != '/')
+    else
+      full_path = pdircat(tmp_pool, session.chroot_path, dir_path, NULL);
+
+  } else if (*dir_path != '/')
     full_path = pdircat(tmp_pool, session.cwd, dir_path, NULL);
 
   c = dir_match_path(tmp_pool, full_path);
