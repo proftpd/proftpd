@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.579 2004-06-17 20:34:27 castaglia Exp $
+$Id: NEWS,v 1.580 2004-06-23 00:04:39 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -40,6 +40,7 @@ CVS
   target path does not exist.
 - Bug 2422 - %v not working in SQLNamedQuery.
 - Bug 2418 - chmod returns 550 with filename containing multiple spaces.
+- Bug 2431 - mod_sql does not use UID/GID properly in cache lookups.
 
 1.2.10rc1 - Released 28-Apr-2004
 ---------------------------------

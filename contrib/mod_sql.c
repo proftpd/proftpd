@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.77 2004-06-11 21:19:24 castaglia Exp $
+ * $Id: mod_sql.c,v 1.78 2004-06-23 00:04:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -854,6 +854,7 @@ static struct passwd *_sql_addpasswd(cmd_rec *cmd, char *username,
   struct passwd *pwd = NULL;
 
   pwd = pcalloc(cmd->tmp_pool, sizeof(struct passwd));
+  pwd->pw_uid = uid;
   pwd->pw_name = username;
 
   /* check to make sure the entry doesn't exist in the cache */
@@ -1094,7 +1095,7 @@ static struct group *_sql_addgroup(cmd_rec *cmd, char *groupname, gid_t gid,
   int cnt = 0;
 
   grp = pcalloc(cmd->tmp_pool, sizeof(struct group));
-
+  grp->gr_gid = gid;
   grp->gr_name = groupname;
 
   /* check to make sure the entry doesn't exist in the cache */
