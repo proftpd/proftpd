@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.132 2003-11-15 20:27:33 castaglia Exp $
+ * $Id: dirtree.c,v 1.133 2003-11-15 20:30:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -652,7 +652,7 @@ char *get_config_line(char *buf, size_t len) {
 
 static char *get_config_word(pool *p, char *word) {
 #ifdef HAVE_GETENV
-  /* Is the given word use the environment syntax? */
+  /* Does the given word use the environment syntax? */
   if (strncmp(word, "%{env:", 6) == 0 &&
       word[strlen(word)-1] == '}') {
     char *env;
