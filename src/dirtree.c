@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.149 2004-05-30 02:39:20 castaglia Exp $
+ * $Id: dirtree.c,v 1.150 2004-05-31 21:20:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2638,6 +2638,9 @@ static void debug_config_printf(const char *fmt, ...) {
 void pr_conf_debug_config(void (*debugf)(const char *, ...), xaset_t *s,
     char *indent) {
   config_rec *c = NULL;
+
+  if (!s)
+    return;
 
   if (!indent)
     indent = "";
