@@ -1,17 +1,17 @@
-mod_ldap v2.0
+mod_ldap v2.7
 =============
 
 mod_ldap is a module that allows proftpd to do user authentication and
 name/UID lookups against an LDAP database.
 
-**Please note:** some of the basic configuration directives have changed
-in version 2.0 of mod_ldap; please read the Changes section of this file
-carefully to find out what you will need to update in your proftpd.conf.
+**Please note:** Read the CHANGES section below for mod_ldap v2.7 changes;
+some significant changes have been made. Do *NOT* upgrade to mod_ldap v2.7
+before reading the CHANGES section.
 
 
 Sections:
 1. How do I set up mod_ldap?
-2. Changes in v2.0
+2. Changes in v2.5.2 - v2.7
 3. To-Do
 4. Thanks
 5. Author
@@ -21,124 +21,93 @@ Sections:
 1. How do I set up mod_ldap?
 ============================
 
-Currently, mod_ldap has only been heavily tested with recent versions of
-OpenLDAP-stable, but has been reported to work with Netscape Directory
-Server without any modification.
+If you are using a version of mod_ldap included with a ProFTPD release,
+you can simply:
 
-1. Add the following schema to your slapd.oc.conf (if it's not already
-   there) and restart slapd:
+tar xvzf proftpd-version.tar.gz
+cd proftpd-version
+./configure --with-modules=mod_ldap
+make
+make install
+Add the contents of posixAccount-objectclass to your slapd.oc.conf (or
+    equivalent) and restart your LDAP server. If you plan on using mod_ldap
+    for group lookups, also add the contents of posixGroup-objectclass.
+The 'user-ldif' file contains a sample user ldif. Modify it to your liking
+    and say ldapadd -D your-root-dn -w your-root-dn-password < ldif
+Read up on the LDAP config-file directives in doc/Configuration.html. At
+    bare minimum, you'll need to have LDAPServer, LDAPDNInfo, and LDAPDoAuth
+    configuration directives in your proftpd.conf.
 
-objectclass posixAccount
-        requires
-                objectclass,
-                cn,
-                uid,
-                uidNumber,
-                gidNumber,
-                homeDirectory
-        allows
-                userPassword,
-                loginShell,
-                gecos,
-                description
+    A sample set of LDAP configuration directives is included here:
 
-2. Create an ldif file and add it to your LDAP server by saying: ldapadd -D
-   your-root-dn -w your-root-dn-password < ldif-file
+    LDAPServer            localhost
+    LDAPDNInfo            cn=your-dn,dc=horde,dc=net dnpass
+    LDAPDoAuth            on "dc=users,dc=horde,dc=net"
 
-A sample ldif is included here:
 
-dn: cn=John Morrissey, dc=horde, dc=net
-cn: John Morrissey
-uid: jwmsax
-uidNumber: 2000
-gidNumber: 100
-homeDirectory: /home/jwm
-userPassword: {crypt}SosPSqZVHbI5Y
-loginShell: /bin/bash
 
-3. Read up on the LDAP config-file directives in doc/Configuration.html. At
-bare minimum, you'll need to have LDAPServer, LDAPDNInfo, and LDAPDoAuth
-configuration directives in your proftpd.conf.
+If you wish to use a newer version of mod_ldap that is not yet included with
+a release version of ProFTPD, simply download the file mod_ldap.c, say:
 
-A sample set of LDAP configuration directives is included here:
+cp -f mod_ldap.c proftpd-version/contrib
 
-LDAPServer            localhost
-LDAPDNInfo            cn=your-dn,dc=horde,dc=net dnpass
-LDAPDoAuth            on "dc=users,dc=horde,dc=net"
+and then follow the same steps as above.
 
-==================
-2. Changes in v2.0
-==================
+===========================
+2. Changes in v2.5.2 - v2.7
+===========================
 
 Please check the web site for previous changelogs.
 
-* Config file syntax revamped:
-   LDAPServer            localhost
-   LDAPDNInfo            cn=your-dn,dc=horde,dc=net dnpass
-   LDAPQueryTimeout      5
-   LDAPDoAuth            on "dc=users,dc=horde,dc=net"
-   LDAPDoUIDLookups      on "dc=users,dc=horde,dc=net"
-   LDAPDoGIDLookups      on "dc=groups,dc=horde,dc=net"
-   LDAPDefaultUID        35000
-   LDAPDefaultGID        1000
-   LDAPNegativeCache     on
-   LDAPHomedirOnDemand   on
-   LDAPDefaultAuthScheme clear
-* Configurable LDAP query timeout [Peter Deacon <peterd@iea-software.com>]
-* Cleartext password "encryption" scheme ("{clear}mypass")
-* UID-to-name and GID-to-name lookups in directory listings
-* Separate prefixes for user and group lookups
-* Can turn on/off UID-to-name and GID-to-name lookups independently
-* Default [UG]IDs. Say you want to have a web-toaster type of deal, with
-  all users having the same [UG]IDs. Just don't put [ug]idNumber attrs in
-  your LDAP database for those users, and set these configuration
-  directives. Any user that doesn't have a [UG]ID in the LDAP database will
-  have that info filled in with the default [UG]ID.
-* mod_ldap is now able to function in a pure virtual-user environment;
-  please note, however, that the loginShell LDAP attr still must be a
-  valid shell. You can turn this check off by saying RequireValidShell off
-  in your proftpd.conf
-* allowedServices attr: (I broke with objectclass here, couldn't find
-  something that seemed to fit this.) This attribute contains a
-  comma-deliminated list of services to allow this particular user.  The
-  string "FTP" corresponds to FTP service. If no allowedServices attr is
-  present, all services will be allowed.
-* You can have alternate LDAP servers; just specify LDAPServer "host1
-  host2"; [Peter Deacon <peterd@iea-software.com>]
-* LDAPHomedirOnDemand to automatically create home directories in a
-  virtual-user environment. [patch: Bert Vermeulen <bert@be.easynet.net>]
-* LDAPDefaultAuthScheme to select the authentication scheme to use when
-  no {prefix} is present in a user's userPassword LDAP attr.
-  [patch: Bert Vermeulen <bert@be.easynet.net>]
-* Virtual hosting support may or may not work okay; theoretically, I think
-  adding LDAP configuration directives to a <VirtualHost> block will work,
-  but this hasn't been tested.
+v2.7:
+* Added a fix for picky LDAP servers like Sun Directory Services; using
+AuthBinds with those LDAP servers would break in previous mod_ldap versions.
+See the comments in the code for more details (search for "Sun Directory
+Services").
+* You can now specify custom LDAP search filters at runtime. See the
+configuration guide (doc/Configuration.html) entries for LDAPDo* for more
+details.
+* Objectclass is now enforced. You *must* have an objectclass attribute for
+each of your LDAP objects. This attribute must have a value of
+'posixAccount' ("objectclass: posixAccount"). For groups, this attribute
+must have the value 'posixGroup' ("objectclass: posixGroup"). If you wish to
+disable this objectclass enforcement, use the the LDAP filter "(uid=%u)" for
+Auth and UID lookups (see doc/Configuration.html for how to specify a custom
+LDAP search filter).
+* Removed allowedServices code. The functionality that allowedServices
+provided can now be duplicated with a modified LDAP search filter.
 
-New Tested Platforms:
+For example, to replicate basic allowedServices checking, pass this LDAP
+search filter to LDAPDoAuth:
+(&(uid=%u)(|(allowedServices=*FTP*)(!(allowedService=*))))
 
-* Solaris 2.6 with Netscape Directory Server and the Mozilla LDAP C SDK,
-  available at http://www.mozilla.org/directory/csdk.html.
-  Peter Fabian <fabian@staff.matavnet.hu>
-* Solaris 7 with gcc 2.95.1 and OpenLDAP 1.2.7
-  Ralf Kruedewagen <Ralf.Kruedewagen@meocom.de>
+To emulate deniedServices checking, use this search filter:
+(&(uid=%u)(!(deniedServices=*FTP*)))
 
-Please check the web site for the complete list of tested platforms.
+To emulate *both* allowedServices and deniedServices checking, use this
+filter (beware line wrap):
+(&(uid=%u)(|(allowedServices=*FTP*)(!(allowedService=*)))(!(deniedServices=*FTP*)))
+
+v2.6.1:
+* Fixed a bug that would prevent proper search scope selection.
+
+v2.6:
+* HomedirOnDemandSuffix - create an additional subdirectory in a user's home
+  directory (/home/user/anotherdirectory) on demand
+* Minor group fixes/cleanups - supplementary groups now work properly
+* Password {scheme}s are now treated in a case-insensitive manner.
+* Password-hash support for any crypto method OpenSSL supports
+  To enable extended OpenSSL password hash support, edit mod_ldap.c and
+  uncomment #define HAVE_OPENSSL. You'll also need to edit Make.rules to
+  link against OpenSSL. Further details are provided in mod_ldap.c.
+* Runtime search scope selection; one-level or subtree searches can be
+  selected from proftpd.conf.
 
 =======
 3. ToDo
 =======
 
-* Support for alternate password hash algorithms, such as SHA1. I'm looking
-  at how qmail-ldap does this; it looks like they just "borrowed" the SHA1
-  source file from OpenBSD. Authenticated binds would also take care of
-  this, as then any encryption scheme supported by your LDAP server would
-  be usable.
 * different log levels in mod_ldap to log varying debug info
-* config file directive to not even look up [ug]id attrs if we're using
-  a default [ug]id
-
-Peter Deacon <peterd@iea-software.com>'s ideas:
-* authenticated binds (also Peter Fabian <fabian@staff.matavnet.hu>)
 * perror()-like error reporting to improve error messages
 * shadowAccount objectclass stuff - inactive, expiration, etc.
 
@@ -158,7 +127,7 @@ Peter Deacon <peterd@iea-software.com>'s ideas:
 5. Author
 =========
 
-John Morrissey, <jwm@horde.net>, http://horde.net/~jwm/software/proftpd-ldap
+John Morrissey, <jwm@horde.net>, http://horde.net/~jwm/software/mod_ldap/
 Feedback is much appreciated. If you're using mod_ldap successfully, or
 you're having problems getting mod_ldap up and running at your site, or
 even have some code improvements or ideas for development, please let

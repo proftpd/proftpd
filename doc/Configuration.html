@@ -1517,7 +1517,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <p><strong>Syntax:</strong> LDAPAuthBinds <em>on|off</em><br>
   <strong>Default:</strong> <code>LDAPAuthBinds off</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre10 w/mod_ldap v2.5 and later</p>
+  <strong>Compatibility:</strong> mod_ldap v2.5 and later</p>
 <p>Specifies whether to use authenticated binds. Normally, a privileged
    LDAP DN will be used to bind to the LDAP server to obtain user
    information, including the userPassword attribute. If
@@ -1534,7 +1534,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <p><strong>Syntax:</strong> LDAPDefaultAuthScheme <em>crypt|clear</em><br>
   <strong>Default:</strong> <code>LDAPDefaultAuthScheme "crypt"</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre10 and later</p>
+  <strong>Compatibility:</strong> mod_ldap v2.0 and later</p>
 <p>Specifies the authentication scheme used for passwords with no {prefix}
    in the LDAP database. For example, if you are using something like
    userPassword: mypass in your LDAP database, you would want to set
@@ -1544,7 +1544,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <p><strong>Syntax:</strong> LDAPDefaultGID <em>default-gid</em><br>
   <strong>Default:</strong> None<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre10 and later</p>
+  <strong>Compatibility:</strong> mod_ldap v2.0 and later</p>
 <p>This directive is useful primarily in virtual-user environments common
    in large-scale ISPs and hosting organizations. If a user does not have
    a LDAP gidNumber attribute, the LDAPDefaultGID is used. This allows one
@@ -1556,7 +1556,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <p><strong>Syntax:</strong> LDAPDefaultUID <em>default-uid</em><br>
   <strong>Default:</strong> None<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre10 and later</p>
+  <strong>Compatibility:</strong> mod_ldap v2.0 and later</p>
 <p>This directive is useful primarily in virtual-user environments common
    in large-scale ISPs and hosting organizations. If a user does not have
    a LDAP uidNumber attribute, the LDAPDefaultUID is used. This allows one
@@ -1568,53 +1568,70 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <p><strong>Syntax:</strong> LDAPDNInfo <em>"ldap-dn" "dn-password"</em><br>
   <strong>Default:</strong> <code>LDAPDNInfo "" ""</code> (anonymous bind)<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre10 and later</p>
+  <strong>Compatibility:</strong> mod_ldap v2.0 and later</p>
 <p>This directive specifies the LDAP DN and password to use when binding
    to the LDAP server. If this configuration directive is not specified,
    anonymous binds are used.
 <hr>
 <h2><a name="LDAPDoAuth">LDAPDoAuth</a></h2>
-<p><strong>Syntax:</strong> LDAPDoAuth <em>on|off "auth-base-prefix"</em><br>
+<p><strong>Syntax:</strong> LDAPDoAuth <em>on|off "auth-base-prefix" "search-filter-template"</em><br>
   <strong>Default:</strong> <code>LDAPDoAuth off</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre10 and later</p>
+  <strong>Compatibility:</strong> mod_ldap v2.0 and later</p>
 <p>This configuration directive activates LDAP authentication. The second
    argument to this directive is the LDAP prefix to use for authentication.
+   The third argument is a template to be used for the search filter; %u
+   will be replaced with the username that is being authenticated. By
+   default, the search filter template "(&(uid=%u)(objectclass=posixAccount))"
+   is used. Search filter templates are only supported in mod_ldap v2.7 and
+   later.
 <hr>
 <h2><a name="LDAPDoUIDLookups">LDAPDoUIDLookups</a></h2>
-<p><strong>Syntax:</strong> LDAPDoUIDLookups <em>on|off "uid-base-prefix"</em><br>
+<p><strong>Syntax:</strong> LDAPDoUIDLookups <em>on|off "uid-base-prefix" "search-filter-template"</em><br>
   <strong>Default:</strong> <code>LDAPDoUIDLookups off</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre10 and later</p>
+  <strong>Compatibility:</strong> mod_ldap v2.0 and later</p>
 <p>This configuration directive activates LDAP UID-to-name lookups in
    directory listings. The second argument to this directive is the LDAP
-   prefix to use for UID-to-name lookups.
+   prefix to use for UID-to-name lookups. The third argument is a template
+   to be used for the search filter; %u will be replaced with the UID that
+   is being looked up. By default, the search filter template
+   "(&(uidNumber=%u)(objectclass=posixAccount))" is used. Search filter
+   templates are only supported in mod_ldap v2.7 and later.
 <hr>
 <h2><a name="LDAPDoGIDLookups">LDAPDoGIDLookups</a></h2>
-<p><strong>Syntax:</strong> LDAPDoGIDLookups <em>on|off "uid-base-prefix"</em><br>
+<p><strong>Syntax:</strong> LDAPDoGIDLookups <em>on|off "uid-base-prefix" "search-filter-template"</em><br>
   <strong>Default:</strong> <code>LDAPDoGIDLookups off</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre10 and later</p>
+  <strong>Compatibility:</strong> mod_ldap v2.0 and later</p>
 <p>This configuration directive activates LDAP GID-to-name lookups in
    directory listings. The second argument to this directive is the LDAP
-   prefix to use for GID-to-name lookups.
+   prefix to use for GID-to-name lookups. The third argument is a template
+   to be used for the search filter; %u will be replaced with the GID that
+   is being looked up. By default, the search filter template
+   "(&(gidNumber=%u)(objectclass=posixGroup))" is used. Search filter
+   templates are only supported in mod_ldap v2.7 and later.
 <hr>
 <h2><a name="LDAPHomedirOnDemand">LDAPHomedirOnDemand</a></h2>
-<p><strong>Syntax:</strong> LDAPHomedirOnDemand <em>on|off</em><br>
+<p><strong>Syntax:</strong> LDAPHomedirOnDemand <em>on|off directory-mode</em><br>
   <strong>Default:</strong> <code>LDAPHomedirOnDemand off</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre10 and later</p>
+  <strong>Compatibility:</strong> mod_ldap v2.0 and later</p>
 <p>LDAPHomedirOnDemand activates on-demand home directory creation. If a
    user logs in and does not yet have a home directory, a home directory
    is created automatically. The home directory will be owned by the same
    user and group that ProFTPD is running as (see the <a href="#User">User</a>
-   and <a href="#Group">Group</a> configuration directives).
+   and <a href="#Group">Group</a> configuration directives). The second
+   argument allows you to specify the mode (default permissions) to use when
+   creating home directories on demand. If no directory mode is specified,
+   the default of 0755 is used. Directory mode setting is only supported in
+   mod_ldap v2.7 or later.
 <hr>
 <h2><a name="LDAPHomedirOnDemandSuffix"></a></h2>
 <p><strong>Syntax:</strong> LDAPHomedirOnDemandSuffix <em>"additional-directory"</em><br>
   <strong>Default:</strong> <code>LDAPHomedirOnDemandSuffix ""</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0 and later</p>
+  <strong>Compatibility:</strong> mod_ldap v2.6 and later</p>
 <p>LDAPHomedirOnDemandSuffix allows you to specify an additional directory
    to be created within a user's home directory when it is created on
    demand. For example, if a user's home directory is "/home/user", setting
@@ -1628,7 +1645,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <p><strong>Syntax:</strong> LDAPNegativeCache <em>on|off</em><br>
   <strong>Default:</strong> <code>LDAPNegativeCache off</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
+  <strong>Compatibility:</strong> mod_ldap v1.1 and later</p>
 <p>LDAPNegativeCache specifies whether or not to cache negative responses
    from the LDAP server when using LDAP for UID/GID lookups. This option is
    useful if you also use/are in transition from another authentication
@@ -1645,30 +1662,30 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <p><strong>Syntax:</strong> LDAPQueryTimeout <em>timeout-seconds</em><br>
   <strong>Default:</strong> <code>LDAPQueryTimeout default-api-timeout</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre10 and later</p>
+  <strong>Compatibility:</strong> mod_ldap v2.0 and later</p>
 <p>Sets the timeout used for LDAP directory queries. The default is the
-   default timeout used by the LDAP API.
+   default timeout used by your LDAP API.</p>
 <hr>
-<h2><a name="LDAPSearchScope"></a></h2>
+<h2><a name="LDAPSearchScope">LDAPSearchScope</a></h2>
 <p><strong>Syntax:</strong> LDAPSearchScope <em>onelevel|subtree</em><br>
   <strong>Default:</strong> <code>LDAPSearchScope subtree</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0 and later</p>
-<p>Set the scope used for LDAP searches. Setting this directive to
+  <strong>Compatibility:</strong> mod_ldap v2.6 and later</p>
+<p>Set the scope used for LDAP searches. The default setting,
+   <strong><em>subtree</em></strong>, searches for all entries in the tree
+   from the current level down. Setting this directive to
    <strong><em>onelevel</em></strong> searches only one level deep in the
-   LDAP tree. The default setting, <strong><em>subtree</em></strong>,
-   searches for all entries in the tree from the current level down.
-   </p>
+   LDAP tree.</p>
 <hr>
 <h2><a name="LDAPServer">LDAPServer</a></h2>
 <p><strong>Syntax:</strong> LDAPServer <em>"hostname1:port hostname2:port ..."</em><br>
   <strong>Default:</strong> <code>LDAPServer "localhost"</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
+  <strong>Compatibility:</strong> mod_ldap v1.0 and later</p>
 <p>LDAPServer allows you to to specify the hostname(s) and port(s) of the
    LDAP server(s) to use for LDAP authentication. If no LDAPServer
-   configuration directive is present, the local host will be used for the
-   LDAP server.</p>
+   configuration directive is present, the default LDAP servers specified
+   by your LDAP API will be used.</p>
 <hr>
 <h2><a name="LeechRatioMsg">LeechRatioMsg</a></h2>
 <p><strong>Syntax:</strong> LeechRatioMsg <em>foo1 foo2 foo3</em><br>
