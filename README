@@ -21,9 +21,8 @@ ftp users and easy chroot() ftp sessions for individual users.
 ProFTPD is popular with many service providers for delivering update
 access to user web pages, without resorting to Unix shell accounts.
 
-ProFTPD powers many well-known, high-volume anonymous FTP sites, including
-debian.org, freshmeat.net, gnu.org, isc.org, kernel.org, perl.org, redhat.com,
-slashdot.org and sourceforge.net.
+ProFTPD powers many well-known, high-volume anonymous FTP sites,
+including debian.org, redhat.com and sourceforge.net.
 
 ProFTPD is bundled with several Linux distributions, including
 Conectiva and Trustix.

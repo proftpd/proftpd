@@ -18,9 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-/* bumping the version to 3.0 to match everything else */
-
-#define MOD_SQL_POSTGRES_VERSION "mod_sql_postgres/3.0"
+#define MOD_SQL_POSTGRES_VERSION "mod_sql_postgres/3.01"
 
 /* -- DO NOT MODIFY THE LINE BELOW UNLESS YOU FEEL LIKE IT --
  * $Libraries: -lm -lpq $
@@ -172,14 +170,14 @@ MODRET _do_query(cmd_rec * cmd, const char *query, int update)
     }
   } else {
     if (PQresultStatus(g.res) != PGRES_TUPLES_OK) {
-    log_debug(DEBUG4, %s: select failed:\"%s\": %s", MOD_SQL_POSTGRES_VERSION,
+    log_debug(DEBUG4, "%s: select failed:\"%s\": %s", MOD_SQL_POSTGRES_VERSION,
                 query,
                 PQerrorMessage(conn));
       return DECLINED(cmd);
     }
   }
 
-  log_debug(DEBUG5, "%s: %s OK: [%s] \"%s\"", MOD_SQL_POSTGRES_VERSION
+  log_debug(DEBUG5, "%s: %s OK: [%s] \"%s\"", MOD_SQL_POSTGRES_VERSION,
             (update) ? "update" : "select", g.sql_dbname, query);
   return HANDLED(cmd);
 }
@@ -327,7 +325,7 @@ module sql_postgres_module = {
 
 unsigned int sql_backend_escape_string(char *to, char *from, unsigned int len)
 {
-  stncpy(to, from, len);
+  strncpy(to, from, len);
 
   if (strlen(from) >= len)
     to[len - 1] = '\0';

@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#define MOD_SQL_VERSION "mod_sql/3.01"
+#define MOD_SQL_VERSION "mod_sql/3.02"
 
 /* This is mod_sql, contrib software for proftpd 1.2.0rc3 and above.
    Originally written and maintained as 'mod_sqlpw' by Johnie 
@@ -333,7 +333,10 @@ static char *_uservar(cmd_rec * cmd, const char *user, const char *var)
     destroy_pool(c->tmp_pool);
   if (MODRET_ISHANDLED(mr)) {
     sd = mr->data;
-    return (sd) ? sd->data[0] : NULL;
+    if ((!sd) || (!sd->data) || (!sd->data[0])) {
+      return NULL;
+    }
+    return sd->data[0];
   }
 
   return NULL;
@@ -741,6 +744,10 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
 
     sd = (sqldata_t *) mr->data;
 
+    if ((!sd) || (!sd->data) || (!sd->data[0])) {
+      return NULL;
+    }
+
     username = pstrdup(cmd->tmp_pool, sd->data[0]);
   }
 
@@ -829,6 +836,10 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
 
     sd = (sqldata_t *) mr->data;
 
+    if ((!sd) || (!sd->data) || (!sd->data[0])) {
+      return NULL;
+    }
+
     groupname = pstrdup(cmd->tmp_pool, sd->data[0]);
   }
 
@@ -846,6 +857,10 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
 
   rows = sd->data;
   numrows = sd->rowcount;
+
+  if ((!sd) || (!sd->data) || (!sd->data[1])) {
+    return NULL;
+  }
 
   grp = (struct group *) pcalloc(session.pool, sizeof(struct group));
 
@@ -1358,6 +1373,12 @@ MODRET auth_cmd_auth(cmd_rec * cmd)
 
   row = sd->data;
 
+  /* sanity check */
+  if ((row == NULL) || (row[0] == NULL)) {
+    log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_auth", MOD_SQL_VERSION);
+    return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
+  }    
+
   if (auth_check(cmd->tmp_pool, row[0], user, cmd->argv[1])) {
     log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_auth", MOD_SQL_VERSION);
     return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
@@ -1447,6 +1468,10 @@ MODRET auth_cmd_uid_name(cmd_rec * cmd)
 
   sd = (sqldata_t *) mr->data;
 
+  if ((!sd) || (!sd->data) || (!sd->data[0])) {
+    return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
+  }
+
   username = sd->data[0];
 
   log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_uid_name", MOD_SQL_VERSION);
@@ -1482,6 +1507,10 @@ MODRET auth_cmd_gid_name(cmd_rec * cmd)
     return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
 
   sd = (sqldata_t *) mr->data;
+
+  if ((!sd) || (!sd->data) || (!sd->data[0])) {
+    return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
+  }
 
   groupname = sd->data[0];
 
@@ -1534,6 +1563,10 @@ MODRET auth_cmd_name_gid(cmd_rec * cmd)
     return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
 
   sd = (sqldata_t *) mr->data;
+
+  if ((!sd) || (!sd->data) || (!sd->data[0])) {
+    return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
+  }
 
   groupid = atol(sd->data[0]);
 

@@ -1,4 +1,5 @@
 CC=@CC@
+RANLIB=@RANLIB@
 
 top_srcdir=@top_srcdir@
 srcdir=@srcdir@
@@ -13,7 +14,7 @@ include ../Make.rules
 
 libsupp.a: $(LIB_OBJS)
 	ar rc libsupp.a $(LIB_OBJS)
-	ranlib libsupp.a
+	$(RANLIB) libsupp.a
 
 all:
 	@echo "Running make from top level directory."
