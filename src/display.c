@@ -24,7 +24,7 @@
 
 /*
  * Display of files
- * $Id: display.c,v 1.1 2004-10-31 18:53:06 castaglia Exp $
+ * $Id: display.c,v 1.2 2004-11-01 17:21:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -159,11 +159,12 @@ int pr_display_file(const char *path, const char *fs, const char *code) {
 
   snprintf(mg_max, sizeof(mg_max), "%u", max_clients ? *max_clients : 0);
 
-  if ((user = get_param_ptr(main_server->conf, C_USER, FALSE)) == NULL)
+  user = get_param_ptr(main_server->conf, C_USER, FALSE);
+  if (user == NULL)
     user = "";
 
-  if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
-      FALSE)) != NULL) {
+  c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
+  if (c) {
     pr_netaddr_t *masq_addr = (pr_netaddr_t *) c->argv[0];
     serverfqdn = pr_netaddr_get_dnsstr(masq_addr);
   }
@@ -221,7 +222,7 @@ int pr_display_file(const char *path, const char *fs, const char *code) {
     /* Check for any Variable-type strings. */
     tmp = strstr(outs, "%{");
     while (tmp) {
-      char c, *key, *tmp2;
+      char t, *key, *tmp2;
       const char *val;
 
       pr_signals_handle();
@@ -233,7 +234,7 @@ int pr_display_file(const char *path, const char *fs, const char *code) {
       }
 
       key = tmp;
-      c = *(tmp2 + 1);
+      t = *(tmp2 + 1);
       *(tmp2 + 1) = '\0';
 
       val = pr_var_get(key);
@@ -244,7 +245,7 @@ int pr_display_file(const char *path, const char *fs, const char *code) {
         val = "(none)";
       }
 
-      *(tmp2 + 1) = c;
+      *(tmp2 + 1) = t;
 
       outs = sreplace(p, outs, tmp, val, NULL);
 
