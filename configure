@@ -2790,7 +2790,14 @@ fi;
 # Check whether --enable-autoshadow or --disable-autoshadow was given.
 if test "${enable_autoshadow+set}" = set; then
   enableval="$enable_autoshadow"
-   if test "$enableval" != "no" ; then
+
+            if test "$enableval" = "yes" && test "$OSTYPE" = "-DAIX4"; then
+      { echo "$as_me:$LINENO: WARNING: AIX does not support traditional shadowed passwords" >&5
+echo "$as_me: WARNING: AIX does not support traditional shadowed passwords" >&2;}
+      enableval="no"
+    fi
+
+    if test "$enableval" != "no" ; then
       cat >>confdefs.h <<\_ACEOF
 #define USE_SHADOW 1
 _ACEOF
@@ -2829,7 +2836,14 @@ fi;
 # Check whether --enable-shadow or --disable-shadow was given.
 if test "${enable_shadow+set}" = set; then
   enableval="$enable_shadow"
-   if test "$enableval" = "no" ; then
+
+            if test "$enableval" = "yes" && test "$OSTYPE" = "-DAIX4"; then
+      { echo "$as_me:$LINENO: WARNING: AIX does not support traditional shadowed passwords" >&5
+echo "$as_me: WARNING: AIX does not support traditional shadowed passwords" >&2;}
+      enableval="no"
+    fi
+
+    if test "$enableval" = "no" ; then
       use_shadow=""
       force_shadow="no"
     else
