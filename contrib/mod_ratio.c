@@ -118,7 +118,7 @@ static void
 log_ratio(cmd_rec *cmd)
 {
   char sbuf[1023];
-  sprintf (sbuf, RATIO_SHORT);
+  snprintf (sbuf, sizeof(sbuf), RATIO_SHORT);
   log_debug(DEBUG0, "%s: %s %s %s",
 	    sbuf, session.cwd, cmd->argv[0], cmd->arg);
 }
@@ -130,13 +130,13 @@ add_ratio_response (cmd_rec *cmd)
   char sbuf2[128];
   char sbuf3[128];
   sbuf1[0] = sbuf2[0] = sbuf3[0] = 0;
-  sprintf(sbuf1,
+  snprintf(sbuf1, sizeof(sbuf1),
 	  "Sent: %i (%iB)  Got: %i (%iB)",
 	  ratio.f_retr, ratio.b_retr, ratio.f_stor, ratio.b_stor);
   if (FILE_ENFORCE)
-    sprintf(sbuf2,"  [%i:1F] CR: %iF", ratio.files, FILES_ALLOWED);
+    snprintf(sbuf2, sizeof(sbuf2), "  [%i:1F] CR: %iF", ratio.files, FILES_ALLOWED);
   if (BYTE_ENFORCE)
-    sprintf(sbuf3,"  [%i:1B] CR: %iB", ratio.bytes, BYTES_ALLOWED);
+    snprintf(sbuf3, sizeof(sbuf3), "  [%i:1B] CR: %iB", ratio.bytes, BYTES_ALLOWED);
   if (! RATIO_ENFORCE)
     add_response(R_DUP, "%s  [10,000,000:1]  CR: LEECH", sbuf1);
   else
@@ -172,7 +172,7 @@ MODRET calculate_ratios(cmd_rec *cmd)
     else if(*(char *)(cfg->argv[0] + (strlen(cfg->argv[0]) -1)) == '.') {
       strncpy(mask,cfg->argv[0],sizeof(buf)-2);
         buf[1023] = '\0';
-        strcpy(&buf[strlen(buf)-1],"*");
+        strncpy(&buf[strlen(buf)-1],"*", 1);
     } else
       strncpy(mask,cfg->argv[0],sizeof(buf)-1);
     buf[1023] = '\0';
