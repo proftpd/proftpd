@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.128 2002-10-28 16:51:50 castaglia Exp $
+ * $Id: main.c,v 1.129 2002-12-05 20:08:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2027,7 +2027,7 @@ static RETSIGTYPE sig_terminate(int signo) {
      * process is terminating anyway, why not?  It helps when knowing/logging
      * that a segfault happened...
      */
-    log_pri(LOG_NOTICE, "ProFTPD terminating (signal 11)");
+    log_pri(PR_LOG_NOTICE, "ProFTPD terminating (signal 11)");
 
     /* Restore the default signal handler. */
     signal(SIGSEGV, SIG_DFL);

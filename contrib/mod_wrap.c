@@ -24,7 +24,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lwrap -lnsl$
- * $Id: mod_wrap.c,v 1.5 2002-10-30 19:10:10 castaglia Exp $
+ * $Id: mod_wrap.c,v 1.6 2002-12-05 20:08:37 castaglia Exp $
  */
 
 #define MOD_WRAP_VERSION "mod_wrap/1.2.3"
@@ -36,8 +36,8 @@
 /* these need to be defined for the libwrap functions -- default settings
  * are those from tcpd.h
  */
-int allow_severity = LOG_INFO;
-int deny_severity = LOG_WARNING;
+int allow_severity = PR_LOG_INFO;
+int deny_severity = PR_LOG_WARNING;
 
 /* function prototypes */
 static int wrap_eval_expression(char **, array_header *);
@@ -133,7 +133,7 @@ static int wrap_is_usable_file(char *filename) {
     return FALSE;
 
   if (fs_stat(filename, &statbuf) == -1) {
-    log_pri(LOG_INFO, MOD_WRAP_VERSION ": \"%s\": %s", filename,
+    log_pri(PR_LOG_INFO, MOD_WRAP_VERSION ": \"%s\": %s", filename,
       strerror(errno));
     return FALSE;
   }
@@ -142,7 +142,7 @@ static int wrap_is_usable_file(char *filename) {
    * can _read_ the file
    */
   if ((fs_file = fs_open(filename, O_RDONLY, &fd)) == NULL) {
-    log_pri(LOG_INFO, MOD_WRAP_VERSION ": \"%s\": %s", filename,
+    log_pri(PR_LOG_INFO, MOD_WRAP_VERSION ": \"%s\": %s", filename,
       strerror(errno));
     return FALSE;
   }
@@ -807,8 +807,8 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
     allow_real_table = wrap_get_user_table(cmd, user, hosts_allow_table);
 
     if (!wrap_is_usable_file(allow_real_table)) {
-      log_pri(LOG_WARNING, MOD_WRAP_VERSION ": configured TCPAllowFile %s is "
-        "unusable", hosts_allow_table);
+      log_pri(PR_LOG_WARNING, MOD_WRAP_VERSION
+        ": configured TCPAllowFile %s is unusable", hosts_allow_table);
       hosts_allow_table = NULL;
 
     } else
@@ -822,8 +822,8 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
     deny_real_table = dir_realpath(cmd->pool, hosts_deny_table);
 
     if (!wrap_is_usable_file(deny_real_table)) {
-      log_pri(LOG_WARNING, MOD_WRAP_VERSION ": configured TCPDenyFile %s is "
-        "unusable", hosts_deny_table);
+      log_pri(PR_LOG_WARNING, MOD_WRAP_VERSION
+        ": configured TCPDenyFile %s is unusable", hosts_deny_table);
       hosts_deny_table = NULL;
 
     } else 
@@ -840,7 +840,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
   } else if (hosts_allow_table == NULL && hosts_deny_table != NULL) {
 
     /* Log the missing file */
-    log_pri(LOG_INFO, MOD_WRAP_VERSION ": no usable allow access file -- "
+    log_pri(PR_LOG_INFO, MOD_WRAP_VERSION ": no usable allow access file -- "
       "allowing connection");
 
     return DECLINED(cmd);
@@ -848,7 +848,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
   } else if (hosts_allow_table != NULL && hosts_deny_table == NULL) {
 
     /* log the missing file */
-    log_pri(LOG_INFO, MOD_WRAP_VERSION ": no usable deny access file -- "
+    log_pri(PR_LOG_INFO, MOD_WRAP_VERSION ": no usable deny access file -- "
       "allowing connection");
 
     return DECLINED(cmd);
@@ -861,9 +861,8 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
     return DECLINED(cmd);
   }
 
-  /* log the names of the allow/deny files being used
-   */
-  log_pri(LOG_DEBUG, MOD_WRAP_VERSION ": using access files: %s, %s",
+  /* Log the names of the allow/deny files being used. */
+  log_pri(PR_LOG_DEBUG, MOD_WRAP_VERSION ": using access files: %s, %s",
     hosts_allow_table, hosts_deny_table);
 
   /* retrieve the user-defined syslog priorities, if any.  Fall back to the
@@ -878,8 +877,8 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
 
   } else {
 
-    allow_severity = LOG_INFO;
-    deny_severity = LOG_WARNING;
+    allow_severity = PR_LOG_INFO;
+    deny_severity = PR_LOG_WARNING;
   }
 
   log_debug(DEBUG4, MOD_WRAP_VERSION ": checking under service name '%s'",

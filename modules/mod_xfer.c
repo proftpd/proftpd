@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.101 2002-12-02 17:04:04 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.102 2002-12-05 20:08:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -340,7 +340,7 @@ static void _rate_throttle(off_t rate_pos, off_t rate_bytes,
     
       if (select(0, NULL, NULL, NULL, &rate_tv) < 0) {
         if(errno != EINTR) {
-          log_pri(LOG_WARNING, "Unable to throttle bandwidth: %s.",
+          log_pri(PR_LOG_WARNING, "Unable to throttle bandwidth: %s.",
 	          strerror(errno));
         } else {
           pr_handle_signals();
@@ -406,7 +406,7 @@ static int _transmit_sendfile(int rate_bps, off_t count, off_t *offset,
       break;
       
     default:
-      log_pri(LOG_ERR,
+      log_pri(PR_LOG_ERR,
 	      "_transmit_sendfile error "
 	      "(reverting to normal data transmission) %d: %s.",
 	      errno, strerror(errno));
@@ -455,7 +455,7 @@ static void _stor_chown(void) {
     PRIVS_RELINQUISH
 
     if (iserr) 
-      log_pri(LOG_WARNING, "chown(%s) as root failed: %s", xfer_path,
+      log_pri(PR_LOG_WARNING, "chown(%s) as root failed: %s", xfer_path,
         strerror(err));
     
     else {
@@ -480,7 +480,7 @@ static void _stor_chown(void) {
   } else if ((session.fsgid != (gid_t) -1) && xfer_path) {
 
     if (fs_chown(xfer_path, (uid_t) -1, session.fsgid) == -1)
-      log_pri(LOG_WARNING, "chown(%s) failed: %s", xfer_path,
+      log_pri(PR_LOG_WARNING, "chown(%s) failed: %s", xfer_path,
         strerror(errno));
 
     else {
@@ -668,7 +668,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       sstrncpy(p_hidden->value.str_val, ".in.", maxlen);
       sstrcat(p_hidden->value.str_val, dir, maxlen);
       sstrcat(p_hidden->value.str_val, ".", maxlen);
-      log_pri(LOG_DEBUG, "Local path, will rename %s to %s.",
+      log_pri(PR_LOG_DEBUG, "Local path, will rename %s to %s.",
 	p_hidden->value.str_val, p->value.str_val);
     } else {
       /* Complex relative path or absolute path */
@@ -677,7 +677,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       sstrcat(p_hidden->value.str_val, ".in.", maxlen);
       sstrcat(p_hidden->value.str_val, dir + basenamestart, maxlen);
       sstrcat(p_hidden->value.str_val, ".", maxlen);
-      log_pri(LOG_DEBUG, "Complex path, will rename %s to %s.",
+      log_pri(PR_LOG_DEBUG, "Complex path, will rename %s to %s.",
 	p_hidden->value.str_val, p->value.str_val);
 
       if(file_mode(p_hidden->value.str_val)) {
@@ -737,7 +737,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
   filename = pstrcat(cmd->pool, prefix, "XXXXXX", NULL);
 
   if ((tmpfd = mkstemp(filename)) < 0) {
-    log_pri(LOG_ERR, "error: unable to use mkstemp(): %s", strerror(errno));
+    log_pri(PR_LOG_ERR, "error: unable to use mkstemp(): %s", strerror(errno));
 
     /* If we can't guarantee a unique filename, refuse the command. */
     add_response_err(R_450, "%s: unable to generate unique filename",
@@ -817,7 +817,7 @@ MODRET xfer_post_stou(cmd_rec *cmd) {
   if (fs_chmod(cmd->arg, mode) < 0) {
 
     /* Not much to do but log the error. */
-    log_pri(LOG_ERR, "error: unable to chmod '%s': %s", cmd->arg,
+    log_pri(PR_LOG_ERR, "error: unable to chmod '%s': %s", cmd->arg,
       strerror(errno));
   }
 
@@ -991,7 +991,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   /* Check the MaxStoreFileSize, and abort now if zero. */
   if (have_limit && nbytes_max_store == 0) {
 
-    log_pri(LOG_INFO, "MaxStoreFileSize (%" PR_LU " byte%s) reached: "
+    log_pri(PR_LOG_INFO, "MaxStoreFileSize (%" PR_LU " byte%s) reached: "
       "aborting transfer of '%s'", nbytes_max_store,
       nbytes_max_store != 1 ? "s" : "", dir);
 
@@ -1019,7 +1019,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
      */
     if (have_limit && nbytes_stored > nbytes_max_store) {
 
-      log_pri(LOG_INFO, "MaxStoreFileSize (%" PR_LU " bytes) reached: "
+      log_pri(PR_LOG_INFO, "MaxStoreFileSize (%" PR_LU " bytes) reached: "
         "aborting transfer of '%s'", nbytes_max_store, dir);
 
       /* Unlink the file being written. */
@@ -1070,7 +1070,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
          * The poor user will have to re-upload, but we've got more important
          * problems to worry about and this failure should be fairly rare.
          */
-        log_pri(LOG_WARNING, "Rename of %s to %s failed: %s.",
+        log_pri(PR_LOG_WARNING, "Rename of %s to %s failed: %s.",
           session.xfer.path_hidden, session.xfer.path, strerror(errno));
 
         add_response_err(R_550,"%s: rename of hidden file %s failed: %s",
@@ -1269,7 +1269,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   if (have_limit &&
       ((nbytes_max_retrieve == 0) || (sbuf.st_size > nbytes_max_retrieve))) {
 
-    log_pri(LOG_INFO, "MaxRetrieveFileSize (%" PR_LU " byte%s) reached: "
+    log_pri(PR_LOG_INFO, "MaxRetrieveFileSize (%" PR_LU " byte%s) reached: "
       "aborting transfer of '%s'", nbytes_max_retrieve,
       nbytes_max_retrieve != 1 ? "s" : "", dir);
 
@@ -1503,7 +1503,7 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
   remove_timer(TIMER_IDLE, ANY_MODULE);
   remove_timer(TIMER_LOGIN, ANY_MODULE);
 
-  main_exit((void*) LOG_NOTICE, "FTP no transfer timeout, disconnected.",
+  main_exit((void*) PR_LOG_NOTICE, "FTP no transfer timeout, disconnected.",
 		  (void*) 0, NULL);
   return 0;
 }

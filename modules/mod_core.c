@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.121 2002-11-25 21:12:56 castaglia Exp $
+ * $Id: mod_core.c,v 1.122 2002-12-05 20:08:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -885,7 +885,7 @@ MODRET set_rlimitcpu(cmd_rec *cmd) {
 
     /* Retrieve the current values */
     if (getrlimit(RLIMIT_CPU, rlim) == -1)
-      log_pri(LOG_ERR, "error: getrlimit(RLIMIT_CPU): %s", strerror(errno));
+      log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_CPU): %s", strerror(errno));
 
     if (!strcasecmp("max", cmd->argv[2]))
       rlim->rlim_cur = RLIM_INFINITY;
@@ -933,7 +933,7 @@ MODRET set_rlimitcpu(cmd_rec *cmd) {
 
     /* Retrieve the current values */
     if (getrlimit(RLIMIT_CPU, rlim) == -1)
-      log_pri(LOG_ERR, "error: getrlimit(RLIMIT_CPU): %s", strerror(errno));
+      log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_CPU): %s", strerror(errno));
 
     if (!strcasecmp("max", cmd->argv[1]))
       rlim->rlim_cur = RLIM_INFINITY;
@@ -1010,13 +1010,13 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
     /* Retrieve the current values */
 #if defined(RLIMIT_AS)
     if (getrlimit(RLIMIT_AS, rlim) == -1)
-      log_pri(LOG_ERR, "error: getrlimit(RLIMIT_AS): %s", strerror(errno));
+      log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_AS): %s", strerror(errno));
 #elif defined(RLIMIT_DATA)
     if (getrlimit(RLIMIT_DATA, rlim) == -1)
-      log_pri(LOG_ERR, "error: getrlimit(RLIMIT_DATA): %s", strerror(errno));
+      log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_DATA): %s", strerror(errno));
 #elif defined(RLIMIT_VMEM)
     if (getrlimit(RLIMIT_VMEM, rlim) == -1)
-      log_pri(LOG_ERR, "error: getrlimit(RLIMIT_VMEM): %s", strerror(errno));
+      log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_VMEM): %s", strerror(errno));
 #endif
 
     if (!strcasecmp("max", cmd->argv[2]))
@@ -1060,13 +1060,13 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
     /* Retrieve the current values */
 #if defined(RLIMIT_AS)
     if (getrlimit(RLIMIT_AS, rlim) == -1)
-      log_pri(LOG_ERR, "error: getrlimit(RLIMIT_AS): %s", strerror(errno));
+      log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_AS): %s", strerror(errno));
 #elif defined(RLIMIT_DATA)
     if (getrlimit(RLIMIT_DATA, rlim) == -1)
-      log_pri(LOG_ERR, "error: getrlimit(RLIMIT_DATA): %s", strerror(errno));
+      log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_DATA): %s", strerror(errno));
 #elif defined(RLIMIT_VMEM)
     if (getrlimit(RLIMIT_VMEM, rlim) == -1)
-      log_pri(LOG_ERR, "error: getrlimit(RLIMIT_VMEM): %s", strerror(errno));
+      log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_VMEM): %s", strerror(errno));
 #endif
 
     if (!strcasecmp("max", cmd->argv[1]))
@@ -1138,10 +1138,12 @@ MODRET set_rlimitopenfiles(cmd_rec *cmd) {
     /* Retrieve the current values */
 #if defined(RLIMIT_NOFILE)
     if (getrlimit(RLIMIT_NOFILE, rlim) == -1)
-      log_pri(LOG_ERR, "error: getrlimit(RLIMIT_NOFILE): %s", strerror(errno));
+      log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_NOFILE): %s",
+        strerror(errno));
 #elif defined(RLIMIT_OFILE)
     if (getrlimit(RLIMIT_OFILE, rlim) == -1)
-      log_pri(LOG_ERR, "error: getrlimit(RLIMIT_OFILE): %s", strerror(errno));
+      log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_OFILE): %s",
+        strerror(errno));
 #endif
 
     if (!strcasecmp("max", cmd->argv[2]))
@@ -1191,10 +1193,12 @@ MODRET set_rlimitopenfiles(cmd_rec *cmd) {
     /* Retrieve the current values */
 #if defined(RLIMIT_NOFILE)
     if (getrlimit(RLIMIT_NOFILE, rlim) == -1)
-      log_pri(LOG_ERR, "error: getrlimit(RLIMIT_NOFILE): %s", strerror(errno));
+      log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_NOFILE): %s",
+        strerror(errno));
 #elif defined(RLIMIT_OFILE)
     if (getrlimit(RLIMIT_OFILE, rlim) == -1)
-      log_pri(LOG_ERR, "error: getrlimit(RLIMIT_OFILE): %s", strerror(errno));
+      log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_OFILE): %s",
+        strerror(errno));
 #endif
 
     if (!strcasecmp("max", cmd->argv[1]))
@@ -2508,7 +2512,7 @@ MODRET core_quit(cmd_rec *cmd) {
   } else
     send_response(R_221, "Goodbye.");
   
-  log_pri(LOG_INFO, "FTP session closed.");
+  log_pri(PR_LOG_INFO, "FTP session closed.");
   end_login(0);
 
   /* Even though end_login() does not return, this is necessary to avoid
@@ -2573,7 +2577,7 @@ MODRET core_pasv(cmd_rec *cmd) {
        * normal behavior (using INPORT_ANY), and log the failure.  This
        * indicates a too-small range configuration.
        */
-      log_pri(LOG_WARNING, "unable to find open port in PassivePorts range "
+      log_pri(PR_LOG_WARNING, "unable to find open port in PassivePorts range "
 	      "%d-%d: defaulting to INPORT_ANY", pasv_min_port, pasv_max_port);
     }
   }
@@ -2673,7 +2677,7 @@ MODRET core_port(cmd_rec *cmd) {
 
   if (allow_foreign_addr && *allow_foreign_addr == FALSE) {
     if (addr.addr.s_addr != session.c->remote_ipaddr->s_addr || !port.port) {
-      log_pri(LOG_WARNING, "Refused PORT %s (address mismatch)", cmd->arg);
+      log_pri(PR_LOG_WARNING, "Refused PORT %s (address mismatch)", cmd->arg);
       add_response_err(R_500, "Illegal PORT command");
       return ERROR(cmd);
     }
@@ -2684,7 +2688,7 @@ MODRET core_port(cmd_rec *cmd) {
    */
 
   if (ntohs(port.port) < 1024) {
-    log_pri(LOG_WARNING, "Refused PORT %s (bounce attack)", cmd->arg);
+    log_pri(PR_LOG_WARNING, "Refused PORT %s (bounce attack)", cmd->arg);
     add_response_err(R_500, "Illegal PORT command");
     return ERROR(cmd);
   }
@@ -3004,7 +3008,7 @@ MODRET core_mkd(cmd_rec *cmd) {
       PRIVS_RELINQUISH
 
       if (iserr)
-        log_pri(LOG_WARNING, "chown() as root failed: %s", strerror(err));
+        log_pri(PR_LOG_WARNING, "chown() as root failed: %s", strerror(err));
 
       else {
         if (session.fsgid != (gid_t) -1)
@@ -3020,7 +3024,7 @@ MODRET core_mkd(cmd_rec *cmd) {
       fs_stat(dir, &sbuf);
 
       if (fs_chown(dir, (uid_t) -1, session.fsgid) == -1)
-        log_pri(LOG_WARNING, "chown() failed: %s", strerror(errno));
+        log_pri(PR_LOG_WARNING, "chown() failed: %s", strerror(errno));
 
       else
         log_debug(DEBUG2, "chown(%s) to gid %lu successful", dir,
@@ -3470,7 +3474,7 @@ MODRET set_class(cmd_rec *cmd) {
    * if not enabled
    */
   if (get_param_int(cmd->server->conf, "Classes", FALSE) != TRUE)
-    log_pri(LOG_WARNING, "warning: Classes disabled - Class directive "
+    log_pri(PR_LOG_WARNING, "warning: Classes disabled - Class directive "
       "not in effect");
 
   /* setup "default" class if necesarry */
@@ -3499,7 +3503,7 @@ MODRET set_class(cmd_rec *cmd) {
       pr_regexp_free(preg);
       
       n->preg = NULL;
-      log_pri(LOG_ERR, "Failed regexp '%s' compilation: ", cmd->argv[3]);
+      log_pri(PR_LOG_ERR, "Failed regexp '%s' compilation: ", cmd->argv[3]);
     } else {
       n->preg = preg;
     }
@@ -3509,14 +3513,14 @@ MODRET set_class(cmd_rec *cmd) {
   } else if(strcasecmp(cmd->argv[2], "ip") == 0) {
     sstrncpy(ipaddress, cmd->argv[3], sizeof(ipaddress));
     if((ptr = strchr(ipaddress, '/')) == NULL) {
-      log_pri(LOG_ERR, "Class '%s' ipmask %s skipped.",
+      log_pri(PR_LOG_ERR, "Class '%s' ipmask %s skipped.",
 	      cmd->argv[1], cmd->argv[3]);
       CONF_ERROR(cmd, "wrong syntax error.");
     } else {
       bits = atol(ptr + 1);
       
       if (bits < 0 || bits > 32) {
-	log_pri(LOG_ERR, "Class '%s' ipmask %s skipped: wrong netmask.",
+	log_pri(PR_LOG_ERR, "Class '%s' ipmask %s skipped: wrong netmask.",
 		cmd->argv[1], cmd->argv[3]);
       }
       
@@ -3528,7 +3532,7 @@ MODRET set_class(cmd_rec *cmd) {
       log_debug(DEBUG4, "Class '%s' ipmask %p/%d added.",
 		cmd->argv[1], res, bits);
     } else {
-      log_pri(LOG_ERR, "Class '%s' ip could not parse '%s'.",
+      log_pri(PR_LOG_ERR, "Class '%s' ip could not parse '%s'.",
 	      cmd->argv[1], cmd->argv[3]);
     }
   } else if(strcasecmp(cmd->argv[2], "host") == 0) {

@@ -195,7 +195,7 @@ static struct group *supp_getgrent(const char *buf) {
   }
 
   if (i < (NGRPFIELDS - 1)) {
-    log_pri(LOG_ERR, "Malformed entry in group file: %s", buf);
+    log_pri(PR_LOG_ERR, "Malformed entry in group file: %s", buf);
     return NULL;
   }
   

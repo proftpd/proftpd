@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.34 2002-12-05 19:20:15 castaglia Exp $
+ * $Id: mod_log.c,v 1.35 2002-12-05 20:08:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -335,7 +335,7 @@ static int _parse_classes(char *s)
     else if(!strcasecmp(s,"MISC"))
       classes |= CL_MISC;
     else
-      log_pri(LOG_NOTICE, "ExtendedLog class '%s' is not defined.", s);
+      log_pri(PR_LOG_NOTICE, "ExtendedLog class '%s' is not defined.", s);
   } while((s = nextp));
 
   return classes;
@@ -858,15 +858,15 @@ static void get_extendedlogs(void) {
     if(logclasses == CL_NONE)
       goto loop_extendedlogs;
     
-    if(logfmt_s) {
+    if (logfmt_s) {
       /* search for the format-nickname */
-      for(logfmt = formats; logfmt; logfmt=logfmt->next)
-        if(!strcmp(logfmt->lf_nickname,logfmt_s))
+      for (logfmt = formats; logfmt; logfmt = logfmt->next)
+        if (!strcmp(logfmt->lf_nickname, logfmt_s))
           break;
 
-      if(!logfmt) {
-        log_pri(LOG_NOTICE, "Format-Nickname '%s' is not defined.",
-                           logfmt_s);
+      if (!logfmt) {
+        log_pri(PR_LOG_NOTICE, "Format-Nickname '%s' is not defined.",
+          logfmt_s);
         goto loop_extendedlogs;
       }
     } else {
@@ -959,17 +959,17 @@ static int log_sess_init(void) {
       unblock_signals();
 
       if (res == -1) {
-        log_pri(LOG_NOTICE, "unable to open ExtendedLog '%s': %s",
+        log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': %s",
           lf->lf_filename, strerror(errno));
         continue;
 
       } else if (res == LOG_WRITEABLE_DIR) {
-        log_pri(LOG_NOTICE, "unable to open ExtendedLog '%s': "
+        log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
           "containing directory is world writeable", lf->lf_filename);
         continue;
 
       } else if (res == LOG_SYMLINK) {
-        log_pri(LOG_NOTICE, "unable to open ExtendedLog '%s': "
+        log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
           "%s is a symbolic link", lf->lf_filename, lf->lf_filename);
         close(lf->lf_fd);
         lf->lf_fd = -1;

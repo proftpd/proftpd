@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.3 2002-11-25 17:33:48 castaglia Exp $
+ * $Id: mod_radius.c,v 1.4 2002-12-05 20:08:36 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.7rc5"
@@ -355,7 +355,7 @@ static unsigned char radius_parse_group_info(config_rec *c, char *group_str,
     gid = strtoul(name, &endp, 10);
 
     if (endp && *endp) {
-      log_pri(LOG_NOTICE, "%s: badly formed group ID: %s", c->name, name);
+      log_pri(PR_LOG_NOTICE, "%s: badly formed group ID: %s", c->name, name);
       return FALSE;
     }
 
@@ -365,7 +365,7 @@ static unsigned char radius_parse_group_info(config_rec *c, char *group_str,
 
   /* Does the number of names match the number of GIDs? */
   if (group_names->nelts != group_ids->nelts) {
-    log_pri(LOG_NOTICE, "%s: mismatched number of group names and IDs",
+    log_pri(PR_LOG_NOTICE, "%s: mismatched number of group names and IDs",
       c->name);
     return FALSE;
   }
@@ -2221,15 +2221,15 @@ static int radius_child_init(void) {
 
   if ((res = radius_openlog()) < 0) {
     if (res == -1)
-      log_pri(LOG_NOTICE, "notice: unable to open RadiusLog: %s",
+      log_pri(PR_LOG_NOTICE, "notice: unable to open RadiusLog: %s",
         strerror(errno));
 
     else if (res == LOG_WRITEABLE_DIR)
-      log_pri(LOG_NOTICE, "notice: unable to open RadiusLog: "
+      log_pri(PR_LOG_NOTICE, "notice: unable to open RadiusLog: "
           "parent directory is world writeable");
 
     else if (res == LOG_SYMLINK)
-      log_pri(LOG_NOTICE, "notice: unable to open RadiusLog: "
+      log_pri(PR_LOG_NOTICE, "notice: unable to open RadiusLog: "
           "cannot log to a symbolic link");
   }
 

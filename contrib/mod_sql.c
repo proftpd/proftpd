@@ -3984,7 +3984,7 @@ static int sql_getconf(void)
 
   if ((c = find_config(main_server->conf, CONF_PARAM, "SQLRatios", FALSE))) {
     if (!cmap.sql_fstor) {
-      log_pri(LOG_WARNING, _MOD_VERSION
+      log_pri(PR_LOG_WARNING, _MOD_VERSION
               ": warning: SQLRatios directive ineffective without SQLRatioStats on");
       log_debug(DEBUG_WARN, _MOD_VERSION
                 ": warning: SQLRatios directive ineffective without SQLRatioStats on");
@@ -3997,7 +3997,7 @@ static int sql_getconf(void)
 
   if ((!cmap.homedirfield) && (!cmap.defaulthomedir)) {
     cmap.authmask ^= SQL_AUTH_USERS;
-    log_pri(LOG_WARNING, _MOD_VERSION ": warning: no homedir field and no default specified. User authentication is OFF");
+    log_pri(PR_LOG_WARNING, _MOD_VERSION ": warning: no homedir field and no default specified. User authentication is OFF");
     log_debug(DEBUG_WARN, _MOD_VERSION ": warning: no homedir field and no default specified. User authentication is OFF");
   }
 
