@@ -1,6 +1,7 @@
 CC=@CC@
 @SET_MAKE@
 
+top_builddir=.
 top_srcdir=@top_srcdir@
 srcdir=@srcdir@
 VPATH=@srcdir@
@@ -9,8 +10,11 @@ DESTDIR=
 include ./Make.rules
 
 DIRS=@ADDL_DIRS@
-INSTALL=@INSTALL@
 EXEEXT=@EXEEXT@
+INSTALL=@INSTALL@
+INSTALL_DEPS=@INSTALL_DEPS@
+LIBTOOL=@LIBTOOL@
+LIBTOOL_DEPS=@LIBTOOL_DEPS@
 
 INSTALL_USER=@install_user@
 INSTALL_GROUP=@install_group@
@@ -18,6 +22,9 @@ INSTALL_GROUP=@install_group@
 INSTALL_BIN=$(INSTALL) @INSTALL_STRIP@ -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0755
 INSTALL_SBIN=$(INSTALL) @INSTALL_STRIP@ -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0755
 INSTALL_MAN=$(INSTALL) -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0644
+
+MAIN_LDFLAGS=@MAIN_LDFLAGS@
+MAIN_LIBS=@MAIN_LIBS@
 
 BUILD_PROFTPD_OBJS=$(BUILD_OBJS) $(BUILD_MODULE_OBJS)
 BUILD_BIN=proftpd$(EXEEXT) ftpcount$(EXEEXT) ftpdctl$(EXEEXT) ftpshut$(EXEEXT) ftptop$(EXEEXT) ftpwho$(EXEEXT)
@@ -50,7 +57,7 @@ dirs: include/buildstamp.h dummy
 
 
 proftpd$(EXEEXT): lib src modules dirs
-	$(CC) $(LDFLAGS) -o $@ $(BUILD_PROFTPD_OBJS) $(LIBS)
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(MAIN_LDFLAGS) -o $@ $(BUILD_PROFTPD_OBJS) $(LIBS) $(MAIN_LIBS)
 
 ftpcount$(EXEEXT): utils
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPCOUNT_OBJS)
@@ -69,7 +76,7 @@ ftpwho$(EXEEXT): lib utils
 
 
 # BSD install -d doesn't work, so ...
-$(DESTDIR)$(localstatedir) $(DESTDIR)$(sysconfdir) $(DESTDIR)$(rundir) $(DESTDIR)$(bindir) $(DESTDIR)$(sbindir) $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/man5 $(DESTDIR)$(mandir)/man8:
+$(DESTDIR)$(libexecdir) $(DESTDIR)$(localstatedir) $(DESTDIR)$(sysconfdir) $(DESTDIR)$(rundir) $(DESTDIR)$(bindir) $(DESTDIR)$(sbindir) $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/man5 $(DESTDIR)$(mandir)/man8:
 	@if [ ! -d $@ ]; then \
 		mkdir -p $@; \
 		chown $(INSTALL_USER):$(INSTALL_GROUP) $@; \
@@ -98,6 +105,9 @@ install-conf: $(DESTDIR)$(sysconfdir)
 	       	           $(DESTDIR)$(sysconfdir)/proftpd.conf ; \
 	fi
 
+install-libltdl:
+	cd lib/libltdl/ && $(MAKE) install
+
 install-man: $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/man5 $(DESTDIR)$(mandir)/man8
 	$(INSTALL_MAN) $(top_srcdir)/src/ftpdctl.8    $(DESTDIR)$(mandir)/man8
 	$(INSTALL_MAN) $(top_srcdir)/src/proftpd.8    $(DESTDIR)$(mandir)/man8
@@ -107,17 +117,15 @@ install-man: $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/ma
 	$(INSTALL_MAN) $(top_srcdir)/utils/ftpwho.1   $(DESTDIR)$(mandir)/man1
 	$(INSTALL_MAN) $(top_srcdir)/src/xferlog.5    $(DESTDIR)$(mandir)/man5
 
-install-all: install-proftpd install-utils install-conf install-man
+install-all: install-proftpd install-utils install-conf install-man $(INSTALL_DEPS)
 
 install: all install-all
-
 
 depend:
 	cd src/     && $(MAKE) depend
 	cd modules/ && $(MAKE) depend
 	cd lib/     && $(MAKE) depend
 	cd utils/   && $(MAKE) depend
-
 
 clean:
 	cd src/     && $(MAKE) clean
@@ -134,6 +142,7 @@ clean:
 	rm -f $(BUILD_BIN)
 
 distclean: clean
+	cd lib/ && $(MAKE) distclean
 	rm -f Makefile Make.modules Make.rules \
 	      lib/Makefile modules/Makefile src/Makefile utils/Makefile
 	rm -f config.h config.status config.cache config.log stamp-h
@@ -172,3 +181,6 @@ Makefile: Makefile.in Make.rules.in config.status
 
 config.status: configure
 	./config.status --recheck
+
+libtool: $(LIBTOOL_DEPS)
+	$(SHELL) ./config.status --recheck

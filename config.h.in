@@ -621,6 +621,10 @@
 #undef CONFIG_DIR
 #endif /* CONFIG_DIR */
 
+#ifndef LIBEXEC_DIR
+#undef LIBEXEC_DIR
+#endif /* LIBEXEC_DIR */
+
 #ifndef RUN_DIR
 #undef RUN_DIR
 #endif /* RUN_DIR */

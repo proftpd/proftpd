@@ -12,6 +12,7 @@ AR=ar
 
 LIB_OBJS=@LIB_OBJS@
 
+dummy:
 
 all:
 	@echo "Running make from top level directory."
@@ -24,18 +25,25 @@ Makefile: Makefile.in ../config.status
 .c.o:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
+libltdl: dummy
+	cd libltdl/ && $(MAKE)
+
 libsupp.a: $(LIB_OBJS)
 	$(AR) rc libsupp.a $(LIB_OBJS)
 	$(RANLIB) libsupp.a
 
-lib: libsupp.a
+lib: libsupp.a libltdl
 
 clean:
 	rm -f *.o libsupp.a
+	cd libltdl/ && $(MAKE) clean
 
 depend:
 	makedepend $(CPPFLAGS) -Y *.c 2>/dev/null
 	makedepend $(CPPFLAGS) -Y -fMakefile.in *.c 2>/dev/null
+
+distclean:
+	cd libltdl/ && $(MAKE) distclean
 
 # Dependancies written below
 # DO NOT DELETE

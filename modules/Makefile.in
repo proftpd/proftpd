@@ -1,8 +1,12 @@
 CC=@CC@
 @SET_MAKE@
 
+top_builddir=.
 top_srcdir=@top_srcdir@
 srcdir=@srcdir@
+INCLTDL=@INCLTDL@
+LIBLTDL=@LIBLTDL@
+LIBTOOL=@LIBTOOL@
 VPATH=@srcdir@
 
 include ../Make.rules

@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001, 2002, 2003, 2004 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 /* ProFTPD default path configuration.  Normally, Makefiles generated
  * by the top-level configuration script define the RUN_DIR and
  * CONFIG_FILE_PATH macros, so the two below are typically not used.
- * $Id: default_paths.h,v 1.8 2003-01-02 17:28:15 castaglia Exp $
+ * $Id: default_paths.h,v 1.9 2004-10-29 05:28:49 castaglia Exp $
  */
 
 #ifndef PROFTPD_PATHS_H
@@ -36,28 +36,28 @@
  * ftpcount, ftpwho, etc.
  */
 #ifndef RUN_DIR
-#define RUN_DIR			"/var/run/proftpd"
+# define RUN_DIR		"/var/run/proftpd"
 #endif
 
 /* The location you wish to place any core files produced as a result of
  * fatal errors (memory problems, etc).
  */
 #ifndef CORE_DIR
-#define CORE_DIR		RUN_DIR
+# define CORE_DIR		RUN_DIR
 #endif
 
 /* The file in which to write the pid (in ASCII) after the initial fork,
  * when run in standalone daemon mode.
  */
 #ifndef PID_FILE_PATH
-#define PID_FILE_PATH		"/var/run/proftpd.pid"
+# define PID_FILE_PATH		"/var/run/proftpd.pid"
 #endif
 
 /* The default location of the proftpd configuration file.  Can be
  * overriden at runtime with the '-c' switch
  */
 #ifndef CONFIG_FILE_PATH
-#define	CONFIG_FILE_PATH	"/etc/proftpd.conf"
+# define CONFIG_FILE_PATH	"/etc/proftpd.conf"
 #endif
 
 /* The location of your `shells' file; a newline delimited list of

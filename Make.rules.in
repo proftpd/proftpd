@@ -12,31 +12,6 @@ LDFLAGS=@LDFLAGS@
 LIBS=@LIBRARIES@ @LIBS@
 CURSES_LIBS=@CURSES_LIBS@
 
-# The following compilation flags are valid:
-#
-# -DUSESHADOW
-#   Use the shadow password suite.
-#
-# -DAUTOSHADOW
-#   Enable support for automatic run-time shadow detection. NOT recommended
-#   except for binary distributions; use configure --enable-autoshadow to
-#   force this on.
-#
-# -DDEVEL_NO_FORK
-#   Server in standalone mode will not fork for incoming connections.
-#
-# -DDEVEL_NO_DAEMON
-#   Process will not go into a daemon loop, but will handle only one
-#   session.  This, in conjunction with DEVEL_NO_FORK, is useful for
-#   building a binary that can be profiled.
-#
-# -DDEVEL_NO_SIG
-#   Server will not catch signals that cause termination.
-#
-# -DDEBUG_MEMORY
-#   Enables memory debugging with Electric Fence. Debugging information
-#   will be written to $(rundir)/proftpd-memory.log.
-
 # Directory include paths.
 #
 INCLUDES=-I.. -I$(top_srcdir)/include @INCLUDES@
@@ -49,10 +24,6 @@ CPPFLAGS=@CPPFLAGS@ $(DEFAULT_PATHS) $(PLATFORM) $(INCLUDES)
 #
 CFLAGS=@CFLAGS@
 DEFINES=$(PLATFORM)
-
-# Defines for memory testing and debugging.
-#CFLAGS=-g -DDEVEL_NO_FORK -DDEBUG_MEMORY
-#LIBS=$(LIBS) -lefence
 
 OBJS=main.o timers.o sets.o pool.o table.o regexp.o dirtree.o support.o \
      netaddr.o inet.o child.o log.o xferlog.o bindings.o netacl.o class.o \
