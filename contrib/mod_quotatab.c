@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.15 2005-03-05 22:55:15 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.16 2005-03-05 23:02:00 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -870,8 +870,6 @@ static int quotatab_fsio_write(pr_fh_t *fh, int fd, const char *buf,
 
   if (quotatab_limit.bytes_in_avail > 0.0 &&
       quotatab_tally.bytes_in_used + session.xfer.total_bytes > quotatab_limit.bytes_in_avail) {
-    res = -1;
-
 #if defined(EDQUOT)
     quotatab_log("quotatab write(): limit exceeded, returning EDQUOT");
     errno = EDQUOT;
@@ -882,6 +880,24 @@ static int quotatab_fsio_write(pr_fh_t *fh, int fd, const char *buf,
     quotatab_log("quotatab write(): limit exceeded, returning EIO");
     errno = EIO;
 #endif
+
+    return -1;
+  }
+
+  if (quotatab_limit.bytes_xfer_avail > 0.0 &&
+      quotatab_tally.bytes_xfer_used + session.xfer.total_bytes > quotatab_limit.bytes_xfer_avail) {
+#if defined(EDQUOT)
+    quotatab_log("quotatab write(): transfer limit exceeded, returning EDQUOT");
+    errno = EDQUOT;
+#elif defined(EFBIG)
+    quotatab_log("quotatab write(): transfer limit exceeded, returning EFBIG");
+    errno = EFBIG;
+#else
+    quotatab_log("quotatab write(): transfer limit exceeded, returning EIO");
+    errno = EIO;
+#endif
+
+    return -1;
   }
 
   return res;
