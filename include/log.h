@@ -1,6 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
+ * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +20,7 @@
 
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
- * $Id: log.h,v 1.2 1999-10-01 07:57:31 macgyver Exp $
+ * $Id: log.h,v 1.3 2000-07-09 07:01:47 macgyver Exp $
  */
 
 #ifndef __LOG_H
@@ -98,6 +99,6 @@ int log_open_xfer(const char*);
 void log_close_xfer();
 int log_xfer(int xfertime,char *remhost,unsigned long fsize,
               char *fname,char xfertype,char direction,
-              char access,char *user);
+              char access,char *user,char abort_flag);
 
 #endif /* __LOG_H */

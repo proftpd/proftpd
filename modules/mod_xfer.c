@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.35 2000-07-06 20:08:01 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.36 2000-07-09 07:01:47 macgyver Exp $
  */
 
 /* History Log:
@@ -65,7 +65,7 @@ static int retr_fd;
 
 module xfer_module;
 
-static void _log_transfer(char direction)
+static void _log_transfer(char direction, char abort_flag)
 {
   struct timeval end_time;
   char *fullpath;
@@ -86,17 +86,18 @@ static void _log_transfer(char direction)
   if((session.flags & SF_ANON) != 0) {
     log_xfer(end_time.tv_sec,session.c->remote_name,session.xfer.total_bytes,
              fullpath,(session.flags & SF_ASCII ? 'a' : 'b'),
-             direction,'a',session.anon_user);
+             direction,'a',session.anon_user, abort_flag);
   } else {
     log_xfer(end_time.tv_sec,session.c->remote_name,session.xfer.total_bytes,
              fullpath,(session.flags & SF_ASCII ? 'a' : 'b'),
-             direction,'r',session.user);
+             direction,'r',session.user, abort_flag);
   }
-  
-  log_debug(DEBUG1, "Transfer completed: %d bytes in %d.%02d seconds.",
+
+  log_debug(DEBUG1, "Transfer %s %d bytes in %d.%02d seconds.",
+	    abort_flag == 'c' ? " completed:" : " aborted after",
 	    session.xfer.total_bytes,end_time.tv_sec,
 	    (end_time.tv_usec / 10000));
-  
+
   data_cleanup();
 }
 
@@ -241,12 +242,14 @@ static void _stor_abort() {
   } else if(session.xfer.path) {
     unlink(session.xfer.path);
   }
+  _log_transfer('i', 'i');
 }
 
 static void _retr_abort() {
   /* Isn't necessary to send anything here, just cleanup */
   fs_close(retr_file,retr_fd);
   retr_file = NULL;
+  _log_transfer('o', 'i');
 }
 
 /* cmd_pre_stor is a PRE_CMD handler which checks security, etc, and
@@ -968,16 +971,15 @@ cmd_stou(cmd_rec *cmd)
 	return HANDLED(cmd);
 }
 
-
 MODRET log_stor(cmd_rec *cmd)
 {
-  _log_transfer('i');
+  _log_transfer('i', 'c');
   return DECLINED(cmd);
 }
 
 MODRET log_retr(cmd_rec *cmd)
 {
-  _log_transfer('o');
+  _log_transfer('o', 'c');
   return DECLINED(cmd);
 }
 
