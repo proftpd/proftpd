@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.165 2003-09-28 20:31:40 castaglia Exp $
+ * $Id: mod_auth.c,v 1.166 2003-10-31 07:22:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -216,10 +216,14 @@ static int _do_auth(pool *p, xaset_t *conf, char *u, char *pw) {
   return auth_authenticate(p, u, pw);
 }
 
-MODRET auth_log_pass(cmd_rec *cmd) {
+MODRET auth_err_pass(cmd_rec *cmd) {
 
-  /* Remove C_USER here, so that other modules, who may want to lookup the
-   * original USER parameter on a failed login, have a chance to do so.
+  /* Remove C_USER here in a LOG_CMD_ERR handler, so that other modules,
+   * who may want to lookup the original USER parameter on a failed login in
+   * an earlier command handler phase, have a chance to do so.  This removal
+   * of the C_USER parameter on failure was happening directly in the
+   * CMD handler previously, thus preventing POST_CMD_ERR handlers from
+   * using C_USER.
    */
   remove_config(cmd->server->conf, C_USER, FALSE);
 
@@ -2767,8 +2771,7 @@ static cmdtable auth_cmdtab[] = {
   { PRE_CMD,	C_PASS,	G_NONE,	auth_pre_pass,	FALSE,	FALSE,	CL_AUTH },
   { CMD,	C_PASS,	G_NONE,	auth_pass,	FALSE,	FALSE,	CL_AUTH },
   { POST_CMD,	C_PASS,	G_NONE,	auth_post_pass,	FALSE,	FALSE,	CL_AUTH },
-  { LOG_CMD,	C_PASS,	G_NONE,	auth_log_pass,	FALSE,	FALSE },
-  { LOG_CMD_ERR,C_PASS,	G_NONE,	auth_log_pass,  FALSE,  FALSE },
+  { LOG_CMD_ERR,C_PASS,	G_NONE,	auth_err_pass,  FALSE,  FALSE },
   { CMD,	C_ACCT,	G_NONE,	auth_acct,	FALSE,	FALSE,	CL_AUTH },
   { CMD,	C_REIN,	G_NONE,	auth_rein,	FALSE,	FALSE,	CL_AUTH },
   { 0, NULL }
