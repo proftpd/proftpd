@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.68 2002-09-13 22:51:12 castaglia Exp $
+ * $Id: dirtree.c,v 1.69 2002-09-26 01:05:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -398,8 +398,12 @@ char *get_word(char **cp)
     return NULL;
 
   ret = dst = *cp;
-  
-  if(**cp == '\"') {
+
+  /* Stop processing at start of an inline comment. */ 
+  if (**cp == '#')
+    return NULL;
+
+  if (**cp == '\"') {
     quote_mode++;
     (*cp)++;
   }
