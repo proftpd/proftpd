@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.113 2002-12-05 21:16:49 castaglia Exp $
+ * $Id: mod_auth.c,v 1.114 2002-12-06 21:04:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -70,8 +70,11 @@ static int lockdown(char *newroot) {
  * so that we can deny all commands until authentication is complete.
  */
 static int auth_cmd_chk_cb(cmd_rec *cmd) {
-  if (get_param_int(cmd->server->conf, "authenticated", FALSE) != 1) {
-    send_response(R_530, "Please login with USER and PASS.");
+  unsigned char *authenticated = get_param_ptr(cmd->server->conf,
+    "authenticated", FALSE);
+
+  if (!authenticated || *authenticated == FALSE) {
+    send_response(R_530, "Please login with " C_USER " and " C_PASS);
     return FALSE;
   }
 
@@ -79,7 +82,7 @@ static int auth_cmd_chk_cb(cmd_rec *cmd) {
 }
 
 /* As for 1.2.0, timer callbacks are now non-reentrant, so it's
- * safe to call main_exit()
+ * safe to call session_exit().
  */
 
 static int auth_login_timeout_cb(CALLBACK_FRAME) {
@@ -87,8 +90,7 @@ static int auth_login_timeout_cb(CALLBACK_FRAME) {
   send_response_async(R_421, "Login Timeout (%d seconds): "
     "closing control connection.", TimeoutLogin);
 
-  main_exit((void*) PR_LOG_NOTICE, "FTP login timed out, disconnected.",
-	    (void*) 0, NULL);
+  session_exit(PR_LOG_NOTICE, "FTP login timed out, disconnected", 0, NULL);
 
   /* Do not restart the timer (should never be reached). */
   return 0;
@@ -99,8 +101,7 @@ static int auth_session_timeout_cb(CALLBACK_FRAME) {
   send_response_async(R_421, "Session Timeout (%u seconds): "
     "closing control connection", TimeoutSession);
 
-  main_exit((void *) PR_LOG_NOTICE, "FTP session timed out, disconnected",
-    (void *) 0, NULL);
+  session_exit(PR_LOG_NOTICE, "FTP session timed out, disconnected", 0, NULL);
 
   /* no need to restart the timer -- session's over */
   return 0;
@@ -470,10 +471,11 @@ static unsigned char auth_check_ftpusers(xaset_t *s, const char *user) {
   unsigned char res = TRUE;
   FILE *ftpusersf = NULL;
   char *u, buf[256] = {'\0'};
+  unsigned char *use_ftp_users = get_param_ptr(s, "UseFtpUsers", FALSE);
 
-  if (get_param_int(s,"UseFtpUsers",FALSE) != 0) {
+  if (!use_ftp_users || *use_ftp_users == TRUE) {
     PRIVS_ROOT
-    ftpusersf = fopen(FTPUSERS_PATH,"r");
+    ftpusersf = fopen(FTPUSERS_PATH, "r");
     PRIVS_RELINQUISH
 
     if (!ftpusersf)
@@ -503,9 +505,13 @@ static unsigned char auth_check_shell(xaset_t *s, const char *shell) {
   unsigned char res = TRUE;
   FILE *shellf = NULL;
   char buf[256] = {'\0'};
+  unsigned char *require_valid_shell = get_param_ptr(s, "RequireValidShell",
+    FALSE);
 
-  if (get_param_int(s,"RequireValidShell",FALSE) != 0 &&
-     (shellf = fopen(VALID_SHELL_PATH,"r")) != NULL) {
+  if (!require_valid_shell || *require_valid_shell == TRUE) {
+    if ((shellf = fopen(VALID_SHELL_PATH, "r")) == NULL)
+      return res;
+
     res = FALSE;
 
     while (fgets(buf, sizeof(buf)-1, shellf)) {
@@ -656,7 +662,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
   char *origuser,*ourname,*anonname = NULL,*anongroup = NULL,*ugroup = NULL;
   char ttyname[20] = {'\0'}, *defaulttransfermode;
   char *defroot = NULL,*defchdir = NULL,*xferlog = NULL;
-  int aclp,i,force_anon = 0,wtmp_log = -1,res = 0,showsymlinks;
+  int aclp,i,force_anon = 0,res = 0,showsymlinks;
+  unsigned char *wtmp_log = NULL, *anon_require_passwd = NULL;
 
   /********************* Authenticate the user here *********************/
 
@@ -676,7 +683,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
   if ((pw = auth_getpwnam(p, user)) == NULL) {
     log_auth(PR_LOG_NOTICE, "USER %s: no such user found from %s [%s] to %s:%i",
-      user,session.c->remote_name, inet_ascii(p, session.c->remote_ipaddr),
+      user, session.c->remote_name, inet_ascii(p, session.c->remote_ipaddr),
       inet_ascii(p, session.c->local_ipaddr), session.c->local_port);
     goto auth_failure;
   }
@@ -763,20 +770,26 @@ static int _setup_environment(pool *p, char *user, char *pass)
     goto auth_failure;
   }
 
-  if (!c || get_param_int(c->subset,"AnonRequirePassword",FALSE) == 1) {
+  if (c)
+    anon_require_passwd = get_param_ptr(c->subset, "AnonRequirePassword",
+      FALSE);
+
+  if (!c || (anon_require_passwd && *anon_require_passwd == TRUE)) {
     int auth_code;
-    char *user_name;
+    char *user_name = user;
 
-    user_name = user;
+    if (c && origuser && strcasecmp(user, origuser)) {
+      unsigned char *auth_using_alias = get_param_ptr(c->subset,
+        "AuthUsingAlias", FALSE);
 
-    /* if 'AuthUsingAlias' set and we're logging in under an alias,
-     * then auth using that alias.
-     */
-    if(c && origuser && strcasecmp(user,origuser) &&
-       get_param_int(c->subset,"AuthUsingAlias",FALSE) == 1) {
-      user_name = origuser;
-      log_auth(PR_LOG_NOTICE, "ANON AUTH: User %s, Auth Alias %s",
-	       user, user_name);
+      /* If 'AuthUsingAlias' set and we're logging in under an alias,
+       * then auth using that alias.
+       */
+      if (auth_using_alias && *auth_using_alias == TRUE) { 
+        user_name = origuser;
+        log_auth(PR_LOG_NOTICE, "ANON AUTH: User %s, Auth Alias %s", user,
+          user_name);
+      }
     }
 
     auth_code = _do_auth(p, c ? c->subset : main_server->conf, user_name, pass);
@@ -839,33 +852,31 @@ static int _setup_environment(pool *p, char *user, char *pass)
     if (auth_code < 0)
       goto auth_failure;
 
-  } else if(c && get_param_int(c->subset, "AnonRequirePassword", FALSE) != 1) {
+  } else if(c && (!anon_require_passwd || *anon_require_passwd == FALSE)) {
     session.hide_password = FALSE;
   }
 
   auth_setgrent(p);
 
-  if (!auth_check_shell((c ? c->subset : main_server->conf),pw->pw_shell)) {
+  if (!auth_check_shell((c ? c->subset : main_server->conf), pw->pw_shell)) {
     log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Invalid shell: %s", user,
       pw->pw_shell);
     goto auth_failure;
   }
 
-  if (!auth_check_ftpusers((c ? c->subset : main_server->conf),pw->pw_name)) {
-    log_auth(PR_LOG_NOTICE, "USER %s (Login failed): User in %s.",
-	     user, FTPUSERS_PATH);
+  if (!auth_check_ftpusers((c ? c->subset : main_server->conf), pw->pw_name)) {
+    log_auth(PR_LOG_NOTICE, "USER %s (Login failed): User in " FTPUSERS_PATH,
+      user);
     goto auth_failure;
   }
 
-  if(c) {
-    struct group *grp;
-    int add_userdir;
-    char *u;
+  if (c) {
+    struct group *grp = NULL;
+    unsigned char *add_userdir = NULL;
+    char *u = get_param_ptr(main_server->conf, C_USER, FALSE);
 
-    u = (char *) get_param_int(main_server->conf, C_USER, FALSE);
-
-    add_userdir = get_param_int((c ? c->subset : main_server->conf),
-				"UserDirRoot", FALSE);
+    add_userdir = get_param_ptr((c ? c->subset : main_server->conf),
+      "UserDirRoot", FALSE);
 
     /* If resolving an <Anonymous> user, make sure that user's groups
      * are set properly for the check of the home directory path (which
@@ -888,7 +899,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
 #endif
     PRIVS_SETUP(pw->pw_uid, pw->pw_gid)
 
-    if (add_userdir > 0 && strcmp(u, user))
+    if ((add_userdir && *add_userdir == TRUE) && strcmp(u, user))
       session.chroot_path = dir_realpath(p, pdircat(p, c->name, u, NULL));
     else
       session.chroot_path = dir_realpath(p, c->name);
@@ -932,14 +943,14 @@ static int _setup_environment(pool *p, char *user, char *pass)
     }
 #endif /* HAVE_GETEUID */
 
-    if (get_param_int(c->subset, "AnonRequirePassword", FALSE) == 1)
+    if (anon_require_passwd && *anon_require_passwd == TRUE)
       session.anon_user = pstrdup(session.pool, origuser);
     else
       session.anon_user = pstrdup(session.pool, pass);
 
     if (!session.chroot_path) {
-      log_pri(PR_LOG_ERR, "%s: Directory %s is not accessible.",
-        session.user, c->name);
+      log_pri(PR_LOG_ERR, "%s: Directory %s is not accessible.", session.user,
+        c->name);
       add_response_err(R_530, "Unable to set anonymous privileges.");
       goto auth_failure;
     }
@@ -990,7 +1001,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   if (!login_check_limits((c ? c->subset : main_server->conf), FALSE, TRUE,
       &i)) {
     log_auth(PR_LOG_NOTICE, "%s %s: Limit access denies login.",
-      (c != NULL) ? "ANON" : "USER", origuser);
+      (c != NULL) ? "ANON" : C_USER, origuser);
     goto auth_failure;
   }
 
@@ -1005,7 +1016,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
     resolve_anonymous_dirs(c->subset);
 
   log_auth(PR_LOG_NOTICE, "%s %s: Login successful.",
-    (c != NULL) ? "ANON" : "USER", origuser);
+    (c != NULL) ? "ANON" : C_USER, origuser);
 
   /* Write the login to wtmp.  This must be done here because we won't
    * have access after we give up root.  This can result in falsified
@@ -1022,17 +1033,17 @@ static int _setup_environment(pool *p, char *user, char *pass)
   /* Perform wtmp logging only if not turned off in <Anonymous>
    * or the current server
    */
-  if(c)
-    wtmp_log = get_param_int(c->subset, "WtmpLog", FALSE);
+  if (c)
+    wtmp_log = get_param_ptr(c->subset, "WtmpLog", FALSE);
 
-  if(wtmp_log == -1)
-    wtmp_log = get_param_int(main_server->conf, "WtmpLog", FALSE);
+  if (wtmp_log == NULL)
+    wtmp_log = get_param_ptr(main_server->conf, "WtmpLog", FALSE);
 
   PRIVS_ROOT
 
-  if(wtmp_log != 0) {
+  if (!wtmp_log || *wtmp_log == TRUE) {
     log_wtmp(ttyname, session.user, session.c->remote_name,
-             session.c->remote_ipaddr);
+      session.c->remote_ipaddr);
     session.wtmp_log = TRUE;
   }
 
@@ -1255,7 +1266,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
     PR_SCORE_CWD, session.cwd,
     NULL);
 
-  main_set_idle();
+  session_set_idle();
 
   remove_timer(TIMER_LOGIN, &auth_module);
 
@@ -1285,7 +1296,7 @@ auth_failure:
   pr_memscrub(pass, strlen(pass));
   session.user = session.group = NULL;
   session.gids = session.groups = NULL;
-  session.wtmp_log = 0;
+  session.wtmp_log = FALSE;
   return 0;
 }
 
@@ -1295,12 +1306,15 @@ auth_failure:
  * greeting.
  */
 static void auth_scan_scoreboard(void) {
+  config_rec *c = NULL;
   pr_scoreboard_entry_t *score = NULL;
   int cur = -1, ccur = -1;
   char config_class_users[128] = {'\0'};
   xaset_t *conf = NULL;
+  unsigned char *class_engine = get_param_ptr(main_server->conf,
+    "Classes", FALSE);
 
-  if (get_param_int(main_server->conf, "Classes", FALSE) != 1)
+  if (!class_engine || *class_engine == FALSE)
     return;
 
   if (!session.class)
@@ -1328,16 +1342,21 @@ static void auth_scan_scoreboard(void) {
   /* This silliness is needed to get past the broken HP/UX 11.x compiler.
    */
   conf = CURRENT_CONF;
-  remove_config(CURRENT_CONF, "CURRENT-CLIENTS", FALSE);
-  add_config_param_set(&conf, "CURRENT-CLIENTS", 1, (void *) cur);
 
-  remove_config(CURRENT_CONF,"CURRENT-CLASS",FALSE);
+  remove_config(CURRENT_CONF, "CURRENT-CLIENTS", FALSE);
+  c = add_config_param_set(&conf, "CURRENT-CLIENTS", 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = cur;
+
+  remove_config(CURRENT_CONF, "CURRENT-CLASS", FALSE);
   add_config_param_set(&conf, "CURRENT-CLASS", 1, session.class->name);
 
-  snprintf(config_class_users, sizeof(config_class_users), "%s-%s",
-	   "CURRENT-CLIENTS-CLASS", session.class->name);
+  snprintf(config_class_users, sizeof(config_class_users),
+    "CURRENT-CLIENTS-CLASS-%s", session.class->name);
   remove_config(CURRENT_CONF, config_class_users, FALSE);
-  add_config_param_set(&conf, config_class_users, 1, ccur);
+  c = add_config_param_set(&conf, config_class_users, 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = ccur;
 }
 
 static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
@@ -1345,11 +1364,11 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
   long cur = 0, hcur = 0, ccur = 0, hostsperuser = 1, usersessions = 0;
   config_rec *c, *maxc;
   char *origuser, config_class_users[128] = {'\0'};
-  unsigned char classes_enabled = FALSE;
+  unsigned char classes_enabled = FALSE,
+    *class_engine = get_param_ptr(main_server->conf, "Classes", FALSE);
 
-  if ((classes_enabled = get_param_int(main_server->conf, "Classes",
-      FALSE)) != TRUE)
-    classes_enabled = FALSE;
+  if (class_engine && *class_engine == TRUE)
+    classes_enabled = TRUE;
 
   /* NOTE: there is an assumption here that if Classes have been enabled,
    * there will be a corresponding Class defined.  This can cause a
@@ -1472,6 +1491,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
    * (if any) and count through the runtime file to see if this limit would
    * be exceeded.
    */
+
   if ((maxc = find_config((c ? c->subset : cmd->server->conf),
       CONF_PARAM, "MaxClientsPerHost", FALSE)) != NULL) {
     char *maxstr = "Sorry, the maximum number clients (%m) from your host are "
@@ -1568,37 +1588,36 @@ MODRET auth_user(cmd_rec *cmd) {
   config_rec *c;
   char *user, *origuser;
   int failnopwprompt = 0, aclp, i;
+  unsigned char *anon_require_passwd = NULL, *login_passwd_prompt = NULL;
 
-  if(logged_in)
-    return ERROR_MSG(cmd,R_503,"You are already logged in!");
+  if (logged_in)
+    return ERROR_MSG(cmd, R_503, "You are already logged in!");
 
-  if(cmd->argc < 2)
-    return ERROR_MSG(cmd,R_500,"'USER': command requires a parameter.");
+  if (cmd->argc < 2)
+    return ERROR_MSG(cmd, R_500, C_USER ": command requires a parameter.");
 
   user = cmd->arg;
 
   remove_config(cmd->server->conf, C_USER, FALSE);
   remove_config(cmd->server->conf, C_PASS, FALSE);
 
-  add_config_param_set(&cmd->server->conf, C_USER, 1,
-		       pstrdup(cmd->server->pool, user));
+  c = add_config_param_set(&cmd->server->conf, C_USER, 1, NULL);
+  c->argv[0] = pstrdup(c->pool, user);
 
   origuser = user;
   c = _auth_resolve_user(cmd->tmp_pool,&user,NULL,NULL);
 
-  switch(get_param_int((c && c->config_type == CONF_ANON ? c->subset :
-                     main_server->conf),"LoginPasswordPrompt",FALSE)) {
-  case 0:
-    failnopwprompt = 1;
-    break;
+  login_passwd_prompt = get_param_ptr(
+    (c && c->config_type == CONF_ANON) ? c->subset : main_server->conf,
+    "LoginPasswordPrompt", FALSE);
 
-  default:
-    failnopwprompt = 0;
-    break;
-  }
+  if (login_passwd_prompt && *login_passwd_prompt == FALSE)
+    failnopwprompt = TRUE;
+  else
+    failnopwprompt = FALSE;
 
-  if(failnopwprompt) {
-    if(!user) {
+  if (failnopwprompt) {
+    if (!user) {
       remove_config(cmd->server->conf, C_USER, FALSE);
       remove_config(cmd->server->conf, C_PASS, FALSE);
 
@@ -1644,10 +1663,14 @@ MODRET auth_user(cmd_rec *cmd) {
 
   auth_count_scoreboard(cmd, origuser);
 
-  if(c && user && get_param_int(c->subset, "AnonRequirePassword", FALSE) != 1)
+  if (c)
+    anon_require_passwd = get_param_ptr(c->subset, "AnonRequirePassword",
+      FALSE);
+
+  if (c && user && (!anon_require_passwd || *anon_require_passwd == FALSE))
     nopass++;
 
-  if(nopass)
+  if (nopass)
     add_response(R_331, "Anonymous login ok, send your complete email "
 		 "address as your password.");
   else
@@ -1682,15 +1705,19 @@ MODRET auth_pass(cmd_rec *cmd) {
     remove_config(cmd->server->conf, C_USER, FALSE);
     remove_config(cmd->server->conf, C_PASS, FALSE);
 
-    return ERROR_MSG(cmd, R_503, "Login with USER first.");
+    return ERROR_MSG(cmd, R_503, "Login with " C_USER " first");
   }
 
   auth_count_scoreboard(cmd, user);
 
   if ((res = _setup_environment(cmd->tmp_pool, user, cmd->arg)) == 1) {
     char *display = NULL, *grantmsg = NULL;
+    config_rec *c = NULL;
 
-    add_config_param_set(&cmd->server->conf, "authenticated", 1, (void *) TRUE);
+    c = add_config_param_set(&cmd->server->conf, "authenticated", 1, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+    *((unsigned char *) c->argv[0]) = TRUE;
+
     set_auth_check(NULL);
 
     remove_config(cmd->server->conf, C_PASS, FALSE);
@@ -1732,7 +1759,7 @@ MODRET auth_pass(cmd_rec *cmd) {
   remove_config(cmd->server->conf, C_PASS, FALSE);
 
   if (res == 0) {
-    int max;
+    unsigned int max_logins, *max = NULL;
     char *denymsg = NULL;
 
     /* check for AccessDenyMsg */
@@ -1742,17 +1769,20 @@ MODRET auth_pass(cmd_rec *cmd) {
       denymsg = sreplace(cmd->tmp_pool, denymsg, "%u", user, NULL);
     }
 
-    max = get_param_int(main_server->conf,"MaxLoginAttempts",FALSE);
-    if (max == -1)
-      max = 3;
+    if ((max = get_param_ptr(main_server->conf, "MaxLoginAttempts",
+        FALSE)) == NULL)
+      max_logins = 3;
+    else
+      max_logins = *max;
 
-    if (++auth_tries >= max) {
+    if (++auth_tries >= max_logins) {
       if (denymsg)
         send_response(R_530, "%s", denymsg);
       else
         send_response(R_530, "Login incorrect.");
 
-      log_auth(PR_LOG_NOTICE, "Maximum login attempts exceeded.");
+      log_auth(PR_LOG_NOTICE, "Maximum login attempts (%u) exceeded",
+        max_logins);
       end_login(0);
     }
 
@@ -1801,6 +1831,7 @@ MODRET set_accessgrantmsg(cmd_rec *cmd) {
 
 MODRET set_anonrequirepassword(cmd_rec *cmd) {
   int bool = -1;
+  config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ANON);
@@ -1808,7 +1839,9 @@ MODRET set_anonrequirepassword(cmd_rec *cmd) {
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean parameter");
 
-  add_config_param(cmd->argv[0], 1, (void *) bool);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
 
   return HANDLED(cmd);
 }
@@ -1865,14 +1898,17 @@ MODRET set_authaliasonly(cmd_rec *cmd) {
 
 MODRET set_authusingalias(cmd_rec *cmd) {
   int bool = -1;
+  config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ANON);
 
   if ((bool = get_boolean(cmd,1)) == -1)
-    CONF_ERROR(cmd, "expected boolean parameter");
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
-  add_config_param(cmd->argv[0], 1, (void *) bool);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
 
   return HANDLED(cmd);
 }
@@ -1989,11 +2025,13 @@ MODRET set_loginpasswordprompt(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
-  c = add_config_param(cmd->argv[0], 1, (void*) bool);
-
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
@@ -2156,6 +2194,7 @@ MODRET set_maxhostsperuser(cmd_rec *cmd) {
 
 MODRET set_maxloginattempts(cmd_rec *cmd) {
   int max;
+  config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -2171,7 +2210,10 @@ MODRET set_maxloginattempts(cmd_rec *cmd) {
       CONF_ERROR(cmd, "parameter must be 'none' or a number greater than 0");
   }
 
-  add_config_param(cmd->argv[0], 1, (void*)max);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[0]) = max;
+
   return HANDLED(cmd);
 }
 
@@ -2185,7 +2227,9 @@ MODRET set_requirevalidshell(cmd_rec *cmd) {
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
 
-  c = add_config_param(cmd->argv[0], 1, bool);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
@@ -2204,8 +2248,8 @@ MODRET set_rootlogin(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = (unsigned char) bool;
-
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
@@ -2343,9 +2387,11 @@ MODRET set_useftpusers(cmd_rec *cmd) {
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
 
-  c = add_config_param(cmd->argv[0], 1, (void *) bool);
-
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
@@ -2366,15 +2412,20 @@ MODRET set_useralias(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET add_userdirroot (cmd_rec *cmd) {
-  int bool;
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF (cmd, CONF_ANON);
+MODRET set_userdirroot(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ANON);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
-  add_config_param(cmd->argv[0], 1, (void *) bool);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
+
   return HANDLED(cmd);
 }
 
@@ -2415,7 +2466,7 @@ static conftable auth_conftab[] = {
   { "TimeoutSession",		set_timeoutsession,		NULL },
   { "UseFtpUsers",		set_useftpusers,		NULL },
   { "UserAlias",		set_useralias,			NULL },
-  { "UserDirRoot",		add_userdirroot,		NULL },
+  { "UserDirRoot",		set_userdirroot,		NULL },
   { "UserPassword",		set_userpassword,		NULL },
   { NULL,			NULL,				NULL }
 };

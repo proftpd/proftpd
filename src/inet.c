@@ -701,36 +701,46 @@ int inet_set_proto_options(pool *pool, conn_t *c,
   int tos = 0;
 
 #ifdef TCP_NODELAY
-  if(get_param_int(main_server->conf,"tcpNoDelay",FALSE) != 0) {
-    if(c->wfd != -1)
-      setsockopt(c->wfd,IPPROTO_TCP,TCP_NODELAY,(void*)&nodelay,sizeof(nodelay));
-    if(c->rfd != -1)
-      setsockopt(c->rfd,IPPROTO_TCP,TCP_NODELAY,(void*)&nodelay,sizeof(nodelay));
+  unsigned char *no_delay = get_param_ptr(main_server->conf, "tcpNoDelay",
+    FALSE);
+
+  if (!no_delay || *no_delay == TRUE) {
+    if (c->wfd != -1)
+      setsockopt(c->wfd, IPPROTO_TCP, TCP_NODELAY, (void *) &nodelay,
+        sizeof(nodelay));
+
+    if (c->rfd != -1)
+      setsockopt(c->rfd, IPPROTO_TCP, TCP_NODELAY, (void *) &nodelay,
+        sizeof(nodelay));
   }
 #endif
 
 #ifdef IPTOS_LOWDELAY
-  if(lowdelay)
+  if (lowdelay)
     tos = IPTOS_LOWDELAY;
 #endif
 
 #ifdef IPTOS_THROUGHPUT
-  if(throughput)
+  if (throughput)
     tos |= IPTOS_THROUGHPUT;
 #endif
 
 #ifdef IP_TOS
-  if(c->wfd != -1)
-    setsockopt(c->wfd,IPPROTO_IP,IP_TOS,(void*)&tos,sizeof(tos));
-  if(c->rfd != -1)
-    setsockopt(c->rfd,IPPROTO_IP,IP_TOS,(void*)&tos,sizeof(tos));
+  if (c->wfd != -1)
+    setsockopt(c->wfd, IPPROTO_IP, IP_TOS, (void *) &tos, sizeof(tos));
+
+  if (c->rfd != -1)
+    setsockopt(c->rfd, IPPROTO_IP, IP_TOS, (void *) &tos, sizeof(tos));
 #endif
 
 #ifdef TCP_NOPUSH
-  if(c->wfd != -1)
-    setsockopt(c->wfd,IPPROTO_TCP,TCP_NOPUSH,(void*)&nopush,sizeof(nopush));
-  if(c->rfd != -1)
-    setsockopt(c->rfd,IPPROTO_TCP,TCP_NOPUSH,(void*)&nopush,sizeof(nopush));
+  if (c->wfd != -1)
+    setsockopt(c->wfd, IPPROTO_TCP, TCP_NOPUSH, (void *) &nopush,
+      sizeof(nopush));
+
+  if (c->rfd != -1)
+    setsockopt(c->rfd, IPPROTO_TCP, TCP_NOPUSH, (void *) &nopush,
+      sizeof(nopush));
 #endif
 
   return 0;

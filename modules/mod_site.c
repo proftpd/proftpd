@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.27 2002-12-05 21:16:50 castaglia Exp $
+ * $Id: mod_site.c,v 1.28 2002-12-06 21:05:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -390,7 +390,7 @@ modret_t *site_dispatch(cmd_rec *cmd) {
     if (!strcmp(cmd->argv[0], site_commands[i].command)) {
       if (site_commands[i].requires_auth && cmd_auth_chk &&
           !cmd_auth_chk(cmd)) {
-        send_response(R_530, "Please login with USER and PASS.");
+        send_response(R_530, "Please login with " C_USER " and " C_PASS);
         return ERROR(cmd);
 
       } else

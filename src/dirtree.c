@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.81 2002-12-05 21:16:51 castaglia Exp $
+ * $Id: dirtree.c,v 1.82 2002-12-06 21:05:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -996,23 +996,22 @@ static int _dir_check_op(pool *p, xaset_t *c, int op, uid_t uid, gid_t gid,
   int res = 1, user_perms = 0;
   uid_t *u = NULL;
   gid_t *g = NULL, *gidp = NULL;
+  unsigned char *hide_no_access = NULL;
 
-  if(!c)
+  if (!c)
     return 1;				/* Default is to allow */
 
-  /* attempt to match the UID and GID of the file against that of the
-   * current user and groups
+  /* Attempt to match the UID and GID of the file against that of the
+   * current user and groups.
    */
   if (uid == session.uid) {
 
-    /* the UID of the file is that of the current user
-     */
+    /* The UID of the file is that of the current user. */
     user_perms |= (mode & S_IRWXU);
 
   } else if (gid == session.gid) {
 
-    /* the primary GID of the file is that of the current user
-     */
+    /* The primary GID of the file is that of the current user. */
     user_perms |= (mode & S_IRWXG);
 
   } else {
@@ -1036,14 +1035,14 @@ static int _dir_check_op(pool *p, xaset_t *c, int op, uid_t uid, gid_t gid,
       }
     }
 
-    /* no matching GIDs.  Assume the current user can read, as other,
+    /* No matching GIDs.  Assume the current user can read, as other,
      * by default.
      */
     if (!found_gid_match)
       user_perms |= (mode & S_IRWXO);
   }
 
-  switch(op) {
+  switch (op) {
   case OP_HIDE:
     u = (uid_t *) get_param_ptr(c, "HideUser", FALSE);
 
@@ -1065,9 +1064,10 @@ static int _dir_check_op(pool *p, xaset_t *c, int op, uid_t uid, gid_t gid,
       break;
     }
 
-    if (get_param_int(c, "HideNoAccess", FALSE) == 1) {
+    hide_no_access = get_param_ptr(c, "HideNoAccess", FALSE);
 
-      if(S_ISDIR(mode)) {
+    if (hide_no_access && *hide_no_access == TRUE) {
+      if (S_ISDIR(mode)) {
 
         /* check to see if the mode of this directory allows the
          * current user to list its contents
@@ -1092,15 +1092,20 @@ static int _dir_check_op(pool *p, xaset_t *c, int op, uid_t uid, gid_t gid,
     break;
 
   case OP_COMMAND:
-    if (get_param_int(c, "AllowAll", FALSE) == 1)
-      /* nop */;  
+    {
+      unsigned char *allow_all = get_param_ptr(c, "AllowAll", FALSE),
+        *deny_all = get_param_ptr(c, "DenyAll", FALSE);
+      
+      if (allow_all && *allow_all == TRUE)
+        /* nop */; 
 
-    else if (get_param_int(c, "DenyAll", FALSE) == 1) {
-      res = 0;
-      errno = EACCES;
+      else if (deny_all && *deny_all == TRUE) {
+        res = 0;
+        errno = EACCES;
+      }
     }
-
     break;
+
   }
 
   return res;
@@ -1388,9 +1393,10 @@ static int _check_ip_access(xaset_t *conf, char *name)
 
 /* 1 if allowed, 0 otherwise */
 
-static int _check_limit_allow(config_rec *c)
-{
-  /* if session.groups is null, this means no authentication
+static int _check_limit_allow(config_rec *c) {
+  unsigned char *allow_all = NULL;
+
+  /* If session.groups is null, this means no authentication
    * attempt has been made, so we simply check for the
    * very existance of an AllowGroup, and assume (for now) it's
    * allowed.  This works because later calls to _check_limit_allow
@@ -1398,35 +1404,46 @@ static int _check_limit_allow(config_rec *c)
    * group membership at that time.  Same goes for AllowUser.
    */
 
-  if(!session.user) {
-    if(find_config(c->subset,CONF_PARAM,"AllowUser", FALSE))
+  if (!session.user) {
+    if (find_config(c->subset, CONF_PARAM, "AllowUser", FALSE))
       return 1;
-  } else if(_check_user_access(c->subset,"AllowUser"))
+
+  } else if (_check_user_access(c->subset, "AllowUser"))
     return 1;
 
-  if(!session.groups) {
-    if(find_config(c->subset,CONF_PARAM,"AllowGroup",FALSE))
+  if (!session.groups) {
+    if (find_config(c->subset, CONF_PARAM, "AllowGroup", FALSE))
       return 1;
-  } else if(_check_group_access(c->subset,"AllowGroup"))
+
+  } else if (_check_group_access(c->subset, "AllowGroup"))
     return 1;
-  if(_check_ip_access(c->subset,"Allow"))
+
+  if (_check_ip_access(c->subset, "Allow"))
     return 1;
-  if(get_param_int(c->subset,"AllowAll",FALSE) == 1)
+
+  allow_all = get_param_ptr(c->subset, "AllowAll", FALSE);
+
+  if (allow_all && *allow_all == TRUE)
     return 1;
 
   return 0;
 }
 
-static int _check_limit_deny(config_rec *c)
-{
-  if(get_param_int(c->subset,"DenyAll",FALSE) == 1)
+static int _check_limit_deny(config_rec *c) {
+  unsigned char *deny_all = get_param_ptr(c->subset, "DenyAll", FALSE);
+
+  if (deny_all && *deny_all == TRUE)
     return 1;
-  if(session.user && _check_user_access(c->subset,"DenyUser"))
+
+  if (session.user && _check_user_access(c->subset, "DenyUser"))
     return 1;
-  if(session.groups && _check_group_access(c->subset,"DenyGroup"))
+
+  if (session.groups && _check_group_access(c->subset, "DenyGroup"))
     return 1;
-  if(_check_ip_access(c->subset,"Deny"))
+
+  if (_check_ip_access(c->subset, "Deny"))
     return 1;
+
   return 0;
 }
 
@@ -1434,30 +1451,36 @@ static int _check_limit_deny(config_rec *c)
  * and -1 if implicitly denied and -2 if explicitly denied.
  */
    
-static int _check_limit(config_rec *c)
-{
-  int order;
+static int _check_limit(config_rec *c) {
+  int *tmp = get_param_ptr(c->subset, "Order", FALSE);
+  int order = tmp ? *tmp : ORDER_ALLOWDENY;
 
-  if((order = get_param_int(c->subset,"Order",FALSE)) == -1)
-    order = ORDER_ALLOWDENY;
+  if (order == ORDER_DENYALLOW) {
+    /* Check deny first */
 
-  if(order == ORDER_DENYALLOW) {
-    /* check deny first */
-    if(_check_limit_deny(c))
-      return -2;		/* explicit deny */
-    if(_check_limit_allow(c))
-      return 1;			/* explicit allow */
+    if (_check_limit_deny(c))
+      /* Explicit deny */
+      return -2;
 
-    return -1;    		/* implicit deny */
+    if (_check_limit_allow(c))
+      /* Explicit allow */
+      return 1;
+
+    /* Implicit deny */
+    return -1;
   }
 
-  /* check allow first */
-  if(_check_limit_allow(c))
-    return 1;			/* explicit allow */
-  if(_check_limit_deny(c))
-    return -2;			/* explicit deny */
+  /* Check allow first */
+  if (_check_limit_allow(c))
+    /* Explicit allow */
+    return 1;
 
-  return 0;			/* implicit allow */
+  if (_check_limit_deny(c))
+    /* Explicit deny */
+    return -2;
+
+  /* Implicit allow */
+  return 0;
 }
 
 /* Note: if and == 1, the logic is short circuited so that the first
@@ -1531,79 +1554,78 @@ int login_check_limits(xaset_t *conf, int recurse,
   return res;
 }
 
-static
-int _check_limits(xaset_t *set, char *cmd, int hidden)
-{
-  /* Check limit directives */
-  int res = 1,ignore_hidden = -1;
+/* Check limit directives.
+ */
+static int _check_limits(xaset_t *set, char *cmd, int hidden) {
+  int res = 1, ignore_hidden = -1;
   config_rec *lc = NULL;
-  register int i;
 
   errno = 0;
   
-  if(!set)
+  if (!set)
     return res;
   
-  for(lc = (config_rec*)set->xas_list;
+  for (lc = (config_rec*)set->xas_list;
       lc && (res == 1); lc = lc->next) {
 
-    if(lc->config_type == CONF_LIMIT) {
-      for(i = 0; i < lc->argc; i++) {
-        if(!strcasecmp(cmd,(char*)(lc->argv[i])))
+    if (lc->config_type == CONF_LIMIT) {
+      register unsigned int i = 0;
+
+      for (i = 0; i < lc->argc; i++) {
+        if (!strcasecmp(cmd, (char *) (lc->argv[i])))
           break;
       }
 	  
-/*
-      log_debug(DEBUG5,"cmd=%s i=%d lc->argc=%d lc->argv[0]=%s\n",
-                   cmd, i, lc->argc, (char*)(lc->argv[i]));
-*/
-
-      if(i == lc->argc)
+      if (i == lc->argc)
         continue;
 	  
-      /* Found a limit directive associated with the current
-       * command.  ignore_hidden defaults to -1, if an explicit
-       * IgnoreHidden off is seen, it is set to 0 and the check will not
-       * be done again up the chain.  If an explicit IgnoreHidden on is
-       * seen, checking short-circuits and we set ENOENT.
+      /* Found a limit directive associated with the current command.
+       * ignore_hidden defaults to -1, if an explicit IgnoreHidden off is seen,
+       * it is set to 0 and the check will not be done again up the chain.  If
+       * an explicit "IgnoreHidden on" is seen, checking short-circuits and we
+       * set ENOENT.
        */
      
       if (hidden && ignore_hidden == -1) {
-          ignore_hidden = get_param_int(lc->subset,"IgnoreHidden",FALSE);
-        if(ignore_hidden == 1) {
+        unsigned char *ignore = get_param_ptr(lc->subset, "IgnoreHidden",
+          FALSE);
+
+        if (ignore)
+          ignore_hidden = *ignore;
+ 
+        if (ignore_hidden == 1) {
           res = 0;
           errno = ENOENT;
           break;
         }
       }
 
-      switch(_check_limit(lc)) {
-      case 1:
-        res++;
-        break;
+      switch (_check_limit(lc)) {
+        case 1:
+          res++;
+          break;
 	    
-      case -1:
-      case -2:
-        res = 0;
-        break;
+        case -1:
+        case -2:
+          res = 0;
+          break;
 	    
-      default:
-        continue;
+        default:
+          continue;
       }
     }
   }
-  
-  if(!res && !errno)
+ 
+  if (!res && !errno)
     errno = EACCES;
-  
+ 
   return res;
 }
 
-int dir_check_limits(config_rec *c, char *cmd, int hidden)
-{
+int dir_check_limits(config_rec *c, char *cmd, int hidden) {
   int res = 1;
-  
-  for(; c && (res == 1); c = c->parent)
+ 
+  for (; c && (res == 1); c = c->parent)
     res = _check_limits(c->subset, cmd, hidden);
       
   if(!c && (res == 1))
@@ -1828,7 +1850,7 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf,
  * function if an entry should be hidden or not.  This is used by mod_ls to
  * determine if a file should be displayed.  Note that in this context, hidden
  * means "hidden by configuration" (HideUser, etc), NOT "hidden because it's a
- * .dotfile".  -jss 2/22/01
+ * .dotfile".
  */
 
 int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
@@ -1848,7 +1870,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
 
   fullpath = dir_realpath(p,path);
 
-  if(!fullpath)
+  if (!fullpath)
     fullpath = pdircat(p,session.cwd,path,NULL);
   else 
     path = fullpath;
@@ -1910,27 +1932,27 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   session.fsuid = (uid_t) -1;
   session.fsgid = (gid_t) -1;
 
-  if((owner = get_param_ptr(CURRENT_CONF,"UserOwner",FALSE)) != NULL) {
-    /* attempt chown on all new files */
+  if ((owner = get_param_ptr(CURRENT_CONF, "UserOwner", FALSE)) != NULL) {
+    /* Attempt chown on all new files. */
     struct passwd *pw;
 
-    if((pw = auth_getpwnam(p,owner)) != NULL)
+    if((pw = auth_getpwnam(p, owner)) != NULL)
       session.fsuid = pw->pw_uid;
   }
   
-  if((owner = get_param_ptr(CURRENT_CONF,"GroupOwner",FALSE)) != NULL) {
-    /* attempt chgrp on all new files */
+  if ((owner = get_param_ptr(CURRENT_CONF, "GroupOwner", FALSE)) != NULL) {
+    /* Attempt chgrp on all new files. */
     struct group *gr;
 
     if((gr = auth_getgrnam(p,owner)) != NULL)
       session.fsgid = gr->gr_gid;
   }
   
-  if(isfile != -1) {
+  if (isfile != -1) {
 
     /* Check to see if the current config "hides" the path or not
      */
-    
+   
     op_hidden = !_dir_check_op(p,CURRENT_CONF,OP_HIDE,sbuf.st_uid,sbuf.st_gid,
                                  sbuf.st_mode);
 
@@ -1938,7 +1960,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
       sbuf.st_mode);
   }
 
-  if(res) {
+  if (res) {
 
     /* Note that dir_check_limits() also handles IgnoreHidden.  If it is set,
      * these return 0 (no access), and also set errno to ENOENT so it looks
@@ -1947,13 +1969,13 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
     res = dir_check_limits(c, cmd, op_hidden || regex_hidden);
 
     /* If specifically allowed, res will be > 1 and we don't want to
-     * check the command group limit
+     * check the command group limit.
      */
-    if(res == 1 && group)
+    if (res == 1 && group)
       res = dir_check_limits(c, group, op_hidden || regex_hidden);
 
     /* if still == 1, no explicit allow so check lowest priority "ALL" group */
-    if(res == 1)
+    if (res == 1)
       res = dir_check_limits(c, "ALL", op_hidden || regex_hidden);
   }
 
@@ -2074,18 +2096,18 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
 			sbuf.st_mode);
   }
   
-  if(res) {
+  if (res) {
     res = dir_check_limits(c, cmd, op_hidden || regex_hidden);
 
     /* If specifically allowed, res will be > 1 and we don't want to
      * check the command group limit
      */
 
-    if(res == 1 && group)
+    if (res == 1 && group)
       res = dir_check_limits(c, group, op_hidden || regex_hidden);
-    
+ 
     /* if still == 1, no explicit allow so check lowest priority "ALL" group */
-    if(res == 1)
+    if (res == 1) 
       res = dir_check_limits(c, "ALL", op_hidden || regex_hidden);
   }
 

@@ -26,7 +26,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.47 2002-10-29 15:51:54 jwm Exp $
+ * $Id: data.c,v 1.48 2002-12-06 21:05:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -514,7 +514,7 @@ void data_close(int quiet) {
   
   session.flags &= (SF_ALL^SF_PASSIVE);
   session.flags &= (SF_ALL^(SF_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
-  main_set_idle();
+  session_set_idle();
   
   if (!quiet)
     add_response(R_226, "Transfer complete.");
@@ -563,7 +563,7 @@ void data_abort(int err, int quiet) {
   
   session.flags &= (SF_ALL^SF_PASSIVE);
   session.flags &= (SF_ALL^(SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
-  main_set_idle();
+  session_set_idle();
   
   /* Aborts no longer necessary */
   signal(SIGURG, SIG_IGN);

@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.5 2002-12-05 20:18:54 castaglia Exp $
+ * $Id: mod_radius.c,v 1.6 2002-12-06 21:04:51 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.7rc5"
@@ -1456,20 +1456,21 @@ static unsigned char radius_start_accting(void) {
   int sockfd = -1, acct_status = htonl(RADIUS_ACCT_STATUS_START);
   radius_packet_t *request = NULL, *response = NULL;
   radius_server_t *acct_server = NULL;
-  unsigned char recvd_response = FALSE;
+  unsigned char recvd_response = FALSE, *authenticated = NULL;
 
   /* Check to see if RADIUS accounting should be done. */
   if (!radius_engine || !radius_acct_server)
     return TRUE;
 
   /* Only do accounting for authenticated users. */
-  if (get_param_int(main_server->conf, "authenticated", FALSE) != TRUE)
+  authenticated = get_param_ptr(main_server->conf, "authenticate", FALSE);
+  if (!authenticated || *authenticated == FALSE)
     return TRUE;
 
   /* Allocate a packet. */
   request = (radius_packet_t *) palloc(radius_pool, sizeof(radius_packet_t));
 
-  /* open a RADIUS socket */
+  /* Open a RADIUS socket */
   if ((sockfd = radius_open_socket()) < 0) {
     radius_log("socket open failed");
     return FALSE;
@@ -1557,7 +1558,7 @@ static unsigned char radius_stop_accting(void) {
   int sockfd = -1, acct_status = htonl(RADIUS_ACCT_STATUS_STOP);
   radius_packet_t *request = NULL, *response = NULL;
   radius_server_t *acct_server = NULL;
-  unsigned char recvd_response = FALSE;
+  unsigned char recvd_response = FALSE, *authenticated = NULL;
   int now = (int) htonl(time(NULL) - radius_session_start);
 
   /* Check to see if RADIUS accounting should be done. */
@@ -1565,13 +1566,15 @@ static unsigned char radius_stop_accting(void) {
     return TRUE;
 
   /* Only do accounting for authenticated users. */
-  if (get_param_int(main_server->conf, "authenticated", FALSE) != TRUE)
+  authenticated = get_param_ptr(main_server->conf, "authenticated", FALSE);
+
+  if (!authenticated || *authenticated == FALSE)
     return TRUE;
 
   /* Allocate a packet. */
   request = (radius_packet_t *) palloc(radius_pool, sizeof(radius_packet_t));
 
-  /* open a RADIUS socket */
+  /* Open a RADIUS socket */
   if ((sockfd = radius_open_socket()) < 0) {
     radius_log("socket open failed");
     return FALSE;

@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.70 2002-12-05 21:16:50 castaglia Exp $
+ * $Id: mod_ls.c,v 1.71 2002-12-06 21:05:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -50,7 +50,7 @@ static unsigned char show_symlinks_hold;
 static int cmp(const void *a, const void *b);
 static char *fakeuser, *fakegroup;
 static mode_t fakemode;
-static int fakemodep;
+static unsigned char have_fake_mode = FALSE;
 static int ls_errno = 0;
 static time_t ls_curtime = 0;
 
@@ -148,7 +148,7 @@ static void pop_cwd(char *_cwd, unsigned char *symhold) {
 static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
   int ret, canon = 0;
   char *fullpath;
-  long _fakemode;
+  mode_t *fake_mode = NULL;
 
   fullpath = dir_realpath(p, path);
 
@@ -173,12 +173,12 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
       list_show_symlinks = *tmp;
   }
 
-  _fakemode = get_param_int(CURRENT_CONF,"DirFakeMode",FALSE);
-  if(_fakemode != -1) {
-    fakemode = (mode_t)_fakemode;
-    fakemodep = 1;
+  if ((fake_mode = get_param_ptr(CURRENT_CONF, "DirFakeMode", FALSE))) {
+    fakemode = *fake_mode;
+    have_fake_mode = TRUE;
+
   } else
-    fakemodep = 0;
+    have_fake_mode = FALSE;
 
   return ret;
 }
@@ -186,7 +186,7 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
 static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden) {
   int ret;
   char fullpath[MAXPATHLEN + 1] = {'\0'};
-  long _fakemode;
+  mode_t *fake_mode = NULL;
 
   /* no need to process dotdirs
    */
@@ -212,12 +212,12 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden) {
       list_show_symlinks = *tmp;
   }
 
-  _fakemode = get_param_int(CURRENT_CONF,"DirFakeMode",FALSE);
-  if(_fakemode != -1) {
-    fakemode = (mode_t)_fakemode;
-    fakemodep = 1;
+  if ((fake_mode = get_param_ptr(CURRENT_CONF, "DirFakeMode", FALSE))) {
+    fakemode = *fake_mode;
+    have_fake_mode = TRUE;
+
   } else
-    fakemodep = 0;
+    have_fake_mode = FALSE;
 
   return ret;
 }
@@ -373,7 +373,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
         char timeline[6] = {'\0'};
         mode_t mode = st.st_mode;
 
-        if (fakemodep) {
+        if (have_fake_mode) {
           mode = fakemode;
 
           if (S_ISDIR(st.st_mode)) {
@@ -801,15 +801,16 @@ static char **sreaddir(pool *workp, const char *dirname, const int sort) {
 static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
   char **dir;
   int dest_workp = 0;
-	config_rec *c = NULL;
-	int ignore_hidden = FALSE;
+  config_rec *c = NULL;
+  unsigned char ignore_hidden = FALSE;
 
-  if(XFER_ABORTED)
-	return -1;
+  if (XFER_ABORTED)
+    return -1;
 
-  if(!workp) {
+  if (!workp) {
     workp = make_sub_pool(cmd->tmp_pool);
     dest_workp++;
+
   } else {
     workp = make_sub_pool(workp);
     dest_workp++;
@@ -817,14 +818,17 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
 
   dir = sreaddir(workp, ".", TRUE);
 
-  /* search for relevant <Limit>'s to this LIST command.  If found,
-   * check to see whether hidden files should be ignored
+  /* Search for relevant <Limit>'s to this LIST command.  If found,
+   * check to see whether hidden files should be ignored.
    */
-  if ((c = _find_ls_limit(cmd->argv[0])) != NULL &&
-      get_param_int(c->subset, "IgnoreHidden", FALSE) == TRUE)
-    ignore_hidden = TRUE;
+  if ((c = _find_ls_limit(cmd->argv[0])) != NULL) {
+    unsigned char *ignore = get_param_ptr(c->subset, "IgnoreHidden", FALSE);
 
-  if(dir) {
+    if (ignore && *ignore == TRUE)
+      ignore_hidden = TRUE;
+  }
+
+  if (dir) {
     char **s;
     char **r;
 
@@ -847,8 +851,8 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
 
         } else {
 
-          /* make sure IgnoreHidden is properly honored.  "." and
-           * ".." are not to be treated as hidden files, though
+          /* Make sure IgnoreHidden is properly honored.  "." and
+           * ".." are not to be treated as hidden files, though.
            */
           if (is_dotdir(*s) || !ignore_hidden)
             d = listfile(cmd,workp,*s);
@@ -1270,9 +1274,8 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   unsigned char symhold;
   int curdir = 0, i, count = 0, hidden = 0;
   mode_t mode;
-  
   config_rec *c = NULL;
-  int ignore_hidden = FALSE;
+  unsigned char ignore_hidden = FALSE;
 
   workp = make_sub_pool(cmd->tmp_pool);
   
@@ -1295,11 +1298,15 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
     return 0;
   }
   
-  /* search for relevant <Limit>'s to this NLST command.  If found,
-   * check to see whether hidden files should be ignored
+  /* Search for relevant <Limit>'s to this NLST command.  If found,
+   * check to see whether hidden files should be ignored.
    */
-  if ((c = _find_ls_limit(cmd->argv[0])) != NULL)
-    ignore_hidden = (get_param_int(c->subset, "IgnoreHidden", FALSE) == TRUE);
+  if ((c = _find_ls_limit(cmd->argv[0])) != NULL) {
+    unsigned char *ignore = get_param_ptr(c->subset, "IgnoreHidden", FALSE);
+
+    if (ignore && *ignore == TRUE)
+      ignore_hidden = TRUE;
+  } 
 
   while (*list && count >= 0) {
     p = *list; list++;
@@ -1308,10 +1315,9 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
       if (!opt_a && (!opt_A || is_dotdir(p)))
         continue;
 
-      /* make sure IgnoreHidden is properly honored
-       */
+      /* Make sure IgnoreHidden is properly honored. */
       else if (ignore_hidden)
-      continue;
+        continue;
     }
    
     if ((i = pr_fsio_readlink(p, file, sizeof(file))) > 0) {
@@ -1366,8 +1372,8 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
 /* The LIST command.  */
 MODRET genericlist(cmd_rec *cmd) {
   int res = 0;
-  long _fakemode;
   unsigned char *tmp = NULL;
+  mode_t *fake_mode = NULL;
 
   if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE)) != NULL)
     list_show_symlinks = *tmp;
@@ -1388,14 +1394,12 @@ MODRET genericlist(cmd_rec *cmd) {
   if (fakegroup && !strcmp(fakegroup, "~"))
     fakegroup = session.group;
 
-  _fakemode = (long)get_param_int(TOPLEVEL_CONF,"DirFakeMode",FALSE);
-
-  if (_fakemode != -1) {
-    fakemode = (mode_t)_fakemode;
-    fakemodep = 1;
+  if ((fake_mode = get_param_ptr(CURRENT_CONF, "DirFakeMode", FALSE))) {
+    fakemode = *fake_mode;
+    have_fake_mode = TRUE;
 
   } else
-    fakemodep = 0;
+    have_fake_mode = FALSE;
 
   if ((tmp = get_param_ptr(TOPLEVEL_CONF, "TimesGMT", FALSE)) != NULL)
     list_times_gmt = *tmp;
@@ -1426,10 +1430,10 @@ MODRET ls_err_nlst(cmd_rec *cmd) {
 
 MODRET ls_stat(cmd_rec *cmd) {
   char *arg = cmd->arg;
-  long _fakemode;
   unsigned char *tmp = NULL;
+  mode_t *fake_mode = NULL;
 
-  if(cmd->argc < 2) {
+  if (cmd->argc < 2) {
     add_response_err(R_500,"'%s' not understood.",get_full_cmd(cmd));
     return ERROR(cmd);
   }
@@ -1460,13 +1464,12 @@ MODRET ls_stat(cmd_rec *cmd) {
   if (fakegroup && !strcmp(fakegroup, "~"))
     fakegroup = session.group;
 
-  _fakemode = (long)get_param_int(TOPLEVEL_CONF,"DirFakeMode",FALSE);
-  
-  if(_fakemode != -1) {
-    fakemode = (mode_t)_fakemode;
-    fakemodep = 1;
+  if ((fake_mode = get_param_ptr(CURRENT_CONF, "DirFakeMode", FALSE))) {
+    fakemode = *fake_mode;
+    have_fake_mode = TRUE;
+
   } else
-    fakemodep = 0;
+    have_fake_mode = FALSE;
 
   if ((tmp = get_param_ptr(TOPLEVEL_CONF, "TimesGMT", FALSE)) != NULL)
     list_times_gmt = *tmp;
@@ -1593,9 +1596,11 @@ MODRET ls_nlst(cmd_rec *cmd) {
     /* Don't display hidden files */
     if (hidden) {
       config_rec *c = NULL;
+      unsigned char *ignore_hidden = get_param_ptr(c->subset,
+        "IgnoreHidden", FALSE);
 
       if ((c = _find_ls_limit(target)) != NULL &&
-          get_param_int(c->subset, "IgnoreHidden", FALSE) == TRUE)
+          (ignore_hidden && *ignore_hidden == TRUE))
         add_response_err(R_550, "%s: %s", cmd->arg, strerror(ENOENT));
       else
         add_response_err(R_550, "%s: %s", cmd->arg, strerror(EACCES));
@@ -1711,19 +1716,22 @@ MODRET set_dirfakegroup(cmd_rec *cmd) {
 }
 
 MODRET set_dirfakemode(cmd_rec *cmd) {
-  config_rec *c;
-  unsigned long fake;
-  char *endp;
+  config_rec *c = NULL;
+  char *endp = NULL;
+  mode_t fake_mode;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR|
+    CONF_DYNDIR);
 
-  fake = (unsigned long)strtol(cmd->argv[1],&endp,8);
+  fake_mode = (mode_t) strtol(cmd->argv[1], &endp, 8);
 
-  if(endp && *endp)
-    CONF_ERROR(cmd,"argument must be an octal number.");
+  if (endp && *endp)
+    CONF_ERROR(cmd, "parameter must be an octal number");
 
-  c = add_config_param(cmd->argv[0], 1, (void *) fake);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(mode_t));
+  *((mode_t *) c->argv[0]) = fake_mode;
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);

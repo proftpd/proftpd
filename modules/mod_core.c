@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.127 2002-12-05 22:53:16 castaglia Exp $
+ * $Id: mod_core.c,v 1.128 2002-12-06 21:04:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -416,13 +416,15 @@ MODRET set_wtmplog(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if (strcasecmp(cmd->argv[1],"NONE") == 0)
+  if (strcasecmp(cmd->argv[1], "NONE") == 0)
     bool = 0;
   else
     bool = get_boolean(cmd, 1);
 
   if (bool != -1) {
-    c = add_config_param(cmd->argv[0], 1, (void *) bool);
+    c = add_config_param(cmd->argv[0], 1, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+    *((unsigned char *) c->argv[0]) = bool;
     c->flags |= CF_MERGEDOWN;
 
   } else
@@ -525,13 +527,13 @@ MODRET set_sysloglevel(cmd_rec *cmd) {
   else if (!strcasecmp(cmd->argv[1], "warn"))
     level = PR_LOG_WARNING;
 
-  else if(!strcasecmp(cmd->argv[1], "notice"))
+  else if (!strcasecmp(cmd->argv[1], "notice"))
     level = PR_LOG_NOTICE;
 
-  else if(!strcasecmp(cmd->argv[1], "info"))
+  else if (!strcasecmp(cmd->argv[1], "info"))
     level = PR_LOG_INFO;
 
-  else if(!strcasecmp(cmd->argv[1], "debug"))
+  else if (!strcasecmp(cmd->argv[1], "debug"))
     level = PR_LOG_DEBUG;
 
   else
@@ -558,12 +560,18 @@ MODRET set_serverident(cmd_rec *cmd) {
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   if (bool && cmd->argc == 3) {
-    c = add_config_param(cmd->argv[0], 2, (void *) !bool, NULL);
+    c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+    *((unsigned char *) c->argv[0]) = !bool;
     c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
 
-  } else
-    add_config_param(cmd->argv[0], 1, (void *) !bool);
-  
+  } else {
+
+    c = add_config_param(cmd->argv[0], 1, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+    *((unsigned char *) c->argv[0]) = !bool;
+  }
+ 
   return HANDLED(cmd);
 }
 
@@ -770,14 +778,17 @@ MODRET set_tcpsendwindow(cmd_rec *cmd) {
 
 MODRET set_tcpnodelay(cmd_rec *cmd) {
   int bool = -1;
+  config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
-  add_config_param(cmd->argv[0], 1, (void *) bool);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
 
   return HANDLED(cmd);
 }
@@ -1467,7 +1478,8 @@ MODRET set_allowforeignaddress(cmd_rec *cmd) {
 }
 
 MODRET set_commandbuffersize(cmd_rec *cmd) {
-  int size;
+  int size = 0;
+  config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -1475,7 +1487,9 @@ MODRET set_commandbuffersize(cmd_rec *cmd) {
   /* NOTE: need to add checks for maximum possible sizes, negative sizes. */ 
   size = atoi(cmd->argv[1]);
  
-  add_config_param(cmd->argv[0], 1, (void*) size);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = size;
 
   return HANDLED(cmd);
 }
@@ -1558,40 +1572,6 @@ MODRET add_directory(cmd_rec *cmd) {
 
   c->config_type = CONF_DIR;
   c->flags |= flags;
-  return HANDLED(cmd);
-}
-
-MODRET set_allowretrieverestart(cmd_rec *cmd) {
-  int bool = -1;
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
-    CONF_DIR|CONF_DYNDIR);
-
-  if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean parameter");
-
-  c = add_config_param(cmd->argv[0], 1, (void *) bool);
-  c->flags |= CF_MERGEDOWN;
-
-  return HANDLED(cmd);
-}
-
-MODRET set_allowstorerestart(cmd_rec *cmd) {
-  int bool = -1;
-  config_rec *c;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
-    CONF_DIR|CONF_DYNDIR);
-
-  if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean parameter");
-
-  c = add_config_param(cmd->argv[0], 1, (void *) bool);
-  c->flags |= CF_MERGEDOWN;
-
   return HANDLED(cmd);
 }
 
@@ -1747,18 +1727,20 @@ MODRET set_hidenoaccess(cmd_rec *cmd) {
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean parameter");
 
-  c = add_config_param(cmd->argv[0], 1, (void *) bool);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
 }
 
-MODRET add_hideuser(cmd_rec *cmd) {
+MODRET set_hideuser(cmd_rec *cmd) {
   config_rec *c = NULL;
   struct passwd *pw = NULL;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_DIR|CONF_ANON);
+  CHECK_CONF(cmd, CONF_ANON|CONF_DIR);
 
   pw = auth_getpwnam(cmd->tmp_pool, cmd->argv[1]);
 
@@ -1774,12 +1756,12 @@ MODRET add_hideuser(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET add_hidegroup(cmd_rec *cmd) {
+MODRET set_hidegroup(cmd_rec *cmd) {
   config_rec *c = NULL;
   struct group *gr = NULL;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_DIR|CONF_ANON);
+  CHECK_CONF(cmd, CONF_ANON|CONF_DIR);
 
   gr = auth_getgrnam(cmd->tmp_pool, cmd->argv[1]);
 
@@ -2027,23 +2009,29 @@ MODRET add_limit(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET add_order(cmd_rec *cmd) {
+MODRET set_order(cmd_rec *cmd) {
   int order = -1,argc = cmd->argc;
   char *arg = "",**argv = cmd->argv+1;
+  config_rec *c = NULL;
 
   CHECK_CONF(cmd, CONF_LIMIT);
 
-  while(--argc && *argv)
-    arg = pstrcat(cmd->tmp_pool,arg,*argv++,NULL);
+  while (--argc && *argv)
+    arg = pstrcat(cmd->tmp_pool, arg, *argv++, NULL);
 
-  if(!strcasecmp(arg,"allow,deny"))
+  if (!strcasecmp(arg, "allow,deny"))
     order = ORDER_ALLOWDENY;
-  else if(!strcasecmp(arg,"deny,allow"))
-    order = ORDER_DENYALLOW;
-  else
-    CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"'",arg,"': invalid argument",NULL));
 
-  add_config_param(cmd->argv[0], 1, (void*) order);
+  else if (!strcasecmp(arg, "deny,allow"))
+    order = ORDER_DENYALLOW;
+
+  else
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", arg, "': invalid argument",
+      NULL));
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = order;
 
   return HANDLED(cmd);
 }
@@ -2200,19 +2188,27 @@ MODRET add_deny(cmd_rec *cmd) {
 }
 
 MODRET set_denyall(cmd_rec *cmd) {
+  config_rec *c = NULL;
+
   CHECK_ARGS(cmd, 0);
   CHECK_CONF(cmd, CONF_LIMIT|CONF_ANON|CONF_DIR|CONF_DYNDIR);
 
-  add_config_param(cmd->argv[0], 1, (void *) TRUE);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = TRUE; 
 
   return HANDLED(cmd);
 }
 
 MODRET set_allowall(cmd_rec *cmd) {
+  config_rec *c = NULL;
+
   CHECK_ARGS(cmd, 0);
   CHECK_CONF(cmd, CONF_LIMIT|CONF_ANON|CONF_DIR|CONF_DYNDIR);
 
-  add_config_param(cmd->argv[0], 1, (void*) TRUE);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = TRUE;
 
   return HANDLED(cmd);
 }
@@ -2269,7 +2265,9 @@ MODRET set_ignorehidden(cmd_rec *cmd) {
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
 
-  c = add_config_param(cmd->argv[0], 1, (void *) bool);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
 
   return HANDLED(cmd);
 }
@@ -2361,8 +2359,9 @@ MODRET end_virtualhost(cmd_rec *cmd) {
 int core_display_file(const char *numeric, const char *fn, const char *fs) {
   pr_fh_t *fp = NULL;
   char buf[1024] = {'\0'};
-  int len, classes_enabled;
+  int len, classes_enabled = 0, *current_clients = NULL;
   unsigned int *max_clients = NULL;
+  unsigned char *class_engine = NULL;
   off_t fs_size = 0;
   pool *p;
   xaset_t *s;
@@ -2394,17 +2393,26 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
 
   max_clients = get_param_ptr(s, "MaxClients", FALSE);
 
-  snprintf(mg_cur, sizeof(mg_cur), "%d",(int)get_param_int(main_server->conf,
-          "CURRENT-CLIENTS",FALSE)+1);
+  current_clients = get_param_ptr(main_server->conf, "CURRENT-CLIENTS", FALSE);
 
-  if((classes_enabled = get_param_int(CURRENT_CONF,"Classes",FALSE)) < 0)
-    classes_enabled = 0;
-  
+  snprintf(mg_cur, sizeof(mg_cur), "%d",
+    current_clients ? *current_clients + 1 : 1);
+
+  class_engine = get_param_ptr(TOPLEVEL_CONF, "Classes", FALSE);
+
+  if (class_engine && *class_engine == TRUE)
+    classes_enabled = 1;
+
   if (classes_enabled && session.class && session.class->name) {
+    int *class_users = NULL;
+
     snprintf(config_class_users, sizeof(config_class_users),
       "CURRENT-CLIENTS-CLASS-%s", session.class->name);
+
+    class_users = get_param_ptr(main_server->conf, config_class_users, FALSE);
+
     snprintf(mg_cur_class, sizeof(mg_cur_class), "%d",
-      (int)get_param_int(main_server->conf, config_class_users, FALSE));
+      class_users ? *class_users : 0);
     snprintf(mg_class_limit, sizeof(mg_class_limit), "%u",
       session.class->max_connections);
 
@@ -2415,19 +2423,21 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
   }
    
   snprintf(mg_xfer_bytes, sizeof(mg_xfer_bytes), "%" PR_LU,
-	   session.total_bytes >> 10);
+    session.total_bytes >> 10);
   snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "B",
-	   session.total_bytes);
+    session.total_bytes);
 
-  if(session.total_bytes >= 10240) {
+  if (session.total_bytes >= 10240) {
     snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "kB",
-	     session.total_bytes >> 10);
+      session.total_bytes >> 10);
+
   } else if ((session.total_bytes >> 10) >= 10240) {
     snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "MB",
-	     session.total_bytes >> 20);
+      session.total_bytes >> 20);
+
   } else if ((session.total_bytes >> 20) >= 10240) {
     snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "GB",
-	     session.total_bytes >> 30);
+      session.total_bytes >> 30);
   }
  
   snprintf(mg_max, sizeof(mg_max), "%u", max_clients ? *max_clients : 0); 
@@ -2525,7 +2535,7 @@ MODRET regex_filters(cmd_rec *cmd) {
   /* Don't apply the filter checks to passwords (arguments to the PASS
    * command).
    */
-  if (strcasecmp(cmd->argv[0], "PASS") == 0)
+  if (strcasecmp(cmd->argv[0], C_PASS) == 0)
     return DECLINED(cmd);
 
   /* Check for an AllowFilter */
@@ -3452,6 +3462,7 @@ MODRET set_defaulttransfermode(cmd_rec *cmd) {
 
 MODRET set_deferwelcome(cmd_rec *cmd) {
   int bool = -1;
+  config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -3459,7 +3470,9 @@ MODRET set_deferwelcome(cmd_rec *cmd) {
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
-  add_config_param(cmd->argv[0], 1, (void *) bool);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
 
   return HANDLED(cmd);
 }
@@ -3474,7 +3487,9 @@ MODRET set_classes(cmd_rec *cmd) {
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
-  c = add_config_param(cmd->argv[0], 1, (void *) bool);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
@@ -3602,6 +3617,7 @@ MODRET set_class(cmd_rec *cmd) {
   class_t *n;
   p_in_addr_t *res;
   char *ptr, ipaddress[20] = {'\0'}, errmsg[80] = {'\0'};
+  unsigned char *class_engine = NULL;
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *preg;
 #endif
@@ -3609,10 +3625,12 @@ MODRET set_class(cmd_rec *cmd) {
   CHECK_ARGS(cmd,3);
   CHECK_CONF(cmd,CONF_ROOT);
 
-  /* check to see that Classes have been enabled, and issue a warning
-   * if not enabled
+  /* Check to see that Classes have been enabled, and issue a warning
+   * if not enabled.
    */
-  if (get_param_int(cmd->server->conf, "Classes", FALSE) != TRUE)
+  class_engine = get_param_ptr(cmd->server->conf, "Classes", FALSE);
+
+  if (!class_engine || *class_engine == FALSE)
     log_pri(PR_LOG_WARNING, "warning: Classes disabled - Class directive "
       "not in effect");
 
@@ -3784,8 +3802,6 @@ static conftable core_conftab[] = {
   { "AllowForeignAddress",	set_allowforeignaddress,	NULL },
   { "AllowGroup",		add_allowgroup,			NULL },
   { "AllowOverride",		set_allowoverride,		NULL },
-  { "AllowRetrieveRestart",	set_allowretrieverestart,	NULL },
-  { "AllowStoreRestart",	set_allowstorerestart,		NULL },
   { "AllowUser",		add_allowuser,			NULL },
   { "AuthOrder",		set_authorder,			NULL },
   { "Bind",			add_bind,			NULL },
@@ -3812,9 +3828,9 @@ static conftable core_conftab[] = {
   { "Group",			set_group, 			NULL },
   { "GroupOwner",		add_groupowner,			NULL },
   { "HideFiles",		set_hidefiles,			NULL },
-  { "HideGroup",		add_hidegroup,			NULL },
+  { "HideGroup",		set_hidegroup,			NULL },
   { "HideNoAccess",		set_hidenoaccess,		NULL },
-  { "HideUser",			add_hideuser,			NULL },
+  { "HideUser",			set_hideuser,			NULL },
   { "IdentLookups",		set_identlookups,		NULL },
   { "IgnoreHidden",		set_ignorehidden,		NULL },
   { "Include",			add_include,	 		NULL },
@@ -3822,7 +3838,7 @@ static conftable core_conftab[] = {
   { "MaxConnectionRate",	set_maxconnrate,		NULL },
   { "MaxInstances",		set_maxinstances,		NULL },
   { "MultilineRFC2228",		set_multilinerfc2228,		NULL },
-  { "Order",			add_order,			NULL },
+  { "Order",			set_order,			NULL },
   { "PassivePorts",		set_passiveports,		NULL },
   { "PathAllowFilter",		set_pathallowfilter,		NULL },
   { "PathDenyFilter",		set_pathdenyfilter,		NULL },

@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.38 2002-12-06 01:03:26 castaglia Exp $
+ * $Id: mod_log.c,v 1.39 2002-12-06 21:05:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -387,6 +387,7 @@ MODRET add_extendedlog(cmd_rec *cmd) {
 /* Syntax: AllowLogSymlinks <on|off> */
 MODRET set_allowlogsymlinks(cmd_rec *cmd) {
   int bool = -1;
+  config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -394,7 +395,9 @@ MODRET set_allowlogsymlinks(cmd_rec *cmd) {
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
 
-  add_config_param(cmd->argv[0], 1, (void *) bool);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
 
   return HANDLED(cmd);
 }
@@ -533,12 +536,16 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
     break;
 
   case META_CLASS:
-    argp = arg;
-    if(get_param_int(TOPLEVEL_CONF, "Classes", FALSE) > 0)
-      sstrncpy(argp, session.class->name, sizeof(arg));
-    else
-      sstrncpy(argp, "-", sizeof(arg));
-    m++;
+    {
+      unsigned char *classes = get_param_ptr(TOPLEVEL_CONF, "Classes", FALSE);
+      argp = arg;
+
+      if (classes && *classes == TRUE)
+        sstrncpy(argp, session.class->name, sizeof(arg));
+      else
+        sstrncpy(argp, "-", sizeof(arg));
+      m++;
+    }
     break;
 
   case META_DIR_NAME:

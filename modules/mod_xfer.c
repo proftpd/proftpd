@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.104 2002-12-05 21:16:50 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.105 2002-12-06 21:05:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -563,17 +563,18 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   char *dir;
   mode_t fmode;
   privdata_t *p, *p_hidden;
-  unsigned char *hidden_stores = NULL, *allow_overwrite = NULL;
+  unsigned char *hidden_stores = NULL, *allow_overwrite = NULL,
+    *allow_restart = NULL;
 
-  if(cmd->argc < 2) {
-    add_response_err(R_500,"'%s' not understood.",get_full_cmd(cmd));
+  if (cmd->argc < 2) {
+    add_response_err(R_500, "'%s' not understood.", get_full_cmd(cmd));
     return ERROR(cmd);
   }
   
-  dir = dir_best_path(cmd->tmp_pool,cmd->arg);
+  dir = dir_best_path(cmd->tmp_pool, cmd->arg);
 
-  if (!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL)) {
-    add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
+  if (!dir || !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL)) {
+    add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
 
@@ -596,18 +597,20 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   /* If restarting, check permissions on this directory, if
    * AllowStoreRestart is set, permit it
    */
+  allow_restart = get_param_ptr(CURRENT_CONF, "AllowStoreRestart", FALSE);
 
-  if(fmode &&
+  if (fmode &&
      (session.restart_pos || (session.xfer.xfer_type == STOR_APPEND)) &&
-     get_param_int(CURRENT_CONF,"AllowStoreRestart",FALSE) != TRUE) {
-    add_response_err(R_451,"%s: Append/Restart not permitted, try again.",
-                  cmd->arg);
+     (!allow_restart || *allow_restart == FALSE)) {
+
+    add_response_err(R_451, "%s: Append/Restart not permitted, try again",
+      cmd->arg);
     session.restart_pos = 0L;
     session.xfer.xfer_type = STOR_DEFAULT;
     return ERROR(cmd);
   }
 
-  /* otherwise everthing is good */
+  /* Otherwise everthing is good */
   p = mod_privdata_alloc(cmd, "stor_filename", strlen(dir) + 1);
   sstrncpy(p->value.str_val, dir, strlen(dir) + 1);
 
@@ -1127,7 +1130,8 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
   char *dir = NULL;
   mode_t fmode;
   privdata_t *p = NULL;
-
+  unsigned char *allow_restart = NULL;
+ 
   if (cmd->argc < 2) {
     add_response_err(R_500,"'%s' not understood.",get_full_cmd(cmd));
     return ERROR(cmd);
@@ -1153,11 +1157,11 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
   /* If restart is on, check to see if AllowRestartRetrieve is off, in
    * which case we disallow the transfer and clear restart_pos.
    */
+  allow_restart = get_param_ptr(CURRENT_CONF, "AllowRetrieveRestart", FALSE);
 
   if (session.restart_pos &&
-     get_param_int(CURRENT_CONF, "AllowRetrieveRestart", FALSE) == 0) {
-
-    add_response_err(R_451,"%s: Restart not permitted, try again.", cmd->arg);
+     (!allow_restart || *allow_restart == FALSE)) {
+    add_response_err(R_451, "%s: Restart not permitted, try again", cmd->arg);
     session.restart_pos = 0L;
     return ERROR(cmd);
   }
@@ -1515,8 +1519,7 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
   remove_timer(TIMER_IDLE, ANY_MODULE);
   remove_timer(TIMER_LOGIN, ANY_MODULE);
 
-  main_exit((void*) PR_LOG_NOTICE, "FTP no transfer timeout, disconnected.",
-		  (void*) 0, NULL);
+  session_exit(PR_LOG_NOTICE, "FTP no transfer timeout, disconnected", 0, NULL);
   return 0;
 }
 
@@ -1564,6 +1567,25 @@ MODRET set_allowoverwrite(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = (unsigned char) bool;
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
+MODRET set_allowrestart(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
+    CONF_DIR|CONF_DYNDIR);
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean parameter");
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
@@ -1834,6 +1856,8 @@ MODRET set_timeoutstalled(cmd_rec *cmd) {
 
 static conftable xfer_conftab[] = {
   { "AllowOverwrite",		set_allowoverwrite,		NULL },
+  { "AllowRetrieveRestart",	set_allowrestart,		NULL },
+  { "AllowStoreRestart",	set_allowrestart,		NULL },
   { "DeleteAbortedStores",	set_deleteabortedstores,	NULL },
   { "HiddenStor",		set_hiddenstores,		NULL },
   { "HiddenStores",		set_hiddenstores,		NULL },

@@ -1538,8 +1538,8 @@ static char *resolve_tag(cmd_rec *cmd, char tag)
     break;
   case 'r':
     argp = arg;
-    if(!strcasecmp(cmd->argv[0],"PASS") && session.hide_password)
-      sstrncpy(argp, "PASS (hidden)", sizeof(arg));
+    if(!strcasecmp(cmd->argv[0], C_PASS) && session.hide_password)
+      sstrncpy(argp, C_PASS " (hidden)", sizeof(arg));
     else
       sstrncpy(argp, get_full_cmd(cmd), sizeof(arg));
     break;

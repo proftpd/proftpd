@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.133 2002-12-05 22:47:48 castaglia Exp $
+ * $Id: main.c,v 1.134 2002-12-06 21:05:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -430,7 +430,7 @@ static void set_proc_title(const char *fmt, ...) {
 #endif /* HAVE_SETPROCTITLE */
 }
   
-void main_set_idle(void) {
+void session_set_idle(void) {
 
   pr_scoreboard_update_entry(getpid(),
     PR_SCORE_BEGIN_IDLE, time(NULL),
@@ -658,10 +658,8 @@ void end_login(int exitcode) {
   _exit(exitcode);
 }
 
-void main_exit(void *pv, void *lv, void *ev, void *dummy) {
-  int pri = (int) pv;
+void session_exit(int pri, void *lv, int exitval, void *dummy) {
   char *log = (char *) lv;
-  int exitcode = (int) ev;
   
   log_pri(pri, "%s", log);
   
@@ -676,7 +674,7 @@ void main_exit(void *pv, void *lv, void *ev, void *dummy) {
     PRIVS_RELINQUISH
   }
   
-  end_login(exitcode);
+  end_login(exitval);
 }
 
 static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
@@ -686,6 +684,8 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
     char *msg;
     char *serveraddress = main_server->ServerAddress;
     config_rec *c = NULL;
+    unsigned char *authenticated = get_param_ptr(main_server->conf,
+      "authenticated", FALSE);
 
     if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
         FALSE)) != NULL) {
@@ -695,8 +695,8 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
     }
 
     time(&now);
-    if(get_param_int(main_server->conf,"authenticated",FALSE) == 1)
-      user = get_param_ptr(main_server->conf,"USER",FALSE);
+    if (authenticated && *authenticated == TRUE)
+      user = get_param_ptr(main_server->conf, C_USER, FALSE);
     else
       user = "NONE";
 
@@ -715,7 +715,7 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
 
     send_response_async(R_421,"FTP server shutting down - %s",msg);
 
-    main_exit((void*)PR_LOG_NOTICE,msg,(void*)0,NULL);
+    session_exit(PR_LOG_NOTICE, msg, 0, NULL);
   }
 
   signal(SIGUSR1,sig_disconnect);
@@ -827,7 +827,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
       }
 
       if (session.user && !(session.flags & SF_XFER) && cmd_type == CMD)
-        main_set_idle();
+        session_set_idle();
 
       destroy_pool(cmd->tmp_pool);
     }
@@ -961,9 +961,7 @@ static int idle_timeout_cb(CALLBACK_FRAME) {
   send_response_async(R_421,"Idle Timeout (%d seconds): closing control "
     "connection.", TimeoutIdle);
 
-  main_exit((void*)PR_LOG_INFO,
-		  "FTP session idle timeout, disconnected.",
-		  (void*)0,NULL);
+  session_exit(PR_LOG_INFO, "FTP session idle timeout, disconnected.", 0, NULL);
 
   remove_timer(TIMER_LOGIN, ANY_MODULE);
   remove_timer(TIMER_NOXFER, ANY_MODULE);
@@ -971,7 +969,7 @@ static int idle_timeout_cb(CALLBACK_FRAME) {
 }
 
 static void cmd_loop(server_rec *server, conn_t *c) {
-  static int CmdBufSize = -1;
+  static long cmd_buf_size = -1;
   config_rec *id = NULL;
   char buf[1024] = {'\0'};
   char *cp;
@@ -994,28 +992,33 @@ static void cmd_loop(server_rec *server, conn_t *c) {
     serveraddress = pstrdup(server->pool, inet_ntoa(*masq_addr));
   }
 
-  if ((display = get_param_ptr(server->conf, "DisplayConnect", FALSE)))
+  if ((display = get_param_ptr(server->conf, "DisplayConnect", FALSE)) != NULL)
     core_display_file(R_220, display, NULL);
 
-  if((id = find_config(server->conf,CONF_PARAM,"ServerIdent",FALSE)) == NULL ||
-		  !id->argv[0]) {
-    if(id && id->argc > 1)
-      send_response("220","%s",(char*)id->argv[1]);
-    else if(get_param_int(server->conf,"DeferWelcome",FALSE) == 1)
-      send_response("220", "ProFTPD " PROFTPD_VERSION_TEXT " Server ready.");
+  if ((id = find_config(server->conf, CONF_PARAM, "ServerIdent",
+      FALSE)) == NULL || *((unsigned char *) id->argv[0]) == FALSE) {
+    unsigned char *defer_welcome = get_param_ptr(main_server->conf,
+      "DeferWelcome", FALSE);
+
+    if (id && id->argc > 1)
+      send_response(R_220, "%s", (char *) id->argv[1]);
+
+    else if (defer_welcome && *defer_welcome == TRUE)
+      send_response(R_220, "ProFTPD " PROFTPD_VERSION_TEXT " Server ready.");
+
     else
-      send_response("220", "ProFTPD " PROFTPD_VERSION_TEXT " Server (%s) [%s]",
+      send_response(R_220, "ProFTPD " PROFTPD_VERSION_TEXT " Server (%s) [%s]",
            server->ServerName,serveraddress);
-  } else {
-    send_response("220", "%s FTP server ready.", serveraddress);
-  }
+
+  } else
+    send_response(R_220, "%s FTP server ready.", serveraddress);
 
   /* Make sure we can receive OOB data */
-  inet_setasync(session.pool,session.c);
+  inet_setasync(session.pool, session.c);
 
   log_pri(PR_LOG_INFO, "FTP session opened.");
 
-  while (1) {
+  while (TRUE) {
     pr_handle_signals();
 
     if (pr_netio_telnet_gets(buf, sizeof(buf)-1, session.c->instrm,
@@ -1034,18 +1037,21 @@ static void cmd_loop(server_rec *server, conn_t *c) {
     if (TimeoutIdle)
       reset_timer(TIMER_IDLE, NULL);
 
-    if(CmdBufSize == -1) {
-      if((CmdBufSize = get_param_int(main_server->conf,
-				     "CommandBufferSize", FALSE)) <= 0) {
-	CmdBufSize = 512;
-      } else if(CmdBufSize + 1 > sizeof(buf)) {
-	log_pri(PR_LOG_WARNING,
-		"Invalid CommandBufferSize size given.  Resetting to 512.");
-	CmdBufSize = 512;
+    if (cmd_buf_size == -1) {
+      long *buf_size = get_param_ptr(main_server->conf,
+        "CommandBufferSize", FALSE);
+
+      if (buf_size == NULL || *buf_size <= 0)
+        cmd_buf_size = 512;
+
+      else if (*buf_size + 1 > sizeof(buf)) {
+	log_pri(PR_LOG_WARNING, "Invalid CommandBufferSize size given. "
+          "Resetting to 512.");
+	cmd_buf_size = 512;
       }
     }
     
-    buf[CmdBufSize - 1] = '\0';
+    buf[cmd_buf_size - 1] = '\0';
     i = strlen(buf);
 
     if(i && (buf[i-1] == '\n' || buf[i-1] == '\r')) {
@@ -1584,14 +1590,19 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   /* Set the ID/privs for the User/Group in this server */
   set_server_privs();
 
-  /* find class */
-  if (get_param_int(main_server->conf, "Classes", FALSE) == 1) {
-    if ((session.class = (class_t *) find_class(conn->remote_ipaddr,
-        conn->remote_name)) != NULL)
-      log_debug(DEBUG2, "FTP session requested from class '%s'",
-        session.class->name);
-    else 
-      log_debug(DEBUG2, "FTP session requested from unknown class");
+  /* Find class. */
+  {
+    unsigned char *class_engine = get_param_ptr(main_server->conf,
+      "Classes", FALSE);
+
+    if (class_engine && *class_engine == TRUE) {
+      if ((session.class = (class_t *) find_class(conn->remote_ipaddr,
+          conn->remote_name)) != NULL)
+        log_debug(DEBUG2, "FTP session requested from class '%s'",
+          session.class->name);
+      else 
+        log_debug(DEBUG2, "FTP session requested from unknown class");
+    }
   }
 
   /* Inform all the modules that we are now a child */
@@ -1880,11 +1891,7 @@ void pr_handle_signals(void) {
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_EXIT) {
-
-      /* NOTE: should this be done here, rather than using a schedule? */
-      schedule(main_exit, 0, (void *) PR_LOG_NOTICE,
-        "Parent process requested shutdown", (void *) NULL, NULL);
-
+      session_exit(PR_LOG_NOTICE, "Parent process requested shutdown", 0, NULL);
       recvd_signal_flags &= ~RECEIVED_SIG_EXIT;
     }
 

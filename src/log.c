@@ -27,7 +27,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.48 2002-10-28 16:51:50 castaglia Exp $
+ * $Id: log.c,v 1.49 2002-12-06 21:05:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -237,7 +237,8 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip) {
 
 int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   pool *pool;
-  char *tmp = NULL,*lf;
+  char *tmp = NULL, *lf;
+  unsigned char *allow_log_symlinks = NULL;
   struct stat sbuf;
 
   /* sanity check */
@@ -287,9 +288,12 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
    */
   *tmp = '/';
 
-  if (get_param_int(main_server->conf, "AllowLogSymlinks", FALSE) != TRUE) {
+  allow_log_symlinks = get_param_ptr(main_server->conf, "AllowLogSymlinks",
+    FALSE);
 
-    /* prevent a race condition between stat() and open() by opening the
+  if (!allow_log_symlinks || *allow_log_symlinks == FALSE) {
+
+    /* Prevent a race condition between stat() and open() by opening the
      * file now, _then_ checking to see if it's a symlink
      */
     if ((*log_fd = open(lf, O_APPEND|O_CREAT|O_WRONLY,
