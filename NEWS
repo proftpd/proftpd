@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.608 2004-09-26 18:24:26 castaglia Exp $
+$Id: NEWS,v 1.609 2004-09-28 01:25:54 jwm Exp $
 
 CVS
 --------------------------------
@@ -23,6 +23,7 @@ CVS
 - Bug 2485 - SQL backend modules close all open connections too early.
   This fixes a bug where a "signal 11" would be reported, when a session
   ends, if the "EXIT" SQLLog command was configured.
+- mod_ldap 2.8.13
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

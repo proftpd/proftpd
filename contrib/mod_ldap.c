@@ -1,4 +1,5 @@
-/* mod_ldap - LDAP password lookup module for ProFTPD
+/*
+ * mod_ldap - LDAP password lookup module for ProFTPD
  * Copyright (c) 1999, 2000-3, John Morrissey <jwm@horde.net>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -21,11 +22,12 @@
  */
 
 /*
- * mod_ldap v2.8.12
+ * mod_ldap v2.8.13
  *
  * Thanks for patches go to (in alphabetical order):
  *
  * Peter Fabian (fabian at staff dot matavnet dot hu) - LDAPAuthBinds
+ * Marek Gradzki (mgradzki at ost dot net dot pl) - LDAPProtocolVersion
  * Pierrick Hascoet (pierrick at alias dot fr) - OpenSSL password hash support
  * Florian Lohoff (flo at rfc822 dot org) - LDAPForceDefault[UG]ID code
  * Steve Luzynski (steve at uniteone dot net) - HomedirOnDemandPrefix support
@@ -45,51 +47,15 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.34 2004-09-14 17:49:42 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.35 2004-09-28 01:25:55 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
-/* You can override the attribute names that mod_ldap uses here. */
-
-/* User attributes */
-#ifndef UID_ATTR
-#define UID_ATTR            "uid"
-#endif
-#ifndef UIDNUMBER_ATTR
-#define UIDNUMBER_ATTR      "uidNumber"
-#endif
-#ifndef GIDNUMBER_ATTR
-#define GIDNUMBER_ATTR      "gidNumber"
-#endif
-#ifndef HOMEDIRECTORY_ATTR
-#define HOMEDIRECTORY_ATTR  "homeDirectory"
-#endif
-#ifndef USERPASSWORD_ATTR
-#define USERPASSWORD_ATTR   "userPassword"
-#endif
-#ifndef LOGINSHELL_ATTR
-#define LOGINSHELL_ATTR     "loginShell"
-#endif
-
-/* Group attributes */
-/* NOTE: gidNumber (above) is also a group attribute. */
-#ifndef CN_ATTR
-#define CN_ATTR             "cn"
-#endif
-#ifndef MEMBERUID_ATTR
-#define MEMBERUID_ATTR      "memberUid"
-#endif
-
-/* Quota attributes */
-#ifndef QUOTA_ATTR
-#define QUOTA_ATTR          "ftpQuota"
-#endif
-
-/* Uncomment this to use LDAPv3 TLS. If enabled, we will try to enable
- * TLS after connecting to the LDAP server. If TLS cannot be enabled, the
- * LDAP connection will fail.
+/* Uncomment this to use LDAP TLS. If enabled, we will try to enable TLS
+ * after connecting to the LDAP server. If TLS cannot be enabled, the LDAP
+ * connection will fail.
  */
-/* #define USE_LDAPV3_TLS */
+/* #define USE_LDAP_TLS */
 
 /* Uncomment this if you have OpenSSL and wish to verify non-crypt()
  * password hashes locally with OpenSSL. You'll also need to edit
@@ -104,11 +70,14 @@
  * at http://bugs.proftpd.org/.
  */
 
-/* Default mode to use when creating home directory on demand. */
-#define DEFAULT_HOMEDIR_MODE 0755
-
 #include "conf.h"
 #include "privs.h"
+
+#define MOD_LDAP_VERSION	"mod_ldap/2.8.13"
+
+#if PROFTPD_VERSION_NUMBER < 0x0001021002
+# error "mod_ldap " MOD_LDAP_VERSION " requires ProFTPD 1.2.10rc2 or later"
+#endif
 
 #if defined(HAVE_CRYPT_H) && !defined(AIX4) && !defined(AIX5)
 # include <crypt.h>
@@ -124,7 +93,7 @@
 #include <lber.h>
 #include <ldap.h>
 
-/* Sun fucks my shit right up. */
+/* Thanks, Sun. */
 #ifndef LDAP_OPT_SUCCESS
 # define LDAP_OPT_SUCCESS LDAP_SUCCESS
 #endif
@@ -164,15 +133,22 @@ static char *ldap_server, *ldap_dn, *ldap_dnpass,
             *ldap_auth_basedn, *ldap_uid_basedn, *ldap_gid_basedn,
             *ldap_quota_basedn,
             *ldap_defaultauthscheme, *ldap_authbind_dn,
-            *ldap_hdod_prefix, **ldap_hdod_suffix,
-            *ldap_default_quota;
+            *ldap_genhdir_prefix, *ldap_default_quota,
+            *ldap_attr_uid = "uid",
+            *ldap_attr_uidnumber = "uidNumber",
+            *ldap_attr_gidnumber = "gidNumber",
+            *ldap_attr_homedirectory = "homeDirectory",
+            *ldap_attr_userpassword = "userPassword",
+            *ldap_attr_loginshell = "loginShell",
+            *ldap_attr_cn = "cn",
+            *ldap_attr_memberuid = "memberUid",
+            *ldap_attr_ftpquota = "ftpQuota";
 static int ldap_doauth = 0, ldap_douid = 0, ldap_dogid = 0, ldap_doquota = 0,
            ldap_authbinds = 1, ldap_negcache = 1,
-           ldap_querytimeout = 0, ldap_hdod = 0, ldap_hdod_prefix_nouname = 0,
+           ldap_querytimeout = 0, ldap_genhdir = 0, ldap_genhdir_prefix_nouname = 0,
            ldap_forcedefaultuid = 0, ldap_forcedefaultgid = 0,
-           ldap_forcehdod = 0,
+           ldap_forcegenhdir = 0, ldap_protocol_version = 3,
            ldap_search_scope = LDAP_SCOPE_SUBTREE;
-static mode_t ldap_hdod_mode = DEFAULT_HOMEDIR_MODE;
 static struct timeval ldap_querytimeout_tp;
 
 /* We get these values from get_param_int(), which returns a long. On
@@ -183,11 +159,11 @@ static struct timeval ldap_querytimeout_tp;
 static uid_t ldap_defaultuid = -1;
 static gid_t ldap_defaultgid = -1;
 
-#ifdef USE_LDAPV3_TLS
+#ifdef USE_LDAP_TLS
 static int ldap_use_tls = 0;
 #endif
 
-static LDAP *ld;
+static LDAP *ld = NULL;
 static struct passwd *pw = NULL;
 static struct group *gr = NULL;
 array_header *cached_quota = NULL;
@@ -202,19 +178,14 @@ pr_ldap_module_init(void)
 }
 
 static void
-pr_ldap_set_sizelimit(int limit)
+pr_ldap_set_sizelimit(LDAP *limit_ld, int limit)
 {
-  /* I couldn't think of a better way to do this without having autoconf
-   * jump through hoops to detect whether ldap_set_option() is present.
-   * I think this works fairly well, though, as we're sure to need
-   * LDAP_OPT_SIZELIMIT to use ldap_set_option in this case. :-)
-   */
 #ifdef LDAP_OPT_SIZELIMIT
   int ret;
-  if ((ret = ldap_set_option(ld, LDAP_OPT_SIZELIMIT, (void *)&limit)) != LDAP_OPT_SUCCESS)
-    pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): ldap_set_option() unable to set query size limit to %d entries: %s", limit, ldap_err2string(ret));
+  if ((ret = ldap_set_option(limit_ld, LDAP_OPT_SIZELIMIT, (void *)&limit)) != LDAP_OPT_SUCCESS)
+    pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_set_sizelimit(): ldap_set_option() unable to set query size limit to %d entries: %s", limit, ldap_err2string(ret));
 #else
-  ld->ld_sizelimit = limit;
+  limit_ld->ld_sizelimit = limit;
 #endif
 }
 
@@ -233,164 +204,58 @@ pr_ldap_unbind(void)
 }
 
 static int
-pr_ldap_connect(void)
+pr_ldap_connect(LDAP **conn_ld, int bind)
 {
   int ret;
-#ifdef USE_LDAPV3_TLS
-  int version = LDAP_VERSION3;
-#endif
 
-  if ((ld = ldap_init(ldap_server, LDAP_PORT)) == NULL) {
+  if ((*conn_ld = ldap_init(ldap_server, LDAP_PORT)) == NULL) {
     pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): ldap_init() to %s failed: %s", ldap_server, strerror(errno));
     return -1;
   }
 
-#ifdef USE_LDAPV3_TLS
-  if (ldap_use_tls == 1) {
-    if ((ret = ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &version)) != LDAP_OPT_SUCCESS) {
+  int version = -1;
+  switch (ldap_protocol_version) {
+    case 2:
+      version = LDAP_VERSION2;
+      break;
+    case 3:
+    default:
+      version = LDAP_VERSION3;
+      break;
+  }
+
+  if (version != -1) {
+    if ((ret = ldap_set_option(*conn_ld, LDAP_OPT_PROTOCOL_VERSION, &version)) != LDAP_OPT_SUCCESS) {
       pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): Setting LDAP version option failed: %s", ldap_err2string(ret));
       pr_ldap_unbind();
       return -1;
     }
+  }
 
+#ifdef USE_LDAP_TLS
+  if (ldap_use_tls == 1) {
     pr_log_debug(DEBUG2, "mod_ldap: Starting TLS for this connection.");
-    if ((ret = ldap_start_tls_s(ld, NULL, NULL)) != LDAP_SUCCESS) {
+    if ((ret = ldap_start_tls_s(*conn_ld, NULL, NULL)) != LDAP_SUCCESS) {
       pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): Starting TLS failed: %s", ldap_err2string(ret));
       pr_ldap_unbind();
       return -1;
     }
   }
-#endif /* USE_LDAPV3_TLS */
+#endif /* USE_LDAP_TLS */
 
-  if ((ret = ldap_simple_bind_s(ld, ldap_dn, ldap_dnpass) != LDAP_SUCCESS)) {
-    pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): ldap_simple_bind() as %s failed: %s", ldap_dn, ldap_err2string(ret));
-    return -1;
+  if (bind == TRUE) {
+    if ((ret = ldap_simple_bind_s(*conn_ld, ldap_dn, ldap_dnpass) != LDAP_SUCCESS)) {
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): ldap_simple_bind() as %s failed: %s", ldap_dn, ldap_err2string(ret));
+      return -1;
+    }
   }
 
-  pr_ldap_set_sizelimit(2);
+  pr_ldap_set_sizelimit(*conn_ld, 2);
 
   ldap_querytimeout_tp.tv_sec = (ldap_querytimeout > 0 ? ldap_querytimeout : 5);
   ldap_querytimeout_tp.tv_usec = 0;
 
   return 1;
-}
-
-static void
-pr_ldap_mkdir(char *dir, mode_t mode, uid_t uid, gid_t gid)
-{
-  int ret;
-  mode_t old_umask;
-  struct stat st;
-
-  ret = pr_fsio_stat(dir, &st);
-
-  /* If the directory already exists, just return. */
-  if (ret == 0)
-    return;
-  else if (errno != ENOENT) {
-    pr_log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_mkdir(): unable to create directory %s: pr_fsio_stat() failed: %s", dir, strerror(errno));
-    return;
-  }
-
-  /* These permissions are absolute; we don't want them to be subject
-   * to ProFTPD's Umask.
-   */
-  old_umask = umask(0);
-
-  PRIVS_ROOT;
-  if (pr_fsio_mkdir(dir, mode) != 0) {
-    PRIVS_RELINQUISH;
-    pr_log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_mkdir(): unable to create directory %s: %s", dir, strerror(errno));
-    return;
-  }
-  if (pr_fsio_chmod(dir, mode) == -1) {
-    PRIVS_RELINQUISH;
-    pr_log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_chmod(): unable to chmod directory %s: %s", dir, strerror(errno));
-    return;
-  }
-  if (pr_fsio_chown(dir, uid, gid) == -1) {
-    PRIVS_RELINQUISH;
-    pr_log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_mkdir(): unable to chown directory %s: %s", dir, strerror(errno));
-    return;
-  }
-  PRIVS_RELINQUISH;
-
-  umask(old_umask);
-}
-
-static int
-pr_ldap_mkpath(pool *p, const char *path, mode_t mode)
-{
-  char *curpath, *currdir, *buf;
-  struct stat st;
-
-  /* If the full path already exists, just return without bothering to
-   * stat() its individual components.
-   */
-  if (pr_fsio_stat(path, &st) != -1)
-    return 0;
-
-  buf = pstrdup(p, path);
-
-  /* Move past the leading / in an absolute path. */
-  if (buf && *buf == '/')
-    ++buf;
-
-  curpath = "";
-  while (buf && *buf) {
-    currdir = strsep(&buf, "/");
-    curpath = pstrcat(p, curpath, "/", currdir, NULL);
-
-    /* If buf is NULL, then we're creating the last part of the
-     * directory (presumably, the user's home directory itself), so we
-     * want to use the mode specified by the configuration and chown it
-     * to the user's UID/GID.
-     */
-    if ((buf == NULL) || (*buf == '\0'))
-      pr_ldap_mkdir(curpath, mode, session.login_uid, session.login_gid);
-    else
-      pr_ldap_mkdir(curpath, 0755, 0, 0);
-  }
-
-  return 0;
-}
-
-static void
-create_homedir(pool *p, const char *homedir)
-{
-  int i;
-  char *hdod_fulldir, *mode_pos, *suffix;
-  mode_t mode;
-
-  /* Make sure we were passed a valid directory to create. */
-  if (!homedir || !*homedir)
-    return;
-
-  if (ldap_hdod)
-    if (pr_ldap_mkpath(p, homedir, ldap_hdod_mode) != 0)
-      return;
-
-  /* Loop through the suffixes and create them. If the mode separator (":")
-   * is found, we'll use that mode on the suffix directory; if not, default
-   * to ldap_hdod_mode.
-   */
-  if (ldap_hdod_suffix) {
-    for (i = 0; ldap_hdod_suffix[i] != NULL; ++i) {
-      suffix = pstrdup(p, ldap_hdod_suffix[i]);
-      if ((mode_pos = strrchr(suffix, ':')) != NULL &&
-          *(mode_pos + 1) != '\0')
-      {
-        *mode_pos = '\0';
-        mode_pos++;
-        mode = strtol(mode_pos, (char **)NULL, 8);
-      }
-      else
-        mode = ldap_hdod_mode;
-
-      hdod_fulldir = pstrcat(p, homedir, "/", suffix, NULL);
-      pr_ldap_mkdir(hdod_fulldir, mode, session.login_uid, session.login_gid);
-    }
-  }
 }
 
 static char *
@@ -407,7 +272,8 @@ pr_ldap_generate_filter(pool *p, char *template, const char *entity)
   filter = pcalloc(p, strlen(template) - (num_escapes * 2) + (num_escapes * strlen(entity)) + 1);
 
   while (template[i] != '\0') {
-    if (template[i] == '%' && template[i + 1] == 'v') {
+    /* Replace %u or %v with entity. */
+    if (template[i] == '%' && (template[i + 1] == 'u' || template[i + 1] == 'v')) {
       strcat(filter, entity);
       j += strlen(entity);
       i += 2;
@@ -439,7 +305,7 @@ pr_ldap_user_lookup(pool *p,
    */
   if (ld == NULL) {
     /* If we _still_ can't connect, give up and return NULL. */
-    if (pr_ldap_connect() == -1)
+    if (pr_ldap_connect(&ld, TRUE) == -1)
       return NULL;
   }
 
@@ -449,7 +315,7 @@ pr_ldap_user_lookup(pool *p,
     if (ret == LDAP_SERVER_DOWN) {
       pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): LDAP server went away, trying to reconnect");
 
-      if (pr_ldap_connect() == -1) {
+      if (pr_ldap_connect(&ld, TRUE) == -1) {
         pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): LDAP server went away, unable to reconnect");
         ld = NULL;
         return NULL;
@@ -489,9 +355,9 @@ pr_ldap_user_lookup(pool *p,
 
       /* If we can't find the [ug]idNumber attrs, just fill the passwd
          struct in with default values from the config file. */
-      if (strcasecmp(ldap_attrs[i], UIDNUMBER_ATTR) == 0) {
+      if (strcasecmp(ldap_attrs[i], ldap_attr_uidnumber) == 0) {
         if (ldap_defaultuid == -1) {
-          pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): no " UIDNUMBER_ATTR " attr for DN %s and LDAPDefaultUID was not specified!", (dn = ldap_get_dn(ld, e)));
+          pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): no %s attr for DN %s and LDAPDefaultUID was not specified!", (dn = ldap_get_dn(ld, e)), ldap_attr_uidnumber);
           free(dn);
           return NULL;
         }
@@ -500,9 +366,9 @@ pr_ldap_user_lookup(pool *p,
         ++i;
         continue;
       }
-      if (strcasecmp(ldap_attrs[i], GIDNUMBER_ATTR) == 0) {
+      if (strcasecmp(ldap_attrs[i], ldap_attr_gidnumber) == 0) {
         if (ldap_defaultgid == -1) {
-          pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): no " GIDNUMBER_ATTR " attr for DN %s and LDAPDefaultGID was not specified!", (dn = ldap_get_dn(ld, e)));
+          pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): no %s attr for DN %s and LDAPDefaultGID was not specified!", (dn = ldap_get_dn(ld, e)), ldap_attr_gidnumber);
           free(dn);
           return NULL;
         }
@@ -512,24 +378,24 @@ pr_ldap_user_lookup(pool *p,
         continue;
       }
 
-      if (strcasecmp(ldap_attrs[i], HOMEDIRECTORY_ATTR) == 0) {
-        if (!ldap_hdod || !ldap_hdod_prefix || !*ldap_hdod_prefix) {
-          pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): no " HOMEDIRECTORY_ATTR " attr for DN %s and LDAPHomedirOnDemandPrefix was not enabled!", (dn = ldap_get_dn(ld, e)));
+      if (strcasecmp(ldap_attrs[i], ldap_attr_homedirectory) == 0) {
+        if (!ldap_genhdir || !ldap_genhdir_prefix || !*ldap_genhdir_prefix) {
+          pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): no %s attr for DN %s and LDAPGenerateHomedirPrefix was not enabled!", (dn = ldap_get_dn(ld, e)), ldap_attr_homedirectory);
           free(dn);
           return NULL;
         }
 
-        if (ldap_hdod_prefix_nouname)
-          pw->pw_dir = pstrcat(session.pool, ldap_hdod_prefix, NULL);
+        if (ldap_genhdir_prefix_nouname)
+          pw->pw_dir = pstrcat(session.pool, ldap_genhdir_prefix, NULL);
         else {
           char **canon_username;
-          if ((canon_username = ldap_get_values(ld, e, UID_ATTR)) == NULL) {
-            pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): couldn't get " UID_ATTR " attr for canonical username for %s", (dn = ldap_get_dn(ld, e)));
+          if ((canon_username = ldap_get_values(ld, e, ldap_attr_uid)) == NULL) {
+            pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): couldn't get %s attr for canonical username for %s", (dn = ldap_get_dn(ld, e)), ldap_attr_uid);
             free(dn);
             return NULL;
           }
 
-          pw->pw_dir = pstrcat(session.pool, ldap_hdod_prefix, "/", canon_username[0], NULL);
+          pw->pw_dir = pstrcat(session.pool, ldap_genhdir_prefix, "/", canon_username[0], NULL);
           ldap_value_free(canon_username);
         }
 
@@ -538,7 +404,7 @@ pr_ldap_user_lookup(pool *p,
       }
 
       /* Don't worry if we don't have a loginShell attr. */
-      if (strcasecmp(ldap_attrs[i], LOGINSHELL_ATTR) == 0) {
+      if (strcasecmp(ldap_attrs[i], ldap_attr_loginshell) == 0) {
         /* Prevent a segfault if no loginShell attr && RequireValidShell on. */
         pw->pw_shell = pstrdup(session.pool, "");
         ++i;
@@ -562,47 +428,47 @@ pr_ldap_user_lookup(pool *p,
      * branches below for nonexistant attrs will just never be called.
      */
 
-    if (strcasecmp(ldap_attrs[i], UID_ATTR) == 0)
+    if (strcasecmp(ldap_attrs[i], ldap_attr_uid) == 0)
       pw->pw_name = pstrdup(session.pool, values[0]);
-    else if (strcasecmp(ldap_attrs[i], USERPASSWORD_ATTR) == 0)
+    else if (strcasecmp(ldap_attrs[i], ldap_attr_userpassword) == 0)
       pw->pw_passwd = pstrdup(session.pool, values[0]);
-    else if (strcasecmp(ldap_attrs[i], UIDNUMBER_ATTR) == 0) {
+    else if (strcasecmp(ldap_attrs[i], ldap_attr_uidnumber) == 0) {
       if (ldap_forcedefaultuid && ldap_defaultuid != -1)
         pw->pw_uid = ldap_defaultuid;
       else
         pw->pw_uid = (uid_t) strtoul(values[0], (char **)NULL, 10);
     }
-    else if (strcasecmp(ldap_attrs[i], GIDNUMBER_ATTR) == 0) {
+    else if (strcasecmp(ldap_attrs[i], ldap_attr_gidnumber) == 0) {
       if (ldap_forcedefaultgid && ldap_defaultgid != -1)
         pw->pw_gid = ldap_defaultgid;
       else
         pw->pw_gid = (gid_t) strtoul(values[0], (char **)NULL, 10);
     }
-    else if (strcasecmp(ldap_attrs[i], HOMEDIRECTORY_ATTR) == 0) {
-      if (ldap_forcehdod) {
-        if (!ldap_hdod || !ldap_hdod_prefix || !*ldap_hdod_prefix) {
-          pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): LDAPForceHomedirOnDemand is enabled, but LDAPHomedirOnDemand is not.");
+    else if (strcasecmp(ldap_attrs[i], ldap_attr_homedirectory) == 0) {
+      if (ldap_forcegenhdir) {
+        if (!ldap_genhdir || !ldap_genhdir_prefix || !*ldap_genhdir_prefix) {
+          pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): LDAPForceGeneratedHomedir is enabled, but LDAPGenerateHomedir is not.");
           return NULL;
         }
 
-        if (ldap_hdod_prefix_nouname)
-          pw->pw_dir = pstrcat(session.pool, ldap_hdod_prefix, NULL);
+        if (ldap_genhdir_prefix_nouname)
+          pw->pw_dir = pstrcat(session.pool, ldap_genhdir_prefix, NULL);
         else {
           char **canon_username;
-          if ((canon_username = ldap_get_values(ld, e, UID_ATTR)) == NULL) {
-            pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): couldn't get " UID_ATTR " attr for canonical username for %s", (dn = ldap_get_dn(ld, e)));
+          if ((canon_username = ldap_get_values(ld, e, ldap_attr_uid)) == NULL) {
+            pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): couldn't get %s attr for canonical username for %s", (dn = ldap_get_dn(ld, e)), ldap_attr_uid);
             free(dn);
             return NULL;
           }
 
-          pw->pw_dir = pstrcat(session.pool, ldap_hdod_prefix, "/", canon_username[0], NULL);
+          pw->pw_dir = pstrcat(session.pool, ldap_genhdir_prefix, "/", canon_username[0], NULL);
           ldap_value_free(canon_username);
         }
       }
       else
         pw->pw_dir = pstrdup(session.pool, values[0]);
     }
-    else if (strcasecmp(ldap_attrs[i], LOGINSHELL_ATTR) == 0)
+    else if (strcasecmp(ldap_attrs[i], ldap_attr_loginshell) == 0)
       pw->pw_shell = pstrdup(session.pool, values[0]);
     else
       pr_log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_user_lookup(): ldap_get_values() loop found unknown attr %s", ldap_attrs[i]);
@@ -641,7 +507,7 @@ pr_ldap_group_lookup(pool *p,
    */
   if (ld == NULL) {
     /* If we _still_ can't connect, give up and return NULL. */
-    if (pr_ldap_connect() == -1)
+    if (pr_ldap_connect(&ld, TRUE) == -1)
       return NULL;
   }
 
@@ -651,7 +517,7 @@ pr_ldap_group_lookup(pool *p,
     if (ret == LDAP_SERVER_DOWN) {
       pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_group_lookup(): LDAP server went away, trying to reconnect");
 
-      if (pr_ldap_connect() != -1) {
+      if (pr_ldap_connect(&ld, TRUE) != -1) {
         if ((ret = ldap_search_st(ld, ldap_gid_basedn, ldap_search_scope, filter, ldap_attrs, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
           pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_group_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
           return NULL;
@@ -680,7 +546,7 @@ pr_ldap_group_lookup(pool *p,
 
   while (ldap_attrs[i] != NULL) {
     if ((values = ldap_get_values(ld, e, ldap_attrs[i])) == NULL) {
-      if (strcasecmp(ldap_attrs[i], MEMBERUID_ATTR) == 0) {
+      if (strcasecmp(ldap_attrs[i], ldap_attr_memberuid) == 0) {
         gr->gr_mem = palloc(session.pool, 2 * sizeof(char *));
         gr->gr_mem[0] = pstrdup(session.pool, "");
         gr->gr_mem[1] = NULL;
@@ -695,11 +561,11 @@ pr_ldap_group_lookup(pool *p,
       return NULL;
     }
 
-    if (strcasecmp(ldap_attrs[i], CN_ATTR) == 0)
+    if (strcasecmp(ldap_attrs[i], ldap_attr_cn) == 0)
       gr->gr_name = pstrdup(session.pool, values[0]);
-    else if (strcasecmp(ldap_attrs[i], GIDNUMBER_ATTR) == 0)
+    else if (strcasecmp(ldap_attrs[i], ldap_attr_gidnumber) == 0)
       gr->gr_gid = strtoul(values[0], (char **)NULL, 10);
-    else if (strcasecmp(ldap_attrs[i], MEMBERUID_ATTR) == 0) {
+    else if (strcasecmp(ldap_attrs[i], ldap_attr_memberuid) == 0) {
       value_count = ldap_count_values(values);
       gr->gr_mem = (char **) palloc(session.pool, value_count * sizeof(char *));
 
@@ -737,7 +603,7 @@ static unsigned char
 pr_ldap_quota_lookup(pool *p, char *filter_template, const char *replace,
                      char *basedn)
 {
-  char *filter, **values, *attrs[] = {QUOTA_ATTR, NULL};
+  char *filter, **values, *attrs[] = {ldap_attr_ftpquota, NULL};
   int ret;
   LDAPMessage *result, *e;
 
@@ -751,7 +617,7 @@ pr_ldap_quota_lookup(pool *p, char *filter_template, const char *replace,
    */
   if (ld == NULL) {
     /* If we _still_ can't connect, give up and return NULL. */
-    if (pr_ldap_connect() == -1)
+    if (pr_ldap_connect(&ld, TRUE) == -1)
       return FALSE;
   }
 
@@ -761,7 +627,7 @@ pr_ldap_quota_lookup(pool *p, char *filter_template, const char *replace,
     if (ret == LDAP_SERVER_DOWN) {
       pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): LDAP server went away, trying to reconnect");
 
-      if (pr_ldap_connect() == -1) {
+      if (pr_ldap_connect(&ld, TRUE) == -1) {
         pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): LDAP server went away, unable to reconnect");
         ld = NULL;
         return FALSE;
@@ -817,7 +683,7 @@ pr_ldap_quota_lookup(pool *p, char *filter_template, const char *replace,
 static struct group *
 pr_ldap_getgrnam(pool *p, const char *group_name)
 {
-  char *group_attrs[] = {CN_ATTR, GIDNUMBER_ATTR, MEMBERUID_ATTR, NULL};
+  char *group_attrs[] = {ldap_attr_cn, ldap_attr_gidnumber, ldap_attr_memberuid, NULL};
 
   return pr_ldap_group_lookup(p, ldap_group_name_filter, group_name, group_attrs);
 }
@@ -826,9 +692,9 @@ static struct group *
 pr_ldap_getgrgid(pool *p, gid_t gid)
 {
   char gidstr[PR_TUNABLE_BUFFER_SIZE] = {'\0'},
-       *group_attrs[] = {CN_ATTR, GIDNUMBER_ATTR, MEMBERUID_ATTR, NULL};
+       *group_attrs[] = {ldap_attr_cn, ldap_attr_gidnumber, ldap_attr_memberuid, NULL};
 
-  snprintf(gidstr, sizeof(gidstr), "%d", gid);
+  snprintf(gidstr, sizeof(gidstr), "%u", (unsigned)gid);
 
   return pr_ldap_group_lookup(p, ldap_group_gid_filter, (const char *)gidstr, group_attrs);
 }
@@ -836,8 +702,8 @@ pr_ldap_getgrgid(pool *p, gid_t gid)
 static struct passwd *
 pr_ldap_getpwnam(pool *p, const char *username)
 {
-  char *name_attrs[] = {USERPASSWORD_ATTR, UID_ATTR, UIDNUMBER_ATTR,
-                        GIDNUMBER_ATTR, HOMEDIRECTORY_ATTR, LOGINSHELL_ATTR,
+  char *name_attrs[] = {ldap_attr_userpassword, ldap_attr_uid, ldap_attr_uidnumber,
+                        ldap_attr_gidnumber, ldap_attr_homedirectory, ldap_attr_loginshell,
                         NULL};
 
   /* pr_ldap_user_lookup() returns NULL if it doesn't find an entry or
@@ -849,6 +715,16 @@ pr_ldap_getpwnam(pool *p, const char *username)
    * that you don't have access to, SDS totally ignores any entries with
    * that attribute. Thank you, Sun; how very smart of you. So if we're
    * doing auth binds, we don't request the userPassword attr.
+   *
+   * NOTE: if the UserPassword directive is configured, mod_auth will pass
+   * a crypted password to handle_ldap_check(), which will NOT do auth binds
+   * in order to support UserPassword. (Otherwise, it would try binding to
+   * the directory and would ignore UserPassword.)
+   *
+   * We're reasonably safe in making that assumption as long as we never
+   * fetch userPassword from the directory if auth binds are enabled. If we
+   * fetched userPassword, auth binds would never be done because
+   * handle_ldap_check() would always get a crypted password.
    */
   return pr_ldap_user_lookup(p, ldap_auth_filter, username,
                              pr_ldap_generate_filter(p, ldap_auth_basedn, username),
@@ -860,10 +736,10 @@ static struct passwd *
 pr_ldap_getpwuid(pool *p, uid_t uid)
 {
   char uidstr[PR_TUNABLE_BUFFER_SIZE] = {'\0'},
-       *uid_attrs[] = {UID_ATTR, UIDNUMBER_ATTR, GIDNUMBER_ATTR,
-                       HOMEDIRECTORY_ATTR, LOGINSHELL_ATTR, NULL};
+       *uid_attrs[] = {ldap_attr_uid, ldap_attr_uidnumber, ldap_attr_gidnumber,
+                       ldap_attr_homedirectory, ldap_attr_loginshell, NULL};
 
-  snprintf(uidstr, sizeof(uidstr), "%d", uid);
+  snprintf(uidstr, sizeof(uidstr), "%u", (unsigned)uid);
 
   /* pr_ldap_user_lookup() returns NULL if it doesn't find an entry or
    * encounters an error. If everything goes all right, it returns a
@@ -964,7 +840,7 @@ handle_ldap_setpwent(cmd_rec *cmd)
 {
   if (ldap_doauth || ldap_douid || ldap_dogid) {
     if (ld == NULL)
-      (void) pr_ldap_connect();
+      (void) pr_ldap_connect(&ld, TRUE);
     return HANDLED(cmd);
   }
 
@@ -1045,7 +921,7 @@ MODRET
 handle_ldap_getgroups(cmd_rec *cmd)
 {
   char *filter, **gidNumber, **cn,
-       *w[] = {GIDNUMBER_ATTR, CN_ATTR, NULL};
+       *w[] = {ldap_attr_gidnumber, ldap_attr_cn, NULL};
   int ret;
   struct passwd *pw;
   struct group *gr;
@@ -1076,18 +952,19 @@ handle_ldap_getgroups(cmd_rec *cmd)
    */
   if (ld == NULL) {
     /* If we _still_ can't connect, give up and decline. */
-    if (pr_ldap_connect() == -1)
+    if (pr_ldap_connect(&ld, TRUE) == -1)
       goto return_groups;
   }
 
   filter = pr_ldap_generate_filter(cmd->tmp_pool, ldap_group_member_filter, cmd->argv[0]);
 
-  pr_ldap_set_sizelimit(-1);
+  /* Unlimited. */
+  pr_ldap_set_sizelimit(ld, 0);
   if ((ret = ldap_search_st(ld, ldap_gid_basedn, ldap_search_scope, filter, w, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
     if (ret == LDAP_SERVER_DOWN) {
       pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): LDAP server went away, trying to reconnect");
 
-      if (pr_ldap_connect() != -1) {
+      if (pr_ldap_connect(&ld, TRUE) != -1) {
         if ((ret = ldap_search_st(ld, ldap_gid_basedn, ldap_search_scope, filter, w, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
           pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): ldap_search_st() failed: %s", ldap_err2string(ret));
           goto return_groups;
@@ -1103,18 +980,18 @@ handle_ldap_getgroups(cmd_rec *cmd)
       goto return_groups;
     }
   }
-  pr_ldap_set_sizelimit(2);
+  pr_ldap_set_sizelimit(ld, 2);
 
   if (ldap_count_entries(ld, result) == 0)
     goto return_groups;
 
   for (e = ldap_first_entry(ld, result); e; e = ldap_next_entry(ld, e)) {
     if (! (gidNumber = ldap_get_values(ld, e, w[0]))) {
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): ldap_get_values() on " GIDNUMBER_ATTR " attr failed, skipping current group: %s", ldap_err2string(ret));
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): ldap_get_values() on %s attr failed, skipping current group: %s", ldap_err2string(ret), ldap_attr_gidnumber);
       continue;
     }
     if (! (cn = ldap_get_values(ld, e, w[1]))) {
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): ldap_get_values() on " CN_ATTR " attr failed, skipping current group: %s", ldap_err2string(ret));
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): ldap_get_values() on %s attr failed, skipping current group: %s", ldap_err2string(ret), ldap_attr_cn);
       continue;
     }
 
@@ -1149,7 +1026,7 @@ MODRET
 handle_ldap_is_auth(cmd_rec *cmd)
 {
   const char *username = cmd->argv[0];
-  char *pass_attrs[] = {USERPASSWORD_ATTR, HOMEDIRECTORY_ATTR, NULL};
+  char *pass_attrs[] = {ldap_attr_userpassword, ldap_attr_homedirectory, NULL};
 
   if (! ldap_doauth)
     return DECLINED(cmd);
@@ -1189,7 +1066,6 @@ handle_ldap_is_auth(cmd_rec *cmd)
     return ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
-  create_homedir(cmd->tmp_pool, pw->pw_dir);
   return HANDLED(cmd);
 }
 
@@ -1202,11 +1078,8 @@ MODRET
 handle_ldap_check(cmd_rec *cmd)
 {
   char *pass, *cryptpass, *hash_method;
-  int encname_len;
+  int encname_len, ret;
   LDAP *ld_auth;
-#ifdef USE_LDAPV3_TLS
-  int ret, version = LDAP_VERSION3;
-#endif
 
 #ifdef HAVE_OPENSSL
   EVP_MD_CTX EVP_Context;
@@ -1225,40 +1098,34 @@ handle_ldap_check(cmd_rec *cmd)
 
 
   if (ldap_authbinds) {
-    /* Don't try to do auth binds with a NULL DN or password. */
+    /* Don't try to do auth binds with a NULL DN or password.
+     *
+     * We also need to support the UserPassword directive, so don't do auth
+     * binds if we received a crypted password, which seems to indicate the
+     * use of that directive. See also the comments in pr_ldap_getpwnam().
+     */
     if ( (pass == NULL) || (strlen(pass) == 0) ||
-         (ldap_authbind_dn == NULL) || (strlen(ldap_authbind_dn) == 0) )
-      return DECLINED(cmd);
-
-    if ((ld_auth = ldap_init(ldap_server, LDAP_PORT)) == NULL) {
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_is_auth(): ldap_init() to %s failed", ldap_server);
+         (ldap_authbind_dn == NULL) || (strlen(ldap_authbind_dn) == 0))
+    {
       return DECLINED(cmd);
     }
-
-#ifdef USE_LDAPV3_TLS
-  if (ldap_use_tls == 1) {
-    if ((ret = ldap_set_option(ld_auth, LDAP_OPT_PROTOCOL_VERSION, &version)) != LDAP_OPT_SUCCESS) {
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): Setting LDAP version option on rebind failed: %s", ldap_err2string(ret));
-      pr_ldap_unbind();
-      return ERROR(cmd);
+    if (cryptpass != NULL && strlen(cryptpass) != 0) {
+      return DECLINED(cmd);
     }
 
-    pr_log_debug(DEBUG2, "mod_ldap: Starting TLS for rebind connection.");
-    if ((ret = ldap_start_tls_s(ld_auth, NULL, NULL)) != LDAP_SUCCESS) {
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): Starting TLS for rebind failed: %s", ldap_err2string(ret));
-      pr_ldap_unbind();
-      return ERROR(cmd);
+    if (pr_ldap_connect(&ld_auth, FALSE) == -1) {
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: handle_ldap_check(): pr_ldap_connect() failed");
+      return DECLINED(cmd);
     }
-  }
-#endif /* USE_LDAPV3_TLS */
 
-    if (ldap_simple_bind_s(ld_auth, ldap_authbind_dn, cmd->argv[2]) != LDAP_SUCCESS) {
+    if ((ret = ldap_simple_bind_s(ld_auth, ldap_authbind_dn, cmd->argv[2]) != LDAP_SUCCESS)) {
+      if (ret != LDAP_INVALID_CREDENTIALS)
+        pr_log_pri(PR_LOG_ERR, "mod_ldap: handle_ldap_check(): pr_ldap_connect() failed: %s", ldap_err2string(ret));
       ldap_unbind(ld_auth);
       return ERROR(cmd);
     }
 
     ldap_unbind(ld_auth);
-
     return HANDLED(cmd);
   }
 
@@ -1663,7 +1530,7 @@ set_ldap_negcache(cmd_rec *cmd)
 }
 
 MODRET
-set_ldap_hdod(cmd_rec *cmd)
+set_ldap_genhdir(cmd_rec *cmd)
 {
   int b;
   config_rec *c;
@@ -1672,40 +1539,38 @@ set_ldap_hdod(cmd_rec *cmd)
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if ((b = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "LDAPHomedirOnDemand: expected a boolean value for first argument.");
+    CONF_ERROR(cmd, "LDAPGenerateHomedir: expected a boolean value for first argument.");
 
-  c = add_config_param("LDAPHomedirOnDemand", 2, (void *)b);
-  c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
-
+  c = add_config_param("LDAPGenerateHomedir", 1, (void *)b);
   return HANDLED(cmd);
 
 }
 
-MODRET set_ldap_forcehdod(cmd_rec *cmd)
+MODRET set_ldap_forcegenhdir(cmd_rec *cmd)
 {
   int b;
 
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if ((b = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "LDAPForceHomeDirOnDemand: expected boolean argument for first argument.");
+    CONF_ERROR(cmd, "LDAPForceGeneratedHomedir: expected boolean argument for first argument.");
 
-  add_config_param("LDAPForceHomeDirOnDemand", 1, (void *)b);
+  add_config_param("LDAPForceGeneratedHomedir", 1, (void *)b);
   return HANDLED(cmd);
 }
 
 MODRET
-set_ldap_hdodprefix(cmd_rec *cmd)
+set_ldap_genhdirprefix(cmd_rec *cmd)
 {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  add_config_param_str("LDAPHomedirOnDemandPrefix", 1, cmd->argv[1]);
+  add_config_param_str("LDAPGenerateHomedirPrefix", 1, cmd->argv[1]);
   return HANDLED(cmd);
 }
 
 MODRET
-set_ldap_hdodprefixnouname(cmd_rec *cmd)
+set_ldap_genhdirprefixnouname(cmd_rec *cmd)
 {
   int b;
 
@@ -1713,25 +1578,9 @@ set_ldap_hdodprefixnouname(cmd_rec *cmd)
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if ((b = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "LDAPHomedirOnDemandPrefixNoUsername: expected a boolean value for first argument.");
+    CONF_ERROR(cmd, "LDAPGenerateHomedirPrefixNoUsername: expected a boolean value for first argument.");
 
-  add_config_param("LDAPHomedirOnDemandPrefixNoUsername", 1, (void *)b);
-  return HANDLED(cmd);
-}
-
-MODRET
-set_ldap_hdodsuffix(cmd_rec *cmd)
-{
-  int i;
-  config_rec *c;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-
-  c = add_config_param_str("LDAPHomedirOnDemandSuffix", cmd->argc - 1, cmd->argv[1]);
-  for (i = 1; i < cmd->argc - 1; ++i)
-    c->argv[i] = pstrdup(c->pool, cmd->argv[1 + i]);
-
+  add_config_param("LDAPGenerateHomedirPrefixNoUsername", 1, (void *)b);
   return HANDLED(cmd);
 }
 
@@ -1748,9 +1597,9 @@ set_ldap_defaultauthscheme(cmd_rec *cmd)
 MODRET
 set_ldap_usetls(cmd_rec *cmd)
 {
-#ifndef USE_LDAPV3_TLS
-  CONF_ERROR(cmd, "LDAPUseTLS: You must edit mod_ldap.c and recompile with USE_LDAPV3_TLS enabled in order to use TLS.");
-#else /* USE_LDAPV3_TLS */
+#ifndef USE_LDAP_TLS
+  CONF_ERROR(cmd, "LDAPUseTLS: You must edit mod_ldap.c and recompile with USE_LDAP_TLS enabled in order to use TLS.");
+#else /* USE_LDAP_TLS */
   int b;
 
   CHECK_ARGS(cmd, 1);
@@ -1761,13 +1610,53 @@ set_ldap_usetls(cmd_rec *cmd)
 
   add_config_param("LDAPUseTLS", 1, (void *)b);
   return HANDLED(cmd);
-#endif /* USE_LDAPV3_TLS */
+#endif /* USE_LDAP_TLS */
+}
+
+MODRET
+set_ldap_protoversion(cmd_rec *cmd)
+{
+  int i = 0;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  while (cmd->argv[1][i]) {
+    if (! isdigit((int) cmd->argv[1][i]))
+      CONF_ERROR(cmd, "LDAPProtocolVersion: argument must be numeric!");
+    ++i;
+  }
+
+  add_config_param("LDAPProtocolVersion", 1, strtoul(cmd->argv[1], (char **)NULL, 10));
+  return HANDLED(cmd);
+}
+
+MODRET
+set_ldap_attr(cmd_rec *cmd)
+{
+  CHECK_ARGS(cmd, 2);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (strcasecmp(cmd->argv[1], "uid") != 0 &&
+      strcasecmp(cmd->argv[1], "uidNumber") != 0 &&
+      strcasecmp(cmd->argv[1], "gidNumber") != 0 &&
+      strcasecmp(cmd->argv[1], "homeDirectory") != 0 &&
+      strcasecmp(cmd->argv[1], "userPassword") != 0 &&
+      strcasecmp(cmd->argv[1], "loginShell") != 0 &&
+      strcasecmp(cmd->argv[1], "cn") != 0 &&
+      strcasecmp(cmd->argv[1], "memberUid") != 0 &&
+      strcasecmp(cmd->argv[1], "ftpQuota") != 0)
+  {
+    CONF_ERROR(cmd, "LDAPAttr: unknown attribute name.");
+  }
+
+  add_config_param("LDAPAttr", 2, cmd->argv[1], cmd->argv[2]);
+  return HANDLED(cmd);
 }
 
 static int
 ldap_getconf(void)
 {
-  int i = 0;
   char *scope;
   config_rec *c;
 
@@ -1799,7 +1688,7 @@ ldap_getconf(void)
       if (c->argv[2])
         ldap_auth_filter = pstrdup(session.pool, c->argv[2]);
       else
-        ldap_auth_filter = "(&(" UID_ATTR "=%v)(objectclass=posixAccount))";
+        ldap_auth_filter = pstrcat(session.pool, "(&(", ldap_attr_uid, "=%v)(objectclass=posixAccount))", NULL);
     }
   }
 
@@ -1811,7 +1700,7 @@ ldap_getconf(void)
       if (c->argv[2])
         ldap_uid_filter = pstrdup(session.pool, c->argv[2]);
       else
-        ldap_uid_filter = "(&(" UIDNUMBER_ATTR "=%v)(objectclass=posixAccount))";
+        ldap_uid_filter = pstrcat(session.pool, "(&(", ldap_attr_uidnumber, "=%v)(objectclass=posixAccount))", NULL);
     }
   }
 
@@ -1823,17 +1712,17 @@ ldap_getconf(void)
       if (c->argc > 2)
         ldap_group_name_filter = pstrdup(session.pool, c->argv[2]);
       else
-        ldap_group_name_filter = "(&(" CN_ATTR " =%v)(objectclass=posixGroup))";
+        ldap_group_name_filter = pstrcat(session.pool, "(&(", ldap_attr_cn, " =%v)(objectclass=posixGroup))", NULL);
 
       if (c->argc > 3)
         ldap_group_gid_filter = pstrdup(session.pool, c->argv[3]);
       else
-        ldap_group_gid_filter = "(&(" GIDNUMBER_ATTR "=%v)(objectclass=posixGroup))";
+        ldap_group_gid_filter = pstrcat(session.pool, "(&(", ldap_attr_gidnumber, "=%v)(objectclass=posixGroup))", NULL);
 
       if (c->argc > 4)
-        ldap_group_member_filter = pstrdup(session.pool, c->argv[3]);
+        ldap_group_member_filter = pstrdup(session.pool, c->argv[4]);
       else
-        ldap_group_member_filter = "(&(" MEMBERUID_ATTR "=%v)(objectclass=posixGroup))";
+        ldap_group_member_filter = pstrcat(session.pool, "(&(", ldap_attr_memberuid, "=%v)(objectclass=posixGroup))", NULL);
     }
   }
 
@@ -1845,7 +1734,7 @@ ldap_getconf(void)
       if (c->argc > 2)
         ldap_quota_filter = pstrdup(session.pool, c->argv[2]);
       else
-        ldap_quota_filter = "(&(" UIDNUMBER_ATTR "=%v)(objectclass=posixAccount))";
+        ldap_quota_filter = pstrcat(session.pool, "(&(", ldap_attr_uid, "=%v)(objectclass=posixAccount))", NULL);
 
       if (c->argc > 3)
         ldap_default_quota = pstrdup(session.pool, c->argv[3]);
@@ -1863,73 +1752,83 @@ ldap_getconf(void)
     if ( (int)c->argv[0] > 0)
       ldap_forcedefaultgid = 1;
 
-  if ((c = find_config(main_server->conf, CONF_PARAM, "LDAPForceHomeDirOnDemand", FALSE)) != NULL)
+  if ((c = find_config(main_server->conf, CONF_PARAM, "LDAPForceGeneratedHomedir", FALSE)) != NULL)
     if ( (int)c->argv[0] > 0)
-      ldap_forcehdod = 1;
+      ldap_forcegenhdir = 1;
 
   if (get_param_int(main_server->conf, "LDAPNegativeCache", FALSE) > 0)
     ldap_negcache = 1;
 
-  if ((c = find_config(main_server->conf, CONF_PARAM, "LDAPHomedirOnDemand", FALSE)) != NULL) {
-    if ( (int)c->argv[0] > 0) {
-      ldap_hdod = 1;
+  if ((c = find_config(main_server->conf, CONF_PARAM, "LDAPGenerateHomedir", FALSE)) != NULL)
+    if ( (int)c->argv[0] > 0)
+      ldap_genhdir = 1;
 
-      /* Use strtol() instead of atoi() here becuase we need to pass an
-       * octal mode to mkdir().
-       */
-      if (c->argv[1])
-        ldap_hdod_mode = strtol(c->argv[1], (char **)NULL, 8);
-    }
-  }
-
-  ldap_hdod_prefix = (char *)get_param_ptr(main_server->conf, "LDAPHomedirOnDemandPrefix", FALSE);
-  if (get_param_int(main_server->conf, "LDAPHomedirOnDemandPrefixNoUsername", FALSE) == 1)
-    ldap_hdod_prefix_nouname = 1;
-
-  if ((c = find_config(main_server->conf, CONF_PARAM, "LDAPHomedirOnDemandSuffix", FALSE)) != NULL) {
-    ldap_hdod_suffix = (char **) palloc(session.pool, ( (c->argc + 1) * sizeof(char *)) );
-    for (i = 0; i < c->argc; ++i)
-      ldap_hdod_suffix[i] = pstrdup(session.pool, c->argv[i]);
-    ldap_hdod_suffix[i] = NULL;
-  }
+  ldap_genhdir_prefix = (char *)get_param_ptr(main_server->conf, "LDAPGenerateHomedirPrefix", FALSE);
+  if (get_param_int(main_server->conf, "LDAPGenerateHomedirPrefixNoUsername", FALSE) == 1)
+    ldap_genhdir_prefix_nouname = 1;
 
   /* If ldap_defaultauthscheme is NULL, ldap_check() will assume crypt. */
   ldap_defaultauthscheme = (char *)get_param_ptr(main_server->conf, "LDAPDefaultAuthScheme", FALSE);
 
-#ifdef USE_LDAPV3_TLS
+  ldap_protocol_version = (int)get_param_int(main_server->conf, "LDAPProtocolVersion", TRUE);
+#ifdef USE_LDAP_TLS
   ldap_use_tls = (int)get_param_int(main_server->conf, "LDAPUseTLS", FALSE);
 #endif
+
+  if ((c = find_config(main_server->conf, CONF_PARAM, "LDAPAttr", FALSE)) != NULL) {
+    do {
+      if (strcasecmp(c->argv[0], "uid") == 0)
+        ldap_attr_uid = c->argv[1];
+      else if (strcasecmp(c->argv[0], "uidNumber") == 0)
+        ldap_attr_uidnumber = c->argv[1];
+      else if (strcasecmp(c->argv[0], "gidNumber") == 0)
+        ldap_attr_gidnumber = c->argv[1];
+      else if (strcasecmp(c->argv[0], "homeDirectory") == 0)
+        ldap_attr_homedirectory = c->argv[1];
+      else if (strcasecmp(c->argv[0], "userPassword") == 0)
+        ldap_attr_userpassword = c->argv[1];
+      else if (strcasecmp(c->argv[0], "loginShell") == 0)
+        ldap_attr_loginshell = c->argv[1];
+      else if (strcasecmp(c->argv[0], "cn") == 0)
+        ldap_attr_cn = c->argv[1];
+      else if (strcasecmp(c->argv[0], "memberUid") == 0)
+        ldap_attr_memberuid = c->argv[1];
+      else if (strcasecmp(c->argv[0], "ftpQuota") == 0)
+        ldap_attr_ftpquota = c->argv[1];
+    } while ((c = find_config_next(c, c->next, CONF_PARAM, "LDAPAttr", FALSE)));
+  }
 
   return 0;
 }
 
 static conftable ldap_config[] = {
-  { "LDAPServer",                          set_ldap_server,            NULL },
-  { "LDAPDNInfo",                          set_ldap_dninfo,            NULL },
-  { "LDAPAuthBinds",                       set_ldap_authbinds,         NULL },
-  { "LDAPQueryTimeout",                    set_ldap_querytimeout,      NULL },
-  { "LDAPSearchScope",                     set_ldap_searchscope,       NULL },
-  { "LDAPNegativeCache",                   set_ldap_negcache,          NULL },
-  { "LDAPDoAuth",                          set_ldap_doauth,            NULL },
-  { "LDAPDoUIDLookups",                    set_ldap_douid,             NULL },
-  { "LDAPDoGIDLookups",                    set_ldap_dogid,             NULL },
-  { "LDAPDoQuotaLookups",                  set_ldap_doquota,           NULL },
-  { "LDAPDefaultUID",                      set_ldap_defaultuid,        NULL },
-  { "LDAPDefaultGID",                      set_ldap_defaultgid,        NULL },
-  { "LDAPForceDefaultUID",                 set_ldap_forcedefaultuid,   NULL },
-  { "LDAPForceDefaultGID",                 set_ldap_forcedefaultgid,   NULL },
-  { "LDAPHomedirOnDemand",                 set_ldap_hdod,              NULL },
-  { "LDAPHomedirOnDemandPrefix",           set_ldap_hdodprefix,        NULL },
-  { "LDAPHomedirOnDemandPrefixNoUsername", set_ldap_hdodprefixnouname, NULL },
-  { "LDAPHomedirOnDemandSuffix",           set_ldap_hdodsuffix,        NULL },
-  { "LDAPForceHomedirOnDemand",            set_ldap_forcehdod,         NULL },
-  { "LDAPDefaultAuthScheme",               set_ldap_defaultauthscheme, NULL },
-  { "LDAPUseTLS",                          set_ldap_usetls,            NULL },
-  { NULL,                                  NULL,                       NULL }
+  { "LDAPServer",                          set_ldap_server,               NULL },
+  { "LDAPDNInfo",                          set_ldap_dninfo,               NULL },
+  { "LDAPAuthBinds",                       set_ldap_authbinds,            NULL },
+  { "LDAPQueryTimeout",                    set_ldap_querytimeout,         NULL },
+  { "LDAPSearchScope",                     set_ldap_searchscope,          NULL },
+  { "LDAPNegativeCache",                   set_ldap_negcache,             NULL },
+  { "LDAPDoAuth",                          set_ldap_doauth,               NULL },
+  { "LDAPDoUIDLookups",                    set_ldap_douid,                NULL },
+  { "LDAPDoGIDLookups",                    set_ldap_dogid,                NULL },
+  { "LDAPDoQuotaLookups",                  set_ldap_doquota,              NULL },
+  { "LDAPDefaultUID",                      set_ldap_defaultuid,           NULL },
+  { "LDAPDefaultGID",                      set_ldap_defaultgid,           NULL },
+  { "LDAPForceDefaultUID",                 set_ldap_forcedefaultuid,      NULL },
+  { "LDAPForceDefaultGID",                 set_ldap_forcedefaultgid,      NULL },
+  { "LDAPGenerateHomedir",                 set_ldap_genhdir,              NULL },
+  { "LDAPGenerateHomedirPrefix",           set_ldap_genhdirprefix,        NULL },
+  { "LDAPGenerateHomedirPrefixNoUsername", set_ldap_genhdirprefixnouname, NULL },
+  { "LDAPForceGeneratedHomedir",           set_ldap_forcegenhdir,         NULL },
+  { "LDAPDefaultAuthScheme",               set_ldap_defaultauthscheme,    NULL },
+  { "LDAPUseTLS",                          set_ldap_usetls,               NULL },
+  { "LDAPProtocolVersion",                 set_ldap_protoversion,         NULL },
+  { "LDAPAttr",                            set_ldap_attr,                 NULL },
+  { NULL,                                  NULL,                          NULL }
 };
 
 static cmdtable ldap_cmdtab[] = {
-  {CMD, "ldap_quota_lookup", G_NONE, handle_ldap_quota_lookup, FALSE, FALSE},
+  {HOOK, "ldap_quota_lookup", G_NONE, handle_ldap_quota_lookup, FALSE, FALSE},
   {0, NULL}
 };
 
@@ -1953,11 +1852,12 @@ static authtable ldap_auth[] = {
 };
 
 module ldap_module = {
-  NULL, NULL,                       /* Always NULL */
-  0x20,                             /* API Version 2.0 */
+  NULL, NULL,                        /* Always NULL */
+  0x20,                              /* API Version 2.0 */
   "ldap",
-  ldap_config,                      /* Configuration directive table */
-  ldap_cmdtab,                      /* Command handlers */
-  ldap_auth,                        /* Authentication handlers */
-  pr_ldap_module_init, ldap_getconf /* Initialization functions */
+  ldap_config,                       /* Configuration directive table */
+  ldap_cmdtab,                       /* Command handlers */
+  ldap_auth,                         /* Authentication handlers */
+  pr_ldap_module_init, ldap_getconf, /* Initialization functions */
+  MOD_LDAP_VERSION
 };
