@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.17 2004-05-20 17:28:55 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.18 2004-05-30 02:39:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -352,10 +352,6 @@ static int ctrls_handle_dump(pr_ctrls_t *ctrl, int reqargc,
   return 0;
 }
 
-/* From src/modules.c */
-extern conftable *m_conftable;
-extern unsigned int n_conftabs;
-
 static int ctrls_handle_get(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
   int res = 0;
@@ -405,22 +401,29 @@ static int ctrls_handle_get(pr_ctrls_t *ctrl, int reqargc,
   } else if (strcmp(reqargv[0], "directives") == 0) {
 
     if (reqargc == 1) {
-      register unsigned int i = 0;
+      conftable *conftab;
+      int stash_idx = -1;
 
       /* Create a list of all known configuration directives. */
-      for (i = 0; i < n_conftabs; i++) {
-        conftable conftab = m_conftable[i];
 
-        if (!conftab.directive)
-          continue;
+      conftab = pr_stash_get_symbol(PR_SYM_CONF, NULL, NULL, &stash_idx);
 
-        pr_ctrls_add_response(ctrl, "%s (mod_%s.c)", conftab.directive,
-          conftab.m->name);
+      while (stash_idx != -1) {
+        pr_signals_handle();
 
-        /* Be nice, and sort the directives lexicographically */
-        qsort(ctrl->ctrls_cb_resps->elts, ctrl->ctrls_cb_resps->nelts,
-          sizeof(char *), respcmp);
+        if (conftab) {
+          pr_ctrls_add_response(ctrl, "%s (mod_%s.c)", conftab->directive,
+            conftab->m->name);
+
+        } else
+          stash_idx++;
+
+        conftab = pr_stash_get_symbol(PR_SYM_CONF, NULL, conftab, &stash_idx);
       }
+
+      /* Be nice, and sort the directives lexicographically */
+      qsort(ctrl->ctrls_cb_resps->elts, ctrl->ctrls_cb_resps->nelts,
+        sizeof(char *), respcmp);
 
     } else {
       pr_ctrls_add_response(ctrl, "%s: wrong number of parameters", reqargv[0]);
@@ -474,7 +477,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
 
       while ((score = pr_scoreboard_read_entry()) != NULL) {
         if (strcmp(reqargv[i], score->sce_user) == 0) {
-          int res = 0;
+          res = 0;
 
           PRIVS_ROOT
           res = kill(score->sce_pid, SIGTERM);
@@ -574,7 +577,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
 
       while ((score = pr_scoreboard_read_entry()) != NULL) {
         if (strcmp(reqargv[i], score->sce_class) == 0) {
-          int res = 0;
+          res = 0;
 
           PRIVS_ROOT
           res = kill(score->sce_pid, SIGTERM);
@@ -655,7 +658,7 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
   if (reqargc >= 1 &&
       strcmp(reqargv[0], "graceful") == 0) {
     unsigned long nkids = 0;
-    unsigned int wait = CTRLS_DEFAULT_SHUTDOWN_WAIT;
+    unsigned int waiting = CTRLS_DEFAULT_SHUTDOWN_WAIT;
     unsigned int timeout = 0;
     time_t now;
 
@@ -666,11 +669,11 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
       ctrls_log(MOD_CTRLS_ADMIN_VERSION,
         "shutdown: waiting %u seconds before shutting down", timeout);
 
-      /* If the timeout is less than the wait period, reduce the
-       * wait period by half.
+      /* If the timeout is less than the waiting period, reduce the
+       * waiting period by half.
        */
-      if (timeout < wait)
-        wait /= 2;
+      if (timeout < waiting)
+        waiting /= 2;
     }
 
     /* Now, simply wait for all sessions to be done.  For bonus points,
@@ -700,7 +703,7 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
 
       ctrls_log(MOD_CTRLS_ADMIN_VERSION,
         "shutdown: waiting for %lu sessions to end", nkids);
-      sleep(wait);
+      sleep(waiting);
 
       child_update();
       nkids = child_count();     

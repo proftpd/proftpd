@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.148 2004-05-26 18:54:55 castaglia Exp $
+ * $Id: dirtree.c,v 1.149 2004-05-30 02:39:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -722,6 +722,7 @@ static cmd_rec *get_config_cmd(pool *ppool) {
 
     new_cmd = (cmd_rec *) pcalloc(new_pool, sizeof(cmd_rec));
     new_cmd->pool = new_pool;
+    new_cmd->stash_index = -1;
     tarr = make_array(new_pool, 4, sizeof(char **));
 
     /* Add each word to the array */
@@ -2102,32 +2103,35 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
           pr_signals_handle();
 
           if (cmd->argc) {
-            conftable *c;
-            char found = 0;
-            modret_t *mr;
+            conftable *conftab;
+            char found = FALSE;
 
             cmd->server = *conf.curserver;
             cmd->config = *conf.curconfig;
 
-            for (c = m_conftable; c->directive; c++) {
-              if (!strcasecmp(c->directive, cmd->argv[0])) {
-                cmd->argv[0] = c->directive;
-                found++;
+            conftab = pr_stash_get_symbol(PR_SYM_CONF, cmd->argv[0], NULL,
+              &cmd->stash_index);
 
-                mr = call_module(c->m, c->handler, cmd);
-                if (mr != NULL) {
-                  if (MODRET_ERRMSG(mr)) {
-                    pr_log_pri(PR_LOG_WARNING, "warning: %s on line %u of '%s'",
-                      MODRET_ERRMSG(mr), cs->cs_lineno, dynpath);
-		  }
-                }
+            while (conftab) {
+              modret_t *mr;
 
-		if (MODRET_ISDECLINED(mr))
-                  found--;
+              cmd->argv[0] = conftab->directive;
+              found = TRUE;
 
-		destroy_pool(cmd->tmp_pool);
+              mr = call_module(conftab->m, conftab->handler, cmd);
+              if (mr != NULL) {
+                if (MODRET_ERRMSG(mr))
+                  pr_log_pri(PR_LOG_WARNING, "warning: %s on line %u of '%s'",
+                    MODRET_ERRMSG(mr), cs->cs_lineno, dynpath);
               }
+
+              if (!MODRET_ISDECLINED(mr))
+                  found = TRUE;
+
+              conftab = pr_stash_get_symbol(PR_SYM_CONF, cmd->argv[0],
+                conftab, &cmd->stash_index);
             }
+            destroy_pool(cmd->tmp_pool);
 
             if (!found)
               pr_log_pri(PR_LOG_WARNING,
@@ -3160,7 +3164,6 @@ int parse_config_file(pool *p, const char *fname) {
   pr_fh_t *fh = NULL;
   conf_stack_t *cs = NULL;
   cmd_rec *cmd = NULL;
-  modret_t *mr = NULL;
   pool *tmp_pool = make_sub_pool(p ? p : permanent_pool);
 
   pr_pool_tag(tmp_pool, "parse_config_file() tmp pool");
@@ -3180,40 +3183,45 @@ int parse_config_file(pool *p, const char *fname) {
 
   while ((cmd = get_config_cmd(tmp_pool)) != NULL) {
     if (cmd->argc) {
-      conftable *c;
-      char found = 0;
+      conftable *conftab;
+      char found = FALSE;
 
       cmd->server = *conf.curserver;
       cmd->config = *conf.curconfig;
 
-      for (c = m_conftable; c->directive; c++)
-        if (!strcasecmp(c->directive, cmd->argv[0])) {
-          cmd->argv[0] = c->directive;
-          ++found;
+      conftab = pr_stash_get_symbol(PR_SYM_CONF, cmd->argv[0], NULL,
+        &cmd->stash_index);
 
-          pr_log_debug(DEBUG8, "dispatching directive '%s' to module mod_%s",
-            c->directive, c->m->name);
+      while (conftab) {
+        modret_t *mr;
+ 
+        cmd->argv[0] = conftab->directive;
 
-          mr = call_module(c->m, c->handler, cmd);
-          if (mr != NULL) {
-            if (MODRET_ISERROR(mr)) {
-              pr_log_pri(PR_LOG_ERR, "Fatal: %s on line %u of '%s'",
-                MODRET_ERRMSG(mr), cs->cs_lineno, fname);
-              exit(1);
-            }
+        pr_log_debug(DEBUG8, "dispatching directive '%s' to module mod_%s",
+          conftab->directive, conftab->m->name);
+
+        mr = call_module(conftab->m, conftab->handler, cmd);
+        if (mr != NULL) {
+          if (MODRET_ISERROR(mr)) {
+            pr_log_pri(PR_LOG_ERR, "Fatal: %s on line %u of '%s'",
+              MODRET_ERRMSG(mr), cs->cs_lineno, fname);
+            exit(1);
           }
-
-          if (MODRET_ISDECLINED(mr))
-            found--;
-
-          destroy_pool(cmd->tmp_pool);
         }
 
-       if (!found) {
-         pr_log_pri(PR_LOG_ERR, "Fatal: unknown configuration directive '%s' "
-           "on line %u of '%s'.", cmd->argv[0], cs->cs_lineno, fname);
-         exit(1);
-       }
+        if (!MODRET_ISDECLINED(mr))
+          found = TRUE;
+
+        conftab = pr_stash_get_symbol(PR_SYM_CONF, cmd->argv[0],
+          conftab, &cmd->stash_index);
+      }
+      destroy_pool(cmd->tmp_pool);
+
+      if (!found) {
+        pr_log_pri(PR_LOG_ERR, "Fatal: unknown configuration directive '%s' "
+          "on line %u of '%s'.", cmd->argv[0], cs->cs_lineno, fname);
+        exit(1);
+      }
     }
 
     destroy_pool(cmd->pool);

@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.39 2004-05-29 23:02:45 castaglia Exp $
+ * $Id: modules.c,v 1.40 2004-05-30 02:39:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -116,6 +116,9 @@ static int symtab_hash(const char *name) {
   unsigned char *cp = NULL;
   int total = 0;
 
+  if (!name)
+    return 0;
+
   for (cp = (unsigned char *)name; *cp; cp++)
     total += (int)*cp;
 
@@ -183,10 +186,11 @@ static struct stash *stash_lookup(pr_stash_type_t sym_type,
     const char *name, int idx) {
   struct stash *sym = NULL;
 
-  if (name && symbol_table[idx]) {
+  if (symbol_table[idx]) {
     for (sym = (struct stash *) symbol_table[idx]->xas_list; sym;
         sym = sym->next)
-      if (sym->sym_type == sym_type && !strcmp(sym->sym_name, name))
+      if (sym->sym_type == sym_type &&
+          (!name || strcmp(sym->sym_name, name) == 0))
         break;
   }
 
@@ -201,7 +205,8 @@ static struct stash *stash_lookup_next(pr_stash_type_t sym_type,
   if (symbol_table[idx]) {
     for (sym = (struct stash *) symbol_table[idx]->xas_list; sym;
         sym = sym->next) {
-      if (last_hit && sym->sym_type == sym_type && !strcmp(sym->sym_name, name))
+      if (last_hit && sym->sym_type == sym_type &&
+          (!name || strcmp(sym->sym_name, name) == 0))
         break;
       if (sym->ptr.sym_generic == prev)
         last_hit++;
@@ -224,6 +229,13 @@ void *pr_stash_get_symbol(pr_stash_type_t sym_type, const char *name,
     idx = symtab_hash(name);
     if (idx_cache)
       *idx_cache = idx;
+  }
+
+  if (idx >= PR_TUNABLE_HASH_TABLE_SIZE) {
+    if (*idx_cache)
+      *idx_cache = -1;
+
+    return NULL;
   }
 
   if (prev)
