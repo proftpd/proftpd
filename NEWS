@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.298 2002-12-05 19:48:39 castaglia Exp $
+$Id: NEWS,v 1.299 2002-12-05 20:18:54 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -7,6 +7,9 @@ CVS
 - Bug 1683 - Handling of VirtualHosts on startup.  Now, rather than dying
   when unable to resolve a <VirtualHost> DNS hostname when starting up, the
   daemon will log the error, and skip the bad <VirtualHost>.
+- Bug 1825 - AUTH macro namespace cleanup.  A "PR_" prefix has been added to
+  the AUTH_* macros, to help prevent namespace collisions.  This means that
+  some third-party auth modules may need to be updated.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------

@@ -1124,12 +1124,12 @@ MODRET cmd_escapestring(cmd_rec * cmd)
  *  cmd->argv[2]: hashed string
  *
  * Returns:
- *  HANDLED(cmd)                   -- passwords match
- *  ERROR_INT(cmd,AUTH_NOPWD)      -- missing password
- *  ERROR_INT(cmd,AUTH_BADPWD)     -- passwords don't match
- *  ERROR_INT(cmd,AUTH_DISABLEPWD) -- password is disabled
- *  ERROR_INT(cmd,AUTH_AGEPWD)     -- password is aged
- *  ERROR(cmd)                     -- unknown error
+ *  HANDLED(cmd)                        -- passwords match
+ *  ERROR_INT(cmd, PR_AUTH_NOPWD)       -- missing password
+ *  ERROR_INT(cmd, PR_AUTH_BADPWD)      -- passwords don't match
+ *  ERROR_INT(cmd, PR_AUTH_DISABLEPWD)  -- password is disabled
+ *  ERROR_INT(cmd, PR_AUTH_AGEPWD)      -- password is aged
+ *  ERROR(cmd)                          -- unknown error
  *
  * Notes:
  *  If this backend does not provide this functionality, this cmd *must*

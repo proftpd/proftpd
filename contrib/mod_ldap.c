@@ -60,7 +60,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  * 
- * $Id: mod_ldap.c,v 1.26 2002-09-21 02:09:36 jwm Exp $
+ * $Id: mod_ldap.c,v 1.27 2002-12-05 20:18:54 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -965,7 +965,7 @@ handle_ldap_is_auth(cmd_rec *cmd)
       return DECLINED(cmd); /* Can't find the user in the LDAP directory. */
 
   if (!ldap_authbinds && !pw->pw_passwd)
-    return ERROR_INT(cmd, AUTH_NOPWD);
+    return ERROR_INT(cmd, PR_AUTH_NOPWD);
 
   /* FIXME: If we pass a "" or NULL "crypted password" argument to
             auth_check, the mod_unixpw auth handler gets called before the
@@ -975,7 +975,7 @@ handle_ldap_is_auth(cmd_rec *cmd)
             name escapes me right now) For now, we'll kludge around this by
             passing "*", which mod_unixpw will happily deny auth to. */
   if (auth_check(cmd->tmp_pool, ldap_authbinds ? "*" : pw->pw_passwd, username, cmd->argv[1]))
-    return ERROR_INT(cmd, AUTH_BADPWD);
+    return ERROR_INT(cmd, PR_AUTH_BADPWD);
 
   create_homedir(cmd->tmp_pool, pw->pw_dir);
   return HANDLED(cmd);

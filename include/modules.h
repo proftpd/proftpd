@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.14 2002-11-05 19:06:56 jwm Exp $
+ * $Id: modules.h,v 1.15 2002-12-05 20:18:55 castaglia Exp $
  */
 
 #ifndef __MODULES_H
@@ -47,22 +47,22 @@ struct modret_struc {
  */
 
 /* Account authenticated by RFC2228 security data exchange */
-#define AUTH_RFC2228_OK			1
+#define PR_AUTH_RFC2228_OK		1
 
 /* Account authenticated normally */
-#define AUTH_FTP_OK			0
+#define PR_AUTH_OK			0
 
 /* Account does not exist */
-#define AUTH_NOPWD			-1
+#define PR_AUTH_NOPWD			-1
 
 /* Password mismatch */
-#define AUTH_BADPWD			-2
+#define PR_AUTH_BADPWD			-2
 
 /* Password hasn't been changed recently enough */
-#define AUTH_AGEPWD			-3
+#define PR_AUTH_AGEPWD			-3
 
 /* Account has been disabled */
-#define AUTH_DISABLEDPWD		-4
+#define PR_AUTH_DISABLEDPWD		-4
 
 /* The following macros are for creating basic modret_t, and can
  * only be used inside of module handlers

@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.111 2002-12-05 20:08:38 castaglia Exp $
+ * $Id: mod_auth.c,v 1.112 2002-12-05 20:18:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -179,7 +179,7 @@ static int _do_auth(pool *p, xaset_t *conf, char *u, char *pw) {
 
   if (cpw) {
     if (!auth_getpwnam(p, u))
-      return AUTH_NOPWD;
+      return PR_AUTH_NOPWD;
 
     return auth_check(p, cpw, u, pw);
   }
@@ -794,7 +794,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
           anongroup = NULL;
         }
 
-        auth_code = AUTH_FTP_OK;
+        auth_code = PR_AUTH_OK;
       }
     }
 
@@ -803,30 +803,30 @@ static int _setup_environment(pool *p, char *user, char *pass)
     switch (auth_code) {
 
       /* Use an RFC2228 response code if authenticated by an RFC2228 module. */
-      case AUTH_RFC2228_OK:
+      case PR_AUTH_RFC2228_OK:
         auth_pass_resp_code = R_232;
         break;
 
-      case AUTH_FTP_OK:
+      case PR_AUTH_OK:
         auth_pass_resp_code = R_230;
         break;
 
-      case AUTH_NOPWD:
+      case PR_AUTH_NOPWD:
         log_auth(PR_LOG_NOTICE, "USER %s (Login failed): No such user found.",
           user);
         goto auth_failure;
 
-      case AUTH_BADPWD:
+      case PR_AUTH_BADPWD:
         log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Incorrect password.",
           origuser);
         goto auth_failure;
 
-      case AUTH_AGEPWD:
+      case PR_AUTH_AGEPWD:
         log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Password expired.",
           user);
         goto auth_failure;
 
-      case AUTH_DISABLEDPWD:
+      case PR_AUTH_DISABLEDPWD:
         log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Account disabled.",
           user);
         goto auth_failure;

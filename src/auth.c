@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.21 2002-11-05 19:06:58 jwm Exp $
+ * $Id: auth.c,v 1.22 2002-12-05 20:18:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -340,13 +340,13 @@ struct group *auth_getgrgid(pool *p, gid_t gid)
 int auth_authenticate(pool *p, const char *name, const char *pw) {
   cmd_rec *c = NULL;
   modret_t *mr = NULL;
-  int res = AUTH_NOPWD;
+  int res = PR_AUTH_NOPWD;
 
   c = _make_cmd(p, 2, name, pw);
   mr = _dispatch_auth(c, "auth");
 
   if (MODRET_ISHANDLED(mr))
-    res = MODRET_HASDATA(mr) ? AUTH_RFC2228_OK : AUTH_FTP_OK;
+    res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
 
   else if (MODRET_ISERROR(mr))
     res = MODRET_ERROR(mr);
@@ -362,13 +362,13 @@ int auth_authenticate(pool *p, const char *name, const char *pw) {
 int auth_check(pool *p, const char *cpw, const char *name, const char *pw) {
   cmd_rec *c = NULL;
   modret_t *mr = NULL;
-  int res = AUTH_BADPWD;
+  int res = PR_AUTH_BADPWD;
 
   c = _make_cmd(p, 3, cpw, name, pw);
   mr = _dispatch_auth(c, "check");
 
   if (MODRET_ISHANDLED(mr))
-    res = MODRET_HASDATA(mr) ? AUTH_RFC2228_OK : AUTH_FTP_OK;
+    res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
 
   if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);

@@ -1246,12 +1246,12 @@ MODRET cmd_escapestring(cmd_rec * cmd)
  *  cmd->argv[2]: hashed string
  *
  * Returns:
- *  HANDLED(cmd)                   -- passwords match
- *  ERROR_INT(cmd,AUTH_NOPWD)      -- missing password
- *  ERROR_INT(cmd,AUTH_BADPWD)     -- passwords don't match
- *  ERROR_INT(cmd,AUTH_DISABLEPWD) -- password is disabled
- *  ERROR_INT(cmd,AUTH_AGEPWD)     -- password is aged
- *  ERROR(cmd)                     -- unknown error
+ *  HANDLED(cmd)                        -- passwords match
+ *  ERROR_INT(cmd, PR_AUTH_NOPWD)       -- missing password
+ *  ERROR_INT(cmd, PR_AUTH_BADPWD)      -- passwords don't match
+ *  ERROR_INT(cmd, PR_ AUTH_DISABLEPWD) -- password is disabled
+ *  ERROR_INT(cmd, PR_AUTH_AGEPWD)      -- password is aged
+ *  ERROR(cmd)                          -- unknown error
  *
  * Notes:
  *  If this backend does not provide this functionality, this cmd *must*
@@ -1284,7 +1284,7 @@ MODRET cmd_checkauth(cmd_rec * cmd)
 
   if (cmd->argv[1] == NULL) {
     log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_checkauth");
-    return ERROR_INT(cmd, AUTH_NOPWD);
+    return ERROR_INT(cmd, PR_AUTH_NOPWD);
   }
 
   conn = (db_conn_t *) entry->data;
@@ -1298,7 +1298,7 @@ MODRET cmd_checkauth(cmd_rec * cmd)
 
   log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_checkauth");
 
-  return success ? HANDLED(cmd) : ERROR_INT(cmd, AUTH_BADPWD);
+  return success ? HANDLED(cmd) : ERROR_INT(cmd, PR_AUTH_BADPWD);
 }
 
 /*

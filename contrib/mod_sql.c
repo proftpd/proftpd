@@ -419,11 +419,11 @@ static modret_t *check_auth_crypt(cmd_rec * cmd, const char *c_clear,
 {
   int success = 0;
 
-  if (*c_hash == '\0') return ERROR_INT(cmd,AUTH_BADPWD);
+  if (*c_hash == '\0') return ERROR_INT(cmd, PR_AUTH_BADPWD);
 
   success = !strcmp((char *) crypt(c_clear, c_hash), c_hash);
 
-  return success ? HANDLED(cmd) : ERROR_INT(cmd,AUTH_BADPWD);
+  return success ? HANDLED(cmd) : ERROR_INT(cmd, PR_AUTH_BADPWD);
 }
 
 static modret_t *check_auth_plaintext(cmd_rec * cmd, const char *c_clear,
@@ -431,11 +431,11 @@ static modret_t *check_auth_plaintext(cmd_rec * cmd, const char *c_clear,
 {
   int success = 0;
 
-  if (*c_hash == '\0' ) return ERROR_INT(cmd,AUTH_BADPWD);
+  if (*c_hash == '\0' ) return ERROR_INT(cmd, PR_AUTH_BADPWD);
 
   success = !strcmp(c_clear, c_hash);
 
-  return success ? HANDLED(cmd) : ERROR_INT(cmd,AUTH_BADPWD);
+  return success ? HANDLED(cmd) : ERROR_INT(cmd, PR_AUTH_BADPWD);
 }
 
 static modret_t *check_auth_empty(cmd_rec * cmd, const char *c_clear,
@@ -445,7 +445,7 @@ static modret_t *check_auth_empty(cmd_rec * cmd, const char *c_clear,
 
   success = !strcmp(c_hash, "");
 
-  return success ? HANDLED(cmd) : ERROR_INT(cmd,AUTH_BADPWD);
+  return success ? HANDLED(cmd) : ERROR_INT(cmd, PR_AUTH_BADPWD);
 }
 
 static modret_t *check_auth_backend(cmd_rec * cmd, const char *c_clear,
@@ -453,7 +453,7 @@ static modret_t *check_auth_backend(cmd_rec * cmd, const char *c_clear,
 {
   modret_t * mr = NULL;
 
-  if (*c_hash == '\0' ) return ERROR_INT(cmd, AUTH_BADPWD);
+  if (*c_hash == '\0' ) return ERROR_INT(cmd, PR_AUTH_BADPWD);
 
   mr = _sql_dispatch( _sql_make_cmd(cmd->tmp_pool, 3, "default", 
 				    c_clear, c_hash),
@@ -485,7 +485,7 @@ static modret_t *check_auth_openssl(cmd_rec * cmd, const char *c_clear,
   char *copyhash;               /* temporary copy of the c_hash string */
 
   if (c_hash[0] != '{') {
-    return ERROR_INT(cmd, AUTH_BADPWD);
+    return ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
   /*
@@ -498,7 +498,7 @@ static modret_t *check_auth_openssl(cmd_rec * cmd, const char *c_clear,
   hashvalue = (char *) strchr(copyhash, '}');
 
   if (hashvalue == NULL) {
-    return ERROR_INT(cmd, AUTH_BADPWD);
+    return ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
   *hashvalue = '\0';
@@ -509,7 +509,7 @@ static modret_t *check_auth_openssl(cmd_rec * cmd, const char *c_clear,
   md = EVP_get_digestbyname(digestname);
 
   if (!md) {
-    return ERROR_INT(cmd, AUTH_BADPWD);
+    return ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
   EVP_DigestInit(&mdctx, md);
@@ -521,7 +521,7 @@ static modret_t *check_auth_openssl(cmd_rec * cmd, const char *c_clear,
 
   returnValue = strcmp(buff, hashvalue);
 
-  return returnValue ? ERROR_INT(cmd, AUTH_BADPWD) : HANDLED(cmd);
+  return returnValue ? ERROR_INT(cmd, PR_AUTH_BADPWD) : HANDLED(cmd);
 }
 #endif
 
@@ -2750,7 +2750,7 @@ MODRET cmd_auth(cmd_rec * cmd)
     return HANDLED(cmd);
   } else {
     log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_auth");
-    return ( SQL_USERGOD ? ERROR_INT(cmd,AUTH_BADPWD) : DECLINED(cmd) );
+    return ( SQL_USERGOD ? ERROR_INT(cmd, PR_AUTH_BADPWD) : DECLINED(cmd) );
   }
 }
 
