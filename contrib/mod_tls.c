@@ -566,7 +566,7 @@ static int tls_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
 static int tls_get_passphrase(const char *path, const char *prompt, char *buf,
     size_t buflen) {
   FILE *keyf;
-  EVP_PKEY *pkey;
+  EVP_PKEY *pkey = NULL;
   int prompt_fd = -1;
   struct tls_pkey_data pdata;
   register unsigned int attempt;
