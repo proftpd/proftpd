@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.244 2004-07-31 01:35:45 castaglia Exp $
+ * $Id: mod_core.c,v 1.245 2004-08-04 18:52:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4551,6 +4551,14 @@ static int core_sess_init(void) {
   }
 
   remove_timer(core_scrub_timer_id, &core_module);
+
+  /* If we're running as 'ServerType inetd', scrub the scoreboard here.
+   * For standalone ServerTypes, the scoreboard scrubber will handle
+   * things itself.
+   */
+  if (ServerType == SERVER_INETD)
+    scrub_scoreboard(NULL);
+
   return 0;
 }
 
