@@ -19,7 +19,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.5 1999-09-12 16:30:01 macgyver Exp $
+ * $Id: mod_log.c,v 1.6 1999-09-17 04:14:15 macgyver Exp $
  */
 
 #include "conf.h"
@@ -310,7 +310,8 @@ MODRET add_extendedlog(cmd_rec *cmd)
 MODRET set_systemlog(cmd_rec *cmd)
 {
   char *syslogfn;
-
+  int ret;
+  
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_ROOT);
 
@@ -329,16 +330,20 @@ MODRET set_systemlog(cmd_rec *cmd)
   block_signals();
   PRIVS_ROOT
 
-  if(log_opensyslog(syslogfn) == -1) {
-    int xerrno = errno;
-
-    PRIVS_RELINQUISH
-    unblock_signals();
-
-    CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"unable to redirect logging to '",
-                   syslogfn,"': ",strerror(xerrno),NULL));
-  }
-
+    if((ret = log_opensyslog(syslogfn)) < 0) {
+      int xerrno = errno;
+      
+      PRIVS_RELINQUISH
+      unblock_signals();
+      
+      if(ret == -2) {
+	CONF_ERROR(cmd, "you are attempting to log to a world writeable directory");
+      } else {
+	CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"unable to redirect logging to '",
+			       syslogfn,"': ",strerror(xerrno),NULL));
+      }
+    }
+  
   PRIVS_RELINQUISH
   unblock_signals();
 
