@@ -3,7 +3,6 @@
                         ==========================
 
 
-
 Core ProFTPD Modules (modules subdirectory)
 -------------------------------------------
 
@@ -13,9 +12,9 @@ Modules always included:
         Implements FTP authentication commands (USER, PASS, ACCT, REIN).
 
     mod_core
-        Implements core configuration directives and most RFC-959 FTP commands
-        (CWD, CDUP, MKD, PWD, RMD, DELE, RNTO, RNFR, PASV, PORT, SYST, HELP,
-        QUIT, NOOP), and the MDTM and SIZE extensions.
+        Implements core configuration directives and most RFC-959 FTP
+        commands (CWD, CDUP, MKD, PWD, RMD, DELE, RNTO, RNFR, PASV, PORT,
+        SYST, HELP, QUIT, NOOP), and the MDTM and SIZE extensions.
 
     mod_log
         Interface to Unix message logging (syslog or file).
@@ -24,7 +23,8 @@ Modules always included:
         Implements the FTP LIST, NLST and STAT commands.
 
     mod_site
-        Implements the FTP SITE command, and the HELP, CHGRP, CHMOD subcommands.
+        Implements the FTP SITE command, and the HELP, CHGRP, CHMOD
+        subcommands.
 
     mod_unixpw
         Interface to the native Unix password system.
@@ -40,6 +40,11 @@ Modules automatically included when supported by the OS:
         PAM (Pluggable Authentication Modules) authentication.
         See README.PAM.
         Originally contributed by MacGyver <macgyver@tos.net>.
+
+    mod_cap, libcap
+        POSIX 1e (IEEE 1003.1e draft) security model enhancements
+        (capabilities and capability sets), available for Linux kernels
+        2.1.104 and later. See README.capabilities.
 
 
 Contributed ProFTPD Modules (contrib subdirectory)
@@ -68,12 +73,6 @@ Authentication modules:
 
 Feature modules:
 
-    mod_linuxprivs, libcap
-        POSIX 1e (IEEE 1003.1e draft) security model enhancements
-        (capabilities and capability sets), available for Linux
-        kernels 2.1.104 and later.
-        See README.linux-privs.
-
     mod_ratio
         User upload/download ratios.
         See contrib/README.ratio and the comments in mod_ratio.c.
@@ -90,7 +89,6 @@ Feature modules:
         Contributed by TJ Saunders <tj@digisle.net>.
 
 
-
 Other ProFTPD modules (not included in the source distribution)
 ---------------------------------------------------------------
 
@@ -98,5 +96,5 @@ Please see
 
     http://www.proftpd.org/module_news.html
 
-for a current third-party module list.  These modules (and patches) are
+for a current third-party module list. These modules (and patches) are
 neither evaluated nor sanctioned in any way.
