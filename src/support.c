@@ -26,7 +26,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.37 2002-09-25 23:43:20 castaglia Exp $
+ * $Id: support.c,v 1.38 2002-10-09 16:55:09 castaglia Exp $
  */
 
 /* History Log:
@@ -518,7 +518,6 @@ int exists(char *path)
  * ACC_SELF) on AIX.
  */
 int access_check(char *path, int mode) {
-  int i;
   mode_t mask;
   struct stat buf;
   
@@ -528,7 +527,7 @@ int access_check(char *path, int mode) {
   }
  
   /* If root, always return succeed. */
-  if(session.uid == 0)
+  if (session.uid == 0)
     return 0;
 
   /* Initialize `mask' to reflect the permission bits that are
@@ -540,20 +539,25 @@ int access_check(char *path, int mode) {
    */
   mask = S_IROTH | S_IWOTH | S_IXOTH;
   
-  if(buf.st_uid == session.uid)
-    mask |= S_IRUSR | S_IWUSR | S_IXUSR;
+  if (buf.st_uid == session.uid)
+    mask |= S_IRUSR|S_IWUSR|S_IXUSR;
 
   /* Check the current group, as well as all supplementary groups.
    * Fortunately, we have this information cached, so accessing it is
    * almost free.
    */
-  if(buf.st_gid == session.gid) {
+  if (buf.st_gid == session.gid) {
     mask |= S_IRGRP | S_IWGRP | S_IXGRP;
+
   } else {
-    for(i = 0; i < session.gids->nelts; i++) {
-      if(buf.st_gid == ((gid_t *) session.gids->elts)[i]) {
-	mask |= S_IRGRP | S_IWGRP | S_IXGRP;
-	break;
+    if (session.gids) {
+      register unsigned int i = 0;
+
+      for (i = 0; i < session.gids->nelts; i++) {
+        if (buf.st_gid == ((gid_t *) session.gids->elts)[i]) {
+	  mask |= S_IRGRP|S_IWGRP|S_IXGRP;
+	  break;
+        }
       }
     }
   }
@@ -561,22 +565,22 @@ int access_check(char *path, int mode) {
   mask &= buf.st_mode;
   
   /* Perform requested access checks */
-  if(mode & R_OK) {
-    if (!(mask & (S_IRUSR | S_IRGRP | S_IROTH))) {
+  if (mode & R_OK) {
+    if (!(mask & (S_IRUSR|S_IRGRP|S_IROTH))) {
       errno = EACCES;
       return -1;
-  }
+    }
   }
   
-  if(mode & W_OK) {
-    if (!(mask & (S_IWUSR | S_IWGRP | S_IWOTH))) {
+  if (mode & W_OK) {
+    if (!(mask & (S_IWUSR|S_IWGRP|S_IWOTH))) {
       errno = EACCES;
       return -1;
-  }
+    }
   }
   
-  if(mode & X_OK) {
-    if (!(mask & (S_IXUSR | S_IXGRP | S_IXOTH))) {
+  if (mode & X_OK) {
+    if (!(mask & (S_IXUSR|S_IXGRP|S_IXOTH))) {
       errno = EACCES;
       return -1;
     }

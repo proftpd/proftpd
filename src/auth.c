@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.16 2002-09-06 00:59:05 castaglia Exp $
+ * $Id: auth.c,v 1.17 2002-10-09 16:55:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -526,16 +526,20 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
 
   tmp_pool = make_sub_pool(p);
 
-  ngids = suppl_gids->nelts;
-  gids = suppl_gids->elts;
-  proc_gids = pcalloc(tmp_pool, sizeof(gid_t) * (ngids));
+  /* Check for a NULL supplemental group ID list. */
+  if (suppl_gids) {
+    ngids = suppl_gids->nelts;
+    gids = suppl_gids->elts;
 
-  /* Note: the list of supplemental GIDs may contain duplicates.  Sort
-   * through the list and keep only the unique IDs - this should help avoid
-   * running into the NGROUPS limit when possible.  This algorithm may slow
-   * things down some; optimize it if/when possible.
-   */
-  proc_gids[nproc_gids++] = gids[0];
+    proc_gids = pcalloc(tmp_pool, sizeof(gid_t) * (ngids));
+
+    /* Note: the list of supplemental GIDs may contain duplicates.  Sort
+     * through the list and keep only the unique IDs - this should help avoid
+     * running into the NGROUPS limit when possible.  This algorithm may slow
+     * things down some; optimize it if/when possible.
+     */
+    proc_gids[nproc_gids++] = gids[0];
+  }
 
   for (i = 1; i < ngids; i++) {
     register unsigned int j = 0;

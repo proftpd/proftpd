@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.69 2002-09-26 01:05:22 castaglia Exp $
+ * $Id: dirtree.c,v 1.70 2002-10-09 16:55:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1038,7 +1038,7 @@ config_rec *dir_match_path(pool *p, char *path)
 
 static int _dir_check_op(pool *p, xaset_t *c, int op, uid_t uid, gid_t gid,
     mode_t mode) {
-  int i, res = 1, user_perms = 0;
+  int res = 1, user_perms = 0;
   uid_t *u = NULL;
   gid_t *g = NULL, *gidp = NULL;
 
@@ -1061,20 +1061,23 @@ static int _dir_check_op(pool *p, xaset_t *c, int op, uid_t uid, gid_t gid,
     user_perms |= (mode & S_IRWXG);
 
   } else {
-    int found_gid_match = FALSE;
- 
-    /* loop through the user's auxiliary groups, checking if these
-     * memberships match that of the file
-     */
-    for (i = session.gids->nelts, gidp = (gid_t *) session.gids->elts;
+    unsigned char found_gid_match = FALSE;
+
+    if (session.gids) { 
+      register unsigned int i = 0;
+
+      /* Loop through the user's auxiliary groups, checking if these
+       * memberships match that of the file
+       */
+      for (i = session.gids->nelts, gidp = (gid_t *) session.gids->elts;
          i; i--, gidp++) {
 
-      /* matched an auxiliary GID against the file GID
-       */
-      if (*gidp == gid) {
-        found_gid_match = TRUE;
-        user_perms |= (mode & S_IRWXG);
-        break;
+        /* Matched an auxiliary GID against the file GID. */
+        if (*gidp == gid) {
+          found_gid_match = TRUE;
+          user_perms |= (mode & S_IRWXG);
+          break;
+        }
       }
     }
 
@@ -1107,7 +1110,7 @@ static int _dir_check_op(pool *p, xaset_t *c, int op, uid_t uid, gid_t gid,
       break;
     }
 
-    if(get_param_int(c,"HideNoAccess",FALSE) == 1) {
+    if (get_param_int(c, "HideNoAccess", FALSE) == 1) {
 
       if(S_ISDIR(mode)) {
 
@@ -1134,13 +1137,14 @@ static int _dir_check_op(pool *p, xaset_t *c, int op, uid_t uid, gid_t gid,
     break;
 
   case OP_COMMAND:
-    if(get_param_int(c,"AllowAll",FALSE) == 1)
+    if (get_param_int(c, "AllowAll", FALSE) == 1)
       /* nop */;  
 
-    else if(get_param_int(c,"DenyAll",FALSE) == 1) {
+    else if (get_param_int(c, "DenyAll", FALSE) == 1) {
       res = 0;
       errno = EACCES;
     }
+
     break;
   }
 
