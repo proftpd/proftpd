@@ -19,7 +19,7 @@
 
 /*
  * ProFTPD logging support
- * $Id: log.c,v 1.10 1999-09-18 18:25:55 macgyver Exp $
+ * $Id: log.c,v 1.11 1999-09-26 06:00:34 macgyver Exp $
  */
 
 /* History Log:
@@ -643,7 +643,7 @@ int log_opensyslog(const char *fn)
       return -1;
     }
     
-    if(statbuf.st_mode & S_IXOTH) {
+    if(statbuf.st_mode & S_IWOTH) {
       log_debug(DEBUG0, "%s is a world writeable directory", syslog_fn);
       syslog_fn = NULL;
       return -2;
