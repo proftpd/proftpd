@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.91 2002-06-24 23:24:58 castaglia Exp $
+ * $Id: mod_core.c,v 1.92 2002-06-27 18:35:40 flyhmstr Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -292,7 +292,7 @@ MODRET add_define(cmd_rec *cmd) {
   /* Make sure there's at least one parameter; any others are ignored */
   CHECK_ARGS(cmd, 1);
 
-  /* This directive can occur in any context, so need need for the
+  /* This directive can occur in any context, so no need for the
    * CHECK_CONF macro.
    */
 
