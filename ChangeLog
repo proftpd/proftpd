@@ -1,3 +1,8 @@
+2001-08-16 15:58  flood
+
+	* NEWS, contrib/mod_test.c, doc/Configuration.html: Updated docs,
+	moved mod_test.c to attic
+
 2001-08-16 15:54  flood
 
 	* NEWS, modules/mod_ls.c, modules/mod_xfer.c, src/support.c: 1273 -
