@@ -18,7 +18,7 @@
  */
 
 /*
- * mod_ldap v2.8.3
+ * mod_ldap v2.8.4
  *
  * Thanks for patches go to (in alphabetical order):
  * 
@@ -39,7 +39,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  * 
- * $Id: mod_ldap.c,v 1.18 2002-05-10 12:51:44 jwm Exp $
+ * $Id: mod_ldap.c,v 1.19 2002-05-15 12:55:13 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -1271,7 +1271,7 @@ set_ldap_dogid(cmd_rec *cmd)
   if (b == 1) { CHECK_ARGS(cmd, 2); }
   else        { CHECK_ARGS(cmd, 1); }
 
-  c = add_config_param("LDAPDoGIDLookups", 4, (void *)b);
+  c = add_config_param("LDAPDoGIDLookups", cmd->argc - 1, (void *)b);
   if (cmd->argc > 2)
     c->argv[1] = pstrdup(permanent_pool, cmd->argv[2]);
   if (cmd->argc > 3)
@@ -1502,12 +1502,12 @@ ldap_getconf(void)
       ldap_dogid = 1;
       ldap_gid_basedn = pstrdup(session.pool, c->argv[1]);
 
-      if (c->argv[2])
+      if (c->argc > 2)
         ldap_group_name_filter = pstrdup(session.pool, c->argv[2]);
       else
         ldap_group_name_filter = "(&(cn=%v)(objectclass=posixGroup))";
 
-      if (c->argv[3])
+      if (c->argc > 3)
         ldap_group_gid_filter = pstrdup(session.pool, c->argv[3]);
       else
         ldap_group_gid_filter = "(&(gidNumber=%v)(objectclass=posixGroup))";
