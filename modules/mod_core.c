@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.119 2002-11-19 17:57:49 castaglia Exp $
+ * $Id: mod_core.c,v 1.120 2002-11-25 21:02:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2296,11 +2296,11 @@ MODRET end_virtualhost(cmd_rec *cmd) {
  *          0 if file display
  */
 
-int core_display_file(const char *numeric, const char *fn, const char *fs)
-{
+int core_display_file(const char *numeric, const char *fn, const char *fs) {
   fsdir_t *fp;
   char buf[1024] = {'\0'};
-  int len, max, fd, classes_enabled;
+  int len, fd, classes_enabled;
+  unsigned int *max_clients = NULL;
   off_t fs_size = 0;
   pool *p;
   xaset_t *s;
@@ -2317,7 +2317,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs)
   snprintf(mg_size, sizeof(mg_size), "%" PR_LU, fs_size);
 #endif
 
-  if((fp = fs_open_canon(fn,O_RDONLY,&fd)) == NULL)
+  if ((fp = fs_open_canon(fn,O_RDONLY, &fd)) == NULL)
     return -1;
 
   p = make_sub_pool(permanent_pool);
@@ -2325,9 +2325,9 @@ int core_display_file(const char *numeric, const char *fn, const char *fs)
   s = (session.anon_config ? session.anon_config->subset : main_server->conf);
 
   mg_time = fmt_time(time(NULL));
-  snprintf(mg_size, sizeof(mg_size), "%" PR_LU, fs_size);
 
-  max = get_param_int(s,"MaxClients",FALSE);
+  max_clients = get_param_ptr(s, "MaxClients", FALSE);
+
   snprintf(mg_cur, sizeof(mg_cur), "%d",(int)get_param_int(main_server->conf,
           "CURRENT-CLIENTS",FALSE)+1);
 
@@ -2335,13 +2335,17 @@ int core_display_file(const char *numeric, const char *fn, const char *fs)
     classes_enabled = 0;
   
   if (classes_enabled && session.class && session.class->name) {
-	snprintf(config_class_users,sizeof(config_class_users),"%s-%s","CURRENT-CLIENTS-CLASS",session.class->name);
-	snprintf(mg_cur_class,sizeof(mg_cur_class),"%d",(int)get_param_int(main_server->conf,config_class_users,FALSE));
-	snprintf(mg_class_limit, sizeof(mg_class_limit), "%u",
-		 session.class->max_connections);
+    snprintf(config_class_users, sizeof(config_class_users),
+      "CURRENT-CLIENTS-CLASS-%s", session.class->name);
+    snprintf(mg_cur_class, sizeof(mg_cur_class), "%d",
+      (int)get_param_int(main_server->conf, config_class_users, FALSE));
+    snprintf(mg_class_limit, sizeof(mg_class_limit), "%u",
+      session.class->max_connections);
+
   } else {
-	mg_cur_class[0] = 0;
-	snprintf(mg_class_limit, sizeof(mg_class_limit), "%u",max);
+    mg_cur_class[0] = 0;
+    snprintf(mg_class_limit, sizeof(mg_class_limit), "%u",
+      max_clients ? *max_clients : 0);
   }
    
   snprintf(mg_xfer_bytes, sizeof(mg_xfer_bytes), "%" PR_LU,
@@ -2359,13 +2363,11 @@ int core_display_file(const char *numeric, const char *fn, const char *fs)
     snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "GB",
 	     session.total_bytes >> 30);
   }
-  
-  if(max != -1)
-    snprintf(mg_max, sizeof(mg_max), "%d",max);
+ 
+  snprintf(mg_max, sizeof(mg_max), "%u", max_clients ? *max_clients : 0); 
 
-  user = (char*)get_param_ptr(main_server->conf,"USER",FALSE);
-  if (user == 0)
-      user = "";
+  if ((user = get_param_ptr(main_server->conf, C_USER, FALSE)) == NULL)
+    user = "";
    
   if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
       FALSE)) != NULL) {
