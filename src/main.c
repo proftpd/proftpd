@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.215 2003-11-09 23:32:07 castaglia Exp $
+ * $Id: main.c,v 1.216 2003-12-30 22:56:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -770,7 +770,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
 
     else
       pr_response_send(R_220, "ProFTPD " PROFTPD_VERSION_TEXT
-        " Server (%s) [%s]", server->ServerName,serveraddress);
+        " Server (%s) [%s]", server->ServerName, serveraddress);
 
   } else
     pr_response_send(R_220, "%s FTP server ready", serveraddress);
