@@ -1,6 +1,6 @@
-$Id: NEWS,v 1.557 2004-04-16 16:33:44 castaglia Exp $
+$Id: NEWS,v 1.558 2004-04-28 17:52:46 castaglia Exp $
 
-CVS
+1.2.10rc1 - Released 28-Apr-2004
 ---------------------------------
 - Bug 2135 - Add ability to handle passphrase-protected server keys.  mod_tls
   can now properly prompt for passphrases for protected server certificate

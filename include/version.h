@@ -8,4 +8,4 @@
 #define PR_MODULE_API_VERSION		0x20
 
 /* PR_STATUS is reported by --version-status -- don't ask why */
-#define PR_STATUS          		"(CVS)"
+#define PR_STATUS          		"(devel)"
