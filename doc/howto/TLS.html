@@ -1,4 +1,4 @@
-<!-- $Id: TLS.html,v 1.3 2004-04-10 18:01:18 castaglia Exp $ -->
+<!-- $Id: TLS.html,v 1.4 2004-06-30 18:25:22 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/TLS.html,v $ -->
 
 <html>
@@ -93,16 +93,60 @@ these two approaches for encrypting FTP channels.
 
 <p><a name="TLSPerUser">
 <font color=red>Question</font>: Can I require TLS on a per-user basis?<br>
-<font color=blue>Answer</font>: No.  The IETF Draft specifying FTP over TLS
-requires that the TLS handshake occur <i>before</i> the client sends the
-<code>USER</code> command.  This means that the server does not know the name
-of the user that the client will be using when the TLS session is established.
-It is possible that the client's certificate, if one is even presented, may
-contain information the server may use to map that certificate to a user, but
-such mapping is not currently supported by <code>mod_tls</code>.  Note that
-this is also the reason the <code>TLSRequired</code> directive cannot appear in
-the <code>&lt;Anonymous&gt;</code> context: anonymous logins are based on the
+<font color=blue>Answer</font>: Prior to ProFTPD 1.2.10rc2, no.  The IETF
+Draft specifying FTP over TLS requires that the TLS handshake occur
+<i>before</i> the client sends the <code>USER</code> command.  This means that
+the server does not know the name of the user that the client will be using
+when the TLS session is established.  It is possible that the client's
+certificate, if one is even presented, may contain information the server may
+use to map that certificate to a user, but such mapping is not currently
+supported by <code>mod_tls</code>.  Note that this is also the reason the
+<code>TLSRequired</code> directive cannot appear in the
+<code>&lt;Anonymous&gt;</code> context: anonymous logins are based on the
 <code>USER</code> command.
+
+<p>
+However, in 1.2.10rc2, the <code>mod_tls</code> module was modified to allow
+such per-user TLS requirements.  To do this, the <code>AllowPerUser</code>
+parameter of the <code>TLSOptions</code> directive is used.  For example,
+the following example <code>mod_tls</code> configuration allows non-SSL
+anonymous sessions, but requires SSL/TLS for all other sessions:
+<pre>
+  &lt;IfModule mod_tls.c&gt;
+    TLSEngine on
+    TLSRSACertificateFile ...
+    TLSCACertificateFile ...
+    TLSOptions AllowPerUser
+    TLSRequired on
+
+    &lt;Anonymous ~ftp&gt;
+      User ftp
+      Group ftp
+      UserAlias anonymous ftp
+
+      RequireValidShell off
+
+      # Note how TLSRequired is set to off here in the &lt;Anonymous&gt; context
+      TLSRequired off
+    &lt;/Anonymous&gt;
+  &lt;/IfModule&gt;
+</pre>
+The modification also allows <code>mod_ifsession</code>-based conditions, so
+that one can have settings like:
+<pre>
+  &lt;IfGroup trusted&gt;
+    TLSRequired off
+  &lt;/IfGroup&gt;
+</pre>
+However, there is a risk involved in using the <code>AllowPerUser</code>
+option: it causes <code>mod_tls</code> not to enforce <code>TLSRequired</code>
+until <i>after</i> the potentially sensitive USER and PASS commands have
+been sent by the client.  This allows clients, even when
+<code>TLSRequired on</code> or <code>TLSRequired ctrl</code> are in effect,
+to send the USER and PASS commands <i>unencrypted</i>.  Depending on your
+site's security needs, the ability to require SSL/TLS on a per-user basis
+may or may not be worth the ability to require SSL/TLS for the USER and PASS
+commands.
 
 <p><a name="TLSFXP">
 <font color=red>Question</font>: Why does <code>mod_tls</code> break FXP
@@ -175,7 +219,7 @@ depending on the client).
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-04-10 18:01:18 $</i><br>
+Last Updated: <i>$Date: 2004-06-30 18:25:22 $</i><br>
 <hr>
 
 </body>
