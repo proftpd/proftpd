@@ -1,25 +1,32 @@
-LDAP
-====
+mod_ldap v2.0
+=============
 
 mod_ldap is a module that allows proftpd to do user authentication and
 name/UID lookups against an LDAP database.
 
+**Please note:** some of the basic configuration directives have changed
+in version 2.0 of mod_ldap; please read the Changes section of this file
+carefully to find out what you will need to update in your proftpd.conf.
+
 
 Sections:
 1. How do I set up mod_ldap?
-2. To-Do
-3. Author
+2. Changes in v2.0
+3. To-Do
+4. Thanks
+5. Author
 
 
 ============================
 1. How do I set up mod_ldap?
 ============================
 
-Currently, mod_ldap has only been tested with recent versions of
-OpenLDAP-stable, but would probably work with other LDAP servers with
-a bit of minor tweaking.
+Currently, mod_ldap has only been heavily tested with recent versions of
+OpenLDAP-stable, but has been reported to work with Netscape Directory
+Server without any modification.
 
-1. Add the following schema to your slapd.oc.conf and restart slapd:
+1. Add the following schema to your slapd.oc.conf (if it's not already
+   there) and restart slapd:
 
 objectclass posixAccount
         requires
@@ -35,8 +42,8 @@ objectclass posixAccount
                 gecos,
                 description
 
-2. Create an ldif file and add it to your LDAP server by saying:
-   ldapadd -D your-root-dn -w your-root-dn-password < ldif-file
+2. Create an ldif file and add it to your LDAP server by saying: ldapadd -D
+   your-root-dn -w your-root-dn-password < ldif-file
 
 A sample ldif is included here:
 
@@ -49,39 +56,106 @@ homeDirectory: /home/jwm
 userPassword: {crypt}SosPSqZVHbI5Y
 loginShell: /bin/bash
 
-3. Read up on the LDAP config-file directives in doc/Configuration.html.
-At bare minimum, you'll need to have LDAPServer, LDAPDN, LDAPDNPass, and
-LDAPPrefix configuration directives in your proftpd.conf.
+3. Read up on the LDAP config-file directives in doc/Configuration.html. At
+bare minimum, you'll need to have LDAPServer, LDAPDNInfo, and LDAPDoAuth
+configuration directives in your proftpd.conf.
 
 A sample set of LDAP configuration directives is included here:
 
-LDAPServer         "localhost"
-LDAPPrefix         "dc=horde,dc=net"
-LDAPDN             "cn=thedn,dc=horde,dc=net"
-LDAPDNPass         "ldap_dnpass"
+LDAPServer            localhost
+LDAPDNInfo            cn=your-dn,dc=horde,dc=net dnpass
+LDAPDoAuth            on "dc=users,dc=horde,dc=net"
 
-========
-2. To-Do
-========
+==================
+2. Changes in v2.0
+==================
 
-* LDAP group lookups: Currently, proftpd-ldap is based off of mod_unixpw; I
-  just left the Unix group lookup code alone when I wrote proftpd-ldap, so
-  proftpd-ldap still does Unix group lookups. I imagine someone out there
-  would find LDAP group lookups useful. The next version does this, but I'm
-  currently hung up with a config-file showstopper. Hopefully I'll be able
-  to take care of that and get a release out in the next couple of weeks.
+Please check the web site for previous changelogs.
+
+* Config file syntax revamped:
+   LDAPServer            localhost
+   LDAPDNInfo            cn=your-dn,dc=horde,dc=net dnpass
+   LDAPQueryTimeout      5
+   LDAPDoAuth            on "dc=users,dc=horde,dc=net"
+   LDAPDoUIDLookups      on "dc=users,dc=horde,dc=net"
+   LDAPDoGIDLookups      on "dc=groups,dc=horde,dc=net"
+   LDAPDefaultUID        35000
+   LDAPDefaultGID        1000
+   LDAPNegativeCache     on
+   LDAPHomedirOnDemand   on
+   LDAPDefaultAuthScheme clear
+* Configurable LDAP query timeout [Peter Deacon <peterd@iea-software.com>]
+* Cleartext password "encryption" scheme ("{clear}mypass")
+* UID-to-name and GID-to-name lookups in directory listings
+* Separate prefixes for user and group lookups
+* Can turn on/off UID-to-name and GID-to-name lookups independently
+* Default [UG]IDs. Say you want to have a web-toaster type of deal, with
+  all users having the same [UG]IDs. Just don't put [ug]idNumber attrs in
+  your LDAP database for those users, and set these configuration
+  directives. Any user that doesn't have a [UG]ID in the LDAP database will
+  have that info filled in with the default [UG]ID.
+* mod_ldap is now able to function in a pure virtual-user environment;
+  please note, however, that the loginShell LDAP attr still must be a
+  valid shell. You can turn this check off by saying RequireValidShell off
+  in your proftpd.conf
+* allowedServices attr: (I broke with objectclass here, couldn't find
+  something that seemed to fit this.) This attribute contains a
+  comma-deliminated list of services to allow this particular user.  The
+  string "FTP" corresponds to FTP service. If no allowedServices attr is
+  present, all services will be allowed.
+* You can have alternate LDAP servers; just specify LDAPServer "host1
+  host2"; [Peter Deacon <peterd@iea-software.com>]
+* LDAPHomedirOnDemand to automatically create home directories in a
+  virtual-user environment. [patch: Bert Vermeulen <bert@be.easynet.net>]
+* LDAPDefaultAuthScheme to select the authentication scheme to use when
+  no {prefix} is present in a user's userPassword LDAP attr.
+  [patch: Bert Vermeulen <bert@be.easynet.net>]
+* Virtual hosting support may or may not work okay; theoretically, I think
+  adding LDAP configuration directives to a <VirtualHost> block will work,
+  but this hasn't been tested.
+
+New Tested Platforms:
+
+* Solaris 2.6 with Netscape Directory Server and the Mozilla LDAP C SDK,
+  available at http://www.mozilla.org/directory/csdk.html.
+  Peter Fabian <fabian@staff.matavnet.hu>
+* Solaris 7 with gcc 2.95.1 and OpenLDAP 1.2.7
+  Ralf Kruedewagen <Ralf.Kruedewagen@meocom.de>
+
+Please check the web site for the complete list of tested platforms.
+
+=======
+3. ToDo
+=======
 
 * Support for alternate password hash algorithms, such as SHA1. I'm looking
   at how qmail-ldap does this; it looks like they just "borrowed" the SHA1
-  source file from OpenBSD.
+  source file from OpenBSD. Authenticated binds would also take care of
+  this, as then any encryption scheme supported by your LDAP server would
+  be usable.
+* different log levels in mod_ldap to log varying debug info
+* config file directive to not even look up [ug]id attrs if we're using
+  a default [ug]id
 
-* Secondary LDAP server: for when the primary is unreachable. 
-
-* Virtual hosting support: vary the LDAPPrefix in a <VirtualHost> config
-  block.
+Peter Deacon <peterd@iea-software.com>'s ideas:
+* authenticated binds (also Peter Fabian <fabian@staff.matavnet.hu>)
+* perror()-like error reporting to improve error messages
+* shadowAccount objectclass stuff - inactive, expiration, etc.
 
 =========
-3. Author
+4. Thanks
+=========
+
+* James <james@wwnet.net> for a copy of his LDAP module that he
+* Krzysztof Dabrowski <brush@pol.pl> for some big virtual-user ideas
+* Peter Deacon <peterd@iea-software.com> for ideas
+* Peter Fabian <fabian@staff.matavnet.hu> for ideas and a tested platform
+* Ralf Kruedewagen <Ralf.Kruedewagen@meocom.de> for a tested platform
+* Scott Murphy <smurphy@berbee.com> for a trouble report
+* Bert Vermeulen <bert@be.easynet.net> for patches
+
+=========
+5. Author
 =========
 
 John Morrissey, <jwm@horde.net>, http://horde.net/~jwm/software/proftpd-ldap

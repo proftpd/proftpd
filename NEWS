@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.16 1999-12-23 06:05:18 macgyver Exp $
+$Id: NEWS,v 1.17 1999-12-27 03:03:52 macgyver Exp $
 
 1.2.0pre10 - Released: ???
 --------------------------
@@ -10,6 +10,11 @@ $Id: NEWS,v 1.16 1999-12-23 06:05:18 macgyver Exp $
 - sendfile() doesn't log spurious messages unless it's in debug mode now.
 
 - A meaningful error is now generated with bad group files.
+
+- Complex group permissions work correctly now, where they did not in a
+  rare case.
+
+- Updated included version of mod_ldap.
 
 1.2.0pre9 - Released: 10/27/99
 ------------------------------

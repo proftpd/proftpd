@@ -64,11 +64,17 @@
   <li><a href="#IdentLookups">IdentLookups</a></li>
   <li><a href="#IgnoreHidden">IgnoreHidden</a></li>
   <li><a href="#Limit">&lt;Limit&gt;</a></li>
-  <li><a href="#LDAPDN">LDAPDN</a></li>
-  <li><a href="#LDAPDNPass">LDAPDNPass</a></li>
-  <li><a href="#LDAPServer">LDAPServer</a></li>
-  <li><a href="#LDAPNegativeCache">LDAPNegativeCache</a></li>
-  <li><a href="#LDAPPrefix">LDAPPrefix</a></li>
+  <li><a href="#LDAPDefaultAuthScheme">LDAPDefaultAuthScheme
+  <li><a href="#LDAPDefaultGID">LDAPDefaultGID
+  <li><a href="#LDAPDefaultUID">LDAPDefaultUID
+  <li><a href="#LDAPDNInfo">LDAPDNInfo
+  <li><a href="#LDAPDoAuth">LDAPDoAuth
+  <li><a href="#LDAPDoUIDLookups">LDAPDoUIDLookups
+  <li><a href="#LDAPDoGIDLookups">LDAPDoGIDLookups
+  <li><a href="#LDAPHomedirOnDemand">LDAPHomedirOnDemand
+  <li><a href="#LDAPNegativeCache">LDAPNegativeCache
+  <li><a href="#LDAPQueryTimeout">LDAPQueryTimeout
+  <li><a href="#LDAPServer">LDAPServer
   <li><a href="#LogFormat">LogFormat</a></li>
   <li><a href="#LoginPasswordPrompt">LoginPasswordPrompt</a></li>
   <li><a href="#LsDefaultOptions">LsDefaultOptions</a></li>
@@ -1255,59 +1261,119 @@ href="reference.html#Limit">&lt;Limit&gt;</a> block to completely ignore any hid
   the base operating/file system.</p>
 <p><strong>See Also:</strong> <a href="reference.html#IgnoreHidden">IgnoreHidden</a></p>
 <hr>
-<h2><a name="LDAPDN">LDAPDN</a></h2>
-<p><strong>Syntax:</strong> LDAPDN <em>"ldap-dn"</em><br>
-  <strong>Default:</strong> <code>LDAPDN ""</code> (anonymous bind)<br>
+<h2><a name="LDAPDefaultAuthScheme"></a></h2>
+<p><strong>Syntax:</strong> LDAPDefaultAuthScheme <em>crypt|clear</em><br>
+  <strong>Default:</strong> <code>LDAPDefaultAuthScheme "crypt"</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
-<p>LDAPDN specifies the Distinguished Name to bind as to the LDAP server for authentication. 
-  This usually looks something like "cn=the-dn, dc=domain, dc=com" or "o=Your 
-  Organization, c=US". If no LDAPDN configuration directive is present, anonymous 
-  binds will be used.</p>
+  <strong>Compatibility:</strong> 1.2.0pre10 and later</p>
+<p>Specifies the authentication scheme used for passwords with no {prefix}
+   in the LDAP database. For example, if you are using something like
+   userPassword: mypass in your LDAP database, you would want to set
+   <code>LDAPDefaultAuthScheme</code> to <em>clear</em>.
 <hr>
-<h2><a name="LDAPDNPass">LDAPDNPass</a></h2>
-<p><strong>Syntax:</strong> LDAPDNPass <em>"ldap-dn-password"</em><br>
-  <strong>Default:</strong> <code>LDAPDNPass ""</code> (no password)<br>
+<h2><a name="LDAPDefaultGID"></a></h2>
+<p><strong>Syntax:</strong> LDAPDefaultGID <em>default-gid</em><br>
+  <strong>Default:</strong> None<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
-<p>LDAPDNPass allows you to specify the password to be used when binding as <a href="#LDAPDN">LDAPDN</a> 
-  to the LDAP server for authentication. If no LDAPDNPass configuration directive 
-  is present, no password will be used.</p>
+  <strong>Compatibility:</strong> 1.2.0pre10 and later</p>
+<p>This directive is useful primarily in virtual-user environments common
+   in large-scale ISPs and hosting organizations. If a user does not have
+   a LDAP gidNumber attribute, the LDAPDefaultGID is used. This allows one
+   to have a large number of users in an LDAP database without gidNumber
+   attributes; setting this configuration directive will automatically
+   assign those users a single GID.
 <hr>
-<h2><a name="LDAPServer">LDAPServer</a></h2>
-<p><strong>Syntax:</strong> LDAPServer <em>"ldap-server-name"</em><br>
-  <strong>Default:</strong> <code>LDAPServer "localhost"</code><br>
+<h2><a name="LDAPDefaultUID"></a></h2>
+<p><strong>Syntax:</strong> LDAPDefaultUID <em>default-uid</em><br>
+  <strong>Default:</strong> None<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
-<p>LDAPServer allows you to to specify the hostname of the LDAP server to use 
-  in LDAP authentication. If no LDAPServer configuration directive is present, 
-  the local host will be used for the LDAP server.</p>
+  <strong>Compatibility:</strong> 1.2.0pre10 and later</p>
+<p>This directive is useful primarily in virtual-user environments common
+   in large-scale ISPs and hosting organizations. If a user does not have
+   a LDAP uidNumber attribute, the LDAPDefaultUID is used. This allows one
+   to have a large number of users in an LDAP database without uidNumber
+   attributes; setting this configuration directive will automatically
+   assign those users a single UID.
 <hr>
-<h2><a name="LDAPNegativeCache">LDAPNegativeCache</a></h2>
-<p><strong>Syntax:</strong> LDAPNegativeCache <em>on/off</em><br>
+<h2><a name="LDAPDNInfo"></a></h2>
+<p><strong>Syntax:</strong> LDAPDNInfo <em>"ldap-dn" "dn-password"</em><br>
+  <strong>Default:</strong> <code>LDAPDNInfo "" ""</code> (anonymous bind)<br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+  <strong>Compatibility:</strong> 1.2.0pre10 and later</p>
+<p>This directive specifies the LDAP DN and password to use when binding
+   to the LDAP server. If this configuration directive is not specified,
+   anonymous binds are used.
+<hr>
+<h2><a name="LDAPDoAuth"></a></h2>
+<p><strong>Syntax:</strong> LDAPDoAuth <em>on|off "auth-base-prefix"</em><br>
+  <strong>Default:</strong> <code>LDAPDoAuth off</code><br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+  <strong>Compatibility:</strong> 1.2.0pre10 and later</p>
+<p>This configuration directive activates LDAP authentication. The second
+   argument to this directive is the LDAP prefix to use for authentication.
+<hr>
+<h2><a name="LDAPDoUIDLookups"></a></h2>
+<p><strong>Syntax:</strong> LDAPDoUIDLookups <em>on|off "uid-base-prefix"</em><br>
+  <strong>Default:</strong> <code>LDAPDoUIDLookups off</code><br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+  <strong>Compatibility:</strong> 1.2.0pre10 and later</p>
+<p>This configuration directive activates LDAP UID-to-name lookups in
+   directory listings. The second argument to this directive is the LDAP
+   prefix to use for UID-to-name lookups.
+<hr>
+<h2><a name="LDAPDoGIDLookups"></a></h2>
+<p><strong>Syntax:</strong> LDAPDoGIDLookups <em>on|off "uid-base-prefix"</em><br>
+  <strong>Default:</strong> <code>LDAPDoGIDLookups off</code><br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+  <strong>Compatibility:</strong> 1.2.0pre10 and later</p>
+<p>This configuration directive activates LDAP GID-to-name lookups in
+   directory listings. The second argument to this directive is the LDAP
+   prefix to use for GID-to-name lookups.
+<hr>
+<h2><a name="LDAPHomedirOnDemand"></a></h2>
+<p><strong>Syntax:</strong> LDAPHomedirOnDemand <em>on|off</em><br>
+  <strong>Default:</strong> <code>LDAPHomedirOnDemand off</code><br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+  <strong>Compatibility:</strong> 1.2.0pre10 and later</p>
+<p>LDAPHomedirOnDemand activates on-demand home directory creation. If a
+   user logs in and does not yet have a home directory, a home directory
+   is created automatically. The home directory will be owned by the same
+   user and group that ProFTPD is running as (see the <a href="#User">User</a>
+   and <a href="#Group">Group</a> configuration directives).
+<hr>
+<h2><a name="LDAPNegativeCache"></a></h2>
+<p><strong>Syntax:</strong> LDAPNegativeCache <em>on|off</em><br>
   <strong>Default:</strong> <code>LDAPNegativeCache off</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
-<p>LDAPNegativeCache specifies whether or not to cache negative responses from 
-  the LDAP server when using LDAP authentication. This option is useful if you 
-  also use/are in transition from another authentication system. If there are 
-  many users in your old authentication system that aren't in the LDAP database, 
-  there will be a significant delay when a directory listing is performed as the 
-  UIDs not in the LDAP database are repeatedly looked up in the LDAP database 
-  in an attempt to present usernames instead of UIDs in directory listings. With 
-  LDAPNegativeCache set to on, negative ("not found") responses from the LDAP 
-  server will be cached and speed will improve on directory listings in situations 
-  like this.</p>
+<p>LDAPNegativeCache specifies whether or not to cache negative responses
+   from the LDAP server when using LDAP for UID/GID lookups. This option is
+   useful if you also use/are in transition from another authentication
+   system; if there are many users in your old authentication system that
+   aren't in the LDAP database, there can be a significant delay when a
+   directory listing is performed as the UIDs not in the LDAP database are
+   repeatedly looked up in an attempt to present usernames instead of UIDs
+   in directory listings. With LDAPNegativeCache set to on, negative ("not
+   found") responses from the LDAP server will be cached and speed will
+   improve on directory listings that contain many users not present in the
+   LDAP database.</p>
 <hr>
-<h2><a name="LDAPPrefix">LDAPPrefix</a></h2>
-<p><strong>Syntax:</strong> LDAPPrefix <em>"ldap-prefix"</em><br>
-  <strong>Default:</strong> <code>LDAPPrefix ""</code><br>
+<h2><a name="LDAPQueryTimeout"></a></h2>
+<p><strong>Syntax:</strong> LDAPQueryTimeout <em>timeout-seconds</em><br>
+  <strong>Default:</strong> <code>LDAPQueryTimeout default-api-timeout</code><br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+  <strong>Compatibility:</strong> 1.2.0pre10 and later</p>
+<p>Sets the timeout used for LDAP directory queries. The default is the
+   default timeout used by the LDAP API.
+<hr>
+<h2><a name="LDAPServer"></a></h2>
+<p><strong>Syntax:</strong> LDAPServer <em>"hostname"</em><br>
+  <strong>Default:</strong> <code>LDAPServer "localhost"</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
-<p>LDAPPrefix allows you to specify the prefix to be used in LDAP authentication 
-  queries. This usually looks something like "dc=domain, dc=com" or "o=Your Organization, 
-  c=US". If no LDAPPrefix configuration directive is present, a default of no 
-  prefix is used.</p>
+<p>LDAPServer allows you to to specify the hostname of the LDAP server to
+   use for LDAP authentication. If no LDAPServer configuration directive is
+   present, the local host will be used for the LDAP server.</p>
 <hr>
 <h2><a name="LogFormat">LogFormat</a></h2>
 <p><strong>Syntax:</strong> LogFormat <em>nickname &quot;format-string&quot;</em><br>
