@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.190 2004-09-26 20:12:00 castaglia Exp $
+ * $Id: mod_auth.c,v 1.191 2004-09-26 20:23:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -51,25 +51,6 @@ static unsigned int TimeoutSession = 0;
 
 static void auth_scan_scoreboard(void);
 static void auth_count_scoreboard(cmd_rec *, char *);
-
-static void random_delay(void) {
-  struct timeval tv;
-  int randno = rand();
-
-  /* This algorithm should obtain a number of microseconds between 1 and
-   * PR_TUNABLE_AUTH_DELAY * 1000000, resulting in a random delay of at most
-   * PR_TUNABLE_AUTH_DELAY seconds.
-   */
-
-  unsigned long usecs = 1 + (int)
-    (PR_TUNABLE_AUTH_DELAY * 1000000.0 * randno / (RAND_MAX + 1.0));
-
-  tv.tv_sec = 0;
-  tv.tv_usec = usecs;
-
-  /* We're not too concerned with interruptions at the moment. */
-  (void) select(0, NULL, NULL, NULL, &tv);
-}
 
 /* Perform a chroot or equivalent action to lockdown the process into a
  * particular directory.
@@ -973,14 +954,6 @@ static int _setup_environment(pool *p, char *user, char *pass) {
         break;
 
       case PR_AUTH_NOPWD:
-
-        /* Introduce a random delay, to simulate the time that might have
-         * used to authenticate an existing user, in order to mitigate
-         * information leaks based on timing responses for existing and
-         * unknown users.
-         */
-        random_delay();
-
         pr_log_auth(PR_LOG_NOTICE,
           "USER %s (Login failed): No such user found.", user);
         goto auth_failure;
