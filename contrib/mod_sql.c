@@ -2966,7 +2966,9 @@ MODRET add_virtualbool(char * name, cmd_rec * cmd)
   if (b == -1)
     CONF_ERROR(cmd, "requires a boolean value");
 
-  c = add_config_param(name, 1, (void *) b);
+  c = add_config_param(name, 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = b;
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
@@ -3349,7 +3351,9 @@ MODRET set_sqlminid(cmd_rec * cmd)
     CONF_ERROR(cmd, "the value given is outside the legal range");
   }
 
-  c = add_config_param("SQLMinID", 1, (void *) (uid_t) val);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = val;
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
@@ -3381,7 +3385,9 @@ MODRET set_sqlminuseruid(cmd_rec * cmd)
     CONF_ERROR(cmd, "the value given is outside the legal range");
   }
 
-  c = add_config_param("SQLMinUserUID", 1, (void *) (uid_t) val);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(uid_t));
+  *((uid_t *) c->argv[0]) = val;
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
@@ -3413,7 +3419,9 @@ MODRET set_sqlminusergid(cmd_rec * cmd)
     CONF_ERROR(cmd, "the value given is outside the legal range");
   }
 
-  c = add_config_param("SQLMinUserGID", 1, (void *) (gid_t) val);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(gid_t));
+  *((gid_t *) c->argv[0]) = val;
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
@@ -3441,7 +3449,9 @@ MODRET set_sqldefaultuid(cmd_rec * cmd)
     CONF_ERROR(cmd, "the value given is outside the legal range");
   }
 
-  c = add_config_param("SQLDefaultUID", 1, (void *) val);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(uid_t));
+  *((uid_t *) c->argv[0]) = val;
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
@@ -3469,7 +3479,9 @@ MODRET set_sqldefaultgid(cmd_rec * cmd)
     CONF_ERROR(cmd, "the value given is outside the legal range");
   }
 
-  c = add_config_param("SQLDefaultGID", 1, (void *) val);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(gid_t));
+  *((gid_t *) c->argv[0]) = val;
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
@@ -3582,9 +3594,12 @@ static int sql_getconf()
     cmap.authmask = SQL_AUTH_GROUPS | SQL_AUTH_USERS | SQL_AUTH_GROUPSET | SQL_AUTH_USERSET;
 
   /* SQLHomedirOnDemand defaults to NO */
-  cmap.buildhomedir =
-      get_param_int(main_server->conf, "SQLHomedirOnDemand", FALSE);
-  if (cmap.buildhomedir == -1) cmap.buildhomedir = 0;
+  temp_ptr = get_param_ptr(main_server->conf, "SQLHomedirOnDemand", FALSE);
+
+  if (temp_ptr && (*((unsigned char *) temp_ptr) == TRUE))
+    cmap.buildhomedir = TRUE;
+  else
+    cmap.buildhomedir = FALSE;
 
   cmap.defaulthomedir = get_param_ptr(main_server->conf, "SQLDefaultHomedir", FALSE);
 
@@ -3653,21 +3668,22 @@ static int sql_getconf()
 
   temp_ptr = get_param_ptr(main_server->conf, "SQLMinID", FALSE);
   if ( temp_ptr ) {
-    cmap.minuseruid = (uid_t) temp_ptr;
-    cmap.minusergid = (gid_t) temp_ptr;
+    cmap.minuseruid = *((unsigned long *) temp_ptr);
+    cmap.minusergid = *((unsigned long *) temp_ptr);
+
   } else {
     temp_ptr = get_param_ptr(main_server->conf, "SQLMinUserUID", FALSE);
-    cmap.minuseruid = temp_ptr ? ((uid_t) temp_ptr) : MODSQL_MIN_USER_UID;
+    cmap.minuseruid = temp_ptr ? *((uid_t *) temp_ptr) : MODSQL_MIN_USER_UID;
 
     temp_ptr = get_param_ptr(main_server->conf, "SQLMinUserGID", FALSE);
-    cmap.minusergid = temp_ptr ? ((uid_t) temp_ptr) : MODSQL_MIN_USER_GID;
+    cmap.minusergid = temp_ptr ? *((gid_t *) temp_ptr) : MODSQL_MIN_USER_GID;
   }
 
   temp_ptr = get_param_ptr(main_server->conf, "SQLDefaultUID", FALSE);
-  cmap.defaultuid = temp_ptr ? ((uid_t) temp_ptr) : MODSQL_DEF_UID;
+  cmap.defaultuid = temp_ptr ? *((uid_t *) temp_ptr) : MODSQL_DEF_UID;
 
   temp_ptr = get_param_ptr(main_server->conf, "SQLDefaultGID", FALSE);
-  cmap.defaultgid = temp_ptr ? ((gid_t) temp_ptr) : MODSQL_DEF_GID;
+  cmap.defaultgid = temp_ptr ? *((gid_t *) temp_ptr) : MODSQL_DEF_GID;
 
   if ((c = find_config(main_server->conf, CONF_PARAM, "SQLRatioStats", FALSE))) {
     cmap.sql_fstor = c->argv[0];
