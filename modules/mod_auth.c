@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.163 2003-09-05 18:38:57 castaglia Exp $
+ * $Id: mod_auth.c,v 1.164 2003-09-08 00:32:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1347,19 +1347,17 @@ static int _setup_environment(pool *p, char *user, char *pass) {
 
   if (c) {
     if (!session.hide_password)
-      session.proc_prefix =
-      pstrcat(permanent_pool,session.c->remote_name,
-              ": anonymous/",pass,NULL);
+      session.proc_prefix = pstrcat(session.pool, session.c->remote_name,
+        ": anonymous/", pass, NULL);
+
     else
-      session.proc_prefix =
-      pstrcat(permanent_pool,session.c->remote_name,
-              ": anonymous",NULL);
+      session.proc_prefix = pstrcat(session.pool, session.c->remote_name,
+        ": anonymous", NULL);
 
     session.sf_flags = SF_ANON;
 
   } else {
-
-    session.proc_prefix = pstrdup(permanent_pool,session.c->remote_name);
+    session.proc_prefix = pstrdup(session.pool, session.c->remote_name);
     session.sf_flags = 0;
   }
 
@@ -1400,22 +1398,22 @@ static int _setup_environment(pool *p, char *user, char *pass) {
 
   remove_timer(TIMER_LOGIN, &auth_module);
 
-  /* These copies are made from the permanent_pool, instead of the more
+  /* These copies are made from the session.pool, instead of the more
    * volatile pool used originally, in order that the copied data maintain
    * its integrity for the lifetime of the session.
    */
-  session.user = pstrdup(permanent_pool,session.user);
+  session.user = pstrdup(session.pool, session.user);
 
   if (session.group)
-    session.group = pstrdup(permanent_pool,session.group);
+    session.group = pstrdup(session.pool, session.group);
 
   if (session.gids)
-    session.gids = copy_array(permanent_pool, session.gids);
+    session.gids = copy_array(session.pool, session.gids);
 
   /* session.groups is an array of strings, so we must copy the string data
    * as well as the pointers.
    */
-  session.groups = copy_array_str(permanent_pool, session.groups);
+  session.groups = copy_array_str(session.pool, session.groups);
 
   /* Resolve any deferred-resolution paths in the FS layer */
   pr_resolve_fs_map();
