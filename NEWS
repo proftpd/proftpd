@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.330 2002-12-27 15:47:44 jwm Exp $
+$Id: NEWS,v 1.331 2002-12-27 16:04:49 jwm Exp $
 
 CVS
 ---------------------------------
@@ -76,6 +76,8 @@ CVS
 - Bug 1888 - Increase mod_linuxprivs configurability.  Two new directives,
   LinuxPrivsEngine and LinuxPrivsCapabilities, are added.
 - Bug 1905 - AIX needs "config.h" included before *anything* else.
+- Bug 1903 - ftpwho depends on snprintf but doesn't link in lib/libsupp.a
+  Primarily of issue under Solaris 2.5 and Tru64 4.0D.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------

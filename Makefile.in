@@ -73,7 +73,7 @@ ftptop$(EXEEXT): utils
 	$(CC) $(LDFLAGS) -o $@ $(FTPTOP) $(LIBS) $(CURSES_LIBS)
 
 ftpwho$(EXEEXT): utils
-	$(CC) -o $@ $(FTPWHO)
+	$(CC) $(LDFLAGS) -o $@ $(FTPWHO) -lsupp
 
 clean:
 	cd src ; $(MAKE) clean
