@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.11 1999-10-23 03:52:37 macgyver Exp $
+$Id: NEWS,v 1.12 1999-10-23 05:24:19 macgyver Exp $
 
 1.2.0pre9
 
@@ -31,3 +31,7 @@ $Id: NEWS,v 1.11 1999-10-23 03:52:37 macgyver Exp $
 - Work around FreeBSD's broken setpassent().
 
 - Generate RPMs for both inetd and standalone versions of ProFTPD.
+
+- Added AuthUsingAlias to allow for more fine-grain control of anonymous
+    logins.
+
