@@ -23,7 +23,7 @@
  */
 
 /* Table management
- * $Id: table.h,v 1.1 2004-10-26 22:14:15 castaglia Exp $
+ * $Id: table.h,v 1.2 2004-11-03 01:54:38 castaglia Exp $
  */
 
 #ifndef PR_TABLE_H
@@ -32,7 +32,7 @@
 #include "conf.h"
 
 typedef struct tab_key {
-  pool *pool;
+  struct tab_key *next;
   void *key_data;
   size_t key_datasz;
   unsigned int hash;
@@ -42,7 +42,6 @@ typedef struct tab_key {
 
 typedef struct tab_entry {
   struct tab_entry *next, *prev;
-  pool *pool;
   unsigned int idx;
   pr_table_key_t *key;
   void *value_data;

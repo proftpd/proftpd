@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.2 2004-10-31 21:22:30 castaglia Exp $
+ * $Id: table.c,v 1.3 2004-11-03 01:54:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -38,6 +38,10 @@ struct table_rec {
   pr_table_entry_t **chains;
   unsigned int nchains;
   unsigned int nents;
+
+  /* List of free structures. */
+  pr_table_entry_t *free_ents;
+  pr_table_key_t *free_keys;
 
   /* For iterating over all the keys in the entire table. */
   pr_table_entry_t *tab_iter_ent;
@@ -71,8 +75,12 @@ static unsigned int key_hash(const void *key, size_t keysz) {
   size_t sz = !keysz ? strlen((const char *) key) : keysz;
 
   while (sz--) {
-    unsigned int c = *((const char *) key);
-    key++;
+    const char *k = key;
+    unsigned int c = *k;
+    k++;
+
+    /* Always handle signals in potentially long-running while loops. */
+    pr_signals_handle();
 
     i = (i * 33) + c;
   }
@@ -84,35 +92,33 @@ static unsigned int key_hash(const void *key, size_t keysz) {
  * chain.
  */
 static void entry_insert(pr_table_entry_t **h, pr_table_entry_t *e) {
-  pr_table_entry_t *ent = e;
   pr_table_entry_t *ei;
 
   for (ei = *h; ei && ei->next; ei = ei->next);
 
   /* Now, ei points to the last entry in the chain. */
-  ei->next = ent;
-  ent->prev = ei;
+  ei->next = e;
+  e->prev = ei;
 }
 
 /* Default removal is simply to remove the entry from the chain. */
 static void entry_remove(pr_table_entry_t **h, pr_table_entry_t *e) {
-  pr_table_entry_t *ent = e;
 
-  if (ent->next)
-    ent->next->prev = ent->prev;
+  if (e->next)
+    e->next->prev = e->prev;
 
-  if (ent->prev)
-    ent->prev->next = ent->next;
+  if (e->prev)
+    e->prev->next = e->next;
 
-  if (ent == *h &&
-      ent->next == NULL)
-    /* This entry is the head and only entry in this chain. */
+  if (e == *h &&
+      e->next == NULL)
+    /* This entry is the head, and is the only entry in this chain. */
     *h = NULL;
 
-  else
-    *h = ent->next;
+  else 
+    *h = e->next;
 
-  ent->prev = ent->next = NULL;
+  e->prev = e->next = NULL;
   return;
 }
 
@@ -120,34 +126,78 @@ static void entry_remove(pr_table_entry_t **h, pr_table_entry_t *e) {
  */
 
 static pr_table_key_t *tab_key_alloc(pr_table_t *tab) {
-  pool *key_pool = pr_pool_create_sz(tab->pool, PR_TABLE_ENT_POOL_SIZE);
-  pr_table_key_t *k = pcalloc(key_pool, sizeof(pr_table_key_t));
+  pr_table_key_t *k;
 
-  k->pool = key_pool;
-  pr_pool_tag(k->pool, "table key pool");
+  /* Try to find a free key on the free list first... */
+  if (tab->free_keys) {
+    k = tab->free_keys;
+    tab->free_keys = k->next;
+    k->next = NULL;
+
+    return k;
+  }
+
+  /* ...otherwise, allocate a new key. */
+  k = pcalloc(tab->pool, sizeof(pr_table_key_t));
 
   return k;
 }
 
-static void tab_key_free(pr_table_key_t *k) {
-  destroy_pool(k->pool);
+static void tab_key_free(pr_table_t *tab, pr_table_key_t *k) {
+  /* Clear everything from the given key. */
+  memset(k, 0, sizeof(pr_table_key_t));
+
+  /* Add this key to the table's free list. */
+  if (tab->free_keys) {
+    pr_table_key_t *i = tab->free_keys;
+
+    /* Scan to the end of the list. */
+    while (i->next != NULL)
+      i = i->next;
+
+    i->next = k;
+
+  } else
+    tab->free_keys = k;
 }
 
 /* Table entry management
  */
 
 static pr_table_entry_t *tab_entry_alloc(pr_table_t *tab) {
-  pool *ent_pool = pr_pool_create_sz(tab->pool, PR_TABLE_ENT_POOL_SIZE);
-  pr_table_entry_t *e = pcalloc(ent_pool, sizeof(pr_table_entry_t));
+  pr_table_entry_t *e;
 
-  e->pool = ent_pool;
-  pr_pool_tag(e->pool, "table entry pool");
+  /* Try to find a free entry on the free list first... */
+  if (tab->free_ents) {
+    e = tab->free_ents;
+    tab->free_ents = e->next;
+    e->next = NULL;
+
+    return e;
+  }
+
+  /* ...otherwise, allocate a new entry. */
+  e = pcalloc(tab->pool, sizeof(pr_table_entry_t));
 
   return e;
 }
 
-static void tab_entry_free(pr_table_entry_t *e) {
-  destroy_pool(e->pool);
+static void tab_entry_free(pr_table_t *tab, pr_table_entry_t *e) {
+  /* Clear everything from the given entry. */
+  memset(e, 0, sizeof(pr_table_entry_t));
+
+  /* Add this entry to the table's free list. */
+  if (tab->free_ents) {
+    pr_table_entry_t *i = tab->free_ents;
+
+    /* Scan to the end of the list. */
+    while (i->next != NULL)
+      i = i->next;
+
+    i->next = e;
+ 
+  } else
+    tab->free_ents = e;
 }
 
 static void tab_entry_insert(pr_table_t *tab, pr_table_entry_t *e) {
@@ -214,8 +264,10 @@ static void tab_entry_remove(pr_table_t *tab, pr_table_entry_t *e) {
   tab->chains[e->idx] = h;
   e->key->nents--;
 
-  if (e->key->nents == 0)
-    tab_key_free(e->key);
+  if (e->key->nents == 0) {
+    tab_key_free(tab, e->key);
+    e->key = NULL;
+  }
 
   tab->nents--;
 }
@@ -460,7 +512,7 @@ void *pr_table_kremove(pr_table_t *tab, const void *key_data,
       *value_datasz = tab->cache_ent->value_datasz;
 
     tab_entry_remove(tab, tab->cache_ent);
-    tab_entry_free(tab->cache_ent);
+    tab_entry_free(tab, tab->cache_ent);
     tab->cache_ent = NULL;
 
     return value_data;
@@ -491,7 +543,7 @@ void *pr_table_kremove(pr_table_t *tab, const void *key_data,
         *value_datasz = ent->value_datasz;
 
       tab_entry_remove(tab, ent);
-      tab_entry_free(ent);
+      tab_entry_free(tab, ent);
       tab->cache_ent = NULL;
 
       return value_data;
@@ -700,14 +752,18 @@ int pr_table_empty(pr_table_t *tab) {
     return 0;
 
   for (i = 0; i < tab->nchains; i++) {
-    pr_table_entry_t *ent = tab->chains[i];
+    pr_table_entry_t *e = tab->chains[i];
 
-    while (ent) {
-      tab_entry_remove(tab, ent);
-      tab_entry_free(ent);
+    while (e) {
+      pr_signals_handle();
 
-      ent = tab->chains[i];
+      tab_entry_remove(tab, e);
+      tab_entry_free(tab, e);
+
+      e = tab->chains[i];
     }
+
+    tab->chains[i] = NULL;
   }
 
   return 0;
