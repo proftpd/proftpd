@@ -41,14 +41,14 @@ static void show_usage(char *progname)
 
 static int isnumeric(char *str)
 {
-  while(str && isspace(*str))
+  while(str && isspace((UCHAR)*str))
     str++;
   
   if(!str || !*str)
     return 0;
   
   for(; str && *str; str++) {
-    if(!isdigit(*str))
+    if(!isdigit((UCHAR)*str))
       return 0;
   }
   

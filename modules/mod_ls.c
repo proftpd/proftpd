@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.66 2002-10-21 17:06:09 castaglia Exp $
+ * $Id: mod_ls.c,v 1.67 2002-11-23 18:39:31 jwm Exp $
  */
 
 #include "conf.h"
@@ -414,18 +414,20 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
         if (!opt_n) {
 
           /* Format nameline using user/group names. */
-          snprintf(nameline, sizeof(nameline), "%s %3d %-8s %-8s %8" PR_LU
-            " %s %2d %s %s", m, st.st_nlink, MAP_UID(st.st_uid),
-            MAP_GID(st.st_gid), st.st_size, months[t->tm_mon], t->tm_mday,
-            timeline, name);
+          snprintf(nameline, sizeof(nameline),
+                   "%s %3d %-8s %-8s %8" PR_LU " %s %2d %s %s",
+                   m, (int)st.st_nlink,
+                   MAP_UID(st.st_uid), MAP_GID(st.st_gid), st.st_size,
+                   months[t->tm_mon], t->tm_mday, timeline, name);
 
         } else {
 
           /* Format nameline using user/group IDs. */
-          snprintf(nameline, sizeof(nameline), "%s %3d %-8u %-8u %8" PR_LU
-            " %s %2d %s %s", m, st.st_nlink, st.st_uid, st.st_gid,
-            st.st_size, months[t->tm_mon], t->tm_mday,
-            timeline, name);
+          snprintf(nameline, sizeof(nameline),
+                   "%s %3d %-8u %-8u %8" PR_LU " %s %2d %s %s",
+                   m, (int)st.st_nlink,
+                   (unsigned)st.st_uid, (unsigned)st.st_gid, st.st_size,
+                   months[t->tm_mon], t->tm_mday, timeline, name);
         }
 
         if (S_ISLNK(st.st_mode)) {
