@@ -20,7 +20,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.10 1999-12-28 15:54:44 macgyver Exp $
+ * $Id: mod_log.c,v 1.11 2000-02-28 10:16:59 macgyver Exp $
  */
 
 #include "conf.h"
@@ -273,6 +273,8 @@ static int _parse_classes(char *s)
       classes |= CL_WRITE;
     else if(!strcasecmp(s,"MISC"))
       classes |= CL_MISC;
+    else
+      log_pri(LOG_NOTICE, "ExtendedLog class '%s' is not defined.", s);
   } while((s = nextp));
 
   return classes;
