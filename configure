@@ -1471,12 +1471,21 @@ test -n "$target_alias" &&
     NONENONEs,x,x, &&
   program_prefix=${target_alias}-
 
-OSTYPE=-D`echo $build_os | sed 's/\..*$//g' | sed 's/-.*//g' | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ`
-OSREL=-D`echo $build_os | sed 's/-.*//g' | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ | tr '.' '_'`
+ostype=`echo $build_os | sed 's/\..*$//g' | sed 's/-.*//g' | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ`
+osrel=`echo $build_os | sed 's/-.*//g' | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ | tr '.' '_'`
+
+OSTYPE="-D$ostype"
+OSREL="-D$osrel"
+PLATFORM="\"$ostype ($osrel)\""
 
 if test "$OSTYPE" = "$OSREL" ; then
   OSTYPE=""
+  PLATFORM="\"$ostype\""
 fi
+cat >>confdefs.h <<_ACEOF
+#define PLATFORM $PLATFORM
+_ACEOF
+
 
 
 
@@ -14921,6 +14930,18 @@ _ACEOF
 fi
 
 
+if test x"$enable_largefile" = xno; then
+  cat >>confdefs.h <<\_ACEOF
+#define USE_LARGEFILES 0
+_ACEOF
+
+else
+  cat >>confdefs.h <<\_ACEOF
+#define USE_LARGEFILES 1
+_ACEOF
+
+fi
+
 echo "$as_me:$LINENO: checking whether struct addrinfo is defined" >&5
 echo $ECHO_N "checking whether struct addrinfo is defined... $ECHO_C" >&6
  cat >conftest.$ac_ext <<_ACEOF
@@ -15474,6 +15495,15 @@ echo "${ECHO_T}$pr_cv_func_sendfile" >&6
   if test "$pr_cv_func_sendfile" != "None"; then
     cat >>confdefs.h <<\_ACEOF
 #define HAVE_SENDFILE 1
+_ACEOF
+
+    cat >>confdefs.h <<\_ACEOF
+#define USE_SENDFILE 1
+_ACEOF
+
+  else
+    cat >>confdefs.h <<\_ACEOF
+#define USE_SENDFILE 0
 _ACEOF
 
   fi
