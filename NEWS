@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.205 2002-07-24 22:20:20 castaglia Exp $
+$Id: NEWS,v 1.206 2002-08-15 14:45:20 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -8,6 +8,8 @@ CVS
              in the supplied fgetgrent() function, which is used for
              AuthGroupFiles under FreeBSD.
 - Bug 1697 - Fixed memory leak involving allocated regex_t *s and SIGHUP
+- Bug 1701 - Fixed/enhanced name/IP matching function by adding matching of
+             ip1/ip2 to function; it was just name1/name2, name1/ip2 matching.
 
 1.2.6rc1 - Released 2002-07-02
 ---------------------------------

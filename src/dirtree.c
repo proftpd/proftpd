@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.62 2002-08-01 22:08:54 castaglia Exp $
+ * $Id: dirtree.c,v 1.63 2002-08-15 14:45:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1007,31 +1007,32 @@ static int _check_group_access(xaset_t *conf, char *name)
  * returns 0 if no match
  */
 
-int match_ip(p_in_addr_t *addr, char *name, const char *match)
-{
+int match_ip(p_in_addr_t *addr, char *name, const char *match) {
   char buf[1024];
   char *mask,*cp;
   int cidr_mode = 0, cidr_bits;
   p_in_addr_t cidr_addr;
   u_int_32 cidr_mask = 0;
 
-  if(!strcasecmp(match,"ALL"))
+  if (!strcasecmp(match, "ALL"))
     return 1;
 
-  if(!strcasecmp(match,"NONE"))
+  if (!strcasecmp(match, "NONE"))
     return -1;
 
-  memset(buf,0,sizeof(buf));
+  memset(buf, '\0', sizeof(buf));
   mask = buf;
 
-  if(*match == '.') {
+  if (*match == '.') {
     *mask++ = '*';
     *mask = '\0';
     sstrcat(buf, match, sizeof(buf));
-  } else if(*(match + strlen(match) - 1) == '.') {
+
+  } else if (*(match + strlen(match) - 1) == '.') {
     sstrcat(buf, match, sizeof(buf));
     sstrcat(buf, "*", sizeof(buf));
-  } else if((cp = strchr(match,'/')) != NULL) { /* check for CIDR notation */
+
+  } else if ((cp = strchr(match, '/')) != NULL) { /* check for CIDR notation */
     /* first portion of CIDR should be dotted quad, second portion
      * is netmask
      */
@@ -1056,18 +1057,34 @@ int match_ip(p_in_addr_t *addr, char *name, const char *match)
     } else {
       return 0;
     }
+
   } else {
     sstrcat(buf, match, sizeof(buf));
   }
   
-  if(cidr_mode) {
+  if (cidr_mode) {
     if((addr->s_addr & htonl(cidr_mask)) == cidr_addr.s_addr)
       return 1;
+
   } else {
-    if(pr_fnmatch(buf, name, PR_FNM_NOESCAPE | PR_FNM_CASEFOLD) == 0 ||
-       pr_fnmatch(buf, inet_ntoa(*addr),
-		  PR_FNM_NOESCAPE | PR_FNM_CASEFOLD) == 0)
+    int fnm_flags = PR_FNM_NOESCAPE|PR_FNM_CASEFOLD;
+    pool *tmp_pool = make_sub_pool(permanent_pool);
+    p_in_addr_t *buf_addr = inet_getaddr(tmp_pool, buf);
+
+    log_debug(DEBUG6, "comparing addresses '%s' (%s) and '%s' (%s)",
+      buf, inet_ntoa(*buf_addr), name, inet_ntoa(*addr));
+
+    if (!pr_fnmatch(buf, name, fnm_flags) ||
+        !pr_fnmatch(buf, inet_ntoa(*addr), fnm_flags) ||
+        !pr_fnmatch(inet_ntoa(*buf_addr), inet_ntoa(*addr), fnm_flags)) {
+      log_debug(DEBUG6, "addresses match");
+      destroy_pool(tmp_pool);
       return 1;
+
+    } else
+      log_debug(DEBUG6, "addresses do not match");
+
+    destroy_pool(tmp_pool);
   }
   
   return 0;
