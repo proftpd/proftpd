@@ -375,4 +375,10 @@
 #define STDERR_FILENO	2
 #endif
 
+#ifdef DEBUG_MEMORY
+#ifndef MYSTRNCPY
+#define MYSTRNCPY(to, from, len)        my_strncpy(to, from, len, __FILE__, __PRETTY_FUNCTION__, __LINE__, #to ", " #from ", " #len)
+#endif
+#endif /* DEBUG_MEMORY */
+
 #endif /* config_h_included */
