@@ -3178,8 +3178,22 @@ ac_devel_cflags="-g -Wcast-align -Wchar-subscripts -Winline -Wstrict-prototypes 
 if test "${enable_devel+set}" = set; then
   enableval="$enable_devel"
 
-    if test x"$enableval" = xyes ; then
+    if test x"$enableval" != xno ; then
       devel="yes"
+
+
+      if test `echo $enableval | grep -c coredump` = "1" ; then
+        ac_devel_cflags="-DPR_DEVEL_COREDUMP $ac_devel_cflags"
+      fi
+
+      if test `echo $enableval | grep -c nodaemon` = "1" ; then
+        ac_devel_cflags="-DPR_DEVEL_NO_DAEMON $ac_devel_cflags"
+      fi
+
+      if test `echo $enableval | grep -c nofork` = "1" ; then
+        ac_devel_cflags="-DPR_DEVEL_NO_FORK $ac_devel_cflags"
+      fi
+
     else
       devel="no"
     fi
