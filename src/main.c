@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.238 2004-05-30 21:50:58 castaglia Exp $
+ * $Id: main.c,v 1.239 2004-06-17 20:34:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -669,11 +669,12 @@ void pr_cmd_dispatch(cmd_rec *cmd) {
   }
 }
 
-static cmd_rec *make_ftp_cmd(pool *p, char *buf) {
+static cmd_rec *make_ftp_cmd(pool *p, char *buf, int flags) {
   char *cp = buf, *wrd;
   cmd_rec *cmd;
   pool *subpool;
   array_header *tarr;
+  int str_flags = PR_STR_FL_PRESERVE_COMMENTS|flags;
 
   /* Be pedantic (and RFC-compliant) by not allowing leading whitespace
    * in an issued FTP command.  Will this cause troubles with many clients?
@@ -682,7 +683,8 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf) {
     return NULL;
 
   /* Nothing there...bail out. */
-  if ((wrd = get_word(&cp, TRUE)) == NULL)
+  wrd = pr_str_get_word(&cp, str_flags);
+  if (wrd == NULL)
     return NULL;
 
   subpool = make_sub_pool(p);
@@ -697,7 +699,7 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf) {
   cmd->argc++;
   cmd->arg = pstrdup(cmd->pool, cp);
 
-  while ((wrd = get_word(&cp, TRUE)) != NULL) {
+  while ((wrd = pr_str_get_word(&cp, str_flags)) != NULL) {
     *((char **) push_array(tarr)) = pstrdup(cmd->pool, wrd);
     cmd->argc++;
   }
@@ -831,7 +833,19 @@ static void cmd_loop(server_rec *server, conn_t *c) {
       cp++;
 
     if (*cp) {
-      cmd_rec *cmd = make_ftp_cmd(session.pool, cp);
+      cmd_rec *cmd;
+      int flags = 0;
+
+      /* If this is a SITE command, preserve embedded whitespace in the
+       * command parameters, in order to handle file names that have multiple
+       * spaces in the names.  Arguably this should be handled in the SITE
+       * command handlers themselves, via cmd->arg.  This small hack
+       * reduces the burden on SITE module developers, however.
+       */
+      if (strncasecmp(cp, C_SITE, 4) == 0)
+        flags |= PR_STR_FL_PRESERVE_WHITESPACE;
+
+      cmd = make_ftp_cmd(session.pool, cp, flags);
 
       if (cmd) {
         pr_cmd_dispatch(cmd);

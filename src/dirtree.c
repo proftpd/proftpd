@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.151 2004-05-31 22:07:39 castaglia Exp $
+ * $Id: dirtree.c,v 1.152 2004-06-17 20:34:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -533,24 +533,28 @@ void kludge_enable_umask(void) {
   _kludge_disable_umask = FALSE;
 }
 
-char *get_word(char **cp, unsigned char ignore_comments) {
-  char *ret,*dst;
+char *pr_str_get_word(char **cp, int flags) {
+  char *ret, *dst;
   char quote_mode = 0;
 
   if (!cp || !*cp || !**cp)
     return NULL;
 
-  while (**cp && isspace((int) **cp))
-    (*cp)++;
+  if (!(flags & PR_STR_FL_PRESERVE_WHITESPACE)) {
+    while (**cp && isspace((int) **cp))
+      (*cp)++;
+  }
 
   if (!**cp)
     return NULL;
 
   ret = dst = *cp;
 
-  /* Stop processing at start of an inline comment. */
-  if (!ignore_comments && **cp == '#')
-    return NULL;
+  if (!(flags & PR_STR_FL_PRESERVE_COMMENTS)) {
+    /* Stop processing at start of an inline comment. */
+    if (**cp == '#')
+      return NULL;
+  }
 
   if (**cp == '\"') {
     quote_mode++;
@@ -559,6 +563,7 @@ char *get_word(char **cp, unsigned char ignore_comments) {
 
   while (**cp && (quote_mode ? (**cp != '\"') : !isspace((int) **cp))) {
     if (**cp == '\\' && quote_mode) {
+
       /* Escaped char */
       if (*((*cp)+1))
         *dst = *(++(*cp));
@@ -568,7 +573,8 @@ char *get_word(char **cp, unsigned char ignore_comments) {
     ++(*cp);
   }
 
-  if (**cp) (*cp)++;
+  if (**cp)
+    (*cp)++;
   *dst = '\0';
 
   return ret;
@@ -726,7 +732,7 @@ static cmd_rec *get_config_cmd(pool *ppool) {
     tarr = make_array(new_pool, 4, sizeof(char **));
 
     /* Add each word to the array */
-    while ((word = get_word(&bufp, FALSE)) != NULL) {
+    while ((word = pr_str_get_word(&bufp, 0)) != NULL) {
 
       /* Should this word be replaced with a value from the environment?
        * If so, tmp will contain the expanded value, otherwise tmp will

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.578 2004-06-17 00:06:05 castaglia Exp $
+$Id: NEWS,v 1.579 2004-06-17 20:34:27 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -39,6 +39,7 @@ CVS
 - Bug 2411 - Caching effects cause RNTO to fail if AllowOverwrite is off and
   target path does not exist.
 - Bug 2422 - %v not working in SQLNamedQuery.
+- Bug 2418 - chmod returns 550 with filename containing multiple spaces.
 
 1.2.10rc1 - Released 28-Apr-2004
 ---------------------------------
