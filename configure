@@ -4282,7 +4282,7 @@ _ACEOF
 
 fi;
 
-pr_devel_cflags="-g -Wcast-align -Wchar-subscripts -Winline -Wstrict-prototypes -Wmissing-declarations -Wnested-externs -Wpointer-arith -Wshadow -Wundef"
+pr_devel_cflags="-DPR_DEVEL -g -Wcast-align -Wchar-subscripts -Winline -Wstrict-prototypes -Wmissing-declarations -Wnested-externs -Wpointer-arith -Wshadow -Wundef"
 pr_devel_libs=""
 
 # Check whether --enable-devel or --disable-devel was given.
