@@ -14,6 +14,9 @@ NOTES
   + The new Class support will require changes to proftpd.conf files that
     use the old Class/Classes directives.  See README.classes for details.
 
+1.2.10rc2
+  + New configuration directives:
+      TimeoutLinger
 
 1.2.10rc1
 ---------
@@ -79,4 +82,4 @@ NOTES
      ProFTPD's optional modules (e.g. mod_cap, mod_ctrls).
 
 
-Last Updated: $Date: 2004-04-28 17:43:03 $
+Last Updated: $Date: 2004-05-21 17:35:43 $
