@@ -1,3 +1,22 @@
+2000-08-02 21:59  macgyver
+
+	* modules/mod_auth.c (1.41): Added some debug logging to
+	lockdown().
+
+2000-08-02 21:46  macgyver
+
+	* NEWS (1.70), config.h.in (1.20), configure (1.45), configure.in
+	(1.46), modules/mod_auth.c (1.40): Added in support for jail() on
+	platforms that support it (currently FreeBSD 4.x+).
+
+2000-08-02 20:35  macgyver
+
+	* modules/mod_pam.c (1.26): More Solaris tweaks.
+
+2000-08-02 20:30  macgyver
+
+	* ChangeLog (1.27), NEWS (1.69): Updated ChangeLog and NEWS.
+
 2000-08-02 20:29  macgyver
 
 	* src/fs.c (1.11): Fixed a problem where files that began with ~
