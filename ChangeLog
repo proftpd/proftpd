@@ -1,3 +1,16 @@
+2001-11-30 12:34  flood
+
+	* NEWS, README.mod_sql, contrib/UPGRADE.mod_sql, contrib/mod_sql.c,
+	contrib/mod_sql_mysql.c, contrib/mod_sql_postgres.c,
+	sample-configurations/mod_sql.conf: new mod_sql (4.07)
+
+2001-11-29 13:54  flood
+
+	* NEWS, include/dirtree.h, modules/mod_core.c, src/dirtree.c,
+	src/main.c, src/support.c: #1396 DenyFilter works only in server
+	config scope #1410 SIGIO now conditionally compiled #1281 Improper
+	checking of server context
+
 2001-11-29 13:20  flood
 
 	* NEWS, include/modules.h, modules/mod_core.c, src/dirtree.c,
