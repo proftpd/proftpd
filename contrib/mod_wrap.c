@@ -24,10 +24,10 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lwrap -lnsl$
- * $Id: mod_wrap.c,v 1.2 2001-11-08 17:28:41 flood Exp $
+ * $Id: mod_wrap.c,v 1.3 2002-02-14 16:39:18 flood Exp $
  */
 
-#define MOD_WRAP_VERSION "mod_wrap/1.2.2"
+#define MOD_WRAP_VERSION "mod_wrap/1.2.3"
 
 #include "conf.h"
 #include "privs.h"
@@ -47,16 +47,18 @@ static void wrap_log_request_allowed(int, struct request_info *);
 static void wrap_log_request_denied(int, struct request_info *);
 static config_rec *wrap_resolve_user(pool *, char **);
 
-/* -------------------------------------------------------------------------
-    Helper Functions
-   ------------------------------------------------------------------------- */
+static char *wrap_service_name = "proftpd";
+
+/* Support routines
+ */
 
 /* boolean "expression" matching, returns TRUE if the entire expression matches
  */
 static int wrap_eval_expression(char **config_expr,
     array_header *session_expr) {
 
-  int index, found;
+  unsigned char found = FALSE;
+  int index = 0;
   char *elem = NULL, **list = NULL;
 
   /* sanity check */
@@ -101,7 +103,7 @@ static char *wrap_get_user_table(cmd_rec *cmd, char *user,
     char *path) {
 
   char *realpath = NULL;
-  struct passwd *pw;
+  struct passwd *pw = NULL;
 
   pw = auth_getpwnam(cmd->pool, user);
 
@@ -111,11 +113,9 @@ static char *wrap_get_user_table(cmd_rec *cmd, char *user,
   session.user = pstrdup(cmd->pool, pw->pw_name);
   session.login_uid = pw->pw_uid;
 
-  PRIVS_USER;
-
+  PRIVS_USER
   realpath = dir_realpath(cmd->pool, path);
-
-  PRIVS_RELINQUISH;
+  PRIVS_RELINQUISH
 
   if (realpath)
     path = realpath;
@@ -124,7 +124,6 @@ static char *wrap_get_user_table(cmd_rec *cmd, char *user,
 }
 
 static int wrap_is_usable_file(char *filename) {
-
   struct stat statbuf;
   fsdir_t *fs_file = NULL;
 
@@ -174,10 +173,9 @@ static void wrap_log_request_denied(int priority,
  * to make some of mod_auth's functions visible from src/auth.c?
  */
 static config_rec *wrap_resolve_user(pool *pool, char **user) {
-
-  config_rec *conf, *top_conf;
-  char *ourname,*anonname = NULL;
-  int is_alias = FALSE, force_anon = FALSE;
+  config_rec *conf = NULL, *top_conf;
+  char *ourname = NULL, *anonname = NULL;
+  unsigned char is_alias = FALSE, force_anon = FALSE;
 
   /* Precendence rules:
    *   1. Search for UserAlias directive.
@@ -264,11 +262,10 @@ static config_rec *wrap_resolve_user(pool *pool, char **user) {
   return conf;
 }
 
-/* -------------------------------------------------------------------------
-    Configuration Handlers
-   ------------------------------------------------------------------------- */
+/* Configuration handlers
+ */
 
-MODRET add_accessfiles(cmd_rec *cmd) {
+MODRET add_tcpaccessfiles(cmd_rec *cmd) {
   config_rec *c = NULL;
 
   /* assume use of the standard TCP wrappers installation locations */
@@ -361,7 +358,7 @@ MODRET add_accessfiles(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET add_groupaccessfiles(cmd_rec *cmd) {
+MODRET add_tcpgroupaccessfiles(cmd_rec *cmd) {
   int group_argc = 1;
   char **group_argv = NULL;
   array_header *group_acl = NULL;
@@ -454,20 +451,21 @@ MODRET add_groupaccessfiles(cmd_rec *cmd) {
 
   /* build the desired config_rec manually */
   c->argc = group_argc + 2;
-  c->argv = pcalloc(c->pool, (group_argc + 2) * sizeof(char *));
+  c->argv = pcalloc(c->pool, (group_argc + 3) * sizeof(char *));
   group_argv = (char **) c->argv;
 
   /* the access files are the first two arguments */
-  *group_argv++ = pstrdup(permanent_pool, allow_filename);
-  *group_argv++ = pstrdup(permanent_pool, deny_filename);
+  *group_argv++ = pstrdup(c->pool, allow_filename);
+  *group_argv++ = pstrdup(c->pool, deny_filename);
 
   /* and the group names follow */
   if (group_argc && group_acl)
     while (group_argc--) {
-      *group_argv++ = pstrdup(permanent_pool, *((char **) group_acl->elts));
+      *group_argv++ = pstrdup(c->pool, *((char **) group_acl->elts));
       group_acl->elts = ((char **) group_acl->elts) + 1;
     }
 
+  /* don't forget to NULL-terminate */
   *group_argv = NULL;
 
   c->flags |= CF_MERGEDOWN;
@@ -476,7 +474,7 @@ MODRET add_groupaccessfiles(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET add_useraccessfiles(cmd_rec *cmd) {
+MODRET add_tcpuseraccessfiles(cmd_rec *cmd) {
   int user_argc = 1;
   char **user_argv = NULL;
   array_header *user_acl = NULL;
@@ -569,20 +567,21 @@ MODRET add_useraccessfiles(cmd_rec *cmd) {
 
   /* build the desired config_rec manually */
   c->argc = user_argc + 2;
-  c->argv = pcalloc(c->pool, (user_argc + 2) * sizeof(char *));
+  c->argv = pcalloc(c->pool, (user_argc + 3) * sizeof(char *));
   user_argv = (char **) c->argv;
 
   /* the access files are the first two arguments */
-  *user_argv++ = pstrdup(permanent_pool, allow_filename);
-  *user_argv++ = pstrdup(permanent_pool, deny_filename);
+  *user_argv++ = pstrdup(c->pool, allow_filename);
+  *user_argv++ = pstrdup(c->pool, deny_filename);
 
   /* and the user names follow */
   if (user_argc && user_acl)
     while (user_argc--) {
-      *user_argv++ = pstrdup(permanent_pool, *((char **) user_acl->elts));
+      *user_argv++ = pstrdup(c->pool, *((char **) user_acl->elts));
       user_acl->elts = ((char **) user_acl->elts) + 1;
     }
 
+  /* don't forget to NULL-terminate */
   *user_argv = NULL;
 
   c->flags |= CF_MERGEDOWN;
@@ -595,7 +594,7 @@ MODRET add_useraccessfiles(cmd_rec *cmd) {
  * function in modules/mod_core.c.  I hereby cite the source for this code
  * as MacGuyver <macguyver@tos.net>. =)
  */
-MODRET set_accesssysloglevels(cmd_rec *cmd) {
+MODRET set_tcpaccesssysloglevels(cmd_rec *cmd) {
   config_rec *c = NULL;
   int allow_level, deny_level;
 
@@ -667,9 +666,17 @@ MODRET set_accesssysloglevels(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-/* -------------------------------------------------------------------------
-    Command Handlers
-   ------------------------------------------------------------------------- */
+/* usage: TCPServiceName <name> */
+MODRET set_tcpservicename(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  return HANDLED(cmd);
+}
+
+/* Command handlers
+ */
 
 MODRET wrap_handle_request(cmd_rec *cmd) {
 
@@ -681,6 +688,9 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
   config_rec *conf = NULL, *access_conf = NULL, *syslog_conf = NULL;
   hosts_allow_table = NULL;
   hosts_deny_table = NULL;
+
+  /* hide passwords */
+  session.hide_password = TRUE;
 
   /* sneaky...found in mod_auth.c's cmd_pass() function.  Need to find the
    * login UID in order to resolve the possibly-login-dependent filename.
@@ -712,6 +722,8 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
        */
       if (wrap_eval_expression(((char **) access_conf->argv) + 2,
           user_array)) {
+        log_debug(DEBUG4, MOD_WRAP_VERSION
+          ": matched TCPUserAccessFiles expression");
         matched = TRUE;
         break;
       }
@@ -729,21 +741,30 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
    */ 
   if (!access_conf && (access_conf = find_config(conf ? conf->subset :
         CURRENT_CONF, CONF_PARAM, "TCPGroupAccessFiles", FALSE)) != NULL) {
-    int matched = FALSE;
-    array_header *group_array = NULL;
+    unsigned char matched = FALSE;
+
+    /* NOTE: this gid_array is only necessary until Bug#1461 is fixed */
+    array_header *gid_array = make_array(cmd->pool, 0, sizeof(gid_t));
+
+    array_header *group_array = make_array(cmd->pool, 0, sizeof(char *));
 
     while (access_conf) {
+      if (auth_getgroups(cmd->pool, user, &gid_array, &group_array) < 1) {
+        log_debug(DEBUG3, MOD_WRAP_VERSION
+          ": no supplemental groups found for user '%s'", user);
 
-      group_array = make_array(cmd->tmp_pool, 0, sizeof(char *));
-      get_groups(cmd->tmp_pool, user, NULL, &group_array);
+      } else {
 
-      /* check the group expression -- don't forget the offset, to skip
-       * the access file names strings in argv
-       */
-      if (wrap_eval_expression(((char **) access_conf->argv) + 2,
-          group_array)) {
-        matched = TRUE;
-        break;
+        /* check the group expression -- don't forget the offset, to skip
+         * the access file names strings in argv
+         */
+        if (wrap_eval_expression(((char **) access_conf->argv) + 2,
+            group_array)) {
+          log_debug(DEBUG4, MOD_WRAP_VERSION
+            ": matched TCPGroupAccessFiles expression");
+          matched = TRUE;
+          break;
+        }
       }
 
       access_conf = find_config_next(access_conf, access_conf->next,
@@ -833,7 +854,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
 
   /* log the names of the allow/deny files being used
    */
-  log_pri(LOG_DEBUG, MOD_WRAP_VERSION ": using TCPAccessFiles: %s, %s",
+  log_pri(LOG_DEBUG, MOD_WRAP_VERSION ": using access files: %s, %s",
     hosts_allow_table, hosts_deny_table);
 
   /* retrieve the user-defined syslog priorities, if any.  Fall back to the
@@ -852,7 +873,9 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
     deny_severity = LOG_WARNING;
   }
 
-  request_init(&request, RQ_DAEMON, "proftpd", RQ_FILE,
+  log_debug(DEBUG4, MOD_WRAP_VERSION ": checking under service name '%s'",
+    wrap_service_name);
+  request_init(&request, RQ_DAEMON, wrap_service_name, RQ_FILE,
     session.c->rfd, 0);
 
   fromhost(&request);
@@ -865,10 +888,9 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
     wrap_log_request_denied(deny_severity, &request);
 
     /* check for AccessDenyMsg */
-    if ((denymsg = (char *) get_param_ptr(cmd->server->conf,
-        "AccessDenyMsg", FALSE)) != NULL) {
+    if ((denymsg = (char *) get_param_ptr(TOPLEVEL_CONF, "AccessDenyMsg",
+        FALSE)) != NULL)
       denymsg = sreplace(cmd->tmp_pool, denymsg, "%u", user, NULL);
-    }
 
     if (denymsg)
       return ERROR_MSG(cmd, R_530, denymsg);
@@ -886,11 +908,28 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
   return DECLINED(cmd);
 }
 
+/* Initialization routines
+ */
+
+static int wrap_child_init() {
+
+  /* look up any configured TCPServiceName */
+  if ((wrap_service_name = get_param_ptr(main_server->conf,
+      "TCPServiceName", FALSE)) == NULL)
+    wrap_service_name = "proftpd";
+
+  return 0;
+}
+
+/* Module API tables
+ */
+
 static conftable wrap_conftab[] = {
-  { "TCPAccessFiles",        add_accessfiles,        NULL },
-  { "TCPAccessSyslogLevels", set_accesssysloglevels, NULL },
-  { "TCPGroupAccessFiles",   add_groupaccessfiles,   NULL },
-  { "TCPUserAccessFiles",    add_useraccessfiles,    NULL },
+  { "TCPAccessFiles",        add_tcpaccessfiles,        NULL },
+  { "TCPAccessSyslogLevels", set_tcpaccesssysloglevels, NULL },
+  { "TCPGroupAccessFiles",   add_tcpgroupaccessfiles,   NULL },
+  { "TCPServiceName",	     set_tcpservicename,	NULL },
+  { "TCPUserAccessFiles",    add_tcpuseraccessfiles,    NULL },
   { NULL }
 };
 
@@ -928,5 +967,5 @@ module wrap_module = {
   NULL,
 
   /* module "child mode" post-fork initialization function */
-  NULL
+  wrap_child_init
 };

@@ -43,7 +43,7 @@ TJ Saunders <tj@castaglia.org>
 
   Syntax: TCPAccessFiles allow-filename deny-filename
   Default: none
-  Context: server, <Anonymous>, <VirtualHost>, <Global>
+  Context: server config, <Anonymous>, <VirtualHost>, <Global>
   Module: mod_wrap
   Compatibility: 1.2.1 and later
 
@@ -89,7 +89,7 @@ TJ Saunders <tj@castaglia.org>
 
   Syntax: TCPAccessSyslogLevels allow-level deny-level
   Default: TCPAccessSyslogLevels info warn
-  Context: server, <Anonymous>, <VirtualHost>, <Global>
+  Context: server config, <Anonymous>, <VirtualHost>, <Global>
   Module: mod_wrap
   Compatibility: 1.2.1 and later
 
@@ -108,7 +108,7 @@ TJ Saunders <tj@castaglia.org>
 
   Syntax: TCPGroupAccessFiles group-expression allow-filename deny-filename
   Default: none
-  Context: server, <VirtualHost>, <Global>
+  Context: server config, <VirtualHost>, <Global>
   Module: mod_wrap
   Compatibility: 1.2.1 and later
 
@@ -131,12 +131,27 @@ TJ Saunders <tj@castaglia.org>
   See also: TCPAccessFiles
 
                     -------------------------------
+  TCPServiceName
+
+  Syntax: TCPServiceName name
+  Default: proftpd
+  Context: server config, <VirtualHost>, <Global>
+  Module: mod_wrap
+  Compatibility: 1.2.1 and later
+
+  TCPServiceName is used to configure the name of the service under which
+  libwrap will check the allow/deny files.  By default, this is the name
+  of the program started, i.e. "proftpd".  However, some administrators may
+  want to use a different, more generic service name, such as "ftpd"; use
+  this directive for such needs.
+
+                    -------------------------------
 
   TCPUserAccessFiles
 
   Syntax: TCPUserAccessFiles user-expression allow-filename deny-filename
   Default: none
-  Context: server, <VirtualHost>, <Global>
+  Context: server config, <VirtualHost>, <Global>
   Module: mod_wrap
   Compatibility: 1.2.1 and later
 
@@ -188,7 +203,7 @@ TJ Saunders <tj@castaglia.org>
 
   The most current version of mod_wrap will be available at:
 
-    http://rad.geology.washington.edu/~tj/proftpd/
+    http://www.castaglia.org/proftpd/
 
   2000-05-29: thanks to David Douthitt <ssrat@mailbag.com> for pointing out
               the usefulness of using mod_wrap in conjunction with portsentry
@@ -201,6 +216,9 @@ TJ Saunders <tj@castaglia.org>
 
   2001-09-27: thanks to Gabe Frost <gfrost@gostnet.com> for helping
               track down several mergedown bugs.
+
+  2001-12-19: thanks to Mark Castillo <markc@webFreak.com> for pointing
+              out the issue with passwords not being properly hidden
 
 --------------------------------------------------------------------------
 Copyright 2000,2001 TJ Saunders
