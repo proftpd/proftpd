@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.31 2003-02-12 08:46:36 castaglia Exp $
+ * $Id: pool.c,v 1.32 2003-04-23 02:46:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -377,6 +377,9 @@ static void clear_pool(struct pool *p) {
 
 void destroy_pool(pool *p) {
   pr_alarms_block();
+
+  if (p == NULL)
+    return;
 
   if (p->parent) {
     if (p->parent->sub_pools == p)
