@@ -1,4 +1,8 @@
-$Id: NEWS,v 1.116 2001-06-20 01:23:09 flood Exp $
+$Id: NEWS,v 1.117 2001-07-02 18:56:17 flood Exp $
+
+1.2.2 - CVS
+---------------------------------
+- New mod_sql from upstream maintainer
 
 1.2.2rc3 - Released 06/19/2001
 ---------------------------------
