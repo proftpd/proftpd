@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.304 2002-12-05 21:46:20 castaglia Exp $
+$Id: NEWS,v 1.305 2002-12-05 21:57:23 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -20,6 +20,8 @@ CVS
 - Bug 1653 - Complete the FS API abstraction implementation.  The Developer
   Guide will have the complete details on using this API.
 - Bug 1712 - TLS support.  mod_tls-2.0.5 has been added to the distribution.
+  Many, many thanks to Peter Runestig for his work on this, and for maintaining
+  his code through so many versions of ProFTPD.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------
