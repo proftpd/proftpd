@@ -1,3 +1,13 @@
+2000-08-01 16:51  macgyver
+
+	* include/proftpd.h (1.12), modules/mod_auth.c (1.39), src/main.c
+	(1.41): AnonRequirePassword should prevent the password from being
+	displayed in ftpwho/ftpcount/ps.
+
+2000-08-01 16:30  macgyver
+
+	* ChangeLog (1.23): Updated ChangeLog.
+
 2000-08-01 16:30  macgyver
 
 	* modules/mod_pam.c (1.23): Give ProFTPD it's own entry under /dev.
