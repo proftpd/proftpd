@@ -21,7 +21,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.19 2003-03-20 07:54:27 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.20 2003-03-20 23:23:16 castaglia Exp $
  */
 
 /*
@@ -282,7 +282,7 @@ static int _sql_timer_callback(CALLBACK_FRAME)
       sql_log(DEBUG_INFO, "timer expired for connection '%s'", entry->name);
       cmd = _sql_make_cmd( conn_pool, 2, entry->name, "1" );
       cmd_close( cmd );
-      _sql_free_cmd( cmd );
+      SQL_FREE_CMD(cmd);
       entry->timer = 0;
     }
   }
@@ -306,7 +306,7 @@ static void _sql_shutdown(void)
     if (entry->connections > 0) {
       cmd = _sql_make_cmd( conn_pool, 2, entry->name, "1" );
       cmd_close( cmd );
-      _sql_free_cmd( cmd );
+      SQL_FREE_CMD(cmd);
     }
   }
 
@@ -806,7 +806,7 @@ MODRET cmd_select(cmd_rec *cmd)
 
     close_cmd = _sql_make_cmd( cmd->tmp_pool, 1, entry->name );
     cmd_close(close_cmd);
-    _sql_free_cmd( close_cmd );
+    SQL_FREE_CMD(close_cmd);
 
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_select");
     return dmr;
@@ -821,7 +821,7 @@ MODRET cmd_select(cmd_rec *cmd)
 
     close_cmd = _sql_make_cmd( cmd->tmp_pool, 1, entry->name );
     cmd_close(close_cmd);
-    _sql_free_cmd( close_cmd );
+    SQL_FREE_CMD(close_cmd);
 
     return dmr;
   }    
@@ -829,7 +829,7 @@ MODRET cmd_select(cmd_rec *cmd)
   /* close the connection, return the data. */
   close_cmd = _sql_make_cmd( cmd->tmp_pool, 1, entry->name );
   cmd_close(close_cmd);
-  _sql_free_cmd( close_cmd );
+  SQL_FREE_CMD(close_cmd);
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_select");
   return dmr;
@@ -920,7 +920,7 @@ MODRET cmd_insert(cmd_rec *cmd)
 
     close_cmd = _sql_make_cmd( cmd->tmp_pool, 1, entry->name );
     cmd_close(close_cmd);
-    _sql_free_cmd( close_cmd );
+    SQL_FREE_CMD(close_cmd);
 
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_insert");
     return dmr;
@@ -929,7 +929,7 @@ MODRET cmd_insert(cmd_rec *cmd)
   /* close the connection and return HANDLED. */
   close_cmd = _sql_make_cmd( cmd->tmp_pool, 1, entry->name );
   cmd_close(close_cmd);
-  _sql_free_cmd( close_cmd );
+  SQL_FREE_CMD(close_cmd);
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_insert");
   return HANDLED(cmd);
@@ -1019,7 +1019,7 @@ MODRET cmd_update(cmd_rec *cmd)
 
     close_cmd = _sql_make_cmd( cmd->tmp_pool, 1, entry->name );
     cmd_close(close_cmd);
-    _sql_free_cmd( close_cmd );
+    SQL_FREE_CMD(close_cmd);
 
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_update");
     return dmr;
@@ -1028,7 +1028,7 @@ MODRET cmd_update(cmd_rec *cmd)
   /* close the connection, return HANDLED.  */
   close_cmd = _sql_make_cmd( cmd->tmp_pool, 1, entry->name );
   cmd_close(close_cmd);
-  _sql_free_cmd( close_cmd );
+  SQL_FREE_CMD(close_cmd);
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_update");
   return HANDLED(cmd);
@@ -1135,7 +1135,7 @@ MODRET cmd_query(cmd_rec *cmd)
     
     close_cmd = _sql_make_cmd( cmd->tmp_pool, 1, entry->name );
     cmd_close(close_cmd);
-    _sql_free_cmd( close_cmd );
+    SQL_FREE_CMD(close_cmd);
     
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_query");
     return dmr;
@@ -1157,7 +1157,7 @@ MODRET cmd_query(cmd_rec *cmd)
   /* close the connection, return the data. */
   close_cmd = _sql_make_cmd( cmd->tmp_pool, 1, entry->name );
   cmd_close(close_cmd);
-  _sql_free_cmd( close_cmd );
+  SQL_FREE_CMD(close_cmd);
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_query");
   return dmr;

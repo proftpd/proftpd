@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.h,v 1.4 2003-03-14 18:27:27 castaglia Exp $
+ * $Id: mod_sql.h,v 1.5 2003-03-20 23:23:15 castaglia Exp $
  */
 
 #ifndef MOD_SQL_H
@@ -51,6 +51,8 @@ extern cmdtable sql_cmdtable[];
 #define DEBUG_AUTH DEBUG4
 #define DEBUG_INFO DEBUG3
 #define DEBUG_WARN DEBUG2
+
+#define SQL_FREE_CMD(c)       destroy_pool((c)->pool)
 
 /* 
  * These macros are for backends to create basic internal error messages
