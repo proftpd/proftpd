@@ -20,7 +20,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.14 2000-07-21 04:52:43 macgyver Exp $
+ * $Id: data.c,v 1.15 2000-07-26 11:03:17 macgyver Exp $
  */
 
 #include "conf.h"
@@ -587,78 +587,79 @@ void data_abort(int err, int quiet)
 
 int data_xfer(char *cl_buf, int cl_size)
 {
-	char *buf = session.xfer.buf;
-	int len = 0;
-	int total = 0;
+  char *buf = session.xfer.buf;
+  int len = 0;
+  int total = 0;
+  
+  if(session.xfer.direction == IO_READ) {
+    if(session.d && (len = io_read(session.d->inf, cl_buf, cl_size, 1)) > 0) {
+      if(TimeoutStalled)
+	reset_timer(TIMER_STALLED, ANY_MODULE);
 
-	if(session.xfer.direction == IO_READ) {
-		if((len = io_read(session.d->inf,cl_buf,cl_size, 1)) > 0) {
-			if(TimeoutStalled)
-				reset_timer(TIMER_STALLED, ANY_MODULE);
-			if(session.flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
-				char *cp = cl_buf, *dest = cl_buf;
-				register int i = len;
-
-				while(i--)
-					if(*cp != '\r')
-						*dest++ = *cp++;
-					else {
-						len--; total++;
-						cp++;
-					}
-			}
-
-			total += len;
-		}
-	} else { /* IO_WRITE */
-
-		/* copy client buffer to internal buffer, and
-		 * xlate ascii as necessary
-		 */
-
-		while(cl_size) {
-			int o_size,size = cl_size;
-			int wsize,adjlen;
-			char *wb;
-
-			if(size > 1024)
-				size = 1024;
-
-			o_size = size;
-			bcopy(cl_buf,buf,size);
-			while(size) {
-				wb = buf; wsize = size; adjlen = 0;
-
-				if(session.flags & (SF_ASCII|SF_ASCII_OVERRIDE))
-					_translate_ascii(&wb,&wsize,&adjlen);
-
-				if(io_write(session.d->outf,wb,wsize) == -1)
-					return -1;
-
-				if(TimeoutStalled)
-					reset_timer(TIMER_STALLED, ANY_MODULE);
-
-				total += wsize;
-				size -= (wsize - adjlen);
-				if(size) {
-					wb = buf + (wsize - adjlen);
-					bcopy(wb,buf,size);
-				}
-			}
-
-			cl_size -= o_size;
-			cl_buf += o_size;
-		}
-
-		len = total;
+      if(session.flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
+	char *cp = cl_buf, *dest = cl_buf;
+	register int i = len;
+	
+	while(i--)
+	  if(*cp != '\r')
+	    *dest++ = *cp++;
+	  else {
+	    len--; total++;
+	    cp++;
+	  }
+      }
+      
+      total += len;
+    }
+  } else { /* IO_WRITE */
+    
+    /* copy client buffer to internal buffer, and
+     * xlate ascii as necessary
+     */
+    
+    while(cl_size) {
+      int o_size,size = cl_size;
+      int wsize,adjlen;
+      char *wb;
+      
+      if(size > 1024)
+	size = 1024;
+      
+      o_size = size;
+      bcopy(cl_buf,buf,size);
+      while(size) {
+	wb = buf; wsize = size; adjlen = 0;
+	
+	if(session.flags & (SF_ASCII|SF_ASCII_OVERRIDE))
+	  _translate_ascii(&wb,&wsize,&adjlen);
+	
+	if(io_write(session.d->outf,wb,wsize) == -1)
+	  return -1;
+	
+	if(TimeoutStalled)
+	  reset_timer(TIMER_STALLED, ANY_MODULE);
+	
+	total += wsize;
+	size -= (wsize - adjlen);
+	if(size) {
+	  wb = buf + (wsize - adjlen);
+	  bcopy(wb,buf,size);
 	}
-
-	if(total && TimeoutIdle)
-		reset_timer(TIMER_IDLE,ANY_MODULE);
-
-	session.xfer.total_bytes += total;
-	session.total_bytes += total;
-	return len;
+      }
+      
+      cl_size -= o_size;
+      cl_buf += o_size;
+    }
+    
+    len = total;
+  }
+  
+  if(total && TimeoutIdle)
+    reset_timer(TIMER_IDLE,ANY_MODULE);
+  
+  session.xfer.total_bytes += total;
+  session.total_bytes += total;
+  return len;
 }
 
 #ifdef HAVE_SENDFILE

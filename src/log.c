@@ -20,7 +20,7 @@
 
 /*
  * ProFTPD logging support
- * $Id: log.c,v 1.18 2000-07-11 13:36:52 macgyver Exp $
+ * $Id: log.c,v 1.19 2000-07-26 11:03:17 macgyver Exp $
  */
 
 /* History Log:
@@ -110,7 +110,7 @@ int log_xfer(int xfertime, char *remhost, unsigned long fsize,
        fbuf[LOGBUFFER_SIZE] = {'\0'};
   int i;
 
-  if(xferfd == -1)
+  if(xferfd == -1 || !remhost || !user || !fname)
     return 0;
 
   for(i = 0; (i + 1 < sizeof(fbuf)) && fname[i] != '\0'; i++) {

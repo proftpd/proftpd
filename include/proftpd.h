@@ -18,7 +18,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.10 2000-07-06 20:08:01 macgyver Exp $
+ * $Id: proftpd.h,v 1.11 2000-07-26 11:03:17 macgyver Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -183,9 +183,10 @@ extern const char	*pwdfname,*grpfname;
 #define SF_ASCII_OVERRIDE (1 << 4)	/* ASCII override this xfer only */
 #define SF_ANON		(1 << 5)	/* Anonymous (chroot) login */
 #define SF_POST_ABORT	(1 << 6)	/* After abort has occured */
+#define SF_PORT		(1 << 7)	/* Port command given */
 
 #define SF_ALL		(SF_PASSIVE|SF_ABORT|SF_XFER|SF_ASCII| \
-                        SF_ASCII_OVERRIDE|SF_ANON|SF_POST_ABORT)
+                        SF_ASCII_OVERRIDE|SF_ANON|SF_POST_ABORT|SF_PORT)
 
 /* Macro to test global abort flag */
 #define XFER_ABORTED	(session.flags & SF_ABORT)

@@ -19,7 +19,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.30 2000-07-11 13:36:52 macgyver Exp $
+ * $Id: mod_ls.c,v 1.31 2000-07-26 11:03:17 macgyver Exp $
  */
 
 #include "conf.h"
@@ -1262,10 +1262,13 @@ MODRET cmd_stat(cmd_rec *cmd)
     return ERROR(cmd);
   }
 
+  /* Get to the actual argument.
+   */
   if(*arg == '-')
-    while(!isspace((UCHAR)*arg)) arg++;
-  while(isspace((UCHAR)*arg)) arg++;
-
+    while(arg && *arg && !isspace((UCHAR)*arg)) arg++;
+  
+  while(arg && *arg && isspace((UCHAR)*arg)) arg++;
+  
   showsymlinks = get_param_int(TOPLEVEL_CONF,"ShowSymlinks",FALSE);
 
   if(showsymlinks == -1)
@@ -1276,9 +1279,9 @@ MODRET cmd_stat(cmd_rec *cmd)
   fakegroup = get_param_ptr(TOPLEVEL_CONF,"DirFakeGroup",FALSE);
   _fakemode = (long)get_param_int(TOPLEVEL_CONF,"DirFakeMode",FALSE);
   timesgmt = get_param_int(TOPLEVEL_CONF, "TimesGMT", FALSE);
+  
   /* No need to check ShowDotFiles since we force opt_a below.
    */
-
   if(_fakemode != -1) {
     fakemode = (umode_t)_fakemode;
     fakemodep = 1;
@@ -1288,7 +1291,7 @@ MODRET cmd_stat(cmd_rec *cmd)
   opt_C = opt_d = opt_F = opt_R;
   opt_a = opt_l = opt_STAT = 1;
 
-  add_response(R_211,"status of %s:",arg);
+  add_response(R_211,"status of %s:", arg && *arg ? arg : ".");
   dolist(cmd,cmd->arg,FALSE);
   add_response(R_211,"End of Status");
   return HANDLED(cmd);
