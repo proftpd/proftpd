@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.22 2000-03-01 06:13:49 macgyver Exp $
+ * $Id: mod_ls.c,v 1.23 2000-03-06 06:25:11 macgyver Exp $
  */
 
 #include "conf.h"
@@ -53,6 +53,7 @@ int opt_a = 0,
     opt_d = 0,
     opt_F = 0,
     opt_l = 0,
+    opt_L = 0,
     opt_R = 0,
     opt_r = 0,
     opt_t = 0,
@@ -212,7 +213,7 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
   if(fs_lstat(name,&st) == 0) {
     suffix[0] = suffix[1] = '\0';
 
-    if(S_ISLNK(st.st_mode) && !showsymlinks) {
+    if(S_ISLNK(st.st_mode) && (opt_L || !showsymlinks)) {
       /* attempt to fully dereference symlink */
       struct stat l_st;
 
@@ -752,7 +753,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name, int list_dotdirs
       push_cwd(cwd,&symhold);
      
       if(*r && ls_perms_full(workp,cmd,(char*)*r,NULL) 
-	    && !fs_chdir_canon(*r,showsymlinks)) {
+	    && !fs_chdir_canon(*r, !opt_L && showsymlinks)) {
         char *subdir;
 
 	if(strcmp(name,".") == 0)
@@ -824,6 +825,9 @@ void _parse_options(char **opt, int *glob_flags)
         opt_l++;
         opt_C = 0;
         break;
+      case 'L':
+        opt_L++;
+        break;
       case '1':
         opt_l = opt_C = 0;
         break;
@@ -868,6 +872,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
 
   if(clearflags)
     opt_a = opt_C = opt_d = opt_F = opt_r = opt_R = opt_t = opt_STAT = 0;
+    opt_L = 0;
 
   if(default_options)
     _parse_options(&default_options,&glob_flags);
@@ -952,7 +957,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
 	    target_mode = st.st_mode;
 
             if(S_ISLNK(st.st_mode) && (lmode = file_mode((char*)*path)) != 0) {
-              if(!showsymlinks)
+              if(opt_L || !showsymlinks)
                 st.st_mode = lmode;
               target_mode = lmode;
             }
@@ -993,7 +998,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
 
             push_cwd(cwd,&symhold);
 
-            if(!fs_chdir_canon(*path,showsymlinks)) {
+            if(!fs_chdir_canon(*path, !opt_L && showsymlinks)) {
               int ret = listdir(cmd,NULL,*path,FALSE);
               pop_cwd(cwd,&symhold);
 
@@ -1101,7 +1106,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
     push_cwd(cwd,&symhold);
   }
   
-  if(fs_chdir_canon(dir,showsymlinks)) {
+  if(fs_chdir_canon(dir, !opt_L && showsymlinks)) {
     destroy_pool(workp);
     return 0;
   }
