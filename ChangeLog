@@ -1,3 +1,41 @@
+2000-07-21 00:06  macgyver
+
+	* modules/mod_pam.c (1.18): Typo with AuthPAMConfig and PAMConfig.
+
+2000-07-21 00:05  macgyver
+
+	* configure (1.34), configure.in (1.34): Added in better PAM
+	detection for -ldl.
+
+2000-07-20 23:58  macgyver
+
+	* README.LDAP (1.3), contrib/mod_ldap.c (1.9),
+	doc/Configuration.html (1.27): Latest LDAP updates (mod_ldap 2.7).
+
+2000-07-20 23:52  macgyver
+
+	* src/data.c (1.14): Added many more descriptions around various
+	error conditions for better RFC compliance.
+
+2000-07-20 23:52  macgyver
+
+	* modules/mod_pam.c (1.17): Fix potential strdup madness.
+
+2000-07-20 23:47  macgyver
+
+	* modules/mod_unixpw.c (1.6): Reworked UID/GID hash tables to be
+	more portable across implementations with different sizes for UID
+	and GID fields.
+
+2000-07-11 13:44  macgyver
+
+	* modules/mod_core.c (1.36): Fixed a minor typo when there is no
+	regex engine around.
+
+2000-07-11 09:13  macgyver
+
+	* ChangeLog (1.17): Updated ChangeLog.
+
 2000-07-11 09:10  macgyver
 
 	* NEWS (1.54), src/data.c (1.13), src/main.c (1.33): Don't ignore
