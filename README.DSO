@@ -9,3 +9,5 @@ modules, is now available in ProFTPD 1.3.0.
   --with-shared
   --libexecdir/ModulePath
   LoadModule, ModuleOrder
+
+  Importance of keeping access to ModulePath/libexec dir restricted
