@@ -25,7 +25,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.5 2001-06-18 17:12:45 flood Exp $
+ * $Id: options.h,v 1.6 2002-06-11 14:49:27 castaglia Exp $
  */
 
 #ifndef __OPTIONS_H
@@ -49,6 +49,14 @@
 #endif
 
 /* Tunable parameters */
+
+/* This defines the timeout for the main select() loop, defines the number
+ * of seconds to wait for a session request before checking for things such
+ * as shutdown requests, perform signal dispatching, etc before waitinng
+ * for requests again.
+ */
+
+#define TUNABLE_SELECT_TIMEOUT	30
 
 /* "Backlog" is the number of connections that can be received at one
  * burst before the kernel rejects.  This can be configured by the

@@ -25,7 +25,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.72 2002-05-21 20:47:16 castaglia Exp $
+ * $Id: mod_auth.c,v 1.73 2002-06-11 14:49:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1606,14 +1606,16 @@ MODRET cmd_pass(cmd_rec *cmd) {
     if(display)
       core_display_file(R_230, display, NULL);
     
-    if((grantmsg = (char*)get_param_ptr((session.anon_config ?
+    if ((grantmsg = (char *)get_param_ptr((session.anon_config ?
         session.anon_config->subset : cmd->server->conf),
         "AccessGrantMsg",FALSE)) != NULL) {
       grantmsg = sreplace(cmd->tmp_pool, grantmsg, "%u", user, NULL);
 
-      add_response(R_230, "%s", grantmsg, NULL);
+      add_response(R_230, "%s", grantmsg);
+
     } else {
-      if(session.flags & SF_ANON)
+
+      if (session.flags & SF_ANON)
         add_response(R_230, "Anonymous access granted, restrictions apply.");
       else
         add_response(R_230, "User %s logged in.", user);
@@ -1641,11 +1643,11 @@ MODRET cmd_pass(cmd_rec *cmd) {
     if(max == -1)
       max = 3;
 
-    if(++auth_tries >= max) {
+    if (++auth_tries >= max) {
       if (denymsg)
-        send_response(R_530, "%s", denymsg, NULL);
+        send_response(R_530, "%s", denymsg);
       else
-      send_response(R_530,"Login incorrect");
+        send_response(R_530, "Login incorrect.");
 
       log_auth(LOG_NOTICE, "Maximum login attempts exceeded.");
       end_login(0);

@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.85 2002-06-11 14:36:42 castaglia Exp $
+ * $Id: mod_core.c,v 1.86 2002-06-11 14:49:27 castaglia Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -2282,29 +2282,34 @@ MODRET regex_filters(cmd_rec *cmd)
 }
 #endif /* HAVE_REGEX_H && HAVE_REGCOMP */
 
-MODRET cmd_quit(cmd_rec *cmd)
-{
+MODRET cmd_quit(cmd_rec *cmd) {
   char *display = NULL;
   
-  if(session.flags & SF_ANON)
-	display = (char*)get_param_ptr(session.anon_config->subset, "DisplayQuit", FALSE);
+  if (session.flags & SF_ANON)
+    display = (char *)get_param_ptr(session.anon_config->subset,
+      "DisplayQuit", FALSE);
 
-  if(!display)
-	display = (char*)get_param_ptr(cmd->server->conf, "DisplayQuit", FALSE);
+  if (!display)
+    display = (char *)get_param_ptr(cmd->server->conf, "DisplayQuit", FALSE);
 
-  if(display) {
-	core_display_file(R_221, display, NULL);
-	/* hack or feature, core_display_file() always puts a hyphen
-	 * on the last line
-	 */
-	send_response(R_221, "");
-  } else {
-        send_response(R_221, "Goodbye.");
-  }
+  if (display) {
+    core_display_file(R_221, display, NULL);
+
+    /* Hack or feature, core_display_file() always puts a hyphen on the
+     * last line
+     */
+    send_response(R_221, "%s", "");
+
+  } else
+    send_response(R_221, "Goodbye.");
   
   log_pri(LOG_INFO, "FTP session closed.");
   end_login(0);
-  return HANDLED(cmd);			/* Avoid compiler warning */
+
+  /* Even though end_login() does not return, this is necessary to avoid
+   * compiler warnings.
+   */
+  return HANDLED(cmd);
 }
 
 /* per RFC959, directory responses for MKD and PWD should be

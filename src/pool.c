@@ -265,19 +265,17 @@ static long __walk_pools(pool *p, int level)
     total += bytes_in_block_list(p->first);
     if(level == 0) {
       if(p->symbol)
-        log_pri(LOG_NOTICE,"(%s)0x%08x bytes",
-			&p->symbol,
+        log_pri(LOG_NOTICE,"(%s)0x%08lx bytes", &p->symbol,
 			bytes_in_block_list(p->first));
       else
-        log_pri(LOG_NOTICE,"0x%08x bytes",
+        log_pri(LOG_NOTICE,"0x%08lx bytes",
 	  	      	bytes_in_block_list(p->first));
     } else {
       if(p->symbol)
-	log_pri(LOG_NOTICE,"%s(%s)\\- 0x%08x bytes",_levelpad,
-			&p->symbol,
+	log_pri(LOG_NOTICE,"%s(%s)\\- 0x%08lx bytes",_levelpad, &p->symbol,
 			bytes_in_block_list(p->first));
       else
-        log_pri(LOG_NOTICE,"%s\\- 0x%08x bytes",_levelpad,
+        log_pri(LOG_NOTICE,"%s\\- 0x%08lx bytes",_levelpad,
               bytes_in_block_list(p->first));
     }
     
@@ -289,23 +287,21 @@ static long __walk_pools(pool *p, int level)
   return total;
 }
 
-void debug_pool_info(void)
-{
-  if(block_freelist)
-    log_pri(LOG_NOTICE,"Free block list: 0x%08x bytes",
-            bytes_in_block_list(block_freelist));
+void debug_pool_info(void) {
+  if (block_freelist)
+    log_pri(LOG_NOTICE, "Free block list: 0x%08lx bytes",
+      bytes_in_block_list(block_freelist));
   else
-    log_pri(LOG_NOTICE,"Free block list: EMPTY");
+    log_pri(LOG_NOTICE, "Free block list: EMPTY");
 
-  log_pri(LOG_NOTICE,"%u count blocks malloc'd.",stat_malloc);
-  log_pri(LOG_NOTICE,"%u count blocks reused.",stat_freehit); 
+  log_pri(LOG_NOTICE, "%u count blocks malloc'd.", stat_malloc);
+  log_pri(LOG_NOTICE, "%u count blocks reused.", stat_freehit); 
 }
 
-void debug_walk_pools(void)
-{
-  log_pri(LOG_NOTICE,"Memory pool allocation:");
-  log_pri(LOG_NOTICE,"Total 0x%08x bytes allocated",
-          __walk_pools(permanent_pool,0));
+void debug_walk_pools(void) {
+  log_pri(LOG_NOTICE, "Memory pool allocation:");
+  log_pri(LOG_NOTICE, "Total 0x%08lx bytes allocated",
+    __walk_pools(permanent_pool, 0));
   debug_pool_info();
 }
 

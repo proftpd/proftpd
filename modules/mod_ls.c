@@ -24,7 +24,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.49 2002-05-21 20:47:17 castaglia Exp $
+ * $Id: mod_ls.c,v 1.50 2002-06-11 14:49:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -882,9 +882,9 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name)
         else
           subdir = pdircat(workp,name,*r,NULL);
 
-	if(opt_STAT) {
-	  add_response(R_211,"");
-          add_response(R_211,"%s:",subdir);
+	if (opt_STAT) {
+	  add_response(R_211, "%s", "");
+          add_response(R_211, "%s:", subdir);
 
 	} else if(sendline("\n%s:\n",subdir) < 0) {
           pop_cwd(cwd,&symhold);
@@ -1132,10 +1132,11 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
           char cwd[MAXPATHLEN + 1] = {'\0'};
           int symhold;
 
-          if(!justone) {
-            if(opt_STAT) {
-	      add_response(R_211, "");
+          if (!justone) {
+            if (opt_STAT) {
+	      add_response(R_211, "%s", "");
 	      add_response(R_211, "%s:", *path);
+
 	    } else
               sendline("\n%s:\n", *path);
           }
@@ -1601,8 +1602,8 @@ MODRET cmd_nlst(cmd_rec *cmd)
 			}
 			ret = nlstdir(cmd,target);
 		} else {
-			add_response_err(R_550,"%s: Not a regular file",
-					cmd->arg,strerror(errno));
+			add_response_err(R_550, "%s: Not a regular file",
+					cmd->arg);
 			return ERROR(cmd);
 		}
 		

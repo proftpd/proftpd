@@ -26,7 +26,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.35 2002-05-21 20:47:22 castaglia Exp $
+ * $Id: log.c,v 1.36 2002-06-11 14:49:27 castaglia Exp $
  */
 
 /* History Log:
@@ -894,15 +894,15 @@ void log(int priority, int f, char *s)
     openlog("proftpd", LOG_NDELAY | LOG_PID, facility);
 }
 
-void log_pri(int priority, char *fmt, ...)
-{
+void log_pri(int priority, char *fmt, ...) {
   char buf[LOGBUFFER_SIZE] = {'\0'};
   va_list msg;
   
-  va_start(msg,fmt);
+  va_start(msg, fmt);
   vsnprintf(buf, sizeof(buf), fmt, msg);
   va_end(msg);
-  
+ 
+  /* Always make sure the buffer is NUL-terminated. */ 
   buf[sizeof(buf) - 1] = '\0';
   
   log(priority, facility, buf);
@@ -912,15 +912,15 @@ void log_pri(int priority, char *fmt, ...)
  * facility (presumable it doesn't need to be seen by everyone
  */
 
-void log_auth(int priority, char *fmt, ...)
-{
+void log_auth(int priority, char *fmt, ...) {
   char buf[LOGBUFFER_SIZE] = {'\0'};
   va_list msg;
 
-  va_start(msg,fmt);
+  va_start(msg, fmt);
   vsnprintf(buf, sizeof(buf), fmt, msg);
   va_end(msg);
 
+  /* Always make sure the buffer is NUL-terminated. */
   buf[sizeof(buf) - 1] = '\0';
 
   log(priority, LOG_AUTHPRIV, buf);
@@ -948,19 +948,19 @@ int log_setdebuglevel(int level)
   return old_level;
 }
 
-void log_debug(int level,char *str,...)
-{
-  char buf[LOGBUFFER_SIZE];
+void log_debug(int level, char *fmt, ...) {
+  char buf[LOGBUFFER_SIZE] = {'\0'};
   va_list msg;
 
-  if(debug_level < level)
+  if (debug_level < level)
     return;
 
-  memset(buf,'\0',sizeof(buf));
-  va_start(msg, str);
-  vsnprintf(buf, sizeof(buf), str, msg);
+  memset(buf, '\0', sizeof(buf));
+  va_start(msg, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, msg);
   va_end(msg);
 
+  /* Always make sure the buffer is NUL-terminated. */
   buf[sizeof(buf) - 1] = '\0';
 
   log(LOG_DEBUG, facility, buf);

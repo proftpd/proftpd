@@ -25,7 +25,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.66 2002-06-11 14:30:02 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.67 2002-06-11 14:49:27 castaglia Exp $
  */
 
 /* History Log:
@@ -94,10 +94,10 @@ static void _log_transfer(char direction, char abort_flag) {
              direction,'r',session.user, abort_flag);
   }
 
-  log_debug(DEBUG1, "Transfer %s %d bytes in %d.%02d seconds.",
+  log_debug(DEBUG1, "Transfer %s %lu bytes in %d.%02d seconds.",
 	    abort_flag == 'c' ? "completed:" : "aborted after",
-	    session.xfer.total_bytes,end_time.tv_sec,
-	    (end_time.tv_usec / 10000));
+	    session.xfer.total_bytes, (int) end_time.tv_sec,
+	    (int) (end_time.tv_usec / 10000));
 }
 
 /* This routine counts the difference in usec between timeval's

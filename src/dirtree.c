@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.54 2002-06-11 14:36:42 castaglia Exp $
+ * $Id: dirtree.c,v 1.55 2002-06-11 14:49:27 castaglia Exp $
  */
 
 /* History:
@@ -2219,9 +2219,9 @@ void fixup_dirs(server_rec *s, int mask)
     if(c->config_type == CONF_ANON)
       _reorder_dirs(c->subset);
 */
-  log_debug(DEBUG5,"");
-  log_debug(DEBUG5,"Config for %s:",s->ServerName);
-  debug_dump_config(s->conf,NULL);
+  log_debug(DEBUG5, "%s", "");
+  log_debug(DEBUG5, "Config for %s:", s->ServerName);
+  debug_dump_config(s->conf, NULL);
 }
 
 config_rec *find_config_next(config_rec *prev, config_rec *c, int type,

@@ -2,6 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
+ * Copyright (C) 2001, 2002 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.82 2002-06-11 14:36:42 castaglia Exp $
+ * $Id: main.c,v 1.83 2002-06-11 14:49:27 castaglia Exp $
  */
 
 /*
@@ -136,7 +137,8 @@ time_t shut = (time_t)0,deny = (time_t)0, disc = (time_t)0;
 char shutmsg[81] = {'\0'};
 
 xaset_t *children = NULL;
-static int n_children = 0, have_dead_child = FALSE;
+static unsigned char have_dead_child = FALSE;
+static unsigned long n_children = 0;
 
 response_t *resp_list = NULL,*resp_err_list = NULL;
 static pool *resp_pool = NULL;
@@ -152,8 +154,36 @@ extern array_header *server_defines;
 
 static int nodaemon = 0;
 static int shutdownp = 0;
+
+/* Signal handling */
 static RETSIGTYPE sig_disconnect(int);
 static RETSIGTYPE sig_debug(int);
+
+#define RECEIVED_SIG_REHASH	0x0001
+#define RECEIVED_SIG_EXIT	0x0002
+#define RECEIVED_SIG_SHUTDOWN	0x0004
+#define RECEIVED_SIG_SEGV	0x0008
+#define RECEIVED_SIG_TERMINATE	0x0010
+#define RECEIVED_SIG_XCPU	0x0020
+#define RECEIVED_SIG_TERM_OTHER	0x0040
+#define RECEIVED_SIG_ABORT	0x0080
+#define RECEIVED_SIG_DEBUG	0x0100
+#define RECEIVED_SIG_CHLD	0x0200
+
+volatile static unsigned int recvd_signal_flags = 0;
+
+/* Used to capture an "unknown" signal value that causes termination. */
+static int term_signo = 0;
+
+/* Signal dispatcher */
+static void handle_signals(void);
+static void handle_abort(void);
+static void handle_chld(void);
+static void handle_xcpu(void);
+static void handle_terminate(void);
+static void handle_terminate_other(void);
+static void finish_terminate(void);
+static int signals_timer(CALLBACK_FRAME);
 
 #ifdef DEBUG_CORE
 static int abort_core = 0;
@@ -290,7 +320,7 @@ static int semaphore_fds(fd_set *rfd, int max_fd)
 {
   pidrec_t *p;
 
-  if(children)
+  if (children)
     for(p = (pidrec_t*)children->xas_list; p; p=p->next) {
       if(p->sempipe != -1) {
 	FD_SET(p->sempipe,rfd);
@@ -1295,7 +1325,7 @@ void fork_server(int fd, conn_t *l, int nofork) {
       /* The parent doesn't need the socket open */
       close(fd);
 
-      if(!children) {
+      if (!children) {
 
         /* allocate a subpool from permanent_pool for the set
          */
@@ -1627,12 +1657,14 @@ void server_loop(void)
     case 0: shutdownp = 0; deny = disc = (time_t)0; break;
     }
 
-    if(shutdownp) {
-      tv.tv_usec = 0L;
+    if (shutdownp) {
       tv.tv_sec = 5L;
-    } else {
       tv.tv_usec = 0L;
-      tv.tv_sec = 30L;
+
+    } else {
+
+      tv.tv_sec = TUNABLE_SELECT_TIMEOUT;
+      tv.tv_usec = 0L;
     }
 
     /* If running (a flag signaling whether proftpd is just starting up)
@@ -1700,22 +1732,28 @@ void server_loop(void)
       unblock_alarms();
     }
 
-    if(i == -1) {
+    if (i == -1) {
       time_t this_error;
 
-      if(errno == EINTR)
+      if (errno == EINTR) {
+
+        /* A signal was received; make sure it is properly handled. */
+        handle_signals();
         continue;
+      }
 
       time(&this_error);
-      if((this_error - last_error) <= 5 && err_count++ > 10) {
-        log_pri(LOG_ERR,"Fatal: select() failing repeatedly, shutting down.");
+
+      if ((this_error - last_error) <= 5 && err_count++ > 10) {
+        log_pri(LOG_ERR, "Fatal: select() failing repeatedly, shutting down.");
         exit(1);
-      } else if((this_error - last_error) > 5) {
+
+      } else if ((this_error - last_error) > 5) {
         last_error = this_error;
         err_count = 0;
       }
 
-      log_pri(LOG_NOTICE,"select() failed in server_loop(): %s",
+      log_pri(LOG_NOTICE, "select() failed in server_loop(): %s",
               strerror(errno));
     }
 
@@ -1723,8 +1761,8 @@ void server_loop(void)
       continue;
     
     /* See if child semaphore pipes have signaled */
-    if(children) {
-      pidrec_t *cp;
+    if (children) {
+      pidrec_t *cp = NULL;
 
       for(cp = (pidrec_t*)children->xas_list; cp; cp = cp->next)
 	if(cp->sempipe != -1 && FD_ISSET(cp->sempipe,&rfd)) {
@@ -1733,7 +1771,9 @@ void server_loop(void)
 	}
     }
 
-    /* fork off servers to handle each connection
+    handle_signals();
+
+    /* Fork off servers to handle each connection
      * our job is to get back to answering connections asap,
      * so leave the work of determining which server the connection
      * is for to our child.
@@ -1750,24 +1790,93 @@ void server_loop(void)
   }
 }
 
+/* This function is to handle the dispatching of actions based on
+ * signals received by the signal handlers, to avoid signal handler-based
+ * race conditions.
+ */
+
+static void handle_signals(void) {
+
+  while (recvd_signal_flags) {
+
+    if (recvd_signal_flags & RECEIVED_SIG_CHLD) {
+      recvd_signal_flags &= ~RECEIVED_SIG_CHLD;
+      handle_chld();
+    }
+
+    if (recvd_signal_flags & RECEIVED_SIG_DEBUG) {
+      recvd_signal_flags &= ~RECEIVED_SIG_DEBUG;
+      debug_walk_pools();
+    }
+
+    if (recvd_signal_flags & RECEIVED_SIG_SEGV) {
+      recvd_signal_flags &= ~RECEIVED_SIG_SEGV;
+      handle_terminate_other();
+    }
+
+    if (recvd_signal_flags & RECEIVED_SIG_TERMINATE) {
+      recvd_signal_flags &= ~RECEIVED_SIG_TERMINATE;
+      handle_terminate();
+    }
+
+    if (recvd_signal_flags & RECEIVED_SIG_TERM_OTHER) {
+      recvd_signal_flags &= ~RECEIVED_SIG_TERM_OTHER;
+      handle_terminate_other();
+    }
+
+    if (recvd_signal_flags & RECEIVED_SIG_XCPU) {
+      recvd_signal_flags &= ~RECEIVED_SIG_XCPU;
+      handle_xcpu();
+    }
+
+    if (recvd_signal_flags & RECEIVED_SIG_ABORT) {
+      recvd_signal_flags &= RECEIVED_SIG_ABORT;
+      handle_abort();
+    }
+
+    if (recvd_signal_flags & RECEIVED_SIG_REHASH) {
+
+      /* NOTE: should this be done here, rather than using a schedule? */
+      schedule(main_rehash, 0, NULL, NULL, NULL, NULL);
+
+      recvd_signal_flags &= ~RECEIVED_SIG_REHASH;
+    }
+
+    if (recvd_signal_flags & RECEIVED_SIG_EXIT) {
+
+      /* NOTE: should this be done here, rather than using a schedule? */
+      schedule(main_exit, 0, (void *) LOG_NOTICE,
+        "Parent process requested shutdown", (void *) NULL, NULL);
+
+      recvd_signal_flags &= ~RECEIVED_SIG_EXIT;
+    }
+
+    if (recvd_signal_flags & RECEIVED_SIG_SHUTDOWN) {
+
+      /* NOTE: should this be done here, rather than using a schedule? */
+      schedule(shutdown_exit, 0, NULL, NULL, NULL, NULL);
+
+      recvd_signal_flags &= ~RECEIVED_SIG_SHUTDOWN;
+    }
+  }
+}
+
 /* sig_rehash occurs in the master daemon when manually "kill -HUP"
  * in order to re-read configuration files, and is sent to all
  * children by the master.
  */
 
-static RETSIGTYPE sig_rehash(int sig)
-{
-  schedule(main_rehash,0,NULL,NULL,NULL,NULL);
-
-  signal(SIGHUP,sig_rehash);
+static RETSIGTYPE sig_rehash(int signo) {
+  recvd_signal_flags |= RECEIVED_SIG_REHASH;
+  signal(SIGHUP, sig_rehash);
 }
 
 /* sig_debug outputs some basic debugging info
  */
 
-static RETSIGTYPE sig_debug(int sig)
-{
-  debug_walk_pools();
+static RETSIGTYPE sig_debug(int signo) {
+  recvd_signal_flags |= RECEIVED_SIG_DEBUG;
+  signal(SIGHUP, sig_debug);
 }
 
 /* sig_disconnect is called in children when the parent daemon
@@ -1777,50 +1886,23 @@ static RETSIGTYPE sig_debug(int sig)
  * the shutdown reason.
  */
 
-static RETSIGTYPE sig_disconnect(int sig)
-{
-  if((session.flags & SF_ANON) || (session.flags & SF_XFER))
-    schedule(main_exit, 0, (void*) LOG_NOTICE,
-             "Parent process requested shutdown",
-             (void*) 0, NULL);
-  else
-    schedule(shutdown_exit,0,NULL,NULL,NULL,NULL);
+static RETSIGTYPE sig_disconnect(int signo) {
 
-  signal(SIGUSR1,SIG_IGN);
+  /* If this is an anonymous session, or a transfer is in progress,
+   * perform the exit a little later...
+   */
+  if ((session.flags & SF_ANON) ||
+      (session.flags & SF_XFER))
+    recvd_signal_flags |= RECEIVED_SIG_EXIT;
+  else
+    recvd_signal_flags |= RECEIVED_SIG_SHUTDOWN;
+
+  signal(SIGUSR1, SIG_IGN);
 }
 
-static RETSIGTYPE sig_child(int sig)
-{
-  sigset_t sigset;
-  pid_t cpid;
-  pidrec_t *cp,*cpnext;
-
-  sigemptyset(&sigset);
-  sigaddset(&sigset,SIGTERM);
-
-  block_alarms();
-  sigprocmask(SIG_BLOCK,&sigset,NULL);
-
-  /* block SIGTERM in here, so we don't create screw with the
-   * child list while modifying it.
-   */
-
-  while((cpid = waitpid(-1,NULL,WNOHANG)) > 0) {
-    if(children) {
-      for(cp = (pidrec_t*)children->xas_list; cp; cp=cpnext) {
-        cpnext = cp->next;
-        if(cp->pid == cpid) {
-          n_children--;
-          have_dead_child = TRUE;
-          cp->dead = 1;
-        }
-      }
-    }
-  }
-
-  sigprocmask(SIG_UNBLOCK,&sigset,NULL);
-  unblock_alarms();
-  signal(SIGCHLD,sig_child);
+static RETSIGTYPE sig_child(int signo) {
+  recvd_signal_flags |= RECEIVED_SIG_CHLD;
+  signal(SIGCHLD, sig_child);
 }
 
 #ifdef DEBUG_CORE
@@ -1837,8 +1919,13 @@ static char *_prepare_core(void)
 }
 #endif /* DEBUG_CORE */
 
-static RETSIGTYPE sig_abort(int sig)
-{
+static RETSIGTYPE sig_abort(int signo) {
+  recvd_signal_flags |= RECEIVED_SIG_ABORT;
+  signal(SIGABRT, SIG_DFL);
+}
+
+static void handle_abort(void) {
+
 #ifdef DEBUG_CORE
   if(abort_core)
     log_pri(LOG_NOTICE,
@@ -1848,7 +1935,6 @@ static RETSIGTYPE sig_abort(int sig)
 #endif /* DEBUG_CORE */
     log_pri(LOG_NOTICE, "ProFTPD received SIGABRT signal, no core dump.");
   
-  signal(SIGABRT,SIG_DFL);
   end_login_noexit();
   abort();
 }  
@@ -1865,48 +1951,102 @@ static void _internal_abort(void)
 }
 #endif /* DEBUG_CORE */
 
-static RETSIGTYPE sig_terminate(int sig) {
+static RETSIGTYPE sig_terminate(int signo) {
+
+  if (signo == SIGSEGV) {
+    recvd_signal_flags |= RECEIVED_SIG_ABORT;
+
+    /* Restore the default signal handler. */
+    signal(SIGSEGV, SIG_DFL);
+  
+  } else if (signo == SIGTERM)
+    recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
+
+  else if (signo == SIGXCPU)
+    recvd_signal_flags |= RECEIVED_SIG_XCPU;
+
+  else
+    recvd_signal_flags |= RECEIVED_SIG_TERM_OTHER;
+
+  /* Capture the signal number for later display purposes. */
+  term_signo = signo;
+}
+
+static void handle_chld(void) {
+  sigset_t sigset;
+  pid_t child_pid;
+  pidrec_t *child = NULL, *child_next = NULL;
+
+  sigemptyset(&sigset);
+  sigaddset(&sigset, SIGTERM);
+
+  block_alarms();
+  sigprocmask(SIG_BLOCK, &sigset, NULL);
+
+  /* Block SIGTERM in here, so we don't create havoc with the
+   * child list while modifying it.
+   */
+  while ((child_pid = waitpid(-1, NULL, WNOHANG)) > 0) {
+    if (children) {
+      for (child = (pidrec_t *) children->xas_list; child; child = child_next) {
+        child_next = child->next;
+        if (child->pid == child_pid) {
+          n_children--;
+          have_dead_child = TRUE;
+          child->dead = TRUE;
+        }
+      }
+    }
+  }
+
+  sigprocmask(SIG_UNBLOCK, &sigset, NULL);
+  unblock_alarms();
+}
+
+static void handle_xcpu(void) {
+  log_pri(LOG_NOTICE, "ProFTPD CPU limit exceeded (signal %d)", SIGXCPU);
+  finish_terminate();
+}
+
+static void handle_terminate_other(void) {
+  log_pri(LOG_ERR, "ProFTPD terminating (signal %d)", term_signo);
+  finish_terminate();
+}
+
+static void handle_terminate(void) {
   pidrec_t *pid = NULL;
 
-  /* If we caught SIGSEGV, restore the default signal handler.
-   * jss 3/9/2001
-   */
-  if (sig == SIGSEGV)
-    signal(SIGSEGV,SIG_DFL);
-  
-  if (sig == SIGTERM) {
+  /* Do not log if we are a child that has been terminated. */
+  if (master) {
 
-    /* Don't log if we are a child that has been terminated */
-    if (master) {
-      /* Send a SIGTERM to all our children */
-      if (children) {
-        PRIVS_ROOT
-        for(pid = (pidrec_t*)children->xas_list; pid; pid=pid->next)
-          kill(pid->pid,SIGTERM);
-        PRIVS_RELINQUISH
-      }
-
-      log_pri(LOG_NOTICE,"ProFTPD killed (signal %d)",sig);
+    /* Send a SIGTERM to all our children */
+    if (children) {
+      PRIVS_ROOT
+      for (pid = (pidrec_t *) children->xas_list; pid; pid = pid->next)
+        kill(pid->pid, SIGTERM);
+      PRIVS_RELINQUISH
     }
 
-  } else if (sig == SIGXCPU) {
-    log_pri(LOG_NOTICE, "ProFTPD CPU limit exceeded (signal %d)", sig);
+    log_pri(LOG_NOTICE, "ProFTPD killed (signal %d)", term_signo);
+  }
 
-  } else
-    log_pri(LOG_ERR,"ProFTPD terminating (signal %d)",sig);
+  finish_terminate();
+}
+
+static void finish_terminate(void) {
 
   if (master && mpid == getpid()) {
     PRIVS_ROOT
 
-    /* clean up the scoreboard file */
+    /* Clean up the scoreboard file. */
     log_close_run();
     log_rm_run();
 
-    /* do not need the pidfile any longer */
+    /* Do not need the pidfile any longer. */
     if (standalone && !nodaemon)
       unlink(PidPath);
 
-    /* run any exit handlers registered in the master process here, so that
+    /* Run any exit handlers registered in the master process here, so that
      * they may have the benefit of root privs.  More than likely these
      * exit handlers were registered by modules' module initialization
      * functions, which also occur under root priv conditions. (If an
@@ -1915,9 +2055,9 @@ static RETSIGTYPE sig_terminate(int sig) {
      */
     run_exit_handlers();
 
-    /* remove the registered exit handlers now, so that the ensuing
+    /* Remove the registered exit handlers now, so that the ensuing
      * end_login() call (outside the root privs condition) does not call
-     * the exit handlers for the master process again
+     * the exit handlers for the master process again.
      */
     remove_exit_handlers();
 
@@ -1934,8 +2074,7 @@ static RETSIGTYPE sig_terminate(int sig) {
   end_login(1);
 }
 
-static void install_signal_handlers(void)
-{
+static void install_signal_handlers(void) {
   sigset_t sigset;
 
   /* Should the master server (only applicable in standalone mode)
@@ -2186,9 +2325,9 @@ void addl_bindings(server_rec *s)
      */
 
     ipaddr = inet_getaddr(s->pool,c->argv[0]);
-    if(!ipaddr) {
-      log_pri(LOG_NOTICE,"unable to determine IP address of `%s'.",
-              c->argv[0]);
+    if (!ipaddr) {
+      log_pri(LOG_NOTICE, "unable to determine IP address of '%s'.",
+              (char *) c->argv[0]);
 
       continue;
     }
