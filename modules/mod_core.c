@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.30 2000-02-28 19:06:48 macgyver Exp $
+ * $Id: mod_core.c,v 1.31 2000-07-06 06:53:24 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -57,14 +57,14 @@ static struct {
   { C_REIN, "is not implemented",		FALSE },
   { C_PORT, "<sp> h1,h2,h3,h4,p1,p2",		TRUE },
   { C_PASV, "(returns address/port)",		TRUE },
-  { C_TYPE, "<sp> type-code (A or I)",		TRUE },
-  { C_STRU, "is not implemented",		FALSE },
-  { C_MODE, "is not implemented (always S)",	FALSE },
+  { C_TYPE, "<sp> type-code (A, I, L 7, L 8)",	TRUE },
+  { C_STRU, "is not implemented (always F)",	TRUE },
+  { C_MODE, "is not implemented (always S)",	TRUE },
   { C_RETR, "<sp> pathname",			TRUE },
   { C_STOR, "<sp> pathname",			TRUE },
   { C_STOU, "is not implemented",		FALSE },
   { C_APPE, "<sp> pathname",			TRUE },
-  { C_ALLO, "is not implemented",		FALSE },
+  { C_ALLO, "is not implemented (ignored)",	FALSE },
   { C_REST, "<sp> byte-count",			TRUE },
   { C_RNFR, "<sp> pathname",			TRUE },
   { C_RNTO, "<sp> pathname",			TRUE },
@@ -80,7 +80,7 @@ static struct {
   { C_SIZE, "<sp> pathname",			TRUE },
   { C_LIST, "[<sp> pathname]",			TRUE },
   { C_NLST, "[<sp> (pathname)]",		TRUE },
-  { C_SITE, "<sp> string",		TRUE },
+  { C_SITE, "<sp> string",			TRUE },
   { C_SYST, "(returns system type)",		TRUE },
   { C_STAT, "[<sp> pathname]",			TRUE },
   { C_HELP, "[<sp> command]",			TRUE },

@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.33 2000-07-06 06:45:10 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.34 2000-07-06 06:53:24 macgyver Exp $
  */
 
 /* History Log:
@@ -858,6 +858,107 @@ MODRET cmd_type(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
+
+MODRET
+cmd_stru(cmd_rec *cmd)
+{
+	if ( cmd->argc != 2 ) {
+		add_response_err(R_501, "'%s' not understood.",
+						get_full_cmd(cmd));
+		return ERROR(cmd);
+	}
+
+	cmd->argv[1][0] = toupper(cmd->argv[1][0]);
+
+	switch ( (int)cmd->argv[1][0] ) {
+	case 'F':
+		/* Should 202 be returned instead??? */
+		add_response(R_200, "Structure set to F.");
+		return HANDLED(cmd);
+		break;
+	case 'R':
+		/*
+		** Accept R but with no operational difference from F???
+		** R is required in minimum implementations by RFC-959, 5.1.
+		** RFC-1123, 4.1.2.13, amends this to only apply to servers
+		** whose file systems support record structures, but also
+		** suggests that such a server "may still accept files
+		** with STRU R, recording the byte stream literally."
+		** Another configurable choice, perhaps?
+		** NB: wu-ftp does not so accept STRU R.
+		*/
+			/* FALLTHROUGH */
+	case 'P':
+		/* RFC-1123 recommends against implementing P. */
+		add_response_err(R_504, "'%s' unsupported structure type.",
+						get_full_cmd(cmd));
+		return ERROR(cmd);
+		break;
+	default:
+		add_response_err(R_501, "'%s' unrecognized structure type.",
+						get_full_cmd(cmd));
+		return ERROR(cmd);
+		break;
+	}
+}
+
+
+MODRET
+cmd_mode(cmd_rec *cmd)
+{
+	if ( cmd->argc != 2 ) {
+		add_response_err(R_501, "'%s' not understood.",
+						get_full_cmd(cmd));
+		return ERROR(cmd);
+	}
+
+	cmd->argv[1][0] = toupper(cmd->argv[1][0]);
+
+	switch ( (int)cmd->argv[1][0] ) {
+	case 'S':
+		/* Should 202 be returned instead??? */
+		add_response(R_200, "Mode set to S.");
+		return HANDLED(cmd);
+		break;
+	case 'B':	/* FALLTHROUGH */
+	case 'C':
+		add_response_err(R_504, "'%s' unsupported transfer mode.",
+						get_full_cmd(cmd));
+		return ERROR(cmd);
+		break;
+	default:
+		add_response_err(R_501, "'%s' unrecognized transfer mode.",
+						get_full_cmd(cmd));
+		return ERROR(cmd);
+		break;
+	}
+}
+
+
+MODRET
+cmd_allo(cmd_rec *cmd)
+{
+	add_response(R_202, "No storage allocation necessary.");
+	return HANDLED(cmd);
+}
+
+
+MODRET
+cmd_smnt(cmd_rec *cmd)
+{
+	add_response(R_502, "SMNT command not implemented.");
+	return HANDLED(cmd);
+}
+
+
+MODRET
+cmd_stou(cmd_rec *cmd)
+{
+	add_response(R_502, "STOU command not implemented.");
+	return HANDLED(cmd);
+}
+
+
 MODRET log_stor(cmd_rec *cmd)
 {
   _log_transfer('i');
@@ -979,12 +1080,17 @@ conftable xfer_config[] = {
 
 static cmdtable xfer_commands[] = {
   { CMD,     C_TYPE,	G_NONE,	 cmd_type,	TRUE,	FALSE, CL_MISC },
+  { CMD,     C_STRU,	G_NONE,	 cmd_stru,	TRUE,	FALSE, CL_MISC },
+  { CMD,     C_MODE,	G_NONE,	 cmd_mode,	TRUE,	FALSE, CL_MISC },
+  { CMD,     C_ALLO,	G_NONE,	 cmd_allo,	TRUE,	FALSE, CL_MISC },
+  { CMD,     C_SMNT,	G_NONE,	 cmd_smnt,	TRUE,	FALSE, CL_MISC },
   { PRE_CMD, C_RETR,	G_READ,	 pre_cmd_retr,	TRUE,	FALSE },
   { CMD,     C_RETR,	G_READ,	 cmd_retr,	TRUE,	FALSE, CL_READ },
   { LOG_CMD, C_RETR,	G_NONE,	 log_retr,	FALSE,  FALSE },
   { PRE_CMD, C_STOR,	G_WRITE, pre_cmd_stor,	TRUE,	FALSE },
   { CMD,     C_STOR,	G_WRITE, cmd_stor,	TRUE,	FALSE, CL_WRITE },
   { LOG_CMD, C_STOR,    G_NONE,	 log_stor,	FALSE,  FALSE },
+  { CMD,     C_STOU,	G_WRITE, cmd_stou,	TRUE,	FALSE, CL_WRITE },
   { PRE_CMD, C_APPE,	G_WRITE, pre_cmd_appe,	TRUE,	FALSE },
   { CMD,     C_APPE,	G_WRITE, cmd_stor,	TRUE,	FALSE, CL_WRITE },
   { LOG_CMD, C_APPE,	G_NONE,  log_stor,	FALSE,  FALSE },

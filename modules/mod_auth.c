@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.31 2000-07-06 06:42:49 macgyver Exp $
+ * $Id: mod_auth.c,v 1.32 2000-07-06 06:53:24 macgyver Exp $
  */
 
 #include "conf.h"
@@ -1366,6 +1366,23 @@ MODRET cmd_pass(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
+
+MODRET
+cmd_acct(cmd_rec *cmd)
+{
+	add_response(R_502, "ACCT command not implemented.");
+	return HANDLED(cmd);
+}
+
+
+MODRET
+cmd_rein(cmd_rec *cmd)
+{
+	add_response(R_502, "REIN command not implemented.");
+	return HANDLED(cmd);
+}
+
+
 MODRET set_rootlogin(cmd_rec *cmd)
 {
   CHECK_ARGS(cmd,1);
@@ -1502,6 +1519,8 @@ static conftable auth_config[] = {
 static cmdtable auth_commands[] = {
   { CMD, C_USER, G_NONE, cmd_user,	FALSE,	FALSE, CL_AUTH },
   { CMD, C_PASS, G_NONE, cmd_pass,	FALSE,  FALSE, CL_AUTH },
+  { CMD, C_ACCT, G_NONE, cmd_acct,	FALSE,  FALSE, CL_AUTH },
+  { CMD, C_REIN, G_NONE, cmd_rein,	FALSE,  FALSE, CL_AUTH },
   { 0, NULL }
 };
 
