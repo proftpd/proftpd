@@ -3425,7 +3425,9 @@ static void tls_restart_ev(const void *event_data, void *user_data) {
   /* Re-register the postparse callback, to handle the (possibly changed)
    * configuration and (re-)prompt for passphrases, if needed.
    */
-  pr_event_register(&tls_module, "core.restart", tls_postparse_ev, NULL);
+  pr_event_register(&tls_module, "core.postparse", tls_postparse_ev, NULL);
+
+  tls_closelog();
 }
 
 static void tls_sess_exit_ev(const void *event_data, void *user_data) {
