@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.37 2003-04-09 02:53:06 castaglia Exp $
+ * $Id: mod_site.c,v 1.38 2003-08-01 01:05:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -57,7 +57,7 @@ static char *_get_full_cmd(cmd_rec *cmd) {
   for (i = 0; i < cmd->argc; i++)
     res = pstrcat(cmd->tmp_pool,res,cmd->argv[i]," ",NULL);
 
-  while(res[strlen(res)-1] == ' ')
+  while (res[strlen(res)-1] == ' ')
     res[strlen(res)-1] = '\0';
 
   return res;
@@ -226,7 +226,7 @@ MODRET site_chmod(cmd_rec *cmd) {
       }
 
       cp = what;
-      while(cp) {
+      while (cp) {
         switch (*who) {
         case 'u':
           mask = 0077;

@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.32 2003-04-23 02:46:06 castaglia Exp $
+ * $Id: pool.c,v 1.33 2003-08-01 01:05:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -200,7 +200,7 @@ static union block_hdr *new_block(int min_size) {
 static unsigned long bytes_in_block_list(union block_hdr *blok) {
   unsigned long size = 0;
 
-  while(blok) {
+  while (blok) {
     size += blok->h.endp - (char *) (blok + 1);
     blok = blok->h.next;
   }
@@ -512,7 +512,7 @@ char *pdircat(pool *p, ...) {
 
   last = 0;
 
-  while((argp = va_arg(dummy, char *)) != NULL) {
+  while ((argp = va_arg(dummy, char *)) != NULL) {
     if (last && last == '/' && *argp == '/')
       argp++;
     else if (last && last != '/' && *argp != '/')
@@ -593,7 +593,7 @@ void array_cat(array_header *dst, const array_header *src)
 
     if (new_size == 0) ++new_size;
 
-    while(dst->nelts + src->nelts > new_size)
+    while (dst->nelts + src->nelts > new_size)
       new_size *= 2;
 
     new_data = pcalloc(dst->pool, elt_size * new_size);
@@ -710,7 +710,7 @@ void run_cleanup(pool *p, void *data, void (*cleanup_cb)(void *)) {
 #endif
 
 static void run_cleanups(cleanup_t *c) {
-  while(c) {
+  while (c) {
     (*c->plain_cleanup_cb)(c->data);
     c = c->next;
   }

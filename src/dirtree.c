@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.112 2003-07-16 18:48:50 castaglia Exp $
+ * $Id: dirtree.c,v 1.113 2003-08-01 01:05:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -656,7 +656,7 @@ static cmd_rec *get_config_cmd(pool *ppool) {
     tarr = make_array(new_pool,4,sizeof(char**));
 
     /* Add each word to the array */
-    while((word = get_word(&bufp, FALSE)) != NULL) {
+    while ((word = get_word(&bufp, FALSE)) != NULL) {
       char *tmp = pstrdup(new_pool, word);
 
       *((char **)push_array(tarr)) = tmp; /* pstrdup(new_pool,word); */
@@ -1145,11 +1145,10 @@ unsigned char pr_user_or_expression(char **expr) {
 }
 /* Per-directory configuration */
 
-static int _strmatch(register char *s1, register char *s2)
-{
+static int _strmatch(register char *s1, register char *s2) {
   register int len = 0;
 
-  while(*s1 && *s2 && *s1++ == *s2++)
+  while (*s1 && *s2 && *s1++ == *s2++)
     len++;
 
   return len;
@@ -2481,8 +2480,8 @@ static config_rec *_find_best_dir(xaset_t *set,char *path,int *matchlen)
       if (!strcmp(c->name,path))
         continue;				/* Don't examine the current */
       len = strlen(c->name);
-      while(len > 0 && (*(c->name+len-1) == '*' ||
-                        *(c->name+len-1) == '/'))
+      while (len > 0 &&
+             (*(c->name+len-1) == '*' || *(c->name+len-1) == '/'))
         len--;
 
       /*
@@ -2620,7 +2619,7 @@ static void _mergedown(xaset_t *s,int dynamic)
           newconf->argv = pcalloc(newconf->pool, (c->argc+1)*sizeof(void*));
           argv = newconf->argv; sargv = c->argv;
           argc = newconf->argc;
-          while(argc--)
+          while (argc--)
             *argv++ = *sargv++;
           *argv++ = NULL;
         }
@@ -2695,9 +2694,8 @@ void resolve_defered_dirs(server_rec *s)
   }
 }
 
-static
-void _copy_recur(xaset_t **set, pool *p, config_rec *c, config_rec *new_parent)
-{
+static void _copy_recur(xaset_t **set, pool *p, config_rec *c,
+    config_rec *new_parent) {
   config_rec *newconf;
   int argc;
   void **argv,**sargv;
@@ -2710,15 +2708,18 @@ void _copy_recur(xaset_t **set, pool *p, config_rec *c, config_rec *new_parent)
   newconf->flags = c->flags;
   newconf->parent = new_parent;
   newconf->argc = c->argc;
+
   if (c->argc) {
     newconf->argv = pcalloc(newconf->pool, (c->argc+1)*sizeof(void*));
-    argv = newconf->argv; sargv = c->argv;
+    argv = newconf->argv;
+    sargv = c->argv;
     argc = newconf->argc;
 
-    while(argc--)
+    while (argc--)
       *argv++ = *sargv++;
+
     if (argv)
-    *argv++ = NULL;
+      *argv++ = NULL;
   }
 
   if (c->subset)
@@ -2837,7 +2838,7 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
       }
 
       break;
-    } while(1);
+    } while (TRUE);
 
   } else {
     for (c = top; c; c=c->next) {
@@ -2966,11 +2967,11 @@ int remove_config(xaset_t *set, const char *name,int recurse)
   int found = 0;
   xaset_t *fset;
 
-  while((c = find_config(set,-1,name,recurse)) != NULL) {
+  while ((c = find_config(set, -1, name, recurse)) != NULL) {
     found++;
 
     fset = c->set;
-    xaset_remove(fset, (xasetmember_t*)c);
+    xaset_remove(fset, (xasetmember_t *) c);
 
     /* if the set is empty, and has no more contained members in
      * the xas_list, destroy the set
@@ -3009,14 +3010,13 @@ config_rec *add_config_param_set(xaset_t **set,const char *name,int num,...)
   if (c) {
     c->config_type = CONF_PARAM;
     c->argc = num;
-    c->argv = pcalloc(c->pool, (num+1)*sizeof(void*));
+    c->argv = pcalloc(c->pool, (num+1) * sizeof(void *));
 
     argv = c->argv;
     va_start(ap,num);
 
-    while(num-- > 0)
-      *argv++ = va_arg(ap,void*);
-
+    while (num-- > 0)
+      *argv++ = va_arg(ap, void *);
 
     va_end(ap);
   }
@@ -3038,7 +3038,7 @@ config_rec *add_config_param_str(const char *name, int num, ...) {
     argv = c->argv;
     va_start(ap, num);
 
-    while(num-- > 0) {
+    while (num-- > 0) {
       arg = va_arg(ap, char *);
       if (arg)
         *argv++ = pstrdup(c->pool, arg);
@@ -3052,8 +3052,7 @@ config_rec *add_config_param_str(const char *name, int num, ...) {
   return c;
 }
 
-config_rec *add_config_param(const char *name,int num,...)
-{
+config_rec *add_config_param(const char *name, int num, ...) {
   config_rec *c = add_config(name);
   void **argv;
   va_list ap;
@@ -3064,10 +3063,10 @@ config_rec *add_config_param(const char *name,int num,...)
     c->argv = pcalloc(c->pool, (num+1) * sizeof(void*));
 
     argv = c->argv;
-    va_start(ap,num);
+    va_start(ap, num);
 
-    while(num-- > 0)
-      *argv++ = va_arg(ap,void*);
+    while (num-- > 0)
+      *argv++ = va_arg(ap, void *);
 
     va_end(ap);
   }

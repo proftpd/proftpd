@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.185 2003-07-18 19:18:51 castaglia Exp $
+ * $Id: main.c,v 1.186 2003-08-01 01:05:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1741,11 +1741,12 @@ static void handle_chld(void) {
   sigaddset(&sig_set, SIGCHLD);
 
   pr_alarms_block();
+
+  /* Block SIGTERM in here, so we don't create havoc with the child list
+   * while modifying it.
+   */
   sigprocmask(SIG_BLOCK, &sig_set, NULL);
 
-  /* Block SIGTERM in here, so we don't create havoc with the
-   * child list while modifying it.
-   */
   while ((child_pid = waitpid(-1, NULL, WNOHANG)) > 0) {
     if (child_list) {
       for (child = (pidrec_t *) child_list->xas_list; child;

@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.62 2003-05-26 19:20:10 castaglia Exp $
+ * $Id: data.c,v 1.63 2003-08-01 01:05:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -81,7 +81,7 @@ static int _xlate_ascii_read(char *buf, int *bufsize, int *adjlen)
   int thislen = *bufsize;
 
   *adjlen = 0;
-  while(thislen--) {
+  while (thislen--) {
     if (*src != '\r')
       *dest++ = *src++;
     else {
@@ -825,7 +825,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 	   * This indicates that _xlate_ascii_read() needs more data
 	   * in order to translate, so we need to call pr_netio_read() again.
            */
-	} while(len > 0 && buflen == 0);
+	} while (len > 0 && buflen == 0);
 
         /* Return how much data we actually copied into the client buffer.
          */

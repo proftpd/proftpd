@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.52 2003-06-03 20:42:28 castaglia Exp $
+ * $Id: mod_log.c,v 1.53 2003-08-01 01:05:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -143,7 +143,7 @@ static void add_meta(unsigned char **s, unsigned char meta, int args,
     va_list ap;
     va_start(ap, args);
 
-    while(args--) {
+    while (args--) {
       arglen = va_arg(ap, int);
       arg = va_arg(ap, char *);
 
@@ -163,7 +163,7 @@ char *preparse_arg(char **s)
   char *ret = (*s) + 1;
 
   (*s) = (*s) + 1;
-  while(**s && **s != '}')
+  while (**s && **s != '}')
     (*s) = (*s) + 1;
 
   **s = 0;
@@ -362,7 +362,7 @@ static int _parse_classes(char *s) {
       classes |= CL_MISC;
     else
       log_pri(PR_LOG_NOTICE, "ExtendedLog class '%s' is not defined.", s);
-  } while((s = nextp));
+  } while ((s = nextp));
 
   return classes;
 }
@@ -530,7 +530,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
   switch (*m) {
   case META_ARG:
     m++; argp = arg;
-    while(*m != META_ARG_END)
+    while (*m != META_ARG_END)
       *argp++ = (char)*m++;
 
     *argp = 0; argp = arg;

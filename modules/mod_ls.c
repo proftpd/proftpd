@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.92 2003-06-03 16:25:22 castaglia Exp $
+ * $Id: mod_ls.c,v 1.93 2003-08-01 01:05:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -624,7 +624,7 @@ static int outputfiles(cmd_rec *cmd) {
   p = head;
   p->top = 1;
   n = (filenames + (75 / colwidth)-1) / (75 / colwidth);
-  while(n && p) {
+  while (n && p) {
     p = p->down;
     if (p)
       p->top = 0;
@@ -632,20 +632,20 @@ static int outputfiles(cmd_rec *cmd) {
   }
 
   q = head;
-  while(p) {
+  while (p) {
     p->top = q->top;
     q->right = p;
     q = q->down;
     p = p->down;
   }
 
-  while(q) {
+  while (q) {
     q->right = NULL;
     q = q->down;
   }
 
   p = head;
-  while(p && p->down && !p->down->top)
+  while (p && p->down && !p->down->top)
     p = p->down;
   if (p && p->down)
     p->down = NULL;
@@ -657,10 +657,10 @@ static int outputfiles(cmd_rec *cmd) {
 #endif
 
   p = head;
-  while(p) {
+  while (p) {
     q = p;
     p = p->down;
-    while(q) {
+    while (q) {
       char pad[6] = {'\0'};
 
       if (q->right) {

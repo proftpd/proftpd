@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.59 2003-06-03 16:25:23 castaglia Exp $
+ * $Id: support.c,v 1.60 2003-08-01 01:05:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -137,9 +137,8 @@ void run_exit_handlers(void) {
     e->exit_cb();
 }
 
-void schedule(void (*f)(void*,void*,void*,void*),int nloops,
-              void *a1, void *a2, void *a3, void *a4)
-{
+void schedule(void (*f)(void*,void*,void*,void*),int nloops, void *a1,
+    void *a2, void *a3, void *a4) {
   pool *p, *sub_pool;
   sched_t *s;
 
@@ -180,59 +179,53 @@ void run_schedule(void) {
   }
 }
 
-/*
-** Get the maximum size of a file name (pathname component).
-** If a directory file descriptor, e.g. the d_fd DIR structure element,
-** is not available, the second argument should be 0.
-**
-** Note: a POSIX compliant system typically should NOT define NAME_MAX,
-** since the value almost certainly varies across different file system types.
-** Refer to POSIX 1003.1a, Section 2.9.5, Table 2-5.
-** Alas, current (Jul 2000) Linux systems define NAME_MAX anyway.
-** NB: NAME_MAX_GUESS is defined in support.h.
-*/
-int
-get_name_max(char *dirname, int dir_fd)
-{
-	int	name_max = 0;
+/* Get the maximum size of a file name (pathname component).
+ * If a directory file descriptor, e.g. the d_fd DIR structure element,
+ * is not available, the second argument should be 0.
+ *
+ * Note: a POSIX compliant system typically should NOT define NAME_MAX,
+ * since the value almost certainly varies across different file system types.
+ * Refer to POSIX 1003.1a, Section 2.9.5, Table 2-5.
+ * Alas, current (Jul 2000) Linux systems define NAME_MAX anyway.
+ * NB: NAME_MAX_GUESS is defined in support.h.
+ */
+int get_name_max(char *dirname, int dir_fd) {
+  int name_max = 0;
 #if defined(HAVE_FPATHCONF) || defined(HAVE_PATHCONF)
-	char	*msgfmt = "";
+  char *msgfmt = "";
 
 # if defined(HAVE_FPATHCONF)
-	if ( dir_fd > 0 ) {
-		name_max = fpathconf(dir_fd, _PC_NAME_MAX);
-		msgfmt = "fpathconf(%s, _PC_NAME_MAX) = %d, errno = %d";
-	}
-	else
+  if (dir_fd > 0) {
+    name_max = fpathconf(dir_fd, _PC_NAME_MAX);
+    msgfmt = "fpathconf(%s, _PC_NAME_MAX) = %d, errno = %d";
+  } else
 # endif
 # if defined(HAVE_PATHCONF)
-	if ( dirname != NULL ) {
-		name_max = pathconf(dirname, _PC_NAME_MAX);
-		msgfmt = "pathconf(%s, _PC_NAME_MAX) = %d, errno = %d";
-	}
-	else
+  if (dirname != NULL) {
+    name_max = pathconf(dirname, _PC_NAME_MAX);
+    msgfmt = "pathconf(%s, _PC_NAME_MAX) = %d, errno = %d";
+  } else
 # endif
-		/* no data provided to use either pathconf() or fpathconf() */
-		return -1;
-	if ( name_max < 0 ) {
-		/*
-		** NB: errno may not be set if the failure is due
-		** to a limit or option not being supported.
-		*/
-		log_debug(DEBUG1, msgfmt,
-				dirname ? dirname : "(NULL)", name_max, errno);
-	}
-#else
-	name_max = NAME_MAX_GUESS;
-#endif
+  /* No data provided to use either pathconf() or fpathconf() */
+  return -1;
 
-	return name_max;
+  if (name_max < 0) {
+    /* NB: errno may not be set if the failure is due to a limit or option
+     * not being supported.
+     */
+    log_debug(DEBUG1, msgfmt, dirname ? dirname : "(NULL)", name_max, errno);
+  }
+
+#else
+  name_max = NAME_MAX_GUESS;
+#endif /* HAVE_FPATHCONF or HAVE_PATHCONF */
+
+  return name_max;
 }
 
 
 /* Interpolates a pathname, expanding ~ notation if necessary
  */
-
 char *dir_interpolate(pool *p, const char *path) {
   struct passwd *pw;
   char *user,*tmp;
@@ -267,7 +260,6 @@ char *dir_interpolate(pool *p, const char *path) {
 /* dir_best_path() creates the "most" fully canonicalized path possible
  * (i.e. if path components at the end don't exist, they are ignored
  */
-
 char *dir_best_path(pool *p, const char *path) {
   char workpath[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   char realpath_buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
@@ -363,7 +355,6 @@ char *dir_canonical_vpath(pool *p, const char *path) {
 /* dir_realpath() is needed to properly dereference symlinks (getcwd() may
  * not work if permissions cause problems somewhere up the tree).
  */
-
 char *dir_realpath(pool *p, const char *path) {
   char buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
 
@@ -378,7 +369,6 @@ char *dir_realpath(pool *p, const char *path) {
  * a *full* reference based on the root directory, not upon a chrooted
  * dir.
  */
-
 char *dir_abs_path(pool *p, const char *path, int interpolate) {
   char *res = NULL;
 
@@ -463,7 +453,6 @@ mode_t file_mode(char *path) {
  * If DIRP == -1, fail unless PATH exists; the caller doesn't care whether
  * PATH is a file or a directory.
  */
-
 static int _exists(char *path, int dirp) {
   mode_t fmode;
 
@@ -584,7 +573,6 @@ char *strip_end(char *s, char *ch) {
  * the next non-separator in the string.  If the src string is
  * empty or NULL, the next token returned is NULL.
  */
-
 char *get_token(char **s, char *sep) {
   char *res;
 
@@ -593,11 +581,11 @@ char *get_token(char **s, char *sep) {
 
   res = *s;
 
-  while(**s && !strchr(sep,**s)) (*s)++;
+  while (**s && !strchr(sep,**s))
+    (*s)++;
 
-  if (**s) {
+  if (**s)
     *(*s)++ = '\0';
-  }
 
   return res;
 }
@@ -607,24 +595,26 @@ char *get_token(char **s, char *sep) {
  * never returns NULL, only an empty string if no token remains
  * in the source string.
  */
-
 char *safe_token(char **s) {
   char *res = "";
 
   if (!s || !*s)
     return res;
 
-  while (isspace((int) **s) && **s) (*s)++;
+  while (isspace((int) **s) && **s)
+    (*s)++;
 
   if (**s) {
     res = *s;
 
-    while (!isspace((int) **s) && **s) (*s)++;
+    while (!isspace((int) **s) && **s)
+      (*s)++;
 
     if (**s)
       *(*s)++ = '\0';
 
-    while (isspace((int) **s) && **s) (*s)++;
+    while (isspace((int) **s) && **s)
+      (*s)++;
   }
 
   return res;
@@ -634,7 +624,6 @@ char *safe_token(char **s) {
  * filled with the times to deny new connections and disconnect
  * existing ones.
  */
-
 int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
                   size_t msg_size) {
   FILE *fp;
@@ -734,8 +723,8 @@ char *sreplace(pool *p, char *s, ...) {
   char **mptr,**rptr;
   char *marr[33],*rarr[33];
   char buf[PR_TUNABLE_PATH_MAX] = {'\0'}, *pbuf = NULL;
-  int  mlen = 0, rlen = 0;
-  int  blen, dyn = 1;
+  int mlen = 0, rlen = 0;
+  int blen, dyn = 1;
 
   cp = buf;
   *cp = '\0';
@@ -840,13 +829,12 @@ void pr_memscrub(void *ptr, size_t ptrlen) {
 /* "safe" strcat, saves room for \0 at end of dest, and refuses to copy
  * more than "n" bytes.
  */
-
 char *sstrcat(char *dest, const char *src, size_t n) {
   register char *d;
 
   for (d = dest; *d && n > 1; d++, n--) ;
 
-  while(n-- > 1 && *src)
+  while (n-- > 1 && *src)
     *d++ = *src++;
 
   *d = 0;
