@@ -48,7 +48,7 @@ dnl MacOS X requires -traditional-cpp; autodetecting it isn't impossible
 dnl AFAIK, since assuming the need for -traditional-cpp breaks the build
 dnl on other OSes. -jwm, 30 Jan 2001
 if test "$OSTYPE" = "-DRHAPSODY5"; then
-  CFLAGS="$CFLAGS -traditional-cpp"
+  CFLAGS="$CFLAGS -traditional-cpp -D__OT__"
 fi
 
 dnl Checks for programs.
