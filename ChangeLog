@@ -1,3 +1,9 @@
+2001-01-31 16:39  flood
+
+	* configure.in, modules/mod_xfer.c: Bug #35 - call _aborT() funcs
+	in exit handler.  sendfile() support is now disabled by default,
+	enable with --enable-sendfile
+
 2001-01-31 15:51  flood
 
 	* include/dirtree.h, modules/mod_core.c, modules/mod_ls.c,
