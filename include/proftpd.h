@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.43 2003-06-03 16:25:21 castaglia Exp $
+ * $Id: proftpd.h,v 1.44 2003-07-18 19:18:51 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -146,6 +146,9 @@ typedef struct {
 
   struct config_struc *anon_config;	/* Anonymous FTP configuration */
   char *anon_user;			/* E-mail address sent to us */
+
+  char *curr_cmd;                       /* Current FTP command */
+  int curr_phase;                       /* Current handler phase */
 
   off_t restart_pos;			/* Restart marked position */
 

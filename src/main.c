@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.184 2003-07-16 18:48:50 castaglia Exp $
+ * $Id: main.c,v 1.185 2003-07-18 19:18:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -482,9 +482,12 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
   c = pr_stash_get_symbol(PR_SYM_CMD, match, NULL, index_cache);
 
   while (c && !success) {
+    session.curr_cmd = cmd->argv[0];
+    session.curr_phase = cmd_type;
+
     if (c->cmd_type == cmd_type) {
       if (c->group)
-        cmd->group = pstrdup(cmd->pool,c->group);
+        cmd->group = pstrdup(cmd->pool, c->group);
 
       if (c->requires_auth && cmd_auth_chk && !cmd_auth_chk(cmd))
         return -1;
