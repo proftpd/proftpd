@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.43 2000-08-03 14:05:38 macgyver Exp $
+ * $Id: mod_auth.c,v 1.44 2000-08-03 15:24:58 macgyver Exp $
  */
 
 #include "conf.h"
@@ -74,7 +74,7 @@ static int lockdown(char *newroot) {
   /* Finally, we restrict the jail to a particular IP address.  I have a
    * tough time seeing a practical use of this, but I'm also paranoid...
    */
-  hell.ip_number = session.c->local_ipaddr.s_addr;
+  hell.ip_number = session.c->local_ipaddr->s_addr;
   
   log_debug(DEBUG1, "Preparing to jail() the environment"
 	    "(version - '%d', path - '%s', hostname - '%s', ip_number - '%s'",
