@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.199 2003-10-10 18:11:14 castaglia Exp $
+ * $Id: main.c,v 1.200 2003-10-14 18:17:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -223,6 +223,7 @@ static void init_proc_title(int argc, char *argv[], char *envp[]) {
 #endif /* HAVE___PROGNAME */
 }
 
+#ifdef PR_DEVEL
 static void free_proc_title(void) {
   if (environ) {
     register unsigned int i;
@@ -232,11 +233,12 @@ static void free_proc_title(void) {
     free(environ);
   }
 
-#ifdef HAVE___PROGNAME
+# ifdef HAVE___PROGNAME
   free(__progname);
   free(__progname_full);
-#endif /* HAVE___PROGNAME */
+# endif /* HAVE___PROGNAME */
 }
+#endif /* PR_DEVEL */
 
 static void set_proc_title(const char *fmt, ...) {
   va_list msg;
@@ -394,7 +396,7 @@ void end_login(int exitcode) {
     free_pools();
     free_proc_title();
   }
-#endif
+#endif /* PR_DEVEL */
 
   _exit(exitcode);
 }
