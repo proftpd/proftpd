@@ -1,6 +1,6 @@
-$Id: NEWS,v 1.433 2003-05-14 17:54:27 castaglia Exp $
+$Id: NEWS,v 1.434 2003-05-16 04:25:39 castaglia Exp $
 
-CVS
+1.2.9rc1 - Released 15-May-2003
 ---------------------------------
 - Bug 1828 - mod_sql can only find mysql.sock if in /tmp.  This was caused
   by the fact that mod_sql_mysql did not load/read the MySQL .cnf

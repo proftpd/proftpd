@@ -9,4 +9,4 @@
 
 /* PR_STATUS is reported by --version-status -- don't ask why
  */
-#define PR_STATUS          		"(CVS)"
+#define PR_STATUS          		"(devel)"

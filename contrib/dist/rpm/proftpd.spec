@@ -1,8 +1,8 @@
-# $Id: proftpd.spec,v 1.11 2003-03-04 05:25:42 castaglia Exp $
+# $Id: proftpd.spec,v 1.12 2003-05-16 04:25:40 castaglia Exp $
 
 Summary:	ProFTPD -- Professional FTP Server.
 Name:		proftpd
-Version:	1.2.8
+Version:	1.2.9rc1
 Release:	1
 Copyright:	GPL
 Group:		System Environment/Daemons
