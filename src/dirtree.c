@@ -20,7 +20,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.28 2001-02-23 02:47:26 flood Exp $
+ * $Id: dirtree.c,v 1.29 2001-03-22 20:56:13 flood Exp $
  */
 
 /* History:
@@ -1514,7 +1514,8 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
   }
 
   if(res && _umask != -1)
-    umask(_umask);
+    log_debug(DEBUG5,"in dir_check_full(): setting umask to 0%o (was 0%o)",
+        (unsigned int)_umask,(unsigned int)umask(_umask));
 
   destroy_pool(p);
 
@@ -1627,7 +1628,8 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
   }
 
   if(res && _umask != -1)
-    umask(_umask);
+    log_debug(DEBUG5,"in dir_check(): setting umask to 0%o (was 0%o)",
+        (unsigned int)_umask,(unsigned int)umask(_umask));
 
   destroy_pool(p);
 
