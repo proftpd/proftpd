@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.20 2003-09-11 13:33:49 castaglia Exp $
+# $Id: proftpd.spec,v 1.21 2003-09-23 14:45:37 jwm Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -16,6 +16,10 @@
 #   mod_sql_postgres
 #   mod_rewrite
 #   mod_ifsession
+#
+# If you want to enable IPv6 support, use:
+#
+#   --with ipv6
 
 Summary:	ProFTPD -- Professional FTP Server.
 Name:		proftpd
@@ -70,6 +74,7 @@ This package is neccesary to setup ProFTPD to run from inetd/xinetd.
 	--sysconfdir=/etc \
 	--localstatedir=/var/run \
 	--mandir=%_mandir \
+	%{?_with_ipv6:--enable-ipv6} \
 	--with-modules=${MODULES}
 
 %build
@@ -208,6 +213,9 @@ rm -rf %{_builddir}/%{name}-%{version}
 %config(noreplace) /etc/proftpd.conf
 
 %changelog
+* Tue Sep 23 2003 Daniel Roesen <dr@proftpd.org>
+- Added "--with ipv6" to enable IPv6 support while building the RPM
+
 * Sun May 25 2003 John Morrissey <jwm@horde.net>
 - Permit selection of additional contrib modules when building the RPM
   Submitted by: Ivan F. Martinez <ivanfm@users.sourceforge.net>
