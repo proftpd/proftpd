@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.66 2003-09-06 16:56:30 castaglia Exp $
+ * $Id: data.c,v 1.67 2003-09-08 00:36:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -141,7 +141,7 @@ static void _xlate_ascii_write(char **buf, unsigned int *buflen,
    *
    * Note: the res variable is needed in order to force signedness of the
    * resulting difference.  Without it, this condition would never evaluate
-   * to true, as C's promotion rules would insure that the resulting value
+   * to true, as C's promotion rules would ensure that the resulting value
    * would be of the same type as the operands: an unsigned int (which will
    * never be less than zero).
    */
@@ -149,10 +149,10 @@ static void _xlate_ascii_write(char **buf, unsigned int *buflen,
     pool *copy_pool = make_sub_pool(session.xfer.p);
     char *copy_buf = pcalloc(copy_pool, tmplen);
 
-    memmove(copy_buf, tmpbuf, tmplen);
+    memcpy(copy_buf, tmpbuf, tmplen);
 
     /* Allocate a new session.xfer.buf of the needed size. */
-    session.xfer.bufsize = tmplen + lfcount;
+    session.xfer.bufsize = tmplen + lfcount + 1;
     session.xfer.buf = pcalloc(session.xfer.p, session.xfer.bufsize);
 
     /* Allow space for a CR to be inserted before an LF if an LF is the
@@ -161,7 +161,7 @@ static void _xlate_ascii_write(char **buf, unsigned int *buflen,
     session.xfer.buf++;
     session.xfer.bufstart = session.xfer.buf;
 
-    memmove(session.xfer.buf, copy_buf, tmplen);
+    memcpy(session.xfer.buf, copy_buf, tmplen);
     destroy_pool(copy_pool);
 
     tmpbuf = session.xfer.buf;
