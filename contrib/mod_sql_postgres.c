@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.16 2003-06-17 20:54:16 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.17 2003-06-28 17:14:11 castaglia Exp $
  */
 
 /*
@@ -1077,8 +1077,9 @@ MODRET cmd_query(cmd_rec *cmd)
  *  the database documentation and figure it out) to do the conversion
  *  themselves in this function.
  *
- *  At the very least, a backend MUST simply copy the data from argv[0]
- *  into the data field of the modret.
+ *  A backend MUST supply a working escapestring implementation.  Simply
+ *  copying the data from argv[0] into the data field of the modret allows
+ *  for possible SQL injection attacks when this backend is used.
  */
 MODRET cmd_escapestring(cmd_rec * cmd) {
   conn_entry_t *entry = NULL;
