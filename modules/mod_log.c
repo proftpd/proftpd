@@ -19,7 +19,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.2 1998-10-27 01:53:05 flood Exp $
+ * $Id: mod_log.c,v 1.3 1998-10-30 01:38:03 flood Exp $
  */
 
 #include "conf.h"
@@ -68,6 +68,7 @@ struct logfile_struc {
 #define META_USER		14
 #define META_RESPONSE_CODE	15
 
+static pool			*log_pool;
 static logformat_t		*formats = NULL;
 static xaset_t			*format_set = NULL;
 static logfile_t		*logs = NULL;
@@ -211,13 +212,13 @@ void logformat(char *nickname, char *fmts)
 
   *outs++ = 0;
 
-  lf = (logformat_t*)pcalloc(permanent_pool,sizeof(logformat_t));
-  lf->lf_nickname = pstrdup(permanent_pool,nickname);
-  lf->lf_format = palloc(permanent_pool,outs - format);
+  lf = (logformat_t*)pcalloc(log_pool,sizeof(logformat_t));
+  lf->lf_nickname = pstrdup(log_pool,nickname);
+  lf->lf_format = palloc(log_pool,outs - format);
   bcopy(format,lf->lf_format,outs-format);
 
   if(!format_set)
-    format_set = xaset_create(permanent_pool,NULL);
+    format_set = xaset_create(log_pool,NULL);
 
   xaset_insert_end(format_set,(xasetmember_t*)lf);
   formats = (logformat_t*)format_set->xas_list;
@@ -291,14 +292,14 @@ MODRET add_extendedlog(cmd_rec *cmd)
   c = add_config_param("ExtendedLog",3,NULL,NULL,NULL);
 
   if(cmd->argv[1][0] != '/')
-    c->argv[0] = dir_canonical_path(permanent_pool,cmd->argv[1]);
+    c->argv[0] = dir_canonical_path(log_pool,cmd->argv[1]);
   else
-    c->argv[0] = pstrdup(permanent_pool,cmd->argv[1]);
+    c->argv[0] = pstrdup(log_pool,cmd->argv[1]);
 
   if(argc > 2)
-    c->argv[1] = pstrdup(permanent_pool,cmd->argv[2]);
+    c->argv[1] = pstrdup(log_pool,cmd->argv[2]);
   if(argc > 3)
-    c->argv[2] = pstrdup(permanent_pool,cmd->argv[3]);
+    c->argv[2] = pstrdup(log_pool,cmd->argv[3]);
 
   c->argc = argc-1;
   return HANDLED(cmd);
@@ -610,12 +611,31 @@ MODRET log_command(cmd_rec *cmd)
   return DECLINED(cmd);
 }
 
+/* log_rehash is called whenever the master server rehashes it's
+ * config (in response to SIGHUP).
+ */
+
+static
+void log_rehash(void *d)
+{
+  destroy_pool(log_pool);
+
+  formats = NULL;
+  format_set = NULL;
+  logs = NULL;
+  log_set = NULL;
+
+  log_pool = make_sub_pool(permanent_pool);
+  logformat("","%h %l %u %t \"%r\" %s %b");
+}
+  
 static 
 int log_init()
 {
+  log_pool = make_sub_pool(permanent_pool);
   /* add the "default" extendedlog format */
-
   logformat("","%h %l %u %t \"%r\" %s %b");
+  register_rehash(NULL,log_rehash);
   return 0;
 }
 

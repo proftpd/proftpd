@@ -19,7 +19,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.2 1998-10-23 11:21:23 flood Exp $
+ * $Id: main.c,v 1.3 1998-10-30 01:38:04 flood Exp $
  */
 
 /*
@@ -47,6 +47,13 @@
 
 #include "privs.h"
 
+struct rehash {
+  struct rehash *next;
+
+  void *data;
+  void (*rehash)(void*);
+};
+
 typedef struct _pidrec {
   struct _pidrec *next,*prev;
 
@@ -73,7 +80,8 @@ session_t session;
 int master = TRUE;			/* Master daemon in standalone mode */
 int standalone = 0;			/* If in standalone mode */
 pid_t mpid = 0;				/* Master pid */
-int rehash = 0;
+int rehash = 0;				/* Performing rehash? */
+struct rehash *rehash_list = NULL;	/* Pre-rehash callbacks */
 binding_t *bind_list = NULL;
 pool *bind_pool = NULL;
 
@@ -804,8 +812,20 @@ static void _server_conn_cleanup(void *connp)
   *((conn_t**)connp) = NULL;
 }
 
+void register_rehash(void *data, void (*fp)(void*))
+{
+  struct rehash *r = (struct rehash*)pcalloc(permanent_pool,
+		  				sizeof(struct rehash));
+
+  r->data = data;
+  r->rehash = fp;
+  r->next = rehash_list;
+  rehash_list = r;
+}
+
 void main_rehash(void *d1,void *d2,void *d3,void *d4)
 {
+  struct rehash *rh;
   server_rec *s,*snext,*old_main;
   xaset_t *old_servers;
   int isdefault;
@@ -818,6 +838,9 @@ void main_rehash(void *d1,void *d2,void *d3,void *d4)
   if(master && mpid) {
     log_pri(LOG_NOTICE,"received SIGHUP -- master server rehashing configuration file.");
 
+    for(rh = rehash_list; rh; rh=rh->next)
+      rh->rehash(rh->data);
+    
     init_config();
     init_conf_stacks();
 
