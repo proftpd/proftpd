@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.64 2003-11-09 22:19:46 castaglia Exp $
+ * $Id: log.c,v 1.65 2003-11-09 23:32:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -106,7 +106,7 @@ int log_wtmp(char *line, const char *name, const char *host,
     if (write(fdx, (char *)&utx,sizeof(utx)) != sizeof(utx))
       ftruncate(fdx, buf.st_size);
   } else {
-    log_debug(DEBUG0, "%s fstat(): %s",WTMPX_FILE,strerror(errno));
+    pr_log_debug(DEBUG0, "%s fstat(): %s",WTMPX_FILE,strerror(errno));
     res = -1;
   }
 
@@ -153,7 +153,7 @@ int log_wtmp(char *line, const char *name, const char *host,
     if (write(fd, (char *)&ut,sizeof(ut)) != sizeof(ut))
       ftruncate(fd,buf.st_size);
   } else {
-    log_debug(DEBUG0, "%s fstat(): %s",WTMP_FILE,strerror(errno));
+    pr_log_debug(DEBUG0, "%s fstat(): %s",WTMP_FILE,strerror(errno));
     res = -1;
   }
 #endif /* SVR4 */
@@ -180,7 +180,7 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
 
   tmp = strrchr(lf, '/');
   if (tmp == NULL) {
-    log_debug(DEBUG0, "inappropriate log file: %s", lf);
+    pr_log_debug(DEBUG0, "inappropriate log file: %s", lf);
     destroy_pool(tmp_pool);
     return -1;
   }
@@ -191,7 +191,7 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   *tmp = '\0';
 
   if (stat(lf, &sbuf) == -1) {
-    log_debug(DEBUG0, "error: unable to stat() %s: %s", lf,
+    pr_log_debug(DEBUG0, "error: unable to stat() %s: %s", lf,
       strerror(errno));
     destroy_pool(tmp_pool);
     return -1;
@@ -199,7 +199,7 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
 
   /* The path must be in a valid directory */
   if (!S_ISDIR(sbuf.st_mode)) {
-    log_debug(DEBUG0, "error: %s is not a directory", lf);
+    pr_log_debug(DEBUG0, "error: %s is not a directory", lf);
     destroy_pool(tmp_pool);
     return -1;
   }
@@ -305,7 +305,7 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
       have_stat = TRUE;
 
     if (!have_stat || S_ISLNK(sbuf.st_mode)) {
-      log_debug(DEBUG0, !have_stat ? "error: unable to stat %s" :
+      pr_log_debug(DEBUG0, !have_stat ? "error: unable to stat %s" :
         "error: %s is a symbolic link", lf);
 
       close(*log_fd);
@@ -564,7 +564,7 @@ int log_str2sysloglevel(const char *name) {
   return -1;
 }
 
-void log_debug(int level, const char *fmt, ...) {
+void pr_log_debug(int level, const char *fmt, ...) {
   char buf[LOGBUFFER_SIZE] = {'\0'};
   va_list msg;
 

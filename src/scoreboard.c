@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.27 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: scoreboard.c,v 1.28 2003-11-09 23:32:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -259,7 +259,8 @@ void pr_delete_scoreboard(void) {
     struct stat st;
 
     if (stat(scoreboard_file, &st) == 0)
-      log_debug(DEBUG3, "deleting existing scoreboard '%s'", scoreboard_file);
+      pr_log_debug(DEBUG3, "deleting existing scoreboard '%s'",
+        scoreboard_file);
 
     unlink(scoreboard_file);
   }
@@ -273,7 +274,7 @@ int pr_open_scoreboard(int flags) {
   int res;
   struct stat st;
 
-  log_debug(DEBUG7, "opening scoreboard '%s'", scoreboard_file);
+  pr_log_debug(DEBUG7, "opening scoreboard '%s'", scoreboard_file);
 
   /* Prevent writing to a symlink while avoiding a race condition: open
    * the file name O_RDWR|O_CREAT first, then check to see if it's a symlink.

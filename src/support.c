@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.64 2003-11-09 22:19:47 castaglia Exp $
+ * $Id: support.c,v 1.65 2003-11-09 23:32:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -216,7 +216,7 @@ int get_name_max(char *dirname, int dir_fd) {
     /* NB: errno may not be set if the failure is due to a limit or option
      * not being supported.
      */
-    log_debug(DEBUG1, msgfmt, dirname ? dirname : "(NULL)", name_max, errno);
+    pr_log_debug(DEBUG1, msgfmt, dirname ? dirname : "(NULL)", name_max, errno);
   }
 
 #else

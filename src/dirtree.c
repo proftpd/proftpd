@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.128 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: dirtree.c,v 1.129 2003-11-09 23:32:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -163,7 +163,7 @@ static int allow_dyn_config(void) {
   /* Print out some nice debugging information. */
   if (have_user_limit || have_group_limit ||
       have_class_limit || have_all_limit) {
-    log_debug(DEBUG4, "AllowOverride %s %s%s .ftpaccess files",
+    pr_log_debug(DEBUG4, "AllowOverride %s %s%s .ftpaccess files",
       allow ? "allows" : "denies",
       have_user_limit ? "user " : have_group_limit ? "group " :
       have_class_limit ? "class " : "all",
@@ -440,7 +440,7 @@ unsigned char dir_hide_file(const char *path) {
   if (have_user_regex || have_group_regex ||
       have_class_regex || have_all_regex) {
 
-    log_debug(DEBUG4, "checking HideFiles pattern for current %s",
+    pr_log_debug(DEBUG4, "checking HideFiles pattern for current %s",
       have_user_regex ? "user" : have_group_regex ? "group" :
       have_class_regex ? "class" : "session");
 
@@ -1588,18 +1588,18 @@ int match_ip(pr_netaddr_t *cli_addr, const char *cli_str,
     acl_ascii = acl_addr ? pr_netaddr_get_ipstr(acl_addr) : acl_str;
     cli_ascii = pr_netaddr_get_ipstr(cli_addr);
 
-    log_debug(DEBUG6, "comparing addresses '%s' (%s) and '%s' (%s)",
+    pr_log_debug(DEBUG6, "comparing addresses '%s' (%s) and '%s' (%s)",
       acl_str, acl_ascii, cli_str, cli_ascii);
 
     if (!pr_fnmatch(acl_str, cli_str, fnm_flags) ||
         !pr_fnmatch(acl_str, cli_ascii, fnm_flags) ||
         !pr_fnmatch(acl_ascii, cli_ascii, fnm_flags)) {
-      log_debug(DEBUG6, "addresses match");
+      pr_log_debug(DEBUG6, "addresses match");
       destroy_pool(tmp_pool);
       return 1;
 
     } else
-      log_debug(DEBUG6, "addresses do not match");
+      pr_log_debug(DEBUG6, "addresses do not match");
 
     destroy_pool(tmp_pool);
   }
@@ -2142,7 +2142,7 @@ void build_dyn_config(pool *p, char *_path, struct stat *_sbuf,
         }
 
         if (updated)
-	  log_debug(DEBUG5, "dynamic configuration added/updated for %s",
+	  pr_log_debug(DEBUG5, "dynamic configuration added/updated for %s",
             fullpath);
 
         d->config_type = CONF_DIR;
@@ -2158,7 +2158,7 @@ void build_dyn_config(pool *p, char *_path, struct stat *_sbuf,
     }
 
     if (isfile == -1 && removed && d && set) {
-      log_debug(DEBUG5, "dynamic configuration removed for %s", fullpath);
+      pr_log_debug(DEBUG5, "dynamic configuration removed for %s", fullpath);
       _mergedown(*set, FALSE);
     }
 
@@ -2228,7 +2228,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   if (session.chroot_path)
     fullpath = pdircat(p, session.chroot_path, fullpath, NULL);
 
-  log_debug(DEBUG5, "in dir_check_full(): path = '%s', fullpath = '%s'.",
+  pr_log_debug(DEBUG5, "in dir_check_full(): path = '%s', fullpath = '%s'.",
             path, fullpath);
 
   /* Check and build all appropriate dynamic configuration entries */
@@ -2330,7 +2330,8 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   }
 
   if (res && _umask != (mode_t) -1)
-    log_debug(DEBUG5, "in dir_check_full(): setting umask to %04o (was %04o)",
+    pr_log_debug(DEBUG5,
+      "in dir_check_full(): setting umask to %04o (was %04o)",
         (unsigned int)_umask, (unsigned int)umask(_umask));
 
   destroy_pool(p);
@@ -2467,7 +2468,7 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   }
 
   if (res && _umask != (mode_t) -1)
-    log_debug(DEBUG5, "in dir_check(): setting umask to %04o (was %04o)",
+    pr_log_debug(DEBUG5, "in dir_check(): setting umask to %04o (was %04o)",
         (unsigned int)_umask, (unsigned int)umask(_umask));
 
   destroy_pool(p);
@@ -2623,7 +2624,7 @@ static void debug_dump_config(xaset_t *s,char *indent) {
     indent = "";
 
   for (c = (config_rec *) s->xas_list; c; c = c->next) {
-    log_debug(DEBUG5, "%s%s", indent, c->name);
+    pr_log_debug(DEBUG5, "%s%s", indent, c->name);
     if (c->subset)
       debug_dump_config(c->subset, pstrcat(c->pool, indent, " ", NULL));
   }
@@ -2819,8 +2820,8 @@ void fixup_dirs(server_rec *s, int mask) {
   /* Merge mergeable configuration items down. */
   _mergedown(s->conf, FALSE);
 
-  log_debug(DEBUG5, "%s", "");
-  log_debug(DEBUG5, "Config for %s:", s->ServerName);
+  pr_log_debug(DEBUG5, "%s", "");
+  pr_log_debug(DEBUG5, "Config for %s:", s->ServerName);
   debug_dump_config(s->conf, NULL);
 }
 
@@ -3122,9 +3123,10 @@ int parse_config_file(const char *fname) {
 
   pr_pool_tag(tmp_pool, "parse_config_file() tmp pool");
 
-  log_debug(DEBUG2, "parsing '%s' configuration", fname);
+  pr_log_debug(DEBUG2, "parsing '%s' configuration", fname);
 
-  if ((fh = pr_fsio_open(fname, O_RDONLY)) == NULL) {
+  fh = pr_fsio_open(fname, O_RDONLY);
+  if (fh == NULL) {
     destroy_pool(tmp_pool);
     return -1;
   }
@@ -3147,7 +3149,7 @@ int parse_config_file(const char *fname) {
           cmd->argv[0] = c->directive;
           ++found;
 
-          log_debug(DEBUG8, "dispatching directive '%s' to module mod_%s",
+          pr_log_debug(DEBUG8, "dispatching directive '%s' to module mod_%s",
             c->directive, c->m->name);
 
           mr = call_module(c->m, c->handler, cmd);

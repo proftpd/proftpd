@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.3 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: ctrls.c,v 1.4 2003-11-09 23:32:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -960,7 +960,7 @@ int pr_run_ctrls(module *mod, const char *action) {
 
     if (action &&
         strcmp(ctrl->ctrls_action, action) == 0) {
-      log_debug(DEBUG7, "calling '%s' control handler", ctrl->ctrls_action);
+      pr_log_debug(DEBUG7, "calling '%s' control handler", ctrl->ctrls_action);
 
       /* Invoke the callback, if the ctrl's action matches.  Unblock
        * ctrls before invoking the callback, then re-block them after the
@@ -980,7 +980,7 @@ int pr_run_ctrls(module *mod, const char *action) {
       }
 
     } else if (!action) {
-      log_debug(DEBUG5, "calling '%s' control handler", ctrl->ctrls_action);
+      pr_log_debug(DEBUG5, "calling '%s' control handler", ctrl->ctrls_action);
 
       /* If no action was given, invoke every callback */
       pr_unblock_ctrls();

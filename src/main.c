@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.214 2003-11-09 22:48:14 castaglia Exp $
+ * $Id: main.c,v 1.215 2003-11-09 23:32:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -344,13 +344,13 @@ static void end_login_noexit(void) {
      * an exiting child process.
      */
     if (!is_master && pr_scoreboard_del_entry(TRUE) < 0)
-      log_debug(DEBUG1, "error deleting scoreboard entry: %s",
+      pr_log_debug(DEBUG1, "error deleting scoreboard entry: %s",
         strerror(errno));
 
   } else if (ServerType == SERVER_INETD) {
     /* For inetd-spawned daemons, we always clear the scoreboard slot. */
     if (pr_scoreboard_del_entry(TRUE) < 0)
-      log_debug(DEBUG1, "error deleting scoreboard entry: %s",
+      pr_log_debug(DEBUG1, "error deleting scoreboard entry: %s",
         strerror(errno));
   }
 
@@ -544,7 +544,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
             session.c->remote_port ? session.c->remote_port : 0, cmdargstr);
       }
 
-      log_debug(DEBUG4, "dispatching %s command '%s' to mod_%s",
+      pr_log_debug(DEBUG4, "dispatching %s command '%s' to mod_%s",
         (cmd_type == PRE_CMD ? "PRE_CMD" :
          cmd_type == CMD ? "CMD" :
          cmd_type == POST_CMD ? "POST_CMD" :
@@ -1307,13 +1307,13 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   /* Use the ident protocol (RFC1413) to try to get remote ident_user */
   if ((ident_lookups = get_param_ptr(main_server->conf, "IdentLookups",
      FALSE)) == NULL || *ident_lookups == TRUE) {
-    log_debug(DEBUG6, "performing ident lookup");
+    pr_log_debug(DEBUG6, "performing ident lookup");
     session.ident_lookups = TRUE;
     session.ident_user = pr_ident_lookup(session.pool, conn);
-    log_debug(DEBUG6, "ident lookup returned '%s'", session.ident_user);
+    pr_log_debug(DEBUG6, "ident lookup returned '%s'", session.ident_user);
 
   } else {
-    log_debug(DEBUG6, "ident lookup disabled");
+    pr_log_debug(DEBUG6, "ident lookup disabled");
     session.ident_lookups = FALSE;
     session.ident_user = "UNKNOWN";
   }
@@ -1329,21 +1329,21 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     if (class_engine && *class_engine == TRUE) {
       if ((session.class = (class_t *) find_class(conn->remote_addr,
           conn->remote_name)) != NULL)
-        log_debug(DEBUG2, "FTP session requested from class '%s'",
+        pr_log_debug(DEBUG2, "FTP session requested from class '%s'",
           session.class->name);
       else
-        log_debug(DEBUG2, "FTP session requested from unknown class");
+        pr_log_debug(DEBUG2, "FTP session requested from unknown class");
     }
   }
 
   /* Inform all the modules that we are now a child */
-  log_debug(DEBUG7, "performing module session initializations");
+  pr_log_debug(DEBUG7, "performing module session initializations");
 
   module_session_init();
 
-  log_debug(DEBUG4, "connected - local  : %s:%d",
+  pr_log_debug(DEBUG4, "connected - local  : %s:%d",
     pr_netaddr_get_ipstr(session.c->local_addr), session.c->local_port);
-  log_debug(DEBUG4, "connected - remote : %s:%d",
+  pr_log_debug(DEBUG4, "connected - remote : %s:%d",
     pr_netaddr_get_ipstr(session.c->remote_addr), session.c->remote_port);
 
   /* Set the per-child resource limits. */
@@ -2028,7 +2028,7 @@ void set_daemon_rlimits(void) {
       }
       PRIVS_RELINQUISH
 
-      log_debug(DEBUG2, "set RLimitCPU for daemon");
+      pr_log_debug(DEBUG2, "set RLimitCPU for daemon");
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "RLimitCPU", FALSE);
@@ -2068,7 +2068,7 @@ void set_daemon_rlimits(void) {
 #  endif
       PRIVS_RELINQUISH
 
-      log_debug(DEBUG2, "set RLimitMemory for daemon");
+      pr_log_debug(DEBUG2, "set RLimitMemory for daemon");
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "RLimitMemory", FALSE);
@@ -2101,7 +2101,7 @@ void set_daemon_rlimits(void) {
 #  endif
       PRIVS_RELINQUISH
 
-      log_debug(DEBUG2, "set RLimitOpenFiles for daemon");
+      pr_log_debug(DEBUG2, "set RLimitOpenFiles for daemon");
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "RLimitOpenFiles", FALSE);
@@ -2130,7 +2130,7 @@ void set_session_rlimits(void) {
       }
       PRIVS_RELINQUISH
 
-      log_debug(DEBUG2, "set RLimitCPU for session");
+      pr_log_debug(DEBUG2, "set RLimitCPU for session");
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "RLimitCPU", FALSE);
@@ -2170,7 +2170,7 @@ void set_session_rlimits(void) {
 #  endif
       PRIVS_RELINQUISH
 
-      log_debug(DEBUG2, "set RLimitMemory for session");
+      pr_log_debug(DEBUG2, "set RLimitMemory for session");
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "RLimitMemory", FALSE);
@@ -2203,7 +2203,7 @@ void set_session_rlimits(void) {
 #  endif /* defined RLIMIT_OFILE */
       PRIVS_RELINQUISH
 
-      log_debug(DEBUG2, "set RLimitOpenFiles for session");
+      pr_log_debug(DEBUG2, "set RLimitOpenFiles for session");
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "RLimitOpenFiles", FALSE);
@@ -2755,7 +2755,7 @@ int main(int argc, char *argv[], char **envp) {
 
     if (auth_getgroups(permanent_pool, (const char *) get_param_ptr(
         main_server->conf, "UserName", FALSE), &daemon_gids, NULL) < 0)
-      log_debug(DEBUG2, "unable to retrieve daemon supplemental groups");
+      pr_log_debug(DEBUG2, "unable to retrieve daemon supplemental groups");
 
     if (set_groups(permanent_pool, daemon_gid, daemon_gids) < 0)
       pr_log_pri(PR_LOG_ERR, "unable to set daemon groups: %s",

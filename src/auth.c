@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.34 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: auth.c,v 1.35 2003-11-09 23:32:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -69,7 +69,7 @@ static modret_t *dispatch_auth(cmd_rec *cmd, char *match) {
     &cmd->stash_index);
 
   while (authtab) {
-    log_debug(DEBUG6, "dispatching auth request \"%s\" to module mod_%s",
+    pr_log_debug(DEBUG6, "dispatching auth request \"%s\" to module mod_%s",
       match, authtab->m->name);
 
     mr = call_module(authtab->m, authtab->handler, cmd);
@@ -516,7 +516,7 @@ int auth_getgroups(pool *p, const char *name, array_header **group_ids,
         strgids = pstrcat(p, strgids, i != 0 ? ", " : "", buf, NULL);
       }
 
-      log_debug(DEBUG10, "retrieved group %s: %s",
+      pr_log_debug(DEBUG10, "retrieved group %s: %s",
         (*group_ids)->nelts == 1 ? "ID" : "IDs", strgids);
     }
 
@@ -528,7 +528,7 @@ int auth_getgroups(pool *p, const char *name, array_header **group_ids,
       for (i = 0; i < (*group_names)->nelts; i++)
         strgroups = pstrcat(p, strgroups, i != 0 ? ", " : "", groups[i], NULL);
     
-      log_debug(DEBUG10, "retrieved group %s: %s",
+      pr_log_debug(DEBUG10, "retrieved group %s: %s",
         (*group_names)->nelts == 1 ? "name" : "names", strgroups);
     }
   }
@@ -601,7 +601,7 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
     strgids = pstrcat(p, strgids, i != 0 ? ", " : "", buf, NULL);
   }
 
-  log_debug(DEBUG10, "setting group %s: %s", nproc_gids == 1 ? "ID" : "IDs",
+  pr_log_debug(DEBUG10, "setting group %s: %s", nproc_gids == 1 ? "ID" : "IDs",
     strgids);
 
   /* Set the supplemental groups. */

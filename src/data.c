@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.73 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: data.c,v 1.74 2003-11-09 23:32:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -259,9 +259,9 @@ static int data_pasv_open(char *reason, off_t size) {
     pr_inet_set_nonblock(session.pool, c);
     session.d = c;
 
-    log_debug(DEBUG4, "passive data connection opened - local  : %s:%d",
+    pr_log_debug(DEBUG4, "passive data connection opened - local  : %s:%d",
       pr_netaddr_get_ipstr(session.d->local_addr), session.d->local_port);
-    log_debug(DEBUG4, "passive data connection opened - remote : %s:%d",
+    pr_log_debug(DEBUG4, "passive data connection opened - remote : %s:%d",
       pr_netaddr_get_ipstr(session.d->remote_addr), session.d->remote_port);
 
     if (session.xfer.xfer_type != STOR_UNIQUE) {
@@ -359,9 +359,9 @@ static int data_active_open(char *reason, off_t size) {
   pr_netaddr_set_reverse_dns(rev);
 
   if (c) {
-    log_debug(DEBUG4, "active data connection opened - local  : %s:%d",
+    pr_log_debug(DEBUG4, "active data connection opened - local  : %s:%d",
       pr_netaddr_get_ipstr(session.d->local_addr), session.d->local_port);
-    log_debug(DEBUG4, "active data connection opened - remote : %s:%d",
+    pr_log_debug(DEBUG4, "active data connection opened - remote : %s:%d",
       pr_netaddr_get_ipstr(session.d->remote_addr), session.d->remote_port);
 
     if (session.xfer.xfer_type != STOR_UNIQUE) {
@@ -422,7 +422,7 @@ void pr_data_init(char *filename, int direction) {
 
   } else {
     if (!(session.sf_flags & SF_PASSIVE))
-      log_debug(DEBUG0,
+      pr_log_debug(DEBUG0,
 		"data_init oddity: session.xfer exists in non-PASV mode.");
 
     session.xfer.direction = direction;

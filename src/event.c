@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.3 2003-11-09 02:17:38 castaglia Exp $
+ * $Id: event.c,v 1.4 2003-11-09 23:32:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -168,12 +168,12 @@ void pr_event_generate(const char *event, const void *event_data) {
 
       /* If there are no registered callbacks for this event, be done. */
       if (!evl->handlers) {
-        log_debug(DEBUG10, "no event handlers registered for '%s'", event);
+        pr_log_debug(DEBUG10, "no event handlers registered for '%s'", event);
         return;
       }
 
       for (evh = evl->handlers; evh; evh = evh->next) {
-        log_debug(DEBUG10, "dispatching event '%s' to mod_%s", event,
+        pr_log_debug(DEBUG10, "dispatching event '%s' to mod_%s", event,
           evh->module->name);
         evh->cb(event_data, evh->user_data);
       }

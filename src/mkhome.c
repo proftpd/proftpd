@@ -24,7 +24,7 @@
 
 /*
  * Home-on-demand support
- * $Id: mkhome.c,v 1.3 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: mkhome.c,v 1.4 2003-11-09 23:32:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -47,7 +47,7 @@ static int create_dir(const char *dir, uid_t uid, gid_t gid,
 
   /* The directory already exists. */
   if (res == 0) {
-    log_debug(DEBUG3, "CreateHome: '%s' already exists", dir);
+    pr_log_debug(DEBUG3, "CreateHome: '%s' already exists", dir);
     return 0;
   }
 
@@ -68,7 +68,7 @@ static int create_dir(const char *dir, uid_t uid, gid_t gid,
 
   umask(prevmask);
 
-  log_debug(DEBUG6, "CreateHome: directory '%s' created", dir);
+  pr_log_debug(DEBUG6, "CreateHome: directory '%s' created", dir);
   return 0;
 }
 
@@ -85,7 +85,8 @@ static int create_path(pool *p, const char *path, const char *user, uid_t uid,
     /* Path already exists, nothing to be done. */
     return 0;
 
-  log_debug(DEBUG3, "creating home directory '%s' for user '%s'", path, user);
+  pr_log_debug(DEBUG3, "creating home directory '%s' for user '%s'", path,
+    user);
   tmppath = pstrdup(p, path);
 
   currpath = "/";
@@ -104,7 +105,7 @@ static int create_path(pool *p, const char *path, const char *user, uid_t uid,
     pr_signals_handle();
   }
 
-  log_debug(DEBUG3, "home directory '%s' created", path);
+  pr_log_debug(DEBUG3, "home directory '%s' created", path);
   return 0;
 }
 
@@ -114,14 +115,16 @@ static int copy_file(pool *p, const char *src, const char *dst, uid_t uid,
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   int res = 0;
 
-  if ((src_fh = pr_fsio_open(src, O_RDONLY)) == NULL) {
-    log_debug(DEBUG2, "CreateHome: trouble with '%s': %s", src, 
+  src_fh = pr_fsio_open(src, O_RDONLY);
+  if (src_fh == NULL) {
+    pr_log_debug(DEBUG2, "CreateHome: trouble with '%s': %s", src, 
       strerror(errno));
     return -1;
   }
 
-  if ((dst_fh = pr_fsio_open(dst, O_WRONLY|O_CREAT|O_EXCL)) == NULL) {
-    log_debug(DEBUG2, "CreateHome: trouble with %s': %s", dst, 
+  dst_fh = pr_fsio_open(dst, O_WRONLY|O_CREAT|O_EXCL);
+  if (dst_fh == NULL) {
+    pr_log_debug(DEBUG2, "CreateHome: trouble with %s': %s", dst, 
       strerror(errno));
     pr_fsio_close(src_fh);
     return -1;
@@ -217,7 +220,7 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
       continue;
 
     if (pr_fsio_lstat(src_path, &st) < 0) {
-      log_debug(DEBUG3, "CreateHome: unable to stat '%s' (%s), skipping",
+      pr_log_debug(DEBUG3, "CreateHome: unable to stat '%s' (%s), skipping",
         src_path, strerror(errno));
       continue;
     }
@@ -254,7 +257,7 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
 
     /* All other file types are skipped */
     } else {
-      log_debug(DEBUG3, "CreateHome: skipping skel file '%s'", src_path);
+      pr_log_debug(DEBUG3, "CreateHome: skipping skel file '%s'", src_path);
       continue;
     }
   }
@@ -290,10 +293,10 @@ int create_home(pool *p, const char *home, const char *user, uid_t uid,
      * skeleton (a al /etc/skel) directory.
      */
 
-    log_debug(DEBUG4, "CreateHome: copying skel files from '%s' into '%s'",
+    pr_log_debug(DEBUG4, "CreateHome: copying skel files from '%s' into '%s'",
       skel_dir, home);
     if (copy_dir(p, skel_dir, home, uid, gid) < 0)
-      log_debug(DEBUG4, "CreateHome: error copying skel files");
+      pr_log_debug(DEBUG4, "CreateHome: error copying skel files");
   }
 
   PRIVS_RELINQUISH

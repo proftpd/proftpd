@@ -25,7 +25,7 @@
 
 /*
  * Ident (RFC1413) protocol support
- * $Id: ident.c,v 1.19 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: ident.c,v 1.20 2003-11-09 23:32:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -78,7 +78,7 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
       ident_port)) < 0) {
     remove_timer(timer, NULL);
     pr_inet_close(tmp_pool, ident_conn);
-    log_debug(DEBUG6, "ident connection failed: %s", strerror(errno));
+    pr_log_debug(DEBUG6, "ident connection failed: %s", strerror(errno));
     destroy_pool(tmp_pool);
     return pstrdup(p, ret);
   }
@@ -97,7 +97,7 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
           remove_timer(timer, NULL);
           pr_netio_close(nstrm);
           pr_inet_close(tmp_pool, ident_conn);
-          log_debug(DEBUG6, "ident lookup timed out, returning '%s'", ret);
+          pr_log_debug(DEBUG6, "ident lookup timed out, returning '%s'", ret);
           destroy_pool(tmp_pool);
           return pstrdup(p, ret);
         }
@@ -108,7 +108,7 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
         remove_timer(timer, NULL);
         pr_netio_close(nstrm);
         pr_inet_close(tmp_pool, ident_conn);
-        log_debug(DEBUG6, "ident lookup failed (%s), returning '%s'",
+        pr_log_debug(DEBUG6, "ident lookup failed (%s), returning '%s'",
           strerror(errno), ret);
         destroy_pool(tmp_pool);
         return pstrdup(p, ret);
@@ -121,7 +121,7 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
           remove_timer(timer, NULL);
           pr_netio_close(nstrm);
           pr_inet_close(tmp_pool, ident_conn);
-          log_debug(DEBUG2, "ident lookup timed out, returning '%s'", ret);
+          pr_log_debug(DEBUG2, "ident lookup timed out, returning '%s'", ret);
           destroy_pool(tmp_pool);
           return pstrdup(p, ret);
         }
