@@ -1,7 +1,8 @@
-$Id: NEWS,v 1.90 2001-03-23 13:17:51 flood Exp $
+$Id: NEWS,v 1.91 2001-03-24 15:46:01 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+- Bug 1043 - Fixed possible infinite loop in bandwidth throttling code.
 - New RLimit* directives used to control resource usage on support platforms.
 - Bug 1075 - Sub-contexts (<Directory>, etc) weren't being fully copied from
   <Global> to vhosts.

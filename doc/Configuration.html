@@ -1,11 +1,12 @@
-<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+
 <html><head><title>ProFTPD Configuration Directives</title></head>
-<body bgcolor="#E7E4D8">
+<body>
 <h1>Configuration Directives</h1>
 
 <H2>Notes</H2>
     <ol>
-	<LI>This document is valid for 1.2.0-final only.
+	<LI>This document is valid for 1.2.2 only.
 
 	<LI>SQL support was moved from three to a single module
     (mod_sql) after 1.2.0rc3
@@ -19,7 +20,6 @@ configuration:</p>
 
 <HR>
 
-<MULTICOL COLS=2>
 <ul>
   <li><a href="#AccessGrantMsg">AccessGrantMsg</a></LI>
   <li><a href="#Allow">Allow</a></LI>
@@ -141,6 +141,9 @@ configuration:</p>
   <li><A HREF="#Ratios">Ratios</A> <EM>Incomplete</EM>
   <li><A HREF="#RatioTempFile">RatioTempFile</A> <EM>Incomplete</EM>
   <li><a href="#RequireValidShell">RequireValidShell</a></li>
+  <LI><A HREF="#RLimitCPU">RLimitCPU</A></LI>
+  <LI><A HREF="#RLimitMemory">RLimitMemory</A></LI>
+  <LI><A HREF="#RLimitOpenFiles">RLimitOpenFiles</A></LI>
   <li><a href="#RootLogin">RootLogin</a></li>
   <li><A HREF="#SaveRatios">SaveRatios</A> <EM>Incomplete</EM>
   <li><a href="#ScoreboardPath">ScoreboardPath</a></li>
@@ -158,8 +161,8 @@ configuration:</p>
   <LI><A HREF="#SQLDefaultUID">SQLDefaultUID</A>
   <LI><A HREF="#SQLDoAuth">SQLDoAuth</A>
   <LI><A HREF="#SQLDoGroupAuth">SQLDoGroupAuth</A>
-  <li><A HREF="#SQLEmptyPasswords">SQLEmptyPasswords</A> (<strong>Deprecated use <A HREF="SQLAuthTypes">SQLAuthTypes</A></strong>) 
-  <li><A HREF="#SQLEncryptedPasswords">SQLEncryptedPasswords</A> (<strong>Deprecated use <A HREF="SQLAuthTypes">SQLAuthTypes</A></strong>) 
+  <li><A HREF="#SQLEmptyPasswords">SQLEmptyPasswords</A> (<strong>Deprecated use <A HREF="#SQLAuthTypes">SQLAuthTypes</A></strong>) 
+  <li><A HREF="#SQLEncryptedPasswords">SQLEncryptedPasswords</A> (<strong>Deprecated use <A HREF="#SQLAuthTypes">SQLAuthTypes</A></strong>) 
   <li><A HREF="#SQLGIDField">SQLGidField</A>
   <li><A HREF="#SQLGroupGidField">SQLGroupGidField</A>
   <LI><A HRef="#SQLGroupMembersField">SQLGroupMembersField</A>
@@ -168,8 +171,8 @@ configuration:</p>
   <li><A HREF="#SQLHomedir">SQLHomedir</A>
   <li><A HREF="#SQLHomedirField">SQLHomedirField</A>
   <LI><A href="#SQLHomedirOnDemand">SQLHomedirOnDemand</A>
-  <li><A HREF="#SQLKey">SQLKey</A></LI> (<strong>Deprecated use <A HREF="SQLWhereClause">SQLWhereClause</A></strong>)
-  <li><A HREF="#SQLKeyField">SQLKeyField</A> </li> (<strong>Deprecated use <A HREF="SQLWhereClause">SQLWhereClause</A></strong>)
+  <li><A HREF="#SQLKey">SQLKey</A> (<strong>Deprecated use <A HREF="#SQLWhereClause">SQLWhereClause</A></strong>)
+  <li><A HREF="#SQLKeyField">SQLKeyField</A> (<strong>Deprecated use <A HREF="#SQLWhereClause">SQLWhereClause</A></strong>)
   <li><A HREF="#SQLLogDirs">SQLLogDirs</A>
   <li><A HREF="#SQLLogHits">SQLLogHits</A>
   <li><A HREF="#SQLLogHosts">SQLLogHosts</A>
@@ -177,7 +180,7 @@ configuration:</p>
   <li><A HREF="#SQLLogStats">SQLLogStats</A>
   <LI><A href="#SQLMinID">SQLMinID</A>
   <li><A HREF="#SQLPasswordField">SQLPasswordField</A>
-  <li><A HREF="#SQLPlaintextPasswords">SQLPlaintextPasswords</A> (<strong>Deprecated use <A HREF="SQLAuthTypes">SQLAuthTypes</A></strong>)
+  <li><A HREF="#SQLPlaintextPasswords">SQLPlaintextPasswords</A> (<strong>Deprecated use <A HREF="#SQLAuthTypes">SQLAuthTypes</A></strong>)
   <li><A HREF="#SQLRatios">SQLRatios</A> <EM>Incomplete</EM></li>
   <LI><A href="#SQLShellField">SQLShellField</A>
   <li><A HREF="#SQLUidField">SQLUidField</A>
@@ -211,7 +214,6 @@ configuration:</p>
   <li><a href="#VirtualHost">VirtualHost</a></li>
   <li><a href="#WtmpLog">WtmpLog</a></li>
 </ul>
-</MULTICOL>
 
 <hr>
 <h2><a name="AccessGrantMsg">AccessGrantMsg</a></h2>
@@ -289,7 +291,7 @@ href="#Limit">&lt;Limit&gt;</a> block. Although proftpd's default
   directives.</p>
 <hr>
 <h2><a name="AllowChmod">AllowChmod</a></h2>
-    <p><strong>Syntax:</strong> <code>AllowChmod <em>on|off</code></em><br>
+    <p><strong>Syntax:</strong> <code>AllowChmod <em>on|off</em></code><br>
   <strong>Default:</strong> true<br>
   <strong>Context:</strong> server config, &lt;Directory&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;, .ftpaccess<br>
   <STRONG>Module:</STRONG> mod_site<BR>
@@ -786,7 +788,7 @@ The default class is called <em>default</em>. Example:
 </pre>
 This creates two classes, local and default, with local being everything in 
 *.foo.com and 172.16.1.* combined.
-<p></p>
+
 <hr>
 <h2><a name="Classes">Classes</a></h2>
 <p><strong>Syntax:</strong> Classes <em>on|off</em> <br>
@@ -796,7 +798,7 @@ This creates two classes, local and default, with local being everything in
   <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
 <p>Controls class based access. Enables class based access control.
  see: <a href="#Class">Class</a>
-<p></p>
+
 <hr>
 <h2><a name="CommandBufferSize">CommandBufferSize</a></h2>
 <p><strong>Syntax:</strong> CommandBufferSize <em>size</em><br>
@@ -1046,7 +1048,7 @@ href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em><strong>group-expres
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 1.1.7 and later</p>
 <p><a href="#DenyUser">DenyUser</A> specifies a <em><strong>user-expression</strong></em> 
-  that is specifically denied within the context of the a
+  that is specifically denied within the context of the <a
 href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em> <strong>user-expression</strong></em> 
   is a comma delimited list of users or &quot;not&quot; users (by prefixing a 
   user name with the `!' character). The expression is parsed as a boolean &quot;and&quot; 
@@ -1114,7 +1116,7 @@ href="#Anonymous">&lt;Anonymous&gt;</a> block can be relative, indicating
   <STRONG>Module:</STRONG> mod_ls<BR>
   <strong>Compatibility:</strong> 1.1.5</p>
 <p>DirFakeGroup and its companion directive, <a
-Hhref="#DirFakeUser">DirFakeUser</a>, can be used to hide the true group and user 
+href="#DirFakeUser">DirFakeUser</a>, can be used to hide the true group and user 
   owners of files in a directory listing. If simply turned On, DirFakeGroup will 
   display all files as being owned by group 'ftp'. Optionally, the <em><strong>groupname</strong></em> 
   argument can be used to specify a specific group other than 'ftp'. <strong>Both 
@@ -1240,13 +1242,6 @@ href="#Anonymous"><u>&lt;Anonymous&gt;</u></a><u>), the file must
       <td>&nbsp;</td>
       <td>Server admin's e-mail address</td>
     </tr>
-    <!-- This doesn't work?  It appears in mod_core.c 
-    <tr>
-        <td align="right"><strong>%V</strong></td>
-        <td>&nbsp;</td>
-        <td>Name of virtual host (if any)</td>
-    </tr>
---> 
     <tr>
       <td align="right"><strong>%x</strong></td>
       <td>&nbsp;</td>
@@ -1561,7 +1556,6 @@ href="#Anonymous">&lt;Anonymous&gt;</a> block to hide all directory
   <strong>Context:</strong> server, &lt;Anonymous&gt;, &lt;VirtualHost&gt; <BR>
   <STRONG>Module:</STRONG> mod_wrap<BR>
   <strong>Compatibility:</strong> 1.2.0 and later</p>
-  <P></P>
 
   <p>Proftpd can log when a connection is allowed as the result of a
   rule in the file specified in UseHostsAllowFile to the Unix syslog
@@ -1625,7 +1619,7 @@ href="#IgnoreHidden">IgnoreHidden</a></p>
 <hr>
 <h2><a name="IgnoreHidden">IgnoreHidden</a></h2>
 <p><strong>Syntax:</strong> IgnoreHidden <em>on|off</em><br>
-  <strong>Default:</strong> offbr>
+  <strong>Default:</strong> off<br>
   <strong>Context:</strong> &lt;Limit&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 0.99.0 and later</p>
@@ -1646,10 +1640,11 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <h2><a name="Include">Include</a></h2>
 <p><strong>Syntax:</strong> Include <em>file</em><br>
   <strong>Default:</strong> None<br>
-  <strong>Context:</strong> Any<br>
+  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 1.2.0 and later</p>
 <p>This directive allows you to include another configuration file within your current configuration file.</p>
+
 <hr>
 <h2><a name="Limit">&lt;Limit&gt;</a></h2>
 <p><strong>Syntax:</strong> &lt;Limit <em>command|command-group [command2 ..]</em>&gt;<br>
@@ -1722,7 +1717,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <p><strong>See Also:</strong> <a href="#IgnoreHidden">IgnoreHidden</a></p>
 
 <hr>
-<h2><a name="LDAPAuthBinds"></a></h2>
+<h2><a name="LDAPAuthBinds">LDAPAuthBinds</a></h2>
 <p><strong>Syntax:</strong> LDAPAuthBinds <em>on|off</em><br>
   <strong>Default:</strong> off<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
@@ -1845,7 +1840,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
    the default of 0755 is used. Directory mode setting is only supported in
    mod_ldap v2.7 or later.
 <hr>
-<h2><a name="LDAPHomedirOnDemandSuffix"></a></h2>
+<h2><a name="LDAPHomedirOnDemandSuffix">LDAPHomedirOnDemandSuffix</a></h2>
 <p><strong>Syntax:</strong> LDAPHomedirOnDemandSuffix <em>"additional-directory"</em><br>
   <strong>Default:</strong> &quot;&quot;<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
@@ -1963,7 +1958,8 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
     <tr> 
       <td align="right" width="20%"><strong>%{FOOBAR}e</strong></td>
       <td>&nbsp;</td>
-      <td>Contents of environment variable FOOBAR</td>
+      <td>Contents of environment variable FOOBAR.  Note that the server
+      does not set any environment variables itself.</td>
     </tr>
     <tr> 
       <td align="right" width="20%"><strong>%h</strong></td>
@@ -2491,7 +2487,6 @@ href="#VirtualHost">&lt;VirtualHost&gt;</a> in order to run a virtual server on
   <p>The QuotaType directive defines what happens to files which break 
   the quota limits as they are uploaded.  Setting the type to hard
   ensures that the file which violates the quota is deleted.</P>
-  uploaded.</P>
 
   <hr>
   <h2><a name="RateReadBPS">RateReadBPS</a></h2>
@@ -2577,10 +2572,12 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
     the WriteBPS is low then the user may wait for extended periods of time until 
     the transfer continues. <tt>:-)</tt></p>
 
+  <UL>
   <li><a href="#RateWriteHardBPS">RateWriteHardBPS</a></li>
   <li>RatioFile (mod_ratio) <EM>Incomplete</EM>
   <li>Ratios (mod_ratio) <EM>Incomplete</EM>
   <li>RatioTempFile (mod_ratio) <EM>Incomplete</EM>
+  </UL>
 
 <hr>
 <h2><a name="RatioFile">RatioFile</a></h2>
@@ -2638,6 +2635,57 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
     disallows logins if the user's default shell is not listed in
     /etc/shells. If /etc/shells cannot be found, all default shells
     are assumed to be valid.</p>
+
+  <hr>
+  <h2><a name="RLimitCPU">RLimitCPU</a></h2>
+  <p><strong>Syntax:</strong> RLimitCPU <em>soft-limit|"max" [hard-limit|"max"]</em><br>
+    <strong>Default:</strong> none<br>
+    <strong>Context:</strong> server config<BR>
+    <STRONG>Module:</STRONG> mod_core<BR>
+    <strong>Compatibility:</strong> 1.2.2 and later</P>
+
+  <P>RLimitCPU takes 1 or 2 parameters. The first parameter sets the
+  soft resource limit for all proftpd processes. The optional second
+  parameter sets the maximum resource limit. Either parameter can be a
+  number, or <em>max</em> to indicate to the server that the limit
+  should be set to the maximum allowed by the operating system
+  configuration.</P>
+
+  <hr>
+  <h2><a name="RLimitMemory">RLimitMemory</a></h2>
+  <p><strong>Syntax:</strong> RLimitMemory <em>soft-limit[units]|"max" [hard-limit[units]|"max"]</em><br>
+  <strong>Default:</strong> none<br> 
+  <strong>Context:</strong> server config<BR> 
+  <STRONG>Module:</STRONG> mod_core<BR>
+  <strong>Compatibility:</strong> 1.2.2 and later</P>
+
+  <P>RLimitMemory takes 1 or 2 parameters. The first parameter sets
+  the soft resource limit for all proftpd processes. The optional
+  second parameter sets the maximum resource limit. Either parameter
+  can be a number, or <em>max</em> to indicate to the server that the
+  limit should be set to the maximum allowed by the operating system
+  configuration.</p>
+
+  <p>Memory resource limits are expressed in bytes per process.  An
+  optional case-insensitive units specifier may follow the number of
+  bytes given: G (Gigabytes), M (Megabytes), K (Kilobytes), or B
+  (bytes).  If the units specifier is used, the given number of bytes
+  is multiplied by the appropriate factor.</P>
+
+  <hr>
+  <h2><a name="RLimitOpenFiles">RLimitOpenFiles</a></h2>
+  <p><strong>Syntax:</strong> RLimitOpenFiles <em>soft-limit|"max" [hard-limit|"max"]</em><br>
+    <strong>Default:</strong> none<br>
+    <strong>Context:</strong> server config<BR>
+    <STRONG>Module:</STRONG> mod_core<BR>
+    <strong>Compatibility:</strong> 1.2.2 and later</P>
+
+  <P>RLimitOpenFiles takes 1 or 2 parameters. The first parameter sets
+  the soft resource limit for all proftpd processes. The optional
+  second parameter sets the maximum resource limit. Either parameter
+  can be a number, or <em>max</em> to indicate to the server that the
+  limit should be set to the maximum allowed by the operating system
+  configuration.</P>
 
   <hr>
   <h2><a name="RootLogin">RootLogin</a></h2>
@@ -3161,7 +3209,7 @@ it doesn't exist at login.
 
   <P>This directive is DEPRECATED.  Please use SQLWhereClause instead.
 
-  <P>SQLKey <key-value> (ROOT, GLOBAL, VIRTUAL) sets the value that the
+  <P>SQLKey &lt;key-value&gt; (ROOT, GLOBAL, VIRTUAL) sets the value that the
   SQLKeyField column needs to match.</P>
 
 <hr>
@@ -3173,7 +3221,7 @@ it doesn't exist at login.
 
   <P>This directive is DEPRECATED.  Please use SQLWhereClause instead.
 
-  <P>SQLKeyField <column-name> (ROOT, GLOBAL) designates a table field
+  <P>SQLKeyField &lt;column-name&gt; (ROOT, GLOBAL) designates a table field
   that's used to distinguish what logins belong to what virtual host.</P>
 
 <hr>
@@ -3412,7 +3460,7 @@ they are reported as the values of, respectively, 'SQLDefaultGID' and
 <code>
   SQLKey           true
   SQLKeyfield      LoginAllowed
-</code.
+</code>
 
   <P>You would now use:
 
@@ -3625,7 +3673,7 @@ they are reported as the values of, respectively, 'SQLDefaultGID' and
     <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
   <p>The TimesGMT option causes the server to report all ls and MDTM times in
      GMT and not local time.
-  <p></p>
+
   <hr>
   <h2><a name="TimeoutIdle">TimeoutIdle</a></h2>
   <p><strong>Syntax:</strong> TimeoutIdle <em>seconds</em><br>
@@ -3846,7 +3894,7 @@ they are reported as the values of, respectively, 'SQLDefaultGID' and
   <p>The UserOwner directive configures which user all newly created directories 
   and files will be owned by, within the context that UserOwner is applied to. 
   The user ID of username cannot be 0 (root).
-  Where it is used, the <href="#GroupOwner">GroupOwner</a> directive is not
+  Where it is used, the <A href="#GroupOwner">GroupOwner</a> directive is not
   restricted to groups that the current user is a member of.</p>
 <hr>
   <h2><a name="UserPassword">UserPassword</a></h2>

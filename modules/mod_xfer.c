@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.52 2001-02-28 17:07:51 flood Exp $
+ * $Id: mod_xfer.c,v 1.53 2001-03-24 15:46:01 flood Exp $
  */
 
 /* History Log:
@@ -136,8 +136,6 @@ static void _rate_throttle(unsigned long rate_pos, long rate_bytes,
   struct timeval rate_tv;
   float dtime, wtime;
 
-  gettimeofday(&rate_tv, NULL);
-  
   /* no rate control unless more than free bytes DL'ed */
   log_debug(DEBUG5,
 	    "_rate_throttle: rate_bytes=%ld  rate_pos=%ld  rate_freebytes=%ld "
@@ -148,52 +146,58 @@ static void _rate_throttle(unsigned long rate_pos, long rate_bytes,
   if(rate_pos < rate_freebytes)
     return;
   
-  if(!rate_hardbps)
-    rate_bytes -= rate_freebytes;
+  while(1) {
+    gettimeofday(&rate_tv, NULL);
   
-  dtime = _rate_diffusec(rate_tvlast, rate_tv);
-  wtime = 10e5 * rate_bytes / rate_bps;
+    if(!rate_hardbps)
+      rate_bytes -= rate_freebytes;
   
-  /* Setup for the select.
-   */
-  memset(&rate_tv, 0, sizeof(rate_tv));
+    dtime = _rate_diffusec(rate_tvlast, rate_tv);
+    wtime = 10e5 * rate_bytes / rate_bps;
   
-  if(wtime > dtime) {
-    /* too fast, doze a little */
-    log_debug(DEBUG5, "_rate_throttle: wtime=%f  dtime=%f.", wtime, dtime);
+    /* Setup for the select.
+    */
+    memset(&rate_tv, 0, sizeof(rate_tv));
+  
+    if(wtime > dtime) {
+      /* too fast, doze a little */
+      log_debug(DEBUG5, "_rate_throttle: wtime=%f  dtime=%f.", wtime, dtime);
 
-    if(wtime - dtime > 10e7) {
-      /* >100sec, umm that'd timeout */
-      log_debug(DEBUG5, "Sleeping 100 seconds.");
-      rate_tv.tv_usec = 10e7;
-      log_debug(DEBUG5, "Sleeping 100 seconds done!");
-    } else {
-      log_debug(DEBUG5, "Sleeping %f sec.", (wtime - dtime) / 10e5);
-      rate_tv.tv_usec = wtime - dtime;
-      log_debug(DEBUG5, "Sleeping %f sec done!", (wtime - dtime) / 10e5);
-    }
+      if(wtime - dtime > 10e7) {
+        /* >100sec, umm that'd timeout */
+        log_debug(DEBUG5, "Sleeping 100 seconds.");
+        rate_tv.tv_usec = 10e7;
+        log_debug(DEBUG5, "Sleeping 100 seconds done!");
+      } else {
+        log_debug(DEBUG5, "Sleeping %f sec.", (wtime - dtime) / 10e5);
+        rate_tv.tv_usec = wtime - dtime;
+        log_debug(DEBUG5, "Sleeping %f sec done!", (wtime - dtime) / 10e5);
+      }
     
-    /* For completeness, break it up into seconds and microseconds -- some
-     * platforms have problems dealing with large values for microseconds.
-     *
-     * Due to a bug in GCC/EGCS, we can't say x % 10e5, so we spell it out...
-     */
-    rate_tv.tv_sec = rate_tv.tv_usec / 1000000;
-    rate_tv.tv_usec = rate_tv.tv_usec % 1000000;
+      /* For completeness, break it up into seconds and microseconds -- some
+       * platforms have problems dealing with large values for microseconds.
+       *
+       * Due to a bug in GCC/EGCS, we can't say x % 10e5, so we spell it out...
+       */
+      rate_tv.tv_sec = rate_tv.tv_usec / 1000000;
+      rate_tv.tv_usec = rate_tv.tv_usec % 1000000;
     
-    /* We use select() instead of usleep() because it seems to be far more
-     * portable across platforms.
-     */
+      /* We use select() instead of usleep() because it seems to be far more
+       * portable across platforms.
+       */
 
-    /* Look for EINTR and restart the syscall if necessary.
-     * jss 2/20/01
-     */
+      /* Look for EINTR and restart the entire loop if necessary.
+       * jss 2/20/01
+       */
     
-    while(select(0, NULL, NULL, NULL, &rate_tv) < 0) {
-      if(errno != EINTR)
-        log_pri(LOG_WARNING, "Unable to throttle bandwidth: %s.",
-	        strerror(errno));
+      if(select(0, NULL, NULL, NULL, &rate_tv) < 0) {
+        if(errno != EINTR) {
+          log_pri(LOG_WARNING, "Unable to throttle bandwidth: %s.",
+	          strerror(errno));
+        } else continue;
+      }
     }
+    break;
   }
 }
 
