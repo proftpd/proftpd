@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.342 2003-01-05 02:18:16 jwm Exp $
+$Id: NEWS,v 1.343 2003-01-05 02:18:50 jwm Exp $
 
 CVS
 ---------------------------------
@@ -13,6 +13,7 @@ CVS
   by default if the host OS (Linux) supports it. autoconf detection code
   based on a submission by Mihai RUSU <dizzy@roedu.net>
 - Bug 1893 - Apple likes to move things. PAM support works on OS X again.
+  Submitted by: thesin@users.sourceforge.net (Justin F. Hallett)
 
 1.2.8rc1 - Released 28-Dec-2002
 ---------------------------------
