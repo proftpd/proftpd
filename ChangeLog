@@ -1,3 +1,32 @@
+2001-03-11 09:23  flood
+
+	* NEWS, modules/mod_core.c, src/main.c: Added MasqueradeAddress
+	feature.
+
+2001-03-09 13:49  flood
+
+	* NEWS, modules/mod_auth.c, modules/mod_core.c: Bug #1044 - New
+	directive: AccessDenyMsg
+
+2001-03-09 13:16  flood
+
+	* src/main.c: Bug #1056 (second part) - SIGSEGV is no longer
+	handled when inside the SIGSEGV handler.
+
+2001-03-09 11:14  flood
+
+	* NEWS, src/ftpcount.c: Bug #1055 - ftpwho/ftpcount scan
+	proftpd.conf for scoreboard path.
+
+2001-03-09 08:54  flood
+
+	* NEWS, config.h.in, configure.in,
+	contrib/dist/rpm/proftpd.spec.in, src/ftpcount.1, src/ftpshut.8,
+	src/ftpwho.1, src/pool.c, src/proftpd.8, src/xferlog.5: Bug #1042 -
+	Directory matching for / Bug #1051 - man pages reference
+	proftpd.net instead of .org New proftpd.spec.in from RPM maintainer
+	configure now tests for the limits.h header file
+
 2001-03-01 11:00  flood
 
 	* NEWS: New NEWS
