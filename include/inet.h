@@ -26,7 +26,7 @@
 
 /* BSD socket manipulation tools.
  *
- * $Id: inet.h,v 1.12 2002-08-14 16:17:35 castaglia Exp $
+ * $Id: inet.h,v 1.13 2002-09-13 23:14:41 castaglia Exp $
  */
 
 #ifndef __INET_H
@@ -66,7 +66,7 @@ typedef struct conn_struc {
   int niplist;				/* IPs we are listening to */
   
   int rfd,wfd;				/* Read and write fds */
-  IOFILE *inf,*outf;			/* Input/Output streams */
+  pr_netio_stream_t *instrm, *outstrm;	/* Input/Output streams */
 
   p_in_addr_t *remote_ipaddr;		/* Remote address of connection */
   int remote_port;			/* Remote port of connection */
@@ -107,9 +107,9 @@ int inet_connect(pool *, conn_t *, p_in_addr_t *, int);
 int inet_connect_nowait(pool*,conn_t*,p_in_addr_t*,int);
 int inet_get_conn_info(conn_t *, int);
 conn_t *inet_accept(pool *, conn_t *, conn_t *, int, int, unsigned char);
-conn_t *inet_associate(pool *, conn_t *, p_in_addr_t *, IOFILE *,
-  IOFILE *, int);
-conn_t *inet_openrw(pool *, conn_t *, p_in_addr_t *, int, int, int, int);
+conn_t *inet_associate(pool *, conn_t *, p_in_addr_t *,
+  pr_netio_stream_t *, pr_netio_stream_t *, int);
+conn_t *inet_openrw(pool *, conn_t *, p_in_addr_t *, int, int, int, int, int);
 void inet_resolve_ip(pool *, conn_t *);
 
 #endif /* __INET_H */

@@ -26,7 +26,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.83 2002-09-13 22:59:40 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.84 2002-09-13 23:14:41 castaglia Exp $
  */
 
 /* History Log:
@@ -58,7 +58,7 @@ extern pid_t mpid;
 char *auth_map_uid(int);
 char *auth_map_gid(int);
 
-void xfer_abort(IOFILE*,int);
+void xfer_abort(pr_netio_stream_t *, int);
 
 /* Variables for this module */
 static fsdir_t *retr_file = NULL;
@@ -537,10 +537,14 @@ static void _retr_abort(void) {
 
 /* Exit handler, call abort functions if a transfer is in progress. */
 static void _xfer_exit(void) {
-  if(session.flags & SF_XFER) {
-    if(session.xfer.direction == IO_READ) /* stor */
+  if (session.flags & SF_XFER) {
+
+    if (session.xfer.direction == PR_NETIO_IO_RD)
+       /* An upload is occurring... */
       _stor_abort();
-    else				  /* retr */
+
+    else
+      /* A download is occurring... */
       _retr_abort();
   }
 }
@@ -932,7 +936,7 @@ MODRET cmd_stor(cmd_rec *cmd)
   } else {
 
     /* perform the actual transfer now */
-    data_init(cmd->arg, IO_READ);
+    data_init(cmd->arg, PR_NETIO_IO_RD);
 
     session.xfer.path = pstrdup(session.xfer.p, dir);
     if (session.xfer.xfer_type == STOR_HIDDEN)
@@ -946,7 +950,7 @@ MODRET cmd_stor(cmd_rec *cmd)
     /* First, make sure the uploaded file has the requested ownership. */
     _stor_chown();
 
-    if(data_open(cmd->arg,NULL,IO_READ,0) < 0) {
+    if (data_open(cmd->arg, NULL, PR_NETIO_IO_RD, 0) < 0) {
       _stor_abort();
       data_abort(0,TRUE);
       return HANDLED(cmd);
@@ -1038,7 +1042,7 @@ MODRET cmd_stor(cmd_rec *cmd)
 
     } else if (len < 0) {
       _stor_abort();
-      data_abort(session.d->inf->xerrno, FALSE);
+      data_abort(PR_NETIO_ERRNO(session.d->instrm), FALSE);
       return ERROR(cmd);
 
     } else {
@@ -1225,7 +1229,7 @@ MODRET cmd_retr(cmd_rec *cmd)
   }
 
   /* Send the data */
-  data_init(cmd->arg, IO_WRITE);
+  data_init(cmd->arg, PR_NETIO_IO_WR);
     
   session.xfer.path = pstrdup(session.xfer.p,dir);
   session.xfer.file_size = sbuf.st_size;
@@ -1233,7 +1237,7 @@ MODRET cmd_retr(cmd_rec *cmd)
   if(cnt_steps == 0)
     cnt_steps = 1;
 
-  if(data_open(cmd->arg, NULL, IO_WRITE, sbuf.st_size - respos) < 0) {
+  if(data_open(cmd->arg, NULL, PR_NETIO_IO_WR, sbuf.st_size - respos) < 0) {
     data_abort(0, TRUE);
     return ERROR(cmd);
   }
@@ -1284,7 +1288,7 @@ MODRET cmd_retr(cmd_rec *cmd)
       
     if (len < 0) {
       _retr_abort();
-      data_abort(session.d->outf->xerrno,FALSE);
+      data_abort(PR_NETIO_ERRNO(session.d->outstrm), FALSE);
       return ERROR(cmd);
     }
 

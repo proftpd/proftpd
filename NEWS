@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.231 2002-09-13 22:59:40 castaglia Exp $
+$Id: NEWS,v 1.232 2002-09-13 23:14:40 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -24,6 +24,7 @@ CVS
 - Bug 1436 - Feature Enhancement: Timeouts on a <Virtualhost> basis
 - Bug 1737 - Enhance file hiding via regular expressions
 - Bug 1736 - RETR does not handle an inappropriate REST
+- Added NetIO API
 
 1.2.6 - Released 2002-09-04
 ---------------------------------

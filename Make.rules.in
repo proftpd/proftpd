@@ -58,9 +58,9 @@ CFLAGS=@CFLAGS@
 #CFLAGS=-g -pedantic -DUSESHADOW -DDEBUG_NOFORK
 
 OBJS=main.o timers.o sets.o pool.o regexp.o dirtree.o support.o inet.o log.o \
-     io.o ident.o data.o modules.o auth.o fs.o
+     netio.o ident.o data.o modules.o auth.o fs.o
 BUILD_OBJS=src/main.o src/timers.o src/sets.o src/pool.o src/regexp.o \
-           src/dirtree.o src/support.o src/inet.o src/log.o src/io.o \
+           src/dirtree.o src/support.o src/inet.o src/log.o src/netio.o \
            src/ident.o src/data.o src/modules.o src/auth.o src/fs.o
 
 LIB_OBJS=getopt.o getopt1.o pr_fnmatch.o strsep.o vsnprintf.o glibc-glob.o \

@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.18 2002-09-10 15:06:54 castaglia Exp $
+ * $Id: conf.h,v 1.19 2002-09-13 23:14:41 castaglia Exp $
  */
 
 #ifndef __CONF_H
@@ -311,7 +311,7 @@ typedef struct in_addr p_in_addr_t;
 #include "support.h"
 #include "sets.h"
 #include "dirtree.h"
-#include "io.h"
+#include "netio.h"
 #include "modules.h"
 #include "timers.h"
 #include "inet.h"

@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.111 2002-09-13 19:33:38 castaglia Exp $
+ * $Id: main.c,v 1.112 2002-09-13 23:14:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -450,26 +450,30 @@ static void send_response_list(response_t **head)
   char *last_numeric = NULL;
   response_t *t;
 
-  for(t = *head; t; t=t->next) {
-    if(ml) {
+  for (t = *head; t; t=t->next) {
+    if (ml) {
       /* look for end of multiline */
-      if(!t->next || (t->num && strcmp(t->num,last_numeric) != 0)) {
-        io_printf(session.c->outf,"%s %s\r\n",last_numeric,t->msg);
+      if(!t->next || (t->num && strcmp(t->num, last_numeric) != 0)) {
+        pr_netio_printf(session.c->outstrm, "%s %s\r\n", last_numeric, t->msg);
         ml = 0;
+
       } else {
-	if(MultilineRFC2228)
-	  io_printf(session.c->outf,"%s-%s\r\n",last_numeric,t->msg);
+	if (MultilineRFC2228)
+	  pr_netio_printf(session.c->outstrm, "%s-%s\r\n", last_numeric,
+            t->msg);
 	else
-	  io_printf(session.c->outf," %s\r\n",t->msg);
+	  pr_netio_printf(session.c->outstrm, " %s\r\n" ,t->msg);
       }
+
     } else {
       /* look for start of multiline */
-      if(t->next && (!t->next->num || strcmp(t->num,t->next->num) == 0)) {
-        io_printf(session.c->outf,"%s-%s\r\n",t->num,t->msg);
+      if (t->next && (!t->next->num || strcmp(t->num, t->next->num) == 0)) {
+        pr_netio_printf(session.c->outstrm, "%s-%s\r\n", t->num, t->msg);
         ml = 1;
         last_numeric = t->num;
+
       } else
-        io_printf(session.c->outf,"%s %s\r\n",t->num,t->msg);
+        pr_netio_printf(session.c->outstrm, "%s %s\r\n", t->num, t->msg);
     }
   }
 
@@ -498,8 +502,7 @@ void add_response_err(const char *numeric, const char *fmt, ...)
   *head = t;
 }
 
-void add_response(const char *numeric, const char *fmt, ...)
-{
+void add_response(const char *numeric, const char *fmt, ...) {
   va_list msg;
   response_t *t,**head;
 
@@ -520,8 +523,7 @@ void add_response(const char *numeric, const char *fmt, ...)
   *head = t;
 }
 
-void send_response_raw(const char *fmt, ...)
-{
+void send_response_raw(const char *fmt, ...) {
   va_list msg;
 
   va_start(msg,fmt);
@@ -529,11 +531,10 @@ void send_response_raw(const char *fmt, ...)
   va_end(msg);
 
   sbuf[sizeof(sbuf) - 1] = '\0';
-  io_printf(session.c->outf, "%s\r\n", sbuf);
+  pr_netio_printf(session.c->outstrm, "%s\r\n", sbuf);
 }
 
-void send_response_async(const char *resp_numeric, const char *fmt, ...)
-{
+void send_response_async(const char *resp_numeric, const char *fmt, ...) {
   char buf[1024] = {'\0'};
   va_list msg;
   int maxlen;
@@ -550,11 +551,10 @@ void send_response_async(const char *resp_numeric, const char *fmt, ...)
   buf[sizeof(buf) - 1] = '\0';
   sstrcat(buf, "\r\n", sizeof(buf));
 
-  io_write_async(session.c->outf, buf, strlen(buf));
+  pr_netio_write_async(session.c->outstrm, buf, strlen(buf));
 }
 
-void send_response(const char *resp_numeric, const char *fmt, ...)
-{
+void send_response(const char *resp_numeric, const char *fmt, ...) {
   va_list msg;
 
   va_start(msg,fmt);
@@ -562,11 +562,10 @@ void send_response(const char *resp_numeric, const char *fmt, ...)
   va_end(msg);
   
   sbuf[sizeof(sbuf) - 1] = '\0';
-  io_printf(session.c->outf,"%s %s\r\n",resp_numeric, sbuf);
+  pr_netio_printf(session.c->outstrm, "%s %s\r\n", resp_numeric, sbuf);
 }
 
-void send_response_ml_start(const char *resp_numeric, const char *fmt, ...)
-{
+void send_response_ml_start(const char *resp_numeric, const char *fmt, ...) {
   va_list msg;
 
   va_start(msg,fmt);
@@ -575,11 +574,10 @@ void send_response_ml_start(const char *resp_numeric, const char *fmt, ...)
 
   sbuf[sizeof(sbuf) - 1] = '\0';
   sstrncpy(_ml_numeric, resp_numeric, sizeof(_ml_numeric));
-  io_printf(session.c->outf, "%s-%s\r\n", _ml_numeric, sbuf);
+  pr_netio_printf(session.c->outstrm, "%s-%s\r\n", _ml_numeric, sbuf);
 }
 
-void send_response_ml(const char *fmt, ...)
-{
+void send_response_ml(const char *fmt, ...) {
   va_list msg;
 
   va_start(msg,fmt);
@@ -588,11 +586,10 @@ void send_response_ml(const char *fmt, ...)
 
   sbuf[sizeof(sbuf) - 1] = '\0';
 
-  io_printf(session.c->outf, " %s\r\n", sbuf);
+  pr_netio_printf(session.c->outstrm, " %s\r\n", sbuf);
 }
 
-void send_response_ml_end(const char *fmt, ...)
-{
+void send_response_ml_end(const char *fmt, ...) {
   va_list msg;
  
   va_start(msg,fmt);
@@ -601,7 +598,7 @@ void send_response_ml_end(const char *fmt, ...)
 
   sbuf[sizeof(sbuf) - 1] = '\0';
 
-  io_printf(session.c->outf, "%s %s\r\n", _ml_numeric, sbuf);
+  pr_netio_printf(session.c->outstrm, "%s %s\r\n", _ml_numeric, sbuf);
 }
 
 void set_auth_check(int (*ck)(cmd_rec*))
@@ -630,14 +627,22 @@ static void end_login_noexit(void) {
     log_add_run(mpid,NULL,NULL,NULL,NULL,0,0,0,NULL);
     log_close_run();
   }
+
+  /* These are necessary in order that cleanups associated with these pools
+   * (and their subpools) are properly run.
+   */
+  if (session.d)
+    inet_close(session.pool, session.d);
+
+  if (session.c)
+    inet_close(session.pool, session.c);
 }
 
 /* Finish any cleaning up, mark utmp as closed and exit
  * without flushing buffers
  */
 
-void end_login(int exitcode)
-{
+void end_login(int exitcode) {
   end_login_noexit();
   _exit(exitcode);
 }
@@ -1016,10 +1021,12 @@ static void cmd_loop(server_rec *server, conn_t *c) {
   while(1) {
     pr_handle_signals();
 
-    if (io_telnet_gets(buf, sizeof(buf)-1, session.c->inf,
-        session.c->outf) == NULL) {
-      if (session.c->inf->xerrno == EINTR)
-	continue;		/* Simple interrupted syscall */
+    if (pr_netio_telnet_gets(buf, sizeof(buf)-1, session.c->instrm,
+        session.c->outstrm) == NULL) {
+
+      if (PR_NETIO_ERRNO(session.c->instrm) == EINTR)
+        /* Simple interrupted syscall */
+	continue;
       
       /* Otherwise, EOF */
       log_pri(LOG_INFO,"FTP session closed.");
@@ -1390,8 +1397,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
    * the race condition mentioned above.  Instead we do it after closing
    * all former listening sockets.
    */
-  conn = inet_openrw(permanent_pool, l, NULL, fd, STDIN_FILENO,
-    STDOUT_FILENO, FALSE);
+  conn = inet_openrw(permanent_pool, l, NULL, PR_NETIO_STRM_CTRL, fd,
+    STDIN_FILENO, STDOUT_FILENO, FALSE);
   
   /* Now do the permanent syslog open
    */
@@ -2890,7 +2897,7 @@ int main(int argc, char **argv, char **envp)
   pr_init_regexp();
   init_log();
   init_inet();
-  init_io();
+  pr_init_netio();
   init_fs();
   init_config();
   init_modules();

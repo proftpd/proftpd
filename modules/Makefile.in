@@ -39,108 +39,62 @@ depend:
 mod_auth.o: ../include/conf.h ../include/version.h ../config.h
 mod_auth.o: ../include/default_paths.h ../include/options.h ../include/pool.h
 mod_auth.o: ../include/proftpd.h ../include/support.h ../include/sets.h
-mod_auth.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+mod_auth.o: ../include/dirtree.h ../include/netio.h ../include/modules.h
 mod_auth.o: ../include/timers.h ../include/inet.h ../include/ident.h
 mod_auth.o: ../include/ftp.h ../include/log.h ../include/data.h
-mod_auth.o: ../include/libsupp.h ../include/fs.h ../include/privs.h
+mod_auth.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
+mod_auth.o: ../include/privs.h
 mod_core.o: ../include/conf.h ../include/version.h ../config.h
 mod_core.o: ../include/default_paths.h ../include/options.h ../include/pool.h
 mod_core.o: ../include/proftpd.h ../include/support.h ../include/sets.h
-mod_core.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+mod_core.o: ../include/dirtree.h ../include/netio.h ../include/modules.h
 mod_core.o: ../include/timers.h ../include/inet.h ../include/ident.h
 mod_core.o: ../include/ftp.h ../include/log.h ../include/data.h
-mod_core.o: ../include/libsupp.h ../include/fs.h ../include/privs.h
-mod_linuxprivs.o: ../include/conf.h ../include/version.h ../config.h
-mod_linuxprivs.o: ../include/default_paths.h ../include/options.h
-mod_linuxprivs.o: ../include/pool.h ../include/proftpd.h ../include/support.h
-mod_linuxprivs.o: ../include/sets.h ../include/dirtree.h ../include/io.h
-mod_linuxprivs.o: ../include/modules.h ../include/timers.h ../include/inet.h
-mod_linuxprivs.o: ../include/ident.h ../include/ftp.h ../include/log.h
-mod_linuxprivs.o: ../include/data.h ../include/libsupp.h ../include/fs.h
-mod_linuxprivs.o: ../include/privs.h
-mod_linuxprivs.o: ../contrib/libcap/include/sys/capability.h
+mod_core.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
+mod_core.o: ../include/privs.h
 mod_log.o: ../include/conf.h ../include/version.h ../config.h
 mod_log.o: ../include/default_paths.h ../include/options.h ../include/pool.h
 mod_log.o: ../include/proftpd.h ../include/support.h ../include/sets.h
-mod_log.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+mod_log.o: ../include/dirtree.h ../include/netio.h ../include/modules.h
 mod_log.o: ../include/timers.h ../include/inet.h ../include/ident.h
 mod_log.o: ../include/ftp.h ../include/log.h ../include/data.h
-mod_log.o: ../include/libsupp.h ../include/fs.h ../include/privs.h
+mod_log.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
+mod_log.o: ../include/privs.h
 mod_ls.o: ../include/conf.h ../include/version.h ../config.h
 mod_ls.o: ../include/default_paths.h ../include/options.h ../include/pool.h
 mod_ls.o: ../include/proftpd.h ../include/support.h ../include/sets.h
-mod_ls.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+mod_ls.o: ../include/dirtree.h ../include/netio.h ../include/modules.h
 mod_ls.o: ../include/timers.h ../include/inet.h ../include/ident.h
 mod_ls.o: ../include/ftp.h ../include/log.h ../include/data.h
-mod_ls.o: ../include/libsupp.h ../include/fs.h
-mod_mysql.o: ../include/conf.h ../include/version.h ../config.h
-mod_mysql.o: ../include/default_paths.h ../include/options.h
-mod_mysql.o: ../include/pool.h ../include/proftpd.h ../include/support.h
-mod_mysql.o: ../include/sets.h ../include/dirtree.h ../include/io.h
-mod_mysql.o: ../include/modules.h ../include/timers.h ../include/inet.h
-mod_mysql.o: ../include/ident.h ../include/ftp.h ../include/log.h
-mod_mysql.o: ../include/data.h ../include/libsupp.h ../include/fs.h
+mod_ls.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
 mod_pam.o: ../include/conf.h ../include/version.h ../config.h
 mod_pam.o: ../include/default_paths.h ../include/options.h ../include/pool.h
 mod_pam.o: ../include/proftpd.h ../include/support.h ../include/sets.h
-mod_pam.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+mod_pam.o: ../include/dirtree.h ../include/netio.h ../include/modules.h
 mod_pam.o: ../include/timers.h ../include/inet.h ../include/ident.h
 mod_pam.o: ../include/ftp.h ../include/log.h ../include/data.h
-mod_pam.o: ../include/libsupp.h ../include/fs.h ../include/privs.h
-mod_ratio.o: ../include/conf.h ../include/version.h ../config.h
-mod_ratio.o: ../include/default_paths.h ../include/options.h
-mod_ratio.o: ../include/pool.h ../include/proftpd.h ../include/support.h
-mod_ratio.o: ../include/sets.h ../include/dirtree.h ../include/io.h
-mod_ratio.o: ../include/modules.h ../include/timers.h ../include/inet.h
-mod_ratio.o: ../include/ident.h ../include/ftp.h ../include/log.h
-mod_ratio.o: ../include/data.h ../include/libsupp.h ../include/fs.h
-mod_readme.o: ../include/conf.h ../include/version.h ../config.h
-mod_readme.o: ../include/default_paths.h ../include/options.h
-mod_readme.o: ../include/pool.h ../include/proftpd.h ../include/support.h
-mod_readme.o: ../include/sets.h ../include/dirtree.h ../include/io.h
-mod_readme.o: ../include/modules.h ../include/timers.h ../include/inet.h
-mod_readme.o: ../include/ident.h ../include/ftp.h ../include/log.h
-mod_readme.o: ../include/data.h ../include/libsupp.h ../include/fs.h
-mod_sample.o: ../include/conf.h ../include/version.h ../config.h
-mod_sample.o: ../include/default_paths.h ../include/options.h
-mod_sample.o: ../include/pool.h ../include/proftpd.h ../include/support.h
-mod_sample.o: ../include/sets.h ../include/dirtree.h ../include/io.h
-mod_sample.o: ../include/modules.h ../include/timers.h ../include/inet.h
-mod_sample.o: ../include/ident.h ../include/ftp.h ../include/log.h
-mod_sample.o: ../include/data.h ../include/libsupp.h ../include/fs.h
+mod_pam.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
+mod_pam.o: ../include/privs.h
 mod_site.o: ../include/conf.h ../include/version.h ../config.h
 mod_site.o: ../include/default_paths.h ../include/options.h ../include/pool.h
 mod_site.o: ../include/proftpd.h ../include/support.h ../include/sets.h
-mod_site.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+mod_site.o: ../include/dirtree.h ../include/netio.h ../include/modules.h
 mod_site.o: ../include/timers.h ../include/inet.h ../include/ident.h
 mod_site.o: ../include/ftp.h ../include/log.h ../include/data.h
-mod_site.o: ../include/libsupp.h ../include/fs.h
-mod_tar.o: ../include/conf.h ../include/version.h ../config.h
-mod_tar.o: ../include/default_paths.h ../include/options.h ../include/pool.h
-mod_tar.o: ../include/proftpd.h ../include/support.h ../include/sets.h
-mod_tar.o: ../include/dirtree.h ../include/io.h ../include/modules.h
-mod_tar.o: ../include/timers.h ../include/inet.h ../include/ident.h
-mod_tar.o: ../include/ftp.h ../include/log.h ../include/data.h
-mod_tar.o: ../include/libsupp.h ../include/fs.h
-mod_test.o: ../include/conf.h ../include/version.h ../config.h
-mod_test.o: ../include/default_paths.h ../include/options.h ../include/pool.h
-mod_test.o: ../include/proftpd.h ../include/support.h ../include/sets.h
-mod_test.o: ../include/dirtree.h ../include/io.h ../include/modules.h
-mod_test.o: ../include/timers.h ../include/inet.h ../include/ident.h
-mod_test.o: ../include/ftp.h ../include/log.h ../include/data.h
-mod_test.o: ../include/libsupp.h ../include/fs.h
+mod_site.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
 mod_unixpw.o: ../include/conf.h ../include/version.h ../config.h
 mod_unixpw.o: ../include/default_paths.h ../include/options.h
 mod_unixpw.o: ../include/pool.h ../include/proftpd.h ../include/support.h
-mod_unixpw.o: ../include/sets.h ../include/dirtree.h ../include/io.h
+mod_unixpw.o: ../include/sets.h ../include/dirtree.h ../include/netio.h
 mod_unixpw.o: ../include/modules.h ../include/timers.h ../include/inet.h
 mod_unixpw.o: ../include/ident.h ../include/ftp.h ../include/log.h
-mod_unixpw.o: ../include/data.h ../include/libsupp.h ../include/fs.h
-mod_unixpw.o: ../include/privs.h
+mod_unixpw.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
+mod_unixpw.o: ../include/fs.h ../include/privs.h
 mod_xfer.o: ../include/conf.h ../include/version.h ../config.h
 mod_xfer.o: ../include/default_paths.h ../include/options.h ../include/pool.h
 mod_xfer.o: ../include/proftpd.h ../include/support.h ../include/sets.h
-mod_xfer.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+mod_xfer.o: ../include/dirtree.h ../include/netio.h ../include/modules.h
 mod_xfer.o: ../include/timers.h ../include/inet.h ../include/ident.h
 mod_xfer.o: ../include/ftp.h ../include/log.h ../include/data.h
-mod_xfer.o: ../include/libsupp.h ../include/fs.h
+mod_xfer.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
+mod_xfer.o: ../include/privs.h

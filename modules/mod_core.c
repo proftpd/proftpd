@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.108 2002-09-13 22:51:12 castaglia Exp $
+ * $Id: mod_core.c,v 1.109 2002-09-13 23:14:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2723,7 +2723,8 @@ MODRET cmd_pasv(cmd_rec *cmd) {
   inet_setblock(session.pool, session.d);
   inet_listen(session.pool, session.d, 1);
   
-  session.d->inf = io_open(session.pool, session.d->listen_fd, IO_READ);
+  session.d->instrm = pr_netio_open(session.pool, PR_NETIO_STRM_DATA,
+    session.d->listen_fd, PR_NETIO_IO_RD);
 
   /* Now tell the client our address/port */
   session.data_port = session.d->local_port;

@@ -270,18 +270,19 @@ char *inet_getname(pool *pool, p_in_addr_t *addr)
 static void conn_cleanup_cb(void *cv) { 
   conn_t *c = (conn_t*)cv;
 
-  if(c->inf)
-    io_close(c->inf);
-  if(c->outf && c->outf != c->inf)
-    io_close(c->outf);
+  if (c->instrm)
+    pr_netio_close(c->instrm);
 
-  if(c->listen_fd != -1)
+  if (c->outstrm && c->outstrm != c->instrm)
+    pr_netio_close(c->outstrm);
+
+  if (c->listen_fd != -1)
     close(c->listen_fd);
 
-  if(c->rfd != -1)
+  if (c->rfd != -1)
     close(c->rfd);
 
-  if(c->wfd != -1)
+  if (c->wfd != -1)
     close(c->wfd);
 }
 
@@ -290,8 +291,7 @@ static void conn_cleanup_cb(void *cv) {
  * connection.
  */
 
-conn_t *inet_copy_connection(pool *p, conn_t *c)
-{
+conn_t *inet_copy_connection(pool *p, conn_t *c) {
   conn_t *res;
   pool *subpool;
 
@@ -300,7 +300,7 @@ conn_t *inet_copy_connection(pool *p, conn_t *c)
 
   memcpy(res,c,sizeof(conn_t));
   res->pool = subpool;
-  res->inf = res->outf = NULL;
+  res->instrm = res->outstrm = NULL;
 
   if(c->local_ipaddr) {
     res->local_ipaddr = (p_in_addr_t*)palloc(res->pool,sizeof(p_in_addr_t));
@@ -663,9 +663,8 @@ conn_t *inet_create_connection_portrange(pool *p, xaset_t *servers,
   return c;
 }
 
-void inet_close(pool *pool, conn_t *c)
-{
-  /* It's not necessary to close the fds or schedule IOFILEs for
+void inet_close(pool *pool, conn_t *c) {
+  /* It's not necessary to close the fds or schedule netio streams for
    * removal, because the creator of the connection (either
    * inet_create_connection() or inet_copy_connection() will
    * have registered a pool cleanup handler (conn_cleanup_cb())
@@ -680,17 +679,17 @@ void inet_close(pool *pool, conn_t *c)
 void inet_lingering_close(pool *pool, conn_t *c, long linger) {
   inet_setblock(pool, c);
 
-  if (c->outf)
-    io_lingering_close(c->outf, linger);
+  if (c->outstrm)
+    pr_netio_lingering_close(c->outstrm, linger);
 
   /* Only close the input stream if it is actually a different stream than
    * the output stream.
    */
-  if (c->inf != c->outf)
-    io_lingering_close(c->inf, linger);
+  if (c->instrm != c->outstrm)
+    pr_netio_lingering_close(c->instrm, linger);
 
-  c->outf = NULL;
-  c->inf = NULL;
+  c->outstrm = NULL;
+  c->instrm = NULL;
 
   destroy_pool(c->pool);
 }
@@ -959,8 +958,7 @@ int inet_connect(pool *pool, conn_t *c, p_in_addr_t *addr, int port)
  * called once, and can then be selected for writing.
  */
 
-int inet_connect_nowait(pool *pool, conn_t *c, p_in_addr_t *addr, int port)
-{
+int inet_connect_nowait(pool *pool, conn_t *c, p_in_addr_t *addr, int port) {
   struct sockaddr_in remaddr;
 
   inet_setnonblock(pool,c);
@@ -1057,7 +1055,8 @@ conn_t *inet_accept(pool *pool, conn_t *d, conn_t *c, int rfd, int wfd,
 	}
       }
       d->mode = CM_OPEN;
-      res = inet_openrw(pool, d, NULL, newfd, rfd, wfd, resolve);
+      res = inet_openrw(pool, d, NULL, PR_NETIO_STRM_DATA, newfd, rfd, wfd,
+        resolve);
 
     } else {
       d->mode = CM_ERROR;
@@ -1110,16 +1109,15 @@ int inet_get_conn_info(conn_t *c, int fd) {
  * If resolve is non-zero, the remote address is reverse resolved.
  */
 
-conn_t *inet_associate(pool *pool, conn_t *c, p_in_addr_t *addr, 
-                       IOFILE *inf, IOFILE *outf, int resolve)
-{
+conn_t *inet_associate(pool *pool, conn_t *c, p_in_addr_t *addr,
+    pr_netio_stream_t *in, pr_netio_stream_t *out, int resolve) {
   int rfd,wfd;
   int socktype;
   int socktype_len = sizeof(socktype);
   conn_t *res;
 
-  rfd = inf->fd;
-  wfd = outf->fd;
+  rfd = PR_NETIO_FD(in);
+  wfd = PR_NETIO_FD(out);
 
   if(getsockopt(rfd,SOL_SOCKET,SO_TYPE,(void*)&socktype,&socktype_len) == -1 ||
      socktype != SOCK_STREAM)
@@ -1133,8 +1131,8 @@ conn_t *inet_associate(pool *pool, conn_t *c, p_in_addr_t *addr,
 
   res->rfd = rfd;
   res->wfd = wfd;
-  res->inf = inf;
-  res->outf = outf;
+  res->instrm = in;
+  res->outstrm = out;
   res->mode = CM_OPEN;
 
   if (inet_get_conn_info(res, wfd) < 0)
@@ -1176,9 +1174,8 @@ conn_t *inet_associate(pool *pool, conn_t *c, p_in_addr_t *addr,
  * Important, do not call any log_* functions from inside of inet_openrw()
  * or any functions it calls, as the possibility for fd overwriting occurs.
  */
-conn_t *inet_openrw(pool *pool, conn_t *c, p_in_addr_t *addr, int fd,
-                    int rfd,int wfd, int resolve)
-{
+conn_t *inet_openrw(pool *pool, conn_t *c, p_in_addr_t *addr,
+    int strm_type, int fd, int rfd, int wfd, int resolve) {
   conn_t *res = NULL;
   int close_fd = TRUE;
 
@@ -1237,8 +1234,8 @@ conn_t *inet_openrw(pool *pool, conn_t *c, p_in_addr_t *addr, int fd,
   res->rfd = rfd;
   res->wfd = wfd;
 
-  res->inf = io_open(res->pool,res->rfd,IO_READ);
-  res->outf = io_open(res->pool,res->wfd,IO_WRITE);
+  res->instrm = pr_netio_open(res->pool, strm_type, res->rfd, PR_NETIO_IO_RD);
+  res->outstrm = pr_netio_open(res->pool, strm_type, res->wfd, PR_NETIO_IO_WR);
 
   /* Set options on the sockets. */
   inet_setoptions(res->pool,res,0,0);

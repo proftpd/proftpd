@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.63 2002-09-13 22:51:12 castaglia Exp $
+ * $Id: mod_ls.c,v 1.64 2002-09-13 23:14:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -235,7 +235,7 @@ static int sendline(char *fmt, ...) {
   if (!fmt) {
     if ((res = data_xfer(listbuf, strlen(listbuf))) < 0)
       log_debug(DEBUG3, "data_xfer returned %d, error = %s.", res,
-        strerror(session.d->outf->xerrno));
+        strerror(PR_NETIO_ERRNO(session.d->outstrm)));
 
     memset(listbuf, '\0', sizeof(listbuf));
     return res;
@@ -251,7 +251,7 @@ static int sendline(char *fmt, ...) {
   if (strlen(buf) >= (sizeof(listbuf) - strlen(listbuf))) {
     if ((res = data_xfer(listbuf, strlen(listbuf))) < 0)
       log_debug(DEBUG3, "data_xfer returned %d, error = %s.", res,
-        strerror(session.d->outf->xerrno));
+        strerror(PR_NETIO_ERRNO(session.d->outstrm)));
 
     memset(listbuf, '\0', sizeof(listbuf));
   }
@@ -961,12 +961,13 @@ static void ls_terminate(void) {
       if(ls_errno)
         data_abort(ls_errno,FALSE);
       else
-        data_abort((session.d && session.d->outf ? 
-                   session.d->outf->xerrno : errno),FALSE);
+        data_abort((session.d && session.d->outstrm ? 
+                   PR_NETIO_ERRNO(session.d->outstrm) : errno),FALSE);
     }
     ls_errno = 0;
+
   } else if(ls_errno) {
-    add_response(R_211,"ERROR: %s",strerror(ls_errno));
+    add_response(R_211, "ERROR: %s", strerror(ls_errno));
     ls_errno = 0;
   }
 }
@@ -1051,7 +1052,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
   /* open data connection */
   if(!opt_STAT) {
     session.flags |= SF_ASCII_OVERRIDE;
-    if(data_open(NULL,"file list",IO_WRITE,0) < 0)
+    if(data_open(NULL,"file list", PR_NETIO_IO_WR, 0) < 0)
       return -1;
   }
   
@@ -1260,7 +1261,7 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
 
   /* If the data connection isn't open, open it now. */
   if ((session.flags & SF_XFER) == 0) {
-    if (data_open(NULL, "file list", IO_WRITE, 0) < 0) {
+    if (data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
       data_reset();
       return -1;
     }
@@ -1348,8 +1349,8 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
         continue;
 
       /* If the data connection isn't open, open it now. */
-      if((session.flags & SF_XFER) == 0) {
-	if(data_open(NULL, "file list", IO_WRITE, 0) < 0) {
+      if ((session.flags & SF_XFER) == 0) {
+	if (data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
 	  data_reset();
 	  count = -1;
 	  continue;

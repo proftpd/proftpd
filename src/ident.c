@@ -30,17 +30,17 @@
 #include "conf.h"
 
 static int ident_timeout;
-static IOFILE *io;
+static pr_netio_stream_t *nstrm = NULL;
 
-static int _ident_timeout(CALLBACK_FRAME)
-{
+static int ident_timer_cb(CALLBACK_FRAME) {
   ident_timeout++;
 
-  if(io)
-    /* Abort the IOFILE, which will cause io_poll (and thus io_read) to
-     * also abort.  This is similar to the way data connects are aborted
+  if (nstrm)
+    /* Abort the NetIO stream, which will cause netio_poll (and thus
+     * netio_read) to also abort.  This is similar to the way data connects
+     * are aborted.
      */
-    io_abort(io);
+    pr_netio_abort(nstrm);
     
   return 0;
 }
@@ -55,7 +55,7 @@ char *get_ident(pool *p, conn_t *c) {
 
   tmp_pool = make_sub_pool(p);
   ident_timeout = 0;
-  io = NULL;
+  nstrm = NULL;
 
   if (ident_port == -1) {
     destroy_pool(tmp_pool);
@@ -64,11 +64,11 @@ char *get_ident(pool *p, conn_t *c) {
  
   /* Set up our timer before going any further. */
   if ((timer = add_timer(TUNABLE_TIMEOUTIDENT, -1, NULL,
-      (callback_t) _ident_timeout)) <= 0) {
+      (callback_t) ident_timer_cb)) <= 0) {
     destroy_pool(tmp_pool);
     return pstrdup(p, ret);
   }
- 
+
   ident_conn = inet_create_connection(tmp_pool, NULL, -1, c->local_ipaddr,
     INPORT_ANY, FALSE);
   inet_setnonblock(tmp_pool, ident_conn);
@@ -83,16 +83,17 @@ char *get_ident(pool *p, conn_t *c) {
  
   if (!i) {
     /* Not yet connected. */ 
-    io = io_open(p, ident_conn->listen_fd, IO_READ);
-    io_set_poll_sleep(io, 1);
+    nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR, ident_conn->listen_fd,
+      PR_NETIO_IO_RD);
+    pr_netio_set_poll_interval(nstrm, 1);
 
-    switch (io_poll(io)) {
+    switch (pr_netio_poll(nstrm)) {
 
       /* Aborted, timed out */
       case 1:
         if (ident_timeout) {
           remove_timer(timer, NULL);
-          io_close(io);
+          pr_netio_close(nstrm);
           inet_close(tmp_pool, ident_conn);
           destroy_pool(tmp_pool);
           return pstrdup(p, ret);
@@ -102,7 +103,7 @@ char *get_ident(pool *p, conn_t *c) {
       /* Error. */
       case -1:
         remove_timer(timer, NULL);
-        io_close(io);
+        pr_netio_close(nstrm);
         inet_close(tmp_pool, ident_conn);
         destroy_pool(tmp_pool);
         return pstrdup(p, ret);
@@ -113,7 +114,7 @@ char *get_ident(pool *p, conn_t *c) {
 
         if (inet_get_conn_info(ident_conn, ident_conn->listen_fd) < 0) {
           remove_timer(timer, NULL);
-          io_close(io);
+          pr_netio_close(nstrm);
           inet_close(tmp_pool, ident_conn);
           destroy_pool(tmp_pool);
           return pstrdup(p, ret);
@@ -122,30 +123,31 @@ char *get_ident(pool *p, conn_t *c) {
     }
   }
 
-  if ((ident_io = inet_openrw(tmp_pool, ident_conn, NULL, -1, -1, -1,
-      FALSE)) == NULL) {
+  if ((ident_io = inet_openrw(tmp_pool, ident_conn, NULL, PR_NETIO_STRM_OTHR,
+      -1, -1, -1, FALSE)) == NULL) {
     remove_timer(timer, NULL);
     inet_close(tmp_pool, ident_conn);
     destroy_pool(tmp_pool);
     return pstrdup(p, ret);
   }
 
-  io = ident_io->inf;
+  nstrm = ident_io->instrm;
 
   inet_setnonblock(tmp_pool, ident_io);
-  io_set_poll_sleep(ident_io->inf, 1);
-  io_set_poll_sleep(ident_io->outf, 1);
+  pr_netio_set_poll_interval(ident_io->instrm, 1);
+  pr_netio_set_poll_interval(ident_io->outstrm, 1);
 
-  io_printf(ident_io->outf, "%d, %d\r\n", c->remote_port, c->local_port);
+  pr_netio_printf(ident_io->outstrm, "%d, %d\r\n", c->remote_port,
+    c->local_port);
 
-  /* If the timer fires while in io_gets, io_gets will simply return
-   * either a partial string, or NULL.  This works because _ident_timeout
-   * aborts the IOFILE we are reading on.  io_set_poll_sleep() is used
-   * to make sure significant delays don't occur on systems that
+  /* If the timer fires while in netio_gets(), netio_gets() will simply return
+   * either a partial string, or NULL.  This works because ident_timer_cb
+   * aborts the stream from which we are reading.  netio_set_poll_interval() is
+   * used to make sure significant delays don't occur on systems that
    * automatically restart syscalls after the SIGALRM signal.
    */
   
-  if (io_gets(buf, sizeof(buf), ident_io->inf)) {
+  if (pr_netio_gets(buf, sizeof(buf), ident_io->instrm)) {
     strip_end(buf, "\r\n");
     
     tmp = buf;
