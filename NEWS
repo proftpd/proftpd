@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.484 2003-09-27 20:48:31 castaglia Exp $
+$Id: NEWS,v 1.485 2003-10-01 14:21:31 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -17,6 +17,10 @@ CVS
 - Bug 2024 - DefaultServer not functioning properly.
   The addition of the Bindings API in 1.2.8rc1 inadvertently caused the
   DefaultServer directive to not be properly honored in some configurations.
+- Bug 2191 - Segfault in mod_sql_mysql when using 'Backend' SQLAuthType.
+  This happens only with MySQL 4.1.  In MySQL 4.1, the way in which MySQL
+  handles its passwords changed, and mod_sql_mysql was using the new
+  interface incorrectly.
 
 1.2.9rc2 - Released 11-Sep-2003
 ---------------------------------
