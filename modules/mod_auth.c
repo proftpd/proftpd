@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.149 2003-04-25 04:13:39 castaglia Exp $
+ * $Id: mod_auth.c,v 1.150 2003-04-30 18:20:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1287,7 +1287,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     unsigned char *show_symlinks = get_param_ptr(
       c ? c->subset : main_server->conf, "ShowSymlinks", FALSE);
 
-    if (show_symlinks && *show_symlinks == TRUE)
+    if (!show_symlinks || *show_symlinks == TRUE)
       showsymlinks = TRUE;
     else
       showsymlinks = FALSE;
