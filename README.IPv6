@@ -9,7 +9,6 @@ In particular, here are some things that may be affected:
   UseReverseDNS
   SocketBindTight
   active/passive transfers (PORT, PASV, EPRT, EPSV)
-  SSL/TLS (mod_tls)
 
 Please report any IPv6-related problems with the above to the bug tracking
 system as soon as possible, so that we may fix it:
