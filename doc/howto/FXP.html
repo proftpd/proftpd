@@ -1,4 +1,4 @@
-<!-- $Id: FXP.html,v 1.1 2004-04-10 20:42:51 castaglia Exp $ -->
+<!-- $Id: FXP.html,v 1.2 2004-09-12 23:36:35 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/FXP.html,v $ -->
 
 <html>
@@ -119,8 +119,14 @@ by using the <a href="http://www.proftpd.org/docs/directives/linked/config_ref_A
 directive.
 
 <p>
+Note that even if <code>AllowForeignAddress</code> is enabled, you may still
+encounter trouble with site-to-site transfers involving your server.
+These issues usually arise from firewall configurations, or with upstream
+ISPs performing filtering on the FTP port.
+
+<p>
 <hr>
-Last Updated: <i>$Date: 2004-04-10 20:42:51 $</i><br>
+Last Updated: <i>$Date: 2004-09-12 23:36:35 $</i><br>
 <hr>
 
 </body>
