@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.282 2002-11-18 16:15:38 castaglia Exp $
+$Id: NEWS,v 1.283 2002-11-19 17:57:48 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -6,6 +6,10 @@ CVS
   a default device of /dev/log.un rather than /dev/log.
 - Bug 1844 - DisplayLogin %y macro is off by 1.  Consequence of scoreboarding
   code changes.
+- Bug 1838 - Since 1.2.6: in add_useralias() setting flag CF_MERGEDOWN breaks
+  aliased anonymous functionality.  The fix was to set the CF_MERGEDOWN flag
+  only if the UserAlias directive is not being used in the <Anonymous>
+  context.
 
 1.2.7rc3 - Released 15-11-2002
 ---------------------------------

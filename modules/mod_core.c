@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.118 2002-11-18 16:15:41 castaglia Exp $
+ * $Id: mod_core.c,v 1.119 2002-11-19 17:57:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1515,7 +1515,7 @@ MODRET add_directory(cmd_rec *cmd) {
    * probably OK, as this overriding only takes effect for the <Anonymous>
    * user.
    */
-  if (!check_conf(cmd, CONF_ANON) &&
+  if (!check_context(cmd, CONF_ANON) &&
       find_config(cmd->server->conf, CONF_DIR, dir, FALSE) != NULL)
     return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
       cmd->argv[0], ": <Directory> section already configured for '",
@@ -2208,18 +2208,6 @@ MODRET set_ignorehidden(cmd_rec *cmd) {
     CONF_ERROR(cmd, "expected boolean argument.");
 
   c = add_config_param(cmd->argv[0], 1, (void *) bool);
-
-  return HANDLED(cmd);
-}
-
-MODRET add_useralias(cmd_rec *cmd) {
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 2);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-
-  c = add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
-  c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
 }
@@ -3646,7 +3634,6 @@ static conftable core_conftab[] = {
   { "Umask",			set_umask,			NULL },
   { "UseReverseDNS",		set_usereversedns,		NULL },
   { "User",			set_user,			NULL },
-  { "UserAlias",		add_useralias, 			NULL },
   { "UserOwner",		add_userowner,			NULL },
   { "WtmpLog",			set_wtmplog,			NULL },
   { "tcpBackLog",		set_tcpbacklog,			NULL },

@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.21 2002-10-21 17:06:09 castaglia Exp $
+ * $Id: dirtree.h,v 1.22 2002-11-19 17:57:48 castaglia Exp $
  */
 
 #ifndef __DIRTREE_H
@@ -161,7 +161,7 @@ extern int			TimeoutStalled;
 
 #define CHECK_HASARGS(x, n)	((x)->argc - 1) == n
 
-#define CHECK_CONF(x,p)		if(!check_conf((x),(p))) \
+#define CHECK_CONF(x,p)		if (!check_context((x),(p))) \
 				CONF_ERROR((x), \
 				pstrcat((x)->tmp_pool,"directive not allowed in ", \
 				get_context_name((x)), \
@@ -236,7 +236,7 @@ int login_check_limits(xaset_t *, int, int, int *);
 void resolve_anonymous_dirs(xaset_t *);
 void resolve_defered_dirs(server_rec *);
 void fixup_dirs(server_rec *, int);
-unsigned char check_conf(cmd_rec *, int);
+unsigned char check_context(cmd_rec *, int);
 char *get_context_name(cmd_rec *);
 int get_boolean(cmd_rec *, int);
 char *get_full_cmd(cmd_rec *);

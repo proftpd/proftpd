@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.74 2002-11-13 14:37:42 castaglia Exp $
+ * $Id: dirtree.c,v 1.75 2002-11-19 17:57:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2945,7 +2945,7 @@ void init_config(void) {
 /* These functions are used by modules to help parse configuration.
  */
 
-unsigned char check_conf(cmd_rec *cmd, int allowed) {
+unsigned char check_context(cmd_rec *cmd, int allowed) {
   int ctxt = (cmd->config && cmd->config->config_type != CONF_PARAM ?
      cmd->config->config_type : cmd->server->config_type ?
      cmd->server->config_type : CONF_ROOT);

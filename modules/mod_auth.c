@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.105 2002-11-18 17:15:47 castaglia Exp $
+ * $Id: mod_auth.c,v 1.106 2002-11-19 17:57:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2360,6 +2360,23 @@ MODRET set_useftpusers(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+MODRET set_useralias(cmd_rec *cmd) {
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 2);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  c = add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
+
+  /* Note: only merge this directive down if it is not appearing in an
+   * <Anonymous> context.
+   */
+  if (!check_context(cmd, CONF_ANON))
+    c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
 MODRET add_userdirroot (cmd_rec *cmd) {
   int bool;
   CHECK_ARGS(cmd,1);
@@ -2408,6 +2425,7 @@ static conftable auth_conftab[] = {
   { "TimeoutLogin",		set_timeoutlogin,		NULL },
   { "TimeoutSession",		set_timeoutsession,		NULL },
   { "UseFtpUsers",		set_useftpusers,		NULL },
+  { "UserAlias",		set_useralias,			NULL },
   { "UserDirRoot",		add_userdirroot,		NULL },
   { "UserPassword",		set_userpassword,		NULL },
   { NULL,			NULL,				NULL }
