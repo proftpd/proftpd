@@ -407,13 +407,13 @@ LIBS="-lsupp $LIBS"
 dnl Module handling.
 for module in $ac_addl_modules; do
   src=`echo "$module" | sed -e 's/\.o$//'`.c;
-  if test -f modules/$src; then
-    alib=`cat modules/$src | grep "\\\$Libraries:" | sed -e 's/^.*\$Libraries: \(.*\)\\$/\1/'`
+  if test -f $srcdir/modules/$src; then
+    alib=`cat $srcdir/modules/$src | grep "\\\$Libraries:" | sed -e 's/^.*\$Libraries: \(.*\)\\$/\1/'`
     test x"$alib" = x || ac_addl_libs="$alib $ac_addl_libs"
-    adir=`cat modules/$src | grep "\\\$Directories:" | sed -e 's/^.*\$Directories: \(.*\)\\$/\1/'`
+    adir=`cat $srcdir/modules/$src | grep "\\\$Directories:" | sed -e 's/^.*\$Directories: \(.*\)\\$/\1/'`
     test x"$adir" = x || ac_addl_dirs="$adir $ac_addl_dirs"
   else
-    echo "source file 'modules/$src' cannot be found -- aborting"
+    echo "source file '$srcdir/modules/$src' cannot be found -- aborting"
     exit 1
   fi
 done
@@ -425,7 +425,7 @@ ADDL_DIRS="$ac_addl_dirs"
 
 MODULES="$ac_core_modules $ac_addl_modules"
 BUILD_MODULES="$ac_build_core_modules $ac_build_addl_modules"
-VERSION=`cat include/version.h | grep "#define VERSION" | sed -e 's/^.*\"\(.*\)\"/\1/'`
+VERSION=`cat $srcdir/include/version.h | grep "#define VERSION" | sed -e 's/^.*\"\(.*\)\"/\1/'`
 
 AC_SUBST(MODULES)
 AC_SUBST(BUILD_MODULES)
