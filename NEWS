@@ -1,7 +1,8 @@
-$Id: NEWS,v 1.141 2001-11-29 18:54:12 flood Exp $
+$Id: NEWS,v 1.142 2001-11-30 17:34:16 flood Exp $
 
 1.2.5rc1 - CVS
 ---------------------------------
+- New mod_sql (4.07)
 - New mod_wrap (1.2.2)
 - Bug 1113 Make.rules for HPUX incorrectly generated
 - Bug 1334 (should have been in 1.2.4, but was missed somehow)
