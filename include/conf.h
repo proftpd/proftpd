@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.41 2003-09-05 19:42:09 castaglia Exp $
+ * $Id: conf.h,v 1.42 2003-09-11 06:36:11 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -345,6 +345,12 @@ typedef struct {
   char na_ipstr[INET_ADDRSTRLEN];
 #endif /* USE_IPV6 */
   int na_have_ipstr;
+
+  /* Note: at some point, this union might/should be replaced with
+   * struct sockaddr_storage.  Why?  The sockaddr_storage struct is
+   * better defined to be aligned on OS/arch boundaries, for more efficient
+   * allocation/access.
+   */
 
   union {
     struct sockaddr_in v4;
