@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.260 2004-11-02 18:18:59 castaglia Exp $
+ * $Id: main.c,v 1.261 2004-11-11 02:44:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -709,7 +709,10 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, int flags) {
   *((char **) push_array(tarr)) = NULL;
   cmd->argv = (char **) tarr->elts;
 
-  cmd->notes = pr_table_alloc(cmd->pool, 0);
+  /* This table will not contain that many entries, so a low number
+   * of chains should suffice.
+   */
+  cmd->notes = pr_table_nalloc(cmd->pool, 0, 8);
   return cmd;
 }
 

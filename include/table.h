@@ -23,7 +23,7 @@
  */
 
 /* Table management
- * $Id: table.h,v 1.2 2004-11-03 01:54:38 castaglia Exp $
+ * $Id: table.h,v 1.3 2004-11-11 02:44:04 castaglia Exp $
  */
 
 #ifndef PR_TABLE_H
@@ -259,5 +259,10 @@ void *pr_table_kremove(pr_table_t *tab, const void *key_data,
  */
 int pr_table_kset(pr_table_t *tab, const void *key_data, size_t key_datasz,
   void *value_data, size_t value_datasz);
+
+/* Similar to pr_table_alloc(), except that the number of chains can
+ * be explicitly configured.
+ */
+pr_table_t *pr_table_nalloc(pool *p, int flags, unsigned int nchains);
 
 #endif /* PR_TABLE_H */

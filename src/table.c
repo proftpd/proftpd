@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.3 2004-11-03 01:54:38 castaglia Exp $
+ * $Id: table.c,v 1.4 2004-11-11 02:44:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -668,7 +668,7 @@ int pr_table_add_dup(pr_table_t *tab, const char *key_data, void *value_data,
   return pr_table_add(tab, key_data, dup_data, value_datasz);
 }
 
-pr_table_t *pr_table_alloc(pool *p, int flags) {
+pr_table_t *pr_table_nalloc(pool *p, int flags, unsigned int nchains) {
   pr_table_t *tab;
   pool *tab_pool;
 
@@ -683,7 +683,7 @@ pr_table_t *pr_table_alloc(pool *p, int flags) {
   tab = pcalloc(tab_pool, sizeof(pr_table_t));
   tab->pool = tab_pool;
   tab->flags = flags;
-  tab->nchains = PR_TABLE_DEFAULT_NCHAINS;
+  tab->nchains = nchains;
   tab->chains = pcalloc(tab_pool,
     sizeof(pr_table_entry_t *) * tab->nchains);
 
@@ -693,6 +693,10 @@ pr_table_t *pr_table_alloc(pool *p, int flags) {
   tab->entremove = entry_remove;
 
   return tab;
+}
+
+pr_table_t *pr_table_alloc(pool *p, int flags) {
+  return pr_table_nalloc(p, flags, PR_TABLE_DEFAULT_NCHAINS);
 }
 
 int pr_table_count(pr_table_t *tab) {
