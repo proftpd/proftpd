@@ -19,7 +19,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.10 1999-10-01 03:35:31 macgyver Exp $
+ * $Id: mod_auth.c,v 1.11 1999-10-01 03:49:07 macgyver Exp $
  */
 
 #include "conf.h"
@@ -925,6 +925,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
    * sigh.
    */
 
+#ifndef __hpux
   block_signals();
 
   PRIVS_ROOT
@@ -935,6 +936,11 @@ static int _setup_environment(pool *p, char *user, char *pass)
   PRIVS_SETUP(pw->pw_uid,pw->pw_gid)
 
   unblock_signals();
+#else
+  session.uid = session.ouid = pw->pw_uid;
+  session.gid = pw->pw_gid;
+  PRIVS_RELINQUISH
+#endif
 
 #ifdef HAVE_GETEUID
   if(getegid() != pw->pw_gid ||

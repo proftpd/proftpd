@@ -17,7 +17,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-/* $Id: privs.h,v 1.1 1998-10-18 02:24:41 flood Exp $
+/* $Id: privs.h,v 1.2 1999-10-01 03:49:07 macgyver Exp $
  */
 
 #ifndef __PRIVS_H
@@ -38,6 +38,10 @@
  * doing this in here:
  */
 
+#ifdef __hpux
+#define setreuid(x,y) setresuid(x,y,0)
+#endif
+
 #if !defined(HAVE_SETEUID)
  
 /* Use setreuid() to perform uid swapping.
@@ -55,11 +59,17 @@
 				  setreuid(0,session.uid); \
 				} }
 
-#define PRIVS_ROOT		if(!session.disable_id_switching) \
-				{ setreuid(session.uid,0); }
+#define PRIVS_ROOT		{ log_debug(DEBUG4,"ROOT %s %d", \
+				  __FILE__, __LINE__); \
+				  if(!session.disable_id_switching) \
+				    { setreuid(session.uid,0); \
+				} }
 
-#define PRIVS_RELINQUISH	if(!session.disable_id_switching) \
-				{ setreuid(0,session.uid); }
+#define PRIVS_RELINQUISH	{ log_debug(DEBUG4,"NONROOT %s %d", \
+				  __FILE__, __LINE__); \
+				  if(!session.disable_id_switching) \
+				    { setreuid(session.uid,session.uid); \
+				} }
 
 #define PRIVS_REVOKE		{ setreuid(0,0); \
 				  setgid(session.gid); \
