@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.23 2000-01-18 02:07:57 macgyver Exp $
+ * $Id: mod_core.c,v 1.24 2000-01-23 22:55:26 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -713,6 +713,22 @@ MODRET set_showsymlinks(cmd_rec *cmd)
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
 
   c = add_config_param("ShowSymlinks",1,get_boolean(cmd,1));
+  c->flags |= CF_MERGEDOWN;
+  return HANDLED(cmd);
+}
+
+MODRET set_timesgmt(cmd_rec *cmd)
+{
+  config_rec *c;
+  int b;
+    
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_GLOBAL);
+
+  if((b = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  c = add_config_param("TimesGMT", 1, (void*) b);
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 }
@@ -1468,6 +1484,7 @@ int core_display_file(const char *numeric, const char *fn)
   xaset_t *s;
   char *outs,*mg_time,mg_size[12],mg_max[12] = "unlimited", mg_class_limit[12];
   char mg_cur[12],mg_xfer_bytes[12],mg_cur_class[12], config_class_users[128];
+  char *user;
   short first = 1;
 
 #if defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
@@ -1496,15 +1513,21 @@ int core_display_file(const char *numeric, const char *fn)
 	snprintf(mg_cur_class,sizeof(mg_cur_class),"%d",(int)get_param_int(main_server->conf,config_class_users,FALSE)+1);
 	snprintf(mg_class_limit, sizeof(mg_class_limit), "%u",
 		 session.class->max_connections);
-  } else
+  } else {
 	mg_cur_class[0] = 0;
-
+	snprintf(mg_class_limit, sizeof(mg_class_limit), "%u",max);
+  }
+   
   snprintf(mg_xfer_bytes, sizeof(mg_xfer_bytes), "%lu",
 	   session.total_bytes >> 10);
 
   if(max != -1)
     snprintf(mg_max, sizeof(mg_max), "%d",max);
 
+  user = (char*)get_param_ptr(main_server->conf,"USER",FALSE);
+  if (user == 0)
+      user = "";
+   
   while(fs_gets(buf,sizeof(buf),fp,fd) != NULL) {
     buf[1023] = '\0';
 
@@ -1523,7 +1546,7 @@ int core_display_file(const char *numeric, const char *fn)
 		   session.c->remote_name : "(unknown)"),
 	     "%L",main_server->ServerFQDN,
              "%u",session.ident_user,
-	     "%U",(char*)get_param_ptr(main_server->conf,"USER",FALSE),
+	     "%U",user,
 	     "%K",mg_xfer_bytes,
 	     "%M",mg_max,
              "%N",mg_cur,
@@ -2054,7 +2077,10 @@ MODRET cmd_mdtm(cmd_rec *cmd)
       add_response_err(R_550,"%s: not a plain file.",cmd->argv[1]);
       return ERROR(cmd);
     } else {
-      tm = gmtime(&sbuf.st_mtime);
+      if (get_param_int(TOPLEVEL_CONF,"TimesGMT",FALSE))
+         tm = gmtime(&sbuf.st_mtime);
+      else 
+         tm = localtime(&sbuf.st_mtime);
       if(tm)
         snprintf(buf, sizeof(buf), "%04d%02d%02d%02d%02d%02d",
                 tm->tm_year+1900,tm->tm_mon+1,tm->tm_mday,
@@ -2560,6 +2586,7 @@ static conftable core_conftable[] = {
   { "DefaultTransferMode",	set_defaulttransfermode,	NULL },
   { "Class",			set_class,			NULL },
   { "Classes",			set_classes,			NULL },
+  { "TimesGMT",			set_timesgmt,			NULL },
   { NULL, NULL, NULL }
 };
 
