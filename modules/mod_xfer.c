@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.18 1999-10-23 03:21:01 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.19 1999-10-23 03:52:37 macgyver Exp $
  */
 
 /* History Log:
@@ -81,11 +81,12 @@ static void _log_transfer(char direction)
     log_xfer(end_time.tv_sec,session.c->remote_name,session.xfer.total_bytes,
              fullpath,(session.flags & SF_ASCII ? 'a' : 'b'),
              direction,'a',session.anon_user);
-  } else
+  } else {
     log_xfer(end_time.tv_sec,session.c->remote_name,session.xfer.total_bytes,
              fullpath,(session.flags & SF_ASCII ? 'a' : 'b'),
              direction,'r',session.user);
-
+  }
+  
   log_debug(DEBUG1, "Transfer completed: %d bytes in %d.%02d seconds.",
 	    session.xfer.total_bytes,end_time.tv_sec,
 	    (end_time.tv_usec / 10000));
