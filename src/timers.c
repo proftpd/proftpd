@@ -8,7 +8,7 @@
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * BUT witHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
@@ -19,7 +19,7 @@
 
 /* 
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.2 1999-03-05 00:29:22 flood Exp $
+ * $Id: timers.c,v 1.3 1999-03-05 17:55:43 flood Exp $
  */
 
 #include <signal.h>
@@ -27,6 +27,7 @@
 #include "conf.h"
 
 static int _current_timeout = 0;
+static int _total_time = 0;
 static int _sleep_sem = 0;
 static int alarms_blocked = 0,alarm_pending = 0;
 static xaset_t *timers = NULL;
@@ -128,6 +129,11 @@ void sig_alarm(int signum)
 #ifdef HAVE_SIGINTERRUPT
   siginterrupt(SIGALRM,1);
 #endif
+
+  /* Reset the alarm */
+  _total_time += _current_timeout;
+  if(_current_timeout)
+    alarm(_current_timeout);
 }
 
 void set_sig_alarm()
@@ -165,7 +171,8 @@ void handle_sig_alarm()
   while(_alarm_received) {
     _alarm_received = 0;
     if(!alarms_blocked) {
-      new_timeout = _current_timeout - alarm(0);
+      new_timeout = _total_time + (_current_timeout - alarm(0));
+      _total_time = 0;
       new_timeout = _reset_timers(new_timeout);
 
       /*log_debug(DEBUG5,"alarm(%d)",new_timeout);*/
