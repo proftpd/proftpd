@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.63 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: support.c,v 1.64 2003-11-09 22:19:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -843,3 +843,27 @@ char *sstrcat(char *dest, const char *src, size_t n) {
   *d = 0;
   return dest;
 }
+
+const char *pr_strtime(time_t t) {
+  static char buf[30];
+  static char *mons[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul",
+    "Aug", "Sep", "Oct", "Nov", "Dec" };
+  static char *days[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+  struct tm *tr;
+
+  memset(buf, '\0', sizeof(buf));
+
+  tr = localtime(&t);
+  if (tr != NULL) {
+    snprintf(buf, sizeof(buf), "%s %s %2d %02d:%02d:%02d %d",
+      days[tr->tm_wday], mons[tr->tm_mon], tr->tm_mday, tr->tm_hour,
+      tr->tm_min, tr->tm_sec, tr->tm_year + 1900);
+
+  } else
+    buf[0] = '\0';
+
+  buf[sizeof(buf)-1] = '\0';
+
+  return buf;
+}
+

@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.170 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: mod_auth.c,v 1.171 2003-11-09 22:19:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1193,9 +1193,9 @@ static int _setup_environment(pool *p, char *user, char *pass) {
   }
 
   if (strcasecmp(xferlog, "NONE") == 0)
-    log_open_xfer(NULL);
+    xferlog_open(NULL);
   else
-    log_open_xfer(xferlog);
+    xferlog_open(xferlog);
 
   if ((res = set_groups(p, pw->pw_gid, session.gids)) < 0)
     pr_log_pri(PR_LOG_ERR, "error: unable to set groups: %s",

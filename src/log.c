@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.63 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: log.c,v 1.64 2003-11-09 22:19:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,84 +44,7 @@ static char systemlog_fn[PR_TUNABLE_PATH_MAX] = {'\0'};
 static char systemlog_host[256] = {'\0'};
 static int systemlog_fd = -1;
 
-static int xfer_fd = -1;
-
 int syslog_sockfd = -1;
-
-char *fmt_time(time_t t) {
-  static char buf[30];
-  static char *mons[] =
-  { "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec" };
-  static char *days[] =
-  { "Sun","Mon","Tue","Wed","Thu","Fri","Sat" };
-  struct tm *tr;
-
-  memset(buf, '\0', sizeof(buf));
-  if ((tr = localtime(&t)) != NULL) {
-    snprintf(buf,sizeof(buf), "%s %s %2d %02d:%02d:%02d %d",
-            days[tr->tm_wday],
-            mons[tr->tm_mon],
-            tr->tm_mday,
-            tr->tm_hour,
-            tr->tm_min,
-            tr->tm_sec,
-            tr->tm_year + 1900);
-  } else
-    buf[0] = '\0';
-  buf[sizeof(buf)-1] = '\0';
-
-  return buf;
-}
-
-void log_close_xfer(void) {
-  if (xfer_fd != -1)
-    close(xfer_fd);
-
-  xfer_fd = -1;
-}
-
-int log_open_xfer(const char *path) {
-
-  if (!path) {
-    if (xfer_fd != -1)
-      log_close_xfer();
-    return 0;
-  }
-
-  if (xfer_fd == -1) {
-    log_debug(DEBUG6, "opening TransferLog '%s'", path);
-    pr_log_openfile(path, &xfer_fd, LOG_XFER_MODE);
-  }
-
-  return xfer_fd;
-}
-
-int log_xfer(long xfertime, const char *remhost, off_t fsize, char *fname,
-    char xfertype, char direction, char access_mode, char *user,
-    char abort_flag) {
-
-  char buf[LOGBUFFER_SIZE] = {'\0'}, fbuf[LOGBUFFER_SIZE] = {'\0'};
-  register unsigned int i = 0;
-
-  if (xfer_fd == -1 || !remhost || !user || !fname)
-    return 0;
-
-  for (i = 0; (i + 1 < sizeof(fbuf)) && fname[i] != '\0'; i++) {
-    fbuf[i] = (isspace((int) fname[i]) || iscntrl((int) fname[i])) ? '_' :
-      fname[i];
-  }
-  fbuf[i] = '\0';
-
-  snprintf(buf, sizeof(buf),
-    "%s %ld %s %" PR_LU " %s %c _ %c %c %s ftp %c %s %c\n",
-    fmt_time(time(NULL)), xfertime, remhost, fsize, fbuf, xfertype, direction,
-    access_mode, user, session.ident_lookups == TRUE ? '1' : '0',
-    (session.ident_lookups == TRUE && strcmp(session.ident_user,
-      "UNKNOWN")) ? session.ident_user : "*", abort_flag);
-  buf[sizeof(buf)-1] = '\0';
-
-  return write(xfer_fd, buf, strlen(buf));
-}
 
 /* This next function logs an entry to wtmp, it MUST be called as
  * root BEFORE a chroot occurs.

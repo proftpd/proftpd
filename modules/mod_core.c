@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.206 2003-11-09 21:24:55 castaglia Exp $
+ * $Id: mod_core.c,v 1.207 2003-11-09 22:19:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2713,13 +2713,14 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
   xaset_t *s;
   config_rec *c = NULL;
   const char *serverfqdn = main_server->ServerFQDN;
-  char *outs, *mg_time, mg_size[12] = {'\0'}, mg_size_units[12] = {'\0'},
+  char *outs, mg_size[12] = {'\0'}, mg_size_units[12] = {'\0'},
     mg_max[12] = "unlimited";
   char total_files_in[12] = {'\0'}, total_files_out[12] = {'\0'},
     total_files_xfer[12] = {'\0'};
   char mg_class_limit[12] = {'\0'}, mg_cur[12] = {'\0'},
     mg_xfer_bytes[12] = {'\0'}, mg_cur_class[12] = {'\0'};
   char mg_xfer_units[12] = {'\0'}, config_class_users[128] = {'\0'}, *user;
+  const char *mg_time;
   unsigned char first = TRUE;
 
 #if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
@@ -2739,7 +2740,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
 
   s = (session.anon_config ? session.anon_config->subset : main_server->conf);
 
-  mg_time = fmt_time(time(NULL));
+  mg_time = pr_strtime(time(NULL));
 
   max_clients = get_param_ptr(s, "MaxClients", FALSE);
 
@@ -3987,12 +3988,12 @@ MODRET core_dele(cmd_rec *cmd) {
   fullpath = dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE);
 
   if (session.sf_flags & SF_ANON) {
-    log_xfer(0, session.c->remote_name, st.st_size, fullpath,
+    xferlog_write(0, session.c->remote_name, st.st_size, fullpath,
       (session.sf_flags & SF_ASCII ? 'a' : 'b'), 'd', 'a', session.anon_user,
       'c');
 
   } else {
-    log_xfer(0, session.c->remote_name, st.st_size, fullpath,
+    xferlog_write(0, session.c->remote_name, st.st_size, fullpath,
       (session.sf_flags & SF_ASCII ? 'a' : 'b'), 'd', 'r', session.user, 'c');
   }
 

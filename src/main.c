@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.210 2003-11-09 21:24:57 castaglia Exp $
+ * $Id: main.c,v 1.211 2003-11-09 22:19:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -454,14 +454,14 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
       user = "NONE";
 
     msg = sreplace(permanent_pool, shutmsg,
-                   "%s", pstrdup(permanent_pool, fmt_time(shut)),
-                   "%r", pstrdup(permanent_pool, fmt_time(deny)),
-                   "%d", pstrdup(permanent_pool, fmt_time(disc)),
+                   "%s", pstrdup(permanent_pool, pr_strtime(shut)),
+                   "%r", pstrdup(permanent_pool, pr_strtime(deny)),
+                   "%d", pstrdup(permanent_pool, pr_strtime(disc)),
 		   "%C", (session.cwd[0] ? session.cwd : "(none)"),
 		   "%L", serveraddress,
 		   "%R", (session.c && session.c->remote_name ?
                          session.c->remote_name : "(unknown)"),
-		   "%T", pstrdup(permanent_pool,fmt_time(now)),
+		   "%T", pstrdup(permanent_pool, pr_strtime(now)),
 		   "%U", user,
 		   "%V", main_server->ServerName,
                    NULL );
@@ -1267,14 +1267,14 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
       }
 
       reason = sreplace(permanent_pool, shutmsg,
-                   "%s", pstrdup(permanent_pool, fmt_time(shut)),
-                   "%r", pstrdup(permanent_pool, fmt_time(deny)),
-                   "%d", pstrdup(permanent_pool, fmt_time(disc)),
+                   "%s", pstrdup(permanent_pool, pr_strtime(shut)),
+                   "%r", pstrdup(permanent_pool, pr_strtime(deny)),
+                   "%d", pstrdup(permanent_pool, pr_strtime(disc)),
 		   "%C", (session.cwd[0] ? session.cwd : "(none)"),
 		   "%L", serveraddress,
 		   "%R", (session.c && session.c->remote_name ?
                          session.c->remote_name : "(unknown)"),
-		   "%T", pstrdup(permanent_pool, fmt_time(now)),
+		   "%T", pstrdup(permanent_pool, pr_strtime(now)),
 		   "%U", "NONE",
 		   "%V", main_server->ServerName,
                    NULL );
