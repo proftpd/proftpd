@@ -434,7 +434,7 @@ ratio_cmd (cmd_rec * cmd)
       if (cwding || !strcasecmp (cmd->argv[0], "PASS"))
 	_calc_ratios (cmd);
 
-      snprintf (sbuf1, sizeof(buf), "Down: %iF (%iB)  Up: %iF (%iB)",
+      snprintf (sbuf1, sizeof(sbuf1), "Down: %iF (%iB)  Up: %iF (%iB)",
 		stats.fretr, stats.bretr, stats.fstor, stats.bstor);
       if (stats.frate)
 	snprintf (sbuf2, sizeof(sbuf2), 
