@@ -31,7 +31,8 @@
  *   Copyright (C) 1985, 86, 87, 88, 89, 91, 92, 93, 1994, 1995, 1997
  *     Free Software Foundation, Inc.
  * 
- * $Id: mod_load.c,v 1.3 2005-01-01 18:55:34 castaglia Exp $
+ * $Id: mod_load.c,v 1.4 2005-01-01 19:02:06 castaglia Exp $
+ * $Libraries: $
  */
 
 #include "conf.h"
@@ -1017,15 +1018,15 @@ static int load_sess_init(void) {
     return 0;
   }
 
-  pr_log_debug(DEBUG5, MOD_LOAD_VERSION ": current system load: %.2lf",
+  pr_log_debug(DEBUG5, MOD_LOAD_VERSION ": current system load: %.2f",
     curr_load);
 
   if (curr_load >= max_load) {
-    pr_log_pri(PR_LOG_INFO, "MaxLoad (%.2lf) reached: connection denied",
+    pr_log_pri(PR_LOG_INFO, "MaxLoad (%.2f) reached: connection denied",
       max_load);
 
     if (c->argc == 2)
-      pr_response_send(R_421, "%s", c->argv[1]);
+      pr_response_send(R_421, "%s", (const char *) c->argv[1]);
     else
       pr_response_send(R_421, "System busy, try again later");
 
