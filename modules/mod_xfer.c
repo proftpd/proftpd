@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.156 2004-03-05 02:13:23 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.157 2004-03-11 02:18:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1689,11 +1689,11 @@ MODRET xfer_abor(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  pr_response_add(R_226, "Abort successful");
   pr_data_abort(0, FALSE);
   pr_data_reset();
   pr_data_cleanup();
 
+  pr_response_add(R_226, "Abort successful");
   return HANDLED(cmd);
 }
 

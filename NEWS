@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.546 2004-03-11 02:02:10 castaglia Exp $
+$Id: NEWS,v 1.547 2004-03-11 02:18:57 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -119,6 +119,9 @@ CVS
 - Bug 2321 - FTP permission checks inconsistent for DELE and RMD/XRMD when
   symlink is in directory path.  This bug affected the RNFR command as well.
 - Bug 2361 - Second USER command causes problems with chrooted session.
+- Bug 2363 - ABOR response RFC 959 compliance.  The 226 response was being
+  sent before closing the data connection; RFC 959 implies that the data
+  connection is closed first.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------
