@@ -886,8 +886,8 @@ AC_PROG_GCC_TRADITIONAL
 AC_FUNC_SETPGRP
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS(bcopy crypt fgetgrent fgetpwent flock freeaddrinfo getaddrinfo)
-AC_CHECK_FUNCS(getcwd gethostname getnameinfo)
+AC_CHECK_FUNCS(bcopy crypt fgetgrent fgetpwent flock freeaddrinfo gai_strerror)
+AC_CHECK_FUNCS(getaddrinfo getcwd gethostname getnameinfo)
 if test "$ac_pr_check_getopt" = "yes" ; then
   AC_CHECK_FUNCS(getopt)
 fi
