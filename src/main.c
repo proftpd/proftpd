@@ -19,7 +19,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.11 1999-09-07 23:29:07 macgyver Exp $
+ * $Id: main.c,v 1.12 1999-09-08 06:59:28 macgyver Exp $
  */
 
 /*
@@ -1929,6 +1929,33 @@ int main(int argc, char **argv, char **envp)
   int daemon_uid,daemon_gid,socketp;
   int _umask = 0,nodaemon = 0,c;
   struct sockaddr peer;
+  
+#ifdef DEBUG_MEMORY
+  int logfd;
+  extern int EF_PROTECT_BELOW;
+  extern int EF_PROTECT_FREE;
+  extern int EF_ALIGNMENT;
+
+  EF_PROTECT_BELOW = 1;/* */
+  EF_PROTECT_FREE = 1; /* */
+  EF_ALIGNMENT = 0; /* */
+
+  /* Redirect stderr to somewhere appropriate.
+   * Ideally, this would be syslog, but alas...
+   */
+  if((logfd = open("/tmp/proftpd.log", O_WRONLY | O_CREAT | O_APPEND,0644))< 0) {
+	log_pri(LOG_ERR, "Error opening error logfile: %s", strerror(errno));
+	exit(1);
+  }
+
+  close(fileno(stderr));
+  if(dup2(logfd, fileno(stderr)) == -1) {
+	log_pri(LOG_ERR, "Error converting standard error to a logfile: %s",
+					strerror(errno));
+	exit(1);
+  }
+  close(logfd);
+#endif /* DEBUG_MEMORY */
 
 #ifdef HAVE_SET_AUTH_PARAMETERS
   (void) set_auth_parameters(argc, argv);
@@ -2073,3 +2100,15 @@ int main(int argc, char **argv, char **envp)
 
   return 0;
 }
+
+#ifdef DEBUG_MEMORY
+#undef strncpy
+char *my_strncpy(to, from, num, file, function, line, args)
+{
+  fprintf(stderr, "%s:%d:%s - strncpy(%s)\n", file, line, function, args);
+  fflush(stderr);
+  fsync(fileno(stderr));
+
+  return strncpy(to, from, num);
+}
+#endif /* DEBUG_MEMORY */
