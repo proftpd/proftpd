@@ -9,7 +9,7 @@ VPATH=@srcdir@
 include ../Make.rules
 
 .c.o:
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
 all:
 	@echo "Running make from top level directory."

@@ -20,7 +20,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.18 2000-07-26 04:11:42 macgyver Exp $
+ * $Id: dirtree.c,v 1.19 2000-07-26 08:16:33 macgyver Exp $
  */
 
 /* History:
@@ -526,12 +526,17 @@ static config_rec *_recur_match_path(pool *p,xaset_t *s, char *path)
 
       /* Temporary measure until we figure what's going on with
        * gnu fnmatch
+       *
+       * Hmm...wonder what this is, and if it's still an issue.  I love
+       * cryptic comments in other people's code. :)
+       *
+       * - MacGyver
        */
 
 #if 0
-      if(fnmatch(tmp,path,FNM_PATHNAME) == 0) {
+      if(pr_fnmatch(tmp, path, PR_FNM_PATHNAME) == 0) {
 #else
-      if(fnmatch(tmp,path,0) == 0) {
+      if(pr_fnmatch(tmp, path, 0) == 0) {
 #endif
         if(c->subset) {
           res = _recur_match_path(p,c->subset,path);
@@ -799,8 +804,9 @@ int match_ip(p_in_addr_t *addr, char *name, const char *match)
     if((addr->s_addr & htonl(cidr_mask)) == cidr_addr.s_addr)
       return 1;
   } else {
-    if(fnmatch(buf, name, FNM_NOESCAPE | FNM_CASEFOLD) == 0 ||
-       fnmatch(buf, inet_ntoa(*addr), FNM_NOESCAPE | FNM_CASEFOLD) == 0)
+    if(pr_fnmatch(buf, name, PR_FNM_NOESCAPE | PR_FNM_CASEFOLD) == 0 ||
+       pr_fnmatch(buf, inet_ntoa(*addr),
+		  PR_FNM_NOESCAPE | PR_FNM_CASEFOLD) == 0)
       return 1;
   }
   

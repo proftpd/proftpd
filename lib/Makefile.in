@@ -9,7 +9,7 @@ VPATH=@srcdir@
 include ../Make.rules
 
 .c.o:
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
 libsupp.a: $(LIB_OBJS)
 	ar rc libsupp.a $(LIB_OBJS)
@@ -30,9 +30,9 @@ depend:
 # Dependancies written below
 # DO NOT DELETE
 
-fnmatch.o: ../include/conf.h ../include/version.h ../config.h
-fnmatch.o: ../include/default_paths.h ../include/options.h
-fnmatch.o: ../include/libsupp.h
+pr_fnmatch.o: ../include/conf.h ../include/version.h ../config.h
+pr_fnmatch.o: ../include/default_paths.h ../include/options.h
+pr_fnmatch.o: ../include/libsupp.h pr_fnmatch_loop.c
 getopt.o: ../include/conf.h ../include/version.h ../config.h
 getopt.o: ../include/default_paths.h ../include/options.h getopt.h
 getopt1.o: ../include/conf.h ../include/version.h ../config.h

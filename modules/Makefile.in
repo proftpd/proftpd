@@ -10,7 +10,7 @@ include ../Make.rules
 include ../Make.modules
 
 .c.o:
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
 all:
 	@echo "Running make from top level directory."
@@ -20,7 +20,7 @@ module_glue.c: $(MODULES)
 	srcdir=$(srcdir) $(srcdir)/glue.sh $(MODULES)
 
 module_glue.o: module_glue.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
 modules: $(MODULES) module_glue.o
 

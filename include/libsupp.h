@@ -73,23 +73,19 @@ extern int glob_pattern_p (const char *__pattern, int __quote);
 
 #endif /* HAVE_GLOB */
 
-#ifndef HAVE_FNMATCH
+/* Bits set in the FLAGS argument to `pr_fnmatch'.  */
+#define	PR_FNM_PATHNAME	(1 << 0) /* No wildcard can ever match `/'.  */
+#define	PR_FNM_NOESCAPE	(1 << 1) /* Backslashes don't quote special chars.  */
+#define	PR_FNM_PERIOD	(1 << 2) /* Leading `.' is matched only explicitly.  */
 
-/* Bits set in the FLAGS argument to `fnmatch'.  */
-#define	FNM_PATHNAME	(1 << 0) /* No wildcard can ever match `/'.  */
-#define	FNM_NOESCAPE	(1 << 1) /* Backslashes don't quote special chars.  */
-#define	FNM_PERIOD	(1 << 2) /* Leading `.' is matched only explicitly.  */
+#define	PR_FNM_FILE_NAME	PR_FNM_PATHNAME /* Preferred GNU name.  */
+#define	PR_FNM_LEADING_DIR	(1 << 3) /* Ignore `/...' after a match.  */
+#define	PR_FNM_CASEFOLD		(1 << 4) /* Compare without regard to case.  */
 
-#define	FNM_FILE_NAME	FNM_PATHNAME /* Preferred GNU name.  */
-#define	FNM_LEADING_DIR	(1 << 3) /* Ignore `/...' after a match.  */
-#define	FNM_CASEFOLD	(1 << 4) /* Compare without regard to case.  */
+/* Value returned by `pr_fnmatch' if STRING does not match PATTERN.  */
+#define	PR_FNM_NOMATCH	1
 
-/* Value returned by `fnmatch' if STRING does not match PATTERN.  */
-#define	FNM_NOMATCH	1
-
-int fnmatch(const char *pattern, const char *strings, int flags);
-
-#endif /* HAVE_FNMATCH */
+int pr_fnmatch(const char *pattern, const char *strings, int flags);
 
 #ifndef HAVE_STRSEP
 

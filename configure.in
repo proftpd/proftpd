@@ -204,7 +204,6 @@ AC_CHECK_HEADERS(sys/statvfs.h sys/vfs.h sys/select.h sys/sendfile.h)
 AC_CHECK_HEADERS(utmpx.h)
 AC_CHECK_HEADERS(regex.h)
 AC_CHECK_HEADER(glob.h,have_glob_h="yes",)
-AC_CHECK_HEADER(fnmatch.h,have_fnmatch_h="yes",)
 AC_CHECK_HEADER(syslog.h,have_syslog_h="yes",)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
@@ -320,30 +319,6 @@ if test "$have_syslog_h" = "yes"; then
   fi
 fi
 
-dnl See if we have FNM_NOESCAPE
-if test "$have_fnmatch_h" = "yes"; then
-  AC_CACHE_CHECK(whether your fnmatch.h defines FNM_NOESCAPE,
-  		pr_cv_header_fnmatch_noescape,
-	AC_EGREP_CPP(yes,[
-#include <fnmatch.h>
-#ifdef FNM_NOESCAPE
-  yes
-#endif
-  ], pr_cv_header_fnmatch_noescape="yes", pr_cv_header_fnmatch_noescape="no"))
-fi
-
-dnl See if we have FNM_CASEFOLD
-if test "$have_fnmatch_h" = "yes"; then
-  AC_CACHE_CHECK(whether your fnmatch.h defines FNM_CASEFOLD,
-  		pr_cv_header_fnmatch_casefold,
-	AC_EGREP_CPP(yes,[
-#include <fnmatch.h>
-#ifdef FNM_CASEFOLD
-  yes
-#endif
-  ], pr_cv_header_fnmatch_casefold="yes", pr_cv_header_fnmatch_casefold="no"))
-fi
-
 dnl Check for member d_fd in struct DIR
 AC_MSG_CHECKING(for d_fd in DIR structure)
 AC_TRY_COMPILE([
@@ -362,19 +337,6 @@ fi
 
 
 dnl Checks for library functions.
-
-if test "$pr_cv_header_fnmatch_noescape" = "yes" && \
-   test "$pr_cv_header_fnmatch_casefold" = "yes"; then
-  AC_FUNC_FNMATCH
-
-
-  dnl Unfortunately, the FNM_CASEFOLD GNU extension is useless without
-  dnl defining _GNU_SOURCE.
-
-  if test "$ac_cv_func_fnmatch_works" = "yes"; then
-    CFLAGS="$CFLAGS -D_GNU_SOURCE"
-  fi
-fi
 
 AC_FUNC_ALLOCA
 AC_PROG_GCC_TRADITIONAL
