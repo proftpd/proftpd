@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.24 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: scoreboard.c,v 1.25 2003-09-14 18:27:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -356,7 +356,8 @@ int pr_open_scoreboard(int flags) {
     }
 
     /* Write-lock the scoreboard file. */
-    wlock_scoreboard();
+    if (wlock_scoreboard() < 0)
+      return -1;
 
     while (write(scoreboard_fd, &header, sizeof(header)) != sizeof(header)) {
       int wr_errno = errno;
@@ -452,7 +453,8 @@ int pr_scoreboard_add_entry(void) {
   }
 
   /* Write-lock the scoreboard file. */
-  wlock_scoreboard();
+  if (wlock_scoreboard() < 0)
+    return -1;
 
   /* No interruptions, please. */
   pr_signals_block();
@@ -539,8 +541,12 @@ pr_scoreboard_entry_t *pr_scoreboard_read_entry(void) {
   }
 
   /* Make sure the scoreboard file is read-locked. */
-  if (!scoreboard_read_locked)
-    rlock_scoreboard();
+  if (!scoreboard_read_locked) {
+
+    /* Do not proceed if we cannot lock the scoreboard. */
+    if (rlock_scoreboard() < 0)
+      return NULL; 
+  }
 
   memset(&scan_entry, '\0', sizeof(scan_entry));
 
