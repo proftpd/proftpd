@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.34 2004-04-12 17:14:55 castaglia Exp $
+ * $Id: fsio.c,v 1.35 2004-05-09 01:07:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -308,7 +308,11 @@ static pr_fs_t *lookup_dir_fs(const char *path, int op) {
 
   sstrncpy(buf, path, sizeof(buf));
 
-  if (buf[0] != '/') {
+  /* Check if the given path is an absolute path.  Since there may be
+   * alternate fs roots, this is not a simple check.  If the path is
+   * not absolute, prepend the current location.
+   */
+  if (pr_fs_valid_path(path) < 0) {
     if (pr_fs_dircat(tmp_path, sizeof(tmp_path), cwd, buf) < 0)
       return NULL;
 
@@ -767,13 +771,12 @@ pr_fs_t *pr_get_fs(const char *path, int *exact) {
     return root_fs;
 
   fs_objs = (pr_fs_t **) fs_map->elts;
-  best_match_fs = fs_objs[0];
+  best_match_fs = root_fs;
 
   /* In order to handle deferred-resolution paths (eg "~" paths), the given
    * path will need to be passed through dir_realpath(), if necessary.
-   */
-
-  /* The chk_fs_map flag, if TRUE, should be cleared on return of this
+   *
+   * The chk_fs_map flag, if TRUE, should be cleared on return of this
    * function -- all that flag says is, if TRUE, that this function _might_
    * return something different than it did on a previous call.
    */
