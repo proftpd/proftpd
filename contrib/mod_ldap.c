@@ -1,6 +1,6 @@
 /*
  * mod_ldap - LDAP password lookup module for ProFTPD
- * Copyright (c) 1999, 2000-3, John Morrissey <jwm@horde.net>
+ * Copyright (c) 1999, 2000-5, John Morrissey <jwm@horde.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  */
 
 /*
- * mod_ldap v2.8.14
+ * mod_ldap v2.8.15
  *
  * Thanks for patches go to (in alphabetical order):
  *
@@ -47,7 +47,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.37 2004-12-17 00:03:21 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.38 2005-03-11 20:44:11 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -244,7 +244,7 @@ pr_ldap_connect(LDAP **conn_ld, int bind)
 #endif /* USE_LDAP_TLS */
 
   if (bind == TRUE) {
-    if ((ret = ldap_simple_bind_s(*conn_ld, ldap_dn, ldap_dnpass) != LDAP_SUCCESS)) {
+    if ((ret = ldap_simple_bind_s(*conn_ld, ldap_dn, ldap_dnpass)) != LDAP_SUCCESS) {
       pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): ldap_simple_bind() as %s failed: %s", ldap_dn, ldap_err2string(ret));
       return -1;
     }
@@ -995,7 +995,7 @@ handle_ldap_getgroups(cmd_rec *cmd)
       continue;
     }
 
-    if (strtoul(gidNumber[0], (char **)NULL, 10) != pw->pw_gid) {
+    if (!pw || strtoul(gidNumber[0], (char **)NULL, 10) != pw->pw_gid) {
       *((gid_t *) push_array(gids))   = strtoul(gidNumber[0], (char **)NULL, 10);
       *((char **) push_array(groups)) = pstrdup(session.pool, cn[0]);
     }
@@ -1126,7 +1126,7 @@ handle_ldap_check(cmd_rec *cmd)
       return DECLINED(cmd);
     }
 
-    if ((ret = ldap_simple_bind_s(ld_auth, ldap_authbind_dn, cmd->argv[2]) != LDAP_SUCCESS)) {
+    if ((ret = ldap_simple_bind_s(ld_auth, ldap_authbind_dn, cmd->argv[2])) != LDAP_SUCCESS) {
       if (ret != LDAP_INVALID_CREDENTIALS)
         pr_log_pri(PR_LOG_ERR, "mod_ldap: handle_ldap_check(): pr_ldap_connect() failed: %s", ldap_err2string(ret));
       ldap_unbind(ld_auth);
@@ -1658,7 +1658,7 @@ set_ldap_attr(cmd_rec *cmd)
     CONF_ERROR(cmd, "LDAPAttr: unknown attribute name.");
   }
 
-  add_config_param("LDAPAttr", 2, cmd->argv[1], cmd->argv[2]);
+  add_config_param_str("LDAPAttr", 2, cmd->argv[1], cmd->argv[2]);
   return HANDLED(cmd);
 }
 
@@ -1786,23 +1786,23 @@ ldap_getconf(void)
   if ((c = find_config(main_server->conf, CONF_PARAM, "LDAPAttr", FALSE)) != NULL) {
     do {
       if (strcasecmp(c->argv[0], "uid") == 0)
-        ldap_attr_uid = c->argv[1];
+        ldap_attr_uid = pstrdup(session.pool, c->argv[1]);
       else if (strcasecmp(c->argv[0], "uidNumber") == 0)
-        ldap_attr_uidnumber = c->argv[1];
+        ldap_attr_uidnumber = pstrdup(session.pool, c->argv[1]);
       else if (strcasecmp(c->argv[0], "gidNumber") == 0)
-        ldap_attr_gidnumber = c->argv[1];
+        ldap_attr_gidnumber = pstrdup(session.pool, c->argv[1]);
       else if (strcasecmp(c->argv[0], "homeDirectory") == 0)
-        ldap_attr_homedirectory = c->argv[1];
+        ldap_attr_homedirectory = pstrdup(session.pool, c->argv[1]);
       else if (strcasecmp(c->argv[0], "userPassword") == 0)
-        ldap_attr_userpassword = c->argv[1];
+        ldap_attr_userpassword = pstrdup(session.pool, c->argv[1]);
       else if (strcasecmp(c->argv[0], "loginShell") == 0)
-        ldap_attr_loginshell = c->argv[1];
+        ldap_attr_loginshell = pstrdup(session.pool, c->argv[1]);
       else if (strcasecmp(c->argv[0], "cn") == 0)
-        ldap_attr_cn = c->argv[1];
+        ldap_attr_cn = pstrdup(session.pool, c->argv[1]);
       else if (strcasecmp(c->argv[0], "memberUid") == 0)
-        ldap_attr_memberuid = c->argv[1];
+        ldap_attr_memberuid = pstrdup(session.pool, c->argv[1]);
       else if (strcasecmp(c->argv[0], "ftpQuota") == 0)
-        ldap_attr_ftpquota = c->argv[1];
+        ldap_attr_ftpquota = pstrdup(session.pool, c->argv[1]);
     } while ((c = find_config_next(c, c->next, CONF_PARAM, "LDAPAttr", FALSE)));
   }
 
