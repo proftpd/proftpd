@@ -24,7 +24,7 @@
 
 /*
  * Display of files
- * $Id: display.c,v 1.2 2004-11-01 17:21:48 castaglia Exp $
+ * $Id: display.c,v 1.3 2004-11-23 03:43:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -267,5 +267,3 @@ int pr_display_file(const char *path, const char *fs, const char *code) {
   pr_fsio_close(fp);
   return 0;
 }
-
-#include "conf.h"
