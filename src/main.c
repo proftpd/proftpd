@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.235 2004-05-29 21:02:54 castaglia Exp $
+ * $Id: main.c,v 1.236 2004-05-30 21:45:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -78,6 +78,9 @@ unsigned char persistent_passwd = TRUE;
 #else
 unsigned char persistent_passwd = FALSE;
 #endif /* NEED_PERSISTENT_PASSWD */
+
+/* From modules/module_glue.c */
+extern module *static_modules[];
 
 /* From mod_core.c. */
 extern int core_display_file(const char *numeric, const char *fn,
@@ -2576,11 +2579,28 @@ int main(int argc, char *argv[], char **envp) {
       pr_log_pri(PR_LOG_NOTICE, "ProFTPD Version " PROFTPD_VERSION_TEXT);
 
     else {
-      pr_log_pri(PR_LOG_NOTICE, "         Version: %s",
+      register unsigned int;
+
+      pr_log_pri(PR_LOG_NOTICE, "ProFTPD Version: %s",
         PROFTPD_VERSION_TEXT " " PR_STATUS);
-      pr_log_pri(PR_LOG_NOTICE, "Scoreboard Version: %08x",
+      pr_log_pri(PR_LOG_NOTICE, "  Scoreboard Version: %08x",
         PR_SCOREBOARD_VERSION);
-      pr_log_pri(PR_LOG_NOTICE, "     Build Stamp: %s", BUILD_STAMP);
+      pr_log_pri(PR_LOG_NOTICE, "  Built: %s", BUILD_STAMP);
+
+      for (i = 0; static_modules[i]; i++) {
+        char buf[256];
+        char *desc = static_modules[i]->module_version;
+
+        if (!desc) {
+          memset(buf, '\0', sizeof(buf));
+          snprintf(buf, sizeof(buf), "mod_%s.c", static_modules[i]->name);
+          buf[sizeof(buf)-1] = '\0';
+
+          desc = buf;
+        }
+
+        pr_log_pri(PR_LOG_NOTICE, "  Module: %s", desc);
+      }
     }
 
     exit(0);
