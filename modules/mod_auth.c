@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.54 2001-03-09 18:49:51 flood Exp $
+ * $Id: mod_auth.c,v 1.55 2001-03-22 21:43:53 flood Exp $
  */
 
 #include "conf.h"
@@ -1324,6 +1324,18 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
   }
 }
 
+/* close the passwd and group databases, because libc won't let us see new
+ * entries to these files without this (only in PersistentPasswd mode)
+ * jss 3/14/2001
+ */
+
+MODRET pre_cmd_user(cmd_rec *cmd) {
+  auth_endpwent(cmd->tmp_pool);
+  auth_endgrent(cmd->tmp_pool);
+
+  return DECLINED(cmd);
+}
+
 MODRET cmd_user(cmd_rec *cmd) {
   int nopass = 0;
   config_rec *c;
@@ -1420,6 +1432,16 @@ MODRET cmd_user(cmd_rec *cmd) {
   session.group = NULL;
 
   return HANDLED(cmd);
+}
+
+/* close the passwd and group databases (see pre_cmd_user)
+ * jss 3/14/2001
+ */
+
+MODRET pre_cmd_pass(cmd_rec *cmd) {
+  auth_endpwent(cmd->tmp_pool);
+  auth_endgrent(cmd->tmp_pool);
+  return DECLINED(cmd);
 }
 
 MODRET cmd_pass(cmd_rec *cmd) {
@@ -1668,7 +1690,9 @@ static conftable auth_config[] = {
 };
 
 static cmdtable auth_commands[] = {
+  { PRE_CMD, C_USER, G_NONE, pre_cmd_user, FALSE, FALSE, CL_AUTH },
   { CMD, C_USER, G_NONE, cmd_user,	FALSE,	FALSE, CL_AUTH },
+  { PRE_CMD, C_PASS, G_NONE, pre_cmd_pass, FALSE, FALSE, CL_AUTH },
   { CMD, C_PASS, G_NONE, cmd_pass,	FALSE,  FALSE, CL_AUTH },
   { CMD, C_ACCT, G_NONE, cmd_acct,	FALSE,  FALSE, CL_AUTH },
   { CMD, C_REIN, G_NONE, cmd_rein,	FALSE,  FALSE, CL_AUTH },

@@ -1,7 +1,8 @@
-$Id: NEWS,v 1.88 2001-03-17 20:34:31 flood Exp $
+$Id: NEWS,v 1.89 2001-03-22 21:43:53 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+- Bug #1049 - New User/Groups weren't being seen after startup w/out a SIGHUP.
 - Bug #1066 - new GNU glob() and friends, which properly limits recursion and
   avoids DoS issues.  Built-in glob support is now always compiled in to
   proftpd regardless of libc support on build platform.
