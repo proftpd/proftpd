@@ -759,7 +759,14 @@ done
 dnl Checks for library functions.
 
 AC_FUNC_ALLOCA
-AC_CHECK_LIB(gen, alloca)
+
+dnl UnixWare's alloca is in libucb, in /usr/ucblib/. Muck about with
+dnl $LDFLAGS so AC_CHECK_LIB() will find it there.
+old_LDFLAGS=$LDFLAGS
+LDFLAGS="$LDFLAGS -L/usr/ucblib/"
+AC_CHECK_LIB(ucb, alloca)
+LDFLAGS=$old_LDFLAGS
+
 AC_PROG_GCC_TRADITIONAL
 AC_FUNC_SETPGRP
 AC_TYPE_SIGNAL

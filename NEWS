@@ -1,4 +1,8 @@
-$Id: NEWS,v 1.362 2003-01-29 15:25:11 castaglia Exp $
+$Id: NEWS,v 1.363 2003-01-30 19:05:01 jwm Exp $
+
+CVS
+---
+- Bug 1863 - Unable to build under UnixWare 7
 
 1.2.8rc2 - Released 29-Jan-2003
 ---------------------------------
