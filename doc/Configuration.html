@@ -205,6 +205,7 @@ configuration:</p>
   <li><a href="#TransferLog">TransferLog</a></li>
   <li><a href="#Umask">Umask</a></li>
   <li><a href="#UseFtpUsers">UseFtpUsers</a></li>
+  <li><a href="#UseGlobbing">UseGlobbing</a></li>
   <LI><A HREF="#UseHostsAllowFile">UseHostsAllowFile</A> 
   <LI><A HREF="#UseHostsDenyFile">UseHostsDenyFile</A> 
   <li><a href="#UseReverseDNS">UseReverseDNS</a></li>
@@ -4000,6 +4001,19 @@ they are reported as the values of, respectively, 'SQLDefaultGID' and
     denied. For compatibility sake, proftpd defaults to checking this file
     during authentication. This behavior can be suppressed using the
     UseFtpUsers configuration directive.</p>
+
+<hr>
+  <h2><a name="UseGlobbing">UseGlobbing</a></h2>
+  <p>
+  <strong>Syntax:</strong> UseGlobbing <em>on|off</em><br>
+  <strong>Default:</strong> <code>on</code><br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;, &lt;Anonymous&gt;<br>
+  <strong>Module:</strong> mod_ls<br>
+  <strong>Compatibility:</strong> 1.2.5rc1 and later</p>
+
+  <p>
+  Enable or disable use of <code>glob()</code> functionality.
+  </p>
 
 <hr>
 <h2><a name="UseHostsAllowFile">UseHostsAllowFile</a></h2>

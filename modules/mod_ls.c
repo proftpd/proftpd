@@ -24,7 +24,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.47 2001-12-17 20:07:59 flood Exp $
+ * $Id: mod_ls.c,v 1.48 2001-12-18 16:14:43 flood Exp $
  */
 
 #include "conf.h"
@@ -51,6 +51,8 @@ static umode_t fakemode;
 static int fakemodep;
 static int ls_errno = 0;
 static time_t ls_curtime = 0;
+
+static unsigned char use_globbing = TRUE;
 
 /* ls options */
 static int
@@ -1043,10 +1045,23 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
     if(!ls_perms_full(cmd->tmp_pool, cmd,
 		      (*pbuffer ? (char *) pbuffer : (char *) arg),NULL)) {
       a = -1;
-      skiparg = 1;
+      skiparg = TRUE;
+
     } else {
-      skiparg = 0;
-      a = fs_glob(*pbuffer ? pbuffer : arg, glob_flags, NULL, &g);
+
+      skiparg = FALSE;
+
+      if (use_globbing)
+        a = fs_glob(*pbuffer ? pbuffer : arg, glob_flags, NULL, &g);
+      else {
+
+        /* trick the following code into using the non-glob() processed path */
+        a = 0;
+        g.gl_pathv = (char **) pcalloc(cmd->tmp_pool, 2 * sizeof(char *));
+        g.gl_pathv[0] = (char *) pstrdup(cmd->tmp_pool,
+          *pbuffer ? pbuffer : arg);
+        g.gl_pathv[1] = NULL;
+      }
     }
       
     if(!a) {
@@ -1092,7 +1107,8 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
           if(opt_d || !(S_ISDIR(target_mode))) {
             if(listfile(cmd,NULL,*path) < 0) {
               ls_terminate();
-	      fs_globfree(&g);
+	      if (use_globbing)
+                fs_globfree(&g);
               return -1;
             }
             **path = '\0';
@@ -1105,7 +1121,8 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
 
       if(outputfiles(cmd) < 0) {
         ls_terminate();
-        fs_globfree(&g);
+        if (use_globbing) 
+          fs_globfree(&g);
 	return -1;
       }
 
@@ -1131,7 +1148,8 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
 
             if(ret < 0) {
               ls_terminate();
-	      fs_globfree(&g);
+	      if (use_globbing)
+                fs_globfree(&g);
               return -1;
             }
           }
@@ -1139,7 +1157,8 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
 
         if(XFER_ABORTED) {
 	  discard_output();
-          fs_globfree(&g);
+          if (use_globbing)
+            fs_globfree(&g);
 	  return -1;
 	}
 
@@ -1156,7 +1175,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
       }
     }
 
-    if(!skiparg)
+    if (!skiparg && use_globbing)
       fs_globfree(&g);
 
     if(XFER_ABORTED) {
@@ -1497,7 +1516,7 @@ MODRET cmd_nlst(cmd_rec *cmd)
 	/* If the target is a glob, get the listing of files/dirs to send
 	 */
 
-	if(strpbrk(target,"{[*?") != NULL) {
+	if (use_globbing && strpbrk(target, "{[*?") != NULL) {
 		glob_t g;
 		char **path,*p;
 
@@ -1610,6 +1629,22 @@ MODRET cmd_nlst(cmd_rec *cmd)
 	return (ret < 0 ? ERROR(cmd) : HANDLED(cmd));
 }
 
+MODRET ls_chk_glob(cmd_rec *cmd) {
+  long globbing = -1;
+
+  if ((globbing = get_param_int(TOPLEVEL_CONF, "UseGlobbing", FALSE)) != -1) {
+    if (!globbing) {
+      log_debug(DEBUG3, "UseGlobbing disabling globbing functionality");
+      use_globbing = FALSE; 
+    }
+  }
+
+  return DECLINED(cmd);
+}
+
+/* Configuration handlers
+ */
+
 MODRET _sethide(cmd_rec *cmd, const char *param)
 {
   int bool;
@@ -1696,12 +1731,29 @@ MODRET set_showdotfiles(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
+MODRET set_useglobbing(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
+  
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean parameter");
+
+  c = add_config_param(cmd->argv[0], 1, (void *) bool);
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
 static conftable ls_config[] = {
   { "DirFakeUser",	set_dirfakeuser,			NULL },
   { "DirFakeGroup",	set_dirfakegroup,			NULL },
   { "DirFakeMode",	set_dirfakemode,			NULL },
   { "LsDefaultOptions",	set_lsdefaultoptions,			NULL },
   { "ShowDotFiles",	set_showdotfiles,			NULL },
+  { "UseGlobbing",	set_useglobbing,			NULL },
   { NULL,		NULL,					NULL }
 };
 
@@ -1709,6 +1761,7 @@ static cmdtable ls_commands[] = {
   { CMD,  	C_NLST,	G_DIRS,	cmd_nlst,	TRUE, FALSE, CL_DIRS },
   { CMD,	C_LIST,	G_DIRS,	cmd_list,	TRUE, FALSE, CL_DIRS },
   { CMD, 	C_STAT,	G_DIRS,	cmd_stat,	TRUE, FALSE, CL_DIRS },
+  { POST_CMD,	C_PASS,	G_NONE,	ls_chk_glob,	FALSE, FALSE },
   { LOG_CMD,	C_LIST,	G_NONE,	fini_nlst,	FALSE, FALSE },
   { LOG_CMD,	C_NLST, G_NONE,	fini_nlst,	FALSE, FALSE },
   { LOG_CMD_ERR,C_LIST, G_NONE, list_cleanup,   FALSE, FALSE },
