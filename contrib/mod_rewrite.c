@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.9 2003-04-23 18:55:04 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.10 2003-04-24 23:02:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1676,7 +1676,10 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
           } else
             rewrite_log("rewrite_fixup(): condition met");
         }
-      }
+
+      } else
+        /* There are no conditions. */
+        exec_rule = TRUE;
     } 
 
     if (exec_rule) {
