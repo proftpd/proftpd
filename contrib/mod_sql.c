@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.79 2004-07-22 00:11:22 castaglia Exp $
+ * $Id: mod_sql.c,v 1.80 2004-08-03 00:44:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2024,7 +2024,7 @@ MODRET info_master(cmd_rec *cmd) {
 	    argp=resolve_tag( cmd, *tmp);
 	  }
 
-	  strcat( outs, argp );
+	  sstrcat(outs, argp, sizeof(outs));
 	  outsp += strlen(argp);
 
 	  if (*tmp!='\0') tmp++;
@@ -2098,7 +2098,7 @@ MODRET info_master(cmd_rec *cmd) {
 	    argp=resolve_tag( cmd, *tmp);
 	  }
 
-	  strcat( outs, argp );
+	  sstrcat(outs, argp, sizeof(outs));
 	  outsp += strlen(argp);
 
 	  if (*tmp!='\0') tmp++;
@@ -2189,7 +2189,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
 	    argp=resolve_tag( cmd, *tmp);
 	  }
 
-	  strcat( outs, argp );
+	  sstrcat(outs, argp, sizeof(outs));
 	  outsp += strlen(argp);
 
 	  if (*tmp!='\0') tmp++;
@@ -2263,7 +2263,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
 	    argp=resolve_tag( cmd, *tmp);
 	  }
 
-	  strcat( outs, argp );
+	  sstrcat(outs, argp, sizeof(outs));
 	  outsp += strlen(argp);
 
 	  if (*tmp!='\0') tmp++;
