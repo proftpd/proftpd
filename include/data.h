@@ -25,7 +25,7 @@
  */
 
 /* Data connection management prototypes
- * $Id: data.h,v 1.16 2004-05-21 17:19:02 castaglia Exp $
+ * $Id: data.h,v 1.17 2004-11-04 22:48:17 castaglia Exp $
  */
 
 #ifndef PR_DATACONN_H
@@ -54,7 +54,7 @@ off_t
 
 pr_sendfile_t;
 
-pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, size_t count);
+pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count);
 #endif /* HAVE_SENDFILE */
 
 #endif /* PR_DATACONN_H */

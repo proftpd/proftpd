@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.175 2004-11-03 16:53:47 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.176 2004-11-04 22:48:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -650,34 +650,32 @@ static int transmit_sendfile(off_t count, off_t *offset,
 
   if (*retval == -1) {
     switch (errno) {
-    case EAGAIN:
-    case EINTR:
-      /* Interrupted call, or the other side wasn't ready yet. */
-      pr_signals_handle();
-      goto retry;
+      case EAGAIN:
+      case EINTR:
+        /* Interrupted call, or the other side wasn't ready yet. */
+        pr_signals_handle();
+        goto retry;
 
-    case EPIPE:
-    case ECONNRESET:
-    case ETIMEDOUT:
-    case EHOSTUNREACH:
-      /* Other side broke the connection.
-       */
-      break;
+      case EPIPE:
+      case ECONNRESET:
+      case ETIMEDOUT:
+      case EHOSTUNREACH:
+        /* Other side broke the connection. */
+        break;
 
 #ifdef ENOSYS
-    case ENOSYS:
+      case ENOSYS:
 #endif /* ENOSYS */
 
-    case EINVAL:
-      /* No sendfile support, apparently.  Try it the normal way. */
-      return 0;
-      break;
+      case EINVAL:
+        /* No sendfile support, apparently.  Try it the normal way. */
+        return 0;
+        break;
 
     default:
-      pr_log_pri(PR_LOG_ERR,
-              "transmit_sendfile() error "
-              "(reverting to normal data transmission) %d: %s",
-              errno, strerror(errno));
+      pr_log_pri(PR_LOG_ERR, "transmit_sendfile() error, "
+        "reverting to normal data transmission: [%d] %s", errno,
+        strerror(errno));
       return 0;
     }
   }
@@ -686,7 +684,11 @@ static int transmit_sendfile(off_t count, off_t *offset,
 }
 #endif /* HAVE_SENDFILE */
 
-static long transmit_data(off_t count, off_t offset, char *buf, long bufsz) {
+/* Note: the count and offset arguments are only for the benefit of
+ * transmit_sendfile(), if sendfile support is enabled.  The transmit_normal()
+ * function only needs/uses buf and bufsz.
+ */
+static long transmit_data(off_t count, off_t *offset, char *buf, long bufsz) {
   long res;
 
 #ifdef TCP_CORK
@@ -708,7 +710,7 @@ static long transmit_data(off_t count, off_t offset, char *buf, long bufsz) {
 #endif /* TCP_CORK */
 
 #ifdef HAVE_SENDFILE
-  if (!transmit_sendfile(count, &offset, &retval))
+  if (transmit_sendfile(count, offset, &retval) == 0)
     res = transmit_normal(buf, bufsz);
   else
     res = (long) retval;
@@ -1190,7 +1192,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   off_t nbytes_stored, nbytes_max_store = 0;
   unsigned char have_limit = FALSE;
   struct stat st;
-  off_t respos = 0;
+  off_t curr_pos = 0;
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *preg;
@@ -1284,7 +1286,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
       return ERROR(cmd);
     }
 
-    respos = session.restart_pos;
+    curr_pos = session.restart_pos;
     session.restart_pos = 0L;
   }
 
@@ -1310,7 +1312,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     session.xfer.path_hidden = pstrdup(session.xfer.p,
       pr_table_get(cmd->notes, "mod_xfer.store-hidden-path", NULL));
 
-  session.xfer.file_size = respos;
+  session.xfer.file_size = curr_pos;
 
   /* First, make sure the uploaded file has the requested ownership. */
   stor_chown();
@@ -1531,7 +1533,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   off_t nbytes_max_retrieve = 0;
   unsigned char have_limit = FALSE;
   long bufsz, len = 0;
-  off_t respos = 0, nbytes_sent = 0, cnt_steps = 0, cnt_next = 0;
+  off_t curr_pos = 0, nbytes_sent = 0, cnt_steps = 0, cnt_next = 0;
 
   /* This function sets static module variables for later potential
    * throttling of the transfer.
@@ -1578,7 +1580,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
       retr_fh = NULL;
     }
 
-    respos = session.restart_pos;
+    curr_pos = session.restart_pos;
     session.restart_pos = 0L;
   }
 
@@ -1592,7 +1594,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   if (cnt_steps == 0)
     cnt_steps = 1;
 
-  if (pr_data_open(cmd->arg, NULL, PR_NETIO_IO_WR, st.st_size - respos) < 0) {
+  if (pr_data_open(cmd->arg, NULL, PR_NETIO_IO_WR, st.st_size - curr_pos) < 0) {
     retr_abort();
     pr_data_abort(0, TRUE);
     return ERROR(cmd);
@@ -1627,7 +1629,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     PR_TUNABLE_XFER_BUFFER_SIZE);
   lbuf = (char *) palloc(cmd->tmp_pool, bufsz);
 
-  nbytes_sent = respos;
+  nbytes_sent = curr_pos;
 
   pr_scoreboard_update_entry(getpid(),
     PR_SCORE_XFER_SIZE, session.xfer.file_size,
@@ -1638,7 +1640,8 @@ MODRET xfer_retr(cmd_rec *cmd) {
     if (XFER_ABORTED)
       break;
 
-    if ((len = transmit_data(nbytes_sent, respos, lbuf, bufsz)) == 0)
+    len = transmit_data(nbytes_sent, &curr_pos, lbuf, bufsz);
+    if (len == 0)
       break;
 
     if (len < 0) {

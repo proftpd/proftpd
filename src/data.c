@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.84 2004-10-31 19:09:36 castaglia Exp $
+ * $Id: data.c,v 1.85 2004-11-04 22:48:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -919,7 +919,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
  * ASCII translation is not performed.
  * return 0 if reading and data connection closes, or -1 if error
  */
-pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, size_t count) {
+pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
   int flags, error;
   pr_sendfile_t len = 0, total = 0;
 #if defined(HAVE_AIX_SENDFILE)
@@ -930,10 +930,11 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, size_t count) {
   if (session.xfer.direction == PR_NETIO_IO_RD)
     return -1;
 
-  if ((flags = fcntl(PR_NETIO_FD(session.d->outstrm), F_GETFL)) == -1)
+  flags = fcntl(PR_NETIO_FD(session.d->outstrm), F_GETFL);
+  if (flags == -1)
     return -1;
 
-  /* set fd to blocking-mode for sendfile() */
+  /* Set fd to blocking-mode for sendfile() */
   if (flags & O_NONBLOCK)
     if (fcntl(PR_NETIO_FD(session.d->outstrm), F_SETFL, flags^O_NONBLOCK) == -1)
       return -1;
@@ -944,14 +945,35 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, size_t count) {
 
     /* Linux semantics are fairly straightforward in a glibc 2.x world:
      *
-     * #include <sys/sendfile.h>
+     *   #include <sys/sendfile.h>
      *
-     * ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
+     *   ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
+     *
+     * Unfortunately, this API does not allow for an off_t number of bytes
+     * to be sent, only a size_t.  This means we need to make sure that
+     * the given count does not exceed the maximum value for a size_t.  Even
+     * worse, the return value is a ssize_t, not a size_t, which means
+     * the maximum value used can only be of the maximum _signed_ value,
+     * not the maximum unsigned value.  This means calling sendfile() more
+     * times.  How annoying.
      */
+
+#if SIZEOF_SIZE_T == SIZEOF_INT
+    if (count > INT_MAX)
+      count = INT_MAX;
+#elif SIZEOF_SIZE_T == SIZEOF_LONG
+    if (count > LONG_MAX)
+      count = LONG_MAX;
+#elif SIZEOF_SIZE_T == SIZEOF_LONG_LONG
+    if (count > LLONG_MAX)
+      count = LLONG_MAX;
+#endif
+
     len = sendfile(PR_NETIO_FD(session.d->outstrm), retr_fd, offset, count);
 
-    if (len != -1 && len < count) {
-      /* under linux semantics, this occurs when a signal has interrupted
+    if (len != -1 &&
+        len < count) {
+      /* Under Linux semantics, this occurs when a signal has interrupted
        * sendfile().
        */
 
@@ -984,13 +1006,30 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, size_t count) {
     /* BSD semantics for sendfile are flexible...it'd be nice if we could
      * standardize on something like it.  The semantics are:
      *
-     * #include <sys/types.h>
-     * #include <sys/socket.h>
-     * #include <sys/uio.h>
+     *   #include <sys/types.h>
+     *   #include <sys/socket.h>
+     *   #include <sys/uio.h>
      *
-     * int sendfile(int in_fd, int out_fd, off_t offset, size_t count,
-     *              struct sf_hdtr *hdtr, off_t *len, int flags)
+     *   int sendfile(int in_fd, int out_fd, off_t offset, size_t count,
+     *                struct sf_hdtr *hdtr, off_t *len, int flags)
+     *
+     *  The comments above, about size_t versus off_t, apply here as
+     *  well.  Except that BSD's sendfile() uses an off_t * for returning
+     *  the number of bytes sent, so we can use the maximum unsigned
+     *  value.
      */
+
+#if SIZEOF_SIZE_T == SIZEOF_INT
+    if (count > UINT_MAX)
+      count = UINT_MAX;
+#elif SIZEOF_SIZE_T == SIZEOF_LONG
+    if (count > ULONG_MAX)
+      count = ULONG_MAX;
+#elif SIZEOF_SIZE_T == SIZEOF_LONG_LONG
+    if (count > ULLONG_MAX)
+      count = ULLONG_MAX;
+#endif
+
     if (sendfile(retr_fd, PR_NETIO_FD(session.d->outstrm), *offset, count,
         NULL, &len, 0) == -1) {
 
@@ -1022,16 +1061,18 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, size_t count) {
        * -1 being returned and EINTR being set, what ACTUALLY happens is
        * that errno is cleared and the number of bytes written is returned.
        *
-       * For obvious reasons, HP/UX sendfile is not supported yet - jss
+       * For obvious reasons, HP/UX sendfile is not supported yet.
        */
       if (errno == EINTR) {
         pr_signals_handle();
 
-	/* If we got everything in this transaction, we're done.
-	 */
-	if ((count -= len) <= 0)
-	  break;
-	
+        /* If we got everything in this transaction, we're done. */
+        if (len >= count)
+          break;
+
+        else 
+          count -= len;
+
 	*offset += len;
 	
 	if (TimeoutStalled)
