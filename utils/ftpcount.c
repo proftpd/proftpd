@@ -24,10 +24,9 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Shows a count of "who" is online via proftpd.  Uses the /var/run/proftpd*
- * log files.
+/* Shows a count of "who" is online via proftpd.  Uses the scoreboard file.
  *
- * $Id: ftpcount.c,v 1.12 2003-03-24 20:26:39 castaglia Exp $
+ * $Id: ftpcount.c,v 1.13 2004-02-08 01:12:19 castaglia Exp $
  */
 
 #include "utils.h"
@@ -171,14 +170,16 @@ int main(int argc, char **argv) {
   struct scoreboard_class classes[MAX_CLASSES];
   char *cp, *progname = *argv;
   const char *cmdopts = "S:c:f:h";
+  register unsigned int i;
 
   memset(classes, 0, MAX_CLASSES * sizeof(struct scoreboard_class));
 
-  if((cp = strrchr(progname,'/')) != NULL)
-    progname = cp+1;
+  cp = strrchr(progname, '/');
+  if (cp != NULL)
+    progname = cp + 1;
 
   opterr = 0;
-  while((c =
+  while ((c =
 #ifdef HAVE_GETOPT_LONG
 	 getopt_long(argc, argv, cmdopts, opts, NULL)
 #else /* HAVE_GETOPT_LONG */
@@ -247,19 +248,20 @@ int main(int argc, char **argv) {
 
   errno = 0;
   while ((score = util_scoreboard_read_entry()) != NULL) {
-    register unsigned int i = 0;
+    i = 0;
 
     if (errno)
       break;
 
-    if (!count++ || oldpid != mpid) {
+    if (!count++ ||
+        oldpid != mpid) {
       if (total)
         printf("   -  %d user%s\n\n", total, total > 1 ? "s" : "");
 
       if (!mpid)
         printf("inetd FTP connections:\n");
       else
-        printf("Master proftpd process %d:\n",(int) mpid);
+        printf("Master proftpd process %u:\n", (unsigned int) mpid);
 
       if (server_name)
         printf("ProFTPD Server '%s'\n", server_name);
@@ -289,16 +291,23 @@ int main(int argc, char **argv) {
   }
   util_close_scoreboard();
 
+  /* Print out the total. */
   if (total) {
-    register unsigned int i = 0;
-
     for (i = 0; i != MAX_CLASSES; i++) {
       if (classes[i].score_class == 0)
          break;
 
-       printf("Service class %-20s - %3lu user%s\n", classes[i].score_class,
-         classes[i].score_count, classes[i].score_count > 1 ? "s" : "");
+      printf("Service class %-20s - %3lu %s\n", classes[i].score_class,
+         classes[i].score_count, classes[i].score_count > 1 ? "users" : "user");
     }
+
+  } else {
+    if (!mpid)
+      printf("inetd FTP connections:\n");
+    else
+      printf("Master proftpd process %u:\n", (unsigned int) mpid);
+
+    printf("0 users\n");
   }
 
   return 0;

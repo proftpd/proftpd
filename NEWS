@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.528 2004-02-08 00:40:26 castaglia Exp $
+$Id: NEWS,v 1.529 2004-02-08 01:12:19 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -82,6 +82,8 @@ CVS
   was configured to handle the same IP address and port as the "server config"
   server, the wrong server configuration was being removed.
 - Bug 2324 - Directories whose names contain whitespace are inaccessible.
+- Bug 2306 - ftpcount output should handle case of no users.  When no clients
+  are connected, ftpcount now displays "0 users".
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------
