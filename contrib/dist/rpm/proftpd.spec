@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.2 2002-11-02 22:01:19 jwm Exp $
+# $Id: proftpd.spec,v 1.3 2002-11-02 22:44:42 jwm Exp $
 
 Summary:	ProFTPD -- Professional FTP Server.
 Name:		proftpd
@@ -76,7 +76,8 @@ This package is neccesary to setup ProFTPD to run from inetd.
 	contrib/dist/rpm/proftpd.init.d \
   > contrib/dist/rpm/proftpd.init.d.tmp
   mv --force contrib/dist/rpm/proftpd.init.d.tmp contrib/dist/rpm/proftpd.init.d
-  install contrib/dist/rpm/proftpd.init.d $RPM_BUILD_ROOT/etc/rc.d/init.d/proftpd
+  install -m 755 contrib/dist/rpm/proftpd.init.d $RPM_BUILD_ROOT/etc/rc.d/init.d/proftpd
+  install -m 644 contrib/dist/rpm/proftpd.logrotate $RPM_BUILD_ROOT/etc/logrotate.d/proftpd
   # We don't want these dangling symlinks to make it into the RPM
   rm -f contrib/README.linux-privs contrib/README.mod_sql
   mkdir -p $RPM_BUILD_ROOT/%{_docdir}
@@ -180,6 +181,10 @@ rm -rf %{_builddir}/%{name}-%{version}
 %config(noreplace) /etc/proftpd.conf
 
 %changelog
+* Sat Nov  2 2002 John Morrissey <jwm@horde.net>
+- Don't let dangling contrib/README.* symlinks get into the built RPM
+- logrotate for xferlog
+
 * Wed Aug 14 2002 John Morrissey <jwm@horde.net>
 - Added removal of build leftover directory in %clean.
   Submitted by: Christian Pelealu <kurisu@mweb.co.id>
