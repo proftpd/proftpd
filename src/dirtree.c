@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.107 2003-04-30 19:32:14 castaglia Exp $
+ * $Id: dirtree.c,v 1.108 2003-05-14 04:43:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -492,8 +492,7 @@ static void pop_config_stack(void) {
  */
 char *get_config_line(char *buf, size_t len) {
 
-  /* Always use the config stream at the top of the stack.
-   */
+  /* Always use the config stream at the top of the stack. */
   conf_stack_t *cs = config_stack;
 
   if (!cs->cs_file)
@@ -502,7 +501,7 @@ char *get_config_line(char *buf, size_t len) {
   /* Check for error conditions. */
   while ((pr_fsio_getline(buf, len, cs->cs_file, &(cs->cs_lineno))) != NULL) {
     char *bufp = NULL;
-    int buflen = strlen(buf);
+    size_t buflen = strlen(buf);
 
     /* Trim off the trailing newline, if present. */
     if (buflen && buf[buflen - 1] == '\n')
@@ -515,10 +514,10 @@ char *get_config_line(char *buf, size_t len) {
      * to the next configuration line if found.  If not, return the
      * configuration line.
      */
-    if (*bufp == '#' || !*bufp)
+    if (*bufp == '#' || !*bufp) {
       continue;
 
-    else {
+    } else {
 
       /* Copy the value of bufp back into the pointer passed in
        * and return it.
@@ -538,7 +537,7 @@ static cmd_rec *get_config_cmd(pool *ppool) {
   pool *new_pool = NULL;
   array_header *tarr = NULL;
 
-  while (get_config_line(buf, sizeof(buf)) != NULL) {
+  while (get_config_line(buf, sizeof(buf)-1) != NULL) {
     char *bufp = buf;
 
     /* Build a new pool for the command structure and array */
@@ -1825,13 +1824,13 @@ int dir_check_limits(config_rec *c, char *cmd, int hidden) {
   return res;
 }
 
-void build_dyn_config(pool *p,char *_path, struct stat *_sbuf,
+void build_dyn_config(pool *p, char *_path, struct stat *_sbuf,
     unsigned char recurse) {
-  char *fullpath,*path,*dynpath,*cp;
+  char *fullpath = NULL, *path = NULL, *dynpath = NULL, *cp = NULL;
   struct stat sbuf;
-  config_rec *d;
+  config_rec *d = NULL;
   pr_fh_t *fp = NULL;
-  cmd_rec *cmd;
+  cmd_rec *cmd = NULL;
   xaset_t **set = NULL;
   int isfile, removed = 0;
 
@@ -1842,8 +1841,7 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf,
   if (!_path)
     return;
 
-  /* check to see whether .ftpaccess files are allowed to be parsed
-   */
+  /* Check to see whether .ftpaccess files are allowed to be parsed. */
   if (!allow_dyn_config())
     return;
 
@@ -1906,7 +1904,7 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf,
 
 	if (d->subset && d->subset->xas_list) {
 
-       	  /* remove all old dynamic entries */
+       	  /* Remove all old dynamic entries. */
           for (newd = (config_rec *)d->subset->xas_list; newd; newd = dnext) {
 	    dnext = newd->next;
 
@@ -1923,9 +1921,8 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf,
           d->argv[0] = NULL;
 
 	  /* If the file has been removed and no entries exist in this
-           * dynamic entry, remove it completely
+           * dynamic entry, remove it completely.
            */
-
           if (isfile == -1)
             xaset_remove(*set, (xasetmember_t *) d);
         }
@@ -1940,6 +1937,7 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf,
       *((time_t *) d->argv[0]) = sbuf.st_mtime;
 
       if ((fp = pr_fsio_open(dynpath, O_RDONLY)) != NULL) {
+        unsigned char updated = FALSE;
         conf_stack_t *cs = NULL;
 
         removed = 0;
@@ -1953,6 +1951,10 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf,
         d->config_type = CONF_DYNDIR;
 
         while ((cmd = get_config_cmd(p)) != NULL) {
+
+          /* while() loops should always handle signals. */
+          pr_signals_handle();
+
           if (cmd->argc) {
             conftable *c;
             char found = 0;
@@ -1984,13 +1986,17 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf,
                 "warning: unknown configuration directive '%s' on "
                 "line %d of '%s'", cmd->argv[0], cs->cs_lineno,
                 dynpath);
+
+            else
+              updated = TRUE;
           }
 
           destroy_pool(cmd->pool);
         }
 
-	log_debug(DEBUG5, "dynamic configuration added/updated for %s",
-          fullpath);
+        if (updated)
+	  log_debug(DEBUG5, "dynamic configuration added/updated for %s",
+            fullpath);
 
         d->config_type = CONF_DIR;
         free_dyn_stacks();

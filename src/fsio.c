@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.18 2003-04-16 17:53:27 castaglia Exp $
+ * $Id: fsio.c,v 1.19 2003-05-14 04:43:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2464,7 +2464,7 @@ char *pr_fsio_gets(char *buf, size_t size, pr_fh_t *fh) {
   int toread = 0;
   pr_buffer_t *pbuf = NULL;
 
-  if (!buf || !fh) {
+  if (!buf || !fh || size <= 0) {
     errno = EINVAL;
     return NULL;
   }
@@ -2534,6 +2534,10 @@ char *pr_fsio_getline(char *buf, int buflen, pr_fh_t *fh,
   char *start = buf;
 
   while (pr_fsio_gets(buf, buflen, fh)) {
+
+    /* while() loops should always handle signals. */
+    pr_signals_handle();
+
     inlen = strlen(buf);
 
     if (inlen >= 1 && buf[inlen - 1] == '\n') {
@@ -2545,6 +2549,10 @@ char *pr_fsio_getline(char *buf, int buflen, pr_fh_t *fh,
       } else
         return start;
     }
+
+    /* Be careful of reading too much. */
+    if (buflen - inlen == 0)
+      return buf;
 
     buf += inlen;
     buflen -= inlen;
