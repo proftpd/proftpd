@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.263 2004-12-02 23:15:19 castaglia Exp $
+ * $Id: mod_core.c,v 1.264 2004-12-04 01:16:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2429,6 +2429,10 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
       argc = cmd->argc-1;
       argv = cmd->argv;
     }
+
+  } else {
+    argc = cmd->argc-1;
+    argv = cmd->argv;
   }
 
   acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
