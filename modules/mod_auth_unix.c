@@ -26,7 +26,7 @@
 
 /*
  * Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.7 2003-04-22 20:47:07 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.8 2003-04-30 19:32:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,19 +35,19 @@
  * their crypt.h and stdlib.h's setkey() declarations.  *sigh*
  */
 #if defined(HAVE_CRYPT_H) && !defined(AIX4)
-#include <crypt.h>
+# include <crypt.h>
 #endif
 
 #ifdef USE_SHADOW
-#include <shadow.h>
+# include <shadow.h>
 #endif
 
 #ifdef HAVE_SYS_SECURITY_H
-#include <sys/security.h>
+# include <sys/security.h>
 #endif
 
 #ifdef HAVE_KRB_H
-#include <krb.h>
+# include <krb.h>
 #endif
 
 #if defined(HAVE_HPSECURITY_H) || defined(HPUX10) || defined(HPUX11)
@@ -58,7 +58,7 @@
 #endif /* HAVE_HPSECURITY_H or HPUX10 or HPUX11 */
 
 #if defined(HAVE_PROT_H) || defined(COMSEC)
-#include <prot.h>
+# include <prot.h>
 #endif
 
 #ifdef USE_SIA
@@ -69,6 +69,16 @@
 #  include <siad.h>
 # endif
 #endif /* USE_SIA */
+
+#ifdef CYGWIN
+typedef void *HANDLE;
+typedef unsigned long DWORD;
+# define INVALID_HANDLE_VALUE (HANDLE)(-1)
+# define WINAPI __stdcall
+DWORD WINAPI GetVersion(void);
+extern HANDLE cygwin_logon_user (const struct passwd *, const char *);
+extern void cygwin_set_impersonation_token (const HANDLE);
+#endif /* CYGWIN */
 
 #ifdef SETGRENT_VOID
 # define RETSETGRENTTYPE	void
@@ -297,8 +307,7 @@ static idmap_t *_auth_lookup_id(xaset_t **id_table, idauth_t id)
   return m;
 }
 
-MODRET pw_setpwent(cmd_rec *cmd)
-{
+MODRET pw_setpwent(cmd_rec *cmd) {
   if (PERSISTENT_PASSWD)
     p_setpwent();
   else
@@ -307,8 +316,7 @@ MODRET pw_setpwent(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET pw_endpwent(cmd_rec *cmd)
-{
+MODRET pw_endpwent(cmd_rec *cmd) {
   if (PERSISTENT_PASSWD)
     p_endpwent();
   else
@@ -326,8 +334,7 @@ MODRET pw_setgrent(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET pw_endgrent(cmd_rec *cmd)
-{
+MODRET pw_endgrent(cmd_rec *cmd) {
   if (PERSISTENT_GROUP)
     p_endgrent();
   else
@@ -336,8 +343,7 @@ MODRET pw_endgrent(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET pw_getgrent(cmd_rec *cmd)
-{
+MODRET pw_getgrent(cmd_rec *cmd) {
   struct group *gr;
 
   if (PERSISTENT_GROUP)
@@ -351,8 +357,7 @@ MODRET pw_getgrent(cmd_rec *cmd)
     return ERROR(cmd);
 }
 
-MODRET pw_getpwent(cmd_rec *cmd)
-{
+MODRET pw_getpwent(cmd_rec *cmd) {
   struct passwd *pw;
 
   if (PERSISTENT_PASSWD)
@@ -366,8 +371,7 @@ MODRET pw_getpwent(cmd_rec *cmd)
     return ERROR(cmd);
 }
 
-MODRET pw_getpwuid(cmd_rec *cmd)
-{
+MODRET pw_getpwuid(cmd_rec *cmd) {
   struct passwd *pw;
   uid_t uid;
 
@@ -383,8 +387,7 @@ MODRET pw_getpwuid(cmd_rec *cmd)
     return ERROR(cmd);
 }
 
-MODRET pw_getpwnam(cmd_rec *cmd)
-{
+MODRET pw_getpwnam(cmd_rec *cmd) {
   struct passwd *pw;
   const char *name;
 
@@ -400,8 +403,7 @@ MODRET pw_getpwnam(cmd_rec *cmd)
     return ERROR(cmd);
 }
 
-MODRET pw_getgrnam(cmd_rec *cmd)
-{
+MODRET pw_getgrnam(cmd_rec *cmd) {
   struct group *gr;
   const char *name;
 
@@ -417,8 +419,7 @@ MODRET pw_getgrnam(cmd_rec *cmd)
     return ERROR(cmd);
 }
 
-MODRET pw_getgrgid(cmd_rec *cmd)
-{
+MODRET pw_getgrgid(cmd_rec *cmd) {
   struct group *gr;
   gid_t gid;
 
@@ -685,6 +686,51 @@ MODRET pw_check(cmd_rec *cmd) {
     return ERROR(cmd);
 
 #else /* !USE_SIA */
+
+# ifdef CYGWIN
+  /* We have to do special Windows NT voodoo with Cygwin in order to be
+   * able to switch UID/GID. More info at
+   * http://cygwin.com/cygwin-ug-net/ntsec.html#NTSEC-SETUID
+   */
+  if (GetVersion() < 0x80000000) {
+    cmd_rec *tmp_cmd = NULL;
+    modret_t *mr = NULL;
+    struct passwd *pwent = NULL;
+    HANDLE token;
+
+    /* A struct passwd * is needed.  To look one up via pw_getpwnam(), though,
+     * we'll need a cmd_rec.
+     */
+    tmp_cmd = pr_cmd_alloc(cmd->tmp_pool, 1, cmd->argv[1]);
+
+    /* pw_getpwnam() returns a MODRET, so we need to handle that.  Yes, this
+     * might have been easier if we'd used auth_getpwnam(), but that would
+     * dispatch through other auth modules, which is _not_ what we want.
+     */
+    mr = pw_getpwnam(tmp_cmd);
+
+    /* Note: we don't handle the case where pw_getpwnam() returns anything
+     * other than HANDLED at the moment.
+     */
+
+    if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
+      pwent = mr->data;
+
+      if ((token = cygwin_logon_user((const struct passwd *) pwent,
+          pw)) == INVALID_HANDLE_VALUE) {
+        log_pri(PR_LOG_NOTICE, "error authenticating Cygwin user: %s",
+          strerror(errno));
+        return ERROR(cmd);
+      }
+
+      cygwin_set_impersonation_token(token);
+
+    } else
+      return ERROR(cmd);
+
+  } else
+# endif /* CYGWIN */
+
   if (strcmp(crypt(pw, cpw), cpw) != 0)
     return ERROR(cmd);
 #endif /* USE_SIA */

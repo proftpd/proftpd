@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.57 2003-01-25 02:38:00 castaglia Exp $
+ * $Id: support.c,v 1.58 2003-04-30 19:32:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -43,7 +43,7 @@
 #endif
 
 #ifdef AIX3
-#include <sys/statfs.h>
+# include <sys/statfs.h>
 #endif
 
 static pool *exithandler_pool = NULL;

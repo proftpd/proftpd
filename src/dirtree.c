@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.106 2003-03-14 15:54:39 castaglia Exp $
+ * $Id: dirtree.c,v 1.107 2003-04-30 19:32:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -421,6 +421,33 @@ char *get_word(char **cp, unsigned char ignore_comments) {
   *dst = '\0';
 
   return ret;
+}
+
+cmd_rec *pr_cmd_alloc(pool *p, int argc, ...) {
+  pool *newpool = NULL;
+  cmd_rec *c = NULL;
+  va_list args;
+
+  newpool = make_sub_pool(p);
+  c = pcalloc(newpool, sizeof(cmd_rec));
+  c->argc = argc;
+  c->stash_index = -1;
+  c->pool = newpool;
+  c->tmp_pool = make_sub_pool(c->pool);
+
+  if (argc) {
+    register unsigned int i = 0;
+
+    c->argv = pcalloc(newpool, sizeof(void *) * (argc));
+    va_start(args, argc);
+
+    for (i = 0; i < argc; i++)
+      c->argv[i] = (void *) va_arg(args, char *);
+
+    va_end(args);
+  }
+
+  return c;
 }
 
 static conf_stack_t *push_config_stack(pr_fh_t *fh, unsigned int lineno) {
