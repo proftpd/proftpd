@@ -360,6 +360,9 @@
 /* Define if you have the <security/pam_appl.h> header file.  */
 #undef HAVE_SECURITY_PAM_APPL_H
 
+/* Define if you have the <pam/pam_appl.h> header file.  */
+#undef HAVE_PAM_PAM_APPL_H
+
 /* Define if you have the <shadow.h> header file.  */
 #undef HAVE_SHADOW_H
 

@@ -55,6 +55,17 @@ These settings are valid for RedHat and SuSE Linux systems.  Other Linux
 distributions may differ.
 
 
+Mac OS X
+--------
+
+To use PAM with ProFTPD, you must edit /etc/pam.d/ftp and add the
+following lines:
+
+auth       required    pam_unix.so try_first_pass
+account    required    pam_unix.so try_first_pass
+session    required    pam_permit.so
+
+
 PAM Configuration Options
 -------------------------
 
