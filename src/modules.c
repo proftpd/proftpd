@@ -628,11 +628,11 @@ int module_preparse_init(void) {
         /* HOOKs and CMDs share the cmdtable type, so check the cmd_type
          * when adding this symbol to the stash.
          */
-        if (cmdtab->cmd_type == CMD)
-          pr_stash_add_symbol(PR_SYM_CMD, cmdtab);
-
-        else if (cmdtab->cmd_type == HOOK)
+        if (cmdtab->cmd_type == HOOK)
           pr_stash_add_symbol(PR_SYM_HOOK, cmdtab);
+
+        else
+          pr_stash_add_symbol(PR_SYM_CMD, cmdtab);
       }
     }
 
