@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.209 2003-11-09 23:10:55 castaglia Exp $
+ * $Id: mod_core.c,v 1.210 2003-11-15 19:43:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -491,8 +491,23 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
     pr_netaddr_t **elts = addrs->elts;
 
     /* For every additional address, implicitly add a Bind record. */
-    for (i = 0; i < addrs->nelts; i++)
-      add_config_param_str("Bind", 1, pr_netaddr_get_ipstr(elts[i]));
+    for (i = 0; i < addrs->nelts; i++) {
+      const char *ipstr = pr_netaddr_get_ipstr(elts[i]);
+
+#ifdef USE_IPV6
+      char ipbuf[INET6_ADDRSTRLEN];
+      if (pr_netaddr_get_family(elts[i]) == AF_INET) {
+
+        /* Create the Bind record using the IPv4-mapped IPv6 version of
+         * this address.
+         */
+        snprintf(ipbuf, sizeof(ipbuf), "::ffff:%s", ipstr);
+        ipstr = ipbuf;
+      }
+#endif /* USE_IPV6 */
+
+      add_config_param_str("Bind", 1, ipstr);
+    }
   }
 
   return HANDLED(cmd);
