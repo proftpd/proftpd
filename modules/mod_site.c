@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.32 2002-12-11 16:50:07 castaglia Exp $
+ * $Id: mod_site.c,v 1.33 2002-12-11 23:17:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -65,41 +65,47 @@ static char *_get_full_cmd(cmd_rec *cmd) {
 
 MODRET site_chgrp(cmd_rec *cmd) {
   gid_t gid;
-  char *path = NULL, *tmp = NULL;
-
+  char *path = NULL, *tmp = NULL, *arg = "";
+  register unsigned int i = 0;
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *preg;
 #endif
 
-  if (cmd->argc != 3) {
-    add_response_err(R_500,"'SITE %s' not understood.", _get_full_cmd(cmd));
+  if (cmd->argc < 3) {
+    add_response_err(R_500, "'SITE %s' not understood", _get_full_cmd(cmd));
     return NULL;
   }
+
+  /* Construct the target file name by concatenating all the parameters after
+   * the mode, separating them with spaces.
+   */
+  for (i = 2; i <= cmd->argc-1; i++)
+    arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "", cmd->argv[i], NULL);
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
 
-  if (preg && regexec(preg, cmd->argv[2], 0, NULL, 0) != 0) {
+  if (preg && regexec(preg, arg, 0, NULL, 0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
-    add_response_err(R_550, "%s: Forbidden filename", cmd->argv[2]);
+    add_response_err(R_550, "%s: Forbidden filename", arg);
     return ERROR(cmd);
   }
 
   preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathDenyFilter", FALSE);
 
-  if (preg && regexec(preg, cmd->argv[2], 0, NULL, 0) == 0) {
+  if (preg && regexec(preg, arg, 0, NULL, 0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
-    add_response_err(R_550, "%s: Forbidden filename", cmd->argv[2]);
+    add_response_err(R_550, "%s: Forbidden filename", arg);
     return ERROR(cmd);
   }
 #endif
 
-  path = dir_realpath(cmd->tmp_pool, cmd->argv[2]);
+  path = dir_realpath(cmd->tmp_pool, arg);
 
   if (!path) {
-    add_response_err(R_550, "%s: %s", cmd->argv[2], strerror(errno));
+    add_response_err(R_550, "%s: %s", arg, strerror(errno));
     return ERROR(cmd);
   }
 
@@ -112,57 +118,64 @@ MODRET site_chgrp(cmd_rec *cmd) {
 
     /* Try the parameter as a user name. */
     if ((gid = auth_name_gid(cmd->tmp_pool, cmd->argv[1])) == -1) {
-      add_response_err(R_550, "%s: %s", cmd->argv[2], strerror(EINVAL));
+      add_response_err(R_550, "%s: %s", arg, strerror(EINVAL));
       return ERROR(cmd);
     }
   }
 
   if (core_chgrp(cmd, path, (uid_t) -1, gid) == -1) {
-    add_response_err(R_550, "%s: %s", cmd->argv[2], strerror(errno));
+    add_response_err(R_550, "%s: %s", arg, strerror(errno));
     return ERROR(cmd);
 
   } else
-    add_response(R_200, "SITE %s command successful.", cmd->argv[0]);
+    add_response(R_200, "SITE %s command successful", cmd->argv[0]);
 
   return HANDLED(cmd);
 }
 
 MODRET site_chmod(cmd_rec *cmd) {
   mode_t mode = 0;
-  char *dir,*endp,*tmp;
+  char *dir, *endp, *tmp, *arg = "";
+  register unsigned int i = 0;
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *preg;
 #endif
 
-  if (cmd->argc != 3) {
-    add_response_err(R_500,"'SITE %s' not understood.",_get_full_cmd(cmd));
+  if (cmd->argc < 3) {
+    add_response_err(R_500, "'SITE %s' not understood", _get_full_cmd(cmd));
     return NULL;
   }
+
+  /* Construct the target file name by concatenating all the parameters after
+   * the mode, separating them with spaces.
+   */
+  for (i = 2; i <= cmd->argc-1; i++) 
+    arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "", cmd->argv[i], NULL);
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
 
-  if (preg && regexec(preg, cmd->argv[2], 0, NULL, 0) != 0) {
+  if (preg && regexec(preg, arg, 0, NULL, 0) != 0) {
     log_debug(DEBUG2, "'%s %s %s' denied by PathAllowFilter", cmd->argv[0],
-      cmd->argv[1], cmd->argv[2]);
-    add_response_err(R_550, "%s: Forbidden filename", cmd->argv[2]);
+      cmd->argv[1], arg);
+    add_response_err(R_550, "%s: Forbidden filename", arg);
     return ERROR(cmd);
   }
 
   preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathDenyFilter", FALSE);
 
-  if (preg && regexec(preg, cmd->argv[2], 0, NULL, 0) == 0) {
+  if (preg && regexec(preg, arg, 0, NULL, 0) == 0) {
     log_debug(DEBUG2, "'%s %s %s' denied by PathDenyFilter", cmd->argv[0],
-      cmd->argv[1], cmd->argv[2]);
-    add_response_err(R_550, "%s: Forbidden filename", cmd->argv[2]);
+      cmd->argv[1], arg);
+    add_response_err(R_550, "%s: Forbidden filename", arg);
     return ERROR(cmd);
   }
 #endif
 
-  dir = dir_realpath(cmd->tmp_pool, cmd->argv[2]);
+  dir = dir_realpath(cmd->tmp_pool, arg);
 
   if (!dir) {
-    add_response_err(R_550, "%s: %s", cmd->argv[2], strerror(errno));
+    add_response_err(R_550, "%s: %s", arg, strerror(errno));
     return ERROR(cmd);
   }
 
@@ -319,11 +332,11 @@ MODRET site_chmod(cmd_rec *cmd) {
   }
 
   if (core_chmod(cmd, dir, mode) == -1) {
-    add_response_err(R_550, "%s: %s", cmd->argv[2], strerror(errno));
+    add_response_err(R_550, "%s: %s", arg, strerror(errno));
     return ERROR(cmd);
 
   } else
-    add_response(R_200, "SITE %s command successful.", cmd->argv[0]);
+    add_response(R_200, "SITE %s command successful", cmd->argv[0]);
 
   return HANDLED(cmd);
 }

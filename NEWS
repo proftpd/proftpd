@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.319 2002-12-11 16:49:59 castaglia Exp $
+$Id: NEWS,v 1.320 2002-12-11 23:17:40 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -52,6 +52,8 @@ CVS
   been implemented by adding a "regex" optional parameter to the AllowGroup,
   DenyGroup, AllowUser, and DenyUser directives.  The documentation will
   be adjusted accordingly.
+- Bug 1882 - SITE chmod 777 file<space>name.  The patch for this works
+  for filename parameters to the SITE CHGRP command as well.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------
