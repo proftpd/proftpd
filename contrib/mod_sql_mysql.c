@@ -21,7 +21,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.27 2003-10-01 14:21:31 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.28 2003-11-09 21:23:30 castaglia Exp $
  */
 
 /*
@@ -251,10 +251,9 @@ static void *_sql_add_connection(pool *p, char *name, db_conn_t *conn)
  *  properly filled in.  If not, it's grounds for the daemon to
  *  shutdown.
  */
-static void _sql_check_cmd(cmd_rec *cmd, char *msg)
-{
+static void _sql_check_cmd(cmd_rec *cmd, char *msg) {
   if ((!cmd) || (!cmd->tmp_pool)) {
-    log_pri(PR_LOG_ERR, _MOD_VERSION ": '%s' was passed an invalid cmd_rec. "
+    pr_log_pri(PR_LOG_ERR, _MOD_VERSION ": '%s' was passed an invalid cmd_rec. "
 	    "Shutting down.", msg);
     sql_log(DEBUG_WARN, "'%s' was passed an invalid cmd_rec. Shutting down.",
       msg);
@@ -269,8 +268,7 @@ static void _sql_check_cmd(cmd_rec *cmd, char *msg)
  *  that gets called.  This function makes assumptions about the 
  *  db_conn_t members.
  */
-static int _sql_timer_callback(CALLBACK_FRAME)
-{
+static int _sql_timer_callback(CALLBACK_FRAME) {
   conn_entry_t *entry = NULL;
   int cnt = 0;
   cmd_rec *cmd = NULL;
@@ -448,7 +446,7 @@ MODRET cmd_open(cmd_rec *cmd) {
   conn->mysql = mysql_init(NULL);
 
   if (!conn->mysql) {
-    log_pri(PR_LOG_ERR, _MOD_VERSION ": failed to allocate memory for "
+    pr_log_pri(PR_LOG_ERR, _MOD_VERSION ": failed to allocate memory for "
 	    "MYSQL structure.  Shutting down.");
     sql_log(DEBUG_WARN, "%s", "failed to allocate memory for MYSQL structure. "
       "Shutting down.");
