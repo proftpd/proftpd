@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.194 2003-10-17 13:19:54 castaglia Exp $
+ * $Id: mod_core.c,v 1.195 2003-10-17 15:39:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1470,38 +1470,32 @@ MODRET set_syslogfacility(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT);
 
   for (i = 0; factable[i].name; i++) {
-    if (!strcasecmp(cmd->argv[1],factable[i].name)) {
+    if (strcasecmp(cmd->argv[1], factable[i].name) == 0) {
       log_closesyslog();
       log_setfacility(factable[i].facility);
 
       pr_signals_block();
-      PRIVS_ROOT
-        switch (log_opensyslog(NULL)) {
-
+      switch (log_opensyslog(NULL)) {
         case -1:
-          PRIVS_RELINQUISH
           pr_signals_unblock();
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to open syslog: ",
             strerror(errno), NULL));
           break;
 
         case LOG_WRITEABLE_DIR:
-          PRIVS_RELINQUISH
           pr_signals_unblock();
           CONF_ERROR(cmd,
             "you are attempting to log to a world writeable directory");
           break;
 
         case LOG_SYMLINK:
-          PRIVS_RELINQUISH
           pr_signals_unblock();
           CONF_ERROR(cmd, "you are attempting to log to a symbolic link");
           break;
 
         default:
           break;
-        }
-      PRIVS_RELINQUISH
+      }
       pr_signals_unblock();
 
       return HANDLED(cmd);
@@ -3107,7 +3101,7 @@ MODRET core_port(cmd_rec *cmd) {
      * address if the remote client address is an IPv4-mapped IPv6 address.
      */
     if (pr_netaddr_get_family(remote_addr) == AF_INET6 &&
-        !pr_netaddr_is_v4mappedv6(remote_addr)) {
+        pr_netaddr_is_v4mappedv6(remote_addr) != TRUE) {
       log_pri(PR_LOG_WARNING, "Refused PORT %s (IPv4/IPv6 address mismatch)",
         cmd->arg);
       pr_response_add_err(R_500, "Illegal PORT command");

@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.55 2003-09-08 00:33:49 castaglia Exp $
+ * $Id: mod_log.c,v 1.56 2003-10-17 15:39:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -456,12 +456,10 @@ MODRET set_systemlog(cmd_rec *cmd) {
     syslogfn = dir_canonical_path(cmd->tmp_pool,syslogfn);
 
   pr_signals_block();
-  PRIVS_ROOT
 
   if ((ret = log_opensyslog(syslogfn)) < 0) {
     int xerrno = errno;
 
-    PRIVS_RELINQUISH
     pr_signals_unblock();
 
     if (ret == LOG_WRITEABLE_DIR) {
@@ -478,9 +476,7 @@ MODRET set_systemlog(cmd_rec *cmd) {
     }
   }
 
-  PRIVS_RELINQUISH
   pr_signals_unblock();
-
   return HANDLED(cmd);
 }
 

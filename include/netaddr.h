@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.13 2003-10-11 16:57:24 castaglia Exp $
+ * $Id: netaddr.h,v 1.14 2003-10-17 15:39:27 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -160,7 +160,8 @@ unsigned int pr_netaddr_get_addrno(const pr_netaddr_t *);
 int pr_netaddr_loopback(const pr_netaddr_t *);
 
 /* Returns TRUE if the given pr_netaddr_t is of the AF_INET6 family and
- * contains an IPv4-mapped IPv6 address; otherwise FALSE is returned.
+ * contains an IPv4-mapped IPv6 address; otherwise FALSE is returned.  A
+ * return value of -1 is used to indicate an error.
  */
 int pr_netaddr_is_v4mappedv6(const pr_netaddr_t *);
 

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.492 2003-10-17 13:19:54 castaglia Exp $
+$Id: NEWS,v 1.493 2003-10-17 15:39:27 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -7,6 +7,14 @@ CVS
   still existed when an IPv4 client used the PORT command when talking to
   an IPv4-only vhost (as opposed to an IPv4 and IPv6 vhost).  Now PORT is
   properly handled in all cases.
+- Bug 2204 - On systems that use the gethostbyname2() function, IPv4 clients
+  were not being properly resolved to their DNS names.
+- Bug 2242 - proftpd reread included additional config as user nobody instead
+  of root.  The bug was caused by configuration directive handlers
+  (specifically, SyslogFacility and SystemLog) that would incorrectly change
+  the process privileges; depending on the order of configuration in
+  proftpd.conf, some Included files might not be parseable due to permissions
+  problems.
 
 1.2.9rc3 - Released 15-Oct-2003
 ---------------------------------
