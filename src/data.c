@@ -25,7 +25,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.31 2002-06-11 14:30:02 castaglia Exp $
+ * $Id: data.c,v 1.32 2002-06-11 16:18:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -167,13 +167,36 @@ static int _data_pasv_open(char *reason, unsigned long size) {
     inet_setnonblock(session.pool,c);
     session.d = c;
     
-    if(size) {
-      send_response(R_150,
-		    "Opening %s mode data connection for %s (%lu bytes).",
-		    MODE_STRING, reason, size);
-    } else {
+    if (session.xfer.xfer_type != STOR_UNIQUE) { 
+      if (size)
+        send_response(R_150, "Opening %s mode data connection for %s "
+          "(%lu bytes)", MODE_STRING, reason, size);
+      else
       send_response(R_150,"Opening %s mode data connection for %s",
 		    MODE_STRING, reason);
+
+    } else {
+
+      /* Format of 150 responses for STOU is explicitly dictated by
+       * RFC 1123:
+       *
+       *  4.1.2.9  STOU Command: RFC-959 Section 4.1.3
+       *
+       *    The STOU command stores into a uniquely named file.  When it
+       *    receives an STOU command, a Server-FTP MUST return the
+       *    actual file name in the "125 Transfer Starting" or the "150
+       *    Opening Data Connection" message that precedes the transfer
+       *    (the 250 reply code mentioned in RFC-959 is incorrect).  The
+       *    exact format of these messages is hereby defined to be as
+       *    follows:
+       *
+       *        125 FILE: pppp
+       *        150 FILE: pppp
+       *
+       *    where pppp represents the unique pathname of the file that
+       *    will be written.
+       */
+      send_response(R_150, "FILE: %s", reason);
     }
     
     return 0;
@@ -235,14 +258,36 @@ static int _data_active_open(char *reason, unsigned long size) {
 	      inet_ntoa(*session.d->remote_ipaddr),
 	      session.d->remote_port);
     
-    if(size) {
-      send_response(R_150,
-		    "Opening %s mode data connection for %s (%lu bytes).",
-		    MODE_STRING,reason,size);
-    } else {
-      send_response(R_150,
-		    "Opening %s mode data connection for %s.",
+    if (session.xfer.xfer_type != STOR_UNIQUE) {
+      if (size)
+        send_response(R_150, "Opening %s mode data connection for %s "
+          "(%lu bytes)", MODE_STRING, reason, size);
+      else
+        send_response(R_150, "Opening %s mode data connection for %s",
 		    MODE_STRING,reason);
+
+    } else {
+
+      /* Format of 150 responses for STOU is explicitly dictated by
+       * RFC 1123:
+       *
+       *  4.1.2.9  STOU Command: RFC-959 Section 4.1.3
+       *
+       *    The STOU command stores into a uniquely named file.  When it
+       *    receives an STOU command, a Server-FTP MUST return the
+       *    actual file name in the "125 Transfer Starting" or the "150
+       *    Opening Data Connection" message that precedes the transfer
+       *    (the 250 reply code mentioned in RFC-959 is incorrect).  The
+       *    exact format of these messages is hereby defined to be as
+       *    follows:
+       *
+       *        125 FILE: pppp
+       *        150 FILE: pppp
+       *
+       *    where pppp represents the unique pathname of the file that
+       *    will be written.
+       */
+      send_response(R_150, "FILE: %s", reason);
     }
     
     inet_close(session.pool,session.d);

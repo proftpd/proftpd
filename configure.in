@@ -442,7 +442,7 @@ AC_FUNC_SETPGRP
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS(bcopy flock getcwd gethostname getopt getopt_long gettimeofday)
-AC_CHECK_FUNCS(memcpy mempcpy mkdir rmdir select socket strchr strcoll)
+AC_CHECK_FUNCS(memcpy mempcpy mkdir mkstemp rmdir select socket strchr strcoll)
 AC_CHECK_FUNCS(strerror strsep strtol)
 # __snprintf and __vsnprintf are only on solaris and _really_ broken there.
 AC_CHECK_FUNCS(vsnprintf snprintf)

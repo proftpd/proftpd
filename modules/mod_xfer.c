@@ -25,7 +25,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.67 2002-06-11 14:49:27 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.68 2002-06-11 16:18:07 castaglia Exp $
  */
 
 /* History Log:
@@ -520,7 +520,123 @@ MODRET pre_cmd_stor(cmd_rec *cmd) {
     session.xfer.xfer_type = STOR_HIDDEN;
   }
 
+  return HANDLED(cmd);
+}
 
+/* pre_cmd_stou is a PRE_CMD handler which changes the uploaded filename
+ * to a unique one, after making the requisite security and authorization
+ * checks.
+ */
+MODRET pre_cmd_stou(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  privdata_t *priv = NULL;
+  char *prefix = "ftp", *filename = NULL;
+  int tmpfd;
+  mode_t mode;
+
+  /* Some FTP clients are "broken" in that they will send a filename
+   * along with STOU.  Technically this violates RFC959, but for now, just
+   * ignore that filename.  Stupid client implementors.
+   */
+
+  if (cmd->argc > 2) {
+    add_response_err(R_500, "'%s' not understood.", get_full_cmd(cmd));
+    return ERROR(cmd);
+  }
+
+  /* Watch for STOU preceded by REST, which makes no sense.
+   *
+   *   REST: session.restart_pos > 0
+   */
+  if (session.restart_pos) {
+    add_response_err(R_550, "STOU incompatible with REST");
+    return ERROR(cmd);
+  }
+
+  /* Generate the filename to be stored, depending on the configured
+   * unique filename prefix.
+   */
+  if ((c = find_config(CURRENT_CONF, CONF_PARAM, "StoreUniquePrefix",
+      FALSE)) != NULL)
+    prefix = c->argv[0];
+
+  /* Now, construct the unique filename using the cmd_rec's pool, the
+   * prefix, and mkstemp().
+   */
+  filename = pstrcat(cmd->pool, prefix, "XXXXXX", NULL);
+
+  if ((tmpfd = mkstemp(filename)) < 0) {
+    log_pri(LOG_ERR, "error: unable to use mkstemp(): %s", strerror(errno));
+
+    /* If we can't guarantee a unique filename, refuse the command. */
+    add_response_err(R_450, "%s: unable to generate unique filename",
+      cmd->argv[0]); 
+    return ERROR(cmd);
+
+  } else {
+    cmd->arg = filename;
+
+    /* Close the unique file.  This introduces a small race condition
+     * between the time this function returns, and the STOU CMD handler
+     * opens the unique file, but this may have to do, as closing that
+     * race would involve some major restructuring.
+     */
+    close(tmpfd);
+  }
+
+  /* It's OK to reuse the char * pointer for filename.
+   */
+  filename = dir_best_path(cmd->tmp_pool, cmd->arg);
+
+  if (!filename || !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group,
+      filename, NULL)) {
+    add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    return ERROR(cmd);
+  }
+
+  mode = file_mode(filename);
+
+  if (mode &&
+      session.xfer.xfer_type != STOR_APPEND &&
+      get_param_int(CURRENT_CONF,"AllowOverwrite",FALSE) != 1) {
+    add_response_err(R_550, "%s: Overwrite permission denied", cmd->arg);
+    return ERROR(cmd);
+  }
+
+  /* Not likely to _not_ be a regular file, but just to be certain...
+   */
+  if (mode && !S_ISREG(mode)) {
+    add_response_err(R_550, "%s: Not a regular file", cmd->arg);
+    return ERROR(cmd);
+  }
+
+  /* Otherwise everthing is good */
+  priv = mod_privdata_alloc(cmd, "stor_filename", strlen(filename) + 1);
+  sstrncpy(priv->value.str_val, filename, strlen(filename) + 1);
+
+  session.xfer.xfer_type = STOR_UNIQUE;
+ 
+  return HANDLED(cmd);
+}
+
+/* post_cmd_stou is a POST_CMD handler that changes the mode of the
+ * STOU file from 0600, which is what mkstemp() makes it, to 0666,
+ * the default for files uploaded via STOR.  This is to prevent users
+ * from being surprised.
+ */
+MODRET post_cmd_stou(cmd_rec *cmd) {
+
+  /* This is the same mode as used in src/fs.c.  Should probably be
+   * available as a macro.
+   */
+  mode_t mode = 0666;
+
+  if (fs_chmod(cmd->arg, mode) < 0) {
+
+    /* Not much to do but log the error. */
+    log_pri(LOG_ERR, "error: unable to chmod '%s': %s", cmd->arg,
+      strerror(errno));
+  }
 
   return HANDLED(cmd);
 }
@@ -1086,13 +1202,6 @@ cmd_smnt(cmd_rec *cmd)
 }
 
 
-MODRET
-cmd_stou(cmd_rec *cmd)
-{
-	add_response(R_502, "STOU command not implemented.");
-	return HANDLED(cmd);
-}
-
 MODRET xfer_err_cleanup(cmd_rec *cmd) {
   if (session.xfer.p)
     destroy_pool(session.xfer.p);
@@ -1197,17 +1306,36 @@ MODRET add_ratebool(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-conftable xfer_config[] = {
+MODRET set_storeuniqueprefix(cmd_rec *cmd) {
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR|
+    CONF_DYNDIR);
+
+  /* make sure there are no slashes in the prefix */
+  if (strchr(cmd->argv[1], '/') != NULL)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "no slashes allowed in prefix: '",
+      cmd->argv[1], "'", NULL));
+
+  c = add_config_param_str(cmd->argv[0], 1, (void *) cmd->argv[1]);
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
+static conftable xfer_conftab[] = {
   { "RateReadBPS",		add_ratenum,                 },
   { "RateReadFreeBytes",	add_ratenum,	             },
   { "RateReadHardBPS",		add_ratebool,                },
   { "RateWriteBPS",		add_ratenum,                 },
   { "RateWriteFreeBytes",	add_ratenum,	             },
   { "RateWriteHardBPS",		add_ratebool,                },
+  { "StoreUniquePrefix",	set_storeuniqueprefix,		},
   { NULL }
 };
 
-static cmdtable xfer_commands[] = {
+static cmdtable xfer_cmdtab[] = {
   { CMD,     C_TYPE,	G_NONE,	 cmd_type,	TRUE,	FALSE, CL_MISC },
   { CMD,     C_STRU,	G_NONE,	 cmd_stru,	TRUE,	FALSE, CL_MISC },
   { CMD,     C_MODE,	G_NONE,	 cmd_mode,	TRUE,	FALSE, CL_MISC },
@@ -1216,17 +1344,20 @@ static cmdtable xfer_commands[] = {
   { PRE_CMD, C_RETR,	G_READ,	 pre_cmd_retr,	TRUE,	FALSE },
   { CMD,     C_RETR,	G_READ,	 cmd_retr,	TRUE,	FALSE, CL_READ },
   { LOG_CMD, C_RETR,	G_NONE,	 log_retr,	FALSE,  FALSE },
+  { LOG_CMD_ERR, C_RETR,G_NONE,  xfer_err_cleanup,  FALSE,  FALSE },
   { PRE_CMD, C_STOR,	G_WRITE, pre_cmd_stor,	TRUE,	FALSE },
   { CMD,     C_STOR,	G_WRITE, cmd_stor,	TRUE,	FALSE, CL_WRITE },
   { LOG_CMD, C_STOR,    G_NONE,	 log_stor,	FALSE,  FALSE },
   { LOG_CMD_ERR, C_STOR,G_NONE,  xfer_err_cleanup,  FALSE,  FALSE },
-  { LOG_CMD_ERR, C_RETR,G_NONE,  xfer_err_cleanup,  FALSE,  FALSE },
-  { CMD,     C_STOU,	G_WRITE, cmd_stou,	TRUE,	FALSE, CL_WRITE },
-  { PRE_CMD, C_APPE,	G_WRITE, pre_cmd_appe,	TRUE,	FALSE },
+  { PRE_CMD, C_STOU,	G_WRITE, pre_cmd_stou,	TRUE,	FALSE },
+  { CMD,     C_STOU,	G_WRITE, cmd_stor,	TRUE,	FALSE, CL_WRITE },
+  { POST_CMD,C_STOU,	G_WRITE, post_cmd_stou,	FALSE,	FALSE },
+  { LOG_CMD, C_STOU,	G_NONE,  log_stor,	FALSE,	FALSE },
   { LOG_CMD_ERR, C_STOU,G_NONE,  xfer_err_cleanup,  FALSE,  FALSE },
-  { LOG_CMD_ERR, C_APPE,G_NONE,  xfer_err_cleanup,  FALSE,  FALSE },
+  { PRE_CMD, C_APPE,	G_WRITE, pre_cmd_appe,	TRUE,	FALSE },
   { CMD,     C_APPE,	G_WRITE, cmd_stor,	TRUE,	FALSE, CL_WRITE },
   { LOG_CMD, C_APPE,	G_NONE,  log_stor,	FALSE,  FALSE },
+  { LOG_CMD_ERR, C_APPE,G_NONE,  xfer_err_cleanup,  FALSE,  FALSE },
   { CMD,     C_ABOR,	G_NONE,	 cmd_abor,	TRUE,	TRUE,  CL_MISC  },
   { CMD,     C_REST,	G_NONE,	 cmd_rest,	TRUE,	FALSE, CL_MISC  },
   { 0,NULL }
@@ -1236,8 +1367,8 @@ module xfer_module = {
   NULL,NULL,				/* Always NULL */
   0x20,					/* API Version */
   "xfer",				/* Module name */
-  xfer_config,
-  xfer_commands,
+  xfer_conftab,
+  xfer_cmdtab,
   NULL,
   NULL,
   xfer_init_child

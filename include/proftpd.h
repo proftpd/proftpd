@@ -24,7 +24,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.21 2002-05-21 20:47:15 castaglia Exp $
+ * $Id: proftpd.h,v 1.22 2002-06-11 16:18:07 castaglia Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -185,6 +185,7 @@ extern array_header *daemon_gids;
 #define STOR_DEFAULT	0
 #define STOR_APPEND	1
 #define STOR_HIDDEN	2
+#define STOR_UNIQUE	3
 
 extern session_t	session;
 extern char		ServerType;

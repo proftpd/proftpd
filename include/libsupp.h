@@ -28,7 +28,7 @@
 
 /* ProFTPD support library definitions.
  *
- * $Id: libsupp.h,v 1.6 2002-05-21 20:47:15 castaglia Exp $
+ * $Id: libsupp.h,v 1.7 2002-06-11 16:18:07 castaglia Exp $
  */
 
 #include <glibc-glob.h>
@@ -63,6 +63,10 @@ int vsnprintf(char *, size_t, const char *, va_list);
 
 int snprintf(char *, size_t, const char *, ...);
 
+#endif
+
+#ifndef HAVE_MKSTEMP
+int mkstemp(char *);
 #endif
 
 #ifndef HAVE_FGETPWENT

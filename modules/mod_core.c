@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.86 2002-06-11 14:49:27 castaglia Exp $
+ * $Id: mod_core.c,v 1.87 2002-06-11 16:18:07 castaglia Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -68,7 +68,7 @@ static struct {
   { C_MODE, "is not implemented (always S)",	TRUE },
   { C_RETR, "<sp> pathname",			TRUE },
   { C_STOR, "<sp> pathname",			TRUE },
-  { C_STOU, "is not implemented",		FALSE },
+  { C_STOU, "(store unique filename)",		TRUE },
   { C_APPE, "<sp> pathname",			TRUE },
   { C_ALLO, "is not implemented (ignored)",	FALSE },
   { C_REST, "<sp> byte-count",			TRUE },
