@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.42 2004-01-09 04:41:59 castaglia Exp $
+ * $Id: pool.c,v 1.43 2005-03-08 17:06:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -46,8 +46,12 @@ union align {
 union block_hdr {
   union align a;
 
-  /* Actual header */
+  /* Padding */
+#if defined(_LP64) || defined(__LP64__)
+  char pad[32];
+#endif
 
+  /* Actual header */
   struct {
     char *endp;
     union block_hdr *next;
