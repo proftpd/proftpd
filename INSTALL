@@ -89,12 +89,12 @@ Installation Instructions
     configure.  Using a Bourne-ish style shell (e.g. sh, ksh, bash), you can
     do this on the command line like this:
 
-        $ install_user=root install_group=wheel ./configure
+        $ ./configure install_user=root install_group=wheel
 
     Similarly, as is typical with GNU autoconf scripts, settings for the
     compilation system can be made, such as the compiler:
 
-        $ CC=gcc CFLAGS='-O -g' ./configure
+        $ ./configure CC=gcc CFLAGS='-O -g'
 
     Other options can be given to configure as command line arguments.
     All available arguments can be listed by running './configure --help'.
@@ -383,13 +383,6 @@ T2. If you encounter run-time problems, first check your syslog messages.
           adding either '--enable-autoshadow' or '--enable-shadow' to
           the configure command line.
 
-        o "Fatal: unknown configuration directive 'AuthPAMAuthoritative'
-          on line NN of '/etc/proftpd.conf'."
-          This means that either 'AuthPAMAuthoritative' was misspelld or
-          mod_pam was not compiled in to ProFTPD.  If the latter, you may
-          need to reconfigure and recompile proftpd, explicitly adding
-          mod_pam with the "./configure --with-modules=mod_pam ...".
-
     If users can not login and your system uses PAM authentication, you may
     need to configure PAM to work for FTP.  For further details, consult your
     system PAM documentation.  If you have installed from a package, hopefully
@@ -403,7 +396,7 @@ T2. If you encounter run-time problems, first check your syslog messages.
 
 
 T3. You can generate additional debugging messages by starting the proftpd
-    daemon with the "-d N" command line option, where N ranges from 1 to 5,
+    daemon with the "-d N" command line option, where N ranges from 1 to 10,
     with higher values increase the number of debugging messages.  If you are
     running the daemon standalone, you also may wish to use the "-n" option,
     which will keep the daemon from disassociating from your terminal and
@@ -474,7 +467,7 @@ H2. When posting to the mailing list, try to be clear and concise, but give
 
     So, at a minimum, you should include:
         o OS type and version (e.g. `uname -a`)
-        o ProFTPD extended version (`proftpd -vv`)
+        o ProFTPD extended version info (`proftpd -V` and `proftpd -vv`)
         o ProFTPD module list (`proftpd -l`)
 
     The following may help to further identify compilation information,
