@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.71 2002-12-06 21:05:02 castaglia Exp $
+ * $Id: mod_ls.c,v 1.72 2002-12-06 23:08:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,7 +44,8 @@ static int listfile(cmd_rec*, pool*, const char *name);
 static int listdir(cmd_rec*, pool*, const char *name);
 
 static int matches = 0;
-static char *default_options;
+static unsigned char strict_list_opts = FALSE;
+static char *list_options = NULL;
 static unsigned char list_show_symlinks = TRUE, list_times_gmt = TRUE;
 static unsigned char show_symlinks_hold;
 static int cmp(const void *a, const void *b);
@@ -953,58 +954,134 @@ static void ls_terminate(void) {
   }
 }
 
-static void _parse_options(char **opt, int *glob_flags) {
+static void parse_list_opts(char **opt, int *glob_flags,
+    unsigned char handle_plus_opts) {
   while (isspace((int) **opt))
     (*opt)++;
 
+  /* Check for standard /bin/ls options */
   while (*opt && **opt == '-') {
     while ((*opt)++ && isalnum((int) **opt)) {
-      switch(**opt) {
-      case 'a':
-        opt_a = 1;
-        break;
-      case 'A':
-        opt_A = 1;
-        break;
-      case 'l':
-        opt_l = 1;
-        opt_C = 0;
-        break;
-      case 'L':
-        opt_L++;
-        break;
-      case 'n':
-        opt_n = 1;
-        break;
-      case '1':
-        opt_l = opt_C = 0;
-        break;
-      case 'C':
-        opt_l = 0;
-        opt_C = 1;
-        break;
-      case 'F':
-        opt_F = 1;
-        break;
-      case 'r':
-        opt_r = 1;
-        break;
-      case 'R':
-        opt_R = 1;
-        break;
-      case 'd':
-        opt_d = 1;
-        break;
-      case 't':
-        opt_t = 1;
-        if(glob_flags)
-          *glob_flags |= GLOB_NOSORT;;
-        break;
+      switch (**opt) {
+        case '1':
+          opt_l = opt_C = 0;
+          break;
+
+        case 'A':
+          opt_A = 1;
+          break;
+
+        case 'a':
+          opt_a = 1;
+          break;
+
+        case 'C':
+          opt_l = 0;
+          opt_C = 1;
+          break;
+
+        case 'd':
+          opt_d = 1;
+          break;
+
+        case 'F':
+          opt_F = 1;
+          break;
+
+        case 'L':
+          opt_L++;
+          break;
+
+        case 'l':
+          opt_l = 1;
+          opt_C = 0;
+          break;
+
+        case 'n':
+          opt_n = 1;
+          break;
+
+        case 'R':
+          opt_R = 1;
+          break;
+
+        case 'r':
+          opt_r = 1;
+          break;
+
+        case 't':
+          opt_t = 1;
+          if (glob_flags)
+            *glob_flags |= GLOB_NOSORT;
+          break;
       }
     }
+
     while (isspace((int) **opt)) 
       (*opt)++;
+  }
 
+  if (!handle_plus_opts)
+    return;
+
+  /* Check for non-standard options */
+  while (*opt && **opt == '+') {
+    while ((*opt)++ && isalnum((int) **opt)) {
+      switch (**opt) {
+        case '1':
+          opt_l = opt_C = 0;
+          break;
+
+        case 'A':
+          opt_A = 0;
+          break;
+
+        case 'a':
+          opt_a = 0;
+          break;
+
+        case 'C':
+          opt_l = opt_C = 0;
+          break;
+
+        case 'd':
+          opt_d = 0;
+          break;
+
+        case 'F':
+          opt_F = 0;
+          break;
+
+        case 'L':
+          opt_L = 0;
+          break;
+
+        case 'l':
+          opt_l = opt_C = 0;
+          break;
+
+        case 'n':
+          opt_n = 0;
+          break;
+
+        case 'R':
+          opt_R = 0;
+          break;
+
+        case 'r':
+          opt_r = 0;
+          break;
+
+        case 't':
+          opt_t = 0;
+          if (glob_flags)
+            *glob_flags &= GLOB_NOSORT;
+          break;
+      }
+    }
+
+    while (isspace((int) **opt))
+      (*opt)++;
   }
 }
 
@@ -1024,9 +1101,33 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
     opt_L = 0;
   }
 
-  if(default_options)
-    _parse_options(&default_options,&glob_flags);
-  _parse_options(&arg,&glob_flags);
+  if (!strict_list_opts) {
+    parse_list_opts(&arg, &glob_flags, FALSE);
+
+  } else {
+
+    /* Even if the user-given options are ignored, they still need to
+     * "processed" (ie skip past options) in order to get to the paths.
+     */
+    while (*arg && isspace((int) *arg))
+      arg++;
+
+    while (arg && *arg == '-') {
+
+      /* Advance to the next whitespace */
+      while (*arg != '\0' && !isspace((int) *arg))
+        arg++;
+
+      while (isspace((int) *arg))
+        arg++;
+    }
+
+    while (isspace((int) *arg))
+      arg++;
+  }
+
+  if (list_options)
+    parse_list_opts(&list_options, &glob_flags, TRUE);
 
   /* open data connection */
   if(!opt_STAT) {
@@ -1374,11 +1475,18 @@ MODRET genericlist(cmd_rec *cmd) {
   int res = 0;
   unsigned char *tmp = NULL;
   mode_t *fake_mode = NULL;
+  config_rec *c = NULL;
 
   if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE)) != NULL)
     list_show_symlinks = *tmp;
 
-  default_options = get_param_ptr(TOPLEVEL_CONF,"LsDefaultOptions",FALSE);
+  strict_list_opts = FALSE;
+
+  if ((c = find_config(CURRENT_CONF, CONF_PARAM, "ListOptions",
+      FALSE)) != NULL) {
+    list_options = c->argv[0];
+    strict_list_opts = *((unsigned char *) c->argv[1]);
+  }
 
   fakeuser = get_param_ptr(CURRENT_CONF,"DirFakeUser",FALSE);
 
@@ -1432,23 +1540,29 @@ MODRET ls_stat(cmd_rec *cmd) {
   char *arg = cmd->arg;
   unsigned char *tmp = NULL;
   mode_t *fake_mode = NULL;
+  config_rec *c = NULL;
 
   if (cmd->argc < 2) {
-    add_response_err(R_500,"'%s' not understood.",get_full_cmd(cmd));
+    add_response_err(R_500, "'%s' not understood.", get_full_cmd(cmd));
     return ERROR(cmd);
   }
 
-  /* Get to the actual argument.
-   */
-  if(*arg == '-')
-    while(arg && *arg && !isspace((int) *arg)) arg++;
+  /* Get to the actual argument. */
+  if (*arg == '-')
+    while (arg && *arg && !isspace((int) *arg)) arg++;
   
-  while(arg && *arg && isspace((int) *arg)) arg++;
+  while (arg && *arg && isspace((int) *arg)) arg++;
   
   if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE)) != NULL)
     list_show_symlinks = *tmp;
 
-  default_options = get_param_ptr(TOPLEVEL_CONF,"LsDefaultOptions",FALSE);
+  strict_list_opts = FALSE;
+
+  if ((c = find_config(CURRENT_CONF, CONF_PARAM, "ListOptions",
+      FALSE)) != NULL) {
+    list_options = c->argv[0];
+    strict_list_opts = *((unsigned char *) c->argv[1]);
+  }
 
   fakeuser = get_param_ptr(CURRENT_CONF,"DirFakeUser",FALSE);
 
@@ -1492,7 +1606,7 @@ MODRET ls_list(cmd_rec *cmd) {
 }
 
 /* NLST is a very simplistic directory listing, unlike LIST (which
- * emululates ls), it only sends a list of all files/directories
+ * emulates ls), it only sends a list of all files/directories
  * matching the glob(s).
  */
 
@@ -1737,14 +1851,25 @@ MODRET set_dirfakemode(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_lsdefaultoptions(cmd_rec *cmd) {
+MODRET set_listoptions(cmd_rec *cmd) {
   config_rec *c = NULL;
 
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+  if (cmd->argc-1 < 1 || cmd->argc-1 > 2)
+    CONF_ERROR(cmd, "wrong number of parameters");
 
-  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
+    CONF_DIR|CONF_DYNDIR);
+
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+  c->argv[1] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[1]) = FALSE;
   c->flags |= CF_MERGEDOWN;
+
+  /* Check for the optional "strict" argument. */
+  if (cmd->argc-1 == 2 &&
+      !strcasecmp(cmd->argv[2], "strict"))
+    *((unsigned char *) c->argv[1]) = TRUE;
 
   return HANDLED(cmd);
 }
@@ -1785,6 +1910,10 @@ MODRET set_useglobbing(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+MODRET set_lsdefaultoptions(cmd_rec *cmd) {
+  CONF_ERROR(cmd, "deprecated. Use ListOptions instead");
+}
+
 /* Module API tables
  */
 
@@ -1792,9 +1921,13 @@ static conftable ls_conftab[] = {
   { "DirFakeUser",	set_dirfakeuser,			NULL },
   { "DirFakeGroup",	set_dirfakegroup,			NULL },
   { "DirFakeMode",	set_dirfakemode,			NULL },
-  { "LsDefaultOptions",	set_lsdefaultoptions,			NULL },
+  { "ListOptions",	set_listoptions,			NULL },
   { "ShowSymlinks",	set_showsymlinks,			NULL },
   { "UseGlobbing",	set_useglobbing,			NULL },
+
+  /* Deprecated */
+  { "LsDefaultOptions",	set_lsdefaultoptions,			NULL },
+
   { NULL,		NULL,					NULL }
 };
 
