@@ -1,6 +1,6 @@
-$Id: NEWS,v 1.496 2003-10-31 08:05:18 castaglia Exp $
+$Id: NEWS,v 1.497 2003-10-31 08:10:34 castaglia Exp $
 
-CVS
+1.2.9 - Released 31-Oct-2003
 ---------------------------------
 - Bug 2181 - The prior fix for Bug#2181, handling of the PORT command when the
   --enable-ipv6 configure option is used, was not quite correct.  A problem
