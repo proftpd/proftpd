@@ -18,7 +18,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.2 1999-09-17 07:31:44 macgyver Exp $
+ * $Id: auth.c,v 1.3 2000-07-07 00:26:24 macgyver Exp $
  */
 
 #include "conf.h"
@@ -292,7 +292,7 @@ const char *auth_uid_name(pool *p, uid_t uid)
   cmd_rec *c;
   modret_t *mr;
   static char namebuf[64];
-  char *ret = NULL;
+  char *ret = "ERROR";
 
   c = _make_cmd(p,1,(void*)uid);
   mr = _dispatch_auth(c,"uid_name");
@@ -316,7 +316,7 @@ const char *auth_gid_name(pool *p, gid_t gid)
   cmd_rec *c;
   modret_t *mr;
   static char namebuf[64];
-  char *ret = NULL;
+  char *ret = "ERROR";
 
   c = _make_cmd(p,1,(void*)gid);
   mr = _dispatch_auth(c,"gid_name");
