@@ -18,7 +18,7 @@
  */
 
 /*
- * mod_ldap v2.8.5
+ * mod_ldap v2.8.6
  *
  * Thanks for patches go to (in alphabetical order):
  * 
@@ -39,7 +39,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  * 
- * $Id: mod_ldap.c,v 1.20 2002-05-19 14:35:14 jwm Exp $
+ * $Id: mod_ldap.c,v 1.21 2002-05-30 16:06:53 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -152,8 +152,8 @@ static int ldap_use_tls = 0;
 #endif
 
 static LDAP *ld;
-static struct passwd *pw;
-static struct group *gr;
+static struct passwd *pw = NULL;
+static struct group *gr = NULL;
 
 
 static int
@@ -394,6 +394,7 @@ static struct passwd
 
   if (ldap_count_entries(ld, result) > 1) {
     log_pri(LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): LDAP search returned multiple entries, aborting query");
+    ldap_msgfree(result);
     return NULL;
   }
 
@@ -402,7 +403,10 @@ static struct passwd
     return NULL; /* No LDAP entries for this user */
   }
 
-  pw = pcalloc(session.pool, sizeof(struct passwd));
+  if (! pw)
+    pw = pcalloc(session.pool, sizeof(struct passwd));
+  else
+    memset(pw, '\0', sizeof(struct passwd));
 
   while (ldap_attrs[i] != NULL) {
     if ((values = ldap_get_values(ld, e, ldap_attrs[i])) == NULL) {
@@ -449,8 +453,7 @@ static struct passwd
         continue;
       }
 
-      /* We may not always have a loginShell entry. If it's not
-         there, don't worry. */
+      /* Don't worry if we don't have a loginShell attr. */
       if (strcasecmp(ldap_attrs[i], LOGINSHELL_ATTR) == 0) {
         /* Prevent a segfault if no loginShell attr && RequireValidShell on. */
         pw->pw_shell = pstrdup(session.pool, "");
@@ -463,9 +466,9 @@ static struct passwd
          fall through to here and will complain about not being able to find
          the attr. */
 
-      ldap_msgfree(result);
       log_pri(LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): ldap_get_values() failed on attr %s for DN %s, ignoring request (perhaps this DN's entry does not have the attr?)", ldap_attrs[i], (dn = ldap_get_dn(ld, e)));
       free(dn);
+      ldap_msgfree(result);
       return NULL;
     }
 
@@ -559,7 +562,10 @@ static struct group
     return NULL; /* No LDAP entries for this user */
   }
 
-  gr = pcalloc(session.pool, sizeof(struct group));
+  if (! gr)
+    gr = pcalloc(session.pool, sizeof(struct group));
+  else
+    memset(gr, '\0', sizeof(struct group));
 
   while (ldap_attrs[i] != NULL) {
     if ((values = ldap_get_values(ld, e, ldap_attrs[i])) == NULL) {
@@ -760,7 +766,7 @@ handle_ldap_getpwnam(cmd_rec *cmd)
   if (! ldap_doauth)
     return DECLINED(cmd);
 
-  if (pw && strcasecmp(pw->pw_name, cmd->argv[0]) == 0)
+  if (pw && pw->pw_name && strcasecmp(pw->pw_name, cmd->argv[0]) == 0)
     return mod_create_data(cmd, pw);
 
   if ((pw = pr_ldap_getpwnam(cmd->tmp_pool, cmd->argv[0])))
@@ -921,7 +927,7 @@ handle_ldap_is_auth(cmd_rec *cmd)
 
   /* If we don't have a cached entry, or if the cached entry isn't for this
      user, fetch the entry. */
-  if (!pw || (pw && strcasecmp(pw->pw_name, username) != 0))
+  if (!pw || (pw && pw->pw_name && strcasecmp(pw->pw_name, username) != 0))
     if ((pw = pr_ldap_user_lookup(cmd->tmp_pool, ldap_auth_filter, username, ldap_auth_basedn, pass_attrs, ldap_authbinds ? &ldap_authbind_dn : NULL)) == NULL)
       return DECLINED(cmd); /* Can't find the user in the LDAP directory. */
 
@@ -1134,7 +1140,7 @@ handle_ldap_name_uid(cmd_rec *cmd)
   if (! ldap_doauth)
     return DECLINED(cmd);
 
-  if (pw && strcasecmp(pw->pw_name, cmd->argv[0]) == 0)
+  if (pw && pw->pw_name && strcasecmp(pw->pw_name, cmd->argv[0]) == 0)
     return mod_create_data(cmd, (void *)pw->pw_uid);
 
   if ((pw = pr_ldap_getpwnam(cmd->tmp_pool, cmd->argv[0])))
