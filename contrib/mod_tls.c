@@ -2662,7 +2662,6 @@ MODRET tls_auth(cmd_rec *cmd) {
     tls_flags |= TLS_SESS_NEED_DATA_PROT;
 
   } else {
-    pr_response_add_err(R_504, "AUTH %s unsupported", cmd->argv[1]);
     tls_log("AUTH %s unsupported, declining", cmd->argv[1]);
 
     /* Allow other RFC2228 modules a chance a handling this command. */
