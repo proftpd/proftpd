@@ -584,6 +584,22 @@ if test x"$enable_auth_pam" != xno ; then
 
 fi
 
+AC_MSG_CHECKING([whether to enable mod_cap])
+ac_add_capabilities="no"
+case "$host" in
+  [*-linux-*])
+    rev=`uname -r | awk -F'[[.-]]' '{printf "%03d%03d%03d", $1, $2, $3}'`
+    if test $rev -ge 002001097; then
+      ac_add_capabilities="yes"
+    fi
+esac
+AC_MSG_RESULT($ac_add_capabilities)
+
+if test $ac_add_capabilities = "yes"; then
+  ac_addl_modules="$ac_addl_modules mod_cap.o"
+  ac_build_addl_modules="modules/mod_cap.o $ac_build_addl_modules"
+fi
+
 AC_CHECK_HEADERS(ctype.h getopt.h crypt.h bstring.h strings.h limits.h)
 AC_CHECK_HEADERS(sys/types.h sys/mount.h sys/param.h sys/file.h sys/uio.h)
 AC_CHECK_HEADERS(netdb.h netinet/in.h netinet/tcp.h arpa/inet.h sys/stat.h)
