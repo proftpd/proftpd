@@ -2845,10 +2845,19 @@ fi;
 if test "${enable_buffer_size+set}" = set; then
   enableval="$enable_buffer_size"
 
-    cat >>confdefs.h <<_ACEOF
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      { echo "$as_me:$LINENO: WARNING: buffer size defaulting to 1024 bytes" >&5
+echo "$as_me: WARNING: buffer size defaulting to 1024 bytes" >&2;}
+      cat >>confdefs.h <<_ACEOF
+#define PR_TUNABLE_BUFFER_SIZE 1024
+_ACEOF
+
+    else
+      cat >>confdefs.h <<_ACEOF
 #define PR_TUNABLE_BUFFER_SIZE $enableval
 _ACEOF
 
+    fi
 
 fi;
 
@@ -2856,10 +2865,19 @@ fi;
 if test "${enable_pool_size+set}" = set; then
   enableval="$enable_pool_size"
 
-    cat >>confdefs.h <<_ACEOF
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      { echo "$as_me:$LINENO: WARNING: pool size defaulting to 512 bytes" >&5
+echo "$as_me: WARNING: pool size defaulting to 512 bytes" >&2;}
+      cat >>confdefs.h <<_ACEOF
+#define PR_TUNABLE_NEW_POOL_SIZE 512
+_ACEOF
+
+    else
+      cat >>confdefs.h <<_ACEOF
 #define PR_TUNABLE_NEW_POOL_SIZE $enableval
 _ACEOF
 
+    fi
 
 fi;
 
@@ -2867,10 +2885,19 @@ fi;
 if test "${enable_scoreboard_buffer_size+set}" = set; then
   enableval="$enable_scoreboard_buffer_size"
 
-    cat >>confdefs.h <<_ACEOF
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      { echo "$as_me:$LINENO: WARNING: scoreboard buffer size defaulting to 80 bytes" >&5
+echo "$as_me: WARNING: scoreboard buffer size defaulting to 80 bytes" >&2;}
+      cat >>confdefs.h <<_ACEOF
+#define PR_TUNABLE_SCOREBOARD_BUFFER_SIZE 80
+_ACEOF
+
+    else
+      cat >>confdefs.h <<_ACEOF
 #define PR_TUNABLE_SCOREBOARD_BUFFER_SIZE $enableval
 _ACEOF
 
+    fi
 
 fi;
 
@@ -2879,10 +2906,19 @@ fi;
 if test "${enable_timeout_ident+set}" = set; then
   enableval="$enable_timeout_ident"
 
-    cat >>confdefs.h <<_ACEOF
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      { echo "$as_me:$LINENO: WARNING: ident timeout defaulting to 10 secs" >&5
+echo "$as_me: WARNING: ident timeout defaulting to 10 secs" >&2;}
+      cat >>confdefs.h <<_ACEOF
+#define PR_TUNABLE_TIMEOUTIDENT 10
+_ACEOF
+
+    else
+      cat >>confdefs.h <<_ACEOF
 #define PR_TUNABLE_TIMEOUTIDENT $enableval
 _ACEOF
 
+    fi
 
 fi;
 
@@ -2890,10 +2926,19 @@ fi;
 if test "${enable_timeout_idle+set}" = set; then
   enableval="$enable_timeout_idle"
 
-    cat >>confdefs.h <<_ACEOF
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      { echo "$as_me:$LINENO: WARNING: idle timeout defaulting to 600 secs" >&5
+echo "$as_me: WARNING: idle timeout defaulting to 600 secs" >&2;}
+      cat >>confdefs.h <<_ACEOF
+#define PR_TUNABLE_TIMEOUTIDLE 600
+_ACEOF
+
+    else
+      cat >>confdefs.h <<_ACEOF
 #define PR_TUNABLE_TIMEOUTIDLE $enableval
 _ACEOF
 
+    fi
 
 fi;
 
@@ -2901,10 +2946,19 @@ fi;
 if test "${enable_timeout_linger+set}" = set; then
   enableval="$enable_timeout_linger"
 
-    cat >>confdefs.h <<_ACEOF
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      { echo "$as_me:$LINENO: WARNING: linger timeout defaulting to 180 secs" >&5
+echo "$as_me: WARNING: linger timeout defaulting to 180 secs" >&2;}
+      cat >>confdefs.h <<_ACEOF
+#define PR_TUNABLE_TIMEOUTLINGER 180
+_ACEOF
+
+    else
+      cat >>confdefs.h <<_ACEOF
 #define PR_TUNABLE_TIMEOUTLINGER $enableval
 _ACEOF
 
+    fi
 
 fi;
 
@@ -2912,10 +2966,19 @@ fi;
 if test "${enable_timeout_login+set}" = set; then
   enableval="$enable_timeout_login"
 
-    cat >>confdefs.h <<_ACEOF
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      { echo "$as_me:$LINENO: WARNING: login timeout defaulting to 300 secs" >&5
+echo "$as_me: WARNING: login timeout defaulting to 300 secs" >&2;}
+      cat >>confdefs.h <<_ACEOF
+#define PR_TUNABLE_TIMEOUTLOGIN 300
+_ACEOF
+
+    else
+      cat >>confdefs.h <<_ACEOF
 #define PR_TUNABLE_TIMEOUTLOGIN $enableval
 _ACEOF
 
+    fi
 
 fi;
 
@@ -2923,10 +2986,19 @@ fi;
 if test "${enable_timeout_no_transfer+set}" = set; then
   enableval="$enable_timeout_no_transfer"
 
-    cat >>confdefs.h <<_ACEOF
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      { echo "$as_me:$LINENO: WARNING: no data transfer timeout defaulting to 300 secs" >&5
+echo "$as_me: WARNING: no data transfer timeout defaulting to 300 secs" >&2;}
+      cat >>confdefs.h <<_ACEOF
+#define PR_TUNABLE_TIMEOUTNOXFER 300
+_ACEOF
+
+    else
+      cat >>confdefs.h <<_ACEOF
 #define PR_TUNABLE_TIMEOUTNOXFER $enableval
 _ACEOF
 
+    fi
 
 fi;
 
@@ -2934,10 +3006,19 @@ fi;
 if test "${enable_timeout_stalled+set}" = set; then
   enableval="$enable_timeout_stalled"
 
-    cat >>confdefs.h <<_ACEOF
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      { echo "$as_me:$LINENO: WARNING: stalled timeout defaulting to 3600 secs" >&5
+echo "$as_me: WARNING: stalled timeout defaulting to 3600 secs" >&2;}
+      cat >>confdefs.h <<_ACEOF
+#define PR_TUNABLE_TIMEOUTSTALLED 3600
+_ACEOF
+
+    else
+      cat >>confdefs.h <<_ACEOF
 #define PR_TUNABLE_TIMEOUTSTALLED $enableval
 _ACEOF
 
+    fi
 
 fi;
 
