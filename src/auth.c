@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.32 2003-11-06 02:53:30 castaglia Exp $
+ * $Id: auth.c,v 1.33 2003-11-06 04:35:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -502,6 +502,35 @@ int auth_getgroups(pool *p, const char *name, array_header **group_ids,
      * struct passwd, from /etc/passwd.  This will need to be documented
      * for the benefit of auth_getgroup() implementors.
      */
+
+    if (group_ids) {
+      register unsigned int i;
+      char *strgids = "";
+      gid_t *gids = (*group_ids)->elts;
+
+      for (i = 0; i < (*group_ids)->nelts; i++) {
+        char buf[64];
+        snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) gids[i]);
+        buf[sizeof(buf)-1] = '\0';
+
+        strgids = pstrcat(p, strgids, i != 0 ? ", " : "", buf, NULL);
+      }
+
+      log_debug(DEBUG10, "retrieved group %s: %s",
+        (*group_ids)->nelts == 1 ? "ID" : "IDs", strgids);
+    }
+
+    if (group_names) {
+      register unsigned int i;
+      char *strgroups = ""; 
+      char **groups = (*group_names)->elts;
+
+      for (i = 0; i < (*group_names)->nelts; i++)
+        strgroups = pstrcat(p, strgroups, i != 0 ? ", " : "", groups[i], NULL);
+    
+      log_debug(DEBUG10, "retrieved group %s: %s",
+        (*group_names)->nelts == 1 ? "name" : "names", strgroups);
+    }
   }
 
   if (cmd->tmp_pool) {
@@ -569,10 +598,10 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
     snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) proc_gids[i]);
     buf[sizeof(buf)-1] = '\0';
 
-    strgids = pstrcat(p, strgids, buf, NULL);
+    strgids = pstrcat(p, strgids, i != 0 ? ", " : "", buf, NULL);
   }
 
-  log_debug(DEBUG10, "setting group %s %s", nproc_gids == 1 ? "ID" : "IDs",
+  log_debug(DEBUG10, "setting group %s: %s", nproc_gids == 1 ? "ID" : "IDs",
     strgids);
 
   /* Set the supplemental groups. */
