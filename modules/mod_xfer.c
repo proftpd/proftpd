@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.166 2004-09-04 22:56:30 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.167 2004-09-05 00:36:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -839,20 +839,6 @@ static void stor_complete(void) {
     pr_log_pri(PR_LOG_NOTICE, "notice: error closing '%s': %s",
       stor_fh->fh_path, strerror(errno));
   stor_fh = NULL;
-}
-
-/* Exit handler, call abort functions if a transfer is in progress. */
-static void xfer_exit_cb(void) {
-  if (session.sf_flags & SF_XFER) {
-
-    if (session.xfer.direction == PR_NETIO_IO_RD)
-       /* An upload is occurring... */
-      stor_abort();
-
-    else
-      /* A download is occurring... */
-      retr_abort();
-  }
 }
 
 static int get_hidden_store_path(cmd_rec *cmd, char *path, privdata_t *p) {
@@ -2331,6 +2317,24 @@ static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
   return;
 }
 
+/* Events handlers
+ */
+
+static void xfer_exit_ev(const void *event_data, void *user_data) {
+
+  if (session.sf_flags & SF_XFER) {
+    if (session.xfer.direction == PR_NETIO_IO_RD)
+       /* An upload is occurring... */
+      stor_abort();
+
+    else
+      /* A download is occurring... */
+      retr_abort();
+  }
+
+  return;
+}
+
 /* Initialization routines
  */
 
@@ -2372,7 +2376,7 @@ static int xfer_sess_init(void) {
    */
 
   /* Exit handler for HiddenStores cleanup */
-  pr_exit_register_handler(xfer_exit_cb);
+  pr_event_register(&xfer_module, "core.exit", xfer_exit_ev, NULL);
 
   pr_event_register(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev,
     NULL);
