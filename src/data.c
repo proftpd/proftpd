@@ -214,6 +214,14 @@ int _data_active_open(char *reason, unsigned long size)
 	return -1;
 }
 
+void data_reset()
+{
+	if(session.d && session.d->pool)
+		destroy_pool(session.d->pool);
+	session.d = NULL;
+	session.flags &= (SF_ALL^(SF_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
+}
+		
 void data_init(char *filename, int direction)
 {
 	if(!session.xfer.p)

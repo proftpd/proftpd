@@ -18,7 +18,7 @@
  */
 
 /* Data connection management prototypes
- * $Id: data.h,v 1.1 1998-10-18 02:24:41 flood Exp $
+ * $Id: data.h,v 1.2 1999-01-19 01:34:50 flood Exp $
  */
 
 #ifndef __DATACONN_H
@@ -30,5 +30,6 @@ int data_open(char*,char*,int,unsigned long);
 void data_close(int);
 void data_abort(int,int);
 int data_xfer(char*,int);
+void data_reset();
 
 #endif /* __DATACONN_H */

@@ -19,7 +19,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.3 1998-10-30 01:38:04 flood Exp $
+ * $Id: main.c,v 1.4 1999-01-19 01:34:55 flood Exp $
  */
 
 /*
@@ -771,7 +771,7 @@ void cmd_loop(server_rec *server, conn_t *c)
 
   while(1) {
     if(io_telnet_gets(buf,sizeof(buf)-1,session.c->inf,session.c->outf) == NULL) {
-      if(errno == EINTR)
+      if(session.c->inf->xerrno == EINTR)
 	continue;		/* Simple interrupted syscall */
       
       /* Otherwise, EOF */

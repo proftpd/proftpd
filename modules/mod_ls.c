@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.2 1998-10-23 11:21:22 flood Exp $
+ * $Id: mod_ls.c,v 1.3 1999-01-19 01:34:51 flood Exp $
  */
 
 #include "conf.h"
@@ -39,7 +39,7 @@ static int listdir(cmd_rec*,pool*,const char *name,int list_dotdirs);
 
 static int matches = 0;
 static char *default_options;
-static int showsymlinks,showsymlinks_hold;
+static int showdotfiles,showsymlinks,showsymlinks_hold;
 static int cmp(const void *a, const void *b);
 static char *fakeuser,*fakegroup;
 static umode_t fakemode;
@@ -459,10 +459,12 @@ int outputfiles(cmd_rec *cmd)
   if(p && p->down)
     p->down = NULL;
 
+#if 0
   if(opt_l)
     if(sendline("total 0\n") < 0)
       return -1;
-
+#endif
+  
   p = head;
   while(p) {
     q = p;
@@ -582,13 +584,15 @@ int listdir(cmd_rec *cmd, pool *workp, const char *name, int list_dotdirs)
 
     int d = 0;
 
-    /* CODENOTE: print total here */
+    if(opt_l)
+      if(sendline("total 0\n") < 0)
+        return -1;
 
     s = dir;
     while(*s) {
       if(**s != '.') {
         d = listfile(cmd,*s);
-      } else if(!opt_a && list_dotdirs) {
+      } else if(!opt_a && showdotfiles != 1 && list_dotdirs) {
         if( (((*s)[1] == '\0') ||
             (((*s)[1] == '.') &&
              ((*s)[2] == '\0')))) {
@@ -596,12 +600,13 @@ int listdir(cmd_rec *cmd, pool *workp, const char *name, int list_dotdirs)
           if(d > 0)
             d = 0;
         }
-      } else if(opt_a) {
-        d = listfile(cmd,*s);
-        if(d && (((*s)[1] == '\0') ||
+      } else if(opt_a || showdotfiles == 1) {
+        if(!opt_a && (((*s)[1] == '\0') ||
            (((*s)[1] == '.') &&
             ((*s)[2] == '\0'))))
           d = 0;
+	else
+	  d = listfile(cmd,*s);
       } else {
         d = 0;
       }
@@ -723,7 +728,7 @@ void _parse_options(char **opt, int *glob_flags)
 }
 
 static
-int donlist(cmd_rec *cmd, const char *opt, int clearflags)
+int dolist(cmd_rec *cmd, const char *opt, int clearflags)
 {
   int skiparg = 0;
   int glob_flags = GLOB_PERIOD;
@@ -805,7 +810,7 @@ int donlist(cmd_rec *cmd, const char *opt, int clearflags)
            * ./ and ../
            */
 
-          if(**path == '.' && !opt_a && strcmp(*path,".") && strcmp(*path,"..")) {
+          if(**path == '.' && !opt_a && showdotfiles != 1) {
             **path = '\0';
             path++;
             continue;
@@ -918,11 +923,172 @@ int donlist(cmd_rec *cmd, const char *opt, int clearflags)
   return 0;
 }
 
-MODRET cmd_nlst(cmd_rec *cmd)
+/* display simple directory listing
+ */
+
+static
+int nlstdir(cmd_rec *cmd, const char *dir, int simple)
+{
+  char **list,*p,*file;
+  pool *workp;
+  int ret = 0;
+  int curdir = 0;
+  mode_t mode;
+  
+  workp = make_sub_pool(cmd->tmp_pool);
+  if(strcmp(dir,".") == 0) curdir = 1;
+  
+  if(ls_perms_full(workp,cmd,dir) &&
+		  (list = sreaddir(workp,dir)))
+	  while(*list && ret >= 0) {
+		  p = *list;
+		  list++;
+		  
+		  file = (curdir ? p : pdircat(workp,dir,p,NULL));
+		  mode = file_mode(file);
+		  if(!simple && !S_ISREG(mode))
+			  continue;
+		  
+		  if(ls_perms(workp,cmd,file)) {
+			  if((session.flags & SF_XFER) == 0)
+				  if(data_open(NULL,"file list",IO_WRITE,0) < 0) {
+					  destroy_pool(workp);
+					  return -1;
+				  }
+			  
+			  ret = sendline("%s\n",file);
+
+		  }
+	}
+
+  destroy_pool(workp);
+  return ret;
+}
+
+static
+int donlst(cmd_rec *cmd, const char *opt)
+{
+  int a;
+  int glob_flags = GLOB_PERIOD;
+  char *arg = (char*)opt;
+  int ret = 0;
+  int simple = 1;
+
+  matches = 0;
+  if(strpbrk(arg,"~{[*?") != NULL)
+	  simple = 0;
+  
+  /* open data connection */
+  session.flags |= SF_ASCII_OVERRIDE;
+
+  if(arg && *arg) {
+ 
+    while(arg) {
+      glob_t g;
+      int a;
+      char pbuffer[MAXPATHLEN];
+      char *endarg = strchr(arg,' ');
+
+      if(endarg)
+        *endarg++ = '\0';
+
+      if(*arg == '~') {
+	      struct passwd *pw;
+	      int i;
+	      const char *p;
+
+	      i = 0;
+	      p = arg;
+	      p++;
+
+	      while(*p && *p != '/')
+		      pbuffer[i++] = *p++;
+	      pbuffer[i] = '\0';
+
+	      if((pw = auth_getpwnam(cmd->tmp_pool,i ? pbuffer : session.user)))
+		      sprintf(pbuffer,"%s%s",pw->pw_dir,p);
+	      else
+		      *pbuffer = '\0';
+      } else
+	      *pbuffer = '\0';
+
+      a = fs_glob(*pbuffer ? pbuffer:arg, glob_flags, NULL, &g);
+
+      if(!a) {
+	      char **path,*p;
+	      
+	      path = g.gl_pathv;
+
+	      while(path && *path && ret >= 0) {
+		      struct stat st;
+
+		      /* Skip .dotfiles? */
+		      p = *path; path++;
+		      if(*p == '.' && (
+	                  ((p[1] == '\0') ||
+			  ((p[1] == '.') &&
+			   (p[2] == '\0')))) )
+			      continue;
+
+		      if(*p == '.' && showdotfiles != 1)
+			      continue;
+		      
+		      if(fs_stat(p,&st) == 0) {
+			      /* if it's a directory, hand it off
+			       * to nlstdir, NLST doesn't return non
+			       * regular files, so skip if not a dir
+			       * or regular file.
+			       */
+			      if(S_ISDIR(st.st_mode))
+				      ret = nlstdir(cmd,p,simple);
+			      else if((simple || S_ISREG(st.st_mode)) 
+					      && ls_perms(cmd->tmp_pool,cmd,p)) {
+				      if((session.flags & SF_XFER) == 0)
+					      if(data_open(NULL,"file list",
+							      IO_WRITE,0) < 0)
+						      ret = -1;
+				      if(ret >= 0)
+				    	      ret = sendline("%s\n",p);
+			      }
+		      }
+	      }
+	      fs_globfree(&g);
+	} else {
+		switch(a) {
+		case GLOB_NOMATCH:
+			break;
+		case GLOB_NOSPACE:
+			add_response(R_226,
+					"Out of memory during globbing of %s",arg);
+			ret = -1;
+			break;
+		case GLOB_ABORTED:
+			add_response(R_226,
+					"Read error during globbing of %s",arg);
+			ret = -1;
+			break;
+		default:
+			add_response(R_226,
+					"Unknown error during globbing of %s",arg);
+			ret = -1;
+			break;
+		}
+	}
+
+	arg = endarg;
+    }
+  } else
+    ret = nlstdir(cmd,".",1);
+
+  return ret;
+}
+
+MODRET cmd_list(cmd_rec *cmd)
 {
   int err;
   long _fakemode;
 
+  opt_l = 1;
   showsymlinks = get_param_int(TOPLEVEL_CONF,"ShowSymlinks",FALSE);
 
   if(showsymlinks == -1)
@@ -932,6 +1098,7 @@ MODRET cmd_nlst(cmd_rec *cmd)
   fakeuser = get_param_ptr(TOPLEVEL_CONF,"DirFakeUser",FALSE);
   fakegroup = get_param_ptr(TOPLEVEL_CONF,"DirFakeGroup",FALSE);
   _fakemode = (long)get_param_int(TOPLEVEL_CONF,"DirFakeMode",FALSE);
+  showdotfiles = get_param_int(TOPLEVEL_CONF,"ShowDotFiles",FALSE);
 
   if(_fakemode != -1) {
     fakemode = (umode_t)_fakemode;
@@ -939,7 +1106,7 @@ MODRET cmd_nlst(cmd_rec *cmd)
   } else
     fakemodep = 0;
 
-  err = donlist(cmd,cmd->arg,TRUE);
+  err = dolist(cmd,cmd->arg,TRUE);
   if(XFER_ABORTED) {
     data_abort(0,0);
     err = -1;
@@ -948,12 +1115,6 @@ MODRET cmd_nlst(cmd_rec *cmd)
 
   opt_l = 0;
   return (err == -1 ? ERROR(cmd) : HANDLED(cmd));
-}
-
-MODRET cmd_list(cmd_rec *cmd)
-{
-  opt_l = 1;
-  return cmd_nlst(cmd);
 }
 
 MODRET fini_nlst(cmd_rec *cmd)
@@ -986,7 +1147,8 @@ MODRET cmd_stat(cmd_rec *cmd)
   fakeuser = get_param_ptr(TOPLEVEL_CONF,"DirFakeUser",FALSE);
   fakegroup = get_param_ptr(TOPLEVEL_CONF,"DirFakeGroup",FALSE);
   _fakemode = (long)get_param_int(TOPLEVEL_CONF,"DirFakeMode",FALSE);
-
+  showdotfiles = get_param_int(TOPLEVEL_CONF,"ShowDotFiles",FALSE);
+  
   if(_fakemode != -1) {
     fakemode = (umode_t)_fakemode;
     fakemodep = 1;
@@ -1002,9 +1164,53 @@ MODRET cmd_stat(cmd_rec *cmd)
   }
 
   add_response(R_211,"status of %s:",arg);
-  donlist(cmd,cmd->arg,FALSE);
+  dolist(cmd,cmd->arg,FALSE);
   add_response(R_211,"End of Status");
   return HANDLED(cmd);
+}
+
+/* NLST is a very simplistic directory listing, unlike LIST (which
+ * emululates ls), it only sends a list of all files/directories
+ * matching the glob(s).
+ */
+
+MODRET cmd_nlst(cmd_rec *cmd)
+{
+  int err;
+
+  /* In case the client used NLST instead of LIST
+   */
+
+  if(cmd->argc > 1 && cmd->argv[1][0] == '-')
+	  return cmd_list(cmd);
+ 
+  showsymlinks = get_param_int(TOPLEVEL_CONF,"ShowSymlinks",FALSE);
+
+  if(showsymlinks == -1)
+    showsymlinks = 1;
+  showdotfiles = get_param_int(TOPLEVEL_CONF,"ShowDotFiles",FALSE);
+
+  err = donlst(cmd,cmd->arg);
+  if(XFER_ABORTED) {
+    data_abort(0,0);
+    err = -1;
+  } else {
+    /* if donlst() didn't return an error, but no transfer is active,
+     * this means that no files were actually listed.
+     */
+    if(err >= 0 && (session.flags & SF_XFER) == 0) {
+      add_response_err(R_550,"No files found.");
+      err = -1;
+    } else if(session.flags & SF_XFER)
+      ls_done(cmd);
+
+    /* In case the transfer was supposed to have been started, but
+     * never was, clear out data connection mgmt stuff.
+     */
+    data_reset();
+  }
+ 
+  return (err < 0 ? ERROR(cmd) : HANDLED(cmd));
 }
 
 MODRET _sethide(cmd_rec *cmd, const char *param)
@@ -1068,11 +1274,26 @@ MODRET set_lsdefaultoptions(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
+MODRET set_showdotfiles(cmd_rec *cmd)
+{
+  int b;
+  
+  CHECK_ARGS(cmd,1);
+  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+
+  if((b = get_boolean(cmd,1)) == -1)
+    CONF_ERROR(cmd,"expected boolean argument.");
+
+  add_config_param("ShowDotFiles",1,(void*)b);
+  return HANDLED(cmd);
+}
+
 conftable ls_config[] = {
   { "DirFakeUser",	set_dirfakeuser,			NULL },
   { "DirFakeGroup",	set_dirfakegroup,			NULL },
   { "DirFakeMode",	set_dirfakemode,			NULL },
   { "LsDefaultOptions",	set_lsdefaultoptions,			NULL },
+  { "ShowDotFiles",	set_showdotfiles,			NULL },
   { NULL,		NULL,					NULL }
 };
 
