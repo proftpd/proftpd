@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.28 2002-09-12 23:20:42 castaglia Exp $
+ * $Id: mod_log.c,v 1.29 2002-09-12 23:23:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -826,7 +826,7 @@ static void get_extendedlogs(void) {
     logs = (logfile_t *) log_set->xas_list;
 
 loop_extendedlogs:
-    c = find_config_next(c, c->next, CONF_PARAM, "ExtendedLog", TRUE);
+    c = find_config_next(c, c->next, CONF_PARAM, "ExtendedLog", FALSE);
   }
 }
 
