@@ -532,7 +532,7 @@ int module_preparse_init(void) {
     }
 
     if (!m->module_init_cb ||
-        (m->module_init_cb() != -1)) {
+        (m->module_init_cb() >= 0)) {
       xaset_insert(installed_modules, (xasetmember_t *) m);
 
       if (m->conftable)
@@ -546,7 +546,10 @@ int module_preparse_init(void) {
       if (m->authtable)
         for (auth = m->authtable; auth->name; auth++)
           ++numauth;
-    }
+
+    } else
+      log_pri(PR_LOG_ERR, "error: initialization of 'mod_%s' module failed",
+        m->name);
   }
 
   /* Allow for an empty entry */
