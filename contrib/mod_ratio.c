@@ -157,28 +157,26 @@ MODRET calculate_ratios(cmd_rec *cmd)
 {
   config_rec *cfg;
   char buf[1024];
-  char *mask;
+
   ratio.ratios = get_param_int(CURRENT_CONF,"Ratios",FALSE);
   if (!ratio.ratios || !cmd || !cmd->server || !cmd->server->conf)
     return DECLINED(cmd);
 
   cfg = find_config(cmd->server->conf,CONF_PARAM, "HostRatio",TRUE);
   while(cfg) {
-    mask = buf;
     if(*(char *)cfg->argv[0] == '.') {
-      *mask++ = '*';
-      strncpy(mask,cfg->argv[0],sizeof(buf)-2);
+      *buf = '*';
+      sstrcat(buf, cfg->argv[0], sizeof(buf));
+    } else if(*(char *)(cfg->argv[0] + (strlen(cfg->argv[0]) -1)) == '.') {
+      sstrncpy(buf, cfg->argv[0], sizeof(buf));
+      sstrcat(buf, "*", sizeof(buf));
+    } else {
+      sstrncpy(buf, cfg->argv[0], sizeof(buf) - 1);
     }
-    else if(*(char *)(cfg->argv[0] + (strlen(cfg->argv[0]) -1)) == '.') {
-      strncpy(mask,cfg->argv[0],sizeof(buf)-2);
-        buf[1023] = '\0';
-        strncpy(&buf[strlen(buf)-1],"*", 1);
-    } else
-      strncpy(mask,cfg->argv[0],sizeof(buf)-1);
-    buf[1023] = '\0';
-    if(!fnmatch(buf,session.c->remote_name,FNM_NOESCAPE) ||
-       !fnmatch(buf,inet_ntoa(*session.c->remote_ipaddr),FNM_NOESCAPE)) {
-      set_ratios (cfg->argv[1], cfg->argv[2], cfg->argv[3], cfg->argv[4]);
+    
+    if(!fnmatch(buf, session.c->remote_name, FNM_NOESCAPE) ||
+       !fnmatch(buf, inet_ntoa(*session.c->remote_ipaddr), FNM_NOESCAPE)) {
+      set_ratios(cfg->argv[1], cfg->argv[2], cfg->argv[3], cfg->argv[4]);
       return DECLINED(cmd);
     }
     cfg = find_config_next(cfg,cfg->next,CONF_PARAM,"HostRatio",FALSE);

@@ -19,7 +19,7 @@
 
 /*
  * ProFTPD logging support
- * $Id: log.c,v 1.8 1999-09-17 04:06:15 macgyver Exp $
+ * $Id: log.c,v 1.9 1999-09-17 07:31:45 macgyver Exp $
  */
 
 /* History Log:
@@ -152,8 +152,7 @@ const char *log_run_getpath(void)
 
 void log_run_setpath(const char *path)
 {
-  strncpy(scoreboard_path,path,sizeof(scoreboard_path));
-  scoreboard_path[sizeof(scoreboard_path)-1] = '\0';
+  sstrncpy(scoreboard_path,path,sizeof(scoreboard_path));
   if(scoreboard_path[strlen(scoreboard_path)-1] == '/')
     scoreboard_path[strlen(scoreboard_path)-1] = '\0';
 }
@@ -382,8 +381,7 @@ void log_run_cwd(const char *cwd)
   if(!runcwd)
     runcwd = pcalloc(permanent_pool,MAX_PATH_LEN);
   
-  strncpy(runcwd,cwd,MAX_PATH_LEN);
-  runcwd[MAX_PATH_LEN-1] = '\0';
+  sstrncpy(runcwd,cwd,MAX_PATH_LEN);
 }
 
 /* log_add_run() logs the current process and connection information to
@@ -455,11 +453,11 @@ int log_add_run(pid_t mpid, time_t *idle_since, char *user,
 
   if(user) {
     bzero(ent.user,sizeof(ent.user));
-    strncpy(ent.user,user,sizeof(ent.user));
+    sstrncpy(ent.user,user,sizeof(ent.user));
   }
   if(buf[0]) {
     bzero(ent.op,sizeof(ent.op));
-    strncpy(ent.op,buf,sizeof(ent.op));
+    sstrncpy(ent.op,buf,sizeof(ent.op));
   }
 
   if(server_ip)
@@ -476,13 +474,13 @@ int log_add_run(pid_t mpid, time_t *idle_since, char *user,
   }
 
   if(runcwd) {
-    strncpy(ent.cwd,runcwd,sizeof(ent.cwd));
+    sstrncpy(ent.cwd,runcwd,sizeof(ent.cwd));
     ent.cwd[sizeof(ent.cwd)-1] = '\0';
   } else
     bzero(ent.cwd,sizeof(ent.cwd));
 
   if(address) {
-    strncpy(ent.address,address,sizeof(ent.address));
+    sstrncpy(ent.address,address,sizeof(ent.address));
     ent.address[sizeof(ent.address)-1] = '\0';
   } else
     bzero(ent.address,sizeof(ent.address));
@@ -540,10 +538,10 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip)
 
   if(fstat(fdx,&buf) == 0) {
     memset(&utx,0,sizeof(utx));
-    strncpy(utx.ut_user,name,sizeof(utx.ut_user));
-    strncpy(utx.ut_id,"ftp",sizeof(utx.ut_user));
-    strncpy(utx.ut_line,line,sizeof(utx.ut_line));
-    strncpy(utx.ut_host,host,sizeof(utx.ut_host));
+    sstrncpy(utx.ut_user,name,sizeof(utx.ut_user));
+    sstrncpy(utx.ut_id,"ftp",sizeof(utx.ut_user));
+    sstrncpy(utx.ut_line,line,sizeof(utx.ut_line));
+    sstrncpy(utx.ut_host,host,sizeof(utx.ut_host));
     utx.ut_syslen = strlen(utx.ut_host)+1;
     utx.ut_pid = getpid();
     time(&utx.ut_tv.tv_sec);
@@ -575,27 +573,27 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip)
     if(ip)
       memcpy(&ut.ut_addr,ip,sizeof(ut.ut_addr));
 #else
-    strncpy(ut.ut_id,"ftp",sizeof(ut.ut_id));
+    sstrncpy(ut.ut_id,"ftp",sizeof(ut.ut_id));
     ut.ut_exit.e_termination = 0;
     ut.ut_exit.e_exit = 0;
 #endif
-    strncpy(ut.ut_line,line,sizeof(ut.ut_line));
+    sstrncpy(ut.ut_line,line,sizeof(ut.ut_line));
     if(name && *name)
-      strncpy(ut.ut_user,name,sizeof(ut.ut_user));
+      sstrncpy(ut.ut_user,name,sizeof(ut.ut_user));
     ut.ut_pid = getpid();
     if(name && *name)
       ut.ut_type = USER_PROCESS;
     else
       ut.ut_type = DEAD_PROCESS;
 #else  /* !HAVE_UTMAXTYPE */
-    strncpy(ut.ut_line,line,sizeof(ut.ut_line));
+    sstrncpy(ut.ut_line,line,sizeof(ut.ut_line));
     if(name && *name)
-      strncpy(ut.ut_name,name,sizeof(ut.ut_name));
+      sstrncpy(ut.ut_name,name,sizeof(ut.ut_name));
 #endif /* HAVE_UTMAXTYPE */
 
 #ifdef HAVE_UT_UT_HOST
     if(host && *host)
-      strncpy(ut.ut_host,host,sizeof(ut.ut_host));
+      sstrncpy(ut.ut_host,host,sizeof(ut.ut_host));
 #endif /* HAVE_UT_UT_HOST */
 
     time(&ut.ut_time);
@@ -803,7 +801,7 @@ void init_log()
   char buf[256];
 
   if(gethostname(buf, sizeof(buf)) == -1)
-    strncpy(buf, "localhost", sizeof(buf));
+    sstrncpy(buf, "localhost", sizeof(buf));
   
   syslog_hostname = inet_validate(pstrdup(permanent_pool, buf));
 }

@@ -19,7 +19,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.12 1999-09-17 04:13:32 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.13 1999-09-17 07:31:44 macgyver Exp $
  */
 
 /* History Log:
@@ -182,8 +182,8 @@ MODRET pre_cmd_stor(cmd_rec *cmd) {
   }
 
   /* otherwise everthing is good */
-  p = mod_privdata_alloc(cmd,"stor_filename",strlen(dir)+1);
-  strncpy(p->value.str_val, dir, strlen(dir) + 1);
+  p = mod_privdata_alloc(cmd, "stor_filename", strlen(dir) + 1);
+  sstrncpy(p->value.str_val, dir, strlen(dir) + 1);
 
   if(get_param_int(CURRENT_CONF,"HiddenStor",FALSE) == 1) {
     /* We have to also figure out the temporary hidden file name for
@@ -238,14 +238,14 @@ MODRET pre_cmd_stor(cmd_rec *cmd) {
 
     if (! foundslash) {
       /* Simple local file name */
-      strncpy(p_hidden->value.str_val, ".in.", maxlen);
+      sstrncpy(p_hidden->value.str_val, ".in.", maxlen);
       sstrcat(p_hidden->value.str_val, dir, maxlen);
       sstrcat(p_hidden->value.str_val, ".", maxlen);
       log_pri(LOG_DEBUG,"Local path, will rename %s to %s",
 	p_hidden->value.str_val, p->value.str_val);
     } else {
       /* Complex relative path or absolute path */
-      strncpy(p_hidden->value.str_val, dir, maxlen);
+      sstrncpy(p_hidden->value.str_val, dir, maxlen);
       p_hidden->value.str_val[basenamestart] = '\0';
       sstrcat(p_hidden->value.str_val, ".in.", maxlen);
       sstrcat(p_hidden->value.str_val, dir + basenamestart, maxlen);
@@ -509,7 +509,7 @@ MODRET pre_cmd_retr(cmd_rec *cmd)
 
   /* otherwise everthing is good */
   p = mod_privdata_alloc(cmd,"retr_filename",strlen(dir)+1);
-  strncpy(p->value.str_val, dir, strlen(dir) + 1);
+  sstrncpy(p->value.str_val, dir, strlen(dir) + 1);
   return HANDLED(cmd);
 }
 

@@ -19,7 +19,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.6 1999-09-12 16:30:01 macgyver Exp $
+ * $Id: mod_auth.c,v 1.7 1999-09-17 07:31:44 macgyver Exp $
  */
 
 #include "conf.h"
@@ -729,7 +729,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
       goto auth_failure;
     }
   
-    strncpy(session.cwd,"/",sizeof(session.cwd));
+    sstrncpy(session.cwd, "/", sizeof(session.cwd));
     xferlog = get_param_ptr(c->subset,"TransferLog",FALSE);
 
     if(anongroup) {
@@ -750,14 +750,14 @@ static int _setup_environment(pool *p, char *user, char *pass)
       }
     }
 
-    strncpy(session.cwd,pw->pw_dir,MAX_PATH_LEN);
+    sstrncpy(session.cwd, pw->pw_dir, MAX_PATH_LEN);
   }
 
   /* Get default chdir (if any) */
   defchdir = _get_default_chdir(p,(c ? c->subset : main_server->conf));
   
   if(defchdir)
-    strncpy(session.cwd,defchdir,MAX_PATH_LEN);
+    sstrncpy(session.cwd, defchdir, MAX_PATH_LEN);
 
   build_group_arrays(session.pool,pw,NULL,
                      &session.gids,&session.groups);
@@ -890,9 +890,9 @@ static int _setup_environment(pool *p, char *user, char *pass)
         newcwd++;
       session.cwd[0] = '/';
 
-      strncpy(&session.cwd[1],newcwd,sizeof(session.cwd) - 1);
+      sstrncpy(&session.cwd[1], newcwd, sizeof(session.cwd));
     } else
-      strncpy(session.cwd,"/",sizeof(session.cwd));
+      sstrncpy(session.cwd, "/", sizeof(session.cwd));
   }
 
   if(c) {
@@ -980,8 +980,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
     end_login(1);
   }
 
-  strncpy(session.cwd,fs_getcwd(),sizeof(session.cwd));
-  strncpy(session.vwd,fs_getvwd(),sizeof(session.vwd));
+  sstrncpy(session.cwd, fs_getcwd(), sizeof(session.cwd));
+  sstrncpy(session.vwd, fs_getvwd(), sizeof(session.vwd));
 
 
   /* check dynamic configuration */

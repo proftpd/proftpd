@@ -19,7 +19,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.16 1999-09-17 03:59:49 macgyver Exp $
+ * $Id: main.c,v 1.17 1999-09-17 07:31:45 macgyver Exp $
  */
 
 /*
@@ -459,15 +459,15 @@ void add_response_err(const char *numeric, const char *fmt, ...)
   response_t *t,**head;
 
   va_start(msg,fmt);
-  vsnprintf(sbuf,sizeof(sbuf),fmt,msg);
+  vsnprintf(sbuf, sizeof(sbuf), fmt, msg);
   va_end(msg);
-
-  sbuf[1023] = '\0';
   
-  t = (response_t*)pcalloc(resp_pool,sizeof(response_t));
-  t->num = (numeric ? pstrdup(resp_pool,numeric) : NULL);
-  t->msg = pstrdup(resp_pool,sbuf);
-
+  sbuf[sizeof(sbuf) - 1] = '\0';
+  
+  t = (response_t*) pcalloc(resp_pool, sizeof(response_t));
+  t->num = (numeric ? pstrdup(resp_pool, numeric) : NULL);
+  t->msg = pstrdup(resp_pool, sbuf);
+  
   for(head = &resp_err_list; *head && (!numeric || !(*head)->num ||
       strcmp((*head)->num,numeric) <= 0); head = &(*head)->next) ;
 
@@ -481,15 +481,15 @@ void add_response(const char *numeric, const char *fmt, ...)
   response_t *t,**head;
 
   va_start(msg,fmt);
-  vsnprintf(sbuf,sizeof(sbuf),fmt,msg);
+  vsnprintf(sbuf, sizeof(sbuf), fmt, msg);
   va_end(msg);
 
-  sbuf[1023] = '\0';
+  sbuf[sizeof(sbuf) - 1] = '\0';
   
-  t = (response_t*)pcalloc(resp_pool,sizeof(response_t));
-  t->num = (numeric ? pstrdup(resp_pool,numeric) : NULL);
-  t->msg = pstrdup(resp_pool,sbuf);
-
+  t = (response_t*) pcalloc(resp_pool, sizeof(response_t));
+  t->num = (numeric ? pstrdup(resp_pool, numeric) : NULL);
+  t->msg = pstrdup(resp_pool, sbuf);
+  
   for(head = &resp_list; *head && (!numeric || !(*head)->num ||
       strcmp((*head)->num,numeric) <= 0); head = &(*head)->next) ;
 
@@ -502,34 +502,32 @@ void send_response_raw(const char *fmt, ...)
   va_list msg;
 
   va_start(msg,fmt);
-  vsnprintf(sbuf,sizeof(sbuf),fmt,msg);
+  vsnprintf(sbuf, sizeof(sbuf), fmt, msg);
   va_end(msg);
 
-  sbuf[1023] = '\0';
-  io_printf(session.c->outf,"%s\r\n",sbuf);
+  sbuf[sizeof(sbuf) - 1] = '\0';
+  io_printf(session.c->outf, "%s\r\n", sbuf);
 }
 
 void send_response_async(const char *resp_numeric, const char *fmt, ...)
 {
-  char buf[1023],*cp = buf;
+  char buf[1024];
   va_list msg;
   int maxlen;
 
-  maxlen = sizeof(buf) - strlen(resp_numeric) - 1;
-
-  strncpy(cp,resp_numeric,maxlen);
-  cp += strlen(resp_numeric);
-  *cp++ = ' ';
-
-  va_start(msg,fmt);
-  vsnprintf(cp,maxlen,fmt,msg);
+  sstrncpy(buf, resp_numeric, sizeof(buf));
+  sstrcat(buf, " ", sizeof(buf));
+  
+  maxlen = sizeof(buf) - strlen(buf) - 1;
+  
+  va_start(msg, fmt);
+  vsnprintf(buf + strlen(buf), maxlen, fmt, msg);
   va_end(msg);
+  
+  buf[sizeof(buf) - 1] = '\0';
+  sstrcat(buf, "\r\n", sizeof(buf));
 
-  buf[1022] = '\0';
-  cp = buf + strlen(buf);
-  *cp++ = '\r'; *cp++ = '\n'; *cp++ = '\0';
-
-  io_write_async(session.c->outf,buf,strlen(buf));
+  io_write_async(session.c->outf, buf, strlen(buf));
 }
 
 void send_response(const char *resp_numeric, const char *fmt, ...)
@@ -537,11 +535,11 @@ void send_response(const char *resp_numeric, const char *fmt, ...)
   va_list msg;
 
   va_start(msg,fmt);
-  vsnprintf(sbuf,sizeof(sbuf),fmt,msg);
+  vsnprintf(sbuf, sizeof(sbuf), fmt, msg);
   va_end(msg);
-
-  sbuf[1023] = '\0';
-  io_printf(session.c->outf,"%s %s\r\n",resp_numeric,sbuf);
+  
+  sbuf[sizeof(sbuf) - 1] = '\0';
+  io_printf(session.c->outf,"%s %s\r\n",resp_numeric, sbuf);
 }
 
 void send_response_ml_start(const char *resp_numeric, const char *fmt, ...)
@@ -549,13 +547,13 @@ void send_response_ml_start(const char *resp_numeric, const char *fmt, ...)
   va_list msg;
 
   va_start(msg,fmt);
-  vsnprintf(sbuf,sizeof(sbuf),fmt,msg);
+  vsnprintf(sbuf, sizeof(sbuf), fmt, msg);
   va_end(msg);
 
-  sbuf[1023] = '\0';
-  strncpy(_ml_numeric,resp_numeric,3); _ml_numeric[3] = '\0';
-
-  io_printf(session.c->outf,"%s-%s\r\n",_ml_numeric,sbuf);
+  sbuf[sizeof(sbuf) - 1] = '\0';
+  sstrncpy(_ml_numeric, resp_numeric, sizeof(_ml_numeric));
+  
+  io_printf(session.c->outf, "%s-%s\r\n", _ml_numeric, sbuf);
 }
 
 void send_response_ml(const char *fmt, ...)
@@ -563,12 +561,12 @@ void send_response_ml(const char *fmt, ...)
   va_list msg;
 
   va_start(msg,fmt);
-  vsnprintf(sbuf,sizeof(sbuf),fmt,msg);
+  vsnprintf(sbuf, sizeof(sbuf), fmt, msg);
   va_end(msg);
 
-  sbuf[1023] = '\0';
+  sbuf[sizeof(sbuf) - 1] = '\0';
 
-  io_printf(session.c->outf," %s\r\n",sbuf);
+  io_printf(session.c->outf, " %s\r\n", sbuf);
 }
 
 void send_response_ml_end(const char *fmt, ...)
@@ -576,12 +574,12 @@ void send_response_ml_end(const char *fmt, ...)
   va_list msg;
  
   va_start(msg,fmt);
-  vsnprintf(sbuf,sizeof(sbuf),fmt,msg);
+  vsnprintf(sbuf, sizeof(sbuf), fmt, msg);
   va_end(msg);
 
-  sbuf[1023] = '\0';
+  sbuf[sizeof(sbuf) - 1] = '\0';
 
-  io_printf(session.c->outf,"%s %s\r\n",_ml_numeric,sbuf);
+  io_printf(session.c->outf, "%s %s\r\n", _ml_numeric, sbuf);
 }
 
 void set_auth_check(int (*ck)(cmd_rec*))
@@ -601,6 +599,8 @@ void end_login_noexit()
 #else
     snprintf(sbuf, sizeof(sbuf), "ftpd%d",(int)getpid());
 #endif
+    sbuf[sizeof(sbuf) - 1] = '\0';
+    
     if(session.wtmp_log)
       log_wtmp(sbuf,"",
         (session.c && session.c->remote_name ? session.c->remote_name : ""),
@@ -1978,7 +1978,7 @@ int main(int argc, char **argv, char **envp)
   int daemon_uid,daemon_gid,socketp;
   int _umask = 0,nodaemon = 0,c;
   struct sockaddr peer;
-  
+
 #ifdef DEBUG_MEMORY
   int logfd;
   extern int EF_PROTECT_BELOW;
@@ -2150,15 +2150,3 @@ int main(int argc, char **argv, char **envp)
 
   return 0;
 }
-
-#ifdef DEBUG_MEMORY
-#undef strncpy
-char *my_strncpy(to, from, num, file, function, line, args)
-{
-  fprintf(stderr, "%s:%d:%s - strncpy(%s)\n", file, line, function, args);
-  fflush(stderr);
-  fsync(fileno(stderr));
-
-  return strncpy(to, from, num);
-}
-#endif /* DEBUG_MEMORY */

@@ -335,7 +335,7 @@ struct pool *make_named_sub_pool(struct pool *p, const char *symbol)
   if(symbol) {
     /* This could be questionable... - MacGyver
      */
-    strncpy(&new_pool->symbol,symbol,strlen(&new_pool->symbol));
+    sstrncpy(&new_pool->symbol,symbol,strlen(&new_pool->symbol));
 
     /* Alignment issues on Sparc, SGI, and probably other hardware,
      * demand this.
@@ -469,8 +469,8 @@ char *pstrdup(struct pool *p, const char *s)
   if(!s)
     return NULL;
 
-  res = palloc(p,strlen(s)+1);
-  strncpy(res,s,strlen(s) + 1);
+  res = palloc(p, strlen(s) + 1);
+  sstrncpy(res, s, strlen(s) + 1);
   return res;
 }
 
@@ -481,16 +481,15 @@ char *pstrndup(struct pool *p, const char *s, int n)
   if(!s)
     return NULL;
 
-  res = palloc(p,n+1);
+  res = palloc(p, n + 1);
 
-  strncpy(res,s,n+1);
-  res[n] = '\0';
+  sstrncpy(res, s, n + 1);
   return res;
 }
 
 char *pdircat(pool *p, ...)
 {
-  char *cp, *argp, *res;
+  char *argp, *res;
   char last;
 
   int len = 0;
@@ -500,32 +499,30 @@ char *pdircat(pool *p, ...)
 
   last = 0;
 
-  while((cp = va_arg(dummy,char*)) != NULL) {
-    if(last && last != '/' && *cp != '/')
+  while((res = va_arg(dummy,char*)) != NULL) {
+    if(last && last != '/' && *res != '/')
       len++;
-    else if(last && last == '/' && *cp == '/')
+    else if(last && last == '/' && *res == '/')
       len--;
-    len += strlen(cp);
-    last = *(cp+strlen(cp)-1);
+    len += strlen(res);
+    last = res[strlen(res) - 1];
   }
 
   va_end(dummy);
-  res = (char*)palloc(p,len+1);
-
-  va_start(dummy,p);
-
-  cp = res;
-  *cp = '\0';
+  res = (char *) pcalloc(p, len + 1);
+  
+  va_start(dummy, p);
+  
   last = 0;
   
-  while((argp = va_arg(dummy,char*)) != NULL) {
+  while((argp = va_arg(dummy, char *)) != NULL) {
     if(last && last == '/' && *argp == '/')
       argp++;
     else if(last && last != '/' && *argp != '/')
-      *cp++ = '/';
-    strncpy(cp,argp,len + 1 - strlen(res));
-    cp += strlen(argp);
-    last = *(cp-1);
+      sstrcat(res, "/", len + 1);
+    
+    sstrcat(res, argp, len + 1);
+    last = res[strlen(res) - 1];
   }
 
   va_end(dummy);
@@ -535,31 +532,27 @@ char *pdircat(pool *p, ...)
 
 char *pstrcat(pool *p, ...)
 {
-  char *cp, *argp, *res;
+  char *argp, *res;
 
   int len = 0;
   va_list dummy;
 
   va_start(dummy,p);
-
-  while((cp = va_arg(dummy, char*)) != NULL)
-    len += strlen(cp);
-
+  
+  while((res = va_arg(dummy, char *)) != NULL)
+    len += strlen(res);
+  
   va_end(dummy);
-
-  res = (char*)palloc(p,len+1);
-  cp = res;
-  *cp = '\0';
+  
+  res = (char*) pcalloc(p, len + 1);
   
   va_start(dummy,p);
-
-  while((argp = va_arg(dummy,char*)) != NULL) {
-    strncpy(cp,argp,len + 1 - strlen(res));
-    cp += strlen(argp);
-  }
-
+  
+  while((argp = va_arg(dummy, char *)) != NULL)
+    sstrcat(res, argp, len + 1);
+  
   va_end(dummy);
-
+  
   return res;
 }
 
@@ -569,11 +562,11 @@ char *pstrcat(pool *p, ...)
 
 array_header *make_array(pool *p, int nelts, int elt_size)
 {
-  array_header *res = (array_header*)palloc(p, sizeof(array_header));
+  array_header *res = (array_header*) palloc(p, sizeof(array_header));
 
   if(nelts < 1) nelts = 1;
 
-  res->elts = pcalloc(p,nelts * elt_size);
+  res->elts = pcalloc(p, nelts * elt_size);
   res->pool = p;
   res->elt_size = elt_size;
   res->nelts = 0;

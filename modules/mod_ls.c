@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.11 1999-09-17 04:14:47 macgyver Exp $
+ * $Id: mod_ls.c,v 1.12 1999-09-17 07:31:44 macgyver Exp $
  */
 
 #include "conf.h"
@@ -65,7 +65,7 @@ static void push_cwd(char *_cwd, int *symhold)
   if(!_cwd) _cwd = cwd;
   if(!symhold) symhold = &showsymlinks_hold;
 
-  strncpy(_cwd,fs_getcwd(),MAXPATHLEN);
+  sstrncpy(_cwd, fs_getcwd(), MAXPATHLEN);
   *symhold = showsymlinks;
 }
 
@@ -226,7 +226,7 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
     }
 
     if(opt_l) {
-      strncpy(m," ---------",sizeof(m));
+      sstrncpy(m, " ---------", sizeof(m));
       switch(st.st_mode & S_IFMT) {
       case S_IFREG:
         m[0] = '-';
@@ -495,12 +495,13 @@ int outputfiles(cmd_rec *cmd)
       char pad[6];
 
       if(q->right) {
-        strncpy(pad,"\t\t\t\t\t",sizeof(pad));
+        sstrncpy(pad, "\t\t\t\t\t", sizeof(pad));
         pad[(colwidth + 7 - strlen(q->line)) / 8] = '\0';
-      } else
-        strncpy(pad,"\n",sizeof(pad));
+      } else {
+        sstrncpy(pad, "\n", sizeof(pad));
+      }
 
-      if(sendline("%s%s",q->line,pad) < 0)
+      if(sendline("%s%s", q->line, pad) < 0)
         return -1;
 
       q = q->right;
@@ -575,7 +576,7 @@ realloc_buf:
       goto realloc_buf;
     }
     s -= strlen(de->d_name) + 1;
-    strncpy(s,de->d_name,strlen(de->d_name) + 1);
+    sstrncpy(s, de->d_name, strlen(de->d_name) + 1);
     p[i++] = s;
   }
 
@@ -1215,7 +1216,7 @@ MODRET cmd_nlst(cmd_rec *cmd)
 
 		if((pw = auth_getpwnam(cmd->tmp_pool,i ? pb : session.user))) {
 		  snprintf(pb, sizeof(pb), "%s%s",pw->pw_dir,p);
-		  strncpy(line,pb,sizeof(line));
+		  sstrncpy(line, pb, sizeof(line));
 		  target = line;
 		}
 	}

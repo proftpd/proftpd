@@ -19,7 +19,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.6 1999-09-17 04:14:15 macgyver Exp $
+ * $Id: mod_log.c,v 1.7 1999-09-17 07:31:44 macgyver Exp $
  */
 
 #include "conf.h"
@@ -404,58 +404,66 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
     if(session.xfer.p)
       snprintf(argp, sizeof(arg), "%lu",session.xfer.total_bytes);
     else
-      strncpy(argp,"-",sizeof(arg));
-    m++; break;
+      sstrncpy(argp, "-", sizeof(arg));
+
+    m++;
+    break;
 
   case META_FILENAME:
     argp = arg;
     if(session.xfer.p && session.xfer.path) {
       char *fullpath;
       fullpath = dir_abs_path(p,session.xfer.path,TRUE);
-      strncpy(argp,fullpath,sizeof(arg));
-      arg[sizeof(arg)-1] = '\0';
-    } else
-      strncpy(argp,"-",sizeof(arg));
-    m++; break;
+      sstrncpy(argp, fullpath, sizeof(arg));
+    } else {
+      sstrncpy(argp, "-", sizeof(arg));
+    }
+
+    m++;
+    break;
 
   case META_ENV_VAR:
-    argp = arg; m++;
+    argp = arg;
+    m++;
+
     if(*m == META_START && *(m+1) == META_ARG) {
       char *env;
 
       env = getenv(get_next_meta(p,cmd,&m));
-      strncpy(argp,env,sizeof(arg));
-      arg[sizeof(arg)-1] = '\0';
+      sstrncpy(argp, env, sizeof(arg));
     }
+
     break;
 
   case META_REMOTE_HOST:
     argp = arg;
-    strncpy(argp,session.c->remote_name,sizeof(arg));
-    arg[sizeof(arg)-1] = '\0';
-    m++; break;
+    sstrncpy(argp, session.c->remote_name, sizeof(arg));
+    m++;
+    break;
 
   case META_REMOTE_IP:
     argp = arg;
-    strncpy(argp,inet_ntoa(*session.c->remote_ipaddr),sizeof(arg));
-    arg[sizeof(arg)-1] = '\0';
-    m++; break;
+    sstrncpy(argp, inet_ntoa(*session.c->remote_ipaddr), sizeof(arg));
+    m++;
+    break;
 
   case META_IDENT_USER:
     argp = arg;
-    strncpy(argp,session.ident_user,sizeof(arg));
-    arg[sizeof(arg)-1] = '\0';
-    m++; break;
+    sstrncpy(argp, session.ident_user, sizeof(arg));
+    m++;
+    break;
 
   case META_SERVER_PORT:
     argp = arg;
-    snprintf(argp, sizeof(arg), "%d",cmd->server->ServerPort);
-    m++; break;
+    snprintf(argp, sizeof(arg), "%d", cmd->server->ServerPort);
+    m++;
+    break;
 
   case META_PID:
     argp = arg;
     snprintf(argp, sizeof(arg), "%u",(unsigned int)getpid());
-    m++; break;
+    m++;
+    break;
 
   case META_TIME:
     {
@@ -500,27 +508,29 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
       }
 
       snprintf(argp, sizeof(arg), "%lu",(unsigned long)end_time.tv_sec);
-    } else
-      strncpy(argp,"-",sizeof(arg));
+    } else {
+      sstrncpy(argp,"-",sizeof(arg));
+    }
 
-    m++; break;
+    m++;
+    break;
 
   case META_COMMAND:
     argp = arg;
 
     if(!strcasecmp(cmd->argv[0],"PASS") && session.hide_password)
-      strncpy(argp,"PASS (hidden)",sizeof(arg));
+      sstrncpy(argp, "PASS (hidden)", sizeof(arg));
     else
-      strncpy(argp,get_full_cmd(cmd),sizeof(arg));
-    arg[sizeof(arg)-1] = '\0';
-    m++; break;
+      sstrncpy(argp, get_full_cmd(cmd), sizeof(arg));
+    m++;
+    break;
 
   case META_SERVERNAME:
     argp = arg;
 
-    strncpy(argp,cmd->server->ServerName,sizeof(arg));
-    arg[sizeof(arg)-1] = '\0';
-    m++; break;
+    sstrncpy(argp,cmd->server->ServerName,sizeof(arg));
+    m++;
+    break;
 
   case META_USER:
     argp = arg;
@@ -532,12 +542,13 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
       if(!u)
         u = "root";
     
-      strncpy(argp,u,sizeof(arg));
-    } else
-      strncpy(argp,session.user,sizeof(arg));
+      sstrncpy(argp, u, sizeof(arg));
+    } else {
+      sstrncpy(argp, session.user, sizeof(arg));
+    }
 
-    arg[sizeof(arg)-1] = '\0';
-    m++; break;
+    m++;
+    break;
 
   case META_RESPONSE_CODE:
     {
@@ -548,16 +559,18 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
 
       for(; r && !r->num; r=r->next) ;
       if(r && r->num)
-        strncpy(argp,r->num,sizeof(arg));
+        sstrncpy(argp,r->num,sizeof(arg));
       else
-        strncpy(argp,"-",sizeof(arg));
+        sstrncpy(argp,"-",sizeof(arg));
     }
-    m++; break;
+
+    m++;
+    break;
   }
 
   *f = m;
   if(argp)
-    return pstrdup(p,argp);
+    return pstrdup(p, argp);
   else
     return NULL;
 }

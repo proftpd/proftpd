@@ -18,7 +18,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.1 1998-10-18 02:24:41 flood Exp $
+ * $Id: auth.c,v 1.2 1999-09-17 07:31:44 macgyver Exp $
  */
 
 #include "conf.h"
@@ -299,7 +299,7 @@ const char *auth_uid_name(pool *p, uid_t uid)
 
   if(MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
     ret = mr->data;
-    strncpy(namebuf,ret,sizeof(namebuf));
+    sstrncpy(namebuf,ret,sizeof(namebuf));
     ret = namebuf;
   }
 
@@ -323,7 +323,7 @@ const char *auth_gid_name(pool *p, gid_t gid)
 
   if(MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
     ret = mr->data;
-    strncpy(namebuf,ret,sizeof(namebuf));
+    sstrncpy(namebuf,ret,sizeof(namebuf));
     ret = namebuf;
   }
 

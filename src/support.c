@@ -19,7 +19,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.6 1999-09-10 07:46:20 macgyver Exp $
+ * $Id: support.c,v 1.7 1999-09-17 07:31:45 macgyver Exp $
  */
 
 /* History Log:
@@ -268,7 +268,7 @@ char *dir_best_path(pool *p, const char *path)
     if(target)
       fs_dircat(workpath,sizeof(workpath),realpath,target);
     else
-      strncpy(workpath,realpath,sizeof(workpath));
+      sstrncpy(workpath,realpath,sizeof(workpath));
   } else
     fs_dircat(workpath,sizeof(workpath),"/",target);
 
@@ -527,8 +527,8 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
 
       if(deny) {
         if(strlen(deny_str) == 4) {
-          strncpy(hr,deny_str,sizeof(hr)); hr[2] = '\0'; deny_str += 2;
-          strncpy(mn,deny_str,sizeof(mn)); mn[2] = '\0';
+          sstrncpy(hr,deny_str,sizeof(hr)); hr[2] = '\0'; deny_str += 2;
+          sstrncpy(mn,deny_str,sizeof(mn)); mn[2] = '\0';
           
           *deny = shuttime - ((atoi(hr) * 3600) + (atoi(mn) * 60));
         } else
@@ -537,8 +537,8 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
 
       if(disc) {
         if(strlen(disc_str) == 4) {
-          strncpy(hr,disc_str,sizeof(hr)); hr[2] = '\0'; disc_str += 2;
-          strncpy(mn,disc_str,sizeof(mn)); mn[2] = '\0';
+          sstrncpy(hr,disc_str,sizeof(hr)); hr[2] = '\0'; disc_str += 2;
+          sstrncpy(mn,disc_str,sizeof(mn)); mn[2] = '\0';
 
           *disc = shuttime - ((atoi(hr) * 3600) + (atoi(mn) * 60));
         } else
@@ -546,10 +546,9 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
       }
 
       if(fgets(buf,sizeof(buf),fp) && msg) {
-        buf[255] = '\0'; CHOP(buf);
-        
-        strncpy(msg,buf,msg_size-1);
-        *(msg+msg_size-1) = '\0';
+        buf[255] = '\0';
+	CHOP(buf);
+        sstrncpy(msg,buf,msg_size-1);
       }
     }
 
@@ -581,7 +580,7 @@ char *sreplace(pool *p, char *s, ...)
   char *m,*r,*src = s,*cp;
   char **mptr,**rptr;
   char *marr[33],*rarr[33];
-  char buf[1024];
+  char buf[2048];
   int mlen = 0,rlen = 0;
 
   cp = buf;
@@ -607,7 +606,7 @@ char *sreplace(pool *p, char *s, ...)
       rlen = strlen(*rptr);
 
       if(strncmp(src,*mptr,mlen) == 0) {
-        strncpy(cp,*rptr,sizeof(buf) - strlen(buf));
+        sstrncpy(cp,*rptr,sizeof(buf) - strlen(buf));
 	if(((cp + rlen) - buf + 1) > sizeof(buf)) {
 	  log_pri(LOG_ERR,
 		  "Warning, attempt to overflow internal ProFTPD buffers.");
@@ -688,15 +687,31 @@ unsigned long get_fs_size(char *s)
  * more than "n" bytes.
  */
 
-char *sstrcat(char *dest, const char *src, size_t n)
-{
-	register char *d;
+char *sstrcat(char *dest, const char *src, size_t n) {
+  register char *d;
+  
+  for(d = dest; *d && n > 1; d++, n--) ;
+  
+  while(n-- > 1 && *src)
+    *d++ = *src++;
+  
+  *d = 0;
+  return dest;
+}
 
-	for(d = dest; *d && n > 1; d++, n--) ;
-
-	while(n-- > 1 && *src)
-		*d++ = *src++;
-	
-	*d = 0;
-	return dest;
+/* "safe" strncpy, saves room for \0 at end of dest, and refuses to copy
+ * more than "n" bytes.
+ */
+char *sstrncpy(char *dest, const char *src, size_t n) {
+  register char *d;
+  
+  if(!dest || !src)
+    return NULL;
+  
+  for(d = dest; *src && n > 1; n--)
+    *d++ = *src++;
+  
+  *d = 0;
+  
+  return dest;
 }

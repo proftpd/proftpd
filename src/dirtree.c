@@ -19,7 +19,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.4 1999-09-07 23:29:07 macgyver Exp $
+ * $Id: dirtree.c,v 1.6 1999-09-18 18:26:38 macgyver Exp $
  */
 
 /* History:
@@ -142,7 +142,9 @@ cmd_rec *get_config_cmd(pool *ppool, FILE *fp)
 
     /* Add each word to the array */
     while((wrd = get_word(&cp)) != NULL) {
-      *((char**)push_array(tarr)) = pstrdup(newpool,wrd);
+      char *tmp = pstrdup(newpool, wrd);
+      
+      *((char**)push_array(tarr)) = tmp; // pstrdup(newpool,wrd);
       newcmd->argc++;
     }
 
@@ -740,12 +742,13 @@ int match_ip(p_in_addr_t *addr, char *name, const char *match)
 {
   char buf[1024];
   char *mask,*cp;
-  int cidr_mode = 0,cidr_bits;
+  int cidr_mode = 0, cidr_bits;
   p_in_addr_t cidr_addr;
   u_int_32 cidr_mask = 0;
 
   if(!strcasecmp(match,"ALL"))
     return 1;
+
   if(!strcasecmp(match,"NONE"))
     return -1;
 
@@ -753,50 +756,48 @@ int match_ip(p_in_addr_t *addr, char *name, const char *match)
 
   if(*match == '.') {
     *mask++ = '*';
-    strncpy(mask,match,sizeof(buf)-2);
-  } else if(*(match+strlen(match)-1) == '.') {
-    strncpy(mask,match,sizeof(buf)-2);
-    buf[1023] = '\0';
-    strncpy(&buf[strlen(buf)-1],"*",sizeof(buf) - strlen(buf) - 1);
+    sstrcat(buf, match, sizeof(buf));
+  } else if(*(match + strlen(match) - 1) == '.') {
+    sstrcat(buf, match, sizeof(buf));
+    sstrcat(buf, "*", sizeof(buf));
   } else if((cp = strchr(match,'/')) != NULL) { /* check for CIDR notation */
     /* first portion of CIDR should be dotted quad, second portion
      * is netmask
      */
-     strncpy(buf,match,(cp - match));
-     buf[(cp - match)] = '\0';
- 
-     cidr_bits = atoi(cp+1);
-
-     if(cidr_bits > 0 && cidr_bits < 33) {
-       int shift = 32 - cidr_bits;
-
-       cidr_mode = 1;
-       while(cidr_bits--)
-         cidr_mask = (cidr_mask << 1) | 1;
-       cidr_mask = cidr_mask << shift;
+    sstrncpy(buf, match, (cp - match));
+    
+    cidr_bits = atoi(cp+1);
+    
+    if(cidr_bits > 0 && cidr_bits < 33) {
+      int shift = 32 - cidr_bits;
+      
+      cidr_mode = 1;
+      while(cidr_bits--)
+	cidr_mask = (cidr_mask << 1) | 1;
+      cidr_mask = cidr_mask << shift;
 #ifdef HAVE_INET_ATON
-       if(inet_aton(mask,&cidr_addr) == 0)
-           return 0;
+      if(inet_aton(mask,&cidr_addr) == 0)
+	return 0;
 #else
-       cidr_addr.s_addr = inet_addr(mask);
+      cidr_addr.s_addr = inet_addr(mask);
 #endif
-       cidr_addr.s_addr &= htonl(cidr_mask);
-     } else
-       return 0;
-  } else
-    strncpy(mask,match,sizeof(buf)-1);
-
-  buf[1023] = '\0';
-
+      cidr_addr.s_addr &= htonl(cidr_mask);
+    } else {
+      return 0;
+    }
+  } else {
+    sstrcat(buf, match, sizeof(buf));
+  }
+  
   if(cidr_mode) {
     if((addr->s_addr & htonl(cidr_mask)) == cidr_addr.s_addr)
-    return 1;
+      return 1;
   } else {
-    if(fnmatch(buf,name,FNM_NOESCAPE) == 0 ||
-       fnmatch(buf,inet_ntoa(*addr),FNM_NOESCAPE) == 0)
-         return 1;
+    if(fnmatch(buf, name, FNM_NOESCAPE) == 0 ||
+       fnmatch(buf, inet_ntoa(*addr), FNM_NOESCAPE) == 0)
+      return 1;
   }
-
+  
   return 0;
 }
 
