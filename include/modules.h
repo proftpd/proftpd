@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.28 2003-03-04 19:55:20 castaglia Exp $
+ * $Id: modules.h,v 1.29 2003-03-09 01:04:03 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -181,17 +181,6 @@ struct module_struc {
   /* Internal use; high number == higher priority. */
   int auth_priority, priority;
 };
-
-/* module hash types */
-typedef struct authsym {
-  struct authsym *next, *prev;
-
-  /* pointer to the auth symbol */
-  char *name;
-
-  module *module;
-  authtable *table;
-} pr_authsym_t;
 
 /* These are stored in modules.c */
 
