@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.24 2003-10-10 05:37:08 castaglia Exp $
+ * $Id: netaddr.c,v 1.25 2003-10-10 06:36:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -692,7 +692,13 @@ const char *pr_netaddr_get_localaddr_str(pool *p) {
 
   if (gethostname(buf, sizeof(buf)-1) != -1) {
     buf[sizeof(buf)-1] = '\0';
+
+    /* Note: this may need to be gethostbyname2() on systems that provide
+     * that function, for it is possible that the configured hostname for
+     * a machine only resolves to an IPv6 address.
+     */
     host = gethostbyname(buf);
+
     if (host)
       return pr_inet_validate(pstrdup(p, host->h_name));
 
