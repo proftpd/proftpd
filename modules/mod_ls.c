@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.10 1999-09-12 16:30:01 macgyver Exp $
+ * $Id: mod_ls.c,v 1.11 1999-09-17 04:14:47 macgyver Exp $
  */
 
 #include "conf.h"
@@ -1123,7 +1123,6 @@ MODRET fini_nlst(cmd_rec *cmd)
 
 MODRET cmd_stat(cmd_rec *cmd)
 {
-  struct stat sbuf;
   char *arg = cmd->arg;
   long _fakemode;
 
@@ -1155,13 +1154,6 @@ MODRET cmd_stat(cmd_rec *cmd)
 
   opt_C = opt_d = opt_F = opt_R;
   opt_a = opt_l = opt_STAT = 1;
-
-#if 0
-  if(fs_stat(arg,&sbuf) == -1) {
-    add_response_err(R_550,"%s: %s",arg,strerror(errno));
-    return ERROR(cmd);
-  }
-#endif
 
   add_response(R_211,"status of %s:",arg);
   dolist(cmd,cmd->arg,FALSE);
