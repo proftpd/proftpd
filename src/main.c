@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.213 2003-11-09 22:43:26 castaglia Exp $
+ * $Id: main.c,v 1.214 2003-11-09 22:48:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1978,7 +1978,6 @@ static void install_signal_handlers(void) {
   signal(SIGBUS, sig_terminate);
 #endif /* SIGBUS */
   signal(SIGUSR2, sig_evnt);
-#endif /* USE_CTRLS */
 
   /* In case our parent left signals blocked (as happens under some
    * poor inetd implementations)
