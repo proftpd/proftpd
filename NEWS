@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.616 2004-10-17 01:10:57 castaglia Exp $
+$Id: NEWS,v 1.617 2004-10-17 23:29:43 castaglia Exp $
 
 CVS
 --------------------------------
@@ -43,6 +43,10 @@ CVS
 - Bug 2273 - Ability to limit number of unauthenticated clients from a single
   host.  There is a new MaxConnectionsPerHost directive for configuring
   the maximum number of connections from a single host at the same time.
+- Bug 1965 - Change timing of handling of QUIT command.  The actual ending
+  of the session is now done by LOG_CMD/LOG_CMD_ERR handlers for the QUIT
+  command.  This allows modules that wish to do POST_CMD processing of
+  QUIT, like mod_sql, a chance to see the command.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.247 2004-09-18 00:38:13 castaglia Exp $
+ * $Id: mod_core.c,v 1.248 2004-10-17 23:29:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3050,13 +3050,7 @@ MODRET core_clear_fs(cmd_rec *cmd) {
 MODRET core_quit(cmd_rec *cmd) {
   char *display = NULL;
 
-  if (session.sf_flags & SF_ANON)
-    display = (char *)get_param_ptr(session.anon_config->subset,
-      "DisplayQuit", FALSE);
-
-  if (!display)
-    display = (char *)get_param_ptr(cmd->server->conf, "DisplayQuit", FALSE);
-
+  display = get_param_ptr(TOPLEVEL_CONF, "DisplayQuit", FALSE); 
   if (display) {
     core_display_file(R_221, display, NULL);
 
@@ -3068,6 +3062,15 @@ MODRET core_quit(cmd_rec *cmd) {
   } else
     pr_response_send(R_221, "Goodbye.");
 
+  /* The LOG_CMD handler for QUIT is responsible for actually ending
+   * the session.
+   */
+
+  return HANDLED(cmd);
+}
+
+MODRET core_log_quit(cmd_rec *cmd) {
+
 #ifndef PR_DEVEL_NO_DAEMON
   end_login(0);
 #endif /* PR_DEVEL_NO_DAEMON */
@@ -3078,7 +3081,7 @@ MODRET core_quit(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-/* per RFC959, directory responses for MKD and PWD should be
+/* Per RFC959, directory responses for MKD and PWD should be
  * "dir_name" (w/ quote).  For directories that CONTAIN quotes,
  * the add'l quotes must be duplicated.
  */
@@ -4702,6 +4705,8 @@ static cmdtable core_cmdtab[] = {
   { LOG_CMD_ERR, C_RNTO, G_NONE, core_rnto_cleanup, TRUE, FALSE, CL_NONE },
   { CMD, C_SIZE, G_READ,  core_size,	TRUE,	FALSE, CL_INFO },
   { CMD, C_QUIT, G_NONE,  core_quit,	FALSE,	FALSE,  CL_INFO },
+  { LOG_CMD, 	 C_QUIT, G_NONE, core_log_quit, FALSE, FALSE },
+  { LOG_CMD_ERR, C_QUIT, G_NONE, core_log_quit, FALSE, FALSE },
   { CMD, C_NOOP, G_NONE,  core_noop,	FALSE,	FALSE,  CL_MISC },
   { CMD, C_FEAT, G_NONE,  core_feat,	FALSE,	FALSE,  CL_INFO },
   { CMD, C_OPTS, G_NONE,  core_opts,    FALSE,	FALSE,	CL_MISC },
