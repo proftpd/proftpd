@@ -1876,7 +1876,7 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
     if (tls_required_on_data || (tls_flags & TLS_SESS_NEED_DATA_PROT)) {
       X509 *ctrl_cert = NULL, *data_cert = NULL;
 
-      tls_log("%s", "start TLS handshake on data connection");
+      tls_log("%s", "starting TLS negotiation on data connection");
       if (tls_accept(session.d, TRUE) < 0) {
         tls_log("%s", "unable to open data connection: TLS negotiation failed");
         session.d->xerrno = EPERM;
