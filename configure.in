@@ -1016,7 +1016,7 @@ AC_PROG_GCC_TRADITIONAL
 AC_FUNC_SETPGRP
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS(bcopy crypt fgetgrent fgetpwent flock freeaddrinfo iconv nl_langinfo)
+AC_CHECK_FUNCS(bcopy crypt fdatasync fgetgrent fgetpwent flock freeaddrinfo iconv nl_langinfo)
 AC_CHECK_FUNC(gai_strerror,
   AC_DEFINE(HAVE_GAI_STRERROR),
   LIB_OBJS="$LIB_OBJS glibc-gai_strerror.o"
@@ -1049,7 +1049,7 @@ AC_TRY_LINK(
   ]
 )
 
-AC_CHECK_FUNCS(fdatasync getcwd getenv gethostbyname2 gethostname getnameinfo)
+AC_CHECK_FUNCS(getcwd getenv gethostbyname2 gethostname getnameinfo)
 AC_CHECK_FUNCS(getopt_long gettimeofday hstrerror inet_aton inet_ntop inet_pton)
 AC_CHECK_FUNCS(memcpy mempcpy mkdir mkstemp mlock mlockall munlock munlockall)
 AC_CHECK_FUNCS(rmdir select setgroups socket statfs strchr strcoll strerror)
