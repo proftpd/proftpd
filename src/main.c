@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.108 2002-09-09 22:43:17 castaglia Exp $
+ * $Id: main.c,v 1.109 2002-09-09 23:05:46 jwm Exp $
  */
 
 #include "conf.h"
@@ -374,7 +374,7 @@ static void set_proc_title(const char *fmt, ...) {
   /* FreeBSD's setproctitle() automatically prepends the process name. */
   vsnprintf(statbuf, sizeof(statbuf), fmt, msg);
 
-# else
+# else /* FREEBSD4 */
   /* Manually append the process name for non-FreeBSD platforms. */
   snprintf(statbuf, sizeof(statbuf), "%s", "proftpd: ");
   vsnprintf(statbuf + strlen(statbuf), sizeof(statbuf) - strlen(statbuf),
@@ -383,7 +383,7 @@ static void set_proc_title(const char *fmt, ...) {
 # endif /* FREEBSD4 */
   setproctitle("%s", statbuf);
 
-#else
+#else /* HAVE_SETPROCTITLE */
   /* Manually append the process name for non-setproctitle() platforms. */
   snprintf(statbuf, sizeof(statbuf), "%s", "proftpd: ");
   vsnprintf(statbuf + strlen(statbuf), sizeof(statbuf) - strlen(statbuf),
