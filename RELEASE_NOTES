@@ -15,6 +15,7 @@ NOTES
     use the old Class/Classes directives.  See README.classes for details.
 
 1.2.10rc2
+---------
   + New configuration directives:
       TimeoutLinger
 
@@ -82,4 +83,4 @@ NOTES
      ProFTPD's optional modules (e.g. mod_cap, mod_ctrls).
 
 
-Last Updated: $Date: 2004-05-21 17:35:43 $
+Last Updated: $Date: 2004-05-21 17:46:21 $
