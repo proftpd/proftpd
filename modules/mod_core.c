@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.70 2001-09-26 15:34:10 flood Exp $
+ * $Id: mod_core.c,v 1.71 2001-09-26 15:35:53 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -1188,7 +1188,8 @@ MODRET set_pathdenyfilter(cmd_rec *cmd) {
 
 MODRET set_allowforeignaddress(cmd_rec *cmd)
 {
-  int b;
+  int b = -1;
+  config_rec *c = NULL;
 
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
@@ -1196,7 +1197,8 @@ MODRET set_allowforeignaddress(cmd_rec *cmd)
   if((b = get_boolean(cmd,1)) == -1)
     CONF_ERROR(cmd,"expected boolean argument.");
 
-  add_config_param("AllowForeignAddress",1,(void*)b);
+  c = add_config_param("AllowForeignAddress",1,(void*)b);
+  c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
 }
