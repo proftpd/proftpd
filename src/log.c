@@ -20,7 +20,7 @@
 
 /*
  * ProFTPD logging support
- * $Id: log.c,v 1.14 2000-02-29 01:11:59 macgyver Exp $
+ * $Id: log.c,v 1.15 2000-07-07 00:00:56 macgyver Exp $
  */
 
 /* History Log:
@@ -539,6 +539,12 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip)
     return -1;
   }
 
+  /* Unfortunately, utmp string fields are terminated by '\0' if they are
+   * shorter than the size of the field, but if they are exactly the size of
+   * the field they don't have to be terminated at all.  Frankly, this sucks.
+   * Insane if you ask me.  Unless there's massive uproar, I prefer to err on
+   * the side of caution and always null-terminate our strings.
+   */
   if(fstat(fdx,&buf) == 0) {
     memset(&utx,0,sizeof(utx));
     sstrncpy(utx.ut_user,name,sizeof(utx.ut_user));
