@@ -1,4 +1,4 @@
-<!-- $Id: mod_ctrls_admin.html,v 1.1 2004-11-03 19:37:45 castaglia Exp $ -->
+<!-- $Id: mod_ctrls_admin.html,v 1.2 2004-11-22 06:09:25 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_ctrls_admin.html,v $ -->
 
 <html>
@@ -261,6 +261,30 @@ privileges, nor knowledge of the daemon's PID, to restart the daemon.
 
 <p>
 <hr>
+<h2><a name="shutdown"><code>shutdown</code></a></h2>
+<strong>Syntax:</strong> ftpdctl shutdown <em>[&quot;graceful&quot; seconds]</em><br>
+<strong>Purpose:</strong> Stop the daemon
+
+<p>
+The <code>shutdown</code> control action shuts the daemon down.  This is
+convenient for administrators, as it does not (necessarily) require root
+privileges, nor knowledge of the daemon's PID, to stop the daemon.
+
+<p>
+The optional &quot;graceful&quot; parameter allows for a graceful shutdown,
+in which <code>proftpd</code> will wait for the given number of <em>seconds</em>
+for all current sessions to end, before shutting down.
+
+<p>
+Example:
+<pre>
+  ftpdctl shutdown graceful 30
+</pre>
+will cause <code>proftpd</code> to wait for 30 seconds for all current
+sessions to end before shutting down completely.
+
+<p>
+<hr>
 <h2><a name="status"><code>status</code></a></h2>
 <strong>Syntax:</strong> ftpdctl status <em>ip-address|dns-name[#port]|&quot;all&quot;</em><br>
 <strong>Purpose:</strong> Display the status of virtual servers
@@ -275,28 +299,6 @@ If a port number is not specified, it defaults to 21.
 <p>
 If &quot;status all&quot; is used, the status of all virtual servers will be
 displayed.
-
-<p>
-<hr>
-<h2><a name="down"><code>down</code></a></h2>
-<strong>Syntax:</strong> ftpdctl down <em>ip-address|dns-name[#port]|&quot;all&quot;</em><br>
-<strong>Purpose:</strong> Turn down a virtual server
-
-<p>
-The <code>down</code> control action can be used to &quot;turn down&quot;
-an individual virtual server, so that clients cannot connect to it.  Once
-a virtual server has been &quot;downed&quot;, the
-&quot;<a href="#up">up</a>&quot; control action can be used to bring
-that virtual server back up.
-
-<p>
-If a port number is not specified, it defaults to 21.
-
-<p>
-Note that using &quot;down all&quot; effectively puts the daemon in an
-&quot;administrative&quot; shutdown state, where the daemon is still running
-but no servers are available for servicing incoming connection requests.
-Current sessions are not affected.
 
 <p>
 <hr>
@@ -328,7 +330,7 @@ steps for using third-party modules in ProFTPD:
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-11-03 19:37:45 $</i><br>
+Last Updated: <i>$Date: 2004-11-22 06:09:25 $</i><br>
 
 <br><hr>
 
