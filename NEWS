@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.407 2003-03-20 17:46:03 castaglia Exp $
+$Id: NEWS,v 1.408 2003-03-20 21:38:58 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -67,7 +67,7 @@ CVS
   matched.
 - Bug 1987 - mod_rewrite seems not to handle more than one backreference.
 - By default, mod_tls will now turn manually turn RSA blinding on, when
-  OpenSSL older than 0.9.7a is used, in order to thwart certain timing attacks
+  OpenSSL older than 0.9.7b is used, in order to thwart certain timing attacks
   possible against RSA operations. The following URL contains more information:
   http://www.openssl.org/news/secadv_20030317.txt
 - Bug 1995 - incorrect handling of curses/ncurses header and libraries in
