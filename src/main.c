@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.92 2002-07-26 17:02:13 castaglia Exp $
+ * $Id: main.c,v 1.93 2002-07-26 17:08:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -115,7 +115,6 @@ static unsigned char is_standalone = FALSE;
 static unsigned char is_master = TRUE;
 
 pid_t mpid = 0;				/* Master pid */
-int rehash = 0;				/* Performing rehash? */
 struct rehash *rehash_list = NULL;	/* Pre-rehash callbacks */
 static binding_t *bind_list = NULL;
 static pool *bind_pool = NULL;
@@ -1081,15 +1080,14 @@ void register_rehash(void *data, void (*fp)(void*))
 
 static void main_rehash(void *d1, void *d2, void *d3, void *d4) {
   struct rehash *rh;
+  server_rec *s;
   int isdefault;
-
-  rehash++;
 
   if (is_master && mpid) {
     int max_fd;
     fd_set rfd;
 
-    log_pri(LOG_NOTICE,"received SIGHUP -- master server rehashing configuration file (%d).", rehash);
+    log_pri(LOG_NOTICE,"received SIGHUP -- master server rehashing configuration file.");
 
     /* Make sure none of our children haven't completed start up */
     FD_ZERO(&rfd); max_fd = -1;
@@ -1195,8 +1193,6 @@ static void main_rehash(void *d1, void *d2, void *d3, void *d4) {
         addl_bindings(s);
       }
     }
-
-    rehash--;
 
   } else
     /* Child process -- cannot rehash, log error */
