@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.268 2002-11-02 22:44:58 jwm Exp $
+$Id: NEWS,v 1.269 2002-11-03 16:40:07 jwm Exp $
 
 CVS
 ---------------------------------
@@ -25,6 +25,7 @@ CVS
 - Bug 1805 - PAM support under Mac OS X
 - Bug 1772 - Docs fixup in RPM spec file
 - Bug 1398 - there is no log rotate for /var/log/xferlog
+- Bug 1814 - class names are truncated in scoreboard entry
 
 1.2.7rc2 - Released 2002-10-22
 ---------------------------------

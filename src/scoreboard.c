@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.8 2002-10-17 00:37:45 castaglia Exp $
+ * $Id: scoreboard.c,v 1.9 2002-11-03 16:40:08 jwm Exp $
  */
 
 #include "conf.h"
@@ -523,7 +523,7 @@ int pr_scoreboard_update_entry(pid_t pid, ...) {
       case PR_SCORE_CLASS:
         tmp = va_arg(ap, char *);
         memset(entry.sce_class, '\0', sizeof(entry.sce_class));
-        sstrncpy(entry.sce_class, tmp, strlen(tmp));
+        sstrncpy(entry.sce_class, tmp, sizeof(entry.sce_class));
         break;
 
       case PR_SCORE_CWD:
