@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.45 2000-08-05 04:44:00 macgyver Exp $
+ * $Id: mod_auth.c,v 1.46 2000-10-08 21:11:56 macgyver Exp $
  */
 
 #include "conf.h"
@@ -873,7 +873,10 @@ static int _setup_environment(pool *p, char *user, char *pass)
       session.anon_root = dir_realpath(session.pool, c->name);
     }
     
-    session.anon_user = pstrdup(session.pool, pass);
+    if(get_param_int(c->subset, "AnonRequirePassword", FALSE) == 1)
+      session.anon_user = pstrdup(session.pool, origuser);
+    else
+      session.anon_user = pstrdup(session.pool, pass);
     
     if(!session.anon_root) {
       log_pri(LOG_ERR, "%s: Directory %s is not accessible.",
@@ -1200,7 +1203,7 @@ static void _do_user_counts()
 }
 
 static void _auth_check_count(cmd_rec *cmd, char *user) {
-  int cur = 0, hcur = 0, ccur = 0;
+  long cur = 0, hcur = 0, ccur = 0, hostsperuser = 0, usersessions = 0;
   logrun_t *l;
   config_rec *c, *maxc;
   char *origuser, config_class_users[128] = {'\0'};
@@ -1218,31 +1221,61 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
    */
   origuser = user;
   c = _auth_resolve_user(cmd->tmp_pool, &user, NULL, NULL);
-  
+
+  /* Gather our statistics.
+   */
   if(user) {
     PRIVS_ROOT;
-    while((l = log_read_run(NULL)) != NULL)
-      /* Make sure it matches our current server */
+    
+    while((l = log_read_run(NULL)) != NULL) {
+      int samehost = 0;
+      
+      /* Make sure it matches our current server.
+       */
       if(l->server_ip.s_addr == main_server->ipaddr->s_addr &&
          l->server_port == main_server->ServerPort) {
-        if((c && c->config_type == CONF_ANON && !strcmp(l->user,user)) || !c) {
+        if((c && c->config_type == CONF_ANON && !strcmp(l->user, user)) ||
+	   !c) {
           char *s, *d, ip[32] = {'\0'};
           int mpos = sizeof(ip) - 1;
 	  
           cur++;
-          s = strchr (l->address, '[');
+	  
+          s = strchr(l->address, '[');
           d = ip;
-          if (s != NULL) s++;
-          while (*s && *s != ']' && d<ip+mpos) *d++ = *s++;
+	  
+          if(s != NULL)
+	    s++;
+	  
+          while(*s && *s != ']' && d < ip + mpos)
+	    *d++ = *s++;
+	  
           *d = '\0';
 	  
-          if(!strcmp(ip, inet_ntoa(*session.c->remote_ipaddr)))
+	  /* Count up sessions on a per-host basis.
+	   */
+          if(!strcmp(ip, inet_ntoa(*session.c->remote_ipaddr))) {
+	    samehost++;
             hcur++;
+	  }
+	  
+	  /* Take a per-user count of connections.
+	   */
+	  if(!strcmp(l->user, user)) {
+	    usersessions++;
+	    
+	    /* Count up unique hosts.
+	     */
+	    if(!samehost)
+	      hostsperuser++;
+	  }
         }
 	
         if(classes_enabled && strcmp(l->class, session.class->name) == 0)
         	ccur++;
       }
+    }
+    
     PRIVS_RELINQUISH;
   }
   
@@ -1287,8 +1320,8 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
       end_login(0);
     }
   }
-  
-  /* Try to determine what MaxClients applies to the user
+
+  /* Try to determine what MaxClients or MaxHosts applies to the user
    * (if any) and count through the runtime file to see
    * if this would exceed the max.
    */
@@ -1297,7 +1330,7 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
   
   if(maxc) {
     int max = (int) maxc->argv[0];
-    char *maxstr = "Sorry, maximum number clients (%m) from your host "
+    char *maxstr = "Sorry, the maximum number clients (%m) from your host are "
       "already connected.";
     char maxn[10] = {'\0'};
     
@@ -1325,7 +1358,7 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
 
   if(maxc) {
     int max = (int) maxc->argv[0];
-    char *maxstr = "Sorry, maximum number of allowed clients (%m) "
+    char *maxstr = "Sorry, the maximum number of allowed clients (%m) "
       "already connected.";
     char maxn[10] = {'\0'};
     
@@ -1343,6 +1376,34 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
       remove_config(cmd->server->conf, C_USER, FALSE);
       remove_config(cmd->server->conf, C_PASS, FALSE);
 
+      end_login(0);
+    }
+  }
+
+  maxc = find_config((c ? c->subset : cmd->server->conf),
+		     CONF_PARAM, "MaxHostsPerUser", FALSE);
+  
+  if(maxc) {
+    int max = (int) maxc->argv[0];
+    char *maxstr = "Sorry, the maximum number of hosts (%m) for this user "
+      "already connected.";
+    char maxn[10] = {'\0'};
+    
+    snprintf(maxn, sizeof(maxn), "%d", max);
+    
+    if(maxc->argc > 1)
+      maxstr = maxc->argv[1];
+    
+    if(hostsperuser >= max) {
+      send_response(R_530, "%s",
+		    sreplace(cmd->tmp_pool,maxstr, "%m", maxn, NULL));
+      
+      remove_config(cmd->server->conf, C_USER, FALSE);
+      remove_config(cmd->server->conf, C_PASS, FALSE);
+
+      log_auth(LOG_NOTICE, "Connection refused (max clients per host %d).",
+	       max);
+      
       end_login(0);
     }
   }

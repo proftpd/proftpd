@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.43 2000-08-07 23:17:46 macgyver Exp $
+ * $Id: mod_core.c,v 1.44 2000-10-08 21:11:56 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -393,26 +393,57 @@ MODRET set_maxhostclients(cmd_rec *cmd)
   char *endp;
   config_rec *c;
 
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_GLOBAL);
+  
+  if(cmd->argc < 2 || cmd->argc > 3)
+    CONF_ERROR(cmd, "invalid number of arguments");
+  
+  if(!strcasecmp(cmd->argv[1], "none")) {
+    max = -1;
+  } else {
+    max = (int) strtol(cmd->argv[1], &endp, 10);
+    
+    if((endp && *endp) || max < 1)
+      CONF_ERROR(cmd, "argument must be 'none' or a number greater than 0.");
+  }
+  
+  if(cmd->argc == 3) {
+    c = add_config_param("MaxClientsPerHost", 2, (void *) max, NULL);
+    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
+  } else {
+    add_config_param("MaxClientsPerHost", 1, (void *) max);
+  }
+  
+  return HANDLED(cmd);
+}
+
+MODRET set_maxhostsperuser(cmd_rec *cmd)
+{
+  int max;
+  char *endp;
+  config_rec *c;
+
+  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_GLOBAL);
 
   if(cmd->argc < 2 || cmd->argc > 3)
-    CONF_ERROR(cmd,"invalid number of arguments");
-
-  if(!strcasecmp(cmd->argv[1],"none"))
+    CONF_ERROR(cmd, "invalid number of arguments");
+  
+  if(!strcasecmp(cmd->argv[1], "none")) {
     max = -1;
-  else {
-    max = (int)strtol(cmd->argv[1],&endp,10);
-
+  } else {
+    max = (int) strtol(cmd->argv[1], &endp, 10);
+    
     if((endp && *endp) || max < 1)
-      CONF_ERROR(cmd,"argument must be 'none' or a number greater than 0.");
+      CONF_ERROR(cmd, "argument must be 'none' or a number greater than 0.");
   }
-
+  
   if(cmd->argc == 3) {
-    c = add_config_param("MaxClientsPerHost",2,(void*)max,NULL);
-    c->argv[1] = pstrdup(c->pool,cmd->argv[2]);   
-  } else
-    add_config_param("MaxClientsPerHost",1,(void*)max);
-
+    c = add_config_param("MaxHostsPerUser", 2, (void *) max, NULL);
+    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);   
+  } else {
+    add_config_param("MaxHostsPerUser", 1, (void *) max);
+  }
+  
   return HANDLED(cmd);
 }
 
@@ -1726,43 +1757,43 @@ MODRET cmd_pasv(cmd_rec *cmd)
 
   CHECK_CMD_ARGS(cmd, 1);
 
-  /* If we already have a passive listen data connection open,
-   * kill it.
+  /* If we already have a passive listen data connection open, kill it.
    */
-
   if(session.d) {
-    inet_close(session.d->pool,session.d);
+    inet_close(session.d->pool, session.d);
     session.d = NULL;
   }
 
-  session.d = inet_create_connection(session.pool,NULL,-1,
-		session.c->local_ipaddr,INPORT_ANY,FALSE);
-
+  /* Open up the connection and pass it back.
+   */
+  session.d = inet_create_connection(session.pool, NULL, -1,
+				     session.c->local_ipaddr,
+				     INPORT_ANY, FALSE);
+  
   if(!session.d)
-     return ERROR_MSG(cmd,R_425,
+    return ERROR_MSG(cmd,R_425,
                      "Unable to build data connection: Internal error.");
-
-  inet_setblock(session.pool,session.d);
-  inet_listen(session.pool,session.d,1);
-
-  session.d->inf = io_open(session.pool,session.d->listen_fd,IO_READ);
+  
+  inet_setblock(session.pool, session.d);
+  inet_listen(session.pool, session.d, 1);
+  
+  session.d->inf = io_open(session.pool, session.d->listen_fd, IO_READ);
 
   /* Now tell the client our address/port */
   session.data_port = session.d->local_port;
   session.flags |= SF_PASSIVE;
-
+  
   addr.addr = *session.d->local_ipaddr;
   port.port = htons(session.data_port);
-
-
+  
   log_debug(DEBUG1,"Entering Passive Mode (%u,%u,%u,%u,%u,%u).",
-		(int)addr.u[0],(int)addr.u[1],(int)addr.u[2],
-		(int)addr.u[3],(int)port.u[0],(int)port.u[1]);
-
+	    (int)addr.u[0],(int)addr.u[1],(int)addr.u[2],
+	    (int)addr.u[3],(int)port.u[0],(int)port.u[1]);
+  
   add_response(R_227, "Entering Passive Mode (%u,%u,%u,%u,%u,%u).",
-                (int)addr.u[0],(int)addr.u[1],(int)addr.u[2],
-                (int)addr.u[3],(int)port.u[0],(int)port.u[1]);
-
+	       (int)addr.u[0],(int)addr.u[1],(int)addr.u[2],
+	       (int)addr.u[3],(int)port.u[0],(int)port.u[1]);
+  
   return HANDLED(cmd);
 }
 
@@ -2696,6 +2727,7 @@ static conftable core_conftable[] = {
   { "Include",			add_include,	 		NULL },
   { "MaxClients",		set_maxclients,			NULL },
   { "MaxClientsPerHost",	set_maxhostclients,		NULL },
+  { "MaxHostsPerUser",		set_maxhostsperuser,		NULL },
   { "MaxInstances",		set_maxinstances,		NULL },
   { "MaxLoginAttempts",		set_maxloginattempts,		NULL },
   { "MultilineRFC2228",		set_multilinerfc2228,		NULL },
