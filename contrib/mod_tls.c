@@ -954,7 +954,7 @@ static int tls_init_server(void) {
       "(see $SSL_CERT_DIR)");
 
     if (SSL_CTX_set_default_verify_paths(ssl_ctx) != 1)
-      tls_log("error setting default verification locations: %s"
+      tls_log("error setting default verification locations: %s",
           ERR_error_string(ERR_get_error(), NULL));
   }
 
