@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.240 2002-09-30 20:52:59 castaglia Exp $
+$Id: NEWS,v 1.241 2002-09-30 20:57:52 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -33,6 +33,7 @@ CVS
 - Bug 1572 - Need to use pam_end() to close session on Solaris 8
 - Bug 1475 - Minor changes to SITE command handling
 - Bug 1748 - SQLLog doesn't work with DELE (no filename with %f)
+- Bug 1694 - SQLLog QUIT doesn't execute on connection close
 
 1.2.6 - Released 2002-09-04
 ---------------------------------

@@ -23,7 +23,7 @@
  * the source distribution.
  */
 
-#define _MOD_VERSION "mod_sql/4.09"
+#define _MOD_VERSION "mod_sql/4.10"
 
 #ifdef HAVE_CRYPT_H
 #include <crypt.h>
@@ -3764,6 +3764,59 @@ MODRET set_deprecated(cmd_rec * cmd)
  *
  *****************************************************************/
 
+static void sql_exit(void)
+{
+  config_rec *c = NULL;
+
+  /* Note: most of this code hacked out of log_master(), which
+   * brings to mind the idea of reorganizing the code a little, so
+   * that this function can call a function to do this, instead of
+   * handling it itself; that function to be used by/in log_master
+   * as well.
+   */
+
+  if (!cmap.status)
+    return;
+
+  /* handle EXIT queries */
+  c = find_config(main_server->conf, CONF_PARAM, "SQLLog_EXIT", FALSE);
+
+  while (c) {
+    char *qname = NULL, *type = NULL;
+    cmd_rec *cmd = NULL;
+
+    qname = c->argv[0];
+
+    /* Since we're exiting the process here (or soon, anyway), we can
+     * get away with using the config_rec's pool.
+     */
+    cmd = _sql_make_cmd(c->pool, 1, "EXIT");
+    type = _named_query_type(cmd, qname);
+
+    if (type) {
+      if ((!strcasecmp(type, SQL_UPDATE_C)) ||
+          (!strcasecmp(type, SQL_FREEFORM_C)) ||
+          (!strcasecmp(type, SQL_INSERT_C))) {
+
+        log_debug(DEBUG_FUNC, _MOD_VERSION ": running named query '%s' at exit",
+          qname);
+        _process_named_query( cmd, qname );
+
+      } else {
+        log_debug(DEBUG_WARN, _MOD_VERSION ": named query '%s' is not an "
+          "INSERT, UPDATE, or FREEFORM query", qname);
+      }
+
+    } else
+      log_debug(DEBUG_WARN, _MOD_VERSION ": named query '%s' cannot be found",
+        qname);
+
+    c = find_config_next(c, c->next, CONF_PARAM, "SQLLog_EXIT", FALSE);
+  }
+
+  return;
+}
+
 static int sql_init(void)
 {
 
@@ -4023,81 +4076,84 @@ static int sql_getconf(void)
 
   if (SQL_USERS || cmap.sql_fstor || cmap.sql_frate) {
     log_debug(DEBUG_INFO, _MOD_VERSION ": usertable          : %s",
-	      cmap.usrtable);
+      cmap.usrtable);
     log_debug(DEBUG_INFO, _MOD_VERSION ": userid field       : %s",
-	      cmap.usrfield);
+      cmap.usrfield);
   }
   if (SQL_USERS) {
     log_debug(DEBUG_INFO, _MOD_VERSION ": password field     : %s",
-	      cmap.pwdfield);
+      cmap.pwdfield);
     log_debug(DEBUG_INFO, _MOD_VERSION ": uid field          : %s",
-	      (cmap.uidfield ? cmap.uidfield : "NULL"));
+      (cmap.uidfield ? cmap.uidfield : "NULL"));
     log_debug(DEBUG_INFO, _MOD_VERSION ": gid field          : %s",
-	      (cmap.gidfield ? cmap.gidfield : "NULL"));
+      (cmap.gidfield ? cmap.gidfield : "NULL"));
     if (cmap.defaulthomedir) {
       log_debug(DEBUG_INFO, _MOD_VERSION ": homedir(defaulted) : '%s'",
-		cmap.defaulthomedir);
+        cmap.defaulthomedir);
     } else {
       log_debug(DEBUG_INFO, _MOD_VERSION ": homedir field      : %s",
-		cmap.homedirfield);
+        cmap.homedirfield);
     } 
     log_debug(DEBUG_INFO, _MOD_VERSION ": shell field        : %s",
-	      (cmap.shellfield ? cmap.shellfield : "NULL"));
+      (cmap.shellfield ? cmap.shellfield : "NULL"));
     log_debug(DEBUG_INFO, _MOD_VERSION ": homedirondemand    : %s",
-	      (cmap.buildhomedir ? "true" : "false"));
+      (cmap.buildhomedir ? "true" : "false"));
   }
 
   if (SQL_GROUPS) {
     log_debug(DEBUG_INFO, _MOD_VERSION ": group table        : %s",
-	      cmap.grptable);
+      cmap.grptable);
     log_debug(DEBUG_INFO, _MOD_VERSION ": groupname field    : %s",
-	      cmap.grpfield);
+      cmap.grpfield);
     log_debug(DEBUG_INFO, _MOD_VERSION ": grp gid field      : %s",
-	      cmap.grpgidfield);
+      cmap.grpgidfield);
     log_debug(DEBUG_INFO, _MOD_VERSION ": grp members field  : %s",
-	      cmap.grpmembersfield);
+      cmap.grpmembersfield);
   }
 
   if (SQL_USERS) {
     log_debug(DEBUG_INFO, _MOD_VERSION ": SQLMinUserUID      : %u",
-	      cmap.minuseruid);
+      cmap.minuseruid);
     log_debug(DEBUG_INFO, _MOD_VERSION ": SQLMinUserGID      : %u",
-	      cmap.minusergid);
+      cmap.minusergid);
   }
    
   if (SQL_GROUPS) {
     log_debug(DEBUG_INFO, _MOD_VERSION ": SQLDefaultUID      : %u",
-	      cmap.defaultuid);
+      cmap.defaultuid);
     log_debug(DEBUG_INFO, _MOD_VERSION ": SQLDefaultGID      : %u",
-	      cmap.defaultgid);
+      cmap.defaultgid);
   }
 
   if (cmap.sql_fstor) {
     log_debug(DEBUG_INFO, _MOD_VERSION ": sql_fstor          : %s",
-	      cmap.sql_fstor);
+      cmap.sql_fstor);
     log_debug(DEBUG_INFO, _MOD_VERSION ": sql_fretr          : %s",
-	      cmap.sql_fretr);
+      cmap.sql_fretr);
     log_debug(DEBUG_INFO, _MOD_VERSION ": sql_bstor          : %s",
-	      cmap.sql_bstor);
+      cmap.sql_bstor);
     log_debug(DEBUG_INFO, _MOD_VERSION ": sql_bretr          : %s",
-	      cmap.sql_bretr);
+      cmap.sql_bretr);
   }
 
   if (cmap.sql_frate) {
     log_debug(DEBUG_INFO, _MOD_VERSION ": sql_frate          : %s",
-	      cmap.sql_frate);
+      cmap.sql_frate);
     log_debug(DEBUG_INFO, _MOD_VERSION ": sql_fcred          : %s",
-	      cmap.sql_fcred);
+      cmap.sql_fcred);
     log_debug(DEBUG_INFO, _MOD_VERSION ": sql_brate          : %s",
-	      cmap.sql_brate);
+      cmap.sql_brate);
     log_debug(DEBUG_INFO, _MOD_VERSION ": sql_bcred          : %s",
-	      cmap.sql_bcred);
+      cmap.sql_bcred);
   }
 
   log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< sql_getconf");
 
   /* get rid of the temp pool */
   destroy_pool( tmp_pool );
+
+  /* add our exit handler */
+  add_exit_handler(sql_exit);
 
   return 0;
 }
