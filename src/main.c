@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.256 2004-10-31 01:32:49 castaglia Exp $
+ * $Id: main.c,v 1.257 2004-10-31 18:45:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2427,6 +2427,12 @@ static void show_settings(void) {
 #else
   printf("    - Developer support\n");
 #endif /* USE_DEVEL */
+
+#ifdef USE_DSO
+  printf("    + DSO support\n");
+#else
+  printf("    - DSO support\n");
+#endif
 
 #ifdef USE_IPV6
   printf("    + IPv6 support\n");

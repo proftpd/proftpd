@@ -657,6 +657,9 @@
 /* Define if you are a developer. */
 #undef USE_DEVEL
 
+/* Define if DSO support is desired.  */
+#undef USE_DSO
+
 /* Define if use of builtin getaddrinfo() is desired.  */
 #undef USE_GETADDRINFO
 
