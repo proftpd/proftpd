@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.185 2002-06-21 00:40:38 castaglia Exp $
+$Id: NEWS,v 1.186 2002-06-21 18:54:25 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -12,6 +12,7 @@ CVS
 - Bug 1258 - Added STOU command handler
 - Bug 1534 - Added LFS support
 - Bug 1647 - Changed unnecessary use of umode_t to mode_t in mod_ls.
+- Bug 1650 - Mergedown bug with LsDefaultOptions directive fixed.
 
 1.2.5 - Released 2002-06-08
 ---------------------------------
