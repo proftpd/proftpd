@@ -25,7 +25,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.26 2001-12-13 20:35:50 flood Exp $
+ * $Id: support.c,v 1.27 2002-02-26 17:35:58 flood Exp $
  */
 
 /* History Log:
@@ -438,7 +438,7 @@ static mode_t _symlink(char *path, ino_t last_inode, int rcount)
     return 0;
   }
 
-  bzero(buf,sizeof(buf));
+  memset(buf,'\0',sizeof(buf));
 
   i = fs_readlink(path,buf,sizeof(buf) - 1);
   if(i == -1)
@@ -748,8 +748,8 @@ char *sreplace(pool *p, char *s, ...)
   cp = buf;
   *cp = '\0';
   
-  bzero(marr,sizeof(marr));
-  bzero(rarr,sizeof(rarr));
+  memset(marr,NULL,sizeof(marr));
+  memset(rarr,NULL,sizeof(rarr));
   blen=strlen(src)+1;
 
   va_start(args,s);

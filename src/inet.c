@@ -497,7 +497,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     servaddr.sin_family = AF_INET;
     
     if(bind_addr)
-      bcopy(bind_addr, &servaddr.sin_addr, sizeof(servaddr.sin_addr));
+      memcpy(&servaddr.sin_addr, bind_addr, sizeof(servaddr.sin_addr));
     else
       servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     

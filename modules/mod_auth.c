@@ -25,7 +25,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.64 2001-12-13 20:35:50 flood Exp $
+ * $Id: mod_auth.c,v 1.65 2002-02-26 17:35:57 flood Exp $
  */
 
 #include "conf.h"
@@ -531,9 +531,6 @@ static int _setup_environment(pool *p, char *user, char *pass)
     goto auth_failure;
   }
 
-  /* If c != NULL from this point on, we have an anonymous login */
-  aclp = login_check_limits(main_server->conf,FALSE,TRUE,&i);
-
   if((pw = auth_getpwnam(p,user)) == NULL) {
     log_auth(LOG_NOTICE,"USER %s: no such user found from %s [%s] to %s:%i",
                user,session.c->remote_name,
@@ -577,6 +574,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
     log_debug(DEBUG2, "no supplemental groups found for user '%s'",
       pw->pw_name);
 
+  /* If c != NULL from this point on, we have an anonymous login */
+  aclp = login_check_limits(main_server->conf,FALSE,TRUE,&i);
 
   /* set force_anon (for AnonymousGroup) and build a custom
    * anonymous config for this session.
@@ -1033,7 +1032,6 @@ static int _setup_environment(pool *p, char *user, char *pass)
         send_response(R_530,"Login incorrect.");
         end_login(1);
       }
-
     } else if(defchdir) {
     /* if we've got defchdir, failure is ok as well, simply switch to
      * user's homedir.
@@ -1062,6 +1060,9 @@ static int _setup_environment(pool *p, char *user, char *pass)
   /* check dynamic configuration */
   if (fs_stat(session.cwd, &sbuf) != -1)
     build_dyn_config(p, session.cwd, &sbuf, 1);
+
+  /* make sure session.dir_config is set correctly */
+  dir_check_full(p,C_PASS,G_NONE,session.cwd,NULL);
 
   if(c) {
     if(!session.hide_password)

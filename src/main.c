@@ -25,7 +25,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.72 2001-12-13 20:35:50 flood Exp $
+ * $Id: main.c,v 1.73 2002-02-26 17:35:58 flood Exp $
  */
 
 /*
@@ -168,7 +168,7 @@ void test_fs()
   fsdir_t *f;
   size_t l;
 
-  bzero(&pglob,sizeof(pglob));
+  memset(&pglob,0,sizeof(pglob));
 
   chdir("/");
   fs_setcwd("/");
@@ -1277,7 +1277,7 @@ static int _dup_low_fd(int fd)
 
 void fork_server(int fd,conn_t *l,int nofork)
 {
-  server_rec *s,*serv = NULL;
+  server_rec *s, *s_saved, *serv = NULL;
   conn_t *conn;
   int i, rev;
   int sempipe[2] = { -1, -1 };
@@ -1473,7 +1473,9 @@ void fork_server(int fd,conn_t *l,int nofork)
   /* To conserve memory, free all other servers and associated
    * configurations
    */
-  for(s = main_server; s; s=s->next)
+  s = main_server;
+  while (s) {
+    s_saved = s->next;
     if(s != serv) {
       if(s->listen && s->listen != l) {
 	/* If our former listen socket was stdin or stdout (0 or 1),
@@ -1496,6 +1498,8 @@ void fork_server(int fd,conn_t *l,int nofork)
       xaset_remove(servers,(xasetmember_t*)s);
       destroy_pool(s->pool);
     }
+    s = s_saved;
+  }
 
   main_server = serv;
     
@@ -2504,7 +2508,7 @@ int main(int argc, char **argv, char **envp)
   tzset();
 #endif
 
-  bzero(&session, sizeof(session));
+  memset(&session, 0, sizeof(session));
 
   /* Initialize stuff for set_proc_title.
    */

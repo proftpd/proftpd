@@ -77,7 +77,8 @@ typedef unsigned long int __size_t;
 #define	GLOB_NOESCAPE	(1 << 6)/* Backslashes don't quote metacharacters.  */
 #define	GLOB_PERIOD	(1 << 7)/* Leading `.' can be matched by metachars.  */
 
-#if (!defined _POSIX_C_SOURCE || _POSIX_C_SOURCE < 2 || defined _BSD_SOURCE \
+#if (!defined _POSIX_C_SOURCE || _POSIX_C_SOURCE < 2 \
+     || _POSIX_C_SOURCE == 199506L || defined _BSD_SOURCE \
      || defined _GNU_SOURCE)
 # define GLOB_MAGCHAR	 (1 << 8)/* Set in gl_flags if any metachars seen.  */
 # define GLOB_ALTDIRFUNC (1 << 9)/* Use gl_opendir et al functions.  */

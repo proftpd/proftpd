@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.44 2002-01-24 00:21:53 flood Exp $
+ * $Id: dirtree.c,v 1.45 2002-02-26 17:35:57 flood Exp $
  */
 
 /* History:
@@ -296,13 +296,13 @@ void init_conf_stacks()
 
 void free_dyn_stacks()
 {
-  bzero(&conf,sizeof(conf));
+  memset(&conf,0,sizeof(conf));
 }
 
 void free_conf_stacks()
 {
   destroy_pool(conf.tpool);
-  bzero(&conf, sizeof(conf));
+  memset(&conf,0,sizeof(conf));
 }
 
 /* Used by modules to start/end configuration sections */
@@ -526,10 +526,13 @@ int group_expression(char **expr)
       grp++;
     }
 
-    for(cnt = session.groups->nelts-1; cnt >= 0; cnt--)
-      if(strcmp(*(((char**)session.groups->elts)+cnt),grp) == 0) {
-        found = !found; break;
-      }
+    if(session.group && strcmp(session.group,grp) == 0)
+      found = !found;
+    else if (session.groups)
+      for(cnt = session.groups->nelts-1; cnt >= 0; cnt--)
+        if(strcmp(*(((char**)session.groups->elts)+cnt),grp) == 0) {
+          found = !found; break;
+        }
 
     if(!found) {
       expr = NULL;
@@ -1498,7 +1501,7 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
 int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
 {
   char *fullpath, *owner;
-  config_rec *c = NULL, *old_dir_config = NULL;
+  config_rec *c;
   struct stat sbuf;
   pool *p;
   mode_t _umask = -1;
@@ -1529,13 +1532,10 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
 
   /* Check and build all appropriate dynamic configuration entries */
   if((isfile = fs_stat(path, &sbuf)) == -1)
-    bzero(&sbuf, sizeof(sbuf));
+    memset(&sbuf,0,sizeof(sbuf));
   
   build_dyn_config(p,path,&sbuf,1);
- 
-  /* keep track of the old dir_config pointer */
-  old_dir_config = session.dir_config;
-
+  
   session.dir_config = c = dir_match_path(p,fullpath);
 
   if(!c && session.anon_config)
@@ -1630,9 +1630,6 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
   if(hidden)
     *hidden = op_hidden;
 
-  /* restore the old dir_config pointer */
-  session.dir_config = old_dir_config;
-
   return res;
 }
 
@@ -1644,7 +1641,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
 int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
 {
   char *fullpath, *owner;
-  config_rec *c = NULL, *old_dir_config = NULL;
+  config_rec *c;
   struct stat sbuf;
   pool *p;
   mode_t _umask = -1;
@@ -1668,12 +1665,9 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
 
   /* Check and build all appropriate dynamic configuration entries */
   if((isfile = fs_stat(path, &sbuf)) == -1)
-    bzero(&sbuf, sizeof(sbuf));
+    memset(&sbuf,0,sizeof(sbuf));
 
   build_dyn_config(p, path, &sbuf, 0);
-
-  /* keep track of the old dir_config pointer */
-  old_dir_config = session.dir_config;
 
   session.dir_config = c = dir_match_path(p, fullpath);
 
@@ -1764,10 +1758,6 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
 
   if(hidden)
     *hidden = op_hidden;
-
-  /* restore the old dir_config pointer */
-  session.dir_config = old_dir_config;
-
   return res;
 }
 

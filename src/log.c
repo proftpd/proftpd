@@ -26,7 +26,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.30 2001-07-04 15:28:06 flood Exp $
+ * $Id: log.c,v 1.31 2002-02-26 17:35:58 flood Exp $
  */
 
 /* History Log:
@@ -260,8 +260,8 @@ int log_open_run(pid_t mpid, int trunc, int allow_update)
     hdr.r_magic = LOGRUN_MAGIC;
     hdr.r_version = INTERNAL_VERSION;
     hdr.r_size = sizeof(logrun_t);
-    bzero(buf,sizeof(logrun_t));
-    bcopy(&hdr,buf,sizeof(hdr));
+    memset(buf,'\0',sizeof(logrun_t));
+    memcpy(buf,&hdr,sizeof(hdr));
     write(runfd,buf,runsize);
     fsync(runfd);
 
@@ -365,7 +365,7 @@ static int _read_run(int fd, size_t size, logrun_t *ent)
     if(((logrun_t *) buf)->pid) {
       /* Try to determine if the process still exists.
        */
-      bcopy((logrun_t *) buf, ent, sizeof(logrun_t));
+      memcpy(ent, (logrun_t *) buf, sizeof(logrun_t));
       free(buf);
       return _pid_exists(ent->pid);
     }
@@ -488,7 +488,7 @@ int log_add_run(pid_t mpid, time_t *idle_since, char *user,char *class,
   if(runfd == -1)
     return -1;
 
-  bzero(&ent,sizeof(ent));
+  memset(&ent,0,sizeof(ent));
   ent.pid = getpid();
   ent.uid = geteuid();
   ent.gid = getegid();
@@ -509,7 +509,7 @@ int log_add_run(pid_t mpid, time_t *idle_since, char *user,char *class,
     }
 
     if(fent.pid == ent.pid) {
-      bcopy(&fent,&ent,sizeof(ent));
+      memcpy(&ent,&fent,sizeof(ent));
       first = -1;
       lseek(runfd,c,SEEK_SET);
     } else
@@ -522,20 +522,20 @@ int log_add_run(pid_t mpid, time_t *idle_since, char *user,char *class,
     ent.idle_since = 0;
 
   if(user) {
-    bzero(ent.user,sizeof(ent.user));
+    memset(ent.user,0,sizeof(ent.user));
     sstrncpy(ent.user,user,sizeof(ent.user));
   }
   if(class) {
-    bzero(ent.class,sizeof(ent.class));
+    memset(ent.class,0,sizeof(ent.class));
     sstrncpy(ent.class,class,sizeof(ent.class));
   }
   if(buf[0]) {
-    bzero(ent.op,sizeof(ent.op));
+    memset(ent.op,0,sizeof(ent.op));
     sstrncpy(ent.op,buf,sizeof(ent.op));
   }
 
   if(server_ip)
-    bcopy(server_ip,&ent.server_ip,sizeof(ent.server_ip));
+    memcpy(&ent.server_ip,server_ip,sizeof(ent.server_ip));
   if(server_port)
     ent.server_port = server_port;
 
@@ -551,17 +551,17 @@ int log_add_run(pid_t mpid, time_t *idle_since, char *user,char *class,
     sstrncpy(ent.cwd,runcwd,sizeof(ent.cwd));
     ent.cwd[sizeof(ent.cwd)-1] = '\0';
   } else
-    bzero(ent.cwd,sizeof(ent.cwd));
+    memset(ent.cwd,0,sizeof(ent.cwd));
 
   if(address) {
     sstrncpy(ent.address,address,sizeof(ent.address));
     ent.address[sizeof(ent.address)-1] = '\0';
   } else
-    bzero(ent.address,sizeof(ent.address));
+    memset(ent.address,0,sizeof(ent.address));
 
   if(!user) {
     if(fent.pid == ent.pid) {
-      bzero(&ent,sizeof(ent));
+      memset(&ent,0,sizeof(ent));
       res = write(runfd,(char*)&ent,sizeof(ent));
     }
   } else {
@@ -799,7 +799,7 @@ void log(int priority, int f, char *s)
   int maxpriority;
   char serverinfo[1024];
   
-  bzero(serverinfo, sizeof(serverinfo));
+  memset(serverinfo, '\0', sizeof(serverinfo));
   
   if(main_server && main_server->ServerFQDN) {
     snprintf(serverinfo, sizeof(serverinfo), "%s", main_server->ServerFQDN);

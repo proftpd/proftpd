@@ -25,7 +25,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.28 2002-01-24 00:21:53 flood Exp $
+ * $Id: data.c,v 1.29 2002-02-26 17:35:57 flood Exp $
  */
 
 #include "conf.h"
@@ -128,7 +128,7 @@ static int _xlate_ascii_write(char **buf, int *bufsize, int *adjlen) {
 static void _data_new_xfer(char *filename, int direction) {
   if(session.xfer.p) {
     destroy_pool(session.xfer.p);
-    bzero(&session.xfer,sizeof(session.xfer));
+    memset(&session.xfer,0,sizeof(session.xfer));
   }
   
   session.xfer.p = make_sub_pool(session.pool);
@@ -411,7 +411,7 @@ void data_cleanup() {
   if(session.xfer.p)
     destroy_pool(session.xfer.p);
   
-  bzero(&session.xfer,sizeof(session.xfer));
+  memset(&session.xfer,0,sizeof(session.xfer));
   
   session.data_port = session.c->remote_port - 1;
 }
@@ -667,7 +667,7 @@ int data_xfer(char *cl_buf, int cl_size) {
 	      adjlen += (buflen - cl_size);
 	      buflen = cl_size;
 	    }
-  	    bcopy(buf,cl_buf,buflen);
+  	    memcpy(cl_buf,buf,buflen);
 	
 	    /* copy whatever remains at the end of session.xfer.buf to the
 	     * head of the buffer and adjust buf accordingly
@@ -677,7 +677,7 @@ int data_xfer(char *cl_buf, int cl_size) {
 	     */
 	
 	    if(adjlen > 0)
-	      bcopy(buf+buflen,buf,adjlen);
+	      memcpy(buf,buf+buflen,adjlen);
 
 	    /* store everything back in session.xfer */
 	    session.xfer.buflen = adjlen;
@@ -715,7 +715,7 @@ int data_xfer(char *cl_buf, int cl_size) {
 	size = TUNABLE_BUFFER_SIZE;
       
       o_size = size;
-      bcopy(cl_buf,buf,size);
+      memcpy(buf,cl_buf,size);
       while(size) {
 	wb = buf; wsize = size; adjlen = 0;
 	
@@ -732,7 +732,7 @@ int data_xfer(char *cl_buf, int cl_size) {
 	size -= (wsize - adjlen);
 	if(size) {
 	  wb = buf + (wsize - adjlen);
-	  bcopy(wb,buf,size);
+	  memcpy(buf,wb,size);
 	}
       }
       

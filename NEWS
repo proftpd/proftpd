@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.152 2002-02-14 16:50:04 flood Exp $
+$Id: NEWS,v 1.153 2002-02-26 17:35:56 flood Exp $
 
 1.2.5rc2 - CVS
 ---------------------------------
@@ -9,6 +9,12 @@ $Id: NEWS,v 1.152 2002-02-14 16:50:04 flood Exp $
 - Bug 1450 - Timers removed immediately/alarm() return no longer used for
              timing
 - Bug 1446 - DefaultServer overrides SocketBindTight
+- Bug 1378 - Replace alloca stuff in glibc-glob.c with something more standard
+- Bug 1498 - <Limit LOGIN> block failing with mod_ldap
+- Bug 1381 - include/glibc-glob.h fix for Tru64 UNIX
+- Bug 1465 - can't bind to port that hasn't been closed by forked child
+             process
+- Bug 1379 - replace bzero/bcopy with memset/memcpy
 
 1.2.5rc1 - Released 12/18/2001
 ---------------------------------

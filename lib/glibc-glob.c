@@ -21,12 +21,20 @@
  #pragma alloca
 #endif
 
-/* HPUX10 & HPUX11 need this */
-#if defined(HPUX10) || defined(HPUX11)
- #include <alloca.h>
-#endif
-
 #include <config.h>
+
+/* Make alloca work the best possible way.  */
+#ifdef __GNUC__
+#define alloca __builtin_alloca
+#else /* not __GNUC__ */
+#if HAVE_ALLOCA_H
+#include <alloca.h>
+#else /* not __GNUC__ or HAVE_ALLOCA_H */
+#ifndef _AIX /* Already did AIX, up at the top.  */
+char *alloca ();
+#endif /* not _AIX */
+#endif /* not HAVE_ALLOCA_H */
+#endif /* not __GNUC__ */
 
 #define MAX_RECURSION 8
 #define MAX_RESULTS 100000UL
