@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.40 2004-02-17 02:16:00 castaglia Exp $
+ * $Id: mod_site.c,v 1.41 2004-02-23 23:27:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -473,10 +473,6 @@ static int site_init(void) {
 /* Module API tables
  */
 
-static conftable site_conftab[] = {
-  { NULL, 		NULL,			NULL }
-};
-
 static cmdtable site_cmdtab[] = {
   { PRE_CMD,  C_SITE, G_NONE, site_pre_cmd,   FALSE,  FALSE },
   { CMD,      C_SITE, G_NONE, site_cmd,       FALSE,  FALSE,  CL_MISC },
@@ -494,7 +490,7 @@ module site_module = {
   "site",
 
   /* Module configuration table */
-  site_conftab,
+  NULL,
 
   /* Module command handler table */
   site_cmdtab,
