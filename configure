@@ -2936,6 +2936,20 @@ rm -f conftest.$ac_objext conftest.$ac_ext
   CFLAGS="$fullCFLAGS"
 fi
 
+echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wno-long-double" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -Wno-long-double... $ECHO_C" >&6
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -Wno-long-double conftest.c 2>&1`"; then
+     echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+     CFLAGS="$CFLAGS -Wno-long-double"
+   else
+     echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+   fi
+   rm -f conftest*
+
+
 
 
 ac_lib_objs="pr_fnmatch.o strsep.o vsnprintf.o glibc-glob.o glibc-mkstemp.o pr-syslog.o pwgrent.o"
@@ -14665,6 +14679,20 @@ _ACEOF
 
         CFLAGS=`echo "$CFLAGS" | sed -e 's/\-O2//'`
     CFLAGS="$CFLAGS $ac_devel_cflags"
+
+                echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wfloat-equal" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -Wfloat-equal... $ECHO_C" >&6
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -Wfloat-equal conftest.c 2>&1`"; then
+     echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+     CFLAGS="$CFLAGS -Wfloat-equal"
+   else
+     echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+   fi
+   rm -f conftest*
+
   fi
 
     INSTALL_STRIP=""
