@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.152 2003-01-13 05:38:22 castaglia Exp $
+ * $Id: mod_core.c,v 1.153 2003-01-14 04:43:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2416,8 +2416,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
 
   current_clients = get_param_ptr(main_server->conf, "CURRENT-CLIENTS", FALSE);
 
-  snprintf(mg_cur, sizeof(mg_cur), "%d",
-    current_clients ? *current_clients + 1 : 1);
+  snprintf(mg_cur, sizeof(mg_cur), "%d", current_clients ? *current_clients: 1);
 
   class_engine = get_param_ptr(TOPLEVEL_CONF, "Classes", FALSE);
 

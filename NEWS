@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.352 2003-01-14 03:31:01 castaglia Exp $
+$Id: NEWS,v 1.353 2003-01-14 04:43:25 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -31,6 +31,8 @@ CVS
   The setsockopt(2) function was being called at the wrong time during the
   establishment of the data connection.
 - %f for DELE commands was not being properly expanded.
+- Bug 1923 - %N magic cookie reports incorrectly.  This was an off-by-one
+  bug.
 
 1.2.8rc1 - Released 28-Dec-2002
 ---------------------------------
