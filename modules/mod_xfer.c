@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.115 2002-12-20 20:20:55 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.116 2002-12-26 19:45:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1186,6 +1186,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
   }
 
   if (!stor_fh) {
+    log_debug(DEBUG4, "unable to open '%s' for writing: %s", cmd->arg,
+      strerror(errno));
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
