@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.65 2003-08-14 01:02:13 castaglia Exp $
+ * $Id: data.c,v 1.66 2003-09-06 16:56:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -185,7 +185,7 @@ static void _xlate_ascii_write(char **buf, unsigned int *buflen,
 
   for (i = 1; i < bufsize && (lfcount > 0); i++) {
     if (tmpbuf[i] == '\n' && tmpbuf[i-1] != '\r') {
-      memmove(&(tmpbuf[i+1]), &(tmpbuf[i]), bufsize - i);
+      memmove(&(tmpbuf[i+1]), &(tmpbuf[i]), bufsize - i - 1);
       tmpbuf[i] = '\r';
       (*expand)++;
       lfcount--;
