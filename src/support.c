@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.73 2004-11-22 00:21:49 castaglia Exp $
+ * $Id: support.c,v 1.74 2004-11-22 00:27:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -45,14 +45,6 @@
 #ifdef AIX3
 # include <sys/statfs.h>
 #endif
-
-static pool *exithandler_pool = NULL;
-
-typedef struct exit_obj {
-  struct exit_obj *next, *prev;
-
-  void (*exit_cb)(void);
-} exithandler_t;
 
 typedef struct sched_obj {
   struct sched_obj *next, *prev;
