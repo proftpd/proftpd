@@ -27,7 +27,7 @@
 /* Shows a count of "who" is online via proftpd.  Uses the /var/run/proftpd*
  * log files.
  *
- * $Id: ftpcount.c,v 1.1 2002-09-25 23:45:24 castaglia Exp $
+ * $Id: ftpcount.c,v 1.2 2002-10-25 16:54:04 castaglia Exp $
  */
 
 #include "utils.h"
@@ -128,7 +128,6 @@ struct option_help {
   { "--config","-c","specify full path to proftpd configuration file" },
   { "--file","-f","specify full path to scoreboard file" },
   { "--help","-h", NULL },
-  { "--verbose","-v","display add'l information for each connection" },
   { NULL }
 };
 
@@ -136,7 +135,6 @@ struct option opts[] = {
   { "config",  1, NULL, 'c' },
   { "file",    1, NULL, 'f' },
   { "help",    0, NULL, 'h' },
-  { "verbose", 0, NULL, 'v' },
   { NULL,      0, NULL, 0   }
 };
 
@@ -163,7 +161,6 @@ int main(int argc, char **argv) {
   struct scoreboard_class classes[MAX_CLASSES];  
   char *cp, *progname = *argv;
   const char *cmdopts = "f:hv";
-  unsigned char verbose = FALSE;
    
   memset(classes, 0, MAX_CLASSES * sizeof(struct scoreboard_class));
    
@@ -181,10 +178,6 @@ int main(int argc, char **argv) {
     switch (c) {
       case 'h':
         show_usage(progname, 0);
-
-      case 'v':
-        verbose = TRUE;
-        break;
 
       case 'f':
         util_set_scoreboard(optarg);

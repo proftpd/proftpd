@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.30 2002-10-16 18:14:11 castaglia Exp $
+ * $Id: mod_log.c,v 1.31 2002-10-25 16:54:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -341,29 +341,28 @@ static int _parse_classes(char *s)
 MODRET add_extendedlog(cmd_rec *cmd) {
   config_rec *c = NULL;
   int argc;
-  char **argv;
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   argc = cmd->argc;
-  argv = cmd->argv;
 
-  if(argc < 2)
+  if (argc < 2)
     CONF_ERROR(cmd, "Syntax: ExtendedLog <log-filename> "
 	       "[<Command-Classes> [<Format-Nickname>]]");
 
   c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
   c->flags |= CF_MERGEDOWN;
 
-  if(cmd->argv[1][0] != '/')
-    c->argv[0] = dir_canonical_path(log_pool,cmd->argv[1]);
+  if (cmd->argv[1][0] != '/')
+    c->argv[0] = dir_canonical_path(log_pool, cmd->argv[1]);
   else
-    c->argv[0] = pstrdup(log_pool,cmd->argv[1]);
+    c->argv[0] = pstrdup(log_pool, cmd->argv[1]);
 
-  if(argc > 2)
-    c->argv[1] = pstrdup(log_pool,cmd->argv[2]);
-  if(argc > 3)
-    c->argv[2] = pstrdup(log_pool,cmd->argv[3]);
+  if (argc > 2)
+    c->argv[1] = pstrdup(log_pool, cmd->argv[2]);
+
+  if (argc > 3)
+    c->argv[2] = pstrdup(log_pool, cmd->argv[3]);
 
   c->argc = argc-1;
   return HANDLED(cmd);

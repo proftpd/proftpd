@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.126 2002-10-25 16:18:44 castaglia Exp $
+ * $Id: main.c,v 1.127 2002-10-25 16:54:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -70,6 +70,8 @@
 #endif /* HAVE_REGEXP_H */
 
 #include "privs.h"
+
+int (*cmd_auth_chk)(cmd_rec *);
 
 /* From mod_core.c
  */
