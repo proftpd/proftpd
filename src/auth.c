@@ -24,7 +24,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.11 2002-06-11 15:34:33 castaglia Exp $
+ * $Id: auth.c,v 1.12 2002-06-23 18:58:46 jwm Exp $
  */
 
 #include "conf.h"
@@ -513,6 +513,9 @@ int auth_getgroups(pool *p, const char *name, array_header **group_ids,
 }
 
 int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
+#ifndef HAVE_SETGROUPS
+  return 0;
+#else /* HAVE_SETGROUPS */
   gid_t *process_gids = NULL, *group_ids = NULL;
   size_t ngids = 0;
   int i = 0, res = 0;
@@ -545,7 +548,8 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
    */
   if ((res = setgid(primary_gid)) < 0)
     return res;
- 
+
   return res;
+#endif /* HAVE_SETGROUPS */
 }
 

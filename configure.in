@@ -368,11 +368,19 @@ if test $have_utmp; then
 	AC_EGREP_HEADER([ *ut_host.*;],utmp.h,
 			pr_cv_header_ut_host="yes",
 			pr_cv_header_ut_host="no"))
+  AC_CACHE_CHECK(whether your struct utmp has ut_exit,
+		pr_cv_header_ut_exit,
+	AC_EGREP_HEADER([ *ut_exit.*;],utmp.h,
+			pr_cv_header_ut_exit="yes",
+			pr_cv_header_ut_exit="no"))
   if test "$pr_cv_header_utmaxtype" = "yes"; then
     AC_DEFINE(HAVE_UTMAXTYPE)
   fi
   if test "$pr_cv_header_ut_host" = "yes"; then
     AC_DEFINE(HAVE_UT_UT_HOST)
+  fi
+  if test "$pr_cv_header_ut_exit" = "yes"; then
+    AC_DEFINE(HAVE_UT_UT_EXIT)
   fi
 fi
 
@@ -448,8 +456,9 @@ AC_FUNC_SETPGRP
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS(bcopy flock getcwd gethostname getopt getopt_long gettimeofday)
-AC_CHECK_FUNCS(memcpy mempcpy mkdir mkstemp rmdir select socket strchr strcoll)
-AC_CHECK_FUNCS(strerror strsep strtol)
+AC_CHECK_FUNCS(memcpy mempcpy mkdir mkstemp rmdir select setgroups socket)
+AC_CHECK_FUNCS(strchr strcoll strerror strsep strtol)
+AC_CHECK_FUNCS(setprotoent endprotoent)
 # __snprintf and __vsnprintf are only on solaris and _really_ broken there.
 AC_CHECK_FUNCS(vsnprintf snprintf)
 if test x"$ac_cv_func_vsnprintf" != xyes || test x"$ac_cv_func_snprintf" != xyes

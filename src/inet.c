@@ -1243,8 +1243,14 @@ void init_inet(void)
 {
   struct protoent *pr;
 
+#ifdef HAVE_SETPROTOENT
   setprotoent(FALSE);
+#endif
+
   if((pr = getprotobyname("tcp")) != NULL)
     tcp_proto = pr->p_proto;
+
+#ifdef HAVE_ENDPROTOENT
   endprotoent();
+#endif
 }

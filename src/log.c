@@ -26,7 +26,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.38 2002-06-22 01:06:09 castaglia Exp $
+ * $Id: log.c,v 1.39 2002-06-23 18:56:39 jwm Exp $
  */
 
 /* History Log:
@@ -637,8 +637,10 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip)
       utx.ut_type = USER_PROCESS;
     else
       utx.ut_type = DEAD_PROCESS;
+#ifdef HAVE_UT_UT_EXIT
     utx.ut_exit.e_termination = 0;
     utx.ut_exit.e_exit = 0;
+#endif /* HAVE_UT_UT_EXIT */
     if(write(fdx,(char*)&utx,sizeof(utx)) != sizeof(utx))
       ftruncate(fdx, buf.st_size);
   } else {
@@ -661,8 +663,10 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip)
       memcpy(&ut.ut_addr,ip,sizeof(ut.ut_addr));
 #else
     sstrncpy(ut.ut_id,"ftp",sizeof(ut.ut_id));
+#ifdef HAVE_UT_UT_EXIT
     ut.ut_exit.e_termination = 0;
     ut.ut_exit.e_exit = 0;
+#endif /* HAVE_UT_UT_EXIT */
 #endif
     sstrncpy(ut.ut_line,line,sizeof(ut.ut_line));
     if(name && *name)
