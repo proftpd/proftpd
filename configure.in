@@ -727,8 +727,27 @@ fi
 
 AC_CHECK_HEADERS(ctype.h getopt.h crypt.h bstring.h limits.h)
 AC_CHECK_HEADERS(strings.h stropts.h)
-AC_CHECK_HEADERS(sys/types.h sys/mount.h sys/param.h sys/file.h sys/uio.h)
-AC_CHECK_HEADERS(netdb.h netinet/in.h netinet/in_systm.h netinet/ip.h)
+AC_CHECK_HEADERS(sys/file.h sys/types.h sys/uio.h)
+
+dnl These particular checks are done a little differently because on some
+dnl platforms, <sys/mount.h> wants <sys/param.h> to be included first.
+AC_CHECK_HEADERS(sys/param.h sys/mount.h,,,
+  [
+   [#if HAVE_SYS_PARAM_H
+     # include <sys/param.h>
+     #endif
+   ]
+  ])
+
+AC_CHECK_HEADERS(netdb.h netinet/in.h)
+AC_CHECK_HEADERS(netinet/in_systm.h netinet/ip.h,,,
+  [
+    [#if HAVE_NETINET_IN_SYSTM_H
+     # include <netinet/in_systm.h>
+     #endif
+    ]
+  ])
+
 AC_CHECK_HEADERS(netinet/tcp.h arpa/inet.h)
 AC_CHECK_HEADERS(sys/stat.h errno.h sys/socket.h sys/termios.h sys/termio.h)
 AC_CHECK_HEADERS(sys/statvfs.h sys/vfs.h sys/select.h)

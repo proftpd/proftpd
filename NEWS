@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.470 2003-08-29 17:01:56 castaglia Exp $
+$Id: NEWS,v 1.471 2003-09-03 20:14:21 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -77,6 +77,9 @@ CVS
   DNS names with both A and AAAA records were not being properly handled;
   listening sockets for both the IPv4 and IPv6 addresses were not being
   established.
+- Bug 2007 - autoconf header detection problem.
+  On FreeBSD and other platforms, changes in autoconf require that headers
+  be included in the proper order during configure's check.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------
