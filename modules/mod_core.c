@@ -1542,6 +1542,14 @@ MODRET cmd_port(cmd_rec *cmd)
   session.data_port = ntohs(port.port);
   session.flags &= (SF_ALL^SF_PASSIVE);
 
+  /* If we already have a data connection open, kill it.
+   */
+
+  if(session.d) {
+    inet_close(session.d->pool,session.d);
+    session.d = NULL;
+  }
+
   add_response(R_200,"PORT command successful.");
   return HANDLED(cmd);
 }

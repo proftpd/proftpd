@@ -173,6 +173,8 @@ int _data_active_open(char *reason, unsigned long size)
 			session.data_port) == -1) {
 		add_response_err(R_425,"Can't build data connection: %s",
 				strerror(session.d->xerrno));
+		destroy_pool(session.d->pool);
+        	session.d = NULL;
 		return -1;
 	}
 
@@ -203,9 +205,12 @@ int _data_active_open(char *reason, unsigned long size)
 		session.d = c;
 		return 0;
 	}
-
+        
+	
 	add_response_err(R_425,"Can't build data connection: %s",
 			strerror(session.d->xerrno));
+	destroy_pool(session.d->pool);
+        session.d = NULL;
 	return -1;
 }
 
