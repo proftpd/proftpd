@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.30 2002-09-13 19:33:38 castaglia Exp $
+ * $Id: proftpd.h,v 1.31 2002-10-15 17:01:03 castaglia Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -161,16 +161,13 @@ typedef struct {
     char *path;				/* As used in transfer */
     char *path_hidden;			/* As used in hidden stor */
 
-    char *bufstart,*buf;
-    int bufsize,buflen;
+    unsigned int bufsize,buflen;
 
     struct timeval start_time;		/* Time current transfer started */
     off_t file_size;			/* Total size of file (if known) */
     off_t total_bytes;			/* Total bytes transfered */
 
-    int (*get_data)(struct IO_File*,char*,int);
-    int (*complete)(struct IO_File*);
-    int (*abort)(struct IO_File*,int err);
+    char *bufstart,*buf;
   } xfer;
 
   off_t total_bytes;          /* Total bytes transfered for this session */

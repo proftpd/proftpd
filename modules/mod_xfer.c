@@ -26,7 +26,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.89 2002-10-08 21:19:16 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.90 2002-10-15 17:01:03 castaglia Exp $
  */
 
 /* History Log:
@@ -1170,9 +1170,8 @@ MODRET pre_cmd_retr(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET cmd_retr(cmd_rec *cmd)
-{
-  char *dir, *lbuf;
+MODRET cmd_retr(cmd_rec *cmd) {
+  char *dir = NULL, *lbuf;
   struct stat sbuf;
   struct timeval rate_tvstart;
   unsigned long nbytes_max_retrieve = -1;
@@ -1248,13 +1247,14 @@ MODRET cmd_retr(cmd_rec *cmd)
   /* Send the data */
   data_init(cmd->arg, PR_NETIO_IO_WR);
     
-  session.xfer.path = pstrdup(session.xfer.p,dir);
+  session.xfer.path = dir;
   session.xfer.file_size = sbuf.st_size;
+
   cnt_steps = session.xfer.file_size / 100;
-  if(cnt_steps == 0)
+  if (cnt_steps == 0)
     cnt_steps = 1;
 
-  if(data_open(cmd->arg, NULL, PR_NETIO_IO_WR, sbuf.st_size - respos) < 0) {
+  if (data_open(cmd->arg, NULL, PR_NETIO_IO_WR, sbuf.st_size - respos) < 0) {
     data_abort(0, TRUE);
     return ERROR(cmd);
   }

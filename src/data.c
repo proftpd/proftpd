@@ -26,7 +26,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.42 2002-09-13 23:14:41 castaglia Exp $
+ * $Id: data.c,v 1.43 2002-10-15 17:01:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -148,7 +148,7 @@ static void _xlate_ascii_write(char **buf, unsigned int *buflen,
   if ((res = (bufsize - tmplen - lfcount)) < 0) {
     pool *copy_pool = make_sub_pool(session.xfer.p);
     char *copy_buf = pcalloc(copy_pool, tmplen);
-   
+
     memmove(copy_buf, tmpbuf, tmplen);
 
     /* Allocate a new session.xfer.buf of the needed size. */
@@ -846,7 +846,7 @@ int data_xfer(char *cl_buf, int cl_size) {
         if (TimeoutStalled)
           reset_timer(TIMER_STALLED, ANY_MODULE);
 
-        /* Do not take any added CRs into account for the session sum. */	
+        /* Do not take any added CRs into account for the session sum. */
         total += (wsize - adjlen);
         size -= (wsize - adjlen);
 
