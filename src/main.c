@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.267 2004-12-05 08:03:50 castaglia Exp $
+ * $Id: main.c,v 1.268 2004-12-05 08:12:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1364,6 +1364,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 #ifdef PR_DEVEL_NO_DAEMON
   /* Cleanup */
   end_login_noexit();
+  main_server = NULL;
   free_pools();
   free_proc_title();
 #endif /* PR_DEVEL_NO_DAEMON */
