@@ -13,6 +13,13 @@
 #define RUN_DIR			"/var/run/proftpd"
 #endif
 
+/* The location you wish to place any core files produced as a result of
+ * fatal errors (memory problems, etc).
+ */
+#ifndef CORE_DIR
+#define CORE_DIR		RUN_DIR
+#endif
+
 /* The file in which to write the pid (in ASCII) after the initial fork,
  * when run in standalone daemon mode.
  */

@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.31 2000-07-06 19:29:17 macgyver Exp $
+ * $Id: main.c,v 1.32 2000-07-11 13:35:34 macgyver Exp $
  */
 
 /*
@@ -122,7 +122,7 @@ binding_t *bind_list = NULL;
 pool *bind_pool = NULL;
 
 time_t shut = (time_t)0,deny = (time_t)0, disc = (time_t)0;
-char shutmsg[81] = "";
+char shutmsg[81] = {'\0'};
 
 xaset_t *children = NULL;
 static int child_count = 0,child_flag = 0;
@@ -130,16 +130,19 @@ static int child_count = 0,child_flag = 0;
 response_t *resp_list = NULL,*resp_err_list = NULL;
 static pool *resp_pool = NULL;
 static int (*main_check_auth)(cmd_rec*) = NULL;
-static char sbuf[1024];
-static char _ml_numeric[4];
+static char sbuf[1024] = {'\0'};
+static char _ml_numeric[4] = {'\0'};
 static char **Argv = NULL;
 static char *LastArgv = NULL;
 
 static int nodaemon = 0;
 static int shutdownp = 0;
-static int abort_core = 0;
 static RETSIGTYPE sig_disconnect(int);
 static RETSIGTYPE sig_debug(int);
+
+#ifdef DEBUG_CORE
+static int abort_core = 0;
+#endif /* DEBUG_CORE */
 
 char *config_filename = CONFIG_FILE_PATH;
 
@@ -545,7 +548,7 @@ void send_response_raw(const char *fmt, ...)
 
 void send_response_async(const char *resp_numeric, const char *fmt, ...)
 {
-  char buf[1024];
+  char buf[1024] = {'\0'};
   va_list msg;
   int maxlen;
 
@@ -586,7 +589,6 @@ void send_response_ml_start(const char *resp_numeric, const char *fmt, ...)
 
   sbuf[sizeof(sbuf) - 1] = '\0';
   sstrncpy(_ml_numeric, resp_numeric, sizeof(_ml_numeric));
-  
   io_printf(session.c->outf, "%s-%s\r\n", _ml_numeric, sbuf);
 }
 
@@ -954,7 +956,7 @@ void cmd_loop(server_rec *server, conn_t *c)
 {
   static int CmdBufSize = -1;
   config_rec *id;
-  char buf[1024];
+  char buf[1024] = {'\0'};
   char *cp;
   char *display;
   int i;
@@ -1599,31 +1601,47 @@ static RETSIGTYPE sig_child(int sig)
   signal(SIGCHLD,sig_child);
 }
 
+#ifdef DEBUG_CORE
+static char *_prepare_core()
+{
+  static char dir[256];
+  
+  snprintf(dir, sizeof(dir), "%s/proftpd-core-%ld", CORE_DIR, getpid());
+  
+  if(mkdir(dir, 0700) != -1)
+    chdir(dir);
+  
+  return dir;
+}
+#endif /* DEBUG_CORE */
+
 static RETSIGTYPE sig_abort(int sig)
 {
-#if 0
+#ifdef DEBUG_CORE
   if(abort_core)
-    log_pri(LOG_NOTICE,"ProFTPD received SIGABRT signal, generating core file in %s",_prepare_core());
+    log_pri(LOG_NOTICE,
+	    "ProFTPD received SIGABRT signal, generating core file in %s",
+	    _prepare_core());
   else
-#endif
-    log_pri(LOG_NOTICE,"ProFTPD received SIGABRT signal, no core dump.");
+#endif /* DEBUG_CORE */
+    log_pri(LOG_NOTICE, "ProFTPD received SIGABRT signal, no core dump.");
   
   signal(SIGABRT,SIG_DFL);
   end_login_noexit();
   abort();
 }  
 
+#ifdef DEBUG_CORE
 static void _internal_abort()
 {
   if(abort_core) {
-#if 0
-    log_pri(LOG_NOTICE,"core file dumped to %s",_prepare_core());
-#endif
+    log_pri(LOG_NOTICE, "core file dumped to %s", _prepare_core());
     signal(SIGABRT,SIG_DFL);
     end_login_noexit();
     abort();
   }
 }
+#endif /* DEBUG_CORE */
 
 static RETSIGTYPE sig_terminate(int sig)
 {
@@ -1656,7 +1674,10 @@ static RETSIGTYPE sig_terminate(int sig)
       log_pri(LOG_NOTICE,"ProFTPD %s standalone mode SHUTDOWN",VERSION);
   }
 
-  _internal_abort();  
+#ifdef DEBUG_CORE
+  _internal_abort();
+#endif /* DEBUG_CORE */
+
   end_login(1);
 }
 
@@ -1734,9 +1755,11 @@ static void set_rlimits()
   if(getrlimit(RLIMIT_CORE,&rlim) == -1)
     log_pri(LOG_ERR,"getrlimit(): %s",strerror(errno));
   else {
+#ifdef DEBUG_CORE
     if(abort_core)
       rlim.rlim_cur = rlim.rlim_max = RLIM_INFINITY;
     else
+#endif /* DEBUG_CORE */
       rlim.rlim_cur = rlim.rlim_max = 0;
 
     PRIVS_ROOT
@@ -2004,9 +2027,9 @@ struct option opts[] = {
   { "list",       0, NULL, 'l' },
   { "version",    0, NULL, 'v' },
   { "configtest", 0, NULL, 't' },
-/*
+#ifdef DEBUG_CORE
   { "core",     0, NULL, 'o' },
-*/
+#endif /* DEBUG_CORE */
   { "help",	0, NULL, 'h' },
   { NULL,	0, NULL,  0  }
 };
@@ -2028,9 +2051,9 @@ struct option_help {
     "List all compiled-in modules" },
   { "--configtest", "-t",
     "Test the syntax of the specified config" },
-/*
+#ifdef DEBUG_CORE
   { "--core","-o","enable core dump for profiling/debugging on serious errors"},
-*/
+#endif /* DEBUG_CORE */
   { "--version", "-v",
     "Print version number and exit" },
   { NULL, NULL, NULL }
@@ -2118,13 +2141,20 @@ int main(int argc, char **argv, char **envp)
    * -n, --nodaemon	Standalone server doesn't background itself,
    *                    all logging dumped to stderr
    *
+   * -o, --core		Enable graceful coredumps, dropping things into
+   *			CORE_DIR
+   *
    * -t, --configtest	Syntax check the config file
    *
    * -v, --version      Report version number
    */
 
   opterr = 0;
-  while((c = getopt_long(argc,argv,"nd:c:p:lhtv",opts,NULL)) != -1) {
+  while((c = getopt_long(argc, argv, "nd:c:p:lhtv"
+#ifdef DEBUG_CORE
+			 "o"
+#endif /* DEBUG_CORE */
+			 , opts, NULL)) != -1) {
     switch(c) {
     case 'n': 
       nodaemon++;
@@ -2166,11 +2196,11 @@ int main(int argc, char **argv, char **envp)
 
       break;
     }
-    /*
+#ifdef DEBUG_CORE
     case 'o':
-      abort_core++;
+      abort_core = 1;
       break;
-    */
+#endif /* DEBUG_CORE */
     case 'v':
       log_pri(LOG_NOTICE,"ProFTPD Version " VERSION);
       exit(0);
