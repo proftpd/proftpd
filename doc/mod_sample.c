@@ -32,7 +32,7 @@
 
 /*
  * sample module for ProFTPD
- * $Id: mod_sample.c,v 1.4 2002-11-25 16:04:02 castaglia Exp $
+ * $Id: mod_sample.c,v 1.5 2002-12-05 18:47:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -90,11 +90,11 @@ MODRET sample_post_stor(cmd_rec *cmd) {
 }
 
 MODRET sample_post_list(cmd_rec *cmd) {
-  return same_post_retr(cmd);
+  return sample_post_retr(cmd);
 }
 
 MODRET sample_post_nlst(cmd_rec *cmd) {
-  return same_post_retr(cmd);
+  return sample_post_retr(cmd);
 }
 
 /* This command handler is for a non-standard FTP command, "XFOO".  It
