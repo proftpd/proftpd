@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.451 2003-07-21 22:03:49 castaglia Exp $
+$Id: NEWS,v 1.452 2003-07-24 15:22:52 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -38,6 +38,8 @@ CVS
 - Bug 2110 - Segfault if gethostname(2) returns NULL.
 - Bug 2113 - mod_sql default uses mysql keyword "password".  The default
   has been changed to "passwd".
+- Bug 2115 - ftptop depends on snprintf but doesn't link in lib/libsupp.a
+  on snprintf-less platforms
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------
