@@ -929,16 +929,15 @@ int inet_connect(pool *pool, conn_t *c, p_in_addr_t *addr, int port)
 
   c->mode = CM_CONNECT;
 
-  while (1)
+  while (TRUE) {
     if ((ret = connect(c->listen_fd, (struct sockaddr *) &remaddr,
-        sizeof(remaddr))) == -1) {
-      if (errno == EINTR) {
-        handle_signals();
-        continue;
-      }
+        sizeof(remaddr))) == -1 && errno == EINTR) {
+      handle_signals();
+      continue;
 
     } else
       break;
+  }
 
   if (ret == -1) {
     c->mode = CM_ERROR;
