@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.267 2002-11-02 22:01:18 jwm Exp $
+$Id: NEWS,v 1.268 2002-11-02 22:44:58 jwm Exp $
 
 CVS
 ---------------------------------
@@ -24,6 +24,7 @@ CVS
   breaks some Linux installations
 - Bug 1805 - PAM support under Mac OS X
 - Bug 1772 - Docs fixup in RPM spec file
+- Bug 1398 - there is no log rotate for /var/log/xferlog
 
 1.2.7rc2 - Released 2002-10-22
 ---------------------------------
