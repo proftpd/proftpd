@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.163 2004-08-03 23:17:36 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.164 2004-08-12 23:24:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2424,7 +2424,7 @@ static cmdtable xfer_cmdtab[] = {
   { LOG_CMD_ERR, C_APPE,G_NONE,  xfer_err_cleanup,  FALSE,  FALSE },
   { CMD,     C_ABOR,	G_NONE,	 xfer_abor,	TRUE,	TRUE,  CL_MISC  },
   { CMD,     C_REST,	G_NONE,	 xfer_rest,	TRUE,	FALSE, CL_MISC  },
-  { POST_CMD,C_PROT,	G_NONE,  xfer_post_prot,TRUE,	FALSE },
+  { POST_CMD,C_PROT,	G_NONE,  xfer_post_prot,FALSE,	FALSE },
   { 0,NULL }
 };
 
