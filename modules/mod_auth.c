@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.49 2001-01-31 18:43:07 flood Exp $
+ * $Id: mod_auth.c,v 1.50 2001-02-05 19:37:03 flood Exp $
  */
 
 #include "conf.h"
@@ -1045,8 +1045,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
 
   /* check dynamic configuration */
-  if(fs_stat("/",&sbuf) != -1)
-    build_dyn_config(p,"/",&sbuf,1);
+  if (fs_stat(session.cwd, &sbuf) != -1)
+    build_dyn_config(p, session.cwd, &sbuf, 1);
 
   if(c) {
     if(!session.hide_password)

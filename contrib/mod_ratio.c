@@ -398,7 +398,7 @@ pre_cmd_retr (cmd_rec * cmd)
     {
       path = dir_realpath (cmd->tmp_pool, cmd->arg);
       if (path
-	  && dir_check (cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL)
+	  && dir_check (cmd->tmp_pool, cmd->argv[0], cmd->group, path)
 	  && fs_stat (path, &sbuf) > -1)
 	fsize = sbuf.st_size;
 

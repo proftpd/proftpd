@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.45 2001-02-02 23:09:26 flood Exp $
+ * $Id: mod_xfer.c,v 1.46 2001-02-05 19:37:03 flood Exp $
  */
 
 /* History Log:
@@ -201,7 +201,7 @@ static int _transmit_normal(char *buf, long bufsize) {
 }
 
 #ifdef HAVE_SENDFILE
-static int _transmit_sendfile(int rate_bps, unsigned long count, off_t offset,
+static int _transmit_sendfile(int rate_bps, unsigned long count, off_t *offset,
 			       pr_sendfile_t *retval) {
   
   /* We don't use sendfile() if:
@@ -216,7 +216,7 @@ static int _transmit_sendfile(int rate_bps, unsigned long count, off_t offset,
   }
 
  retry:
-  *retval = data_sendfile(retr_fd, &offset, session.xfer.file_size - count);
+  *retval = data_sendfile(retr_fd, offset, session.xfer.file_size - count);
 
   if(*retval == -1) {
     switch (errno) {
@@ -257,7 +257,7 @@ static int _transmit_sendfile(int rate_bps, unsigned long count, off_t offset,
 }
 #endif /* HAVE_SENDFILE */
 
-static long _transmit_data(int rate_bps, unsigned long count, off_t offset,
+static long _transmit_data(int rate_bps, unsigned long count, off_t *offset,
 			   char *buf, long bufsize) {
 #ifdef HAVE_SENDFILE
   pr_sendfile_t retval;
@@ -825,7 +825,7 @@ MODRET cmd_retr(cmd_rec *cmd)
         break;
       
       /* INSERT CODE HERE */
-      if((len = _transmit_data(rate_bps, cnt, respos, lbuf, bufsize)) == 0)
+      if((len = _transmit_data(rate_bps, cnt, &respos, lbuf, bufsize)) == 0)
 	break;
       
       if(len < 0) {
