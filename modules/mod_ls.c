@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.118 2004-11-03 16:53:47 castaglia Exp $
+ * $Id: mod_ls.c,v 1.119 2004-12-12 22:00:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1004,10 +1004,10 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
         char *subdir;
         int res = 0;
 
-        if (strcmp(name,".") == 0)
+        if (strcmp(name, ".") == 0)
           subdir = *r;
         else
-          subdir = pdircat(workp,name,*r,NULL);
+          subdir = pdircat(workp, name, *r, NULL);
 
         if (opt_STAT) {
           pr_response_add(R_211, "%s", "");
@@ -1240,7 +1240,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
 static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
   int skiparg = 0;
   int glob_flags = GLOB_PERIOD;
-  char *arg = (char*)opt;
+  char *arg = (char*) opt;
 
   matches = 0;
   ls_curtime = time(NULL);
@@ -1277,18 +1277,12 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
   if (list_options)
     parse_list_opts(&list_options, &glob_flags, TRUE);
 
-  /* open data connection */
-  if (!opt_STAT) {
-    session.sf_flags |= SF_ASCII_OVERRIDE;
-    if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
-      return -1;
-  }
-
   if (arg && *arg) {
     int justone = 1;
     glob_t g;
     int    a;
     char   pbuffer[PR_TUNABLE_PATH_MAX + 1] = "";
+    char *target;
 
     /* Make sure the glob_t is initialized. */
     memset(&g, '\0', sizeof(glob_t));
@@ -1312,9 +1306,30 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
         pbuffer[0] = '\0';
     }
 
+    target = *pbuffer ? pbuffer : arg;
+
+    /* If there are no globbing characters in the given target,
+     * we can check to see if it even exists.
+     */
+    if (strpbrk(target, "{[*?") == NULL) {
+      struct stat st;
+
+      pr_fs_clear_cache();
+      if (pr_fsio_stat(target, &st) < 0) {
+        pr_response_add_err(R_450, "%s: %s", target, strerror(errno));
+        return -1;
+      }
+    }
+
+    /* Open data connection */
+    if (!opt_STAT) {
+      session.sf_flags |= SF_ASCII_OVERRIDE;
+      if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+        return -1;
+    }
+
     /* Check perms on the directory/file we are about to scan. */
-    if (!ls_perms_full(cmd->tmp_pool, cmd,
-        (*pbuffer ? (char *) pbuffer : (char *) arg), NULL)) {
+    if (!ls_perms_full(cmd->tmp_pool, cmd, target, NULL)) {
       a = -1;
       skiparg = TRUE;
 
@@ -1322,16 +1337,16 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
       skiparg = FALSE;
 
-      if (use_globbing)
-        a = pr_fs_glob(*pbuffer ? pbuffer : arg, glob_flags, NULL, &g);
+      if (use_globbing &&
+          strpbrk(target, "{[*?") != NULL)
+        a = pr_fs_glob(target, glob_flags, NULL, &g);
 
       else {
 
         /* Trick the following code into using the non-glob() processed path */
         a = 0;
         g.gl_pathv = (char **) pcalloc(cmd->tmp_pool, 2 * sizeof(char *));
-        g.gl_pathv[0] = (char *) pstrdup(cmd->tmp_pool,
-          *pbuffer ? pbuffer : arg);
+        g.gl_pathv[0] = (char *) pstrdup(cmd->tmp_pool, target);
         g.gl_pathv[1] = NULL;
       }
     }
@@ -1345,7 +1360,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
        * directories as files for listing purposes.
        */
       if (use_globbing &&
-          strpbrk((*pbuffer ? pbuffer : arg), "{[*?") != NULL &&
+          strpbrk(target, "{[*?") != NULL &&
           !opt_R)
         list_dir_as_file = TRUE;
 
@@ -1463,6 +1478,14 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
     }
 
   } else {
+
+    /* Open data connection */
+    if (!opt_STAT) {
+      session.sf_flags |= SF_ASCII_OVERRIDE;
+      if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+        return -1;
+    }
+
     if (ls_perms_full(cmd->tmp_pool, cmd, ".", NULL)) {
 
       if (opt_d) {
@@ -1987,7 +2010,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
     p++;
 
-    while (*p && *p !='/' && i < PR_TUNABLE_PATH_MAX)
+    while (*p && *p != '/' && i < PR_TUNABLE_PATH_MAX)
       pb[i++] = *p++;
     pb[i] = '\0';
 
@@ -2038,7 +2061,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
     /* Make sure the glob_t is initialized */
     memset(&g, '\0', sizeof(glob_t));
 
-    if (pr_fs_glob(target, GLOB_PERIOD,NULL, &g) != 0) {
+    if (pr_fs_glob(target, GLOB_PERIOD, NULL, &g) != 0) {
       pr_response_add_err(R_450, "No files found");
       return ERROR(cmd);
     }
@@ -2065,7 +2088,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
           if (hidden)
             continue;
 
-          res = nlstfile(cmd,p);
+          res = nlstfile(cmd, p);
         }
 
         if (res > 0)
@@ -2108,6 +2131,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
     /* Make sure the target is a file or directory, and that we have access
      * to it.
      */
+    pr_fs_clear_cache();
     if (pr_fsio_stat(target, &st) < 0) {
       pr_response_add_err(R_450, "%s: %s", cmd->arg, strerror(errno));
       return ERROR(cmd);
@@ -2138,16 +2162,10 @@ MODRET ls_nlst(cmd_rec *cmd) {
     res = -1;
 
   } else {
-    if (res == 0 && !count && (session.sf_flags & SF_XFER) == 0) {
-      pr_response_add_err(R_450, "No files found");
-      res = -1;
-
-    } else if (session.sf_flags & SF_XFER)
-
-      /* Note that the data connection is NOT cleared here, as an error in
-       * NLST still leaves data ready for another command.
-       */
-      ls_done(cmd);
+    /* Note that the data connection is NOT cleared here, as an error in
+     * NLST still leaves data ready for another command.
+     */
+    ls_done(cmd);
   }
 
   return (res < 0 ? ERROR(cmd) : HANDLED(cmd));

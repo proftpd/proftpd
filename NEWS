@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.634 2004-12-12 17:53:27 castaglia Exp $
+$Id: NEWS,v 1.635 2004-12-12 22:00:18 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -96,6 +96,8 @@ CVS
 - Bug 2027 - Add log message for timed out passive transfers.
 - Bug 2406 - Add a SQLEngine directive.  See the mod_sql documentation
   for details.
+- Bug 2229 - NLST and LIST behave differently e.g. when listing an empty
+  directory.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------
