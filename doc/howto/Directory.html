@@ -1,4 +1,4 @@
-<!-- $Id: Directory.html,v 1.6 2004-05-29 04:22:59 castaglia Exp $ -->
+<!-- $Id: Directory.html,v 1.7 2004-10-17 23:42:28 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Directory.html,v $ -->
 
 <html>
@@ -34,6 +34,13 @@ if the path has a <code>~</code> prefix, or if the
 section.  In the latter case, the path may be relative (<i>i.e.</i> does
 not need to start with a <code>/</code>), in which case the path will be
 relative to the directory to which anonymous sessions are restricted.
+
+<p>
+If the name of the directory contains spaces, you should enclose the entire
+directory name in quotations, <i>e.g.</i>:
+<pre>
+  &lt;Directory &quot;/path/to/My Directory&quot;&gt;
+</pre>
 
 <p>
 As noted in the documentation, use of a <code>/*</code> suffix on a path
@@ -131,7 +138,7 @@ in the 1.2.7rc1 release) will provide fine-grained control over when
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-05-29 04:22:59 $</i><br>
+Last Updated: <i>$Date: 2004-10-17 23:42:28 $</i><br>
 <hr>
 
 </body>
