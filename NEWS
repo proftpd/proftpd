@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.428 2003-04-29 17:40:42 castaglia Exp $
+$Id: NEWS,v 1.429 2003-04-30 15:49:17 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -122,6 +122,10 @@ CVS
 - Cygwin compilation/portability fixes.
 - Fixed bug where AllowForeignAddress was not properly blocking "bounce"
   attacks in some cases.  Patch contributed by Patrick Hardy <kaber@trash.net>.
+- Bug 2032 - AuthOrder not working when first option is mod_auth_file.c.  This
+  was caused by mod_auth_file's returning of an ERROR condition, rather than
+  DECLINED, when the module could not obtain the user's encrypted password
+  for verification.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------

@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.9 2003-01-18 06:06:54 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.10 2003-04-30 15:49:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -868,8 +868,22 @@ MODRET authfile_auth(cmd_rec *cmd) {
     return DECLINED(cmd);
 
   /* Lookup the cleartxt password for this user. */
-  if ((tmp = af_getpwpass(af_current_user_file, name)) == NULL)
+  if ((tmp = af_getpwpass(af_current_user_file, name)) == NULL) {
+
+    /* For now, return DECLINED.  Ideally, we could stash an auth module
+     * identifier in the session structure, so that all auth modules could
+     * coordinate/use their methods as long as they matched the auth module
+     * used.
+     */
+    return DECLINED(cmd);
+
+    /* When the above is implemented, and if the user being checked was
+     * provided by mod_auth_file, we'd return this.
+     */
+#if 0
     return ERROR_INT(cmd, PR_AUTH_NOPWD);
+#endif
+  }
 
   cleartxt_pass = pstrdup(cmd->tmp_pool, tmp);
 
