@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.144 2001-12-17 17:58:29 flood Exp $
+$Id: NEWS,v 1.145 2001-12-17 20:07:59 flood Exp $
 
 1.2.5rc1 - CVS
 ---------------------------------
@@ -27,6 +27,8 @@ $Id: NEWS,v 1.144 2001-12-17 17:58:29 flood Exp $
 - Bug 1419 - Remove unnecessary colons from PRIVS_ macros
 - Bug 1418 - Slight change to exithandler handling to allow module
              finalization slot
+- Bug 1392 - Added LOG_CMD_ERR cleanup handler for LIST/NLST/RETR/
+             STOR/APPE/STOU, to defer clearing of transfer counters.
 
 1.2.4 - Released 10/19/2001
 ---------------------------------

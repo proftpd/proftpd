@@ -24,7 +24,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.46 2001-12-13 20:35:50 flood Exp $
+ * $Id: mod_ls.c,v 1.47 2001-12-17 20:07:59 flood Exp $
  */
 
 #include "conf.h"
@@ -1371,6 +1371,12 @@ MODRET fini_nlst(cmd_rec *cmd)
   return DECLINED(cmd);
 }
 
+MODRET list_cleanup(cmd_rec *cmd)
+{
+  data_cleanup();
+  return DECLINED(cmd);
+}
+
 MODRET cmd_stat(cmd_rec *cmd)
 {
   char *arg = cmd->arg;
@@ -1705,6 +1711,8 @@ static cmdtable ls_commands[] = {
   { CMD, 	C_STAT,	G_DIRS,	cmd_stat,	TRUE, FALSE, CL_DIRS },
   { LOG_CMD,	C_LIST,	G_NONE,	fini_nlst,	FALSE, FALSE },
   { LOG_CMD,	C_NLST, G_NONE,	fini_nlst,	FALSE, FALSE },
+  { LOG_CMD_ERR,C_LIST, G_NONE, list_cleanup,   FALSE, FALSE },
+  { LOG_CMD_ERR,C_NLST, G_NONE, list_cleanup,   FALSE, FALSE },
   { 0, NULL }
 };
 

@@ -25,7 +25,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.26 2001-06-19 18:51:51 flood Exp $
+ * $Id: data.c,v 1.27 2001-12-17 20:07:59 flood Exp $
  */
 
 #include "conf.h"
@@ -372,9 +372,8 @@ void data_close(int quiet) {
     destroy_pool(session.xfer.p);
   
   bzero(&session.xfer,sizeof(session.xfer));
-#endif
-  
   session.data_port = session.c->remote_port - 1;
+#endif
   
   /* aborts no longer necessary */
   signal(SIGURG,SIG_IGN);
@@ -403,11 +402,25 @@ void data_close(int quiet) {
  * set if the OOB byte won the race.
  */
 void data_cleanup() {
+  /* sanity check */
+  if(session.d) {
+    inet_close(session.pool,session.d);
+    session.d = NULL;
+  }
+
   if(session.xfer.p)
     destroy_pool(session.xfer.p);
   
   bzero(&session.xfer,sizeof(session.xfer));
+  
+  session.data_port = session.c->remote_port - 1;
 }
+
+/* In order to avoid clearing the transfer counters in session.xfer, we don't
+ * clear session.xfer here, it should be handled by the appropriate
+ * LOG_CMD/LOG_CMD_ERR handler calling data_cleanup().
+ * jss - 12/13/2001
+ */
 
 void data_abort(int err, int quiet) {
   int true_abort = XFER_ABORTED;
@@ -418,12 +431,15 @@ void data_abort(int err, int quiet) {
     session.d = NULL;
   }
   
+  /*
   if(session.xfer.p)
     destroy_pool(session.xfer.p);
   
   bzero(&session.xfer,sizeof(session.xfer));
-  
+
   session.data_port = session.c->remote_port - 1;
+  */
+  
   
   if(TimeoutNoXfer)
     reset_timer(TIMER_NOXFER,ANY_MODULE);

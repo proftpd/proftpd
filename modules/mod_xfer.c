@@ -25,7 +25,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.58 2001-12-13 20:35:50 flood Exp $
+ * $Id: mod_xfer.c,v 1.59 2001-12-17 20:07:59 flood Exp $
  */
 
 /* History Log:
@@ -1094,6 +1094,12 @@ cmd_stou(cmd_rec *cmd)
 	return HANDLED(cmd);
 }
 
+MODRET xfer_cleanup(cmd_rec *cmd)
+{
+  data_cleanup();
+  return DECLINED(cmd);
+}
+
 MODRET log_stor(cmd_rec *cmd)
 {
   _log_transfer('i', 'c');
@@ -1212,8 +1218,12 @@ static cmdtable xfer_commands[] = {
   { PRE_CMD, C_STOR,	G_WRITE, pre_cmd_stor,	TRUE,	FALSE },
   { CMD,     C_STOR,	G_WRITE, cmd_stor,	TRUE,	FALSE, CL_WRITE },
   { LOG_CMD, C_STOR,    G_NONE,	 log_stor,	FALSE,  FALSE },
+  { LOG_CMD_ERR, C_STOR,G_NONE,  xfer_cleanup,  FALSE,  FALSE },
+  { LOG_CMD_ERR, C_RETR,G_NONE,  xfer_cleanup,  FALSE,  FALSE },
   { CMD,     C_STOU,	G_WRITE, cmd_stou,	TRUE,	FALSE, CL_WRITE },
   { PRE_CMD, C_APPE,	G_WRITE, pre_cmd_appe,	TRUE,	FALSE },
+  { LOG_CMD_ERR, C_STOU,G_NONE,  xfer_cleanup,  FALSE,  FALSE },
+  { LOG_CMD_ERR, C_APPE,G_NONE,  xfer_cleanup,  FALSE,  FALSE },
   { CMD,     C_APPE,	G_WRITE, cmd_stor,	TRUE,	FALSE, CL_WRITE },
   { LOG_CMD, C_APPE,	G_NONE,  log_stor,	FALSE,  FALSE },
   { CMD,     C_ABOR,	G_NONE,	 cmd_abor,	TRUE,	TRUE,  CL_MISC  },
