@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.18 2003-07-07 20:42:53 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.19 2003-11-09 21:25:47 castaglia Exp $
  */
 
 /*
@@ -153,10 +153,9 @@ static void *_sql_add_connection(pool *p, char *name, db_conn_t *conn)
  *  properly filled in.  If not, it's grounds for the daemon to
  *  shutdown.
  */
-static void _sql_check_cmd(cmd_rec *cmd, char *msg)
-{
+static void _sql_check_cmd(cmd_rec *cmd, char *msg) {
   if ((!cmd) || (!cmd->tmp_pool)) {
-    log_pri(PR_LOG_ERR, _MOD_VERSION ": '%s' was passed an invalid cmd_rec. "
+    pr_log_pri(PR_LOG_ERR, _MOD_VERSION ": '%s' was passed an invalid cmd_rec. "
 	    "Shutting down.", msg);
     sql_log(DEBUG_WARN, "'%s' was passed an invalid cmd_rec. Shutting down.",
       msg);
@@ -171,8 +170,7 @@ static void _sql_check_cmd(cmd_rec *cmd, char *msg)
  *  that gets called.  This function makes assumptions about the 
  *  db_conn_t members.
  */
-static int _sql_timer_callback(CALLBACK_FRAME)
-{
+static int _sql_timer_callback(CALLBACK_FRAME) {
   conn_entry_t *entry = NULL;
   int cnt = 0;
   cmd_rec *cmd = NULL;
