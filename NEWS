@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.472 2003-09-05 18:38:57 castaglia Exp $
+$Id: NEWS,v 1.473 2003-09-07 23:54:37 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -81,6 +81,9 @@ CVS
   On FreeBSD and other platforms, changes in autoconf require that headers
   be included in the proper order during configure's check.
 - Bug 2153 - Small error in handling PR_AUTH_RFC2228 authentication code
+- Bug 2154 - SQL query loses shell information.
+  An index was not being properly incremented in some cases when retrieving
+  user information.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------

@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.58 2003-08-16 15:43:46 castaglia Exp $
+ * $Id: mod_sql.c,v 1.59 2003-09-07 23:54:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1061,9 +1061,11 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
     }
   }
 
-  if (cmap.defaulthomedir)
+  if (cmap.defaulthomedir) {
     dir = cmap.defaulthomedir;
-  else
+    i++;
+
+  } else
     dir = sd->data[i++];
 
   if (cmap.shellfield) {
