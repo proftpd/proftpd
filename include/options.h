@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.17 2003-06-03 16:25:21 castaglia Exp $
+ * $Id: options.h,v 1.18 2003-06-04 23:32:02 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -173,11 +173,12 @@
  */
 
 #ifndef PR_TUNABLE_LOGIN_MAX
-# ifdef _POSIX_LOGIN_NAME_MAX
-#  define PR_TUNABLE_LOGIN_MAX		_POSIX_LOGIN_NAME_MAX
-# else
-#  define PR_TUNABLE_LOGIN_MAX		9
-# endif
+/* Ideally, we'd use _POSIX_LOGIN_NAME_MAX here, if it was defined.  However,
+ * doing so would cause trouble for those sites that use databases for
+ * storing user information; such sites often use email addresses as
+ * login names.  Given that, let's use 256 as a login name size.
+ */
+# define PR_TUNABLE_LOGIN_MAX		256
 #endif
 
 /* Loopback network, this should generally not need to be changed,
