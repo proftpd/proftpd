@@ -1,3 +1,40 @@
+2001-10-18 13:10  flood
+
+	* NEWS, doc/Configuration.html, modules/mod_core.c,
+	modules/mod_log.c, modules/mod_site.c, src/main.c: 1344-ExtendedLog
+	now logs QUIT command 1332-Doc patch 1335-Doc patch 1334-Max* none
+	fix 1343-better reporting of command dispatching 1242-more verbose
+	logging of regex
+
+2001-10-18 12:51  flood
+
+	* NEWS, src/dirtree.c: #1247 - Fix Allow/Deny boolean logic.
+
+2001-09-26 11:35  flood
+
+	* NEWS, modules/mod_core.c: #1327 AllowForeignAddress mergedown
+
+2001-09-26 11:34  flood
+
+	* NEWS, include/dirtree.h, modules/mod_core.c, src/dirtree.c: #1280
+	datatype fixups
+
+2001-09-26 11:32  flood
+
+	* NEWS, modules/mod_ls.c: #1311 - sigsegv under DirFake* directives
+
+2001-09-26 11:00  flood
+
+	* NEWS, include/conf.h: #1305 - limits.h now included
+
+2001-09-26 10:58  flood
+
+	* NEWS, src/inet.c: #1331 - forward-resolve reverse dns
+
+2001-08-24 13:33  flood
+
+	* src/main.c: patched to not display PASS password on proctitle
+
 2001-08-17 11:43  flood
 
 	* NEWS, include/version.h: 1.2.2-final
