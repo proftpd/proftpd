@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.48 2003-03-23 18:15:25 castaglia Exp $
+ * $Id: mod_sql.c,v 1.49 2003-04-01 20:13:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -976,7 +976,7 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
 
   } else {
     /* assume we have a uid */
-    snprintf(uidstr, MOD_SQL_BUFSIZE, "%d", (uid_t) p->pw_uid);
+    snprintf(uidstr, MOD_SQL_BUFSIZE, "%lu", (unsigned long) p->pw_uid);
     sql_log(DEBUG_WARN, "cache miss for uid '%s'", uidstr);
 
     if (cmap.uidfield)
@@ -1191,7 +1191,7 @@ static struct group *_sql_getgroup(cmd_rec *cmd, struct group *g) {
 
   } else {
     /* get groupname from gid */
-    snprintf(gidstr, MOD_SQL_BUFSIZE, "%d", (gid_t) g->gr_gid);
+    snprintf(gidstr, MOD_SQL_BUFSIZE, "%lu", (unsigned long) g->gr_gid);
 
     sql_log(DEBUG_WARN, "cache miss for gid '%s'", gidstr);
 
@@ -2877,7 +2877,7 @@ MODRET cmd_uid2name(cmd_rec *cmd) {
     if (!SQL_USERGOD)
       return DECLINED(cmd);
 
-    snprintf( uidstr, MOD_SQL_BUFSIZE, "%d", (uid_t) cmd->argv[0]);
+    snprintf( uidstr, MOD_SQL_BUFSIZE, "%lu", (unsigned long) cmd->argv[0]);
     return mod_create_data(cmd, uidstr);
   }
 
@@ -2889,7 +2889,7 @@ MODRET cmd_uid2name(cmd_rec *cmd) {
     uid_name = pw->pw_name;
 
   else {
-    snprintf( uidstr, MOD_SQL_BUFSIZE, "%d", (uid_t) cmd->argv[0]);
+    snprintf( uidstr, MOD_SQL_BUFSIZE, "%lu", (unsigned long) cmd->argv[0]);
     uid_name = uidstr;
   }
 
@@ -2920,11 +2920,11 @@ MODRET cmd_gid2name(cmd_rec *cmd) {
     if (!SQL_GROUPGOD)
       return DECLINED(cmd);
 
-    snprintf( gidstr, MOD_SQL_BUFSIZE, "%d", (gid_t) cmd->argv[0]);
+    snprintf( gidstr, MOD_SQL_BUFSIZE, "%lu", (unsigned long) cmd->argv[0]);
     return mod_create_data(cmd, gidstr);
   }
 
-  /* in the caes of a lookup of a negatively cached GID, the gr_name
+  /* In the caes of a lookup of a negatively cached GID, the gr_name
    * member will be NULL, which causes an undesired handling by
    * the core code.  Handle this case separately.
    */
@@ -2932,7 +2932,7 @@ MODRET cmd_gid2name(cmd_rec *cmd) {
     gid_name = gr->gr_name;
 
   else {
-    snprintf( gidstr, MOD_SQL_BUFSIZE, "%d", (gid_t) cmd->argv[0]);
+    snprintf( gidstr, MOD_SQL_BUFSIZE, "%lu", (unsigned long) cmd->argv[0]);
     gid_name = gidstr;
   }
 
