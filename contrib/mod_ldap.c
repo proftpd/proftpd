@@ -45,7 +45,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.32 2004-04-29 03:35:38 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.33 2004-07-22 00:11:22 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -110,7 +110,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#ifdef HAVE_CRYPT_H
+#if defined(HAVE_CRYPT_H) && !defined(AIX4) && !defined(AIX5)
 # include <crypt.h>
 #endif
 
