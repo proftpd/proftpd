@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.120 2003-10-10 05:37:08 castaglia Exp $
+ * $Id: dirtree.c,v 1.121 2003-10-10 05:45:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3166,6 +3166,7 @@ int fixup_servers(void) {
       log_pri(PR_LOG_ERR, "error: unable to determine IP address of '%s'",
         s->ServerAddress);
       xaset_remove(server_list, (xasetmember_t *) s);
+      destroy_pool(s->pool);
       continue;
     }
 
