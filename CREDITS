@@ -1,7 +1,7 @@
 Below are people who have made a significant contribution to ProFTPD's
 development, and their contact information.  It's modeled after the Linux
 CREDITS file.  If you've contributed, and I've forgotten you, my apologies.
-Feel free to contact me at macgyver@tos.net with any updates to this list.
+Feel free to contact me at macgyver@tos.net with any updates to 
 
 - MacGyver
 
@@ -11,11 +11,15 @@ beautification by scripts.  The fields are: name (N), email (E), web-address
 address (S).
 
 --
+N: Jesse Sipprell
+E: jss@inflicted.net
+D: Original proftpd author and current project co-maintainer
+
 N: Habeeb J. Dihu
 E: macgyver@tos.net
 W: http://www.macgyver.org
 P: 1024/D6C5774D 8E F5 3F 54 A0 69 CD 18  03 03 12 F4 B9 A4 A1 DA
-D: Head ProFTPD hacker
+D: Project co-maintainer
 
 N: Mark Lowes
 E: hamster@vom.tm

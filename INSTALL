@@ -177,7 +177,7 @@ INSTALLATION INSTRUCTIONS:
          Configuration Examples: sample-configurations/*.conf
         Configuration Reference: doc/Configuration.html
               Configuration FAQ: doc/FAQ-config.html
-                  Documentation: http://www.proftpd.net/docs/
+                  Documentation: http://www.proftpd.org/docs/
 
     Note that some systems will require special system-specific preparation
     of the anonymous ftp and other chroot directories.  Also, be aware of
@@ -237,21 +237,23 @@ Troubleshooting and Help
       Various subjects: README.*
     Config/Problem FAQ: doc/FAQ-config.html
 
-                   WWW: http://www.proftpd.net
-                   FTP: ftp://ftp.proftpd.net/pub/proftpd
-         Documentation: http://www.proftpd.net/docs/
-FAQ (hyperlinked file): http://www.proftpd.net/docs/proftpdfaq.html
-FAQ (single html file): http://www.proftpd.net/docs/proftpdfaq-full.html
+                   WWW: http://www.proftpd.org
+                   FTP: ftp://ftp.proftpd.org/pub/proftpd
+         Documentation: http://www.proftpd.org/docs/
+FAQ (hyperlinked file): http://www.proftpd.org/docs/proftpdfaq.html
+FAQ (single html file): http://www.proftpd.org/docs/proftpdfaq-full.html
     User Guide (draft): http://hamster.wibble.org/proftpd/proftpd_userguide.html
-      Config Reference: http://www.proftpd.net/docs/configuration.html
+      Config Reference: http://www.proftpd.org/docs/configuration.html
                         (similar or identical to doc/Configuration.html)
 
- End User Mailing List: proftpd@proftpd.net
-  (searchable archives) http://www.proftpd.net/lists.html
-Developer Mailing List: proftpd-devel@proftpd.net
-  (searchable archives) http://www.proftpd.net/lists.html
- Bug reports & patches: http://bugs.proftpd.net
-               Patches: macgyver@tos.net or proftpd-devel@proftpd.net
+ End User Mailing List: proftpd-user@proftpd.org
+  (searchable archives) http://www.proftpd.org/proftpd-l-archive
+Developer Mailing List: proftpd-devel@proftpd.org
+  (searchable archives) http://www.proftpd.org/proftpd-devel-archive
+ Bug reports & patches: http://bugs.proftpd.org
+               Patches: proftpd-devel@proftpd.org
 
-Note that the www.proftpd.org site is no longer officially being maintained.
-
+Note that www.proftpd.org and www.proftpd.net should now effectively be
+mirrors of each other.  The official proftpd site is www.proftpd.org, however
+proftpd.net will remain in operation and will be geographically (network-wise)
+seperate from proftpd.org in order to provide redundancy.
