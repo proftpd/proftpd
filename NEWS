@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.372 2003-02-18 17:55:17 castaglia Exp $
+$Id: NEWS,v 1.373 2003-02-20 07:48:12 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -27,6 +27,7 @@ CVS
 - Bug 1956 - Upload transfer rate broken.  The wrong variable was being used.
 - Bug 1941 - SCO OpenServer 5.0.5 issues.  Fixing this bug required adding
   more autoconf portability checks.
+- Bug 1958 - ftpwho -o oneline has newlines when client is idle.
 
 1.2.8rc2 - Released 29-Jan-2003
 ---------------------------------
