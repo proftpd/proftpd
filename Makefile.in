@@ -104,7 +104,7 @@ install-man: $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/ma
 
 install-all: install-proftpd install-utils install-conf install-man
 
-install: install-all
+install: all install-all
 
 
 depend:
