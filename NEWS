@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.332 2002-12-27 16:08:02 jwm Exp $
+$Id: NEWS,v 1.333 2002-12-27 16:13:55 jwm Exp $
 
 CVS
 ---------------------------------
@@ -172,7 +172,7 @@ CVS
              only occurred for those daemons running in inetd mode.
 - Bug 1769 - Lack of supplemental groups can cause segfault.  This bug is
              a result of the fix for Bug 1666.
-- Bug 1770 - Forgetting to check for no IP in string. 
+- Bug 1770 - Forgetting to check for no IP in string.
 - Moved the switching to the User/Group for a vhost up in the order, to occur
   before any modules' session initialization callback is invoked.
 - Bug 1644 - LogFormat local IP and FQDN tags missing.  Added %L to LogFormat
@@ -330,7 +330,7 @@ New mod_ldap (2.8.6)
              segfaults for ephemeral TCP connections
 - Bug 1570 - Changed MasqueradeAddress context checks in code to match
              docs
-- Bug 1601 - RNTO handler did not properly cleanup after itself in an 
+- Bug 1601 - RNTO handler did not properly cleanup after itself in an
              error condition, tickling a later segfault
 - Bug 1523 - Amended fix for this bug to include a pool that should prevent
              memory leaks for long-running daemons
@@ -721,4 +721,3 @@ consistantly.  Use <Limit SITE_CHMOD> instead.
     logins.
 
 - Added support for 'TYPE L 8' and 'TYPE L 7' per RFC 959.
-
