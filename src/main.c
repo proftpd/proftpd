@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.147 2002-12-16 18:45:31 castaglia Exp $
+ * $Id: main.c,v 1.148 2002-12-17 16:06:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1257,7 +1257,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   /* Inform all the modules that we are now a child */
   log_debug(DEBUG7, "performing module session initializations");
 
-  pr_init_session_modules();
+  module_session_init();
 
   log_debug(DEBUG4,"connected - local  : %s:%d",
                     inet_ntoa(*session.c->local_ipaddr),
@@ -2506,7 +2506,7 @@ int main(int argc, char *argv[], char **envp) {
   pr_init_fs();
   pr_free_bindings();
   init_config();
-  pr_preparse_init_modules();
+  module_preparse_init();
 
   init_conf_stacks();
   if (parse_config_file(config_filename) == -1) {
@@ -2518,8 +2518,8 @@ int main(int argc, char *argv[], char **envp) {
   free_conf_stacks();
   fixup_servers();
 
-  pr_postparse_init_modules();
-  pr_remove_postparse_inits();
+  module_postparse_init();
+  module_remove_postparse_inits();
 
   /* We're only doing a syntax check of the configuration file.
    */

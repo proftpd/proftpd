@@ -486,8 +486,7 @@ modret_t *mod_create_error(cmd_rec *cmd,int mr_errno)
 /* Called after forking in order to inform/initialize modules
  * need to know we are a child and have a connection.
  */
-
-int pr_init_session_modules(void) {
+int module_session_init(void) {
   module *prev_module = curmodule;
   module *m;
 
@@ -539,7 +538,7 @@ void list_modules(void) {
   }
 }
 
-int pr_preparse_init_modules(void) {
+int module_preparse_init(void) {
   int numconf = 0,numcmd = 0,numauth = 0;
   module *m;
   conftable *c,*wrk;
@@ -631,7 +630,7 @@ int pr_preparse_init_modules(void) {
   return 0;
 }
 
-int pr_postparse_init_modules(void) {
+int module_postparse_init(void) {
   postparse_t *pp = NULL;
 
   if (!postparse_inits)
@@ -658,7 +657,7 @@ void pr_register_postparse_init(int (*cb)(void)) {
   xaset_insert(postparse_inits, (xasetmember_t *) pp);
 }
 
-void pr_remove_postparse_inits(void) {
+void module_remove_postparse_inits(void) {
   if (postparse_inits)
     postparse_inits = NULL;
 

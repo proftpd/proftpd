@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.24 2002-12-17 15:18:19 jwm Exp $
+ * $Id: modules.h,v 1.25 2002-12-17 16:06:41 castaglia Exp $
  */
 
 #ifndef __MODULES_H
@@ -213,11 +213,13 @@ extern authtable *m_authtable;			/* Master authtable */
 unsigned char command_exists(char *);
 unsigned char module_exists(const char *);
 void list_modules(void);
-int pr_preparse_init_modules(void);			/* Initialize modules */
-int pr_postparse_init_modules(void);
-int pr_init_session_modules(void);
+
+/* Module daemon-startup initialization */
+int module_preparse_init(void);
+int module_postparse_init(void);
+int module_session_init(void);
+void module_remove_postparse_inits(void);
 void pr_register_postparse_init(int (*)(void));
-void pr_remove_postparse_inits(void);
 
 modret_t *call_module(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
 modret_t *call_module_cmd(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
