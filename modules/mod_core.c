@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.58 2001-03-11 14:23:22 flood Exp $
+ * $Id: mod_core.c,v 1.59 2001-03-23 12:54:59 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -666,10 +666,8 @@ MODRET set_user(cmd_rec *cmd)
     }
   }
 
-  /* The extra cast is required to avoid compiler warning */
-
   if(pw) {
-    add_config_param("User",1,(void*)((int)pw->pw_uid));
+    add_config_param("User",1,(void*)pw->pw_uid);
     /* We don't need extra fds sitting around open */
     auth_endpwent(cmd->tmp_pool);
   }
@@ -693,10 +691,8 @@ MODRET set_group(cmd_rec *cmd)
     }
   }
 
-  /* The extra cast is needed to avoid compiler warning */
-
   if(grp) {
-    add_config_param("Group",1,(void*)((int)grp->gr_gid));
+    add_config_param("Group",1,(void*)grp->gr_gid);
     auth_endgrent(cmd->tmp_pool);
   }
   add_config_param_str("GroupName",1,(void*)cmd->argv[1]);

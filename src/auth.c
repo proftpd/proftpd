@@ -19,7 +19,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.7 2001-02-23 02:47:26 flood Exp $
+ * $Id: auth.c,v 1.8 2001-03-23 12:54:59 flood Exp $
  */
 
 #include "conf.h"
@@ -247,7 +247,7 @@ struct passwd *auth_getpwuid(pool *p, uid_t uid)
 
   /* sanity check */
   if (ret == NULL) {
-    log_pri(LOG_NOTICE, "no such UID '%u'", (unsigned int)uid);
+    log_pri(LOG_NOTICE, "no such UID '%lu'", (unsigned long)uid);
     return NULL;
   }
 
@@ -316,7 +316,7 @@ struct group *auth_getgrgid(pool *p, gid_t gid)
 
   /* sanity check */
   if (ret == NULL) {
-    log_pri(LOG_NOTICE, "no such GID '%u'", (unsigned int)gid);
+    log_pri(LOG_NOTICE, "no such GID '%lu'", (unsigned long)gid);
     return NULL;
   }
 

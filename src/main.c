@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.56 2001-03-11 14:23:22 flood Exp $
+ * $Id: main.c,v 1.57 2001-03-23 12:54:59 flood Exp $
  */
 
 /*
@@ -2570,14 +2570,14 @@ int main(int argc, char **argv, char **envp)
    */
 
   if(geteuid() != daemon_uid) {
-    log_pri(LOG_ERR,"unable to set uid to %d, current uid: %d",
-		    (int)daemon_uid,(int)geteuid());
+    log_pri(LOG_ERR,"unable to set uid to %lu, current uid: %lu",
+		    (unsigned long)daemon_uid,(unsigned long)geteuid());
     exit(1);
   }
 
   if(getegid() != daemon_gid) {
-    log_pri(LOG_ERR,"unable to set gid to %d, current gid: %d",
-		    (int)daemon_gid,(int)getegid());
+    log_pri(LOG_ERR,"unable to set gid to %lu, current gid: %lu",
+		    (unsigned long)daemon_gid,(unsigned long)getegid());
     exit(1);
   }
 
