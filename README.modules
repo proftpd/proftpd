@@ -26,7 +26,10 @@ Modules always included:
         Implements the FTP SITE command, and the HELP, CHGRP, CHMOD
         subcommands.
 
-    mod_unixpw
+    mod_auth_file
+        Interface to file-based authentication (AuthUserFile, AuthGroupFile)
+
+    mod_auth_unix
         Interface to the native Unix password system.
 
     mod_xfer
@@ -52,6 +55,14 @@ Contributed ProFTPD Modules (contrib subdirectory)
 
 Also, see contrib/README.
 
+Security/encryption modules:
+
+    mod_tls
+        SSL/TLS authentication/encryption
+        See contrib/mod_tls.html
+        Originally by Peter Runestig
+        Contributed by TJ Saunders <tj@castaglia.org>
+
 Authentication modules:
 
     mod_ldap
@@ -73,6 +84,11 @@ Authentication modules:
 
 Feature modules:
 
+    mod_ifsession
+        Conditional per-user, per-group, per-class configurations
+        See contrib/mod_ifsession.html
+        Contributed by TJ Saunders <tj@castaglia.org>
+
     mod_ratio
         User upload/download ratios.
         See contrib/README.ratio and the comments in mod_ratio.c.
@@ -80,13 +96,18 @@ Feature modules:
         and Jim Dogopoulos <jd@dynw.com>/<jd@downcity.net>.
 
    mod_readme
-       Display "readme" files, controlled by the "DisplayReadme" directive.
-       Originally contributed by <jan.menzel@gmx.de>.
+        Display "readme" files, controlled by the "DisplayReadme" directive.
+        Originally contributed by <jan.menzel@gmx.de>.
+
+    mod_rewrite
+        Powerful regular expression-based command parameter rewrite engine
+        See contrib/mod_rewrite.html
+        Contributed by TJ Saunders <tj@castaglia.org>
 
     mod_wrap
         TCP Wrappers.
         See contrib/README.mod_wrap and contrib/mod_wrap.html.
-        Contributed by TJ Saunders <tj@digisle.net>.
+        Contributed by TJ Saunders <tj@castaglia.org>.
 
 
 Other ProFTPD modules (not included in the source distribution)
