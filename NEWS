@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.551 2004-04-05 17:54:58 castaglia Exp $
+$Id: NEWS,v 1.552 2004-04-06 23:17:05 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -134,6 +134,10 @@ CVS
 - Bug 2371 - ftpasswd should have option to compare password against value
   in passwd file.  ftpasswd now supports a --not-previous-password option.
 - Added a `howto' directory under `doc', for mini-HOWTOs.
+- Bug 2221 - proftpd on hp-ux 11.22.  The default data type of socklen_t
+  on HP-UX 11 is problematic; many system calls expect an int, and the
+  default type is a size_t.  This mismatch causes problems for 64-bit
+  builds.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------
