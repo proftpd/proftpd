@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.49 2003-04-01 20:13:51 castaglia Exp $
+ * $Id: mod_sql.c,v 1.50 2003-04-01 20:22:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2881,7 +2881,7 @@ MODRET cmd_uid2name(cmd_rec *cmd) {
     return mod_create_data(cmd, uidstr);
   }
 
-  /* in the caes of a lookup of a negatively cached UID, the pw_name
+  /* In the case of a lookup of a negatively cached UID, the pw_name
    * member will be NULL, which causes an undesired handling by
    * the core code.  Handle this case separately.
    */
@@ -2924,7 +2924,7 @@ MODRET cmd_gid2name(cmd_rec *cmd) {
     return mod_create_data(cmd, gidstr);
   }
 
-  /* In the caes of a lookup of a negatively cached GID, the gr_name
+  /* In the case of a lookup of a negatively cached GID, the gr_name
    * member will be NULL, which causes an undesired handling by
    * the core code.  Handle this case separately.
    */
