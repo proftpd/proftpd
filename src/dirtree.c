@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.118 2003-09-09 01:04:26 castaglia Exp $
+ * $Id: dirtree.c,v 1.119 2003-09-28 17:04:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -872,9 +872,9 @@ config_rec *end_sub_config(unsigned char *empty) {
 }
 
 /* Adds a config_rec to the specified set */
-config_rec *add_config_set(xaset_t **set,const char *name) {
+config_rec *add_config_set(xaset_t **set, const char *name) {
   pool *conf_pool = NULL, *set_pool = NULL;
-  config_rec *c,*parent = NULL;
+  config_rec *c, *parent = NULL;
 
   if (!*set) {
 
@@ -2136,7 +2136,7 @@ void build_dyn_config(pool *p, char *_path, struct stat *_sbuf,
     else
       path = NULL;
 
-    if (path && *path) {
+    if (path) {
       if (*(path + strlen(path) - 1) == '*')
         *(path +strlen(path) - 1) = '\0';
 
