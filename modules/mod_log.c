@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.49 2003-02-24 02:37:18 castaglia Exp $
+ * $Id: mod_log.c,v 1.50 2003-03-04 21:46:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -760,23 +760,34 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
   case META_SECONDS:
     argp = arg;
     if (session.xfer.p) {
-      struct timeval end_time;
 
-      gettimeofday(&end_time,NULL);
-      end_time.tv_sec -= session.xfer.start_time.tv_sec;
-      if (end_time.tv_usec >= session.xfer.start_time.tv_usec)
-        end_time.tv_usec -= session.xfer.start_time.tv_usec;
-      else {
-        end_time.tv_usec = 1000000L - (session.xfer.start_time.tv_usec -
-                           end_time.tv_usec);
-        end_time.tv_sec--;
-      }
+      /* Make sure that session.xfer.start_time actually has values (which
+       * is not always the case).
+       */
+      if (session.xfer.start_time.tv_sec != 0 ||
+          session.xfer.start_time.tv_usec != 0) {
+        struct timeval end_time;
 
-      snprintf(argp, sizeof(arg), "%ld.%03ld", (time_t) end_time.tv_sec,
-               (time_t) (end_time.tv_usec / 1000));
-    } else {
-      sstrncpy(argp,"-",sizeof(arg));
-    }
+        gettimeofday(&end_time,NULL);
+        end_time.tv_sec -= session.xfer.start_time.tv_sec;
+
+        if (end_time.tv_usec >= session.xfer.start_time.tv_usec)
+          end_time.tv_usec -= session.xfer.start_time.tv_usec;
+
+        else {
+          end_time.tv_usec = 1000000L - (session.xfer.start_time.tv_usec -
+            end_time.tv_usec);
+          end_time.tv_sec--;
+        }
+
+        snprintf(argp, sizeof(arg), "%ld.%03ld", (time_t) end_time.tv_sec,
+          (time_t) (end_time.tv_usec / 1000));
+
+      } else
+        sstrncpy(argp, "-", sizeof(arg));
+
+    } else
+      sstrncpy(argp, "-", sizeof(arg));
 
     m++;
     break;
