@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.1 2004-11-03 19:37:45 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.2 2004-12-12 19:27:20 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -52,6 +52,7 @@ The most current version of <code>mod_sql</code> is distributed with ProFTPD.
   <li><a href="#SQLDefaultGID">SQLDefaultGID</a>
   <li><a href="#SQLDefaultHomedir">SQLDefaultHomedir</a>
   <li><a href="#SQLDefaultUID">SQLDefaultUID</a>
+  <li><a href="#SQLEngine">SQLEngine</a>
   <li><a href="#SQLGroupInfo">SQLGroupInfo</a>
   <li><a href="#SQLGroupWhereClause">SQLGroupWhereClause</a>
   <li><a href="#SQLHomedirOnDemand">SQLHomedirOnDemand</a>
@@ -495,6 +496,40 @@ This value must be greater than any configured <code>SQLMinUserUID</code>.
 
 <p>
 See also: <a href="#SQLMinUserUID"><code>SQLMinUserUID</code></a>
+
+<p>
+<hr>
+<h2><a name="SQLEngine">SQLEngine</a></h2>
+<strong>Syntax:</strong> SQLEngine <em>on|off|auth|log</em><br>
+<strong>Default:</strong> SQLEngine on<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
+<strong>Module:</strong> mod_sql<br>
+<strong>Compatibility:</strong> 1.3.0rc1 and later
+
+<p>
+The <code>SQLEngine</code> directive is used to specify how
+<code>mod_sql</code> will operate.  By default, <code>SQLEngine</code> is
+<em>on</em>, and <code>mod_sql</code> will operate as normal.  Setting
+<code>SQLEngine</code> to <em>off</em> will effectively disable the module.
+
+<p>
+In addition to <em>on</em> and <em>off</em>, <code>SQLEngine</code> accepts
+two other values: <em>auth</em> and <em>log</em>.  If you wish to use
+<code>mod_sql</code> for authentication and not for logging (via
+<a href="#SQLLog"><code>SQLLog</code></a>), use <em>auth</em>.  Conversely,
+to do only <code>SQLLog</code>-type logging, and no authentication, use
+<em>log</em>.
+
+<p>
+This directive can be used to have <code>&lt;Anonymous&gt;</code> sections
+that do not use <code>mod_sql</code>, <i>e.g.</i>:
+<pre>
+  &lt;Anonymous ~ftp&gt;
+    ...
+    SQLEngine off
+    ...
+  &lt;/Anonymous&gt;
+</pre>
 
 <p>
 <hr>
@@ -1113,7 +1148,7 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2004-11-03 19:37:45 $</i><br>
+Last Updated: <i>$Date: 2004-12-12 19:27:20 $</i><br>
 
 <br><hr>
 
