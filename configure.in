@@ -731,7 +731,7 @@ if test $ac_add_mod_cap = "yes"; then
   ac_build_addl_modules="modules/mod_cap.o $ac_build_addl_modules"
 fi
 
-AC_CHECK_HEADERS(ctype.h getopt.h crypt.h bstring.h limits.h)
+AC_CHECK_HEADERS(ctype.h getopt.h crypt.h bstring.h inttypes.h limits.h)
 AC_CHECK_HEADERS(strings.h stropts.h)
 AC_CHECK_HEADERS(sys/file.h sys/mman.h sys/types.h sys/uio.h)
 
@@ -814,6 +814,12 @@ AC_STRUCT_TM
 dnl Check for generic typedefs
 AC_CHECK_TYPE(umode_t, mode_t)
 AC_CHECK_TYPE(ino_t, ino_t)
+AC_CHECK_TYPE(intptr_t, AC_DEFINE(HAVE_INTPTR_T),, [
+  #if HAVE_INTTYPES_H
+  # include <inttypes.h>
+  #endif
+])
+
 AC_CHECK_TYPES(socklen_t, ,
   [AC_DEFINE(socklen_t, int)],
   [
