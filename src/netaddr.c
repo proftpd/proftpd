@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.39 2003-11-19 20:57:47 castaglia Exp $
+ * $Id: netaddr.c,v 1.40 2003-12-03 00:16:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -203,7 +203,8 @@ int pr_inet_pton(int af, const char *src, void *dst) {
 
   /* inet_aton(3) would be better. However, it is not ubiquitous.  */
   res = inet_addr(src);
-  if (res == 0)
+  if (res == INADDR_NONE ||
+      res == 0)
     return 0;
 
   memcpy(dst, &res, sizeof(res));
