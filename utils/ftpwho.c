@@ -26,7 +26,7 @@
 
 /* Shows a count of "who" is online via proftpd.  Uses the scoreboard file.
  *
- * $Id: ftpwho.c,v 1.19 2003-03-04 19:28:35 castaglia Exp $
+ * $Id: ftpwho.c,v 1.20 2003-03-05 19:20:32 castaglia Exp $
  */
 
 #include "utils.h"
@@ -370,26 +370,28 @@ int main(int argc, char **argv) {
 
     total++;
 
-    if (strncmp(score->sce_cmd, "STOR", 4) == 0 ||
-        strncmp(score->sce_cmd, "STOU", 4) == 0 ||
-        strncmp(score->sce_cmd, "APPE", 4) == 0)
+    if (strcmp(score->sce_cmd, "STOR") == 0 ||
+        strcmp(score->sce_cmd, "STOU") == 0 ||
+        strcmp(score->sce_cmd, "APPE") == 0)
       uploading = TRUE;
 
     if (outform & OF_COMPAT) {
       if (score->sce_xfer_size) {
         if (uploading)
-          printf("%5d %-6s (n/a) %s\n", (int) score->sce_pid,
-            show_time(&score->sce_begin_idle), score->sce_cmd);
+          printf("%5d %-6s (n/a) %s %s\n", (int) score->sce_pid,
+            show_time(&score->sce_begin_idle), score->sce_cmd,
+            score->sce_cmd_arg);
 
         else
-          printf("%5d %-6s (%s%%) %s\n", (int) score->sce_pid,
+          printf("%5d %-6s (%s%%) %s %s\n", (int) score->sce_pid,
             show_time(&score->sce_begin_idle),
             percent_complete(score->sce_xfer_size, score->sce_xfer_done),
-            score->sce_cmd);
+            score->sce_cmd, score->sce_cmd_arg);
 
       } else
-        printf("%5d %-6s %s\n", (int) score->sce_pid,
-          show_time(&score->sce_begin_idle), score->sce_cmd);
+        printf("%5d %-6s %s %s\n", (int) score->sce_pid,
+          show_time(&score->sce_begin_idle), score->sce_cmd,
+          score->sce_cmd_arg);
 
       if (verbose) {
         if (score->sce_client_addr[0])
@@ -408,7 +410,7 @@ int main(int argc, char **argv) {
     if (strcmp(score->sce_user, "(none)")) {
 
       /* Is the client idle? */
-      if (!strcmp(score->sce_cmd, "(idle)")) {
+      if (strcmp(score->sce_cmd, "idle") == 0) {
 
         /* These printf() calls needs to be split up, as show_time() returns
          * a pointer to a static buffer, and pushing two invocations onto
@@ -423,15 +425,15 @@ int main(int argc, char **argv) {
 
       } else {
         if (uploading)
-          printf("%5d %-8s [%6s] (n/a) %s", (int) score->sce_pid,
+          printf("%5d %-8s [%6s] (n/a) %s %s", (int) score->sce_pid,
             score->sce_user, show_time(&score->sce_begin_session),
-            score->sce_cmd);
+            score->sce_cmd, score->sce_cmd_arg);
 
         else
-          printf("%5d %-8s [%6s] (%3s%%) %s", (int) score->sce_pid,
+          printf("%5d %-8s [%6s] (%3s%%) %s %s", (int) score->sce_pid,
             score->sce_user, show_time(&score->sce_begin_session),
             percent_complete(score->sce_xfer_size, score->sce_xfer_done),
-            score->sce_cmd);
+            score->sce_cmd, score->sce_cmd_arg);
 
         if (verbose) {
           printf("%sKB/s: %3.2f%s",

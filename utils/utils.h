@@ -26,7 +26,7 @@
 
 /* Scoreboard routines.
  *
- * $Id: utils.h,v 1.13 2003-03-04 19:28:37 castaglia Exp $
+ * $Id: utils.h,v 1.14 2003-03-05 19:20:34 castaglia Exp $
  */
 
 #ifndef UTIL_SCOREBOARD_H
@@ -82,7 +82,7 @@ typedef struct in_addr p_in_addr_t;
 
 /* UTIL_SCOREBOARD_VERSION is used for checking for scoreboard compatibility
  */
-#define UTIL_SCOREBOARD_VERSION        0x01040001
+#define UTIL_SCOREBOARD_VERSION        0x01040002
 
 /* Structure used as a header for scoreboard files.
  */
@@ -112,15 +112,22 @@ typedef struct {
   uid_t sce_uid;
   gid_t sce_gid;
   char sce_user[32];
+
   p_in_addr_t sce_server_ip;
   int sce_server_port;
   char sce_server_addr[80], sce_server_label[32];
+
   char sce_client_addr[16];
   char sce_client_name[PR_TUNABLE_SCOREBOARD_BUFFER_SIZE];
+
   char sce_class[32];
   char sce_cwd[PR_TUNABLE_SCOREBOARD_BUFFER_SIZE];
-  char sce_cmd[PR_TUNABLE_SCOREBOARD_BUFFER_SIZE];
+
+  char sce_cmd[5];
+  char sce_cmd_arg[PR_TUNABLE_SCOREBOARD_BUFFER_SIZE];
+
   time_t sce_begin_idle, sce_begin_session;
+
   off_t sce_xfer_size, sce_xfer_done, sce_xfer_len;
   unsigned long sce_xfer_elapsed;
 

@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.16 2003-03-04 19:28:32 castaglia Exp $
+ * $Id: scoreboard.c,v 1.17 2003-03-05 19:20:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -48,7 +48,7 @@ static unsigned char scoreboard_write_locked = FALSE;
 
 /* Internal routines */
 
-static char *handle_score_cmd(const char *fmt, va_list cmdap) {
+static char *handle_score_str(const char *fmt, va_list cmdap) {
   static char buf[PR_TUNABLE_SCOREBOARD_BUFFER_SIZE] = {'\0'};
   memset(buf, '\0', sizeof(buf));
   vsnprintf(buf, sizeof(buf), fmt, cmdap);
@@ -553,10 +553,22 @@ int pr_scoreboard_update_entry(pid_t pid, ...) {
         {
           char *cmdstr = NULL;
           tmp = va_arg(ap, char *);
-          cmdstr = handle_score_cmd(tmp, ap);
+          cmdstr = handle_score_str(tmp, ap);
 
           memset(entry.sce_cmd, '\0', sizeof(entry.sce_cmd));
           sstrncpy(entry.sce_cmd, cmdstr, sizeof(entry.sce_cmd));
+          tmp = va_arg(ap, void *);
+        }
+        break;
+
+      case PR_SCORE_CMD_ARG:
+        {
+          char *argstr = NULL;
+          tmp = va_arg(ap, char *);
+          argstr = handle_score_str(tmp, ap);
+
+          memset(entry.sce_cmd_arg, '\0', sizeof(entry.sce_cmd_arg));
+          sstrncpy(entry.sce_cmd_arg, argstr, sizeof(entry.sce_cmd_arg));
           tmp = va_arg(ap, void *);
         }
         break;

@@ -26,7 +26,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.22 2003-03-04 19:28:34 castaglia Exp $
+ * $Id: ftptop.c,v 1.23 2003-03-05 19:20:31 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.9"
@@ -64,11 +64,11 @@ static const char *program = "ftptop";
 
 /* Display options */
 
-/* These are for displaying "PID S USER ADDR SERVER TIME COMMAND" */
+/* These are for displaying "PID S USER CLIENT SERVER TIME COMMAND" */
 #define FTPTOP_REG_HEADER_FMT	"%-5s %s %-8s %-20s %-15s %-4s %-20s\n"
-#define FTPTOP_REG_DISPLAY_FMT	"%-5u %s %-8.8s %-20.20s %-15s %lu %-20.20s\n"
+#define FTPTOP_REG_DISPLAY_FMT	"%-5u %s %-8.8s %-20.20s %-15s %-4lu %4s %-20.20s\n"
 
-/* These are for displaying tranfer data: "PID S USER ADDR KB/s %DONE" */
+/* These are for displaying tranfer data: "PID S USER CLIENT KB/s %DONE" */
 #define FTPTOP_XFER_HEADER_FMT	"%-5s %s %-8s %-20s %-5s    %-32s\n"
 #define FTPTOP_XFER_DISPLAY_FMT	"%-5u %s %-8.8s %-20.20s %-3.2f %-32.20s\n"
 
@@ -357,7 +357,7 @@ static void read_scoreboard(void) {
     memset(buf, '\0', sizeof(buf));
 
     /* Determine the status symbol to display. */
-    if (strstr(score->sce_cmd, "(idle)")) {
+    if (strcmp(score->sce_cmd, "idle") == 0) {
       status = "I";
       ftp_nidles++;
 
@@ -365,7 +365,7 @@ static void read_scoreboard(void) {
           !(display_mode & FTPTOP_SHOW_IDLE))
         continue;
 
-    } else if (strstr(score->sce_cmd, "RETR")) {
+    } else if (strcmp(score->sce_cmd, "RETR") == 0) {
       status = "D";
       ftp_ndownloads++;
 
@@ -373,9 +373,9 @@ static void read_scoreboard(void) {
           !(display_mode & FTPTOP_SHOW_DOWNLOAD))
         continue;
 
-    } else if (strstr(score->sce_cmd, "STOR") ||
-        strstr(score->sce_cmd, "APPE") ||
-        strstr(score->sce_cmd, "STOU")) {
+    } else if (strcmp(score->sce_cmd, "STOR") == 0 ||
+        strcmp(score->sce_cmd, "APPE") == 0 ||
+        strcmp(score->sce_cmd, "STOU") == 0) {
       status = "U";
       ftp_nuploads++;
 
@@ -383,15 +383,16 @@ static void read_scoreboard(void) {
           !(display_mode & FTPTOP_SHOW_UPLOAD))
         continue;
 
-    } else if (strstr(score->sce_cmd, "LIST") ||
-        strstr(score->sce_cmd, "NLST"))
+    } else if (strcmp(score->sce_cmd, "LIST") == 0 ||
+        strcmp(score->sce_cmd, "NLST") == 0)
       status = "L";
 
     if (display_mode != FTPTOP_SHOW_RATES) {
       snprintf(buf, sizeof(buf), FTPTOP_REG_DISPLAY_FMT,
         (unsigned int) score->sce_pid, status, score->sce_user,
         score->sce_client_name, score->sce_server_addr,
-        time(NULL) - score->sce_begin_session, score->sce_cmd);
+        time(NULL) - score->sce_begin_session, score->sce_cmd,
+        score->sce_cmd_arg);
       buf[sizeof(buf)-1] = '\0';
 
     } else {
@@ -490,11 +491,11 @@ static void show_sessions(void) {
   attron(A_REVERSE);
 
   if (display_mode != FTPTOP_SHOW_RATES)
-    printw(FTPTOP_REG_HEADER_FMT, "PID", "S", "USER", "ADDR", "SERVER",
+    printw(FTPTOP_REG_HEADER_FMT, "PID", "S", "USER", "CLIENT", "SERVER",
       "TIME", "COMMAND");
 
   else
-    printw(FTPTOP_XFER_HEADER_FMT, "PID", "S", "USER", "ADDR", "KB/s", "%DONE");
+    printw(FTPTOP_XFER_HEADER_FMT, "PID", "S", "USER", "CLIENT", "KB/s", "%DONE");
 
   attroff(A_REVERSE);
 

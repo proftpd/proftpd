@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.164 2003-03-04 19:28:29 castaglia Exp $
+ * $Id: main.c,v 1.165 2003-03-05 19:20:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -306,8 +306,10 @@ void session_set_idle(void) {
 
   pr_scoreboard_update_entry(getpid(),
     PR_SCORE_BEGIN_IDLE, time(NULL),
-    PR_SCORE_CMD, "%s", "(idle)", NULL,
-    NULL);
+    PR_SCORE_CMD, "%s", "idle", NULL, NULL);
+
+  pr_scoreboard_update_entry(getpid(),
+    PR_SCORE_CMD_ARG, "%s", "", NULL, NULL);
 
   set_proc_title("%s - %s: IDLE", session.user, session.proc_prefix);
 }
@@ -449,7 +451,7 @@ static int get_command_class(const char *name) {
 }
 
 static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
-  char *argstr = NULL;
+  char *cmdargstr = NULL;
   cmdtable *c;
   modret_t *mr;
   int success = 0;
@@ -486,23 +488,27 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
 
       cmd->tmp_pool = make_sub_pool(cmd->pool);
 
-      argstr = make_arg_str(cmd->tmp_pool, cmd->argc, cmd->argv);
+      cmdargstr = make_arg_str(cmd->tmp_pool, cmd->argc, cmd->argv);
 
       if (cmd_type == CMD) {
 
-        /* The client has successfully authenticated.. */
+        /* The client has successfully authenticated... */
         if (session.user) {
+          char *args = strchr(cmdargstr, ' ');
+
           pr_scoreboard_update_entry(getpid(),
-            PR_SCORE_CMD, "%s", argstr, NULL,
-            NULL);
+            PR_SCORE_CMD, "%s", cmd->argv[0], NULL, NULL);
+          pr_scoreboard_update_entry(getpid(),
+            PR_SCORE_CMD_ARG, "%s", args ? (args+1) : "", NULL, NULL);
+
           set_proc_title("%s - %s: %s", session.user, session.proc_prefix,
-            argstr);
+            cmdargstr);
 
         /* ...else the client has not yet authenticated */
         } else
           set_proc_title("%s:%d: %s", session.c->remote_ipaddr ?
             inet_ntoa(*session.c->remote_ipaddr) : "?",
-            session.c->remote_port ? session.c->remote_port : 0, argstr);
+            session.c->remote_port ? session.c->remote_port : 0, cmdargstr);
       }
 
       log_debug(DEBUG4, "dispatching %s command '%s' to mod_%s",
@@ -513,7 +519,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
          cmd_type == LOG_CMD ? "LOG_CMD" :
          cmd_type == LOG_CMD_ERR ? "LOG_CMD_ERR" :
          "(unknown)"),
-        argstr, c->m->name);
+        cmdargstr, c->m->name);
 
       cmd->class |= c->class;
 
