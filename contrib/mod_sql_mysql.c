@@ -21,7 +21,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.25 2003-07-16 06:16:40 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.26 2003-08-02 00:30:04 castaglia Exp $
  */
 
 /*
@@ -1215,18 +1215,17 @@ MODRET cmd_escapestring(cmd_rec * cmd)
   conn = (db_conn_t *) entry->data;
 
   unescaped = cmd->argv[1];
-  escaped = (char *) pcalloc( cmd->tmp_pool, sizeof(char) * 
-			      (strlen(unescaped) * 2) + 1);
+  escaped = (char *) pcalloc(cmd->tmp_pool, sizeof(char) *
+    (strlen(unescaped) * 2) + 1);
 
   /* Note: the mysql_real_escape_string() function appeared in the C API
    * as of MySQL 3.23.14; this macro allows functioning with older mysql
    * installations.
    */
 #if MYSQL_VERSION_ID >= 32314
-  mysql_real_escape_string( conn->mysql, escaped, unescaped, 
-			    strlen(unescaped) );
+  mysql_real_escape_string(conn->mysql, escaped, unescaped, strlen(unescaped));
 #else
-  mysql_escape_string( escaped, unescaped, strlen(unescaped) );
+  mysql_escape_string(escaped, unescaped, strlen(unescaped));
 #endif
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_escapestring");
@@ -1290,7 +1289,11 @@ MODRET cmd_checkauth(cmd_rec * cmd)
   c_clear = cmd->argv[1];
   c_hash = cmd->argv[2];
 
-  make_scrambled_password( scrambled, c_clear );
+#if MYSQL_VERSION_ID >= 40100
+  make_scrambled_password(scrambled, c_clear, 0, NULL);
+#else
+  make_scrambled_password(scrambled, c_clear);
+#endif
 
   success = !strcmp(scrambled, c_hash); 
 
