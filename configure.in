@@ -141,7 +141,7 @@ AC_ARG_ENABLE(sendfile,
   [  --enable-sendfile       enable sendfile support (default=yes)])
 
 AC_ARG_ENABLE(force-setpassent,
-  [  --enable-force-setpassent force use of setpassent (default=yes on FreeBSD)])
+  [  --enable-force-setpassent force use of setpassent (default=no on FreeBSD)])
 
 AC_CHECK_LIB(security, set_auth_parameters, LIBS="$LIBS -lsecurity")
 AC_CHECK_HEADERS(sys/security.h)
