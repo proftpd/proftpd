@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.85 2003-11-19 20:57:47 castaglia Exp $
+ * $Id: inet.c,v 1.86 2004-04-22 01:32:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -536,8 +536,7 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
 #endif /* SOL_TCP */
 
   /* Some of these setsockopt() calls may fail when they operate on IPv6
-   * sockets, rather than on IPv4 sockets; I'm already seeing some IP_TOS
-   * EINVAL failures on FreeBSD, but only for IPv6 vhosts.
+   * sockets, rather than on IPv4 sockets.
    */
 
 #ifdef TCP_NODELAY
@@ -582,15 +581,21 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
 #endif /* IPTOS_THROUGHPUT */
 
 #ifdef IP_TOS
-  if (c->wfd != -1)
-    if (setsockopt(c->wfd, ip_level, IP_TOS, (void *) &tos, sizeof(tos)) < 0)
-      pr_log_pri(PR_LOG_NOTICE, "error setting write fd IP_TOS: %s",
-        strerror(errno));
 
-  if (c->rfd != -1)
-    if (setsockopt(c->rfd, ip_level, IP_TOS, (void *) &tos, sizeof(tos)) < 0)
-      pr_log_pri(PR_LOG_NOTICE, "error setting read fd IP_TOS: %s",
-        strerror(errno));
+  /* Only set TOS flags on IPv4 sockets; IPv6 sockets don't seem to support
+   * them.
+   */
+  if (pr_netaddr_get_family(c->local_addr) == AF_INET) {
+    if (c->wfd != -1)
+      if (setsockopt(c->wfd, ip_level, IP_TOS, (void *) &tos, sizeof(tos)) < 0)
+        pr_log_pri(PR_LOG_NOTICE, "error setting write fd IP_TOS: %s",
+          strerror(errno));
+
+    if (c->rfd != -1)
+      if (setsockopt(c->rfd, ip_level, IP_TOS, (void *) &tos, sizeof(tos)) < 0)
+        pr_log_pri(PR_LOG_NOTICE, "error setting read fd IP_TOS: %s",
+          strerror(errno));
+  }
 #endif /* IP_TOS */
 
 #ifdef TCP_NOPUSH
