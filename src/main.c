@@ -25,7 +25,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.78 2002-05-09 20:15:14 castaglia Exp $
+ * $Id: main.c,v 1.79 2002-05-09 20:42:30 castaglia Exp $
  */
 
 /*
@@ -1591,7 +1591,7 @@ void fork_server(int fd, conn_t *l, int nofork) {
    */
 
   if ((ident_lookups = get_param_ptr(main_server->conf, "IdentLookups",
-     FALSE)) != NULL && *ident_lookups == TRUE)
+     FALSE)) == NULL || *ident_lookups == TRUE)
     session.ident_user = get_ident(session.pool,conn);
   else
     session.ident_user = "UNKNOWN";
