@@ -69,7 +69,7 @@ than the default configuration file.  The default configuration file is
 .B @SYSCONFDIR@/proftpd.conf
 .br
 .TP
-.BI \-V, \--settings
+.BI \-V,\--settings
 Displays various compile-time settings and exits.
 .TP
 .BI \-t,\--configtest
