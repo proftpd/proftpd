@@ -19,7 +19,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.15 1999-09-16 17:20:51 macgyver Exp $
+ * $Id: main.c,v 1.16 1999-09-17 03:59:49 macgyver Exp $
  */
 
 /*
@@ -68,7 +68,15 @@
 # endif /* HAVE_SYS_EXEC_H */
 #endif /* PF_ARGV_PSSTRINGS */
 
+#ifdef HAVE_REGEX_H
+#include <regex.h>
+#endif
+
 #include "privs.h"
+
+/* From mod_core.c
+ */
+extern int core_display_file(const char *numeric, const char *fn);
 
 struct rehash {
   struct rehash *next;
@@ -119,7 +127,6 @@ static pool *resp_pool = NULL;
 static int (*main_check_auth)(cmd_rec*) = NULL;
 static char sbuf[1024];
 static char _ml_numeric[4];
-static char **Environment = NULL;
 static char **Argv = NULL;
 static char *LastArgv = NULL;
 
@@ -778,10 +785,39 @@ static void dispatch_cmd(cmd_rec *cmd)
   char *cp;
   int success = 0;
 
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+  regex_t *preg;
+  int ret;
+#endif
+  
   cmd->server = main_server;
   resp_list = resp_err_list = NULL;
   resp_pool = cmd->pool;
-
+  
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+  /* Check for valid arguments.
+   */
+  preg = (regex_t*) get_param_ptr(TOPLEVEL_CONF, "AllowFilter", FALSE);
+  
+  if(preg && ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) != 0)) {
+    char errmsg[200];
+    
+    regerror(ret, preg, errmsg, 200);
+    log_debug(DEBUG2, "'%s' didn't pass regex: %s", cmd->arg, errmsg);
+    add_response_err(R_550,"%s: Forbidden command argument", cmd->arg);
+    send_response_list(&resp_err_list);
+    return;
+  }
+  
+  preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"DenyFilter",FALSE);
+  
+  if(preg && ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) == 0)) {
+    add_response_err(R_550,"%s: Forbidden command argument", cmd->arg);
+    send_response_list(&resp_err_list);
+    return;
+  }
+#endif
+  
   for(cp = cmd->argv[0]; *cp; cp++)
     *cp = toupper(*cp);
 
@@ -830,6 +866,7 @@ cmd_rec *make_cmd(pool *p, char *buf)
   newcmd = (cmd_rec*)pcalloc(newpool,sizeof(cmd_rec));
   newcmd->pool = newpool;
   newcmd->symtable_index = -1;
+  
   tarr = make_array(newpool,2,sizeof(char*));
 
   if((wrd = get_word(&cp)) != NULL) {
@@ -932,7 +969,7 @@ void cmd_loop(server_rec *server, conn_t *c)
     buf[CmdBufSize - 1] = '\0';
     i = strlen(buf);
 
-    if(i && (buf[i-1] == '\n' || buf[i-1] == '\n')) {
+    if(i && (buf[i-1] == '\n' || buf[i-1] == '\r')) {
       buf[i-1] = '\0'; i--;
       if(i && (buf[i-1] == '\n' || buf[i-1] =='\r'))
         buf[i-1] = '\0';
@@ -1955,7 +1992,8 @@ int main(int argc, char **argv, char **envp)
   /* Redirect stderr to somewhere appropriate.
    * Ideally, this would be syslog, but alas...
    */
-  if((logfd = open("/tmp/proftpd.log", O_WRONLY | O_CREAT | O_APPEND,0644))< 0) {
+  if((logfd = open(RUN_DIR "/proftpd-memory.log",
+		   O_WRONLY | O_CREAT | O_APPEND, 0644))< 0) {
 	log_pri(LOG_ERR, "Error opening error logfile: %s", strerror(errno));
 	exit(1);
   }
