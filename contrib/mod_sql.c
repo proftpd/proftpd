@@ -1540,6 +1540,17 @@ static char *resolve_tag(cmd_rec *cmd, char tag)
       sstrncpy(argp, session.user, sizeof(arg));
     }
     break;
+  case 'U':
+    argp = arg;
+    if (!session.user) {
+      char *login_user = get_param_ptr(main_server->conf, C_USER, FALSE);
+
+      if (!login_user)
+        login_user = "root";
+
+      sstrncpy(argp, login_user, sizeof(arg));
+    }
+    break;
   case 'r':
     argp = arg;
     if(!strcasecmp(cmd->argv[0], C_PASS) && session.hide_password)
