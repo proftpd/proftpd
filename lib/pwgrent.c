@@ -23,7 +23,8 @@ not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite
 
 #include <conf.h>
 
-/* From log.c */
+/* From log.c/log.h */
+#define PR_LOG_ERR LOG_ERR
 extern void log_pri(int, char *, ...);
 
 /* From utils.c */
