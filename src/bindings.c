@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.23 2004-10-11 17:03:24 castaglia Exp $
+ * $Id: bindings.c,v 1.24 2004-11-20 20:32:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -146,7 +146,7 @@ int pr_ipbind_add_binds(server_rec *serv) {
   if (!serv)
     return -1;
 
-  c = find_config(serv->conf, CONF_PARAM, "Bind", FALSE);
+  c = find_config(serv->conf, CONF_PARAM, "_bind", FALSE);
 
   while (c) {
     listen_conn = NULL;
@@ -155,7 +155,7 @@ int pr_ipbind_add_binds(server_rec *serv) {
     if (!addr) {
       pr_log_pri(PR_LOG_NOTICE,
        "notice: unable to determine IP address of '%s'", (char *) c->argv[0]);
-      c = find_config_next(c, c->next, CONF_PARAM, "Bind", FALSE);
+      c = find_config_next(c, c->next, CONF_PARAM, "_bind", FALSE);
       continue;
     }
 
@@ -175,8 +175,8 @@ int pr_ipbind_add_binds(server_rec *serv) {
       PR_OPEN_IPBIND(addr, serv->ServerPort, serv->listen, FALSE, FALSE, TRUE);
     }
 
-    /* move on to the next Bind directive */
-    c = find_config_next(c, c->next, CONF_PARAM, "Bind", FALSE);
+    /* Move on to the next bind directive */
+    c = find_config_next(c, c->next, CONF_PARAM, "_bind", FALSE);
   }
 
   /* done */

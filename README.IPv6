@@ -22,7 +22,6 @@ the proper configure option:
 The functionality of the following configuration directives has been 
 changed slightly with the addition of IPv6 support:
 
-  Bind
   DefaultAddress
   MasqueradeAddress
   <VirtualHost>
@@ -32,9 +31,9 @@ If given IP addresses, either IPv4 or IPv6, they work as one expects.  The
 case that is now different is when a DNS name is given as a parameter.
 
 It's possible for a DNS name to have multiple IP addresses, both A and AAAA
-records.  Thus Bind, DefaultAddress, and <VirtualHost> will resolve a DNS
-name to its address(es); if multiple addresses are found, Bind directives will
-be implicitly added.  For example:
+records.  Thus DefaultAddress and <VirtualHost> will resolve a DNS name to its
+address(es); if multiple addresses are found, Bind directives will be
+implicitly added.  For example:
 
   <VirtualHost localhost>
     ...
@@ -42,15 +41,9 @@ be implicitly added.  For example:
 
 on an IPv6-enabled host, would be treated as:
 
-  <VirtualHost ::1>
-    Bind 127.0.0.1
+  <VirtualHost 127.0.0.1 ::1>
     ...
   </VirtualHost>
-
-Recall that the Bind directive works by "binding" the server configuration
-to a different IP address, such that proftpd, when it searches its list of
-server configurations by IP address, the bound configuration is matched
-with the different IP address.
 
 NOTE: the MasqueradeAddress does _not_ resolve a DNS name to all possible
 addresses.  ProFTPD can only masquerade as one address, and so, if given a

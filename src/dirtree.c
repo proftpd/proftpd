@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.163 2004-11-02 18:18:59 castaglia Exp $
+ * $Id: dirtree.c,v 1.164 2004-11-20 20:32:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2232,7 +2232,11 @@ void pr_config_dump(void (*dumpf)(const char *, ...), xaset_t *s,
     indent = "";
 
   for (c = (config_rec *) s->xas_list; c; c = c->next) {
-    dumpf("%s%s", indent, c->name);
+
+    /* Don't display directives whose name starts with an underscore. */
+    if (*(c->name) != '_')
+      dumpf("%s%s", indent, c->name);
+
     if (c->subset)
       pr_config_dump(dumpf, c->subset,
         pstrcat(c->pool, indent, " ", NULL));
@@ -2893,7 +2897,7 @@ int fixup_servers(xaset_t *list) {
         register unsigned int i;
         pr_netaddr_t **elts = addrs->elts;
 
-        /* For every additional address, implicitly add a Bind record. */
+        /* For every additional address, implicitly add a bind record. */
         for (i = 0; i < addrs->nelts; i++) {
           const char *ipstr = pr_netaddr_get_ipstr(elts[i]);
 
@@ -2901,7 +2905,7 @@ int fixup_servers(xaset_t *list) {
           char ipbuf[INET6_ADDRSTRLEN];
           if (pr_netaddr_get_family(elts[i]) == AF_INET) {
 
-            /* Create the Bind record using the IPv4-mapped IPv6 version of
+            /* Create the bind record using the IPv4-mapped IPv6 version of
              * this address.
              */
             snprintf(ipbuf, sizeof(ipbuf), "::ffff:%s", ipstr);
@@ -2909,7 +2913,7 @@ int fixup_servers(xaset_t *list) {
           }
 #endif /* PR_USE_IPV6 */
 
-          pr_conf_add_server_config_param_str(s, "Bind", 1, ipstr);
+          pr_conf_add_server_config_param_str(s, "_bind", 1, ipstr);
         }
       }
  

@@ -52,4 +52,27 @@ files.
   + New modules:
       mod_dso
 
-Last Updated: $Date: 2004-11-20 03:15:21 $
+  + Deprecated configuration directives:
+      Bind
+
+        The Bind directive was causing too much confusion, and did not
+        do as many system administrators assumed it.  Rather than using
+        Bind to associate a server configuration with an IP address,
+        administrators would assume it was meant for making ProFTPD
+        bind to a single address.
+
+        Rather than having a configuration like this:
+
+          <VirtualHost host1.domain.com>
+            Bind host2.domain.com
+            ...
+          </VirtualHost>
+
+        The <VirtualHost> and DefaultAddress directives can now handle
+        multiple address, so that the above configuration becomes:
+
+          <VirtualHost host1.domain.com host2.domain.com>
+            ...
+          </VirtualHost>
+
+Last Updated: $Date: 2004-11-20 20:32:19 $

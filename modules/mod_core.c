@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.259 2004-11-15 00:21:33 castaglia Exp $
+ * $Id: mod_core.c,v 1.260 2004-11-20 20:32:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -423,7 +423,8 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
   pr_netaddr_t *main_addr = NULL;
   array_header *addrs = NULL;
 
-  CHECK_ARGS(cmd, 1);
+  if (cmd->argc-1 < 1)
+    CONF_ERROR(cmd, "wrong number of parameters");
   CHECK_CONF(cmd, CONF_ROOT);
 
   main_addr = pr_netaddr_get_addr(main_server->pool, cmd->argv[1], &addrs);
@@ -442,7 +443,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
     register unsigned int i;
     pr_netaddr_t **elts = addrs->elts;
 
-    /* For every additional address, implicitly add a Bind record. */
+    /* For every additional address, implicitly add a bind record. */
     for (i = 0; i < addrs->nelts; i++) {
       const char *ipstr = pr_netaddr_get_ipstr(elts[i]);
 
@@ -450,7 +451,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
       char ipbuf[INET6_ADDRSTRLEN];
       if (pr_netaddr_get_family(elts[i]) == AF_INET) {
 
-        /* Create the Bind record using the IPv4-mapped IPv6 version of
+        /* Create the bind record using the IPv4-mapped IPv6 version of
          * this address.
          */
         snprintf(ipbuf, sizeof(ipbuf), "::ffff:%s", ipstr);
@@ -458,7 +459,37 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
       }
 #endif /* PR_USE_IPV6 */
 
-      add_config_param_str("Bind", 1, ipstr);
+      add_config_param_str("_bind", 1, ipstr);
+    }
+  }
+
+  /* Handle multiple addresses in a DefaultAddres directive.  We do
+   * this by adding bind directives to the server_rec created for the
+   * first address.
+   */
+  if (cmd->argc-1 > 1) {
+    register unsigned int i;
+
+    for (i = 2; i < cmd->argc; i++) {
+      pr_netaddr_t *addr;
+      addrs = NULL;
+
+      addr = pr_netaddr_get_addr(cmd->tmp_pool, cmd->argv[i], &addrs);
+
+      if (addr == NULL)
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '",
+          cmd->argv[i], "': ", strerror(errno), NULL));
+
+      add_config_param_str("_bind", 1, pr_netaddr_get_ipstr(addr));
+
+      if (addrs) {
+        register unsigned int j;
+        pr_netaddr_t **elts = addrs->elts;
+
+        /* For every additional address, implicitly add a bind record. */
+        for (j = 0; j < addrs->nelts; j++)
+          add_config_param_str("_bind", 1, pr_netaddr_get_ipstr(elts[j]));
+      }
     }
   }
 
@@ -556,41 +587,6 @@ MODRET set_wtmplog(cmd_rec *cmd) {
 
   } else
     CONF_ERROR(cmd, "expected boolean argument, or \"NONE\"");
-
-  return HANDLED(cmd);
-}
-
-MODRET set_bind(cmd_rec *cmd) {
-  pr_netaddr_t *addr = NULL;
-  array_header *addrs = NULL;
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
-
-  /* It's possible for a server to have multiple IP addresses (e.g. a DNS
-   * name that has both A and AAAA records).  We need to handle that case
-   * here by looking up all of a server's addresses, and making sure there
-   * are server_recs for each one.
-   */
-
-  c = add_config_param(cmd->argv[0], 1, NULL);
-
-  addr = pr_netaddr_get_addr(c->pool, cmd->argv[1], &addrs);
-  if (!addr)
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unable to resolve \"",
-      cmd->argv[1], "\"", NULL));
-
-  c->argv[0] = pstrdup(c->pool, pr_netaddr_get_ipstr(addr));
-
-  if (addrs) {
-    register unsigned int i;
-    pr_netaddr_t **elts = addrs->elts;
-
-    /* For every additional address, implicitly add a Bind record. */
-    for (i = 0; i < addrs->nelts; i++)
-      add_config_param_str(cmd->argv[0], 1, pr_netaddr_get_ipstr(elts[i]));
-  }
 
   return HANDLED(cmd);
 }
@@ -2590,6 +2586,43 @@ MODRET set_authorder(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+MODRET set_bind(cmd_rec *cmd) {
+  pr_netaddr_t *addr = NULL;
+  array_header *addrs = NULL;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
+
+  /* It's possible for a server to have multiple IP addresses (e.g. a DNS
+   * name that has both A and AAAA records).  We need to handle that case
+   * here by looking up all of a server's addresses, and making sure there
+   * are server_recs for each one.
+   */
+
+  c = add_config_param("_bind", 1, NULL);
+
+  addr = pr_netaddr_get_addr(c->pool, cmd->argv[1], &addrs);
+  if (!addr)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unable to resolve \"",
+      cmd->argv[1], "\"", NULL));
+
+  c->argv[0] = pstrdup(c->pool, pr_netaddr_get_ipstr(addr));
+
+  if (addrs) {
+    register unsigned int i;
+    pr_netaddr_t **elts = addrs->elts;
+
+    /* For every additional address, implicitly add a Bind record. */
+    for (i = 0; i < addrs->nelts; i++)
+      add_config_param_str("_bind", 1, pr_netaddr_get_ipstr(elts[i]));
+  }
+
+  pr_log_pri(PR_LOG_WARNING, "warning: the Bind directive is deprecated "
+    "and will be removed in the next release");
+  return HANDLED(cmd);
+}
+
 MODRET end_limit(cmd_rec *cmd) {
   int empty_ctxt = FALSE;
 
@@ -2683,7 +2716,8 @@ MODRET add_virtualhost(cmd_rec *cmd) {
   pr_netaddr_t *addr = NULL;
   array_header *addrs = NULL;
 
-  CHECK_ARGS(cmd, 1);
+  if (cmd->argc-1 < 1)
+    CONF_ERROR(cmd, "wrong number of parameters");
   CHECK_CONF(cmd, CONF_ROOT);
 
   s = pr_parser_server_ctxt_open(cmd->argv[1]);
@@ -2701,9 +2735,38 @@ MODRET add_virtualhost(cmd_rec *cmd) {
     register unsigned int i;
     pr_netaddr_t **elts = addrs->elts;
 
-    /* For every additional address, implicitly add a Bind record. */
+    /* For every additional address, implicitly add a bind record. */
     for (i = 0; i < addrs->nelts; i++)
-      add_config_param_str("Bind", 1, pr_netaddr_get_ipstr(elts[i]));
+      add_config_param_str("_bind", 1, pr_netaddr_get_ipstr(elts[i]));
+  }
+
+  /* Handle multiple addresses in a <VirtualHost> directive.  We do
+   * this by adding bind directives to the server_rec created for the
+   * first address.
+   */
+  if (cmd->argc-1 > 1) {
+    register unsigned int i;
+
+    for (i = 2; i < cmd->argc; i++) {
+      addrs = NULL;
+
+      addr = pr_netaddr_get_addr(cmd->tmp_pool, cmd->argv[i], &addrs);
+
+      if (addr == NULL)
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '",
+          cmd->argv[i], "': ", strerror(errno), NULL));
+
+      add_config_param_str("_bind", 1, pr_netaddr_get_ipstr(addr));
+
+      if (addrs) {
+        register unsigned int j;
+        pr_netaddr_t **elts = addrs->elts;
+
+        /* For every additional address, implicitly add a bind record. */
+        for (j = 0; j < addrs->nelts; j++)
+          add_config_param_str("_bind", 1, pr_netaddr_get_ipstr(elts[j]));
+      }
+    }
   }
 
   return HANDLED(cmd);
@@ -4384,7 +4447,6 @@ static conftable core_conftab[] = {
   { "AllowOverride",		set_allowoverride,		NULL },
   { "AllowUser",		set_allowdenyusergroupclass,	NULL },
   { "AuthOrder",		set_authorder,			NULL },
-  { "Bind",			set_bind,			NULL },
   { "CDPath",			set_cdpath,			NULL },
   { "CommandBufferSize",	set_commandbuffersize,		NULL },
   { "DebugLevel",		set_debuglevel,			NULL },
@@ -4450,6 +4512,9 @@ static conftable core_conftab[] = {
   { "WtmpLog",			set_wtmplog,			NULL },
   { "tcpBackLog",		set_tcpbacklog,			NULL },
   { "tcpNoDelay",		set_tcpnodelay,			NULL },
+
+  /* Deprecated */
+  { "Bind",			set_bind,			NULL },
 
   { NULL, NULL, NULL }
 };

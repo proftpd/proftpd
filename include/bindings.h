@@ -24,7 +24,7 @@
 
 /* ProFTPD bindings support routines.
  *
- * $Id: bindings.h,v 1.9 2003-11-09 21:09:58 castaglia Exp $
+ * $Id: bindings.h,v 1.10 2004-11-20 20:32:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -110,8 +110,8 @@ int pr_ipbind_close(pr_netaddr_t *addr, unsigned int port,
 int pr_ipbind_close_listeners(void);
 
 /* Search through the given server's configuration records, and for each
- * associated Bind configuration found, create an additional IP binding for
- * that Bind address.  Honors SocketBindTight, if set.  Returns 0 on
+ * associated bind configuration found, create an additional IP binding for
+ * that bind address.  Honors SocketBindTight, if set.  Returns 0 on
  * success, -1 on failure (if server == NULL, for example).
  */
 int pr_ipbind_add_binds(server_rec *server);

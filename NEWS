@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.626 2004-11-14 23:45:51 castaglia Exp $
+$Id: NEWS,v 1.627 2004-11-20 20:32:19 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -72,6 +72,9 @@ CVS
 - Bug 2471 - Restart command (REST) is not working correctly for text files.
   When in ASCII mode, ProFTPD now refuses to handle REST.  This behavior
   is documented in doc/howto/ASCII.html.
+- Bug 2454 - Extend <VirtualHost> to honor multiple addresses.  With this
+  change, the Bind directive is now deprecated.  See the RELEASE_NOTES
+  for more details.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------
