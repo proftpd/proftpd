@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.2.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.4 2004-10-31 22:36:42 castaglia Exp $
+ * $Id: mod_dso.c,v 1.5 2004-10-31 22:39:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -157,6 +157,7 @@ static int dso_load_module(char *name) {
   return 0;
 }
 
+#ifdef USE_CTRLS
 static int dso_unload_module(const char *name) {
   module *m;
 
@@ -190,6 +191,7 @@ static int dso_unload_module(const char *name) {
   errno = ENOENT;
   return -1;
 }
+#endif /* USE_CTRLS */
 
 #ifdef USE_CTRLS
 /* Controls handlers
