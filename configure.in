@@ -481,6 +481,10 @@ if test "$pr_cv_func_sendfile" = "None"; then
   AC_TRY_COMPILE([
 #include <sys/socket.h>
 ],[
+#ifndef __hpux
+#error "Non-HP/UX platform"
+#endif /* __hpux */
+
 int i;
 off_t o;
 size_t n;
