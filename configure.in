@@ -1,3 +1,4 @@
+dnl $Id: configure.in,v 1.43 2000-08-02 22:38:13 macgyver Exp $
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(include/conf.h)
 
@@ -238,7 +239,7 @@ AC_CHECK_HEADERS(ctype.h getopt.h crypt.h bstring.h strings.h)
 AC_CHECK_HEADERS(sys/types.h sys/param.h sys/file.h sys/uio.h)
 AC_CHECK_HEADERS(netdb.h netinet/in.h netinet/tcp.h arpa/inet.h sys/stat.h)
 AC_CHECK_HEADERS(errno.h sys/socket.h sys/termios.h sys/termio.h)
-AC_CHECK_HEADERS(sys/statvfs.h sys/vfs.h sys/select.h sys/sendfile.h)
+AC_CHECK_HEADERS(sys/statvfs.h sys/vfs.h sys/select.h)
 AC_CHECK_HEADERS(utmpx.h)
 AC_CHECK_HEADERS(regex.h)
 AC_CHECK_HEADER(glob.h,have_glob_h="yes",)
@@ -450,8 +451,9 @@ off_t o;
 size_t n;
 const struct iovec h;
 (void)sendfile(i,i,o,n,&h,i);
-       ], pr_cv_func_sendfile="HP/UX"))
+       ], pr_cv_func_sendfile="HP/UX")
 fi
+)
 
   dnl Now, set the appropriate defines based on our investigations...
 
@@ -465,6 +467,7 @@ fi
 		;;
 
 	  "Linux")
+		AC_CHECK_HEADERS(sys/sendfile.h)
 		AC_DEFINE(HAVE_LINUX_SENDFILE)
 		;;
 
@@ -627,4 +630,6 @@ AC_SUBST(VERSION)
 AC_CONFIG_HEADER(config.h)
 
 CFLAGS="$CFLAGS $use_shadow"
-AC_OUTPUT(lib/Makefile src/Makefile modules/Makefile Makefile Make.rules Make.modules contrib/dist/rpm/proftpd.spec)
+AC_OUTPUT(lib/Makefile src/Makefile modules/Makefile Makefile Make.rules
+            Make.modules contrib/dist/rpm/proftpd.spec,
+          [echo timestamp > stamp-h])

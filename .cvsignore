@@ -9,5 +9,6 @@ ftpcount
 Makefile
 Make.rules
 Make.modules
+stamp-h
 *.o
 *~
