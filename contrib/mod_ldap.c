@@ -20,7 +20,7 @@
 
 /*
  * $Libraries: -lldap -llber$
- * ldap password lookup module for ProFTPD (mod_ldap v2.7.3)
+ * ldap password lookup module for ProFTPD (mod_ldap v2.7.4)
  * Copyright (c) 1999-2000, John Morrissey <jwm@horde.net>
  *
  * Thanks for patches to:
@@ -29,7 +29,7 @@
  * Bert Vermeulen <bert@be.easynet.net> - LDAPHomedirOnDemand,
  *                                        LDAPDefaultAuthScheme
  *
- * $Id: mod_ldap.c,v 1.13 2000-08-03 15:36:18 macgyver Exp $
+ * $Id: mod_ldap.c,v 1.14 2001-01-29 02:16:12 flood Exp $
  */
 
 /* Default mode to use when creating home directory on demand. */
@@ -673,7 +673,7 @@ MODRET ldap_check(cmd_rec *cmd)
 
   /* Check to see how the password is encrypted, and check accordingly. */
 
-  if (hash_method == NULL) { /* No leading {scheme} */
+  if (encname_len == strlen(cpw + 1)) { /* No leading {scheme} */
     if (ldap_defaultauthscheme && (strcasecmp(ldap_defaultauthscheme, "clear") == 0)) {
       if (strcmp(pw, cpw) != 0)
       return ERROR(cmd);
