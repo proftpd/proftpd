@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.2.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.7 2004-11-02 18:18:59 castaglia Exp $
+ * $Id: mod_dso.c,v 1.8 2004-12-16 18:33:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,6 +35,7 @@
 #define MOD_DSO_VERSION		"mod_dso/0.4"
 
 /* From modules/module_glue.c */
+extern module *static_modules[];
 extern module *loaded_modules;
 
 module dso_module;
@@ -157,8 +158,33 @@ static int dso_load_module(char *name) {
   return 0;
 }
 
-#ifdef PR_USE_CTRLS
-static int dso_unload_module(const char *name) {
+static int dso_unload_module(module *m) {
+  int res;
+  char *name;
+
+  /* Some modules cannot be unloaded. */
+  if (strcmp(m->name, "dso") == 0) {
+    errno = EPERM;
+    return -1;
+  }
+
+  name = pstrdup(dso_pool, m->name);
+
+  res = pr_module_unload(m);
+  if (res < 0)
+    pr_log_debug(DEBUG1, MOD_DSO_VERSION
+      ": error unloading module 'mod_%s.c': %s", m->name, strerror(errno));
+
+  if (lt_dlclose(m->handle) < 0) {
+    pr_log_debug(DEBUG1, MOD_DSO_VERSION ": error closing '%s': %s",
+      name, lt_dlerror());
+    return -1;
+  }
+
+  return 0;
+}
+
+static int dso_unload_module_by_name(const char *name) {
   module *m;
 
   if (strncmp(name, "mod_", 4) != 0 ||
@@ -170,34 +196,13 @@ static int dso_unload_module(const char *name) {
 
   /* Lookup the module pointer for the given module name. */
   m = pr_module_get(name);
-
-  if (m) {
-    int res;
-
-    /* Some modules cannot be unloaded. */
-    if (strcmp(m->name, "dso") == 0) {
-      errno = EPERM;
-      return -1;
-    }
-
-    res = pr_module_unload(m);
-    if (res < 0)
-      pr_log_debug(DEBUG1, MOD_DSO_VERSION
-        ": error unloading module 'mod_%s.c': %s", m->name, strerror(errno));
-
-    if (lt_dlclose(m->handle) < 0) {
-      pr_log_debug(DEBUG1, MOD_DSO_VERSION ": error closing '%s': %s",
-        name, lt_dlerror());
-      return -1;
-    }
-
-    return 0;
+  if (!m) {
+    errno = ENOENT;
+    return -1;
   }
 
-  errno = ENOENT;
-  return -1;
+  return dso_unload_module(m);
 }
-#endif /* PR_USE_CTRLS */
 
 #ifdef PR_USE_CTRLS
 /* Controls handlers
@@ -299,7 +304,7 @@ static int dso_handle_rmmod(pr_ctrls_t *ctrl, int reqargc,
   }
 
   for (i = 0; i < reqargc; i++) {
-    if (dso_unload_module(reqargv[i]) < 0) {
+    if (dso_unload_module_by_name(reqargv[i]) < 0) {
       switch (errno) {
         case EINVAL:
           pr_ctrls_add_response(ctrl, "error unloading '%s': Bad module name",
@@ -510,6 +515,7 @@ MODRET set_modulepath(cmd_rec *cmd) {
  */
 
 static void dso_restart_ev(const void *event_data, void *user_data) {
+  module *m, *mi;
 #ifdef PR_USE_CTRLS
   register unsigned int i = 0;
 #endif /* PR_USE_CTRLS */
@@ -531,6 +537,28 @@ static void dso_restart_ev(const void *event_data, void *user_data) {
     ctrls_init_acl(dso_acttab[i].act_acl);
   }
 #endif /* PR_USE_CTRLS */
+
+  /* Unload all shared modules. */
+  for (mi = loaded_modules; mi; mi = m) {
+    register unsigned int i;
+    int is_static = FALSE;
+
+    m = mi->next;
+
+    for (i = 0; static_modules[i]; i++) {
+      if (strcmp(mi->name, static_modules[i]->name) == 0) {
+        is_static = TRUE;
+        break;
+      }
+    }
+
+    if (!is_static) {
+      pr_log_debug(DEBUG7, "unloading 'mod_%s.c'", mi->name);
+      if (dso_unload_module(mi) < 0)
+        pr_log_pri(PR_LOG_INFO, "error unloading 'mod_%s.c': %s",
+          mi->name, strerror(errno));
+    }
+  }
 
   return;
 }
