@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.7 2002-12-28 18:23:43 castaglia Exp $
+# $Id: proftpd.spec,v 1.8 2003-01-03 03:47:01 jwm Exp $
 
 Summary:	ProFTPD -- Professional FTP Server.
 Name:		proftpd
@@ -52,7 +52,7 @@ This package is neccesary to setup ProFTPD to run from inetd.
 	--sysconfdir=/etc \
 	--localstatedir=/var/run \
 	--mandir=%_mandir \
-	--with-modules=mod_linuxprivs:mod_ratio:mod_readme
+	--with-modules=mod_ratio:mod_readme
 
 %build
   make
