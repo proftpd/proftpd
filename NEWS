@@ -1,7 +1,11 @@
-$Id: NEWS,v 1.72 2001-02-02 03:12:49 flood Exp $
+$Id: NEWS,v 1.73 2001-02-05 19:48:28 flood Exp $
 
 1.2.0rc3 - Released:
 ----------------------------
+- mod_sqlpw.c, mod_mysql.c and mod_pgsql.c have been REMOVED from the
+  distribution.  They are currently unmaintained and have numerous bugs.
+  If any kind soul <grin> is interested in maintaining them, they may be
+  brought back into a future version of proftpd.
 - Passive FTP works properly now (was broken in RC2).
 - Compilation problems fixed on some obscure platforms.
 - PAM authentication finally works again on Solaris (due to an annoying bug in
