@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.138 2003-04-14 22:38:28 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.139 2003-04-30 00:03:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1495,6 +1495,11 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
   if (pr_fsio_stat(dir, &sbuf) < 0) {
     /* Error stat'ing the file. */
+    int xerrno = errno;
+    pr_fsio_close(retr_fh);
+    errno = xerrno;
+
+    retr_fh = NULL;
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
@@ -1506,8 +1511,8 @@ MODRET xfer_retr(cmd_rec *cmd) {
      */
     if (session.restart_pos > sbuf.st_size) {
       pr_response_add_err(R_554, "%s: invalid REST argument", cmd->arg);
-      pr_fsio_close(stor_fh);
-      stor_fh = NULL;
+      pr_fsio_close(retr_fh);
+      retr_fh = NULL;
       return ERROR(cmd);
     }
 
@@ -1534,6 +1539,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     cnt_steps = 1;
 
   if (pr_data_open(cmd->arg, NULL, PR_NETIO_IO_WR, sbuf.st_size - respos) < 0) {
+    retr_abort();
     pr_data_abort(0, TRUE);
     return ERROR(cmd);
   }
