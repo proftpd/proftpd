@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.16 1999-10-11 03:13:13 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.17 1999-10-18 05:11:42 macgyver Exp $
  */
 
 /* History Log:
@@ -41,6 +41,9 @@
 
 extern module auth_module;
 extern pid_t mpid;
+#ifdef HAVE_SENDFILE
+static int have_sendfile = 0;
+#endif
 
 /* From the auth module */
 char *auth_map_uid(int);
@@ -692,7 +695,7 @@ MODRET cmd_retr(cmd_rec *cmd)
         break;
       
 #ifdef HAVE_SENDFILE
-      if(session.flags & (SF_ASCII | SF_ASCII_OVERRIDE)) {
+      if(!have_sendfile || (session.flags & (SF_ASCII | SF_ASCII_OVERRIDE))) {
 	len = data_xfer(lbuf, len);
 	goto done;
       }
@@ -838,6 +841,19 @@ int xfer_init_child()
   return 0;
 }
 
+int xfer_init_parent()
+{
+#ifdef HAVE_SENDFILE
+  if(!sendfile(1, 0, NULL, 0) || errno != ENOSYS) {
+  	have_sendfile = 1;
+  } else {
+        log_debug(DEBUG2, "Sendfile disabled (%d:%s)", errno, strerror(errno));
+  }
+#endif
+
+  return 0;
+}
+
 MODRET add_ratenum(cmd_rec *cmd)
 {
   config_rec *c;
@@ -919,5 +935,6 @@ module xfer_module = {
   xfer_config,
   xfer_commands,
   NULL,
-  NULL,xfer_init_child
+  xfer_init_parent,
+  xfer_init_child
 };
