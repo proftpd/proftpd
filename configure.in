@@ -966,10 +966,15 @@ dnl IPv4/IPv6-related checks
 AC_CHECK_MEMBER(struct sockaddr_in.sin_len,
   [AC_DEFINE(SIN_LEN)],,
   [
-    #if HAVE_NETINET_IN_SYSTM_H
-    # include <netinet/in_systm.h>
+    #if HAVE_SYS_TYPES_H
+    # include <sys/types.h>
     #endif
-    #include <netinet/in.h>
+    #if HAVE_SYS_SOCKET_H
+    # include <sys/socket.h>
+    #endif
+    #if HAVE_NETINET_IN_H
+    # include <netinet/in.h>
+    #endif
   ])
 
 PR_CHECK_STRUCT_ADDRINFO

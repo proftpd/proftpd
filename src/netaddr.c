@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.20 2003-10-06 03:53:49 castaglia Exp $
+ * $Id: netaddr.c,v 1.21 2003-10-09 19:34:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -313,6 +313,9 @@ int pr_netaddr_set_sockaddr_any(pr_netaddr_t *na) {
       struct in_addr in4addr_any;
       in4addr_any.s_addr = htonl(INADDR_ANY);
       na->na_addr.v4.sin_family = AF_INET;
+#ifdef SIN_LEN
+      na->na_addr.v4.sin_len = sizeof(struct sockaddr_in);
+#endif /* SIN_LEN */
       memcpy(&na->na_addr.v4.sin_addr, &in4addr_any, sizeof(struct in_addr));
       return 0;
     }
@@ -320,6 +323,9 @@ int pr_netaddr_set_sockaddr_any(pr_netaddr_t *na) {
 #ifdef USE_IPV6
     case AF_INET6:
       na->na_addr.v6.sin6_family = AF_INET6;
+#ifdef SIN6_LEN
+      na->na_addr.v6.sin6_len = sizeof(struct sockaddr_in6);
+#endif /* SIN6_LEN */
       memcpy(&na->na_addr.v6.sin6_addr, &in6addr_any, sizeof(struct in6_addr));
       return 0;
 #endif /* USE_IPV6 */

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.487 2003-10-08 18:13:03 castaglia Exp $
+$Id: NEWS,v 1.488 2003-10-09 19:34:02 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -28,6 +28,9 @@ CVS
   The fix is to use the O_NOFOLLOW flag when opening log file paths.  However,
   this flag does not exist on Solaris machines, and so there still exists
   a race condition on Solaris when checking that a log path is not a symlink.
+- Bug 2188 - Wildcard sockets not properly handled on FreeBSD.
+  Similar to bugs 2167, the sin_len/sin6_len members of socket structures
+  were not being properly set for wildcard sockets.
 
 1.2.9rc2 - Released 11-Sep-2003
 ---------------------------------
