@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.26 2002-08-14 16:25:29 castaglia Exp $
+ * $Id: mod_log.c,v 1.27 2002-09-10 18:50:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -489,12 +489,26 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
 
   case META_FILENAME:
     argp = arg;
-    if(session.xfer.p && session.xfer.path) {
+
+    if (session.xfer.p && session.xfer.path) {
       char *fullpath;
       fullpath = dir_abs_path(p,session.xfer.path,TRUE);
       sstrncpy(argp, fullpath, sizeof(arg));
+
     } else {
-      sstrncpy(argp, "-", sizeof(arg));
+
+      /* Some commands (i.e. DELE, MKD, RMD, XMKD, and XRMD) have associated
+       * filenames that are not stored in the session.xfer structure; these
+       * should be expanded properly as well.
+       */
+      if (!strcmp(cmd->argv[0], "DELE") || !strcmp(cmd->argv[0], "MKD") ||
+          !strcmp(cmd->argv[0], "RMD") || !strcmp(cmd->argv[0], "XMKD") ||
+          !strcmp(cmd->argv[0], "XRMD"))
+        sstrncpy(arg, cmd->arg, sizeof(arg));
+
+      else
+        /* All other situations get a "-".  */
+        sstrncpy(argp, "-", sizeof(arg));
     }
 
     m++;

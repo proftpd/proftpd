@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.225 2002-09-10 16:01:00 castaglia Exp $
+$Id: NEWS,v 1.226 2002-09-10 18:50:12 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -17,6 +17,8 @@ CVS
 - Bug 1652 - Add connection-rate limiting mechanism
 - Bug 1662 - Define _GNU_SOURCE
 - Bug 1486 - mod_ls is extremly slow
+- Bug 1669 - Filename meta (%f) not correctly expanded for some commands
+             in WRITE logging class
 
 1.2.6 - Released 2002-09-04
 ---------------------------------
