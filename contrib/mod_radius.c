@@ -27,10 +27,10 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.7 2002-12-12 19:57:26 castaglia Exp $
+ * $Id: mod_radius.c,v 1.8 2002-12-18 18:27:57 castaglia Exp $
  */
 
-#define MOD_RADIUS_VERSION "mod_radius/0.7rc5"
+#define MOD_RADIUS_VERSION "mod_radius/0.7rc6"
 
 #include "conf.h"
 #include "privs.h"
@@ -1186,25 +1186,16 @@ static void radius_add_passwd(radius_packet_t *packet, unsigned char type,
     memcpy(attrib->data, pwhash, pwlen);
 }
 
-/* Currently this is not used, but it may be necessary in the future. */
 static void radius_get_acct_digest(radius_packet_t *packet, char *secret) {
   MD5_CTX ctx;
-  radius_attrib_t *attrib = (radius_attrib_t *) &packet->data;
-  int len = ntohs(packet->length) - RADIUS_HEADER_LEN;
+
+  /* Clear the current digest (not needed yet for accounting packets) */
+  memset(packet->digest, 0, RADIUS_VECTOR_LEN);
 
   MD5Init(&ctx);
+
+  /* Add the packet data to the mix. */
   MD5Update(&ctx, (unsigned char *) packet, ntohs(packet->length));
-
-  /* Add each of the attributes to the mix. */
-  while (len > 0) {
-    len -= attrib->length;
-
-    /* Skip bad attributes. */
-    if (attrib->length != 0)
-      MD5Update(&ctx, (unsigned char *) &attrib->data, attrib->length); 
-
-    attrib = (radius_attrib_t *) ((char *) attrib + attrib->length);
-  }
 
   /* Add the secret to the mix. */
   MD5Update(&ctx, secret, strlen(secret));
@@ -1446,7 +1437,7 @@ static int radius_send_packet(int sockfd, radius_packet_t *packet,
 
   if (sendto(sockfd, (char *) packet, ntohs(packet->length), 0, 
       &radius_remote_sock, sizeof(struct sockaddr_in)) < 0) {
-    radius_log("error: unable to send packet: %s",strerror(errno));
+    radius_log("error: unable to send packet: %s", strerror(errno));
     return -1;
   }
 
@@ -1458,7 +1449,7 @@ static int radius_send_packet(int sockfd, radius_packet_t *packet,
 
 
 static unsigned char radius_start_accting(void) {
-  int sockfd = -1, acct_status = htonl(RADIUS_ACCT_STATUS_START);
+  int sockfd = -1, acct_status = 0, acct_authentic = 0;
   radius_packet_t *request = NULL, *response = NULL;
   radius_server_t *acct_server = NULL;
   unsigned char recvd_response = FALSE, *authenticated = NULL;
@@ -1468,12 +1459,12 @@ static unsigned char radius_start_accting(void) {
     return TRUE;
 
   /* Only do accounting for authenticated users. */
-  authenticated = get_param_ptr(main_server->conf, "authenticate", FALSE);
+  authenticated = get_param_ptr(main_server->conf, "authenticated", FALSE);
   if (!authenticated || *authenticated == FALSE)
     return TRUE;
 
   /* Allocate a packet. */
-  request = (radius_packet_t *) palloc(radius_pool, sizeof(radius_packet_t));
+  request = (radius_packet_t *) pcalloc(radius_pool, sizeof(radius_packet_t));
 
   /* Open a RADIUS socket */
   if ((sockfd = radius_open_socket()) < 0) {
@@ -1501,14 +1492,19 @@ static unsigned char radius_start_accting(void) {
     radius_last_acct_pkt_id = request->id;
 
     /* Add accounting attributes. */
+    acct_status = htonl(RADIUS_ACCT_STATUS_START);
     radius_add_attrib(request, RADIUS_ACCT_STATUS_TYPE,
       (unsigned char *) &acct_status, sizeof(int));
 
     snprintf(pid, sizeof(pid), "%08d", (int) getpid());
     radius_add_attrib(request, RADIUS_ACCT_SESSION_ID, pid, strlen(pid));
 
+    acct_authentic = htonl(RADIUS_AUTH_LOCAL);
     radius_add_attrib(request, RADIUS_ACCT_AUTHENTIC,
-      (unsigned char *) &radius_session_authtype, sizeof(int));
+      (unsigned char *) &acct_authentic, sizeof(int));
+
+    /* Calculate the signature. */
+    radius_get_acct_digest(request, acct_server->secret);
 
     /* Send the request. */
     radius_log("sending start acct request packet");
@@ -1562,11 +1558,10 @@ static unsigned char radius_start_accting(void) {
 }
 
 static unsigned char radius_stop_accting(void) {
-  int sockfd = -1, acct_status = htonl(RADIUS_ACCT_STATUS_STOP);
+  int sockfd = -1, acct_status = 0, acct_authentic = 0, now = 0;
   radius_packet_t *request = NULL, *response = NULL;
   radius_server_t *acct_server = NULL;
   unsigned char recvd_response = FALSE, *authenticated = NULL;
-  int now = (int) htonl(time(NULL) - radius_session_start);
 
   /* Check to see if RADIUS accounting should be done. */
   if (!radius_engine || !radius_acct_server)
@@ -1579,7 +1574,7 @@ static unsigned char radius_stop_accting(void) {
     return TRUE;
 
   /* Allocate a packet. */
-  request = (radius_packet_t *) palloc(radius_pool, sizeof(radius_packet_t));
+  request = (radius_packet_t *) pcalloc(radius_pool, sizeof(radius_packet_t));
 
   /* Open a RADIUS socket */
   if ((sockfd = radius_open_socket()) < 0) {
@@ -1611,23 +1606,31 @@ static unsigned char radius_stop_accting(void) {
       request->id = 1;
 
     /* Add accounting attributes. */
+    acct_status = htonl(RADIUS_ACCT_STATUS_STOP);
     radius_add_attrib(request, RADIUS_ACCT_STATUS_TYPE,
       (unsigned char *) &acct_status, sizeof(int));
 
     snprintf(pid, sizeof(pid), "%08d", (int) getpid());
     radius_add_attrib(request, RADIUS_ACCT_SESSION_ID, pid, strlen(pid));
 
+    acct_authentic = htonl(RADIUS_AUTH_LOCAL);
     radius_add_attrib(request, RADIUS_ACCT_AUTHENTIC,
-      (unsigned char *) &radius_session_authtype, sizeof(int));
+      (unsigned char *) &acct_authentic, sizeof(int));
 
+    now = htonl(time(NULL) - radius_session_start);
     radius_add_attrib(request, RADIUS_ACCT_SESSION_TIME,
       (unsigned char *) &now, sizeof(int));
 
+    radius_session_bytes_in = htonl(radius_session_bytes_in);
     radius_add_attrib(request, RADIUS_ACCT_INPUT_OCTETS,
       (unsigned char *) &radius_session_bytes_in, sizeof(int));
 
+    radius_session_bytes_in = htonl(radius_session_bytes_out);
     radius_add_attrib(request, RADIUS_ACCT_OUTPUT_OCTETS,
       (unsigned char *) &radius_session_bytes_out, sizeof(int));
+
+    /* Calculate the signature. */
+    radius_get_acct_digest(request, acct_server->secret);
 
     /* Send the request. */
     radius_log("sending stop acct request packet");
@@ -1894,7 +1897,7 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
     return DECLINED(cmd);
 
   /* Allocate a packet. */
-  request = (radius_packet_t *) palloc(cmd->tmp_pool,
+  request = (radius_packet_t *) pcalloc(cmd->tmp_pool,
     sizeof(radius_packet_t));
 
   /* open a RADIUS socket */
@@ -2006,13 +2009,13 @@ MODRET radius_post_pass(cmd_rec *cmd) {
   return DECLINED(cmd);
 }
 
-MODRET radius_retr(cmd_rec *cmd) {
-  radius_session_bytes_out += htonl(session.xfer.total_bytes);
+MODRET radius_post_retr(cmd_rec *cmd) {
+  radius_session_bytes_out += session.xfer.total_bytes;
   return DECLINED(cmd);
 }
 
-MODRET radius_stor(cmd_rec *cmd) {
-  radius_session_bytes_in += htonl(session.xfer.total_bytes);
+MODRET radius_post_stor(cmd_rec *cmd) {
+  radius_session_bytes_in += session.xfer.total_bytes;
   return DECLINED(cmd);
 }
 
@@ -2352,16 +2355,16 @@ static conftable radius_conftab[] = {
 };
 
 static cmdtable radius_cmdtab[] = {
-  { POST_CMD,		C_APPE,	G_NONE,	radius_stor,		FALSE, FALSE },
-  { POST_CMD_ERR,	C_APPE,	G_NONE,	radius_stor,		FALSE, FALSE },
+  { POST_CMD,		C_APPE,	G_NONE,	radius_post_stor,	FALSE, FALSE },
+  { POST_CMD_ERR,	C_APPE,	G_NONE,	radius_post_stor,	FALSE, FALSE },
   { PRE_CMD,		C_PASS, G_NONE, radius_pre_pass,	FALSE, FALSE, CL_AUTH },
   { POST_CMD,		C_PASS, G_NONE, radius_post_pass, 	FALSE, FALSE, CL_AUTH },
-  { POST_CMD,		C_RETR,	G_NONE,	radius_retr,		FALSE, FALSE },
-  { POST_CMD_ERR,	C_RETR,	G_NONE,	radius_retr,		FALSE, FALSE },
-  { POST_CMD,		C_STOR,	G_NONE,	radius_stor,		FALSE, FALSE },
-  { POST_CMD_ERR,	C_STOR,	G_NONE,	radius_stor,		FALSE, FALSE },
-  { POST_CMD,		C_STOU,	G_NONE,	radius_stor,		FALSE, FALSE },
-  { POST_CMD_ERR,	C_STOU,	G_NONE,	radius_stor,		FALSE, FALSE },
+  { POST_CMD,		C_RETR,	G_NONE,	radius_post_retr,	FALSE, FALSE },
+  { POST_CMD_ERR,	C_RETR,	G_NONE,	radius_post_retr,	FALSE, FALSE },
+  { POST_CMD,		C_STOR,	G_NONE,	radius_post_stor,	FALSE, FALSE },
+  { POST_CMD_ERR,	C_STOR,	G_NONE,	radius_post_stor,	FALSE, FALSE },
+  { POST_CMD,		C_STOU,	G_NONE,	radius_post_stor,	FALSE, FALSE },
+  { POST_CMD_ERR,	C_STOU,	G_NONE,	radius_post_stor,	FALSE, FALSE },
   { 0, NULL }
 };
 
