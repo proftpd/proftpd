@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.127 2003-02-24 18:39:52 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.128 2003-02-24 23:47:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -551,8 +551,11 @@ static void xfer_rate_throttle(off_t xferlen) {
 
     /* Setup for the select.  We use select() instead of usleep() because it
      * seems to be far more portable across platforms.
+     *
+     * ideal and elapsed are in milleconds, but tv_usec will be microseconds,
+     * so be sure to convert properly.
      */
-    tv.tv_usec = ideal - elapsed;
+    tv.tv_usec = (ideal - elapsed) * 1000;
     tv.tv_sec = tv.tv_usec / 1000000L;
     tv.tv_usec = tv.tv_usec % 1000000L;
 
