@@ -696,7 +696,7 @@ int inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay, int lowdelay,
   /* More portability fun.  Traditional BSD-style sockets want the value from
    * getprotobyname() in the setsockopt(2) call; Linux wants SOL_TCP for
    * these options.  Also, *BSD want IPPROTO_IP for IP_TOS options, Linux
-   * wans SOL_IP.  How many other platforms will have variations?  Will
+   * wants SOL_IP.  How many other platforms will have variations?  Will
    * networking code always be this fragmented?
    */
 #ifdef SOL_IP
