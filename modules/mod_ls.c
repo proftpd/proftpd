@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.107 2004-03-23 18:40:44 castaglia Exp $
+ * $Id: mod_ls.c,v 1.108 2004-04-23 18:35:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1869,7 +1869,9 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
   /* In case the client used NLST instead of LIST. */
   if (cmd->argc > 1 && cmd->argv[1][0] == '-') {
-    pr_response_add_err(R_501, "%s: options not supported", cmd->argv[0]);
+    pr_log_debug(DEBUG1, "NLST %s: Options for this command are not supported",
+      cmd->argv[1]);
+    pr_response_add_err(R_501, "%s: Options not supported", cmd->argv[0]);
     return ERROR(cmd);
   }
 
