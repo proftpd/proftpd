@@ -24,6 +24,11 @@
 #       -l <depth>      Depth of path detail for sections
 #       -s <section>    Section to report on, For example: -s /pub will report
 #				only on paths under /pub
+#       -u <user>       Report traffic for specified user.
+#
+# ---------------------------------------------------------------------------
+# 05.09.01: minor change by Jamie Fifield (fifield@chebucto.ns.ca):
+# - added option u which singles out the data for a single user
 #
 # ---------------------------------------------------------------------------
 # 30.09.98: changes by Jan Menzel (jan.menzel@gmx.net):
@@ -55,7 +60,7 @@ $opt_t = 1;
 $opt_l = 3;
 
 require 'getopts.pl';
-&Getopts('f:rahdD:l:s:A:io');
+&Getopts('f:rahdD:l:s:A:iou:');
 
 if ($opt_r) { $real = 1;}
 if ($opt_a) { $anon = 1;}
@@ -91,6 +96,11 @@ if ($opt_s) {
    print "All other sections are filtered out for this report.\n\n";
 }
 
+if ($opt_u) {
+   print "Transfer Totals are for user '$opt_u' only.\n";
+   print "All other users are filtered out for this report.\n\n";
+}
+
 line: while (<LOG>) {
 
    @line = split;
@@ -107,10 +117,11 @@ line: while (<LOG>) {
    } else {
       next;
    }
-   next if (!$anon && $line[$offset+3] eq "a");
-   next if (!$real && $line[$offset+3] eq "r");
+   next if (!$opt_u && !$anon && $line[$offset+3] eq "a");
+   next if (!$opt_u && !$real && $line[$offset+3] eq "r");
    next if ($opt_i && $line[$offset+2] ne "i");
    next if ($opt_o && $line[$offset+2] ne "o");
+   next if ($opt_u && $line[$offset+4] ne $opt_u);
 
    $daytime = substr($_, 0, 10) . substr($_, 19, 5);
    $time = substr($_,11,2); 

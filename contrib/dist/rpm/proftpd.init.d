@@ -13,10 +13,14 @@
 # config: /etc/proftpd.conf
 #
 # By: Osman Elliyasa <osman@Cable.EU.org>
-# $Id: proftpd.init.d,v 1.2 2001-01-26 23:10:55 flood Exp $
+# $Id: proftpd.init.d,v 1.3 2001-06-03 13:38:04 flood Exp $
 
 # Source function library.
 . /etc/rc.d/init.d/functions
+
+if [ -f /etc/sysconfig/proftpd ]; then
+      . /etc/sysconfig/proftpd
+fi
 
 FTPSHUT=/opt/sbin/ftpshut
 
@@ -28,8 +32,8 @@ case "$1" in
 		echo -n "Adverts "
 		su - ftp-master -c "bin/advert.sh fifo"
 	fi
-	$0 resume
-	daemon proftpd
+        daemon proftpd $OPTIONS
+        $0 resume
 	echo
 	touch /var/lock/subsys/proftpd
 	;;

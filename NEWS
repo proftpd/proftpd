@@ -1,7 +1,11 @@
-$Id: NEWS,v 1.105 2001-05-31 16:08:08 flood Exp $
+$Id: NEWS,v 1.106 2001-06-03 13:38:04 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+- Bug 1149 - Patch to contrib RPM init script
+- Bug 1132 - Compilation fix for glibc 2.0
+- Bug 1201 - Modifications to contrib/xferstats.holger-preiss
+- Bug 1090 - {Allow,Deny}Filter Errors now *really* logged
 - New mod_sql (and friends) from upstream maintainer
 - Bug 1175 - GNU HURD portability
 - Bug 1176 - PWD/XPWD can now be <Limit>ed

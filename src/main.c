@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.61 2001-05-17 03:22:23 flood Exp $
+ * $Id: main.c,v 1.62 2001-06-03 13:38:04 flood Exp $
  */
 
 /*
@@ -741,6 +741,18 @@ void shutdown_exit(void *d1, void *d2, void *d3, void *d4)
   signal(SIGUSR1,sig_disconnect);
 }
 
+static int get_command_class(const char *name)
+{
+  cmdtable *c;
+
+  c = mod_find_cmd_symbol((char*)name, NULL, NULL);
+
+  while(c && c->cmd_type != CMD)
+    c = mod_find_cmd_symbol((char*)name, NULL, c);
+
+  return (c ? c->class : 0);
+}
+
 static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
 {
   char *argstr;
@@ -862,11 +874,6 @@ static void dispatch_cmd(cmd_rec *cmd)
   char *cp;
   int success = 0;
 
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  regex_t *preg;
-  int ret;
-#endif
-  
   cmd->server = main_server;
   resp_list = resp_err_list = NULL;
   resp_pool = cmd->pool;
@@ -876,39 +883,6 @@ static void dispatch_cmd(cmd_rec *cmd)
 
   /* debug_print_dispatch(cmd); */
 
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  /* Check for valid arguments.
-   */
-  preg = (regex_t*) get_param_ptr(TOPLEVEL_CONF, "AllowFilter", FALSE);
-  
-  /* Don't apply the AllowFilter check to passwords (arguments to the PASS
-     command). */
-  if(strcasecmp(cmd->argv[0], "PASS") && preg && cmd->arg && ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) != 0)) {
-    char errmsg[200];
-    
-    regerror(ret, preg, errmsg, 200);
-    log_debug(DEBUG2, "'%s' didn't pass regex: %s", cmd->arg, errmsg);
-    add_response_err(R_550, "%s: Forbidden command argument", cmd->arg);
-    /* Make sure logging occurs
-     * jss - 3/26/01
-     */
-    _dispatch(cmd,LOG_CMD_ERR,FALSE,"*");
-    _dispatch(cmd,LOG_CMD_ERR,FALSE,NULL);
-    send_response_list(&resp_err_list);
-    return;
-  }
-  
-  preg = (regex_t*) get_param_ptr(TOPLEVEL_CONF, "DenyFilter", FALSE);
-  
-  if(preg && cmd->arg && ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) == 0)) {
-    add_response_err(R_550, "%s: Forbidden command argument", cmd->arg);
-    _dispatch(cmd,LOG_CMD_ERR,FALSE,"*");
-    _dispatch(cmd,LOG_CMD_ERR,FALSE,NULL);
-    send_response_list(&resp_err_list);
-    return;
-  }
-#endif
-
   /* first dispatch PRE_CMD with wildcard */
   success = _dispatch(cmd,PRE_CMD,FALSE,"*");
 
@@ -916,6 +890,15 @@ static void dispatch_cmd(cmd_rec *cmd)
     success = _dispatch(cmd,PRE_CMD,FALSE,NULL);
 
   if(success < 0) {
+    /* If PRE_CMD failed, we need to find the command class so that
+     * extended logging will work correctly.  This is normally done in the
+     * CMD handler phase (below) by _dispatch(), the problem is that
+     * most PRE_CMD handlers are very general and don't specify a class.
+     * jss - 5/16/01
+     */
+
+    if(!cmd->class)
+      cmd->class = get_command_class(cmd->argv[0]);
     _dispatch(cmd,LOG_CMD_ERR,FALSE,"*");
     _dispatch(cmd,LOG_CMD_ERR,FALSE,NULL);
     send_response_list(&resp_err_list);

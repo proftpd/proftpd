@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.63 2001-05-21 21:14:45 flood Exp $
+ * $Id: mod_core.c,v 1.64 2001-06-03 13:38:04 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -2057,6 +2057,56 @@ int core_display_file(const char *numeric, const char *fn)
   return 0;
 }
 
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+MODRET regex_filters(cmd_rec *cmd)
+{
+  /* This is only called after our virtualhost has been resolved and
+   * we are receiving commands, so it's ok to cache the regex for performance.
+   */
+  static regex_t *a_reg = NULL;
+  static int a_reg_cached = 0;
+  static regex_t *d_reg = NULL;
+  static int d_reg_cached = 0;
+  int ret;
+  
+  /* Check for an AllowFilter */
+  if(!a_reg_cached) {
+    a_reg = (regex_t*) get_param_ptr(TOPLEVEL_CONF, "AllowFilter", FALSE);
+    a_reg_cached = TRUE;
+  }
+  
+  /* Don't apply the filter checks to passwords (arguments to the PASS
+   * command).
+   */
+  if(strcasecmp(cmd->argv[0],"PASS") == 0)
+    return DECLINED(cmd);
+
+  if(a_reg && cmd->arg &&
+     ((ret = regexec(a_reg, cmd->arg, 0, NULL, 0)) != 0)) {
+    char errmsg[200];
+
+    regerror(ret, a_reg, errmsg, 200);
+    log_debug(DEBUG2, "'%s' didn't pass regex: %s", cmd->arg, errmsg);
+    add_response_err(R_550, "%s: Forbidden command argument", cmd->arg);
+    return ERROR(cmd);
+  }
+
+  /* Check for a DenyFilter */
+  if(!d_reg_cached) {
+    d_reg = (regex_t*) get_param_ptr(TOPLEVEL_CONF, "DenyFilter", FALSE);
+    d_reg_cached = TRUE;
+  }
+
+  if(d_reg && cmd->arg &&
+      ((ret = regexec(d_reg, cmd->arg, 0, NULL, 0)) == 0)) {
+    add_response_err(R_550, "%s: Forbidden command argument", cmd->arg);
+    return ERROR(cmd);
+  }
+
+  return DECLINED(cmd);
+}
+#endif /* HAVE_REGEX_H && HAVE_REGCOMP */
+
 MODRET cmd_quit(cmd_rec *cmd)
 {
   char *display = NULL;
@@ -3197,6 +3247,13 @@ static conftable core_conftable[] = {
 };
 
 static cmdtable core_commands[] = {
+  /* Added a PRE_CMD handler for all commands so that AllowFilter and
+   * DenyFilter can be re-implemented correctly.
+   * jss - 5/16/01
+   */
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+  { PRE_CMD, "*",G_NONE,  regex_filters,FALSE,  FALSE, CL_NONE },
+#endif
   { CMD, C_HELP, G_NONE,  cmd_help,	FALSE,	FALSE, CL_INFO },
   { CMD, C_PORT, G_NONE,  cmd_port,	TRUE,	FALSE, CL_MISC },
   { CMD, C_PASV, G_NONE,  cmd_pasv,	TRUE,	FALSE, CL_MISC },

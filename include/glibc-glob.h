@@ -45,6 +45,10 @@ extern "C" {
 # define __ptr_t	char *
 #endif /* C++ or ANSI C.  */
 
+#if ! defined(__PMT) && defined(__P)
+# define __PMT(x) __P(x)
+#endif
+
 /* We need `size_t' for the following definitions.  */
 #ifndef __size_t
 # if defined __GNUC__ && __GNUC__ >= 2
