@@ -23,12 +23,17 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.2 2002-12-19 21:52:25 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.3 2002-12-20 20:20:54 castaglia Exp $
  */
 
 #include "conf.h"
 
 #define MOD_AUTHFILE_VERSION	"mod_auth_file/0.8.2"
+
+/* Make sure the version of proftpd is as necessary. */
+#if PROFTPD_VERSION_NUMBER < 0x0001020702
+# error "ProFTPD 1.2.7rc2 or later required"
+#endif
 
 #ifndef BUFSIZ
 # define BUFSIZ          PR_TUNABLE_BUFFER_SIZE
@@ -226,7 +231,7 @@ static struct group *af_getgrp(const char *buf) {
   }
 
   if (i < (NGRPFIELDS - 1)) {
-    log_pri(LOG_ERR, "Malformed entry in group file: %s", buf);
+    log_pri(PR_LOG_ERR, "Malformed entry in group file: %s", buf);
     return NULL;
   }
 
@@ -389,7 +394,7 @@ static unsigned char af_setgrent(void) {
 
     if (!af_open_file(af_current_group_file)) {
       /* Log the error */
-      log_pri(LOG_ERR, "error: unable to open group file '%s': %s",
+      log_pri(PR_LOG_ERR, "error: unable to open group file '%s': %s",
         af_current_group_file->af_path, strerror(errno));
         
       /* Move to the next file in the list. */
@@ -536,7 +541,7 @@ static unsigned char af_setpwent(void) {
 
     if (!af_open_file(af_current_user_file)) {
       /* Log the error */
-      log_pri(LOG_ERR, "error: unable to open passwd file '%s': %s",
+      log_pri(PR_LOG_ERR, "error: unable to open passwd file '%s': %s",
         af_current_user_file->af_path, strerror(errno));
 
       /* Move to the next file in the list. */
@@ -1114,17 +1119,6 @@ MODRET set_authuserfile(cmd_rec *cmd) {
 /* Initialization routines
  */
 
-static int authfile_init(void) {
-
-  /* Make sure the version of proftpd is as necessary. */
-  if (PROFTPD_VERSION_NUMBER < 0x0001020702) {
-    log_pri(LOG_ERR, MOD_AUTHFILE_VERSION " requires proftpd 1.2.7rc2 and later");
-    exit(1);
-  }
-
-  return 0;
-}
-
 static int authfile_sess_init(void) {
   config_rec *c = NULL;
 
@@ -1231,7 +1225,7 @@ module auth_file_module = {
   authfile_authtab,
 
   /* Module initialization function */
-  authfile_init,
+  NULL,
 
   /* Session initialization function */
   authfile_sess_init

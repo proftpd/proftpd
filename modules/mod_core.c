@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.143 2002-12-19 21:45:40 castaglia Exp $
+ * $Id: mod_core.c,v 1.144 2002-12-20 20:20:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3027,21 +3027,21 @@ MODRET core_rmd(cmd_rec *cmd) {
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
+  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
 
-  if (preg && regexec(preg,cmd->arg,0,NULL,0) != 0) {
+  if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550,"%s: Forbidden filename",cmd->arg);
     return ERROR(cmd);
   }
 
-  preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathDenyFilter",FALSE);
+  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathDenyFilter", FALSE);
 
-  if (preg && regexec(preg,cmd->arg,0,NULL,0) == 0) {
+  if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
-    pr_response_add_err(R_550,"%s: Forbidden filename",cmd->arg);
+    pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
   }
 #endif
@@ -3075,21 +3075,21 @@ MODRET core_mkd(cmd_rec *cmd) {
   }
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-    preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathAllowFilter",FALSE);
+    preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
 
-    if (preg && regexec(preg,cmd->arg,0,NULL,0) != 0) {
-    log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
-      cmd->arg);
-      pr_response_add_err(R_550,"%s: Forbidden filename",cmd->arg);
+    if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
+      log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
+        cmd->arg);
+      pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
       return ERROR(cmd);
     }
 
-    preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathDenyFilter",FALSE);
+    preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathDenyFilter", FALSE);
 
-    if (preg && regexec(preg,cmd->arg,0,NULL,0) == 0) {
-    log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
-      cmd->arg);
-      pr_response_add_err(R_550,"%s: Forbidden filename",cmd->arg);
+    if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
+      log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
+        cmd->arg);
+      pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
       return ERROR(cmd);
     }
 #endif
@@ -3309,24 +3309,24 @@ MODRET core_rnto(cmd_rec *cmd) {
   }
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathAllowFilter",FALSE);
+  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
 
-  if (preg && regexec(preg,cmd->arg,0,NULL,0) != 0) {
+  if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
-    pr_response_add_err(R_550,"%s: Forbidden filename", cmd->arg);
+    pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
     destroy_pool(session.xfer.p);
     memset(&session.xfer, '\0', sizeof(session.xfer));
 
     return ERROR(cmd);
   }
 
-  preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathDenyFilter",FALSE);
+  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathDenyFilter", FALSE);
 
-  if (preg && regexec(preg,cmd->arg,0,NULL,0) == 0) {
+  if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
-    pr_response_add_err(R_550,"%s: Forbidden filename", cmd->arg);
+    pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
     destroy_pool(session.xfer.p);
     memset(&session.xfer, '\0', sizeof(session.xfer));
 
@@ -3362,18 +3362,18 @@ MODRET core_rnfr(cmd_rec *cmd) {
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathAllowFilter",FALSE);
+  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
 
-  if (preg && regexec(preg,cmd->arg,0,NULL,0) != 0) {
+  if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
   }
 
-  preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathDenyFilter",FALSE);
+  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathDenyFilter", FALSE);
 
-  if (preg && regexec(preg,cmd->arg,0,NULL,0) == 0) {
+  if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);

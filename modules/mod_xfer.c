@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.114 2002-12-13 17:28:12 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.115 2002-12-20 20:20:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1112,22 +1112,30 @@ MODRET xfer_stor(cmd_rec *cmd) {
   }
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathAllowFilter",FALSE);
+  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
 
-  if (preg && ((ret = regexec(preg,cmd->arg,0,NULL,0)) != 0)) {
+  if (preg && ((ret = regexec(preg,cmd->arg, 0, NULL, 0)) != 0)) {
     char errmsg[200];
-    regerror(ret,preg,errmsg,200);
-    log_debug(DEBUG2, "'%s' didn't pass regex: %s.", cmd->arg, errmsg);
+    regerror(ret, preg, errmsg, sizeof(errmsg));
+    log_debug(DEBUG2, "'%s' denied by PathAllowFilter: %s", cmd->arg, errmsg);
     pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
-  }
 
-  preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathDenyFilter",FALSE);
+  } else if (preg)
+    log_debug(DEBUG8, "'%s' allowed by PathAllowFilter", cmd->arg);
+
+  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathDenyFilter", FALSE);
 
   if (preg && ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) == 0)) {
+    char errmsg[200];
+    regerror(ret, preg, errmsg, sizeof(errmsg));
+    log_debug(DEBUG2, "'%s' denied by PathDenyFilter: %s", cmd->arg, errmsg);
     pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
-  }
+
+  } else if (preg)
+    log_debug(DEBUG8, "'%s' allowed by PathDenyFilter", cmd->arg);
+
 #endif /* REGEX */
 
   if (session.xfer.xfer_type == STOR_HIDDEN)
