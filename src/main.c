@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.220 2004-04-15 02:47:35 castaglia Exp $
+ * $Id: main.c,v 1.221 2004-04-21 01:15:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1003,6 +1003,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   unsigned char *ident_lookups = NULL;
   int i, rev;
   int sempipe[2] = { -1, -1 };
+  int xerrno = 0;
 
 #ifndef PR_DEVEL_NO_FORK
   pid_t pid;
@@ -1164,6 +1165,10 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   conn = pr_inet_openrw(permanent_pool, l, NULL, PR_NETIO_STRM_CTRL, fd,
     STDIN_FILENO, STDOUT_FILENO, FALSE);
 
+  /* Capture errno here, if necessary. */
+  if (!conn)
+    xerrno = errno;
+
   /* Now do the permanent syslog open
    */
   pr_signals_block();
@@ -1176,7 +1181,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
   if (!conn) {
     pr_log_pri(PR_LOG_ERR, "Fatal: unable to open incoming connection: %s",
-      strerror(errno));
+      strerror(xerrno));
     exit(1);
   }
 
