@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.256 2004-11-02 18:18:59 castaglia Exp $
+ * $Id: mod_core.c,v 1.257 2004-11-03 16:53:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -651,10 +651,6 @@ MODRET set_scoreboardfile(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_scoreboardpath(cmd_rec *cmd) {
-  CONF_ERROR(cmd, "deprecated. Use 'ScoreboardFile /path/to/scoreboard/file' instead");
-}
-
 MODRET set_serverport(cmd_rec *cmd) {
   server_rec *s = cmd->server;
   int port;
@@ -987,14 +983,6 @@ MODRET set_tcpnodelay(cmd_rec *cmd) {
   *((unsigned char *) c->argv[0]) = bool;
 
   return HANDLED(cmd);
-}
-
-MODRET set_tcpreceivewindow(cmd_rec *cmd) {
-  CONF_ERROR(cmd, "deprecated. Use 'SocketOptions rcvbuf <size>' instead");
-}
-
-MODRET set_tcpsendwindow(cmd_rec *cmd) {
-  CONF_ERROR(cmd, "deprecated. Use 'SocketOptions sndbuf <size>' instead");
 }
 
 MODRET set_user(cmd_rec *cmd) {
@@ -2287,14 +2275,6 @@ MODRET end_class(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_WARNING, "warning: empty <Class> definition");
 
   return HANDLED(cmd);
-}
-
-MODRET set_class(cmd_rec *cmd) {
-  CONF_ERROR(cmd, "deprecated. Use <Class> sections instead.");
-}
-
-MODRET set_classes(cmd_rec *cmd) {
-  CONF_ERROR(cmd, "deprecated. Use <Class> sections instead.");
 }
 
 MODRET add_global(cmd_rec *cmd) {
@@ -4461,13 +4441,6 @@ static conftable core_conftab[] = {
   { "WtmpLog",			set_wtmplog,			NULL },
   { "tcpBackLog",		set_tcpbacklog,			NULL },
   { "tcpNoDelay",		set_tcpnodelay,			NULL },
-
-  /* Deprecated */
-  { "Class",			set_class,			NULL },
-  { "Classes",			set_classes,			NULL },
-  { "ScoreboardPath",		set_scoreboardpath,		NULL },
-  { "tcpReceiveWindow",		set_tcpreceivewindow,		NULL },
-  { "tcpSendWindow",		set_tcpsendwindow,		NULL },
 
   { NULL, NULL, NULL }
 };

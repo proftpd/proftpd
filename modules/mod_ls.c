@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.117 2004-10-07 18:59:05 castaglia Exp $
+ * $Id: mod_ls.c,v 1.118 2004-11-03 16:53:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2340,10 +2340,6 @@ MODRET set_useglobbing(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_lsdefaultoptions(cmd_rec *cmd) {
-  CONF_ERROR(cmd, "deprecated. Use ListOptions instead");
-}
-
 /* Initialization routines
  */
 
@@ -2367,10 +2363,6 @@ static conftable ls_conftab[] = {
   { "ListOptions",	set_listoptions,			NULL },
   { "ShowSymlinks",	set_showsymlinks,			NULL },
   { "UseGlobbing",	set_useglobbing,			NULL },
-
-  /* Deprecated */
-  { "LsDefaultOptions",	set_lsdefaultoptions,			NULL },
-
   { NULL,		NULL,					NULL }
 };
 

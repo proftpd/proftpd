@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.174 2004-10-31 19:03:30 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.175 2004-11-03 16:53:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2290,10 +2290,6 @@ MODRET set_transferrate(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_ratedeprecated(cmd_rec *cmd) {
-  CONF_ERROR(cmd, "deprecated.  Use TransferRate instead");
-}
-
 /* Event handlers
  */
 
@@ -2404,14 +2400,6 @@ static conftable xfer_conftab[] = {
   { "TimeoutNoTransfer",	set_timeoutnoxfer,		NULL },
   { "TimeoutStalled",		set_timeoutstalled,		NULL },
   { "TransferRate",		set_transferrate,		NULL },
-
-  /* Deprecated */
-  { "RateReadBPS",		set_ratedeprecated,		NULL },
-  { "RateReadFreeBytes",	set_ratedeprecated,		NULL },
-  { "RateReadHardBPS",          set_ratedeprecated,		NULL },
-  { "RateWriteBPS",             set_ratedeprecated,		NULL },
-  { "RateWriteFreeBytes",       set_ratedeprecated,		NULL },
-  { "RateWriteHardBPS",         set_ratedeprecated,		NULL },
 
   { NULL }
 };

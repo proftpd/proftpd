@@ -35,7 +35,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.10 2004-10-16 00:43:26 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.11 2004-11-03 16:53:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -457,11 +457,6 @@ MODRET set_authpam(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_authpamauthoritative(cmd_rec *cmd) {
-  pr_log_auth(PR_LOG_WARNING, "warning: AuthPAMAuthoritative is deprecated");
-  return HANDLED(cmd);
-}
-
 MODRET set_authpamconfig(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -479,10 +474,6 @@ static authtable auth_pam_authtab[] = {
 static conftable auth_pam_conftab[] = {
   { "AuthPAM",			set_authpam,			NULL },
   { "AuthPAMConfig",		set_authpamconfig,		NULL },
-
-  /* Deprecated */
-  { "AuthPAMAuthoritative",	set_authpamauthoritative,	NULL },
-
   { NULL, NULL, NULL}
 };
 
