@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.35 2002-12-05 20:08:39 castaglia Exp $
+ * $Id: mod_log.c,v 1.36 2002-12-05 23:38:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -383,6 +383,16 @@ MODRET set_allowlogsymlinks(cmd_rec *cmd) {
     CONF_ERROR(cmd, "expected boolean argument.");
 
   add_config_param(cmd->argv[0], 1, (void *) bool);
+
+  return HANDLED(cmd);
+}
+
+/* Syntax: ServerLog <filename> */
+MODRET set_serverlog(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
 
   return HANDLED(cmd);
 }
@@ -941,10 +951,21 @@ MODRET log_auth_complete(cmd_rec *cmd) {
   return DECLINED(cmd);
 }
 
+/* Open all the log files */
 static int log_sess_init(void) {
-  /* Open all log files */
+  char *serverlog_name = NULL;
   logfile_t *lf = NULL;
 
+  /* Open the ServerLog, if present. */
+  if ((serverlog_name = get_param_ptr(main_server->conf, "ServerLog",
+      FALSE)) != NULL) {
+    PRIVS_ROOT
+    log_closesyslog();
+    log_opensyslog(serverlog_name);
+    PRIVS_RELINQUISH
+  }
+
+  /* Open all the ExtendedLog files. */
   get_extendedlogs();
 
   for (lf = logs; lf; lf = lf->next) {
@@ -988,6 +1009,7 @@ static conftable log_conftab[] = {
   { "AllowLogSymlinks",	set_allowlogsymlinks,			NULL },
   { "ExtendedLog",	add_extendedlog,			NULL },
   { "LogFormat",	add_logformat,				NULL },
+  { "ServerLog",	set_serverlog,				NULL },
   { "SystemLog",	set_systemlog,				NULL },
   { NULL,		NULL,					NULL }
 };
