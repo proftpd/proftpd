@@ -3,12 +3,13 @@ exec_prefix=@exec_prefix@
 bindir=@bindir@
 sbindir=@sbindir@
 sysconfdir=@sysconfdir@
+libexecdir=@libexecdir@
 localstatedir=@localstatedir@
 rundir=@localstatedir@/proftpd
 mandir=@mandir@
 
 PLATFORM=@OSREL@ @OSTYPE@
-LDFLAGS=@LDFLAGS@
+LDFLAGS=@LDFLAGS@ @LIBDIRS@
 LIBS=@LIBRARIES@ @LIBS@
 CURSES_LIBS=@CURSES_LIBS@
 
@@ -37,8 +38,11 @@ BUILD_OBJS=src/main.o src/timers.o src/sets.o src/pool.o src/table.o \
            src/display.o src/auth.o src/fsio.o src/mkhome.o src/ctrls.o \
            src/event.o src/var.o
 
-MODULE_OBJS=@MODULE_OBJS@
-BUILD_MODULE_OBJS=@BUILD_MODULE_OBJS@ modules/module_glue.o
+SHARED_MODULE_OBJS=@SHARED_MODULE_OBJS@
+BUILD_SHARED_MODULE_OBJS=@BUILD_SHARED_MODULE_OBJS@
+
+STATIC_MODULE_OBJS=@STATIC_MODULE_OBJS@
+BUILD_STATIC_MODULE_OBJS=@BUILD_STATIC_MODULE_OBJS@ modules/module_glue.o
 
 FTPCOUNT_OBJS=ftpcount.o scoreboard.o
 BUILD_FTPCOUNT_OBJS=utils/ftpcount.o utils/scoreboard.o

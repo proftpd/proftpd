@@ -1,11 +1,20 @@
 CC=@CC@
 @SET_MAKE@
 
-top_builddir=.
+top_builddir=@top_builddir@
 top_srcdir=@top_srcdir@
 srcdir=@srcdir@
+
+LIBEXECDIR=@LIBEXECDIR@
 LIBTOOL=@LIBTOOL@
+SHARED_CFLAGS=-DPR_SHARED_MODULE
+SHARED_LDFLAGS=-avoid-version -export-dynamic -module
 VPATH=@srcdir@
+
+INSTALL=@INSTALL@
+INSTALL_USER=@install_user@
+INSTALL_GROUP=@install_group@
+INSTALL_BIN=$(INSTALL) @INSTALL_STRIP@ -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0755
 
 include ../Make.rules
 
@@ -17,17 +26,27 @@ all:
 Makefile: Makefile.in ../config.status
 	cd ../ && ./config.status
 
-
 .c.o:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
-module_glue.c: module_glue.c.tmpl $(MODULE_OBJS)
-	srcdir=$(srcdir) $(srcdir)/glue.sh $(MODULE_OBJS)
+$(SHARED_MODULE_OBJS):
+	$(LIBTOOL) --mode=compile $(CC) $(CPPFLAGS) $(CFLAGS) $(SHARED_CFLAGS) -c $(basename $@).c
+	$(LIBTOOL) --mode=link $(CC) -o $@ -rpath $(LIBEXECDIR) $(LDFLAGS) $(SHARED_LDFLAGS) $(basename $@).lo `cat $(top_srcdir)/modules/$(basename $@).c | grep '$$Libraries:' | sed -e 's/^.*\$$Libraries: \(.*\)\\$$/\1/'`
 
-modules: $(MODULE_OBJS) module_glue.o
+module_glue.c: module_glue.c.tmpl $(STATIC_MODULE_OBJS)
+	srcdir=$(srcdir) $(srcdir)/glue.sh $(STATIC_MODULE_OBJS)
+
+shared-modules: $(SHARED_MODULE_OBJS)
+
+static-modules: $(STATIC_MODULE_OBJS) module_glue.o
+
+install:
+	$(LIBTOOL) --mode=install $(INSTALL_BIN) $(SHARED_MODULE_OBJS) $(LIBEXECDIR)
 
 clean:
 	rm -f *.o module_glue.c
+	$(LIBTOOL) --mode=clean $(RM) $(SHARED_MODULE_OBJS)
+	$(LIBTOOL) --mode=clean $(RM) `echo $(SHARED_MODULE_OBJS) | sed 's/\.la$\/.lo/g'`
 
 depend:
 	rm -f module_glue.c
