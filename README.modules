@@ -74,12 +74,13 @@ Authentication modules:
         (formerly known as mod_sqlpw, mod_mysql, mod_pgsql)
         SQL (Structured Query Language) database authentication and
         other functions, with backends for MySQL and PostgreSQL.
-        See contrib/README.mod_sql.
+        See contrib/mod_sql.html
         Contributed by Johnie Ingram <johnie@netgod.net>.
         Maintained by Andrew Houghton <aah@acm.org>.
 
     mod_radius
        RADIUS (RFC2865) authentication and accounting
+       See contrib/mod_radius.html
        Contributed by TJ Saunders <tj@castaglia.org>.
 
 Feature modules:
