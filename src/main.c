@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.20 1999-10-11 03:13:13 macgyver Exp $
+ * $Id: main.c,v 1.21 2000-01-24 01:03:12 macgyver Exp $
  */
 
 /*
@@ -820,23 +820,31 @@ static void dispatch_cmd(cmd_rec *cmd)
     
     regerror(ret, preg, errmsg, 200);
     log_debug(DEBUG2, "'%s' didn't pass regex: %s", cmd->arg, errmsg);
-    add_response_err(R_550,"%s: Forbidden command argument", cmd->arg);
+    add_response_err(R_550, "%s: Forbidden command argument", cmd->arg);
     send_response_list(&resp_err_list);
     return;
   }
   
-  preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"DenyFilter",FALSE);
+  preg = (regex_t*) get_param_ptr(TOPLEVEL_CONF, "DenyFilter", FALSE);
   
   if(preg && ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) == 0)) {
-    add_response_err(R_550,"%s: Forbidden command argument", cmd->arg);
+    add_response_err(R_550, "%s: Forbidden command argument", cmd->arg);
     send_response_list(&resp_err_list);
     return;
   }
 #endif
-  
+
   for(cp = cmd->argv[0]; *cp; cp++)
     *cp = toupper(*cp);
 
+  /* Fastpath explicit deny directives for commands.
+   */
+  if(dir_check_limits(TOPLEVEL_CONF, cmd->argv[0], 0) < 0) {
+    add_response_err(R_550, "%s: Command disabled.", cmd->arg);
+    send_response_list(&resp_err_list);
+    return;
+  }
+  
   /* debug_print_dispatch(cmd); */
 
   /* first dispatch PRE_CMD with wildcard */
