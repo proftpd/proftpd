@@ -1,0 +1,56 @@
+CC=@CC@
+
+top_srcdir=@top_srcdir@
+srcdir=@srcdir@
+VPATH=@srcdir@
+
+@SET_MAKE@
+
+include ../Make.rules
+
+.c.o:
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
+
+all:
+	@echo "Running make from top level directory."
+	cd ../; $(MAKE) all
+
+utils: $(FTPCOUNT_OBJS) $(FTPSHUT_OBJS) $(FTPTOP_OBJS) $(FTPWHO_OBJS)
+
+clean:
+	rm -f *.o *.save core *~
+
+depend:
+	makedepend $(CPPFLAGS) -Y *.c 2>/dev/null
+	makedepend $(CPPFLAGS) -Y -fMakefile.in *.c 2>/dev/null
+
+# Dependancies written below
+
+# DO NOT DELETE
+
+ftpcount.o: utils.h ../config.h ../include/version.h ../include/buildstamp.h
+ftpcount.o: ../include/default_paths.h
+ftpshut.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+ftpshut.o: ../config.h ../include/default_paths.h ../include/options.h
+ftpshut.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+ftpshut.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+ftpshut.o: ../include/netio.h ../include/modules.h ../include/timers.h
+ftpshut.o: ../include/inet.h ../include/ident.h ../include/ftp.h
+ftpshut.o: ../include/log.h ../include/scoreboard.h ../include/data.h
+ftpshut.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
+ftpshut.o: ../include/pr-syslog.h
+ftptop.o: utils.h ../config.h ../include/version.h ../include/buildstamp.h
+ftptop.o: ../include/default_paths.h
+ftpwho.o: utils.h ../config.h ../include/version.h ../include/buildstamp.h
+ftpwho.o: ../include/default_paths.h
+misc.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+misc.o: ../config.h ../include/default_paths.h ../include/options.h
+misc.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+misc.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+misc.o: ../include/netio.h ../include/modules.h ../include/timers.h
+misc.o: ../include/inet.h ../include/ident.h ../include/ftp.h
+misc.o: ../include/log.h ../include/scoreboard.h ../include/data.h
+misc.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
+misc.o: ../include/pr-syslog.h
+scoreboard.o: utils.h ../config.h ../include/version.h
+scoreboard.o: ../include/buildstamp.h ../include/default_paths.h
