@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.112 2004-05-07 18:17:50 castaglia Exp $
+ * $Id: mod_ls.c,v 1.113 2004-05-07 21:31:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -73,6 +73,7 @@ static int
     opt_C = 0,
     opt_d = 0,
     opt_F = 0,
+    opt_h = 0,
     opt_l = 0,
     opt_L = 0,
     opt_n = 0,
@@ -271,6 +272,27 @@ static void ls_done(cmd_rec *cmd) {
   pr_data_close(FALSE);
 }
 
+static char units[6][2] = 
+  { "", "k", "M", "G", "T", "P" };
+
+static void ls_fmt_filesize(char *buf, size_t buflen, off_t sz) {
+  if (!opt_h || sz < 1000) {
+    snprintf(buf, buflen, "%8" PR_LU, sz);
+
+  } else {
+    register unsigned int i = 0;
+    float size = sz;
+
+    /* Determine the appropriate units label to use. */
+    while (size >= 1024.0) {
+      size /= 1024.0;
+      i++;
+    }
+
+    snprintf(buf, buflen, "%7.1f%s", size, units[i]);
+  }
+}
+
 static char months[12][4] =
   { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
@@ -278,7 +300,7 @@ static char months[12][4] =
 static int listfile(cmd_rec *cmd, pool *p, const char *name) {
   int rval = 0, len;
   time_t mtime;
-  char m[1024] = {'\0'},l[1024] = {'\0'};
+  char m[1024] = {'\0'}, l[1024] = {'\0'}, s[16] = {'\0'};
   struct stat st;
   struct tm *t = NULL;
   char suffix[2];
@@ -417,11 +439,6 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
           }
         }
 
-        /*
-         * The following lines were blatently ripped from stat.c, as shipped
-         * with the debian 'stat' package. Can't have anything thinking I know
-         * what I'm doing in here. :)
-         */
         m[9] = (mode & S_IXOTH)
                 ? ((mode & S_ISVTX) ? 't' : 'x')
                 : ((mode & S_ISVTX) ? 'T' : '-');
@@ -445,20 +462,22 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
           snprintf(timeline, sizeof(timeline), "%02d:%02d", t->tm_hour,
             t->tm_min);
 
+        ls_fmt_filesize(s, sizeof(s), st.st_size);
+
         if (!opt_n) {
 
           /* Format nameline using user/group names. */
           snprintf(nameline, sizeof(nameline)-1,
-            "%s %3d %-8s %-8s %8" PR_LU " %s %2d %s %s", m, (int) st.st_nlink,
-            MAP_UID(st.st_uid), MAP_GID(st.st_gid), st.st_size,
+            "%s %3d %-8s %-8s %s %s %2d %s %s", m, (int) st.st_nlink,
+            MAP_UID(st.st_uid), MAP_GID(st.st_gid), s,
             months[t->tm_mon], t->tm_mday, timeline, name);
 
         } else {
 
           /* Format nameline using user/group IDs. */
           snprintf(nameline, sizeof(nameline)-1,
-            "%s %3d %-8u %-8u %8" PR_LU " %s %2d %s %s", m, (int) st.st_nlink,
-            (unsigned) st.st_uid, (unsigned) st.st_gid, st.st_size,
+            "%s %3d %-8u %-8u %s %s %2d %s %s", m, (int) st.st_nlink,
+            (unsigned) st.st_uid, (unsigned) st.st_gid, s,
             months[t->tm_mon], t->tm_mday, timeline, name);
         }
 
@@ -1101,6 +1120,12 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           }
           break;
 
+        case 'h':
+          if (strcmp(session.curr_cmd, C_NLST) != 0) {
+            opt_h = 1;
+          }
+          break;
+
         case 'L':
           opt_L = 1;
           break;
@@ -1169,6 +1194,10 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           opt_F = 0;
           break;
 
+        case 'h':
+          opt_h = 0;
+          break;
+
         case 'L':
           opt_L = 0;
           break;
@@ -1214,7 +1243,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
   ls_curtime = time(NULL);
 
   if (clearflags)
-    opt_a = opt_C = opt_d = opt_F = opt_n = opt_r = opt_R =
+    opt_a = opt_C = opt_d = opt_F = opt_h = opt_n = opt_r = opt_R =
       opt_t = opt_STAT = opt_L = 0;
 
   if (!list_strict_opts) {
