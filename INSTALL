@@ -204,8 +204,10 @@ Troubleshooting and Help
     The proftpd daemon logs all error conditions it encounters, including
     problems parsing the configuration file.  Authentication related
     messages are logged using the syslog facility "auth" or, if available,
-    "authpriv".  All other messages use the syslog "daemon" facility.
-    Check your syslogd.conf to see what syslogd does with these messages.
+    "authpriv", while all other messages use the syslog "daemon" facility,
+    unless redirected by the "-n" command line switch or by the configuration
+    file directives SyslogFacility or SystemLog.  Check your syslogd.conf
+    to see what syslogd does with these messages.
 
 2.  If you encounter problems not easily diagnosed by the error messages,
     you might check for a newer ProFTPD release at the official distribution
