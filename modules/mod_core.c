@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.28 2000-02-28 10:32:47 macgyver Exp $
+ * $Id: mod_core.c,v 1.29 2000-02-28 18:57:18 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -1495,9 +1495,9 @@ int core_display_file(const char *numeric, const char *fn)
   unsigned long fs_size = 0;
   pool *p;
   xaset_t *s;
-  char *outs,*mg_time,mg_size[12],mg_max[12] = "unlimited", mg_class_limit[12];
-  char mg_cur[12],mg_xfer_bytes[12],mg_cur_class[12], config_class_users[128];
-  char *user;
+  char *outs, *mg_time, mg_size[12], mg_max[12] = "unlimited";
+  char mg_class_limit[12], mg_cur[12], mg_xfer_bytes[12], mg_cur_class[12];
+  char mg_xfer_units[12], config_class_users[128], *user;
   short first = 1;
 
 #if defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
@@ -1533,6 +1533,20 @@ int core_display_file(const char *numeric, const char *fn)
    
   snprintf(mg_xfer_bytes, sizeof(mg_xfer_bytes), "%lu",
 	   session.total_bytes >> 10);
+  
+  snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%luB",
+	   session.total_bytes);
+  
+  if(session.total_bytes >= 10240) {
+    snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%lukB",
+	     session.total_bytes >> 10);
+  } else if ((session.total_bytes >> 10) >= 10240) {
+    snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%luMB",
+	     session.total_bytes >> 20);
+  } else if ((session.total_bytes >> 20) >= 10240) {
+    snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%luGB",
+	     session.total_bytes >> 30);
+  }
 
   if(max != -1)
     snprintf(mg_max, sizeof(mg_max), "%d",max);
@@ -1552,24 +1566,26 @@ int core_display_file(const char *numeric, const char *fn)
     }
 
     outs = sreplace(p,buf,
-             "%T",mg_time,
-             "%F",mg_size,
-	     "%C",(session.cwd[0] ? session.cwd : "(none)"),
-	     "%R",(session.c && session.c->remote_name ?
-		   session.c->remote_name : "(unknown)"),
-	     "%L",main_server->ServerFQDN,
-             "%u",session.ident_user,
-	     "%U",user,
-	     "%K",mg_xfer_bytes,
-	     "%M",mg_max,
-             "%N",mg_cur,
-	     "%E",main_server->ServerAdmin,
-	     "%V",main_server->ServerName,
-	     "%x",(classes_enabled && session.class) ? session.class->name : "",
-	     "%y",mg_cur_class,
-	     "%z",mg_class_limit,
-             NULL);
-
+		    "%T", mg_time,
+		    "%F", mg_size,
+		    "%C", (session.cwd[0] ? session.cwd : "(none)"),
+		    "%R", (session.c && session.c->remote_name ?
+			   session.c->remote_name : "(unknown)"),
+		    "%L", main_server->ServerFQDN,
+		    "%u", session.ident_user,
+		    "%U", user,
+		    "%k", mg_xfer_units,
+		    "%K", mg_xfer_bytes,
+		    "%M", mg_max,
+		    "%N", mg_cur,
+		    "%E", main_server->ServerAdmin,
+		    "%V", main_server->ServerName,
+		    "%x", (classes_enabled && session.class) ?
+		    session.class->name : "",
+		    "%y", mg_cur_class,
+		    "%z", mg_class_limit,
+		    NULL);
+    
     if(first) {
       send_response_raw("%s-%s",numeric,outs);
       first=0;
