@@ -25,7 +25,7 @@
 
 /*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.20 2004-10-30 20:45:52 castaglia Exp $
+ * $Id: timers.c,v 1.21 2004-10-30 21:55:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,7 +35,7 @@
 /* From src/main.c */
 volatile extern unsigned int recvd_signal_flags;
 
-typedef struct timer {
+struct timer {
   struct timer *next, *prev;
 
   long count;                   /* Amount of time remaining */
