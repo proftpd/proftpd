@@ -24,7 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* $Id: privs.h,v 1.17 2003-02-05 21:14:26 castaglia Exp $
+/* $Id: privs.h,v 1.18 2003-03-05 01:23:16 castaglia Exp $
  */
 
 #ifndef PR_PRIVS_H
@@ -83,6 +83,9 @@
   { \
     log_debug(DEBUG9, "ROOT PRIVS at %s:%d", __FILE__, __LINE__); \
     if (!session.disable_id_switching) { \
+      if (setregid(session.gid,0)) \
+        log_pri(PR_LOG_ERR, "PRIVS_ROOT: unable to setregid(): %s", \
+          strerror(errno)); \
       if (setreuid(session.uid, 0)) \
         log_pri(PR_LOG_ERR, "PRIVS_ROOT: unable to setreuid(): %s", \
           strerror(errno)); \
@@ -109,6 +112,14 @@
   { \
     log_debug(DEBUG9, "RELINQUISH PRIVS at %s:%d", __FILE__, __LINE__); \
     if (!session.disable_id_switching) { \
+      if (getegid() != 0) { \
+        if (setregid(session.gid, 0)) \
+          log_pri(PR_LOG_ERR, "PRIVS_RELINQUISH: unable to " \
+            "setregid(session.gid, 0): %s", strerror(errno)); \
+      } \
+      if (setregid(session.gid, session.gid)) \
+        log_pri(PR_LOG_ERR, "PRIVS_RELINQUISH: unable to setregid(session.jid, " \
+          "session.gid): %s", strerror(errno)); \
       if (geteuid() != 0) { \
         if (setreuid(session.uid, 0)) \
           log_pri(PR_LOG_ERR, "PRIVS_RELINQUISH: unable to " \
@@ -186,6 +197,9 @@
     if (seteuid(0)) \
       log_pri(PR_LOG_ERR, "PRIVS_ROOT: unable to seteuid(): %s", \
         strerror(errno)); \
+    if (setegid(0)) \
+      log_pri(PR_LOG_ERR, "PRIVS_ROOT: unable to setegid(): %s", \
+        strerror(errno)); \
   } else \
     log_debug(DEBUG9, "ROOT PRIVS: ID switching disabled");
 
@@ -219,6 +233,9 @@
           strerror(errno)); \
     } \
     log_debug(DEBUG9, "RELINQUISH PRIVS at %s:%d", __FILE__, __LINE__); \
+    if (setegid(session.gid)) \
+      log_pri(PR_LOG_ERR, "PRIVS_RELINQUISH: unable to setegid(session.gid): %s", \
+        strerror(errno)); \
     if (seteuid(session.uid)) \
       log_pri(PR_LOG_ERR, "PRIVS_RELINQUISH: unable to seteuid(session.uid): %s", \
         strerror(errno)); \
