@@ -2,9 +2,29 @@
 			ProFTPD 1.2 README.FreeBSD
 			==========================
 
+Packages
+--------
+
+A precompiled FreeBSD package for x86 systems can be installed from sources,
+including CD-ROM, the FreeBSD FTP server and its mirrors. To install from the
+main FreeBSD FTP server:
+
+  # pkg_add -r ftp://ftp.freebsd.org/pub/FreeBSD/ports/packages/ftp/proftpd-1.2.8.tgz
+
+Note that 1.2.8 is the current package version and is based on the current
+version of the FreeBSD ProFTPD port (ftp/proftpd).  As the port is updated to a
+newer version, the corresponding package will be updated.
+
+Versions for Alpha and Sparc64 systems are avaialble in their respective
+directories on the FTP site, ports/alpha and ports/sparc64.
+
+Bugs
+----
+
 FreeBSD releases 2.0 through 3.3-RELEASE have a libc bug with setpassent().
 If you know that you have a fixed libc you can use the configure command line
 option '--enable-force-setpassent' to use it with one of these fixed releases,
 otherwise ProFTPD will use its internal persistent password support.  If you
 would like more information, this bug is described in FreeBSD PR #14201.
+
 
