@@ -1,3 +1,159 @@
+2005-03-26 13:10  castaglia
+
+	* NEWS, include/version.h, contrib/dist/rpm/proftpd.spec: 
+	Preparing for release of 1.3.0rc1.
+
+2005-03-26 12:53  jwm
+
+	* RELEASE_NOTES: mod_ldap is now 2.8.15
+
+2005-03-26 12:48  castaglia
+
+	* RELEASE_NOTES: 
+	Updating release notes, preparing for release of 1.3.0rc1.
+
+2005-03-25 08:41  castaglia
+
+	* NEWS, contrib/mod_tls.c: 
+	Bug#2493 - mod_tls should support CCC command.
+
+2005-03-18 10:25  castaglia
+
+	* NEWS, src/support.c: 
+	Bug#2576 - PWD command does not handle " character properly.
+
+2005-03-16 23:12  castaglia
+
+	* modules/mod_auth.c: 
+	Call PRIVS_ROOT before PRIVS_REVOKE, to make absolutely sure that
+	the real and effective UIDs are as needed in order for privs
+	revocation to work.
+
+2005-03-16 08:16  castaglia
+
+	* NEWS, modules/mod_ls.c: 
+	Bug#2551 - Recursive LIST with symlinked directories gives
+	duplicate results.
+
+2005-03-15 22:16  castaglia
+
+	* modules/mod_ls.c: 
+	Cruft removal.
+
+2005-03-12 09:36  castaglia
+
+	* modules/mod_ls.c: 
+	Fix an unreported bug where attempting to use the -t directory
+	listing option would trigger a segfault.
+
+2005-03-11 12:44  jwm
+
+	* contrib/mod_ldap.c: [no log message]
+
+2005-03-08 09:06  castaglia
+
+	* NEWS, src/pool.c: 
+	Bug#2567 - Segmentation fault with 64-bit binary due to structure
+	layout difference.
+
+2005-03-05 22:03  castaglia
+
+	* contrib/mod_quotatab.c: 
+	More consistent log messages.
+
+2005-03-05 15:02  castaglia
+
+	* contrib/mod_quotatab.c: 
+	Fixed quotatab_fsio_write() to check the xfer limit as well as the
+	upload limit.
+
+2005-03-05 14:55  castaglia
+
+	* NEWS, contrib/mod_quotatab.c: 
+	Bug#2515 - mod_quotatab should enforce hard limits at the
+	filesystem level.
+
+2005-03-05 09:46  castaglia
+
+	* NEWS, contrib/mod_tls.c, modules/mod_auth.c, src/auth.c: 
+	Bug#2164 - Support non-PASS response codes.
+
+2005-03-05 09:33  castaglia
+
+	* NEWS, src/inet.c: 
+	Bug#2559 - IPv6 socket option should be set for ServerType inetd.
+
+2005-03-04 09:01  castaglia
+
+	* NEWS, contrib/mod_tls.c: 
+	Bug #2573 - TLSProtocol directive in proftpd.conf is ignored.
+
+2005-03-02 12:33  castaglia
+
+	* modules/mod_delay.c: 
+	Allow for <IfClass>-based tweaks of the DelayEngine directive.
+
+2005-02-27 18:50  castaglia
+
+	* README.DSO: 
+	Mention the DSO howto.
+
+2005-02-27 11:23  castaglia
+
+	* README.modules: 
+	List mod_facl in the modules README.
+
+2005-02-27 11:21  castaglia
+
+	* README.facl: 
+	Fleshing out the POSIX ACL doc.
+
+2005-02-27 09:46  castaglia
+
+	* README.DSO: 
+	Update the DSO doc with information on where to find more
+	documentation for the mod_dso module.
+
+2005-02-26 18:37  castaglia
+
+	* README.DSO: 
+	Adding more substance to the DSO doc.
+
+2005-02-26 12:22  castaglia
+
+	* RELEASE_NOTES: 
+	Mention the new --enable-facl configure option, mod_facl module in
+	the release notes.
+
+2005-02-26 09:55  castaglia
+
+	* src/fsio.c: 
+	Fix missing variable declaration.
+
+2005-02-26 09:39  castaglia
+
+	* configure: 
+	Updating configure.
+
+2005-02-26 09:28  castaglia
+
+	* NEWS, README.facl, config.h.in, configure.in, include/conf.h,
+	include/dirtree.h, include/fsio.h, include/privs.h,
+	include/proftpd.h, include/support.h, modules/mod_auth.c,
+	modules/mod_facl.c, modules/mod_ls.c, src/dirtree.c, src/fsio.c,
+	src/main.c, src/support.c: 
+	Bug #2331: Proftpd does not honor POSIX ACLs.
+
+2005-02-24 18:01  castaglia
+
+	* NEWS, contrib/mod_sql_mysql.c: 
+	Bug #2563: Linking fails on Solaris with libz and libmysqlclient.
+
+2005-02-24 16:00  castaglia
+
+	* ChangeLog: 
+	Updated ChangeLog.
+
 2005-02-15 13:54  jwm
 
 	* contrib/dist/rpm/proftpd.spec: i don't have access to red hat
@@ -6639,7 +6795,7 @@
 2003-06-11 19:08  castaglia
 
 	* src/: inet.c, modules.c: 
-	Missing $Id: ChangeLog,v 1.124 2005-02-25 00:00:17 castaglia Exp $ keyword.
+	Missing $Id: ChangeLog,v 1.125 2005-03-26 21:12:18 castaglia Exp $ keyword.
 
 2003-06-11 15:45  castaglia
 
@@ -7810,7 +7966,7 @@
 
 	* contrib/: mod_sql.c, mod_sql.h, mod_sql_mysql.c,
 	mod_sql_postgres.c: 
-	Adding $Id: ChangeLog,v 1.124 2005-02-25 00:00:17 castaglia Exp $ tags to the mod_sql files.
+	Adding $Id: ChangeLog,v 1.125 2005-03-26 21:12:18 castaglia Exp $ tags to the mod_sql files.
 
 2003-03-14 07:54  castaglia
 
@@ -8327,12 +8483,12 @@
 
 	* src/netio.c, src/pool.c, src/sets.c, include/ident.h,
 	include/timers.h: 
-	Adding more $Id: ChangeLog,v 1.124 2005-02-25 00:00:17 castaglia Exp $ keywords.
+	Adding more $Id: ChangeLog,v 1.125 2005-03-26 21:12:18 castaglia Exp $ keywords.
 
 2003-02-11 23:34  castaglia
 
 	* src/feat.c: 
-	Added $Id: ChangeLog,v 1.124 2005-02-25 00:00:17 castaglia Exp $ keyword.
+	Added $Id: ChangeLog,v 1.125 2005-03-26 21:12:18 castaglia Exp $ keyword.
 
 2003-02-10 15:34  castaglia
 
