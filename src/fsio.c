@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.15 2003-04-16 03:18:04 castaglia Exp $
+ * $Id: fsio.c,v 1.16 2003-04-16 06:09:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2581,18 +2581,19 @@ static off_t calc_fs_size(size_t blocks, size_t bsize) {
 off_t pr_fs_getsize(char *path) {
 # if defined(HAVE_SYS_STATVFS_H)
 
-#  if _FILE_OFFSET_BITS == 64 && (defined(SOLARIS2_8) || defined(SOLARIS2_9))
+#  if _FILE_OFFSET_BITS == 64 && defined(SOLARIS2) && \
+   !defined(SOLARIS2_6) && !defined(SOLARIS2_7))
   /* Note: somewhere along the way, Sun decided that the prototype for
    * its statvfs64(2) function would include a statvfs64_t rather than
-   * struct statvfs64.  I know that in 2.6, it's struct statvfs64, and
-   * that in 8, 9 it's statvfs64_t.  Don't know about 2.7 yet.  But this
-   * should silence compiler warnings.  (The statvfs_t will be redefined
-   * to a statvfs64_t as appropriate on LFS systems).
+   * struct statvfs64.  In 2.6 and 2.7, it's struct statvfs64, and
+   * in 8, 9 it's statvfs64_t.  This should silence compiler warnings.
+   * (The statvfs_t will be redefined to a statvfs64_t as appropriate on
+   * LFS systems).
    */
   statvfs_t fs;
 #  else
   struct statvfs fs;
-#  endif /* LFS && Solaris 8 || Solaris 9 */
+#  endif /* LFS && !Solaris 2.6 && !Solaris 2.7 */
 
   if (statvfs(path, &fs) != 0)
     return 0;
