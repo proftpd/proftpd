@@ -110,7 +110,7 @@ INSTALLATION INSTRUCTIONS:
 
 11. If you want to add anonymous ftp, or create a more sophisticated
     ftp configuration, try doing this now (using
-    http://www.proftpd.org/reference.html as a guide).  To test a
+    http://www.proftpd.net/docs/ as a guide).  To test a
     new configuration you can run proftpd -c <new_config_file>
     from the command line, and you'll be informed if proftpd can't
     properly parse the conf file.  If you are running in inetd
@@ -122,8 +122,9 @@ Good luck!  If you run into problems with configuration, *check your
 syslog*.  Proftpd logs all error conditions it encounters, including
 parsing problems with one or more configuration files.
 
-   Bug reports
-& mailing list: proftpd@proftpd.net
-       Patches: macgyver@tos.net
-           WWW: http://www.proftpd.org
-           FTP: ftp://ftp.tos.net/pub/proftpd
+ Bug reports & patches: http://bugs.proftpd.net
+ End User Mailing List: proftpd@proftpd.net
+Developer Mailing List: proftpd-devel@proftpd.net
+               Patches: macgyver@tos.net or proftpd-devel@proftpd.net
+                   WWW: http://www.proftpd.net
+                   FTP: ftp://ftp.proftpd.net/pub/proftpd
