@@ -1,3 +1,13 @@
+2001-02-21 20:48  flood
+
+	* NEWS, src/log.c: Logging is now done with a single write()
+	syscall
+
+2001-02-21 20:09  flood
+
+	* modules/mod_core.c, src/main.c: Bug #1009 - FTP logins are now
+	logged to match logouts.
+
 2001-02-21 17:33  flood
 
 	* CREDITS, src/log.c: Bug #1021 - fix for ftpwho/ftpcount not
