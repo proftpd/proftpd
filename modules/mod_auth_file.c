@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.12 2003-06-09 17:25:26 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.13 2003-08-01 01:03:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -167,6 +167,7 @@ static char *af_getgrentline(char **buf, int *buflen, FILE *fp) {
   char *cp = *buf;
 
   while (fgets(cp, (*buflen) - (cp - *buf), fp) != NULL) {
+    pr_signals_handle();
 
     /* Is this a full line? */
     if (strchr(cp, '\n'))
@@ -329,6 +330,8 @@ static struct group *af_getgrent(authfile_file_t *groupf) {
   struct group *grp = NULL;
 
   while (TRUE) {
+    pr_signals_handle();
+
 #ifdef HAVE_FGETGRENT
     grp = fgetgrent(groupf->af_file);
 #else
@@ -482,12 +485,15 @@ static struct passwd *af_getpwent(authfile_file_t *passwdf) {
   struct passwd *pwd = NULL;
 
   while (TRUE) {
+    pr_signals_handle();
+
 #ifdef HAVE_FGETPWENT
     pwd = fgetpwent(passwdf->af_file);
 #else
     char buf[BUFSIZ] = {'\0'};
 
     while (fgets(buf, sizeof(buf), passwdf->af_file) != (char*) 0) {
+      pr_signals_handle();
 
       /* Ignore empty and comment lines */
       if (buf[0] == '\0' || buf[0] == '#')

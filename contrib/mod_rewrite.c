@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.14 2003-06-24 01:47:20 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.15 2003-08-01 01:03:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -560,6 +560,8 @@ static unsigned char rewrite_parse_map_txt(rewrite_map_txt_t *txtmap) {
     unsigned int key_so = 0, key_eo = 0;
     unsigned int val_so = 0, val_eo = 0;
 
+    pr_signals_handle();
+
     /* Skip leading whitespace. */
     for (pos = 0; pos < linelen && isspace(linebuf[pos]); pos++);
 
@@ -665,11 +667,11 @@ static unsigned char rewrite_regexec(const char *string, regex_t *regbuf,
     have_match = TRUE;
     break;
 
+#if 0
     /* If negated, be done */
-/*
     if (negated)
       break;
-*/
+#endif
   }
 
   /* Invert the return value if necessary. */
@@ -867,8 +869,10 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
     lock.l_start = lock.l_len = 0;
 
     while (fcntl(fifo_lockfd, F_SETLKW, &lock) < 0) {
-      if (errno == EINTR)
+      if (errno == EINTR) {
+        pr_signals_handle();
         continue;
+      }
 
       rewrite_log("rewrite_subst_maps_fifo(): error obtaining lock: %s",
         strerror(errno));
@@ -911,8 +915,10 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
       lock.l_start = lock.l_len = 0;
 
       while (fcntl(fifo_lockfd, F_SETLKW, &lock) < 0) {
-        if (errno == EINTR)
+        if (errno == EINTR) {
+          pr_signals_handle();
           continue;
+        }
 
         rewrite_log("rewrite_subst_maps_fifo(): error releasing lock: %s",
           strerror(errno));
@@ -980,8 +986,10 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
     lock.l_start = lock.l_len = 0;
 
     while (fcntl(fifo_lockfd, F_SETLKW, &lock) < 0) {
-      if (errno == EINTR)
+      if (errno == EINTR) {
+        pr_signals_handle();
         continue;
+      }
 
       rewrite_log("rewrite_subst_maps_fifo(): error releasing lock: %s",
         strerror(errno));

@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.156 2003-07-11 01:52:01 castaglia Exp $
+ * $Id: mod_auth.c,v 1.157 2003-08-01 01:03:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -553,9 +553,14 @@ static unsigned char auth_check_ftpusers(xaset_t *s, const char *user) {
       return res;
 
     while (fgets(buf, sizeof(buf)-1, ftpusersf)) {
-      buf[sizeof(buf)-1] = '\0'; CHOP(buf);
+      pr_signals_handle();
 
-      u = buf; while (isspace((int) *u) && *u) u++;
+      buf[sizeof(buf)-1] = '\0';
+      CHOP(buf);
+
+      u = buf;
+      while (isspace((int) *u) && *u)
+        u++;
 
       if (!*u || *u == '#')
         continue;
@@ -579,6 +584,9 @@ static unsigned char auth_check_shell(xaset_t *s, const char *shell) {
   unsigned char *require_valid_shell = get_param_ptr(s, "RequireValidShell",
     FALSE);
 
+  if (!shell)
+    return res;
+
   if (!require_valid_shell || *require_valid_shell == TRUE) {
     if ((shellf = fopen(VALID_SHELL_PATH, "r")) == NULL)
       return res;
@@ -586,7 +594,10 @@ static unsigned char auth_check_shell(xaset_t *s, const char *shell) {
     res = FALSE;
 
     while (fgets(buf, sizeof(buf)-1, shellf)) {
-      buf[sizeof(buf)-1] = '\0'; CHOP(buf);
+      pr_signals_handle();
+
+      buf[sizeof(buf)-1] = '\0';
+      CHOP(buf);
 
       if (!strcmp(shell, buf)) {
         res = TRUE;

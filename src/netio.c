@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.14 2003-06-03 16:25:23 castaglia Exp $
+ * $Id: netio.c,v 1.15 2003-08-01 01:03:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -419,6 +419,7 @@ int pr_netio_poll(pr_netio_stream_t *nstrm) {
           }
 
 	  /* Otherwise, restart the call */
+          pr_signals_handle();
           continue;
         }
 
@@ -524,9 +525,9 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
         return -1;
 
       default:
-        /* We have to potentially restart here as well, in case we get EINTR.
-         */
+        /* We have to potentially restart here as well, in case we get EINTR. */
         do {
+          pr_signals_handle(); 
           run_schedule();
 
           switch (nstrm->strm_type) {
@@ -587,6 +588,7 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
 
   while (buflen) {
     do {
+      pr_signals_handle();
 
       switch (nstrm->strm_type) {
         case PR_NETIO_STRM_CTRL:
@@ -658,6 +660,7 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
 
       default:
         do {
+          pr_signals_handle();
           run_schedule();
 
           switch (nstrm->strm_type) {

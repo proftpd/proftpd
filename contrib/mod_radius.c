@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.16 2003-06-23 19:58:39 castaglia Exp $
+ * $Id: mod_radius.c,v 1.17 2003-08-01 01:03:27 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.8rc2"
@@ -1565,8 +1565,8 @@ static void radius_build_packet(radius_packet_t *packet, const char *user,
 
   /* Add a NAS IP address attribute. */
   radius_add_attrib(packet, RADIUS_NAS_IP_ADDRESS,
-    (unsigned char *) &(main_server->ipaddr->s_addr),
-    sizeof(main_server->ipaddr->s_addr));
+    (unsigned char *) &(session.c->local_ipaddr->s_addr),
+    sizeof(session.c->local_ipaddr->s_addr));
 
   /* Add a NAS port attribute. */
   radius_add_attrib(packet, RADIUS_NAS_PORT, (unsigned char *) &nas_port,
@@ -1633,6 +1633,8 @@ static int radius_open_socket(void) {
    */
   local_port = (getpid() & 0x7fff) + 1024;
   do {
+    pr_signals_handle();
+
     local_port++;
     radius_sockaddr_in->sin_port = htons(local_port);
 
@@ -1755,6 +1757,8 @@ static unsigned char radius_start_accting(void) {
   while (acct_server) {
     char pid[10] = {'\0'};
 
+    pr_signals_handle();
+
     /* Clear the packet. */
     memset(request, '\0', sizeof(radius_packet_t));
 
@@ -1864,6 +1868,8 @@ static unsigned char radius_stop_accting(void) {
 
   while (acct_server) {
     char pid[10] = {'\0'};
+
+    pr_signals_handle();
 
     /* Clear the packet. */
     memset(request, '\0', sizeof(radius_packet_t));
@@ -2207,6 +2213,7 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
   auth_server = radius_auth_server;
 
   while (auth_server) {
+    pr_signals_handle();
 
     /* Clear the packet. */
     memset(request, '\0', sizeof(radius_packet_t));
