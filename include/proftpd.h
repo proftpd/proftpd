@@ -18,7 +18,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.8 2000-01-03 21:28:39 macgyver Exp $
+ * $Id: proftpd.h,v 1.9 2000-01-24 00:46:24 macgyver Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -75,6 +75,12 @@ typedef struct cdir_struc {
   u_int_32 netmask;
   class_t *class;
 } cdir_t;
+
+typedef struct hostname_struc {
+  struct hostname_struc *next;
+  char *hostname;
+  class_t *class;
+} hostname_t;
 
 struct conn_struc;
 struct cmd_struc;

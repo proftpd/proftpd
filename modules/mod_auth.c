@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.23 2000-01-03 21:28:39 macgyver Exp $
+ * $Id: mod_auth.c,v 1.24 2000-01-24 00:46:24 macgyver Exp $
  */
 
 #include "conf.h"
@@ -35,6 +35,8 @@ module auth_module;
 
 static int logged_in = 0;
 static int auth_tries = 0;
+
+static void _do_user_counts();
 
 /* check_auth is hooked into the main server's auth_hook function,
  * so that we can deny all commands until authentication is complete.
@@ -82,6 +84,10 @@ int auth_init_child()
   /* Start the login timer */
   if(TimeoutLogin)
     add_timer(TimeoutLogin,TIMER_LOGIN,&auth_module,_login_timeout);
+   
+  if ((char*)get_param_ptr(main_server->conf,"DisplayConnect",FALSE) != NULL)
+    _do_user_counts();
+   
   return 0;
 }
 
@@ -1041,7 +1047,47 @@ auth_failure:
   session.wtmp_log = 0;
   return 0;
 }
+
+/* This function counts the number of connected users. It only fills in the 
+   CURRENT_CLASS based counters and an estimate for the number of clients. The
+   primary prupose is to make it so that the %N/%y escapes work in a 
+   DisplayConnect greeting */
+static void _do_user_counts()
+{
+  logrun_t *l;
+  int cur = -1, ccur = -1;
+  char config_class_users[128];
+   
+  if(!get_param_int(main_server->conf,"Classes",FALSE))
+    return;
+
+  session.class = (class_t *) find_class(session.c->remote_ipaddr,
+  			   	         session.c->remote_name);
   
+  /* Determine how many users are currently connected */
+  PRIVS_ROOT
+  while((l = log_read_run(NULL)) != NULL)
+      /* Make sure it matches our current server */
+      if(l->server_ip.s_addr == main_server->ipaddr->s_addr &&
+         l->server_port == main_server->ServerPort) {
+	 
+	cur++;
+        if(strcmp(l->class, session.class->name) == 0)
+        	ccur++;
+      }
+  PRIVS_RELINQUISH
+
+  remove_config(CURRENT_CONF,"CURRENT-CLIENTS",FALSE);
+  add_config_param_set(&CURRENT_CONF,"CURRENT-CLIENTS",1,(void*)cur);
+
+  remove_config(CURRENT_CONF,"CURRENT-CLASS",FALSE);
+  add_config_param_set(&CURRENT_CONF,"CURRENT-CLASS",1,session.class->name);
+
+  snprintf(config_class_users, sizeof(config_class_users), "%s-%s", "CURRENT-CLIENTS-CLASS", session.class->name);
+  remove_config(CURRENT_CONF,config_class_users,FALSE);
+  add_config_param_set(&CURRENT_CONF,config_class_users,1,ccur);
+}
+
 MODRET cmd_user(cmd_rec *cmd)
 {
   int nopass = 0, cur = 0,hcur = 0, ccur = 0;

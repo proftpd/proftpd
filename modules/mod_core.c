@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.25 2000-01-23 23:31:43 macgyver Exp $
+ * $Id: mod_core.c,v 1.26 2000-01-24 00:46:24 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -2355,6 +2355,28 @@ MODRET set_classes(cmd_rec *cmd)
 
 static cdir_t *cdir_list = NULL;
 static class_t *class_list = NULL;
+static hostname_t *hostname_list = NULL;
+
+static hostname_t *add_hostname(class_t *class, char *name)
+{
+	hostname_t *n;
+	
+	n = calloc(1, sizeof(hostname_t));
+	n->hostname = strdup(name);
+	n->next = hostname_list;
+	n->class = class;
+	hostname_list = n;
+	return n;
+}
+
+static hostname_t *find_hostname(char *name)
+{
+	hostname_t *i;
+	for (i = hostname_list; i != NULL; i = i->next)
+		if (strcasecmp(i->hostname,name) == 0)
+			return i;
+	return NULL;
+}
 
 static cdir_t *add_cdir(class_t *class, u_int_32 address, u_int_8 netmask)
 {
@@ -2423,10 +2445,16 @@ static class_t *get_class(char *name)
 class_t *find_class(p_in_addr_t *addr, char *remote_name)
 {
 	cdir_t *ip;
+	hostname_t *host;
 	class_t *c, *f;
 
 	if ((ip = find_cdir(ntohl(addr->s_addr))) != NULL)
 		return ip->class;
+
+	if ((host = find_hostname(remote_name)) != NULL)
+		return host->class;
+	if ((host = find_hostname(inet_ntoa(*addr))) != NULL)
+		return host->class;
 
 	c = class_list;
 	f = NULL;
@@ -2507,6 +2535,8 @@ MODRET set_class(cmd_rec *cmd)
       log_pri(LOG_ERR, "Class '%s' ip could not parse '%s'.",
 	      cmd->argv[1], cmd->argv[3]);
     }
+  } else if(strcasecmp(cmd->argv[2], "host") == 0) {
+    add_hostname(n,cmd->argv[3]);
   } else {
     CONF_ERROR(cmd, "unknown argument.");
   }
