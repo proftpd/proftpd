@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.83 2002-12-07 00:48:32 castaglia Exp $
+ * $Id: dirtree.c,v 1.84 2002-12-07 02:38:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2839,6 +2839,8 @@ void fixup_servers(void) {
     s->ServerName = pstrdup(s->pool, "ProFTPD");
 
   for (; s; s = next_s) {
+    unsigned char *default_server = NULL;
+
     next_s = s->next;
 
     if (!s->ServerAddress)
@@ -2880,7 +2882,9 @@ void fixup_servers(void) {
     /* Honor the DefaultServer directive only if SocketBindTight is not
      * in effect.
      */
-    if (get_param_int(s->conf, "DefaultServer", FALSE) == 1) {
+    default_server= get_param_ptr(s->conf, "DefaultServer", FALSE);
+
+    if (default_server && *default_server == TRUE) {
       if (!SocketBindTight)
         s->ipaddr->s_addr = 0;
       else
