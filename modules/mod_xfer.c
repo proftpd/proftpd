@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.137 2003-04-09 02:53:06 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.138 2003-04-14 22:38:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1768,6 +1768,10 @@ MODRET xfer_err_cleanup(cmd_rec *cmd) {
     destroy_pool(session.xfer.p);
 
   memset(&session.xfer, '\0', sizeof(session.xfer));
+
+  /* Don't forget to clear any possible REST parameter as well. */
+  session.restart_pos = 0;
+
   return DECLINED(cmd);
 }
 
@@ -1779,6 +1783,9 @@ MODRET xfer_log_stor(cmd_rec *cmd) {
   session.total_files_in++;
   session.total_files_xfer++;
 
+  /* Don't forget to clear any possible REST parameter as well. */
+  session.restart_pos = 0;
+
   return DECLINED(cmd);
 }
 
@@ -1789,6 +1796,9 @@ MODRET xfer_log_retr(cmd_rec *cmd) {
   /* Increment the file counters. */
   session.total_files_out++;
   session.total_files_xfer++;
+
+  /* Don't forget to clear any possible REST parameter as well. */
+  session.restart_pos = 0;
 
   return DECLINED(cmd);
 }
