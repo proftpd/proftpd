@@ -1,3 +1,406 @@
+2002-11-15 08:37  castaglia
+
+	* modules/mod_pam.c: 
+	More timing/pam_end() fixes specific to the Solaris flavor of PAM.
+
+2002-11-15 08:11  castaglia
+
+	* utils/ftptop.c: 
+	Portability/compiler warning hack.  *sigh*
+
+2002-11-15 08:03  castaglia
+
+	* modules/mod_xfer.c: 
+	Necessary typecasts to avoid compiler warnings (seen on Solaris
+	2.8).
+
+2002-11-15 07:46  castaglia
+
+	* modules/mod_log.c: 
+	Style cleanup.
+
+2002-11-14 09:57  castaglia
+
+	* modules/mod_auth.c: 
+	More hassle/work with MaxClientsPerHost (see Bug#1830, Bug#1831).
+
+2002-11-14 09:09  castaglia
+
+	* contrib/ftpasswd: 
+	Forgot to increment the displayed $version.
+
+2002-11-14 08:56  castaglia
+
+	* NEWS: 
+	Attributing proper credit. =)
+
+2002-11-14 08:55  castaglia
+
+	* contrib/: ftpasswd, ftpasswd.html: 
+	Minor doc change.
+
+2002-11-14 08:53  castaglia
+
+	* NEWS, contrib/ftpasswd, contrib/ftpasswd.html: 
+	Adding/changing ftpasswd error exit values.
+
+2002-11-14 06:49  jwm
+
+	* Makefile.in: 
+	we don't need to worry about removing the autoconf-processed
+	proftpd.spec anymore (this wasn't even the right path to it,
+	anyway)
+
+2002-11-13 13:15  castaglia
+
+	* NEWS, modules/mod_auth.c: 
+	Bug#1830 - MaxClientsPerHost (small) Bug.
+
+2002-11-13 08:32  castaglia
+
+	* NEWS, modules/mod_xfer.c: 
+	Bug#1810 - Wrong permissions assigned to uploaded file
+
+2002-11-13 06:55  castaglia
+
+	* NEWS, utils/ftpwho.c: 
+	Bug#1815 - Patch to add class information to ftpwho (with verbose
+	on)
+
+2002-11-13 06:37  castaglia
+
+	* src/dirtree.c: 
+	Add debugging output mentioning the configuration file being parsed
+	at debug level 2.
+
+2002-11-12 14:27  castaglia
+
+	* modules/: mod_auth.c, mod_core.c, mod_xfer.c: 
+	Fix handling/lookup of Timeouts.
+
+2002-11-12 08:42  castaglia
+
+	* configure: 
+	Updating configure script.
+
+2002-11-12 08:38  castaglia
+
+	* configure.in: 
+	Minor whitespace quibble.
+
+2002-11-12 08:28  jwm
+
+	* .cvsignore: 
+	ignore ftptop, autom4te.cache
+
+2002-11-12 08:28  jwm
+
+	* configure: 
+	updated configure
+
+2002-11-12 08:23  jwm
+
+	* Make.rules.in, configure.in: 
+	oops, accidentally reverted TJ's changes
+
+2002-11-12 08:19  jwm
+
+	* Makefile.in, Make.rules.in, NEWS, configure.in: 
+	Only link ftptop with lib{n,}curses - it isn't needed in any other
+	binaries
+
+2002-11-12 08:19  castaglia
+
+	* configure: 
+	Updating the configure script.
+
+2002-11-12 08:10  castaglia
+
+	* Make.rules.in, NEWS, configure.in: 
+	Bug#1703 - mod_sql_mysql compile error.
+
+2002-11-12 07:24  castaglia
+
+	* modules/mod_core.c, modules/mod_xfer.c, NEWS: 
+	Bug#1760 - AllowOverwrite not operational.
+
+2002-11-11 15:57  jwm
+
+	* utils/.cvsignore: 
+	ignore Makefile, object and editor backup files
+
+2002-11-11 15:44  jwm
+
+	* modules/mod_unixpw.c: OS X also has a setgrent() that returns
+	void; make a note to update autoconf for a generic check for this
+
+2002-11-05 11:06  jwm
+
+	* NEWS, include/modules.h, modules/mod_auth.c, src/auth.c: 
+	Bug 1818 - proftpd doesn't compile on hpux11
+
+2002-11-03 16:53  jwm
+
+	* configure: 
+	updated configure
+
+2002-11-03 16:41  jwm
+
+	* NEWS, utils/ftptop.c, config.h.in, configure.in: 
+	ftptop can now use either curses or ncurses
+	
+	Based on a submission by: Ayamura KIKUCHI <ayamura@ayamura.org>
+
+2002-11-03 08:40  jwm
+
+	* NEWS, src/scoreboard.c: 
+	Bug 1814 - class names are truncated in scoreboard entry
+
+2002-11-02 14:47  jwm
+
+	* contrib/dist/rpm/proftpd.spec: 
+	forgot to add logrotate to %files
+
+2002-11-02 14:44  jwm
+
+	* NEWS: 
+	update
+
+2002-11-02 14:44  jwm
+
+	* contrib/dist/rpm/: proftpd.logrotate, proftpd.spec: 
+	Bug 1398 - there is no log rotate for /var/log/xferlog
+
+2002-11-02 14:32  jwm
+
+	* modules/mod_auth.c: 
+	style, whitespace
+
+2002-11-02 14:10  jwm
+
+	* contrib/mod_ratio.c: 
+	clean up compiler warnings
+
+2002-11-02 14:01  jwm
+
+	* NEWS, contrib/dist/rpm/proftpd.spec: 
+	Bug 1772 - Docs fixup in RPM spec file
+
+2002-11-02 14:01  jwm
+
+	* configure: 
+	update configure
+
+2002-11-02 13:49  jwm
+
+	* configure.in: 
+	don't preprocess the rpm spec
+
+2002-11-02 13:48  jwm
+
+	* contrib/dist/rpm/: proftpd.spec, proftpd.spec.in: 
+	having autoconf process proftpd.spec.in is silly - it's only that
+	way to substitute the @VERSION@ tag.
+
+2002-11-02 13:42  jwm
+
+	* NEWS: 
+	update
+
+2002-11-02 13:41  jwm
+
+	* README.PAM, config.h.in, modules/mod_pam.c: 
+	Bug 1805 - PAM support under Mac OS X
+
+2002-11-02 13:38  jwm
+
+	* README.PAM: 
+	style
+
+2002-11-02 13:34  jwm
+
+	* NEWS, config.h.in, configure.in, include/conf.h: 
+	Bug 1803 - Check for SIZEOF_UNSIGNED_LONG_LONG to determine LFS
+	support breaks some Linux installations
+
+2002-10-30 11:29  castaglia
+
+	* NEWS: 
+	Typo.
+
+2002-10-30 11:10  castaglia
+
+	* NEWS, contrib/mod_wrap.c: 
+	Bug#1800 - Proftpd child segfaults when ussing a PASS without no
+	USER first.
+
+2002-10-29 17:47  castaglia
+
+	* NEWS: 
+	Typos.
+
+2002-10-29 17:23  castaglia
+
+	* NEWS, modules/mod_auth.c: 
+	Fixing broken AuthAliasOnly, so that it does as described in the
+	docs (it had been broken by Bug#1567).
+
+2002-10-29 10:06  castaglia
+
+	* utils/: ftpcount.c, ftpwho.c, utils.h: 
+	Modifying the handling of struct option in these files.  A change
+	had been made earlier in CVS to get these utilities to compile
+	properly under IRIX (which has a <getopt.h> that does not define
+	struct option); unfortunately, that change made it such that on
+	Solaris, the utilities did not compile.  The modifications
+	committed bring the handling of struct option in the utilities to
+	be like that of the main proftpd binary, which consequently is
+	handled properly under Solaris, IRIX, BSD, and Linux.  Hopefully
+	this concludes this getopt issue in the utilities.
+
+2002-10-29 08:41  castaglia
+
+	* modules/: mod_auth.c, mod_core.c: 
+	More get_param_int() cleanup (this function will cause grief on
+	LP64 architectures, where pointer sizes are different and passing
+	pointers to stack values is a Bad Thing).  This patch moves all the
+	MaxClients*/MaxHosts* directives into mod_auth, makes them all
+	consistently use pointers, and corrects a small datatype underflow
+	bug that crept in with the introduction of MaxClientsPerUser
+	(oops).
+
+2002-10-29 07:51  jwm
+
+	* src/data.c: * style * Make sure session.xfer uses cleared memory
+	so unset structure members   won't contain random values.
+
+2002-10-29 07:51  jwm
+
+	* NEWS: Make sure session.xfer uses cleared memory so unset
+	structure members won't contain random values.
+
+2002-10-28 14:32  castaglia
+
+	* configure: 
+	Updating configure script.
+
+2002-10-28 14:30  castaglia
+
+	* NEWS, config.h.in, configure.in, include/support.h,
+	modules/mod_core.c, src/support.c: 
+	Bug#1722 - Can't work magic cookie %F on FreeBSD.
+
+2002-10-28 09:28  castaglia
+
+	* src/data.c: 
+	Removed unnecessary log_debug() calls from data_sendfile().  Part
+	of this is because of the headache involved with getting the proper
+	format specifiers into the log_debug() calls -- too much effort for
+	little return.
+
+2002-10-28 08:51  castaglia
+
+	* modules/mod_xfer.c, src/dirtree.c, src/inet.c, src/log.c,
+	src/main.c, utils/ftpcount.c, utils/ftptop.c, utils/ftpwho.c: 
+	Added typecast to int in is*() functions for picky Solaris.
+
+2002-10-28 08:19  castaglia
+
+	* include/conf.h: 
+	Adding some necessary function prototypes for AIX, when compiled
+	using -D_NO_PROTO.
+
+2002-10-26 15:57  castaglia
+
+	* modules/mod_auth.c, utils/utils.h: 
+	Fixing signedness variable check in mod_auth Fixed a missing
+	definition in utils/utils.h which afflicted systems that don't have
+	the getopt_long() function.
+
+2002-10-25 09:54  castaglia
+
+	* include/modules.h, modules/mod_log.c, src/main.c,
+	utils/ftpcount.c: 
+	Fixing some function pointer scopes, removing unused variables --
+	general cleanup due to compiler complaints on IRIX.
+
+2002-10-25 09:18  castaglia
+
+	* src/main.c: 
+	Re-adding logging of SIGSEGVs.
+
+2002-10-24 15:19  castaglia
+
+	* modules/mod_auth.c: 
+	Correcting an off-by-one error concerning the enforcement of
+	MaxClients.
+
+2002-10-24 13:03  castaglia
+
+	* NEWS: 
+	Forgot to note that Bug#1745 was fixed in 1.2.7rc1.
+
+2002-10-24 10:22  castaglia
+
+	* configure: 
+	Updating configure script.
+
+2002-10-24 10:16  castaglia
+
+	* NEWS, configure.in: 
+	Bug#1287 - Error compile with autoshadow option
+
+2002-10-24 09:32  castaglia
+
+	* configure: 
+	Updating configure script.
+
+2002-10-24 09:28  castaglia
+
+	* configure.in: 
+	Fixing up the configure script to handle the case where the admin
+	forgets to (or just plain doesn't) provide a value for the new
+	--enable-* tunable configure options.  It was simply writing the
+	"yes"/"no" strings into the headers -- not what I wanted.  Now,
+	configure will emit a warning if no values are explicitly provided,
+	and will use the default numbers.  Otherwise, it will use the value
+	provided.
+
+2002-10-24 08:49  castaglia
+
+	* README.AIX: 
+	Adding remark reminding AIX users to avoid use of
+	--enable-autoshadow and --enable-shadow in their configure options.
+
+2002-10-23 16:56  castaglia
+
+	* configure: 
+	Updating configure script to match changes/fixes to configure.in.
+
+2002-10-23 16:53  castaglia
+
+	* NEWS, config.h.in, configure.in, include/options.h,
+	include/scoreboard.h, utils/utils.h: 
+	Fixed configure script handling of ncurses detection (was not
+	#define'ing   HAVE_LIBNCURSES properly) Added
+	--enable-scoreboard-buffer-size option to the other "tunable"
+	configure   options, for tuning the size of sce_cmd, sce_cwd.
+
+2002-10-23 10:27  castaglia
+
+	* modules/mod_site.c: 
+	Fixing requirement of auth chk for SITE commands CHGRP and CHMOD.
+
+2002-10-22 12:14  castaglia
+
+	* include/version.h: 
+	Making CVS look ready for rc3.
+
+2002-10-22 11:27  castaglia
+
+	* ChangeLog, NEWS, include/version.h: 
+	Preparing for release of 1.2.7rc2.
+
 2002-10-21 11:40  castaglia
 
 	* contrib/mod_wrap.c: 

@@ -1,6 +1,6 @@
-$Id: NEWS,v 1.279 2002-11-14 16:56:39 castaglia Exp $
+$Id: NEWS,v 1.280 2002-11-15 16:45:53 castaglia Exp $
 
-CVS
+1.2.7rc3 - Released 15-11-2002
 ---------------------------------
 - Fixed configure script detection and handling of ncurses (HAVE_LIBNCURSES
   was not being properly defined).
