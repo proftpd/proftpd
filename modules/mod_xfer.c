@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.177 2004-11-10 18:32:25 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.178 2004-11-14 23:45:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1449,6 +1449,13 @@ MODRET xfer_rest(cmd_rec *cmd) {
 
   if (cmd->argc != 2) {
     pr_response_add_err(R_500, "'%s' not understood", get_full_cmd(cmd));
+    return ERROR(cmd);
+  }
+
+  /* Refuse the command if we're in ASCII mode. */
+  if (session.sf_flags & SF_ASCII) {
+    pr_response_add_err(R_501,
+      "%s: Resuming transfers not allowed in ASCII mode", cmd->argv[0]);
     return ERROR(cmd);
   }
 
