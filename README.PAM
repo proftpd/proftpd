@@ -2,7 +2,7 @@ PAM: Pluggable Authentication Modules
 -------------------------------------
 
 Author: MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
-Copyright(C) 1999, All Rights Reserved.
+Copyright(C) 1999, 2000. All Rights Reserved.
 
 PAM stands for Pluggable Authentication Modules, a modular system
 designed to eliminate the ages old problem of disparate authentication
@@ -50,21 +50,32 @@ distributions may differ.
 
 PAM Configuration Options
 -------------------------
-1. PAMConfig
+1. AuthPAM
+You may selectively enable or disable PAM authentication.  This is
+especially useful in environments where you are receiving ProFTPD in a
+distribution, and you want to disable the builtin PAM authentication
+module.  The default is to enable PAM authentication.  You may disable
+it as follows:
+
+# This enables or disables the PAM authentication module.
+# The default is 'On'.
+AuthPAM				    On
+
+2. AuthPAMConfig
 You may configure multiple authentication configurations using PAM
 that optionally validate users against various things, such as an LDAP
 directory, a MySQL database, or even a Windows NT domain.  Discussion
 of alternate authentication modules for PAM is beyond the scope of
 this document.  However, what is relevant is that ProFTPD allows you
 to use different PAM authentication schemes for different virtual
-servers.  You can do this by using the PAMConfig directive:
+servers.  You can do this by using the AuthPAMConfig directive:
 
 # This is the PAM configuration file that will be referenced when
 # authenticating.  It can be set globally and/or per VirtualHost.
 # The default is 'ftp'.
-PAMConfig                       ftp
+AuthPAMConfig                       ftp
 
-The default setting is 'ftp'.  However, if you set PAMConfig to be
+The default setting is 'ftp'.  However, if you set AuthPAMConfig to be
 'ftp.myhost', for example, ProFTPD will try to use the PAM
 authentication settings for ftp.myhost, assuming you've set up your
 PAM configuration file(s) properly.  To use the above example with
@@ -77,14 +88,14 @@ to your /etc/pam.conf file.  Under Linux, or if you're using a
 directory like /etc/pam.d, you could simply copy the Linux
 configuration above to a new file called /etc/pam.d/ftp.myhost.
 
-The pattern here is that PAMConfig sets what's called the service name
+The pattern here is that AuthPAMConfig sets what's called the service name
 in PAM lingo.  If you use /etc/pam.conf, the first field on any
 configuration directive is the service name.  If you're using
 /etc/pam.d, the service name is the name of the file, for example
 /etc/pam.d/login happens to be the PAM configuration for the login
 program.
 
-2. AuthPAMAuthoritative
+3. AuthPAMAuthoritative
 
 The directive AuthPAMAuthoritative refers to whether you want PAM to
 be the final arbitrator of what is and is not a valid ProFTPD user.
