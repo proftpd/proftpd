@@ -35,7 +35,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.6 2004-07-22 21:49:20 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.7 2004-09-05 00:31:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -60,6 +60,8 @@
 #ifdef HAVE_PAM_PAM_APPL_H
 #include <pam/pam_appl.h>
 #endif /* HAVE_PAM_PAM_APPL_H */
+
+module auth_pam_module;
 
 static pam_handle_t *	pamh			= NULL;
 static char *		pamconfig		= "ftp";
@@ -129,7 +131,7 @@ static struct pam_conv pam_conv = {
   NULL
 };
 
-static void modpam_exit(void) {
+static void auth_pam_exit_ev(const void *event_data, void *user_data) {
   int pam_error = 0;
 
   /* Sanity check.
@@ -147,14 +149,16 @@ static void modpam_exit(void) {
    * instance of PAM authentication.
    */
 #ifdef PAM_CRED_DELETE
-  if ((pam_error = pam_setcred(pamh, PAM_CRED_DELETE)) != PAM_SUCCESS)
+  pam_error = pam_setcred(pamh, PAM_CRED_DELETE);
 #else
-  if ((pam_error = pam_setcred(pamh, PAM_DELETE_CRED)) != PAM_SUCCESS)
+  pam_error = pam_setcred(pamh, PAM_DELETE_CRED);
 #endif /* !PAM_CRED_DELETE */
+  if (pam_error != PAM_SUCCESS)
     pr_log_pri(PR_LOG_NOTICE, "PAM(setcred): %s",
       pam_strerror(pamh, pam_error));
 
-  if ((pam_error = pam_close_session(pamh, PAM_SILENT)) != PAM_SUCCESS)
+  pam_error = pam_close_session(pamh, PAM_SILENT);
+  if (pam_error != PAM_SUCCESS)
     pr_log_pri(PR_LOG_NOTICE, "PAM(close_session): %s",
       pam_strerror(pamh, pam_error));
 
@@ -427,7 +431,7 @@ MODRET pam_auth(cmd_rec *cmd) {
     return pam_authoritative ? ERROR_INT(cmd, retval) : DECLINED(cmd);
 
   } else {
-    pr_exit_register_handler(modpam_exit);
+    pr_event_register(&auth_pam_module, "core.exit", auth_pam_exit_ev, NULL);
     return HANDLED(cmd);
   }
 }
