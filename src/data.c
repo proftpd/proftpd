@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.50 2002-12-07 21:45:43 jwm Exp $
+ * $Id: data.c,v 1.51 2002-12-07 21:57:12 jwm Exp $
  */
 
 #include "conf.h"
@@ -883,6 +883,10 @@ int data_xfer(char *cl_buf, int cl_size) {
 pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
   int flags, error;
   pr_sendfile_t len = 0, total = 0;
+#if defined(HAVE_AIX_SENDFILE)
+  struct sf_parms parms;
+  int rc;
+#endif /* HAVE_AIX_SENDFILE */
 
   if (session.xfer.direction == PR_NETIO_IO_RD)
     return -1;
@@ -945,7 +949,21 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
      */
     if (sendfile(retr_fd, PR_NETIO_FD(session.d->outstrm), *offset, count,
         NULL, &len, 0) == -1) {
-#endif /* HAVE_BSD_SENDFILE */
+
+#elif defined(HAVE_AIX_SENDFILE)
+
+    memset(&parms, 0, sizeof(parms));
+
+    parms.file_descriptor = retr_fd;
+    parms.file_offset = (uint64_t) *offset;
+    parms.file_bytes = (int64_t) count;
+
+    rc  = send_file(&(PR_NETIO_FD(session.d->outstrm)), &(parms), (uint_t)0);
+    len = (int) parms.bytes_sent;
+
+    if (rc == -1 || rc == 1) {
+
+#endif /* HAVE_AIX_SENDFILE */
 
       /* IMO, BSD's semantics are warped.  Apparently, since we have our
        * alarms tagged SA_INTERRUPT (allowing system calls to be

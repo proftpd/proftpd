@@ -25,7 +25,7 @@
  */
 
 /* Data connection management prototypes
- * $Id: data.h,v 1.10 2002-06-23 19:03:21 castaglia Exp $
+ * $Id: data.h,v 1.11 2002-12-07 21:57:12 jwm Exp $
  */
 
 #ifndef __DATACONN_H
@@ -42,7 +42,7 @@ void data_reset(void);
 #ifdef HAVE_SENDFILE
 typedef
 
-#if defined(HAVE_LINUX_SENDFILE) || defined(HAVE_HPUX_SENDFILE)
+#if defined(HAVE_LINUX_SENDFILE) || defined(HAVE_HPUX_SENDFILE) || defined(HAVE_AIX_SENDFILE)
 ssize_t
 #elif defined(HAVE_BSD_SENDFILE)
 off_t

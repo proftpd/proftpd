@@ -706,6 +706,19 @@ struct sf_hdtr h;
 (void)sendfile(i,i,o,n,&h,&o,i);
        ], pr_cv_func_sendfile="BSD")
 fi
+
+  dnl AIX.
+if test "$pr_cv_func_sendfile" = "None"; then
+  AC_TRY_LINK([
+#include <sys/types.h>
+#include <sys/socket.h>
+],[
+uint f;
+int h;
+struct sf_parms p;
+(void)send_file(&(h),&(p),f);
+       ], pr_cv_func_sendfile="AIX")
+fi
 )
   dnl Now, set the appropriate defines based on our investigations...
 
@@ -723,6 +736,10 @@ fi
 
 	  "BSD")
 		AC_DEFINE(HAVE_BSD_SENDFILE)
+		;;
+
+	  "AIX")
+		AC_DEFINE(HAVE_AIX_SENDFILE)
 		;;
   esac
 fi
