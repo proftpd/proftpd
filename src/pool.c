@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.38 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: pool.c,v 1.39 2003-11-10 03:52:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -242,7 +242,7 @@ pool *global_config_pool = NULL;
  */
 
 static long __walk_pools(pool *p, int level,
-    void (*debug_mem)(const char *, ...)) {
+    void (*debugf)(const char *, ...)) {
   char _levelpad[80] = "";
   long total = 0;
 
@@ -260,37 +260,37 @@ static long __walk_pools(pool *p, int level,
   for (; p; p = p->sub_next) {
     total += bytes_in_block_list(p->first);
     if (level == 0)
-      debug_mem("%s (%lu bytes)", p->tag ? p->tag : "[none]",
+      debugf("%s (%lu bytes)", p->tag ? p->tag : "[none]",
         bytes_in_block_list(p->first));
 
     else
-      debug_mem("%s\\- %s (%lu bytes)", _levelpad,
+      debugf("%s\\- %s (%lu bytes)", _levelpad,
         p->tag ? p->tag : "[none]", bytes_in_block_list(p->first));
 
     /* Recurse */
     if (p->sub_pools)
-      total += __walk_pools(p->sub_pools, level+1, debug_mem);
+      total += __walk_pools(p->sub_pools, level+1, debugf);
   }
 
   return total;
 }
 
-static void debug_pool_info(void (*debug_mem)(const char *, ...)) {
+static void debug_pool_info(void (*debugf)(const char *, ...)) {
   if (block_freelist)
-    debug_mem("Free block list: %lu bytes",
+    debugf("Free block list: %lu bytes",
       bytes_in_block_list(block_freelist));
   else
-    debug_mem("Free block list: EMPTY");
+    debugf("Free block list: EMPTY");
 
-  debug_mem("%u count blocks allocated", stat_malloc);
-  debug_mem("%u count blocks reused", stat_freehit);
+  debugf("%u count blocks allocated", stat_malloc);
+  debugf("%u count blocks reused", stat_freehit);
 }
 
-void pr_pool_debug_memory(void (*debug_mem)(const char *, ...)) {
-  debug_mem("Memory pool allocation:");
-  debug_mem("Total %lu bytes allocated",
-    __walk_pools(permanent_pool, 0, debug_mem));
-  debug_pool_info(debug_mem);
+void pr_pool_debug_memory(void (*debugf)(const char *, ...)) {
+  debugf("Memory pool allocation:");
+  debugf("Total %lu bytes allocated",
+    __walk_pools(permanent_pool, 0, debugf));
+  debug_pool_info(debugf);
 }
 
 void pr_pool_tag(pool *p, const char *tag) {
