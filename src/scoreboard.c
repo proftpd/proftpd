@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.18 2003-03-09 23:24:42 castaglia Exp $
+ * $Id: scoreboard.c,v 1.19 2003-03-21 05:58:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -247,8 +247,11 @@ int pr_open_scoreboard(int flags) {
    * and continue.
    */
   if ((scoreboard_fd = open(scoreboard_file, flags|O_CREAT,
-      PR_SCOREBOARD_MODE)) < 0)
+      PR_SCOREBOARD_MODE)) < 0) {
+    log_debug(DEBUG7, "error opening scoreboard '%s': %s", scoreboard_file,
+      strerror(errno));
     return -1;
+  }
 
   /* Make certain that the scoreboard mode will be read-only for everyone
    * except the user owner (this allows for non-root-running daemons to
