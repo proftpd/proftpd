@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.40 2003-01-02 18:25:18 castaglia Exp $
+ * $Id: proftpd.h,v 1.41 2003-03-09 00:56:24 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -147,8 +147,6 @@ typedef struct {
   int wtmp_log;				/* Are we logging to wtmp? */
   struct conn_struc *c;			/* Control connection */
   struct conn_struc *d;			/* Data connection */
-
-  struct IO_Request *d_req;		/* Active data connection request */
 
   int hide_password;			/* Hide password in logs/ps listing */
 
