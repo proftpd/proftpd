@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.74 2003-09-08 00:26:49 castaglia Exp $
+ * $Id: inet.c,v 1.75 2003-09-08 02:55:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -195,10 +195,9 @@ const char *pr_inet_ntop(int af, const void *src, char *dst, size_t len) {
   memcpy(dst, res, len);
   return dst;
 }
-# define inet_ntop	pr_inet_ntop
 #endif /* !HAVE_INET_NTOP */
 
-#if !defined(HAVE_INET_PTON) && !defined(inet_pton)
+#if !defined(HAVE_INET_PTON)
 int pr_inet_pton(int af, const char *src, void *dst) {
   unsigned long res;
 
@@ -214,8 +213,7 @@ int pr_inet_pton(int af, const char *src, void *dst) {
   memcpy(dst, &res, sizeof(res));
   return 1;
 }
-# define inet_pton	pr_inet_pton
-#endif /* !HAVE_INET_PTON and !inet_pton */
+#endif /* !HAVE_INET_PTON */
 
 /* Called by others after running a number of pr_inet_* functions in order
  * to free up memory.

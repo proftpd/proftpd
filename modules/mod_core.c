@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.184 2003-09-08 00:33:49 castaglia Exp $
+ * $Id: mod_core.c,v 1.185 2003-09-08 02:55:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3221,18 +3221,20 @@ MODRET core_eprt(cmd_rec *cmd) {
   }
 
   /* Twiddle the string so that just the address portion will be processed
-   * by inet_pton().
+   * by pr_inet_pton().
    */
   *tmp = '\0';
 
   memset(&na, 0, sizeof(na));
 
-  /* Use inet_pton() to translate the address string into the address value. */
+  /* Use pr_inet_pton() to translate the address string into the address
+   * value.
+   */
   switch (family) {
     case 1: {
       pr_netaddr_set_family(&na, AF_INET);
       pr_netaddr_get_sockaddr(&na)->sa_family = AF_INET;
-      if (inet_pton(AF_INET, argstr, pr_netaddr_get_inaddr(&na)) <= 0) {
+      if (pr_inet_pton(AF_INET, argstr, pr_netaddr_get_inaddr(&na)) <= 0) {
         log_debug(DEBUG2, "error converting IPv4 address '%s': %s",
           argstr, strerror(errno));
         pr_response_add_err(R_501, "Illegal EPRT command");
@@ -3244,7 +3246,7 @@ MODRET core_eprt(cmd_rec *cmd) {
     case 2: {
       pr_netaddr_set_family(&na, AF_INET6);
       pr_netaddr_get_sockaddr(&na)->sa_family = AF_INET6;
-      if (inet_pton(AF_INET6, argstr, pr_netaddr_get_inaddr(&na)) <= 0) {
+      if (pr_inet_pton(AF_INET6, argstr, pr_netaddr_get_inaddr(&na)) <= 0) {
         log_debug(DEBUG2, "error converting IPv6 address '%s': %s",
           argstr, strerror(errno));
         pr_response_add_err(R_501, "Illegal EPRT command");

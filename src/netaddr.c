@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.11 2003-08-30 16:07:09 castaglia Exp $
+ * $Id: netaddr.c,v 1.12 2003-09-08 02:55:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -57,14 +57,14 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     return NULL;
   }
 
-  /* Attempt to translate the given name into a pr_netaddr_t using inet_pton()
-   * first.
+  /* Attempt to translate the given name into a pr_netaddr_t using
+   * pr_inet_pton() first.
    *
    * First, if IPv6 support is enabled, we try to translate the name using
-   * inet_pton(AF_INET6) on the hopes that the given string is a valid
+   * pr_inet_pton(AF_INET6) on the hopes that the given string is a valid
    * representation of an IPv6 address.  If that fails, or if IPv6 support
-   * is not enabled, we try with inet_pton(AF_INET).  If that fails, we
-   * assume that the given name is a DNS name, and we call getaddrinfo().
+   * is not enabled, we try with pr_inet_pton(AF_INET).  If that fails, we
+   * assume that the given name is a DNS name, and we call pr_getaddrinfo().
    */
 
   na = (pr_netaddr_t *) pcalloc(p, sizeof(pr_netaddr_t));
@@ -72,7 +72,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
 #ifdef USE_IPV6
   memset(&v6, 0, sizeof(v6));
   v6.sin6_family = AF_INET6;
-  res = inet_pton(AF_INET6, name, &v6.sin6_addr);
+  res = pr_inet_pton(AF_INET6, name, &v6.sin6_addr);
   if (res > 0) {
     pr_netaddr_set_family(na, AF_INET6);
     pr_netaddr_set_sockaddr(na, (struct sockaddr *) &v6);
@@ -85,7 +85,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
 
   memset(&v4, 0, sizeof(v4));
   v4.sin_family = AF_INET;
-  res = inet_pton(AF_INET, name, &v4.sin_addr);
+  res = pr_inet_pton(AF_INET, name, &v4.sin_addr);
   if (res > 0) {
     pr_netaddr_set_family(na, AF_INET);
     pr_netaddr_set_sockaddr(na, (struct sockaddr *) &v4);
@@ -96,7 +96,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
 
   } else if (res == 0) {
 
-    /* If inet_pton(3) returns 0, it means that name does not represent a
+    /* If pr_inet_pton() returns 0, it means that name does not represent a
      * valid network address in the specified address family.  Usually,
      * this means that name is actually a DNS name, not an IP address
      * string.  So we treat it as a DNS name, and use getaddrinfo(3) to

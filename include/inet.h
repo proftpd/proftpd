@@ -25,7 +25,7 @@
  */
 
 /* BSD socket manipulation tools.
- * $Id: inet.h,v 1.22 2003-09-08 00:26:48 castaglia Exp $
+ * $Id: inet.h,v 1.23 2003-09-08 02:55:27 castaglia Exp $
  */
 
 #ifndef PR_INET_H
@@ -134,6 +134,24 @@ int pr_getaddrinfo(const char *, const char *, const struct addrinfo *,
   struct addrinfo **);
 void pr_freeaddrinfo(struct addrinfo *);
 #endif /* HAVE_GETNAMEINFO and !USE_GETNAMEINFO */
+
+#if defined(HAVE_INET_NTOP)
+/* Use the system inet_ntop(3) by redefining the 'pr_inet_ntop' symbol to be
+ * 'inet_ntop'.
+ */
+# define pr_inet_ntop		inet_ntop
+#else
+const char *pr_inet_ntop(int, const void *, char *, size_t);
+#endif
+
+#if defined(HAVE_INET_PTON)
+/* Use the system inet_pton(3) by redefining the 'pr_inet_pton' symbol to be
+ * 'inet_pton'.
+ */
+# define pr_inet_pton		inet_pton
+#else
+int pr_inet_pton(int, const char *, void *);
+#endif
 
 /* Indicates that the socket is intended for bind()+listen(). */
 #ifndef AI_PASSIVE
