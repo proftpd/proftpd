@@ -25,7 +25,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.74 2002-06-28 18:43:17 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.75 2002-07-15 15:50:05 castaglia Exp $
  */
 
 /* History Log:
@@ -785,9 +785,7 @@ MODRET cmd_stor(cmd_rec *cmd)
       
     session.xfer.file_size = respos;
 
-    /* first, make sure the uploaded file has the requested ownership
-     * -tj, 2001-10-18
-     */
+    /* First, make sure the uploaded file has the requested ownership. */
     _stor_chown();
 
     if(data_open(cmd->arg,NULL,IO_READ,0) < 0) {
@@ -821,34 +819,38 @@ MODRET cmd_stor(cmd_rec *cmd)
       }
     }
 
-    if(XFER_ABORTED) {
+    if (XFER_ABORTED) {
       _stor_abort();
-      data_abort(0,0);
+      data_abort(0, 0);
       return ERROR(cmd);
-    } else if(len < 0) {
+
+    } else if (len < 0) {
       _stor_abort();
-      data_abort(session.d->inf->xerrno,FALSE);
+      data_abort(session.d->inf->xerrno, FALSE);
       return ERROR(cmd);
+
     } else {
-      if(session.xfer.path && session.xfer.path_hidden) {
-        if(fs_rename(session.xfer.path_hidden,session.xfer.path) != 0) {
+      _stor_done();
+
+      if (session.xfer.path && session.xfer.path_hidden) {
+
+        if (fs_rename(session.xfer.path_hidden, session.xfer.path) != 0) {
           /* This should only fail on a race condition with a chmod/chown
            * or if STOR_APPEND is on and the permissions are squirrely.
            * The poor user will have to re-upload, but we've got more important
            * problems to worry about and this failure should be fairly rare.
            */
-           log_pri(LOG_WARNING, "Rename of %s to %s failed: %s.",
-             session.xfer.path_hidden, session.xfer.path, strerror(errno));
+          log_pri(LOG_WARNING, "Rename of %s to %s failed: %s.",
+            session.xfer.path_hidden, session.xfer.path, strerror(errno));
 
-           add_response_err(R_550,"%s: rename of hidden file %s failed: %s",
-             session.xfer.path, session.xfer.path_hidden, strerror(errno));
+          add_response_err(R_550,"%s: rename of hidden file %s failed: %s",
+            session.xfer.path, session.xfer.path_hidden, strerror(errno));
 
-           fs_unlink(session.xfer.path_hidden);
+          fs_unlink(session.xfer.path_hidden);
 
-           return ERROR(cmd);
-         }
+          return ERROR(cmd);
+        }
       }
-      _stor_done();
       data_close(FALSE);
     }
   }
