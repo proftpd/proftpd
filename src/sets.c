@@ -25,7 +25,7 @@
 
 /*
  * Generic set manipulation
- * $Id: sets.c,v 1.13 2004-05-30 02:39:25 castaglia Exp $
+ * $Id: sets.c,v 1.14 2004-12-17 01:58:47 castaglia Exp $
  *
  * TODO: Use a hash table to greatly speed up set manipulation on
  *       large sets.
@@ -78,18 +78,23 @@ int xaset_insert(xaset_t *set, xasetmember_t *member) {
  * of the list.
  */
 int xaset_insert_end(xaset_t *set, xasetmember_t *member) {
-  xasetmember_t **tmp,*prev = NULL;
+  xasetmember_t **tmp, *prev = NULL;
 
   if (!set || !member) {
     errno = EINVAL;
     return 0;
   }
 
-  for (tmp = &set->xas_list; *tmp; prev=*tmp, tmp=&(*tmp)->next) ;
+  for (tmp = &set->xas_list; *tmp; prev = *tmp, tmp = &(*tmp)->next)
+    ;
 
   *tmp = member;
   member->prev = prev;
   member->next = NULL;
+
+  if (prev)
+    prev->next = member;
+
   return 1;
 }
 
