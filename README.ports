@@ -40,8 +40,9 @@ ProFTPD has been reported to build on the following:
    ?BSD/OS 4.1
    ?BSD/OS 4.2
 
-   ?Compaq Tru64 5.0A
-   ?Compaq Tru64 5.0B
+    Compaq Tru64 5.0A
+    Compaq Tru64 5.0B
+    Compaq Tru64 5.1B
 
     DEC OFS/1                    native compiler
     Digital UNIX 4.0A
@@ -51,15 +52,21 @@ ProFTPD has been reported to build on the following:
     FreeBSD 3.5        gcc          see README.FreeBSD
     FreeBSD 4.1        gcc
     FreeBSD 4.2        gcc
+    FreeBSD 4.3        gcc
+    FreeBSD 4.4        gcc
+    FreeBSD 4.5        gcc
+    FreeBSD 4.6        gcc
+    FreeBSD 4.7        gcc
+    FreeBSD 4.8        gcc
+    FreeBSD 5.0        gcc
 
-   ?HP/UX 10.x
-   ?HP/UX 11.x
+    HP/UX 10.x
+    HP/UX 11.x                      native compiler or gcc
 
     IRIX 6.2
     IRIX 6.3                        native compiler or gcc
     IRIX 6.4                        tested
     IRIX 6.5           cc 7.30     
-   ?IRIX 6.5           gcc 2.95.2  
 
     Linux              gcc          kernel 2.0.x, 2.2.x or 2.4.x
                                     glibc2 (libc6) required
