@@ -1,8 +1,9 @@
-$Id: NEWS,v 1.138 2001-11-08 17:28:41 flood Exp $
+$Id: NEWS,v 1.139 2001-11-08 17:30:37 flood Exp $
 
 1.2.5rc1 - CVS
 ---------------------------------
 - New mod_wrap (1.2.2)
+- Bug 1113 Make.rules for HPUX incorrectly generated
 - Bug 1334 (should have been in 1.2.4, but was missed somehow)
            MaxClients none in VirtualHost forbids connect
 

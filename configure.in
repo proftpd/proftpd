@@ -55,6 +55,12 @@ AC_PROG_MAKE_SET
 AC_PROG_INSTALL
 AC_PROG_RANLIB
 
+# The native HP-UX 10 compiler needs -Ae to enable Extended ANSI compliance
+# (-Ae is the default in the native compiler under HP-UX 11).
+if test $ac_cv_prog_gcc = no -a "$OSTYPE" = "-DHPUX10"; then
+	CFLAGS="$CFLAGS -Ae"
+fi
+
 LDFLAGS="-Llib $LDFLAGS"
 
 if test $ac_cv_prog_gcc = yes; then
