@@ -1,3 +1,120 @@
+2002-05-30 09:22  castaglia
+
+	* NEWS, contrib/xferstats.holger-preiss: 
+	
+	Bug#1394: ftpstats program is not working, cust says "There was no
+	data to 	  process."
+
+2002-05-30 09:06  jwm
+
+	* contrib/mod_ldap.c: 
+	a few memory management fixes
+
+2002-05-28 18:09  jwm
+
+	* doc/rfc/: draft-ietf-ftpext-mlst-12.txt,
+	draft-ietf-ftpext-mlst-15.txt: 
+	new version of mlst draft. the changes don't appear to change
+	anything we currently implement.
+
+2002-05-26 19:31  jwm
+
+	* contrib/: README.ratio, mod_ratio.c: 
+	new mod_ratio from James Dogopoulos
+
+2002-05-22 10:08  flyhmstr
+
+	* doc/Configuration.html: ML: replacing the directive guide
+
+2002-05-21 13:47  castaglia
+
+	* NEWS, contrib/mod_readme.c, include/data.h, include/dirtree.h,
+	include/fs.h, include/ident.h, include/inet.h, include/io.h,
+	include/libsupp.h, include/log.h, include/modules.h,
+	include/pool.h, include/proftpd.h, include/sets.h,
+	include/support.h, include/timers.h, lib/glibc-glob.c,
+	modules/mod_auth.c, modules/mod_core.c, modules/mod_log.c,
+	modules/mod_ls.c, modules/mod_pam.c, modules/mod_site.c,
+	modules/mod_unixpw.c, modules/mod_xfer.c, src/data.c,
+	src/dirtree.c, src/fs.c, src/inet.c, src/io.c, src/log.c,
+	src/main.c, src/modules.c, src/pool.c, src/support.c, src/timers.c,
+	src/utils.c: 
+	
+	Bug#1379 - Replace bzero/bcopy with memset/memcpy Bug#1521 -
+	Function prototype cleanup
+
+2002-05-21 11:59  castaglia
+
+	* NEWS, src/timers.c: 
+	
+	Bug#1627 - Sessions not timing out
+
+2002-05-21 11:29  castaglia
+
+	* configure: 
+	
+	TJ: updated configure script to match configure.in (necessary delay
+	in     commits *sigh*)
+
+2002-05-21 11:26  castaglia
+
+	* configure.in: 
+	
+	TJ: changing configure script to check for $Libraries$ line in
+	mod_<name>.h	 files, if present, as well as mod_<name>.c files
+	(which are currently	 scanned)
+
+2002-05-19 13:50  castaglia
+
+	* NEWS, modules/mod_xfer.c: 
+	
+	TJ: Bug#1595 - ProFTPD closes connection when accessed from Lynx
+	browser
+
+2002-05-19 13:45  castaglia
+
+	* NEWS, include/proftpd.h, src/log.c, src/main.c: 
+	
+	TJ: Bug#1612 - missing/broken ident logging
+
+2002-05-19 07:38  jwm
+
+	* contrib/dist/rpm/proftpd.spec.in: 
+	oops, that wasn't ready for commit yet. reverting to 1.12.
+
+2002-05-19 07:35  jwm
+
+	* Makefile.in, contrib/mod_ldap.c,
+	contrib/dist/rpm/proftpd.spec.in: 
+	#1626 - install_user is not used everywhere
+
+2002-05-18 08:06  jwm
+
+	* contrib/dist/rpm/ftp.pamd: 
+	language cleanup/clarification
+
+2002-05-18 07:59  jwm
+
+	* contrib/dist/rpm/proftpd.init.d: 
+	cleanup
+
+2002-05-18 07:48  jwm
+
+	* contrib/dist/rpm/proftpd.spec.in: 
+	fixing a typo (' -> `)
+
+2002-05-15 05:55  jwm
+
+	* contrib/mod_ldap.c: 
+	2.8.4: fix for segfaults when optional arguments are omitted from
+	LDAPDoGIDLookups directive
+
+2002-05-13 07:07  castaglia
+
+	* ChangeLog: 
+	
+	TJ: latest ChangeLog
+
 2002-05-13 07:05  castaglia
 
 	* NEWS, include/version.h: 
