@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.191 2004-09-26 20:23:09 castaglia Exp $
+ * $Id: mod_auth.c,v 1.192 2004-10-02 03:34:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -944,11 +944,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
 
     switch (auth_code) {
 
-      /* Use an RFC2228 response code if authenticated by an RFC2228 module. */
       case PR_AUTH_RFC2228_OK:
-        auth_pass_resp_code = R_232;
-        break;
-
       case PR_AUTH_OK:
         auth_pass_resp_code = R_230;
         break;
