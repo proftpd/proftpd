@@ -1,3 +1,8 @@
+2001-01-25 00:53  flood
+
+	* config.h.in, configure.in, modules/mod_auth.c: Bug #365 - Removed
+	jail() code from mod_auth.c
+
 2001-01-25 00:13  flood
 
 	* contrib/README.mod_sqlpw: Added README.mod_sqlpw
