@@ -1,7 +1,15 @@
-A new functionality, called Controls, was added in ProFTPD 1.2.10rc1.
-Controls is provides a way for system administrators to communicate directly
-with a running proftpd daemon, making it possible to do on-the-fly
-configuration changes and other capabilities.
+
+Controls
+--------
+
+A new functionality called Controls was added in ProFTPD 1.2.10rc1.
+
+Controls is a feature that provides a way for system administrators to
+communicate directly with a running proftpd daemon, making it possible to do
+on-the-fly configuration changes and other capabilities.  This feature
+includes a program called `ftpdctl', for communicating with the daemon from
+the command line, and an API that third-party modules can use to extend the
+Control commands available to `ftpdctl'.
 
 To enable support for Controls, use the --enable-ctrls configure option:
 
