@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.519 2004-01-02 15:27:30 jwm Exp $
+$Id: NEWS,v 1.520 2004-01-11 21:33:26 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -66,6 +66,7 @@ CVS
   Fix the build under Solaris - ftpdctl needs to be linked against libsocket
   and libnsl
 - Bug 2267 - Broken IP subnet matching. Added new ACL parsing/matching code.
+- Bug 2307 - MySQL 4.1.1 API change causes mod_sql_mysql compilation failure
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------

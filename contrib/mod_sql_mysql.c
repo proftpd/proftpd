@@ -21,7 +21,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.28 2003-11-09 21:23:30 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.29 2004-01-11 21:33:26 castaglia Exp $
  */
 
 /*
@@ -1287,7 +1287,7 @@ MODRET cmd_checkauth(cmd_rec * cmd)
   c_clear = cmd->argv[1];
   c_hash = cmd->argv[2];
 
-#if MYSQL_VERSION_ID >= 40100
+#if MYSQL_VERSION_ID >= 40100 && MYSQL_VERSION_ID < 40101
   make_scrambled_password(scrambled, c_clear, 1, NULL);
 #else
   make_scrambled_password(scrambled, c_clear);
