@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.9 2004-09-07 19:41:40 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.10 2004-09-08 00:40:16 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -984,6 +984,10 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
   else {
     if (errno == ENOENT)
       append_bytes = 0;
+
+    else
+      quotatab_log("%s: error checking '%s': %s", cmd->argv[0], cmd->arg,
+        strerror(errno));
   }
 
   /* Write out an updated quota entry. */
@@ -1029,6 +1033,10 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
   else {
     if (errno == ENOENT)
       append_bytes = 0;
+
+    else
+      quotatab_log("%s: error checking '%s': %s", cmd->argv[0], cmd->arg,
+        strerror(errno));
   }
 
   /* Write out an updated quota entry */
@@ -1606,6 +1614,10 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
   else {
     if (errno == ENOENT)
       store_bytes = 0;
+
+    else
+      quotatab_log("%s: error checking '%s': %s", cmd->argv[0], cmd->arg,
+        strerror(errno));
   }
 
   /* NOTE: if use_dirs is TRUE, also take into consideration the increased
@@ -1717,6 +1729,10 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
   else {
     if (errno == ENOENT)
       store_bytes = 0;
+
+    else
+      quotatab_log("%s: error checking '%s': %s", cmd->argv[0], cmd->arg,
+        strerror(errno));
   }
 
   /* Write out an updated quota entry */
