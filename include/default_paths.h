@@ -26,7 +26,7 @@
 /* ProFTPD default path configuration.  Normally, Makefiles generated
  * by the top-level configuration script define the PR_RUN_DIR and
  * PR_CONFIG_FILE_PATH macros, so the two below are typically not used.
- * $Id: default_paths.h,v 1.10 2004-11-02 18:18:58 castaglia Exp $
+ * $Id: default_paths.h,v 1.11 2004-11-03 00:40:07 castaglia Exp $
  */
 
 #ifndef PROFTPD_PATHS_H
@@ -68,10 +68,9 @@
 /* Where your log files are kept.  The "wu-ftpd style" xferlog is
  * stored here, as well as "extended" (not yet available) transfer
  * log files.  These can be overridden in the configuration file via
- * "TransferLog" and "ExtendedLog".  (note ExtendedLog does not work yet)
+ * "TransferLog" and "ExtendedLog".
  */
 #define PR_XFERLOG_PATH		"/var/log/xferlog"
-#define PR_EXTLOG_PATH		"/var/log/proftpd-log"
 
 /* Location of the file that tells proftpd to discontinue servicing
  * requests.
