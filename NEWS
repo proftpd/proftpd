@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.395 2003-03-09 04:19:23 castaglia Exp $
+$Id: NEWS,v 1.396 2003-03-09 22:28:16 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -38,6 +38,14 @@ CVS
 - Bug 1969 - Add scoreboard-scrubbing timer.  The scoreboard will be scanned
   now every 30 seconds for entries with invalid PIDs; this timer can be
   adjusted using the PR_TUNABLE_SCOREBOARD_SCRUB_TIMER #define.
+- Bug 1921 - Socket-level performance tweaks.  This change deprecates the
+  tcpReceiveWindow and tcpSendWindow configuration directives, replacing
+  them with a single SocketOptions configuration directive.  This new
+  directive can be used to tune the TCP send and receive window sizes as well
+  as the TCP max segment size.  A new configure option,
+  --enable-transfer-buffer-size, is also added, to be used for tuning the
+  size of internal buffers used for file transfers.  Using this option to
+  configure an 8K buffer size often results in higher transfer speeds.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------

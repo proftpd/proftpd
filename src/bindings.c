@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.7 2003-01-02 18:25:23 castaglia Exp $
+ * $Id: bindings.c,v 1.8 2003-03-09 22:28:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -617,10 +617,16 @@ int pr_namebind_create(server_rec *server, const char *name, p_in_addr_t *addr,
   namebind->nb_server->ServerFQDN = (server->ServerFQDN ?
     server->ServerFQDN : main_server->ServerFQDN);
 
-  namebind->nb_server->tcp_rwin = (server->tcp_rwin ? server->tcp_rwin :
-    main_server->tcp_rwin);
-  namebind->nb_server->tcp_swin = (server->tcp_swin ? server->tcp_swin :
-    main_server->tcp_swin);
+  namebind->nb_server->tcp_mss_len = (server->tcp_mss_len ?
+    server->tcp_mss_len : main_server->tcp_mss_len);
+  namebind->nb_server->tcp_rcvbuf_len = (server->tcp_rcvbuf_len ?
+    server->tcp_rcvbuf_len : main_server->tcp_rcvbuf_len);
+  namebind->nb_server->tcp_rcvbuf_override = (server->tcp_rcvbuf_override ?
+    TRUE : main_server->tcp_rcvbuf_override);
+  namebind->nb_server->tcp_sndbuf_len = (server->tcp_sndbuf_len ?
+    server->tcp_sndbuf_len : main_server->tcp_sndbuf_len);
+  namebind->nb_server->tcp_sndbuf_override = (server->tcp_sndbuf_override ?
+    TRUE : main_server->tcp_sndbuf_override);
 
   namebind->nb_server->ipaddr = (server->ipaddr ? server->ipaddr :
     main_server->ipaddr);

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.162 2003-03-09 04:19:23 castaglia Exp $
+ * $Id: mod_core.c,v 1.163 2003-03-09 22:28:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -780,6 +780,60 @@ MODRET set_socketbindtight(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+/* NOTE: at some point in the future, SocketBindTight should be folded
+ * into this SocketOptions directive handler.
+ */
+MODRET set_socketoptions(cmd_rec *cmd) {
+  register unsigned int i = 0;
+
+  /* Make sure we have the right number of parameters. */
+  if ((cmd->argc-1) % 2 != 0)
+   CONF_ERROR(cmd, "bad number of parameters");
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    int value = 0;
+
+    if (strcasecmp(cmd->argv[i], "maxseg") == 0) {
+      value = atoi(cmd->argv[++i]);
+
+      /* As per the tcp(7) man page, sizes larger than the interface MTU
+       * will be ignored, and will have no effect.
+       */
+
+      if (value < 0)
+        CONF_ERROR(cmd, "maxseg size must be greater than 0");
+
+      cmd->server->tcp_mss_len = value;
+
+    } else if (strcasecmp(cmd->argv[i], "rcvbuf") == 0) {
+      value = atoi(cmd->argv[++i]);
+
+      if (value < 1024)
+        CONF_ERROR(cmd, "rcvbuf size must be greater than or equal to 1024");
+
+      cmd->server->tcp_rcvbuf_len = value;
+      cmd->server->tcp_rcvbuf_override = TRUE;
+
+    } else if (strcasecmp(cmd->argv[i], "sndbuf") == 0) {
+      value = atoi(cmd->argv[++i]);
+
+      if (value < 1024)
+        CONF_ERROR(cmd, "sndbuf size must be greater than or equal to 1024");
+
+      cmd->server->tcp_sndbuf_len = value;
+      cmd->server->tcp_sndbuf_override = TRUE;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown socket option: '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  return HANDLED(cmd);
+}
+
 MODRET set_multilinerfc2228(cmd_rec *cmd) {
   int bool = -1;
   CHECK_ARGS(cmd, 1);
@@ -824,38 +878,6 @@ MODRET set_tcpbacklog(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_tcpreceivewindow(cmd_rec *cmd) {
-  int rwin;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
-
-  rwin = atoi(cmd->argv[1]);
-
-  if (rwin < 1024)
-    CONF_ERROR(cmd,"parameter must be number equal to or greater than 1024.");
-
-  cmd->server->tcp_rwin = rwin;
-  cmd->server->tcp_rwin_override = 1;
-  return HANDLED(cmd);
-}
-
-MODRET set_tcpsendwindow(cmd_rec *cmd) {
-  int swin;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
-
-  swin = atoi(cmd->argv[1]);
-
-  if (swin < 1024)
-    CONF_ERROR(cmd,"parameter must be number equal to or greater than 1024.");
-
-  cmd->server->tcp_swin = swin;
-  cmd->server->tcp_swin_override = 1;
-  return HANDLED(cmd);
-}
-
 MODRET set_tcpnodelay(cmd_rec *cmd) {
   int bool = -1;
   config_rec *c = NULL;
@@ -871,6 +893,14 @@ MODRET set_tcpnodelay(cmd_rec *cmd) {
   *((unsigned char *) c->argv[0]) = bool;
 
   return HANDLED(cmd);
+}
+
+MODRET set_tcpreceivewindow(cmd_rec *cmd) {
+  CONF_ERROR(cmd, "deprecated. Use 'SocketOptions rcvbuf <size>' instead");
+}
+
+MODRET set_tcpsendwindow(cmd_rec *cmd) {
+  CONF_ERROR(cmd, "deprecated. Use 'SocketOptions sndbuf <size>' instead");
 }
 
 MODRET set_user(cmd_rec *cmd) {
@@ -4046,6 +4076,7 @@ static conftable core_conftab[] = {
   { "ServerName",		set_servername, 		NULL },
   { "ServerType",		set_servertype,			NULL },
   { "SocketBindTight",		set_socketbindtight,		NULL },
+  { "SocketOptions",		set_socketoptions,		NULL },
   { "SyslogFacility",		set_syslogfacility,		NULL },
   { "SyslogLevel",		set_sysloglevel,		NULL },
   { "TimeoutIdle",		set_timeoutidle,		NULL },

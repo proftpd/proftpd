@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.133 2003-03-04 23:32:25 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.134 2003-03-09 22:28:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1295,9 +1295,9 @@ MODRET xfer_stor(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  bufsize = (main_server->tcp_rwin > 0 ?
-    main_server->tcp_rwin : PR_TUNABLE_BUFFER_SIZE);
-  lbuf = (char*) palloc(cmd->tmp_pool, bufsize);
+  bufsize = (main_server->tcp_rcvbuf_len > 0 ?  main_server->tcp_rcvbuf_len :
+    PR_TUNABLE_XFER_BUFFER_SIZE);
+  lbuf = (char *) palloc(cmd->tmp_pool, bufsize);
 
   while ((len = pr_data_xfer(lbuf, bufsize)) > 0) {
     if (XFER_ABORTED)
@@ -1561,8 +1561,8 @@ MODRET xfer_retr(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  bufsize = (main_server->tcp_swin > 0 ?
-             main_server->tcp_swin : PR_TUNABLE_BUFFER_SIZE);
+  bufsize = (main_server->tcp_sndbuf_len > 0 ?  main_server->tcp_sndbuf_len :
+    PR_TUNABLE_XFER_BUFFER_SIZE);
   lbuf = (char *) palloc(cmd->tmp_pool, bufsize);
 
   nbytes_sent = respos;

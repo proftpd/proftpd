@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.34 2003-02-26 04:30:06 castaglia Exp $
+ * $Id: dirtree.h,v 1.35 2003-03-09 22:28:16 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -50,10 +50,19 @@ typedef struct server_struc {
   char *ServerAddress;		/* This server address */
   char *ServerFQDN;		/* Fully Qualified Domain Name */
 
-  int ServerPort;		/* Port # to run on */
-  int tcp_rwin,tcp_swin;	/* Receive/Send windows */
-  int tcp_rwin_override;	/* Specifically override tcp rwin */
-  int tcp_swin_override;	/* Specifically override tcp swin */
+  /* Port number to which to listen. A value of zero disables the server_rec.
+   */
+  int ServerPort;
+
+  /* TCP settings: max segment size, receive/send buffer sizes.
+   */
+  int tcp_mss_len;
+
+  int tcp_rcvbuf_len;
+  unsigned char tcp_rcvbuf_override;
+
+  int tcp_sndbuf_len;
+  unsigned char tcp_sndbuf_override;
 
   char *ServerAdmin;		/* Administrator's name */
 

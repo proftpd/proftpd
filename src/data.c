@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.58 2003-02-12 19:03:36 castaglia Exp $
+ * $Id: data.c,v 1.59 2003-03-09 22:28:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -237,14 +237,16 @@ static int data_pasv_open(char *reason, off_t size) {
   /* Protocol and socket options should be set before handshaking. */
 
   if (session.xfer.direction == PR_NETIO_IO_RD) {
-    inet_set_socket_opts(session.d->pool,session.d,
-      (main_server->tcp_rwin_override ?  main_server->tcp_rwin : 0), 0);
-    inet_set_proto_opts(session.pool, session.d, 0, 0, 1, 1);
+    inet_set_socket_opts(session.d->pool, session.d,
+      (main_server->tcp_rcvbuf_override ?  main_server->tcp_rcvbuf_len : 0), 0);
+    inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
+      0, 1, 1);
     
   } else {
-    inet_set_socket_opts(session.d->pool,session.d, 0,
-      (main_server->tcp_swin_override ?  main_server->tcp_swin : 0));
-    inet_set_proto_opts(session.pool, session.d, 0, 0, 1, 1);
+    inet_set_socket_opts(session.d->pool, session.d,
+      0, (main_server->tcp_sndbuf_override ?  main_server->tcp_sndbuf_len : 0));
+    inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
+      0, 1, 1);
   }
 
   c = inet_accept(session.xfer.p, session.d, session.c, -1, -1, TRUE);
@@ -329,14 +331,16 @@ static int data_active_open(char *reason, off_t size) {
   /* Protocol and socket options should be set before handshaking. */
 
   if (session.xfer.direction == PR_NETIO_IO_RD) {
-    inet_set_socket_opts(session.d->pool,session.d,
-       (main_server->tcp_rwin_override ?  main_server->tcp_rwin : 0), 0);
-    inet_set_proto_opts(session.pool, session.d, 0, 0, 1, 1);
+    inet_set_socket_opts(session.d->pool, session.d,
+      (main_server->tcp_rcvbuf_override ?  main_server->tcp_rcvbuf_len : 0), 0);
+    inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
+      0, 1, 1);
     
   } else {
-    inet_set_socket_opts(session.d->pool,session.d, 0,
-      (main_server->tcp_swin_override ?  main_server->tcp_swin : 0));
-    inet_set_proto_opts(session.pool, session.d, 0, 0, 1, 1);
+    inet_set_socket_opts(session.d->pool, session.d,
+      0, (main_server->tcp_sndbuf_override ?  main_server->tcp_sndbuf_len : 0));
+    inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
+      0, 1, 1);
   }
 
   if (inet_connect(session.d->pool, session.d, &session.data_addr,

@@ -32,14 +32,6 @@
 #include "conf.h"
 #include "privs.h"
 
-#if 0
-#ifdef HAVE_NETINET_IN_SYSTM_H
-#include <netinet/in_systm.h>
-#endif
-#include <netinet/ip.h>
-#include <netinet/tcp.h>
-#endif
-
 #define CHECK_INET_POOL	 if(!inet_pool) _create_inet_pool()
 
 extern server_rec *main_server;
@@ -697,7 +689,7 @@ void inet_lingering_close(pool *p, conn_t *c, long linger) {
   destroy_pool(c->pool);
 }
 
-int inet_set_proto_opts(pool *p, conn_t *c, int nodelay, int lowdelay,
+int inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay, int lowdelay,
     int throughput, int nopush) {
   int tos = 0;
 
@@ -718,17 +710,29 @@ int inet_set_proto_opts(pool *p, conn_t *c, int nodelay, int lowdelay,
         log_pri(PR_LOG_NOTICE, "error setting read fd TCP_NODELAY: %s",
           strerror(errno));
   }
-#endif
+#endif /* TCP_NODELAY */
+
+#ifdef TCP_MAXSEG
+  if (c->wfd != -1 && mss)
+    if (setsockopt(c->wfd, SOL_TCP, TCP_MAXSEG, &mss, sizeof(mss)) < 0)
+      log_pri(PR_LOG_NOTICE, "error setting write fd TCP_MAXSEG(%d): %s",
+        mss, strerror(errno));
+
+  if (c->rfd != -1 && mss)
+    if (setsockopt(c->wfd, SOL_TCP, TCP_MAXSEG, &mss, sizeof(mss)) < 0)
+      log_pri(PR_LOG_NOTICE, "error setting read fd TCP_MAXSEG(%d): %s",
+        mss, strerror(errno));
+#endif /* TCP_MAXSEG */
 
 #ifdef IPTOS_LOWDELAY
   if (lowdelay)
     tos = IPTOS_LOWDELAY;
-#endif
+#endif /* IPTOS_LOWDELAY */
 
 #ifdef IPTOS_THROUGHPUT
   if (throughput)
     tos |= IPTOS_THROUGHPUT;
-#endif
+#endif /* IPTOS_THROUGHPUT */
 
 #ifdef IP_TOS
   if (c->wfd != -1)
@@ -740,7 +744,7 @@ int inet_set_proto_opts(pool *p, conn_t *c, int nodelay, int lowdelay,
     if (setsockopt(c->rfd, IPPROTO_IP, IP_TOS, (void *) &tos, sizeof(tos)) < 0)
       log_pri(PR_LOG_NOTICE, "error setting read fd IP_TOS: %s",
         strerror(errno));
-#endif
+#endif /* IP_TOS */
 
 #ifdef TCP_NOPUSH
   /* NOTE: TCP_NOPUSH is a BSDism. */
@@ -755,7 +759,7 @@ int inet_set_proto_opts(pool *p, conn_t *c, int nodelay, int lowdelay,
         sizeof(nopush)) < 0)
       log_pri(PR_LOG_NOTICE, "error setting read fd TCP_NOPUSH: %s",
         strerror(errno));
-#endif
+#endif /* TCP_NOPUSH */
 
   return 0;
 }
@@ -767,18 +771,18 @@ int inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf) {
   int crcvbuf, csndbuf;
   socklen_t len;
 
+  /* Linux and "most" newer networking OSes probably use a highly adaptive
+   * window size system, which generally wouldn't require user-space
+   * modification at all.  Thus, check the current sndbuf and rcvbuf sizes
+   * before changing them, and only change them if we are making them larger
+   * than their current size.
+   */
+
   if (c->wfd != -1) {
     if (setsockopt(c->wfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &no_keep_alive,
         sizeof(int)) < 0)
       log_pri(PR_LOG_NOTICE, "error setting write fd SO_KEEPALIVE: %s",
         strerror(errno));
-
-    /* Linux and "most" newer networking OSes probably use a highly
-     * adaptive window size system, which generally wouldn't require
-     * user-space modification at all.  Thus, check the current
-     * sndbuf and rcvbuf sizes before changing them, and only change
-     * them if we are making them larger than their current size.
-     */
 
     len = sizeof(csndbuf);
     getsockopt(c->wfd, SOL_SOCKET, SO_SNDBUF, (void *) &csndbuf, &len);

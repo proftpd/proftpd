@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.15 2003-03-09 04:19:23 castaglia Exp $
+ * $Id: options.h,v 1.16 2003-03-09 22:28:16 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -69,7 +69,7 @@
  * "tcpBackLog" configuration directive, this value is just the default.
  */
 
-#define PR_TUNABLE_DEFAULT_BACKLOG 5
+#define PR_TUNABLE_DEFAULT_BACKLOG	5
 
 /* The next two define the default receive/send tcp windows (and
  * internal ProFTPD buffer sizes.  These can be configured per server
@@ -77,14 +77,20 @@
  * directives.
  */
 
-#define PR_TUNABLE_DEFAULT_RWIN    8192
-#define PR_TUNABLE_DEFAULT_SWIN    8192
+#define PR_TUNABLE_DEFAULT_RCVBUF	8192
+#define PR_TUNABLE_DEFAULT_SNDBUF	8192
 
 /* Default internal buffer size used for data transfers and other
  * miscellaneous tasks.
  */
 #ifndef PR_TUNABLE_BUFFER_SIZE
 # define PR_TUNABLE_BUFFER_SIZE	1024
+#endif
+
+/* This one is specifically for data transfers.
+ */
+#ifndef PR_TUNABLE_XFER_BUFFER_SIZE
+# define PR_TUNABLE_XFER_BUFFER_SIZE	PR_TUNABLE_BUFFER_SIZE
 #endif
 
 /* Default timeouts, if not explicitly configured via
@@ -96,7 +102,7 @@
 #endif
 
 #ifndef PR_TUNABLE_TIMEOUTIDLE
-# define PR_TUNABLE_TIMEOUTIDLE	600
+# define PR_TUNABLE_TIMEOUTIDLE		600
 #endif
 
 #ifndef PR_TUNABLE_TIMEOUTLINGER

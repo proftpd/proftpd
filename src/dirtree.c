@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.101 2003-02-26 04:30:06 castaglia Exp $
+ * $Id: dirtree.c,v 1.102 2003-03-09 22:28:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -595,8 +595,7 @@ void free_conf_stacks(void) {
 
 /* Used by modules to start/end configuration sections */
 
-server_rec *start_new_server(const char *addr)
-{
+server_rec *start_new_server(const char *addr) {
   server_rec *s;
   pool *p;
 
@@ -623,18 +622,15 @@ server_rec *start_new_server(const char *addr)
   return s;
 }
 
-server_rec *end_new_server(void)
-{
+server_rec *end_new_server(void) {
   if (!*conf.curserver)
     return NULL;
 
   if (conf.curserver == (server_rec**)conf.sstack->elts)
     return NULL; /* Disallow underflows */
 
-
   conf.curserver--;
   conf.sstack->nelts--;
-
 
   return *conf.curserver;
 }
@@ -3029,11 +3025,11 @@ void fixup_servers(void) {
       s->ServerName = pstrdup(s->pool, m->ServerName);
     }
 
-    if (!s->tcp_rwin)
-      s->tcp_rwin = PR_TUNABLE_DEFAULT_RWIN;
+    if (!s->tcp_rcvbuf_len)
+      s->tcp_rcvbuf_len = PR_TUNABLE_DEFAULT_RCVBUF;
 
-    if (!s->tcp_swin)
-      s->tcp_swin = PR_TUNABLE_DEFAULT_SWIN;
+    if (!s->tcp_sndbuf_len)
+      s->tcp_sndbuf_len = PR_TUNABLE_DEFAULT_SNDBUF;
 
     if ((c = find_config(s->conf, CONF_PARAM, "MasqueradeAddress",
         FALSE)) != NULL) {
