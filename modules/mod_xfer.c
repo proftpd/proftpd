@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.141 2003-05-19 20:12:16 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.142 2003-05-19 22:28:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -511,6 +511,7 @@ static long xfer_rate_since(struct timeval *then) {
 
 static void xfer_rate_throttle(off_t xferlen) {
   long ideal = 0, elapsed = 0;
+  off_t orig_xferlen = xferlen;
 
   /* Calculate the time interval since the transfer of data started. */
   elapsed = xfer_rate_since(&session.xfer.start_time);
@@ -520,7 +521,7 @@ static void xfer_rate_throttle(off_t xferlen) {
 
     /* Update the scoreboard. */
     pr_scoreboard_update_entry(getpid(),
-      PR_SCORE_XFER_LEN, xferlen,
+      PR_SCORE_XFER_LEN, orig_xferlen,
       PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
       NULL);
 
@@ -543,7 +544,7 @@ static void xfer_rate_throttle(off_t xferlen) {
        * update the scoreboard -- no throttling needed.
        */
       pr_scoreboard_update_entry(getpid(),
-        PR_SCORE_XFER_LEN, xferlen,
+        PR_SCORE_XFER_LEN, orig_xferlen,
         PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
         NULL);
 
@@ -581,7 +582,7 @@ static void xfer_rate_throttle(off_t xferlen) {
 
     /* Update the scoreboard. */
     pr_scoreboard_update_entry(getpid(),
-      PR_SCORE_XFER_LEN, xferlen,
+      PR_SCORE_XFER_LEN, orig_xferlen,
       PR_SCORE_XFER_ELAPSED, (unsigned long) ideal,
       NULL);
 
@@ -589,7 +590,7 @@ static void xfer_rate_throttle(off_t xferlen) {
 
     /* Update the scoreboard. */
     pr_scoreboard_update_entry(getpid(),
-      PR_SCORE_XFER_LEN, xferlen,
+      PR_SCORE_XFER_LEN, orig_xferlen,
       PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
       NULL);
   }
