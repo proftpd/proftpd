@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.110 2004-04-29 01:55:21 castaglia Exp $
+ * $Id: mod_ls.c,v 1.111 2004-05-06 15:35:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -333,6 +333,11 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
         return 0;
 
     } else if (!ls_perms(p, cmd, name, &hidden))
+      return 0;
+
+    /* Skip dotfiles, unless requested not to via -a or -A. */
+    if (*name == '.' &&
+        (!opt_a && (!opt_A || is_dotdir(name))))
       return 0;
 
     if (hidden)
