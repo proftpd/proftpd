@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.85 2004-09-26 18:24:26 castaglia Exp $
+ * $Id: mod_sql.c,v 1.86 2004-10-17 19:09:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4057,7 +4057,6 @@ static void sql_exit_ev(const void *event_data, void *user_data) {
 
   while (c) {
     char *qname = NULL, *type = NULL;
-    cmd_rec *cmd = NULL;
 
     qname = c->argv[0];
 
