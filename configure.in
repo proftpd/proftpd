@@ -1088,7 +1088,7 @@ fi
 
 dnl Run a small test program to see if the host's printf(3) family can
 dnl actually handle the %llu format.
-AC_MSG_CHECKING([whether printfs support the %llu format]);
+AC_MSG_CHECKING([whether printf supports %llu format]);
 AC_TRY_RUN(
   [ #include <stdio.h>
     int main(int argc, char *argv[]) {
