@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.499 2003-10-31 19:23:13 castaglia Exp $
+$Id: NEWS,v 1.500 2003-10-31 19:41:41 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -8,6 +8,9 @@ CVS
 - Bug 2086 - Add limits for PORT, PASV.  This means that now one can use
   <Limit> to place access controls on the PORT and PASV commands.  This
   applies to the EPRT and EPSV commands as well if IPv6 support is enabled.
+- Bug 2174 - mod_auth_unix should not act authoritatively.  This was causing
+  problems when using mod_auth_unix.c and the AuthOrder configuration
+  directive.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------

@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.11 2003-09-28 23:56:22 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.12 2003-10-31 19:41:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -346,10 +346,7 @@ MODRET pw_getgrent(cmd_rec *cmd) {
   else
     gr = getgrent();
 
-  if (gr)
-    return mod_create_data(cmd,gr);
-  else
-    return ERROR(cmd);
+  return gr ? mod_create_data(cmd, gr) : DECLINED(cmd);
 }
 
 MODRET pw_getpwent(cmd_rec *cmd) {
@@ -360,10 +357,7 @@ MODRET pw_getpwent(cmd_rec *cmd) {
   else
     pw = getpwent();
 
-  if (pw)
-    return mod_create_data(cmd,pw);
-  else
-    return ERROR(cmd);
+  return pw ? mod_create_data(cmd, pw) : DECLINED(cmd);
 }
 
 MODRET pw_getpwuid(cmd_rec *cmd) {
@@ -376,10 +370,7 @@ MODRET pw_getpwuid(cmd_rec *cmd) {
   else
     pw = getpwuid(uid);
 
-  if (pw)
-    return mod_create_data(cmd,pw);
-  else
-    return ERROR(cmd);
+  return pw ? mod_create_data(cmd, pw) : DECLINED(cmd);
 }
 
 MODRET pw_getpwnam(cmd_rec *cmd) {
@@ -392,10 +383,7 @@ MODRET pw_getpwnam(cmd_rec *cmd) {
   else
     pw = getpwnam(name);
 
-  if (pw)
-    return mod_create_data(cmd,pw);
-  else
-    return ERROR(cmd);
+  return pw ? mod_create_data(cmd, pw) : DECLINED(cmd);
 }
 
 MODRET pw_getgrnam(cmd_rec *cmd) {
@@ -408,10 +396,7 @@ MODRET pw_getgrnam(cmd_rec *cmd) {
   else
     gr = getgrnam(name);
 
-  if (gr)
-    return mod_create_data(cmd,gr);
-  else
-    return ERROR(cmd);
+  return gr ? mod_create_data(cmd, gr) : DECLINED(cmd);
 }
 
 MODRET pw_getgrgid(cmd_rec *cmd) {
@@ -424,10 +409,7 @@ MODRET pw_getgrgid(cmd_rec *cmd) {
   else
     gr = getgrgid(gid);
 
-  if (gr)
-    return mod_create_data(cmd,gr);
-  else
-    return ERROR(cmd);
+  return gr ? mod_create_data(cmd, gr) : DECLINED(cmd);
 }
 
 #ifdef USE_SHADOW
@@ -630,7 +612,7 @@ static char *_get_ppw_info(pool *p, const char *u) {
 MODRET pw_auth(cmd_rec *cmd) {
   time_t now;
   char *cpw;
-  time_t lstchg = -1,max = -1,inact = -1,disable = -1;
+  time_t lstchg = -1, max = -1, inact = -1, disable = -1;
   const char *name;
 
   name = cmd->argv[0];
@@ -643,7 +625,7 @@ MODRET pw_auth(cmd_rec *cmd) {
       &disable);
 
   if (!cpw)
-    return ERROR_INT(cmd, PR_AUTH_NOPWD);
+    return DECLINED(cmd);
 
   if (auth_check(cmd->tmp_pool, cpw, cmd->argv[0], cmd->argv[1]))
     return ERROR_INT(cmd, PR_AUTH_BADPWD);
@@ -661,8 +643,7 @@ MODRET pw_auth(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-/*
- * cmd->argv[0] = hashed password,
+/* cmd->argv[0] = hashed password,
  * cmd->argv[1] = user,
  * cmd->argv[2] = cleartext
  */
@@ -756,7 +737,7 @@ MODRET pw_check(cmd_rec *cmd) {
       cygwin_set_impersonation_token(token);
 
     } else
-      return ERROR(cmd);
+      return DECLINED(cmd);
 
   } else
 # endif /* CYGWIN */
@@ -772,7 +753,7 @@ MODRET pw_check(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET pw_uid_name(cmd_rec *cmd) {
+MODRET pw_uid2name(cmd_rec *cmd) {
   idmap_t *m;
   idauth_t id;
   struct passwd *pw;
@@ -781,7 +762,7 @@ MODRET pw_uid_name(cmd_rec *cmd) {
   m = _auth_lookup_id(uid_table, id);
 
   if (!m->name) {
-    /* wasn't cached, so perform a lookup */
+    /* Wasn't cached, so perform a lookup */
 
     if (PERSISTENT_PASSWD)
       pw = p_getpwuid(id.uid);
@@ -791,19 +772,16 @@ MODRET pw_uid_name(cmd_rec *cmd) {
     if (pw) {
       m->name = pstrdup(session.pool ? session.pool : permanent_pool,
         pw->pw_name);
-
-    } else {
-      char buf[10] = {'\0'};
-
-      snprintf(buf, sizeof(buf), "%lu", (unsigned long) id.uid);
-      m->name = pstrdup(session.pool ? session.pool : permanent_pool, buf);
+      return mod_create_data(cmd, m->name);
     }
+
+    return DECLINED(cmd);
   }
 
   return mod_create_data(cmd, m->name);
 }
 
-MODRET pw_gid_name(cmd_rec *cmd) {
+MODRET pw_gid2name(cmd_rec *cmd) {
   idmap_t *m;
   idauth_t id;
   struct group *gr;
@@ -818,26 +796,19 @@ MODRET pw_gid_name(cmd_rec *cmd) {
     else
       gr = getgrgid(id.gid);
 
-    if (gr)
+    if (gr) {
       m->name = pstrdup(session.pool ? session.pool : permanent_pool,
         gr->gr_name);
-
-    else {
-      char buf[10] = {'\0'};
-
-      /* Removed cast to unsigned long long here, as it presents a problem
-       * passed to snprintf because there is no ANSI standard for the format
-       * string modifier used for long long (is it %llu or %Lu, etc).
-       */
-      snprintf(buf, sizeof(buf), "%lu", (unsigned long) id.gid);
-      m->name = pstrdup(session.pool ? session.pool : permanent_pool, buf);
+      return mod_create_data(cmd, m->name);
     }
+
+    return DECLINED(cmd);
   }
 
   return mod_create_data(cmd, m->name);
 }
 
-MODRET pw_name_uid(cmd_rec *cmd) {
+MODRET pw_name2uid(cmd_rec *cmd) {
   struct passwd *pw;
   const char *name;
 
@@ -848,13 +819,10 @@ MODRET pw_name_uid(cmd_rec *cmd) {
   else
     pw = getpwnam(name);
 
-  if (pw)
-    return mod_create_data(cmd, (void *) pw->pw_uid);
-
-  return ERROR(cmd);
+  return pw ? mod_create_data(cmd, (void *) pw->pw_uid) : DECLINED(cmd);
 }
 
-MODRET pw_name_gid(cmd_rec *cmd) {
+MODRET pw_name2gid(cmd_rec *cmd) {
   struct group *gr;
   const char *name;
 
@@ -865,10 +833,7 @@ MODRET pw_name_gid(cmd_rec *cmd) {
   else
     gr = getgrnam(name);
 
-  if (gr)
-    return mod_create_data(cmd, (void *) gr->gr_gid);
-
-  return ERROR(cmd);
+  return gr ? mod_create_data(cmd, (void *) gr->gr_gid) : DECLINED(cmd);
 }
 
 /* cmd->argv[0] = name
@@ -913,7 +878,7 @@ MODRET pw_getgroups(cmd_rec *cmd) {
 
   /* Retrieve the necessary info. */
   if (!name || !(pw = my_getpwnam(name)))
-    return mod_create_error(cmd, -1);
+    return DECLINED(cmd);
 
   /* Populate the first group ID and name. */
   if (gids)
@@ -1032,10 +997,10 @@ static authtable auth_unix_authtab[] = {
   { 0,  "getgrgid",     pw_getgrgid },
   { 0,  "auth",         pw_auth	},
   { 0,  "check",	pw_check },
-  { 0,  "uid_name",	pw_uid_name },
-  { 0,  "gid_name",	pw_gid_name },
-  { 0,  "name_uid",	pw_name_uid },
-  { 0,  "name_gid",	pw_name_gid },
+  { 0,  "uid_name",	pw_uid2name },
+  { 0,  "gid_name",	pw_gid2name },
+  { 0,  "name_uid",	pw_name2uid },
+  { 0,  "name_gid",	pw_name2gid },
   { 0,  "getgroups",	pw_getgroups },
   { 0,  NULL }
 };
