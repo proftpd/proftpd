@@ -4,16 +4,16 @@
 #
 # chkconfig: 345 85 15
 # description: ProFTPD is an enhanced FTP server with \
-#               a focus toward simplicity, security, and ease of configuration. \
+#              a focus toward simplicity, security, and ease of configuration. \
 #              It features a very Apache-like configuration syntax, \
-#               and a highly customizable server infrastructure, \
-#               including support for multiple 'virtual' FTP servers, \
-#               anonymous FTP, and permission-based directory visibility.
+#              and a highly customizable server infrastructure, \
+#              including support for multiple 'virtual' FTP servers, \
+#              anonymous FTP, and permission-based directory visibility.
 # processname: proftpd
 # config: /etc/proftpd.conf
 #
 # By: Osman Elliyasa <osman@Cable.EU.org>
-# $Id: proftpd.init.d,v 1.4 2002-05-08 18:39:35 castaglia Exp $
+# $Id: proftpd.init.d,v 1.5 2002-05-18 14:59:56 jwm Exp $
 
 # Source function library.
 . /etc/rc.d/init.d/functions
@@ -22,26 +22,18 @@ if [ -f /etc/sysconfig/proftpd ]; then
       . /etc/sysconfig/proftpd
 fi
 
-FTPSHUT=/opt/sbin/ftpshut
+FTPSHUT=/usr/sbin/ftpshut
 
 # See how we were called.
 case "$1" in
   start)
 	echo -n "Starting proftpd: "
-	if [ -x ~ftp-master/bin/advert.sh ]; then
-		echo -n "Adverts "
-		su - ftp-master -c "bin/advert.sh fifo"
-	fi
-        daemon proftpd $OPTIONS
+	daemon proftpd $OPTIONS
 	echo
 	touch /var/lock/subsys/proftpd
 	;;
   stop)
 	echo -n "Shutting down proftpd: "
-	if [ -x ~ftp-master/bin/advert.sh ]; then
-		echo -n "Adverts "
-		su - ftp-master -c "bin/advert.sh kfifo"
-	fi
 	killproc proftpd
 	echo
 	rm -f /var/lock/subsys/proftpd
