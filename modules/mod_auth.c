@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.18 1999-10-23 05:18:49 macgyver Exp $
+ * $Id: mod_auth.c,v 1.19 1999-12-27 02:48:41 macgyver Exp $
  */
 
 #include "conf.h"
@@ -226,14 +226,22 @@ static int _init_groups(pool *p, gid_t addl_group)
   size_t ngids = session.gids->nelts;
 
   session_gids = session.gids->elts;
-  gid_arr = palloc(p,sizeof(gid_t) * (ngids+1));
+  gid_arr = palloc(p, sizeof(gid_t) * (ngids + 2));
+
+  /* From FreeBSD: /usr/src/lib/libc/gen/getgrouplist.c
+   *
+   * When installing primary group, duplicate it;
+   * the first element of groups is the effective gid
+   * and will be overwritten when a setgid file is executed.
+   */
+  
+  gid_arr[0] = addl_group;
+  gid_arr[1] = addl_group;
 
   for(i = 0; i < ngids; i++)
-    gid_arr[i] = (gid_t)session_gids[i];
+    gid_arr[i + 2] = (gid_t) session_gids[i];
   
-  gid_arr[i] = addl_group;
-
-  return setgroups(ngids+1,gid_arr);
+  return setgroups(ngids + 1, gid_arr);
 }
 
 static config_rec *_auth_anonymous_group(pool *p, char *user)
