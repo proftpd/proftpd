@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.248 2004-09-07 22:29:51 castaglia Exp $
+ * $Id: main.c,v 1.249 2004-09-07 22:34:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2396,57 +2396,57 @@ static void show_settings(void) {
   /* Feature settings */
   printf("\n  Features:\n");
 #ifdef USE_AUTO_SHADOW
-  printf("    +Autoshadow support\n");
+  printf("    + Autoshadow support\n");
 #else
-  printf("    -Autoshadow support\n");
+  printf("    - Autoshadow support\n");
 #endif /* USE_AUTO_SHADOW */
 
 #ifdef USE_CTRLS
-  printf("    +Controls support\n");
+  printf("    + Controls support\n");
 #else
-  printf("    -Controls support\n");
+  printf("    - Controls support\n");
 #endif /* USE_CTRLS */
 
 #ifdef USE_CURSES
-  printf("    +curses support\n");
+  printf("    + curses support\n");
 #else
-  printf("    -curses support\n");
+  printf("    - curses support\n");
 #endif /* USE_CURSES */
 
 #ifdef USE_DEVEL
-  printf("    +Developer support\n");
+  printf("    + Developer support\n");
 #else
-  printf("    -Developer support\n");
+  printf("    - Developer support\n");
 #endif /* USE_DEVEL */
 
 #ifdef USE_IPV6
-  printf("    +IPv6 support\n");
+  printf("    + IPv6 support\n");
 #else
-  printf("    -IPv6 support\n");
+  printf("    - IPv6 support\n");
 #endif /* USE_IPV6 */
 
 #ifdef USE_LARGEFILES
-  printf("    +Largefile support\n");
+  printf("    + Largefile support\n");
 #else
-  printf("    -Largefile support\n");
+  printf("    - Largefile support\n");
 #endif /* USE_LARGEFILES */
 
 #ifdef USE_NCURSES
-  printf("    +ncurses support\n");
+  printf("    + ncurses support\n");
 #else
-  printf("    -ncurses support\n");
+  printf("    - ncurses support\n");
 #endif /* USE_NCURSES */
 
 #ifdef USE_SHADOW
-  printf("    +Shadow file support\n");
+  printf("    + Shadow file support\n");
 #else
-  printf("    -Shadow file suppport\n");
+  printf("    - Shadow file suppport\n");
 #endif /* USE_SHADOW */
 
 #ifdef USE_SENDFILE
-  printf("    +Sendfile support\n")
+  printf("    + Sendfile support\n")
 #else
-  printf("    -Sendfile support\n");
+  printf("    - Sendfile support\n");
 #endif /* USE_SENDFILE */
 
   /* Tunable settings */
