@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.531 2004-02-12 23:46:48 castaglia Exp $
+$Id: NEWS,v 1.532 2004-02-15 19:41:39 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -72,7 +72,8 @@ CVS
   attempted to build proftpd.
 - Bug 2320 - autoconf check for socklen_t doesn't work on FreeBSD 4.8-RELEASE.
   The fix is to include <sys/types.h>, if present, sooner in the check.
-- Bug 1925 - Clean up of Class code.  See README.classes for more details.
+- Bug 1925 - Clean up of Class code.  The Class and Classes directives are
+  now deprecated.  See README.classes for more details.
 - Bug 2295 - mod_tls returns multiline response to AUTH commands.
 - Bug 2322 - NLST -a returns listing formatted for LIST -a.  RFC959 does not
   explicitly allow dash-style options for LIST or NLST, although many clients
