@@ -311,6 +311,7 @@ AC_CHECK_HEADERS(sys/types.h sys/param.h sys/file.h sys/uio.h)
 AC_CHECK_HEADERS(netdb.h netinet/in.h netinet/tcp.h arpa/inet.h sys/stat.h)
 AC_CHECK_HEADERS(errno.h sys/socket.h sys/termios.h sys/termio.h)
 AC_CHECK_HEADERS(sys/statvfs.h sys/vfs.h sys/select.h)
+AC_CHECK_HEADERS(dirent.h ndir.h sys/ndir.h sys/dir.h vmsdir.h)
 AC_CHECK_HEADERS(utmpx.h)
 AC_CHECK_HEADERS(regex.h)
 AC_CHECK_HEADER(syslog.h,have_syslog_h="yes",)
@@ -439,7 +440,7 @@ AC_FUNC_SETPGRP
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS(getcwd gethostname gettimeofday mkdir rmdir select socket strerror strtol)
-AC_CHECK_FUNCS(strchr memcpy bcopy flock getopt getopt_long strsep)
+AC_CHECK_FUNCS(strchr strcoll memcpy mempcpy bcopy flock getopt getopt_long strsep)
 # __snprintf and __vsnprintf are only on solaris and _really_ broken there.
 AC_CHECK_FUNCS(vsnprintf snprintf)
 if test x"$ac_cv_func_vsnprintf" != xyes || test x"$ac_cv_func_snprintf" != xyes

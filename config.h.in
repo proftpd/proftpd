@@ -210,6 +210,9 @@
 /* Define if you have the memcpy function.  */
 #undef HAVE_MEMCPY
 
+/* Define if you have the mempcpy function.  */
+#undef HAVE_MEMPCPY
+
 /* Define if you have the mkdir function.  */
 #undef HAVE_MKDIR
 
@@ -260,6 +263,9 @@
 
 /* Define if you have the strchr function.  */
 #undef HAVE_STRCHR
+
+/* Define if you have the strcoll function.  */
+#undef HAVE_STRCOLL
 
 /* Define if you have the strerror function.  */
 #undef HAVE_STRERROR
@@ -407,6 +413,9 @@
 
 /* Define if you have the <utmpx.h> header file.  */
 #undef HAVE_UTMPX_H
+
+/* Define if you have the "vmsdir.h" header file.  */
+#undef HAVE_VMSDIR_H
 
 /* Define if you have the bind library (-lbind).  */
 #undef HAVE_LIBBIND

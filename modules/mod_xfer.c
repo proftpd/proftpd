@@ -25,7 +25,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.62 2002-02-28 19:13:35 flood Exp $
+ * $Id: mod_xfer.c,v 1.63 2002-05-12 20:48:55 castaglia Exp $
  */
 
 /* History Log:
@@ -95,7 +95,7 @@ static void _log_transfer(char direction, char abort_flag) {
   }
 
   log_debug(DEBUG1, "Transfer %s %d bytes in %d.%02d seconds.",
-	    abort_flag == 'c' ? " completed:" : " aborted after",
+	    abort_flag == 'c' ? "completed:" : "aborted after",
 	    session.xfer.total_bytes,end_time.tv_sec,
 	    (end_time.tv_usec / 10000));
 }

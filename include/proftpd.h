@@ -24,7 +24,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.18 2001-08-01 15:03:11 flood Exp $
+ * $Id: proftpd.h,v 1.19 2002-05-12 20:48:55 castaglia Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -97,7 +97,7 @@ struct config_struc;
 typedef struct {
   pool *pool;
 
-  long flags;				/* Session & State flags */
+  volatile int flags;			/* Session & State flags */
   p_in_addr_t data_addr;		/* Remote data address */
   short data_port;			/* Remote data port */
 
