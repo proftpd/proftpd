@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.263 2004-11-22 00:21:48 castaglia Exp $
+ * $Id: main.c,v 1.264 2004-11-22 00:26:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -350,7 +350,6 @@ static void end_login_noexit(void) {
 
   /* Run all the exit handlers */
   pr_event_generate("core.exit", NULL);
-  run_exit_handlers();
 
   /* If session.user is set, we have a valid login */
   if (session.user) {
