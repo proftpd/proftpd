@@ -26,7 +26,7 @@
 
 /* Scoreboard routines.
  *
- * $Id: utils.h,v 1.17 2003-06-03 16:25:23 castaglia Exp $
+ * $Id: utils.h,v 1.18 2003-10-21 01:44:47 castaglia Exp $
  */
 
 #ifndef UTIL_SCOREBOARD_H
@@ -76,6 +76,14 @@
 #define	FALSE	0
 #define TRUE	1
 
+#ifndef INET_ADDRSTRLEN
+# define INET_ADDRSTRLEN        16
+#endif /* INET_ADDRSTRLEN */
+
+#ifndef INET6_ADDRSTRLEN
+# define INET6_ADDRSTRLEN       46
+#endif /* INET6_ADDRSTRLEN */
+
 /* UTIL_SCOREBOARD_VERSION is used for checking for scoreboard compatibility
  */
 #define UTIL_SCOREBOARD_VERSION        0x01040002
@@ -112,7 +120,11 @@ typedef struct {
   int sce_server_port;
   char sce_server_addr[80], sce_server_label[32];
 
-  char sce_client_addr[16];
+#ifdef USE_IPV6
+  char sce_client_addr[INET6_ADDRSTRLEN];
+#else
+  char sce_client_addr[INET_ADDRSTRLEN];
+#endif /* USE_IPV6 */
   char sce_client_name[PR_TUNABLE_SCOREBOARD_BUFFER_SIZE];
 
   char sce_class[32];
