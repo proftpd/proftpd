@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.15 1999-10-11 03:13:12 macgyver Exp $
+ * $Id: mod_auth.c,v 1.16 1999-10-11 07:20:42 macgyver Exp $
  */
 
 #include "conf.h"
@@ -979,8 +979,12 @@ static int _setup_environment(pool *p, char *user, char *pass)
     session.flags = 0;
   }
 
-  /* Make sure passwd file is closed after login to avoid leaking information */
-  auth_endpwent(p);
+  /* While closing the pointer to the password database would avoid any
+   * potential attempt to hijack this information, it is unfortunately needed
+   * in a chroot()ed environment.  Otherwise, mappings from UIDs to names,
+   * among other things, would fail. - MacGyver
+   */
+  /* auth_endpwent(p); */
 
   /* Default transfer mode is ASCII */
   defaulttransfermode = (char*)get_param_ptr(CURRENT_CONF, "DefaultTransferMode", FALSE);
