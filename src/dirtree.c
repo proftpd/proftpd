@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.58 2002-06-23 19:03:24 castaglia Exp $
+ * $Id: dirtree.c,v 1.59 2002-06-23 22:14:14 castaglia Exp $
  */
 
 /* History:
@@ -83,7 +83,7 @@ static struct {
 
 static struct {
   FILE *file;
-  unsigned int line_number;
+  unsigned int lineno;
 } config_stream;
 
 /* Imported this function from modules/mod_ls.c -- it belongs more with the
@@ -223,9 +223,40 @@ char *get_word(char **cp)
   return ret;
 }
 
-void set_config_stream(FILE *filep, unsigned int line_number) {
+void set_config_stream(FILE *filep, unsigned int lineno) {
   config_stream.file = filep;
-  config_stream.line_number = line_number;
+  config_stream.lineno = lineno;
+}
+
+/* get_line() is an fgets() with backslash-newline stripping, copied from
+ * Wietse Venema's tcpwrapppers-7.6 code.  The extra *lineno argument is
+ * needed, at the moment, to properly track which line of the configuration
+ * file is being read in, so that errors can be reported with line numbers
+ * correctly.
+ */
+char *get_line(char *buf, int buflen, FILE *filep, int *lineno) {
+  int inlen;
+  char *start = buf;
+
+  while (fgets(buf, buflen, filep)) {
+    inlen = strlen(buf);
+
+    if (inlen >= 1 && buf[inlen - 1] == '\n') {
+      (*lineno)++;
+
+      if (inlen >= 2 && buf[inlen - 2] == '\\') {
+        inlen -= 2;
+
+      } else
+        return start;
+    }
+
+    buf += inlen;
+    buflen -= inlen;
+    buf[0] = 0;
+  }
+
+  return (buf > start ? start : 0);
 }
 
 /* This functions returns the next line from the configuration stream,
@@ -250,12 +281,13 @@ char *get_config_line(char *buf, size_t len) {
 
   /* be sure to check for error conditions
    */
-  while ((fgets(buf, len, config_stream.file)) != NULL) {
+  while ((get_line(buf, len, config_stream.file,
+      &config_stream.lineno)) != NULL) {
     char *bufp;
     int buflen = strlen(buf);
 
     /* increment the line number count */
-    config_stream.line_number++;
+    config_stream.lineno++;
     
     /* trim off the trailing newline, if present
      */
@@ -1510,7 +1542,7 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
             if(!found)
               log_pri(LOG_WARNING,
                 "warning: unknown configuration directive '%s' on "
-                "line %d of '%s'.", cmd->argv[0], config_stream.line_number,
+                "line %d of '%s'.", cmd->argv[0], config_stream.lineno,
                 dynpath);
 
           }
@@ -2508,7 +2540,7 @@ int parse_config_file(const char *fname)
 
        if(!found) {
          log_pri(LOG_ERR,"Fatal: unknown configuration directive '%s' on line %d of '%s'.",
-                 cmd->argv[0], config_stream.line_number, fname);
+                 cmd->argv[0], config_stream.lineno, fname);
          exit(1);
        }
     }

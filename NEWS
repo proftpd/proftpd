@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.191 2002-06-23 22:12:05 jwm Exp $
+$Id: NEWS,v 1.192 2002-06-23 22:14:13 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -17,6 +17,9 @@ CVS
              time limit on an entire session.
 - Bug 1643 - Cleaned up several source code files.
 - Bug 1569 - Cygwin support, added README.cygwin
+- Bug 1171 - Added handling backslash-escaped newlines in configuration files,
+             so that a directive can be split across multiple lines using
+             a trailing \ before the newline character.
 
 1.2.5 - Released 2002-06-08
 ---------------------------------
