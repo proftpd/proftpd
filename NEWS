@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.522 2004-01-17 23:08:24 castaglia Exp $
+$Id: NEWS,v 1.523 2004-01-17 23:16:38 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -70,6 +70,8 @@ CVS
 - Bug 2319 - Build scripts have owner-only execute permission.  This was
   causing problems whenever a user other than the owner of the files
   attempted to build proftpd.
+- Bug 2320 - autoconf check for socklen_t doesn't work on FreeBSD 4.8-RELEASE.
+  The fix is to include <sys/types.h>, if present, sooner in the check.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------
