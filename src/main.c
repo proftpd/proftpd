@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.117 2002-09-26 16:47:06 castaglia Exp $
+ * $Id: main.c,v 1.118 2002-09-26 17:09:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -603,12 +603,12 @@ void set_auth_check(int (*ck)(cmd_rec*))
 
 static void end_login_noexit(void) {
 
-  /* Run all the exit handlers */
-  run_exit_handlers();
-
   /* Clear the scoreboard entry. */
   if (!is_master && pr_scoreboard_del_entry(TRUE) < 0)
     log_pri(LOG_NOTICE, "error deleting scoreboard entry: %s", strerror(errno));
+
+  /* Run all the exit handlers */
+  run_exit_handlers();
 
   /* If session.user is set, we have a valid login */
   if(session.user) {
