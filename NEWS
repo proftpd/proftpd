@@ -1,8 +1,11 @@
-$Id: NEWS,v 1.478 2003-09-13 23:29:57 castaglia Exp $
+$Id: NEWS,v 1.479 2003-09-18 19:08:15 castaglia Exp $
 
 CVS
 ---------------------------------
 - Bug 2167 - getnameinfo() on FreeBSD doesn't support IP address lookups.
+- Bug 2176 - getnameinfo() error on Cygwin during startup.
+  The sa_family member of the address was not being properly initialized
+  in some instances.
 
 1.2.9rc2 - Released 11-Sep-2003
 ---------------------------------

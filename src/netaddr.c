@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.17 2003-09-13 23:29:57 castaglia Exp $
+ * $Id: netaddr.c,v 1.18 2003-09-18 19:08:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -194,6 +194,27 @@ int pr_netaddr_set_family(pr_netaddr_t *na, int family) {
     return -1;
   }
 
+  /* Set the family member of the appropriate sockaddr struct. */
+  switch (family) {
+    case AF_INET:
+      na->na_addr.v4.sin_family = AF_INET;
+      break;
+
+#ifdef USE_IPV6
+    case AF_INET6:
+      na->na_addr.v6.sin6_family = AF_INET6;
+      break;
+#endif /* USE_IPV6 */
+
+    default:
+#ifdef EAFNOSUPPORT
+      errno = EAFNOSUPPORT;
+#else
+      errno = EINVAL;
+#endif
+      return -1;
+  }
+
   na->na_family = family;
   return 0;
 }
@@ -291,18 +312,20 @@ int pr_netaddr_set_sockaddr_any(pr_netaddr_t *na) {
     case AF_INET: {
       struct in_addr in4addr_any;
       in4addr_any.s_addr = htonl(INADDR_ANY);
+      na->na_addr.v4.sin_family = AF_INET;
       memcpy(&na->na_addr.v4.sin_addr, &in4addr_any, sizeof(struct in_addr));
       return 0;
     }
 
 #ifdef USE_IPV6
     case AF_INET6:
+      na->na_addr.v6.sin6_family = AF_INET6;
       memcpy(&na->na_addr.v6.sin6_addr, &in6addr_any, sizeof(struct in6_addr));
       return 0;
 #endif /* USE_IPV6 */
   }
 
-  errno = EACCES;
+  errno = EPERM;
   return -1;
 }
 
