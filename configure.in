@@ -112,10 +112,6 @@ AC_SUBST(SBINDIR)
 SYSCONFDIR=`eval echo $sysconfdir`
 AC_SUBST(SYSCONFDIR)
 
-dnl Check whether the C compiler accepts -Wno-long-double. This helps to
-dnl quell unnecessary OSX compiler complaints.
-PR_CHECK_CC_OPT(Wno-long-double)
-
 AC_ARG_VAR(LIBS, [linker flags, e.g. -l<lib>.{a,so} if you have nonstandard libraries to link])
 
 dnl configure command line options...
@@ -985,14 +981,14 @@ PR_FUNC_SETGRENT_VOID
 
 dnl Perform checks for curses/ncurses libraries only if the corresponding
 dnl headers have been found.
-if test x"$ac_cv_header_curses_h" == xyes; then
+if test x"$ac_cv_header_curses_h" = xyes; then
   AC_CHECK_LIB(curses, initscr,
     [ CURSES_LIBS="-lcurses"
       AC_DEFINE(HAVE_LIBCURSES, 1, [Define if you have curses])
     ])
 fi
 
-if test x"$ac_cv_header_ncurses_h" == xyes; then
+if test x"$ac_cv_header_ncurses_h" = xyes; then
   AC_CHECK_LIB(ncurses, initscr,
     [ CURSES_LIBS="-lncurses"
       AC_DEFINE(HAVE_LIBNCURSES, 1, [Define if you have ncurses])
@@ -1187,6 +1183,13 @@ else
   dnl Make sure to strip symbols from non-developer object files.
   INSTALL_STRIP="-s"
 fi
+
+dnl Check whether the C compiler accepts -Wno-long-double. This helps to
+dnl quell unnecessary OSX compiler complaints.  Use of this macro should
+dnl be as late in the configure script as possible, for it changes the
+dnl CFLAGS environment variable (which may possible cause other autoconf
+dnl tests to fail).
+PR_CHECK_CC_OPT(Wno-long-double)
 
 dnl And finally, generate the appropriate Make* and config.h
 AC_SUBST(INSTALL_STRIP)
