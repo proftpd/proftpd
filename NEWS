@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.73 2001-02-05 19:48:28 flood Exp $
+$Id: NEWS,v 1.74 2001-02-05 22:29:47 flood Exp $
 
 1.2.0rc3 - Released:
 ----------------------------
@@ -6,6 +6,12 @@ $Id: NEWS,v 1.73 2001-02-05 19:48:28 flood Exp $
   distribution.  They are currently unmaintained and have numerous bugs.
   If any kind soul <grin> is interested in maintaining them, they may be
   brought back into a future version of proftpd.
+- sendfile now defaults to off, use --enable-sendfile at configure
+  time to enable.  Additionally, sendfile is probably fixed.
+- initgroups/getgroups new defaults to off, use --enable-initgroups at
+  configure time to enable (mainly useful for large systems).  Be careful,
+  though, as initgroups/getgroups breaks module handling and will not work
+  in conjunction with other third-party modules (mod_sqlpw, etc).
 - Passive FTP works properly now (was broken in RC2).
 - Compilation problems fixed on some obscure platforms.
 - PAM authentication finally works again on Solaris (due to an annoying bug in
@@ -21,8 +27,6 @@ $Id: NEWS,v 1.73 2001-02-05 19:48:28 flood Exp $
 - On systems with wtmpx, don't use wtmp at all.
 - Handle files that begin with ~ properly.
 - Documentation updated for PAM on FreeBSD operating systems.
-- sendfile now defaults to off, use --enable-sendfile at configure
-  time to enable.
 - NUMEROUS other bug fixes, including many security issues
 
 1.2.0RC2 - Released: 07/28/2000

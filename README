@@ -1,6 +1,6 @@
 ProFTPD 1.2 README
 ---------------------
-URL:  http://www.proftpd.net
+URL:  http://www.proftpd.org
 
 INTRODUCTION
 ************
@@ -21,7 +21,8 @@ IRIX 6.2
 IRIX 6.3 (native compiler or gcc)
 IRIX 6.4 (tested) 
 Solaris 2.5.1 (see README.Solaris2.5x)
-Solaris 2.6
+Solaris 2.6 (may get warnings)
+Solaris 2.7 (may get warnings)
 AIX 3.2 (native compiler)
 AIX 4.2 (tested)
 OpenBSD 2.2/2.3 (tested)
@@ -40,7 +41,7 @@ MacOS X 1.02
 
 
 ProFTPD is designed to be somewhat of a "drop-in" replacement for wu-ftpd.
-Full online documentation is available at http://www.proftpd.net,
+Full online documentation is available at http://www.proftpd.org,
 including a server configuration directive reference manual.
 
 
