@@ -1,3 +1,11 @@
+2001-08-17 11:43  flood
+
+	* NEWS, include/version.h: 1.2.2-final
+
+2001-08-16 16:00  flood
+
+	* include/conf.h: Double license in header conf.h
+
 2001-08-16 15:58  flood
 
 	* NEWS, contrib/mod_test.c, doc/Configuration.html: Updated docs,
