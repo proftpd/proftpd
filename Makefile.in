@@ -134,7 +134,7 @@ distclean: clean
 	rm -f config.h config.status config.cache config.log
 	rm -f include/buildstamp.h
 
-dist: distclean depend
+dist: depend distclean
 	rm -rf `find . -name CVS`
 	rm -rf `find . -name .cvsignore`
 	rm -rf `find . -name core`
