@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.325 2002-12-18 02:59:33 jwm Exp $
+$Id: NEWS,v 1.326 2002-12-18 20:09:13 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -62,6 +62,8 @@ CVS
   patch.
 - Bug 1885 - -q/--quiet option for use with the -n/--nodaemon flag. Useful
   for running proftpd from inittab or with daemontools.
+- Bug 1667 - Integrate ProFTPD with C2/SIA on Tru64 Unix.  The --enable-sia
+  configure option has been added.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------
