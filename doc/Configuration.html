@@ -3,6 +3,14 @@
 <body bgcolor="#E7E4D8">
 <h1>Configuration Directives</h1>
 
+<H2>Notes</H2>
+    <ol>
+      <li>There are no directives which can be used multiple times
+	within a given context</li>
+    </ol>
+
+    <h2>Alphabetical List of Directives</h2>
+
 <p>The following configuration parameters control ProFTPD features and
 configuration:</p>
 
@@ -20,10 +28,10 @@ not fully documented yet..</EM></P>
   <li><a href="#AllowFilter">AllowFilter</a></LI>
   <LI><a href="#AllowForeignAddress">AllowForeignAddress</a></li>
   <LI><a href="#AllowGroup">AllowGroup</a></li>
-  <li><a href="#AllowUser">AllowUser</a></li>
   <li><a href="#AllowOverwrite">AllowOverwrite</a></li>
   <li><a href="#AllowRetrieveRestart">AllowRetrieveRestart</a></li>
   <li><a href="#AllowStoreRestart">AllowStoreRestart</a></li>
+  <li><a href="#AllowUser">AllowUser</a></li>
   <li><A HREF="#AnonRatio">AnonRatio</A> <EM>Incomplete</EM></LI>
   <li><a href="#AnonRequirePassword">AnonRequirePassword</a></li>
   <li><a href="#Anonymous">&lt;Anonymous&gt;</a></li>
@@ -77,6 +85,8 @@ not fully documented yet..</EM></P>
   <li><a href="#HideNoAccess">HideNoAccess</a></li>
   <li><a href="#HideUser">HideUser</a></li>
   <li><a href="#HostRatio">HostRatio</a> <em>Incomplete</em></li>
+  <li><a href="#HostsAllowSyslogLevel">HostsAllowSyslogLevel</a>
+  <li><a href="#HostsDenySyslogLevel">HostsDenySyslogLevel</a>
   <li><a href="#IdentLookups">IdentLookups</a></li>
   <li><a href="#IgnoreHidden">IgnoreHidden</a></li>
   <li><a href="#Include">Include</a></li>
@@ -101,19 +111,25 @@ not fully documented yet..</EM></P>
   <li><a href="#LsDefaultOptions">LsDefaultOptions</a></li>
   <li><a href="#MaxClients">MaxClients</a></li>
   <li><a href="#MaxClientsPerHost">MaxClientsPerHost</a></li>
+  <LI><a href="#MaxHostsPerUser">MaxHostsPerUser</a>
   <li><a href="#MaxInstances">MaxInstances</a></li>
   <li><a href="#MaxLoginAttempts">MaxLoginAttempts</a></li>
   <li><a href="#MultilineRFC2228">MultilineRFC2228</a></li>
-  <LI><A HREF="#MySQLInfo">MySQLInfo</A> <EM>Incomplete</EM></LI>
+  <LI><A HREF="#MySQLInfo">MySQLInfo</A></LI>
   <li><a href="#Order">Order</a></li>
-  <li>PAMConfig <EM>Removed as of 1.2.0rc1,<BR> see <A HREF="#AuthPAMConfig">AuthPAMConfig</A></EM>
+<!-- commented out by ML to clean up for 1.2.0 -->
+<!--
+  <li>PAMConfig <EM>Removed as of 1.2.0rc1,<BR> see <A
+HREF="#AuthPAMConfig">AuthPAMConfig</A></EM>
+-->
+  <li><A href="#PassivePorts">PassivePorts</A>
   <li><a href="#PathAllowFilter">PathAllowFilter</a></li>
   <li><a href="#PathDenyFilter">PathDenyFilter</a></li>
   <li><a href="#PersistentPasswd">PersistentPasswd</a></li>
   <LI><A HREF="#PidFile">PidFile</A></LI>
   <li><a href="#Port">Port</a></li>
-  <LI><A HREF="#PostgresInfo">PostgresInfo</A> <EM>Incomplete</EM>
-  <LI><A HREF="#PostgresPort">PostgresPort</A> <EM>Incomplete</EM>
+  <LI><A HREF="#PostgresInfo">PostgresInfo</A>
+  <LI><A HREF="#PostgresPort">PostgresPort</A> 
   <LI><A HREF="#Quotas">Quotas</A></LI>
   <LI><A HREF="#QuotaBlockSize">QuotaBlockSize</A></LI>
   <LI><A HREF="#QuotaBlockName">QuotaBlockName</A></LI>
@@ -141,24 +157,24 @@ not fully documented yet..</EM></P>
   <li><a href="#ShowSymlinks">ShowSymlinks</a></li>
   <li><a href="#SocketBindTight">SocketBindTight</a></li>
   <li><A HREF="#SQLAuthoritative">SQLAuthoritative</A> </li>
-  <li><A HREF="#SQLEmptyPasswords">SQLEmptyPasswords</A> <EM>Incomplete</EM></li>
-  <li><A HREF="#SQLEncryptedPasswords">SQLEncryptedPasswords</A> <EM>Incomplete</EM></LI>
-  <li><A HREF="#SQLGidField">SQLGidField</A> <EM>Incomplete</EM></LI>
-  <li><A HREF="#SQLHomedir">SQLHomedir</A> <EM>Incomplete</EM></LI>
-  <li><A HREF="#SQLHomedirField">SQLHomedirField</A> <EM>Incomplete</EM></LI>
+  <li><A HREF="#SQLEmptyPasswords">SQLEmptyPasswords</A>
+  <li><A HREF="#SQLEncryptedPasswords">SQLEncryptedPasswords</A>
+  <li><A HREF="#SQLGidField">SQLGidField</A>
+  <li><A HREF="#SQLHomedir">SQLHomedir</A>
+  <li><A HREF="#SQLHomedirField">SQLHomedirField</A>
   <li><A HREF="#SQLKey">SQLKey</A></LI>
   <li><A HREF="#SQLKeyField">SQLKeyField</A> </li>
-  <li><A HREF="#SQLLogDirs">SQLLogDirs</A> <EM>Incomplete</EM></li>
-  <li><A HREF="#SQLLogHits">SQLLogHits</A> <EM>Incomplete</EM></li>
-  <li><A HREF="#SQLLogHosts">SQLLogHosts</A> <EM>Incomplete</EM></li>
-  <li><A HREF="#SQLLoginCountField">SQLLoginCountField</A> <EM>Incomplete</EM></li>
-  <li><A HREF="#SQLLogStats">SQLLogStats</A> <EM>Incomplete</EM></li>
-  <li><A HREF="#SQLPasswordField">SQLPasswordField</A> <EM>Incomplete</EM></li>
-  <li><A HREF="#SQLPlaintextPasswords">SQLPlaintextPasswords</A> <EM>Incomplete</EM></li>
+  <li><A HREF="#SQLLogDirs">SQLLogDirs</A>
+  <li><A HREF="#SQLLogHits">SQLLogHits</A>
+  <li><A HREF="#SQLLogHosts">SQLLogHosts</A>
+  <li><A HREF="#SQLLoginCountField">SQLLoginCountField</A>
+  <li><A HREF="#SQLLogStats">SQLLogStats</A>
+  <li><A HREF="#SQLPasswordField">SQLPasswordField</A>
+  <li><A HREF="#SQLPlaintextPasswords">SQLPlaintextPasswords</A>
   <li><A HREF="#SQLRatios">SQLRatios</A> <EM>Incomplete</EM></li>
-  <li><A HREF="#SQLUidField">SQLUidField</A> <EM>Incomplete</EM></li>
-  <li><A HREF="#SQLUserTable">SQLUserTable</A> <EM>Incomplete</EM></li>
-  <li><A HREF="#SQLUsernameField">SQLUsernameField</A> <EM>Incomplete</EM></li>
+  <li><A HREF="#SQLUidField">SQLUidField</A>
+  <li><A HREF="#SQLUserTable">SQLUserTable</A>
+  <li><A HREF="#SQLUsernameField">SQLUsernameField</A>
   <li><a href="#SyslogFacility">SyslogFacility</a></li>
   <li><a href="#SyslogLevel">SyslogLevel</a></li>
   <li><a href="#SystemLog">SystemLog</a></li>
@@ -174,6 +190,8 @@ not fully documented yet..</EM></P>
   <li><a href="#TransferLog">TransferLog</a></li>
   <li><a href="#Umask">Umask</a></li>
   <li><a href="#UseFtpUsers">UseFtpUsers</a></li>
+  <LI><A HREF="#UseHostsAllowFile">UseHostsAllowFile</A> 
+  <LI><A HREF="#UseHostsDenyFile">UseHostsDenyFile</A> 
   <li><a href="#UseReverseDNS">UseReverseDNS</a></li>
   <li><a href="#User">User</a></li>
   <li><a href="#UserDirRoot">UserDirRoot</a></li>
@@ -190,8 +208,7 @@ not fully documented yet..</EM></P>
 <h2><a name="AccessGrantMsg">AccessGrantMsg</a></h2>
 <p><strong>Syntax:</strong> AccessGrantMsg <em>message</em><br>
   <strong>Default:</strong> Dependent on login type<br>
-  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  &lt;Global&gt;<br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 0.99.0pl5 and later</p>
 <p>Normally, a 230 response message is sent to an FTP client immediately after 
@@ -204,7 +221,7 @@ not fully documented yet..</EM></P>
 <hr>
 <h2><a name="Allow">Allow</a></h2>
 <p><strong>Syntax:</strong> Allow <em>[&quot;from&quot;] &quot;all&quot;|&quot;none&quot;|host|network[,host|network[,...]]</em><br>
-  <strong>Default:</strong> <code>Allow from all</code><br>
+  <strong>Default:</strong> <em>allow all</em><br>
   <strong>Context:</strong> &lt;Limit&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 0.99.0pl6 and later</p>
@@ -259,10 +276,9 @@ href="#Limit">&lt;Limit&gt;</a> block. Although proftpd's default
   directives.</p>
 <hr>
 <h2><a name="AllowChmod">AllowChmod</a></h2>
-<p><strong>Syntax:</strong> AllowChmod <em>bool</em><br>
+    <p><strong>Syntax:</strong> <code>AllowChmod <em>on|off</code></em><br>
   <strong>Default:</strong> true<br>
-  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;, 
-  &lt;Anonymous&gt;, &lt;Global&gt;<br> 
+  <strong>Context:</strong> server config, &lt;Directory&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;, .ftpaccess<br>
   <STRONG>Module:</STRONG> mod_site<BR>
   <strong>Compatibility:</strong> 1.2.0rc1 and later</p>
 
@@ -277,8 +293,7 @@ href="#Limit">&lt;Limit&gt;</a> block. Although proftpd's default
 <h2><a name="AllowFilter">AllowFilter</a></h2>
 <p><strong>Syntax:</strong> AllowFilter <em>regular-expression</em><br>
   <strong>Default:</strong> None<br>
-  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  &lt;Global&gt;<br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 1.2.0pre7 and later</p>
 <p>AllowFilter allows the configuration of a regular expression that <strong>must</strong> 
@@ -296,10 +311,9 @@ href="#Limit">&lt;Limit&gt;</a> block. Although proftpd's default
 <p><strong>See Also:</strong> <a href="#DenyFilter">DenyFilter</a></p>
 <hr>
 <h2><a name="AllowForeignAddress">AllowForeignAddress</a></h2>
-<p><strong>Syntax:</strong> AllowForeignAddress <em>on|off</em><br>
-  <strong>Default:</strong> <code>AllowForeignAddress off</code><br>
-  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  &lt;Global&gt;<br>
+    <p><strong>Syntax:</strong> <code>AllowForeignAddress <em>on|off</em></code><br>
+  <strong>Default:</strong> off<br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 1.1.7 and later</p>
 <p>Normally, proftpd disallows clients from using the ftp PORT command with anything 
@@ -333,6 +347,16 @@ href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em><strong>group-expres
   in order for the explicit allow to apply.</p>
 <p><strong>See Also:</strong> <a href="#DenyGroup">DenyGroup</a>, <a href="#DenyUser">DenyUser</a>, 
   <a href="#AllowUser">AllowUser</a></p>
+
+<hr>
+<h2><a name="AllowOverwrite">AllowOverwrite</a></h2>
+    <p><strong>Syntax:</strong> <code>AllowOverwrite <em>on|off</em></code><br>
+  <strong>Default:</strong> off<br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Directory&gt;, &lt;Global&gt;, .ftpaccess<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
+  <strong>Compatibility:</strong> 0.99.0 and later</p>
+<p>The AllowOverwrite directive permits newly transfered files to overwrite existing 
+  files. By default, ftp clients cannot overwrite existing files.</p>
 <hr>
 <h2><a name="AllowUser">AllowUser</a></h2>
 <p><strong>Syntax:</strong> AllowUser <em>user-expression</em><br>
@@ -340,30 +364,22 @@ href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em><strong>group-expres
   <strong>Context:</strong> &lt;Limit&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 1.1.7 and later</p>
-<p>AllowUser specifies a <em><strong>user-expression</strong></em> that is specifically 
-  permitted access within the context of the <a href="#Limit">&lt;Limit&gt;</a> 
-  block it is applied to. <em><strong>user-expression</strong></em> has a similar 
-  syntax as that used in <a href="#AllowGroup">AllowGroup</a>, in that it should 
-  contain a comma delimited list of users or &quot;not&quot; users (by prefixing 
-  a user name with the `!' character) that are to be allowed access to the block. 
-  The expression is parsed as a boolean &quot;and&quot; list, meaning that ALL 
-  elements of the expression must evaluate to logically true in order to the explicit 
-  allow to apply.</p>
+<p>AllowUser specifies a <em><strong>user-expression</strong></em>
+that is specifically permitted access within the context
+of the <a href="#Limit">&lt;Limit&gt;</a> block it is applied
+to. <em><strong>user-expression</strong></em> has a similar syntax as that
+used in <a href="#AllowGroup">AllowGroup</a>, in that it should contain
+a comma delimited list of users or &quot;not&quot; users (by prefixing
+a user name with the `!' character) that are to be allowed access to
+the block. The expression is parsed as a boolean &quot;and&quot; list,
+meaning that ALL elements of the expression must evaluate to logically
+true in order to the explicit allow to apply.</p>
 <p><strong>See Also:</strong> <a href="#DenyUser">DenyUser</a>, <a href="#DenyGroup">DenyGroup</a>, 
   <a href="#AllowGroup">AllowGroup</a></p>
 <hr>
-<h2><a name="AllowOverwrite">AllowOverwrite</a></h2>
-<p><strong>Syntax:</strong> AllowOverwrite <em>on|off</em><br>
-  <strong>Default:</strong> <code>AllowOverwrite off</code><br>
-  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Directory&gt;, &lt;Global&gt;, .ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_core<BR>
-  <strong>Compatibility:</strong> 0.99.0 and later</p>
-<p>The AllowOverwrite directive permits newly transfered files to overwrite existing 
-  files. By default, ftp clients cannot overwrite existing files.</p>
-<hr>
 <h2><a name="AnonRequirePassword">AnonRequirePassword</a></h2>
-<p><strong>Syntax:</strong> AnonRequirePassword <em>on|off</em><br>
-  <strong>Default:</strong> <code>AnonRequirePassword off</code><br>
+    <p><strong>Syntax:</strong> <code>AnonRequirePassword <em>on|off</em></code><br>
+  <strong>Default:</strong> off<br>
   <strong>Context:</strong> &lt;Anonymous&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 0.99.0 and later</p>
@@ -411,8 +427,8 @@ href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em><strong>group-expres
 </blockquote>
 <hr>
 <h2><a name="AllowRetrieveRestart">AllowRetrieveRestart</a></h2>
-<p><strong>Syntax:</strong> AllowRetrieveRestart <em>on|off</em><br>
-  <strong>Default:</strong> <code>AllowRetrieveRestart on</code><br>
+    <p><strong>Syntax:</strong> <code>AllowRetrieveRestart <em>on|off</em></code><br>
+  <strong>Default:</strong> on<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
   &lt;Directory&gt;, &lt;Global&gt;, .ftpaccess<br>
   <STRONG>Module:</STRONG> mod_core<BR>
@@ -423,8 +439,8 @@ href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em><strong>group-expres
   later time without losing previously collected data.</p>
 <hr>
 <h2><a name="AllowStoreRestart">AllowStoreRestart</a></h2>
-<p><strong>Syntax:</strong> AllowStoreRestart <em>on|off</em><br>
-  <strong>Default:</strong> <code>AllowStoreRestart off</code><br>
+    <p><strong>Syntax:</strong> <code>AllowStoreRestart <em>on|off</em></code><br>
+  <strong>Default:</strong> off<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
   &lt;Directory&gt;, &lt;Global&gt;, .ftpaccess<br>
   <STRONG>Module:</STRONG> mod_core<BR>
@@ -437,13 +453,13 @@ href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em><strong>group-expres
   the size of previously stored files (even if not their own).</p>
 <hr>
 <h2><a name="AnonRatio">AnonRatio</a></h2>
-<p><strong>Syntax:</strong> AnonRatio <em>foo1 foo2 foo3</em><br>
+    <p><strong>Syntax:</strong> <code>AnonRatio <em>foo1 foo2 foo3</em></code><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
   <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The AnonRatio directive ....</P>
+  <p>The AnonRatio directive .... INCOMPLETE</P>
 
   <P>Example:</P>
   <P><code>AnonRatio</code></P>
@@ -533,10 +549,9 @@ href="#DefaultRoot">DefaultRoot</a> directive also applies to the user, this dir
   the entire world.</strong></em></p>
 <hr>
 <h2><a name="AuthAliasOnly">AuthAliasOnly</a></h2>
-<p><strong>Syntax:</strong> AuthAliasOnly <em>on|off</em><br>
-  <strong>Default:</strong> <code>AuthAliasOnly off</code><br>
-  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  &lt;Global&gt;<br>
+<p><strong>Syntax:</strong> <code>AuthAliasOnly <em>on|off</em></code><br>
+  <strong>Default:</strong> off<br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 1.1.3 and later</p>
 <p>AuthAliasOnly restricts authentication to &quot;aliased&quot; logins only; i.e. 
@@ -567,7 +582,7 @@ href="#AuthUserFile">AuthUserFile</a>).</p>
 <hr>
 
 <h2><a name="AuthPAM">AuthPAM</a></h2>
-<p><strong>Syntax:</strong> AuthPAM <em>on|off</em><br>
+    <p><strong>Syntax:</strong> <code>AuthPAM <em>on|off</em></code><br>
   <strong>Default:</strong> on<br>
   <strong>Context:</strong> server config,&lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_pam<BR>
@@ -580,7 +595,7 @@ href="#AuthUserFile">AuthUserFile</a>).</p>
 <hr>
 
 <h2><a name="AuthPAMAuthoritative">AuthPAMAuthoritative</a></h2>
-<p><strong>Syntax:</strong> AuthPAMAuthoritative <em>on|off</em><br>
+<p><strong>Syntax:</strong> <code>AuthPAMAuthoritative <em>on|off</em></code><br>
   <strong>Default:</strong> off<br>
   <strong>Context:</strong> server config,&lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_unixpw<BR>
@@ -636,8 +651,8 @@ href="#AuthGroupFile">AuthGroupFile</a>).</p>
 <hr>
 <h2><a name="AuthUsingAlias">AuthUsingAlias</a></h2>
 
-<p><strong>Syntax:</strong> AuthUsingAlias <em>on|off</em><br>
-<strong>Default:</strong> <code>AuthUsingAlias off</code><br>
+    <p><strong>Syntax:</strong> <code>AuthUsingAlias <em>on|off</em></code><br>
+<strong>Default:</strong> off<br>
 <strong>Context:</strong> &lt;Anonymous&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
 <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
@@ -698,7 +713,7 @@ AuthUsingAlias</p>
   <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The ByteRatioErrMsg directive ....</P>
+  <p>The ByteRatioErrMsg directive .... INCOMPLETE</P>
 
   <P>Example:</P>
   <P><code>ByteRatioErrMsg</code></P>
@@ -756,7 +771,7 @@ This creates two classes, local and default, with local being everything in
 <hr>
 <h2><a name="CommandBufferSize">CommandBufferSize</a></h2>
 <p><strong>Syntax:</strong> CommandBufferSize <em>size</em><br>
-  <strong>Default:</strong> <code>None</code><br>
+  <strong>Default:</strong> None<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 1.2.0pre7 and later</p>
@@ -769,11 +784,12 @@ This creates two classes, local and default, with local being everything in
 <h2><a name="CwdRatioMsg">CwdRatioMsg</a></h2>
 <p><strong>Syntax:</strong> CwdRatioMsg <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;,
+      &lt;Limit&gt;, .ftpaccess<br>
   <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The CwdRatioMsg directive ....</P>
+  <p>The CwdRatioMsg directive .... INCOMPLETE</P>
 
   <P>Example:</P>
   <P><code>CwdRatioMsg</code></P>
@@ -785,8 +801,7 @@ This creates two classes, local and default, with local being everything in
 <p><strong>Syntax:</strong> DefaultChdir <em>directory
   [group-expression]</em><br>
   <strong>Default:</strong> ~<br>
-  <strong>Context:</strong> server config, &lt;VirtualHost&gt;,
-  &lt;Anonymous&gt;, &lt;Global&gt;<br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_auth<BR>
   <strong>Compatibility:</strong> 1.2.0pre2 and later</p>
 
@@ -800,7 +815,7 @@ This creates two classes, local and default, with local being everything in
 <hr>
 <h2><a name="DefaultQuota">DefaultQuota</a></h2>
 <p><strong>Syntax:</strong> DefaultQuota <em>value in bytes</em><br>
-  <strong>Default:</strong> <CODE>0</CODE><BR>
+  <strong>Default:</strong> 0<BR>
   <strong>Context:</strong> server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;<br>
   <STRONG>Module:</STRONG> mod_quota<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
@@ -821,7 +836,7 @@ DefaultQuota 1024
 <h2><a name="DefaultRoot">DefaultRoot</a></h2>
 
 <p><strong>Syntax:</strong> DefaultRoot <em>directory [group-expression]</em><br>
-  <strong>Default:</strong> <code>DefaultRoot /</code><br>
+  <strong>Default:</strong> /<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_auth<BR>
   <strong>Compatibility:</strong> 0.99.0pl7 and later</p>
@@ -869,7 +884,7 @@ href="#Anonymous">Anonymous</a> logins.</p>
 <hr>
 <h2><a name="DefaultServer">DefaultServer</a></h2>
 <p><strong>Syntax:</strong> DefaultServer <em>on|off</em><br>
-  <strong>Default:</strong> <code>DefaultServer off</code><br>
+  <strong>Default:</strong> off<br>
   <strong>Context:</strong> server config,&lt;VirtualHost&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 0.99.0pl6 and later</p>
@@ -886,7 +901,7 @@ href="#VirtualHost">&lt;VirtualHost&gt;</a> configuration block. Normally such
 <hr>
 <h2><a name="DefaultTransferMode">DefaultTransferMode</a></h2>
 <p><strong>Syntax:</strong> DefaultTransferMode <em>ascii|binary</em><br>
-  <strong>Default:</strong> <code>DefaultTransferMode ascii</code><br>
+  <strong>Default:</strong> ascii<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
@@ -896,7 +911,7 @@ href="#VirtualHost">&lt;VirtualHost&gt;</a> configuration block. Normally such
 <hr>
 <h2><a name="DeferWelcome">DeferWelcome</a></h2>
 <p><strong>Syntax:</strong> DeferWelcome <em>on|off</em><br>
-  <strong>Default:</strong> <code>DeferWelcome off</code><br>
+  <strong>Default:</strong> off<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 0.99.0 and later</p>
@@ -912,9 +927,9 @@ href="#VirtualHost">virtual server</a> to delay transmitting the
 
 <h2><a name="DeleteAbortedStores">DeleteAbortedStores</a></h2>
 <p><strong>Syntax:</strong> DeleteAbortedStores <em>on|off</em><br>
-  <strong>Default:</strong> <code>off</code><br>
+  <strong>Default:</strong> off<br>
   <strong>Context:</strong> server, &lt;VirtualHost&gt;,
-      &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Global&gt;, .ftpaccess
+      &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Global&gt;, .ftpaccess<BR>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 1.2.0rc2 and later</p>
 
@@ -941,9 +956,8 @@ href="#Limit">&lt;Limit&gt;</a> context block. The magic keywords <em><strong>al
 <h2><a name="DenyAll">DenyAll</a></h2>
 <p><strong>Syntax:</strong> DenyAll<br>
   <strong>Default:</strong> None<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;, 
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;, .ftpaccess<br>
   <STRONG>Module:</STRONG> mod_core<BR>
-  .ftpaccess<br>
   <strong>Compatibility:</strong> 0.99.0 and later</p>
 <p>The DenyAll directive is analogous to a combination of &quot;<em>order deny,allow</em> 
   &lt;cr&gt; <em>deny from all</em>&quot;, with the exception that it has a higher 
@@ -959,8 +973,7 @@ href="#AllowAll">AllowAll</a> are mutually exclusive.</p>
 <h2><a name="DenyFilter">DenyFilter</a></h2>
 <p><strong>Syntax:</strong> DenyFilter <em>regular-expression</em><br>
   <strong>Default:</strong> None<br>
-  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  &lt;Global&gt;<br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 1.2.0pre7 and later</p>
 <p>Similar to <a href="#AllowFilter">AllowFilter</a>, DenyFilter specifies a regular 
@@ -996,8 +1009,8 @@ href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em><strong>group-expres
   <strong>Context:</strong> &lt;Limit&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 1.1.7 and later</p>
-<p><a href="#DenyUser">DenyUser specifies a <em><strong>user-expression</strong></em> 
-  that is specifically denied within the context of the </a><a
+<p><a href="#DenyUser">DenyUser</A> specifies a <em><strong>user-expression</strong></em> 
+  that is specifically denied within the context of the a
 href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em> <strong>user-expression</strong></em> 
   is a comma delimited list of users or &quot;not&quot; users (by prefixing a 
   user name with the `!' character). The expression is parsed as a boolean &quot;and&quot; 
@@ -1050,10 +1063,11 @@ href="#Anonymous">&lt;Anonymous&gt;</a> block can be relative, indicating
   all user's home directories, or sub-directories thereof.</p>
 <blockquote> 
   <p>Example:<br>
+
     <code>&lt;Directory ~/anon-ftp&gt;<br>
     &lt;Limit WRITE&gt;<br>
     DenyAll<br>
-    &lt;/Limit READ&gt;<br>
+    &lt;/Limit&gt;<br>
     &lt;/Directory&gt;</code></p>
 </blockquote>
 <hr>
@@ -1064,7 +1078,7 @@ href="#Anonymous">&lt;Anonymous&gt;</a> block can be relative, indicating
   <STRONG>Module:</STRONG> mod_ls<BR>
   <strong>Compatibility:</strong> 1.1.5</p>
 <p>DirFakeGroup and its companion directive, <a
-href="#DirFakeUser">DirFakeUser</a>, can be used to hide the true group and user 
+Hhref="#DirFakeUser">DirFakeUser</a>, can be used to hide the true group and user 
   owners of files in a directory listing. If simply turned On, DirFakeGroup will 
   display all files as being owned by group 'ftp'. Optionally, the <em><strong>groupname</strong></em> 
   argument can be used to specify a specific group other than 'ftp'. <strong>Both 
@@ -1076,9 +1090,8 @@ href="#DirFakeUser"><strong>DirFakeUser</strong></a><strong> are completely cosm
 <h2><a name="DirFakeMode">DirFakeMode</a></h2>
 <p><strong>Syntax:</strong> DirFakeMode <em>octal-mode</em><br>
   <strong>Default:</strong> None<br>
-  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Directory&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_ls<BR>
-  &lt;Directory&gt;, &lt;Global&gt;<br>
   <strong>Compatibility:</strong> 1.1.6</p>
 <p>The DirFakeMode directive configures a mode (or permissions) which will be 
   displayed for ALL files and directories in directory listings. For each subset 
@@ -1095,10 +1108,9 @@ href="#DirFakeUser"><strong>DirFakeUser</strong></a><strong> are completely cosm
 <hr>
 <h2><a name="DirFakeUser">DirFakeUser</a></h2>
 <p><strong>Syntax:</strong> DirFakeUser <em>On|Off [username]</em><br>
-  <strong>Default:</strong> <code>DirFakeUser Off</code><br>
-  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
+  <strong>Default:</strong> Off<br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_ls<BR>
-  &lt;Global&gt;<br>
   <strong>Compatibility:</strong> 1.1.5</p>
 <p>See <a href="#DirFakeGroup">DirFakeGroup</a></p>
 <hr>
@@ -1108,18 +1120,16 @@ href="#DirFakeUser"><strong>DirFakeUser</strong></a><strong> are completely cosm
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_code<BR>
   <strong>Compatibility:</strong> 1.2.0pre2 and later</p>
-<p>The DisplayConnect directive configures an ASCII text filename which will be 
-  displayed to the user when they initially connect but before they login. The 
-  filename can be either relative or absolute. In the case of a relative filename, 
-  the file is searched for starting in the home directory of the user the server 
-  is running as. As this can lead confusion, absolute pathnames are suggested. 
-  If the file cannot be found or accessed, no error occurs and nothing is logged 
-  or displayed to the client.</p>
-<!-- Bug fixed 
-<p>DisplayConnect supports a subset of the &quot;magic cookies&quot; used by <a href="#DisplayLogin">DisplayLogin</a> 
-  and <a
-href="#DisplayFirstChdir">DisplayFirstChdir</a>: %T, %F, %R, %L and %u (see <a href="#DisplayFirstChdir">DisplayFirstChdir</a> 
-  for details).</p> -->
+
+<p>The DisplayConnect directive configures an ASCII text filename
+  which will be displayed to the user when they initially connect but
+  before they login. The filename can be either relative or
+  absolute. In the case of a relative filename, the file is searched
+  for starting in the home directory of the user the server is running
+  as. As this can lead confusion, absolute pathnames are suggested.
+  If the file cannot be found or accessed, no error occurs and nothing
+  is logged or displayed to the client.</p>
+
 <hr>
 <h2><a name="DisplayFirstChdir">DisplayFirstChdir</a></h2>
 <p><strong>Syntax:</strong> DisplayFirstChdir <em>filename</em><br>
@@ -1224,9 +1234,8 @@ href="#Anonymous"><u>&lt;Anonymous&gt;</u></a><u>), the file must
 <h2><a name="DisplayGoAway">DisplayGoAway</a></h2>
 <p><strong>Syntax:</strong> DisplayGoAway <em>filename</em><br>
   <strong>Default:</strong> None<br>
-  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
-  &lt;Global&gt;<br>
   <strong>Compatibility:</strong> 1.2.0pre8 and later</p>
 <p>The DisplayGoAway directive specifies an ASCII text filename which will be 
   displayed to the user if the class they're a member of has too many users logged
@@ -1239,8 +1248,8 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
 <p><strong>Syntax:</strong> DisplayLogin <em>filename</em><br>
   <strong>Default:</strong> None<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_core<BR>
   &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 0.99.0 and later</p>
 <p>The DisplayLogin directive configures an ASCII text filename which will be 
   displayed to the user when they initially login. The filename can be either 
@@ -1258,8 +1267,8 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
 <p><strong>Syntax:</strong> DisplayQuit <em>filename</em><br>
   <strong>Default:</strong> None<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_core<BR>
   &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 1.2.0pre8 and later</p>
 <p>DisplayQuit configures an ASCII text filename which will be displayed to the 
   user when they quit. The filename can be either relative or absolute. In the 
@@ -1275,10 +1284,9 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
 <p><strong>Syntax:</strong> DisplayReadme <em>filename or pattern</em><br>
   <strong>Default:</strong> None<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_readme<BR>
   &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_readme<BR>
   <strong>Compatibility:</strong> 1.2.0pre8 and later<br>
-  <strong>Module:</strong> mod_readme</p>
 <p>The DisplayReadme directive notifies the user of the last change date of the 
   specified file or pattern. Only a single DisplayReadme directive is allowed per configuration 
   scope. 
@@ -1301,8 +1309,8 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
 <p><strong>Syntax:</strong> <em>filename [[command-classes] format-nickname]</em><br>
   <strong>Default:</strong> None<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt; 
-  <STRONG>Module:</STRONG> mod_log<BR>
   &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_log<BR>
   <strong>Compatibility:</strong> 1.1.6pl1 and later</p>
 <p>The ExtendedLog directive allows customizable logfiles to be generated, either 
   globally or per <a href="#VirtualHost">VirtualHost</a>. The <strong><em>filename</em></strong> 
@@ -1349,7 +1357,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
   <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The FileRatioErrMsg directive ....</P>
+  <p>The FileRatioErrMsg directive .... INCOMPLETE</P>
 
   <P>Example:</P>
   <P><code>FileRatioErrMsg</code></P>
@@ -1428,11 +1436,12 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
 <h2><a name="GroupRatio">GroupRatio</a></h2>
 <p><strong>Syntax:</strong> GroupRatio <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;,
+      &lt;Limit&gt;, .ftpaccess<br>
   <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The GroupRatio directive ....</P>
+  <p>The GroupRatio directive .... INCOMPLETE</P>
 
   <P>Example:</P>
   <P><code>GroupRatio</code></P>
@@ -1440,9 +1449,8 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
 <hr>
 <h2><a name="HiddenStor">HiddenStor</a></h2>
 <p><strong>Syntax:</strong> HiddenStor <em>on|off</em><br>
-  <strong>Default:</strong> <code>HiddenStor off</code><br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;VirtualHost&gt;, 
-  &lt;Global&gt;<br>
+  <strong>Default:</strong> off<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 1.2.0pre5 and later</p>
 <p>The HiddenStor directive enables two-step file uploads: files are uploaded 
@@ -1473,7 +1481,7 @@ href="#HideNoAccess">HideNoAccess</a>, <a
 href="#IgnoreHidden">IgnoreHidden</a></p>
 <hr>
 <h2><a name="HideNoAccess">HideNoAccess</a></h2>
-<p><strong>Syntax:</strong> HideNoAccess<br>
+<p><strong>Syntax:</strong> HideNoAccess <em>on|off</em><br>
   <strong>Default:</strong> None<br>
   <strong>Context:</strong> &lt;Directory&gt;,&lt;Anonymous&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
@@ -1500,14 +1508,54 @@ href="#Anonymous">&lt;Anonymous&gt;</a> block to hide all directory
 <h2><a name="HostRatio">HostRatio</a></h2>
 <p><strong>Syntax:</strong> HostRatio <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;,
+      &lt;Limit&gt;, .ftpaccess<br>
   <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The HostRatio directive ....</P>
+  <p>The HostRatio directive .... INCOMPLETE</P>
 
   <P>Example:</P>
   <P><code>HostRatio</code></P>
+
+<hr>
+<h2><a name="HostsAllowSyslogLevel">HostsAllowSyslogLevel</a></h2>
+<p><strong>Syntax:</strong> HostsAllowSyslogLevel <em>facility-level</em><br>
+  <strong>Default:</strong> none<br>
+  <strong>Context:</strong> server, &lt;Anonymous&gt;, &lt;VirtualHost&gt; <BR>
+  <STRONG>Module:</STRONG> mod_wrap<BR>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+  <P></P>
+
+  <p>Proftpd can log when a connection is allowed as the result of a
+  rule in the file specified in UseHostsAllowFile to the Unix syslog
+  mechanism.  A discussion on the facility levels which can be used is
+  given in the <A HREF="#SyslogFacility">SyslogFacility</A>
+  directive</P>.
+
+  <p><strong>See Also:</strong> <a
+  href="#HostsDenySyslogLevel">HostsDenySyslogLevel</a></p>
+
+  <P><EM>Example:</EM> <code>HostsAllowSyslogLevel local3</code></P>
+
+<hr>
+<h2><a name="HostsDenySyslogLevel">HostsDenySyslogLevel</a></h2>
+<p><strong>Syntax:</strong> HostsDenySyslogLevel <em>facility-level</em><BR>
+  <strong>Default:</strong> none<br>
+  <strong>Context:</strong> server, &lt;Anonymous&gt;, &lt;VirtualHost&gt; <BR>
+  <STRONG>Module:</STRONG> mod_wrap<BR>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+  <p>Proftpd can log when a connection is rejected as the result of a
+  rule in the file specified in UseHostsAllowFile to the Unix syslog
+  mechanism.  A discussion on the facility levels which can be used is
+  given in the <A HREF="#SyslogFacility">SyslogFacility</A>
+  directive</P>.
+
+  <p><strong>See Also:</strong> <a
+  href="#HostsAllowSyslogLevel">HostsAllowSyslogLevel</a></p>
+
+  <P><EM>Example:</EM> <code>HostsDenySyslogLevel local3</code></P>
 
 <hr>
 <h2><a name="HideUser">HideUser</a></h2>
@@ -1531,7 +1579,7 @@ href="#IgnoreHidden">IgnoreHidden</a></p>
 <hr>
 <h2><a name="IdentLookups">IdentLookups</a></h2>
 <p><strong>Syntax:</strong> IdentLookups <em>on|off</em><br>
-  <strong>Default:</strong> <code>IdentLookups on</code><br>
+  <strong>Default:</strong> on<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 1.1.5 and later</p>
@@ -1541,7 +1589,7 @@ href="#IgnoreHidden">IgnoreHidden</a></p>
 <hr>
 <h2><a name="IgnoreHidden">IgnoreHidden</a></h2>
 <p><strong>Syntax:</strong> IgnoreHidden <em>on|off</em><br>
-  <strong>Default:</strong> <code>IgnoreHidden off</code><br>
+  <strong>Default:</strong> offbr>
   <strong>Context:</strong> &lt;Limit&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 0.99.0 and later</p>
@@ -1570,18 +1618,22 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <h2><a name="Limit">&lt;Limit&gt;</a></h2>
 <p><strong>Syntax:</strong> &lt;Limit <em>command|command-group [command2 ..]</em>&gt;<br>
   <strong>Default:</strong> None<br>
-  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Directory&gt;, 
-  &lt;Anonymous&gt;, &lt;Global&gt;, .ftpaccess<br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Global&gt;, .ftpaccess<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 0.99.0 and later</p>
-<p>The Limit configuration block is used to place access restrictions on one or 
-  more FTP commands, within a given context. Limits flow downward, so that a Limit 
-  configuration in the server config context applies to all <a href="#Directory">&lt;Directory&gt;</a> 
-  and <a href="#Anonymous">&lt;Anonymous&gt;</a> blocks that also 
-  reside in the configuration; until it is overridden by a &quot;lower&quot; &lt;Limit&gt; 
-  block. Any number of <em><strong>command</strong></em> parameters can be specified, 
-  against which the contents of the &lt;Limit&gt; block will be applied. <em><strong>command</strong></em> 
-  can be any valid FTP command, but is generally one of the following:</p>
+
+<p>The Limit configuration block is used to place access restrictions
+  on one or more FTP commands, within a given context. Limits flow
+  downward, so that a Limit configuration in the server config context
+  applies to all <a href="#Directory">&lt;Directory&gt;</a> and <a
+  href="#Anonymous">&lt;Anonymous&gt;</a> blocks that also reside in
+  the configuration; until it is overridden by a &quot;lower&quot;
+  &lt;Limit&gt; block. Any number of <em><strong>command</strong></em>
+  parameters can be specified, against which the contents of the
+  &lt;Limit&gt; block will be
+  applied. <em><strong>command</strong></em> can be any valid FTP
+  command, but is generally one of the following:</p>
+
 <ul>
   <li><strong>CWD</strong> (Change Working Directory)<br>
     Sent by client when changing directories. <u>Note that limits placed on this 
@@ -1634,7 +1686,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <hr>
 <h2><a name="LDAPAuthBinds"></a></h2>
 <p><strong>Syntax:</strong> LDAPAuthBinds <em>on|off</em><br>
-  <strong>Default:</strong> <code>LDAPAuthBinds off</code><br>
+  <strong>Default:</strong> off<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <strong>Module:</strong> mod_ldap<BR>
   <strong>Compatibility:</strong> mod_ldap v2.5 and later</p>
@@ -1652,7 +1704,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <hr>
 <h2><a name="LDAPDefaultAuthScheme">LDAPDefaultAuthScheme</a></h2>
 <p><strong>Syntax:</strong> LDAPDefaultAuthScheme <em>crypt|clear</em><br>
-  <strong>Default:</strong> <code>LDAPDefaultAuthScheme "crypt"</code><br>
+  <strong>Default:</strong> "crypt"<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <strong>Module:</strong> mod_ldap<BR>
   <strong>Compatibility:</strong> mod_ldap v2.0 and later</p>
@@ -1689,7 +1741,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <hr>
 <h2><a name="LDAPDNInfo">LDAPDNInfo</a></h2>
 <p><strong>Syntax:</strong> LDAPDNInfo <em>"ldap-dn" "dn-password"</em><br>
-  <strong>Default:</strong> <code>LDAPDNInfo "" ""</code> (anonymous bind)<br>
+  <strong>Default:</strong> &quot;&quot; &quot;&quot; <em>(anonymous bind)</em><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <strong>Module:</strong> mod_ldap<BR>
   <strong>Compatibility:</strong> mod_ldap v2.0 and later</p>
@@ -1699,7 +1751,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <hr>
 <h2><a name="LDAPDoAuth">LDAPDoAuth</a></h2>
 <p><strong>Syntax:</strong> LDAPDoAuth <em>on|off "auth-base-prefix" "search-filter-template"</em><br>
-  <strong>Default:</strong> <code>LDAPDoAuth off</code><br>
+  <strong>Default:</strong> off<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <strong>Module:</strong> mod_ldap<BR>
   <strong>Compatibility:</strong> mod_ldap v2.0 and later</p>
@@ -1713,7 +1765,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <hr>
 <h2><a name="LDAPDoUIDLookups">LDAPDoUIDLookups</a></h2>
 <p><strong>Syntax:</strong> LDAPDoUIDLookups <em>on|off "uid-base-prefix" "search-filter-template"</em><br>
-  <strong>Default:</strong> <code>LDAPDoUIDLookups off</code><br>
+  <strong>Default:</strong> off<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <strong>Module:</strong> mod_ldap<BR>
   <strong>Compatibility:</strong> mod_ldap v2.0 and later</p>
@@ -1727,7 +1779,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <hr>
 <h2><a name="LDAPDoGIDLookups">LDAPDoGIDLookups</a></h2>
 <p><strong>Syntax:</strong> LDAPDoGIDLookups <em>on|off "uid-base-prefix" "search-filter-template"</em><br>
-  <strong>Default:</strong> <code>LDAPDoGIDLookups off</code><br>
+  <strong>Default:</strong> off<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <strong>Module:</strong> mod_ldap<BR>
   <strong>Compatibility:</strong> mod_ldap v2.0 and later</p>
@@ -1741,7 +1793,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <hr>
 <h2><a name="LDAPHomedirOnDemand">LDAPHomedirOnDemand</a></h2>
 <p><strong>Syntax:</strong> LDAPHomedirOnDemand <em>on|off directory-mode</em><br>
-  <strong>Default:</strong> <code>LDAPHomedirOnDemand off</code><br>
+  <strong>Default:</strong> off<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <strong>Module:</strong> mod_ldap<BR>
   <strong>Compatibility:</strong> mod_ldap v2.0 and later</p>
@@ -1757,7 +1809,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <hr>
 <h2><a name="LDAPHomedirOnDemandSuffix"></a></h2>
 <p><strong>Syntax:</strong> LDAPHomedirOnDemandSuffix <em>"additional-directory"</em><br>
-  <strong>Default:</strong> <code>LDAPHomedirOnDemandSuffix ""</code><br>
+  <strong>Default:</strong> &quot;&quot;<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <strong>Module:</strong> mod_ldap<BR>
   <strong>Compatibility:</strong> mod_ldap v2.6 and later</p>
@@ -1772,7 +1824,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <hr>
 <h2><a name="LDAPNegativeCache">LDAPNegativeCache</a></h2>
 <p><strong>Syntax:</strong> LDAPNegativeCache <em>on|off</em><br>
-  <strong>Default:</strong> <code>LDAPNegativeCache off</code><br>
+  <strong>Default:</strong> off<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <strong>Module:</strong> mod_ldap<BR>
   <strong>Compatibility:</strong> mod_ldap v1.1 and later</p>
@@ -1790,7 +1842,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <hr>
 <h2><a name="LDAPQueryTimeout">LDAPQueryTimeout</a></h2>
 <p><strong>Syntax:</strong> LDAPQueryTimeout <em>timeout-seconds</em><br>
-  <strong>Default:</strong> <code>LDAPQueryTimeout default-api-timeout</code><br>
+  <strong>Default:</strong> default-api-timeout<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <strong>Module:</strong> mod_ldap<BR>
   <strong>Compatibility:</strong> mod_ldap v2.0 and later</p>
@@ -1799,7 +1851,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <hr>
 <h2><a name="LDAPSearchScope">LDAPSearchScope</a></h2>
 <p><strong>Syntax:</strong> LDAPSearchScope <em>onelevel|subtree</em><br>
-  <strong>Default:</strong> <code>LDAPSearchScope subtree</code><br>
+  <strong>Default:</strong> subtree<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <strong>Module:</strong> mod_ldap<BR>
   <strong>Compatibility:</strong> mod_ldap v2.6 and later</p>
@@ -1811,7 +1863,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <hr>
 <h2><a name="LDAPServer">LDAPServer</a></h2>
 <p><strong>Syntax:</strong> LDAPServer <em>"hostname1:port hostname2:port ..."</em><br>
-  <strong>Default:</strong> <code>LDAPServer "localhost"</code><br>
+  <strong>Default:</strong> &quot;localhost&quot;<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <strong>Module:</strong> mod_ldap<BR>
   <strong>Compatibility:</strong> mod_ldap v1.0 and later</p>
@@ -1836,8 +1888,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <hr>
 <h2><a name="LogFormat">LogFormat</a></h2>
 <p><strong>Syntax:</strong> LogFormat <em>nickname &quot;format-string&quot;</em><br>
-  <strong>Default:</strong> <code>LogFormat default &quot;%h %l %u %t \&quot;%r\&quot; 
-  %s %b&quot;</code><br>
+  <strong>Default:</strong> default &quot;%h %l %u %t \&quot;%r\&quot; %s %b&quot;<br>
   <strong>Context:</strong> server config<br>
   <STRONG>Module:</STRONG> mod_log<BR>
   <strong>Compatibility:</strong> 1.1.6pl1 and later</p>
@@ -1946,10 +1997,10 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
   <hr>
   <h2><a name="LoginPasswordPrompt">LoginPasswordPrompt</a></h2>
   <p><strong>Syntax:</strong> LoginPasswordPrompt <em>on|off</em><br>
-    <strong>Default:</strong> LoginPasswordPrompt on<br>
+    <strong>Default:</strong> on<br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_auth<BR>
     &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_auth<BR>
     <strong>Compatibility:</strong> 1.2.0pre1 and later</p>
   <p>If set to <code>off</code>, ProFTPd will skip the password request if the 
     login will be denied regardless of password, e.g., if a <code>&lt;Limit LOGIN&gt; 
@@ -1971,32 +2022,39 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
   <hr>
   <h2><a name="MaxClients">MaxClients</a></h2>
   <p><strong>Syntax:</strong> MaxClients <em>number|none [message]</em><br>
-    <strong>Default:</strong> <code>MaxClients none</code><br>
+    <strong>Default:</strong> none<br>
     <strong>Context:</strong> server config, &lt;Anonymous&gt;, &lt;VirtualHost&gt;, 
     &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
-  <p>The MaxClients directive configures the maximum number of authenticated clients 
-    which may be logged into a server or anonymous account. Once this limit is 
-    reached, additional clients attempting to authenticate will be disconnected.</p>
-  <p>The special value <em><strong>none</strong></em> may be supplied which removes 
-    all maximum connection limits from the applicable configuration context. Additionally, 
-    an optional <em><strong>message</strong></em> argument may be used which will 
-    be displayed to a client attempting to exceed the maximum value; immediately 
-    before disconnection. The <em><strong>message</strong></em> argument is parsed 
-    for the magic string <strong>&quot;%m&quot;</strong>, which is replaced with 
-    the configured maximum value. If <em><strong>message</strong></em> is not 
-    supplied, a system-wide default message is used.</p>
+
+  <p>The MaxClients directive configures the maximum number of
+    authenticated clients which may be logged into a server or
+    anonymous account. Once this limit is reached, additional clients
+    attempting to authenticate will be disconnected.</p>
+
+  <p>The special value <em><strong>none</strong></em> may be supplied
+    which removes all maximum connection limits from the applicable
+    configuration context. Additionally, an optional
+    <em><strong>message</strong></em> argument may be used which will
+    be displayed to a client attempting to exceed the maximum value;
+    immediately before disconnection. The
+    <em><strong>message</strong></em> argument is parsed for the magic
+    string <strong>&quot;%m&quot;</strong>, which is replaced with the
+    configured maximum value. If <em><strong>message</strong></em> is
+    not supplied, a system-wide default message is used.</p>
+
   <p>Example:</p>
   <p><code>MaxClients 5 &quot;Sorry, the maximum number of allowed users are already 
     connected (%m)&quot;</code></p>
   <p>Results in:</p>
   <p><code>530 Sorry, the maximum number of allowed users are already connected 
     (5)</code></p>
+
   <hr>
   <h2><a name="MaxClientsPerHost">MaxClientsPerHost</a></h2>
   <p><strong>Syntax:</strong> MaxClientsPerHost <em>number|none [message]</em><br>
-    <strong>Default:</strong> <code>MaxClientsPerHost none</code><br>
+    <strong>Default:</strong> none<br>
     <strong>Context:</strong> server config, &lt;Anonymous&gt;, &lt;VirtualHost&gt;, 
     &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
@@ -2011,17 +2069,52 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
     time.&quot;</code></p>
   <p>Results in:</p>
   <p><code>530 Sorry, you may not connect more than one time.</code></p>
+
+  <hr>
+  <h2><a name="MaxClientsPerUser">MaxClientsPerUser</a></h2>
+  <p><strong>Syntax:</strong> MaxClientsPerUser <em>number|none [message]</em><br>
+    <strong>Default:</strong> none<br>
+    <strong>Context:</strong> server config, &lt;Anonymous&gt;, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
+    <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+  <p>The MaxClientsPerUser directive configures the maximum number of
+  authenticated clients that can log into the server for any given
+  user.  This is to limit the effect of some of the more popular ftp
+  clients which can open multiple connections to a server and perform
+  parallel downloads. Once the limit is reached additional
+  authentication attempts will be disconnected.</p>
+
+  <p>An optional <em><strong>message</strong></em> argument may be
+  used which will be displayed to a client attempting to exceed the
+  maximum value; immediately before disconnection. The
+  <em><strong>message</strong></em> argument is parsed for the magic
+  string <strong>&quot;%m&quot;</strong>, which is replaced with the
+  configured maximum value. If <em><strong>message</strong></em> is
+  not supplied, a system-wide default message is used.</p>
+
+  <p>Example:</p>
+  <p><code>MaxClientsPerUser 1 &quot;Please do not abuse this facility
+	  you are already connected %m times from your host.&quot;</code></p>
+  <p>Results in:</p>
+  <p><code>530 Please do not abuse this facility you are already
+	  connected 1 times from your host.</code></p> 
+
+
   <hr>
   <h2><a name="MaxInstances">MaxInstances</a></h2>
   <p><strong>Syntax:</strong> MaxInstances <em>number</em><br>
-    <strong>Default:</strong> <code>MaxInstances none</code><br>
+    <strong>Default:</strong> none<br>
     <strong>Context:</strong> server config<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 1.1.6pl1</p>
-  <p>The MaxInstances directive configures the maximum number of child processes 
-    that may be spawned by a parent proftpd process in <strong><em>standalone</em></strong> 
-    mode. The directive has no effect when used on a server running in <strong><em>inetd</em></strong> 
-    mode.</p>
+
+  <p>The MaxInstances directive configures the maximum number of child
+  processes that may be spawned by a parent proftpd process in
+  <strong><em>standalone</em></strong> mode. The directive has no
+  effect when used on a server running in
+  <strong><em>inetd</em></strong> mode.</p>
+
   <p>Because each child proftpd process represents a single client connection, 
     this directive also controls the maximum number of simultaneous connections 
     allowed. Additional connections beyond the configured limit are syslog'd and 
@@ -2032,7 +2125,7 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
   <hr>
   <h2><a name="MaxLoginAttempts">MaxLoginAttempts</a></h2>
   <p><strong>Syntax:</strong> MaxLoginAttempts <em>number</em><br>
-    <strong>Default:</strong> <code>MaxLoginAttempts 3</code><br>
+    <strong>Default:</strong> 3<br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
@@ -2044,19 +2137,21 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
   <hr>
   <h2><a name="MySQLInfo">MySQLInfo</a></h2>
   <p><strong>Syntax:</strong> MySQLInfo <em>hostname sqluser sqlpass dbname</em><br>
-    <strong>Default:</strong> <code>none</code><br>
+    <strong>Default:</strong> none<br>
     <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
   <STRONG>Module:</STRONG> mod_mysql<BR>
     <strong>Compatibility:</strong> at least 1.2.0 and later</p>
-  <p>
 
---STILL NEEDS WORK--
-
+  <p>Configures the MySQL database driver (the database may be
+  remote).  A connection isn't made until use of a SQL feature
+  requires it, after which it may be held open for the lifetime of the
+  FTP session depending on the directives in use.  Use `""' to specify
+  a null password.
 
   <hr>
   <h2><a name="MultilineRFC2228">MultilineRFC2228</a></h2>
   <p><strong>Syntax:</strong> MultilineRFC2228 <em>on|off</em><br>
-    <strong>Default:</strong> <code>MultilineRFC2228 off</code><br>
+    <strong>Default:</strong> off<br>
     <strong>Context:</strong> server config<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 1.2.0pre3 and later</p>
@@ -2084,7 +2179,7 @@ href="ftp://ftp.ietf.org/rfc/rfc0959.txt">RFC 959</a>, i.e.:
   <hr>
   <h2><a name="Order">Order</a></h2>
   <p><strong>Syntax:</strong> Order <em>allow,deny|deny,allow</em><br>
-    <strong>Default:</strong> <code>Order allow,deny</code><br>
+    <strong>Default:</strong> allow,deny<br>
     <strong>Context:</strong> &lt;Limit&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0pl6 and later</p>
@@ -2124,6 +2219,28 @@ href="#Allow">Allow</a> and <a href="#Deny">Deny</a> directives are checked insi
     <li>Check Allow directives. If one or more apply, exit with result: <strong>ALLOW</strong></li>
     <li>Exit with default implicit: <strong>DENY</strong></li>
   </ol>
+
+  <hr>
+
+  <h2><a name="PassivePorts"><strong>PassivePorts</strong></a></h2>
+  <p><strong>Syntax:</strong> PassivePorts <em>min-pasv-port max-pasv-port</em><br>
+    <strong>Default:</strong> none<br>
+    <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+    <strong>Module:</strong> mod_core<br>
+    <strong>Compatibility:</strong> 1.2.0rc2 and later</p>
+ 
+  <P>PassivePorts restricts the range of ports from which the server will
+        select when sent the PASV command from a client.  The server will randomly
+        choose a number from within the specified range until an open port is found.
+  Should no open ports be found within the given range, the server will
+  default to a normal kernel-assigned port, and a message logged.
+
+  <P>The port range selected must be in the non-privileged range (<i>eg</i>
+  greater than or equal to 1024); it is <b>STRONGLY RECOMMENDED</b> that
+  the chosen range be large enough to handle many simultaneous passive
+  connections (for example, 49152-65534, the IANA-registered ephemeral port
+  range).
+        
   <hr>
   <h2><a name="PathAllowFilter">PathAllowFilter</a></h2>
   <p><strong>Syntax:</strong> PathAllowFilter <em>regular-expression</em><br>
@@ -2157,7 +2274,7 @@ href="#Allow">Allow</a> and <a href="#Deny">Deny</a> directives are checked insi
     .htaccess files.</p>
   <p>Example:</p>
   <p><code># We don't want .ftpaccess or .htaccess files to be uploaded<br>
-    PathDenyFilter &quot;(\.ftpaccess)|(\.htaccess)$&quot;</code></p>
+    PathDenyFilter &quot;(\\.ftpaccess)|(\\.htaccess)$&quot;</code></p>
   <hr>
   <h2><a name="PersistentPasswd">PersistentPasswd</a></h2>
   <p><strong>Syntax:</strong> PersistentPasswd <em>on|off</em><br>
@@ -2208,7 +2325,7 @@ href="#AuthGroupFile">AuthGroupFile</a> directives will force partial support
 
   <h2><a name="Port">Port</a></h2>
   <p><strong>Syntax:</strong> Port <em>port-number</em><br>
-    <strong>Default:</strong> <code>Port 21</code><br>
+    <strong>Default:</strong> 21<br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
@@ -2221,32 +2338,36 @@ href="#VirtualHost">&lt;VirtualHost&gt;</a> in order to run a virtual server on
 
 <hr>
 <h2><a name="PostgresInfo">PostgresInfo</a></h2>
-<p><strong>Syntax:</strong> PostgresInfo <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p><strong>Syntax:</strong> PostgresInfo <em>hostname sqluser sqlpass dbname</em><br>
+  <strong>Default:</strong> none<BR>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;<br>
   <STRONG>Module:</STRONG> mod_pgsql<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The PostgresInfo directive ....</P>
+   <P>Configures the  Posgresql  database driver (the  database may be
+   remote).    A  connection isn't  made until  use  of  a SQL feature
+   requires it, after which  it may be  held open for the  lifetime of
+   the FTP session depending on the directives in use.
 
   <P>Example:</P>
-  <P><code>PostgresInfo</code></P>
+  <P><code>PostgresInfo myserver.example.com proftpd wibble ftpusers</code></P>
 <hr>
 <h2><a name="PostgresPort">PostgresPort</a></h2>
-<p><strong>Syntax:</strong> PostgresPort <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p><strong>Syntax:</strong> PostgresPort <em>port-number</em><br>
+  <strong>Default:</strong> 5432<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;VirtualHost&gt;<br>
   <STRONG>Module:</STRONG> mod_pgsql<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The PostgresPort directive ....</P>
+  <P>Specifies which TCP/IP port to use for connecting.  Default is
+  5432, or UNIX socket for localhost.
 
   <P>Example:</P>
-  <P><code>PostgresPort</code></P>
+  <P><code>PostgresPort 3306</code></P>
 <hr>
 <h2><a name="Quotas">Quotas</a></h2>
 <p><strong>Syntax:</strong> Quotas <em>on|off</em><br>
-  <strong>Default:</strong> <CODE>none</CODE><br>
+  <strong>Default:</strong> none<br>
   <strong>Context:</strong> server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;<br>
   <STRONG>Module:</STRONG> mod_quota<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
@@ -2258,7 +2379,7 @@ href="#VirtualHost">&lt;VirtualHost&gt;</a> in order to run a virtual server on
 <hr>
 <h2><a name="QuotaBlockSize">QuotaBlockSize</a></h2>
 <p><strong>Syntax:</strong> QuotaBlockSize <em>number of bytes</em><br>
-  <strong>Default:</strong> <CODE>None</CODE><br>
+  <strong>Default:</strong> None<br>
   <strong>Context:</strong> server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;<BR>
   <STRONG>Module:</STRONG> mod_quota<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
@@ -2273,7 +2394,7 @@ href="#VirtualHost">&lt;VirtualHost&gt;</a> in order to run a virtual server on
   <hr>
 <h2><a name="QuotaBlockName">QuotaBlockName</a></h2>
 <p><strong>Syntax:</strong> QuotaBlockName <em>name</em><br>
-  <strong>Default:</strong> <code>byte</code><br>
+  <strong>Default:</strong> byte<br>
   <strong>Context:</strong> server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;<BR>
   <STRONG>Module:</STRONG> mod_quota<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
@@ -2371,9 +2492,8 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
   <h2><a name="RateWriteBPS">RateWriteBPS</a></h2>
   <p><strong>Syntax:</strong> RateWriteBPS <em>byte_per_sec-number</em><br>
     <strong>Default:</strong> <code>0</code><br>
-    <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
+    <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Directory&gt;, &lt;Global&gt; <br>
   <STRONG>Module:</STRONG> mod_xfer<BR>
-    &lt;Directory&gt;, &lt;Global&gt; <br>
     <strong>Compatibility:</strong> 1.2.0 and later</p>
   <p>RateWriteBPS sets the allowed byte per second upload bandwidth in the given 
     config context. Zero means no bandwidth limit. (See <a href="#RateWriteFreeBytes">RateWriteFreeBytes</a> 
@@ -2419,11 +2539,12 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
 <h2><a name="RatioFile">RatioFile</a></h2>
 <p><strong>Syntax:</strong> RatioFile <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;,
+	&lt;Limit&gt;, .ftpaccess<br>
   <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The RatioFile directive ....</P>
+  <p>The RatioFile directive .... INCOMPLETE</P>
 
   <P>Example:</P>
   <P><code>RatioFile</code></P>
@@ -2432,11 +2553,12 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
 <h2><a name="Ratios">Ratios</a></h2>
 <p><strong>Syntax:</strong> Ratios <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;,
+	&lt;Limit&gt;, .ftpaccess<br>
   <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The Ratios directive ....</P>
+  <p>The Ratios directive .... INCOMPLETE</P>
 
   <P>Example:</P>
   <P><code>Ratios</code></P>
@@ -2444,11 +2566,12 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
 <h2><a name="RatioTempFile">RatioTempFile</a></h2>
 <p><strong>Syntax:</strong> RatioTempFile <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;,
+	&lt;Limit&gt;, .ftpaccess<br>
   <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The RatioTempFile directive ....</P>
+  <p>The RatioTempFile directive .... INCOMPLETE</P>
 
   <P>Example:</P>
   <P><code>RatioTempFile</code></P>
@@ -2456,41 +2579,48 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
   <hr>
   <h2><a name="RequireValidShell">RequireValidShell</a></h2>
   <p><strong>Syntax:</strong> RequireValidShell <em>on|off</em><br>
-    <strong>Default:</strong> <code>RequireValidShell on</code><br>
+    <strong>Default:</strong> on<br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
     &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
-  <p>The RequireValidShell directive configures the server, virtual host or anonymous 
-    login to allow or deny logins which do not have a shell binary listed in /etc/shells. 
-    By default, proftpd disallows logins if the user's default shell is not listed 
-    in /etc/shells. If /etc/shells cannot be found, all default shells are assumed 
-    to be valid.</p>
+
+  <p>The RequireValidShell directive configures the server, virtual
+    host or anonymous login to allow or deny logins which do not have
+    a shell binary listed in /etc/shells.  By default, proftpd
+    disallows logins if the user's default shell is not listed in
+    /etc/shells. If /etc/shells cannot be found, all default shells
+    are assumed to be valid.</p>
+
   <hr>
   <h2><a name="RootLogin">RootLogin</a></h2>
   <p><strong>Syntax:</strong> RootLogin <em>on|off</em><br>
-    <strong>Default:</strong> <code>RootLogin off</code><br>
+    <strong>Default:</strong> off<br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
     &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_auth<BR>
     <strong>Compatibility:</strong> 1.1.5 and later</p>
-  <p>Normally, proftpd disallows root logins under any circumstance. If a client 
-    attempts to login as root, using the correct password, a special security 
-    message is sent to syslog. When the RootLogin directive is turned On, the 
-    root user may authenticate just as any other user could (assuming no other 
-    access control measures deny access); however the root login security message 
-    is still sysloged. <strong>Obviously, </strong><strong><u>extreme</u></strong><strong> 
-    care should be taken when using this directive.</strong></p>
+
+  <p>Normally, proftpd disallows root logins under any
+    circumstance. If a client attempts to login as root, using the
+    correct password, a special security message is sent to
+    syslog. When the RootLogin directive is turned On, the root user
+    may authenticate just as any other user could (assuming no other
+    access control measures deny access); however the root login
+    security message is still sysloged. <strong>Obviously,
+    </strong><strong><u>extreme</u></strong><strong> care should be
+    taken when using this directive.</strong></p>
 
 <hr>
 <h2><a name="SaveRatios">SaveRatios</a></h2>
 <p><strong>Syntax:</strong> SaveRatios <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;,
+	&lt;Limit&gt;, .ftpaccess<br>
   <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The SaveRatios directive ....</P>
+  <p>The SaveRatios directive .... INCOMPLETE</P>
 
   <P>Example:</P>
   <P><code>SaveRatios</code></P>
@@ -2498,18 +2628,21 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
   <hr>
   <h2><a name="ScoreboardPath">ScoreboardPath</a></h2>
   <p><strong>Syntax:</strong> ScoreboardPath <em>path</em><br>
-    <strong>Default:</strong> <code>ScoreboardPath /var/run</code><br>
+    <strong>Default:</strong> /var/run<br>
     <strong>Context:</strong> server config<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 1.1.6 and later</p>
-  <p>The ScoreboardPath directive sets the directory where proftpd run-time scoreboard 
-    files (proftpd-*) are kept. These file(s) are necessary for <a href="#MaxClients">MaxClients</a> 
-    to work properly, as well as other utilities (such as ftpwho and ftpcount). 
+
+  <p>The ScoreboardPath directive sets the directory where proftpd
+    run-time scoreboard files (proftpd-*) are kept. These file(s) are
+    necessary for <a href="#MaxClients">MaxClients</a> to work
+    properly, as well as other utilities (such as ftpwho and
+    ftpcount).
   </p>
   <hr>
   <h2><a name="ServerAdmin">ServerAdmin</a></h2>
-  <p><strong>Syntax:</strong> ServerAdmin <em>&quot;admin-email-address&quot;</em><br>
-    <strong>Default:</strong> <code>ServerAdmin root@[ServerName]</code><br>
+  <p><strong>Syntax:</strong> <em>&quot;admin-email-address&quot;</em><br>
+    <strong>Default:</strong> root@[ServerName]<br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0pl10 and later</p>
@@ -2520,23 +2653,26 @@ href="#DisplayLogin">DisplayLogin</a> and <a
 href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <hr>
   <h2><a name="ServerIdent">ServerIdent</a></h2>
-  <p><strong>Syntax:</strong> ServerIdent <em>On|Off [identification string]</em><br>
-    <strong>Default:</strong> <code>ServerIdent ProFTPD [version] Server (server 
-    name) [hostname]</code><br>
+  <p><strong>Syntax:</strong> <em>On|Off [identification string]</em><br>
+    <strong>Default:</strong> ProFTPD [version] Server (server name) [hostname]<br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 1.2.0pre2 and later</p>
-  <p>The ServerIdent directive sets the default message displayed when a new client 
-    connects. Setting this to <em><strong>off</strong></em> displays "<code>[hostname] 
-    FTP server ready.</code>" If set to <em><strong>on</strong></em>, the directive 
-    can take an optional string argument, which will be displayed instead of the 
-    default text. Sites desiring to give out minimal information will probably 
-    want a setting like <code>ServerIdent "FTP Server ready."</code>, which won't 
-    even reveal the hostname. 
+
+  <p>The ServerIdent directive sets the default message displayed when
+    a new client connects. Setting this to
+    <em><strong>off</strong></em> displays "<code>[hostname] FTP
+    server ready.</code>" If set to <em><strong>on</strong></em>, the
+    directive can take an optional string argument, which will be
+    displayed instead of the default text. Sites desiring to give out
+    minimal information will probably want a setting like
+    <code>ServerIdent on "FTP Server ready."</code>, which won't even
+    reveal the hostname. </P>
+
   <hr>
   <h2><a name="ServerName">ServerName</a></h2>
   <p><strong>Syntax:</strong> ServerName <em>&quot;name&quot;</em><br>
-    <strong>Default:</strong> <code>ServerName &quot;ProFTPD Server [version]&quot;</code><br>
+    <strong>Default:</strong> <code>&quot;ProFTPD Server [version]&quot;</code><br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
@@ -2547,27 +2683,28 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <hr>
   <h2><a name="ServerType">ServerType</a></h2>
   <p><strong>Syntax:</strong> ServerType <em>type-identifier</em><br>
-    <strong>Default:</strong> <code>ServerType standalone</code><br>
+    <strong>Default:</strong> <code>standalone</code><br>
     <strong>Context:</strong> server config<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
+
   <p>The ServerType directive configures the server daemon's operating mode. The 
     <em>type-identifier</em> can be one of two values:</p>
   <ul>
-    <li><em><strong>inetd</strong></em><br>
-      The daemon will expect to be run from the inetd &quot;super server.&quot; 
-      New connections are passed from inetd to proftpd and serviced immediately.</li>
-    <li><em><strong>standalone</strong></em><br>
-      The daemon starts and begins listening to the configured <a
-        href="#port">port</a> for incoming connections. New connections 
-      result in spawned child processes dedicated to servicing all requests from 
-      the newly connected client.</li>
+    <li><em><strong>inetd</strong></em><br> The daemon will expect to
+      be run from the inetd &quot;super server.&quot; New connections
+      are passed from inetd to proftpd and serviced immediately.</li>
+      <li><em><strong>standalone</strong></em><br> The daemon starts
+      and begins listening to the configured <a href="#port">port</a>
+      for incoming connections. New connections result in spawned
+      child processes dedicated to servicing all requests from the
+      newly connected client.</li>
   </ul>
   <hr>
   <h2><a name="ShowDotFiles">ShowDotFiles</a></h2>
   <p><strong>Syntax:</strong> ShowDotFiles <em>on|off</em><br>
-    <strong>Default:</strong><code>ShowDotFiles Off</code><strong><br>
-    Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<strong><br>
+    <strong>Default:</strong> Off<BR>
+    <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<strong><br>
   <STRONG>Module:</STRONG> mod_ls<BR>
     Compatibility:</strong> 0.99.0pl6 and later -- <strong>Deprecated</strong></p>
   <p>If set to <code>on</code>, files starting with a '.', except for the
@@ -2579,143 +2716,165 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <hr>
   <h2><a name="ShowSymlinks">ShowSymlinks</a></h2>
   <p><strong>Syntax:</strong> ShowSymlinks <em>on|off</em><br>
-    <strong>Default: (versions previous to 1.1.5) </strong><code>Off for anonymous 
-    logins, On for normal logins</code><br>
-    <strong>Default: (versions 1.1.5 and beyond) </strong><code>ShowSymlinks On</code><strong><br>
-    Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<strong><br>
+    <strong>Default:</strong> on<br>
+    <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<strong><br>
   <STRONG>Module:</STRONG> mod_core<BR>
-    Compatibility:</strong> 0.99.0pl6 and later</p>
-  <p>Symbolic links (if supported on the host OS and filesystem) can be either 
-    shown in directory listings (including the target of the link) or can be &quot;hidden&quot; 
-    (proftpd dereferences symlinks and reports the target's permissions and ownership). 
-    The default behavior is to show all symbolic links when normal users are logged 
-    in, and hide them for anonymous sessions. If a symbolic link cannot be dereferenced 
-    for any reason (permissions, target does not exist, etc) and ShowSymlinks 
-    is off, proftpd displays the link as a directory entry of type 'l' (link) 
-    with the ownership and permissions of the actual link.</p>
-  <p>Under ProFTPD versions 1.1.5 and higher, the default behavior in regard to 
-    ShowSymlinks has been changed so that symbolic links are always displayed 
-    as such (in all cases), unless ShowSymlinks off is explicitly set.</p>
+    <strong>Compatibility:</strong> 0.99.0pl6 and later</p>
+
+  <p>Symbolic links (if supported on the host OS and filesystem) can
+    be either shown in directory listings (including the target of the
+    link) or can be &quot;hidden&quot; (proftpd dereferences symlinks
+    and reports the target's permissions and ownership).  The default
+    behavior is to show all symbolic links when normal users are
+    logged in, and hide them for anonymous sessions. If a symbolic
+    link cannot be dereferenced for any reason (permissions, target
+    does not exist, etc) and ShowSymlinks is off, proftpd displays the
+    link as a directory entry of type 'l' (link) with the ownership
+    and permissions of the actual link.</p> <p>Under ProFTPD versions
+    1.1.5 and higher, the default behavior in regard to ShowSymlinks
+    has been changed so that symbolic links are always displayed as
+    such (in all cases), unless ShowSymlinks off is explicitly
+    set.</p>
+
   <hr>
   <h2><a name="SocketBindTight">SocketBindTight</a></h2>
   <p><strong>Syntax:</strong> SocketBindTight <em>on|off</em><br>
-    <strong>Default:</strong> <code>SocketBindTight off</code><br>
+    <strong>Default:</strong> off<br>
     <strong>Context:</strong> server config<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0pl6 and later</p>
-  <p>The SocketBindTight directive controls how proftpd creates and binds its 
-    initial tcp listen sockets in <em><strong>standalone</strong></em> mode (see 
-    <a href="#ServerType">ServerType</a>). The directive has no effect upon servers 
-    running in <em><strong>inetd</strong></em> mode, because listen sockets are 
-    not needed or created. When SocketBindTight is set to <em><strong>off</strong></em> 
-    (the default), a single listening socket is created for each port that the 
-    server must listen on, regardless of the number of IP addresses being used 
-    by <a href="#VirtualHost">&lt;VirtualHost&gt;</a> configurations. This has 
-    the benefit of typically requiring a relatively small number of file descriptors 
-    for the master daemon process, even if a large number of virtual servers are 
-    configured. If SocketBindTight is set to <em><strong>on</strong></em>, a listen 
-    socket is created and bound to a specific IP address for the master server 
-    and all configured virtual servers. This allows for situations where an administrator 
-    may wish to have a particular port be used by both proftpd (on one IP address) 
-    and another daemon (on a different IP address). The drawback is that considerably 
-    more file descriptors will be required if a large number of virtual servers 
-    must be supported.</p>
-  <p>Example: Two servers have been configured (one master and one virtual), with 
-    the IP addresses 10.0.0.1 and 10.0.0.2, respectively. The 10.0.0.1 server 
-    runs on port 21, while 10.0.0.2 runs on port 2001.</p>
-  <p><code>SocketBindTight off #default<br>
-    # proftpd creates two sockets, both bound to ALL available addresses.<br>
-    # one socket listens on port 21, the other on 2001. Because each socket is<br>
-    # bound to all available addresses, no other daemon or user process will be<br>
-    # allowed to bind to ports 21 or 2001.<br>
-    ...<br>
-    SocketBindTight on<br>
-    # proftpd creates two sockets again, however one is bound to 10.0.0.1, port 
-    21<br>
-    # and the other to 10.0.0.2, port 2001. Because these sockets are &quot;tightly&quot;<br>
-    # bound to IP addresses, port 21 can be reused on any address OTHER than<br>
+
+  <p>The SocketBindTight directive controls how proftpd creates and
+    binds its initial tcp listen sockets in
+    <em><strong>standalone</strong></em> mode (see <a
+    href="#ServerType">ServerType</a>). The directive has no effect
+    upon servers running in <em><strong>inetd</strong></em> mode,
+    because listen sockets are not needed or created. When
+    SocketBindTight is set to <em><strong>off</strong></em> (the
+    default), a single listening socket is created for each port that
+    the server must listen on, regardless of the number of IP
+    addresses being used by <a
+    href="#VirtualHost">&lt;VirtualHost&gt;</a> configurations. This
+    has the benefit of typically requiring a relatively small number
+    of file descriptors for the master daemon process, even if a large
+    number of virtual servers are configured. If SocketBindTight is
+    set to <em><strong>on</strong></em>, a listen socket is created
+    and bound to a specific IP address for the master server and all
+    configured virtual servers. This allows for situations where an
+    administrator may wish to have a particular port be used by both
+    proftpd (on one IP address) and another daemon (on a different IP
+    address). The drawback is that considerably more file descriptors
+    will be required if a large number of virtual servers must be
+    supported.</p> <p>Example: Two servers have been configured (one
+    master and one virtual), with the IP addresses 10.0.0.1 and
+    10.0.0.2, respectively. The 10.0.0.1 server runs on port 21, while
+    10.0.0.2 runs on port 2001.</p> <p><code>SocketBindTight off
+    #default<br> # proftpd creates two sockets, both bound to ALL
+    available addresses.<br> # one socket listens on port 21, the
+    other on 2001. Because each socket is<br> # bound to all available
+    addresses, no other daemon or user process will be<br> # allowed
+    to bind to ports 21 or 2001.<br> ...<br> SocketBindTight on<br> #
+    proftpd creates two sockets again, however one is bound to
+    10.0.0.1, port 21<br> # and the other to 10.0.0.2, port
+    2001. Because these sockets are &quot;tightly&quot;<br> # bound to
+    IP addresses, port 21 can be reused on any address OTHER than<br>
     # 10.0.0.1, and visa-versa with 10.0.0.2, port 2001.</code></p>
-  <p>One side-effect of setting SocketBindTight to <em><strong>on</strong></em> 
-    is that connections to non-bound addresses will result in a &quot;connection 
-    refused&quot; message rather than the typical &quot;500 Sorry, no server available 
-    to handle request on xxx.xxx.xxx.xxx.&quot;, due to the fact that no listen 
-    socket has been bound to the particular address/port pair. This may or may 
-    not be aesthetically desirable, depending on your circumstances.</p>
+    <p>One side-effect of setting SocketBindTight to
+    <em><strong>on</strong></em> is that connections to non-bound
+    addresses will result in a &quot;connection refused&quot; message
+    rather than the typical &quot;500 Sorry, no server available to
+    handle request on xxx.xxx.xxx.xxx.&quot;, due to the fact that no
+    listen socket has been bound to the particular address/port
+    pair. This may or may not be aesthetically desirable, depending on
+    your circumstances.</p>
 
 <hr>
 <h2><a name="SQLAuthoritative">SQLAuthoritative</a></h2>
-<p><strong>Syntax:</strong> SQLAuthoritative <em>bool</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> server, &lt;Global&gt;, &lt;VirtualHost&gt;<BR>
+<p><strong>Syntax:</strong> SQLAuthoritative <em>on|off</em><br>
+  <strong>Default:</strong> off<br>
+  <strong>Context:</strong> server config<br>
   <strong>Module:</strong> mod_sqlpw<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p> This directive allows you to control whether or not SQL is the
-  ultimate authority on authentication. Setting this directive to
-  <em>on</em> will cause authentication to fail if SQL authentication
-  fails. The default setting, <em>off</em>, allows other modules and
-  directives to authenticate users, should SQL authentication fail. </p>
+  <P>Specifies whether authentication stops at mod_mysql, or whether
+  other possibilites (like standard UNIX logins) are tried.  Default
+  is off - others are tried.
 
 <hr>
 <h2><a name="SQLEmptyPasswords">SQLEmptyPasswords</a></h2>
-<p><strong>Syntax:</strong> SQLEmptyPasswords <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p><strong>Syntax:</strong> SQLEmptyPasswords <em>on|off</em><br>
+  <strong>Default:</strong> off<br>
+  <strong>Context:</strong> server config<br>
   <strong>Module:</strong> mod_sqlpw<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The SQLEmptyPasswords directive ....</P>
+  <P>Specifies whether an empty (non-NULL but zero-length) password is
+  acceped from the database.  Default is no, and truly NULL passwords
+  are never accepted.  If the retrieved password is empty then
+  whatever password the user typed is accepted as valid, but the
+  module logs a warning at debug level 4.
 
   <P>Example:</P>
-  <P><code>SQLEmptyPasswords</code></P>
+  <P><code>SQLEmptyPasswords on</code></P>
 <hr>
 <h2><a name="SQLEncryptedPasswords">SQLEncryptedPasswords</a></h2>
-<p><strong>Syntax:</strong> SQLEncryptedPasswords <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p><strong>Syntax:</strong> SQLEncryptedPasswords <em>on|off</em><br>
+  <strong>Default:</strong> on<br>
+  <strong>Context:</strong> server config<br>
   <strong>Module:</strong> mod_sqlpw<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The SQLEncryptedPasswords directive ....</P>
+  <P>Specifies whether the password in the database may be in UNIX
+  crypt() format.  Default is true, with this being the only check
+  done.  A tool for generating crypted password text may be found at
+  <A HREF="ftp://ftp.linpeople.org/pub/People/lilo/source/makepasswd-1.07.tar.gz">ftp://ftp.linpeople.org/pub/People/lilo/source/makepasswd-1.07.tar.gz</A>
 
   <P>Example:</P>
-  <P><code>SQLEncryptedPasswords</code></P>
+  <P><code>SQLEncryptedPasswords off</code></P>
 <hr>
 <h2><a name="SQLGidField">SQLGidField</a></h2>
-<p><strong>Syntax:</strong> SQLGidField <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p><strong>Syntax:</strong> SQLGidField <em>fieldname</em><br>
+  <strong>Default:</strong> none, GID is 65533<br>
+  <strong>Context:</strong> server config<br>
   <strong>Module:</strong> mod_sqlpw<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The SQLGidField directive ....</P>
+  <P>Specifes what field holds the gid number, for users authenticated
+  with this module.  Default is to use the compiled-in default 65533.
+  If the retrieved gid is in the range reserved for admin accounts
+  (0-9999), 65533 is used instead.
 
   <P>Example:</P>
-  <P><code>SQLGidField</code></P>
+  <P><code>SQLGidField custgid</code></P>
 <hr>
 <h2><a name="SQLHomedir">SQLHomedir</a></h2>
-<p><strong>Syntax:</strong> SQLHomedir <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p><strong>Syntax:</strong> SQLHomedir <em>/path/to/virtual/site</em><br>
+  <strong>Default:</strong> nonw<br>
+  <strong>Context:</strong> server config<br>
   <strong>Module:</strong> mod_sqlpw<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The SQLHomedir directive ....</P>
+  <P>Specifies the homedir to use for all users authenticated with
+  this module, overriding any SQLHomedirField directive.  If no
+  homedir is set with either directive, authentication is turned off.
 
   <P>Example:</P>
-  <P><code>SQLHomedir</code></P>
+  <P><code>SQLHomedir /ftp/vhost/ftp.example.com/</code></P>
   <hr>
 <h2><a name="SQLHomedirField">SQLHomedirField</a></h2>
-<p><strong>Syntax:</strong> SQLHomedirField <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p><strong>Syntax:</strong> SQLHomedirField <em>fieldname</em><br>
+  <strong>Default:</strong> none<br>
+  <strong>Context:</strong> server config<br>
   <strong>Module:</strong> mod_sqlpw<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The SQLHomedirField directive ....</P>
+  <P>Specifies what field holds the home directory, for users
+  authenticated with this module.  The directory can also be defined
+  for all users using SQLHomedir.  If no homedir is set with either
+  directive, authentication is turned off.
 
   <P>Example:</P>
-  <P><code>SQLHomedirField</code></P>
+  <P><code>SQLHomedirField home</code></P>
 <hr>
 
 <h2><a name="SQLKey">SQLKey</a></h2>
@@ -2741,157 +2900,203 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
 <hr>
 
 <h2><a name="SQLLogDirs">SQLLogDirs</a></h2>
-<p><strong>Syntax:</strong> SQLLogDirs <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p><strong>Syntax:</strong> SQLLogDirs <em>on</em><br>
+  <strong>Syntax:</strong> SQLLogDirs <em>fieldname</em><br>
+  <strong>Default:</strong> off, or `fcdir' if field unspecified<br>
+  <strong>Context:</strong> server config<br>
   <strong>Module:</strong> mod_sqlpw<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The SQLLogDirs directive ....</P>
+  <P>Activates logging of the last directory the user changed to.
+  This is done after every CHDIR command - the initial login to "/"
+  does not count.  Also, the last dir is displayed during login in
+  this format:
+
+  <P>230 "/pub/debian/Incoming" was last directory.
 
   <P>Example:</P>
-  <P><code>SQLLogDirs</code></P>
+  <P><code>SQLLogDirs dirfield</code></P>
 <hr>
 <h2><a name="SQLLogHits">SQLLogHits</a></h2>
-<p><strong>Syntax:</strong> SQLLogHits <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p>
+  <strong>Syntax:</strong> SQLLogHits <em>hit-table</em><br>
+  <strong>Syntax:</strong> SQLLogHits <em>hit-table pathname-field hits-field</em><br>
+  <strong>Syntax:</strong> SQLLogHits <em>hit-table filename-field hits-field dir-field</em><br>
+  <strong>Default:</strong> off, or `filename, hits' if fields unspecified<br>
+  <strong>Context:</strong> server config<br>
   <strong>Module:</strong> mod_sqlpw<BR>
-  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+  <strong>Compatibility:</strong> only available with the Debian package.</P>
 
-  <p>The SQLLogHits directive ....</P>
+  <P>Activates logging of RETR commands on a file to a separate table
+  for this purpose.  This is done during an approved RETR command,
+  whether it completes or not.
 
-  <P>Example:</P>
-  <P><code>SQLLogHits</code></P>
+  <P>If one argument is given, the `hits' field is incremented where
+  the `filename' field matches the pathname requested for RETR.  If
+  three are given, the 2 extra strings are used for the pathname field
+  and hits field.
+
+  <P>If four arguments are given, the fourth string is used as the
+  field name for logging the directory.  In this case the real path is
+  used -- symbolic links are dereferenced and the path split into dir
+  and filename parts.
+
 <hr>
 <h2><a name="SQLLogHosts">SQLLogHosts</a></h2>
-<p><strong>Syntax:</strong> SQLLogHosts <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p>
+  <strong>Syntax:</strong> SQLLogHosts on<br>
+  <strong>Syntax:</strong> SQLLogHosts host-field ipaddr-field time-field<br>
+  <strong>Default:</strong> off, or (`fhost faddr ftime') if fields unspecified<br>
+  <strong>Context:</strong> server config<br>
   <strong>Module:</strong> mod_sqlpw<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The SQLLogHosts directive ....</P>
+  <P>Activates logging of host, IP, and last-login timestamp to the
+  user database.  (The time is inserted as `now').  This is done
+  immediately after a successful PASS command.
 
   <P>Example:</P>
-  <P><code>SQLLogHosts</code></P>
+  <P><code>SQLLogHosts on</code></P>
 <hr>
 <h2><a name="SQLLoginCountField">SQLLoginCountField</a></h2>
-<p><strong>Syntax:</strong> SQLLoginCountField <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p><strong>Syntax:</strong> SQLLoginCountField <em>fieldname</em><br>
+  <strong>Default:</strong> none<br>
+  <strong>Context:</strong> server config<br>
   <strong>Module:</strong> mod_sqlpw<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The SQLLoginCountField directive ....</P>
+  <P>Activates incrementation of a login count for the user, done with
+  `set count = count + 1'.  This is done immediately after a
+  successful PASS command.
 
   <P>Example:</P>
-  <P><code>SQLLoginCountField</code></P>
+  <P><code>SQLLoginCountField logincount</code></P>
 <hr>
 <h2><a name="SQLLogStats">SQLLogStats</a></h2>
-<p><strong>Syntax:</strong> SQLLogStats <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p><strong>Syntax:</strong> SQLLogStats <em>on</em><br>
+  <strong>Syntax:</strong> SQLLogStats <em>F-stor-field F-retr-field B-stor-field B-retr-field</em><br>
+  <strong>Default:</strong> off, or `fstor fretr bstor bretr"' if fields unspecified<br>
+  <strong>Context:</strong> server config<br>
   <strong>Module:</strong> mod_sqlpw<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The SQLLogStats directive ....</P>
+  <P>Activates logging of upload/download statistics for this user.
+  This is updated after every successfully completed STOR and RETR, in
+  a way that allows for concurrent transfers.
+
+  <P>This directive is _required_ when using this module in
+  conjunction with mod_ratio.
 
   <P>Example:</P>
-  <P><code>SQLLogStats</code></P>
+  <P><code>SQLLogStats off</code></P>
 <hr>
 <h2><a name="SQLPasswordField">SQLPasswordField</a></h2>
-<p><strong>Syntax:</strong> SQLPasswordField <em>foo1 foo2 foo3</em><br>
+<p><strong>Syntax:</strong> SQLPasswordField <em>fieldname</em><br>
   <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Context:</strong> server config<br>
   <strong>Module:</strong> mod_sqlpw<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The SQLPasswordField directive ....</P>
+  <P>Using this directive activates SQL authentication functions, if a
+  database driver is configured.  It specifies which field holds the
+  password, and has no default.
 
   <P>Example:</P>
-  <P><code>SQLPasswordField</code></P>
+  <P><code>SQLPasswordField passwd</code></P>
 <hr>
 <h2><a name="SQLPlaintextPasswords">SQLPlaintextPasswords</a></h2>
-<p><strong>Syntax:</strong> SQLPlaintextPasswords <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p><strong>Syntax:</strong> SQLPlaintextPasswords <em>on|off</em><br>
+  <strong>Default:</strong> off<br>
+  <strong>Context:</strong> server config<br>
   <strong>Module:</strong> mod_sqlpw<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The SQLPlaintextPasswords directive ....</P>
+  <P>Specifies whether the two passwords should be compared as
+  plaintext.  Default is no - passwords must be UNIX DES-encrypted
+  (the default).  Setting this does not turn off other tests.
 
   <P>Example:</P>
-  <P><code>SQLPlaintextPasswords</code></P>
+  <P><code>SQLPlaintextPasswords on</code></P>
 <hr>
 <h2><a name="SQLRatios">SQLRatios</a></h2>
 <p><strong>Syntax:</strong> SQLRatios <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;,
+	    &lt;Limit&gt;, .ftpaccess<br>
   <strong>Module:</strong> mod_sqlpw<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The SQLRatios directive ....</P>
+  <p>The SQLRatios directive .... INCOMPLETE</P>
 
   <P>Example:</P>
   <P><code>SQLRatios</code></P>
 <hr>
 <h2><a name="SQLUidField">SQLUidField</a></h2>
-<p><strong>Syntax:</strong> SQLUidField <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p><strong>Syntax:</strong> SQLUidField <em>fieldname</em><br>
+  <strong>Default:</strong> none, UID is 655533<br>
+  <strong>Context:</strong> server config<br>
   <strong>Module:</strong> mod_sqlpw<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The SQLUidField directive ....</P>
+  <P>Specifes what field holds the uid number, for users authenticated
+  with this module.  Default is to use the compiled-in default 65533.
+  If the retrieved uid is in the range reserved for admin accounts
+  (0-9999), 65533 is used instead.
 
   <P>Example:</P>
-  <P><code>SQLUidField</code></P>
+  <P><code>SQLUidField custuid</code></P>
 <hr>
 <h2><a name="SQLUserTable">SQLUserTable</a></h2>
-<p><strong>Syntax:</strong> SQLUserTable <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p><strong>Syntax:</strong> SQLUserTable <em>tablename</em><br>
+  <strong>Default:</strong> users<br>
+  <strong>Context:</strong> server config<br>
   <strong>Module:</strong> mod_sqlpw<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The SQLUserTable directive ....</P>
+  <P>Specifies the table used to look up the other information,
+  defaults to `users'.
 
   <P>Example:</P>
-  <P><code>SQLUserTable</code></P>
+  <P><code>SQLUserTable liveusers</code></P>
 <hr>
 <h2><a name="SQLUsernameField">SQLUsernameField</a></h2>
-<p><strong>Syntax:</strong> SQLUsernameField <em>foo1 foo2 foo3</em><br>
-  <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+<p><strong>Syntax:</strong> SQLUsernameField <em>fieldname</em><br>
+  <strong>Default:</strong> userid<br>
+  <strong>Context:</strong> server config<br>
   <strong>Module:</strong> mod_sqlpw<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The SQLUsernameField directive ....</P>
+  <P>Specifies the name of the username field, defaults to `userid'.
+  This is used in a WHERE clause for all other operations.
 
   <P>Example:</P>
-  <P><code>SQLUsernameField</code></P>
-
+  <P><code>SQLUsernameField customerid</code></P>
 
   <hr>
   <h2><a name="SyslogFacility"><strong>SyslogFacility</strong></a></h2>
-  <p><strong>Syntax:</strong> SyslogFacility <em>facility-level</em><br>
+  <p><strong>Syntax:</strong> <em>facility-level</em><br>
     <strong>Default:</strong> None<br>
     <strong>Context:</strong> server config<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 1.1.6 and later</p>
-  <p>Proftpd logs its activity via the Unix syslog mechanism, which allows for 
-    several different general classifications of logging messages, known as "facilities." 
-    Normally, all authentication related messages are logged with the AUTHPRIV 
-    (or AUTH) facility [intended to be secure, and never seen by unwanted eyes], 
-    while normal operational messages are logged with the DAEMON facility. The 
-    SyslogFacility directive allows ALL logging messages to be directed to a different 
-    facility than the default. When this directive is used, ALL logging is done 
-    with the specified facility, both authentication (secure) and otherwise.</p>
-  <p>The <strong><em>facility-level</em></strong> argument must be one of the 
-    following: <strong>AUTH</strong> (or <strong>AUTHPRIV</strong>)<strong>, CRON, 
-    DAEMON, KERN, LPR, MAIL, NEWS, USER, UUCP, LOCAL0, LOCAL1, LOCAL2, LOCAL3, 
-    LOCAL4, LOCAL5, LOCAL6 or LOCAL7.</strong></p>
+
+  <p>Proftpd logs its activity via the Unix syslog mechanism, which
+    allows for several different general classifications of logging
+    messages, known as "facilities."  Normally, all authentication
+    related messages are logged with the AUTHPRIV (or AUTH) facility
+    [intended to be secure, and never seen by unwanted eyes], while
+    normal operational messages are logged with the DAEMON
+    facility. The SyslogFacility directive allows ALL logging messages
+    to be directed to a different facility than the default. When this
+    directive is used, ALL logging is done with the specified
+    facility, both authentication (secure) and otherwise.</p>
+
+  <p>The <strong><em>facility-level</em></strong> argument must be one
+    of the following: <strong>AUTH</strong> (or
+    <strong>AUTHPRIV</strong>)<strong>, CRON, DAEMON, KERN, LPR, MAIL,
+    NEWS, USER, UUCP, LOCAL0, LOCAL1, LOCAL2, LOCAL3, LOCAL4, LOCAL5,
+    LOCAL6 or LOCAL7.</strong></p>
+
   <p><strong>See Also:</strong> <a href="#SystemLog">SystemLog</a></p>
 
   <hr>
@@ -2902,7 +3107,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;,
 	    &lt;Anonymous&gt;, &lt;Global&gt;<br>
     <STRONG>Module:</STRONG> mod_core<BR>
-    <strong>Compatibility:</strong> 1.2.0rc2 later</p>
+    <strong>Compatibility:</strong> Post 1.2.0rc2 CVS and later</p>
   
   <P>SyslogLevel adjusts the verbosity of the messages recorded in the
   error logs.  The following <EM>level</EM>s are available, in order
@@ -2939,101 +3144,128 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
 
   <hr>
   <h2><a name="SystemLog"><strong>SystemLog</strong></a></h2>
-  <p><strong>Syntax:</strong> SystemLog <em>filename|NONE</em><br>
+  <p><strong>Syntax:</strong> <em>filename</em><br>
     <strong>Default:</strong> None<br>
     <strong>Context:</strong> server config<br>
   <STRONG>Module:</STRONG> mod_log<BR>
     <strong>Compatibility:</strong> 1.1.6pl1 and later</p>
-  <p>The SystemLog directive disables proftpd's use of the syslog mechanism and 
-    instead redirects all logging output to the specified <strong><em>filename</em></strong>. 
-    The <strong><em>filename</em></strong> argument should contain an absolute 
-    path. Use of this directive overrides any facility set by the <a href="#SyslogFacility">SyslogFacility</a> 
-    directive.</p>
-  <p>Additionally, the special keyword <strong><em>NONE</em></strong> can be used 
-    which disables all syslog style logging for the entire configuration.</p>
+
+  <p>The SystemLog directive disables proftpd's use of the syslog
+    mechanism and instead redirects all logging output to the
+    specified <strong><em>filename</em></strong>.  The
+    <strong><em>filename</em></strong> argument should contain an
+    absolute path. Use of this directive overrides any facility set by
+    the <a href="#SyslogFacility">SyslogFacility</a> directive.</p>
+
+  <p>Additionally, the special keyword <strong><em>NONE</em></strong>
+    can be used which disables all syslog style logging for the entire
+    configuration.</p>
+
   <hr>
   <h2><a name="tcpBackLog"><strong>tcpBackLog</strong></a></h2>
-  <p><strong>Syntax:</strong> tcpBackLog <em>backlog-size</em><br>
-    <strong>Default:</strong> <code>tcpBackLog 5</code><br>
+  <p><strong>Syntax:</strong> <em>backlog-size</em><br>
+    <strong>Default:</strong> 5<br>
     <strong>Context:</strong> server config<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
-  <p>The tcpBackLog directive controls the tcp &quot;backlog queue&quot; when 
-    listening for connections in <em><strong>standalone</strong></em> mode (see 
-    <a href="#ServerType">ServerType</a>). It has no affect upon 
-    servers in <em><strong>inetd</strong></em> mode. When a tcp connection is 
-    established by the tcp/ip stack inside the kernel, there is a short period 
-    of time between the actual establishment of the connection and the acceptance 
-    of the connection by a user-space program. The duration of this latency period 
-    is widely variable, and can depend upon several factors (hardware, system 
-    load, etc). During this period tcp connections cannot be accepted, as the 
-    port that was previously &quot;listening&quot; has become filled with the 
-    new connection. Under heavy connection load this can result in occasional 
-    (or even frequent!) &quot;connection refused&quot; messages returned to the 
-    incoming client, even when there is a service available to handle requests. 
-    To eliminate this problem, most modern tcp/ip stacks implement a &quot;backlog 
-    queue&quot; which is simply a pre-allocation of resources necessary to handle 
-    <em><strong>backlog-size</strong></em> connections during the latency period. 
-    The larger the backlog queue, the more connections can be established in a 
-    very short time period. The trade-off, of course, is kernel memory and/or 
+
+  <p>The tcpBackLog directive controls the tcp &quot;backlog
+    queue&quot; when listening for connections in
+    <em><strong>standalone</strong></em> mode (see <a
+    href="#ServerType">ServerType</a>). It has no affect upon servers
+    in <em><strong>inetd</strong></em> mode. When a tcp connection is
+    established by the tcp/ip stack inside the kernel, there is a
+    short period of time between the actual establishment of the
+    connection and the acceptance of the connection by a user-space
+    program. The duration of this latency period is widely variable,
+    and can depend upon several factors (hardware, system load,
+    etc). During this period tcp connections cannot be accepted, as
+    the port that was previously &quot;listening&quot; has become
+    filled with the new connection. Under heavy connection load this
+    can result in occasional (or even frequent!) &quot;connection
+    refused&quot; messages returned to the incoming client, even when
+    there is a service available to handle requests.  To eliminate
+    this problem, most modern tcp/ip stacks implement a &quot;backlog
+    queue&quot; which is simply a pre-allocation of resources
+    necessary to handle <em><strong>backlog-size</strong></em>
+    connections during the latency period.  The larger the backlog
+    queue, the more connections can be established in a very short
+    time period. The trade-off, of course, is kernel memory and/or
     other kernel resources.</p>
-  <p>Generally it is not necessary to use a tcpBackLog directive, unless you intend 
-    to service a large number of virtual hosts (see <a href="#VirtualHost">&lt;VirtualHost&gt;</a>), 
-    or have a consistently heavy system load. If you begin to notice or hear of 
-    &quot;connection refused&quot; messages from remote clients, try setting a 
-    slightly higher value to this directive.</p>
+
+  <p>Generally it is not necessary to use a tcpBackLog directive,
+    unless you intend to service a large number of virtual hosts (see
+    <a href="#VirtualHost">&lt;VirtualHost&gt;</a>), or have a
+    consistently heavy system load. If you begin to notice or hear of
+    &quot;connection refused&quot; messages from remote clients, try
+    setting a slightly higher value to this directive.</p>
+
   <hr>
   <h2><a name="tcpNoDelay"><strong>tcpNoDelay</strong></a></h2>
   <p><strong>Syntax:</strong> tcpNoDelay <em>on|off</em><br>
-    <strong>Default:</strong> <code>tcpNoDelay on</code><br>
+    <strong>Default:</strong> on<br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 1.2.0pre3a and later</p>
-  <p>The tcpNoDelay directive controls the use of the TCP_NODELAY socket option 
-    (which disables the Nagle algorithm). ProFTPd uses TCP_NODELAY by default, 
-    which usually is a benefit but this can occasionally lead to problems with 
-    some clients, so tcpNoDelay is provided as a way to disable this option. You 
-    will not normally need to use this directive but if you have clients reporting 
-    unusually slow connections, try setting this to <em><strong>off</strong></em>. 
+
+  <p>The tcpNoDelay directive controls the use of the TCP_NODELAY
+    socket option (which disables the Nagle algorithm). ProFTPd uses
+    TCP_NODELAY by default, which usually is a benefit but this can
+    occasionally lead to problems with some clients, so tcpNoDelay is
+    provided as a way to disable this option. You will not normally
+    need to use this directive but if you have clients reporting
+    unusually slow connections, try setting this to
+    <em><strong>off</strong></em>.
   </p>
+
   <hr>
   <h2><a name="tcpReceiveWindow">tcpReceiveWindow</a></h2>
   <p><strong>Syntax:</strong> tcpReceiveWindow <em>window-size</em><br>
-    <strong>Default:</strong> <code>tcpReceiveWindow 8192</code><br>
+    <strong>Default:</strong> 8192<br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
-  <p>The tcpReceiveWindow directive configures the size (in octets) of all data 
-    connections' tcp receive windows. It is only used when receiving a file from 
-    a client over the data connection. Typically, a given tcp/ip implementation 
-    will use a relatively small receive window size (the number of octets that 
-    can be received at the tcp layer before a &quot;turnaround&quot; acknowledgement 
-    is required). When transferring a large amount of data over fast digital transmission 
-    lines which have a relatively high latency, a small receive window can dramatically 
-    affect perceived throughput because of the necessity to completely stop the 
-    transfer occasionally in order to wait for the remote endpoint to receive 
-    the acknowledgement and continue transmission. For example, on a T1 line (assuming 
-    full 1.544Mbps endpoint-to-endpoint throughput) with 100 ms latency, a 4k 
-    receive buffer will very dramatically reduce the perceived throughput. The 
-    default value of 8192 octets (8k) should be reasonable in common network configurations.</p>
-  <p>Additionally, proftpd allocates its internal buffers to match the receive/send 
-    window sizes; in order to maximize the reception/transmission performance 
-    (reducing the number of times data must be transfered from proftpd to the 
-    kernel tcp/ip stack). The tradeoff, of course, is memory; both kernel- and 
-    user-space. If running proftpd on a memory tight host (and on a low-bandwidth 
-    connection), it might be advisable to decrease both the tcpReceiveWindow and 
-    <a href="#tcpSendWindow">tcpSendWindow</a> sizes.</p>
+
+  <p>The tcpReceiveWindow directive configures the size (in octets) of
+    all data connections' tcp receive windows. It is only used when
+    receiving a file from a client over the data
+    connection. Typically, a given tcp/ip implementation will use a
+    relatively small receive window size (the number of octets that
+    can be received at the tcp layer before a &quot;turnaround&quot;
+    acknowledgement is required). When transferring a large amount of
+    data over fast digital transmission lines which have a relatively
+    high latency, a small receive window can dramatically affect
+    perceived throughput because of the necessity to completely stop
+    the transfer occasionally in order to wait for the remote endpoint
+    to receive the acknowledgement and continue transmission. For
+    example, on a T1 line (assuming full 1.544Mbps
+    endpoint-to-endpoint throughput) with 100 ms latency, a 4k receive
+    buffer will very dramatically reduce the perceived throughput. The
+    default value of 8192 octets (8k) should be reasonable in common
+    network configurations.</p> <p>Additionally, proftpd allocates its
+    internal buffers to match the receive/ send window sizes; in order
+    to maximize the reception/transmission performance (reducing the
+    number of times data must be transfered from proftpd to the kernel
+    tcp/ip stack). The tradeoff, of course, is memory; both kernel-
+    and user-space. If running proftpd on a memory tight host (and on
+    a low-bandwidth connection), it might be advisable to decrease
+    both the tcpReceiveWindow and <a
+    href="#tcpSendWindow">tcpSendWindow</a> sizes.</p>
+
   <hr>
   <h2><a name="tcpSendWindow">tcpSendWindow</a></h2>
   <p><strong>Syntax:</strong> tcpSendWindow <em>window-size</em><br>
-    <strong>Default:</strong> <code>tcpSendWindow 8192</code><br>
+    <strong>Default:</strong> 8192<br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
-  <p>The tcpSendWindow directive configures the size (in octets) of all data connections' 
-    tcp send windows. It is only used when sending a file from the server to a 
-    client on the data connection. For a detailed description of receive/send 
-    window sizes see <a href="#tcpReceiveWindow">tcpReceiveWindow</a>.</p>
+
+  <p>The tcpSendWindow directive configures the size (in octets) of
+    all data connections' tcp send windows. It is only used when
+    sending a file from the server to a client on the data
+    connection. For a detailed description of receive/send window
+    sizes see <a href="#tcpReceiveWindow">tcpReceiveWindow</a>.</p>
+
   <hr>
   <h2><a name="TimesGMT">TimesGMT</a></h2>
   <p><strong>Syntax:</strong> TimesGMT <em>on|off</em><br>
@@ -3048,7 +3280,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <hr>
   <h2><a name="TimeoutIdle">TimeoutIdle</a></h2>
   <p><strong>Syntax:</strong> TimeoutIdle <em>seconds</em><br>
-    <strong>Default:</strong> <code>TimeoutIdle 600</code><br>
+    <strong>Default:</strong> 600<br>
     <strong>Context:</strong> server config<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
@@ -3065,7 +3297,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <hr>
   <h2><a name="TimeoutLogin">TimeoutLogin</a></h2>
   <p><strong>Syntax:</strong> TimeoutLogin <em>seconds</em><br>
-    <strong>Default:</strong> <code>TimeoutLogin 300</code><br>
+    <strong>Default:</strong> 300<br>
     <strong>Context:</strong> server config<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
@@ -3077,7 +3309,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <hr>
   <h2><a name="TimeoutNoTransfer">TimeoutNoTransfer</a></h2>
   <p><strong>Syntax:</strong> TimeoutNoTransfer <em>seconds</em><br>
-    <strong>Default:</strong> <code>TimeoutNoTransfer 600</code><br>
+    <strong>Default:</strong> 300<br>
     <strong>Context:</strong> server config<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
@@ -3089,7 +3321,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <hr>
   <h2><a name="TimeoutStalled">TimeoutStalled</a></h2>
   <p><strong>Syntax:</strong> TimeoutStalled <em>seconds</em><br>
-    <strong>Default:</strong> <code>TimeoutStalled 0</code><br>
+    <strong>Default:</strong> 3600<br>
     <strong>Context:</strong> server config<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 1.1.6 and later</p>
@@ -3101,10 +3333,10 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <hr>
   <h2><a name="TransferLog">TransferLog</a></h2>
   <p><strong>Syntax:</strong> TransferLog <em>filename|NONE</em><br>
-    <strong>Default:</strong> <code>TransferLog /var/log/xferlog</code><br>
+    <strong>Default:</strong> /var/log/xferlog<br>
     <strong>Context:</strong> server config, &lt;Anonymous&gt;, &lt;VirtualHost&gt;, 
-  <STRONG>Module:</STRONG> mod_core<BR>
     &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 1.1.4 and later</p>
   <p>The TransferLog directive configures the full path to the &quot;wu-ftpd style&quot; 
     file transfer log. Separate log files can be created for each <a href="#Anonymous">Anonymous</a> 
@@ -3118,8 +3350,8 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <p><strong>Syntax:</strong> Umask <em>file octal-mask</em> [<em>directory octal-mask]</em><br>
     <strong>Default:</strong> None<br>
     <strong>Context:</strong> server config, &lt;Anonymous&gt;, &lt;VirtualHost&gt;, 
-  <STRONG>Module:</STRONG> mod_core<BR>
     &lt;Directory&gt;, &lt;Global&gt;, .ftpaccess<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
   <p>Umask sets the mask applied to newly created file and directory permissions 
     within a given context. By default, the Umask in the server configuration, 
@@ -3133,20 +3365,45 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <hr>
   <h2><a name="UseFtpUsers">UseFtpUsers</a></h2>
   <p><strong>Syntax:</strong> UseFtpUsers <em>on|off</em><br>
-    <strong>Default:</strong> <code>UseFtpUsers on</code><br>
+    <strong>Default:</strong> <code>on</code><br>
     <strong>Context:</strong> server config, &lt;Anonymous&gt;, &lt;VirtualHost&gt;, 
-  <STRONG>Module:</STRONG> mod_core<BR>
     &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
   <p>Legacy FTP servers generally check a special authorization file (typically 
     /etc/ftpusers) when a client attempts to authenticate. If the user's name 
     is found in this file, FTP access is denied. For compatibility sake, proftpd 
     defaults to checking this file during authentication. This behavior can be 
     suppressed using the UseFtpUsers configuration directive.</p>
+
+<hr>
+<h2><a name="UseHostsAllowFile">UseHostsAllowFile</a></h2>
+<p><strong>Syntax:</strong> UseHostsAllowFile <em>filename</em><br>
+  <strong>Default:</strong> /etc/hosts.allow<br>
+  <strong>Context:</strong> server, &lt;Anonymous&gt;, &lt;VirtualHost&gt; <BR>
+  <STRONG>Module:</STRONG> mod_wrap<BR>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+  <P>UseHostsAllowFile specifies the IPs, networks or name based masks
+	    to be allowed to connect to the server in the same format
+	    as the hosts.allow/deny files.</P>
+
+  <P><EM>Example:</EM> UseHostsAllowFile /etc/ftpd.allow</P>
+
+  <hr>
+<h2><a name="">UseHostsDenyFile</a></h2>
+<p><strong>Syntax:</strong> UseHostsDenyFile <em>filename</em><br>
+  <strong>Default:</strong> /etc/hosts.deny<br>
+  <strong>Context:</strong> server, &lt;Anonymous&gt;, &lt;VirtualHost&gt; <BR>
+  <STRONG>Module:</STRONG> mod_wrap<BR>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+  <P>Specifies the hosts.deny compatible deny file for IP based
+	    security checks. See <A HREF="#UseHostsAllowFile">UseHostsAllowFile</A></P> 
+  <P><EM>Example:</EM> UseHostsDenyFile /etc/ftpd.deny</P>
+
   <hr>
   <h2><a name="UseReverseDNS">UseReverseDNS</a></h2>
   <p><strong>Syntax:</strong> UseReverseDNS <em>on|off</em><br>
-    <strong>Default:</strong> <code>UseReverseDNS on</code><br>
+    <strong>Default:</strong> on<br>
     <strong>Context:</strong> server config<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 1.1.7 and later</p>
@@ -3165,8 +3422,8 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <p><strong>Syntax:</strong> User <em>userid</em><br>
     <strong>Default:</strong> None<br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_core<BR>
     &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
   <p>The User directive configures which user the proftpd daemon will <strong>normally</strong> 
     run as. By default, proftpd runs as root which is considered undesirable 
@@ -3213,8 +3470,8 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <p><strong>Syntax:</strong> UserAlias <em>login-user userid</em><br>
     <strong>Default:</strong> None<br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_auth<BR>
     &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_auth<BR>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
   <p>The UserAlias directive creates a mapping from a login name transmitted by 
     a client (<em><strong>login-user</strong></em>) to a real system userid (<em><strong>userid</strong></em>). 
@@ -3241,8 +3498,8 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <p><strong>Syntax:</strong> UserPassword <em>userid hashed-password</em><br>
     <strong>Default:</strong> None<br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_core<BR>
     &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0pl5 and later</p>
   <p>The UserPassword directive creates a password for a particular user which 
     overrides the user's normal password in /etc/passwd (or /etc/shadow). The 
@@ -3300,11 +3557,12 @@ href="#tcpBackLog"><u>tcpBackLog</u></a><u> value on heavily loaded
 <h2><a name="UserRatio">UserRatio</a></h2>
 <p><strong>Syntax:</strong> UserRatio <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
-  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;,
+      &lt;Limit&gt;, .ftpaccess<br>
   <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
-  <p>The UserRatio directive ....</P>
+  <p>The UserRatio directive .... INCOMPLETE</P>
 
   <P>Example:</P>
   <P><code>UserRatio</code></P>
@@ -3312,7 +3570,7 @@ href="#tcpBackLog"><u>tcpBackLog</u></a><u> value on heavily loaded
 <hr>
 <h2><a name="WtmpLog">WtmpLog</a></h2>
 <p><strong>Syntax:</strong> WtmpLog <em>on|off|NONE</em><br>
-  <strong>Default:</strong> <code>WtmpLog on</code><br>
+  <strong>Default:</strong> on<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 1.1.7 and later</p>
@@ -3323,7 +3581,8 @@ href="#tcpBackLog"><u>tcpBackLog</u></a><u> value on heavily loaded
 
 <HR>
 
-<P>Please report any corrections or additions via http://bugs.proftpd.net/</P>
+<P>Please report any corrections or additions via <A
+HREF="http://bugs.proftpd.net/">Bugzilla</A> or to <A HREF="mailto:hamster@vom.tm">Mark</A></P>
  
 </BODY>
 </HTML>
