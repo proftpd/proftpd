@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.91 2002-07-24 22:20:20 castaglia Exp $
+ * $Id: main.c,v 1.92 2002-07-26 17:02:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1081,19 +1081,15 @@ void register_rehash(void *data, void (*fp)(void*))
 
 static void main_rehash(void *d1, void *d2, void *d3, void *d4) {
   struct rehash *rh;
-  server_rec *s,*snext,*old_main;
-  xaset_t *old_servers;
   int isdefault;
-  int max_fd;
-  fd_set rfd;
 
   rehash++;
 
-  old_servers = servers;
-  old_main = main_server;
-
   if (is_master && mpid) {
-    log_pri(LOG_NOTICE,"received SIGHUP -- master server rehashing configuration file.");
+    int max_fd;
+    fd_set rfd;
+
+    log_pri(LOG_NOTICE,"received SIGHUP -- master server rehashing configuration file (%d).", rehash);
 
     /* Make sure none of our children haven't completed start up */
     FD_ZERO(&rfd); max_fd = -1;
@@ -1118,38 +1114,28 @@ static void main_rehash(void *d1, void *d2, void *d3, void *d4) {
       }
     }
 
-    for(rh = rehash_list; rh; rh=rh->next)
+    for (rh = rehash_list; rh; rh=rh->next)
       rh->rehash(rh->data);
    
     init_config();
     init_conf_stacks();
 
     PRIVS_ROOT
-    if(parse_config_file(config_filename) == -1) {
+    if (parse_config_file(config_filename) == -1) {
       PRIVS_RELINQUISH
-      log_pri(LOG_ERR,"Fatal: unable to read configuration file '%s'.",
-              config_filename);
+      log_pri(LOG_ERR, "Fatal: unable to read configuration file '%s'.",
+        config_filename);
       end_login(1);
     }
     PRIVS_RELINQUISH
     free_conf_stacks();
+    fixup_servers();
 
     /* set resource limits */
     set_rlimits();
 
-    fixup_servers();
-
-    /* Free old configuration completely */
-
-    for(s = (server_rec*)old_servers->xas_list; s; s=snext) {
-      snext = s->next;
-      destroy_pool(s->pool);
-    }
-
-    destroy_pool(old_servers->mempool);
-
     /* Destroy the old bind list */
-    if(bind_pool) {
+    if (bind_pool) {
       destroy_pool(bind_pool);
       bind_pool = NULL;
     }
@@ -1209,6 +1195,9 @@ static void main_rehash(void *d1, void *d2, void *d3, void *d4) {
         addl_bindings(s);
       }
     }
+
+    rehash--;
+
   } else
     /* Child process -- cannot rehash, log error */
     log_pri(LOG_ERR,"received SIGHUP, cannot rehash child process");

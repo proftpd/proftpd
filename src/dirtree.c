@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.60 2002-07-15 15:39:01 castaglia Exp $
+ * $Id: dirtree.c,v 1.61 2002-07-26 17:02:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2029,7 +2029,7 @@ static void debug_dump_config(xaset_t *s,char *indent) {
   for (c = (config_rec *) s->xas_list; c; c = c->next) {
     log_debug(DEBUG5, "%s%s", indent, c->name);
     if (c->subset)
-      debug_dump_config(c->subset, pstrcat(permanent_pool, indent," ", NULL));
+      debug_dump_config(c->subset, pstrcat(c->pool, indent," ", NULL));
   }
 }
 
@@ -2652,6 +2652,17 @@ void init_config(void) {
   if (global_config_pool) {
     destroy_pool(global_config_pool);
     global_config_pool = NULL;
+  }
+
+  if (servers) {
+    server_rec *s, *s_next;
+
+    /* Free the old configuration completely */
+    for (s = (server_rec *) servers->xas_list; s; s = s_next) {
+      s_next = s->next;
+      destroy_pool(s->pool);
+    }
+    destroy_pool(servers->mempool);
   }
 
   servers = xaset_create(pool,NULL);

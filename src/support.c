@@ -26,7 +26,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.33 2002-07-09 22:20:10 castaglia Exp $
+ * $Id: support.c,v 1.34 2002-07-26 17:02:13 castaglia Exp $
  */
 
 /* History Log:
@@ -90,6 +90,7 @@ typedef struct _exithandler {
 typedef struct _sched {
   struct _sched *next,*prev;
 
+  pool *pool;
   void (*f)(void*,void*,void*,void*);
   int loops;
   void *a1,*a2,*a3,*a4;
@@ -174,16 +175,20 @@ void run_exit_handlers(void) {
 void schedule(void (*f)(void*,void*,void*,void*),int nloops,
               void *a1, void *a2, void *a3, void *a4)
 {
-  pool *p;
+  pool *p, *sub_pool;
   sched_t *s;
 
-  if(!scheds) {
+  if (!scheds) {
    p = make_sub_pool(permanent_pool);
-   scheds = xaset_create(p,NULL);
+   scheds = xaset_create(p, NULL);
+
   } else
    p = scheds->mempool;
 
-  s = (sched_t*)pcalloc(p,sizeof(sched_t));
+  sub_pool = make_sub_pool(p);
+
+  s = pcalloc(sub_pool, sizeof(sched_t));
+  s->pool = sub_pool;
   s->f = f;
   s->a1 = a1;
   s->a2 = a2;
@@ -205,6 +210,7 @@ void run_schedule(void) {
     if(s->loops-- <= 0) {
       s->f(s->a1,s->a2,s->a3,s->a4);
       xaset_remove(scheds,(xasetmember_t*)s);
+      destroy_pool(s->pool);
     }
   }
 }
