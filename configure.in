@@ -88,7 +88,25 @@ AC_ARG_WITH(includes,
   ],
   [ ac_addl_includes=`echo "$withval" | sed -e 's/:/ /g'` ;
     for ainclude in $ac_addl_includes; do
-      ac_build_addl_includes="-I$ainclude $ac_build_addl_includes"
+      if test x"$ac_build_addl_includes" = x ; then
+        ac_build_addl_includes="-I$ainclude"
+      else
+        ac_build_addl_includes="-I$ainclude $ac_build_addl_includes"
+      fi
+    done ])
+
+AC_ARG_WITH(libraries,
+  [  --with-libraries=LIST    add additional library paths to proftpd
+                          LIST is a ':' separated list of include paths to add
+                          e.g. --with-libraries=/some/mysql/libdir:/my/libs
+  ],
+  [ ac_addl_libraries=`echo "$withval" | sed -e 's/:/ /g'` ;
+    for ainclude in $ac_addl_libraries; do
+      if test x"$ac_build_addl_libraries" = x ; then
+        ac_build_addl_libraries="-L$ainclude"
+      else
+        ac_build_addl_libraries="-L$ainclude $ac_build_addl_libraries"
+      fi
     done ])
 
 AC_ARG_WITH(modules,
@@ -635,6 +653,7 @@ if test x"$enable_pam" != xno && \
 fi
 
 INCLUDES="$ac_build_addl_includes"
+LIBRARIES="$ac_build_addl_libraries"
 MODULES="$ac_core_modules $ac_addl_modules"
 BUILD_MODULES="$ac_build_core_modules $ac_build_addl_modules"
 VERSION=`cat $srcdir/include/version.h | grep "#define VERSION" | sed -e 's/^.*\"\(.*\)\"/\1/'`
@@ -643,6 +662,7 @@ AC_SUBST(MODULES)
 AC_SUBST(BUILD_MODULES)
 AC_SUBST(ADDL_DIRS)
 AC_SUBST(INCLUDES)
+AC_SUBST(LIBRARIES)
 AC_SUBST(VERSION)
 AC_CONFIG_HEADER(config.h)
 

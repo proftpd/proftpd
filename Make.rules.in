@@ -13,7 +13,7 @@ mandir=@mandir@
 
 PLATFORM=@OSREL@ @OSTYPE@
 LDFLAGS=@LDFLAGS@
-LIBS=@LIBS@
+LIBS=@LIBS@ @LIBRARIES@
 
 DEFAULT_PATHS=-DCONFIG_FILE_PATH=\"$(sysconfdir)/proftpd.conf\" -DPID_FILE_PATH=\"$(localstatedir)/proftpd.pid\" -DRUN_DIR=\"$(rundir)\"
 INCLUDES=-I.. -I$(top_srcdir)/include @INCLUDES@
