@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.16 2003-04-16 06:09:14 castaglia Exp $
+ * $Id: fsio.c,v 1.17 2003-04-16 07:34:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2582,7 +2582,7 @@ off_t pr_fs_getsize(char *path) {
 # if defined(HAVE_SYS_STATVFS_H)
 
 #  if _FILE_OFFSET_BITS == 64 && defined(SOLARIS2) && \
-   !defined(SOLARIS2_6) && !defined(SOLARIS2_7))
+   !defined(SOLARIS2_6) && !defined(SOLARIS2_7)
   /* Note: somewhere along the way, Sun decided that the prototype for
    * its statvfs64(2) function would include a statvfs64_t rather than
    * struct statvfs64.  In 2.6 and 2.7, it's struct statvfs64, and
