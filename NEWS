@@ -1,6 +1,6 @@
-$Id: NEWS,v 1.126 2001-08-16 19:58:18 flood Exp $
+$Id: NEWS,v 1.127 2001-08-17 15:43:18 flood Exp $
 
-1.2.2 - CVS
+1.2.2 - Released 08/17/2001
 ---------------------------------
 README.mod_sql update from author
 new mod_sql from author
