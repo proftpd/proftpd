@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.31 2003-11-01 07:11:07 castaglia Exp $
+ * $Id: modules.c,v 1.32 2003-11-09 01:55:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -58,8 +58,13 @@ static array_header *mcmdarr;			/* mastercmd array */
 static array_header *mautharr;			/* masterauth array */
 
 conftable *m_conftable; 			/* Master conf table */
+unsigned int n_conftabs;
+
 cmdtable *m_cmdtable;				/* Master cmd table */
+unsigned int n_cmdtabs;
+
 authtable *m_authtable;				/* Master auth table */
+unsigned int n_authtabs;
 
 module *curr_module = NULL;			/* Current running module */
 
@@ -622,8 +627,13 @@ int module_preparse_init(void) {
   push_array(mautharr);
 
   m_conftable = (conftable *) mconfarr->elts;
+  n_conftabs = mconfarr->nelts;
+
   m_cmdtable = (cmdtable *) mcmdarr->elts;
+  n_cmdtabs = mcmdarr->nelts;
+
   m_authtable = (authtable *) mautharr->elts;
+  n_authtabs = mautharr->nelts;
 
   return 0;
 }

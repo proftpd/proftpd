@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.206 2003-11-08 22:34:15 castaglia Exp $
+ * $Id: main.c,v 1.207 2003-11-09 01:55:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -110,7 +110,7 @@ session_t session;
 static unsigned char is_standalone = FALSE;
 
 /* Is this process the master standalone daemon process? */
-static unsigned char is_master = TRUE;
+unsigned char is_master = TRUE;
 
 pid_t mpid = 0;				/* Master pid */
 struct rehash *rehash_list = NULL;	/* Pre-rehash callbacks */
@@ -147,7 +147,10 @@ static int shutdownp = 0;
 
 /* Signal handling */
 static RETSIGTYPE sig_disconnect(int);
+
+#ifndef USE_CTRLS
 static RETSIGTYPE sig_debug(int);
+#endif /* !USE_CTRLS */
 
 volatile unsigned int recvd_signal_flags = 0;
 
@@ -161,6 +164,10 @@ static void handle_xcpu(void);
 static void handle_terminate(void);
 static void handle_terminate_other(void);
 static void finish_terminate(void);
+
+#ifndef USE_CTRLS
+static void handle_debug(void);
+#endif /* !USE_CTRLS */
 
 static const char *config_filename = CONFIG_FILE_PATH;
 
@@ -1132,7 +1139,13 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
   /* Child is running here */
   signal(SIGUSR1, sig_disconnect);
+
+#ifdef USE_CTRLS
+  signal(SIGUSR2, SIG_IGN);
+#else
   signal(SIGUSR2, sig_debug);
+#endif /* USE_CTRLS */
+
   signal(SIGCHLD, SIG_DFL);
   signal(SIGHUP, SIG_IGN);
 
@@ -1597,10 +1610,12 @@ void pr_signals_handle(void) {
       handle_chld();
     }
 
+#ifndef USE_CTRLS
     if (recvd_signal_flags & RECEIVED_SIG_DEBUG) {
       recvd_signal_flags &= ~RECEIVED_SIG_DEBUG;
-      debug_walk_pools();
+      handle_debug();
     }
+#endif /* !USE_CTRLS */
 
     if (recvd_signal_flags & RECEIVED_SIG_SEGV) {
       recvd_signal_flags &= ~RECEIVED_SIG_SEGV;
@@ -1659,12 +1674,14 @@ static RETSIGTYPE sig_rehash(int signo) {
   signal(SIGHUP, sig_rehash);
 }
 
+#ifndef USE_CTRLS
 /* sig_debug outputs some basic debugging info
  */
 static RETSIGTYPE sig_debug(int signo) {
   recvd_signal_flags |= RECEIVED_SIG_DEBUG;
   signal(SIGHUP, sig_debug);
 }
+#endif /* !USE_CTRLS */
 
 /* sig_disconnect is called in children when the parent daemon
  * detects that shutmsg has been created and ftp sessions should
@@ -1819,6 +1836,25 @@ static void handle_chld(void) {
   pr_alarms_unblock();
 }
 
+#ifndef USE_CTRLS
+static void debug_memory(const char *fmt, ...) {
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+  va_list msg;
+
+  va_start(msg, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, msg);
+  va_end(msg);
+
+  buf[sizeof(buf)-1] = '\0';
+
+  log_pri(PR_LOG_NOTICE, "%s", buf);
+}
+
+static void handle_debug(void) {
+  pr_pool_debug_memory(debug_memory);
+}
+#endif /* !USE_CTRLS */
+
 static void handle_xcpu(void) {
   log_pri(PR_LOG_NOTICE, "ProFTPD CPU limit exceeded (signal %d)", SIGXCPU);
   finish_terminate();
@@ -1930,7 +1966,6 @@ static void install_signal_handlers(void) {
 
   signal(SIGCHLD, sig_child);
   signal(SIGHUP, sig_rehash);
-  signal(SIGUSR2, sig_debug);
   signal(SIGINT, sig_terminate);
   signal(SIGQUIT, sig_terminate);
   signal(SIGILL, sig_terminate);
@@ -1949,6 +1984,12 @@ static void install_signal_handlers(void) {
 #ifdef SIGBUS
   signal(SIGBUS, sig_terminate);
 #endif /* SIGBUS */
+
+#ifdef USE_CTRLS
+  signal(SIGUSR2, SIG_IGN);
+#else
+  signal(SIGUSR2, sig_debug);
+#endif /* USE_CTRLS */
 
   /* In case our parent left signals blocked (as happens under some
    * poor inetd implementations)
@@ -2308,6 +2349,11 @@ static void inetd_main(void) {
   }
 #endif /* USE_IPV6 and IPV6_ADDRFORM */
 
+  pr_event_generate("core.startup", NULL);
+
+  module_daemon_startup();
+  module_remove_daemon_startups();
+
   init_bindings();
 
   /* Check our shutdown status */
@@ -2365,6 +2411,7 @@ static void standalone_main(void) {
   pr_close_scoreboard();
 
   pr_event_generate("core.startup", NULL);
+
   module_daemon_startup();
   module_remove_daemon_startups();
 
@@ -2638,6 +2685,10 @@ int main(int argc, char *argv[], char **envp) {
   free_bindings();
   init_config();
   init_stash();
+
+#ifdef USE_CTRLS
+  init_ctrls();
+#endif /* USE_CTRLS */
 
   module_preparse_init();
 

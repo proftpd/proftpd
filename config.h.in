@@ -622,6 +622,9 @@
 /* Define if auto-detection of shadow passwords is wanted.  */
 #undef USE_AUTO_SHADOW
 
+/* Define if controls support is desired.  */
+#undef USE_CTRLS
+
 /* Define if curses support, if available, should be used.  */
 #undef USE_CURSES
 

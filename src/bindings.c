@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.20 2003-11-09 00:52:35 castaglia Exp $
+ * $Id: bindings.c,v 1.21 2003-11-09 01:55:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -399,6 +399,40 @@ pr_ipbind_t *pr_ipbind_find(pr_netaddr_t *addr, unsigned int port,
   }
 
   /* default return value */
+  return NULL;
+}
+
+pr_ipbind_t *pr_ipbind_get(pr_ipbind_t *prev) {
+  static unsigned int i = 0;
+
+  if (prev) {
+
+    /* If there's another ipbind in this chain, simply return that. */
+    if (prev->ib_next)
+      return prev->ib_next;
+
+    /* If the increment is at the maximum size, return NULL (no more chains
+     * to be examined).
+     */
+    if (i == PR_BINDINGS_TABLE_SIZE)
+      return NULL;
+
+    /* Increment the index. At this point, we know that the given pointer is
+     * the last in the chain, and that there are more chains in the table
+     * to be examined.
+     */
+    i++;
+
+  } else
+    /* Reset the index if prev is NULL. */
+    i = 0;
+
+  /* Search for the next non-empty chain in the table. */
+  for (; i < PR_BINDINGS_TABLE_SIZE; i++) {
+    if (ipbind_table[i])
+      return ipbind_table[i];
+  }
+
   return NULL;
 }
 

@@ -19,7 +19,7 @@ Makefile: Makefile.in ../config.status
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
 
-src: $(OBJS)
+src: $(OBJS) $(FTPDCTL_OBJS)
 
 clean:
 	rm -f *.o

@@ -56,18 +56,21 @@ DEFINES=$(PLATFORM)
 
 OBJS=main.o timers.o sets.o pool.o regexp.o dirtree.o support.o netaddr.o \
      inet.o log.o bindings.o scoreboard.o feat.o netio.o response.o \
-     ident.o data.o modules.o auth.o fsio.o mkhome.o event.o
+     ident.o data.o modules.o auth.o fsio.o mkhome.o ctrls.o event.o
 BUILD_OBJS=src/main.o src/timers.o src/sets.o src/pool.o src/regexp.o \
            src/dirtree.o src/support.o src/netaddr.o src/inet.o src/log.o \
            src/bindings.o src/scoreboard.o src/feat.o src/netio.o \
            src/response.o src/ident.o src/data.o src/modules.o src/auth.o \
-           src/fsio.o src/mkhome.o src/event.o
+           src/fsio.o src/mkhome.o src/ctrls.o src/event.o
 
 MODULE_OBJS=@MODULE_OBJS@
 BUILD_MODULE_OBJS=@BUILD_MODULE_OBJS@ modules/module_glue.o
 
 FTPCOUNT_OBJS=ftpcount.o scoreboard.o
 BUILD_FTPCOUNT_OBJS=utils/ftpcount.o utils/scoreboard.o
+
+FTPDCTL_OBJS=ftpdctl.o pool.o netaddr.o log.o ctrls.o
+BUILD_FTPDCTL_OBJS=src/ftpdctl.o src/pool.o src/netaddr.o src/log.o src/ctrls.o
 
 FTPSHUT_OBJS=ftpshut.o
 BUILD_FTPSHUT_OBJS=utils/ftpshut.o

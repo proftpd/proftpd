@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.505 2003-11-08 23:34:24 castaglia Exp $
+$Id: NEWS,v 1.506 2003-11-09 01:55:28 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -17,6 +17,11 @@ CVS
 - Bug 2255 - RADIUS Service-Type should reflect attribute expectations.
 - Added Event API.
 - Bug 2272 - Address/port collision check needs to handle DefaultAddress.
+- Bug 2072 - Add Controls API.
+  This API includes a new program, ftpdctl, that is used to communicate
+  directly with the proftpd daemon via a new core module, mod_ctrls.  For
+  this new functionality to be used, proftpd must be configured using the
+  added --enable-ctrls option.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------

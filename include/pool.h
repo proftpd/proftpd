@@ -27,7 +27,7 @@
 /* Memory allocation/anti-leak system.  Yes, this *IS* stolen from Apache
  * also.  What can I say?  It makes sense, and it's safe (more overhead
  * though)
- * $Id: pool.h,v 1.15 2003-11-01 07:11:07 castaglia Exp $
+ * $Id: pool.h,v 1.16 2003-11-09 01:55:28 castaglia Exp $
  */
 
 #ifndef PR_POOL_H
@@ -51,7 +51,7 @@ pool *make_sub_pool(pool *);		/* All pools are sub-pools of perm */
 /* Clears out _everything_ in a pool, destroying any sub-pools */
 void destroy_pool(struct pool *);
 
-/* allocate memory from a pool */
+/* Allocate memory from a pool */
 void *palloc(struct pool *, int);
 void *pcalloc(struct pool *, int);
 extern char *pstrdup(struct pool *, const char *);
@@ -60,7 +60,7 @@ char *pstrcat(struct pool *, ...);       /* Must be char * */
 char *pdircat(struct pool *, ...);	/* Must be char * */
 
 /* MM debugging */
-void debug_walk_pools(void);
+void pr_pool_debug_memory(void (*)(const char *, ...));
 void pr_pool_tag(struct pool *, const char *);
 
 /* Array management */

@@ -20,7 +20,7 @@ INSTALL_SBIN=$(INSTALL) @INSTALL_STRIP@ -o $(INSTALL_USER) -g $(INSTALL_GROUP) -
 INSTALL_MAN=$(INSTALL) -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0644
 
 BUILD_PROFTPD_OBJS=$(BUILD_OBJS) $(BUILD_MODULE_OBJS)
-BUILD_BIN=proftpd$(EXEEXT) ftpcount$(EXEEXT) ftpshut$(EXEEXT) ftptop$(EXEEXT) ftpwho$(EXEEXT)
+BUILD_BIN=proftpd$(EXEEXT) ftpcount$(EXEEXT) ftpdctl$(EXEEXT) ftpshut$(EXEEXT) ftptop$(EXEEXT) ftpwho$(EXEEXT)
 
 
 all: $(BUILD_BIN)
@@ -55,6 +55,9 @@ proftpd$(EXEEXT): lib src modules dirs
 ftpcount$(EXEEXT): utils
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPCOUNT_OBJS)
 
+ftpdctl$(EXEEXT): src
+	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPDCTL_OBJS) -lsupp
+
 ftpshut$(EXEEXT): utils
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPSHUT_OBJS)
 
@@ -83,6 +86,7 @@ install-proftpd: proftpd $(DESTDIR)$(localstatedir) $(DESTDIR)$(sysconfdir) $(DE
 
 install-utils: $(DESTDIR)$(sbindir) $(DESTDIR)$(bindir)
 	$(INSTALL_BIN)  ftpcount $(DESTDIR)$(bindir)/ftpcount
+	$(INSTALL_BIN)  ftpdctl  $(DESTDIR)$(bindir)/ftpdctl
 	$(INSTALL_SBIN) ftpshut  $(DESTDIR)$(sbindir)/ftpshut
 	$(INSTALL_BIN)  ftptop   $(DESTDIR)$(bindir)/ftptop
 	$(INSTALL_BIN)  ftpwho   $(DESTDIR)$(bindir)/ftpwho

@@ -24,7 +24,7 @@
 
 /* ProFTPD bindings support routines.
  *
- * $Id: bindings.h,v 1.7 2003-09-29 00:00:49 castaglia Exp $
+ * $Id: bindings.h,v 1.8 2003-11-09 01:55:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -121,6 +121,12 @@ int pr_ipbind_add_binds(server_rec *server);
  */
 pr_ipbind_t *pr_ipbind_find(pr_netaddr_t *addr, unsigned int port,
   unsigned char skip_inactive);
+
+/* Iterate through the binding list, returning the next ipbind.  Returns NULL
+ * once the end of the list is reached.  If prev is NULL, the iterator
+ * restarts at the beginning of the list.
+ */
+pr_ipbind_t *pr_ipbind_get(pr_ipbind_t *prev);
 
 /* Search the binding list, and return the server_rec * that is bound to the
  * given IP address/port combination.
