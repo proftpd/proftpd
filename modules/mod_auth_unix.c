@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.10 2003-09-28 20:31:40 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.11 2003-09-28 23:56:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -789,13 +789,14 @@ MODRET pw_uid_name(cmd_rec *cmd) {
       pw = getpwuid(id.uid);
 
     if (pw) {
-      m->name = pstrdup(session.pool, pw->pw_name);
+      m->name = pstrdup(session.pool ? session.pool : permanent_pool,
+        pw->pw_name);
 
     } else {
       char buf[10] = {'\0'};
 
       snprintf(buf, sizeof(buf), "%lu", (unsigned long) id.uid);
-      m->name = pstrdup(session.pool, buf);
+      m->name = pstrdup(session.pool ? session.pool : permanent_pool, buf);
     }
   }
 
@@ -818,7 +819,8 @@ MODRET pw_gid_name(cmd_rec *cmd) {
       gr = getgrgid(id.gid);
 
     if (gr)
-      m->name = pstrdup(session.pool, gr->gr_name);
+      m->name = pstrdup(session.pool ? session.pool : permanent_pool,
+        gr->gr_name);
 
     else {
       char buf[10] = {'\0'};
@@ -828,7 +830,7 @@ MODRET pw_gid_name(cmd_rec *cmd) {
        * string modifier used for long long (is it %llu or %Lu, etc).
        */
       snprintf(buf, sizeof(buf), "%lu", (unsigned long) id.gid);
-      m->name = pstrdup(session.pool, buf);
+      m->name = pstrdup(session.pool ? session.pool : permanent_pool, buf);
     }
   }
 
