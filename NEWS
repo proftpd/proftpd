@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.236 2002-09-26 01:05:22 castaglia Exp $
+$Id: NEWS,v 1.237 2002-09-26 01:11:32 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -29,6 +29,7 @@ CVS
 - Bug 1713 - Scoreboard changes
 - Bug 1395 - Check return values in PRIVS calls
 - Bug 1732 - No checking for NULL at inet_ascii and pr_fnmatch
+- Bug 1687 - Add contrib module for RADIUS authentication, accounting
 
 1.2.6 - Released 2002-09-04
 ---------------------------------
