@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.44 2003-03-14 18:27:25 castaglia Exp $
+ * $Id: mod_sql.c,v 1.45 2003-03-17 16:48:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1770,7 +1770,7 @@ MODRET log_master(cmd_rec * cmd)
   }
   
   /* handle implit queries */
-  name = pstrcat(cmd->tmp_pool, "SQLLog_*", cmd->argv[0], NULL);
+  name = pstrcat(cmd->tmp_pool, "SQLLog_*", NULL);
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
 

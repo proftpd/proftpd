@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.402 2003-03-15 03:33:26 castaglia Exp $
+$Id: NEWS,v 1.403 2003-03-17 16:48:29 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -59,6 +59,7 @@ CVS
   (8 hours).  The fix involves marking mod_sql_mysql sessions as interactive;
   this means that users may use the 'interactive-timeout' option in their
   .cnf files to override the default interactive session timeout (also 8 hours).
+- Bug 1989 - SQLLog '*' doesn't match any commands.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------
