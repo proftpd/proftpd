@@ -26,7 +26,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.41 2002-10-28 22:30:03 castaglia Exp $
+ * $Id: support.c,v 1.42 2002-11-22 19:19:10 jwm Exp $
  */
 
 #include "conf.h"
@@ -37,7 +37,7 @@
 # include <sys/statvfs.h>
 #elif defined(HAVE_SYS_VFS_H)
 # include <sys/vfs.h>
-#elif defined(__FreeBSD__) && defined(HAVE_STATFS)
+#elif defined(HAVE_SYS_MOUNT_H)
 # include <sys/mount.h>
 #endif
 
@@ -828,34 +828,31 @@ static off_t _calc_fs(size_t blocks, size_t bsize) {
   return (res_lo >> 10) | (res_hi << 6);
 }
 
-# if defined(__FreeBSD__) && defined(HAVE_STATFS)
 off_t get_fs_size(char *s) {
-  struct statfs fs;
-
-  if (statfs(s, &fs) != 0)
-    return 0;
-
-  return _calc_fs(fs.f_bavail, fs.f_bsize);
-}
-# elif defined(HAVE_SYS_STATVFS_H)
-off_t get_fs_size(char *s) {
+# if defined(HAVE_SYS_STATVFS_H)
   struct statvfs fs;
-
+  
   if (statvfs(s, &fs) != 0)
     return 0;
 
   return _calc_fs(fs.f_bavail, fs.f_frsize);
-}
+
 # elif defined(HAVE_SYS_VFS_H)
-off_t get_fs_size(char *s) {
   struct statfs fs;
 
   if (statfs(s, &fs) != 0)
     return 0;
 
   return _calc_fs(fs.f_bavail, fs.f_bsize);
-}
+# elif defined(HAVE_STATFS)
+  struct statfs fs;
+
+  if (statfs(s, &fs) != 0)
+    return 0;
+
+  return _calc_fs(fs.f_bavail, fs.f_bsize);
 # endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
+}
 #endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
 
 /* "safe" strcat, saves room for \0 at end of dest, and refuses to copy

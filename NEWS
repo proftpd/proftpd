@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.285 2002-11-22 00:19:20 castaglia Exp $
+$Id: NEWS,v 1.286 2002-11-22 19:19:10 jwm Exp $
 
 CVS
 ---------------------------------
@@ -16,6 +16,8 @@ CVS
   provide this function, as ncurses does.  The patch works around this by
   using halfdelay() if linking against ncurses, and using nodelay() and sleep()
   if linking against curses.
+- Bug 1839 - undefined reference to `get_fs_size'. Expand BSD
+  statfs()/statvfs() support beyond FreeBSD.
 
 1.2.7rc3 - Released 15-11-2002
 ---------------------------------

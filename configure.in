@@ -496,7 +496,7 @@ if test x"$enable_pam" != xno ; then
 fi
 
 AC_CHECK_HEADERS(ctype.h getopt.h crypt.h bstring.h strings.h limits.h)
-AC_CHECK_HEADERS(sys/types.h sys/param.h sys/file.h sys/uio.h)
+AC_CHECK_HEADERS(sys/types.h sys/mount.h sys/param.h sys/file.h sys/uio.h)
 AC_CHECK_HEADERS(netdb.h netinet/in.h netinet/tcp.h arpa/inet.h sys/stat.h)
 AC_CHECK_HEADERS(errno.h sys/socket.h sys/termios.h sys/termio.h)
 AC_CHECK_HEADERS(sys/statvfs.h sys/vfs.h sys/select.h)
