@@ -589,7 +589,12 @@ case "$host" in
   [*-linux-*])
     rev=`uname -r | awk -F'[[.-]]' '{printf "%03d%03d%03d", $1, $2, $3}'`
     if test $rev -ge 002001097; then
-      ac_add_capabilities="yes"
+      AC_CHECK_HEADER(linux/capabilities.h, have_linux_capabilities_h="yes",
+                      have_linux_capabilities_h="no")
+
+      if test have_linux_capabilities_h = "yes"; then
+        ac_add_capabilities="yes"
+      fi
     fi
 esac
 AC_MSG_RESULT($ac_add_capabilities)

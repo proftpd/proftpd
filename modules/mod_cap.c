@@ -31,15 +31,22 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -Llib/libcap -lcap$
  * $Directories: lib/libcap$
- * $Id: mod_cap.c,v 1.2 2003-01-03 02:47:35 jwm Exp $
+ * $Id: mod_cap.c,v 1.3 2003-01-03 03:02:22 jwm Exp $
  */
 
-#include <stdio.h>
 #include <stdlib.h>
-#ifdef __powerpc__
-#define _LINUX_BYTEORDER_GENERIC_H
-#endif
-#include <linux/capability.h>
+
+#ifdef LINUX
+# ifdef __powerpc__
+# define _LINUX_BYTEORDER_GENERIC_H
+# endif
+
+/*# ifdef HAVE_LINUX_CAPABILITY_H*/
+#  include <linux/capability.h>
+/*# endif HAVE_LINUX_CAPABILITY_H */
+#endif /* LINUX */
+
+/* What are these here for? */
 #undef WNOHANG
 #undef WUNTRACED
 
@@ -118,7 +125,7 @@ static int lp_set_cap(void) {
 /* Configuration handlers
  */
 
-MODRET set_linuxprivscaps(cmd_rec *cmd) {
+MODRET set_caps(cmd_rec *cmd) {
   unsigned char use_chown = TRUE;
   config_rec *c = NULL;
   register unsigned int i = 0;
@@ -155,7 +162,7 @@ MODRET set_linuxprivscaps(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_linuxprivsengine(cmd_rec *cmd) {
+MODRET set_capengine(cmd_rec *cmd) {
   int bool = -1;
   config_rec *c = NULL;
 
@@ -179,7 +186,7 @@ MODRET set_linuxprivsengine(cmd_rec *cmd) {
  * successfully completed, which means authentication is successful,
  * so we can "tweak" our root access down to almost nothing.
  */
-MODRET linuxprivs_post_pass(cmd_rec *cmd) {
+MODRET cap_post_pass(cmd_rec *cmd) {
   int ret;
 
   if (!use_capabilities)
@@ -257,15 +264,15 @@ MODRET linuxprivs_post_pass(cmd_rec *cmd) {
 /* Initialization routines
  */
 
-static int linuxprivs_sess_init(void) {
+static int cap_sess_init(void) {
   /* Check to see if the lowering of capabilities has been disabled in the
    * configuration file.
    */
   if (use_capabilities) {
-    unsigned char *linuxprivs_engine = get_param_ptr(main_server->conf,
-      "LinuxPrivsEngine", FALSE);
+    unsigned char *cap_engine = get_param_ptr(main_server->conf,
+                                              "CapabilitiesEngine", FALSE);
 
-    if (linuxprivs_engine && *linuxprivs_engine == FALSE) {
+    if (cap_engine && *cap_engine == FALSE) {
       log_debug(DEBUG3, MOD_CAP_VERSION ": lowering of capabilities disabled");
       use_capabilities = FALSE;
     }
@@ -276,7 +283,7 @@ static int linuxprivs_sess_init(void) {
     config_rec *c = NULL;
 
     if ((c = find_config(main_server->conf, CONF_PARAM,
-                         "LinuxPrivsCapabilities", FALSE)) != NULL)
+                         "EnableCapabilities", FALSE)) != NULL)
     {
       /* use_cap_chown is stored in c->argv[0] */
       if (*((unsigned char *) c->argv[0]) == FALSE) {
@@ -289,10 +296,9 @@ static int linuxprivs_sess_init(void) {
   return 0;
 }
 
-static int linuxprivs_init(void) {
-
+static int cap_module_init(void) {
   /* Attempt to determine if we are running on a kernel that supports
-   * linuxprivs, this allows binary distributions to include the module
+   * capabilities. This allows binary distributions to include the module
    * even if it may not work.
    */
   if (!cap_get_proc() && errno == ENOSYS) {
@@ -309,13 +315,13 @@ static int linuxprivs_init(void) {
  */
 
 static conftable cap_conftab[] = {
-  { "LinuxPrivsCapabilities", set_linuxprivscaps,   NULL },
-  { "LinuxPrivsEngine",       set_linuxprivsengine, NULL },
+  { "EnableCapabilities", set_caps,      NULL },
+  { "CapabilitiesEngine", set_capengine, NULL },
   { NULL, NULL, NULL }
 };
 
 static cmdtable cap_cmdtab[] = {
-  { POST_CMD, C_PASS, G_NONE, linuxprivs_post_pass, TRUE, FALSE },
+  { POST_CMD, C_PASS, G_NONE, cap_post_pass, TRUE, FALSE },
   { 0, NULL }
 };
 
@@ -338,8 +344,8 @@ module cap_module = {
   NULL,
 
   /* Module initialization */
-  linuxprivs_init,
+  cap_init,
 
   /* Session initialization */
-  linuxprivs_sess_init
+  cap_sess_init
 };
