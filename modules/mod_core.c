@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.95 2002-07-22 22:17:05 castaglia Exp $
+ * $Id: mod_core.c,v 1.96 2002-07-22 23:18:51 castaglia Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -2936,6 +2936,20 @@ MODRET set_defaulttransfermode(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+MODRET set_deferwelcome(cmd_rec *cmd) {
+  int bool = -1;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
+
+  add_config_param(cmd->argv[0], 1, (void *) bool);
+
+  return HANDLED(cmd);
+}
+
 MODRET set_classes(cmd_rec *cmd) {
   int bool = -1;
   config_rec *c = NULL;
@@ -3189,6 +3203,7 @@ static conftable core_conftab[] = {
   { "CommandBufferSize",	set_commandbuffersize,		NULL },
   { "DefaultServer",		set_defaultserver,		NULL },
   { "DefaultTransferMode",	set_defaulttransfermode,	NULL },
+  { "DeferWelcome",		set_deferwelcome,		NULL },
   { "Define",			add_define,			NULL },
   { "Deny",			add_deny,			NULL },
   { "DenyAll",			set_denyall,			NULL },

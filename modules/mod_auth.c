@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.79 2002-07-22 22:17:05 castaglia Exp $
+ * $Id: mod_auth.c,v 1.80 2002-07-22 23:18:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1887,20 +1887,6 @@ MODRET set_authusingalias(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_deferwelcome(cmd_rec *cmd) {
-  int bool = -1;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-
-  if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected Boolean parameter");
-
-  add_config_param(cmd->argv[0], 1, (void *) bool);
-
-  return HANDLED(cmd);
-}
-
 MODRET add_defaultroot(cmd_rec *cmd) {
   config_rec *c;
   char *dir,**argv;
@@ -2232,7 +2218,6 @@ static conftable auth_conftab[] = {
   { "AuthUsingAlias",		set_authusingalias,		NULL },
   { "DefaultChdir",		add_defaultchdir,		NULL },
   { "DefaultRoot",		add_defaultroot,		NULL },
-  { "DeferWelcome",		set_deferwelcome,		NULL },
   { "GroupPassword",		set_grouppassword,		NULL },
   { "LoginPasswordPrompt",	set_loginpasswordprompt,	NULL },
   { "MaxLoginAttempts",		set_maxloginattempts,		NULL },
