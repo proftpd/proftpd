@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.2 2002-12-06 21:32:37 castaglia Exp $
+ * $Id: fsio.c,v 1.3 2002-12-06 21:37:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2477,7 +2477,7 @@ off_t pr_fs_getsize(char *path) {
   if (statvfs(path, &fs) != 0)
     return 0;
 
-  return _calc_fs(fs.f_bavail, fs.f_frsize);
+  return calc_fs_size(fs.f_bavail, fs.f_frsize);
 
 # elif defined(HAVE_SYS_VFS_H)
   struct statfs fs;
@@ -2485,14 +2485,14 @@ off_t pr_fs_getsize(char *path) {
   if (statfs(path, &fs) != 0)
     return 0;
 
-  return _calc_fs(fs.f_bavail, fs.f_bsize);
+  return calc_fs_size(fs.f_bavail, fs.f_bsize);
 # elif defined(HAVE_STATFS)
   struct statfs fs;
 
   if (statfs(path, &fs) != 0)
     return 0;
 
-  return _calc_fs(fs.f_bavail, fs.f_bsize);
+  return calc_fs_size(fs.f_bavail, fs.f_bsize);
 # endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
 }
 #endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
