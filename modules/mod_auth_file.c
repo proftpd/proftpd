@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.20 2004-05-11 23:37:44 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.21 2004-07-21 23:58:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -31,7 +31,7 @@
 /* AIX has some rather stupid function prototype inconsistencies between
  * their crypt.h and stdlib.h's setkey() declarations.
  */
-#if defined(HAVE_CRYPT_H) && !defined(AIX4)
+#if defined(HAVE_CRYPT_H) && !defined(AIX4) && !defined(AIX5)
 # include <crypt.h>
 #endif
 

@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.16 2004-05-11 23:37:44 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.17 2004-07-21 23:58:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -33,7 +33,7 @@
 /* AIX has some rather stupid function prototype inconsistencies between
  * their crypt.h and stdlib.h's setkey() declarations.  *sigh*
  */
-#if defined(HAVE_CRYPT_H) && !defined(AIX4)
+#if defined(HAVE_CRYPT_H) && !defined(AIX4) && !defined(AIX5)
 # include <crypt.h>
 #endif
 
