@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.511 2003-11-15 19:52:22 castaglia Exp $
+$Id: NEWS,v 1.512 2003-11-15 20:27:30 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -41,6 +41,18 @@ CVS
 - Bug 2274 - Default server only binds to one IP address of host if
   the --enable-ipv6 configure option is used.  ProFTPD will now properly
   bind to all addresses for the default "server config" server.
+- Bug 2048 - Add ability to get configuration file values from environment.
+  For example, you can now have the following in your proftpd.conf:
+
+    DefaultAddress %{env:PR_DEFAULT_ADDR}
+
+  which indicates to ProFTPD's configuration parser to get the value of
+  the PR_DEFAULT_ADDR environment variable, and substitute it in, e.g.:
+
+    PR_DEFAULT_ADDR=1.2.3.4 ./proftpd ...
+
+  If the indicated environment variable is not present, the value is
+  substituted with the empty string.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------

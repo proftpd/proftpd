@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.131 2003-11-15 19:52:22 castaglia Exp $
+ * $Id: dirtree.c,v 1.132 2003-11-15 20:27:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -650,6 +650,24 @@ char *get_config_line(char *buf, size_t len) {
   return NULL;
 }
 
+static char *get_config_word(pool *p, char *word) {
+#ifdef HAVE_GETENV
+  /* Is the given word use the environment syntax? */
+  if (strncmp(word, "%{env:", 6) == 0 &&
+      word[strlen(word)-1] == '}') {
+    char *env;
+
+    word[strlen(word)-1] = '\0';
+
+    env = getenv(word + 6);
+
+    return env ? pstrdup(p, env) : "";
+  }
+#endif /* HAVE_GETENV */
+
+  return pstrdup(p, word);
+}
+
 static cmd_rec *get_config_cmd(pool *ppool) {
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'}, *word = NULL;
   cmd_rec *new_cmd = NULL;
@@ -665,23 +683,28 @@ static cmd_rec *get_config_cmd(pool *ppool) {
 
     new_cmd = (cmd_rec *) pcalloc(new_pool, sizeof(cmd_rec));
     new_cmd->pool = new_pool;
-    tarr = make_array(new_pool,4,sizeof(char**));
+    tarr = make_array(new_pool, 4, sizeof(char **));
 
     /* Add each word to the array */
     while ((word = get_word(&bufp, FALSE)) != NULL) {
-      char *tmp = pstrdup(new_pool, word);
 
-      *((char **)push_array(tarr)) = tmp; /* pstrdup(new_pool,word); */
+      /* Should this word be replaced with a value from the environment?
+       * If so, tmp will contain the expanded value, otherwise it will be
+       * a duplicate.
+       */
+      char *tmp = get_config_word(new_pool, word);
+
+      *((char **) push_array(tarr)) = tmp;
       new_cmd->argc++;
     }
 
-    *((char **)push_array(tarr)) = NULL;
+    *((char **) push_array(tarr)) = NULL;
 
     /* The array header's job is done, we can forget about it and
      * it will get purged when the command's pool is cleared
      */
 
-    new_cmd->argv = (char **)tarr->elts;
+    new_cmd->argv = (char **) tarr->elts;
 
     /* Perform a fixup on configuration directives so that:
      * -argv[0]--  -argv[1]-- ----argv[2]-----
