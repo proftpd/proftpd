@@ -734,7 +734,7 @@ static int tls_init_server(void) {
      */
  
     if ((tls_ca_chain = get_param_ptr(main_server->conf,
-        "TLSCACertificateChain", FALSE))) {
+        "TLSCertificateChainFile", FALSE))) {
       SSL_CTX_set_client_CA_list(ssl_ctx,
         SSL_load_client_CA_file(tls_ca_chain));
 
