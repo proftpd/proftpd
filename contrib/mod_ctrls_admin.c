@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.13 2004-04-14 18:11:41 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.14 2004-04-20 20:57:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -215,6 +215,9 @@ static int ctrls_handle_dump(pr_ctrls_t *ctrl, int reqargc,
           }
         }
       }
+
+      pr_ctrls_add_response(ctrl, "  Satisfy %s",
+        cls->cls_satisfy == PR_CLASS_SATISFY_ANY ? "any rule" : "all rules");
 
       cls = pr_class_get(cls);
 
