@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.231 2004-04-28 21:29:30 castaglia Exp $
+ * $Id: mod_core.c,v 1.232 2004-05-21 17:19:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -834,6 +834,26 @@ MODRET set_timeoutidle(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = timeout;
+
+  return HANDLED(cmd);
+}
+
+MODRET set_timeoutlinger(cmd_rec *cmd) {
+  long timeout = -1;
+  char *endp = NULL;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  timeout = strtol(cmd->argv[1], &endp, 10);
+
+  if ((endp && *endp) || timeout < 0 || timeout > 65535)
+    CONF_ERROR(cmd, "timeout values must be between 0 and 65535");
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(long));
+  *((long *) c->argv[0]) = timeout;
 
   return HANDLED(cmd);
 }
@@ -4389,13 +4409,18 @@ static int core_sess_init(void) {
   unsigned int *debug_level = NULL;
 
   /* Check for a server-specific TimeoutIdle. */
-  if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutIdle",
-      FALSE)) != NULL)
+  c = find_config(main_server->conf, CONF_PARAM, "TimeoutIdle", FALSE);
+  if (c != NULL)
     TimeoutIdle = *((int *) c->argv[0]);
 
+  /* Check for a server-specific TimeoutLinger */
+  c = find_config(main_server->conf, CONF_PARAM, "TimeoutLinger", FALSE);
+  if (c != NULL)
+    pr_data_set_linger(*((long *) c->argv[0]));
+  
   /* Check for a configured DebugLevel. */
-  if ((debug_level = get_param_ptr(main_server->conf, "DebugLevel",
-      FALSE)) != NULL)
+  debug_level = get_param_ptr(main_server->conf, "DebugLevel", FALSE);
+  if (debug_level != NULL)
     pr_log_setdebuglevel(*debug_level);
 
 #ifdef HAVE_SETENV
@@ -4572,6 +4597,7 @@ static conftable core_conftab[] = {
   { "SyslogFacility",		set_syslogfacility,		NULL },
   { "SyslogLevel",		set_sysloglevel,		NULL },
   { "TimeoutIdle",		set_timeoutidle,		NULL },
+  { "TimeoutLinger",		set_timeoutlinger,		NULL },
   { "TimesGMT",			set_timesgmt,			NULL },
   { "TransferLog",		add_transferlog,		NULL },
   { "Umask",			set_umask,			NULL },

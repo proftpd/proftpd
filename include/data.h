@@ -25,7 +25,7 @@
  */
 
 /* Data connection management prototypes
- * $Id: data.h,v 1.15 2003-04-08 18:47:07 castaglia Exp $
+ * $Id: data.h,v 1.16 2004-05-21 17:19:02 castaglia Exp $
  */
 
 #ifndef PR_DATACONN_H
@@ -38,6 +38,7 @@ void pr_data_close(int);
 void pr_data_abort(int, int);
 int pr_data_xfer(char *, int);
 void pr_data_reset(void);
+void pr_data_set_linger(long);
 
 #ifdef HAVE_SENDFILE
 typedef

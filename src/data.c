@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.77 2004-05-17 18:24:15 castaglia Exp $
+ * $Id: data.c,v 1.78 2004-05-21 17:19:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -50,6 +50,8 @@
  * in either read or write mode)
  */
 static pr_netio_stream_t *nstrm = NULL;
+
+static long timeout_linger = PR_TUNABLE_TIMEOUTLINGER;
 
 /* Called if the "Stalled" timer goes off
  */
@@ -419,6 +421,10 @@ static int data_active_open(char *reason, off_t size) {
   return -1;
 }
 
+void pr_data_set_linger(long linger) {
+  timeout_linger = linger;
+}
+
 void pr_data_reset(void) {
   if (session.d && session.d->pool)
     destroy_pool(session.d->pool);
@@ -532,7 +538,7 @@ void pr_data_close(int quiet) {
   nstrm = NULL;
 
   if (session.d) {
-    pr_inet_lingering_close(session.pool, session.d, PR_TUNABLE_TIMEOUTLINGER);
+    pr_inet_lingering_close(session.pool, session.d, timeout_linger);
     session.d = NULL;
   }
 
@@ -565,7 +571,7 @@ void pr_data_close(int quiet) {
 void pr_data_cleanup(void) {
   /* sanity check */
   if (session.d) {
-    pr_inet_lingering_close(session.pool, session.d, PR_TUNABLE_TIMEOUTLINGER);
+    pr_inet_lingering_close(session.pool, session.d, timeout_linger);
     session.d = NULL;
   }
 
@@ -584,7 +590,7 @@ void pr_data_abort(int err, int quiet) {
   nstrm = NULL;
 
   if (session.d) {
-    pr_inet_lingering_close(session.pool, session.d, PR_TUNABLE_TIMEOUTLINGER);
+    pr_inet_lingering_close(session.pool, session.d, timeout_linger);
     session.d = NULL;
   }
 
