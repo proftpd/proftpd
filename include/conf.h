@@ -24,7 +24,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.11 2001-08-16 20:00:51 flood Exp $
+ * $Id: conf.h,v 1.12 2001-09-26 15:00:33 flood Exp $
  */
 
 #ifndef __CONF_H
@@ -53,6 +53,10 @@
 
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
+#endif
+
+#ifdef HAVE_LIMITS_H
+# include <limits.h>
 #endif
 
 #ifdef HAVE_SYS_SELECT_H

@@ -1,9 +1,10 @@
-$Id: NEWS,v 1.128 2001-09-26 14:58:02 flood Exp $
+$Id: NEWS,v 1.129 2001-09-26 15:00:33 flood Exp $
 
 1.2.3 - CVS
 ---------------------------------
 PASS argument now intentionally hidden in the proctitle.
 - Bug 1331 - Reverse DNS is now forward checked for security
+- Bug 1305 - limits.h is now included if present
 
 1.2.2 - Released 08/17/2001
 ---------------------------------
