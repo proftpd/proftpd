@@ -1,7 +1,8 @@
-$Id: NEWS,v 1.122 2001-08-01 15:17:06 flood Exp $
+$Id: NEWS,v 1.123 2001-08-01 15:18:33 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+README.mod_sql update from author
 - Bug 1145 - DirFakeUser now applies to STAT
 - Bug 1216 - xferlog man page update
 - Bug 1111 - INSTALL update
