@@ -2979,7 +2979,8 @@ MODRET set_tlscacertfile(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if (!file_exists(cmd->argv[1]))
-    CONF_ERROR(cmd, "file does not exist");
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
+      "' does not exist", NULL));
 
   if (*cmd->argv[1] != '/')
     CONF_ERROR(cmd, "parameter must be an absolute path");
@@ -3009,7 +3010,8 @@ MODRET set_tlscacrlfile(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if (!file_exists(cmd->argv[1]))
-    CONF_ERROR(cmd, "file does not exist");
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
+      "' does not exist", NULL));
 
   if (*cmd->argv[1] != '/')
     CONF_ERROR(cmd, "parameter must be an absolute path");
@@ -3039,7 +3041,8 @@ MODRET set_tlscertchain(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if (!file_exists(cmd->argv[1]))
-    CONF_ERROR(cmd, "file does not exist");
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
+      "' does not exist", NULL));
 
   if (*cmd->argv[1] != '/')
     CONF_ERROR(cmd, "parameter must be an absolute path");
@@ -3063,7 +3066,8 @@ MODRET set_tlsdhparamfile(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if (!file_exists(cmd->argv[1]))
-    CONF_ERROR(cmd, "file does not exist");
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
+      "' does not exist", NULL));
 
   if (*cmd->argv[1] != '/')
     CONF_ERROR(cmd, "parameter must be an absolute path");
@@ -3078,7 +3082,8 @@ MODRET set_tlsdsacertfile(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if (!file_exists(cmd->argv[1]))
-    CONF_ERROR(cmd, "file does not exist");
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
+      "' does not exist", NULL));
 
   if (*cmd->argv[1] != '/')
     CONF_ERROR(cmd, "parameter must be an absolute path");
@@ -3093,7 +3098,8 @@ MODRET set_tlsdsakeyfile(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if (!file_exists(cmd->argv[1]))
-    CONF_ERROR(cmd, "file does not exist");
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
+      "' does not exist", NULL));
 
   if (*cmd->argv[1] != '/')
     CONF_ERROR(cmd, "parameter must be an absolute path");
@@ -3342,7 +3348,8 @@ MODRET set_tlsrsacertfile(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if (!file_exists(cmd->argv[1]))
-    CONF_ERROR(cmd, "file does not exist");
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
+      "' does not exist", NULL));
 
   if (*cmd->argv[1] != '/')
     CONF_ERROR(cmd, "parameter must be an absolute path");
@@ -3357,7 +3364,8 @@ MODRET set_tlsrsakeyfile(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if (!file_exists(cmd->argv[1]))
-    CONF_ERROR(cmd, "file does not exist");
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
+      "' does not exist", NULL));
 
   if (*cmd->argv[1] != '/')
     CONF_ERROR(cmd, "parameter must be an absolute path");
