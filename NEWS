@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.628 2004-11-20 22:35:37 castaglia Exp $
+$Id: NEWS,v 1.629 2004-11-21 19:09:38 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -76,6 +76,7 @@ CVS
   change, the Bind directive is now deprecated.  See the RELEASE_NOTES
   for more details.
 - Bug 2516 - Getting "421 Login Timeout" immediately upon connect.
+- Bug 2520 - Turning on AuthAliasOnly disables MaxClientsPerHost.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

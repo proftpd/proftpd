@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.197 2004-11-02 18:18:58 castaglia Exp $
+ * $Id: mod_auth.c,v 1.198 2004-11-21 19:09:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1708,8 +1708,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     break;
   }
 
-  if ((maxc = find_config((anon_config ? anon_config->subset :
-      cmd->server->conf), CONF_PARAM, "MaxClientsPerHost", FALSE)) != NULL) {
+  maxc = find_config(TOPLEVEL_CONF, CONF_PARAM, "MaxClientsPerHost", FALSE);
+  if (maxc) {
     char *maxstr = "Sorry, the maximum number of clients (%m) from your host "
       "are already connected.";
     unsigned int *max = maxc->argv[0];
@@ -1732,8 +1732,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
   }
 
   /* Check for any configured MaxClientsPerUser. */
-  if ((maxc = find_config((anon_config ? anon_config->subset :
-      cmd->server->conf), CONF_PARAM, "MaxClientsPerUser", FALSE)) != NULL) {
+  maxc = find_config(TOPLEVEL_CONF, CONF_PARAM, "MaxClientsPerUser", FALSE);
+  if (maxc) {
     char *maxstr = "Sorry, the maximum number of clients (%m) for this user "
       "are already connected.";
     unsigned int *max = maxc->argv[0];
@@ -1755,8 +1755,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     }
   }
 
-  if ((maxc = find_config((anon_config ? anon_config->subset :
-      cmd->server->conf), CONF_PARAM, "MaxClients", FALSE)) != NULL) {
+  maxc = find_config(TOPLEVEL_CONF, CONF_PARAM, "MaxClients", FALSE);
+  if (maxc) {
     char *maxstr = "Sorry, the maximum number of allowed clients (%m) are "
       "already connected.";
     unsigned int *max = maxc->argv[0];
@@ -1777,8 +1777,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     }
   }
 
-  if ((maxc = find_config((anon_config ? anon_config->subset :
-      cmd->server->conf), CONF_PARAM, "MaxHostsPerUser", FALSE)) != NULL) {
+  maxc = find_config(TOPLEVEL_CONF, CONF_PARAM, "MaxHostsPerUser", FALSE);
+  if (maxc) {
     char *maxstr = "Sorry, the maximum number of hosts (%m) for this user are "
       "already connected.";
     unsigned int *max = maxc->argv[0];
