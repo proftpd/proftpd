@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.25 2003-09-14 18:27:46 castaglia Exp $
+ * $Id: scoreboard.c,v 1.26 2003-11-04 20:44:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -255,8 +255,14 @@ void pr_delete_scoreboard(void) {
 
   scoreboard_fd = -1;
 
-  if (*scoreboard_file)
+  if (*scoreboard_file) {
+    struct stat st;
+
+    if (stat(scoreboard_file, &st) == 0)
+      log_debug(DEBUG3, "deleting existing scoreboard '%s'", scoreboard_file);
+
     unlink(scoreboard_file);
+  }
 }
 
 const char *pr_get_scoreboard(void) {
