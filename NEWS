@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.611 2004-10-01 00:43:30 castaglia Exp $
+$Id: NEWS,v 1.612 2004-10-07 18:59:05 castaglia Exp $
 
 CVS
 --------------------------------
@@ -35,6 +35,8 @@ CVS
 
   is a way to workaround this bug in 1.2.10 installations.
 - Bug 2492 - Off-by-one error in FreeBSD PAM username length check.
+- Bug 2496 - NLST off-by-one bug when handling relative paths in a chrooted
+  session.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

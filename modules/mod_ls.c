@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.116 2004-10-07 15:53:08 castaglia Exp $
+ * $Id: mod_ls.c,v 1.117 2004-10-07 18:59:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2001,6 +2001,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
   /* Clean the path. */
   if (*target != '/') {
+    size_t cwdlen = strlen(pr_fs_getcwd());
+
     pr_fs_clean_path(pdircat(cmd->tmp_pool, pr_fs_getcwd(), target, NULL),
       buf, sizeof(buf));
 
@@ -2009,8 +2011,15 @@ MODRET ls_nlst(cmd_rec *cmd) {
     /* If the given target was not an absolute path, advance past the
      * current working directory prefix in the cleaned up target path.
      */
+    target += cwdlen;
 
-    target += strlen(pr_fs_getcwd()) + 1;
+    /* If the length of the current working directory (cwdlen) is one,
+     * it means that the current working directory is the root ('/'),
+     * and so we don't want to advance past that into the file name
+     * portion of the path.
+     */
+    if (cwdlen > 1)
+      target += 1;
 
   } else {
     pr_fs_clean_path(target, buf, sizeof(buf));
