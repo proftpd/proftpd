@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.13 2003-08-29 17:01:57 castaglia Exp $
+ * $Id: bindings.c,v 1.14 2003-08-29 17:20:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -232,7 +232,7 @@ int pr_ipbind_close(pr_netaddr_t *addr, unsigned int port,
      */
     if (SocketBindTight && ipbind->ib_listener != NULL) {
       pr_inet_close(ipbind->ib_server->pool, ipbind->ib_listener);
-      ipbind->ib_listener = NULL;
+      ipbind->ib_listener = ipbind->ib_server->listen = NULL;
     }
 
     /* Mark this ipbind as inactive.  For SocketBindTight sockets, the
@@ -268,7 +268,7 @@ int pr_ipbind_close(pr_netaddr_t *addr, unsigned int port,
 
         if (SocketBindTight && ipbind->ib_listener != NULL) {
           pr_inet_close(main_server->pool, ipbind->ib_listener);
-          ipbind->ib_listener = NULL;
+          ipbind->ib_listener = ipbind->ib_server->listen = NULL;
         }
 
         /* Note: do not need to check if this ipbind was previously closed,
@@ -527,7 +527,7 @@ int pr_ipbind_open(pr_netaddr_t *addr, unsigned int port, conn_t *listen_conn,
   if (listen_conn)
     listen_conn->next = NULL;
 
-  ipbind->ib_listener = listen_conn;
+  ipbind->ib_listener = ipbind->ib_server->listen = listen_conn;
   ipbind->ib_isdefault = isdefault;
   ipbind->ib_islocalhost = islocalhost;
 

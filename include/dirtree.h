@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.42 2003-08-09 08:09:28 castaglia Exp $
+ * $Id: dirtree.h,v 1.43 2003-08-29 17:20:34 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -73,7 +73,15 @@ typedef struct server_struc {
   char *ServerAdmin;		/* Administrator's name */
 
   pr_netaddr_t *addr;		/* Internal address of this server */
-  struct conn_struc *listen;	/* Our listening connection */
+
+  /* The listener for this server.  Note that this listener, and that
+   * pointed to by ipbind->ib_listener (where ipbind->ib_server points to
+   * this server_rec) are the same.  Ideally, we'd only want one pointer to
+   * the listener around, and avoid the duplication.  To do this would
+   * require further structural changes.
+   */
+  struct conn_struc *listen;
+
   xaset_t *conf;		/* Configuration details */
 
   int config_type;

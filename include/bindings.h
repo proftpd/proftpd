@@ -24,7 +24,7 @@
 
 /* ProFTPD bindings support routines.
  *
- * $Id: bindings.h,v 1.5 2003-08-29 17:01:57 castaglia Exp $
+ * $Id: bindings.h,v 1.6 2003-08-29 17:20:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -48,7 +48,10 @@ typedef struct ipbind_rec {
    */
   server_rec *ib_server;
 
-  /* Listener associated with this binding. */
+  /* Listener associated with this binding.  This listener, and
+   * ib_server->listen, are the same listener.  The duplicate locations
+   * are necessary for inetd-run servers (at present).
+   */
   conn_t *ib_listener;
 
   /* List of name-based servers bound to the above IP address.  Note that
