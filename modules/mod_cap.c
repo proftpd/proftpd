@@ -31,12 +31,11 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -Llib/libcap -lcap$
  * $Directories: lib/libcap$
- * $Id: mod_cap.c,v 1.8 2003-05-15 00:49:13 castaglia Exp $
+ * $Id: mod_cap.c,v 1.9 2003-09-07 23:55:58 castaglia Exp $
  */
 
 #include <stdio.h>
 #include <stdlib.h>
-
 
 #ifdef LINUX
 # ifdef __powerpc__
@@ -59,6 +58,7 @@
 #define MOD_CAP_VERSION	"mod_cap/1.0"
 
 static cap_t capabilities = 0;
+static unsigned char have_capabilities = FALSE;
 static unsigned char use_capabilities = TRUE;
 static unsigned char use_cap_chown = TRUE;
 
@@ -74,31 +74,43 @@ static void lp_debug(void) {
     return;
   }
 
-  if (! (res = cap_to_text(caps,&len))) {
+  if (! (res = cap_to_text(caps, &len))) {
     log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": cap_to_text failed: %s",
-            strerror(errno));
-    cap_free(&caps);
+      strerror(errno));
+    if (cap_free(caps) < 0)
+      log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION
+        ": error freeing cap at line %d: %s", __LINE__ - 2, strerror(errno));
     return;
   }
 
-  log_debug(DEBUG1, MOD_CAP_VERSION ": capabilities '%s'.", res);
-  cap_free(&caps);
+  log_debug(DEBUG1, MOD_CAP_VERSION ": capabilities '%s'", res);
+  cap_free(res);
+
+  if (cap_free(caps) < 0)
+    log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION
+      ": error freeing cap at line %d: %s", __LINE__ - 2, strerror(errno));
 }
 
 /* create a new capability structure */
 static int lp_init_cap(void) {
+
   if (! (capabilities = cap_init())) {
-    log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": cap_init failed: %s.",
-            strerror(errno));
+    log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": initializing cap failed: %s",
+      strerror(errno));
     return -1;
   }
 
+  have_capabilities = TRUE;
   return 0;
 }
 
 /* free the capability structure */
 static void lp_free_cap(void) {
-  cap_free(&capabilities);
+  if (have_capabilities) {
+    if (cap_free(capabilities) < 0)
+      log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION
+        ": error freeing cap at line %d: %s", __LINE__ - 2, strerror(errno));
+  }
 }
 
 /* add a capability to a given set */
@@ -228,6 +240,7 @@ MODRET cap_post_pass(cmd_rec *cmd) {
 
   if (setreuid(0, session.uid) == -1) {
     log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": setreuid: %s", strerror(errno));
+    lp_free_cap();
     pr_signals_unblock();
     end_login(1);
   }
@@ -249,8 +262,7 @@ MODRET cap_post_pass(cmd_rec *cmd) {
   if (ret != -1)
     ret = lp_set_cap();
 
-  if (capabilities)
-    lp_free_cap();
+  lp_free_cap();
 
   if (ret != -1) {
     /* That's it!  Disable all further id switching */
@@ -300,15 +312,22 @@ static int cap_sess_init(void) {
 }
 
 static int cap_module_init(void) {
+  cap_t res;
+
   /* Attempt to determine if we are running on a kernel that supports
    * capabilities. This allows binary distributions to include the module
    * even if it may not work.
    */
-  if (!cap_get_proc() && errno == ENOSYS) {
+  res = cap_get_proc();
+  if (res == NULL && errno == ENOSYS) {
     log_debug(DEBUG2, MOD_CAP_VERSION
               ": kernel does not support capabilities, disabling module");
     use_capabilities = FALSE;
   }
+
+  if (res && cap_free(res) < 0)
+    log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION ": error freeing cap at line %d: %s",
+      __LINE__ - 2, strerror(errno));
 
   return 0;
 }
