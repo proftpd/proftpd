@@ -382,8 +382,9 @@ static RSA *tls_tmp_rsa = NULL;
 /* SSL/TLS support functions */
 static void tls_closelog(void);
 static void tls_end_session(SSL *, int);
+static void tls_fatal_error(int, int);
+static const char *tls_get_errors(void);
 static char *tls_get_subj_name(void);
-static void tls_handle_error(int, int);
 
 static int tls_log(const char *, ...)
 #ifdef __GNUC__
@@ -1210,7 +1211,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   retry:
   if ((res = SSL_accept(ssl)) < 1) {
-    int err = SSL_get_error(ssl, res);
+    const char *msg = "unable to accept TLS connection";
+    int errcode = SSL_get_error(ssl, res);
 
     pr_signals_handle();
 
@@ -1220,10 +1222,47 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       return -4;
     }
 
-    if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE)
-      goto retry;
+    switch (errcode) {
+      case SSL_ERROR_WANT_READ:
+      case SSL_ERROR_WANT_WRITE:
+        goto retry;
 
-    tls_log("unable to accept TLS connection: %s", ERR_error_string(err, NULL));
+      case SSL_ERROR_ZERO_RETURN:
+        tls_log("%s: connection closed", msg);
+        break;
+
+      case SSL_ERROR_WANT_X509_LOOKUP:
+        tls_log("%s: needs X509 lookup", msg);
+        break;
+
+      case SSL_ERROR_SYSCALL: {
+        /* Check to see if the OpenSSL error queue has info about this. */
+        int xerrcode = ERR_get_error();
+    
+        if (xerrcode == 0) {
+          /* The OpenSSL error queue doesn't have any more info, so we'll
+           * examine the SSL_accept() return value itself.
+           */
+
+          if (res == 0)
+            /* EOF */
+            tls_log("%s: received EOF that violates protocol", msg);
+
+          else if (res == -1)
+            /* Check errno */
+            tls_log("%s: %s", msg, strerror(errno));
+
+        } else
+          tls_log("%s: %s", msg, tls_get_errors());
+
+        break;
+      }
+
+      case SSL_ERROR_SSL:
+        tls_log("%s: %s", msg, tls_get_errors());
+        break;
+    }
+
     tls_end_session(ssl, on_data ? PR_NETIO_STRM_DATA : PR_NETIO_STRM_CTRL);
     return -3;
   }
@@ -1333,11 +1372,37 @@ static void tls_end_session(SSL *ssl, int strms) {
     /* Now call SSL_shutdown again. */
     if (SSL_shutdown(ssl) == -1) {
       tls_log("error shutting down TLS session");
-      tls_handle_error(SSL_get_error(ssl, -1), __LINE__);
+      tls_fatal_error(SSL_get_error(ssl, -1), __LINE__);
     }
   }
 
   SSL_free(ssl);
+}
+
+static const char *tls_get_errors(void) {
+  unsigned int count = 0;
+  unsigned long e = ERR_get_error();
+  BIO *bio = NULL;
+  char *tmp = NULL;
+  const char *str = "(unknown)";
+
+  /* Use ERR_print_errors() and a memory BIO to build up a string with
+   * all of the error messages from the error queue.
+   */
+
+  if (e)
+    bio = BIO_new(BIO_s_mem());
+
+  while (e) {
+    BIO_printf(bio, "\n  (%u) %s", ++count, ERR_error_string(e, NULL));
+    e = ERR_get_error(); 
+  }
+
+  BIO_get_mem_data(bio, &tmp);
+  str = pstrdup(main_server->pool, tmp);
+  BIO_free(bio);
+
+  return str;
 }
 
 static char *tls_get_subj_name(void) {
@@ -1352,46 +1417,67 @@ static char *tls_get_subj_name(void) {
   return NULL;
 }
 
-static void tls_handle_error(int error, int lineno) {
-  char *errstr = ERR_error_string(error, NULL);
+static void tls_fatal_error(int error, int lineno) {
 
   switch (error) {
     case SSL_ERROR_NONE:
       return;
 
     case SSL_ERROR_SSL:
-      tls_log("panic: SSL_ERROR_SSL at %d: %s", lineno, errstr);
+      tls_log("panic: SSL_ERROR_SSL, line %d: %s", lineno, tls_get_errors());
       break;
 
     case SSL_ERROR_WANT_READ:
-      tls_log("panic: SSL_ERROR_WANT_READ at %d: %s", lineno, errstr);
+      tls_log("panic: SSL_ERROR_WANT_READ, line %d", lineno);
       break;
 
     case SSL_ERROR_WANT_WRITE:
-      tls_log("panic: SSL_ERROR_WANT_WRITE at %d: %s", lineno, errstr);
+      tls_log("panic: SSL_ERROR_WANT_WRITE, line %d", lineno);
       break;
 
     case SSL_ERROR_WANT_X509_LOOKUP:
-      tls_log("panic: SSL_ERROR_WANT_X509_LOOKUP at %d: %s", lineno, errstr);
+      tls_log("panic: SSL_ERROR_WANT_X509_LOOKUP, line %d", lineno);
       break;
 
-    case SSL_ERROR_SYSCALL:
+    case SSL_ERROR_SYSCALL: {
+      int xerrcode = ERR_get_error();
+
       if (errno == ECONNRESET)
         return;
 
-      tls_log("panic: SSL_ERROR_SYSCALL at %d: %s", lineno, errstr);
+      /* Check to see if the OpenSSL error queue has info about this. */
+      if (xerrcode == 0) {
+        /* The OpenSSL error queue doesn't have any more info, so we'll
+         * examine the error value itself.
+         */
+
+        if (error == 0)
+          /* EOF */
+          tls_log("panic: SSL_ERROR_SYSCALL, line %d: "
+            "EOF that violates protocol", lineno);
+
+          else if (error == -1)
+            /* Check errno */
+            tls_log("panic: SSL_ERROR_SYSCALL, line %d: %s", lineno,
+              strerror(errno));
+
+      } else
+        tls_log("panic: SSL_ERROR_SYSCALL, line %d: %s", lineno,
+          tls_get_errors());
+
       break;
+    }
 
     case SSL_ERROR_ZERO_RETURN:
-      tls_log("panic: SSL_ERROR_ZERO_RETURN at %d: %s", lineno, errstr);
+      tls_log("panic: SSL_ERROR_ZERO_RETURN, line %d", lineno);
       break;
 
     case SSL_ERROR_WANT_CONNECT:
-      tls_log("panic: SSL_ERROR_WANT_CONNECT at %d: %s", lineno, errstr);
+      tls_log("panic: SSL_ERROR_WANT_CONNECT, line %d", lineno);
       break;
 
     default:
-      tls_log("panic: SSL_ERROR %d (%s) at %d", error, errstr, lineno);
+      tls_log("panic: SSL_ERROR %d, line %d", error, lineno);
       break;
   }
 
@@ -1531,7 +1617,7 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
         break;
 
       default:
-        tls_handle_error(err, __LINE__);
+        tls_fatal_error(err, __LINE__);
         break;
     }
   }
@@ -2120,7 +2206,7 @@ static ssize_t tls_write(SSL *ssl, const void *buf, size_t len) {
         break;
 
       default:
-        tls_handle_error(err, __LINE__);
+        tls_fatal_error(err, __LINE__);
         break;
     }
   }
