@@ -39,7 +39,6 @@ To use PAM with ProFTPD, you must edit /etc/pam.d/ftp and add the
 following lines for RedHat installations:
 
 #%PAM-1.0
-auth       required     /lib/security/pam_listfile.so item=user sense=deny file=/etc/ftpusers onerr=succeed
 auth       required     /lib/security/pam_pwdb.so shadow nullok
 account    required     /lib/security/pam_pwdb.so
 session    required     /lib/security/pam_pwdb.so
@@ -47,7 +46,6 @@ session    required     /lib/security/pam_pwdb.so
 For SuSE:
 
 #%PAM-1.0
-auth       required     /lib/security/pam_listfile.so item=user sense=deny file=/etc/ftpusers onerr=succeed
 auth       required     /lib/security/pam_unix.so shadow nullok
 account    required     /lib/security/pam_unix.so
 session    required     /lib/security/pam_unix.so
