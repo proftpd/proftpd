@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.414 2003-04-02 17:45:25 castaglia Exp $
+$Id: NEWS,v 1.415 2003-04-03 01:31:21 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -94,6 +94,11 @@ CVS
   and maxfiles.
 - Bug 2011 - No "FTP session closed." msgs written to logfile.  This affected
   only inetd-run servers.
+- Added two new configure options, --disable-curses and --disable-ncurses.
+  By default, ftptop will use ncurses if available, then curses (if available).
+  In some cases, both curses and ncurses may be present, and yet the admin
+  would prefer ftptop to use curses.  Using the above options, one can
+  disable ftptop's use of ncurses or curses, as needed.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------
