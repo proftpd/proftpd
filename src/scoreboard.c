@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.6 2002-10-04 00:36:40 castaglia Exp $
+ * $Id: scoreboard.c,v 1.7 2002-10-04 19:08:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -251,11 +251,11 @@ int pr_open_scoreboard(int flags, pid_t *daemon_pid) {
       PR_SCOREBOARD_MODE)) < 0)
     return -1;
 
-  /* Make certain that the scoreboard mode will be read-only for everybody.
-   * Anyone who wants to write to it should already have the ability to
-   * do so.  Anyone else will require root privs.
+  /* Make certain that the scoreboard mode will be read-only for everyone
+   * except the user owner (this allows for non-root-running daemons to
+   * still modify the scoreboard).
    */
-  fchmod(scoreboard_fd, 0444);
+  fchmod(scoreboard_fd, 0644);
 
   if (fstat(scoreboard_fd, &st) < 0) {
     close(scoreboard_fd);
