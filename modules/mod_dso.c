@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.2.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.2 2004-10-29 15:29:54 castaglia Exp $
+ * $Id: mod_dso.c,v 1.3 2004-10-31 22:11:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -513,7 +513,9 @@ static void dso_exit_ev(const void *event_data, void *user_data) {
 }
 
 static void dso_restart_ev(const void *event_data, void *user_data) {
+#ifdef USE_CTRLS
   register unsigned int i = 0;
+#endif /* USE_CTRLS */
 
   if (dso_pool)
     destroy_pool(dso_pool);
@@ -540,7 +542,9 @@ static void dso_restart_ev(const void *event_data, void *user_data) {
  */
 
 static int dso_init(void) {
+#ifdef USE_CTRLS
   register unsigned int i = 0;
+#endif /* USE_CTRLS */
 
   /* Allocate the pool for this module's use. */
   dso_pool = make_sub_pool(permanent_pool);
