@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.4 2003-01-02 18:25:13 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.5 2003-03-15 03:18:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -32,7 +32,7 @@
 
 #include <sys/ioctl.h>
 
-#define MOD_REWRITE_VERSION "mod_rewrite/0.6.5"
+#define MOD_REWRITE_VERSION "mod_rewrite/0.6.6"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001020801
@@ -609,6 +609,10 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
   char *value = NULL, *fifo_lockname = NULL;
   const char *fifo = (char *) c->argv[2];
 
+#ifndef HAVE_FLOCK
+  struct flock lock;
+#endif /* HAVE_FLOCK */
+
   /* The FIFO file descriptor should already be open. */
   fifo_fd = *((int *) c->argv[3]);
 
@@ -632,8 +636,26 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
   }
 
   /* Obtain a write lock on the lock file, if configured */
-  if (fifo_lockfd != -1)
-    flock(fifo_lockfd, LOCK_EX);
+  if (fifo_lockfd != -1) {
+#ifdef HAVE_FLOCK
+    if (flock(fifo_lockfd, LOCK_EX) < 0)
+      rewrite_log("rewrite_subst_maps_fifo(): error obtaining lock: %s",
+        strerror(errno));
+#else
+    lock.l_type = F_WRLCK;
+    lock.l_whence = 0;
+    lock.l_start = lock.l_len = 0;
+
+    while (fcntl(fifo_lockfd, F_SETLKW, &lock) < 0) {
+      if (errno == EINTR)
+        continue;
+
+      rewrite_log("rewrite_subst_maps_fifo(): error obtaining lock: %s",
+        strerror(errno));
+      break;
+    }
+#endif /* HAVE_FLOCK */
+  }
 
   /* Write the lookup key to the FIFO.  There is no need to restrict the size
    * of data written to the FIFO to the PIPE_BUF length; the advisory lock on
@@ -659,7 +681,25 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
       "FIFO '%s': %s", map->map_lookup_key, fifo, strerror(errno));
 
     if (fifo_lockfd != -1) {
-      flock(fifo_lockfd, LOCK_UN);
+#ifdef HAVE_FLOCK
+      if (flock(fifo_lockfd, LOCK_UN) < 0)
+        rewrite_log("rewrite_subst_maps_fifo(): error releasing lock: %s",
+          strerror(errno));
+#else
+      lock.l_type = F_UNLCK;
+      lock.l_whence = 0;
+      lock.l_start = lock.l_len = 0;
+
+      while (fcntl(fifo_lockfd, F_SETLKW, &lock) < 0) {
+        if (errno == EINTR)
+          continue;
+
+        rewrite_log("rewrite_subst_maps_fifo(): error releasing lock: %s",
+          strerror(errno));
+        break;
+      }
+#endif /* HAVE_FLOCK */
+
       close(fifo_lockfd);
     }
 
@@ -710,7 +750,25 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
   fsync(fifo_fd);
 
   if (fifo_lockfd != -1) {
-    flock(fifo_lockfd, LOCK_UN);
+#ifdef HAVE_FLOCK
+    if (flock(fifo_lockfd, LOCK_UN) < 0)
+      rewrite_log("rewrite_subst_maps_fifo(): error releasing lock: %s",
+        strerror(errno));
+#else
+    lock.l_type = F_UNLCK;
+    lock.l_whence = 0;
+    lock.l_start = lock.l_len = 0;
+
+    while (fcntl(fifo_lockfd, F_SETLKW, &lock) < 0) {
+      if (errno == EINTR)
+        continue;
+
+      rewrite_log("rewrite_subst_maps_fifo(): error releasing lock: %s",
+        strerror(errno));
+      break;
+    }
+#endif /* HAVE_FLOCK */
+
     close(fifo_lockfd);
   }
 

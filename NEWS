@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.400 2003-03-13 23:31:30 castaglia Exp $
+$Id: NEWS,v 1.401 2003-03-15 03:18:58 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -53,6 +53,7 @@ CVS
   alter the --with-includes configure option used when building mod_sql.
 - Bug 1915 - Unsafe pointer usage in scoreboard file format.
 - Bug 1983 - Filenames beginning with '#' fail to upload/download.
+- Bug 1985 - mod_rewrite fails to build on platforms without flock()
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------
