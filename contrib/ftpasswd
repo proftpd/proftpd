@@ -21,7 +21,7 @@
 # format, or AuthGroupFile, in group(5) format.  The idea is somewhat similar
 # to Apache's htpasswd program.
 #
-#  $Id: ftpasswd,v 1.9 2004-03-24 21:55:44 castaglia Exp $
+#  $Id: ftpasswd,v 1.10 2004-10-07 21:17:58 castaglia Exp $
 #
 # ---------------------------------------------------------------------------
 
@@ -238,7 +238,7 @@ sub check_shell {
 
   unless ($result) {
     print STDOUT "\n$program: $shell is not among the valid system shells.  Use of\n";
-    print STDOUT "$program: the RequireValidShell may be required, and the PAM\n";
+    print STDOUT "$program: \"RequireValidShell off\" may be required, and the PAM\n";
     print STDOUT "$program: module configuration may need to be adjusted.\n\n";
   }
 
