@@ -1,4 +1,21 @@
-# $Id: proftpd.spec,v 1.12 2003-05-16 04:25:40 castaglia Exp $
+# $Id: proftpd.spec,v 1.13 2003-05-26 01:17:21 jwm Exp $
+
+# You can specify additional modules on the RPM build line by specifying
+# flags like:
+#
+#   --with mod_tls
+#
+# The following modules can be added in this manner:
+#
+#   mod_tls
+#   mod_radius
+#   mod_ldap
+#   mod_wrap
+#   mod_sql
+#   mod_sql_mysql
+#   mod_sql_postgres
+#   mod_rewrite
+#   mod_ifsession
 
 Summary:	ProFTPD -- Professional FTP Server.
 Name:		proftpd
@@ -47,12 +64,22 @@ This package is neccesary to setup ProFTPD to run from inetd.
 
 %prep
 %setup -q
+  MODULES="mod_ratio:mod_readme"
+  MODULES="${MODULES}%{?_with_mod_tls::mod_tls}"
+  MODULES="${MODULES}%{?_with_mod_radius::mod_radius}"
+  MODULES="${MODULES}%{?_with_mod_ldap::mod_ldap}"
+  MODULES="${MODULES}%{?_with_mod_wrap::mod_wrap}"
+  MODULES="${MODULES}%{?_with_mod_sql::mod_sql}"
+  MODULES="${MODULES}%{?_with_mod_sql_mysql::mod_sql_mysql}"
+  MODULES="${MODULES}%{?_with_mod_sql_postgres::mod_sql_postgres}"
+  MODULES="${MODULES}%{?_with_mod_rewrite::mod_rewrite}"
+  MODULES="${MODULES}%{?_with_mod_ifsession::mod_ifsession}"
   CFLAGS="$RPM_OPT_FLAGS" ./configure \
 	--prefix=%{prefix} \
 	--sysconfdir=/etc \
 	--localstatedir=/var/run \
 	--mandir=%_mandir \
-	--with-modules=mod_ratio:mod_readme
+	--with-modules=${MODULES}
 
 %build
   make
@@ -183,6 +210,10 @@ rm -rf %{_builddir}/%{name}-%{version}
 %config(noreplace) /etc/proftpd.conf
 
 %changelog
+* Sun May 25 2003 John Morrissey <jwm@horde.net>
+- Permit selection of additional contrib modules when building the RPM
+  Submitted by: Ivan F. Martinez <ivanfm@users.sourceforge.net>
+
 * Sat Nov  2 2002 John Morrissey <jwm@horde.net>
 - Don't let dangling contrib/README.* symlinks get into the built RPM
 - logrotate for xferlog
