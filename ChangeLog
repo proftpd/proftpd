@@ -1,3 +1,20 @@
+2001-08-01 11:18  flood
+
+	* NEWS, README.mod_sql: README.mod_sql update from author
+
+2001-08-01 11:17  flood
+
+	* INSTALL, NEWS, contrib/mod_quota.c, doc/Configuration.html,
+	modules/mod_ls.c, src/xferlog.5: #1187 Upstream update to mod_quota
+	#1217,1262,1111,1216 Documentation updates #1145 DirFakeUser now
+	applies to STAT as well as LIST/NLST
+
+2001-08-01 11:03  flood
+
+	* NEWS, include/proftpd.h, modules/mod_core.c, modules/mod_xfer.c,
+	src/dirtree.c, src/main.c: #1219 - gcc 3.0 fix #1232 - UserOwner
+	changes both uid and gid
+
 2001-07-04 11:28  flood
 
 	* NEWS, src/log.c: #1230 - size mismatch struct utmpx in Solaris 8
