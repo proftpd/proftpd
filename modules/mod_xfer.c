@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.135 2003-03-17 16:41:08 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.136 2003-04-07 21:07:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -309,10 +309,6 @@ static void xfer_rate_lookup(cmd_rec *cmd) {
     have_class_rate = FALSE, have_all_rate = FALSE;
   unsigned int precedence = 0;
 
-  /* Do nothing if values are already cached. */
-  if (have_xfer_rate)
-    return;
-
   /* Make sure the variables are (re)initialized */
   xfer_rate_kbps = xfer_rate_bps = 0.0;
   xfer_rate_freebytes = 0;
@@ -472,7 +468,7 @@ static void xfer_rate_sigmask(unsigned char block) {
     sigaddset(&sig_set, SIGUSR1);
     sigaddset(&sig_set, SIGINT);
     sigaddset(&sig_set, SIGQUIT);
-    sigaddset(&sig_set, SIGALRM);
+    sigaddset(&sig_set, SIGURG);
 #ifdef SIGIO
     sigaddset(&sig_set, SIGIO);
 #endif /* SIGIO */
@@ -481,10 +477,25 @@ static void xfer_rate_sigmask(unsigned char block) {
 #endif /* SIGBUS */
     sigaddset(&sig_set, SIGHUP);
 
-    sigprocmask(SIG_BLOCK, &sig_set, NULL);
+    while (sigprocmask(SIG_BLOCK, &sig_set, NULL) < 0) {
+      if (errno == EINTR) {
+        pr_signals_handle();
+        continue;
+      }
 
-  } else
-    sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
+      break;
+    }
+
+  } else {
+    while (sigprocmask(SIG_UNBLOCK, &sig_set, NULL) < 0) {
+      if (errno == EINTR) {
+        pr_signals_handle();
+        continue;
+      }
+
+      break;
+    }
+  }
 }
 
 /* Returns the difference, in milliseconds, between the given timeval and
@@ -835,14 +846,6 @@ static void xfer_exit_cb(void) {
       /* A download is occurring... */
       retr_abort();
   }
-}
-
-/* This function clears any cached TransferRate values, as TransferRates
- * may be set on a directory-by-directory basis.
- */
-MODRET xfer_reset_rate(cmd_rec *cmd) {
-  have_xfer_rate = FALSE;
-  return DECLINED(cmd);
 }
 
 /* This is a PRE_CMD handler that checks security, etc, and places the full
@@ -2292,10 +2295,6 @@ static cmdtable xfer_cmdtab[] = {
   { LOG_CMD_ERR, C_APPE,G_NONE,  xfer_err_cleanup,  FALSE,  FALSE },
   { CMD,     C_ABOR,	G_NONE,	 xfer_abor,	TRUE,	TRUE,  CL_MISC  },
   { CMD,     C_REST,	G_NONE,	 xfer_rest,	TRUE,	FALSE, CL_MISC  },
-  { PRE_CMD, C_CDUP,	G_NONE,  xfer_reset_rate, TRUE,	FALSE },
-  { PRE_CMD, C_CWD,	G_NONE,  xfer_reset_rate, TRUE,	FALSE },
-  { PRE_CMD, C_XCUP,	G_NONE,  xfer_reset_rate, TRUE,	FALSE },
-  { PRE_CMD, C_XCWD,	G_NONE,  xfer_reset_rate, TRUE,	FALSE },
   { 0,NULL }
 };
 
