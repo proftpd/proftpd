@@ -191,7 +191,7 @@ p_in_addr_t *inet_getaddr(pool *pool, char *name)
 
   host = gethostbyname(name);
   if(host) {
-    memcpy(res,inet_validate(host->h_addr_list[0]),sizeof(p_in_addr_t));
+    memcpy(res, host->h_addr_list[0], sizeof(p_in_addr_t));
     return res;
   }
     
