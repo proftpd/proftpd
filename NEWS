@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.459 2003-08-07 20:16:45 castaglia Exp $
+$Id: NEWS,v 1.460 2003-08-08 15:10:02 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -351,7 +351,7 @@ CVS
   patch.
 - Bug 1885 - -q/--quiet option for use with the -n/--nodaemon flag. Useful
   for running proftpd from inittab or with daemontools.
-- Bug 1667 - Integrate ProFTPD with C2/SIA on Tru64 Unix.  The --enable-sia
+- Bug 1677 - Integrate ProFTPD with C2/SIA on Tru64 Unix.  The --enable-sia
   configure option has been added.
 - Bug 1837 - Add module specifically for handling Auth*Files, providing
   finer-grained control.  The new mod_auth_file module is compiled in by
