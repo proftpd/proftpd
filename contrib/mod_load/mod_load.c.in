@@ -31,7 +31,7 @@
  *   Copyright (C) 1985, 86, 87, 88, 89, 91, 92, 93, 1994, 1995, 1997
  *     Free Software Foundation, Inc.
  * 
- * $Id: mod_load.c.in,v 1.1 2005-01-01 19:39:41 castaglia Exp $
+ * $Id: mod_load.c.in,v 1.2 2005-01-01 20:04:49 castaglia Exp $
  * $Libraries: @MODULE_LIBS@ $
  */
 
@@ -39,11 +39,11 @@
 #include "privs.h"
 #include "mod_load.h"
 
-#define MOD_LOAD_VERSION	"mod_load/1.0.1"
+#define MOD_LOAD_VERSION		"mod_load/1.0.1"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001020804
-# error "ProFTPD 1.2.8 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030001
+# error "ProFTPD 1.3.0rc1 or later required"
 #endif
 
 /* Support code.  Most of this is from getloadavg.c
@@ -1000,6 +1000,7 @@ MODRET set_maxload(cmd_rec *cmd) {
 static int load_sess_init(void) {
   config_rec *c = NULL;
   double max_load = 0.0, curr_load = 0.0;
+  char curr_load_str[16], max_load_str[16];
 
   /* Lookup any configured load limit. */
   c = find_config(main_server->conf, CONF_PARAM, "MaxLoad", FALSE);
@@ -1032,6 +1033,23 @@ static int load_sess_init(void) {
 
     end_login(1);
   }
+
+  /* Register some Variable entries for showing the system load. */
+  memset(curr_load_str, '\0', sizeof(curr_load_str));
+  snprintf(curr_load_str, sizeof(curr_load_str)-1, "%.2f", curr_load);
+  if (pr_var_set(session.pool, "%{mod_load.curr_load}",
+      "Current system load average", PR_VAR_TYPE_STR,
+      curr_load_str, NULL, 0) < 0)
+    pr_log_debug(DEBUG1, MOD_LOAD_VERSION
+      ": error setting %%{mod_load.curr_load} variable: %s", strerror(errno));
+
+  memset(max_load_str, '\0', sizeof(max_load_str));
+  snprintf(max_load_str, sizeof(max_load_str)-1, "%.2f", max_load);
+  if (pr_var_set(session.pool, "%{mod_load.max_load}",
+      "Maximum system load average", PR_VAR_TYPE_STR,
+      max_load_str, NULL, 0) < 0)
+    pr_log_debug(DEBUG1, MOD_LOAD_VERSION
+      ": error setting %%{mod_load.max_load} variable: %s", strerror(errno));
 
   return 0;
 }
