@@ -188,7 +188,12 @@ _pgetgrent(const char *buf)
       *cp++ = 0;
   }
 
-  if(i < (NGRPFIELDS-1) || *grpfields[2] == '\0')
+  if(i < (NGRPFIELDS - 1)) {
+    log_pri(LOG_ERR, "Malformed entry in group file: %s", buf);
+    return 0;
+  }
+  
+  if(*grpfields[2] == '\0')
     return 0;
 
   grent.gr_name = grpfields[0];
