@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.17 1999-10-01 03:34:14 macgyver Exp $
+ * $Id: mod_ls.c,v 1.18 1999-10-11 03:13:13 macgyver Exp $
  */
 
 #include "conf.h"
@@ -175,8 +175,8 @@ int sendline(char *fmt, ...)
 
   ret = data_xfer(buf,strlen(buf));
   if(ret < 0) {
-    log_debug(DEBUG3,"data_xfer returned %d, error = %s",
-              ret,strerror(session.d->outf->xerrno));
+    log_debug(DEBUG3, "data_xfer returned %d, error = %s.",
+              ret, strerror(session.d->outf->xerrno));
   }
   return ret;
 }
@@ -392,7 +392,7 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix, time_t m
 
   p = (struct filename*) pcalloc(fpool, sizeof(struct filename) + l + 1);
 #if 0
-  log_debug(DEBUG4,"alloc: %d\n",sizeof(struct filename) + l + 1);
+  log_debug(DEBUG4, "alloc: %d.\n", sizeof(struct filename) + l + 1);
 #endif
 
   snprintf(p->line, l + 1, "%s%s", name, suffix);
@@ -596,8 +596,9 @@ realloc_buf:
   while((de = readdir(d)) != NULL) {
     if((unsigned int)p + (i+1)*sizeof(char*) + strlen(de->d_name) + 1
          > (unsigned int)s) {
-      log_debug(DEBUG0,"reallocating sreaddir buffer from %d bytes to %d bytes.",
-		      dsize,dsize*2);
+      log_debug(DEBUG0,
+		"reallocating sreaddir buffer from %d bytes to %d bytes.",
+		dsize, dsize*2);
       dsize *= 2;
       rewinddir(d);
       goto realloc_buf;

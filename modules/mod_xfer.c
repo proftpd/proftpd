@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.15 1999-10-01 07:57:31 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.16 1999-10-11 03:13:13 macgyver Exp $
  */
 
 /* History Log:
@@ -83,10 +83,10 @@ static void _log_transfer(char direction)
              fullpath,(session.flags & SF_ASCII ? 'a' : 'b'),
              direction,'r',session.user);
 
-  log_debug(DEBUG1,"Transfer completed: %d bytes in %d.%02d seconds.",
-                 session.xfer.total_bytes,end_time.tv_sec,
-                 (end_time.tv_usec / 10000));
-
+  log_debug(DEBUG1, "Transfer completed: %d bytes in %d.%02d seconds.",
+	    session.xfer.total_bytes,end_time.tv_sec,
+	    (end_time.tv_usec / 10000));
+  
   data_cleanup();
 }
 
@@ -97,7 +97,8 @@ static float _rate_diffusec(struct timeval tlast, struct timeval t) {
 
     diffsec = t.tv_sec - tlast.tv_sec;
     diffusec= t.tv_usec- tlast.tv_usec;
-    log_debug(DEBUG5,"_rate_diffusec: last=%ld %ld  now=%ld %ld  diff=%f %f  res=%f",
+    log_debug(DEBUG5,
+	      "_rate_diffusec: last=%ld %ld  now=%ld %ld  diff=%f %f  res=%f.",
 	      tlast.tv_sec,tlast.tv_usec,
 	      t.tv_sec,t.tv_usec,
 	      diffsec, diffusec,
@@ -132,7 +133,8 @@ static void _rate_throttle(unsigned long rate_pos, long rate_bytes,
   
   /* no rate control unless more than free bytes DL'ed */
   log_debug(DEBUG5,
-	    "_rate_throttle: rate_bytes=%ld  rate_pos=%ld  rate_freebytes=%ld  rate_bps=%ld  rate_hardbps=%i",
+	    "_rate_throttle: rate_bytes=%ld  rate_pos=%ld  rate_freebytes=%ld "
+	    "rate_bps=%ld  rate_hardbps=%i.",
 	    rate_bytes, rate_pos,
 	    rate_freebytes, rate_bps, rate_hardbps);
 
@@ -147,7 +149,7 @@ static void _rate_throttle(unsigned long rate_pos, long rate_bytes,
   
   if(wtime>dtime) {
     /* too fast, doze a little */
-    log_debug(DEBUG5,"_rate_throttle: wtime=%f  dtime=%f",wtime,dtime);
+    log_debug(DEBUG5, "_rate_throttle: wtime=%f  dtime=%f.", wtime, dtime);
 
     if(wtime-dtime > 10e7) {
       /* >100sec, umm that'd timeout */
@@ -173,8 +175,8 @@ void _stor_done()
 
     fs_stat(session.xfer.path,&sbuf);
     if(chown(session.xfer.path,(uid_t)-1,(gid_t)session.fsgid) == -1)
-      log_pri(LOG_WARNING,"chown(%s) failed: %s",
-              session.xfer.path,strerror(errno));
+      log_pri(LOG_WARNING, "chown(%s) failed: %s.",
+              session.xfer.path, strerror(errno));
     else
       fs_chmod(session.xfer.path,sbuf.st_mode);
   }
@@ -316,7 +318,7 @@ MODRET pre_cmd_stor(cmd_rec *cmd) {
       sstrncpy(p_hidden->value.str_val, ".in.", maxlen);
       sstrcat(p_hidden->value.str_val, dir, maxlen);
       sstrcat(p_hidden->value.str_val, ".", maxlen);
-      log_pri(LOG_DEBUG,"Local path, will rename %s to %s",
+      log_pri(LOG_DEBUG, "Local path, will rename %s to %s.",
 	p_hidden->value.str_val, p->value.str_val);
     } else {
       /* Complex relative path or absolute path */
@@ -325,7 +327,7 @@ MODRET pre_cmd_stor(cmd_rec *cmd) {
       sstrcat(p_hidden->value.str_val, ".in.", maxlen);
       sstrcat(p_hidden->value.str_val, dir + basenamestart, maxlen);
       sstrcat(p_hidden->value.str_val, ".", maxlen);
-      log_pri(LOG_DEBUG,"Complex path, will rename %s to %s",
+      log_pri(LOG_DEBUG, "Complex path, will rename %s to %s.",
 	p_hidden->value.str_val, p->value.str_val);
 
       if(file_mode(p_hidden->value.str_val)) {
@@ -380,7 +382,8 @@ MODRET cmd_stor(cmd_rec *cmd)
       /* I am not sure this _is_ allowed in ftp protocol... ideas, anyone?
        add_response(R_211,"Allowed bandwidth is %ld bps (starting at %ld).",rate_bps,rate_freebytes);
        */
-      log_debug(DEBUG2,"Allowed bandwidth is %ld bps (starting at %ld).",rate_bps,rate_freebytes);
+      log_debug(DEBUG2, "Allowed bandwidth is %ld bps (starting at %ld).",
+		rate_bps, rate_freebytes);
   }
   
   p_hidden = NULL;
@@ -407,7 +410,7 @@ MODRET cmd_stor(cmd_rec *cmd)
   if(preg && ((ret = regexec(preg,cmd->arg,0,NULL,0)) != 0)) {
     char errmsg[200];
     regerror(ret,preg,errmsg,200);
-    log_debug(DEBUG2,"'%s' didn't pass regex: %s",cmd->arg,errmsg);
+    log_debug(DEBUG2, "'%s' didn't pass regex: %s.", cmd->arg, errmsg);
     add_response_err(R_550,"%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
   }
@@ -505,10 +508,12 @@ MODRET cmd_stor(cmd_rec *cmd)
            * The poor user will have to re-upload, but we've got more important
            * problems to worry about and this failure should be fairly rare.
            */
-           log_pri(LOG_WARNING,"Rename of %s to %s failed: %s",
+           log_pri(LOG_WARNING, "Rename of %s to %s failed: %s.",
              session.xfer.path_hidden, session.xfer.path, strerror(errno));
+
            add_response_err(R_550,"%s: rename of hidden file %s failed: %s",
              session.xfer.path, session.xfer.path_hidden, strerror(errno));
+
            unlink(session.xfer.path_hidden);
 
            return ERROR(cmd);
@@ -622,7 +627,8 @@ MODRET cmd_retr(cmd_rec *cmd)
       /* I am not sure this _is_ allowed in ftp protocol... ideas, anyone?
 	 add_response(R_211,"Allowed bandwidth is %ld bps (starting at %ld).",rate_bps,rate_freebytes);
       */
-    log_debug(DEBUG2,"Allowed bandwidth is %ld bps (starting at %ld).",rate_bps,rate_freebytes);
+    log_debug(DEBUG2, "Allowed bandwidth is %ld bps (starting at %ld).",
+	      rate_bps, rate_freebytes);
   }
   
   p = mod_privdata_find(cmd,"retr_filename",NULL);
@@ -693,13 +699,13 @@ MODRET cmd_retr(cmd_rec *cmd)
       
       len = data_sendfile(retr_fd, &off, session.xfer.file_size - cnt);
       if(len == -1) {
-	log_pri(LOG_ERR, "data_sendfile error: %d:%s",
+	log_pri(LOG_ERR, "data_sendfile error: %d:%s.",
 		errno, strerror(errno));
 	switch (errno) {
 	case EAGAIN:
 	  continue;
 	default:
-	  log_pri(LOG_ERR, "unknown data_sendfile() error %d: %s",
+	  log_pri(LOG_ERR, "Unknown data_sendfile() error %d: %s.",
 		  errno, strerror(errno));
 	}
       }
@@ -811,15 +817,16 @@ static int _noxfer_timeout(CALLBACK_FRAME)
            TimeoutNoXfer);
 
 #if 0		/* no longer needed */
-  schedule(main_exit,0,(void*)LOG_NOTICE,"FTP no transfer time out, disconnected.",
-           (void*)0,NULL);
+  schedule(main_exit, 0, (void*) LOG_NOTICE,
+	   "FTP no transfer time out, disconnected.",
+           (void*) 0, NULL);
 #endif
   
   remove_timer(TIMER_IDLE,ANY_MODULE);
   remove_timer(TIMER_LOGIN,ANY_MODULE);
 
-  main_exit((void*)LOG_NOTICE,"FTP no transfer timeout, disconnected.",
-		  (void*)0,NULL);
+  main_exit((void*) LOG_NOTICE, "FTP no transfer timeout, disconnected.",
+		  (void*) 0, NULL);
   return 0;
 }
 
@@ -852,7 +859,7 @@ MODRET add_ratenum(cmd_rec *cmd)
       CONF_ERROR(cmd,"argument must be 'none' or a positive integer.");
   }
 
-  log_debug(DEBUG5,"add_ratenum: %s %ld",cmd->argv[0],ratenum);
+  log_debug(DEBUG5, "add_ratenum: %s %ld.", cmd->argv[0], ratenum);
 
   c = add_config_param( cmd->argv[0], 1, (void*)ratenum );
   c->flags |= CF_MERGEDOWN;
@@ -871,7 +878,7 @@ MODRET add_ratebool(cmd_rec *cmd)
   if((b = get_boolean(cmd,1)) == -1)
     CONF_ERROR(cmd,"expected boolean argument.");
 
-  log_debug(DEBUG5,"add_ratebool: %s %d",cmd->argv[0],b);
+  log_debug(DEBUG5, "add_ratebool: %s %d.", cmd->argv[0], b);
 
   c = add_config_param( cmd->argv[0], 1, (void*)b );
   c->flags |= CF_MERGEDOWN;

@@ -19,11 +19,12 @@
  */
 
 /*
+ * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lldap -llber$
- * ldap password lookup module for ProFTPD
- * Author: John Morrissey <jwm@horde.net>
+ * $Id: mod_ldap.c,v 1.3 1999-10-11 03:13:12 macgyver Exp $
  *
- * $Id: mod_ldap.c,v 1.2 1999-10-10 10:05:58 macgyver Exp $
+ * LDAP lookup module for ProFTPD
+ * Author: John Morrissey <jwm@horde.net>
  */
 
 #include "conf.h"
@@ -85,11 +86,13 @@ static void p_setpwent()
   /* FUTURE: secondary ldap server? */
 
   if ((ld = ldap_open(ldap_server, LDAP_PORT)) == NULL) {
-    log_pri(LOG_ERR, "ldap_auth: p_setpwent(): ldap_open() to %s failed", ldap_server);
+    log_pri(LOG_ERR, "ldap_auth: p_setpwent(): ldap_open() to %s failed.",
+	    ldap_server);
     return;
   }
   if (ldap_simple_bind(ld, ldap_dn, ldap_dnpass) == -1) {
-    log_pri(LOG_ERR, "ldap_auth: p_setpwent(): ldap_simple_bind() as %s failed", ldap_dn);
+    log_pri(LOG_ERR, "ldap_auth: p_setpwent(): ldap_simple_bind() "
+	    "as %s failed.", ldap_dn);
     return;
   }
 }
@@ -98,7 +101,7 @@ static void p_endpwent()
 {
   if (ld != NULL)
     if (ldap_unbind(ld) == -1)
-      log_pri(LOG_NOTICE, "ldap_auth: p_endpwent(): ldap_unbind() failed");
+      log_pri(LOG_NOTICE, "ldap_auth: p_endpwent(): ldap_unbind() failed.");
 }
 
 static void p_setgrent()
@@ -156,7 +159,7 @@ static struct passwd *p_getpwnam(cmd_rec *cmd, const char *name)
   filter = pstrcat(cmd->tmp_pool, "uid=", name, NULL);
 
   if (ldap_ufn_search_s(ld, filter, name_attrs, 0, &result) == -1) {
-    log_pri(LOG_ERR, "ldap_auth: p_getpwnam(): ldap_ufn_search_s() failed");
+    log_pri(LOG_ERR, "ldap_auth: p_getpwnam(): ldap_ufn_search_s() failed.");
     return NULL;
   }
 
@@ -168,7 +171,8 @@ static struct passwd *p_getpwnam(cmd_rec *cmd, const char *name)
   for (i = 0; i <= sizeof(name_attrs) / sizeof(*name_attrs) - 2; ++i) {
     if ((values = ldap_get_values(ld, e, name_attrs[i])) == NULL) {
       ldap_msgfree(result);
-      log_pri(LOG_ERR, "ldap_auth: p_getpwnam(): ldap_get_values() failed for attr %s", name_attrs[i]);
+      log_pri(LOG_ERR, "ldap_auth: p_getpwnam(): ldap_get_values() failed "
+	      "for attr %s.", name_attrs[i]);
       return NULL;
     }
 
@@ -183,7 +187,8 @@ static struct passwd *p_getpwnam(cmd_rec *cmd, const char *name)
     else if (strcasecmp(name_attrs[i], "loginShell") == 0)
       pw->pw_shell = pstrdup(session.pool, values[0]);
     else
-      log_pri(LOG_WARNING, "ldap_auth: p_getpwnam(): ldap_get_values() loop found unknown attr %s", name_attrs[i]);
+      log_pri(LOG_WARNING, "ldap_auth: p_getpwnam(): ldap_get_values() loop "
+	      "found unknown attr %s.", name_attrs[i]);
 
     ldap_value_free(values);
   }
@@ -221,7 +226,7 @@ static struct passwd *p_getpwuid(cmd_rec *cmd, uid_t uid)
   filter = pstrcat(session.pool, "uidNumber=", uidstr, NULL);
 
   if (ldap_ufn_search_s(ld, filter, uid_attrs, 0, &result) == -1) {
-    log_pri(LOG_ERR, "ldap_auth: p_getpwuid(): ldap_ufn_search_s() failed");
+    log_pri(LOG_ERR, "ldap_auth: p_getpwuid(): ldap_ufn_search_s() failed.");
     return NULL;
   }
 
@@ -233,7 +238,8 @@ static struct passwd *p_getpwuid(cmd_rec *cmd, uid_t uid)
   for (i = 0; i <= sizeof(uid_attrs) / sizeof(*uid_attrs) - 2; ++i) {
     if ((values = ldap_get_values(ld, e, uid_attrs[i])) == NULL) {
       ldap_msgfree(result);
-      log_pri(LOG_ERR, "ldap_auth: p_getpwuid(): ldap_get_values() failed for attr %s", uid_attrs[i]);
+      log_pri(LOG_ERR, "ldap_auth: p_getpwuid(): ldap_get_values() failed for "
+	      "attr %s.", uid_attrs[i]);
       return NULL;
     }
 
@@ -248,7 +254,8 @@ static struct passwd *p_getpwuid(cmd_rec *cmd, uid_t uid)
     else if (strcasecmp(uid_attrs[i], "shell") == 0)
       pw->pw_shell = pstrdup(session.pool, values[0]);
     else
-      log_pri(LOG_WARNING, "ldap_auth: p_getpwuid(): ldap_get_values() loop found unknown attr %s", uid_attrs[i]);
+      log_pri(LOG_WARNING, "ldap_auth: p_getpwuid(): ldap_get_values() loop "
+	      "found unknown attr %s.", uid_attrs[i]);
 
     ldap_value_free(values);
   }
@@ -457,7 +464,7 @@ MODRET pw_auth(cmd_rec *cmd)
   filter = pstrcat(cmd->tmp_pool, "uid=", name, NULL);
 
   if (ldap_ufn_search_s(ld, filter, pass_attrs, 0, &result) == -1) {
-    log_pri(LOG_ERR, "ldap_auth: pw_auth(): ldap_ufn_search_s() failed");
+    log_pri(LOG_ERR, "ldap_auth: pw_auth(): ldap_ufn_search_s() failed.");
     return NULL;
   }
 
@@ -468,7 +475,7 @@ MODRET pw_auth(cmd_rec *cmd)
 
   if ((values = ldap_get_values(ld, e, "userPassword")) == NULL) {
     ldap_msgfree(result);
-    log_pri(LOG_ERR, "ldap_auth: pw_auth(): ldap_get_values() failed");
+    log_pri(LOG_ERR, "ldap_auth: pw_auth(): ldap_get_values() failed.");
     return NULL;
   }
 
@@ -516,7 +523,8 @@ MODRET pw_check(cmd_rec *cmd)
       return DECLINED(cmd);
   }
   else {
-    log_pri(LOG_ERR, "ldap_auth: pw_check(): can't determine encryption scheme from '%s'", cpw);
+    log_pri(LOG_ERR, "ldap_auth: pw_check(): can't determine encryption "
+	    "scheme from '%s'.", cpw);
     return DECLINED(cmd);
   }
 

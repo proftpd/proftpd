@@ -377,7 +377,7 @@ log_cmd_pass (cmd_rec * cmd)
   if (g.enable)
     {
       snprintf (buf, sizeof(buf), RATIO_STUFFS);
-      log_pri (LOG_NOTICE, "ratio: %s/%s %s[%s]: %s", g.user,
+      log_pri (LOG_NOTICE, "Ratio: %s/%s %s[%s]: %s.", g.user,
 	       session.group, session.c->remote_name,
 	       inet_ntoa (*session.c->remote_ipaddr), buf);
     }

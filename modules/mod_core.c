@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.17 1999-10-07 03:25:55 macgyver Exp $
+ * $Id: mod_core.c,v 1.18 1999-10-11 03:13:12 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -712,9 +712,9 @@ MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_GLOBAL);
   
-  log_debug(DEBUG4,"Compiling %s regex '%s'", type, cmd->argv[1]);
+  log_debug(DEBUG4, "Compiling %s regex '%s'.", type, cmd->argv[1]);
   preg = calloc(1, sizeof(regex_t));
-  log_debug(DEBUG4,"Allocated %s regex at location %p", type, preg);
+  log_debug(DEBUG4, "Allocated %s regex at location %p.", type, preg);
   
   if((ret = regcomp(preg, cmd->argv[1], REG_EXTENDED | REG_NOSUB)) != 0) {
     char errmsg[200];
@@ -1614,11 +1614,11 @@ MODRET cmd_pasv(cmd_rec *cmd)
   port.port = htons(session.data_port);
 
 
-  log_debug(DEBUG1,"Entering Passive Mode (%u,%u,%u,%u,%u,%u)",
+  log_debug(DEBUG1,"Entering Passive Mode (%u,%u,%u,%u,%u,%u).",
 		(int)addr.u[0],(int)addr.u[1],(int)addr.u[2],
 		(int)addr.u[3],(int)port.u[0],(int)port.u[1]);
 
-  add_response(R_227, "Entering Passive Mode (%u,%u,%u,%u,%u,%u)",
+  add_response(R_227, "Entering Passive Mode (%u,%u,%u,%u,%u,%u).",
                 (int)addr.u[0],(int)addr.u[1],(int)addr.u[2],
                 (int)addr.u[3],(int)port.u[0],(int)port.u[1]);
 
@@ -1680,12 +1680,8 @@ MODRET cmd_port(cmd_rec *cmd)
   if(allow_foreign_addr != 1) {
     if(addr.addr.s_addr != session.c->remote_ipaddr->s_addr ||
        !port.port) {
-      log_pri(LOG_WARNING,
-	      "%s - refused PORT %s from %s [%s] (address mismatch)",
-	      main_server->ServerFQDN, cmd->arg,
-	      session.c->remote_name, inet_ntoa(*session.c->remote_ipaddr));
-
-      return ERROR_MSG(cmd,R_500,"Illegal PORT command.");
+      log_pri(LOG_WARNING, "Refused PORT %s (address mismatch).", cmd->arg);
+      return ERROR_MSG(cmd, R_500, "Illegal PORT command.");
     }
   }
 
@@ -1694,11 +1690,7 @@ MODRET cmd_port(cmd_rec *cmd)
    */
 
   if(ntohs(port.port) < 1024) {
-    log_pri(LOG_WARNING,
-	    "%s - refused PORT %s from %s [%s] (bounce attack)",
-	    main_server->ServerFQDN, cmd->arg,
-	    session.c->remote_name, inet_ntoa(*session.c->remote_ipaddr));
-    
+    log_pri(LOG_WARNING, "Refused PORT %s (bounce attack).", cmd->arg);
     return ERROR_MSG(cmd,R_500,"Illegal PORT command.");
   }
 
@@ -1996,11 +1988,11 @@ MODRET cmd_mkd(cmd_rec *cmd)
 
       fs_stat(dir,&sbuf);
       if(chown(dir,(uid_t)-1,(gid_t)session.fsgid) == -1)
-        log_pri(LOG_WARNING,"chown() failed: %s",strerror(errno));
+        log_pri(LOG_WARNING, "chown() failed: %s.", strerror(errno));
       else
         chmod(dir,sbuf.st_mode);
     }
-    add_response(R_257,"\"%s\" - directory successfully created.",
+    add_response(R_257,"\"%s\" - Directory successfully created.",
                   quote_dir(cmd,dir));
   }
     
@@ -2165,7 +2157,7 @@ MODRET cmd_dele(cmd_rec *cmd)
 	     path, (session.flags & SF_ASCII ? 'a' : 'b'),
 	     'd', 'a', session.anon_user);
   } else {
-    log_xfer(0,session.c->remote_name, 0, path,
+    log_xfer(0, session.c->remote_name, 0, path,
 	     (session.flags & SF_ASCII ? 'a' : 'b'),
 	     'd', 'r', session.user);
   }
@@ -2444,7 +2436,7 @@ MODRET set_class(cmd_rec *cmd)
     if (ret < 0)
       ret = 100;
     n->max_connections = ret;
-    log_debug(DEBUG4, "class '%s' maxconnections set to %d",
+    log_debug(DEBUG4, "Class '%s' maxconnections set to %d.",
 	      n->name, n->max_connections);
   } else if (strcasecmp(cmd->argv[2], "regex") == 0) {
     preg = calloc(1, sizeof(regex_t));
@@ -2455,21 +2447,21 @@ MODRET set_class(cmd_rec *cmd)
       regfree(preg);
       
       n->preg = NULL;
-      log_pri(LOG_ERR, "failed regexp '%s' compilation: ", cmd->argv[3]);
+      log_pri(LOG_ERR, "Failed regexp '%s' compilation: ", cmd->argv[3]);
     } else {
       n->preg = preg;
     }
   } else if(strcasecmp(cmd->argv[2], "ip") == 0) {
     sstrncpy(ipaddress, cmd->argv[3], sizeof(ipaddress));
     if((ptr = strchr(ipaddress, '/')) == NULL) {
-      log_pri(LOG_ERR, "class '%s' ipmask %s skipped.",
+      log_pri(LOG_ERR, "Class '%s' ipmask %s skipped.",
 	      cmd->argv[1], cmd->argv[3]);
       CONF_ERROR(cmd, "wrong syntax error.");
     } else {
       bits = atol(ptr + 1);
       
       if (bits < 0 || bits > 32) {
-	log_pri(LOG_ERR, "class '%s' ipmask %s skipped: wrong netmask",
+	log_pri(LOG_ERR, "Class '%s' ipmask %s skipped: wrong netmask.",
 		cmd->argv[1], cmd->argv[3]);
       }
       
@@ -2478,10 +2470,10 @@ MODRET set_class(cmd_rec *cmd)
     
     if((res = inet_getaddr(cmd->pool, ipaddress)) != NULL) {
       add_cdir(n, ntohl(res->s_addr), bits);
-      log_debug(DEBUG4, "class '%s' ipmask %p/%d added.",
+      log_debug(DEBUG4, "Class '%s' ipmask %p/%d added.",
 		cmd->argv[1], res, bits);
     } else {
-      log_pri(LOG_ERR, "Class '%s' ip could not parse '%s'",
+      log_pri(LOG_ERR, "Class '%s' ip could not parse '%s'.",
 	      cmd->argv[1], cmd->argv[3]);
     }
   } else {

@@ -20,7 +20,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.8 1999-10-01 07:57:31 macgyver Exp $
+ * $Id: mod_log.c,v 1.9 1999-10-11 03:13:12 macgyver Exp $
  */
 
 #include "conf.h"
@@ -293,7 +293,8 @@ MODRET add_extendedlog(cmd_rec *cmd)
   argv = cmd->argv;
 
   if(argc < 2)
-    CONF_ERROR(cmd,"Syntax: ExtendedLog <log-filename> [<command-classes> [<format-nickname>]]");
+    CONF_ERROR(cmd, "Syntax: ExtendedLog <log-filename> "
+	       "[<Command-Classes> [<Format-Nickname>]]");
 
   c = add_config_param("ExtendedLog",3,NULL,NULL,NULL);
 
@@ -700,7 +701,7 @@ void get_extendedlogs()
           break;
 
       if(!logfmt) {
-        log_pri(LOG_NOTICE,"format-nickname '%s' is not defined.",
+        log_pri(LOG_NOTICE, "Format-Nickname '%s' is not defined.",
                            logfmt_s);
         goto loop_extendedlogs;
       }
@@ -798,8 +799,8 @@ int log_child_init()
       unblock_signals();
 
       if(lf->lf_fd == -1)
-        log_pri(LOG_NOTICE,"unable to open ExtendedLog '%s': %s",
-                lf->lf_filename,strerror(errno));
+        log_pri(LOG_NOTICE, "Unable to open ExtendedLog '%s': %s.",
+                lf->lf_filename, strerror(errno));
     }
 
   return 0;

@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.14 1999-10-07 03:25:55 macgyver Exp $
+ * $Id: mod_auth.c,v 1.15 1999-10-11 03:13:12 macgyver Exp $
  */
 
 #include "conf.h"
@@ -52,7 +52,8 @@ int check_auth(cmd_rec *cmd)
 
 int _auth_shutdown(CALLBACK_FRAME)
 {
-  log_pri(LOG_ERR,"scheduled main_exit() never ran [from auth:_login_timeout], terminating.");
+  log_pri(LOG_ERR, "scheduled main_exit() never ran "
+	  "[from auth:_login_timeout], terminating.");
   end_login(1);
   return 0;				/* Avoid compiler warning */
 }
@@ -64,19 +65,14 @@ int _auth_shutdown(CALLBACK_FRAME)
 int _login_timeout(CALLBACK_FRAME)
 {
   /* Is this the proper behavior when timing out? */
-  send_response_async(R_421,"Login Timeout (%d seconds): closing control connection.",
+  send_response_async(R_421,
+		      "Login Timeout (%d seconds): "
+		      "closing control connection.",
                       TimeoutLogin);
-  main_exit((void*)LOG_NOTICE,"FTP login timed out, disconnected.",
-		  (void*)0,NULL);
-
-/*
-  schedule(main_exit,0,(void*)LOG_NOTICE,"FTP login timed out, disconnected.",
-           (void*)0,NULL);
-  remove_timer(TIMER_IDLE,ANY_MODULE);
-  remove_timer(TIMER_NOXFER,ANY_MODULE);
-  add_timer(10,-1,&auth_module,_auth_shutdown);
-*/
-
+  
+  main_exit((void*) LOG_NOTICE, "FTP login timed out, disconnected.",
+	    (void*) 0, NULL);
+  
 /* should never be reached */
   return 0;		/* Don't restart the timer */
 }
@@ -532,7 +528,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
   c = _auth_resolve_user(p,&user,&ourname,&anonname);
 
   if(!user) {
-    log_pri(LOG_NOTICE,"failed login from %s, '%s' is not a UserAlias.",inet_ascii(p,session.c->remote_ipaddr),origuser);
+    log_pri(LOG_NOTICE, "USER %s (Login failed): User not a UserAlias.",
+	    origuser);
     goto auth_failure;
   }
 
@@ -540,7 +537,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   aclp = login_check_limits(main_server->conf,FALSE,TRUE,&i);
 
   if((pw = auth_getpwnam(p,user)) == NULL) {
-    log_pri(LOG_NOTICE,"failed login from %s, can't find user '%s'",inet_ascii(p,session.c->remote_ipaddr),user);
+    log_pri(LOG_NOTICE, "USER %s (Login failed): Can't find user.", user);
     goto auth_failure;
   }
 
@@ -555,23 +552,17 @@ static int _setup_environment(pool *p, char *user, char *pass)
      * still log a warning. :)
      */
 
-    if(get_param_int((c ? c->subset : main_server->conf),"RootLogin",FALSE) != 1) {
-      log_auth(LOG_CRIT,"SECURITY VIOLATION: root login attempted from %s [%s] to %s:%i",
-	       session.c->remote_name,
-	       inet_ascii(p,session.c->remote_ipaddr),
-	       inet_ascii(p,session.c->local_ipaddr),
-	       session.c->local_port);
+    if(get_param_int((c ? c->subset : main_server->conf),
+		     "RootLogin", FALSE) != 1) {
+      log_auth(LOG_CRIT, "SECURITY VIOLATION: root login attempted.");
       return 0;
-    } else
-      log_auth(LOG_WARNING,"root login from %s [%s] to %s:%i",
-	       session.c->remote_name,
-	       inet_ascii(p,session.c->remote_ipaddr),
-	       inet_ascii(p,session.c->local_ipaddr),
-	       session.c->local_port);
+    } else {
+      log_auth(LOG_WARNING, "root login successful.");
+    }
   }
-
-  session.user = pstrdup(p,pw->pw_name);
-  session.group = pstrdup(p,auth_gid_name(p,pw->pw_gid));
+  
+  session.user = pstrdup(p, pw->pw_name);
+  session.group = pstrdup(p, auth_gid_name(p, pw->pw_gid));
 
   /* set force_anon (for AnonymousGroup) and build a custom
    * anonymous config for this session.
@@ -603,22 +594,15 @@ static int _setup_environment(pool *p, char *user, char *pass)
     }
 
     if(!login_check_limits(c->subset,FALSE,TRUE,&i) || (!aclp && !i) ){
-      log_auth(LOG_NOTICE,"ANON %s: LIMIT access denies login from %s [%s] to %s:%i",
-                          origuser,
-                          session.c->remote_name,
-                          inet_ascii(p,session.c->remote_ipaddr),
-			  inet_ascii(p,session.c->local_ipaddr),
-			  session.c->local_port);
+      log_auth(LOG_NOTICE, "ANON %s (Login failed): Limit access denies "
+	       "login.", origuser);
       goto auth_failure;
     }
   }
 
   if(!c && !aclp) {
-    log_auth(LOG_NOTICE,"USER %s: LIMIT access denies login from %s [%s] to %s:%i",
-             origuser,session.c->remote_name,
-             inet_ascii(p,session.c->remote_ipaddr),
-	     inet_ascii(p,session.c->local_ipaddr),
-	     session.c->local_port);
+    log_auth(LOG_NOTICE, "USER %s (Login failed): Limit access denies login.",
+	     origuser);
     goto auth_failure;
   }
 
@@ -649,40 +633,35 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
     switch(authcode) {
     case AUTH_NOPWD:
-      log_auth(LOG_NOTICE,"USER %s: no such user found from %s [%s] to %s:%i",
-               user,session.c->remote_name,
-	       inet_ascii(p,session.c->remote_ipaddr),
-	       inet_ascii(p,session.c->local_ipaddr),
-	       session.c->local_port);
-      break;
+      log_auth(LOG_NOTICE, "USER %s (Login failed): No such user found.",
+	       user);
+      goto auth_failure;
+      
     case AUTH_BADPWD:
-      log_auth(LOG_NOTICE,"USER %s: incorrect password from %s [%s] to %s:%i",
-               origuser,session.c->remote_name,
-	       inet_ascii(p,session.c->remote_ipaddr),
-	       inet_ascii(p,session.c->local_ipaddr),
-	       session.c->local_port);
-      break;
+      log_auth(LOG_NOTICE, "USER %s (Login failed): Incorrect password.",
+	       origuser);
+      goto auth_failure;
+
     case AUTH_AGEPWD:
-      log_auth(LOG_NOTICE,"USER %s: password expired from %s [%s] to %s:%i",
-	       user,session.c->remote_name,
-	       inet_ascii(p,session.c->remote_ipaddr),
-	       inet_ascii(p,session.c->local_ipaddr),
-	       session.c->local_port);
-      break;
+      log_auth(LOG_NOTICE, "USER %s (Login failed): Password expired.",
+	       user);
+      goto auth_failure;
+
     case AUTH_DISABLEDPWD:
-      log_auth(LOG_NOTICE,"USER %s: account disabled from %s [%s] to %s:%i",
-	       user,session.c->remote_name,
-	       inet_ascii(p,session.c->remote_ipaddr),
-	       inet_ascii(p,session.c->local_ipaddr),
-	       session.c->local_port);
+      log_auth(LOG_NOTICE, "USER %s (Login failed): Account disabled.",
+	       user);
+      goto auth_failure;
+
+    default:
       break;
     };
-
+    
     if(authcode != 0)
       goto auth_failure;
-  } else if(c)
+  } else if(c) {
     session.hide_password = FALSE;
-
+  }
+  
 /* Flood - 7/10/97, not sure what setutent() was used for, but it
  * certainly looks unnecessary now.
  */
@@ -692,21 +671,12 @@ static int _setup_environment(pool *p, char *user, char *pass)
   auth_setgrent(p);
 
   if(!_auth_check_shell((c ? c->subset : main_server->conf),pw->pw_shell)) {
-    log_auth(LOG_NOTICE,"failed login '%s' from %s [%s] to %s:%i (invalid shell)",
-               user,session.c->remote_name,
-	       inet_ascii(p,session.c->remote_ipaddr),
-	       inet_ascii(p,session.c->local_ipaddr),
-	       session.c->local_port);
+    log_auth(LOG_NOTICE, "USER %s (Login failed): Invalid shell.", user);
     goto auth_failure;
   }
 
   if(!_auth_check_ftpusers((c ? c->subset : main_server->conf),pw->pw_name)) {
-    log_auth(LOG_NOTICE,"failed login '%s' from %s [%s] to %s:%i (user in %s)",
-             pw->pw_name,session.c->remote_name,
-             inet_ascii(p,session.c->remote_ipaddr),
-	     inet_ascii(p,session.c->local_ipaddr),
-	     session.c->local_port,
-             FTPUSERS_PATH);
+    log_auth(LOG_NOTICE, "USER %s (Login failed): User in %s.", FTPUSERS_PATH);
     goto auth_failure;
   }
 
@@ -715,27 +685,28 @@ static int _setup_environment(pool *p, char *user, char *pass)
     int add_userdir;
     char *u;
     
-    u = (char *) get_param_int(main_server->conf,C_USER,FALSE);               
+    u = (char *) get_param_int(main_server->conf, C_USER, FALSE);
                                                                               
     add_userdir = get_param_int((c ? c->subset : main_server->conf),
-				"UserDirRoot",FALSE);
-
+				"UserDirRoot", FALSE);
+    
     if(add_userdir > 0 && strcmp(u, user)) {
-      session.anon_root = dir_realpath(session.pool, pdircat(session.pool,
-							     c->name, u, NULL));
+      session.anon_root = dir_realpath(session.pool,
+				       pdircat(session.pool, c->name,
+					       u, NULL));
     } else {
-      session.anon_root = dir_realpath(session.pool,c->name);
+      session.anon_root = dir_realpath(session.pool, c->name);
     }
     
-    session.anon_user = pstrdup(session.pool,pass);
-
+    session.anon_user = pstrdup(session.pool, pass);
+    
     if(!session.anon_root) {
-      log_pri(LOG_ERR,"%s: Directory %s is not accessible.",
-              session.user,c->name);
+      log_pri(LOG_ERR, "%s: Directory %s is not accessible.",
+              session.user, c->name);
       add_response_err(R_530,"Unable to set anonymous privileges.");
       goto auth_failure;
     }
-  
+    
     sstrncpy(session.cwd, "/", sizeof(session.cwd));
     xferlog = get_param_ptr(c->subset,"TransferLog",FALSE);
 
@@ -776,11 +747,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
   if(!login_check_limits((c ? c->subset : main_server->conf),FALSE,TRUE,&i))
   {
-    log_auth(LOG_NOTICE,"%s: LIMIT access denies login (DenyGroup) from %s [%s] to %s:%i",
-             origuser,session.c->remote_name,
-             inet_ascii(p,session.c->remote_ipaddr),
-	     inet_ascii(p,session.c->local_ipaddr),
-	     session.c->local_port);
+    log_auth(LOG_NOTICE, "%s: Limit access denies login (DenyGroup).",
+	     origuser);
     goto auth_failure;
   }
   
@@ -794,17 +762,9 @@ static int _setup_environment(pool *p, char *user, char *pass)
     resolve_anonymous_dirs(c->subset);
 
   if(c)
-    log_auth(LOG_NOTICE,"ANONYMOUS FTP login as '%s' from %s [%s] to %s:%i",
-      origuser,session.c->remote_name,
-      inet_ascii(p,session.c->remote_ipaddr),
-      inet_ascii(p,session.c->local_ipaddr),
-      session.c->local_port);
+    log_auth(LOG_NOTICE, "ANON %s: Login successful.", origuser);
   else
-    log_auth(LOG_NOTICE,"FTP login as '%s' from %s [%s] to %s:%i",
-      origuser,session.c->remote_name,
-      inet_ascii(p,session.c->remote_ipaddr),
-      inet_ascii(p,session.c->local_ipaddr),
-      session.c->local_port);
+    log_auth(LOG_NOTICE,"USER %s: Login successful.", origuser);
 
   /* Write the login to wtmp.  This must be done here because we won't
    * have access after we give up root.  This can result in falsified
@@ -831,13 +791,13 @@ static int _setup_environment(pool *p, char *user, char *pass)
   PRIVS_ROOT
 
   if(wtmp_log != 0) {
-    log_wtmp(ttyname,session.user,session.c->remote_name,
+    log_wtmp(ttyname, session.user, session.c->remote_name,
              session.c->remote_ipaddr);
     session.wtmp_log = TRUE;
   }
 
   /* Open the /var/run log for later writing */
-  log_open_run(mpid,FALSE,TRUE);
+  log_open_run(mpid, FALSE, TRUE);
   /* Open /var/log/ files */
   if(!xferlog) {
     if(c)
@@ -877,8 +837,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
       PRIVS_RELINQUISH
 
       add_response_err(R_530,"Unable to set default root directory.");
-      log_pri(LOG_ERR,"%s chroot(\"%s\"): %s",session.user,
-              defroot,strerror(errno));
+      log_pri(LOG_ERR, "%s chroot(\"%s\"): %s", session.user,
+              defroot, strerror(errno));
       end_login(1);
     }
 
@@ -923,7 +883,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
     PRIVS_RELINQUISH
 
     add_response_err(R_530,"Unable to set anonymous privileges.");
-    log_pri(LOG_ERR,"%s chroot(): %s",session.user,strerror(errno));
+    log_pri(LOG_ERR, "%s chroot(): %s", session.user, strerror(errno));
     
     end_login(1);
   }
@@ -956,8 +916,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
     PRIVS_RELINQUISH
 
     add_response_err(R_530,"Unable to set user privileges.");
-    log_pri(LOG_ERR,"%s setregid() or setreuid(): %s",
-            session.user,strerror(errno));
+    log_pri(LOG_ERR, "%s setregid() or setreuid(): %s",
+            session.user, strerror(errno));
 
     end_login(1);
   }
@@ -988,8 +948,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
   if(fs_chdir_canon(session.cwd,!showsymlinks) == -1) {
     add_response_err(R_530,"Unable to chdir.");
-    log_pri(LOG_ERR,"%s chdir(\"%s\"): %s",session.user,
-            session.cwd,strerror(errno));
+    log_pri(LOG_ERR, "%s chdir(\"%s\"): %s", session.user,
+            session.cwd, strerror(errno));
     end_login(1);
   }
 
@@ -1033,7 +993,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
    * timer.
    */
 
-  log_run_address(session.c->remote_name,session.c->remote_ipaddr);
+  log_run_address(session.c->remote_name, session.c->remote_ipaddr);
   log_run_cwd(session.cwd);
   main_set_idle();
 
@@ -1081,7 +1041,8 @@ MODRET cmd_user(cmd_rec *cmd)
 
   if(failnopwprompt) {
     if(!user) {
-      log_pri(LOG_NOTICE,"failed login from %s, '%s' is not a UserAlias.",inet_ascii(cmd->tmp_pool,session.c->remote_ipaddr),origuser);
+      log_pri(LOG_NOTICE, "USER %s (Login failed): Not a UserAlias.",
+	      origuser);
       send_response(R_530,"Login incorrect.");
       end_login(0);
     }
@@ -1097,23 +1058,15 @@ MODRET cmd_user(cmd_rec *cmd)
 
     if(c) {
       if(!login_check_limits(c->subset,FALSE,TRUE,&i) || (!aclp && !i) ) {
-              log_auth(LOG_NOTICE,"ANON %s: LIMIT access denies login from %s [%s] to %s:%i",
-                          origuser,
-                          session.c->remote_name,
-                          inet_ascii(cmd->tmp_pool,session.c->remote_ipaddr),
-			  inet_ascii(cmd->tmp_pool,session.c->local_ipaddr),
-			  session.c->local_port);
-              send_response(R_530,"Login incorrect.");
-              end_login(0);
+	log_auth(LOG_NOTICE, "ANON %s: Limit access denies login.",
+		 origuser);
+	send_response(R_530,"Login incorrect.");
+	end_login(0);
       }
     }
-
+    
     if(!c && !aclp) {
-      log_auth(LOG_NOTICE,"USER %s: LIMIT access denies login from %s [%s] to %s:%i",
-               origuser,session.c->remote_name,
-               inet_ascii(cmd->tmp_pool,session.c->remote_ipaddr),
-	       inet_ascii(cmd->tmp_pool,session.c->local_ipaddr),
-	       session.c->local_port);
+      log_auth(LOG_NOTICE, "USER %s: Limit access denies login.", origuser);
       send_response(R_530,"Login incorrect.");
       end_login(0);
     }
@@ -1181,14 +1134,12 @@ MODRET cmd_user(cmd_rec *cmd)
 	  core_display_file(R_530, display);
 	else
 	  send_response(R_530,
-			"Too many users in your class, please try again later.");
+			"Too many users in your class, "
+			"please try again later.");
 	
-	log_auth(LOG_NOTICE,
-		 "%s - connection refused (max clients for class %s) from %s [%s]",
-		 main_server->ServerFQDN,
-		 session.class->name, session.c->remote_name,
-		 inet_ntoa(*session.c->remote_ipaddr));
-
+	log_auth(LOG_NOTICE, "Connection refused (max clients for class %s).",
+		 session.class->name);
+	
 	end_login(0);
     }
   }
@@ -1219,10 +1170,8 @@ MODRET cmd_user(cmd_rec *cmd)
       send_response(R_530,"%s",
                     sreplace(cmd->tmp_pool,maxstr,"%m",maxn,NULL));
 
-      log_auth(LOG_NOTICE,
-	       "%s - connection refused (max clients per host %d) from %s [%s]",
-	       main_server->ServerFQDN, max, session.c->remote_name,
-	       inet_ntoa(*session.c->remote_ipaddr));
+      log_auth(LOG_NOTICE, "Connection refused (max clients per host %d).",
+	       max);
       
       end_login(0);
     }
@@ -1244,13 +1193,8 @@ MODRET cmd_user(cmd_rec *cmd)
     
     if(cur >= max) {
       send_response(R_530, "%s",
-                    sreplace(cmd->tmp_pool, maxstr, "%m", maxn, NULL));
-      
-      log_auth(LOG_NOTICE,
-	       "%s - connection refused (max clients %d) from %s [%s]",
-	       main_server->ServerFQDN, max, session.c->remote_name,
-	       inet_ntoa(*session.c->remote_ipaddr));
-      
+		    sreplace(cmd->tmp_pool, maxstr, "%m", maxn, NULL));
+      log_auth(LOG_NOTICE, "Connection refused (max clients %d).", max);
       end_login(0);
     }
 
@@ -1336,11 +1280,7 @@ MODRET cmd_pass(cmd_rec *cmd)
 
     if(++auth_tries >= max) {
       send_response(R_530,"Login incorrect");
-      log_auth(LOG_NOTICE,"Maximum login attempts exceeded from %s [%s] to %s:%i",
-               session.c->remote_name,
-               inet_ascii(cmd->tmp_pool,session.c->remote_ipaddr),
-	       inet_ascii(cmd->tmp_pool,session.c->local_ipaddr),
-	       session.c->local_port);
+      log_auth(LOG_NOTICE, "Maximum login attempts exceeded.");
       end_login(0);
     }
 

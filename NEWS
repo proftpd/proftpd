@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.5 1999-10-10 18:33:00 macgyver Exp $
+$Id: NEWS,v 1.6 1999-10-11 03:13:12 macgyver Exp $
 
 1.2.0pre9
 
@@ -11,7 +11,9 @@ $Id: NEWS,v 1.5 1999-10-10 18:33:00 macgyver Exp $
 
 - Fixed a rare segfault in mod_auth.
 
-- Added some extra information when logging various conditions.
+- Logging has changed slightly to be more informative and more consistent.
+    All messages that get logged are now preceded with
+    <virtualhost> (remote host[remote ip]).
 
 - mod_ldap for authentication against LDAP directories is now in place.
 

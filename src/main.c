@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.19 1999-10-07 03:25:55 macgyver Exp $
+ * $Id: main.c,v 1.20 1999-10-11 03:13:13 macgyver Exp $
  */
 
 /*
@@ -633,13 +633,15 @@ void end_login(int exitcode)
 
 void main_exit(void *pv, void *lv, void *ev, void *dummy)
 {
-  int pri = (int)pv;
-  char *log = (char*)lv;
-  int exitcode = (int)ev;
-
-  log_pri(pri,log);
+  int pri = (int) pv;
+  char *log = (char *) lv;
+  int exitcode = (int) ev;
+  
+  log_pri(pri, log);
+  
   if(standalone && master)
-    log_pri(LOG_NOTICE,"ProFTPD %s standalone mode SHUTDOWN",VERSION);
+    log_pri(LOG_NOTICE, "ProFTPD %s standalone mode SHUTDOWN", VERSION);
+  
   end_login(exitcode);
 }
 
@@ -1521,9 +1523,9 @@ static RETSIGTYPE sig_debug(int sig)
 static RETSIGTYPE sig_disconnect(int sig)
 {
   if((session.flags & SF_ANON) || (session.flags & SF_XFER))
-    schedule(main_exit,0,(void*)LOG_NOTICE,
+    schedule(main_exit, 0, (void*) LOG_NOTICE,
              "Parent process requested shutdown",
-             (void*)0,NULL);
+             (void*) 0, NULL);
   else
     schedule(shutdown_exit,0,NULL,NULL,NULL,NULL);
 
@@ -1886,16 +1888,16 @@ void standalone_main(int nodaemon)
     main_server->listen =
       inet_create_connection(main_server->pool,servers,-1,
                              (SocketBindTight ? main_server->ipaddr :  NULL),
-                             main_server->ServerPort,FALSE);
+                             main_server->ServerPort, FALSE);
   else
     main_server->listen = NULL;
 
-  isdefault = get_param_int(main_server->conf,"DefaultServer",FALSE);
+  isdefault = get_param_int(main_server->conf, "DefaultServer", FALSE);
   if(isdefault != 1)
     isdefault = 0;
 
   if(main_server->ServerPort || isdefault) {
-    add_binding(main_server,main_server->ipaddr,main_server->listen,
+    add_binding(main_server, main_server->ipaddr, main_server->listen,
                 isdefault,1);
 
     addl_bindings(main_server);

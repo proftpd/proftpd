@@ -19,7 +19,7 @@
 
 /*
  * ProFTPD logging support
- * $Id: log.c,v 1.12 1999-10-01 07:57:32 macgyver Exp $
+ * $Id: log.c,v 1.13 1999-10-11 03:13:13 macgyver Exp $
  */
 
 /* History Log:
@@ -39,6 +39,8 @@
 #include "conf.h"
 
 #include <signal.h>
+
+#define LOGBUFFER_SIZE	2048
 
 static int syslog_open = FALSE;
 static int syslog_discard = FALSE;
@@ -102,11 +104,11 @@ int log_open_xfer(const char *fn)
   return xferfd;
 }
 
-int log_xfer(int xfertime,char *remhost,unsigned long fsize,
-             char *fname,char xfertype,char direction,
-             char access,char *user)
+int log_xfer(int xfertime, char *remhost, unsigned long fsize,
+             char *fname, char xfertype, char direction,
+             char access, char *user)
 {
-  char buf[1024], fbuf[1024];
+  char buf[LOGBUFFER_SIZE], fbuf[LOGBUFFER_SIZE];
   int i;
 
   if(xferfd == -1)
@@ -118,11 +120,11 @@ int log_xfer(int xfertime,char *remhost,unsigned long fsize,
   
   fbuf[i] = '\0';
   
-  snprintf(buf,sizeof(buf),"%s %d %s %lu %s %c _ %c %c %s ftp 0 *\n",
-	   fmt_time(time(NULL)),xfertime,remhost,fsize,
-	   fbuf,xfertype,direction,access,user);
+  snprintf(buf, sizeof(buf), "%s %d %s %lu %s %c _ %c %c %s ftp 0 *\n",
+	   fmt_time(time(NULL)), xfertime, remhost, fsize,
+	   fbuf, xfertype, direction, access, user);
 
-  return(write(xferfd,buf,strlen(buf)));
+  return(write(xferfd, buf, strlen(buf)));
 }
 
 void log_rm_run()
@@ -369,10 +371,11 @@ logrun_t *log_read_run(pid_t *mpid)
 
 void log_run_address(const char *remote_name, const p_in_addr_t *remote_ipaddr)
 {
-  char buf[1024];
+  char buf[LOGBUFFER_SIZE];
 
-  snprintf(buf,sizeof(buf),"%s [%s]",remote_name,inet_ntoa(*remote_ipaddr));
-  buf[1023] = '\0';
+  snprintf(buf, sizeof(buf), "%s [%s]",
+	   remote_name, inet_ntoa(*remote_ipaddr));
+  buf[sizeof(buf) - 1] = '\0';
   address = pstrdup(permanent_pool,buf);
 }
 
@@ -689,58 +692,84 @@ void log_discard()
 
 void log(int priority, int f, char *s)
 {
+  char serverinfo[1024];
+  
+  bzero(serverinfo, sizeof(serverinfo));
+  
+  if(main_server && main_server->ServerFQDN) {
+    snprintf(serverinfo, sizeof(serverinfo), "%s", main_server->ServerFQDN);
+    serverinfo[sizeof(serverinfo) - 1] = '\0';
+    
+    if(session.c && session.c->remote_name) {
+      snprintf(serverinfo + strlen(serverinfo),
+	       sizeof(serverinfo) - strlen(serverinfo), " (%s[%s])",
+	       session.c->remote_name, inet_ntoa(*session.c->remote_ipaddr));
+      serverinfo[sizeof(serverinfo) - 1] = '\0';
+    }
+  }
+  
   if(logstderr) {
-    fprintf(stderr,"%s\n",s);
+    fprintf(stderr, "%s - %s\n", serverinfo, s);
     return;
   }
-
+  
   if(syslog_discard)
     return;
-
+  
   if(syslog_fd != -1) {
-    char buf[1024];
+    char buf[LOGBUFFER_SIZE];
     time_t tt = time(NULL);
     struct tm *t;
 
     t = localtime(&tt);
-    strftime(buf,sizeof(buf),"%b %d %H:%M:%S ",t);
+    strftime(buf, sizeof(buf), "%b %d %H:%M:%S ", t);
     buf[sizeof(buf) - 1] = '\0';
-    snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-             "%s proftpd[%u]: %s",syslog_hostname,
-             (unsigned int)getpid(),s);
-
-    buf[sizeof(buf)-1] = '\0';
-    write(syslog_fd,buf,strlen(buf));
-    write(syslog_fd,"\n",1);
+    
+    if(serverinfo && *serverinfo) {
+      snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
+	       "%s proftpd[%u] %s: %s", syslog_hostname,
+	       (unsigned int) getpid(), serverinfo, s);
+    } else {
+      snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
+	       "%s proftpd[%u]: %s", syslog_hostname,
+	       (unsigned int) getpid(), s);
+    }
+    
+    buf[sizeof(buf) - 1] = '\0';
+    write(syslog_fd, buf, strlen(buf));
+    write(syslog_fd, "\n", 1);
     return;
   }
-
+  
   if(set_facility != -1)
     f = set_facility;
 
   if(f != facility || !syslog_open)
     openlog("proftpd", LOG_NDELAY | LOG_PID, f);
-
-  syslog(priority, "%s\n", s);
-
+  
+  if(serverinfo && *serverinfo)
+    syslog(priority, "%s - %s\n", serverinfo, s);
+  else
+    syslog(priority, "%s\n", s);
+  
   if(!syslog_open)
     closelog();
   else if(f != facility)
     openlog("proftpd", LOG_NDELAY | LOG_PID, facility);
 }
 
-void log_pri(int priority,char *fmt,...)
+void log_pri(int priority, char *fmt, ...)
 {
-  char buf[1024];
+  char buf[LOGBUFFER_SIZE];
   va_list msg;
-
+  
   va_start(msg,fmt);
   vsnprintf(buf, sizeof(buf), fmt, msg);
   va_end(msg);
-
-  buf[1023] = '\0';
-
-  log(priority,facility,buf);
+  
+  buf[sizeof(buf) - 1] = '\0';
+  
+  log(priority, facility, buf);
 }
 
 /* Like log_pri(), but sends the log entry in the LOG_AUTHPRIV
@@ -749,14 +778,14 @@ void log_pri(int priority,char *fmt,...)
 
 void log_auth(int priority, char *fmt, ...)
 {
-  char buf[1024];
+  char buf[LOGBUFFER_SIZE];
   va_list msg;
 
   va_start(msg,fmt);
   vsnprintf(buf, sizeof(buf), fmt, msg);
   va_end(msg);
 
-  buf[1023] = '\0';
+  buf[sizeof(buf) - 1] = '\0';
 
   log(priority, LOG_AUTHPRIV, buf);
 }
@@ -785,17 +814,17 @@ int log_setdebuglevel(int level)
 
 void log_debug(int level,char *str,...)
 {
-  char buf[1024];
+  char buf[LOGBUFFER_SIZE];
   va_list msg;
 
   if(debug_level < level)
     return;
 
-  va_start(msg,str);
+  va_start(msg, str);
   vsnprintf(buf, sizeof(buf), str, msg);
   va_end(msg);
 
-  buf[1023] = '\0';
+  buf[sizeof(buf) - 1] = '\0';
 
   log(LOG_DEBUG, facility, buf);
 }
