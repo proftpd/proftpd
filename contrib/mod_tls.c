@@ -744,16 +744,34 @@ static int tls_init_server(void) {
  
     if ((tls_ca_chain = get_param_ptr(main_server->conf,
         "TLSCertificateChainFile", FALSE))) {
-      STACK_OF(X509_NAME) *ca_certs = SSL_load_client_CA_file(tls_ca_chain);
-
-      if (ca_certs)
-        SSL_CTX_set_client_CA_list(ssl_ctx, ca_certs);
-
-      else
-        tls_log("unable to load certificates from '%s': %s", tls_ca_chain,
+      if (SSL_CTX_use_certificate_chain_file(ssl_ctx, tls_ca_chain) < 0)
+        tls_log("unable to use certificate chain '%s': %s", tls_ca_chain,
           ERR_error_string(ERR_get_error(), NULL));
- 
-    } else if (tls_ca_path) {
+    } 
+
+    if (tls_ca_cert) {
+      FILE *cacertf = NULL;
+
+      PRIVS_ROOT
+      cacertf = fopen(tls_ca_cert, "r");
+      PRIVS_RELINQUISH
+
+      if (cacertf) {
+        X509 *x509 = PEM_read_X509(cacertf, NULL, NULL, NULL);
+
+        if (x509) {
+          SSL_CTX_add_client_CA(ssl_ctx, x509);
+          fclose(cacertf);
+
+        } else
+          tls_log("unable to add '%s' to client CA list: %s", tls_ca_cert,
+            ERR_error_string(ERR_get_error(), NULL));
+
+      } else
+        tls_log("unable to open '%s': %s", tls_ca_cert, strerror(errno));
+    }
+
+    if (tls_ca_path) {
       DIR *cacertdir = NULL;
 
       PRIVS_ROOT
@@ -785,8 +803,7 @@ static int tls_init_server(void) {
                 cacertname, ERR_error_string(ERR_get_error(), NULL));
 
           } else
-            tls_log("unable to add '%s' to client CA list: %s",
-              cacertname, strerror(errno));
+            tls_log("unable to open '%s': %s", cacertname, strerror(errno));
         }
         destroy_pool(tmp_pool);
         closedir(cacertdir);
