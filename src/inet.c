@@ -48,7 +48,7 @@ extern server_rec *main_server;
  */
 
 static pool *inet_pool = NULL;
-static int tcp_proto = 6;		/* Generally, this is "tcp" */
+static int tcp_proto = IPPROTO_TCP;
 static int reverse_dns = 1;		/* Use reverse dns? */
 static int inet_errno = 0;		/* Holds errno */
 
