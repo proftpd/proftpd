@@ -26,7 +26,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.90 2002-10-15 17:01:03 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.91 2002-10-15 17:08:39 castaglia Exp $
  */
 
 /* History Log:
@@ -955,7 +955,8 @@ MODRET cmd_stor(cmd_rec *cmd)
     /* perform the actual transfer now */
     data_init(cmd->arg, PR_NETIO_IO_RD);
 
-    session.xfer.path = pstrdup(session.xfer.p, dir);
+    session.xfer.path = dir;
+
     if (session.xfer.xfer_type == STOR_HIDDEN)
       session.xfer.path_hidden = pstrdup(session.xfer.p,
         p_hidden->value.str_val);
