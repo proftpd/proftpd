@@ -470,6 +470,7 @@ conn_t *inet_create_connection(pool *p, xaset_t *servers, int fd,
               port);
       log_pri(LOG_ERR,"bind() failed in inet_create_connection(): %s",
               strerror(hold_errno));
+	  log_pri(LOG_ERR,"Check the ServerType directive to ensure you are configured correctly.");
       end_login(1);
     }
 
