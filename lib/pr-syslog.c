@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  */
 
-/* $Id: pr-syslog.c,v 1.15 2004-05-19 17:07:49 castaglia Exp $
+/* $Id: pr-syslog.c,v 1.16 2004-05-24 21:35:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -211,7 +211,7 @@ int pr_openlog(const char *ident, int opts, int facility) {
   sockfd = open(PR_PATH_LOG, O_WRONLY);
 
 # ifdef SOLARIS2
-  /* Workaround for a /dev/log bug on Solaris. */
+  /* Workaround for a /dev/log bug (SunSolve bug #4817079) on Solaris. */
   if (sockfd >= 0) {
     struct strioctl ic;
 
