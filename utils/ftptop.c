@@ -25,7 +25,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.3 2002-09-26 17:52:35 castaglia Exp $
+ * $Id: ftptop.c,v 1.4 2002-09-27 20:01:10 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.8.2"
@@ -40,12 +40,6 @@
 #include "utils.h"
 
 static const char *program = "ftptop";
-
-#ifdef HAVE_GETOPT_H
-#  include <getopt.h>
-#else
-#  error Missing required <getopt.h> header file
-#endif
 
 #ifdef HAVE_NCURSES_H
 #include <ncurses.h>

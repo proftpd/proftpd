@@ -26,7 +26,7 @@
 
 /* Scoreboard routines.
  *
- * $Id: utils.h,v 1.3 2002-09-26 17:52:35 castaglia Exp $
+ * $Id: utils.h,v 1.4 2002-09-27 20:01:10 castaglia Exp $
  */
 
 #ifndef UTIL_SCOREBOARD_H
@@ -45,7 +45,9 @@
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
-#endif
+#else
+#  include "../lib/getopt.h"
+#endif /* !HAVE_GETOPT_H */
 
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
