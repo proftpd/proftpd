@@ -16,6 +16,10 @@ Modules always included:
         commands (CWD, CDUP, MKD, PWD, RMD, DELE, RNTO, RNFR, PASV, PORT,
         SYST, HELP, QUIT, NOOP), and the MDTM and SIZE extensions.
 
+    mod_delay
+        Implements algorithms to protect against information leaks
+        via timing attacks.
+
     mod_log
         Interface to Unix message logging (syslog or file).
 
@@ -50,7 +54,16 @@ Modules automatically included when supported by the OS:
         2.1.104 and later. See README.capabilities.
 
 
-Contributed ProFTPD Modules (contrib subdirectory)
+Modules included upon request:
+
+    mod_ctrls
+        Provides the server-side listener for control requests
+        (see README.controls)
+
+    mod_dso
+        Handles loading and unloading of DSO modules (see README.DSO)
+
+Contributed ProFTPD Modules (contrib/ subdirectory)
 --------------------------------------------------
 
 Also, see contrib/README.
@@ -85,14 +98,19 @@ Authentication modules:
 
 Feature modules:
 
+    mod_ctrls_admin
+        Common administrative control actions
+        See doc/contrib/mod_ctrls_admin.html
+        Contributed by TJ Saunders <tj@castaglia.org>
+
     mod_ifsession
         Conditional per-user, per-group, per-class configurations
-        See contrib/mod_ifsession.html
+        See doc/contrib/mod_ifsession.html
         Contributed by TJ Saunders <tj@castaglia.org>
 
     mod_quotatab, mod_quotatab_file, mod_quotatab_ldap, mod_quotatab_sql
         User/group/class quotas.
-        See contrib/mod_quotatab.html
+        See doc/contrib/mod_quotatab.html
         Contributed by TJ Saunders <tj@castaglia.org>
 
     mod_ratio
@@ -107,16 +125,16 @@ Feature modules:
 
     mod_rewrite
         Powerful regular expression-based command parameter rewrite engine
-        See contrib/mod_rewrite.html
+        See doc/contrib/mod_rewrite.html
         Contributed by TJ Saunders <tj@castaglia.org>
 
     mod_site_misc
         Miscellaneous SITE commands (e.g. SITE SYLINK, SITE UTIME)
-        see contrib/mod_site_misc.html
+        See doc/contrib/mod_site_misc.html
 
     mod_wrap
         TCP Wrappers.
-        See contrib/README.mod_wrap and contrib/mod_wrap.html.
+        See contrib/README.mod_wrap and doc/contrib/mod_wrap.html.
         Contributed by TJ Saunders <tj@castaglia.org>.
 
 
