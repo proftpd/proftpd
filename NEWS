@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.47 2000-07-06 05:58:31 macgyver Exp $
+$Id: NEWS,v 1.48 2000-07-06 06:18:32 macgyver Exp $
 
 1.2.0 - Released: ???
 ---------------------
@@ -45,6 +45,8 @@ $Id: NEWS,v 1.47 2000-07-06 05:58:31 macgyver Exp $
   *snprintf implementation.
 - PAM now properly registers and closes a session, conforming closer to the PAM
   specification.
+- More documentation updates.
+- Fix a permissions display problem under certain circumstances.
 
 1.2.0pre10 - Released: 1/17/00
 ------------------------------

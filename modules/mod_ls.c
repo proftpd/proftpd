@@ -19,7 +19,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.26 2000-07-06 04:24:06 macgyver Exp $
+ * $Id: mod_ls.c,v 1.27 2000-07-06 06:18:32 macgyver Exp $
  */
 
 #include "conf.h"
@@ -289,19 +289,19 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
           m[1] = 'r';
         if(mode & 128)
           m[2] = 'w';
-        if(mode & 64 || ((mode & 256) && S_ISDIR(st.st_mode)))
+        if(mode & 64 || (fakemodep && (mode & 256) && S_ISDIR(st.st_mode)))
           m[3] = 'x';
         if(mode & 32)
           m[4] = 'r';
         if(mode & 16)
           m[5] = 'w';
-        if(mode & 8 || ((mode & 32) && S_ISDIR(st.st_mode)))
+        if(mode & 8 || (fakemodep && (mode & 32) && S_ISDIR(st.st_mode)))
           m[6] = 'x';
         if(mode & 4)
           m[7] = 'r';
         if(mode & 2)
           m[8] = 'w';
-        if(mode & 1 || ((mode & 4) && S_ISDIR(st.st_mode)))
+        if(mode & 1 || (fakemodep && (mode & 4) && S_ISDIR(st.st_mode)))
           m[9] = 'x';
 
         if(ls_curtime - mtime > 180 * 24 * 60 * 60)
