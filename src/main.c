@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.258 2004-10-31 18:53:06 castaglia Exp $
+ * $Id: main.c,v 1.259 2004-10-31 20:56:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2467,11 +2467,13 @@ static void show_settings(void) {
   printf("    PR_TUNABLE_GLOBBING_MAX = %u\n", PR_TUNABLE_GLOBBING_MAX);
   printf("    PR_TUNABLE_HASH_TABLE_SIZE = %u\n", PR_TUNABLE_HASH_TABLE_SIZE);
   printf("    PR_TUNABLE_NEW_POOL_SIZE = %u\n", PR_TUNABLE_NEW_POOL_SIZE);
+  printf("    PR_TUNABLE_RCVBUFSZ = %u\n", PR_TUNABLE_RCVBUFSZ);
   printf("    PR_TUNABLE_SCOREBOARD_BUFFER_SIZE = %u\n",
     PR_TUNABLE_SCOREBOARD_BUFFER_SIZE);
   printf("    PR_TUNABLE_SCOREBOARD_SCRUB_TIMER = %u\n",
     PR_TUNABLE_SCOREBOARD_SCRUB_TIMER);
   printf("    PR_TUNABLE_SELECT_TIMEOUT = %u\n", PR_TUNABLE_SELECT_TIMEOUT);
+  printf("    PR_TUNABLE_SNDBUFSZ = %u\n", PR_TUNABLE_SNDBUFSZ);
   printf("    PR_TUNABLE_TIMEOUTIDENT = %u\n", PR_TUNABLE_TIMEOUTIDENT);
   printf("    PR_TUNABLE_TIMEOUTIDLE = %u\n", PR_TUNABLE_TIMEOUTIDLE);
   printf("    PR_TUNABLE_TIMEOUTLINGER = %u\n", PR_TUNABLE_TIMEOUTLINGER);
