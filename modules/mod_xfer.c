@@ -25,7 +25,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.70 2002-06-22 00:24:50 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.71 2002-06-22 20:17:58 jwm Exp $
  */
 
 /* History Log:
@@ -131,7 +131,7 @@ static float _rate_diffusec(struct timeval tlast, struct timeval t) {
  *              rate_bps:       max byte / sec bandwidth allowed
  *              rate_hardbps:   if FALSE then forces BPS only after FreeBytes
  */
-static void _rate_throttle(off_t rate_pos, long rate_bytes,
+static void _rate_throttle(off_t rate_pos, off_t rate_bytes,
 			   struct timeval rate_tvlast,
 			   long rate_freebytes, long rate_bps,
 			   int rate_hardbps)
@@ -943,8 +943,8 @@ MODRET cmd_retr(cmd_rec *cmd)
   privdata_t *p;
   long bufsize, len = 0;
   long rate_hardbps = 0;
-  off_t respos = 0,cnt = 0,cnt_steps = 0,cnt_next = 0;
-  long rate_bytes = 0, rate_freebytes = 0, rate_bps = 0;
+  off_t respos = 0, cnt = 0, cnt_steps = 0, cnt_next = 0, rate_bytes = 0;
+  long rate_freebytes = 0, rate_bps = 0;
   
   if((rate_bps = get_param_int(CURRENT_CONF, "RateReadBPS", FALSE)) == -1)
     rate_bps = 0;
