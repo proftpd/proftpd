@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.167 2003-04-01 18:11:36 castaglia Exp $
+ * $Id: mod_core.c,v 1.168 2003-04-03 23:15:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -178,15 +178,12 @@ static ssize_t get_num_bytes(char *nbytes_str) {
   return PR_BYTES_BAD_FORMAT;
 }
 
-static int core_scrub_scoreboard_cb(CALLBACK_FRAME) {
+static void scrub_scoreboard(void *data) {
   int fd = -1;
   off_t curr_offset = 0;
   struct flock lock;
   pr_scoreboard_entry_t entry;
 
-  /* Always return 1 when leaving this function, to make sure the timer
-   * gets called again.
-   */
   log_debug(DEBUG9, "scrubbing scoreboard");
 
   /* Manually open the scoreboard.  It won't hurt if the process already
@@ -197,7 +194,7 @@ static int core_scrub_scoreboard_cb(CALLBACK_FRAME) {
     PRIVS_RELINQUISH
     log_debug(DEBUG1, "unable to scrub ScoreboardFile '%s': %s",
       pr_get_scoreboard(), strerror(errno));
-    return 1;
+    return;
   }
   PRIVS_RELINQUISH
 
@@ -213,7 +210,7 @@ static int core_scrub_scoreboard_cb(CALLBACK_FRAME) {
       continue;
  
     } else
-      return 1;
+      return;
   }
 
   /* Skip past the scoreboard header. */
@@ -266,6 +263,14 @@ static int core_scrub_scoreboard_cb(CALLBACK_FRAME) {
 
   /* Don't need the descriptor anymore. */
   close(fd);
+}
+
+static int core_scrub_scoreboard_cb(CALLBACK_FRAME) {
+
+  /* Always return 1 when leaving this function, to make sure the timer
+   * gets called again.
+   */
+  scrub_scoreboard(NULL);
 
   return 1;
 }
@@ -3925,6 +3930,9 @@ static int core_startup_cb(void) {
   /* Add a scoreboard-scrubbing timer. */
   core_scrub_timer_id = add_timer(PR_TUNABLE_SCOREBOARD_SCRUB_TIMER, -1,
     &core_module, core_scrub_scoreboard_cb);
+
+  /* Add a rehash handler to scrub the scoreboard, too. */
+  pr_rehash_register_handler(NULL, scrub_scoreboard);
 
   return 0;
 }
