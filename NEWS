@@ -1,9 +1,10 @@
-$Id: NEWS,v 1.211 2002-09-04 18:55:09 castaglia Exp $
+$Id: NEWS,v 1.212 2002-09-04 19:27:37 castaglia Exp $
 
 CVS
 ---------------------------------
 - Bug 1649 - setproctitle() prepends and appends process name
 - Bug 1666 - Auth modules can return duplicate supplemental groups
+- Bug 1654 - Add DESTDIR in Makefile
 
 1.2.6 - Released 2002-09-04
 ---------------------------------
