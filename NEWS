@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.483 2003-09-27 18:40:10 castaglia Exp $
+$Id: NEWS,v 1.484 2003-09-27 20:48:31 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -14,6 +14,9 @@ CVS
   IPv4-mapped IPv6 addresses were not being properly compared for active
   data transfers.
 - Bug 2200 - Correct segfaults with xlate_ascii_write() on IRIX.
+- Bug 2024 - DefaultServer not functioning properly.
+  The addition of the Bindings API in 1.2.8rc1 inadvertently caused the
+  DefaultServer directive to not be properly honored in some configurations.
 
 1.2.9rc2 - Released 11-Sep-2003
 ---------------------------------

@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.14 2003-08-29 17:20:34 castaglia Exp $
+ * $Id: bindings.c,v 1.15 2003-09-27 20:48:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -408,48 +408,15 @@ server_rec *pr_ipbind_get_server(pr_netaddr_t *addr, unsigned int port) {
   if ((ipbind = pr_ipbind_find(addr, port, TRUE)) != NULL)
     return ipbind->ib_server;
 
-  /* Not found in binding list, so see if it's the loopback address */
-  if (ipbind_localhost_server && pr_netaddr_loopback(addr))
-      return ipbind_localhost_server->ib_server;
-
-#if 0
-    pr_netaddr_t loopback, loopmask, tmp;
-
-#ifdef HAVE_INET_PTON
-    inet_pton(AF_INET, LOOPBACK_NET, &loopback);
-    inet_pton(AF_INET, LOOPBACK_MASK, &loopmask);
-#else
-# ifdef HAVE_INET_ATON
-    inet_aton(LOOPBACK_NET, &loopback);
-    inet_aton(LOOPBACK_MASK, &loopmask);
-# else
-    loopback.sin6_addr.s6_addr32 = inet_addr(LOOPBACK_NET);
-    loopmask.sin6_addr.s6_addr32 = inet_addr(LOOPBACK_MASK);
-# endif /* HAVE_INET_ATON */
-#endif /* HAVE_INET_PTON */
-
-/* This whole section is ugly.  It's intended to see if the given address
- * matches the loopback address.
- */
-  if (pr_netaddr_cmp(&loopback, addr) == 0)
-    log_debug(DEBUG0, "ipbind_get_server(): addr matched loopback");
-
-    loopback.sin_addr.s_addr = ntohl(loopback.sin_addr.s_addr);
-    loopmask.sin_addr.s_addr = ntohl(loopmask.sin_addr.s_addr);
-    tmp.sin_addr.s_addr = ntohl(addr->sin_addr.s_addr);
-
-    /* NOTE: use the inet_addr() accessor functions in the future */
-    if ((tmp.sin_addr.s_addr & loopmask.sin_addr.s_addr) == loopback.sin_addr.s_addr &&
-        (!ipbind_localhost_server->ib_port ||
-         port == ipbind_localhost_server->ib_port)) {
-      return ipbind_localhost_server->ib_server;
-    }
-  }
-#endif
-
-  /* Otherwise, use the default server, if set */
+  /* Use the default server, if set */
   if (ipbind_default_server && ipbind_default_server->ib_isactive)
     return ipbind_default_server->ib_server;
+
+  /* Not found in binding list, and no DefaultServer, so see if it's the
+   * loopback address
+   */
+  if (ipbind_localhost_server && pr_netaddr_loopback(addr))
+      return ipbind_localhost_server->ib_server;
 
   return NULL;
 }
@@ -791,8 +758,7 @@ static void init_inetd_bindings(void) {
     main_server->listen, is_default, TRUE, TRUE);
   PR_ADD_IPBINDS(main_server);
 
-  /* Now attach the faked connection to all virtual servers
-   */
+  /* Now attach the faked connection to all virtual servers. */
   for (serv = main_server->next; serv; serv = serv->next) {
 
     /* Because this server is sharing the connection with the
@@ -805,10 +771,10 @@ static void init_inetd_bindings(void) {
     register_cleanup(serv->listen->pool, &serv->listen, server_cleanup_cb,
       server_cleanup_cb);
 
-    is_default = TRUE;
+    is_default = FALSE;
     if ((default_server = get_param_ptr(serv->conf, "DefaultServer",
-        FALSE)) != NULL && *default_server != TRUE)
-      is_default = FALSE;
+        FALSE)) != NULL && *default_server == TRUE)
+      is_default = TRUE;
 
     PR_CREATE_IPBIND(serv, serv->addr);
     PR_OPEN_IPBIND(serv->addr, serv->ServerPort, serv->listen, is_default,
