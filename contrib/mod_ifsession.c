@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.8 2003-11-09 04:53:38 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.9 2003-11-09 21:16:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -332,7 +332,7 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
         mergein = TRUE;
 
       if (mergein) {
-        log_debug(DEBUG2, MOD_IFSESSION_VERSION
+        pr_log_debug(DEBUG2, MOD_IFSESSION_VERSION
           ": merging <IfGroup> directives in");
         ifsess_dup_set(main_server->pool, main_server->conf, c->subset);
 
@@ -345,7 +345,7 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
         fixup_dirs(main_server, CF_DEFER);
 
       } else
-        log_debug(DEBUG9, MOD_IFSESSION_VERSION
+        pr_log_debug(DEBUG9, MOD_IFSESSION_VERSION
           ": <IfGroup> not matched, skipping");
     }
 
@@ -395,7 +395,7 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
         mergein = TRUE;
 
       if (mergein) {
-        log_debug(DEBUG2, MOD_IFSESSION_VERSION
+        pr_log_debug(DEBUG2, MOD_IFSESSION_VERSION
           ": merging <IfUser> directives in");
         ifsess_dup_set(main_server->pool, main_server->conf, c->subset);
 
@@ -408,7 +408,7 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
         fixup_dirs(main_server, CF_DEFER);
 
       } else
-        log_debug(DEBUG9, MOD_IFSESSION_VERSION
+        pr_log_debug(DEBUG9, MOD_IFSESSION_VERSION
           ": <IfUser> not matched, skipping");
     }
 
@@ -464,7 +464,7 @@ static int ifsess_sess_init(void) {
         mergein = TRUE;
 
       if (mergein) {
-        log_debug(DEBUG2, MOD_IFSESSION_VERSION
+        pr_log_debug(DEBUG2, MOD_IFSESSION_VERSION
           ": merging <IfClass> directives in");
         ifsess_dup_set(main_server->pool, main_server->conf, c->subset);
 
@@ -477,7 +477,7 @@ static int ifsess_sess_init(void) {
         fixup_dirs(main_server, CF_DEFER);
 
       } else
-        log_debug(DEBUG9, MOD_IFSESSION_VERSION
+        pr_log_debug(DEBUG9, MOD_IFSESSION_VERSION
           ": <IfClass> not matched, skipping");
     }
 
