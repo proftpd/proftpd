@@ -1003,8 +1003,8 @@ ADDL_DIRS="$ac_addl_dirs"
 
 INCLUDES="$ac_build_addl_includes"
 LIBRARIES="$ac_build_addl_libraries"
-MODULES="$ac_core_modules $ac_addl_modules"
-BUILD_MODULES="$ac_build_core_modules $ac_build_addl_modules"
+MODULE_OBJS="$ac_core_modules $ac_addl_modules"
+BUILD_MODULE_OBJS="$ac_build_core_modules $ac_build_addl_modules"
 VERSION=`cat $srcdir/include/version.h | grep "#define VERSION " | sed -e 's/^.*\"\(.*\)\"/\1/'`
 
 dnl Substitute in our configuration paths as appropriate.  We also have to
@@ -1046,8 +1046,8 @@ fi
 dnl And finally, generate the appropriate Make* and config.h
 AC_SUBST(INSTALL_STRIP)
 AC_SUBST(LIB_OBJS)
-AC_SUBST(MODULES)
-AC_SUBST(BUILD_MODULES)
+AC_SUBST(MODULE_OBJS)
+AC_SUBST(BUILD_MODULE_OBJS)
 AC_SUBST(ADDL_DIRS)
 AC_SUBST(INCLUDES)
 AC_SUBST(LIBRARIES)
@@ -1057,5 +1057,5 @@ AC_SUBST(VERSION)
 AC_CONFIG_HEADER(config.h)
 
 AC_OUTPUT(lib/Makefile src/Makefile modules/Makefile utils/Makefile
-          Makefile Make.rules Make.modules,
+          Makefile Make.rules,
           [echo timestamp > stamp-h])

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.343 2003-01-05 02:18:50 jwm Exp $
+$Id: NEWS,v 1.344 2003-01-05 03:47:27 jwm Exp $
 
 CVS
 ---------------------------------
@@ -14,6 +14,7 @@ CVS
   based on a submission by Mihai RUSU <dizzy@roedu.net>
 - Bug 1893 - Apple likes to move things. PAM support works on OS X again.
   Submitted by: thesin@users.sourceforge.net (Justin F. Hallett)
+- Bug 1826 - Makefiles are a bit icky
 
 1.2.8rc1 - Released 28-Dec-2002
 ---------------------------------

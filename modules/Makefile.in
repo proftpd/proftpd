@@ -1,31 +1,31 @@
 CC=@CC@
+@SET_MAKE@
 
 top_srcdir=@top_srcdir@
 srcdir=@srcdir@
 VPATH=@srcdir@
 
-@SET_MAKE@
-
 include ../Make.rules
-include ../Make.modules
+
+
+all:
+	@echo "Running make from top level directory."
+	cd .. && $(MAKE) all
+
+Makefile: Makefile.in ../config.status
+	cd ../ && ./config.status
+
 
 .c.o:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
-all:
-	@echo "Running make from top level directory."
-	cd ..; $(MAKE) all
+module_glue.c: module_glue.c.tmpl $(MODULE_OBJS)
+	srcdir=$(srcdir) $(srcdir)/glue.sh $(MODULE_OBJS)
 
-module_glue.c: $(MODULES)
-	srcdir=$(srcdir) $(srcdir)/glue.sh $(MODULES)
-
-module_glue.o: module_glue.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
-
-modules: $(MODULES) module_glue.o
+modules: $(MODULE_OBJS) module_glue.o
 
 clean:
-	rm -f *.o core *.save module_glue.c *~
+	rm -f *.o module_glue.c
 
 depend:
 	rm -f module_glue.c

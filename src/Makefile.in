@@ -1,24 +1,28 @@
 CC=@CC@
+@SET_MAKE@
 
 top_srcdir=@top_srcdir@
 srcdir=@srcdir@
 VPATH=@srcdir@
 
-@SET_MAKE@
-
 include ../Make.rules
 
-.c.o:
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
 all:
 	@echo "Running make from top level directory."
 	cd ../; $(MAKE) all
 
+Makefile: Makefile.in ../config.status
+	cd ../ && ./config.status
+
+.c.o:
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
+
+
 src: $(OBJS)
 
 clean:
-	rm -f *.o *.save core *~
+	rm -f *.o
 
 depend:
 	makedepend $(CPPFLAGS) -Y *.c 2>/dev/null
