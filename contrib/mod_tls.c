@@ -947,10 +947,15 @@ static int tls_init_server(void) {
 
   } else {
 
-    /* Default to using locations set in the OpenSSL config file. */
-    SSL_CTX_set_default_verify_paths(ssl_ctx);
+    /* Default to using locations set in the OpenSSL config file.
+     */
+
     tls_log("%s", "using default OpenSSL verification locations "
       "(see $SSL_CERT_DIR)");
+
+    if (SSL_CTX_set_default_verify_paths(ssl_ctx) != 1)
+      tls_log("error setting default verification locations: %s"
+          ERR_error_string(ERR_get_error(), NULL));
   }
 
   if (!(tls_opts & TLS_OPT_NO_CERT_REQUEST)) {
