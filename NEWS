@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.248 2002-10-10 15:00:45 castaglia Exp $
+$Id: NEWS,v 1.249 2002-10-14 18:26:51 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -9,6 +9,8 @@ CVS
 - Bug 1769 - Lack of supplemental groups can cause segfault.  This bug is
              a result of the fix for Bug 1666.
 - Bug 1770 - Forgetting to check for no IP in string. 
+- Moved the switching to the User/Group for a vhost up in the order, to occur
+  before any modules' session initialization callback is invoked.
 
 1.2.7rc1 - Released 2002-10-01
 ---------------------------------

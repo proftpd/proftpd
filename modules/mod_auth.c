@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.93 2002-10-10 15:00:48 castaglia Exp $
+ * $Id: mod_auth.c,v 1.94 2002-10-14 18:26:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -108,9 +108,6 @@ static int auth_session_timeout_cb(CALLBACK_FRAME) {
 
 static int auth_sess_init(void) {
   config_rec *c = NULL;
-  uid_t server_uid, current_euid = geteuid();
-  gid_t server_gid, current_egid = getegid();
-  unsigned char switch_server_id = FALSE;
 
   /* Check for a server-specific TimeoutLogin */
   if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutLogin",
@@ -126,35 +123,6 @@ static int auth_sess_init(void) {
   if (TimeoutLogin) {
     remove_timer(TIMER_LOGIN, &auth_module);
     add_timer(TimeoutLogin, TIMER_LOGIN, &auth_module, auth_login_timeout_cb);
-  }
-
-  /* Set the privs for the configured User/Group of this server */
-  {
-    uid_t *uid = (uid_t *) get_param_ptr(main_server->conf, "UserID", FALSE);
-    gid_t *gid = (gid_t *) get_param_ptr(main_server->conf, "GroupID", FALSE);
-
-    if (uid) {
-      server_uid = *uid;
-      switch_server_id = TRUE;
-
-    } else
-      server_uid = current_euid;
-
-    if (gid) {
-      server_gid = *gid;
-      switch_server_id = TRUE;
-
-    } else
-      server_gid = current_egid;
-  }
-
-  if (switch_server_id) {
-    PRIVS_ROOT
-
-    /* Note: will it be necessary to double check this switch, as is done
-     * in src/main.c?
-     */
-    PRIVS_SETUP(server_uid, server_gid);
   }
 
   PRIVS_ROOT

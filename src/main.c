@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.122 2002-10-08 14:35:50 castaglia Exp $
+ * $Id: main.c,v 1.123 2002-10-14 18:26:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1236,13 +1236,45 @@ static int _dup_low_fd(int fd)
   return fd;
 }
 
+static void set_server_privs(void) {
+  uid_t server_uid, current_euid = geteuid();
+  gid_t server_gid, current_egid = getegid();
+  unsigned char switch_server_id = FALSE;
+
+  uid_t *uid = get_param_ptr(main_server->conf, "UserID", FALSE);
+  gid_t *gid =  get_param_ptr(main_server->conf, "GroupID", FALSE);
+
+  if (uid) {
+    server_uid = *uid;
+    switch_server_id = TRUE;
+
+  } else
+    server_uid = current_euid;
+
+  if (gid) {
+    server_gid = *gid;
+    switch_server_id = TRUE;
+
+  } else
+    server_gid = current_egid;
+
+  if (switch_server_id) {
+    PRIVS_ROOT
+
+    /* Note: will it be necessary to double check this switch, as is done
+     * in elsewhere in this file?
+     */
+    PRIVS_SETUP(server_uid, server_gid);
+  }
+}
+
 static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   server_rec *s = NULL, *s_saved = NULL, *serv = NULL;
   conn_t *conn = NULL;
   unsigned char *ident_lookups = NULL;
   int i, rev;
   int sempipe[2] = { -1, -1 };
-  
+ 
 #ifndef DEBUG_NOFORK
   pid_t pid;
   sigset_t sigset;
@@ -1545,6 +1577,9 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     session.ident_lookups = FALSE;
     session.ident_user = "UNKNOWN";
   }
+
+  /* Set the ID/privs for the User/Group in this server */
+  set_server_privs();
 
   /* find class */
   if (get_param_int(main_server->conf, "Classes", FALSE) == 1) {

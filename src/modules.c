@@ -377,8 +377,7 @@ modret_t *mod_create_error(cmd_rec *cmd,int mr_errno)
  * need to know we are a child and have a connection.
  */
 
-int init_child_modules(void)
-{
+int init_child_modules(void) {
   module *prev_module = curmodule;
   module *m;
 
