@@ -150,8 +150,9 @@ distclean: clean
 	cd lib/ && $(MAKE) distclean
 	rm -f Makefile Make.modules Make.rules \
 	      lib/Makefile modules/Makefile src/Makefile utils/Makefile
-	rm -f config.h config.status config.cache config.log stamp-h
+	rm -f config.h config.status config.cache config.log libtool stamp-h
 	rm -f include/buildstamp.h
+	rm -rf .libs/
 
 dist: depend distclean
 	rm -rf `find . -name CVS`
