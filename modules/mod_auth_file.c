@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.11 2003-04-30 16:12:03 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.12 2003-06-09 17:25:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -776,6 +776,18 @@ MODRET authfile_getgroups(cmd_rec *cmd) {
   if (groups &&
       (grp = af_getgrgid(af_current_group_file, pwd->pw_gid)) != NULL)
     *((char **) push_array(groups)) = pstrdup(permanent_pool, grp->gr_name);
+
+  /* The above call to af_getgrgid() will position the file pointer in
+   * the AuthGroupFile just after the group with the primary GID.
+   * Subsequently, the below af_getgrent() starts from that position, and
+   * goes to the end of the file.  The problem is that there may be groups
+   * before the primary GID for the current group.  So, ideally, the
+   * getgrent() loop would continue until we're back to where we are now,
+   * rather than stopping at the end of the file.  Conversely, we could
+   * just simply rewind to the start of the AuthGroupFile (which is easier).
+   * The core auth code will remove duplicate IDs as needed.
+   */
+  af_open_file(af_current_group_file);
 
   /* This is where things get slow, expensive, and ugly.  Loop through
    * everything, checking to make sure we haven't already added it.
