@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.113 2002-09-23 15:30:09 castaglia Exp $
+ * $Id: main.c,v 1.114 2002-09-23 16:17:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1908,7 +1908,7 @@ static RETSIGTYPE sig_child(int signo) {
    * for other signals; SIGCHLD is handled asynchronously.  This is made
    * necessary by two things.
    *
-   * First, we need to support non-POSIX systems.  Under POSIX, one a
+   * First, we need to support non-POSIX systems.  Under POSIX, once a
    * signal handler has been configured for a given signal, that becomes
    * that signal's disposition, until explicitly changed later.  Non-POSIX
    * systems, on the other hand, will restore the default disposition of
@@ -1920,13 +1920,13 @@ static RETSIGTYPE sig_child(int signo) {
    * and SIGCHLD.  These systems will check for any unhandled SIGCHLD
    * signals, waiting to be reaped via wait(2) or waitpid(2), whenever
    * the disposition of SIGCHLD is changed.  This means that if our process
-   * handles SIGCHLD, but does not call wait() or waitpid(), and then
+   * handles SIGCHLD, but does not call wait(2) or waitpid(2), and then
    * calls signal(2), another SIGCHLD is generated; this loop repeats,
    * until the process runs out of stack space and terminates.
    *
    * Thus, in order to cover this interaction, we'll need to call handle_chld()
    * here, asynchronously.  handle_chld() does the work of reaping dead
-   * child processes, and doesn't seem to call any non-reentrant functions,
+   * child processes, and does not seem to call any non-reentrant functions,
    * so it should be safe.
    */
 
