@@ -1,4 +1,4 @@
-<!-- $Id: Limit.html,v 1.7 2004-08-06 00:58:25 castaglia Exp $ -->
+<!-- $Id: Limit.html,v 1.8 2004-09-13 00:12:05 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Limit.html,v $ -->
 
 <html>
@@ -225,6 +225,28 @@ that allows everyone to login; anonymous logins are allowed, and non-anonymous
 logins are denied.
 
 <p>
+Another related question often asked is &quot;How can I limit a user to only
+being able to login from a specific range of IP addresses?&quot;  The
+<code>&lt;Limit LOGIN&gt;</code> can be used, in conjunction with the
+<a href="../../contrib/mod_ifsession.html">mod_ifsession</a> module and a
+<a href="Classes.html">Class</a>, to configure this:
+<pre>
+  &lt;Class friends&gt;
+    From 1.2.3.4/8
+  &lt;/Class&gt;
+
+  &lt;IfUser dave&gt;
+    &lt;Limit LOGIN&gt;
+      AllowClass friends
+      DenyAll
+    &lt;/Limit&gt;
+  &lt;/IfUser&gt;
+</pre>
+Note that the same effect can be achieved by using the
+<a href="../../contrib/mod_wrap.html">mod_wrap</a> module to configure
+user-specific allow/deny files.
+
+<p>
 One situation that often arises is one where the administrator would like
 to give users the ability to upload and dowload files from a given directory,
 but not to be able to delete files from that directory.  This cannot be
@@ -251,7 +273,7 @@ This will allow the user <code>ftpadm</code> to delete files in the
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-08-06 00:58:25 $</i><br>
+Last Updated: <i>$Date: 2004-09-13 00:12:05 $</i><br>
 <hr>
 
 </body>
