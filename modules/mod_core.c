@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.216 2004-02-03 23:57:28 castaglia Exp $
+ * $Id: mod_core.c,v 1.217 2004-02-08 00:40:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3716,24 +3716,27 @@ int core_chmod(cmd_rec *cmd, char *dir, mode_t mode) {
   return pr_fsio_chmod(dir,mode);
 }
 
-MODRET _chdir(cmd_rec *cmd,char *ndir) {
+MODRET _chdir(cmd_rec *cmd, char *ndir) {
   char *display = NULL;
   char *dir,*odir,*cdir;
   config_rec *cdpath;
   unsigned char show_symlinks = TRUE, *tmp = NULL;
 
   odir = ndir;
+  pr_fs_clear_cache();
 
   if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks",
       FALSE)) != NULL)
     show_symlinks = *tmp;
 
   if (show_symlinks) {
-    dir = dir_realpath(cmd->tmp_pool,ndir);
+    dir = dir_realpath(cmd->tmp_pool, ndir);
 
-    if (!dir || !dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
+    if (!dir ||
+        !dir_check_full(cmd->tmp_pool, cmd->arg, cmd->group, dir, NULL) ||
         pr_fsio_chdir(dir, 0) == -1) {
-      for (cdpath = find_config(main_server->conf,CONF_PARAM,"CDPath",TRUE);
+
+      for (cdpath = find_config(main_server->conf, CONF_PARAM, "CDPath", TRUE);
           cdpath != NULL; cdpath =
             find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
         cdir = (char *) malloc(strlen(cdpath->argv[0]) + strlen(ndir) + 2);
@@ -3741,25 +3744,30 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
                  "%s%s%s", (char *) cdpath->argv[0],
                  ((char *) cdpath->argv[0])[strlen(cdpath->argv[0]) - 1] == '/' ? "" : "/",
                  ndir);
-        dir = dir_realpath(cmd->tmp_pool,cdir);
+        dir = dir_realpath(cmd->tmp_pool, cdir);
         free(cdir);
+
         if (dir &&
-           dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) &&
-           pr_fsio_chdir(dir, 0) != -1) {
+            dir_check_full(cmd->tmp_pool, cmd->arg, cmd->group, dir, NULL) &&
+            pr_fsio_chdir(dir, 0) != -1) {
           break;
         }
       }
+
       if (!cdpath) {
         pr_response_add_err(R_550, "%s: %s", odir, strerror(errno));
         return ERROR(cmd);
       }
     }
-  } else {
-    /* virtualize the chdir */
-    ndir = dir_canonical_vpath(cmd->tmp_pool,ndir);
-    dir = dir_realpath(cmd->tmp_pool,ndir);
 
-    if (!dir || !dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
+  } else {
+
+    /* Virtualize the chdir */
+    ndir = dir_canonical_vpath(cmd->tmp_pool, ndir);
+    dir = dir_realpath(cmd->tmp_pool, ndir);
+
+    if (!dir ||
+        !dir_check_full(cmd->tmp_pool, cmd->arg, cmd->group, dir, NULL) ||
         pr_fsio_chdir_canon(ndir, 1) == -1) {
 
       for (cdpath = find_config(main_server->conf,CONF_PARAM,"CDPath",TRUE);
@@ -3770,15 +3778,17 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
                  "%s%s%s", (char *) cdpath->argv[0],
                 ((char *)cdpath->argv[0])[strlen(cdpath->argv[0]) - 1] == '/' ? "" : "/",
                 ndir);
-        ndir = dir_canonical_vpath(cmd->tmp_pool,cdir);
-        dir = dir_realpath(cmd->tmp_pool,ndir);
+        ndir = dir_canonical_vpath(cmd->tmp_pool, cdir);
+        dir = dir_realpath(cmd->tmp_pool, ndir);
         free(cdir);
+
         if (dir &&
-           dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) &&
-           pr_fsio_chdir_canon(ndir, 1) != -1) {
+            dir_check_full(cmd->tmp_pool, cmd->arg, cmd->group, dir, NULL) &&
+            pr_fsio_chdir_canon(ndir, 1) != -1) {
           break;
         }
       }
+
       if (!cdpath) {
         pr_response_add_err(R_550, "%s: %s", odir, strerror(errno));
         return ERROR(cmd);
@@ -3794,30 +3804,32 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
     NULL);
 
   if (session.dir_config)
-    display = (char*)get_param_ptr(session.dir_config->subset,
-                                   "DisplayFirstChdir",FALSE);
+    display = get_param_ptr(session.dir_config->subset, "DisplayFirstChdir",
+      FALSE);
+
   if (!display && session.anon_config)
-    display = (char*)get_param_ptr(session.anon_config->subset,
-                                   "DisplayFirstChdir",FALSE);
+    display = get_param_ptr(session.anon_config->subset, "DisplayFirstChdir",
+      FALSE);
+
   if (!display)
-    display = (char*)get_param_ptr(cmd->server->conf,
-                                   "DisplayFirstChdir",FALSE);
+    display = get_param_ptr(cmd->server->conf, "DisplayFirstChdir", FALSE);
 
   if (display) {
     config_rec *c;
     time_t last;
     struct stat sbuf;
 
-    c = find_config(cmd->server->conf,CONF_USERDATA,session.cwd,FALSE);
+    c = find_config(cmd->server->conf, CONF_USERDATA, session.cwd, FALSE);
 
     if (!c) {
       time(&last);
-      c = add_config_set(&cmd->server->conf,session.cwd);
+      c = add_config_set(&cmd->server->conf, session.cwd);
       c->config_type = CONF_USERDATA;
       c->argc = 1;
-      c->argv = pcalloc(c->pool,sizeof(void**) * 2);
+      c->argv = pcalloc(c->pool, sizeof(void **) * 2);
       c->argv[0] = (void*)last;
       last = (time_t)0L;
+
     } else {
       last = (time_t)c->argv[0];
       c->argv[0] = (void*)time(NULL);
@@ -3828,7 +3840,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
       core_display_file(R_250, display, session.cwd);
   }
 
-  pr_response_add(R_250,"%s command successful.", cmd->argv[0]);
+  pr_response_add(R_250, "%s command successful", cmd->arg);
   return HANDLED(cmd);
 }
 
@@ -3966,12 +3978,12 @@ MODRET core_mkd(cmd_rec *cmd) {
 
 MODRET core_cwd(cmd_rec *cmd) {
   CHECK_CMD_MIN_ARGS(cmd, 2);
-  return _chdir(cmd,cmd->arg);
+  return _chdir(cmd, cmd->arg);
 }
 
 MODRET core_cdup(cmd_rec *cmd) {
   CHECK_CMD_ARGS(cmd, 1);
-  return _chdir(cmd,"..");
+  return _chdir(cmd, "..");
 }
 
 /* Returns the modification time of a file.  This is not in RFC959,
