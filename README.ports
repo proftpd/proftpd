@@ -74,6 +74,7 @@ ProFTPD has been reported to build on the following:
 
     NetBSD 1.4         gcc
    ?NetBSD 1.5         gcc
+    NetBSD 1.6.1       gcc
 
     OpenBSD 2.2
     OpenBSD 2.3
