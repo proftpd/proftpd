@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.15 2004-04-30 19:01:29 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.16 2004-05-02 05:42:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -143,6 +143,89 @@ static int ctrls_handle_debug(pr_ctrls_t *ctrl, int reqargc,
   } else {
     pr_ctrls_add_response(ctrl, "unknown debug action: '%s'", reqargv[0]);
     return -1;
+  }
+
+  return 0;
+}
+
+static int admin_addr_down(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
+    unsigned int port) {
+
+  ctrls_log(MOD_CTRLS_ADMIN_VERSION, "down: disabling %s#%u",
+    pr_netaddr_get_ipstr(addr), port);
+
+  if (pr_ipbind_close(addr, port, FALSE) < 0) {
+    if (errno == ENOENT)
+      pr_ctrls_add_response(ctrl, "down: no such server: %s#%u",
+        pr_netaddr_get_ipstr(addr), port);
+    else
+      pr_ctrls_add_response(ctrl, "down: %s#%u already disabled",
+        pr_netaddr_get_ipstr(addr), port);
+
+  } else
+    pr_ctrls_add_response(ctrl, "down: %s#%u disabled",
+      pr_netaddr_get_ipstr(addr), port);
+
+  return 0;
+}
+
+static int ctrls_handle_down(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+  register unsigned int i = 0;
+
+  /* Handle scheduled downs of virtual servers in the future, and
+   * cancellations of scheduled downs.
+   */
+
+  /* Check the 'down' ACL */
+  if (!ctrls_check_acl(ctrl, ctrls_admin_acttab, "down")) {
+
+    /* Access denied */
+    pr_ctrls_add_response(ctrl, "access denied");
+    return -1;
+  }
+
+  /* Sanity check */
+  if (reqargc < 1 || reqargv == NULL) {
+    pr_ctrls_add_response(ctrl, "down: missing required parameters");
+    return -1;
+  }
+
+  for (i = 0; i < reqargc; i++) {
+    unsigned int server_port = 21;
+    char *server_str = reqargv[i], *tmp = NULL;
+    pr_netaddr_t *server_addr = NULL;
+    array_header *addrs = NULL;
+
+    /* Check for an argument of "all" */
+    if (strcasecmp(server_str, "all") == 0) {
+      pr_ipbind_close(NULL, 0, FALSE);
+      pr_ctrls_add_response(ctrl, "down: all servers disabled");
+      return 0;
+    }
+
+    tmp = strchr(server_str, '#');
+    if (tmp != NULL) {
+      server_port = atoi(tmp + 1);
+      *tmp = '\0';
+    }
+
+    server_addr = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, server_str, &addrs);
+    if (!server_addr) {
+      pr_ctrls_add_response(ctrl, "down: no such server: %s#%u",
+        server_str, server_port);
+      continue;
+    }
+
+    admin_addr_down(ctrl, server_addr, server_port);
+
+    if (addrs) {
+      register unsigned int j;
+      pr_netaddr_t **elts = addrs->elts;
+
+      for (j = 0; j < addrs->nelts; j++)
+        admin_addr_down(ctrl, elts[j], server_port);
+    }
   }
 
   return 0;
@@ -656,116 +739,7 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
   return 0;
 }
 
-static int admin_start_addr(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
-    unsigned int port) {
-  pr_ipbind_t *ipbind = NULL;
-  int res = 0;
-
-  /* Fetch the ipbind associated with this address/port. */
-  ipbind = pr_ipbind_find(addr, port, FALSE);
-  if (ipbind == NULL) {
-    pr_ctrls_add_response(ctrl,
-      "start: no server associated with %s#%u", pr_netaddr_get_ipstr(addr),
-      port);
-    return -1;
-  }
-
-  /* If this ipbind is already active, abort now. */
-  if (ipbind->ib_isactive) {
-    pr_ctrls_add_response(ctrl, "start: %s#%u already started",
-      pr_netaddr_get_ipstr(addr), port);
-    return 0;
-  }
-
-  /* Determine whether this server_rec needs a listening connection
-   * created.  A ServerType of SERVER_STANDALONE combined with a
-   * SocketBindTight means each server_rec will have its own listen
-   * connection; any other combination means that all the server_recs
-   * share the same listen connection.
-   */
-  if (ipbind->ib_server->ServerPort && !ipbind->ib_server->listen) {
-    ipbind->ib_server->listen =
-      pr_inet_create_connection(ipbind->ib_server->pool, server_list, -1,
-      (SocketBindTight ? ipbind->ib_server->addr : NULL),
-      ipbind->ib_server->ServerPort, FALSE);
-  }
-
-  ctrls_log(MOD_CTRLS_ADMIN_VERSION, "start: attempting to start %s#%u",
-    pr_netaddr_get_ipstr(addr), port);
-
-  PR_OPEN_IPBIND(ipbind->ib_server->addr, ipbind->ib_server->ServerPort,
-    ipbind->ib_server->listen, FALSE, FALSE, TRUE);
-
-  if (res < 0)
-    pr_ctrls_add_response(ctrl, "start: no server listening on %s#%u",
-      pr_netaddr_get_ipstr(addr), port);
-  else
-    pr_ctrls_add_response(ctrl, "start: %s#%u started",
-      pr_netaddr_get_ipstr(addr), port);
-
-  PR_ADD_IPBINDS(ipbind->ib_server);
-
-  return 0;
-}
-
-static int ctrls_handle_start(pr_ctrls_t *ctrl, int reqargc,
-    char **reqargv) {
-  register unsigned int i = 0;
-
-  /* Handle scheduled starts of virtual servers in the future, and
-   * cancellations of scheduled starts.
-   */
-
-  /* Check the start ACL */
-  if (!ctrls_check_acl(ctrl, ctrls_admin_acttab, "start")) {
-
-    /* Access denied */
-    pr_ctrls_add_response(ctrl, "access denied");
-    return -1;
-  }
-
-  /* Sanity check */
-  if (reqargc < 1 || reqargv == NULL) {
-    pr_ctrls_add_response(ctrl, "start: missing required parameters");
-    return -1;
-  }
-
-  for (i = 0; i < reqargc; i++) { 
-    unsigned int server_port = 21;
-    char *server_str = reqargv[i], *tmp = NULL;
-    pr_netaddr_t *server_addr = NULL;
-    array_header *addrs = NULL;
-
-    tmp = strchr(server_str, '#');
-    if (tmp != NULL) {
-      server_port = atoi(tmp + 1);
-      *tmp = '\0';
-    }
-
-    if ((server_addr = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool,
-        server_str, &addrs)) == NULL) {
-      pr_ctrls_add_response(ctrl, "start: unable to resolve address for '%s'",
-        server_str);
-      return -1;
-    }
-
-    if (admin_start_addr(ctrl, server_addr, server_port) < 0)
-      return -1;
-
-    if (addrs) {
-      register unsigned int j;
-      pr_netaddr_t **elts = addrs->elts;
-
-      for (j = 0; j < addrs->nelts; j++)
-        if (admin_start_addr(ctrl, elts[j], server_port) < 0)
-          return -1;
-    }
-  }
-
-  return 0;
-}
-
-static int admin_status_addr(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
+static int admin_addr_status(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
     unsigned int port) {
   pr_ipbind_t *ipbind = NULL;
 
@@ -782,7 +756,7 @@ static int admin_status_addr(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
   }
 
   pr_ctrls_add_response(ctrl, "status: %s#%u %s", pr_netaddr_get_ipstr(addr),
-    port, ipbind->ib_isactive ? "RUNNING" : "STOPPED");
+    port, ipbind->ib_isactive ? "UP" : "DOWN");
 
   return 0;
 }
@@ -821,7 +795,7 @@ static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
         const char *ipbind_str = pr_netaddr_get_ipstr(ipbind->ib_addr); 
 
         pr_ctrls_add_response(ctrl, "status: %s#%u %s", ipbind_str,
-          ipbind->ib_port, ipbind->ib_isactive ? "RUNNING" : "STOPPED");
+          ipbind->ib_port, ipbind->ib_isactive ? "UP" : "DOWN");
       }
 
       return 0;
@@ -841,7 +815,7 @@ static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
       continue;
     }
 
-    if (admin_status_addr(ctrl, server_addr, server_port) < 0)
+    if (admin_addr_status(ctrl, server_addr, server_port) < 0)
       continue;
 
     if (addrs) {
@@ -849,44 +823,75 @@ static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
       pr_netaddr_t **elts = addrs->elts;
 
       for (j = 0; j < addrs->nelts; j++)
-        admin_status_addr(ctrl, elts[j], server_port);
+        admin_addr_status(ctrl, elts[j], server_port);
     }
   }
 
   return 0;
 }
 
-static int admin_stop_addr(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
+static int admin_addr_up(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
     unsigned int port) {
+  pr_ipbind_t *ipbind = NULL;
+  int res = 0;
 
-  ctrls_log(MOD_CTRLS_ADMIN_VERSION, "stop: stopping %s:%u",
+  /* Fetch the ipbind associated with this address/port. */
+  ipbind = pr_ipbind_find(addr, port, FALSE);
+  if (ipbind == NULL) {
+    pr_ctrls_add_response(ctrl,
+      "up: no server associated with %s#%u", pr_netaddr_get_ipstr(addr),
+      port);
+    return -1;
+  }
+
+  /* If this ipbind is already active, abort now. */
+  if (ipbind->ib_isactive) {
+    pr_ctrls_add_response(ctrl, "up: %s#%u already enabled",
+      pr_netaddr_get_ipstr(addr), port);
+    return 0;
+  }
+
+  /* Determine whether this server_rec needs a listening connection
+   * created.  A ServerType of SERVER_STANDALONE combined with a
+   * SocketBindTight means each server_rec will have its own listen
+   * connection; any other combination means that all the server_recs
+   * share the same listen connection.
+   */
+  if (ipbind->ib_server->ServerPort && !ipbind->ib_server->listen) {
+    ipbind->ib_server->listen =
+      pr_inet_create_connection(ipbind->ib_server->pool, server_list, -1,
+      (SocketBindTight ? ipbind->ib_server->addr : NULL),
+      ipbind->ib_server->ServerPort, FALSE);
+  }
+
+  ctrls_log(MOD_CTRLS_ADMIN_VERSION, "up: attempting to enable %s#%u",
     pr_netaddr_get_ipstr(addr), port);
 
-  if (pr_ipbind_close(addr, port, FALSE) < 0) {
-    if (errno == ENOENT)
-      pr_ctrls_add_response(ctrl, "stop: no such server: %s:%u",
-        pr_netaddr_get_ipstr(addr), port);
-    else
-      pr_ctrls_add_response(ctrl, "stop: %s:%u already stopped",
-        pr_netaddr_get_ipstr(addr), port);
+  PR_OPEN_IPBIND(ipbind->ib_server->addr, ipbind->ib_server->ServerPort,
+    ipbind->ib_server->listen, FALSE, FALSE, TRUE);
 
-  } else
-    pr_ctrls_add_response(ctrl, "stop: %s:%u stopped",
+  if (res < 0)
+    pr_ctrls_add_response(ctrl, "up: no server listening on %s#%u",
       pr_netaddr_get_ipstr(addr), port);
+  else
+    pr_ctrls_add_response(ctrl, "up: %s#%u enabled",
+      pr_netaddr_get_ipstr(addr), port);
+
+  PR_ADD_IPBINDS(ipbind->ib_server);
 
   return 0;
 }
 
-static int ctrls_handle_stop(pr_ctrls_t *ctrl, int reqargc,
+static int ctrls_handle_up(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
   register unsigned int i = 0;
 
-  /* Handle scheduled stops of virtual servers in the future, and
-   * cancellations of scheduled stops.
+  /* Handle scheduled ups of virtual servers in the future, and
+   * cancellations of scheduled ups.
    */
 
-  /* Check the stop ACL */
-  if (!ctrls_check_acl(ctrl, ctrls_admin_acttab, "stop")) {
+  /* Check the 'up' ACL */
+  if (!ctrls_check_acl(ctrl, ctrls_admin_acttab, "up")) {
 
     /* Access denied */
     pr_ctrls_add_response(ctrl, "access denied");
@@ -895,7 +900,7 @@ static int ctrls_handle_stop(pr_ctrls_t *ctrl, int reqargc,
 
   /* Sanity check */
   if (reqargc < 1 || reqargv == NULL) {
-    pr_ctrls_add_response(ctrl, "stop: missing required parameters");
+    pr_ctrls_add_response(ctrl, "up: missing required parameters");
     return -1;
   }
 
@@ -905,13 +910,6 @@ static int ctrls_handle_stop(pr_ctrls_t *ctrl, int reqargc,
     pr_netaddr_t *server_addr = NULL;
     array_header *addrs = NULL;
 
-    /* Check for an argument of "all" */
-    if (strcasecmp(server_str, "all") == 0) {
-      pr_ipbind_close(NULL, 0, FALSE);
-      pr_ctrls_add_response(ctrl, "stop: all servers stopped");
-      return 0; 
-    }
-
     tmp = strchr(server_str, '#');
     if (tmp != NULL) {
       server_port = atoi(tmp + 1);
@@ -919,21 +917,22 @@ static int ctrls_handle_stop(pr_ctrls_t *ctrl, int reqargc,
     }
 
     server_addr = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, server_str, &addrs);
-
     if (!server_addr) {
-      pr_ctrls_add_response(ctrl, "stop: no such server: %s#%u",
-        server_str, server_port);
-      continue;
+      pr_ctrls_add_response(ctrl, "up: unable to resolve address for '%s'",
+        server_str);
+      return -1;
     }
 
-    admin_stop_addr(ctrl, server_addr, server_port);
+    if (admin_addr_up(ctrl, server_addr, server_port) < 0)
+      return -1;
 
     if (addrs) {
       register unsigned int j;
       pr_netaddr_t **elts = addrs->elts;
 
       for (j = 0; j < addrs->nelts; j++)
-        admin_stop_addr(ctrl, elts[j], server_port);
+        if (admin_addr_up(ctrl, elts[j], server_port) < 0)
+          return -1;
     }
   }
 
@@ -1110,6 +1109,8 @@ static int ctrls_admin_init(void) {
 static ctrls_acttab_t ctrls_admin_acttab[] = {
   { "debug",    "set debugging level",		NULL,
     ctrls_handle_debug },
+  { "down",     "disable an individual virtual server", NULL,
+    ctrls_handle_down },
   { "dump",	"dump internal information",	NULL,
     ctrls_handle_dump },
   { "get",      "list configuration data",	NULL,
@@ -1120,12 +1121,10 @@ static ctrls_acttab_t ctrls_admin_acttab[] = {
     ctrls_handle_restart },
   { "shutdown", "shutdown the daemon",	NULL,
     ctrls_handle_shutdown },
-  { "start",	"enable a stopped virtual server",	NULL,
-    ctrls_handle_start },
   { "status",	"display status of servers",		NULL,
     ctrls_handle_status },
-  { "stop",     "disable an individual virtual server",	NULL,
-    ctrls_handle_stop },
+  { "up",       "enable a downed virtual server",       NULL,
+    ctrls_handle_up },
   { NULL, NULL,	NULL, NULL }
 };
 
