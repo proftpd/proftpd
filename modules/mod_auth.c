@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.155 2003-06-05 19:34:53 castaglia Exp $
+ * $Id: mod_auth.c,v 1.156 2003-07-11 01:52:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -458,9 +458,14 @@ static config_rec *_auth_resolve_user(pool *p,char **user,
   while (c && c->parent &&
     (auth_alias_only = get_param_ptr(c->parent->set, "AuthAliasOnly", FALSE))) {
 
+    /* while() loops should always handle signals. */
+    pr_signals_handle();
+
     /* If AuthAliasOnly is on, ignore this one and continue. */
-    if (auth_alias_only && *auth_alias_only == TRUE)
+    if (auth_alias_only && *auth_alias_only == TRUE) {
+      c = find_config_next(c, c->next, CONF_PARAM, "UserAlias", TRUE);
       continue;
+    }
 
     is_alias = FALSE;
 
