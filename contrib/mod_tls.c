@@ -2323,7 +2323,7 @@ MODRET tls_prot(cmd_rec *cmd) {
     } else {
       pr_response_add_err(R_534, "Unwilling to accept security parameters");
       tls_log("%s: unwilling to accept security parameter (%s), declining",
-        cmd->argv[1]);
+        cmd->argv[0], cmd->argv[1]);
       return ERROR(cmd);
     }
 
