@@ -3408,13 +3408,13 @@ if test "${enable_transfer_buffer_size+set}" = set; then
 echo "$as_me: WARNING: transfer buffer size defaulting to regular buffer size" >&2;}
 
 cat >>confdefs.h <<_ACEOF
-#define PR_TUNABLE_BUFFER_SIZE 1024
+#define PR_TUNABLE_XFER_BUFFER_SIZE 1024
 _ACEOF
 
     else
 
 cat >>confdefs.h <<_ACEOF
-#define PR_TUNABLE_BUFFER_SIZE $enableval
+#define PR_TUNABLE_XFER_BUFFER_SIZE $enableval
 _ACEOF
 
     fi
