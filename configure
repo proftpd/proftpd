@@ -5582,6 +5582,19 @@ MODULES="$ac_core_modules $ac_addl_modules"
 BUILD_MODULES="$ac_build_core_modules $ac_build_addl_modules"
 VERSION=`cat $srcdir/include/version.h | grep "#define VERSION" | sed -e 's/^.*\"\(.*\)\"/\1/'`
 
+cat >> confdefs.h <<EOF
+#define CONFIG_FILE_PATH "${sysconfdir}/proftpd.conf"
+EOF
+
+cat >> confdefs.h <<EOF
+#define PID_FILE_PATH "${localstatedir}/proftpd.pid"
+EOF
+
+cat >> confdefs.h <<EOF
+#define RUN_DIR "${localstatedir}/proftpd"
+EOF
+
+
 
 
 
