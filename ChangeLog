@@ -1,3 +1,31 @@
+2001-06-19 21:23  flood
+
+	* NEWS, include/version.h: Bump version, final commit for 1.2.2rc3
+
+2001-06-19 21:19  flood
+
+	* NEWS, src/main.c: #1215 - Removes setpgid from fork_server
+
+2001-06-19 21:17  flood
+
+	* NEWS, modules/mod_ls.c: #1145 - DirFakeUser can display currently
+	logged in user
+
+2001-06-19 21:13  flood
+
+	* NEWS, doc/Configuration.html: #1164,1020,1134,1190,1207 - Doc
+	updates
+
+2001-06-19 14:51  flood
+
+	* NEWS, src/data.c: #1210 Possible silent truncation in net-ascii
+	mode
+
+2001-06-18 14:02  flood
+
+	* NEWS, modules/mod_ls.c, src/dirtree.c: #1212 Special files in
+	directory listings
+
 2001-06-18 13:39  flood
 
 	* NEWS, modules/mod_core.c: #1189 Directory dups allowed in
