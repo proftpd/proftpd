@@ -174,15 +174,15 @@ void pr_netio_abort(pr_netio_stream_t *nstrm) {
   }
 
   if (nstrm->strm_type == PR_NETIO_STRM_CTRL)
-    return ctrl_netio ? ctrl_netio->abort(nstrm) :
+    ctrl_netio ? ctrl_netio->abort(nstrm) :
       core_ctrl_netio->abort(nstrm);
 
   if (nstrm->strm_type == PR_NETIO_STRM_DATA)
-    return data_netio ? data_netio->abort(nstrm) :
+    data_netio ? data_netio->abort(nstrm) :
       core_data_netio->abort(nstrm);
 
   if (nstrm->strm_type == PR_NETIO_STRM_OTHR)
-    return othr_netio ? othr_netio->abort(nstrm) :
+    othr_netio ? othr_netio->abort(nstrm) :
       core_othr_netio->abort(nstrm);
 
   return;

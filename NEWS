@@ -1,4 +1,8 @@
-$Id: NEWS,v 1.243 2002-10-01 18:59:49 castaglia Exp $
+$Id: NEWS,v 1.244 2002-10-02 20:49:28 castaglia Exp $
+
+CVS
+---------------------------------
+- Bug 1757 - non-ANSI Syntax in netio.c
 
 1.2.7rc1 - Released 2002-10-01
 ---------------------------------
