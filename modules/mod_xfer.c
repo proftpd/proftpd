@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.155 2004-02-24 00:44:06 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.156 2004-03-05 02:13:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1421,7 +1421,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
 }
 
 MODRET xfer_rest(cmd_rec *cmd) {
-  long int pos;
+  off_t pos;
   char *endp = NULL;
   unsigned char *hidden_stores = NULL;
 
@@ -1438,16 +1438,20 @@ MODRET xfer_rest(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  pos = strtol(cmd->argv[1],&endp,10);
+#ifdef HAVE_STRTOULL
+  pos = strtoull(cmd->argv[1], &endp, 10);
+#else
+  pos = strtoul(cmd->argv[1], &endp, 10);
+#endif /* HAVE_STRTOULL */
 
-  if ((endp && *endp) || pos < 0) {
+  if (endp && *endp) {
     pr_response_add_err(R_501, "REST requires a value greater than or equal to 0");
     return ERROR(cmd);
   }
 
   session.restart_pos = pos;
 
-  pr_response_add(R_350, "Restarting at %ld. Send STORE or RETRIEVE to "
+  pr_response_add(R_350, "Restarting at %" PR_LU ". Send STORE or RETRIEVE to "
     "initiate transfer", pos);
   return HANDLED(cmd);
 }

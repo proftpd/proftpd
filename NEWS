@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.541 2004-03-03 00:24:11 castaglia Exp $
+$Id: NEWS,v 1.542 2004-03-05 02:13:23 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -114,6 +114,7 @@ CVS
   and data channels, if the client did not perform the SSL/TLS handshake for
   a data transfer, the connection would hang.  Now, an error message is sent
   to the client if no handshake is done.
+- Bug 2353 - REST doesn't handle offsets greater than 2 GB.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------

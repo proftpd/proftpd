@@ -363,6 +363,9 @@
 /* Define if you have the strtol function.  */
 #undef HAVE_STRTOL
 
+/* Define if you have the strtoull function.  */
+#undef HAVE_STRTOULL
+
 /* Define if you have the tzset function.  */
 #undef HAVE_TZSET
 
