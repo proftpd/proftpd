@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.445 2003-06-16 20:22:21 castaglia Exp $
+$Id: NEWS,v 1.446 2003-06-24 01:47:19 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -29,6 +29,9 @@ CVS
   parser would inadvertently trigger a segfault later.  This has been
   fixed by using a better memory pool, with a longer lifetime, for allocating
   the internal configuration structures.
+- Bug 2090 - mod_rewrite doesn't compile on Solaris 8.  The FIONREAD macro
+  was undefined, due to a strange necessity in the Solaris system headers
+  for a missing flag.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------

@@ -24,13 +24,11 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.13 2003-05-31 00:51:23 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.14 2003-06-24 01:47:20 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
-
-#include <sys/ioctl.h>
 
 #define MOD_REWRITE_VERSION "mod_rewrite/0.6.7"
 

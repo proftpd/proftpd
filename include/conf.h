@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.36 2003-06-17 01:23:15 castaglia Exp $
+ * $Id: conf.h,v 1.37 2003-06-24 01:47:20 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -181,6 +181,9 @@ char *strchr(),*strrchr();
 #endif
 
 #ifdef HAVE_SYS_IOCTL_H
+# ifdef SOLARIS2
+#  define BSD_COMP 1
+# endif
 # include <sys/ioctl.h>
 #endif
 
