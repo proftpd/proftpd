@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.19 2002-10-17 00:37:44 castaglia Exp $
+ * $Id: auth.c,v 1.20 2002-10-18 22:20:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -511,14 +511,13 @@ int auth_getgroups(pool *p, const char *name, array_header **group_ids,
 }
 
 int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
-#ifndef HAVE_SETGROUPS
-  return 0;
-#else /* HAVE_SETGROUPS */
-  register unsigned int i = 0;
   int res = 0;
+  pool *tmp_pool = NULL;
+
+#ifdef HAVE_SETGROUPS
+  register unsigned int i = 0;
   gid_t *gids = NULL, *proc_gids = NULL;
   size_t ngids = 0, nproc_gids = 0;
-  pool *tmp_pool = NULL;
 
   /* sanity check */
   if (!p || !suppl_gids)
@@ -566,16 +565,19 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
     destroy_pool(tmp_pool);
     return res;
   }
+#endif /* !HAVE_SETGROUPS */
 
-  /* If the above succeeded, set the primary GID of the process.
+  /* Set the primary GID of the process.
    */
   if ((res = setgid(primary_gid)) < 0) {
-    destroy_pool(tmp_pool);
+    if (tmp_pool)
+      destroy_pool(tmp_pool);
     return res;
   }
 
-  destroy_pool(tmp_pool);
+  if (tmp_pool)
+    destroy_pool(tmp_pool);
+
   return res;
-#endif /* HAVE_SETGROUPS */
 }
 
