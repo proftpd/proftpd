@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.145 2003-06-03 16:25:22 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.146 2003-07-15 02:57:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,12 +44,6 @@
 
 extern module auth_module;
 extern pid_t mpid;
-
-/* From the auth module */
-char *auth_map_uid(int);
-char *auth_map_gid(int);
-
-void xfer_abort(pr_netio_stream_t *, int);
 
 /* Variables for this module */
 static pr_fh_t *retr_fh = NULL;
