@@ -24,7 +24,7 @@
 
 /* ProFTPD bindings support routines.
  *
- * $Id: bindings.h,v 1.2 2003-01-02 17:28:15 castaglia Exp $
+ * $Id: bindings.h,v 1.3 2003-04-25 00:02:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -96,6 +96,11 @@ int pr_ipbind_create(server_rec *server, p_in_addr_t *addr);
  */
 int pr_ipbind_close(p_in_addr_t *addr, unsigned int port,
   unsigned char close_namebinds);
+
+/* Close all listenings fds.  This needs to happen just after a process
+ * has been forked to handle a session.
+ */
+int pr_ipbind_close_listeners(void);
 
 /* Search through the given server's configuration records, and for each
  * associated Bind configuration found, create an additional IP binding for

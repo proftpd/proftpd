@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.178 2003-04-23 06:53:23 castaglia Exp $
+ * $Id: main.c,v 1.179 2003-04-25 00:02:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1061,6 +1061,9 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
       return;
     }
   }
+
+  /* No longer need any listening fds. */
+  pr_ipbind_close_listeners();
 
   /* There would appear to be no useful purpose behind setting the process
    * group of the newly forked child.  In daemon/inetd mode, we should have no

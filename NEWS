@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.424 2003-04-23 00:28:09 castaglia Exp $
+$Id: NEWS,v 1.425 2003-04-25 00:02:59 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -117,6 +117,8 @@ CVS
   merging down of its directives, and the way in which multiple occurrences
   of directives are handled.  Now, even for merged-down mod_rewrite directives,
   a given RewriteRule will only be processed once.
+- Fixed minor fd leak where listening socket descriptors were not being
+  properly closed in a session process, when the session is first starting.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------
