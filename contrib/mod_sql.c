@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.88 2004-12-12 17:53:28 castaglia Exp $
+ * $Id: mod_sql.c,v 1.89 2004-12-16 18:17:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -458,6 +458,7 @@ int sql_unregister_backend(const char *backend) {
     return -1;
   }
 
+#if !defined(PR_SHARED_MODULE)
   /* If there is only one registered backend, it cannot be removed.
    */
   if (sql_nbackends == 1) {
@@ -471,6 +472,7 @@ int sql_unregister_backend(const char *backend) {
     errno = EACCES;
     return -1;
   }
+#endif
 
   /* Remove this backend from the linked list. */
   if (sb->prev)
@@ -4094,22 +4096,38 @@ static void sql_exit_ev(const void *event_data, void *user_data) {
   return;
 }
 
-static void sql_preparse_ev(const void *event_data, void *user_data) {
+#if defined(PR_SHARED_MODULE)
+static void sql_mod_unload_ev(const void *event_data, void *user_data) {
+  if (strcmp("mod_sql.c", (const char *) event_data) == 0) {
+    destroy_pool(sql_pool);
+    sql_pool = NULL;
+    sql_backends = NULL;
 
+    pr_event_unregister(&sql_module, NULL, NULL);
+  }
+}
+
+#else
+
+static void sql_preparse_ev(const void *event_data, void *user_data) {
   /* If no backends have been registered, croak. */
   if (sql_nbackends == 0) {
     pr_log_pri(PR_LOG_NOTICE, MOD_SQL_VERSION
       ": notice: no backend modules have been registered");
     exit(1);
   }
-
 }
+#endif /* PR_SHARED_MODULE */
 
 /* Initialization routines
  */
 
 static int sql_init(void) {
+#if defined(PR_SHARED_MODULE)
+  pr_event_register(&sql_module, "core.module-unload", sql_mod_unload_ev, NULL);
+#else
   pr_event_register(&sql_module, "core.preparse", sql_preparse_ev, NULL);
+#endif /* PR_SHARED_MODULE */
   return 0;
 }
 

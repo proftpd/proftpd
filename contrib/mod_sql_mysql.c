@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.35 2004-10-30 20:57:03 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.36 2004-12-16 18:17:42 castaglia Exp $
  */
 
 /*
@@ -1377,6 +1377,9 @@ static void sql_mysql_mod_unload_ev(const void *event_data, void *user_data) {
         ": notice: error unregistering backend: %s", strerror(errno));
       end_login(1);
     }
+
+    /* Unregister ourselves from all events. */
+    pr_event_unregister(&sql_mysql_module, NULL, NULL);
   }
 }
 
