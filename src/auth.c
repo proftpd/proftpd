@@ -19,7 +19,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.5 2000-07-11 13:36:52 macgyver Exp $
+ * $Id: auth.c,v 1.6 2001-02-01 22:58:08 flood Exp $
  */
 
 #include "conf.h"
@@ -143,6 +143,21 @@ struct passwd *auth_getpwent(pool *p)
     c->tmp_pool = NULL;
   }
 
+  /* sanity check */
+  if (ret == NULL)
+    return NULL;
+
+  /* make sure the UID and GID are not -1 */
+  if (ret->pw_uid == (uid_t) -1) {
+    log_pri(LOG_ERR, "error: UID of -1 not allowed");
+    return NULL;
+  }
+
+  if (ret->pw_gid == (gid_t) -1) {
+    log_pri(LOG_ERR, "error: GID of -1 not allowed");
+    return NULL;
+  }
+
   return ret;
 }
 
@@ -161,6 +176,16 @@ struct group *auth_getgrent(pool *p)
   if(c->tmp_pool) {
     destroy_pool(c->tmp_pool);
     c->tmp_pool = NULL;
+  }
+
+  /* sanity check */
+  if (ret == NULL)
+    return NULL;
+
+  /* make sure the GID is not -1 */
+  if (ret->gr_gid == (gid_t) -1) {
+    log_pri(LOG_ERR, "error: GID of -1 not allowed");
+    return NULL;
   }
 
   return ret;
@@ -183,6 +208,23 @@ struct passwd *auth_getpwnam(pool *p, const char *name)
     c->tmp_pool = NULL;
   }
 
+  /* sanity check */
+  if (ret == NULL) {
+    log_pri(LOG_NOTICE, "no such user '%s'", name);
+    return NULL;
+  }
+
+  /* make sure the UID and GID are not -1 */
+  if (ret->pw_uid == (uid_t) -1) {
+    log_pri(LOG_ERR, "error: UID of -1 not allowed");
+    return NULL;
+  }
+
+  if (ret->pw_gid == (gid_t) -1) {
+    log_pri(LOG_ERR, "error: GID of -1 not allowed");
+    return NULL;
+  }
+
   return ret;
 }
 
@@ -201,6 +243,23 @@ struct passwd *auth_getpwuid(pool *p, uid_t uid)
   if(c->tmp_pool) {
     destroy_pool(c->tmp_pool);
     c->tmp_pool = NULL;
+  }
+
+  /* sanity check */
+  if (ret == NULL) {
+    log_pri(LOG_NOTICE, "no such UID '%u'", (unsigned int)uid);
+    return NULL;
+  }
+
+  /* make sure the UID and GID are not -1 */
+  if (ret->pw_uid == (uid_t) -1) {
+    log_pri(LOG_ERR, "error: UID of -1 not allowed");
+    return NULL;
+  }
+
+  if (ret->pw_gid == (gid_t) -1) {
+    log_pri(LOG_ERR, "error: GID of -1 not allowed");
+    return NULL;
   }
 
   return ret;
@@ -223,6 +282,18 @@ struct group *auth_getgrnam(pool *p, const char *name)
     c->tmp_pool = NULL;
   }
 
+  /* sanity check */
+  if (ret == NULL) {
+    log_pri(LOG_NOTICE, "no such group '%s'", name);
+    return NULL;
+  }
+
+  /* make sure the GID is not -1 */
+  if (ret->gr_gid == (gid_t) -1) {
+    log_pri(LOG_ERR, "error: GID of -1 not allowed");
+    return NULL;
+  }
+
   return ret;
 }
 
@@ -241,6 +312,18 @@ struct group *auth_getgrgid(pool *p, gid_t gid)
   if(c->tmp_pool) {
     destroy_pool(c->tmp_pool);
     c->tmp_pool = NULL;
+  }
+
+  /* sanity check */
+  if (ret == NULL) {
+    log_pri(LOG_NOTICE, "no such GID '%u'", (unsigned int)gid);
+    return NULL;
+  }
+
+  /* make sure the GID is not -1 */
+  if (ret->gr_gid == (gid_t) -1) {
+    log_pri(LOG_ERR, "error: GID of -1 not allowed");
+    return NULL;
   }
 
   return ret;
