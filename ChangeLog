@@ -1,3 +1,10 @@
+2001-01-28 19:23  flood
+
+	* doc/Configuration.html, include/inet.h, modules/mod_core.c,
+	modules/mod_tar.c, modules/mod_test.c, src/inet.c, src/main.c: Bug
+	#188 - Removed use of NAME_MAX in mod_tar and mod_test.  #349 -
+	Final implementation of PassivePorts.
+
 2001-01-28 13:33  flood
 
 	* modules/mod_core.c: Bug #436 - MaxClients* directives now merge
