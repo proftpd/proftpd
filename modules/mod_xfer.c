@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.48 2001-02-20 03:26:27 flood Exp $
+ * $Id: mod_xfer.c,v 1.49 2001-02-21 02:33:53 flood Exp $
  */
 
 /* History Log:
@@ -504,6 +504,7 @@ MODRET cmd_stor(cmd_rec *cmd)
   char *dir;
   char *lbuf;
   int bufsize,len;
+  struct stat sbuf;
   unsigned long respos = 0;
   privdata_t *p, *p_hidden;
 
@@ -576,15 +577,30 @@ MODRET cmd_stor(cmd_rec *cmd)
     stor_file = fs_open(dir,
 	O_WRONLY|(session.restart_pos ? 0 : O_TRUNC|O_CREAT),&stor_fd);
 
-
   if(stor_file && session.restart_pos) {
+    int xerrno = 0;
+    
     if(fs_lseek(stor_file,stor_fd,session.restart_pos,SEEK_SET) == -1) {
-      int _errno = errno;
+      xerrno = errno;
+    } else if (fs_stat(dir, &sbuf) == -1) {
+      xerrno = errno;
+    }
+    
+    if (xerrno) {
       fs_close(stor_file,stor_fd);
-      errno = _errno;
+      errno = xerrno;
       stor_file = NULL;
     }
 
+    /* make sure that the requested offset is valid (within the size of the
+     * file being resumed
+     */
+    if (stor_file && session.restart_pos > sbuf.st_size) {
+      add_response_err(R_554, "%s: invalid REST argument", cmd->arg);
+      fs_close(stor_file, stor_fd);
+      return ERROR(cmd);
+    }
+    
     respos = session.restart_pos;
     rate_pos = respos;
     session.restart_pos = 0L;

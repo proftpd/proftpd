@@ -1,7 +1,16 @@
-$Id: NEWS,v 1.74 2001-02-05 22:29:47 flood Exp $
+$Id: NEWS,v 1.75 2001-02-21 02:33:53 flood Exp $
 
-1.2.0rc3 - Released:
-----------------------------
+1.2.0 (CVS)
+-------------------------------
+- mod_sql.c, mod_sql_mysql.c and mod_sql_postgres.c back in, with a new
+  maintainer (replacements for mod_sqlpw and friends).
+- intead of using kill(pid,SIGCONT) to determine if scoreboard pids are
+  correct, proftpd now uses kill(pid,0) which should be a lot lighter on
+  heavy-load systems.  Also removed some completely useless and redundant
+  /proc stat code which did the same thing on linux systems.
+
+1.2.0rc3 - Released: 02/05/2001
+-------------------------------
 - mod_sqlpw.c, mod_mysql.c and mod_pgsql.c have been REMOVED from the
   distribution.  They are currently unmaintained and have numerous bugs.
   If any kind soul <grin> is interested in maintaining them, they may be

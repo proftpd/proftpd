@@ -21,7 +21,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.23 2001-02-05 18:28:07 flood Exp $
+ * $Id: log.c,v 1.24 2001-02-21 02:33:54 flood Exp $
  */
 
 /* History Log:
@@ -255,21 +255,30 @@ int log_open_run(pid_t mpid, int trunc, int allow_update)
   return runfd;
 }
 
+/* There was some conditional code in here for LINUX which stat'd the /proc fs
+ * for the pid.  Not sure why it was there, seems useless and redundant to me.
+ * If someone can explain, please do...
+ *
+ * jss 2/20/2001
+ */
 static int _pid_exists(pid_t pid)
 {
-#ifdef LINUX
+#if 0 /* previously #ifdef LINUX */
   char procfn[20] = {'\0'};
   struct stat sbuf;
 #endif
   int res;
 
-  res = kill(pid,SIGCONT);
-#ifdef LINUX
+  /* We used to kill(pid,SIGCONT) here, but kill(pid,0) is much better, as it
+   * doesn't result in a signal actually being sent.  jss 2/20/2001
+   */
+  res = kill(pid,0);
+#if 0 /* previously #ifdef LINUX */
   snprintf(procfn, sizeof(procfn), "/proc/%d",pid);    
   if( (res == -1 && errno == EPERM) || !res ||
     stat(procfn,&sbuf) != -1)
 #else
-  if( (res == -1 && errno == EPERM) || !res )
+  if( (res == -1) )
 #endif
     return 1;
   return 0;

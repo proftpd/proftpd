@@ -20,7 +20,7 @@
 
 /* FTP commands and responses (may not all be implemented)
  *
- * $Id: ftp.h,v 1.2 2000-08-02 05:25:24 macgyver Exp $
+ * $Id: ftp.h,v 1.3 2001-02-21 02:33:53 flood Exp $
  */
 
 #ifndef __FTP_H
@@ -118,7 +118,7 @@
 #define R_551	"551"		/* Requested action not taken, page type unknown */
 #define R_552	"552"		/* Requested file action aborted, exceeding storage allocation */
 #define	R_553	"553"		/* Requested action not taken, file name not allowed */
-
+#define R_554   "554"           /* Requested action not taken, invalid REST parameter (rfc1123) */
 #define R_DUP	NULL		/* Duplicate last numeric in ml response */
 
 #endif /* __FTP_H */
