@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.239 2004-07-13 16:54:36 castaglia Exp $
+ * $Id: mod_core.c,v 1.240 2004-07-13 17:56:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2864,7 +2864,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
   if (session.class && session.class->cls_name) {
     unsigned int *class_users = NULL;
     config_rec *maxc = NULL;
-    unsigned int max_clients = 0;
+    unsigned int maxclients = 0;
 
     snprintf(config_class_users, sizeof(config_class_users),
       "CURRENT-CLIENTS-CLASS-%s", session.class->cls_name);
@@ -2889,18 +2889,18 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
         continue;
       }
 
-      max_clients = *((unsigned int *) maxc->argv[1]);
+      maxclients = *((unsigned int *) maxc->argv[1]);
       break;
     } 
 
-    if (max_clients == 0) {
+    if (maxclients == 0) {
       maxc = find_config(main_server->conf, CONF_PARAM, "MaxClients", FALSE);
 
       if (maxc)
-        max_clients = *((unsigned int *) maxc->argv[0]);
+        maxclients = *((unsigned int *) maxc->argv[0]);
     }
 
-    snprintf(mg_class_limit, sizeof(mg_class_limit), "%u", max_clients);
+    snprintf(mg_class_limit, sizeof(mg_class_limit), "%u", maxclients);
 
   } else {
     mg_cur_class[0] = 0;
