@@ -54,7 +54,7 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
     pri &= LOG_PRIMASK|LOG_FACMASK;
 
   /* Check priority against setlogmask values. */
-  if ((LOG_MASK(LOG_PRI(pri)) & log_mask) == 0)
+  if ((LOG_MASK(pri & LOG_PRIMASK) & log_mask) == 0)
     return;
 
   /* Set default facility if none specified. */
