@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.40 2000-08-01 18:59:39 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.41 2000-08-05 04:42:31 macgyver Exp $
  */
 
 /* History Log:
@@ -781,10 +781,6 @@ MODRET cmd_retr(cmd_rec *cmd)
 	default:
 	  log_pri(LOG_ERR, "data_sendfile error %d: %s.",
 		  errno, strerror(errno));
-#if 0
-	  log_pri(LOG_ERR, "Unknown data_sendfile() error %d: %s.",
-		  errno, strerror(errno));
-#endif
 	}
       }
 
