@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.7 2003-08-09 07:22:05 castaglia Exp $
+ * $Id: netaddr.c,v 1.8 2003-08-13 19:11:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -45,9 +45,9 @@ int pr_netaddr_reverse_dns(int enable) {
 pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     array_header **addrs) {
 
-  struct sockaddr_in sin;
+  struct sockaddr_in v4;
 #ifdef USE_IPV6
-  struct sockaddr_in6 sin6;
+  struct sockaddr_in6 v6;
 #endif /* USE_IPV6 */
   pr_netaddr_t *na = NULL;
   int res;
@@ -70,11 +70,11 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
   na = (pr_netaddr_t *) pcalloc(p, sizeof(pr_netaddr_t));
 
 #ifdef USE_IPV6
-  sin6.sin6_family = AF_INET6;
-  res = inet_pton(AF_INET6, name, &sin6.sin6_addr);
+  v6.sin6_family = AF_INET6;
+  res = inet_pton(AF_INET6, name, &v6.sin6_addr);
   if (res > 0) {
     pr_netaddr_set_family(na, AF_INET6);
-    pr_netaddr_set_sockaddr(na, (struct sockaddr *) &sin6);
+    pr_netaddr_set_sockaddr(na, (struct sockaddr *) &v6);
     if (addrs)
       *addrs = NULL;
 
@@ -82,11 +82,11 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
   }
 #endif
 
-  sin.sin_family = AF_INET;
-  res = inet_pton(AF_INET, name, &sin.sin_addr);
+  v4.sin_family = AF_INET;
+  res = inet_pton(AF_INET, name, &v4.sin_addr);
   if (res > 0) {
     pr_netaddr_set_family(na, AF_INET);
-    pr_netaddr_set_sockaddr(na, (struct sockaddr *) &sin);
+    pr_netaddr_set_sockaddr(na, (struct sockaddr *) &v4);
     if (addrs)
       *addrs = NULL;
 
@@ -102,7 +102,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
      */
 
     struct addrinfo hints, *info = NULL;
-    int res = 0;
+    int gai_res = 0;
 
     memset(&hints, 0, sizeof(hints));
 
@@ -114,10 +114,10 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
 #endif /* USE_IPV6 */
     hints.ai_socktype = SOCK_STREAM;
 
-    res = pr_getaddrinfo(name, NULL, &hints, &info);
-    if (res != 0) {
+    gai_res = pr_getaddrinfo(name, NULL, &hints, &info);
+    if (gai_res != 0) {
       log_pri(PR_LOG_INFO, "getaddrinfo '%s' error: %s", name,
-        res != EAI_SYSTEM ? gai_strerror(res) : strerror(errno));
+        res != EAI_SYSTEM ? gai_strerror(gai_res) : strerror(errno));
       return NULL;
     }
 
@@ -484,11 +484,11 @@ int pr_netaddr_fnmatch(const pr_netaddr_t *na, const char *pattern) {
     return -1;
   }
 
-  dnsstr = pr_netaddr_get_dnsstr(na);
+  dnsstr = pr_netaddr_get_dnsstr((pr_netaddr_t *) na);
   if (pr_fnmatch(pattern, dnsstr, flags) == 0)
     return TRUE;
 
-  ipstr = pr_netaddr_get_ipstr(na);
+  ipstr = pr_netaddr_get_ipstr((pr_netaddr_t *) na);
   if (pr_fnmatch(pattern, ipstr, flags) == 0)
     return TRUE;
 
