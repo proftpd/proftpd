@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.12 2003-08-09 07:50:51 castaglia Exp $
+ * $Id: bindings.c,v 1.13 2003-08-29 17:01:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -230,9 +230,9 @@ int pr_ipbind_close(pr_netaddr_t *addr, unsigned int port,
      * for the master daemon in inetd mode, in which case virtual servers
      * can't be shutdown via ftpdctl, anyway.
      */
-    if (SocketBindTight && ipbind->ib_server->listen != NULL) {
-      pr_inet_close(ipbind->ib_server->pool, ipbind->ib_server->listen);
-      ipbind->ib_server->listen = NULL;
+    if (SocketBindTight && ipbind->ib_listener != NULL) {
+      pr_inet_close(ipbind->ib_server->pool, ipbind->ib_listener);
+      ipbind->ib_listener = NULL;
     }
 
     /* Mark this ipbind as inactive.  For SocketBindTight sockets, the
@@ -266,9 +266,9 @@ int pr_ipbind_close(pr_netaddr_t *addr, unsigned int port,
       pr_ipbind_t *ipbind = NULL;
       for (ipbind = ipbind_table[i]; ipbind; ipbind = ipbind->ib_next) {
 
-        if (SocketBindTight && ipbind->ib_server->listen != NULL) {
-          pr_inet_close(main_server->pool, ipbind->ib_server->listen);
-          ipbind->ib_server->listen = NULL;
+        if (SocketBindTight && ipbind->ib_listener != NULL) {
+          pr_inet_close(main_server->pool, ipbind->ib_listener);
+          ipbind->ib_listener = NULL;
         }
 
         /* Note: do not need to check if this ipbind was previously closed,
@@ -480,24 +480,23 @@ int pr_ipbind_listen(fd_set *readfds) {
       if (SocketBindTight && !ipbind->ib_isactive)
         continue;
 
-      if (ipbind->ib_server->listen) {
+      if (ipbind->ib_listener) {
 
-        if (ipbind->ib_server->listen->mode == CM_NONE)
-          pr_inet_listen(ipbind->ib_server->listen->pool,
-            ipbind->ib_server->listen, tcpBackLog);
+        if (ipbind->ib_listener->mode == CM_NONE)
+          pr_inet_listen(ipbind->ib_listener->pool, ipbind->ib_listener,
+            tcpBackLog);
 
-        if (ipbind->ib_server->listen->mode == CM_ACCEPT)
-          pr_inet_resetlisten(ipbind->ib_server->listen->pool,
-            ipbind->ib_server->listen);
+        if (ipbind->ib_listener->mode == CM_ACCEPT)
+          pr_inet_resetlisten(ipbind->ib_listener->pool, ipbind->ib_listener);
 
-        if (ipbind->ib_server->listen->mode == CM_LISTEN) {
-          FD_SET(ipbind->ib_server->listen->listen_fd, readfds);
-          if (ipbind->ib_server->listen->listen_fd > maxfd)
-            maxfd = ipbind->ib_server->listen->listen_fd;
+        if (ipbind->ib_listener->mode == CM_LISTEN) {
+          FD_SET(ipbind->ib_listener->listen_fd, readfds);
+          if (ipbind->ib_listener->listen_fd > maxfd)
+            maxfd = ipbind->ib_listener->listen_fd;
 
           /* Add this to the listener list as well. */
-          ipbind->ib_server->listen->next = listener_list;
-          listener_list = ipbind->ib_server->listen;
+          ipbind->ib_listener->next = listener_list;
+          listener_list = ipbind->ib_listener;
           listener_listlen++;
         }
       }
@@ -528,7 +527,7 @@ int pr_ipbind_open(pr_netaddr_t *addr, unsigned int port, conn_t *listen_conn,
   if (listen_conn)
     listen_conn->next = NULL;
 
-  ipbind->ib_server->listen = listen_conn;
+  ipbind->ib_listener = listen_conn;
   ipbind->ib_isdefault = isdefault;
   ipbind->ib_islocalhost = islocalhost;
 
@@ -667,7 +666,7 @@ int pr_namebind_create(server_rec *server, const char *name,
     main_server->addr);
   namebind->nb_server->ServerPort = (server->ServerPort ? server->ServerPort :
     main_server->ServerPort);
-  namebind->nb_server->listen = (server->listen ? server->listen :
+  namebind->nb_listener = (server->listen ? server->listen :
     main_server->listen);
 
   /* Add this namebind to the ipbind's list */

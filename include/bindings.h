@@ -24,7 +24,7 @@
 
 /* ProFTPD bindings support routines.
  *
- * $Id: bindings.h,v 1.4 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: bindings.h,v 1.5 2003-08-29 17:01:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -43,10 +43,13 @@ typedef struct ipbind_rec {
   pr_netaddr_t *ib_addr;
   unsigned int ib_port;
 
-  /* default server to handle requests to this binding.  If namebinds are
+  /* Default server to handle requests to this binding.  If namebinds are
    * present, they will be checked before using this server
    */
   server_rec *ib_server;
+
+  /* Listener associated with this binding. */
+  conn_t *ib_listener;
 
   /* List of name-based servers bound to the above IP address.  Note that
    * if this functionality becomes widely adopted and used, a more efficient
@@ -68,6 +71,7 @@ typedef struct ipbind_rec {
 /* Structure associating a name to a server_rec */
 typedef struct namebind_rec {
   server_rec *nb_server;
+  conn_t *nb_listener;
   const char *nb_name;
   unsigned char nb_isactive;
 } pr_namebind_t;
