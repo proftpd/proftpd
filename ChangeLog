@@ -1,3 +1,8 @@
+2001-02-05 17:29  flood
+
+	* CREDITS, INSTALL, NEWS, README, contrib/dist/rpm/proftpd.spec.in,
+	doc/Configuration.html: Minor doc changes
+
 2001-02-05 14:48  flood
 
 	* NEWS, contrib/README.mod_sqlpw, contrib/mod_mysql.c,
