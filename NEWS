@@ -1,7 +1,24 @@
-$Id: NEWS,v 1.157 2002-03-06 16:56:33 flood Exp $
+$Id: NEWS,v 1.158 2002-05-08 19:44:12 castaglia Exp $
 
 1.2.5rc2 - CVS
 ---------------------------------
+- Bug 1563 - Moved checking for bad address lookup up, to prevent segfault
+             when using MasqueradeAddress
+- Bug 1567 - Fixed parsing of AuthAliasOnly to honor Boolean parameter
+- Bug 1579 - the contrib RPM init.d script make inappropriate use of
+             ftpshut in a few cases
+- Bug 1588 - Examined return value of inet_get_conn_info() to prevent
+             segfaults for ephemeral TCP connections
+- Bug 1570 - Changed MasqueradeAddress context checks in code to match
+             docs
+- Bug 1601 - RNTO handler did not properly cleanup after itself in an 
+             error condition, tickling a later segfault
+- Bug 1523 - Amended fix for this bug to include a pool that should prevent
+             memory leaks for long-running daemons
+- Bug 1566 - Changed OpenBSD-specific macro checks to allow for proper
+             use of sockets
+- Bug 1578 - RootLogin's configuration directive handler did not properly
+             set the mergedown flag
 - New mod_wrap (1.2.3)
 - removed contrib/genuser.pl (per TJ)
 - added contrib/ftpasswd utility script (contributed by TJ)
