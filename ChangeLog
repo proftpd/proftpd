@@ -1,0 +1,340 @@
+1999-09-26  MacGyver  <macgyver@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/doc/Undocumented.txt, /var/proftpd/proftpd-1.2/modules/mod_core.c:
+	Added in CommandBufferSize.
+
+	* /var/proftpd/proftpd-1.2/src/log.c: Corrected minor syslog errors.
+
+	* /var/proftpd/proftpd-1.2/src/dirtree.c: Fixed a C++ style comment.
+
+	* /var/proftpd/proftpd-1.2/src/utils.c:
+	Compilation issues on other Unix platforms addressed.
+
+	* /var/proftpd/proftpd-1.2/doc/Configuration.html:
+	Added in updated configuration directives.
+
+1999-09-18  MacGyver  <macgyver@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/src/dirtree.c, /var/proftpd/proftpd-1.2/src/fs.c:
+	Cleaned up usage of fs_readlink.
+
+	* /var/proftpd/proftpd-1.2/src/log.c: Code cleanups.
+
+	* /var/proftpd/proftpd-1.2/src/pool.c, /var/proftpd/proftpd-1.2/src/support.c:
+	Minor code beautification.
+
+	* /var/proftpd/proftpd-1.2/modules/mod_ls.c:
+	Fixed some bad code calling fs_readlink.
+
+1999-09-17  MacGyver  <macgyver@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/Makefile.in:
+	Fixed symbolic link installation.
+
+	* /var/proftpd/proftpd-1.2/src/fs.c, /var/proftpd/proftpd-1.2/src/ftpcount.c, /var/proftpd/proftpd-1.2/src/log.c, /var/proftpd/proftpd-1.2/src/main.c, /var/proftpd/proftpd-1.2/src/pool.c, /var/proftpd/proftpd-1.2/src/support.c, /var/proftpd/proftpd-1.2/src/utils.c, /var/proftpd/proftpd-1.2/contrib/mod_mysql.c, /var/proftpd/proftpd-1.2/contrib/mod_ratio.c, /var/proftpd/proftpd-1.2/include/support.h, /var/proftpd/proftpd-1.2/modules/mod_auth.c, /var/proftpd/proftpd-1.2/modules/mod_core.c, /var/proftpd/proftpd-1.2/modules/mod_log.c, /var/proftpd/proftpd-1.2/modules/mod_ls.c, /var/proftpd/proftpd-1.2/modules/mod_pam.c, /var/proftpd/proftpd-1.2/modules/mod_tar.c, /var/proftpd/proftpd-1.2/modules/mod_test.c, /var/proftpd/proftpd-1.2/modules/mod_xfer.c, /var/proftpd/proftpd-1.2/src/auth.c, /var/proftpd/proftpd-1.2/src/dirtree.c:
+	Implemented sstrncpy to handle proper buffer copying issues on all platforms.
+
+	* /var/proftpd/proftpd-1.2/modules/mod_ls.c: gcc cleanups.
+
+	* /var/proftpd/proftpd-1.2/modules/mod_log.c:
+	Eliminated some potential problems with logging.
+
+	* /var/proftpd/proftpd-1.2/modules/mod_xfer.c:
+	gcc cleanups and a more informative error message added.
+
+	* /var/proftpd/proftpd-1.2/src/log.c:
+	More intelligent handling of logfiles to avoid a potential race condition.
+
+	* /var/proftpd/proftpd-1.2/modules/mod_core.c: General regex cleanups.
+	Added AllowFilter/DenyFilter.
+	More intelligent handling of logfiles.
+	gcc cleanups.
+	wu-ftp style logging of deleted files.
+
+	* /var/proftpd/proftpd-1.2/src/pool.c: Fixed gcc warnings.
+
+	* /var/proftpd/proftpd-1.2/src/main.c: Added AllowFilter/DenyFilter.
+	Fixed a small typo with newlines.
+	Corrected a slight problem with memory debugging.
+	Fixed several gcc warnings.
+
+	* /var/proftpd/proftpd-1.2/src/utils.c: Check for bad DNS entries.
+
+	* /var/proftpd/proftpd-1.2/include/inet.h, /var/proftpd/proftpd-1.2/src/inet.c:
+	Check for any potential DNS spoofing attacks from the outside.
+
+	* /var/proftpd/proftpd-1.2/include/version.h: Bumped version number.
+
+	* /var/proftpd/proftpd-1.2/sample-configurations/complex-virtual.conf:
+	Added in a new sample configuration.
+
+	* /var/proftpd/proftpd-1.2/contrib/libcap/cap_extint.c:
+	Corrected gcc warning.
+
+	* /var/proftpd/proftpd-1.2/contrib/proftpd.spec.in:
+	Added in mod_readme.
+
+	* /var/proftpd/proftpd-1.2/.cvsignore, /var/proftpd/proftpd-1.2/contrib/.cvsignore, /var/proftpd/proftpd-1.2/contrib/libcap/.cvsignore:
+	Added some more files to ignore.
+
+1999-09-16  MacGyver  <macgyver@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/src/main.c: Changed an argument reversal.
+
+	* /var/proftpd/proftpd-1.2/src/log.c: Cleaned up some ugly code.
+
+	* /var/proftpd/proftpd-1.2/src/main.c:
+	Fixed a silly, yet insidious, way to overflow a buffer.
+
+1999-09-14  MacGyver  <macgyver@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/modules/mod_xfer.c:
+	Corrected a minor typo .in -> .in.
+
+	* /var/proftpd/proftpd-1.2/modules/mod_xfer.c, /var/proftpd/proftpd-1.2/changelog, /var/proftpd/proftpd-1.2/include/proftpd.h, /var/proftpd/proftpd-1.2/modules/mod_core.c:
+	Implemented HiddenStor.
+
+1999-09-12  MacGyver  <macgyver@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/README.Solaris2.5x:
+	Additional information regarding Solaris 2.5.x systems added.
+
+	* /var/proftpd/proftpd-1.2/config.h.in, /var/proftpd/proftpd-1.2/configure, /var/proftpd/proftpd-1.2/configure.in, /var/proftpd/proftpd-1.2/include/conf.h, /var/proftpd/proftpd-1.2/src/log.c:
+	Added in support for utmpx under Solaris and like-minded platforms.
+
+	* /var/proftpd/proftpd-1.2/doc/Configuration.html, /var/proftpd/proftpd-1.2/doc/FAQ-config.html, /var/proftpd/proftpd-1.2/doc/GetConf, /var/proftpd/proftpd-1.2/doc/ShowUndocumented, /var/proftpd/proftpd-1.2/doc/Undocumented.txt:
+	Added configuration documentation and 'un' documentation.
+
+	* /var/proftpd/proftpd-1.2/contrib/mod_ratio.c, /var/proftpd/proftpd-1.2/doc/GetConf, /var/proftpd/proftpd-1.2/modules/mod_auth.c, /var/proftpd/proftpd-1.2/modules/mod_core.c, /var/proftpd/proftpd-1.2/modules/mod_log.c, /var/proftpd/proftpd-1.2/modules/mod_ls.c, /var/proftpd/proftpd-1.2/modules/mod_readme.c, /var/proftpd/proftpd-1.2/modules/mod_sample.c:
+	Initial import of GetConf, and slight cleanup in all modules.
+
+	* /var/proftpd/proftpd-1.2/changelog, /var/proftpd/proftpd-1.2/contrib/libcap/Makefile, /var/proftpd/proftpd-1.2/src/ftpcount.1, /var/proftpd/proftpd-1.2/src/ftpshut.8, /var/proftpd/proftpd-1.2/src/ftpwho.1, /var/proftpd/proftpd-1.2/src/proftpd.8:
+	Corrected mailing list addresses.
+
+	* /var/proftpd/proftpd-1.2/contrib/proftpd.spec.in, /var/proftpd/proftpd-1.2/include/version.h:
+	Corrected versioning info.
+
+1999-09-11  MacGyver  <macgyver@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/configure.in, /var/proftpd/proftpd-1.2/configure:
+	Forgot the 'id' issue.
+
+	* /var/proftpd/proftpd-1.2/contrib/proftpd.spec.in:
+	Cleanup of spec file.
+
+	* /var/proftpd/proftpd-1.2/configure, /var/proftpd/proftpd-1.2/configure.in:
+	A couple of more configure fixes.
+
+1999-09-10  MacGyver  <macgyver@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/README.PAM, /var/proftpd/proftpd-1.2/src/log.c:
+	Added PAM README, and modified log.c to handle log_xfer more like WU-FTPd.
+
+	* /var/proftpd/proftpd-1.2/INSTALL, /var/proftpd/proftpd-1.2/README, /var/proftpd/proftpd-1.2/contrib/mod_pam.c, /var/proftpd/proftpd-1.2/modules/mod_pam.c:
+	Moved PAM into the main module set.  It's now a 'core' feature.
+
+	* /var/proftpd/proftpd-1.2/src/main.c: Added CommandBufferSize option.
+
+	* /var/proftpd/proftpd-1.2/configure, /var/proftpd/proftpd-1.2/configure.in:
+	Fixed a small typo with shadow use.
+
+	* /var/proftpd/proftpd-1.2/configure, /var/proftpd/proftpd-1.2/configure.in:
+	Updated support for Solaris, and made PAM sleep quietly when told to do so.
+
+	* /var/proftpd/proftpd-1.2/src/support.c:
+	Fixed remaining buffer issues in sreplace.
+
+	* /var/proftpd/proftpd-1.2/src/pool.c:
+	Corrected alignment issues on 64-bit platforms.  Thanks to Todd C. Miller <millert@ee.ethz.ch> for the patch.
+
+	* /var/proftpd/proftpd-1.2/src/ftpshut.c:
+	Cleaned up ftpshut options to return more meaningful errors.
+
+	* /var/proftpd/proftpd-1.2/src/pool.c: Fix for improper strncpy.
+
+1999-09-09  MacGyver  <macgyver@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/src/support.c:
+	Corrected a length bug in sreplace.
+
+1999-09-08  MacGyver  <macgyver@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/configure, /var/proftpd/proftpd-1.2/configure.in, /var/proftpd/proftpd-1.2/contrib/mod_pam.c:
+	Updates to auto-configuring for PAM on *BSD.
+
+	* /var/proftpd/proftpd-1.2/configure.in, /var/proftpd/proftpd-1.2/configure:
+	Fixed setproctitle detection on *BSD platforms.
+
+	* /var/proftpd/proftpd-1.2/configure, /var/proftpd/proftpd-1.2/configure.in:
+	Fixed an extra 'fi' statement.
+
+	* /var/proftpd/proftpd-1.2/configure, /var/proftpd/proftpd-1.2/configure.in:
+	Fixed a small typo in PAM detection.
+
+	* /var/proftpd/proftpd-1.2/Make.rules.in, /var/proftpd/proftpd-1.2/config.h.in:
+	Added memory debugging support.
+
+	* /var/proftpd/proftpd-1.2/contrib/mod_mysql.c, /var/proftpd/proftpd-1.2/contrib/mod_mysql.h:
+	Initial import of mod_mysql, with some buffer fixes.
+
+	* /var/proftpd/proftpd-1.2/modules/Makefile.in: Updated for mod_mysql.
+
+	* /var/proftpd/proftpd-1.2/config.guess: Added in StrongARM support.
+
+	* /var/proftpd/proftpd-1.2/contrib/libcap/capability.h:
+	Moved in the new capability source tree.
+
+	* /var/proftpd/proftpd-1.2/src/main.c:
+	Added in some debugging code to assist in tracking down memory problems.
+
+	* /var/proftpd/proftpd-1.2/src/pool.c:
+	Fixed a couple of bugs introduced by silly typos.
+
+	* /var/proftpd/proftpd-1.2/src/log.c: Minor buffer cleanups.
+
+	* /var/proftpd/proftpd-1.2/src/inet.c:
+	Added a helper message for people who misconfigure their servers.
+
+1999-09-07  MacGyver  <macgyver@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/Makefile.in, /var/proftpd/proftpd-1.2/config.h.in, /var/proftpd/proftpd-1.2/configure, /var/proftpd/proftpd-1.2/configure.in, /var/proftpd/proftpd-1.2/include/dirtree.h, /var/proftpd/proftpd-1.2/include/fs.h, /var/proftpd/proftpd-1.2/include/version.h, /var/proftpd/proftpd-1.2/lib/glob.c, /var/proftpd/proftpd-1.2/src/dirtree.c, /var/proftpd/proftpd-1.2/src/fs.c, /var/proftpd/proftpd-1.2/src/ftpcount.c, /var/proftpd/proftpd-1.2/src/inet.c, /var/proftpd/proftpd-1.2/src/log.c, /var/proftpd/proftpd-1.2/src/main.c, /var/proftpd/proftpd-1.2/src/modules.c, /var/proftpd/proftpd-1.2/src/pool.c, /var/proftpd/proftpd-1.2/src/support.c:
+	Removed lots of unsafe buffer copies, as well as addressed a couple of Y2K
+	issues.
+
+	* /var/proftpd/proftpd-1.2/contrib/.cvsignore:
+	Removed README.linux-privs
+
+	* /var/proftpd/proftpd-1.2/contrib/ftp.pamd, /var/proftpd/proftpd-1.2/contrib/proftpd.spec.in:
+	Added in RPM spec and ProFTPD PAM file.
+
+	* /var/proftpd/proftpd-1.2/contrib/mod_linuxprivs.c:
+	Updated capabilities code to newer release.
+
+	* /var/proftpd/proftpd-1.2/contrib/libcap/Makefile, /var/proftpd/proftpd-1.2/contrib/libcap/_makenames.c, /var/proftpd/proftpd-1.2/contrib/libcap/cap_alloc.c, /var/proftpd/proftpd-1.2/contrib/libcap/cap_extint.c, /var/proftpd/proftpd-1.2/contrib/libcap/cap_file.c, /var/proftpd/proftpd-1.2/contrib/libcap/cap_flag.c, /var/proftpd/proftpd-1.2/contrib/libcap/cap_proc.c, /var/proftpd/proftpd-1.2/contrib/libcap/cap_sys.c, /var/proftpd/proftpd-1.2/contrib/libcap/cap_text.c, /var/proftpd/proftpd-1.2/contrib/libcap/include/sys/capability.h, /var/proftpd/proftpd-1.2/contrib/libcap/libcap.h:
+	Updated capabilities library and model.
+
+	* /var/proftpd/proftpd-1.2/contrib/mod_ratio.c:
+	Fixed some potential buffer issues.
+
+	* /var/proftpd/proftpd-1.2/contrib/mod_pam.c:
+	Some minor security updates to fix potential buffer problems.
+
+	* /var/proftpd/proftpd-1.2/modules/mod_auth.c, /var/proftpd/proftpd-1.2/modules/mod_log.c, /var/proftpd/proftpd-1.2/modules/mod_ls.c, /var/proftpd/proftpd-1.2/modules/mod_site.c, /var/proftpd/proftpd-1.2/modules/mod_tar.c, /var/proftpd/proftpd-1.2/modules/mod_test.c, /var/proftpd/proftpd-1.2/modules/mod_unixpw.c, /var/proftpd/proftpd-1.2/modules/mod_xfer.c:
+	Removed unsafe buffer copies that may have been potential problems.
+	Implemented the 'real' patch for the MKD/log security issues.
+
+	* /var/proftpd/proftpd-1.2/modules/mod_core.c:
+	Added in Bandwidth patch for bandwidth control.
+	Security cleanups -- removed lots of unsafe buffer copies.
+
+	* /var/proftpd/proftpd-1.2/modules/Makefile.in:
+	Updated Makefile for new capabilities code.
+
+1999-08-31  flood  <flood@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/contrib/libcap/Makefile, /var/proftpd/proftpd-1.2/contrib/libcap/cap_sys.c, /var/proftpd/proftpd-1.2/contrib/mod_linuxprivs.c, /var/proftpd/proftpd-1.2/include/options.h, /var/proftpd/proftpd-1.2/include/pool.h, /var/proftpd/proftpd-1.2/modules/mod_core.c, /var/proftpd/proftpd-1.2/modules/mod_ls.c, /var/proftpd/proftpd-1.2/modules/mod_xfer.c, /var/proftpd/proftpd-1.2/src/log.c, /var/proftpd/proftpd-1.2/src/main.c, /var/proftpd/proftpd-1.2/src/modules.c, /var/proftpd/proftpd-1.2/src/pool.c, /var/proftpd/proftpd-1.2/changelog:
+	Mucho patches.
+
+1999-03-12  flood  <flood@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/modules/mod_xfer.c, /var/proftpd/proftpd-1.2/changelog:
+	TYPE A N
+
+	* /var/proftpd/proftpd-1.2/src/inet.c, /var/proftpd/proftpd-1.2/changelog:
+	OpenBSD SO_REUSEADDR patch.
+
+1999-03-10  flood  <flood@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/include/version.h, /var/proftpd/proftpd-1.2/changelog:
+	Version 1.2.0pre3
+
+1999-03-07  flood  <flood@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/src/main.c, /var/proftpd/proftpd-1.2/src/dirtree.c, /var/proftpd/proftpd-1.2/modules/mod_core.c, /var/proftpd/proftpd-1.2/include/proftpd.h, /var/proftpd/proftpd-1.2/changelog:
+	Added `MultilineRFC2228' directive and changed `ServerIdent'.
+
+1999-03-05  flood  <flood@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/src/timers.c, /var/proftpd/proftpd-1.2/modules/mod_xfer.c:
+	Oops.  Last nights commit royally screwed timers.
+
+	* /var/proftpd/proftpd-1.2/src/main.c, /var/proftpd/proftpd-1.2/src/data.c, /var/proftpd/proftpd-1.2/modules/mod_core.c, /var/proftpd/proftpd-1.2/modules/Makefile.in, /var/proftpd/proftpd-1.2/include/proftpd.h, /var/proftpd/proftpd-1.2/contrib/mod_pam.c, /var/proftpd/proftpd-1.2/configure.in, /var/proftpd/proftpd-1.2/configure, /var/proftpd/proftpd-1.2/config.h.in, /var/proftpd/proftpd-1.2/changelog, /var/proftpd/proftpd-1.2/acconfig.h, /var/proftpd/proftpd-1.2/Makefile.in, /var/proftpd/proftpd-1.2/Make.rules.in:
+	MacGyver's patch to do argv[] rewriting the Right Way<tm>, and some minor
+	socket error handling fixes.
+
+	* /var/proftpd/proftpd-1.2/src/main.c, /var/proftpd/proftpd-1.2/src/io.c, /var/proftpd/proftpd-1.2/src/ident.c, /var/proftpd/proftpd-1.2/modules/mod_xfer.c, /var/proftpd/proftpd-1.2/include/io.h, /var/proftpd/proftpd-1.2/changelog:
+	Fixed ident & i/o (hanging) problems.
+
+	* /var/proftpd/proftpd-1.2/modules/mod_xfer.c, /var/proftpd/proftpd-1.2/changelog:
+	what did I fix?
+
+	* /var/proftpd/proftpd-1.2/src/timers.c, /var/proftpd/proftpd-1.2/src/support.c, /var/proftpd/proftpd-1.2/src/main.c, /var/proftpd/proftpd-1.2/modules/mod_auth.c, /var/proftpd/proftpd-1.2/include/timers.h:
+	timer code fixed
+
+1999-02-14  flood  <flood@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/modules/mod_ls.c:
+	Ugg.. Yet another mod_ls quickfix.
+
+	* /var/proftpd/proftpd-1.2/modules/mod_auth.c:
+	Ooops.  add_userdir should have tested for > 0.
+
+	* /var/proftpd/proftpd-1.2/include/version.h, /var/proftpd/proftpd-1.2/changelog:
+	Version 1.2.0pre2
+
+1999-02-12  flood  <flood@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/src/proftpd.8, /var/proftpd/proftpd-1.2/src/main.c, /var/proftpd/proftpd-1.2/modules/mod_xfer.c, /var/proftpd/proftpd-1.2/modules/mod_ls.c, /var/proftpd/proftpd-1.2/modules/mod_core.c, /var/proftpd/proftpd-1.2/modules/mod_auth.c, /var/proftpd/proftpd-1.2/changelog, /var/proftpd/proftpd-1.2/Makefile.in:
+	Mondo changes.
+
+1999-01-27  flood  <flood@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/src/support.c, /var/proftpd/proftpd-1.2/src/fs.c, /var/proftpd/proftpd-1.2/modules/mod_ls.c, /var/proftpd/proftpd-1.2/include/support.h, /var/proftpd/proftpd-1.2/changelog:
+	More possibly MKD/CWD 'sploits fixed, and mod_ls workin well.
+
+1999-01-21  flood  <flood@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/src/ident.c, /var/proftpd/proftpd-1.2/modules/mod_ls.c:
+	NLST now works properly! woo!
+
+1999-01-19  flood  <flood@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/modules/mod_readme.c:
+	mod_readme.c added to CVS
+
+	* /var/proftpd/proftpd-1.2/src/main.c, /var/proftpd/proftpd-1.2/src/io.c, /var/proftpd/proftpd-1.2/src/fs.c, /var/proftpd/proftpd-1.2/src/data.c, /var/proftpd/proftpd-1.2/modules/mod_ls.c, /var/proftpd/proftpd-1.2/include/data.h, /var/proftpd/proftpd-1.2/changelog:
+	Still working on NLST RFC959 compliane issue.  ncftp client still showing
+	problems.
+
+1998-11-01  flood  <flood@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/src/dirtree.c, /var/proftpd/proftpd-1.2/modules/mod_xfer.c, /var/proftpd/proftpd-1.2/modules/mod_sample.c, /var/proftpd/proftpd-1.2/modules/mod_core.c, /var/proftpd/proftpd-1.2/contrib/mod_readme.c, /var/proftpd/proftpd-1.2/include/proftpd.h, /var/proftpd/proftpd-1.2/contrib/mod_pam.c, /var/proftpd/proftpd-1.2/contrib/mod_ratio.c, /var/proftpd/proftpd-1.2/contrib/README, /var/proftpd/proftpd-1.2/configure.in, /var/proftpd/proftpd-1.2/configure, /var/proftpd/proftpd-1.2/changelog:
+	APPE, mod_pam & mod_readme added
+
+1998-10-30  flood  <flood@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/src/main.c, /var/proftpd/proftpd-1.2/modules/mod_log.c, /var/proftpd/proftpd-1.2/include/proftpd.h, /var/proftpd/proftpd-1.2/changelog:
+	Fix Debian bug #28641
+
+	* /var/proftpd/proftpd-1.2/src/data.c, /var/proftpd/proftpd-1.2/modules/mod_core.c, /var/proftpd/proftpd-1.2/changelog:
+	Fixes to PASV/PORT.
+
+1998-10-27  flood  <flood@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/modules/mod_log.c, /var/proftpd/proftpd-1.2/changelog:
+	%{} argument fix in mod_log.c
+
+1998-10-23  flood  <flood@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/src/pool.c, /var/proftpd/proftpd-1.2/src/main.c, /var/proftpd/proftpd-1.2/modules/mod_ls.c, /var/proftpd/proftpd-1.2/include/pool.h, /var/proftpd/proftpd-1.2/changelog:
+	memory leak in mod_ls fixed
+
+1998-10-18  flood  <flood@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/.cvsignore, /var/proftpd/proftpd-1.2/COPYING, /var/proftpd/proftpd-1.2/INSTALL, /var/proftpd/proftpd-1.2/Make.modules.in, /var/proftpd/proftpd-1.2/Make.rules.in, /var/proftpd/proftpd-1.2/Makefile.in, /var/proftpd/proftpd-1.2/README, /var/proftpd/proftpd-1.2/README.Solaris2.5x, /var/proftpd/proftpd-1.2/README.linux-privs, /var/proftpd/proftpd-1.2/acconfig.h, /var/proftpd/proftpd-1.2/changelog, /var/proftpd/proftpd-1.2/config.guess, /var/proftpd/proftpd-1.2/config.h.in, /var/proftpd/proftpd-1.2/config.sub, /var/proftpd/proftpd-1.2/configure, /var/proftpd/proftpd-1.2/configure.in, /var/proftpd/proftpd-1.2/contrib/.cvsignore, /var/proftpd/proftpd-1.2/contrib/README, /var/proftpd/proftpd-1.2/contrib/libcap/.cvsignore, /var/proftpd/proftpd-1.2/contrib/libcap/Makefile, /var/proftpd/proftpd-1.2/contrib/libcap/_makenames.c, /var/proftpd/proftpd-1.2/contrib/libcap/cap_alloc.c, /var/proftpd/proftpd-1.2/contrib/libcap/cap_extint.c, /var/proftpd/proftpd-1.2/contrib/libcap/cap_flag.c, /var/proftpd/proftpd-1.2/contrib/libcap/cap_proc.c, /var/proftpd/proftpd-1.2/contrib/libcap/cap_sys.c, /var/proftpd/proftpd-1.2/contrib/libcap/cap_text.c, /var/proftpd/proftpd-1.2/contrib/libcap/capability.h, /var/proftpd/proftpd-1.2/contrib/libcap/libcap.h, /var/proftpd/proftpd-1.2/contrib/mod_linuxprivs.c, /var/proftpd/proftpd-1.2/contrib/mod_ratio.c, /var/proftpd/proftpd-1.2/contrib/xferstats.holger-preiss, /var/proftpd/proftpd-1.2/doc/API, /var/proftpd/proftpd-1.2/doc/development.notes, /var/proftpd/proftpd-1.2/doc/license.txt, /var/proftpd/proftpd-1.2/include/conf.h, /var/proftpd/proftpd-1.2/include/data.h, /var/proftpd/proftpd-1.2/include/default_paths.h, /var/proftpd/proftpd-1.2/include/dirtree.h, /var/proftpd/proftpd-1.2/include/fs.h, /var/proftpd/proftpd-1.2/include/ftp.h, /var/proftpd/proftpd-1.2/include/ident.h, /var/proftpd/proftpd-1.2/include/inet.h, /var/proftpd/proftpd-1.2/include/io.h, /var/proftpd/proftpd-1.2/include/libsupp.h, /var/proftpd/proftpd-1.2/include/log.h, /var/proftpd/proftpd-1.2/include/modules.h, /var/proftpd/proftpd-1.2/include/options.h, /var/proftpd/proftpd-1.2/include/pool.h, /var/proftpd/proftpd-1.2/include/privs.h, /var/proftpd/proftpd-1.2/include/proftpd.h, /var/proftpd/proftpd-1.2/include/sets.h, /var/proftpd/proftpd-1.2/include/support.h, /var/proftpd/proftpd-1.2/include/timers.h, /var/proftpd/proftpd-1.2/include/version.h, /var/proftpd/proftpd-1.2/install-sh, /var/proftpd/proftpd-1.2/lib/.cvsignore, /var/proftpd/proftpd-1.2/lib/Makefile.in, /var/proftpd/proftpd-1.2/lib/fnmatch.c, /var/proftpd/proftpd-1.2/lib/getopt.c, /var/proftpd/proftpd-1.2/lib/getopt.h, /var/proftpd/proftpd-1.2/lib/getopt1.c, /var/proftpd/proftpd-1.2/lib/glob.c, /var/proftpd/proftpd-1.2/lib/glob.h, /var/proftpd/proftpd-1.2/lib/pwgrent.c, /var/proftpd/proftpd-1.2/lib/strsep.c, /var/proftpd/proftpd-1.2/lib/vsnprintf.c, /var/proftpd/proftpd-1.2/modules/.cvsignore, /var/proftpd/proftpd-1.2/modules/Makefile.in, /var/proftpd/proftpd-1.2/modules/glue.sh, /var/proftpd/proftpd-1.2/modules/mod_auth.c, /var/proftpd/proftpd-1.2/modules/mod_core.c, /var/proftpd/proftpd-1.2/modules/mod_log.c, /var/proftpd/proftpd-1.2/modules/mod_ls.c, /var/proftpd/proftpd-1.2/modules/mod_sample.c, /var/proftpd/proftpd-1.2/modules/mod_site.c, /var/proftpd/proftpd-1.2/modules/mod_tar.c, /var/proftpd/proftpd-1.2/modules/mod_test.c, /var/proftpd/proftpd-1.2/modules/mod_unixpw.c, /var/proftpd/proftpd-1.2/modules/mod_xfer.c, /var/proftpd/proftpd-1.2/modules/module_glue.c.tmpl, /var/proftpd/proftpd-1.2/sample-configurations/anonymous.conf, /var/proftpd/proftpd-1.2/sample-configurations/basic.conf, /var/proftpd/proftpd-1.2/sample-configurations/virtual.conf, /var/proftpd/proftpd-1.2/src/.cvsignore, /var/proftpd/proftpd-1.2/src/Makefile.in, /var/proftpd/proftpd-1.2/src/auth.c, /var/proftpd/proftpd-1.2/src/data.c, /var/proftpd/proftpd-1.2/src/dirtree.c, /var/proftpd/proftpd-1.2/src/fs.c, /var/proftpd/proftpd-1.2/src/ftpcount.1, /var/proftpd/proftpd-1.2/src/ftpcount.c, /var/proftpd/proftpd-1.2/src/ftpshut.8, /var/proftpd/proftpd-1.2/src/ftpshut.c, /var/proftpd/proftpd-1.2/src/ftpwho.1, /var/proftpd/proftpd-1.2/src/ident.c, /var/proftpd/proftpd-1.2/src/inet.c, /var/proftpd/proftpd-1.2/src/io.c, /var/proftpd/proftpd-1.2/src/log.c, /var/proftpd/proftpd-1.2/src/main.c, /var/proftpd/proftpd-1.2/src/modules.c, /var/proftpd/proftpd-1.2/src/pool.c, /var/proftpd/proftpd-1.2/src/proftpd.8, /var/proftpd/proftpd-1.2/src/sets.c, /var/proftpd/proftpd-1.2/src/support.c, /var/proftpd/proftpd-1.2/src/timers.c, /var/proftpd/proftpd-1.2/src/utils.c, /var/proftpd/proftpd-1.2/src/xferlog.5:
+	Imported source for proftpd 1.2.0
+
+
+	* /var/proftpd/proftpd-1.2/.cvsignore, /var/proftpd/proftpd-1.2/COPYING, /var/proftpd/proftpd-1.2/INSTALL, /var/proftpd/proftpd-1.2/Make.modules.in, /var/proftpd/proftpd-1.2/Make.rules.in, /var/proftpd/proftpd-1.2/Makefile.in, /var/proftpd/proftpd-1.2/README, /var/proftpd/proftpd-1.2/README.Solaris2.5x, /var/proftpd/proftpd-1.2/README.linux-privs, /var/proftpd/proftpd-1.2/acconfig.h, /var/proftpd/proftpd-1.2/changelog, /var/proftpd/proftpd-1.2/config.guess, /var/proftpd/proftpd-1.2/config.h.in, /var/proftpd/proftpd-1.2/config.sub, /var/proftpd/proftpd-1.2/configure, /var/proftpd/proftpd-1.2/configure.in, /var/proftpd/proftpd-1.2/contrib/.cvsignore, /var/proftpd/proftpd-1.2/contrib/README, /var/proftpd/proftpd-1.2/contrib/libcap/.cvsignore, /var/proftpd/proftpd-1.2/contrib/libcap/Makefile, /var/proftpd/proftpd-1.2/contrib/libcap/_makenames.c, /var/proftpd/proftpd-1.2/contrib/libcap/cap_alloc.c, /var/proftpd/proftpd-1.2/contrib/libcap/cap_extint.c, /var/proftpd/proftpd-1.2/contrib/libcap/cap_flag.c, /var/proftpd/proftpd-1.2/contrib/libcap/cap_proc.c, /var/proftpd/proftpd-1.2/contrib/libcap/cap_sys.c, /var/proftpd/proftpd-1.2/contrib/libcap/cap_text.c, /var/proftpd/proftpd-1.2/contrib/libcap/capability.h, /var/proftpd/proftpd-1.2/contrib/libcap/libcap.h, /var/proftpd/proftpd-1.2/contrib/mod_linuxprivs.c, /var/proftpd/proftpd-1.2/contrib/mod_ratio.c, /var/proftpd/proftpd-1.2/contrib/xferstats.holger-preiss, /var/proftpd/proftpd-1.2/doc/API, /var/proftpd/proftpd-1.2/doc/development.notes, /var/proftpd/proftpd-1.2/doc/license.txt, /var/proftpd/proftpd-1.2/include/conf.h, /var/proftpd/proftpd-1.2/include/data.h, /var/proftpd/proftpd-1.2/include/default_paths.h, /var/proftpd/proftpd-1.2/include/dirtree.h, /var/proftpd/proftpd-1.2/include/fs.h, /var/proftpd/proftpd-1.2/include/ftp.h, /var/proftpd/proftpd-1.2/include/ident.h, /var/proftpd/proftpd-1.2/include/inet.h, /var/proftpd/proftpd-1.2/include/io.h, /var/proftpd/proftpd-1.2/include/libsupp.h, /var/proftpd/proftpd-1.2/include/log.h, /var/proftpd/proftpd-1.2/include/modules.h, /var/proftpd/proftpd-1.2/include/options.h, /var/proftpd/proftpd-1.2/include/pool.h, /var/proftpd/proftpd-1.2/include/privs.h, /var/proftpd/proftpd-1.2/include/proftpd.h, /var/proftpd/proftpd-1.2/include/sets.h, /var/proftpd/proftpd-1.2/include/support.h, /var/proftpd/proftpd-1.2/include/timers.h, /var/proftpd/proftpd-1.2/include/version.h, /var/proftpd/proftpd-1.2/install-sh, /var/proftpd/proftpd-1.2/lib/.cvsignore, /var/proftpd/proftpd-1.2/lib/Makefile.in, /var/proftpd/proftpd-1.2/lib/fnmatch.c, /var/proftpd/proftpd-1.2/lib/getopt.c, /var/proftpd/proftpd-1.2/lib/getopt.h, /var/proftpd/proftpd-1.2/lib/getopt1.c, /var/proftpd/proftpd-1.2/lib/glob.c, /var/proftpd/proftpd-1.2/lib/glob.h, /var/proftpd/proftpd-1.2/lib/pwgrent.c, /var/proftpd/proftpd-1.2/lib/strsep.c, /var/proftpd/proftpd-1.2/lib/vsnprintf.c, /var/proftpd/proftpd-1.2/modules/.cvsignore, /var/proftpd/proftpd-1.2/modules/Makefile.in, /var/proftpd/proftpd-1.2/modules/glue.sh, /var/proftpd/proftpd-1.2/modules/mod_auth.c, /var/proftpd/proftpd-1.2/modules/mod_core.c, /var/proftpd/proftpd-1.2/modules/mod_log.c, /var/proftpd/proftpd-1.2/modules/mod_ls.c, /var/proftpd/proftpd-1.2/modules/mod_sample.c, /var/proftpd/proftpd-1.2/modules/mod_site.c, /var/proftpd/proftpd-1.2/modules/mod_tar.c, /var/proftpd/proftpd-1.2/modules/mod_test.c, /var/proftpd/proftpd-1.2/modules/mod_unixpw.c, /var/proftpd/proftpd-1.2/modules/mod_xfer.c, /var/proftpd/proftpd-1.2/modules/module_glue.c.tmpl, /var/proftpd/proftpd-1.2/sample-configurations/anonymous.conf, /var/proftpd/proftpd-1.2/sample-configurations/basic.conf, /var/proftpd/proftpd-1.2/sample-configurations/virtual.conf, /var/proftpd/proftpd-1.2/src/.cvsignore, /var/proftpd/proftpd-1.2/src/Makefile.in, /var/proftpd/proftpd-1.2/src/auth.c, /var/proftpd/proftpd-1.2/src/data.c, /var/proftpd/proftpd-1.2/src/dirtree.c, /var/proftpd/proftpd-1.2/src/fs.c, /var/proftpd/proftpd-1.2/src/ftpcount.1, /var/proftpd/proftpd-1.2/src/ftpcount.c, /var/proftpd/proftpd-1.2/src/ftpshut.8, /var/proftpd/proftpd-1.2/src/ftpshut.c, /var/proftpd/proftpd-1.2/src/ftpwho.1, /var/proftpd/proftpd-1.2/src/ident.c, /var/proftpd/proftpd-1.2/src/inet.c, /var/proftpd/proftpd-1.2/src/io.c, /var/proftpd/proftpd-1.2/src/log.c, /var/proftpd/proftpd-1.2/src/main.c, /var/proftpd/proftpd-1.2/src/modules.c, /var/proftpd/proftpd-1.2/src/pool.c, /var/proftpd/proftpd-1.2/src/proftpd.8, /var/proftpd/proftpd-1.2/src/sets.c, /var/proftpd/proftpd-1.2/src/support.c, /var/proftpd/proftpd-1.2/src/timers.c, /var/proftpd/proftpd-1.2/src/utils.c, /var/proftpd/proftpd-1.2/src/xferlog.5:
+	New file.
+
