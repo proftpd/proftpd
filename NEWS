@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.31 2000-02-28 10:16:59 macgyver Exp $
+$Id: NEWS,v 1.32 2000-02-28 10:25:47 macgyver Exp $
 
 1.2.0 - Released: ???
 ---------------------
@@ -12,6 +12,7 @@ $Id: NEWS,v 1.31 2000-02-28 10:16:59 macgyver Exp $
 - Updated mod_ldap to 2.5.2.
 - Environment is now preserved before trying anything fancy with set_proc_title
 - Warn a user if an invalid class is specified in ExtendedLog
+- Logging of transfer times is more precise now
 
 1.2.0pre10 - Released: 1/17/00
 ------------------------------
