@@ -27,7 +27,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.54 2003-01-02 17:28:21 castaglia Exp $
+ * $Id: log.c,v 1.55 2003-02-12 19:03:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -98,7 +98,7 @@ int log_open_xfer(const char *path) {
   return xfer_fd;
 }
 
-int log_xfer(int xfertime, char *remhost, off_t fsize, char *fname,
+int log_xfer(long xfertime, char *remhost, off_t fsize, char *fname,
     char xfertype, char direction, char access_mode, char *user,
     char abort_flag) {
 
@@ -115,7 +115,7 @@ int log_xfer(int xfertime, char *remhost, off_t fsize, char *fname,
   fbuf[i] = '\0';
 
   snprintf(buf, sizeof(buf),
-    "%s %d %s %" PR_LU " %s %c _ %c %c %s ftp %c %s %c\n",
+    "%s %ld %s %" PR_LU " %s %c _ %c %c %s ftp %c %s %c\n",
     fmt_time(time(NULL)), xfertime, remhost, fsize, fbuf, xfertype, direction,
     access_mode, user, session.ident_lookups == TRUE ? '1' : '0',
     (session.ident_lookups == TRUE && strcmp(session.ident_user,

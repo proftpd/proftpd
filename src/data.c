@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.57 2003-01-14 05:22:22 castaglia Exp $
+ * $Id: data.c,v 1.58 2003-02-12 19:03:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -467,6 +467,7 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
     if (pr_netio_postopen(session.d->outstrm) < 0)
       return -1;
 
+    memset(&session.xfer.start_time, '\0', sizeof(session.xfer.start_time));
     gettimeofday(&session.xfer.start_time, NULL);
 
     if (session.xfer.direction == PR_NETIO_IO_RD)

@@ -1,7 +1,7 @@
-$Id: NEWS,v 1.367 2003-02-10 18:02:51 castaglia Exp $
+$Id: NEWS,v 1.368 2003-02-12 19:03:34 castaglia Exp $
 
 CVS
----
+---------------------------------
 - Bug 1863 - Unable to build under UnixWare 7
 - Bug 1943 - Unable to install on FreeBSD 5.0.  FreeBSD 5.0's header files
   have been rewritten, and glibc's glob.h collided with the new files.  The
@@ -16,6 +16,8 @@ CVS
   support for -Wno-long-double to quell others.
 - Bug 1952 - Umask Bug: Server Not Honoring VirtualHost Umask.  This was
   a statcache caching effect bug.
+- Bug 1916 - Transfers hang with strange transfertime in logfile.  This
+  appears to have been due to use of an uninitialized value.
 
 1.2.8rc2 - Released 29-Jan-2003
 ---------------------------------

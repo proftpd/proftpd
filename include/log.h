@@ -27,7 +27,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.17 2003-01-02 17:28:17 castaglia Exp $
+ * $Id: log.h,v 1.18 2003-02-12 19:03:35 castaglia Exp $
  */
 
 #ifndef PR_LOG_H
@@ -103,6 +103,6 @@ int log_str2sysloglevel(const char *);
 /* TransferLog routines */
 int log_open_xfer(const char *);
 void log_close_xfer(void);
-int log_xfer(int, char *, off_t, char *, char, char, char, char *, char);
+int log_xfer(long, char *, off_t, char *, char, char, char, char *, char);
 
 #endif /* PR_LOG_H */

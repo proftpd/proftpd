@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.121 2003-02-10 16:51:10 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.122 2003-02-12 19:03:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -225,16 +225,20 @@ static void _log_transfer(char direction, char abort_flag) {
   struct timeval end_time;
   char *fullpath = NULL;
 
-  gettimeofday(&end_time, NULL);
+  memset(&end_time, '\0', sizeof(end_time));
 
-  end_time.tv_sec -= session.xfer.start_time.tv_sec;
-  if (end_time.tv_usec >= session.xfer.start_time.tv_usec)
-    end_time.tv_usec -= session.xfer.start_time.tv_usec;
+  if (session.xfer.start_time.tv_sec != 0) {
+    gettimeofday(&end_time, NULL);
+    end_time.tv_sec -= session.xfer.start_time.tv_sec;
 
-  else {
-    end_time.tv_usec = 1000000L - (session.xfer.start_time.tv_usec -
-                       end_time.tv_usec);
-    end_time.tv_sec--;
+    if (end_time.tv_usec >= session.xfer.start_time.tv_usec)
+      end_time.tv_usec -= session.xfer.start_time.tv_usec;
+
+    else {
+      end_time.tv_usec = 1000000L - (session.xfer.start_time.tv_usec -
+        end_time.tv_usec);
+      end_time.tv_sec--;
+    }
   }
 
   fullpath = dir_abs_path(session.xfer.p, session.xfer.path, TRUE);
@@ -250,10 +254,10 @@ static void _log_transfer(char direction, char abort_flag) {
       'r', session.user, abort_flag);
   }
 
-  log_debug(DEBUG1, "Transfer %s %" PR_LU " bytes in %ld.%02lu seconds.",
-            abort_flag == 'c' ? "completed:" : "aborted after",
-            session.xfer.total_bytes, (long) end_time.tv_sec,
-            (unsigned long)(end_time.tv_usec / 10000));
+  log_debug(DEBUG1, "Transfer %s %" PR_LU " bytes in %ld.%02lu seconds",
+    abort_flag == 'c' ? "completed:" : "aborted after",
+    session.xfer.total_bytes, (long) end_time.tv_sec,
+    (unsigned long)(end_time.tv_usec / 10000));
 }
 
 /* Code borrowed from src/dirtree.c's get_word() -- modified to separate
