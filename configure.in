@@ -867,9 +867,9 @@ if test "$ac_pr_check_getopt" = "yes" ; then
   AC_CHECK_FUNCS(getopt)
 fi
 AC_CHECK_FUNCS(getopt_long gettimeofday inet_aton inet_ntop inet_pton)
-AC_CHECK_FUNCS(memcpy mempcpy mkdir mkstemp rmdir select setgroups socket)
-AC_CHECK_FUNCS(statfs strchr strcoll strerror strsep strtol)
-AC_CHECK_FUNCS(setprotoent endprotoent)
+AC_CHECK_FUNCS(memcpy mempcpy mkdir mkstemp mlock mlockall munlock munlockall)
+AC_CHECK_FUNCS(rmdir select setgroups socket statfs strchr strcoll strerror)
+AC_CHECK_FUNCS(strsep strtol setprotoent endprotoent)
 # __snprintf and __vsnprintf are only on solaris and _really_ broken there.
 AC_CHECK_FUNCS(vsnprintf snprintf)
 if test x"$ac_cv_func_vsnprintf" != xyes || test x"$ac_cv_func_snprintf" != xyes
