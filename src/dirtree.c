@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.140 2004-04-11 20:27:41 castaglia Exp $
+ * $Id: dirtree.c,v 1.141 2004-04-12 17:09:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -538,7 +538,8 @@ char *get_word(char **cp, unsigned char ignore_comments) {
   if (!cp || !*cp || !**cp)
     return NULL;
 
-  while (**cp && isspace((int) **cp)) (*cp)++;
+  while (**cp && isspace((int) **cp))
+    (*cp)++;
 
   if (!**cp)
     return NULL;
@@ -556,7 +557,7 @@ char *get_word(char **cp, unsigned char ignore_comments) {
 
   while (**cp && (quote_mode ? (**cp != '\"') : !isspace((int) **cp))) {
     if (**cp == '\\' && quote_mode) {
-      /* escaped char */
+      /* Escaped char */
       if (*((*cp)+1))
         *dst = *(++(*cp));
     }
@@ -652,6 +653,7 @@ char *get_config_line(char *buf, size_t len) {
     return NULL;
 
   /* Check for error conditions. */
+
   while ((pr_fsio_getline(buf, len, cs->cs_file, &(cs->cs_lineno))) != NULL) {
     char *bufp = NULL;
     size_t buflen = strlen(buf);
@@ -660,7 +662,7 @@ char *get_config_line(char *buf, size_t len) {
     if (buflen && buf[buflen - 1] == '\n')
       buf[buflen - 1] = '\0';
 
-    /* Trim off any leading whitespace. */
+    /* Advance past any leading whitespace. */
     for (bufp = buf; *bufp && isspace((int) *bufp); bufp++);
 
     /* Check for commented or blank lines at this point, and just continue on
@@ -687,7 +689,8 @@ char *get_config_line(char *buf, size_t len) {
 static char *get_config_word(pool *p, char *word) {
 #ifdef HAVE_GETENV
   /* Does the given word use the environment syntax? */
-  if (strncmp(word, "%{env:", 6) == 0 &&
+  if (strlen(word) > 7 &&
+      strncmp(word, "%{env:", 6) == 0 &&
       word[strlen(word)-1] == '}') {
     char *env;
 
@@ -723,8 +726,8 @@ static cmd_rec *get_config_cmd(pool *ppool) {
     while ((word = get_word(&bufp, FALSE)) != NULL) {
 
       /* Should this word be replaced with a value from the environment?
-       * If so, tmp will contain the expanded value, otherwise it will be
-       * a duplicate.
+       * If so, tmp will contain the expanded value, otherwise tmp will
+       * contain a string duped from the given pool.
        */
       char *tmp = get_config_word(new_pool, word);
 
