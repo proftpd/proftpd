@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.6 2003-08-08 02:50:26 castaglia Exp $
+ * $Id: netaddr.h,v 1.7 2003-08-14 18:34:53 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -67,7 +67,7 @@ int pr_netaddr_ncmp(const pr_netaddr_t *, const pr_netaddr_t *, unsigned int);
  * TRUE is returned if the address is matched by the pattern, or FALSE if
  * is not matched.
  */
-int pr_netaddr_fnmatch(const pr_netaddr_t *, const char *);
+int pr_netaddr_fnmatch(pr_netaddr_t *, const char *);
 
 /* Returns the size of the contained address (or -1, with errno set to EINVAL,
  * if NULL is used as the argument).  If the pr_netaddr_t is of the AF_INET

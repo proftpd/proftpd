@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.8 2003-08-13 19:11:05 castaglia Exp $
+ * $Id: netaddr.c,v 1.9 2003-08-14 18:34:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -467,7 +467,7 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
   return 0;
 }
 
-int pr_netaddr_fnmatch(const pr_netaddr_t *na, const char *pattern) {
+int pr_netaddr_fnmatch(pr_netaddr_t *na, const char *pattern) {
 
   /* NOTE: I'm still not sure why proftpd bundles an fnmatch(3)
    * implementation rather than using the system library's implementation.
@@ -484,11 +484,11 @@ int pr_netaddr_fnmatch(const pr_netaddr_t *na, const char *pattern) {
     return -1;
   }
 
-  dnsstr = pr_netaddr_get_dnsstr((pr_netaddr_t *) na);
+  dnsstr = pr_netaddr_get_dnsstr(na);
   if (pr_fnmatch(pattern, dnsstr, flags) == 0)
     return TRUE;
 
-  ipstr = pr_netaddr_get_ipstr((pr_netaddr_t *) na);
+  ipstr = pr_netaddr_get_ipstr(na);
   if (pr_fnmatch(pattern, ipstr, flags) == 0)
     return TRUE;
 
