@@ -3,7 +3,7 @@
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  * Copyright (c) 2001, 2002 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.115 2002-12-06 23:45:27 castaglia Exp $
+ * $Id: mod_auth.c,v 1.116 2002-12-07 21:43:44 jwm Exp $
  */
 
 #include "conf.h"
@@ -169,7 +169,7 @@ static int _do_auth(pool *p, xaset_t *conf, char *u, char *pw) {
     c = find_config(conf,CONF_PARAM,"UserPassword",FALSE);
 
     while(c) {
-      if(!strcmp(c->argv[0],u)) {
+      if (!strcmp(c->argv[0],u)) {
         cpw = (char*)c->argv[1];
         break;
       }
@@ -297,35 +297,35 @@ static config_rec *_auth_group(pool *p, char *user, char **group,
   struct group *grp;
 
   ourname = (char*)get_param_ptr(main_server->conf,"UserName",FALSE);
-  if(ournamep && ourname)
+  if (ournamep && ourname)
     *ournamep = ourname;
 
   c = find_config(main_server->conf,CONF_PARAM,"GroupPassword",TRUE);
 
-  if(c) do {
+  if (c) do {
     grp = auth_getgrnam(p,c->argv[0]);
 
-    if(!grp)
+    if (!grp)
       continue;
 
     for(grmem = grp->gr_mem; *grmem; grmem++)
-      if(!strcmp(*grmem,user)) {
-        if(auth_check(p,c->argv[1],user,pass) == 0)
+      if (!strcmp(*grmem,user)) {
+        if (auth_check(p,c->argv[1],user,pass) == 0)
           break;
       }
 
-    if(*grmem) {
-      if(group)
+    if (*grmem) {
+      if (group)
         *group = c->argv[0];
 
-      if(c->parent)
+      if (c->parent)
         c = c->parent;
 
-      if(c->config_type == CONF_ANON)
+      if (c->config_type == CONF_ANON)
         anonname = (char*)get_param_ptr(c->subset,"UserName",FALSE);
-      if(anonnamep)
+      if (anonnamep)
         *anonnamep = anonname;
-      if(anonnamep && !anonname && ourname)
+      if (anonnamep && !anonname && ourname)
         *anonnamep = ourname;
 
       break;
@@ -349,7 +349,7 @@ static config_rec *_auth_anonymous_group(pool *p, char *user)
 
   c = find_config(main_server->conf,CONF_PARAM,"AnonymousGroup",FALSE);
 
-  if(c) do {
+  if (c) do {
     ret = group_expression((char**)c->argv);
   } while(!ret && (c = find_config_next(c,c->next,CONF_PARAM,"AnonymousGroup",FALSE)) != NULL);
 
@@ -412,7 +412,7 @@ static config_rec *_auth_resolve_user(pool *p,char **user,
      * our anon block
      */
 
-    if(c->parent && c->parent->config_type == CONF_ANON)
+    if (c->parent && c->parent->config_type == CONF_ANON)
       c = c->parent;
     else
       c = NULL;
@@ -431,7 +431,7 @@ static config_rec *_auth_resolve_user(pool *p,char **user,
       anonname = ourname;
 
     if (anonname && !strcmp(anonname, *user)) {
-       if(anonnamep)
+       if (anonnamep)
          *anonnamep = anonname;
        break;
     }
@@ -541,14 +541,14 @@ static char *_get_default_chdir(pool *p, xaset_t *conf) {
 
   while(c) {
     /* Check the groups acl */
-    if(c->argc < 2) {
+    if (c->argc < 2) {
       dir = c->argv[0];
       break;
     }
 
     ret = group_expression(((char**)c->argv)+1);
 
-    if(ret) {
+    if (ret) {
       dir = c->argv[0];
       break;
     }
@@ -559,7 +559,7 @@ static char *_get_default_chdir(pool *p, xaset_t *conf) {
   /* if the directory is relative, concatenate w/ session.cwd
    */
 
-  if(dir && *dir != '/' && *dir != '~')
+  if (dir && *dir != '/' && *dir != '~')
     dir = pdircat(p,session.cwd,dir,NULL);
 
   return dir;
@@ -579,14 +579,14 @@ static char *_get_default_root(pool *p)
 
   while(c) {
     /* Check the groups acl */
-    if(c->argc < 2) {
+    if (c->argc < 2) {
       dir = c->argv[0];
       break;
     }
 
     ret = group_expression(((char**)c->argv)+1);
 
-    if(ret) {
+    if (ret) {
       dir = c->argv[0];
       break;
     }
@@ -594,8 +594,8 @@ static char *_get_default_root(pool *p)
     c = find_config_next(c,c->next,CONF_PARAM,"DefaultRoot",FALSE);
   }
 
-  if(dir) {
-    if(!strcmp(dir,"/"))
+  if (dir) {
+    if (!strcmp(dir,"/"))
       dir = NULL;
     else {
       char *realdir;
@@ -612,7 +612,7 @@ static char *_get_default_root(pool *p)
 
       PRIVS_RELINQUISH
 
-      if(realdir)
+      if (realdir)
         dir = realdir;
     }
   }
@@ -731,11 +731,11 @@ static int _setup_environment(pool *p, char *user, char *pass)
   /* set force_anon (for AnonymousGroup) and build a custom
    * anonymous config for this session.
    */
-  if(c && c->config_type != CONF_ANON) {
+  if (c && c->config_type != CONF_ANON) {
     force_anon = 1;
 
     defroot = _get_default_root(session.pool);
-    if(!defroot)
+    if (!defroot)
       defroot = pstrdup(session.pool,pw->pw_dir);
 
     c = (config_rec*)pcalloc(session.pool,sizeof(config_rec));
@@ -785,7 +785,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
       /* If 'AuthUsingAlias' set and we're logging in under an alias,
        * then auth using that alias.
        */
-      if (auth_using_alias && *auth_using_alias == TRUE) { 
+      if (auth_using_alias && *auth_using_alias == TRUE) {
         user_name = origuser;
         log_auth(PR_LOG_NOTICE, "ANON AUTH: User %s, Auth Alias %s", user,
           user_name);
@@ -852,7 +852,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
     if (auth_code < 0)
       goto auth_failure;
 
-  } else if(c && (!anon_require_passwd || *anon_require_passwd == FALSE)) {
+  } else if (c && (!anon_require_passwd || *anon_require_passwd == FALSE)) {
     session.hide_password = FALSE;
   }
 
@@ -958,9 +958,9 @@ static int _setup_environment(pool *p, char *user, char *pass)
     sstrncpy(session.cwd, "/", sizeof(session.cwd));
     xferlog = get_param_ptr(c->subset,"TransferLog",FALSE);
 
-    if(anongroup) {
+    if (anongroup) {
       grp = auth_getgrnam(p,anongroup);
-      if(grp) {
+      if (grp) {
         pw->pw_gid = grp->gr_gid;
         session.group = pstrdup(p,grp->gr_name);
       }
@@ -969,9 +969,9 @@ static int _setup_environment(pool *p, char *user, char *pass)
     struct group *grp;
     char *homedir;
 
-    if(ugroup) {
+    if (ugroup) {
       grp = auth_getgrnam(p,ugroup);
-      if(grp) {
+      if (grp) {
         pw->pw_gid = grp->gr_gid;
         session.group = pstrdup(p,grp->gr_name);
       }
@@ -982,7 +982,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
     homedir = dir_realpath(p, pw->pw_dir);
     PRIVS_RELINQUISH
 
-    if(homedir)
+    if (homedir)
       sstrncpy(session.cwd, homedir, MAX_PATH_LEN);
     else
       sstrncpy(session.cwd, pw->pw_dir, MAX_PATH_LEN);
@@ -991,7 +991,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   /* Get default chdir (if any) */
   defchdir = _get_default_chdir(p,(c ? c->subset : main_server->conf));
 
-  if(defchdir)
+  if (defchdir)
     sstrncpy(session.cwd, defchdir, MAX_PATH_LEN);
 
   /* check limits again to make sure deny/allow directives still permit
@@ -1071,7 +1071,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   PRIVS_RELINQUISH
 
   /* Now check to see if the user has an applicable DefaultRoot */
-  if(!c && (defroot = _get_default_root(session.pool))) {
+  if (!c && (defroot = _get_default_root(session.pool))) {
 
     ensure_open_passwd(p);
 
@@ -1085,17 +1085,17 @@ static int _setup_environment(pool *p, char *user, char *pass)
      * place the user in / (of defroot)
      */
 
-    if(strncmp(session.cwd,defroot,strlen(defroot)) == 0) {
+    if (strncmp(session.cwd,defroot,strlen(defroot)) == 0) {
       char *newcwd = &session.cwd[strlen(defroot)];
 
-      if(*newcwd == '/')
+      if (*newcwd == '/')
         newcwd++;
       session.cwd[0] = '/';
       sstrncpy(&session.cwd[1], newcwd, sizeof(session.cwd));
     }
   }
 
-  if(c)
+  if (c)
     ensure_open_passwd(p);
 
   if (c && lockdown(session.chroot_path) == -1) {
@@ -1126,7 +1126,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
 #endif
 
 #ifdef HAVE_GETEUID
-  if(getegid() != pw->pw_gid ||
+  if (getegid() != pw->pw_gid ||
      geteuid() != pw->pw_uid) {
 
     PRIVS_RELINQUISH
@@ -1215,8 +1215,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
   /* Make sure session.dir_config is set correctly */
   dir_check_full(p, C_PASS, G_NONE, session.cwd, NULL);
 
-  if(c) {
-    if(!session.hide_password)
+  if (c) {
+    if (!session.hide_password)
       session.proc_prefix =
       pstrcat(permanent_pool,session.c->remote_name,
               ": anonymous/",pass,NULL);
@@ -1252,9 +1252,9 @@ static int _setup_environment(pool *p, char *user, char *pass)
     "DefaultTransferMode", FALSE);
 
   if (defaulttransfermode && strcasecmp(defaulttransfermode, "binary") == 0)
-	session.sf_flags &= (SF_ALL^SF_ASCII);
+        session.sf_flags &= (SF_ALL^SF_ASCII);
   else
-	session.sf_flags |= SF_ASCII;
+        session.sf_flags |= SF_ASCII;
 
   /* Authentication complete, user logged in, now kill the login
    * timer.
@@ -1327,7 +1327,7 @@ static void auth_scan_scoreboard(void) {
     /* Make sure it matches our current server */
     if (score->sce_server_ip->s_addr == main_server->ipaddr->s_addr &&
         score->sce_server_port == main_server->ServerPort) {
-	
+        
       cur++;
 
       /* Note: the class member of the scoreboard entry will never be
@@ -1403,19 +1403,19 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
 
           s = strchr(score->sce_client_addr, '[');
           d = ip;
-	
+        
           if (s != NULL)
-	    s++;
-	
+            s++;
+        
           while (s && *s && *s != ']' && d < ip + mpos)
-	    *d++ = *s++;
-	
+            *d++ = *s++;
+        
           *d = '\0';
-	
-	  /* Count up sessions on a per-host basis. */
+        
+          /* Count up sessions on a per-host basis. */
 
           if (!strcmp(ip, inet_ntoa(*session.c->remote_ipaddr))) {
-	    same_host = TRUE;
+            same_host = TRUE;
 
             /* This small hack makes sure that hcur is incremented properly
              * when dealing with anonymous logins (the timing of anonymous
@@ -1425,11 +1425,11 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
               hcur = 1;
 
             hcur++;
-	  }
-	
-	  /* Take a per-user count of connections. */
-	  if (!strcmp(score->sce_user, user)) {
-	    usersessions++;
+          }
+        
+          /* Take a per-user count of connections. */
+          if (!strcmp(score->sce_user, user)) {
+            usersessions++;
 
             /* Count up unique hosts. */
             if (!same_host)
@@ -1452,10 +1452,10 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
   if (classes_enabled) {
     remove_config(cmd->server->conf, "CURRENT-CLASS", FALSE);
     add_config_param_set(&cmd->server->conf, "CURRENT-CLASS", 1,
-			 session.class->name);
+                         session.class->name);
 
     snprintf(config_class_users, sizeof(config_class_users), "%s-%s",
-	     "CURRENT-CLIENTS-CLASS", session.class->name);
+             "CURRENT-CLIENTS-CLASS", session.class->name);
     remove_config(cmd->server->conf, config_class_users, FALSE);
     add_config_param_set(&cmd->server->conf, config_class_users, 1, ccur);
 
@@ -1464,18 +1464,18 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
       char *display = NULL;
 
       if (session.sf_flags & SF_ANON)
-	display = (char*) get_param_ptr(session.anon_config->subset,
-					"DisplayGoAway",FALSE);
+        display = (char*) get_param_ptr(session.anon_config->subset,
+                                        "DisplayGoAway",FALSE);
 
       if (!display)
-	display = (char*) get_param_ptr(cmd->server->conf,
-					"DisplayGoAway",FALSE);
+        display = (char*) get_param_ptr(cmd->server->conf,
+                                        "DisplayGoAway",FALSE);
 
       if (display)
-	core_display_file(R_530, display, NULL);
+        core_display_file(R_530, display, NULL);
       else
-	send_response(R_530, "Too many users in your class, "
-		      "please try again later.");
+        send_response(R_530, "Too many users in your class, "
+                      "please try again later.");
 
       remove_config(cmd->server->conf, C_USER, FALSE);
       remove_config(cmd->server->conf, C_PASS, FALSE);
@@ -1630,27 +1630,27 @@ MODRET auth_user(cmd_rec *cmd) {
 
     aclp = login_check_limits(main_server->conf,FALSE,TRUE,&i);
 
-    if(c && c->config_type != CONF_ANON) {
+    if (c && c->config_type != CONF_ANON) {
       c = (config_rec *) pcalloc(session.pool, sizeof(config_rec));
       c->config_type = CONF_ANON;
       c->name = "";	/* don't really need this yet */
       c->subset = main_server->conf;
     }
 
-    if(c) {
-      if(!login_check_limits(c->subset,FALSE,TRUE,&i) || (!aclp && !i) ) {
-	remove_config(cmd->server->conf, C_USER, FALSE);
-	remove_config(cmd->server->conf, C_PASS, FALSE);
+    if (c) {
+      if (!login_check_limits(c->subset,FALSE,TRUE,&i) || (!aclp && !i) ) {
+        remove_config(cmd->server->conf, C_USER, FALSE);
+        remove_config(cmd->server->conf, C_PASS, FALSE);
 
-	log_auth(PR_LOG_NOTICE, "ANON %s: Limit access denies login.",
+        log_auth(PR_LOG_NOTICE, "ANON %s: Limit access denies login.",
           origuser);
-	send_response(R_530, "Login incorrect.");
+        send_response(R_530, "Login incorrect.");
 
-	end_login(0);
+        end_login(0);
       }
     }
 
-    if(!c && !aclp) {
+    if (!c && !aclp) {
       remove_config(cmd->server->conf, C_USER, FALSE);
       remove_config(cmd->server->conf, C_PASS, FALSE);
 
@@ -1672,7 +1672,7 @@ MODRET auth_user(cmd_rec *cmd) {
 
   if (nopass)
     add_response(R_331, "Anonymous login ok, send your complete email "
-		 "address as your password.");
+                 "address as your password.");
   else
     add_response(R_331, "Password required for %s.", cmd->argv[1]);
 
@@ -1921,7 +1921,7 @@ MODRET add_defaultroot(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_GLOBAL);
 
-  if(cmd->argc < 2)
+  if (cmd->argc < 2)
     CONF_ERROR(cmd,"syntax: DefaultRoot <directory> [<group-expression>]");
 
   argv = cmd->argv;
@@ -1931,15 +1931,15 @@ MODRET add_defaultroot(cmd_rec *cmd) {
 
   /* dir must be / or ~
    */
-  if(*dir != '/' && *dir != '~')
+  if (*dir != '/' && *dir != '~')
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "(", dir, ") absolute pathname "
-			    "required.", NULL));
+                            "required.", NULL));
 
-  if(strchr(dir, '*'))
+  if (strchr(dir, '*'))
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "(", dir, ") wildcards not allowed "
-			    "in pathname.", NULL));
+                            "in pathname.", NULL));
 
-  if(*(dir + strlen(dir) - 1) != '/')
+  if (*(dir + strlen(dir) - 1) != '/')
     dir = pstrcat(cmd->tmp_pool, dir, "/", NULL);
 
   acl = parse_group_expression(cmd->tmp_pool, &argc, argv);
@@ -1951,7 +1951,7 @@ MODRET add_defaultroot(cmd_rec *cmd) {
   argv = (char **) c->argv;
   *argv++ = pstrdup(c->pool, dir);
 
-  if(argc && acl)
+  if (argc && acl)
     while(argc--) {
       *argv++ = pstrdup(c->pool, *((char **) acl->elts));
       acl->elts = ((char **) acl->elts) + 1;
@@ -1969,7 +1969,7 @@ MODRET add_defaultchdir(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if(cmd->argc < 2)
+  if (cmd->argc < 2)
     CONF_ERROR(cmd, "syntax: DefaultChdir <directory> [<group-expression>]");
 
   argv = cmd->argv;
@@ -1977,11 +1977,11 @@ MODRET add_defaultchdir(cmd_rec *cmd) {
 
   dir = *++argv;
 
-  if(strchr(dir, '*'))
+  if (strchr(dir, '*'))
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "(", dir, ") wildcards not allowed "
-			    "in pathname.", NULL));
+                            "in pathname.", NULL));
 
-  if(*(dir + strlen(dir) - 1) != '/')
+  if (*(dir + strlen(dir) - 1) != '/')
     dir = pstrcat(cmd->tmp_pool, dir, "/", NULL);
 
   acl = parse_group_expression(cmd->tmp_pool, &argc, argv);
@@ -1993,7 +1993,7 @@ MODRET add_defaultchdir(cmd_rec *cmd) {
   argv = (char **) c->argv;
   *argv++ = pstrdup(c->pool, dir);
 
-  if(argc && acl)
+  if (argc && acl)
     while(argc--) {
       *argv++ = pstrdup(c->pool, *((char **) acl->elts));
       acl->elts = ((char **) acl->elts) + 1;

@@ -3,7 +3,7 @@
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  * Copyright (c) 2001, 2002 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.109 2002-12-07 21:21:48 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.110 2002-12-07 21:43:44 jwm Exp $
  */
 
 #include "conf.h"
@@ -78,7 +78,7 @@ static unsigned long find_max_nbytes(char *directive) {
   unsigned long max_nbytes = 0UL;
 
   have_user_limit = have_group_limit = have_class_limit =
-    have_all_limit = FALSE; 
+    have_all_limit = FALSE;
 
   c = find_config(CURRENT_CONF, CONF_PARAM, directive, FALSE);
 
@@ -252,9 +252,9 @@ static void _log_transfer(char direction, char abort_flag) {
   }
 
   log_debug(DEBUG1, "Transfer %s %" PR_LU " bytes in %ld.%02lu seconds.",
-	    abort_flag == 'c' ? "completed:" : "aborted after",
-	    session.xfer.total_bytes, (long) end_time.tv_sec,
-	    (unsigned long)(end_time.tv_usec / 10000));
+            abort_flag == 'c' ? "completed:" : "aborted after",
+            session.xfer.total_bytes, (long) end_time.tv_sec,
+            (unsigned long)(end_time.tv_usec / 10000));
 }
 
 /* Code borrowed from src/dirtree.c's get_word() -- modified to separate
@@ -585,17 +585,17 @@ static void xfer_rate_throttle(off_t xferlen) {
 
 static int _transmit_normal(char *buf, long bufsize) {
   long count;
-  
-  if((count = pr_fsio_read(retr_fh, buf, bufsize)) <= 0)
+
+  if ((count = pr_fsio_read(retr_fh, buf, bufsize)) <= 0)
     return 0;
-  
+
   return data_xfer(buf, count);
 }
 
 #ifdef HAVE_SENDFILE
 static int _transmit_sendfile(off_t count, off_t *offset,
     pr_sendfile_t *retval) {
-  
+
   /* We don't use sendfile() if:
    * - We're using bandwidth throttling.
    * - We're transmitting an ASCII file.
@@ -611,14 +611,14 @@ static int _transmit_sendfile(off_t count, off_t *offset,
   *retval = data_sendfile(PR_FH_FD(retr_fh), offset,
     session.xfer.file_size - count);
 
-  if(*retval == -1) {
+  if (*retval == -1) {
     switch (errno) {
     case EAGAIN:
     case EINTR:
       /* Interrupted call, or the other side wasn't ready yet.
        */
       goto retry;
-      
+
     case EPIPE:
     case ECONNRESET:
     case ETIMEDOUT:
@@ -626,26 +626,26 @@ static int _transmit_sendfile(off_t count, off_t *offset,
       /* Other side broke the connection.
        */
       break;
-      
+
 #ifdef ENOSYS
     case ENOSYS:
 #endif /* ENOSYS */
-      
+
     case EINVAL:
       /* No sendfile support, apparently.  Try it the normal way.
        */
       return 0;
       break;
-      
+
     default:
       log_pri(PR_LOG_ERR,
-	      "_transmit_sendfile error "
-	      "(reverting to normal data transmission) %d: %s.",
-	      errno, strerror(errno));
+              "_transmit_sendfile error "
+              "(reverting to normal data transmission) %d: %s.",
+              errno, strerror(errno));
       return 0;
     }
   }
-  
+
   return 1;
 }
 #endif /* HAVE_SENDFILE */
@@ -653,7 +653,7 @@ static int _transmit_sendfile(off_t count, off_t *offset,
 static long _transmit_data(off_t count, off_t offset, char *buf, long bufsize) {
 #ifdef HAVE_SENDFILE
   pr_sendfile_t retval;
-  
+
   if (!_transmit_sendfile(count, &offset, &retval))
     return _transmit_normal(buf, bufsize);
   else
@@ -685,10 +685,10 @@ static void _stor_chown(void) {
     }
     PRIVS_RELINQUISH
 
-    if (iserr) 
+    if (iserr)
       log_pri(PR_LOG_WARNING, "chown(%s) as root failed: %s", xfer_path,
         strerror(err));
-    
+
     else {
 
       if (session.fsgid != (gid_t) -1)
@@ -702,7 +702,7 @@ static void _stor_chown(void) {
 
       pr_fs_clear_cache();
       pr_fsio_stat(xfer_path, &sbuf);
-      
+
       if (pr_fsio_chmod(xfer_path, sbuf.st_mode) < 0)
         log_debug(DEBUG0, "chmod(%s) to %04o failed: %s", xfer_path,
           (unsigned int) sbuf.st_mode, strerror(errno));
@@ -810,7 +810,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     add_response_err(R_500, "'%s' not understood.", get_full_cmd(cmd));
     return ERROR(cmd);
   }
-  
+
   dir = dir_best_path(cmd->tmp_pool, cmd->arg);
 
   if (!dir || !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL)) {
@@ -822,7 +822,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
 
   allow_overwrite = get_param_ptr(CURRENT_CONF, "AllowOverwrite", FALSE);
 
-  if (fmode && (session.xfer.xfer_type != STOR_APPEND) && 
+  if (fmode && (session.xfer.xfer_type != STOR_APPEND) &&
       (!allow_overwrite || *allow_overwrite == FALSE)) {
     log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
     add_response_err(R_550, "%s: Overwrite permission denied", cmd->arg);
@@ -868,24 +868,24 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     /* Figure out where the basename starts */
     for (c=dir; *c; ++c) {
       if (*c == '/') {
-	foundslash = 1;
-	basenamestart = dotcount = 0;
+        foundslash = 1;
+        basenamestart = dotcount = 0;
       } else if (*c == '.') {
-	++ dotcount;
+        ++ dotcount;
 
-	/* Keep track of leading dots, ... is normal, . and .. are special.
-	 * So if we exceed ".." it becomes a normal file, retroactively consider
-	 * this the possible start of the basename
-	 */
-	if ((dotcount > 2) && (!basenamestart))
-	  basenamestart = ((unsigned long)c - (unsigned long)dir) - dotcount;
+        /* Keep track of leading dots, ... is normal, . and .. are special.
+         * So if we exceed ".." it becomes a normal file, retroactively consider
+         * this the possible start of the basename
+         */
+        if ((dotcount > 2) && (!basenamestart))
+          basenamestart = ((unsigned long)c - (unsigned long)dir) - dotcount;
       } else {
-	/* We found a nonslash, nondot character; if this is the first time
-	 * we found one since the last slash, remember this as the possible
-	 * start of the basename.
-	 */
-	if (!basenamestart)
-	  basenamestart = ((unsigned long)c - (unsigned long)dir) - dotcount;
+        /* We found a nonslash, nondot character; if this is the first time
+         * we found one since the last slash, remember this as the possible
+         * start of the basename.
+         */
+        if (!basenamestart)
+          basenamestart = ((unsigned long)c - (unsigned long)dir) - dotcount;
       }
     }
 
@@ -902,7 +902,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       add_response_err(R_451,"%s: File name too long.", dir);
       return ERROR(cmd);
     }
-    
+
     p_hidden = mod_privdata_alloc(cmd, "stor_hidden_filename", maxlen);
 
     if (! foundslash) {
@@ -911,7 +911,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       sstrcat(p_hidden->value.str_val, dir, maxlen);
       sstrcat(p_hidden->value.str_val, ".", maxlen);
       log_pri(PR_LOG_DEBUG, "Local path, will rename %s to %s.",
-	p_hidden->value.str_val, p->value.str_val);
+        p_hidden->value.str_val, p->value.str_val);
     } else {
       /* Complex relative path or absolute path */
       sstrncpy(p_hidden->value.str_val, dir, maxlen);
@@ -920,11 +920,11 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       sstrcat(p_hidden->value.str_val, dir + basenamestart, maxlen);
       sstrcat(p_hidden->value.str_val, ".", maxlen);
       log_pri(PR_LOG_DEBUG, "Complex path, will rename %s to %s.",
-	p_hidden->value.str_val, p->value.str_val);
+        p_hidden->value.str_val, p->value.str_val);
 
-      if(file_mode(p_hidden->value.str_val)) {
+      if (file_mode(p_hidden->value.str_val)) {
         add_response_err(R_550,"%s: Temporary hidden file %s already exists",
-		cmd->arg, p_hidden->value.str_val);
+                cmd->arg, p_hidden->value.str_val);
         return ERROR(cmd);
       }
     }
@@ -983,7 +983,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
 
     /* If we can't guarantee a unique filename, refuse the command. */
     add_response_err(R_450, "%s: unable to generate unique filename",
-      cmd->argv[0]); 
+      cmd->argv[0]);
     return ERROR(cmd);
 
   } else {
@@ -1040,7 +1040,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
   sstrncpy(priv->value.str_val, filename, strlen(filename) + 1);
 
   session.xfer.xfer_type = STOR_UNIQUE;
- 
+
   return HANDLED(cmd);
 }
 
@@ -1073,7 +1073,7 @@ MODRET xfer_post_stou(cmd_rec *cmd) {
 MODRET xfer_pre_appe(cmd_rec *cmd) {
   session.xfer.xfer_type = STOR_APPEND;
   session.restart_pos = 0L;
-  
+
   return xfer_pre_stor(cmd);
 }
 
@@ -1116,7 +1116,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathAllowFilter",FALSE);
 
-  if(preg && ((ret = regexec(preg,cmd->arg,0,NULL,0)) != 0)) {
+  if (preg && ((ret = regexec(preg,cmd->arg,0,NULL,0)) != 0)) {
     char errmsg[200];
     regerror(ret,preg,errmsg,200);
     log_debug(DEBUG2, "'%s' didn't pass regex: %s.", cmd->arg, errmsg);
@@ -1134,7 +1134,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
   if (session.xfer.xfer_type == STOR_HIDDEN)
     stor_fh = pr_fsio_open(p_hidden->value.str_val,
-	O_WRONLY|(session.restart_pos ? 0 : O_CREAT|O_EXCL));
+        O_WRONLY|(session.restart_pos ? 0 : O_CREAT|O_EXCL));
 
   else if (session.xfer.xfer_type == STOR_APPEND) {
     stor_fh = pr_fsio_open(dir, O_CREAT|O_WRONLY);
@@ -1148,17 +1148,17 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
   else /* Normal session */
     stor_fh = pr_fsio_open(dir,
-	O_WRONLY|(session.restart_pos ? 0 : O_TRUNC|O_CREAT));
+        O_WRONLY|(session.restart_pos ? 0 : O_TRUNC|O_CREAT));
 
   if (stor_fh && session.restart_pos) {
     int xerrno = 0;
-    
+
     if (pr_fsio_lseek(stor_fh, session.restart_pos, SEEK_SET) == -1)
       xerrno = errno;
 
     else if (pr_fsio_stat(dir, &sbuf) == -1)
       xerrno = errno;
-    
+
     if (xerrno) {
       pr_fsio_close(stor_fh);
       errno = xerrno;
@@ -1174,7 +1174,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
       stor_fh = NULL;
       return ERROR(cmd);
     }
-    
+
     respos = session.restart_pos;
     session.restart_pos = 0L;
   }
@@ -1194,7 +1194,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
       p_hidden->value.str_val);
   else
     session.xfer.path_hidden = NULL;
-      
+
   session.xfer.file_size = respos;
 
   /* First, make sure the uploaded file has the requested ownership. */
@@ -1233,10 +1233,10 @@ MODRET xfer_stor(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  bufsize = (main_server->tcp_rwin > 0 ? 
+  bufsize = (main_server->tcp_rwin > 0 ?
     main_server->tcp_rwin : PR_TUNABLE_BUFFER_SIZE);
   lbuf = (char*) palloc(cmd->tmp_pool, bufsize);
-  
+
   while ((len = data_xfer(lbuf, bufsize)) > 0) {
     if (XFER_ABORTED)
       break;
@@ -1356,7 +1356,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
   mode_t fmode;
   privdata_t *p = NULL;
   unsigned char *allow_restart = NULL;
- 
+
   if (cmd->argc < 2) {
     add_response_err(R_500,"'%s' not understood.",get_full_cmd(cmd));
     return ERROR(cmd);
@@ -1405,20 +1405,20 @@ MODRET xfer_retr(cmd_rec *cmd) {
   privdata_t *p;
   long bufsize, len = 0;
   off_t respos = 0, cnt = 0, cnt_steps = 0, cnt_next = 0;
- 
+
   /* This function sets static module variables for later potential
    * throttling of the transfer.
    */
-  xfer_rate_lookup(cmd); 
-  
+  xfer_rate_lookup(cmd);
+
   p = mod_privdata_find(cmd, "retr_filename", NULL);
-  
+
   if (!p) {
     add_response_err(R_550, "%s: internal error, what happened to "
-		     "cmd_pre_retr?!?", cmd->arg);
+                     "cmd_pre_retr?!?", cmd->arg);
     return ERROR(cmd);
   }
-  
+
   dir = p->value.str_val;
 
   if ((retr_fh = pr_fsio_open(dir, O_RDONLY)) == NULL) {
@@ -1459,7 +1459,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
   /* Send the data */
   data_init(cmd->arg, PR_NETIO_IO_WR);
-    
+
   session.xfer.path = dir;
   session.xfer.file_size = sbuf.st_size;
 
@@ -1471,7 +1471,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     data_abort(0, TRUE);
     return ERROR(cmd);
   }
-    
+
   /* Retrieve the number of bytes to retrieve, maximum, if present */
   if ((nbytes_max_retrieve = find_max_nbytes("MaxRetrieveFileSize")) == 0UL)
     have_limit = FALSE;
@@ -1496,7 +1496,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     data_abort(EPERM, FALSE);
     return ERROR(cmd);
   }
- 
+
   bufsize = (main_server->tcp_swin > 0 ?
              main_server->tcp_swin : PR_TUNABLE_BUFFER_SIZE);
   lbuf = (char *) palloc(cmd->tmp_pool, bufsize);
@@ -1511,10 +1511,10 @@ MODRET xfer_retr(cmd_rec *cmd) {
   while (cnt != session.xfer.file_size) {
     if (XFER_ABORTED)
       break;
-      
+
     if ((len = _transmit_data(cnt, respos, lbuf, bufsize)) == 0)
       break;
-      
+
     if (len < 0) {
       retr_abort();
       data_abort(PR_NETIO_ERRNO(session.d->outstrm), FALSE);
@@ -1534,7 +1534,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     /* If no throttling is configured, this simply updates the scoreboard. */
     xfer_rate_throttle(cnt);
   }
-    
+
   if (XFER_ABORTED) {
     retr_abort();
     data_abort(0, 0);
@@ -1553,7 +1553,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     retr_complete();
     data_close(FALSE);
   }
-  
+
   return HANDLED(cmd);
 }
 
@@ -1567,7 +1567,7 @@ MODRET xfer_abor(cmd_rec *cmd) {
   data_abort(0, FALSE);
   data_reset();
   data_cleanup();
-  
+
   return HANDLED(cmd);
 }
 
@@ -1578,7 +1578,7 @@ MODRET xfer_type(cmd_rec *cmd) {
   }
 
   cmd->argv[1][0] = toupper(cmd->argv[1][0]);
-  
+
   if (!strcmp(cmd->argv[1], "A") ||
       (cmd->argc == 3 && !strcmp(cmd->argv[1], "L") &&
        !strcmp(cmd->argv[2], "7"))) {
@@ -1746,7 +1746,7 @@ static int xfer_sess_init(void) {
 
   /* Check for a server-specific TimeoutStalled */
   if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutStalled",
-      FALSE)) != NULL) 
+      FALSE)) != NULL)
     TimeoutStalled = *((int *) c->argv[0]);
 
   /* Note: timers for handling TimeoutStalled timeouts are handled in the
@@ -1915,7 +1915,7 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
     *((unsigned long *) c->argv[0]) = nbytes;
     c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
     *((unsigned int *) c->argv[1]) = precedence;
- 
+
   } else {
     array_header *acl = NULL;
     int argc = cmd->argc - 4;
@@ -1937,7 +1937,7 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
     *argv = pcalloc(c->pool, sizeof(unsigned int));
     *((unsigned int *) *argv++) = precedence;
 
-    /* Copy in the classifier. */ 
+    /* Copy in the classifier. */
     *argv++ = pstrdup(c->pool, cmd->argv[3]);
 
     if (argc && acl) {

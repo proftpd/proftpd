@@ -3,7 +3,7 @@
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  * Copyright (c) 2001, 2002 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.132 2002-12-07 21:13:00 castaglia Exp $
+ * $Id: mod_core.c,v 1.133 2002-12-07 21:43:44 jwm Exp $
  */
 
 #include "conf.h"
@@ -312,7 +312,7 @@ MODRET add_define(cmd_rec *cmd) {
 MODRET add_include(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL|CONF_DIR);
-  
+
   /* make sure the given path is a full path, not a relative one */
   if (*(cmd->argv[1]) != '/') {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
@@ -323,7 +323,7 @@ MODRET add_include(cmd_rec *cmd) {
   if (parse_config_file(cmd->argv[1]) == -1)
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "Unable to include configuration "
       "file '", cmd->argv[1], "'.", NULL));
-  
+
   return HANDLED(cmd);
 }
 
@@ -514,7 +514,7 @@ MODRET set_sysloglevel(cmd_rec *cmd) {
   if ((level = log_str2sysloglevel(cmd->argv[1])) < 0)
     CONF_ERROR(cmd, "SyslogLevel requires level keyword: one of "
       "emerg/alert/crit/error/warn/notice/info/debug");
-  
+
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[0]) = level;
@@ -525,10 +525,10 @@ MODRET set_sysloglevel(cmd_rec *cmd) {
 MODRET set_serverident(cmd_rec *cmd) {
   int bool = -1;
   config_rec *c = NULL;
-  
+
   if (cmd->argc < 2 || cmd->argc > 3)
     CONF_ERROR(cmd, "wrong number of parameters");
-  
+
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
@@ -546,7 +546,7 @@ MODRET set_serverident(cmd_rec *cmd) {
     c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
     *((unsigned char *) c->argv[0]) = !bool;
   }
- 
+
   return HANDLED(cmd);
 }
 
@@ -603,12 +603,12 @@ MODRET set_maxinstances(cmd_rec *cmd) {
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_ROOT);
 
-  if(!strcasecmp(cmd->argv[1],"none"))
+  if (!strcasecmp(cmd->argv[1],"none"))
     max = 0;
   else {
     max = (int)strtol(cmd->argv[1],&endp,10);
 
-    if((endp && *endp) || max < 1)
+    if ((endp && *endp) || max < 1)
       CONF_ERROR(cmd,"argument must be 'none' or a number greater than 0.");
   }
 
@@ -676,7 +676,7 @@ MODRET set_socketbindtight(cmd_rec *cmd) {
     CONF_ERROR(cmd, "expected boolean argument.");
 
   SocketBindTight = bool;
-  return HANDLED(cmd);  
+  return HANDLED(cmd);
 }
 
 MODRET set_multilinerfc2228(cmd_rec *cmd) {
@@ -832,22 +832,22 @@ MODRET set_umask(cmd_rec *cmd) {
   config_rec *c;
   char *endp;
   mode_t tmp_umask;
- 
+
   CHECK_VARARGS(cmd, 1, 2);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
     CONF_DIR|CONF_DYNDIR);
-  
+
   tmp_umask = (mode_t) strtol(cmd->argv[1], &endp, 8);
-  
+
   if (endp && *endp)
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
       "' is not a valid umask", NULL));
-  
+
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(mode_t));
   *((mode_t *) c->argv[0]) = tmp_umask;
   c->flags |= CF_MERGEDOWN;
-  
+
   /* Have we specified a directory umask as well?
    */
   if (CHECK_HASARGS(cmd, 2)) {
@@ -856,17 +856,17 @@ MODRET set_umask(cmd_rec *cmd) {
      * pointer was recorded in the Umask config_rec
      */
     tmp_umask = (mode_t) strtol(cmd->argv[2], &endp, 8);
-    
+
     if (endp && *endp)
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[2],
         "' is not a valid umask", NULL));
-    
+
     c = add_config_param("DirUmask", 1, NULL);
     c->argv[0] = pcalloc(c->pool, sizeof(mode_t));
     *((mode_t *) c->argv[0]) = tmp_umask;
     c->flags |= CF_MERGEDOWN;
   }
-  
+
   return HANDLED(cmd);
 }
 
@@ -959,10 +959,10 @@ MODRET set_rlimitcpu(cmd_rec *cmd) {
        */
       char *tmp = NULL;
       long num = strtol(cmd->argv[1], &tmp, 10);
-      
+
       if (tmp && *tmp)
         CONF_ERROR(cmd, "badly formatted argument");
-      
+
       rlim->rlim_cur = num;
     }
 
@@ -1273,7 +1273,7 @@ MODRET set_syslogfacility(cmd_rec *cmd) {
 #endif
 #ifdef HAVE_LOG_CRON
   { "CRON",		LOG_CRON		},
-#endif  
+#endif
   { "DAEMON",		LOG_DAEMON		},
   { "KERN",		LOG_KERN		},
   { "LOCAL0",		LOG_LOCAL0		},
@@ -1295,13 +1295,13 @@ MODRET set_syslogfacility(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT);
 
   for(i = 0; factable[i].name; i++) {
-    if(!strcasecmp(cmd->argv[1],factable[i].name)) {
+    if (!strcasecmp(cmd->argv[1],factable[i].name)) {
       log_closesyslog();
       log_setfacility(factable[i].facility);
 
       block_signals();
       PRIVS_ROOT
-	switch(log_opensyslog(NULL)) {
+        switch(log_opensyslog(NULL)) {
 
         case -1:
           PRIVS_RELINQUISH
@@ -1309,22 +1309,22 @@ MODRET set_syslogfacility(cmd_rec *cmd) {
           CONF_ERROR(cmd, "unable to open syslog");
           break;
 
-	case LOG_WRITEABLE_DIR:
-	  PRIVS_RELINQUISH
-	  unblock_signals();
-	  CONF_ERROR(cmd,
+        case LOG_WRITEABLE_DIR:
+          PRIVS_RELINQUISH
+          unblock_signals();
+          CONF_ERROR(cmd,
             "you are attempting to log to a world writeable directory");
-	  break;
-	  
-	case LOG_SYMLINK:
-	  PRIVS_RELINQUISH
-	  unblock_signals();
-	  CONF_ERROR(cmd, "you are attempting to log to a symbolic link");
-	  break;
-	  
-	default:
-	  break;
-	}
+          break;
+        
+        case LOG_SYMLINK:
+          PRIVS_RELINQUISH
+          unblock_signals();
+          CONF_ERROR(cmd, "you are attempting to log to a symbolic link");
+          break;
+        
+        default:
+          break;
+        }
       PRIVS_RELINQUISH
       unblock_signals();
 
@@ -1338,7 +1338,7 @@ MODRET set_syslogfacility(cmd_rec *cmd) {
 MODRET set_timesgmt(cmd_rec *cmd) {
   int bool = -1;
   config_rec *c = NULL;
-    
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
@@ -1359,33 +1359,33 @@ MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
   regex_t *preg;
   config_rec *c;
   int ret;
-  
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_GLOBAL);
-  
+
   log_debug(DEBUG4, "Compiling %s regex '%s'.", type, cmd->argv[1]);
   preg = pr_regexp_alloc();
   log_debug(DEBUG4, "Allocated %s regex at location %p.", type, preg);
-  
+
   if ((ret = regcomp(preg, cmd->argv[1], REG_EXTENDED | REG_NOSUB)) != 0) {
     char errstr[200] = {'\0'};
 
     regerror(ret, preg, errstr, sizeof(errstr));
     pr_regexp_free(preg);
-    
+
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' failed regex "
       "compilation: ", errstr, NULL));
   }
-  
+
   c = add_config_param(param, 1, preg);
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 
 #else /* no regular expression support at the moment */
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", param,
-			  " directive cannot be used on this system, "
-			  "as you do not have POSIX compliant "
-			  "regex support.", NULL));
+                          " directive cannot be used on this system, "
+                          "as you do not have POSIX compliant "
+                          "regex support.", NULL));
 #endif
 }
 
@@ -1462,10 +1462,10 @@ MODRET set_commandbuffersize(cmd_rec *cmd) {
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
- 
-  /* NOTE: need to add checks for maximum possible sizes, negative sizes. */ 
+
+  /* NOTE: need to add checks for maximum possible sizes, negative sizes. */
   size = atoi(cmd->argv[1]);
- 
+
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = size;
@@ -1495,7 +1495,7 @@ MODRET add_directory(cmd_rec *cmd) {
 
   dir = cmd->argv[1];
 
-  if(*dir != '/' && *dir != '~' && 
+  if (*dir != '/' && *dir != '~' &&
      (!cmd->config || cmd->config->config_type != CONF_ANON))
     CONF_ERROR(cmd,"relative pathname not allowed in non-anonymous blocks.");
 
@@ -1518,12 +1518,12 @@ MODRET add_directory(cmd_rec *cmd) {
      *         ~ will be replaced w/ user's home dir
      */
 
-    if(*dir == '~' && (!*(dir+1) || *(dir+1) == '/'))
+    if (*dir == '~' && (!*(dir+1) || *(dir+1) == '/'))
       flags |= CF_DEFER;
     else {
       dir = dir_best_path(cmd->tmp_pool,dir);
 
-      if(!dir)
+      if (!dir)
         CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,cmd->argv[1],": ",
                        strerror(errno),NULL));
     }
@@ -1546,7 +1546,7 @@ MODRET add_directory(cmd_rec *cmd) {
   c = start_sub_config(dir);
   c->argc = 2;
   c->argv = pcalloc(c->pool,3*sizeof(void*));
-  if(rootdir)
+  if (rootdir)
     c->argv[1] = pstrdup(c->pool,rootdir);
 
   c->config_type = CONF_DIR;
@@ -1908,21 +1908,21 @@ MODRET add_anonymous(cmd_rec *cmd) {
 
   dir = cmd->argv[1];
 
-  if(*dir != '/' && *dir != '~')
+  if (*dir != '/' && *dir != '~')
     CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"(",dir,") absolute pathname "
                "required.",NULL));
 
-  if(strchr(dir,'*'))
+  if (strchr(dir,'*'))
     CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"(",dir,") wildcards not allowed "
                "in pathname.",NULL));
 
-  if(!strcmp(dir,"/"))
+  if (!strcmp(dir,"/"))
     CONF_ERROR(cmd,"'/' not permitted for anonymous root directory.");
 
-  if(*(dir+strlen(dir)-1) != '/')
+  if (*(dir+strlen(dir)-1) != '/')
     dir = pstrcat(cmd->tmp_pool,dir,"/",NULL);
 
-  if(!dir)
+  if (!dir)
     CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,cmd->argv[1],": ",
                strerror(errno),NULL));
 
@@ -1967,7 +1967,7 @@ MODRET add_limit(cmd_rec *cmd) {
   int cargc;
   char **argv,**cargv;
 
-  if(cmd->argc < 2)
+  if (cmd->argc < 2)
     CONF_ERROR(cmd,"directive requires one or more FTP commands.");
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_DIR|CONF_ANON|CONF_DYNDIR|CONF_GLOBAL);
 
@@ -2023,7 +2023,7 @@ MODRET _add_allow_deny_user(cmd_rec *cmd, char *name) {
 
   CHECK_CONF(cmd,CONF_LIMIT);
 
-  if(cmd->argc < 2)
+  if (cmd->argc < 2)
     CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"syntax: ",name,
                " <user-expression>",NULL));
 
@@ -2054,7 +2054,7 @@ MODRET _add_allow_deny_group(cmd_rec *cmd, char *name) {
 
   CHECK_CONF(cmd,CONF_LIMIT);
 
-  if(cmd->argc < 2)
+  if (cmd->argc < 2)
     CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"syntax: ",name,
                " <group-expression>",NULL));
 
@@ -2109,17 +2109,17 @@ MODRET _add_allow_deny(cmd_rec *cmd, char *name) {
   /* ! is allowed in front of a hostmask or IP, but NOT in front of
    * ALL or NONE
    */
-  
+
   while(argc && *(argv+1)) {
-    if(!strcasecmp("from",*(argv+1))) {
+    if (!strcasecmp("from",*(argv+1))) {
       argv++; argc--; continue;
-    } else if(!strcasecmp("!all",*(argv+1)) ||
-	      !strcasecmp("!none",*(argv+1))) {
+    } else if (!strcasecmp("!all",*(argv+1)) ||
+              !strcasecmp("!none",*(argv+1))) {
       CONF_ERROR(cmd,"negation operator (!) cannot be used with ALL/NONE");
-    } else if(!strcasecmp("all",*(argv+1))) {
+    } else if (!strcasecmp("all",*(argv+1))) {
       *((char**)push_array(acl)) = "ALL";
       argc = 0;
-    } else if(!strcasecmp("none",*(argv+1))) {
+    } else if (!strcasecmp("none",*(argv+1))) {
       *((char**)push_array(acl)) = "NONE";
       argc = 0;
     }
@@ -2131,8 +2131,8 @@ MODRET _add_allow_deny(cmd_rec *cmd, char *name) {
 
     /* parse the string into coma-delimited entries */
     while((ent = get_token(&s,",")) != NULL)
-      if(*ent) {
-        if(!strcasecmp(ent,"all") || !strcasecmp(ent,"none")) {
+      if (*ent) {
+        if (!strcasecmp(ent,"all") || !strcasecmp(ent,"none")) {
           acl->nelts = 0; argc = 0; break;
         }
 
@@ -2140,7 +2140,7 @@ MODRET _add_allow_deny(cmd_rec *cmd, char *name) {
       }
   }
 
-  if(!acl->nelts)
+  if (!acl->nelts)
     CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"syntax: ",name,
                    " [from] [all|none]|host|network[,...]",NULL));
 
@@ -2174,7 +2174,7 @@ MODRET set_denyall(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = TRUE; 
+  *((unsigned char *) c->argv[0]) = TRUE;
 
   return HANDLED(cmd);
 }
@@ -2351,7 +2351,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
     total_files_xfer[12] = {'\0'};
   char mg_class_limit[12] = {'\0'}, mg_cur[12] = {'\0'},
     mg_xfer_bytes[12] = {'\0'}, mg_cur_class[12] = {'\0'};
-  char mg_xfer_units[12] = {'\0'}, config_class_users[128] = {'\0'}, *user; 
+  char mg_xfer_units[12] = {'\0'}, config_class_users[128] = {'\0'}, *user;
   unsigned char first = TRUE;
 
 #if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
@@ -2400,7 +2400,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
     snprintf(mg_class_limit, sizeof(mg_class_limit), "%u",
       max_clients ? *max_clients : 0);
   }
-   
+
   snprintf(mg_xfer_bytes, sizeof(mg_xfer_bytes), "%" PR_LU,
     session.total_bytes >> 10);
   snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "B",
@@ -2418,12 +2418,12 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
     snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "GB",
       session.total_bytes >> 30);
   }
- 
-  snprintf(mg_max, sizeof(mg_max), "%u", max_clients ? *max_clients : 0); 
+
+  snprintf(mg_max, sizeof(mg_max), "%u", max_clients ? *max_clients : 0);
 
   if ((user = get_param_ptr(main_server->conf, C_USER, FALSE)) == NULL)
     user = "";
-   
+
   if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
       FALSE)) != NULL) {
     p_in_addr_t *masq_addr = (p_in_addr_t *) c->argv[0];
@@ -2442,7 +2442,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
   snprintf(total_files_xfer, sizeof(total_files_xfer), "%u",
     session.total_files_xfer);
   total_files_xfer[sizeof(total_files_xfer)-1] = '\0';
- 
+
   while (pr_fsio_gets(buf, sizeof(buf), fp) != NULL) {
     buf[sizeof(buf)-1] = '\0';
 
@@ -2475,7 +2475,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
       "%y", mg_cur_class,
       "%z", mg_class_limit,
       NULL);
-    
+
     if (first) {
       send_response_raw("%s-%s", numeric, outs);
       first = FALSE;
@@ -2502,7 +2502,7 @@ MODRET regex_filters(cmd_rec *cmd) {
   static regex_t *d_reg = NULL;
   static int d_reg_cached = FALSE;
   int ret;
- 
+
   /* if authenticated, do lookups again.  This allows {Allow,Deny}Filter to
    * operate on the USER command (although I don't know why you'd want that)
    */
@@ -2518,12 +2518,12 @@ MODRET regex_filters(cmd_rec *cmd) {
     return DECLINED(cmd);
 
   /* Check for an AllowFilter */
-  if(!a_reg_cached) {
+  if (!a_reg_cached) {
     a_reg = (regex_t*) get_param_ptr(TOPLEVEL_CONF, "AllowFilter", FALSE);
     a_reg_cached = TRUE;
   }
-  
-  if(a_reg && cmd->arg &&
+
+  if (a_reg && cmd->arg &&
      ((ret = regexec(a_reg, cmd->arg, 0, NULL, 0)) != 0)) {
     log_debug(DEBUG2, "'%s %s' denied by AllowFilter", cmd->argv[0],
       cmd->arg);
@@ -2532,12 +2532,12 @@ MODRET regex_filters(cmd_rec *cmd) {
   }
 
   /* Check for a DenyFilter */
-  if(!d_reg_cached) {
+  if (!d_reg_cached) {
     d_reg = (regex_t*) get_param_ptr(TOPLEVEL_CONF, "DenyFilter", FALSE);
     d_reg_cached = TRUE;
   }
 
-  if(d_reg && cmd->arg &&
+  if (d_reg && cmd->arg &&
       ((ret = regexec(d_reg, cmd->arg, 0, NULL, 0)) == 0)) {
     log_debug(DEBUG2, "'%s %s' denied by DenyFilter", cmd->argv[0],
       cmd->arg);
@@ -2558,7 +2558,7 @@ MODRET core_clear_fs(cmd_rec *cmd) {
 
 MODRET core_quit(cmd_rec *cmd) {
   char *display = NULL;
-  
+
   if (session.sf_flags & SF_ANON)
     display = (char *)get_param_ptr(session.anon_config->subset,
       "DisplayQuit", FALSE);
@@ -2576,7 +2576,7 @@ MODRET core_quit(cmd_rec *cmd) {
 
   } else
     send_response(R_221, "Goodbye.");
-  
+
   log_pri(PR_LOG_INFO, "FTP session closed.");
   end_login(0);
 
@@ -2621,7 +2621,7 @@ MODRET core_pasv(cmd_rec *cmd) {
   } port;
 
   config_rec *c = NULL;
-  
+
   CHECK_CMD_ARGS(cmd, 1);
 
   /* If we already have a passive listen data connection open, kill it. */
@@ -2643,30 +2643,30 @@ MODRET core_pasv(cmd_rec *cmd) {
        * indicates a too-small range configuration.
        */
       log_pri(PR_LOG_WARNING, "unable to find open port in PassivePorts range "
-	      "%d-%d: defaulting to INPORT_ANY", pasv_min_port, pasv_max_port);
+              "%d-%d: defaulting to INPORT_ANY", pasv_min_port, pasv_max_port);
     }
   }
-  
+
   /* Open up the connection and pass it back. */
   if (!session.d)
     session.d = inet_create_connection(session.pool, NULL, -1,
       session.c->local_ipaddr, INPORT_ANY, FALSE);
-  
+
   if (!session.d) {
     add_response_err(R_425, "Unable to build data connection: Internal error");
     return ERROR(cmd);
   }
-  
+
   inet_setblock(session.pool, session.d);
   inet_listen(session.pool, session.d, 1);
-  
+
   session.d->instrm = pr_netio_open(session.pool, PR_NETIO_STRM_DATA,
     session.d->listen_fd, PR_NETIO_IO_RD);
 
   /* Now tell the client our address/port */
   session.data_port = session.d->local_port;
   session.sf_flags |= SF_PASSIVE;
-  
+
   addr.addr = *session.d->local_ipaddr;
 
   /* Check for a MasqueradeAddress configuration record, and return that
@@ -2677,15 +2677,15 @@ MODRET core_pasv(cmd_rec *cmd) {
    addr.addr = *((p_in_addr_t *) c->argv[0]);
 
   port.port = htons(session.data_port);
-  
+
   log_debug(DEBUG1,"Entering Passive Mode (%u,%u,%u,%u,%u,%u).",
-	    (int)addr.u[0],(int)addr.u[1],(int)addr.u[2],
-	    (int)addr.u[3],(int)port.u[0],(int)port.u[1]);
-  
+            (int)addr.u[0],(int)addr.u[1],(int)addr.u[2],
+            (int)addr.u[3],(int)port.u[0],(int)port.u[1]);
+
   add_response(R_227, "Entering Passive Mode (%u,%u,%u,%u,%u,%u).",
-	       (int)addr.u[0],(int)addr.u[1],(int)addr.u[2],
-	       (int)addr.u[3],(int)port.u[0],(int)port.u[1]);
-  
+               (int)addr.u[0],(int)addr.u[1],(int)addr.u[2],
+               (int)addr.u[3],(int)port.u[0],(int)port.u[1]);
+
   return HANDLED(cmd);
 }
 
@@ -2712,17 +2712,17 @@ MODRET core_port(cmd_rec *cmd) {
   while(a && *a && cnt < 6) {
     arg = strsep(&a,",");
 
-    if(!arg && a && *a) {
+    if (!arg && a && *a) {
       arg = a;
       a = NULL;
-    } else if(!arg)
+    } else if (!arg)
       break;
 
     i = strtol(arg,&endp,10);
-    if(*endp || i < 0 || i > 255)
+    if (*endp || i < 0 || i > 255)
       break;
 
-    if(cnt < 4)
+    if (cnt < 4)
       addr.u[cnt++] = (unsigned char)i;
     else
       port.u[cnt++ - 4] = (unsigned char)i;
@@ -2767,7 +2767,7 @@ MODRET core_port(cmd_rec *cmd) {
     inet_close(session.d->pool, session.d);
     session.d = NULL;
   }
-  
+
   session.sf_flags |= SF_PORT;
   add_response(R_200, "PORT command successful");
 
@@ -2778,7 +2778,7 @@ MODRET core_help(cmd_rec *cmd) {
   int i,c = 0;
   char buf[9] = {'\0'};
 
-  if(cmd->argc == 1) {
+  if (cmd->argc == 1) {
     /* Print help for all commands */
     char *outa[8];
     char *outs = "";
@@ -2789,17 +2789,17 @@ MODRET core_help(cmd_rec *cmd) {
       "The following commands are recognized (* =>'s unimplemented).");
     for(i = 0; _help[i].cmd; i++) {
 
-      if(_help[i].implemented)
+      if (_help[i].implemented)
         outa[c++] = _help[i].cmd;
       else
         outa[c++] = pstrcat(cmd->tmp_pool,_help[i].cmd,"*",NULL);
 
       /* 8 rows */
-      if(((i+1) % 8 == 0) || !_help[i+1].cmd) {
+      if (((i+1) % 8 == 0) || !_help[i+1].cmd) {
         int j;
 
         for(j = 0; j < 8; j++) {
-          if(outa[j]) {
+          if (outa[j]) {
             snprintf(buf, sizeof(buf), "%-8s",outa[j]);
             buf[sizeof(buf)-1] = '\0';
             outs = pstrcat(cmd->tmp_pool,outs,buf,NULL);
@@ -2807,7 +2807,7 @@ MODRET core_help(cmd_rec *cmd) {
             break;
         }
 
-        if(*outs)
+        if (*outs)
           add_response(R_214,"%s",outs);
         outs = "";
         c = 0;
@@ -2824,11 +2824,11 @@ MODRET core_help(cmd_rec *cmd) {
     for(cp = cmd->argv[1]; *cp; cp++)
       *cp = toupper(*cp);
 
-    if(!strcasecmp(cmd->argv[1],"SITE"))
+    if (!strcasecmp(cmd->argv[1],"SITE"))
       return call_module(&site_module,site_dispatch,cmd);
 
     for(i = 0; _help[i].cmd; i++)
-      if(!strcasecmp(cmd->argv[1],_help[i].cmd)) {
+      if (!strcasecmp(cmd->argv[1],_help[i].cmd)) {
         add_response(R_214,"Syntax: %s %s",cmd->argv[1],_help[i].syntax);
         return HANDLED(cmd);
       }
@@ -2846,14 +2846,14 @@ MODRET core_syst(cmd_rec *cmd) {
 }
 
 int core_chgrp(cmd_rec *cmd, char *dir, uid_t uid, gid_t gid) {
-  if (!dir_check(cmd->tmp_pool, "SITE_CHGRP", "WRITE", dir, NULL)) 
+  if (!dir_check(cmd->tmp_pool, "SITE_CHGRP", "WRITE", dir, NULL))
     return -1;
 
   return pr_fsio_chown(dir, uid, gid);
 }
 
 int core_chmod(cmd_rec *cmd, char *dir, mode_t mode) {
-  if(!dir_check(cmd->tmp_pool, "SITE_CHMOD", "WRITE", dir, NULL))
+  if (!dir_check(cmd->tmp_pool, "SITE_CHMOD", "WRITE", dir, NULL))
     return -1;
 
   return pr_fsio_chmod(dir,mode);
@@ -2864,7 +2864,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
   char *dir,*odir,*cdir;
   config_rec *cdpath;
   unsigned char show_symlinks = TRUE, *tmp = NULL;
-  
+
   odir = ndir;
 
   if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks",
@@ -2874,27 +2874,27 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
   if (show_symlinks) {
     dir = dir_realpath(cmd->tmp_pool,ndir);
 
-    if(!dir || !dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
+    if (!dir || !dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
         pr_fsio_chdir(dir, 0) == -1) {
       for(cdpath = find_config(main_server->conf,CONF_PARAM,"CDPath",TRUE);
-	  cdpath != NULL; cdpath =
-	    find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
-	cdir = (char *) malloc(strlen(cdpath->argv[0]) + strlen(ndir) + 2);
-	snprintf(cdir, strlen(cdpath->argv[0]) + strlen(ndir) + 2,
-		 "%s%s%s", (char *) cdpath->argv[0],
-		 ((char *) cdpath->argv[0])[strlen(cdpath->argv[0]) - 1] == '/' ? "" : "/",
-		 ndir);
-	dir = dir_realpath(cmd->tmp_pool,cdir);
-	free(cdir);
-	if(dir &&
-	   dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) &&
-	   pr_fsio_chdir(dir, 0) != -1) {
-	  break;
-	}
+          cdpath != NULL; cdpath =
+            find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
+        cdir = (char *) malloc(strlen(cdpath->argv[0]) + strlen(ndir) + 2);
+        snprintf(cdir, strlen(cdpath->argv[0]) + strlen(ndir) + 2,
+                 "%s%s%s", (char *) cdpath->argv[0],
+                 ((char *) cdpath->argv[0])[strlen(cdpath->argv[0]) - 1] == '/' ? "" : "/",
+                 ndir);
+        dir = dir_realpath(cmd->tmp_pool,cdir);
+        free(cdir);
+        if (dir &&
+           dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) &&
+           pr_fsio_chdir(dir, 0) != -1) {
+          break;
+        }
       }
-      if(!cdpath) {
-	add_response_err(R_550,"%s: %s",odir,strerror(errno));
-	return ERROR(cmd);
+      if (!cdpath) {
+        add_response_err(R_550,"%s: %s",odir,strerror(errno));
+        return ERROR(cmd);
       }
     }
   } else {
@@ -2902,29 +2902,29 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
     ndir = dir_virtual_chdir(cmd->tmp_pool,ndir);
     dir = dir_realpath(cmd->tmp_pool,ndir);
 
-    if(!dir || !dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
+    if (!dir || !dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
         pr_fsio_chdir_canon(ndir, 1) == -1) {
 
       for(cdpath = find_config(main_server->conf,CONF_PARAM,"CDPath",TRUE);
-	  cdpath != NULL; cdpath =
-	    find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
-	cdir = (char *) malloc(strlen(cdpath->argv[0]) + strlen(ndir) + 2);
-	snprintf(cdir, strlen(cdpath->argv[0]) + strlen(ndir) + 2,
-		 "%s%s%s", (char *) cdpath->argv[0],
-		((char *)cdpath->argv[0])[strlen(cdpath->argv[0]) - 1] == '/' ? "" : "/",
-		ndir);
-	ndir = dir_virtual_chdir(cmd->tmp_pool,cdir);
-	dir = dir_realpath(cmd->tmp_pool,ndir);
-	free(cdir);
-	if(dir &&
-	   dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) &&
-	   pr_fsio_chdir_canon(ndir, 1) != -1) {
-	  break;
-	}
+          cdpath != NULL; cdpath =
+            find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
+        cdir = (char *) malloc(strlen(cdpath->argv[0]) + strlen(ndir) + 2);
+        snprintf(cdir, strlen(cdpath->argv[0]) + strlen(ndir) + 2,
+                 "%s%s%s", (char *) cdpath->argv[0],
+                ((char *)cdpath->argv[0])[strlen(cdpath->argv[0]) - 1] == '/' ? "" : "/",
+                ndir);
+        ndir = dir_virtual_chdir(cmd->tmp_pool,cdir);
+        dir = dir_realpath(cmd->tmp_pool,ndir);
+        free(cdir);
+        if (dir &&
+           dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) &&
+           pr_fsio_chdir_canon(ndir, 1) != -1) {
+          break;
+        }
       }
-      if(!cdpath) {
-	add_response_err(R_550,"%s: %s",odir,strerror(errno));
-	return ERROR(cmd);
+      if (!cdpath) {
+        add_response_err(R_550,"%s: %s",odir,strerror(errno));
+        return ERROR(cmd);
       }
     }
   }
@@ -2936,24 +2936,24 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
     PR_SCORE_CWD, session.cwd,
     NULL);
 
-  if(session.dir_config)
+  if (session.dir_config)
     display = (char*)get_param_ptr(session.dir_config->subset,
                                    "DisplayFirstChdir",FALSE);
-  if(!display && session.anon_config)
+  if (!display && session.anon_config)
     display = (char*)get_param_ptr(session.anon_config->subset,
                                    "DisplayFirstChdir",FALSE);
-  if(!display)
+  if (!display)
     display = (char*)get_param_ptr(cmd->server->conf,
                                    "DisplayFirstChdir",FALSE);
 
-  if(display) {
+  if (display) {
     config_rec *c;
     time_t last;
     struct stat sbuf;
 
     c = find_config(cmd->server->conf,CONF_USERDATA,session.cwd,FALSE);
 
-    if(!c) {
+    if (!c) {
       time(&last);
       c = add_config_set(&cmd->server->conf,session.cwd);
       c->config_type = CONF_USERDATA;
@@ -2986,7 +2986,7 @@ MODRET core_rmd(cmd_rec *cmd) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
 
-  if(preg && regexec(preg,cmd->arg,0,NULL,0) != 0) {
+  if (preg && regexec(preg,cmd->arg,0,NULL,0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
     add_response_err(R_550,"%s: Forbidden filename",cmd->arg);
@@ -2994,8 +2994,8 @@ MODRET core_rmd(cmd_rec *cmd) {
   }
 
   preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathDenyFilter",FALSE);
-  
-  if(preg && regexec(preg,cmd->arg,0,NULL,0) == 0) {
+
+  if (preg && regexec(preg,cmd->arg,0,NULL,0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
     add_response_err(R_550,"%s: Forbidden filename",cmd->arg);
@@ -3007,7 +3007,7 @@ MODRET core_rmd(cmd_rec *cmd) {
      you can't rmdir a symlink, you delete it.  */
   dir = dir_canonical_path(cmd->tmp_pool,cmd->arg);
 
-  if(!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
+  if (!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
      pr_fsio_rmdir(dir) == -1) {
     add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
     return ERROR(cmd);
@@ -3026,7 +3026,7 @@ MODRET core_mkd(cmd_rec *cmd) {
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
-  if(strchr(cmd->arg, '*')) {
+  if (strchr(cmd->arg, '*')) {
     add_response_err(R_550, "%s: Invalid directory name", cmd->argv[1]);
     return ERROR(cmd);
   }
@@ -3034,7 +3034,7 @@ MODRET core_mkd(cmd_rec *cmd) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
     preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathAllowFilter",FALSE);
 
-    if(preg && regexec(preg,cmd->arg,0,NULL,0) != 0) {
+    if (preg && regexec(preg,cmd->arg,0,NULL,0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
       add_response_err(R_550,"%s: Forbidden filename",cmd->arg);
@@ -3043,7 +3043,7 @@ MODRET core_mkd(cmd_rec *cmd) {
 
     preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathDenyFilter",FALSE);
 
-    if(preg && regexec(preg,cmd->arg,0,NULL,0) == 0) {
+    if (preg && regexec(preg,cmd->arg,0,NULL,0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
       add_response_err(R_550,"%s: Forbidden filename",cmd->arg);
@@ -3099,7 +3099,7 @@ MODRET core_mkd(cmd_rec *cmd) {
     add_response(R_257, "\"%s\" - Directory successfully created",
       quote_dir(cmd, dir));
   }
-    
+
   return HANDLED(cmd);
 }
 
@@ -3128,12 +3128,12 @@ MODRET core_mdtm(cmd_rec *cmd) {
   char buf[16] = {'\0'};
   struct tm *tm;
   struct stat sbuf;
-  
+
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
   path = dir_realpath(cmd->tmp_pool,cmd->arg);
 
-  if(!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) ||
+  if (!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) ||
      pr_fsio_stat(path, &sbuf) == -1) {
     add_response_err(R_550,"%s: %s",cmd->argv[1],strerror(errno));
     return ERROR(cmd);
@@ -3150,7 +3150,7 @@ MODRET core_mdtm(cmd_rec *cmd) {
 
       if (times_gmt && *times_gmt == TRUE)
          tm = gmtime(&sbuf.st_mtime);
-      else 
+      else
          tm = localtime(&sbuf.st_mtime);
 
       if (tm)
@@ -3158,7 +3158,7 @@ MODRET core_mdtm(cmd_rec *cmd) {
                 tm->tm_year+1900,tm->tm_mon+1,tm->tm_mday,
                 tm->tm_hour,tm->tm_min,tm->tm_sec);
       else
-        snprintf(buf, sizeof(buf), "00000000000000");        
+        snprintf(buf, sizeof(buf), "00000000000000");
 
       add_response(R_213,"%s",buf);
     }
@@ -3180,7 +3180,7 @@ MODRET core_size(cmd_rec *cmd) {
     add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
     return ERROR(cmd);
   } else {
-    if(!S_ISREG(sbuf.st_mode)) {
+    if (!S_ISREG(sbuf.st_mode)) {
       add_response_err(R_550,"%s: not a regular file.",cmd->arg);
       return ERROR(cmd);
     }
@@ -3203,44 +3203,44 @@ MODRET core_dele(cmd_rec *cmd) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
 
-  if(preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
+  if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
     add_response_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
   }
-  
+
   preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathDenyFilter", FALSE);
-  
-  if(preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
+
+  if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
     add_response_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
   }
 #endif
-  
+
   /* If told to delete a symlink, don't delete the file it points to!  */
   path = dir_canonical_path(cmd->tmp_pool, cmd->arg);
-  if(!path ||
+  if (!path ||
      !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
      pr_fsio_unlink(path) == -1) {
     add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
-  
+
   fullpath = dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE);
-  
+
   if (session.sf_flags & SF_ANON) {
     log_xfer(0, session.c->remote_name, 0,
-	     fullpath, (session.sf_flags & SF_ASCII ? 'a' : 'b'),
-	     'd', 'a', session.anon_user, 'c');
+             fullpath, (session.sf_flags & SF_ASCII ? 'a' : 'b'),
+             'd', 'a', session.anon_user, 'c');
   } else {
     log_xfer(0, session.c->remote_name, 0, fullpath,
-	     (session.sf_flags & SF_ASCII ? 'a' : 'b'),
-	     'd', 'r', session.user, 'c');
+             (session.sf_flags & SF_ASCII ? 'a' : 'b'),
+             'd', 'r', session.user, 'c');
   }
-  
+
   add_response(R_250, "%s command successful.", cmd->argv[0]);
   return HANDLED(cmd);
 }
@@ -3253,8 +3253,8 @@ MODRET core_rnto(cmd_rec *cmd) {
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
-  if(!session.xfer.path) {
-    if(session.xfer.p) {
+  if (!session.xfer.path) {
+    if (session.xfer.p) {
       destroy_pool(session.xfer.p);
       memset(&session.xfer, '\0', sizeof(session.xfer));
     }
@@ -3291,7 +3291,7 @@ MODRET core_rnto(cmd_rec *cmd) {
 
   path = dir_canonical_path(cmd->tmp_pool,cmd->arg);
 
-  if(!path || !dir_check_canon(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) 
+  if (!path || !dir_check_canon(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL)
      || pr_fsio_rename(session.xfer.path, path) == -1) {
     add_response_err(R_550, "rename: %s", strerror(errno));
     destroy_pool(session.xfer.p);
@@ -3319,7 +3319,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathAllowFilter",FALSE);
 
-  if(preg && regexec(preg,cmd->arg,0,NULL,0) != 0) {
+  if (preg && regexec(preg,cmd->arg,0,NULL,0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
     add_response_err(R_550,"%s: Forbidden filename",cmd->arg);
@@ -3328,7 +3328,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
 
   preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathDenyFilter",FALSE);
 
-  if(preg && regexec(preg,cmd->arg,0,NULL,0) == 0) {
+  if (preg && regexec(preg,cmd->arg,0,NULL,0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
     add_response_err(R_550,"%s: Forbidden filename",cmd->arg);
@@ -3339,7 +3339,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
   /* Allow renaming a symlink, even a dangling one.  */
   path = dir_canonical_path(cmd->tmp_pool,cmd->arg);
 
-  if(!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) ||
+  if (!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) ||
      !exists(path)) {
     add_response_err(R_550,"%s: %s",cmd->argv[1],strerror(errno));
     return ERROR(cmd);
@@ -3480,115 +3480,118 @@ static hostname_t *hostname_list = NULL;
 
 static hostname_t *add_hostname(class_t *class, char *name)
 {
-	hostname_t *n;
+        hostname_t *n;
 
-	n = calloc(1, sizeof(hostname_t));
-	n->hostname = strdup(name);
-	n->next = hostname_list;
-	n->class = class;
-	hostname_list = n;
-	return n;
+        n = calloc(1, sizeof(hostname_t));
+        n->hostname = strdup(name);
+        n->next = hostname_list;
+        n->class = class;
+        hostname_list = n;
+        return n;
 }
 
 static hostname_t *find_hostname(char *name)
 {
-	hostname_t *i;
-	for (i = hostname_list; i != NULL; i = i->next)
-		if (strcasecmp(i->hostname,name) == 0)
-			return i;
-	return NULL;
+  hostname_t *i;
+
+  for (i = hostname_list; i != NULL; i = i->next)
+    if (strcasecmp(i->hostname,name) == 0)
+      return i;
+  return NULL;
 }
 
 static cdir_t *add_cdir(class_t *class, u_int_32 address, u_int_8 netmask)
 {
-	cdir_t *n;
+  cdir_t *n;
 
-	n = calloc(1, sizeof(cdir_t));
+  n = calloc(1, sizeof(cdir_t));
 
-	n->class = class;
-	while (netmask--) {
-		n->netmask >>= 1;
-		n->netmask |= 0x80000000;
-	}
-	n->address = address & n->netmask;
+  n->class = class;
+  while (netmask--) {
+    n->netmask >>= 1;
+    n->netmask |= 0x80000000;
+  }
+  n->address = address & n->netmask;
 
-	n->next = cdir_list;
-	cdir_list = n;	                
+  n->next = cdir_list;
+  cdir_list = n;
 
-	return n;
+  return n;
 }
 
 static cdir_t *find_cdir(u_int_32 address)
 {
-	cdir_t *c, *f;
+  cdir_t *c, *f;
 
-	c = cdir_list;
-	f = NULL;
-	while (c) {
-		/* within cdir range ? && more specific netmask ? */
-		if (((address & c->netmask) == c->address) && (f == NULL || (f && (f->netmask < c->netmask))))
-			f = c;
+  c = cdir_list;
+  f = NULL;
+  while (c) {
+    /* within cdir range ? && more specific netmask ? */
+    if (((address & c->netmask) == c->address) && (f == NULL || (f && (f->netmask < c->netmask))))
+      f = c;
 
-		c = c->next;
-	}
-	return f;
+    c = c->next;
+  }
+
+  return f;
 }
 
 static class_t *add_class(char *name)
 {
-	class_t *n;
+  class_t *n;
 
-	n = calloc(1, sizeof(class_t));
+  n = calloc(1, sizeof(class_t));
 
-	n->name = strdup(name);
-	n->max_connections = 100;
+  n->name = strdup(name);
+  n->max_connections = 100;
 
-	n->next = class_list;
-	class_list = n;	                
+  n->next = class_list;
+  class_list = n;
 
-	return n;
+  return n;
 }
 
 static class_t *get_class(char *name)
 {
-	class_t *c;
+  class_t *c;
 
-	c = class_list;
-	while (c) {
-		if (name && strcasecmp(name, c->name) == 0)
-			return c;
-	
-		c = c->next;
-	}
-	return NULL;
+  c = class_list;
+  while (c) {
+    if (name && strcasecmp(name, c->name) == 0)
+      return c;
+
+    c = c->next;
+  }
+
+  return NULL;
 }
 
 class_t *find_class(p_in_addr_t *addr, char *remote_name)
 {
-	cdir_t *ip;
-	hostname_t *host;
-	class_t *c, *f;
+  cdir_t *ip;
+  hostname_t *host;
+  class_t *c, *f;
 
-	if ((ip = find_cdir(ntohl(addr->s_addr))) != NULL)
-		return ip->class;
+  if ((ip = find_cdir(ntohl(addr->s_addr))) != NULL)
+    return ip->class;
 
-	if ((host = find_hostname(remote_name)) != NULL)
-		return host->class;
-	if ((host = find_hostname(inet_ntoa(*addr))) != NULL)
-		return host->class;
+  if ((host = find_hostname(remote_name)) != NULL)
+    return host->class;
+  if ((host = find_hostname(inet_ntoa(*addr))) != NULL)
+    return host->class;
 
-	c = class_list;
-	f = NULL;
-	while (c) {
-		if (c->preg && (regexec(c->preg, remote_name, 0, NULL, 0)) == 0) 
-			if (f == NULL || (f && f->max_connections < c->max_connections))
-				f = c;
-		c = c->next;
-	}
-	if (f)
-		return f;
-	else
-		return get_class("default");
+  c = class_list;
+  f = NULL;
+  while (c) {
+    if (c->preg && (regexec(c->preg, remote_name, 0, NULL, 0)) == 0)
+      if (f == NULL || (f && f->max_connections < c->max_connections))
+        f = c;
+    c = c->next;
+  }
+  if (f)
+    return f;
+  else
+    return get_class("default");
 }
 
 MODRET set_class(cmd_rec *cmd) {
@@ -3614,30 +3617,30 @@ MODRET set_class(cmd_rec *cmd) {
       "not in effect");
 
   /* setup "default" class if necesarry */
-  if((n = get_class("default")) == NULL)
+  if ((n = get_class("default")) == NULL)
     n = add_class("default");
-  
+
   /* find class, add if necessary */
-  if((n = get_class(cmd->argv[1])) == NULL)
+  if ((n = get_class(cmd->argv[1])) == NULL)
     n = add_class(cmd->argv[1]);
-  
+
   /* what to do ? */
-  if(strcasecmp(cmd->argv[2], "limit") == 0) {
+  if (strcasecmp(cmd->argv[2], "limit") == 0) {
     ret = atoi(cmd->argv[3]);
     if (ret < 0)
       ret = 100;
     n->max_connections = ret;
     log_debug(DEBUG4, "Class '%s' maxconnections set to %d.",
-	      n->name, n->max_connections);
+              n->name, n->max_connections);
   } else if (strcasecmp(cmd->argv[2], "regex") == 0) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
     preg = pr_regexp_alloc();
-    
+
     if ((ret = regcomp(preg, cmd->argv[3],
-		      REG_EXTENDED|REG_NOSUB|REG_ICASE)) != 0) {
+                      REG_EXTENDED|REG_NOSUB|REG_ICASE)) != 0) {
       regerror(ret, preg, errmsg, sizeof(errmsg));
       pr_regexp_free(preg);
-      
+
       n->preg = NULL;
       log_pri(PR_LOG_ERR, "Failed regexp '%s' compilation: ", cmd->argv[3]);
     } else {
@@ -3646,37 +3649,37 @@ MODRET set_class(cmd_rec *cmd) {
 #else
     CONF_ERROR(cmd, "regex-based classes cannot be used, as you do not have POSIX compliant regex support.");
 #endif
-  } else if(strcasecmp(cmd->argv[2], "ip") == 0) {
+  } else if (strcasecmp(cmd->argv[2], "ip") == 0) {
     sstrncpy(ipaddress, cmd->argv[3], sizeof(ipaddress));
-    if((ptr = strchr(ipaddress, '/')) == NULL) {
+    if ((ptr = strchr(ipaddress, '/')) == NULL) {
       log_pri(PR_LOG_ERR, "Class '%s' ipmask %s skipped.",
-	      cmd->argv[1], cmd->argv[3]);
+              cmd->argv[1], cmd->argv[3]);
       CONF_ERROR(cmd, "wrong syntax error.");
     } else {
       bits = atol(ptr + 1);
-      
+
       if (bits < 0 || bits > 32) {
-	log_pri(PR_LOG_ERR, "Class '%s' ipmask %s skipped: wrong netmask.",
-		cmd->argv[1], cmd->argv[3]);
+        log_pri(PR_LOG_ERR, "Class '%s' ipmask %s skipped: wrong netmask.",
+                cmd->argv[1], cmd->argv[3]);
       }
-      
+
       *ptr = 0;
     }
-    
-    if((res = inet_getaddr(cmd->pool, ipaddress)) != NULL) {
+
+    if ((res = inet_getaddr(cmd->pool, ipaddress)) != NULL) {
       add_cdir(n, ntohl(res->s_addr), bits);
       log_debug(DEBUG4, "Class '%s' ipmask %p/%d added.",
-		cmd->argv[1], res, bits);
+                cmd->argv[1], res, bits);
     } else {
       log_pri(PR_LOG_ERR, "Class '%s' ip could not parse '%s'.",
-	      cmd->argv[1], cmd->argv[3]);
+              cmd->argv[1], cmd->argv[3]);
     }
-  } else if(strcasecmp(cmd->argv[2], "host") == 0) {
+  } else if (strcasecmp(cmd->argv[2], "host") == 0) {
     add_hostname(n,cmd->argv[3]);
   } else {
     CONF_ERROR(cmd, "unknown argument.");
   }
-  
+
   return HANDLED(cmd);
 }
 

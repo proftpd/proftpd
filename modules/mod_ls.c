@@ -3,7 +3,7 @@
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  * Copyright (c) 2001, 2002 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.73 2002-12-06 23:45:27 castaglia Exp $
+ * $Id: mod_ls.c,v 1.74 2002-12-07 21:43:44 jwm Exp $
  */
 
 #include "conf.h"
@@ -165,7 +165,7 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
     ret = dir_check_canon(p,cmd->argv[0],cmd->group,fullpath,hidden);
   else
     ret = dir_check(p,cmd->argv[0],cmd->group,fullpath,hidden);
-  
+
   if (session.dir_config) {
     unsigned char *tmp = get_param_ptr(session.dir_config->subset,
       "ShowSymlinks", FALSE);
@@ -202,7 +202,7 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden) {
       MAXPATHLEN);
   else
     pr_fs_clean_path(path, fullpath, MAXPATHLEN);
- 
+
   ret = dir_check(p,cmd->argv[0],cmd->group,fullpath,hidden);
 
   if (session.dir_config) {
@@ -273,13 +273,13 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
   time_t	mtime;
   char		m[1024] = {'\0'},l[1024] = {'\0'};
   struct	stat st;
-  
+
   struct	tm *t;
   char		suffix[2];
   int           hidden = 0;
-  
+
   if (!p) p = cmd->tmp_pool;
- 
+
   if (pr_fsio_lstat(name, &st) == 0) {
     suffix[0] = suffix[1] = '\0';
 
@@ -291,10 +291,10 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
       if (pr_fsio_stat(name, &l_st) != -1) {
         memcpy(&st, &l_st, sizeof(struct stat));
 
-	if ((len = pr_fsio_readlink(name, m, sizeof(m))) < 0)
-	  return 0;
-	
-	m[len] = '\0';
+        if ((len = pr_fsio_readlink(name, m, sizeof(m))) < 0)
+          return 0;
+        
+        m[len] = '\0';
 
         if (!ls_perms_full(p, cmd, m, NULL))
           return 0;
@@ -305,8 +305,8 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
     } else if (S_ISLNK(st.st_mode)) {
 
       if ((len = pr_fsio_readlink(name, l, sizeof(l))) < 0)
-	return 0;
-      
+        return 0;
+
       l[len] = '\0';
 
       if (!ls_perms_full(p, cmd, l, &hidden))
@@ -322,14 +322,14 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
 
     if (list_times_gmt)
       t = gmtime((time_t *) &mtime);
-    else 
+    else
       t = localtime((time_t *) &mtime);
-    
+
     if (!t) {
       add_response_err(R_421,"Fatal error (localtime() returned NULL?!?)");
       return -1;
     }
-    
+
     if (opt_F) {
       if (S_ISLNK(st.st_mode))
         suffix[0] = '@';
@@ -341,7 +341,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
       } else if (st.st_mode & 0111)
         suffix[0] = '*';
     }
-    
+
     if (opt_l) {
       sstrncpy(m, " ---------", sizeof(m));
       switch(st.st_mode & S_IFMT) {
@@ -389,18 +389,18 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
          * with the debian 'stat' package. Can't have anything thinking I know
          * what I'm doing in here. :)
          */
-        m[9] = (mode & S_IXOTH) 
-                ? ((mode & S_ISVTX) ? 't' : 'x') 
+        m[9] = (mode & S_IXOTH)
+                ? ((mode & S_ISVTX) ? 't' : 'x')
                 : ((mode & S_ISVTX) ? 'T' : '-');
         m[8] = (mode & S_IWOTH) ? 'w' : '-';
         m[7] = (mode & S_IROTH) ? 'r' : '-';
-        m[6] = (mode & S_IXGRP) 
-                ? ((mode & S_ISGID) ? 's' : 'x') 
+        m[6] = (mode & S_IXGRP)
+                ? ((mode & S_ISGID) ? 's' : 'x')
                 : ((mode & S_ISGID) ? 'S' : '-');
         m[5] = (mode & S_IWGRP) ? 'w' : '-';
         m[4] = (mode & S_IRGRP) ? 'r' : '-';
-        m[3] = (mode & S_IXUSR) ? ((mode & S_ISUID) 
-                ? 's' : 'x') 
+        m[3] = (mode & S_IXUSR) ? ((mode & S_ISUID)
+                ? 's' : 'x')
                 :  ((mode & S_ISUID) ? 'S' : '-');
         m[2] = (mode & S_IWUSR) ? 'w' : '-';
         m[1] = (mode & S_IRUSR) ? 'r' : '-';
@@ -459,7 +459,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
       }
 
     } else {
-      if(S_ISREG(st.st_mode) ||
+      if (S_ISREG(st.st_mode) ||
          S_ISDIR(st.st_mode) ||
          S_ISLNK(st.st_mode))
            addfile(cmd,name,suffix,mtime);
@@ -484,27 +484,27 @@ struct sort_filename {
   time_t mtime;
   char *name,*suffix;
 };
-  
+
 static struct filename *head = NULL;
 static struct filename *tail = NULL;
 static array_header *sort_arr = NULL;
 static pool *fpool = NULL;
- 
+
 static void addfile(cmd_rec *cmd, const char *name, const char *suffix, time_t mtime)
 {
   struct 	filename *p;
   int		l;
 
-  if(!name || !suffix)
+  if (!name || !suffix)
     return;
 
-  if(opt_t) {
+  if (opt_t) {
     struct sort_filename *s;
 
-    if(!fpool)
+    if (!fpool)
       fpool = make_sub_pool(cmd->tmp_pool);
 
-    if(!sort_arr)
+    if (!sort_arr)
       sort_arr = make_array(fpool,50,sizeof(struct sort_filename));
 
     s = (struct sort_filename*)push_array(sort_arr);
@@ -518,17 +518,17 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix, time_t m
   matches++;
 
   l = strlen(name) + strlen(suffix);
-  if(l > colwidth)
+  if (l > colwidth)
     colwidth = l;
 
-  if(!fpool)
+  if (!fpool)
     fpool = make_sub_pool(cmd->tmp_pool);
 
   p = (struct filename*) pcalloc(fpool, sizeof(struct filename) + l + 1);
 
   snprintf(p->line, l + 1, "%s%s", name, suffix);
 
-  if(tail)
+  if (tail)
     tail->down = p;
   else
     head = p;
@@ -562,7 +562,7 @@ static void sortfiles(cmd_rec *cmd) {
 
     qsort(sort_arr->elts, sort_arr->nelts, sizeof(struct sort_filename),
           (int (*)(const void*,const void*))
-	  (opt_r ? _compare_file_mtime_reversed : _compare_file_mtime));
+          (opt_r ? _compare_file_mtime_reversed : _compare_file_mtime));
 
     opt_t = 0;
 
@@ -572,7 +572,7 @@ static void sortfiles(cmd_rec *cmd) {
 
     opt_t = 1;
   }
-    
+
   sort_arr = NULL;
 }
 
@@ -580,20 +580,20 @@ static int outputfiles(cmd_rec *cmd) {
   int n;
   struct filename *p = NULL, *q = NULL;
 
-  if(opt_t)
+  if (opt_t)
     sortfiles(cmd);
 
-  if(!head)		/* nothing to display */
+  if (!head)		/* nothing to display */
     return 0;
 
   tail->down = NULL;
   tail = NULL;
   colwidth = ( colwidth | 7 ) + 1;
-  if(opt_l || !opt_C)
+  if (opt_l || !opt_C)
     colwidth = 75;
 
   /* avoid division by 0 if colwidth > 75 */
-  if(colwidth > 75)
+  if (colwidth > 75)
     colwidth = 75;
 
   p = head;
@@ -601,7 +601,7 @@ static int outputfiles(cmd_rec *cmd) {
   n = (filenames + (75 / colwidth)-1) / (75 / colwidth);
   while(n && p) {
     p = p->down;
-    if(p)
+    if (p)
       p->top = 0;
     n--;
   }
@@ -622,15 +622,15 @@ static int outputfiles(cmd_rec *cmd) {
   p = head;
   while(p && p->down && !p->down->top)
     p = p->down;
-  if(p && p->down)
+  if (p && p->down)
     p->down = NULL;
 
 #if 0
-  if(opt_l)
-    if(sendline("total 0\n") < 0)
+  if (opt_l)
+    if (sendline("total 0\n") < 0)
       return -1;
 #endif
-  
+
   p = head;
   while(p) {
     q = p;
@@ -638,7 +638,7 @@ static int outputfiles(cmd_rec *cmd) {
     while(q) {
       char pad[6] = {'\0'};
 
-      if(q->right) {
+      if (q->right) {
         sstrncpy(pad, "\t\t\t\t\t", sizeof(pad));
         pad[(colwidth + 7 - strlen(q->line)) / 8] = '\0';
       } else {
@@ -690,7 +690,7 @@ static char **sreaddir(pool *workp, const char *dirname, const int sort) {
   int		dsize, ssize;
   int		dirfd;
 
-  if (pr_fsio_stat(dirname, &st) < 0) 
+  if (pr_fsio_stat(dirname, &st) < 0)
     return NULL;
 
   if (!S_ISDIR(st.st_mode)) {
@@ -724,38 +724,38 @@ static char **sreaddir(pool *workp, const char *dirname, const int sort) {
 #else
   dirfd = 0;
 #endif
-  if((ssize = get_name_max((char *) dirname, dirfd)) < 1 ) {
+  if ((ssize = get_name_max((char *) dirname, dirfd)) < 1 ) {
     log_debug(DEBUG1, "get_name_max(%s, %d) = %d, using %d",
-	      dirname, dirfd, ssize, NAME_MAX_GUESS);
+              dirname, dirfd, ssize, NAME_MAX_GUESS);
     ssize = NAME_MAX_GUESS;
   }
-  
+
   ssize *= ((dsize / 4) + 1);
 
   /* Allocate array for pointers to filenames */
   p = (char **) palloc(workp, dsize * sizeof(char *));
-  
+
   /* Allocate first block for holding filenames themselves */
   s = (char *) palloc(workp, ssize * sizeof(char));
   s_end = s + (ssize * sizeof(char));
 
   i = 0;
-  
+
   while ((de = pr_fsio_readdir(d)) != NULL) {
-    if(i >= dsize - 1) {
+    if (i >= dsize - 1) {
       /* The test above goes off one item early in case this is the last item
        * in the directory and thus next time we will want to NULL-terminate
        * the array.
        */
       char **new_p;
-      
+
       log_debug(DEBUG0,
-		"Reallocating sreaddir buffer from %d entries to %d entries.",
-		dsize, dsize * 2);
-      
+                "Reallocating sreaddir buffer from %d entries to %d entries.",
+                dsize, dsize * 2);
+
       /* Allocate bigger array for pointers to filenames */
       new_p = (char **) palloc(workp, 2 * dsize * sizeof(char *));
-      
+
       /* Copy across */
       memcpy(new_p, p, dsize * sizeof(char *));
       dsize *= 2;
@@ -768,11 +768,11 @@ static char **sreaddir(pool *workp, const char *dirname, const int sort) {
        */
       p = new_p;
     }
-    
-    if(s + strlen(de->d_name) + 1 >= s_end) {
+
+    if (s + strlen(de->d_name) + 1 >= s_end) {
       log_debug(DEBUG0, "Allocating another sreaddir buffer of %d bytes.",
-		ssize);
-      
+                ssize);
+
       /* Allocate another block for holding filenames themselves */
       /* (don't free the last one, elements of p[] still point at it! ) */
       s = (char *) palloc(workp, ssize * sizeof(char));
@@ -785,16 +785,16 @@ static char **sreaddir(pool *workp, const char *dirname, const int sort) {
     p[i++] = s;
     s += strlen(de->d_name) + 1;
   }
-  
+
   pr_fsio_closedir(d);
 
   /* This is correct, since the above is off by one element.
    */
   p[i] = NULL;
 
-  if(sort)
+  if (sort)
     qsort(p, i, sizeof(char *), cmp);
-  
+
   return p;
 }
 
@@ -836,14 +836,14 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
     int d = 0;
 
 #if 0
-    if(opt_l) {
-      if(opt_STAT)
+    if (opt_l) {
+      if (opt_STAT)
         add_response(R_211,"total 0");
-      else if(sendline("total 0\n") < 0)
+      else if (sendline("total 0\n") < 0)
         return -1;
     }
 #endif
-    
+
     s = dir;
     while(*s) {
       if (**s == '.') {
@@ -864,7 +864,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
       }
 
       if (!d)
-	*s = NULL;
+        *s = NULL;
 
       s++;
     }
@@ -888,24 +888,24 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
       /* Add some signal processing to this while loop, as it can
        * potentially recurse deeply.
        */
-      pr_handle_signals();      
+      pr_handle_signals();
 
       push_cwd(cwd, &symhold);
-     
+
       if (*r && ls_perms_full(workp,cmd,(char*)*r,NULL) &&
           !pr_fsio_chdir_canon(*r, !opt_L && list_show_symlinks)) {
         char *subdir;
 
-	if (strcmp(name,".") == 0)
+        if (strcmp(name,".") == 0)
           subdir = *r;
         else
           subdir = pdircat(workp,name,*r,NULL);
 
-	if (opt_STAT) {
-	  add_response(R_211, "%s", "");
+        if (opt_STAT) {
+          add_response(R_211, "%s", "");
           add_response(R_211, "%s:", subdir);
 
-	} else if (sendline("\n%s:\n", subdir) < 0 ||
+        } else if (sendline("\n%s:\n", subdir) < 0 ||
             sendline(NULL) < 0) {
           pop_cwd(cwd, &symhold);
 
@@ -937,18 +937,18 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
 }
 
 static void ls_terminate(void) {
-  if(!opt_STAT) {
+  if (!opt_STAT) {
     discard_output();
-    if(!XFER_ABORTED) {  /* an error has occured, other than client ABOR */
-      if(ls_errno)
+    if (!XFER_ABORTED) {  /* an error has occured, other than client ABOR */
+      if (ls_errno)
         data_abort(ls_errno,FALSE);
       else
-        data_abort((session.d && session.d->outstrm ? 
+        data_abort((session.d && session.d->outstrm ?
                    PR_NETIO_ERRNO(session.d->outstrm) : errno),FALSE);
     }
     ls_errno = 0;
 
-  } else if(ls_errno) {
+  } else if (ls_errno) {
     add_response(R_211, "ERROR: %s", strerror(ls_errno));
     ls_errno = 0;
   }
@@ -1017,7 +1017,7 @@ static void parse_list_opts(char **opt, int *glob_flags,
       }
     }
 
-    while (isspace((int) **opt)) 
+    while (isspace((int) **opt))
       (*opt)++;
   }
 
@@ -1096,7 +1096,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
   matches = 0;
   ls_curtime = time(NULL);
 
-  if(clearflags) {
+  if (clearflags) {
     opt_a = opt_C = opt_d = opt_F = opt_n = opt_r = opt_R = opt_t = opt_STAT = 0;
     opt_L = 0;
   }
@@ -1135,36 +1135,36 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
     if (data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
       return -1;
   }
-  
-  if(arg && *arg) {
+
+  if (arg && *arg) {
     int justone = 1;
     glob_t g;
     int    a;
     char   pbuffer[MAXPATHLEN + 1] = "";
-     
+
     /* make sure the glob_t is initialized */
     memset(&g, '\0', sizeof(glob_t));
- 
-    if(*arg == '~') {
+
+    if (*arg == '~') {
       struct passwd *pw;
       int i;
       const char *p;
 
       for(i = 0, p = arg + 1;
-	  (i < sizeof(pbuffer) - 1) && p && *p && *p != '/';
-	  pbuffer[i++] = *p++);
-	
+          (i < sizeof(pbuffer) - 1) && p && *p && *p != '/';
+          pbuffer[i++] = *p++);
+        
       pbuffer[i] = '\0';
-	
-      if((pw = auth_getpwnam(cmd->tmp_pool,i ? pbuffer : session.user))) {
+        
+      if ((pw = auth_getpwnam(cmd->tmp_pool,i ? pbuffer : session.user))) {
         snprintf(pbuffer, sizeof(pbuffer), "%s%s", pw->pw_dir, p);
       } else
         pbuffer[0] = '\0';
-    } 
-    
+    }
+
     /* check perms on the directory/file we are about to scan */
-    if(!ls_perms_full(cmd->tmp_pool, cmd,
-		      (*pbuffer ? (char *) pbuffer : (char *) arg),NULL)) {
+    if (!ls_perms_full(cmd->tmp_pool, cmd,
+                      (*pbuffer ? (char *) pbuffer : (char *) arg),NULL)) {
       a = -1;
       skiparg = TRUE;
 
@@ -1185,14 +1185,14 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
         g.gl_pathv[1] = NULL;
       }
     }
-      
+
     if (!a) {
       char **path;
-	
+        
       path = g.gl_pathv;
       if (path && path[0] && path[1])
         justone = 0;
-	
+        
       while (path && *path) {
         struct stat st;
 
@@ -1204,32 +1204,32 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
 #if 0
           /* If we have a leading '.', two conditions must be true for us to
-	   * invalidate it:
-	   *
-	   * - opt_a is not set
-	   * - We don't have '.' or '..'.
-	   */
-	  if(**path == '.' && !opt_a && !is_dotdir(*path)) {
+           * invalidate it:
+           *
+           * - opt_a is not set
+           * - We don't have '.' or '..'.
+           */
+          if (**path == '.' && !opt_a && !is_dotdir(*path)) {
             **path = '\0';
             path++;
             continue;
           }
 #endif
-          
+
         if (pr_fsio_lstat(*path, &st) == 0) {
           mode_t target_mode, lmode;
-	  target_mode = st.st_mode;
+          target_mode = st.st_mode;
 
           if (S_ISLNK(st.st_mode) && (lmode = file_mode((char*)*path)) != 0) {
-            if(opt_L || !list_show_symlinks)
+            if (opt_L || !list_show_symlinks)
               st.st_mode = lmode;
             target_mode = lmode;
           }
 
-          if(opt_d || !(S_ISDIR(target_mode))) {
-            if(listfile(cmd,NULL,*path) < 0) {
+          if (opt_d || !(S_ISDIR(target_mode))) {
+            if (listfile(cmd,NULL,*path) < 0) {
               ls_terminate();
-	      if (use_globbing)
+              if (use_globbing)
                 pr_fs_globfree(&g);
               return -1;
             }
@@ -1241,25 +1241,25 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
         path++;
       }
 
-      if(outputfiles(cmd) < 0) {
+      if (outputfiles(cmd) < 0) {
         ls_terminate();
-        if (use_globbing) 
+        if (use_globbing)
           pr_fs_globfree(&g);
-	return -1;
+        return -1;
       }
 
       path = g.gl_pathv;
       while(path && *path) {
-        if(**path && ls_perms_full(cmd->tmp_pool,cmd,*path,NULL)) {
+        if (**path && ls_perms_full(cmd->tmp_pool,cmd,*path,NULL)) {
           char cwd[MAXPATHLEN + 1] = {'\0'};
           unsigned char symhold;
 
           if (!justone) {
             if (opt_STAT) {
-	      add_response(R_211, "%s", "");
-	      add_response(R_211, "%s:", *path);
+              add_response(R_211, "%s", "");
+              add_response(R_211, "%s:", *path);
 
-	    } else {
+            } else {
               sendline("\n%s:\n", *path);
               sendline(NULL);
             }
@@ -1273,29 +1273,29 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
             if (ret < 0) {
               ls_terminate();
-	      if (use_globbing)
+              if (use_globbing)
                 pr_fs_globfree(&g);
               return -1;
             }
           }
         }
 
-        if(XFER_ABORTED) {
-	  discard_output();
+        if (XFER_ABORTED) {
+          discard_output();
           if (use_globbing)
             pr_fs_globfree(&g);
-	  return -1;
-	}
+          return -1;
+        }
 
         path++;
       }
 
-    } else if(!skiparg) {
-      if(a == GLOB_NOSPACE) {
+    } else if (!skiparg) {
+      if (a == GLOB_NOSPACE) {
         add_response(R_226,"Out of memory during globbing of %s", arg);
-      } else if(a == GLOB_ABORTED) {
+      } else if (a == GLOB_ABORTED) {
         add_response(R_226,"Read error during globbing of %s", arg);
-      } else if(a != GLOB_NOMATCH) {
+      } else if (a != GLOB_NOMATCH) {
         add_response(R_226,"Unknown error during globbing of %s", arg);
       }
     }
@@ -1303,7 +1303,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
     if (!skiparg && use_globbing)
       pr_fs_globfree(&g);
 
-    if(XFER_ABORTED) {
+    if (XFER_ABORTED) {
       discard_output();
       return -1;
     }
@@ -1319,8 +1319,8 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
       } else {
         if (listdir(cmd, NULL, ".") < 0) {
-          ls_terminate(); 
-	  return -1;
+          ls_terminate();
+          return -1;
         }
       }
     }
@@ -1359,7 +1359,7 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
   if ((res = sendline("%s\n", file)) < 0 ||
       (res = sendline(NULL)) < 0)
     return res;
-	
+        
   return 1;
 }
 
@@ -1379,26 +1379,26 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   unsigned char ignore_hidden = FALSE;
 
   workp = make_sub_pool(cmd->tmp_pool);
-  
+
   if (!*dir || (*dir == '.' && !dir[1]) || strcmp(dir, "./") == 0) {
     curdir = 1;
     dir = "";
 
   } else
     push_cwd(cwd, &symhold);
-  
+
   if (pr_fsio_chdir_canon(dir, !opt_L && list_show_symlinks)) {
     destroy_pool(workp);
     return 0;
   }
-  
+
   if ((list = sreaddir(workp, ".", FALSE)) == NULL) {
     if (!curdir)
       pop_cwd(cwd, &symhold);
     destroy_pool(workp);
     return 0;
   }
-  
+
   /* Search for relevant <Limit>'s to this NLST command.  If found,
    * check to see whether hidden files should be ignored.
    */
@@ -1407,11 +1407,11 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
 
     if (ignore && *ignore == TRUE)
       ignore_hidden = TRUE;
-  } 
+  }
 
   while (*list && count >= 0) {
     p = *list; list++;
-    
+
     if (*p == '.') {
       if (!opt_a && (!opt_A || is_dotdir(p)))
         continue;
@@ -1420,7 +1420,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
       else if (ignore_hidden)
         continue;
     }
-   
+
     if ((i = pr_fsio_readlink(p, file, sizeof(file))) > 0) {
       file[i] = '\0';
       f = file;
@@ -1428,45 +1428,45 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
     } else {
       f = p;
     }
-    
+
     if (ls_perms(workp, cmd, f, &hidden)) {
       if (hidden)
         continue;
 
       /* If the data connection isn't open, open it now. */
       if ((session.sf_flags & SF_XFER) == 0) {
-	if (data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
-	  data_reset();
-	  count = -1;
-	  continue;
-	}
+        if (data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
+          data_reset();
+          count = -1;
+          continue;
+        }
 
-	session.sf_flags |= SF_ASCII_OVERRIDE;
+        session.sf_flags |= SF_ASCII_OVERRIDE;
       }
-      
+
       if ((mode = file_mode(f)) == 0)
-	continue;
-      
+        continue;
+
       if (!curdir) {
-	if (sendline("%s/%s\n", dir, p) < 0 || sendline(NULL) < 0)
-	  count = -1;
+        if (sendline("%s/%s\n", dir, p) < 0 || sendline(NULL) < 0)
+          count = -1;
         else
           count++;
 
       } else {
-	if (sendline("%s\n", p) < 0 || sendline(NULL) < 0)
-	  count = -1;
+        if (sendline("%s\n", p) < 0 || sendline(NULL) < 0)
+          count = -1;
         else
           count++;
       }
     }
   }
-  
+
   if (!curdir)
     pop_cwd(cwd, &symhold);
-  
+
   destroy_pool(workp);
-  
+
   return count;
 }
 
@@ -1550,9 +1550,9 @@ MODRET ls_stat(cmd_rec *cmd) {
   /* Get to the actual argument. */
   if (*arg == '-')
     while (arg && *arg && !isspace((int) *arg)) arg++;
-  
+
   while (arg && *arg && isspace((int) *arg)) arg++;
-  
+
   if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE)) != NULL)
     list_show_symlinks = *tmp;
 
@@ -1599,7 +1599,7 @@ MODRET ls_stat(cmd_rec *cmd) {
 
 MODRET ls_list(cmd_rec *cmd) {
   MODRET ret;
-  
+
   opt_l = 1;
   ret = genericlist(cmd);
   return ret;
@@ -1622,14 +1622,14 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
   if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE)) != NULL)
     list_show_symlinks = *tmp;
-	
+        
   if (cmd->argc == 1)
     target = ".";
   else
     target = cmd->arg;
-	
+        
   /* If the target starts with '~' ... */
-  if(*target == '~') {
+  if (*target == '~') {
     char pb[MAXPATHLEN + 1] = {'\0'};
     struct passwd *pw = NULL;
     int i = 0;
@@ -1647,7 +1647,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
       target = line;
     }
   }
-	
+        
   /* If the target is a glob, get the listing of files/dirs to send
    */
   if (use_globbing && strpbrk(target, "{[*?") != NULL) {
@@ -1684,7 +1684,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
           /* Don't display hidden files */
           if (hidden)
             continue;
-                                        
+
           ret = nlstfile(cmd,p);
         }
 
@@ -1701,7 +1701,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
      * file, just list the file.
      */
     struct stat st;
-		
+
     if (!ls_perms(cmd->tmp_pool, cmd, target, &hidden)) {
       add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
       return ERROR(cmd);
@@ -1721,7 +1721,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
       return ERROR(cmd);
     }
-                
+
     /* Make sure the target is a file or directory,
      * and that we have access to it.
      */
@@ -1745,7 +1745,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
       add_response_err(R_550, "%s: Not a regular file", cmd->arg);
       return ERROR(cmd);
     }
-		
+
     if (ret > 0)
       count += ret;
   }
@@ -1780,7 +1780,7 @@ MODRET ls_post_pass(cmd_rec *cmd) {
   if ((globbing = get_param_ptr(TOPLEVEL_CONF, "UseGlobbing",
       FALSE)) != NULL && *globbing == FALSE) {
     log_debug(DEBUG3, "UseGlobbing: disabling globbing functionality");
-    use_globbing = FALSE; 
+    use_globbing = FALSE;
   }
 
   return DECLINED(cmd);
@@ -1806,7 +1806,7 @@ MODRET _sethide(cmd_rec *cmd, const char *param) {
 
   if (bool == TRUE) {
     /* use the configured id to display rather than the default "ftp" */
-    if(cmd->argc > 2)
+    if (cmd->argc > 2)
       as = cmd->argv[2];
 
     c = add_config_param_str(param, 1, as);
@@ -1895,7 +1895,7 @@ MODRET set_showsymlinks(cmd_rec *cmd) {
 MODRET set_useglobbing(cmd_rec *cmd) {
   int bool = -1;
   config_rec *c = NULL;
-  
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 

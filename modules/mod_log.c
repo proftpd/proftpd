@@ -3,7 +3,7 @@
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  * Copyright (c) 2001, 2002 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.40 2002-12-07 21:13:01 castaglia Exp $
+ * $Id: mod_log.c,v 1.41 2002-12-07 21:43:44 jwm Exp $
  */
 
 #include "conf.h"
@@ -66,7 +66,7 @@ struct logfile_struc {
  * than written to a file.
  */
 #define EXTENDED_LOG_SYSLOG	-4
-  
+
 #define META_START		0xff
 #define META_ARG_END		0xfe
 #define META_ARG		1
@@ -128,29 +128,29 @@ static xaset_t			*log_set = NULL;
 */
 
 static void add_meta(unsigned char **s, unsigned char meta, int args,
-		     ...) {
+                     ...) {
   int arglen;
   char *arg;
-  
+
   **s = META_START;
   (*s) = (*s) + 1;
   **s = meta;
   (*s) = (*s) + 1;
-  
-  if(args) {
+
+  if (args) {
     va_list ap;
     va_start(ap, args);
 
     while(args--) {
       arglen = va_arg(ap, int);
       arg = va_arg(ap, char *);
-     
-      memcpy(*s, arg, arglen); 
+
+      memcpy(*s, arg, arglen);
       (*s) = (*s) + arglen;
       **s = META_ARG_END;
       (*s) = (*s) + 1;
     }
-    
+
     va_end(ap);
   }
 }
@@ -180,10 +180,10 @@ void logformat(char *nickname, char *fmts)
    * might overrun the format buffer.  Fixing this problem involves a
    * rewrite of most of this module.  This will happen post 1.2.0.
    */
-  
+
   outs = format;
   for(tmp = fmts; *tmp; ) {
-    if(*tmp == '%') {
+    if (*tmp == '%') {
       arg = NULL;
       tmp++;
       for(;;) {
@@ -217,7 +217,7 @@ void logformat(char *nickname, char *fmts)
           break;
 
         case 'e':
-          if(arg) {
+          if (arg) {
             add_meta(&outs, META_ENV_VAR, 0);
             add_meta(&outs, META_ARG, 1, (int) strlen(arg), arg);
           }
@@ -247,7 +247,7 @@ void logformat(char *nickname, char *fmts)
           add_meta(&outs, META_METHOD, 0);
           break;
 
-        case 'p': 
+        case 'p':
           add_meta(&outs, META_LOCAL_PORT, 0);
           break;
 
@@ -293,8 +293,8 @@ void logformat(char *nickname, char *fmts)
           *outs++ = '%';
           break;
         }
-	tmp++;
-	break;
+        tmp++;
+        break;
       }
     } else {
       *outs++ = *tmp++;
@@ -307,7 +307,7 @@ void logformat(char *nickname, char *fmts)
   lf->lf_nickname = pstrdup(log_pool, nickname);
   lf->lf_format = palloc(log_pool, outs - format);
   memcpy(lf->lf_format, format, outs - format);
-  
+
   if (!format_set)
     format_set = xaset_create(log_pool, NULL);
 
@@ -331,29 +331,29 @@ static int _parse_classes(char *s)
 
   do {
 
-    if((nextp = strchr(s, ',')))
+    if ((nextp = strchr(s, ',')))
       *nextp++ = '\0';
 
-    if(!nextp) {
-      if((nextp = strchr(s, '|')))
+    if (!nextp) {
+      if ((nextp = strchr(s, '|')))
         *nextp++ = '\0';
     }
 
-    if(!strcasecmp(s,"NONE"))
+    if (!strcasecmp(s,"NONE"))
       { classes = CL_NONE; break; }
-    if(!strcasecmp(s,"ALL"))
+    if (!strcasecmp(s,"ALL"))
       { classes = CL_ALL; break; }
-    else if(!strcasecmp(s,"AUTH"))
+    else if (!strcasecmp(s,"AUTH"))
       classes |= CL_AUTH;
-    else if(!strcasecmp(s,"INFO"))
+    else if (!strcasecmp(s,"INFO"))
       classes |= CL_INFO;
-    else if(!strcasecmp(s,"DIRS"))
+    else if (!strcasecmp(s,"DIRS"))
       classes |= CL_DIRS;
-    else if(!strcasecmp(s,"READ"))
+    else if (!strcasecmp(s,"READ"))
       classes |= CL_READ;
-    else if(!strcasecmp(s,"WRITE"))
+    else if (!strcasecmp(s,"WRITE"))
       classes |= CL_WRITE;
-    else if(!strcasecmp(s,"MISC"))
+    else if (!strcasecmp(s,"MISC"))
       classes |= CL_MISC;
     else
       log_pri(PR_LOG_NOTICE, "ExtendedLog class '%s' is not defined.", s);
@@ -435,7 +435,7 @@ MODRET set_serverlog(cmd_rec *cmd) {
 MODRET set_systemlog(cmd_rec *cmd) {
   char *syslogfn = NULL;
   int ret;
-  
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
@@ -448,7 +448,7 @@ MODRET set_systemlog(cmd_rec *cmd) {
     return HANDLED(cmd);
   }
 
-  if (*syslogfn != '/') 
+  if (*syslogfn != '/')
     syslogfn = dir_canonical_path(cmd->tmp_pool,syslogfn);
 
   block_signals();
@@ -456,10 +456,10 @@ MODRET set_systemlog(cmd_rec *cmd) {
 
   if ((ret = log_opensyslog(syslogfn)) < 0) {
     int xerrno = errno;
-      
+
     PRIVS_RELINQUISH
     unblock_signals();
-    
+
     if (ret == LOG_WRITEABLE_DIR) {
       CONF_ERROR(cmd,
         "you are attempting to log to a world writeable directory");
@@ -473,7 +473,7 @@ MODRET set_systemlog(cmd_rec *cmd) {
         strerror(xerrno), NULL));
     }
   }
-  
+
   PRIVS_RELINQUISH
   unblock_signals();
 
@@ -515,12 +515,12 @@ struct tm *_get_gmtoff(int *tz)
 static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
   unsigned char *m;
   char arg[512] = {'\0'}, *argp = NULL, *pass;
-  
+
   /* This function can cause potential problems.  Custom logformats
    * might overrun the arg buffer.  Fixing this problem involves a
    * rewrite of most of this module.  This will happen post 1.2.0.
    */
-  
+
   m = (*f) + 1;
   switch(*m) {
   case META_ARG:
@@ -536,14 +536,14 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
     argp = arg;
 
     pass = get_param_ptr(cmd->server->conf, C_PASS, FALSE);
-    if(!pass)
+    if (!pass)
       pass = "UNKNOWN";
-    
+
     sstrncpy(argp, pass, sizeof(arg));
 
     m++;
     break;
-    
+
   case META_BYTES_SENT:
     argp = arg;
     if (session.xfer.p)
@@ -635,7 +635,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
   case META_XFER_PATH:
     argp = arg;
-    if(session.xfer.p && session.xfer.path) {
+    if (session.xfer.p && session.xfer.path) {
       sstrncpy(argp, session.xfer.path, sizeof(arg));
     } else {
       sstrncpy(argp, "-", sizeof(arg));
@@ -648,7 +648,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
     argp = arg;
     m++;
 
-    if(*m == META_START && *(m+1) == META_ARG) {
+    if (*m == META_START && *(m+1) == META_ARG) {
       char *env;
 
       env = getenv(get_next_meta(p,cmd,&m));
@@ -715,17 +715,17 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
       argp = arg; m++;
 
-      if(*m == META_START && *(m+1) == META_ARG) {
+      if (*m == META_START && *(m+1) == META_ARG) {
         time_fmt = get_next_meta(p,cmd,&m);
         internal_fmt = 0;
       }
       t = *_get_gmtoff(&timz);
       sign = (timz < 0 ? '-' : '+');
-      if(timz < 0)
+      if (timz < 0)
         timz = -timz;
 
       strftime(argp,80,time_fmt,&t);
-      if(internal_fmt)
+      if (internal_fmt)
         snprintf(argp + strlen(argp), sizeof(arg) - strlen(argp),
                 "%c%.2d%.2d]", sign, timz/60, timz%60);
 
@@ -734,12 +734,12 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
   case META_SECONDS:
     argp = arg;
-    if(session.xfer.p) {
+    if (session.xfer.p) {
       struct timeval end_time;
 
       gettimeofday(&end_time,NULL);
       end_time.tv_sec -= session.xfer.start_time.tv_sec;
-      if(end_time.tv_usec >= session.xfer.start_time.tv_usec)
+      if (end_time.tv_usec >= session.xfer.start_time.tv_usec)
         end_time.tv_usec -= session.xfer.start_time.tv_usec;
       else {
         end_time.tv_usec = 1000000L - (session.xfer.start_time.tv_usec -
@@ -748,7 +748,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       }
 
       snprintf(argp, sizeof(arg), "%ld.%03ld", (time_t) end_time.tv_sec,
-	       (time_t) (end_time.tv_usec / 1000));
+               (time_t) (end_time.tv_usec / 1000));
     } else {
       sstrncpy(argp,"-",sizeof(arg));
     }
@@ -759,7 +759,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
   case META_COMMAND:
     argp = arg;
 
-    if(!strcasecmp(cmd->argv[0], C_PASS) && session.hide_password)
+    if (!strcasecmp(cmd->argv[0], C_PASS) && session.hide_password)
       sstrncpy(argp, "PASS (hidden)", sizeof(arg));
     else
       sstrncpy(argp, get_full_cmd(cmd), sizeof(arg));
@@ -776,13 +776,13 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
   case META_USER:
     argp = arg;
 
-    if(!session.user) {
+    if (!session.user) {
       char *u;
 
       u = get_param_ptr(cmd->server->conf,"UserName",FALSE);
-      if(!u)
+      if (!u)
         u = "root";
-    
+
       sstrncpy(argp, u, sizeof(arg));
     } else {
       sstrncpy(argp, session.user, sizeof(arg));
@@ -799,7 +799,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       if (login_user)
         sstrncpy(argp, login_user, sizeof(arg));
       else
-        sstrncpy(argp, "(none)", sizeof(arg));   
+        sstrncpy(argp, "(none)", sizeof(arg));
 
       m++;
       break;
@@ -813,7 +813,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       r = (resp_list ? resp_list : resp_err_list);
 
       for(; r && !r->num; r=r->next) ;
-      if(r && r->num)
+      if (r && r->num)
         sstrncpy(argp,r->num,sizeof(arg));
 
       /* Hack to add return code for proper logging of QUIT command. */
@@ -829,7 +829,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
   }
 
   *f = m;
-  if(argp)
+  if (argp)
     return pstrdup(p, argp);
   else
     return NULL;
@@ -912,7 +912,7 @@ static void log_rehash_cb(void *d) {
   log_pool = make_sub_pool(permanent_pool);
   logformat("", "%h %l %u %t \"%r\" %s %b");
 }
-  
+
 static int log_init(void) {
   log_pool = make_sub_pool(permanent_pool);
 
@@ -941,12 +941,12 @@ static void get_extendedlogs(void) {
       if (c->argc > 2)
         logfmt_s = c->argv[2];
     }
-    
+
     /* No logging for this round.
      */
     if (logclasses == CL_NONE)
       goto loop_extendedlogs;
-    
+
     if (logfmt_s) {
       /* search for the format-nickname */
       for (logfmt = formats; logfmt; logfmt = logfmt->next)
@@ -962,7 +962,7 @@ static void get_extendedlogs(void) {
     } else {
       logfmt = formats;
     }
-    
+
     logf = (logfile_t *) pcalloc(permanent_pool, sizeof(logfile_t));
 
     logf->lf_filename = pstrdup(permanent_pool, logfname);
@@ -971,7 +971,7 @@ static void get_extendedlogs(void) {
     logf->lf_classes = logclasses;
     logf->lf_format = logfmt;
     logf->lf_conf = c->parent;
-    if(!log_set)
+    if (!log_set)
       log_set = xaset_create(permanent_pool, NULL);
 
     xaset_insert(log_set, (xasetmember_t *) logf);
@@ -1026,7 +1026,7 @@ MODRET log_post_pass(cmd_rec *cmd) {
             lfi->lf_fd = -1;
           }
         }
-       
+
         /* Go ahead and close the log if it's CL_NONE */
         if (lf->lf_fd != -1 && lf->lf_fd != EXTENDED_LOG_SYSLOG &&
             lf->lf_classes == CL_NONE) {

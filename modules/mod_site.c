@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 2001, 2002 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.28 2002-12-06 21:05:03 castaglia Exp $
+ * $Id: mod_site.c,v 1.29 2002-12-07 21:43:44 jwm Exp $
  */
 
 #include "conf.h"
@@ -105,9 +105,9 @@ MODRET site_chgrp(cmd_rec *cmd) {
    * number, pass through as is.
    */
   gid = strtoul(cmd->argv[1], &tmp, 10);
- 
+
   if (tmp && *tmp) {
-   
+
     /* Try the parameter as a user name. */
     if ((gid = auth_name_gid(cmd->tmp_pool, cmd->argv[1])) == -1) {
       add_response_err(R_550, "%s: %s", cmd->argv[2], strerror(EINVAL));
@@ -132,7 +132,7 @@ MODRET site_chmod(cmd_rec *cmd) {
   regex_t *preg;
 #endif
 
-  if(cmd->argc != 3) {
+  if (cmd->argc != 3) {
     add_response_err(R_500,"'SITE %s' not understood.",_get_full_cmd(cmd));
     return NULL;
   }
@@ -140,7 +140,7 @@ MODRET site_chmod(cmd_rec *cmd) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathAllowFilter",FALSE);
 
-  if(preg && regexec(preg,cmd->argv[2],0,NULL,0) != 0) {
+  if (preg && regexec(preg,cmd->argv[2],0,NULL,0) != 0) {
     log_debug(DEBUG2, "'%s %s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->argv[1], cmd->argv[2]);
     add_response_err(R_550,"%s: Forbidden filename",cmd->argv[2]);
@@ -149,7 +149,7 @@ MODRET site_chmod(cmd_rec *cmd) {
 
   preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathDenyFilter",FALSE);
 
-  if(preg && regexec(preg,cmd->argv[2],0,NULL,0) == 0) {
+  if (preg && regexec(preg,cmd->argv[2],0,NULL,0) == 0) {
     log_debug(DEBUG2, "'%s %s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->argv[1], cmd->argv[2]);
     add_response_err(R_550,"%s: Forbidden filename",cmd->argv[2]);
@@ -159,7 +159,7 @@ MODRET site_chmod(cmd_rec *cmd) {
 
   dir = dir_realpath(cmd->tmp_pool,cmd->argv[2]);
 
-  if(!dir) {
+  if (!dir) {
     add_response_err(R_550,"%s: %s",cmd->argv[2],strerror(errno));
     return ERROR(cmd);
   }
@@ -169,31 +169,31 @@ MODRET site_chmod(cmd_rec *cmd) {
    * case where an octal number is sent without the leading '0'.
    */
 
-  if(cmd->argv[1][0] != '0')
+  if (cmd->argv[1][0] != '0')
     tmp = pstrcat(cmd->tmp_pool,"0",cmd->argv[1],NULL);
   else
     tmp = cmd->argv[1];
 
   mode = strtol(tmp,&endp,0);
-  if(endp && *endp) {
+  if (endp && *endp) {
     /* It's not an absolute number, try symbolic */
     char *cp = cmd->argv[1];
     int mask = 0,mode_op = 0,curmode = 0,curumask = umask(0);
-    int invalid = 0; 
+    int invalid = 0;
     char *who,*how,*what,*tmp;
     struct stat sbuf;
 
     umask(curumask);
-    mode = 0; 
+    mode = 0;
 
     if (pr_fsio_stat(dir, &sbuf) != -1)
       curmode = sbuf.st_mode;
 
     while (TRUE) {
       who = pstrdup(cmd->tmp_pool,cp);
-      if((tmp = strpbrk(who,"+-=")) != NULL) {
+      if ((tmp = strpbrk(who,"+-=")) != NULL) {
         how = pstrdup(cmd->tmp_pool,tmp);
-        if(*how != '=')
+        if (*how != '=')
           mode = curmode;
 
         *tmp = '\0';
@@ -202,7 +202,7 @@ MODRET site_chmod(cmd_rec *cmd) {
         break;
       }
 
-      if((tmp = strpbrk(how,"rwxXstugo")) != NULL) {
+      if ((tmp = strpbrk(how,"rwxXstugo")) != NULL) {
         what = pstrdup(cmd->tmp_pool,tmp);
         *tmp = '\0';
       } else {
@@ -233,7 +233,7 @@ MODRET site_chmod(cmd_rec *cmd) {
           break;
         }
 
-        if(invalid) break;
+        if (invalid) break;
 
         switch(*how) {
         case '+':
@@ -244,7 +244,7 @@ MODRET site_chmod(cmd_rec *cmd) {
           invalid++;
         }
 
-        if(invalid) break;
+        if (invalid) break;
 
         switch(*cp) {
         case 'r':
@@ -258,7 +258,7 @@ MODRET site_chmod(cmd_rec *cmd) {
           break;
         /* 'X' not implemented */
         case 's':
-	  /* setuid */
+          /* setuid */
           mode_op |= S_ISUID;
           break;
         case 't':
@@ -293,7 +293,7 @@ MODRET site_chmod(cmd_rec *cmd) {
           }
 
           mode_op = 0;
-          if(*who && *(who+1)) {
+          if (*who && *(who+1)) {
             who++;
             cp = what;
             continue;
@@ -304,19 +304,19 @@ MODRET site_chmod(cmd_rec *cmd) {
           invalid++;
         }
 
-        if(invalid) break;
-        if(cp) cp++;
+        if (invalid) break;
+        if (cp) cp++;
       }
       break;
     }
 
-    if(invalid) {
+    if (invalid) {
       add_response_err(R_550,"'%s': invalid mode.",cmd->argv[1]);
       return ERROR(cmd);
     }
   }
 
-  if(core_chmod(cmd,dir,mode) == -1) {
+  if (core_chmod(cmd,dir,mode) == -1) {
     add_response_err(R_550,"%s: %s",cmd->argv[2],strerror(errno));
     return ERROR(cmd);
   } else
