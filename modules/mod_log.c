@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.32 2002-11-15 15:46:39 castaglia Exp $
+ * $Id: mod_log.c,v 1.33 2002-11-21 16:20:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -350,7 +350,6 @@ MODRET add_extendedlog(cmd_rec *cmd) {
 	       "[<Command-Classes> [<Format-Nickname>]]");
 
   c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
-  c->flags |= CF_MERGEDOWN;
 
   if (cmd->argv[1][0] != '/')
     c->argv[0] = dir_canonical_path(log_pool, cmd->argv[1]);

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.283 2002-11-19 17:57:48 castaglia Exp $
+$Id: NEWS,v 1.284 2002-11-21 16:20:18 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -10,6 +10,8 @@ CVS
   aliased anonymous functionality.  The fix was to set the CF_MERGEDOWN flag
   only if the UserAlias directive is not being used in the <Anonymous>
   context.
+- Bug 1812 - Double logging lines for ExtendedLog.  No need to merge this
+  particular directive down.
 
 1.2.7rc3 - Released 15-11-2002
 ---------------------------------
