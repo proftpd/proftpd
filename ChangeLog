@@ -1,3 +1,18 @@
+2002-03-06 11:56  flood
+
+	* NEWS, doc/Configuration.html, modules/mod_core.c, src/main.c:
+	#1445: PID file contents change when attempting to start	the
+	daemon a second time #1539: losing SGID bit on created directories
+	w/ {User,Group}Owner	    in effect #1537: doc update
+
+2002-02-28 21:49  flood
+
+	* src/log.c: possible sigsegv introduced by patch for bug 1520
+
+2002-02-28 14:43  flood
+
+	* NEWS, src/dirtree.c: #1468 - segfault with empty .ftpaccess
+
 2002-02-28 14:30  flood
 
 	* NEWS, doc/Configuration.html, include/privs.h, lib/getopt.c,
