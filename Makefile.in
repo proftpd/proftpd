@@ -156,6 +156,7 @@ distclean: clean depend symlinks
 	rm -f lib/Makefile modules/Makefile src/Makefile
 	rm -f include/buildstamp.h
 	rm -rf `find . -name "CVS"`
+	rm -rf `find . -name ".cvsignore"`
 	rm -rf `find . -name "*~"`
 	rm -rf `find . -name "*.bak"`
 
