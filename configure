@@ -11966,11 +11966,13 @@ cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 
+    #if HAVE_SYS_TYPES_H
+    # include <sys/types.h>
+    #endif
     #if HAVE_NETDB_H
     # include <netdb.h>
     #endif
     #include <sys/socket.h>
-    #include <sys/types.h>
 
 
 int
