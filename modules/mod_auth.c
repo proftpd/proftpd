@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.12 1999-10-01 07:57:31 macgyver Exp $
+ * $Id: mod_auth.c,v 1.13 1999-10-06 03:48:44 macgyver Exp $
  */
 
 #include "conf.h"
@@ -186,14 +186,20 @@ static void build_group_arrays(pool *p, struct passwd *xpw, char *name,
   xgids = make_array(p,2,sizeof(int));
   xgroups = make_array(p,2,sizeof(char*));
 
-  if(!pw && !name)
+  if(!pw && !name) {
+    *gids = xgids;
+    *groups = xgroups;
     return;
+  }
 
   if(!pw) {
     pw = auth_getpwnam(p,name);
 
-    if(!pw)
+    if(!pw) {
+      *gids = xgids;
+      *groups = xgroups;
       return;
+    }
   }
 
   if((gr = auth_getgrgid(p,pw->pw_gid)) != NULL)
