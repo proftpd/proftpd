@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.479 2003-09-18 19:08:15 castaglia Exp $
+$Id: NEWS,v 1.480 2003-09-19 20:21:31 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -6,6 +6,8 @@ CVS
 - Bug 2176 - getnameinfo() error on Cygwin during startup.
   The sa_family member of the address was not being properly initialized
   in some instances.
+- Bug 2179 - ROOT_UID instead of ROOT_GID used in setegid() call.
+  This affects Cygwin installations.
 
 1.2.9rc2 - Released 11-Sep-2003
 ---------------------------------

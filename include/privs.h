@@ -24,7 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* $Id: privs.h,v 1.20 2003-04-25 04:13:39 castaglia Exp $
+/* $Id: privs.h,v 1.21 2003-09-19 20:21:31 castaglia Exp $
  */
 
 #ifndef PR_PRIVS_H
@@ -222,7 +222,7 @@
     if (seteuid(PR_ROOT_UID)) \
       log_pri(PR_LOG_ERR, "PRIVS_ROOT: unable to seteuid(): %s", \
         strerror(errno)); \
-    if (setegid(PR_ROOT_UID)) \
+    if (setegid(PR_ROOT_GID)) \
       log_pri(PR_LOG_ERR, "PRIVS_ROOT: unable to setegid(): %s", \
         strerror(errno)); \
   } else \
