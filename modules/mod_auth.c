@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.144 2003-03-29 23:52:54 castaglia Exp $
+ * $Id: mod_auth.c,v 1.145 2003-04-15 06:22:24 castaglia Exp $
  */
 
 #ifdef __CYGWIN__
@@ -237,7 +237,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
   config_rec *c = NULL;
   unsigned int ctxt_precedence = 0;
   unsigned char have_user_timeout, have_group_timeout, have_class_timeout,
-    have_all_timeout;
+    have_all_timeout, *privsdrop = NULL;
 
   /* Count up various quantities in the scoreboard, checking them against
    * the Max* limits to see if the session should be barred from going
@@ -330,6 +330,26 @@ MODRET auth_post_pass(cmd_rec *cmd) {
       have_class_timeout ? "class" : "all");
     add_timer(TimeoutSession, TIMER_SESSION, &auth_module,
       auth_session_timeout_cb);
+  }
+
+  if ((privsdrop = get_param_ptr(TOPLEVEL_CONF, "RootRevoke",
+      FALSE)) != NULL && *privsdrop == TRUE) {
+    pr_signals_block();
+    PRIVS_REVOKE
+    pr_signals_unblock();
+
+    /* Disable future attempts at UID/GID manipulation. */
+    session.disable_id_switching = TRUE;
+
+    /* If the server's listening port is less than 1025, block PORT
+     * commands (effectively allowing only passive connections, which is
+     * not necessarily a Bad Thing).  Only log this here -- the blocking
+     * will need to occur in mod_core's cmd_port() function.
+     */
+    if (session.c->local_port < 1025)
+      log_debug(DEBUG0, "RootRevoke in effect, disabling active transfers");
+
+    log_debug(DEBUG0, "RootRevoke in effect, dropped root privs");
   }
 
   return HANDLED(cmd);
@@ -2482,6 +2502,24 @@ MODRET set_rootlogin(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+MODRET set_rootrevoke(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = (unsigned char) bool;
+
+  c->flags |= CF_MERGEDOWN;
+  return HANDLED(cmd);
+}
+
 MODRET set_timeoutlogin(cmd_rec *cmd) {
   int timeout = -1;
   char *endp = NULL;
@@ -2698,6 +2736,7 @@ static conftable auth_conftab[] = {
   { "MaxLoginAttempts",		set_maxloginattempts,		NULL },
   { "RequireValidShell",	set_requirevalidshell,		NULL },
   { "RootLogin",		set_rootlogin,			NULL },
+  { "RootRevoke",		set_rootrevoke,			NULL },
   { "TimeoutLogin",		set_timeoutlogin,		NULL },
   { "TimeoutSession",		set_timeoutsession,		NULL },
   { "UseFtpUsers",		set_useftpusers,		NULL },

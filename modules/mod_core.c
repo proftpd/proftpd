@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.169 2003-04-09 02:53:06 castaglia Exp $
+ * $Id: mod_core.c,v 1.170 2003-04-15 06:22:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2916,9 +2916,21 @@ MODRET core_port(cmd_rec *cmd) {
 
   char *a,*endp,*arg;
   int i,cnt = 0;
-  unsigned char *allow_foreign_addr = NULL;
+  unsigned char *allow_foreign_addr = NULL, *privsdrop = NULL;
 
   CHECK_CMD_ARGS(cmd, 2);
+
+  /* Block active transfers (the PORT command) if RootRevoke is in effect
+   * and the server's port is below 1025 (binding to the data port in this
+   * case would require root privs, which will have been dropped.
+   */
+  if ((privsdrop = get_param_ptr(TOPLEVEL_CONF, "RootRevoke",
+      FALSE)) != NULL && *privsdrop == TRUE && session.c->local_port < 1025) {
+    log_debug(DEBUG0, "RootRevoke in effect, unable to bind to local "
+      "port %d for active transfer", session.c->local_port);
+    pr_response_add_err(R_500, "Unable to service PORT commands");
+    return ERROR(cmd);
+  }
 
   /* Format is h1,h2,h3,h4,p1,p2 (ASCII in network order) */
   a = pstrdup(cmd->tmp_pool,cmd->argv[1]);
