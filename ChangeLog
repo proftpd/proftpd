@@ -1,3 +1,15 @@
+2001-01-31 15:51  flood
+
+	* include/dirtree.h, modules/mod_core.c, modules/mod_ls.c,
+	modules/mod_xfer.c, src/dirtree.c: Bug #410 - IgnoreHidden fix and
+	cleanup/changes of hiding code.
+
+2001-01-31 13:43  flood
+
+	* modules/: mod_auth.c, mod_core.c, mod_unixpw.c: Bug #422 - fixed
+	handling of get_boolean() in config handles #410 - HideNoAccess now
+	takes boolean argument
+
 2001-01-28 21:16  flood
 
 	* contrib/mod_ldap.c: New mod_ldap.c from jwm@horde.net
