@@ -1019,7 +1019,7 @@ conn_t *inet_accept(pool *p, conn_t *d, conn_t *c, int rfd, int wfd,
   for (;;) {
     if ((newfd = accept(d->listen_fd, (struct sockaddr *) &addr,
         &addrlen)) != -1) {
-      if ((allow_foreign_addr && *allow_foreign_addr == FALSE) &&
+      if ((!allow_foreign_addr || *allow_foreign_addr == FALSE) &&
 	 (getpeername(newfd, (struct sockaddr *) &addr, &addrlen) != -1)) {
 	if (addr.sin_addr.s_addr != c->remote_ipaddr->s_addr) {
 	  log_pri(PR_LOG_NOTICE, "SECURITY VIOLATION: Passive connection from "

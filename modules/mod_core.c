@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.173 2003-04-23 06:53:23 castaglia Exp $
+ * $Id: mod_core.c,v 1.174 2003-04-29 17:13:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2984,7 +2984,7 @@ MODRET core_port(cmd_rec *cmd) {
   allow_foreign_addr = get_param_ptr(TOPLEVEL_CONF, "AllowForeignAddress",
     FALSE);
 
-  if (allow_foreign_addr && *allow_foreign_addr == FALSE) {
+  if (!allow_foreign_addr || *allow_foreign_addr == FALSE) {
     if (addr.addr.s_addr != session.c->remote_ipaddr->s_addr || !port.port) {
       log_pri(PR_LOG_WARNING, "Refused PORT %s (address mismatch)", cmd->arg);
       pr_response_add_err(R_500, "Illegal PORT command");
