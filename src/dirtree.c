@@ -20,7 +20,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.19 2000-07-26 08:16:33 macgyver Exp $
+ * $Id: dirtree.c,v 1.20 2000-08-18 15:54:15 macgyver Exp $
  */
 
 /* History:
@@ -1486,6 +1486,20 @@ static config_rec *_find_best_dir(xaset_t *set,char *path,int *matchlen)
       while(len > 0 && (*(c->name+len-1) == '*' ||
                         *(c->name+len-1) == '/'))
         len--;
+
+      /*
+       * Just a partial match on the pathname does not mean that the longer
+       * path is the subdirectory of the other -- they might just be sharing
+       * the last path component! 
+       * /var/www/.1
+       * /var/www/.14
+       *            ^ -- not /, not subdir
+       * /var/www/.1
+       * /var/www/.1/images
+       *            ^ -- /, is subdir
+       */
+      if (strlen(path) > len && path[len] != '/')
+          continue;
 
       if(!strncmp(c->name,path,len) &&
          len < strlen(path)) {
