@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.161 2003-03-09 03:16:02 castaglia Exp $
+ * $Id: mod_core.c,v 1.162 2003-03-09 04:19:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -117,6 +117,8 @@ extern array_header *server_defines;
 #define PR_BYTES_BAD_UNITS	-1
 #define PR_BYTES_BAD_FORMAT	-2
 
+module core_module;
+
 static ssize_t get_num_bytes(char *nbytes_str) {
   ssize_t nbytes = 0;
   unsigned long inb;
@@ -171,6 +173,97 @@ static ssize_t get_num_bytes(char *nbytes_str) {
   /* Default return value: the given argument was badly formatted.
    */
   return PR_BYTES_BAD_FORMAT;
+}
+
+static int core_scrub_scoreboard_cb(CALLBACK_FRAME) {
+  int fd = -1;
+  off_t curr_offset = 0;
+  struct flock lock;
+  pr_scoreboard_entry_t entry;
+
+  /* Always return 1 when leaving this function, to make sure the timer
+   * gets called again.
+   */
+  log_debug(DEBUG9, "scrubbing scoreboard");
+
+  /* Manually open the scoreboard.  It won't hurt if the process already
+   * has a descriptor opened on the scoreboard file.
+   */
+  PRIVS_ROOT
+  if ((fd = open(pr_get_scoreboard(), O_RDWR)) < 0) {
+    PRIVS_RELINQUISH
+    log_debug(DEBUG1, "unable to scrub ScoreboardFile: %s", strerror(errno));
+    return 1;
+  }
+  PRIVS_RELINQUISH
+
+  /* Lock the entire scoreboard. */
+  lock.l_type = F_WRLCK;
+  lock.l_whence = 0;
+  lock.l_start = 0;
+  lock.l_len = 0;
+
+  while (fcntl(fd, F_SETLKW, &lock) < 0) {
+    if (errno == EINTR) {
+      pr_signals_handle();
+      continue;
+ 
+    } else
+      return 1;
+  }
+
+  /* Skip past the scoreboard header. */
+  curr_offset = lseek(fd, sizeof(pr_scoreboard_header_t), SEEK_SET);
+
+  memset(&entry, 0, sizeof(entry));
+
+  PRIVS_ROOT
+  while (read(fd, &entry, sizeof(entry)) == sizeof(entry)) {
+
+    /* Check to see if the PID in this entry is valid.  If not, erase
+     * the slot.
+     */
+    if (kill(entry.sce_pid, 0) < 0 && errno == ESRCH) {
+
+      /* OK, the recorded PID is no longer valid. */
+      log_debug(DEBUG9, "scrubbing scoreboard slot for PID %u",
+        (unsigned int) entry.sce_pid);
+   
+      /* Rewind to the start of this slot. */ 
+      lseek(fd, curr_offset, SEEK_SET); 
+
+      memset(&entry, 0, sizeof(entry));
+      while (write(fd, &entry, sizeof(entry)) != sizeof(entry)) {
+        if (errno == EINTR) {
+          pr_signals_handle();
+          continue;
+        } else
+          log_debug(DEBUG0, "error scrubbing scoreboard: %s", strerror(errno));
+      }
+    }
+
+    /* Mark the current offset. */
+    curr_offset = lseek(fd, 0, SEEK_CUR);
+  }
+  PRIVS_RELINQUISH
+ 
+  /* Release the scoreboard. */
+  lock.l_type = F_UNLCK;
+  lock.l_whence = SEEK_SET;
+  lock.l_start = 0;
+  lock.l_len = 0;
+
+  while (fcntl(fd, F_SETLK, &lock) < 0) {
+    if (errno == EINTR) {
+      pr_signals_handle();
+      continue;
+    }
+  }
+
+  /* Don't need the descriptor anymore. */
+  close(fd);
+
+  return 1;
 }
 
 MODRET start_ifdefine(cmd_rec *cmd) {
@@ -3774,6 +3867,15 @@ MODRET set_class(cmd_rec *cmd) {
 /* Initialization/finalization routines
  */
 
+static int core_startup_cb(void) {
+
+  /* Add a scoreboard-scrubbing timer. */
+  add_timer(PR_TUNABLE_SCOREBOARD_SCRUB_TIMER, -1, &core_module,
+    core_scrub_scoreboard_cb);
+
+  return 0;
+}
+
 static int core_init(void) {
 
   /* Add the additional features implemented by this module into the
@@ -3782,6 +3884,9 @@ static int core_init(void) {
   pr_feat_add("MDTM");
   pr_feat_add("REST STREAM");
   pr_feat_add("SIZE");
+
+  /* Register a startup handler. */
+  pr_register_daemon_startup(core_startup_cb);
 
   return 0;
 }

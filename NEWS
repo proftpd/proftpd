@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.394 2003-03-09 02:25:26 castaglia Exp $
+$Id: NEWS,v 1.395 2003-03-09 04:19:23 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -35,6 +35,9 @@ CVS
 - ProFTPD now checks for IP address/port collisions in the configuration
   file, and will refuse to start unless all configured server contexts
   have unique IP address/port combinations.
+- Bug 1969 - Add scoreboard-scrubbing timer.  The scoreboard will be scanned
+  now every 30 seconds for entries with invalid PIDs; this timer can be
+  adjusted using the PR_TUNABLE_SCOREBOARD_SCRUB_TIMER #define.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------

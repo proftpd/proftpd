@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.14 2003-01-02 17:28:17 castaglia Exp $
+ * $Id: options.h,v 1.15 2003-03-09 04:19:23 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -132,6 +132,14 @@
 
 #ifndef PR_TUNABLE_SCOREBOARD_BUFFER_SIZE
 # define PR_TUNABLE_SCOREBOARD_BUFFER_SIZE	80
+#endif
+
+/* Number of seconds between scoreboard scrubs, where the scoreboard is
+ * scanned for slots containing invalid PIDs.  Defaults to 30 seconds.
+ */
+
+#ifndef PR_TUNABLE_SCOREBOARD_SCRUB_TIMER
+# define PR_TUNABLE_SCOREBOARD_SCRUB_TIMER	30
 #endif
 
 /* Max number of recursion/directory levels to support when globbing.
