@@ -20,7 +20,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.31 2001-04-11 18:57:43 flood Exp $
+ * $Id: dirtree.c,v 1.32 2001-04-11 19:00:03 flood Exp $
  */
 
 /* History:
@@ -2332,6 +2332,7 @@ int parse_config_file(const char *fname)
 
 void fixup_servers()
 {
+  config_rec *c;
   server_rec *s;
 
   fixup_globals();
@@ -2361,6 +2362,13 @@ void fixup_servers()
       s->tcp_swin = TUNABLE_DEFAULT_SWIN;
 
     s->ipaddr = inet_getaddr(s->pool,s->ServerAddress);
+
+    if ((c = find_config(s->conf, CONF_PARAM, "MasqueradeAddress",
+        FALSE)) != NULL) {
+      log_pri(LOG_INFO, "%s:%d masquerading as %s",
+        inet_ascii(s->pool, s->ipaddr), s->ServerPort,
+        inet_ascii(s->pool, (p_in_addr_t *) c->argv[0]));
+    }
 
     if(!s->ipaddr) {
       log_pri(LOG_ERR,"Fatal: unable to determine IP address of `%s'.",
