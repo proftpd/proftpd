@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.6 2003-08-15 01:33:22 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.7 2003-11-09 03:41:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,10 +44,6 @@
 #define	IFSESS_GROUP_TEXT	"<IfGroup>"
 #define IFSESS_USER_NUMBER	102
 #define	IFSESS_USER_TEXT	"<IfUser>"
-
-#define IFSESS_EVAL_AND		201
-#define IFSESS_EVAL_OR		202
-#define	IFSESS_EVAL_REGEX	203
 
 /* Support routines
  */
@@ -173,17 +169,17 @@ MODRET start_ifctxt(cmd_rec *cmd) {
   if (strcmp(cmd->argv[0], IFSESS_CLASS_TEXT) == 0) {
     name = "IfClassList";
     config_type = IFSESS_CLASS_NUMBER;
-    eval_type = IFSESS_EVAL_OR;
+    eval_type = PR_EXPR_EVAL_OR;
 
   } else if (strcmp(cmd->argv[0], IFSESS_GROUP_TEXT) == 0) {
     name = "IfGroupList";
     config_type = IFSESS_GROUP_NUMBER;
-    eval_type = IFSESS_EVAL_AND;
+    eval_type = PR_EXPR_EVAL_AND;
 
   } else if (strcmp(cmd->argv[0], IFSESS_USER_TEXT) == 0) {
     name = "IfUserList";
     config_type = IFSESS_USER_NUMBER;
-    eval_type = IFSESS_EVAL_OR;
+    eval_type = PR_EXPR_EVAL_OR;
   }
 
   /* Is this a normal expression, an explicit AND, an explicit OR, or a
@@ -191,12 +187,12 @@ MODRET start_ifctxt(cmd_rec *cmd) {
    */
   if (cmd->argc-1 > 1) {
     if (strcmp(cmd->argv[1], "AND") == 0) {
-      eval_type = IFSESS_EVAL_AND;
+      eval_type = PR_EXPR_EVAL_AND;
       argc = cmd->argc-2;
       argv = cmd->argv+1;
 
     } else if (strcmp(cmd->argv[1], "OR") == 0) {
-      eval_type = IFSESS_EVAL_OR;
+      eval_type = PR_EXPR_EVAL_OR;
       argc = cmd->argc-2;
       argv = cmd->argv+1;
 
@@ -223,7 +219,7 @@ MODRET start_ifctxt(cmd_rec *cmd) {
       c = add_config_param(name, 2, NULL, NULL);
       c->config_type = config_type;
       c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-      *((unsigned char *) c->argv[0]) = IFSESS_EVAL_REGEX;
+      *((unsigned char *) c->argv[0]) = PR_EXPR_EVAL_REGEX;
       c->argv[1] = (void *) preg;
 
       return HANDLED(cmd);
@@ -307,7 +303,7 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
       unsigned char mergein = FALSE;
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-      if (*((unsigned char *) list->argv[0]) == IFSESS_EVAL_REGEX) {
+      if (*((unsigned char *) list->argv[0]) == PR_EXPR_EVAL_REGEX) {
         regex_t *preg = (regex_t *) list->argv[1];
 
         if (session.group && regexec(preg, session.group, 0, NULL, 0) == 0)
@@ -324,11 +320,11 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
       } else
 #endif /* HAVE_REGEX_H && HAVE_REGCOMP */
     
-      if (*((unsigned char *) list->argv[0]) == IFSESS_EVAL_OR &&
+      if (*((unsigned char *) list->argv[0]) == PR_EXPR_EVAL_OR &&
           pr_group_or_expression((char **) &list->argv[1]))
         mergein = TRUE;
 
-      else if (*((unsigned char *) list->argv[0]) == IFSESS_EVAL_AND &&
+      else if (*((unsigned char *) list->argv[0]) == PR_EXPR_EVAL_AND &&
           pr_group_and_expression((char **) &list->argv[1]))
         mergein = TRUE;
  
@@ -381,7 +377,7 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
       unsigned char mergein = FALSE;
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-      if (*((unsigned char *) list->argv[0]) == IFSESS_EVAL_REGEX) {
+      if (*((unsigned char *) list->argv[0]) == PR_EXPR_EVAL_REGEX) {
         regex_t *preg = (regex_t *) list->argv[1];
 
         if (regexec(preg, session.user, 0, NULL, 0) == 0)
@@ -390,11 +386,11 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
       } else
 #endif /* HAVE_REGEX_H && HAVE_REGCOMP */
 
-      if (*((unsigned char *) list->argv[0]) == IFSESS_EVAL_OR &&
+      if (*((unsigned char *) list->argv[0]) == PR_EXPR_EVAL_OR &&
           pr_user_or_expression((char **) &list->argv[1]))
         mergein = TRUE;
 
-      else if (*((unsigned char *) list->argv[0]) == IFSESS_EVAL_AND &&
+      else if (*((unsigned char *) list->argv[0]) == PR_EXPR_EVAL_AND &&
           pr_user_and_expression((char **) &list->argv[1]))
         mergein = TRUE;
 
@@ -449,7 +445,7 @@ static int ifsess_sess_init(void) {
       unsigned char mergein = FALSE;
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-      if (*((unsigned char *) list->argv[0]) == IFSESS_EVAL_REGEX) {
+      if (*((unsigned char *) list->argv[0]) == PR_EXPR_EVAL_REGEX) {
         regex_t *preg = (regex_t *) list->argv[1];
 
         if (session.class && regexec(preg, session.class->name, 0, NULL,
@@ -459,11 +455,11 @@ static int ifsess_sess_init(void) {
       } else
 #endif /* HAVE_REGEX_H && HAVE_REGCOMP */
 
-      if (*((unsigned char *) list->argv[0]) == IFSESS_EVAL_OR &&
+      if (*((unsigned char *) list->argv[0]) == PR_EXPR_EVAL_OR &&
           pr_class_or_expression((char **) &list->argv[1]))
         mergein = TRUE;
 
-      else if (*((unsigned char *) list->argv[0]) == IFSESS_EVAL_AND &&
+      else if (*((unsigned char *) list->argv[0]) == PR_EXPR_EVAL_AND &&
           pr_class_and_expression((char **) &list->argv[1]))
         mergein = TRUE;
 
