@@ -87,6 +87,11 @@ HREF="#ALLOWLOGSYMLINKS"
 >&nbsp;--&nbsp;Permit logging to symlinked files</DT
 ><DT
 ><A
+HREF="#ALLOWOVERRIDE"
+>&#13;AllowOverride</A
+>&nbsp;--&nbsp;FIXFIXFIX</DT
+><DT
+><A
 HREF="#ALLOWOVERWRITE"
 >&#13;AllowOverwrite</A
 >&nbsp;--&nbsp;Enable files to be overwritten</DT
@@ -197,14 +202,14 @@ HREF="#CWDRATIOMSG"
 >&nbsp;--&nbsp;Ratio directive</DT
 ><DT
 ><A
+HREF="#DEFAULTADDRESS"
+>&#13;DefaultAddress</A
+>&nbsp;--&nbsp;FIXFIXFIX</DT
+><DT
+><A
 HREF="#DEFAULTCHDIR"
 >&#13;DefaultChdir</A
 >&nbsp;--&nbsp;Set starting directory for FTP sessions</DT
-><DT
-><A
-HREF="#DEFAULTQUOTA"
->&#13;DefaultQuota</A
->&nbsp;--&nbsp;Sets the default quota</DT
 ><DT
 ><A
 HREF="#DEFAULTROOT"
@@ -289,22 +294,22 @@ HREF="#DISPLAYCONNECT"
 ><A
 HREF="#DISPLAYFIRSTCHDIR"
 >&#13;DisplayFirstChdir</A
->&nbsp;--&nbsp;FIXME FIXME</DT
+>&nbsp;--&nbsp;Set the file to display when first entering a directory</DT
 ><DT
 ><A
 HREF="#DISPLAYGOAWAY"
 >&#13;DisplayGoAway</A
->&nbsp;--&nbsp;FIXME FIXME</DT
+>&nbsp;--&nbsp;Set the file to display to a rejected connection</DT
 ><DT
 ><A
 HREF="#DISPLAYLOGIN"
 >&#13;DisplayLogin</A
->&nbsp;--&nbsp;FIXME FIXME</DT
+>&nbsp;--&nbsp;Set the file to display on login</DT
 ><DT
 ><A
 HREF="#DISPLAYQUIT"
 >&#13;DisplayQuit</A
->&nbsp;--&nbsp;FIXME FIXME</DT
+>&nbsp;--&nbsp;Set the file to display on quit</DT
 ><DT
 ><A
 HREF="#DISPLAYREADME"
@@ -329,7 +334,7 @@ HREF="#FOOBARDIRECTIVE"
 ><A
 HREF="#GLOBAL"
 >&#13;Global</A
->&nbsp;--&nbsp;FIXME FIXME</DT
+>&nbsp;--&nbsp;Set some directives to apply across the entire daemon</DT
 ><DT
 ><A
 HREF="#GROUP"
@@ -355,6 +360,16 @@ HREF="#GROUPRATIO"
 HREF="#HIDDENSTOR"
 >&#13;HiddenStor</A
 >&nbsp;--&nbsp;Enables more safe file uploads</DT
+><DT
+><A
+HREF="#HIDDENSTORES"
+>&#13;HiddenStores</A
+>&nbsp;--&nbsp;FIXFIXFIX</DT
+><DT
+><A
+HREF="#HIDEFILES"
+>&#13;HideFiles</A
+>&nbsp;--&nbsp;FIXFIXFIX</DT
 ><DT
 ><A
 HREF="#HIDEGROUP"
@@ -518,7 +533,7 @@ HREF="#LEECHRATIOMSG"
 ><A
 HREF="#LIMIT"
 >&#13;Limit</A
->&nbsp;--&nbsp;FIXME FIXME</DT
+>&nbsp;--&nbsp;Set the commands/actions to be controlled</DT
 ><DT
 ><A
 HREF="#LOGFORMAT"
@@ -551,6 +566,16 @@ HREF="#MAXCLIENTSPERHOST"
 >&nbsp;--&nbsp;Limits the connections per client machine</DT
 ><DT
 ><A
+HREF="#MAXCLIENTSPERUSER"
+>&#13;MaxClientsPerUser</A
+>&nbsp;--&nbsp;Limit the number of connections per userid</DT
+><DT
+><A
+HREF="#MAXCONNECTIONRATE"
+>&#13;MaxConnectionRate</A
+>&nbsp;--&nbsp;FIXFIXFIX</DT
+><DT
+><A
 HREF="#MAXHOSTSPERUSER"
 >&#13;MaxHostsPerUser</A
 >&nbsp;--&nbsp;Limit the number of connections per userid</DT
@@ -564,6 +589,16 @@ HREF="#MAXINSTANCES"
 HREF="#MAXLOGINATTEMPTS"
 >&#13;MaxLoginAttempts</A
 >&nbsp;--&nbsp;Sets how many password attempts are allowed before disconnection</DT
+><DT
+><A
+HREF="#MAXRETRIEVEFILESIZE"
+>&#13;MaxRetrieveFileSize</A
+>&nbsp;--&nbsp;FIXFIXFIX</DT
+><DT
+><A
+HREF="#MAXSTOREFILESIZE"
+>&#13;MaxStoreFileSize</A
+>&nbsp;--&nbsp;FIXFIXFIX</DT
 ><DT
 ><A
 HREF="#MULTILINERFC2228"
@@ -621,36 +656,6 @@ HREF="#POSTGRESPORT"
 >&nbsp;--&nbsp;Sets the port postgres is listening on</DT
 ><DT
 ><A
-HREF="#QUOTABLOCKNAME"
->&#13;QuotaBlockName</A
->&nbsp;--&nbsp;FIXME FIXME</DT
-><DT
-><A
-HREF="#QUOTABLOCKSIZE"
->&#13;QuotaBlockSize</A
->&nbsp;--&nbsp;FIXME FIXME</DT
-><DT
-><A
-HREF="#QUOTACALC"
->&#13;QuotaCalc</A
->&nbsp;--&nbsp;FIXME FIXME</DT
-><DT
-><A
-HREF="#QUOTAEXEMPT"
->&#13;QuotaExempt</A
->&nbsp;--&nbsp;FIXME FIXME</DT
-><DT
-><A
-HREF="#QUOTATYPE"
->&#13;QuotaType</A
->&nbsp;--&nbsp;FIXME FIXME</DT
-><DT
-><A
-HREF="#QUOTAS"
->&#13;Quotas</A
->&nbsp;--&nbsp;FIXME FIXME</DT
-><DT
-><A
 HREF="#RLIMITCPU"
 >&#13;RLimitCPU</A
 >&nbsp;--&nbsp;Configure the maximum CPU time in seconds used by a process</DT
@@ -664,6 +669,36 @@ HREF="#RLIMITMEMORY"
 HREF="#RLIMITOPENFILES"
 >&#13;RLimitOpenFiles</A
 >&nbsp;--&nbsp;Configure the maximum number of open files used by a process</DT
+><DT
+><A
+HREF="#RADIUSACCTSERVER"
+>&#13;RadiusAcctServer</A
+>&nbsp;--&nbsp;FIXFIXFIX</DT
+><DT
+><A
+HREF="#RADIUSAUTHSERVER"
+>&#13;RadiusAuthServer</A
+>&nbsp;--&nbsp;FIXFIXFIX</DT
+><DT
+><A
+HREF="#RADIUSENGINE"
+>&#13;RadiusEngine</A
+>&nbsp;--&nbsp;FIXFIXFIX</DT
+><DT
+><A
+HREF="#RADIUSLOG"
+>&#13;RadiusLog</A
+>&nbsp;--&nbsp;FIXFIXFIX</DT
+><DT
+><A
+HREF="#RADIUSREALM"
+>&#13;RadiusRealm</A
+>&nbsp;--&nbsp;FIXFIXFIX</DT
+><DT
+><A
+HREF="#RADIUSUSERINFO"
+>&#13;RadiusUserInfo</A
+>&nbsp;--&nbsp;FIXFIXFIX</DT
 ><DT
 ><A
 HREF="#RATEREADBPS"
@@ -734,7 +769,7 @@ HREF="#SQLAUTHENTICATE"
 ><A
 HREF="#SQLAUTHORITATIVE"
 >&#13;SQLAuthoritative</A
->&nbsp;--&nbsp;FIXFIXFIX</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLCONNECTINFO"
@@ -759,12 +794,12 @@ HREF="#SQLDEFAULTUID"
 ><A
 HREF="#SQLDOAUTH"
 >&#13;SQLDoAuth</A
->&nbsp;--&nbsp;FIXME FIXME</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLDOGROUPAUTH"
 >&#13;SQLDoGroupAuth</A
->&nbsp;--&nbsp;FIXME FIXME</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLEMPTYPASSWORDS"
@@ -779,12 +814,12 @@ HREF="#SQLENCRYPTEDPASSWORDS"
 ><A
 HREF="#SQLGIDFIELD"
 >&#13;SQLGidField</A
->&nbsp;--&nbsp;FIXFIXFIX</DT
+>&nbsp;--&nbsp;Set the field holding gid information (deprecated)</DT
 ><DT
 ><A
 HREF="#SQLGROUPGIDFIELD"
 >&#13;SQLGroupGIDField</A
->&nbsp;--&nbsp;FIXFIXFIX</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLGROUPINFO"
@@ -794,12 +829,12 @@ HREF="#SQLGROUPINFO"
 ><A
 HREF="#SQLGROUPMEMBERSFIELD"
 >&#13;SQLGroupMembersField</A
->&nbsp;--&nbsp;FIXME FIXME</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLGROUPTABLE"
 >&#13;SQLGroupTable</A
->&nbsp;--&nbsp;FIXME FIXME</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLGROUPWHERECLAUSE"
@@ -809,17 +844,17 @@ HREF="#SQLGROUPWHERECLAUSE"
 ><A
 HREF="#SQLGROUPNAMEFIELD"
 >&#13;SQLGroupnameField</A
->&nbsp;--&nbsp;FIXME FIXME</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLHOMEDIR"
 >&#13;SQLHomedir</A
->&nbsp;--&nbsp;FIXFIXFIX</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLHOMEDIRFIELD"
 >&#13;SQLHomedirField</A
->&nbsp;--&nbsp;FIXFIXFIX</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLHOMEDIRONDEMAND"
@@ -834,27 +869,27 @@ HREF="#SQLLOG"
 ><A
 HREF="#SQLLOGDIRS"
 >&#13;SQLLogDirs</A
->&nbsp;--&nbsp;FIXFIXFIX</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLLOGHITS"
 >&#13;SQLLogHits</A
->&nbsp;--&nbsp;FIXFIXFIX</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLLOGHOSTS"
 >&#13;SQLLogHosts</A
->&nbsp;--&nbsp;FIXFIXFIX</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLLOGSTATS"
 >&#13;SQLLogStats</A
->&nbsp;--&nbsp;FIXFIXFIX</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLLOGINCOUNTFIELD"
 >&#13;SQLLoginCountField</A
->&nbsp;--&nbsp;FIXFIXFIX</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLMINID"
@@ -877,19 +912,24 @@ HREF="#SQLNAMEDQUERY"
 >&nbsp;--&nbsp;FIXFIXFIX</DT
 ><DT
 ><A
+HREF="#SQLNEGATIVECACHE"
+>&#13;			SQLNegativeCache</A
+>&nbsp;--&nbsp;Enable negative caching for SQL lookups</DT
+><DT
+><A
 HREF="#SQLPASSWORDFIELD"
 >&#13;SQLPasswordField</A
->&nbsp;--&nbsp;FIXFIXFIX</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLPROCESSGRENT"
 >&#13;SQLProcessGrEnt</A
->&nbsp;--&nbsp;FIXFIXFIX</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLPROCESSPWENT"
 >&#13;SQLProcessPwEnt</A
->&nbsp;--&nbsp;FIXFIXFIX</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLRATIOSTATS"
@@ -914,7 +954,7 @@ HREF="#SQLSCRAMBLEDPASSWORDS"
 ><A
 HREF="#SQLSHELLFIELD"
 >&#13;SQLShellField</A
->&nbsp;--&nbsp;FIXME FIXME</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLSHOWINFO"
@@ -924,7 +964,7 @@ HREF="#SQLSHOWINFO"
 ><A
 HREF="#SQLUIDFIELD"
 >&#13;SQLUidField</A
->&nbsp;--&nbsp;FIXFIXFIX</DT
+>&nbsp;--&nbsp;Set the field holding uid information (deprecated)</DT
 ><DT
 ><A
 HREF="#SQLUSERINFO"
@@ -934,7 +974,7 @@ HREF="#SQLUSERINFO"
 ><A
 HREF="#SQLUSERTABLE"
 >&#13;SQLUserTable</A
->&nbsp;--&nbsp;FIXFIXFIX</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLUSERWHERECLAUSE"
@@ -944,7 +984,7 @@ HREF="#SQLUSERWHERECLAUSE"
 ><A
 HREF="#SQLUSERNAMEFIELD"
 >&#13;SQLUsernameField</A
->&nbsp;--&nbsp;FIXFIXFIX</DT
+>&nbsp;--&nbsp;Deprecated</DT
 ><DT
 ><A
 HREF="#SQLWHERECLAUSE"
@@ -957,8 +997,8 @@ HREF="#SAVERATIOS"
 >&nbsp;--&nbsp;FIXME FIXME</DT
 ><DT
 ><A
-HREF="#SCOREBOARDPATH"
->&#13;ScoreboardPath</A
+HREF="#SCOREBOARDFILE"
+>&#13;ScoreboardFile</A
 >&nbsp;--&nbsp;Sets the path to the scoreboard file</DT
 ><DT
 ><A
@@ -1059,7 +1099,7 @@ HREF="#TIMEOUTNOTRANSFER"
 ><A
 HREF="#TIMEOUTSESSION"
 >&#13;TimeoutSession</A
->&nbsp;--&nbsp;FIXFIXFIX</DT
+>&nbsp;--&nbsp;Sets a timeout for an entire session</DT
 ><DT
 ><A
 HREF="#TIMEOUTSTALLED"
@@ -1159,7 +1199,7 @@ HREF="#TCPSENDWINDOW"
 ></DD
 ><DT
 >2. <A
-HREF="#AEN10570"
+HREF="#AEN10965"
 >List of modules</A
 ></DT
 ><DD
@@ -1196,9 +1236,9 @@ HREF="#MOD-PAM"
 >&nbsp;--&nbsp;Pluggable authentication modules support</DT
 ><DT
 ><A
-HREF="#MOD-QUOTA"
->&#13;mod_quota</A
->&nbsp;--&nbsp;Module to implement per-user quotas</DT
+HREF="#MOD-RADIUS"
+>&#13;mod_radius</A
+>&nbsp;--&nbsp;RADIUS based authentication support</DT
 ><DT
 ><A
 HREF="#MOD-RATIO"
@@ -1243,7 +1283,7 @@ HREF="#MOD-XFER"
 ></DD
 ><DT
 >3. <A
-HREF="#AEN11052"
+HREF="#AEN11452"
 >List of configuration contexts</A
 ></DT
 ><DD
@@ -2377,10 +2417,10 @@ CLASS="PROGRAMLISTING"
 ></DIV
 ><H1
 ><A
-NAME="ALLOWOVERWRITE"
+NAME="ALLOWOVERRIDE"
 ></A
 >
-AllowOverwrite</H1
+AllowOverride</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
@@ -2388,11 +2428,121 @@ NAME="AEN450"
 ></A
 ><H2
 >Name</H2
->AllowOverwrite&nbsp;--&nbsp;Enable files to be overwritten</DIV
+>AllowOverride&nbsp;--&nbsp;FIXFIXFIX</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
 NAME="AEN453"
+></A
+><H2
+>Synopsis</H2
+><P
+><B
+CLASS="COMMAND"
+>AllowOverride</B
+>  [  <TT
+CLASS="OPTION"
+>"name" limit|regex|ip value</TT
+>]</P
+><P
+></P
+><DIV
+CLASS="VARIABLELIST"
+><P
+><B
+></B
+></P
+><DL
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Default</PRE
+></DT
+><DD
+><P
+>FIXFIXFIX</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Context</PRE
+></DT
+><DD
+><P
+>server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;, .ftpaccess</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Module</PRE
+></DT
+><DD
+><P
+>mod_core</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Compatibility</PRE
+></DT
+><DD
+><P
+>1.2.7rc1 and later</P
+></DD
+></DL
+></DIV
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN480"
+></A
+><H2
+>Description</H2
+><P
+>FIX FIX FIX</P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN483"
+></A
+><H2
+>See also</H2
+><P
+></P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN486"
+></A
+><H2
+>Examples</H2
+><P
+CLASS="LITERALLAYOUT"
+>FIXFIXFIX</P
+><P
+>FIXFIX</P
+></DIV
+><H1
+><A
+NAME="ALLOWOVERWRITE"
+></A
+>
+AllowOverwrite</H1
+><DIV
+CLASS="REFNAMEDIV"
+><A
+NAME="AEN498"
+></A
+><H2
+>Name</H2
+>AllowOverwrite&nbsp;--&nbsp;Enable files to be overwritten</DIV
+><DIV
+CLASS="REFSYNOPSISDIV"
+><A
+NAME="AEN501"
 ></A
 ><H2
 >Synopsis</H2
@@ -2455,7 +2605,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN480"
+NAME="AEN528"
 ></A
 ><H2
 >Description</H2
@@ -2466,7 +2616,7 @@ existing files. By default, ftp clients cannot overwrite existing files.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN483"
+NAME="AEN531"
 ></A
 ><H2
 >See also</H2
@@ -2476,7 +2626,7 @@ NAME="AEN483"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN486"
+NAME="AEN534"
 ></A
 ><H2
 >Examples</H2
@@ -2492,7 +2642,7 @@ AllowRetrieveRestart</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN497"
+NAME="AEN545"
 ></A
 ><H2
 >Name</H2
@@ -2500,7 +2650,7 @@ NAME="AEN497"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN500"
+NAME="AEN548"
 ></A
 ><H2
 >Synopsis</H2
@@ -2563,7 +2713,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN527"
+NAME="AEN575"
 ></A
 ><H2
 >Description</H2
@@ -2577,7 +2727,7 @@ collected data.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN530"
+NAME="AEN578"
 ></A
 ><H2
 >See also</H2
@@ -2590,7 +2740,7 @@ HREF="#ALLOWSTORERESTART"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN534"
+NAME="AEN582"
 ></A
 ><H2
 >Examples</H2
@@ -2606,7 +2756,7 @@ AllowStoreRestart</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN545"
+NAME="AEN593"
 ></A
 ><H2
 >Name</H2
@@ -2614,7 +2764,7 @@ NAME="AEN545"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN548"
+NAME="AEN596"
 ></A
 ><H2
 >Synopsis</H2
@@ -2677,7 +2827,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN575"
+NAME="AEN623"
 ></A
 ><H2
 >Description</H2
@@ -2696,7 +2846,7 @@ enabled, with the server returning a 501 error code to the client.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN579"
+NAME="AEN627"
 ></A
 ><H2
 >See also</H2
@@ -2717,7 +2867,7 @@ HREF="#HIDDENSTOR"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN585"
+NAME="AEN633"
 ></A
 ><H2
 >Examples</H2
@@ -2733,7 +2883,7 @@ AllowUser</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN596"
+NAME="AEN644"
 ></A
 ><H2
 >Name</H2
@@ -2741,7 +2891,7 @@ NAME="AEN596"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN599"
+NAME="AEN647"
 ></A
 ><H2
 >Synopsis</H2
@@ -2804,7 +2954,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN626"
+NAME="AEN674"
 ></A
 ><H2
 >Description</H2
@@ -2822,7 +2972,7 @@ allow to apply.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN629"
+NAME="AEN677"
 ></A
 ><H2
 >See also</H2
@@ -2843,7 +2993,7 @@ HREF="#ALLOWGROUP"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN635"
+NAME="AEN683"
 ></A
 ><H2
 >Examples</H2
@@ -2859,7 +3009,7 @@ AnonRatio</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN646"
+NAME="AEN694"
 ></A
 ><H2
 >Name</H2
@@ -2867,7 +3017,7 @@ NAME="AEN646"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN649"
+NAME="AEN697"
 ></A
 ><H2
 >Synopsis</H2
@@ -2930,7 +3080,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN676"
+NAME="AEN724"
 ></A
 ><H2
 >Description</H2
@@ -2940,7 +3090,7 @@ NAME="AEN676"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN679"
+NAME="AEN727"
 ></A
 ><H2
 >See also</H2
@@ -2950,7 +3100,7 @@ NAME="AEN679"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN682"
+NAME="AEN730"
 ></A
 ><H2
 >Examples</H2
@@ -2966,7 +3116,7 @@ AnonRequirePassword</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN693"
+NAME="AEN741"
 ></A
 ><H2
 >Name</H2
@@ -2974,7 +3124,7 @@ NAME="AEN693"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN696"
+NAME="AEN744"
 ></A
 ><H2
 >Synopsis</H2
@@ -3037,7 +3187,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN723"
+NAME="AEN771"
 ></A
 ><H2
 >Description</H2
@@ -3059,7 +3209,7 @@ host system.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN726"
+NAME="AEN774"
 ></A
 ><H2
 >See also</H2
@@ -3080,7 +3230,7 @@ HREF="#AUTHUSINGALIAS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN732"
+NAME="AEN780"
 ></A
 ><H2
 >Examples</H2
@@ -3125,7 +3275,7 @@ Anonymous</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN744"
+NAME="AEN792"
 ></A
 ><H2
 >Name</H2
@@ -3133,7 +3283,7 @@ NAME="AEN744"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN747"
+NAME="AEN795"
 ></A
 ><H2
 >Synopsis</H2
@@ -3196,7 +3346,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN774"
+NAME="AEN822"
 ></A
 ><H2
 >Description</H2
@@ -3230,7 +3380,7 @@ the new root directory.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN778"
+NAME="AEN826"
 ></A
 ><H2
 >See also</H2
@@ -3240,7 +3390,7 @@ NAME="AEN778"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN781"
+NAME="AEN829"
 ></A
 ><H2
 >Examples</H2
@@ -3279,7 +3429,7 @@ AnonymousGroup</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN793"
+NAME="AEN841"
 ></A
 ><H2
 >Name</H2
@@ -3287,7 +3437,7 @@ NAME="AEN793"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN796"
+NAME="AEN844"
 ></A
 ><H2
 >Synopsis</H2
@@ -3350,7 +3500,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN823"
+NAME="AEN871"
 ></A
 ><H2
 >Description</H2
@@ -3372,7 +3522,7 @@ to the entire world.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN826"
+NAME="AEN874"
 ></A
 ><H2
 >See also</H2
@@ -3397,7 +3547,7 @@ HREF="#DEFAULTROOT"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN833"
+NAME="AEN881"
 ></A
 ><H2
 >Examples</H2
@@ -3413,7 +3563,7 @@ AuthAliasOnly</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN844"
+NAME="AEN892"
 ></A
 ><H2
 >Name</H2
@@ -3421,7 +3571,7 @@ NAME="AEN844"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN847"
+NAME="AEN895"
 ></A
 ><H2
 >Synopsis</H2
@@ -3484,7 +3634,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN874"
+NAME="AEN922"
 ></A
 ><H2
 >Description</H2
@@ -3500,7 +3650,7 @@ sends an appropriate message to syslog.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN877"
+NAME="AEN925"
 ></A
 ><H2
 >See also</H2
@@ -3525,7 +3675,7 @@ HREF="#USERALIAS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN884"
+NAME="AEN932"
 ></A
 ><H2
 >Examples</H2
@@ -3541,7 +3691,7 @@ AuthGroupFile</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN895"
+NAME="AEN943"
 ></A
 ><H2
 >Name</H2
@@ -3549,7 +3699,7 @@ NAME="AEN895"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN898"
+NAME="AEN946"
 ></A
 ><H2
 >Synopsis</H2
@@ -3612,7 +3762,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN925"
+NAME="AEN973"
 ></A
 ><H2
 >Description</H2
@@ -3632,7 +3782,7 @@ the duration of client connections.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN929"
+NAME="AEN977"
 ></A
 ><H2
 >See also</H2
@@ -3645,7 +3795,7 @@ HREF="#AUTHUSERFILE"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN933"
+NAME="AEN981"
 ></A
 ><H2
 >Examples</H2
@@ -3661,7 +3811,7 @@ AuthPAM</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN944"
+NAME="AEN992"
 ></A
 ><H2
 >Name</H2
@@ -3669,7 +3819,7 @@ NAME="AEN944"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN947"
+NAME="AEN995"
 ></A
 ><H2
 >Synopsis</H2
@@ -3732,7 +3882,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN974"
+NAME="AEN1022"
 ></A
 ><H2
 >Description</H2
@@ -3744,7 +3894,7 @@ policy of using PAM as the primary authentication mechanism.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN977"
+NAME="AEN1025"
 ></A
 ><H2
 >See also</H2
@@ -3754,7 +3904,7 @@ NAME="AEN977"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN980"
+NAME="AEN1028"
 ></A
 ><H2
 >Examples</H2
@@ -3770,7 +3920,7 @@ AuthPAMAuthoritative</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN991"
+NAME="AEN1039"
 ></A
 ><H2
 >Name</H2
@@ -3778,7 +3928,7 @@ NAME="AEN991"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN994"
+NAME="AEN1042"
 ></A
 ><H2
 >Synopsis</H2
@@ -3841,7 +3991,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1021"
+NAME="AEN1069"
 ></A
 ><H2
 >Description</H2
@@ -3857,7 +4007,7 @@ directive to off.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1024"
+NAME="AEN1072"
 ></A
 ><H2
 >See also</H2
@@ -3867,7 +4017,7 @@ NAME="AEN1024"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1027"
+NAME="AEN1075"
 ></A
 ><H2
 >Examples</H2
@@ -3883,7 +4033,7 @@ AuthPAMConfig</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN1038"
+NAME="AEN1086"
 ></A
 ><H2
 >Name</H2
@@ -3891,7 +4041,7 @@ NAME="AEN1038"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN1041"
+NAME="AEN1089"
 ></A
 ><H2
 >Synopsis</H2
@@ -3954,7 +4104,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1068"
+NAME="AEN1116"
 ></A
 ><H2
 >Description</H2
@@ -3968,7 +4118,7 @@ PAMConfig post 1.2.0 pre10.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1071"
+NAME="AEN1119"
 ></A
 ><H2
 >See also</H2
@@ -3978,7 +4128,7 @@ NAME="AEN1071"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1074"
+NAME="AEN1122"
 ></A
 ><H2
 >Examples</H2
@@ -4002,7 +4152,7 @@ AuthUserFile</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN1086"
+NAME="AEN1134"
 ></A
 ><H2
 >Name</H2
@@ -4010,7 +4160,7 @@ NAME="AEN1086"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN1089"
+NAME="AEN1137"
 ></A
 ><H2
 >Synopsis</H2
@@ -4073,7 +4223,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1116"
+NAME="AEN1164"
 ></A
 ><H2
 >Description</H2
@@ -4093,7 +4243,7 @@ the duration of client connections.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1120"
+NAME="AEN1168"
 ></A
 ><H2
 >See also</H2
@@ -4106,7 +4256,7 @@ HREF="#AUTHGROUPFILE"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1124"
+NAME="AEN1172"
 ></A
 ><H2
 >Examples</H2
@@ -4122,7 +4272,7 @@ AuthUsingAlias</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN1135"
+NAME="AEN1183"
 ></A
 ><H2
 >Name</H2
@@ -4130,7 +4280,7 @@ NAME="AEN1135"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN1138"
+NAME="AEN1186"
 ></A
 ><H2
 >Synopsis</H2
@@ -4193,7 +4343,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1165"
+NAME="AEN1213"
 ></A
 ><H2
 >Description</H2
@@ -4207,7 +4357,7 @@ would be "ftp".</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1168"
+NAME="AEN1216"
 ></A
 ><H2
 >See also</H2
@@ -4228,7 +4378,7 @@ HREF="#ANONREQUIREPASSWORD"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1174"
+NAME="AEN1222"
 ></A
 ><H2
 >Examples</H2
@@ -4271,7 +4421,7 @@ Bind</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN1186"
+NAME="AEN1234"
 ></A
 ><H2
 >Name</H2
@@ -4279,7 +4429,7 @@ NAME="AEN1186"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN1189"
+NAME="AEN1237"
 ></A
 ><H2
 >Synopsis</H2
@@ -4342,7 +4492,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1216"
+NAME="AEN1264"
 ></A
 ><H2
 >Description</H2
@@ -4359,7 +4509,7 @@ address.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1219"
+NAME="AEN1267"
 ></A
 ><H2
 >See also</H2
@@ -4369,7 +4519,7 @@ NAME="AEN1219"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1222"
+NAME="AEN1270"
 ></A
 ><H2
 >Examples</H2
@@ -4385,7 +4535,7 @@ ByteRatioErrMsg</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN1233"
+NAME="AEN1281"
 ></A
 ><H2
 >Name</H2
@@ -4393,7 +4543,7 @@ NAME="AEN1233"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN1236"
+NAME="AEN1284"
 ></A
 ><H2
 >Synopsis</H2
@@ -4456,7 +4606,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1263"
+NAME="AEN1311"
 ></A
 ><H2
 >Description</H2
@@ -4468,7 +4618,7 @@ ByteRatioErrMsg</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1266"
+NAME="AEN1314"
 ></A
 ><H2
 >See also</H2
@@ -4478,7 +4628,7 @@ NAME="AEN1266"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1269"
+NAME="AEN1317"
 ></A
 ><H2
 >Examples</H2
@@ -4494,7 +4644,7 @@ CDPath</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN1280"
+NAME="AEN1328"
 ></A
 ><H2
 >Name</H2
@@ -4502,7 +4652,7 @@ NAME="AEN1280"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN1283"
+NAME="AEN1331"
 ></A
 ><H2
 >Synopsis</H2
@@ -4565,7 +4715,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1310"
+NAME="AEN1358"
 ></A
 ><H2
 >Description</H2
@@ -4582,7 +4732,7 @@ they currently are in the directory tree.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1313"
+NAME="AEN1361"
 ></A
 ><H2
 >See also</H2
@@ -4592,7 +4742,7 @@ NAME="AEN1313"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1316"
+NAME="AEN1364"
 ></A
 ><H2
 >Examples</H2
@@ -4608,7 +4758,7 @@ Class</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN1327"
+NAME="AEN1375"
 ></A
 ><H2
 >Name</H2
@@ -4616,7 +4766,7 @@ NAME="AEN1327"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN1330"
+NAME="AEN1378"
 ></A
 ><H2
 >Synopsis</H2
@@ -4653,7 +4803,7 @@ CLASS="SYNOPSIS"
 ></DT
 ><DD
 ><P
->server config, &lt;VirtualHost&gt;</P
+>server config</P
 ></DD
 ><DT
 ><PRE
@@ -4679,7 +4829,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1357"
+NAME="AEN1405"
 ></A
 ><H2
 >Description</H2
@@ -4693,7 +4843,7 @@ inclusion in the class and ip sets an IP/netmask based inclusion.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1360"
+NAME="AEN1408"
 ></A
 ><H2
 >See also</H2
@@ -4703,7 +4853,7 @@ NAME="AEN1360"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1363"
+NAME="AEN1411"
 ></A
 ><H2
 >Examples</H2
@@ -4727,7 +4877,7 @@ Classes</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN1375"
+NAME="AEN1423"
 ></A
 ><H2
 >Name</H2
@@ -4735,7 +4885,7 @@ NAME="AEN1375"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN1378"
+NAME="AEN1426"
 ></A
 ><H2
 >Synopsis</H2
@@ -4772,7 +4922,7 @@ CLASS="SYNOPSIS"
 ></DT
 ><DD
 ><P
->server config, &lt;VirtualHost&gt;</P
+>server config</P
 ></DD
 ><DT
 ><PRE
@@ -4798,7 +4948,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1405"
+NAME="AEN1453"
 ></A
 ><H2
 >Description</H2
@@ -4809,7 +4959,7 @@ see: Class</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1408"
+NAME="AEN1456"
 ></A
 ><H2
 >See also</H2
@@ -4819,7 +4969,7 @@ NAME="AEN1408"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1411"
+NAME="AEN1459"
 ></A
 ><H2
 >Examples</H2
@@ -4839,7 +4989,7 @@ CommandBufferSize</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN1423"
+NAME="AEN1471"
 ></A
 ><H2
 >Name</H2
@@ -4847,7 +4997,7 @@ NAME="AEN1423"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN1426"
+NAME="AEN1474"
 ></A
 ><H2
 >Synopsis</H2
@@ -4910,7 +5060,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1453"
+NAME="AEN1501"
 ></A
 ><H2
 >Description</H2
@@ -4923,7 +5073,7 @@ Denial of Service or resource-consumption attacks. </P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1456"
+NAME="AEN1504"
 ></A
 ><H2
 >See also</H2
@@ -4933,7 +5083,7 @@ NAME="AEN1456"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1459"
+NAME="AEN1507"
 ></A
 ><H2
 >Examples</H2
@@ -4949,7 +5099,7 @@ CwdRatioMsg</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN1470"
+NAME="AEN1518"
 ></A
 ><H2
 >Name</H2
@@ -4957,7 +5107,7 @@ NAME="AEN1470"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN1473"
+NAME="AEN1521"
 ></A
 ><H2
 >Synopsis</H2
@@ -5020,7 +5170,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1500"
+NAME="AEN1548"
 ></A
 ><H2
 >Description</H2
@@ -5032,7 +5182,7 @@ CwdRatioMsg</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1503"
+NAME="AEN1551"
 ></A
 ><H2
 >See also</H2
@@ -5042,12 +5192,122 @@ NAME="AEN1503"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1506"
+NAME="AEN1554"
 ></A
 ><H2
 >Examples</H2
 ><P
 ></P
+></DIV
+><H1
+><A
+NAME="DEFAULTADDRESS"
+></A
+>
+DefaultAddress</H1
+><DIV
+CLASS="REFNAMEDIV"
+><A
+NAME="AEN1565"
+></A
+><H2
+>Name</H2
+>DefaultAddress&nbsp;--&nbsp;FIXFIXFIX</DIV
+><DIV
+CLASS="REFSYNOPSISDIV"
+><A
+NAME="AEN1568"
+></A
+><H2
+>Synopsis</H2
+><P
+><B
+CLASS="COMMAND"
+>DefaultAddress</B
+>  [  <TT
+CLASS="OPTION"
+>"name" limit|regex|ip value</TT
+>]</P
+><P
+></P
+><DIV
+CLASS="VARIABLELIST"
+><P
+><B
+></B
+></P
+><DL
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Default</PRE
+></DT
+><DD
+><P
+>FIXFIXFIX</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Context</PRE
+></DT
+><DD
+><P
+>server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;, .ftpaccess</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Module</PRE
+></DT
+><DD
+><P
+>mod_core</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Compatibility</PRE
+></DT
+><DD
+><P
+>1.2.7rc1 and later</P
+></DD
+></DL
+></DIV
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN1595"
+></A
+><H2
+>Description</H2
+><P
+>FIX FIX FIX</P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN1598"
+></A
+><H2
+>See also</H2
+><P
+></P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN1601"
+></A
+><H2
+>Examples</H2
+><P
+CLASS="LITERALLAYOUT"
+>FIXFIXFIX</P
+><P
+>FIXFIX</P
 ></DIV
 ><H1
 ><A
@@ -5058,7 +5318,7 @@ DefaultChdir</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN1517"
+NAME="AEN1613"
 ></A
 ><H2
 >Name</H2
@@ -5066,7 +5326,7 @@ NAME="AEN1517"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN1520"
+NAME="AEN1616"
 ></A
 ><H2
 >Synopsis</H2
@@ -5129,7 +5389,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1547"
+NAME="AEN1643"
 ></A
 ><H2
 >Description</H2
@@ -5143,7 +5403,7 @@ the user will not be able to log in.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1550"
+NAME="AEN1646"
 ></A
 ><H2
 >See also</H2
@@ -5156,127 +5416,10 @@ HREF="#DEFAULTROOT"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1554"
+NAME="AEN1650"
 ></A
 ><H2
 >Examples</H2
-><P
-></P
-></DIV
-><H1
-><A
-NAME="DEFAULTQUOTA"
-></A
->
-DefaultQuota</H1
-><DIV
-CLASS="REFNAMEDIV"
-><A
-NAME="AEN1565"
-></A
-><H2
->Name</H2
->DefaultQuota&nbsp;--&nbsp;Sets the default quota</DIV
-><DIV
-CLASS="REFSYNOPSISDIV"
-><A
-NAME="AEN1568"
-></A
-><H2
->Synopsis</H2
-><P
-><B
-CLASS="COMMAND"
->DefaultQuota</B
->  [  <TT
-CLASS="OPTION"
->value in bytes</TT
->]</P
-><P
-></P
-><DIV
-CLASS="VARIABLELIST"
-><P
-><B
-></B
-></P
-><DL
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Default</PRE
-></DT
-><DD
-><P
->0</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Context</PRE
-></DT
-><DD
-><P
->server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Module</PRE
-></DT
-><DD
-><P
->mod_quota</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Compatibility</PRE
-></DT
-><DD
-><P
->at least 1.2.0 and later</P
-></DD
-></DL
-></DIV
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN1595"
-></A
-><H2
->Description</H2
-><P
->The DefaultQuota directive sets the default quota in bytes, this
-value is used if the .quota file does not exist.</P
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN1598"
-></A
-><H2
->See also</H2
-><P
-><A
-HREF="#QUOTAS"
->Quotas</A
-></P
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN1602"
-></A
-><H2
->Examples</H2
-><PRE
-CLASS="PROGRAMLISTING"
->#
-# Set default to 1kb
-#
-DefaultQuota 1024 </PRE
 ><P
 ></P
 ></DIV
@@ -5289,7 +5432,7 @@ DefaultRoot</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN1614"
+NAME="AEN1661"
 ></A
 ><H2
 >Name</H2
@@ -5297,7 +5440,7 @@ NAME="AEN1614"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN1617"
+NAME="AEN1664"
 ></A
 ><H2
 >Synopsis</H2
@@ -5360,7 +5503,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1644"
+NAME="AEN1691"
 ></A
 ><H2
 >Description</H2
@@ -5372,6 +5515,13 @@ authenticates. This can be used to effectively isolate the client from
 a portion of the host system filespace. The specified root directory
 must begin with a / or can be the magic character '~'; meaning that the
 client is chroot jailed into their home directory.</P
+><P
+>When the specified chroot directory is a symlink this will be resolved
+to it's parent first before setting up the chroot.  This can have
+unwanted side effects.  For example if a chroot is to be configured
+within space to which a user as shell access, the chroot directory
+could be converted to a symlink pointing at '/'.  Thus the chroot
+would be to the root directory of the server.</P
 ><P
 >If the DefaultRoot directive specifies a directory which disallows
 access to the logged-in user's home directory, the user's current
@@ -5398,7 +5548,7 @@ as there are potentially ways that a user can &quot;escape&quot; the jail.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1650"
+NAME="AEN1698"
 ></A
 ><H2
 >See also</H2
@@ -5408,7 +5558,7 @@ NAME="AEN1650"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1653"
+NAME="AEN1701"
 ></A
 ><H2
 >Examples</H2
@@ -5440,7 +5590,7 @@ DefaultServer</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN1665"
+NAME="AEN1713"
 ></A
 ><H2
 >Name</H2
@@ -5448,7 +5598,7 @@ NAME="AEN1665"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN1668"
+NAME="AEN1716"
 ></A
 ><H2
 >Synopsis</H2
@@ -5511,7 +5661,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1695"
+NAME="AEN1743"
 ></A
 ><H2
 >Description</H2
@@ -5529,7 +5679,7 @@ configuration can be set to default.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1698"
+NAME="AEN1746"
 ></A
 ><H2
 >See also</H2
@@ -5539,7 +5689,7 @@ NAME="AEN1698"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1701"
+NAME="AEN1749"
 ></A
 ><H2
 >Examples</H2
@@ -5555,7 +5705,7 @@ DefaultTransferMode</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN1712"
+NAME="AEN1760"
 ></A
 ><H2
 >Name</H2
@@ -5563,7 +5713,7 @@ NAME="AEN1712"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN1715"
+NAME="AEN1763"
 ></A
 ><H2
 >Synopsis</H2
@@ -5626,7 +5776,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1742"
+NAME="AEN1790"
 ></A
 ><H2
 >Description</H2
@@ -5637,7 +5787,7 @@ carriage-return/linefeed translation will be performed (ASCII mode).</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1745"
+NAME="AEN1793"
 ></A
 ><H2
 >See also</H2
@@ -5647,7 +5797,7 @@ NAME="AEN1745"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1748"
+NAME="AEN1796"
 ></A
 ><H2
 >Examples</H2
@@ -5663,7 +5813,7 @@ DeferWelcome</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN1759"
+NAME="AEN1807"
 ></A
 ><H2
 >Name</H2
@@ -5671,7 +5821,7 @@ NAME="AEN1759"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN1762"
+NAME="AEN1810"
 ></A
 ><H2
 >Synopsis</H2
@@ -5734,7 +5884,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1789"
+NAME="AEN1837"
 ></A
 ><H2
 >Description</H2
@@ -5751,7 +5901,7 @@ networks/hosts.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1792"
+NAME="AEN1840"
 ></A
 ><H2
 >See also</H2
@@ -5768,7 +5918,7 @@ HREF="#SERVERNAME"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1797"
+NAME="AEN1845"
 ></A
 ><H2
 >Examples</H2
@@ -5784,7 +5934,7 @@ Define</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN1808"
+NAME="AEN1856"
 ></A
 ><H2
 >Name</H2
@@ -5792,7 +5942,7 @@ NAME="AEN1808"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN1811"
+NAME="AEN1859"
 ></A
 ><H2
 >Synopsis</H2
@@ -5855,7 +6005,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1838"
+NAME="AEN1886"
 ></A
 ><H2
 >Description</H2
@@ -5866,7 +6016,7 @@ the IfDefine directive</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1841"
+NAME="AEN1889"
 ></A
 ><H2
 >See also</H2
@@ -5883,7 +6033,7 @@ HREF="#IFMODULE"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1846"
+NAME="AEN1894"
 ></A
 ><H2
 >Examples</H2
@@ -5901,7 +6051,7 @@ DeleteAbortedStores</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN1857"
+NAME="AEN1905"
 ></A
 ><H2
 >Name</H2
@@ -5909,7 +6059,7 @@ NAME="AEN1857"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN1860"
+NAME="AEN1908"
 ></A
 ><H2
 >Synopsis</H2
@@ -5972,7 +6122,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1887"
+NAME="AEN1935"
 ></A
 ><H2
 >Description</H2
@@ -5984,7 +6134,7 @@ the ABOR command rather than a connection failure.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1890"
+NAME="AEN1938"
 ></A
 ><H2
 >See also</H2
@@ -5997,7 +6147,7 @@ HREF="#HIDDENSTOR"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1894"
+NAME="AEN1942"
 ></A
 ><H2
 >Examples</H2
@@ -6013,7 +6163,7 @@ Deny</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN1905"
+NAME="AEN1953"
 ></A
 ><H2
 >Name</H2
@@ -6021,7 +6171,7 @@ NAME="AEN1905"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN1908"
+NAME="AEN1956"
 ></A
 ><H2
 >Synopsis</H2
@@ -6084,7 +6234,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1935"
+NAME="AEN1983"
 ></A
 ><H2
 >Description</H2
@@ -6099,7 +6249,7 @@ and Order.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1938"
+NAME="AEN1986"
 ></A
 ><H2
 >See also</H2
@@ -6120,7 +6270,7 @@ HREF="#LIMIT"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1944"
+NAME="AEN1992"
 ></A
 ><H2
 >Examples</H2
@@ -6136,7 +6286,7 @@ DenyAll</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN1955"
+NAME="AEN2003"
 ></A
 ><H2
 >Name</H2
@@ -6144,7 +6294,7 @@ NAME="AEN1955"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN1958"
+NAME="AEN2006"
 ></A
 ><H2
 >Synopsis</H2
@@ -6207,7 +6357,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1985"
+NAME="AEN2033"
 ></A
 ><H2
 >Description</H2
@@ -6224,7 +6374,7 @@ mutually exclusive.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1988"
+NAME="AEN2036"
 ></A
 ><H2
 >See also</H2
@@ -6237,7 +6387,7 @@ HREF="#ALLOWALL"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN1992"
+NAME="AEN2040"
 ></A
 ><H2
 >Examples</H2
@@ -6253,7 +6403,7 @@ DenyFilter</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2003"
+NAME="AEN2051"
 ></A
 ><H2
 >Name</H2
@@ -6261,7 +6411,7 @@ NAME="AEN2003"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2006"
+NAME="AEN2054"
 ></A
 ><H2
 >Synopsis</H2
@@ -6324,7 +6474,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2033"
+NAME="AEN2081"
 ></A
 ><H2
 >Description</H2
@@ -6347,7 +6497,7 @@ this directive.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2038"
+NAME="AEN2086"
 ></A
 ><H2
 >See also</H2
@@ -6357,7 +6507,7 @@ NAME="AEN2038"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2041"
+NAME="AEN2089"
 ></A
 ><H2
 >Examples</H2
@@ -6377,7 +6527,7 @@ DenyGroup</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2053"
+NAME="AEN2101"
 ></A
 ><H2
 >Name</H2
@@ -6385,7 +6535,7 @@ NAME="AEN2053"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2056"
+NAME="AEN2104"
 ></A
 ><H2
 >Synopsis</H2
@@ -6448,7 +6598,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2083"
+NAME="AEN2131"
 ></A
 ><H2
 >Description</H2
@@ -6466,7 +6616,7 @@ in order for the explicit deny to apply.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2086"
+NAME="AEN2134"
 ></A
 ><H2
 >See also</H2
@@ -6487,7 +6637,7 @@ HREF="#ALLOWGROUP"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2092"
+NAME="AEN2140"
 ></A
 ><H2
 >Examples</H2
@@ -6503,7 +6653,7 @@ DenyUser</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2103"
+NAME="AEN2151"
 ></A
 ><H2
 >Name</H2
@@ -6511,7 +6661,7 @@ NAME="AEN2103"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2106"
+NAME="AEN2154"
 ></A
 ><H2
 >Synopsis</H2
@@ -6574,7 +6724,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2133"
+NAME="AEN2181"
 ></A
 ><H2
 >Description</H2
@@ -6589,7 +6739,7 @@ evaluate to logically true in order for the explicit deny to apply.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2136"
+NAME="AEN2184"
 ></A
 ><H2
 >See also</H2
@@ -6610,7 +6760,7 @@ HREF="#ALLOWGROUP"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2142"
+NAME="AEN2190"
 ></A
 ><H2
 >Examples</H2
@@ -6626,7 +6776,7 @@ DirFakeGroup</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2153"
+NAME="AEN2201"
 ></A
 ><H2
 >Name</H2
@@ -6634,7 +6784,7 @@ NAME="AEN2153"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2156"
+NAME="AEN2204"
 ></A
 ><H2
 >Synopsis</H2
@@ -6697,7 +6847,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2183"
+NAME="AEN2231"
 ></A
 ><H2
 >Description</H2
@@ -6716,7 +6866,7 @@ affects permissions, real ownership or access control in any way.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2187"
+NAME="AEN2235"
 ></A
 ><H2
 >See also</H2
@@ -6733,7 +6883,7 @@ HREF="#DIRFAKEMODE"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2192"
+NAME="AEN2240"
 ></A
 ><H2
 >Examples</H2
@@ -6749,7 +6899,7 @@ DirFakeMode</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2203"
+NAME="AEN2251"
 ></A
 ><H2
 >Name</H2
@@ -6757,7 +6907,7 @@ NAME="AEN2203"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2206"
+NAME="AEN2254"
 ></A
 ><H2
 >Synopsis</H2
@@ -6820,7 +6970,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2233"
+NAME="AEN2281"
 ></A
 ><H2
 >Description</H2
@@ -6837,7 +6987,7 @@ access control in any way.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2236"
+NAME="AEN2284"
 ></A
 ><H2
 >See also</H2
@@ -6854,7 +7004,7 @@ HREF="#DIRFAKEGROUP"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2241"
+NAME="AEN2289"
 ></A
 ><H2
 >Examples</H2
@@ -6878,7 +7028,7 @@ DirFakeUser</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2253"
+NAME="AEN2301"
 ></A
 ><H2
 >Name</H2
@@ -6886,7 +7036,7 @@ NAME="AEN2253"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2256"
+NAME="AEN2304"
 ></A
 ><H2
 >Synopsis</H2
@@ -6949,7 +7099,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2283"
+NAME="AEN2331"
 ></A
 ><H2
 >Description</H2
@@ -6968,7 +7118,7 @@ affects permissions, real ownership or access control in any way.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2287"
+NAME="AEN2335"
 ></A
 ><H2
 >See also</H2
@@ -6985,7 +7135,7 @@ HREF="#DIRFAKEMODE"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2292"
+NAME="AEN2340"
 ></A
 ><H2
 >Examples</H2
@@ -7001,7 +7151,7 @@ Directory</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2303"
+NAME="AEN2351"
 ></A
 ><H2
 >Name</H2
@@ -7009,7 +7159,7 @@ NAME="AEN2303"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2306"
+NAME="AEN2354"
 ></A
 ><H2
 >Synopsis</H2
@@ -7072,7 +7222,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2333"
+NAME="AEN2381"
 ></A
 ><H2
 >Description</H2
@@ -7111,7 +7261,7 @@ all user's home directories, or sub-directories thereof.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2338"
+NAME="AEN2386"
 ></A
 ><H2
 >See also</H2
@@ -7124,7 +7274,7 @@ HREF="#LIMIT"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2342"
+NAME="AEN2390"
 ></A
 ><H2
 >Examples</H2
@@ -7153,7 +7303,7 @@ DisplayConnect</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2354"
+NAME="AEN2402"
 ></A
 ><H2
 >Name</H2
@@ -7161,7 +7311,7 @@ NAME="AEN2354"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2357"
+NAME="AEN2405"
 ></A
 ><H2
 >Synopsis</H2
@@ -7224,7 +7374,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2384"
+NAME="AEN2432"
 ></A
 ><H2
 >Description</H2
@@ -7240,7 +7390,7 @@ error occurs and nothing is logged or displayed to the client.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2387"
+NAME="AEN2435"
 ></A
 ><H2
 >See also</H2
@@ -7250,7 +7400,7 @@ NAME="AEN2387"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2390"
+NAME="AEN2438"
 ></A
 ><H2
 >Examples</H2
@@ -7266,15 +7416,15 @@ DisplayFirstChdir</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2401"
+NAME="AEN2449"
 ></A
 ><H2
 >Name</H2
->DisplayFirstChdir&nbsp;--&nbsp;FIXME FIXME</DIV
+>DisplayFirstChdir&nbsp;--&nbsp;Set the file to display when first entering a directory</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2404"
+NAME="AEN2452"
 ></A
 ><H2
 >Synopsis</H2
@@ -7337,7 +7487,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2431"
+NAME="AEN2479"
 ></A
 ><H2
 >Description</H2
@@ -7390,7 +7540,7 @@ which they're used (e.g., %u if ident lookups are off).</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2437"
+NAME="AEN2485"
 ></A
 ><H2
 >See also</H2
@@ -7411,7 +7561,7 @@ HREF="#DISPLAYQUIT"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2443"
+NAME="AEN2491"
 ></A
 ><H2
 >Examples</H2
@@ -7427,15 +7577,15 @@ DisplayGoAway</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2454"
+NAME="AEN2502"
 ></A
 ><H2
 >Name</H2
->DisplayGoAway&nbsp;--&nbsp;FIXME FIXME</DIV
+>DisplayGoAway&nbsp;--&nbsp;Set the file to display to a rejected connection</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2457"
+NAME="AEN2505"
 ></A
 ><H2
 >Synopsis</H2
@@ -7498,7 +7648,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2484"
+NAME="AEN2532"
 ></A
 ><H2
 >Description</H2
@@ -7511,7 +7661,7 @@ DisplayGoAway supports the same &quot;magic cookies&quot; as DisplayFirstChdir.<
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2487"
+NAME="AEN2535"
 ></A
 ><H2
 >See also</H2
@@ -7521,7 +7671,7 @@ NAME="AEN2487"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2490"
+NAME="AEN2538"
 ></A
 ><H2
 >Examples</H2
@@ -7537,15 +7687,15 @@ DisplayLogin</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2501"
+NAME="AEN2549"
 ></A
 ><H2
 >Name</H2
->DisplayLogin&nbsp;--&nbsp;FIXME FIXME</DIV
+>DisplayLogin&nbsp;--&nbsp;Set the file to display on login</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2504"
+NAME="AEN2552"
 ></A
 ><H2
 >Synopsis</H2
@@ -7608,7 +7758,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2531"
+NAME="AEN2579"
 ></A
 ><H2
 >Description</H2
@@ -7626,7 +7776,7 @@ DisplayLogin supports the same &quot;magic cookies&quot; as DisplayFirstChdir.</
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2534"
+NAME="AEN2582"
 ></A
 ><H2
 >See also</H2
@@ -7636,7 +7786,7 @@ NAME="AEN2534"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2537"
+NAME="AEN2585"
 ></A
 ><H2
 >Examples</H2
@@ -7652,15 +7802,15 @@ DisplayQuit</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2548"
+NAME="AEN2596"
 ></A
 ><H2
 >Name</H2
->DisplayQuit&nbsp;--&nbsp;FIXME FIXME</DIV
+>DisplayQuit&nbsp;--&nbsp;Set the file to display on quit</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2551"
+NAME="AEN2599"
 ></A
 ><H2
 >Synopsis</H2
@@ -7723,7 +7873,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2578"
+NAME="AEN2626"
 ></A
 ><H2
 >Description</H2
@@ -7741,7 +7891,7 @@ DisplayQuit supports the &quot;magic cookies&quot; listed under DisplayFirstChdi
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2581"
+NAME="AEN2629"
 ></A
 ><H2
 >See also</H2
@@ -7751,7 +7901,7 @@ NAME="AEN2581"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2584"
+NAME="AEN2632"
 ></A
 ><H2
 >Examples</H2
@@ -7767,7 +7917,7 @@ DisplayReadme</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2595"
+NAME="AEN2643"
 ></A
 ><H2
 >Name</H2
@@ -7775,7 +7925,7 @@ NAME="AEN2595"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2598"
+NAME="AEN2646"
 ></A
 ><H2
 >Synopsis</H2
@@ -7838,7 +7988,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2625"
+NAME="AEN2673"
 ></A
 ><H2
 >Description</H2
@@ -7863,7 +8013,7 @@ Being displayed to the user on a cwd. </P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2628"
+NAME="AEN2676"
 ></A
 ><H2
 >See also</H2
@@ -7873,7 +8023,7 @@ NAME="AEN2628"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2631"
+NAME="AEN2679"
 ></A
 ><H2
 >Examples</H2
@@ -7889,7 +8039,7 @@ ExtendedLog</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2642"
+NAME="AEN2690"
 ></A
 ><H2
 >Name</H2
@@ -7897,7 +8047,7 @@ NAME="AEN2642"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2645"
+NAME="AEN2693"
 ></A
 ><H2
 >Synopsis</H2
@@ -7960,7 +8110,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2672"
+NAME="AEN2720"
 ></A
 ><H2
 >Description</H2
@@ -8003,7 +8153,7 @@ is used.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2677"
+NAME="AEN2725"
 ></A
 ><H2
 >See also</H2
@@ -8024,7 +8174,7 @@ HREF="#TRANSFERLOG"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2683"
+NAME="AEN2731"
 ></A
 ><H2
 >Examples</H2
@@ -8046,7 +8196,7 @@ FileRatioErrMsg</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2696"
+NAME="AEN2744"
 ></A
 ><H2
 >Name</H2
@@ -8054,7 +8204,7 @@ NAME="AEN2696"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2699"
+NAME="AEN2747"
 ></A
 ><H2
 >Synopsis</H2
@@ -8117,7 +8267,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2726"
+NAME="AEN2774"
 ></A
 ><H2
 >Description</H2
@@ -8129,7 +8279,7 @@ FileRatioErrMsg</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2729"
+NAME="AEN2777"
 ></A
 ><H2
 >See also</H2
@@ -8139,7 +8289,7 @@ NAME="AEN2729"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2732"
+NAME="AEN2780"
 ></A
 ><H2
 >Examples</H2
@@ -8155,7 +8305,7 @@ FooBarDirective</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2743"
+NAME="AEN2791"
 ></A
 ><H2
 >Name</H2
@@ -8163,7 +8313,7 @@ NAME="AEN2743"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2746"
+NAME="AEN2794"
 ></A
 ><H2
 >Synopsis</H2
@@ -8226,7 +8376,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2773"
+NAME="AEN2821"
 ></A
 ><H2
 >Description</H2
@@ -8237,7 +8387,7 @@ example only.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2776"
+NAME="AEN2824"
 ></A
 ><H2
 >See also</H2
@@ -8247,7 +8397,7 @@ NAME="AEN2776"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2779"
+NAME="AEN2827"
 ></A
 ><H2
 >Examples</H2
@@ -8263,15 +8413,15 @@ Global</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2790"
+NAME="AEN2838"
 ></A
 ><H2
 >Name</H2
->Global&nbsp;--&nbsp;FIXME FIXME</DIV
+>Global&nbsp;--&nbsp;Set some directives to apply across the entire daemon</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2793"
+NAME="AEN2841"
 ></A
 ><H2
 >Synopsis</H2
@@ -8334,7 +8484,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2820"
+NAME="AEN2868"
 ></A
 ><H2
 >Description</H2
@@ -8342,15 +8492,16 @@ NAME="AEN2820"
 >The Global configuration block is used to create a set of configuration directives 
 which is applied universally to both the main server configuration and all VirtualHost 
 configurations. Most, but not all other directives can be used 
-inside a Global block.
-In addition, multiple &lt;Global&gt; blocks can be created. At runtime, all 
+inside a Global block.</P
+><P
+>In addition, multiple &lt;Global&gt; blocks can be created. At runtime, all 
 Global blocks are merged together and finally into each server's configuration. 
 Global blocks are terminated by a matching &lt;/Global&gt; directive.</P
 ></DIV
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2823"
+NAME="AEN2872"
 ></A
 ><H2
 >See also</H2
@@ -8360,7 +8511,7 @@ NAME="AEN2823"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2826"
+NAME="AEN2875"
 ></A
 ><H2
 >Examples</H2
@@ -8376,7 +8527,7 @@ Group</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2837"
+NAME="AEN2886"
 ></A
 ><H2
 >Name</H2
@@ -8384,7 +8535,7 @@ NAME="AEN2837"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2840"
+NAME="AEN2889"
 ></A
 ><H2
 >Synopsis</H2
@@ -8447,7 +8598,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2867"
+NAME="AEN2916"
 ></A
 ><H2
 >Description</H2
@@ -8458,7 +8609,7 @@ run at. See User for more details.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2870"
+NAME="AEN2919"
 ></A
 ><H2
 >See also</H2
@@ -8468,7 +8619,7 @@ NAME="AEN2870"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2873"
+NAME="AEN2922"
 ></A
 ><H2
 >Examples</H2
@@ -8484,7 +8635,7 @@ GroupOwner</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2884"
+NAME="AEN2933"
 ></A
 ><H2
 >Name</H2
@@ -8492,7 +8643,7 @@ NAME="AEN2884"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2887"
+NAME="AEN2936"
 ></A
 ><H2
 >Synopsis</H2
@@ -8555,7 +8706,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2914"
+NAME="AEN2963"
 ></A
 ><H2
 >Description</H2
@@ -8575,7 +8726,7 @@ in the same context, this restriction is lifted.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2917"
+NAME="AEN2966"
 ></A
 ><H2
 >See also</H2
@@ -8585,7 +8736,7 @@ NAME="AEN2917"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2920"
+NAME="AEN2969"
 ></A
 ><H2
 >Examples</H2
@@ -8601,7 +8752,7 @@ GroupPassword</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2931"
+NAME="AEN2980"
 ></A
 ><H2
 >Name</H2
@@ -8609,7 +8760,7 @@ NAME="AEN2931"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2934"
+NAME="AEN2983"
 ></A
 ><H2
 >Synopsis</H2
@@ -8672,7 +8823,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2961"
+NAME="AEN3010"
 ></A
 ><H2
 >Description</H2
@@ -8688,7 +8839,7 @@ serious security problems may arise if group membership is not carefully control
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2964"
+NAME="AEN3013"
 ></A
 ><H2
 >See also</H2
@@ -8698,7 +8849,7 @@ NAME="AEN2964"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN2967"
+NAME="AEN3016"
 ></A
 ><H2
 >Examples</H2
@@ -8714,7 +8865,7 @@ GroupRatio</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN2978"
+NAME="AEN3027"
 ></A
 ><H2
 >Name</H2
@@ -8722,7 +8873,7 @@ NAME="AEN2978"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN2981"
+NAME="AEN3030"
 ></A
 ><H2
 >Synopsis</H2
@@ -8785,7 +8936,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3008"
+NAME="AEN3057"
 ></A
 ><H2
 >Description</H2
@@ -8797,7 +8948,7 @@ GroupRatio</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3011"
+NAME="AEN3060"
 ></A
 ><H2
 >See also</H2
@@ -8807,7 +8958,7 @@ NAME="AEN3011"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3014"
+NAME="AEN3063"
 ></A
 ><H2
 >Examples</H2
@@ -8823,7 +8974,7 @@ HiddenStor</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3025"
+NAME="AEN3074"
 ></A
 ><H2
 >Name</H2
@@ -8831,7 +8982,7 @@ NAME="AEN3025"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3028"
+NAME="AEN3077"
 ></A
 ><H2
 >Synopsis</H2
@@ -8894,7 +9045,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3055"
+NAME="AEN3104"
 ></A
 ><H2
 >Description</H2
@@ -8913,7 +9064,7 @@ enabled, with the server returning a 501 error code to the client.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3059"
+NAME="AEN3108"
 ></A
 ><H2
 >See also</H2
@@ -8930,12 +9081,232 @@ HREF="#DELETEABORTEDSTORES"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3064"
+NAME="AEN3113"
 ></A
 ><H2
 >Examples</H2
 ><P
 ></P
+></DIV
+><H1
+><A
+NAME="HIDDENSTORES"
+></A
+>
+HiddenStores</H1
+><DIV
+CLASS="REFNAMEDIV"
+><A
+NAME="AEN3124"
+></A
+><H2
+>Name</H2
+>HiddenStores&nbsp;--&nbsp;FIXFIXFIX</DIV
+><DIV
+CLASS="REFSYNOPSISDIV"
+><A
+NAME="AEN3127"
+></A
+><H2
+>Synopsis</H2
+><P
+><B
+CLASS="COMMAND"
+>HiddenStores</B
+>  [  <TT
+CLASS="OPTION"
+>"name" limit|regex|ip value</TT
+>]</P
+><P
+></P
+><DIV
+CLASS="VARIABLELIST"
+><P
+><B
+></B
+></P
+><DL
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Default</PRE
+></DT
+><DD
+><P
+>FIXFIXFIX</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Context</PRE
+></DT
+><DD
+><P
+>server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;, .ftpaccess</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Module</PRE
+></DT
+><DD
+><P
+>mod_xfer</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Compatibility</PRE
+></DT
+><DD
+><P
+>1.2.7rc1 and later</P
+></DD
+></DL
+></DIV
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN3154"
+></A
+><H2
+>Description</H2
+><P
+>FIX FIX FIX</P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN3157"
+></A
+><H2
+>See also</H2
+><P
+></P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN3160"
+></A
+><H2
+>Examples</H2
+><P
+CLASS="LITERALLAYOUT"
+>FIXFIXFIX</P
+><P
+>FIXFIX</P
+></DIV
+><H1
+><A
+NAME="HIDEFILES"
+></A
+>
+HideFiles</H1
+><DIV
+CLASS="REFNAMEDIV"
+><A
+NAME="AEN3172"
+></A
+><H2
+>Name</H2
+>HideFiles&nbsp;--&nbsp;FIXFIXFIX</DIV
+><DIV
+CLASS="REFSYNOPSISDIV"
+><A
+NAME="AEN3175"
+></A
+><H2
+>Synopsis</H2
+><P
+><B
+CLASS="COMMAND"
+>HideFiles</B
+>  [  <TT
+CLASS="OPTION"
+>"name" limit|regex|ip value</TT
+>]</P
+><P
+></P
+><DIV
+CLASS="VARIABLELIST"
+><P
+><B
+></B
+></P
+><DL
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Default</PRE
+></DT
+><DD
+><P
+>FIXFIXFIX</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Context</PRE
+></DT
+><DD
+><P
+>server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;, .ftpaccess</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Module</PRE
+></DT
+><DD
+><P
+>mod_code</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Compatibility</PRE
+></DT
+><DD
+><P
+>%%VERSION%% and later</P
+></DD
+></DL
+></DIV
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN3202"
+></A
+><H2
+>Description</H2
+><P
+>FIX FIX FIX</P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN3205"
+></A
+><H2
+>See also</H2
+><P
+></P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN3208"
+></A
+><H2
+>Examples</H2
+><P
+CLASS="LITERALLAYOUT"
+>FIXFIXFIX</P
+><P
+>FIXFIX</P
 ></DIV
 ><H1
 ><A
@@ -8946,7 +9317,7 @@ HideGroup</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3075"
+NAME="AEN3220"
 ></A
 ><H2
 >Name</H2
@@ -8954,7 +9325,7 @@ NAME="AEN3075"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3078"
+NAME="AEN3223"
 ></A
 ><H2
 >Synopsis</H2
@@ -9017,7 +9388,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3105"
+NAME="AEN3250"
 ></A
 ><H2
 >Description</H2
@@ -9033,7 +9404,7 @@ can be modified via the IgnoreHidden directive.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3108"
+NAME="AEN3253"
 ></A
 ><H2
 >See also</H2
@@ -9043,7 +9414,7 @@ NAME="AEN3108"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3111"
+NAME="AEN3256"
 ></A
 ><H2
 >Examples</H2
@@ -9059,7 +9430,7 @@ HideNoAccess</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3122"
+NAME="AEN3267"
 ></A
 ><H2
 >Name</H2
@@ -9068,7 +9439,7 @@ has no access permissions</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3125"
+NAME="AEN3270"
 ></A
 ><H2
 >Synopsis</H2
@@ -9131,7 +9502,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3152"
+NAME="AEN3297"
 ></A
 ><H2
 >Description</H2
@@ -9150,7 +9521,7 @@ IgnoreHidden in conjunction with HideNoAccess.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3155"
+NAME="AEN3300"
 ></A
 ><H2
 >See also</H2
@@ -9160,7 +9531,7 @@ NAME="AEN3155"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3158"
+NAME="AEN3303"
 ></A
 ><H2
 >Examples</H2
@@ -9176,7 +9547,7 @@ HideUser</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3169"
+NAME="AEN3314"
 ></A
 ><H2
 >Name</H2
@@ -9184,7 +9555,7 @@ NAME="AEN3169"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3172"
+NAME="AEN3317"
 ></A
 ><H2
 >Synopsis</H2
@@ -9247,7 +9618,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3199"
+NAME="AEN3344"
 ></A
 ><H2
 >Description</H2
@@ -9262,7 +9633,7 @@ behavior can be modified via the IgnoreHidden directive. </P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3202"
+NAME="AEN3347"
 ></A
 ><H2
 >See also</H2
@@ -9272,7 +9643,7 @@ NAME="AEN3202"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3205"
+NAME="AEN3350"
 ></A
 ><H2
 >Examples</H2
@@ -9288,7 +9659,7 @@ HostRatio</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3216"
+NAME="AEN3361"
 ></A
 ><H2
 >Name</H2
@@ -9296,7 +9667,7 @@ NAME="AEN3216"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3219"
+NAME="AEN3364"
 ></A
 ><H2
 >Synopsis</H2
@@ -9359,7 +9730,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3246"
+NAME="AEN3391"
 ></A
 ><H2
 >Description</H2
@@ -9371,7 +9742,7 @@ HostRatio</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3249"
+NAME="AEN3394"
 ></A
 ><H2
 >See also</H2
@@ -9381,7 +9752,7 @@ NAME="AEN3249"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3252"
+NAME="AEN3397"
 ></A
 ><H2
 >Examples</H2
@@ -9397,7 +9768,7 @@ IdentLookups</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3263"
+NAME="AEN3408"
 ></A
 ><H2
 >Name</H2
@@ -9405,7 +9776,7 @@ NAME="AEN3263"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3266"
+NAME="AEN3411"
 ></A
 ><H2
 >Synopsis</H2
@@ -9468,7 +9839,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3293"
+NAME="AEN3438"
 ></A
 ><H2
 >Description</H2
@@ -9480,7 +9851,7 @@ be controlled via the IdentLookups directive.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3296"
+NAME="AEN3441"
 ></A
 ><H2
 >See also</H2
@@ -9490,7 +9861,7 @@ NAME="AEN3296"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3299"
+NAME="AEN3444"
 ></A
 ><H2
 >Examples</H2
@@ -9506,7 +9877,7 @@ IfDefine</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3310"
+NAME="AEN3455"
 ></A
 ><H2
 >Name</H2
@@ -9514,7 +9885,7 @@ NAME="AEN3310"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3313"
+NAME="AEN3458"
 ></A
 ><H2
 >Synopsis</H2
@@ -9577,7 +9948,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3340"
+NAME="AEN3485"
 ></A
 ><H2
 >Description</H2
@@ -9605,7 +9976,7 @@ simple multiple-parameter tests.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3347"
+NAME="AEN3492"
 ></A
 ><H2
 >See also</H2
@@ -9622,7 +9993,7 @@ HREF="#IFMODULE"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3352"
+NAME="AEN3497"
 ></A
 ><H2
 >Examples</H2
@@ -9645,7 +10016,7 @@ IfModule</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3363"
+NAME="AEN3508"
 ></A
 ><H2
 >Name</H2
@@ -9653,7 +10024,7 @@ NAME="AEN3363"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3366"
+NAME="AEN3511"
 ></A
 ><H2
 >Synopsis</H2
@@ -9716,7 +10087,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3393"
+NAME="AEN3538"
 ></A
 ><H2
 >Description</H2
@@ -9743,7 +10114,7 @@ simple multiple-module tests.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3400"
+NAME="AEN3545"
 ></A
 ><H2
 >See also</H2
@@ -9759,7 +10130,7 @@ HREF="#IFDEFINE"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3405"
+NAME="AEN3550"
 ></A
 ><H2
 >Examples</H2
@@ -9780,7 +10151,7 @@ IgnoreHidden</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3417"
+NAME="AEN3562"
 ></A
 ><H2
 >Name</H2
@@ -9788,7 +10159,7 @@ NAME="AEN3417"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3420"
+NAME="AEN3565"
 ></A
 ><H2
 >Synopsis</H2
@@ -9851,7 +10222,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3447"
+NAME="AEN3592"
 ></A
 ><H2
 >Description</H2
@@ -9871,7 +10242,7 @@ command upon a hidden directory or file.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3450"
+NAME="AEN3595"
 ></A
 ><H2
 >See also</H2
@@ -9881,7 +10252,7 @@ NAME="AEN3450"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3453"
+NAME="AEN3598"
 ></A
 ><H2
 >Examples</H2
@@ -9897,7 +10268,7 @@ Include</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3464"
+NAME="AEN3609"
 ></A
 ><H2
 >Name</H2
@@ -9905,7 +10276,7 @@ NAME="AEN3464"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3467"
+NAME="AEN3612"
 ></A
 ><H2
 >Synopsis</H2
@@ -9968,7 +10339,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3494"
+NAME="AEN3639"
 ></A
 ><H2
 >Description</H2
@@ -9979,7 +10350,7 @@ the file to be included.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3497"
+NAME="AEN3642"
 ></A
 ><H2
 >See also</H2
@@ -9989,7 +10360,7 @@ NAME="AEN3497"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3500"
+NAME="AEN3645"
 ></A
 ><H2
 >Examples</H2
@@ -10005,7 +10376,7 @@ NAME="LDAPAUTHBINDS"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3511"
+NAME="AEN3656"
 ></A
 ><H2
 >Name</H2
@@ -10013,7 +10384,7 @@ NAME="AEN3511"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3514"
+NAME="AEN3659"
 ></A
 ><H2
 >Synopsis</H2
@@ -10086,7 +10457,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3542"
+NAME="AEN3687"
 ></A
 ><H2
 >Description</H2
@@ -10105,7 +10476,7 @@ NAME="AEN3542"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3545"
+NAME="AEN3690"
 ></A
 ><H2
 >See also</H2
@@ -10115,7 +10486,7 @@ NAME="AEN3545"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3548"
+NAME="AEN3693"
 ></A
 ><H2
 >Examples</H2
@@ -10131,7 +10502,7 @@ NAME="LDAPDNINFO"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3559"
+NAME="AEN3704"
 ></A
 ><H2
 >Name</H2
@@ -10139,7 +10510,7 @@ NAME="AEN3559"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3562"
+NAME="AEN3707"
 ></A
 ><H2
 >Synopsis</H2
@@ -10207,7 +10578,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3589"
+NAME="AEN3734"
 ></A
 ><H2
 >Description</H2
@@ -10219,7 +10590,7 @@ NAME="AEN3589"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3592"
+NAME="AEN3737"
 ></A
 ><H2
 >See also</H2
@@ -10229,7 +10600,7 @@ NAME="AEN3592"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3595"
+NAME="AEN3740"
 ></A
 ><H2
 >Examples</H2
@@ -10245,7 +10616,7 @@ NAME="LDAPDEFAULTAUTHSCHEME"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3606"
+NAME="AEN3751"
 ></A
 ><H2
 >Name</H2
@@ -10255,7 +10626,7 @@ NAME="AEN3606"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3609"
+NAME="AEN3754"
 ></A
 ><H2
 >Synopsis</H2
@@ -10327,7 +10698,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3637"
+NAME="AEN3782"
 ></A
 ><H2
 >Description</H2
@@ -10340,7 +10711,7 @@ NAME="AEN3637"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3640"
+NAME="AEN3785"
 ></A
 ><H2
 >See also</H2
@@ -10350,7 +10721,7 @@ NAME="AEN3640"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3643"
+NAME="AEN3788"
 ></A
 ><H2
 >Examples</H2
@@ -10366,7 +10737,7 @@ NAME="LDAPDEFAULTGID"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3654"
+NAME="AEN3799"
 ></A
 ><H2
 >Name</H2
@@ -10376,7 +10747,7 @@ NAME="AEN3654"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3657"
+NAME="AEN3802"
 ></A
 ><H2
 >Synopsis</H2
@@ -10444,7 +10815,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3684"
+NAME="AEN3829"
 ></A
 ><H2
 >Description</H2
@@ -10460,7 +10831,7 @@ NAME="AEN3684"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3687"
+NAME="AEN3832"
 ></A
 ><H2
 >See also</H2
@@ -10470,7 +10841,7 @@ NAME="AEN3687"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3690"
+NAME="AEN3835"
 ></A
 ><H2
 >Examples</H2
@@ -10486,7 +10857,7 @@ NAME="LDAPDEFAULTUID"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3701"
+NAME="AEN3846"
 ></A
 ><H2
 >Name</H2
@@ -10496,7 +10867,7 @@ NAME="AEN3701"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3704"
+NAME="AEN3849"
 ></A
 ><H2
 >Synopsis</H2
@@ -10564,7 +10935,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3731"
+NAME="AEN3876"
 ></A
 ><H2
 >Description</H2
@@ -10580,7 +10951,7 @@ NAME="AEN3731"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3734"
+NAME="AEN3879"
 ></A
 ><H2
 >See also</H2
@@ -10590,7 +10961,7 @@ NAME="AEN3734"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3737"
+NAME="AEN3882"
 ></A
 ><H2
 >Examples</H2
@@ -10606,7 +10977,7 @@ NAME="LDAPDOAUTH"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3748"
+NAME="AEN3893"
 ></A
 ><H2
 >Name</H2
@@ -10614,7 +10985,7 @@ NAME="AEN3748"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3751"
+NAME="AEN3896"
 ></A
 ><H2
 >Synopsis</H2
@@ -10694,7 +11065,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3783"
+NAME="AEN3928"
 ></A
 ><H2
 >Description</H2
@@ -10710,7 +11081,7 @@ NAME="AEN3783"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3786"
+NAME="AEN3931"
 ></A
 ><H2
 >See also</H2
@@ -10720,7 +11091,7 @@ NAME="AEN3786"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3789"
+NAME="AEN3934"
 ></A
 ><H2
 >Examples</H2
@@ -10736,7 +11107,7 @@ NAME="LDAPDOGIDLOOKUPS"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3800"
+NAME="AEN3945"
 ></A
 ><H2
 >Name</H2
@@ -10746,7 +11117,7 @@ NAME="AEN3800"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3803"
+NAME="AEN3948"
 ></A
 ><H2
 >Synopsis</H2
@@ -10826,7 +11197,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3835"
+NAME="AEN3980"
 ></A
 ><H2
 >Description</H2
@@ -10844,7 +11215,7 @@ NAME="AEN3835"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3838"
+NAME="AEN3983"
 ></A
 ><H2
 >See also</H2
@@ -10854,7 +11225,7 @@ NAME="AEN3838"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3841"
+NAME="AEN3986"
 ></A
 ><H2
 >Examples</H2
@@ -10870,7 +11241,7 @@ NAME="LDAPDOUIDLOOKUPS"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3852"
+NAME="AEN3997"
 ></A
 ><H2
 >Name</H2
@@ -10879,7 +11250,7 @@ NAME="AEN3852"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3855"
+NAME="AEN4000"
 ></A
 ><H2
 >Synopsis</H2
@@ -10959,7 +11330,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3887"
+NAME="AEN4032"
 ></A
 ><H2
 >Description</H2
@@ -10977,7 +11348,7 @@ NAME="AEN3887"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3890"
+NAME="AEN4035"
 ></A
 ><H2
 >See also</H2
@@ -10987,7 +11358,7 @@ NAME="AEN3890"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3893"
+NAME="AEN4038"
 ></A
 ><H2
 >Examples</H2
@@ -11003,7 +11374,7 @@ NAME="LDAPFORCEDEFAULTGID"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3904"
+NAME="AEN4049"
 ></A
 ><H2
 >Name</H2
@@ -11011,7 +11382,7 @@ NAME="AEN3904"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3907"
+NAME="AEN4052"
 ></A
 ><H2
 >Synopsis</H2
@@ -11083,7 +11454,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3935"
+NAME="AEN4080"
 ></A
 ><H2
 >Description</H2
@@ -11101,7 +11472,7 @@ HREF="#LDAPDEFAULTGID"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3939"
+NAME="AEN4084"
 ></A
 ><H2
 >See also</H2
@@ -11111,7 +11482,7 @@ NAME="AEN3939"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3942"
+NAME="AEN4087"
 ></A
 ><H2
 >Examples</H2
@@ -11127,7 +11498,7 @@ NAME="LDAPFORCEDEFAULTUID"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN3953"
+NAME="AEN4098"
 ></A
 ><H2
 >Name</H2
@@ -11135,7 +11506,7 @@ NAME="AEN3953"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN3956"
+NAME="AEN4101"
 ></A
 ><H2
 >Synopsis</H2
@@ -11207,7 +11578,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3984"
+NAME="AEN4129"
 ></A
 ><H2
 >Description</H2
@@ -11225,7 +11596,7 @@ HREF="#LDAPDEFAULTUID"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3988"
+NAME="AEN4133"
 ></A
 ><H2
 >See also</H2
@@ -11235,7 +11606,7 @@ NAME="AEN3988"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN3991"
+NAME="AEN4136"
 ></A
 ><H2
 >Examples</H2
@@ -11251,7 +11622,7 @@ NAME="LDAPHOMEDIRONDEMAND"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4002"
+NAME="AEN4147"
 ></A
 ><H2
 >Name</H2
@@ -11260,7 +11631,7 @@ NAME="AEN4002"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4005"
+NAME="AEN4150"
 ></A
 ><H2
 >Synopsis</H2
@@ -11336,7 +11707,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4035"
+NAME="AEN4180"
 ></A
 ><H2
 >Description</H2
@@ -11360,7 +11731,7 @@ NAME="AEN4035"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4040"
+NAME="AEN4185"
 ></A
 ><H2
 >See also</H2
@@ -11370,7 +11741,7 @@ NAME="AEN4040"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4043"
+NAME="AEN4188"
 ></A
 ><H2
 >Examples</H2
@@ -11386,7 +11757,7 @@ NAME="LDAPHOMEDIRONDEMANDPREFIX"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4054"
+NAME="AEN4199"
 ></A
 ><H2
 >Name</H2
@@ -11395,7 +11766,7 @@ NAME="AEN4054"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4057"
+NAME="AEN4202"
 ></A
 ><H2
 >Synopsis</H2
@@ -11463,7 +11834,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4084"
+NAME="AEN4229"
 ></A
 ><H2
 >Description</H2
@@ -11491,7 +11862,7 @@ HREF="#LDAPHOMEDIRONDEMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4090"
+NAME="AEN4235"
 ></A
 ><H2
 >See also</H2
@@ -11501,7 +11872,7 @@ NAME="AEN4090"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4093"
+NAME="AEN4238"
 ></A
 ><H2
 >Examples</H2
@@ -11517,7 +11888,7 @@ LDAPHomedirOnDemandPrefixNoUsername</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4104"
+NAME="AEN4249"
 ></A
 ><H2
 >Name</H2
@@ -11525,7 +11896,7 @@ NAME="AEN4104"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4107"
+NAME="AEN4252"
 ></A
 ><H2
 >Synopsis</H2
@@ -11588,7 +11959,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4134"
+NAME="AEN4279"
 ></A
 ><H2
 >Description</H2
@@ -11598,7 +11969,7 @@ NAME="AEN4134"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4137"
+NAME="AEN4282"
 ></A
 ><H2
 >See also</H2
@@ -11608,7 +11979,7 @@ NAME="AEN4137"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4140"
+NAME="AEN4285"
 ></A
 ><H2
 >Examples</H2
@@ -11627,7 +11998,7 @@ NAME="LDAPHOMEDIRONDEMANDSUFFIX"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4152"
+NAME="AEN4297"
 ></A
 ><H2
 >Name</H2
@@ -11637,7 +12008,7 @@ NAME="AEN4152"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4155"
+NAME="AEN4300"
 ></A
 ><H2
 >Synopsis</H2
@@ -11713,7 +12084,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4184"
+NAME="AEN4329"
 ></A
 ><H2
 >Description</H2
@@ -11731,7 +12102,7 @@ NAME="AEN4184"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4188"
+NAME="AEN4333"
 ></A
 ><H2
 >See also</H2
@@ -11741,7 +12112,7 @@ NAME="AEN4188"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4191"
+NAME="AEN4336"
 ></A
 ><H2
 >Examples</H2
@@ -11757,7 +12128,7 @@ NAME="LDAPNEGATIVECACHE"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4202"
+NAME="AEN4347"
 ></A
 ><H2
 >Name</H2
@@ -11765,7 +12136,7 @@ NAME="AEN4202"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4205"
+NAME="AEN4350"
 ></A
 ><H2
 >Synopsis</H2
@@ -11837,7 +12208,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4233"
+NAME="AEN4378"
 ></A
 ><H2
 >Description</H2
@@ -11858,7 +12229,7 @@ NAME="AEN4233"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4236"
+NAME="AEN4381"
 ></A
 ><H2
 >See also</H2
@@ -11868,7 +12239,7 @@ NAME="AEN4236"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4239"
+NAME="AEN4384"
 ></A
 ><H2
 >Examples</H2
@@ -11884,7 +12255,7 @@ NAME="LDAPQUERYTIMEOUT"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4250"
+NAME="AEN4395"
 ></A
 ><H2
 >Name</H2
@@ -11892,7 +12263,7 @@ NAME="AEN4250"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4253"
+NAME="AEN4398"
 ></A
 ><H2
 >Synopsis</H2
@@ -11960,7 +12331,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4280"
+NAME="AEN4425"
 ></A
 ><H2
 >Description</H2
@@ -11971,7 +12342,7 @@ NAME="AEN4280"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4283"
+NAME="AEN4428"
 ></A
 ><H2
 >See also</H2
@@ -11981,7 +12352,7 @@ NAME="AEN4283"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4286"
+NAME="AEN4431"
 ></A
 ><H2
 >Examples</H2
@@ -11997,7 +12368,7 @@ NAME="LDAPSEARCHSCOPE"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4297"
+NAME="AEN4442"
 ></A
 ><H2
 >Name</H2
@@ -12005,7 +12376,7 @@ NAME="AEN4297"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4300"
+NAME="AEN4445"
 ></A
 ><H2
 >Synopsis</H2
@@ -12077,7 +12448,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4328"
+NAME="AEN4473"
 ></A
 ><H2
 >Description</H2
@@ -12090,7 +12461,7 @@ NAME="AEN4328"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4331"
+NAME="AEN4476"
 ></A
 ><H2
 >See also</H2
@@ -12100,7 +12471,7 @@ NAME="AEN4331"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4334"
+NAME="AEN4479"
 ></A
 ><H2
 >Examples</H2
@@ -12116,7 +12487,7 @@ NAME="LDAPSERVER"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4345"
+NAME="AEN4490"
 ></A
 ><H2
 >Name</H2
@@ -12124,7 +12495,7 @@ NAME="AEN4345"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4348"
+NAME="AEN4493"
 ></A
 ><H2
 >Synopsis</H2
@@ -12192,7 +12563,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4375"
+NAME="AEN4520"
 ></A
 ><H2
 >Description</H2
@@ -12205,7 +12576,7 @@ NAME="AEN4375"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4378"
+NAME="AEN4523"
 ></A
 ><H2
 >See also</H2
@@ -12215,7 +12586,7 @@ NAME="AEN4378"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4381"
+NAME="AEN4526"
 ></A
 ><H2
 >Examples</H2
@@ -12231,7 +12602,7 @@ NAME="LDAPUSETLS"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4392"
+NAME="AEN4537"
 ></A
 ><H2
 >Name</H2
@@ -12239,7 +12610,7 @@ NAME="AEN4392"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4395"
+NAME="AEN4540"
 ></A
 ><H2
 >Synopsis</H2
@@ -12311,7 +12682,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4423"
+NAME="AEN4568"
 ></A
 ><H2
 >Description</H2
@@ -12326,7 +12697,7 @@ NAME="AEN4423"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4426"
+NAME="AEN4571"
 ></A
 ><H2
 >See also</H2
@@ -12336,7 +12707,7 @@ NAME="AEN4426"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4429"
+NAME="AEN4574"
 ></A
 ><H2
 >Examples</H2
@@ -12352,7 +12723,7 @@ LeechRatioMsg</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4440"
+NAME="AEN4585"
 ></A
 ><H2
 >Name</H2
@@ -12360,7 +12731,7 @@ NAME="AEN4440"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4443"
+NAME="AEN4588"
 ></A
 ><H2
 >Synopsis</H2
@@ -12423,7 +12794,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4470"
+NAME="AEN4615"
 ></A
 ><H2
 >Description</H2
@@ -12434,7 +12805,7 @@ back to the client upon breaking their quota limits.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4473"
+NAME="AEN4618"
 ></A
 ><H2
 >See also</H2
@@ -12444,7 +12815,7 @@ NAME="AEN4473"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4476"
+NAME="AEN4621"
 ></A
 ><H2
 >Examples</H2
@@ -12463,15 +12834,15 @@ Limit</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4488"
+NAME="AEN4633"
 ></A
 ><H2
 >Name</H2
->Limit&nbsp;--&nbsp;FIXME FIXME</DIV
+>Limit&nbsp;--&nbsp;Set the commands/actions to be controlled</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4491"
+NAME="AEN4636"
 ></A
 ><H2
 >Synopsis</H2
@@ -12534,7 +12905,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4518"
+NAME="AEN4663"
 ></A
 ><H2
 >Description</H2
@@ -12607,7 +12978,7 @@ The following FTP commands cannot be restricted via &lt;Limit&gt;:
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4521"
+NAME="AEN4666"
 ></A
 ><H2
 >See also</H2
@@ -12617,7 +12988,7 @@ NAME="AEN4521"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4524"
+NAME="AEN4669"
 ></A
 ><H2
 >Examples</H2
@@ -12633,7 +13004,7 @@ LogFormat</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4535"
+NAME="AEN4680"
 ></A
 ><H2
 >Name</H2
@@ -12641,7 +13012,7 @@ NAME="AEN4535"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4538"
+NAME="AEN4683"
 ></A
 ><H2
 >Synopsis</H2
@@ -12704,7 +13075,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4565"
+NAME="AEN4710"
 ></A
 ><H2
 >Description</H2
@@ -12778,7 +13149,7 @@ Local authenticated userid</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4569"
+NAME="AEN4714"
 ></A
 ><H2
 >See also</H2
@@ -12795,7 +13166,7 @@ HREF="#TRANSFERLOG"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4574"
+NAME="AEN4719"
 ></A
 ><H2
 >Examples</H2
@@ -12811,7 +13182,7 @@ LoginPasswordPrompt</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4585"
+NAME="AEN4730"
 ></A
 ><H2
 >Name</H2
@@ -12819,7 +13190,7 @@ NAME="AEN4585"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4588"
+NAME="AEN4733"
 ></A
 ><H2
 >Synopsis</H2
@@ -12882,7 +13253,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4615"
+NAME="AEN4760"
 ></A
 ><H2
 >Description</H2
@@ -12894,7 +13265,7 @@ directive forbids the connection.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4618"
+NAME="AEN4763"
 ></A
 ><H2
 >See also</H2
@@ -12904,7 +13275,7 @@ NAME="AEN4618"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4621"
+NAME="AEN4766"
 ></A
 ><H2
 >Examples</H2
@@ -12920,7 +13291,7 @@ LsDefaultOptions</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4632"
+NAME="AEN4777"
 ></A
 ><H2
 >Name</H2
@@ -12928,7 +13299,7 @@ NAME="AEN4632"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4635"
+NAME="AEN4780"
 ></A
 ><H2
 >Synopsis</H2
@@ -12991,7 +13362,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4662"
+NAME="AEN4807"
 ></A
 ><H2
 >Description</H2
@@ -13007,7 +13378,7 @@ LsDefaultOptions "-a"</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4665"
+NAME="AEN4810"
 ></A
 ><H2
 >See also</H2
@@ -13017,7 +13388,7 @@ NAME="AEN4665"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4668"
+NAME="AEN4813"
 ></A
 ><H2
 >Examples</H2
@@ -13033,7 +13404,7 @@ MasqueradeAddress</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4679"
+NAME="AEN4824"
 ></A
 ><H2
 >Name</H2
@@ -13041,7 +13412,7 @@ NAME="AEN4679"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4682"
+NAME="AEN4827"
 ></A
 ><H2
 >Synopsis</H2
@@ -13104,7 +13475,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4709"
+NAME="AEN4854"
 ></A
 ><H2
 >Description</H2
@@ -13117,7 +13488,7 @@ for the server.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4712"
+NAME="AEN4857"
 ></A
 ><H2
 >See also</H2
@@ -13127,7 +13498,7 @@ NAME="AEN4712"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4715"
+NAME="AEN4860"
 ></A
 ><H2
 >Examples</H2
@@ -13146,7 +13517,7 @@ MaxClients</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4727"
+NAME="AEN4872"
 ></A
 ><H2
 >Name</H2
@@ -13154,7 +13525,7 @@ NAME="AEN4727"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4730"
+NAME="AEN4875"
 ></A
 ><H2
 >Synopsis</H2
@@ -13217,7 +13588,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4757"
+NAME="AEN4902"
 ></A
 ><H2
 >Description</H2
@@ -13243,7 +13614,7 @@ Results in:
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4760"
+NAME="AEN4905"
 ></A
 ><H2
 >See also</H2
@@ -13253,7 +13624,7 @@ NAME="AEN4760"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4763"
+NAME="AEN4908"
 ></A
 ><H2
 >Examples</H2
@@ -13269,7 +13640,7 @@ MaxClientsPerHost</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4774"
+NAME="AEN4919"
 ></A
 ><H2
 >Name</H2
@@ -13277,7 +13648,7 @@ NAME="AEN4774"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4777"
+NAME="AEN4922"
 ></A
 ><H2
 >Synopsis</H2
@@ -13340,7 +13711,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4804"
+NAME="AEN4949"
 ></A
 ><H2
 >Description</H2
@@ -13355,7 +13726,7 @@ is used. </P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4807"
+NAME="AEN4952"
 ></A
 ><H2
 >See also</H2
@@ -13365,7 +13736,7 @@ NAME="AEN4807"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4810"
+NAME="AEN4955"
 ></A
 ><H2
 >Examples</H2
@@ -13378,6 +13749,243 @@ Results in: 530 Sorry, you may not connect more than one time.</PRE
 ></DIV
 ><H1
 ><A
+NAME="MAXCLIENTSPERUSER"
+></A
+>
+MaxClientsPerUser</H1
+><DIV
+CLASS="REFNAMEDIV"
+><A
+NAME="AEN4967"
+></A
+><H2
+>Name</H2
+>MaxClientsPerUser&nbsp;--&nbsp;Limit the number of connections per userid</DIV
+><DIV
+CLASS="REFSYNOPSISDIV"
+><A
+NAME="AEN4970"
+></A
+><H2
+>Synopsis</H2
+><P
+><B
+CLASS="COMMAND"
+>MaxClientsPerUser</B
+>  [  <TT
+CLASS="OPTION"
+>MaxClientsPerUser number|none [message]</TT
+>]</P
+><P
+></P
+><DIV
+CLASS="VARIABLELIST"
+><P
+><B
+></B
+></P
+><DL
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Default</PRE
+></DT
+><DD
+><P
+>MaxClientsPerUser none</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Context</PRE
+></DT
+><DD
+><P
+>server config, &lt;VirtualHost&gt;, &lt;Global&gt;, &lt;Anonymous&gt;</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Module</PRE
+></DT
+><DD
+><P
+>mod_auth</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Compatibility</PRE
+></DT
+><DD
+><P
+>1.2.7rc1 and later</P
+></DD
+></DL
+></DIV
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN4997"
+></A
+><H2
+>Description</H2
+><P
+>The MaxClientsPerUser directive configures the maximum number of clients
+that may be connected at any given time using the same user name.  The
+optional argument message may be used which will be displayed to a client
+attempting to exceed the maximum value. If message is not supplied, a default
+message of "Sorry, the maximum number of clients (%m) for this user
+already connected."</P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN5000"
+></A
+><H2
+>See also</H2
+><P
+><A
+HREF="#MAXCLIENTS"
+>MaxClients</A
+>,
+<A
+HREF="#MAXCLIENTSPERHOST"
+>MaxClientsPerHost</A
+>
+<A
+HREF="#MAXHOSTSPERUSER"
+>MaxHostsPerUser</A
+></P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN5006"
+></A
+><H2
+>Examples</H2
+><PRE
+CLASS="PROGRAMLISTING"
+>MaxClientsPerUser 1 &quot;Only one such user at a time.&quot;
+Results in: 530 Only one such user at a time.</PRE
+><P
+></P
+></DIV
+><H1
+><A
+NAME="MAXCONNECTIONRATE"
+></A
+>
+MaxConnectionRate</H1
+><DIV
+CLASS="REFNAMEDIV"
+><A
+NAME="AEN5018"
+></A
+><H2
+>Name</H2
+>MaxConnectionRate&nbsp;--&nbsp;FIXFIXFIX</DIV
+><DIV
+CLASS="REFSYNOPSISDIV"
+><A
+NAME="AEN5021"
+></A
+><H2
+>Synopsis</H2
+><P
+><B
+CLASS="COMMAND"
+>MaxConnectionRate</B
+>  [  <TT
+CLASS="OPTION"
+>"name" limit|regex|ip value</TT
+>]</P
+><P
+></P
+><DIV
+CLASS="VARIABLELIST"
+><P
+><B
+></B
+></P
+><DL
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Default</PRE
+></DT
+><DD
+><P
+>FIXFIXFIX</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Context</PRE
+></DT
+><DD
+><P
+>server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;, .ftpaccess</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Module</PRE
+></DT
+><DD
+><P
+>mod_core</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Compatibility</PRE
+></DT
+><DD
+><P
+>1.2.7rc1 and later</P
+></DD
+></DL
+></DIV
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN5048"
+></A
+><H2
+>Description</H2
+><P
+>FIX FIX FIX</P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN5051"
+></A
+><H2
+>See also</H2
+><P
+></P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN5054"
+></A
+><H2
+>Examples</H2
+><P
+CLASS="LITERALLAYOUT"
+>FIXFIXFIX</P
+><P
+>FIXFIX</P
+></DIV
+><H1
+><A
 NAME="MAXHOSTSPERUSER"
 ></A
 >
@@ -13385,7 +13993,7 @@ MaxHostsPerUser</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4822"
+NAME="AEN5066"
 ></A
 ><H2
 >Name</H2
@@ -13393,7 +14001,7 @@ NAME="AEN4822"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4825"
+NAME="AEN5069"
 ></A
 ><H2
 >Synopsis</H2
@@ -13456,22 +14064,22 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4852"
+NAME="AEN5096"
 ></A
 ><H2
 >Description</H2
 ><P
 >The MaxHostsPerUser directive configures the maximum number of times
-any given login can connection at any given time.  The optional argument
-message may be used which will be displayed to a client attempting
-to exceed the maximum value. If message is not supplied, a default
+different hosts, using a given login, can connect at any given time.  The
+optional argument message may be used which will be displayed to a client
+attempting to exceed the maximum value. If message is not supplied, a default
 message of "Sorry, the maximum number of hosts (%m) for this user
 already connected."</P
 ></DIV
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4855"
+NAME="AEN5099"
 ></A
 ><H2
 >See also</H2
@@ -13488,7 +14096,7 @@ HREF="#MAXCLIENTSPERHOST"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4860"
+NAME="AEN5104"
 ></A
 ><H2
 >Examples</H2
@@ -13508,7 +14116,7 @@ MaxInstances</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4872"
+NAME="AEN5116"
 ></A
 ><H2
 >Name</H2
@@ -13516,7 +14124,7 @@ NAME="AEN4872"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4875"
+NAME="AEN5119"
 ></A
 ><H2
 >Synopsis</H2
@@ -13579,7 +14187,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4902"
+NAME="AEN5146"
 ></A
 ><H2
 >Description</H2
@@ -13599,7 +14207,7 @@ processes that may run at one time.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4905"
+NAME="AEN5149"
 ></A
 ><H2
 >See also</H2
@@ -13609,7 +14217,7 @@ NAME="AEN4905"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4908"
+NAME="AEN5152"
 ></A
 ><H2
 >Examples</H2
@@ -13625,7 +14233,7 @@ MaxLoginAttempts</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4919"
+NAME="AEN5163"
 ></A
 ><H2
 >Name</H2
@@ -13633,7 +14241,7 @@ NAME="AEN4919"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4922"
+NAME="AEN5166"
 ></A
 ><H2
 >Synopsis</H2
@@ -13696,7 +14304,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4949"
+NAME="AEN5193"
 ></A
 ><H2
 >Description</H2
@@ -13709,7 +14317,7 @@ appropriate message is logged via the syslog mechanism.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4952"
+NAME="AEN5196"
 ></A
 ><H2
 >See also</H2
@@ -13719,12 +14327,232 @@ NAME="AEN4952"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4955"
+NAME="AEN5199"
 ></A
 ><H2
 >Examples</H2
 ><P
 ></P
+></DIV
+><H1
+><A
+NAME="MAXRETRIEVEFILESIZE"
+></A
+>
+MaxRetrieveFileSize</H1
+><DIV
+CLASS="REFNAMEDIV"
+><A
+NAME="AEN5210"
+></A
+><H2
+>Name</H2
+>MaxRetrieveFileSize&nbsp;--&nbsp;FIXFIXFIX</DIV
+><DIV
+CLASS="REFSYNOPSISDIV"
+><A
+NAME="AEN5213"
+></A
+><H2
+>Synopsis</H2
+><P
+><B
+CLASS="COMMAND"
+>MaxRetrieveFileSize</B
+>  [  <TT
+CLASS="OPTION"
+>"name" limit|regex|ip value</TT
+>]</P
+><P
+></P
+><DIV
+CLASS="VARIABLELIST"
+><P
+><B
+></B
+></P
+><DL
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Default</PRE
+></DT
+><DD
+><P
+>FIXFIXFIX</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Context</PRE
+></DT
+><DD
+><P
+>server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;, .ftpaccess</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Module</PRE
+></DT
+><DD
+><P
+>mod_xfer</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Compatibility</PRE
+></DT
+><DD
+><P
+>1.2.7rc1 and later</P
+></DD
+></DL
+></DIV
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN5240"
+></A
+><H2
+>Description</H2
+><P
+>FIX FIX FIX</P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN5243"
+></A
+><H2
+>See also</H2
+><P
+></P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN5246"
+></A
+><H2
+>Examples</H2
+><P
+CLASS="LITERALLAYOUT"
+>FIXFIXFIX</P
+><P
+>FIXFIX</P
+></DIV
+><H1
+><A
+NAME="MAXSTOREFILESIZE"
+></A
+>
+MaxStoreFileSize</H1
+><DIV
+CLASS="REFNAMEDIV"
+><A
+NAME="AEN5258"
+></A
+><H2
+>Name</H2
+>MaxStoreFileSize&nbsp;--&nbsp;FIXFIXFIX</DIV
+><DIV
+CLASS="REFSYNOPSISDIV"
+><A
+NAME="AEN5261"
+></A
+><H2
+>Synopsis</H2
+><P
+><B
+CLASS="COMMAND"
+>MaxStoreFileSize</B
+>  [  <TT
+CLASS="OPTION"
+>"name" limit|regex|ip value</TT
+>]</P
+><P
+></P
+><DIV
+CLASS="VARIABLELIST"
+><P
+><B
+></B
+></P
+><DL
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Default</PRE
+></DT
+><DD
+><P
+>FIXFIXFIX</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Context</PRE
+></DT
+><DD
+><P
+>server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;, .ftpaccess</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Module</PRE
+></DT
+><DD
+><P
+>mod_xfer</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Compatibility</PRE
+></DT
+><DD
+><P
+>1.2.7rc1 and later</P
+></DD
+></DL
+></DIV
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN5288"
+></A
+><H2
+>Description</H2
+><P
+>FIX FIX FIX</P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN5291"
+></A
+><H2
+>See also</H2
+><P
+></P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN5294"
+></A
+><H2
+>Examples</H2
+><P
+CLASS="LITERALLAYOUT"
+>FIXFIXFIX</P
+><P
+>FIXFIX</P
 ></DIV
 ><H1
 ><A
@@ -13735,7 +14563,7 @@ MultilineRFC2228</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN4966"
+NAME="AEN5306"
 ></A
 ><H2
 >Name</H2
@@ -13743,7 +14571,7 @@ NAME="AEN4966"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN4969"
+NAME="AEN5309"
 ></A
 ><H2
 >Synopsis</H2
@@ -13806,7 +14634,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4996"
+NAME="AEN5336"
 ></A
 ><H2
 >Description</H2
@@ -13831,7 +14659,7 @@ not enabled by default.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN4999"
+NAME="AEN5339"
 ></A
 ><H2
 >See also</H2
@@ -13841,7 +14669,7 @@ NAME="AEN4999"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5002"
+NAME="AEN5342"
 ></A
 ><H2
 >Examples</H2
@@ -13857,7 +14685,7 @@ MySQLInfo</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN5013"
+NAME="AEN5353"
 ></A
 ><H2
 >Name</H2
@@ -13865,7 +14693,7 @@ NAME="AEN5013"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN5016"
+NAME="AEN5356"
 ></A
 ><H2
 >Synopsis</H2
@@ -13937,7 +14765,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5049"
+NAME="AEN5389"
 ></A
 ><H2
 >Description</H2
@@ -13954,7 +14782,7 @@ null password.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5053"
+NAME="AEN5393"
 ></A
 ><H2
 >See also</H2
@@ -13964,7 +14792,7 @@ NAME="AEN5053"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5056"
+NAME="AEN5396"
 ></A
 ><H2
 >Examples</H2
@@ -13980,7 +14808,7 @@ Order</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN5067"
+NAME="AEN5407"
 ></A
 ><H2
 >Name</H2
@@ -13988,7 +14816,7 @@ NAME="AEN5067"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN5070"
+NAME="AEN5410"
 ></A
 ><H2
 >Synopsis</H2
@@ -14051,7 +14879,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5097"
+NAME="AEN5437"
 ></A
 ><H2
 >Description</H2
@@ -14075,7 +14903,7 @@ Exit with default implicit: DENY</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5100"
+NAME="AEN5440"
 ></A
 ><H2
 >See also</H2
@@ -14085,7 +14913,7 @@ NAME="AEN5100"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5103"
+NAME="AEN5443"
 ></A
 ><H2
 >Examples</H2
@@ -14101,7 +14929,7 @@ PassivePorts</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN5114"
+NAME="AEN5454"
 ></A
 ><H2
 >Name</H2
@@ -14109,7 +14937,7 @@ NAME="AEN5114"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN5117"
+NAME="AEN5457"
 ></A
 ><H2
 >Synopsis</H2
@@ -14172,7 +15000,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5144"
+NAME="AEN5484"
 ></A
 ><H2
 >Description</H2
@@ -14193,7 +15021,7 @@ IANA-registered ephemeral port range).</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5148"
+NAME="AEN5488"
 ></A
 ><H2
 >See also</H2
@@ -14203,7 +15031,7 @@ NAME="AEN5148"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5151"
+NAME="AEN5491"
 ></A
 ><H2
 >Examples</H2
@@ -14223,7 +15051,7 @@ PathAllowFilter</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN5163"
+NAME="AEN5503"
 ></A
 ><H2
 >Name</H2
@@ -14231,7 +15059,7 @@ NAME="AEN5163"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN5166"
+NAME="AEN5506"
 ></A
 ><H2
 >Synopsis</H2
@@ -14294,7 +15122,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5193"
+NAME="AEN5533"
 ></A
 ><H2
 >Description</H2
@@ -14310,7 +15138,7 @@ it must be enclosed in quotes.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5196"
+NAME="AEN5536"
 ></A
 ><H2
 >See also</H2
@@ -14320,7 +15148,7 @@ NAME="AEN5196"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5199"
+NAME="AEN5539"
 ></A
 ><H2
 >Examples</H2
@@ -14343,7 +15171,7 @@ PathDenyFilter</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN5211"
+NAME="AEN5551"
 ></A
 ><H2
 >Name</H2
@@ -14351,7 +15179,7 @@ NAME="AEN5211"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN5214"
+NAME="AEN5554"
 ></A
 ><H2
 >Synopsis</H2
@@ -14414,7 +15242,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5241"
+NAME="AEN5581"
 ></A
 ><H2
 >Description</H2
@@ -14428,7 +15256,7 @@ to the client. This can be especially useful for forbidding .ftpaccess or
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5244"
+NAME="AEN5584"
 ></A
 ><H2
 >See also</H2
@@ -14438,7 +15266,7 @@ NAME="AEN5244"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5247"
+NAME="AEN5587"
 ></A
 ><H2
 >Examples</H2
@@ -14458,7 +15286,7 @@ PersistentPasswd</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN5259"
+NAME="AEN5599"
 ></A
 ><H2
 >Name</H2
@@ -14466,7 +15294,7 @@ NAME="AEN5259"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN5262"
+NAME="AEN5602"
 ></A
 ><H2
 >Synopsis</H2
@@ -14529,7 +15357,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5289"
+NAME="AEN5629"
 ></A
 ><H2
 >Description</H2
@@ -14560,7 +15388,7 @@ authenticate both users from NIS maps and local users.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5293"
+NAME="AEN5633"
 ></A
 ><H2
 >See also</H2
@@ -14570,7 +15398,7 @@ NAME="AEN5293"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5296"
+NAME="AEN5636"
 ></A
 ><H2
 >Examples</H2
@@ -14586,7 +15414,7 @@ PidFile</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN5307"
+NAME="AEN5647"
 ></A
 ><H2
 >Name</H2
@@ -14594,7 +15422,7 @@ NAME="AEN5307"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN5310"
+NAME="AEN5650"
 ></A
 ><H2
 >Synopsis</H2
@@ -14657,7 +15485,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5337"
+NAME="AEN5677"
 ></A
 ><H2
 >Description</H2
@@ -14675,7 +15503,7 @@ the PidFile.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5340"
+NAME="AEN5680"
 ></A
 ><H2
 >See also</H2
@@ -14685,7 +15513,7 @@ NAME="AEN5340"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5343"
+NAME="AEN5683"
 ></A
 ><H2
 >Examples</H2
@@ -14701,7 +15529,7 @@ Port</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN5354"
+NAME="AEN5694"
 ></A
 ><H2
 >Name</H2
@@ -14709,7 +15537,7 @@ NAME="AEN5354"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN5357"
+NAME="AEN5697"
 ></A
 ><H2
 >Synopsis</H2
@@ -14772,7 +15600,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5384"
+NAME="AEN5724"
 ></A
 ><H2
 >Description</H2
@@ -14789,7 +15617,7 @@ Port 0 effectively turns off that server.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5388"
+NAME="AEN5728"
 ></A
 ><H2
 >See also</H2
@@ -14799,7 +15627,7 @@ NAME="AEN5388"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5391"
+NAME="AEN5731"
 ></A
 ><H2
 >Examples</H2
@@ -14815,7 +15643,7 @@ PostgresInfo</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN5402"
+NAME="AEN5742"
 ></A
 ><H2
 >Name</H2
@@ -14823,7 +15651,7 @@ NAME="AEN5402"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN5405"
+NAME="AEN5745"
 ></A
 ><H2
 >Synopsis</H2
@@ -14895,7 +15723,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5438"
+NAME="AEN5778"
 ></A
 ><H2
 >Description</H2
@@ -14911,7 +15739,7 @@ session depending on the directives in use.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5442"
+NAME="AEN5782"
 ></A
 ><H2
 >See also</H2
@@ -14921,7 +15749,7 @@ NAME="AEN5442"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5445"
+NAME="AEN5785"
 ></A
 ><H2
 >Examples</H2
@@ -14940,7 +15768,7 @@ PostgresPort</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN5457"
+NAME="AEN5797"
 ></A
 ><H2
 >Name</H2
@@ -14948,7 +15776,7 @@ NAME="AEN5457"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN5460"
+NAME="AEN5800"
 ></A
 ><H2
 >Synopsis</H2
@@ -15011,7 +15839,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5487"
+NAME="AEN5827"
 ></A
 ><H2
 >Description</H2
@@ -15025,7 +15853,7 @@ or UNIX socket for localhost.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5491"
+NAME="AEN5831"
 ></A
 ><H2
 >See also</H2
@@ -15035,7 +15863,7 @@ NAME="AEN5491"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5494"
+NAME="AEN5834"
 ></A
 ><H2
 >Examples</H2
@@ -15047,668 +15875,6 @@ CLASS="LITERALLAYOUT"
 ></DIV
 ><H1
 ><A
-NAME="QUOTABLOCKNAME"
-></A
->
-QuotaBlockName</H1
-><DIV
-CLASS="REFNAMEDIV"
-><A
-NAME="AEN5506"
-></A
-><H2
->Name</H2
->QuotaBlockName&nbsp;--&nbsp;FIXME FIXME</DIV
-><DIV
-CLASS="REFSYNOPSISDIV"
-><A
-NAME="AEN5509"
-></A
-><H2
->Synopsis</H2
-><P
-><B
-CLASS="COMMAND"
->QuotaBlockName</B
->  [  <TT
-CLASS="OPTION"
->QuotaBlockName name</TT
->]</P
-><P
-></P
-><DIV
-CLASS="VARIABLELIST"
-><P
-><B
-></B
-></P
-><DL
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Default</PRE
-></DT
-><DD
-><P
->byte</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Context</PRE
-></DT
-><DD
-><P
->server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Module</PRE
-></DT
-><DD
-><P
->mod_quota</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Compatibility</PRE
-></DT
-><DD
-><P
->at least 1.2.0 and later</P
-></DD
-></DL
-></DIV
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5536"
-></A
-><H2
->Description</H2
-><P
->The QuotaBlockName directive is used in conjunction with the QuotaBlockSize directive to control user
-output from the module.  This directive specifies the name given to
-the values displayed (ie byte, kilobyte, kb etc etc).  
-Example:
-QuotaBlockName kb</P
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5539"
-></A
-><H2
->See also</H2
-><P
-></P
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5542"
-></A
-><H2
->Examples</H2
-><P
-></P
-></DIV
-><H1
-><A
-NAME="QUOTABLOCKSIZE"
-></A
->
-QuotaBlockSize</H1
-><DIV
-CLASS="REFNAMEDIV"
-><A
-NAME="AEN5553"
-></A
-><H2
->Name</H2
->QuotaBlockSize&nbsp;--&nbsp;FIXME FIXME</DIV
-><DIV
-CLASS="REFSYNOPSISDIV"
-><A
-NAME="AEN5556"
-></A
-><H2
->Synopsis</H2
-><P
-><B
-CLASS="COMMAND"
->QuotaBlockSize</B
->  [  <TT
-CLASS="OPTION"
->QuotaBlockSize number of bytes</TT
->]</P
-><P
-></P
-><DIV
-CLASS="VARIABLELIST"
-><P
-><B
-></B
-></P
-><DL
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Default</PRE
-></DT
-><DD
-><P
->None</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Context</PRE
-></DT
-><DD
-><P
->server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Module</PRE
-></DT
-><DD
-><P
->mod_quota</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Compatibility</PRE
-></DT
-><DD
-><P
->at least 1.2.0 and later</P
-></DD
-></DL
-></DIV
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5583"
-></A
-><H2
->Description</H2
-><P
->The QuotaBlockSize directive is used in conjuntion with the QuotaBlockName directive to control how
-the user output is handled.  QuotaBlockSize specifies the factor by
-which the values in the user reports are divided before display.
-Example:
-QuotaBlockSize 1024</P
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5586"
-></A
-><H2
->See also</H2
-><P
-></P
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5589"
-></A
-><H2
->Examples</H2
-><P
-></P
-></DIV
-><H1
-><A
-NAME="QUOTACALC"
-></A
->
-QuotaCalc</H1
-><DIV
-CLASS="REFNAMEDIV"
-><A
-NAME="AEN5600"
-></A
-><H2
->Name</H2
->QuotaCalc&nbsp;--&nbsp;FIXME FIXME</DIV
-><DIV
-CLASS="REFSYNOPSISDIV"
-><A
-NAME="AEN5603"
-></A
-><H2
->Synopsis</H2
-><P
-><B
-CLASS="COMMAND"
->QuotaCalc</B
->  [  <TT
-CLASS="OPTION"
->QuotaCalc foo1 foo2 foo3</TT
->]</P
-><P
-></P
-><DIV
-CLASS="VARIABLELIST"
-><P
-><B
-></B
-></P
-><DL
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Default</PRE
-></DT
-><DD
-><P
->None</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Context</PRE
-></DT
-><DD
-><P
->server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Module</PRE
-></DT
-><DD
-><P
->mod_quota</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Compatibility</PRE
-></DT
-><DD
-><P
->at least 1.2.0 and later</P
-></DD
-></DL
-></DIV
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5630"
-></A
-><H2
->Description</H2
-><P
->The QuotaCalc directive controls whether calculation is done on
-the fly.  If the directive is set to 'on' and either there is no
-.quota file or the quota would go negative then calculation is done
-on the fly rather than at the end of the session.</P
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5633"
-></A
-><H2
->See also</H2
-><P
-></P
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5636"
-></A
-><H2
->Examples</H2
-><P
-></P
-></DIV
-><H1
-><A
-NAME="QUOTAEXEMPT"
-></A
->
-QuotaExempt</H1
-><DIV
-CLASS="REFNAMEDIV"
-><A
-NAME="AEN5647"
-></A
-><H2
->Name</H2
->QuotaExempt&nbsp;--&nbsp;FIXME FIXME</DIV
-><DIV
-CLASS="REFSYNOPSISDIV"
-><A
-NAME="AEN5650"
-></A
-><H2
->Synopsis</H2
-><P
-><B
-CLASS="COMMAND"
->QuotaExempt</B
->  [  <TT
-CLASS="OPTION"
->QuotaExempt uid, uid, uid</TT
->]</P
-><P
-></P
-><DIV
-CLASS="VARIABLELIST"
-><P
-><B
-></B
-></P
-><DL
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Default</PRE
-></DT
-><DD
-><P
->None</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Context</PRE
-></DT
-><DD
-><P
->server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Module</PRE
-></DT
-><DD
-><P
->mod_quota</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Compatibility</PRE
-></DT
-><DD
-><P
->at least 1.2.0 and later</P
-></DD
-></DL
-></DIV
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5677"
-></A
-><H2
->Description</H2
-><P
->The QuotaExempt directive lists the UIDs which are not subject to
-quota controls, using UIDs rather than symbolic user names speeds up
-the loading and resolution process.
-Example:
-QuotaExempt 3000,3401,500</P
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5680"
-></A
-><H2
->See also</H2
-><P
-></P
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5683"
-></A
-><H2
->Examples</H2
-><P
-></P
-></DIV
-><H1
-><A
-NAME="QUOTATYPE"
-></A
->
-QuotaType</H1
-><DIV
-CLASS="REFNAMEDIV"
-><A
-NAME="AEN5694"
-></A
-><H2
->Name</H2
->QuotaType&nbsp;--&nbsp;FIXME FIXME</DIV
-><DIV
-CLASS="REFSYNOPSISDIV"
-><A
-NAME="AEN5697"
-></A
-><H2
->Synopsis</H2
-><P
-><B
-CLASS="COMMAND"
->QuotaType</B
->  [  <TT
-CLASS="OPTION"
->QuotaType soft|hard</TT
->]</P
-><P
-></P
-><DIV
-CLASS="VARIABLELIST"
-><P
-><B
-></B
-></P
-><DL
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Default</PRE
-></DT
-><DD
-><P
->soft</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Context</PRE
-></DT
-><DD
-><P
->server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Module</PRE
-></DT
-><DD
-><P
->mod_quota</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Compatibility</PRE
-></DT
-><DD
-><P
->at least 1.2.0 and later</P
-></DD
-></DL
-></DIV
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5724"
-></A
-><H2
->Description</H2
-><P
->The QuotaType directive defines what happens to files which break 
-the quota limits as they are uploaded.  Setting the type to hard
-ensures that the file which violates the quota is deleted.
-uploaded.</P
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5727"
-></A
-><H2
->See also</H2
-><P
-></P
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5730"
-></A
-><H2
->Examples</H2
-><P
-></P
-></DIV
-><H1
-><A
-NAME="QUOTAS"
-></A
->
-Quotas</H1
-><DIV
-CLASS="REFNAMEDIV"
-><A
-NAME="AEN5741"
-></A
-><H2
->Name</H2
->Quotas&nbsp;--&nbsp;FIXME FIXME</DIV
-><DIV
-CLASS="REFSYNOPSISDIV"
-><A
-NAME="AEN5744"
-></A
-><H2
->Synopsis</H2
-><P
-><B
-CLASS="COMMAND"
->Quotas</B
->  [  <TT
-CLASS="OPTION"
->Quotas on|off</TT
->]</P
-><P
-></P
-><DIV
-CLASS="VARIABLELIST"
-><P
-><B
-></B
-></P
-><DL
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Default</PRE
-></DT
-><DD
-><P
->none</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Context</PRE
-></DT
-><DD
-><P
->server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Module</PRE
-></DT
-><DD
-><P
->mod_quota</P
-></DD
-><DT
-><PRE
-CLASS="SYNOPSIS"
->Compatibility</PRE
-></DT
-><DD
-><P
->at least 1.2.0 and later</P
-></DD
-></DL
-></DIV
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5771"
-></A
-><H2
->Description</H2
-><P
->The Quotas directive enables or disables Quota support.
-Example:
-Quotas on</P
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5774"
-></A
-><H2
->See also</H2
-><P
-></P
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN5777"
-></A
-><H2
->Examples</H2
-><P
-></P
-></DIV
-><H1
-><A
 NAME="RLIMITCPU"
 ></A
 >
@@ -15716,7 +15882,7 @@ RLimitCPU</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN5788"
+NAME="AEN5846"
 ></A
 ><H2
 >Name</H2
@@ -15724,7 +15890,7 @@ NAME="AEN5788"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN5791"
+NAME="AEN5849"
 ></A
 ><H2
 >Synopsis</H2
@@ -15787,7 +15953,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5818"
+NAME="AEN5876"
 ></A
 ><H2
 >Description</H2
@@ -15803,7 +15969,7 @@ by the operating system configuration.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5822"
+NAME="AEN5880"
 ></A
 ><H2
 >See also</H2
@@ -15820,7 +15986,7 @@ HREF="#RLIMITOPENFILES"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5827"
+NAME="AEN5885"
 ></A
 ><H2
 >Examples</H2
@@ -15836,7 +16002,7 @@ RLimitMemory</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN5838"
+NAME="AEN5896"
 ></A
 ><H2
 >Name</H2
@@ -15844,7 +16010,7 @@ NAME="AEN5838"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN5841"
+NAME="AEN5899"
 ></A
 ><H2
 >Synopsis</H2
@@ -15907,7 +16073,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5868"
+NAME="AEN5926"
 ></A
 ><H2
 >Description</H2
@@ -15927,7 +16093,7 @@ factor.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5872"
+NAME="AEN5930"
 ></A
 ><H2
 >See also</H2
@@ -15943,7 +16109,7 @@ RLimitOpenFiles</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN5883"
+NAME="AEN5941"
 ></A
 ><H2
 >Name</H2
@@ -15951,7 +16117,7 @@ NAME="AEN5883"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN5886"
+NAME="AEN5944"
 ></A
 ><H2
 >Synopsis</H2
@@ -16014,7 +16180,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5913"
+NAME="AEN5971"
 ></A
 ><H2
 >Description</H2
@@ -16030,12 +16196,672 @@ by the operating system configuration.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5917"
+NAME="AEN5975"
 ></A
 ><H2
 >See also</H2
 ><P
 >RLimitCPU, RLimitMaxProcesses, RLimitMemory</P
+></DIV
+><H1
+><A
+NAME="RADIUSACCTSERVER"
+></A
+>
+RadiusAcctServer</H1
+><DIV
+CLASS="REFNAMEDIV"
+><A
+NAME="AEN5986"
+></A
+><H2
+>Name</H2
+>RadiusAcctServer&nbsp;--&nbsp;FIXFIXFIX</DIV
+><DIV
+CLASS="REFSYNOPSISDIV"
+><A
+NAME="AEN5989"
+></A
+><H2
+>Synopsis</H2
+><P
+><B
+CLASS="COMMAND"
+>RadiusAcctServer</B
+>  [  <TT
+CLASS="OPTION"
+>"name" limit|regex|ip value</TT
+>]</P
+><P
+></P
+><DIV
+CLASS="VARIABLELIST"
+><P
+><B
+></B
+></P
+><DL
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Default</PRE
+></DT
+><DD
+><P
+>FIXFIXFIX</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Context</PRE
+></DT
+><DD
+><P
+>server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;, .ftpaccess</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Module</PRE
+></DT
+><DD
+><P
+>mod_radius</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Compatibility</PRE
+></DT
+><DD
+><P
+>1.2.7rc1 and later</P
+></DD
+></DL
+></DIV
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN6016"
+></A
+><H2
+>Description</H2
+><P
+>FIX FIX FIX</P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN6019"
+></A
+><H2
+>See also</H2
+><P
+></P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN6022"
+></A
+><H2
+>Examples</H2
+><P
+CLASS="LITERALLAYOUT"
+>FIXFIXFIX</P
+><P
+>FIXFIX</P
+></DIV
+><H1
+><A
+NAME="RADIUSAUTHSERVER"
+></A
+>
+RadiusAuthServer</H1
+><DIV
+CLASS="REFNAMEDIV"
+><A
+NAME="AEN6034"
+></A
+><H2
+>Name</H2
+>RadiusAuthServer&nbsp;--&nbsp;FIXFIXFIX</DIV
+><DIV
+CLASS="REFSYNOPSISDIV"
+><A
+NAME="AEN6037"
+></A
+><H2
+>Synopsis</H2
+><P
+><B
+CLASS="COMMAND"
+>RadiusAuthServer</B
+>  [  <TT
+CLASS="OPTION"
+>"name" limit|regex|ip value</TT
+>]</P
+><P
+></P
+><DIV
+CLASS="VARIABLELIST"
+><P
+><B
+></B
+></P
+><DL
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Default</PRE
+></DT
+><DD
+><P
+>FIXFIXFIX</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Context</PRE
+></DT
+><DD
+><P
+>server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;, .ftpaccess</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Module</PRE
+></DT
+><DD
+><P
+>mod_radius</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Compatibility</PRE
+></DT
+><DD
+><P
+>1.2.7rc1 and later</P
+></DD
+></DL
+></DIV
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN6064"
+></A
+><H2
+>Description</H2
+><P
+>FIX FIX FIX</P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN6067"
+></A
+><H2
+>See also</H2
+><P
+></P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN6070"
+></A
+><H2
+>Examples</H2
+><P
+CLASS="LITERALLAYOUT"
+>FIXFIXFIX</P
+><P
+>FIXFIX</P
+></DIV
+><H1
+><A
+NAME="RADIUSENGINE"
+></A
+>
+RadiusEngine</H1
+><DIV
+CLASS="REFNAMEDIV"
+><A
+NAME="AEN6082"
+></A
+><H2
+>Name</H2
+>RadiusEngine&nbsp;--&nbsp;FIXFIXFIX</DIV
+><DIV
+CLASS="REFSYNOPSISDIV"
+><A
+NAME="AEN6085"
+></A
+><H2
+>Synopsis</H2
+><P
+><B
+CLASS="COMMAND"
+>RadiusEngine</B
+>  [  <TT
+CLASS="OPTION"
+>"name" limit|regex|ip value</TT
+>]</P
+><P
+></P
+><DIV
+CLASS="VARIABLELIST"
+><P
+><B
+></B
+></P
+><DL
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Default</PRE
+></DT
+><DD
+><P
+>FIXFIXFIX</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Context</PRE
+></DT
+><DD
+><P
+>server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;, .ftpaccess</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Module</PRE
+></DT
+><DD
+><P
+>mod_radius</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Compatibility</PRE
+></DT
+><DD
+><P
+>1.2.7rc1 and later</P
+></DD
+></DL
+></DIV
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN6112"
+></A
+><H2
+>Description</H2
+><P
+>FIX FIX FIX</P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN6115"
+></A
+><H2
+>See also</H2
+><P
+></P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN6118"
+></A
+><H2
+>Examples</H2
+><P
+CLASS="LITERALLAYOUT"
+>FIXFIXFIX</P
+><P
+>FIXFIX</P
+></DIV
+><H1
+><A
+NAME="RADIUSLOG"
+></A
+>
+RadiusLog</H1
+><DIV
+CLASS="REFNAMEDIV"
+><A
+NAME="AEN6130"
+></A
+><H2
+>Name</H2
+>RadiusLog&nbsp;--&nbsp;FIXFIXFIX</DIV
+><DIV
+CLASS="REFSYNOPSISDIV"
+><A
+NAME="AEN6133"
+></A
+><H2
+>Synopsis</H2
+><P
+><B
+CLASS="COMMAND"
+>RadiusLog</B
+>  [  <TT
+CLASS="OPTION"
+>"name" limit|regex|ip value</TT
+>]</P
+><P
+></P
+><DIV
+CLASS="VARIABLELIST"
+><P
+><B
+></B
+></P
+><DL
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Default</PRE
+></DT
+><DD
+><P
+>FIXFIXFIX</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Context</PRE
+></DT
+><DD
+><P
+>server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;, .ftpaccess</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Module</PRE
+></DT
+><DD
+><P
+>mod_radius</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Compatibility</PRE
+></DT
+><DD
+><P
+>1.2.7rc1 and later</P
+></DD
+></DL
+></DIV
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN6160"
+></A
+><H2
+>Description</H2
+><P
+>FIX FIX FIX</P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN6163"
+></A
+><H2
+>See also</H2
+><P
+></P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN6166"
+></A
+><H2
+>Examples</H2
+><P
+CLASS="LITERALLAYOUT"
+>FIXFIXFIX</P
+><P
+>FIXFIX</P
+></DIV
+><H1
+><A
+NAME="RADIUSREALM"
+></A
+>
+RadiusRealm</H1
+><DIV
+CLASS="REFNAMEDIV"
+><A
+NAME="AEN6178"
+></A
+><H2
+>Name</H2
+>RadiusRealm&nbsp;--&nbsp;FIXFIXFIX</DIV
+><DIV
+CLASS="REFSYNOPSISDIV"
+><A
+NAME="AEN6181"
+></A
+><H2
+>Synopsis</H2
+><P
+><B
+CLASS="COMMAND"
+>RadiusRealm</B
+>  [  <TT
+CLASS="OPTION"
+>"name" limit|regex|ip value</TT
+>]</P
+><P
+></P
+><DIV
+CLASS="VARIABLELIST"
+><P
+><B
+></B
+></P
+><DL
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Default</PRE
+></DT
+><DD
+><P
+>FIXFIXFIX</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Context</PRE
+></DT
+><DD
+><P
+>server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;, .ftpaccess</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Module</PRE
+></DT
+><DD
+><P
+>mod_radius</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Compatibility</PRE
+></DT
+><DD
+><P
+>1.2.7rc1 and later</P
+></DD
+></DL
+></DIV
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN6208"
+></A
+><H2
+>Description</H2
+><P
+>FIX FIX FIX</P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN6211"
+></A
+><H2
+>See also</H2
+><P
+></P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN6214"
+></A
+><H2
+>Examples</H2
+><P
+CLASS="LITERALLAYOUT"
+>FIXFIXFIX</P
+><P
+>FIXFIX</P
+></DIV
+><H1
+><A
+NAME="RADIUSUSERINFO"
+></A
+>
+RadiusUserInfo</H1
+><DIV
+CLASS="REFNAMEDIV"
+><A
+NAME="AEN6226"
+></A
+><H2
+>Name</H2
+>RadiusUserInfo&nbsp;--&nbsp;FIXFIXFIX</DIV
+><DIV
+CLASS="REFSYNOPSISDIV"
+><A
+NAME="AEN6229"
+></A
+><H2
+>Synopsis</H2
+><P
+><B
+CLASS="COMMAND"
+>RadiusUserInfo</B
+>  [  <TT
+CLASS="OPTION"
+>"name" limit|regex|ip value</TT
+>]</P
+><P
+></P
+><DIV
+CLASS="VARIABLELIST"
+><P
+><B
+></B
+></P
+><DL
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Default</PRE
+></DT
+><DD
+><P
+>FIXFIXFIX</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Context</PRE
+></DT
+><DD
+><P
+>server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;, .ftpaccess</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Module</PRE
+></DT
+><DD
+><P
+>mod_radius</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Compatibility</PRE
+></DT
+><DD
+><P
+>1.2.7rc1 and later</P
+></DD
+></DL
+></DIV
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN6256"
+></A
+><H2
+>Description</H2
+><P
+>FIX FIX FIX</P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN6259"
+></A
+><H2
+>See also</H2
+><P
+></P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN6262"
+></A
+><H2
+>Examples</H2
+><P
+CLASS="LITERALLAYOUT"
+>FIXFIXFIX</P
+><P
+>FIXFIX</P
 ></DIV
 ><H1
 ><A
@@ -16046,7 +16872,7 @@ RateReadBPS</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN5928"
+NAME="AEN6274"
 ></A
 ><H2
 >Name</H2
@@ -16054,7 +16880,7 @@ NAME="AEN5928"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN5931"
+NAME="AEN6277"
 ></A
 ><H2
 >Synopsis</H2
@@ -16117,7 +16943,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5958"
+NAME="AEN6304"
 ></A
 ><H2
 >Description</H2
@@ -16130,7 +16956,7 @@ usual place for this directive is in &lt;VirtualHost&gt; or  &lt;Directory&gt; s
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5961"
+NAME="AEN6307"
 ></A
 ><H2
 >See also</H2
@@ -16140,7 +16966,7 @@ NAME="AEN5961"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN5964"
+NAME="AEN6310"
 ></A
 ><H2
 >Examples</H2
@@ -16156,7 +16982,7 @@ RateReadFreeBytes</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN5975"
+NAME="AEN6321"
 ></A
 ><H2
 >Name</H2
@@ -16164,7 +16990,7 @@ NAME="AEN5975"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN5978"
+NAME="AEN6324"
 ></A
 ><H2
 >Synopsis</H2
@@ -16227,7 +17053,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6005"
+NAME="AEN6351"
 ></A
 ><H2
 >Description</H2
@@ -16240,7 +17066,7 @@ on further info about what happens after the free amount was transferred.) </P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6008"
+NAME="AEN6354"
 ></A
 ><H2
 >See also</H2
@@ -16250,7 +17076,7 @@ NAME="AEN6008"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6011"
+NAME="AEN6357"
 ></A
 ><H2
 >Examples</H2
@@ -16266,7 +17092,7 @@ RateReadHardBPS</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6022"
+NAME="AEN6368"
 ></A
 ><H2
 >Name</H2
@@ -16274,7 +17100,7 @@ NAME="AEN6022"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6025"
+NAME="AEN6371"
 ></A
 ><H2
 >Synopsis</H2
@@ -16337,7 +17163,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6052"
+NAME="AEN6398"
 ></A
 ><H2
 >Description</H2
@@ -16353,7 +17179,7 @@ the transfer continues. :-)</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6055"
+NAME="AEN6401"
 ></A
 ><H2
 >See also</H2
@@ -16363,7 +17189,7 @@ NAME="AEN6055"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6058"
+NAME="AEN6404"
 ></A
 ><H2
 >Examples</H2
@@ -16379,7 +17205,7 @@ RateWriteBPS</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6069"
+NAME="AEN6415"
 ></A
 ><H2
 >Name</H2
@@ -16387,7 +17213,7 @@ NAME="AEN6069"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6072"
+NAME="AEN6418"
 ></A
 ><H2
 >Synopsis</H2
@@ -16450,7 +17276,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6099"
+NAME="AEN6445"
 ></A
 ><H2
 >Description</H2
@@ -16464,7 +17290,7 @@ of uploaded bytes.) The usual place for this directive is in
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6102"
+NAME="AEN6448"
 ></A
 ><H2
 >See also</H2
@@ -16474,7 +17300,7 @@ NAME="AEN6102"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6105"
+NAME="AEN6451"
 ></A
 ><H2
 >Examples</H2
@@ -16490,7 +17316,7 @@ RateWriteFreeBytes</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6116"
+NAME="AEN6462"
 ></A
 ><H2
 >Name</H2
@@ -16498,7 +17324,7 @@ NAME="AEN6116"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6119"
+NAME="AEN6465"
 ></A
 ><H2
 >Synopsis</H2
@@ -16561,7 +17387,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6146"
+NAME="AEN6492"
 ></A
 ><H2
 >Description</H2
@@ -16574,7 +17400,7 @@ on further info about what happens after the free amount was transferred.) </P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6149"
+NAME="AEN6495"
 ></A
 ><H2
 >See also</H2
@@ -16584,7 +17410,7 @@ NAME="AEN6149"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6152"
+NAME="AEN6498"
 ></A
 ><H2
 >Examples</H2
@@ -16600,7 +17426,7 @@ RateWriteHardBPS</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6163"
+NAME="AEN6509"
 ></A
 ><H2
 >Name</H2
@@ -16608,7 +17434,7 @@ NAME="AEN6163"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6166"
+NAME="AEN6512"
 ></A
 ><H2
 >Synopsis</H2
@@ -16671,7 +17497,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6193"
+NAME="AEN6539"
 ></A
 ><H2
 >Description</H2
@@ -16691,7 +17517,7 @@ RatioTempFile (mod_ratio) Incomplete</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6196"
+NAME="AEN6542"
 ></A
 ><H2
 >See also</H2
@@ -16701,7 +17527,7 @@ NAME="AEN6196"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6199"
+NAME="AEN6545"
 ></A
 ><H2
 >Examples</H2
@@ -16717,7 +17543,7 @@ RatioFile</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6210"
+NAME="AEN6556"
 ></A
 ><H2
 >Name</H2
@@ -16725,7 +17551,7 @@ NAME="AEN6210"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6213"
+NAME="AEN6559"
 ></A
 ><H2
 >Synopsis</H2
@@ -16788,7 +17614,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6240"
+NAME="AEN6586"
 ></A
 ><H2
 >Description</H2
@@ -16800,7 +17626,7 @@ RatioFile</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6243"
+NAME="AEN6589"
 ></A
 ><H2
 >See also</H2
@@ -16810,7 +17636,7 @@ NAME="AEN6243"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6246"
+NAME="AEN6592"
 ></A
 ><H2
 >Examples</H2
@@ -16826,7 +17652,7 @@ RatioTempFile</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6257"
+NAME="AEN6603"
 ></A
 ><H2
 >Name</H2
@@ -16834,7 +17660,7 @@ NAME="AEN6257"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6260"
+NAME="AEN6606"
 ></A
 ><H2
 >Synopsis</H2
@@ -16897,7 +17723,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6287"
+NAME="AEN6633"
 ></A
 ><H2
 >Description</H2
@@ -16909,7 +17735,7 @@ RatioTempFile</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6290"
+NAME="AEN6636"
 ></A
 ><H2
 >See also</H2
@@ -16919,7 +17745,7 @@ NAME="AEN6290"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6293"
+NAME="AEN6639"
 ></A
 ><H2
 >Examples</H2
@@ -16935,7 +17761,7 @@ Ratios</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6304"
+NAME="AEN6650"
 ></A
 ><H2
 >Name</H2
@@ -16943,7 +17769,7 @@ NAME="AEN6304"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6307"
+NAME="AEN6653"
 ></A
 ><H2
 >Synopsis</H2
@@ -17006,7 +17832,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6334"
+NAME="AEN6680"
 ></A
 ><H2
 >Description</H2
@@ -17018,7 +17844,7 @@ Ratios</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6337"
+NAME="AEN6683"
 ></A
 ><H2
 >See also</H2
@@ -17028,7 +17854,7 @@ NAME="AEN6337"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6340"
+NAME="AEN6686"
 ></A
 ><H2
 >Examples</H2
@@ -17044,7 +17870,7 @@ RequireValidShell</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6351"
+NAME="AEN6697"
 ></A
 ><H2
 >Name</H2
@@ -17052,7 +17878,7 @@ NAME="AEN6351"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6354"
+NAME="AEN6700"
 ></A
 ><H2
 >Synopsis</H2
@@ -17115,7 +17941,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6381"
+NAME="AEN6727"
 ></A
 ><H2
 >Description</H2
@@ -17129,7 +17955,7 @@ to be valid.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6384"
+NAME="AEN6730"
 ></A
 ><H2
 >See also</H2
@@ -17139,7 +17965,7 @@ NAME="AEN6384"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6387"
+NAME="AEN6733"
 ></A
 ><H2
 >Examples</H2
@@ -17155,7 +17981,7 @@ RootLogin</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6398"
+NAME="AEN6744"
 ></A
 ><H2
 >Name</H2
@@ -17163,7 +17989,7 @@ NAME="AEN6398"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6401"
+NAME="AEN6747"
 ></A
 ><H2
 >Synopsis</H2
@@ -17226,7 +18052,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6428"
+NAME="AEN6774"
 ></A
 ><H2
 >Description</H2
@@ -17244,7 +18070,7 @@ care should be taken when using this directive.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6432"
+NAME="AEN6778"
 ></A
 ><H2
 >See also</H2
@@ -17254,7 +18080,7 @@ NAME="AEN6432"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6435"
+NAME="AEN6781"
 ></A
 ><H2
 >Examples</H2
@@ -17270,7 +18096,7 @@ SQLAuthTypes</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6446"
+NAME="AEN6792"
 ></A
 ><H2
 >Name</H2
@@ -17278,7 +18104,7 @@ NAME="AEN6446"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6449"
+NAME="AEN6795"
 ></A
 ><H2
 >Synopsis</H2
@@ -17353,7 +18179,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6484"
+NAME="AEN6830"
 ></A
 ><H2
 >Description</H2
@@ -17404,7 +18230,7 @@ NAME="SQLAUTHENTICATE"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6495"
+NAME="AEN6841"
 ></A
 ><H2
 >Name</H2
@@ -17413,7 +18239,7 @@ NAME="AEN6495"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6498"
+NAME="AEN6844"
 ></A
 ><H2
 >Synopsis</H2
@@ -17491,7 +18317,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6538"
+NAME="AEN6884"
 ></A
 ><H2
 >Description</H2
@@ -17526,7 +18352,7 @@ CLASS="VARIABLELIST"
 file access using both user ID and group ID.  This is equivalent to the 
 following alternative syntax:
             <A
-NAME="AEN6549"
+NAME="AEN6895"
 ></A
 ><BLOCKQUOTE
 CLASS="BLOCKQUOTE"
@@ -17705,7 +18531,7 @@ CLASS="COMPUTEROUTPUT"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6595"
+NAME="AEN6941"
 ></A
 ><H2
 >See also</H2
@@ -17731,7 +18557,7 @@ HREF="#SQLGROUPINFO"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6602"
+NAME="AEN6948"
 ></A
 ><H2
 >Examples</H2
@@ -17741,7 +18567,7 @@ NAME="AEN6602"
 authoritatuve, the following directive syntax is appropriate.  This is not a 
 particuarly interesting configuration.</P
 ><A
-NAME="AEN6605"
+NAME="AEN6951"
 ></A
 ><BLOCKQUOTE
 CLASS="BLOCKQUOTE"
@@ -17761,7 +18587,7 @@ users on the server, while still providing &quot;non-anonymous&quot; ftp access 
 access control. The &quot;fast&quot; option is also used to speed up logins, at the 
 expense of increased memory utilization.</P
 ><A
-NAME="AEN6609"
+NAME="AEN6955"
 ></A
 ><BLOCKQUOTE
 CLASS="BLOCKQUOTE"
@@ -17783,15 +18609,15 @@ SQLAuthoritative</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6620"
+NAME="AEN6966"
 ></A
 ><H2
 >Name</H2
->SQLAuthoritative&nbsp;--&nbsp;FIXFIXFIX</DIV
+>SQLAuthoritative&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6623"
+NAME="AEN6969"
 ></A
 ><H2
 >Synopsis</H2
@@ -17854,7 +18680,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6650"
+NAME="AEN6996"
 ></A
 ><H2
 >Description</H2
@@ -17864,7 +18690,7 @@ NAME="AEN6650"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6653"
+NAME="AEN6999"
 ></A
 ><H2
 >See also</H2
@@ -17874,7 +18700,7 @@ NAME="AEN6653"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6656"
+NAME="AEN7002"
 ></A
 ><H2
 >Examples</H2
@@ -17893,7 +18719,7 @@ SQLConnectInfo</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6668"
+NAME="AEN7014"
 ></A
 ><H2
 >Name</H2
@@ -17901,7 +18727,7 @@ NAME="AEN6668"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6671"
+NAME="AEN7017"
 ></A
 ><H2
 >Synopsis</H2
@@ -17970,7 +18796,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6702"
+NAME="AEN7048"
 ></A
 ><H2
 >Description</H2
@@ -18030,7 +18856,7 @@ SQLDefaultGID</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6713"
+NAME="AEN7059"
 ></A
 ><H2
 >Name</H2
@@ -18038,7 +18864,7 @@ NAME="AEN6713"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6716"
+NAME="AEN7062"
 ></A
 ><H2
 >Synopsis</H2
@@ -18101,7 +18927,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6743"
+NAME="AEN7089"
 ></A
 ><H2
 >Description</H2
@@ -18117,7 +18943,7 @@ SQLDefaultHomedir</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6754"
+NAME="AEN7100"
 ></A
 ><H2
 >Name</H2
@@ -18125,7 +18951,7 @@ NAME="AEN6754"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6757"
+NAME="AEN7103"
 ></A
 ><H2
 >Synopsis</H2
@@ -18188,7 +19014,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6784"
+NAME="AEN7130"
 ></A
 ><H2
 >Description</H2
@@ -18198,7 +19024,7 @@ NAME="AEN6784"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6787"
+NAME="AEN7133"
 ></A
 ><H2
 >See also</H2
@@ -18208,7 +19034,7 @@ NAME="AEN6787"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6790"
+NAME="AEN7136"
 ></A
 ><H2
 >Examples</H2
@@ -18227,7 +19053,7 @@ SQLDefaultUID</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6802"
+NAME="AEN7148"
 ></A
 ><H2
 >Name</H2
@@ -18235,7 +19061,7 @@ NAME="AEN6802"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6805"
+NAME="AEN7151"
 ></A
 ><H2
 >Synopsis</H2
@@ -18298,7 +19124,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6832"
+NAME="AEN7178"
 ></A
 ><H2
 >Description</H2
@@ -18314,15 +19140,15 @@ SQLDoAuth</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6843"
+NAME="AEN7189"
 ></A
 ><H2
 >Name</H2
->SQLDoAuth&nbsp;--&nbsp;FIXME FIXME</DIV
+>SQLDoAuth&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6846"
+NAME="AEN7192"
 ></A
 ><H2
 >Synopsis</H2
@@ -18385,7 +19211,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6873"
+NAME="AEN7219"
 ></A
 ><H2
 >Description</H2
@@ -18402,15 +19228,15 @@ SQLDoGroupAuth</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6884"
+NAME="AEN7230"
 ></A
 ><H2
 >Name</H2
->SQLDoGroupAuth&nbsp;--&nbsp;FIXME FIXME</DIV
+>SQLDoGroupAuth&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6887"
+NAME="AEN7233"
 ></A
 ><H2
 >Synopsis</H2
@@ -18473,7 +19299,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6914"
+NAME="AEN7260"
 ></A
 ><H2
 >Description</H2
@@ -18500,7 +19326,7 @@ SQLEmptyPasswords</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6925"
+NAME="AEN7271"
 ></A
 ><H2
 >Name</H2
@@ -18508,7 +19334,7 @@ NAME="AEN6925"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6928"
+NAME="AEN7274"
 ></A
 ><H2
 >Synopsis</H2
@@ -18571,7 +19397,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6955"
+NAME="AEN7301"
 ></A
 ><H2
 >Description</H2
@@ -18587,7 +19413,7 @@ warning at debug level 4.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6959"
+NAME="AEN7305"
 ></A
 ><H2
 >See also</H2
@@ -18597,7 +19423,7 @@ NAME="AEN6959"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN6962"
+NAME="AEN7308"
 ></A
 ><H2
 >Examples</H2
@@ -18613,7 +19439,7 @@ SQLEncryptedPasswords</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN6973"
+NAME="AEN7319"
 ></A
 ><H2
 >Name</H2
@@ -18621,7 +19447,7 @@ NAME="AEN6973"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN6976"
+NAME="AEN7322"
 ></A
 ><H2
 >Synopsis</H2
@@ -18684,7 +19510,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7003"
+NAME="AEN7349"
 ></A
 ><H2
 >Description</H2
@@ -18699,7 +19525,7 @@ ftp://ftp.linpeople.org/pub/People/lilo/source/makepasswd-1.07.tar.gz</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7007"
+NAME="AEN7353"
 ></A
 ><H2
 >See also</H2
@@ -18709,7 +19535,7 @@ NAME="AEN7007"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7010"
+NAME="AEN7356"
 ></A
 ><H2
 >Examples</H2
@@ -18725,15 +19551,15 @@ SQLGidField</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7021"
+NAME="AEN7367"
 ></A
 ><H2
 >Name</H2
->SQLGidField&nbsp;--&nbsp;FIXFIXFIX</DIV
+>SQLGidField&nbsp;--&nbsp;Set the field holding gid information (deprecated)</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7024"
+NAME="AEN7370"
 ></A
 ><H2
 >Synopsis</H2
@@ -18796,7 +19622,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7051"
+NAME="AEN7397"
 ></A
 ><H2
 >Description</H2
@@ -18806,7 +19632,7 @@ NAME="AEN7051"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7054"
+NAME="AEN7400"
 ></A
 ><H2
 >See also</H2
@@ -18816,7 +19642,7 @@ NAME="AEN7054"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7057"
+NAME="AEN7403"
 ></A
 ><H2
 >Examples</H2
@@ -18835,15 +19661,15 @@ SQLGroupGIDField</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7069"
+NAME="AEN7415"
 ></A
 ><H2
 >Name</H2
->SQLGroupGIDField&nbsp;--&nbsp;FIXFIXFIX</DIV
+>SQLGroupGIDField&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7072"
+NAME="AEN7418"
 ></A
 ><H2
 >Synopsis</H2
@@ -18906,7 +19732,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7099"
+NAME="AEN7445"
 ></A
 ><H2
 >Description</H2
@@ -18916,7 +19742,7 @@ NAME="AEN7099"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7102"
+NAME="AEN7448"
 ></A
 ><H2
 >See also</H2
@@ -18926,7 +19752,7 @@ NAME="AEN7102"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7105"
+NAME="AEN7451"
 ></A
 ><H2
 >Examples</H2
@@ -18945,7 +19771,7 @@ SQLGroupInfo</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7117"
+NAME="AEN7463"
 ></A
 ><H2
 >Name</H2
@@ -18953,7 +19779,7 @@ NAME="AEN7117"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7120"
+NAME="AEN7466"
 ></A
 ><H2
 >Synopsis</H2
@@ -19016,7 +19842,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7147"
+NAME="AEN7493"
 ></A
 ><H2
 >Description</H2
@@ -19026,7 +19852,7 @@ NAME="AEN7147"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7150"
+NAME="AEN7496"
 ></A
 ><H2
 >See also</H2
@@ -19036,7 +19862,7 @@ NAME="AEN7150"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7153"
+NAME="AEN7499"
 ></A
 ><H2
 >Examples</H2
@@ -19055,15 +19881,15 @@ SQLGroupMembersField</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7165"
+NAME="AEN7511"
 ></A
 ><H2
 >Name</H2
->SQLGroupMembersField&nbsp;--&nbsp;FIXME FIXME</DIV
+>SQLGroupMembersField&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7168"
+NAME="AEN7514"
 ></A
 ><H2
 >Synopsis</H2
@@ -19126,7 +19952,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7195"
+NAME="AEN7541"
 ></A
 ><H2
 >Description</H2
@@ -19143,15 +19969,15 @@ SQLGroupTable</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7206"
+NAME="AEN7552"
 ></A
 ><H2
 >Name</H2
->SQLGroupTable&nbsp;--&nbsp;FIXME FIXME</DIV
+>SQLGroupTable&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7209"
+NAME="AEN7555"
 ></A
 ><H2
 >Synopsis</H2
@@ -19214,7 +20040,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7236"
+NAME="AEN7582"
 ></A
 ><H2
 >Description</H2
@@ -19230,7 +20056,7 @@ SQLGroupWhereClause</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7247"
+NAME="AEN7593"
 ></A
 ><H2
 >Name</H2
@@ -19238,7 +20064,7 @@ NAME="AEN7247"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7250"
+NAME="AEN7596"
 ></A
 ><H2
 >Synopsis</H2
@@ -19301,7 +20127,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7277"
+NAME="AEN7623"
 ></A
 ><H2
 >Description</H2
@@ -19311,7 +20137,7 @@ NAME="AEN7277"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7280"
+NAME="AEN7626"
 ></A
 ><H2
 >See also</H2
@@ -19321,7 +20147,7 @@ NAME="AEN7280"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7283"
+NAME="AEN7629"
 ></A
 ><H2
 >Examples</H2
@@ -19340,15 +20166,15 @@ SQLGroupnameField</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7295"
+NAME="AEN7641"
 ></A
 ><H2
 >Name</H2
->SQLGroupnameField&nbsp;--&nbsp;FIXME FIXME</DIV
+>SQLGroupnameField&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7298"
+NAME="AEN7644"
 ></A
 ><H2
 >Synopsis</H2
@@ -19411,7 +20237,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7325"
+NAME="AEN7671"
 ></A
 ><H2
 >Description</H2
@@ -19427,15 +20253,15 @@ SQLHomedir</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7336"
+NAME="AEN7682"
 ></A
 ><H2
 >Name</H2
->SQLHomedir&nbsp;--&nbsp;FIXFIXFIX</DIV
+>SQLHomedir&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7339"
+NAME="AEN7685"
 ></A
 ><H2
 >Synopsis</H2
@@ -19498,7 +20324,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7366"
+NAME="AEN7712"
 ></A
 ><H2
 >Description</H2
@@ -19508,7 +20334,7 @@ NAME="AEN7366"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7369"
+NAME="AEN7715"
 ></A
 ><H2
 >See also</H2
@@ -19518,7 +20344,7 @@ NAME="AEN7369"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7372"
+NAME="AEN7718"
 ></A
 ><H2
 >Examples</H2
@@ -19537,15 +20363,15 @@ SQLHomedirField</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7384"
+NAME="AEN7730"
 ></A
 ><H2
 >Name</H2
->SQLHomedirField&nbsp;--&nbsp;FIXFIXFIX</DIV
+>SQLHomedirField&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7387"
+NAME="AEN7733"
 ></A
 ><H2
 >Synopsis</H2
@@ -19608,7 +20434,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7414"
+NAME="AEN7760"
 ></A
 ><H2
 >Description</H2
@@ -19618,7 +20444,7 @@ NAME="AEN7414"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7417"
+NAME="AEN7763"
 ></A
 ><H2
 >See also</H2
@@ -19628,7 +20454,7 @@ NAME="AEN7417"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7420"
+NAME="AEN7766"
 ></A
 ><H2
 >Examples</H2
@@ -19647,7 +20473,7 @@ SQLHomedirOnDemand</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7432"
+NAME="AEN7778"
 ></A
 ><H2
 >Name</H2
@@ -19655,7 +20481,7 @@ NAME="AEN7432"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7435"
+NAME="AEN7781"
 ></A
 ><H2
 >Synopsis</H2
@@ -19718,7 +20544,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7462"
+NAME="AEN7808"
 ></A
 ><H2
 >Description</H2
@@ -19735,7 +20561,7 @@ SQLLog</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7473"
+NAME="AEN7819"
 ></A
 ><H2
 >Name</H2
@@ -19743,7 +20569,7 @@ NAME="AEN7473"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7476"
+NAME="AEN7822"
 ></A
 ><H2
 >Synopsis</H2
@@ -19806,7 +20632,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7503"
+NAME="AEN7849"
 ></A
 ><H2
 >Description</H2
@@ -19816,7 +20642,7 @@ NAME="AEN7503"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7506"
+NAME="AEN7852"
 ></A
 ><H2
 >See also</H2
@@ -19826,7 +20652,7 @@ NAME="AEN7506"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7509"
+NAME="AEN7855"
 ></A
 ><H2
 >Examples</H2
@@ -19845,15 +20671,15 @@ SQLLogDirs</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7521"
+NAME="AEN7867"
 ></A
 ><H2
 >Name</H2
->SQLLogDirs&nbsp;--&nbsp;FIXFIXFIX</DIV
+>SQLLogDirs&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7524"
+NAME="AEN7870"
 ></A
 ><H2
 >Synopsis</H2
@@ -19916,7 +20742,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7551"
+NAME="AEN7897"
 ></A
 ><H2
 >Description</H2
@@ -19926,7 +20752,7 @@ NAME="AEN7551"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7554"
+NAME="AEN7900"
 ></A
 ><H2
 >See also</H2
@@ -19936,7 +20762,7 @@ NAME="AEN7554"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7557"
+NAME="AEN7903"
 ></A
 ><H2
 >Examples</H2
@@ -19955,15 +20781,15 @@ SQLLogHits</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7569"
+NAME="AEN7915"
 ></A
 ><H2
 >Name</H2
->SQLLogHits&nbsp;--&nbsp;FIXFIXFIX</DIV
+>SQLLogHits&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7572"
+NAME="AEN7918"
 ></A
 ><H2
 >Synopsis</H2
@@ -20026,7 +20852,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7599"
+NAME="AEN7945"
 ></A
 ><H2
 >Description</H2
@@ -20036,7 +20862,7 @@ NAME="AEN7599"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7602"
+NAME="AEN7948"
 ></A
 ><H2
 >See also</H2
@@ -20046,7 +20872,7 @@ NAME="AEN7602"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7605"
+NAME="AEN7951"
 ></A
 ><H2
 >Examples</H2
@@ -20065,15 +20891,15 @@ SQLLogHosts</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7617"
+NAME="AEN7963"
 ></A
 ><H2
 >Name</H2
->SQLLogHosts&nbsp;--&nbsp;FIXFIXFIX</DIV
+>SQLLogHosts&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7620"
+NAME="AEN7966"
 ></A
 ><H2
 >Synopsis</H2
@@ -20136,7 +20962,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7647"
+NAME="AEN7993"
 ></A
 ><H2
 >Description</H2
@@ -20146,7 +20972,7 @@ NAME="AEN7647"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7650"
+NAME="AEN7996"
 ></A
 ><H2
 >See also</H2
@@ -20156,7 +20982,7 @@ NAME="AEN7650"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7653"
+NAME="AEN7999"
 ></A
 ><H2
 >Examples</H2
@@ -20175,15 +21001,15 @@ SQLLogStats</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7665"
+NAME="AEN8011"
 ></A
 ><H2
 >Name</H2
->SQLLogStats&nbsp;--&nbsp;FIXFIXFIX</DIV
+>SQLLogStats&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7668"
+NAME="AEN8014"
 ></A
 ><H2
 >Synopsis</H2
@@ -20246,7 +21072,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7695"
+NAME="AEN8041"
 ></A
 ><H2
 >Description</H2
@@ -20256,7 +21082,7 @@ NAME="AEN7695"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7698"
+NAME="AEN8044"
 ></A
 ><H2
 >See also</H2
@@ -20266,7 +21092,7 @@ NAME="AEN7698"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7701"
+NAME="AEN8047"
 ></A
 ><H2
 >Examples</H2
@@ -20285,15 +21111,15 @@ SQLLoginCountField</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7713"
+NAME="AEN8059"
 ></A
 ><H2
 >Name</H2
->SQLLoginCountField&nbsp;--&nbsp;FIXFIXFIX</DIV
+>SQLLoginCountField&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7716"
+NAME="AEN8062"
 ></A
 ><H2
 >Synopsis</H2
@@ -20356,7 +21182,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7743"
+NAME="AEN8089"
 ></A
 ><H2
 >Description</H2
@@ -20366,7 +21192,7 @@ NAME="AEN7743"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7746"
+NAME="AEN8092"
 ></A
 ><H2
 >See also</H2
@@ -20376,7 +21202,7 @@ NAME="AEN7746"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7749"
+NAME="AEN8095"
 ></A
 ><H2
 >Examples</H2
@@ -20395,7 +21221,7 @@ SQLMinID</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7761"
+NAME="AEN8107"
 ></A
 ><H2
 >Name</H2
@@ -20403,7 +21229,7 @@ NAME="AEN7761"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7764"
+NAME="AEN8110"
 ></A
 ><H2
 >Synopsis</H2
@@ -20466,7 +21292,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7791"
+NAME="AEN8137"
 ></A
 ><H2
 >Description</H2
@@ -20485,7 +21311,7 @@ SQLMinUserGID</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7802"
+NAME="AEN8148"
 ></A
 ><H2
 >Name</H2
@@ -20493,7 +21319,7 @@ NAME="AEN7802"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7805"
+NAME="AEN8151"
 ></A
 ><H2
 >Synopsis</H2
@@ -20556,7 +21382,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7832"
+NAME="AEN8178"
 ></A
 ><H2
 >Description</H2
@@ -20566,7 +21392,7 @@ NAME="AEN7832"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7835"
+NAME="AEN8181"
 ></A
 ><H2
 >See also</H2
@@ -20576,7 +21402,7 @@ NAME="AEN7835"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7838"
+NAME="AEN8184"
 ></A
 ><H2
 >Examples</H2
@@ -20595,7 +21421,7 @@ SQLMinUserUID</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7850"
+NAME="AEN8196"
 ></A
 ><H2
 >Name</H2
@@ -20603,7 +21429,7 @@ NAME="AEN7850"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7853"
+NAME="AEN8199"
 ></A
 ><H2
 >Synopsis</H2
@@ -20666,7 +21492,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7880"
+NAME="AEN8226"
 ></A
 ><H2
 >Description</H2
@@ -20676,7 +21502,7 @@ NAME="AEN7880"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7883"
+NAME="AEN8229"
 ></A
 ><H2
 >See also</H2
@@ -20686,7 +21512,7 @@ NAME="AEN7883"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7886"
+NAME="AEN8232"
 ></A
 ><H2
 >Examples</H2
@@ -20705,7 +21531,7 @@ SQLNamedQuery</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7898"
+NAME="AEN8244"
 ></A
 ><H2
 >Name</H2
@@ -20713,7 +21539,7 @@ NAME="AEN7898"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7901"
+NAME="AEN8247"
 ></A
 ><H2
 >Synopsis</H2
@@ -20776,7 +21602,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7928"
+NAME="AEN8274"
 ></A
 ><H2
 >Description</H2
@@ -20786,7 +21612,7 @@ NAME="AEN7928"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7931"
+NAME="AEN8277"
 ></A
 ><H2
 >See also</H2
@@ -20796,7 +21622,7 @@ NAME="AEN7931"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7934"
+NAME="AEN8280"
 ></A
 ><H2
 >Examples</H2
@@ -20808,6 +21634,131 @@ CLASS="LITERALLAYOUT"
 ></DIV
 ><H1
 ><A
+NAME="SQLNEGATIVECACHE"
+></A
+>
+			SQLNegativeCache</H1
+><DIV
+CLASS="REFNAMEDIV"
+><A
+NAME="AEN8292"
+></A
+><H2
+>Name</H2
+>SQLNegativeCache&nbsp;--&nbsp;Enable negative caching for SQL lookups</DIV
+><DIV
+CLASS="REFSYNOPSISDIV"
+><A
+NAME="AEN8295"
+></A
+><H2
+>Synopsis</H2
+><P
+><B
+CLASS="COMMAND"
+>SQLNegativeCache</B
+>  [				<TT
+CLASS="OPTION"
+>on</TT
+>
+				<TT
+CLASS="OPTION"
+>off</TT
+>
+			]</P
+><P
+></P
+><DIV
+CLASS="VARIABLELIST"
+><P
+><B
+></B
+></P
+><DL
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Default</PRE
+></DT
+><DD
+><P
+>				SQLNegativeCache off
+			</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Context</PRE
+></DT
+><DD
+><P
+>				server config, &lt;VirtualHost&gt;, &lt;Global&gt;
+			</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Module</PRE
+></DT
+><DD
+><P
+>mod_sql
+			</P
+></DD
+><DT
+><PRE
+CLASS="SYNOPSIS"
+>Compatibility</PRE
+></DT
+><DD
+><P
+>				mod_sql v4.10 and later
+			</P
+></DD
+></DL
+></DIV
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN8323"
+></A
+><H2
+>Description</H2
+><P
+>SQLNegativeCache specifies whether or not to cache negative
+		responses from SQL lookups when using SQL for UID/GID lookups.
+		Depending on your SQL tables, there can be a significant delay
+                when a directory listing is performed as the UIDs not in the
+                SQL database are repeatedly looked up in an attempt to present
+                usernames instead of UIDs in directory listings. With
+                SQLNegativeCache set to on, negative ("not found") responses from
+		SQL queries will be cached and speed will improve on directory
+		listings that contain many users not present in the SQL
+		database.</P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN8326"
+></A
+><H2
+>See also</H2
+><P
+></P
+></DIV
+><DIV
+CLASS="REFSECT1"
+><A
+NAME="AEN8329"
+></A
+><H2
+>Examples</H2
+><P
+></P
+></DIV
+><H1
+><A
 NAME="SQLPASSWORDFIELD"
 ></A
 >
@@ -20815,15 +21766,15 @@ SQLPasswordField</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7946"
+NAME="AEN8340"
 ></A
 ><H2
 >Name</H2
->SQLPasswordField&nbsp;--&nbsp;FIXFIXFIX</DIV
+>SQLPasswordField&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7949"
+NAME="AEN8343"
 ></A
 ><H2
 >Synopsis</H2
@@ -20886,7 +21837,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7976"
+NAME="AEN8370"
 ></A
 ><H2
 >Description</H2
@@ -20896,7 +21847,7 @@ NAME="AEN7976"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7979"
+NAME="AEN8373"
 ></A
 ><H2
 >See also</H2
@@ -20906,7 +21857,7 @@ NAME="AEN7979"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN7982"
+NAME="AEN8376"
 ></A
 ><H2
 >Examples</H2
@@ -20925,15 +21876,15 @@ SQLProcessGrEnt</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN7994"
+NAME="AEN8388"
 ></A
 ><H2
 >Name</H2
->SQLProcessGrEnt&nbsp;--&nbsp;FIXFIXFIX</DIV
+>SQLProcessGrEnt&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN7997"
+NAME="AEN8391"
 ></A
 ><H2
 >Synopsis</H2
@@ -20996,7 +21947,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8024"
+NAME="AEN8418"
 ></A
 ><H2
 >Description</H2
@@ -21006,7 +21957,7 @@ NAME="AEN8024"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8027"
+NAME="AEN8421"
 ></A
 ><H2
 >See also</H2
@@ -21016,7 +21967,7 @@ NAME="AEN8027"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8030"
+NAME="AEN8424"
 ></A
 ><H2
 >Examples</H2
@@ -21035,15 +21986,15 @@ SQLProcessPwEnt</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8042"
+NAME="AEN8436"
 ></A
 ><H2
 >Name</H2
->SQLProcessPwEnt&nbsp;--&nbsp;FIXFIXFIX</DIV
+>SQLProcessPwEnt&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8045"
+NAME="AEN8439"
 ></A
 ><H2
 >Synopsis</H2
@@ -21106,7 +22057,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8072"
+NAME="AEN8466"
 ></A
 ><H2
 >Description</H2
@@ -21116,7 +22067,7 @@ NAME="AEN8072"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8075"
+NAME="AEN8469"
 ></A
 ><H2
 >See also</H2
@@ -21126,7 +22077,7 @@ NAME="AEN8075"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8078"
+NAME="AEN8472"
 ></A
 ><H2
 >Examples</H2
@@ -21145,7 +22096,7 @@ SQLRatioStats</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8090"
+NAME="AEN8484"
 ></A
 ><H2
 >Name</H2
@@ -21153,7 +22104,7 @@ NAME="AEN8090"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8093"
+NAME="AEN8487"
 ></A
 ><H2
 >Synopsis</H2
@@ -21216,7 +22167,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8120"
+NAME="AEN8514"
 ></A
 ><H2
 >Description</H2
@@ -21226,7 +22177,7 @@ NAME="AEN8120"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8123"
+NAME="AEN8517"
 ></A
 ><H2
 >See also</H2
@@ -21236,7 +22187,7 @@ NAME="AEN8123"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8126"
+NAME="AEN8520"
 ></A
 ><H2
 >Examples</H2
@@ -21255,7 +22206,7 @@ SQLRatios</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8138"
+NAME="AEN8532"
 ></A
 ><H2
 >Name</H2
@@ -21263,7 +22214,7 @@ NAME="AEN8138"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8141"
+NAME="AEN8535"
 ></A
 ><H2
 >Synopsis</H2
@@ -21326,7 +22277,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8168"
+NAME="AEN8562"
 ></A
 ><H2
 >Description</H2
@@ -21336,7 +22287,7 @@ NAME="AEN8168"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8171"
+NAME="AEN8565"
 ></A
 ><H2
 >See also</H2
@@ -21346,7 +22297,7 @@ NAME="AEN8171"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8174"
+NAME="AEN8568"
 ></A
 ><H2
 >Examples</H2
@@ -21365,7 +22316,7 @@ SQLSSLHashedPasswords</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8186"
+NAME="AEN8580"
 ></A
 ><H2
 >Name</H2
@@ -21373,7 +22324,7 @@ NAME="AEN8186"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8189"
+NAME="AEN8583"
 ></A
 ><H2
 >Synopsis</H2
@@ -21436,7 +22387,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8216"
+NAME="AEN8610"
 ></A
 ><H2
 >Description</H2
@@ -21465,7 +22416,7 @@ SQLScrambledPasswords</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8227"
+NAME="AEN8621"
 ></A
 ><H2
 >Name</H2
@@ -21473,7 +22424,7 @@ NAME="AEN8227"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8230"
+NAME="AEN8624"
 ></A
 ><H2
 >Synopsis</H2
@@ -21536,7 +22487,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8257"
+NAME="AEN8651"
 ></A
 ><H2
 >Description</H2
@@ -21556,15 +22507,15 @@ SQLShellField</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8268"
+NAME="AEN8662"
 ></A
 ><H2
 >Name</H2
->SQLShellField&nbsp;--&nbsp;FIXME FIXME</DIV
+>SQLShellField&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8271"
+NAME="AEN8665"
 ></A
 ><H2
 >Synopsis</H2
@@ -21627,7 +22578,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8298"
+NAME="AEN8692"
 ></A
 ><H2
 >Description</H2
@@ -21645,7 +22596,7 @@ SQLShowInfo</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8309"
+NAME="AEN8703"
 ></A
 ><H2
 >Name</H2
@@ -21653,7 +22604,7 @@ NAME="AEN8309"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8312"
+NAME="AEN8706"
 ></A
 ><H2
 >Synopsis</H2
@@ -21716,7 +22667,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8339"
+NAME="AEN8733"
 ></A
 ><H2
 >Description</H2
@@ -21726,7 +22677,7 @@ NAME="AEN8339"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8342"
+NAME="AEN8736"
 ></A
 ><H2
 >See also</H2
@@ -21736,7 +22687,7 @@ NAME="AEN8342"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8345"
+NAME="AEN8739"
 ></A
 ><H2
 >Examples</H2
@@ -21755,15 +22706,15 @@ SQLUidField</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8357"
+NAME="AEN8751"
 ></A
 ><H2
 >Name</H2
->SQLUidField&nbsp;--&nbsp;FIXFIXFIX</DIV
+>SQLUidField&nbsp;--&nbsp;Set the field holding uid information (deprecated)</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8360"
+NAME="AEN8754"
 ></A
 ><H2
 >Synopsis</H2
@@ -21826,7 +22777,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8387"
+NAME="AEN8781"
 ></A
 ><H2
 >Description</H2
@@ -21836,7 +22787,7 @@ NAME="AEN8387"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8390"
+NAME="AEN8784"
 ></A
 ><H2
 >See also</H2
@@ -21846,7 +22797,7 @@ NAME="AEN8390"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8393"
+NAME="AEN8787"
 ></A
 ><H2
 >Examples</H2
@@ -21865,7 +22816,7 @@ SQLUserInfo</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8405"
+NAME="AEN8799"
 ></A
 ><H2
 >Name</H2
@@ -21873,7 +22824,7 @@ NAME="AEN8405"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8408"
+NAME="AEN8802"
 ></A
 ><H2
 >Synopsis</H2
@@ -21936,7 +22887,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8435"
+NAME="AEN8829"
 ></A
 ><H2
 >Description</H2
@@ -21946,7 +22897,7 @@ NAME="AEN8435"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8438"
+NAME="AEN8832"
 ></A
 ><H2
 >See also</H2
@@ -21956,7 +22907,7 @@ NAME="AEN8438"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8441"
+NAME="AEN8835"
 ></A
 ><H2
 >Examples</H2
@@ -21975,15 +22926,15 @@ SQLUserTable</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8453"
+NAME="AEN8847"
 ></A
 ><H2
 >Name</H2
->SQLUserTable&nbsp;--&nbsp;FIXFIXFIX</DIV
+>SQLUserTable&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8456"
+NAME="AEN8850"
 ></A
 ><H2
 >Synopsis</H2
@@ -22046,7 +22997,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8483"
+NAME="AEN8877"
 ></A
 ><H2
 >Description</H2
@@ -22056,7 +23007,7 @@ NAME="AEN8483"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8486"
+NAME="AEN8880"
 ></A
 ><H2
 >See also</H2
@@ -22066,7 +23017,7 @@ NAME="AEN8486"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8489"
+NAME="AEN8883"
 ></A
 ><H2
 >Examples</H2
@@ -22085,7 +23036,7 @@ SQLUserWhereClause</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8501"
+NAME="AEN8895"
 ></A
 ><H2
 >Name</H2
@@ -22093,7 +23044,7 @@ NAME="AEN8501"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8504"
+NAME="AEN8898"
 ></A
 ><H2
 >Synopsis</H2
@@ -22156,7 +23107,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8531"
+NAME="AEN8925"
 ></A
 ><H2
 >Description</H2
@@ -22166,7 +23117,7 @@ NAME="AEN8531"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8534"
+NAME="AEN8928"
 ></A
 ><H2
 >See also</H2
@@ -22176,7 +23127,7 @@ NAME="AEN8534"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8537"
+NAME="AEN8931"
 ></A
 ><H2
 >Examples</H2
@@ -22195,15 +23146,15 @@ SQLUsernameField</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8549"
+NAME="AEN8943"
 ></A
 ><H2
 >Name</H2
->SQLUsernameField&nbsp;--&nbsp;FIXFIXFIX</DIV
+>SQLUsernameField&nbsp;--&nbsp;Deprecated</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8552"
+NAME="AEN8946"
 ></A
 ><H2
 >Synopsis</H2
@@ -22266,7 +23217,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8579"
+NAME="AEN8973"
 ></A
 ><H2
 >Description</H2
@@ -22276,7 +23227,7 @@ NAME="AEN8579"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8582"
+NAME="AEN8976"
 ></A
 ><H2
 >See also</H2
@@ -22286,7 +23237,7 @@ NAME="AEN8582"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8585"
+NAME="AEN8979"
 ></A
 ><H2
 >Examples</H2
@@ -22305,7 +23256,7 @@ SQLWhereClause</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8597"
+NAME="AEN8991"
 ></A
 ><H2
 >Name</H2
@@ -22313,7 +23264,7 @@ NAME="AEN8597"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8600"
+NAME="AEN8994"
 ></A
 ><H2
 >Synopsis</H2
@@ -22376,7 +23327,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8627"
+NAME="AEN9021"
 ></A
 ><H2
 >Description</H2
@@ -22410,7 +23361,7 @@ SaveRatios</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8638"
+NAME="AEN9032"
 ></A
 ><H2
 >Name</H2
@@ -22418,7 +23369,7 @@ NAME="AEN8638"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8641"
+NAME="AEN9035"
 ></A
 ><H2
 >Synopsis</H2
@@ -22481,7 +23432,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8668"
+NAME="AEN9062"
 ></A
 ><H2
 >Description</H2
@@ -22493,7 +23444,7 @@ SaveRatios</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8671"
+NAME="AEN9065"
 ></A
 ><H2
 >See also</H2
@@ -22503,7 +23454,7 @@ NAME="AEN8671"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8674"
+NAME="AEN9068"
 ></A
 ><H2
 >Examples</H2
@@ -22512,29 +23463,29 @@ NAME="AEN8674"
 ></DIV
 ><H1
 ><A
-NAME="SCOREBOARDPATH"
+NAME="SCOREBOARDFILE"
 ></A
 >
-ScoreboardPath</H1
+ScoreboardFile</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8685"
+NAME="AEN9079"
 ></A
 ><H2
 >Name</H2
->ScoreboardPath&nbsp;--&nbsp;Sets the path to the scoreboard file</DIV
+>ScoreboardFile&nbsp;--&nbsp;Sets the path to the scoreboard file</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8688"
+NAME="AEN9082"
 ></A
 ><H2
 >Synopsis</H2
 ><P
 ><B
 CLASS="COMMAND"
->ScoreboardPath</B
+>ScoreboardFile</B
 >  [  <TT
 CLASS="OPTION"
 >path</TT
@@ -22555,7 +23506,7 @@ CLASS="SYNOPSIS"
 ></DT
 ><DD
 ><P
->ScoreboardPath /var/run</P
+>ScoreboardFile /var/run/proftpd.scoreboard</P
 ></DD
 ><DT
 ><PRE
@@ -22582,7 +23533,7 @@ CLASS="SYNOPSIS"
 ></DT
 ><DD
 ><P
->1.1.6 and later</P
+>1.2.7rc1 and later</P
 ></DD
 ></DL
 ></DIV
@@ -22590,19 +23541,19 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8715"
+NAME="AEN9109"
 ></A
 ><H2
 >Description</H2
 ><P
->The ScoreboardPath directive sets the directory where proftpd run-time scoreboard 
-files (proftpd-*) are kept. These file(s) are necessary for MaxClients 
-to work properly, as well as other utilities (such as ftpwho and ftpcount).</P
+>The ScoreboardFile directive sets the path to the file where the daemon will
+store its run-time "scoreboard" session information.  This file is necessary
+for MaxClients to work properly, as well as other utilities (such as ftpwho and ftpcount).</P
 ></DIV
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8718"
+NAME="AEN9112"
 ></A
 ><H2
 >See also</H2
@@ -22612,7 +23563,7 @@ NAME="AEN8718"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8721"
+NAME="AEN9115"
 ></A
 ><H2
 >Examples</H2
@@ -22628,7 +23579,7 @@ ServerAdmin</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8732"
+NAME="AEN9126"
 ></A
 ><H2
 >Name</H2
@@ -22636,7 +23587,7 @@ NAME="AEN8732"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8735"
+NAME="AEN9129"
 ></A
 ><H2
 >Synopsis</H2
@@ -22699,7 +23650,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8762"
+NAME="AEN9156"
 ></A
 ><H2
 >Description</H2
@@ -22711,7 +23662,7 @@ the server or virtualhost. This address is displayed in magic cookie replacement
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8765"
+NAME="AEN9159"
 ></A
 ><H2
 >See also</H2
@@ -22721,7 +23672,7 @@ NAME="AEN8765"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8768"
+NAME="AEN9162"
 ></A
 ><H2
 >Examples</H2
@@ -22737,7 +23688,7 @@ ServerIdent</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8779"
+NAME="AEN9173"
 ></A
 ><H2
 >Name</H2
@@ -22745,7 +23696,7 @@ NAME="AEN8779"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8782"
+NAME="AEN9176"
 ></A
 ><H2
 >Synopsis</H2
@@ -22808,7 +23759,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8809"
+NAME="AEN9203"
 ></A
 ><H2
 >Description</H2
@@ -22824,7 +23775,7 @@ even reveal the hostname. </P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8812"
+NAME="AEN9206"
 ></A
 ><H2
 >See also</H2
@@ -22834,7 +23785,7 @@ NAME="AEN8812"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8815"
+NAME="AEN9209"
 ></A
 ><H2
 >Examples</H2
@@ -22850,7 +23801,7 @@ ServerName</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8826"
+NAME="AEN9220"
 ></A
 ><H2
 >Name</H2
@@ -22858,7 +23809,7 @@ NAME="AEN8826"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8829"
+NAME="AEN9223"
 ></A
 ><H2
 >Synopsis</H2
@@ -22921,7 +23872,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8856"
+NAME="AEN9250"
 ></A
 ><H2
 >Description</H2
@@ -22934,7 +23885,7 @@ See Also: &lt;VirtualHost&gt;</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8859"
+NAME="AEN9253"
 ></A
 ><H2
 >See also</H2
@@ -22944,7 +23895,7 @@ NAME="AEN8859"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8862"
+NAME="AEN9256"
 ></A
 ><H2
 >Examples</H2
@@ -22960,7 +23911,7 @@ ServerType</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8873"
+NAME="AEN9267"
 ></A
 ><H2
 >Name</H2
@@ -22968,7 +23919,7 @@ NAME="AEN8873"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8876"
+NAME="AEN9270"
 ></A
 ><H2
 >Synopsis</H2
@@ -23031,7 +23982,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8903"
+NAME="AEN9297"
 ></A
 ><H2
 >Description</H2
@@ -23049,7 +24000,7 @@ the newly connected client.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8906"
+NAME="AEN9300"
 ></A
 ><H2
 >See also</H2
@@ -23059,7 +24010,7 @@ NAME="AEN8906"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8909"
+NAME="AEN9303"
 ></A
 ><H2
 >Examples</H2
@@ -23075,7 +24026,7 @@ ShowDotFiles</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8920"
+NAME="AEN9314"
 ></A
 ><H2
 >Name</H2
@@ -23083,7 +24034,7 @@ NAME="AEN8920"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8923"
+NAME="AEN9317"
 ></A
 ><H2
 >Synopsis</H2
@@ -23146,7 +24097,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8950"
+NAME="AEN9344"
 ></A
 ><H2
 >Description</H2
@@ -23161,7 +24112,7 @@ See Also: LsDefaultOptions</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8953"
+NAME="AEN9347"
 ></A
 ><H2
 >See also</H2
@@ -23171,7 +24122,7 @@ NAME="AEN8953"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8956"
+NAME="AEN9350"
 ></A
 ><H2
 >Examples</H2
@@ -23187,7 +24138,7 @@ ShowSymlinks</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN8967"
+NAME="AEN9361"
 ></A
 ><H2
 >Name</H2
@@ -23195,7 +24146,7 @@ NAME="AEN8967"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN8970"
+NAME="AEN9364"
 ></A
 ><H2
 >Synopsis</H2
@@ -23258,7 +24209,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN8997"
+NAME="AEN9391"
 ></A
 ><H2
 >Description</H2
@@ -23279,7 +24230,7 @@ as such (in all cases), unless ShowSymlinks off is explicitly set.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9000"
+NAME="AEN9394"
 ></A
 ><H2
 >See also</H2
@@ -23289,7 +24240,7 @@ NAME="AEN9000"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9003"
+NAME="AEN9397"
 ></A
 ><H2
 >Examples</H2
@@ -23305,7 +24256,7 @@ SocketBindTight</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9014"
+NAME="AEN9408"
 ></A
 ><H2
 >Name</H2
@@ -23313,7 +24264,7 @@ NAME="AEN9014"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9017"
+NAME="AEN9411"
 ></A
 ><H2
 >Synopsis</H2
@@ -23376,7 +24327,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9044"
+NAME="AEN9438"
 ></A
 ><H2
 >Description</H2
@@ -23423,7 +24374,7 @@ not be aesthetically desirable, depending on your circumstances.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9047"
+NAME="AEN9441"
 ></A
 ><H2
 >See also</H2
@@ -23433,7 +24384,7 @@ NAME="AEN9047"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9050"
+NAME="AEN9444"
 ></A
 ><H2
 >Examples</H2
@@ -23449,7 +24400,7 @@ StoreUniquePrefix</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9061"
+NAME="AEN9455"
 ></A
 ><H2
 >Name</H2
@@ -23457,7 +24408,7 @@ NAME="AEN9061"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9064"
+NAME="AEN9458"
 ></A
 ><H2
 >Synopsis</H2
@@ -23520,7 +24471,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9091"
+NAME="AEN9485"
 ></A
 ><H2
 >Description</H2
@@ -23535,7 +24486,7 @@ in the prefix string.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9095"
+NAME="AEN9489"
 ></A
 ><H2
 >See also</H2
@@ -23545,7 +24496,7 @@ NAME="AEN9095"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9098"
+NAME="AEN9492"
 ></A
 ><H2
 >Examples</H2
@@ -23562,7 +24513,7 @@ SyslogFacility</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9109"
+NAME="AEN9503"
 ></A
 ><H2
 >Name</H2
@@ -23570,7 +24521,7 @@ NAME="AEN9109"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9112"
+NAME="AEN9506"
 ></A
 ><H2
 >Synopsis</H2
@@ -23633,7 +24584,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9139"
+NAME="AEN9533"
 ></A
 ><H2
 >Description</H2
@@ -23655,7 +24606,7 @@ See Also: SystemLog</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9142"
+NAME="AEN9536"
 ></A
 ><H2
 >See also</H2
@@ -23665,7 +24616,7 @@ NAME="AEN9142"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9145"
+NAME="AEN9539"
 ></A
 ><H2
 >Examples</H2
@@ -23681,7 +24632,7 @@ SyslogLevel</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9156"
+NAME="AEN9550"
 ></A
 ><H2
 >Name</H2
@@ -23689,7 +24640,7 @@ NAME="AEN9156"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9159"
+NAME="AEN9553"
 ></A
 ><H2
 >Synopsis</H2
@@ -23752,7 +24703,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9186"
+NAME="AEN9580"
 ></A
 ><H2
 >Description</H2
@@ -23788,7 +24739,7 @@ Using a level of at least crit is recommended.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9189"
+NAME="AEN9583"
 ></A
 ><H2
 >See also</H2
@@ -23798,7 +24749,7 @@ NAME="AEN9189"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9192"
+NAME="AEN9586"
 ></A
 ><H2
 >Examples</H2
@@ -23814,7 +24765,7 @@ SystemLog</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9203"
+NAME="AEN9597"
 ></A
 ><H2
 >Name</H2
@@ -23822,7 +24773,7 @@ NAME="AEN9203"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9206"
+NAME="AEN9600"
 ></A
 ><H2
 >Synopsis</H2
@@ -23885,7 +24836,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9233"
+NAME="AEN9627"
 ></A
 ><H2
 >Description</H2
@@ -23902,7 +24853,7 @@ which disables all syslog style logging for the entire configuration.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9236"
+NAME="AEN9630"
 ></A
 ><H2
 >See also</H2
@@ -23915,7 +24866,7 @@ HREF="#ALLOWLOGSYMLINKS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9240"
+NAME="AEN9634"
 ></A
 ><H2
 >Examples</H2
@@ -23931,7 +24882,7 @@ TCPAccessFiles</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9251"
+NAME="AEN9645"
 ></A
 ><H2
 >Name</H2
@@ -23939,7 +24890,7 @@ NAME="AEN9251"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9254"
+NAME="AEN9648"
 ></A
 ><H2
 >Synopsis</H2
@@ -24002,7 +24953,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9281"
+NAME="AEN9675"
 ></A
 ><H2
 >Description</H2
@@ -24035,7 +24986,7 @@ control to be handled without interfering with the server access rules.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9286"
+NAME="AEN9680"
 ></A
 ><H2
 >See also</H2
@@ -24056,7 +25007,7 @@ HREF="#TCPUSERACCESSFILES"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9292"
+NAME="AEN9686"
 ></A
 ><H2
 >Examples</H2
@@ -24076,7 +25027,7 @@ TCPAccessSyslogLevels</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9303"
+NAME="AEN9697"
 ></A
 ><H2
 >Name</H2
@@ -24084,7 +25035,7 @@ NAME="AEN9303"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9306"
+NAME="AEN9700"
 ></A
 ><H2
 >Synopsis</H2
@@ -24147,7 +25098,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9333"
+NAME="AEN9727"
 ></A
 ><H2
 >Description</H2
@@ -24164,7 +25115,7 @@ connections. </P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9337"
+NAME="AEN9731"
 ></A
 ><H2
 >See also</H2
@@ -24177,7 +25128,7 @@ HREF="#SYSLOGLEVEL"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9341"
+NAME="AEN9735"
 ></A
 ><H2
 >Examples</H2
@@ -24193,7 +25144,7 @@ TCPGroupAccessFiles</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9352"
+NAME="AEN9746"
 ></A
 ><H2
 >Name</H2
@@ -24201,7 +25152,7 @@ NAME="AEN9352"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9355"
+NAME="AEN9749"
 ></A
 ><H2
 >Synopsis</H2
@@ -24264,7 +25215,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9382"
+NAME="AEN9776"
 ></A
 ><H2
 >Description</H2
@@ -24280,7 +25231,7 @@ directive to apply. Group names may be negated with a ! prefix.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9386"
+NAME="AEN9780"
 ></A
 ><H2
 >See also</H2
@@ -24297,7 +25248,7 @@ HREF="#TCPUSERACCESSFILES"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9391"
+NAME="AEN9785"
 ></A
 ><H2
 >Examples</H2
@@ -24317,7 +25268,7 @@ TCPServiceName</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9402"
+NAME="AEN9796"
 ></A
 ><H2
 >Name</H2
@@ -24325,7 +25276,7 @@ NAME="AEN9402"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9405"
+NAME="AEN9799"
 ></A
 ><H2
 >Synopsis</H2
@@ -24388,7 +25339,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9432"
+NAME="AEN9826"
 ></A
 ><H2
 >Description</H2
@@ -24398,7 +25349,7 @@ NAME="AEN9432"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9435"
+NAME="AEN9829"
 ></A
 ><H2
 >See also</H2
@@ -24414,7 +25365,7 @@ TCPUserAccessFiles</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9446"
+NAME="AEN9840"
 ></A
 ><H2
 >Name</H2
@@ -24422,7 +25373,7 @@ NAME="AEN9446"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9449"
+NAME="AEN9843"
 ></A
 ><H2
 >Synopsis</H2
@@ -24485,7 +25436,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9476"
+NAME="AEN9870"
 ></A
 ><H2
 >Description</H2
@@ -24502,7 +25453,7 @@ with the use of the ! negation prefix.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9480"
+NAME="AEN9874"
 ></A
 ><H2
 >See also</H2
@@ -24519,7 +25470,7 @@ HREF="#TCPGROUPACCESSFILES"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9485"
+NAME="AEN9879"
 ></A
 ><H2
 >Examples</H2
@@ -24539,7 +25490,7 @@ TimeoutIdle</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9496"
+NAME="AEN9890"
 ></A
 ><H2
 >Name</H2
@@ -24547,7 +25498,7 @@ NAME="AEN9496"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9499"
+NAME="AEN9893"
 ></A
 ><H2
 >Synopsis</H2
@@ -24610,7 +25561,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9526"
+NAME="AEN9920"
 ></A
 ><H2
 >Description</H2
@@ -24629,7 +25580,7 @@ See Also: TimeoutLogin, TimeoutNoTransfer</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9529"
+NAME="AEN9923"
 ></A
 ><H2
 >See also</H2
@@ -24639,7 +25590,7 @@ NAME="AEN9529"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9532"
+NAME="AEN9926"
 ></A
 ><H2
 >Examples</H2
@@ -24655,7 +25606,7 @@ TimeoutLogin</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9543"
+NAME="AEN9937"
 ></A
 ><H2
 >Name</H2
@@ -24663,7 +25614,7 @@ NAME="AEN9543"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9546"
+NAME="AEN9940"
 ></A
 ><H2
 >Synopsis</H2
@@ -24700,7 +25651,7 @@ CLASS="SYNOPSIS"
 ></DT
 ><DD
 ><P
->server config</P
+>server config, &lt;VirtualHost&gt;, &lt;Global&gt;</P
 ></DD
 ><DT
 ><PRE
@@ -24709,7 +25660,7 @@ CLASS="SYNOPSIS"
 ></DT
 ><DD
 ><P
->mod_core</P
+>mod_auth</P
 ></DD
 ><DT
 ><PRE
@@ -24726,7 +25677,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9573"
+NAME="AEN9967"
 ></A
 ><H2
 >Description</H2
@@ -24740,7 +25691,7 @@ See Also: TimeoutIdle, TimeoutNoTransfer</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9576"
+NAME="AEN9970"
 ></A
 ><H2
 >See also</H2
@@ -24750,7 +25701,7 @@ NAME="AEN9576"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9579"
+NAME="AEN9973"
 ></A
 ><H2
 >Examples</H2
@@ -24766,7 +25717,7 @@ TimeoutNoTransfer</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9590"
+NAME="AEN9984"
 ></A
 ><H2
 >Name</H2
@@ -24774,7 +25725,7 @@ NAME="AEN9590"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9593"
+NAME="AEN9987"
 ></A
 ><H2
 >Synopsis</H2
@@ -24811,7 +25762,7 @@ CLASS="SYNOPSIS"
 ></DT
 ><DD
 ><P
->server config</P
+>server config, &lt;VirtualHost&gt;, &lt;Global&gt;</P
 ></DD
 ><DT
 ><PRE
@@ -24820,7 +25771,7 @@ CLASS="SYNOPSIS"
 ></DT
 ><DD
 ><P
->mod_core</P
+>mod_xfer</P
 ></DD
 ><DT
 ><PRE
@@ -24837,7 +25788,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9620"
+NAME="AEN10014"
 ></A
 ><H2
 >Description</H2
@@ -24851,7 +25802,7 @@ See Also: TimeoutIdle, TimeoutLogin</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9623"
+NAME="AEN10017"
 ></A
 ><H2
 >See also</H2
@@ -24861,7 +25812,7 @@ NAME="AEN9623"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9626"
+NAME="AEN10020"
 ></A
 ><H2
 >Examples</H2
@@ -24877,15 +25828,15 @@ TimeoutSession</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9637"
+NAME="AEN10031"
 ></A
 ><H2
 >Name</H2
->TimeoutSession&nbsp;--&nbsp;FIXFIXFIX</DIV
+>TimeoutSession&nbsp;--&nbsp;Sets a timeout for an entire session</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9640"
+NAME="AEN10034"
 ></A
 ><H2
 >Synopsis</H2
@@ -24895,7 +25846,7 @@ CLASS="COMMAND"
 >TimeoutSession</B
 >  [  <TT
 CLASS="OPTION"
->"name" limit|regex|ip value</TT
+>seconds ["user"|"group"|"class" expression]</TT
 >]</P
 ><P
 ></P
@@ -24913,7 +25864,7 @@ CLASS="SYNOPSIS"
 ></DT
 ><DD
 ><P
->FIXFIXFIX</P
+>None</P
 ></DD
 ><DT
 ><PRE
@@ -24922,7 +25873,7 @@ CLASS="SYNOPSIS"
 ></DT
 ><DD
 ><P
->server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;, .ftpaccess</P
+>server config, &lt;VirtualHost&gt;, &lt;Global&gt;, &lt;Anonymous&gt;</P
 ></DD
 ><DT
 ><PRE
@@ -24948,17 +25899,36 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9667"
+NAME="AEN10061"
 ></A
 ><H2
 >Description</H2
 ><P
->FIX FIX FIX</P
+>The TimeoutSession directive sets the maximum number of seconds a control
+connection between the proftpd server and an FTP client can exist after the
+client has successfully authenticated.  If the seconds argument is set to 0,
+sessions are allowed to last indefinitely (the default).</P
+><P
+>The optional parameters are used to restrict the session time limit only
+to specific users.  If "user" restriction is given, then expression is a
+user-expression specifying to which users the time limit applies.  Similarly
+for the "group" restriction.  For the "class" restriction, the expression is
+simply the name of connection class for whom the time limit will apply.
+Note that use of the "user" or "group" classifiers within an &lt;Anonymous&gt;
+context will not make much sense.</P
+><P
+>Example:
+
+  # set a draconian session time limit
+  TimeoutSession 60
+
+  # set session time limits for everyone except a few privileged users
+  TimeoutSession 300 user !bob,!dave,!jenni</P
 ></DIV
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9670"
+NAME="AEN10066"
 ></A
 ><H2
 >See also</H2
@@ -24968,15 +25938,14 @@ NAME="AEN9670"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9673"
+NAME="AEN10069"
 ></A
 ><H2
 >Examples</H2
 ><P
 CLASS="LITERALLAYOUT"
->FIXFIXFIX</P
-><P
->FIXFIX</P
+>#&nbsp;Kick&nbsp;the&nbsp;user&nbsp;off&nbsp;after&nbsp;60&nbsp;minutes<br>
+TimeoutSession&nbsp;3600</P
 ></DIV
 ><H1
 ><A
@@ -24987,7 +25956,7 @@ TimeoutStalled</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9685"
+NAME="AEN10080"
 ></A
 ><H2
 >Name</H2
@@ -24995,7 +25964,7 @@ NAME="AEN9685"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9688"
+NAME="AEN10083"
 ></A
 ><H2
 >Synopsis</H2
@@ -25032,7 +26001,7 @@ CLASS="SYNOPSIS"
 ></DT
 ><DD
 ><P
->server config</P
+>server config, &lt;VirtualHost&gt;, &lt;Global&gt;</P
 ></DD
 ><DT
 ><PRE
@@ -25041,7 +26010,7 @@ CLASS="SYNOPSIS"
 ></DT
 ><DD
 ><P
->mod_core</P
+>mod_xfer</P
 ></DD
 ><DT
 ><PRE
@@ -25058,7 +26027,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9715"
+NAME="AEN10110"
 ></A
 ><H2
 >Description</H2
@@ -25072,7 +26041,7 @@ indefinitely.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9718"
+NAME="AEN10113"
 ></A
 ><H2
 >See also</H2
@@ -25082,7 +26051,7 @@ NAME="AEN9718"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9721"
+NAME="AEN10116"
 ></A
 ><H2
 >Examples</H2
@@ -25098,7 +26067,7 @@ TimesGMT</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9732"
+NAME="AEN10127"
 ></A
 ><H2
 >Name</H2
@@ -25106,7 +26075,7 @@ NAME="AEN9732"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9735"
+NAME="AEN10130"
 ></A
 ><H2
 >Synopsis</H2
@@ -25169,7 +26138,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9762"
+NAME="AEN10157"
 ></A
 ><H2
 >Description</H2
@@ -25181,7 +26150,7 @@ GMT and not local time.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9765"
+NAME="AEN10160"
 ></A
 ><H2
 >See also</H2
@@ -25191,7 +26160,7 @@ NAME="AEN9765"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9768"
+NAME="AEN10163"
 ></A
 ><H2
 >Examples</H2
@@ -25207,7 +26176,7 @@ TransferLog</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9779"
+NAME="AEN10174"
 ></A
 ><H2
 >Name</H2
@@ -25215,7 +26184,7 @@ NAME="AEN9779"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9782"
+NAME="AEN10177"
 ></A
 ><H2
 >Synopsis</H2
@@ -25278,7 +26247,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9809"
+NAME="AEN10204"
 ></A
 ><H2
 >Description</H2
@@ -25294,7 +26263,7 @@ See Also: ExtendedLog, LogFormat</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9812"
+NAME="AEN10207"
 ></A
 ><H2
 >See also</H2
@@ -25304,7 +26273,7 @@ NAME="AEN9812"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9815"
+NAME="AEN10210"
 ></A
 ><H2
 >Examples</H2
@@ -25320,7 +26289,7 @@ Umask</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9826"
+NAME="AEN10221"
 ></A
 ><H2
 >Name</H2
@@ -25328,7 +26297,7 @@ NAME="AEN9826"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9829"
+NAME="AEN10224"
 ></A
 ><H2
 >Synopsis</H2
@@ -25391,7 +26360,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9856"
+NAME="AEN10251"
 ></A
 ><H2
 >Description</H2
@@ -25415,7 +26384,7 @@ SITE CHMOD &lt;mode&gt; &lt;file&gt;.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9860"
+NAME="AEN10255"
 ></A
 ><H2
 >See also</H2
@@ -25425,7 +26394,7 @@ NAME="AEN9860"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9863"
+NAME="AEN10258"
 ></A
 ><H2
 >Examples</H2
@@ -25441,7 +26410,7 @@ UseFtpUsers</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9874"
+NAME="AEN10269"
 ></A
 ><H2
 >Name</H2
@@ -25449,7 +26418,7 @@ NAME="AEN9874"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9877"
+NAME="AEN10272"
 ></A
 ><H2
 >Synopsis</H2
@@ -25512,7 +26481,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9904"
+NAME="AEN10299"
 ></A
 ><H2
 >Description</H2
@@ -25526,7 +26495,7 @@ suppressed using the UseFtpUsers configuration directive.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9907"
+NAME="AEN10302"
 ></A
 ><H2
 >See also</H2
@@ -25536,7 +26505,7 @@ NAME="AEN9907"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9910"
+NAME="AEN10305"
 ></A
 ><H2
 >Examples</H2
@@ -25552,7 +26521,7 @@ UseGlobbing</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9921"
+NAME="AEN10316"
 ></A
 ><H2
 >Name</H2
@@ -25560,7 +26529,7 @@ NAME="AEN9921"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9924"
+NAME="AEN10319"
 ></A
 ><H2
 >Synopsis</H2
@@ -25623,7 +26592,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9951"
+NAME="AEN10346"
 ></A
 ><H2
 >Description</H2
@@ -25634,7 +26603,7 @@ needed for supporting wildcard characters such as *.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9954"
+NAME="AEN10349"
 ></A
 ><H2
 >See also</H2
@@ -25650,7 +26619,7 @@ UseReverseDNS</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN9965"
+NAME="AEN10360"
 ></A
 ><H2
 >Name</H2
@@ -25658,7 +26627,7 @@ NAME="AEN9965"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN9968"
+NAME="AEN10363"
 ></A
 ><H2
 >Synopsis</H2
@@ -25721,7 +26690,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9995"
+NAME="AEN10390"
 ></A
 ><H2
 >Description</H2
@@ -25739,7 +26708,7 @@ IP addresses. </P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN9998"
+NAME="AEN10393"
 ></A
 ><H2
 >See also</H2
@@ -25749,7 +26718,7 @@ NAME="AEN9998"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10001"
+NAME="AEN10396"
 ></A
 ><H2
 >Examples</H2
@@ -25765,7 +26734,7 @@ User</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10012"
+NAME="AEN10407"
 ></A
 ><H2
 >Name</H2
@@ -25773,7 +26742,7 @@ NAME="AEN10012"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10015"
+NAME="AEN10410"
 ></A
 ><H2
 >Synopsis</H2
@@ -25836,7 +26805,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10042"
+NAME="AEN10437"
 ></A
 ><H2
 >Description</H2
@@ -25866,7 +26835,7 @@ other user/group.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10045"
+NAME="AEN10440"
 ></A
 ><H2
 >See also</H2
@@ -25876,7 +26845,7 @@ NAME="AEN10045"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10048"
+NAME="AEN10443"
 ></A
 ><H2
 >Examples</H2
@@ -25892,7 +26861,7 @@ UserAlias</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10059"
+NAME="AEN10454"
 ></A
 ><H2
 >Name</H2
@@ -25900,7 +26869,7 @@ NAME="AEN10059"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10062"
+NAME="AEN10457"
 ></A
 ><H2
 >Synopsis</H2
@@ -25963,7 +26932,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10089"
+NAME="AEN10484"
 ></A
 ><H2
 >Description</H2
@@ -25982,7 +26951,7 @@ by adding the following to the config file.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10093"
+NAME="AEN10488"
 ></A
 ><H2
 >See also</H2
@@ -25992,7 +26961,7 @@ NAME="AEN10093"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10096"
+NAME="AEN10491"
 ></A
 ><H2
 >Examples</H2
@@ -26011,7 +26980,7 @@ UserDirRoot</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10108"
+NAME="AEN10503"
 ></A
 ><H2
 >Name</H2
@@ -26019,7 +26988,7 @@ NAME="AEN10108"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10111"
+NAME="AEN10506"
 ></A
 ><H2
 >Synopsis</H2
@@ -26082,7 +27051,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10138"
+NAME="AEN10533"
 ></A
 ><H2
 >Description</H2
@@ -26096,7 +27065,7 @@ instead of just ~ftp.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10141"
+NAME="AEN10536"
 ></A
 ><H2
 >See also</H2
@@ -26106,7 +27075,7 @@ NAME="AEN10141"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10144"
+NAME="AEN10539"
 ></A
 ><H2
 >Examples</H2
@@ -26122,7 +27091,7 @@ UserOwner</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10155"
+NAME="AEN10550"
 ></A
 ><H2
 >Name</H2
@@ -26130,7 +27099,7 @@ NAME="AEN10155"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10158"
+NAME="AEN10553"
 ></A
 ><H2
 >Synopsis</H2
@@ -26193,7 +27162,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10185"
+NAME="AEN10580"
 ></A
 ><H2
 >Description</H2
@@ -26207,7 +27176,7 @@ restricted to groups that the current user is a member of.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10188"
+NAME="AEN10583"
 ></A
 ><H2
 >See also</H2
@@ -26217,7 +27186,7 @@ NAME="AEN10188"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10191"
+NAME="AEN10586"
 ></A
 ><H2
 >Examples</H2
@@ -26233,7 +27202,7 @@ UserPassword</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10202"
+NAME="AEN10597"
 ></A
 ><H2
 >Name</H2
@@ -26241,7 +27210,7 @@ NAME="AEN10202"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10205"
+NAME="AEN10600"
 ></A
 ><H2
 >Synopsis</H2
@@ -26304,7 +27273,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10232"
+NAME="AEN10627"
 ></A
 ><H2
 >Description</H2
@@ -26321,7 +27290,7 @@ See Also: GroupPassword</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10235"
+NAME="AEN10630"
 ></A
 ><H2
 >See also</H2
@@ -26331,7 +27300,7 @@ NAME="AEN10235"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10238"
+NAME="AEN10633"
 ></A
 ><H2
 >Examples</H2
@@ -26347,7 +27316,7 @@ UserRatio</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10249"
+NAME="AEN10644"
 ></A
 ><H2
 >Name</H2
@@ -26355,7 +27324,7 @@ NAME="AEN10249"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10252"
+NAME="AEN10647"
 ></A
 ><H2
 >Synopsis</H2
@@ -26418,7 +27387,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10279"
+NAME="AEN10674"
 ></A
 ><H2
 >Description</H2
@@ -26430,7 +27399,7 @@ UserRatio</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10282"
+NAME="AEN10677"
 ></A
 ><H2
 >See also</H2
@@ -26440,7 +27409,7 @@ NAME="AEN10282"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10285"
+NAME="AEN10680"
 ></A
 ><H2
 >Examples</H2
@@ -26456,7 +27425,7 @@ VirtualHost</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10296"
+NAME="AEN10691"
 ></A
 ><H2
 >Name</H2
@@ -26464,7 +27433,7 @@ NAME="AEN10296"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10299"
+NAME="AEN10694"
 ></A
 ><H2
 >Synopsis</H2
@@ -26527,7 +27496,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10326"
+NAME="AEN10721"
 ></A
 ><H2
 >Description</H2
@@ -26568,7 +27537,7 @@ refused&quot;).</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10329"
+NAME="AEN10724"
 ></A
 ><H2
 >See also</H2
@@ -26578,7 +27547,7 @@ NAME="AEN10329"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10332"
+NAME="AEN10727"
 ></A
 ><H2
 >Examples</H2
@@ -26594,7 +27563,7 @@ WtmpLog</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10343"
+NAME="AEN10738"
 ></A
 ><H2
 >Name</H2
@@ -26602,7 +27571,7 @@ NAME="AEN10343"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10346"
+NAME="AEN10741"
 ></A
 ><H2
 >Synopsis</H2
@@ -26665,7 +27634,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10373"
+NAME="AEN10768"
 ></A
 ><H2
 >Description</H2
@@ -26678,7 +27647,7 @@ Please report any corrections or additions via http://bugs.proftpd.net/ </P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10376"
+NAME="AEN10771"
 ></A
 ><H2
 >See also</H2
@@ -26688,7 +27657,7 @@ NAME="AEN10376"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10379"
+NAME="AEN10774"
 ></A
 ><H2
 >Examples</H2
@@ -26704,7 +27673,7 @@ tcpBackLog</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10390"
+NAME="AEN10785"
 ></A
 ><H2
 >Name</H2
@@ -26712,7 +27681,7 @@ NAME="AEN10390"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10393"
+NAME="AEN10788"
 ></A
 ><H2
 >Synopsis</H2
@@ -26775,7 +27744,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10420"
+NAME="AEN10815"
 ></A
 ><H2
 >Description</H2
@@ -26808,7 +27777,7 @@ slightly higher value to this directive.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10423"
+NAME="AEN10818"
 ></A
 ><H2
 >See also</H2
@@ -26818,7 +27787,7 @@ NAME="AEN10423"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10426"
+NAME="AEN10821"
 ></A
 ><H2
 >Examples</H2
@@ -26834,7 +27803,7 @@ tcpNoDelay</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10437"
+NAME="AEN10832"
 ></A
 ><H2
 >Name</H2
@@ -26842,7 +27811,7 @@ NAME="AEN10437"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10440"
+NAME="AEN10835"
 ></A
 ><H2
 >Synopsis</H2
@@ -26905,7 +27874,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10467"
+NAME="AEN10862"
 ></A
 ><H2
 >Description</H2
@@ -26920,7 +27889,7 @@ unusually slow connections, try setting this to off. </P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10470"
+NAME="AEN10865"
 ></A
 ><H2
 >See also</H2
@@ -26930,7 +27899,7 @@ NAME="AEN10470"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10473"
+NAME="AEN10868"
 ></A
 ><H2
 >Examples</H2
@@ -26946,7 +27915,7 @@ tcpReceiveWindow</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10484"
+NAME="AEN10879"
 ></A
 ><H2
 >Name</H2
@@ -26954,7 +27923,7 @@ NAME="AEN10484"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10487"
+NAME="AEN10882"
 ></A
 ><H2
 >Synopsis</H2
@@ -27017,7 +27986,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10514"
+NAME="AEN10909"
 ></A
 ><H2
 >Description</H2
@@ -27046,7 +28015,7 @@ tcpSendWindow sizes.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10517"
+NAME="AEN10912"
 ></A
 ><H2
 >See also</H2
@@ -27056,7 +28025,7 @@ NAME="AEN10517"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10520"
+NAME="AEN10915"
 ></A
 ><H2
 >Examples</H2
@@ -27072,7 +28041,7 @@ tcpSendWindow</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10531"
+NAME="AEN10926"
 ></A
 ><H2
 >Name</H2
@@ -27080,7 +28049,7 @@ NAME="AEN10531"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10534"
+NAME="AEN10929"
 ></A
 ><H2
 >Synopsis</H2
@@ -27143,7 +28112,7 @@ CLASS="SYNOPSIS"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10561"
+NAME="AEN10956"
 ></A
 ><H2
 >Description</H2
@@ -27156,7 +28125,7 @@ window sizes see tcpReceiveWindow.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10564"
+NAME="AEN10959"
 ></A
 ><H2
 >See also</H2
@@ -27166,7 +28135,7 @@ NAME="AEN10564"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10567"
+NAME="AEN10962"
 ></A
 ><H2
 >Examples</H2
@@ -27178,7 +28147,7 @@ NAME="AEN10567"
 CLASS="CHAPTER"
 ><HR><H1
 ><A
-NAME="AEN10570"
+NAME="AEN10965"
 ></A
 >Chapter 2. List of modules</H1
 ><H1
@@ -27190,7 +28159,7 @@ mod_auth</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10577"
+NAME="AEN10972"
 ></A
 ><H2
 >Name</H2
@@ -27198,7 +28167,7 @@ NAME="AEN10577"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10580"
+NAME="AEN10975"
 ></A
 ><H2
 >Synopsis</H2
@@ -27211,7 +28180,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10583"
+NAME="AEN10978"
 ></A
 ><H2
 >Description</H2
@@ -27223,7 +28192,7 @@ FIXME</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10586"
+NAME="AEN10981"
 ></A
 ><H2
 >See also</H2
@@ -27265,6 +28234,10 @@ HREF="#LOGINPASSWORDPROMPT"
 >LoginPasswordPrompt</A
 > 
 <A
+HREF="#MAXCLIENTSPERUSER"
+>MaxClientsPerUser</A
+> 
+<A
 HREF="#MAXLOGINATTEMPTS"
 >MaxLoginAttempts</A
 > 
@@ -27275,6 +28248,10 @@ HREF="#REQUIREVALIDSHELL"
 <A
 HREF="#ROOTLOGIN"
 >RootLogin</A
+> 
+<A
+HREF="#TIMEOUTLOGIN"
+>TimeoutLogin</A
 > 
 <A
 HREF="#TIMEOUTSESSION"
@@ -27306,7 +28283,7 @@ mod_core</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10611"
+NAME="AEN11008"
 ></A
 ><H2
 >Name</H2
@@ -27314,7 +28291,7 @@ NAME="AEN10611"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10614"
+NAME="AEN11011"
 ></A
 ><H2
 >Synopsis</H2
@@ -27327,7 +28304,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10617"
+NAME="AEN11014"
 ></A
 ><H2
 >Description</H2
@@ -27338,7 +28315,7 @@ module must be compiled in.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10620"
+NAME="AEN11017"
 ></A
 ><H2
 >See also</H2
@@ -27362,6 +28339,10 @@ HREF="#ALLOWFOREIGNADDRESS"
 <A
 HREF="#ALLOWGROUP"
 >AllowGroup</A
+> 
+<A
+HREF="#ALLOWOVERRIDE"
+>AllowOverride</A
 > 
 <A
 HREF="#ALLOWOVERWRITE"
@@ -27406,6 +28387,10 @@ HREF="#CLASSES"
 <A
 HREF="#COMMANDBUFFERSIZE"
 >CommandBufferSize</A
+> 
+<A
+HREF="#DEFAULTADDRESS"
+>DefaultAddress</A
 > 
 <A
 HREF="#DEFAULTSERVER"
@@ -27480,6 +28465,10 @@ HREF="#GROUPOWNER"
 >GroupOwner</A
 > 
 <A
+HREF="#HIDEFILES"
+>HideFiles</A
+> 
+<A
 HREF="#HIDEGROUP"
 >HideGroup</A
 > 
@@ -27526,6 +28515,10 @@ HREF="#MAXCLIENTS"
 <A
 HREF="#MAXCLIENTSPERHOST"
 >MaxClientsPerHost</A
+> 
+<A
+HREF="#MAXCONNECTIONRATE"
+>MaxConnectionRate</A
 > 
 <A
 HREF="#MAXHOSTSPERUSER"
@@ -27576,8 +28569,8 @@ HREF="#RLIMITOPENFILES"
 >RLimitOpenFiles</A
 > 
 <A
-HREF="#SCOREBOARDPATH"
->ScoreboardPath</A
+HREF="#SCOREBOARDFILE"
+>ScoreboardFile</A
 > 
 <A
 HREF="#SERVERADMIN"
@@ -27628,18 +28621,6 @@ HREF="#TIMEOUTIDLE"
 >TimeoutIdle</A
 > 
 <A
-HREF="#TIMEOUTLOGIN"
->TimeoutLogin</A
-> 
-<A
-HREF="#TIMEOUTNOTRANSFER"
->TimeoutNoTransfer</A
-> 
-<A
-HREF="#TIMEOUTSTALLED"
->TimeoutStalled</A
-> 
-<A
 HREF="#TIMESGMT"
 >TimesGMT</A
 > 
@@ -27681,7 +28662,7 @@ NAME="MOD-LDAP"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10710"
+NAME="AEN11108"
 ></A
 ><H2
 >Name</H2
@@ -27689,7 +28670,7 @@ NAME="AEN10710"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10713"
+NAME="AEN11111"
 ></A
 ><H2
 >Synopsis</H2
@@ -27702,7 +28683,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10716"
+NAME="AEN11114"
 ></A
 ><H2
 >Description</H2
@@ -27715,7 +28696,7 @@ NAME="AEN10716"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10719"
+NAME="AEN11117"
 ></A
 ><H2
 >See also</H2
@@ -27806,7 +28787,7 @@ mod_log</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10746"
+NAME="AEN11144"
 ></A
 ><H2
 >Name</H2
@@ -27814,7 +28795,7 @@ NAME="AEN10746"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10749"
+NAME="AEN11147"
 ></A
 ><H2
 >Synopsis</H2
@@ -27827,7 +28808,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10752"
+NAME="AEN11150"
 ></A
 ><H2
 >Description</H2
@@ -27837,7 +28818,7 @@ NAME="AEN10752"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10755"
+NAME="AEN11153"
 ></A
 ><H2
 >See also</H2
@@ -27868,7 +28849,7 @@ mod_ls</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10767"
+NAME="AEN11165"
 ></A
 ><H2
 >Name</H2
@@ -27876,7 +28857,7 @@ NAME="AEN10767"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10770"
+NAME="AEN11168"
 ></A
 ><H2
 >Synopsis</H2
@@ -27889,7 +28870,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10773"
+NAME="AEN11171"
 ></A
 ><H2
 >Description</H2
@@ -27901,7 +28882,7 @@ FIXME</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10776"
+NAME="AEN11174"
 ></A
 ><H2
 >See also</H2
@@ -27944,7 +28925,7 @@ mod_pam</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10791"
+NAME="AEN11189"
 ></A
 ><H2
 >Name</H2
@@ -27952,7 +28933,7 @@ NAME="AEN10791"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10794"
+NAME="AEN11192"
 ></A
 ><H2
 >Synopsis</H2
@@ -27965,7 +28946,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10797"
+NAME="AEN11195"
 ></A
 ><H2
 >Description</H2
@@ -27977,7 +28958,7 @@ FIXME</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10800"
+NAME="AEN11198"
 ></A
 ><H2
 >See also</H2
@@ -27993,90 +28974,72 @@ HREF="#AUTHPAMCONFIG"
 ></DIV
 ><H1
 ><A
-NAME="MOD-QUOTA"
+NAME="MOD-RADIUS"
 ></A
 >
-mod_quota</H1
+mod_radius</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10810"
+NAME="AEN11208"
 ></A
 ><H2
 >Name</H2
->mod_quota&nbsp;--&nbsp;Module to implement per-user quotas</DIV
+>mod_radius&nbsp;--&nbsp;RADIUS based authentication support</DIV
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10813"
+NAME="AEN11211"
 ></A
 ><H2
 >Synopsis</H2
 ><P
 ><B
 CLASS="COMMAND"
->mod_quota</B
+>mod_radius</B
 > </P
 ></DIV
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10816"
+NAME="AEN11214"
 ></A
 ><H2
 >Description</H2
 ><P
->FIXME
-FIXME
-FIXME</P
+>This module provides RADIUS authentication and accounting support.</P
 ></DIV
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10819"
-></A
-><H2
->Notes</H2
-><P
->mod_quota forces a quota recalculation when the .quota file is
-missing.  It is therefore possible to tie normal shell logins into
-deleting the file to force recalcualtions.</P
-></DIV
-><DIV
-CLASS="REFSECT1"
-><A
-NAME="AEN10822"
+NAME="AEN11217"
 ></A
 ><H2
 >See also</H2
 ><P
 ><A
-HREF="#DEFAULTQUOTA"
->DefaultQuota</A
+HREF="#RADIUSACCTSERVER"
+>RadiusAcctServer</A
 > 
 <A
-HREF="#QUOTABLOCKNAME"
->QuotaBlockName</A
+HREF="#RADIUSAUTHSERVER"
+>RadiusAuthServer</A
 > 
 <A
-HREF="#QUOTABLOCKSIZE"
->QuotaBlockSize</A
+HREF="#RADIUSENGINE"
+>RadiusEngine</A
 > 
 <A
-HREF="#QUOTACALC"
->QuotaCalc</A
+HREF="#RADIUSLOG"
+>RadiusLog</A
 > 
 <A
-HREF="#QUOTAEXEMPT"
->QuotaExempt</A
+HREF="#RADIUSREALM"
+>RadiusRealm</A
 > 
 <A
-HREF="#QUOTAS"
->Quotas</A
-> 
-<A
-HREF="#QUOTATYPE"
->QuotaType</A
+HREF="#RADIUSUSERINFO"
+>RadiusUserInfo</A
 > </P
 ></DIV
 ><H1
@@ -28088,7 +29051,7 @@ mod_ratio</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10837"
+NAME="AEN11231"
 ></A
 ><H2
 >Name</H2
@@ -28096,7 +29059,7 @@ NAME="AEN10837"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10840"
+NAME="AEN11234"
 ></A
 ><H2
 >Synopsis</H2
@@ -28109,7 +29072,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10843"
+NAME="AEN11237"
 ></A
 ><H2
 >Description</H2
@@ -28121,7 +29084,7 @@ FIXME</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10846"
+NAME="AEN11240"
 ></A
 ><H2
 >See also</H2
@@ -28184,7 +29147,7 @@ mod_readme</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10866"
+NAME="AEN11260"
 ></A
 ><H2
 >Name</H2
@@ -28192,7 +29155,7 @@ NAME="AEN10866"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10869"
+NAME="AEN11263"
 ></A
 ><H2
 >Synopsis</H2
@@ -28205,7 +29168,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10872"
+NAME="AEN11266"
 ></A
 ><H2
 >Description</H2
@@ -28217,7 +29180,7 @@ FIXME</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10875"
+NAME="AEN11269"
 ></A
 ><H2
 >See also</H2
@@ -28236,7 +29199,7 @@ mod_sample</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10884"
+NAME="AEN11278"
 ></A
 ><H2
 >Name</H2
@@ -28244,7 +29207,7 @@ NAME="AEN10884"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10887"
+NAME="AEN11281"
 ></A
 ><H2
 >Synopsis</H2
@@ -28257,7 +29220,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10890"
+NAME="AEN11284"
 ></A
 ><H2
 >Description</H2
@@ -28268,7 +29231,7 @@ module programmer.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10893"
+NAME="AEN11287"
 ></A
 ><H2
 >See also</H2
@@ -28287,7 +29250,7 @@ mod_site</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10902"
+NAME="AEN11296"
 ></A
 ><H2
 >Name</H2
@@ -28295,7 +29258,7 @@ NAME="AEN10902"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10905"
+NAME="AEN11299"
 ></A
 ><H2
 >Synopsis</H2
@@ -28308,7 +29271,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10908"
+NAME="AEN11302"
 ></A
 ><H2
 >Description</H2
@@ -28320,7 +29283,7 @@ FIXME</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10911"
+NAME="AEN11305"
 ></A
 ><H2
 >See also</H2
@@ -28339,7 +29302,7 @@ mod_sql</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10920"
+NAME="AEN11314"
 ></A
 ><H2
 >Name</H2
@@ -28347,7 +29310,7 @@ NAME="AEN10920"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10923"
+NAME="AEN11317"
 ></A
 ><H2
 >Synopsis</H2
@@ -28360,7 +29323,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10926"
+NAME="AEN11320"
 ></A
 ><H2
 >Description</H2
@@ -28371,7 +29334,7 @@ It replaces the SQL modules which were shipped with 1.2.0rc2 and earlier.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10929"
+NAME="AEN11323"
 ></A
 ><H2
 >See also</H2
@@ -28513,6 +29476,10 @@ HREF="#SQLNAMEDQUERY"
 >SQLNamedQuery</A
 > 
 <A
+HREF="#SQLNEGATIVECACHE"
+>SQLNegativeCache</A
+> 
+<A
 HREF="#SQLPASSWORDFIELD"
 >SQLPasswordField</A
 > 
@@ -28582,7 +29549,7 @@ mod_unixpw</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN10986"
+NAME="AEN11381"
 ></A
 ><H2
 >Name</H2
@@ -28590,7 +29557,7 @@ NAME="AEN10986"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN10989"
+NAME="AEN11384"
 ></A
 ><H2
 >Synopsis</H2
@@ -28603,7 +29570,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10992"
+NAME="AEN11387"
 ></A
 ><H2
 >Description</H2
@@ -28614,7 +29581,7 @@ methods.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN10995"
+NAME="AEN11390"
 ></A
 ><H2
 >See also</H2
@@ -28645,7 +29612,7 @@ mod_wrap</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN11007"
+NAME="AEN11402"
 ></A
 ><H2
 >Name</H2
@@ -28653,7 +29620,7 @@ NAME="AEN11007"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN11010"
+NAME="AEN11405"
 ></A
 ><H2
 >Synopsis</H2
@@ -28666,7 +29633,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN11013"
+NAME="AEN11408"
 ></A
 ><H2
 >Description</H2
@@ -28689,7 +29656,7 @@ attempted, it will add hosts to the /etc/hosts.deny file.</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN11018"
+NAME="AEN11413"
 ></A
 ><H2
 >See also</H2
@@ -28724,7 +29691,7 @@ mod_xfer</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN11031"
+NAME="AEN11426"
 ></A
 ><H2
 >Name</H2
@@ -28732,7 +29699,7 @@ NAME="AEN11031"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN11034"
+NAME="AEN11429"
 ></A
 ><H2
 >Synopsis</H2
@@ -28745,7 +29712,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN11037"
+NAME="AEN11432"
 ></A
 ><H2
 >Description</H2
@@ -28757,7 +29724,7 @@ FIXME</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN11040"
+NAME="AEN11435"
 ></A
 ><H2
 >See also</H2
@@ -28769,6 +29736,18 @@ HREF="#DELETEABORTEDSTORES"
 <A
 HREF="#HIDDENSTOR"
 >HiddenStor</A
+> 
+<A
+HREF="#HIDDENSTORES"
+>HiddenStores</A
+> 
+<A
+HREF="#MAXRETRIEVEFILESIZE"
+>MaxRetrieveFileSize</A
+> 
+<A
+HREF="#MAXSTOREFILESIZE"
+>MaxStoreFileSize</A
 > 
 <A
 HREF="#RATEREADBPS"
@@ -28797,6 +29776,14 @@ HREF="#RATEWRITEHARDBPS"
 <A
 HREF="#STOREUNIQUEPREFIX"
 >StoreUniquePrefix</A
+> 
+<A
+HREF="#TIMEOUTNOTRANSFER"
+>TimeoutNoTransfer</A
+> 
+<A
+HREF="#TIMEOUTSTALLED"
+>TimeoutStalled</A
 > </P
 ></DIV
 ></DIV
@@ -28804,7 +29791,7 @@ HREF="#STOREUNIQUEPREFIX"
 CLASS="CHAPTER"
 ><HR><H1
 ><A
-NAME="AEN11052"
+NAME="AEN11452"
 ></A
 >Chapter 3. List of configuration contexts</H1
 ><H1
@@ -28816,7 +29803,7 @@ server config</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN11059"
+NAME="AEN11459"
 ></A
 ><H2
 >Name</H2
@@ -28824,7 +29811,7 @@ NAME="AEN11059"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN11062"
+NAME="AEN11462"
 ></A
 ><H2
 >Synopsis</H2
@@ -28837,7 +29824,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN11065"
+NAME="AEN11465"
 ></A
 ><H2
 >Description</H2
@@ -28849,7 +29836,7 @@ FIXME</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN11068"
+NAME="AEN11468"
 ></A
 ><H2
 >See also</H2
@@ -28865,7 +29852,7 @@ Global</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN11076"
+NAME="AEN11476"
 ></A
 ><H2
 >Name</H2
@@ -28873,7 +29860,7 @@ NAME="AEN11076"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN11079"
+NAME="AEN11479"
 ></A
 ><H2
 >Synopsis</H2
@@ -28886,7 +29873,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN11082"
+NAME="AEN11482"
 ></A
 ><H2
 >Description</H2
@@ -28898,7 +29885,7 @@ FIXME</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN11085"
+NAME="AEN11485"
 ></A
 ><H2
 >See also</H2
@@ -28914,7 +29901,7 @@ VirtualHost</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN11093"
+NAME="AEN11493"
 ></A
 ><H2
 >Name</H2
@@ -28922,7 +29909,7 @@ NAME="AEN11093"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN11096"
+NAME="AEN11496"
 ></A
 ><H2
 >Synopsis</H2
@@ -28935,7 +29922,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN11099"
+NAME="AEN11499"
 ></A
 ><H2
 >Description</H2
@@ -28947,7 +29934,7 @@ FIXME</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN11102"
+NAME="AEN11502"
 ></A
 ><H2
 >See also</H2
@@ -28963,7 +29950,7 @@ Anonymous</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN11110"
+NAME="AEN11510"
 ></A
 ><H2
 >Name</H2
@@ -28971,7 +29958,7 @@ NAME="AEN11110"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN11113"
+NAME="AEN11513"
 ></A
 ><H2
 >Synopsis</H2
@@ -28984,7 +29971,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN11116"
+NAME="AEN11516"
 ></A
 ><H2
 >Description</H2
@@ -28996,7 +29983,7 @@ FIXME</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN11119"
+NAME="AEN11519"
 ></A
 ><H2
 >See also</H2
@@ -29024,6 +30011,10 @@ HREF="#ALLOWFILTER"
 <A
 HREF="#ALLOWFOREIGNADDRESS"
 >AllowForeignAddress</A
+> 
+<A
+HREF="#ALLOWOVERRIDE"
+>AllowOverride</A
 > 
 <A
 HREF="#ALLOWOVERWRITE"
@@ -29066,12 +30057,12 @@ HREF="#CWDRATIOMSG"
 >CwdRatioMsg</A
 > 
 <A
-HREF="#DEFAULTCHDIR"
->DefaultChdir</A
+HREF="#DEFAULTADDRESS"
+>DefaultAddress</A
 > 
 <A
-HREF="#DEFAULTQUOTA"
->DefaultQuota</A
+HREF="#DEFAULTCHDIR"
+>DefaultChdir</A
 > 
 <A
 HREF="#DELETEABORTEDSTORES"
@@ -29154,6 +30145,14 @@ HREF="#HIDDENSTOR"
 >HiddenStor</A
 > 
 <A
+HREF="#HIDDENSTORES"
+>HiddenStores</A
+> 
+<A
+HREF="#HIDEFILES"
+>HideFiles</A
+> 
+<A
 HREF="#HIDEGROUP"
 >HideGroup</A
 > 
@@ -29202,8 +30201,24 @@ HREF="#MAXCLIENTSPERHOST"
 >MaxClientsPerHost</A
 > 
 <A
+HREF="#MAXCLIENTSPERUSER"
+>MaxClientsPerUser</A
+> 
+<A
+HREF="#MAXCONNECTIONRATE"
+>MaxConnectionRate</A
+> 
+<A
 HREF="#MAXHOSTSPERUSER"
 >MaxHostsPerUser</A
+> 
+<A
+HREF="#MAXRETRIEVEFILESIZE"
+>MaxRetrieveFileSize</A
+> 
+<A
+HREF="#MAXSTOREFILESIZE"
+>MaxStoreFileSize</A
 > 
 <A
 HREF="#PATHALLOWFILTER"
@@ -29214,28 +30229,28 @@ HREF="#PATHDENYFILTER"
 >PathDenyFilter</A
 > 
 <A
-HREF="#QUOTABLOCKNAME"
->QuotaBlockName</A
+HREF="#RADIUSACCTSERVER"
+>RadiusAcctServer</A
 > 
 <A
-HREF="#QUOTABLOCKSIZE"
->QuotaBlockSize</A
+HREF="#RADIUSAUTHSERVER"
+>RadiusAuthServer</A
 > 
 <A
-HREF="#QUOTACALC"
->QuotaCalc</A
+HREF="#RADIUSENGINE"
+>RadiusEngine</A
 > 
 <A
-HREF="#QUOTAEXEMPT"
->QuotaExempt</A
+HREF="#RADIUSLOG"
+>RadiusLog</A
 > 
 <A
-HREF="#QUOTATYPE"
->QuotaType</A
+HREF="#RADIUSREALM"
+>RadiusRealm</A
 > 
 <A
-HREF="#QUOTAS"
->Quotas</A
+HREF="#RADIUSUSERINFO"
+>RadiusUserInfo</A
 > 
 <A
 HREF="#RATEREADBPS"
@@ -29475,7 +30490,7 @@ Limit</H1
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN11243"
+NAME="AEN11650"
 ></A
 ><H2
 >Name</H2
@@ -29483,7 +30498,7 @@ NAME="AEN11243"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN11246"
+NAME="AEN11653"
 ></A
 ><H2
 >Synopsis</H2
@@ -29496,7 +30511,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN11249"
+NAME="AEN11656"
 ></A
 ><H2
 >Description</H2
@@ -29508,7 +30523,7 @@ FIXME</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN11252"
+NAME="AEN11659"
 ></A
 ><H2
 >See also</H2
@@ -29526,6 +30541,10 @@ HREF="#ALLOWGROUP"
 >AllowGroup</A
 > 
 <A
+HREF="#ALLOWOVERRIDE"
+>AllowOverride</A
+> 
+<A
 HREF="#ALLOWUSER"
 >AllowUser</A
 > 
@@ -29540,6 +30559,10 @@ HREF="#BYTERATIOERRMSG"
 <A
 HREF="#CWDRATIOMSG"
 >CwdRatioMsg</A
+> 
+<A
+HREF="#DEFAULTADDRESS"
+>DefaultAddress</A
 > 
 <A
 HREF="#DENY"
@@ -29570,6 +30593,14 @@ HREF="#GROUPRATIO"
 >GroupRatio</A
 > 
 <A
+HREF="#HIDDENSTORES"
+>HiddenStores</A
+> 
+<A
+HREF="#HIDEFILES"
+>HideFiles</A
+> 
+<A
 HREF="#HOSTRATIO"
 >HostRatio</A
 > 
@@ -29586,8 +30617,44 @@ HREF="#LEECHRATIOMSG"
 >LeechRatioMsg</A
 > 
 <A
+HREF="#MAXCONNECTIONRATE"
+>MaxConnectionRate</A
+> 
+<A
+HREF="#MAXRETRIEVEFILESIZE"
+>MaxRetrieveFileSize</A
+> 
+<A
+HREF="#MAXSTOREFILESIZE"
+>MaxStoreFileSize</A
+> 
+<A
 HREF="#ORDER"
 >Order</A
+> 
+<A
+HREF="#RADIUSACCTSERVER"
+>RadiusAcctServer</A
+> 
+<A
+HREF="#RADIUSAUTHSERVER"
+>RadiusAuthServer</A
+> 
+<A
+HREF="#RADIUSENGINE"
+>RadiusEngine</A
+> 
+<A
+HREF="#RADIUSLOG"
+>RadiusLog</A
+> 
+<A
+HREF="#RADIUSREALM"
+>RadiusRealm</A
+> 
+<A
+HREF="#RADIUSUSERINFO"
+>RadiusUserInfo</A
 > 
 <A
 HREF="#RATIOFILE"
@@ -29714,10 +30781,6 @@ HREF="#SAVERATIOS"
 >SaveRatios</A
 > 
 <A
-HREF="#TIMEOUTSESSION"
->TimeoutSession</A
-> 
-<A
 HREF="#USERRATIO"
 >UserRatio</A
 > </P
@@ -29731,7 +30794,7 @@ NAME="CONTEXT-FTPACCESS"
 ><DIV
 CLASS="REFNAMEDIV"
 ><A
-NAME="AEN11312"
+NAME="AEN11731"
 ></A
 ><H2
 >Name</H2
@@ -29739,7 +30802,7 @@ NAME="AEN11312"
 ><DIV
 CLASS="REFSYNOPSISDIV"
 ><A
-NAME="AEN11315"
+NAME="AEN11734"
 ></A
 ><H2
 >Synopsis</H2
@@ -29752,7 +30815,7 @@ CLASS="COMMAND"
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN11318"
+NAME="AEN11737"
 ></A
 ><H2
 >Description</H2
@@ -29764,7 +30827,7 @@ FIXME</P
 ><DIV
 CLASS="REFSECT1"
 ><A
-NAME="AEN11321"
+NAME="AEN11740"
 ></A
 ><H2
 >See also</H2
@@ -29776,6 +30839,10 @@ HREF="#ALLOWALL"
 <A
 HREF="#ALLOWCHMOD"
 >AllowChmod</A
+> 
+<A
+HREF="#ALLOWOVERRIDE"
+>AllowOverride</A
 > 
 <A
 HREF="#ALLOWOVERWRITE"
@@ -29802,6 +30869,10 @@ HREF="#CWDRATIOMSG"
 >CwdRatioMsg</A
 > 
 <A
+HREF="#DEFAULTADDRESS"
+>DefaultAddress</A
+> 
+<A
 HREF="#DELETEABORTEDSTORES"
 >DeleteAbortedStores</A
 > 
@@ -29822,6 +30893,14 @@ HREF="#GROUPRATIO"
 >GroupRatio</A
 > 
 <A
+HREF="#HIDDENSTORES"
+>HiddenStores</A
+> 
+<A
+HREF="#HIDEFILES"
+>HideFiles</A
+> 
+<A
 HREF="#HOSTRATIO"
 >HostRatio</A
 > 
@@ -29836,6 +30915,42 @@ HREF="#LEECHRATIOMSG"
 <A
 HREF="#LIMIT"
 >Limit</A
+> 
+<A
+HREF="#MAXCONNECTIONRATE"
+>MaxConnectionRate</A
+> 
+<A
+HREF="#MAXRETRIEVEFILESIZE"
+>MaxRetrieveFileSize</A
+> 
+<A
+HREF="#MAXSTOREFILESIZE"
+>MaxStoreFileSize</A
+> 
+<A
+HREF="#RADIUSACCTSERVER"
+>RadiusAcctServer</A
+> 
+<A
+HREF="#RADIUSAUTHSERVER"
+>RadiusAuthServer</A
+> 
+<A
+HREF="#RADIUSENGINE"
+>RadiusEngine</A
+> 
+<A
+HREF="#RADIUSLOG"
+>RadiusLog</A
+> 
+<A
+HREF="#RADIUSREALM"
+>RadiusRealm</A
+> 
+<A
+HREF="#RADIUSUSERINFO"
+>RadiusUserInfo</A
 > 
 <A
 HREF="#RATIOFILE"
@@ -29964,10 +31079,6 @@ HREF="#SAVERATIOS"
 <A
 HREF="#STOREUNIQUEPREFIX"
 >StoreUniquePrefix</A
-> 
-<A
-HREF="#TIMEOUTSESSION"
->TimeoutSession</A
 > 
 <A
 HREF="#UMASK"
