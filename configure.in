@@ -464,7 +464,8 @@ AC_PROG_GCC_TRADITIONAL
 AC_FUNC_SETPGRP
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS(bcopy flock getcwd gethostname getopt getopt_long gettimeofday)
+AC_CHECK_FUNCS(bcopy crypt fgetgrent fgetpwent flock getcwd gethostname)
+AC_CHECK_FUNCS(getopt getopt_long gettimeofday inet_aton)
 AC_CHECK_FUNCS(memcpy mempcpy mkdir mkstemp rmdir select setgroups socket)
 AC_CHECK_FUNCS(strchr strcoll strerror strsep strtol)
 AC_CHECK_FUNCS(setprotoent endprotoent)
@@ -475,8 +476,8 @@ then
 	AC_CHECK_FUNCS(fconvert fcvt)
 	AC_CHECK_HEADERS(floatingpoint.h)
 fi
-AC_CHECK_FUNCS(setsid setgroupent seteuid setegid crypt fgetpwent fgetgrent)
-AC_CHECK_FUNCS(inet_aton siginterrupt setpgid)
+AC_CHECK_FUNCS(setsid setgroupent seteuid setegid)
+AC_CHECK_FUNCS(siginterrupt setpgid)
 AC_CHECK_FUNCS(regcomp)
 AC_CHECK_FUNCS(tzset)
 AC_CHECK_FUNCS(pathconf fpathconf)
