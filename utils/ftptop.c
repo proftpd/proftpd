@@ -25,7 +25,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.10 2002-11-15 16:11:39 castaglia Exp $
+ * $Id: ftptop.c,v 1.11 2002-11-22 00:19:20 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.8.2"
@@ -445,6 +445,9 @@ int main(int argc, char *argv[]) {
   initscr();
   cbreak();
   noecho();
+#ifndef HAVE_NCURSES
+  nodelay(stdscr, TRUE);
+#endif
   curs_set(0);
 
   /* Paint the initial display. */
@@ -454,8 +457,13 @@ int main(int argc, char *argv[]) {
   for (;;) {
     int c = -1;
 
+#ifdef HAVE_NCURSES
     if (halfdelay(delay * 10) != ERR)
       c = getch();
+#else
+    sleep(delay);
+    c = getch();
+#endif
 
     if (c != -1 && tolower(c) == 'q')
       finish(0);
