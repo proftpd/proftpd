@@ -25,7 +25,7 @@
 
 /*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.18 2003-01-07 17:31:08 castaglia Exp $
+ * $Id: timers.c,v 1.19 2004-07-15 00:07:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -278,6 +278,16 @@ int add_timer(int seconds, int timerno, module *mod, callback_t cb) {
 
   if (!timers)
     timers = xaset_create(NULL, (XASET_COMPARE) timer_cmp);
+
+  /* Check to see that, if specified, the timerno is not already in use. */
+  if (timerno != -1) {
+    for (t = (timer_t *) timers->xas_list; t; t = t->next) {
+      if (t->timerno == timerno) {
+        errno = EPERM;
+        return -1;
+      }
+    }
+  }
 
   if (!free_timers)
     free_timers = xaset_create(NULL, NULL);
