@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.31 2003-11-01 07:11:07 castaglia Exp $
+ * $Id: auth.c,v 1.32 2003-11-06 02:53:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -520,6 +520,7 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
   register unsigned int i = 0;
   gid_t *gids = NULL, *proc_gids = NULL;
   size_t ngids = 0, nproc_gids = 0;
+  char *strgids = "";
 
   /* sanity check */
   if (!p || !suppl_gids)
@@ -562,6 +563,17 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
     if (!skip_gid)
       proc_gids[nproc_gids++] = gids[i];
   }
+
+  for (i = 0; i < nproc_gids; i++) {
+    char buf[64];
+    snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long) proc_gids[i]);
+    buf[sizeof(buf)-1] = '\0';
+
+    strgids = pstrcat(p, strgids, buf, NULL);
+  }
+
+  log_debug(DEBUG10, "setting group %s %s", nproc_gids == 1 ? "ID" : "IDs",
+    strgids);
 
   /* Set the supplemental groups. */
   if ((res = setgroups(nproc_gids, proc_gids)) < 0) {
