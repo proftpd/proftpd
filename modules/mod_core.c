@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.39 2000-08-01 18:59:39 macgyver Exp $
+ * $Id: mod_core.c,v 1.40 2000-08-01 22:20:28 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -235,6 +235,14 @@ MODRET set_deferwelcome(cmd_rec *cmd)
 
   add_config_param("DeferWelcome",1,(void*)b);
 
+  return HANDLED(cmd);
+}
+
+MODRET set_pidfile(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  add_config_param_str("PidFile", 1, cmd->argv[1]);
   return HANDLED(cmd);
 }
 
@@ -2666,6 +2674,7 @@ static conftable core_conftable[] = {
   { "Order",			add_order,			NULL },
   { "PathAllowFilter",		set_pathallowfilter,		NULL },
   { "PathDenyFilter",		set_pathdenyfilter,		NULL },
+  { "PidFile",			set_pidfile,	 		NULL },
   { "Port",			set_serverport, 		NULL },
   { "RequireValidShell",	set_requirevalidshell,		NULL },
   { "ScoreboardPath",		set_scoreboardpath,		NULL },

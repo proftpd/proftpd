@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.41 2000-08-01 21:51:48 macgyver Exp $
+ * $Id: main.c,v 1.42 2000-08-01 22:20:28 macgyver Exp $
  */
 
 /*
@@ -134,6 +134,7 @@ static char sbuf[1024] = {'\0'};
 static char _ml_numeric[4] = {'\0'};
 static char **Argv = NULL;
 static char *LastArgv = NULL;
+static char *PidPath = PID_FILE_PATH;
 
 static int nodaemon = 0;
 static int shutdownp = 0;
@@ -668,7 +669,7 @@ void main_exit(void *pv, void *lv, void *ev, void *dummy)
     log_pri(LOG_NOTICE, "ProFTPD %s standalone mode SHUTDOWN", VERSION);
     if(!nodaemon) {
       PRIVS_ROOT;
-      unlink(PID_FILE_PATH);
+      unlink(PidPath);
       PRIVS_RELINQUISH;
     }
   }
@@ -1706,7 +1707,7 @@ static RETSIGTYPE sig_terminate(int sig)
     log_close_run();
     log_rm_run();
     if(standalone && !nodaemon)
-      unlink(PID_FILE_PATH);
+      unlink(PidPath);
     PRIVS_RELINQUISH
     if(standalone)
       log_pri(LOG_NOTICE,"ProFTPD %s standalone mode SHUTDOWN",VERSION);
@@ -1817,7 +1818,8 @@ void start_daemon()
 #endif
   FILE *pidf;
 
-  /* Fork off and have parent exit */
+  /* Fork off and have parent exit.
+   */
   switch(fork()) {
     case -1: perror("fork"); exit(1);
     case 0: break;
@@ -1840,10 +1842,14 @@ void start_daemon()
     close(ttyfd);
   }
 #endif /* HAVE_SETSID */
-
+  
+  PidPath = (char *) get_param_ptr(main_server->conf, "PidFile", FALSE);
+  if(!PidPath || !*PidPath)
+    PidPath = PID_FILE_PATH;
+  
   PRIVS_ROOT;
-  if((pidf = fopen(PID_FILE_PATH, "w")) == NULL) {
-    perror(PID_FILE_PATH);
+  if((pidf = fopen(PidPath, "w")) == NULL) {
+    perror(PidPath);
     exit(1);
   }
   
