@@ -1219,7 +1219,9 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       tls_handshake_timeout_cb);
 
   retry:
-  if ((res = SSL_accept(ssl)) < 1) {
+  pr_signals_handle();
+  res = SSL_accept(ssl);
+  if (res < 1) {
     const char *msg = "unable to accept TLS connection";
     int errcode = SSL_get_error(ssl, res);
 
@@ -1632,8 +1634,8 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
   ssize_t count;
 
   retry:
+  pr_signals_handle();
   count = SSL_read(ssl, buf, len);
-
   if (count < 0) {
     int err = SSL_get_error(ssl, count);
 
@@ -2930,8 +2932,10 @@ MODRET tls_prot(cmd_rec *cmd) {
 
     } else {
       pr_response_add_err(R_534, "Unwilling to accept security parameters");
-      tls_log("%s: unwilling to accept security parameter (%s), declining",
-        cmd->argv[0], cmd->argv[1]);
+      tls_log("%s: TLSRequired requires protection for data transfers",
+        cmd->argv[0]);
+      tls_log("%s: unwilling to accept security parameter (%s)", cmd->argv[0],
+        cmd->argv[1]);
       return ERROR(cmd);
     }
 
