@@ -2580,7 +2580,7 @@ EOF
 
 fi;
 
-ac_devel_cflags="-g -Wcast-align -Wchar-subscripts -Winline -Wstrict-prototypes -Wmissing-declarations -Wnested-externs -Wpointer-arith -Wshadow"
+ac_devel_cflags="-g -Wcast-align -Wchar-subscripts -Winline -Wstrict-prototypes -Wmissing-declarations -Wnested-externs -Wpointer-arith -Wshadow -Wundef -Wfloat-equal"
 
 # Check whether --enable-devel or --disable-devel was given.
 if test "${enable_devel+set}" = set; then
