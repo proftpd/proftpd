@@ -13,6 +13,9 @@ path that the IBM linker inserts into executables.  The second problem is
 compilaton failure stemming from an incompatibility with the <string.h>
 header file when the IBM compiler attempts to inline some string functions.
 
+Also, a minor usage note: do NOT use the --enable-autoshadow or --enable-shadow
+configure options when configuring ProFTPD for AIX.  AIX does not use
+the shadow libraries.
 
 Executive Summary
 -----------------
