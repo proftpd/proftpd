@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.48 2001-02-01 19:52:29 flood Exp $
+ * $Id: main.c,v 1.49 2001-02-20 04:50:38 flood Exp $
  */
 
 /*
@@ -950,7 +950,7 @@ static int _idle_timeout(CALLBACK_FRAME)
   send_response_async(R_421,"Idle Timeout (%d seconds): closing control connection.", 
                       TimeoutIdle);
 
-  main_exit((void*)LOG_NOTICE,
+  main_exit((void*)LOG_INFO,
 		  "FTP session idle timeout, disconnected.",
 		  (void*)0,NULL);
 
@@ -1005,7 +1005,7 @@ void cmd_loop(server_rec *server, conn_t *c)
 	continue;		/* Simple interrupted syscall */
       
       /* Otherwise, EOF */
-      log_pri(LOG_NOTICE,"FTP session closed.");
+      log_pri(LOG_INFO,"FTP session closed.");
       end_login(0);
     }
 
