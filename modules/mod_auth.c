@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.32 2000-07-06 06:53:24 macgyver Exp $
+ * $Id: mod_auth.c,v 1.33 2000-07-06 18:33:51 macgyver Exp $
  */
 
 #include "conf.h"
@@ -1060,12 +1060,13 @@ static void _do_user_counts()
   logrun_t *l;
   int cur = -1, ccur = -1;
   char config_class_users[128];
-   
-  if(!get_param_int(main_server->conf,"Classes",FALSE))
+  
+  if(get_param_int(main_server->conf, "Classes", FALSE) != 1)
     return;
 
-  session.class = (class_t *) find_class(session.c->remote_ipaddr,
-  			   	         session.c->remote_name);
+  if((session.class = (class_t *) find_class(session.c->remote_ipaddr,
+					     session.c->remote_name)) == NULL)
+    return;
   
   /* Determine how many users are currently connected */
   PRIVS_ROOT
