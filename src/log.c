@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.68 2004-01-31 00:08:27 castaglia Exp $
+ * $Id: log.c,v 1.69 2004-04-20 02:05:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -70,7 +70,8 @@ int log_wtmp(char *line, const char *name, const char *host,
 #endif
   static int fdx = -1;
 
-  if (fdx < 0 && (fdx = open(WTMPX_FILE, O_WRONLY|O_APPEND, 0)) < 0) {
+  if (fdx < 0 &&
+      (fdx = open(WTMPX_FILE, O_WRONLY|O_APPEND, 0)) < 0) {
     pr_log_pri(PR_LOG_WARNING, "wtmpx %s: %s", WTMPX_FILE, strerror(errno));
     return -1;
   }
@@ -81,12 +82,13 @@ int log_wtmp(char *line, const char *name, const char *host,
    * Insane if you ask me.  Unless there's massive uproar, I prefer to err on
    * the side of caution and always null-terminate our strings.
    */
-  if (fstat(fdx,&buf) == 0) {
-    memset(&utx,0,sizeof(utx));
-    sstrncpy(utx.ut_user,name,sizeof(utx.ut_user));
-    sstrncpy(utx.ut_id, "ftp",sizeof(utx.ut_user));
-    sstrncpy(utx.ut_line,line,sizeof(utx.ut_line));
-    sstrncpy(utx.ut_host,host,sizeof(utx.ut_host));
+  if (fstat(fdx, &buf) == 0) {
+    memset(&utx, 0, sizeof(utx));
+
+    sstrncpy(utx.ut_user, name, sizeof(utx.ut_user));
+    sstrncpy(utx.ut_id, "ftp", sizeof(utx.ut_user));
+    sstrncpy(utx.ut_line, line, sizeof(utx.ut_line));
+    sstrncpy(utx.ut_host, host, sizeof(utx.ut_host));
     utx.ut_syslen = strlen(utx.ut_host)+1;
     utx.ut_pid = getpid();
 #ifdef __sparcv9
@@ -103,55 +105,62 @@ int log_wtmp(char *line, const char *name, const char *host,
     utx.ut_exit.e_termination = 0;
     utx.ut_exit.e_exit = 0;
 #endif /* HAVE_UT_UT_EXIT */
-    if (write(fdx, (char *)&utx,sizeof(utx)) != sizeof(utx))
+    if (write(fdx, (char *)&utx, sizeof(utx)) != sizeof(utx))
       ftruncate(fdx, buf.st_size);
+
   } else {
-    pr_log_debug(DEBUG0, "%s fstat(): %s",WTMPX_FILE,strerror(errno));
+    pr_log_debug(DEBUG0, "%s fstat(): %s", WTMPX_FILE, strerror(errno));
     res = -1;
   }
 
 #else /* Non-SVR4 systems */
 
-  if (fd < 0 && (fd = open(WTMP_FILE,O_WRONLY|O_APPEND,0)) < 0) {
+  if (fd < 0 &&
+      (fd = open(WTMP_FILE, O_WRONLY|O_APPEND, 0)) < 0) {
     pr_log_pri(PR_LOG_WARNING, "wtmp %s: %s", WTMP_FILE, strerror(errno));
     return -1;
   }
 
-  if (fstat(fd,&buf) == 0) {
-    memset(&ut,0,sizeof(ut));
+  if (fstat(fd, &buf) == 0) {
+    memset(&ut, 0, sizeof(ut));
 #ifdef HAVE_UTMAXTYPE
-#ifdef LINUX
+# ifdef LINUX
     if (ip)
-      memcpy(&ut.ut_addr,ip,sizeof(ut.ut_addr));
-#else
-    sstrncpy(ut.ut_id, "ftp",sizeof(ut.ut_id));
-#ifdef HAVE_UT_UT_EXIT
+#  ifndef USE_IPV6
+      memcpy(&ut.ut_addr, pr_netaddr_get_inaddr(ip), sizeof(ut.ut_addr));
+#  else
+      memcpy(&ut.ut_addr_v6, pr_netaddr_get_inaddr(ip), sizeof(ut.ut_addr_v6));
+#  endif /* !USE_IPV6 */
+# else
+    sstrncpy(ut.ut_id, "ftp", sizeof(ut.ut_id));
+#  ifdef HAVE_UT_UT_EXIT
     ut.ut_exit.e_termination = 0;
     ut.ut_exit.e_exit = 0;
-#endif /* HAVE_UT_UT_EXIT */
-#endif
-    sstrncpy(ut.ut_line,line,sizeof(ut.ut_line));
+#  endif /* !HAVE_UT_UT_EXIT */
+# endif /* !LINUX */
+    sstrncpy(ut.ut_line, line, sizeof(ut.ut_line));
     if (name && *name)
-      sstrncpy(ut.ut_user,name,sizeof(ut.ut_user));
+      sstrncpy(ut.ut_user, name, sizeof(ut.ut_user));
     ut.ut_pid = getpid();
     if (name && *name)
       ut.ut_type = USER_PROCESS;
     else
       ut.ut_type = DEAD_PROCESS;
 #else  /* !HAVE_UTMAXTYPE */
-    sstrncpy(ut.ut_line,line,sizeof(ut.ut_line));
+    sstrncpy(ut.ut_line, line, sizeof(ut.ut_line));
     if (name && *name)
-      sstrncpy(ut.ut_name,name,sizeof(ut.ut_name));
+      sstrncpy(ut.ut_name, name, sizeof(ut.ut_name));
 #endif /* HAVE_UTMAXTYPE */
 
 #ifdef HAVE_UT_UT_HOST
     if (host && *host)
-      sstrncpy(ut.ut_host,host,sizeof(ut.ut_host));
+      sstrncpy(ut.ut_host, host, sizeof(ut.ut_host));
 #endif /* HAVE_UT_UT_HOST */
 
     time(&ut.ut_time);
-    if (write(fd, (char *)&ut,sizeof(ut)) != sizeof(ut))
-      ftruncate(fd,buf.st_size);
+    if (write(fd, (char *)&ut, sizeof(ut)) != sizeof(ut))
+      ftruncate(fd, buf.st_size);
+
   } else {
     pr_log_debug(DEBUG0, "%s fstat(): %s",WTMP_FILE,strerror(errno));
     res = -1;
