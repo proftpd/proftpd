@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.21 2002-09-30 15:56:43 castaglia Exp $
+ * $Id: mod_site.c,v 1.22 2002-10-02 18:13:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -329,16 +329,23 @@ MODRET site_chmod(cmd_rec *cmd) {
 MODRET site_help(cmd_rec *cmd) {
   register unsigned int i = 0;
 
-  if (cmd->argc == 1 ||
-      (cmd->argc == 2 &&
-       !strcasecmp(cmd->argv[0], "SITE") &&
-       !strcasecmp(cmd->argv[1], "HELP"))) {
+  /* Have to support 'HELP SITE' as well as 'SITE HELP'.  Most clients expect
+   * the former (it's mentioned in RFC959), whereas the latter is more
+   * syntactically correct.
+   */
+
+  if (cmd->argc == 1 || (cmd->argc == 2 &&
+      ((!strcasecmp(cmd->argv[0], "SITE") &&
+        !strcasecmp(cmd->argv[1], "HELP")) ||
+       (!strcasecmp(cmd->argv[0], "HELP") &&
+        !strcasecmp(cmd->argv[1], "SITE"))))) {
 
     for (i = 0; _help[i].cmd; i++) {
       if (_help[i].implemented)
-        add_response(R_DUP, "%s", _help[i].cmd);
+        add_response(i != 0 ? R_214 : R_DUP, "%s", _help[i].cmd);
       else
-        add_response(R_DUP, "%s", pstrcat(cmd->pool, _help[i].cmd, "*", NULL));
+        add_response(i != 0 ? R_214 : R_DUP, "%s",
+          pstrcat(cmd->pool, _help[i].cmd, "*", NULL));
     }
 
   } else {
