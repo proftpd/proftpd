@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Startup script for ProFTPd
+# Startup script for ProFTPD
 #
 # chkconfig: 345 85 15
 # description: ProFTPD is an enhanced FTP server with \
@@ -13,7 +13,7 @@
 # config: /etc/proftpd.conf
 #
 # By: Osman Elliyasa <osman@Cable.EU.org>
-# $Id: proftpd.init.d,v 1.6 2002-11-23 05:20:52 jwm Exp $
+# $Id: proftpd.init.d,v 1.7 2002-12-07 21:50:27 jwm Exp $
 
 # Source function library.
 . /etc/rc.d/init.d/functions
@@ -23,67 +23,68 @@ if [ -f /etc/sysconfig/proftpd ]; then
 fi
 
 PATH="$PATH:/usr/local/sbin"
-FTPSHUT=/usr/sbin/ftpshut
 
 # See how we were called.
 case "$1" in
-  start)
-	echo -n "Starting proftpd: "
-	daemon proftpd $OPTIONS
-	echo
-	touch /var/lock/subsys/proftpd
-	;;
-  stop)
-	echo -n "Shutting down proftpd: "
-	killproc proftpd
-	echo
-	rm -f /var/lock/subsys/proftpd
-	;;
-  status)
-	status proftpd
-	;;
-  restart)
-	$0 stop
-	$0 start
-	;;
-  reread)
-	echo -n "Re-reading proftpd config: "
-	killproc proftpd -HUP
-	echo
-	;;
-  suspend)
-  	if [ -f $FTPSHUT ]; then
-  		if [ $# -gt 1 ]; then
-			shift
-			echo -n "Suspending with '$*' "
-			$FTPSHUT $*
+	start)
+		echo -n "Starting proftpd: "
+		daemon proftpd $OPTIONS
+		echo
+		touch /var/lock/subsys/proftpd
+		;;
+	stop)
+		echo -n "Shutting down proftpd: "
+		killproc proftpd
+		echo
+		rm -f /var/lock/subsys/proftpd
+		;;
+	status)
+		status proftpd
+		;;
+	restart)
+		$0 stop
+		$0 start
+		;;
+	reread)
+		echo -n "Re-reading proftpd config: "
+		killproc proftpd -HUP
+		echo
+		;;
+	suspend)
+		hash ftpshut >/dev/null 2>&1
+		if [ $? = 0 ]; then
+			if [ $# -gt 1 ]; then
+				shift
+				echo -n "Suspending with '$*' "
+				ftpshut $*
+			else
+				echo -n "Suspending NOW "
+				ftpshut now "Maintanance in progress"
+			fi
 		else
-			echo -n "Suspending NOW "
-			$FTPSHUT now "Maintanance in progress"
+			echo -n "No way to suspend "
 		fi
-	else
-		echo -n "No way to suspend "
-	fi
-	echo
-  	;;
-  resume)
-	if [ -f /etc/shutmsg ]; then
-		echo -n "Allowing sessions again "
-		rm -f /etc/shutmsg
-	else
-		echo -n "Was not suspended "
-	fi
-	echo
-  	;;
-  *)
-	echo -n "Usage: $0 {start|stop|restart|status|reread|resume"
-  	if [ "$FTPSHUT" = "" ]; then
-		echo "}"
-	else
-		echo "|suspend}"
-		echo "suspend accepts additional arguments which are passed to ftpshut(8)"
-	fi
-	exit 1
+		echo
+		;;
+	resume)
+		if [ -f /etc/shutmsg ]; then
+			echo -n "Allowing sessions again "
+			rm -f /etc/shutmsg
+		else
+			echo -n "Was not suspended "
+		fi
+		echo
+		;;
+	*)
+		echo -n "Usage: $0 {start|stop|restart|status|reread|resume"
+		hash ftpshut
+		if [ $? = 1 ]; then
+			echo '}'
+		else
+			echo '|suspend}'
+			echo 'suspend accepts additional arguments which are passed to ftpshut(8)'
+		fi
+		exit 1
 esac
 
 if [ $# -gt 1 ]; then
