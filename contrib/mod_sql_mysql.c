@@ -21,7 +21,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.17 2003-03-14 18:27:28 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.18 2003-03-15 03:33:26 castaglia Exp $
  */
 
 /*
@@ -463,7 +463,8 @@ MODRET cmd_open(cmd_rec *cmd) {
   mysql_options(conn->mysql, MYSQL_READ_DEFAULT_GROUP, "client");
 
   if (!mysql_real_connect(conn->mysql, conn->host, conn->user, conn->pass,
-      conn->db, (int) strtol(conn->port, (char **) NULL, 10), NULL, 0)) {
+      conn->db, (int) strtol(conn->port, (char **) NULL, 10), NULL,
+      CLIENT_INTERACTIVE)) {
 
     /* If it didn't work, return an error. */
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
