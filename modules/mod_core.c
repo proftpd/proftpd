@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.242 2004-07-20 17:39:59 castaglia Exp $
+ * $Id: mod_core.c,v 1.243 2004-07-30 17:42:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4465,7 +4465,15 @@ static int core_sess_init(void) {
   c = find_config(main_server->conf, CONF_PARAM, "UnsetEnv", FALSE);
 
   while (c) {
-    unsetenv(c->argv[0]);
+
+    /* The same key may appear multiple times in environ, so make
+     * certain that all such occurrences are removed.
+     */
+    while (getenv(c->argv[0])) {
+      pr_signals_handle();
+      unsetenv(c->argv[0]);
+    }
+
     c = find_config_next(c, c->next, CONF_PARAM, "UnsetEnv", FALSE);
   }
 #endif /* HAVE_UNSETENV */
