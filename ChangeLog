@@ -1,3 +1,11 @@
+2001-02-21 23:51  flood
+
+	* Make.rules.in, Makefile.in, include/.cvsignore,
+	include/version.h, modules/mod_unixpw.c, src/main.c: Build
+	timestamp is now reported at startup and with --version-status. 
+	Removing includes from CFLAGS (CPPFLAGS is enough), changed uid/gid
+	cast from unsigned long long to unsigned long.
+
 2001-02-21 20:48  flood
 
 	* NEWS, src/log.c: Logging is now done with a single write()
