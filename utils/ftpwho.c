@@ -27,7 +27,7 @@
 /* Shows a count of "who" is online via proftpd.  Uses the /var/run/proftpd*
  * log files.
  *
- * $Id: ftpwho.c,v 1.12 2002-12-17 01:06:43 castaglia Exp $
+ * $Id: ftpwho.c,v 1.13 2002-12-26 20:18:24 castaglia Exp $
  */
 
 #include "utils.h"
@@ -311,6 +311,7 @@ int main(int argc, char **argv) {
     printf("standalone FTP daemon [%d]:\n",(int) mpid);
 
   while ((score = util_scoreboard_read_entry()) != NULL) {
+    unsigned char uploading = FALSE;
     register unsigned int i = 0;
 
     if (!count++) {
@@ -336,13 +337,24 @@ int main(int argc, char **argv) {
 
     total++;
 
+    if (strncmp(score->sce_cmd, "STOR", 4) == 0 ||
+        strncmp(score->sce_cmd, "STOU", 4) == 0 ||
+        strncmp(score->sce_cmd, "APPE", 4) == 0)
+      uploading = TRUE; 
+
     if (outform & OF_COMPAT) {
-      if (score->sce_xfer_size)
-        printf("%5d %-6s (%s%%) %s\n", (int) score->sce_pid,
-          show_time(&score->sce_begin_idle),
-          percent_complete(score->sce_xfer_size, score->sce_xfer_done),
-          score->sce_cmd);
-      else
+      if (score->sce_xfer_size) {
+        if (uploading)
+          printf("%5d %-6s (n/a) %s\n", (int) score->sce_pid,
+            show_time(&score->sce_begin_idle), score->sce_cmd);
+
+        else
+          printf("%5d %-6s (%s%%) %s\n", (int) score->sce_pid,
+            show_time(&score->sce_begin_idle),
+            percent_complete(score->sce_xfer_size, score->sce_xfer_done),
+            score->sce_cmd);
+       
+      } else
         printf("%5d %-6s %s\n", (int) score->sce_pid,
           show_time(&score->sce_begin_idle), score->sce_cmd);
 
@@ -376,11 +388,16 @@ int main(int argc, char **argv) {
           printf("\n");
 
       } else {
+        if (uploading)
+          printf("%5d %-8s [%6s] (n/a) %s", (int) score->sce_pid,
+            score->sce_user, show_time(&score->sce_begin_session),
+            score->sce_cmd);
 
-        printf("%5d %-8s [%6s] (%3s%%) %s", (int) score->sce_pid,
-          score->sce_user, show_time(&score->sce_begin_session),
-          percent_complete(score->sce_xfer_size, score->sce_xfer_done),
-          score->sce_cmd);
+        else
+          printf("%5d %-8s [%6s] (%3s%%) %s", (int) score->sce_pid,
+            score->sce_user, show_time(&score->sce_begin_session),
+            percent_complete(score->sce_xfer_size, score->sce_xfer_done),
+            score->sce_cmd);
 
         if (verbose) {
           printf("%sKB/s: %3.2f%s",
