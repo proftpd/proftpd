@@ -19,7 +19,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.32 2000-10-08 22:24:46 macgyver Exp $
+ * $Id: mod_ls.c,v 1.33 2001-01-31 20:51:37 flood Exp $
  */
 
 #include "conf.h"
@@ -63,6 +63,56 @@ static int
 
 static char cwd[MAXPATHLEN + 1] = "";
 
+/* Find a <Limit> block that limits the given command (which will probably
+ * be LIST).  This code borrowed for src/dirtree.c's _dir_check_limit().
+ * Note that this function is targeted specifically for ls commands (eg
+ * LIST, NLST, DIRS, and ALL) that might be <Limit>'ed.
+ */
+static config_rec *_find_ls_limit(char *ftp_cmd) {
+  config_rec *c = NULL, *limit_c = NULL;
+  register int index;
+
+  if (!ftp_cmd)
+    return NULL;
+
+  if (!session.dir_config)
+    return NULL;
+
+  /* determine whether this command is <Limit>'ed
+   */
+  for (c = session.dir_config; c; c = c->parent) {
+
+    if (c->subset) {
+
+      for (limit_c = (config_rec *) (c->subset->xas_list); limit_c;
+          limit_c = limit_c->next) {
+
+        if (limit_c->config_type == CONF_LIMIT) {
+
+          for (index = 0; index < limit_c->argc; index++) {
+
+            /* match any of the appropriate <Limit> arguments
+             */
+            if (!strcmp(ftp_cmd, (char *) (limit_c->argv[index])) ||
+                !strcmp("DIRS", (char *) (limit_c->argv[index])) ||
+                !strcmp("ALL", (char *) (limit_c->argv[index])))
+              break;
+          }
+
+          if (index == limit_c->argc)
+            continue;
+
+          /* Found a <Limit> directive associated with the current command
+           */
+          return limit_c;
+        }
+      }
+    }
+  }
+
+  return NULL;
+}
+
 static void push_cwd(char *_cwd, int *symhold) {
   if(!_cwd)
     _cwd = cwd;
@@ -86,9 +136,9 @@ static void pop_cwd(char *_cwd, int *symhold)
   showsymlinks = *symhold;
 }
 
-static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden)
+static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path)
 {
-  int ret,ishidden,canon = 0;
+  int ret, canon = 0;
   char *fullpath;
   long _fakemode;
 
@@ -97,20 +147,16 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden)
   if(!fullpath) {
     fullpath = dir_canonical_path(p,path);
     canon = 1;
-  } if(!fullpath)
+  }
+
+  if(!fullpath)
     fullpath = pstrdup(p,path);
   
   if(canon)
-    ret = dir_check_canon(p,cmd->argv[0],cmd->group,fullpath,&ishidden);
+    ret = dir_check_canon(p,cmd->argv[0],cmd->group,fullpath);
   else
-    ret = dir_check(p,cmd->argv[0],cmd->group,fullpath,&ishidden);
-
-  if(hidden)
-	*hidden = ishidden;
+    ret = dir_check(p,cmd->argv[0],cmd->group,fullpath);
   
-  if(ishidden)
-  	return 0;
-
   if(session.dir_config) {
     showsymlinks = get_param_int(session.dir_config->subset,
                                  "ShowSymlinks",FALSE);
@@ -129,27 +175,26 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden)
   return ret;
 }
 
-static int ls_perms(pool *p, cmd_rec *cmd, const char *path, int *hidden)
+static int ls_perms(pool *p, cmd_rec *cmd, const char *path)
 {
-  int ret,ishidden;
+  int ret;
   char fullpath[MAXPATHLEN + 1] = {'\0'};
   long _fakemode;
 
+  /* no need to process dotdirs
+   */
+  if (is_dotdir(path))
+    return 1;
+
   if(*path == '~')
-	return ls_perms_full(p,cmd,path,hidden);
+	  return ls_perms_full(p,cmd,path);
 
   if(*path != '/')
   	fs_clean_path(pdircat(p,fs_getcwd(),path,NULL),fullpath,MAXPATHLEN);
   else
 	fs_clean_path(path,fullpath,MAXPATHLEN);
   
-  ret = dir_check(p,cmd->argv[0],cmd->group,fullpath,&ishidden);
-
-  if(hidden)
-	  *hidden = ishidden;
-  
-  if(ishidden)
-    return 0;
+  ret = dir_check(p,cmd->argv[0],cmd->group,fullpath);
 
   if(session.dir_config) {
     showsymlinks = get_param_int(session.dir_config->subset,
@@ -221,25 +266,30 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
 
       if(fs_stat(name,&l_st) != -1) {
         memcpy(&st,&l_st,sizeof(st));
+
 	if((len = fs_readlink(name, m, sizeof(m))) < 0)
 	  return 0;
 	
 	m[len] = '\0';
 	
-        if(!ls_perms_full(p,cmd,m,NULL))
+        if(!ls_perms_full(p,cmd,m))
           return 0;
+
       } else {
         return 0;
       }
+
     } else if(S_ISLNK(st.st_mode)) {
+
       if((len = fs_readlink(name, l, sizeof(l))) < 0)
 	return 0;
       
       l[len] = '\0';
       
-      if(!ls_perms_full(p,cmd,l,NULL))
+      if(!ls_perms_full(p,cmd,l))
         return 0;
-    } else if(!ls_perms(p,cmd,name,NULL)) {
+
+    } else if(!ls_perms(p,cmd,name)) {
       return 0;
     }
 
@@ -336,8 +386,9 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
 
 	if(opt_STAT)
 	  add_response(R_211,"%s%s",nameline,suffix);
-	else
+	      else {
           addfile(cmd,nameline,suffix,mtime);
+      }
       }
     } else {
       if(S_ISREG(st.st_mode) ||
@@ -347,6 +398,7 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
 
     }
   }
+
   return rval;
 }
 
@@ -697,23 +749,13 @@ char **sreaddir(pool *workp, const char *dirname, const int sort)
   return p;
 }
 
-/* Return true iff S is ".", "./", "../", or "..". */
-static int is_dotdir(char *s)
-{
-  if(!strcmp(s, ".")  ||
-     !strcmp(s, "./") ||
-     !strcmp(s, "..") ||
-     !strcmp(s, "../"))
-    return 1;
-  
-  return 0;
-}
-
 /* listdir required chdir first */
 static int listdir(cmd_rec *cmd, pool *workp, const char *name)
 {
   char **dir;
   int dest_workp = 0;
+	config_rec *c = NULL;
+	int ignore_hidden = FALSE;
 
   if(XFER_ABORTED)
 	return -1;
@@ -727,6 +769,13 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name)
   }
 
   dir = sreaddir(workp,".",TRUE);
+
+	/* search for relevant <Limit>'s to this LIST command.  If found,
+	 * check to see whether hidden files should be ignored
+   */
+	if ((c = _find_ls_limit(cmd->argv[0])) != NULL &&
+      get_param_int(c->set, "IgnoreHidden", FALSE))
+    ignore_hidden = TRUE;
 
   if(dir) {
     char **s;
@@ -745,16 +794,27 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name)
     
     s = dir;
     while(*s) {
-      if (**s == '.'
-	  && !opt_a
-	  && (!opt_A || is_dotdir(*s))) {
+      if (**s == '.') {
+
+				if (!opt_a && (!opt_A || is_dotdir(*s))) {
 	d = 0;
+
+        } else {
+
+					/* make sure IgnoreHidden is properly honored.  "." and
+           * ".." are not to be treated as hidden files, though
+					 */
+					if (is_dotdir(*s) || !ignore_hidden)
+            d = listfile(cmd,workp,*s);
+        }
+
       } else {
         d = listfile(cmd,workp,*s);
       }
 
       if(!d)
 	*s = NULL;
+
       s++;
     }
 
@@ -776,8 +836,8 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name)
       
       push_cwd(cwd,&symhold);
      
-      if(*r && ls_perms_full(workp,cmd,(char*)*r,NULL) 
-	    && !fs_chdir_canon(*r, !opt_L && showsymlinks)) {
+      if(*r && ls_perms_full(workp,cmd,(char*)*r) &&
+	       !fs_chdir_canon(*r, !opt_L && showsymlinks)) {
         char *subdir;
 
 	if(strcmp(name,".") == 0)
@@ -788,8 +848,10 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name)
 	if(opt_STAT) {
 	  add_response(R_211,"");
           add_response(R_211,"%s:",subdir);
+
 	} else if(sendline("\n%s:\n",subdir) < 0) {
           pop_cwd(cwd,&symhold);
+
           if(dest_workp)
             destroy_pool(workp);
           return -1;
@@ -797,6 +859,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name)
 
         if(listdir(cmd,workp,subdir) < 0) {
           pop_cwd(cwd,&symhold);
+
           if(dest_workp)
             destroy_pool(workp);
           return -1;
@@ -899,9 +962,10 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
   matches = 0;
   ls_curtime = time(NULL);
 
-  if(clearflags)
+  if(clearflags) {
     opt_a = opt_C = opt_d = opt_F = opt_r = opt_R = opt_t = opt_STAT = 0;
     opt_L = 0;
+  }
 
   if(default_options)
     _parse_options(&default_options,&glob_flags);
@@ -952,7 +1016,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
       
       /* check perms on the directory/file we are about to scan */
       if(!ls_perms_full(cmd->tmp_pool, cmd,
-			(*pbuffer ? (char *) pbuffer : (char *) arg), NULL)) {
+			(*pbuffer ? (char *) pbuffer : (char *) arg))) {
         a = -1;
 	skiparg = 1;
       } else {
@@ -1014,7 +1078,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
 
         path = g.gl_pathv;
         while(path && *path) {
-          if(**path && ls_perms_full(cmd->tmp_pool,cmd,*path,NULL)) {
+          if(**path && ls_perms_full(cmd->tmp_pool,cmd,*path)) {
             char cwd[MAXPATHLEN + 1] = {'\0'};
             int symhold;
 
@@ -1039,11 +1103,13 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
               }
             }
           }
+
           if(XFER_ABORTED) {
 	    discard_output();
             fs_globfree(&g);
 	    return -1;
 	  }
+
           path++;
         }
 
@@ -1059,6 +1125,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
 
       if(!skiparg)
         fs_globfree(&g);
+
       arg = endarg;
 
       if(XFER_ABORTED) {
@@ -1066,8 +1133,10 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
         return -1;
       }
     }
+
   } else {
-    if(ls_perms_full(cmd->tmp_pool,cmd,".",NULL)) {
+
+    if(ls_perms_full(cmd->tmp_pool,cmd,".")) {
       if(opt_d) {
         if(listfile(cmd,NULL,".") < 0) {
           ls_terminate();
@@ -1127,6 +1196,9 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   int curdir = 0, i, symhold, count = 0;
   mode_t mode;
   
+  config_rec *c = NULL;
+  int ignore_hidden = FALSE;
+
   workp = make_sub_pool(cmd->tmp_pool);
   
   if(!*dir || (*dir == '.' && !dir[1]) || strcmp(dir, "./") == 0) {
@@ -1148,11 +1220,25 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
     return 0;
   }
   
+  /* search for relevant <Limit>'s to this NLST command.  If found,
+   * check to see whether hidden files should be ignored
+   */
+  if ((c = _find_ls_limit(cmd->argv[0])) != NULL)
+    ignore_hidden = get_param_int(c->subset, "IgnoreHidden", FALSE);
+
   while(*list && count >= 0) {
     p = *list; list++;
     
-    if(*p == '.' && (!opt_A || is_dotdir(p)))
+		if (*p == '.') {
+
+      if (!opt_a && (!opt_A || is_dotdir(p)))
+        continue;
+
+      /* make sure IgnoreHidden is properly honored
+       */
+      else if (ignore_hidden)
       continue;
+    }
     
     if((i = fs_readlink(p, file, sizeof(file))) > 0) {
       file[i] = '\0';
@@ -1161,7 +1247,8 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
       f = p;
     }
     
-    if(ls_perms(workp,cmd,f,NULL)) {
+    if(ls_perms(workp,cmd,f)) {
+    
       /* If the data connection isn't open, open it now. */
       if((session.flags & SF_XFER) == 0) {
 	if(data_open(NULL,"file list",IO_WRITE,0) < 0) {
@@ -1178,11 +1265,13 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
       if(!curdir) {
 	if(sendline("%s/%s\n",dir,p) < 0)
 	  count = -1;
-	else count++;
+        else
+          count++;
       } else {
 	if(sendline("%s\n",p) < 0)
 	  count = -1;
-	else count++;
+        else
+          count++;
       }
     }
   }
@@ -1370,7 +1459,7 @@ MODRET cmd_nlst(cmd_rec *cmd)
 				if(S_ISDIR(st.st_mode))
 					ret = nlstdir(cmd,p);
 				else if(S_ISREG(st.st_mode) &&
-						ls_perms(cmd->tmp_pool,cmd,p,NULL))
+						ls_perms(cmd->tmp_pool,cmd,p))
 					ret = nlstfile(cmd,p);
 				if(ret > 0)
 					count += ret;
@@ -1381,11 +1470,10 @@ MODRET cmd_nlst(cmd_rec *cmd)
 		/* A single target, if it's a directory, list the contents,
 		 * if it's a file, just list the file.
 		 */
-		int hidden;
 		struct stat st;
 		
-		if(!ls_perms(cmd->tmp_pool,cmd,target,&hidden)) {
-			if(hidden)
+		if(!ls_perms(cmd->tmp_pool,cmd,target)) {
+			if(dir_check_hidden(target))
 				add_response_err(R_550,"%s: No such file or directory",cmd->arg);
 			else
 				add_response_err(R_550,"%s: Permission denied",cmd->arg);

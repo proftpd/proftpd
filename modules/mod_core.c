@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.50 2001-01-31 18:43:07 flood Exp $
+ * $Id: mod_core.c,v 1.51 2001-01-31 20:51:37 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -2073,7 +2073,7 @@ MODRET cmd_syst(cmd_rec *cmd)
 }
 
 int core_chmod(cmd_rec *cmd, char *dir, mode_t mode) {
-  if(!dir_check(cmd->tmp_pool, "SITE_CHMOD", "WRITE", dir, NULL))
+  if(!dir_check(cmd->tmp_pool, "SITE_CHMOD", "WRITE", dir))
     return -1;
 
   return fs_chmod(dir,mode);
@@ -2095,7 +2095,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir)
   if(showsymlinks) {
     dir = dir_realpath(cmd->tmp_pool,ndir);
 
-    if(!dir || !dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
+    if(!dir || !dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir) ||
         fs_chdir(dir,0) == -1) {
       for(cdpath = find_config(main_server->conf,CONF_PARAM,"CDPath",TRUE);
 	  cdpath != NULL; cdpath =
@@ -2108,7 +2108,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir)
 	dir = dir_realpath(cmd->tmp_pool,cdir);
 	free(cdir);
 	if(dir &&
-	   dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) &&
+	   dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir) &&
 	   fs_chdir(dir,0) != -1) {
 	  break;
 	}
@@ -2123,7 +2123,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir)
     ndir = dir_virtual_chdir(cmd->tmp_pool,ndir);
     dir = dir_realpath(cmd->tmp_pool,ndir);
 
-    if(!dir || !dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
+    if(!dir || !dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir) ||
         fs_chdir_canon(ndir,1) == -1) {
 
       for(cdpath = find_config(main_server->conf,CONF_PARAM,"CDPath",TRUE);
@@ -2138,7 +2138,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir)
 	dir = dir_realpath(cmd->tmp_pool,ndir);
 	free(cdir);
 	if(dir &&
-	   dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) &&
+	   dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir) &&
 	   fs_chdir_canon(ndir,1) != -1) {
 	  break;
 	}
@@ -2222,7 +2222,7 @@ MODRET cmd_rmd(cmd_rec *cmd)
      you can't rmdir a symlink, you delete it.  */
   dir = dir_canonical_path(cmd->tmp_pool,cmd->arg);
 
-  if(!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
+  if(!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir) ||
      rmdir(dir) == -1) {
     add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
     return ERROR(cmd);
@@ -2265,7 +2265,7 @@ MODRET cmd_mkd(cmd_rec *cmd)
 
   dir = dir_canonical_path(cmd->tmp_pool,cmd->arg);
 
-  if(!dir || !dir_check_canon(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
+  if(!dir || !dir_check_canon(cmd->tmp_pool,cmd->argv[0],cmd->group,dir) ||
      mkdir(dir,0777) == -1) {
     add_response_err(R_550,"%s: %s",cmd->argv[1],strerror(errno));
     return ERROR(cmd);
@@ -2326,7 +2326,7 @@ MODRET cmd_mdtm(cmd_rec *cmd)
 
   path = dir_realpath(cmd->tmp_pool,cmd->arg);
 
-  if(!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) ||
+  if(!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path) ||
      fs_stat(path,&sbuf) == -1) {
     add_response_err(R_550,"%s: %s",cmd->argv[1],strerror(errno));
     return ERROR(cmd);
@@ -2362,7 +2362,7 @@ MODRET cmd_size(cmd_rec *cmd)
 
   path = dir_realpath(cmd->tmp_pool,cmd->arg);
 
-  if(!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) ||
+  if(!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path) ||
       fs_stat(path,&sbuf) == -1) {
     add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
     return ERROR(cmd);
@@ -2428,7 +2428,7 @@ MODRET cmd_dele(cmd_rec *cmd)
   /* If told to delete a symlink, don't delete the file it points to!  */
   path = dir_canonical_path(cmd->tmp_pool, cmd->arg);
   if(!path ||
-     !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
+     !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path) ||
      fs_unlink(path) == -1) {
     add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
@@ -2487,7 +2487,7 @@ MODRET cmd_rnto(cmd_rec *cmd)
 
   path = dir_canonical_path(cmd->tmp_pool,cmd->arg);
 
-  if(!path || !dir_check_canon(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) 
+  if(!path || !dir_check_canon(cmd->tmp_pool,cmd->argv[0],cmd->group,path) 
      || rename(session.xfer.path,path) == -1) {
     add_response_err(R_550,"rename: %s",strerror(errno));
     destroy_pool(session.xfer.p);
@@ -2529,7 +2529,7 @@ MODRET cmd_rnfr(cmd_rec *cmd)
   /* Allow renaming a symlink, even a dangling one.  */
   path = dir_canonical_path(cmd->tmp_pool,cmd->arg);
 
-  if(!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) ||
+  if(!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path) ||
      !exists(path)) {
     add_response_err(R_550,"%s: %s",cmd->argv[1],strerror(errno));
     return ERROR(cmd);
