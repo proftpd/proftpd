@@ -1,9 +1,11 @@
-$Id: NEWS,v 1.281 2002-11-18 16:02:32 castaglia Exp $
+$Id: NEWS,v 1.282 2002-11-18 16:15:38 castaglia Exp $
 
 CVS
 ---------------------------------
 - Bug 1840 - Problem with syslog default destination on HP-UX.  HPUX uses
   a default device of /dev/log.un rather than /dev/log.
+- Bug 1844 - DisplayLogin %y macro is off by 1.  Consequence of scoreboarding
+  code changes.
 
 1.2.7rc3 - Released 15-11-2002
 ---------------------------------
