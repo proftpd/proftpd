@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.29 2000-02-28 20:19:50 macgyver Exp $
+ * $Id: mod_auth.c,v 1.30 2000-03-01 06:13:06 macgyver Exp $
  */
 
 #include "conf.h"
@@ -810,16 +810,16 @@ static int _setup_environment(pool *p, char *user, char *pass)
   /* perform a dir fixup */
   resolve_defered_dirs(main_server);
   fixup_dirs(main_server,CF_DEFER);
+
   /* If running under an anonymous context, resolve all <Directory>
    * blocks inside it
    */
   if(c && c->subset)
     resolve_anonymous_dirs(c->subset);
 
-  if(c)
-    log_auth(LOG_NOTICE, "ANON %s: Login successful.", origuser);
-  else
-    log_auth(LOG_NOTICE, "USER %s: Login successful.", origuser);
+  log_auth(LOG_NOTICE, "%s %s: Login successful.",
+	   (c != NULL) ? "ANON" : "USER",
+	   origuser);
 
   /* Write the login to wtmp.  This must be done here because we won't
    * have access after we give up root.  This can result in falsified
@@ -836,12 +836,11 @@ static int _setup_environment(pool *p, char *user, char *pass)
   /* Perform wtmp logging only if not turned off in <Anonymous>
    * or the current server
    */
-
   if(c)
-    wtmp_log = get_param_int(c->subset,"WtmpLog",FALSE);
+    wtmp_log = get_param_int(c->subset, "WtmpLog", FALSE);
 
   if(wtmp_log == -1)
-    wtmp_log = get_param_int(main_server->conf,"WtmpLog",FALSE);
+    wtmp_log = get_param_int(main_server->conf, "WtmpLog", FALSE);
 
   PRIVS_ROOT
 
@@ -856,19 +855,19 @@ static int _setup_environment(pool *p, char *user, char *pass)
   /* Open /var/log/ files */
   if(!xferlog) {
     if(c)
-      xferlog = get_param_ptr(c->subset,"TransferLog",FALSE);
+      xferlog = get_param_ptr(c->subset, "TransferLog", FALSE);
     if(!xferlog)
-      xferlog = get_param_ptr(main_server->conf,"TransferLog",FALSE);
+      xferlog = get_param_ptr(main_server->conf, "TransferLog", FALSE);
     if(!xferlog)
       xferlog = XFERLOG_PATH;
   }
 
-  if(strcasecmp(xferlog,"NONE") == 0)
+  if(strcasecmp(xferlog, "NONE") == 0)
     log_open_xfer(NULL);
   else
     log_open_xfer(xferlog);
 
-  _init_groups(p,pw->pw_gid);
+  _init_groups(p, pw->pw_gid);
 
   PRIVS_RELINQUISH
 
