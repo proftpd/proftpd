@@ -65,6 +65,7 @@
   <li><a href="#HideUser">HideUser</a></li>
   <li><a href="#IdentLookups">IdentLookups</a></li>
   <li><a href="#IgnoreHidden">IgnoreHidden</a></li>
+  <li><a href="#Include">Include</a></li>
   <li><a href="#Limit">&lt;Limit&gt;</a></li>
   <li><a href="#LDAPDefaultAuthScheme">LDAPDefaultAuthScheme
   <li><a href="#LDAPDefaultGID">LDAPDefaultGID
@@ -1247,6 +1248,13 @@ href="reference.html#Limit">&lt;Limit&gt;</a> block to completely ignore any hid
   directory entries for the set of limited FTP commands. This has the effect of 
   returning an error similar to &quot;No such file or directory&quot; when the 
   client attempts to use the limited command upon a hidden directory or file.</p>
+<hr>
+<h2><a name="Include">Include</a></h2>
+<p><strong>Syntax:</strong> Include <em>file</em><br>
+  <strong>Default:</strong> None<br>
+  <strong>Context:</strong> Any<br>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+<p>This directive allows you to include another configuration file within your current configuration file.</p>
 <hr>
 <h2><a name="Limit">&lt;Limit&gt;</a></h2>
 <p><strong>Syntax:</strong> &lt;Limit <em>command|command-group [command2 ..]</em>&gt;<br>
