@@ -1,7 +1,9 @@
-$Id: NEWS,v 1.110 2001-06-18 17:39:52 flood Exp $
+$Id: NEWS,v 1.111 2001-06-18 18:02:55 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+- Bug 1212 - special files (devices, etc) didn't show up in directory
+  listings.
 - Bug 1189 - (again) <Directory> dups allowed in <Anonymous>
 - Bug 1155 - non rfc behavior on filenames with spaces
 - Bug 1193 - Error "~" processing while renaming files

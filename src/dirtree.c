@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.35 2001-06-18 17:35:06 flood Exp $
+ * $Id: dirtree.c,v 1.36 2001-06-18 18:02:55 flood Exp $
  */
 
 /* History:
@@ -1056,7 +1056,6 @@ static int _check_ip_positive(const config_rec *c)
 
 static int _check_ip_access(xaset_t *conf, char *name)
 {
-  char *arg,**argv;
   int res = FALSE;
   
   config_rec *c = find_config(conf,CONF_PARAM,name,FALSE);

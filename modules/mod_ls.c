@@ -24,7 +24,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.40 2001-06-18 17:35:06 flood Exp $
+ * $Id: mod_ls.c,v 1.41 2001-06-18 18:02:55 flood Exp $
  */
 
 #include "conf.h"
@@ -331,6 +331,18 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
         break;
       case S_IFLNK:
         m[0] = 'l';
+        break;
+      case S_IFSOCK:
+        m[0] = 's';
+        break;
+      case S_IFBLK:
+        m[0] = 'b';
+        break;
+      case S_IFCHR:
+        m[0] = 'c';
+        break;
+      case S_IFIFO:
+        m[0] = 'p';
         break;
       case S_IFDIR:
         m[0] = 'd';
