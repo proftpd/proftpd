@@ -225,15 +225,46 @@ char *inet_ascii(pool *pool, p_in_addr_t *addr)
 char *inet_getname(pool *pool, p_in_addr_t *addr)
 {
   char *res = NULL;
-  struct hostent *host = NULL;
+  char **checkaddr;
+  struct hostent *hptr_rev = NULL, *hptr_forw = NULL;
+  static char *res_cache = NULL;
+  static p_in_addr_t *addr_cache = NULL;
 
-  if(reverse_dns)
-    host = gethostbyaddr((const char *) addr, sizeof(p_in_addr_t), AF_INET);
+  if(reverse_dns) {
+    if(res_cache && addr_cache && addr_cache->s_addr == addr->s_addr) {
+      res = pstrdup(pool, res_cache);
+      return inet_validate(res);
+    }
+    
+    if((hptr_rev = gethostbyaddr((const char *)addr,
+                                 sizeof(p_in_addr_t), AF_INET)) != NULL) {
+      if((hptr_forw = gethostbyname(hptr_rev->h_name)) != NULL) {
+        for(checkaddr = hptr_forw->h_addr_list; *checkaddr; ++checkaddr) {
+          if(((p_in_addr_t*)(*checkaddr))->s_addr == addr->s_addr) {
+            res = pstrdup(pool, hptr_rev->h_name);
+            break;
+          }
+        }
+      }
+    }
+  }
   
-  if(!host)
+  if(!res)
     res = pstrdup(pool, inet_ntoa(*addr));
-  else
-    res = pstrdup(pool, host->h_name);
+ 
+  if(reverse_dns) {
+    /* cache the result */
+    if(!addr_cache)
+      addr_cache = malloc(sizeof(p_in_addr_t));
+
+    if(addr_cache)
+      memcpy(addr_cache, addr, sizeof(p_in_addr_t));
+
+    if(res_cache)
+      free(res_cache);
+
+    res_cache = strdup(res);
+  }
   
   return inet_validate(res);
 }
