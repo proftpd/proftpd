@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.388 2003-03-05 19:20:21 castaglia Exp $
+$Id: NEWS,v 1.389 2003-03-05 19:23:31 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -14,6 +14,10 @@ CVS
 - Bug 1972 - %T not correctly shows time at performance of a command "rename".
   This was due to improper use of uninitialized data.
 - Bug 1794 - Scoreboard format changes.
+- Bug 1979 - Add TLSTimeoutHandshake directive.  This adds a directive to
+  configure a timer when SSL/TLS handshakes are occurring, to prevent
+  a malicious client from attempting to DOS a TLS-enabled server.  The default
+  timeout is 5 minutes.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------

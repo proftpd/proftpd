@@ -42,7 +42,7 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 
-#define MOD_TLS_VERSION		"mod_tls/2.0.5"
+#define MOD_TLS_VERSION		"mod_tls/2.0.6"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001020801 
@@ -316,17 +316,22 @@ static char *tls_dsa_cert_file = NULL, *tls_dsa_key_file = NULL;
 static char *tls_rsa_cert_file = NULL, *tls_rsa_key_file = NULL;
 static char *tls_rand_file = NULL;
 
+/* Timeout given for TLS handshakes.  The default is 5 minutes. */
+static unsigned int tls_handshake_timeout = 300;
+static unsigned char tls_handshake_timed_out = FALSE;
+static int tls_handshake_timer_id = -1;
+
 /* Note: 9 is the default OpenSSL depth. */
 static int tls_verify_depth = 9;
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-/* Renegotiate control channel SSL sessions after 4 hours, by default. */
+/* Renegotiate control channel on TLS sessions after 4 hours, by default. */
 static int tls_ctrl_renegotiate_timeout = 14400;
 
-/* Renegotiate data channel SSL sessions after 1 gigabyte, by default. */
+/* Renegotiate data channel on TLS sessions after 1 gigabyte, by default. */
 static off_t tls_data_renegotiate_limit = 1024 * 1024 * 1024;
 
-/* Timeout given for renegotiations to occur before the SSL session is
+/* Timeout given for renegotiations to occur before the TLS session is
  * shutdown.  The default is 30 seconds.
  */
 static int tls_renegotiate_timeout = 30;
@@ -482,6 +487,10 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
   return TRUE;
 }
 
+static int tls_handshake_timeout_cb(CALLBACK_FRAME) {
+  tls_handshake_timed_out = TRUE;
+  return 0;
+}
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
 static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
@@ -489,12 +498,12 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
       (tls_flags & TLS_SESS_CTRL_RENEGOTIATING)) {
 
     if (!SSL_renegotiate_pending(ctrl_ssl)) {
-      tls_log("%s", "control channel SSL session renegotiated");
+      tls_log("%s", "control channel TLS session renegotiated");
       tls_flags &= ~TLS_SESS_CTRL_RENEGOTIATING;
 
     } else if (tls_renegotiate_required) {
-      tls_log("%s", "requested SSL renegotiation timed out on control channel");
-      tls_log("%s", "shutting down control channel SSL session");
+      tls_log("%s", "requested TLS renegotiation timed out on control channel");
+      tls_log("%s", "shutting down control channel TLS session");
       tls_end_session(ctrl_ssl);
       tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
         ctrl_ssl = NULL;
@@ -505,12 +514,12 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
       (tls_flags & TLS_SESS_DATA_RENEGOTIATING)) {
 
     if (!SSL_renegotiate_pending((SSL *) tls_data_wr_nstrm->strm_data)) {
-      tls_log("%s", "data channel SSL session renegotiated");
+      tls_log("%s", "data channel TLS session renegotiated");
       tls_flags &= ~TLS_SESS_DATA_RENEGOTIATING;
 
     } else if (tls_renegotiate_required) {
-      tls_log("%s", "requested SSL renegotiation timed out on data channel");
-      tls_log("%s", "shutting down data channel SSL session");
+      tls_log("%s", "requested TLS renegotiation timed out on data channel");
+      tls_log("%s", "shutting down data channel TLS session");
       tls_end_session((SSL *) tls_data_wr_nstrm->strm_data);
       tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = NULL;
     }
@@ -521,7 +530,7 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
 
 static int tls_ctrl_renegotiate_cb(CALLBACK_FRAME) {
   if (tls_flags & TLS_SESS_ON_CTRL) {
-    tls_log("%s", "requesting SSL renegotiation on control channel");
+    tls_log("%s", "requesting TLS renegotiation on control channel");
     SSL_renegotiate(ctrl_ssl);
     /* SSL_do_handshake(ctrl_ssl); */
 
@@ -865,19 +874,33 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   /* This works with either rfd or wfd (I hope) */
   SSL_set_fd(ssl, conn->rfd);
 
+  /* If configured, set a timer for the handshake. */
+  if (tls_handshake_timeout)
+    tls_handshake_timer_id = add_timer(tls_handshake_timeout, -1, &tls_module,
+      tls_handshake_timeout_cb);
+
   retry:
   if ((res = SSL_accept(ssl)) < 1) {
     int err = SSL_get_error(ssl, res);
 
-    if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE) {
-      pr_signals_handle();
-      goto retry;
+    pr_signals_handle();
+
+    if (tls_handshake_timed_out) {
+      tls_log("TLS negotiation timed out (%u seconds)", tls_handshake_timeout);
+      tls_end_session(ssl);
+      return -4;
     }
 
-    tls_log("unable to accept SSL connection: %s", ERR_error_string(err, NULL));
+    if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE)
+      goto retry;
+
+    tls_log("unable to accept TLS connection: %s", ERR_error_string(err, NULL));
     tls_end_session(ssl);
     return -3;
   }
+
+  /* Disable the handshake timer. */
+  remove_timer(tls_handshake_timer_id, &tls_module);
 
   /* Stash the SSL object in the pointers of the correct NetIO streams. */
   if (conn == session.c) {
@@ -1957,7 +1980,7 @@ static int tls_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
     if (tls_data_renegotiate_limit &&
         session.xfer.total_bytes >= tls_data_renegotiate_limit) {
-      tls_log("%s", "requesting SSL renegotiation on data channel");
+      tls_log("%s", "requesting TLS renegotiation on data channel");
       SSL_renegotiate((SSL *) nstrm->strm_data);
       /* SSL_do_handshake((SSL *) nstrm->strm_data); */
 
@@ -2752,6 +2775,27 @@ MODRET set_tlsrsakeyfile(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+/* usage: TLSTimeoutHandshake <secs> */
+MODRET set_tlstimeouthandshake(cmd_rec *cmd) {
+  int timeout = -1;
+  config_rec *c = NULL;
+  char *tmp = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  timeout = (int) strtol(cmd->argv[1], &tmp, 10);
+
+  if ((tmp && *tmp) || timeout < 0 || timeout > 65535)
+    CONF_ERROR(cmd, "timeout value must be between 0 and 65535");
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[0]) = timeout;
+
+  return HANDLED(cmd);
+}
+
 /* usage: TLSVerifyClient on|off */
 MODRET set_tlsverifyclient(cmd_rec *cmd) {
   int bool = -1;
@@ -2889,6 +2933,10 @@ static int tls_sess_init(void) {
     tls_required_on_data = *((unsigned char *) c->argv[1]);
   }
 
+  if ((c = find_config(main_server->conf, CONF_PARAM, "TLSTimeoutHandshake",
+      FALSE)))
+    tls_handshake_timeout = *((unsigned int *) c->argv[0]);
+
   /* Open the TLSLog, if configured */
   if ((res = tls_openlog()) < 0) {
     if (res == -1)
@@ -2951,6 +2999,7 @@ static conftable tls_conftab[] = {
   { "TLSRequired",		set_tlsrequired,	NULL },
   { "TLSRSACertificateFile",	set_tlsrsacertfile,	NULL },
   { "TLSRSACertificateKeyFile",	set_tlsrsakeyfile,	NULL },
+  { "TLSTimeoutHandshake",	set_tlstimeouthandshake,NULL },
   { "TLSVerifyClient",		set_tlsverifyclient,	NULL },
   { "TLSVerifyDepth",		set_tlsverifydepth,	NULL },
   { NULL , NULL, NULL}
