@@ -16819,7 +16819,7 @@ echo "${ECHO_T}no" >&6
           ac_config_headers="$ac_config_headers config.h"
 
 
-                                                                                                                        ac_config_files="$ac_config_files lib/Makefile modules/Makefile src/Makefile src/proftpd.8 src/xferlog.5 utils/Makefile utils/ftpcount.1 utils/ftpshut.8 utils/ftptop.1 utils/ftpwho.1 Makefile Make.rules"
+                                                                                                                                  ac_config_files="$ac_config_files lib/Makefile modules/Makefile src/Makefile src/ftpdctl.8 src/proftpd.8 src/xferlog.5 utils/Makefile utils/ftpcount.1 utils/ftpshut.8 utils/ftptop.1 utils/ftpwho.1 Makefile Make.rules"
           ac_config_commands="$ac_config_commands default"
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -17351,6 +17351,7 @@ do
   "lib/Makefile" ) CONFIG_FILES="$CONFIG_FILES lib/Makefile" ;;
   "modules/Makefile" ) CONFIG_FILES="$CONFIG_FILES modules/Makefile" ;;
   "src/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
+  "src/ftpdctl.8" ) CONFIG_FILES="$CONFIG_FILES src/ftpdctl.8" ;;
   "src/proftpd.8" ) CONFIG_FILES="$CONFIG_FILES src/proftpd.8" ;;
   "src/xferlog.5" ) CONFIG_FILES="$CONFIG_FILES src/xferlog.5" ;;
   "utils/Makefile" ) CONFIG_FILES="$CONFIG_FILES utils/Makefile" ;;
