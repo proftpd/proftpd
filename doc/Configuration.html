@@ -73,6 +73,12 @@ features and configuration:</p>
     <li><a href="#PathDenyFilter">PathDenyFilter</a></li>
     <li><a href="#PersistentPasswd">PersistentPasswd</a></li>
     <li><a href="#Port">Port</a></li>
+    <li><a href="#RateReadBPS">RateReadBPS</a></li>
+    <li><a href="#RateReadFreeBytes">RateReadFreeBytes</a></li>
+    <li><a href="#RateReadHardBPS">RateReadHardBPS</a></li>
+    <li><a href="#RateWriteBPS">RateWriteBPS</a></li>
+    <li><a href="#RateWriteFreeBytes">RateWriteFreeBytes</a></li>
+    <li><a href="#RateWriteHardBPS">RateWriteHardBPS</a></li>
     <li><a href="#RequireValidShell">RequireValidShell</a></li>
     <li><a href="#RootLogin">RootLogin</a></li>
     <li><a href="#ScoreboardPath">ScoreboardPath</a></li>
@@ -1853,6 +1859,128 @@ The directive can be used in conjuction with <a
 href="#VirtualHost">&lt;VirtualHost&gt;</a> in
 order to run a virtual server on the same IP address as the
 master server, but listening on a different port.</p>
+
+<hr>
+
+<h2><a name="RateReadBPS">RateReadBPS</a></h2>
+
+<p><strong>Syntax:</strong> RateReadBPS <em>byte_per_sec-number</em><br>
+<strong>Default:</strong> <code>0</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Directory&gt;,
+&lt;Limits&gt;, &lt;Global&gt; <br>
+<strong>Compatibility:</strong> 1.2.0 and later</p>
+
+<p>RateReadBPS sets the allowed byte per second download bandwidth
+in the given config context. Zero means no bandwidth limit.
+(See <A HREF="#RateReadFreeBytes">RateReadFreeBytes</A> about
+limiting bandwidth only after some amount of downloaded bytes.)
+The usual place for this directive is in <a
+href="#VirtualHost">&lt;VirtualHost&gt;</a> or <a
+href="#Directory">&lt;Directory&gt;</a> sections.
+</p>
+
+<hr>
+
+<h2><a name="RateReadFreeBytes">RateReadFreeBytes</a></h2>
+
+<p><strong>Syntax:</strong> RateReadFreeBytes <em>number of bytes</em><br>
+<strong>Default:</strong> <code>0</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Directory&gt;,
+&lt;Limits&gt;, &lt;Global&gt; <br>
+<strong>Compatibility:</strong> 1.2.0 and later</p>
+
+<p>RateReadFreeBytes is the amount of bytes to be transferred
+without any
+<A HREF="#RateReadBPS">bandwidth limits</A>, so with that option
+you can give full bandwidth for small files while limiting big ones.
+(See <A HREF="#RateReadhardBPS">RateReadHardBPS</A> on
+further info about what happens after the free amount was
+transferred.)
+</p>
+
+<h2><a name="RateReadHardBPS">RateReadHardBPS</a></h2>
+
+<p><strong>Syntax:</strong> RateReadHardBPS <em>on/off</em><br>
+<strong>Default:</strong> <code>off</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Directory&gt;,
+&lt;Limits&gt;, &lt;Global&gt; <br>
+<strong>Compatibility:</strong> 1.2.0 and later</p>
+
+<p>RateReadHardBPS forces the bandwidth to the given 
+<A HREF="#RateReadBPS">RateReadBPS</A> value after
+the <A HREF="#RateReadFreeBytes">RateReadFreeBytes</A>
+amount of file was transfered. This means that if the
+user have huge bandwidth and downloaded the "free"
+amount fast, HardBPS will stop the transfer until the
+average goes down to the given limit.
+If the amount of FreeBytes is high and the ReadBPS is
+low then the user may wait for extended periods of time until
+the transfer continues. <tt>:-)</tt></p>
+
+<hr>
+
+<h2><a name="RateWriteBPS">RateWriteBPS</a></h2>
+
+<p><strong>Syntax:</strong> RateWriteBPS <em>byte_per_sec-number</em><br>
+<strong>Default:</strong> <code>0</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Directory&gt;,
+&lt;Limits&gt;, &lt;Global&gt; <br>
+<strong>Compatibility:</strong> 1.2.0 and later</p>
+
+<p>RateWriteBPS sets the allowed byte per second upload bandwidth
+in the given config context. Zero means no bandwidth limit.
+(See <A HREF="#RateWriteFreeBytes">RateWriteFreeBytes</A> about
+limiting bandwidth only after some amount of uploaded bytes.)
+The usual place for this directive is in <a
+href="#VirtualHost">&lt;VirtualHost&gt;</a> or <a
+href="#Directory">&lt;Directory&gt;</a> sections.
+</p>
+
+<hr>
+
+<h2><a name="RateWriteFreeBytes">RateWriteFreeBytes</a></h2>
+
+<p><strong>Syntax:</strong> RateWriteFreeBytes <em>number of bytes</em><br>
+<strong>Default:</strong> <code>0</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Directory&gt;,
+&lt;Limits&gt;, &lt;Global&gt; <br>
+<strong>Compatibility:</strong> 1.2.0 and later</p>
+
+<p>RateWriteFreeBytes is the amount of bytes to be transferred
+without any
+<A HREF="#RateWriteBPS">bandwidth limits</A>, so with that option
+you can give full bandwidth for small files while limiting big ones.
+(See <A HREF="#RateWritehardBPS">RateWriteHardBPS</A> on
+further info about what happens after the free amount was
+transferred.)
+</p>
+
+<hr>
+
+<h2><a name="RateWriteHardBPS">RateWriteHardBPS</a></h2>
+
+<p><strong>Syntax:</strong> RateWriteHardBPS <em>on/off</em><br>
+<strong>Default:</strong> <code>off</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Directory&gt;,
+&lt;Limits&gt;, &lt;Global&gt; <br>
+<strong>Compatibility:</strong> 1.2.0 and later</p>
+
+<p>RateWriteHardBPS forces the bandwidth to the given 
+<A HREF="#RateWriteBPS">RateWriteBPS</A> value after
+the <A HREF="#RateWriteFreeBytes">RateWriteFreeBytes</A>
+amount of file was transfered. This means that if the
+user have huge bandwidth and uploaded the "free"
+amount fast, HardBPS will stop the transfer until the
+average goes down to the given limit.
+If the amount of FreeBytes is high and the WriteBPS is
+low then the user may wait for extended periods of time until
+the transfer continues. <tt>:-)</tt></p>
 
 <hr>
 

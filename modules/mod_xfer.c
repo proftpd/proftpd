@@ -19,11 +19,13 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.13 1999-09-17 07:31:44 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.14 1999-10-01 03:36:23 macgyver Exp $
  */
 
 /* History Log:
  *
+ * 8/15/99
+ *   - rate control <grin@tolna.net>
  * 4/24/97 0.99.0pl1
  *   _translate_ascii was returning a buffer larger than the max buffer
  *   size causing memory overrun and all sorts of neat corruption.
@@ -85,6 +87,78 @@ static void _log_transfer(char direction)
                  (end_time.tv_usec / 10000));
 
   data_cleanup();
+}
+
+/* This routine counts the difference in usec between timeval's
+ */
+static float _rate_diffusec(struct timeval tlast, struct timeval t) {
+    float diffsec, diffusec;
+
+    diffsec = t.tv_sec - tlast.tv_sec;
+    diffusec= t.tv_usec- tlast.tv_usec;
+    log_debug(DEBUG5,"_rate_diffusec: last=%ld %ld  now=%ld %ld  diff=%f %f  res=%f",
+	      tlast.tv_sec,tlast.tv_usec,
+	      t.tv_sec,t.tv_usec,
+	      diffsec, diffusec,
+	      ( diffsec * 10e5 + diffusec ) );
+    return( diffsec * 10e5 + diffusec );
+}
+
+/* Bandwidth Throttling. <grin@tolna.net>
+ *
+ * If the rate sent were too high usleeps the required amount (max 100 sec).
+ * No throttling for the first FreeBytes bytes (but this includes REST as well).
+ * If HardBPS then forces BPS throughout FreeBytes as well.
+ *
+ * input: 	rate_pos:	position in file
+ *              rate_bytes:     bytes xferred (same as rate_pos if !REST)
+ *              rate_tvlast:    when the transfer was started
+ *              rate_freebytes: no throttling unless that many xferred
+ *              rate_bps:       max byte / sec bandwidth allowed
+ *              rate_hardbps:   if FALSE then forces BPS only after FreeBytes
+ */
+static void _rate_throttle(unsigned long rate_pos, long rate_bytes,
+			   struct timeval rate_tvlast,
+			   long rate_freebytes, long rate_bps,
+			   int rate_hardbps)
+{
+  /* rate_tv:        now (the diff of those gives the time spent)
+   */
+  struct timeval rate_tv;
+  float dtime, wtime;
+
+  gettimeofday(&rate_tv, NULL);
+  
+  /* no rate control unless more than free bytes DL'ed */
+  log_debug(DEBUG5,
+	    "_rate_throttle: rate_bytes=%ld  rate_pos=%ld  rate_freebytes=%ld  rate_bps=%ld  rate_hardbps=%i",
+	    rate_bytes, rate_pos,
+	    rate_freebytes, rate_bps, rate_hardbps);
+
+  if(rate_pos < rate_freebytes)
+    return;
+  
+  if(!rate_hardbps)
+    rate_bytes -= rate_freebytes;
+  
+  dtime = _rate_diffusec(rate_tvlast, rate_tv);
+  wtime = 10e5 * rate_bytes / rate_bps;
+  
+  if(wtime>dtime) {
+    /* too fast, doze a little */
+    log_debug(DEBUG5,"_rate_throttle: wtime=%f  dtime=%f",wtime,dtime);
+
+    if(wtime-dtime > 10e7) {
+      /* >100sec, umm that'd timeout */
+      log_debug(DEBUG5, "Sleeping 100 seconds.");
+      usleep( 10e7 );
+      log_debug(DEBUG5, "Sleeping 100 seconds done!");
+    } else {
+      log_debug(DEBUG5, "Sleeping %f sec.", (wtime - dtime) / 10e5);
+      usleep(wtime-dtime);
+      log_debug(DEBUG5, "Sleeping %f sec done!", (wtime - dtime) / 10e5);
+    }
+  }
 }
 
 static
@@ -287,10 +361,26 @@ MODRET cmd_stor(cmd_rec *cmd)
   int bufsize,len;
   unsigned long respos = 0;
   privdata_t *p, *p_hidden;
+
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *preg;
   int ret;
 #endif
+
+  long rate_pos=0, rate_bytes=0, rate_freebytes=0, rate_bps=0;
+  int rate_hardbps=0;
+  struct timeval rate_tvstart;
+
+  if( (rate_bps = get_param_int(CURRENT_CONF,"RateWriteBPS",FALSE)) == -1 ) { rate_bps=0; }
+  if( (rate_freebytes = get_param_int(CURRENT_CONF,"RateWriteFreeBytes",FALSE)) == -1 ) { rate_freebytes=0; }
+  rate_hardbps = get_param_int(CURRENT_CONF,"RateWriteHardBPS",FALSE) == 1;
+      
+  if( rate_bps != 0 ) {
+      /* I am not sure this _is_ allowed in ftp protocol... ideas, anyone?
+       add_response(R_211,"Allowed bandwidth is %ld bps (starting at %ld).",rate_bps,rate_freebytes);
+       */
+      log_debug(DEBUG2,"Allowed bandwidth is %ld bps (starting at %ld).",rate_bps,rate_freebytes);
+  }
   
   p_hidden = NULL;
   p = mod_privdata_find(cmd,"stor_filename",NULL);
@@ -350,6 +440,7 @@ MODRET cmd_stor(cmd_rec *cmd)
     }
 
     respos = session.restart_pos;
+    rate_pos = respos;
     session.restart_pos = 0L;
   }
 
@@ -357,9 +448,6 @@ MODRET cmd_stor(cmd_rec *cmd)
     add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
     return ERROR(cmd);
   } else {
-    int stor_now, stor_starttime = time(NULL) - 1;
-    int stor_bw, stor_bytecount = cmd->server->Bandwidth / 8;
-
     /* perform the actual transfer now */
     data_init(cmd->arg,IO_READ);
 
@@ -377,31 +465,26 @@ MODRET cmd_stor(cmd_rec *cmd)
     }
 
     bufsize = (main_server->tcp_rwin > 0 ? main_server->tcp_rwin : 1024);
-    lbuf = (char*)palloc(cmd->tmp_pool,bufsize);
-
-    while((len = data_xfer(lbuf,bufsize)) > 0) {
+    lbuf = (char*) palloc(cmd->tmp_pool, bufsize);
+    
+    gettimeofday(&rate_tvstart, NULL);
+    while((len = data_xfer(lbuf, bufsize)) > 0) {
       if(XFER_ABORTED)
         break;
 
-      len = fs_write(stor_file,stor_fd,lbuf,len);
+      len = fs_write(stor_file, stor_fd, lbuf, len);
       if(len < 0) {
         int s_errno = errno;
         _stor_abort();
-        data_abort(s_errno,FALSE);
+        data_abort(s_errno, FALSE);
         return ERROR(cmd);
       }
 
-      if(cmd->server->Bandwidth) {
-	stor_bytecount += len;
-	log_debug(DEBUG2, "stor_bytecount = %d", stor_bytecount);
-	for(;;) {
-	  stor_now = time(NULL);
-	  if(stor_now <= stor_starttime) break;
-	  stor_bw = stor_bytecount * 8 / (stor_now - stor_starttime);
-	  log_debug(DEBUG2, "stor_bw = %d", stor_bw);
-	  if(stor_bw <= cmd->server->Bandwidth) break;
-	  sleep(1);
-	}
+      if(rate_bps) {
+          rate_pos += len;
+          rate_bytes += len;
+	  _rate_throttle(rate_pos, rate_bytes, rate_tvstart, rate_freebytes,
+			 rate_bps, rate_hardbps);
       }
     }
 
@@ -521,6 +604,20 @@ MODRET cmd_retr(cmd_rec *cmd)
   int bufsize,len;
   unsigned long respos = 0,cnt = 0,cnt_steps = 0,cnt_next = 0;
   privdata_t *p;
+  long rate_bytes=0, rate_freebytes=0, rate_bps=0;
+  int rate_hardbps=0;
+  struct timeval rate_tvstart;
+
+  if( (rate_bps = get_param_int(CURRENT_CONF,"RateReadBPS",FALSE)) == -1 ) { rate_bps=0; }
+  if( (rate_freebytes = get_param_int(CURRENT_CONF,"RateReadFreeBytes",FALSE)) == -1 ) { rate_freebytes=0; }
+  rate_hardbps = get_param_int(CURRENT_CONF,"RateReadHardBPS",FALSE) == 1;
+
+  if( rate_bps != 0 ) {
+      /* I am not sure this _is_ allowed in ftp protocol... ideas, anyone?
+       add_response(R_211,"Allowed bandwidth is %ld bps (starting at %ld).",rate_bps,rate_freebytes);
+       */
+      log_debug(DEBUG2,"Allowed bandwidth is %ld bps (starting at %ld).",rate_bps,rate_freebytes);
+  }
 
   p = mod_privdata_find(cmd,"retr_filename",NULL);
 
@@ -548,9 +645,6 @@ MODRET cmd_retr(cmd_rec *cmd)
     add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
     return ERROR(cmd);
   } else {
-    int retr_now, retr_starttime = time(NULL) - 1;
-    int retr_bw, retr_bytecount = main_server->Bandwidth / 8;
-
     /* send the data */
     data_init(cmd->arg,IO_WRITE);
 
@@ -571,6 +665,7 @@ MODRET cmd_retr(cmd_rec *cmd)
     cnt = respos;
     log_add_run(mpid,NULL,session.user,NULL,0,session.xfer.file_size,0,NULL);
 
+    gettimeofday(&rate_tvstart, NULL);
     while((len = fs_read(retr_file,retr_fd,lbuf,bufsize)) > 0) {
       if(XFER_ABORTED)
         break;
@@ -582,27 +677,20 @@ MODRET cmd_retr(cmd_rec *cmd)
         return ERROR(cmd);
       } else {
         cnt += len;
+	rate_bytes += len;
 
         if((cnt / cnt_steps) != cnt_next) {
           cnt_next = cnt / cnt_steps;
 	  log_add_run(mpid,NULL,session.user,NULL,0,session.xfer.file_size,cnt,NULL);
         }
-      }
 
-      if(cmd->server->Bandwidth) {
-	retr_bytecount += len;
-	log_debug(DEBUG2, "retr_bytecount = %d", retr_bytecount);
-	for(;;) {
-	  retr_now = time(NULL);
-	  if(retr_now <= retr_starttime) break;
-	  retr_bw = retr_bytecount * 8 / (retr_now - retr_starttime);
-	  log_debug(DEBUG2, "retr_bw = %d", retr_bw);
-	  if(retr_bw <= cmd->server->Bandwidth) break;
-	  sleep(1);
+	if(rate_bps) {
+	    _rate_throttle(cnt, rate_bytes, rate_tvstart, rate_freebytes,
+			   rate_bps, rate_hardbps);
 	}
       }
     }
-
+    
     if(XFER_ABORTED) {
       _retr_abort();
       data_abort(0,0);
@@ -700,6 +788,64 @@ int xfer_init_child()
   return 0;
 }
 
+MODRET add_ratenum(cmd_rec *cmd)
+{
+  config_rec *c;
+  long ratenum;
+  char *endp;
+
+  CHECK_ARGS(cmd,1);
+  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_DIR | CONF_GLOBAL);
+
+  if(cmd->argc != 2 )
+      CONF_ERROR(cmd,"invalid number of arguments");
+
+  if(!strcasecmp(cmd->argv[1],"none"))
+    ratenum = 0;
+  else {
+    ratenum = (int)strtol(cmd->argv[1],&endp,10);
+
+    if((endp && *endp) || ratenum < 0)
+      CONF_ERROR(cmd,"argument must be 'none' or a positive integer.");
+  }
+
+  log_debug(DEBUG5,"add_ratenum: %s %ld",cmd->argv[0],ratenum);
+
+  c = add_config_param( cmd->argv[0], 1, (void*)ratenum );
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
+MODRET add_ratebool(cmd_rec *cmd)
+{
+  config_rec *c;
+  int b;
+
+  CHECK_ARGS(cmd,1);
+  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_DIR | CONF_GLOBAL);
+
+  if((b = get_boolean(cmd,1)) == -1)
+    CONF_ERROR(cmd,"expected boolean argument.");
+
+  log_debug(DEBUG5,"add_ratebool: %s %d",cmd->argv[0],b);
+
+  c = add_config_param( cmd->argv[0], 1, (void*)b );
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
+conftable xfer_config[] = {
+  { "RateReadBPS",		add_ratenum,                 },
+  { "RateReadFreeBytes",	add_ratenum,	             },
+  { "RateReadHardBPS",		add_ratebool,                },
+  { "RateWriteBPS",		add_ratenum,                 },
+  { "RateWriteFreeBytes",	add_ratenum,	             },
+  { "RateWriteHardBPS",		add_ratebool,                },
+  { NULL }
+};
+
 cmdtable xfer_commands[] = {
   { CMD,     C_TYPE,	G_NONE,	 cmd_type,	TRUE,	FALSE, CL_MISC },
   { PRE_CMD, C_RETR,	G_READ,	 pre_cmd_retr,	TRUE,	FALSE },
@@ -720,7 +866,7 @@ module xfer_module = {
   NULL,NULL,				/* Always NULL */
   0x20,					/* API Version */
   "xfer",				/* Module name */
-  NULL,					/* No config */
+  xfer_config,
   xfer_commands,
   NULL,
   NULL,xfer_init_child
