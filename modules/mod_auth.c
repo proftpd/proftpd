@@ -25,7 +25,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.62 2001-07-03 14:51:32 flood Exp $
+ * $Id: mod_auth.c,v 1.63 2001-11-08 17:24:26 flood Exp $
  */
 
 #include "conf.h"
@@ -1303,7 +1303,7 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
   maxc = find_config((c ? c->subset : cmd->server->conf),
 		     CONF_PARAM, "MaxClientsPerHost", FALSE);
   
-  if(maxc) {
+  if(maxc && (int)maxc->argv[0] != -1) {
     int max = (int) maxc->argv[0];
     char *maxstr = "Sorry, the maximum number clients (%m) from your host are "
       "already connected.";
@@ -1331,7 +1331,7 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
   maxc = find_config((c ? c->subset : cmd->server->conf),
 		     CONF_PARAM, "MaxClients", FALSE);
 
-  if(maxc) {
+  if(maxc && ((int)maxc->argv[0] != -1)) {
     int max = (int) maxc->argv[0];
     char *maxstr = "Sorry, the maximum number of allowed clients (%m) "
       "already connected.";
@@ -1358,7 +1358,7 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
   maxc = find_config((c ? c->subset : cmd->server->conf),
 		     CONF_PARAM, "MaxHostsPerUser", FALSE);
   
-  if(maxc) {
+  if(maxc && (int)maxc->argv[0] != -1) {
     int max = (int) maxc->argv[0];
     char *maxstr = "Sorry, the maximum number of hosts (%m) for this user "
       "already connected.";

@@ -1,4 +1,9 @@
-$Id: NEWS,v 1.136 2001-10-19 15:27:58 flood Exp $
+$Id: NEWS,v 1.137 2001-11-08 17:24:26 flood Exp $
+
+1.2.5rc1 - CVS
+---------------------------------
+- Bug 1334 (should have been in 1.2.4, but was missed somehow)
+           MaxClients none in VirtualHost forbids connect
 
 1.2.4 - Released 10/19/2001
 ---------------------------------
