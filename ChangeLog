@@ -1,3 +1,8 @@
+2001-01-28 13:33  flood
+
+	* modules/mod_core.c: Bug #436 - MaxClients* directives now merge
+	downward.
+
 2001-01-28 13:25  flood
 
 	* doc/Configuration.html, modules/mod_auth.c, modules/mod_unixpw.c,
