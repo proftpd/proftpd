@@ -1273,7 +1273,7 @@ static char *resolve_tag(cmd_rec *cmd, char tag)
   case 'b':
     argp=arg;
     if (session.xfer.p)
-      snprintf(argp, sizeof(arg), "%lu", session.xfer.total_bytes);
+      snprintf(argp, sizeof(arg), "%" PR_LU, session.xfer.total_bytes);
     else
       sstrncpy( argp, "0", sizeof(arg));
     break;
@@ -1455,7 +1455,7 @@ static modret_t *_process_named_query(cmd_rec *cmd, char *name)
 	  if (argc) {
 	    num = strtol(argc, &endptr, 10);
 	    
-	    if ((*endptr != NULL) || (num < 0) || 
+	    if ((*endptr != '\0') || (num < 0) || 
 		((cmd->argc - 3 ) < num)) {
 	      return ERROR_MSG(cmd, _MOD_VERSION, "reference out-of-bounds in query");
 	    }
