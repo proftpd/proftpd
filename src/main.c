@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.249 2004-09-07 22:34:24 castaglia Exp $
+ * $Id: main.c,v 1.250 2004-09-11 17:53:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2444,7 +2444,7 @@ static void show_settings(void) {
 #endif /* USE_SHADOW */
 
 #ifdef USE_SENDFILE
-  printf("    + Sendfile support\n")
+  printf("    + Sendfile support\n");
 #else
   printf("    - Sendfile support\n");
 #endif /* USE_SENDFILE */
