@@ -70,7 +70,7 @@ ftpshut$(EXEEXT): utils
 	$(CC) -o $@ $(FTPSHUT)
 
 ftptop$(EXEEXT): utils
-	$(CC) $(LDFLAGS) -o $@ $(FTPTOP) $(LIBS) $(CURSES_LIBS)
+	$(CC) $(LDFLAGS) -o $@ $(FTPTOP) $(CURSES_LIBS)
 
 ftpwho$(EXEEXT): utils
 	$(CC) $(LDFLAGS) -o $@ $(FTPWHO) -lsupp
