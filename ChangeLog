@@ -1,3 +1,19 @@
+2001-06-18 13:12  flood
+
+	* NEWS, contrib/mod_linuxprivs.c, include/conf.h, include/data.h,
+	include/default_paths.h, include/dirtree.h, include/fs.h,
+	include/ident.h, include/inet.h, include/io.h, include/libsupp.h,
+	include/log.h, include/modules.h, include/options.h,
+	include/pool.h, include/privs.h, include/proftpd.h, include/sets.h,
+	include/support.h, include/timers.h, modules/mod_auth.c,
+	modules/mod_core.c, modules/mod_log.c, modules/mod_ls.c,
+	modules/mod_pam.c, modules/mod_site.c, modules/mod_unixpw.c,
+	modules/mod_xfer.c, src/auth.c, src/data.c, src/dirtree.c,
+	src/fs.c, src/ftpcount.c, src/ftpshut.c, src/ftpwho.c, src/ident.c,
+	src/inet.c, src/io.c, src/log.c, src/main.c, src/modules.c,
+	src/pool.c, src/sets.c, src/support.c, src/timers.c, src/utils.c:
+	Updated Copyright/License to allow linking to OpenSSL
+
 2001-06-03 11:17  flood
 
 	* NEWS, modules/mod_auth.c, modules/mod_core.c, src/main.c: #1185 -
