@@ -333,7 +333,7 @@ struct pool *make_named_sub_pool(struct pool *p, const char *symbol)
   memset((char *)new_pool,'\0',sizeof(struct pool));
 
   if(symbol) {
-    strcpy(&new_pool->symbol,symbol);
+    strncpy(&new_pool->symbol,symbol,strlen(symbol));
     blok->h.first_avail += strlen(symbol);
   }
   
@@ -463,7 +463,7 @@ char *pstrdup(struct pool *p, const char *s)
     return NULL;
 
   res = palloc(p,strlen(s)+1);
-  strcpy(res,s);
+  strncpy(res,s,strlen(s) + 1);
   return res;
 }
 
@@ -508,6 +508,7 @@ char *pdircat(pool *p, ...)
   va_start(dummy,p);
 
   cp = res;
+  *cp = '\0';
   last = 0;
   
   while((argp = va_arg(dummy,char*)) != NULL) {
@@ -515,7 +516,7 @@ char *pdircat(pool *p, ...)
       argp++;
     else if(last && last != '/' && *argp != '/')
       *cp++ = '/';
-    strcpy(cp,argp);
+    strncpy(cp,argp,len + 1 - strlen(cp));
     cp += strlen(argp);
     last = *(cp-1);
   }
@@ -541,11 +542,12 @@ char *pstrcat(pool *p, ...)
 
   res = (char*)palloc(p,len+1);
   cp = res;
-
+  *cp = '\0';
+  
   va_start(dummy,p);
 
   while((argp = va_arg(dummy,char*)) != NULL) {
-    strcpy(cp,argp);
+    strncpy(cp,argp,len + 1 - strlen(cp));
     cp += strlen(argp);
   }
 

@@ -19,7 +19,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.3 1999-03-07 17:18:53 flood Exp $
+ * $Id: dirtree.c,v 1.4 1999-09-07 23:29:07 macgyver Exp $
  */
 
 /* History:
@@ -242,6 +242,8 @@ server_rec *start_new_server(const char *addr)
   if(addr)
     s->ServerAddress = pstrdup(s->pool,addr);
   s->ServerPort = -1;
+
+  s->Bandwidth = 0;
 
   conf.curserver = (server_rec**)push_array(conf.sstack);
   *conf.curserver = s;
@@ -755,7 +757,7 @@ int match_ip(p_in_addr_t *addr, char *name, const char *match)
   } else if(*(match+strlen(match)-1) == '.') {
     strncpy(mask,match,sizeof(buf)-2);
     buf[1023] = '\0';
-    strcpy(&buf[strlen(buf)-1],"*");
+    strncpy(&buf[strlen(buf)-1],"*",sizeof(buf) - strlen(buf) - 1);
   } else if((cp = strchr(match,'/')) != NULL) { /* check for CIDR notation */
     /* first portion of CIDR should be dotted quad, second portion
      * is netmask

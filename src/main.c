@@ -19,7 +19,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.10 1999-08-31 01:31:59 flood Exp $
+ * $Id: main.c,v 1.11 1999-09-07 23:29:07 macgyver Exp $
  */
 
 /*
@@ -343,27 +343,23 @@ static void init_set_proc_title(int argc, char *argv[], char *envp[])
 void set_proc_title(char *fmt,...)
 {
   va_list msg;
-
+  static char statbuf[BUFSIZ];
+  
 #ifndef HAVE_SETPROCTITLE
 #if PF_ARGV_TYPE == PF_ARGV_PSTAT
    union pstun pst;
 #endif /* PF_ARGV_PSTAT */
-
-#if PF_ARGV_TYPE == PF_ARGV_PSSTRINGS || PS_ARGV_TYPE == PF_ARGV_NEW
-  static
-#endif
-  char statbuf[2048];
-
   char *p;
   int i,maxlen = (LastArgv - Argv[0]) - 2;
 #endif /* HAVE_SETPROCTITLE */
   
   va_start(msg,fmt);
 
+  memset(statbuf, 0, sizeof(statbuf));
+  vsnprintf(statbuf, sizeof(statbuf), fmt, msg);
+
 #ifdef HAVE_SETPROCTITLE
-  setproctitle(fmt,msg);
-#else
-  vsnprintf(statbuf,sizeof(statbuf),fmt,msg);
+  setproctitle(statbuf);
 #endif /* HAVE_SETPROCTITLE */
 
   va_end(msg);
@@ -512,11 +508,11 @@ void send_response_async(const char *resp_numeric, const char *fmt, ...)
   va_list msg;
   int maxlen;
 
-  strcpy(cp,resp_numeric);
+  maxlen = sizeof(buf) - strlen(resp_numeric) - 1;
+
+  strncpy(cp,resp_numeric,maxlen);
   cp += strlen(resp_numeric);
   *cp++ = ' ';
-
-  maxlen = sizeof(buf) - strlen(resp_numeric) - 1;
 
   va_start(msg,fmt);
   vsnprintf(cp,maxlen,fmt,msg);
@@ -594,9 +590,9 @@ void end_login_noexit()
   /* If session.user is set, we have a valid login */
   if(session.user) {
 #if (defined(BSD) && (BSD >= 199103))
-    sprintf(sbuf,"ftp%ld",(long)getpid());
+    snprintf(sbuf, sizeof(sbuf), "ftp%ld",(long)getpid());
 #else
-    sprintf(sbuf,"ftpd%d",(int)getpid());
+    snprintf(sbuf, sizeof(sbuf), "ftpd%d",(int)getpid());
 #endif
     if(session.wtmp_log)
       log_wtmp(sbuf,"",
@@ -1933,6 +1929,10 @@ int main(int argc, char **argv, char **envp)
   int daemon_uid,daemon_gid,socketp;
   int _umask = 0,nodaemon = 0,c;
   struct sockaddr peer;
+
+#ifdef HAVE_SET_AUTH_PARAMETERS
+  (void) set_auth_parameters(argc, argv);
+#endif
 
   bzero(&session,sizeof(session));
 

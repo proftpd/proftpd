@@ -19,7 +19,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.3 1999-03-05 00:29:21 flood Exp $
+ * $Id: support.c,v 1.4 1999-09-07 23:29:07 macgyver Exp $
  */
 
 /* History Log:
@@ -243,9 +243,9 @@ char *dir_best_path(pool *p, const char *path)
 
   if(*path == '~') {
     if(fs_interpolate(path,workpath,MAXPATHLEN) == -1)
-      fs_dircat(workpath,fs_getcwd(),path);
+      fs_dircat(workpath,sizeof(workpath),fs_getcwd(),path);
   } else
-    fs_dircat(workpath,fs_getcwd(),path);
+    fs_dircat(workpath,sizeof(workpath),fs_getcwd(),path);
 
   fs_clean_path(pstrdup(p,workpath),workpath,MAXPATHLEN);
 
@@ -256,7 +256,7 @@ char *dir_best_path(pool *p, const char *path)
     ntarget = rindex(workpath,'/');
     if(ntarget) {
       if(target)
-        fs_dircat(workpath,workpath,target);
+        fs_dircat(workpath,sizeof(workpath),workpath,target);
 
       target = ntarget;
       *target++ = '\0';
@@ -266,11 +266,11 @@ char *dir_best_path(pool *p, const char *path)
 
   if(!fini && workpath[0]) {
     if(target)
-      fs_dircat(workpath,realpath,target);
+      fs_dircat(workpath,sizeof(workpath),realpath,target);
     else
-      strcpy(workpath,realpath);
+      strncpy(workpath,realpath,sizeof(workpath));
   } else
-    fs_dircat(workpath,"/",target);
+    fs_dircat(workpath,sizeof(workpath),"/",target);
 
   return pstrdup(p,workpath);
 }
@@ -282,9 +282,9 @@ char *dir_canonical_path(pool *p, const char *path)
 
   if(*path == '~') {
     if(fs_interpolate(path,work,MAXPATHLEN) == -1)
-      fs_dircat(work,fs_getcwd(),path);
+      fs_dircat(work,sizeof(work),fs_getcwd(),path);
   } else
-    fs_dircat(work,fs_getcwd(),path);
+    fs_dircat(work,sizeof(work),fs_getcwd(),path);
 
   fs_clean_path(work,buf,MAXPATHLEN);
   return pstrdup(p,buf);
@@ -311,9 +311,9 @@ char *dir_virtual_chdir(pool *p, const char *path)
 
   if(*path == '~') {
     if(fs_interpolate(path,work,MAXPATHLEN) == -1)
-      fs_dircat(work,fs_getvwd(),path);
+      fs_dircat(work,sizeof(work),fs_getvwd(),path);
   } else
-    fs_dircat(work,fs_getvwd(),path);
+    fs_dircat(work,sizeof(work),fs_getvwd(),path);
 
   fs_clean_path(work,buf,MAXPATHLEN);
   return pstrdup(p,buf);
@@ -510,7 +510,7 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
       time(&now);
       tm = *(localtime(&now));
 
-      tm.tm_year = atoi(safe_token(&cp)) - 1900;
+      tm.tm_year = atoi(safe_token(&cp)) % 100;
       tm.tm_mon = atoi(safe_token(&cp));
       tm.tm_mday = atoi(safe_token(&cp));
       tm.tm_hour = atoi(safe_token(&cp));
@@ -527,8 +527,8 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
 
       if(deny) {
         if(strlen(deny_str) == 4) {
-          strncpy(hr,deny_str,2); hr[2] = '\0'; deny_str += 2;
-          strcpy(mn,deny_str); mn[2] = '\0';
+          strncpy(hr,deny_str,sizeof(hr)); hr[2] = '\0'; deny_str += 2;
+          strncpy(mn,deny_str,sizeof(mn)); mn[2] = '\0';
           
           *deny = shuttime - ((atoi(hr) * 3600) + (atoi(mn) * 60));
         } else
@@ -537,8 +537,8 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
 
       if(disc) {
         if(strlen(disc_str) == 4) {
-          strncpy(hr,disc_str,2); hr[2] = '\0'; disc_str += 2;
-          strcpy(mn,disc_str); mn[2] = '\0';
+          strncpy(hr,disc_str,sizeof(hr)); hr[2] = '\0'; disc_str += 2;
+          strncpy(mn,disc_str,sizeof(mn)); mn[2] = '\0';
 
           *disc = shuttime - ((atoi(hr) * 3600) + (atoi(mn) * 60));
         } else
@@ -585,7 +585,8 @@ char *sreplace(pool *p, char *s, ...)
   int mlen = 0,rlen = 0;
 
   cp = buf;
-
+  *cp = '\0';
+  
   bzero(marr,sizeof(marr));
 
   va_start(args,s);
@@ -606,7 +607,7 @@ char *sreplace(pool *p, char *s, ...)
       rlen = strlen(*rptr);
 
       if(strncmp(src,*mptr,mlen) == 0) {
-        strcpy(cp,*rptr);
+        strncpy(cp,*rptr,sizeof(buf) - strlen(cp));
         cp += rlen;
         src += mlen;
         break;

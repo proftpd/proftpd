@@ -520,10 +520,12 @@ int inet_set_proto_options(pool *pool, conn_t *c,
   int tos = 0;
 
 #ifdef TCP_NODELAY
-  if(c->wfd != -1)
-    setsockopt(c->wfd,IPPROTO_TCP,TCP_NODELAY,(void*)&nodelay,sizeof(nodelay));
-  if(c->rfd != -1)
-    setsockopt(c->rfd,IPPROTO_TCP,TCP_NODELAY,(void*)&nodelay,sizeof(nodelay));
+  if(get_param_int(main_server->conf,"tcpNoDelay",FALSE) != 0) {
+    if(c->wfd != -1)
+      setsockopt(c->wfd,IPPROTO_TCP,TCP_NODELAY,(void*)&nodelay,sizeof(nodelay));
+    if(c->rfd != -1)
+      setsockopt(c->rfd,IPPROTO_TCP,TCP_NODELAY,(void*)&nodelay,sizeof(nodelay));
+  }
 #endif
 
 #ifdef IPTOS_LOWDELAY

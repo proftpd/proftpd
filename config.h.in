@@ -162,6 +162,9 @@
 /* Define if you have the getopt_long function.  */
 #undef HAVE_GETOPT_LONG
 
+/* Define if you have the getprpwent function.  */
+#undef HAVE_GETPRPWENT
+
 /* Define if you have the gettimeofday function.  */
 #undef HAVE_GETTIMEOFDAY
 
@@ -188,6 +191,9 @@
 
 /* Define if you have the select function.  */
 #undef HAVE_SELECT
+
+/* Define if you have the set_auth_parameters function.  */
+#undef HAVE_SET_AUTH_PARAMETERS
 
 /* Define if you have the setegid function.  */
 #undef HAVE_SETEGID
@@ -273,6 +279,12 @@
 /* Define if you have the <netinet/tcp.h> header file.  */
 #undef HAVE_NETINET_TCP_H
 
+/* Define if you have the <krb.h> header file.  */
+#undef HAVE_KRB_H
+
+/* Define if you have the <prot.h> header file.  */
+#undef HAVE_PROT_H
+
 /* Define if you have the <regex.h> header file.  */
 #undef HAVE_REGEX_H
 
@@ -296,6 +308,9 @@
 
 /* Define if you have the <sys/param.h> header file.  */
 #undef HAVE_SYS_PARAM_H
+
+/* Define if you have the <sys/security.h> header file.  */
+#undef HAVE_SYS_SECURITY_H
 
 /* Define if you have the <sys/pstat.h> header file.  */
 #undef HAVE_SYS_PSTAT_H

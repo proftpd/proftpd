@@ -19,7 +19,7 @@
 
 /*
  * ProFTPD logging support
- * $Id: log.c,v 1.2 1999-08-31 01:31:59 flood Exp $
+ * $Id: log.c,v 1.3 1999-09-07 23:29:07 macgyver Exp $
  */
 
 /* History Log:
@@ -67,7 +67,7 @@ char *fmt_time(time_t t)
   struct tm *tr;
 
   if((tr = localtime(&t)) != NULL) {
-    snprintf(buf,sizeof(buf)-1,"%s %s %2d %02d:%02d:%02d %d",
+    snprintf(buf,sizeof(buf),"%s %s %2d %02d:%02d:%02d %d",
             days[tr->tm_wday],
             mons[tr->tm_mon],
             tr->tm_mday,
@@ -111,7 +111,7 @@ int log_xfer(int xfertime,char *remhost,unsigned long fsize,
   if(xferfd == -1)
     return 0;
 
-  snprintf(buf,sizeof(buf)-1,"%s %d %s %lu %s %c _ %c %c %s ftp 0 *\n",
+  snprintf(buf,sizeof(buf),"%s %d %s %lu %s %c _ %c %c %s ftp 0 *\n",
           fmt_time(time(NULL)),xfertime,remhost,fsize,
           fname,xfertype,direction,access,user);
 
@@ -176,9 +176,9 @@ int log_open_run(pid_t mpid, int trunc, int allow_update)
     return 0;
 
   if(!mpid)
-    sprintf(fname,"%s/proftpd-inetd",scoreboard_path);
+    snprintf(fname, sizeof(fname), "%s/proftpd-inetd",scoreboard_path);
   else
-    sprintf(fname,"%s/proftpd-%d",scoreboard_path,(int)mpid);
+    snprintf(fname, sizeof(fname), "%s/proftpd-%d",scoreboard_path,(int)mpid);
 
   runfn = pstrdup(permanent_pool,fname);
   if((runfd = open(runfn,O_RDWR|O_CREAT|(trunc ? O_TRUNC : 0),
@@ -252,7 +252,7 @@ static int _pid_exists(pid_t pid)
 
   res = kill(pid,SIGCONT);
 #ifdef LINUX
-  sprintf(procfn,"/proc/%d",pid);    
+  snprintf(procfn, sizeof(procfn), "/proc/%d",pid);    
   if( (res == -1 && errno == EPERM) || !res ||
     stat(procfn,&sbuf) != -1)
 #else
@@ -334,7 +334,7 @@ logrun_t *log_read_run(pid_t *mpid)
         cp++;
         if(mpid)
           *mpid = (pid_t)atoi(cp);
-        sprintf(buf,"%s/%s",scoreboard_path,dent->d_name);
+        snprintf(buf, sizeof(buf), "%s/%s",scoreboard_path,dent->d_name);
         fd = open(buf,O_RDONLY,0644);
 
         if(fd != -1) {
@@ -765,7 +765,7 @@ void init_log()
   char buf[256];
 
   if(gethostname(buf,sizeof(buf)) == -1)
-    strcpy(buf,"localhost");
+    strncpy(buf,"localhost",sizeof(buf));
 
   syslog_hostname = pstrdup(permanent_pool,buf);
 }

@@ -71,7 +71,7 @@ clean:
 # BSD install -d doesn't work, so ...
 $(localstatedir) $(sysconfdir) $(rundir) $(bindir) $(sbindir) $(mandir) $(mandir)/man1 $(mandir)/man5 $(mandir)/man8:
 	@if [ ! -d $@ ]; then \
-		mkdir $@; \
+		mkdir -p $@; \
 		chown $(INSTALL_USER):$(INSTALL_GROUP) $@; \
 		chmod 0755 $@; \
 	fi
@@ -114,12 +114,17 @@ distclean: clean depend
 	rm -f src/Makefile modules/Makefile lib/Makefile
 	rm -f config.h config.status config.cache config.log \
 	      Makefile proftpd.conf development.notes
-	rm -f Make.modules
+	rm -f Make.modules Make.rules contrib/proftpd.spec
+	rm -f Makefile lib/Makefile modules/Makefile src/Makefile
 	rm -rf `find . -name "CVS"`
+	rm -rf `find . -name "*~"`
 
 cvsclean: clean
 	cd src; rm -f Makefile Makefile.bak Makefile.in.bak
 	cd modules; rm -f Makefile Makefile.bak Makefile.in.bak
-	cd lib; rm -f Makefile Makefile.bak Makefile.in.bak Make.modules
+	cd lib; rm -f Makefile Makefile.bak Makefile.in.bak
+	rm -f Make.modules Make.rules contrib/proftpd.spec
+	rm -f Make.modules.bak Make.rules.bak contrib/proftpd.spec.bak
 	rm -f config.h config.status config.cache config.log \
-	      Makefile proftpd.conf development.notes
+	      proftpd.conf development.notes
+	rm -f Makefile lib/Makefile modules/Makefile src/Makefile

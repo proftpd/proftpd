@@ -148,7 +148,7 @@ static struct symbol_hash *_hash_find(int index, char *name, int type)
 {
   struct symbol_hash *sym = NULL;
 
-  if(symtable[index]) {
+  if(name && symtable[index]) {
     for(sym = (struct symbol_hash*)symtable[index]->xas_list; sym; sym=sym->next)
       if(sym->sym_type == type && !strcmp(sym->sym_name,name))
         break;
