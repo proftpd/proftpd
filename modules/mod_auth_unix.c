@@ -26,7 +26,7 @@
 
 /*
  * Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.3 2003-02-06 16:38:42 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.4 2003-02-18 17:55:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -446,13 +446,31 @@ static char *_get_pw_info(pool *p, const char *u,
   sp = getspnam(u);
 
   if (sp) {
-    cpw = pstrdup(p,sp->sp_pwdp);
-    if (lstchg) *lstchg = SP_CVT_DAYS(sp->sp_lstchg);
-    if (min) *min = SP_CVT_DAYS(sp->sp_min);
-    if (max) *max = SP_CVT_DAYS(sp->sp_max);
-    if (warn) *warn = SP_CVT_DAYS(sp->sp_warn);
-    if (inact) *inact = SP_CVT_DAYS(sp->sp_inact);
-    if (expire) *expire = SP_CVT_DAYS(sp->sp_expire);
+    cpw = pstrdup(p, sp->sp_pwdp);
+
+    if (lstchg)
+      *lstchg = SP_CVT_DAYS(sp->sp_lstchg);
+
+    if (min)
+      *min = SP_CVT_DAYS(sp->sp_min);
+
+    if (max)
+      *max = SP_CVT_DAYS(sp->sp_max);
+
+#ifdef HAVE_SPWD_SP_WARN
+    if (warn)
+      *warn = SP_CVT_DAYS(sp->sp_warn);
+#endif /* HAVE_SPWD_SP_WARN */
+
+#ifdef HAVE_SPWD_SP_INACT
+    if (inact)
+      *inact = SP_CVT_DAYS(sp->sp_inact);
+#endif /* HAVE_SPWD_SP_INACT */
+
+#ifdef HAVE_SPWD_SP_EXPIRE
+    if (expire)
+      *expire = SP_CVT_DAYS(sp->sp_expire);
+#endif /* HAVE_SPWD_SP_EXPIRE */
   }
 #ifdef AUTO_SHADOW
   else {

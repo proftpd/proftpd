@@ -562,6 +562,17 @@ if test x"$force_shadow" != xno ; then
   AC_CHECK_HEADERS(shadow.h,
     [ if test "$use_shadow" = "" && test -f /etc/shadow ; then
         AC_DEFINE(USE_SHADOW)
+
+        AC_CHECK_MEMBER(struct spwd.sp_warn,
+          [AC_DEFINE(HAVE_SPWD_SP_WARN)],,
+          [#include <shadow.h>])
+        AC_CHECK_MEMBER(struct spwd.sp_inact,
+          [AC_DEFINE(HAVE_SPWD_SP_INACT)],,
+          [#include <shadow.h>])
+        AC_CHECK_MEMBER(struct spwd.sp_expire,
+          [AC_DEFINE(HAVE_SPWD_SP_EXPIRE)],,
+          [#include <shadow.h>])
+
       fi ])
 fi
 
