@@ -20,7 +20,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.9 1999-12-30 06:27:24 macgyver Exp $
+ * $Id: data.c,v 1.10 1999-12-30 19:06:45 macgyver Exp $
  */
 
 #include "conf.h"
@@ -530,9 +530,9 @@ data_sendfile(int retr_fd, off_t *offset, size_t count)
 {
   int flags, error;
 #if defined(HAVE_LINUX_SENDFILE)
-  ssize_t len = 0;
+  ssize_t len = 0, total = 0;
 #elif defined(HAVE_BSD_SENDFILE)
-  off_t len = 0;
+  off_t len = 0, total = 0;
 #endif /* HAVE_LINUX_SENDFILE */
   
   if(session.xfer.direction == IO_READ)
@@ -563,7 +563,11 @@ data_sendfile(int retr_fd, off_t *offset, size_t count)
        * page doesn't state any of this.
        */
       if(errno == EINTR) {
-	count -= len;
+	/* If we got everything in this transaction, we're done.
+	 */
+	if((count -= len) <= 0)
+	  break;
+	
 	*offset += len;
 	
 	if(TimeoutStalled)
@@ -571,6 +575,10 @@ data_sendfile(int retr_fd, off_t *offset, size_t count)
 	
 	if(TimeoutIdle)
 	  reset_timer(TIMER_IDLE, ANY_MODULE);
+	
+	session.xfer.total_bytes += len;
+	session.total_bytes += len;
+	total += len;
 	
 	continue;
       }
@@ -582,11 +590,11 @@ data_sendfile(int retr_fd, off_t *offset, size_t count)
       
       return -1;
     }
-    
+
     break;
   }
   
-  log_debug(DEBUG4, "data_sendfile: %ld", len);
+  log_debug(DEBUG4, "data_sendfile: %ld", total);
   
   if (flags & O_NONBLOCK)
     fcntl(session.d->outf->fd, F_SETFL, flags);
@@ -599,7 +607,8 @@ data_sendfile(int retr_fd, off_t *offset, size_t count)
   
   session.xfer.total_bytes += len;
   session.total_bytes += len;
+  total += len;
   
-  return len;
+  return total;
 }
 #endif /* HAVE_SENDFILE */
