@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.123 2003-02-12 23:54:21 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.124 2003-02-13 00:02:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -714,13 +714,13 @@ static void _stor_chown(void) {
        * root privs aren't used, the chmod() will fail because the old owner/
        * session user doesn't have the necessary privileges to do so).
        */
-      is_err = 0;
+      iserr = 0;
       PRIVS_ROOT
       if (pr_fsio_chmod(xfer_path, sbuf.st_mode) < 0)
-        is_err++;
+        iserr++;
       PRIVS_RELINQUISH
 
-      if (is_err)
+      if (iserr)
         log_debug(DEBUG0, "root chmod(%s) to %04o failed: %s", xfer_path,
           (unsigned int) sbuf.st_mode, strerror(errno));
       else
