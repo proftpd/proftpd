@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.10 2002-10-23 23:53:55 castaglia Exp $
+ * $Id: options.h,v 1.11 2002-12-05 22:47:48 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -58,6 +58,11 @@
  */
 
 #define PR_TUNABLE_SELECT_TIMEOUT	30
+
+/* Hash table size is the number of items in the module hash tables.
+ */
+
+#define PR_TUNABLE_HASH_TABLE_SIZE 40
 
 /* "Backlog" is the number of connections that can be received at one
  * burst before the kernel rejects.  This can be configured by the

@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.17 2002-12-05 20:37:18 castaglia Exp $
+ * $Id: modules.h,v 1.18 2002-12-05 22:47:47 castaglia Exp $
  */
 
 #ifndef __MODULES_H
@@ -180,13 +180,28 @@ struct module_struc {
   int (*module_init_cb)(void); 		/* Module initialization */
   int (*module_init_session_cb)(void);	/* Session initialization */
 
-  int priority;				/* internal use, higher == higher priority */
+  /* Internal use; high number == higher priority. */
+  int auth_priority, priority;
 };
+
+/* module hash types */
+typedef struct authsym {
+  struct authsym *next, *prev;
+
+  /* pointer to the auth symbol */
+  char *name;
+
+  module *module;
+  authtable *table;
+} pr_authsym_t;
 
 /* These are stored in modules.c */
 
+extern xaset_t *authsymtab[PR_TUNABLE_HASH_TABLE_SIZE];
+
 extern conftable *m_conftable;			/* Master conftable */
 extern cmdtable *m_cmdtable;			/* Master cmdtable */
+extern authtable *m_authtable;			/* Master authtable */
 
 #define ANY_MODULE			((module*)0xffffffff)
 
@@ -205,7 +220,11 @@ modret_t *call_module(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
 modret_t *call_module_cmd(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
 modret_t *call_module_auth(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
 
+/* Symbol table creation functions */
+int insert_authsym(xaset_t **, authtable *);
+
 /* Symbol table lookup functions */
+authtable *get_auth_symbol(char *, int *, authtable *);
 conftable *mod_find_conf_symbol(char *, int *, conftable *);
 cmdtable *mod_find_cmd_symbol(char *, int *, cmdtable *);
 authtable *mod_find_auth_symbol(char *, int *, authtable *);

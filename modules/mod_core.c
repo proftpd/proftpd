@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.125 2002-12-05 21:16:49 castaglia Exp $
+ * $Id: mod_core.c,v 1.126 2002-12-05 22:47:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2192,6 +2192,39 @@ MODRET set_allowall(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+MODRET set_authorder(cmd_rec *cmd) {
+  register unsigned int i = 0;
+  config_rec *c = NULL;
+  array_header *auth_module_order = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  /* Check to see if the directive has already been set */
+  if (find_config(cmd->server->conf, CONF_PARAM, "AuthOrder", FALSE))
+    CONF_ERROR(cmd, "AuthOrder has already been configured");
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  auth_module_order = make_array(c->pool, 0, sizeof(char *));
+
+  /* Make sure the given modules exist */
+  for (i = 1; i < cmd->argc; i++) {
+    if (!module_exists(cmd->argv[i]))
+      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+        cmd->argv[0], ": no such module '", cmd->argv[i], "' installed",
+        NULL));
+
+    else
+      *((char **) push_array(auth_module_order)) = pstrdup(c->pool,
+        cmd->argv[i]);
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(array_header *));
+  *((array_header **) c->argv[0]) = auth_module_order;
+
+  return HANDLED(cmd);
+}
+
 MODRET end_limit(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 0);
   CHECK_CONF(cmd, CONF_LIMIT);
@@ -3629,6 +3662,7 @@ MODRET set_class(cmd_rec *cmd) {
  */
 
 static int core_init(void) {
+  config_rec *c = NULL;
 
   /* Add the additional features implemented by this module into the
    * list, to be displayed in response to a FEAT command.
@@ -3636,6 +3670,50 @@ static int core_init(void) {
   pr_add_feat("MDTM");
   pr_add_feat("REST STREAM");
   pr_add_feat("SIZE");
+
+  /* Check for a server-specific AuthOrder. */
+  if ((c = find_config(main_server->conf, CONF_PARAM, "AuthOrder",
+      FALSE)) != NULL) {
+    char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+    authtable *authtab = NULL;
+    array_header *auth_module_order = (array_header *) c->argv[0];
+    int modulec = 0;
+    char **modulev = NULL;
+    register unsigned int i = 0;
+
+    modulec = auth_module_order->nelts;
+    modulev = (char **) auth_module_order->elts;
+
+    /* Free up the memory from the old authsymtab. */
+    for (i = 0; i < PR_TUNABLE_HASH_TABLE_SIZE; i++) {
+      if (authsymtab[i]) {
+        destroy_pool((authsymtab[i])->mempool);
+        authsymtab[i] = NULL;
+      }
+    }
+
+    /* Rebuild a new authsymtab by inserting only those modules listed
+     * by AuthOrder, in the order that they are listed.
+     */
+    if (m_authtable) {
+      for (authtab = m_authtable; authtab->name; authtab++) {
+        memset(buf, '\0', sizeof(buf));
+        snprintf(buf, sizeof(buf), "mod_%s.c", authtab->m->name);
+        buf[sizeof(buf)-1] = '\0';
+
+        /* Iterate through the AuthOrder, looking for a match of the
+         * name of the module owning the authtable pointer from the
+         * master authtable.
+         */
+        for (i = 0; i < modulec; i++) {
+          if (!strcmp(buf, modulev[i])) {
+            authtab->m->auth_priority = modulec - i;
+            insert_authsym(authsymtab, authtab);
+          }
+        }
+      }
+    }
+  }
 
   return 0;
 }
@@ -3678,6 +3756,7 @@ static conftable core_conftab[] = {
   { "AllowRetrieveRestart",	set_allowretrieverestart,	NULL },
   { "AllowStoreRestart",	set_allowstorerestart,		NULL },
   { "AllowUser",		add_allowuser,			NULL },
+  { "AuthOrder",		set_authorder,			NULL },
   { "Bind",			add_bind,			NULL },
   { "CDPath",			add_cdpath,			NULL },
   { "Class",			set_class,			NULL },

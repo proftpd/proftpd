@@ -31,9 +31,6 @@
 
 /* local symbol hash structure to vastly speed up module symbol lookups
  */
-
-#define HASH_TABLE_SIZE				40
-
 #define SYM_CONF				1
 #define SYM_CMD					2
 #define SYM_AUTH				3
@@ -53,7 +50,9 @@ struct symbol_hash {
   } ptr;
 };
 
-static xaset_t *symtable[HASH_TABLE_SIZE];
+/* symbol hashes for each type */
+xaset_t *authsymtab[PR_TUNABLE_HASH_TABLE_SIZE];
+static xaset_t *symtable[PR_TUNABLE_HASH_TABLE_SIZE];
 
 static xaset_t *installed_modules = NULL;
 static array_header *mconfarr;			/* masterconf array */
@@ -79,8 +78,26 @@ static xaset_t *postparse_inits = NULL;
 
 /* hash lookup code and management */
 
-static int _compare_sym(struct symbol_hash *s1, struct symbol_hash *s2)
-{
+static int authsym_cmp(pr_authsym_t *authsym1, pr_authsym_t *authsym2) {
+  int result;
+
+  result = strcmp(authsym1->name, authsym2->name);
+
+  /* Higher priority modules must go BEFORE lower priority modules in the
+   * hash table.
+   */
+  if (!result) {
+    if (authsym1->module->auth_priority > authsym2->module->auth_priority)
+      result = -1;
+
+    else if (authsym1->module->auth_priority < authsym2->module->auth_priority)
+      result = 1;
+  }
+
+  return result;
+}
+
+static int sym_cmp(struct symbol_hash *s1, struct symbol_hash *s2) {
   int ret;
 
   ret = strcmp(s1->sym_name,s2->sym_name);
@@ -99,35 +116,33 @@ static int _compare_sym(struct symbol_hash *s1, struct symbol_hash *s2)
   return ret;
 }
 
-static int _hash_index(char *name)
-{
+static int _hash_index(char *name) {
   unsigned char *cp;
   int total = 0;
 
   for(cp = (unsigned char*)name; *cp; cp++)
     total += (int)*cp;
 
-  return (total < HASH_TABLE_SIZE ? total : (total % HASH_TABLE_SIZE));
+  return (total < PR_TUNABLE_HASH_TABLE_SIZE ? total :
+    (total % PR_TUNABLE_HASH_TABLE_SIZE));
 }
 
-static int _hash_insert(struct symbol_hash *sym)
-{
+static int _hash_insert(struct symbol_hash *sym) {
   int index;
 
   index = _hash_index(sym->sym_name);
   if(!symtable[index])
     symtable[index] = xaset_create(permanent_pool,
-                      (XASET_COMPARE)_compare_sym);
+                      (XASET_COMPARE) sym_cmp);
 
   xaset_insert_sort(symtable[index],(xasetmember_t*)sym,TRUE);
   return index;
 }
 
-static int _hash_insert_conf(conftable *conf)
-{
+static int _hash_insert_conf(conftable *conf) {
   struct symbol_hash *sym;
 
-  sym = palloc(permanent_pool,sizeof(struct symbol_hash));
+  sym = pcalloc(permanent_pool,sizeof(struct symbol_hash));
   sym->sym_type = SYM_CONF;
   sym->sym_name = conf->directive;
   sym->ptr.sym_conf = conf;
@@ -135,11 +150,10 @@ static int _hash_insert_conf(conftable *conf)
   return _hash_insert(sym);
 }
 
-static int _hash_insert_cmd(cmdtable *cmd)
-{
+static int _hash_insert_cmd(cmdtable *cmd) {
   struct symbol_hash *sym;
 
-  sym = palloc(permanent_pool,sizeof(struct symbol_hash));
+  sym = pcalloc(permanent_pool,sizeof(struct symbol_hash));
   sym->sym_type = SYM_CMD;
   sym->sym_name = cmd->command;
   sym->ptr.sym_cmd = cmd;
@@ -147,8 +161,7 @@ static int _hash_insert_cmd(cmdtable *cmd)
   return _hash_insert(sym);
 }
 
-static int _hash_insert_auth(authtable *auth)
-{
+static int _hash_insert_auth(authtable *auth) {
   struct symbol_hash *sym;
 
   sym = pcalloc(permanent_pool,sizeof(struct symbol_hash));
@@ -156,7 +169,74 @@ static int _hash_insert_auth(authtable *auth)
   sym->sym_name = auth->name;
   sym->ptr.sym_auth = auth;
   sym->sym_module = auth->m;
+
+  insert_authsym(authsymtab, auth);
+
   return _hash_insert(sym);
+}
+
+int insert_authsym(xaset_t **authsym_tab, authtable *authtab) {
+  pool *authsym_pool = NULL;
+  pr_authsym_t *authsym = NULL;
+  unsigned int index = 0;
+
+  /* Determine the hash/index for this auth symbol. */
+  index = _hash_index(authtab->name);
+
+  /* Allocate memory for the auth hash table, if necessary. */
+  authsym_pool = make_sub_pool(permanent_pool);
+
+  if (!authsym_tab[index])
+    authsym_tab[index] = xaset_create(authsym_pool,
+      (XASET_COMPARE) authsym_cmp);
+
+  /* Due to the way in which xaset_create() assigns the mempool member
+   * of an xaset_t, the passed in pool (in the above call, authsym_pool)
+   * _is_ the mempool member, so it can be reused here.  Doesn't mean it
+   * _should_ be that way, though.
+   */
+  authsym = pcalloc(authsym_pool, sizeof(pr_authsym_t));
+
+  authsym->name = authtab->name;
+  authsym->module = authtab->m;
+  authsym->table = authtab;
+
+  /* Insert the symbol into the hash in sorted order. */
+  return xaset_insert_sort(authsym_tab[index], (xasetmember_t *) authsym, TRUE);
+}
+
+static pr_authsym_t *authsym_find(int index, char *symbol) {
+  pr_authsym_t *authsym = NULL;
+
+  if (symbol && authsymtab[index]) {
+    for (authsym = (pr_authsym_t *) authsymtab[index]->xas_list; authsym;
+        authsym = authsym->next)
+
+      /* this comparison is here to handle possible hash collisions */
+      if (!strcmp(authsym->name, symbol))
+        break;
+  }
+
+  return authsym;
+}
+
+static pr_authsym_t *authsym_find_next(int index, char *symbol,
+    authtable *prev) {
+  pr_authsym_t *authsym = NULL;
+  int last_hit = 0;
+
+  if (authsymtab[index]) {
+    for (authsym = (pr_authsym_t *) authsymtab[index]->xas_list; authsym;
+        authsym = authsym->next)
+
+      /* this comparison is here to handle possible hash collisions */
+      if (last_hit && !strcmp(authsym->name, symbol))
+        break;
+      if (authsym->table == prev)
+        last_hit++; 
+  }
+
+  return authsym;
 }
 
 static struct symbol_hash *_hash_find(int index, char *name, int type)
@@ -251,6 +331,28 @@ authtable *mod_find_auth_symbol(char *name, int *idx_cache, authtable *last)
     sym = _hash_find(index,name,SYM_AUTH);
 
   return (sym ? sym->ptr.sym_auth : NULL);
+}
+
+authtable *get_auth_symbol(char *symbol, int *cached_index, authtable *prev) {
+  int index;
+  pr_authsym_t *authsym;
+
+  if (cached_index && *cached_index != -1) {
+    index = *cached_index;
+
+  } else {
+    index = _hash_index(symbol);
+
+    if (cached_index)
+      *cached_index = index;
+  }
+
+  if (prev)
+    authsym = authsym_find_next(index, symbol, prev);
+  else
+    authsym = authsym_find(index, symbol);
+
+  return (authsym ? authsym->table : NULL);
 }
 
 /* functions to manage modular privdata structure inside cmd_rec */
@@ -428,14 +530,13 @@ unsigned char module_exists(const char *name) {
 }
 
 void list_modules(void) {
-  int i;
-  module *m;
+  register unsigned int i = 0;
+  module *m = NULL;
 
   printf("Compiled-in modules:\n");
-  for(i = 0; static_modules[i]; i++)
-  {
+  for (i = 0; static_modules[i]; i++) {
     m = static_modules[i];
-    printf("  mod_%s.c\n",m->name);
+    printf("  mod_%s.c\n", m->name);
   }
 }
 
@@ -452,7 +553,7 @@ int pr_preparse_init_modules(void) {
 
   for (i = 0; static_modules[i]; i++) {
     m = static_modules[i];
-    m->priority = i;
+    m->priority = m->auth_priority = i;
 
     if (m->api_version < PR_MODULE_API_VERSION) {
       log_pri(PR_LOG_ERR, "Fatal: module '%s' API version (0x%x) is too old "
