@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.2 2004-11-09 03:07:42 castaglia Exp $
+ * $Id: mod_delay.c,v 1.3 2004-11-13 22:41:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -190,7 +190,8 @@ static long delay_get_median(pool *p, unsigned int rownum, long interval) {
     delay_max_interval = tab_vals[DELAY_NVALUES - i];
 
   pr_log_debug(DEBUG6, MOD_DELAY_VERSION
-    ": selecting median interval from %d values", list->nelts);
+    ": selecting median interval from %d %s", list->nelts,
+    list->nelts != 1 ? "values" : "value");
   return delay_select_k(((list->nelts + 1) / 2), list);
 }
 
