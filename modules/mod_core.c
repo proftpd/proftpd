@@ -19,7 +19,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.8 1999-09-07 23:08:05 macgyver Exp $
+ * $Id: mod_core.c,v 1.9 1999-09-12 16:30:01 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -2219,7 +2219,7 @@ MODRET cmd_noop(cmd_rec *cmd)
 
 /* Configuration directive table */
 
-conftable core_conftable[] = {
+static conftable core_conftable[] = {
   { "ServerName",		set_servername, 		NULL },
   { "ServerIdent",		set_serverident,		NULL },
   { "ServerType",		set_servertype,			NULL },

@@ -19,7 +19,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.4 1999-09-07 23:09:10 macgyver Exp $
+ * $Id: mod_log.c,v 1.5 1999-09-12 16:30:01 macgyver Exp $
  */
 
 #include "conf.h"
@@ -773,7 +773,7 @@ int log_child_init()
 }
 
 
-conftable log_config[] = {
+static conftable log_config[] = {
   { "LogFormat",	add_logformat,				NULL },
   { "ExtendedLog",	add_extendedlog,			NULL },
   { "SystemLog",	set_systemlog,				NULL },

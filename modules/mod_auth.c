@@ -19,7 +19,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.5 1999-09-07 23:09:10 macgyver Exp $
+ * $Id: mod_auth.c,v 1.6 1999-09-12 16:30:01 macgyver Exp $
  */
 
 #include "conf.h"
@@ -1404,7 +1404,7 @@ MODRET add_userdirroot (cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-conftable auth_config[] = {
+static conftable auth_config[] = {
   { "RootLogin",		set_rootlogin,			NULL },
   { "LoginPasswordPrompt",	set_loginpasswordprompt,	NULL },
   { "DefaultRoot",		add_defaultroot,		NULL },

@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.9 1999-09-07 23:09:10 macgyver Exp $
+ * $Id: mod_ls.c,v 1.10 1999-09-12 16:30:01 macgyver Exp $
  */
 
 #include "conf.h"
@@ -1405,7 +1405,7 @@ MODRET set_showdotfiles(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-conftable ls_config[] = {
+static conftable ls_config[] = {
   { "DirFakeUser",	set_dirfakeuser,			NULL },
   { "DirFakeGroup",	set_dirfakegroup,			NULL },
   { "DirFakeMode",	set_dirfakemode,			NULL },

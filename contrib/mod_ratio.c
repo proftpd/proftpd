@@ -362,7 +362,7 @@ MODRET add_ratios(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-conftable ratio_config[] = {
+static conftable ratio_config[] = {
   { "Ratios",	        add_ratios,                    },
   { "UserRatio",	add_userratio,                 },
   { "GroupRatio",	add_groupratio,                },
