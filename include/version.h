@@ -1,11 +1,11 @@
 #include "buildstamp.h"
 
-#define VERSION                 "1.2.6rc2"
+#define VERSION                 "1.2.6"
 
 /* VERSION_STATUS is reported by --version-status
  * don't ask why
  */
-#define VERSION_STATUS          "1.2.6rc2"
+#define VERSION_STATUS          "1.2.6"
 
 /* INTERNAL_VERSION is used for checking for scoreboard compatibility
  */

@@ -1,6 +1,6 @@
-$Id: NEWS,v 1.209 2002-09-02 20:16:23 castaglia Exp $
+$Id: NEWS,v 1.210 2002-09-04 14:54:29 castaglia Exp $
 
-CVS
+1.2.6 - Released 2002-09-04
 ---------------------------------
 New mod_ldap (2.8.10)
 - Fixed bug in matching of IP addresses introduced by Bug#1701

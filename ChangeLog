@@ -1,3 +1,65 @@
+2002-09-04 00:07  flyhmstr
+
+	* doc/Configuration.html: ML: updated directive list
+
+2002-09-02 13:16  castaglia
+
+	* NEWS, src/io.c: 
+	Note version increment of mod_ldap; add processing of signals in
+	the io_poll() loop.
+
+2002-08-30 17:48  jwm
+
+	* contrib/mod_ratio.c: 
+	openssl exemption
+
+2002-08-30 17:45  jwm
+
+	* contrib/mod_ldap.c: 
+	2.8.10 - replacement for ldap_build_filter()
+
+2002-08-30 17:08  jwm
+
+	* src/main.c: 
+	would someone please give me an elementary lesson in checking what
+	exactly i'm committing before committing it?
+
+2002-08-30 17:06  jwm
+
+	* src/: main.c, pool.c: 
+	style, removing cruft
+
+2002-08-29 16:25  castaglia
+
+	* contrib/mod_readme.c: 
+	Added OpenSSL exemption clause to this contrib module's license.
+
+2002-08-28 09:00  castaglia
+
+	* NEWS, src/dirtree.c: 
+	Fixed bug introduced by bad use of inet_ntoa(3) in fix for
+	Bug#1701.
+
+2002-08-24 08:18  jwm
+
+	* contrib/dist/rpm/proftpd.spec.in: 
+	bloody fscking stupid thing...
+
+2002-08-24 08:15  jwm
+
+	* contrib/: mod_ldap.c, dist/rpm/proftpd.spec.in: 
+	* openssl exemption * version bump to 2.8.9
+
+2002-08-18 18:38  jwm
+
+	* doc/Configuration.sgml: 
+	adding the sgml version of the directive docs
+
+2002-08-15 08:02  castaglia
+
+	* ChangeLog, NEWS, include/version.h: 
+	Preparing to release 1.2.6rc2
+
 2002-08-15 07:45  castaglia
 
 	* NEWS, src/dirtree.c: 
