@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.391 2003-03-06 00:11:53 castaglia Exp $
+$Id: NEWS,v 1.392 2003-03-06 02:15:41 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -26,6 +26,7 @@ CVS
   via RADIUS, but the login process later fails (e.g. home directory
   inaccessible or something similar); subsequent logging in as a different
   user would succeed because the OK flag was not cleared.
+- Added mod_ifsession-0.9rc6.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------
