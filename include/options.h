@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.18 2003-06-04 23:32:02 castaglia Exp $
+ * $Id: options.h,v 1.19 2004-04-11 22:38:02 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -71,10 +71,8 @@
 
 #define PR_TUNABLE_DEFAULT_BACKLOG	5
 
-/* The next two define the default receive/send tcp windows (and
- * internal ProFTPD buffer sizes.  These can be configured per server
- * or per virtual-server via the tcpReceiveWindow and tcpSendWindow
- * directives.
+/* The next two define the default receive/send TCP windows.  These can be
+ * configured on a per-vhost basis via the SocketOptions directive.
  */
 
 #define PR_TUNABLE_DEFAULT_RCVBUF	8192
