@@ -18,7 +18,7 @@
  */
 
 /*
- * mod_ldap v2.8.7
+ * mod_ldap v2.8.8
  *
  * Thanks for patches go to (in alphabetical order):
  * 
@@ -39,7 +39,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  * 
- * $Id: mod_ldap.c,v 1.22 2002-06-14 16:36:13 jwm Exp $
+ * $Id: mod_ldap.c,v 1.23 2002-06-25 04:27:47 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -1223,8 +1223,8 @@ set_ldap_doauth(cmd_rec *cmd)
   else        { CHECK_ARGS(cmd, 1); }
 
   c = add_config_param("LDAPDoAuth", 3, (void *)b);
-  c->argv[1] = pstrdup(permanent_pool, cmd->argv[2]);
-  c->argv[2] = pstrdup(permanent_pool, cmd->argv[3]);
+  c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
+  c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
 
   return HANDLED(cmd);
 }
@@ -1244,8 +1244,8 @@ set_ldap_douid(cmd_rec *cmd)
   else        { CHECK_ARGS(cmd, 1); }
 
   c = add_config_param("LDAPDoUIDLookups", 3, (void *)b);
-  c->argv[1] = pstrdup(permanent_pool, cmd->argv[2]);
-  c->argv[2] = pstrdup(permanent_pool, cmd->argv[3]);
+  c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
+  c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
 
   return HANDLED(cmd);
 }
@@ -1266,11 +1266,11 @@ set_ldap_dogid(cmd_rec *cmd)
 
   c = add_config_param("LDAPDoGIDLookups", cmd->argc - 1, (void *)b);
   if (cmd->argc > 2)
-    c->argv[1] = pstrdup(permanent_pool, cmd->argv[2]);
+    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
   if (cmd->argc > 3)
-    c->argv[2] = pstrdup(permanent_pool, cmd->argv[3]);
+    c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
   if (cmd->argc > 4)
-    c->argv[3] = pstrdup(permanent_pool, cmd->argv[4]);
+    c->argv[3] = pstrdup(c->pool, cmd->argv[4]);
 
   return HANDLED(cmd);
 }
@@ -1365,7 +1365,7 @@ set_ldap_hdod(cmd_rec *cmd)
     CONF_ERROR(cmd, "LDAPHomedirOnDemand: expected a boolean value for first argument.");
 
   c = add_config_param("LDAPHomedirOnDemand", 2, (void *)b);
-  c->argv[1] = pstrdup(permanent_pool, cmd->argv[2]);
+  c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
 
   return HANDLED(cmd);
 
@@ -1407,7 +1407,7 @@ set_ldap_hdodsuffix(cmd_rec *cmd)
 
   c = add_config_param_str("LDAPHomedirOnDemandSuffix", cmd->argc - 1, cmd->argv[1]);
   for (i = 1; i < cmd->argc - 1; ++i)
-    c->argv[i] = pstrdup(permanent_pool, cmd->argv[1 + i]);
+    c->argv[i] = pstrdup(c->pool, cmd->argv[1 + i]);
 
   return HANDLED(cmd);
 }
