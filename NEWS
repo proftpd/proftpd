@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.538 2004-02-24 20:13:53 castaglia Exp $
+$Id: NEWS,v 1.539 2004-02-24 20:34:52 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -100,6 +100,10 @@ CVS
 - Bug 2311 - MaxClients counts unauthenticated users.  According to the
   documentation, the MaxClients configuration directive should only count
   authenticated clients.
+- Bug 2339 - STAT command doesn't follow RFC959.  Previously, ProFTPD did
+  not support use of the STAT command during file transfers.  This
+  functionality is now implemented.  Sites wishing to prevent this can
+  limit use of the STAT command by using <Limit STAT>.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------

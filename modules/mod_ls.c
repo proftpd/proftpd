@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.103 2004-02-17 02:15:59 castaglia Exp $
+ * $Id: mod_ls.c,v 1.104 2004-02-24 20:34:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1720,9 +1720,55 @@ MODRET ls_stat(cmd_rec *cmd) {
   mode_t *fake_mode = NULL;
   config_rec *c = NULL;
 
-  if (cmd->argc < 2) {
-    pr_response_add_err(R_500, "'%s' not understood", get_full_cmd(cmd));
-    return ERROR(cmd);
+  if (cmd->argc == 1) {
+
+    /* In this case, the client is requesting the current session
+     * status.
+     */
+
+    if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.cwd,
+        NULL)) {
+      pr_response_add_err(R_500, "%s: %s", cmd->argv[0], strerror(EPERM));
+      return ERROR(cmd);
+    }
+
+    pr_response_add(R_211, "Status of '%s'", main_server->ServerName);
+    pr_response_add(R_DUP, "Connected from %s (%s)", session.c->remote_name,
+      pr_netaddr_get_ipstr(session.c->remote_addr));
+    pr_response_add(R_DUP, "Logged in as %s", session.user);
+    pr_response_add(R_DUP, "TYPE: %s, STRUcture: File, Mode: Stream",
+      (session.sf_flags & SF_ASCII) ? "ASCII" : "BINARY");
+
+    if (session.total_bytes)
+      pr_response_add(R_DUP, "Total bytes transferred for session: %" PR_LU,
+        session.total_bytes);
+
+    if (session.sf_flags & SF_XFER) {
+
+      /* Report on the data transfer attributes.
+       */
+
+      pr_response_add(R_DUP, "%s from %s port %u",
+        (session.sf_flags & SF_PASSIVE) ?
+          "Passive data transfer from" : "Active data transfer to",
+        pr_netaddr_get_ipstr(session.d->remote_addr), session.d->remote_port);
+
+      if (session.xfer.file_size)
+        pr_response_add(R_DUP, "%s %s (%" PR_LU "/%" PR_LU ")",
+          session.xfer.direction == PR_NETIO_IO_RD ? C_STOR : C_RETR,
+          session.xfer.path, session.xfer.file_size, session.xfer.total_bytes);
+
+      else
+        pr_response_add(R_DUP, "%s %s (%" PR_LU ")",
+          session.xfer.direction == PR_NETIO_IO_RD ? C_STOR : C_RETR,
+          session.xfer.path, session.xfer.total_bytes);
+
+    } else
+      pr_response_add(R_DUP, "No data connection");
+
+    pr_response_add(R_DUP, "End of status");
+
+    return HANDLED(cmd);
   }
 
   list_nfiles.curr = list_ndirs.curr = list_ndepth.curr = 0;
