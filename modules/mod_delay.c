@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.8 2005-01-06 23:40:01 castaglia Exp $
+ * $Id: mod_delay.c,v 1.9 2005-03-02 20:33:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -512,7 +512,7 @@ MODRET set_delayengine(cmd_rec *cmd) {
   int bool;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   bool = get_boolean(cmd, 1);
   if (bool == -1)
@@ -744,14 +744,25 @@ static int delay_init(void) {
 
 static int delay_sess_init(void) {
   pr_fh_t *fh;
+  config_rec *c;
+
+  pr_event_unregister(&delay_module, "core.exit", delay_exit_ev);
+
+  if (!delay_engine)
+    return 0;
+
+  /* Look up DelayEngine again, as it may have been disabled in an
+   * <IfClass> section.
+   */
+  c = find_config(main_server->conf, CONF_PARAM, "DelayEngine", FALSE);
+  if (c && *((unsigned int *) c->argv[0]) == FALSE)
+    delay_engine = FALSE;
 
   if (!delay_engine)
     return 0;
 
   delay_nuser = 0;
   delay_npass = 0;
-
-  pr_event_unregister(&delay_module, "core.exit", delay_exit_ev);
 
   pr_log_debug(DEBUG6, MOD_DELAY_VERSION ": opening DelayTable '%s'",
     delay_tab.dt_path);
