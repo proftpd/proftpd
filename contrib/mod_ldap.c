@@ -20,16 +20,18 @@
 
 /*
  * $Libraries: -lldap -llber$
- * ldap password lookup module for ProFTPD (mod_ldap v2.7.4)
- * Copyright (c) 1999-2000, John Morrissey <jwm@horde.net>
+ * LDAP password lookup module for ProFTPD (mod_ldap v2.7.5)
+ * Copyright (c) 1999, 2000-1, John Morrissey <jwm@horde.net>
  *
  * Thanks for patches to:
  * Peter Fabian <fabian@staff.matavnet.hu> - LDAPAuthBinds
  * Pierrick Hascoet <pierrick@alias.fr> - OpenSSL password hash support
+ * Gaute Nessan <gaute@KPNQwest.No> - OpenLDAP 2.0 fixes
+ * Ross Thomas <ross@grinfinity.com> - Non-AuthBinds auth fix
  * Bert Vermeulen <bert@be.easynet.net> - LDAPHomedirOnDemand,
  *                                        LDAPDefaultAuthScheme
  *
- * $Id: mod_ldap.c,v 1.14 2001-01-29 02:16:12 flood Exp $
+ * $Id: mod_ldap.c,v 1.15 2001-02-26 17:50:00 flood Exp $
  */
 
 /* Default mode to use when creating home directory on demand. */
@@ -172,8 +174,8 @@ static struct passwd *ldap_user_lookup(char *filter, char *ldap_attrs[], char *p
     return NULL;
   }
 
-  if (ldap_search_st(ld, prefix, ldap_search_scope, filter, ldap_attrs, 0, &ldap_querytimeout_tp, &result) == -1) {
-    log_pri(LOG_ERR, "mod_ldap: ldap_user_lookup(): ldap_search_st() failed");
+  if (ldap_search_st(ld, prefix, ldap_search_scope, filter, ldap_attrs, 0, &ldap_querytimeout_tp, &result) == LDAP_SUCCESS) {
+    log_pri(LOG_ERR, "mod_ldap: ldap_user_lookup(): ldap_search_st() failed: %s", ldap_err2string(ldap_result2error(ld, result, 1)));
     return NULL;
   }
 
@@ -308,8 +310,8 @@ static struct group *ldap_group_lookup(char *filter, char *ldap_attrs[])
     return NULL;
   }
 
-  if (ldap_search_st(ld, ldap_gid_prefix, ldap_search_scope, filter, ldap_attrs, 0, &ldap_querytimeout_tp, &result) == -1) {
-    log_pri(LOG_ERR, "mod_ldap: ldap_group_lookup(): ldap_search_st() failed");
+  if (ldap_search_st(ld, ldap_gid_prefix, ldap_search_scope, filter, ldap_attrs, 0, &ldap_querytimeout_tp, &result) == LDAP_SUCCESS) {
+    log_pri(LOG_ERR, "mod_ldap: ldap_group_lookup(): ldap_search_st() failed: %s", ldap_err2string(ldap_result2error(ld, result, 1)));
     return NULL;
   }
 
@@ -610,7 +612,11 @@ MODRET ldap_is_auth(cmd_rec *cmd)
     return HANDLED(cmd);
   }
 
-  filter = pstrcat(cmd->tmp_pool, "uid=", name, NULL);
+  if (ldap_auth_filter && *ldap_auth_filter)
+    filter = make_ldap_filter(cmd->tmp_pool, ldap_auth_filter, name);
+  else
+    filter = pstrcat(cmd->tmp_pool, "(&(uid=", name, ")(objectclass=posixAccount))", NULL);
+
   if ((pw = ldap_user_lookup(filter, pass_attrs, ldap_auth_prefix, cmd->tmp_pool)) == NULL)
     return DECLINED(cmd); /* Can't find the user in the LDAP db. */
 
