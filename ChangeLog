@@ -1,3 +1,7 @@
+2001-03-24 10:59  flood
+
+	* include/version.h: Bumped version number to 1.2.2rc1.
+
 2001-03-24 10:56  flood
 
 	* NEWS, modules/mod_auth.c: Bug #1085: better logging of two auth
