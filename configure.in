@@ -10,12 +10,6 @@ AC_CANONICAL_SYSTEM
 
 dnl Create symlinks in modules/ and contrib/
 olddir=`pwd`
-cd $srcdir/modules
-test -f mod_ratio.c || ln -s ../contrib/mod_ratio.c mod_ratio.c
-test -f mod_linuxprivs.c || ln -s ../contrib/mod_linuxprivs.c mod_linuxprivs.c
-test -f mod_pam.c || ln -s ../contrib/mod_pam.c mod_pam.c
-test -f mod_readme.c || ln -s ../contrib/mod_readme.c mod_readme.c
-
 cd ../contrib
 test -f README.linux-privs || ln -s ../README.linux-privs README.linux-privs
 cd $olddir
@@ -403,7 +397,14 @@ LIBS="-lsupp $LIBS"
 dnl Module handling.
 for module in $ac_addl_modules; do
   src=`echo "$module" | sed -e 's/\.o$//'`.c;
-  if test -f $srcdir/modules/$src; then
+  if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
+    if ! test -f $srcdir/modules/$src; then
+	olddir=`pwd`
+	cd $srcdir/modules
+	ln -s ../contrib/$src $src
+	cd $olddir
+    fi
+
     alib=`cat $srcdir/modules/$src | grep "\\\$Libraries:" | sed -e 's/^.*\$Libraries: \(.*\)\\$/\1/'`
     test x"$alib" = x || ac_addl_libs="$alib $ac_addl_libs"
     adir=`cat $srcdir/modules/$src | grep "\\\$Directories:" | sed -e 's/^.*\$Directories: \(.*\)\\$/\1/'`
