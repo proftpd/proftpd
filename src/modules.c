@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.35 2004-05-13 14:02:02 castaglia Exp $
+ * $Id: modules.c,v 1.36 2004-05-29 20:04:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -68,7 +68,7 @@ unsigned int n_authtabs;
 
 module *curr_module = NULL;			/* Current running module */
 
-extern module *static_modules[];
+extern module **loaded_modules;
 
 typedef struct mod_cb {
   struct mod_cb *next, *prev;
@@ -483,36 +483,42 @@ unsigned char command_exists(char *name) {
   return (cmdtab ? TRUE : FALSE);
 }
 
-unsigned char module_exists(const char *name) {
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-  register unsigned int i = 0;
-
-  /* Check the list of compiled-in modules. */
-  for (i = 0; static_modules[i]; i++) {
-    memset(buf, '\0', sizeof(buf));
-    snprintf(buf, sizeof(buf), "mod_%s.c", (static_modules[i])->name);
-    buf[sizeof(buf)-1] = '\0';
-
-    if (!strcmp(buf, name))
-      return TRUE;
-  }
-
-  /* default */
-  return FALSE;
+unsigned char pr_module_exists(const char *name) {
+  return pr_module_get(name) != NULL ? TRUE : FALSE;
 }
 
-void list_modules(void) {
+module *pr_module_get(const char *name) {
+  char buf[80] = {'\0'};
+  register unsigned int i = 0;
+
+  if (!name)
+    return NULL;
+
+  /* Check the list of compiled-in modules. */
+  for (i = 0; loaded_modules[i]; i++) {
+    memset(buf, '\0', sizeof(buf));
+    snprintf(buf, sizeof(buf), "mod_%s.c", loaded_modules[i]->name);
+    buf[sizeof(buf)-1] = '\0';
+
+    if (strcmp(buf, name) == 0)
+      return loaded_modules[i];
+  }
+
+  return NULL;
+}
+
+void modules_list(void) {
   register unsigned int i = 0;
   module *m = NULL;
 
   printf("Compiled-in modules:\n");
-  for (i = 0; static_modules[i]; i++) {
-    m = static_modules[i];
+  for (i = 0; loaded_modules[i]; i++) {
+    m = loaded_modules[i];
     printf("  mod_%s.c\n", m->name);
   }
 }
 
-int module_preparse_init(void) {
+int modules_init(void) {
   int numconf = 0,numcmd = 0,numauth = 0;
   module *m;
   conftable *conf = NULL;
@@ -522,8 +528,8 @@ int module_preparse_init(void) {
 
   installed_modules = xaset_create(permanent_pool, NULL);
 
-  for (i = 0; static_modules[i]; i++) {
-    m = static_modules[i];
+  for (i = 0; loaded_modules[i]; i++) {
+    m = loaded_modules[i];
     m->priority = i;
 
     if (m->api_version < PR_MODULE_API_VERSION) {

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.232 2004-05-21 17:19:02 castaglia Exp $
+ * $Id: mod_core.c,v 1.233 2004-05-29 20:03:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -42,17 +42,20 @@
 extern module site_module;
 extern xaset_t *server_list;
 
-/* from src/main.c */
+/* From src/main.c */
 extern unsigned long max_connects;
 extern unsigned int max_connect_interval;
 
-/* from mod_site */
+/* From modules/mod_site.c */
 extern modret_t *site_dispatch(cmd_rec*);
 
-/* from dirtree.c */
+/* From src/dirtree.c */
 extern array_header *server_defines;
 
-/* for bytes-retrieving directives */
+/* From modules/module_glue.c */
+extern module **loaded_modules;
+
+/* For bytes-retrieving directives */
 #define PR_BYTES_BAD_UNITS	-1
 #define PR_BYTES_BAD_FORMAT	-2
 
@@ -285,7 +288,7 @@ MODRET start_ifmodule(cmd_rec *cmd) {
     (cmd->argv[1])++;
   }
 
-  found_module = module_exists(cmd->argv[1]);
+  found_module = pr_module_exists(cmd->argv[1]);
 
   /* Return now if we don't need to consume the <IfModule> section
    * configuration lines.
@@ -306,11 +309,15 @@ MODRET start_ifmodule(cmd_rec *cmd) {
    */
   while (ifmodule_ctx_count && (config_line = get_config_line(buf,
       sizeof(buf))) != NULL) {
+    char *bufp;
 
-    if (!strncmp(config_line, "<IfModule", 9))
+    /* Advance past any leading whitespace. */
+    for (bufp = config_line; *bufp && isspace((int) *bufp); bufp++);
+
+    if (strncmp(bufp, "<IfModule", 9) == 0)
       ifmodule_ctx_count++;
 
-    if (!strcmp(config_line, "</IfModule>"))
+    if (strcmp(bufp, "</IfModule>") == 0)
       ifmodule_ctx_count--;
   }
 
@@ -2596,7 +2603,7 @@ MODRET set_authorder(cmd_rec *cmd) {
 
   /* Make sure the given modules exist */
   for (i = 1; i < cmd->argc; i++) {
-    if (!module_exists(cmd->argv[i]))
+    if (!pr_module_exists(cmd->argv[i]))
       return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
         cmd->argv[0], ": no such module '", cmd->argv[i], "' installed",
         NULL));

@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.233 2004-05-25 17:17:23 castaglia Exp $
+ * $Id: main.c,v 1.234 2004-05-29 20:04:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2534,7 +2534,7 @@ int main(int argc, char *argv[], char **envp) {
       break;
 
     case 'l':
-      list_modules();
+      modules_list();
       exit(0);
       break;
 
@@ -2602,7 +2602,7 @@ int main(int argc, char *argv[], char **envp) {
   init_ctrls();
 #endif /* USE_CTRLS */
 
-  module_preparse_init();
+  modules_init();
 
   /* Now, once the modules have had a chance to initialize themselves
    * but before the configuration stream is actually parsed, check

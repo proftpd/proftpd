@@ -20,3 +20,6 @@ done
 
 echo "  NULL" >>$GLUE
 echo "};"     >>$GLUE
+
+echo >>$GLUE
+echo "module **loaded_modules = static_modules;" >>$GLUE

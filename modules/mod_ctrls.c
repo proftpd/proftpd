@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.15 2004-05-29 19:52:02 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.16 2004-05-29 20:04:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -38,8 +38,6 @@
 
 /* Master daemon in standalone mode? (from src/main.c) */
 extern unsigned char is_master;
-
-extern module *static_modules[];
 
 module ctrls_module;
 static ctrls_acttab_t ctrls_acttab[];
@@ -1227,21 +1225,8 @@ static int ctrls_handle_insctrl(pr_ctrls_t *ctrl, int reqargc,
   /* If the optional second parameter, a module name, is used, lookup
    * the module pointer matching the name.
    */
-  if (reqargc == 2) {
-    char buf[80] = {'\0'};
-    register unsigned int i = 0;
-
-    for (i = 0; static_modules[i]; i++) {
-      memset(buf, '\0', sizeof(buf));
-      snprintf(buf, sizeof(buf), "mod_%s.c", (static_modules[i])->name);
-      buf[sizeof(buf)-1] = '\0';
-
-      if (strcmp(buf, reqargv[1]) == 0) {
-        m = static_modules[i];
-        break;
-      }
-    }
-  }
+  if (reqargc == 2)
+    m = pr_module_get(reqargv[1]);
 
   if (pr_set_registered_actions(m, reqargv[0], FALSE, 0) < 0) {
 
@@ -1325,21 +1310,8 @@ static int ctrls_handle_rmctrl(pr_ctrls_t *ctrl, int reqargc,
   /* If the optional second parameter, a module name, is used, lookup
    * the module pointer matching the name.
    */
-  if (reqargc == 2) {
-    char buf[80] = {'\0'};
-    register unsigned int i = 0;
-
-    for (i = 0; static_modules[i]; i++) {
-      memset(buf, '\0', sizeof(buf));
-      snprintf(buf, sizeof(buf), "mod_%s.c", (static_modules[i])->name);
-      buf[sizeof(buf)-1] = '\0';
-
-      if (strcmp(buf, reqargv[1]) == 0) {
-        m = static_modules[i];
-        break;
-      }
-    }
-  }
+  if (reqargc == 2)
+    m = pr_module_get(reqargv[1]);
 
   if (pr_set_registered_actions(m, reqargv[0], FALSE,
       PR_CTRLS_ACT_DISABLED) < 0) {
