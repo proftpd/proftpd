@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.133 2003-11-15 20:30:25 castaglia Exp $
+ * $Id: dirtree.c,v 1.134 2003-11-15 23:49:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1528,151 +1528,35 @@ static int _check_group_access(xaset_t *set, char *name) {
   return res;
 }
 
-/* returns 1 if explicit match
- * returns -1 if explicit mismatch (i.e. "NONE")
- * returns 0 if no match
- */
-
-/* XXX much nasty ACL code, screaming to be reimplemented. */
-
-int match_ip(pr_netaddr_t *cli_addr, const char *cli_str,
-    const char *acl_match) {
-  char acl_str[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-  char *mask,*cp;
-  int cidr_mode = 0, cidr_bits;
-  struct in_addr cidr_addr;
-  u_int_32 cidr_mask = 0;
-
-  if (!strcasecmp(acl_match, "ALL"))
-    return 1;
-
-  if (!strcasecmp(acl_match, "NONE"))
-    return -1;
-
-  memset(acl_str, '\0', sizeof(acl_str));
-  mask = acl_str;
-
-  if (*acl_match == '.') {
-    *mask++ = '*';
-    *mask = '\0';
-    sstrcat(acl_str, acl_match, sizeof(acl_str));
-
-  } else if (*(acl_match + strlen(acl_match) - 1) == '.') {
-    sstrcat(acl_str, acl_match, sizeof(acl_str));
-    sstrcat(acl_str, "*", sizeof(acl_str));
-
-  /* Check for CIDR notation. */
-  } else if ((cp = strchr(acl_match, '/')) != NULL) {
-    /* first portion of CIDR should be dotted quad, second portion
-     * is netmask
-     */
-    sstrncpy(acl_str, acl_match, (cp-acl_match)+1 <= sizeof(acl_str) ?
-                                 (cp-acl_match)+1 :  sizeof(acl_str));
-    cidr_bits = atoi(cp+1);
-
-    if (cidr_bits > 0 && cidr_bits < 33) {
-      int shift = 32 - cidr_bits;
-
-      cidr_mode = 1;
-      while (cidr_bits--)
-	cidr_mask = (cidr_mask << 1) | 1;
-      cidr_mask = cidr_mask << shift;
-#ifdef HAVE_INET_ATON
-      if (inet_aton(mask, &cidr_addr) == 0)
-	return 0;
-#else
-      cidr_addr.s_addr = inet_addr(mask);
-#endif
-      cidr_addr.s_addr &= htonl(cidr_mask);
-
-    } else {
-      return 0;
-    }
-
-  } else {
-    sstrcat(acl_str, acl_match, sizeof(acl_str));
-  }
-
-  if (cidr_mode) {
-/* NOTE: encapsulation breakage note/IPv6 change needed here. */
-#if 0
-    if ((cli_addr->s_addr & htonl(cidr_mask)) == cidr_addr.s_addr)
-#endif
-      return 1;
-
-  } else {
-    pr_netaddr_t *acl_addr = NULL;
-    int fnm_flags = PR_FNM_NOESCAPE|PR_FNM_CASEFOLD;
-    pool *tmp_pool = make_sub_pool(permanent_pool);
-    const char *acl_ascii = NULL, *cli_ascii = NULL;
-
-    pr_pool_tag(tmp_pool, "match_ip() tmp pool");
-
-    if (strpbrk(acl_str, "[*?") == NULL)
-      acl_addr = pr_netaddr_get_addr(tmp_pool, acl_str, NULL);
-
-    /* As acl_str may contain the '*' globbing character, an attempt
-     * to resolve it to an IP address may very well fail, in which case this
-     * will be NULL.  Handle this case accordingly.
-     */
-    acl_ascii = acl_addr ? pr_netaddr_get_ipstr(acl_addr) : acl_str;
-    cli_ascii = pr_netaddr_get_ipstr(cli_addr);
-
-    pr_log_debug(DEBUG6, "comparing addresses '%s' (%s) and '%s' (%s)",
-      acl_str, acl_ascii, cli_str, cli_ascii);
-
-    if (!pr_fnmatch(acl_str, cli_str, fnm_flags) ||
-        !pr_fnmatch(acl_str, cli_ascii, fnm_flags) ||
-        !pr_fnmatch(acl_ascii, cli_ascii, fnm_flags)) {
-      pr_log_debug(DEBUG6, "addresses match");
-      destroy_pool(tmp_pool);
-      return 1;
-
-    } else
-      pr_log_debug(DEBUG6, "addresses do not match");
-
-    destroy_pool(tmp_pool);
-  }
-
-  return 0;
-}
-
 /* As of 1.2.0rc3, a '!' character in front of the IP address
  * negates the logic (i.e. doesn't match).
  *
  * Here are our rules for matching an IP/host list:
  *
- * (negate-cond-1 && negate-cond-2 && ... negate-cond-n) &&
- * (cond-1 || cond-2 || ... cond-n)
+ *   (negate-cond-1 && negate-cond-2 && ... negate-cond-n) &&
+ *   (cond-1 || cond-2 || ... cond-n)
  *
  * This boils down to the following two rules:
  *
- * 1. ALL negative ('!') conditions must evaluate to
- * logically TRUE.
- *
- * .. and ..
- *
- * 2. One (or more) normal conditions must evaluate to
- * logically TRUE.
+ *   1. ALL negative ('!') conditions must evaluate to logically TRUE.
+ *   2. One (or more) normal conditions must evaluate to logically TRUE.
  */
 
-/* Check an ACL for negative (!) rules and make sure all of them evaluate to
- * TRUE.  Default (if none exist) is TRUE.
+/* Check an ACL for negated rules and make sure all of them evaluate to TRUE.
+ * Default (if none exist) is TRUE.
  */
 static int _check_ip_negative(const config_rec *c) {
-  char *arg,**argv;
-  int argc;
+  int aclc;
+  pr_netacl_t **aclv;
 
-  for (argc = c->argc, argv = (char **)c->argv; argc; argc--, argv++) {
-    arg = *argv;
-    if (*arg != '!')
+  for (aclc = c->argc, aclv = (pr_netacl_t **) c->argv; aclc; aclc--, aclv++) {
+    if (pr_netacl_is_negated(*aclv) == FALSE)
       continue;
 
-    arg++;
-    switch (match_ip(session.c->remote_addr, session.c->remote_name, arg)) {
+    switch (pr_netacl_match(*aclv, session.c->remote_addr)) {
       case 1:
         /* This actually means we DIDN'T match, and it's ok to short circuit
-         * everything (negative)
+         * everything (negative).
          */
         return FALSE;
 
@@ -1701,15 +1585,14 @@ static int _check_ip_negative(const config_rec *c) {
  * TRUE.  Default return is FALSE.
  */
 static int _check_ip_positive(const config_rec *c) {
-  char *arg,**argv;
-  int argc;
+  int aclc;
+  pr_netacl_t **aclv;
 
-  for (argc = c->argc, argv = (char **)c->argv; argc; argc--, argv++) {
-    arg = *argv;
-    if (*arg == '!')
+  for (aclc = c->argc, aclv = (pr_netacl_t **) c->argv; aclc; aclc--, aclv++) {
+    if (pr_netacl_is_negated(*aclv) == TRUE)
       continue;
 
-    switch (match_ip(session.c->remote_addr, session.c->remote_name, arg)) {
+    switch (pr_netacl_match(*aclv, session.c->remote_addr)) {
       case 1:
         /* Found it! */
         return TRUE;

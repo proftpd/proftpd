@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.14 2003-10-17 15:39:27 castaglia Exp $
+ * $Id: netaddr.h,v 1.15 2003-11-15 23:49:52 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -66,14 +66,18 @@ int pr_netaddr_cmp(const pr_netaddr_t *, const pr_netaddr_t *);
 int pr_netaddr_ncmp(const pr_netaddr_t *, const pr_netaddr_t *, unsigned int);
 
 /* Compare the given pr_netaddr_t against a glob pattern, as intended for
- * fnmatch(3).  The given pattern will be matched first against the DNS
- * string of the netaddr, if present.  If that doesn't match, a comparison
- * against the IP address string will be tried.  A return value of -1, with
- * errno set to EINVAL, occurs if the netaddr or pattern are NULL.  Otherwise,
- * TRUE is returned if the address is matched by the pattern, or FALSE if
- * is not matched.
+ * fnmatch(3).  The flags parameter is an OR of the following values:
+ * PR_NETADDR_MATCH_DNS and PR_NETADDR_MATCH_IP.  If the PR_NETADDR_MATCH_DNS
+ * flag is used, the given pattern will be matched against the DNS string of
+ * the netaddr, if present.  If that doesn't match, and if the
+ * PR_NETADDR_MATCH_IP flag is used, a comparison against the IP address string
+ * will be tried.  A return value of -1, with errno set to EINVAL, occurs if
+ * the netaddr or pattern are NULL.  Otherwise, TRUE is returned if the address
+ * is matched by the pattern, or FALSE if is not matched.
  */
-int pr_netaddr_fnmatch(pr_netaddr_t *, const char *);
+int pr_netaddr_fnmatch(pr_netaddr_t *, const char *, int);
+#define PR_NETADDR_MATCH_DNS		0x001
+#define PR_NETADDR_MATCH_IP		0x002
 
 /* Returns the size of the contained address (or -1, with errno set to EINVAL,
  * if NULL is used as the argument).  If the pr_netaddr_t is of the AF_INET

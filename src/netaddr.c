@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.36 2003-11-13 07:25:35 castaglia Exp $
+ * $Id: netaddr.c,v 1.37 2003-11-15 23:49:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -530,30 +530,39 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
   return 0;
 }
 
-int pr_netaddr_fnmatch(pr_netaddr_t *na, const char *pattern) {
+int pr_netaddr_fnmatch(pr_netaddr_t *na, const char *pattern, int flags) {
 
-  /* NOTE: I'm still not sure why proftpd bundles an fnmatch(3)
+  /* Note: I'm still not sure why proftpd bundles an fnmatch(3)
    * implementation rather than using the system library's implementation.
    * Needs looking into.
    *
    * The FNM_CASEFOLD flag is a GNU extension; perhaps the bundled
    * implementation was added to make that flag available on other platforms.
    */
-  int flags = PR_FNM_NOESCAPE|PR_FNM_CASEFOLD;
-  const char *dnsstr, *ipstr;
+  int match_flags = PR_FNM_NOESCAPE|PR_FNM_CASEFOLD;
 
   if (!na || !pattern) {
     errno = EINVAL;
     return -1;
   }
 
-  dnsstr = pr_netaddr_get_dnsstr(na);
-  if (pr_fnmatch(pattern, dnsstr, flags) == 0)
-    return TRUE;
+  if (flags & PR_NETADDR_MATCH_DNS) {
+    const char *dnsstr = pr_netaddr_get_dnsstr(na);
 
-  ipstr = pr_netaddr_get_ipstr(na);
-  if (pr_fnmatch(pattern, ipstr, flags) == 0)
-    return TRUE;
+    pr_log_debug(DEBUG6, "comparing DNS name '%s' to pattern '%s'", dnsstr,
+      pattern);
+    if (pr_fnmatch(pattern, dnsstr, match_flags) == 0)
+      return TRUE;
+  }
+
+  if (flags & PR_NETADDR_MATCH_IP) {
+    const char *ipstr = pr_netaddr_get_ipstr(na);
+
+    pr_log_debug(DEBUG6, "comparing IP address '%s' to pattern '%s'", ipstr,
+      pattern);
+    if (pr_fnmatch(pattern, ipstr, match_flags) == 0)
+      return TRUE;
+  }
 
   return FALSE;
 }

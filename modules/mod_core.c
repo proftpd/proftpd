@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.211 2003-11-15 20:41:56 castaglia Exp $
+ * $Id: mod_core.c,v 1.212 2003-11-15 23:49:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2390,66 +2390,84 @@ MODRET set_allowdenyusergroup(cmd_rec *cmd) {
 
 MODRET set_allowdeny(cmd_rec *cmd) {
   int argc;
-  char *s,*ent,**argv;
-  array_header *acl;
+  char **argv;
+  pr_netacl_t **aclargv;
+  array_header *list;
   config_rec *c;
 
   CHECK_CONF(cmd, CONF_LIMIT);
 
   /* Syntax: allow [from] [all|none]|host|network[,...] */
-  acl = make_array(cmd->tmp_pool,cmd->argc,sizeof(char*));
-  argc = cmd->argc-1; argv = cmd->argv;
-
-  /* Skip optional "from" keyword */
-  /* ! is allowed in front of a hostmask or IP, but NOT in front of
-   * ALL or NONE
-   */
-
-  while(argc && *(argv+1)) {
-    if (!strcasecmp("from",*(argv+1))) {
-      argv++; argc--; continue;
-    } else if (!strcasecmp("!all",*(argv+1)) ||
-              !strcasecmp("!none",*(argv+1))) {
-      CONF_ERROR(cmd,"negation operator (!) cannot be used with ALL/NONE");
-    } else if (!strcasecmp("all",*(argv+1))) {
-      *((char**)push_array(acl)) = "ALL";
-      argc = 0;
-    } else if (!strcasecmp("none",*(argv+1))) {
-      *((char**)push_array(acl)) = "NONE";
-      argc = 0;
-    }
-    break;
-  }
-
-  while(argc-- && *(++argv)) {
-    s = pstrdup(cmd->tmp_pool,*argv);
-
-    /* Parse the string into comma-delimited entries */
-    while((ent = get_token(&s,",")) != NULL)
-      if (*ent) {
-        if (!strcasecmp(ent,"all") || !strcasecmp(ent,"none")) {
-          acl->nelts = 0; argc = 0; break;
-        }
-
-        *((char**)push_array(acl)) = ent;
-      }
-  }
-
-  if (!acl->nelts)
-    CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"syntax: ", cmd->argv[0] ,
-                   " [from] [all|none]|host|network[,...]",NULL));
+  list = make_array(cmd->tmp_pool, cmd->argc, sizeof(pr_netacl_t *));
+  argc = cmd->argc-1;
+  argv = cmd->argv;
 
   c = add_config_param(cmd->argv[0], 0);
 
-  c->argc = acl->nelts;
-  c->argv = pcalloc(c->pool, (c->argc+1) * sizeof(char *));
-  argv = (char **) c->argv;
+  /* Skip optional "from" keyword. The '!' character is allowed in front of a
+   * hostmask or IP, but NOT in front of "ALL" or "NONE".
+   */
 
-  while (acl->nelts--) {
-    *argv++ = pstrdup(c->pool, *((char **) acl->elts));
-    acl->elts = ((char **)acl->elts) + 1;
+  while (argc && *(argv+1)) {
+    if (strcasecmp("from", *(argv+1)) == 0) {
+      argv++;
+      argc--;
+      continue;
+
+    } else if (strcasecmp("!all", *(argv+1)) == 0 ||
+               strcasecmp("!none", *(argv+1)) == 0) {
+      CONF_ERROR(cmd, "the ! negation operator cannot be used with ALL/NONE");
+
+    } else if (strcasecmp("all", *(argv+1)) == 0 ||
+               strcasecmp("none", *(argv+1)) == 0) {
+      *((pr_netacl_t **) push_array(list)) =
+        pr_netacl_create(c->pool, *(argv+1));
+      argc = 0;
+    }
+
+    break;
   }
-  *argv = NULL;
+
+  /* Parse any other/remaining rules. */
+  while (argc-- && *(++argv)) {
+    char *ent = NULL;
+    char *s = pstrdup(cmd->tmp_pool, *argv);
+
+    /* Parse the string into comma-delimited entries */
+    while ((ent = get_token(&s, ",")) != NULL) {
+      if (*ent) {
+        pr_netacl_t *acl;
+
+        if (strcasecmp(ent, "all") == 0 ||
+            strcasecmp(ent, "none") == 0) {
+          list->nelts = 0;
+          argc = 0;
+          break;
+        }
+
+        acl = pr_netacl_create(c->pool, ent);
+        if (!acl)
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad ACL definition: '",
+            ent, "': ", strerror(errno), NULL));     
+
+        *((pr_netacl_t **) push_array(list)) = acl;
+      }
+    }
+  }
+
+  if (!list->nelts)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "syntax: ", cmd->argv[0],
+      " [from] [all|none]|host|network[,...]", NULL));
+
+  c->argc = list->nelts;
+  c->argv = pcalloc(c->pool, (c->argc+1) * sizeof(pr_netacl_t *));
+  aclargv = (pr_netacl_t **) c->argv;
+
+  while (list->nelts--) {
+    *aclargv++ = *((pr_netacl_t **) list->elts);
+    list->elts = ((pr_netacl_t **) list->elts) + 1;
+  }
+  *aclargv = NULL;
 
   return HANDLED(cmd);
 }

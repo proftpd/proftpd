@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.48 2003-11-15 19:52:22 castaglia Exp $
+ * $Id: dirtree.h,v 1.49 2003-11-15 23:49:52 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -286,7 +286,6 @@ unsigned char check_context(cmd_rec *, int);
 char *get_context_name(cmd_rec *);
 int get_boolean(cmd_rec *, int);
 char *get_full_cmd(cmd_rec *);
-int match_ip(pr_netaddr_t *, const char *, const char *);
 
 void pr_conf_debug_config(void (*)(const char *, ...), xaset_t *, char *);
 
