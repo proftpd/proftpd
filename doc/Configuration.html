@@ -32,6 +32,7 @@
   <li><a href="#Bind">Bind</a></li>
   <li><a href="#CDPath">CDPath</a></li>
   <li><a href="#CommandBufferSize">CommandBufferSize</a></li>
+  <li><a href="#DefaultChdir">DefaultChdir</a></li>
   <li><a href="#DefaultRoot">DefaultRoot</a></li>
   <li><a href="#DefaultServer">DefaultServer</a></li>
   <li><a href="#DeferWelcome">DeferWelcome</a></li>
@@ -110,6 +111,7 @@
   <li><a href="#UseFtpUsers">UseFtpUsers</a></li>
   <li><a href="#UseReverseDNS">UseReverseDNS</a></li>
   <li><a href="#User">User</a></li>
+  <li><a href="#UserDirRoot">UserDirRoot</a></li>
   <li><a href="#UserAlias">UserAlias</a></li>
   <li><a href="#UserPassword">UserPassword</a></li>
   <li><a href="#VirtualHost">&lt;VirtualHost&gt;</a></li>
@@ -551,8 +553,29 @@ they currently are in the directory tree.
   to be sent to the server. This allows you to effectively control what the longest 
   command the server may accept it, and can help protect the server from various 
   Denial of Service or resource-consumption attacks. </p>
+
 <hr>
+
+<h2><a name="DefaultChdir">DefaultChdir</a></h2>
+
+<p><strong>Syntax:</strong> DefaultChdir <em>directory
+  [group-expression]</em><br>
+  <strong>Default:</strong> ~<br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+  &lt;Anonymous&gt;, &lt;Global&gt;<br>
+  <strong>Compatibility:</strong> 1.2.0pre2 and later</p>
+
+<p>Determines the directory a user is placed in after logging in.
+  By default, the user is put in their home directory.  The specified
+  directory can be relative to the user's home directory.</p>
+
+<p><strong>NOTE:</strong> if the specifed directory is not available
+  the user will not be able to log in.</p>
+
+<hr>
+
 <h2><a name="DefaultRoot">DefaultRoot</a></h2>
+
 <p><strong>Syntax:</strong> DefaultRoot <em>directory [group-expression]</em><br>
   <strong>Default:</strong> <code>DefaultRoot /</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
@@ -2076,7 +2099,25 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
     privileges are released, the daemon switches permanently to the logged in 
     user's uid/gid, and is never again capable of switching back to root or any 
     other user/group.</u></p>
+
   <hr>
+
+<h2><a name="UserDirRoot">UserDirRoot</a></h2>
+
+<p><strong>Syntax:</strong> UserDirRoot <em>on|off</em><br>
+  <strong>Default:</strong> off<br>
+  <strong>Context:</strong> &lt;Anonymous&gt;<br>
+  <strong>Compatibility:</strong> 1.2.0pre2 and later</p>
+
+<p>When set to true, the chroot base directory becomes a subdirectory of the 
+  anonymous ftp directory, based on the username of the current user.  For 
+  example, assuming user "foo" is aliased to "ftp", logging in as "foo" causes
+  proftpd to run as <em>real</em> user ftp, but to chroot into <code>~ftp/foo</code>
+  instead of just <code>~ftp</code>.
+</p>
+
+<hr>
+
   <h2><a name="UserAlias">UserAlias</a></h2>
   <p><strong>Syntax:</strong> UserAlias <em>login-user userid</em><br>
     <strong>Default:</strong> None<br>
