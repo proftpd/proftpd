@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.156 2003-01-17 21:47:38 castaglia Exp $
+ * $Id: mod_core.c,v 1.157 2003-01-28 22:00:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -164,8 +164,8 @@ static ssize_t get_num_bytes(char *nbytes_str) {
 
   } else if (result == 1) {
 
-    /* No units given -- just return the number of bytes as is. */
-    return nbytes;
+    /* No units given.  Return the number of bytes as is. */
+    return (ssize_t) inb;
   }
 
   /* Default return value: the given argument was badly formatted.
