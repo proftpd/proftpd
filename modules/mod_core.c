@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.207 2003-11-09 22:19:45 castaglia Exp $
+ * $Id: mod_core.c,v 1.208 2003-11-09 22:51:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1070,17 +1070,13 @@ MODRET set_unsetenv(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
  
-  if (unsetenv(cmd->argv[1]) < 0)
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-      "unable to clear environment variable '", cmd->argv[1], ": ",
-      strerror(errno), NULL));
- 
+  unsetenv(cmd->argv[1]);
   return HANDLED(cmd);
 
 #else
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
     " directive cannot be used on this system, as it does not have the "
-    "setenv() function.", NULL));
+    "unsetenv() function.", NULL));
 
 #endif /* HAVE_UNSETENV */
 }
