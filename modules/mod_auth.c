@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.17 1999-10-23 03:21:51 macgyver Exp $
+ * $Id: mod_auth.c,v 1.18 1999-10-23 05:18:49 macgyver Exp $
  */
 
 #include "conf.h"
@@ -621,11 +621,20 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
   if(!c || get_param_int(c->subset,"AnonRequirePassword",FALSE) == 1) {
     int authcode;
+    char *user_name;
+
+    user_name = user;
+
+    /* if 'AuthUsingAlias' set and logging in under an alias then auth using that alias */
+    if (origuser && strcasecmp(user,origuser) && get_param_int(c->subset,"AuthUsingAlias",FALSE) == 1) {
+      user_name = origuser;
+      log_auth(LOG_NOTICE,"ANON AUTH: User %s, Auth Alias %s",user,user_name);
+    }
 
     if(c)
-      authcode = _do_auth(p,c->subset,user,pass);
+      authcode = _do_auth(p,c->subset,user_name,pass);
     else
-      authcode = _do_auth(p,main_server->conf,user,pass);
+      authcode = _do_auth(p,main_server->conf,user_name,pass);
 
     if(authcode) {
       /* Normal authentication has failed, see if group authentication

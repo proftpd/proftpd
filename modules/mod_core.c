@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.19 1999-10-18 05:12:40 macgyver Exp $
+ * $Id: mod_core.c,v 1.20 1999-10-23 05:18:49 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -1050,6 +1050,21 @@ MODRET set_anonrequirepassword(cmd_rec *cmd)
 
   add_config_param("AnonRequirePassword",1,
                    (void*)get_boolean(cmd,1));
+  return HANDLED(cmd);
+}
+
+MODRET set_authusingalias(cmd_rec *cmd)
+{
+  int b;
+
+  CHECK_ARGS(cmd,1);
+  CHECK_CONF(cmd,CONF_ANON);
+
+  if((b = get_boolean(cmd,1)) == -1)
+    CONF_ERROR(cmd,"expected boolean argument.");
+
+  add_config_param("AuthUsingAlias",1,(void*)b);
+
   return HANDLED(cmd);
 }
 
@@ -2572,6 +2587,7 @@ static conftable core_conftable[] = {
   { "<Anonymous>",		add_anonymous,			NULL },
   { "UserAlias",		add_useralias, 			NULL },
   { "AnonRequirePassword",	set_anonrequirepassword,	NULL },
+  { "AuthUsingAlias",		set_authusingalias,		NULL },
   { "CommandBufferSize",	set_commandbuffersize,		NULL },
   { "AllowFilter",		set_allowfilter,		NULL },
   { "DenyFilter",		set_denyfilter,			NULL },
