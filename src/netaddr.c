@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.26 2003-10-11 16:57:24 castaglia Exp $
+ * $Id: netaddr.c,v 1.27 2003-10-11 17:01:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -623,9 +623,6 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
       unsigned char ok = FALSE;
 
 #ifdef HAVE_GETHOSTBYNAME2
-      /* On *BSD platforms, gethostbyname2() is provided as the function to
-       * handle names with AF_INET6 addresses.
-       */
       hent = gethostbyname2(buf, pr_netaddr_get_family(na));
 #else
       hent = gethostbyname(buf);
