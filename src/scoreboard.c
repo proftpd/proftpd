@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.21 2003-03-24 20:26:38 castaglia Exp $
+ * $Id: scoreboard.c,v 1.22 2003-03-29 23:55:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -59,18 +59,28 @@ static char *handle_score_str(const char *fmt, va_list cmdap) {
 static int read_scoreboard_header(pr_scoreboard_header_t *sch) {
   int res = 0;
 
+  /* No interruptions, please. */
+  pr_signals_block();
+ 
   /* NOTE: reading a struct from a file using read(2) -- bad (in general). */
   while ((res = read(scoreboard_fd, sch, sizeof(pr_scoreboard_header_t))) !=
       sizeof(pr_scoreboard_header_t)) {
-    if (res == 0)
+    int rd_errno = errno;
+
+    pr_signals_unblock();
+
+    if (res == 0) {
+      errno = EIO;
       return -1;
+    }
 
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
+    }
 
-    } else
-      return -1;
+    errno = rd_errno;
+    return -1;
   }
 
   /* Note: these errors will most likely occur only for inetd-run daemons.
@@ -218,15 +228,31 @@ int pr_close_scoreboard(void) {
   if (scoreboard_read_locked || scoreboard_write_locked)
     unlock_scoreboard();
 
-  close(scoreboard_fd);
-  scoreboard_fd = -1;
+  while (close(scoreboard_fd) < 0) {
+    if (errno == EINTR) {
+      pr_signals_handle();
+      continue;
 
+    } else
+      break;
+  }
+
+  scoreboard_fd = -1;
   return 0;
 }
 
 void pr_delete_scoreboard(void) {
-  if (scoreboard_fd > -1)
-    close(scoreboard_fd);
+  if (scoreboard_fd > -1) {
+    while (close(scoreboard_fd) < 0) {
+      if (errno == EINTR) {
+        pr_signals_handle();
+        continue;
+
+      } else
+        break;
+    }
+  }
+
   scoreboard_fd = -1;
 
   if (scoreboard_file)
@@ -248,26 +274,66 @@ int pr_open_scoreboard(int flags) {
    * If so, close the file and error out.  If not, truncate as necessary,
    * and continue.
    */
-  if ((scoreboard_fd = open(scoreboard_file, flags|O_CREAT,
-      PR_SCOREBOARD_MODE)) < 0)
-    return -1;
+  
+  while ((scoreboard_fd = open(scoreboard_file, flags|O_CREAT,
+      PR_SCOREBOARD_MODE)) < 0) {
+    if (errno == EINTR) {
+      pr_signals_handle();
+      continue;
+
+    } else
+      return -1;
+  }
 
   /* Make certain that the scoreboard mode will be read-only for everyone
    * except the user owner (this allows for non-root-running daemons to
    * still modify the scoreboard).
    */
-  fchmod(scoreboard_fd, 0644);
+  while (fchmod(scoreboard_fd, 0644) < 0) {
+    if (errno == EINTR) {
+      pr_signals_handle();
+      continue;
 
-  if (fstat(scoreboard_fd, &st) < 0) {
-    close(scoreboard_fd);
+    } else
+      break;
+  }
+
+  while (fstat(scoreboard_fd, &st) < 0) {
+    int st_errno = errno;
+
+    if (errno == EINTR) {
+      pr_signals_handle();
+      continue;
+    }
+
+    while (close(scoreboard_fd) < 0) {
+      if (errno == EINTR) {
+        pr_signals_handle();
+        continue;
+
+      } else
+        break;
+    }
+
+    /* Either way, the scoreboard fd should be marked as closed. */
     scoreboard_fd = -1;
+
+    errno = st_errno;
     return -1;
   }
 
   if (S_ISLNK(st.st_mode)) {
-    close(scoreboard_fd);
-    scoreboard_fd = -1;
+    while (close(scoreboard_fd) < 0) {
+      if (errno == EINTR) {
+        pr_signals_handle();
+        continue;
+
+      } else
+        break;
+    }
+
     errno = EPERM;
+    scoreboard_fd = -1;
     return -1;
   }
 
@@ -289,15 +355,24 @@ int pr_open_scoreboard(int flags) {
       header.sch_uptime = 0;
     }
 
+    /* Write-lock the scoreboard file. */
+    wlock_scoreboard();
+
     while (write(scoreboard_fd, &header, sizeof(header)) != sizeof(header)) {
+      int wr_errno = errno;
+
       if (errno == EINTR) {
         pr_signals_handle();
         continue;
+      }
 
-      } else
-        return -1;
+      unlock_scoreboard();
+
+      errno = wr_errno;
+      return -1;
     }
 
+    unlock_scoreboard();
     return 0;
 
   } else
@@ -379,6 +454,9 @@ int pr_scoreboard_add_entry(void) {
   /* Write-lock the scoreboard file. */
   wlock_scoreboard();
 
+  /* No interruptions, please. */
+  pr_signals_block();
+
   /* If the scoreboard is open, the file position is already past the
    * header.
    */
@@ -404,9 +482,6 @@ int pr_scoreboard_add_entry(void) {
 
     if (found_slot)
       break;
-
-    if (errno == EINTR)
-      pr_signals_handle();
   }
 
   memset(&entry, '\0', sizeof(entry));
@@ -418,6 +493,8 @@ int pr_scoreboard_add_entry(void) {
   if (write_entry() < 0)
     log_pri(PR_LOG_NOTICE, "error writing scoreboard entry: %s",
       strerror(errno));
+
+  pr_signals_unblock();
 
   /* We can unlock the scoreboard now. */
   unlock_scoreboard();
