@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.8 2004-05-31 22:07:39 castaglia Exp $
+ * $Id: event.c,v 1.9 2004-09-05 22:42:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -197,8 +197,13 @@ void pr_event_generate(const char *event, const void *event_data) {
       curr_evl = evl;
 
       for (evh = evl->handlers; evh; evh = evh->next) {
-        pr_log_debug(DEBUG10, "dispatching event '%s' to mod_%s", event,
-          evh->module->name);
+        if (evh->module)
+          pr_log_debug(DEBUG10, "dispatching event '%s' to mod_%s", event,
+            evh->module->name);
+
+        else
+          pr_log_debug(DEBUG10, "dispatching event '%s' to core", event);
+
         evh->cb(event_data, evh->user_data);
       }
 
@@ -227,7 +232,11 @@ void pr_event_dump(void (*dumpf)(const char *, ...)) {
 
       dumpf("Registered for '%s':", evl->event);
       for (evh = evl->handlers; evh; evh = evh->next)
-        dumpf("  mod_%s.c", evh->module->name);
+        if (evh->module)
+          dumpf("  mod_%s.c", evh->module->name);
+
+        else
+          dumpf("  (core)");
     }
   }
 
