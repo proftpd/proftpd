@@ -907,6 +907,11 @@ static int tls_init_ctxt(void) {
   if (tls_seed_prng())
     tls_log("%s", "unable to properly seed PRNG");
 
+  /* Add the commands handled by this module to the HELP list. */
+  pr_help_add(C_AUTH, "<sp> base64-data", TRUE);
+  pr_help_add(C_PBSZ, "<sp> protection buffer size", TRUE);
+  pr_help_add(C_PROT, "<sp> protection code", TRUE);
+
   return 0;
 }
 

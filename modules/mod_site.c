@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.39 2003-11-09 23:10:56 castaglia Exp $
+ * $Id: mod_site.c,v 1.40 2004-02-17 02:16:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -459,6 +459,17 @@ MODRET site_post_cmd(cmd_rec *cmd) {
   return DECLINED(cmd);
 }
 
+/* Initialization routines
+ */
+
+static int site_init(void) {
+
+  /* Add the commands handled by this module to the HELP list. */ 
+  pr_help_add(C_SITE, "<sp> string", TRUE);
+
+  return 0;
+}
+
 /* Module API tables
  */
 
@@ -492,7 +503,7 @@ module site_module = {
   NULL,
 
   /* Module initialization function */
-  NULL,
+  site_init,
 
   /* Session initialization function */
   NULL

@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.102 2004-02-01 20:51:48 castaglia Exp $
+ * $Id: mod_ls.c,v 1.103 2004-02-17 02:15:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2162,6 +2162,19 @@ MODRET set_lsdefaultoptions(cmd_rec *cmd) {
   CONF_ERROR(cmd, "deprecated. Use ListOptions instead");
 }
 
+/* Initialization routines
+ */
+
+static int ls_init(void) {
+
+  /* Add the commands handled by this module to the HELP list. */
+  pr_help_add(C_LIST, "[<sp> pathname]", TRUE);
+  pr_help_add(C_NLST, "[<sp> (pathname)]", TRUE);
+  pr_help_add(C_STAT, "[<sp> pathname]", TRUE);
+
+  return 0;
+}
+
 /* Module API tables
  */
 
@@ -2210,7 +2223,7 @@ module ls_module = {
   NULL,
 
   /* Module initialization */
-  NULL,
+  ls_init,
 
   /* Session initialization */
   NULL

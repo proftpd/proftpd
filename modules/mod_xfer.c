@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.153 2004-02-16 23:05:54 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.154 2004-02-17 02:16:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1864,6 +1864,22 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
   return 0;
 }
 
+static int xfer_init(void) {
+ 
+  /* Add the commands handled by this module to the HELP list. */
+  pr_help_add(C_TYPE, "<sp> type-code (A, I, L 7, L 8)", TRUE);
+  pr_help_add(C_STRU, "is not implemented (always F)", TRUE);
+  pr_help_add(C_MODE, "is not implemented (always S)", TRUE);
+  pr_help_add(C_RETR, "<sp> pathname", TRUE);
+  pr_help_add(C_STOR, "<sp> pathname", TRUE);
+  pr_help_add(C_STOU, "(store unique filename)", TRUE);
+  pr_help_add(C_APPE, "<sp> pathname", TRUE);
+  pr_help_add(C_REST, "<sp> byte-count", TRUE);
+  pr_help_add(C_ABOR, "(abort current operation)", TRUE);
+
+  return 0;
+}
+
 static int xfer_sess_init(void) {
   config_rec *c = NULL;
 
@@ -2381,7 +2397,7 @@ module xfer_module = {
   NULL,
 
   /* Module initialization function */
-  NULL,
+  xfer_init,
 
   /* Session initialization function */
   xfer_sess_init

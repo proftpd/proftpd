@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.217 2004-02-08 00:40:27 castaglia Exp $
+ * $Id: mod_core.c,v 1.218 2004-02-17 02:15:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -38,70 +38,6 @@
 #ifdef HAVE_REGEX_H
 # include <regex.h>
 #endif
-
-/* This is declared static to this module because it's not needed,
- * except for the HELP command.
- */
-
-static struct {
-  char *cmd;
-  char *syntax;
-  int implemented;
-} _help[] = {
-  { C_USER, "<sp> username",			TRUE },
-  { C_PASS, "<sp> password",			TRUE },
-  { C_ACCT, "is not implemented",		FALSE },
-  { C_CWD,  "<sp> pathname",			TRUE },
-  { C_XCWD, "<sp> pathname",			TRUE },
-  { C_CDUP, "(up one directory)",		TRUE },
-  { C_XCUP, "(up one directory)",		TRUE },
-  { C_SMNT, "is not implemented",		FALSE },
-  { C_QUIT, "(close control connection)",	TRUE },
-  { C_REIN, "is not implemented",		FALSE },
-  { C_PORT, "<sp> h1,h2,h3,h4,p1,p2",		TRUE },
-  { C_PASV, "(returns address/port)",		TRUE },
-  { C_EPRT, "<sp> |proto|addr|port|",		TRUE },
-  { C_EPSV, "(returns port |||port|)",		TRUE },
-  { C_TYPE, "<sp> type-code (A, I, L 7, L 8)",	TRUE },
-  { C_STRU, "is not implemented (always F)",	TRUE },
-  { C_MODE, "is not implemented (always S)",	TRUE },
-  { C_RETR, "<sp> pathname",			TRUE },
-  { C_STOR, "<sp> pathname",			TRUE },
-  { C_STOU, "(store unique filename)",		TRUE },
-  { C_APPE, "<sp> pathname",			TRUE },
-  { C_ALLO, "is not implemented (ignored)",	FALSE },
-  { C_REST, "<sp> byte-count",			TRUE },
-  { C_RNFR, "<sp> pathname",			TRUE },
-  { C_RNTO, "<sp> pathname",			TRUE },
-  { C_ABOR, "(abort current operation)",	TRUE },
-  { C_DELE, "<sp> pathname",			TRUE },
-  { C_MDTM, "<sp> pathname",			TRUE },
-  { C_RMD,  "<sp> pathname",			TRUE },
-  { C_XRMD, "<sp> pathname",			TRUE },
-  { C_MKD,  "<sp> pathname",			TRUE },
-  { C_XMKD, "<sp> pathname",			TRUE },
-  { C_PWD,  "(returns current working directory)", TRUE },
-  { C_XPWD, "(returns current working directory)", TRUE },
-  { C_SIZE, "<sp> pathname",			TRUE },
-  { C_LIST, "[<sp> pathname]",			TRUE },
-  { C_NLST, "[<sp> (pathname)]",		TRUE },
-  { C_SITE, "<sp> string",			TRUE },
-  { C_SYST, "(returns system type)",		TRUE },
-  { C_STAT, "[<sp> pathname]",			TRUE },
-  { C_HELP, "[<sp> command]",			TRUE },
-  { C_NOOP, "(no operation)",			TRUE },
-  { C_FEAT, "(returns feature list)",		TRUE },
-  { C_OPTS, "<sp> command [<sp> options]",	TRUE },
-  { C_ADAT, "<sp> mechanism-name",		FALSE },
-  { C_AUTH, "<sp> base64-data",			FALSE },
-  { C_CCC,  "(clears protection level)",	FALSE },
-  { C_CONF, "<sp> base64-data",			FALSE },
-  { C_ENC,  "<sp> base64-data",			FALSE },
-  { C_MIC,  "<sp> base64-data",			FALSE },
-  { C_PBSZ, "<sp> protection buffer size",	FALSE },
-  { C_PROT, "<sp> protection code",		FALSE },
-  { NULL,   NULL,          			FALSE }
-};
 
 extern module site_module;
 extern xaset_t *server_list;
@@ -3632,63 +3568,21 @@ MODRET core_epsv(cmd_rec *cmd) {
 }
 
 MODRET core_help(cmd_rec *cmd) {
-  int i,c = 0;
-  char buf[9] = {'\0'};
 
   if (cmd->argc == 1) {
-    /* Print help for all commands */
-    char *outa[8];
-    char *outs = "";
+    pr_help_add_response(cmd, NULL);
 
-    memset(outa, '\0', sizeof(outa));
-
-    pr_response_add(R_214,
-      "The following commands are recognized (* =>'s unimplemented).");
-    for (i = 0; _help[i].cmd; i++) {
-
-      if (_help[i].implemented)
-        outa[c++] = _help[i].cmd;
-      else
-        outa[c++] = pstrcat(cmd->tmp_pool,_help[i].cmd,"*",NULL);
-
-      /* 8 rows */
-      if (((i+1) % 8 == 0) || !_help[i+1].cmd) {
-        int j;
-
-        for (j = 0; j < 8; j++) {
-          if (outa[j]) {
-            snprintf(buf, sizeof(buf), "%-8s",outa[j]);
-            buf[sizeof(buf)-1] = '\0';
-            outs = pstrcat(cmd->tmp_pool,outs,buf,NULL);
-          } else
-            break;
-        }
-
-        if (*outs)
-          pr_response_add(R_214, "%s", outs);
-        outs = "";
-        c = 0;
-        memset(outa, '\0', sizeof(outa));
-      }
-    }
-
-    pr_response_add(R_214,"Direct comments to %s.",
-                         (cmd->server->ServerAdmin ? cmd->server->ServerAdmin :
-                          "ftp-admin"));
   } else {
     char *cp;
 
     for (cp = cmd->argv[1]; *cp; cp++)
       *cp = toupper(*cp);
 
-    if (!strcasecmp(cmd->argv[1],"SITE"))
-      return call_module(&site_module,site_dispatch,cmd);
+    if (strcasecmp(cmd->argv[1], "SITE") == 0)
+      return call_module(&site_module, site_dispatch, cmd);
 
-    for (i = 0; _help[i].cmd; i++)
-      if (!strcasecmp(cmd->argv[1],_help[i].cmd)) {
-        pr_response_add(R_214, "Syntax: %s %s", cmd->argv[1], _help[i].syntax);
-        return HANDLED(cmd);
-      }
+    if (pr_help_add_response(cmd, cmd->argv[1]) == 0)
+      return HANDLED(cmd);
 
     pr_response_add_err(R_502, "Unknown command '%s'.", cmd->argv[1]);
     return ERROR(cmd);
@@ -4372,6 +4266,43 @@ static void core_startup_ev(const void *event_data, void *user_data) {
  */
 
 static int core_init(void) {
+
+  /* Add the commands handled by this module to the HELP list. */
+  pr_help_add(C_CWD,  "<sp> pathname", TRUE);
+  pr_help_add(C_XCWD, "<sp> pathname", TRUE);
+  pr_help_add(C_CDUP, "(up one directory)", TRUE);
+  pr_help_add(C_XCUP, "(up one directory)", TRUE);
+  pr_help_add(C_SMNT, "is not implemented", FALSE);
+  pr_help_add(C_QUIT, "(close control connection)", TRUE);
+  pr_help_add(C_PORT, "<sp> h1,h2,h3,h4,p1,p2", TRUE);
+  pr_help_add(C_PASV, "(returns address/port)", TRUE);
+  pr_help_add(C_EPRT, "<sp> |proto|addr|port|", TRUE);
+  pr_help_add(C_EPSV, "(returns port |||port|)", TRUE);
+  pr_help_add(C_ALLO, "is not implemented (ignored)", FALSE);
+  pr_help_add(C_RNFR, "<sp> pathname", TRUE);
+  pr_help_add(C_RNTO, "<sp> pathname", TRUE);
+  pr_help_add(C_DELE, "<sp> pathname", TRUE);
+  pr_help_add(C_MDTM, "<sp> pathname", TRUE);
+  pr_help_add(C_RMD,  "<sp> pathname", TRUE);
+  pr_help_add(C_XRMD, "<sp> pathname", TRUE);
+  pr_help_add(C_MKD,  "<sp> pathname", TRUE);
+  pr_help_add(C_XMKD, "<sp> pathname", TRUE);
+  pr_help_add(C_PWD,  "(returns current working directory)", TRUE);
+  pr_help_add(C_XPWD, "(returns current working directory)", TRUE);
+  pr_help_add(C_SIZE, "<sp> pathname", TRUE);
+  pr_help_add(C_SYST, "(returns system type)", TRUE);
+  pr_help_add(C_HELP, "[<sp> command]", TRUE);
+  pr_help_add(C_NOOP, "(no operation)", TRUE);
+  pr_help_add(C_FEAT, "(returns feature list)", TRUE);
+  pr_help_add(C_OPTS, "<sp> command [<sp> options]", TRUE);
+  pr_help_add(C_AUTH, "<sp> base64-data", FALSE);
+  pr_help_add(C_CCC,  "(clears protection level)", FALSE);
+  pr_help_add(C_CONF, "<sp> base64-data", FALSE);
+  pr_help_add(C_ENC,  "<sp> base64-data", FALSE);
+  pr_help_add(C_MIC,  "<sp> base64-data", FALSE);
+  pr_help_add(C_PBSZ, "<sp> protection buffer size", FALSE);
+  pr_help_add(C_PROT, "<sp> protection code", FALSE);
+
 
   /* Add the additional features implemented by this module into the
    * list, to be displayed in response to a FEAT command.
