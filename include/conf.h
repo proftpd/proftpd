@@ -38,7 +38,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.8 2001-03-17 20:34:31 flood Exp $
+ * $Id: conf.h,v 1.9 2001-05-21 21:14:45 flood Exp $
  */
 
 #ifndef __CONF_H
@@ -261,6 +261,11 @@ char *strchr(),*strrchr();
 #if defined(HAVE_GETOPT) && defined(AIX3)
 /* AIX 3.2.5 libc exports symbol optopt but is forgotten in includes */
 extern int optopt;
+#endif
+
+/* GNU HURD (and maybe others) do not define MAXPATHLEN */
+#ifndef MAXPATHLEN
+#define MAXPATHLEN      1024
 #endif
 
 /* Necessary for alloca to work */

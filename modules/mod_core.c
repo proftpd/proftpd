@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.62 2001-04-13 18:32:05 flood Exp $
+ * $Id: mod_core.c,v 1.63 2001-05-21 21:14:45 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -2096,8 +2096,15 @@ MODRET cmd_pwd(cmd_rec *cmd)
 {
   CHECK_CMD_ARGS(cmd, 1);
 
+  if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.vwd, NULL)) {
+    add_response_err(R_550, "%s: %s", cmd->argv[0], strerror(errno));
+    return ERROR(cmd);
+
+  } else {
   add_response(R_257,"\"%s\" is current directory.",
                 quote_dir(cmd,session.vwd));
+  }
+
   return HANDLED(cmd);
 }
 
@@ -3194,8 +3201,8 @@ static cmdtable core_commands[] = {
   { CMD, C_PORT, G_NONE,  cmd_port,	TRUE,	FALSE, CL_MISC },
   { CMD, C_PASV, G_NONE,  cmd_pasv,	TRUE,	FALSE, CL_MISC },
   { CMD, C_SYST, G_NONE,  cmd_syst,	TRUE,	FALSE, CL_INFO },
-  { CMD, C_PWD,	 G_NONE,  cmd_pwd,	TRUE,	FALSE, CL_INFO|CL_DIRS },
-  { CMD, C_XPWD, G_NONE,  cmd_pwd,	TRUE,	FALSE, CL_INFO|CL_DIRS },
+  { CMD, C_PWD,	 G_DIRS,  cmd_pwd,	TRUE,	FALSE, CL_INFO|CL_DIRS },
+  { CMD, C_XPWD, G_DIRS,  cmd_pwd,	TRUE,	FALSE, CL_INFO|CL_DIRS },
   { CMD, C_CWD,	 G_DIRS,  cmd_cwd,	TRUE,	FALSE, CL_DIRS },
   { CMD, C_XCWD, G_DIRS,  cmd_cwd,	TRUE,	FALSE, CL_DIRS },
   { CMD, C_MKD,	 G_WRITE, cmd_mkd,	TRUE,	FALSE, CL_DIRS|CL_WRITE },

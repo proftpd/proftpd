@@ -1,7 +1,10 @@
-$Id: NEWS,v 1.103 2001-05-21 20:48:52 flood Exp $
+$Id: NEWS,v 1.104 2001-05-21 21:14:45 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+- Bug 1175 - GNU HURD portability
+- Bug 1176 - PWD/XPWD can now be <Limit>ed
+- Bug 1177 - mod_readme moved to contrib/
 - Bug 1155 - HPUX portability cleanup
 - Bug 1172 - Compiler clean for getopt code.
 - Bug 1170 - Compiler cleanup for pr_fnmatch code.
