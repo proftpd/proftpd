@@ -13704,6 +13704,65 @@ _ACEOF
   esac
 fi
 
+echo "$as_me:$LINENO: checking whether setgrent returns void" >&5
+echo $ECHO_N "checking whether setgrent returns void... $ECHO_C" >&6
+if test "${ac_cv_func_setgrent_void+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if test "$cross_compiling" = yes; then
+  { { echo "$as_me:$LINENO: error: cannot run test program while cross compiling
+See \`config.log' for more details." >&5
+echo "$as_me: error: cannot run test program while cross compiling
+See \`config.log' for more details." >&2;}
+   { (exit 1); exit 1; }; }
+else
+  cat >conftest.$ac_ext <<_ACEOF
+
+    #include <sys/types.h>
+    #include <grp.h>
+    int main(int argc, char *argv) {
+      int i = 0;
+      getgrent();
+      i = setgrent();
+      return (i != 1);
+    }
+
+_ACEOF
+rm -f conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && { ac_try='./conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_func_setgrent_void=no
+else
+  echo "$as_me: program exited with status $ac_status" >&5
+echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+( exit $ac_status )
+ac_cv_func_setgrent_void=yes
+fi
+rm -f core core.* *.core gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
+fi
+fi
+echo "$as_me:$LINENO: result: $ac_cv_func_setgrent_void" >&5
+echo "${ECHO_T}$ac_cv_func_setgrent_void" >&6
+
+if test $ac_cv_func_setgrent_void = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define SETGRENT_VOID 1
+_ACEOF
+
+fi
+
+
 echo "$as_me:$LINENO: checking for initscr in -lcurses" >&5
 echo $ECHO_N "checking for initscr in -lcurses... $ECHO_C" >&6
 if test "${ac_cv_lib_curses_initscr+set}" = set; then
