@@ -1,3 +1,11 @@
+2001-01-28 13:25  flood
+
+	* doc/Configuration.html, modules/mod_auth.c, modules/mod_unixpw.c,
+	src/main.c: Bug #350 - Enabling classes but not defining a class no
+	longer segfaults. #360 - Proftpd now logs if passwd/group files
+	cannot be opened. #417 - Command filter regexps no longer apply to
+	the PASS command.
+
 2001-01-26 18:15  flood
 
 	* modules/mod_core.c: Bug #390 - Added ifdef to regex code in
