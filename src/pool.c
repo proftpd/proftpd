@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.39 2003-11-10 03:52:22 castaglia Exp $
+ * $Id: pool.c,v 1.40 2004-01-09 04:15:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -163,21 +163,28 @@ static void free_blocks(union block_hdr *blok) {
   blok->h.next = old_free_list;
 }
 
-/* Get a new block, from the free list if possible, otherwise malloc
- * a new one.  *BLOCK ALARMS BEFORE CALLING*
+/* Get a new block, from the free list if possible, otherwise malloc a new
+ * one.  minsz is the requested size of the block to be allocated.
+ * If exact is TRUE, then minsz is the exact size of the allocated block;
+ * otherwise, the allocated size will be rounded up from minsz to the nearest
+ * multiple of BLOCK_MINFREE.
+ *
+ * Important: BLOCK ALARMS BEFORE CALLING
  */
 
-static union block_hdr *new_block(int min_size) {
+static union block_hdr *new_block(int minsz, int exact) {
   union block_hdr **lastptr = &block_freelist;
   union block_hdr *blok = block_freelist;
 
-  min_size = 1 + ((min_size - 1) / BLOCK_MINFREE);
-  min_size *= BLOCK_MINFREE;
+  if (exact) {
+    minsz = 1 + ((minsz - 1) / BLOCK_MINFREE);
+    minsz *= BLOCK_MINFREE;
+  }
 
   /* Check if we have anything of the requested size on our free list first...
    */
   while (blok) {
-    if (min_size <= blok->h.endp - blok->h.first_avail) {
+    if (minsz <= blok->h.endp - blok->h.first_avail) {
       *lastptr = blok->h.next;
       blok->h.next = NULL;
 
@@ -192,7 +199,7 @@ static union block_hdr *new_block(int min_size) {
 
   /* Nope...damn.  Have to malloc() a new one. */
   stat_malloc++;
-  return malloc_block(min_size);
+  return malloc_block(minsz);
 }
 
 /* Accounting */
@@ -322,7 +329,37 @@ struct pool *make_sub_pool(struct pool *p) {
 
   pr_alarms_block();
 
-  blok = new_block(0);
+  blok = new_block(0, FALSE);
+
+  new_pool = (pool *) blok->h.first_avail;
+  blok->h.first_avail += POOL_HDR_BYTES;
+
+  memset(new_pool, 0, sizeof(struct pool));
+  new_pool->free_first_avail = blok->h.first_avail;
+  new_pool->first = new_pool->last = blok;
+
+  if (p) {
+    new_pool->parent = p;
+    new_pool->sub_next = p->sub_pools;
+
+    if (new_pool->sub_next)
+      new_pool->sub_next->sub_prev = new_pool;
+
+    p->sub_pools = new_pool;
+  }
+
+  pr_alarms_unblock();
+
+  return new_pool;
+}
+
+struct pool *pr_pool_create_sz(struct pool *p, size_t sz) {
+  union block_hdr *blok;
+  pool *new_pool;
+
+  pr_alarms_block();
+
+  blok = new_block(sz, TRUE);
 
   new_pool = (pool *) blok->h.first_avail;
   blok->h.first_avail += POOL_HDR_BYTES;
@@ -422,11 +459,11 @@ static long bytes_in_free_blocks(void) {
 /* Allocation interface...
  */
 
-void *palloc(struct pool *p, int reqsize) {
+static void *alloc_pool(struct pool *p, int reqsz, int exact) {
 
   /* Round up requested size to an even number of aligned units */
-  int nclicks = 1 + ((reqsize - 1) / CLICK_SZ);
-  int size = nclicks * CLICK_SZ;
+  int nclicks = 1 + ((reqsz - 1) / CLICK_SZ);
+  size_t sz = nclicks * CLICK_SZ;
 
   /* For performance, see if space is available in the most recently
    * allocated block.
@@ -436,10 +473,10 @@ void *palloc(struct pool *p, int reqsize) {
   char *first_avail = blok->h.first_avail;
   char *new_first_avail;
 
-  if (reqsize <= 0)
+  if (reqsz <= 0)
     return NULL;
 
-  new_first_avail = first_avail + size;
+  new_first_avail = first_avail + sz;
 
   if (new_first_avail <= blok->h.endp) {
     blok->h.first_avail = new_first_avail;
@@ -449,20 +486,34 @@ void *palloc(struct pool *p, int reqsize) {
   /* Need a new one that's big enough */
   pr_alarms_block();
 
-  blok = new_block(size);
+  blok = new_block(sz, exact);
   p->last->h.next = blok;
   p->last = blok;
 
   first_avail = blok->h.first_avail;
-  blok->h.first_avail += size;
+  blok->h.first_avail += sz;
 
   pr_alarms_unblock();
   return (void *) first_avail;
 }
 
-void *pcalloc(struct pool *p, int size) {
-  void *res = palloc(p, size);
-  memset(res, '\0', size);
+void *palloc(struct pool *p, int sz) {
+  return alloc_pool(p, sz, FALSE);
+}
+
+void *pallocsz(struct pool *p, int sz) {
+  return alloc_pool(p, sz, TRUE);
+}
+
+void *pcalloc(struct pool *p, int sz) {
+  void *res = palloc(p, sz);
+  memset(res, '\0', sz);
+  return res;
+}
+
+void *pcallocsz(struct pool *p, int sz) {
+  void *res = pallocsz(p, sz);
+  memset(res, '\0', sz);
   return res;
 }
 
