@@ -28,12 +28,6 @@
  *
  * TODO: Use a hash table to greatly speed up set manipulation on
  *       large sets.
- *
- * HISTORY:
- *
- * 3/31/97: Flood-
- *   Changed all memory allocation routines to be "pool" compliant
- *   -- now requires "pool{.c,.h}".
  */
 
 #include "conf.h"
@@ -41,10 +35,10 @@
 #define POOL(x)		((x) ? (x) : permanent_pool)
 
 /* Create a new set, compf is a pointer to the function used
-   to to compare members of the set ... it should return 1, 0, or
-   -1 after the fashion of strcmp.  Returns NULL if memory allocation
-   fails.
-*/
+ * to to compare members of the set ... it should return 1, 0, or
+ * -1 after the fashion of strcmp.  Returns NULL if memory allocation
+ * fails.
+ */
 
 xaset_t *xaset_create(pool *pool, XASET_COMPARE compf)
 {
@@ -58,13 +52,12 @@ xaset_t *xaset_create(pool *pool, XASET_COMPARE compf)
 }
 
 /* Inserts a new member into an existing set.  The member is inserted
-   at the beginning of the set.
-   Returns: 1 if successful
-            0 if one or more arguments is invalid or something
-              is wrong with the set
-           -1 error (not used)
-*/
-
+ * at the beginning of the set.
+ * Returns: 1 if successful
+ *          0 if one or more arguments is invalid or something
+ *            is wrong with the set
+ *         -1 error (not used)
+ */
 int xaset_insert(xaset_t *set, xasetmember_t *member)
 {
   if(!set || !member)
@@ -80,7 +73,6 @@ int xaset_insert(xaset_t *set, xasetmember_t *member)
 /* Inserts a new member into an existing set at the end
  * of the list.
  */
-
 int xaset_insert_end(xaset_t *set, xasetmember_t *member)
 {
   xasetmember_t **tmp,*prev = NULL;
@@ -105,7 +97,6 @@ int xaset_insert_end(xaset_t *set, xasetmember_t *member)
             0 if bad arguments or duplicate member
            -1 error (not used, applicable error would be in errno)
 */
-
 int xaset_insert_sort(xaset_t *set, xasetmember_t *member, int dupes_allowed)
 {
   xasetmember_t **setp,*mprev = NULL;
