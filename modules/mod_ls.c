@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.13 1999-09-18 18:23:07 macgyver Exp $
+ * $Id: mod_ls.c,v 1.14 1999-09-29 20:46:13 macgyver Exp $
  */
 
 #include "conf.h"
@@ -374,12 +374,12 @@ void addfile(cmd_rec *cmd, const char *name, const char *suffix, time_t mtime)
   if(!fpool)
     fpool = make_sub_pool(cmd->tmp_pool);
 
-  p = (struct filename*)pcalloc(fpool,sizeof(struct filename) + l + 1);
+  p = (struct filename*) pcalloc(fpool, sizeof(struct filename) + l + 1);
 #if 0
   log_debug(DEBUG4,"alloc: %d\n",sizeof(struct filename) + l + 1);
 #endif
 
-  sprintf(p->line, "%s%s", name, suffix);
+  snprintf(l + 1, p->line, "%s%s", name, suffix);
   if(tail)
     tail->down = p;
   else

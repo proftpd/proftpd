@@ -19,7 +19,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.7 1999-09-17 07:31:44 macgyver Exp $
+ * $Id: mod_auth.c,v 1.8 1999-09-29 20:46:13 macgyver Exp $
  */
 
 #include "conf.h"
@@ -769,7 +769,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
   if(!login_check_limits((c ? c->subset : main_server->conf),FALSE,TRUE,&i))
   {
-    log_auth(LOG_AUTH,"%s: LIMIT access denies login (DenyGroup) from %s [%s] to %s:%i",
+    log_auth(LOG_NOTICE,"%s: LIMIT access denies login (DenyGroup) from %s [%s] to %s:%i",
              origuser,session.c->remote_name,
              inet_ascii(p,session.c->remote_ipaddr),
 	     inet_ascii(p,session.c->local_ipaddr),
