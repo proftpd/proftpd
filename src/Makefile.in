@@ -190,12 +190,3 @@ timers.o: ../include/inet.h ../include/ident.h ../include/feat.h
 timers.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
 timers.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
 timers.o: ../include/fsio.h ../include/pr-syslog.h
-utils.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
-utils.o: ../config.h ../include/default_paths.h ../include/options.h
-utils.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
-utils.o: ../include/support.h ../include/sets.h ../include/dirtree.h
-utils.o: ../include/netio.h ../include/modules.h ../include/timers.h
-utils.o: ../include/inet.h ../include/ident.h ../include/feat.h
-utils.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
-utils.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
-utils.o: ../include/fsio.h ../include/pr-syslog.h
