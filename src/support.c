@@ -20,7 +20,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.20 2001-01-26 22:30:12 flood Exp $
+ * $Id: support.c,v 1.21 2001-02-26 17:59:04 flood Exp $
  */
 
 /* History Log:
@@ -502,7 +502,11 @@ int access_check(char *path, int mode) {
   
   if(stat(path, &buf) < 0)
     return -1;
-  
+ 
+  /* If root, always return succeed. */
+  if(session.uid == 0)
+    return 0;
+
   /* Initialize `mask' to reflect the permission bits that are
    * applicable for the effective user. `mask' contains the user-bits
    * if the effective user id equals the id of the file owner. `mask'
