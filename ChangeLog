@@ -1,3 +1,146 @@
+2003-10-31 00:10  castaglia
+
+	* NEWS, include/version.h, contrib/dist/rpm/proftpd.spec: 
+	Preparing for the release of 1.2.9.
+
+2003-10-31 00:05  castaglia
+
+	* NEWS: 
+	Mention the memory leak fixes.
+
+2003-10-31 00:02  castaglia
+
+	* contrib/mod_sql.c: 
+	Always expand %U to the USER name given, not just when session.user
+	is NULL.
+
+2003-10-30 23:22  castaglia
+
+	* modules/mod_auth.c: 
+	Undoing part of change made earlier: rather than removing a C_USER
+	config_rec during both the LOG_CMD (success) and LOG_CMD_ERR
+	(failure) command phases of the PASS command, only do the removal
+	in LOG_CMD_ERR, which was the originally intended effect.  Doing
+	the removal in the LOG_CMD handler causes trouble for modules that
+	may want to use %U (e.g. mod_rewrite).
+
+2003-10-30 12:38  flyhmstr
+
+	* doc/: Configuration.html, Configuration.sgml, faq.html: 
+	ML: New userguide (html & sgml) and faq built from current pdd
+	sources     committed.
+
+2003-10-28 10:41  castaglia
+
+	* README.FreeBSD: 
+	Adding FreeBSD package installation docs from Bug#2250.
+
+2003-10-22 00:40  castaglia
+
+	* src/main.c: 
+	Removing duplicate sanity check.
+
+2003-10-21 23:49  castaglia
+
+	* src/fsio.c: 
+	Fixing comments.  Have pr_insert_fs() set errno on error, for
+	reporting purposes.
+
+2003-10-20 18:44  castaglia
+
+	* utils/utils.h: 
+	It helps to make sure that the utils (ftpcount, ftpwho, ftptop)
+	expect that the scoreboard entry has the same format as the core
+	code (cf. size of the sce_client_addr field).
+
+2003-10-20 15:20  castaglia
+
+	* include/scoreboard.h: 
+	Forgot to increase the size of the IP address buffer in the
+	scoreboard if --enable-ipv6 is used.
+
+2003-10-20 00:28  castaglia
+
+	* modules/mod_log.c: 
+	More paranoid checking of snprintf() usage.
+
+2003-10-20 00:15  castaglia
+
+	* contrib/: mod_radius.c, mod_sql.c, mod_tls.c: 
+	Minor paranoia changes: make certain the buffer is NUL-terminated
+	before calling strlen() on its contents.
+
+2003-10-20 00:02  castaglia
+
+	* NEWS, modules/mod_ls.c: 
+	Check for excessive length of symlink directory listing entries,
+	when ShowSymlinks is on.  This also requires that the platform
+	_not_ provide MAXPATHLEN.  Added some style/spacing changes as
+	well.
+
+2003-10-19 14:45  jwm
+
+	* NEWS, contrib/dist/rpm/proftpd.spec: 
+	Bug 2197 - The RPM .spec has been updated for easy RPM builds from
+	CVS snapshots.
+
+2003-10-19 14:40  jwm
+
+	* contrib/dist/rpm/proftpd.spec: rpm doesn't like empty
+	BuildPreReqs, add a static dep on pam-devel
+
+2003-10-18 16:48  castaglia
+
+	* src/fsio.c: 
+	Fixing a memory leak in the handling of structures used for
+	tracking open directories.
+
+2003-10-18 15:14  castaglia
+
+	* src/dirtree.c: 
+	Fixing a rather major memory pool leak.  A temporary pool was being
+	allocated in dir_hide_file() (which is called rather often), but in
+	the case where no HideFiles directive was configured (very common),
+	that pool was not being destroyed.  Oops.
+
+2003-10-17 08:39  castaglia
+
+	* NEWS, include/netaddr.h, modules/mod_core.c, modules/mod_log.c,
+	src/netaddr.c: 
+	Bug#2204 - More reverse DNS resolutions problems.  A previous fix
+	for systems that use gethostbyname2() (e.g. the BSDs, some Linux
+	distributions) was not properly checking the return value from
+	pr_netaddr_is_v4mapped(), and thus IPv4 addresses were not being
+	resolved to their names.
+	
+	Bug#2242 - Parsing during rehashing was failing with an EPERM.	The
+	problem was that configuration directive handlers (specifically,
+	SyslogFacility and SystemLog) were using PRIVS_RELINQUISH, which
+	caused later Includes to fail.	Configuration handlers should not
+	use the PRIVS macros.
+
+2003-10-17 06:19  castaglia
+
+	* NEWS, modules/mod_core.c: 
+	Bug#2181: fixing this bug (again) to work correctly in all cases.
+
+2003-10-16 23:15  castaglia
+
+	* include/fsio.h, include/inet.h, include/netio.h, src/fsio.c,
+	src/inet.c, src/main.c, src/netio.c: 
+	Removing the pr_ prefix from some API initialization functions;
+	they are not really appropriate for module use.
+
+2003-10-15 17:58  castaglia
+
+	* include/version.h: 
+	Updating the version for CVS status.
+
+2003-10-15 12:54  castaglia
+
+	* ChangeLog: 
+	Updating ChangeLog.
+
 2003-10-15 12:53  castaglia
 
 	* NEWS, contrib/dist/rpm/proftpd.spec, include/version.h: 
@@ -1356,7 +1499,7 @@
 2003-06-11 19:08  castaglia
 
 	* src/: inet.c, modules.c: 
-	Missing $Id: ChangeLog,v 1.118 2003-10-15 19:54:09 castaglia Exp $ keyword.
+	Missing $Id: ChangeLog,v 1.119 2003-10-31 08:22:49 castaglia Exp $ keyword.
 
 2003-06-11 15:45  castaglia
 
@@ -2527,7 +2670,7 @@
 
 	* contrib/: mod_sql.c, mod_sql.h, mod_sql_mysql.c,
 	mod_sql_postgres.c: 
-	Adding $Id: ChangeLog,v 1.118 2003-10-15 19:54:09 castaglia Exp $ tags to the mod_sql files.
+	Adding $Id: ChangeLog,v 1.119 2003-10-31 08:22:49 castaglia Exp $ tags to the mod_sql files.
 
 2003-03-14 07:54  castaglia
 
@@ -3044,12 +3187,12 @@
 
 	* src/netio.c, src/pool.c, src/sets.c, include/ident.h,
 	include/timers.h: 
-	Adding more $Id: ChangeLog,v 1.118 2003-10-15 19:54:09 castaglia Exp $ keywords.
+	Adding more $Id: ChangeLog,v 1.119 2003-10-31 08:22:49 castaglia Exp $ keywords.
 
 2003-02-11 23:34  castaglia
 
 	* src/feat.c: 
-	Added $Id: ChangeLog,v 1.118 2003-10-15 19:54:09 castaglia Exp $ keyword.
+	Added $Id: ChangeLog,v 1.119 2003-10-31 08:22:49 castaglia Exp $ keyword.
 
 2003-02-10 15:34  castaglia
 
