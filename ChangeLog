@@ -1,3 +1,957 @@
+2003-03-03 21:25  castaglia
+
+	* NEWS, include/version.h, contrib/dist/rpm/proftpd.spec: 
+	Preparing for release of 1.2.8.
+
+2003-03-03 18:58  castaglia
+
+	* README.PAM: 
+	Updating PAM information for FreeBSD.
+
+2003-03-03 12:13  castaglia
+
+	* README.mod_sql: 
+	Updating.
+
+2003-03-02 20:21  castaglia
+
+	* src/inet.c: 
+	Fixed #if check.
+
+2003-03-02 18:21  castaglia
+
+	* src/main.c: 
+	Changing code back to its original setting; when doing the
+	modifications for mod_unixpw -> mod_auth_unix, this code was
+	incorrectly modified.
+
+2003-03-02 16:42  castaglia
+
+	* NEWS, modules/mod_auth.c: 
+	Bug#1976 - Login hangs, spawned process runs in endless loop in
+	mod_auth.
+
+2003-03-02 16:31  castaglia
+
+	* NEWS, src/inet.c: 
+	Adding FreeBSD-5.0 to the #defines for the socket/privs fun.
+
+2003-03-01 10:41  castaglia
+
+	* contrib/mod_tls.c: 
+	Playing with logged messages...
+
+2003-03-01 10:39  castaglia
+
+	* contrib/mod_tls.c: 
+	Bad grammar.
+
+2003-03-01 10:31  castaglia
+
+	* contrib/mod_tls.c: 
+	Pedantic changes of "SSL" to "TLS" adding logging for when mod_tls
+	starts a TLS handshake on the data connection
+
+2003-02-25 20:49  castaglia
+
+	* src/inet.c: 
+	Modify the use of ioctl() such that it will be used on platforms
+	known to use STREAMS (i.e. Solaris and IRIX, at present).
+
+2003-02-25 20:30  castaglia
+
+	* include/dirtree.h, src/dirtree.c: 
+	Added pr_class_and_expression(), for symmetry (and yes, there are
+	cases where having a list of class names evaluated in a Boolean AND
+	fashion can be useful).
+
+2003-02-25 11:00  castaglia
+
+	* configure: 
+	Updating configure script.
+
+2003-02-25 10:56  castaglia
+
+	* NEWS, config.h.in, configure.in, include/conf.h, lib/pr-syslog.c,
+	src/inet.c, src/netio.c: 
+	Bug#1964 - When uploading to an NFS mounted file system in passive
+	mode read() get EAGAIN and closes connection.
+
+2003-02-24 17:39  castaglia
+
+	* NEWS, modules/mod_xfer.c: 
+	Bug#1937 - transfer hangs when using transferrate limits on a
+	resumed download.
+
+2003-02-24 15:47  castaglia
+
+	* modules/mod_xfer.c: 
+	Cleanup of missed code for Bug#1970.
+
+2003-02-24 10:39  castaglia
+
+	* NEWS, modules/mod_xfer.c, utils/ftptop.c, utils/ftpwho.c: 
+	Bug#1970 - Transfer time wraps around and causes problems with
+	transfer speed calculation.
+
+2003-02-24 10:15  castaglia
+
+	* modules/mod_ls.c: 
+	Removing unused cruft.
+
+2003-02-24 10:13  castaglia
+
+	* NEWS, modules/mod_ls.c: 
+	Bug#1953 - STAT -R does not work.
+
+2003-02-24 08:06  castaglia
+
+	* NEWS, src/inet.c: 
+	Bug#1966 - SCO OpenServer 5.0.5 and inetd (not passive mode).
+
+2003-02-23 18:37  castaglia
+
+	* NEWS, modules/mod_log.c, src/dirtree.c: 
+	Bug#1908 - ExtendedLog to work properly in <Anonymous> context.
+
+2003-02-19 23:48  castaglia
+
+	* NEWS, utils/ftpwho.c: 
+	Bug#1958 - ftpwho -o oneline has newlines when client is idle.
+
+2003-02-18 16:01  castaglia
+
+	* modules/mod_xfer.c: 
+	Minor variable name change; seems to collide with variable used in
+	Tru64 5.1b's headers.
+
+2003-02-18 10:01  castaglia
+
+	* configure: 
+	Updating configure script.
+
+2003-02-18 09:55  castaglia
+
+	* NEWS, config.h.in, configure.in, modules/mod_auth_unix.c,
+	modules/mod_ls.c: 
+	Bug#1941 - SCO OpenServer 5.0.5
+
+2003-02-18 00:16  castaglia
+
+	* sample-configurations/basic.conf: 
+	Adding some comments to the default config file.  Hopefully this
+	will stem some of the more common questions on the users mailing
+	list.
+
+2003-02-17 17:45  jwm
+
+	* configure: 
+	update
+
+2003-02-17 17:41  jwm
+
+	* configure.in: 
+	typo
+
+2003-02-17 17:28  jwm
+
+	* configure: 
+	update
+
+2003-02-17 17:25  jwm
+
+	* configure.in: 
+	expend as little effort as possible if mod_cap is explicitly
+	disabled
+
+2003-02-17 15:41  castaglia
+
+	* configure: 
+	Updating configure script.
+
+2003-02-17 15:40  castaglia
+
+	* configure.in: 
+	Add to output at end of configure --help instructions describing
+	LIBS environment variable.
+
+2003-02-16 16:56  castaglia
+
+	* NEWS, modules/mod_xfer.c: 
+	Bug#1956 - Upload transfer rate broken.
+
+2003-02-14 07:47  castaglia
+
+	* NEWS, contrib/mod_tls.c: 
+	Added FTPS FEAT responses, as per the Draft.
+
+2003-02-12 16:02  castaglia
+
+	* modules/mod_xfer.c: 
+	Helps if I get the variable names right...
+
+2003-02-12 15:54  castaglia
+
+	* NEWS, modules/mod_xfer.c: 
+	Bug#1948 - mod_xfer relinquishes privs before chmod takes place.
+
+2003-02-12 11:03  castaglia
+
+	* NEWS, include/log.h, modules/mod_xfer.c, src/data.c, src/log.c: 
+	Bug#1916 - Transfers hang with strange transfertime in logfile.
+
+2003-02-12 00:46  castaglia
+
+	* src/netio.c, src/pool.c, src/sets.c, include/ident.h,
+	include/timers.h: 
+	Adding more $Id: ChangeLog,v 1.114 2003-03-04 05:26:55 castaglia Exp $ keywords.
+
+2003-02-11 23:34  castaglia
+
+	* src/feat.c: 
+	Added $Id: ChangeLog,v 1.114 2003-03-04 05:26:55 castaglia Exp $ keyword.
+
+2003-02-10 15:34  castaglia
+
+	* contrib/mod_sql.c, modules/mod_auth.c: 
+	Add logging of the problem if an admin configured a valid shell
+	column in a SQL table, but the value of the shell in the table was
+	NULL.
+
+2003-02-10 10:02  castaglia
+
+	* NEWS, src/dirtree.c: 
+	Bug#1952 - Umask Bug: Server Not Honoring VirtualHost Umask.
+
+2003-02-10 08:53  castaglia
+
+	* configure: 
+	Updating configure script.
+
+2003-02-10 08:51  castaglia
+
+	* NEWS, aclocal.m4, configure.in, modules/mod_xfer.c: 
+	Bug#1949 - Compiler warns of 'long double' usage on OSX.
+
+2003-02-07 12:46  castaglia
+
+	* README: 
+	Add a line to the REAME pointing out the doc/ directory.  Not that
+	anyone will notice.  *sigh*
+
+2003-02-06 08:40  castaglia
+
+	* configure: 
+	Updated configure script.
+
+2003-02-06 08:38  castaglia
+
+	* NEWS, aclocal.m4, config.h.in, configure.in,
+	modules/mod_auth_unix.c: 
+	Bug#1950 - OSX setgrent(3) returns int, causing compiler warning.
+
+2003-02-05 13:14  castaglia
+
+	* include/privs.h: 
+	Oops.  I said DEBUG9, but had DEBUG0.  Should've been DEBUG9 in
+	code.  Fixed.
+
+2003-02-05 13:11  castaglia
+
+	* include/privs.h: 
+	Add debug output, level 9, for PRIVS macros when they are disabled
+	(will help cut down on confusion when proftpd is built on Linux,
+	and admins forget that mod_cap is now enabled by default, and that
+	mod_cap will disable id switching).
+
+2003-02-01 10:11  castaglia
+
+	* NEWS, include/glibc-glob.h: 
+	Bug#1943 - Unable to install on FreeBSD 5.0.
+
+2003-01-31 12:48  castaglia
+
+	* configure: 
+	Updating configure script.
+
+2003-01-31 09:28  castaglia
+
+	* configure.in: 
+	Only check for the linux/capability.h header if mod_cap has not
+	already been explicitly disabled in the configure options.
+
+2003-01-30 11:05  jwm
+
+	* NEWS, configure, configure.in: 
+	Bug 1863 - Unable to build under UnixWare 7
+
+2003-01-30 08:15  castaglia
+
+	* modules/mod_xfer.c: 
+	Changed TransferRate handler to use strtod() rather than strtoul()
+	when parsing the kbps rate parameter.  strtold() would be
+	better...but FreeBSD doesn't seem to have strtold().  *sigh*
+
+2003-01-29 18:11  castaglia
+
+	* include/version.h: 
+	Updating version.h for CVS status.
+
+2003-01-29 17:25  jwm
+
+	* Makefile.in: 
+	build deps before we get rid of the Makefiles we need to generate
+	them :-)
+
+2003-01-29 09:27  flyhmstr
+
+	* doc/Configuration.html: ML: updated build of configuration.html
+
+2003-01-29 07:25  castaglia
+
+	* NEWS, include/version.h, contrib/dist/rpm/proftpd.spec: 
+	Marking Bug#1911 fixed (I think the fix was committed when I was
+	working on Bug#1931).  Also updating the version and spec files,
+	preparing for rc2 release.
+
+2003-01-28 14:00  castaglia
+
+	* NEWS, modules/mod_core.c: 
+	Bug#1939 - RLimitMemory seems broken.
+
+2003-01-25 12:51  castaglia
+
+	* src/dirtree.c: 
+	Michael noticed that the parse_config_file() function was failing
+	to close the opened configuration file handle, leaking descriptors.
+	 This started happening in 1.2.8rc1, with the introduction of the
+	FSIO patch.  Fixed.  Good catch, Michael!
+
+2003-01-24 18:38  castaglia
+
+	* NEWS, src/support.c: 
+	Bug#1938 - upload to root directory fails.
+
+2003-01-23 22:52  castaglia
+
+	* contrib/mod_radius.c: 
+	Fixed misordered parameters to pr_rehash_register_handler() call.
+
+2003-01-23 15:25  castaglia
+
+	* src/modules.c: 
+	Actually check for a negative return value from the module
+	initialization callback, if one is provided, and report an error if
+	the initialization failed.  Previously, the code would only check
+	for a -1 return value, and would silently load the module to the
+	internal lists if the returned value was not -1; just as silently
+	would -1 returns be handled.
+
+2003-01-22 21:48  castaglia
+
+	* include/conf.h: 
+	Wrapping _GNU_SOURCE definition in an #ifndef.	It's possible that,
+	depending on the CFLAGS options given, some other included file may
+	already define it, in which case the compiler will throw an
+	"already defined" warning.
+
+2003-01-21 22:12  castaglia
+
+	* modules/mod_ls.c: 
+	As discovered when looking into Bug#1931, some of the response
+	codes used when handling NLST are not legal viz. RFC959.  This
+	patch changes the 550s to 450s.
+
+2003-01-20 22:46  castaglia
+
+	* src/inet.c: 
+	Fixing inet_getname() so that, when doing reverse DNS checks, the
+	two related calls, gethostbyaddr() and gethostbyname(), don't
+	overwrite the same data.  This was happening under Tru64 Unix, and
+	could have happened under Linux.
+
+2003-01-19 18:18  jwm
+
+	* NEWS, modules/mod_auth.c: 
+	Bug 1734 - Cygwin - Unable to set uid
+
+2003-01-18 15:28  castaglia
+
+	* Make.rules.in, NEWS, include/conf.h, include/mkhome.h,
+	modules/mod_auth.c, src/mkhome.c: 
+	Bug#1241 - Additional functionality: HomedirOnDemand.  Added as
+	CreateHome directive.
+
+2003-01-18 11:29  castaglia
+
+	* configure: 
+	Updating configure, again. =P
+
+2003-01-18 11:26  castaglia
+
+	* configure.in: 
+	Argh.  John had it right the first time.  My mistake. =P
+
+2003-01-18 11:23  castaglia
+
+	* configure: 
+	Updating configure script.
+
+2003-01-18 11:19  castaglia
+
+	* configure.in: 
+	Changing check of UnixWare's libgen a little, to add -lgen to LIBS
+	if libgen is present.
+
+2003-01-18 11:09  castaglia
+
+	* config.h.in: 
+	Adding HAVE_LIBGEN to config.h, corresponding to added
+	AC_CHECK_LIB(gen) in configure.in.
+
+2003-01-17 22:06  castaglia
+
+	* modules/mod_auth_file.c, src/auth.c: 
+	Adding proper UID/GID->name translation to mod_auth_file.c
+
+2003-01-17 18:33  castaglia
+
+	* NEWS, modules/mod_auth_file.c: 
+	Bug#1918 - AuthUserFile not works normally.
+
+2003-01-17 16:13  castaglia
+
+	* src/fsio.c: 
+	Some of the FSIO routines are manually returning ENOENT, rather
+	than letting errno propagate up properly.
+
+2003-01-17 13:47  castaglia
+
+	* modules/mod_auth_file.c, modules/mod_core.c, src/modules.c: 
+	Fixed broken pr_stash_remove_symbol() (AuthOrder still wasn't
+	working quite right).  Removed devel cruft from mod_auth_file, and
+	added some more debugging output to it.
+
+2003-01-17 08:46  castaglia
+
+	* NEWS, contrib/mod_ratio.c, contrib/mod_sql.c, include/dirtree.h,
+	include/modules.h, modules/mod_core.c, src/auth.c, src/main.c,
+	src/modules.c: 
+	Bug#1926 - AuthOrder doesn't work.
+	
+	Also did a lot of style cleanup along the way.
+
+2003-01-16 19:41  castaglia
+
+	* NEWS, utils/ftptop.1, utils/ftptop.c: 
+	Adding displaying of transfer rates to ftptop.
+
+2003-01-16 00:28  castaglia
+
+	* Make.rules.in: 
+	The patch for Bug#1904 added building of utils/misc.o for ftpwho
+	rather than ftptop.  ftptop may need it, but it doesn't link
+	against -lsupp, whereas ftpwho does.
+
+2003-01-15 22:08  castaglia
+
+	* src/regexp.c: 
+	Missing Id keyword.
+
+2003-01-15 18:04  castaglia
+
+	* NEWS, contrib/mod_sql_mysql.c, include/support.h,
+	modules/mod_core.c, modules/mod_log.c, src/dirtree.c,
+	src/support.c, utils/misc.c: 
+	Bug#1922 - Server allows RNTO an existing file even with
+	AllowOverwrite turned off
+	
+	Some logging bugs in mod_log also corrected.
+
+2003-01-13 21:22  castaglia
+
+	* include/inet.h, src/data.c, src/inet.c, src/main.c: 
+	Adding checking for, and logging of, errors when calling
+	setsockopt(2).
+
+2003-01-13 20:43  castaglia
+
+	* NEWS, modules/mod_core.c: 
+	Bug#1923 - %N magic cookie reports incorrectly.
+
+2003-01-13 19:31  castaglia
+
+	* NEWS, modules/mod_log.c: 
+	Fixing problem with using %f for DELE logging, as mentioned on
+	-user.
+
+2003-01-13 11:22  castaglia
+
+	* NEWS: 
+	Forgot to mention tcp{Receive,Send}Window fix in NEWS.
+
+2003-01-13 11:20  castaglia
+
+	* src/data.c: 
+	Fixing the timing of setting of socket options.  The
+	tcpReceiveWindow and tcpSendWindow configuration directives were
+	not taking effect properly because setsockopt(2) was being called,
+	for the data connection, _after_ the TCP handshake was done.  As it
+	is during the handshake when such things as window sizes are
+	negotiated, this timing rendered any configuration settings
+	useless.
+
+2003-01-13 10:25  castaglia
+
+	* src/main.c: 
+	As John pointed out, it's better to have run-time generated files,
+	much like coredumps, to be under RUN_DIR (/var/run/proftpd), or
+	CORE_DIR (although CORE_DIR is #defined to be RUN_DIR).  So now,
+	the profiling gmon.out and bb.out files will be found there, rather
+	than /tmp.
+	
+	Thanks, John! =)
+
+2003-01-12 21:38  castaglia
+
+	* Make.rules.in, modules/mod_core.c, src/main.c: 
+	Added DEVEL_NO_DAEMON define, and changed other DEBUG_* defines to
+	match.	The purpose for these is to be able to build a proftpd
+	daemon that can be profiled.  Now, one can have a configure
+	statement such as:
+	
+	  CFLAGS="-DDEVEL_NO_DAEMON -DDEVEL_NO_FORK -g -pg -a" \
+	    LIBS="-pg" ./configure ...
+	
+	The resulting daemon will only handle one session.  The bb.out and
+	gmon.out profiling files will be written to /tmp.
+
+2003-01-12 21:17  castaglia
+
+	* configure: 
+	Updating configure script.
+
+2003-01-12 20:31  castaglia
+
+	* configure.in: 
+	Removing -Wfloat-equal, for now.  This warning flag was introduced
+	with gcc-3.0, and so we'll need to check the gcc version being used
+	(if indeed it is gcc being used) before using this flag.
+
+2003-01-12 20:25  castaglia
+
+	* modules/mod_xfer.c: 
+	Floating point numbers are best compared using greater/less than,
+	not equals.  Thanks to Steve Grubb for pointing this out.
+
+2003-01-12 20:21  jwm
+
+	* NEWS: 
+	Add -Wundef and -Wfloat-equal to CFLAGS (Suggested by Steve Grubb
+	<linux_4ever@yahoo.com>)
+
+2003-01-12 20:16  jwm
+
+	* configure: 
+	update with autoconf 2.57; I'm curious if this changes the LFS
+	problems I'm currently working on
+
+2003-01-12 20:15  castaglia
+
+	* configure.in: 
+	Add -Wfloat-equal and -Wundef to the warning flags enabled by using
+	the --enable-devel configure option.
+
+2003-01-12 20:09  jwm
+
+	* configure: 
+	update
+
+2003-01-12 17:27  castaglia
+
+	* NEWS, modules/mod_core.c, src/main.c: 
+	Bug#1910 - ProFTPD hangs on SIGHUP.
+
+2003-01-10 16:26  castaglia
+
+	* NEWS, modules/mod_core.c: 
+	Bug#1919 - <Directory> section already configured for $dir needs
+	clarification.
+
+2003-01-08 20:28  jwm
+
+	* configure: 
+	update
+
+2003-01-08 20:27  jwm
+
+	* modules/mod_cap.c: 
+	EnableCapabilities -> CapabilitiesSet
+
+2003-01-08 20:25  jwm
+
+	* README.capabilities, configure.in: 
+	OS-neutrality
+
+2003-01-08 12:44  castaglia
+
+	* contrib/mod_radius.c: 
+	Corrected typo in session accouting variables.	Bumped version
+	number.
+
+2003-01-07 16:12  castaglia
+
+	* NEWS, lib/pr-syslog.c: 
+	Bug#1891 - SGI syslog isn't being written to.
+
+2003-01-07 10:45  castaglia
+
+	* contrib/mod_radius.c: 
+	Use cmd->arg, rather than cmd->argv[1], from the C_PASS command.
+
+2003-01-07 09:30  castaglia
+
+	* modules/mod_core.c, src/timers.c: 
+	Correcting minor bugs.
+
+2003-01-07 09:14  castaglia
+
+	* configure: 
+	Updated configure script.
+
+2003-01-07 09:05  castaglia
+
+	* configure.in: 
+	Add enable/disable configure option, for excluding mod_cap from
+	Linux builds, for those sites that wish to have minimalist builds
+	(e.g. every automatic inclusion should have an optional switch for
+	disabling that inclusion).
+
+2003-01-05 09:33  jwm
+
+	* NEWS: 
+	style nit
+
+2003-01-04 20:00  jwm
+
+	* NEWS, Make.rules.in: 
+	Bug 1904 - Tru64 UNIX 4.0D and sstrncpy()
+
+2003-01-04 19:48  jwm
+
+	* modules/glue.sh: 
+	style
+
+2003-01-04 19:48  jwm
+
+	* configure: 
+	update
+
+2003-01-04 19:47  jwm
+
+	* Make.modules.in, Make.rules.in, Makefile.in, NEWS, configure.in,
+	lib/Makefile.in, modules/Makefile.in, src/Makefile.in,
+	utils/Makefile.in: 
+	Bug 1826 - Makefiles are a bit icky. This gives the build system a
+	nice tidying up; I don't seem to have broken anything.
+	
+	The only noticable change is that the dist/distclean/cvsclean
+	targets have been cleaned up:
+	
+	cvsclean: is no more. Use distclean instead.  distclean: return the
+	source tree to its pristine condition (don't touch	      CVS
+	state directories).  dist: prepare the source tree for
+	distribution. Move the RPM spec file	   into place and blow away
+	any CVS state directories.
+
+2003-01-04 18:26  jwm
+
+	* config.guess, config.sub: 
+	part of Bug 1826 - Makefiles are a bit icky: updated
+	config.{guess,sub}
+
+2003-01-04 18:20  jwm
+
+	* Makefile.in: 
+	Part of #1826 - ftptop doesn't need to link against $(LIBS)
+
+2003-01-04 18:19  jwm
+
+	* configure: 
+	update
+
+2003-01-04 18:18  jwm
+
+	* NEWS: 
+	credit for #1893
+
+2003-01-04 18:18  jwm
+
+	* NEWS, configure.in: 
+	Bug 1893 - Apple likes to move things
+
+2003-01-04 17:29  jwm
+
+	* modules/mod_auth.c, modules/mod_auth_file.c, modules/mod_core.c,
+	modules/mod_ls.c, modules/mod_site.c, lib/glibc-mkstemp.c,
+	lib/pr-syslog.c, lib/pwgrent.c, lib/strsep.c, lib/vsnprintf.c,
+	utils/ftpcount.c, utils/ftpshut.c, utils/ftptop.c, utils/ftpwho.c,
+	utils/misc.c, utils/scoreboard.c: 
+	nuke trailing whitespace
+
+2003-01-02 20:31  jwm
+
+	* NEWS: 
+	credit where credit is due
+
+2003-01-02 20:16  jwm
+
+	* src/: Makefile.in, utils.c: 
+	utils.c doesn't seem to be needed anymore...
+
+2003-01-02 20:00  jwm
+
+	* NEWS: 
+	mod_cap announcement
+
+2003-01-02 19:53  jwm
+
+	* README.capabilities, README.linux-privs,
+	contrib/dist/rpm/proftpd.spec: 
+	mod_linuxprivs -> mod_cap
+
+2003-01-02 19:50  jwm
+
+	* README.modules: 
+	mod_linuxprivs is now the official module mod_cap
+
+2003-01-02 19:47  jwm
+
+	* contrib/dist/rpm/proftpd.spec: 
+	we don't have to explicitly include mod_linuxprivs anymore; mod_cap
+	will be included automatically
+
+2003-01-02 19:44  jwm
+
+	* configure: 
+	update
+
+2003-01-02 19:43  jwm
+
+	* config.h.in, configure.in, modules/mod_cap.c: 
+	fix the build :-) This now autodetects and cleanly builds mod_cap
+	into proftpd if the host OS (Linux) supports it
+
+2003-01-02 19:09  jwm
+
+	* configure: 
+	update
+
+2003-01-02 19:08  jwm
+
+	* config.h.in, configure.in: 
+	fixing linux/capability.h detection
+
+2003-01-02 19:03  jwm
+
+	* configure: 
+	update
+
+2003-01-02 19:02  jwm
+
+	* modules/mod_cap.c: 
+	removing debugging cruft
+
+2003-01-02 19:02  jwm
+
+	* configure.in, modules/mod_cap.c: 
+	removing last Linux-specific bits of mod_cap
+
+2003-01-02 18:47  jwm
+
+	* modules/mod_cap.c: 
+	getting rid of some linux references
+
+2003-01-02 18:39  jwm
+
+	* configure: 
+	update
+
+2003-01-02 18:36  jwm
+
+	* configure.in, contrib/README, modules/mod_cap.c: 
+	mod_linuxprivs -> mod_cap
+
+2003-01-02 18:16  jwm
+
+	* README.linux-privs, configure.in, contrib/mod_linuxprivs.c,
+	contrib/mod_linuxprivs.html, lib/libcap/.cvsignore,
+	lib/libcap/Makefile, lib/libcap/_makenames.c,
+	lib/libcap/cap_alloc.c, lib/libcap/cap_extint.c,
+	lib/libcap/cap_file.c, lib/libcap/cap_flag.c,
+	lib/libcap/cap_proc.c, lib/libcap/cap_sys.c, lib/libcap/cap_text.c,
+	lib/libcap/libcap.h, lib/libcap/include/sys/capability.h: 
+	Turning mod_linuxprivs into a core module, mod_cap. This is by no
+	means complete.
+
+2003-01-02 13:09  castaglia
+
+	* contrib/mod_sql.c: 
+	Added handling of %U to mod_sql, so that it can be used in
+	SQLNamedQuery directives; part of the addition of Bug#1482.
+
+2003-01-02 10:53  jwm
+
+	* doc/license.txt: 
+	update copyright year
+
+2003-01-02 10:27  castaglia
+
+	* configure: 
+	Updated configure script.
+
+2003-01-02 10:25  castaglia
+
+	* config.h.in, configure.in, contrib/mod_linuxprivs.c,
+	contrib/mod_radius.c, contrib/mod_rewrite.c, contrib/mod_sql.c,
+	contrib/mod_sql_mysql.c, contrib/mod_sql_postgres.c,
+	contrib/mod_tls.c, include/data.h, include/ident.h, include/pool.h,
+	include/proftpd.h, include/response.h, include/support.h,
+	modules/mod_auth.c, modules/mod_auth_pam.c, modules/mod_core.c,
+	modules/mod_log.c, modules/mod_ls.c, modules/mod_xfer.c,
+	src/bindings.c, src/data.c, src/ident.c, src/inet.c, src/main.c,
+	src/netio.c, src/pool.c, src/regexp.c, src/response.c,
+	src/scoreboard.c, src/support.c, src/timers.c, src/utils.c: 
+	More namespace/API changes, for consistency:
+	
+	  data_*() -> pr_data_*()
+	  register_rehash() ->	pr_rehash_register_handler()
+	  add_exit_handler() -> pr_exit_register_handler()
+	  (un)block_alarms() -> pr_alarms_(un)block()
+	  (un)block_signals() -> pr_signals_(un)block()
+	  pr_handle_signals() -> pr_signals_handle()
+	
+	The distinction for which I am striving is to have all the
+	functions that module developers should use to be prefixed with
+	pr_; public functions may be available without a pr_ prefix, but
+	such functions will be intended for use by the core code only.
+	
+	Also, more in the RFC2228 support department:
+	
+	  session_t has a new field, rfc2228_mech.  This is to be filled in
+	by
+	  the RFC2228 module that handles an AUTH command, so that other
+	  RFC2228 modules, should they be higher in the module load order,
+	know
+	  not to process RFC2228 commands meant for the handling module.
+	
+	  The response formatting callback function now takes an additional
+	  parameter, a pool pointer, as the first argument.  The pool that
+	will
+	  be passed to that function will be the same pool used by the
+	other
+	  response functions.
+
+2003-01-02 09:28  castaglia
+
+	* configure.in, contrib/ftpasswd, contrib/mod_radius.c,
+	contrib/mod_readme.c, contrib/mod_rewrite.c, contrib/mod_tls.c,
+	contrib/mod_wrap.c, doc/mod_sample.c, include/bindings.h,
+	include/conf.h, include/data.h, include/default_paths.h,
+	include/dirtree.h, include/feat.h, include/fsio.h, include/ftp.h,
+	include/ident.h, include/inet.h, include/libsupp.h, include/log.h,
+	include/modules.h, include/netio.h, include/options.h,
+	include/pool.h, include/pr-syslog.h, include/privs.h,
+	include/proftpd.h, include/regexp.h, include/response.h,
+	include/scoreboard.h, include/sets.h, include/support.h,
+	include/timers.h, modules/mod_auth.c, modules/mod_auth_file.c,
+	modules/mod_auth_unix.c, modules/mod_core.c, modules/mod_log.c,
+	modules/mod_ls.c, modules/mod_site.c, modules/mod_xfer.c,
+	src/auth.c, src/bindings.c, src/data.c, src/dirtree.c, src/feat.c,
+	src/fsio.c, src/ident.c, src/inet.c, src/log.c, src/main.c,
+	src/modules.c, src/netio.c, src/pool.c, src/proftpd.8,
+	src/regexp.c, src/response.c, src/scoreboard.c, src/sets.c,
+	src/support.c, src/timers.c, src/utils.c, src/xferlog.5,
+	utils/ftpcount.1, utils/ftpcount.c, utils/ftpshut.c,
+	utils/ftptop.c, utils/ftpwho.1, utils/ftpwho.c, utils/misc.c,
+	utils/scoreboard.c, utils/utils.h: 
+	Updating the copyright notice in the file headers for the new year.
+
+2003-01-02 08:31  castaglia
+
+	* Makefile.in, utils/ftptop.1: 
+	Adding man page for ftptop.
+
+2003-01-01 16:37  jwm
+
+	* contrib/mod_linuxprivs.c: 
+	the docs say to use the full capability name: CAP_CHOWN
+
+2002-12-31 17:24  castaglia
+
+	* NEWS, contrib/mod_sql.c, contrib/mod_sql.h,
+	contrib/mod_sql_mysql.c, contrib/mod_sql_postgres.c: 
+	Bug#1671 - new directive SQLLogFile.
+
+2002-12-31 16:35  castaglia
+
+	* NEWS, modules/mod_core.c: 
+	Bug#1272 - Requested Addition: DenyFilter by User or DenyFilter by
+	Directory.
+
+2002-12-31 14:35  castaglia
+
+	* utils/ftptop.c: 
+	Actually calculate and display the TIME value (duration of session,
+	in seconds).
+
+2002-12-31 13:18  castaglia
+
+	* src/main.c: 
+	Make sure that the configuration file specified using the -c
+	command-line option is an absolute path.  Bug noted by Michael
+	Renner.
+
+2002-12-31 12:05  castaglia
+
+	* NEWS, src/fsio.c: 
+	Bug#1894 - Double chdir into self-referencing symlink fails with
+	"No such file or directory".
+
+2002-12-31 12:00  castaglia
+
+	* include/scoreboard.h, modules/mod_auth.c, src/scoreboard.c,
+	utils/ftptop.c, utils/ftpwho.c, utils/utils.h: 
+	Portion of changes requested in Bug#1794.
+
+2002-12-30 16:37  castaglia
+
+	* modules/mod_auth.c: 
+	Yet another missing word ("the").
+
+2002-12-30 16:35  castaglia
+
+	* modules/mod_auth.c: 
+	Missing "of" in message string (noted by Michael).
+
+2002-12-28 12:52  castaglia
+
+	* contrib/mod_linuxprivs.html: 
+	Forgot to add documentation for the mod_linuxprivs directives
+	before releasing 1.2.8rc1.  With this file, the README.linux-privs
+	doc can probably be retired.
+
+2002-12-28 12:51  castaglia
+
+	* include/version.h: 
+	Updating version for CVS.
+
+2002-12-28 10:23  castaglia
+
+	* ChangeLog, NEWS, contrib/dist/rpm/proftpd.spec,
+	include/version.h: 
+	Preparing for 1.2.8rc1 release.
+
 2002-12-27 09:23  castaglia
 
 	* configure: 
@@ -4981,15 +5935,14 @@
 2000-07-11 06:36  macgyver
 
 	* ChangeLog, contrib/mod_ldap.c, contrib/mod_quota.c,
-	contrib/mod_ratio.c, contrib/mod_sqlpw.c,
-	contrib/libcap/cap_text.c, lib/pwgrent.c, lib/vsnprintf.c,
-	modules/mod_auth.c, modules/mod_core.c, modules/mod_log.c,
-	modules/mod_ls.c, modules/mod_pam.c, modules/mod_readme.c,
-	modules/mod_site.c, modules/mod_tar.c, modules/mod_test.c,
-	modules/mod_unixpw.c, modules/mod_xfer.c, src/auth.c,
-	src/dirtree.c, src/fs.c, src/ftpcount.c, src/ident.c, src/inet.c,
-	src/io.c, src/log.c, src/pool.c, src/support.c: Minor updates and
-	buffer cleanups.
+	contrib/mod_ratio.c, contrib/mod_sqlpw.c, lib/pwgrent.c,
+	lib/vsnprintf.c, modules/mod_auth.c, modules/mod_core.c,
+	modules/mod_log.c, modules/mod_ls.c, modules/mod_pam.c,
+	modules/mod_readme.c, modules/mod_site.c, modules/mod_tar.c,
+	modules/mod_test.c, modules/mod_unixpw.c, modules/mod_xfer.c,
+	src/auth.c, src/dirtree.c, src/fs.c, src/ftpcount.c, src/ident.c,
+	src/inet.c, src/io.c, src/log.c, src/pool.c, src/support.c: Minor
+	updates and buffer cleanups.
 
 2000-07-11 06:35  macgyver
 
@@ -5009,11 +5962,6 @@
 2000-07-09 00:01  macgyver
 
 	* doc/Configuration.html: Updated LDAP documentation.
-
-2000-07-09 00:00  macgyver
-
-	* contrib/libcap/include/sys/capability.h: Added a #define for the
-	kernel.
 
 2000-07-08 23:59  macgyver
 
@@ -5740,10 +6688,6 @@
 	* contrib/proftpd.spec.in: Updated spec file to produce standalone
 	and inetd packages.
 
-1999-10-22 20:34  macgyver
-
-	* contrib/libcap/.cvsignore: Updated ignored files.
-
 1999-10-22 20:21  macgyver
 
 	* NEWS, README, acconfig.h, config.h.in, configure, configure.in,
@@ -6175,18 +7119,13 @@
 	* sample-configurations/complex-virtual.conf: Added in a new sample
 	configuration.
 
-1999-09-16 20:54  macgyver
-
-	* contrib/libcap/cap_extint.c: Corrected gcc warning.
-
 1999-09-16 20:53  macgyver
 
 	* contrib/proftpd.spec.in: Added in mod_readme.
 
 1999-09-16 20:45  macgyver
 
-	* .cvsignore, contrib/.cvsignore, contrib/libcap/.cvsignore: Added
-	some more files to ignore.
+	* .cvsignore, contrib/.cvsignore: Added some more files to ignore.
 
 1999-09-16 10:20  macgyver
 
@@ -6235,9 +7174,8 @@
 
 1999-09-11 17:08  macgyver
 
-	* changelog, contrib/libcap/Makefile, src/ftpcount.1,
-	src/ftpshut.8, src/ftpwho.1, src/proftpd.8: Corrected mailing list
-	addresses.
+	* changelog, src/ftpcount.1, src/ftpshut.8, src/ftpwho.1,
+	src/proftpd.8: Corrected mailing list addresses.
 
 1999-09-11 17:05  macgyver
 
@@ -6336,11 +7274,6 @@
 
 	* config.guess: Added in StrongARM support.
 
-1999-09-08 00:04  macgyver
-
-	* contrib/libcap/capability.h: Moved in the new capability source
-	tree.
-
 1999-09-07 23:59  macgyver
 
 	* src/main.c: Added in some debugging code to assist in tracking
@@ -6382,13 +7315,6 @@
 	* contrib/mod_linuxprivs.c: Updated capabilities code to newer
 	release.
 
-1999-09-07 16:14  macgyver
-
-	* contrib/libcap/: Makefile, _makenames.c, cap_alloc.c,
-	cap_extint.c, cap_file.c, cap_flag.c, cap_proc.c, cap_sys.c,
-	cap_text.c, libcap.h, include/sys/capability.h: Updated
-	capabilities library and model.
-
 1999-09-07 16:13  macgyver
 
 	* contrib/mod_ratio.c: Fixed some potential buffer issues.
@@ -6417,10 +7343,10 @@
 
 1999-08-30 18:31  flood
 
-	* changelog, contrib/mod_linuxprivs.c, contrib/libcap/Makefile,
-	contrib/libcap/cap_sys.c, include/options.h, include/pool.h,
-	modules/mod_core.c, modules/mod_ls.c, modules/mod_xfer.c,
-	src/log.c, src/main.c, src/modules.c, src/pool.c: Mucho patches.
+	* changelog, contrib/mod_linuxprivs.c, include/options.h,
+	include/pool.h, modules/mod_core.c, modules/mod_ls.c,
+	modules/mod_xfer.c, src/log.c, src/main.c, src/modules.c,
+	src/pool.c: Mucho patches.
 
 1999-03-11 17:58  flood
 
@@ -6538,16 +7464,11 @@
 	acconfig.h, changelog, config.guess, config.h.in, config.sub,
 	configure, configure.in, install-sh, contrib/.cvsignore,
 	contrib/README, contrib/mod_linuxprivs.c, contrib/mod_ratio.c,
-	contrib/xferstats.holger-preiss, contrib/libcap/.cvsignore,
-	contrib/libcap/Makefile, contrib/libcap/_makenames.c,
-	contrib/libcap/cap_alloc.c, contrib/libcap/cap_extint.c,
-	contrib/libcap/cap_flag.c, contrib/libcap/cap_proc.c,
-	contrib/libcap/cap_sys.c, contrib/libcap/cap_text.c,
-	contrib/libcap/capability.h, contrib/libcap/libcap.h, doc/API,
-	doc/development.notes, doc/license.txt, include/conf.h,
-	include/data.h, include/default_paths.h, include/dirtree.h,
-	include/fs.h, include/ftp.h, include/ident.h, include/inet.h,
-	include/io.h, include/libsupp.h, include/log.h, include/modules.h,
+	contrib/xferstats.holger-preiss, doc/API, doc/development.notes,
+	doc/license.txt, include/conf.h, include/data.h,
+	include/default_paths.h, include/dirtree.h, include/fs.h,
+	include/ftp.h, include/ident.h, include/inet.h, include/io.h,
+	include/libsupp.h, include/log.h, include/modules.h,
 	include/options.h, include/pool.h, include/privs.h,
 	include/proftpd.h, include/sets.h, include/support.h,
 	include/timers.h, include/version.h, lib/.cvsignore,
@@ -6575,16 +7496,11 @@
 	acconfig.h, changelog, config.guess, config.h.in, config.sub,
 	configure, configure.in, install-sh, contrib/.cvsignore,
 	contrib/README, contrib/mod_linuxprivs.c, contrib/mod_ratio.c,
-	contrib/xferstats.holger-preiss, contrib/libcap/.cvsignore,
-	contrib/libcap/Makefile, contrib/libcap/_makenames.c,
-	contrib/libcap/cap_alloc.c, contrib/libcap/cap_extint.c,
-	contrib/libcap/cap_flag.c, contrib/libcap/cap_proc.c,
-	contrib/libcap/cap_sys.c, contrib/libcap/cap_text.c,
-	contrib/libcap/capability.h, contrib/libcap/libcap.h, doc/API,
-	doc/development.notes, doc/license.txt, include/conf.h,
-	include/data.h, include/default_paths.h, include/dirtree.h,
-	include/fs.h, include/ftp.h, include/ident.h, include/inet.h,
-	include/io.h, include/libsupp.h, include/log.h, include/modules.h,
+	contrib/xferstats.holger-preiss, doc/API, doc/development.notes,
+	doc/license.txt, include/conf.h, include/data.h,
+	include/default_paths.h, include/dirtree.h, include/fs.h,
+	include/ftp.h, include/ident.h, include/inet.h, include/io.h,
+	include/libsupp.h, include/log.h, include/modules.h,
 	include/options.h, include/pool.h, include/privs.h,
 	include/proftpd.h, include/sets.h, include/support.h,
 	include/timers.h, include/version.h, lib/.cvsignore,
