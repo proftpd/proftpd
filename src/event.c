@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.2 2003-11-08 22:32:37 castaglia Exp $
+ * $Id: event.c,v 1.3 2003-11-09 02:17:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -100,7 +100,7 @@ int pr_event_unregister(module *m, const char *event,
     void (*cb)(const void *, void *)) {
   struct event_list *evl;
 
-  if (!event || !cb) {
+  if (!event) {
     errno = EINVAL;
     return -1;
   }
@@ -128,8 +128,8 @@ int pr_event_unregister(module *m, const char *event,
 
         for (evh = evl->handlers; evh;) {
 
-          if (evh->cb == cb &&
-              (m == NULL || evh->module == m)) {
+          if ((m == NULL || evh->module == m) &&
+              (cb == NULL || evh->cb == cb)) { 
             struct event_handler *tmp = evh->next;
 
             if (evh->prev)

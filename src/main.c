@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.207 2003-11-09 01:55:28 castaglia Exp $
+ * $Id: main.c,v 1.208 2003-11-09 02:17:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -361,6 +361,7 @@ static void end_login_noexit(void) {
   }
 
   /* Run all the exit handlers */
+  pr_event_generate("core.exit", NULL);
   run_exit_handlers();
 
   /* If session.user is set, we have a valid login */
@@ -1901,12 +1902,14 @@ static void finish_terminate(void) {
      * exit handler is registered after the fork(), it won't be run here --
      * that registration occurs in a different process space.
      */
+    pr_event_generate("core.exit", NULL);
     run_exit_handlers();
 
     /* Remove the registered exit handlers now, so that the ensuing
      * end_login() call (outside the root privs condition) does not call
      * the exit handlers for the master process again.
      */
+    pr_event_unregister(NULL, "core.exit", NULL);
     remove_exit_handlers();
 
     PRIVS_RELINQUISH

@@ -23,7 +23,7 @@
  */
 
 /* Event management
- * $Id: event.h,v 1.1 2003-11-08 22:19:30 castaglia Exp $
+ * $Id: event.h,v 1.2 2003-11-09 02:17:38 castaglia Exp $
  */
 
 #ifndef PR_EVENT_H
@@ -48,6 +48,20 @@ int pr_event_register(module *m, const char *event,
 /* Remove the given event handler from the event registration lists.  The
  * return value is zero if successful, and -1 if there was an error (in
  * which case, errno will be set appropriately).
+ *
+ * If the module pointer is non-NULL, the event handler being unregistered
+ * must have been registered by that module.  If the callback pointer is
+ * non-NULL, the event handler being unregistered must be that specific
+ * handler.
+ *
+ * This arrangement means that it is possible, though considered terribly
+ * impolite, for the caller to unregister all handlers for a given event,
+ * regardless of registree, using:
+ *
+ *  pr_event_unregister(NULL, event_name, NULL);
+ *
+ * Although rare, there are cases where this kind of blanket unregistration
+ * is necessary.
  */
 int pr_event_unregister(module *m, const char *event,
   void (*cb)(const void *, void *));
