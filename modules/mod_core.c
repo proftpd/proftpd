@@ -19,7 +19,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.10 1999-09-14 08:43:59 macgyver Exp $
+ * $Id: mod_core.c,v 1.11 1999-09-17 04:05:50 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -680,7 +680,22 @@ MODRET set_syslogfacility(cmd_rec *cmd)
 
       block_signals();
       PRIVS_ROOT
-      log_opensyslog(NULL);
+	switch(log_opensyslog(NULL)) {
+	case -2:
+	  PRIVS_RELINQUISH
+	  unblock_signals();
+	  CONF_ERROR(cmd, "you are attempting to log to a world writeable directory");
+	  break;
+	  
+	case -1:
+	  PRIVS_RELINQUISH
+	  unblock_signals();
+	  CONF_ERROR(cmd, "unable to open syslog");
+	  break;
+	  
+	default:
+	  break;
+	}
       PRIVS_RELINQUISH
       unblock_signals();
 
@@ -688,7 +703,7 @@ MODRET set_syslogfacility(cmd_rec *cmd)
     }
   }
 
-  CONF_ERROR(cmd,"argument must be a valid syslog facility");
+  CONF_ERROR(cmd, "argument must be a valid syslog facility");
 }
 
 MODRET set_showsymlinks(cmd_rec *cmd)
@@ -703,75 +718,54 @@ MODRET set_showsymlinks(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET set_pathallowfilter(cmd_rec *cmd)
+MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-{
   regex_t *preg;
   config_rec *c;
   int ret;
-
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
-
-  log_debug(DEBUG4,"Compiling allow regex '%s'",cmd->argv[1]);
-  preg = calloc(1,sizeof(regex_t));
-  log_debug(DEBUG4,"Allocated allow regex at location %p", preg);
-
-  if((ret = regcomp(preg,cmd->argv[1],REG_EXTENDED|REG_NOSUB)) != 0) {
+  
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_GLOBAL);
+  
+  log_debug(DEBUG4,"Compiling %s regex '%s'", type, cmd->argv[1]);
+  preg = calloc(1, sizeof(regex_t));
+  log_debug(DEBUG4,"Allocated %s regex at location %p", type, preg);
+  
+  if((ret = regcomp(preg, cmd->argv[1], REG_EXTENDED | REG_NOSUB)) != 0) {
     char errmsg[200];
 
     regerror(ret, preg, errmsg, 200);
     regfree(preg);
-
+    
     CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"'",cmd->argv[1],
-               "' failed regex compilation: ",errmsg,NULL));
+			   "' failed regex compilation: ",errmsg,NULL));
   }
-
-  c = add_config_param("PathAllowFilter",1,preg);
+  
+  c = add_config_param(param, 1, preg);
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
-}
+
 #else /* no regular expression support at the moment */
-{
-  CONF_ERROR(cmd,"The PathAllowFilter directive cannot be used on this system, "
-                 "as you do not have POSIX compliant regex support.");
-}
+  CONF_ERROR(cmd, "The ", param, " directive cannot be used on this system, "
+	     "as you do not have POSIX compliant regex support.");
 #endif
-
-MODRET set_pathdenyfilter(cmd_rec *cmd)
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-{
-  regex_t *preg;
-  config_rec *c;
-  int ret;
-
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
-
-  log_debug(DEBUG4,"Compiling deny regex '%s'",cmd->argv[1]);
-  preg = calloc(1,sizeof(regex_t));
-  log_debug(DEBUG4,"Allocated deny regex at location %p", preg);
-
-  if((ret = regcomp(preg,cmd->argv[1],REG_EXTENDED|REG_NOSUB)) != 0) {
-    char errmsg[200];
-
-    regerror(ret, preg, errmsg, 200);
-    regfree(preg);
-
-    CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"'",cmd->argv[1],
-               "' failed regex compilation: ",errmsg,NULL));
-  }
-
-  c = add_config_param("PathDenyFilter",1,preg);
-  c->flags |= CF_MERGEDOWN;
-  return HANDLED(cmd);
 }
-#else /* no regular expression support at the moment */
-{
-  CONF_ERROR(cmd,"The PathDenyFilter directive cannot be used on this system, "
-                 "as you do not have POSIX compliant regex support.");
+
+MODRET set_allowfilter(cmd_rec *cmd) {
+  return set_regex(cmd, "AllowFilter", "allow");
 }
-#endif
+
+MODRET set_denyfilter(cmd_rec *cmd) {
+  return set_regex(cmd, "DenyFilter", "deny");
+}
+
+MODRET set_pathallowfilter(cmd_rec *cmd) {
+  return set_regex(cmd, "PathAllowFilter", "allow");
+}
+
+MODRET set_pathdenyfilter(cmd_rec *cmd) {
+  return set_regex(cmd, "PathDenyFilter", "deny");
+}
 
 MODRET set_allowforeignaddress(cmd_rec *cmd)
 {
@@ -1731,9 +1725,8 @@ MODRET cmd_syst(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-int core_chmod(cmd_rec *cmd, char *dir, mode_t mode)
-{
-  if(!dir_check(cmd->tmp_pool,"SITE_CHMOD","WRITE",dir,NULL))
+int core_chmod(cmd_rec *cmd, char *dir, mode_t mode) {
+  if(!dir_check(cmd->tmp_pool, "SITE_CHMOD", "WRITE", dir, NULL))
     return -1;
 
   return fs_chmod(dir,mode);
@@ -1762,8 +1755,8 @@ MODRET _chdir(cmd_rec *cmd,char *ndir)
 	    find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
 	cdir = (char *) malloc(strlen(cdpath->argv[0]) + strlen(ndir) + 2);
 	snprintf(cdir, strlen(cdpath->argv[0]) + strlen(ndir) + 2,
-		 "%s%s%s",cdpath->argv[0],
-		 ((char *)cdpath->argv[0])[strlen(cdpath->argv[0]) - 1] == '/' ? "" : "/",
+		 "%s%s%s", (char *) cdpath->argv[0],
+		 ((char *) cdpath->argv[0])[strlen(cdpath->argv[0]) - 1] == '/' ? "" : "/",
 		 ndir);
 	dir = dir_realpath(cmd->tmp_pool,cdir);
 	free(cdir);
@@ -1791,7 +1784,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir)
 	    find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
 	cdir = (char *) malloc(strlen(cdpath->argv[0]) + strlen(ndir) + 2);
 	snprintf(cdir, strlen(cdpath->argv[0]) + strlen(ndir) + 2,
-		 "%s%s%s",cdpath->argv[0],
+		 "%s%s%s", (char *) cdpath->argv[0],
 		((char *)cdpath->argv[0])[strlen(cdpath->argv[0]) - 1] == '/' ? "" : "/",
 		ndir);
 	ndir = dir_virtual_chdir(cmd->tmp_pool,cdir);
@@ -2101,7 +2094,17 @@ MODRET cmd_dele(cmd_rec *cmd)
     add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
     return ERROR(cmd);
   }
-
+  
+  if(session.flags & SF_ANON) {
+    log_xfer(0, session.c->remote_name, 0,
+	     path, (session.flags & SF_ASCII ? 'a' : 'b'),
+	     'd', 'a', session.anon_user);
+  } else {
+    log_xfer(0,session.c->remote_name, 0, path,
+	     (session.flags & SF_ASCII ? 'a' : 'b'),
+	     'd', 'r', session.user);
+  }
+  
   add_response(R_250,"%s command successful.",cmd->argv[0]);
   return HANDLED(cmd);
 }
@@ -2299,10 +2302,12 @@ static conftable core_conftable[] = {
   { "DenyAll",			set_denyall,			NULL },
   { "</Limit>", 		end_limit, 			NULL },
   { "DisplayLogin",		set_displaylogin,		NULL },
-  { "DisplayConnect",	set_displayconnect,		NULL },
+  { "DisplayConnect",		set_displayconnect,		NULL },
   { "<Anonymous>",		add_anonymous,			NULL },
   { "UserAlias",		add_useralias, 			NULL },
   { "AnonRequirePassword",	set_anonrequirepassword,	NULL },
+  { "AllowFilter",		set_allowfilter,		NULL },
+  { "DenyFilter",		set_denyfilter,			NULL },
   { "PathAllowFilter",		set_pathallowfilter,		NULL },
   { "PathDenyFilter",		set_pathdenyfilter,		NULL },
   { "AllowForeignAddress",	set_allowforeignaddress,	NULL },
