@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.418 2003-04-08 18:47:06 castaglia Exp $
+$Id: NEWS,v 1.419 2003-04-09 02:53:06 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -103,6 +103,7 @@ CVS
 - Bug 2018 - Incorrect caching of TransferRate values.
 - Bug 1813 - configure code: mistake in BSD sendfile semantic detection.
 - Bug 2019 - proftpd support for Solaris 8/9 native sendfile
+- Bug 2002 - Per-<Directory> PathAllowFilter/PathDenyFilter.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------

@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.36 2003-01-05 01:29:38 jwm Exp $
+ * $Id: mod_site.c,v 1.37 2003-04-09 02:53:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -83,7 +83,7 @@ MODRET site_chgrp(cmd_rec *cmd) {
     arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "", cmd->argv[i], NULL);
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
+  preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
   if (preg && regexec(preg, arg, 0, NULL, 0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
@@ -92,7 +92,7 @@ MODRET site_chgrp(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathDenyFilter", FALSE);
+  preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
   if (preg && regexec(preg, arg, 0, NULL, 0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
@@ -153,7 +153,7 @@ MODRET site_chmod(cmd_rec *cmd) {
     arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "", cmd->argv[i], NULL);
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
+  preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
   if (preg && regexec(preg, arg, 0, NULL, 0) != 0) {
     log_debug(DEBUG2, "'%s %s %s' denied by PathAllowFilter", cmd->argv[0],
@@ -162,7 +162,7 @@ MODRET site_chmod(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathDenyFilter", FALSE);
+  preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
   if (preg && regexec(preg, arg, 0, NULL, 0) == 0) {
     log_debug(DEBUG2, "'%s %s %s' denied by PathDenyFilter", cmd->argv[0],

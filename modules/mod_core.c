@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.168 2003-04-03 23:15:01 castaglia Exp $
+ * $Id: mod_core.c,v 1.169 2003-04-09 02:53:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3198,7 +3198,7 @@ MODRET core_rmd(cmd_rec *cmd) {
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
+  preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
@@ -3207,7 +3207,7 @@ MODRET core_rmd(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathDenyFilter", FALSE);
+  preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
@@ -3217,16 +3217,18 @@ MODRET core_rmd(cmd_rec *cmd) {
   }
 #endif
 
-  /* If told to rmdir a symlink to a directory, don't;
-     you can't rmdir a symlink, you delete it.  */
-  dir = dir_canonical_path(cmd->tmp_pool,cmd->arg);
+  /* If told to rmdir a symlink to a directory, don't; you can't rmdir a
+   * symlink, you delete it.
+   */
+  dir = dir_canonical_path(cmd->tmp_pool, cmd->arg);
 
-  if (!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
+  if (!dir || !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL) ||
      pr_fsio_rmdir(dir) == -1) {
-    pr_response_add_err(R_550,"%s: %s",cmd->arg,strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
+
   } else
-    pr_response_add(R_250,"%s command successful.",cmd->argv[0]);
+    pr_response_add(R_250, "%s command successful", cmd->argv[0]);
 
   return HANDLED(cmd);
 }
@@ -3246,7 +3248,7 @@ MODRET core_mkd(cmd_rec *cmd) {
   }
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-    preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
+    preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
     if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
       log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
@@ -3255,7 +3257,7 @@ MODRET core_mkd(cmd_rec *cmd) {
       return ERROR(cmd);
     }
 
-    preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathDenyFilter", FALSE);
+    preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
     if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
       log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
@@ -3418,7 +3420,7 @@ MODRET core_dele(cmd_rec *cmd) {
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
+  preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
@@ -3427,7 +3429,7 @@ MODRET core_dele(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathDenyFilter", FALSE);
+  preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
@@ -3491,7 +3493,7 @@ MODRET core_rnto(cmd_rec *cmd) {
   }
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
+  preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
@@ -3503,7 +3505,7 @@ MODRET core_rnto(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathDenyFilter", FALSE);
+  preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
@@ -3556,7 +3558,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
+  preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
@@ -3565,7 +3567,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathDenyFilter", FALSE);
+  preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
@@ -3575,11 +3577,12 @@ MODRET core_rnfr(cmd_rec *cmd) {
   }
 #endif
 
-  /* Allow renaming a symlink, even a dangling one.  */
-  path = dir_canonical_path(cmd->tmp_pool,cmd->arg);
+  /* Allow renaming a symlink, even a dangling one. */
+  path = dir_canonical_path(cmd->tmp_pool, cmd->arg);
 
-  if (!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) ||
-     !exists(path)) {
+  if (!path ||
+      !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
+      !exists(path)) {
     pr_response_add_err(R_550, "%s: %s", cmd->argv[1], strerror(errno));
     return ERROR(cmd);
   }

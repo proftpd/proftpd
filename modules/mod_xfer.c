@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.136 2003-04-07 21:07:48 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.137 2003-04-09 02:53:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1168,7 +1168,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   }
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
+  preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
   if (preg && ((ret = regexec(preg,cmd->arg, 0, NULL, 0)) != 0)) {
     char errmsg[200];
@@ -1180,7 +1180,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   } else if (preg)
     log_debug(DEBUG8, "'%s' allowed by PathAllowFilter", cmd->arg);
 
-  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathDenyFilter", FALSE);
+  preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
   if (preg && ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) == 0)) {
     char errmsg[200];
