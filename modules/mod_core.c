@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.107 2002-09-13 20:21:50 castaglia Exp $
+ * $Id: mod_core.c,v 1.108 2002-09-13 22:51:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1667,6 +1667,148 @@ MODRET set_allowstorerestart(cmd_rec *cmd) {
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
+}
+
+MODRET set_hidefiles(cmd_rec *cmd) {
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+  regex_t *regexp = NULL;
+  config_rec *c = NULL;
+  int res;
+  unsigned int precedence = 0;
+  unsigned char inverted = FALSE;
+
+  int ctxt = (cmd->config && cmd->config->config_type != CONF_PARAM ?
+    cmd->config->config_type : cmd->server->config_type ?
+    cmd->server->config_type : CONF_ROOT);
+
+  /* This directive must have either 1, or 3, arguments */
+  if (cmd->argc-1 != 1 && cmd->argc-1 != 3)
+    CONF_ERROR(cmd, "wrong number of parameters");
+
+  CHECK_CONF(cmd, CONF_DIR|CONF_DYNDIR);
+
+  /* Set the precedence for this config_rec based on its configuration
+   * context.
+   */
+  if (ctxt & CONF_DIR)
+    precedence = 1;
+
+  else
+    precedence = 2;
+
+  /* Check for a "none" argument, which is used to nullify inherited
+   * HideFiles configurations from parent directories.
+   */
+  if (!strcasecmp(cmd->argv[1], "none")) {
+    log_debug(DEBUG4, "setting %s to NULL", cmd->argv[0]);
+    add_config_param(cmd->argv[0], 1, NULL);
+    return HANDLED(cmd);
+  }
+
+  /* Check for a leading '!' prefix, signifying regex negation */
+  if (*cmd->argv[1] == '!') {
+    inverted = TRUE;
+    cmd->argv[1]++;
+  }
+
+  regexp = pr_regexp_alloc();
+
+  if ((res = regcomp(regexp, cmd->argv[1], REG_EXTENDED|REG_NOSUB)) != 0) {
+    char errstr[200] = {'\0'};
+
+    regerror(res, regexp, errstr, sizeof(errstr));
+    pr_regexp_free(regexp);
+
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
+      "' failed regex compilation: ", errstr, NULL));
+  }
+
+  /* If the directive was used with 3 arguments, then the optional
+   * classifiers, and classifier expression, were used.  Make sure that
+   * a valid classifier was used.
+   */
+  if (cmd->argc-1 == 3) {
+    if (!strcmp(cmd->argv[2], "user") ||
+        !strcmp(cmd->argv[2], "group") ||
+        !strcmp(cmd->argv[2], "class")) {
+
+      /* no-op */
+
+    } else
+      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool, cmd->argv[0],
+        ": unknown classifier used: '", cmd->argv[2], "'", NULL));
+  }
+
+  if (cmd->argc-1 == 1) {
+    c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(regex_t *));
+    *((regex_t **) c->argv[0]) = regexp;
+    c->argv[1] = pcalloc(c->pool, sizeof(unsigned char));
+    *((unsigned char *) c->argv[1]) = inverted;
+    c->argv[2] = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[2]) = precedence;
+
+  } else if (cmd->argc-1 == 3) {
+    array_header *acl = NULL;
+    int argc = cmd->argc - 3;
+    char **argv = cmd->argv + 2;
+
+    /* NOTE: for now, this will work.  parse_group_expression() doesn't
+     * check that they are valid system groups, it just parses the expression
+     * into an array_header.
+     */
+    acl = parse_group_expression(cmd->tmp_pool, &argc, argv);
+
+    c = add_config_param(cmd->argv[0], 0);
+    c->argc = argc + 4;
+
+    /* Add 5 to argc for the argv of the config_rec: one for the
+     * regexp, one for the 'inverted' value, one for the precedence,
+     * one for the classifier, and one for the terminating NULL
+     */
+    c->argv = pcalloc(c->pool, ((argc + 5) * sizeof(char *)));
+
+    /* Capture the config_rec's argv pointer for doing the by-hand
+     * population.
+     */
+    argv = (char **) c->argv;
+
+    /* Copy in the regexp. */
+    *argv = pcalloc(c->pool, sizeof(regex_t *));
+    *((regex_t **) *argv++) = regexp;
+
+    /* Copy in the 'inverted' flag */
+    *argv = pcalloc(c->pool, sizeof(unsigned char));
+    *((unsigned char *) *argv++) = inverted;
+
+    /* Copy in the precedence. */
+    *argv = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) *argv++) = precedence;
+
+    /* Copy in the expression classifier */
+    *argv++ = pstrdup(c->pool, cmd->argv[2]);
+
+    /* now, copy in the expression arguments */
+    if (argc && acl) {
+      while (argc--) {
+        *argv++ = pstrdup(c->pool, *((char **) acl->elts));
+        acl->elts = ((char **) acl->elts) + 1;
+      }
+    }
+
+    /* don't forget the terminating NULL */
+    *argv = NULL;
+  }
+
+  c->flags |= CF_MERGEDOWN_MULTI;
+  return HANDLED(cmd);
+
+#else /* no regular expression support at the moment */
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The HideFiles"
+        " directive cannot be used on this system, "
+        "as you do not have POSIX compliant "
+        "regex support."));
+#endif
 }
 
 MODRET set_hidenoaccess(cmd_rec *cmd) {
@@ -3633,6 +3775,7 @@ static conftable core_conftab[] = {
   { "DisplayQuit",		set_displayquit,		NULL },
   { "Group",			set_group, 			NULL },
   { "GroupOwner",		add_groupowner,			NULL },
+  { "HideFiles",		set_hidefiles,			NULL },
   { "HideGroup",		add_hidegroup,			NULL },
   { "HideNoAccess",		set_hidenoaccess,		NULL },
   { "HideUser",			add_hideuser,			NULL },

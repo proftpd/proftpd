@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.229 2002-09-13 20:21:49 castaglia Exp $
+$Id: NEWS,v 1.230 2002-09-13 22:51:12 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -22,6 +22,7 @@ CVS
 - Bug 1065 - New directives to limit file size on upload and download
 - Bug 1658 - Separate session/daemon resource limit settings
 - Bug 1436 - Feature Enhancement: Timeouts on a <Virtualhost> basis
+- Bug 1737 - Enhance file hiding via regular expressions
 
 1.2.6 - Released 2002-09-04
 ---------------------------------

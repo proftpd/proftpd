@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.67 2002-09-13 20:21:53 castaglia Exp $
+ * $Id: dirtree.c,v 1.68 2002-09-13 22:51:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -36,6 +36,10 @@
 
 #ifdef HAVE_ARPA_INET_H
 # include <arpa/inet.h>
+#endif
+
+#ifdef HAVE_REGEX_H
+# include <regex.h>
 #endif
 
 xaset_t *servers = NULL;
@@ -192,72 +196,176 @@ int is_dotdir(const char *dir) {
   return FALSE;
 }
 
-/* Determine whether the given path is to be treated as a "hidden" file.
- * Returns TRUE if so, FALSE otherwise.
+/* Lookup the best configuration set from which to retrieve configuration
+ * values if the config_rec can appear in <Directory>.  This function
+ * works around the issue caused by using the cached directory pointer
+ * in session.dir_config.
  */
-int dir_check_hidden(const char *path) {
-  char *filename_start = NULL;
+xaset_t *get_dir_ctxt(char *dir_path) {
+  config_rec *c = NULL;
+  char *full_path = dir_path;
+  pool *tmp_pool = make_sub_pool(permanent_pool);
 
-  /* NULL is never a hidden file
-   */
-  if (!path)
-    return FALSE;
+  if (session.anon_root)
+    full_path = pdircat(tmp_pool, session.anon_root, dir_path, NULL);
 
-  /* if path is "." or "..", it's _not_ a hidden file
-   */
-  if (!strcmp(path, ".") || !strcmp(path, ".."))
-    return FALSE;
+  else if (*dir_path != '/')
+    full_path = pdircat(tmp_pool, session.cwd, dir_path, NULL);
 
-  /* if the given path matches the current working directory, treat it
-   * (the path) as if it was ".", and return FALSE.
-   */
-  if (!strcmp(path, fs_getcwd()))
-    return FALSE;
+  c = dir_match_path(tmp_pool, full_path);
+  destroy_pool(tmp_pool);
 
-  /* find the start of the filename portion by looking for the last
-   * slash in the path.  If found, and the next character is a ".", it's
-   * a hidden file.  If not found, and the first character of path is a
-   * ".", it's a hidden file.  Otherwise, it's not a hidden file.
-   */
-  filename_start = rindex(path, '/');
+  return c ? c->subset : session.anon_config ? session.anon_config->subset :
+    main_server->conf;
+}  
 
-  if (filename_start) {
+/* Check for configured HideFiles directives, and check the given filename
+ * (not _path_, just filename) against those regexes if configured. Returns
+ * FALSE if filename should be shown/listed, TRUE if it should not
+ * be visible.
+ */
+unsigned char dir_hide_file(const char *path) {
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+  char *file_name = NULL, *dir_name = NULL;
+  config_rec *c = NULL;
+  regex_t *regexp = NULL;
+  pool *tmp_pool = make_sub_pool(permanent_pool);
+  unsigned int ctxt_precedence = 0;
+  unsigned char have_user_regex, have_group_regex, have_class_regex,
+    have_all_regex, inverted = FALSE;
 
-    /* check to see if this pointer is pointing at the last character in 
-     * the string.  If so, path can't be a hidden file, at least by nature
-     * of it's name.  This _shouldn't_ happen, though, as intervening
-     * functions strip off trailing slashes.  However, just to be thorough
-     * cautious...
-     */
-    if (strlen(filename_start) < 1)
+  have_user_regex = have_group_regex = have_class_regex = have_all_regex =
+    FALSE;
+
+  /* Separate the given path into directory and file components. */
+  dir_name = pstrdup(tmp_pool, path);
+
+  if ((file_name = strrchr(dir_name, '/')) != NULL) {
+    file_name = '\0';
+    file_name++;
+
+  } else
+    file_name = dir_name;
+
+  /* Check for any configured HideFiles */
+  c = find_config(get_dir_ctxt(dir_name), CONF_PARAM, "HideFiles", FALSE);
+
+  while (c) {
+    if (c->argc >= 4) {
+      
+      /* check for a specified "user" classifier first... */
+      if (!strcmp(c->argv[3], "user")) {
+        if (user_expression((char **) &c->argv[4])) {
+
+          if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
+            ctxt_precedence = *((unsigned int *) c->argv[2]);
+
+            regexp = *((regex_t **) c->argv[0]);
+            inverted = *((unsigned char *) c->argv[1]);
+
+            have_group_regex = have_class_regex = have_all_regex = FALSE;
+            have_user_regex = TRUE;
+          }
+        }
+
+      /* ...then for a "group" classifier... */
+      } else if (!strcmp(c->argv[3], "group")) {
+        if (group_expression((char **) &c->argv[4])) {
+          if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
+            ctxt_precedence = *((unsigned int *) c->argv[2]);
+
+            regexp = *((regex_t **) c->argv[0]);
+            inverted = *((unsigned char *) c->argv[1]);
+
+            have_user_regex = have_class_regex = have_all_regex = FALSE;
+            have_group_regex = TRUE;
+          }
+        }
+
+      /* ...finally, for a "class" classifier.  NOTE: mod_time's
+       * class_expression functionality should really be added into the
+       * core code at some point.  When that happens, then this code will
+       * need to be updated to process class-expressions.
+       */
+      } else if (!strcmp(c->argv[3], "class")) {
+        if (session.class && session.class->name &&
+            !strcmp(session.class->name, c->argv[4])) {
+          if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
+            ctxt_precedence = *((unsigned int *) c->argv[2]);
+
+            regexp = *((regex_t **) c->argv[0]);
+            inverted = *((unsigned char *) c->argv[1]);
+
+            have_user_regex = have_group_regex = have_all_regex = FALSE;
+            have_class_regex = TRUE;
+          }
+        }
+      }
+
+    } else if (c->argc == 1) {
+
+      /* This is the "none" HideFiles parameter. */
       return FALSE;
 
-    else
-      filename_start++;
+    } else {
+      if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
+        ctxt_precedence = *((unsigned int *) c->argv[2]);
 
-    if (*filename_start == '.') {
-      return TRUE;
+        regexp = *((regex_t **) c->argv[0]);
+        inverted = *((unsigned char *) c->argv[1]);
+
+        have_user_regex = have_group_regex = have_class_regex = FALSE;
+        have_all_regex = TRUE;
+      }
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "HideFiles", FALSE);
+  }
+
+  destroy_pool(tmp_pool);
+
+  if (have_user_regex || have_group_regex ||
+      have_class_regex || have_all_regex) {
+    int res;
+
+    log_debug(DEBUG4, "checking HideFiles pattern for current %s",
+      have_user_regex ? "user" : have_group_regex ? "group" :
+      have_class_regex ? "class" : "session");
+
+    if ((res = regexec(regexp, file_name, 0, NULL, 0)) != 0) {
+
+      /* The file failed to match the HideFiles regex, which means it should
+       * be treated as a "visible" file.  If the regex was 'inverted', though,
+       * switch the result.
+       */
+      return (inverted ? TRUE : FALSE);
 
     } else {
 
-      /* no-op -- for now */
+      /* The file matched the HideFiles regex, which means it should be
+       * considered a "hidden" file.  If the regex was 'inverted', though,
+       * switch the result.
+       */
+      return (inverted ? FALSE : TRUE);
     }
+  }
 
-  } else if (*path == '.')
-    return TRUE;
+  return FALSE;
+#endif
 
-  /* return FALSE by default */
+  /* return FALSE by default
+   */
   return FALSE;	
 }
 
 int define_exists(const char *definition) {
-  char **defines = NULL;
-  register unsigned int i = 0;
 
   /* Check the list of specified definitions, if present.
    */
   if (server_defines) {
-    defines = (char **) server_defines->elts;
+    char **defines = server_defines->elts;
+    register unsigned int i = 0;
+
     for (i = 0; i < server_defines->nelts; i++) {
       if (defines[i] && !strcmp(defines[i], definition))
         return TRUE;
@@ -835,32 +943,34 @@ static config_rec *_recur_match_path(pool *p,xaset_t *s, char *path)
   char *tmp_path = NULL;
   config_rec *c,*res;
 
-  if(!s)
+  if (!s)
     return NULL;
 
-  for(c = (config_rec*)s->xas_list; c; c=c->next)
-    if(c->config_type == CONF_DIR) {
+  for (c = (config_rec *) s->xas_list; c; c=c->next)
+    if (c->config_type == CONF_DIR) {
       tmp_path = c->name;
 
-      if(c->argv[1]) {
-        if(*(char*)(c->argv[1]) == '~')
-          c->argv[1] = dir_canonical_path(c->pool,(char*)c->argv[1]);
+      if (c->argv[1]) {
+        if (*(char *)(c->argv[1]) == '~')
+          c->argv[1] = dir_canonical_path(c->pool, (char *) c->argv[1]);
 
         tmp_path = pdircat(p, (char *) c->argv[1], tmp_path, NULL);
       }
 
-      /* exact path match
-       */
-      if(!strcmp(tmp_path, path))
+      /* Exact path match */
+      if (!strcmp(tmp_path, path))
         return c;
 
-      if(!strstr(tmp_path,"/*")) {
-        if(*tmp_path && *(tmp_path + (strlen(tmp_path)-1)) == '/') {
+      if (!strstr(tmp_path, "/*")) {
+
+        /* Trim a trailing path separator, if present. */
+        if (*tmp_path && *(tmp_path + (strlen(tmp_path)-1)) == '/') {
           *(tmp_path+(strlen(tmp_path)-1)) = '\0';
 
-          if(!strcmp(tmp_path,path))
+          if (!strcmp(tmp_path, path))
             return c;
         }
+
         tmp_path = pdircat(p, tmp_path, "*", NULL);
       }
 
@@ -878,11 +988,11 @@ static config_rec *_recur_match_path(pool *p,xaset_t *s, char *path)
 #else
       if(pr_fnmatch(tmp_path, path, 0) == 0) {
 #endif
-        if(c->subset) {
-          res = _recur_match_path(p,c->subset,path);
-          if(res)
+        if (c->subset) {
+          if ((res = _recur_match_path(p,c->subset,path)))
             return res;
         }
+
         return c;
       }
     }
@@ -1754,15 +1864,14 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
  * .dotfile".  -jss 2/22/01
  */
 
-int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
-{
-  char *fullpath, *owner;
+int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
+  char *fullpath, *owner, *tmp = NULL;
   config_rec *c;
   struct stat sbuf;
   pool *p;
   mode_t _umask = (mode_t) -1;
   int res = 1, isfile;
-  int op_hidden = FALSE;
+  int op_hidden = FALSE, regex_hidden = FALSE;
 
   p = make_sub_pool(pp);
 
@@ -1780,7 +1889,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
 
   fullpath = path;
 
-  if(session.anon_root)
+  if (session.anon_root)
     fullpath = pdircat(p, session.anon_root, fullpath, NULL);
 
   log_debug(DEBUG5, "in dir_check_full(): path = '%s', fullpath = '%s'.",
@@ -1791,7 +1900,13 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
     memset(&sbuf,0,sizeof(sbuf));
   
   build_dyn_config(p,path,&sbuf,1);
-  
+ 
+  /* Check to see if this path is hidden by HideFiles. */
+  if ((tmp = strrchr(fullpath, '/')) != NULL)
+    regex_hidden = dir_hide_file(++tmp);
+  else
+    regex_hidden = dir_hide_file(fullpath);
+
   session.dir_config = c = dir_match_path(p,fullpath);
 
   if(!c && session.anon_config)
@@ -1862,17 +1977,17 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
      * these return 0 (no access), and also set errno to ENOENT so it looks
      * like the file doesn't exist.
      */
-    res = dir_check_limits(c, cmd, op_hidden);
+    res = dir_check_limits(c, cmd, op_hidden || regex_hidden);
 
     /* If specifically allowed, res will be > 1 and we don't want to
      * check the command group limit
      */
     if(res == 1 && group)
-      res = dir_check_limits(c, group, op_hidden);
+      res = dir_check_limits(c, group, op_hidden || regex_hidden);
 
     /* if still == 1, no explicit allow so check lowest priority "ALL" group */
     if(res == 1)
-      res = dir_check_limits(c, "ALL",op_hidden);
+      res = dir_check_limits(c, "ALL", op_hidden || regex_hidden);
   }
 
   if (res && _umask != (mode_t) -1)
@@ -1881,8 +1996,8 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
 
   destroy_pool(p);
 
-  if(hidden)
-    *hidden = op_hidden;
+  if (hidden)
+    *hidden = op_hidden || regex_hidden;
 
   return res;
 }
@@ -1892,15 +2007,14 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
  * otherwise handed off to dir_check_full
  */
 
-int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
-{
-  char *fullpath, *owner;
+int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
+  char *fullpath, *owner, *tmp = NULL;
   config_rec *c;
   struct stat sbuf;
   pool *p;
   mode_t _umask = (mode_t) -1;
   int res = 1, isfile;
-  int op_hidden = FALSE;
+  int op_hidden = FALSE, regex_hidden = FALSE;
 
   p = make_sub_pool(pp);
 
@@ -1923,9 +2037,16 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
 
   build_dyn_config(p, path, &sbuf, 0);
 
+  /* Check to see if this path is hidden by HideFiles. */
+  if ((tmp = strrchr(fullpath, '/')) != NULL)
+    regex_hidden = dir_hide_file(++tmp);
+
+  else
+    regex_hidden = dir_hide_file(fullpath);
+
   session.dir_config = c = dir_match_path(p, fullpath);
 
-  if(!c && session.anon_config)
+  if (!c && session.anon_config)
     c = session.anon_config;
 
   if(!_kludge_disable_umask) {
@@ -1988,18 +2109,18 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
   }
   
   if(res) {
-    res = dir_check_limits(c, cmd, op_hidden);
+    res = dir_check_limits(c, cmd, op_hidden || regex_hidden);
 
     /* If specifically allowed, res will be > 1 and we don't want to
      * check the command group limit
      */
 
     if(res == 1 && group)
-      res = dir_check_limits(c, group, op_hidden);
+      res = dir_check_limits(c, group, op_hidden || regex_hidden);
     
     /* if still == 1, no explicit allow so check lowest priority "ALL" group */
     if(res == 1)
-      res = dir_check_limits(c, "ALL", op_hidden);
+      res = dir_check_limits(c, "ALL", op_hidden || regex_hidden);
   }
 
   if (res && _umask != (mode_t) -1)
@@ -2008,8 +2129,9 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
 
   destroy_pool(p);
 
-  if(hidden)
-    *hidden = op_hidden;
+  if (hidden)
+    *hidden = op_hidden || regex_hidden;
+
   return res;
 }
 

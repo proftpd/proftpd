@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.62 2002-09-10 16:01:04 castaglia Exp $
+ * $Id: mod_ls.c,v 1.63 2002-09-13 22:51:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1267,6 +1267,9 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
 
     session.flags |= SF_ASCII_OVERRIDE;
   }
+
+  if (dir_hide_file(file))
+    return 1;
 
   /* Be sure to flush the output */
   if ((res = sendline("%s\n", file)) < 0 ||

@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.19 2002-08-01 22:08:54 castaglia Exp $
+ * $Id: dirtree.h,v 1.20 2002-09-13 22:51:12 castaglia Exp $
  */
 
 #ifndef __DIRTREE_H
@@ -227,7 +227,7 @@ char *get_line(char *, int, FILE *, unsigned int *);
 
 config_rec *dir_match_path(pool *, char *);
 void build_dyn_config(pool *, char *, struct stat *, int);
-int dir_check_hidden(const char *);
+unsigned char dir_hide_file(const char *);
 int dir_check_op_mode(pool *, char *, int, uid_t, gid_t, mode_t);
 int dir_check_full(pool *, char *, char *, char *, int *);
 int dir_check(pool *, char *, char *, char *, int *);
