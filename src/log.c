@@ -27,7 +27,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.44 2002-09-25 23:43:20 castaglia Exp $
+ * $Id: log.c,v 1.45 2002-10-15 00:11:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -278,7 +278,7 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   if (sbuf.st_mode & S_IWOTH) {
     log_debug(DEBUG0, "error: %s is a world writeable directory", lf);
     destroy_pool(pool);
-    return -2;
+    return LOG_WRITEABLE_DIR;
   }
 
   /* Restore the path separator so that checks on the file itself may be
@@ -303,7 +303,7 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
       close(*log_fd);
       *log_fd = -1;
       destroy_pool(pool);
-      return -3;
+      return LOG_SYMLINK;
     }
 
   } else
