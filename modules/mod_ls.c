@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.85 2003-02-24 18:13:56 castaglia Exp $
+ * $Id: mod_ls.c,v 1.86 2003-02-24 18:15:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1203,26 +1203,6 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
       while (path && *path) {
         struct stat st;
-
-          /* I believe this code may be unnecessary here because it's only
-           * used if args are passed to LIST/STAT, and then only to display
-           * the initial directories/files from a glob.  listdir() will hide
-           * .dotfiles correctly, so ...  jss - 2/20/01
-           */
-
-#if 0
-          /* If we have a leading '.', two conditions must be true for us to
-           * invalidate it:
-           *
-           * - opt_a is not set
-           * - We don't have '.' or '..'.
-           */
-          if (**path == '.' && !opt_a && !is_dotdir(*path)) {
-            **path = '\0';
-            path++;
-            continue;
-          }
-#endif
 
         if (pr_fsio_lstat(*path, &st) == 0) {
           mode_t target_mode, lmode;
