@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.55 2003-01-02 18:25:24 castaglia Exp $
+ * $Id: data.c,v 1.56 2003-01-13 19:20:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -232,7 +232,21 @@ static int data_pasv_open(char *reason, off_t size) {
    * lookups, and then set it to what the configuration wants it to
    * be.
    */
-  rev = inet_reverse_dns(session.xfer.p,ServerUseReverseDNS);
+  rev = inet_reverse_dns(session.xfer.p, ServerUseReverseDNS);
+
+  /* Protocol and socket options should be set before handshaking. */
+
+  if (session.xfer.direction == PR_NETIO_IO_RD) {
+    inet_setoptions(session.d->pool,session.d,
+      (main_server->tcp_rwin_override ?  main_server->tcp_rwin : 0), 0);
+    inet_set_proto_options(session.pool, session.d, 0, 0, 1, 1);
+    
+  } else {
+    inet_setoptions(session.d->pool,session.d, 0,
+      (main_server->tcp_swin_override ?  main_server->tcp_swin : 0));
+    inet_set_proto_options(session.pool, session.d, 0, 0, 1, 1);
+  }
+
   c = inet_accept(session.xfer.p, session.d, session.c, -1, -1, TRUE);
   inet_reverse_dns(session.xfer.p,rev);
 
@@ -310,7 +324,20 @@ static int data_active_open(char *reason, off_t size) {
   if (TimeoutStalled)
     add_timer(TimeoutStalled, TIMER_STALLED, NULL, stalled_timeout_cb);
 
-  rev = inet_reverse_dns(session.pool,ServerUseReverseDNS);
+  rev = inet_reverse_dns(session.pool, ServerUseReverseDNS);
+
+  /* Protocol and socket options should be set before handshaking. */
+
+  if (session.xfer.direction == PR_NETIO_IO_RD) {
+    inet_setoptions(session.d->pool,session.d,
+       (main_server->tcp_rwin_override ?  main_server->tcp_rwin : 0), 0);
+    inet_set_proto_options(session.pool, session.d, 0, 0, 1, 1);
+    
+  } else {
+    inet_setoptions(session.d->pool,session.d, 0,
+      (main_server->tcp_swin_override ?  main_server->tcp_swin : 0));
+    inet_set_proto_options(session.pool, session.d, 0, 0, 1, 1);
+  }
 
   if (inet_connect(session.d->pool, session.d, &session.data_addr,
       session.data_port) == -1) {
@@ -442,20 +469,11 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
 
     gettimeofday(&session.xfer.start_time, NULL);
 
-    if (session.xfer.direction == PR_NETIO_IO_RD) {
-      inet_setoptions(session.d->pool,session.d,
-		      (main_server->tcp_rwin_override ?
-		       main_server->tcp_rwin : 0),0);
-      inet_set_proto_options(session.pool,session.d,0,0,1,1);
+    if (session.xfer.direction == PR_NETIO_IO_RD)
       nstrm = session.d->instrm;
 
-    } else {
-      inet_setoptions(session.d->pool,session.d,0,
-		      (main_server->tcp_swin_override ?
-		       main_server->tcp_swin : 0));
-      inet_set_proto_options(session.pool,session.d,0,0,1,1);
+    else
       nstrm = session.d->outstrm;
-    }
 
     session.sf_flags |= SF_XFER;
 
