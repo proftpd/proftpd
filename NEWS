@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.68 2000-08-02 23:28:04 macgyver Exp $
+$Id: NEWS,v 1.69 2000-08-03 01:30:54 macgyver Exp $
 
 1.2.0 - Released: 08/??/2000
 ----------------------------
@@ -15,6 +15,7 @@ $Id: NEWS,v 1.68 2000-08-02 23:28:04 macgyver Exp $
 - Added --with-includes option to configure.
 - Added --with-libraries option to configure.
 - On systems with wtmpx, don't use wtmp at all.
+- Handle files that begin with ~ properly.
 
 1.2.0RC2 - Released: 07/28/2000
 -------------------------------

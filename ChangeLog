@@ -1,3 +1,21 @@
+2000-08-02 20:29  macgyver
+
+	* src/fs.c (1.11): Fixed a problem where files that began with ~
+	weren't being handled properly.
+
+2000-08-02 18:36  macgyver
+
+	* contrib/mod_quota.c (1.4): Fixed a crash when using mod_quota and
+	not defining QuotaExempt.
+
+2000-08-02 18:34  macgyver
+
+	* doc/Configuration.html (1.30): Updated documentation.
+
+2000-08-02 18:28  macgyver
+
+	* ChangeLog (1.26), NEWS (1.68): Updated NEWS and ChangeLog.
+
 2000-08-02 18:26  macgyver
 
 	* Make.rules.in (1.9), configure (1.44), configure.in (1.45): Added
