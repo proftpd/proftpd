@@ -8179,6 +8179,8 @@ SBINDIR=`eval echo $sbindir`
 SYSCONFDIR=`eval echo $sysconfdir`
 
 
+LIB_DEPS="\"\""
+
 
 
 
