@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.95 2003-08-28 00:40:12 jwm Exp $
+ * $Id: mod_ls.c,v 1.96 2003-09-06 17:44:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -901,13 +901,8 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
         d = listfile(cmd, workp, *s);
       }
 
-      if (d == 0)
-        *s = NULL;
-
-      else if (d == 2) {
-        *s = NULL;
+      if (d == 2)
         break;
-      }
 
       s++;
     }
