@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.50 2001-02-20 20:34:17 flood Exp $
+ * $Id: main.c,v 1.51 2001-02-22 01:09:35 flood Exp $
  */
 
 /*
@@ -998,6 +998,8 @@ void cmd_loop(server_rec *server, conn_t *c)
 
   /* make sure we can receive OOB data */
   inet_setasync(session.pool,session.c);
+
+  log_pri(LOG_INFO, "FTP session opened.");
 
   while(1) {
     if(io_telnet_gets(buf,sizeof(buf)-1,session.c->inf,session.c->outf) == NULL) {

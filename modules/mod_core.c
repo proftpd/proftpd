@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.53 2001-02-16 01:21:39 flood Exp $
+ * $Id: mod_core.c,v 1.54 2001-02-22 01:09:35 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -1825,7 +1825,7 @@ MODRET cmd_quit(cmd_rec *cmd)
         send_response(R_221, "Goodbye.");
   }
   
-  log_pri(LOG_NOTICE, "FTP session closed.");
+  log_pri(LOG_INFO, "FTP session closed.");
   end_login(0);
   return HANDLED(cmd);			/* Avoid compiler warning */
 }
