@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.548 2004-03-19 20:22:21 castaglia Exp $
+$Id: NEWS,v 1.549 2004-03-23 18:37:37 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -128,6 +128,9 @@ CVS
   connection address, as is done in a PASV response for forwarding devices
   (e.g. NAT, firewall).  Until the proper behavior can be determined,
   do not honor MasqueradeAddress for EPSV.
+- Bug 2367 - LIST *.* strange behaviour.  The builtin listing mechanism
+  was inadvertently recursing into globbed directories when recursion was
+  not actually requested.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------

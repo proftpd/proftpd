@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.105 2004-02-27 22:53:24 castaglia Exp $
+ * $Id: mod_ls.c,v 1.106 2004-03-23 18:37:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1295,7 +1295,11 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
     if (!a) {
       char **path;
 
+      if (!opt_R)
+        opt_d = 1;
+
       path = g.gl_pathv;
+
       if (path && path[0] && path[1])
         justone = 0;
 
