@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.128 2003-02-24 23:47:30 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.129 2003-02-25 01:39:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1568,8 +1568,13 @@ MODRET xfer_retr(cmd_rec *cmd) {
         NULL);
     }
 
-    /* If no throttling is configured, this simply updates the scoreboard. */
-    xfer_rate_throttle(nbytes_sent);
+    /* If no throttling is configured, this simply updates the scoreboard.
+     * In this case, we want to use session.xfer.total_bytes, rather than
+     * nbytes_sent, as the latter incorporates a REST position and the
+     * former does not.  (When handling STOR, this is not an issue: different
+     * end-of-loop conditions).
+     */
+    xfer_rate_throttle(session.xfer.total_bytes);
   }
 
   if (XFER_ABORTED) {
@@ -1584,8 +1589,13 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
   } else {
 
-    /* If no throttling is configured, this simply updates the scoreboard. */
-    xfer_rate_throttle(nbytes_sent);
+    /* If no throttling is configured, this simply updates the scoreboard.
+     * In this case, we want to use session.xfer.total_bytes, rather than
+     * nbytes_sent, as the latter incorporates a REST position and the
+     * former does not.  (When handling STOR, this is not an issue: different
+     * end-of-loop conditions).
+     */
+    xfer_rate_throttle(session.xfer.total_bytes);
 
     retr_complete();
     pr_data_close(FALSE);
