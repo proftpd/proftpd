@@ -2,7 +2,7 @@
  * ProFTPD: mod_quotatab -- a module for managing FTP byte/file quotas via
  *                          centralized tables
  *
- * Copyright (c) 2001-2004 TJ Saunders
+ * Copyright (c) 2001-2005 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.14 2004-12-16 22:55:46 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.15 2005-03-05 22:55:15 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -846,6 +846,47 @@ int quotatab_write(double bytes_in_inc, double bytes_out_inc,
   return 0;
 }
 
+/* FSIO handlers
+ */
+
+static int quotatab_fsio_write(pr_fh_t *fh, int fd, const char *buf,
+    size_t bufsz) {
+  int res;
+
+  res = write(fd, buf, bufsz);
+  if (res < 0)
+    return res;
+
+  /* Check to see if we've exceeded our upload limit.  mod_xfer will
+   * have called pr_data_xfer(), which will have updated
+   * session.xfer.total_bytes, before calling pr_fsio_write(), so
+   * we do not have to worry about updated/changing session.xfer.total_bytes
+   * ourselves.
+   *
+   * Note that there is a race condition here: it is possible for the same
+   * user to be writing to the same file in chunks from multiple
+   * simultaneous connections.
+   */
+
+  if (quotatab_limit.bytes_in_avail > 0.0 &&
+      quotatab_tally.bytes_in_used + session.xfer.total_bytes > quotatab_limit.bytes_in_avail) {
+    res = -1;
+
+#if defined(EDQUOT)
+    quotatab_log("quotatab write(): limit exceeded, returning EDQUOT");
+    errno = EDQUOT;
+#elif defined(EFBIG)
+    quotatab_log("quotatab write(): limit exceeded, returning EFBIG");
+    errno = EFBIG;
+#else
+    quotatab_log("quotatab write(): limit exceeded, returning EIO");
+    errno = EIO;
+#endif
+  }
+
+  return res;
+}
+
 /* Configuration handlers
  */
 
@@ -1398,6 +1439,21 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
 
       quotatab_log("per session setting in effect: updates will not be "
         "tracked in the QuotaTallyTable");
+    }
+
+    /* If the limit for this user is a hard limit, install our own FS handler,
+     * one that provides a custom write() function.  We will use this to
+     * return an error when writing a file causes a limit to be reached.
+     */
+    if (quotatab_limit.quota_limit_type == HARD_LIMIT) {
+      pr_fs_t *fs = pr_register_fs(main_server->pool, "quotatab", "/");
+      if (fs) {
+        quotatab_log("quotatab FS registered");
+
+        fs->write = quotatab_fsio_write;
+
+      } else
+        quotatab_log("error registering fs: %s", strerror(errno));
     }
 
   } else {

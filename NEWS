@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.648 2005-03-05 17:46:00 castaglia Exp $
+$Id: NEWS,v 1.649 2005-03-05 22:55:15 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -119,6 +119,7 @@ CVS
 - Bug 2573 - TLSProtocol directive in proftpd.conf is ignored.
 - Bug 2559 - IPv6 socket option should be set for ServerType inetd.
 - Bug 2164 - Support non-PASS response codes (i.e. 232).
+- Bug 2515 - mod_quotatab should enforce hard limits at the filesystem level.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------
