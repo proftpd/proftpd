@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.643 2005-02-04 23:54:55 castaglia Exp $
+$Id: NEWS,v 1.644 2005-02-25 02:01:23 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -110,6 +110,10 @@ CVS
 - Bug 2556 - Rename of directory across devices fails.  The solution is to
   prevent renaming of directories.  Proper support for copying of directories
   will require module support.
+- Bug 2563 - Linking fails on Solaris with libz and libmysqlclient.  The
+  linker in question was Solaris ld, not GNU ld; the Solaris linker is
+  more particular about the order of specified libraries.  GNU ld is
+  less strict.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------
