@@ -18,7 +18,7 @@ INCLUDES=-I.. -I$(top_srcdir)/include @INCLUDES@
 
 # Preprocessor compilation flags.
 #
-CPPFLAGS=@CPPFLAGS@ $(DEFAULT_PATHS) $(PLATFORM) $(INCLUDES)
+CPPFLAGS=@CPPFLAGS@ -DHAVE_CONFIG_H $(DEFAULT_PATHS) $(PLATFORM) $(INCLUDES)
 
 # Our compiler flags.
 #
