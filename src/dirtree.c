@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.39 2001-10-18 16:51:26 flood Exp $
+ * $Id: dirtree.c,v 1.40 2001-10-19 15:27:58 flood Exp $
  */
 
 /* History:
@@ -1537,21 +1537,34 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
   if(!c && session.anon_config)
     c = session.anon_config;
 
-  _umask = -1;
+  _umask = (mode_t) -1;
   
   if(!_kludge_disable_umask) {
     /* Check for a directory Umask.
      */
     if(S_ISDIR(sbuf.st_mode) ||
 		!strcasecmp(cmd, C_MKD) ||
-		!strcasecmp(cmd, C_XMKD))
-      _umask = (mode_t) get_param_int(CURRENT_CONF, "DirUmask", FALSE);
+        !strcasecmp(cmd, C_XMKD)) {
+      mode_t *dir_umask = (mode_t *) get_param_ptr(CURRENT_CONF, "DirUmask",
+        FALSE);
+
+      if (dir_umask == NULL)
+        _umask = (mode_t) -1;
+      else
+        _umask = *dir_umask;
+    }
     
     /* It's either a file, or we had no directory Umask.
      */
-    if(_umask == -1 &&
-       ((_umask = (mode_t) get_param_int(CURRENT_CONF, "Umask", FALSE)) == -1))
-      _umask = 0022;
+    if (_umask == (mode_t) -1) {
+      mode_t *file_umask = (mode_t *) get_param_ptr(CURRENT_CONF, "Umask",
+        FALSE);
+
+      if (file_umask == NULL)
+        _umask = (mode_t) 0022;
+      else
+        _umask = *file_umask;
+    }
   }
   
   session.fsuid = session.fsgid = -1;
@@ -1602,8 +1615,8 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
       res = dir_check_limits(c, "ALL",op_hidden);
   }
 
-  if(res && _umask != -1)
-    log_debug(DEBUG5,"in dir_check_full(): setting umask to 0%o (was 0%o)",
+  if (res && _umask != (mode_t) -1)
+    log_debug(DEBUG5,"in dir_check_full(): setting umask to %04o (was %04o)",
         (unsigned int)_umask,(unsigned int)umask(_umask));
 
   destroy_pool(p);
@@ -1662,14 +1675,27 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
      */
     if(S_ISDIR(sbuf.st_mode) ||
 		!strcasecmp(cmd, C_MKD) ||
-		!strcasecmp(cmd, C_XMKD))
-      _umask = (mode_t) get_param_int(CURRENT_CONF, "DirUmask", FALSE);
+        !strcasecmp(cmd, C_XMKD)) {
+      mode_t *dir_umask = (mode_t *) get_param_ptr(CURRENT_CONF, "DirUmask",
+        FALSE);
+
+      if (dir_umask == NULL)
+        _umask = (mode_t) -1;
+      else
+        _umask = *dir_umask;
+    }
     
     /* It's either a file, or we had no directory Umask.
      */
-    if(_umask == -1 &&
-       ((_umask = (mode_t) get_param_int(CURRENT_CONF, "Umask", FALSE)) == -1))
-      _umask = 0022;
+    if (_umask == (mode_t) -1) {
+      mode_t *file_umask = (mode_t *) get_param_ptr(CURRENT_CONF, "Umask",
+        FALSE);
+
+      if (file_umask == NULL)
+        _umask = (mode_t) 0022;
+      else
+        _umask = *file_umask;
+    }
   }
 
   session.fsuid = session.fsgid = -1;
@@ -1716,8 +1742,8 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
       res = dir_check_limits(c, "ALL", op_hidden);
   }
 
-  if(res && _umask != -1)
-    log_debug(DEBUG5,"in dir_check(): setting umask to 0%o (was 0%o)",
+  if (res && _umask != (mode_t) -1)
+    log_debug(DEBUG5,"in dir_check(): setting umask to %04o (was %04o)",
         (unsigned int)_umask,(unsigned int)umask(_umask));
 
   destroy_pool(p);

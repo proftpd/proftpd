@@ -1,4 +1,10 @@
-$Id: NEWS,v 1.135 2001-10-18 17:13:41 flood Exp $
+$Id: NEWS,v 1.136 2001-10-19 15:27:58 flood Exp $
+
+1.2.4 - Released 10/19/2001
+---------------------------------
+Ooops.  1.2.3 was released with a bug that breaks Umask on
+certain platforms.  This results in files being mode 0.
+- Bug 1348 - Fix for mode 0 problem
 
 1.2.3 - Released 10/18/2001
 ---------------------------------
