@@ -59,7 +59,7 @@ static struct {
   { C_RETR, "<sp> pathname",			TRUE },
   { C_STOR, "<sp> pathname",			TRUE },
   { C_STOU, "is not implemented",		FALSE },
-  { C_APPE, "is not implemented",		FALSE },
+  { C_APPE, "<sp> pathname",			TRUE },
   { C_ALLO, "is not implemented",		FALSE },
   { C_REST, "<sp> byte-count",			TRUE },
   { C_RNFR, "<sp> pathname",			TRUE },

@@ -19,7 +19,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.1 1998-10-18 02:24:41 flood Exp $
+ * $Id: dirtree.c,v 1.2 1998-11-01 19:08:26 flood Exp $
  */
 
 /* History:
@@ -1513,7 +1513,7 @@ static void _mergedown(xaset_t *s,int dynamic)
           /* If an option of the same name/type is found in the
            * next level down, it overrides, so we don't merge.
            */
-          if(find_config(dest->subset,dest->config_type,
+          if(find_config(dest->subset,c->config_type,
                          c->name,FALSE))
             continue;
 

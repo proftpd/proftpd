@@ -12,6 +12,26 @@ xferstats.holger-preiss (BSD license, I think)
 	w/ bug fixes and some modifications.  Useful for analyzing
 	your /var/log/xferlog files.  See xferlog(5).
 
+mod_read.c (License unknown - jan.menzel@gmx.de)
+
+	A 3rd party module which implements a new configuration directive,
+	"DisplayReadme."  The directive can be used to display a list
+	of "readme" files, including their last modification date.
+	See contrib/mod_readme.c for details.
+
+mod_pam.c (GPL license - macgyver@tos.net)
+
+        A 3rd party module which implements PAM (Pluggable Authentication
+	Modules) support for proftpd.  An additional directive,
+	AuthPAMAuthoritative, is available when using this module, which
+	controls whether the authentication provided by PAM is absolutely
+	authoritative over logins, or whether proftpd should try other
+	authentications methods.
+
+	To build with mod_pam, simply:
+
+		./configure --with-modules=mod_pam
+
 mod_ratio.c (GPL license)
 
 	A 3rd party module (distributed w/ the debian proftpd package)

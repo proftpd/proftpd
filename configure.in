@@ -13,6 +13,9 @@ olddir=`pwd`
 cd $srcdir/modules
 test -f mod_ratio.c || ln -s ../contrib/mod_ratio.c mod_ratio.c
 test -f mod_linuxprivs.c || ln -s ../contrib/mod_linuxprivs.c mod_linuxprivs.c
+test -f mod_pam.c || ln -s ../contrib/mod_pam.c mod_pam.c
+test -f mod_readme.c || ln -s ../contrib/mod_readme.c mod_readme.c
+
 cd ../contrib
 test -f README.linux-privs || ln -s ../README.linux-privs
 cd $olddir

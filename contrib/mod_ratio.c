@@ -382,6 +382,7 @@ cmdtable ratio_commands[] = {
 
   { PRE_CMD,  C_CWD,	G_NONE, pre_cmd_log, 	FALSE, FALSE },
   { PRE_CMD,  C_STOR,	G_NONE, pre_cmd, 	FALSE, FALSE },
+  { PRE_CMD,  C_APPE,	G_NONE, pre_cmd,	FALSE, FALSE },
   { PRE_CMD,  C_PORT,	G_NONE, pre_cmd, 	FALSE, FALSE },
   { PRE_CMD,  C_LIST,	G_NONE, pre_cmd, 	FALSE, FALSE },
   { PRE_CMD,  C_NLST,	G_NONE, pre_cmd, 	FALSE, FALSE },
@@ -394,6 +395,7 @@ cmdtable ratio_commands[] = {
   { PRE_CMD,  C_RETR,   G_NONE, pre_cmd_retr,	FALSE, FALSE },
   { POST_CMD, C_RETR,   G_NONE, post_cmd_retr,	FALSE, FALSE },
   { POST_CMD, C_STOR,	G_NONE, post_cmd_stor,	FALSE, FALSE },
+  { POST_CMD, C_APPE,   G_NONE, post_cmd_stor,  FALSE, FALSE },
 
   { CMD,      "XRATIO",	G_NONE, cmd_xratio, 	FALSE, FALSE },
   { 0,	      NULL }

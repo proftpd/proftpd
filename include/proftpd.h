@@ -18,7 +18,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.2 1998-10-30 01:38:02 flood Exp $
+ * $Id: proftpd.h,v 1.3 1998-11-01 19:08:22 flood Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -109,6 +109,8 @@ typedef struct {
 
   struct {
     struct pool *p;
+
+    int stor_append;			/* append to file? */
     int direction;
     char *filename;			/* As shown to user */
     char *path;				/* As used in transfer */

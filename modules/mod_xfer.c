@@ -19,7 +19,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.1 1998-10-18 02:24:41 flood Exp $
+ * $Id: mod_xfer.c,v 1.2 1998-11-01 19:08:25 flood Exp $
  */
 
 /* History Log:
@@ -155,7 +155,8 @@ MODRET pre_cmd_stor(cmd_rec *cmd)
 
   fmode = file_mode(dir);
 
-  if(fmode && get_param_int(CURRENT_CONF,"AllowOverwrite",FALSE) != 1) {
+  if(fmode && !session.xfer.stor_append && 
+	       get_param_int(CURRENT_CONF,"AllowOverwrite",FALSE) != 1) {
     add_response_err(R_550,"%s: Overwrite permission denied",cmd->arg);
     return ERROR(cmd);
   }
@@ -169,11 +170,12 @@ MODRET pre_cmd_stor(cmd_rec *cmd)
    * AllowStoreRestart is set, permit it
    */
 
-  if(fmode && session.restart_pos &&
+  if(fmode && (session.restart_pos || session.xfer.stor_append) &&
      get_param_int(CURRENT_CONF,"AllowStoreRestart",FALSE) != TRUE) {
-    add_response_err(R_451,"%s: Restart not permitted, try again.",
+    add_response_err(R_451,"%s: Append/Restart not permitted, try again.",
                   cmd->arg);
     session.restart_pos = 0L;
+    session.xfer.stor_append = 0;
     return ERROR(cmd);
   }
 
@@ -182,6 +184,18 @@ MODRET pre_cmd_stor(cmd_rec *cmd)
   strcpy(p->value.str_val,dir);
 
   return HANDLED(cmd);
+}
+
+/* cmd_pre_appe is the PRE_CMD handler for the APPEnd command, which
+ * simply sets stor_append and calls pre_cmd_stor
+ */
+
+MODRET pre_cmd_appe(cmd_rec *cmd)
+{
+  session.xfer.stor_append = 1;
+  session.restart_pos = 0L;
+  
+  return pre_cmd_stor(cmd);
 }
 
 MODRET cmd_stor(cmd_rec *cmd)
@@ -224,7 +238,10 @@ MODRET cmd_stor(cmd_rec *cmd)
 
   dir = p->value.str_val;
 
-  stor_file = fs_open(dir,O_WRONLY|(session.restart_pos ? 0 : O_TRUNC|O_CREAT),&stor_fd);
+  if(session.xfer.stor_append)
+	  stor_file = fs_open(dir,O_WRONLY|O_CREAT|O_APPEND,&stor_fd);
+  else
+	  stor_file = fs_open(dir,O_WRONLY|(session.restart_pos ? 0 : O_TRUNC|O_CREAT),&stor_fd);
 
   if(stor_file && session.restart_pos) {
     if(fs_lseek(stor_file,stor_fd,session.restart_pos,SEEK_SET) == -1) {
@@ -533,6 +550,9 @@ cmdtable xfer_commands[] = {
   { PRE_CMD, C_STOR,	G_WRITE, pre_cmd_stor,	TRUE,	FALSE },
   { CMD,     C_STOR,	G_WRITE, cmd_stor,	TRUE,	FALSE, CL_WRITE },
   { LOG_CMD, C_STOR,    G_NONE,	 log_stor,	FALSE,  FALSE },
+  { PRE_CMD, C_APPE,	G_WRITE, pre_cmd_appe,	TRUE,	FALSE },
+  { CMD,     C_APPE,	G_WRITE, cmd_stor,	TRUE,	FALSE, CL_WRITE },
+  { LOG_CMD, C_APPE,	G_NONE,  log_stor,	FALSE,  FALSE },
   { CMD,     C_ABOR,	G_NONE,	 cmd_abor,	TRUE,	TRUE,  CL_MISC  },
   { CMD,     C_REST,	G_NONE,	 cmd_rest,	TRUE,	FALSE, CL_MISC  },
   { 0,NULL }
