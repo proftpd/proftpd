@@ -20,7 +20,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.22 2001-01-26 23:06:17 flood Exp $
+ * $Id: dirtree.c,v 1.23 2001-01-29 02:14:47 flood Exp $
  */
 
 /* History:
@@ -825,19 +825,47 @@ int match_ip(p_in_addr_t *addr, char *name, const char *match)
   return 0;
 }
 
+/* As of 1.2.0rc3, a '!' character in front of the IP address
+ * negates the logic (i.e. doesn't match)
+ */
+
 static int _check_ip_access(xaset_t *conf, char *name)
 {
-  char **argv;
+  char *arg,**argv;
   int argc; 
-
+  int negate;
+  
   config_rec *c = find_config(conf,CONF_PARAM,name,FALSE);
 
   while(c) {
     for(argc = c->argc, argv = (char**)c->argv; argc; argc--, argv++) {
-      switch(match_ip(session.c->remote_ipaddr,session.c->remote_name,*argv)) {
-      case 1: return TRUE;
-      case -1: return FALSE;
-      default: break; /* avoid compiler warning */
+      arg = *argv;
+      if(*arg == '!') {
+	negate++;
+	arg++;
+      } else negate = 0;
+      
+      switch(match_ip(session.c->remote_ipaddr,session.c->remote_name,arg)) {
+	case 1: 
+	  /* If in logical negate mode, we specifically did NOT find what we
+	   * were looking for.
+	   */
+	  if(negate) break;
+	  
+	  /* otherwise, we did */
+	  return TRUE;
+	case -1: 
+	  /* -1 is only returned on an explicit mismatch, which can only
+	   * happen for "NONE".  Negate is not valid in this case, and is
+	   * disallowed by mod_core's _add_allow_deny().
+	   */
+	  return FALSE;
+        default:
+	  /* No match, but if we are in negate mode, that means it IS 
+	   * a match.
+	   */
+	  if(negate) return TRUE;
+	  break;
       }
     }
 

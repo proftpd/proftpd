@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.48 2001-01-29 00:23:21 flood Exp $
+ * $Id: mod_core.c,v 1.49 2001-01-29 02:14:47 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -1404,9 +1404,16 @@ MODRET _add_allow_deny(cmd_rec *cmd, char *name)
   argc = cmd->argc-1; argv = cmd->argv;
 
   /* Skip optional "from" keyword */
+  /* ! is allowed in front of a hostmask or IP, but NOT in front of
+   * ALL or NONE
+   */
+  
   while(argc && *(argv+1)) {
     if(!strcasecmp("from",*(argv+1))) {
       argv++; argc--; continue;
+    } else if(!strcasecmp("!all",*(argv+1)) ||
+	      !strcasecmp("!none",*(argv+1))) {
+      CONF_ERROR(cmd,"negation operator (!) cannot be used with ALL/NONE");
     } else if(!strcasecmp("all",*(argv+1))) {
       *((char**)push_array(acl)) = "ALL";
       argc = 0;
