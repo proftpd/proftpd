@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.276 2002-11-13 16:32:13 castaglia Exp $
+$Id: NEWS,v 1.277 2002-11-13 21:15:27 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -41,6 +41,9 @@ CVS
 - Bug 1810 - Wrong permissions assigned to uploaded file.  This turned out
   to be related to the addition of the statcache code, and its interaction
   with the UserOwner and GroupOwner configuration directives.
+- Bug 1830 - MaxClientsPerHost (small) Bug.  Off-by-one error in the handling
+  of the MaxClientsPerHost directive, introduced by the change in timing of
+  scoreboard modifications of the new scoreboarding code.
 
 1.2.7rc2 - Released 2002-10-22
 ---------------------------------

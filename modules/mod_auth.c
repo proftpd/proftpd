@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.102 2002-11-12 22:27:59 castaglia Exp $
+ * $Id: mod_auth.c,v 1.103 2002-11-13 21:15:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1458,11 +1458,11 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
 	display = (char*) get_param_ptr(session.anon_config->subset,
 					"DisplayGoAway",FALSE);
 
-      if(!display)
+      if (!display)
 	display = (char*) get_param_ptr(cmd->server->conf,
 					"DisplayGoAway",FALSE);
 
-      if(display)
+      if (display)
 	core_display_file(R_530, display, NULL);
       else
 	send_response(R_530, "Too many users in your class, "
@@ -1492,7 +1492,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     if (maxc->argc > 1)
       maxstr = maxc->argv[1];
 
-    if (*max && hcur > *max) {
+    if (*max && hcur >= *max) {
       snprintf(maxn, sizeof(maxn), "%u", *max);
       send_response(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
