@@ -336,7 +336,12 @@ struct pool *make_named_sub_pool(struct pool *p, const char *symbol)
     /* This could be questionable... - MacGyver
      */
     strncpy(&new_pool->symbol,symbol,strlen(&new_pool->symbol));
-    blok->h.first_avail += strlen(symbol);
+
+    /* Alignment issues on Sparc, SGI, and probably other hardware,
+     * demand this.
+     */
+    blok->h.first_avail += (strlen(symbol) / POOL_HDR_BYTES + 1) *
+      POOL_HDR_BYTES;
   }
   
   new_pool->free_first_avail = blok->h.first_avail;
