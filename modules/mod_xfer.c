@@ -26,7 +26,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.77 2002-08-14 16:17:35 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.78 2002-09-10 11:35:57 jwm Exp $
  */
 
 /* History Log:
@@ -95,10 +95,10 @@ static void _log_transfer(char direction, char abort_flag) {
              direction,'r',session.user, abort_flag);
   }
 
-  log_debug(DEBUG1, "Transfer %s %" PR_LU " bytes in %d.%02d seconds.",
+  log_debug(DEBUG1, "Transfer %s %" PR_LU " bytes in %ld.%02lu seconds.",
 	    abort_flag == 'c' ? "completed:" : "aborted after",
-	    session.xfer.total_bytes, (int) end_time.tv_sec,
-	    (int) (end_time.tv_usec / 10000));
+	    session.xfer.total_bytes, (long) end_time.tv_sec,
+	    (end_time.tv_usec / 10000));
 }
 
 /* This routine counts the difference in usec between timeval's
@@ -143,9 +143,10 @@ static void _rate_throttle(off_t rate_pos, off_t rate_bytes,
   float dtime, wtime;
 
   /* no rate control unless more than free bytes DL'ed */
-  log_debug(DEBUG5, "_rate_throttle: rate_bytes=%" PR_LU
-    " rate_pos=%" PR_LU " rate_freebytes=%ld rate_bps=%ld rate_hardbps=%d.",
-    rate_bytes, rate_pos, rate_freebytes, rate_bps, rate_hardbps);
+  log_debug(DEBUG5,
+            "_rate_throttle: rate_bytes=%ld rate_pos=%" PR_LU " "
+            "rate_freebytes=%ld rate_bps=%ld rate_hardbps=%i.",
+            rate_bytes, rate_pos, rate_freebytes, rate_bps, rate_hardbps);
 
   if(rate_pos < rate_freebytes)
     return;
