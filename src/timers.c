@@ -25,7 +25,7 @@
 
 /*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.22 2004-11-10 03:26:47 castaglia Exp $
+ * $Id: timers.c,v 1.23 2004-11-20 21:20:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -88,8 +88,8 @@ static int process_timers(int elapsed) {
   if (_indispatch)
     return 0;
 
-  _indispatch++;
   pr_alarms_block();
+  _indispatch++;
 
   if (elapsed) {
     for (t = (struct timer *) timers->xas_list; t; t=next) {
@@ -131,8 +131,8 @@ static int process_timers(int elapsed) {
     xaset_insert_sort(timers, (xasetmember_t *) t, TRUE);
   }
 
-  pr_alarms_unblock();
   _indispatch--;
+  pr_alarms_unblock();
 
   /* If no active timers remain in the list, there is no reason to set the
    * SIGALRM handle.
