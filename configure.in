@@ -454,7 +454,7 @@ dnl Module handling.
 for module in $ac_addl_modules; do
   src=`echo "$module" | sed -e 's/\.o$//'`.c;
   if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
-    if ! test -f $srcdir/modules/$src; then
+    if test ! -f $srcdir/modules/$src; then
 	olddir=`pwd`
 	cd $srcdir/modules
 	ln -s ../contrib/$src $src
