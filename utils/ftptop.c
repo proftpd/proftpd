@@ -25,7 +25,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.1 2002-09-25 23:45:24 castaglia Exp $
+ * $Id: ftptop.c,v 1.2 2002-09-26 17:20:23 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.8.2"
@@ -62,7 +62,6 @@ static const char *program = "ftptop";
 
 static int delay = 2;
 static unsigned int display_session = FTPTOP_SHOW_ALL;
-static unsigned char ignore_idle = 0;
 
 /* Scoreboard variables */
 static unsigned int ftp_nsessions = 0;
