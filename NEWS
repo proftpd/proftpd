@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.214 2002-09-05 21:13:04 castaglia Exp $
+$Id: NEWS,v 1.215 2002-09-05 23:04:42 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -7,6 +7,7 @@ CVS
 - Bug 1654 - Add DESTDIR in Makefile
 - Bug 1682 - Broken SyslogFacility requires custom syslog code
 - Bug 1076 - Toggle parsing of .ftpaccess files with a AllowOverride
+- Bug 1724 - AuthPAM off does not work beginning 1.2.5
 
 1.2.6 - Released 2002-09-04
 ---------------------------------
