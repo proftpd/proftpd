@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.321 2002-12-11 23:35:46 castaglia Exp $
+$Id: NEWS,v 1.322 2002-12-12 18:17:04 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -56,6 +56,7 @@ CVS
   for filename parameters to the SITE CHGRP command as well.
 - Bug 1881 - Bug in Function MaxClients.  This was caused by an off-by-one
   bug in the handling of non-anonymous settings.
+- Bug 1886 - Ftpwho uses too many lines when authenticating.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------
