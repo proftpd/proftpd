@@ -1,5 +1,5 @@
-mod_ldap v2.7
-=============
+mod_ldap v2.7.1
+===============
 
 mod_ldap is a module that allows proftpd to do user authentication and
 name/UID lookups against an LDAP database.
@@ -11,7 +11,7 @@ before reading the CHANGES section.
 
 Sections:
 1. How do I set up mod_ldap?
-2. Changes in v2.5.2 - v2.7
+2. Changes in v2.5.2 - v2.7.1
 3. To-Do
 4. Thanks
 5. Author
@@ -53,11 +53,14 @@ cp -f mod_ldap.c proftpd-version/contrib
 
 and then follow the same steps as above.
 
-===========================
-2. Changes in v2.5.2 - v2.7
-===========================
+=============================
+2. Changes in v2.5.2 - v2.7.1
+=============================
 
 Please check the web site for previous changelogs.
+
+v2.7.1:
+* UID/GID caching code updated with MacGyver's portability fixes
 
 v2.7:
 * Added a fix for picky LDAP servers like Sun Directory Services; using
