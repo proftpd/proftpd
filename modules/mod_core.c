@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.195 2003-10-17 15:39:27 castaglia Exp $
+ * $Id: mod_core.c,v 1.196 2003-10-31 19:23:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2950,6 +2950,14 @@ MODRET core_pasv(cmd_rec *cmd) {
 
   CHECK_CMD_ARGS(cmd, 1);
 
+  /* Returning 501 is the best we can do.  It would be nicer if RFC959 allowed
+   * 550 as a possible response.
+   */
+  if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.cwd, NULL)) {
+    pr_response_add_err(R_501, "%s: %s", cmd->argv[0], strerror(EPERM));
+    return ERROR(cmd);
+  }
+
   /* If we already have a passive listen data connection open, kill it. */
   if (session.d) {
     pr_inet_close(session.d->pool, session.d);
@@ -3038,6 +3046,14 @@ MODRET core_port(cmd_rec *cmd) {
   }
 
   CHECK_CMD_ARGS(cmd, 2);
+
+  /* Returning 501 is the best we can do.  It would be nicer if RFC959 allowed
+   * 550 as a possible response.
+   */
+  if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.cwd, NULL)) {
+    pr_response_add_err(R_501, "%s: %s", cmd->argv[0], strerror(EPERM));
+    return ERROR(cmd);
+  }
 
   /* Block active transfers (the PORT command) if RootRevoke is in effect
    * and the server's port is below 1025 (binding to the data port in this
@@ -3158,6 +3174,14 @@ MODRET core_eprt(cmd_rec *cmd) {
   }
 
   CHECK_CMD_ARGS(cmd, 2);
+
+  /* Returning 501 is the best we can do.  It would be nicer if RFC959 allowed
+   * 550 as a possible response.
+   */
+  if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.cwd, NULL)) {
+    pr_response_add_err(R_501, "%s: %s", cmd->argv[0], strerror(EPERM));
+    return ERROR(cmd);
+  }
 
   /* Initialize the netaddr. */
   pr_netaddr_clear(&na);
@@ -3340,6 +3364,14 @@ MODRET core_epsv(cmd_rec *cmd) {
   config_rec *c = NULL;
 
   CHECK_CMD_MIN_ARGS(cmd, 1);
+
+  /* Returning 501 is the best we can do.  It would be nicer if RFC959 allowed
+   * 550 as a possible response.
+   */
+  if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.cwd, NULL)) {
+    pr_response_add_err(R_501, "%s: %s", cmd->argv[0], strerror(EPERM));
+    return ERROR(cmd);
+  }
 
   if (cmd->argc-1 == 1)
     arg = pstrdup(cmd->tmp_pool, cmd->argv[1]);

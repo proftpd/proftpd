@@ -1,10 +1,13 @@
-$Id: NEWS,v 1.498 2003-10-31 18:55:18 castaglia Exp $
+$Id: NEWS,v 1.499 2003-10-31 19:23:13 castaglia Exp $
 
 CVS
 ---------------------------------
 - Bug 2135 - Add ability to handle passphrase-protected server keys.  mod_tls
   can now properly prompt for passphrases for protected server certificate
   keys when the daemon is starting up.
+- Bug 2086 - Add limits for PORT, PASV.  This means that now one can use
+  <Limit> to place access controls on the PORT and PASV commands.  This
+  applies to the EPRT and EPSV commands as well if IPv6 support is enabled.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------
