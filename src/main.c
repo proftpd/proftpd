@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.27 2000-07-03 14:30:30 macgyver Exp $
+ * $Id: main.c,v 1.28 2000-07-06 03:55:51 macgyver Exp $
  */
 
 /*
@@ -135,6 +135,7 @@ static char _ml_numeric[4];
 static char **Argv = NULL;
 static char *LastArgv = NULL;
 
+static int nodaemon = 0;
 static int shutdownp = 0;
 static int abort_core = 0;
 static RETSIGTYPE sig_disconnect(int);
@@ -661,8 +662,14 @@ void main_exit(void *pv, void *lv, void *ev, void *dummy)
   
   log_pri(pri, log);
   
-  if(standalone && master)
+  if(standalone && master) {
     log_pri(LOG_NOTICE, "ProFTPD %s standalone mode SHUTDOWN", VERSION);
+    if(!nodaemon) {
+      PRIVS_ROOT;
+      unlink(PID_FILE_PATH);
+      PRIVS_RELINQUISH;
+    }
+  }
   
   end_login(exitcode);
 }
@@ -1636,6 +1643,8 @@ static RETSIGTYPE sig_terminate(int sig)
     PRIVS_ROOT
     log_close_run();
     log_rm_run();
+    if(standalone && !nodaemon)
+      unlink(PID_FILE_PATH);
     PRIVS_RELINQUISH
     if(standalone)
       log_pri(LOG_NOTICE,"ProFTPD %s standalone mode SHUTDOWN",VERSION);
@@ -1739,6 +1748,7 @@ void start_daemon()
 #ifndef HAVE_SETSID
   int ttyfd;
 #endif
+  FILE *pidf;
 
   /* Fork off and have parent exit */
   switch(fork()) {
@@ -1764,6 +1774,17 @@ void start_daemon()
   }
 #endif /* HAVE_SETSID */
 
+  PRIVS_ROOT;
+  if((pidf = fopen(PID_FILE_PATH, "w")) == NULL) {
+    perror(PID_FILE_PATH);
+    exit(1);
+  }
+  
+  fprintf(pidf, "%lu\n", (unsigned long) getpid());
+  fclose(pidf);
+  pidf = NULL;
+  PRIVS_RELINQUISH;
+  
   /* Close the three big boys */
   close(fileno(stdin));
   close(fileno(stdout));
@@ -1879,7 +1900,7 @@ void inetd_main()
   fork_server(STDIN_FILENO,main_server->listen,TRUE);
 }
 
-void standalone_main(int nodaemon)
+void standalone_main()
 {
   server_rec *s;
   int isdefault;
@@ -1889,8 +1910,7 @@ void standalone_main(int nodaemon)
     log_stderr(TRUE);
     close(fileno(stdin));
     close(fileno(stdout));
-  }
-  else {
+  } else {
     log_stderr(FALSE);
     start_daemon();
   }
@@ -2025,7 +2045,7 @@ void show_usage(int exit_code)
 int main(int argc, char **argv, char **envp)
 {
   int daemon_uid,daemon_gid,socketp;
-  int _umask = 0,nodaemon = 0,c;
+  int _umask = 0,c;
   int check_config_syntax = 0;
   struct sockaddr peer;
 
@@ -2101,7 +2121,8 @@ int main(int argc, char **argv, char **envp)
   while((c = getopt_long(argc,argv,"nd:c:p:lhtv",opts,NULL)) != -1) {
     switch(c) {
     case 'n': 
-      nodaemon++; break;
+      nodaemon++;
+      break;
     case 'd': 
       if(!optarg) {
         log_pri(LOG_ERR,"Fatal: -d requires debugging level argument.");
@@ -2216,7 +2237,7 @@ int main(int argc, char **argv, char **envp)
   set_rlimits();
 
   switch(ServerType) {
-  case SERVER_STANDALONE: standalone_main(nodaemon);
+  case SERVER_STANDALONE: standalone_main();
   case SERVER_INETD:      inetd_main();
   }
 

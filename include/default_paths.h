@@ -13,6 +13,13 @@
 #define RUN_DIR			"/var/run/proftpd"
 #endif
 
+/* The file in which to write the pid (in ASCII) after the initial fork,
+ * when run in standalone daemon mode.
+ */
+#ifndef PID_FILE_PATH
+#define PID_FILE_PATH		"/var/run/proftpd.pid"
+#endif
+
 /* The default location of the proftpd configuration file.  Can be
  * overriden at runtime with the '-c' switch
  */
