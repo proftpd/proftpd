@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.21 1999-12-28 15:54:44 macgyver Exp $
+ * $Id: mod_auth.c,v 1.22 1999-12-30 18:41:29 macgyver Exp $
  */
 
 #include "conf.h"
@@ -1236,11 +1236,6 @@ MODRET cmd_pass(cmd_rec *cmd)
   char *display = NULL;
   char *user,*grantmsg;
   int res = 0;
-
-#if 0
-  if(cmd->argc < 2)
-    return ERROR_MSG(cmd,R_500,"'PASS': command requires a parameter.");
-#endif
 
   if(logged_in)
     return ERROR_MSG(cmd,R_503,"You are already logged in!");

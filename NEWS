@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.19 1999-12-28 07:45:13 macgyver Exp $
+$Id: NEWS,v 1.20 1999-12-30 18:41:29 macgyver Exp $
 
 1.2.0pre10 - Released: ???
 --------------------------
@@ -25,6 +25,9 @@ $Id: NEWS,v 1.19 1999-12-28 07:45:13 macgyver Exp $
 - More informative error messages.
 
 - Minor semi-Y2K issue in mod_readme fixed (don't ask...look at the code :)).
+
+- Corrected error messages on most commands in cases where an invalid number
+  of arguments are specified.
 
 1.2.0pre9 - Released: 10/27/99
 ------------------------------

@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.21 1999-12-28 15:54:44 macgyver Exp $
+ * $Id: mod_core.c,v 1.22 1999-12-30 18:41:29 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -1586,12 +1586,8 @@ static char *quote_dir(cmd_rec *cmd, char *dir)
 
 MODRET cmd_pwd(cmd_rec *cmd)
 {
-  if(cmd->argc != 1) {
-    add_response_err(R_500,"'%s' not understood.",get_full_cmd(cmd));
-    return ERROR(cmd);
-  }
+  CHECK_CMD_ARGS(cmd, 1);
 
-  
   add_response(R_257,"\"%s\" is current directory.",
                 quote_dir(cmd,session.vwd));
   return HANDLED(cmd);
@@ -1609,10 +1605,7 @@ MODRET cmd_pasv(cmd_rec *cmd)
     unsigned char u[2];
   } port;
 
-  if(cmd->argc != 1) {
-    add_response_err(R_500,"'%s' not understood.",get_full_cmd(cmd));
-    return ERROR(cmd);
-  }
+  CHECK_CMD_ARGS(cmd, 1);
 
   /* If we already have a passive listen data connection open,
    * kill it.
@@ -1670,10 +1663,7 @@ MODRET cmd_port(cmd_rec *cmd)
   int i,cnt = 0;
   int allow_foreign_addr = 0;
 
-  if(cmd->argc != 2) {
-    add_response_err(R_500,"'%s' not understood.",get_full_cmd(cmd));
-    return ERROR(cmd);
-  }
+  CHECK_CMD_ARGS(cmd, 2);
 
   /* Format is h1,h2,h3,h4,p1,p2 (ASCII in network order) */
   a = pstrdup(cmd->tmp_pool,cmd->argv[1]);
@@ -1939,10 +1929,7 @@ MODRET cmd_rmd(cmd_rec *cmd)
   regex_t *preg;
 #endif
 
-  if(cmd->argc < 2) {
-    add_response_err(R_500,"'%s' is an unknown command.",get_full_cmd(cmd));
-    return ERROR(cmd);
-  }
+  CHECK_CMD_MIN_ARGS(cmd, 2);
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathAllowFilter",FALSE);
@@ -1979,10 +1966,7 @@ MODRET cmd_mkd(cmd_rec *cmd)
   regex_t *preg;
 #endif
 
-  if(cmd->argc < 2) {
-    add_response_err(R_500,"'%s' is an unknown command.",get_full_cmd(cmd));
-    return ERROR(cmd);
-  }
+  CHECK_CMD_MIN_ARGS(cmd, 2);
 
   if(strchr(cmd->arg,'*')) {
     add_response_err(R_550,"%s: Invalid directory name", cmd->argv[1]);
@@ -2030,22 +2014,13 @@ MODRET cmd_mkd(cmd_rec *cmd)
 
 MODRET cmd_cwd(cmd_rec *cmd)
 {
-  
-  if(cmd->argc < 2) {
-    add_response_err(R_500,"'%s' is an unknown command.",get_full_cmd(cmd));
-    return ERROR(cmd);
-  }
-
+  CHECK_CMD_MIN_ARGS(cmd, 2);
   return _chdir(cmd,cmd->arg);
 }
 
 MODRET cmd_cdup(cmd_rec *cmd)
 {
-  if(cmd->argc != 1) {
-    add_response_err(R_500,"'%s' is an unknown command.",get_full_cmd(cmd));
-    return ERROR(cmd);
-  }
-
+  CHECK_CMD_ARGS(cmd, 1);
   return _chdir(cmd,"..");
 }
 
@@ -2066,10 +2041,7 @@ MODRET cmd_mdtm(cmd_rec *cmd)
   struct tm *tm;
   struct stat sbuf;
   
-  if(cmd->argc < 2) {
-    add_response_err(R_500,"'%s' is an unknown command.",get_full_cmd(cmd));
-    return ERROR(cmd);
-  }
+  CHECK_CMD_MIN_ARGS(cmd, 2);
 
   path = dir_realpath(cmd->tmp_pool,cmd->arg);
 
@@ -2102,10 +2074,7 @@ MODRET cmd_size(cmd_rec *cmd)
   struct stat sbuf;
   unsigned long st_size;
 
-  if(cmd->argc < 2) {
-    add_response_err(R_500,"'%s' is an unknown command.",get_full_cmd(cmd));
-    return ERROR(cmd);
-  }
+  CHECK_CMD_MIN_ARGS(cmd, 2);
 
   path = dir_realpath(cmd->tmp_pool,cmd->arg);
 
@@ -2153,10 +2122,7 @@ MODRET cmd_dele(cmd_rec *cmd)
   regex_t *preg;
 #endif
 
-  if(cmd->argc < 2) {
-    add_response_err(R_500,"'%s' is an unknown command.",get_full_cmd(cmd));
-    return ERROR(cmd);
-  }
+  CHECK_CMD_MIN_ARGS(cmd, 2);
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathAllowFilter",FALSE);
@@ -2202,10 +2168,7 @@ MODRET cmd_rnto(cmd_rec *cmd)
   regex_t *preg;
 #endif
 
-  if(cmd->argc < 2) {
-    add_response_err(R_500,"'%s' is an unknown command.",get_full_cmd(cmd));
-    return ERROR(cmd);
-  }
+  CHECK_CMD_MIN_ARGS(cmd, 2);
 
   if(!session.xfer.path) {
     if(session.xfer.p) {
@@ -2256,10 +2219,7 @@ MODRET cmd_rnfr(cmd_rec *cmd)
   regex_t *preg;
 #endif
 
-  if(cmd->argc < 2) {
-    add_response_err(R_500,"'%s' is an unknown command.",get_full_cmd(cmd));
-    return ERROR(cmd);
-  }
+  CHECK_CMD_MIN_ARGS(cmd, 2);
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathAllowFilter",FALSE);

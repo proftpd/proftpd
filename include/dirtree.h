@@ -21,7 +21,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.5 1999-10-18 05:12:40 macgyver Exp $
+ * $Id: dirtree.h,v 1.6 1999-12-30 18:41:29 macgyver Exp $
  */
 
 #ifndef __DIRTREE_H
@@ -159,6 +159,18 @@ extern int			TimeoutStalled;
 				pstrcat((x)->tmp_pool,"directive not allowed in ", \
 				get_section_name((x)), \
 				" section.",NULL))
+
+#define CHECK_CMD_ARGS(x, n)	if((x)->argc != (n)) { \
+				  add_response_err(R_501, \
+					"Invalid number of arguments."); \
+				  return ERROR((x)); \
+				}
+
+#define CHECK_CMD_MIN_ARGS(x, n)	if((x)->argc < (n)) { \
+					  add_response_err(R_501, \
+					     "Invalid number of arguments."); \
+					  return ERROR((x)); \
+					}
 
 /* Prototypes */
 
