@@ -553,7 +553,7 @@ they currently are in the directory tree.
 <h2><a name="Class">Class</a></h2>
 <p><strong>Syntax:</strong> Class <em>"name"</em> <em>limit|regex|ip</em> <em>value</em><br>
   <strong>Default:</strong> None<br>
-  <strong>Context:</strong> server config <br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt; <br>
   <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
 <p>Controls class based access. Class base access allows each connecting IP to 
 be classified into a separate class. Each class has its own maximum number
@@ -575,7 +575,7 @@ This creates two classes, local and default, with local being everything in
 <h2><a name="Classes">Classes</a></h2>
 <p><strong>Syntax:</strong> Classes <em>on|off</em> <br>
   <strong>Default:</strong> Off<br>
-  <strong>Context:</strong> server config <br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt; <br>
   <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
 <p>Controls class based access. Enables class based access control.
  see: <a href="#Class">Class</a>
