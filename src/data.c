@@ -20,7 +20,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.13 2000-07-11 14:10:33 macgyver Exp $
+ * $Id: data.c,v 1.14 2000-07-21 04:52:43 macgyver Exp $
  */
 
 #include "conf.h"
@@ -422,11 +422,156 @@ void data_abort(int err, int quiet)
 		reset_timer(TIMER_NOXFER,ANY_MODULE);
 
 	if(!quiet) {
-		if(err)
-			add_response_err(R_425,"Data connection error: %s",
-					strerror(err));
-		else
-			add_response_err(R_426,"Transfer aborted. Data connection closed.");
+		char	*respcode = R_426;
+		char	*fmt = NULL;
+		char	*msg = NULL;
+		char	msgbuf[64];
+
+		switch (err) {
+
+		case 0:
+			respcode = R_426;
+			msg = "Data connection closed.";
+			break;
+
+#ifdef ENXIO
+		case ENXIO:
+			respcode = R_451;
+			msg = "Unexpected streams hangup.";
+			break;
+
+#endif
+
+#ifdef EAGAIN
+		case EAGAIN:		/* FALLTHROUGH */
+#endif
+#ifdef ENOMEM
+		case ENOMEM:
+#endif
+#if defined(EAGAIN) || defined(ENOMEM)
+			respcode = R_451;
+			msg = "Insufficient memory or file locked.";
+			break;
+#endif
+
+#ifdef ETXTBSY
+		case ETXTBSY:		/* FALLTHROUGH */
+#endif
+#ifdef EBUSY
+		case EBUSY:
+#endif
+#if defined(ETXTBSY) || defined(EBUSY)
+			respcode = R_451;
+			break;
+#endif
+
+#ifdef ENOSPC
+		case ENOSPC:
+			respcode = R_452;
+			break;
+#endif
+
+#ifdef EDQUOT
+		case EDQUOT:		/* FALLTHROUGH */
+#endif
+#ifdef EFBIG
+		case EFBIG:
+#endif
+#if defined(EDQUOT) || defined(EFBIG)
+			respcode = R_552;
+			break;
+#endif
+
+#ifdef ECOMM
+		case ECOMM:		/* FALLTHROUGH */
+#endif
+#ifdef EDEADLK
+		case EDEADLK:		/* FALLTHROUGH */
+#endif
+#ifdef EDEADLOCK
+# if !defined(EDEADLK) || (EDEADLOCK != EDEADLK)
+		case EDEADLOCK:		/* FALLTHROUGH */
+# endif
+#endif
+#ifdef EXFULL
+		case EXFULL:		/* FALLTHROUGH */
+#endif
+#ifdef ENOSR
+		case ENOSR:		/* FALLTHROUGH */
+#endif
+#ifdef EPROTO
+		case EPROTO:		/* FALLTHROUGH */
+#endif
+#ifdef ETIME
+		case ETIME:		/* FALLTHROUGH */
+#endif
+#ifdef EIO
+		case EIO:		/* FALLTHROUGH */
+#endif
+#ifdef EFAULT
+		case EFAULT:		/* FALLTHROUGH */
+#endif
+#ifdef ESPIPE
+		case ESPIPE:		/* FALLTHROUGH */
+#endif
+#ifdef EPIPE
+		case EPIPE:
+#endif
+#if defined(ECOMM) || defined(EDEADLK) ||  defined(EDEADLOCK) \
+	|| defined(EXFULL) || defined(ENOSR) || defined(EPROTO) \
+	|| defined(ETIME) || defined(EIO) || defined(EFAULT) \
+	|| defined(ESPIPE) || defined(EPIPE)
+			respcode = R_451;
+			break;
+#endif
+
+#ifdef EREMCHG
+		case EREMCHG:		/* FALLTHROUGH */
+#endif
+#ifdef ESRMNT
+		case ESRMNT:		/* FALLTHROUGH */
+#endif
+#ifdef ESTALE
+		case ESTALE:		/* FALLTHROUGH */
+#endif
+#ifdef ENOLINK
+		case ENOLINK:		/* FALLTHROUGH */
+#endif
+#ifdef ENOLCK
+		case ENOLCK:		/* FALLTHROUGH */
+#endif
+#ifdef ENETRESET
+		case ENETRESET:		/* FALLTHROUGH */
+#endif
+#ifdef ECONNABORTED
+		case ECONNABORTED:	/* FALLTHROUGH */
+#endif
+#ifdef ECONNRESET
+		case ECONNRESET:	/* FALLTHROUGH */
+#endif
+#ifdef ETIMEDOUT
+		case ETIMEDOUT:
+#endif
+#if defined(EREMCHG) || defined(ESRMNT) ||  defined(ESTALE) \
+	|| defined(ENOLINK) || defined(ENOLCK) || defined(ENETRESET) \
+	|| defined(ECONNABORTED) || defined(ECONNRESET) || defined(ETIMEDOUT)
+			respcode = R_450;
+			msg = "Link to file server lost.";
+			break;
+#endif
+		}
+
+		if ( msg == NULL && (msg = strerror(err)) == NULL ) {
+			if ( snprintf(msgbuf, sizeof msgbuf,
+					"Unknown or out of range errno [%d].",
+					err) > 0 )
+				msg = msgbuf;
+		}
+		add_response_err(respcode,
+			fmt ? fmt : "Transfer aborted.  %s",
+			msg ? msg : ""
+			);
+		/* ??? syslog the response for the help desk??? */
 	}
 
 	if(true_abort)
