@@ -25,10 +25,10 @@
  */
 
 /* Regular expression management
- * $Id: regexp.h,v 1.1 2002-07-24 22:22:34 castaglia Exp $
+ * $Id: regexp.h,v 1.2 2002-07-25 15:21:23 jwm Exp $
  */
 
-#ifndef PR_REGEXP__H
+#ifndef PR_REGEXP_H
 #define PR_REGEXP_H
 
 #ifdef HAVE_REGEX_H
@@ -39,4 +39,5 @@ void pr_regexp_free(regex_t *);
 void pr_init_regexp(void);
 
 #endif /* HAVE_REGEX_H */
+
 #endif /* PR_REGEXP_H */
