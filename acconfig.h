@@ -42,6 +42,9 @@
 /* Define if your <syslog.h> defines the LOG_FTP macro */
 #undef HAVE_LOG_FTP
 
+/* Define if your system has the tzset function */
+#undef HAVE_TZSET
+
 /* Define if your system has the setproctitle function */
 #undef HAVE_SETPROCTITLE
 

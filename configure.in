@@ -344,6 +344,7 @@ AC_CHECK_FUNCS(vsnprintf snprintf)
 AC_CHECK_FUNCS(setsid setgroupent seteuid setegid crypt fgetpwent fgetgrent)
 AC_CHECK_FUNCS(inet_aton siginterrupt setpgid)
 AC_CHECK_FUNCS(regcomp)
+AC_CHECK_FUNCS(tzset)
 
 AC_CHECK_FUNC(setpassent,
 [case "$target_os:$enable_force_setpassent" in

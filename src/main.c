@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.25 2000-02-28 20:02:01 macgyver Exp $
+ * $Id: main.c,v 1.26 2000-02-29 07:25:52 macgyver Exp $
  */
 
 /*
@@ -2058,7 +2058,13 @@ int main(int argc, char **argv, char **envp)
   (void) set_auth_parameters(argc, argv);
 #endif
 
-  bzero(&session,sizeof(session));
+#ifdef HAVE_TZSET
+  /* Preserve timezone information in jailed environments.
+   */
+  tzset();
+#endif
+
+  bzero(&session, sizeof(session));
 
   /* Initialize stuff for set_proc_title.
    */
