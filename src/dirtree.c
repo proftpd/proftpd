@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.142 2004-04-13 16:48:49 castaglia Exp $
+ * $Id: dirtree.c,v 1.143 2004-04-18 17:00:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3199,7 +3199,8 @@ int parse_config_file(pool *p, const char *fname) {
           mr = call_module(c->m, c->handler, cmd);
           if (mr != NULL) {
             if (MODRET_ISERROR(mr)) {
-              pr_log_pri(PR_LOG_ERR, "Fatal: %s", MODRET_ERRMSG(mr));
+              pr_log_pri(PR_LOG_ERR, "Fatal: %s on line %u of '%s'",
+                MODRET_ERRMSG(mr), cs->cs_lineno, fname);
               exit(1);
             }
           }
@@ -3212,7 +3213,7 @@ int parse_config_file(pool *p, const char *fname) {
 
        if (!found) {
          pr_log_pri(PR_LOG_ERR, "Fatal: unknown configuration directive '%s' "
-           "on line %d of '%s'.", cmd->argv[0], cs->cs_lineno, fname);
+           "on line %u of '%s'.", cmd->argv[0], cs->cs_lineno, fname);
          exit(1);
        }
     }
