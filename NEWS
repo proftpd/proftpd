@@ -1,9 +1,10 @@
-$Id: NEWS,v 1.82 2001-03-01 03:18:42 flood Exp $
+$Id: NEWS,v 1.83 2001-03-01 16:00:23 flood Exp $
 
-1.2.1 - CVS
+1.2.1 - Released 03/01/2001
 ---------------------------------
 - A relatively major issue was discovered with session.groups which may cause
   any group-expressions inside of <Limit> (DenyGroup, etc) to malfunction.
+  This is the primary reason for the 1.2.1 release.
 - Default CFLAGS changed from "-g3 -O6" to "-O2" because it is reported
   that -O6 is highly experimental, and including debugging really isn't all
   the useful, as someone _really_ interested in debugging can edit Make.rules.
