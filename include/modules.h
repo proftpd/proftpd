@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.20 2002-12-11 16:50:02 castaglia Exp $
+ * $Id: modules.h,v 1.21 2002-12-12 17:05:47 castaglia Exp $
  */
 
 #ifndef __MODULES_H
@@ -47,7 +47,7 @@ struct modret_struc {
  */
 
 /* Account authenticated by RFC2228 security data exchange */
-#define PR_AUTH_RFC2228_OK		1
+#define PR_AUTH_RFC2228_OK		2
 
 /* Account authenticated normally */
 #define PR_AUTH_OK			0
