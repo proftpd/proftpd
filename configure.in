@@ -597,7 +597,7 @@ if test x"$enable_auth_pam" != xno ; then
 fi
 
 ac_add_mod_cap="no"
-if test x"$enable_cap" != xno ; then
+if test x"$enable_cap" != xno; then
   case "$host" in
     [*-linux-*])
       rev=`uname -r | awk -F'[[.-]]' '{printf "%03d%03d%03d", $1, $2, $3}'`
@@ -609,7 +609,6 @@ if test x"$enable_cap" != xno ; then
           ac_add_mod_cap="yes"
         fi
       fi
-    fi
   esac
 fi
 
