@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.66 2004-02-15 22:42:18 castaglia Exp $
+ * $Id: mod_sql.c,v 1.67 2004-02-15 22:58:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2514,16 +2514,17 @@ MODRET cmd_getpwent(cmd_rec *cmd) {
     }
   }
 
-  if ( cmap.curr_passwd != NULL ) {
-    pw = ( struct passwd * ) cmap.curr_passwd->data;
+  if (cmap.curr_passwd != NULL) {
+    pw = (struct passwd *) cmap.curr_passwd->data;
     cmap.curr_passwd = cmap.curr_passwd->list_next;
+
   } else {
     pw = NULL;
   }
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_getpwent");
 
-  if ( pw == NULL )
+  if (pw == NULL || pw->pw_uid == (uid_t) -1)
     return (SQL_USERGOD ? mod_create_data( cmd, (void *) pw) : DECLINED(cmd) );
 
   return mod_create_data( cmd, (void *) pw);
@@ -2656,16 +2657,17 @@ MODRET cmd_getgrent(cmd_rec *cmd) {
     }
   }
 
-  if ( cmap.curr_group != NULL ) {
-    gr = ( struct group * ) cmap.curr_group->data;
+  if (cmap.curr_group != NULL) {
+    gr = (struct group *) cmap.curr_group->data;
     cmap.curr_group = cmap.curr_group->list_next;
+
   } else {
     gr = NULL;
   }
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgrent");
 
-  if ( gr == NULL )
+  if (gr == NULL || gr->gr_gid == (gid_t) -1)
     return (SQL_GROUPGOD ? mod_create_data( cmd, (void *) gr) : DECLINED(cmd));
 
   return mod_create_data( cmd, (void *) gr);
@@ -2701,7 +2703,7 @@ MODRET cmd_getpwnam(cmd_rec *cmd) {
   lpw.pw_name = cmd->argv[0];
   pw = _sql_getpasswd(cmd, &lpw);
 
-  if (pw == NULL) {
+  if (pw == NULL || pw->pw_uid == (uid_t) -1) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_getpwnam");
     return SQL_USERGOD ? ERROR(cmd) : DECLINED(cmd);
   }
@@ -2726,7 +2728,7 @@ MODRET cmd_getpwuid(cmd_rec *cmd) {
   lpw.pw_name = NULL;
   pw = _sql_getpasswd(cmd, &lpw);
 
-  if (pw == NULL) {
+  if (pw == NULL || pw->pw_uid == (uid_t) -1) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_getpwuid");
     return SQL_USERGOD ? ERROR(cmd) : DECLINED(cmd);
   }
@@ -2751,7 +2753,7 @@ MODRET cmd_getgrnam(cmd_rec *cmd) {
   lgr.gr_name = cmd->argv[0];
   gr = _sql_getgroup(cmd, &lgr);
 
-  if (gr == NULL) {
+  if (gr == NULL || gr->gr_gid == (gid_t) -1) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgrnam");
     return SQL_GROUPGOD ? ERROR(cmd) : DECLINED(cmd);
   }
@@ -2775,7 +2777,7 @@ MODRET cmd_getgrgid(cmd_rec *cmd) {
   lgr.gr_name = NULL;
   gr = _sql_getgroup(cmd, &lgr);
 
-  if (gr == NULL) {
+  if (gr == NULL || gr->gr_gid == (gid_t) -1) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgrgid");
     return SQL_GROUPGOD ? ERROR(cmd) : DECLINED(cmd);
   }
@@ -3021,7 +3023,7 @@ MODRET cmd_name2uid(cmd_rec *cmd) {
     pw = _sql_getpasswd(cmd, &lpw);
   }
 
-  if (pw == NULL) {
+  if (pw == NULL || pw->pw_uid == (uid_t) -1) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_name2uid");
     return SQL_USERGOD ? ERROR(cmd) : DECLINED(cmd);
   }
@@ -3047,7 +3049,7 @@ MODRET cmd_name2gid(cmd_rec *cmd) {
   lgr.gr_name = cmd->argv[0];
   gr = _sql_getgroup(cmd, &lgr);
 
-  if (gr == NULL) {
+  if (gr == NULL || gr->gr_gid == (gid_t) -1) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_name2gid");
     return SQL_GROUPGOD ? ERROR(cmd) : DECLINED(cmd);
   }
