@@ -330,8 +330,9 @@ struct pool *make_named_sub_pool(struct pool *p, const char *symbol)
   new_pool = (pool *) blok->h.first_avail;
   
   blok->h.first_avail += POOL_HDR_BYTES;
-  memset((char *) new_pool, '\0', sizeof(struct pool));
+  memset((char *) new_pool, 0, sizeof(struct pool));
 
+#if 0 /* This is simply unused, and will be removed in 1.3 - MacGyver */  
   if(symbol) {
     /* This could be questionable... - MacGyver
      */
@@ -343,7 +344,8 @@ struct pool *make_named_sub_pool(struct pool *p, const char *symbol)
     blok->h.first_avail += (strlen(symbol) / POOL_HDR_BYTES + 1) *
       POOL_HDR_BYTES;
   }
-  
+#endif
+
   new_pool->free_first_avail = blok->h.first_avail;
   new_pool->first = new_pool->last = blok;
   
