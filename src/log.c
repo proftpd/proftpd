@@ -19,7 +19,7 @@
 
 /*
  * ProFTPD logging support
- * $Id: log.c,v 1.6 1999-09-12 20:28:12 macgyver Exp $
+ * $Id: log.c,v 1.7 1999-09-16 07:45:54 macgyver Exp $
  */
 
 /* History Log:
@@ -666,13 +666,14 @@ void log(int priority, int f, char *s)
     return;
 
   if(syslog_fd != -1) {
-    char buf[1025];
+    char buf[1024];
     time_t tt = time(NULL);
     struct tm *t;
 
     t = localtime(&tt);
-    strftime(buf,1024,"%b %d %H:%M:%S ",t);
-    snprintf(buf + strlen(buf),1024-strlen(buf),
+    strftime(buf,sizeof(buf),"%b %d %H:%M:%S ",t);
+    buf[sizeof(buf) - 1] = '\0';
+    snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
              "%s proftpd[%u]: %s",syslog_hostname,
              (unsigned int)getpid(),s);
 
