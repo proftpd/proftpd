@@ -19,7 +19,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.12 2000-01-18 02:07:57 macgyver Exp $
+ * $Id: dirtree.c,v 1.13 2000-01-24 05:47:06 macgyver Exp $
  */
 
 /* History:
@@ -978,15 +978,19 @@ int dir_check_limits(config_rec *c, char *cmd, int hidden)
   int i;
 
   errno = 0;
+    
+  for(; c && (res == 1); c = c->parent) {
+    if(c->subset) {
+      for(lc = (config_rec*)c->subset->xas_list;
+	  lc && (res == 1);
+	  lc=lc->next) {
 
-  while(c && (res == 1)) {
-    if(c->subset)
-      for(lc = (config_rec*)c->subset->xas_list; lc && (res == 1); lc=lc->next)
         if(lc->config_type == CONF_LIMIT) {
-          for(i = 0; i < lc->argc; i++)
+          for(i = 0; i < lc->argc; i++) {
             if(!strcmp(cmd,(char*)(lc->argv[i])))
               break;
-
+	  }
+	  
 /*
           log_debug(DEBUG5,"cmd=%s i=%d lc->argc=%d lc->argv[0]=%s\n",
                     cmd, i, lc->argc, (char*)(lc->argv[i]));
@@ -994,28 +998,39 @@ int dir_check_limits(config_rec *c, char *cmd, int hidden)
 
           if(i == lc->argc)
             continue;
+	  
           /* Found a limit directive associated with the current
            * command
            */
-          if(hidden && get_param_int(lc->subset,"IgnoreHidden",FALSE) == 1)
-            { res = 0; errno = ENOENT; break; }
+          if(hidden && get_param_int(lc->subset,"IgnoreHidden",FALSE) == 1) {
+	    res = 0;
+	    errno = ENOENT;
+	    break;
+	  }
+
           switch(_check_limit(lc)) {
-          case 1: res++; break;
+          case 1:
+	    res++;
+	    break;
+	    
           case -1:
-          case -2: res = 0; break;
-          default: continue;
+          case -2:
+	    res = 0;
+	    break;
+	    
+          default:
+	    continue;
           }
-
+	  
           break;
-        }
-
-
-    c = c->parent;
+	}
+      }
+    }
   }
-
+  
   if(!res && !errno)
     errno = EACCES;
-
+  
   return res;
 }
 
@@ -2100,8 +2115,8 @@ void init_config()
   servers = xaset_create(pool,NULL);
 
   pool = make_sub_pool(permanent_pool);
-  main_server = (server_rec*)pcalloc(pool,sizeof(server_rec));
-  xaset_insert(servers,(xasetmember_t*)main_server);
+  main_server = (server_rec*) pcalloc(pool,sizeof(server_rec));
+  xaset_insert(servers, (xasetmember_t*) main_server);
 
   main_server->pool = pool;
   main_server->set = servers;
