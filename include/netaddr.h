@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.4 2003-08-07 15:49:44 castaglia Exp $
+ * $Id: netaddr.h,v 1.5 2003-08-07 18:05:06 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -57,7 +57,7 @@ int pr_netaddr_cmp(const pr_netaddr_t *, const pr_netaddr_t *);
  * different families, -1 will be returned, with errno set to EINVAL.
  * Otherwise, the comparison is a fancy memcmp().
  */
-int pr_netaddr_ncmp(const pr_netaddr_t *, const pr_netaddr_t *, int);
+int pr_netaddr_ncmp(const pr_netaddr_t *, const pr_netaddr_t *, unsigned int);
 
 /* Compare the given pr_netaddr_t against a glob pattern, as intended for
  * fnmatch(3).  The given pattern will be matched first against the DNS

@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.4 2003-08-07 15:49:44 castaglia Exp $
+ * $Id: netaddr.c,v 1.5 2003-08-07 18:05:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -186,7 +186,7 @@ size_t pr_netaddr_get_sockaddr_len(const pr_netaddr_t *na) {
 #endif /* USE_IPV6 */   
   }
 
-  errno = EPERM;
+  errno = EACCES;
   return -1;
 }
 
@@ -206,7 +206,7 @@ size_t pr_netaddr_get_inaddr_len(const pr_netaddr_t *na) {
 #endif /* USE_IPV6 */
   }
 
-  errno = EPERM;
+  errno = EACCES;
   return -1;
 }
 
@@ -226,7 +226,7 @@ struct sockaddr *pr_netaddr_get_sockaddr(const pr_netaddr_t *na) {
 #endif /* USE_IPV6 */
   }
 
-  errno = EPERM;
+  errno = EACCES;
   return NULL;
 }
 
@@ -249,7 +249,7 @@ int pr_netaddr_set_sockaddr(pr_netaddr_t *na, struct sockaddr *addr) {
 #endif /* USE_IPV6 */
   }
 
-  errno = EPERM;
+  errno = EACCES;
   return -1;
 }
 
@@ -274,7 +274,7 @@ int pr_netaddr_set_sockaddr_any(pr_netaddr_t *na) {
 #endif /* USE_IPV6 */
   }
 
-  errno = EPERM;
+  errno = EACCES;
   return -1;
 }
 
@@ -294,7 +294,7 @@ void *pr_netaddr_get_inaddr(const pr_netaddr_t *na) {
 #endif /* USE_IPV6 */
   }
 
-  errno = EPERM;
+  errno = EACCES;
   return NULL;
 }
 
@@ -314,7 +314,7 @@ unsigned int pr_netaddr_get_port(const pr_netaddr_t *na) {
 #endif /* USE_IPV6 */
   }
 
-  errno = EPERM;
+  errno = EACCES;
   return 0;
 }
 
@@ -336,7 +336,7 @@ int pr_netaddr_set_port(pr_netaddr_t *na, unsigned int port) {
 #endif /* USE_IPV6 */
   }
 
-  errno = EPERM;
+  errno = EACCES;
   return 0;
 }
 
@@ -368,16 +368,103 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
 #endif /* USE_IPV6 */
   }
 
-  errno = EPERM;
+  errno = EACCES;
   return -1;
 }
 
 int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
-    int nbits) {
+    unsigned int bitlen) {
+  unsigned int nbytes, nbits;
+  const unsigned char *in1, *in2;
 
-  /* XXX will be implemented for Class matching and ACLs. */
-  errno = ENOSYS;
-  return -1;
+  if (na1 && !na2)
+    return 1;
+
+  if (!na1 && na2)
+    return -1;
+
+  if (!na1 && !na2)
+    return 0;
+
+  if (pr_netaddr_get_family(na1) != pr_netaddr_get_family(na2)) {
+    /* Cannot compare addresses from different families. */
+    errno = EINVAL;
+    return -1;
+  }
+
+  switch (pr_netaddr_get_family(na1)) {
+    case AF_INET: {
+      /* Make sure that the given number of bits is not more than supported
+       * for IPv4 addresses (32).
+       */
+      if (bitlen > 32) {
+        errno = EPERM;
+        return -1;
+      }
+
+      break;
+    }
+
+#ifdef USE_IPV6
+    case AF_INET6: {
+      /* Make sure that the given number of bits is not more than supported
+       * for IPv6 addresses (128).
+       */
+      if (bitlen > 128) {
+        errno = EPERM;
+        return -1;
+      }
+
+      break;
+    }
+#endif /* USE_IPV6 */
+
+    default:
+      errno = EACCES;
+      return -1;
+  }
+
+  /* Retrieve pointers to the contained in_addrs. */
+  in1 = (const unsigned char *) pr_netaddr_get_inaddr(na1);
+  in2 = (const unsigned char *) pr_netaddr_get_inaddr(na2);
+
+  /* Determine the number of bytes, and leftover bits, in the given
+   * bit length.
+   */
+  nbytes = bitlen / 8;
+  nbits = bitlen % 8;
+
+  /* Compare bytes, using memcmp(3), first. */
+  if (nbytes > 0) {
+    int res = memcmp(in1, in2, nbytes);
+
+    /* No need to continue comparing the addresses if they differ already. */
+    if (res != 0)
+      return res;
+  }
+
+  /* Next, compare the remaining bits in the addresses. */
+  if (nbits > 0) {
+    unsigned int mask;
+
+    /* Get the bytes in the addresses that have not yet been compared. */
+    unsigned int in1byte = in1[nbytes];
+    unsigned int in2byte = in2[nbytes];
+
+    /* Build up a mask covering the bits left to be checked. */
+    mask = (0xff << (8 - nbits)) & 0xff;
+
+    if ((in1byte & mask) > (in2byte & mask))
+      return 1;
+
+    if ((in1byte & mask) < (in2byte & mask))
+      return -1;
+  }
+
+  /* If we've made it this far, the addresses match, for the given bit
+   * length.
+   */
+  return 0;
 }
 
 int pr_netaddr_fnmatch(const pr_netaddr_t *na, const char *pattern) {
@@ -616,7 +703,7 @@ unsigned int pr_netaddr_get_addrno(const pr_netaddr_t *na) {
 #endif /* USE_IPV6 */
   }
 
-  errno = EPERM;
+  errno = EACCES;
   return -1;
 }
 
@@ -646,7 +733,7 @@ int pr_netaddr_v4mappedv6(const pr_netaddr_t *na) {
 #endif /* USE_IPV6 */
   }
 
-  errno = EPERM;
+  errno = EACCES;
   return -1;
 }
 
