@@ -125,7 +125,7 @@ static char *number(char *str, long num, int base, int size, int
     { *str++ = sign; msize--; }
 
   if(msize) {
-    if(type & SPECIAL)
+    if(type & SPECIAL) {
       if(base == 8)
         { *str++ = '0'; msize--; }
       else if(base == 16) {
@@ -133,6 +133,7 @@ static char *number(char *str, long num, int base, int size, int
         if(msize)
           { *str++ = digits[33]; msize--; }
       }
+    }
   }
 
   if(!(type & LEFT))
