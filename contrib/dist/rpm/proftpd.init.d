@@ -10,10 +10,10 @@
 #               including support for multiple 'virtual' FTP servers, \
 #               anonymous FTP, and permission-based directory visibility.
 # processname: proftpd
-# config: /etc/proftp.conf
+# config: /etc/proftpd.conf
 #
 # By: Osman Elliyasa <osman@Cable.EU.org>
-# $Id: proftpd.init.d,v 1.1 1999-10-23 04:07:58 macgyver Exp $
+# $Id: proftpd.init.d,v 1.2 2001-01-26 23:10:55 flood Exp $
 
 # Source function library.
 . /etc/rc.d/init.d/functions
