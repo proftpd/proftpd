@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.6 2003-08-07 18:24:11 castaglia Exp $
+ * $Id: netaddr.c,v 1.7 2003-08-09 07:22:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -477,7 +477,7 @@ int pr_netaddr_fnmatch(const pr_netaddr_t *na, const char *pattern) {
    * implementation was added to make that flag available on other platforms.
    */
   int flags = PR_FNM_NOESCAPE|PR_FNM_CASEFOLD;
-  char *dnsstr, *ipstr;
+  const char *dnsstr, *ipstr;
 
   if (!na || !pattern) {
     errno = EINVAL;

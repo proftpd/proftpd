@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.45 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: proftpd.h,v 1.46 2003-08-09 07:22:04 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -99,17 +99,17 @@ typedef struct {
   unsigned char ident_lookups;		/* Is RFC931 (ident) protocol used? */
   char *ident_user;			/* User identified by ident protocol */
 
-  const char *auth_mech;		/* Backend authentication mechanism
-					 * that successfully authenticated
-					 * the client.
+  const char *auth_mech;		/* Name of the authentication
+                                         * module/mechanism that successfully
+                                         * authenticated the client
 					 */
 
   const char *rfc2228_mech;		/* RFC2228 authentication mechanism
 					 * used
 					 */
 
-  char cwd[PR_TUNABLE_PATH_MAX];		/* Current working directory */
-  char vwd[PR_TUNABLE_PATH_MAX];		/* Current virtual working directory */
+  char cwd[PR_TUNABLE_PATH_MAX];	/* Current working directory */
+  char vwd[PR_TUNABLE_PATH_MAX];	/* Current virtual working directory */
 
   struct config_struc *dir_config;	/* Closest matching configuration
                                          * for current operation
@@ -119,26 +119,28 @@ typedef struct {
    * privs.h
    */
 
-  int disable_id_switching;		/* disable uid/gid switching */
-  uid_t uid,ouid;                       /* current and original UIDs */
-  gid_t gid;                            /* current gid */
+  int disable_id_switching;		/* Disable UID/GID switching */
+  uid_t uid, ouid;                      /* Current and original UIDs */
+  gid_t gid;                            /* Current GID */
 
   array_header *gids;
   array_header *groups;
 
-  /* fsuid/fsgid are used for automagic chown after creation or upload,
-   * they are initially -1, meaning no chown/chgrp.
+  /* fsuid/fsgid are used for automagic chown after creation or upload.
+   * They are initially -1, meaning no chown/chgrp.
    */
   uid_t fsuid;				/* Saved file UID */
   gid_t fsgid;				/* Saved file GID */
 
-  char *user,*group;			/* username/groupname after login */
+  char *user,*group;			/* Username/groupname after login */
   uid_t login_uid;                      /* UID after login, but before
-                                         * session.uid is changed */
+                                         * session.uid is changed
+                                         */
   gid_t login_gid;                      /* GID after login, but before
-                                         * session.gid is changed */
+                                         * session.gid is changed
+                                         */
 
-  class_t *class;			/* session class */
+  class_t *class;			/* Session class */
   char *proc_prefix;			/* The "prefix" of our process name */
 
   int wtmp_log;				/* Are we logging to wtmp? */
