@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.223 2002-09-07 17:37:34 castaglia Exp $
+$Id: NEWS,v 1.224 2002-09-10 15:06:53 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -15,6 +15,7 @@ CVS
 - Bug 1253 - No ability to configure address for main server
 - Bug 1432 - Pedantic handling of leading whitespace in FTP commands
 - Bug 1652 - Add connection-rate limiting mechanism
+- Bug 1662 - Define _GNU_SOURCE
 
 1.2.6 - Released 2002-09-04
 ---------------------------------
