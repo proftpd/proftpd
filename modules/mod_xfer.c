@@ -19,7 +19,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.8 1999-08-31 01:31:59 flood Exp $
+ * $Id: mod_xfer.c,v 1.9 1999-09-07 23:09:10 macgyver Exp $
  */
 
 /* History Log:
@@ -181,7 +181,7 @@ MODRET pre_cmd_stor(cmd_rec *cmd)
 
   /* otherwise everthing is good */
   p = mod_privdata_alloc(cmd,"stor_filename",strlen(dir)+1);
-  strcpy(p->value.str_val, dir);
+  strncpy(p->value.str_val, dir, strlen(dir) + 1);
 
   return HANDLED(cmd);
 }
@@ -259,6 +259,9 @@ MODRET cmd_stor(cmd_rec *cmd)
     add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
     return ERROR(cmd);
   } else {
+    int stor_now, stor_starttime = time(NULL) - 1;
+    int stor_bw, stor_bytecount = cmd->server->Bandwidth / 8;
+
     /* perform the actual transfer now */
     data_init(cmd->arg,IO_READ);
 
@@ -283,6 +286,19 @@ MODRET cmd_stor(cmd_rec *cmd)
         _stor_abort();
         data_abort(s_errno,FALSE);
         return ERROR(cmd);
+      }
+
+      if(cmd->server->Bandwidth) {
+	stor_bytecount += len;
+	log_debug(DEBUG2, "stor_bytecount = %d", stor_bytecount);
+	for(;;) {
+	  stor_now = time(NULL);
+	  if(stor_now <= stor_starttime) break;
+	  stor_bw = stor_bytecount * 8 / (stor_now - stor_starttime);
+	  log_debug(DEBUG2, "stor_bw = %d", stor_bw);
+	  if(stor_bw <= cmd->server->Bandwidth) break;
+	  sleep(1);
+	}
       }
     }
 
@@ -374,7 +390,7 @@ MODRET pre_cmd_retr(cmd_rec *cmd)
 
   /* otherwise everthing is good */
   p = mod_privdata_alloc(cmd,"retr_filename",strlen(dir)+1);
-  strcpy(p->value.str_val, dir);
+  strncpy(p->value.str_val, dir, strlen(dir) + 1);
   return HANDLED(cmd);
 }
 
@@ -413,6 +429,9 @@ MODRET cmd_retr(cmd_rec *cmd)
     add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
     return ERROR(cmd);
   } else {
+    int retr_now, retr_starttime = time(NULL) - 1;
+    int retr_bw, retr_bytecount = main_server->Bandwidth / 8;
+
     /* send the data */
     data_init(cmd->arg,IO_WRITE);
 
@@ -449,6 +468,19 @@ MODRET cmd_retr(cmd_rec *cmd)
           cnt_next = cnt / cnt_steps;
 	  log_add_run(mpid,NULL,session.user,NULL,0,session.xfer.file_size,cnt,NULL);
         }
+      }
+
+      if(cmd->server->Bandwidth) {
+	retr_bytecount += len;
+	log_debug(DEBUG2, "retr_bytecount = %d", retr_bytecount);
+	for(;;) {
+	  retr_now = time(NULL);
+	  if(retr_now <= retr_starttime) break;
+	  retr_bw = retr_bytecount * 8 / (retr_now - retr_starttime);
+	  log_debug(DEBUG2, "retr_bw = %d", retr_bw);
+	  if(retr_bw <= cmd->server->Bandwidth) break;
+	  sleep(1);
+	}
       }
     }
 

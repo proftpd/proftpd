@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.8 1999-08-31 01:31:59 flood Exp $
+ * $Id: mod_ls.c,v 1.9 1999-09-07 23:09:10 macgyver Exp $
  */
 
 #include "conf.h"
@@ -226,7 +226,7 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
     }
 
     if(opt_l) {
-      strcpy(m," ---------");
+      strncpy(m," ---------",sizeof(m));
       switch(st.st_mode & S_IFMT) {
       case S_IFREG:
         m[0] = '-';
@@ -268,11 +268,11 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
           m[9] = 'x';
 
         if(ls_curtime - mtime > 180 * 24 * 60 * 60)
-          sprintf(timeline,"%5d",t->tm_year+1900);
+          snprintf(timeline, sizeof(timeline), "%5d",t->tm_year+1900);
         else
-          sprintf(timeline,"%02d:%02d",t->tm_hour,t->tm_min);
+          snprintf(timeline, sizeof(timeline), "%02d:%02d",t->tm_hour,t->tm_min);
 
-        sprintf(nameline,"%s %3d %-8s %-8s %8d %s %2d %s %s", m,
+        snprintf(nameline, sizeof(nameline), "%s %3d %-8s %-8s %8d %s %2d %s %s", m,
                 (int)st.st_nlink, MAP_UID((int)st.st_uid), 
                 MAP_GID((int)st.st_gid),
                 (unsigned int)st.st_size, months[t->tm_mon],
@@ -291,7 +291,7 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
               suffix[0] = '*';
           }
 
-          sprintf(p," -> %s", l);
+          snprintf(p, sizeof(nameline) - strlen(nameline) - 4, " -> %s", l);
         }
 
 	if(opt_STAT)
@@ -495,10 +495,10 @@ int outputfiles(cmd_rec *cmd)
       char pad[6];
 
       if(q->right) {
-        strcpy(pad,"\t\t\t\t\t");
+        strncpy(pad,"\t\t\t\t\t",sizeof(pad));
         pad[(colwidth + 7 - strlen(q->line)) / 8] = '\0';
       } else
-        strcpy(pad,"\n");
+        strncpy(pad,"\n",sizeof(pad));
 
       if(sendline("%s%s",q->line,pad) < 0)
         return -1;
@@ -575,7 +575,7 @@ realloc_buf:
       goto realloc_buf;
     }
     s -= strlen(de->d_name) + 1;
-    strcpy(s,de->d_name);
+    strncpy(s,de->d_name,strlen(de->d_name) + 1);
     p[i++] = s;
   }
 
@@ -826,7 +826,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
         pbuffer[i] = '\0';
 
         if((pw = auth_getpwnam(cmd->tmp_pool,i ? pbuffer : session.user)))
-          sprintf(pbuffer,"%s%s",pw->pw_dir,p);
+          snprintf(pbuffer, sizeof(pbuffer), "%s%s",pw->pw_dir,p);
         else
           *pbuffer = '\0';
       } else
@@ -1222,9 +1222,9 @@ MODRET cmd_nlst(cmd_rec *cmd)
 		pb[i] = '\0';
 
 		if((pw = auth_getpwnam(cmd->tmp_pool,i ? pb : session.user))) {
-			sprintf(pb,"%s%s",pw->pw_dir,p);
-			strcpy(line,pb);
-			target = line;
+		  snprintf(pb, sizeof(pb), "%s%s",pw->pw_dir,p);
+		  strncpy(line,pb,sizeof(line));
+		  target = line;
 		}
 	}
 	

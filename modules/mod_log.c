@@ -19,7 +19,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.3 1998-10-30 01:38:03 flood Exp $
+ * $Id: mod_log.c,v 1.4 1999-09-07 23:09:10 macgyver Exp $
  */
 
 #include "conf.h"
@@ -336,7 +336,7 @@ MODRET set_systemlog(cmd_rec *cmd)
     unblock_signals();
 
     CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"unable to redirect logging to '",
-                   syslogfn,"': ",strerror(xerrno)));
+                   syslogfn,"': ",strerror(xerrno),NULL));
   }
 
   PRIVS_RELINQUISH
@@ -397,9 +397,9 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
   case META_BYTES_SENT:
     argp = arg;
     if(session.xfer.p)
-      sprintf(argp,"%lu",session.xfer.total_bytes);
+      snprintf(argp, sizeof(arg), "%lu",session.xfer.total_bytes);
     else
-      strcpy(argp,"-");
+      strncpy(argp,"-",sizeof(arg));
     m++; break;
 
   case META_FILENAME:
@@ -410,7 +410,7 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
       strncpy(argp,fullpath,sizeof(arg));
       arg[sizeof(arg)-1] = '\0';
     } else
-      strcpy(argp,"-");
+      strncpy(argp,"-",sizeof(arg));
     m++; break;
 
   case META_ENV_VAR:
@@ -444,12 +444,12 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
 
   case META_SERVER_PORT:
     argp = arg;
-    sprintf(argp,"%d",cmd->server->ServerPort);
+    snprintf(argp, sizeof(arg), "%d",cmd->server->ServerPort);
     m++; break;
 
   case META_PID:
     argp = arg;
-    sprintf(argp,"%u",(unsigned int)getpid());
+    snprintf(argp, sizeof(arg), "%u",(unsigned int)getpid());
     m++; break;
 
   case META_TIME:
@@ -473,7 +473,7 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
 
       strftime(argp,80,time_fmt,&t);
       if(internal_fmt)
-        sprintf(argp + strlen(argp),
+        snprintf(argp + strlen(argp), sizeof(arg) - strlen(argp),
                 "%c%.2d%.2d]", sign, timz/60, timz%60);
 
     }
@@ -494,9 +494,9 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
         end_time.tv_sec--;
       }
 
-      sprintf(argp,"%lu",(unsigned long)end_time.tv_sec);
+      snprintf(argp, sizeof(arg), "%lu",(unsigned long)end_time.tv_sec);
     } else
-      strcpy(argp,"-");
+      strncpy(argp,"-",sizeof(arg));
 
     m++; break;
 
@@ -504,7 +504,7 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
     argp = arg;
 
     if(!strcasecmp(cmd->argv[0],"PASS") && session.hide_password)
-      strcpy(argp,"PASS (hidden)");
+      strncpy(argp,"PASS (hidden)",sizeof(arg));
     else
       strncpy(argp,get_full_cmd(cmd),sizeof(arg));
     arg[sizeof(arg)-1] = '\0';
@@ -543,9 +543,9 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
 
       for(; r && !r->num; r=r->next) ;
       if(r && r->num)
-        strcpy(argp,r->num);
+        strncpy(argp,r->num,sizeof(arg));
       else
-        strcpy(argp,"-");
+        strncpy(argp,"-",sizeof(arg));
     }
     m++; break;
   }

@@ -19,7 +19,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.1 1998-10-18 02:24:41 flood Exp $
+ * $Id: mod_site.c,v 1.2 1999-09-07 23:09:10 macgyver Exp $
  */
 
 #include "conf.h"
@@ -276,7 +276,7 @@ MODRET site_help(cmd_rec *cmd)
 
         for(j = 0; j < 8; j++) {
           if(outa[j]) {
-            sprintf(buf,"%-8s",outa[j]);
+            snprintf(buf, sizeof(buf), "%-8s",outa[j]);
             outs = pstrcat(cmd->tmp_pool,outs,buf,NULL);
           } else
             break;

@@ -19,7 +19,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.4 1999-03-05 00:29:19 flood Exp $
+ * $Id: mod_auth.c,v 1.5 1999-09-07 23:09:10 macgyver Exp $
  */
 
 #include "conf.h"
@@ -525,7 +525,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   c = _auth_resolve_user(p,&user,&ourname,&anonname);
 
   if(!user) {
-    log_pri(LOG_NOTICE,"failed login, '%s' is not a UserAlias.",origuser);
+    log_pri(LOG_NOTICE,"failed login from %s, '%s' is not a UserAlias.",inet_ascii(p,session.c->remote_ipaddr),origuser);
     goto auth_failure;
   }
 
@@ -533,7 +533,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   aclp = login_check_limits(main_server->conf,FALSE,TRUE,&i);
 
   if((pw = auth_getpwnam(p,user)) == NULL) {
-    log_pri(LOG_NOTICE,"failed login, can't find user '%s'",user);
+    log_pri(LOG_NOTICE,"failed login from %s, can't find user '%s'",inet_ascii(p,session.c->remote_ipaddr),user);
     goto auth_failure;
   }
 
@@ -729,7 +729,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
       goto auth_failure;
     }
   
-    strcpy(session.cwd,"/");
+    strncpy(session.cwd,"/",sizeof(session.cwd));
     xferlog = get_param_ptr(c->subset,"TransferLog",FALSE);
 
     if(anongroup) {
@@ -806,9 +806,9 @@ static int _setup_environment(pool *p, char *user, char *pass)
    */
 
 #if (defined(BSD) && (BSD >= 199103))
-  sprintf(ttyname,"ftp%ld",(long)getpid());
+  snprintf(ttyname, sizeof(ttyname), "ftp%ld",(long)getpid());
 #else
-  sprintf(ttyname,"ftpd%d",(int)getpid());
+  snprintf(ttyname, sizeof(ttyname), "ftpd%d",(int)getpid());
 #endif
 
   /* Perform wtmp logging only if not turned off in <Anonymous>
@@ -890,9 +890,9 @@ static int _setup_environment(pool *p, char *user, char *pass)
         newcwd++;
       session.cwd[0] = '/';
 
-      strcpy(&session.cwd[1],newcwd);
+      strncpy(&session.cwd[1],newcwd,sizeof(session.cwd) - 1);
     } else
-      strcpy(session.cwd,"/");
+      strncpy(session.cwd,"/",sizeof(session.cwd));
   }
 
   if(c) {
@@ -1021,7 +1021,6 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
   session.user = pstrdup(permanent_pool,session.user);
   session.group = pstrdup(permanent_pool,session.group);
-
   return 1;
 
 auth_failure:
@@ -1063,7 +1062,7 @@ MODRET cmd_user(cmd_rec *cmd)
 
   if(failnopwprompt) {
     if(!user) {
-      log_pri(LOG_NOTICE,"failed login, '%s' is not a UserAlias.",origuser);
+      log_pri(LOG_NOTICE,"failed login from %s, '%s' is not a UserAlias.",inet_ascii(cmd->tmp_pool,session.c->remote_ipaddr),origuser);
       send_response(R_530,"Login incorrect.");
       end_login(0);
     }
@@ -1148,7 +1147,7 @@ MODRET cmd_user(cmd_rec *cmd)
     char *maxstr = "Sorry, maximum number clients (%m) from your host already connected.";
     char maxn[10];
 
-    sprintf(maxn,"%d",max);
+    snprintf(maxn, sizeof(maxn), "%d",max);
     if(maxc->argc > 1)
       maxstr = maxc->argv[1];
     
@@ -1172,7 +1171,7 @@ MODRET cmd_user(cmd_rec *cmd)
     char *maxstr = "Sorry, maximum number of allowed clients (%m) already connected.";
     char maxn[10];
 
-    sprintf(maxn,"%d",max);
+    snprintf(maxn, sizeof(maxn), "%d",max);
     if(maxc->argc > 1)
       maxstr = maxc->argv[1];
     
@@ -1329,7 +1328,7 @@ MODRET add_defaultroot(cmd_rec *cmd)
 
   if(strchr(dir,'*'))
     CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"(",dir,") wildcards not allowed "
-               "in pathname."));
+               "in pathname.",NULL));
 
   if(*(dir+strlen(dir)-1) != '/')
     dir = pstrcat(cmd->tmp_pool,dir,"/",NULL);
@@ -1372,7 +1371,7 @@ MODRET add_defaultchdir(cmd_rec *cmd)
 
   if(strchr(dir,'*'))
     CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"(",dir,") wildcards not allowed "
-               "in pathname."));
+               "in pathname.",NULL));
 
   if(*(dir+strlen(dir)-1) != '/')
     dir = pstrcat(cmd->tmp_pool,dir,"/",NULL);
