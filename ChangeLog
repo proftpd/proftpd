@@ -1,3 +1,24 @@
+2001-04-18 11:40  flood
+
+	* NEWS, src/data.c: Bug #1128 - Incorrect sendfile() semantics.
+
+2001-04-13 14:32  flood
+
+	* modules/mod_core.c: Fixed sigsegv on SITE bug, only in cvs
+	versions.
+
+2001-04-11 16:20  flood
+
+	* modules/mod_log.c, src/dirtree.c, src/log.c: small fixes to dr's
+	case insensitivity patch.  case sensitivity is actually required in
+	some places. ;)
+
+2001-04-11 15:10  flood
+
+	* NEWS, lib/glibc-glob.c, src/main.c: Bug 1119 - IRIX6 fix for
+	glibc-glob.c Bug 1090 - logging now works with PRE_CMD failed
+	handlers
+
 2001-04-11 15:00  flood
 
 	* src/dirtree.c: MasqueradeAddress now prints LOG_INFO message.
