@@ -31,7 +31,7 @@
  * Internal define used for debug and logging.  All backends are encouraged
  * to use the same format.
  */
-#define _MOD_VERSION "mod_sql_postgres/4.01"
+#define _MOD_VERSION "mod_sql_postgres/4.02"
 
 #define _POSTGRES_PORT "5432"
 
@@ -1078,10 +1078,11 @@ MODRET cmd_query(cmd_rec *cmd)
  *  At the very least, a backend MUST simply copy the data from argv[0]
  *  into the data field of the modret.
  */
-MODRET cmd_escapestring(cmd_rec * cmd)
-{
+MODRET cmd_escapestring(cmd_rec * cmd) {
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
+  char *unescaped = NULL;
+  char *escaped = NULL;
 
   sql_log(DEBUG_FUNC, "%s", "entering \tpostgres cmd_escapestring");
 
@@ -1101,10 +1102,27 @@ MODRET cmd_escapestring(cmd_rec * cmd)
 
   conn = (db_conn_t *) entry->data;
 
-  /* PostgreSQL has no way to escape strings internally */
+  /* Note: the PQescapeString() function appeared in the C API as of
+   * Postgres-7.2; this macro allows for functioning with older postgres
+   * installations.  Unfortunately, Postgres' PG_VERSION is defined as
+   * a string, not an actual number, which makes for preprocessor-time checking
+   * of that value much harder.
+   *
+   * Ideally, this function could be detected by a configure script, but
+   * ProFTPD does not yet support per-module configure scripts.
+   */
+#ifndef POSTGRES_NO_PQESCAPESTRING
+  unescaped = cmd->argv[1];
+  escaped = (char *) pcalloc(cmd->tmp_pool, sizeof(char) *
+    (strlen(unescaped) * 2) + 1);
+
+  PQescapeString(escaped, unescaped, strlen(unescaped));
+#else
+  escaped = cmd->argv[1];
+#endif
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_escapestring");
-  return mod_create_data(cmd, (void *) cmd->argv[1]);
+  return mod_create_data(cmd, (void *) escaped);
 }
 
 /*
