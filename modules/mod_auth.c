@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.19 1999-12-27 02:48:41 macgyver Exp $
+ * $Id: mod_auth.c,v 1.20 1999-12-28 07:18:54 macgyver Exp $
  */
 
 #include "conf.h"
@@ -706,7 +706,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
   }
 
   if(!_auth_check_ftpusers((c ? c->subset : main_server->conf),pw->pw_name)) {
-    log_auth(LOG_NOTICE, "USER %s (Login failed): User in %s.", FTPUSERS_PATH);
+    log_auth(LOG_NOTICE, "USER %s (Login failed): User in %s.",
+	     user, FTPUSERS_PATH);
     goto auth_failure;
   }
 
