@@ -22,7 +22,8 @@ thus be:
     From *.evil.com
   </Class>
 
-The new <Class> sections do not support the old "limit" keyword.  Instead,
+The Class and Classes configuration directives are deprecated.  The new
+<Class> sections do not support the old "limit" keyword.  Instead,
 a new MaxClientsPerClass configuration directive can be used:
 
   MaxClientsPerClass foo 10
