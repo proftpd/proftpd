@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.106 2002-09-13 19:33:38 castaglia Exp $
+ * $Id: mod_core.c,v 1.107 2002-09-13 20:21:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -606,23 +606,6 @@ MODRET set_maxinstances(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET _set_timeout(int *v, cmd_rec *cmd)
-{
-  int timeout;
-  char *endp;
-
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT);
-
-  timeout = (int)strtol(cmd->argv[1],&endp,10);
-
-  if((endp && *endp) || timeout < 0 || timeout > 65535)
-    CONF_ERROR(cmd,"timeout values must be between 0 and 65535");
-
-  *v = timeout;
-  return HANDLED(cmd);
-}
-
 MODRET set_maxclients(cmd_rec *cmd) {
   int max;
   config_rec *c = NULL;
@@ -753,31 +736,26 @@ MODRET set_maxhostsperuser(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_timeoutlogin(cmd_rec *cmd)
-{
-  return _set_timeout(&TimeoutLogin,cmd);
+MODRET set_timeoutidle(cmd_rec *cmd) {
+  int timeout = -1;
+  char *endp = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  timeout = (int) strtol(cmd->argv[1], &endp, 10);
+
+  if ((endp && *endp) || timeout < 0 || timeout > 65535)
+    CONF_ERROR(cmd, "timeout values must be between 0 and 65535");
+
+  TimeoutIdle = timeout;
+  return HANDLED(cmd);
 }
 
-MODRET set_timeoutidle(cmd_rec *cmd)
-{
-  return _set_timeout(&TimeoutIdle,cmd);
-}
-
-MODRET set_timeoutnoxfer(cmd_rec *cmd)
-{
-  return _set_timeout(&TimeoutNoXfer,cmd);
-}
-
-MODRET set_timeoutstalled(cmd_rec *cmd)
-{
-  return _set_timeout(&TimeoutStalled,cmd);
-}
-
-MODRET set_socketbindtight(cmd_rec *cmd)
-{
-  int bool;
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT);
+MODRET set_socketbindtight(cmd_rec *cmd) {
+  int bool = -1;
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
@@ -786,11 +764,10 @@ MODRET set_socketbindtight(cmd_rec *cmd)
   return HANDLED(cmd);  
 }
 
-MODRET set_multilinerfc2228(cmd_rec *cmd)
-{
-  int bool;
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT);
+MODRET set_multilinerfc2228(cmd_rec *cmd) {
+  int bool = -1;
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
@@ -3587,7 +3564,27 @@ MODRET set_class(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-/* Configuration directive table */
+/* Initialization/finalization routines
+ */
+
+static int core_sess_init(void) {
+  config_rec *c = NULL;
+
+  /* Check for a server-specific TimeoutIdle */
+  if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutIdle",
+      FALSE)) != NULL) {
+
+    /* NOTE: this isn't pretty, casting a void * to an int.  It'll need
+     * to be cleaned up soon.
+     */
+    TimeoutIdle = (int) c->argv[0];
+  }
+
+  return 0;
+}
+
+/* Module API tables
+ */
 
 static conftable core_conftab[] = {
   { "<Anonymous>",		add_anonymous,			NULL },
@@ -3667,9 +3664,6 @@ static conftable core_conftab[] = {
   { "SyslogFacility",		set_syslogfacility,		NULL },
   { "SyslogLevel",		set_sysloglevel,		NULL },
   { "TimeoutIdle",		set_timeoutidle,		NULL },
-  { "TimeoutLogin",		set_timeoutlogin,		NULL },
-  { "TimeoutNoTransfer",	set_timeoutnoxfer,		NULL },
-  { "TimeoutStalled",		set_timeoutstalled,		NULL },
   { "TimesGMT",			set_timesgmt,			NULL },
   { "TransferLog",		add_transferlog,		NULL },
   { "Umask",			set_umask,			NULL },
@@ -3715,14 +3709,27 @@ static cmdtable core_cmdtab[] = {
   { 0, NULL }
 };
 
-/* Module interface */
-
 module core_module = {
-  NULL,NULL,			/* always NULL */
-  0x20,				/* API Version 2.0 */
+  NULL, NULL,
+
+  /* Module API version */
+  0x20,
+
+  /* Module name */
   "core",
+
+  /* Module configuration directive table */
   core_conftab,
+
+  /* Module command handler table */
   core_cmdtab,
+
+  /* Module authentication handler table */
   NULL,
-  NULL,NULL                    /* No initialization needed */
+
+  /* Module initialization function */
+  NULL,
+
+  /* Session initialization function */
+  core_sess_init
 };

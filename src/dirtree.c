@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.66 2002-09-06 15:18:27 castaglia Exp $
+ * $Id: dirtree.c,v 1.67 2002-09-13 20:21:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -45,7 +45,6 @@ int SocketBindTight = FALSE;
 char ServerType = SERVER_STANDALONE;
 int ServerMaxInstances = 0;
 int ServerUseReverseDNS = TRUE;
-int TimeoutLogin = TUNABLE_TIMEOUTLOGIN;
 int TimeoutIdle = TUNABLE_TIMEOUTIDLE;
 int TimeoutNoXfer = TUNABLE_TIMEOUTNOXFER;
 int TimeoutStalled = TUNABLE_TIMEOUTSTALLED;

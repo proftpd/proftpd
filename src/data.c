@@ -26,7 +26,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.40 2002-09-10 16:01:04 castaglia Exp $
+ * $Id: data.c,v 1.41 2002-09-13 20:21:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -53,10 +53,8 @@ static IOFILE *curf = NULL;
 
 /* Called if the "Stalled" timer goes off
  */
-static int stalled_timeout(CALLBACK_FRAME) {
-  log_pri(LOG_NOTICE,"Data transfer stall timeout: %d seconds",
-	  TimeoutStalled);
-  
+static int stalled_timeout_cb(CALLBACK_FRAME) {
+  log_pri(LOG_NOTICE,"Data transfer stall timeout: %d seconds", TimeoutStalled);
   end_login(1);
 
   /* Prevent compiler warning.
@@ -226,8 +224,8 @@ static int _data_pasv_open(char *reason, off_t size) {
   /* Set the "stalled" timer, if any, to prevent the connection
    * open from taking too long
    */
-  if(TimeoutStalled)
-    add_timer(TimeoutStalled, TIMER_STALLED, NULL, stalled_timeout);
+  if (TimeoutStalled)
+    add_timer(TimeoutStalled, TIMER_STALLED, NULL, stalled_timeout_cb);
   
   /* We save the state of our current disposition for doing reverse
    * lookups, and then set it to what the configuration wants it to
@@ -305,8 +303,8 @@ static int _data_active_open(char *reason, off_t size) {
   /* Set the "stalled" timer, if any, to prevent the connection
    * open from taking too long
    */
-  if(TimeoutStalled)
-    add_timer(TimeoutStalled, TIMER_STALLED, NULL, stalled_timeout);
+  if (TimeoutStalled)
+    add_timer(TimeoutStalled, TIMER_STALLED, NULL, stalled_timeout_cb);
   
   rev = inet_reverse_dns(session.pool,ServerUseReverseDNS);
   
@@ -488,11 +486,11 @@ void data_close(int quiet) {
   /* aborts no longer necessary */
   signal(SIGURG,SIG_IGN);
   
-  if(TimeoutNoXfer)
-    reset_timer(TIMER_NOXFER,ANY_MODULE);
+  if (TimeoutNoXfer)
+    reset_timer(TIMER_NOXFER, ANY_MODULE);
   
-  if(TimeoutStalled)
-    remove_timer(TIMER_STALLED,ANY_MODULE);
+  if (TimeoutStalled)
+    remove_timer(TIMER_STALLED, ANY_MODULE);
   
   session.flags &= (SF_ALL^SF_PASSIVE);
   session.flags &= (SF_ALL^(SF_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
@@ -540,10 +538,10 @@ void data_abort(int err, int quiet) {
   }
   
   if (TimeoutNoXfer)
-    reset_timer(TIMER_NOXFER,ANY_MODULE);
+    reset_timer(TIMER_NOXFER, ANY_MODULE);
   
   if (TimeoutStalled)
-    remove_timer(TIMER_STALLED,ANY_MODULE);
+    remove_timer(TIMER_STALLED, ANY_MODULE);
   
   session.flags &= (SF_ALL^SF_PASSIVE);
   session.flags &= (SF_ALL^(SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
@@ -736,7 +734,7 @@ int data_xfer(char *cl_buf, int cl_size) {
 		  session.xfer.bufsize - buflen, 1)) > 0) {
 	    buflen += len;
 
-	    if(TimeoutStalled)
+	    if (TimeoutStalled)
 	      reset_timer(TIMER_STALLED, ANY_MODULE);
 	  }
 
@@ -792,7 +790,7 @@ int data_xfer(char *cl_buf, int cl_size) {
         len = buflen;
       } else if((len = io_read(session.d->inf, cl_buf, cl_size, 1)) > 0) {
 	  /* non-ascii mode doesn't need to use session.xfer.buf */
-	  if(TimeoutStalled)
+	  if (TimeoutStalled)
 	    reset_timer(TIMER_STALLED, ANY_MODULE);
       
 	  total += len;
@@ -951,7 +949,7 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
 	
 	*offset += len;
 	
-	if(TimeoutStalled)
+	if (TimeoutStalled)
 	  reset_timer(TIMER_STALLED, ANY_MODULE);
 	
 	if(TimeoutIdle)
@@ -979,10 +977,10 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
   if (flags & O_NONBLOCK)
     fcntl(session.d->outf->fd, F_SETFL, flags);
   
-  if(TimeoutStalled)
+  if (TimeoutStalled)
     reset_timer(TIMER_STALLED, ANY_MODULE);
   
-  if(TimeoutIdle)
+  if (TimeoutIdle)
     reset_timer(TIMER_IDLE, ANY_MODULE);
   
   session.xfer.total_bytes += len;

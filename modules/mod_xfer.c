@@ -26,7 +26,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.81 2002-09-10 23:26:01 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.82 2002-09-13 20:21:51 castaglia Exp $
  */
 
 /* History Log:
@@ -1468,37 +1468,56 @@ MODRET log_retr(cmd_rec *cmd)
   return DECLINED(cmd);
 }
 
-static int _noxfer_timeout(CALLBACK_FRAME)
-{
-  if(session.flags & SF_XFER)
-    return TRUE;			/* Transfer in progress, ignore timeout */
+static int noxfer_timeout_cb(CALLBACK_FRAME) {
+  if (session.flags & SF_XFER)
+    /* Transfer in progress, ignore this timeout */
+    return 1;
 
-  send_response_async(R_421,
-           "No Transfer Timeout (%d seconds): closing control connection.",
-           TimeoutNoXfer);
+  send_response_async(R_421, "No Transfer Timeout (%d seconds): closing "
+    "control connection.", TimeoutNoXfer);
 
-#if 0		/* no longer needed */
-  schedule(main_exit, 0, (void*) LOG_NOTICE,
-	   "FTP no transfer time out, disconnected.",
-           (void*) 0, NULL);
-#endif
-  
-  remove_timer(TIMER_IDLE,ANY_MODULE);
-  remove_timer(TIMER_LOGIN,ANY_MODULE);
+  remove_timer(TIMER_IDLE, ANY_MODULE);
+  remove_timer(TIMER_LOGIN, ANY_MODULE);
 
   main_exit((void*) LOG_NOTICE, "FTP no transfer timeout, disconnected.",
 		  (void*) 0, NULL);
   return 0;
 }
 
-int xfer_init_child(void)
-{
+static int xfer_sess_init(void) {
+  config_rec *c = NULL;
+
+  /* Check for a server-specific TimeoutNoTransfer */
+  if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutNoTransfer",
+      FALSE)) != NULL) {
+
+    /* NOTE: this isn't pretty, casting a void * to an int.  It'll need
+     * to be cleaned up soon.
+     */
+    TimeoutNoXfer = (int) c->argv[0];
+  }
+
   /* Setup TimeoutNoXfer timer */
-  if(TimeoutNoXfer)
-    add_timer(TimeoutNoXfer,TIMER_NOXFER,&xfer_module,_noxfer_timeout);
+  if (TimeoutNoXfer)
+    add_timer(TimeoutNoXfer, TIMER_NOXFER, &xfer_module, noxfer_timeout_cb);
+
+  /* Check for a server-specific TimeoutStalled */
+  if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutStalled",
+      FALSE)) != NULL) {
+
+    /* NOTE: this isn't pretty, casting a void * to an int.  It'll need
+     * to be cleaned up soon.
+     */
+    TimeoutStalled = (int) c->argv[0];
+  }
+
+  /* Note: timers for handling TimeoutStalled timeouts are handled in the
+   * data transfer routines, not here.
+   */
 
   /* Exit handler for HiddenStor cleanup */
   add_exit_handler(_xfer_exit);
+
   return 0;
 }
 
@@ -1721,6 +1740,41 @@ MODRET set_storeuniqueprefix(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+MODRET set_timeoutnoxfer(cmd_rec *cmd) {
+  int timeout = -1;
+  char *endp = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  timeout = (int) strtol(cmd->argv[1], &endp, 10);
+
+  if ((endp && *endp) || timeout < 0 || timeout > 65535)
+    CONF_ERROR(cmd, "timeout values must be between 0 and 65535");
+
+  TimeoutNoXfer = timeout;
+  return HANDLED(cmd);
+}
+
+MODRET set_timeoutstalled(cmd_rec *cmd) {
+  int timeout = -1;
+  char *endp = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  timeout = (int) strtol(cmd->argv[1], &endp, 10);
+
+  if ((endp && *endp) || timeout < 0 || timeout > 65535)
+    CONF_ERROR(cmd, "timeout values must be between 0 and 65535");
+
+  TimeoutStalled = timeout;
+  return HANDLED(cmd);
+}
+
+/* Module API tables
+ */
+
 static conftable xfer_conftab[] = {
   { "DeleteAbortedStores",	set_deleteabortedstores,	},
   { "HiddenStor",		set_hiddenstores,		},
@@ -1734,6 +1788,8 @@ static conftable xfer_conftab[] = {
   { "RateWriteFreeBytes",	add_ratenum,	             },
   { "RateWriteHardBPS",		add_ratebool,                },
   { "StoreUniquePrefix",	set_storeuniqueprefix,		},
+  { "TimeoutNoTransfer",	set_timeoutnoxfer,		},
+  { "TimeoutStalled",		set_timeoutstalled,		},
   { NULL }
 };
 
@@ -1766,12 +1822,26 @@ static cmdtable xfer_cmdtab[] = {
 };
 
 module xfer_module = {
-  NULL,NULL,				/* Always NULL */
-  0x20,					/* API Version */
-  "xfer",				/* Module name */
+  NULL, NULL,
+
+  /* Module API version */
+  0x20,
+
+  /* Module name */
+  "xfer",
+
+  /* Module configuration directive table */
   xfer_conftab,
+
+  /* Module command handler table */
   xfer_cmdtab,
+
+  /* Module authentication handler table */
   NULL,
+
+  /* Module initialization function */
   NULL,
-  xfer_init_child
+
+  /* Session initialization function */
+  xfer_sess_init
 };

@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.83 2002-09-13 19:58:44 castaglia Exp $
+ * $Id: mod_auth.c,v 1.84 2002-09-13 20:21:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -38,6 +38,7 @@ extern pid_t mpid;
 
 module auth_module;
 
+static int TimeoutLogin = TUNABLE_TIMEOUTLOGIN;
 static int logged_in = 0;
 static int auth_tries = 0;
 static char *auth_pass_resp_code = R_230;
@@ -105,10 +106,21 @@ static int auth_session_timeout_cb(CALLBACK_FRAME) {
   return 0;
 }
 
-static int auth_child_init(void) {
+static int auth_sess_init(void) {
+  config_rec *c = NULL;
   uid_t server_uid, current_euid = geteuid();
   gid_t server_gid, current_egid = getegid();
   unsigned char switch_server_id = FALSE;
+
+  /* Check for a server-specific TimeoutLogin */
+  if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutLogin",
+      FALSE)) != NULL) {
+
+    /* NOTE: this isn't pretty, casting a void * to an int.  It'll need
+     * to be cleaned up soon.
+     */
+    TimeoutLogin = (int) c->argv[0];
+  }
 
   /* Start the login timer */
   if (TimeoutLogin) {
@@ -2056,6 +2068,22 @@ MODRET set_rootlogin(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+MODRET set_timeoutlogin(cmd_rec *cmd) {
+  int timeout = -1;
+  char *endp = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  timeout = (int) strtol(cmd->argv[1], &endp, 10);
+
+  if ((endp && *endp) || timeout < 0 || timeout > 65535)
+    CONF_ERROR(cmd, "timeout values must be between 0 and 65535");
+
+  TimeoutLogin = timeout;
+  return HANDLED(cmd);
+}
+
 MODRET set_timeoutsession(cmd_rec *cmd) {
   unsigned int seconds = 0, precedence = 0;
   config_rec *c = NULL;
@@ -2217,6 +2245,7 @@ static conftable auth_conftab[] = {
   { "MaxLoginAttempts",		set_maxloginattempts,		NULL },
   { "RequireValidShell",	set_requirevalidshell,		NULL },
   { "RootLogin",		set_rootlogin,			NULL },
+  { "TimeoutLogin",		set_timeoutlogin,		NULL },
   { "TimeoutSession",		set_timeoutsession,		NULL },
   { "UseFtpUsers",		set_useftpusers,		NULL },
   { "UserDirRoot",		add_userdirroot,		NULL },
@@ -2238,13 +2267,27 @@ static cmdtable auth_cmdtab[] = {
 /* Module interface */
 
 module auth_module = {
-  NULL,NULL,				/* Always NULL */
-  0x20,					/* API Version 2.0 */
+  NULL, NULL,
+
+  /* Module API version */
+  0x20,
+
+  /* Module name */
   "auth",
+
+  /* Module configuration directive table */
   auth_conftab,	
+
+  /* Module command handler table */
   auth_cmdtab,
+
+  /* Module authentication handler table */
   NULL,
+
+  /* Module initialization function */
   auth_init,
-  auth_child_init
+
+  /* Session initialization function */
+  auth_sess_init
 };
 
