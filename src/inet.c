@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.75 2003-09-08 02:55:27 castaglia Exp $
+ * $Id: inet.c,v 1.76 2003-09-09 00:32:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -341,13 +341,16 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
   int addr_family;
   int res = 0, one = 1, hold_errno;
 
-  if (!inet_pool)
-    inet_pool = make_sub_pool(permanent_pool);
-
   if ((!servers || !servers->xas_list) && !main_server) {
     errno = EINVAL;
     return NULL;
   }
+
+  if (!inet_pool)
+    inet_pool = make_sub_pool(permanent_pool);
+
+  /* Initialize the netaddr. */
+  pr_netaddr_initialize(&na);
 
   sub_pool = make_sub_pool(p);
   c = (conn_t *) pcalloc(sub_pool, sizeof(conn_t));
@@ -910,6 +913,10 @@ int pr_inet_connect(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
 
   pr_inet_set_block(p, c);
 
+  /* No need to initialize the remote_na netaddr here, as we're directly
+   * copying the data from the given netaddr into that memory area.
+   */
+
   memcpy(&remote_na, addr, sizeof(remote_na));
   pr_netaddr_set_port(&remote_na, htons(port));
 
@@ -950,6 +957,10 @@ int pr_inet_connect_nowait(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
   pr_netaddr_t remote_na;
 
   pr_inet_set_nonblock(p, c);
+
+  /* No need to initialize the remote_na netaddr here, as we're directly
+   * copying the data from the given netaddr into that memory area.
+   */
 
   memcpy(&remote_na, addr, sizeof(remote_na));
   pr_netaddr_set_port(&remote_na, htons(port));
@@ -1037,6 +1048,9 @@ conn_t *pr_inet_accept(pool *p, conn_t *d, conn_t *c, int rfd, int wfd,
   pr_netaddr_t na;
   socklen_t nalen;
 
+  /* Initialize the netaddr. */
+  pr_netaddr_initialize(&na);
+
   /* A directive could enforce only IPv4 or IPv6 connections here, by
    * actually using a sockaddr argument to accept(2), and checking the
    * family of the connecting entity.
@@ -1061,14 +1075,14 @@ conn_t *pr_inet_accept(pool *p, conn_t *d, conn_t *c, int rfd, int wfd,
     fd = accept(d->listen_fd, pr_netaddr_get_sockaddr(&na), &nalen);
     if (fd != -1) {
       if ((!allow_foreign_addr || *allow_foreign_addr == FALSE) &&
-	 (getpeername(fd, pr_netaddr_get_sockaddr(&na), &nalen) != -1)) {
+          (getpeername(fd, pr_netaddr_get_sockaddr(&na), &nalen) != -1)) {
 
-	if (pr_netaddr_cmp(&na, c->remote_addr) != 0) {
-	  log_pri(PR_LOG_NOTICE, "SECURITY VIOLATION: Passive connection from "
+        if (pr_netaddr_cmp(&na, c->remote_addr) != 0) {
+          log_pri(PR_LOG_NOTICE, "SECURITY VIOLATION: Passive connection from "
             "%s rejected.", pr_netaddr_get_ipstr(&na));
-	  close(fd);
-	  continue;
-	}
+          close(fd);
+          continue;
+        }
       }
 
       d->mode = CM_OPEN;
@@ -1098,6 +1112,9 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
     errno = EBADF;
     return -1;
   }
+
+  /* Initialize the netaddr. */
+  pr_netaddr_initialize(&na);
 
 #ifdef USE_IPV6
   pr_netaddr_set_family(&na, AF_INET6);

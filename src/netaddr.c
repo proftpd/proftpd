@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.12 2003-09-08 02:55:27 castaglia Exp $
+ * $Id: netaddr.c,v 1.13 2003-09-09 00:32:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -40,6 +40,10 @@ int pr_netaddr_reverse_dns(int enable) {
   int old_enable = reverse_dns;
   reverse_dns = enable;
   return old_enable;
+}
+
+void pr_netaddr_initialize(pr_netaddr_t *na) {
+  memset(na, 0, sizeof(pr_netaddr_t));
 }
 
 pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,

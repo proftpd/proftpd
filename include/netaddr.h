@@ -23,13 +23,16 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.7 2003-08-14 18:34:53 castaglia Exp $
+ * $Id: netaddr.h,v 1.8 2003-09-09 00:32:51 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
 #define PR_NETADDR_H
 
 #include "conf.h"
+
+/* Initialize the given netaddr. */
+void pr_netaddr_initialize(pr_netaddr_t *);
 
 /* Given a name (either an IP address string or a DNS name), return a
  * pr_netaddr_t * for that name.  In the case of DNS names, multiple
