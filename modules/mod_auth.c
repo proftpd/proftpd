@@ -20,22 +20,13 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.46 2000-10-08 21:11:56 macgyver Exp $
+ * $Id: mod_auth.c,v 1.47 2001-01-25 05:53:06 flood Exp $
  */
 
 #include "conf.h"
 
 #include "privs.h"
 
-#ifdef HAVE_SYS_JAIL_H
-
-#ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif /* HAVE_SYS_TYPES_H */
-
-#include <sys/jail.h>
-
-#endif /* HAVE_SYS_JAIL_H */
 
 /* From the core module */
 extern int core_display_file(const char *,const char *);
@@ -51,53 +42,8 @@ static void _do_user_counts();
 /* Perform a chroot or equivalent action to lockdown the process into a
  * particular directory.
  */
-static int lockdown(char *newroot) {
-#ifdef HAVE_JAIL
-  struct jail hell;
-  
-  /* Isn't this line amusing? :)
-   */
-  bzero(&hell, sizeof(hell));
-  
-  /* Per FreeBSD documentation, we set the API version to 0.
-   */
-  hell.version = 0;
-  
-  /* Set the path to jail us to.
-   */
-  hell.path = newroot;
-  
-  /* Next, we set the jail hostname.
-   */
-  hell.hostname = main_server->ServerFQDN;
-  
-  /* Finally, we restrict the jail to a particular IP address.  I have a
-   * tough time seeing a practical use of this, but I'm also paranoid...
-   */
-  hell.ip_number = session.c->local_ipaddr->s_addr;
-  
-  log_debug(DEBUG1, "Preparing to jail() the environment"
-	    "(version - '%d', path - '%s', hostname - '%s', ip_number - '%s'",
-	    hell.version, hell.path, hell.hostname,
-	    inet_ntoa(*session.c->local_ipaddr));
-  
-  /* Drum roll please...
-   */
-  PRIVS_ROOT;
-
-  if(jail(&hell) == -1) {
-    PRIVS_RELINQUISH;
-    log_pri(LOG_ERR, "%s jail(\"%s\"): %s", session.user,
-	    newroot, strerror(errno));
-    return -1;
-  }
-  
-  PRIVS_RELINQUISH;
-
-  log_debug(DEBUG1, "Environment successfully jail()ed.");
-
-  return 0;
-#else /* HAVE_JAIL */
+static int lockdown(char *newroot)
+{
   PRIVS_ROOT;
   
   log_debug(DEBUG1, "Preparing to chroot() the environment (path - '%s'",
@@ -115,7 +61,6 @@ static int lockdown(char *newroot) {
   log_debug(DEBUG1, "Environment successfully chroot()ed.");
 
   return 0;
-#endif /* HAVE_JAIL */
 }
 
 /* check_auth is hooked into the main server's auth_hook function,

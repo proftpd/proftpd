@@ -215,10 +215,10 @@ if test "$pr_cv_var__pw_stayopen" = "yes"; then
 fi
 
 AC_CHECK_LIB(security, set_auth_parameters)
-AC_CHECK_HEADERS(sys/security.h sys/jail.h)
+AC_CHECK_HEADERS(sys/security.h)
 AC_CHECK_HEADERS(krb.h)
 AC_CHECK_HEADERS(prot.h)
-AC_CHECK_FUNCS(set_auth_parameters getprpwent jail)
+AC_CHECK_FUNCS(set_auth_parameters getprpwent)
 
 dnl HP-UX's hpsecurity.h can multiply define MAXINT and confuse configure
 AC_CHECK_HEADERS(hpsecurity.h,,[
