@@ -25,7 +25,7 @@
 
 /*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.21 2004-10-30 21:55:41 castaglia Exp $
+ * $Id: timers.c,v 1.22 2004-11-10 03:26:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -287,6 +287,11 @@ int pr_timer_remove(int timerno, module *mod) {
 
 int pr_timer_add(int seconds, int timerno, module *mod, callback_t cb) {
   struct timer *t = NULL;
+
+  if (seconds < 0) {
+    errno = EINVAL;
+    return -1;
+  }
 
   if (!timers)
     timers = xaset_create(NULL, (XASET_COMPARE) timer_cmp);
