@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.22 2003-10-09 19:40:18 castaglia Exp $
+ * $Id: netaddr.c,v 1.23 2003-10-10 01:30:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -665,7 +665,7 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
         name = ok ? buf : NULL;
 
       } else
-        log_pri(PR_LOG_NOTICE, "notice: unable to resolve '%s': %s", buf,
+        log_debug(DEBUG1, "notice: unable to resolve '%s': %s", buf,
           hstrerror(errno));
     }
   }
