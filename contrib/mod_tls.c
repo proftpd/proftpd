@@ -1944,6 +1944,10 @@ static pr_netio_stream_t *tls_netio_reopen_cb(pr_netio_stream_t *nstrm, int fd,
   return nstrm;
 }
 
+static int tls_netio_shutdown_cb(pr_netio_stream_t *nstrm, int how) {
+  return shutdown(nstrm->strm_fd, how);
+}
+
 static int tls_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
     size_t buflen) {
 
@@ -1981,6 +1985,7 @@ static void tls_netio_install_ctrl(void) {
   netio->postopen = tls_netio_postopen_cb;
   netio->read = tls_netio_read_cb;
   netio->reopen = tls_netio_reopen_cb;
+  netio->shutdown = tls_netio_shutdown_cb;
   netio->write = tls_netio_write_cb;
 
   pr_unregister_netio(PR_NETIO_STRM_CTRL);
@@ -2002,6 +2007,7 @@ static void tls_netio_install_data(void) {
   netio->postopen = tls_netio_postopen_cb;
   netio->read = tls_netio_read_cb;
   netio->reopen = tls_netio_reopen_cb;
+  netio->shutdown = tls_netio_shutdown_cb;
   netio->write = tls_netio_write_cb;
 
   pr_unregister_netio(PR_NETIO_STRM_DATA);

@@ -138,7 +138,7 @@ static int core_netio_poll_cb(pr_netio_stream_t *nstrm) {
   return select(nstrm->strm_fd + 1, &rfds, &wfds, NULL, &tval);
 }
 
-static int core_netio_postopen_cb(pr_netio_stream_t *nstream) {
+static int core_netio_postopen_cb(pr_netio_stream_t *nstrm) {
   return 0;
 }
 
@@ -157,6 +157,10 @@ static pr_netio_stream_t *core_netio_reopen_cb(pr_netio_stream_t *nstrm, int fd,
   nstrm->strm_mode = mode;
 
   return nstrm;
+}
+
+static int core_netio_shutdown_cb(pr_netio_stream_t *nstrm, int how) {
+  return shutdown(nstrm->strm_fd, how);
 }
 
 static int core_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
@@ -233,7 +237,7 @@ int pr_netio_lingering_close(pr_netio_stream_t *nstrm, long linger) {
     return -1;
   }
 
-  shutdown(nstrm->strm_fd, 1);
+  pr_netio_shutdown(nstrm, 1);
 
   tv.tv_sec = linger;
   tv.tv_usec = 0L;
@@ -694,6 +698,39 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
   return total;
 }
 
+int pr_netio_shutdown(pr_netio_stream_t *nstrm, int how) {
+  int res = -1;
+
+  if (!nstrm) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (nstrm->strm_type == PR_NETIO_STRM_CTRL) {
+    res = ctrl_netio ? ctrl_netio->shutdown(nstrm, how) :
+      core_ctrl_netio->shutdown(nstrm, how);
+    destroy_pool(nstrm->strm_pool);
+    return res;
+  }
+
+  if (nstrm->strm_type == PR_NETIO_STRM_DATA) {
+    res = data_netio ? data_netio->shutdown(nstrm, how) :
+      core_data_netio->shutdown(nstrm, how);
+    destroy_pool(nstrm->strm_pool);
+    return res;
+  }
+
+  if (nstrm->strm_type == PR_NETIO_STRM_OTHR) {
+    res = othr_netio ? othr_netio->shutdown(nstrm, how) :
+      core_othr_netio->shutdown(nstrm, how);
+    destroy_pool(nstrm->strm_pool);
+    return res;
+  }
+
+  errno = EPERM;
+  return res;
+}
+
 char *pr_netio_gets(char *buf, size_t buflen, pr_netio_stream_t *nstrm) {
   char *bp = buf;
   int toread;
@@ -882,7 +919,8 @@ int pr_register_netio(pr_netio_t *netio, int strm_types) {
   }
 
   if (!netio->abort || !netio->close || !netio->open || !netio->poll ||
-      !netio->postopen || !netio->read || !netio->reopen || !netio->write) {
+      !netio->postopen || !netio->read || !netio->reopen ||
+      !netio->shutdown || !netio->write) {
     errno = EINVAL;
     return -1;
   }
@@ -935,12 +973,13 @@ pr_netio_t *pr_alloc_netio(pool *parent_pool) {
 
   /* Set the default NetIO handlers to the core handlers. */
   netio->abort = core_netio_abort_cb;
-  netio->close= core_netio_close_cb;
+  netio->close = core_netio_close_cb;
   netio->open = core_netio_open_cb;
   netio->poll = core_netio_poll_cb;
   netio->postopen = core_netio_postopen_cb;
   netio->read = core_netio_read_cb;
   netio->reopen = core_netio_reopen_cb;
+  netio->shutdown = core_netio_shutdown_cb;
   netio->write = core_netio_write_cb;
 
   return netio;

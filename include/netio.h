@@ -25,7 +25,7 @@
  */
 
 /* Network IO stream layer
- * $Id: netio.h,v 1.4 2002-12-10 21:01:43 castaglia Exp $
+ * $Id: netio.h,v 1.5 2002-12-12 16:24:02 castaglia Exp $
  */
 
 #ifndef PR_NETIO_H
@@ -135,6 +135,7 @@ typedef struct {
   int (*postopen)(pr_netio_stream_t *);
   int (*read)(pr_netio_stream_t *, char *, size_t);
   pr_netio_stream_t *(*reopen)(pr_netio_stream_t *, int, int);
+  int (*shutdown)(pr_netio_stream_t *, int);
   int (*write)(pr_netio_stream_t *, char *, size_t);
   
 } pr_netio_t;
@@ -181,6 +182,8 @@ int pr_netio_poll(pr_netio_stream_t *);
 int pr_netio_read(pr_netio_stream_t *, char *, size_t, int);
 
 pr_netio_stream_t *pr_netio_reopen(pr_netio_stream_t *, int, int);
+
+int pr_netio_shutdown(pr_netio_stream_t *, int);
 
 /* pr_netio_telnet_gets() is exactly like pr_netio_gets(), except a few special
  * telnet characters are handled (which takes care of the [IAC]ABOR
