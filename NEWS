@@ -1,4 +1,8 @@
-$Id: NEWS,v 1.594 2004-09-04 18:50:03 castaglia Exp $
+$Id: NEWS,v 1.595 2004-09-04 22:46:27 castaglia Exp $
+
+CVS
+--------------------------------
+- Bug 2449 - ProFTPD silently ignores extra command-line parameters
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

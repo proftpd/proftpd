@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.243 2004-08-07 22:22:42 castaglia Exp $
+ * $Id: main.c,v 1.244 2004-09-04 22:46:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2597,6 +2597,12 @@ int main(int argc, char *argv[], char **envp) {
       pr_log_pri(PR_LOG_ERR, "unknown option: %c", (char)optopt);
       show_usage(1);
     }
+  }
+
+  /* If we have any leftover parameters, it's an error. */
+  if (argv[optind]) {
+    pr_log_pri(PR_LOG_ERR, "unknown parameter: '%s'", argv[optind]);
+    exit(1);
   }
 
   if (show_version) {
