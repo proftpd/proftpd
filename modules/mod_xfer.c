@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.120 2003-01-30 16:15:57 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.121 2003-02-10 16:51:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -551,7 +551,7 @@ static void xfer_rate_throttle(off_t xferlen) {
     tv.tv_usec = tv.tv_usec % 1000000L;
 
     log_debug(DEBUG7, "transferring too fast, delaying %ld sec%s, %ld usecs",
-      tv.tv_sec, tv.tv_sec == 1 ? "" : "s", tv.tv_usec);
+      (long int) tv.tv_sec, tv.tv_sec == 1 ? "" : "s", (long int) tv.tv_usec);
 
     /* No interruptions, please... */
     xfer_rate_sigmask(TRUE);

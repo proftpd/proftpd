@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.365 2003-02-06 16:38:41 castaglia Exp $
+$Id: NEWS,v 1.366 2003-02-10 16:51:09 castaglia Exp $
 
 CVS
 ---
@@ -11,6 +11,9 @@ CVS
 - Bug 1950 - OSX setgrent(3) returns int, causing compiler warning.  Unlike
   most other Unix flavours (but like FreeBSD), OSX's setgrent(3) returns
   int, rather than void.  A configure check was written to test for this. 
+- Bug 1949 - Compiler warns of 'long double' usage on OSX.  Typecasts have
+  been added to quell some warnings, and an autoconf check added for compiler
+  support for -Wno-long-double to quell others.
 
 1.2.8rc2 - Released 29-Jan-2003
 ---------------------------------

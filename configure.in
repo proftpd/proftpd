@@ -98,6 +98,10 @@ if test $ac_cv_prog_gcc = yes; then
   CFLAGS="$fullCFLAGS"
 fi
 
+dnl Check whether the C compiler accepts -Wno-long-double. This helps to
+dnl quell unnecessary OSX compiler complaints.
+PR_CHECK_CC_OPT(Wno-long-double)
+
 dnl configure command line options...
 
 dnl --with options.
@@ -1053,6 +1057,11 @@ if test x"$devel" = xyes ; then
     dnl Remove any optimization flags from CFLAGS
     CFLAGS=`echo "$CFLAGS" | sed -e 's/\-O2//'`
     CFLAGS="$CFLAGS $ac_devel_cflags"
+
+    dnl Some C compilers (e.g. older gcc versions) may not accept these
+    dnl options.  Check if they are supported.  They will be added to
+    dnl CFLAGS if supported.
+    PR_CHECK_CC_OPT(Wfloat-equal)
   fi
 
   dnl Do not strip symboles from developer object files.
