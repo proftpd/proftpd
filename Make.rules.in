@@ -14,6 +14,7 @@ mandir=@mandir@
 PLATFORM=@OSREL@ @OSTYPE@
 LDFLAGS=@LDFLAGS@
 LIBS=@LIBS@ @LIBRARIES@
+CURSES_LIBS=@CURSES_LIBS@
 
 # Use DEFAULT_PATHS to override the defaults calculated by configure.
 #
@@ -63,6 +64,9 @@ BUILD_OBJS=src/main.o src/timers.o src/sets.o src/pool.o src/regexp.o \
            src/dirtree.o src/support.o src/inet.o src/log.o src/scoreboard.o \
            src/netio.o src/ident.o src/data.o src/modules.o src/auth.o src/fs.o
 
+LIB_OBJS=getopt.o getopt1.o pr_fnmatch.o strsep.o vsnprintf.o glibc-glob.o \
+         glibc-mkstemp.o pr-syslog.o pwgrent.o
+
 FTPCOUNT_OBJS=ftpcount.o scoreboard.o
 BUILD_FTPCOUNT_OBJS=utils/ftpcount.o utils/scoreboard.o
 
@@ -76,5 +80,3 @@ FTPWHO_OBJS=ftpwho.o scoreboard.o
 BUILD_FTPWHO_OBJS=utils/ftpwho.o utils/scoreboard.o
 
 DEFINES=$(OPTIONS) $(PLATFORM)
-
-LIB_OBJS=@LIB_OBJS@

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.273 2002-11-12 16:10:38 castaglia Exp $
+$Id: NEWS,v 1.274 2002-11-12 16:19:58 jwm Exp $
 
 CVS
 ---------------------------------
@@ -35,6 +35,8 @@ CVS
   --without-getopt configure option has been added, which tells the ProFTPD
   build process to explicitly not use the ProFTPD bundled getopt
   implementation.
+- Only link ftptop with lib{n,}curses - it isn't needed in any other
+  binaries
 
 1.2.7rc2 - Released 2002-10-22
 ---------------------------------
