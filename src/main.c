@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.46 2001-01-28 18:25:08 flood Exp $
+ * $Id: main.c,v 1.47 2001-01-29 00:23:21 flood Exp $
  */
 
 /*
@@ -1049,6 +1049,9 @@ void cmd_loop(server_rec *server, conn_t *c)
 		      cp);
       }
     }
+
+    /* release any working memory allocated in inet */
+    clear_inet_pool();
   }
 }
 
@@ -1261,6 +1264,9 @@ void fork_server(int fd,conn_t *l,int nofork)
    setpgrp(0,getpid());
 # endif
 #endif
+
+  /* Reseed pseudo-randoms */
+  srand(time(NULL));
 
 #endif /* DEBUG_NOFORK */
 
@@ -2225,6 +2231,10 @@ int main(int argc, char **argv, char **envp)
   /* Initialize stuff for set_proc_title.
    */
   init_set_proc_title(argc, argv, envp);
+
+
+  /* Seed rand */
+  srand(time(NULL));
 
   /* getpeername() fails if the fd isn't a socket */
   socketp = sizeof(peer);

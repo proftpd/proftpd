@@ -44,6 +44,7 @@ extern server_rec *main_server;
 static pool *inet_pool = NULL;
 static int tcp_proto = 6;		/* Generally, this is "tcp" */
 static int reverse_dns = 1;		/* Use reverse dns? */
+static int inet_errno = 0;		/* Holds errno */
 
 /* Cleanup for inet_pool
  */
@@ -436,9 +437,15 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
 #endif
     
     if(fd == -1) {
-      log_pri(LOG_ERR, "socket() failed in inet_initialize_connection(): %s",
-              strerror(errno));
-      end_login(1);
+      /* on failure, destroy the connection and return NULL
+       */
+
+      inet_errno = errno;
+      if(reporting)
+        log_pri(LOG_ERR,"socket() failed in inet_initialize_connection(): %s",
+			strerror(inet_errno));
+      destroy_pool(c->pool);
+      return NULL;
     }
     
     /* Allow address reuse.
@@ -500,11 +507,17 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
         unblock_signals();
       }
 
-      log_pri(LOG_ERR, "Failed binding to %s, port %d: %s",
-              inet_ntoa(servaddr.sin_addr), port, strerror(hold_errno));
-      log_pri(LOG_ERR, "Check the ServerType directive "
-	               "to ensure you are configured correctly.");
-      end_login(1);
+      if(reporting) {
+        log_pri(LOG_ERR, "Failed binding to %s, port %d: %s",
+                inet_ntoa(servaddr.sin_addr), port, strerror(hold_errno));
+        log_pri(LOG_ERR, "Check the ServerType directive "
+	                 "to ensure you are configured correctly.");
+      }
+      
+      inet_errno = hold_errno;
+      destroy_pool(c->pool);
+      close(fd);
+      return NULL;
     }
     
     if(port != INPORT_ANY && port < 1024) {
@@ -536,8 +549,79 @@ conn_t *inet_create_connection(pool *p, xaset_t *servers, int fd,
                                p_in_addr_t *bind_addr, int port,
 			       int retry_bind)
 {
-  return inet_initialize_connection(p, servers, fd, bind_addr,
-				    port, retry_bind, TRUE);
+  conn_t *c = inet_initialize_connection(p, servers, fd, bind_addr,
+		  		         port, retry_bind, TRUE);
+
+  /* This code is somewhat of a kludge, because error handling should
+   * NOT occur in inet.c, it should be handled by the caller.
+   */
+  
+  if(!c)
+    end_login(1);
+
+  return c;
+}
+
+/* Attempt to create a connection bound to a given port range, returns NULL
+ * if unable to bind to any port in the range.
+ */
+
+conn_t *inet_create_connection_portrange(pool *p, xaset_t *servers,
+				p_in_addr_t *bind_addr, int low_port, int high_port)
+{
+  int range_len, index;
+  int *range, *ports;
+  int attempt, random_index;
+  conn_t *c = NULL;
+
+  /* Make sure the temporary inet work pool exists. */
+  CHECK_INET_POOL;
+  
+  range_len = high_port - low_port + 1;
+  range = (int*)pcalloc(inet_pool, (range_len*sizeof(int)));
+  ports = (int*)pcalloc(inet_pool, (range_len*sizeof(int)));
+  
+  index = range_len;
+  while(index--)
+    range[index] = low_port + index;
+  
+  for(attempt = 3; attempt > 0 && !c; attempt--) {
+    for(index = range_len; index > 0 && !c; index--) {
+
+      /* If this is the first attempt through the range, randomize
+       * the order of the port numbers used.
+       */
+
+      if(attempt == 3) {
+	/* obtain a random index into the port array range
+	 */
+	random_index = (int) ((1.0 * index * rand()) / (RAND_MAX+1.0));
+
+	/* copy the port at that index into the array from which port
+	 * numbers will be selected when calling inet_initialize_connection()
+	 */
+	ports[index] = range[random_index];
+
+	/* Move non-selected numbers down so that the next randomly chosen
+	 * port will be from the range of as-yet untried ports
+	 */
+
+	while(++random_index < index)
+	  range[random_index-1] = range[random_index];
+      }
+
+      c = inet_initialize_connection(p, servers, -1, bind_addr,
+				     ports[index], FALSE, FALSE);
+    
+      if(!c && inet_errno != EADDRINUSE) {
+        log_pri(LOG_ERR,"inet_initialize_connection(): %s",
+  		        strerror(inet_errno));
+        end_login(1);
+      }
+    }
+  }
+
+  return c;
 }
 
 void inet_close(pool *pool, conn_t *c)

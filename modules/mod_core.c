@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.47 2001-01-28 18:33:36 flood Exp $
+ * $Id: mod_core.c,v 1.48 2001-01-29 00:23:21 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -860,6 +860,33 @@ MODRET set_allowfilter(cmd_rec *cmd) {
 
 MODRET set_denyfilter(cmd_rec *cmd) {
   return set_regex(cmd, "DenyFilter", "deny");
+}
+
+MODRET set_passiveports(cmd_rec *cmd) {
+
+  int pasv_min_port, pasv_max_port;
+
+  CHECK_ARGS(cmd, 2);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  pasv_min_port = atoi((char*)cmd->argv[1]);
+  pasv_max_port = atoi((char*)cmd->argv[2]);
+
+  /* Sanity check */
+  if(pasv_min_port <= 0 || pasv_min_port > 65535)
+    CONF_ERROR(cmd, "min port must be allowable port number");
+  if(pasv_max_port <= 0 || pasv_max_port > 65535)
+    CONF_ERROR(cmd, "max port must be allowable port number");
+
+  if(pasv_min_port < 1024 || pasv_max_port < 1024)
+    CONF_ERROR(cmd, "port numbers must be above 1023");
+
+  if(pasv_max_port < pasv_min_port)
+    CONF_ERROR(cmd, "min port must be equal to or less than max port");
+
+  add_config_param("PassivePorts", 2, (void*)pasv_min_port, (void*)pasv_max_port);
+
+  return HANDLED(cmd);
 }
 
 MODRET set_pathallowfilter(cmd_rec *cmd) {
@@ -1761,6 +1788,9 @@ MODRET cmd_pasv(cmd_rec *cmd)
     unsigned char u[2];
   } port;
 
+  config_rec *c = NULL;
+  int pasv_min_port,pasv_max_port;
+  
   CHECK_CMD_ARGS(cmd, 1);
 
   /* If we already have a passive listen data connection open, kill it.
@@ -1770,11 +1800,30 @@ MODRET cmd_pasv(cmd_rec *cmd)
     session.d = NULL;
   }
 
+  if ((c = find_config(main_server->conf, CONF_PARAM, "PassivePorts", FALSE)) !=
+      NULL) {
+    pasv_min_port = (int)c->argv[0];
+    pasv_max_port = (int)c->argv[1];
+
+    if(!(session.d = inet_create_connection_portrange(session.pool, NULL,
+				    session.c->local_ipaddr,
+				    pasv_min_port,pasv_max_port))) {
+      /* If not able to open a passive port in the given range, default to
+       * normal behavior (using INPORT_ANY), and log the failure.  This
+       * indicates a too-small range configuration.
+       */
+      log_pri(LOG_WARNING, "unable to find open port in PassivePorts range "
+	      "%d-%d: defaulting to INPORT_ANY", pasv_min_port, pasv_max_port);
+    }
+  }
+
+  
   /* Open up the connection and pass it back.
    */
-  session.d = inet_create_connection(session.pool, NULL, -1,
-				     session.c->local_ipaddr,
-				     INPORT_ANY, FALSE);
+  if(!session.d)
+    session.d = inet_create_connection(session.pool, NULL, -1,
+				       session.c->local_ipaddr,
+				       INPORT_ANY, FALSE);
   
   if(!session.d)
     return ERROR_MSG(cmd,R_425,
@@ -2748,6 +2797,7 @@ static conftable core_conftable[] = {
   { "MaxLoginAttempts",		set_maxloginattempts,		NULL },
   { "MultilineRFC2228",		set_multilinerfc2228,		NULL },
   { "Order",			add_order,			NULL },
+  { "PassivePorts",		set_passiveports,		NULL },
   { "PathAllowFilter",		set_pathallowfilter,		NULL },
   { "PathDenyFilter",		set_pathdenyfilter,		NULL },
   { "PidFile",			set_pidfile,	 		NULL },

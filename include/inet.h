@@ -20,7 +20,7 @@
 
 /* BSD socket manipulation tools.
  *
- * $Id: inet.h,v 1.4 2000-08-02 05:25:24 macgyver Exp $
+ * $Id: inet.h,v 1.5 2001-01-29 00:23:21 flood Exp $
  */
 
 #ifndef __INET_H
@@ -86,6 +86,8 @@ int inet_prebind_socket(pool*,p_in_addr_t*,int);
 conn_t *inet_create_dup_connection(pool*,xaset_t*,int,p_in_addr_t*);
 conn_t *inet_create_connection(pool*,xaset_t *servers,int fd,
                                p_in_addr_t *bind_addr,int port,int retry_bind);
+conn_t *inet_create_connection_portrange(pool*,xaset_t*servers,
+			       p_in_addr_t *bind_addr,int low_port,int high_port);
 void inet_close(pool*,conn_t*);
 int inet_setnonblock(pool*,conn_t*);
 int inet_setblock(pool*,conn_t*);
