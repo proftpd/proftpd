@@ -20,7 +20,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.10 1999-12-30 19:06:45 macgyver Exp $
+ * $Id: data.c,v 1.11 2000-07-06 13:33:57 macgyver Exp $
  */
 
 #include "conf.h"
@@ -130,7 +130,7 @@ int _data_pasv_open(char *reason, unsigned long size)
 
         rev = inet_reverse_dns(session.xfer.p,ServerUseReverseDNS);
 
-	c = inet_accept(session.xfer.p,session.d,-1,-1,TRUE);
+	c = inet_accept(session.xfer.p, session.d, session.c, -1, -1, TRUE);
 
 	inet_reverse_dns(session.xfer.p,rev);
 

@@ -19,7 +19,7 @@
 
 /* BSD socket manipulation tools.
  *
- * $Id: inet.h,v 1.2 1999-09-17 03:56:55 macgyver Exp $
+ * $Id: inet.h,v 1.3 2000-07-06 13:33:57 macgyver Exp $
  */
 
 #ifndef __INET_H
@@ -97,7 +97,7 @@ int inet_accept_nowait(pool*,conn_t*);
 int inet_connect(pool*,conn_t*,p_in_addr_t*,int);
 int inet_connect_nowait(pool*,conn_t*,p_in_addr_t*,int);
 int inet_get_conn_info(conn_t*,int);
-conn_t *inet_accept(pool*,conn_t*,int rfd,int wfd,int resolve);
+conn_t *inet_accept(pool *, conn_t *, conn_t *, int rfd, int wfd, int resolve);
 conn_t *inet_associate(pool*,conn_t*,p_in_addr_t *addr,
                        IOFILE *inf, IOFILE *outf,int resolve);
 conn_t *inet_openrw(pool*,conn_t*,p_in_addr_t *addr,
