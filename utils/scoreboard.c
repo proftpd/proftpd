@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support (modified for use by external utilities).
  *
- * $Id: scoreboard.c,v 1.4 2003-01-05 01:31:35 jwm Exp $
+ * $Id: scoreboard.c,v 1.5 2003-03-04 19:28:36 castaglia Exp $
  */
 
 #include "utils.h"
@@ -143,7 +143,7 @@ const char *util_get_scoreboard(void) {
   return util_scoreboard_file;
 }
 
-int util_open_scoreboard(int flags, pid_t *daemon_pid) {
+int util_open_scoreboard(int flags) {
   int res;
   struct stat st;
 
@@ -171,9 +171,6 @@ int util_open_scoreboard(int flags, pid_t *daemon_pid) {
   /* Check the header of this scoreboard file. */
   if ((res = read_scoreboard_header(&util_header)) < 0)
     return res;
-
-  if (daemon_pid)
-    *daemon_pid = util_header.sch_pid;
 
   return 0;
 }
@@ -208,6 +205,14 @@ int util_set_scoreboard(const char *path) {
 
   util_sstrncpy(util_scoreboard_file, path, sizeof(util_scoreboard_file));
   return 0;
+}
+
+pid_t util_scoreboard_get_daemon_pid(void) {
+  return util_header.sch_pid;
+}
+
+time_t util_scoreboard_get_daemon_uptime(void) {
+  return util_header.sch_uptime;
 }
 
 pr_scoreboard_entry_t *util_scoreboard_read_entry(void) {

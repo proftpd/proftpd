@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.15 2003-01-02 18:25:27 castaglia Exp $
+ * $Id: scoreboard.c,v 1.16 2003-03-04 19:28:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -237,7 +237,7 @@ const char *pr_get_scoreboard(void) {
   return scoreboard_file;
 }
 
-int pr_open_scoreboard(int flags, pid_t *daemon_pid) {
+int pr_open_scoreboard(int flags) {
   int res;
   struct stat st;
 
@@ -278,10 +278,14 @@ int pr_open_scoreboard(int flags, pid_t *daemon_pid) {
     header.sch_magic = PR_SCOREBOARD_MAGIC;
     header.sch_version = PR_SCOREBOARD_VERSION;
 
-    if (ServerType == SERVER_STANDALONE)
+    if (ServerType == SERVER_STANDALONE) {
       header.sch_pid = getpid();
-    else
+      header.sch_uptime = time(NULL);
+
+    } else {
       header.sch_pid = 0;
+      header.sch_uptime = 0;
+    }
 
     while (write(scoreboard_fd, &header, sizeof(header)) != sizeof(header)) {
       if (errno == EINTR) {
@@ -296,9 +300,6 @@ int pr_open_scoreboard(int flags, pid_t *daemon_pid) {
 
   } else if (res < 0)
     return -1;
-
-  if (daemon_pid)
-    *daemon_pid = header.sch_pid;
 
   return 0;
 }
@@ -439,6 +440,14 @@ int pr_scoreboard_del_entry(unsigned char verbose) {
   unlock_entry();
 
   return 0;
+}
+
+pid_t pr_scoreboard_get_daemon_pid(void) {
+  return header.sch_pid;
+}
+
+time_t pr_scoreboard_get_daemon_uptime(void) {
+  return header.sch_uptime;
 }
 
 pr_scoreboard_entry_t *pr_scoreboard_read_entry(void) {

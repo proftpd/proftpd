@@ -26,7 +26,7 @@
 
 /*
  * Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.4 2003-02-18 17:55:22 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.5 2003-03-04 19:28:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -827,19 +827,18 @@ MODRET pw_getgroups(cmd_rec *cmd) {
 
   name = (char *) cmd->argv[0];
 
-  /* check for NULL values */
+  /* Check for NULL values. */
   if (cmd->argv[1])
     gids = (array_header *) cmd->argv[1];
 
   if (cmd->argv[2])
     groups = (array_header *) cmd->argv[2];
 
-  /* retrieve the necessary info */
+  /* Retrieve the necessary info. */
   if (!name || !(pw = my_getpwnam(name)))
     return mod_create_error(cmd, -1);
 
-  /* populate the first group ID and name
-   */
+  /* Populate the first group ID and name. */
   if (gids)
     *((gid_t *) push_array(gids)) = pw->pw_gid;
 
@@ -848,15 +847,15 @@ MODRET pw_getgroups(cmd_rec *cmd) {
 
   my_setgrent();
 
-  /* this is where things get slow, expensive, and ugly.  Loop through
+  /* This is where things get slow, expensive, and ugly.  Loop through
    * everything, checking to make sure we haven't already added it.
    */
   while ((gr = my_getgrent()) != NULL && gr->gr_mem) {
 
-    /* loop through each member name listed */
+    /* Loop through each member name listed */
     for (gr_member = gr->gr_mem; *gr_member; gr_member++) {
 
-      /* if it matches the given username... */
+      /* If it matches the given username... */
       if (!strcmp(*gr_member, pw->pw_name)) {
 
         /* ...add the GID and name */

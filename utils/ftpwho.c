@@ -24,10 +24,9 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Shows a count of "who" is online via proftpd.  Uses the /var/run/proftpd*
- * log files.
+/* Shows a count of "who" is online via proftpd.  Uses the scoreboard file.
  *
- * $Id: ftpwho.c,v 1.18 2003-02-24 18:39:52 castaglia Exp $
+ * $Id: ftpwho.c,v 1.19 2003-03-04 19:28:35 castaglia Exp $
  */
 
 #include "utils.h"
@@ -168,6 +167,35 @@ static int check_scoreboard_file(void) {
   return 0;
 }
 
+static const char *show_uptime(time_t uptime_since) {
+  static char buf[128] = {'\0'};
+  time_t uptime_secs = time(NULL) - uptime_since;
+  int upminutes, uphours, updays;
+  int pos = 0;
+
+  memset(buf, '\0', sizeof(buf));
+
+  updays = (int) uptime_secs / (60 * 60 * 24);
+
+  if (updays)
+    pos += sprintf(buf + pos, "%d day%s, ", updays, (updays != 1) ? "s" : "");
+
+  upminutes = (int) uptime_secs / 60;
+
+  uphours = upminutes / 60;
+  uphours = uphours % 24;
+
+  upminutes = upminutes % 60;
+
+  if (uphours)
+    pos += sprintf(buf + pos, "%2d hr%s %02d min", uphours,
+      (uphours != 1) ? "s" : "", upminutes);
+  else
+    pos += sprintf(buf + pos, "%d min", upminutes);
+
+  return buf;
+}
+
 static struct option_help {
   const char *long_opt,*short_opt,*desc;
 } opts_help[] = {
@@ -212,6 +240,7 @@ static void show_usage(const char *progname, int exit_code) {
 int main(int argc, char **argv) {
   pr_scoreboard_entry_t *score = NULL;
   pid_t mpid = 0;
+  time_t uptime = 0;
   unsigned int count = 0, total = 0;
   int c = 0, res = 0;
   struct scoreboard_class classes[MAX_CLASSES];
@@ -284,7 +313,7 @@ int main(int argc, char **argv) {
   }
 
   count = 0;
-  if ((res = util_open_scoreboard(O_RDONLY, &mpid)) < 0) {
+  if ((res = util_open_scoreboard(O_RDONLY)) < 0) {
     switch (res) {
       case -1:
         fprintf(stderr, "unable to open scoreboard: %s\n", strerror(errno));
@@ -304,11 +333,15 @@ int main(int argc, char **argv) {
     }
   }
 
+  mpid = util_scoreboard_get_daemon_pid();
+  uptime = util_scoreboard_get_daemon_uptime();
+
   if (!mpid)
     printf("inetd FTP daemon:\n");
 
   else
-    printf("standalone FTP daemon [%d]:\n",(int) mpid);
+    printf("standalone FTP daemon [%u], up for %s\n", (unsigned int) mpid,
+      show_uptime(uptime));
 
   while ((score = util_scoreboard_read_entry()) != NULL) {
     unsigned char uploading = FALSE;

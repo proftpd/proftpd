@@ -26,7 +26,7 @@
 
 /* Scoreboard routines.
  *
- * $Id: utils.h,v 1.12 2003-01-02 17:28:23 castaglia Exp $
+ * $Id: utils.h,v 1.13 2003-03-04 19:28:37 castaglia Exp $
  */
 
 #ifndef UTIL_SCOREBOARD_H
@@ -137,7 +137,9 @@ const char *util_get_scoreboard(void);
 int util_set_scoreboard(const char *);
 
 int util_close_scoreboard(void);
-int util_open_scoreboard(int, pid_t *);
+int util_open_scoreboard(int);
+pid_t util_scoreboard_get_daemon_pid(void);
+time_t util_scoreboard_get_daemon_uptime(void);
 pr_scoreboard_entry_t *util_scoreboard_read_entry(void);
 
 #endif /* UTIL_SCOREBOARD_H */

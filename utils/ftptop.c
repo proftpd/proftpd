@@ -26,7 +26,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.21 2003-02-24 18:39:52 castaglia Exp $
+ * $Id: ftptop.c,v 1.22 2003-03-04 19:28:34 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.9"
@@ -42,8 +42,8 @@
 static const char *program = "ftptop";
 
 #if defined(HAVE_NCURSES_H) && defined(HAVE_LIBNCURSES)
-#define HAVE_NCURSES 1
-#include <ncurses.h>
+# define HAVE_NCURSES 1
+# include <ncurses.h>
 #endif /* HAVE_NCURSES_H */
 
 /* We don't want to include both ncurses.h and curses.h. */
@@ -85,6 +85,7 @@ static unsigned int display_mode = FTPTOP_SHOW_REG;
 static char *config_filename = CONFIG_FILE_PATH;
 
 /* Scoreboard variables */
+static time_t ftp_uptime = 0;
 static unsigned int ftp_nsessions = 0;
 static unsigned int ftp_nuploads = 0;
 static unsigned int ftp_ndownloads = 0;
@@ -97,6 +98,7 @@ static void scoreboard_close(void);
 static int scoreboard_open(void);
 
 static void show_version(void);
+static const char *show_ftpd_uptime(void);
 static void usage(void);
 
 static void clear_counters(void) {
@@ -152,6 +154,41 @@ static int check_scoreboard_file(void) {
     return -1;
 
   return 0;
+}
+
+static const char *show_ftpd_uptime(void) {
+  static char buf[128] = {'\0'};
+  time_t uptime_secs = time(NULL) - ftp_uptime;
+  int upminutes, uphours, updays;
+  int pos = 0;
+
+  if (!ftp_uptime)
+    return "";
+
+  memset(buf, '\0', sizeof(buf));
+
+  strcat(buf, ", up for ");
+  pos += strlen(buf); 
+
+  updays = (int) uptime_secs / (60 * 60 * 24);
+
+  if (updays)
+    pos += sprintf(buf + pos, "%d day%s, ", updays, (updays != 1) ? "s" : "");
+
+  upminutes = (int) uptime_secs / 60;
+
+  uphours = upminutes / 60;
+  uphours = uphours % 24;
+
+  upminutes = upminutes % 60;
+
+  if (uphours)
+    pos += sprintf(buf + pos, "%2d hr%s %02d min", uphours,
+      (uphours != 1) ? "s" : "", upminutes);
+  else
+    pos += sprintf(buf + pos, "%d min", upminutes);
+
+  return buf;
 }
 
 /* scan_config_file() is a kludge for 1.2 which does a very simplistic attempt
@@ -397,7 +434,7 @@ static void scoreboard_close(void) {
 static int scoreboard_open(void) {
   int res = 0;
 
-  if ((res = util_open_scoreboard(O_RDONLY, NULL)) < 0) {
+  if ((res = util_open_scoreboard(O_RDONLY)) < 0) {
     switch (res) {
       case -1:
         fprintf(stderr, "%s: unable to open scoreboard: %s\n", program,
@@ -418,21 +455,32 @@ static int scoreboard_open(void) {
     }
   }
 
+  ftp_uptime = util_scoreboard_get_daemon_uptime();
+
   return 0;
 }
 
 static void show_sessions(void) {
   time_t now;
+  char *now_str = NULL;
+  const char *uptime_str = NULL;
 
   clear_counters();
   read_scoreboard();
 
   time(&now);
+
+  /* Trim ctime(3)'s trailing newline. */
+  now_str = ctime(&now);
+  now_str[strlen(now_str)-1] = '\0';
+
+  uptime_str = show_ftpd_uptime();
+
   wclear(stdscr);
   move(0, 0);
 
   attron(A_BOLD);
-  printw(FTPTOP_VERSION ": %s", ctime(&now));
+  printw(FTPTOP_VERSION ": %s%s\n", now_str, uptime_str);
   printw("%u Total FTP Sessions: %u downloading, %u uploading, %u idle\n",
     ftp_nsessions, ftp_ndownloads, ftp_nuploads, ftp_nidles);
   attroff(A_BOLD);

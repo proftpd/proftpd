@@ -24,7 +24,7 @@
 
 /* Scoreboard routines.
  *
- * $Id: scoreboard.h,v 1.8 2003-01-02 17:28:18 castaglia Exp $
+ * $Id: scoreboard.h,v 1.9 2003-03-04 19:28:28 castaglia Exp $
  */
 
 #ifndef PR_SCOREBOARD_H
@@ -107,12 +107,14 @@ int pr_set_scoreboard(const char *);
 
 int pr_close_scoreboard(void);
 void pr_delete_scoreboard(void);
-int pr_open_scoreboard(int, pid_t *);
+int pr_open_scoreboard(int);
 int pr_restore_scoreboard(void);
 int pr_rewind_scoreboard(void);
 
 int pr_scoreboard_add_entry(void);
 int pr_scoreboard_del_entry(unsigned char);
+pid_t pr_scoreboard_get_daemon_pid(void);
+time_t pr_scoreboard_get_daemon_uptime(void);
 pr_scoreboard_entry_t *pr_scoreboard_read_entry(void);
 int pr_scoreboard_update_entry(pid_t, ...);
 

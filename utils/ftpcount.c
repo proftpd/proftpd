@@ -27,7 +27,7 @@
 /* Shows a count of "who" is online via proftpd.  Uses the /var/run/proftpd*
  * log files.
  *
- * $Id: ftpcount.c,v 1.8 2003-01-05 01:31:35 jwm Exp $
+ * $Id: ftpcount.c,v 1.9 2003-03-04 19:28:33 castaglia Exp $
  */
 
 #include "utils.h"
@@ -162,6 +162,7 @@ static void show_usage(const char *progname, int exit_code) {
 int main(int argc, char **argv) {
   pr_scoreboard_entry_t *score = NULL;
   pid_t oldpid = 0,mpid;
+  time_t uptime = 0;
   unsigned int count = 0, total = 0;
   int c = 0, res = 0;
   struct scoreboard_class classes[MAX_CLASSES];
@@ -214,7 +215,7 @@ int main(int argc, char **argv) {
   }
 
   count = 0;
-  if ((res = util_open_scoreboard(O_RDONLY, &mpid)) < 0) {
+  if ((res = util_open_scoreboard(O_RDONLY)) < 0) {
     switch (res) {
       case -1:
         fprintf(stderr, "unable to open scoreboard: %s\n", strerror(errno));
@@ -233,6 +234,9 @@ int main(int argc, char **argv) {
         return 1;
     }
   }
+
+  mpid = util_scoreboard_get_daemon_pid();
+  uptime = util_scoreboard_get_daemon_uptime();
 
   errno = 0;
   while ((score = util_scoreboard_read_entry()) != NULL) {

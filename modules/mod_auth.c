@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.135 2003-03-03 00:42:12 castaglia Exp $
+ * $Id: mod_auth.c,v 1.136 2003-03-04 19:28:28 castaglia Exp $
  */
 
 #ifdef __CYGWIN__
@@ -127,7 +127,7 @@ static int auth_sess_init(void) {
   }
 
   PRIVS_ROOT
-  if (pr_open_scoreboard(O_RDWR, NULL) < 0)
+  if (pr_open_scoreboard(O_RDWR) < 0)
     log_debug(DEBUG0, "error opening scoreboard: %s", strerror(errno));
   PRIVS_RELINQUISH
 

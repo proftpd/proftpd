@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.163 2003-03-03 02:21:09 castaglia Exp $
+ * $Id: main.c,v 1.164 2003-03-04 19:28:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2195,7 +2195,7 @@ static void inetd_main(void) {
 
   /* Make sure the scoreboard file exists. */
   PRIVS_ROOT
-  if ((res = pr_open_scoreboard(O_RDWR, NULL)) < 0) {
+  if ((res = pr_open_scoreboard(O_RDWR)) < 0) {
     PRIVS_RELINQUISH
 
     switch (res) {
@@ -2251,7 +2251,7 @@ static void standalone_main(void) {
 
   PRIVS_ROOT
   pr_delete_scoreboard();
-  if ((res = pr_open_scoreboard(O_RDWR, NULL)) < 0) {
+  if ((res = pr_open_scoreboard(O_RDWR)) < 0) {
     PRIVS_RELINQUISH
 
     switch (res) {
