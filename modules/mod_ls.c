@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.77 2002-12-13 17:27:57 castaglia Exp $
+ * $Id: mod_ls.c,v 1.78 2002-12-17 01:06:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -228,7 +228,7 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden) {
 static int sendline(char *fmt, ...) {
   static char listbuf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   va_list msg;
-  char buf[1025] = {'\0'};
+  char buf[PR_TUNABLE_BUFFER_SIZE+1] = {'\0'};
   int res = 0;
 
   /* A NULL fmt argument is the signal to flush the buffer */
@@ -245,7 +245,7 @@ static int sendline(char *fmt, ...) {
   vsnprintf(buf, sizeof(buf), fmt, msg);
   va_end(msg);
 
-  buf[1024] = '\0';
+  buf[sizeof(buf)-1] = '\0';
 
   /* If buf won't fit completely into listbuf, flush listbuf */
   if (strlen(buf) >= (sizeof(listbuf) - strlen(listbuf))) {

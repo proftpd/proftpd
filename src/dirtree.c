@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.91 2002-12-13 19:33:07 castaglia Exp $
+ * $Id: dirtree.c,v 1.92 2002-12-17 01:06:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1286,7 +1286,7 @@ static int _check_group_access(xaset_t *set, char *name) {
  */
 
 int match_ip(p_in_addr_t *cli_addr, char *cli_str, const char *acl_match) {
-  char acl_str[1024];
+  char acl_str[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   char *mask,*cp;
   int cidr_mode = 0, cidr_bits;
   p_in_addr_t cidr_addr;

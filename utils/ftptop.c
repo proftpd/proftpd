@@ -25,7 +25,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.13 2002-12-12 19:56:17 jwm Exp $
+ * $Id: ftptop.c,v 1.14 2002-12-17 01:06:43 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.8.2"
@@ -129,7 +129,7 @@ static int check_scoreboard_file(void) {
  */
 static void scan_config_file(void) {
   FILE *fp = NULL;
-  char buf[1024] = {'\0'};
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   char *cp, *file = NULL;
  
   if (!config_filename || (fp = fopen(config_filename,"r")) == NULL)
@@ -265,7 +265,11 @@ static void process_opts(int argc, char *argv[]) {
 }
 
 static void read_scoreboard(void) {
-  static char buf[1024] = {'\0'};
+
+  /* NOTE: this buffer should probably be limited to the maximum window
+   * width, as it is used for display purposes.
+   */
+  static char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   pr_scoreboard_entry_t *score = NULL;
 
   if ((ftp_sessions = calloc(chunklen, sizeof(char *))) == NULL)

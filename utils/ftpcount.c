@@ -27,7 +27,7 @@
 /* Shows a count of "who" is online via proftpd.  Uses the /var/run/proftpd*
  * log files.
  *
- * $Id: ftpcount.c,v 1.5 2002-12-03 15:57:27 castaglia Exp $
+ * $Id: ftpcount.c,v 1.6 2002-12-17 01:06:43 castaglia Exp $
  */
 
 #include "utils.h"
@@ -48,7 +48,7 @@ char *util_sstrncpy(char *, const char *, size_t);
  */
 static void scan_config_file(void) {
   FILE *fp = NULL;
-  char buf[1024] = {'\0'};
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   char *cp, *file = NULL;
   
   if (!config_filename || (fp = fopen(config_filename,"r")) == NULL)

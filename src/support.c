@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.51 2002-12-11 23:33:19 castaglia Exp $
+ * $Id: support.c,v 1.52 2002-12-17 01:06:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -617,13 +617,13 @@ char *safe_token(char **s) {
 int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
                   size_t msg_size) {
   FILE *fp;
-  char *deny_str,*disc_str,*cp, buf[1025] = {'\0'};
+  char *deny_str,*disc_str,*cp, buf[PR_TUNABLE_BUFFER_SIZE+1] = {'\0'};
   char hr[3] = {'\0'}, mn[3] = {'\0'};
   time_t now,shuttime = (time_t)0;
   struct tm tm;
 
   if (file_exists(SHUTMSG_PATH) && (fp = fopen(SHUTMSG_PATH,"r"))) {
-    if ((cp = fgets(buf,sizeof(buf),fp)) != NULL) {
+    if ((cp = fgets(buf, sizeof(buf),fp)) != NULL) {
       buf[sizeof(buf)-1] = '\0'; CHOP(cp);
 
       /* We use this to fill in dst, timezone, etc */
@@ -665,10 +665,10 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
           *disc = shuttime;
       }
 
-      if (fgets(buf,sizeof(buf),fp) && msg) {
+      if (fgets(buf, sizeof(buf),fp) && msg) {
         buf[sizeof(buf)-1] = '\0';
 	CHOP(buf);
-        sstrncpy(msg,buf,msg_size-1);
+        sstrncpy(msg, buf, msg_size-1);
       }
     }
 

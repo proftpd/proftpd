@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.1 2002-12-05 23:16:07 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.2 2002-12-17 01:06:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1166,7 +1166,7 @@ static void rewrite_closelog(void) {
 }
 
 static void rewrite_log(char *format, ...) {
-  char mesgbuf[1024] = {'\0'};
+  char mesgbuf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   char prefix[80] = {'\0'};
   char entry[1156] = {'\0'};
   time_t logtime = time(NULL);

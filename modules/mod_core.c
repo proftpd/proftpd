@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.139 2002-12-13 17:27:36 castaglia Exp $
+ * $Id: mod_core.c,v 1.140 2002-12-17 01:06:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -89,6 +89,10 @@ static struct {
   { C_NOOP, "(no operation)",			TRUE },
   { C_FEAT, "(returns feature list)",		TRUE },
   { C_OPTS, "<sp> command [<sp> options]",	TRUE },
+  { C_ADAT, "",					FALSE },
+  { C_AUTH, "",					FALSE },
+  { C_PBSZ, "",					FALSE },
+  { C_PROT, "",					FALSE },
   { NULL,   NULL,          			FALSE }
 };
 
@@ -2370,7 +2374,7 @@ MODRET end_virtualhost(cmd_rec *cmd) {
 
 int core_display_file(const char *numeric, const char *fn, const char *fs) {
   pr_fh_t *fp = NULL;
-  char buf[1024] = {'\0'};
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   int len, classes_enabled = 0, *current_clients = NULL;
   unsigned int *max_clients = NULL;
   unsigned char *class_engine = NULL;
