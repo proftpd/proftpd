@@ -1,8 +1,11 @@
-$Id: NEWS,v 1.79 2001-02-23 02:47:26 flood Exp $
+$Id: NEWS,v 1.80 2001-02-26 20:13:43 flood Exp $
 
-1.2.0 (CVS)
--------------------------------
-- initgroups() support has been removed, it will be readded in 1.3 after we
+1.2.0-final - Released 02/26/2001
+---------------------------------
+- Numerous additional bug fixes from Bugzilla.  See http://bugs.proftpd.org
+  for more info.
+- New and updated README.* and INSTALL.
+- initgroups() support has been removed, it will be re-added in 1.3 after we
   have proper modular support in authentication modules.
 - mod_sql.c, mod_sql_mysql.c and mod_sql_postgres.c back in, with a new
   maintainer (replacements for mod_sqlpw and friends).

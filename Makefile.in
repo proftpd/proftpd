@@ -151,12 +151,18 @@ distclean: clean depend symlinks
 	rm -f src/Makefile modules/Makefile lib/Makefile
 	rm -f config.h config.status config.cache config.log \
 	      Makefile proftpd.conf development.notes
-	rm -f Make.modules Make.rules contrib/dist/rpm/proftpd.spec
-	rm -f Makefile lib/Makefile modules/Makefile src/Makefile
+	rm -f Make.modules Make.rules Makefile
+	rm -f lib/Makefile modules/Makefile src/Makefile
 	rm -f include/buildstamp.h
 	rm -rf `find . -name "CVS"`
 	rm -rf `find . -name "*~"`
 	rm -rf `find . -name "*.bak"`
+
+# added dist target which distclean's and then moves the proftpd.spec
+# file in to the main source directory.
+# jss - 2/26
+dist: distclean
+	mv -f contrib/dist/rpm/proftpd.spec .
 
 cvsclean: clean
 	cd src; rm -f Makefile Makefile.bak Makefile.in.bak
