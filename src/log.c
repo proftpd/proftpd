@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.65 2003-11-09 23:32:07 castaglia Exp $
+ * $Id: log.c,v 1.66 2004-01-19 17:42:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -331,6 +331,11 @@ int pr_log_writefile(int logfd, const char *ident, const char *fmt, ...) {
   time_t timestamp = time(NULL);
   struct tm *t = NULL;
   va_list msg;
+
+  if (logfd < 0) {
+    errno = EINVAL;
+    return -1;
+  }
 
   t = localtime(&timestamp);
 
