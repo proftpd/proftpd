@@ -25,13 +25,13 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.10 2003-03-13 02:56:33 castaglia Exp $
+ * $Id: fsio.c,v 1.11 2003-03-20 02:19:38 castaglia Exp $
  */
 
 #include "conf.h"
 
 #ifdef HAVE_REGEX_H
-#include <regex.h>
+# include <regex.h>
 #endif
 
 #ifdef HAVE_SYS_STATVFS_H
@@ -43,7 +43,7 @@
 #endif
 
 #ifdef AIX3
-#include <sys/statfs.h>
+# include <sys/statfs.h>
 #endif
 
 typedef struct fsopendir fsopendir_t;
@@ -535,8 +535,13 @@ int pr_insert_fs(pr_fs_t *fs, const char *path) {
     fs_map = make_array(map_pool, 0, sizeof(pr_fs_t *));
   }
 
-  /* Clean the path  */
-  pr_fs_clean_path(path, cleaned_path, sizeof(cleaned_path));
+  /* Clean the path, but only if it starts with a '/'.  Non-local-filesystem
+   * paths may not want/need to be cleaned.
+   */
+  if (*path == '/')
+    pr_fs_clean_path(path, cleaned_path, sizeof(cleaned_path));
+  else
+    sstrncpy(cleaned_path, path, sizeof(cleaned_path));
 
   if (!fs->fs_path)
     fs->fs_path = pstrdup(fs->fs_pool, cleaned_path);
@@ -1487,6 +1492,28 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
     sstrncpy(workpath, "/", sizeof(workpath));
 
   sstrncpy(buf, workpath, buflen);
+}
+
+/* This function checks the given path's prefix against the paths that
+ * have been registered.  If no matching path prefix has been registered,
+ * the path is considered invalid.
+ */
+int pr_fs_valid_path(const char *path) {
+
+  if (fs_map && fs_map->nelts > 0) {
+    pr_fs_t *fsi = NULL, **fs_objs = (pr_fs_t **) fs_map->elts;
+    register int i;
+
+    for (i = 0; i < fs_map->nelts; i++) {
+      fsi = fs_objs[i];
+
+      if (strncmp(fsi->fs_path, path, strlen(fsi->fs_path)) == 0)
+        return 0;
+    }
+  }
+
+  errno = EINVAL;
+  return -1;
 }
 
 void pr_fs_virtual_path(const char *path, char *buf, size_t buflen) {

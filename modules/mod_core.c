@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.165 2003-03-12 02:46:19 castaglia Exp $
+ * $Id: mod_core.c,v 1.166 2003-03-20 02:19:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -417,11 +417,10 @@ MODRET add_include(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL|CONF_DIR);
 
-  /* make sure the given path is a full path, not a relative one */
-  if (*(cmd->argv[1]) != '/') {
+  /* Make sure the given path is a valid path. */
+  if (pr_fs_valid_path(cmd->argv[1]) < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-      "Unable to use relative path for configuration file '",
-      cmd->argv[1], "'.", NULL));
+      "unable to use path for configuration file '", cmd->argv[1], "'", NULL));
   }
 
   if (parse_config_file(cmd->argv[1]) == -1)

@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.170 2003-03-13 23:31:35 castaglia Exp $
+ * $Id: main.c,v 1.171 2003-03-20 02:19:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2442,7 +2442,7 @@ int main(int argc, char *argv[], char **envp) {
    */
 
   opterr = 0;
-  while((optc =
+  while ((optc =
 #ifdef HAVE_GETOPT_LONG
 	 getopt_long(argc, argv, cmdopts, opts, NULL)
 #else /* HAVE_GETOPT_LONG */
@@ -2457,8 +2457,8 @@ int main(int argc, char *argv[], char **envp) {
         exit(1);
       }
 
-      /* if this is the first time through, allocate an array_header
-       * for these command-line definitions
+      /* If this is the first time through, allocate an array_header
+       * for these command-line definitions.
        */
       if (!server_defines)
         server_defines = make_array(permanent_pool, 0, sizeof(char *));
@@ -2488,11 +2488,9 @@ int main(int argc, char *argv[], char **envp) {
         exit(1);
       }
 
-      if (*optarg != '/') {
-        log_pri(PR_LOG_ERR, "Fatal: -c requires an absolute path.");
-        exit(1);
-      }
-
+      /* Note: we delay sanity-checking the given path until after the FSIO
+       * layer has been initialized.
+       */
       config_filename = strdup(optarg);
       break;
 
@@ -2507,8 +2505,7 @@ int main(int argc, char *argv[], char **envp) {
       fflush(stdout);
       break;
 
-    case 'p':
-    {
+    case 'p': {
       if (!optarg ||
           ((persistent_passwd = atoi(optarg)) != 1 && persistent_passwd != 0)) {
         log_pri(PR_LOG_ERR, "Fatal: -p requires boolean (0|1) argument.");
@@ -2517,14 +2514,18 @@ int main(int argc, char *argv[], char **envp) {
 
       break;
     }
+
     case 'v':
       show_version++;
       break;
+
     case 1:
       show_version = 2;
       break;
+
     case 'h':
       show_usage(0);
+
     case '?':
       log_pri(PR_LOG_ERR, "unknown option: %c", (char)optopt);
       show_usage(1);
@@ -2556,6 +2557,15 @@ int main(int argc, char *argv[], char **envp) {
   init_config();
   pr_init_stash();
   module_preparse_init();
+
+  /* Now, once the modules have had a chance to initialize themselves
+   * but before the configuration stream is actually parsed, check
+   * that the given configuration path is valid.
+   */
+  if (pr_fs_valid_path(config_filename) < 0) {
+    log_pri(PR_LOG_ERR, "Fatal: -c requires an absolute path");
+    exit(1);
+  }
 
   init_conf_stacks();
   if (parse_config_file(config_filename) == -1) {
