@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.139 2003-03-07 23:11:34 castaglia Exp $
+ * $Id: mod_auth.c,v 1.140 2003-03-09 23:24:42 castaglia Exp $
  */
 
 #ifdef __CYGWIN__
@@ -143,7 +143,6 @@ static int auth_sess_init(void) {
 
   pr_scoreboard_update_entry(getpid(),
     PR_SCORE_USER, "(none)",
-    PR_SCORE_SERVER_IP, main_server->ipaddr,
     PR_SCORE_SERVER_PORT, main_server->ServerPort,
     PR_SCORE_SERVER_ADDR, main_server->ipaddr, main_server->ServerPort,
     PR_SCORE_SERVER_LABEL, main_server->ServerName,
@@ -1366,6 +1365,7 @@ static void auth_scan_scoreboard(void) {
   pr_scoreboard_entry_t *score = NULL;
   int cur = -1, ccur = -1;
   char config_class_users[128] = {'\0'};
+  char curr_server_addr[80] = {'\0'};
   xaset_t *conf = NULL;
   unsigned char *class_engine = get_param_ptr(main_server->conf,
     "Classes", FALSE);
@@ -1376,14 +1376,16 @@ static void auth_scan_scoreboard(void) {
   if (!session.class)
     return;
 
+  snprintf(curr_server_addr, sizeof(curr_server_addr), "%s:%d",
+    inet_ntoa(*main_server->ipaddr), main_server->ServerPort);
+  curr_server_addr[sizeof(curr_server_addr)-1] = '\0';
+
   /* Determine how many users are currently connected */
   pr_rewind_scoreboard();
   while ((score = pr_scoreboard_read_entry()) != NULL) {
 
     /* Make sure it matches our current server */
-    if (score->sce_server_ip->s_addr == main_server->ipaddr->s_addr &&
-        score->sce_server_port == main_server->ServerPort) {
-
+    if (strcmp(score->sce_server_addr, curr_server_addr) == 0) {
       cur++;
 
       /* Note: the class member of the scoreboard entry will never be
@@ -1442,13 +1444,18 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
 
   /* Gather our statistics. */
   if (user) {
+    char curr_server_addr[80] = {'\0'};
+
+    snprintf(curr_server_addr, sizeof(curr_server_addr), "%s:%d",
+      inet_ntoa(*main_server->ipaddr), main_server->ServerPort);
+    curr_server_addr[sizeof(curr_server_addr)-1] = '\0';
+
     pr_rewind_scoreboard();
     while ((score = pr_scoreboard_read_entry()) != NULL) {
       unsigned char same_host = FALSE;
 
       /* Make sure it matches our current server. */
-      if (score->sce_server_ip->s_addr == main_server->ipaddr->s_addr &&
-          score->sce_server_port == main_server->ServerPort) {
+      if (strcmp(score->sce_server_addr, curr_server_addr) == 0) {
 
         if ((c && c->config_type == CONF_ANON &&
             !strcmp(score->sce_user, user)) || !c) {

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.163 2003-03-09 22:28:16 castaglia Exp $
+ * $Id: mod_core.c,v 1.164 2003-03-09 23:24:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,7 +35,7 @@
 #include <sys/resource.h>
 
 #ifdef HAVE_REGEX_H
-#include <regex.h>
+# include <regex.h>
 #endif
 
 /* This is declared static to this module because it's not needed,
@@ -119,6 +119,8 @@ extern array_header *server_defines;
 
 module core_module;
 
+static int core_scrub_timer_id;
+
 static ssize_t get_num_bytes(char *nbytes_str) {
   ssize_t nbytes = 0;
   unsigned long inb;
@@ -192,7 +194,8 @@ static int core_scrub_scoreboard_cb(CALLBACK_FRAME) {
   PRIVS_ROOT
   if ((fd = open(pr_get_scoreboard(), O_RDWR)) < 0) {
     PRIVS_RELINQUISH
-    log_debug(DEBUG1, "unable to scrub ScoreboardFile: %s", strerror(errno));
+    log_debug(DEBUG1, "unable to scrub ScoreboardFile '%s': %s",
+      pr_get_scoreboard(), strerror(errno));
     return 1;
   }
   PRIVS_RELINQUISH
@@ -3900,8 +3903,8 @@ MODRET set_class(cmd_rec *cmd) {
 static int core_startup_cb(void) {
 
   /* Add a scoreboard-scrubbing timer. */
-  add_timer(PR_TUNABLE_SCOREBOARD_SCRUB_TIMER, -1, &core_module,
-    core_scrub_scoreboard_cb);
+  core_scrub_timer_id = add_timer(PR_TUNABLE_SCOREBOARD_SCRUB_TIMER, -1,
+    &core_module, core_scrub_scoreboard_cb);
 
   return 0;
 }
@@ -3998,6 +4001,7 @@ static int core_sess_init(void) {
      */
   }
 
+  remove_timer(core_scrub_timer_id, &core_module);
   return 0;
 }
 

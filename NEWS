@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.397 2003-03-09 22:40:23 castaglia Exp $
+$Id: NEWS,v 1.398 2003-03-09 23:24:41 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -51,6 +51,7 @@ CVS
   "mysql"; for some distributions this is not the case.  Similarly for
   the Postgres backend module and the libpq-fe.h file.  Users may need to
   alter the --with-includes configure option used when building mod_sql.
+- Bug 1915 - Unsafe pointer usage in scoreboard file format.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------

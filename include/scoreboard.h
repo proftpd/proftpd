@@ -24,7 +24,7 @@
 
 /* Scoreboard routines.
  *
- * $Id: scoreboard.h,v 1.10 2003-03-05 19:20:24 castaglia Exp $
+ * $Id: scoreboard.h,v 1.11 2003-03-09 23:24:42 castaglia Exp $
  */
 
 #ifndef PR_SCOREBOARD_H
@@ -63,7 +63,6 @@ typedef struct {
   gid_t sce_gid;
   char sce_user[32];
 
-  p_in_addr_t *sce_server_ip;
   int sce_server_port;
   char sce_server_addr[80], sce_server_label[32];
 
@@ -94,16 +93,15 @@ typedef struct {
 #define PR_SCORE_CWD		5
 #define PR_SCORE_CMD		6
 #define PR_SCORE_CMD_ARG	7
-#define PR_SCORE_SERVER_IP	8
-#define PR_SCORE_SERVER_PORT	9
-#define PR_SCORE_SERVER_ADDR	10
-#define PR_SCORE_SERVER_LABEL	11
-#define PR_SCORE_XFER_DONE	12	
-#define PR_SCORE_XFER_SIZE	13
-#define PR_SCORE_BEGIN_IDLE	14
-#define PR_SCORE_BEGIN_SESSION	15
-#define PR_SCORE_XFER_LEN	16
-#define PR_SCORE_XFER_ELAPSED	17
+#define PR_SCORE_SERVER_PORT	8
+#define PR_SCORE_SERVER_ADDR	9
+#define PR_SCORE_SERVER_LABEL	10
+#define PR_SCORE_XFER_DONE	11	
+#define PR_SCORE_XFER_SIZE	12
+#define PR_SCORE_BEGIN_IDLE	13
+#define PR_SCORE_BEGIN_SESSION	14
+#define PR_SCORE_XFER_LEN	15
+#define PR_SCORE_XFER_ELAPSED	16
 
 /* Scoreboard error values */
 #define PR_SCORE_ERR_BAD_MAGIC		-2

@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.17 2003-03-05 19:20:30 castaglia Exp $
+ * $Id: scoreboard.c,v 1.18 2003-03-09 23:24:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -571,10 +571,6 @@ int pr_scoreboard_update_entry(pid_t pid, ...) {
           sstrncpy(entry.sce_cmd_arg, argstr, sizeof(entry.sce_cmd_arg));
           tmp = va_arg(ap, void *);
         }
-        break;
-
-      case PR_SCORE_SERVER_IP:
-        entry.sce_server_ip = va_arg(ap, p_in_addr_t *);
         break;
 
       case PR_SCORE_SERVER_PORT:
