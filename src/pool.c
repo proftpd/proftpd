@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.41 2004-01-09 04:23:15 castaglia Exp $
+ * $Id: pool.c,v 1.42 2004-01-09 04:41:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -176,7 +176,7 @@ static union block_hdr *new_block(int minsz, int exact) {
   union block_hdr **lastptr = &block_freelist;
   union block_hdr *blok = block_freelist;
 
-  if (exact) {
+  if (!exact) {
     minsz = 1 + ((minsz - 1) / BLOCK_MINFREE);
     minsz *= BLOCK_MINFREE;
   }
