@@ -1,9 +1,10 @@
-$Id: NEWS,v 1.125 2001-08-16 19:54:04 flood Exp $
+$Id: NEWS,v 1.126 2001-08-16 19:58:18 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
 README.mod_sql update from author
 new mod_sql from author
+- Bug 1285 - Documentation updates
 - Bug 1278 - pedantic fix to access_check()
 - Bug 1266 - Use of APPEnd could corrupt files
 - Bug 1286 - mod_ls displays set[ug]id bits

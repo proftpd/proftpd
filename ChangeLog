@@ -1,3 +1,14 @@
+2001-08-16 15:54  flood
+
+	* NEWS, modules/mod_ls.c, modules/mod_xfer.c, src/support.c: 1273 -
+	DirFakeGroup merges down 1286 - mod_ls displays set[ug]id bits 1266
+	- APPE could corrupt files 1278 - access_check() does not set errno
+	properly
+
+2001-08-16 14:54  flood
+
+	* NEWS, contrib/mod_sql.c: new mod_sql
+
 2001-08-01 11:18  flood
 
 	* NEWS, README.mod_sql: README.mod_sql update from author
