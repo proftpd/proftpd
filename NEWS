@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.257 2002-10-24 17:16:27 castaglia Exp $
+$Id: NEWS,v 1.258 2002-10-24 20:03:57 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -61,6 +61,7 @@ CVS
 - Bug 1436 - Feature Enhancement: Timeouts on a <Virtualhost> basis
 - Bug 1737 - Enhance file hiding via regular expressions
 - Bug 1736 - RETR does not handle an inappropriate REST
+- Bug 1745 - multiple similar entries in extended log
 - Added NetIO API
 - Bug 1726 - Cygwin's Makefile inconsistency
 - Bug 1713 - Scoreboard changes
