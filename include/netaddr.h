@@ -23,13 +23,16 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.8 2003-09-09 00:32:51 castaglia Exp $
+ * $Id: netaddr.h,v 1.9 2003-09-09 00:55:33 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
 #define PR_NETADDR_H
 
 #include "conf.h"
+
+/* Allocate an initialized netaddr from the given pool. */
+pr_netaddr_t *pr_netaddr_alloc(pool *);
 
 /* Initialize the given netaddr. */
 void pr_netaddr_initialize(pr_netaddr_t *);
