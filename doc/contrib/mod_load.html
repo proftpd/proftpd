@@ -1,4 +1,4 @@
-<!-- $Id: mod_load.html,v 1.2 2005-01-01 19:41:33 castaglia Exp $ -->
+<!-- $Id: mod_load.html,v 1.3 2005-01-01 20:15:55 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_load.html,v $ -->
 
 <html>
@@ -15,10 +15,10 @@
 <hr><br>
 
 This module is contained in the <code>mod_load.h</code> and
-<code>mod_load.c</code> files for ProFTPD 1.2.<i>x</i>, found
-<a href="http://www.castaglia.org/proftpd/">here</a>, and is not compiled by
+<code>mod_load.c</code> files for ProFTPD 1.2.<i>x</i>, and is not compiled by
 default.  Installation instructions are discussed
-<a href="#Installation">here</a>.
+<a href="#Installation">here</a>.  There are also some interesting notes
+on the <a href="#Usage">usage</a> of this module.
 
 <p>
 The code for determining load average on a given system is hairy, to say the
@@ -28,10 +28,8 @@ uses code from GNU's <code>make</code> application, which should function
 properly.  If not, please contact the author as soon as possible.
 
 <p>
-The most current version of <code>mod_load</code> can be found at:
-<pre>
-  <a href="http://www.castaglia.org/proftpd/">http://www.castaglia.org/proftpd/</a>
-</pre>
+The most current version of <code>mod_load</code> is distributed with the
+ProFTPD source code.
 
 <h2>Author</h2>
 <p>
@@ -74,6 +72,23 @@ Example:
 
 <p>
 <hr>
+<h2><a name="Usage">Usage</a></h2>
+<p>
+The <code>mod_load</code> module is very straightforward, providing only
+the single configuration directive.
+
+<p>
+<b><code>Display</code> Variables</b><br>
+The following variables are provided by <code>mod_load</code>, and
+can be used in any <code>Display</code> file <i>e.g.</i>
+<code>DisplayConnect</code> and <code>DisplayLogin</code>.
+<pre>
+  %{mod_load.curr_load}
+  %{mod_load.max_load}
+</pre>
+
+<p>
+<hr>
 <h2><a name="Installation">Installation</a></h2>
 To install <code>mod_load</code>, follow the usual steps for using third-party
 modules in proftpd:
@@ -87,7 +102,7 @@ modules in proftpd:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2005-01-01 19:41:33 $</i><br>
+Last Updated: <i>$Date: 2005-01-01 20:15:55 $</i><br>
 
 <br><hr>
 
