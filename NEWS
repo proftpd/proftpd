@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.326 2002-12-18 20:09:13 castaglia Exp $
+$Id: NEWS,v 1.327 2002-12-19 21:47:54 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -64,6 +64,12 @@ CVS
   for running proftpd from inittab or with daemontools.
 - Bug 1667 - Integrate ProFTPD with C2/SIA on Tru64 Unix.  The --enable-sia
   configure option has been added.
+- Bug 1837 - Add module specifically for handling Auth*Files, providing
+  finer-grained control.  The new mod_auth_file module is compiled in by
+  default, and can be disabled using the --disable-auth-file configure option.
+  For consistency, mod_unixpw.c has been renamed to mod_auth_unix (and now
+  has a --disable-auth-unix configure option), and mod_pam.c has been renamed
+  to mod_auth_pam.c (with an explicit --enable-auth-pam configure option).
 
 1.2.7 - Released 05-12-2002
 ---------------------------------
