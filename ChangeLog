@@ -1,3 +1,6 @@
+2001-01-25 13:03  flood
+        * commit email logging test
+
 2001-01-25 00:53  flood
 
 	* config.h.in, configure.in, modules/mod_auth.c: Bug #365 - Removed
@@ -22,9 +25,9 @@
 
 2000-10-08 18:24  macgyver
 
-	* acconfig.h, config.h.in, configure, configure.in,
-	include/support.h, modules/mod_ls.c, src/support.c: Correctly use
-	NAME_MAX and fpathconf() when appropriate.
+	* acconfig.h, config.h.in, configure.in, include/support.h,
+	modules/mod_ls.c, src/support.c: Correctly use NAME_MAX and
+	fpathconf() when appropriate.
 
 2000-10-08 18:11  macgyver
 
@@ -59,8 +62,8 @@
 
 2000-08-19 15:02  macgyver
 
-	* configure, configure.in: Fixed ordering in library duplication
-	detection code.
+	* configure.in: Fixed ordering in library duplication detection
+	code.
 
 2000-08-18 16:25  macgyver
 
@@ -78,11 +81,11 @@
 
 2000-08-18 02:02  macgyver
 
-	* configure, configure.in: Fixed a small typo in PAM detection.
+	* configure.in: Fixed a small typo in PAM detection.
 
 2000-08-18 01:44  macgyver
 
-	* acconfig.h, config.h.in, configure, configure.in: PAM and path
+	* acconfig.h, config.h.in, configure.in: PAM and path
 	modifications.
 
 2000-08-18 01:26  macgyver
@@ -91,7 +94,7 @@
 
 2000-08-13 11:19  macgyver
 
-	* Make.rules.in, acconfig.h, config.h.in, configure, configure.in,
+	* Make.rules.in, acconfig.h, config.h.in, configure.in,
 	include/conf.h: Some configure and compilation cleanups.
 
 2000-08-13 06:36  macgyver
@@ -123,8 +126,8 @@
 
 2000-08-04 11:17  macgyver
 
-	* configure, configure.in: Updated HP/UX sendfile() to only
-	actually check on HP/UX platforms. :)
+	* configure.in: Updated HP/UX sendfile() to only actually check on
+	HP/UX platforms. :)
 
 2000-08-04 11:07  macgyver
 
@@ -180,9 +183,9 @@
 
 2000-08-02 22:46  macgyver
 
-	* NEWS, config.h.in, configure, configure.in, modules/mod_auth.c:
-	Added in support for jail() on platforms that support it (currently
-	FreeBSD 4.x+).
+	* NEWS, config.h.in, configure.in, modules/mod_auth.c: Added in
+	support for jail() on platforms that support it (currently FreeBSD
+	4.x+).
 
 2000-08-02 21:35  macgyver
 
@@ -212,8 +215,8 @@
 
 2000-08-02 19:26  macgyver
 
-	* Make.rules.in, configure, configure.in: Added in --with-libraries
-	for posterity.
+	* Make.rules.in, configure.in: Added in --with-libraries for
+	posterity.
 
 2000-08-02 19:13  macgyver
 
@@ -234,14 +237,13 @@
 
 2000-08-02 18:38  macgyver
 
-	* .cvsignore, Makefile.in, configure, configure.in: Added support
-	for stamp-h.in and automagic rebuilds whenever configure is
-	updated.
+	* .cvsignore, Makefile.in, configure.in: Added support for
+	stamp-h.in and automagic rebuilds whenever configure is updated.
 
 2000-08-02 17:46  macgyver
 
-	* acconfig.h, config.h.in, configure, configure.in: More sendfile
-	detection tweaks. :)
+	* acconfig.h, config.h.in, configure.in: More sendfile detection
+	tweaks. :)
 
 2000-08-02 17:46  macgyver
 
@@ -249,13 +251,13 @@
 
 2000-08-02 02:44  macgyver
 
-	* configure, configure.in: Reworked sendfile detection to be
-	cleaner and better cached.
+	* configure.in: Reworked sendfile detection to be cleaner and
+	better cached.
 
 2000-08-02 02:18  macgyver
 
-	* Make.rules.in, NEWS, configure, configure.in: Added in
-	--with-includes and made the PAM check for -ldl cache its results.
+	* Make.rules.in, NEWS, configure.in: Added in --with-includes and
+	made the PAM check for -ldl cache its results.
 
 2000-08-02 01:28  macgyver
 
@@ -351,10 +353,9 @@
 
 2000-07-28 01:47  macgyver
 
-	* NEWS, acconfig.h, config.h.in, configure, configure.in,
-	src/data.c: Added --disable-pam, allowing you to disable PAM at
-	configure-time.  Reorganized sendfile detection a bit and added
-	support for HP/UX.
+	* NEWS, acconfig.h, config.h.in, configure.in, src/data.c: Added
+	--disable-pam, allowing you to disable PAM at configure-time. 
+	Reorganized sendfile detection a bit and added support for HP/UX.
 
 2000-07-27 12:07  macgyver
 
@@ -412,13 +413,12 @@
 
 2000-07-26 04:16  macgyver
 
-	* Make.rules.in, config.h.in, configure, configure.in,
-	include/libsupp.h, lib/Makefile.in, lib/glob.c,
-	modules/Makefile.in, src/Makefile.in, src/dirtree.c, src/fs.c: New
-	fnmatch code in ProFTPD.  Updated from the latest and greatest
-	glibc code.  ProFTPD now always uses our builtin fnmatch to
-	eliminate problems with incompatible implementations as well as
-	namespace collisions.
+	* Make.rules.in, config.h.in, configure.in, include/libsupp.h,
+	lib/Makefile.in, lib/glob.c, modules/Makefile.in, src/Makefile.in,
+	src/dirtree.c, src/fs.c: New fnmatch code in ProFTPD.  Updated from
+	the latest and greatest glibc code.  ProFTPD now always uses our
+	builtin fnmatch to eliminate problems with incompatible
+	implementations as well as namespace collisions.
 
 2000-07-26 03:36  macgyver
 
@@ -428,13 +428,13 @@
 
 2000-07-26 00:41  macgyver
 
-	* configure, configure.in: Made fnmatch check more robust and
-	cleaned up gcc detection a bit.
+	* configure.in: Made fnmatch check more robust and cleaned up gcc
+	detection a bit.
 
 2000-07-26 00:11  macgyver
 
-	* configure, configure.in, src/dirtree.c: Hostname checks should be
-	case insensitive.  Added FNM_CASEFOLD to fnmatch check.
+	* configure.in, src/dirtree.c: Hostname checks should be case
+	insensitive.  Added FNM_CASEFOLD to fnmatch check.
 
 2000-07-25 23:48  macgyver
 
@@ -447,7 +447,7 @@
 
 2000-07-21 14:44  macgyver
 
-	* NEWS, config.h.in, configure, configure.in, modules/mod_auth.c,
+	* NEWS, config.h.in, configure.in, modules/mod_auth.c,
 	modules/mod_unixpw.c: Portability fixes and additions on various
 	platforms.  Also corrected a problem in configure where a piece of
 	code was completely bypassed.
@@ -497,7 +497,7 @@
 
 2000-07-21 01:05  macgyver
 
-	* configure, configure.in: Added in better PAM detection for -ldl.
+	* configure.in: Added in better PAM detection for -ldl.
 
 2000-07-21 00:58  macgyver
 
@@ -659,10 +659,9 @@
 
 2000-07-06 15:29  macgyver
 
-	* NEWS, config.h.in, configure, configure.in, src/main.c,
-	modules/mod_auth.c: Added in support to handle large groups
-	efficiently.  This should take care of the 'hangs forever on login'
-	bug.
+	* NEWS, config.h.in, configure.in, src/main.c, modules/mod_auth.c:
+	Added in support to handle large groups efficiently.  This should
+	take care of the 'hangs forever on login' bug.
 
 2000-07-06 14:33  macgyver
 
@@ -718,10 +717,9 @@
 
 2000-07-06 01:58  macgyver
 
-	* NEWS, config.h.in, configure, configure.in, lib/vsnprintf.c,
-	src/ftpcount.c: Made portable *snprintf libraries more so by
-	supporting floating point operations and updated ftpcount
-	accordingly.
+	* NEWS, config.h.in, configure.in, lib/vsnprintf.c, src/ftpcount.c:
+	Made portable *snprintf libraries more so by supporting floating
+	point operations and updated ftpcount accordingly.
 
 2000-07-06 01:57  macgyver
 
@@ -748,7 +746,7 @@
 
 2000-07-05 23:32  macgyver
 
-	* acconfig.h, config.h.in, configure, configure.in, include/conf.h,
+	* acconfig.h, config.h.in, configure.in, include/conf.h,
 	modules/mod_ls.c: Fixed a POSIX issue regarding NAME_MAX usage.
 
 2000-07-05 23:31  macgyver
@@ -808,12 +806,12 @@
 
 2000-03-06 00:32  macgyver
 
-	* configure, configure.in: Fixed a bug in link-testing for -ldl
+	* configure.in: Fixed a bug in link-testing for -ldl
 
 2000-03-03 16:10  macgyver
 
-	* config.h.in, configure, configure.in, modules/mod_pam.c: Minor
-	cleanups of configure scripts to remove dependencies on -ldl
+	* config.h.in, configure.in, modules/mod_pam.c: Minor cleanups of
+	configure scripts to remove dependencies on -ldl
 
 2000-03-02 10:32  macgyver
 
@@ -842,9 +840,8 @@
 
 2000-02-29 02:25  macgyver
 
-	* NEWS, acconfig.h, config.h.in, configure, configure.in,
-	src/main.c: Added in support for tzset, to preserve timezone
-	information across a chroot
+	* NEWS, acconfig.h, config.h.in, configure.in, src/main.c: Added in
+	support for tzset, to preserve timezone information across a chroot
 
 2000-02-29 02:25  macgyver
 
@@ -1129,7 +1126,7 @@
 
 1999-12-28 01:26  macgyver
 
-	* configure, configure.in: Fixed the detection of hpsecurity.h
+	* configure.in: Fixed the detection of hpsecurity.h
 
 1999-12-28 01:24  macgyver
 
@@ -1142,7 +1139,7 @@
 
 1999-12-26 21:53  macgyver
 
-	* configure, configure.in: Fixed a minor typo in a test case.
+	* configure.in: Fixed a minor typo in a test case.
 
 1999-12-26 21:48  macgyver
 
@@ -1173,7 +1170,7 @@
 
 1999-10-27 16:45  macgyver
 
-	* configure, configure.in: Corrected intall_group handling.
+	* configure.in: Corrected intall_group handling.
 
 1999-10-27 16:43  macgyver
 
@@ -1233,8 +1230,7 @@
 
 1999-10-26 21:08  macgyver
 
-	* configure, configure.in: Fixed my stupid typo in FreeBSD
-	setpassent.
+	* configure.in: Fixed my stupid typo in FreeBSD setpassent.
 
 1999-10-26 21:02  macgyver
 
@@ -1257,10 +1253,10 @@
 
 1999-10-23 00:07  macgyver
 
-	* configure, configure.in, contrib/ftp.pamd,
-	contrib/proftpd.spec.in, contrib/dist/rpm/ftp.pamd,
-	contrib/dist/rpm/proftpd.init.d, contrib/dist/rpm/proftpd.spec.in,
-	doc/Undocumented.txt: Moved around RPM build files.
+	* configure.in, contrib/ftp.pamd, contrib/proftpd.spec.in,
+	contrib/dist/rpm/ftp.pamd, contrib/dist/rpm/proftpd.init.d,
+	contrib/dist/rpm/proftpd.spec.in, doc/Undocumented.txt: Moved
+	around RPM build files.
 
 1999-10-22 23:52  macgyver
 
@@ -1277,7 +1273,7 @@
 
 1999-10-22 23:21  macgyver
 
-	* NEWS, README, acconfig.h, config.h.in, configure, configure.in,
+	* NEWS, README, acconfig.h, config.h.in, configure.in,
 	modules/mod_auth.c: Updates for FreeBSD's brokenness with respect
 	to setpassent.
 
@@ -1332,8 +1328,8 @@
 
 1999-10-11 03:28  macgyver
 
-	* NEWS, config.h.in, configure, configure.in, include/conf.h: Added
-	in support for setgroupent.
+	* NEWS, config.h.in, configure.in, include/conf.h: Added in support
+	for setgroupent.
 
 1999-10-11 03:20  macgyver
 
@@ -1347,7 +1343,7 @@
 
 1999-10-10 23:13  macgyver
 
-	* NEWS, configure, contrib/mod_ldap.c, contrib/mod_linuxprivs.c,
+	* NEWS, contrib/mod_ldap.c, contrib/mod_linuxprivs.c,
 	contrib/mod_ratio.c, modules/mod_auth.c, modules/mod_core.c,
 	modules/mod_log.c, modules/mod_ls.c, modules/mod_pam.c,
 	modules/mod_readme.c, modules/mod_xfer.c, src/log.c, src/main.c,
@@ -1411,9 +1407,9 @@
 
 1999-10-05 01:37  macgyver
 
-	* acconfig.h, config.h.in, configure, configure.in,
-	doc/Undocumented.txt, include/data.h, src/data.c: Added in support
-	for sendfile on BSD platforms.
+	* acconfig.h, config.h.in, configure.in, doc/Undocumented.txt,
+	include/data.h, src/data.c: Added in support for sendfile on BSD
+	platforms.
 
 1999-10-05 00:28  macgyver
 
@@ -1422,7 +1418,7 @@
 
 1999-10-04 20:07  macgyver
 
-	* configure, configure.in: Fixed a small typo.
+	* configure.in: Fixed a small typo.
 
 1999-10-04 19:57  macgyver
 
@@ -1443,8 +1439,8 @@
 
 1999-10-04 19:35  macgyver
 
-	* configure, configure.in: Enhanced configure to automagically
-	create the necessary symlinks.
+	* configure.in: Enhanced configure to automagically create the
+	necessary symlinks.
 
 1999-10-04 19:34  macgyver
 
@@ -1467,11 +1463,11 @@
 
 1999-10-01 03:57  macgyver
 
-	* config.h.in, configure, configure.in, include/data.h,
-	include/dirtree.h, include/log.h, include/proftpd.h,
-	modules/mod_auth.c, modules/mod_core.c, modules/mod_log.c,
-	modules/mod_xfer.c, src/io.c, src/log.c, src/main.c: Added classes
-	support, new bandwidth support, and sendfile support.
+	* config.h.in, configure.in, include/data.h, include/dirtree.h,
+	include/log.h, include/proftpd.h, modules/mod_auth.c,
+	modules/mod_core.c, modules/mod_log.c, modules/mod_xfer.c,
+	src/io.c, src/log.c, src/main.c: Added classes support, new
+	bandwidth support, and sendfile support.
 
 1999-10-01 03:55  macgyver
 
@@ -1515,8 +1511,7 @@
 
 1999-09-30 23:31  macgyver
 
-	* config.h.in, configure, configure.in: HP/UX security detection
-	added.
+	* config.h.in, configure.in: HP/UX security detection added.
 
 1999-09-30 02:10  macgyver
 
@@ -1529,7 +1524,7 @@
 
 1999-09-30 02:04  macgyver
 
-	* configure, configure.in: Corrected configure portability issues.
+	* configure.in: Corrected configure portability issues.
 
 1999-09-30 02:03  macgyver
 
@@ -1720,8 +1715,8 @@
 
 1999-09-12 16:28  macgyver
 
-	* config.h.in, configure, configure.in, include/conf.h, src/log.c:
-	Added in support for utmpx under Solaris and like-minded platforms.
+	* config.h.in, configure.in, include/conf.h, src/log.c: Added in
+	support for utmpx under Solaris and like-minded platforms.
 
 1999-09-12 13:04  macgyver
 
@@ -1749,7 +1744,7 @@
 
 1999-09-11 16:50  macgyver
 
-	* configure, configure.in: Forgot the 'id' issue.
+	* configure.in: Forgot the 'id' issue.
 
 1999-09-11 16:45  macgyver
 
@@ -1757,7 +1752,7 @@
 
 1999-09-11 16:44  macgyver
 
-	* configure, configure.in: A couple of more configure fixes.
+	* configure.in: A couple of more configure fixes.
 
 1999-09-10 17:17  macgyver
 
@@ -1775,12 +1770,12 @@
 
 1999-09-10 15:08  macgyver
 
-	* configure, configure.in: Fixed a small typo with shadow use.
+	* configure.in: Fixed a small typo with shadow use.
 
 1999-09-10 04:21  macgyver
 
-	* configure, configure.in: Updated support for Solaris, and made
-	PAM sleep quietly when told to do so.
+	* configure.in: Updated support for Solaris, and made PAM sleep
+	quietly when told to do so.
 
 1999-09-10 03:46  macgyver
 
@@ -1806,21 +1801,20 @@
 
 1999-09-08 04:35  macgyver
 
-	* configure, configure.in, contrib/mod_pam.c: Updates to
-	auto-configuring for PAM on *BSD.
+	* configure.in, contrib/mod_pam.c: Updates to auto-configuring for
+	PAM on *BSD.
 
 1999-09-08 04:03  macgyver
 
-	* configure, configure.in: Fixed setproctitle detection on *BSD
-	platforms.
+	* configure.in: Fixed setproctitle detection on *BSD platforms.
 
 1999-09-08 03:48  macgyver
 
-	* configure, configure.in: Fixed an extra 'fi' statement.
+	* configure.in: Fixed an extra 'fi' statement.
 
 1999-09-08 03:43  macgyver
 
-	* configure, configure.in: Fixed a small typo in PAM detection.
+	* configure.in: Fixed a small typo in PAM detection.
 
 1999-09-08 03:42  macgyver
 
@@ -1864,12 +1858,11 @@
 
 1999-09-07 19:29  macgyver
 
-	* Makefile.in, config.h.in, configure, configure.in,
-	include/dirtree.h, include/fs.h, include/version.h, lib/glob.c,
-	src/dirtree.c, src/fs.c, src/ftpcount.c, src/inet.c, src/log.c,
-	src/main.c, src/modules.c, src/pool.c, src/support.c: Removed lots
-	of unsafe buffer copies, as well as addressed a couple of Y2K
-	issues.
+	* Makefile.in, config.h.in, configure.in, include/dirtree.h,
+	include/fs.h, include/version.h, lib/glob.c, src/dirtree.c,
+	src/fs.c, src/ftpcount.c, src/inet.c, src/log.c, src/main.c,
+	src/modules.c, src/pool.c, src/support.c: Removed lots of unsafe
+	buffer copies, as well as addressed a couple of Y2K issues.
 
 1999-09-07 19:22  macgyver
 
@@ -1951,7 +1944,7 @@
 1999-03-04 22:34  flood
 
 	* Make.rules.in, Makefile.in, acconfig.h, changelog, config.h.in,
-	configure, configure.in, contrib/mod_pam.c, include/proftpd.h,
+	configure.in, contrib/mod_pam.c, include/proftpd.h,
 	modules/Makefile.in, modules/mod_core.c, src/data.c, src/main.c:
 	MacGyver's patch to do argv[] rewriting the Right Way<tm>, and some
 	minor socket error handling fixes.
@@ -2011,10 +2004,10 @@
 
 1998-11-01 14:08  flood
 
-	* changelog, configure, configure.in, contrib/README,
-	contrib/mod_pam.c, contrib/mod_ratio.c, contrib/mod_readme.c,
-	include/proftpd.h, modules/mod_core.c, modules/mod_sample.c,
-	modules/mod_xfer.c, src/dirtree.c: APPE, mod_pam & mod_readme added
+	* changelog, configure.in, contrib/README, contrib/mod_pam.c,
+	contrib/mod_ratio.c, contrib/mod_readme.c, include/proftpd.h,
+	modules/mod_core.c, modules/mod_sample.c, modules/mod_xfer.c,
+	src/dirtree.c: APPE, mod_pam & mod_readme added
 
 1998-10-29 20:38  flood
 
@@ -2039,8 +2032,8 @@
 	* .cvsignore, COPYING, INSTALL, Make.modules.in, Make.rules.in,
 	Makefile.in, README, README.Solaris2.5x, README.linux-privs,
 	acconfig.h, changelog, config.guess, config.h.in, config.sub,
-	configure, configure.in, install-sh, contrib/.cvsignore,
-	contrib/README, contrib/mod_linuxprivs.c, contrib/mod_ratio.c,
+	configure.in, install-sh, contrib/.cvsignore, contrib/README,
+	contrib/mod_linuxprivs.c, contrib/mod_ratio.c,
 	contrib/xferstats.holger-preiss, contrib/libcap/.cvsignore,
 	contrib/libcap/Makefile, contrib/libcap/_makenames.c,
 	contrib/libcap/cap_alloc.c, contrib/libcap/cap_extint.c,
@@ -2076,8 +2069,8 @@
 	* .cvsignore, COPYING, INSTALL, Make.modules.in, Make.rules.in,
 	Makefile.in, README, README.Solaris2.5x, README.linux-privs,
 	acconfig.h, changelog, config.guess, config.h.in, config.sub,
-	configure, configure.in, install-sh, contrib/.cvsignore,
-	contrib/README, contrib/mod_linuxprivs.c, contrib/mod_ratio.c,
+	configure.in, install-sh, contrib/.cvsignore, contrib/README,
+	contrib/mod_linuxprivs.c, contrib/mod_ratio.c,
 	contrib/xferstats.holger-preiss, contrib/libcap/.cvsignore,
 	contrib/libcap/Makefile, contrib/libcap/_makenames.c,
 	contrib/libcap/cap_alloc.c, contrib/libcap/cap_extint.c,
