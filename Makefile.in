@@ -53,10 +53,10 @@ proftpd$(EXEEXT): lib src modules dirs
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_PROFTPD_OBJS) $(LIBS)
 
 ftpcount$(EXEEXT): utils
-	$(CC) -o $@ $(BUILD_FTPCOUNT_OBJS)
+	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPCOUNT_OBJS)
 
 ftpshut$(EXEEXT): utils
-	$(CC) -o $@ $(BUILD_FTPSHUT_OBJS)
+	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPSHUT_OBJS)
 
 ftptop$(EXEEXT): utils
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPTOP_OBJS) $(CURSES_LIBS)
