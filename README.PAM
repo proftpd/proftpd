@@ -22,13 +22,14 @@ FreeBSD
 -------
 
 To use PAM with ProFTPD, you must edit /etc/pam.conf and add the
-following lines:
+following lines (if they are not already present):
 
-ftp auth    required    pam_unix.so         try_first_pass
-ftp account required    pam_unix.so         try_first_pass
-ftp session required    pam_permit.so
+ftpd auth    required    pam_unix.so         try_first_pass
+ftpd account required    pam_unix.so         try_first_pass
+ftpd session required    pam_permit.so
 
-PAM authentication should now work properly.
+In your proftpd.conf, you'll need to set AuthPAMConfig to 'ftpd'.  PAM
+authentication should now work properly.
 
 
 Linux
