@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.159 2003-01-13 05:38:22 castaglia Exp $
+ * $Id: main.c,v 1.160 2003-01-13 18:25:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2643,7 +2643,7 @@ int main(int argc, char *argv[], char **envp) {
 
 #ifdef DEVEL_NO_DAEMON
   PRIVS_ROOT
-  chdir("/tmp");
+  chdir(RUN_DIR);
 #endif
 
   return 0;
