@@ -81,7 +81,8 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
   }
 
   if (buflen < sizeof(logbuf)-1 && (log_opts & LOG_PID)) {
-    snprintf(&(logbuf[buflen]), sizeof(logbuf) - buflen, "[%d]", getpid());
+    snprintf(&(logbuf[buflen]), sizeof(logbuf) - buflen,
+             "[%d]", (int)getpid());
     logbuf[sizeof(logbuf)-1] = '\0';
     buflen = strlen(logbuf);
   }
