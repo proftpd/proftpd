@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.150 2003-11-09 23:10:56 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.151 2004-01-12 23:01:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -811,7 +811,9 @@ static void stor_abort(void) {
   unsigned char *delete_stores = NULL;
 
   if (stor_fh) {
-    pr_fsio_close(stor_fh);
+    if (pr_fsio_close(stor_fh) != 0)
+      pr_log_pri(PR_LOG_NOTICE, "notice: error closing '%s': %s",
+        stor_fh->fh_path, strerror(errno));
     stor_fh = NULL;
   }
 
@@ -830,7 +832,9 @@ static void stor_abort(void) {
 }
 
 static void stor_complete(void) {
-  pr_fsio_close(stor_fh);
+  if (pr_fsio_close(stor_fh) != 0)
+    pr_log_pri(PR_LOG_NOTICE, "notice: error closing '%s': %s",
+      stor_fh->fh_path, strerror(errno));
   stor_fh = NULL;
 }
 
@@ -849,7 +853,7 @@ static void xfer_exit_cb(void) {
 }
 
 /* This is a PRE_CMD handler that checks security, etc, and places the full
- * filename to receive in cmd->private [note that we CANNOT use cmd->tmp_pool
+ * filename to receive in cmd->private. Note that we CANNOT use cmd->tmp_pool
  * for this, as tmp_pool only lasts for the duration of this function.
  */
 
@@ -1213,7 +1217,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
     if (stor_fh)
       if (pr_fsio_lseek(stor_fh, 0, SEEK_END) == (off_t) -1) {
-        pr_fsio_close(stor_fh);
+        (void) pr_fsio_close(stor_fh);
         stor_fh = NULL;
       }
   }
@@ -1232,7 +1236,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
       xerrno = errno;
 
     if (xerrno) {
-      pr_fsio_close(stor_fh);
+      (void) pr_fsio_close(stor_fh);
       errno = xerrno;
       stor_fh = NULL;
     }
@@ -1242,7 +1246,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
      */
     if (stor_fh && session.restart_pos > sbuf.st_size) {
       pr_response_add_err(R_554, "%s: invalid REST argument", cmd->arg);
-      pr_fsio_close(stor_fh);
+      (void) pr_fsio_close(stor_fh);
       stor_fh = NULL;
       return ERROR(cmd);
     }
