@@ -26,7 +26,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.84 2002-09-13 23:14:41 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.85 2002-09-25 02:13:52 jwm Exp $
  */
 
 /* History Log:
@@ -252,7 +252,7 @@ static void _log_transfer(char direction, char abort_flag) {
   log_debug(DEBUG1, "Transfer %s %" PR_LU " bytes in %ld.%02lu seconds.",
 	    abort_flag == 'c' ? "completed:" : "aborted after",
 	    session.xfer.total_bytes, (long) end_time.tv_sec,
-	    (end_time.tv_usec / 10000));
+	    (unsigned long)(end_time.tv_usec / 10000));
 }
 
 /* This routine counts the difference in usec between timeval's
@@ -260,15 +260,13 @@ static void _log_transfer(char direction, char abort_flag) {
 static float _rate_diffusec(struct timeval tlast, struct timeval t) {
     float diffsec, diffusec;
 
-    diffsec = t.tv_sec - tlast.tv_sec;
-    diffusec= t.tv_usec- tlast.tv_usec;
+    diffsec  = t.tv_sec - tlast.tv_sec;
+    diffusec = t.tv_usec- tlast.tv_usec;
     log_debug(DEBUG5,
 	      "_rate_diffusec: last=%ld %ld  now=%ld %ld  diff=%f %f  res=%f.",
-	      tlast.tv_sec,tlast.tv_usec,
-	      t.tv_sec,t.tv_usec,
-	      diffsec, diffusec,
-	      ( diffsec * 10e5 + diffusec ) );
-    return( diffsec * 10e5 + diffusec );
+	      tlast.tv_sec, tlast.tv_usec, t.tv_sec, t.tv_usec,
+	      diffsec, diffusec, (diffsec * 10e5 + diffusec));
+    return(diffsec * 10e5 + diffusec);
 }
 
 /* Bandwidth Throttling. <grin@tolna.net>
