@@ -714,7 +714,7 @@ static void tls_scrub_pkeys(void) {
 
   /* Scrub and free all passphrases in memory. */
   if (tls_pkey_list)
-    log_debug(DEBUG5, MOD_TLS_VERSION
+    pr_log_debug(DEBUG5, MOD_TLS_VERSION
       ": scrubbing all passphrases from memory");
 
   for (k = tls_pkey_list; k; k = k->next) {
@@ -800,7 +800,7 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylength) {
         return tls_tmp_dh;
 
     } else
-      log_debug(DEBUG3, MOD_TLS_VERSION
+      pr_log_debug(DEBUG3, MOD_TLS_VERSION
         ": unable to open TLSDHParamFile '%s': %s", tls_dhparam_file,
           strerror(errno));
   }
@@ -1389,7 +1389,7 @@ static void tls_handle_error(int error, int lineno) {
   }
 
   tls_log("%s", "unexpected OpenSSL error, disconnecting");
-  log_pri(PR_LOG_ERR, "%s", MOD_TLS_VERSION
+  pr_log_pri(PR_LOG_ERR, "%s", MOD_TLS_VERSION
     ": unexpected OpenSSL error, disconnecting");
 
   end_login(1);
@@ -2379,7 +2379,7 @@ static void tls_netio_install_ctrl(void) {
   pr_unregister_netio(PR_NETIO_STRM_CTRL);
 
   if (pr_register_netio(netio, PR_NETIO_STRM_CTRL) < 0)
-    log_pri(PR_LOG_INFO, MOD_TLS_VERSION ": error registering netio: %s",
+    pr_log_pri(PR_LOG_INFO, MOD_TLS_VERSION ": error registering netio: %s",
       strerror(errno));
 }
 
@@ -2401,7 +2401,7 @@ static void tls_netio_install_data(void) {
   pr_unregister_netio(PR_NETIO_STRM_DATA);
 
   if (pr_register_netio(netio, PR_NETIO_STRM_DATA) < 0)
-    log_pri(PR_LOG_INFO, MOD_TLS_VERSION ": error registering netio: %s",
+    pr_log_pri(PR_LOG_INFO, MOD_TLS_VERSION ": error registering netio: %s",
       strerror(errno));
 }
 
@@ -2470,7 +2470,7 @@ static int tls_openlog(void) {
 
   pr_signals_block();
   PRIVS_ROOT
-  res = log_openfile(tls_logname, &tls_logfd, 0600);
+  res = pr_log_openfile(tls_logname, &tls_logfd, 0600);
   PRIVS_RELINQUISH
   pr_signals_unblock();
 
@@ -2501,7 +2501,7 @@ MODRET tls_authenticate(cmd_rec *cmd) {
     if (tls_dotlogin_allow(cmd->argv[0])) {
       tls_log("TLS/X509 .tlslogin check successful for user '%s'",
        cmd->argv[0]);
-      log_auth(PR_LOG_NOTICE, "USER %s: TLS/X509 .tlslogin authentication "
+      pr_log_auth(PR_LOG_NOTICE, "USER %s: TLS/X509 .tlslogin authentication "
         "successful", cmd->argv[0]);
       return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
 
@@ -2537,7 +2537,7 @@ MODRET tls_auth_check(cmd_rec *cmd) {
     if (tls_dotlogin_allow(cmd->argv[1])) {
       tls_log("TLS/X509 .tlslogin check successful for user '%s'",
        cmd->argv[0]);
-      log_auth(PR_LOG_NOTICE, "USER %s: TLS/X509 .tlslogin authentication "
+      pr_log_auth(PR_LOG_NOTICE, "USER %s: TLS/X509 .tlslogin authentication "
         "successful", cmd->argv[1]);
       return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
 
@@ -3248,7 +3248,7 @@ static int tls_postparse_cb(void) {
 
       k->rsa_pkey = calloc(1, k->pkeysz);
       if (k->rsa_pkey == NULL) {
-        log_pri(PR_LOG_ERR, "out of memory!");
+        pr_log_pri(PR_LOG_ERR, "out of memory!");
         exit(1);
       }
 
@@ -3256,7 +3256,7 @@ static int tls_postparse_cb(void) {
         tls_log("error reading RSA passphrase: %s",
           ERR_error_string(ERR_get_error(), NULL));
 
-        log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use "
+        pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use "
           "RSA certificate key in '%s', exiting", (char *) rsa->argv[0]);
         end_login(1);
       }
@@ -3269,7 +3269,7 @@ static int tls_postparse_cb(void) {
 
       k->dsa_pkey = calloc(1, k->pkeysz);
       if (k->dsa_pkey == NULL) {
-        log_pri(PR_LOG_ERR, "out of memory!");
+        pr_log_pri(PR_LOG_ERR, "out of memory!");
         exit(1);
       }
 
@@ -3277,7 +3277,7 @@ static int tls_postparse_cb(void) {
         tls_log("error reading DSA passphrase: %s",
           ERR_error_string(ERR_get_error(), NULL));
 
-        log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use "
+        pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use "
           "DSA certificate key '%s', exiting", (char *) dsa->argv[0]);
         end_login(1);
       }
@@ -3443,15 +3443,15 @@ static int tls_sess_init(void) {
   /* Open the TLSLog, if configured */
   if ((res = tls_openlog()) < 0) {
     if (res == -1)
-      log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
         ": notice: unable to open TLSLog: %s", strerror(errno));
 
     else if (res == LOG_WRITEABLE_DIR)
-      log_pri(PR_LOG_NOTICE, "notice: unable to open TLSLog: "
+      pr_log_pri(PR_LOG_NOTICE, "notice: unable to open TLSLog: "
         "parent directory is world writeable");
 
     else if (res == LOG_SYMLINK)
-      log_pri(PR_LOG_NOTICE, "notice: unable to open TLSLog: "
+      pr_log_pri(PR_LOG_NOTICE, "notice: unable to open TLSLog: "
           "cannot log to a symbolic link");
   }
 
