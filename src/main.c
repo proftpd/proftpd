@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.28 2000-07-06 03:55:51 macgyver Exp $
+ * $Id: main.c,v 1.29 2000-07-06 06:08:04 macgyver Exp $
  */
 
 /*
@@ -818,7 +818,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
   }
 
   if(!c && !success && validate) {
-    add_response_err("500", "%s not understood.", cmd->argv[0]);
+    add_response_err(R_500, "%s not understood.", cmd->argv[0]);
     success = -1;
   }
 
@@ -1337,7 +1337,7 @@ void fork_server(int fd,conn_t *l,int nofork)
                reason, session.c->remote_name,
                inet_ntoa(*session.c->remote_ipaddr));
 
-      printf("500 FTP server shut down (%s) -- please try again later.\r\n",
+      printf(R_500, "FTP server shut down (%s) -- please try again later.\r\n",
              reason); 
       fflush(stdout);
       exit(0);
@@ -1349,7 +1349,7 @@ void fork_server(int fd,conn_t *l,int nofork)
    */
 
   if(!serv) {
-    printf("500 Sorry, no server available to handle request on %s.\r\n",
+    printf(R_500, "Sorry, no server available to handle request on %s.\r\n",
            inet_getname(conn->pool,conn->local_ipaddr));
     fflush(stdout);
     exit(0);
