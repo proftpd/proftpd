@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.3 2003-12-19 21:29:41 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.4 2004-01-15 23:54:10 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -70,6 +70,7 @@ static unsigned char use_quotas = FALSE;
 static unsigned char have_quota_entry = FALSE;
 static unsigned char have_quota_limit_table = FALSE;
 static unsigned char have_quota_tally_table = FALSE;
+static unsigned char have_quota_lock = FALSE;
 static quota_units_t byte_units = BYTE;
 
 /* For transmitting number of bytes from PRE_CMD to POST_CMD handlers
@@ -564,12 +565,24 @@ int quotatab_register(const char *srcname,
 }
 
 static int quotatab_rlock(quota_tabtype_t tab_type) {
+  if (have_quota_lock)
+    return 0;
 
-  if (tab_type == TYPE_TALLY)
-    return tally_tab->tab_rlock(tally_tab);
+  if (tab_type == TYPE_TALLY) {
+    int res = tally_tab->tab_rlock(tally_tab);
+    if (res == 0)
+      have_quota_lock = TRUE;
 
-  else if (tab_type == TYPE_LIMIT)
-    return limit_tab->tab_rlock(limit_tab);
+    return res;
+  }
+
+  else if (tab_type == TYPE_LIMIT) {
+    int res = limit_tab->tab_rlock(limit_tab);
+    if (res == 0)
+      have_quota_lock = TRUE;
+
+    return res;
+  }
 
   /* default */
   errno = EINVAL;
@@ -610,12 +623,24 @@ unsigned char quotatab_lookup(quota_tabtype_t tab_type, const char *name,
 }
 
 static int quotatab_unlock(quota_tabtype_t tab_type) {
+  if (!have_quota_lock)
+    return 0;
 
-  if (tab_type == TYPE_TALLY)
-    return tally_tab->tab_unlock(tally_tab);
+  if (tab_type == TYPE_TALLY) {
+    int res = tally_tab->tab_unlock(tally_tab);
+    if (res == 0)
+      have_quota_lock = FALSE;
 
-  else if (tab_type == TYPE_LIMIT)
-    return limit_tab->tab_unlock(limit_tab);
+    return res;
+  }
+
+  else if (tab_type == TYPE_LIMIT) {
+    int res = limit_tab->tab_unlock(limit_tab);
+    if (res == 0)
+      have_quota_lock = FALSE;
+
+    return res;
+  }
 
   /* default */
   errno = EINVAL;
@@ -623,12 +648,24 @@ static int quotatab_unlock(quota_tabtype_t tab_type) {
 }
 
 static int quotatab_wlock(quota_tabtype_t tab_type) {
+  if (have_quota_lock)
+    return 0;
 
-  if (tab_type == TYPE_TALLY)
-    return tally_tab->tab_wlock(tally_tab);
+  if (tab_type == TYPE_TALLY) {
+    int res = tally_tab->tab_wlock(tally_tab);
+    if (res == 0)
+      have_quota_lock = TRUE;
 
-  else if (tab_type == TYPE_LIMIT)
-    return limit_tab->tab_wlock(limit_tab);
+    return res;
+  }
+
+  else if (tab_type == TYPE_LIMIT) {
+    int res = limit_tab->tab_wlock(limit_tab);
+    if (res == 0)
+      have_quota_lock = TRUE;
+
+    return res;
+  }
 
   /* default */
   errno = EINVAL;
