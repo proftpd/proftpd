@@ -9739,7 +9739,8 @@ done
 
 
 
-for ac_func in strchr strcoll strerror strsep strtol
+
+for ac_func in statfs strchr strcoll strerror strsep strtol
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 echo "$as_me:$LINENO: checking for $ac_func" >&5
