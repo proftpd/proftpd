@@ -20,7 +20,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.21 2001-01-24 22:02:04 flood Exp $
+ * $Id: dirtree.c,v 1.22 2001-01-26 23:06:17 flood Exp $
  */
 
 /* History:
@@ -124,9 +124,6 @@ cmd_rec *get_config_cmd(pool *ppool, FILE *fp, int *line)
   pool *newpool;
   array_header *tarr;
   int i;
-  
-  if(line != NULL)
-    *line = 0;
   
   while(fgets(buf, sizeof(buf) - 1, fp)) {
     if(line != NULL)
@@ -1069,7 +1066,7 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
   FILE *fp;
   cmd_rec *cmd;
   xaset_t **set = NULL;
-  int isfile, line, removed = 0;
+  int isfile, line = 0, removed = 0;
 
   /* Switch through each directory, from "deepest" up looking for
    * new or updated .ftpaccess files
@@ -2086,7 +2083,7 @@ int parse_config_file(const char *fname)
   cmd_rec *cmd;
   pool *tmp_pool = make_sub_pool(permanent_pool);
   modret_t *mr;
-  int line;
+  int line = 0;
  
   fp = pfopen(tmp_pool,fname,"r");
 
