@@ -2970,9 +2970,9 @@ static int tls_sess_init(void) {
   /* Add the additional features implemented by this module into the
    * list, to be displayed in response to a FEAT command.
    */
-  pr_add_feat("AUTH TLS");
-  pr_add_feat("PBSZ");
-  pr_add_feat("PROT");
+  pr_feat_add("AUTH TLS");
+  pr_feat_add("PBSZ");
+  pr_feat_add("PROT");
 
   return 0;
 }

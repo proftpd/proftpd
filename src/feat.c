@@ -24,7 +24,7 @@
 
 /*
  * Feature management code
- * $Id: feat.c,v 1.4 2003-02-12 07:34:57 castaglia Exp $
+ * $Id: feat.c,v 1.5 2003-03-09 02:07:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -33,7 +33,7 @@ static pool *feat_pool = NULL;
 static array_header *feat_list = NULL;
 static unsigned int feati = 0U;
 
-void pr_add_feat(const char *feat) {
+void pr_feat_add(const char *feat) {
 
   /* If no feature-tracking list has been allocated, create one. */
   if (!feat_pool) {
@@ -54,7 +54,7 @@ void pr_add_feat(const char *feat) {
   *((char **) push_array(feat_list)) = pstrdup(feat_pool, feat);
 }
 
-const char *pr_get_feat(void) {
+const char *pr_feat_get(void) {
   if (feat_list) {
     feati = 0U;
     return ((const char **) feat_list->elts)[feati++];
@@ -63,7 +63,7 @@ const char *pr_get_feat(void) {
   return NULL;
 }
 
-const char *pr_get_next_feat(void) {
+const char *pr_feat_get_next(void) {
   if (feat_list && feati < feat_list->nelts)
     return ((const char **) feat_list->elts)[feati++];
 

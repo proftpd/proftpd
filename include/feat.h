@@ -23,14 +23,14 @@
  */
 
 /* Feature list management
- * $Id: feat.h,v 1.2 2003-01-02 17:28:16 castaglia Exp $
+ * $Id: feat.h,v 1.3 2003-03-09 02:07:00 castaglia Exp $
  */
 
 #ifndef PR_FEAT_H
 #define PR_FEAT_H
 
-void pr_add_feat(const char *);
-const char *pr_get_feat(void);
-const char *pr_get_next_feat(void);
+void pr_feat_add(const char *);
+const char *pr_feat_get(void);
+const char *pr_feat_get_next(void);
 
 #endif /* PR_FEAT_H */

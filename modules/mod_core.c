@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.158 2003-03-04 19:25:03 castaglia Exp $
+ * $Id: mod_core.c,v 1.159 2003-03-09 02:07:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3416,11 +3416,11 @@ MODRET core_feat(cmd_rec *cmd) {
 
   pr_response_add(R_211, "Features:");
 
-  feat = pr_get_feat();
+  feat = pr_feat_get();
 
   while (feat) {
     pr_response_add(R_DUP, " %s", feat);
-    feat = pr_get_next_feat();
+    feat = pr_feat_get_next();
   }
 
   pr_response_add(R_DUP, "End");
@@ -3738,9 +3738,9 @@ static int core_init(void) {
   /* Add the additional features implemented by this module into the
    * list, to be displayed in response to a FEAT command.
    */
-  pr_add_feat("MDTM");
-  pr_add_feat("REST STREAM");
-  pr_add_feat("SIZE");
+  pr_feat_add("MDTM");
+  pr_feat_add("REST STREAM");
+  pr_feat_add("SIZE");
 
   return 0;
 }
