@@ -3583,11 +3583,17 @@ static void tls_sess_exit_ev(const void *event_data, void *user_data) {
     RAND_write_file(tls_rand_file);
 
   /* Done with the NetIO objects */
-  if (tls_ctrl_netio)
+  if (tls_ctrl_netio) {
+    pr_unregister_netio(PR_NETIO_STRM_CTRL);
     destroy_pool(tls_ctrl_netio->pool);
+    tls_ctrl_netio = NULL;
+  }
 
-  if (tls_data_netio)
+  if (tls_data_netio) {
+    pr_unregister_netio(PR_NETIO_STRM_DATA);
     destroy_pool(tls_data_netio->pool);
+    tls_data_netio = NULL;
+  }
 
   if (mpid != getpid())
     tls_scrub_pkeys();
