@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.30 2000-03-01 06:13:06 macgyver Exp $
+ * $Id: mod_auth.c,v 1.31 2000-07-06 06:42:49 macgyver Exp $
  */
 
 #include "conf.h"
@@ -1200,7 +1200,7 @@ MODRET cmd_user(cmd_rec *cmd)
     add_config_param_set(&cmd->server->conf,config_class_users,1,ccur);
 
     /* too many users in this class ? */
-    if (ccur == session.class->max_connections) {
+    if(ccur >= session.class->max_connections) {
 	char *display = NULL;
 
 	if(session.flags & SF_ANON)
