@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.69 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: inet.c,v 1.70 2003-08-07 07:09:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -503,7 +503,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
      */
     for (i = 10; i; i--) {
       res = bind(fd, pr_netaddr_get_sockaddr(&na),
-        pr_netaddr_get_addrlen(&na));
+        pr_netaddr_get_sockaddr_len(&na));
       hold_errno = errno;
 
       if (res == -1 && errno == EINTR) {
@@ -558,7 +558,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
      * INPORT_ANY (0), in which case our port number will be dynamic.
      */
 
-    salen = pr_netaddr_get_addrlen(&na);
+    salen = pr_netaddr_get_sockaddr_len(&na);
     if (getsockname(fd, pr_netaddr_get_sockaddr(&na), &salen) != -1) {
       if (!c->local_addr)
         c->local_addr = (pr_netaddr_t *) pcalloc(c->pool,
@@ -960,7 +960,7 @@ int pr_inet_connect(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
 
   while (TRUE) {
     if ((res = connect(c->listen_fd, pr_netaddr_get_sockaddr(&remote_na),
-        pr_netaddr_get_addrlen(&remote_na))) == -1 && errno == EINTR) {
+        pr_netaddr_get_sockaddr_len(&remote_na))) == -1 && errno == EINTR) {
       pr_signals_handle();
       continue;
 
@@ -999,7 +999,7 @@ int pr_inet_connect_nowait(pool *p, conn_t *c, pr_netaddr_t *addr, int port) {
 
   c->mode = CM_CONNECT;
   if (connect(c->listen_fd, pr_netaddr_get_sockaddr(&remote_na),
-      pr_netaddr_get_addrlen(&remote_na)) == -1) {
+      pr_netaddr_get_sockaddr_len(&remote_na)) == -1) {
     if (errno != EINPROGRESS && errno != EALREADY) {
       c->mode = CM_ERROR;
       c->xerrno = errno;
@@ -1086,7 +1086,7 @@ conn_t *pr_inet_accept(pool *p, conn_t *d, conn_t *c, int rfd, int wfd,
    */
 
   pr_netaddr_set_family(&na, pr_netaddr_get_family(c->remote_addr));
-  nalen = pr_netaddr_get_addrlen(&na);
+  nalen = pr_netaddr_get_sockaddr_len(&na);
 
   d->mode = CM_ACCEPT;
 
@@ -1147,7 +1147,7 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
 #else
   pr_netaddr_set_family(&na, AF_INET);
 #endif /* USE_IPV6 */
-  nalen = pr_netaddr_get_addrlen(&na);
+  nalen = pr_netaddr_get_sockaddr_len(&na);
 
   if (getsockname(fd, pr_netaddr_get_sockaddr(&na), &nalen) != -1) {
     if (!c->local_addr)
@@ -1173,7 +1173,7 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
 #else
   pr_netaddr_set_family(&na, AF_INET);
 #endif /* USE_IPV6 */
-  nalen = pr_netaddr_get_addrlen(&na);
+  nalen = pr_netaddr_get_sockaddr_len(&na);
 
   if (getpeername(fd, pr_netaddr_get_sockaddr(&na), &nalen) != -1) {
     c->remote_addr = (pr_netaddr_t *) pcalloc(c->pool,

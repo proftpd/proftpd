@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.2 2003-08-06 22:31:37 castaglia Exp $
+ * $Id: netaddr.c,v 1.3 2003-08-07 07:09:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -170,7 +170,7 @@ int pr_netaddr_set_family(pr_netaddr_t *na, int family) {
   return 0;
 }
 
-int pr_netaddr_get_addrlen(const pr_netaddr_t *na) {
+int pr_netaddr_get_sockaddr_len(const pr_netaddr_t *na) {
   if (!na) {
     errno = EINVAL;
     return -1;
@@ -352,6 +352,14 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
   return -1;
 }
 
+int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
+    int nbits) {
+
+  /* XXX will be implemented for Class matching and ACLs. */
+  errno = ENOSYS;
+  return -1;
+}
+
 const char *pr_netaddr_get_ipstr(pr_netaddr_t *na) {
 #ifdef USE_IPV6
   char buf[INET6_ADDRSTRLEN];
@@ -372,8 +380,9 @@ const char *pr_netaddr_get_ipstr(pr_netaddr_t *na) {
     return na->na_ipstr;
 
   memset(buf, '\0', sizeof(buf));
-  res = pr_getnameinfo(pr_netaddr_get_sockaddr(na), pr_netaddr_get_addrlen(na),
-    buf, sizeof(buf), NULL, 0, NI_NUMERICHOST);
+  res = pr_getnameinfo(pr_netaddr_get_sockaddr(na),
+    pr_netaddr_get_sockaddr_len(na), buf, sizeof(buf), NULL, 0, NI_NUMERICHOST);
+
   if (res != 0) {
     log_pri(PR_LOG_NOTICE, "getnameinfo error: %s",
       res != EAI_SYSTEM ? gai_strerror(res) : strerror(errno));
@@ -414,7 +423,7 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
 
     memset(buf, '\0', sizeof(buf));
     res = pr_getnameinfo(pr_netaddr_get_sockaddr(na),
-      pr_netaddr_get_addrlen(na), buf, sizeof(buf), NULL, 0, NI_NAMEREQD);
+      pr_netaddr_get_sockaddr_len(na), buf, sizeof(buf), NULL, 0, NI_NAMEREQD);
 
     if (res == 0) {
       char **checkaddr;

@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.2 2003-08-07 00:42:02 castaglia Exp $
+ * $Id: netaddr.h,v 1.3 2003-08-07 07:09:40 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -49,14 +49,22 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *, const char *, array_header **);
  * families, -1 will be returned, with errno set to EINVAL. Otherwise,
  * the comparison is a fancy memcmp().
  */
-int pr_netaddr_cmp(const pr_netaddr_t *s, const pr_netaddr_t *);
+int pr_netaddr_cmp(const pr_netaddr_t *, const pr_netaddr_t *);
+
+/* Compare the first N bits of the two given pr_netaddr_ts.  In order for
+ * the comparison to be accurate, the pr_netaddr_ts must be of the same family
+ * (AF_INET or AF_INET6).  In the case where the pr_netaddr_ts are from
+ * different families, -1 will be returned, with errno set to EINVAL.
+ * Otherwise, the comparison is a fancy memcmp().
+ */
+int pr_netaddr_ncmp(const pr_netaddr_t *, const pr_netaddr_t *, int);
 
 /* Returns the size of the contained address (or -1, with errno set to EINVAL,
  * if NULL is used as the argument).  If the pr_netaddr_t is of the AF_INET
  * family, the size of struct sockaddr_in is returned; if of the AF_INET6
  * family, the size of struct sockaddr_in6 is returned.
  */
-int pr_netaddr_get_addrlen(const pr_netaddr_t *);
+int pr_netaddr_get_sockaddr_len(const pr_netaddr_t *);
 
 /* Returns the family of the given pr_netaddr_t, either AF_INET or AF_INET6.
  * A NULL pr_netaddr_t will result in -1 being returned, and errno set to
