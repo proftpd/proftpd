@@ -29,6 +29,7 @@ configuration:</p>
   <li><a href="#AllowFilter">AllowFilter</a></LI>
   <LI><a href="#AllowForeignAddress">AllowForeignAddress</a></li>
   <LI><a href="#AllowGroup">AllowGroup</a></li>
+  <li><a href="#AllowLogSymlinks">AllowLogSymlinks</a></li>
   <li><a href="#AllowOverwrite">AllowOverwrite</a></li>
   <li><a href="#AllowRetrieveRestart">AllowRetrieveRestart</a></li>
   <li><a href="#AllowStoreRestart">AllowStoreRestart</a></li>
@@ -407,6 +408,27 @@ href="#Limit">&lt;Limit&gt;</a> block. Although proftpd's default
 
 <p><strong>See Also:</strong> <a href="#DenyGroup">DenyGroup</a>, <a href="#DenyUser">DenyUser</a>, 
   <a href="#AllowUser">AllowUser</a></p>
+
+<hr>
+<h2><a name="AllowLogSymlinks">AllowLogSymlinks</a></h2>
+  <p><strong>Syntax:</strong> <code>AllowLogSymlinks <em>on|off</em></code><br>
+     <strong>Default:</strong> off<br>
+     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+     <strong>Module:</strong> mod_log<br>
+     <strong>Compatibility:</strong> 1.2.2rc2 and later</p>
+
+  <p>
+  By default, the server will the path of any configured SystemLog and
+  any configured ExtendedLogs to see if they are symbolic links.  If the
+  paths are symbolic links, the server will refuse to log to that link
+  unless explicitly configured to do via this directive.</p>
+
+  <p>
+  <b>Security note</b>: this behaviour should not be allowed unless for
+  a very good reason.  By allowing the server to open symbolic links with
+  its root privileges, you are allowing a potential symlink attack where
+  the server could be tricked into overwriting arbitrary system files.
+  You have been warned.</p>
 
 <hr>
 <h2><a name="AllowOverwrite">AllowOverwrite</a></h2>
@@ -2487,12 +2509,21 @@ href="#AuthGroupFile">AuthGroupFile</a> directives will force partial support
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
-  <p>The Port directive configures the tcp port which proftpd will listen on while 
-    running in <em><strong>standalone</strong></em> mode. It has no effect when 
-    used upon a server running in <em><strong>inetd</strong></em> mode (see <a href="#ServerType">ServerType</a>). 
-    The directive can be used in conjunction with <a
-href="#VirtualHost">&lt;VirtualHost&gt;</a> in order to run a virtual server on 
-    the same IP address as the master server, but listening on a different port.</p>
+
+    <p>
+    The Port directive configures the TCP port on which proftpd will listen
+    while running in <em><strong>standalone</strong></em> mode. It has no
+    effect when used upon a server running in <em><strong>inetd</strong></em>
+    mode (see <a href="#ServerType">ServerType</a>).  The directive can be used
+    in conjunction with <a href="#VirtualHost">&lt;VirtualHost&gt;</a> in order
+    to run a virtual server on the same IP address as the master server, but
+    listening on a different port.
+    </p>
+
+    <p>
+    For any server, either &lt;VirtualHost&gt; or server config, setting
+    <code>Port 0</code> effectively turns off that server.
+    </p>
 
 <hr>
 <h2><a name="PostgresInfo">PostgresInfo</a></h2>

@@ -24,7 +24,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.12 2001-06-18 17:12:45 flood Exp $
+ * $Id: mod_site.c,v 1.13 2001-10-18 17:10:47 flood Exp $
  */
 
 #include "conf.h"
@@ -108,6 +108,8 @@ MODRET site_chmod(cmd_rec *cmd) {
   preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathAllowFilter",FALSE);
 
   if(preg && regexec(preg,cmd->argv[2],0,NULL,0) != 0) {
+    log_debug(DEBUG2, "'%s %s %s' denied by PathAllowFilter", cmd->argv[0],
+      cmd->argv[1], cmd->argv[2]);
     add_response_err(R_550,"%s: Forbidden filename",cmd->argv[2]);
     return ERROR(cmd);
   }
@@ -115,6 +117,8 @@ MODRET site_chmod(cmd_rec *cmd) {
   preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathDenyFilter",FALSE);
 
   if(preg && regexec(preg,cmd->argv[2],0,NULL,0) == 0) {
+    log_debug(DEBUG2, "'%s %s %s' denied by PathDenyFilter", cmd->argv[0],
+      cmd->argv[1], cmd->argv[2]);
     add_response_err(R_550,"%s: Forbidden filename",cmd->argv[2]);
     return ERROR(cmd);
   }

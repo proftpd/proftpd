@@ -25,7 +25,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.19 2001-06-18 17:12:45 flood Exp $
+ * $Id: mod_log.c,v 1.20 2001-10-18 17:10:47 flood Exp $
  */
 
 #include "conf.h"
@@ -660,6 +660,13 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
       for(; r && !r->num; r=r->next) ;
       if(r && r->num)
         sstrncpy(argp,r->num,sizeof(arg));
+
+      /* hack to add return code for proper logging of QUIT command
+       * -tj 2001-10-03
+       */
+      else if (!strcasecmp(cmd->argv[0], "QUIT"))
+        sstrncpy(argp, R_221, sizeof(arg));
+
       else
         sstrncpy(argp,"-",sizeof(arg));
     }
@@ -969,9 +976,10 @@ static conftable log_config[] = {
 };
 
 static cmdtable log_commands[] = {
-  { LOG_CMD,	"*",	G_NONE,		log_command,	FALSE, FALSE },
-  { LOG_CMD_ERR,"*",	G_NONE,		log_command,	FALSE, FALSE },
-  { POST_CMD,	"PASS",	G_NONE,		log_auth_complete,FALSE,FALSE },
+  { PRE_CMD, 		C_QUIT,	G_NONE,	log_command,		FALSE, FALSE },
+  { LOG_CMD,		C_ANY,	G_NONE,	log_command,		FALSE, FALSE },
+  { LOG_CMD_ERR,	C_ANY,	G_NONE,	log_command,		FALSE, FALSE },
+  { POST_CMD,		C_PASS,	G_NONE,	log_auth_complete,	FALSE, FALSE },
   { 0, NULL }
 };
 

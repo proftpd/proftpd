@@ -1,8 +1,13 @@
-$Id: NEWS,v 1.133 2001-10-18 16:51:26 flood Exp $
+$Id: NEWS,v 1.134 2001-10-18 17:10:46 flood Exp $
 
 1.2.3 - CVS
 ---------------------------------
 PASS argument now intentionally hidden in the proctitle.
+- Bug 1242 - More verbose logging of regex evaluations
+- Bug 1343 - Better reporting of command dispatching
+- Bug 1335 - Documentation patch
+- Bug 1334 - MaxClients none in <VirtualHost> now works
+- Bug 1344 - QUIT now properly logged.
 - Bug 1247 - Allow/Deny now bahave as in <1.2.2 (multiple lines work)
 - Bug 1327 - AllowForeignAddress now merges down
 - Bug 1280 - datatype fixups

@@ -25,7 +25,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.68 2001-08-24 17:33:17 flood Exp $
+ * $Id: main.c,v 1.69 2001-10-18 17:10:47 flood Exp $
  */
 
 /*
@@ -823,7 +823,13 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
       }
 
       if (send_error)
-          log_debug(DEBUG4,"received: %s",argstr);
+        log_debug(DEBUG4, "dispatching %s command '%s' to mod_%s",
+          (cmd_type == PRE_CMD ? "PRE_CMD" :
+           cmd_type == CMD ? "CMD" :
+           cmd_type == POST_CMD ? "POST_CMD" : 
+           cmd_type == LOG_CMD ? "LOG_CMD" :
+           "(unknown)"),
+          argstr, c->m->name);
 
       cmd->class |= c->class;
 
@@ -884,6 +890,9 @@ static void dispatch_cmd(cmd_rec *cmd)
   for(cp = cmd->argv[0]; *cp; cp++)
     *cp = toupper(*cp);
 
+  if (!cmd->class)
+    cmd->class = get_command_class(cmd->argv[0]);
+
   /* debug_print_dispatch(cmd); */
 
   /* first dispatch PRE_CMD with wildcard */
@@ -893,15 +902,6 @@ static void dispatch_cmd(cmd_rec *cmd)
     success = _dispatch(cmd,PRE_CMD,FALSE,NULL);
 
   if(success < 0) {
-    /* If PRE_CMD failed, we need to find the command class so that
-     * extended logging will work correctly.  This is normally done in the
-     * CMD handler phase (below) by _dispatch(), the problem is that
-     * most PRE_CMD handlers are very general and don't specify a class.
-     * jss - 5/16/01
-     */
-
-    if(!cmd->class)
-      cmd->class = get_command_class(cmd->argv[0]);
     _dispatch(cmd,LOG_CMD_ERR,FALSE,"*");
     _dispatch(cmd,LOG_CMD_ERR,FALSE,NULL);
     send_response_list(&resp_err_list);
