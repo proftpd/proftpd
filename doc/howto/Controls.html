@@ -1,4 +1,4 @@
-<!-- $Id: Controls.html,v 1.1 2004-05-20 03:39:39 castaglia Exp $ -->
+<!-- $Id: Controls.html,v 1.2 2004-11-17 17:58:19 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Controls.html,v $ -->
 
 <html>
@@ -94,11 +94,13 @@ The default ownership of the socket is user <code>root</code>, group
 <b>Controls Access Control Lists</b><br>
 Communicating with the daemon process allows for some great features, but
 it also allows the potential to easily abuse the system.  Thus, by default,
-all users <i>including user <code>root</code></i> are denied access to all
+all users <b>including user <code>root</code></b> are denied access to all
 <code>ftpdctl</code> actions.  <b>Access for control actions must be
 explicitly granted.</b>  Also, be aware that the users and groups configured
 in these ACLs are <b>system</b> users and groups, not the virtual users
 and groups that <code>proftpd</code> may have been configured to use.
+The group will be only the primary group of the user; supplemental group
+memberships are currently ignored.
 
 <p>
 The <code>mod_ctrls</code> first checks whether the connecting client has
@@ -302,7 +304,7 @@ If either allows access, the client can use that control action.
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-05-20 03:39:39 $</i><br>
+Last Updated: <i>$Date: 2004-11-17 17:58:19 $</i><br>
 <hr>
 
 </body>
