@@ -24,7 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* $Id: privs.h,v 1.10 2002-09-26 00:36:20 castaglia Exp $
+/* $Id: privs.h,v 1.11 2002-09-28 02:01:47 castaglia Exp $
  */
 
 #ifndef PR_PRIVS_H
@@ -91,7 +91,7 @@
 
 #define PRIVS_USER \
   { \
-    log_debug(DEBUG8, "USER PRIVS %d at %s:%d", session.login_uid, \
+    log_debug(DEBUG8, "USER PRIVS %d at %s:%d", (int) session.login_uid, \
       __FILE__, __LINE__); \
     if (!session.disable_id_switching) { \
       if (setreuid(session.uid,0)) \
@@ -193,7 +193,7 @@
       log_debug(DEBUG1, "Use of PRIVS_USER before session.login_uid set " \
         "in %s %d", __FILE__, __LINE__); \
     } else { \
-      log_debug(DEBUG8, "USER PRIVS %d at %s:%d", session.login_uid, \
+      log_debug(DEBUG8, "USER PRIVS %d at %s:%d", (int) session.login_uid, \
         __FILE__, __LINE__); \
       if (seteuid(0)) \
         log_pri(LOG_ERR, "PRIVS_USER: unable to seteuid(0): %s", \
