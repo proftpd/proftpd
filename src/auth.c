@@ -25,11 +25,18 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.29 2003-04-23 06:53:23 castaglia Exp $
+ * $Id: auth.c,v 1.30 2003-09-08 00:39:05 castaglia Exp $
  */
 
 #include "conf.h"
 
+/* The difference between this function, and pr_cmd_alloc(), is that this
+ * allocates the cmd_rec directly from the given pool, whereas pr_cmd_alloc()
+ * will allocate a subpool from the given pool, and allocate its cmd_rec
+ * from the subpool.  This means that pr_cmd_alloc()'s cmd_rec's can be
+ * subsequently destroyed easily; this function's cmd_rec's will be destroyed
+ * when the given pool is destroyed.
+ */
 static cmd_rec *make_cmd(pool *cp, int argc, ...) {
   va_list args;
   cmd_rec *c;
@@ -65,7 +72,7 @@ static modret_t *dispatch_auth(cmd_rec *cmd, char *match) {
     log_debug(DEBUG6, "dispatching auth request \"%s\" to module mod_%s",
       match, authtab->m->name);
 
-    mr = call_module_auth(authtab->m, authtab->handler, cmd);
+    mr = call_module(authtab->m, authtab->handler, cmd);
 
     if (MODRET_ISHANDLED(mr) || MODRET_ISERROR(mr))
       break;
