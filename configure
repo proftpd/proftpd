@@ -469,7 +469,7 @@ ac_includes_default="\
 #endif"
 
 ac_subdirs_all="$ac_subdirs_all lib/libltdl"
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os OSREL OSTYPE CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT SET_MAKE INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA LN_S ECHO RANLIB ac_ct_RANLIB STRIP ac_ct_STRIP CPP EGREP LIBTOOL BINDIR LIBEXECIR LOCALSTATEDIR SBINDIR SYSCONFDIR subdirs install_user install_group ALLOCA INSTALL_STRIP INCLTDL INSTALL_DEPS LIB_OBJS LIBTOOL_DEPS LIBLTDL MAIN_LDFLAGS MAIN_LIBS MODULE_DEPS MODULE_LDFLAGS MODULE_OBJS BUILD_MODULE_OBJS ADDL_DIRS INCLUDES LIBRARIES CURSES_LIBS VERSION LIBOBJS LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os OSREL OSTYPE CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT SET_MAKE INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA LN_S ECHO RANLIB ac_ct_RANLIB STRIP ac_ct_STRIP CPP EGREP LIBTOOL BINDIR LIBEXECIR LOCALSTATEDIR SBINDIR SYSCONFDIR subdirs install_user install_group ALLOCA INSTALL_STRIP INCLTDL INSTALL_DEPS LIB_DEPS LIB_OBJS LIBTOOL_DEPS LIBLTDL MAIN_LDFLAGS MAIN_LIBS MODULE_DEPS MODULE_LDFLAGS MODULE_OBJS BUILD_MODULE_OBJS ADDL_DIRS INCLUDES LIBRARIES CURSES_LIBS VERSION LIBOBJS LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -8564,6 +8564,7 @@ if test "${enable_dso+set}" = set; then
       MAIN_LIBS="-lltdl"
 
       INSTALL_DEPS="install-libltdl"
+      LIB_DEPS="libltdl"
       MODULE_DEPS="libltdl"
 
 
@@ -23272,6 +23273,7 @@ echo "${ECHO_T}no" >&6
 
 
 
+
           ac_config_headers="$ac_config_headers config.h"
 
 
@@ -23951,6 +23953,7 @@ s,@ALLOCA@,$ALLOCA,;t t
 s,@INSTALL_STRIP@,$INSTALL_STRIP,;t t
 s,@INCLTDL@,$INCLTDL,;t t
 s,@INSTALL_DEPS@,$INSTALL_DEPS,;t t
+s,@LIB_DEPS@,$LIB_DEPS,;t t
 s,@LIB_OBJS@,$LIB_OBJS,;t t
 s,@LIBTOOL_DEPS@,$LIBTOOL_DEPS,;t t
 s,@LIBLTDL@,$LIBLTDL,;t t
