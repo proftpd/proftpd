@@ -25,7 +25,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.74 2002-02-28 19:30:02 flood Exp $
+ * $Id: main.c,v 1.75 2002-03-06 16:56:33 flood Exp $
  */
 
 /*
@@ -2143,12 +2143,31 @@ void set_rlimits() {
   }
 }
 
+void pr_write_pid()
+{
+  FILE *pidf;
+  
+  PidPath = (char *) get_param_ptr(main_server->conf, "PidFile", FALSE);
+  if(!PidPath || !*PidPath)
+    PidPath = PID_FILE_PATH;
+  
+  PRIVS_ROOT
+  if((pidf = fopen(PidPath, "w")) == NULL) {
+    perror(PidPath);
+    exit(1);
+  }
+  
+  fprintf(pidf, "%lu\n", (unsigned long) getpid());
+  fclose(pidf);
+  pidf = NULL;
+  PRIVS_RELINQUISH
+}
+  
 void start_daemon()
 {
 #ifndef HAVE_SETSID
   int ttyfd;
 #endif
-  FILE *pidf;
 
   /* Fork off and have parent exit.
    */
@@ -2174,21 +2193,6 @@ void start_daemon()
     close(ttyfd);
   }
 #endif /* HAVE_SETSID */
-  
-  PidPath = (char *) get_param_ptr(main_server->conf, "PidFile", FALSE);
-  if(!PidPath || !*PidPath)
-    PidPath = PID_FILE_PATH;
-  
-  PRIVS_ROOT
-  if((pidf = fopen(PidPath, "w")) == NULL) {
-    perror(PidPath);
-    exit(1);
-  }
-  
-  fprintf(pidf, "%lu\n", (unsigned long) getpid());
-  fclose(pidf);
-  pidf = NULL;
-  PRIVS_RELINQUISH
   
   /* Close the three big boys */
   close(fileno(stdin));
@@ -2390,6 +2394,8 @@ void standalone_main()
 
   log_pri(LOG_NOTICE,"ProFTPD %s (built %s) standalone mode STARTUP",
                       VERSION_STATUS,BUILD_STAMP);
+
+  pr_write_pid();
   server_loop();
 }
 

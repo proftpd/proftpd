@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.156 2002-02-28 19:43:30 flood Exp $
+$Id: NEWS,v 1.157 2002-03-06 16:56:33 flood Exp $
 
 1.2.5rc2 - CVS
 ---------------------------------
@@ -31,6 +31,11 @@ $Id: NEWS,v 1.156 2002-02-28 19:43:30 flood Exp $
 - Bug 1523 - umask allocation in <Global> moved to permanent_pool
 - Bug 1380 - updated getopt library for Tru64/AIX
 - Bug 1468 - segfault with empty .ftpaccess
+- Bug 1445 - PID file contents change when attempting to start
+             the daemon a second time
+- Bug 1539 - losing SGID bit on created directories w/ {User,Group}Owner
+             in effect
+- Bug 1537 - doc update
 
 1.2.5rc1 - Released 12/18/2001
 ---------------------------------
