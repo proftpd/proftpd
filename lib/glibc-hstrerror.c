@@ -73,4 +73,9 @@ hstrerror(int err) {
 	return "Unknown resolver error";
 }
 
+#else /* HAVE_STRERROR */
+void
+pr_os_already_has_hstrerror(void)
+{
+}
 #endif /* HAVE_STRERROR */
