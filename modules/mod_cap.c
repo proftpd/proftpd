@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -Llib/libcap -lcap$
  * $Directories: lib/libcap$
- * $Id: mod_cap.c,v 1.11 2003-11-09 23:10:55 castaglia Exp $
+ * $Id: mod_cap.c,v 1.12 2004-02-27 19:44:45 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -60,7 +60,11 @@
 static cap_t capabilities = 0;
 static unsigned char have_capabilities = FALSE;
 static unsigned char use_capabilities = TRUE;
-static unsigned char use_cap_chown = TRUE;
+static unsigned int cap_flags = 0;
+
+#define CAP_USE_CHOWN		0x0001
+#define CAP_USE_DAC_OVERRIDE	0x0002
+#define CAP_USE_DAC_READ_SEARCH	0x0004
 
 /* log current capabilities */
 static void lp_debug(void) {
@@ -128,7 +132,7 @@ static int lp_add_cap(cap_value_t cap, cap_flag_t set) {
 static int lp_set_cap(void) {
   if (cap_set_proc(capabilities) == -1) {
     pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": cap_set_proc failed: %s",
-            strerror(errno));
+      strerror(errno));
     return -1;
   }
 
@@ -139,7 +143,7 @@ static int lp_set_cap(void) {
  */
 
 MODRET set_caps(cmd_rec *cmd) {
-  unsigned char use_chown = TRUE;
+  unsigned int flags = 0;
   config_rec *c = NULL;
   register unsigned int i = 0;
 
@@ -148,9 +152,9 @@ MODRET set_caps(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  /* At the moment, only the CAP_CHOWN capability is handled by this
-   * directive.
-   */
+  /* CAP_CHOWN is enabled by default. */
+  flags |= CAP_USE_CHOWN;
+
   for (i = 1; i < cmd->argc; i++) {
     char *cp = cmd->argv[i];
     cp++;
@@ -161,7 +165,15 @@ MODRET set_caps(cmd_rec *cmd) {
 
     if (strcasecmp(cp, "CAP_CHOWN") == 0) {
       if (*cmd->argv[i] == '-')
-        use_chown = FALSE;
+        flags &= ~CAP_USE_CHOWN;
+
+    } else if (strcasecmp(cp, "CAP_DAC_OVERRIDE") == 0) {
+      if (*cmd->argv[i] == '+')
+        flags |= CAP_USE_DAC_OVERRIDE;
+
+    } else if (strcasecmp(cp, "CAP_DAC_READ_SEARCH") == 0) {
+      if (*cmd->argv[i] == '+')
+        flags |= CAP_USE_DAC_READ_SEARCH;
 
     } else
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown capability: '",
@@ -169,8 +181,8 @@ MODRET set_caps(cmd_rec *cmd) {
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = use_chown;
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[0]) = flags;
 
   return HANDLED(cmd);
 }
@@ -200,7 +212,7 @@ MODRET set_capengine(cmd_rec *cmd) {
  * so we can "tweak" our root access down to almost nothing.
  */
 MODRET cap_post_pass(cmd_rec *cmd) {
-  int ret;
+  int res;
 
   if (!use_capabilities)
     return DECLINED(cmd);
@@ -213,8 +225,7 @@ MODRET cap_post_pass(cmd_rec *cmd) {
    * workaround.
    */
   if (setreuid(session.uid, 0) == -1) {
-    pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION
-      ": setreuid: %s", strerror(errno));
+    pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": setreuid: %s", strerror(errno));
     pr_signals_unblock();
     return DECLINED(cmd);
   }
@@ -226,17 +237,22 @@ MODRET cap_post_pass(cmd_rec *cmd) {
    * we lose CAP_EFFECTIVE anyhow, and must reset it.
    */
 
-  ret = lp_init_cap();
-  if (ret != -1)
-    ret = lp_add_cap(CAP_NET_BIND_SERVICE, CAP_PERMITTED);
+  res = lp_init_cap();
+  if (res != -1)
+    res = lp_add_cap(CAP_NET_BIND_SERVICE, CAP_PERMITTED);
 
-  /* Add the CAP_CHOWN capability, unless explicitly configured not to.
-   */
-  if (use_cap_chown && ret != -1)
-    ret = lp_add_cap(CAP_CHOWN, CAP_PERMITTED);
+  /* Add the CAP_CHOWN capability, unless explicitly configured not to. */
+  if (res != -1 && (cap_flags & CAP_USE_CHOWN))
+    res = lp_add_cap(CAP_CHOWN, CAP_PERMITTED);
 
-  if (ret != -1)
-    ret = lp_set_cap();
+  if (res != -1 && (cap_flags & CAP_USE_DAC_OVERRIDE))
+    res = lp_add_cap(CAP_DAC_OVERRIDE, CAP_PERMITTED);
+
+  if (res != -1 && (cap_flags & CAP_USE_DAC_READ_SEARCH))
+    res = lp_add_cap(CAP_DAC_READ_SEARCH, CAP_PERMITTED);
+
+  if (res != -1)
+    res = lp_set_cap();
 
   if (setreuid(0, session.uid) == -1) {
     pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": setreuid: %s", strerror(errno));
@@ -247,24 +263,29 @@ MODRET cap_post_pass(cmd_rec *cmd) {
   pr_signals_unblock();
 
   /* Now our only capabilities consist of CAP_NET_BIND_SERVICE
-   * (and possibly CAP_CHOWN), however in order to actually be able to bind
+   * (and other configured caps), however in order to actually be able to bind
    * to low-numbered ports, we need the capability to be in the effective set.
    */
 
-  if (ret != -1)
-    ret = lp_add_cap(CAP_NET_BIND_SERVICE, CAP_EFFECTIVE);
+  if (res != -1)
+    res = lp_add_cap(CAP_NET_BIND_SERVICE, CAP_EFFECTIVE);
 
-  /* Add the CAP_CHOWN capability, unless explicitly configured not to.
-   */
-  if (use_cap_chown && ret != -1)
-    ret = lp_add_cap(CAP_CHOWN, CAP_EFFECTIVE);
+  /* Add the CAP_CHOWN capability, unless explicitly configured not to. */
+  if (res != -1 && (cap_flags & CAP_USE_CHOWN))
+    res = lp_add_cap(CAP_CHOWN, CAP_EFFECTIVE);
 
-  if (ret != -1)
-    ret = lp_set_cap();
+  if (res != -1 && (cap_flags & CAP_USE_DAC_OVERRIDE))
+    res = lp_add_cap(CAP_DAC_OVERRIDE, CAP_EFFECTIVE);
+
+  if (res != -1 && (cap_flags & CAP_USE_DAC_READ_SEARCH))
+    res = lp_add_cap(CAP_DAC_READ_SEARCH, CAP_EFFECTIVE);
+
+  if (res != -1)
+    res = lp_set_cap();
 
   lp_free_cap();
 
-  if (ret != -1) {
+  if (res != -1) {
     /* That's it!  Disable all further id switching */
     session.disable_id_switching = TRUE;
     lp_debug();
@@ -296,16 +317,23 @@ static int cap_sess_init(void) {
 
   /* Check for which specific capabilities to include/exclude. */
   if (use_capabilities) {
-    config_rec *c = NULL;
+    config_rec *c = find_config(main_server->conf, CONF_PARAM,
+      "CapabilitiesSet", FALSE);
 
-    if ((c = find_config(main_server->conf, CONF_PARAM,
-                         "CapabilitiesSet", FALSE)) != NULL)
-    {
-      /* use_cap_chown is stored in c->argv[0] */
-      if (*((unsigned char *) c->argv[0]) == FALSE) {
-        pr_log_debug(DEBUG3, MOD_CAP_VERSION ": removing CAP_CHOWN capability");
-        use_cap_chown = FALSE;
-      }
+    if (c != NULL) {
+      cap_flags = *((unsigned int *) c->argv[0]);
+
+      if (!(cap_flags & CAP_USE_CHOWN))
+        pr_log_debug(DEBUG3, MOD_CAP_VERSION
+          ": removing CAP_CHOWN capability");
+
+      if (cap_flags & CAP_USE_DAC_OVERRIDE)
+        pr_log_debug(DEBUG3, MOD_CAP_VERSION
+          ": adding CAP_DAC_OVERRIDE capability"); 
+
+      if (cap_flags & CAP_USE_DAC_READ_SEARCH)
+        pr_log_debug(DEBUG3, MOD_CAP_VERSION
+          ": adding CAP_DAC_READ_SEARCH capability");
     }
   }
 
