@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.160 2003-03-09 02:24:05 castaglia Exp $
+ * $Id: mod_core.c,v 1.161 2003-03-09 03:16:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2354,15 +2354,6 @@ MODRET add_virtualhost(cmd_rec *cmd) {
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
-
-  /* Specifically block use of "0.0.0.0", as no client will ever be able
-   * to use that address, meaning that such a vhost will never be reached.
-   *
-   * Note: once IPv6 support is added, also check for similar IPv6 versions.
-   */
-  if (strcmp(cmd->argv[1], "0.0.0.0") == 0)
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "illegal IP address: ",
-      cmd->argv[1], NULL));
 
   if ((s = start_new_server(cmd->argv[1])) == NULL)
     CONF_ERROR(cmd, "unable to create virtual server configuration.");
