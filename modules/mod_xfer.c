@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.130 2003-03-04 20:03:21 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.131 2003-03-04 23:14:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -681,13 +681,6 @@ static long _transmit_data(off_t count, off_t offset, char *buf, long bufsize) {
 #else
   return _transmit_normal(buf, bufsize);
 #endif /* HAVE_SENDFILE */
-
-#ifdef TCP_CORK
-  on = 0;
-  if (setsockopt(PR_NETIO_FD(session.d->outstrm), SOL_TCP, TCP_CORK, &on,
-      len) < 0)
-    log_pri(PR_LOG_NOTICE, "error setting TCP_CORK: %s", strerror(errno));
-#endif /* TCP_CORK */
 }
 
 static void _stor_chown(void) {
