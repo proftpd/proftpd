@@ -26,7 +26,7 @@
 
 /* ProFTPD internal implemenation of syslog(3) routines
  *
- * $Id: pr-syslog.h,v 1.3 2003-01-02 17:28:18 castaglia Exp $
+ * $Id: pr-syslog.h,v 1.4 2003-07-25 01:21:58 jwm Exp $
  */
 
 #include "conf.h"
@@ -66,7 +66,7 @@
 
 #ifdef _PATH_LOG
 # define PR_PATH_LOG	_PATH_LOG
-#elif __hpux
+#elif defined(__hpux)
 # define PR_PATH_LOG	"/dev/log.un"
 #else
 # define PR_PATH_LOG	"/dev/log"
