@@ -61,10 +61,10 @@ ftpdctl$(EXEEXT): src
 ftpshut$(EXEEXT): utils
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPSHUT_OBJS)
 
-ftptop$(EXEEXT): utils
+ftptop$(EXEEXT): lib utils
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPTOP_OBJS) $(CURSES_LIBS) -lsupp
 
-ftpwho$(EXEEXT): utils
+ftpwho$(EXEEXT): lib utils
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPWHO_OBJS) -lsupp
 
 
