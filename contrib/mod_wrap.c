@@ -24,7 +24,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lwrap -lnsl$
- * $Id: mod_wrap.c,v 1.3 2002-02-14 16:39:18 flood Exp $
+ * $Id: mod_wrap.c,v 1.4 2002-10-21 18:40:25 castaglia Exp $
  */
 
 #define MOD_WRAP_VERSION "mod_wrap/1.2.3"
@@ -126,6 +126,7 @@ static char *wrap_get_user_table(cmd_rec *cmd, char *user,
 static int wrap_is_usable_file(char *filename) {
   struct stat statbuf;
   fsdir_t *fs_file = NULL;
+  int fd;
 
   /* check the easy case first */
   if (filename == NULL)
@@ -140,11 +141,12 @@ static int wrap_is_usable_file(char *filename) {
   /* OK, the file exists.  Now, to make sure that the current process
    * can _read_ the file
    */
-  if ((fs_file = fs_open(filename, O_RDONLY, NULL)) == NULL) {
+  if ((fs_file = fs_open(filename, O_RDONLY, &fd)) == NULL) {
     log_pri(LOG_INFO, MOD_WRAP_VERSION ": \"%s\": %s", filename,
       strerror(errno));
     return FALSE;
   }
+  fs_close(fs_file, fd);
 
   return TRUE;
 }
