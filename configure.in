@@ -30,8 +30,12 @@ AC_PROG_INSTALL
 
 LDFLAGS="-Llib $LDFLAGS"
 
-if test x"$CFLAGS" = "x-g -O2" && test $ac_cv_prog_gcc = yes; then
-  fullCFLAGS="$CFLAGS"
+if test $ac_cv_prog_gcc = yes; then
+  if test x"$CFLAGS" = "x-g -O2"; then
+    fullCFLAGS="-g3 -O6"
+  else
+    fullCFLAGS="$CFLAGS"
+  fi
 
   dnl Compilation tests
 
@@ -358,11 +362,21 @@ fi
 
 
 dnl Checks for library functions.
-AC_FUNC_ALLOCA
+
 if test "$pr_cv_header_fnmatch_noescape" = "yes" && \
    test "$pr_cv_header_fnmatch_casefold" = "yes"; then
   AC_FUNC_FNMATCH
+
+
+  dnl Unfortunately, the FNM_CASEFOLD GNU extension is useless without
+  dnl defining _GNU_SOURCE.
+
+  if test "$ac_cv_func_fnmatch_works" = "yes"; then
+    CFLAGS="$CFLAGS -D_GNU_SOURCE"
+  fi
 fi
+
+AC_FUNC_ALLOCA
 AC_PROG_GCC_TRADITIONAL
 AC_FUNC_SETPGRP
 AC_TYPE_SIGNAL
