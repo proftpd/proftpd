@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.1 2002-12-07 00:48:32 castaglia Exp $
+ * $Id: bindings.c,v 1.2 2002-12-07 16:29:10 jwm Exp $
  */
 
 #include "conf.h"
@@ -54,7 +54,8 @@ extern server_rec *main_server;
 
 static pr_ipbind_t *ipbind_table[PR_BINDINGS_TABLE_SIZE];
 static pool *binding_pool = NULL;
-static pr_ipbind_t *ipbind_default_server = NULL;
+static pr_ipbind_t *ipbind_default_server = NULL,
+                   *ipbind_localhost_server = NULL;
 
 /* Server cleanup callback function */
 static void server_cleanup_cb(void *conn) {
@@ -378,33 +379,16 @@ pr_ipbind_t *pr_ipbind_find(p_in_addr_t *addr, unsigned int port,
 }
 
 server_rec *pr_ipbind_get_server(p_in_addr_t *addr, unsigned int port) {
-  pr_ipbind_t *ipbind = NULL, *local_ipbind = NULL, *default_ipbind = NULL;
-  register unsigned int i = ipbind_hash_addr(addr);
+  pr_ipbind_t *ipbind = NULL;
 
-  /* Cannot use pr_ipbind_find() for this loop, as this search is a little
-   * more stringent; in particular, I need to scan for islocalhost and
-   * isdefault bindings.
+  /* If we've got a binding configured for this exact address, return it
+   * straightaway.
    */
-  for (ipbind = ipbind_table[i]; ipbind; ipbind = ipbind->ib_next) {
-
-    /* Skip inactive bindings. */
-    if (!ipbind->ib_isactive)
-      continue;
-
-    /* NOTE: use inet_addr() accessor functions in the future */
-    if (ipbind->ib_addr.s_addr == addr->s_addr &&
-       (!ipbind->ib_port || ipbind->ib_port == port))
-      return ipbind->ib_server;
-
-    if (ipbind->ib_islocalhost)
-      local_ipbind = ipbind;
-
-    if (ipbind->ib_isdefault)
-      default_ipbind = ipbind;
-  }
+  if ((ipbind = pr_ipbind_find(addr, port, TRUE)) != NULL)
+    return ipbind->ib_server;
 
   /* Not found in binding list, so see if it's the loopback address */
-  if (local_ipbind) {
+  if (ipbind_localhost_server) {
     p_in_addr_t loopback, loopmask, tmp;
 
 #ifdef HAVE_INET_ATON
@@ -420,13 +404,16 @@ server_rec *pr_ipbind_get_server(p_in_addr_t *addr, unsigned int port) {
 
     /* NOTE: use the inet_addr() accessor functions in the future */
     if ((tmp.s_addr & loopmask.s_addr) == loopback.s_addr &&
-        (!local_ipbind->ib_port || port == local_ipbind->ib_port)) 
-      return local_ipbind->ib_server;
+        (!ipbind_localhost_server->ib_port ||
+         port == ipbind_localhost_server->ib_port)) 
+    {
+      return ipbind_localhost_server->ib_server;
+    }
   }
 
   /* Otherwise, use the default server, if set */
-  if (default_ipbind && default_ipbind->ib_isactive)
-    return default_ipbind->ib_server;
+  if (ipbind_default_server && ipbind_default_server->ib_isactive)
+    return ipbind_default_server->ib_server;
 
   return NULL;
 }
@@ -507,15 +494,23 @@ int pr_ipbind_open(p_in_addr_t *addr, unsigned int port, conn_t *listen_conn,
 
   ipbind->ib_server->listen = listen_conn;
   ipbind->ib_isdefault = isdefault;
+  ipbind->ib_islocalhost = islocalhost;
 
   /* Stash a pointer to this ipbind, since it is designated as the
    * default server (via the DefaultServer directive), for use in the
    * lookup functions.
    */
+
+  /* Stash pointers to this ipbind for use in the lookup functions if:
+   *
+   * - It's the default server (specified via the DefaultServer directive)
+   * - It handles connections to the loopback interface
+   */
   if (isdefault)
     ipbind_default_server = ipbind;
+  if (islocalhost)
+    ipbind_localhost_server = ipbind;
 
-  ipbind->ib_islocalhost = islocalhost;
 
   /* If requested, look for any namebinds for this ipbind, and open them.
    */
