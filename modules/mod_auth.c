@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.92 2002-10-09 16:55:09 castaglia Exp $
+ * $Id: mod_auth.c,v 1.93 2002-10-10 15:00:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1353,7 +1353,7 @@ static void auth_scan_scoreboard(void) {
   int cur = -1, ccur = -1;
   char config_class_users[128] = {'\0'};
   xaset_t *conf = NULL;
-  
+ 
   if (get_param_int(main_server->conf, "Classes", FALSE) != 1)
     return;
 
@@ -1400,7 +1400,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
   config_rec *c, *maxc;
   char *origuser, config_class_users[128] = {'\0'};
   int classes_enabled = 0;
- 
+
   if((classes_enabled = get_param_int(main_server->conf,
 				      "Classes", FALSE)) != 1)
     classes_enabled = 0;
@@ -1438,14 +1438,14 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
           int mpos = sizeof(ip) - 1;
 	  
           cur++;
-	  
+
           s = strchr(score->sce_client_addr, '[');
           d = ip;
 	  
           if (s != NULL)
 	    s++;
 	  
-          while (*s && *s != ']' && d < ip + mpos)
+          while (s && *s && *s != ']' && d < ip + mpos)
 	    *d++ = *s++;
 	  
           *d = '\0';

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.247 2002-10-09 16:55:09 castaglia Exp $
+$Id: NEWS,v 1.248 2002-10-10 15:00:45 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -8,6 +8,7 @@ CVS
              only occurred for those daemons running in inetd mode.
 - Bug 1769 - Lack of supplemental groups can cause segfault.  This bug is
              a result of the fix for Bug 1666.
+- Bug 1770 - Forgetting to check for no IP in string. 
 
 1.2.7rc1 - Released 2002-10-01
 ---------------------------------
