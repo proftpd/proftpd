@@ -413,6 +413,7 @@ AC_CACHE_CHECK([which sendfile() implementation we have], pr_cv_func_sendfile,
   pr_cv_func_sendfile="None"
 
   dnl Linux.
+if test "$pr_cv_func_sendfile" = "None"; then
   AC_TRY_COMPILE([
 #include <unistd.h>
 #include <sys/sendfile.h>
@@ -422,8 +423,10 @@ off_t o;
 size_t c;
 (void)sendfile(i,i,&o,c);
       ], pr_cv_func_sendfile="Linux")
+fi
 
   dnl BSD.
+if test "$pr_cv_func_sendfile" = "None"; then
   AC_TRY_COMPILE([
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -435,8 +438,10 @@ size_t n;
 struct sf_hdtr h;
 (void)sendfile(i,i,o,n,&h,&o,i);
        ], pr_cv_func_sendfile="BSD")
+fi
 
   dnl HP/UX.
+if test "$pr_cv_func_sendfile" = "None"; then
   AC_TRY_COMPILE([
 #include <sys/socket.h>
 ],[
@@ -446,6 +451,7 @@ size_t n;
 const struct iovec h;
 (void)sendfile(i,i,o,n,&h,i);
        ], pr_cv_func_sendfile="HP/UX"))
+fi
 
   dnl Now, set the appropriate defines based on our investigations...
 

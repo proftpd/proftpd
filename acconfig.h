@@ -45,6 +45,9 @@
 /* Define if your system has the setproctitle function */
 #undef HAVE_SETPROCTITLE
 
+/* Define if your system has the sendfile function */
+#undef HAVE_SENDFILE
+
 /* Define if your DIR structure has member d_fd */
 #undef HAVE_STRUCT_DIR_D_FD
 
