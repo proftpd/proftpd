@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.12 2003-02-25 18:56:41 castaglia Exp $
+ * $Id: netio.c,v 1.13 2003-03-23 20:00:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -718,21 +718,18 @@ int pr_netio_shutdown(pr_netio_stream_t *nstrm, int how) {
   if (nstrm->strm_type == PR_NETIO_STRM_CTRL) {
     res = ctrl_netio ? ctrl_netio->shutdown(nstrm, how) :
       core_ctrl_netio->shutdown(nstrm, how);
-    destroy_pool(nstrm->strm_pool);
     return res;
   }
 
   if (nstrm->strm_type == PR_NETIO_STRM_DATA) {
     res = data_netio ? data_netio->shutdown(nstrm, how) :
       core_data_netio->shutdown(nstrm, how);
-    destroy_pool(nstrm->strm_pool);
     return res;
   }
 
   if (nstrm->strm_type == PR_NETIO_STRM_OTHR) {
     res = othr_netio ? othr_netio->shutdown(nstrm, how) :
       core_othr_netio->shutdown(nstrm, how);
-    destroy_pool(nstrm->strm_pool);
     return res;
   }
 
