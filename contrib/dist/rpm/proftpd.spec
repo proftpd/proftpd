@@ -1,9 +1,9 @@
-# $Id: proftpd.spec,v 1.13 2003-05-26 01:17:21 jwm Exp $
+# $Id: proftpd.spec,v 1.14 2003-05-26 01:39:50 jwm Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
 #
-#   --with mod_tls
+#   --with-module mod_tls
 #
 # The following modules can be added in this manner:
 #
@@ -65,15 +65,15 @@ This package is neccesary to setup ProFTPD to run from inetd.
 %prep
 %setup -q
   MODULES="mod_ratio:mod_readme"
-  MODULES="${MODULES}%{?_with_mod_tls::mod_tls}"
-  MODULES="${MODULES}%{?_with_mod_radius::mod_radius}"
-  MODULES="${MODULES}%{?_with_mod_ldap::mod_ldap}"
-  MODULES="${MODULES}%{?_with_mod_wrap::mod_wrap}"
-  MODULES="${MODULES}%{?_with_mod_sql::mod_sql}"
-  MODULES="${MODULES}%{?_with_mod_sql_mysql::mod_sql_mysql}"
-  MODULES="${MODULES}%{?_with_mod_sql_postgres::mod_sql_postgres}"
-  MODULES="${MODULES}%{?_with_mod_rewrite::mod_rewrite}"
-  MODULES="${MODULES}%{?_with_mod_ifsession::mod_ifsession}"
+  MODULES="${MODULES}%{?_with_module_mod_tls::mod_tls}"
+  MODULES="${MODULES}%{?_with_module_mod_radius::mod_radius}"
+  MODULES="${MODULES}%{?_with_module_mod_ldap::mod_ldap}"
+  MODULES="${MODULES}%{?_with_module_mod_wrap::mod_wrap}"
+  MODULES="${MODULES}%{?_with_module_mod_sql::mod_sql}"
+  MODULES="${MODULES}%{?_with_module_mod_sql_mysql::mod_sql_mysql}"
+  MODULES="${MODULES}%{?_with_module_mod_sql_postgres::mod_sql_postgres}"
+  MODULES="${MODULES}%{?_with_module_mod_rewrite::mod_rewrite}"
+  MODULES="${MODULES}%{?_with_module_mod_ifsession::mod_ifsession}"
   CFLAGS="$RPM_OPT_FLAGS" ./configure \
 	--prefix=%{prefix} \
 	--sysconfdir=/etc \
