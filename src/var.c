@@ -23,7 +23,7 @@
  */
 
 /* Variables API implementation
- * $Id: var.c,v 1.1 2004-10-31 18:53:06 castaglia Exp $
+ * $Id: var.c,v 1.2 2004-10-31 19:58:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -100,6 +100,7 @@ const char *pr_var_get(const char *name) {
 
     default:
       /* Pass through to the error case. */
+      ;
   }
 
   errno = EINVAL;
