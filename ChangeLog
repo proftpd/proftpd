@@ -1,3 +1,162 @@
+2002-08-15 07:45  castaglia
+
+	* NEWS, src/dirtree.c: 
+	Bug#1701 - Reverse lookups not working
+
+2002-08-14 09:25  castaglia
+
+	* modules/: mod_log.c, mod_ls.c, mod_site.c, mod_unixpw.c: 
+	Updating copyright notices.
+
+2002-08-14 09:17  castaglia
+
+	* include/inet.h, include/proftpd.h, modules/mod_core.c,
+	modules/mod_ls.c, modules/mod_xfer.c, src/data.c, src/inet.c,
+	src/io.c, src/main.c, src/support.c: 
+	Code cleanup:  - moved ShowSymlinks from mod_core to mod_ls  -
+	changed PassivePorts, AllowForeignAddress, ShowSymlinks, TimesGMT
+	to not	  use get_param_int() (which uses addresses of stack
+	variables instead of	heap variables), and using get_param_ptr()
+	instead.   - minor renaming
+
+2002-08-14 08:14  jwm
+
+	* contrib/dist/rpm/proftpd.spec.in: 
+	Packager: update
+
+2002-08-14 08:10  jwm
+
+	* contrib/dist/rpm/proftpd.spec.in: 
+	Added removal of build leftover directory in %clean.  Submitted by:
+	Christian Pelealu <kurisu@mweb.co.id>
+
+2002-08-13 15:52  castaglia
+
+	* src/log.c: 
+	Added minor, but necessary check when reading the scoreboard header
+	on AIX platforms.  Portability is a PITA.
+
+2002-08-12 10:30  castaglia
+
+	* modules/mod_ls.c, src/main.c: 
+	Added signal processing for recursive directory listings Added
+	masking of SIGCHLD in the SIGCHLD processing function Added debug
+	logging, at level 7, of module session initialization callbacks
+
+2002-08-05 10:06  castaglia
+
+	* config.sub: 
+	Added case to handle ELF NetBSD on a shark.
+
+2002-08-01 16:13  castaglia
+
+	* src/log.c: 
+	Added logging of TransferLog file opening at level 6; this will aid
+	in debugging errors involving the default TransferLog
+	("/var/log/xferlog") on systems which may have troubles (e.g. no
+	/var/log directory, which shows up in the logs as "unable to stat()
+	/var/log" -- not indicative of the culprit [TransferLog]).
+
+2002-08-01 15:11  castaglia
+
+	* modules/mod_unixpw.c: 
+	AIX portability/broken-ness changes.
+
+2002-08-01 15:08  castaglia
+
+	* include/dirtree.h, src/dirtree.c: 
+	Minor fix, matching up datatypes in function declaration to actual
+	datatype used (caused a complaint under AIX's xlc).
+
+2002-07-26 10:08  castaglia
+
+	* src/main.c: 
+	Minor cleanup from previous commit.
+
+2002-07-26 10:02  castaglia
+
+	* src/: dirtree.c, main.c, support.c: 
+	Fixed minor HUP memory leak, caused by use of schedule() to
+	schedule an invocation of main_rehash().  A sched_t object is
+	allocated for the scheduling from permanent_pool, but that object
+	is never freed.  The fix was to add a pool member to the sched_t
+	struct, allocated a subpool from permanent_pool, allocate the
+	sched_t struct from that subpool, and assign the subpool to the
+	struct's pool member.  That way, the sched_t object can be
+	destroyed once the scheduled callback has been invoked.  Also
+	cleaned up some of the main_rehash() code, to make it more legible.
+
+2002-07-25 08:21  jwm
+
+	* include/regexp.h: 
+	typo/style
+
+2002-07-24 15:20  castaglia
+
+	* Make.rules.in, NEWS, include/conf.h, include/pool.h,
+	modules/mod_core.c, src/inet.c, src/main.c, src/pool.c,
+	include/regexp.h, src/regexp.c: 
+	Bug#1697 - Memory leak involving regexp and SIGHUP
+
+2002-07-22 16:18  castaglia
+
+	* modules/: mod_auth.c, mod_core.c: 
+	Oops.  Realized that DeferWelcome should've stayed in mod_core.
+
+2002-07-22 15:17  castaglia
+
+	* modules/: mod_auth.c, mod_core.c, mod_xfer.c: 
+	Rearranging the placement of several configuration directive
+	handlers, placing the handler functions in the module that actually
+	uses the configured directive (many were bunched into mod_core).
+
+2002-07-20 01:29  flyhmstr
+
+	* contrib/UPGRADE.mod_sql: ML: updated mod_sql homepage url
+
+2002-07-19 14:25  castaglia
+
+	* NEWS, lib/pwgrent.c: 
+	Bug#1674 - fgetbufline passes NULL pointer to fgets()
+
+2002-07-18 16:01  castaglia
+
+	* modules/mod_core.c, modules/mod_pam.c, modules/mod_unixpw.c,
+	src/main.c: 
+	Miscellaneous configuration handler cleanup.
+
+2002-07-15 08:50  castaglia
+
+	* NEWS, modules/mod_xfer.c: 
+	Bug#1645 - HiddenStor should close file before renaming
+
+2002-07-15 08:39  castaglia
+
+	* NEWS, modules/mod_core.c, src/dirtree.c: 
+	Bug#1681 - Multiple Include directives in a single file do not get
+	parsed
+
+2002-07-09 15:20  castaglia
+
+	* include/proftpd.h, include/support.h, include/timers.h,
+	src/main.c, src/support.c, src/timers.c: 
+	Committed the latest patch attached to Bug#1556.
+
+2002-07-02 17:30  jwm
+
+	* configure: 
+	new configure
+
+2002-07-02 17:25  jwm
+
+	* Makefile.in, README.cygwin, configure.in: 
+	attach 1428 to bug 1569 - cygwin EXEEXT fixups
+
+2002-07-02 11:25  castaglia
+
+	* ChangeLog, NEWS, include/version.h: 
+	Preparing for release of 1.2.6rc1
+
 2002-07-02 10:01  castaglia
 
 	* include/inet.h, include/io.h, include/options.h, src/data.c,
