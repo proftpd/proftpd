@@ -15731,8 +15731,8 @@ _ACEOF
   fi
 fi
 
-echo "$as_me:$LINENO: checking whether printfs support the %llu format" >&5
-echo $ECHO_N "checking whether printfs support the %llu format... $ECHO_C" >&6;
+echo "$as_me:$LINENO: checking whether printf supports %llu format" >&5
+echo $ECHO_N "checking whether printf supports %llu format... $ECHO_C" >&6;
 if test "$cross_compiling" = yes; then
   echo "$as_me:$LINENO: result: cross-compiling" >&5
 echo "${ECHO_T}cross-compiling" >&6; cat >>confdefs.h <<\_ACEOF
