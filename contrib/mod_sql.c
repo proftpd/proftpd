@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.70 2004-02-27 22:42:14 castaglia Exp $
+ * $Id: mod_sql.c,v 1.71 2004-03-16 21:46:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3388,7 +3388,7 @@ MODRET set_sqllog(cmd_rec *cmd) {
       c = add_config_param_str(name, 1, cmd->argv[2]);
     }
 
-    c->flags |= CF_MERGEDOWN;
+    c->flags |= CF_MERGEDOWN_MULTI;
   }
   
   return HANDLED(cmd);
@@ -3468,7 +3468,7 @@ MODRET set_sqlshowinfo(cmd_rec * cmd) {
     name = pstrcat( cmd->tmp_pool, "SQLShowInfo_", name, NULL);
     
     c = add_config_param_str(name, 2, cmd->argv[2], cmd->argv[3] );
-    c->flags |= CF_MERGEDOWN;
+    c->flags |= CF_MERGEDOWN_MULTI;
   }
 
   return HANDLED(cmd);
