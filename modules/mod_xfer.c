@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.19 1999-10-23 03:52:37 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.20 1999-10-27 01:58:03 macgyver Exp $
  */
 
 /* History Log:
@@ -789,17 +789,23 @@ MODRET cmd_type(cmd_rec *cmd)
   }
 
   cmd->argv[1][0] = toupper(cmd->argv[1][0]);
-
-  if(!strcmp(cmd->argv[1],"A"))
+  
+  /* TYPE A(SCII) or TYPE L 7.
+   */
+  if(!strcmp(cmd->argv[1], "A") ||
+     (!strcmp(cmd->argv[1], "L") && !strcmp(cmd->argv[2], "7"))) {
     session.flags |= SF_ASCII;
-  else if(!strcmp(cmd->argv[1],"I"))
+  } else if(!strcmp(cmd->argv[1], "I") ||
+	    (!strcmp(cmd->argv[1], "L") && !strcmp(cmd->argv[2], "8"))) {
+    /* TYPE I(MAGE) or TYPE L 8.
+     */
     session.flags &= (SF_ALL^SF_ASCII);
-  else {
-    add_response_err(R_500,"'%s' not understood.",get_full_cmd(cmd));
+  } else {
+    add_response_err(R_500, "'%s' not understood.", get_full_cmd(cmd));
     return ERROR(cmd);
   }
 
-  add_response(R_200,"Type set to %s.",cmd->argv[1]);
+  add_response(R_200, "Type set to %s.", cmd->argv[1]);
   return HANDLED(cmd);
 }
 
