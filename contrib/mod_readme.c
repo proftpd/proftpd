@@ -109,7 +109,7 @@ MODRET show_readme(cmd_rec *cmd) {
   while(c) {
     file = c->argv[0];
     
-    log_debug(DEBUG5, "Checking for display pattern %s.", file);
+    pr_log_debug(DEBUG5, "Checking for display pattern %s.", file);
     add_pattern_response(file);
     
     c = find_config_next(c, c->next, CONF_PARAM, "DisplayReadme",FALSE);
@@ -121,19 +121,19 @@ MODRET show_readme(cmd_rec *cmd) {
   return DECLINED(cmd);
 }
 
-MODRET readme_add_entry (cmd_rec *cmd) {
+MODRET readme_add_entry(cmd_rec *cmd) {
   config_rec *c;
   
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
   
-  if(cmd->argc != 2) {
+  if (cmd->argc != 2) {
     CONF_ERROR(cmd, "syntax: DisplayReadme <filename-or-pattern>");
   }
   
   c = add_config_param_str( "DisplayReadme", 1, (void *)cmd->argv[1]);
   c->flags |= CF_MERGEDOWN;
   
-  log_debug(DEBUG5, "Added pattern %s to readme-list.", cmd->argv[1]);
+  pr_log_debug(DEBUG5, "Added pattern %s to readme-list.", cmd->argv[1]);
   
   return HANDLED(cmd);
 }
