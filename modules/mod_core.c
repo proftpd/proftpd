@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.36 2000-07-11 18:44:52 macgyver Exp $
+ * $Id: mod_core.c,v 1.37 2000-07-21 05:59:48 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -1996,12 +1996,11 @@ MODRET cmd_rmd(cmd_rec *cmd)
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *preg;
 #endif
-  struct stat sbuf;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathAllowFilter",FALSE);
+  preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
 
   if(preg && regexec(preg,cmd->arg,0,NULL,0) != 0) {
     add_response_err(R_550,"%s: Forbidden filename",cmd->arg);
@@ -2040,8 +2039,8 @@ MODRET cmd_mkd(cmd_rec *cmd)
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
-  if(strchr(cmd->arg,'*')) {
-    add_response_err(R_550,"%s: Invalid directory name", cmd->argv[1]);
+  if(strchr(cmd->arg, '*')) {
+    add_response_err(R_550, "%s: Invalid directory name", cmd->argv[1]);
     return ERROR(cmd);
   }
 
