@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.179 2003-06-05 19:34:53 castaglia Exp $
+ * $Id: mod_core.c,v 1.180 2003-06-27 07:13:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1439,7 +1439,8 @@ MODRET set_syslogfacility(cmd_rec *cmd) {
         case -1:
           PRIVS_RELINQUISH
           pr_signals_unblock();
-          CONF_ERROR(cmd, "unable to open syslog");
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to open syslog: ",
+            strerror(errno), NULL));
           break;
 
         case LOG_WRITEABLE_DIR:
