@@ -395,7 +395,7 @@ static int tls_log(const char *, ...)
 static int tls_openlog(void);
 static RSA *tls_rsa_cb(SSL *, int, int);
 static int tls_seed_prng(void);
-static void tls_setup_environ(void);
+static void tls_setup_environ(SSL *);
 static int tls_verify_cb(int, X509_STORE_CTX *);
 static int tls_verify_crl(int, X509_STORE_CTX *);
 static char *tls_x509_name_oneline(X509_NAME *);
@@ -1260,7 +1260,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     }
 
     /* Setup the TLS environment variables, if requested. */
-    tls_setup_environ();
+    tls_setup_environ(ssl);
 
   /* TLS handshake on the data channel... */
   } else {
@@ -1808,7 +1808,7 @@ static void tls_setup_cert_environ(const char *env_prefix, X509 *cert) {
   BIO_free(bio);
 }
 
-static void tls_setup_environ(void) {
+static void tls_setup_environ(SSL *ssl) {
   X509 *cert = NULL;
   STACK_OF(X509) *sk_cert_chain = NULL;
 
@@ -1823,10 +1823,10 @@ static void tls_setup_environ(void) {
     putenv(pstrdup(main_server->pool, "FTPS=1"));
 
     putenv(pstrcat(main_server->pool, "TLS_PROTOCOL=",
-      SSL_get_cipher_version(ctrl_ssl), NULL));
+      SSL_get_cipher_version(ssl), NULL));
 
     /* Process the SSL session-related environ variable. */
-    if ((ssl_session = SSL_get_session(ctrl_ssl))) {
+    if ((ssl_session = SSL_get_session(ssl))) {
       char buf[SSL_MAX_SSL_SESSION_ID_LENGTH*2+1] = {'\0'};
       register unsigned int i = 0;
 
@@ -1839,7 +1839,7 @@ static void tls_setup_environ(void) {
     }
 
     /* Process the SSL cipher-related environ variables. */
-    if ((cipher = SSL_get_current_cipher(ctrl_ssl))) {
+    if ((cipher = SSL_get_current_cipher(ssl))) {
       char buf[10] = {'\0'};
       int cipher_bits_used = 0, cipher_bits_possible = 0;
 
@@ -1871,7 +1871,7 @@ static void tls_setup_environ(void) {
      tls_log("error setting environ variable: %s", strerror(errno)); 
   }
 
-  if ((sk_cert_chain = SSL_get_peer_cert_chain(ctrl_ssl))) {
+  if ((sk_cert_chain = SSL_get_peer_cert_chain(ssl))) {
     char *tmp = NULL;
     register unsigned int i = 0;
     BIO *bio = NULL;
@@ -1890,13 +1890,23 @@ static void tls_setup_environ(void) {
     } 
   }
 
-  cert = SSL_get_certificate(ctrl_ssl);
-  tls_setup_cert_environ("TLS_SERVER_", cert);
-  X509_free(cert);
+  cert = SSL_get_certificate(ssl);
+  if (cert) {
+    tls_setup_cert_environ("TLS_SERVER_", cert);
+    X509_free(cert);
 
-  cert = SSL_get_peer_certificate(ctrl_ssl);
-  tls_setup_cert_environ("TLS_CLIENT_", cert);
-  X509_free(cert);
+  } else
+    tls_log("unable to set server certificate environ variables: "
+      "no server certificate presented");
+
+  cert = SSL_get_peer_certificate(ssl);
+  if (cert) {
+    tls_setup_cert_environ("TLS_CLIENT_", cert);
+    X509_free(cert);
+
+  } else
+    tls_log("unable to set client certificate environ variables: "
+      "no client certificate presented");
 
   return;
 }
