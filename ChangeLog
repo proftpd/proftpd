@@ -1,3 +1,15 @@
+2001-05-21 17:14  flood
+
+	* NEWS, contrib/mod_readme.c, include/conf.h, modules/mod_core.c,
+	modules/mod_readme.c: Bug 1175 - GNU HURD portability Bug 1177 -
+	mod_readme.c moved to contrib/ Bug 1176 - PWD/XPWD now G_DIRS and
+	limitable
+
+2001-05-21 16:48  flood
+
+	* NEWS, lib/glibc-glob.c: Bug 1155 - conditional HPUX headers in
+	glibc-glob.c
+
 2001-05-16 23:22  flood
 
 	* NEWS, include/proftpd.h, lib/getopt.c, lib/pr_fnmatch.c,
