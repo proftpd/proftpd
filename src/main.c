@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.232 2004-05-19 17:07:49 castaglia Exp $
+ * $Id: main.c,v 1.233 2004-05-25 17:17:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2623,8 +2623,6 @@ int main(int argc, char *argv[], char **envp) {
     exit(1);
   }
 
-  pr_event_generate("core.postparse", NULL);
-
   free_conf_stacks();
 
   if (fixup_servers() < 0) {
@@ -2632,6 +2630,8 @@ int main(int argc, char *argv[], char **envp) {
       config_filename);
     exit(1);
   }
+
+  pr_event_generate("core.postparse", NULL);
 
   /* We're only doing a syntax check of the configuration file. */
   if (syntax_check) {
