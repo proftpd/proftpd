@@ -474,11 +474,14 @@
 /* Define if you have the crypt library (-lcrypt).  */
 #undef HAVE_LIBCRYPT
 
-/* Define if you have the ncurses library (-lncurses).  */
-#undef HAVE_LIBNCURSES
-
 /* Define if you have the curses library (-lcurses).  */
 #undef HAVE_LIBCURSES
+
+/* Define if you have the UnixWare gen library (-lgen).  */
+#undef HAVE_LIBGEN
+
+/* Define if you have the ncurses library (-lncurses).  */
+#undef HAVE_LIBNCURSES
 
 /* Define if you have the nsl library (-lnsl).  */
 #undef HAVE_LIBNSL
