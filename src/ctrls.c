@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.7 2004-04-11 20:42:37 castaglia Exp $
+ * $Id: ctrls.c,v 1.8 2004-04-14 18:11:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -801,7 +801,14 @@ int pr_get_registered_actions(pr_ctrls_t *ctrl, int flags) {
 
   for (act = ctrls_action_list; act; act = act->next) {
     switch (flags) {
-      case CTRLS_GET_ACTION:
+      case CTRLS_GET_ACTION_ALL:
+        pr_ctrls_add_response(ctrl, "%s (mod_%s.c)", act->action,
+          act->module->name);
+        break;
+
+      case CTRLS_GET_ACTION_ENABLED:
+        if (act->flags & PR_CTRLS_ACT_DISABLED)
+          break;
         pr_ctrls_add_response(ctrl, "%s (mod_%s.c)", act->action,
           act->module->name);
         break;

@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.11 2004-04-12 17:35:14 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.12 2004-04-14 18:11:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -139,7 +139,7 @@ static unsigned char ctrls_check_group_acl(gid_t cl_gid,
   unsigned char res = FALSE;
 
   /* Note: the special condition of ngids of 1 and gids of NULL signals
-   *  that all groups are to be treated according to the allow member.
+   * that all groups are to be treated according to the allow member.
    */
   if (grp_acl->gids) {
     for (i = 0; i < grp_acl->ngids; i++)
@@ -165,7 +165,7 @@ static unsigned char ctrls_check_user_acl(uid_t cl_uid,
   unsigned char res = FALSE;
 
   /* Note: the special condition of nuids of 1 and uids of NULL signals
-   *  that all users are to be treated according to the allow member.
+   * that all users are to be treated according to the allow member.
    */
   if (usr_acl->uids) {
     for (i = 0; i < usr_acl->nuids; i++)
@@ -1249,12 +1249,12 @@ static int ctrls_handle_lsctrl(pr_ctrls_t *ctrl, int reqargc,
     return -1;
   }
 
-  if (pr_get_registered_actions(ctrl, CTRLS_GET_ACTION) < 0)
+  if (pr_get_registered_actions(ctrl, CTRLS_GET_ACTION_ENABLED) < 0)
     pr_ctrls_add_response(ctrl, "unable to get actions: %s", strerror(errno));
 
   else {
 
-    /* Be nice, and sort the directives lexicographically */
+    /* Be nice, and sort the actions lexicographically */
     qsort(ctrl->ctrls_cb_resps->elts, ctrl->ctrls_cb_resps->nelts,
       sizeof(char *), respcmp);
 
@@ -1655,6 +1655,10 @@ static int ctrls_init(void) {
         ": error registering '%s' control: %s",
         ctrls_acttab[i].act_action, strerror(errno));
   }
+
+  /* Make certain the socket ACL is initialized. */
+  memset(&ctrls_sock_acl, '\0', sizeof(ctrls_acl_t));
+  ctrls_sock_acl.acl_usrs.allow = ctrls_sock_acl.acl_grps.allow = FALSE;
 
   /* Start listening on the ctrl socket */
   ctrls_sockfd = ctrls_listen(ctrls_sock_file);

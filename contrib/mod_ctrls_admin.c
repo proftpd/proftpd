@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.12 2004-04-13 16:46:34 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.13 2004-04-14 18:11:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -543,19 +543,6 @@ static int ctrls_handle_restart(pr_ctrls_t *ctrl, int reqargc,
   PRIVS_RELINQUISH
 
   pr_ctrls_add_response(ctrl, "restarted server");
-  return 0;
-}
-
-static int ctrls_handle_set(pr_ctrls_t *ctrl, int reqargc,
-    char **reqargv) {
-
-  /* Sanity check */
-  if (reqargc == 0 || reqargv == NULL) {
-    pr_ctrls_add_response(ctrl, "set: missing required parameters");
-    return -1;
-  }
-
-  pr_ctrls_add_response(ctrl, "set action currently unsupported");
   return 0;
 }
 
@@ -1088,14 +1075,12 @@ static ctrls_acttab_t ctrls_admin_acttab[] = {
     ctrls_handle_debug },
   { "dump",	"dump internal information",	NULL,
     ctrls_handle_dump },
-  { "get",      "",	NULL,
+  { "get",      "list configuration data",	NULL,
     ctrls_handle_get },
   { "kick",	"disconnect a class, host, or user",	NULL,
     ctrls_handle_kick },
   { "restart",  "restart the daemon (similar to using HUP)",	NULL,
     ctrls_handle_restart },
-  { "set",      "",	NULL,
-    ctrls_handle_set },
   { "shutdown", "shutdown the daemon",	NULL,
     ctrls_handle_shutdown },
   { "start",	"enable a stopped virtual server",	NULL,
