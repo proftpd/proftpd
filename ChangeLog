@@ -1,3 +1,20 @@
+2001-07-04 11:28  flood
+
+	* NEWS, src/log.c: #1230 - size mismatch struct utmpx in Solaris 8
+	(sparcv9)
+
+2001-07-03 10:51  flood
+
+	* NEWS, modules/mod_auth.c: #1098 - Non~* DefaultRoot bug
+
+2001-07-03 10:49  flood
+
+	* NEWS, modules/mod_xfer.c: #1234 ABOR must always return 226
+
+2001-07-02 14:56  flood
+
+	* NEWS, contrib/mod_sql.c: New mod_sql
+
 2001-06-19 21:23  flood
 
 	* NEWS, include/version.h: Bump version, final commit for 1.2.2rc3
