@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.339 2003-01-01 01:24:48 castaglia Exp $
+$Id: NEWS,v 1.340 2003-01-03 04:00:38 jwm Exp $
 
 CVS
 ---------------------------------
@@ -9,6 +9,8 @@ CVS
   AllowFilter and DenyFilter are now extended to <Directory> and .ftpaccess
   contexts.
 - Bug 1671 - new directive SQLLogFile.
+- mod_linuxprivs has been renamed to mod_cap and is now built into ProFTPD
+  by default if the host OS (Linux) supports it
 
 1.2.8rc1 - Released 28-Dec-2002
 ---------------------------------
