@@ -52,6 +52,15 @@ files.
   + New modules:
       mod_dso
 
+  + New Display variables:
+
+      %{total_bytes_in}
+      %{total_bytes_out}
+      %{total_bytes_xfer}
+      %{total_files_in}
+      %{total_files_out}
+      %{total_files_xfer}
+
   + Deprecated configuration directives:
       Bind
 
@@ -75,4 +84,4 @@ files.
             ...
           </VirtualHost>
 
-Last Updated: $Date: 2004-11-20 20:32:19 $
+Last Updated: $Date: 2004-12-04 07:02:14 $
