@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.140 2003-05-14 19:05:10 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.141 2003-05-19 20:12:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -530,28 +530,24 @@ static void xfer_rate_throttle(off_t xferlen) {
   /* Give credit for any configured freebytes. */
   if (xferlen && xfer_rate_freebytes) {
 
-    if (xfer_rate_freebytes >= xferlen) {
-       /* Decrement the number of freebytes by the total number of bytes
-        * sent.  Since there are still more freebytes to be used, just
-        * return now, after updating the timeval struc.
-        */
-       xfer_rate_freebytes -= xferlen;
+    if (xferlen > xfer_rate_freebytes)
 
-      /* Update the scoreboard. */
+      /* Decrement the number of bytes transferred by the freebytes, so that
+       * any throttling does not take into account the freebytes.
+       */
+      xferlen -= xfer_rate_freebytes;
+
+    else {
+
+      /* The number of bytes transferred is less than the freebytes.  Just
+       * update the scoreboard -- no throttling needed.
+       */
       pr_scoreboard_update_entry(getpid(),
         PR_SCORE_XFER_LEN, xferlen,
         PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
         NULL);
 
-       return;
-
-    } else {
-      xferlen -= xfer_rate_freebytes;
-
-      /* Make sure that, the next time through, the freebytes are not
-       * credited again.
-       */
-      xfer_rate_freebytes = 0;
+      return;
     }
   }
 

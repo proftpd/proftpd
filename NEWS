@@ -1,4 +1,8 @@
-$Id: NEWS,v 1.434 2003-05-16 04:25:39 castaglia Exp $
+$Id: NEWS,v 1.435 2003-05-19 20:12:15 castaglia Exp $
+
+CVS
+---------------------------------
+- Bug 2051 - freebytes in TransferRate does not work properly.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------
