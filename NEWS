@@ -1,6 +1,6 @@
-$Id: NEWS,v 1.58 2000-07-28 05:52:39 macgyver Exp $
+$Id: NEWS,v 1.59 2000-07-28 13:50:15 macgyver Exp $
 
-1.2.0RC2 - Released: 07/??/2000
+1.2.0RC2 - Released: 07/28/2000
 ---------------------
 - Made sure ServerUseReverseDNS was honored.
 - Compile problems on various problems.

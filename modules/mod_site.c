@@ -19,7 +19,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.7 2000-07-28 05:52:39 macgyver Exp $
+ * $Id: mod_site.c,v 1.8 2000-07-28 13:50:15 macgyver Exp $
  */
 
 #include "conf.h"
@@ -59,8 +59,9 @@ MODRET set_allowchmod(cmd_rec *cmd) {
   int b;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_GLOBAL);
-
+  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_DIR | CONF_ANON |
+	     CONF_GLOBAL | CONF_DYNDIR);
+  
   if((b = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
 
