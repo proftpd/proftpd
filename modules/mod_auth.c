@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.24 2000-01-24 00:46:24 macgyver Exp $
+ * $Id: mod_auth.c,v 1.25 2000-01-24 05:59:00 macgyver Exp $
  */
 
 #include "conf.h"
@@ -247,7 +247,7 @@ static int _init_groups(pool *p, gid_t addl_group)
   for(i = 0; i < ngids; i++)
     gid_arr[i + 2] = (gid_t) session_gids[i];
   
-  return setgroups(ngids + 1, gid_arr);
+  return setgroups(ngids + 2, gid_arr);
 }
 
 static config_rec *_auth_anonymous_group(pool *p, char *user)

@@ -1,8 +1,9 @@
-$Id: NEWS,v 1.24 2000-01-23 18:38:11 macgyver Exp $
+$Id: NEWS,v 1.25 2000-01-24 05:59:00 macgyver Exp $
 
 1.2.0 - Released: ???
 ---------------------
 - Fixed a bug in mod_ls that could cause a crash.
+- Fixed a minor bug related to group permissions.
 
 1.2.0pre10 - Released: 1/17/00
 ------------------------------
