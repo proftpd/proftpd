@@ -599,11 +599,17 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylength) {
  */
 #if OPENSSL_VERSION_NUMBER < 0x0090702fL
 static void tls_blinding_on(SSL *ssl) {
+  EVP_PKEY *pkey = NULL;
+  RSA *rsa = NULL;
+
   /* RSA keys are subject to timing attacks.  To attempt to make such
    * attacks harder, use RSA blinding.
    */
-  EVP_PKEY *pkey = SSL_get_privatekey(ssl);
-  RSA *rsa = EVP_PKEY_get1_RSA(pkey);
+
+  pkey = SSL_get_privatekey(ssl);
+
+  if (pkey)
+    rsa = EVP_PKEY_get1_RSA(pkey);
 
   if (rsa) {
     if (RSA_blinding_on(rsa, NULL) != 1)
