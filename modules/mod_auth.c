@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.44 2000-08-03 15:24:58 macgyver Exp $
+ * $Id: mod_auth.c,v 1.45 2000-08-05 04:44:00 macgyver Exp $
  */
 
 #include "conf.h"
@@ -1277,7 +1277,10 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
       else
 	send_response(R_530, "Too many users in your class, "
 		      "please try again later.");
-	
+      
+      remove_config(cmd->server->conf, C_USER, FALSE);
+      remove_config(cmd->server->conf, C_PASS, FALSE);
+      
       log_auth(LOG_NOTICE, "Connection refused (max clients for class %s).",
 	       session.class->name);
       
@@ -1307,6 +1310,9 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
       send_response(R_530, "%s",
 		    sreplace(cmd->tmp_pool,maxstr, "%m", maxn, NULL));
       
+      remove_config(cmd->server->conf, C_USER, FALSE);
+      remove_config(cmd->server->conf, C_PASS, FALSE);
+
       log_auth(LOG_NOTICE, "Connection refused (max clients per host %d).",
 	       max);
       
@@ -1331,7 +1337,12 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
     if(cur >= max) {
       send_response(R_530, "%s",
 		    sreplace(cmd->tmp_pool, maxstr, "%m", maxn, NULL));
+
       log_auth(LOG_NOTICE, "Connection refused (max clients %d).", max);
+
+      remove_config(cmd->server->conf, C_USER, FALSE);
+      remove_config(cmd->server->conf, C_PASS, FALSE);
+
       end_login(0);
     }
   }
@@ -1351,10 +1362,12 @@ MODRET cmd_user(cmd_rec *cmd) {
 
   user = cmd->argv[1];
 
-  remove_config(cmd->server->conf,C_USER,FALSE);
-  add_config_param_set(&cmd->server->conf,C_USER,1,
-                       pstrdup(cmd->server->pool,user));
+  remove_config(cmd->server->conf, C_USER, FALSE);
+  remove_config(cmd->server->conf, C_PASS, FALSE);
 
+  add_config_param_set(&cmd->server->conf, C_USER, 1,
+		       pstrdup(cmd->server->pool, user));
+  
   origuser = user;
   c = _auth_resolve_user(cmd->tmp_pool,&user,NULL,NULL);
 
@@ -1371,9 +1384,13 @@ MODRET cmd_user(cmd_rec *cmd) {
   
   if(failnopwprompt) {
     if(!user) {
+      remove_config(cmd->server->conf, C_USER, FALSE);
+      remove_config(cmd->server->conf, C_PASS, FALSE);
+
       log_pri(LOG_NOTICE, "USER %s (Login failed): Not a UserAlias.",
 	      origuser);
       send_response(R_530,"Login incorrect.");
+
       end_login(0);
     }
 
@@ -1388,25 +1405,33 @@ MODRET cmd_user(cmd_rec *cmd) {
 
     if(c) {
       if(!login_check_limits(c->subset,FALSE,TRUE,&i) || (!aclp && !i) ) {
+	remove_config(cmd->server->conf, C_USER, FALSE);
+	remove_config(cmd->server->conf, C_PASS, FALSE);
+
 	log_auth(LOG_NOTICE, "ANON %s: Limit access denies login.",
 		 origuser);
 	send_response(R_530, "Login incorrect.");
+
 	end_login(0);
       }
     }
     
     if(!c && !aclp) {
+      remove_config(cmd->server->conf, C_USER, FALSE);
+      remove_config(cmd->server->conf, C_PASS, FALSE);
+      
       log_auth(LOG_NOTICE, "USER %s: Limit access denies login.", origuser);
       send_response(R_530, "Login incorrect.");
+      
       end_login(0);
     }
   }
-
+  
   _auth_check_count(cmd, origuser);
   
   if(c && user && get_param_int(c->subset, "AnonRequirePassword", FALSE) != 1)
-      nopass++;
-
+    nopass++;
+  
   if(nopass)
     add_response(R_331, "Anonymous login ok, send your complete email "
 		 "address as your password.");
@@ -1421,19 +1446,22 @@ MODRET cmd_user(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET cmd_pass(cmd_rec *cmd)
-{
+MODRET cmd_pass(cmd_rec *cmd) {
   char *display = NULL;
-  char *user,*grantmsg;
+  char *user, *grantmsg;
   int res = 0;
-
+  
   if(logged_in)
-    return ERROR_MSG(cmd,R_503,"You are already logged in!");
-
-  user = (char*)get_param_ptr(cmd->server->conf,C_USER,FALSE);
-
-  if(!user)
-    return ERROR_MSG(cmd,R_503,"Login with USER first.");
+    return ERROR_MSG(cmd, R_503, "You are already logged in!");
+  
+  user = (char *) get_param_ptr(cmd->server->conf, C_USER, FALSE);
+  
+  if(!user) {
+    remove_config(cmd->server->conf, C_USER, FALSE);
+    remove_config(cmd->server->conf, C_PASS, FALSE);
+    
+    return ERROR_MSG(cmd, R_503, "Login with USER first.");
+  }
   
   _auth_check_count(cmd, user);
   
@@ -1455,8 +1483,8 @@ MODRET cmd_pass(cmd_rec *cmd)
 				      "DisplayLogin", FALSE);
 
     if(display)
-      core_display_file(R_230,display);
-
+      core_display_file(R_230, display);
+    
     if((grantmsg = 
         (char*)get_param_ptr((session.anon_config ? session.anon_config->subset :
                               cmd->server->conf),"AccessGrantMsg",FALSE)) != NULL) {
@@ -1469,13 +1497,14 @@ MODRET cmd_pass(cmd_rec *cmd)
       else
         add_response(R_230, "User %s logged in.", user);
     }
-
+    
     logged_in = 1;
     return HANDLED(cmd);
   }
 
-  remove_config(cmd->server->conf,C_USER,FALSE);
-
+  remove_config(cmd->server->conf, C_USER, FALSE);
+  remove_config(cmd->server->conf, C_PASS, FALSE);
+  
   if(res == 0) {
     int max;
 
@@ -1496,143 +1525,133 @@ MODRET cmd_pass(cmd_rec *cmd)
 }
 
 
-MODRET
-cmd_acct(cmd_rec *cmd)
-{
-	add_response(R_502, "ACCT command not implemented.");
-	return HANDLED(cmd);
+MODRET cmd_acct(cmd_rec *cmd) {
+  add_response(R_502, "ACCT command not implemented.");
+  return HANDLED(cmd);
 }
 
 
-MODRET
-cmd_rein(cmd_rec *cmd)
-{
-	add_response(R_502, "REIN command not implemented.");
-	return HANDLED(cmd);
+MODRET cmd_rein(cmd_rec *cmd) {
+  add_response(R_502, "REIN command not implemented.");
+  return HANDLED(cmd);
 }
 
 
-MODRET set_rootlogin(cmd_rec *cmd)
-{
+MODRET set_rootlogin(cmd_rec *cmd) {
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
-
+  
   add_config_param("RootLogin",1,(void*)get_boolean(cmd,1));
   return HANDLED(cmd);
 }
 
-MODRET set_loginpasswordprompt(cmd_rec *cmd)
-{
+MODRET set_loginpasswordprompt(cmd_rec *cmd) {
   config_rec *c;
-
+  
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
-
+  
   c = add_config_param("LoginPasswordPrompt",1,(void*)get_boolean(cmd,1));
   c->flags |= CF_MERGEDOWN;
-
+  
   return HANDLED(cmd);
 }
 
-MODRET add_defaultroot(cmd_rec *cmd)
-{
+MODRET add_defaultroot(cmd_rec *cmd) {
   config_rec *c;
   char *dir,**argv;
   int argc;
   array_header *acl = NULL;
-
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-
+  
+  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_GLOBAL);
+  
   if(cmd->argc < 2)
     CONF_ERROR(cmd,"syntax: DefaultRoot <directory> [<group-expression>]");
-
+  
   argv = cmd->argv;
-  argc = cmd->argc-2;
-
+  argc = cmd->argc - 2;
+  
   dir = *++argv;
-
+  
   /* dir must be / or ~
    */
-
   if(*dir != '/' && *dir != '~')
-    CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"(",dir,") absolute pathname "
-              "required.",NULL));
-
-  if(strchr(dir,'*'))
-    CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"(",dir,") wildcards not allowed "
-               "in pathname.",NULL));
-
-  if(*(dir+strlen(dir)-1) != '/')
-    dir = pstrcat(cmd->tmp_pool,dir,"/",NULL);
-
-  acl = parse_group_expression(cmd->tmp_pool,&argc,argv);
-
-  c = add_config_param("DefaultRoot",0);
-
-  c->argc = argc+1;
-  c->argv = pcalloc(c->pool,(argc+2) * sizeof(char*));
-  argv = (char**)c->argv;
-  *argv++ = pstrdup(permanent_pool,dir);
-
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "(", dir, ") absolute pathname "
+			    "required.", NULL));
+  
+  if(strchr(dir, '*'))
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "(", dir, ") wildcards not allowed "
+			    "in pathname.", NULL));
+  
+  if(*(dir + strlen(dir) - 1) != '/')
+    dir = pstrcat(cmd->tmp_pool, dir, "/", NULL);
+  
+  acl = parse_group_expression(cmd->tmp_pool, &argc, argv);
+  
+  c = add_config_param("DefaultRoot", 0);
+  
+  c->argc = argc + 1;
+  c->argv = pcalloc(c->pool, (argc + 2) * sizeof(char *));
+  argv = (char **) c->argv;
+  *argv++ = pstrdup(permanent_pool, dir);
+  
   if(argc && acl)
     while(argc--) {
-      *argv++ = pstrdup(permanent_pool,*((char**)acl->elts));
-      acl->elts = ((char**)acl->elts) + 1;
+      *argv++ = pstrdup(permanent_pool, *((char **) acl->elts));
+      acl->elts = ((char **) acl->elts) + 1;
     }
 
   *argv = NULL;
   return HANDLED(cmd);
 }
 
-MODRET add_defaultchdir(cmd_rec *cmd)
-{
+MODRET add_defaultchdir(cmd_rec *cmd) {
   config_rec *c;
   char *dir,**argv;
   int argc;
   array_header *acl = NULL;
 
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
-
+  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_GLOBAL);
+  
   if(cmd->argc < 2)
-    CONF_ERROR(cmd,"syntax: DefaultChdir <directory> [<group-expression>]");
-
+    CONF_ERROR(cmd, "syntax: DefaultChdir <directory> [<group-expression>]");
+  
   argv = cmd->argv;
-  argc = cmd->argc-2;
-
+  argc = cmd->argc - 2;
+  
   dir = *++argv;
+  
+  if(strchr(dir, '*'))
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "(", dir, ") wildcards not allowed "
+			    "in pathname.", NULL));
 
-  if(strchr(dir,'*'))
-    CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"(",dir,") wildcards not allowed "
-               "in pathname.",NULL));
-
-  if(*(dir+strlen(dir)-1) != '/')
-    dir = pstrcat(cmd->tmp_pool,dir,"/",NULL);
-
-  acl = parse_group_expression(cmd->tmp_pool,&argc,argv);
-
-  c = add_config_param("DefaultChdir",0);
-
-  c->argc = argc+1;
-  c->argv = pcalloc(c->pool,(argc+2) * sizeof(char*));
-  argv = (char**)c->argv;
-  *argv++ = pstrdup(permanent_pool,dir);
-
+  if(*(dir + strlen(dir) - 1) != '/')
+    dir = pstrcat(cmd->tmp_pool, dir, "/", NULL);
+  
+  acl = parse_group_expression(cmd->tmp_pool, &argc, argv);
+  
+  c = add_config_param("DefaultChdir", 0);
+  
+  c->argc = argc + 1;
+  c->argv = pcalloc(c->pool, (argc + 2) * sizeof(char *));
+  argv = (char **) c->argv;
+  *argv++ = pstrdup(permanent_pool, dir);
+  
   if(argc && acl)
     while(argc--) {
-      *argv++ = pstrdup(permanent_pool,*((char**)acl->elts));
-      acl->elts = ((char**)acl->elts) + 1;
+      *argv++ = pstrdup(permanent_pool, *((char **) acl->elts));
+      acl->elts = ((char **) acl->elts) + 1;
     }
-
+  
   *argv = NULL;
   return HANDLED(cmd);
 }
 
-MODRET add_userdirroot (cmd_rec *cmd)
-{
+MODRET add_userdirroot (cmd_rec *cmd) {
   CHECK_ARGS(cmd,1);
   CHECK_CONF (cmd, CONF_ANON);
 
-  add_config_param("UserDirRoot",1,(void*)get_boolean(cmd,1));
+  add_config_param("UserDirRoot", 1, (void *) get_boolean(cmd, 1));
   return HANDLED(cmd);
 }
 
