@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.201 2003-11-08 23:34:24 castaglia Exp $
+ * $Id: mod_core.c,v 1.202 2003-11-09 03:37:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2268,36 +2268,40 @@ MODRET set_order(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_allowdenyuser(cmd_rec *cmd) {
-  config_rec *c = NULL;
-
+MODRET set_allowdenyusergroup(cmd_rec *cmd) {
+  config_rec *c;
+  char **argv;
+  int argc, eval_type;
+  array_header *acl;
+ 
   CHECK_CONF(cmd, CONF_LIMIT);
 
   if (cmd->argc < 2)
     CONF_ERROR(cmd, "wrong number of parameters");
 
-  /* Is this a regular user expression, or a regular expression for
-   * matching user names?
+  /* For AllowUser and DenyUser, the default expression type is "or". */
+  if (strcmp(cmd->argv[0], "AllowUser") == 0 ||
+      strcmp(cmd->argv[0], "DenyUser") == 0)
+    eval_type = PR_EXPR_EVAL_OR;
+
+  /* For AllowGroup and DenyGroup, the default expression type is "and". */
+  else
+    eval_type = PR_EXPR_EVAL_AND;
+
+  /* Check the first parameter to see if it is an evaluation modifier:
+   * "and", "or", or "regex".
    */
+  if (strcasecmp(cmd->argv[1], "AND") == 0) {
+    eval_type = PR_EXPR_EVAL_AND;
+    argc = cmd->argc-2;
+    argv = cmd->argv+1;
 
-  if (strcmp(cmd->argv[1], "regex") != 0) {
-    char **argv = cmd->argv;
-    int argc = cmd->argc-1;
-    array_header *acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
+  } else if (strcasecmp(cmd->argv[1], "OR") == 0) {
+    eval_type = PR_EXPR_EVAL_OR;
+    argc = cmd->argc-2;
+    argv = cmd->argv+1;
 
-    c = add_config_param(cmd->argv[0], 0);
-
-    c->argc = argc;
-    c->argv = pcalloc(c->pool, (argc+1) * sizeof(char*));
-    argv = (char **) c->argv;
-
-    while (argc--) {
-      *argv++ = pstrdup(c->pool, *((char **) acl->elts));
-      acl->elts = ((char **)acl->elts) + 1;
-    }
-    *argv = NULL;
-
-  } else {
+  } else if (strcasecmp(cmd->argv[1], "regex") == 0) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
     regex_t *preg;
     int res;
@@ -2307,7 +2311,8 @@ MODRET set_allowdenyuser(cmd_rec *cmd) {
 
     preg = pr_regexp_alloc();
 
-    if ((res = regcomp(preg, cmd->argv[2], REG_EXTENDED|REG_NOSUB)) != 0) {
+    res = regcomp(preg, cmd->argv[2], REG_EXTENDED|REG_NOSUB);
+    if (res != 0) {
       char errstr[200] = {'\0'};
 
       regerror(res, preg, errstr, sizeof(errstr));
@@ -2317,79 +2322,43 @@ MODRET set_allowdenyuser(cmd_rec *cmd) {
         "regex compilation: ", errstr, NULL));
     }
 
-    /* The first NULL is used as the signal to the {Allow,Deny}User lookup
-     * function to handle the config_rec's contents as a regular expression,
-     * rather than a user list.
-     */
-    c = add_config_param(cmd->argv[0], 2, NULL, preg);
+    c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+    *((unsigned char *) c->argv[0]) = PR_EXPR_EVAL_REGEX;
+    c->argv[1] = (void *) preg;
+
+    return HANDLED(cmd);
+
 #else
     CONF_ERROR(cmd, "The 'regex' parameter cannot be used on this system, "
       "as you do not have POSIX compliant regex support");
 #endif /* HAVE_REGEX_H and HAVE_REGCOMP */
+
+  } else {
+    argc = cmd->argc-1;
+    argv = cmd->argv;
   }
 
-  return HANDLED(cmd);
-}
+  acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
 
-MODRET set_allowdenygroup(cmd_rec *cmd) {
-  config_rec *c = NULL;
+  c = add_config_param(cmd->argv[0], 0);
 
-  CHECK_CONF(cmd, CONF_LIMIT);
+  c->argc = acl->nelts + 1;
+  c->argv = pcalloc(c->pool, (c->argc + 1) * sizeof(char *));
 
-  if (cmd->argc < 2)
-    CONF_ERROR(cmd, "wrong number of parameters");
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = eval_type;
 
-  /* Is this a regular user expression, or a regular expression for
-   * matching user names?
-   */
+  argv = (char **) c->argv + 1;
 
-  if (strcmp(cmd->argv[1], "regex") != 0) {
-    char **argv = cmd->argv;
-    int argc = cmd->argc-1;
-    array_header *acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
-
-    c = add_config_param(cmd->argv[0], 0);
-
-    c->argc = argc;
-    c->argv = pcalloc(c->pool, (argc+1) * sizeof(char*));
-    argv = (char **) c->argv;
-
-    while (argc--) {
+  if (acl) {
+    while (acl->nelts--) {
       *argv++ = pstrdup(c->pool, *((char **) acl->elts));
       acl->elts = ((char **) acl->elts) + 1;
     }
-    *argv = NULL;
-
-  } else {
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-    regex_t *preg;
-    int res;
-
-    if (cmd->argc != 3)
-      CONF_ERROR(cmd, "wrong number of parameters");
-
-    preg = pr_regexp_alloc();
-
-    if ((res = regcomp(preg, cmd->argv[2], REG_EXTENDED|REG_NOSUB)) != 0) {
-      char errstr[200] = {'\0'};
-
-      regerror(res, preg, errstr, sizeof(errstr));
-      pr_regexp_free(preg);
-
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[2], "' failed "
-        "regex compilation: ", errstr, NULL));
-    }
-
-    /* The first NULL is used as the signal to the {Allow,Deny}Group lookup
-     * function to handle the config_rec's contents as a regular expression,
-     * rather than a group list.
-     */
-    c = add_config_param(cmd->argv[0], 2, NULL, preg);
-#else
-    CONF_ERROR(cmd, "The 'regex' parameter cannot be used on this system, "
-      "as you do not have POSIX compliant regex support");
-#endif /* HAVE_REGEX_H and HAVE_REGCOMP */
   }
+
+  *argv = NULL;
 
   return HANDLED(cmd);
 }
@@ -4606,9 +4575,9 @@ static conftable core_conftab[] = {
   { "AllowAll",			set_allowall,			NULL },
   { "AllowFilter",		set_allowfilter,		NULL },
   { "AllowForeignAddress",	set_allowforeignaddress,	NULL },
-  { "AllowGroup",		set_allowdenygroup,		NULL },
+  { "AllowGroup",		set_allowdenyusergroup,		NULL },
   { "AllowOverride",		set_allowoverride,		NULL },
-  { "AllowUser",		set_allowdenyuser,		NULL },
+  { "AllowUser",		set_allowdenyusergroup,		NULL },
   { "AuthOrder",		set_authorder,			NULL },
   { "Bind",			set_bind,			NULL },
   { "CDPath",			set_cdpath,			NULL },
@@ -4624,8 +4593,8 @@ static conftable core_conftab[] = {
   { "Deny",			set_allowdeny,			NULL },
   { "DenyAll",			set_denyall,			NULL },
   { "DenyFilter",		set_denyfilter,			NULL },
-  { "DenyGroup",		set_allowdenygroup,		NULL },
-  { "DenyUser",			set_allowdenyuser,		NULL },
+  { "DenyGroup",		set_allowdenyusergroup,		NULL },
+  { "DenyUser",			set_allowdenyusergroup,		NULL },
   { "DisplayConnect",		set_displayconnect,		NULL },
   { "DisplayFirstChdir",	set_displayfirstchdir,		NULL },
   { "DisplayGoAway",		set_displaygoaway,		NULL },

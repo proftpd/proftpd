@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.506 2003-11-09 01:55:28 castaglia Exp $
+$Id: NEWS,v 1.507 2003-11-09 03:37:28 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -22,6 +22,18 @@ CVS
   directly with the proftpd daemon via a new core module, mod_ctrls.  For
   this new functionality to be used, proftpd must be configured using the
   added --enable-ctrls option.
+- Bug 2015 - Add AND, OR keywords to Allow/DenyUser directives.
+  The AllowUser, DenyUser, AllowGroup, and DenyGroup directives now take
+  an optional keyword that indicates what type of expression they are:
+  AND, OR, or regex.  By default, AllowUser and DenyUser are OR expressions,
+  and AllowGroup and DenyGroup are AND expressions.  For example:
+
+    AllowUser regex ^ftp
+    DenyUser AND dave,bob
+    AllowGroup OR web,doc
+
+  These demonstrate that the optional keyword modifier must be the first
+  parameter in the configuration directive.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------

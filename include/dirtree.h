@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.44 2003-09-08 00:41:37 castaglia Exp $
+ * $Id: dirtree.h,v 1.45 2003-11-09 03:37:28 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -149,6 +149,11 @@ struct config_struc {
 /* For the Order directive */
 #define ORDER_ALLOWDENY		0
 #define ORDER_DENYALLOW		1
+
+/* For the different types of expressions: AND, OR, and REGEX. */
+#define PR_EXPR_EVAL_AND	0
+#define PR_EXPR_EVAL_OR		1
+#define PR_EXPR_EVAL_REGEX	2
 
 /* The following macro determines the "highest" level available for
  * configuration directives.  If a current dir_config is available, it's

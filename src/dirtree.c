@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.125 2003-11-01 07:11:07 castaglia Exp $
+ * $Id: dirtree.c,v 1.126 2003-11-09 03:37:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1422,7 +1422,7 @@ static int _check_user_access(xaset_t *set, char *name) {
 
   while (c) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-    if (c->argc == 2 && c->argv[0] == NULL) {
+    if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_REGEX) {
       regex_t *preg = (regex_t *) c->argv[1];
 
       if (regexec(preg, session.user, 0, NULL, 0) == 0) {
@@ -1430,16 +1430,21 @@ static int _check_user_access(xaset_t *set, char *name) {
         break;
       }
 
-    } else {
+    } else
 #endif /* HAVE_REGEX_H and HAVE_REGCOMP */
-      res = pr_user_or_expression((char **) c->argv);
+
+    if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_OR) {
+      res = pr_user_or_expression((char **) &c->argv[1]);
 
       if (res)
         break;
 
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+    } else if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_AND) {
+      res = pr_user_and_expression((char **) &c->argv[1]);
+
+      if (res)
+        break;
     }
-#endif /* HAVE_REGEX_H and HAVE_REGCOMP */
 
     c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
@@ -1452,11 +1457,10 @@ static int _check_group_access(xaset_t *set, char *name) {
   config_rec *c = find_config(set, CONF_PARAM, name, FALSE);
 
   while (c) {
-
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-    if (c->argc == 2 && c->argv[0] == NULL) {
+    if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_REGEX) {
       regex_t *preg = (regex_t *) c->argv[1];
-      
+
       if (session.group && regexec(preg, session.group, 0, NULL, 0) == 0) {
         res = TRUE;
         break;
@@ -1471,17 +1475,22 @@ static int _check_group_access(xaset_t *set, char *name) {
             break;
           }
       }
-    
-    } else {
+
+    } else
 #endif /* HAVE_REGEX_H and HAVE_REGCOMP */
-      res = pr_group_and_expression((char **) c->argv);
+
+    if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_OR) {
+      res = pr_group_or_expression((char **) &c->argv[1]);
 
       if (res)
         break;
 
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+    } else if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_AND) {
+      res = pr_group_and_expression((char **) &c->argv[1]);
+
+      if (res)
+        break;
     }
-#endif /* HAVE_REGEX_H and HAVE_REGCOMP */
 
     c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
