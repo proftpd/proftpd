@@ -127,12 +127,12 @@ typedef struct
 #endif
     __ptr_t (*gl_opendir) __PMT ((__const char *));
 #ifdef _GNU_SOURCE
-    int (*gl_lstat) __PMT ((__const char *__restrict,
-			    struct stat *__restrict));
-    int (*gl_stat) __PMT ((__const char *__restrict, struct stat *__restrict));
+    int (*gl_lstat) __PMT ((__const char *,
+			    struct stat *));
+    int (*gl_stat) __PMT ((__const char *, struct stat *));
 #else
-    int (*gl_lstat) __PMT ((__const char *__restrict, void *__restrict));
-    int (*gl_stat) __PMT ((__const char *__restrict, void *__restrict));
+    int (*gl_lstat) __PMT ((__const char *, void *));
+    int (*gl_stat) __PMT ((__const char *, void *));
 #endif
   } glob_t;
 
@@ -157,13 +157,13 @@ typedef struct
 # endif
     __ptr_t (*gl_opendir) __PMT ((__const char *));
 # ifdef _GNU_SOURCE
-    int (*gl_lstat) __PMT ((__const char *__restrict,
-			    struct stat64 *__restrict));
-    int (*gl_stat) __PMT ((__const char *__restrict,
-			   struct stat64 *__restrict));
+    int (*gl_lstat) __PMT ((__const char *,
+			    struct stat64 *));
+    int (*gl_stat) __PMT ((__const char *,
+			   struct stat64 *));
 # else
-    int (*gl_lstat) __PMT ((__const char *__restrict, void *__restrict));
-    int (*gl_stat) __PMT ((__const char *__restrict, void *__restrict));
+    int (*gl_lstat) __PMT ((__const char *, void *));
+    int (*gl_stat) __PMT ((__const char *, void *));
 # endif
   } glob64_t;
 #endif
@@ -182,24 +182,24 @@ typedef struct
    If memory cannot be allocated for PGLOB, GLOB_NOSPACE is returned.
    Otherwise, `glob' returns zero.  */
 #if _FILE_OFFSET_BITS != 64 || __GNUC__ < 2
-extern int glob __P ((__const char *__restrict __pattern, int __flags,
+extern int glob __P ((__const char *__pattern, int __flags,
 		      int (*__errfunc) (__const char *, int),
-		      glob_t *__restrict __pglob));
+		      glob_t *__pglob));
 
 /* Free storage allocated in PGLOB by a previous `glob' call.  */
 extern void globfree __P ((glob_t *__pglob));
 #else
-extern int glob __P ((__const char *__restrict __pattern, int __flags,
+extern int glob __P ((__const char *__pattern, int __flags,
 		      int (*__errfunc) (__const char *, int),
-		      glob_t *__restrict __pglob)) __asm__ ("glob64");
+		      glob_t *__pglob));
 
-extern void globfree __P ((glob_t *__pglob)) __asm__ ("globfree64");
+extern void globfree __P ((glob_t *__pglob));
 #endif
 
 #ifdef _LARGEFILE64_SOURCE
-extern int glob64 __P ((__const char *__restrict __pattern, int __flags,
+extern int glob64 __P ((__const char *__pattern, int __flags,
 			int (*__errfunc) (__const char *, int),
-			glob64_t *__restrict __pglob));
+			glob64_t *__pglob));
 
 extern void globfree64 __P ((glob64_t *__pglob));
 #endif
