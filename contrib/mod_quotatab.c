@@ -2,7 +2,7 @@
  * ProFTPD: mod_quotatab -- a module for managing FTP byte/file quotas via
  *                          centralized tables
  *
- * Copyright (c) 2001-2003 TJ Saunders
+ * Copyright (c) 2001-2004 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.12 2004-09-18 19:08:12 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.13 2004-12-04 07:52:40 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -940,6 +940,97 @@ MODRET set_quotatable(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+/* Variable handlers
+ */
+
+static const char *quota_get_bytes_str(void *data, size_t datasz) {
+  const char *res = NULL;
+  double adj = 0.0, bytes = *((double *) data);
+
+  switch (byte_units) {
+    case BYTE:
+      /* no calculation needed */
+
+      if (bytes > 0.0) {
+        char buf[PR_TUNABLE_BUFFER_SIZE];
+        memset(buf, '\0', sizeof(buf));
+        snprintf(buf, sizeof(buf), "%.2f", bytes);
+        res = pstrdup(session.pool, buf);
+
+      } else
+        res = pstrdup(session.pool, "(unlimited)");
+
+      break;
+
+    case KILO:
+      /* Divide by 1024.0 */
+      adj = (bytes / 1024.0);
+
+      if (adj > 0.0) {
+        char buf[PR_TUNABLE_BUFFER_SIZE];
+        memset(buf, '\0', sizeof(buf));
+        snprintf(buf, sizeof(buf), "%.2f KB", adj);
+        res = pstrdup(session.pool, buf);
+
+      } else
+        res = pstrdup(session.pool, "(unlimited)");
+
+      break;
+
+    case MEGA:
+      /* Divide by 1024.0 * 1024.0 */
+      adj = (bytes / (1024.0 * 1024.0));
+
+      if (adj > 0.0) {
+        char buf[PR_TUNABLE_BUFFER_SIZE];
+        memset(buf, '\0', sizeof(buf));
+        snprintf(buf, sizeof(buf), "%.2f MB", adj);
+        res = pstrdup(session.pool, buf);
+
+      } else
+        res = pstrdup(session.pool, "(unlimited)");
+
+      break;
+
+    case GIGA:
+      /* Divide by 1024.0 * 1024.0 * 1024.0 */
+      adj = (bytes / (1024.0 * 1024.0 * 1024.0));
+
+      if (adj > 0.0) {
+        char buf[PR_TUNABLE_BUFFER_SIZE];
+        memset(buf, '\0', sizeof(buf));
+        snprintf(buf, sizeof(buf), "%.2f GB", adj);
+        res = pstrdup(session.pool, buf);
+
+      } else
+        res = pstrdup(session.pool, "(unlimited)");
+
+      break;
+
+    default:
+      quotatab_log("warning: unknown QuotaDisplayUnits");
+      break;
+  }
+
+  return res;
+}
+
+static const char *quota_get_files_str(void *data, size_t datasz) {
+  const char *res;
+  unsigned int files = *((unsigned int *) data);
+
+  if (files != 0) {
+    char buf[PR_TUNABLE_BUFFER_SIZE];
+    memset(buf, '\0', sizeof(buf));
+    snprintf(buf, sizeof(buf), "%u", files);
+    res = pstrdup(session.pool, buf);
+
+  } else
+    res = pstrdup(session.pool, "(unlimited)");
+
+  return res;
+}
+
 /* Command handlers
  */
 
@@ -1255,6 +1346,91 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
     quotatab_log("no quota entry found, turning QuotaEngine off");
     use_quotas = FALSE;
   }
+
+  /* Register some Variable entries, for Display files. */
+  if (pr_var_set(quotatab_pool, "%{mod_quotatab.limit.bytes_in}",
+      "Maximum number of uploadable bytes", PR_VAR_TYPE_FUNC,
+      quota_get_bytes_str, &quotatab_limit.bytes_in_avail,
+      sizeof(double *)) < 0)
+    quotatab_log("error setting %%{mod_quotatab.limit.bytes_in} variable: %s",
+      strerror(errno));
+
+  if (pr_var_set(quotatab_pool, "%{mod_quotatab.limit.bytes_out}",
+      "Maximum number of downloadable bytes", PR_VAR_TYPE_FUNC,
+      quota_get_bytes_str, &quotatab_limit.bytes_out_avail,
+      sizeof(double *)) < 0)
+    quotatab_log("error setting %%{mod_quotatab.limit.bytes_out} variable: %s",
+      strerror(errno));
+
+  if (pr_var_set(quotatab_pool, "%{mod_quotatab.limit.bytes_xfer}",
+      "Maximum number of transferble bytes", PR_VAR_TYPE_FUNC,
+      quota_get_bytes_str, &quotatab_limit.bytes_xfer_avail,
+      sizeof(double *)) < 0)
+    quotatab_log("error setting %%{mod_quotatab.limit.bytes_xfer} variable: %s",
+      strerror(errno));
+
+  if (pr_var_set(quotatab_pool, "%{mod_quotatab.limit.files_in}",
+      "Maximum number of uploadable files", PR_VAR_TYPE_FUNC,
+      quota_get_files_str, &quotatab_limit.files_in_avail,
+      sizeof(unsigned int *)) < 0)
+    quotatab_log("error setting %%{mod_quotatab.limit.files_in} variable: %s",
+      strerror(errno));
+
+  if (pr_var_set(quotatab_pool, "%{mod_quotatab.limit.files_out}",
+      "Maximum number of downloadable files", PR_VAR_TYPE_FUNC,
+      quota_get_files_str, &quotatab_limit.files_out_avail,
+      sizeof(unsigned int *)) < 0)
+    quotatab_log("error setting %%{mod_quotatab.limit.files_out} variable: %s",
+      strerror(errno));
+
+  if (pr_var_set(quotatab_pool, "%{mod_quotatab.limit.files_xfer}",
+      "Maximum number of transferable files", PR_VAR_TYPE_FUNC,
+      quota_get_files_str, &quotatab_limit.files_xfer_avail,
+      sizeof(unsigned int *)) < 0)
+    quotatab_log("error setting %%{mod_quotatab.limit.files_xfer} variable: %s",
+      strerror(errno));
+
+  if (pr_var_set(quotatab_pool, "%{mod_quotatab.tally.bytes_in}",
+      "Current number of uploaded bytes", PR_VAR_TYPE_FUNC,
+      quota_get_bytes_str, &quotatab_tally.bytes_in_used,
+      sizeof(double *)) < 0)
+    quotatab_log("error setting %%{mod_quotatab.tally.bytes_in} variable: %s",
+      strerror(errno));
+
+  if (pr_var_set(quotatab_pool, "%{mod_quotatab.tally.bytes_out}",
+      "Current number of downloaded bytes", PR_VAR_TYPE_FUNC,
+      quota_get_bytes_str, &quotatab_tally.bytes_out_used,
+      sizeof(double *)) < 0)
+    quotatab_log("error setting %%{mod_quotatab.limit.bytes_out} variable: %s",
+      strerror(errno));
+
+  if (pr_var_set(quotatab_pool, "%{mod_quotatab.tally.bytes_xfer}",
+      "Current number of transferred bytes", PR_VAR_TYPE_FUNC,
+      quota_get_bytes_str, &quotatab_tally.bytes_xfer_used,
+      sizeof(double *)) < 0)
+    quotatab_log("error setting %%{mod_quotatab.tally.bytes_xfer} variable: %s",
+      strerror(errno));
+
+  if (pr_var_set(quotatab_pool, "%{mod_quotatab.tally.files_in}",
+      "Current number of uploaded files", PR_VAR_TYPE_FUNC,
+      quota_get_files_str, &quotatab_tally.files_in_used,
+      sizeof(unsigned int *)) < 0)
+    quotatab_log("error setting %%{mod_quotatab.tally.files_in} variable: %s",
+      strerror(errno));
+
+  if (pr_var_set(quotatab_pool, "%{mod_quotatab.tally.files_out}",
+      "Current number of downloaded files", PR_VAR_TYPE_FUNC,
+      quota_get_files_str, &quotatab_tally.files_out_used,
+      sizeof(unsigned int *)) < 0)
+    quotatab_log("error setting %%{mod_quotatab.tally.files_out} variable: %s",
+      strerror(errno));
+
+  if (pr_var_set(quotatab_pool, "%{mod_quotatab.tally.files_xfer}",
+      "Current number of transferred files", PR_VAR_TYPE_FUNC,
+      quota_get_files_str, &quotatab_tally.files_xfer_used,
+      sizeof(unsigned int *)) < 0)
+    quotatab_log("error setting %%{mod_quotatab.tally.files_xfer} variable: %s",
+      strerror(errno));
 
   return DECLINED(cmd);
 }

@@ -1,4 +1,4 @@
-<!-- $Id: mod_quotatab.html,v 1.1 2004-11-03 19:37:45 castaglia Exp $ -->
+<!-- $Id: mod_quotatab.html,v 1.2 2004-12-04 07:52:40 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_quotatab.html,v $ -->
 
 <html>
@@ -403,6 +403,31 @@ information, or to develop a new submodule, there is developer documentation
 available <a href="http://www.castaglia.org/proftpd/doc/devel-guide/advanced/Quotatab/">here</a>.
 
 <p>
+<b><code>Display</code> Variables</b><br>
+The following variables are provided by <code>mod_quotatab</code>, and
+can be used in any <code>Display</code> file (<i>e.g.</i>
+<code>DisplayLogin</code>) other than <code>DisplayConnect</code>.  The
+values for the variables are not known when the client connects to the
+daemon, hence why the variables are not useful in a <code>DisplayConnect</code>
+file.
+<pre>
+  %{mod_quotatab.limit.bytes_in}
+  %{mod_quotatab.limit.bytes_out}
+  %{mod_quotatab.limit.bytes_xfer}
+  %{mod_quotatab.limit.files_in}
+  %{mod_quotatab.limit.files_out}
+  %{mod_quotatab.limit.files_xfer}
+  %{mod_quotatab.tally.bytes_in}
+  %{mod_quotatab.tally.bytes_out}
+  %{mod_quotatab.tally.bytes_xfer}
+  %{mod_quotatab.tally.files_in}
+  %{mod_quotatab.tally.files_out}
+  %{mod_quotatab.tally.files_xfer}
+</pre>
+Note that the values for the various byte variables honor any
+<a href="#QuotaDisplayUnits"><code>QuotaDisplayUnits</code></a> setting.
+
+<p>
 <hr>
 <h2><a name="Installation">Installation</a></h2>
 To install <code>mod_quotatab</code>, follow these instructions.  After
@@ -461,7 +486,7 @@ for that module.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2004-11-03 19:37:45 $</i><br>
+Last Updated: <i>$Date: 2004-12-04 07:52:40 $</i><br>
 
 <br><hr>
 

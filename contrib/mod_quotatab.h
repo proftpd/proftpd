@@ -2,7 +2,7 @@
  * ProFTPD: mod_quotatab -- a module for managing FTP byte/file quotas via
  *                          centralized tables
  *
- * Copyright (c) 2001-2003 TJ Saunders
+ * Copyright (c) 2001-2004 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.h,v 1.4 2004-06-07 23:00:35 castaglia Exp $
+ * $Id: mod_quotatab.h,v 1.5 2004-12-04 07:52:40 castaglia Exp $
  */
 
 #ifndef MOD_QUOTATAB_H
@@ -41,8 +41,8 @@
 #define MOD_QUOTATAB_VERSION "mod_quotatab/1.2.13"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001021001
-# error "ProFTPD 1.2.10rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030001
+# error "ProFTPD 1.3.0rc1 or later required"
 #endif
 
 /* Quota types */
