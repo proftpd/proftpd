@@ -1,3 +1,290 @@
+2000-07-07 02:09  macgyver
+
+	* contrib/: README.ratio (1.1), mod_ratio.c (1.9): Updated to
+	mod_ratio.
+
+2000-07-07 01:41  macgyver
+
+	* NEWS (1.53), modules/mod_ls.c (1.29), modules/mod_tar.c (1.6),
+	src/auth.c (1.4), src/data.c (1.12), src/fs.c (1.8), src/log.c
+	(1.16), src/support.c (1.16): Fixed various MAXPATHLEN buffers.
+
+2000-07-07 01:21  macgyver
+
+	* modules/mod_ls.c (1.28): Use access_check to properly check
+	permissions.  More consistent handling of '.' and '..'.  I can't
+	wait to rewrite this module.
+
+2000-07-07 01:18  macgyver
+
+	* modules/mod_core.c (1.33), src/support.c (1.15): Handle symlinks
+	more appropriately...follow the link, not the file.
+
+2000-07-06 20:19  macgyver
+
+	* NEWS (1.52), include/support.h (1.4), src/dirtree.c (1.16),
+	src/support.c (1.14): Added access_check() to handle correct
+	permission checking.
+
+2000-07-06 19:26  macgyver
+
+	* src/auth.c (1.3): Minor correction to auth_uid_name and
+	auth_gid_name.
+
+2000-07-06 19:00  macgyver
+
+	* src/log.c (1.15): Documented design decision behind utmp entries
+	and strings.
+
+2000-07-06 18:42  macgyver
+
+	* doc/Configuration.html (1.24): Updates to documentation.
+
+2000-07-06 18:42  macgyver
+
+	* modules/Makefile.in (1.5): Removed mod_mysql.h dependency.
+
+2000-07-06 15:19  macgyver
+
+	* contrib/mod_sqlpw.c (1.5): Added SQLKeyField, SQLKey and
+	SQLAuthoritative directives.
+
+2000-07-06 15:08  macgyver
+
+	* NEWS (1.51), doc/Configuration.html (1.23), include/proftpd.h
+	(1.10), modules/mod_core.c (1.32), modules/mod_xfer.c (1.35): Fixed
+	GroupOwner and added UserOwner.
+
+2000-07-06 14:29  macgyver
+
+	* NEWS (1.50), config.h.in (1.15), configure (1.33), configure.in
+	(1.33), src/main.c (1.31), modules/mod_auth.c (1.34): Added in
+	support to handle large groups efficiently.  This should take care
+	of the 'hangs forever on login' bug.
+
+2000-07-06 13:33  macgyver
+
+	* modules/mod_auth.c (1.33): Fixed a bug when classes weren't
+	enabled and DisplayConnect is used.
+
+2000-07-06 08:33  macgyver
+
+	* include/inet.h (1.3), src/data.c (1.11), src/inet.c (1.9):
+	AllowForeignAddress directives now work on passive connections as
+	well.
+
+2000-07-06 07:58  macgyver
+
+	* modules/mod_site.c (1.5): Typo in AllowChmod implementation. :)
+
+2000-07-06 07:44  macgyver
+
+	* Make.rules.in (1.6): Minor cleanups.
+
+2000-07-06 01:59  macgyver
+
+	* src/main.c (1.30): Added in set_proc_title duirng login.
+
+2000-07-06 01:53  macgyver
+
+	* modules/: mod_auth.c (1.32), mod_core.c (1.31), mod_xfer.c
+	(1.34): Stubs for unimplemented commands.  Bleh...we need to
+	overhaul this protocol.
+
+2000-07-06 01:42  macgyver
+
+	* NEWS (1.49), modules/mod_xfer.c (1.33): Minor typo in cmd_stor.
+
+2000-07-06 01:42  macgyver
+
+	* modules/mod_auth.c (1.31): Fixed a minor race condition in
+	classes.
+
+2000-07-06 01:42  macgyver
+
+	* doc/Configuration.html (1.22): Updated classes documentation.
+
+2000-07-06 01:18  macgyver
+
+	* NEWS (1.48), modules/mod_ls.c (1.27): Fixed a minor permissions
+	display problem when DirFakeMode is not in use.
+
+2000-07-06 01:13  macgyver
+
+	* src/proftpd.8 (1.6): Added documentation for -t option.
+
+2000-07-06 01:08  macgyver
+
+	* src/main.c (1.29): Fixed use of 500 instead of R_500.
+
+2000-07-06 00:57  macgyver
+
+	* modules/mod_pam.c (1.12): Added in session control management.
+
+2000-07-06 00:57  macgyver
+
+	* NEWS (1.47), config.h.in (1.14), configure (1.32), configure.in
+	(1.32), lib/vsnprintf.c (1.3), src/ftpcount.c (1.7): Made portable
+	*snprintf libraries more so by supporting floating point operations
+	and updated ftpcount accordingly.
+
+2000-07-05 23:51  macgyver
+
+	* lib/pwgrent.c (1.4): A fix for dealing with FreeBSD's (IMO
+	**BROKEN**) passwd scheme that allows comments and blank lines in
+	passwd files.
+
+2000-07-05 23:41  macgyver
+
+	* NEWS (1.46), modules/mod_site.c (1.4): Added AllowChmod
+	directive.
+
+2000-07-05 23:24  macgyver
+
+	* NEWS (1.45), doc/Configuration.html (1.21), modules/mod_ls.c
+	(1.26), modules/mod_readme.c (1.6): DisplayReadme now accepts
+	patterns.
+
+2000-07-05 22:55  macgyver
+
+	* Make.rules.in (1.5), NEWS (1.44), include/default_paths.h (1.2),
+	src/main.c (1.28), src/proftpd.8 (1.5): A PID file is now created
+	in standalone mode.
+
+2000-07-05 22:31  macgyver
+
+	* INSTALL (1.6): Updated documentation.
+
+2000-07-05 22:31  macgyver
+
+	* acconfig.h (1.6), config.h.in (1.13), configure (1.31),
+	configure.in (1.31), include/conf.h (1.5), modules/mod_ls.c (1.25):
+	Fixed a POSIX issue regarding NAME_MAX usage.
+
+2000-07-05 22:31  macgyver
+
+	* NEWS (1.43): Updated news.
+
+2000-07-03 13:25  macgyver
+
+	* modules/mod_ls.c (1.24): Fixed potential buffer problem in
+	dolist().
+
+2000-07-03 11:25  macgyver
+
+	* modules/mod_log.c (1.14): Cleaned up mod_log slightly, and added
+	in some comments about potential buffer problems to be fixed after
+	1.2.0.
+
+2000-07-03 11:03  macgyver
+
+	* README.PAM (1.4): Updated PAM documentation to reflect AuthPAM.
+
+2000-07-03 10:55  macgyver
+
+	* modules/mod_pam.c (1.11): Changed PAMConfig to AuthPAMConfig for
+	compatability reasons going forward.  Added in AuthPAM directive to
+	selectively activate/deactivate PAM.  Cleaned up PAM functions a
+	bit and made some checks more strict.  Removed a minor potential
+	memory leak.
+
+2000-07-03 09:30  macgyver
+
+	* src/main.c (1.27): Security fix in setproctitle().
+
+2000-05-15 10:08  macgyver
+
+	* contrib/mod_sqlpw.c (1.4): Fixed the 'password shows up instead
+	of the username' problem with SQL passwords
+
+2000-03-06 01:11  macgyver
+
+	* CREDITS (1.2): Updated CREDITS
+
+2000-03-06 00:44  macgyver
+
+	* INSTALL (1.5): An even cooler INSTALL file
+
+2000-03-06 00:38  macgyver
+
+	* INSTALL (1.4), doc/Configuration.html (1.20): Documentation
+	updates
+
+2000-03-06 00:25  macgyver
+
+	* NEWS (1.42), modules/mod_ls.c (1.23): Added in -L option for
+	things like mirror to work with symlinks
+
+2000-03-05 23:32  macgyver
+
+	* configure (1.30), configure.in (1.30): Fixed a bug in
+	link-testing for -ldl
+
+2000-03-03 15:10  macgyver
+
+	* config.h.in (1.12), configure (1.29), configure.in (1.29),
+	modules/mod_pam.c (1.10): Minor cleanups of configure scripts to
+	remove dependencies on -ldl
+
+2000-03-02 09:32  macgyver
+
+	* src/: ftpcount.1 (1.3), ftpshut.8 (1.3), ftpwho.1 (1.3),
+	proftpd.8 (1.4), xferlog.5 (1.2): Cleaned up man pages a bit.  Lots
+	more work still needed, though.
+
+2000-03-01 00:11  macgyver
+
+	* include/conf.h (1.4), modules/mod_tar.c (1.5): Moved the NAME_MAX
+	stuff into conf.h, for portability
+
+2000-03-01 00:11  macgyver
+
+	* modules/mod_auth.c (1.30): Cleanup of a couple of typos, and
+	removed some redundant code
+
+2000-03-01 00:11  macgyver
+
+	* src/pool.c (1.11): Commented out references to symbol information
+	in pool allocations
+
+2000-03-01 00:11  macgyver
+
+	* NEWS (1.41), modules/mod_ls.c (1.22): Put in a better optimized
+	sreaddir function
+
+2000-02-29 01:25  macgyver
+
+	* NEWS (1.40), acconfig.h (1.5), config.h.in (1.11), configure
+	(1.28), configure.in (1.28), src/main.c (1.26): Added in support
+	for tzset, to preserve timezone information across a chroot
+
+2000-02-29 01:25  macgyver
+
+	* src/ftpcount.c (1.6): Cleaned up a couple of compile-time
+	warnings
+
+2000-02-28 19:11  macgyver
+
+	* NEWS (1.39), lib/vsnprintf.c (1.2), src/log.c (1.14): Removed
+	spurious alloca calls
+
+2000-02-28 18:30  macgyver
+
+	* modules/mod_tar.c (1.4): Make mod_tar more portable
+
+2000-02-28 14:19  macgyver
+
+	* NEWS (1.38), doc/Configuration.html (1.19), modules/mod_auth.c
+	(1.29), modules/mod_log.c (1.13): Added in %A, %F, and %m to
+	LogFormat so we can do CLF-style logs now
+
+2000-02-28 14:02  macgyver
+
+	* ChangeLog (1.14), NEWS (1.37), src/dirtree.c (1.15), src/main.c
+	(1.25): Added -t option to allow for syntax checking of a config
+	file and made config file errors give line and file information on
+	failure
+
 2000-02-28 13:06  macgyver
 
 	* modules/: mod_auth.c (1.28), mod_core.c (1.30): Minor cosmetic
