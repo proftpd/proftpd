@@ -24,7 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* $Id: privs.h,v 1.24 2004-03-10 01:31:30 castaglia Exp $
+/* $Id: privs.h,v 1.25 2004-04-13 17:52:31 castaglia Exp $
  */
 
 #ifndef PR_PRIVS_H
@@ -57,9 +57,9 @@
  * doing this in here:
  */
 
-#ifdef __hpux
-# define setreuid(x,y) setresuid(x,y,0)
-#endif /* __hpux */
+#if defined(HPUX10) || defined(HPUX11)
+# define setreuid(r, e) setresuid((r), (e), 0)
+#endif /* HPUX */
 
 #ifdef PR_DEVEL_COREDUMP
 /* Unix kernels can be notoriously picky about dumping the core for
@@ -112,11 +112,11 @@
 #  define PRIVS_ROOT { \
     pr_log_debug(DEBUG9, "ROOT PRIVS at %s:%d", __FILE__, __LINE__); \
     if (!session.disable_id_switching) { \
-      if (setregid(session.gid, PR_ROOT_GID)) \
-        pr_log_pri(PR_LOG_ERR, "PRIVS_ROOT: unable to setregid(): %s", \
-          strerror(errno)); \
       if (setreuid(session.uid, PR_ROOT_UID)) \
         pr_log_pri(PR_LOG_ERR, "PRIVS_ROOT: unable to setreuid(): %s", \
+          strerror(errno)); \
+      if (setregid(session.gid, PR_ROOT_GID)) \
+        pr_log_pri(PR_LOG_ERR, "PRIVS_ROOT: unable to setregid(): %s", \
           strerror(errno)); \
     } else \
       pr_log_debug(DEBUG9, "ROOT PRIVS: ID switching disabled"); \
@@ -129,6 +129,9 @@
       if (setreuid(session.uid, PR_ROOT_UID)) \
         pr_log_pri(PR_LOG_ERR, "PRIVS_USER: unable to setreuid(session.uid, PR_ROOT_UID): %s", \
           strerror(errno)); \
+      if (setregid(session.gid, session.login_gid)) \
+        pr_log_pri(PR_LOG_ERR, "PRIVS_USER: unable to setregid(session.gid, " \
+          "session.login_gid): %s", strerror(errno)); \
       if (setreuid(session.uid, session.login_uid)) \
         pr_log_pri(PR_LOG_ERR, "PRIVS_USER: unable to setreuid(session.uid, " \
           "session.login_uid): %s", strerror(errno)); \
@@ -237,6 +240,9 @@
     if (seteuid(PR_ROOT_UID)) \
       pr_log_pri(PR_LOG_ERR, "PRIVS_USER: unable to seteuid(PR_ROOT_UID): %s", \
         strerror(errno)); \
+    if (setegid(session.login_gid)) \
+      pr_log_pri(PR_LOG_ERR, "PRIVS_USER: unable to setegid(session.login_gid): " \
+        "%s", strerror(errno)); \
     if (seteuid(session.login_uid)) \
       pr_log_pri(PR_LOG_ERR, "PRIVS_USER: unable to seteuid(session.login_uid): " \
         "%s", strerror(errno)); \

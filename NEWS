@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.554 2004-04-11 20:42:37 castaglia Exp $
+$Id: NEWS,v 1.555 2004-04-13 17:52:30 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -141,6 +141,7 @@ CVS
 - Bug 2385 - Renames fail with error "Invalid cross-device link".
 - Bug 2383 - mod_ctrls.c: ctrls_listen(): Invalid size in bind() argument.
   The size of struct sockaddr_un is not consistent across platforms.
+- Bug 2387 - PRIVS_USER macro should set effective GID to user's primary GID.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------
