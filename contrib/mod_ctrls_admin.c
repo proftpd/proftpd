@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.16 2004-05-02 05:42:18 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.17 2004-05-20 17:28:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -704,6 +704,9 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
 
       child_update();
       nkids = child_count();     
+
+      /* Always check for sent signals in a while() loop. */
+      pr_signals_handle();
     }
   }
 
