@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.21 2004-11-02 18:18:59 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.22 2005-04-04 20:41:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -686,12 +686,21 @@ MODRET pw_check(cmd_rec *cmd) {
 
   } else {
 
-    if ((res = sia_ses_authent(NULL, pw, ent)) != SIASUCCESS)
+    res = sia_ses_authent(NULL, pw, ent);
+    if (res != SIASUCCESS) {
+      sia_ses_release(&ent);
+      PRIVS_RELINQUISH
       pr_log_auth(PR_LOG_NOTICE, "sia_ses_authent() returned %d for user '%s'",
         res, user);
+      return ERROR(cmd);
+    }
 
-    if ((res = sia_ses_release(&ent)) != SIASUCCESS)
+    res = sia_ses_release(&ent);
+    if (res != SIASUCCESS) {
+      PRIVS_RELINQUISH
       pr_log_auth(PR_LOG_NOTICE, "sia_ses_release() returned %d", res);
+      return ERROR(cmd);
+    }
   }
   PRIVS_RELINQUISH
 
