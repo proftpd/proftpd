@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  */
 
-/* $Id: pr-syslog.c,v 1.14 2003-06-27 07:10:01 castaglia Exp $
+/* $Id: pr-syslog.c,v 1.15 2004-05-19 17:07:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -62,7 +62,7 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
   struct log_ctl lc;
 #endif
 
-  /* clear the buffer */
+  /* Clear the buffer */
   memset(logbuf, '\0', sizeof(logbuf));
 
   /* Check for invalid bits. */
@@ -209,6 +209,22 @@ int pr_openlog(const char *ident, int opts, int facility) {
   }
 #else
   sockfd = open(PR_PATH_LOG, O_WRONLY);
+
+# ifdef SOLARIS2
+  /* Workaround for a /dev/log bug on Solaris. */
+  if (sockfd >= 0) {
+    struct strioctl ic;
+
+    ic.ic_cmd = I_ERRLOG;
+    ic.ic_timout = 0;
+    ic.ic_len = 0;
+    ic.ic_dp = NULL;
+
+    if (ioctl(sockfd, I_STR, &ic) < 0)
+      fprintf(stderr, "error setting I_ERRLOG on " PR_PATH_LOG ": %s\n",
+        strerror(errno));
+  }
+# endif /* SOLARIS2 */
 #endif
 
   return sockfd;

@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.231 2004-05-17 18:24:15 castaglia Exp $
+ * $Id: main.c,v 1.232 2004-05-19 17:07:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -379,6 +379,7 @@ static void end_login_noexit(void) {
       (ServerType == SERVER_INETD && !syntax_check))
     pr_log_pri(PR_LOG_INFO, "FTP session closed.");
 
+  log_closesyslog();
 }
 
 /* Finish any cleaning up, mark utmp as closed and exit without flushing
