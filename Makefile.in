@@ -31,7 +31,7 @@ INSTALL_SBIN=$(INSTALL) -s -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0755
 INSTALL_MAN=$(INSTALL) -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0644
 #
 
-all: proftpd utils
+all: proftpd$(EXEEXT) utils
 
 force-buildstamp:
 	echo \#define BUILD_STAMP \"`date`\" > include/buildstamp.h
@@ -157,9 +157,6 @@ distclean: clean depend
 	rm -rf `find . -name "*~"`
 	rm -rf `find . -name "*.bak"`
 
-# added dist target which distclean's and then moves the proftpd.spec
-# file in to the main source directory.
-# jss - 2/26
 dist: distclean
 	mv -f contrib/dist/rpm/proftpd.spec .
 
