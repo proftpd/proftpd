@@ -31,7 +31,7 @@ static const char letters[] =
    rules for mk[s]temp (i.e. end in "XXXXXX").  The name constructed
    does not exist at the time of the call to mkstemp().  TMPL is
    overwritten with the result.  Creates the file and returns a read-write
-   fd; the file is mode 0600 modulo umask. 
+   fd; the file is mode 0600 modulo umask.
 
    We use a clever algorithm to get hard-to-predict names. */
 int mkstemp (char *tmpl) {

@@ -48,7 +48,7 @@ char
   res = *stringp;
   while(**stringp && !strchr(delim, **stringp))
     ++(*stringp);
-  
+
   if (**stringp) {
     **stringp = '\0';
     ++(*stringp);

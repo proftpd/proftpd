@@ -27,7 +27,7 @@
 /* Shows a count of "who" is online via proftpd.  Uses the /var/run/proftpd*
  * log files.
  *
- * $Id: ftpcount.c,v 1.7 2003-01-02 17:28:22 castaglia Exp $
+ * $Id: ftpcount.c,v 1.8 2003-01-05 01:31:35 jwm Exp $
  */
 
 #include "utils.h"
@@ -50,7 +50,7 @@ static void scan_config_file(void) {
   FILE *fp = NULL;
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   char *cp, *file = NULL;
-  
+
   if (!config_filename || (fp = fopen(config_filename,"r")) == NULL)
     return;
 
@@ -76,19 +76,19 @@ static void scan_config_file(void) {
     /* strip whitespace */
     while (*cp && isspace((int) *cp))
       cp++;
-    
+
     file = cp;
 
     /* If the scoreboard file argument is quoted, dequote */
     if (*cp == '"') {
       char *src = cp;
-      
+
       cp++;
       file++;
 
       while (*++src) {
         switch (*src) {
-          case '\\': 
+          case '\\':
             if (*++src)
               *cp++ = *src;
             break;
@@ -164,17 +164,17 @@ int main(int argc, char **argv) {
   pid_t oldpid = 0,mpid;
   unsigned int count = 0, total = 0;
   int c = 0, res = 0;
-  struct scoreboard_class classes[MAX_CLASSES];  
+  struct scoreboard_class classes[MAX_CLASSES];
   char *cp, *progname = *argv;
   const char *cmdopts = "c:f:h";
-   
+
   memset(classes, 0, MAX_CLASSES * sizeof(struct scoreboard_class));
-   
+
   if((cp = strrchr(progname,'/')) != NULL)
     progname = cp+1;
 
   opterr = 0;
-  while((c = 
+  while((c =
 #ifdef HAVE_GETOPT_LONG
 	 getopt_long(argc, argv, cmdopts, opts, NULL)
 #else /* HAVE_GETOPT_LONG */
@@ -204,7 +204,7 @@ int main(int argc, char **argv) {
    */
   if (check_scoreboard_file() < 0) {
     scan_config_file();
-    
+
     if (check_scoreboard_file() < 0) {
       fprintf(stderr, "%s: %s\n", util_get_scoreboard(), strerror(errno));
       fprintf(stderr, "(Perhaps you need to specify the ScoreboardFile with -f, or change\n");
@@ -212,7 +212,7 @@ int main(int argc, char **argv) {
       exit(1);
     }
   }
-  
+
   count = 0;
   if ((res = util_open_scoreboard(O_RDONLY, &mpid)) < 0) {
     switch (res) {
@@ -260,13 +260,13 @@ int main(int argc, char **argv) {
 	classes[i].score_count++;
         break;
       }
-       
+
       if (strcasecmp(classes[i].score_class, score->sce_class) == 0) {
-	classes[i].score_count++; 
+	classes[i].score_count++;
 	break;
       }
     }
-     
+
     total++;
   }
   util_close_scoreboard();
@@ -282,6 +282,6 @@ int main(int argc, char **argv) {
          classes[i].score_count, classes[i].score_count > 1 ? "s" : "");
     }
   }
-   
+
   return 0;
 }

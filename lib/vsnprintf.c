@@ -3,12 +3,12 @@
  * modify it under the terms of the GNU Library General Public License as
  * published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version.
- * 
+ *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Library General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Library General Public
  * License along with this library; see the file COPYING.LIB.  If
  * not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite
@@ -163,7 +163,7 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
 {
   int len;
   unsigned long num;
-  int i, base; 
+  int i, base;
   char *str;
   const char *s;
 

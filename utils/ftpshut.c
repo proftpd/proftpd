@@ -43,15 +43,15 @@ static int isnumeric(char *str)
 {
   while (str && isspace((int) *str))
     str++;
-  
+
   if(!str || !*str)
     return 0;
-  
+
   for(; str && *str; str++) {
     if (!isdigit((int) *str))
       return 0;
   }
-  
+
   return 1;
 }
 
@@ -80,17 +80,17 @@ int main(int argc, char *argv[])
 		progname, c);
 	show_usage(progname);
       }
-      
+
       if(c == 'd')
 	disc = atoi(optarg);
       else if(c == 'l')
 	deny = atoi(optarg);
-      
+
       break;
-      
+
     case '?':
       fprintf(stderr,"%s: unknown option '%c'.\n",progname,(char)optopt);
-      
+
     case 'h':
     default:
       show_usage(progname);
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 	fprintf(stderr, "%s: Invalid time interval specified.\n", progname);
 	show_usage(progname);
       }
-      
+
       now += (60 * atoi(shut));
       tm = localtime(&now);
     } else {
@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
 		progname);
 	show_usage(progname);
       }
-      
+
       if(hr < tm->tm_hour || (hr == tm->tm_hour && mn <= tm->tm_min)) {
         now += 86400;		/* one day forward */
         tm = localtime(&now);

@@ -27,7 +27,7 @@ not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite
 #define PR_LOG_ERR LOG_ERR
 extern void log_pri(int, char *, ...);
 
-/* From utils.c */
+/* From support.c */
 extern char *sstrncpy(char *dest, const char *src, size_t n);
 
 #define NPWDFIELDS 	7
@@ -93,7 +93,7 @@ static struct passwd *supp_getpwent(const char *buf) {
   pwd->pw_dir = fields[5];
   pwd->pw_shell = fields[6];
 
-  return pwd;  
+  return pwd;
 }
 
 struct passwd *fgetpwent(FILE *fp) {
@@ -133,7 +133,7 @@ static char *fgetbufline(char **buf, int *buflen, FILE *fp) {
     /* No -- allocate a larger buffer, doubling buflen. */
     *buflen += *buflen;
 
-    { 
+    {
       char *new_buf;
 
       if ((new_buf = realloc(*buf, *buflen)) == NULL)
@@ -174,17 +174,17 @@ static struct group *supp_getgrent(const char *buf) {
   char *cp;
 
   i = strlen(buf) + 1;
-  
+
   if (!grpbuf)
     grpbuf = malloc(i);
   else
     grpbuf = realloc(grpbuf, i);
-  
+
   if (!grpbuf)
     return NULL;
-  
+
   sstrncpy(grpbuf, buf, i);
-  
+
   if ((cp = strrchr(grpbuf, '\n')))
     *cp = '\0';
 
@@ -199,7 +199,7 @@ static struct group *supp_getgrent(const char *buf) {
     log_pri(PR_LOG_ERR, "Malformed entry in group file: %s", buf);
     return NULL;
   }
-  
+
   if (*grpfields[2] == '\0')
     return NULL;
 

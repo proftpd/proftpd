@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.35 2003-01-02 17:28:19 castaglia Exp $
+ * $Id: mod_site.c,v 1.36 2003-01-05 01:29:38 jwm Exp $
  */
 
 #include "conf.h"
@@ -149,7 +149,7 @@ MODRET site_chmod(cmd_rec *cmd) {
   /* Construct the target file name by concatenating all the parameters after
    * the mode, separating them with spaces.
    */
-  for (i = 2; i <= cmd->argc-1; i++) 
+  for (i = 2; i <= cmd->argc-1; i++)
     arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "", cmd->argv[i], NULL);
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)

@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.5 2003-01-02 17:28:19 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.6 2003-01-05 01:29:38 jwm Exp $
  */
 
 #include "conf.h"
@@ -256,7 +256,7 @@ static struct group *af_getgrp(const char *buf) {
 
 static unsigned char af_close_file(authfile_file_t *file) {
   if (file && file->af_file) {
-    fclose(file->af_file); 
+    fclose(file->af_file);
     file->af_file = NULL;
   }
 
@@ -403,7 +403,7 @@ static unsigned char af_setgrent(void) {
       /* Log the error */
       log_pri(PR_LOG_ERR, "error: unable to open group file '%s': %s",
         af_current_group_file->af_path, strerror(errno));
-        
+
       /* Move to the next file in the list. */
       af_current_group_file = af_current_group_file->af_next;
       continue;
@@ -443,7 +443,7 @@ static unsigned char af_allow_pwent(authfile_file_t *passwdf,
 
     if ((res != 0 && !passwdf->af_name_regex_inverted) ||
         (res == 0 && passwdf->af_name_regex_inverted)) {
-      log_debug(DEBUG3, MOD_AUTHFILE_VERSION ": skipping user '%s': " 
+      log_debug(DEBUG3, MOD_AUTHFILE_VERSION ": skipping user '%s': "
         "name '%s' does not meet allowed filter '%s'", pwd->pw_name,
         pwd->pw_name, passwdf->af_name_filter);
       return FALSE;
@@ -503,7 +503,7 @@ static struct passwd *af_getpwent(authfile_file_t *passwdf) {
       continue;
 
     break;
-  } 
+  }
 
   return pwd;
 }
@@ -607,7 +607,7 @@ MODRET authfile_getpwnam(cmd_rec *cmd) {
     if (!strcmp(name, pwd->pw_name))
 
       /* Found the requested name */
-      break;  
+      break;
 
   return pwd ? mod_create_data(cmd, pwd) : DECLINED(cmd);
 }
@@ -938,7 +938,7 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
         *sep = '\0';
 
         min = strtol(cmd->argv[i], &tmp, 10);
- 
+
         if (tmp && *tmp)
           CONF_ERROR(cmd, "badly formatted minimum ID");
 
@@ -986,7 +986,7 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
 
 #endif /* !HAVE_REGEX_H && !HAVE_REGCOMP */
 
-      } else 
+      } else
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown restriction '",
           cmd->argv[i], "'", NULL));
     }
@@ -1039,7 +1039,7 @@ MODRET set_authuserfile(cmd_rec *cmd) {
         *sep = '\0';
 
         min = strtol(cmd->argv[i], &tmp, 10);
-  
+
         if (tmp && *tmp)
           CONF_ERROR(cmd, "badly formatted minimum ID");
 
@@ -1117,7 +1117,7 @@ MODRET set_authuserfile(cmd_rec *cmd) {
       } else
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown restriction '",
           cmd->argv[i], "'", NULL));
-    } 
+    }
   }
 
   return HANDLED(cmd);
@@ -1130,7 +1130,7 @@ static int authfile_sess_init(void) {
   config_rec *c = NULL;
 
   af_user_file_list = af_group_file_list = NULL;
- 
+
   /* Search for all relevant AuthUserFiles for this server. */
   c = find_config(main_server->conf, CONF_PARAM, "AuthUserFile", FALSE);
 

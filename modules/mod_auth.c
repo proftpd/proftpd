@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.130 2003-01-02 18:25:19 castaglia Exp $
+ * $Id: mod_auth.c,v 1.131 2003-01-05 01:29:38 jwm Exp $
  */
 
 #include "conf.h"
@@ -1326,7 +1326,7 @@ static void auth_scan_scoreboard(void) {
     /* Make sure it matches our current server */
     if (score->sce_server_ip->s_addr == main_server->ipaddr->s_addr &&
         score->sce_server_port == main_server->ServerPort) {
-        
+
       cur++;
 
       /* Note: the class member of the scoreboard entry will never be
@@ -1420,7 +1420,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
 
             hcur++;
           }
-        
+
           /* Take a per-user count of connections. */
           if (!strcmp(score->sce_user, user)) {
             usersessions++;

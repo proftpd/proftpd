@@ -78,7 +78,7 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
 #endif
 
   time(&now);
- 
+
   if (log_ident == NULL)
 #ifdef HAVE___PROGNAME
     log_ident = __progname;

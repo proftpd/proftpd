@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support (modified for use by external utilities).
  *
- * $Id: scoreboard.c,v 1.3 2003-01-02 17:28:23 castaglia Exp $
+ * $Id: scoreboard.c,v 1.4 2003-01-05 01:31:35 jwm Exp $
  */
 
 #include "utils.h"
@@ -213,7 +213,7 @@ int util_set_scoreboard(const char *path) {
 pr_scoreboard_entry_t *util_scoreboard_read_entry(void) {
   static pr_scoreboard_entry_t scan_entry;
   int res = 0;
- 
+
   if (util_scoreboard_fd < 0) {
     errno = EINVAL;
     return NULL;

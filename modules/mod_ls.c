@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.81 2003-01-02 18:25:21 castaglia Exp $
+ * $Id: mod_ls.c,v 1.82 2003-01-05 01:29:38 jwm Exp $
  */
 
 #include "conf.h"
@@ -293,7 +293,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
 
         if ((len = pr_fsio_readlink(name, m, sizeof(m))) < 0)
           return 0;
-        
+
         m[len] = '\0';
 
         if (!ls_perms_full(p, cmd, m, NULL))
@@ -1153,9 +1153,9 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
       for (i = 0, p = arg + 1;
           (i < sizeof(pbuffer) - 1) && p && *p && *p != '/';
           pbuffer[i++] = *p++);
-        
+
       pbuffer[i] = '\0';
-        
+
       if ((pw = auth_getpwnam(cmd->tmp_pool,i ? pbuffer : session.user))) {
         snprintf(pbuffer, sizeof(pbuffer), "%s%s", pw->pw_dir, p);
       } else
@@ -1188,11 +1188,11 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
     if (!a) {
       char **path;
-        
+
       path = g.gl_pathv;
       if (path && path[0] && path[1])
         justone = 0;
-        
+
       while (path && *path) {
         struct stat st;
 
@@ -1360,7 +1360,7 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
   if ((res = sendline("%s\n", file)) < 0 ||
       (res = sendline(NULL)) < 0)
     return res;
-        
+
   return 1;
 }
 
@@ -1619,12 +1619,12 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
   if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE)) != NULL)
     list_show_symlinks = *tmp;
-        
+
   if (cmd->argc == 1)
     target = ".";
   else
     target = cmd->arg;
-        
+
   /* If the target starts with '~' ... */
   if (*target == '~') {
     char pb[MAXPATHLEN + 1] = {'\0'};
@@ -1644,7 +1644,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
       target = line;
     }
   }
-        
+
   /* If the target is a glob, get the listing of files/dirs to send
    */
   if (use_globbing && strpbrk(target, "{[*?") != NULL) {

@@ -27,7 +27,7 @@
 /* Shows a count of "who" is online via proftpd.  Uses the /var/run/proftpd*
  * log files.
  *
- * $Id: ftpwho.c,v 1.15 2003-01-02 17:28:22 castaglia Exp $
+ * $Id: ftpwho.c,v 1.16 2003-01-05 01:31:35 jwm Exp $
  */
 
 #include "utils.h"
@@ -64,7 +64,7 @@ static char *percent_complete(off_t size, off_t done) {
 	     ((double) done / (double) size) * 100.0);
     sbuf[sizeof(sbuf)-1] = '\0';
   }
-  
+
   return sbuf;
 }
 
@@ -79,7 +79,7 @@ static const char *show_time(time_t *i) {
   memset(sbuf, '\0', sizeof(sbuf));
   l = now - *i;
 
-  if (l < 3600) 
+  if (l < 3600)
     snprintf(sbuf, sizeof(sbuf), "%lum%lus",(l / 60),(l % 60));
   else
     snprintf(sbuf, sizeof(sbuf), "%luh%lum",(l / 3600),
@@ -96,7 +96,7 @@ static void scan_config_file(void) {
   FILE *fp = NULL;
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   char *cp, *file = NULL;
-  
+
   if (!config_filename || (fp = fopen(config_filename,"r")) == NULL)
     return;
 
@@ -122,19 +122,19 @@ static void scan_config_file(void) {
     /* strip whitespace */
     while (*cp && isspace((int) *cp))
       cp++;
-    
+
     file = cp;
 
     /* If the scoreboard file argument is quoted, dequote */
     if (*cp == '"') {
       char *src = cp;
-      
+
       cp++;
       file++;
 
       while (*++src) {
         switch (*src) {
-          case '\\': 
+          case '\\':
             if (*++src)
               *cp++ = *src;
             break;
@@ -214,19 +214,19 @@ int main(int argc, char **argv) {
   pid_t mpid = 0;
   unsigned int count = 0, total = 0;
   int c = 0, res = 0;
-  struct scoreboard_class classes[MAX_CLASSES];  
+  struct scoreboard_class classes[MAX_CLASSES];
   char *cp, *progname = *argv;
   const char *cmdopts = "c:f:ho:v";
   unsigned char verbose = FALSE;
   unsigned long outform = 0;
-   
+
   memset(classes, 0, MAX_CLASSES * sizeof(struct scoreboard_class));
-   
+
   if((cp = strrchr(progname,'/')) != NULL)
     progname = cp+1;
 
   opterr = 0;
-  while((c = 
+  while((c =
 #ifdef HAVE_GETOPT_LONG
 	 getopt_long(argc, argv, cmdopts, opts, NULL)
 #else /* HAVE_GETOPT_LONG */
@@ -260,7 +260,7 @@ int main(int argc, char **argv) {
           break;
         }
 
-        fprintf(stderr, "unknown outform value: '%s'\n", optarg); 
+        fprintf(stderr, "unknown outform value: '%s'\n", optarg);
         return 1;
 
       case '?':
@@ -274,7 +274,7 @@ int main(int argc, char **argv) {
    */
   if (check_scoreboard_file() < 0) {
     scan_config_file();
-    
+
     if (check_scoreboard_file() < 0) {
       fprintf(stderr, "%s: %s\n", util_get_scoreboard(), strerror(errno));
       fprintf(stderr, "(Perhaps you need to specify the ScoreboardFile with -f, or change\n");
@@ -282,7 +282,7 @@ int main(int argc, char **argv) {
       exit(1);
     }
   }
-  
+
   count = 0;
   if ((res = util_open_scoreboard(O_RDONLY, &mpid)) < 0) {
     switch (res) {
@@ -340,7 +340,7 @@ int main(int argc, char **argv) {
     if (strncmp(score->sce_cmd, "STOR", 4) == 0 ||
         strncmp(score->sce_cmd, "STOU", 4) == 0 ||
         strncmp(score->sce_cmd, "APPE", 4) == 0)
-      uploading = TRUE; 
+      uploading = TRUE;
 
     if (outform & OF_COMPAT) {
       if (score->sce_xfer_size) {
@@ -353,7 +353,7 @@ int main(int argc, char **argv) {
             show_time(&score->sce_begin_idle),
             percent_complete(score->sce_xfer_size, score->sce_xfer_done),
             score->sce_cmd);
-       
+
       } else
         printf("%5d %-6s %s\n", (int) score->sce_pid,
           show_time(&score->sce_begin_idle), score->sce_cmd);
@@ -483,6 +483,6 @@ int main(int argc, char **argv) {
   } else {
     printf("no users connected\n");
   }
-   
+
   return 0;
 }
