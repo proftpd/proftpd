@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.40 2000-07-26 23:09:31 macgyver Exp $
+ * $Id: main.c,v 1.41 2000-08-01 21:51:48 macgyver Exp $
  */
 
 /*
@@ -380,7 +380,7 @@ static void init_set_proc_title(int argc, char *argv[], char *envp[])
 #endif
 }    
 
-void set_proc_title(char *fmt,...)
+static void set_proc_title(char *fmt,...)
 {
   va_list msg;
   static char statbuf[BUFSIZ];

@@ -18,7 +18,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.11 2000-07-26 11:03:17 macgyver Exp $
+ * $Id: proftpd.h,v 1.12 2000-08-01 21:51:48 macgyver Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -212,7 +212,6 @@ typedef struct response_struc {
 
 /* Misc Prototypes */
 
-void set_proc_title(char *, ...);
 void send_response_raw(const char *, ...);
 void send_response_async(const char *, const char *, ...);
 void send_response(const char *, const char *, ...);

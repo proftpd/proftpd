@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.38 2000-08-01 20:13:07 macgyver Exp $
+ * $Id: mod_auth.c,v 1.39 2000-08-01 21:51:48 macgyver Exp $
  */
 
 #include "conf.h"
@@ -755,7 +755,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
     
     if(authcode != 0)
       goto auth_failure;
-  } else if(c) {
+  } else if(c && get_param_int(c->subset, "AnonRequirePassword", FALSE) != 1) {
     session.hide_password = FALSE;
   }
   
