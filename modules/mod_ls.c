@@ -24,7 +24,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.55 2002-06-22 00:24:50 castaglia Exp $
+ * $Id: mod_ls.c,v 1.56 2002-06-24 15:19:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1364,9 +1364,6 @@ MODRET genericlist(cmd_rec *cmd)
   _fakemode = (long)get_param_int(TOPLEVEL_CONF,"DirFakeMode",FALSE);
   timesgmt = get_param_int(TOPLEVEL_CONF, "TimesGMT", FALSE);
   
-  if((opt_A = get_param_int(TOPLEVEL_CONF,"ShowDotFiles",FALSE)) < 0)
-    opt_A = 0;
-  
   if(_fakemode != -1) {
     fakemode = (mode_t)_fakemode;
     fakemodep = 1;
@@ -1437,8 +1434,6 @@ MODRET cmd_stat(cmd_rec *cmd)
   _fakemode = (long)get_param_int(TOPLEVEL_CONF,"DirFakeMode",FALSE);
   timesgmt = get_param_int(TOPLEVEL_CONF, "TimesGMT", FALSE);
   
-  /* No need to check ShowDotFiles since we force opt_a below.
-   */
   if(_fakemode != -1) {
     fakemode = (mode_t)_fakemode;
     fakemodep = 1;
@@ -1483,8 +1478,6 @@ MODRET cmd_nlst(cmd_rec *cmd)
 
 	if(showsymlinks == -1)
 		showsymlinks = 1;
-	if((opt_A = get_param_int(TOPLEVEL_CONF,"ShowDotFiles",FALSE)) < 0)
-	  opt_A = 0;
 	
 	if(cmd->argc == 1)
 		target = ".";
@@ -1753,7 +1746,6 @@ static conftable ls_conftab[] = {
   { "DirFakeGroup",	set_dirfakegroup,			NULL },
   { "DirFakeMode",	set_dirfakemode,			NULL },
   { "LsDefaultOptions",	set_lsdefaultoptions,			NULL },
-  { "ShowDotFiles",	set_showdotfiles,			NULL },
   { "UseGlobbing",	set_useglobbing,			NULL },
   { NULL,		NULL,					NULL }
 };
