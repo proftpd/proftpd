@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.67 2001-06-18 17:35:06 flood Exp $
+ * $Id: mod_core.c,v 1.68 2001-06-18 17:39:52 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -1271,9 +1271,16 @@ MODRET add_directory(cmd_rec *cmd)
     }
   }
 
-  /* check to see that there isn't already a config for this directory
+  /* check to see that there isn't already a config for this directory,
+   * but only if we're not in an <Anonymous> section.  Due to the way
+   * in which later <Directory> checks are done, <Directory> blocks inside
+   * <Anonymous> sections are handled differently than outside, probably
+   * overriding their outside counterparts (if necessary).  This is
+   * probably OK, as this overriding only takes effect for the <Anonymous>
+   * user.
    */
-  if (find_config(cmd->server->conf, CONF_DIR, dir, FALSE) != NULL)
+  if (!check_conf(cmd, CONF_ANON) &&
+      find_config(cmd->server->conf, CONF_DIR, dir, FALSE) != NULL)
     return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
       cmd->argv[0], ": <Directory> section already configured for '",
       cmd->argv[1], "'", NULL));
