@@ -19,7 +19,7 @@
  */
 
 /*
- * $Libraries: -lldap -llber$
+ * $Libraries: -lldap -llber -lresolv$
  * ldap password lookup module for ProFTPD (mod_ldap v2.5.2)
  * Author: John Morrissey <jwm@horde.net>
  *
@@ -28,7 +28,7 @@
  * Bert Vermeulen <bert@be.easynet.net> - LDAPHomedirOnDemand,
  *                                        LDAPDefaultAuthScheme
  *
- * $Id: mod_ldap.c,v 1.6 2000-02-26 21:34:39 macgyver Exp $
+ * $Id: mod_ldap.c,v 1.7 2000-07-09 06:59:55 macgyver Exp $
  */
 
 #include "conf.h"
