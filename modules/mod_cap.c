@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -Llib/libcap -lcap$
  * $Directories: lib/libcap$
- * $Id: mod_cap.c,v 1.3 2003-01-03 03:02:22 jwm Exp $
+ * $Id: mod_cap.c,v 1.4 2003-01-03 03:02:44 jwm Exp $
  */
 
 #include <stdlib.h>
@@ -41,9 +41,9 @@
 # define _LINUX_BYTEORDER_GENERIC_H
 # endif
 
-/*# ifdef HAVE_LINUX_CAPABILITY_H*/
+# ifdef HAVE_LINUX_CAPABILITY_H
 #  include <linux/capability.h>
-/*# endif HAVE_LINUX_CAPABILITY_H */
+# endif /* HAVE_LINUX_CAPABILITY_H */
 #endif /* LINUX */
 
 /* What are these here for? */
