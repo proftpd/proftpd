@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.159 2004-04-11 22:03:41 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.160 2004-04-11 22:13:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2289,7 +2289,7 @@ MODRET set_ratedeprecated(cmd_rec *cmd) {
 static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
 
   /* Only do this if we're currently involved in a data transfer.
-   * This is a hack * put in to support mod_shaper's antics.
+   * This is a hack put in to support mod_shaper's antics.
    */
   if (strcmp(session.curr_cmd, C_APPE) == 0 ||
       strcmp(session.curr_cmd, C_RETR) == 0 ||
