@@ -24,7 +24,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.51 2002-06-11 17:09:46 castaglia Exp $
+ * $Id: mod_ls.c,v 1.52 2002-06-12 19:11:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -398,7 +398,7 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
         else
           snprintf(timeline, sizeof(timeline), "%02d:%02d",t->tm_hour,t->tm_min);
 
-        snprintf(nameline, sizeof(nameline), "%s %3d %-8s %-8s %8" PR_LU "%s %2d %s %s",
+        snprintf(nameline, sizeof(nameline), "%s %3d %-8s %-8s %8" PR_LU " %s %2d %s %s",
                  m, st.st_nlink, MAP_UID(st.st_uid), MAP_GID(st.st_gid),
                  st.st_size, months[t->tm_mon],
                  t->tm_mday, timeline, name);
