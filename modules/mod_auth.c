@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.167 2003-11-08 22:34:14 castaglia Exp $
+ * $Id: mod_auth.c,v 1.168 2003-11-09 02:29:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1637,6 +1637,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     if (*max && hcur > *max) {
       char maxn[20] = {'\0'};
 
+      pr_event_generate("mod_auth.max-clients-per-host", session.c);
+
       snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
@@ -1659,6 +1661,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     if (*max && usersessions > *max) {
       char maxn[20] = {'\0'};
 
+      pr_event_generate("mod_auth.max-clients-per-user", user);
+
       snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
@@ -1680,6 +1684,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     if (*max && cur > *max) {
       char maxn[20] = {'\0'};
 
+      pr_event_generate("mod_auth.max-clients", NULL);
+
       snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
@@ -1699,6 +1705,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
 
     if (*max && hostsperuser > *max) {
       char maxn[20] = {'\0'};
+
+      pr_event_generate("mod_auth.max-hosts-per-user", user);
 
       snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
