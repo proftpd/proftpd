@@ -35,7 +35,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.8 2004-09-13 01:43:23 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.9 2004-10-01 00:43:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -221,7 +221,7 @@ MODRET pam_auth(cmd_rec *cmd) {
   /* Some platforms' PAM libraries do not handle login strings that
    * exceed this length.
    */
-  if (pam_user_len >= MAXLOGNAME) {
+  if (pam_user_len > MAXLOGNAME) {
     pr_log_pri(PR_LOG_NOTICE,
       "PAM(%s): Name exceeds maximum login length (%u)", cmd->argv[0],
       MAXLOGNAME);

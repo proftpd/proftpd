@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.610 2004-09-29 21:04:29 castaglia Exp $
+$Id: NEWS,v 1.611 2004-10-01 00:43:30 castaglia Exp $
 
 CVS
 --------------------------------
@@ -34,6 +34,7 @@ CVS
     </Limit>
 
   is a way to workaround this bug in 1.2.10 installations.
+- Bug 2492 - Off-by-one error in FreeBSD PAM username length check.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------
