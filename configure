@@ -854,9 +854,7 @@ Optional Features:
 
   --enable-shadow         force compilation of shadowed password support
 
-  --enable-devel
-    enable code of interest to developers
-
+  --enable-devel          enable code of interest to developers
 
   --enable-buffer-size    tune the the size (in bytes) of internal buffers
                           (default=1024)
