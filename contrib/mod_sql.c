@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.71 2004-03-16 21:46:42 castaglia Exp $
+ * $Id: mod_sql.c,v 1.72 2004-04-23 01:32:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -908,10 +908,10 @@ static struct passwd *_sql_addpasswd(cmd_rec *cmd, char *username,
 }
 
 static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
-  sql_data_t * sd = NULL;
+  sql_data_t *sd = NULL;
   modret_t *mr = NULL;
   struct passwd *pwd = NULL;
-  char uidstr[MOD_SQL_BUFSIZE] = { '\0' };
+  char uidstr[MOD_SQL_BUFSIZE] = {'\0'};
   char *usrwhere, *where;
   char *realname = NULL;
   int i = 0;
@@ -990,34 +990,38 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
       cmap.usrtable, cmap.usrfields, where, "1"), "sql_select");
 
     _sql_check_response(mr);
-    sd = (sql_data_t *) mr->data;
+
+    if (MODRET_HASDATA(mr))
+      sd = (sql_data_t *) mr->data;
 
   } else {
-    array_header *ah = NULL;
-    sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
 
     mr = sql_lookup(_sql_make_cmd(cmd->tmp_pool, 3, "default", cmap.usercustom,
       realname ? realname : "NULL"));
 
     _sql_check_response(mr);
 
-    ah = (array_header *) mr->data;
+    if (MODRET_HASDATA(mr)) {
+      array_header *ah = (array_header *) mr->data;
+      sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
 
-    /* Assume the query only returned 1 row. */
-    sd->fnum = ah->nelts;
+      /* Assume the query only returned 1 row. */
+      sd->fnum = ah->nelts;
 
-    if (sd->fnum) {
-      sd->rnum = 1;
-      sd->data = (char **) ah->elts;
+      if (sd->fnum) {
+        sd->rnum = 1;
+        sd->data = (char **) ah->elts;
 
-    } else {
-      sd->rnum = 0;
-      sd->data = NULL;
+      } else {
+        sd->rnum = 0;
+        sd->data = NULL;
+      }
     }
   }
 
   /* if we have no data.. */
-  if (sd->rnum == 0) {
+  if (sd == NULL ||
+      sd->rnum == 0) {
     if (!cmap.negative_cache) {
       return NULL;
 
