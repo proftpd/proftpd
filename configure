@@ -19558,6 +19558,16 @@ _ACEOF
 
 fi;
 
+if test "$OSTYPE" = "-DHPUX11"; then
+  { echo "$as_me:$LINENO: WARNING: HP-UX 11 has broken getaddrinfo(), using builtin version" >&5
+echo "$as_me: WARNING: HP-UX 11 has broken getaddrinfo(), using builtin version" >&2;}
+
+cat >>confdefs.h <<\_ACEOF
+#define PR_USE_GETADDRINFO 1
+_ACEOF
+
+fi
+
 # Check whether --enable-builtin-getnameinfo or --disable-builtin-getnameinfo was given.
 if test "${enable_builtin_getnameinfo+set}" = set; then
   enableval="$enable_builtin_getnameinfo"
