@@ -1,3 +1,25 @@
+2000-08-01 16:30  macgyver
+
+	* modules/mod_pam.c (1.23): Give ProFTPD it's own entry under /dev.
+
+2000-08-01 16:23  macgyver
+
+	* NEWS (1.65), modules/mod_log.c (1.16): Honor ExtendedLog NONE.
+
+2000-08-01 15:41  macgyver
+
+	* NEWS (1.64), doc/Configuration.html (1.29), modules/mod_site.c
+	(1.10): AllowChmod defaults to 'on' now, to be backward compatible.
+
+2000-08-01 15:41  macgyver
+
+	* modules/mod_pam.c (1.22): More information about PAM and Solaris
+	interaction.
+
+2000-08-01 15:20  macgyver
+
+	* ChangeLog (1.22): Updated ChangeLog.
+
 2000-08-01 15:13  macgyver
 
 	* NEWS (1.63), modules/mod_auth.c (1.38): Moved code around to
