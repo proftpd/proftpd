@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.20 2004-05-31 21:49:39 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.21 2004-11-02 18:18:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -39,7 +39,7 @@
 # error "ProFTPD 1.2.10rc1 or later required"
 #endif
 
-#ifndef USE_CTRLS
+#ifndef PR_USE_CTRLS
 # error "Controls support required (use --enable-ctrls)"
 #endif
 

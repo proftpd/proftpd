@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.20 2004-09-26 21:07:30 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.21 2004-11-02 18:18:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -37,7 +37,7 @@
 # include <crypt.h>
 #endif
 
-#ifdef USE_SHADOW
+#ifdef PR_USE_SHADOW
 # include <shadow.h>
 #endif
 
@@ -60,14 +60,14 @@
 # include <prot.h>
 #endif
 
-#ifdef USE_SIA
+#ifdef PR_USE_SIA
 # ifdef HAVE_SIA_H
 #  include <sia.h>
 # endif
 # ifdef HAVE_SIAD_H
 #  include <siad.h>
 # endif
-#endif /* USE_SIA */
+#endif /* PR_USE_SIA */
 
 #ifdef CYGWIN
 typedef void *HANDLE;
@@ -133,14 +133,14 @@ static int persistent_passwdf = 0, persistent_groupf = 0;
 #undef GROUP
 #define	GROUP		grpfname
 
-#ifdef USE_SHADOW
+#ifdef PR_USE_SHADOW
 
 /* Shadow password entries are stored as number of days, not seconds
  * and are -1 if unused
  */
 #define SP_CVT_DAYS(x)	((x) == (time_t)-1 ? (x) : ((x) * 86400))
 
-#endif /* USE_SHADOW */
+#endif /* PR_USE_SHADOW */
 
 static void p_setpwent(void) {
   if (pwdf)
@@ -414,7 +414,7 @@ MODRET pw_getgrgid(cmd_rec *cmd) {
   return gr ? mod_create_data(cmd, gr) : DECLINED(cmd);
 }
 
-#ifdef USE_SHADOW
+#ifdef PR_USE_SHADOW
 static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
     time_t *max, time_t *warn, time_t *inact, time_t *expire) {
   struct spwd *sp;
@@ -450,7 +450,7 @@ static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
       *expire = SP_CVT_DAYS(sp->sp_expire);
 #endif /* HAVE_SPWD_SP_EXPIRE */
   }
-#ifdef USE_AUTO_SHADOW
+#ifdef PR_USE_AUTO_SHADOW
   else {
     struct passwd *pw;
 
@@ -482,11 +482,11 @@ static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
 #else
   endspent();
   PRIVS_RELINQUISH
-#endif /* USE_AUTO_SHADOW */
+#endif /* PR_USE_AUTO_SHADOW */
   return cpw;
 }
 
-#else /* USE_SHADOW */
+#else /* PR_USE_SHADOW */
 
 static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
     time_t *max, time_t *warn, time_t *inact, time_t *expire) {
@@ -591,7 +591,7 @@ static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
   return cpw;
 }
 
-#endif /* USE_SHADOW */
+#endif /* PR_USE_SHADOW */
 
 static char *_get_ppw_info(pool *p, const char *u) {
   struct passwd *pw;
@@ -654,7 +654,7 @@ MODRET pw_check(cmd_rec *cmd) {
   const char *cpw = cmd->argv[0];
   const char *pw = cmd->argv[2];
 
-#ifdef USE_SIA
+#ifdef PR_USE_SIA
   SIAENTITY *ent = NULL;
   int res = SIASUCCESS;
   char *info[2];
@@ -670,7 +670,7 @@ MODRET pw_check(cmd_rec *cmd) {
   } else {
 #endif /* COMSEC */
 
-#ifdef USE_SIA
+#ifdef PR_USE_SIA
   /* Use Tru64's C2 SIA subsystem for authenticating this user. */
   user = cmd->argv[1];
 
@@ -698,7 +698,7 @@ MODRET pw_check(cmd_rec *cmd) {
   if (res != SIASUCCESS)
     return ERROR(cmd);
 
-#else /* !USE_SIA */
+#else /* !PR_USE_SIA */
 
 # ifdef CYGWIN
   /* We have to do special Windows NT voodoo with Cygwin in order to be
@@ -746,7 +746,7 @@ MODRET pw_check(cmd_rec *cmd) {
 
   if (strcmp(crypt(pw, cpw), cpw) != 0)
     return ERROR(cmd);
-#endif /* USE_SIA */
+#endif /* PR_USE_SIA */
 
 #ifdef COMSEC
   }

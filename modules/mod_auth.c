@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.196 2004-10-31 18:53:05 castaglia Exp $
+ * $Id: mod_auth.c,v 1.197 2004-11-02 18:18:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -582,7 +582,7 @@ static unsigned char auth_check_ftpusers(xaset_t *s, const char *user) {
 
   if (!use_ftp_users || *use_ftp_users == TRUE) {
     PRIVS_ROOT
-    ftpusersf = fopen(FTPUSERS_PATH, "r");
+    ftpusersf = fopen(PR_FTPUSERS_PATH, "r");
     PRIVS_RELINQUISH
 
     if (!ftpusersf)
@@ -624,7 +624,7 @@ static unsigned char auth_check_shell(xaset_t *s, const char *shell) {
     return res;
 
   if (!require_valid_shell || *require_valid_shell == TRUE) {
-    if ((shellf = fopen(VALID_SHELL_PATH, "r")) == NULL)
+    if ((shellf = fopen(PR_VALID_SHELL_PATH, "r")) == NULL)
       return res;
 
     res = FALSE;
@@ -1016,8 +1016,8 @@ static int _setup_environment(pool *p, char *user, char *pass) {
   }
 
   if (!auth_check_ftpusers((c ? c->subset : main_server->conf), pw->pw_name)) {
-    pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): User in " FTPUSERS_PATH,
-      user);
+    pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): User in "
+      PR_FTPUSERS_PATH, user);
     goto auth_failure;
   }
 
@@ -1226,7 +1226,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
       xferlog = get_param_ptr(main_server->conf, "TransferLog", FALSE);
 
     if (!xferlog)
-      xferlog = XFERLOG_PATH;
+      xferlog = PR_XFERLOG_PATH;
   }
 
   if (strcasecmp(xferlog, "NONE") == 0)

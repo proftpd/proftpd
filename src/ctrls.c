@@ -24,12 +24,12 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.9 2004-05-26 19:25:42 castaglia Exp $
+ * $Id: ctrls.c,v 1.10 2004-11-02 18:18:59 castaglia Exp $
  */
 
 #include "conf.h"
 
-#ifdef USE_CTRLS
+#ifdef PR_USE_CTRLS
 
 typedef struct ctrls_act_obj {
   struct ctrls_act_obj *prev, *next;
@@ -1080,4 +1080,4 @@ void init_ctrls(void) {
   return;
 }
 
-#endif /* USE_CTRLS */
+#endif /* PR_USE_CTRLS */

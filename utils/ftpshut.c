@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001, 2002, 2003, 2004 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 /* Simple utility to create the proftpd shutdown message file, allowing
  * an admin to configure the shutdown, deny, disconnect times and messages.
  *
- * $Id: ftpshut.c,v 1.7 2003-09-09 14:58:34 castaglia Exp $
+ * $Id: ftpshut.c,v 1.8 2004-11-02 18:18:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -66,12 +66,12 @@ int main(int argc, char *argv[]) {
   while ((c = getopt(argc, argv, "Rl:d:")) != -1) {
     switch (c) {
       case 'R':
-        if (unlink(SHUTMSG_PATH) < 0) {
-          fprintf(stderr, "%s: error removing '" SHUTMSG_PATH "': %s\n",
+        if (unlink(PR_SHUTMSG_PATH) < 0) {
+          fprintf(stderr, "%s: error removing '" PR_SHUTMSG_PATH "': %s\n",
             progname, strerror(errno));
           exit(1);
         }
-        fprintf(stdout, "%s: " SHUTMSG_PATH " removed\n", progname);
+        fprintf(stdout, "%s: " PR_SHUTMSG_PATH " removed\n", progname);
         exit(0);
 
       case 'l':
@@ -166,8 +166,8 @@ int main(int argc, char *argv[]) {
   }
 
   umask(022);
-  if ((outf = fopen(SHUTMSG_PATH, "w")) == NULL) {
-    fprintf(stderr,"%s: error opening '" SHUTMSG_PATH "': %s\n", progname,
+  if ((outf = fopen(PR_SHUTMSG_PATH, "w")) == NULL) {
+    fprintf(stderr,"%s: error opening '" PR_SHUTMSG_PATH "': %s\n", progname,
       strerror(errno));
     exit(1);
   }

@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.30 2004-05-29 00:28:29 castaglia Exp $
+ * $Id: scoreboard.c,v 1.31 2004-11-02 18:18:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -37,7 +37,7 @@ extern char ServerType;
 
 static pid_t scoreboard_opener = 0;
 static int scoreboard_fd = -1;
-static char scoreboard_file[PR_TUNABLE_PATH_MAX] = RUN_DIR "/proftpd.scoreboard";
+static char scoreboard_file[PR_TUNABLE_PATH_MAX] = PR_RUN_DIR "/proftpd.scoreboard";
 
 static off_t current_pos = 0;
 static pr_scoreboard_header_t header;

@@ -26,7 +26,7 @@
 
 /* Shows a count of "who" is online via proftpd.  Uses the scoreboard file.
  *
- * $Id: ftpwho.c,v 1.22 2003-03-09 16:23:50 castaglia Exp $
+ * $Id: ftpwho.c,v 1.23 2004-11-02 18:18:59 castaglia Exp $
  */
 
 #include "utils.h"
@@ -40,7 +40,7 @@ struct scoreboard_class {
 #define OF_COMPAT		0x001
 #define OF_ONELINE		0x002
 
-static const char *config_filename = CONFIG_FILE_PATH;
+static const char *config_filename = PR_CONFIG_FILE_PATH;
 
 char *util_sstrncpy(char *, const char *, size_t);
 

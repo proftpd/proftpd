@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.71 2004-10-30 23:16:41 castaglia Exp $
+ * $Id: support.c,v 1.72 2004-11-02 18:18:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -652,7 +652,7 @@ char *safe_token(char **s) {
   return res;
 }
 
-/* Checks for the existance of SHUTMSG_PATH.  deny and disc are
+/* Checks for the existence of PR_SHUTMSG_PATH.  deny and disc are
  * filled with the times to deny new connections and disconnect
  * existing ones.
  */
@@ -664,7 +664,7 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
   time_t now,shuttime = (time_t)0;
   struct tm tm;
 
-  if (file_exists(SHUTMSG_PATH) && (fp = fopen(SHUTMSG_PATH, "r"))) {
+  if (file_exists(PR_SHUTMSG_PATH) && (fp = fopen(PR_SHUTMSG_PATH, "r"))) {
     if ((cp = fgets(buf, sizeof(buf),fp)) != NULL) {
       buf[sizeof(buf)-1] = '\0'; CHOP(cp);
 

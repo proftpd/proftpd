@@ -10,8 +10,11 @@
  * if configure didn't make a correct guess for your system.
  *************************************************************************/
 
+/* Define to be the build options. */
+#undef PR_BUILD_OPTS
+
 /* Define to be the build platform. */
-#undef PLATFORM
+#undef PR_PLATFORM
 
 /* Define to `int' if <sys/types.h> doesn't define. */
 #undef ino_t
@@ -623,25 +626,25 @@
 #define STDERR_FILENO	2
 #endif /* STDERR_FILENO */
 
-#ifndef CONFIG_DIR
-#undef CONFIG_DIR
-#endif /* CONFIG_DIR */
+#ifndef PR_CONFIG_DIR
+#undef PR_CONFIG_DIR
+#endif /* PR_CONFIG_DIR */
 
-#ifndef LIBEXEC_DIR
-#undef LIBEXEC_DIR
-#endif /* LIBEXEC_DIR */
+#ifndef PR_LIBEXEC_DIR
+#undef PR_LIBEXEC_DIR
+#endif /* PR_LIBEXEC_DIR */
 
-#ifndef RUN_DIR
-#undef RUN_DIR
-#endif /* RUN_DIR */
+#ifndef PR_RUN_DIR
+#undef PR_RUN_DIR
+#endif /* PR_RUN_DIR */
 
-#ifndef CONFIG_FILE_PATH
-#undef CONFIG_FILE_PATH	
-#endif /* CONFIG_FILE_PATH */
+#ifndef PR_CONFIG_FILE_PATH
+#undef PR_CONFIG_FILE_PATH	
+#endif /* PR_CONFIG_FILE_PATH */
 
-#ifndef PID_FILE_PATH
-#undef PID_FILE_PATH		
-#endif /* PID_FILE_PATH */
+#ifndef PR_PID_FILE_PATH
+#undef PR_PID_FILE_PATH		
+#endif /* PR_PID_FILE_PATH */
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 #ifndef _FILE_OFFSET_BITS
@@ -652,31 +655,31 @@
 #undef _LARGE_FILES
 
 /* Define if auto-detection of shadow passwords is wanted.  */
-#undef USE_AUTO_SHADOW
+#undef PR_USE_AUTO_SHADOW
 
 /* Define if controls support is desired.  */
-#undef USE_CTRLS
+#undef PR_USE_CTRLS
 
 /* Define if curses support, if available, should be used.  */
-#undef USE_CURSES
+#undef PR_USE_CURSES
 
 /* Define if you are a developer. */
-#undef USE_DEVEL
+#undef PR_USE_DEVEL
 
 /* Define if DSO support is desired.  */
-#undef USE_DSO
+#undef PR_USE_DSO
 
 /* Define if use of builtin getaddrinfo() is desired.  */
-#undef USE_GETADDRINFO
+#undef PR_USE_GETADDRINFO
 
 /* Define if use of builtin getnameinfo() is desired.  */
-#undef USE_GETNAMEINFO
+#undef PR_USE_GETNAMEINFO
 
 /* Define if IPv6 support is desired.  */
-#undef USE_IPV6
+#undef PR_USE_IPV6
 
 /* Define if largfile support is desired.  */
-#undef USE_LARGEFILES
+#undef PR_USE_LARGEFILES
 
 /* Define if the %llu format should be used.  */
 #undef HAVE_LLU
@@ -685,16 +688,16 @@
 #undef HAVE_LU
 
 /* Define if ncurses support, if available, should be used.  */
-#undef USE_NCURSES
+#undef PR_USE_NCURSES
 
 /* Define if sendfile support, if available, should be used.  */
-#undef USE_SENDFILE
+#undef PR_USE_SENDFILE
 
 /* Define if using /etc/shadow files.  */
-#undef USE_SHADOW
+#undef PR_USE_SHADOW
 
 /* Define if using Tru64's C2 SIA authentication.  */
-#undef USE_SIA
+#undef PR_USE_SIA
 
 /* Tunable parameters */
 #undef PR_TUNABLE_BUFFER_SIZE

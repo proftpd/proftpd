@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001, 2002, 2003, 2004 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.259 2004-10-31 20:56:27 castaglia Exp $
+ * $Id: main.c,v 1.260 2004-11-02 18:18:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -118,7 +118,7 @@ static char sbuf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
 
 static char **Argv = NULL;
 static char *LastArgv = NULL;
-static const char *PidPath = PID_FILE_PATH;
+static const char *PidPath = PR_PID_FILE_PATH;
 
 /* From dirtree.c */
 extern array_header *server_defines;
@@ -152,7 +152,7 @@ static void handle_terminate(void);
 static void handle_terminate_other(void);
 static void finish_terminate(void);
 
-static const char *config_filename = CONFIG_FILE_PATH;
+static const char *config_filename = PR_CONFIG_FILE_PATH;
 
 /* Add child semaphore fds into the rfd for selecting */
 static int semaphore_fds(fd_set *rfd, int maxfd) {
@@ -1442,11 +1442,11 @@ static void daemon_loop(void) {
       time_t now = time(NULL);
 
       if (difftime(deny, now) < 0.0) {
-        pr_log_pri(PR_LOG_ERR, SHUTMSG_PATH
+        pr_log_pri(PR_LOG_ERR, PR_SHUTMSG_PATH
           " present: all incoming connections will be refused.");
 
       } else {
-        pr_log_pri(PR_LOG_ERR, SHUTMSG_PATH " present: incoming connections "
+        pr_log_pri(PR_LOG_ERR, PR_SHUTMSG_PATH " present: incoming connections "
           "will be denied starting %s", CHOP(ctime(&deny)));
       }
     }
@@ -1707,7 +1707,7 @@ static RETSIGTYPE sig_child(int signo) {
 static char *prepare_core(void) {
   static char dir[256] = {'\0'};
 
-  snprintf(dir, sizeof(dir), "%s/proftpd-core-%lu", CORE_DIR,
+  snprintf(dir, sizeof(dir), "%s/proftpd-core-%lu", PR_CORE_DIR,
     (unsigned long) getpid());
 
   if (mkdir(dir, 0700) != -1)
@@ -1792,7 +1792,7 @@ static void handle_chld(void) {
   pr_alarms_unblock();
 }
 
-#ifndef USE_CTRLS
+#ifndef PR_USE_CTRLS
 static void debug_memory(const char *fmt, ...) {
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   va_list msg;
@@ -1815,7 +1815,7 @@ static void handle_evnt(void) {
 static void handle_evnt(void) {
   pr_event_generate("core.signal.USR2", NULL);
 }
-#endif /* !USE_CTRLS */
+#endif /* !PR_USE_CTRLS */
 
 static void handle_xcpu(void) {
   pr_log_pri(PR_LOG_NOTICE, "ProFTPD CPU limit exceeded (signal %d)", SIGXCPU);
@@ -2185,7 +2185,7 @@ static void write_pid(void) {
 
   PidPath = get_param_ptr(main_server->conf, "PidFile", FALSE);
   if (!PidPath || !*PidPath)
-    PidPath = PID_FILE_PATH;
+    PidPath = PR_PID_FILE_PATH;
 
   PRIVS_ROOT
   pidf = fopen(PidPath, "w");
@@ -2389,77 +2389,78 @@ static struct option opts[] = {
 static void show_settings(void) {
   printf("Compile-time Settings:\n");
   printf("  Version: " PROFTPD_VERSION_TEXT "\n");
-  printf("  Platform: " PLATFORM "\n");
+  printf("  Platform: " PR_PLATFORM "\n");
+  printf("  Built With:\n    configure " PR_BUILD_OPTS "\n");
 
   printf("\n  Files:\n");
   printf("    Configuration File:\n");
-  printf("      " CONFIG_FILE_PATH "\n");
+  printf("      " PR_CONFIG_FILE_PATH "\n");
   printf("    Pid File:\n");
-  printf("      " PID_FILE_PATH "\n");
+  printf("      " PR_PID_FILE_PATH "\n");
   printf("    Scoreboard File:\n");
-  printf("      " RUN_DIR "/proftpd.scoreboard\n");
+  printf("      " PR_RUN_DIR "/proftpd.scoreboard\n");
 
   /* Feature settings */
   printf("\n  Features:\n");
-#ifdef USE_AUTO_SHADOW
+#ifdef PR_USE_AUTO_SHADOW
   printf("    + Autoshadow support\n");
 #else
   printf("    - Autoshadow support\n");
-#endif /* USE_AUTO_SHADOW */
+#endif /* PR_USE_AUTO_SHADOW */
 
-#ifdef USE_CTRLS
+#ifdef PR_USE_CTRLS
   printf("    + Controls support\n");
 #else
   printf("    - Controls support\n");
-#endif /* USE_CTRLS */
+#endif /* PR_USE_CTRLS */
 
-#ifdef USE_CURSES
+#ifdef PR_USE_CURSES
   printf("    + curses support\n");
 #else
   printf("    - curses support\n");
-#endif /* USE_CURSES */
+#endif /* PR_USE_CURSES */
 
-#ifdef USE_DEVEL
+#ifdef PR_USE_DEVEL
   printf("    + Developer support\n");
 #else
   printf("    - Developer support\n");
-#endif /* USE_DEVEL */
+#endif /* PR_USE_DEVEL */
 
-#ifdef USE_DSO
+#ifdef PR_USE_DSO
   printf("    + DSO support\n");
 #else
   printf("    - DSO support\n");
-#endif
+#endif /* PR_USE_DSO */
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
   printf("    + IPv6 support\n");
 #else
   printf("    - IPv6 support\n");
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
 
-#ifdef USE_LARGEFILES
+#ifdef PR_USE_LARGEFILES
   printf("    + Largefile support\n");
 #else
   printf("    - Largefile support\n");
-#endif /* USE_LARGEFILES */
+#endif /* PR_USE_LARGEFILES */
 
-#ifdef USE_NCURSES
+#ifdef PR_USE_NCURSES
   printf("    + ncurses support\n");
 #else
   printf("    - ncurses support\n");
-#endif /* USE_NCURSES */
+#endif /* PR_USE_NCURSES */
 
-#ifdef USE_SHADOW
+#ifdef PR_USE_SHADOW
   printf("    + Shadow file support\n");
 #else
   printf("    - Shadow file suppport\n");
-#endif /* USE_SHADOW */
+#endif /* PR_USE_SHADOW */
 
-#ifdef USE_SENDFILE
+#ifdef PR_USE_SENDFILE
   printf("    + Sendfile support\n");
 #else
   printf("    - Sendfile support\n");
-#endif /* USE_SENDFILE */
+#endif /* PR_USE_SENDFILE */
 
   /* Tunable settings */
   printf("\n  Tunable Options:\n");
@@ -2553,7 +2554,7 @@ int main(int argc, char *argv[], char **envp) {
   /* Redirect stderr to somewhere appropriate.
    * Ideally, this would be syslog, but alas...
    */
-  if ((logfd = open(RUN_DIR "/proftpd-memory.log",
+  if ((logfd = open(PR_RUN_DIR "/proftpd-memory.log",
 		   O_WRONLY | O_CREAT | O_APPEND, 0644))< 0) {
 	pr_log_pri(PR_LOG_ERR, "Error opening error logfile: %s",
           strerror(errno));
@@ -2772,9 +2773,9 @@ int main(int argc, char *argv[], char **envp) {
   init_config();
   init_stash();
 
-#ifdef USE_CTRLS
+#ifdef PR_USE_CTRLS
   init_ctrls();
-#endif /* USE_CTRLS */
+#endif /* PR_USE_CTRLS */
 
   var_init();
   modules_init();
@@ -2899,7 +2900,7 @@ int main(int argc, char *argv[], char **envp) {
 
 #ifdef PR_DEVEL_NO_DAEMON
   PRIVS_ROOT
-  chdir(RUN_DIR);
+  chdir(PR_RUN_DIR);
 #endif /* PR_DEVEL_NO_DAEMON */
 
   return 0;

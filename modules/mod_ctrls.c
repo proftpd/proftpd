@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.21 2004-10-30 20:57:03 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.22 2004-11-02 18:18:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -52,7 +52,7 @@ static unsigned int ctrls_interval = 10;
 /* Controls listening socket fd */
 static int ctrls_sockfd = -1;
 
-#define MOD_CTRLS_DEFAULT_SOCK		RUN_DIR "/proftpd.sock"
+#define MOD_CTRLS_DEFAULT_SOCK		PR_RUN_DIR "/proftpd.sock"
 static char *ctrls_sock_file = MOD_CTRLS_DEFAULT_SOCK;
 
 /* User/group ownership of the control socket */

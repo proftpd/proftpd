@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.58 2004-10-31 21:06:12 castaglia Exp $
+ * $Id: conf.h,v 1.59 2004-11-02 18:18:58 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -358,11 +358,11 @@ typedef struct {
   char na_dnsstr[256];
   int na_have_dnsstr;
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
   char na_ipstr[INET6_ADDRSTRLEN];
 #else
   char na_ipstr[INET_ADDRSTRLEN];
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   int na_have_ipstr;
 
   /* Note: at some point, this union might/should be replaced with
@@ -373,9 +373,9 @@ typedef struct {
 
   union {
     struct sockaddr_in v4;
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     struct sockaddr_in6 v6;
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   } na_addr;
 
 } pr_netaddr_t;

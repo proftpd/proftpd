@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.17 2004-01-29 03:19:08 castaglia Exp $
+ * $Id: netaddr.h,v 1.18 2004-11-02 18:18:58 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -60,7 +60,7 @@ struct addrinfo {
 };
 #endif /* HAVE_STRUCT_ADDRINFO */
 
-#if defined(HAVE_GETADDRINFO) && !defined(USE_GETADDRINFO)
+#if defined(HAVE_GETADDRINFO) && !defined(PR_USE_GETADDRINFO)
 /* Use the system getaddrinfo(2) and freeaddrinfo(2) by redefining the
  * 'pr_getaddrinfo' and 'pr_freeaddrinfo' symbols to be 'getaddrinfo' and
  * 'freeaddrinfo', respectively.
@@ -71,7 +71,7 @@ struct addrinfo {
 int pr_getaddrinfo(const char *, const char *, const struct addrinfo *,
   struct addrinfo **);
 void pr_freeaddrinfo(struct addrinfo *);
-#endif /* HAVE_GETNAMEINFO and !USE_GETNAMEINFO */
+#endif /* HAVE_GETNAMEINFO and !PR_USE_GETNAMEINFO */
 
 /* These AI_ defines are for use by getaddrinfo(3). */
 
@@ -142,7 +142,7 @@ void pr_freeaddrinfo(struct addrinfo *);
 # define EAI_SYSTEM     -11
 #endif /* EAI_SYSTEM */
 
-#if defined(HAVE_GETNAMEINFO) && !defined(USE_GETNAMEINFO)
+#if defined(HAVE_GETNAMEINFO) && !defined(PR_USE_GETNAMEINFO)
 /* Use the system getnameinfo(2) by redefining the 'pr_getnameinfo' symbol
  * to be simply 'getnameinfo'.
  */
@@ -150,7 +150,7 @@ void pr_freeaddrinfo(struct addrinfo *);
 #else
 int pr_getnameinfo(const struct sockaddr *, socklen_t, char *, size_t,
   char *, size_t, int);
-#endif /* HAVE_GETNAMEINFO and !USE_GETNAMEINFO */
+#endif /* HAVE_GETNAMEINFO and !PR_USE_GETNAMEINFO */
 
 /* These NI_ defines are for use by getnameinfo(3). */
 

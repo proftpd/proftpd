@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.8 2004-06-30 02:42:13 castaglia Exp $
+ * $Id: netacl.c,v 1.9 2004-11-02 18:18:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -170,7 +170,7 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
         break;
       }
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
       case AF_INET6: {
         /* Make sure that the given number of bits is not more than supported
          * for IPv6 addresses (128).
@@ -182,7 +182,7 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
 
         break;
       }
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
 
       default:
         break;

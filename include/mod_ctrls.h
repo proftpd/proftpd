@@ -26,7 +26,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.h,v 1.1 2003-11-09 01:55:28 castaglia Exp $
+ * $Id: mod_ctrls.h,v 1.2 2004-11-02 18:18:58 castaglia Exp $
  */
 
 #ifndef MOD_CTRLS_H
@@ -35,7 +35,7 @@
 #include <signal.h>
 #include "conf.h"
 
-# ifdef USE_CTRLS
+# ifdef PR_USE_CTRLS
 
 /* Controls access control objects */
 
@@ -94,5 +94,5 @@ char *ctrls_unregister_module_actions(ctrls_acttab_t *ctrls_acttab,
  */
 int ctrls_log(const char *module_version, const char *fmt, ...);
 
-# endif /* USE_CTRLS */
+# endif /* PR_USE_CTRLS */
 #endif /* MOD_FTPDCTL_H */

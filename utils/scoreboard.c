@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support (modified for use by external utilities).
  *
- * $Id: scoreboard.c,v 1.6 2003-06-03 16:25:23 castaglia Exp $
+ * $Id: scoreboard.c,v 1.7 2004-11-02 18:18:59 castaglia Exp $
  */
 
 #include "utils.h"
@@ -33,7 +33,7 @@
 #include <signal.h>
 
 static int util_scoreboard_fd = -1;
-static char util_scoreboard_file[PR_TUNABLE_PATH_MAX] = RUN_DIR "/proftpd.scoreboard";
+static char util_scoreboard_file[PR_TUNABLE_PATH_MAX] = PR_RUN_DIR "/proftpd.scoreboard";
 
 static pr_scoreboard_header_t util_header;
 

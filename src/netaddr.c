@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.44 2004-06-30 02:42:13 castaglia Exp $
+ * $Id: netaddr.c,v 1.45 2004-11-02 18:18:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -38,7 +38,7 @@ static int reverse_dns = 1;
 
 /* Provide replacements for needed functions. */
 
-#if !defined(HAVE_GETNAMEINFO) || defined(USE_GETNAMEINFO)
+#if !defined(HAVE_GETNAMEINFO) || defined(PR_USE_GETNAMEINFO)
 int pr_getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host,
     size_t hostlen, char *serv, size_t servlen, int flags) {
 
@@ -80,9 +80,9 @@ int pr_getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host,
 
   return 0;
 }
-#endif /* HAVE_GETNAMEINFO or USE_GETNAMEINFO */
+#endif /* HAVE_GETNAMEINFO or PR_USE_GETNAMEINFO */
 
-#if !defined(HAVE_GETADDRINFO) || defined(USE_GETADDRINFO)
+#if !defined(HAVE_GETADDRINFO) || defined(PR_USE_GETADDRINFO)
 int pr_getaddrinfo(const char *node, const char *service,
     const struct addrinfo *hints, struct addrinfo **res) {
 
@@ -172,7 +172,7 @@ void pr_freeaddrinfo(struct addrinfo *ai) {
   }
   free(ai);
 }
-#endif /* HAVE_GETADDRINFO or USE_GETADDRINFO */
+#endif /* HAVE_GETADDRINFO or PR_USE_GETADDRINFO */
 
 #if !defined(HAVE_INET_NTOP)
 const char *pr_inet_ntop(int af, const void *src, char *dst, size_t len) {
@@ -271,9 +271,9 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     array_header **addrs) {
 
   struct sockaddr_in v4;
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
   struct sockaddr_in6 v6;
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   pr_netaddr_t *na = NULL;
   int res;
 
@@ -294,7 +294,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
 
   na = (pr_netaddr_t *) pcalloc(p, sizeof(pr_netaddr_t));
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
   memset(&v6, 0, sizeof(v6));
   v6.sin6_family = AF_INET6;
 
@@ -345,12 +345,12 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
 
     memset(&hints, 0, sizeof(hints));
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     /* This looks up both IPv4 (as IPv6-mapped) and IPv6 addresses. */
     hints.ai_family = AF_UNSPEC;
 #else
     hints.ai_family = AF_INET;
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
     hints.ai_socktype = SOCK_STREAM;
 
     pr_log_debug(DEBUG10, "attempting to resolve '%s' via DNS", name);
@@ -417,11 +417,11 @@ int pr_netaddr_set_family(pr_netaddr_t *na, int family) {
       na->na_addr.v4.sin_family = AF_INET;
       break;
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     case AF_INET6:
       na->na_addr.v6.sin6_family = AF_INET6;
       break;
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
 
     default:
 #ifdef EAFNOSUPPORT
@@ -446,10 +446,10 @@ size_t pr_netaddr_get_sockaddr_len(const pr_netaddr_t *na) {
     case AF_INET:
       return sizeof(struct sockaddr_in);
  
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     case AF_INET6:
       return sizeof(struct sockaddr_in6);
-#endif /* USE_IPV6 */   
+#endif /* PR_USE_IPV6 */   
   }
 
   errno = EPERM;
@@ -466,10 +466,10 @@ size_t pr_netaddr_get_inaddr_len(const pr_netaddr_t *na) {
     case AF_INET:
       return sizeof(struct in_addr);
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     case AF_INET6:
       return sizeof(struct in6_addr);
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   }
 
   errno = EPERM;
@@ -486,10 +486,10 @@ struct sockaddr *pr_netaddr_get_sockaddr(const pr_netaddr_t *na) {
     case AF_INET:
       return (struct sockaddr *) &na->na_addr.v4;
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     case AF_INET6:
       return (struct sockaddr *) &na->na_addr.v6;
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   }
 
   errno = EPERM;
@@ -508,11 +508,11 @@ int pr_netaddr_set_sockaddr(pr_netaddr_t *na, struct sockaddr *addr) {
       memcpy(&(na->na_addr.v4), addr, sizeof(struct sockaddr_in));
       return 0;
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     case AF_INET6:
       memcpy(&(na->na_addr.v6), addr, sizeof(struct sockaddr_in6));
       return 0;
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   }
 
   errno = EPERM;
@@ -537,7 +537,7 @@ int pr_netaddr_set_sockaddr_any(pr_netaddr_t *na) {
       return 0;
     }
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     case AF_INET6:
       na->na_addr.v6.sin6_family = AF_INET6;
 #ifdef SIN6_LEN
@@ -545,7 +545,7 @@ int pr_netaddr_set_sockaddr_any(pr_netaddr_t *na) {
 #endif /* SIN6_LEN */
       memcpy(&na->na_addr.v6.sin6_addr, &in6addr_any, sizeof(struct in6_addr));
       return 0;
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   }
 
   errno = EPERM;
@@ -562,10 +562,10 @@ void *pr_netaddr_get_inaddr(const pr_netaddr_t *na) {
     case AF_INET:
       return (void *) &na->na_addr.v4.sin_addr;
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     case AF_INET6:
       return (void *) &na->na_addr.v6.sin6_addr;
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   }
 
   errno = EPERM;
@@ -582,10 +582,10 @@ unsigned int pr_netaddr_get_port(const pr_netaddr_t *na) {
     case AF_INET:
       return na->na_addr.v4.sin_port;
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     case AF_INET6:
       return na->na_addr.v6.sin6_port;
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   }
 
   errno = EPERM;
@@ -603,11 +603,11 @@ int pr_netaddr_set_port(pr_netaddr_t *na, unsigned int port) {
       na->na_addr.v4.sin_port = port;
       return 0;
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     case AF_INET6:
       na->na_addr.v6.sin6_port = port;
       return 0;
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   }
 
   errno = EPERM;
@@ -635,11 +635,11 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
       return memcmp(&na1->na_addr.v4.sin_addr, &na2->na_addr.v4.sin_addr,
         sizeof(struct in_addr));
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     case AF_INET6:
       return memcmp(&na1->na_addr.v6.sin6_addr, &na2->na_addr.v6.sin6_addr,
         sizeof(struct in6_addr));
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   }
 
   errno = EPERM;
@@ -679,7 +679,7 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
       break;
     }
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     case AF_INET6: {
       /* Make sure that the given number of bits is not more than supported
        * for IPv6 addresses (128).
@@ -691,7 +691,7 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
 
       break;
     }
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
 
     default:
       errno = EPERM;
@@ -779,11 +779,11 @@ int pr_netaddr_fnmatch(pr_netaddr_t *na, const char *pattern, int flags) {
 }
 
 const char *pr_netaddr_get_ipstr(pr_netaddr_t *na) {
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
   char buf[INET6_ADDRSTRLEN];
 #else
   char buf[INET_ADDRSTRLEN];
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   int res = 0;
   
   if (!na) {
@@ -874,7 +874,7 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
             } 
             break;
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
           case AF_INET6:
             if (family == AF_INET6) {
               for (checkaddr = hent->h_addr_list; *checkaddr; ++checkaddr) {
@@ -885,7 +885,7 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
               }
             } 
             break;
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
         }
 
         name = ok ? buf : NULL;
@@ -945,7 +945,7 @@ int pr_netaddr_loopback(const pr_netaddr_t *na) {
       return IN_IS_ADDR_LOOPBACK(
         (struct in_addr *) pr_netaddr_get_inaddr(na));
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     case AF_INET6:
 
       /* XXX *sigh* Different platforms implement the IN6_IS_ADDR macros
@@ -964,7 +964,7 @@ int pr_netaddr_loopback(const pr_netaddr_t *na) {
       return IN6_IS_ADDR_LOOPBACK(
         ((struct in6_addr *) pr_netaddr_get_inaddr(na))->s6_addr32);
 # endif
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   }
 
   return FALSE;
@@ -983,7 +983,7 @@ unsigned int pr_netaddr_get_addrno(const pr_netaddr_t *na) {
     case AF_INET:
       return na->na_addr.v4.sin_addr.s_addr;
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     case AF_INET6: {
 
       /* Linux defines s6_addr32 in its netinet/in.h header.
@@ -998,7 +998,7 @@ unsigned int pr_netaddr_get_addrno(const pr_netaddr_t *na) {
       return 0;
 #endif
     }
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   }
 
   errno = EPERM;
@@ -1018,7 +1018,7 @@ int pr_netaddr_is_v4mappedv6(const pr_netaddr_t *na) {
       errno = EINVAL;
       return -1;
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     case AF_INET6:
 
 # ifndef LINUX
@@ -1028,7 +1028,7 @@ int pr_netaddr_is_v4mappedv6(const pr_netaddr_t *na) {
       return IN6_IS_ADDR_V4MAPPED(
         ((struct in6_addr *) pr_netaddr_get_inaddr(na))->s6_addr32);
 # endif
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   }
 
   errno = EPERM;

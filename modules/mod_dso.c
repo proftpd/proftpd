@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.2.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.6 2004-11-01 17:30:36 castaglia Exp $
+ * $Id: mod_dso.c,v 1.7 2004-11-02 18:18:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -38,10 +38,10 @@
 extern module *loaded_modules;
 
 module dso_module;
-static const char *dso_module_path = LIBEXEC_DIR;
+static const char *dso_module_path = PR_LIBEXEC_DIR;
 static pool *dso_pool = NULL;
 
-#ifdef USE_CTRLS
+#ifdef PR_USE_CTRLS
 static ctrls_acttab_t dso_acttab[];
 #endif
 
@@ -157,7 +157,7 @@ static int dso_load_module(char *name) {
   return 0;
 }
 
-#ifdef USE_CTRLS
+#ifdef PR_USE_CTRLS
 static int dso_unload_module(const char *name) {
   module *m;
 
@@ -197,9 +197,9 @@ static int dso_unload_module(const char *name) {
   errno = ENOENT;
   return -1;
 }
-#endif /* USE_CTRLS */
+#endif /* PR_USE_CTRLS */
 
-#ifdef USE_CTRLS
+#ifdef PR_USE_CTRLS
 /* Controls handlers
  */
 
@@ -323,7 +323,7 @@ static int dso_handle_rmmod(pr_ctrls_t *ctrl, int reqargc,
 
   return 0;
 }
-#endif /* USE_CTRLS */
+#endif /* PR_USE_CTRLS */
 
 /* Configuration handlers
  */
@@ -359,7 +359,7 @@ MODRET set_loadmodule(cmd_rec *cmd) {
 
 /* usage: ModuleControlsACLs actions|all allow|deny user|group list */
 MODRET set_modulectrlsacls(cmd_rec *cmd) {
-#ifdef USE_CTRLS
+#ifdef PR_USE_CTRLS
   char *bad_action = NULL, **actions = NULL;
 
   CHECK_ARGS(cmd, 4);
@@ -510,9 +510,9 @@ MODRET set_modulepath(cmd_rec *cmd) {
  */
 
 static void dso_restart_ev(const void *event_data, void *user_data) {
-#ifdef USE_CTRLS
+#ifdef PR_USE_CTRLS
   register unsigned int i = 0;
-#endif /* USE_CTRLS */
+#endif /* PR_USE_CTRLS */
 
   if (dso_pool)
     destroy_pool(dso_pool);
@@ -520,7 +520,7 @@ static void dso_restart_ev(const void *event_data, void *user_data) {
   dso_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(dso_pool, MOD_DSO_VERSION);
 
-#ifdef USE_CTRLS
+#ifdef PR_USE_CTRLS
   /* Re-register the control handlers */
   for (i = 0; dso_acttab[i].act_action; i++) {
     pool *sub_pool = make_sub_pool(dso_pool);
@@ -530,7 +530,7 @@ static void dso_restart_ev(const void *event_data, void *user_data) {
     dso_acttab[i].act_acl->acl_pool = sub_pool;
     ctrls_init_acl(dso_acttab[i].act_acl);
   }
-#endif /* USE_CTRLS */
+#endif /* PR_USE_CTRLS */
 
   return;
 }
@@ -539,9 +539,9 @@ static void dso_restart_ev(const void *event_data, void *user_data) {
  */
 
 static int dso_init(void) {
-#ifdef USE_CTRLS
+#ifdef PR_USE_CTRLS
   register unsigned int i = 0;
-#endif /* USE_CTRLS */
+#endif /* PR_USE_CTRLS */
 
   /* Allocate the pool for this module's use. */
   dso_pool = make_sub_pool(permanent_pool);
@@ -563,7 +563,7 @@ static int dso_init(void) {
     return -1;
   }
 
-#ifdef USE_CTRLS
+#ifdef PR_USE_CTRLS
   /* Register ctrls handlers. */
   for (i = 0; dso_acttab[i].act_action; i++) {
     pool *sub_pool = make_sub_pool(dso_pool);
@@ -579,7 +579,7 @@ static int dso_init(void) {
         ": error registering '%s' control: %s", dso_acttab[i].act_action,
         strerror(errno));
   }
-#endif /* USE_CTRLS */
+#endif /* PR_USE_CTRLS */
 
   /* Ideally, we'd call register a listener for the 'core.exit' event
    * and call lt_dlexit() there, politely freeing up any resources allocated
@@ -600,14 +600,14 @@ static int dso_sess_init(void) {
   return 0;
 }
 
-#ifdef USE_CTRLS
+#ifdef PR_USE_CTRLS
 static ctrls_acttab_t dso_acttab[] = {
   { "insmod",	"load modules",		NULL,	dso_handle_insmod },
   { "lsmod",	"list modules",		NULL, 	dso_handle_lsmod },
   { "rmmod",	"unload modules",	NULL,	dso_handle_rmmod },
   { NULL, NULL, NULL, NULL }
 };
-#endif /* USE_CTRLS */
+#endif /* PR_USE_CTRLS */
 
 /* Module API tables
  */

@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.90 2004-10-31 01:57:36 castaglia Exp $
+ * $Id: inet.c,v 1.91 2004-11-02 18:18:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -37,9 +37,9 @@ extern server_rec *main_server;
 static pool *inet_pool = NULL;
 
 static int ip_proto = IPPROTO_IP;
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
 static int ipv6_proto = IPPROTO_IPV6;
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
 static int tcp_proto = IPPROTO_TCP;
 
 static int inet_errno = 0;		/* Holds errno */
@@ -89,9 +89,9 @@ char *pr_inet_validate(char *buf) {
 
     /* Per RFC requirements, these are all that are valid from a DNS. */
     if (!isalnum((int) *p) && *p != '.' && *p != '-'
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
         && *p != ':'
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
         ) {
 
       /* We set it to _ because we know that's an invalid, yet safe, option
@@ -208,11 +208,11 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     /* If no default family has been set, then default to IPv6 (if IPv6
      * support is enabled), otherwise use IPv4.
      */
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     addr_family = AF_INET6;
 #else
     addr_family = AF_INET;
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   }
 
   /* If fd == -1, there is no currently open socket, so create one.
@@ -289,7 +289,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     else {
       pr_netaddr_set_sockaddr_any(&na);
 
-#if defined(USE_IPV6) && defined(IPV6_V6ONLY)
+#if defined(PR_USE_IPV6) && defined(IPV6_V6ONLY)
       if (addr_family == AF_INET6) {
         int off = 0;
 
@@ -312,7 +312,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
           pr_log_pri(PR_LOG_NOTICE, "error setting IPV6_V6ONLY: %s",
             strerror(errno));
       }
-#endif /* USE_IPV6 and IPV6_V6ONLY */
+#endif /* PR_USE_IPV6 and IPV6_V6ONLY */
     }
 
     pr_netaddr_set_port(&na, htons(port));
@@ -1017,11 +1017,11 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
   /* Initialize the netaddr. */
   pr_netaddr_clear(&na);
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
   pr_netaddr_set_family(&na, AF_INET6);
 #else
   pr_netaddr_set_family(&na, AF_INET);
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   nalen = pr_netaddr_get_sockaddr_len(&na);
 
   if (getsockname(fd, pr_netaddr_get_sockaddr(&na), &nalen) != -1) {
@@ -1042,11 +1042,11 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
     return -1;
 
   /* "Reset" the pr_netaddr_t struct for the getpeername(2) call. */
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
   pr_netaddr_set_family(&na, AF_INET6);
 #else
   pr_netaddr_set_family(&na, AF_INET);
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   nalen = pr_netaddr_get_sockaddr_len(&na);
 
   if (getpeername(fd, pr_netaddr_get_sockaddr(&na), &nalen) != -1) {
@@ -1232,11 +1232,11 @@ void init_inet(void) {
   if (pr != NULL)
     ip_proto = pr->p_proto;
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
   pr = getprotobyname("ipv6"); 
   if (pr != NULL)
     ipv6_proto = pr->p_proto;
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
 
   pr = getprotobyname("tcp");
   if (pr != NULL)

@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.70 2004-08-07 22:22:42 castaglia Exp $
+ * $Id: log.c,v 1.71 2004-11-02 18:18:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -126,11 +126,11 @@ int log_wtmp(char *line, const char *name, const char *host,
 #ifdef HAVE_UTMAXTYPE
 # ifdef LINUX
     if (ip)
-#  ifndef USE_IPV6
+#  ifndef PR_USE_IPV6
       memcpy(&ut.ut_addr, pr_netaddr_get_inaddr(ip), sizeof(ut.ut_addr));
 #  else
       memcpy(&ut.ut_addr_v6, pr_netaddr_get_inaddr(ip), sizeof(ut.ut_addr_v6));
-#  endif /* !USE_IPV6 */
+#  endif /* !PR_USE_IPV6 */
 # else
     sstrncpy(ut.ut_id, "ftp", sizeof(ut.ut_id));
 #  ifdef HAVE_UT_UT_EXIT

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.255 2004-10-31 22:27:30 castaglia Exp $
+ * $Id: mod_core.c,v 1.256 2004-11-02 18:18:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -444,7 +444,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
     for (i = 0; i < addrs->nelts; i++) {
       const char *ipstr = pr_netaddr_get_ipstr(elts[i]);
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
       char ipbuf[INET6_ADDRSTRLEN];
       if (pr_netaddr_get_family(elts[i]) == AF_INET) {
 
@@ -454,7 +454,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
         snprintf(ipbuf, sizeof(ipbuf), "::ffff:%s", ipstr);
         ipstr = ipbuf;
       }
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
 
       add_config_param_str("Bind", 1, ipstr);
     }
@@ -2994,11 +2994,11 @@ MODRET core_pasv(cmd_rec *cmd) {
 
 MODRET core_port(cmd_rec *cmd) {
   pr_netaddr_t *port_addr = NULL;
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
   char buf[INET6_ADDRSTRLEN] = {'\0'};
 #else
   char buf[INET_ADDRSTRLEN] = {'\0'};
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   unsigned int h1, h2, h3, h4, p1, p2;
   unsigned short port;
   unsigned char *allow_foreign_addr = NULL, *privsdrop = NULL;
@@ -3046,11 +3046,11 @@ MODRET core_port(cmd_rec *cmd) {
   }
   port = ((p1 << 8) | p2);
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
   if (pr_netaddr_get_family(session.c->remote_addr) == AF_INET6)
     snprintf(buf, sizeof(buf), "::ffff:%u.%u.%u.%u", h1, h2, h3, h4);
   else
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
   snprintf(buf, sizeof(buf), "%u.%u.%u.%u", h1, h2, h3, h4);
   buf[sizeof(buf)-1] = '\0';
 
@@ -3075,7 +3075,7 @@ MODRET core_port(cmd_rec *cmd) {
   if (!allow_foreign_addr || *allow_foreign_addr == FALSE) {
     pr_netaddr_t *remote_addr = session.c->remote_addr;
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     /* We can only compare the PORT-given address against the remote client
      * address if the remote client address is an IPv4-mapped IPv6 address.
      */
@@ -3086,7 +3086,7 @@ MODRET core_port(cmd_rec *cmd) {
       pr_response_add_err(R_500, "Illegal PORT command");
       return ERROR(cmd);
     }
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
 
     if (pr_netaddr_cmp(port_addr, remote_addr) != 0) {
       pr_log_pri(PR_LOG_WARNING, "Refused PORT %s (address mismatch)",
@@ -3176,17 +3176,17 @@ MODRET core_eprt(cmd_rec *cmd) {
     case 1:
       break;
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     case 2:
       break;
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
 
     default:
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
       pr_response_add_err(R_522, "Network protocol not supported, use (1,2)");
 #else
       pr_response_add_err(R_522, "Network protocol not supported, use (1)");
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
       return ERROR(cmd);
   }
 
@@ -3366,11 +3366,11 @@ MODRET core_epsv(cmd_rec *cmd) {
         family = 1;
         break;
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
       case AF_INET6:
         family = 2;
         break;
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
 
       default:
         family = 0;
@@ -3382,17 +3382,17 @@ MODRET core_epsv(cmd_rec *cmd) {
     case 1:
       break;
 
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
     case 2:
       break;
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
 
     default:
-#ifdef USE_IPV6
+#ifdef PR_USE_IPV6
       pr_response_add_err(R_522, "Network protocol not supported, use (1,2)");
 #else
       pr_response_add_err(R_522, "Network protocol not supported, use (1)");
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
       return ERROR(cmd);
   }
 

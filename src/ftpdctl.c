@@ -26,7 +26,7 @@
 
 /* ProFTPD Controls command-line client
  *
- * $Id: ftpdctl.c,v 1.1 2003-11-09 01:55:28 castaglia Exp $
+ * $Id: ftpdctl.c,v 1.2 2004-11-02 18:18:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -91,7 +91,7 @@ char *sstrncpy(char *dest, const char *src, size_t n) {
   return dest;
 }
 
-#ifdef USE_CTRLS
+#ifdef PR_USE_CTRLS
 
 /* need a SIGPIPE handler */
 static RETSIGTYPE sig_pipe(int sig) {
@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
   const char *cmdopts = "hs:v";
 
   register int i = 0;
-  char *socket_file = RUN_DIR "/proftpd.sock";
+  char *socket_file = PR_RUN_DIR "/proftpd.sock";
   int sockfd = -1, optc = 0, status = 0, respargc = 0;
   unsigned int reqargc = 0;
   pool *ctl_pool = NULL;
@@ -238,4 +238,4 @@ int main(int argc, char *argv[]) {
   return 1;
 }
 
-#endif /* USE_CTRLS */
+#endif /* PR_USE_CTRLS */

@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.23 2004-09-14 17:49:42 castaglia Exp $
+ * $Id: mod_radius.c,v 1.24 2004-11-02 18:18:58 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.8rc2"
@@ -1570,11 +1570,11 @@ static void radius_build_packet(radius_packet_t *packet, const char *user,
   /* Add a NAS identifier attribute of the service name: 'ftp'. */
   radius_add_attrib(packet, RADIUS_NAS_IDENTIFIER, "ftp", 3);
 
-#ifndef USE_IPV6
+#ifndef PR_USE_IPV6
   /* Add a NAS IP address attribute. */
   radius_add_attrib(packet, RADIUS_NAS_IP_ADDRESS, (unsigned char *) &((struct in_addr *) pr_netaddr_get_inaddr(session.c->local_addr))->s_addr,
     sizeof(((struct in_addr *) pr_netaddr_get_inaddr(session.c->local_addr))->s_addr));
-#endif /* USE_IPV6 */
+#endif /* PR_USE_IPV6 */
 
   /* Add a NAS port attribute. */
   radius_add_attrib(packet, RADIUS_NAS_PORT, (unsigned char *) &nas_port,
