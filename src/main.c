@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.254 2004-10-30 20:45:52 castaglia Exp $
+ * $Id: main.c,v 1.255 2004-10-30 23:18:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2832,7 +2832,7 @@ int main(int argc, char *argv[], char **envp) {
     /* Allocate space for daemon supplemental groups. */
     daemon_gids = make_array(permanent_pool, 2, sizeof(gid_t));
 
-    if (auth_getgroups(permanent_pool, (const char *) get_param_ptr(
+    if (pr_auth_getgroups(permanent_pool, (const char *) get_param_ptr(
         main_server->conf, "UserName", FALSE), &daemon_gids, NULL) < 0)
       pr_log_debug(DEBUG2, "unable to retrieve daemon supplemental groups");
 
