@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.27 2000-02-16 00:33:22 macgyver Exp $
+$Id: NEWS,v 1.28 2000-02-26 21:31:39 macgyver Exp $
 
 1.2.0 - Released: ???
 ---------------------
@@ -7,6 +7,8 @@ $Id: NEWS,v 1.27 2000-02-16 00:33:22 macgyver Exp $
 - Fixed a bug in calculating file system size when using statvfs.
 - Fixed a bug when a 'TYPE L' directive is passed improperly.
 - Fixed Umask directive handling in directories.
+- Changed bandwidth throttling to use select() instead of usleep() to work
+  better across platforms.
 
 1.2.0pre10 - Released: 1/17/00
 ------------------------------

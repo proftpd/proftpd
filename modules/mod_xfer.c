@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.30 2000-02-16 00:09:02 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.31 2000-02-26 21:31:39 macgyver Exp $
  */
 
 /* History Log:
@@ -112,8 +112,10 @@ static float _rate_diffusec(struct timeval tlast, struct timeval t) {
 
 /* Bandwidth Throttling. <grin@tolna.net>
  *
- * If the rate sent were too high usleeps the required amount (max 100 sec).
- * No throttling for the first FreeBytes bytes (but this includes REST as well).
+ * If the rate sent were too high throttles the required amount (max 100 sec).
+ * No throttling for the first FreeBytes bytes
+ *   (but this includes REST as well).
+ *
  * If HardBPS then forces BPS throughout FreeBytes as well.
  *
  * input: 	rate_pos:	position in file
@@ -151,19 +153,39 @@ static void _rate_throttle(unsigned long rate_pos, long rate_bytes,
   dtime = _rate_diffusec(rate_tvlast, rate_tv);
   wtime = 10e5 * rate_bytes / rate_bps;
   
-  if(wtime>dtime) {
+  /* Setup for the select.
+   */
+  memset(&rate_tv, 0, sizeof(rate_tv));
+  
+  if(wtime > dtime) {
     /* too fast, doze a little */
     log_debug(DEBUG5, "_rate_throttle: wtime=%f  dtime=%f.", wtime, dtime);
 
-    if(wtime-dtime > 10e7) {
+    if(wtime - dtime > 10e7) {
       /* >100sec, umm that'd timeout */
       log_debug(DEBUG5, "Sleeping 100 seconds.");
-      usleep( 10e7 );
+      rate_tv.tv_usec = 10e7;
       log_debug(DEBUG5, "Sleeping 100 seconds done!");
     } else {
       log_debug(DEBUG5, "Sleeping %f sec.", (wtime - dtime) / 10e5);
-      usleep(wtime-dtime);
+      rate_tv.tv_usec = wtime - dtime;
       log_debug(DEBUG5, "Sleeping %f sec done!", (wtime - dtime) / 10e5);
+    }
+    
+    /* For completeness, break it up into seconds and microseconds -- some
+     * platforms have problems dealing with large values for microseconds.
+     *
+     * Due to a bug in GCC/EGCS, we can't say x % 10e5, so we spell it out...
+     */
+    rate_tv.tv_sec = rate_tv.tv_usec / 1000000;
+    rate_tv.tv_usec = rate_tv.tv_usec % 1000000;
+    
+    /* We use select() instead of usleep() because it seems to be far more
+     * portable across platforms.
+     */
+    if(select(0, (fd_set *) 0, (fd_set *) 0, (fd_set *) 0, &rate_tv) < 0) {
+      log_pri(LOG_WARNING, "Unable to throttle bandwidth: %s.",
+	      strerror(errno));
     }
   }
 }
