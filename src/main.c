@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.180 2003-04-25 04:13:39 castaglia Exp $
+ * $Id: main.c,v 1.181 2003-06-03 20:42:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -379,9 +379,9 @@ void end_login(int exitcode) {
 }
 
 void session_exit(int pri, void *lv, int exitval, void *dummy) {
-  char *log = (char *) lv;
+  char *msg = (char *) lv;
 
-  log_pri(pri, "%s", log);
+  log_pri(pri, "%s", msg);
 
   if (is_standalone && is_master) {
     log_pri(PR_LOG_NOTICE, "ProFTPD " PROFTPD_VERSION_TEXT

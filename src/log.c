@@ -27,7 +27,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.57 2003-06-03 16:25:23 castaglia Exp $
+ * $Id: log.c,v 1.58 2003-06-03 20:42:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -377,7 +377,7 @@ void log_discard(void) {
   syslog_discard = TRUE;
 }
 
-static void log(int priority, int f, char *s) {
+static void log_write(int priority, int f, char *s) {
   unsigned int *max_priority = NULL;
   char serverinfo[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
 
@@ -461,7 +461,7 @@ void log_pri(int priority, const char *fmt, ...) {
   /* Always make sure the buffer is NUL-terminated. */
   buf[sizeof(buf) - 1] = '\0';
 
-  log(priority, facility, buf);
+  log_write(priority, facility, buf);
 }
 
 /* Like log_pri(), but sends the log entry in the LOG_AUTHPRIV
@@ -479,7 +479,7 @@ void log_auth(int priority, const char *fmt, ...) {
   /* Always make sure the buffer is NUL-terminated. */
   buf[sizeof(buf) - 1] = '\0';
 
-  log(priority, LOG_AUTHPRIV, buf);
+  log_write(priority, LOG_AUTHPRIV, buf);
 }
 
 /* Disable logging to stderr, should be done right before forking
@@ -547,7 +547,7 @@ void log_debug(int level, const char *fmt, ...) {
   /* Always make sure the buffer is NUL-terminated. */
   buf[sizeof(buf) - 1] = '\0';
 
-  log(PR_LOG_DEBUG, facility, buf);
+  log_write(PR_LOG_DEBUG, facility, buf);
 }
 
 void init_log(void) {

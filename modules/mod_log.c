@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.51 2003-05-31 00:37:16 castaglia Exp $
+ * $Id: mod_log.c,v 1.52 2003-06-03 20:42:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -976,7 +976,7 @@ static void find_extendedlogs(void) {
   int logclasses = CL_ALL;
   logformat_t *logfmt;
   char *logfmt_s = NULL;
-  logfile_t *logf;
+  logfile_t *extlog = NULL;
 
   /* We _do_ actually want the recursion here.  The reason is that we want
    * to find _all_ ExtendedLog directives in the configuration, including
@@ -1018,18 +1018,18 @@ static void find_extendedlogs(void) {
       logfmt = formats;
     }
 
-    logf = (logfile_t *) pcalloc(permanent_pool, sizeof(logfile_t));
+    extlog = (logfile_t *) pcalloc(permanent_pool, sizeof(logfile_t));
 
-    logf->lf_filename = pstrdup(permanent_pool, logfname);
-    logf->lf_fd = -1;
-    logf->lf_syslog_level = -1;
-    logf->lf_classes = logclasses;
-    logf->lf_format = logfmt;
-    logf->lf_conf = c->parent;
+    extlog->lf_filename = pstrdup(permanent_pool, logfname);
+    extlog->lf_fd = -1;
+    extlog->lf_syslog_level = -1;
+    extlog->lf_classes = logclasses;
+    extlog->lf_format = logfmt;
+    extlog->lf_conf = c->parent;
     if (!log_set)
       log_set = xaset_create(permanent_pool, NULL);
 
-    xaset_insert(log_set, (xasetmember_t *) logf);
+    xaset_insert(log_set, (xasetmember_t *) extlog);
     logs = (logfile_t *) log_set->xas_list;
 
 loop_extendedlogs:
