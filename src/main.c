@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.59 2001-04-11 19:10:50 flood Exp $
+ * $Id: main.c,v 1.60 2001-04-20 15:20:17 flood Exp $
  */
 
 /*
@@ -707,9 +707,7 @@ void shutdown_exit(void *d1, void *d2, void *d3, void *d4)
         FALSE)) != NULL) {
 
       p_in_addr_t *masq_addr = (p_in_addr_t *) c->argv[0];
-      char *masq_ip = inet_ntoa((struct in_addr) *masq_addr);
-
-      serveraddress = pstrdup(main_server->pool, masq_ip);
+      serveraddress = pstrdup(main_server->pool, inet_ntoa(*masq_addr));
     }
 
     time(&now);
@@ -1016,11 +1014,8 @@ void cmd_loop(server_rec *server, conn_t *c)
 
   if ((masq_c = find_config(server->conf, CONF_PARAM, "MasqueradeAddress",
       FALSE)) != NULL) {
-
     p_in_addr_t *masq_addr = (p_in_addr_t *) masq_c->argv[0];
-    char *masq_ip = inet_ntoa((struct in_addr) *masq_addr);
-
-    serveraddress = pstrdup(server->pool, masq_ip);
+    serveraddress = pstrdup(server->pool, inet_ntoa(*masq_addr));
   }
 
   display = (char*)get_param_ptr(server->conf,"DisplayConnect",FALSE);
@@ -1515,9 +1510,7 @@ void fork_server(int fd,conn_t *l,int nofork)
         FALSE)) != NULL) {
 
         p_in_addr_t *masq_addr = (p_in_addr_t *) c->argv[0];
-        char *masq_ip = inet_ntoa((struct in_addr) *masq_addr);
-
-        serveraddress = pstrdup(main_server->pool, masq_ip);
+        serveraddress = pstrdup(main_server->pool, inet_ntoa(*masq_addr));
       }
 
       reason = sreplace(permanent_pool,shutmsg,
