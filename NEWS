@@ -1,9 +1,10 @@
-$Id: NEWS,v 1.151 2002-02-14 16:39:18 flood Exp $
+$Id: NEWS,v 1.152 2002-02-14 16:50:04 flood Exp $
 
 1.2.5rc2 - CVS
 ---------------------------------
 - New mod_wrap (1.2.3)
 - removed contrib/genuser.pl (per TJ)
+- added contrib/ftpasswd utility script (contributed by TJ)
 - Bug 1318 - sendfile() semantics incorrect under Linux
 - Bug 1450 - Timers removed immediately/alarm() return no longer used for
              timing
