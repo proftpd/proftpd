@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.423 2003-04-22 23:07:28 castaglia Exp $
+$Id: NEWS,v 1.424 2003-04-23 00:28:09 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -112,6 +112,11 @@ CVS
   %F cookie, used to display the number of bytes of available space (without
   units).
 - Bug 2003 - mod_auth.c does not compile for cygwin on W2K.
+- Bug 2029 - Rewrite rule may execute more than once if multiple
+  RewriteConditions exist.  This turned out to be caused by mod_rewrite's
+  merging down of its directives, and the way in which multiple occurrences
+  of directives are handled.  Now, even for merged-down mod_rewrite directives,
+  a given RewriteRule will only be processed once.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------

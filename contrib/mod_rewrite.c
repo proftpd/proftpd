@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.7 2003-03-18 15:19:42 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.8 2003-04-23 00:28:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -76,6 +76,8 @@ static char *rewrite_logfile = NULL;
 static int rewrite_logfd = -1;
 static pool *rewrite_pool = NULL;
 static pool *rewrite_cond_pool = NULL;
+
+static unsigned int rewrite_nrules = 0;
 static array_header *rewrite_conds = NULL, *rewrite_regexes = NULL;
 static rewrite_match_t rewrite_cond_matches;
 static rewrite_match_t rewrite_rule_matches;
@@ -1537,14 +1539,14 @@ MODRET set_rewriterule(cmd_rec *cmd) {
       cmd->argv[1], "' regex: ", errstr, NULL));
   }
 
-  /* NOTE: scan through the substitution parameter, checking any given
+  /* Note: scan through the substitution parameter, checking any given
    * variables, and noting if any invalid sequences are found
    */
   tmp = NULL;
 
-  c = add_config_param(cmd->argv[0], 4, preg, NULL, NULL, NULL);
+  c = add_config_param(cmd->argv[0], 5, preg, NULL, NULL, NULL, NULL);
 
-  /* NOTE: how to handle the substitution expression? Later? */
+  /* Note: how to handle the substitution expression? Later? */
   c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
 
   c->argv[2] = palloc(c->pool, sizeof(unsigned char));
@@ -1577,8 +1579,13 @@ MODRET set_rewriterule(cmd_rec *cmd) {
   } else
     c->argv[3] = NULL;
 
-  c->flags |= CF_MERGEDOWN_MULTI;
+  /* The very last slot is to be filled by a unique ID (just a counter
+   * value).
+   */
+  c->argv[4] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[4]) = rewrite_nrules++;
 
+  c->flags |= CF_MERGEDOWN_MULTI;
   return HANDLED(cmd);
 }
 
@@ -1587,6 +1594,7 @@ MODRET set_rewriterule(cmd_rec *cmd) {
 
 MODRET rewrite_fixup(cmd_rec *cmd) {
   config_rec *c = NULL;
+  array_header *seen_rules = NULL;
 
   /* Is RewriteEngine on? */
   if (!rewrite_engine)
@@ -1600,6 +1608,11 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
     return DECLINED(cmd);
   }
 
+  /* Create an array that will contain the IDs of the RewriteRules we've
+   * already processed.
+   */
+  seen_rules = make_array(cmd->tmp_pool, 0, sizeof(unsigned int));
+
   /* Find all RewriteRules in effect. */
   c = find_config(CURRENT_CONF, CONF_PARAM, "RewriteRule", FALSE);
 
@@ -1607,8 +1620,30 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
     unsigned char exec_rule = FALSE;
     rewrite_log("rewrite_fixup(): found RewriteRule");
 
-    /* First, make sure the given RewriteRule regex matches the command
-     * argument.
+    /* If we've already seen this Rule, skip on to the next Rule. */
+    if (seen_rules->nelts > 0) {
+      register unsigned int i = 0;
+      unsigned char seen_rule = FALSE;
+      unsigned int id = *((unsigned int *) c->argv[4]), *ids = seen_rules->elts;
+
+      for (i = 0; i < seen_rules->nelts; i++) {
+        if (ids[i] == id) {
+          seen_rule = TRUE;
+          break;
+        }
+      }
+
+      if (seen_rule) {
+        rewrite_log("rewrite_fixup(): already saw this RewriteRule, skipping");
+        c = find_config_next(c, c->next, CONF_PARAM, "RewriteRule", FALSE);
+        continue;
+      }
+    }
+
+    /* Add this Rule's ID to the list of seen Rules. */
+    *((unsigned int *) push_array(seen_rules)) = *((unsigned int *) c->argv[4]);
+
+    /* Make sure the given RewriteRule regex matches the command argument.
      */
     memset(&rewrite_rule_matches, '\0', sizeof(rewrite_rule_matches));
     rewrite_rule_matches.match_string = cmd->arg;
