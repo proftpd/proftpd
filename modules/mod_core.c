@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.229 2004-04-14 20:25:47 castaglia Exp $
+ * $Id: mod_core.c,v 1.230 2004-04-19 23:59:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -607,6 +607,29 @@ MODRET set_usereversedns(cmd_rec *cmd) {
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   ServerUseReverseDNS = bool;
+
+  return HANDLED(cmd);
+}
+
+MODRET set_satisfy(cmd_rec *cmd) {
+  int satisfy = -1;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_CLASS);
+
+  if (strcasecmp(cmd->argv[1], "any") == 0)
+    satisfy = PR_CLASS_SATISFY_ANY;
+
+  else if (strcasecmp(cmd->argv[1], "all") == 0)
+    satisfy = PR_CLASS_SATISFY_ALL;
+
+  else
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid parameter: '",
+      cmd->argv[1], "'", NULL));
+
+  if (pr_class_set_satisfy(satisfy) < 0)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error setting Satisfy: ",
+      strerror(errno), NULL));
 
   return HANDLED(cmd);
 }
@@ -4532,6 +4555,7 @@ static conftable core_conftab[] = {
   { "RLimitCPU",		set_rlimitcpu,			NULL },
   { "RLimitMemory",		set_rlimitmemory,		NULL },
   { "RLimitOpenFiles",		set_rlimitopenfiles,		NULL },
+  { "Satisfy",			set_satisfy,			NULL },
   { "ScoreboardFile",		set_scoreboardfile,		NULL },
   { "ServerAdmin",		set_serveradmin,		NULL },
   { "ServerIdent",		set_serverident,		NULL },

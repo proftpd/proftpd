@@ -23,7 +23,7 @@
  */
 
 /* Class routines
- * $Id: class.c,v 1.1 2004-01-29 22:20:52 castaglia Exp $
+ * $Id: class.c,v 1.2 2004-04-19 23:59:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -38,7 +38,7 @@ pr_class_t *pr_class_get(pr_class_t *prev) {
   if (prev)
     return prev->cls_next;
 
-  return class_list;;
+  return class_list;
 }
 
 pr_class_t *pr_class_match_addr(pr_netaddr_t *addr) {
@@ -53,13 +53,27 @@ pr_class_t *pr_class_match_addr(pr_netaddr_t *addr) {
     array_header *acl_list = cls->cls_acls;
     pr_netacl_t **acls = acl_list->elts;
     register int i;
+    int next_class = FALSE;
 
     /* For each ACL rule in this class, compare the rule against the given
-     * address.  The address matches the given class if any rule matches.
+     * address.  The address matches the given class depending on the
+     * Satisfy setting: if "any", the class matches if any rule matches;
+     * if "all", the class matches only if _all_ rules match.
      */
     for (i = 0; i < acl_list->nelts && acls[i]; i++) {
-      if (pr_netacl_match(acls[i], addr) == 1)
-        return cls;
+      if (next_class)
+        break;
+
+      switch (cls->cls_satisfy) {
+        case PR_CLASS_SATISFY_ANY:
+          if (pr_netacl_match(acls[i], addr) == 1)
+            return cls;
+
+        case PR_CLASS_SATISFY_ALL:
+          if (pr_netacl_match(acls[i], addr) == 0)
+            next_class = TRUE;
+          break;
+      }
     }
   }
 
@@ -106,6 +120,19 @@ int pr_class_add_acl(pr_netacl_t *acl) {
   return 0;
 }
 
+int pr_class_set_satisfy(int satisfy) {
+
+  if (!curr_cls) {
+    errno = EPERM;
+    return -1;
+  }
+
+  /* Set the Satisfy flag on the current Class. */
+  curr_cls->cls_satisfy = satisfy;
+
+  return 0;
+}
+
 int pr_class_open(pool *p, const char *name) {
   pr_class_t *cls;
   pool *cls_pool;
@@ -122,7 +149,8 @@ int pr_class_open(pool *p, const char *name) {
   cls = pcalloc(cls_pool, sizeof(pr_class_t));
   cls->cls_pool = cls_pool;
   cls->cls_name = pstrdup(cls->cls_pool, name);
-
+  cls->cls_satisfy = PR_CLASS_SATISFY_ANY;
+ 
   /* Change the configuration context type. */
   main_server->config_type = CONF_CLASS;
 

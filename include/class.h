@@ -23,7 +23,7 @@
  */
 
 /* Class definitions
- * $Id: class.h,v 1.1 2004-01-29 22:20:52 castaglia Exp $
+ * $Id: class.h,v 1.2 2004-04-19 23:59:23 castaglia Exp $
  */
 
 #ifndef PR_CLASS_H
@@ -34,10 +34,14 @@
 typedef struct pr_class_t {
   pool *cls_pool;
   char *cls_name;
+  unsigned int cls_satisfy;
   array_header *cls_acls;
 
   struct pr_class_t *cls_next;
 } pr_class_t;
+
+#define PR_CLASS_SATISFY_ANY	0
+#define PR_CLASS_SATISFY_ALL	1
 
 /* Returns the class object associated with the given name, or NULL if
  * there is no matching class object.
@@ -71,5 +75,9 @@ int pr_class_close(void);
 /* Add the given ACL object to the currently opened class object.
  */
 int pr_class_add_acl(pr_netacl_t *);
+
+/* Set the Satisfy flag on the currently opened class object.
+ */
+int pr_class_set_satisfy(int);
 
 #endif /* PR_CLASS_H */
