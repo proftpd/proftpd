@@ -25,6 +25,7 @@
 
 /*
  * Generic set manipulation
+ * $Id: sets.c,v 1.9 2003-02-12 08:46:37 castaglia Exp $
  *
  * TODO: Use a hash table to greatly speed up set manipulation on
  *       large sets.

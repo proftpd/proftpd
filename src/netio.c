@@ -22,8 +22,11 @@
  * OpenSSL in the source distribution.
  */
 
-#include "conf.h"
+/* NetIO routines
+ * $Id: netio.c,v 1.11 2003-02-12 08:46:35 castaglia Exp $
+ */
 
+#include "conf.h"
 #include <signal.h>
 
 #ifndef IAC
