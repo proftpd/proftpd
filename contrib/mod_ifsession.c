@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.4 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.5 2003-08-09 08:09:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -338,7 +338,7 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
         xaset_remove(main_server->conf, (xasetmember_t *) c);
         removed_c = TRUE; 
 
-        resolve_defered_dirs(main_server);
+        resolve_deferred_dirs(main_server);
         fixup_dirs(main_server, CF_DEFER);
 
       } else
@@ -394,7 +394,7 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
         xaset_remove(main_server->conf, (xasetmember_t *) c);
         removed_c = TRUE;
 
-        resolve_defered_dirs(main_server);
+        resolve_deferred_dirs(main_server);
         fixup_dirs(main_server, CF_DEFER);
 
       } else
@@ -451,7 +451,7 @@ static int ifsess_sess_init(void) {
         xaset_remove(main_server->conf, (xasetmember_t *) c);
         removed_c = TRUE;
 
-        resolve_defered_dirs(main_server);
+        resolve_deferred_dirs(main_server);
         fixup_dirs(main_server, CF_DEFER);
 
       } else

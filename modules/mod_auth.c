@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.159 2003-08-07 20:16:45 castaglia Exp $
+ * $Id: mod_auth.c,v 1.160 2003-08-09 08:09:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1134,7 +1134,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
   }
 
   /* Perform a directory fixup. */
-  resolve_defered_dirs(main_server);
+  resolve_deferred_dirs(main_server);
   fixup_dirs(main_server, CF_DEFER);
 
   /* If running under an anonymous context, resolve all <Directory>

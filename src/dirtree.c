@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.114 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: dirtree.c,v 1.115 2003-08-09 08:09:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2680,12 +2680,8 @@ void resolve_anonymous_dirs(xaset_t *clist)
   }
 }
 
-/* iterate through directory configuration items and resolve
- * ~ references
- */
-
-void resolve_defered_dirs(server_rec *s)
-{
+/* Iterate through directory configuration items and resolve ~ references. */
+void resolve_deferred_dirs(server_rec *s) {
   config_rec *c;
   char *realdir;
 
