@@ -22,15 +22,6 @@
 /* Define to `int' if <sys/socket.h> doesn't define. */
 #undef socklen_t
 
-/* Manually override the socklen_t type on HP-UX 11 boxes.  For more
- * details on why, see:
- *  http://nagoya.apache.org/bugzilla/show_bug.cgi?id=16317
- */
-#if defined(HPUX11)
-# undef socklen_t
-# define socklen_t	int
-#endif
-
 /* Define to `mode_t' if <sys/types.h> doesn't define. */
 #undef umode_t
 

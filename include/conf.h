@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.50 2004-04-29 19:28:24 castaglia Exp $
+ * $Id: conf.h,v 1.51 2004-09-05 02:37:17 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -37,6 +37,15 @@
 
 #include "version.h"
 #include "config.h"
+
+/* Manually override the socklen_t type on HP-UX 11 boxes.  For more
+ * details on why, see:
+ *  http://nagoya.apache.org/bugzilla/show_bug.cgi?id=16317
+ */
+#if defined(HPUX11)
+# undef socklen_t
+# define socklen_t      int
+#endif
 
 #include "default_paths.h"
 
