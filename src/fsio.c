@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.20 2003-05-22 19:26:06 castaglia Exp $
+ * $Id: fsio.c,v 1.21 2003-06-02 22:16:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -245,7 +245,14 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *sbuf,
    */
   if (*path != '/') {
     sstrcat(pathbuf, cwd, MAXPATHLEN);
-    sstrcat(pathbuf, "/", MAXPATHLEN);
+
+    /* If the cwd is "/", we don't need to duplicate the path separator. 
+     * On some systems (e.g. Cygwin), this duplication can cause problems,
+     * as the path may then have different semantics.
+     */
+    if (strcmp(cwd, "/") != 0)
+      sstrcat(pathbuf, "/", MAXPATHLEN);
+
     sstrcat(pathbuf, path, MAXPATHLEN);
 
   } else

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.439 2003-06-02 16:23:23 castaglia Exp $
+$Id: NEWS,v 1.440 2003-06-02 22:16:11 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -10,6 +10,9 @@ CVS
   the RPM
 - Bug 2074 - MaxStoreFileSize restriction capabilities ignored.  This bug
   was affecting MaxRetrieveFileSize as well.
+- Bug 2075 - LIST / fails under Cygwin.  This was due to the addition of
+  an additional path separator character; Cygwin treats paths that start
+  with "//" differently than paths that start with "/".
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------
