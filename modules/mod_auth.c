@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.41 2000-08-03 02:59:58 macgyver Exp $
+ * $Id: mod_auth.c,v 1.42 2000-08-03 05:50:58 macgyver Exp $
  */
 
 #include "conf.h"
@@ -57,7 +57,7 @@ static int lockdown(char *newroot) {
   
   /* Isn't this line amusing? :)
    */
-  bzero(hell, sizeof(hell));
+  bzero(&hell, sizeof(hell));
   
   /* Per FreeBSD documentation, we set the API version to 0.
    */
@@ -74,11 +74,12 @@ static int lockdown(char *newroot) {
   /* Finally, we restrict the jail to a particular IP address.  I have a
    * tough time seeing a practical use of this, but I'm also paranoid...
    */
-  hell.ip_number = session.c->local_ipaddr;
+  hell.ip_number = *session.c->local_ipaddr;
   
   log_debug(DEBUG1, "Preparing to jail() the environment"
 	    "(version - '%d', path - '%s', hostname - '%s', ip_number - '%s'",
-	    hell.version, hell.path, hell.hostname, inet_ntoa(hell.ip_number));
+	    hell.version, hell.path, hell.hostname,
+	    inet_ntoa((struct in_addr) hell.ip_number));
   
   /* Drum roll please...
    */
