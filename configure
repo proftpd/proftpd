@@ -11522,6 +11522,7 @@ _ACEOF
 
 fi
 
+
 echo "$as_me:$LINENO: checking for alloca in -lgen" >&5
 echo $ECHO_N "checking for alloca in -lgen... $ECHO_C" >&6
 if test "${ac_cv_lib_gen_alloca+set}" = set; then
@@ -11577,10 +11578,12 @@ fi
 echo "$as_me:$LINENO: result: $ac_cv_lib_gen_alloca" >&5
 echo "${ECHO_T}$ac_cv_lib_gen_alloca" >&6
 if test $ac_cv_lib_gen_alloca = yes; then
-  cat >>confdefs.h <<\_ACEOF
+  cat >>confdefs.h <<_ACEOF
 #define HAVE_LIBGEN 1
 _ACEOF
- LIBS="$LIBS -lgen"
+
+  LIBS="-lgen $LIBS"
+
 fi
 
 if test $ac_cv_c_compiler_gnu = yes; then
