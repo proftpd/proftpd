@@ -846,6 +846,10 @@ Optional Features:
                           tune the size (in bytes) of memory pools
                           (default=512)
 
+  --enable-scoreboard-buffer-size
+                          tune the the size (in bytes) of certain
+                          scoreboard buffers (default=80)
+
   --enable-timeout-ident
                           set the default timeout (in secs) for
                           RFC931 connections (default=10)
@@ -2858,6 +2862,18 @@ _ACEOF
 
 
 fi;
+
+# Check whether --enable-scoreboard-buffer-size or --disable-scoreboard-buffer-size was given.
+if test "${enable_scoreboard_buffer_size+set}" = set; then
+  enableval="$enable_scoreboard_buffer_size"
+
+    cat >>confdefs.h <<_ACEOF
+#define PR_TUNABLE_SCOREBOARD_BUFFER_SIZE $enableval
+_ACEOF
+
+
+fi;
+
 
 # Check whether --enable-timeout-ident or --disable-timeout-ident was given.
 if test "${enable_timeout_ident+set}" = set; then
@@ -10821,7 +10837,10 @@ fi
 echo "$as_me:$LINENO: result: $ac_cv_lib_ncurses_initscr" >&5
 echo "${ECHO_T}$ac_cv_lib_ncurses_initscr" >&6
 if test $ac_cv_lib_ncurses_initscr = yes; then
-  LIBS="$LIBS -lncurses"
+  LIBS="$LIBS -lncurses" ; cat >>confdefs.h <<\_ACEOF
+#define HAVE_LIBNCURSES 1
+_ACEOF
+
 fi
 
 
