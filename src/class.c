@@ -23,7 +23,7 @@
  */
 
 /* Class routines
- * $Id: class.c,v 1.2 2004-04-19 23:59:24 castaglia Exp $
+ * $Id: class.c,v 1.3 2004-05-01 18:01:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -181,9 +181,17 @@ int pr_class_close(void) {
   /* Make sure the list of clients is NULL-terminated. */
   push_array(curr_cls->cls_acls);
 
-  /* Now add the current Class to the list. */
-  curr_cls->cls_next = class_list;
-  class_list = curr_cls; 
+  /* Now add the current Class to the end of the list. */
+  if (class_list) {
+    pr_class_t *ci = class_list;
+    while (ci && ci->cls_next)
+      ci = ci->cls_next;
+
+    ci->cls_next = curr_cls;
+
+  } else
+    class_list = curr_cls;
+
   curr_cls = NULL;
 
   /* Restore the configuration context type. */

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.560 2004-04-30 19:01:28 castaglia Exp $
+$Id: NEWS,v 1.561 2004-05-01 18:01:35 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -7,6 +7,9 @@ CVS
   NLST will once again handle options, but only the relevant options.
 - Bug 2034 - Add support for a "graceful shutdown" signal. See
   contrib/mod_ctrls_admin.html#shutdown for details.
+- Bug 2400 - <Class> search order is wrong.  The documentation correctly
+  stated that <Class> sections are matched in order of definition, but the
+  code has the match order in the reverse order of definition.
 
 1.2.10rc1 - Released 28-Apr-2004
 ---------------------------------
