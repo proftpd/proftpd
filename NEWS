@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.333 2002-12-27 16:13:55 jwm Exp $
+$Id: NEWS,v 1.334 2002-12-27 16:27:47 jwm Exp $
 
 CVS
 ---------------------------------
@@ -80,8 +80,8 @@ CVS
   Primarily of issue under Solaris 2.5 and Tru64 4.0D.
 - Bug 1863 - Unable to build under UnixWare 7
 
-1.2.7 - Released 05-12-2002
----------------------------------
+1.2.7 - Released 05-Dec-2002
+----------------------------
 - Bug 1840 - Problem with syslog default destination on HP-UX.  HPUX uses
   a default device of /dev/log.un rather than /dev/log.
 - Bug 1844 - DisplayLogin %y macro is off by 1.  Consequence of scoreboarding
@@ -117,8 +117,8 @@ CVS
 - Added custom memory scrubber routine to deal with the issue mentioned in
   this Bugtraq thread: http://online.securityfocus.com/archive/1/298598
 
-1.2.7rc3 - Released 15-11-2002
----------------------------------
+1.2.7rc3 - Released 15-Nov-2002
+-------------------------------
 - Fixed configure script detection and handling of ncurses (HAVE_LIBNCURSES
   was not being properly defined).
 - Added --enable-scoreboard-buffer-size option to configure script, for
@@ -164,8 +164,8 @@ CVS
 - ftpasswd now exits with different values, depending on the problem cause.
   Thanks to Graham Dunn <gdunn@inscriber.com> for these changes.
 
-1.2.7rc2 - Released 2002-10-22
----------------------------------
+1.2.7rc2 - Released 22-Oct-2002
+-------------------------------
 - Bug 1757 - non-ANSI Syntax in netio.c
 - Bug 1735 - Proftpd 1.2.6 compiled on FreeBSD 4.6.2 exits on signal 11
 - Bug 1759 - ftpwho shows much more connections than really is.  This bug
@@ -187,8 +187,8 @@ CVS
 - Adding new configure options (see configure --help) for setting some of
   the "tunable" values in options.h via the configure command.
 
-1.2.7rc1 - Released 2002-10-01
----------------------------------
+1.2.7rc1 - Released 01-Oct-2002
+-------------------------------
 - Bug 1649 - setproctitle() prepends and appends process name
 - Bug 1666 - Auth modules can return duplicate supplemental groups
 - Bug 1654 - Add DESTDIR in Makefile
@@ -224,13 +224,13 @@ CVS
 - Bug 1694 - SQLLog QUIT doesn't execute on connection close
 - Bug 1675 - add new MaxClientsPerUser configuration option
 
-1.2.6 - Released 2002-09-04
----------------------------------
+1.2.6 - Released 04-Sep-2002
+----------------------------
 New mod_ldap (2.8.10)
 - Fixed bug in matching of IP addresses introduced by Bug#1701
 
-1.2.6rc2 - Released 2002-08-15
----------------------------------
+1.2.6rc2 - Released 15-Aug-2002
+-------------------------------
 - Bug 1681 - Fixed bug made when adding <IfDefine>, <IfModule> support
 - Bug 1645 - Changed ordering of close() of HiddenStor files slightly
 - Bug 1674 - Changed timing of allocation of dynamic buffer (to avoid segfaults)
@@ -240,8 +240,8 @@ New mod_ldap (2.8.10)
 - Bug 1701 - Fixed/enhanced name/IP matching function by adding matching of
              ip1/ip2 to function; it was just name1/name2, name1/ip2 matching.
 
-1.2.6rc1 - Released 2002-07-02
----------------------------------
+1.2.6rc1 - Released 02-July-2002
+--------------------------------
 - Bug 1407 - Removed unnecessary check for prior PORT/PASV in STOR
              PRE_CMD handler (RETR PRE_CMD handler did not have these checks)
 - Added new Define, <IfDefine>, <IfModule> configuration directives, new
@@ -278,8 +278,8 @@ New mod_ldap (2.8.10)
 - Bug 1543 - Change mod_sql to not remove embedded whitespace within a
              username, just to strip leading and trailing whitespace.
 
-1.2.5 - Released 2002-06-08
----------------------------------
+1.2.5 - Released 08-Jun-2002
+----------------------------
 New mod_sql (4.08)
 - Bug 1379 - Changed mod_sql.c to use memset() instead of bzero()
 - Bug 1576 - Checks for a NULL pointer in a border case involving use of
@@ -289,8 +289,8 @@ New mod_sql (4.08)
 - Bug 1625 - Adds compatibility fix to mod_sql_mysql for older MySQL libraries
              (a function name changed in MySQL 3.23.14)
 
-1.2.5rc3 - Released 2002-05-30
----------------------------------
+1.2.5rc3 - Released 30-May-2002
+-------------------------------
 New mod_ldap (2.8.6)
 - Bug 1612 - Fixed logging of RFC931 usernames in xferlog
 - Bug 1595 - Transfers that result in error conditions no longer cause
@@ -301,8 +301,8 @@ New mod_ldap (2.8.6)
 - Bug 1379 - Changing remaining bzero/bcopy occurrences to memset/memcpy
 - Bug 1394 - ftpstats program is not working
 
-1.2.5rc2 - Released 2002-05-13
----------------------------------
+1.2.5rc2 - Released 13-May-2002
+-------------------------------
 - Added Andrew Houghton to the credits
 - Added in the new format FAQ
 - Bug 1580 - Minor additions to the RPM spec file to allow RPMs to be built
@@ -373,8 +373,8 @@ New mod_ldap (2.8.6)
              in effect
 - Bug 1537 - doc update
 
-1.2.5rc1 - Released 12/18/2001
----------------------------------
+1.2.5rc1 - Released 18-Dec-2001
+-------------------------------
 - New mod_sql (4.07)
 - New mod_wrap (1.2.2)
 - New mod_ldap (2.8.1)
@@ -407,14 +407,14 @@ New mod_ldap (2.8.6)
 - Bug 1391 - ABOR handler now clears session.xfer
 - Check retr_file for validity when RESToring
 
-1.2.4 - Released 10/19/2001
----------------------------------
+1.2.4 - Released 19-Oct-2001
+----------------------------
 Ooops.  1.2.3 was released with a bug that breaks Umask on
 certain platforms.  This results in files being mode 0.
 - Bug 1348 - Fix for mode 0 problem
 
-1.2.3 - Released 10/18/2001
----------------------------------
+1.2.3 - Released 18-Oct-2001
+----------------------------
 PASS argument now intentionally hidden in the proctitle.
 - Bug 1242 - More verbose logging of regex evaluations
 - Bug 1343 - Better reporting of command dispatching
@@ -428,8 +428,8 @@ PASS argument now intentionally hidden in the proctitle.
 - Bug 1331 - Reverse DNS is now forward checked for security
 - Bug 1305 - limits.h is now included if present
 
-1.2.2 - Released 08/17/2001
----------------------------------
+1.2.2 - Released 17-Aug-2001
+----------------------------
 README.mod_sql update from author
 new mod_sql from author
 - Bug 1285 - Documentation updates
@@ -450,8 +450,8 @@ new mod_sql from author
 - Bug 1234 - ABOR now always returns 226 (as per RFC959)
 - New mod_sql from upstream maintainer
 
-1.2.2rc3 - Released 06/19/2001
----------------------------------
+1.2.2rc3 - Released 19-Jun-2001
+-------------------------------
 - Bugs 1164,1020,1134,1190,1207
   Documentation updates
 - Bug 1215 - Removed setpgid()/setpgrp() from fork_server()
@@ -487,8 +487,8 @@ new mod_sql from author
 - Bug 1152 - Off-by-one in the PassivePorts code
 - Bug 1137 - NLST displayed hidden files
 
-1.2.2rc2 - Released 04/20/2001
----------------------------------
+1.2.2rc2 - Released 20-Apr-2001
+-------------------------------
 The `AllowChmod' directive has been deprecated, and will not work
 consistantly.  Use <Limit SITE_CHMOD> instead.
 
@@ -502,8 +502,8 @@ consistantly.  Use <Limit SITE_CHMOD> instead.
 - Bug 1119 - glibc-glob compilation issue on IRIX6.
 - Bug 1090 - ExtendedLog should now report ALL events (even errors)
 
-1.2.2rc1 - Released 03/24/2001
----------------------------------
+1.2.2rc1 - Released 24-Mar-2001
+-------------------------------
 - Bug 1085 - Better logging of "User is not a UserAlias" and "Can't find
   user."
 - Bug 1043 - Fixed possible infinite loop in bandwidth throttling code.
@@ -523,8 +523,8 @@ consistantly.  Use <Limit SITE_CHMOD> instead.
   scan proftpd.conf looking for ScoreboardPath, if all else fails
 - Bug 1042 - <Directory /> arbitrarily not matching.
 
-1.2.1 - Released 03/01/2001
----------------------------------
+1.2.1 - Released 01-Mar-2001
+----------------------------
 - A relatively major issue was discovered with session.groups which may cause
   any group-expressions inside of <Limit> (DenyGroup, etc) to malfunction.
   This is the primary reason for the 1.2.1 release.
@@ -535,8 +535,8 @@ consistantly.  Use <Limit SITE_CHMOD> instead.
   warning.
 - New mod_sql and mod_ldap from their respective maintainers.
 
-1.2.0-final - Released 02/26/2001
----------------------------------
+1.2.0-final - Released 26-Feb-2001
+----------------------------------
 - Numerous additional bug fixes from Bugzilla.  See http://bugs.proftpd.org
   for more info.
 - New and updated README.* and INSTALL.
@@ -553,8 +553,8 @@ consistantly.  Use <Limit SITE_CHMOD> instead.
 - logging to file (via SystemLog) is now done with a single write instead of
   two in order to be atomic.
 
-1.2.0rc3 - Released: 02/05/2001
--------------------------------
+1.2.0rc3 - Released: 05-Feb-2001
+--------------------------------
 - mod_sqlpw.c, mod_mysql.c and mod_pgsql.c have been REMOVED from the
   distribution.  They are currently unmaintained and have numerous bugs.
   If any kind soul <grin> is interested in maintaining them, they may be
@@ -582,8 +582,8 @@ consistantly.  Use <Limit SITE_CHMOD> instead.
 - Documentation updated for PAM on FreeBSD operating systems.
 - NUMEROUS other bug fixes, including many security issues
 
-1.2.0RC2 - Released: 07/28/2000
--------------------------------
+1.2.0RC2 - Released: 27-Jul-2000
+--------------------------------
 - Made sure ServerUseReverseDNS was honored.
 - Compile problems on various problems.
 - Added descriptions for more errors to be more RFC compliant.
@@ -594,8 +594,8 @@ consistantly.  Use <Limit SITE_CHMOD> instead.
 - HP/UX sendfile support.
 - Cleaned up configure and supporting files.
 
-1.2.0RCl - Released: 07/11/2000
--------------------------------
+1.2.0RCl - Released: 11-Jul-2000
+--------------------------------
 - Fixed a bug in mod_ls that could cause a crash.
 - Fixed a minor bug related to group permissions.
 - Fixed a bug in calculating file system size when using statvfs.
@@ -651,73 +651,46 @@ consistantly.  Use <Limit SITE_CHMOD> instead.
 - Cleaned up use of '.' and '..' in mod_ls.
 - Fixed a case where ServerUseReverseDNS wasn't being honored.
 
-1.2.0pre10 - Released: 1/17/00
-------------------------------
+1.2.0pre10 - Released: 17-Jan-2000
+----------------------------------
 - sendfile() handles errors and non-optimal conditions The Right Way(tm).
-
 - install_group works right in warped cases of having more than one GID 0
   group defined.  No, don't ask. :)
-
 - sendfile() doesn't log spurious messages unless it's in debug mode now.
-
 - A meaningful error is now generated with bad group files.
-
 - Complex group permissions work correctly now, where they did not in a
   rare case.
-
 - Updated included version of mod_ldap.
-
 - Bandwidth and sendfile() use are now mutually exclusive.
-
 - Corrected minor log issues.
-
 - Fixed various compilation issues on various platforms (isn't this vague :)).
-
 - More informative error messages.
-
 - Minor semi-Y2K issue in mod_readme fixed (don't ask...look at the code :)).
-
 - Corrected error messages on most commands in cases where an invalid number
   of arguments are specified.
-
 - An error message is now generated when ~ expansion is meaningless.
-
 - Invalid host entries don't show up as (null) anymore.
 
-1.2.0pre9 - Released: 10/27/99
-------------------------------
+1.2.0pre9 - Released: 27-Oct-1999
+---------------------------------
 - New support for BSD sendfile() semantics.
-
 - sendfile() deprecates politely on Linux 2.0.x.
-
 - AuthPAMAuthoritative now defaults to False.  This should clear up any
   confusion on using PAM with AuthUserFile and friends.
-
 - Removed Bandwidth from the documentation.
-
 - Fixed a rare segfault in mod_auth.
-
 - Logging has changed slightly to be more informative and more consistent.
     All messages that get logged are now preceded with
     <virtualhost> (remote host[remote ip]).
-
 - mod_ldap for authentication against LDAP directories is now in place.
-
 - ftpwho/ftpcount -- a grammatical error corrected, and they now build
     as seperate binaries.
-
 - Fixed the 'no names, just UIDs' bug.
-
 - Added genuser.pl to facilitate AuthUserFile entry creation.
-
 - Umask now takes an optional second argument, specifying a directory umask.
-
 - Work around FreeBSD's broken setpassent(), and a new option to override
     this in fixed versions of FreeBSD's libc (--enable-force-setpassent).
-
 - Generate RPMs for both inetd and standalone versions of ProFTPD.
-
 - Added AuthUsingAlias to allow for more fine-grain control of anonymous
     logins.
-
 - Added support for 'TYPE L 8' and 'TYPE L 7' per RFC 959.
