@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.393 2003-03-07 23:11:33 castaglia Exp $
+$Id: NEWS,v 1.394 2003-03-09 02:25:26 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -32,6 +32,9 @@ CVS
   PASS command has been sent, not after the USER command (as used to be done).
   Also, MaxHostsPerUser and MaxClientsPerUser limits will be determined using
   the locally resolved username, not using any user aliases.
+- ProFTPD now checks for IP address/port collisions in the configuration
+  file, and will refuse to start unless all configured server contexts
+  have unique IP address/port combinations.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------
