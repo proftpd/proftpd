@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.63 2002-08-15 14:45:20 castaglia Exp $
+ * $Id: dirtree.c,v 1.64 2002-08-28 16:00:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1070,13 +1070,20 @@ int match_ip(p_in_addr_t *addr, char *name, const char *match) {
     int fnm_flags = PR_FNM_NOESCAPE|PR_FNM_CASEFOLD;
     pool *tmp_pool = make_sub_pool(permanent_pool);
     p_in_addr_t *buf_addr = inet_getaddr(tmp_pool, buf);
+    char *buf_ascii = inet_ascii(tmp_pool, buf_addr),
+      *addr_ascii = inet_ascii(tmp_pool, addr);
+    
+    /* Note: do NOT use inet_ntoa(3) here, but rather use inet_ascii()
+     * wrapper function.  inet_ntoa(3)'s return value is a pointer to a
+     * buffer that is overwritten on subsequent calls.
+     */
 
     log_debug(DEBUG6, "comparing addresses '%s' (%s) and '%s' (%s)",
-      buf, inet_ntoa(*buf_addr), name, inet_ntoa(*addr));
+      buf, buf_ascii, name, addr_ascii);
 
     if (!pr_fnmatch(buf, name, fnm_flags) ||
-        !pr_fnmatch(buf, inet_ntoa(*addr), fnm_flags) ||
-        !pr_fnmatch(inet_ntoa(*buf_addr), inet_ntoa(*addr), fnm_flags)) {
+        !pr_fnmatch(buf, addr_ascii, fnm_flags) ||
+        !pr_fnmatch(buf_ascii, addr_ascii, fnm_flags)) {
       log_debug(DEBUG6, "addresses match");
       destroy_pool(tmp_pool);
       return 1;

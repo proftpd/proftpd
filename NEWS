@@ -1,4 +1,8 @@
-$Id: NEWS,v 1.207 2002-08-15 15:02:57 castaglia Exp $
+$Id: NEWS,v 1.208 2002-08-28 16:00:21 castaglia Exp $
+
+CVS
+---------------------------------
+- Fixed bug in matching of IP addresses introduced by Bug#1701
 
 1.2.6rc2 - Released 2002-08-15
 ---------------------------------
