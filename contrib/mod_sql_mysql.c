@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.36 2004-12-16 18:17:42 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.37 2004-12-30 23:08:14 castaglia Exp $
  */
 
 /*
@@ -1288,6 +1288,8 @@ MODRET cmd_checkauth(cmd_rec * cmd) {
 #endif
 
   success = !strcmp(scrambled, c_hash); 
+  if (!success)
+    sql_log(DEBUG_FUNC, "%s", "password mismatch");
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_checkauth");
 
