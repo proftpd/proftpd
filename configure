@@ -1471,11 +1471,6 @@ test -n "$target_alias" &&
     NONENONEs,x,x, &&
   program_prefix=${target_alias}-
 
-olddir=`pwd`
-cd contrib
-test -f README.mod_sql || ln -s ../README.mod_sql README.mod_sql
-cd $olddir
-
 OSTYPE=-D`echo $build_os | sed 's/\..*$//g' | sed 's/-.*//g' | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ`
 OSREL=-D`echo $build_os | sed 's/-.*//g' | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ | tr '.' '_'`
 
