@@ -24,7 +24,6 @@ following lines:
 
 ftp auth    required    pam_unix.so         try_first_pass
 ftp account required    pam_unix.so         try_first_pass
-ftp session required    pam_unix.so         try_first_pass
 
 PAM authentication should now work properly.
 
