@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.236 2004-05-30 21:45:26 castaglia Exp $
+ * $Id: main.c,v 1.237 2004-05-30 21:48:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2579,7 +2579,7 @@ int main(int argc, char *argv[], char **envp) {
       pr_log_pri(PR_LOG_NOTICE, "ProFTPD Version " PROFTPD_VERSION_TEXT);
 
     else {
-      register unsigned int;
+      register unsigned int i;
 
       pr_log_pri(PR_LOG_NOTICE, "ProFTPD Version: %s",
         PROFTPD_VERSION_TEXT " " PR_STATUS);
