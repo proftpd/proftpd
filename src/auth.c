@@ -16,10 +16,15 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
+ *
+ * As a special exemption, Public Flood Software/MacGyver aka Habeeb J. Dihu
+ * and other respective copyright holders give permission to link this program
+ * with OpenSSL, and distribute the resulting executable, without including
+ * the source code for OpenSSL in the source distribution.
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.8 2001-03-23 12:54:59 flood Exp $
+ * $Id: auth.c,v 1.9 2001-06-18 17:12:45 flood Exp $
  */
 
 #include "conf.h"

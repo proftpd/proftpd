@@ -16,11 +16,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
+ *
+ * As a special exemption, Public Flood Software/MacGyver aka Habeeb J. Dihu
+ * and other respective copyright holders give permission to link this program
+ * with OpenSSL, and distribute the resulting executable, without including
+ * the source code for OpenSSL in the source distribution.
  */
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.24 2001-04-18 15:45:39 flood Exp $
+ * $Id: data.c,v 1.25 2001-06-18 17:12:45 flood Exp $
  */
 
 #include "conf.h"

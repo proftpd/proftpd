@@ -16,6 +16,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
+ *
+ * As a special exemption, Public Flood Software/MacGyver aka Habeeb J. Dihu
+ * and other respective copyright holders give permission to link this program
+ * with OpenSSL, and distribute the resulting executable, without including
+ * the source code for OpenSSL in the source distribution.
  */
 
 /*
@@ -38,7 +43,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.9 2001-05-21 21:14:45 flood Exp $
+ * $Id: conf.h,v 1.10 2001-06-18 17:12:45 flood Exp $
  */
 
 #ifndef __CONF_H

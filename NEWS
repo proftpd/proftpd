@@ -1,7 +1,8 @@
-$Id: NEWS,v 1.107 2001-06-03 15:17:14 flood Exp $
+$Id: NEWS,v 1.108 2001-06-18 17:12:44 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+- Copyright/License updated to allow linking to OpenSSL
 - Bug 1183 - Removed duplicate find_class() call
 - Bug 1189 - <Directory> duping checked for
 - Bug 1185 - symlinks in homedirs now resolved at login

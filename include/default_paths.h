@@ -15,12 +15,17 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
+ *
+ * As a special exemption, Public Flood Software/MacGyver aka Habeeb J. Dihu
+ * and other respective copyright holders give permission to link this program
+ * with OpenSSL, and distribute the resulting executable, without including
+ * the source code for OpenSSL in the source distribution.
  */
 
 /* ProFTPD default path configuration.  Normally, Makefiles generated
  * by the top-level configuration script define the RUN_DIR and
  * CONFIG_FILE_PATH macros, so the two below are typically not used.
- * $Id: default_paths.h,v 1.4 2000-08-02 05:25:24 macgyver Exp $
+ * $Id: default_paths.h,v 1.5 2001-06-18 17:12:45 flood Exp $
  */
 
 #ifndef PROFTPD_PATHS_H
