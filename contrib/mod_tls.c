@@ -1442,7 +1442,7 @@ static void tls_setup_environ(void) {
 
   if (tls_opts & TLS_OPT_STD_ENV_VARS) {
     SSL_CIPHER *cipher = NULL;
-    SSL_SESSION *session = NULL;
+    SSL_SESSION *ssl_session = NULL;
 
     putenv(pstrdup(main_server->pool, "FTPS=1"));
 
@@ -1450,13 +1450,13 @@ static void tls_setup_environ(void) {
       SSL_get_cipher_version(ctrl_ssl), NULL));
 
     /* Process the SSL session-related environ variable. */
-    if ((session = SSL_get_session(ctrl_ssl))) {
+    if ((ssl_session = SSL_get_session(ctrl_ssl))) {
       char buf[SSL_MAX_SSL_SESSION_ID_LENGTH*2+1] = {'\0'};
       register unsigned int i = 0;
 
       /* Have to obtain a stringified session ID the hard way. */
-      for (i = 0; i < session->session_id_length; i++)
-        sprintf(&(buf[i*2]), "%02X", session->session_id[i]);
+      for (i = 0; i < ssl_session->session_id_length; i++)
+        sprintf(&(buf[i*2]), "%02X", ssl_session->session_id[i]);
       buf[sizeof(buf)-1] = '\0';
 
       putenv(pstrcat(main_server->pool, "TLS_SESSION_ID=", buf, NULL));

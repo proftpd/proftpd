@@ -937,7 +937,7 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
   char uidstr[MOD_SQL_BUFSIZE] = { '\0' };
   char *usrwhere, *where;
   char *realname;
-  int index = 0;
+  int i = 0;
 
   char *username = NULL;
   char *password = NULL;
@@ -1034,36 +1034,36 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
     }
   }
 
-  index = 0;
+  i = 0;
 
-  username = sd->data[index++];
-  password = sd->data[index++];
+  username = sd->data[i++];
+  password = sd->data[i++];
   
   uid = cmap.defaultuid;
   if (cmap.uidfield) {
-    if (sd->data[index]) {
-      uid = atoi(sd->data[index++]);
+    if (sd->data[i]) {
+      uid = atoi(sd->data[i++]);
     } else {
-      index++;
+      i++;
     }
   }
    
   gid = cmap.defaultgid;
   if (cmap.gidfield) {
-    if (sd->data[index]) {
-      gid = atoi(sd->data[index++]);
+    if (sd->data[i]) {
+      gid = atoi(sd->data[i++]);
     } else {
-      index++;
+      i++;
     }
   }
 
   if (cmap.defaulthomedir)
     dir =  cmap.defaulthomedir;
   else 
-    dir = sd->data[index++];
+    dir = sd->data[i++];
 
   if (cmap.shellfield)
-    shell = sd->data[index++];
+    shell = sd->data[i++];
   else
     shell =  "";
   
@@ -1633,14 +1633,14 @@ static modret_t *_process_named_query(cmd_rec *cmd, char *name)
     for (tmp = c->argv[1]; *tmp; ) {
       if(*tmp == '%') {
 	if (*(++tmp) == '{') {
-	  char *query;
+	  char *tmp_query;
 	  
-	  if (*tmp!='\0') query = ++tmp;
+	  if (*tmp!='\0') tmp_query = ++tmp;
 	  
 	  /* find the argument number to use */
 	  while ( *tmp && *tmp!='}' ) tmp++;
 	  
-	  argc = pstrndup(cmd->tmp_pool, query, (tmp - query));
+	  argc = pstrndup(cmd->tmp_pool, tmp_query, (tmp - tmp_query));
 	  if (argc) {
 	    num = strtol(argc, &endptr, 10);
 	    
@@ -2304,8 +2304,7 @@ MODRET cmd_setpwent(cmd_rec * cmd)
   sql_data_t *sd = NULL;
   modret_t *mr = NULL;
   char *where = NULL;
-  int index = 0;
-  int cnt = 0;
+  int i = 0, cnt = 0;
 
   char *username = NULL;
   char *password = NULL;
@@ -2343,39 +2342,39 @@ MODRET cmd_setpwent(cmd_rec * cmd)
     sd = (sql_data_t *) mr->data;
     
     /* walk through the array, adding users to the cache */
-    for ( index = 0, cnt = 0; cnt < sd->rnum; cnt++ ) {
-      username = sd->data[index++];
+    for ( i = 0, cnt = 0; cnt < sd->rnum; cnt++ ) {
+      username = sd->data[i++];
 
       /* if the username is NULL, skip it */
       if ( username == NULL ) continue;
 
-      password = sd->data[index++];
+      password = sd->data[i++];
       
       uid = cmap.defaultuid;
       if (cmap.uidfield) {
-	if (sd->data[index]) {
-	  uid = atoi(sd->data[index++]);
+	if (sd->data[i]) {
+	  uid = atoi(sd->data[i++]);
 	} else {
-	  index++;
+	  i++;
 	}
       }
       
       gid = cmap.defaultgid;
       if (cmap.gidfield) {
-	if (sd->data[index]) {
-	  gid = atoi(sd->data[index++]);
+	if (sd->data[i]) {
+	  gid = atoi(sd->data[i++]);
 	} else {
-	  index++;
+	  i++;
 	}
       }
 
       if (cmap.defaulthomedir)
 	dir =  cmap.defaulthomedir;
       else
-	dir = sd->data[index++];
+	dir = sd->data[i++];
 
       if (cmap.shellfield)
-	shell = sd->data[index++];
+	shell = sd->data[i++];
       else
 	shell =  "";
       

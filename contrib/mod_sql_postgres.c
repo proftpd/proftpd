@@ -1228,8 +1228,7 @@ cmdtable sql_cmdtable[] = {
  * sql_postgres_init: Used to initialize the connection cache and register
  *  the exit handler.
  */
-static int sql_postgres_init()
-{
+static int sql_postgres_init(void) {
   conn_pool  = make_sub_pool(session.pool);
   conn_cache = make_array(session.pool, DEF_CONN_POOL_SIZE,
 			  sizeof(conn_entry_t));

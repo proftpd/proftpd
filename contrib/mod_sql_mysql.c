@@ -349,7 +349,7 @@ static modret_t *_build_data( cmd_rec *cmd, db_conn_t *conn )
   sql_data_t *sd = NULL;
   char **data = NULL;
   unsigned long cnt = 0;
-  unsigned long index = 0;
+  unsigned long i = 0;
 
   if (!conn) 
     return PR_ERR_SQL_BADCMD(cmd);
@@ -374,7 +374,7 @@ static modret_t *_build_data( cmd_rec *cmd, db_conn_t *conn )
   
   while ((row = mysql_fetch_row( result ))) {
     for (cnt = 0; cnt < sd->fnum; cnt++)
-      data[index++] = pstrdup(cmd->tmp_pool, row[cnt]);
+      data[i++] = pstrdup(cmd->tmp_pool, row[cnt]);
   }
   
   /* at this point either we finished correctly or an error occurred in the
@@ -387,7 +387,7 @@ static modret_t *_build_data( cmd_rec *cmd, db_conn_t *conn )
   }
 
   mysql_free_result( result );
-  data[index] = NULL;
+  data[i] = NULL;
   sd->data = data;
 
   return mod_create_data( cmd, (void *) sd );
@@ -1364,8 +1364,7 @@ cmdtable sql_cmdtable[] = {
  * sql_mysql_init: Used to initialize the connection cache and register
  *  the exit handler.
  */
-static int sql_mysql_init()
-{
+static int sql_mysql_init(void) {
   conn_pool  = make_sub_pool(session.pool);
   conn_cache = make_array(session.pool, DEF_CONN_POOL_SIZE,
 			  sizeof(conn_entry_t));
