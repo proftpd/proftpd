@@ -27,7 +27,7 @@
 /* Memory allocation/anti-leak system.  Yes, this *IS* stolen from Apache
  * also.  What can I say?  It makes sense, and it's safe (more overhead
  * though)
- * $Id: pool.h,v 1.10 2002-10-21 17:06:09 castaglia Exp $
+ * $Id: pool.h,v 1.11 2002-12-10 21:01:43 castaglia Exp $
  */
 
 #ifndef PR_POOL_H
@@ -95,6 +95,7 @@ int pclosef(struct pool *, int);
 
 /* Functions for cleanup handlers */
 void register_cleanup(pool *, void *, void (*)(void *), void (*)(void *));
+void register_file_cleanups(pool *, FILE *);
 void unregister_cleanup(pool *, void *, void (*)(void *));
 
 /* minimum free bytes in a new block pool */

@@ -459,7 +459,7 @@ int pr_netio_postopen(pr_netio_stream_t *nstrm) {
   return -1;
 }
 
-int pr_netio_printf(pr_netio_stream_t *nstrm, char *fmt, ...) {
+int pr_netio_printf(pr_netio_stream_t *nstrm, const char *fmt, ...) {
   va_list msg;
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
 

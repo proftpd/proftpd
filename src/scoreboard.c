@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.11 2002-12-07 21:45:44 jwm Exp $
+ * $Id: scoreboard.c,v 1.12 2002-12-10 21:02:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -57,11 +57,11 @@ static char *handle_score_cmd(const char *fmt, va_list cmdap) {
   return buf;
 }
 
-static int read_scoreboard_header(pr_scoreboard_header_t *header) {
+static int read_scoreboard_header(pr_scoreboard_header_t *sch) {
   int res = 0;
 
   /* NOTE: reading a struct from a file using read(2) -- bad (in general). */
-  while ((res = read(scoreboard_fd, header, sizeof(pr_scoreboard_header_t))) !=
+  while ((res = read(scoreboard_fd, sch, sizeof(pr_scoreboard_header_t))) !=
       sizeof(pr_scoreboard_header_t)) {
     if (res == 0)
       return -1;
@@ -78,17 +78,17 @@ static int read_scoreboard_header(pr_scoreboard_header_t *header) {
    * Standalone daemons erase the scoreboard on startup.
    */
 
-  if (header->sch_magic != PR_SCOREBOARD_MAGIC) {
+  if (sch->sch_magic != PR_SCOREBOARD_MAGIC) {
     pr_close_scoreboard();
     return PR_SCORE_ERR_BAD_MAGIC;
   }
 
-  if (header->sch_version < PR_SCOREBOARD_VERSION) {
+  if (sch->sch_version < PR_SCOREBOARD_VERSION) {
     pr_close_scoreboard();
     return PR_SCORE_ERR_OLDER_VERSION;
   }
 
-  if (header->sch_version > PR_SCOREBOARD_VERSION) {
+  if (sch->sch_version > PR_SCOREBOARD_VERSION) {
     pr_close_scoreboard();
     return PR_SCORE_ERR_NEWER_VERSION;
   }

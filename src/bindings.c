@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.4 2002-12-07 21:45:43 jwm Exp $
+ * $Id: bindings.c,v 1.5 2002-12-10 21:02:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -134,7 +134,7 @@ conn_t *pr_ipbind_accept_conn(fd_set *readfds, int *listenfd) {
 int pr_ipbind_add_binds(server_rec *serv) {
   int res = 0;
   config_rec *c = NULL;
-  conn_t *listen = NULL;
+  conn_t *listen_conn = NULL;
   p_in_addr_t *addr = NULL;
 
   /* sanity check */
@@ -144,7 +144,7 @@ int pr_ipbind_add_binds(server_rec *serv) {
   c = find_config(serv->conf, CONF_PARAM, "Bind", FALSE);
 
   while (c) {
-    listen = NULL;
+    listen_conn = NULL;
 
     addr = inet_getaddr(serv->pool, c->argv[0]);
 
@@ -158,11 +158,11 @@ int pr_ipbind_add_binds(server_rec *serv) {
      * listen socket for this address, and add it to the binding list.
      */
     if (SocketBindTight && serv->ServerPort) {
-      listen = inet_create_connection(serv->pool, server_list, -1, addr,
+      listen_conn = inet_create_connection(serv->pool, server_list, -1, addr,
         serv->ServerPort, FALSE);
 
       PR_CREATE_IPBIND(serv, addr);
-      PR_OPEN_IPBIND(addr, serv->ServerPort, listen, FALSE, FALSE, TRUE);
+      PR_OPEN_IPBIND(addr, serv->ServerPort, listen_conn, FALSE, FALSE, TRUE);
 
     } else {
 
@@ -242,12 +242,12 @@ int pr_ipbind_close(p_in_addr_t *addr, unsigned int port,
     ipbind->ib_isactive = FALSE;
 
     if (close_namebinds && ipbind->ib_namebinds) {
-      register unsigned int i = 0;
+      register unsigned int j = 0;
       pr_namebind_t **namebinds = NULL;
 
       namebinds = (pr_namebind_t **) ipbind->ib_namebinds->elts;
-      for (i = 0; i < ipbind->ib_namebinds->nelts; i++) {
-        pr_namebind_t *nb = namebinds[i];
+      for (j = 0; j < ipbind->ib_namebinds->nelts; j++) {
+        pr_namebind_t *nb = namebinds[j];
 
         PR_CLOSE_NAMEBIND(nb->nb_name, nb->nb_server->ipaddr,
           nb->nb_server->ServerPort);
@@ -276,12 +276,12 @@ int pr_ipbind_close(p_in_addr_t *addr, unsigned int port,
         ipbind->ib_isactive = FALSE;
 
         if (close_namebinds && ipbind->ib_namebinds) {
-          register unsigned int n = 0;
+          register unsigned int j = 0;
           pr_namebind_t **namebinds = NULL;
 
           namebinds = (pr_namebind_t **) ipbind->ib_namebinds->elts;
-          for (n = 0; n < ipbind->ib_namebinds->nelts; n++) {
-            pr_namebind_t *nb = namebinds[n];
+          for (j = 0; j < ipbind->ib_namebinds->nelts; j++) {
+            pr_namebind_t *nb = namebinds[j];
 
             PR_CLOSE_NAMEBIND(nb->nb_name, nb->nb_server->ipaddr,
               nb->nb_server->ServerPort);

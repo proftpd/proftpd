@@ -25,7 +25,7 @@
  */
 
 /* Network IO stream layer
- * $Id: netio.h,v 1.3 2002-12-05 21:16:48 castaglia Exp $
+ * $Id: netio.h,v 1.4 2002-12-10 21:01:43 castaglia Exp $
  */
 
 #ifndef PR_NETIO_H
@@ -152,7 +152,7 @@ pr_netio_stream_t *pr_netio_open(pool *, int, int, int);
 
 int pr_netio_postopen(pr_netio_stream_t *);
 
-int pr_netio_printf(pr_netio_stream_t *, char *, ...);
+int pr_netio_printf(pr_netio_stream_t *, const char *, ...);
 
 /* pr_netio_printf_async() is for use inside alarm handlers, where no
  * pr_netio_poll() blocking is allowed.  This is necessary because otherwise,

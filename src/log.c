@@ -27,7 +27,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.51 2002-12-07 21:45:44 jwm Exp $
+ * $Id: log.c,v 1.52 2002-12-10 21:02:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -99,7 +99,8 @@ int log_open_xfer(const char *path) {
 }
 
 int log_xfer(int xfertime, char *remhost, off_t fsize, char *fname,
-    char xfertype, char direction, char access, char *user, char abort_flag) {
+    char xfertype, char direction, char access_mode, char *user,
+    char abort_flag) {
 
   char buf[LOGBUFFER_SIZE] = {'\0'}, fbuf[LOGBUFFER_SIZE] = {'\0'};
   register unsigned int i = 0;
@@ -116,7 +117,7 @@ int log_xfer(int xfertime, char *remhost, off_t fsize, char *fname,
   snprintf(buf, sizeof(buf),
     "%s %d %s %" PR_LU " %s %c _ %c %c %s ftp %c %s %c\n",
     fmt_time(time(NULL)), xfertime, remhost, fsize, fbuf, xfertype, direction,
-    access, user, session.ident_lookups == TRUE ? '1' : '0',
+    access_mode, user, session.ident_lookups == TRUE ? '1' : '0',
     (session.ident_lookups == TRUE && strcmp(session.ident_user,
       "UNKNOWN")) ? session.ident_user : "*", abort_flag);
   buf[sizeof(buf)-1] = '\0';
@@ -130,7 +131,7 @@ int log_xfer(int xfertime, char *remhost, off_t fsize, char *fname,
  * but I haven't been able to test them.
  */
 
-int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip) {
+int log_wtmp(char *line, const char *name, const char *host, p_in_addr_t *ip) {
   struct stat buf;
   struct utmp ut;
   int res = 0;
@@ -239,7 +240,7 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip) {
 }
 
 int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
-  pool *pool;
+  pool *tmp_pool = NULL;
   char *tmp = NULL, *lf;
   unsigned char *allow_log_symlinks = NULL;
   struct stat sbuf;
@@ -251,12 +252,12 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   }
 
   /* Make a temporary copy of log_file in case it's a constant */
-  pool = make_sub_pool(permanent_pool);
-  lf = pstrdup(pool, log_file);
+  tmp_pool = make_sub_pool(permanent_pool);
+  lf = pstrdup(tmp_pool, log_file);
 
   if ((tmp = strrchr(lf, '/')) == NULL) {
     log_debug(DEBUG0, "inappropriate log file: %s", lf);
-    destroy_pool(pool);
+    destroy_pool(tmp_pool);
     return -1;
   }
 
@@ -268,21 +269,21 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   if (stat(lf, &sbuf) == -1) {
     log_debug(DEBUG0, "error: unable to stat() %s: %s", lf,
       strerror(errno));
-    destroy_pool(pool);
+    destroy_pool(tmp_pool);
     return -1;
   }
 
   /* The path must be in a valid directory */
   if (!S_ISDIR(sbuf.st_mode)) {
     log_debug(DEBUG0, "error: %s is not a directory", lf);
-    destroy_pool(pool);
+    destroy_pool(tmp_pool);
     return -1;
   }
 
   /* Do not log to world-writeable directories */
   if (sbuf.st_mode & S_IWOTH) {
     log_debug(DEBUG0, "error: %s is a world writeable directory", lf);
-    destroy_pool(pool);
+    destroy_pool(tmp_pool);
     return LOG_WRITEABLE_DIR;
   }
 
@@ -301,7 +302,7 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
      */
     if ((*log_fd = open(lf, O_APPEND|O_CREAT|O_WRONLY,
           log_mode)) == -1) {
-      destroy_pool(pool);
+      destroy_pool(tmp_pool);
       return -1;
     }
 
@@ -310,17 +311,17 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
       log_debug(DEBUG0, "error: %s is a symbolic link", lf);
       close(*log_fd);
       *log_fd = -1;
-      destroy_pool(pool);
+      destroy_pool(tmp_pool);
       return LOG_SYMLINK;
     }
 
   } else
     if ((*log_fd = open(lf, O_CREAT|O_APPEND|O_WRONLY, log_mode)) == -1) {
-      destroy_pool(pool);
+      destroy_pool(tmp_pool);
       return -1;
     }
 
-  destroy_pool(pool);
+  destroy_pool(tmp_pool);
   return 0;
 }
 
@@ -449,7 +450,7 @@ static void log(int priority, int f, char *s) {
     syslog_sockfd = pr_openlog("proftpd", LOG_NDELAY|LOG_PID, facility);
 }
 
-void log_pri(int priority, char *fmt, ...) {
+void log_pri(int priority, const char *fmt, ...) {
   char buf[LOGBUFFER_SIZE] = {'\0'};
   va_list msg;
 
@@ -467,7 +468,7 @@ void log_pri(int priority, char *fmt, ...) {
  * facility (presumable it doesn't need to be seen by everyone
  */
 
-void log_auth(int priority, char *fmt, ...) {
+void log_auth(int priority, const char *fmt, ...) {
   char buf[LOGBUFFER_SIZE] = {'\0'};
   va_list msg;
 
@@ -531,7 +532,7 @@ int log_str2sysloglevel(const char *name) {
   return -1;
 }
 
-void log_debug(int level, char *fmt, ...) {
+void log_debug(int level, const char *fmt, ...) {
   char buf[LOGBUFFER_SIZE] = {'\0'};
   va_list msg;
 

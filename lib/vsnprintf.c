@@ -21,7 +21,6 @@
 #define __PROFTPD_SUPPORT_LIBRARY
 
 #include <conf.h>
-
 #include <libsupp.h>
 
 #include <ctype.h>

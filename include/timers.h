@@ -46,5 +46,6 @@ int remove_timer(int, module *);
 int reset_timer(int, module *);
 int timer_sleep(int);
 void handle_alarm(void);
+void set_sig_alarm(void);
 
 #endif /* __TIMERS_H */

@@ -25,7 +25,7 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.14 2002-12-05 21:16:48 castaglia Exp $
+ * $Id: support.h,v 1.15 2002-12-10 21:01:45 castaglia Exp $
  */
 
 #ifndef __SUPPORT_H
@@ -70,7 +70,7 @@ char *dir_canonical_path(pool *, const char *);
 char *dir_best_path(pool *, const char *);
 char *dir_virtual_chdir(pool *, const char *);
 
-void add_exit_handler(void (*f)());
+void add_exit_handler(void (*)(void));
 void remove_exit_handlers(void);
 void run_exit_handlers(void);
 

@@ -35,8 +35,7 @@
 static pool *regexp_pool = NULL;
 static array_header *regexp_list = NULL;
 
-static void regexp_rehash_cb(void *data) {
-
+static void regexp_cleanup(void) {
   /* Only perform this cleanup if necessary */
   if (regexp_pool) {
     register unsigned int i = 0;
@@ -57,6 +56,14 @@ static void regexp_rehash_cb(void *data) {
     regexp_pool = NULL;
     regexp_list = NULL;
   }
+}
+
+static void regexp_exit_cb(void) {
+  regexp_cleanup();
+}
+
+static void regexp_rehash_cb(void *data) {
+  regexp_cleanup();
 }
 
 regex_t *pr_regexp_alloc(void) {
@@ -115,10 +122,7 @@ void pr_init_regexp(void) {
    */
   register_rehash(NULL, regexp_rehash_cb);
 
-  /* Use the same rehash handler when exiting, as that callback function
-   * properly frees up memory for allocated regex_ts.
-   */
-  add_exit_handler(regexp_rehash_cb);
+  add_exit_handler(regexp_exit_cb);
 }
 
 #endif

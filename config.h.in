@@ -508,6 +508,9 @@
 /* Define if using /etc/shadow files.  */
 #undef USE_SHADOW
 
+/* Define if you are a developer. */
+#undef USE_DEVEL
+
 /* Tunable parameters */
 #undef PR_TUNABLE_BUFFER_SIZE
 #undef PR_TUNABLE_NEW_POOL_SIZE

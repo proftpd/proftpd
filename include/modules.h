@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.18 2002-12-05 22:47:47 castaglia Exp $
+ * $Id: modules.h,v 1.19 2002-12-10 21:01:41 castaglia Exp $
  */
 
 #ifndef __MODULES_H
@@ -241,6 +241,10 @@ modret_t *mod_create_error(cmd_rec *, int);
 modret_t *mod_create_data(cmd_rec *, void *);
 privdata_t *mod_privdata_alloc(cmd_rec *, char *, int);
 privdata_t *mod_privdata_find(cmd_rec *, char *, module *);
+
+int core_display_file(const char *, const char *, const char *);
+int core_chgrp(cmd_rec *, char *, uid_t, gid_t);
+int core_chmod(cmd_rec *, char *, mode_t);
 
 /* prototypes for auth.c */
 void auth_setpwent(pool *);

@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.26 2002-12-07 00:48:32 castaglia Exp $
+ * $Id: dirtree.h,v 1.27 2002-12-10 21:01:35 castaglia Exp $
  */
 
 #ifndef __DIRTREE_H
@@ -213,6 +213,8 @@ long get_param_int(xaset_t *, const char *, int);
 long get_param_int_next(const char *, int);
 void *get_param_ptr(xaset_t *, const char *, int);
 void *get_param_ptr_next(const char *, int);
+xaset_t *get_dir_ctxt(char *);
+
 void init_conf_stacks(void);
 void free_conf_stacks(void);
 server_rec *start_new_server(const char *);
@@ -226,6 +228,7 @@ void build_dyn_config(pool *, char *, struct stat *, unsigned char);
 unsigned char dir_hide_file(const char *);
 int dir_check_op_mode(pool *, char *, int, uid_t, gid_t, mode_t);
 int dir_check_full(pool *, char *, char *, char *, int *);
+int dir_check_limits(config_rec *, char *, int);
 int dir_check(pool *, char *, char *, char *, int *);
 int dir_check_canon(pool *, char *, char *, char *, int *);
 int is_dotdir(const char *);

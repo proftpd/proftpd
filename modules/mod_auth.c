@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.117 2002-12-07 22:03:38 jwm Exp $
+ * $Id: mod_auth.c,v 1.118 2002-12-10 21:01:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -445,8 +445,8 @@ static config_rec *_auth_resolve_user(pool *p,char **user,
   }
 
   if (!is_alias && !force_anon) {
-    unsigned char *auth_alias_only = get_param_ptr(c ? c->subset :
-      main_server->conf, "AuthAliasOnly", FALSE);
+    auth_alias_only = get_param_ptr(c ? c->subset : main_server->conf,
+      "AuthAliasOnly", FALSE);
 
     if (auth_alias_only && *auth_alias_only == TRUE) {
       if (c && c->config_type == CONF_ANON)
@@ -660,7 +660,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   struct stat sbuf;
   config_rec *c;
   char *origuser,*ourname,*anonname = NULL,*anongroup = NULL,*ugroup = NULL;
-  char ttyname[20] = {'\0'}, *defaulttransfermode;
+  char sess_ttyname[20] = {'\0'}, *defaulttransfermode;
   char *defroot = NULL,*defchdir = NULL,*xferlog = NULL;
   int aclp,i,force_anon = 0,res = 0,showsymlinks;
   unsigned char *wtmp_log = NULL, *anon_require_passwd = NULL;
@@ -1025,9 +1025,9 @@ static int _setup_environment(pool *p, char *user, char *pass)
    */
 
 #if (defined(BSD) && (BSD >= 199103))
-  snprintf(ttyname, sizeof(ttyname), "ftp%ld",(long)getpid());
+  snprintf(sess_ttyname, sizeof(sess_ttyname), "ftp%ld", (long) getpid());
 #else
-  snprintf(ttyname, sizeof(ttyname), "ftpd%d",(int)getpid());
+  snprintf(sess_ttyname, sizeof(sess_ttyname), "ftpd%d", (int) getpid());
 #endif
 
   /* Perform wtmp logging only if not turned off in <Anonymous>
@@ -1042,7 +1042,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   PRIVS_ROOT
 
   if (!wtmp_log || *wtmp_log == TRUE) {
-    log_wtmp(ttyname, session.user, session.c->remote_name,
+    log_wtmp(sess_ttyname, session.user, session.c->remote_name,
       session.c->remote_ipaddr);
     session.wtmp_log = TRUE;
   }

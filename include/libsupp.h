@@ -29,7 +29,7 @@
 
 /* ProFTPD support library definitions.
  *
- * $Id: libsupp.h,v 1.8 2002-06-23 19:03:22 castaglia Exp $
+ * $Id: libsupp.h,v 1.9 2002-12-10 21:01:39 castaglia Exp $
  */
 
 #include <glibc-glob.h>
@@ -49,26 +49,32 @@
 int pr_fnmatch(const char *, const char *, int);
 
 #ifndef HAVE_STRSEP
-
 char *strsep(char **, const char *);
-
+#else
+void pr_os_already_has_strsep(void);
 #endif /* HAVE_STRSEP */
 
 #ifndef HAVE_VSNPRINTF
-
 int vsnprintf(char *, size_t, const char *, va_list);
-
+#else
+void pr_os_already_has_vsnprintf(void);
 #endif /* HAVE_VSNPRINTF */
 
 #ifndef HAVE_SNPRINTF
-
 int snprintf(char *, size_t, const char *, ...);
+#else
+void pr_os_already_has_snprintf(void);
+#endif /* HAVE_SNPRINTF */
 
-#endif
+#if defined(HAVE_VSNPRINTF) && defined(HAVE_SNPRINTF)
+void pr_os_already_has_snprintf_and_vsnprintf(void);
+#endif /* !HAVE_VSNPRINTF || !HAVE_SNPRINTF */
 
 #ifndef HAVE_MKSTEMP
 int mkstemp(char *);
-#endif
+#else
+void pr_os_already_has_mkstemp(void);
+#endif /* HAVE_MKSTEMP */
 
 #ifndef HAVE_FGETPWENT
 struct passwd *fgetpwent(FILE *);

@@ -27,7 +27,7 @@
 /* Shows a count of "who" is online via proftpd.  Uses the /var/run/proftpd*
  * log files.
  *
- * $Id: ftpwho.c,v 1.8 2002-12-06 21:25:10 castaglia Exp $
+ * $Id: ftpwho.c,v 1.9 2002-12-10 21:02:19 castaglia Exp $
  */
 
 #include "utils.h"
@@ -41,7 +41,7 @@ struct scoreboard_class {
 #define OF_COMPAT		0x001
 #define OF_ONELINE		0x002
 
-static char *config_filename = CONFIG_FILE_PATH;
+static const char *config_filename = CONFIG_FILE_PATH;
 
 char *util_sstrncpy(char *, const char *, size_t);
 
@@ -68,7 +68,7 @@ static char *percent_complete(off_t size, off_t done) {
   return sbuf;
 }
 
-static char *show_time(time_t *i) {
+static const char *show_time(time_t *i) {
   time_t now = time(NULL);
   unsigned long l;
   static char sbuf[7];
@@ -169,7 +169,7 @@ static int check_scoreboard_file(void) {
 }
 
 static struct option_help {
-  char *long_opt,*short_opt,*desc;
+  const char *long_opt,*short_opt,*desc;
 } opts_help[] = {
   { "--config", "-c", "specify full path to proftpd configuration file" },
   { "--file", "-f", "specify full path to scoreboard file" },

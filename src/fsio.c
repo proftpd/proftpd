@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.4 2002-12-07 21:45:43 jwm Exp $
+ * $Id: fsio.c,v 1.5 2002-12-10 21:02:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -61,7 +61,9 @@ struct fsopendir {
 static pr_fs_t *root_fs = NULL, *fs_cwd = NULL;
 static array_header *fs_map = NULL;
 
+#ifdef PR_FS_MATCH
 static pr_fs_match_t *fs_match_list = NULL;
+#endif /* PR_FS_MATCH */
 
 static fsopendir_t *fsopendir_list;
 static void *fs_cache_dir = NULL;
@@ -276,9 +278,9 @@ static pr_fs_t *fs_lookup_dir(const char *path, int op) {
   pr_fs_t *fs = NULL;
   int exact = FALSE;
 
-#ifdef FSMATCH
+#ifdef PR_FS_MATCH
   pr_fs_match_t *fsm = NULL;
-#endif
+#endif /* PR_FS_MATCH */
 
   sstrncpy(buf, path, sizeof(buf));
 
@@ -296,7 +298,7 @@ static pr_fs_t *fs_lookup_dir(const char *path, int op) {
 
   fs = pr_get_fs(tmp_path, &exact);
 
-#ifdef FSMATCH
+#ifdef PR_FS_MATCH
 /* NOTE: what if there is a perfect matching pr_fs_t for the given path,
  *  but an fs_match with pattern of "." is registered?  At present, that
  *  fs_match will never trigger...hmmm...OK.  fs_matches are only scanned
@@ -335,7 +337,7 @@ static pr_fs_t *fs_lookup_dir(const char *path, int op) {
    */
   if (chk_fs_map)
     fs = pr_get_fs(tmp_path, &exact);
-#endif
+#endif /* PR_FS_MATCH */
 
   return (fs ? fs : root_fs);
 }
@@ -348,13 +350,15 @@ static pr_fs_t *fs_lookup_dir(const char *path, int op) {
 static pr_fs_t *fs_lookup_file(const char *path, char **deref, int op) {
 
   if (!strchr(path, '/')) {
+#ifdef PR_FS_MATCH
     pr_fs_match_t *fsm = NULL;
 
-#ifdef FSMATCH
     fsm = pr_get_fs_match(path, op);
-#endif
 
     if (!fsm || fsm->trigger(fs_cwd, path, op) <= 0) {
+#else
+    if (1) {
+#endif /* PR_FS_MATCH */
       struct stat sbuf;
       int (*mystat)(pr_fs_t *, const char *, struct stat *) = NULL;
 
@@ -707,6 +711,7 @@ pr_fs_t *pr_get_fs(const char *path, int *exact) {
 }
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+#ifdef PR_FS_MATCH
 void pr_associate_fs(pr_fs_match_t *fsm, pr_fs_t *fs) {
   *((pr_fs_t **) push_array(fsm->fsm_fs_objs)) = fs;
 }
@@ -922,7 +927,8 @@ pr_fs_match_t *pr_get_fs_match(const char *path, int op) {
   /* ...otherwise, hand the search off to pr_get_next_fs_match() */
   return pr_get_next_fs_match(fsm, path, op);
 }
-#endif
+#endif /* PR_FS_MATCH */
+#endif /* HAVE_REGEX_H && HAVE_REGCOMP */
 
 void pr_fs_setcwd(const char *dir) {
   pr_fs_resolve_path(dir, cwd, MAXPATHLEN, FSIO_DIR_CHDIR);

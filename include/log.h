@@ -27,7 +27,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.15 2002-12-07 21:12:59 castaglia Exp $
+ * $Id: log.h,v 1.16 2002-12-10 21:01:40 castaglia Exp $
  */
 
 #ifndef PR_LOG_H
@@ -65,7 +65,7 @@
 #define LOG_XFER_MODE           0644
 
 char *fmt_time(time_t);
-int log_wtmp(char *, char *, char *, p_in_addr_t *);
+int log_wtmp(char *, const char *, const char *, p_in_addr_t *);
 void log_setfacility(int);
 int log_openfile(const char *, int *, mode_t);
 int log_opensyslog(const char *);
@@ -74,21 +74,21 @@ void log_closesyslog(void);
 /* Utilize gcc's __attribute__ pragma for signalling that it should perform
  * printf-style checking of this function's arguments.
  */
-void log_pri(int, char *, ...)
+void log_pri(int, const char *, ...)
 #ifdef __GNUC__
        __attribute__ ((format (printf, 2, 3)));
 #else
        ;
 #endif
 
-void log_auth(int, char *, ...);
+void log_auth(int, const char *, ...);
 void log_stderr(int);
 int  log_setdebuglevel(int);
 
 /* Utilize gcc's __attribute__ pragma for signalling that it should perform
  * printf-style checking of this function's arguments.
  */
-void log_debug(int, char *, ...)
+void log_debug(int, const char *, ...)
 #ifdef __GNUC__
        __attribute__ ((format (printf, 2, 3)));
 #else

@@ -1510,12 +1510,12 @@ glob_in_dir (const char *pattern, const char *directory, int flags,
 
  memory_error:
   {
-    int save = errno;
+    int my_save = errno;
     if (flags & GLOB_ALTDIRFUNC)
       (*pglob->gl_closedir) (stream);
     else
       closedir ((DIR *) stream);
-    __set_errno (save);
+    __set_errno (my_save);
   }
   while (names != NULL)
     {

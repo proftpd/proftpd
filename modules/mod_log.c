@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.42 2002-12-07 22:03:39 jwm Exp $
+ * $Id: mod_log.c,v 1.43 2002-12-10 21:01:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -835,15 +835,15 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
     return NULL;
 }
 
+/* from src/log.c */
+extern int syslog_sockfd;
+
 static void do_log(cmd_rec *cmd, logfile_t *lf) {
   unsigned char *f = NULL;
   size_t size = EXTENDED_LOG_BUFFER_SIZE-2;
   char logbuf[EXTENDED_LOG_BUFFER_SIZE] = {'\0'};
   logformat_t *fmt = NULL;
   char *s, *bp;
-
-  /* from src/log.c */
-  extern int syslog_sockfd;
 
   fmt = lf->lf_format;
   f = fmt->lf_format;

@@ -26,7 +26,7 @@
 
 /* Scoreboard routines.
  *
- * $Id: utils.h,v 1.9 2002-12-06 21:25:10 castaglia Exp $
+ * $Id: utils.h,v 1.10 2002-12-10 21:02:20 castaglia Exp $
  */
 
 #ifndef UTIL_SCOREBOARD_H
@@ -129,6 +129,8 @@ typedef struct {
 #define UTIL_SCORE_ERR_BAD_MAGIC	-2
 #define UTIL_SCORE_ERR_OLDER_VERSION	-3
 #define UTIL_SCORE_ERR_NEWER_VERSION	-4
+
+char *util_sstrncpy(char *, const char *, size_t);
 
 const char *util_get_scoreboard(void);
 int util_set_scoreboard(const char *);

@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.110 2002-12-07 21:43:44 jwm Exp $
+ * $Id: mod_xfer.c,v 1.111 2002-12-10 21:02:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -461,28 +461,28 @@ static unsigned char xfer_rate_parse_cmdlist(config_rec *c, char *cmdlist) {
  * to be killed by the admin.
  */
 static void xfer_rate_sigmask(unsigned char block) {
-  static sigset_t sigset;
+  static sigset_t sig_set;
 
   if (block) {
-    sigemptyset(&sigset);
+    sigemptyset(&sig_set);
 
-    sigaddset(&sigset, SIGCHLD);
-    sigaddset(&sigset, SIGUSR1);
-    sigaddset(&sigset, SIGINT);
-    sigaddset(&sigset, SIGQUIT);
-    sigaddset(&sigset, SIGALRM);
+    sigaddset(&sig_set, SIGCHLD);
+    sigaddset(&sig_set, SIGUSR1);
+    sigaddset(&sig_set, SIGINT);
+    sigaddset(&sig_set, SIGQUIT);
+    sigaddset(&sig_set, SIGALRM);
 #ifdef SIGIO
-    sigaddset(&sigset, SIGIO);
-#endif
+    sigaddset(&sig_set, SIGIO);
+#endif /* SIGIO */
 #ifdef SIGBUS
-    sigaddset(&sigset, SIGBUS);
-#endif
-    sigaddset(&sigset, SIGHUP);
+    sigaddset(&sig_set, SIGBUS);
+#endif /* SIGBUS */
+    sigaddset(&sig_set, SIGHUP);
 
-    sigprocmask(SIG_BLOCK, &sigset, NULL);
+    sigprocmask(SIG_BLOCK, &sig_set, NULL);
 
   } else
-    sigprocmask(SIG_UNBLOCK, &sigset, NULL);
+    sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
 }
 
 /* Returns the difference, in secs, between the given timeval and now. */

@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.87 2002-12-07 22:04:20 jwm Exp $
+ * $Id: dirtree.c,v 1.88 2002-12-10 21:02:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -580,14 +580,14 @@ static void free_dyn_stacks(void) {
 }
 
 void init_conf_stacks(void) {
-  pool *pool = make_sub_pool(permanent_pool);
+  pool *conf_pool = make_sub_pool(permanent_pool);
 
-  conf.tpool = pool;
-  conf.sstack = make_array(pool,1,sizeof(server_rec*));
-  conf.curserver = (server_rec**)push_array(conf.sstack);
+  conf.tpool = conf_pool;
+  conf.sstack = make_array(conf_pool, 1, sizeof(server_rec *));
+  conf.curserver = (server_rec **) push_array(conf.sstack);
   *conf.curserver = main_server;
-  conf.cstack = make_array(pool,10,sizeof(config_rec*));
-  conf.curconfig = (config_rec**)push_array(conf.cstack);
+  conf.cstack = make_array(conf_pool, 10, sizeof(config_rec *));
+  conf.curconfig = (config_rec **) push_array(conf.cstack);
   *conf.curconfig = NULL;
 }
 
@@ -1131,9 +1131,9 @@ int dir_check_op_mode(pool *p, char *path, int op, uid_t uid, gid_t gid,
   return _dir_check_op(p, sc ? sc->subset : c, op, uid, gid, mode);
 }
 
-static int _check_user_access(xaset_t *conf, char *name) {
+static int _check_user_access(xaset_t *set, char *name) {
   int res = 0;
-  config_rec *c = find_config(conf, CONF_PARAM, name, FALSE);
+  config_rec *c = find_config(set, CONF_PARAM, name, FALSE);
 
   while (c) {
     res = user_expression((char **) c->argv);
@@ -1147,9 +1147,9 @@ static int _check_user_access(xaset_t *conf, char *name) {
   return res;
 }
 
-static int _check_group_access(xaset_t *conf, char *name) {
+static int _check_group_access(xaset_t *set, char *name) {
   int res = 0;
-  config_rec *c = find_config(conf, CONF_PARAM, name, FALSE);
+  config_rec *c = find_config(set, CONF_PARAM, name, FALSE);
 
   while (c) {
     res = group_expression((char **) c->argv);
@@ -1365,13 +1365,12 @@ static int _check_ip_positive(const config_rec *c)
   return FALSE;
 }
 
-static int _check_ip_access(xaset_t *conf, char *name)
-{
+static int _check_ip_access(xaset_t *set, char *name) {
   int res = FALSE;
 
-  config_rec *c = find_config(conf,CONF_PARAM,name,FALSE);
+  config_rec *c = find_config(set, CONF_PARAM, name, FALSE);
 
-  while(c) {
+  while (c) {
     /* If the negative check failed (default is success), short-circuit and
      * return FALSE
      */
@@ -1385,7 +1384,7 @@ static int _check_ip_access(xaset_t *conf, char *name)
     /* Continue on, in case there are other acls that need to be checked
      * (multiple acls are logically OR'd)
      */
-    c = find_config_next(c,c->next,CONF_PARAM,name,FALSE);
+    c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
 
   return res;
@@ -1489,9 +1488,7 @@ static int _check_limit(config_rec *c) {
  * TRUE if any <limit LOGIN> allows access.
  */
 
-int login_check_limits(xaset_t *conf, int recurse,
-                       int and, int *found)
-{
+int login_check_limits(xaset_t *set, int recurse, int and, int *found) {
   int res = and;
   int rfound;
   config_rec *c;
@@ -1500,11 +1497,11 @@ int login_check_limits(xaset_t *conf, int recurse,
 
   *found = 0;
 
-  if (!conf || !conf->xas_list)
+  if (!set || !set->xas_list)
     return TRUE;			/* default is to allow */
 
   /* First check top level */
-  for (c = (config_rec*)conf->xas_list; c; c=c->next)
+  for (c = (config_rec*)set->xas_list; c; c=c->next)
     if (c->config_type == CONF_LIMIT) {
       for (argc = c->argc, argv = (char**)c->argv; argc; argc--, argv++)
         if (!strcasecmp("LOGIN",*argv))
@@ -1529,7 +1526,7 @@ int login_check_limits(xaset_t *conf, int recurse,
     }
 
   if ( ((res && and) || (!res && !and && *found)) && recurse ) {
-    for (c = (config_rec*)conf->xas_list; c; c=c->next)
+    for (c = (config_rec*)set->xas_list; c; c=c->next)
       if (c->config_type == CONF_ANON && c->subset && c->subset->xas_list) {
        if (and) {
          res = (res && login_check_limits(c->subset,recurse,and,&rfound));
@@ -2899,7 +2896,7 @@ void fixup_servers(void) {
 }
 
 void init_config(void) {
-  pool *pool = make_sub_pool(permanent_pool);
+  pool *conf_pool = make_sub_pool(permanent_pool);
 
   /* Make sure global_config_pool is destroyed */
   if (global_config_pool) {
@@ -2918,13 +2915,13 @@ void init_config(void) {
     destroy_pool(server_list->mempool);
   }
 
-  server_list = xaset_create(pool,NULL);
+  server_list = xaset_create(conf_pool, NULL);
 
-  pool = make_sub_pool(permanent_pool);
-  main_server = (server_rec*) pcalloc(pool,sizeof(server_rec));
-  xaset_insert(server_list, (xasetmember_t*) main_server);
+  conf_pool = make_sub_pool(permanent_pool);
+  main_server = (server_rec *) pcalloc(conf_pool, sizeof(server_rec));
+  xaset_insert(server_list, (xasetmember_t *) main_server);
 
-  main_server->pool = pool;
+  main_server->pool = conf_pool;
   main_server->set = server_list;
 
   /* default server port */

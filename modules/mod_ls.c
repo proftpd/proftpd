@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.75 2002-12-07 22:03:39 jwm Exp $
+ * $Id: mod_ls.c,v 1.76 2002-12-10 21:01:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -81,7 +81,6 @@ static char cwd[MAXPATHLEN + 1] = "";
  */
 static config_rec *_find_ls_limit(char *ftp_cmd) {
   config_rec *c = NULL, *limit_c = NULL;
-  register int index;
 
   if (!ftp_cmd)
     return NULL;
@@ -99,18 +98,19 @@ static config_rec *_find_ls_limit(char *ftp_cmd) {
           limit_c = limit_c->next) {
 
         if (limit_c->config_type == CONF_LIMIT) {
+          register unsigned int i = 0;
 
-          for (index = 0; index < limit_c->argc; index++) {
+          for (i = 0; i < limit_c->argc; i++) {
 
             /* match any of the appropriate <Limit> arguments
              */
-            if (!strcasecmp(ftp_cmd, (char *) (limit_c->argv[index])) ||
-                !strcasecmp("DIRS", (char *) (limit_c->argv[index])) ||
-                !strcasecmp("ALL", (char *) (limit_c->argv[index])))
+            if (!strcasecmp(ftp_cmd, (char *) (limit_c->argv[i])) ||
+                !strcasecmp("DIRS", (char *) (limit_c->argv[i])) ||
+                !strcasecmp("ALL", (char *) (limit_c->argv[i])))
               break;
           }
 
-          if (index == limit_c->argc)
+          if (i == limit_c->argc)
             continue;
 
           /* Found a <Limit> directive associated with the current command
@@ -432,7 +432,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
         }
 
         if (S_ISLNK(st.st_mode)) {
-          char *p = nameline + strlen(nameline);
+          char *buf = nameline + strlen(nameline);
 
           suffix[0] = '\0';
           if (opt_F && pr_fsio_stat(name, &st) == 0) {
@@ -447,7 +447,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
           }
 
           if (!opt_L && list_show_symlinks)
-            snprintf(p, sizeof(nameline) - strlen(nameline) - 4, " -> %s", l);
+            snprintf(buf, sizeof(nameline) - strlen(nameline) - 4, " -> %s", l);
 
           nameline[sizeof(nameline)-1] = '\0';
         }
@@ -688,7 +688,7 @@ static char **sreaddir(pool *workp, const char *dirname, const int sort) {
   char		**p;
   char		*s, *s_end;
   int		dsize, ssize;
-  int		dirfd;
+  int		dir_fd;
 
   if (pr_fsio_stat(dirname, &st) < 0)
     return NULL;
@@ -716,17 +716,17 @@ static char **sreaddir(pool *workp, const char *dirname, const int sort) {
   ** "__dd_fd" rather than "d_fd".  Still others work really hard at opacity.
   */
 #if defined(HAVE_STRUCT_DIR_D_FD)
-  dirfd = d->d_fd;
+  dir_fd = d->d_fd;
 #elif defined(HAVE_STRUCT_DIR_DD_FD)
-  dirfd = d->dd_fd;
+  dir_fd = d->dd_fd;
 #elif defined(HAVE_STRUCT_DIR___DD_FD)
-  dirfd = d->__dd_fd;
+  dir_fd = d->__dd_fd;
 #else
-  dirfd = 0;
+  dir_fd = 0;
 #endif
-  if ((ssize = get_name_max((char *) dirname, dirfd)) < 1 ) {
+  if ((ssize = get_name_max((char *) dirname, dir_fd)) < 1 ) {
     log_debug(DEBUG1, "get_name_max(%s, %d) = %d, using %d",
-              dirname, dirfd, ssize, NAME_MAX_GUESS);
+              dirname, dir_fd, ssize, NAME_MAX_GUESS);
     ssize = NAME_MAX_GUESS;
   }
 
@@ -877,7 +877,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
 
     r = dir;
     while (opt_R && r != s) {
-      char cwd[MAXPATHLEN + 1] = {'\0'};
+      char cwd_buf[MAXPATHLEN + 1] = {'\0'};
       unsigned char symhold;
 
       if (*r && (strcmp(*r, ".") == 0 || strcmp(*r, "..") == 0)) {
@@ -890,9 +890,9 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
        */
       pr_handle_signals();
 
-      push_cwd(cwd, &symhold);
+      push_cwd(cwd_buf, &symhold);
 
-      if (*r && ls_perms_full(workp,cmd,(char*)*r,NULL) &&
+      if (*r && ls_perms_full(workp, cmd, (char *) *r, NULL) &&
           !pr_fsio_chdir_canon(*r, !opt_L && list_show_symlinks)) {
         char *subdir;
 
@@ -907,7 +907,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
 
         } else if (sendline("\n%s:\n", subdir) < 0 ||
             sendline(NULL) < 0) {
-          pop_cwd(cwd, &symhold);
+          pop_cwd(cwd_buf, &symhold);
 
           if (dest_workp)
             destroy_pool(workp);
@@ -916,7 +916,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
         }
 
         if (listdir(cmd, workp, subdir) < 0) {
-          pop_cwd(cwd, &symhold);
+          pop_cwd(cwd_buf, &symhold);
 
           if (dest_workp)
             destroy_pool(workp);
@@ -924,7 +924,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
           return -1;
         }
 
-        pop_cwd(cwd, &symhold);
+        pop_cwd(cwd_buf, &symhold);
       }
       r++;
     }
@@ -1249,9 +1249,9 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
       }
 
       path = g.gl_pathv;
-      while(path && *path) {
-        if (**path && ls_perms_full(cmd->tmp_pool,cmd,*path,NULL)) {
-          char cwd[MAXPATHLEN + 1] = {'\0'};
+      while (path && *path) {
+        if (**path && ls_perms_full(cmd->tmp_pool, cmd, *path, NULL)) {
+          char cwd_buf[MAXPATHLEN + 1] = {'\0'};
           unsigned char symhold;
 
           if (!justone) {
@@ -1265,11 +1265,11 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
             }
           }
 
-          push_cwd(cwd, &symhold);
+          push_cwd(cwd_buf, &symhold);
 
           if (!pr_fsio_chdir_canon(*path, !opt_L && list_show_symlinks)) {
             int ret = listdir(cmd, NULL, *path);
-            pop_cwd(cwd, &symhold);
+            pop_cwd(cwd_buf, &symhold);
 
             if (ret < 0) {
               ls_terminate();
@@ -1370,7 +1370,7 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
 static int nlstdir(cmd_rec *cmd, const char *dir) {
   char **list, *p, *f,
        file[MAXPATHLEN + 1] = {'\0'};
-  char cwd[MAXPATHLEN + 1]  = {'\0'};
+  char cwd_buf[MAXPATHLEN + 1] = {'\0'};
   pool *workp;
   unsigned char symhold;
   int curdir = 0, i, count = 0, hidden = 0;
@@ -1385,7 +1385,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
     dir = "";
 
   } else
-    push_cwd(cwd, &symhold);
+    push_cwd(cwd_buf, &symhold);
 
   if (pr_fsio_chdir_canon(dir, !opt_L && list_show_symlinks)) {
     destroy_pool(workp);
@@ -1394,7 +1394,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
 
   if ((list = sreaddir(workp, ".", FALSE)) == NULL) {
     if (!curdir)
-      pop_cwd(cwd, &symhold);
+      pop_cwd(cwd_buf, &symhold);
     destroy_pool(workp);
     return 0;
   }
@@ -1463,7 +1463,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   }
 
   if (!curdir)
-    pop_cwd(cwd, &symhold);
+    pop_cwd(cwd_buf, &symhold);
 
   destroy_pool(workp);
 
@@ -1666,7 +1666,6 @@ MODRET ls_nlst(cmd_rec *cmd) {
     path = g.gl_pathv;
     while (path && *path && ret >= 0) {
       struct stat st;
-      int hidden = 0;
 
       p = *path;
       path++;

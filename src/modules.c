@@ -128,15 +128,14 @@ static int _hash_index(char *name) {
 }
 
 static int _hash_insert(struct symbol_hash *sym) {
-  int index;
+  int idx;
 
-  index = _hash_index(sym->sym_name);
-  if (!symtable[index])
-    symtable[index] = xaset_create(permanent_pool,
-                      (XASET_COMPARE) sym_cmp);
+  idx = _hash_index(sym->sym_name);
+  if (!symtable[idx])
+    symtable[idx] = xaset_create(permanent_pool, (XASET_COMPARE) sym_cmp);
 
-  xaset_insert_sort(symtable[index],(xasetmember_t*)sym,TRUE);
-  return index;
+  xaset_insert_sort(symtable[idx], (xasetmember_t *)sym, TRUE);
+  return idx;
 }
 
 static int _hash_insert_conf(conftable *conf) {
@@ -178,16 +177,16 @@ static int _hash_insert_auth(authtable *auth) {
 int insert_authsym(xaset_t **authsym_tab, authtable *authtab) {
   pool *authsym_pool = NULL;
   pr_authsym_t *authsym = NULL;
-  unsigned int index = 0;
+  unsigned int idx = 0;
 
   /* Determine the hash/index for this auth symbol. */
-  index = _hash_index(authtab->name);
+  idx = _hash_index(authtab->name);
 
   /* Allocate memory for the auth hash table, if necessary. */
   authsym_pool = make_sub_pool(permanent_pool);
 
-  if (!authsym_tab[index])
-    authsym_tab[index] = xaset_create(authsym_pool,
+  if (!authsym_tab[idx])
+    authsym_tab[idx] = xaset_create(authsym_pool,
       (XASET_COMPARE) authsym_cmp);
 
   /* Due to the way in which xaset_create() assigns the mempool member
@@ -202,14 +201,14 @@ int insert_authsym(xaset_t **authsym_tab, authtable *authtab) {
   authsym->table = authtab;
 
   /* Insert the symbol into the hash in sorted order. */
-  return xaset_insert_sort(authsym_tab[index], (xasetmember_t *) authsym, TRUE);
+  return xaset_insert_sort(authsym_tab[idx], (xasetmember_t *) authsym, TRUE);
 }
 
-static pr_authsym_t *authsym_find(int index, char *symbol) {
+static pr_authsym_t *authsym_find(int idx, char *symbol) {
   pr_authsym_t *authsym = NULL;
 
-  if (symbol && authsymtab[index]) {
-    for (authsym = (pr_authsym_t *) authsymtab[index]->xas_list; authsym;
+  if (symbol && authsymtab[idx]) {
+    for (authsym = (pr_authsym_t *) authsymtab[idx]->xas_list; authsym;
         authsym = authsym->next)
 
       /* this comparison is here to handle possible hash collisions */
@@ -220,13 +219,13 @@ static pr_authsym_t *authsym_find(int index, char *symbol) {
   return authsym;
 }
 
-static pr_authsym_t *authsym_find_next(int index, char *symbol,
+static pr_authsym_t *authsym_find_next(int idx, char *symbol,
     authtable *prev) {
   pr_authsym_t *authsym = NULL;
   int last_hit = 0;
 
-  if (authsymtab[index]) {
-    for (authsym = (pr_authsym_t *) authsymtab[index]->xas_list; authsym;
+  if (authsymtab[idx]) {
+    for (authsym = (pr_authsym_t *) authsymtab[idx]->xas_list; authsym;
         authsym = authsym->next)
 
       /* this comparison is here to handle possible hash collisions */
@@ -239,28 +238,28 @@ static pr_authsym_t *authsym_find_next(int index, char *symbol,
   return authsym;
 }
 
-static struct symbol_hash *_hash_find(int index, char *name, int type)
-{
+static struct symbol_hash *_hash_find(int idx, char *name, int type) {
   struct symbol_hash *sym = NULL;
 
-  if (name && symtable[index]) {
-    for (sym = (struct symbol_hash*)symtable[index]->xas_list; sym; sym=sym->next)
-      if (sym->sym_type == type && !strcmp(sym->sym_name,name))
+  if (name && symtable[idx]) {
+    for (sym = (struct symbol_hash *) symtable[idx]->xas_list; sym;
+        sym = sym->next)
+      if (sym->sym_type == type && !strcmp(sym->sym_name, name))
         break;
   }
 
   return sym;
 }
 
-static struct symbol_hash *_hash_find_next(int index, char *name,
-                                           int type, void *last)
-{
+static struct symbol_hash *_hash_find_next(int idx, char *name, int type,
+    void *last) {
   struct symbol_hash *sym = NULL;
   int last_hit = 0;
 
-  if (symtable[index]) {
-    for (sym = (struct symbol_hash*)symtable[index]->xas_list; sym; sym=sym->next) {
-      if (last_hit && sym->sym_type == type && !strcmp(sym->sym_name,name))
+  if (symtable[idx]) {
+    for (sym = (struct symbol_hash *) symtable[idx]->xas_list; sym;
+        sym = sym->next) {
+      if (last_hit && sym->sym_type == type && !strcmp(sym->sym_name, name))
         break;
       if (sym->ptr.sym_generic == last)
         last_hit++;
@@ -270,87 +269,87 @@ static struct symbol_hash *_hash_find_next(int index, char *name,
   return sym;
 }
 
-conftable *mod_find_conf_symbol(char *name, int *idx_cache, conftable *last)
-{
-  int index;
+conftable *mod_find_conf_symbol(char *name, int *idx_cache, conftable *last) {
+  int idx;
   struct symbol_hash *sym;
 
   if (idx_cache && *idx_cache != -1)
-    index = *idx_cache;
+    idx = *idx_cache;
+
   else {
-    index = _hash_index(name);
+    idx = _hash_index(name);
     if (idx_cache)
-      *idx_cache = index;
+      *idx_cache = idx;
   }
 
   if (last)
-    sym = _hash_find_next(index,name,SYM_CONF,last);
+    sym = _hash_find_next(idx, name, SYM_CONF, last);
   else
-    sym = _hash_find(index,name,SYM_CONF);
+    sym = _hash_find(idx, name, SYM_CONF);
 
   return (sym ? sym->ptr.sym_conf : NULL);
 }
 
-cmdtable *mod_find_cmd_symbol(char *name, int *idx_cache, cmdtable *last)
-{
-  int index;
+cmdtable *mod_find_cmd_symbol(char *name, int *idx_cache, cmdtable *last) {
+  int idx;
   struct symbol_hash *sym;
 
   if (idx_cache && *idx_cache != -1)
-    index = *idx_cache;
+    idx = *idx_cache;
+
   else {
-    index = _hash_index(name);
+    idx = _hash_index(name);
     if (idx_cache)
-      *idx_cache = index;
+      *idx_cache = idx;
   }
 
   if (last)
-    sym = _hash_find_next(index,name,SYM_CMD,last);
+    sym = _hash_find_next(idx, name, SYM_CMD, last);
   else
-    sym = _hash_find(index,name,SYM_CMD);
+    sym = _hash_find(idx, name, SYM_CMD);
 
   return (sym ? sym->ptr.sym_cmd : NULL);
 }
 
-authtable *mod_find_auth_symbol(char *name, int *idx_cache, authtable *last)
-{
-  int index;
+authtable *mod_find_auth_symbol(char *name, int *idx_cache, authtable *last) {
+  int idx;
   struct symbol_hash *sym;
 
   if (idx_cache && *idx_cache != -1)
-    index = *idx_cache;
+    idx = *idx_cache;
+
   else {
-    index = _hash_index(name);
+    idx = _hash_index(name);
     if (idx_cache)
-      *idx_cache = index;
+      *idx_cache = idx;
   }
 
   if (last)
-    sym = _hash_find_next(index,name,SYM_AUTH,last);
+    sym = _hash_find_next(idx, name, SYM_AUTH, last);
   else
-    sym = _hash_find(index,name,SYM_AUTH);
+    sym = _hash_find(idx, name, SYM_AUTH);
 
   return (sym ? sym->ptr.sym_auth : NULL);
 }
 
-authtable *get_auth_symbol(char *symbol, int *cached_index, authtable *prev) {
-  int index;
+authtable *get_auth_symbol(char *symbol, int *cached_idx, authtable *prev) {
+  int idx;
   pr_authsym_t *authsym;
 
-  if (cached_index && *cached_index != -1) {
-    index = *cached_index;
+  if (cached_idx && *cached_idx != -1) {
+    idx = *cached_idx;
 
   } else {
-    index = _hash_index(symbol);
+    idx = _hash_index(symbol);
 
-    if (cached_index)
-      *cached_index = index;
+    if (cached_idx)
+      *cached_idx = idx;
   }
 
   if (prev)
-    authsym = authsym_find_next(index, symbol, prev);
+    authsym = authsym_find_next(idx, symbol, prev);
   else
-    authsym = authsym_find(index, symbol);
+    authsym = authsym_find(idx, symbol);
 
   return (authsym ? authsym->table : NULL);
 }

@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.30 2002-12-07 22:03:40 jwm Exp $
+ * $Id: mod_site.c,v 1.31 2002-12-10 21:01:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -36,6 +36,8 @@
 /* From mod_core.c */
 extern int core_chmod(cmd_rec *cmd, char *dir, mode_t mode);
 extern int core_chgrp(cmd_rec *cmd, char *dir, uid_t uid, gid_t gid);
+
+modret_t *site_dispatch(cmd_rec *);
 
 static struct {
   char *cmd;
@@ -170,7 +172,7 @@ MODRET site_chmod(cmd_rec *cmd) {
    */
 
   if (cmd->argv[1][0] != '0')
-    tmp = pstrcat(cmd->tmp_pool,"0",cmd->argv[1],NULL);
+    tmp = pstrcat(cmd->tmp_pool, "0", cmd->argv[1], NULL);
   else
     tmp = cmd->argv[1];
 
@@ -180,7 +182,7 @@ MODRET site_chmod(cmd_rec *cmd) {
     char *cp = cmd->argv[1];
     int mask = 0,mode_op = 0,curmode = 0,curumask = umask(0);
     int invalid = 0;
-    char *who,*how,*what,*tmp;
+    char *who,*how,*what;
     struct stat sbuf;
 
     umask(curumask);
@@ -311,16 +313,17 @@ MODRET site_chmod(cmd_rec *cmd) {
     }
 
     if (invalid) {
-      add_response_err(R_550,"'%s': invalid mode.",cmd->argv[1]);
+      add_response_err(R_550, "'%s': invalid mode.", cmd->argv[1]);
       return ERROR(cmd);
     }
   }
 
-  if (core_chmod(cmd,dir,mode) == -1) {
-    add_response_err(R_550,"%s: %s",cmd->argv[2],strerror(errno));
+  if (core_chmod(cmd, dir, mode) == -1) {
+    add_response_err(R_550, "%s: %s", cmd->argv[2], strerror(errno));
     return ERROR(cmd);
+
   } else
-    add_response(R_200,"SITE %s command successful.",cmd->argv[0]);
+    add_response(R_200, "SITE %s command successful.", cmd->argv[0]);
 
   return HANDLED(cmd);
 }

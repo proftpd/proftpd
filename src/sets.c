@@ -40,13 +40,12 @@
  * fails.
  */
 
-xaset_t *xaset_create(pool *pool, XASET_COMPARE compf)
-{
-  xaset_t *newset = palloc(POOL(pool),sizeof(xaset_t));
+xaset_t *xaset_create(pool *work_pool, XASET_COMPARE compf) {
+  xaset_t *newset = palloc(POOL(work_pool), sizeof(xaset_t));
 
   if (!newset) return NULL;
   newset->xas_list = NULL;
-  newset->mempool = POOL(pool);
+  newset->mempool = POOL(work_pool);
   newset->xas_compare = compf;
   return newset;
 }
@@ -154,9 +153,8 @@ int xaset_remove(xaset_t *set, xasetmember_t *member)
    NULL if out-of-memory or one or more arguments is invalid.
 */
 
-xaset_t *xaset_union(pool *pool,xaset_t *set1, xaset_t *set2,
-                     size_t msize, XASET_MCOPY copyf)
-{
+xaset_t *xaset_union(pool *work_pool, xaset_t *set1, xaset_t *set2,
+    size_t msize, XASET_MCOPY copyf) {
   xaset_t *newset;
   xasetmember_t *setp,*n;
   xaset_t *setv[3];
@@ -167,20 +165,22 @@ xaset_t *xaset_union(pool *pool,xaset_t *set1, xaset_t *set2,
   if (!set1 || !set2 || (!msize && !copyf))
     return NULL;
 
-  pool = (pool ? pool : (set1->mempool ? set1->mempool : set2->mempool));
+  work_pool = (work_pool ? work_pool :
+    (set1->mempool ? set1->mempool : set2->mempool));
 
-  if (!(newset = xaset_create(pool,set1->xas_compare)))
+  if (!(newset = xaset_create(work_pool, set1->xas_compare)))
     return NULL;
-
 
   for (setcp = setv; *setcp; setcp++)
     for (setp = (*setcp)->xas_list; setp; setp=setp->next) {
-      n = copyf ? copyf(setp) : (xasetmember_t*)palloc(pool,msize);
+      n = copyf ? copyf(setp) : (xasetmember_t*) palloc(work_pool, msize);
       if (!n)
         return NULL;			/* Could cleanup here */
+
       if (!copyf)
-        memcpy(n,setp,msize);
-      if (xaset_insert_sort(newset,n,0) == -1)
+        memcpy(n, setp, msize);
+
+      if (xaset_insert_sort(newset, n, 0) == -1)
         return NULL;
     }
 
@@ -196,9 +196,8 @@ xaset_t *xaset_union(pool *pool,xaset_t *set1, xaset_t *set2,
    function is used when comparing members of each set.
 */
 
-xaset_t *xaset_subtract(pool *pool,xaset_t *set1, xaset_t *set2,
-                        size_t msize, XASET_MCOPY copyf)
-{
+xaset_t *xaset_subtract(pool *work_pool, xaset_t *set1, xaset_t *set2,
+    size_t msize, XASET_MCOPY copyf) {
   xaset_t *newset;
   xasetmember_t *set1p,*set2p,*n,**pos;
   int c;
@@ -206,29 +205,28 @@ xaset_t *xaset_subtract(pool *pool,xaset_t *set1, xaset_t *set2,
   if (!set1 || !set2 || (!msize && !copyf))
     return NULL;
 
-  pool = (pool ? pool : (set1->mempool ? set1->mempool : set2->mempool));
+  work_pool = (work_pool ? work_pool :
+    (set1->mempool ? set1->mempool : set2->mempool));
 
-
-  if (!(newset = xaset_create(pool,set1->xas_compare)))
+  if (!(newset = xaset_create(work_pool, set1->xas_compare)))
     return NULL;
 
   pos = &newset->xas_list;
-
 
   /* NOTE: xaset_insert_sort is not used here for performance
      reasons. */
 
   for (set1p = set1->xas_list, set2p = set2->xas_list; set1p;
       set1p = set1p->next) {
-    if (!set2p || (c = set1->xas_compare(set1p,set2p)) < 0) {
+    if (!set2p || (c = set1->xas_compare(set1p, set2p)) < 0) {
       /* Copy if set2 is exhausted or set1p's "value" is less than
          set2p's. */
-      n = copyf ? copyf(set1p) : (xasetmember_t*)palloc(pool,msize);
+      n = copyf ? copyf(set1p) : (xasetmember_t *) palloc(work_pool, msize);
       if (!n)
         return NULL;			/* Could cleanup here */
 
       if (!copyf)
-        memcpy(n,set1p,msize);
+        memcpy(n, set1p, msize);
 
       /* Create links */
       n->prev = *pos;
@@ -236,16 +234,17 @@ xaset_t *xaset_subtract(pool *pool,xaset_t *set1, xaset_t *set2,
       if (*pos)
         pos = &(*pos)->next;
       *pos = n;
+
     } else if (c >= 0) {
 
       /* Traverse set2 until we reach a point where set2 is
          exhausted or set2p is "greater" than set1p */
-      while((set2p = set2p->next) != NULL &&
-            set1->xas_compare(set1p,set2p) > 0) ;
+      while ((set2p = set2p->next) != NULL &&
+            set1->xas_compare(set1p, set2p) > 0) ;
 
       /* In case there are dupes in set1, examine the next (if any)
          value(s) and skip if necessary */
-      while(set1p->next && set1->xas_compare(set1p,set1p->next) == 0)
+      while (set1p->next && set1->xas_compare(set1p, set1p->next) == 0)
         set1p = set1p->next;
     }
   }
@@ -260,17 +259,17 @@ xaset_t *xaset_subtract(pool *pool,xaset_t *set1, xaset_t *set2,
    Returns NULL if out of memory condition occurs
 */
 
-xaset_t *xaset_copy(pool *pool, xaset_t *set, size_t msize, XASET_MCOPY copyf)
-{
+xaset_t *xaset_copy(pool *work_pool, xaset_t *set, size_t msize,
+    XASET_MCOPY copyf) {
   xaset_t *newset;
   xasetmember_t *n,*p,**pos;
 
   if (!copyf && !msize)
     return NULL;
 
-  pool = (pool ? pool : set->mempool);
+  work_pool = (work_pool ? work_pool : set->mempool);
 
-  if (!(newset = xaset_create(pool,set->xas_compare)))
+  if (!(newset = xaset_create(work_pool, set->xas_compare)))
     return NULL;
 
   pos = &newset->xas_list;
@@ -279,11 +278,12 @@ xaset_t *xaset_copy(pool *pool, xaset_t *set, size_t msize, XASET_MCOPY copyf)
      reasons. */
 
   for (p = set->xas_list; p; p=p->next) {
-    n = copyf ? copyf(p) : (xasetmember_t*)palloc(pool,msize);
+    n = copyf ? copyf(p) : (xasetmember_t *) palloc(work_pool, msize);
     if (!n)
       return NULL;			/* Could clean up here */
+
     if (!copyf)
-      memcpy(n,p,msize);
+      memcpy(n, p, msize);
 
     /* Create links */
     n->prev = *pos;

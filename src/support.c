@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.49 2002-12-07 22:04:21 jwm Exp $
+ * $Id: support.c,v 1.50 2002-12-10 21:02:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -48,14 +48,14 @@
 
 static pool *exithandler_pool = NULL;
 
-typedef struct exit_cb {
-  struct exit_cb *next, *prev;
+typedef struct exit_obj {
+  struct exit_obj *next, *prev;
 
-  void (*exit)();
+  void (*exit_cb)(void);
 } exithandler_t;
 
-typedef struct sched_cb {
-  struct sched_cb *next, *prev;
+typedef struct sched_obj {
+  struct sched_obj *next, *prev;
 
   pool *pool;
   void (*f)(void*,void*,void*,void*);
@@ -69,35 +69,29 @@ static xaset_t *exits = NULL;
 /* Masks/unmasks all important signals (as opposed to * block_alarms)
  */
 static void mask_signals(unsigned char block) {
-  static sigset_t sigset;
+  static sigset_t mask_sigset;
 
   if (block) {
-    sigemptyset(&sigset);
+    sigemptyset(&mask_sigset);
 
-    sigaddset(&sigset,SIGTERM);
-    sigaddset(&sigset,SIGCHLD);
-    sigaddset(&sigset,SIGUSR1);
-    sigaddset(&sigset,SIGINT);
-    sigaddset(&sigset,SIGQUIT);
-    sigaddset(&sigset,SIGALRM);
+    sigaddset(&mask_sigset, SIGTERM);
+    sigaddset(&mask_sigset, SIGCHLD);
+    sigaddset(&mask_sigset, SIGUSR1);
+    sigaddset(&mask_sigset, SIGINT);
+    sigaddset(&mask_sigset, SIGQUIT);
+    sigaddset(&mask_sigset, SIGALRM);
 #ifdef SIGIO
-    sigaddset(&sigset,SIGIO);
+    sigaddset(&mask_sigset, SIGIO);
 #endif
 #ifdef SIGBUS
-    sigaddset(&sigset,SIGBUS);
+    sigaddset(&mask_sigset, SIGBUS);
 #endif
-    sigaddset(&sigset,SIGHUP);
+    sigaddset(&mask_sigset, SIGHUP);
 
-    sigprocmask(SIG_BLOCK,&sigset,NULL);
+    sigprocmask(SIG_BLOCK, &mask_sigset, NULL);
 
-  } else {
-    sigprocmask(SIG_UNBLOCK,&sigset,NULL);
-
-    /* If unmasking, handle any signals that may have been delivered while
-     * masked.
-     */
-    pr_handle_signals();
-  }
+  } else
+    sigprocmask(SIG_UNBLOCK, &mask_sigset, NULL);
 }
 
 void block_signals(void) {
@@ -108,7 +102,7 @@ void unblock_signals(void) {
   mask_signals(FALSE);
 }
 
-void add_exit_handler(void (*exit)()) {
+void add_exit_handler(void (*exit_cb)(void)) {
   exithandler_t *e = NULL;
 
   if (!exithandler_pool)
@@ -118,7 +112,7 @@ void add_exit_handler(void (*exit)()) {
     exits = xaset_create(exithandler_pool, NULL);
 
   e = pcalloc(exithandler_pool, sizeof(exithandler_t));
-  e->exit = exit;
+  e->exit_cb = exit_cb;
 
   xaset_insert(exits, (xasetmember_t *) e);
 }
@@ -140,7 +134,7 @@ void run_exit_handlers(void) {
     return;
 
   for (e = (exithandler_t *) exits->xas_list; e; e = e->next)
-    e->exit();
+    e->exit_cb();
 }
 
 void schedule(void (*f)(void*,void*,void*,void*),int nloops,
@@ -276,7 +270,7 @@ char *dir_interpolate(pool *p, const char *path) {
 
 char *dir_best_path(pool *p, const char *path) {
   char workpath[MAXPATHLEN + 1] = {'\0'};
-  char realpath[MAXPATHLEN + 1] = {'\0'};
+  char realpath_buf[MAXPATHLEN + 1] = {'\0'};
   char *target = NULL, *ntarget;
   int fini = 0;
 
@@ -290,7 +284,7 @@ char *dir_best_path(pool *p, const char *path) {
   pr_fs_clean_path(pstrdup(p, workpath), workpath, MAXPATHLEN);
 
   while (!fini && *workpath) {
-    if (pr_fs_resolve_path(workpath, realpath, MAXPATHLEN, 0) != -1)
+    if (pr_fs_resolve_path(workpath, realpath_buf, MAXPATHLEN, 0) != -1)
       break;
 
     ntarget = strrchr(workpath, '/');
@@ -307,10 +301,10 @@ char *dir_best_path(pool *p, const char *path) {
 
   if (!fini && *workpath) {
     if (target)
-      pr_fs_dircat(workpath, sizeof(workpath), realpath, target);
+      pr_fs_dircat(workpath, sizeof(workpath), realpath_buf, target);
 
     else
-      sstrncpy(workpath, realpath, sizeof(workpath));
+      sstrncpy(workpath, realpath_buf, sizeof(workpath));
 
   } else
     pr_fs_dircat(workpath, sizeof(workpath), "/", target);

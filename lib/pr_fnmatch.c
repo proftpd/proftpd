@@ -169,7 +169,7 @@
    whose names are inconsistent.  */
 
 # if !defined _LIBC && !defined getenv
-extern char *getenv ();
+extern char *getenv (const char *);
 # endif
 
 # ifndef errno

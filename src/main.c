@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.141 2002-12-10 15:16:40 castaglia Exp $
+ * $Id: main.c,v 1.142 2002-12-10 21:02:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -129,10 +129,13 @@ static char sbuf[1024] = {'\0'};
 static char _ml_numeric[4] = {'\0'};
 static char **Argv = NULL;
 static char *LastArgv = NULL;
-static char *PidPath = PID_FILE_PATH;
+static const char *PidPath = PID_FILE_PATH;
 
-/* from dirtree.c */
+/* From dirtree.c */
 extern array_header *server_defines;
+
+/* From mod_unixpw.c */
+extern unsigned char unixpw_persistent;
 
 static int nodaemon = 0;
 static int shutdownp = 0;
@@ -154,11 +157,7 @@ static void handle_terminate(void);
 static void handle_terminate_other(void);
 static void finish_terminate(void);
 
-#ifdef DEBUG_CORE
-static int abort_core = 0;
-#endif /* DEBUG_CORE */
-
-static char *config_filename = CONFIG_FILE_PATH;
+static const char *config_filename = CONFIG_FILE_PATH;
 
 /* Add child semaphore fds into the rfd for selecting */
 static int semaphore_fds(fd_set *rfd, int max_fd) {
@@ -176,12 +175,12 @@ static int semaphore_fds(fd_set *rfd, int max_fd) {
   return max_fd;
 }
 
-static void init_set_proc_title(int argc, char *argv[], char *envp[]) {
 #ifdef HAVE___PROGNAME
-  extern char *__progname, *__progname_full;
+extern char *__progname, *__progname_full;
 #endif /* HAVE___PROGNAME */
-  extern char **environ;
+extern char **environ;
 
+static void init_set_proc_title(int argc, char *argv[], char *envp[]) {
   register int i, envpsize;
   char **p;
 
@@ -598,8 +597,7 @@ static int get_command_class(const char *name) {
   return (c ? c->class : 0);
 }
 
-static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
-{
+static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
   char *argstr = NULL;
   cmdtable *c;
   modret_t *mr;
@@ -1088,7 +1086,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
 #ifndef DEBUG_NOFORK
   pid_t pid;
-  sigset_t sigset;
+  sigset_t sig_set;
   pool *pidrec_pool = NULL, *set_pool = NULL;
 
   if (!nofork) {
@@ -1119,27 +1117,27 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
      * prevent sig_terminate() from examining the child list
      */
 
-    sigemptyset(&sigset);
-    sigaddset(&sigset,SIGTERM);
-    sigaddset(&sigset,SIGCHLD);
-    sigaddset(&sigset,SIGUSR1);
-    sigaddset(&sigset,SIGUSR2);
+    sigemptyset(&sig_set);
+    sigaddset(&sig_set, SIGTERM);
+    sigaddset(&sig_set, SIGCHLD);
+    sigaddset(&sig_set, SIGUSR1);
+    sigaddset(&sig_set, SIGUSR2);
 
-    sigprocmask(SIG_BLOCK,&sigset,NULL);
+    sigprocmask(SIG_BLOCK, &sig_set, NULL);
 
     switch ((pid = fork())) {
     case 0: /* child */
 
       /* No longer the master process. */
       is_master = FALSE;
-      sigprocmask(SIG_UNBLOCK,&sigset,NULL);
+      sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
 
       /* No longer need the read side of the semaphore pipe. */
       close(sempipe[0]);
       break;
 
     case -1:
-      sigprocmask(SIG_UNBLOCK, &sigset, NULL);
+      sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
       log_pri(PR_LOG_ERR, "fork(): %s", strerror(errno));
 
       /* The parent doesn't need the socket open. */
@@ -1185,7 +1183,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
       /* Unblock the signals now as sig_child() will catch
        * an "immediate" death and remove the pid from the children list
        */
-      sigprocmask(SIG_UNBLOCK,&sigset,NULL);
+      sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
       return;
     }
   }
@@ -1430,30 +1428,31 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 }
 
 static void disc_children(void) {
-  sigset_t sigset;
-  pidrec_t *cp;
 
   if (disc && disc <= time(NULL) && child_list) {
-    sigemptyset(&sigset);
-    sigaddset(&sigset,SIGTERM);
-    sigaddset(&sigset,SIGCHLD);
-    sigaddset(&sigset,SIGUSR1);
-    sigaddset(&sigset,SIGUSR2);
+    sigset_t sig_set;
+    pidrec_t *cp;
 
-    sigprocmask(SIG_BLOCK,&sigset,NULL);
+    sigemptyset(&sig_set);
+    sigaddset(&sig_set, SIGTERM);
+    sigaddset(&sig_set, SIGCHLD);
+    sigaddset(&sig_set, SIGUSR1);
+    sigaddset(&sig_set, SIGUSR2);
+
+    sigprocmask(SIG_BLOCK, &sig_set, NULL);
 
     PRIVS_ROOT
     for (cp = (pidrec_t*) child_list->xas_list; cp; cp=cp->next)
-      kill(cp->pid,SIGUSR1);
+      kill(cp->pid, SIGUSR1);
     PRIVS_RELINQUISH
 
-    sigprocmask(SIG_UNBLOCK,&sigset,NULL);
+    sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
   }
 }
 
 static void server_loop(void) {
   fd_set listen_fds;
-  conn_t *listen;
+  conn_t *listen_conn;
   int fd, max_fd;
   int i,err_count = 0;
   unsigned long nconnects = 0UL;
@@ -1524,14 +1523,14 @@ static void server_loop(void) {
     }
 
     if (have_dead_child) {
-      sigset_t sigset;
+      sigset_t sig_set;
       pidrec_t *cp,*cpnext;
 
-      sigemptyset(&sigset);
-      sigaddset(&sigset,SIGCHLD);
-      sigaddset(&sigset,SIGTERM);
+      sigemptyset(&sig_set);
+      sigaddset(&sig_set, SIGCHLD);
+      sigaddset(&sig_set, SIGTERM);
       block_alarms();
-      sigprocmask(SIG_BLOCK,&sigset,NULL);
+      sigprocmask(SIG_BLOCK, &sig_set, NULL);
 
       have_dead_child = FALSE;
       if (child_list) {
@@ -1556,7 +1555,7 @@ static void server_loop(void) {
         child_list = NULL;
       }
 
-      sigprocmask(SIG_UNBLOCK,&sigset,NULL);
+      sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
       unblock_alarms();
     }
 
@@ -1609,14 +1608,14 @@ static void server_loop(void) {
     pr_handle_signals();
 
     /* Accept the connection. */
-    listen = pr_ipbind_accept_conn(&listen_fds, &fd);
+    listen_conn = pr_ipbind_accept_conn(&listen_fds, &fd);
 
     /* Fork off servers to handle each connection our job is to get back to
      * answering connections asap, so leave the work of determining which
      * server the connection is for to our child.
      */
 
-    if (listen) {
+    if (listen_conn) {
 
       /* Check for exceeded MaxInstances. */
       if (ServerMaxInstances && (child_listlen >= ServerMaxInstances)) {
@@ -1634,7 +1633,7 @@ static void server_loop(void) {
 
       /* Fork off a child to handle the connection. */
       } else
-        fork_server(fd, listen, FALSE);
+        fork_server(fd, listen_conn, FALSE);
     }
   }
 }
@@ -1780,19 +1779,21 @@ static RETSIGTYPE sig_child(int signo) {
   signal(SIGCHLD, sig_child);
 }
 
-#ifdef DEBUG_CORE
-static char *_prepare_core(void)
-{
-  static char dir[256];
+#ifdef USE_DEVEL
+static char *prepare_core(void) {
+  static char dir[256] = {'\0'};
 
-  snprintf(dir, sizeof(dir), "%s/proftpd-core-%ld", CORE_DIR, getpid());
+  snprintf(dir, sizeof(dir), "%s/proftpd-core-%lu", CORE_DIR,
+    (unsigned long) getpid());
 
   if (mkdir(dir, 0700) != -1)
     chdir(dir);
 
+  else
+    log_pri(PR_LOG_ERR, "unable to create '%s': %s", dir, strerror(errno));
   return dir;
 }
-#endif /* DEBUG_CORE */
+#endif /* USE_DEVEL */
 
 static RETSIGTYPE sig_abort(int signo) {
   recvd_signal_flags |= RECEIVED_SIG_ABORT;
@@ -1801,29 +1802,25 @@ static RETSIGTYPE sig_abort(int signo) {
 
 static void handle_abort(void) {
 
-#ifdef DEBUG_CORE
-  if (abort_core)
-    log_pri(PR_LOG_NOTICE,
-	    "ProFTPD received SIGABRT signal, generating core file in %s",
-	    _prepare_core());
-  else
-#endif /* DEBUG_CORE */
-    log_pri(PR_LOG_NOTICE, "ProFTPD received SIGABRT signal, no core dump.");
+#ifdef USE_DEVEL
+  log_pri(PR_LOG_NOTICE, "ProFTPD received SIGABRT signal, generating core "
+    "file in %s", prepare_core());
+#else
+  log_pri(PR_LOG_NOTICE, "ProFTPD received SIGABRT signal, no core dump");
+#endif /* USE_DEVEL */
 
   end_login_noexit();
   abort();
 }
 
-#ifdef DEBUG_CORE
-static void _internal_abort(void) {
-  if (abort_core) {
-    log_pri(PR_LOG_NOTICE, "core file dumped to %s", _prepare_core());
-    signal(SIGABRT,SIG_DFL);
-    end_login_noexit();
-    abort();
-  }
+#ifdef USE_DEVEL
+static void internal_abort(void) {
+  log_pri(PR_LOG_NOTICE, "core file dumped to %s", prepare_core());
+  signal(SIGABRT, SIG_DFL);
+  end_login_noexit();
+  abort();
 }
-#endif /* DEBUG_CORE */
+#endif /* USE_DEVEL */
 
 static RETSIGTYPE sig_terminate(int signo) {
 
@@ -1857,16 +1854,16 @@ static RETSIGTYPE sig_terminate(int signo) {
 }
 
 static void handle_chld(void) {
-  sigset_t sigset;
+  sigset_t sig_set;
   pid_t child_pid;
   pidrec_t *child = NULL, *child_next = NULL;
 
-  sigemptyset(&sigset);
-  sigaddset(&sigset, SIGTERM);
-  sigaddset(&sigset, SIGCHLD);
+  sigemptyset(&sig_set);
+  sigaddset(&sig_set, SIGTERM);
+  sigaddset(&sig_set, SIGCHLD);
 
   block_alarms();
-  sigprocmask(SIG_BLOCK, &sigset, NULL);
+  sigprocmask(SIG_BLOCK, &sig_set, NULL);
 
   /* Block SIGTERM in here, so we don't create havoc with the
    * child list while modifying it.
@@ -1886,7 +1883,7 @@ static void handle_chld(void) {
     }
   }
 
-  sigprocmask(SIG_UNBLOCK, &sigset, NULL);
+  sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
   unblock_alarms();
 }
 
@@ -1957,15 +1954,15 @@ static void finish_terminate(void) {
     }
   }
 
-#ifdef DEBUG_CORE
-  _internal_abort();
-#endif /* DEBUG_CORE */
+#ifdef USE_DEVEL
+  internal_abort();
+#endif /* USE_DEVEL */
 
   end_login(1);
 }
 
 static void install_signal_handlers(void) {
-  sigset_t sigset;
+  sigset_t sig_set;
 
   /* Should the master server (only applicable in standalone mode)
    * kill off children if we receive a signal that causes termination?
@@ -1980,61 +1977,61 @@ static void install_signal_handlers(void) {
    * more memory on long uptimes)
    */
 
-  sigemptyset(&sigset);
-  sigaddset(&sigset,SIGCHLD);
-  sigaddset(&sigset,SIGINT);
-  sigaddset(&sigset,SIGQUIT);
-  sigaddset(&sigset,SIGILL);
-  sigaddset(&sigset,SIGABRT);
-  sigaddset(&sigset,SIGFPE);
-  sigaddset(&sigset,SIGSEGV);
-  sigaddset(&sigset,SIGALRM);
-  sigaddset(&sigset,SIGTERM);
+  sigemptyset(&sig_set);
+  sigaddset(&sig_set, SIGCHLD);
+  sigaddset(&sig_set, SIGINT);
+  sigaddset(&sig_set, SIGQUIT);
+  sigaddset(&sig_set, SIGILL);
+  sigaddset(&sig_set, SIGABRT);
+  sigaddset(&sig_set, SIGFPE);
+  sigaddset(&sig_set, SIGSEGV);
+  sigaddset(&sig_set, SIGALRM);
+  sigaddset(&sig_set, SIGTERM);
 #ifdef SIGSTKFLT
-  sigaddset(&sigset,SIGSTKFLT);
-#endif
-#ifdef SIGIO
-  sigaddset(&sigset,SIGIO);
-#endif
-#ifdef SIGBUS
-  sigaddset(&sigset,SIGBUS);
-#endif
-  sigaddset(&sigset,SIGHUP);
-  sigaddset(&sigset,SIGUSR2);
-
-  signal(SIGCHLD,sig_child);
-  signal(SIGHUP,sig_rehash);
-  signal(SIGUSR2,sig_debug);
-
-#ifndef DEBUG_NOSIG
-  signal(SIGINT,sig_terminate);
-  signal(SIGQUIT,sig_terminate);
-  signal(SIGILL,sig_terminate);
-  signal(SIGABRT,sig_abort);
-  signal(SIGFPE,sig_terminate);
-  signal(SIGSEGV,sig_terminate);
-  signal(SIGTERM,sig_terminate);
-  signal(SIGXCPU,sig_terminate);
-#ifdef SIGSTKFLT
-  signal(SIGSTKFLT,sig_terminate);
+  sigaddset(&sig_set, SIGSTKFLT);
 #endif /* SIGSTKFLT */
 #ifdef SIGIO
-  signal(SIGIO,sig_terminate);
-#endif
+  sigaddset(&sig_set, SIGIO);
+#endif /* SIGIO */
 #ifdef SIGBUS
-  signal(SIGBUS,sig_terminate);
+  sigaddset(&sig_set, SIGBUS);
+#endif /* SIGBUS */
+  sigaddset(&sig_set, SIGHUP);
+  sigaddset(&sig_set, SIGUSR2);
+
+  signal(SIGCHLD, sig_child);
+  signal(SIGHUP, sig_rehash);
+  signal(SIGUSR2, sig_debug);
+
+#ifndef DEBUG_NOSIG
+  signal(SIGINT, sig_terminate);
+  signal(SIGQUIT, sig_terminate);
+  signal(SIGILL, sig_terminate);
+  signal(SIGABRT, sig_abort);
+  signal(SIGFPE, sig_terminate);
+  signal(SIGSEGV, sig_terminate);
+  signal(SIGTERM, sig_terminate);
+  signal(SIGXCPU, sig_terminate);
+#ifdef SIGSTKFLT
+  signal(SIGSTKFLT, sig_terminate);
+#endif /* SIGSTKFLT */
+#ifdef SIGIO
+  signal(SIGIO, sig_terminate);
+#endif /* SIGIO */
+#ifdef SIGBUS
+  signal(SIGBUS, sig_terminate);
 #endif /* SIGBUS */
 #endif /* DEBUG_NOSIG */
 
 #ifdef SIGIO
-  signal(SIGIO,SIG_IGN);
-#endif
-  signal(SIGURG,SIG_IGN);
+  signal(SIGIO, SIG_IGN);
+#endif /* SIGIO */
+  signal(SIGURG, SIG_IGN);
 
   /* In case our parent left signals blocked (as happens under some
    * poor inetd implementations)
    */
-  sigprocmask(SIG_UNBLOCK,&sigset,NULL);
+  sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
 }
 
 void set_daemon_rlimits(void) {
@@ -2043,13 +2040,12 @@ void set_daemon_rlimits(void) {
 
   if (getrlimit(RLIMIT_CORE, &rlim) == -1)
     log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_CORE): %s", strerror(errno));
+
   else {
-#ifdef DEBUG_CORE
-    if (abort_core)
-      rlim.rlim_cur = rlim.rlim_max = RLIM_INFINITY;
-    else
-#endif /* DEBUG_CORE */
-      rlim.rlim_cur = rlim.rlim_max = 0;
+#ifdef USE_DEVEL
+    rlim.rlim_cur = rlim.rlim_max = RLIM_INFINITY;
+#endif /* USE_DEVEL */
+    rlim.rlim_cur = rlim.rlim_max = 0;
 
     PRIVS_ROOT
     if (setrlimit(RLIMIT_CORE, &rlim) == -1) {
@@ -2438,16 +2434,13 @@ static struct option opts[] = {
   { "version",    0, NULL, 'v' },
   { "version-status",0,NULL,1 },
   { "configtest", 0, NULL, 't' },
-#ifdef DEBUG_CORE
-  { "core",     0, NULL, 'o' },
-#endif /* DEBUG_CORE */
   { "help",	0, NULL, 'h' },
   { NULL,	0, NULL,  0  }
 };
 #endif /* HAVE_GETOPT_LONG */
 
 static struct option_help {
-  char *long_opt,*short_opt,*desc;
+  const char *long_opt,*short_opt,*desc;
 } opts_help[] = {
   { "--help", "-h",
     "Display proftpd usage"},
@@ -2465,9 +2458,6 @@ static struct option_help {
     "List all compiled-in modules" },
   { "--configtest", "-t",
     "Test the syntax of the specified config" },
-#ifdef DEBUG_CORE
-  { "--core","-o","enable core dump for profiling/debugging on serious errors"},
-#endif /* DEBUG_CORE */
   { "--version", "-v",
     "Print version number and exit" },
   { "--version-status","-vv",
@@ -2497,12 +2487,7 @@ int main(int argc, char *argv[], char **envp) {
   int check_config_syntax = 0;
   int show_version = 0;
   struct sockaddr peer;
-  const char *cmdopts = "D:nd:c:p:lhtv"
-
-#ifdef DEBUG_CORE
-    "o"
-#endif /* DEBUG_CORE */
-    ;
+  const char *cmdopts = "D:nd:c:p:lhtv";
 
 #ifdef DEBUG_MEMORY
   int logfd;
@@ -2575,8 +2560,6 @@ int main(int argc, char *argv[], char **envp) {
    * --debug n
    * -n                 standalone server does not daemonize, all logging
    * --nodaemon         redirected to stderr
-   * -o                 enable gracefule coredumps, dropping things into
-   * --core                       CORE_DIR
    * -t                 syntax check of the configuration file
    * --configtest
    * -v                 report version number
@@ -2637,10 +2620,6 @@ int main(int argc, char *argv[], char **envp) {
 
     case 'p':
     {
-
-      /* From mod_unixpw.c */
-      extern unsigned char unixpw_persistent;
-
       if (!optarg ||
           ((unixpw_persistent = atoi(optarg)) != 1 && unixpw_persistent != 0)) {
         log_pri(PR_LOG_ERR, "Fatal: -p requires boolean (0|1) argument.");
@@ -2649,11 +2628,6 @@ int main(int argc, char *argv[], char **envp) {
 
       break;
     }
-#ifdef DEBUG_CORE
-    case 'o':
-      abort_core = 1;
-      break;
-#endif /* DEBUG_CORE */
     case 'v':
       show_version++;
       break;
