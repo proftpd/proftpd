@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.122 2005-02-26 17:28:58 castaglia Exp $
+ * $Id: mod_ls.c,v 1.123 2005-03-12 17:36:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -46,7 +46,6 @@ static int outputfiles(cmd_rec *);
 static int listfile(cmd_rec *, pool *, const char *);
 static int listdir(cmd_rec *, pool *, const char *);
 
-static int matches = 0;
 static unsigned char list_strict_opts = FALSE;
 static char *list_options = NULL;
 static unsigned char list_show_symlinks = TRUE, list_times_gmt = TRUE;
@@ -336,7 +335,8 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
       if (pr_fsio_stat(name, &l_st) != -1) {
         memcpy(&st, &l_st, sizeof(struct stat));
 
-        if ((len = pr_fsio_readlink(name, m, sizeof(m))) < 0)
+        len = pr_fsio_readlink(name, m, sizeof(m));
+        if (len < 0)
           return 0;
 
         m[len] = '\0';
@@ -348,8 +348,8 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
         return 0;
 
     } else if (S_ISLNK(st.st_mode)) {
-
-      if ((len = pr_fsio_readlink(name, l, sizeof(l))) < 0)
+      len = pr_fsio_readlink(name, l, sizeof(l));
+      if (len < 0)
         return 0;
 
       l[len] = '\0';
@@ -536,8 +536,8 @@ static int filenames = 0;
 struct filename {
   struct filename *down;
   struct filename *right;
+  char *line;
   int top;
-  char line[1];
 };
 
 struct sort_filename {
@@ -555,7 +555,7 @@ static pool *fpool = NULL;
 static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
     time_t mtime, off_t size) {
   struct filename *p;
-  int l;
+  size_t l;
 
   if (!name || !suffix)
     return;
@@ -580,14 +580,12 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
     return;
   }
 
-  matches++;
-
   l = strlen(name) + strlen(suffix);
   if (l > colwidth)
     colwidth = l;
 
-  p = (struct filename *) pcalloc(fpool, sizeof(struct filename) + l + 1);
-
+  p = (struct filename *) pcalloc(fpool, sizeof(struct filename));
+  p->line = pcalloc(fpool, l + 2);
   snprintf(p->line, l + 1, "%s%s", name, suffix);
 
   if (tail)
@@ -635,41 +633,44 @@ static int file_size_reverse_cmp(const struct sort_filename *f1,
 }
 
 static void sortfiles(cmd_rec *cmd) {
-  struct sort_filename *s = NULL;
 
   if (sort_arr) {
 
     /* Sort by modification time? */
     if (opt_t) {
       register unsigned int i = 0;
+      int setting = opt_S;
+      struct sort_filename *elts = sort_arr->elts;
 
       qsort(sort_arr->elts, sort_arr->nelts, sizeof(struct sort_filename),
         (int (*)(const void *, const void *))
           (opt_r ? file_mtime_reverse_cmp : file_mtime_cmp));
 
-      opt_t = 0;
+      opt_S = opt_t = 0;
 
-      for (i = 0, s = (struct sort_filename *) sort_arr->elts;
-          i < sort_arr->nelts; i++, s++)
-        addfile(cmd, s->name, s->suffix, s->mtime, s->size);
+      for (i = 0; i < sort_arr->nelts; i++)
+        addfile(cmd, elts[i].name, elts[i].suffix, elts[i].mtime, elts[i].size);
 
+      opt_S = setting;
       opt_t = 1;
 
     /* Sort by file size? */
     } else if (opt_S) {
       register unsigned int i = 0;
+      int setting = opt_t;
+      struct sort_filename *elts = sort_arr->elts;
 
       qsort(sort_arr->elts, sort_arr->nelts, sizeof(struct sort_filename),
         (int (*)(const void *, const void *))
           (opt_r ? file_size_reverse_cmp : file_size_cmp));
 
-      opt_S = 0;
+      opt_S = opt_t = 0;
 
-      for (i = 0, s = (struct sort_filename *) sort_arr->elts;
-          i < sort_arr->nelts; i++, s++)
-        addfile(cmd, s->name, s->suffix, s->mtime, s->size);
+      for (i = 0; i < sort_arr->nelts; i++)
+        addfile(cmd, elts[i].name, elts[i].suffix, elts[i].mtime, elts[i].size);
 
       opt_S = 1;
+      opt_t = setting;
     }
   }
 
@@ -1292,12 +1293,11 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
   int glob_flags = GLOB_PERIOD;
   char *arg = (char*) opt;
 
-  matches = 0;
   ls_curtime = time(NULL);
 
   if (clearflags)
     opt_a = opt_C = opt_d = opt_F = opt_h = opt_n = opt_r = opt_R =
-      opt_t = opt_STAT = opt_L = 0;
+      opt_S = opt_t = opt_STAT = opt_L = 0;
 
   if (!list_strict_opts) {
     parse_list_opts(&arg, &glob_flags, FALSE);
