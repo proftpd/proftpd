@@ -63,6 +63,9 @@ Modules included upon request:
     mod_dso
         Handles loading and unloading of DSO modules (see README.DSO)
 
+    mod_facl
+        Handles checking of POSIX ACLs (see README.facl)
+
 Contributed ProFTPD Modules (contrib/ subdirectory)
 --------------------------------------------------
 
