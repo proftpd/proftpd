@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.17 1999-12-27 03:03:52 macgyver Exp $
+$Id: NEWS,v 1.18 1999-12-28 07:43:54 macgyver Exp $
 
 1.2.0pre10 - Released: ???
 --------------------------
@@ -15,6 +15,14 @@ $Id: NEWS,v 1.17 1999-12-27 03:03:52 macgyver Exp $
   rare case.
 
 - Updated included version of mod_ldap.
+
+- Bandwidth and sendfile() use are now mutually exclusive.
+
+- Corrected minor log issues.
+
+- Fixed various compilation issues on various platforms (isn't this vague :)).
+
+- More informative error messages.
 
 1.2.0pre9 - Released: 10/27/99
 ------------------------------
