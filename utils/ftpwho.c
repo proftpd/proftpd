@@ -27,7 +27,7 @@
 /* Shows a count of "who" is online via proftpd.  Uses the /var/run/proftpd*
  * log files.
  *
- * $Id: ftpwho.c,v 1.4 2002-10-28 16:51:51 castaglia Exp $
+ * $Id: ftpwho.c,v 1.5 2002-10-29 18:06:53 castaglia Exp $
  */
 
 #include "utils.h"
@@ -168,7 +168,7 @@ static int check_scoreboard_file(void) {
   return 0;
 }
 
-struct option_help {
+static struct option_help {
   char *long_opt,*short_opt,*desc;
 } opts_help[] = {
   { "--config", "-c", "specify full path to proftpd configuration file" },
@@ -179,7 +179,8 @@ struct option_help {
   { NULL }
 };
 
-struct option opts[] = {
+#ifdef HAVE_GETOPT_LONG
+static struct option opts[] = {
   { "config",  1, NULL, 'c' },
   { "file",    1, NULL, 'f' },
   { "help",    0, NULL, 'h' },
@@ -187,17 +188,22 @@ struct option opts[] = {
   { "verbose", 0, NULL, 'v' },
   { NULL,      0, NULL, 0   }
 };
+#endif /* HAVE_GETOPT_LONG */
 
 static void show_usage(const char *progname, int exit_code) {
   struct option_help *h = NULL;
 
-  printf("usage: %s [options]\n",progname);
-  for(h = opts_help; h->long_opt; h++) {
-    printf("  %s,%s\n",h->long_opt,h->short_opt);
-    if(!h->desc)
-      printf("    display %s usage\n",progname);
+  printf("usage: %s [options]\n", progname);
+  for (h = opts_help; h->long_opt; h++) {
+#ifdef HAVE_GETOPT_LONG
+    printf("  %s, %s\n", h->long_opt, h->short_opt);
+#else /* HAVE_GETOPT_LONG */
+    printf("  %s\n", h->short_opt);
+#endif
+    if (!h->desc)
+      printf("    display %s usage\n", progname);
     else
-      printf("    %s\n",h->desc);
+      printf("    %s\n", h->desc);
   }
 
   exit(exit_code);
