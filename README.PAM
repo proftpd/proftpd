@@ -1,8 +1,8 @@
 PAM: Pluggable Authentication Modules
 -------------------------------------
 
-Author: MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
-Copyright(C) 1999, 2000. All Rights Reserved.
+Author: The ProFTPD Project team
+Copyright(C) 1999, 2000-2. All Rights Reserved.
 
 PAM stands for Pluggable Authentication Modules, a modular system
 designed to eliminate the ages old problem of disparate authentication
@@ -17,7 +17,9 @@ configuration file.  On some systems, such as FreeBSD, this will be a
 file called /etc/pam.conf.  On others, such as Linux, configuration is
 taken from the directory /etc/pam.d, in a file called ftp.
 
-FreeBSD:
+
+FreeBSD
+-------
 
 To use PAM with ProFTPD, you must edit /etc/pam.conf and add the
 following lines:
@@ -28,7 +30,10 @@ ftp session required    pam_permit.so
 
 PAM authentication should now work properly.
 
-Linux:
+
+Linux
+-----
+
 To use PAM with ProFTPD, you must edit /etc/pam.d/ftp and add the
 following lines for RedHat installations:
 
@@ -49,8 +54,10 @@ session    required     /lib/security/pam_unix.so
 These settings are valid for RedHat and SuSE Linux systems.  Other Linux
 distributions may differ.
 
+
 PAM Configuration Options
 -------------------------
+
 1. AuthPAM
 You may selectively enable or disable PAM authentication.  This is
 especially useful in environments where you are receiving ProFTPD in a
@@ -114,8 +121,8 @@ fashion.
 # authentication modules compiled into ProFTPD a chance at the user.
 AuthPAMAuthoritative            On
 
+
 References
 ----------
 More information and a much more complete primer about PAM can be
 found at http://www.kernel.org/pub/linux/libs/pam/Linux-PAM-html/
-
