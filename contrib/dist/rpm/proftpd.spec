@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.23 2003-10-14 13:41:59 jwm Exp $
+# $Id: proftpd.spec,v 1.24 2003-10-15 14:15:38 jwm Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -202,7 +202,6 @@ rm -rf %{_builddir}/%{name}-%{version}
 %config(noreplace) /etc/proftpd.conf
 %config(noreplace) /etc/pam.d/ftp
 %config(noreplace) /etc/logrotate.d/proftpd
-%config(noreplace) /etc/xinetd.d/proftpd
 
 %doc COPYING CREDITS ChangeLog NEWS
 %doc README* doc/*
@@ -213,6 +212,7 @@ rm -rf %{_builddir}/%{name}-%{version}
 %files inetd
 %defattr(-,root,root)
 %config(noreplace) /etc/proftpd.conf
+%config(noreplace) /etc/xinetd.d/proftpd
 
 %changelog
 * Tue Sep 23 2003 Daniel Roesen <dr@proftpd.org>
