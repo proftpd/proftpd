@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.24 1999-10-27 20:43:03 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.25 1999-12-23 06:04:59 macgyver Exp $
  */
 
 /* History Log:
@@ -715,6 +715,8 @@ MODRET cmd_retr(cmd_rec *cmd)
 	  continue;
 	  
 	case EPIPE:
+	case ECONNRESET:
+	case EHOSTUNREACH:
 	  /* Other side broke the connection.
 	   */
 	  break;
