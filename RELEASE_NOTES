@@ -32,6 +32,14 @@ files.
         it if present.  The UseSendfile directive can be used to configure
         proftpd not to use the sendfile() function if necessary.
 
+        Note that if sendfile support is enabled, tools like ftpwho and
+        ftptop will not show the transfer rate for downloads.  These tools
+        work by reading the scoreboard, and the scoreboard is updated
+        periodically during uploads and downloads.  However, when
+        sendfile() is used, scoreboard does not have a chance to be updated.
+        This is only true for downloads; the tools will continue to
+        show the transfer rate for uploads.
+
   + Enhanced configuration directives:
       ExtendedLog's new SEC logging class.  "sec" and "secure" will work.
 
@@ -44,4 +52,4 @@ files.
   + New modules:
       mod_dso
 
-Last Updated: $Date: 2004-11-11 18:58:22 $
+Last Updated: $Date: 2004-11-20 03:15:21 $
