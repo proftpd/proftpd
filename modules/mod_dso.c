@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.2.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.5 2004-10-31 22:39:34 castaglia Exp $
+ * $Id: mod_dso.c,v 1.6 2004-11-01 17:30:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -173,6 +173,12 @@ static int dso_unload_module(const char *name) {
 
   if (m) {
     int res;
+
+    /* Some modules cannot be unloaded. */
+    if (strcmp(m->name, "dso") == 0) {
+      errno = EPERM;
+      return -1;
+    }
 
     res = pr_module_unload(m);
     if (res < 0)
@@ -503,12 +509,6 @@ MODRET set_modulepath(cmd_rec *cmd) {
 /* Event handlers
  */
 
-static void dso_exit_ev(const void *event_data, void *user_data) {
-  if (lt_dlexit() < 0)
-    pr_log_pri(PR_LOG_ERR, MOD_DSO_VERSION ": error finalizing libltdl: %s",
-      lt_dlerror());
-}
-
 static void dso_restart_ev(const void *event_data, void *user_data) {
 #ifdef USE_CTRLS
   register unsigned int i = 0;
@@ -581,16 +581,22 @@ static int dso_init(void) {
   }
 #endif /* USE_CTRLS */
 
-  pr_event_register(&dso_module, "core.exit", dso_exit_ev, NULL);
+  /* Ideally, we'd call register a listener for the 'core.exit' event
+   * and call lt_dlexit() there, politely freeing up any resources allocated
+   * by the ltdl library.  However, it's possible that other modules, later in
+   * the dispatch cycles, may need to use pointers to memory in shared modules
+   * that would become invalid by such finalization.  So we skip it, for now.
+   *
+   * If there was a way to schedule this handler, to happen after all other
+   * exit handlers, that'd be best.
+   */
   pr_event_register(&dso_module, "core.restart", dso_restart_ev, NULL);
 
   return 0;
 }
 
 static int dso_sess_init(void) {
-  pr_event_unregister(&dso_module, "core.exit", dso_exit_ev);
   pr_event_unregister(&dso_module, "core.restart", dso_restart_ev);
-
   return 0;
 }
 
