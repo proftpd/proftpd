@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.143 2003-03-24 20:26:34 castaglia Exp $
+ * $Id: mod_auth.c,v 1.144 2003-03-29 23:52:54 castaglia Exp $
  */
 
 #ifdef __CYGWIN__
@@ -119,6 +119,7 @@ static int auth_session_timeout_cb(CALLBACK_FRAME) {
 static int auth_sess_init(void) {
   config_rec *c = NULL;
   unsigned char *mkhome = NULL;
+  int res = 0;
 
   /* Check for a server-specific TimeoutLogin */
   if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutLogin",
@@ -132,24 +133,25 @@ static int auth_sess_init(void) {
   }
 
   PRIVS_ROOT
-  switch (pr_open_scoreboard(O_RDWR)) {
-    case PR_SCORE_ERR_BAD_MAGIC:
-      log_debug(DEBUG0, "error opening scoreboard: bad/corrupted file");
-      break;
+  if ((res = pr_open_scoreboard(O_RDWR)) < 0) {
+    switch (res) {
+      case PR_SCORE_ERR_BAD_MAGIC:
+        log_debug(DEBUG0, "error opening scoreboard: bad/corrupted file");
+        break;
 
-    case PR_SCORE_ERR_OLDER_VERSION:
-      log_debug(DEBUG0, "error opening scoreboard: bad version (too old)");
-      break;
+      case PR_SCORE_ERR_OLDER_VERSION:
+        log_debug(DEBUG0, "error opening scoreboard: bad version (too old)");
+        break;
 
-    case PR_SCORE_ERR_NEWER_VERSION:
-      log_debug(DEBUG0, "error opening scoreboard: bad version (too new)");
-      break;
+      case PR_SCORE_ERR_NEWER_VERSION:
+        log_debug(DEBUG0, "error opening scoreboard: bad version (too new)");
+        break;
 
-    default:
-      log_debug(DEBUG0, "error opening scoreboard: %s", strerror(errno));
-      break;
+      default:
+        log_debug(DEBUG0, "error opening scoreboard: %s", strerror(errno));
+        break;
+    }
   }
-
   PRIVS_RELINQUISH
 
   /* Create an entry in the scoreboard for this session. */
