@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.24 2000-01-23 22:55:26 macgyver Exp $
+ * $Id: mod_core.c,v 1.25 2000-01-23 23:31:43 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -93,6 +93,22 @@ extern xaset_t *servers;
 
 /* from mod_site */
 extern modret_t *site_dispatch(cmd_rec*);
+
+MODRET add_include(cmd_rec *cmd)
+{
+  int b;
+  config_rec *c;
+  
+  CHECK_ARGS(cmd, 1);
+  
+  if(parse_config_file(cmd->argv[1]) == -1) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+			    "Unable to include configuration file '",
+			    cmd->argv[1], "'.", NULL));
+  }
+  
+  return HANDLED(cmd);
+}
 
 MODRET set_servername(cmd_rec *cmd)
 {
@@ -2501,6 +2517,7 @@ MODRET set_class(cmd_rec *cmd)
 /* Configuration directive table */
 
 static conftable core_conftable[] = {
+  { "Include",			add_include,	 		NULL },
   { "ServerName",		set_servername, 		NULL },
   { "ServerIdent",		set_serverident,		NULL },
   { "ServerType",		set_servertype,			NULL },
