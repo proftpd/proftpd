@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.51 2002-05-09 17:36:00 castaglia Exp $
+ * $Id: dirtree.c,v 1.52 2002-05-10 17:28:54 castaglia Exp $
  */
 
 /* History:
@@ -1523,7 +1523,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
   config_rec *c;
   struct stat sbuf;
   pool *p;
-  mode_t _umask = -1;
+  mode_t _umask = (mode_t) -1;
   int res = 1, isfile;
   int op_hidden = FALSE;
 
@@ -1560,8 +1560,6 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
   if(!c && session.anon_config)
     c = session.anon_config;
 
-  _umask = (mode_t) -1;
-  
   if(!_kludge_disable_umask) {
     /* Check for a directory Umask.
      */
@@ -1663,7 +1661,7 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
   config_rec *c;
   struct stat sbuf;
   pool *p;
-  mode_t _umask = -1;
+  mode_t _umask = (mode_t) -1;
   int res = 1, isfile;
   int op_hidden = FALSE;
 
@@ -1693,8 +1691,6 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
   if(!c && session.anon_config)
     c = session.anon_config;
 
-  _umask = -1;
-  
   if(!_kludge_disable_umask) {
     /* Check for a directory Umask.
      */

@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.82 2002-05-09 20:15:14 castaglia Exp $
+ * $Id: mod_core.c,v 1.83 2002-05-10 17:28:54 castaglia Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -110,7 +110,7 @@ static ssize_t get_num_bytes(char *nbytes_str) {
   char units, junk;
   int result;
 
-  /* scan in the given argument, checking for the leading number-of-bytes
+  /* Scan in the given argument, checking for the leading number-of-bytes
    * as well as a trailing G, M, K, or B (case-insensitive).  The junk
    * variable is catch arguments like "2g2" or "number-letter-whatever".
    *
@@ -129,7 +129,8 @@ static ssize_t get_num_bytes(char *nbytes_str) {
       return PR_BYTES_BAD_UNITS;
 
     nbytes = (ssize_t)inb;
-    /* calculate the actual bytes, multiplying by the given units.  Doing
+
+    /* Calculate the actual bytes, multiplying by the given units.  Doing
      * it this way means that <math.h> and -lm aren't required.
      */
     if (units == 'G' || units == 'g')
@@ -141,7 +142,7 @@ static ssize_t get_num_bytes(char *nbytes_str) {
     if (units == 'K' || units == 'k')
       nbytes *= 1024;
 
-    /* silently ignore units of 'B' and 'b', as they don't affect
+    /* Silently ignore units of 'B' and 'b', as they don't affect
      * the requested number of bytes anyway.
      */
 
@@ -153,19 +154,13 @@ static ssize_t get_num_bytes(char *nbytes_str) {
 
   } else if (result == 1) {
 
-    /* no units given -- just return the number of bytes as is
-     */
+    /* No units given -- just return the number of bytes as is. */
     return nbytes;
-
-  } else {
-
-    /* the given argument was badly formatted.
-     */
-    return PR_BYTES_BAD_FORMAT;
   }
 
-  /* default value */
-  return 0;
+  /* Default return value: the given argument was badly formatted.
+   */
+  return PR_BYTES_BAD_FORMAT;
 }
 
 MODRET add_include(cmd_rec *cmd)
