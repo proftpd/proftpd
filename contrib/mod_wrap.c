@@ -24,7 +24,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lwrap -lnsl$
- * $Id: mod_wrap.c,v 1.4 2002-10-21 18:40:25 castaglia Exp $
+ * $Id: mod_wrap.c,v 1.5 2002-10-30 19:10:10 castaglia Exp $
  */
 
 #define MOD_WRAP_VERSION "mod_wrap/1.2.3"
@@ -694,19 +694,26 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
   /* hide passwords */
   session.hide_password = TRUE;
 
-  /* sneaky...found in mod_auth.c's cmd_pass() function.  Need to find the
+  /* Sneaky...found in mod_auth.c's cmd_pass() function.  Need to find the
    * login UID in order to resolve the possibly-login-dependent filename.
    */
   user = (char *) get_param_ptr(cmd->server->conf, C_USER, FALSE);
 
-  /* use mod_auth's _auth_resolve_user() [imported for use here] to get the
+  /* It's possible that a PASS command came before USER.  This is a PRE_CMD
+   * handler, so it won't be protected from this case; we'll need to do
+   * it manually.
+   */
+  if (!user)
+    return DECLINED(cmd);
+
+  /* Use mod_auth's _auth_resolve_user() [imported for use here] to get the
    * right configuration set, since the user may be logging in anonymously,
    * and the session struct hasn't yet been set for that yet (thus short-
    * circuiting the easiest way to get the right context...the macros.
    */
   conf = wrap_resolve_user(cmd->pool, &user);
 
-  /* search first for user-specific access files.  Multiple TCPUserAccessFiles
+  /* Search first for user-specific access files.  Multiple TCPUserAccessFiles
    * directives are allowed.
    */
   if ((access_conf = find_config(conf ? conf->subset : CURRENT_CONF, CONF_PARAM,
@@ -719,7 +726,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
       user_array = make_array(cmd->tmp_pool, 0, sizeof(char *));
       *((char **) push_array(user_array)) = pstrdup(cmd->tmp_pool, user);
 
-      /* check the user expression -- don't forget the offset, to skip
+      /* Check the user expression -- don't forget the offset, to skip
        * the access file name strings in argv
        */
       if (wrap_eval_expression(((char **) access_conf->argv) + 2,
@@ -757,7 +764,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
 
       } else {
 
-        /* check the group expression -- don't forget the offset, to skip
+        /* Check the group expression -- don't forget the offset, to skip
          * the access file names strings in argv
          */
         if (wrap_eval_expression(((char **) access_conf->argv) + 2,
@@ -790,8 +797,8 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
     hosts_deny_table = (char *) access_conf->argv[1];
   }
 
-  /* now, check the retrieved filename, and see if it requires a login-time
-   * file
+  /* Now, check the retrieved filename, and see if it requires a login-time
+   * file.
    */
   if (hosts_allow_table != NULL && hosts_allow_table[0] == '~' &&
       hosts_allow_table[1] == '/') {
@@ -823,16 +830,16 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
       hosts_deny_table = deny_real_table;
   }
 
-  /* make sure that _both_ allow and deny TCPAccessFiles are present.
+  /* Make sure that _both_ allow and deny TCPAccessFiles are present.
    * If not, log the missing file, and by default allow request to succeed.
    */
   if (hosts_allow_table != NULL && hosts_deny_table != NULL) {
 
-    /* most common case...nothing more necessary */
+    /* Most common case...nothing more necessary */
 
   } else if (hosts_allow_table == NULL && hosts_deny_table != NULL) {
 
-    /* log the missing file */
+    /* Log the missing file */
     log_pri(LOG_INFO, MOD_WRAP_VERSION ": no usable allow access file -- "
       "allowing connection");
 
@@ -848,8 +855,8 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
 
   } else {
 
-    /* neither set -- assume the admin hasn't configured these directives
-     * at all
+    /* Neither set -- assume the admin hasn't configured these directives
+     * at all.
      */
     return DECLINED(cmd);
   }
@@ -900,11 +907,10 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
       return ERROR_MSG(cmd, R_530, "Access denied.");
   }
 
-  /* if request is allowable, return DECLINED (for engine to act as if this
+  /* If request is allowable, return DECLINED (for engine to act as if this
    * handler was never called, else ERROR (for engine to abort processing and
    * deny request.
    */
-  /* log the accepted connection */
   wrap_log_request_allowed(allow_severity, &request);
 
   return DECLINED(cmd);
@@ -913,7 +919,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
 /* Initialization routines
  */
 
-static int wrap_child_init() {
+static int wrap_sess_init(void) {
 
   /* look up any configured TCPServiceName */
   if ((wrap_service_name = get_param_ptr(main_server->conf,
@@ -941,33 +947,26 @@ static cmdtable wrap_cmdtab[] = {
 };
 
 module wrap_module = {
-
-  /* pointer to the next module -- _always_ NULL for user-defined modules */
-  NULL,
-
-  /* pointer to the previous module -- _always_ NULL for user-defined
-   * modules
-   */
-  NULL,
+  NULL, NULL,
 
   /* Module API version 2.0 */
   0x20,
 
-  /* the module name */
+  /* Module name */
   "wrap",
 
-  /* module configuration handler table */
+  /* Mmodule configuration handler table */
   wrap_conftab,
 
-  /* module command handler table */
+  /* Module command handler table */
   wrap_cmdtab,
 
-  /* module authentication handler table */
+  /* Module authentication handler table */
   NULL,
 
-  /* module initialization function */
+  /* Module initialization */
   NULL,
 
-  /* module "child mode" post-fork initialization function */
-  wrap_child_init
+  /* Session initialization */
+  wrap_sess_init
 };
