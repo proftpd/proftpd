@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.40 2004-01-09 04:15:17 castaglia Exp $
+ * $Id: pool.c,v 1.41 2004-01-09 04:23:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -353,7 +353,7 @@ struct pool *make_sub_pool(struct pool *p) {
   return new_pool;
 }
 
-struct pool *pr_pool_create_sz(struct pool *p, size_t sz) {
+struct pool *pr_pool_create_sz(struct pool *p, int sz) {
   union block_hdr *blok;
   pool *new_pool;
 
@@ -463,7 +463,7 @@ static void *alloc_pool(struct pool *p, int reqsz, int exact) {
 
   /* Round up requested size to an even number of aligned units */
   int nclicks = 1 + ((reqsz - 1) / CLICK_SZ);
-  size_t sz = nclicks * CLICK_SZ;
+  int sz = nclicks * CLICK_SZ;
 
   /* For performance, see if space is available in the most recently
    * allocated block.
