@@ -23402,8 +23402,6 @@ echo "${ECHO_T}no" >&6
    rm -f conftest*
 
 
-CFLAGS="-DHAVE_CONFIG_H $CFLAGS"
-
 
 
 
