@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.38 2004-09-26 20:12:00 castaglia Exp $
+ * $Id: auth.c,v 1.39 2004-10-15 17:07:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -48,7 +48,7 @@ static cmd_rec *make_cmd(pool *cp, int argc, ...) {
   c->stash_index = -1;
 
   if (argc) {
-    c->argv = pcalloc(cp, sizeof(void *) * argc);
+    c->argv = pcalloc(cp, sizeof(void *) * (argc + 1));
 
     va_start(args, argc);
 
@@ -56,6 +56,8 @@ static cmd_rec *make_cmd(pool *cp, int argc, ...) {
       c->argv[i] = (void *) va_arg(args, char *);
 
     va_end(args);
+
+    c->argv[argc] = NULL;
   }
 
   return c;

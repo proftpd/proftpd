@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.158 2004-10-11 16:33:57 castaglia Exp $
+ * $Id: dirtree.c,v 1.159 2004-10-15 17:07:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -599,13 +599,15 @@ cmd_rec *pr_cmd_alloc(pool *p, int argc, ...) {
   if (argc) {
     register unsigned int i = 0;
 
-    c->argv = pcalloc(newpool, sizeof(void *) * (argc));
+    c->argv = pcalloc(newpool, sizeof(void *) * (argc + 1));
     va_start(args, argc);
 
     for (i = 0; i < argc; i++)
       c->argv[i] = (void *) va_arg(args, char *);
 
     va_end(args);
+
+    c->argv[argc] = NULL;
   }
 
   return c;
