@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.52 2001-02-02 23:11:26 flood Exp $
+ * $Id: mod_core.c,v 1.53 2001-02-16 01:21:39 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -1670,7 +1670,6 @@ MODRET add_virtualhost(cmd_rec *cmd)
   if(!s)
     CONF_ERROR(cmd,"unable to create virtual server configuration.");
 
-  s->ServerPort = main_server->ServerPort;
   return HANDLED(cmd);
 }
 

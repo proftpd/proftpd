@@ -20,7 +20,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.25 2001-02-13 03:05:11 flood Exp $
+ * $Id: dirtree.c,v 1.26 2001-02-16 01:21:39 flood Exp $
  */
 
 /* History:
@@ -320,7 +320,9 @@ server_rec *start_new_server(const char *addr)
   s->set = servers;
   if(addr)
     s->ServerAddress = pstrdup(s->pool,addr);
-  s->ServerPort = -1;
+
+  /* default server port */
+  s->ServerPort = inet_getservport(s->pool, "ftp", "tcp");
 
   conf.curserver = (server_rec**)push_array(conf.sstack);
   *conf.curserver = s;
@@ -2338,13 +2340,10 @@ void fixup_servers()
     s->ServerName = pstrdup(s->pool,"ProFTPD");
 
   for(; s; s=s->next) {
-    if(s->ServerPort == -1)
-      s->ServerPort = inet_getservport(s->pool,"ftp","tcp");
     if(!s->ServerAddress)
       s->ServerFQDN = s->ServerAddress = inet_gethostname(s->pool);
     else
       s->ServerFQDN = inet_fqdn(s->pool,s->ServerAddress);
-
     if(!s->ServerFQDN)
       s->ServerFQDN = s->ServerAddress;
 
@@ -2388,6 +2387,9 @@ void init_config()
 
   main_server->pool = pool;
   main_server->set = servers;
+
+  /* default server port */
+  main_server->ServerPort = inet_getservport(main_server->pool, "ftp", "tcp");
 }
 
 /* These functions are used by modules to help parse configuration.
