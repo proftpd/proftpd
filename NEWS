@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.438 2003-05-26 01:48:25 jwm Exp $
+$Id: NEWS,v 1.439 2003-06-02 16:23:23 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -6,7 +6,10 @@ CVS
 - Bug 2043 - Proftpd converts LF to CRLF on PUT on Cygwin.  This turned out
   to be caused by the Cygwin layer.  The fix was to use the Cygwin-specific
   O_BINARY open() flag when opening binary files on Cygwin.
-- Bug 1804 - Permit selection of additional contrib modules when building the RPM
+- Bug 1804 - Permit selection of additional contrib modules when building
+  the RPM
+- Bug 2074 - MaxStoreFileSize restriction capabilities ignored.  This bug
+  was affecting MaxRetrieveFileSize as well.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------

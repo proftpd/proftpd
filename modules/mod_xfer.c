@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.143 2003-05-22 15:01:13 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.144 2003-06-02 16:23:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -83,10 +83,17 @@ static unsigned long find_max_nbytes(char *directive) {
   c = find_config(CURRENT_CONF, CONF_PARAM, directive, FALSE);
 
   while (c) {
-    if (c->argc == 3) {
-      if (!strcmp(c->argv[1], "user")) {
 
-        if (pr_user_or_expression((char **) &c->argv[2])) {
+    /* This check is for more than three arguments: one argument is the
+     * classifier (i.e. "user", "group", or "class"), one argument is
+     * the precedence, one is the number of bytes; the remaining arguments
+     * are the individual items in the configured expression.
+     */
+
+    if (c->argc > 3) {
+      if (!strcmp(c->argv[2], "user")) {
+
+        if (pr_user_or_expression((char **) &c->argv[3])) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
             /* Set the context precedence */
@@ -99,9 +106,9 @@ static unsigned long find_max_nbytes(char *directive) {
           }
         }
 
-      } else if (!strcmp(c->argv[1], "group")) {
+      } else if (!strcmp(c->argv[2], "group")) {
 
-        if (pr_group_or_expression((char **) &c->argv[2])) {
+        if (pr_group_or_expression((char **) &c->argv[3])) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
             /* Set the context precedence */
@@ -114,9 +121,9 @@ static unsigned long find_max_nbytes(char *directive) {
           }
         }
 
-      } else if (!strcmp(c->argv[1], "class")) {
+      } else if (!strcmp(c->argv[2], "class")) {
 
-        if (pr_class_or_expression((char **) &c->argv[2])) {
+        if (pr_class_or_expression((char **) &c->argv[3])) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
             /* Set the context precedence */
@@ -1942,7 +1949,11 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
      cmd->config->config_type : cmd->server->config_type ?
      cmd->server->config_type : CONF_ROOT);
 
-  if (cmd->argc-1 != 2 && cmd->argc-1 != 4)
+  if (cmd->argc-1 == 1) {
+    if (strcmp(cmd->argv[1], "*") != 0)
+      CONF_ERROR(cmd, "incorrect number of parameters");
+
+  } else if (cmd->argc-1 != 2 && cmd->argc-1 != 4)
     CONF_ERROR(cmd, "incorrect number of parameters");
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_ANON|CONF_VIRTUAL|CONF_GLOBAL|CONF_DIR|
@@ -1983,9 +1994,10 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
          cmd->argv[3], "'", NULL));
   }
 
-  if (!strcmp(cmd->argv[1], "*")) {
+  if (cmd->argc-1 == 1) {
 
-    /* Do nothing here -- the "*" signifies an unlimited size, which is
+    /* Do nothing here -- the "*" (the only parameter allowed if there is
+     * only a single parameter given) signifies an unlimited size, which is
      * what the server provides by default.
      */
     nbytes = 0UL;
@@ -2008,7 +2020,7 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
     }
   }
 
-  if (cmd->argc-1 == 2) {
+  if (cmd->argc-1 == 1 || cmd->argc-1 == 2) {
     c = add_config_param(cmd->argv[0], 2, NULL, NULL);
     c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
     *((unsigned long *) c->argv[0]) = nbytes;
