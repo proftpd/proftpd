@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.34 2000-07-21 05:18:04 macgyver Exp $
+ * $Id: main.c,v 1.35 2000-07-21 05:18:39 macgyver Exp $
  */
 
 /*
@@ -2082,7 +2082,7 @@ int main(int argc, char **argv, char **envp)
   int _umask = 0,c;
   int check_config_syntax = 0;
   struct sockaddr peer;
-  char *cmdopts = "nd:c:p:lhtv"
+  const char *cmdopts = "nd:c:p:lhtv"
 
 #ifdef DEBUG_CORE
     "o"
