@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.6 2004-03-01 16:43:16 castaglia Exp $
+ * $Id: netacl.c,v 1.7 2004-04-23 20:46:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -196,10 +196,10 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
       aclstr++;
     }
 
-    /* If there are any glob characters (e.g. '[', '*', or '?'), or if the
+    /* If there are any glob characters (e.g. '{', '[', '*', or '?'), or if the
      * first character is a '.', then treat the rule as a glob.
      */
-    if (strpbrk(aclstr, "[*?")) {
+    if (strpbrk(aclstr, "{[*?")) {
       acl->type = PR_NETACL_TYPE_DNSGLOB;
       acl->pattern = pstrdup(p, aclstr);
 
