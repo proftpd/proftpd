@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.14 2004-04-10 02:30:23 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.15 2004-04-29 03:35:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -289,7 +289,7 @@ static idmap_t *_auth_lookup_id(xaset_t **id_table, idauth_t id) {
 
   if (!m || !_compare_id(id_table, m->id, id)) {
     /* Isn't in the table */
-    m = (idmap_t *) pcalloc(id_table[hash]->mempool, sizeof(idmap_t));
+    m = (idmap_t *) pcalloc(id_table[hash]->pool, sizeof(idmap_t));
 
     if (id_table == uid_table)
       m->id.uid = id.uid;

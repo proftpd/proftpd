@@ -45,7 +45,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.31 2003-11-09 21:35:27 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.32 2004-04-29 03:35:38 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -925,7 +925,7 @@ _auth_lookup_id(xaset_t **id_table, pr_idauth_t id)
 
   if (!m || !_compare_id(id_table, m->id, id)) {
     /* Isn't in the table */
-    m = (pr_idmap_t *) pcalloc(id_table[hash]->mempool, sizeof(pr_idmap_t));
+    m = (pr_idmap_t *) pcalloc(id_table[hash]->pool, sizeof(pr_idmap_t));
 
     if (id_table == uid_table)
       m->id.uid = id.uid;

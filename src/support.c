@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.66 2003-12-02 02:54:28 castaglia Exp $
+ * $Id: support.c,v 1.67 2004-04-29 03:35:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -150,7 +150,7 @@ void schedule(void (*f)(void*,void*,void*,void*),int nloops, void *a1,
    scheds = xaset_create(p, NULL);
 
   } else
-   p = scheds->mempool;
+   p = scheds->pool;
 
   sub_pool = make_sub_pool(p);
 

@@ -25,7 +25,7 @@
 
 /*
  * Generic set manipulation
- * $Id: sets.c,v 1.11 2003-06-16 20:22:21 castaglia Exp $
+ * $Id: sets.c,v 1.12 2004-04-29 03:35:39 castaglia Exp $
  *
  * TODO: Use a hash table to greatly speed up set manipulation on
  *       large sets.
@@ -46,7 +46,7 @@ xaset_t *xaset_create(pool *work_pool, XASET_COMPARE compf) {
 
   if (!newset) return NULL;
   newset->xas_list = NULL;
-  newset->mempool = POOL(work_pool);
+  newset->pool = POOL(work_pool);
   newset->xas_compare = compf;
   return newset;
 }
@@ -187,7 +187,7 @@ xaset_t *xaset_union(pool *work_pool, xaset_t *set1, xaset_t *set2,
   }
 
   work_pool = (work_pool ? work_pool :
-    (set1->mempool ? set1->mempool : set2->mempool));
+    (set1->pool ? set1->pool : set2->pool));
 
   if (!(newset = xaset_create(work_pool, set1->xas_compare)))
     return NULL;
@@ -229,7 +229,7 @@ xaset_t *xaset_subtract(pool *work_pool, xaset_t *set1, xaset_t *set2,
   }
 
   work_pool = (work_pool ? work_pool :
-    (set1->mempool ? set1->mempool : set2->mempool));
+    (set1->pool ? set1->pool : set2->pool));
 
   if (!(newset = xaset_create(work_pool, set1->xas_compare)))
     return NULL;
@@ -292,7 +292,7 @@ xaset_t *xaset_copy(pool *work_pool, xaset_t *set, size_t msize,
     return NULL;
   }
 
-  work_pool = (work_pool ? work_pool : set->mempool);
+  work_pool = (work_pool ? work_pool : set->pool);
 
   if (!(newset = xaset_create(work_pool, set->xas_compare)))
     return NULL;

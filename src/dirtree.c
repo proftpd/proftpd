@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.145 2004-04-26 23:33:16 castaglia Exp $
+ * $Id: dirtree.c,v 1.146 2004-04-29 03:35:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -963,7 +963,7 @@ config_rec *add_config_set(xaset_t **set, const char *name) {
     pr_pool_tag(set_pool, "config set pool");
 
     *set = xaset_create(set_pool,NULL);
-    (*set)->mempool = set_pool;
+    (*set)->pool = set_pool;
 
     /* Now, make a subpool for the config_rec to be allocated. */
     conf_pool = make_sub_pool(set_pool);
@@ -975,7 +975,7 @@ config_rec *add_config_set(xaset_t **set, const char *name) {
       parent = ((config_rec*)((*set)->xas_list))->parent;
 
     /* Allocate a subpool for the config_rec from the parent's pool. */
-    conf_pool = make_sub_pool((*set)->mempool);
+    conf_pool = make_sub_pool((*set)->pool);
   }
 
   pr_pool_tag(conf_pool, "config_rec subpool");
@@ -2061,7 +2061,7 @@ void build_dyn_config(pool *p, char *_path, struct stat *_sbuf,
 	}
 
         if (d->subset && !d->subset->xas_list) {
-          destroy_pool(d->subset->mempool);
+          destroy_pool(d->subset->pool);
           d->subset = NULL;
           d->argv[0] = NULL;
 
@@ -2818,7 +2818,7 @@ static void fixup_globals(void) {
           _copy_global_to_all(c->subset);
         xaset_remove(s->conf, (xasetmember_t*)c);
         if (!s->conf->xas_list) {
-          destroy_pool(s->conf->mempool);
+          destroy_pool(s->conf->pool);
           s->conf = NULL;
         }
       }
@@ -3028,27 +3028,24 @@ int remove_config(xaset_t *set, const char *name, int recurse) {
     fset = c->set;
     xaset_remove(fset, (xasetmember_t *) c);
 
-    /* if the set is empty, and has no more contained members in
-     * the xas_list, destroy the set
+    /* If the set is empty, and has no more contained members in the xas_list,
+     * destroy the set.
      */
     if (!fset->xas_list) {
 
-      /* first, set any pointers to the container of the set to NULL
-       */
+      /* First, set any pointers to the container of the set to NULL. */
       if (c->parent && c->parent->subset == fset)
         c->parent->subset = NULL;
 
       else if (s->conf == fset)
         s->conf = NULL;
 
-      /* next, destroy the set's pool, which destroys the set as well
-       */
-        destroy_pool(fset->mempool);
+      /* Next, destroy the set's pool, which destroys the set as well. */
+      destroy_pool(fset->pool);
 
     } else {
 
-      /* if the set was not empty, destroy only the requested config_rec
-       */
+      /* If the set was not empty, destroy only the requested config_rec. */
       destroy_pool(c->pool);
     }
   }
@@ -3056,9 +3053,9 @@ int remove_config(xaset_t *set, const char *name, int recurse) {
   return found;
 }
 
-config_rec *add_config_param_set(xaset_t **set,const char *name,int num,...)
-{
-  config_rec *c = add_config_set(set,name);
+config_rec *add_config_param_set(xaset_t **set, const char *name,
+    int num, ...) {
+  config_rec *c = add_config_set(set, name);
   void **argv;
   va_list ap;
 
@@ -3461,7 +3458,7 @@ void init_config(void) {
       s_next = s->next;
       destroy_pool(s->pool);
     }
-    destroy_pool(server_list->mempool);
+    destroy_pool(server_list->pool);
   }
 
   server_list = xaset_create(conf_pool, NULL);

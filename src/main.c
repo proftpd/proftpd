@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.222 2004-04-21 01:23:25 castaglia Exp $
+ * $Id: main.c,v 1.223 2004-04-29 03:35:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1080,7 +1080,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
         pr_pool_tag(set_pool, "Child List Pool");
 
         child_list = xaset_create(set_pool, NULL);
-        child_list->mempool = set_pool;
+        child_list->pool = set_pool;
 
         /* now, make a subpool for the pidrec_t to be allocated
          */
@@ -1090,7 +1090,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
         /* allocate a subpool for the pidrec_t to be allocated
          */
-        pidrec_pool = make_sub_pool(child_list->mempool);
+        pidrec_pool = make_sub_pool(child_list->pool);
       }
 
       pr_pool_tag(pidrec_pool, "pidrec subpool");
@@ -1499,7 +1499,7 @@ static void daemon_loop(void) {
 
       /* Don't need the pool anymore */
       if (!child_list->xas_list) {
-        destroy_pool(child_list->mempool);
+        destroy_pool(child_list->pool);
         child_list = NULL;
       }
 
