@@ -20,7 +20,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.2 2000-08-02 05:25:24 macgyver Exp $
+ * $Id: modules.h,v 1.3 2001-02-23 02:47:26 flood Exp $
  */
 
 #ifndef __MODULES_H
@@ -208,5 +208,8 @@ const char *auth_uid_name(pool*,uid_t);
 const char *auth_gid_name(pool*,gid_t);
 uid_t auth_name_uid(pool*,const char*);
 gid_t auth_name_gid(pool*,const char*);
+
+int get_groups(pool *, const char *, array_header **, array_header **);
+int set_groups(pool *, gid_t, array_header *);
 
 #endif /* __MODULES_H */

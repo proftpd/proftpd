@@ -19,7 +19,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.13 2000-08-02 05:25:24 macgyver Exp $
+ * $Id: proftpd.h,v 1.14 2001-02-23 02:47:26 flood Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -110,20 +110,20 @@ typedef struct {
    */
 
   int disable_id_switching;		/* disable uid/gid switching */
-  int uid,ouid,gid;			/* Currently running uid, 
-                                         * original (startup) uid and
-                                         * current gid 
-                                         */
+  uid_t uid,ouid;                       /* current and original UIDs */
+  gid_t gid;                            /* current gid */
+
   array_header *gids;
   array_header *groups;
-  int fsuid;				/* Saved file uid */
-  int fsgid;				/* Saved file gid */
+  uid_t fsuid;				/* Saved file UID */
+  gid_t fsgid;				/* Saved file GID */
 
   char *user,*group;			/* username/groupname after login */
-  int login_uid,login_gid;		/* UID and GID after login before
-					 * the uid and gid fields above are
-					 * changed.
-					 */
+  uid_t login_uid;                      /* UID after login, but before
+                                         * session.uid is changed */
+  gid_t login_gid;                      /* GID after login, but before
+                                         * session.gid is changed */
+
   class_t *class;			/* session class */
   char *proc_prefix;			/* The "prefix" of our process name */
 
@@ -164,6 +164,11 @@ typedef struct {
   unsigned long total_bytes;          /* Total bytes transfered for this session */
 
 } session_t;
+
+/* Daemon identity values */
+uid_t daemon_uid;
+gid_t daemon_gid;
+array_header *daemon_gids;
 
 /* Possible values for xfer.xfer_type, mutually exclusive */
 #define STOR_DEFAULT	0

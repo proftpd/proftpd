@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.53 2001-02-23 01:00:00 flood Exp $
+ * $Id: main.c,v 1.54 2001-02-23 02:47:26 flood Exp $
  */
 
 /*
@@ -2292,7 +2292,7 @@ void show_usage(int exit_code)
 
 int main(int argc, char **argv, char **envp)
 {
-  int daemon_uid,daemon_gid,socketp;
+  int socketp;
   int _umask = 0,c;
   int check_config_syntax = 0;
   int show_version = 0;
@@ -2494,18 +2494,26 @@ int main(int argc, char **argv, char **envp)
   endgrent();
 
   /* Security */
-  daemon_uid = get_param_int(main_server->conf,"User",FALSE);
+  daemon_uid = (uid_t) get_param_int(main_server->conf,"User",FALSE);
   if(daemon_uid == -1)
     daemon_uid = 0;
-  daemon_gid = get_param_int(main_server->conf,"Group",FALSE);
+  daemon_gid = (gid_t) get_param_int(main_server->conf,"Group",FALSE);
   if(daemon_gid == -1)
     daemon_gid = 0;
 
-#ifdef HAVE_INITGROUPS
-  if(daemon_uid)
-    initgroups((const char *) get_param_ptr(main_server->conf, "UserName",
-                  FALSE), daemon_gid);
-#endif /* HAVE_INITGROUPS */
+  if (daemon_uid) {
+    /* allocate space for daemon supplemental groups
+     */
+    daemon_gids = make_array(permanent_pool, 2, sizeof(gid_t));
+
+    if (get_groups(permanent_pool, (const char *) get_param_ptr(
+        main_server->conf, "UserName", FALSE), &daemon_gids, NULL) < 0)
+      log_debug(DEBUG2, "unable to retrieve daemon supplemental groups");
+
+    if (set_groups(permanent_pool, daemon_gid, daemon_gids) < 0)
+      log_pri(LOG_ERR, "unable to set daemon groups: %s",
+        strerror(errno));
+  }
   
    if((_umask = get_param_int(main_server->conf,"Umask",FALSE)) == -1)
     _umask = 0022;

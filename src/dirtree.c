@@ -20,7 +20,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.27 2001-02-22 22:39:41 flood Exp $
+ * $Id: dirtree.c,v 1.28 2001-02-23 02:47:26 flood Exp $
  */
 
 /* History:
@@ -584,32 +584,36 @@ static int _strmatch(register char *s1, register char *s2)
 
 static config_rec *_recur_match_path(pool *p,xaset_t *s, char *path)
 {
+  char *tmp_path = NULL;
   config_rec *c,*res;
-  char *tmp;
 
   if(!s)
     return NULL;
 
   for(c = (config_rec*)s->xas_list; c; c=c->next)
     if(c->config_type == CONF_DIR) {
-      tmp = c->name;
+      tmp_path = c->name;
 
       if(c->argv[1]) {
         if(*(char*)(c->argv[1]) == '~')
           c->argv[1] = dir_canonical_path(c->pool,(char*)c->argv[1]);
-        tmp = pdircat(p,(char*)c->argv[1],tmp,NULL);
+
+        tmp_path = pdircat(p, (char *) c->argv[1], tmp_path, NULL);
       }
 
-      if(!strcmp(tmp,path))
-        return c;			/* Exact match */
+      /* exact path match
+       */
+      if(!strcmp(tmp_path, path))
+        return c;
 
-      if(!strstr(tmp,"/*")) {
-        if(*tmp && *(tmp+(strlen(tmp)-1)) == '/') {
-          *(tmp+(strlen(tmp)-1)) = '\0';
-          if(!strcmp(tmp,path))
+      if(!strstr(tmp_path,"/*")) {
+        if(*tmp_path && *(tmp_path + (strlen(tmp_path)-1)) == '/') {
+          *(tmp_path+(strlen(tmp_path)-1)) = '\0';
+
+          if(!strcmp(tmp_path,path))
             return c;
         }
-        tmp = pstrcat(p,tmp,"/*",NULL);
+        tmp_path = pdircat(p, tmp_path, "*", NULL);
       }
 
       /* Temporary measure until we figure what's going on with
@@ -622,9 +626,9 @@ static config_rec *_recur_match_path(pool *p,xaset_t *s, char *path)
        */
 
 #if 0
-      if(pr_fnmatch(tmp, path, PR_FNM_PATHNAME) == 0) {
+      if(pr_fnmatch(tmp_path, path, PR_FNM_PATHNAME) == 0) {
 #else
-      if(pr_fnmatch(tmp, path, 0) == 0) {
+      if(pr_fnmatch(tmp_path, path, 0) == 0) {
 #endif
         if(c->subset) {
           res = _recur_match_path(p,c->subset,path);
@@ -1576,6 +1580,7 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
   }
 
   session.fsuid = session.fsgid = 0;
+
   if((owner = get_param_ptr(CURRENT_CONF,"UserOwner",FALSE)) != NULL) {
     /* attempt chown on all new files */
     struct passwd *pw;

@@ -128,11 +128,6 @@ AC_ARG_WITH(modules,
 
 dnl --enable/--disable options.
 
-dnl Use initgroups/getgroups (for large-group systems)
-AC_ARG_ENABLE(initgroups,
-  [  --enable-initgroups     enabled use of initgroups/getgroups (default=no)
-  ])
-
 dnl Auto-detection of shadow passwords.
 AC_ARG_ENABLE(autoshadow,
   [  --enable-autoshadow     enable run-time auto-detection of shadowed passwords (requires shadow)
@@ -476,10 +471,6 @@ AC_CHECK_FUNCS(inet_aton siginterrupt setpgid)
 AC_CHECK_FUNCS(regcomp)
 AC_CHECK_FUNCS(tzset)
 AC_CHECK_FUNCS(pathconf fpathconf)
-
-if test x"$enable_initgroups" = xyes ; then
-  AC_CHECK_FUNCS(initgroups)
-fi
 
 AC_CHECK_FUNC(setpassent,
 [case "$target_os:$enable_force_setpassent" in

@@ -20,13 +20,11 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.50 2001-02-05 19:37:03 flood Exp $
+ * $Id: mod_auth.c,v 1.51 2001-02-23 02:47:26 flood Exp $
  */
 
 #include "conf.h"
-
 #include "privs.h"
-
 
 /* From the core module */
 extern int core_display_file(const char *,const char *);
@@ -46,7 +44,7 @@ static int lockdown(char *newroot)
 {
   PRIVS_ROOT;
   
-  log_debug(DEBUG1, "Preparing to chroot() the environment (path - '%s'",
+  log_debug(DEBUG1, "Preparing to chroot() the environment, path = '%s'",
 	    newroot);
   
   if(chroot(newroot) == -1) {
@@ -199,128 +197,18 @@ static config_rec *_auth_group(pool *p, char *user, char **group,
   return c;
 }
 
-static void build_group_arrays(pool *p, struct passwd *pw, char *name,
-			       array_header **gids, array_header **groups)
-{
-  struct group *gr;
-  array_header *xgids,*xgroups;
-
-#ifdef HAVE_INITGROUPS
-  /* Optimization for large groups, especially.
-   */
-  int i, total;
-  
-  i = total = 0;
-
-  /* If we don't have a password file, we create an empty array and punt.
-   */
-  if(!pw) {
-    if(!name || !(pw = (struct passwd *) auth_getpwnam(p, name))) {
-      *gids = make_array(p, 2, sizeof(gid_t));
-      *groups = make_array(p, 2, sizeof(char *));
-      return;
-    }
-  }
-  
-  /* We need root privileges for initgroups to succeed.
-   */
-  PRIVS_ROOT;
-  initgroups(pw->pw_name, pw->pw_gid);
-  PRIVS_RELINQUISH;
-  
-  /* Allocate the appropriate space.
-   */
-  total = getgroups(0, 0);
-  xgids = make_array(p, total, sizeof(gid_t));
-  xgroups = make_array(p, 2, sizeof(char *));
-  
-  /* Populate the array of GIDs.
-   */
-  xgids->nelts = getgroups(total, (GETGROUPS_T *) xgids->elts);
-  
-  /* Now populate the names of the groups.
-   */
-  for(i = 0; i < total; i++) {
-    if((gr = (struct group *) auth_getgrgid(p, ((gid_t *) xgids->elts)[i])))
-      *((char **) push_array(xgroups)) = pstrdup(p, gr->gr_name);
-  }
-  
-#else /* No HAVE_INITGROUPS */
-
-  char **gr_mem;
-  
-  /* Allocate space.
-   */
-  xgids = make_array(p, 2, sizeof(gid_t));
-  xgroups = make_array(p, 2, sizeof(char *));
-  
-  /* Nothing there...punt.
-   */
-  if(!pw) {
-    if(!name || !(pw = (struct passwd *) auth_getpwnam(p, name))) {
-      *gids = xgids;
-      *groups = xgroups;
-      return;
-    }
-  }
-  
-  /* Populate the first group name.
-   */
-  if((gr = auth_getgrgid(p, pw->pw_gid)) != NULL)
-    *((char **) push_array(xgroups)) = pstrdup(p, gr->gr_name);
-  
-  auth_setgrent(p);
-  
-  /* This is where things get slow, expensive, and ugly.
-   * Loop through everything, checking to make sure we haven't already added
-   * it.  This is why we have getgroups() and company.
-   */
-  while((gr = auth_getgrent(p)) != NULL && gr->gr_mem)
-    for(gr_mem = gr->gr_mem; *gr_mem; gr_mem++) {
-      if(!strcmp(*gr_mem, pw->pw_name)) {
-        *((int *) push_array(xgids)) = (int) gr->gr_gid;
-        if(pw->pw_gid != gr->gr_gid)
-          *((char **) push_array(xgroups)) = pstrdup(p, gr->gr_name);
-        break;
-      }
-    }
-#endif /* HAVE_INITGROUPS */
-  
-  *gids = xgids;
-  *groups = xgroups;
-}
-
-static int _init_groups(pool *p, gid_t addl_group)
-{
-  gid_t *gid_arr;
-  int i,*session_gids;
-  size_t ngids = session.gids->nelts;
-
-  session_gids = session.gids->elts;
-  gid_arr = palloc(p, sizeof(gid_t) * (ngids + 2));
-
-  /* From FreeBSD: /usr/src/lib/libc/gen/getgrouplist.c
-   *
-   * When installing primary group, duplicate it;
-   * the first element of groups is the effective gid
-   * and will be overwritten when a setgid file is executed.
-   */
-  
-  gid_arr[0] = addl_group;
-  gid_arr[1] = addl_group;
-
-  for(i = 0; i < ngids; i++)
-    gid_arr[i + 2] = (gid_t) session_gids[i];
-  
-  return setgroups(ngids + 2, gid_arr);
-}
-
 static config_rec *_auth_anonymous_group(pool *p, char *user)
 {
   config_rec *c;
   int ret = 0;
 
-  build_group_arrays(p,NULL,user,&session.gids,&session.groups);
+  /* retrieve the session group membership information, so that this check
+   * may work properly
+   */
+  if (!session.gids && !session.groups &&
+      (ret = get_groups(p, user, &session.gids, &session.groups)) < 1)
+    log_debug(DEBUG2, "no supplemental groups found for user '%s'", user);
+
   c = find_config(main_server->conf,CONF_PARAM,"AnonymousGroup",FALSE);
 
   if(c) do {
@@ -620,7 +508,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   char *origuser,*ourname,*anonname = NULL,*anongroup = NULL,*ugroup = NULL;
   char ttyname[20] = {'\0'}, *defaulttransfermode;
   char *defroot = NULL,*defchdir = NULL,*xferlog = NULL;
-  int aclp,i,force_anon = 0,wtmp_log = -1,showsymlinks;
+  int aclp,i,force_anon = 0,wtmp_log = -1,res = 0,showsymlinks;
 
   /********************* Authenticate the user here *********************/
 
@@ -669,6 +557,13 @@ static int _setup_environment(pool *p, char *user, char *pass)
   /* Set the login_uid and login_uid */
   session.login_uid = pw->pw_uid;
   session.login_gid = pw->pw_gid;
+  
+  /* Get the supplemental groups */
+  if (!session.gids && !session.groups &&
+      (res = get_groups(p, pw->pw_name, &session.gids, &session.groups)) < 1)
+    log_debug(DEBUG2, "no supplemental groups found for user '%s'",
+      pw->pw_name);
+
 
   /* set force_anon (for AnonymousGroup) and build a custom
    * anonymous config for this session.
@@ -810,13 +705,71 @@ static int _setup_environment(pool *p, char *user, char *pass)
     add_userdir = get_param_int((c ? c->subset : main_server->conf),
 				"UserDirRoot", FALSE);
     
-    if(add_userdir > 0 && strcmp(u, user)) {
-      session.anon_root = dir_realpath(session.pool,
-				       pdircat(session.pool, c->name,
+    /* If resolving an <Anonymous> user, make sure that user's groups
+     * are set properly for the check of the home directory path (which
+     * depend on those supplemental group memberships).  Additionally,
+     * temporarily switch to the new user's uid.
+     */
+
+    block_signals();
+    
+    PRIVS_ROOT;
+    if ((res = set_groups(p, pw->pw_gid, session.gids)) < 0)
+      log_pri(LOG_ERR, "error: unable to set groups: %s",
+        strerror(errno));
+#ifdef __hpux
+    setresuid(0,0,0);
+    setresgid(0,0,0);
+#else
+    setuid(0);
+    setgid(0);
+#endif
+    PRIVS_SETUP(pw->pw_uid,pw->pw_gid);
+    
+    if(add_userdir > 0 && strcmp(u, user))
+      session.anon_root = dir_realpath(p, pdircat(p, c->name,
 					       u, NULL));
-    } else {
-      session.anon_root = dir_realpath(session.pool, c->name);
+    else
+      session.anon_root = dir_realpath(p, c->name);
+   
+    /* Check access using access_check() which uses euid instead of ruid,
+     * if everything is ok copy it into the session pool. -jss 2/22/2001
+     */
+    
+    if(session.anon_root && access_check(session.anon_root, X_OK) != 0)
+      session.anon_root = NULL;
+    else
+      session.anon_root = pstrdup(session.pool,session.anon_root);
+    
+    /* return all privileges back to that of the daemon, for now */
+    PRIVS_ROOT;
+    if ((res = set_groups(p, daemon_gid, daemon_gids)) < 0)
+      log_pri(LOG_ERR, "error: unable to set groups: %s",
+        strerror(errno));
+#ifdef __hpux
+    setresuid(0,0,0);
+    setresgid(0,0,0);
+#else
+    setuid(0);
+    setgid(0);
+#endif
+    PRIVS_SETUP(daemon_uid, daemon_gid);
+
+    unblock_signals();
+    
+    /* Sanity check, make sure we have daemon_uid and daemon_gid back */
+#ifdef HAVE_GETEUID
+    if(getegid() != daemon_gid ||
+       geteuid() != daemon_uid) {
+
+      PRIVS_RELINQUISH;
+      
+      log_pri(LOG_ERR,"changing from %s back to daemon uid/gid: %s",
+            session.user, strerror(errno));
+
+      end_login(1);
     }
+#endif /* HAVE_GETEUID */
     
     if(get_param_int(c->subset, "AnonRequirePassword", FALSE) == 1)
       session.anon_user = pstrdup(session.pool, origuser);
@@ -859,10 +812,6 @@ static int _setup_environment(pool *p, char *user, char *pass)
   
   if(defchdir)
     sstrncpy(session.cwd, defchdir, MAX_PATH_LEN);
-
-  build_group_arrays(session.pool,pw,NULL,
-                     &session.gids,&session.groups);
-
 
   /* check limits again to make sure deny/allow directives still permit
    * access.
@@ -935,7 +884,9 @@ static int _setup_environment(pool *p, char *user, char *pass)
   else
     log_open_xfer(xferlog);
 
-  _init_groups(p, pw->pw_gid);
+  if ((res = set_groups(p, pw->pw_gid, session.gids)) < 0)
+    log_pri(LOG_ERR, "error: unable to set groups: %s",
+      strerror(errno));
 
   PRIVS_RELINQUISH;
 
@@ -1090,8 +1041,15 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
   remove_timer(TIMER_LOGIN,&auth_module);
 
+  /* these copies are made from the permanent_pool, instead of the more
+   * volatile pool used originally, in order that the copied data maintain
+   * its integrity for the lifetime of the session.
+   */
   session.user = pstrdup(permanent_pool,session.user);
   session.group = pstrdup(permanent_pool,session.group);
+  session.gids = copy_array(permanent_pool, session.gids);
+  session.groups = copy_array(permanent_pool, session.groups);
+
   return 1;
 
 auth_failure:
