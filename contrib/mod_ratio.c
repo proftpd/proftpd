@@ -471,7 +471,7 @@ cmd_cwd (cmd_rec * cmd)
 	{
 	  if (!*((char *) c->argv[0]))
 	    return DECLINED (cmd);
-	  add_response (R_250, "%s", c->argv[0]);
+	  add_response (R_250, "%s", (char *)c->argv[0]);
 	  c = find_config_next (c, c->next, CONF_PARAM, "CwdRatioMsg", FALSE);
 	}
     }
@@ -611,7 +611,7 @@ cmd_site (cmd_rec * cmd)
       add_response(R_214,
 		   "Bytes: %s  Down: %imb  Up: %imb  CR: %i Mbytes",
 		   stats.btext, (stats.bretr / 1024), (stats.bstor / 1024),
-		   (stats.bytes / 1024), stats.bytes);
+		   (stats.bytes / 1024));
     return HANDLED(cmd);
   }
   
