@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.51 2001-01-31 20:51:37 flood Exp $
+ * $Id: mod_core.c,v 1.52 2001-02-02 23:11:26 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -97,7 +97,17 @@ extern modret_t *site_dispatch(cmd_rec*);
 MODRET add_include(cmd_rec *cmd)
 {
   CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT | CONF_DIR | CONF_ANON | CONF_LIMIT |
+    CONF_VIRTUAL | CONF_GLOBAL);
   
+  /* make sure the given path is a full path, not a relative one -- TJ
+   */
+  if (*(cmd->argv[1]) != '/') {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+      "Unable to use relative path for configuration file '",
+      cmd->argv[1], "'.", NULL));
+  }
+ 
   if(parse_config_file(cmd->argv[1]) == -1) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
 			    "Unable to include configuration file '",
