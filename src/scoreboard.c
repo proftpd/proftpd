@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.4 2002-09-27 20:17:44 castaglia Exp $
+ * $Id: scoreboard.c,v 1.5 2002-09-27 20:51:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -541,16 +541,16 @@ int pr_scoreboard_update_entry(pid_t pid, ...) {
         break;
 
       case PR_SCORE_SERVER_PORT:
-        entry.sce_server_port = va_arg(ap, unsigned short);
+        entry.sce_server_port = va_arg(ap, int);
         break;
 
       case PR_SCORE_SERVER_ADDR:
         {
           p_in_addr_t *server_ip = va_arg(ap, p_in_addr_t *);
-          unsigned int server_port = va_arg(ap, unsigned int);
+          int server_port = va_arg(ap, int);
 
           snprintf(entry.sce_server_addr, sizeof(entry.sce_server_addr),
-            "%s:%u", server_ip ? inet_ntoa(*server_ip) : "(uknown)",
+            "%s:%d", server_ip ? inet_ntoa(*server_ip) : "(uknown)",
             server_port);
           entry.sce_server_addr[sizeof(entry.sce_server_addr)-1] = '\0';
         }
