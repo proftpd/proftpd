@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.15 2003-09-09 05:37:26 castaglia Exp $
+ * $Id: netaddr.c,v 1.16 2003-09-09 21:14:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -558,6 +558,7 @@ const char *pr_netaddr_get_ipstr(pr_netaddr_t *na) {
  */
 const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
   char *name = NULL;
+  char buf[256];
 
   if (!na) {
     errno = EINVAL;
@@ -571,7 +572,6 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
     return na->na_dnsstr;
 
   if (reverse_dns) {
-    char buf[256];
     int res = 0;
 
     memset(buf, '\0', sizeof(buf));
@@ -627,8 +627,7 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
 #endif /* USE_IPV6 */
         }
 
-        if (!ok)
-          name = NULL;
+        name = ok ? buf : NULL;
       }
     }
   }
