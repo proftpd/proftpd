@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.211 2003-11-09 22:19:46 castaglia Exp $
+ * $Id: main.c,v 1.212 2003-11-09 22:40:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -147,10 +147,7 @@ static int shutdownp = 0;
 
 /* Signal handling */
 static RETSIGTYPE sig_disconnect(int);
-
-#ifndef USE_CTRLS
-static RETSIGTYPE sig_debug(int);
-#endif /* !USE_CTRLS */
+static RETSIGTYPE sig_evnt(int);
 
 volatile unsigned int recvd_signal_flags = 0;
 
@@ -160,14 +157,11 @@ static int term_signo = 0;
 /* Signal processing functions */
 static void handle_abort(void);
 static void handle_chld(void);
+static void handle_evnt(void);
 static void handle_xcpu(void);
 static void handle_terminate(void);
 static void handle_terminate_other(void);
 static void finish_terminate(void);
-
-#ifndef USE_CTRLS
-static void handle_debug(void);
-#endif /* !USE_CTRLS */
 
 static const char *config_filename = CONFIG_FILE_PATH;
 
@@ -1141,12 +1135,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
   /* Child is running here */
   signal(SIGUSR1, sig_disconnect);
-
-#ifdef USE_CTRLS
-  signal(SIGUSR2, SIG_IGN);
-#else
-  signal(SIGUSR2, sig_debug);
-#endif /* USE_CTRLS */
+  signal(SIGUSR2, sig_evnt);
 
   signal(SIGCHLD, SIG_DFL);
   signal(SIGHUP, SIG_IGN);
@@ -1612,12 +1601,10 @@ void pr_signals_handle(void) {
       handle_chld();
     }
 
-#ifndef USE_CTRLS
-    if (recvd_signal_flags & RECEIVED_SIG_DEBUG) {
-      recvd_signal_flags &= ~RECEIVED_SIG_DEBUG;
-      handle_debug();
+    if (recvd_signal_flags & RECEIVED_SIG_EVENT) {
+      recvd_signal_flags &= ~RECEIVED_SIG_EVENT;
+      handle_evnt();
     }
-#endif /* !USE_CTRLS */
 
     if (recvd_signal_flags & RECEIVED_SIG_SEGV) {
       recvd_signal_flags &= ~RECEIVED_SIG_SEGV;
@@ -1676,14 +1663,10 @@ static RETSIGTYPE sig_rehash(int signo) {
   signal(SIGHUP, sig_rehash);
 }
 
-#ifndef USE_CTRLS
-/* sig_debug outputs some basic debugging info
- */
-static RETSIGTYPE sig_debug(int signo) {
-  recvd_signal_flags |= RECEIVED_SIG_DEBUG;
-  signal(SIGHUP, sig_debug);
+static RETSIGTYPE sig_evnt(int signo) {
+  recvd_signal_flags |= RECEIVED_SIG_EVENT;
+  signal(SIGHUP, sig_evnt);
 }
-#endif /* !USE_CTRLS */
 
 /* sig_disconnect is called in children when the parent daemon
  * detects that shutmsg has been created and ftp sessions should
@@ -1852,8 +1835,14 @@ static void debug_memory(const char *fmt, ...) {
   pr_log_pri(PR_LOG_NOTICE, "%s", buf);
 }
 
-static void handle_debug(void) {
+static void handle_evnt(void) {
   pr_pool_debug_memory(debug_memory);
+}
+
+#else
+
+static void handle_evnt(void) {
+  pr_event_generate("core.signal.USR2", NULL);
 }
 #endif /* !USE_CTRLS */
 

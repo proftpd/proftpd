@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.46 2003-08-09 07:22:04 castaglia Exp $
+ * $Id: proftpd.h,v 1.47 2003-11-09 22:40:42 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -248,7 +248,7 @@ extern const char	*pwdfname,*grpfname;
 #define RECEIVED_SIG_XCPU	0x0020
 #define RECEIVED_SIG_TERM_OTHER	0x0040
 #define RECEIVED_SIG_ABORT	0x0080
-#define RECEIVED_SIG_DEBUG	0x0100
+#define RECEIVED_SIG_EVENT	0x0100
 #define RECEIVED_SIG_CHLD	0x0200
 #define RECEIVED_SIG_ALRM	0x0400
 
