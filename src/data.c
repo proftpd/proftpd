@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.68 2003-09-23 15:13:33 castaglia Exp $
+ * $Id: data.c,v 1.69 2003-09-27 18:40:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -158,11 +158,6 @@ static unsigned int xlate_ascii_write(char **buf, unsigned int *buflen,
     session.xfer.bufsize = tmplen + lfcount + 1;
     session.xfer.buf = pcalloc(session.xfer.p, session.xfer.bufsize);
 
-    /* Allow space for a CR to be inserted before an LF if an LF is the
-     * first character in the buffer.
-     */
-    session.xfer.buf++;
-
     memcpy(session.xfer.buf, copy_buf, tmplen);
     destroy_pool(copy_pool);
 
@@ -175,7 +170,7 @@ static unsigned int xlate_ascii_write(char **buf, unsigned int *buflen,
     /* Shift everything in the buffer to the right one character, making
      * space for a '\r'
      */
-    memmove(&(tmpbuf[1]), &(tmpbuf[0]), bufsize);
+    memmove(&(tmpbuf[1]), &(tmpbuf[0]), tmplen);
     tmpbuf[0] = '\r';
 
     /* Increment the number of added characters, and decrement the number
@@ -194,8 +189,6 @@ static unsigned int xlate_ascii_write(char **buf, unsigned int *buflen,
     }
   }
 
-  /* Always make sure the buffer is NUL-terminated. */
-  tmpbuf[tmplen + added] = '\0';
   *buf = tmpbuf;
   *buflen = tmplen + added;
 

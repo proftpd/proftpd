@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.482 2003-09-23 19:10:52 castaglia Exp $
+$Id: NEWS,v 1.483 2003-09-27 18:40:10 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -13,6 +13,7 @@ CVS
 - Bug 2181 - IPv4 active transfers don't work when using --enable-ipv6.
   IPv4-mapped IPv6 addresses were not being properly compared for active
   data transfers.
+- Bug 2200 - Correct segfaults with xlate_ascii_write() on IRIX.
 
 1.2.9rc2 - Released 11-Sep-2003
 ---------------------------------
