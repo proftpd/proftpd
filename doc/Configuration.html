@@ -32,7 +32,6 @@ features and configuration:</p>
     <li><a href="#AuthAliasOnly">AuthAliasOnly</a></li>
     <li><a href="#AuthGroupFile">AuthGroupFile</a></li>
     <li><a href="#AuthUserFile">AuthUserFile</a></li>
-    <li><a href="#Bandwidth">Bandwidth</a></li>
     <li><a href="#Bind">Bind</a></li>
     <li><a href="#CDPath">CDPath</a></li>
     <li><a href="#DefaultRoot">DefaultRoot</a></li>
@@ -551,34 +550,6 @@ href="#AuthGroupFile">AuthGroupFile</a>).</p>
 chroot()ed directory structure for Anonymous or DefaultRoot
 logins, as it is help open for the duration of client
 connections.</strong></p>
-
-<hr>
-
-<h2><a name="Bandwidth">Bandwidth</a></h2>
-
-<p><strong>Syntax:</strong> Bandwidth <em>&lt;speed in Kbps, between 1
-and 2048&gt;</em><br>
-<strong>Default:</strong> None<br>
-<strong>Context:</strong> server config, &lt;VirtualHost&gt;<br>
-<strong>Compatibility:</strong> 1.2.0pre5 and later</p>
-
-<p>
-The Bandwidth directive controls the maximum throughput for a given
-server. Different limits can be set on a per-server basis, this
-directive is applicable to the main server and/or virtual servers.
-<br><br>
-Example usage:
-<pre>
-&lt;VirtualHost xx.xx.xx.xx&gt;
-  Port xxxx
-  ServerName "My Virtual Server"
-  # Limit the Bandwidth to 256 Kbps
-  Bandwidth 256
-  DefaultRoot /home/ftp/something
-</pre>
-  etc...
-
-</p>
 
 <hr>
 
