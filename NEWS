@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.480 2003-09-19 20:21:31 castaglia Exp $
+$Id: NEWS,v 1.481 2003-09-23 15:19:45 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -8,6 +8,8 @@ CVS
   in some instances.
 - Bug 2179 - ROOT_UID instead of ROOT_GID used in setegid() call.
   This affects Cygwin installations.
+- Fixed ASCII file remote exploit discovered by X-Force at ISS:
+    http://xforce.iss.net/xforce/alerts/id/154
 
 1.2.9rc2 - Released 11-Sep-2003
 ---------------------------------
