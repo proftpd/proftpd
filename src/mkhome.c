@@ -24,7 +24,7 @@
 
 /*
  * Home-on-demand support
- * $Id: mkhome.c,v 1.1 2003-01-18 23:28:37 castaglia Exp $
+ * $Id: mkhome.c,v 1.2 2003-03-26 03:34:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -147,7 +147,7 @@ static int copy_file(pool *p, const char *src, const char *dst, uid_t uid,
  
   if (pr_fsio_chmod(dst, mode) < 0)
     log_pri(PR_LOG_WARNING, "CreateHome: error chmod'ing '%s' to %04o: %s",
-      dst, mode, strerror(errno));
+      dst, (unsigned int) mode, strerror(errno));
 
   pr_fsio_close(src_fh);
   if (pr_fsio_close(dst_fh) < 0)
