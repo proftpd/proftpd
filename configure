@@ -863,6 +863,10 @@ Optional Features:
 
   --enable-cap            enable POSIX.1e capabilities (default=yes on Linux)
 
+  --disable-curses        disable use of curses (default=no)
+
+  --disable-ncurses       disable use of ncurses (default=no)
+
   --enable-ipv6           enable IPv6 support (default=no)
 
   --enable-sendfile       enable sendfile support (default=no)
@@ -3096,6 +3100,18 @@ if test "${enable_cap+set}" = set; then
 
 fi;
 
+# Check whether --enable-curses or --disable-curses was given.
+if test "${enable_curses+set}" = set; then
+  enableval="$enable_curses"
+
+fi;
+
+# Check whether --enable-ncurses or --disable-ncurses was given.
+if test "${enable_ncurses+set}" = set; then
+  enableval="$enable_ncurses"
+
+fi;
+
 # Check whether --enable-ipv6 or --disable-ipv6 was given.
 if test "${enable_ipv6+set}" = set; then
   enableval="$enable_ipv6"
@@ -3108,7 +3124,6 @@ _ACEOF
     fi
 
 fi;
-
 
 # Check whether --enable-sendfile or --disable-sendfile was given.
 if test "${enable_sendfile+set}" = set; then
@@ -14815,6 +14830,20 @@ _ACEOF
 
 fi
 
+
+if test x"$enable_curses" != xno ; then
+  cat >>confdefs.h <<\_ACEOF
+#define USE_CURSES 1
+_ACEOF
+
+fi
+
+if test x"$enable_ncurses" != xno ; then
+  cat >>confdefs.h <<\_ACEOF
+#define USE_NCURSES 1
+_ACEOF
+
+fi
 
 
 for ac_func in setproctitle
