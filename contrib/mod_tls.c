@@ -2521,7 +2521,7 @@ MODRET tls_prot(cmd_rec *cmd) {
 /* usage: TLSCACertificateFile file */
 MODRET set_tlscacertfile(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if (!file_exists(cmd->argv[1]))
     CONF_ERROR(cmd, "file does not exist");
@@ -2536,7 +2536,7 @@ MODRET set_tlscacertfile(cmd_rec *cmd) {
 /* usage: TLSCACertificatePath path */
 MODRET set_tlscacertpath(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
    if (!dir_exists(cmd->argv[1]))
     CONF_ERROR(cmd, "parameter must be a directory path");
