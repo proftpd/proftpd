@@ -1,4 +1,4 @@
-<!-- $Id: TLS.html,v 1.5 2004-07-06 17:32:20 castaglia Exp $ -->
+<!-- $Id: TLS.html,v 1.6 2004-10-02 20:05:00 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/TLS.html,v $ -->
 
 <html>
@@ -50,6 +50,17 @@ Example <a href="http://www.castaglia.org/proftpd/modules/mod_tls.html"><code>mo
 
 <p><a name="FAQ"></a>
 <b>Frequently Asked Questions</b><br>
+
+<p><a name="TLSCertificates">
+<font color=red>Question</font>: How do I generate the certificate files used
+by <code>mod_tls</code>?<br>
+<font color=blue>Answer</font>: The <code>mod_tls</code> module uses the
+same certificate files as Apache's <code>mod_ssl</code>.  The
+<code>mod_ssl</code> documentation explains what the files are, how they
+are used, and how to generate your own:
+<pre>
+  <a href="http://www.modssl.org/docs/2.7/ssl_faq.html#ToC24">http://www.modssl.org/docs/2.7/ssl_faq.html</a>
+</pre>
 
 <p><a name="TLSClients">
 <font color=red>Question</font>: Where can I find a list of clients that
@@ -217,9 +228,39 @@ notably on very high speed networks.  Increasing the buffer size does not
 appear to affect normal FTP transfers (in fact, it may benefit them as well,
 depending on the client).
 
+<p><a name="TLSDataProtection">
+<font color=red>Question</font>: I can login using FTPS, but I cannot see
+any directories.  Why not?<br>
+<font color=blue>Answer</font>: You have most likely configured
+<code>mod_tls</code> to require SSL/TLS protection for data transfers as
+well as control commands, by using:
+<pre>
+  TLSRequired on
+</pre>
+However, if your FTPS client does not expect to handle encrypted data
+transfers (and directory listings count as data transfers, as they are
+sent over a data channel), you may see your client appear to hang, waiting
+for data it can read.  Make sure your client is prepared to handle the
+security requirements you have configured on the server.
+
+<p>
+You may also see the following appear in the <code>TLSLog</code> on occasion:
+<pre>
+  PROT: unwilling to accept security parameter (C), declining
+</pre>
+The <code>PROT</code> FTP command is used to set the protection level to
+be used for data transfers.  Some clients send a <code>PROT</code> command
+with a security parameter of <code>C</code>, meaning &quot;Clear&quot;,
+which effectively tells the server not to protect data transfers.  The
+<code>mod_tls</code> module will refuse the <code>C</code> security parameter
+if, like above, there is &quot;TLSRequired on&quot in your
+<code>proftpd.conf</code>.  This case also indicates a disagreement between
+the client's security expectations and the security policy you have configured
+on the server.
+
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-07-06 17:32:20 $</i><br>
+Last Updated: <i>$Date: 2004-10-02 20:05:00 $</i><br>
 <hr>
 
 </body>
