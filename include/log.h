@@ -27,7 +27,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.19 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: log.h,v 1.20 2003-11-01 00:12:45 castaglia Exp $
  */
 
 #ifndef PR_LOG_H
@@ -45,6 +45,7 @@
  * info.  DEBUG0 (the default) prints nothing.
  */
 
+#define DEBUG10		10
 #define DEBUG9		9
 #define DEBUG8		8
 #define DEBUG7		7
