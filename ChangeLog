@@ -1,3 +1,8 @@
+2001-05-31 12:08  flood
+
+	* NEWS, README.mod_sql, contrib/mod_sql.c, contrib/mod_sql_mysql.c,
+	contrib/mod_sql_postgres.c: New mod_sql and friends
+
 2001-05-21 17:14  flood
 
 	* NEWS, contrib/mod_readme.c, include/conf.h, modules/mod_core.c,
