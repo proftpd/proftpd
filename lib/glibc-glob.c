@@ -726,7 +726,7 @@ glob_limited (unsigned int depth, const char *pattern, int flags,
 	      if (buflen == 0)
 		/* `sysconf' does not support _SC_LOGIN_NAME_MAX.  Try
 		   a moderate value.  */
-		buflen = 20;
+		buflen = PR_TUNABLE_LOGIN_MAX;
 	      name = (char *) __alloca (buflen);
 
 	      success = getlogin_r (name, buflen) >= 0;
