@@ -68,18 +68,20 @@ char *get_ident(pool *p,conn_t *c)
     destroy_pool(tmpp);
     return pstrdup(p,ret);
   }
-  
-  ident_conn = inet_create_connection(tmpp,NULL,-1,c->local_ipaddr,INPORT_ANY,FALSE);
-  inet_setnonblock(tmpp,ident_conn);
-  i = inet_connect_nowait(tmpp,ident_conn,c->remote_ipaddr,ident_port);
-  if(i < 0) {
+ 
+  ident_conn = inet_create_connection(tmpp, NULL, -1, c->local_ipaddr,
+    INPORT_ANY, FALSE);
+  inet_setnonblock(tmpp, ident_conn);
+  i = inet_connect_nowait(tmpp, ident_conn, c->remote_ipaddr, ident_port);
+
+  if (i < 0) {
     remove_timer(timer,NULL);
     inet_close(tmpp,ident_conn);
     destroy_pool(tmpp);
     return pstrdup(p,ret);
   }
   
-  if(!i) {				/* Not yet connected */
+  if (!i) {				/* Not yet connected */
     io = io_open(p,ident_conn->listen_fd,IO_READ);
     io_set_poll_sleep(io,1);
     switch(io_poll(io)) {
@@ -98,16 +100,21 @@ char *get_ident(pool *p,conn_t *c)
 		return pstrdup(p,ret);
     default: /* connected */
 		ident_conn->mode = CM_OPEN;
-		inet_get_conn_info(ident_conn,ident_conn->listen_fd);
+		inet_get_conn_info(ident_conn, ident_conn->listen_fd);
 		break;
     }
   }
 
-  ident_io = inet_openrw(tmpp,ident_conn,NULL,-1,-1,-1,FALSE);
+  if ((ident_io = inet_openrw(tmpp,ident_conn, NULL, -1, -1, -1,
+      FALSE)) == NULL)
+    return pstrdup(p, ret);
+
   io = ident_io->inf;
+
   inet_setnonblock(tmpp,ident_io);
   io_set_poll_sleep(ident_io->inf,1);
   io_set_poll_sleep(ident_io->outf,1);
+
   io_printf(ident_io->outf,"%d, %d\r\n",c->remote_port,c->local_port);
 
   /* If the timer fires while in io_gets, io_gets will simply return
