@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.186 2004-05-17 18:24:14 castaglia Exp $
+ * $Id: mod_auth.c,v 1.187 2004-05-19 21:44:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1638,7 +1638,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
       char maxn[20] = {'\0'};
 
       pr_event_generate("mod_auth.max-clients-per-class",
-        session.class->cls_name);
+        session.class ? session.class->cls_name : NULL);
 
       snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
