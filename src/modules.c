@@ -289,7 +289,7 @@ modret_t *call_module_auth(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd)
   module *prev_module = curmodule;
 
   if(!cmd->tmp_pool)
-    cmd->tmp_pool = make_sub_pool(cmd->pool);
+    cmd->tmp_pool = make_named_sub_pool(cmd->pool,"temp - auth module call");
 
   curmodule = m;
   res = func(cmd);
@@ -304,7 +304,7 @@ modret_t *call_module_cmd(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd)
   module *prev_module = curmodule;
 
   if(!cmd->tmp_pool)
-    cmd->tmp_pool = make_sub_pool(cmd->pool);
+    cmd->tmp_pool = make_named_sub_pool(cmd->pool,"temp - cmd module call");
 
   curmodule = m;
   res = func(cmd);
@@ -319,7 +319,7 @@ modret_t *call_module(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd)
   module *prev_module = curmodule;
 
   if(!cmd->tmp_pool)
-    cmd->tmp_pool = make_sub_pool(cmd->pool);
+    cmd->tmp_pool = make_named_sub_pool(cmd->pool,"temp - generic module call");
   
   curmodule = m;
   res = func(cmd);

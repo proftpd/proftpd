@@ -2124,11 +2124,30 @@ MODRET cmd_rnto(cmd_rec *cmd)
 MODRET cmd_rnfr(cmd_rec *cmd)
 {
   char *path;
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+  regex_t *preg;
+#endif
 
   if(cmd->argc < 2) {
     add_response_err(R_500,"'%s' is an unknown command.",get_full_cmd(cmd));
     return ERROR(cmd);
   }
+
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+  preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathAllowFilter",FALSE);
+
+  if(preg && regexec(preg,cmd->arg,0,NULL,0) != 0) {
+    add_response_err(R_550,"%s: Forbidden filename",cmd->arg);
+    return ERROR(cmd);
+  }
+
+  preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathDenyFilter",FALSE);
+
+  if(preg && regexec(preg,cmd->arg,0,NULL,0) == 0) {
+    add_response_err(R_550,"%s: Forbidden filename",cmd->arg);
+    return ERROR(cmd);
+  }
+#endif
 
   path = dir_realpath(cmd->tmp_pool,cmd->arg);
 

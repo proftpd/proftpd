@@ -19,7 +19,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.1 1998-10-18 02:24:41 flood Exp $
+ * $Id: options.h,v 1.2 1999-08-31 01:31:59 flood Exp $
  */
 
 #ifndef __OPTIONS_H
@@ -68,7 +68,7 @@
 #define TUNABLE_TIMEOUTIDLE	600
 #define TUNABLE_TIMEOUTNOXFER	300
 #define TUNABLE_TIMEOUTIDENT	10
-#define TUNABLE_TIMEOUTSTALLED	0
+#define TUNABLE_TIMEOUTSTALLED	3600
 
 /* Number of bytes in a new memory pool.  During file transfers,
  * quite a few pools can be created, which eat up a lot of memory.
@@ -76,7 +76,7 @@
  * can negatively impact performance)
  */
 
-#define TUNABLE_NEW_POOL_SIZE   1024
+#define TUNABLE_NEW_POOL_SIZE   512
 
 /* Loopback network, this should generally not need to be changed,
  * although you can set a specific address by setting it to say

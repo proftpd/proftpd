@@ -19,7 +19,7 @@
 
 /*
  * ProFTPD logging support
- * $Id: log.c,v 1.1 1998-10-18 02:24:41 flood Exp $
+ * $Id: log.c,v 1.2 1999-08-31 01:31:59 flood Exp $
  */
 
 /* History Log:
@@ -67,7 +67,7 @@ char *fmt_time(time_t t)
   struct tm *tr;
 
   if((tr = localtime(&t)) != NULL) {
-    sprintf(buf,"%s %s %2d %02d:%02d:%02d %d",
+    snprintf(buf,sizeof(buf)-1,"%s %s %2d %02d:%02d:%02d %d",
             days[tr->tm_wday],
             mons[tr->tm_mon],
             tr->tm_mday,
@@ -111,7 +111,7 @@ int log_xfer(int xfertime,char *remhost,unsigned long fsize,
   if(xferfd == -1)
     return 0;
 
-  sprintf(buf,"%s %d %s %lu %s %c _ %c %c %s ftp 0 *\n",
+  snprintf(buf,sizeof(buf)-1,"%s %d %s %lu %s %c _ %c %c %s ftp 0 *\n",
           fmt_time(time(NULL)),xfertime,remhost,fsize,
           fname,xfertype,direction,access,user);
 

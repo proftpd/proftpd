@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.7 1999-02-14 02:36:59 flood Exp $
+ * $Id: mod_ls.c,v 1.8 1999-08-31 01:31:59 flood Exp $
  */
 
 #include "conf.h"
@@ -34,7 +34,7 @@
 static void addfile(cmd_rec*,const char *, const char *, time_t);
 static int outputfiles(cmd_rec*);
 
-static int listfile(cmd_rec*,const char *name);
+static int listfile(cmd_rec*,pool*,const char *name);
 static int listdir(cmd_rec*,pool*,const char *name,int list_dotdirs);
 
 static int matches = 0;
@@ -172,7 +172,7 @@ void ls_done(cmd_rec *cmd)
 }
 
 static
-int listfile(cmd_rec *cmd, const char *name)
+int listfile(cmd_rec *cmd, pool *p, const char *name)
 {
   int		rval = 0;
   time_t	mtime;
@@ -185,6 +185,8 @@ int listfile(cmd_rec *cmd, const char *name)
   struct	tm *t;
   char		suffix[2];
 
+  if(!p) p = cmd->tmp_pool;
+  
   if(fs_lstat(name,&st) == 0) {
     suffix[0] = suffix[1] = '\0';
 
@@ -195,15 +197,15 @@ int listfile(cmd_rec *cmd, const char *name)
       if(fs_stat(name,&l_st) != -1) {
         memcpy(&st,&l_st,sizeof(st));
         m[fs_readlink(name,m,sizeof(m))] = '\0';
-        if(!ls_perms_full(cmd->tmp_pool,cmd,m,NULL))
+        if(!ls_perms_full(p,cmd,m,NULL))
           return 0;
       } else
         return 0;
     } else if(S_ISLNK(st.st_mode)) {
       l[fs_readlink(name,l,sizeof(l))] = '\0';
-      if(!ls_perms_full(cmd->tmp_pool,cmd,l,NULL))
+      if(!ls_perms_full(p,cmd,l,NULL))
         return 0;
-    } else if(!ls_perms(cmd->tmp_pool,cmd,name,NULL))
+    } else if(!ls_perms(p,cmd,name,NULL))
       return 0;
 
     mtime = st.st_mtime;
@@ -343,7 +345,7 @@ void addfile(cmd_rec *cmd, const char *name, const char *suffix, time_t mtime)
       fpool = make_sub_pool(cmd->tmp_pool);
 
     if(!sort_arr)
-      sort_arr = make_array(fpool,20,sizeof(struct sort_filename));
+      sort_arr = make_array(fpool,50,sizeof(struct sort_filename));
 
     s = (struct sort_filename*)push_array(sort_arr);
     s->mtime = mtime;
@@ -555,7 +557,7 @@ char **sreaddir(pool *workp, const char *dirname, const int sort)
   if((d = opendir(dirname)) == NULL)
     return NULL;
 
-  dsize = st.st_size + 100;
+  dsize = st.st_size / 2 + 256;
 
 realloc_buf:
   p = (char**)palloc(workp,dsize);
@@ -566,6 +568,8 @@ realloc_buf:
   while((de = readdir(d)) != NULL) {
     if((unsigned int)p + (i+1)*sizeof(char*) + strlen(de->d_name) + 1
          > (unsigned int)s) {
+      log_debug(DEBUG0,"reallocating sreaddir buffer from %d bytes to %d bytes.",
+		      dsize,dsize*2);
       dsize *= 2;
       rewinddir(d);
       goto realloc_buf;
@@ -596,6 +600,9 @@ int listdir(cmd_rec *cmd, pool *workp, const char *name, int list_dotdirs)
   if(!workp) {
     workp = make_sub_pool(cmd->tmp_pool);
     dest_workp++;
+  } else {
+    workp = make_sub_pool(workp);
+    dest_workp++;
   }
 
   dir = sreaddir(workp,".",TRUE);
@@ -618,12 +625,12 @@ int listdir(cmd_rec *cmd, pool *workp, const char *name, int list_dotdirs)
     s = dir;
     while(*s) {
       if(**s != '.') {
-        d = listfile(cmd,*s);
+        d = listfile(cmd,workp,*s);
       } else if(!opt_a && showdotfiles != 1 && list_dotdirs) {
         if( (((*s)[1] == '\0') ||
             (((*s)[1] == '.') &&
              ((*s)[2] == '\0')))) {
-          d = listfile(cmd,*s);
+          d = listfile(cmd,workp,*s);
           if(d > 0)
             d = 0;
         }
@@ -633,7 +640,7 @@ int listdir(cmd_rec *cmd, pool *workp, const char *name, int list_dotdirs)
             ((*s)[2] == '\0'))))
           d = 0;
 	else
-	  d = listfile(cmd,*s);
+	  d = listfile(cmd,workp,*s);
       } else {
         d = 0;
       }
@@ -694,6 +701,7 @@ int listdir(cmd_rec *cmd, pool *workp, const char *name, int list_dotdirs)
 
   if(dest_workp)
     destroy_pool(workp);
+
   return 0;
 }
 
@@ -866,7 +874,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
             }
 
             if(opt_d || !(S_ISDIR(target_mode))) {
-              if(listfile(cmd,*path) < 0) {
+              if(listfile(cmd,NULL,*path) < 0) {
                 ls_terminate();
 		fs_globfree(&g);
                 return -1;
@@ -942,7 +950,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
   } else {
     if(ls_perms_full(cmd->tmp_pool,cmd,".",NULL)) {
       if(opt_d) {
-        if(listfile(cmd,".") < 0) {
+        if(listfile(cmd,NULL,".") < 0) {
           ls_terminate();
           return -1;
         }
@@ -1163,8 +1171,11 @@ MODRET cmd_stat(cmd_rec *cmd)
 
 MODRET cmd_list(cmd_rec *cmd)
 {
+  MODRET ret;
+  
   opt_l = 1;
-  return genericlist(cmd);
+  ret = genericlist(cmd);
+  return ret;
 }
 
 /* NLST is a very simplistic directory listing, unlike LIST (which

@@ -19,7 +19,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.7 1999-03-12 01:58:12 flood Exp $
+ * $Id: mod_xfer.c,v 1.8 1999-08-31 01:31:59 flood Exp $
  */
 
 /* History Log:
@@ -181,7 +181,7 @@ MODRET pre_cmd_stor(cmd_rec *cmd)
 
   /* otherwise everthing is good */
   p = mod_privdata_alloc(cmd,"stor_filename",strlen(dir)+1);
-  strcpy(p->value.str_val,dir);
+  strcpy(p->value.str_val, dir);
 
   return HANDLED(cmd);
 }
@@ -374,7 +374,7 @@ MODRET pre_cmd_retr(cmd_rec *cmd)
 
   /* otherwise everthing is good */
   p = mod_privdata_alloc(cmd,"retr_filename",strlen(dir)+1);
-  strcpy(p->value.str_val,dir);
+  strcpy(p->value.str_val, dir);
   return HANDLED(cmd);
 }
 

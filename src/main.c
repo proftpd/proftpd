@@ -19,7 +19,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.9 1999-03-07 17:18:54 flood Exp $
+ * $Id: main.c,v 1.10 1999-08-31 01:31:59 flood Exp $
  */
 
 /*
@@ -707,7 +707,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
       }
 #endif
 
-      cmd->tmp_pool = make_sub_pool(cmd->pool);
+      cmd->tmp_pool = make_named_sub_pool(cmd->pool,"temp - dispatch pool");
 
       argstr = make_arg_str(cmd->tmp_pool,cmd->argc,cmd->argv);
 

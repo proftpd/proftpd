@@ -55,6 +55,53 @@ union block_hdr *block_freelist = NULL;
 unsigned int stat_malloc = 0;	/* incr when malloc required */
 unsigned int stat_freehit = 0;	/* incr when freelist used */
 
+/* Lowest level memory allocation functions
+ */
+
+static void *null_alloc(size_t size)
+{
+  void *ret = 0;
+
+  if(size == 0)
+    ret = malloc(size);
+  if(ret == 0) {
+    log_pri(LOG_ERR,"Fatal: Memory exhausted.");
+    exit(1);
+  }
+
+  return ret;
+}
+
+void *xmalloc(size_t size)
+{
+  void *ret;
+
+  ret = malloc(size);
+  if(ret == 0)
+    ret = null_alloc(size);
+  return ret;
+}
+
+void *xcalloc(size_t num, size_t size)
+{
+  void *ret;
+
+  ret = calloc(num,size);
+  if(ret == 0)
+    ret = null_alloc(num * size);
+  return ret;
+}
+
+void *xrealloc(void *p, size_t size)
+{
+  if(p == 0)
+    return xmalloc(size);
+  p = realloc(p,size);
+  if(p == 0)
+    p = null_alloc(size);
+  return p;
+}
+
 /* Grab a completely new block from the system pool.  Relies on malloc()
  * to return truely aligned memory.
  */
@@ -62,12 +109,7 @@ unsigned int stat_freehit = 0;	/* incr when freelist used */
 union block_hdr *malloc_block(int size)
 {
   union block_hdr *blok =
-    (union block_hdr*)malloc(size + sizeof(union block_hdr));
-
-  if(!blok) {
-    log_pri(LOG_ERR,"Fatal: malloc failed in malloc_block().");
-    exit(1);
-  }
+    (union block_hdr*)xmalloc(size + sizeof(union block_hdr));
 
   blok->h.next = NULL;
   blok->h.first_avail = (char *)(blok+1);
@@ -128,8 +170,8 @@ union block_hdr *new_block(int min_size)
   union block_hdr **lastptr = &block_freelist;
   union block_hdr *blok = block_freelist;
 
-  if(min_size < BLOCK_MINFREE)
-    min_size = BLOCK_MINFREE;
+  min_size = 1 + ((min_size - 1) / BLOCK_MINFREE);
+  min_size *= BLOCK_MINFREE;
 
   while(blok) {
     biggest = blok->h.endp - blok->h.first_avail;
@@ -179,6 +221,7 @@ struct pool {
   struct pool *sub_prev;
   struct pool *parent;
   char *free_first_avail;
+  char symbol;
 };
 
 pool *permanent_pool = NULL;
@@ -213,12 +256,24 @@ static long __walk_pools(pool *p, int level)
 
   for(; p; p = p->sub_next) {
     total += bytes_in_block_list(p->first);
-    if(level == 0)
-      log_pri(LOG_NOTICE,"0x%08x bytes",bytes_in_block_list(p->first));
-    else
-      log_pri(LOG_NOTICE,"%s\\- 0x%08x bytes",_levelpad,
+    if(level == 0) {
+      if(p->symbol)
+        log_pri(LOG_NOTICE,"(%s)0x%08x bytes",
+			&p->symbol,
+			bytes_in_block_list(p->first));
+      else
+        log_pri(LOG_NOTICE,"0x%08x bytes",
+	  	      	bytes_in_block_list(p->first));
+    } else {
+      if(p->symbol)
+	log_pri(LOG_NOTICE,"%s(%s)\\- 0x%08x bytes",_levelpad,
+			&p->symbol,
+			bytes_in_block_list(p->first));
+      else
+        log_pri(LOG_NOTICE,"%s\\- 0x%08x bytes",_levelpad,
               bytes_in_block_list(p->first));
-
+    }
+    
     /* recurse */
     if(p->sub_pools)
       total += __walk_pools(p->sub_pools,level+1);  
@@ -227,19 +282,44 @@ static long __walk_pools(pool *p, int level)
   return total;
 }
 
+void debug_pool_info()
+{
+  if(block_freelist)
+    log_pri(LOG_NOTICE,"Free block list: 0x%08x bytes",
+            bytes_in_block_list(block_freelist));
+  else
+    log_pri(LOG_NOTICE,"Free block list: EMPTY");
+
+  log_pri(LOG_NOTICE,"%u count blocks malloc'd.",stat_malloc);
+  log_pri(LOG_NOTICE,"%u count blocks reused.",stat_freehit); 
+}
+
 void debug_walk_pools()
 {
   log_pri(LOG_NOTICE,"Memory pool allocation:");
   log_pri(LOG_NOTICE,"Total 0x%08x bytes allocated",
           __walk_pools(permanent_pool,0));
-  if(block_freelist)
-    log_pri(LOG_NOTICE,"Free block list: 0x%08x bytes",
-            bytes_in_block_list(block_freelist));
-  log_pri(LOG_NOTICE,"%u count blocks malloc'd.",stat_malloc);
-  log_pri(LOG_NOTICE,"%u count blocks reused.",stat_freehit); 
+  debug_pool_info();
 }
 
-struct pool *make_sub_pool(struct pool *p)
+/* Release the entire free block list */
+void pool_release_free_block_list(void)
+{
+  union block_hdr *blok,*next;
+
+  block_alarms();
+  
+  blok = block_freelist;
+  if(blok) {
+    for(next = blok->h.next; next; blok = next, next = blok->h.next)
+      free(blok);
+  }
+  block_freelist = NULL;
+
+  unblock_alarms();
+}
+
+struct pool *make_named_sub_pool(struct pool *p, const char *symbol)
 {
   union block_hdr *blok;
   pool *new_pool;
@@ -248,9 +328,15 @@ struct pool *make_sub_pool(struct pool *p)
 
   blok = new_block(0);
   new_pool = (pool*)blok->h.first_avail;
-  blok->h.first_avail += POOL_HDR_BYTES;
 
+  blok->h.first_avail += POOL_HDR_BYTES;
   memset((char *)new_pool,'\0',sizeof(struct pool));
+
+  if(symbol) {
+    strcpy(&new_pool->symbol,symbol);
+    blok->h.first_avail += strlen(symbol);
+  }
+  
   new_pool->free_first_avail = blok->h.first_avail;
   new_pool->first = new_pool->last = blok;
 
@@ -267,9 +353,14 @@ struct pool *make_sub_pool(struct pool *p)
   return new_pool;
 }
 
+struct pool *make_sub_pool(struct pool *p)
+{
+  return make_named_sub_pool(p,NULL);
+}
+
 /* Initialize the pool system by creating the base permanent_pool. */
 
-void init_alloc() { permanent_pool = make_sub_pool(NULL); }
+void init_alloc() { permanent_pool = make_named_sub_pool(NULL,"permanent_pool"); }
 
 static void clear_pool(struct pool *p)
 {
