@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.592 2004-08-04 18:52:13 castaglia Exp $
+$Id: NEWS,v 1.593 2004-08-07 22:22:42 castaglia Exp $
 
 CVS
 --------------------------------
@@ -13,6 +13,7 @@ CVS
   of the data by RFC2228 security mechanisms (such as those provided by
   mod_tls).  So if security mechanisms are detected, do not use sendfile().
 - Scrub the ScoreboardFile for stale sessions in inetd mode.
+- Bug 2427 - proftpd gets a memory fault when run from ssh batch mode.
 
 1.2.10rc3 - Released 13-Jul-2004
 --------------------------------

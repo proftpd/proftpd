@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.69 2004-04-20 02:05:41 castaglia Exp $
+ * $Id: log.c,v 1.70 2004-08-07 22:22:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -443,7 +443,7 @@ static void log_write(int priority, int f, char *s) {
     }
   }
 
-  if (logstderr) {
+  if (logstderr || !main_server) {
     fprintf(stderr, "%s - %s\n", serverinfo, s);
     return;
   }
@@ -481,8 +481,9 @@ static void log_write(int priority, int f, char *s) {
   if (f != facility || !syslog_open)
     syslog_sockfd = pr_openlog("proftpd", LOG_NDELAY|LOG_PID, f);
 
-  if ((max_priority = get_param_ptr(main_server->conf, "SyslogLevel",
-      FALSE)) != NULL && priority > *max_priority)
+  max_priority = get_param_ptr(main_server->conf, "SyslogLevel", FALSE);
+  if (max_priority != NULL &&
+      priority > *max_priority)
     return;
 
   if (*serverinfo)
