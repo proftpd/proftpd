@@ -106,3 +106,16 @@ the sample-configurations subdirectory of the source distribution.
 On most systems, the inetd or xinetd configuration must be changed,
 either to remove the current ftpd entry to run ProFTPD standalone,
 or to change the current ftpd entry to use the proftpd daemon.
+
+Questions
+---------
+
+If you have questions, please ask them on the appropriate mailing lists:
+
+  http://www.proftpd.org/lists.html
+
+If you don't understand the documentation, please tell us, so we can explain it
+better.  The general idea is: if you need to ask for help, then something needs
+to be fixed so you (and others) don't need to ask for help.  Asking questions
+helps us to know what needs to be documented, described, and/or fixed.
+
