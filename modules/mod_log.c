@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.29 2002-09-12 23:23:15 castaglia Exp $
+ * $Id: mod_log.c,v 1.30 2002-10-16 18:14:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -67,18 +67,20 @@ struct logfile_struc {
 #define META_REMOTE_HOST	5
 #define META_REMOTE_IP		6
 #define META_IDENT_USER		7
-#define META_SERVER_PORT	8
-#define META_PID		9
-#define META_TIME		10
-#define META_SECONDS		11
-#define META_COMMAND		12
-#define META_SERVERNAME		13
-#define META_USER		14
-#define META_RESPONSE_CODE	15
-#define META_CLASS		16
-#define META_ANON_PASS		17
-#define META_METHOD		18
-#define META_XFER_PATH		19
+#define META_PID		8
+#define META_TIME		9
+#define META_SECONDS		10
+#define META_COMMAND		11
+#define META_LOCAL_NAME		12
+#define META_LOCAL_PORT		13
+#define META_LOCAL_IP		14
+#define META_LOCAL_FQDN		15
+#define META_USER		16
+#define META_RESPONSE_CODE	17
+#define META_CLASS		18
+#define META_ANON_PASS		19
+#define META_METHOD		20
+#define META_XFER_PATH		21
 
 static pool			*log_pool;
 static logformat_t		*formats = NULL;
@@ -87,25 +89,27 @@ static logfile_t		*logs = NULL;
 static xaset_t			*log_set = NULL;
 
 /* format string args:
-   %A			- anonymous username (password given)
-   %c			- class
-   %b			- bytes sent for request
-   %f			- filename
-   %F			- transfer path (filename for client)
-   %{FOOBAR}e		- contents of environment variable FOOBAR
-   %h			- remote host
-   %a			- remote IP-address
-   %l			- remote logname (from identd)
+   %a			- Remote client IP address
+   %A			- Anonymous username (password given)
+   %c			- Class
+   %b			- Bytes sent for request
+   %{FOOBAR}e		- Contents of environment variable FOOBAR
+   %f			- Filename
+   %F			- Transfer path (filename for client)
+   %h			- Remote client DNS name
+   %l			- Remote logname (from identd)
+   %L                   - Local server IP address
    %m			- Request (command) method (RETR, etc.)
    %p			- Port of server serving request
    %P			- Process ID of child serving request
    %r			- Full request (command)
+   %s			- Response code (status)
    %t			- Time
-   %{format}t		- formatted time (strftime(3) format)
+   %{format}t		- Formatted time (strftime(3) format)
    %T			- Time taken to serve request, in seconds
-   %s			- Reponse code (status)
    %u			- Local user
-   %v			- Servername of server serving request
+   %v			- ServerName of server serving request
+   %V                   - DNS name of server serving request
 */
 
 static void add_meta(unsigned char **s, unsigned char meta, int args,
@@ -172,65 +176,92 @@ void logformat(char *nickname, char *fmts)
         case '{':
           arg = preparse_arg(&tmp);
           continue;
+
+        case 'a':
+          add_meta(&outs, META_REMOTE_IP, 0);
+          break;
+
         case 'A':
           add_meta(&outs, META_ANON_PASS, 0);
           break;
+
         case 'b':
           add_meta(&outs, META_BYTES_SENT, 0);
           break;
+
         case 'c':
           add_meta(&outs, META_CLASS, 0);
           break;
-        case 'f':
-          add_meta(&outs, META_FILENAME, 0);
-          break;
-        case 'F':
-          add_meta(&outs, META_XFER_PATH, 0);
-          break;
+
         case 'e':
           if(arg) {
             add_meta(&outs, META_ENV_VAR, 0);
             add_meta(&outs, META_ARG, 1, (int) strlen(arg), arg);
           }
           break;
+
+        case 'f':
+          add_meta(&outs, META_FILENAME, 0);
+          break;
+
+        case 'F':
+          add_meta(&outs, META_XFER_PATH, 0);
+          break;
+
         case 'h':
           add_meta(&outs, META_REMOTE_HOST, 0);
           break;
-        case 'a':
-          add_meta(&outs, META_REMOTE_IP, 0);
-          break;
+
         case 'l':
           add_meta(&outs, META_IDENT_USER, 0);
           break;
+
+        case 'L':
+          add_meta(&outs, META_LOCAL_IP, 0);
+          break;
+
         case 'm':
           add_meta(&outs, META_METHOD, 0);
           break;
+
         case 'p': 
-          add_meta(&outs, META_SERVER_PORT, 0);
+          add_meta(&outs, META_LOCAL_PORT, 0);
           break;
+
         case 'P':
           add_meta(&outs, META_PID, 0);
           break;
-        case 't':
-          add_meta(&outs, META_TIME, 0);
-          if(arg)
-            add_meta(&outs, META_ARG, 1, (int) strlen(arg), arg);
-          break;
-        case 'T':
-          add_meta(&outs, META_SECONDS, 0);
-          break;
-        case 'u':
-          add_meta(&outs, META_USER, 0);
-          break;
+
         case 'r':
           add_meta(&outs, META_COMMAND, 0);
           break;
-        case 'v':
-          add_meta(&outs, META_SERVERNAME, 0);
-          break;
+
         case 's':
           add_meta(&outs, META_RESPONSE_CODE, 0);
           break;
+
+        case 't':
+          add_meta(&outs, META_TIME, 0);
+          if (arg)
+            add_meta(&outs, META_ARG, 1, (int) strlen(arg), arg);
+          break;
+
+        case 'T':
+          add_meta(&outs, META_SECONDS, 0);
+          break;
+
+        case 'u':
+          add_meta(&outs, META_USER, 0);
+          break;
+
+        case 'v':
+          add_meta(&outs, META_LOCAL_NAME, 0);
+          break;
+
+        case 'V':
+          add_meta(&outs, META_LOCAL_FQDN, 0);
+          break;
+
         case '%':
           *outs++ = '%';
           break;
@@ -562,9 +593,21 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
     m++;
     break;
 
-  case META_SERVER_PORT:
+  case META_LOCAL_PORT:
     argp = arg;
     snprintf(argp, sizeof(arg), "%d", cmd->server->ServerPort);
+    m++;
+    break;
+
+  case META_LOCAL_IP:
+    argp = arg;
+    sstrncpy(argp, inet_ntoa(*session.c->remote_ipaddr), sizeof(arg));
+    m++;
+    break;
+
+  case META_LOCAL_FQDN:
+    argp = arg;
+    sstrncpy(argp, cmd->server->ServerFQDN, sizeof(arg));
     m++;
     break;
 
@@ -635,10 +678,10 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
     m++;
     break;
 
-  case META_SERVERNAME:
+  case META_LOCAL_NAME:
     argp = arg;
 
-    sstrncpy(argp,cmd->server->ServerName,sizeof(arg));
+    sstrncpy(argp, cmd->server->ServerName, sizeof(arg));
     m++;
     break;
 
