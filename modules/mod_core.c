@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.264 2004-12-04 01:16:19 castaglia Exp $
+ * $Id: mod_core.c,v 1.265 2004-12-04 06:59:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4217,6 +4217,63 @@ MODRET set_deferwelcome(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+/* Variable handlers
+ */
+
+static const char *core_get_sess_bytes_in(void *data, size_t datasz) {
+  char buf[PR_TUNABLE_BUFFER_SIZE];
+
+  memset(buf, '\0', sizeof(buf));
+  snprintf(buf, sizeof(buf), "%" PR_LU, (pr_off_t) session.total_bytes_in);
+
+  return pstrdup(session.pool, buf);
+}
+
+static const char *core_get_sess_bytes_out(void *data, size_t datasz) {
+  char buf[PR_TUNABLE_BUFFER_SIZE];
+
+  memset(buf, '\0', sizeof(buf));
+  snprintf(buf, sizeof(buf), "%" PR_LU, (pr_off_t) session.total_bytes_out);
+
+  return pstrdup(session.pool, buf);
+}
+
+static const char *core_get_sess_bytes_xfer(void *data, size_t datasz) {
+  char buf[PR_TUNABLE_BUFFER_SIZE];
+
+  memset(buf, '\0', sizeof(buf));
+  snprintf(buf, sizeof(buf), "%" PR_LU, (pr_off_t) session.total_bytes);
+
+  return pstrdup(session.pool, buf);
+}
+
+static const char *core_get_sess_files_in(void *data, size_t datasz) {
+  char buf[PR_TUNABLE_BUFFER_SIZE];
+
+  memset(buf, '\0', sizeof(buf));
+  snprintf(buf, sizeof(buf), "%u", session.total_files_in);
+
+  return pstrdup(session.pool, buf);
+}
+
+static const char *core_get_sess_files_out(void *data, size_t datasz) {
+  char buf[PR_TUNABLE_BUFFER_SIZE];
+
+  memset(buf, '\0', sizeof(buf));
+  snprintf(buf, sizeof(buf), "%u", session.total_files_out);
+
+  return pstrdup(session.pool, buf);
+}
+
+static const char *core_get_sess_files_xfer(void *data, size_t datasz) {
+  char buf[PR_TUNABLE_BUFFER_SIZE];
+
+  memset(buf, '\0', sizeof(buf));
+  snprintf(buf, sizeof(buf), "%u", session.total_files_xfer);
+
+  return pstrdup(session.pool, buf);
+}
+
 /* Event handlers
  */
 
@@ -4421,6 +4478,43 @@ static int core_sess_init(void) {
    */
   if (ServerType == SERVER_INETD)
     scrub_scoreboard(NULL);
+
+  /* Set some Variable entries for Display files. */
+  if (pr_var_set(session.pool, "%{total_bytes_in}",
+      "Number of bytes uploaded during a session",
+      PR_VAR_TYPE_FUNC, core_get_sess_bytes_in, NULL, 0) < 0)
+    pr_log_debug(DEBUG6, "error setting %%{total_bytes_in} variable: %s",
+      strerror(errno));
+
+  if (pr_var_set(session.pool, "%{total_bytes_out}", 
+      "Number of bytes downloaded during a session",
+      PR_VAR_TYPE_FUNC, core_get_sess_bytes_out, NULL, 0) < 0)
+    pr_log_debug(DEBUG6, "error setting %%{total_bytes_out} variable: %s",
+      strerror(errno));
+
+  if (pr_var_set(session.pool, "%{total_bytes_xfer}", 
+      "Number of bytes transfered during a session",
+      PR_VAR_TYPE_FUNC, core_get_sess_bytes_xfer, NULL, 0) < 0)
+    pr_log_debug(DEBUG6, "error setting %%{total_bytes_fer} variable: %s",
+      strerror(errno));
+
+  if (pr_var_set(session.pool, "%{total_files_in}", 
+      "Number of files uploaded during a session",
+      PR_VAR_TYPE_FUNC, core_get_sess_bytes_in, NULL, 0) < 0)
+    pr_log_debug(DEBUG6, "error setting %%{total_files_in} variable: %s",
+      strerror(errno));
+
+  if (pr_var_set(session.pool, "%{total_files_out}", 
+      "Number of files downloaded during a session",
+      PR_VAR_TYPE_FUNC, core_get_sess_files_out, NULL, 0) < 0)
+    pr_log_debug(DEBUG6, "error setting %%{total_files_out} variable: %s",
+      strerror(errno));
+
+  if (pr_var_set(session.pool, "%{total_files_xfer}", 
+      "Number of files transfered during a session",
+      PR_VAR_TYPE_FUNC, core_get_sess_files_xfer, NULL, 0) < 0)
+    pr_log_debug(DEBUG6, "error setting %%{total_files_xfer} variable: %s",
+      strerror(errno));
 
   return 0;
 }

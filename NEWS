@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.631 2004-12-02 23:15:17 castaglia Exp $
+$Id: NEWS,v 1.632 2004-12-04 06:59:51 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -79,6 +79,19 @@ CVS
 - Bug 2520 - Turning on AuthAliasOnly disables MaxClientsPerHost.
 - Bug 2510 - Use of ExportCertData TLSOption leads to segfault.
 - Bug 2528 - Incorrect username 'and' parsing in AllowUser.
+- Bug 2170 - Add byte count variables, similar to the file count Display
+  variables.  The added variable names are:
+
+     %{total_bytes_in}
+     %{total_bytes_out}
+     %{total_bytes_xfer}
+
+  In addition, variables of a similar syntax can be used for display
+  file counts, instead of the already-existing variables:
+
+     %{total_files_in}
+     %{total_files_out}
+     %{total_files_xfer}
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

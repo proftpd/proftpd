@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.51 2004-10-26 23:24:56 castaglia Exp $
+ * $Id: proftpd.h,v 1.52 2004-12-04 06:59:51 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -144,6 +144,12 @@ typedef struct {
 
     char *bufstart,*buf;
   } xfer;
+
+  /* Total number of bytes uploaded in this session. */
+  off_t total_bytes_in;
+
+  /* Total number of bytes downloaded in this session. */
+  off_t total_bytes_out;
 
   /* Total number of bytes transfered in this session. */
   off_t total_bytes;

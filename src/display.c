@@ -24,7 +24,7 @@
 
 /*
  * Display of files
- * $Id: display.c,v 1.3 2004-11-23 03:43:19 castaglia Exp $
+ * $Id: display.c,v 1.4 2004-12-04 06:59:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -245,10 +245,10 @@ int pr_display_file(const char *path, const char *fs, const char *code) {
         val = "(none)";
       }
 
+      outs = sreplace(p, buf, key, val, NULL);
+      sstrncpy(buf, outs, sizeof(buf));
+
       *(tmp2 + 1) = t;
-
-      outs = sreplace(p, outs, tmp, val, NULL);
-
       tmp = strstr(outs, "%{");
     }
 
