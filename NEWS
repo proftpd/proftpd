@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.547 2004-03-11 02:18:57 castaglia Exp $
+$Id: NEWS,v 1.548 2004-03-19 20:22:21 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -122,6 +122,12 @@ CVS
 - Bug 2363 - ABOR response RFC 959 compliance.  The 226 response was being
   sent before closing the data connection; RFC 959 implies that the data
   connection is closed first.
+- Bug 2369 - EPSV should not send network address when MasqueradeAddress is
+  used.  RFC 2428 does not address the case where a server may wish to
+  return an address in the EPSV response that differs from the control
+  connection address, as is done in a PASV response for forwarding devices
+  (e.g. NAT, firewall).  Until the proper behavior can be determined,
+  do not honor MasqueradeAddress for EPSV.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.224 2004-03-05 18:48:37 castaglia Exp $
+ * $Id: mod_core.c,v 1.225 2004-03-19 20:22:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3573,10 +3573,15 @@ MODRET core_epsv(cmd_rec *cmd) {
    * will be no need for NAT, and hence no need for masquerading.  This
    * may be true in an ideal world, but I think it more likely that current
    * clients will simply use EPSV, rather than PASV, in existing IPv4 networks.
+   *
+   * Disable the honoring of MasqueradeAddress for EPSV until this can
+   * be officially determined (Bug#2369).
    */
+#if 0
   if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
       FALSE)) != NULL)
    addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
+#endif
 
   pr_log_debug(DEBUG1, "Entering Extended Passive Mode (||%s|%u|)",
     addrstr, (unsigned int) session.data_port);
