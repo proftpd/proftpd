@@ -1,6 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
+ * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,9 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-/*
- * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.25 2000-07-06 03:32:31 macgyver Exp $
+/* Directory listing module for ProFTPD.
+ * $Id: mod_ls.c,v 1.26 2000-07-06 04:24:06 macgyver Exp $
  */
 
 #include "conf.h"

@@ -1034,19 +1034,28 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
 <p>DisplayQuit supports the &quot;magic cookies&quot; listed under <a href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
 <hr>
 <h2><a name="DisplayReadme">DisplayReadme</a></h2>
-<p><strong>Syntax:</strong> DisplayReadme <em>filename</em><br>
+<p><strong>Syntax:</strong> DisplayReadme <em>filename or pattern</em><br>
   <strong>Default:</strong> None<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
   &lt;Global&gt;<br>
   <strong>Compatibility:</strong> 1.2.0pre8 and later<br>
   <strong>Module:</strong> mod_readme</p>
 <p>The DisplayReadme directive notifies the user of the last change date of the 
-  specified file. Only a single DisplayReadme directive is allowed per configuration 
+  specified file or pattern. Only a single DisplayReadme directive is allowed per configuration 
   scope. 
 <p><code>DisplayReadme README</code></p>
 <p>Will result in:</p>
 <p><code> Please read the file README it was last modified on Sun Oct 17 10:36:14 
   1999 - 0 days ago </code></p>
+<p>Being displayed to the user on a cwd. 
+<p><code>DisplayReadmePattern README*</code></p>
+<p>Will result in:</p>
+<p><code>
+ Please read the file README
+    it was last modified on Tue Jan 25 04:47:48 2000 - 0 days ago
+ Please read the file README.first
+   it was last modified on Tue Jan 25 04:48:04 2000 - 0 days ago
+</code></p>
 <p>Being displayed to the user on a cwd. 
 <hr>
 <h2><a name="ExtendedLog">ExtendedLog</a></h2>
