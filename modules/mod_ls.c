@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.89 2003-03-28 21:17:24 castaglia Exp $
+ * $Id: mod_ls.c,v 1.90 2003-03-29 19:52:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1025,10 +1025,12 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
   /* Explicitly free the memory allocated for containing the list of
    * filenames.
    */
-  i = 0;
-  while (dir[i] != NULL)
-    free(dir[i++]);
-  free(dir);
+  if (dir) {
+    i = 0;
+    while (dir[i] != NULL)
+      free(dir[i++]);
+    free(dir);
+  }
 
   return 0;
 }
