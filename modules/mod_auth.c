@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.116 2002-12-07 21:43:44 jwm Exp $
+ * $Id: mod_auth.c,v 1.117 2002-12-07 22:03:38 jwm Exp $
  */
 
 #include "conf.h"
@@ -308,7 +308,7 @@ static config_rec *_auth_group(pool *p, char *user, char **group,
     if (!grp)
       continue;
 
-    for(grmem = grp->gr_mem; *grmem; grmem++)
+    for (grmem = grp->gr_mem; *grmem; grmem++)
       if (!strcmp(*grmem,user)) {
         if (auth_check(p,c->argv[1],user,pass) == 0)
           break;

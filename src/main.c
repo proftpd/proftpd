@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.138 2002-12-07 21:45:44 jwm Exp $
+ * $Id: main.c,v 1.139 2002-12-07 22:02:51 jwm Exp $
  */
 
 #include "conf.h"
@@ -1125,7 +1125,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
     sigprocmask(SIG_BLOCK,&sigset,NULL);
 
-    switch((pid = fork())) {
+    switch ((pid = fork())) {
     case 0: /* child */
 
       /* No longer the master process. */
@@ -2283,7 +2283,7 @@ static void daemonize(void) {
 
   /* Fork off and have parent exit.
    */
-  switch(fork()) {
+  switch (fork()) {
     case -1: perror("fork"); exit(1);
     case 0: break;
     default: exit(0);

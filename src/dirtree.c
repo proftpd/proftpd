@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.85 2002-12-07 21:45:43 jwm Exp $
+ * $Id: dirtree.c,v 1.86 2002-12-07 22:02:51 jwm Exp $
  */
 
 #include "conf.h"
@@ -1303,7 +1303,7 @@ static int _check_ip_negative(const config_rec *c)
       continue;
 
     arg++;
-    switch(match_ip(session.c->remote_ipaddr,session.c->remote_name,arg)) {
+    switch (match_ip(session.c->remote_ipaddr,session.c->remote_name,arg)) {
       case 1:
         /* This actually means we DIDN'T match, and it's ok to short circuit
          * everything (negative)
@@ -1344,7 +1344,7 @@ static int _check_ip_positive(const config_rec *c)
     if (*arg == '!')
       continue;
 
-    switch(match_ip(session.c->remote_ipaddr,session.c->remote_name,arg)) {
+    switch (match_ip(session.c->remote_ipaddr,session.c->remote_name,arg)) {
       case 1:
         /* Found it! */
         return TRUE;
@@ -1512,7 +1512,7 @@ int login_check_limits(xaset_t *conf, int recurse,
 
       if (argc) {
         if (and) {
-          switch(_check_limit(c)) {
+          switch (_check_limit(c)) {
           case 1: res = (res && TRUE); (*found)++; break;
 	  case -1:
           case -2: res = (res && FALSE); (*found)++; break;
@@ -1520,7 +1520,7 @@ int login_check_limits(xaset_t *conf, int recurse,
           if (!res)
             break;
         } else
-          switch(_check_limit(c)) {
+          switch (_check_limit(c)) {
           case 1: res = TRUE;
 	  case -1:
           case -2: (*found)++; break;
@@ -2957,7 +2957,7 @@ char *get_context_name(cmd_rec *cmd) {
   }
 
   memset(cbuf,'\0',sizeof(cbuf));
-  switch(cmd->config->config_type) {
+  switch (cmd->config->config_type) {
   case CONF_DIR: return "<Directory>";
   case CONF_ANON: return "<Anonymous>";
   case CONF_LIMIT: return "<Limit>";

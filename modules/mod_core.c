@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.133 2002-12-07 21:43:44 jwm Exp $
+ * $Id: mod_core.c,v 1.134 2002-12-07 22:03:39 jwm Exp $
  */
 
 #include "conf.h"
@@ -1294,14 +1294,14 @@ MODRET set_syslogfacility(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  for(i = 0; factable[i].name; i++) {
+  for (i = 0; factable[i].name; i++) {
     if (!strcasecmp(cmd->argv[1],factable[i].name)) {
       log_closesyslog();
       log_setfacility(factable[i].facility);
 
       block_signals();
       PRIVS_ROOT
-        switch(log_opensyslog(NULL)) {
+        switch (log_opensyslog(NULL)) {
 
         case -1:
           PRIVS_RELINQUISH
@@ -2787,7 +2787,7 @@ MODRET core_help(cmd_rec *cmd) {
 
     add_response(R_214,
       "The following commands are recognized (* =>'s unimplemented).");
-    for(i = 0; _help[i].cmd; i++) {
+    for (i = 0; _help[i].cmd; i++) {
 
       if (_help[i].implemented)
         outa[c++] = _help[i].cmd;
@@ -2798,7 +2798,7 @@ MODRET core_help(cmd_rec *cmd) {
       if (((i+1) % 8 == 0) || !_help[i+1].cmd) {
         int j;
 
-        for(j = 0; j < 8; j++) {
+        for (j = 0; j < 8; j++) {
           if (outa[j]) {
             snprintf(buf, sizeof(buf), "%-8s",outa[j]);
             buf[sizeof(buf)-1] = '\0';
@@ -2821,13 +2821,13 @@ MODRET core_help(cmd_rec *cmd) {
   } else {
     char *cp;
 
-    for(cp = cmd->argv[1]; *cp; cp++)
+    for (cp = cmd->argv[1]; *cp; cp++)
       *cp = toupper(*cp);
 
     if (!strcasecmp(cmd->argv[1],"SITE"))
       return call_module(&site_module,site_dispatch,cmd);
 
-    for(i = 0; _help[i].cmd; i++)
+    for (i = 0; _help[i].cmd; i++)
       if (!strcasecmp(cmd->argv[1],_help[i].cmd)) {
         add_response(R_214,"Syntax: %s %s",cmd->argv[1],_help[i].syntax);
         return HANDLED(cmd);
@@ -2876,7 +2876,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
 
     if (!dir || !dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
         pr_fsio_chdir(dir, 0) == -1) {
-      for(cdpath = find_config(main_server->conf,CONF_PARAM,"CDPath",TRUE);
+      for (cdpath = find_config(main_server->conf,CONF_PARAM,"CDPath",TRUE);
           cdpath != NULL; cdpath =
             find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
         cdir = (char *) malloc(strlen(cdpath->argv[0]) + strlen(ndir) + 2);
@@ -2905,7 +2905,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
     if (!dir || !dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
         pr_fsio_chdir_canon(ndir, 1) == -1) {
 
-      for(cdpath = find_config(main_server->conf,CONF_PARAM,"CDPath",TRUE);
+      for (cdpath = find_config(main_server->conf,CONF_PARAM,"CDPath",TRUE);
           cdpath != NULL; cdpath =
             find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
         cdir = (char *) malloc(strlen(cdpath->argv[0]) + strlen(ndir) + 2);
