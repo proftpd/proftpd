@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.162 2003-01-17 16:46:26 castaglia Exp $
+ * $Id: main.c,v 1.163 2003-03-03 02:21:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -76,7 +76,7 @@ int (*cmd_auth_chk)(cmd_rec *);
 #ifdef NEED_PERSISTENT_PASSWD
 unsigned char persistent_passwd = TRUE;
 #else
-unsigned char persistent_passwd = TRUE;
+unsigned char persistent_passwd = FALSE;
 #endif
 
 /* From mod_core.c
