@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.48 2004-02-17 02:15:57 castaglia Exp $
+ * $Id: conf.h,v 1.49 2004-03-01 16:55:12 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -197,6 +197,10 @@ char *strchr(),*strrchr();
 
 #ifdef HAVE_FNMATCH
 # include <fnmatch.h>
+#endif
+
+#ifdef HAVE_UTIME_H
+# include <utime.h>
 #endif
 
 #ifdef HAVE_UTMP_H
