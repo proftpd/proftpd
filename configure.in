@@ -253,6 +253,18 @@ AC_TYPE_SIZE_T
 AC_TYPE_MODE_T
 AC_TYPE_OFF_T
 AC_TYPE_GETGROUPS
+
+dnl Check to see if timer_t is already defined
+AC_CACHE_CHECK([for timer_t], pr_cv_header_timer_t,
+	AC_EGREP_HEADER([.*typedef.*timer_t;],sys/types.h,
+			pr_cv_header_timer_t="yes",
+	AC_EGREP_HEADER([.*typedef.*timer_t;],limits.h,
+			pr_cv_header_timer_t="yes",pr_cv_header_timer_t="no")))
+
+if test "$pr_cv_header_timer_t" = "yes"; then
+  AC_DEFINE(HAVE_TIMER_T)
+fi
+
 AC_CHECK_SIZEOF(long long, 0)
 AC_CHECK_SIZEOF(unsigned long long, 0)
 AC_HEADER_TIME
@@ -311,18 +323,6 @@ if test "$have_glob_h" = "yes"; then
       AC_DEFINE(HAVE_GLOB_PERIOD)
     fi
   fi
-fi
-
-dnl Check to see if timer_t is already defined
-AC_MSG_CHECKING(for timer_t)
-AC_CACHE_VAL(pr_cv_header_timer_t,
-	AC_EGREP_HEADER([.*typedef.*timer_t;],sys/types.h,
-			pr_cv_header_timer_t="yes",
-	AC_EGREP_HEADER([.*typedef.*timer_t;],limits.h,
-			pr_cv_header_timer_t="yes",pr_cv_header_timer_t="no")))
-AC_MSG_RESULT($pr_cv_header_timer_t)
-if test "$pr_cv_header_timer_t" = "yes"; then
-  AC_DEFINE(HAVE_TIMER_T)
 fi
 
 dnl See if various LOG_ macros are defined
@@ -409,12 +409,11 @@ changequote([, ])dnl
 esac])
 
 if test x"$enable_sendfile" != xno ; then
-AC_CHECK_FUNCS(sendfile,[
-  AC_MSG_CHECKING(which sendfile() implementation we have)
+AC_CACHE_CHECK([which sendfile() implementation we have], pr_cv_func_sendfile,
+  pr_cv_func_sendfile="None"
 
   dnl Linux.
-  AC_CACHE_VAL(pr_cv_linux_sendfile,
-    AC_TRY_COMPILE([
+  AC_TRY_COMPILE([
 #include <unistd.h>
 #include <sys/sendfile.h>
 ],[
@@ -422,11 +421,10 @@ int i;
 off_t o;
 size_t c;
 (void)sendfile(i,i,&o,c);
-      ], pr_cv_linux_sendfile=yes, pr_cv_linux_sendfile=no))
+      ], pr_cv_func_sendfile="Linux")
 
   dnl BSD.
-  AC_CACHE_VAL(pr_cv_bsd_sendfile,
-    AC_TRY_COMPILE([
+  AC_TRY_COMPILE([
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
@@ -436,11 +434,10 @@ off_t o;
 size_t n;
 struct sf_hdtr h;
 (void)sendfile(i,i,o,n,&h,&o,i);
-       ], pr_cv_bsd_sendfile=yes, pr_cv_bsd_sendfile=no))
+       ], pr_cv_func_sendfile="BSD")
 
   dnl HP/UX.
-  AC_CACHE_VAL(pr_cv_hpux_sendfile,
-    AC_TRY_COMPILE([
+  AC_TRY_COMPILE([
 #include <sys/socket.h>
 ],[
 int i;
@@ -448,21 +445,31 @@ off_t o;
 size_t n;
 const struct iovec h;
 (void)sendfile(i,i,o,n,&h,i);
-       ], pr_cv_hpux_sendfile=yes, pr_cv_hpux_sendfile=no))
+       ], pr_cv_func_sendfile="HP/UX"))
 
-  if test x"$pr_cv_linux_sendfile" = xyes ; then
-    AC_DEFINE(HAVE_LINUX_SENDFILE)
-	AC_MSG_RESULT(Linux)
-  elif test x"$pr_cv_bsd_sendfile" = xyes ; then
-    AC_DEFINE(HAVE_BSD_SENDFILE)
-	AC_MSG_RESULT(BSD)
-  elif test x"$pr_cv_hpux_sendfile" = xyes ; then
-    AC_DEFINE(HAVE_HPUX_SENDFILE)
-	AC_MSG_RESULT(HP/UX)
-  else
-    AC_MSG_RESULT(None)
+  dnl Now, set the appropriate defines based on our investigations...
+
+  if test "$pr_cv_func_sendfile" != "None"; then
+	AC_DEFINE(HAVE_SENDFILE)
   fi
-])
+
+  case "$pr_cv_func_sendfile" in
+
+	  "None")
+		;;
+
+	  "Linux")
+		AC_DEFINE(HAVE_LINUX_SENDFILE)
+		;;
+
+	  "BSD")
+		AC_DEFINE(HAVE_BSD_SENDFILE)
+		;;
+
+	  "HP/UX")
+		AC_DEFINE(HAVE_HPUX_SENDFILE)
+		;;
+  esac
 fi
 
 dnl Only check for glob if we have glob.h, GLOB_PERIOD, and GLOB_ALTDIRFUNC
