@@ -597,12 +597,12 @@ if test x"$enable_auth_pam" != xno ; then
 fi
 
 ac_add_mod_cap="no"
-case "$host" in
-  [*-linux-*])
-    rev=`uname -r | awk -F'[[.-]]' '{printf "%03d%03d%03d", $1, $2, $3}'`
+if test x"$enable_cap" != xno ; then
+  case "$host" in
+    [*-linux-*])
+      rev=`uname -r | awk -F'[[.-]]' '{printf "%03d%03d%03d", $1, $2, $3}'`
 
-    if test $rev -ge 002001097; then
-      if test x"$enable_cap" != xno ; then
+      if test $rev -ge 002001097; then
         AC_CHECK_HEADER(linux/capability.h)
  
         if test $ac_cv_header_linux_capability_h = "yes"; then
@@ -610,7 +610,8 @@ case "$host" in
         fi
       fi
     fi
-esac
+  esac
+fi
 
 AC_MSG_CHECKING([whether to enable mod_cap])
 AC_MSG_RESULT($ac_add_mod_cap)
