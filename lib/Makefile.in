@@ -7,10 +7,10 @@ VPATH=@srcdir@
 
 include ../Make.rules
 
-RANLIB=@RANLIB@
 AR=ar
-
+LIB_DEPS=@LIB_DEPS@
 LIB_OBJS=@LIB_OBJS@
+RANLIB=@RANLIB@
 
 dummy:
 
@@ -32,18 +32,18 @@ libsupp.a: $(LIB_OBJS)
 	$(AR) rc libsupp.a $(LIB_OBJS)
 	$(RANLIB) libsupp.a
 
-lib: libsupp.a libltdl
+lib: libsupp.a $(LIB_DEPS)
 
 clean:
 	rm -f *.o libsupp.a
-	cd libltdl/ && $(MAKE) clean
+	test -z $(LIB_DEPS) || (cd libltdl/ && $(MAKE) clean)
 
 depend:
 	makedepend $(CPPFLAGS) -Y *.c 2>/dev/null
 	makedepend $(CPPFLAGS) -Y -fMakefile.in *.c 2>/dev/null
 
 distclean:
-	cd libltdl/ && $(MAKE) distclean
+	test -z $(LIB_DEPS) || (cd libltdl/ && $(MAKE) distclean)
 
 # Dependancies written below
 # DO NOT DELETE

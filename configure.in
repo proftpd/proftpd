@@ -312,6 +312,7 @@ AC_ARG_ENABLE(dso,
       MAIN_LIBS="-lltdl"
 
       INSTALL_DEPS="install-libltdl"
+      LIB_DEPS="libltdl"
       MODULE_DEPS="libltdl"
 
       dnl Run configure scripts in subdirectories
@@ -1418,6 +1419,7 @@ dnl And finally, generate the appropriate Make* and config.h
 AC_SUBST(INSTALL_STRIP)
 AC_SUBST(INCLTDL)
 AC_SUBST(INSTALL_DEPS)
+AC_SUBST(LIB_DEPS)
 AC_SUBST(LIB_OBJS)
 AC_SUBST(LIBTOOL_DEPS)
 AC_SUBST(LIBLTDL)
