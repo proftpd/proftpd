@@ -19,7 +19,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.8 1999-03-05 03:34:17 flood Exp $
+ * $Id: main.c,v 1.9 1999-03-07 17:18:54 flood Exp $
  */
 
 /*
@@ -430,8 +430,12 @@ static void send_response_list(response_t **head)
       if(!t->next || (t->num && strcmp(t->num,last_numeric) != 0)) {
         io_printf(session.c->outf,"%s %s\r\n",last_numeric,t->msg);
         ml = 0;
-      } else
-        io_printf(session.c->outf," %s\r\n",t->msg);
+      } else {
+	if(MultilineRFC2228)
+	  io_printf(session.c->outf,"%s-%s\r\n",last_numeric,t->msg);
+	else
+	  io_printf(session.c->outf," %s\r\n",t->msg);
+      }
     } else {
       /* look for start of multiline */
       if(t->next && (!t->next->num || strcmp(t->num,t->next->num) == 0)) {
@@ -870,6 +874,7 @@ static int _idle_timeout(CALLBACK_FRAME)
 
 void cmd_loop(server_rec *server, conn_t *c)
 {
+  config_rec *id;
   char buf[1024];
   char *cp;
   char *display;
@@ -884,9 +889,11 @@ void cmd_loop(server_rec *server, conn_t *c)
       core_display_file(R_220,display);
   }
 
-  if(get_param_int(server->conf,"ServerIdent",FALSE) != 1)
-  {
-    if(get_param_int(server->conf,"DeferWelcome",FALSE) == 1)
+  if((id = find_config(server->conf,CONF_PARAM,"ServerIdent",FALSE)) == NULL ||
+		  !id->argv[0]) {
+    if(id && id->argc > 1)
+      send_response("220","%s",(char*)id->argv[1]);
+    else if(get_param_int(server->conf,"DeferWelcome",FALSE) == 1)
       send_response("220", "ProFTPD " VERSION " Server ready.");
     else
       send_response("220", "ProFTPD " VERSION " Server (%s) [%s]",

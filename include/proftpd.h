@@ -18,7 +18,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.4 1999-03-05 03:34:13 flood Exp $
+ * $Id: proftpd.h,v 1.5 1999-03-07 17:18:51 flood Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -132,6 +132,7 @@ typedef struct {
 
 extern session_t	session;
 extern char		ServerType;
+extern char		MultilineRFC2228;
 extern const char	*pwdfname,*grpfname;
 
 /* Session/State flags */

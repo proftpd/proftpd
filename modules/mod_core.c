@@ -227,14 +227,21 @@ MODRET set_deferwelcome(cmd_rec *cmd)
 MODRET set_serverident(cmd_rec *cmd)
 {
   int b;
-
-  CHECK_ARGS(cmd,1);
+  config_rec *c;
+  
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
+  if(cmd->argc < 2 || cmd->argc > 3)
+    CONF_ERROR(cmd,"invalid number of arguments");
+  
   if((b = get_boolean(cmd,1)) == -1)
     CONF_ERROR(cmd,"expected boolean argument.");
 
-  add_config_param("ServerIdent",1,(void*)!b);
+  if(b && cmd->argc == 3) {
+    c = add_config_param("ServerIdent",2,(void*)!b,NULL);
+    c->argv[1] = pstrdup(permanent_pool,cmd->argv[2]);
+  } else
+    add_config_param("ServerIdent",1,(void*)!b);
 
   return HANDLED(cmd);
 }
@@ -420,6 +427,15 @@ MODRET set_socketbindtight(cmd_rec *cmd)
 
   SocketBindTight = get_boolean(cmd,1);
   return HANDLED(cmd);  
+}
+
+MODRET set_multilinerfc2228(cmd_rec *cmd)
+{
+  CHECK_ARGS(cmd,1);
+  CHECK_CONF(cmd,CONF_ROOT);
+
+  MultilineRFC2228 = get_boolean(cmd,1);
+  return HANDLED(cmd);
 }
 
 MODRET set_identlookups(cmd_rec *cmd)
@@ -1354,9 +1370,9 @@ MODRET end_virtualhost(cmd_rec *cmd)
 }
 
 /* Display a file via a given response numeric.  File is displayed
- * in psuedo "multiline" protocol, with a "-" after the numeric code,
- * followed by a text line.  0 is returned if the file was displayed
- * succesfully, otherwise -1 on error.
+ * in normal RFC959 multline mode, unless MultilineRFC2228 is set.
+ * Returns: -1 on error
+ *          0 if file display
  */
 
 int core_display_file(const char *numeric, const char *fn)
@@ -1416,12 +1432,15 @@ int core_display_file(const char *numeric, const char *fn)
 	     "%V",main_server->ServerName,
              NULL);
 
-	if(first) {
+    if(first) {
       send_response_raw("%s-%s",numeric,outs);
-	  first=0;
-    }
-	else
-       send_response_raw("%s",outs);
+      first=0;
+    } else {
+      if(MultilineRFC2228)
+        send_response_raw("%s-%s",numeric,outs);
+      else
+        send_response_raw(" %s",outs);
+      }
   }
 
   fs_close(fp,fd);
@@ -2172,6 +2191,7 @@ conftable core_conftable[] = {
   { "tcpSendWindow",		set_tcpsendwindow,		NULL },
   { "DeferWelcome",		set_deferwelcome,		NULL },
   { "DefaultServer",		set_defaultserver,		NULL },
+  { "MultilineRFC2228",		set_multilinerfc2228,		NULL },
   { "User",			set_user,			NULL },
   { "Group",			set_group, 			NULL },
   { "UserPassword",		add_userpassword,		NULL },

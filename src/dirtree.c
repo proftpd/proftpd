@@ -19,7 +19,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.2 1998-11-01 19:08:26 flood Exp $
+ * $Id: dirtree.c,v 1.3 1999-03-07 17:18:53 flood Exp $
  */
 
 /* History:
@@ -48,6 +48,7 @@ int TimeoutLogin = TUNABLE_TIMEOUTLOGIN;
 int TimeoutIdle = TUNABLE_TIMEOUTIDLE;
 int TimeoutNoXfer = TUNABLE_TIMEOUTNOXFER;
 int TimeoutStalled = TUNABLE_TIMEOUTSTALLED;
+char MultilineRFC2228 = 0;
 
 /* Used by find_config_* */
 xaset_t *find_config_top = NULL;
