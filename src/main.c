@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.88 2002-06-28 18:43:17 castaglia Exp $
+ * $Id: main.c,v 1.89 2002-07-09 22:20:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -150,23 +150,12 @@ static int shutdownp = 0;
 static RETSIGTYPE sig_disconnect(int);
 static RETSIGTYPE sig_debug(int);
 
-#define RECEIVED_SIG_REHASH	0x0001
-#define RECEIVED_SIG_EXIT	0x0002
-#define RECEIVED_SIG_SHUTDOWN	0x0004
-#define RECEIVED_SIG_SEGV	0x0008
-#define RECEIVED_SIG_TERMINATE	0x0010
-#define RECEIVED_SIG_XCPU	0x0020
-#define RECEIVED_SIG_TERM_OTHER	0x0040
-#define RECEIVED_SIG_ABORT	0x0080
-#define RECEIVED_SIG_DEBUG	0x0100
-#define RECEIVED_SIG_CHLD	0x0200
-
-volatile static unsigned int recvd_signal_flags = 0;
+volatile unsigned int recvd_signal_flags = 0;
 
 /* Used to capture an "unknown" signal value that causes termination. */
 static int term_signo = 0;
 
-/* Signal dispatcher */
+/* Signal processing functions */
 static void handle_abort(void);
 static void handle_chld(void);
 static void handle_xcpu(void);
@@ -1787,6 +1776,11 @@ static void server_loop(void) {
 void handle_signals(void) {
 
   while (recvd_signal_flags) {
+
+    if (recvd_signal_flags & RECEIVED_SIG_ALRM) {
+      recvd_signal_flags &= ~RECEIVED_SIG_ALRM;
+      handle_alarm();
+    }
 
     if (recvd_signal_flags & RECEIVED_SIG_CHLD) {
       recvd_signal_flags &= ~RECEIVED_SIG_CHLD;

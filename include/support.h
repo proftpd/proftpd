@@ -25,7 +25,7 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.10 2002-06-23 19:03:23 castaglia Exp $
+ * $Id: support.h,v 1.11 2002-07-09 22:20:10 castaglia Exp $
  */
 
 #ifndef __SUPPORT_H
@@ -77,7 +77,6 @@ void run_exit_handlers(void);
 void schedule(void (*f)(void *, void *, void *, void *), int, void *, void *,
   void *, void *);
 void run_schedule(void);
-int schedulep(void);
 
 int get_name_max(char *, int);
 

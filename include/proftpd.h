@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.27 2002-06-28 18:43:17 castaglia Exp $
+ * $Id: proftpd.h,v 1.28 2002-07-09 22:20:09 castaglia Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -213,6 +213,19 @@ extern const char	*pwdfname,*grpfname;
 /* Server Types */
 #define SERVER_INETD		0
 #define SERVER_STANDALONE	1
+
+/* Signals */
+#define RECEIVED_SIG_REHASH	0x0001
+#define RECEIVED_SIG_EXIT	0x0002
+#define RECEIVED_SIG_SHUTDOWN	0x0004
+#define RECEIVED_SIG_SEGV	0x0008
+#define RECEIVED_SIG_TERMINATE	0x0010
+#define RECEIVED_SIG_XCPU	0x0020
+#define RECEIVED_SIG_TERM_OTHER	0x0040
+#define RECEIVED_SIG_ABORT	0x0080
+#define RECEIVED_SIG_DEBUG	0x0100
+#define RECEIVED_SIG_CHLD	0x0200
+#define RECEIVED_SIG_ALRM	0x0400
 
 /* Timers */
 #define TIMER_LOGIN		1

@@ -26,7 +26,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.32 2002-06-25 20:42:57 castaglia Exp $
+ * $Id: support.c,v 1.33 2002-07-09 22:20:10 castaglia Exp $
  */
 
 /* History Log:
@@ -193,11 +193,9 @@ void schedule(void (*f)(void*,void*,void*,void*),int nloops,
   xaset_insert(scheds,(xasetmember_t*)s);
 }
 
-void run_schedule(void)
-{
+void run_schedule(void) {
   sched_t *s,*snext;
 
-  handle_sig_alarm();
   if(!scheds || !scheds->xas_list)
     return;
 
@@ -210,14 +208,6 @@ void run_schedule(void)
     }
   }
 }
-
-/* Returns TRUE if there is a scheduled function waiting */
-int schedulep(void)
-{
-  handle_sig_alarm();
-  return (scheds && scheds->xas_list);
-}
-
 
 /*
 ** Get the maximum size of a file name (pathname component).
