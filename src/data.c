@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.78 2004-05-21 17:19:03 castaglia Exp $
+ * $Id: data.c,v 1.79 2004-08-25 18:08:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -947,13 +947,16 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, size_t count) {
        */
 
       count -= len;
-	
-      if (TimeoutStalled)
-        reset_timer(TIMER_STALLED, ANY_MODULE);
-	
-      if (TimeoutIdle)
-	reset_timer(TIMER_IDLE, ANY_MODULE);
-	
+
+      /* Only reset the timers if data have actually been written out. */
+      if (len > 0) {
+        if (TimeoutStalled)
+          reset_timer(TIMER_STALLED, ANY_MODULE);
+
+        if (TimeoutIdle)
+          reset_timer(TIMER_IDLE, ANY_MODULE);
+      }
+
       session.xfer.total_bytes += len;
       session.total_bytes += len;
       total += len;
