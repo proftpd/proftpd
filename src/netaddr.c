@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.14 2003-09-09 00:55:33 castaglia Exp $
+ * $Id: netaddr.c,v 1.15 2003-09-09 05:37:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -51,7 +51,7 @@ pr_netaddr_t *pr_netaddr_alloc(pool *p) {
   return pcalloc(p, sizeof(pr_netaddr_t));
 }
 
-void pr_netaddr_initialize(pr_netaddr_t *na) {
+void pr_netaddr_clear(pr_netaddr_t *na) {
   if (!na)
     return;
 

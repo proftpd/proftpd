@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.9 2003-09-09 00:55:33 castaglia Exp $
+ * $Id: netaddr.h,v 1.10 2003-09-09 05:37:26 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -35,7 +35,7 @@
 pr_netaddr_t *pr_netaddr_alloc(pool *);
 
 /* Initialize the given netaddr. */
-void pr_netaddr_initialize(pr_netaddr_t *);
+void pr_netaddr_clear(pr_netaddr_t *);
 
 /* Given a name (either an IP address string or a DNS name), return a
  * pr_netaddr_t * for that name.  In the case of DNS names, multiple

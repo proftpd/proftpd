@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.186 2003-09-09 00:32:51 castaglia Exp $
+ * $Id: mod_core.c,v 1.187 2003-09-09 05:37:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3160,7 +3160,7 @@ MODRET core_eprt(cmd_rec *cmd) {
   CHECK_CMD_ARGS(cmd, 2);
 
   /* Initialize the netaddr. */
-  pr_netaddr_initialize(&na);
+  pr_netaddr_clear(&na);
 
   /* Block active transfers (the EPRT command) if RootRevoke is in effect
    * and the server's port is below 1025 (binding to the data port in this

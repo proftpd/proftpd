@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.78 2003-09-09 02:49:55 castaglia Exp $
+ * $Id: inet.c,v 1.79 2003-09-09 05:37:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -348,7 +348,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     inet_pool = make_sub_pool(permanent_pool);
 
   /* Initialize the netaddr. */
-  pr_netaddr_initialize(&na);
+  pr_netaddr_clear(&na);
 
   sub_pool = make_sub_pool(p);
   c = (conn_t *) pcalloc(sub_pool, sizeof(conn_t));
@@ -1046,7 +1046,7 @@ conn_t *pr_inet_accept(pool *p, conn_t *d, conn_t *c, int rfd, int wfd,
   socklen_t nalen;
 
   /* Initialize the netaddr. */
-  pr_netaddr_initialize(&na);
+  pr_netaddr_clear(&na);
 
   pr_netaddr_set_family(&na, pr_netaddr_get_family(c->remote_addr));
   nalen = pr_netaddr_get_sockaddr_len(&na);
@@ -1106,7 +1106,7 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
   }
 
   /* Initialize the netaddr. */
-  pr_netaddr_initialize(&na);
+  pr_netaddr_clear(&na);
 
 #ifdef USE_IPV6
   pr_netaddr_set_family(&na, AF_INET6);
