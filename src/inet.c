@@ -693,13 +693,24 @@ int inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay, int lowdelay,
     int throughput, int nopush) {
   int tos = 0;
 
+  /* More portability fun.  Traditional BSD-style sockets want the value from
+   * getprotobyname() in the setsockopt(2) call; Linux wants SOL_TCP for
+   * these options.  How many other platforms will have variations?  Will
+   * networking code always be this fragmented?
+   */
+#ifdef SOL_TCP
+  int type = SOL_TCP;
+#else
+  int type = tcp_proto;
+#endif /* SOL_TCP */
+
 #ifdef TCP_NODELAY
   unsigned char *no_delay = get_param_ptr(main_server->conf, "tcpNoDelay",
     FALSE);
 
   if (!no_delay || *no_delay == TRUE) {
     if (c->wfd != -1)
-      if (setsockopt(c->wfd, IPPROTO_TCP, TCP_NODELAY, (void *) &nodelay,
+      if (setsockopt(c->wfd, type, TCP_NODELAY, (void *) &nodelay,
           sizeof(nodelay)) < 0)
         log_pri(PR_LOG_NOTICE, "error setting write fd TCP_NODELAY: %s",
           strerror(errno));
@@ -714,12 +725,12 @@ int inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay, int lowdelay,
 
 #ifdef TCP_MAXSEG
   if (c->wfd != -1 && mss)
-    if (setsockopt(c->wfd, SOL_TCP, TCP_MAXSEG, &mss, sizeof(mss)) < 0)
+    if (setsockopt(c->wfd, type, TCP_MAXSEG, &mss, sizeof(mss)) < 0)
       log_pri(PR_LOG_NOTICE, "error setting write fd TCP_MAXSEG(%d): %s",
         mss, strerror(errno));
 
   if (c->rfd != -1 && mss)
-    if (setsockopt(c->wfd, SOL_TCP, TCP_MAXSEG, &mss, sizeof(mss)) < 0)
+    if (setsockopt(c->wfd, type, TCP_MAXSEG, &mss, sizeof(mss)) < 0)
       log_pri(PR_LOG_NOTICE, "error setting read fd TCP_MAXSEG(%d): %s",
         mss, strerror(errno));
 #endif /* TCP_MAXSEG */
@@ -736,12 +747,12 @@ int inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay, int lowdelay,
 
 #ifdef IP_TOS
   if (c->wfd != -1)
-    if (setsockopt(c->wfd, IPPROTO_IP, IP_TOS, (void *) &tos, sizeof(tos)) < 0)
+    if (setsockopt(c->wfd, SOL_IP, IP_TOS, (void *) &tos, sizeof(tos)) < 0)
       log_pri(PR_LOG_NOTICE, "error setting write fd IP_TOS: %s",
         strerror(errno));
 
   if (c->rfd != -1)
-    if (setsockopt(c->rfd, IPPROTO_IP, IP_TOS, (void *) &tos, sizeof(tos)) < 0)
+    if (setsockopt(c->rfd, SOL_IP, IP_TOS, (void *) &tos, sizeof(tos)) < 0)
       log_pri(PR_LOG_NOTICE, "error setting read fd IP_TOS: %s",
         strerror(errno));
 #endif /* IP_TOS */
@@ -749,13 +760,13 @@ int inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay, int lowdelay,
 #ifdef TCP_NOPUSH
   /* NOTE: TCP_NOPUSH is a BSDism. */
   if (c->wfd != -1)
-    if (setsockopt(c->wfd, IPPROTO_TCP, TCP_NOPUSH, (void *) &nopush,
+    if (setsockopt(c->wfd, type, TCP_NOPUSH, (void *) &nopush,
         sizeof(nopush)) < 0)
       log_pri(PR_LOG_NOTICE, "error setting write fd TCP_NOPUSH: %s",
         strerror(errno));
 
   if (c->rfd != -1)
-    if (setsockopt(c->rfd, IPPROTO_TCP, TCP_NOPUSH, (void *) &nopush,
+    if (setsockopt(c->rfd, type, TCP_NOPUSH, (void *) &nopush,
         sizeof(nopush)) < 0)
       log_pri(PR_LOG_NOTICE, "error setting read fd TCP_NOPUSH: %s",
         strerror(errno));
