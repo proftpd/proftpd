@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.90 2003-03-29 19:52:45 castaglia Exp $
+ * $Id: mod_ls.c,v 1.91 2003-04-08 17:18:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1463,7 +1463,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   char cwd_buf[MAXPATHLEN + 1] = {'\0'};
   pool *workp;
   unsigned char symhold;
-  int curdir = 0, i, count = 0, hidden = 0;
+  int curdir = 0, i, j, count = 0, hidden = 0;
   mode_t mode;
   config_rec *c = NULL;
   unsigned char ignore_hidden = FALSE;
@@ -1524,8 +1524,9 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
       ignore_hidden = TRUE;
   }
 
-  while (*list && count >= 0) {
-    p = *list; list++;
+  j = 0;
+  while (list[j] && count >= 0) {
+    p = list[j++];
 
     if (*p == '.') {
       if (!opt_a && (!opt_A || is_dotdir(p)))
