@@ -514,13 +514,37 @@ test "x$ac_addl_libs" = x || LIBS="$LIBS $ac_addl_libs"
 ac_addl_dirs=`echo "$ac_addl_dirs" | sed -e 's/ *\$//'`
 ADDL_DIRS="$ac_addl_dirs"
 
-dnl Check for dynmaic loading libraries, if applicable.
+
+dnl Add '-ldl' to LIBS as required for linking with libpam.  Prior to 0.72,
+dnl the Linux PAM shared library omitted required libdl linking information.
+dnl PAM-0.72 ships with RH6.2 and Debian2.2.
 if test `echo $ac_addl_modules | grep -c mod_pam` = "1"; then
-  dnl Otherwise compilation will fail since -lsupp isn't compiled yet.
-  tmplibs="$LIBS"
-  LIBS=""
-  AC_CHECK_LIB(dl, dlopen, LIBS="$tmplibs -ldl")
+	AC_MSG_CHECKING([whether libpam requires -ldl])
+	dnl Avoid $LIBS as linking will fail since -lsupp isn't compiled yet.
+	tmp_LIBS="$LIBS"
+	for LIBS in "-lpam" "$tmp_LIBS -lpam" ; do
+		AC_TRY_LINK_FUNC(pam_start, pam_needs_dl=no,
+			LIBS="$LIBS -ldl"
+			AC_TRY_LINK_FUNC(pam_start, pam_needs_dl=yes)
+		)
+		test x$pam_needs_dl != x && break
+	done
+	LIBS="$tmp_LIBS"
+	if test x$pam_needs_dl != x
+	then AC_MSG_RESULT($pam_needs_dl)
+	else AC_MSG_RESULT([determination failed])
+	fi
+	if test x$pam_needs_dl = xyes ; then
+		tmp_LIBS="$LIBS"
+		LIBS="$LIBS -ldl"
+		for i in $tmp_LIBS ; do
+			case $i in
+			-ldl)	LIBS="$tmp_LIBS" ; break ;;
+			esac
+		done
+	fi
 fi
+
 
 MODULES="$ac_core_modules $ac_addl_modules"
 BUILD_MODULES="$ac_build_core_modules $ac_build_addl_modules"

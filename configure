@@ -5255,50 +5255,73 @@ test "x$ac_addl_libs" = x || LIBS="$LIBS $ac_addl_libs"
 ac_addl_dirs=`echo "$ac_addl_dirs" | sed -e 's/ *\$//'`
 ADDL_DIRS="$ac_addl_dirs"
 
+
 if test `echo $ac_addl_modules | grep -c mod_pam` = "1"; then
-    tmplibs="$LIBS"
-  LIBS=""
-  echo $ac_n "checking for dlopen in -ldl""... $ac_c" 1>&6
-echo "configure:5263: checking for dlopen in -ldl" >&5
-ac_lib_var=`echo dl'_'dlopen | sed 'y%./+-%__p_%'`
-if eval "test \"\${ac_cv_lib_$ac_lib_var+set}\" = set"; then
-  echo $ac_n "(cached) $ac_c" 1>&6
-else
-  ac_save_LIBS="$LIBS"
-LIBS="-ldl  $LIBS"
-cat > conftest.$ac_ext <<EOF
-#line 5271 "configure"
+	echo $ac_n "checking whether libpam requires -ldl""... $ac_c" 1>&6
+echo "configure:5262: checking whether libpam requires -ldl" >&5
+		tmp_LIBS="$LIBS"
+	for LIBS in "-lpam" "$tmp_LIBS -lpam" ; do
+		cat > conftest.$ac_ext <<EOF
+#line 5266 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
     builtin and then its argument prototype would still apply.  */
-char dlopen();
+char pam_start();
 
 int main() {
-dlopen()
+pam_start()
 ; return 0; }
 EOF
-if { (eval echo configure:5282: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:5277: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=yes"
+  pam_needs_dl=no
 else
   echo "configure: failed program was:" >&5
   cat conftest.$ac_ext >&5
   rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=no"
+  LIBS="$LIBS -ldl"
+			cat > conftest.$ac_ext <<EOF
+#line 5286 "configure"
+#include "confdefs.h"
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
+char pam_start();
+
+int main() {
+pam_start()
+; return 0; }
+EOF
+if { (eval echo configure:5297: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+  rm -rf conftest*
+  pam_needs_dl=yes
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
 fi
 rm -f conftest*
-LIBS="$ac_save_LIBS"
+		
+fi
+rm -f conftest*
+		test x$pam_needs_dl != x && break
+	done
+	LIBS="$tmp_LIBS"
+	if test x$pam_needs_dl != x
+	then echo "$ac_t""$pam_needs_dl" 1>&6
+	else echo "$ac_t""determination failed" 1>&6
+	fi
+	if test x$pam_needs_dl = xyes ; then
+		tmp_LIBS="$LIBS"
+		LIBS="$LIBS -ldl"
+		for i in $tmp_LIBS ; do
+			case $i in
+			-ldl)	LIBS="$tmp_LIBS" ; break ;;
+			esac
+		done
+	fi
+fi
 
-fi
-if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
-  echo "$ac_t""yes" 1>&6
-  LIBS="$tmplibs -ldl"
-else
-  echo "$ac_t""no" 1>&6
-fi
-
-fi
 
 MODULES="$ac_core_modules $ac_addl_modules"
 BUILD_MODULES="$ac_build_core_modules $ac_build_addl_modules"
