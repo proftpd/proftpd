@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001, 2002, 2003, 2004 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.48 2004-01-29 22:20:52 castaglia Exp $
+ * $Id: proftpd.h,v 1.49 2004-09-07 22:18:00 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -51,8 +51,6 @@ typedef int (*callback_t)(CALLBACK_FRAME);
 
 struct conn_struc;
 struct cmd_struc;
-struct IO_Request;
-struct IO_File;
 struct config_struc;
 
 typedef struct {
