@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.259 2002-10-28 22:30:00 castaglia Exp $
+$Id: NEWS,v 1.260 2002-10-29 15:51:43 jwm Exp $
 
 CVS
 ---------------------------------
@@ -14,6 +14,8 @@ CVS
   updated to detect when these options are used on AIX, and to automatically
   disable them.
 - Bug 1722 - Can't work magic cookie %F on FreeBSD.
+- Make sure session.xfer uses cleared memory so unset structure members
+  won't contain random values.
 
 1.2.7rc2 - Released 2002-10-22
 ---------------------------------
