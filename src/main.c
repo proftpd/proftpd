@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.18 1999-10-01 07:57:32 macgyver Exp $
+ * $Id: main.c,v 1.19 1999-10-07 03:25:55 macgyver Exp $
  */
 
 /*
@@ -1304,8 +1304,8 @@ void fork_server(int fd,conn_t *l,int nofork)
 		   "%V",main_server->ServerName,
                    NULL );
 
-      log_auth(LOG_NOTICE,"connection refused (%s) from %s [%s]",
-               reason,session.c->remote_name,
+      log_auth(LOG_NOTICE, "connection refused (%s) from %s [%s]",
+               reason, session.c->remote_name,
                inet_ntoa(*session.c->remote_ipaddr));
 
       printf("500 FTP server shut down (%s) -- please try again later.\r\n",

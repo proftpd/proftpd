@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.13 1999-10-06 03:48:44 macgyver Exp $
+ * $Id: mod_auth.c,v 1.14 1999-10-07 03:25:55 macgyver Exp $
  */
 
 #include "conf.h"
@@ -1183,7 +1183,12 @@ MODRET cmd_user(cmd_rec *cmd)
 	  send_response(R_530,
 			"Too many users in your class, please try again later.");
 	
-	log_auth(LOG_NOTICE,"connection refused (max clients for class %s)",session.class->name);
+	log_auth(LOG_NOTICE,
+		 "%s - connection refused (max clients for class %s) from %s [%s]",
+		 main_server->ServerFQDN,
+		 session.class->name, session.c->remote_name,
+		 inet_ntoa(*session.c->remote_ipaddr));
+
 	end_login(0);
     }
   }
@@ -1214,8 +1219,11 @@ MODRET cmd_user(cmd_rec *cmd)
       send_response(R_530,"%s",
                     sreplace(cmd->tmp_pool,maxstr,"%m",maxn,NULL));
 
-      log_auth(LOG_NOTICE,"connection refused (max clients per host %d)",
-               max);
+      log_auth(LOG_NOTICE,
+	       "%s - connection refused (max clients per host %d) from %s [%s]",
+	       main_server->ServerFQDN, max, session.c->remote_name,
+	       inet_ntoa(*session.c->remote_ipaddr));
+      
       end_login(0);
     }
 
@@ -1235,11 +1243,14 @@ MODRET cmd_user(cmd_rec *cmd)
       maxstr = maxc->argv[1];
     
     if(cur >= max) {
-      send_response(R_530,"%s",
-                    sreplace(cmd->tmp_pool,maxstr,"%m",maxn,NULL));
-
-      log_auth(LOG_NOTICE,"connection refused (max clients %d)",
-               max);
+      send_response(R_530, "%s",
+                    sreplace(cmd->tmp_pool, maxstr, "%m", maxn, NULL));
+      
+      log_auth(LOG_NOTICE,
+	       "%s - connection refused (max clients %d) from %s [%s]",
+	       main_server->ServerFQDN, max, session.c->remote_name,
+	       inet_ntoa(*session.c->remote_ipaddr));
+      
       end_login(0);
     }
 

@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.16 1999-10-01 07:57:31 macgyver Exp $
+ * $Id: mod_core.c,v 1.17 1999-10-07 03:25:55 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -1680,8 +1680,11 @@ MODRET cmd_port(cmd_rec *cmd)
   if(allow_foreign_addr != 1) {
     if(addr.addr.s_addr != session.c->remote_ipaddr->s_addr ||
        !port.port) {
-      log_pri(LOG_WARNING,"refused PORT %s from %s (address mismatch)",
-    			  cmd->arg,session.c->remote_name);
+      log_pri(LOG_WARNING,
+	      "%s - refused PORT %s from %s [%s] (address mismatch)",
+	      main_server->ServerFQDN, cmd->arg,
+	      session.c->remote_name, inet_ntoa(*session.c->remote_ipaddr));
+
       return ERROR_MSG(cmd,R_500,"Illegal PORT command.");
     }
   }
@@ -1691,8 +1694,11 @@ MODRET cmd_port(cmd_rec *cmd)
    */
 
   if(ntohs(port.port) < 1024) {
-    log_pri(LOG_WARNING,"refused PORT %s from %s (bounce attack)",
-                        cmd->arg,session.c->remote_name);
+    log_pri(LOG_WARNING,
+	    "%s - refused PORT %s from %s [%s] (bounce attack)",
+	    main_server->ServerFQDN, cmd->arg,
+	    session.c->remote_name, inet_ntoa(*session.c->remote_ipaddr));
+    
     return ERROR_MSG(cmd,R_500,"Illegal PORT command.");
   }
 
