@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.164 2003-03-09 23:24:42 castaglia Exp $
+ * $Id: mod_core.c,v 1.165 2003-03-12 02:46:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2018,10 +2018,15 @@ MODRET set_allowoverride(cmd_rec *cmd) {
 }
 
 MODRET end_directory(cmd_rec *cmd) {
+  unsigned char empty_ctxt = FALSE;
+
   CHECK_ARGS(cmd, 0);
   CHECK_CONF(cmd, CONF_DIR);
 
-  end_sub_config();
+  end_sub_config(&empty_ctxt);
+
+  if (empty_ctxt)
+    log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
 
   return HANDLED(cmd);
 }
@@ -2060,10 +2065,15 @@ MODRET add_anonymous(cmd_rec *cmd) {
 }
 
 MODRET end_anonymous(cmd_rec *cmd) {
+  unsigned char empty_ctxt = FALSE;
+
   CHECK_ARGS(cmd, 0);
   CHECK_CONF(cmd, CONF_ANON);
 
-  end_sub_config();
+  end_sub_config(&empty_ctxt);
+
+  if (empty_ctxt)
+    log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
 
   return HANDLED(cmd);
 }
@@ -2081,10 +2091,15 @@ MODRET add_global(cmd_rec *cmd) {
 }
 
 MODRET end_global(cmd_rec *cmd) {
+  unsigned char empty_ctxt = FALSE;
+
   CHECK_ARGS(cmd, 0);
   CHECK_CONF(cmd, CONF_GLOBAL);
 
-  end_sub_config();
+  end_sub_config(&empty_ctxt);
+
+  if (empty_ctxt)
+    log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
 
   return HANDLED(cmd);
 }
@@ -2393,10 +2408,15 @@ MODRET set_authorder(cmd_rec *cmd) {
 }
 
 MODRET end_limit(cmd_rec *cmd) {
+  unsigned char empty_ctxt = FALSE;
+
   CHECK_ARGS(cmd, 0);
   CHECK_CONF(cmd, CONF_LIMIT);
 
-  end_sub_config();
+  end_sub_config(&empty_ctxt);
+
+  if (empty_ctxt)
+    log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
 
   return HANDLED(cmd);
 }

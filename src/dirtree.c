@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.102 2003-03-09 22:28:16 castaglia Exp $
+ * $Id: dirtree.c,v 1.103 2003-03-12 02:46:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -651,11 +651,10 @@ config_rec *start_sub_config(const char *name) {
     set = &(*conf.curserver)->conf;
   }
 
-  /* allocate a sub-pool for this config_rec.  Note: special
-   * exception for <Global> configs -- the parent pool is global_config_pool
-   * (a pool just for this context), not the pool of the parent server.  This
-   * keeps <Global> config recs from being freed prematurely, and helps to
-   * avoid memory leaks.
+  /* Allocate a sub-pool for this config_rec.  Note: special exception for
+   * <Global> configs -- the parent pool is global_config_pool (a pool just for
+   * this context), not the pool of the parent server.  This keeps <Global>
+   * config recs from being freed prematurely, and helps to avoid memory leaks.
    */
   if (!strcmp(name, "<Global>")) {
     if (!global_config_pool)
@@ -694,7 +693,7 @@ config_rec *start_sub_config(const char *name) {
 }
 
 /* Pop one level off the stack */
-config_rec *end_sub_config(void) {
+config_rec *end_sub_config(unsigned char *empty) {
   config_rec *c = *conf.curconfig;
 
   /* Note that if the current config is empty, it should simply be removed.
@@ -703,9 +702,12 @@ config_rec *end_sub_config(void) {
    */
 
   if (conf.curconfig == (config_rec **) conf.cstack->elts) {
-    if (!c->subset) {
+    if (!c->subset || !c->subset->xas_list) {
       xaset_remove(c->set, (xasetmember_t *) c);
       destroy_pool(c->pool);
+
+      if (empty)
+        *empty = TRUE;
     }
 
     if (*conf.curconfig)
@@ -713,9 +715,12 @@ config_rec *end_sub_config(void) {
     return NULL;
   }
 
-  if (!c->subset) {
+  if (!c->subset || !c->subset->xas_list) {
     xaset_remove(c->set, (xasetmember_t *) c);
     destroy_pool(c->pool);
+
+    if (empty)
+      *empty = TRUE;
   }
 
   conf.curconfig--;
@@ -2364,8 +2369,7 @@ static config_rec *_find_best_dir(xaset_t *set,char *path,int *matchlen)
  * in directory tree order
  */
 
-static void _reorder_dirs(xaset_t *set, int mask)
-{
+static void _reorder_dirs(xaset_t *set, int mask) {
   config_rec *c,*cnext,*newparent;
   int tmp,defer = 0;
 
@@ -2605,23 +2609,15 @@ static void fixup_globals(void) {
   }
 }
 
-void fixup_dirs(server_rec *s, int mask)
-{
+void fixup_dirs(server_rec *s, int mask) {
   if (!s || !s->conf)
     return;
 
-  _reorder_dirs(s->conf,mask);
+  _reorder_dirs(s->conf, mask);
 
-  /* Merge mergeable configuration items down
-   */
+  /* Merge mergeable configuration items down. */
+  _mergedown(s->conf, FALSE);
 
-  _mergedown(s->conf,FALSE);
-
-/*
-  for (c = (config_rec*)s->conf->xas_list; c; c=c->next)
-    if (c->config_type == CONF_ANON)
-      _reorder_dirs(c->subset);
-*/
   log_debug(DEBUG5, "%s", "");
   log_debug(DEBUG5, "Config for %s:", s->ServerName);
   debug_dump_config(s->conf, NULL);

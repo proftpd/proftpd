@@ -25,7 +25,7 @@
 
 /*
  * Generic set manipulation
- * $Id: sets.c,v 1.9 2003-02-12 08:46:37 castaglia Exp $
+ * $Id: sets.c,v 1.10 2003-03-12 02:46:19 castaglia Exp $
  *
  * TODO: Use a hash table to greatly speed up set manipulation on
  *       large sets.
@@ -123,21 +123,31 @@ int xaset_insert_sort(xaset_t *set, xasetmember_t *member, int dupes_allowed)
   return 1;
 }
 
-/* Remove a member from a set.  The set need not be sorted.  Note that
-   this does NOT free the memory used by the member.  No check is performed
-   to validate that `member' is truely a member of `set'.
-   Returns: 1 if successful
-            0 if invalid args
-           -1 error (check errno, unused at this time)
-*/
+/* Remove a member from a set.  The set need not be sorted.  Note that this
+ * does NOT free the memory used by the member.
+ * Returns: 1 if successful
+ *          0 if invalid args
+ *         -1 error (check errno)
+ */
+int xaset_remove(xaset_t *set, xasetmember_t *member) {
+  xasetmember_t *m = NULL;
 
-int xaset_remove(xaset_t *set, xasetmember_t *member)
-{
   if (!set || !member)
     return 0;
 
+  /* Check if member is actually a member of set. */
+  for (m = set->xas_list; m; m = m->next)
+    if (m == member)
+      break;
+
+  if (m == NULL) {
+    errno = ENOENT;
+    return -1;  
+  }
+
   if (member->prev)
     member->prev->next = member->next;
+
   else /* assume that member is first in the list */
     set->xas_list = member->next;
 

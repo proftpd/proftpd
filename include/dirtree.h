@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.35 2003-03-09 22:28:16 castaglia Exp $
+ * $Id: dirtree.h,v 1.36 2003-03-12 02:46:19 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -232,7 +232,7 @@ void free_conf_stacks(void);
 server_rec *start_new_server(const char *);
 server_rec *end_new_server(void);
 config_rec *start_sub_config(const char *);
-config_rec *end_sub_config(void);
+config_rec *end_sub_config(unsigned char *);
 char *get_word(char **);
 
 config_rec *dir_match_path(pool *, char *);
