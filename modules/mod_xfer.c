@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.94 2002-11-12 15:24:18 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.95 2002-11-12 22:27:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1504,13 +1504,8 @@ static int xfer_sess_init(void) {
 
   /* Check for a server-specific TimeoutNoTransfer */
   if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutNoTransfer",
-      FALSE)) != NULL) {
-
-    /* NOTE: this isn't pretty, casting a void * to an int.  It'll need
-     * to be cleaned up soon.
-     */
-    TimeoutNoXfer = (int) c->argv[0];
-  }
+      FALSE)) != NULL)
+    TimeoutNoXfer = *((int *) c->argv[0]);
 
   /* Setup TimeoutNoXfer timer */
   if (TimeoutNoXfer)
@@ -1518,13 +1513,8 @@ static int xfer_sess_init(void) {
 
   /* Check for a server-specific TimeoutStalled */
   if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutStalled",
-      FALSE)) != NULL) {
-
-    /* NOTE: this isn't pretty, casting a void * to an int.  It'll need
-     * to be cleaned up soon.
-     */
-    TimeoutStalled = (int) c->argv[0];
-  }
+      FALSE)) != NULL) 
+    TimeoutStalled = *((int *) c->argv[0]);
 
   /* Note: timers for handling TimeoutStalled timeouts are handled in the
    * data transfer routines, not here.
@@ -1781,6 +1771,7 @@ MODRET set_storeuniqueprefix(cmd_rec *cmd) {
 MODRET set_timeoutnoxfer(cmd_rec *cmd) {
   int timeout = -1;
   char *endp = NULL;
+  config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -1790,13 +1781,17 @@ MODRET set_timeoutnoxfer(cmd_rec *cmd) {
   if ((endp && *endp) || timeout < 0 || timeout > 65535)
     CONF_ERROR(cmd, "timeout values must be between 0 and 65535");
 
-  TimeoutNoXfer = timeout;
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = timeout;
+
   return HANDLED(cmd);
 }
 
 MODRET set_timeoutstalled(cmd_rec *cmd) {
   int timeout = -1;
   char *endp = NULL;
+  config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -1806,7 +1801,10 @@ MODRET set_timeoutstalled(cmd_rec *cmd) {
   if ((endp && *endp) || timeout < 0 || timeout > 65535)
     CONF_ERROR(cmd, "timeout values must be between 0 and 65535");
 
-  TimeoutStalled = timeout;
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = timeout;
+
   return HANDLED(cmd);
 }
 

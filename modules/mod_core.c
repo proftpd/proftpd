@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.116 2002-11-12 15:24:17 castaglia Exp $
+ * $Id: mod_core.c,v 1.117 2002-11-12 22:27:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -120,10 +120,7 @@ static ssize_t get_num_bytes(char *nbytes_str) {
    * variable is catch arguments like "2g2" or "number-letter-whatever".
    *
    * NOTE: There is no portable way to scan in an ssize_t, so we do unsigned
-   * long and cast it.  This probably places a 32-bit limit on rlimit values
-   * :(
-   *
-   * - jss 3/22/2001
+   * long and cast it.  This probably places a 32-bit limit on rlimit values.
    */
   if ((result = sscanf(nbytes_str, "%lu%c%c", &inb, &units, &junk)) == 2) {
 
@@ -641,6 +638,7 @@ MODRET set_maxconnrate(cmd_rec *cmd) {
 MODRET set_timeoutidle(cmd_rec *cmd) {
   int timeout = -1;
   char *endp = NULL;
+  config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -650,7 +648,10 @@ MODRET set_timeoutidle(cmd_rec *cmd) {
   if ((endp && *endp) || timeout < 0 || timeout > 65535)
     CONF_ERROR(cmd, "timeout values must be between 0 and 65535");
 
-  TimeoutIdle = timeout;
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = timeout;
+
   return HANDLED(cmd);
 }
 
@@ -1479,13 +1480,12 @@ MODRET add_directory(cmd_rec *cmd) {
   /* If in anonymous mode, and path is relative, just cat anon root
    * and relative path
    *
-   * NOTE [Flood,9/97]: This is no longer necessary, because we don't
-   * interpolate anonymous dirs at run-time.
-   *
+   * Note: This is no longer necessary, because we don't interpolate anonymous
+   * directories at run-time.
    */
-  if(cmd->config && cmd->config->config_type == CONF_ANON &&
+  if (cmd->config && cmd->config->config_type == CONF_ANON &&
      *dir != '/' && *dir != '~') {
-    if(strcmp(dir,"*") != 0)
+    if (strcmp(dir,"*") != 0)
       dir = pdircat(cmd->tmp_pool,"/",dir,NULL);
     rootdir = cmd->config->name;
   }
@@ -3556,13 +3556,8 @@ static int core_sess_init(void) {
 
   /* Check for a server-specific TimeoutIdle */
   if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutIdle",
-      FALSE)) != NULL) {
-
-    /* NOTE: this isn't pretty, casting a void * to an int.  It'll need
-     * to be cleaned up soon.
-     */
-    TimeoutIdle = (int) c->argv[0];
-  }
+      FALSE)) != NULL)
+    TimeoutIdle = *((int *) c->argv[0]);
 
   return 0;
 }
