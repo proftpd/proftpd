@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.544 2004-03-05 18:22:02 castaglia Exp $
+$Id: NEWS,v 1.545 2004-03-11 00:13:03 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -159,7 +159,7 @@ CVS
   The addition of the Bindings API in 1.2.8rc1 inadvertently caused the
   DefaultServer directive to not be properly honored in some configurations.
 - Bug 2183 - Directory configuration lookups broken in 1.2.9rc2 (same as
-  bug 2165).
+  Bug 2165).
 - Bug 2191 - Segfault in mod_sql_mysql when using 'Backend' SQLAuthType.
   This happens only with MySQL 4.1.  In MySQL 4.1, the way in which MySQL
   handles its passwords changed, and mod_sql_mysql was using the new
@@ -336,7 +336,7 @@ CVS
 - Bug 1986 - mod_rewrite backreferences not zero-based (use $1 not $0?). The
   bug here turned out to be an off-by-one offset; mod_rewrite was starting
   at 1 when examining matched groups, rather than 0.  Most of the time $0 will
-  not what is desired, however, for $0 refers to the original string being
+  not be what is desired, however, for $0 refers to the original string being
   matched.
 - Bug 1987 - mod_rewrite seems not to handle more than one backreference.
 - By default, mod_tls will now turn manually turn RSA blinding on, when
