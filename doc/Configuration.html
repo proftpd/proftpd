@@ -158,8 +158,8 @@ configuration:</p>
   <LI><A HREF="#SQLDefaultUID">SQLDefaultUID</A>
   <LI><A HREF="#SQLDoAuth">SQLDoAuth</A>
   <LI><A HREF="#SQLDoGroupAuth">SQLDoGroupAuth</A>
-  <li><A HREF="#SQLEmptyPasswords">SQLEmptyPasswords</A>
-  <li><A HREF="#SQLEncryptedPasswords">SQLEncryptedPasswords</A>
+  <li><A HREF="#SQLEmptyPasswords">SQLEmptyPasswords</A> (<strong>Deprecated use <A HREF="SQLAuthTypes">SQLAuthTypes</A></strong>) 
+  <li><A HREF="#SQLEncryptedPasswords">SQLEncryptedPasswords</A> (<strong>Deprecated use <A HREF="SQLAuthTypes">SQLAuthTypes</A></strong>) 
   <li><A HREF="#SQLGIDField">SQLGidField</A>
   <li><A HREF="#SQLGroupGidField">SQLGroupGidField</A>
   <LI><A HRef="#SQLGroupMembersField">SQLGroupMembersField</A>
@@ -168,8 +168,8 @@ configuration:</p>
   <li><A HREF="#SQLHomedir">SQLHomedir</A>
   <li><A HREF="#SQLHomedirField">SQLHomedirField</A>
   <LI><A href="#SQLHomedirOnDemand">SQLHomedirOnDemand</A>
-  <li><A HREF="#SQLKey">SQLKey</A></LI>
-  <li><A HREF="#SQLKeyField">SQLKeyField</A> </li>
+  <li><A HREF="#SQLKey">SQLKey</A></LI> (<strong>Deprecated use <A HREF="SQLWhereClause">SQLWhereClause</A></strong>)
+  <li><A HREF="#SQLKeyField">SQLKeyField</A> </li> (<strong>Deprecated use <A HREF="SQLWhereClause">SQLWhereClause</A></strong>)
   <li><A HREF="#SQLLogDirs">SQLLogDirs</A>
   <li><A HREF="#SQLLogHits">SQLLogHits</A>
   <li><A HREF="#SQLLogHosts">SQLLogHosts</A>
@@ -177,7 +177,7 @@ configuration:</p>
   <li><A HREF="#SQLLogStats">SQLLogStats</A>
   <LI><A href="#SQLMinID">SQLMinID</A>
   <li><A HREF="#SQLPasswordField">SQLPasswordField</A>
-  <li><A HREF="#SQLPlaintextPasswords">SQLPlaintextPasswords</A>
+  <li><A HREF="#SQLPlaintextPasswords">SQLPlaintextPasswords</A> (<strong>Deprecated use <A HREF="SQLAuthTypes">SQLAuthTypes</A></strong>)
   <li><A HREF="#SQLRatios">SQLRatios</A> <EM>Incomplete</EM></li>
   <LI><A href="#SQLShellField">SQLShellField</A>
   <li><A HREF="#SQLUidField">SQLUidField</A>
@@ -2764,7 +2764,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <h2><a name="ShowSymlinks">ShowSymlinks</a></h2>
   <p><strong>Syntax:</strong> ShowSymlinks <em>on|off</em><br>
     <strong>Default:</strong> on<br>
-    <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<strong><br>
+    <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0pl6 and later</p>
 
@@ -3402,24 +3402,24 @@ they are reported as the values of, respectively, 'SQLDefaultGID' and
 
   <P>This directive deprecates 'SQLKey' and 'SQLKeyField'.
 
-  Specifies a where clause that is added to every user query (this has
+  <P>Specifies a where clause that is added to every user query (this has
   no effect on group queries).  The where clause *must* contain all
   relevant punctuation, and *must not* contain a leading 'and'.
 
-  As an example of switching from the old-style 'SQLKey' and
+  <P>As an example of switching from the old-style 'SQLKey' and
   'SQLKeyField' directives, if you had:
 
+<code>
   SQLKey           true
   SQLKeyfield      LoginAllowed
+</code.
 
-  You would now use:
+  <P>You would now use:
 
-  SQLWhereClause   "LoginAllowed = 'true'"
+  <code>SQLWhereClause   "LoginAllowed = 'true'"</code>
 
-  This would be appended to every user-related query as the string 
-
+  <P>This would be appended to every user-related query as the string 
   " and (LoginAllowed = 'true')"
-
 
   <hr>
   <h2><a name="SyslogFacility"><strong>SyslogFacility</strong></a></h2>
