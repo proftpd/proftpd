@@ -19,7 +19,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.9 2000-08-01 19:51:05 macgyver Exp $
+ * $Id: mod_site.c,v 1.10 2000-08-01 20:41:31 macgyver Exp $
  */
 
 #include "conf.h"
@@ -83,7 +83,7 @@ MODRET site_chmod(cmd_rec *cmd) {
     return NULL;
   }
 
-  if(get_param_int(CURRENT_CONF, "AllowChmod", FALSE) != 1) {
+  if(get_param_int(CURRENT_CONF, "AllowChmod", FALSE) == 0) {
     add_response_err(R_550, "CHMOD not allowed on %s", cmd->argv[2]);
     return ERROR(cmd);
   }
