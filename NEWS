@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.515 2003-12-03 00:16:49 castaglia Exp $
+$Id: NEWS,v 1.516 2003-12-03 07:39:36 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -58,6 +58,7 @@ CVS
   is a harmless error on such systems.
 - Bug 2290 - gmtime() static storage may be overwritten by modules.
 - Bug 2288 - ServerFQDN set to 255.255.255.255 and not hostname.
+- Added mod_quotatab to the contrib area.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------
