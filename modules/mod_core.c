@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.240 2004-07-13 17:56:00 castaglia Exp $
+ * $Id: mod_core.c,v 1.241 2004-07-13 23:51:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3767,7 +3767,7 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
         free(cdir);
 
         if (dir &&
-            dir_check_full(cmd->tmp_pool, cmd->arg[v0], cmd->group, dir, NULL) &&
+            dir_check_full(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL) &&
             pr_fsio_chdir_canon(ndir, 1) != -1) {
           break;
         }
