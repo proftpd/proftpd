@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.1 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: netaddr.c,v 1.2 2003-08-06 22:31:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -531,9 +531,9 @@ int pr_netaddr_loopback(const pr_netaddr_t *na) {
        * differently.  For example, on Linux, those macros expect to operate
        * on s6_addr32, while on Solaris, the macros operate on struct in6_addr.
        * Certain Drafts define the macros to work on struct in6_addr *, as
-       * Solaris does, so Linux may have it wrong.  Tenative research on
+       * Solaris does, so Linux may have it wrong.  Tentative research on
        * Google shows some BSD netinet6/in6.h headers that define these
-       * macros in terms of struct in6_addr *, so I'll go with that, for now.
+       * macros in terms of struct in6_addr *, so I'll go with that for now.
        * Joy. =P
        */
 # ifndef LINUX
