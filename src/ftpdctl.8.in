@@ -10,9 +10,8 @@ ftpdctl \- ProFTPD control program
 .B \-hv
 ] [
 .BI \-s " Unix domain socket"
-] [
-.BI "action action-parameters"
 ]
+.BI "action action-parameters"
 .SH DESCRIPTION
 .B ftpdctl
 is the control program for the Professional File Transfer Protocol (FTP) server
