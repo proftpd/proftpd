@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.19 2004-05-30 22:46:13 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.20 2004-05-31 21:49:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -226,127 +226,6 @@ static int ctrls_handle_down(pr_ctrls_t *ctrl, int reqargc,
       for (j = 0; j < addrs->nelts; j++)
         admin_addr_down(ctrl, elts[j], server_port);
     }
-  }
-
-  return 0;
-}
-
-static int ctrls_handle_dump(pr_ctrls_t *ctrl, int reqargc,
-    char **reqargv) {
-
-  /* Check the dump ACL */
-  if (!ctrls_check_acl(ctrl, ctrls_admin_acttab, "dump")) {
-
-    /* Access denied */
-    pr_ctrls_add_response(ctrl, "access denied");
-    return -1;
-  }
-
-  /* Sanity check */
-  if (reqargc == 0 || reqargv == NULL) {
-    pr_ctrls_add_response(ctrl, "dump: missing required parameters");
-    return -1;
-  }
-
-  /* Handle 'dump classes' requests */
-  if (strcmp(reqargv[0], "classes") == 0) {
-    pr_class_t *cls = pr_class_get(NULL);
-
-    if (!cls) {
-      pr_ctrls_add_response(ctrl, "no classes configured");
-      return 0;
-    }
-
-    while (cls) {
-      pr_ctrls_add_response(ctrl, "Class %s:", cls->cls_name);
-
-      if (cls->cls_acls) {
-        pr_netacl_t **acls = cls->cls_acls->elts;
-        register unsigned int i;
-
-        for (i = 0; i < cls->cls_acls->nelts && acls[i]; i++) {
-          pr_netacl_t *acl = acls[i];
-
-          switch (pr_netacl_get_type(acl)) {
-            case PR_NETACL_TYPE_ALL:
-              pr_ctrls_add_response(ctrl, "  Rule matching ALL");
-              break;
-
-            case PR_NETACL_TYPE_NONE:
-              pr_ctrls_add_response(ctrl, "  Rule matching NONE");
-              break;
-
-            case PR_NETACL_TYPE_IPMASK:
-              pr_ctrls_add_response(ctrl, "  Rule matching IP subnet");
-              break;
-
-            case PR_NETACL_TYPE_IPMATCH:
-              pr_ctrls_add_response(ctrl, "  Rule matching IP address");
-              break;
-
-            case PR_NETACL_TYPE_DNSMATCH:
-              pr_ctrls_add_response(ctrl, "  Rule matching DNS name");
-              break;
-
-            case PR_NETACL_TYPE_IPGLOB:
-              pr_ctrls_add_response(ctrl, "  Rule matching IP wildcard");
-              break;
-
-            case PR_NETACL_TYPE_DNSGLOB:
-              pr_ctrls_add_response(ctrl, "  Rule matching DNS wildcard");
-              break;
-
-            default:
-              /* Do nothing, as it shouldn't ever happen. */
-          }
-        }
-      }
-
-      pr_ctrls_add_response(ctrl, "  Satisfy %s",
-        cls->cls_satisfy == PR_CLASS_SATISFY_ANY ? "any rule" : "all rules");
-
-      cls = pr_class_get(cls);
-
-      /* For a prettier output. */
-      if (cls)
-        pr_ctrls_add_response(ctrl, "%s", "");
-    }
-
-    return 0;
-
-  /* Handle 'dump config' requests */
-  } else if (strcmp(reqargv[0], "config") == 0) {
-    server_rec *s;
-
-    ctrls_dump_ctrl = ctrl;
-
-    for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
-      pr_ctrls_add_response(ctrl, "%s", "");
-      pr_ctrls_add_response(ctrl, "Config for %s:", s->ServerName);
-      pr_conf_debug_config(ctrls_admin_printf, s->conf, NULL);
-    }
-
-  /* Handle 'dump dirs' requests */
-  } else if (strcmp(reqargv[0], "dirs") == 0) {
-    pr_ctrls_add_response(ctrl, "'dump dirs' currently not supported");
-    return -1;
-
-  /* Handle 'dump memory' requests */
-  } else if (strcmp(reqargv[0], "memory") == 0) {
-
-    ctrls_dump_ctrl = ctrl;
-    pr_pool_debug_memory(ctrls_admin_printf);
-
-    pr_ctrls_add_response(ctrl, "memory dumped");
-
-  /* Handle 'dump vars' requests */
-  } else if (strcmp(reqargv[0], "vars") == 0) {
-    pr_ctrls_add_response(ctrl, "'dump vars' currently not supported");
-    return -1;
-
-  } else {
-    pr_ctrls_add_response(ctrl, "unknown dump action: '%s'", reqargv[0]);
-    return -1;
   }
 
   return 0;
@@ -1118,8 +997,6 @@ static ctrls_acttab_t ctrls_admin_acttab[] = {
     ctrls_handle_debug },
   { "down",     "disable an individual virtual server", NULL,
     ctrls_handle_down },
-  { "dump",	"dump internal information",	NULL,
-    ctrls_handle_dump },
   { "get",      "list configuration data",	NULL,
     ctrls_handle_get },
   { "kick",	"disconnect a class, host, or user",	NULL,
