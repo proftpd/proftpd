@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.115 2003-08-09 08:09:28 castaglia Exp $
+ * $Id: dirtree.c,v 1.116 2003-08-18 20:13:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1552,21 +1552,19 @@ int match_ip(pr_netaddr_t *cli_addr, const char *cli_str,
       return 1;
 
   } else {
+    pr_netaddr_t *acl_addr = NULL;
     int fnm_flags = PR_FNM_NOESCAPE|PR_FNM_CASEFOLD;
     pool *tmp_pool = make_sub_pool(permanent_pool);
     const char *acl_ascii = NULL, *cli_ascii = NULL;
 
-    pr_netaddr_t *acl_addr = pr_netaddr_get_addr(tmp_pool, acl_str, NULL);
+    if (strpbrk(acl_str, "[*?") == NULL)
+      acl_addr = pr_netaddr_get_addr(tmp_pool, acl_str, NULL);
 
     /* As acl_str may contain the '*' globbing character, an attempt
      * to resolve it to an IP address may very well fail, in which case this
      * will be NULL.  Handle this case accordingly.
      */
-    if (acl_addr)
-      acl_ascii = pr_netaddr_get_ipstr(acl_addr);
-    else
-      acl_ascii = acl_str;
-
+    acl_ascii = acl_addr ? pr_netaddr_get_ipstr(acl_addr) : acl_str;
     cli_ascii = pr_netaddr_get_ipstr(cli_addr);
 
     log_debug(DEBUG6, "comparing addresses '%s' (%s) and '%s' (%s)",
