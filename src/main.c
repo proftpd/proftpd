@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.148 2002-12-17 16:06:43 castaglia Exp $
+ * $Id: main.c,v 1.149 2002-12-18 02:59:34 jwm Exp $
  */
 
 #include "conf.h"
@@ -138,7 +138,8 @@ extern unsigned char unixpw_persistent;
 /* from response.c */
 extern pr_response_t *resp_list, *resp_err_list;
 
-static int nodaemon = 0;
+static int nodaemon  = 0;
+static int quiet     = 0;
 static int shutdownp = 0;
 
 /* Signal handling */
@@ -2218,7 +2219,7 @@ static void standalone_main(void) {
   is_standalone = TRUE;
 
   if (nodaemon) {
-    log_stderr(TRUE);
+    log_stderr(quiet ? FALSE : TRUE);
     close(fileno(stdin));
     close(fileno(stdout));
 
@@ -2270,17 +2271,18 @@ extern int optind,opterr,optopt;
 
 #ifdef HAVE_GETOPT_LONG
 static struct option opts[] = {
-  { "nodaemon",	  0, NULL, 'n' },
-  { "debug",	  1, NULL, 'd' },
-  { "define",	  1, NULL, 'D' },
-  { "config",	  1, NULL, 'c' },
-  { "persistent", 1, NULL, 'p' },
-  { "list",       0, NULL, 'l' },
-  { "version",    0, NULL, 'v' },
-  { "version-status",0,NULL,1 },
-  { "configtest", 0, NULL, 't' },
-  { "help",	0, NULL, 'h' },
-  { NULL,	0, NULL,  0  }
+  { "nodaemon",	      0, NULL, 'n' },
+  { "quiet",	      0, NULL, 'q' },
+  { "debug",	      1, NULL, 'd' },
+  { "define",	      1, NULL, 'D' },
+  { "config",	      1, NULL, 'c' },
+  { "persistent",     1, NULL, 'p' },
+  { "list",           0, NULL, 'l' },
+  { "version",        0, NULL, 'v' },
+  { "version-status", 0, NULL, 1   },
+  { "configtest",     0, NULL, 't' },
+  { "help",	      0, NULL, 'h' },
+  { NULL,	      0, NULL,  0  }
 };
 #endif /* HAVE_GETOPT_LONG */
 
@@ -2290,7 +2292,9 @@ static struct option_help {
   { "--help", "-h",
     "Display proftpd usage"},
   { "--nodaemon", "-n",
-    "Disable background daemon mode (all output goes to tty, instead of syslog)" },
+    "Disable background daemon mode and send all output to stderr)" },
+  { "--quiet", "-q",
+    "Don't send output to stderr when running with -n or --nodaemon" },
   { "--debug", "-d [level]",
     "Set debugging level (0-9, 9 = most debugging)" },
   { "--define", "-D [definition]",
@@ -2305,7 +2309,7 @@ static struct option_help {
     "Test the syntax of the specified config" },
   { "--version", "-v",
     "Print version number and exit" },
-  { "--version-status","-vv",
+  { "--version-status", "-vv",
     "Print extended version information and exit" },
   { NULL, NULL, NULL }
 };
@@ -2328,7 +2332,7 @@ static void show_usage(int exit_code) {
 
 int main(int argc, char *argv[], char **envp) {
   int optc, check_config_syntax = 0, show_version = 0;
-  const char *cmdopts = "D:nd:c:p:lhtv";
+  const char *cmdopts = "D:nqd:c:p:lhtv";
   mode_t *main_umask = NULL;
   socklen_t socketp;
   struct sockaddr peer;
@@ -2399,6 +2403,8 @@ int main(int argc, char *argv[], char **envp) {
    * --config path
    * -d n               set the debug level
    * --debug n
+   * -q                 quiet mode; don't log to stderr when not daemonized
+   * --quiet
    * -n                 standalone server does not daemonize, all logging
    * --nodaemon         redirected to stderr
    * -t                 syntax check of the configuration file
@@ -2432,6 +2438,9 @@ int main(int argc, char *argv[], char **envp) {
       break;
     case 'n':
       nodaemon++;
+      break;
+    case 'q':
+      quiet++;
       break;
     case 'd':
       if (!optarg) {

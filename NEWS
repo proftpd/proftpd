@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.324 2002-12-15 18:05:09 jwm Exp $
+$Id: NEWS,v 1.325 2002-12-18 02:59:33 jwm Exp $
 
 CVS
 ---------------------------------
@@ -60,6 +60,8 @@ CVS
 - Bug 1875 - same radius packet id for start- and stop-accounting record.
 - Bug 1883 - socklen_t patch. Thanks to Andy Igoshin <ai@vsu.ru> for the
   patch.
+- Bug 1885 - -q/--quiet option for use with the -n/--nodaemon flag. Useful
+  for running proftpd from inittab or with daemontools.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------
