@@ -1,7 +1,9 @@
-$Id: NEWS,v 1.158 2002-05-08 19:44:12 castaglia Exp $
+$Id: NEWS,v 1.159 2002-05-08 20:55:30 flyhmstr Exp $
 
 1.2.5rc2 - CVS
 ---------------------------------
+- Migrated to the new form of the directive list from the pdd sgml sources
+  (ML)
 - Bug 1563 - Moved checking for bad address lookup up, to prevent segfault
              when using MasqueradeAddress
 - Bug 1567 - Fixed parsing of AuthAliasOnly to honor Boolean parameter
