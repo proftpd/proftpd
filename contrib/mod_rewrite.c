@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.8 2003-04-23 00:28:10 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.9 2003-04-23 18:55:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1623,18 +1623,18 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
     /* If we've already seen this Rule, skip on to the next Rule. */
     if (seen_rules->nelts > 0) {
       register unsigned int i = 0;
-      unsigned char seen_rule = FALSE;
+      unsigned char saw_rule = FALSE;
       unsigned int id = *((unsigned int *) c->argv[4]), *ids = seen_rules->elts;
 
       for (i = 0; i < seen_rules->nelts; i++) {
         if (ids[i] == id) {
-          seen_rule = TRUE;
+          saw_rule = TRUE;
           break;
         }
       }
 
-      if (seen_rule) {
-        rewrite_log("rewrite_fixup(): already saw this RewriteRule, skipping");
+      if (saw_rule) {
+        rewrite_log("rewrite_fixup(): already saw this Rule, skipping");
         c = find_config_next(c, c->next, CONF_PARAM, "RewriteRule", FALSE);
         continue;
       }
