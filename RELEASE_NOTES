@@ -27,6 +27,11 @@ files.
         MaxConnectionsPerHost limit is evaluated prior to authentication,
         i.e. before the client has sent any USER and PASS commands.
 
+      UseSendfile
+        ProFTPD now automatically checks for sendfile support, and uses
+        it if present.  The UseSendfile directive can be used to configure
+        proftpd not to use the sendfile() function if necessary.
+
   + Enhanced configuration directives:
       ExtendedLog's new SEC logging class.
 
@@ -39,4 +44,4 @@ files.
   + New modules:
       mod_dso
 
-Last Updated: $Date: 2004-11-10 18:19:56 $
+Last Updated: $Date: 2004-11-10 18:34:30 $
