@@ -24,7 +24,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.23 2002-06-11 17:09:45 castaglia Exp $
+ * $Id: proftpd.h,v 1.24 2002-06-22 00:47:07 castaglia Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -218,6 +218,7 @@ extern const char	*pwdfname,*grpfname;
 #define TIMER_IDLE		2
 #define TIMER_NOXFER		3
 #define TIMER_STALLED		4
+#define TIMER_SESSION		5
 
 /* Response structure */
 

@@ -25,7 +25,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.74 2002-06-22 00:24:50 castaglia Exp $
+ * $Id: mod_auth.c,v 1.75 2002-06-22 00:47:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -39,6 +39,7 @@ module auth_module;
 
 static int logged_in = 0;
 static int auth_tries = 0;
+static unsigned int TimeoutSession = 0;
 
 static void _do_user_counts(void);
 
@@ -100,8 +101,20 @@ int _login_timeout(CALLBACK_FRAME)
   main_exit((void*) LOG_NOTICE, "FTP login timed out, disconnected.",
 	    (void*) 0, NULL);
   
-/* should never be reached */
-  return 0;		/* Don't restart the timer */
+  /* Do not restart the timer (should never be reached). */
+  return 0;
+}
+
+static int session_timeout(CALLBACK_FRAME) {
+
+  send_response_async(R_421, "Session Timeout (%u seconds): "
+    "closing control connection", TimeoutSession);
+
+  main_exit((void *) LOG_NOTICE, "FTP session timed out, disconnected",
+    (void *) 0, NULL);
+
+  /* no need to restart the timer -- session's over */
+  return 0;
 }
 
 static int auth_child_init(void) {
@@ -174,6 +187,99 @@ static int _do_auth(pool *p, xaset_t *conf, char *u, char *pw)
     }
   }
 
+MODRET post_cmd_pass(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  unsigned int ctxt_precedence = 0;
+  unsigned char have_user_timeout, have_group_timeout, have_class_timeout,
+    have_all_timeout;
+
+  have_user_timeout = have_group_timeout = have_class_timeout =
+    have_all_timeout = FALSE;
+
+  if ((c = find_config(CURRENT_CONF, CONF_PARAM, "TimeoutSession",
+      FALSE)) != NULL) {
+
+    if (c->argc == 3) {
+      if (!strcmp(c->argv[1], "user")) {
+        if (user_expression((char **) &c->argv[2])) {
+
+          if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
+
+            /* Set the context precedence. */
+            ctxt_precedence = *((unsigned int *) c->argv[1]);
+
+            TimeoutSession = *((unsigned int *) c->argv[0]);
+
+            have_group_timeout = have_class_timeout = have_all_timeout = FALSE;
+            have_user_timeout = TRUE;
+          }
+        }
+
+      } else if (!strcmp(c->argv[1], "group")) {
+        if (group_expression((char **) &c->argv[2])) {
+
+          if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
+
+            /* Set the context precedence. */
+            ctxt_precedence = *((unsigned int *) c->argv[1]);
+
+            TimeoutSession = *((unsigned int *) c->argv[0]);
+
+            have_user_timeout = have_class_timeout = have_all_timeout = FALSE;
+            have_group_timeout = TRUE;
+          }
+        }
+
+      } else if (!strcmp(c->argv[1], "class")) {
+        if (session.class && session.class->name &&
+            !strcmp(session.class->name, c->argv[2])) {
+
+          if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
+
+            /* Set the context precedence. */
+            ctxt_precedence = *((unsigned int *) c->argv[1]);
+
+            TimeoutSession = *((unsigned int *) c->argv[0]);
+
+            have_user_timeout = have_group_timeout = have_all_timeout = FALSE;
+            have_class_timeout = TRUE;
+          }
+        }
+      }
+
+    } else {
+
+      if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
+
+        /* Set the context precedence. */
+        ctxt_precedence = *((unsigned int *) c->argv[1]);
+
+        TimeoutSession = *((unsigned int *) c->argv[0]);
+
+        have_user_timeout = have_group_timeout = have_class_timeout = FALSE;
+        have_all_timeout = TRUE;
+      }
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "TimeoutSession", FALSE);
+  }
+
+  /* If configured, start a session timer.  The timer ID value for
+   * session timers will not be #defined, as I think that is a bad approach.
+   * A better mechanism would be to use the random timer ID generation, and
+   * store the returned ID in order to later remove the timer.
+   */
+
+  if (have_user_timeout || have_group_timeout ||
+      have_class_timeout || have_all_timeout) {
+    log_debug(DEBUG4, "setting TimeoutSession of %u seconds for current %s",
+      have_user_timeout ? "user" : have_group_timeout ? "group" :
+      have_class_timeout ? "class" : "all", TimeoutSession);
+    add_timer(TimeoutSession, TIMER_SESSION, &auth_module, session_timeout);
+  }
+
+  return HANDLED(cmd);
+}
 
   if(cpw) {
     if(!auth_getpwnam(p,u))
@@ -1821,6 +1927,110 @@ MODRET add_defaultchdir(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+MODRET set_timeoutsession(cmd_rec *cmd) {
+  unsigned int seconds = 0, precedence = 0;
+  config_rec *c = NULL;
+
+  int ctxt = (cmd->config && cmd->config->config_type != CONF_PARAM ?
+     cmd->config->config_type : cmd->server->config_type ?
+     cmd->server->config_type : CONF_ROOT);
+
+  /* this directive must have either 1 or 3 arguments */
+  if (cmd->argc-1 != 1 && cmd->argc-1 != 3)
+    CONF_ERROR(cmd, "missing arguments");
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_ANON|CONF_VIRTUAL|CONF_GLOBAL);
+
+  /* Set the precedence for this config_rec based on its configuration
+   * context.
+   */
+  if (ctxt & CONF_GLOBAL)
+    precedence = 1;
+
+  /* these will never appear simultaneously */
+  else if (ctxt & CONF_ROOT || ctxt & CONF_VIRTUAL)
+    precedence = 2;
+
+  else if (ctxt & CONF_ANON)
+    precedence = 3;
+
+  if ((seconds = atoi(cmd->argv[1])) < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+      "seconds must be greater than or equal to 0", NULL));
+
+  } else if (seconds == 0) {
+
+    /* do nothing */
+    return HANDLED(cmd);
+  }
+
+  if (cmd->argc-1 == 3) {
+    if (!strcmp(cmd->argv[2], "user") ||
+        !strcmp(cmd->argv[2], "group") ||
+        !strcmp(cmd->argv[2], "class")) {
+
+       /* no op */
+
+     } else
+       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[0],
+         ": unknown classifier used: '", cmd->argv[2], "'", NULL));
+  }
+
+  if (cmd->argc-1 == 1) {
+    c = add_config_param(cmd->argv[0], 2, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[0]) = seconds;
+    c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[1]) = precedence;
+ 
+  } else if (cmd->argc-1 == 3) {
+    array_header *acl = NULL;
+    int argc = cmd->argc - 3;
+    char **argv = cmd->argv + 2;
+
+    acl = parse_group_expression(cmd->tmp_pool, &argc, argv);
+
+    c = add_config_param(cmd->argv[0], 0);
+    c->argc = argc + 2;
+
+    /* add 3 to argc for the argv of the config_rec: one for the
+     * seconds value, one for the precedence, one for the classifier,
+     * and one for the terminating NULL
+     */
+    c->argv = pcalloc(c->pool, ((argc + 4) * sizeof(char *)));
+
+    /* capture the config_rec's argv pointer for doing the by-hand
+     * population
+     */
+    argv = (char **) c->argv;
+
+    /* Copy in the seconds. */
+    *argv = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) *argv++) = seconds;
+
+    /* Copy in the precedence. */
+    *argv = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) *argv++) = precedence;
+
+    /* Copy in the classifier. */
+    *argv++ = pstrdup(c->pool, cmd->argv[2]);
+
+    /* now, copy in the expression arguments */
+    if (argc && acl) {
+      while (argc--) {
+        *argv++ = pstrdup(c->pool, *((char **) acl->elts));
+        acl->elts = ((char **) acl->elts) + 1;
+      }
+    }
+
+    /* don't forget the terminating NULL */
+    *argv = NULL;
+  }
+
+  c->flags |= CF_MERGEDOWN_MULTI;
+  return HANDLED(cmd);
+}
+
 MODRET add_userdirroot (cmd_rec *cmd) {
   int bool;
   CHECK_ARGS(cmd,1);
@@ -1839,6 +2049,7 @@ static conftable auth_conftab[] = {
   { "DefaultChdir",		add_defaultchdir,		NULL },
   { "LoginPasswordPrompt",	set_loginpasswordprompt,	NULL },
   { "RootLogin",		set_rootlogin,			NULL },
+  { "TimeoutSession",		set_timeoutsession,		NULL },
   { "UserDirRoot",		add_userdirroot,		NULL },
   { NULL,			NULL,				NULL }
 };
@@ -1848,6 +2059,7 @@ static cmdtable auth_cmdtab[] = {
   { CMD, C_USER, G_NONE, cmd_user,	FALSE,	FALSE, CL_AUTH },
   { PRE_CMD, C_PASS, G_NONE, pre_cmd_pass, FALSE, FALSE, CL_AUTH },
   { CMD, C_PASS, G_NONE, cmd_pass,	FALSE,  FALSE, CL_AUTH },
+  { POST_CMD, C_PASS, G_NONE, post_cmd_pass, FALSE, FALSE, CL_AUTH },
   { CMD, C_ACCT, G_NONE, cmd_acct,	FALSE,  FALSE, CL_AUTH },
   { CMD, C_REIN, G_NONE, cmd_rein,	FALSE,  FALSE, CL_AUTH },
   { 0, NULL }
