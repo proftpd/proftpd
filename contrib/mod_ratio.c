@@ -575,31 +575,33 @@ MODRET
 cmd_site (cmd_rec * cmd)
 {
   char buf[128] = {'\0'};
-
-  if (!strcasecmp (cmd->argv[1], "RATIO"))
-    {
-      _calc_ratios (cmd);
-      snprintf (buf, sizeof(buf), RATIO_STUFFS);
-      add_response (R_214, "Current Ratio: ( %s )", buf);
-      if (stats.frate)
-	add_response (R_214,
-		      "Files: %s  Down: %i  Up: %i  CR: %i file%s",
-		      stats.ftext, stats.fretr, stats.fstor,
-		      stats.files, (stats.files != 1) ? "s" : "");
-      if (stats.brate)
-	add_response (R_214,
-		      "Bytes: %s  Down: %imb  Up: %imb  CR: %i Mbytes",
-		      stats.btext, (stats.bretr / 1024), (stats.bstor / 1024),
-		      (stats.bytes / 1024), stats.bytes);
-      return HANDLED (cmd);
-    }
-
-  if (!strcasecmp (cmd->argv[1], "HELP"))
-    {
-      add_response (R_214,            
-                    "The following SITE extensions are recognized:");
-      add_response (R_214, "RATIO " "-- show all ratios in effect");
-    }
+  
+  if(cmd->argc < 2)
+    return DECLINED(cmd);
+  
+  if(!strcasecmp(cmd->argv[1], "RATIO")) {
+    _calc_ratios(cmd);
+    snprintf(buf, sizeof(buf), RATIO_STUFFS);
+    add_response(R_214, "Current Ratio: ( %s )", buf);
+    if(stats.frate)
+      add_response(R_214,
+		   "Files: %s  Down: %i  Up: %i  CR: %i file%s",
+		   stats.ftext, stats.fretr, stats.fstor,
+		   stats.files, (stats.files != 1) ? "s" : "");
+    if(stats.brate)
+      add_response(R_214,
+		   "Bytes: %s  Down: %imb  Up: %imb  CR: %i Mbytes",
+		   stats.btext, (stats.bretr / 1024), (stats.bstor / 1024),
+		   (stats.bytes / 1024), stats.bytes);
+    return HANDLED(cmd);
+  }
+  
+  if(!strcasecmp (cmd->argv[1], "HELP")) {
+    add_response(R_214,
+		 "The following SITE extensions are recognized:");
+    add_response(R_214, "RATIO " "-- show all ratios in effect");
+  }
+  
   return DECLINED (cmd);
 }
 
