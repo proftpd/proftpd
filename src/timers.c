@@ -25,7 +25,7 @@
 
 /*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.17 2003-01-02 18:25:28 castaglia Exp $
+ * $Id: timers.c,v 1.18 2003-01-07 17:31:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -77,7 +77,7 @@ static int process_timers(int elapsed) {
     return 0;
 
   _indispatch++;
-  pr_alarms_unblock();
+  pr_alarms_block();
 
   if (elapsed) {
     for (t = (timer_t *) timers->xas_list; t; t=next) {

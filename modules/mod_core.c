@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.148 2003-01-05 01:29:38 jwm Exp $
+ * $Id: mod_core.c,v 1.149 2003-01-07 17:30:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3909,7 +3909,7 @@ static cmdtable core_cmdtab[] = {
   { CMD, C_QUIT, G_NONE,  core_quit,	FALSE,	FALSE,  CL_INFO },
   { CMD, C_NOOP, G_NONE,  core_noop,	FALSE,	FALSE,  CL_MISC },
   { CMD, C_FEAT, G_NONE,  core_feat,	FALSE,	FALSE,  CL_INFO },
-  { CMD, C_OPTS, G_NONE,  core_opts,    TRUE,	FALSE,	CL_MISC },
+  { CMD, C_OPTS, G_NONE,  core_opts,    FALSE,	FALSE,	CL_MISC },
   { 0, NULL }
 };
 
