@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.467 2003-08-18 20:13:05 castaglia Exp $
+$Id: NEWS,v 1.468 2003-08-28 00:37:12 jwm Exp $
 
 CVS
 ---------------------------------
@@ -61,6 +61,12 @@ CVS
 - Bug 2148 - Enforce PR_TUNABLE_LOGIN_MAX.
 - Bug 2141 - Glob Allow/Deny parameters cause extraneous log messages when
   comparing addresses.
+- Bug 1804 - RPM spec file improvements
+  The spec file now has xinetd support, builds under newer version of RPM,
+  installs standalone support with the main proftpd RPM, and accepts --with
+  mod_modname arguments during the build process.
+- Bug 2127 - Entry in the file section
+  The RPM spec's %files section now honors the install prefix.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------
