@@ -1559,7 +1559,7 @@ static unsigned char tls_dotlogin_allow(const char *user) {
   tmp_pool = make_sub_pool(permanent_pool);
 
   PRIVS_ROOT
-  if (!(pwd = auth_getpwnam(tmp_pool, user))) {
+  if (!(pwd = pr_auth_getpwnam(tmp_pool, user))) {
     PRIVS_RELINQUISH
     destroy_pool(tmp_pool);
     return FALSE;

@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.36 2004-09-04 23:05:17 castaglia Exp $
+ * $Id: fsio.c,v 1.37 2004-10-30 23:16:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1165,7 +1165,7 @@ int pr_fs_interpolate(const char *path, char *buf, size_t buflen) {
     p = make_sub_pool(permanent_pool);
     pr_pool_tag(p, "pr_fs_interpolate() pool");
 
-    pw = auth_getpwnam(p, user);
+    pw = pr_auth_getpwnam(p, user);
 
     if (!pw) {
       destroy_pool(p);

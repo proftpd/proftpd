@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.159 2004-10-15 17:07:49 castaglia Exp $
+ * $Id: dirtree.c,v 1.160 2004-10-30 23:16:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2301,7 +2301,8 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
     /* Attempt chown on all new files. */
     struct passwd *pw;
 
-    if ((pw = auth_getpwnam(p, owner)) != NULL)
+    pw = pr_auth_getpwnam(p, owner);
+    if (pw != NULL)
       session.fsuid = pw->pw_uid;
   }
 
@@ -2309,7 +2310,8 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
     /* Attempt chgrp on all new files. */
     struct group *gr;
 
-    if ((gr = auth_getgrnam(p,owner)) != NULL)
+    gr = pr_auth_getgrnam(p, owner);
+    if (gr != NULL)
       session.fsgid = gr->gr_gid;
   }
 
@@ -2447,7 +2449,7 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   if ((owner = get_param_ptr(CURRENT_CONF, "UserOwner", FALSE)) != NULL) {
 
     /* Attempt chown() on all new files. */
-    struct passwd *pw = auth_getpwnam(p, owner);
+    struct passwd *pw = pr_auth_getpwnam(p, owner);
 
     if (pw != NULL)
       session.fsuid = pw->pw_uid;
@@ -2456,7 +2458,7 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   if ((owner = get_param_ptr(CURRENT_CONF, "GroupOwner",FALSE)) != NULL) {
 
     /* Attempt chgrp() on all new files. */
-    struct group *gr = auth_getgrnam(p, owner);
+    struct group *gr = pr_auth_getgrnam(p, owner);
 
     if (gr != NULL)
       session.fsgid = gr->gr_gid;

@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.70 2004-09-13 01:47:21 castaglia Exp $
+ * $Id: support.c,v 1.71 2004-10-30 23:16:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -247,7 +247,7 @@ char *dir_interpolate(pool *p, const char *path) {
     if (!*user)
       user = session.user;
 
-    pw = auth_getpwnam(p, user);
+    pw = pr_auth_getpwnam(p, user);
 
     if (!pw) {
       errno = ENOENT;

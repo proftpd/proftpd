@@ -24,7 +24,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lwrap -lnsl$
- * $Id: mod_wrap.c,v 1.13 2003-11-09 21:28:29 castaglia Exp $
+ * $Id: mod_wrap.c,v 1.14 2004-10-30 23:16:41 castaglia Exp $
  */
 
 #define MOD_WRAP_VERSION "mod_wrap/1.2.3"
@@ -105,7 +105,7 @@ static char *wrap_get_user_table(cmd_rec *cmd, char *user,
   char *realpath = NULL;
   struct passwd *pw = NULL;
 
-  pw = auth_getpwnam(cmd->pool, user);
+  pw = pr_auth_getpwnam(cmd->pool, user);
 
   /* For the dir_realpath() function to work, some session members need to
    * be set.
@@ -758,7 +758,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
     array_header *group_array = make_array(cmd->pool, 0, sizeof(char *));
 
     while (access_conf) {
-      if (auth_getgroups(cmd->pool, user, &gid_array, &group_array) < 1) {
+      if (pr_auth_getgroups(cmd->pool, user, &gid_array, &group_array) < 1) {
         pr_log_debug(DEBUG3, MOD_WRAP_VERSION
           ": no supplemental groups found for user '%s'", user);
 
