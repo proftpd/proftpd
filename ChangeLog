@@ -1,3 +1,52 @@
+2000-08-01 15:13  macgyver
+
+	* NEWS (1.63), modules/mod_auth.c (1.38): Moved code around to
+	eliminate a race with MaxClients.
+
+2000-08-01 14:51  macgyver
+
+	* NEWS (1.62), contrib/mod_ratio.c (1.12), modules/mod_site.c
+	(1.9): Fixed a minor bug in SITE HELP.
+
+2000-08-01 13:59  macgyver
+
+	* NEWS (1.61), modules/mod_core.c (1.39), modules/mod_xfer.c
+	(1.40): Added in DeleteAbortedStores and did some minor cleanups.
+
+2000-08-01 13:43  macgyver
+
+	* contrib/mod_quota.c (1.3): unlink should never be called directly
+	-- use fs_unlink instead.
+
+2000-08-01 13:32  macgyver
+
+	* NEWS (1.60), modules/mod_pam.c (1.21): Solaris requires you to
+	have PAM_TTY and PAM_RHOST defined before you call
+	pam_open_session.  No, it doesn't make sense to me either. :)
+
+2000-07-28 17:27  macgyver
+
+	* lib/pr_fnmatch.c (1.2): Optimizations for fnmatch()
+	implementation.
+
+2000-07-28 17:17  macgyver
+
+	* contrib/mod_ldap.c (1.12): Updated mod_ldap to 2.7.2.
+
+2000-07-28 16:56  macgyver
+
+	* modules/mod_xfer.c (1.39): Don't check for PORT in cmd_stor if
+	we're in passive mode.
+
+2000-07-28 08:50  macgyver
+
+	* NEWS (1.59), modules/mod_site.c (1.8): AllowChmod now works in
+	almost any context.
+
+2000-07-28 01:47  macgyver
+
+	* ChangeLog (1.21, R1_2_0RC2): Updated ChangeLog.
+
 2000-07-28 00:52  macgyver
 
 	* NEWS (1.58), modules/mod_site.c (1.7) (utags: R1_2_0RC2):
@@ -111,7 +160,7 @@
 
 2000-07-21 13:45  macgyver
 
-	* ChangeLog (1.20, R1_2_0RC2): Updated changelog.
+	* ChangeLog (1.20): Updated changelog.
 
 2000-07-21 13:44  macgyver
 
