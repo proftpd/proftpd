@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.209 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: main.c,v 1.210 2003-11-09 21:24:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2619,7 +2619,7 @@ int main(int argc, char *argv[], char **envp) {
         pr_log_pri(PR_LOG_ERR, "Fatal: -d requires debugging level argument.");
         exit(1);
       }
-      log_setdebuglevel(atoi(optarg));
+      pr_log_setdebuglevel(atoi(optarg));
       break;
 
     case 'c':

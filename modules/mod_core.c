@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.205 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: mod_core.c,v 1.206 2003-11-09 21:24:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4495,7 +4495,7 @@ static int core_sess_init(void) {
   /* Check for a configured DebugLevel */
   if ((debug_level = get_param_ptr(main_server->conf, "DebugLevel",
       FALSE)) != NULL)
-    log_setdebuglevel(*debug_level);
+    pr_log_setdebuglevel(*debug_level);
 
   /* Check for a server-specific AuthOrder. */
   if ((c = find_config(main_server->conf, CONF_PARAM, "AuthOrder",
