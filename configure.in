@@ -877,6 +877,9 @@ fi
   esac
 fi
 
+dnl Custom-rolled macro for checking return type of setgrent(3)
+PR_FUNC_SETGRENT_VOID
+
 AC_CHECK_LIB(curses, initscr,
   [CURSES_LIBS="-lcurses"
    AC_DEFINE(HAVE_LIBCURSES, 1, [Define if you have curses])])

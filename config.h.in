@@ -138,6 +138,9 @@
 /* Define if the `setpgrp' function takes no argument.  */
 #undef SETPGRP_VOID
 
+/* Define if the `setgrent` function returns void.  */
+#undef SETGRENT_VOID
+
 /* Define to `unsigned' if <sys/types.h> doesn't define.  */
 #undef size_t
 

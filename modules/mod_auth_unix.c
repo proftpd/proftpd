@@ -26,7 +26,7 @@
 
 /*
  * Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.2 2003-01-02 17:28:19 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.3 2003-02-06 16:38:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -70,17 +70,10 @@
 # endif
 #endif /* USE_SIA */
 
-/* Note: FreeBSD seems to be alone amongst the Unix flavors in defining
- * setgrent(3) to return an int, rather than void.  This macro avoids
- * compiler warnings and other possible nastiness.
- *
- * Note that Mac OS X is also this way; we should have autoconf check for
- * the return value of setgrent() so this can be a generic check.
- */
-#ifdef __FreeBSD__
-# define RETSETGRENTTYPE	int
-#else
+#ifdef SETGRENT_VOID
 # define RETSETGRENTTYPE	void
+#else
+# define RETSETGRENTTYPE	int
 #endif
 
 #include "privs.h"
@@ -164,7 +157,7 @@ static RETSETGRENTTYPE p_setgrent(void) {
       log_pri(PR_LOG_ERR, "Unable to open group file %s for reading: %s",
         GROUP, strerror(errno));
 
-#ifdef __FreeBSD__
+#ifndef SETGRENT_VOID
   return 0;
 #endif
 }

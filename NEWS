@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.364 2003-02-01 18:11:49 castaglia Exp $
+$Id: NEWS,v 1.365 2003-02-06 16:38:41 castaglia Exp $
 
 CVS
 ---
@@ -8,6 +8,9 @@ CVS
   fix was simply to use size_t, rather than trying to determine and use
   __size_t (glob.h was intended to be used during library compilation, not
   during application compilation).
+- Bug 1950 - OSX setgrent(3) returns int, causing compiler warning.  Unlike
+  most other Unix flavours (but like FreeBSD), OSX's setgrent(3) returns
+  int, rather than void.  A configure check was written to test for this. 
 
 1.2.8rc2 - Released 29-Jan-2003
 ---------------------------------
