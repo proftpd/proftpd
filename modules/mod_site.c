@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.19 2002-09-28 02:01:47 castaglia Exp $
+ * $Id: mod_site.c,v 1.20 2002-09-28 02:04:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -64,7 +64,7 @@ static char *_get_full_cmd(cmd_rec *cmd)
 
 MODRET site_chgrp(cmd_rec *cmd) {
   gid_t gid;
-  char *path = NULL;
+  char *path = NULL, *tmp = NULL;
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *preg;
