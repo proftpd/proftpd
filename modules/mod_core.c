@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.230 2004-04-19 23:59:23 castaglia Exp $
+ * $Id: mod_core.c,v 1.231 2004-04-28 21:29:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4142,6 +4142,11 @@ MODRET core_rnto(cmd_rec *cmd) {
       pr_response_add_err(R_550, "Rename %s: %s", cmd->arg, strerror(errno));
       return ERROR(cmd);
     }
+
+    /* Once copied, unlink the original file. */
+    if (pr_fsio_unlink(session.xfer.path) < 0)
+      pr_log_debug(DEBUG0, "error unlinking '%s': %s", session.xfer.path,
+        strerror(errno));
   }
 
   pr_response_add(R_250, "Rename successful");
