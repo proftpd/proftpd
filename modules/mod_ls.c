@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.19 1999-12-28 15:54:44 macgyver Exp $
+ * $Id: mod_ls.c,v 1.20 2000-01-23 18:38:11 macgyver Exp $
  */
 
 #include "conf.h"
@@ -757,7 +757,7 @@ static
 void _parse_options(char **opt, int *glob_flags)
 {
   while(isspace((UCHAR)**opt))
-    opt++;
+    (*opt)++;
 
   while(*opt && **opt == '-') {
     while((*opt)++ && isalnum((UCHAR)**opt)) {
