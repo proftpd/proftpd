@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.198 2003-11-01 07:11:07 castaglia Exp $
+ * $Id: mod_core.c,v 1.199 2003-11-06 00:10:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -520,6 +520,7 @@ MODRET set_servertype(cmd_rec *cmd) {
 }
 
 MODRET set_setenv(cmd_rec *cmd) {
+#ifdef HAVE_SETENV
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT);
 
@@ -529,6 +530,13 @@ MODRET set_setenv(cmd_rec *cmd) {
       strerror(errno), NULL));
 
   return HANDLED(cmd);
+
+#else
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
+    " directive cannot be used on this system, as it does not have the "
+    "setenv() function.", NULL));
+
+#endif /* HAVE_SETENV */
 }
 
 MODRET add_transferlog(cmd_rec *cmd) {
@@ -1058,6 +1066,7 @@ MODRET set_umask(cmd_rec *cmd) {
 }
 
 MODRET set_unsetenv(cmd_rec *cmd) {
+#ifdef HAVE_UNSETENV
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
  
@@ -1067,6 +1076,13 @@ MODRET set_unsetenv(cmd_rec *cmd) {
       strerror(errno), NULL));
  
   return HANDLED(cmd);
+
+#else
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
+    " directive cannot be used on this system, as it does not have the "
+    "setenv() function.", NULL));
+
+#endif /* HAVE_UNSETENV */
 }
 
 MODRET set_rlimitcpu(cmd_rec *cmd) {

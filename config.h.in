@@ -309,6 +309,9 @@
 /* Define if you have the setegid function.  */
 #undef HAVE_SETEGID
 
+/* Define if you have the setenv function.  */
+#undef HAVE_SETENV
+
 /* Define if you have the seteuid function.  */
 #undef HAVE_SETEUID
 
@@ -359,6 +362,9 @@
 
 /* Define if you have the tzset function.  */
 #undef HAVE_TZSET
+
+/* Define if you have the unsetenv function.  */
+#undef HAVE_UNSETENV
 
 /* Define if you have the vsnprintf function.  */
 #undef HAVE_VSNPRINTF
