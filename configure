@@ -1961,7 +1961,7 @@ done
 
 test x"$install_user" = x && install_user=root
 if test x"$install_group" = x ; then
-	install_group=`sed -n 's/^\(.*\):.*:0:.*/\1/p' /etc/group 2>/dev/null`
+	install_group=`sed -n '/.*:.*:0:/{s/^\(.*\):.*:0:.*/\1/p;q;}' /etc/group 2>/dev/null`
 fi
 
 
