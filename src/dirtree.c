@@ -20,7 +20,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.26 2001-02-16 01:21:39 flood Exp $
+ * $Id: dirtree.c,v 1.27 2001-02-22 22:39:41 flood Exp $
  */
 
 /* History:
@@ -799,8 +799,10 @@ static int _dir_check_op(pool *p,xaset_t *c,int op,
     if(get_param_int(c,"AllowAll",FALSE) == 1)
       /* nop */;  
 
-    else if(get_param_int(c,"DenyAll",FALSE) == 1)
+    else if(get_param_int(c,"DenyAll",FALSE) == 1) {
       res = 0;
+      errno = EACCES;
+    }
     break;
   }
 
@@ -1149,7 +1151,7 @@ int login_check_limits(xaset_t *conf, int recurse,
 int dir_check_limits(config_rec *c, char *cmd, int hidden)
 {
   /* Check limit directives */
-  int res = 1;
+  int res = 1,ignore_hidden = -1;
   config_rec *lc = NULL;
   register int i;
 
@@ -1176,25 +1178,19 @@ int dir_check_limits(config_rec *c, char *cmd, int hidden)
             continue;
 	  
           /* Found a limit directive associated with the current
-           * command
+           * command.  ignore_hidden defaults to -1, if an explicit
+           * IgnoreHidden off is seen, it is set to 0 and the check will not
+           * be done again up the chain.  If an explicit IgnoreHidden on is
+           * seen, checking short-circuits and we set ENOENT.
            */
-          if (hidden) {
-
-            if (get_param_int(lc->subset,"IgnoreHidden",FALSE) == 1) {
-	    res = 0;
-	    errno = ENOENT;
-	    break;
-
-            } else {
-
-              /* this res value just needs to greater than 1.  Kinda hacky,
-               * I know...but it'll do for now, at least until mod_ls and
-               * these list functions are overhauled
-               */
-              res = 2;
+          if (hidden && ignore_hidden == -1) {
+            ignore_hidden = get_param_int(lc->subset,"IgnoreHidden",FALSE);
+            if(ignore_hidden == 1) {
+              res = 0;
+              errno = ENOENT;
               break;
             }
-	  }
+          }
 
           switch(_check_limit(lc)) {
           case 1:
@@ -1398,18 +1394,22 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
  * or 0 if not.
  */
 
-int dir_check_full(pool *pp, char *cmd, char *group, char *path)
+/* dir_check_full() and dir_check() both take a `hidden' argument which is a
+ * pointer to an integer. This is provided so that they can tell the calling
+ * function if an entry should be hidden or not.  This is used by mod_ls to
+ * determine if a file should be displayed.  Note that in this context, hidden
+ * means "hidden by configuration" (HideUser, etc), NOT "hidden because it's a
+ * .dotfile".  -jss 2/22/01
+ */
+
+int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
 {
   char *fullpath, *owner;
   config_rec *c;
   struct stat sbuf;
   pool *p;
   int res = 1, _umask = -1, isfile;
-  int name_hidden = FALSE, op_hidden = FALSE;
-
-  /* check the path to see if it's a hidden file by its name
-   */
-  name_hidden = dir_check_hidden(path);
+  int op_hidden = FALSE;
 
   p = make_sub_pool(pp);
 
@@ -1467,7 +1467,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path)
     if((pw = auth_getpwnam(p,owner)) != NULL) {
       session.fsuid = pw->pw_uid;
       session.fsgid = pw->pw_gid;
-  }
+    }
   }
   
   if((owner = get_param_ptr(CURRENT_CONF,"GroupOwner",FALSE)) != NULL) {
@@ -1480,43 +1480,43 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path)
   
   if(isfile != -1) {
 
-    /* if not already marked as hidden by its name, check to see if the path
-     * is to be hidden by nature of its mode
+    /* Check to see if the current config "hides" the path or not
      */
+    
     op_hidden = !_dir_check_op(p,CURRENT_CONF,OP_HIDE,sbuf.st_uid,sbuf.st_gid,
-        sbuf.st_mode);
+                                 sbuf.st_mode);
 
     res = _dir_check_op(p,CURRENT_CONF,OP_COMMAND,sbuf.st_uid,sbuf.st_gid,
       sbuf.st_mode);
-
-    /* at this point, check to see if HideNoAccess has been enabled.  If
-     * so, and if op_hidden is TRUE, then handle the scenario here.
-     */
-    if (op_hidden && (get_param_int(c->subset, "HideNoAccess",
-        FALSE) == TRUE)) {
-      errno = ENOENT;
-      res = 0;
-  }
   }
 
   if(res) {
-    res = dir_check_limits(c, cmd, (name_hidden | op_hidden));
+
+    /* Note that dir_check_limits() also handles IgnoreHidden.  If it is set,
+     * these return 0 (no access), and also set errno to ENOENT so it looks
+     * like the file doesn't exist.
+     */
+    res = dir_check_limits(c, cmd, op_hidden);
 
     /* If specifically allowed, res will be > 1 and we don't want to
      * check the command group limit
      */
     if(res == 1 && group)
-      res = dir_check_limits(c, group, (name_hidden | op_hidden));
+      res = dir_check_limits(c, group, op_hidden);
 
     /* if still == 1, no explicit allow so check lowest priority "ALL" group */
     if(res == 1)
-      res = dir_check_limits(c, "ALL", (name_hidden | op_hidden));
+      res = dir_check_limits(c, "ALL",op_hidden);
   }
 
   if(res && _umask != -1)
     umask(_umask);
 
   destroy_pool(p);
+
+  if(hidden)
+    *hidden = op_hidden;
+
   return res;
 }
 
@@ -1525,14 +1525,14 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path)
  * otherwise handed off to dir_check_full
  */
 
-int dir_check(pool *pp, char *cmd, char *group, char *path)
+int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
 {
   char *fullpath, *owner;
   config_rec *c;
   struct stat sbuf;
   pool *p;
   int res = 1, _umask = -1, isfile;
-  int name_hidden = FALSE, op_hidden = FALSE;
+  int op_hidden = FALSE;
 
   p = make_sub_pool(pp);
 
@@ -1546,12 +1546,8 @@ int dir_check(pool *pp, char *cmd, char *group, char *path)
 
   if(!c || strncmp(c->name,fullpath,strlen(c->name)) != 0) {
     destroy_pool(p);
-    return dir_check_full(pp,cmd,group,path);
+    return dir_check_full(pp,cmd,group,path,hidden);
   }
-
-  /* check the path to see if it's a hidden file by its name
-   */
-  name_hidden = dir_check_hidden(fullpath);
 
   /* Check and build all appropriate dynamic configuration entries */
   if((isfile = fs_stat(path, &sbuf)) == -1)
@@ -1604,40 +1600,34 @@ int dir_check(pool *pp, char *cmd, char *group, char *path)
      * is to be hidden by nature of its mode
      */
     op_hidden = !_dir_check_op(p, CURRENT_CONF, OP_HIDE, sbuf.st_uid,
-			     sbuf.st_gid, sbuf.st_mode);
+    			         sbuf.st_gid, sbuf.st_mode);
 
     res = _dir_check_op(p, CURRENT_CONF, OP_COMMAND, sbuf.st_uid, sbuf.st_gid,
 			sbuf.st_mode);
-
-    /* at this point, check to see if HideNoAccess has been enabled.  If
-     * so, and if op_hidden is TRUE, then handle the scenario here.
-     */
-    if (op_hidden && (get_param_int(c->subset, "HideNoAccess",
-        FALSE) == TRUE)) {
-      errno = ENOENT;
-      res = 0;
-    }
   }
   
   if(res) {
-    res = dir_check_limits(c, cmd, (name_hidden | op_hidden));
+    res = dir_check_limits(c, cmd, op_hidden);
 
     /* If specifically allowed, res will be > 1 and we don't want to
      * check the command group limit
      */
 
     if(res == 1 && group)
-      res = dir_check_limits(c, group, (name_hidden | op_hidden));
+      res = dir_check_limits(c, group, op_hidden);
     
     /* if still == 1, no explicit allow so check lowest priority "ALL" group */
     if(res == 1)
-      res = dir_check_limits(c, "ALL", (name_hidden | op_hidden));
+      res = dir_check_limits(c, "ALL", op_hidden);
   }
 
   if(res && _umask != -1)
     umask(_umask);
 
   destroy_pool(p);
+
+  if(hidden)
+    *hidden = op_hidden;
   return res;
 }
 
@@ -1646,9 +1636,9 @@ int dir_check(pool *pp, char *cmd, char *group, char *path)
  * then we hand off to dir_check()
  */
 
-int dir_check_canon(pool *pp, char *cmd, char *group, char *path)
+int dir_check_canon(pool *pp, char *cmd, char *group, char *path, int *hidden)
 {
-  return dir_check(pp,cmd,group,dir_best_path(pp,path));
+  return dir_check(pp,cmd,group,dir_best_path(pp,path),hidden);
 }
 
 /*

@@ -21,7 +21,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.9 2001-01-31 20:51:37 flood Exp $
+ * $Id: dirtree.h,v 1.10 2001-02-22 22:39:40 flood Exp $
  */
 
 #ifndef __DIRTREE_H
@@ -216,9 +216,9 @@ config_rec *dir_match_path(pool*,char*);
 void build_dyn_config(pool*,char*,struct stat*,int);
 int dir_check_hidden(const char *path);
 int dir_check_op_mode(pool*,char*,int,int,int,int);
-int dir_check_full(pool*,char*,char*,char*);
-int dir_check(pool*,char*,char*,char*);
-int dir_check_canon(pool*,char*,char*,char*);
+int dir_check_full(pool*,char*,char*,char*,int*);
+int dir_check(pool*,char*,char*,char*,int*);
+int dir_check_canon(pool*,char*,char*,char*,int*);
 int is_dotdir(const char *);
 int login_check_limits(xaset_t*,int,int,int*);
 void resolve_anonymous_dirs(xaset_t*);

@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.50 2001-02-21 03:17:14 flood Exp $
+ * $Id: mod_xfer.c,v 1.51 2001-02-22 22:39:41 flood Exp $
  */
 
 /* History Log:
@@ -368,7 +368,7 @@ MODRET pre_cmd_stor(cmd_rec *cmd) {
   
   dir = dir_best_path(cmd->tmp_pool,cmd->arg);
 
-  if(!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir)) {
+  if(!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL)) {
     add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
     return ERROR(cmd);
   }
@@ -733,7 +733,7 @@ MODRET pre_cmd_retr(cmd_rec *cmd)
 
   dir = dir_realpath(cmd->tmp_pool,cmd->arg);
 
-  if(!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir)) {
+  if(!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL)) {
     add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
     return ERROR(cmd);
   }

@@ -1,10 +1,10 @@
-$Id: NEWS,v 1.77 2001-02-22 01:48:59 flood Exp $
+$Id: NEWS,v 1.78 2001-02-22 22:39:40 flood Exp $
 
 1.2.0 (CVS)
 -------------------------------
 - mod_sql.c, mod_sql_mysql.c and mod_sql_postgres.c back in, with a new
   maintainer (replacements for mod_sqlpw and friends).
-- intead of using kill(pid,SIGCONT) to determine if scoreboard pids are
+- instead of using kill(pid,SIGCONT) to determine if scoreboard pids are
   correct, proftpd now uses kill(pid,0) which should be a lot lighter on
   heavy-load systems.  Thanks to Rob Schulhof <rrs@digisle.net> for pointing
   out that kill(pid,0) is both valid AND useful. ;) Also removed some

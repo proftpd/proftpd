@@ -19,7 +19,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.34 2001-02-13 03:05:10 flood Exp $
+ * $Id: mod_ls.c,v 1.35 2001-02-22 22:39:41 flood Exp $
  */
 
 #include "conf.h"
@@ -136,7 +136,7 @@ static void pop_cwd(char *_cwd, int *symhold)
   showsymlinks = *symhold;
 }
 
-static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path)
+static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden)
 {
   int ret, canon = 0;
   char *fullpath;
@@ -153,9 +153,9 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path)
     fullpath = pstrdup(p,path);
   
   if(canon)
-    ret = dir_check_canon(p,cmd->argv[0],cmd->group,fullpath);
+    ret = dir_check_canon(p,cmd->argv[0],cmd->group,fullpath,hidden);
   else
-    ret = dir_check(p,cmd->argv[0],cmd->group,fullpath);
+    ret = dir_check(p,cmd->argv[0],cmd->group,fullpath,hidden);
   
   if(session.dir_config) {
     showsymlinks = get_param_int(session.dir_config->subset,
@@ -175,7 +175,7 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path)
   return ret;
 }
 
-static int ls_perms(pool *p, cmd_rec *cmd, const char *path)
+static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden)
 {
   int ret;
   char fullpath[MAXPATHLEN + 1] = {'\0'};
@@ -187,14 +187,14 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path)
     return 1;
 
   if(*path == '~')
-	  return ls_perms_full(p,cmd,path);
+	  return ls_perms_full(p,cmd,path,hidden);
 
   if(*path != '/')
   	fs_clean_path(pdircat(p,fs_getcwd(),path,NULL),fullpath,MAXPATHLEN);
   else
 	fs_clean_path(path,fullpath,MAXPATHLEN);
   
-  ret = dir_check(p,cmd->argv[0],cmd->group,fullpath);
+  ret = dir_check(p,cmd->argv[0],cmd->group,fullpath,hidden);
 
   if(session.dir_config) {
     showsymlinks = get_param_int(session.dir_config->subset,
@@ -254,6 +254,7 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
   
   struct	tm *t;
   char		suffix[2];
+  int           hidden = 0;
   
   if(!p) p = cmd->tmp_pool;
   
@@ -272,7 +273,7 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
 	
 	m[len] = '\0';
 	
-        if(!ls_perms_full(p,cmd,m))
+        if(!ls_perms_full(p,cmd,m,NULL))
           return 0;
 
       } else {
@@ -286,12 +287,15 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
       
       l[len] = '\0';
       
-      if(!ls_perms_full(p,cmd,l))
+      if(!ls_perms_full(p,cmd,l,&hidden))
         return 0;
 
-    } else if(!ls_perms(p,cmd,name)) {
+    } else if(!ls_perms(p,cmd,name,&hidden)) {
       return 0;
     }
+
+    if(hidden)
+      return 0;
 
     mtime = st.st_mtime;
     if(timesgmt)
@@ -836,7 +840,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name)
       
       push_cwd(cwd,&symhold);
      
-      if(*r && ls_perms_full(workp,cmd,(char*)*r) &&
+      if(*r && ls_perms_full(workp,cmd,(char*)*r,NULL) &&
 	       !fs_chdir_canon(*r, !opt_L && showsymlinks)) {
         char *subdir;
 
@@ -1016,7 +1020,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
       
       /* check perms on the directory/file we are about to scan */
       if(!ls_perms_full(cmd->tmp_pool, cmd,
-			(*pbuffer ? (char *) pbuffer : (char *) arg))) {
+			(*pbuffer ? (char *) pbuffer : (char *) arg),NULL)) {
         a = -1;
 	skiparg = 1;
       } else {
@@ -1078,7 +1082,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
 
         path = g.gl_pathv;
         while(path && *path) {
-          if(**path && ls_perms_full(cmd->tmp_pool,cmd,*path)) {
+          if(**path && ls_perms_full(cmd->tmp_pool,cmd,*path,NULL)) {
             char cwd[MAXPATHLEN + 1] = {'\0'};
             int symhold;
 
@@ -1136,7 +1140,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
 
   } else {
 
-    if(ls_perms_full(cmd->tmp_pool,cmd,".")) {
+    if(ls_perms_full(cmd->tmp_pool,cmd,".",NULL)) {
       if(opt_d) {
         if(listfile(cmd,NULL,".") < 0) {
           ls_terminate();
@@ -1247,7 +1251,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
       f = p;
     }
     
-    if(ls_perms(workp,cmd,f)) {
+    if(ls_perms(workp,cmd,f,NULL)) {
     
       /* If the data connection isn't open, open it now. */
       if((session.flags & SF_XFER) == 0) {
@@ -1459,7 +1463,7 @@ MODRET cmd_nlst(cmd_rec *cmd)
 				if(S_ISDIR(st.st_mode))
 					ret = nlstdir(cmd,p);
 				else if(S_ISREG(st.st_mode) &&
-						ls_perms(cmd->tmp_pool,cmd,p))
+						ls_perms(cmd->tmp_pool,cmd,p,NULL))
 					ret = nlstfile(cmd,p);
 				if(ret > 0)
 					count += ret;
@@ -1472,12 +1476,9 @@ MODRET cmd_nlst(cmd_rec *cmd)
 		 */
 		struct stat st;
 		
-		if(!ls_perms(cmd->tmp_pool,cmd,target)) {
-			if(dir_check_hidden(target))
-				add_response_err(R_550,"%s: No such file or directory",cmd->arg);
-			else
-				add_response_err(R_550,"%s: Permission denied",cmd->arg);
-			return ERROR(cmd);
+		if(!ls_perms(cmd->tmp_pool,cmd,target,NULL)) {
+                    add_response(R_550,"%s: %s",strerror(errno));
+		    return ERROR(cmd);
 		}
 
 		/* Make sure the target is a file or directory,
