@@ -87,6 +87,57 @@ AC_DEFUN([PR_CHECK_SS_FAMILY],
   ])
 ])
 
+# PR_CHECK_STRUCT_ADDRINFO
+# ---------------------
+# Check whether the system has a struct addrinfo defined
+AC_DEFUN([PR_CHECK_STRUCT_ADDRINFO],
+[AC_MSG_CHECKING([whether struct addrinfo is defined])
+ AC_TRY_COMPILE(
+ [ #include <stdio.h>
+   #ifdef HAVE_UNISTD_H
+   # include <unistd.h>
+   #endif
+   #include <sys/types.h>
+   #include <sys/socket.h>
+   #include <netdb.h>
+ ],
+ [do {
+   struct addrinfo a;
+   (void) a.ai_flags;
+  } while(0)
+ ],
+ [AC_MSG_RESULT(yes)
+  AC_DEFINE(HAVE_STRUCT_ADDRINFO,, [define if you have struct addrinfo])
+ ],
+ [AC_MSG_RESULT(no)
+ ])
+])
+
+# PR_CHECK_STRUCT_SS
+# ---------------------
+# Check whether the system has a struct sockaddr_storage defined
+AC_DEFUN([PR_CHECK_STRUCT_SS],
+[AC_MSG_CHECKING([whether struct sockaddr_storage is defined])
+ AC_TRY_COMPILE(
+ [ #include <stdio.h>
+   #ifdef HAVE_UNISTD_H
+   # include <unistd.h>
+   #endif
+   #include <sys/types.h>
+   #include <sys/socket.h>
+   #include <netdb.h>
+ ],
+ [do {
+   struct sockaddr_storage ss;
+  } while(0)
+ ],
+ [AC_MSG_RESULT(yes)
+  AC_DEFINE(HAVE_STRUCT_SS,, [define if you have struct sockaddr_storage])
+ ],
+ [AC_MSG_RESULT(no)
+ ])
+])
+
 # PR_CHECK_SS_LEN
 # ---------------------
 # Check which member of the struct sockaddr_storage contains the length

@@ -843,29 +843,10 @@ changequote([, ])dnl
 esac])
 
 dnl IPv6-related checks
+PR_CHECK_STRUCT_ADDRINFO
+PR_CHECK_STRUCT_SS
 PR_CHECK_SS_FAMILY
 PR_CHECK_SS_LEN
-
-AC_MSG_CHECKING([whether struct addrinfo is defined])
-AC_TRY_COMPILE(
-[ #include <stdio.h>
-  #ifdef HAVE_UNISTD_H
-  # include <unistd.h>
-  #endif
-  #include <sys/types.h>
-  #include <sys/socket.h>
-  #include <netdb.h>
-],
-[ do {
-   struct addrinfo a;
-   (void) a.ai_flags;
-  } while(0)
-],
-[ AC_MSG_RESULT(yes)
-  AC_DEFINE(HAVE_STRUCT_ADDRINFO,, [define if you have struct addrinfo])
-],
-[ AC_MSG_RESULT(no)
-]) 
 
 if test x"$enable_sendfile" = xyes ; then
 AC_CACHE_CHECK([which sendfile() implementation to use], pr_cv_func_sendfile,

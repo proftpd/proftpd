@@ -525,6 +525,9 @@
 /* Define if you have the addrinfo struct.  */
 #undef HAVE_STRUCT_ADDRINFO
 
+/* Define if you have the sockaddr_storage struct.  */
+#undef HAVE_STRUCT_SS
+
 /* Define if you have the ss_family sockaddr_storage struct member.  */
 #undef HAVE_SS_FAMILY
 
