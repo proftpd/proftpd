@@ -1,4 +1,12 @@
-$Id: NEWS,v 1.382 2003-03-04 05:25:41 castaglia Exp $
+$Id: NEWS,v 1.383 2003-03-04 19:24:59 castaglia Exp $
+
+CVS
+---------------------------------
+- Bug 1828 - mod_sql can only find mysql.sock if in /tmp.  This was caused
+  by the fact that mod_sql_mysql did not load/read the MySQL .cnf
+  configuration files.  Now, when starting, mod_sql_mysql will read .cnf
+  files for "proftpd" and "client" sections.
+- Bug 1960 - Add removed file size by DELE command to xferlog.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------

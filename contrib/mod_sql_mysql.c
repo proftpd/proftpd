@@ -1,6 +1,5 @@
 /*
  * ProFTPD: mod_mysql -- Support for connecting to MySQL databases.
- * Time-stamp: <1999-10-04 03:21:21 root>
  * Copyright (c) 2001 Andrew Houghton
  *  
  * This program is free software; you can redistribute it and/or modify
@@ -129,7 +128,7 @@
  * Internal define used for debug and logging.  All backends are encouraged
  * to use the same format.
  */
-#define _MOD_VERSION "mod_sql_mysql/4.03"
+#define _MOD_VERSION "mod_sql_mysql/4.04"
 
 #define _MYSQL_PORT "3306"
 
@@ -413,6 +412,9 @@ MODRET cmd_open(cmd_rec *cmd)
 {
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
+  static const char *config_file_groups[]= { "proftpd", "client", NULL };
+  int argc = 1;
+  char *argv[] = { "proftpd", NULL };
 
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_open");
 
@@ -448,7 +450,7 @@ MODRET cmd_open(cmd_rec *cmd)
 
   /* make sure we have a new conn struct */
   conn->mysql = mysql_init(NULL);
-  
+
   if (!conn->mysql) {
     log_pri(PR_LOG_ERR, _MOD_VERSION ": failed to allocate memory for "
 	    "MYSQL structure.  Shutting down.");
@@ -456,6 +458,11 @@ MODRET cmd_open(cmd_rec *cmd)
       "Shutting down.");
     end_login(1);
   }
+
+  /* make sure the MySQL config files are read in.  This will read in
+   * options from groups "proftpd" and "client" in the MySQL .cnf files.
+   */
+  load_defaults("my", config_file_groups, &argc, (char ***) &argv);
 
   if (!mysql_real_connect(conn->mysql, conn->host, conn->user,
 			  conn->pass, conn->db, 

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.157 2003-01-28 22:00:25 castaglia Exp $
+ * $Id: mod_core.c,v 1.158 2003-03-04 19:25:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3217,6 +3217,7 @@ MODRET core_size(cmd_rec *cmd) {
 
 MODRET core_dele(cmd_rec *cmd) {
   char *path, *fullpath;
+  struct stat st;
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *preg;
@@ -3246,6 +3247,13 @@ MODRET core_dele(cmd_rec *cmd) {
 
   /* If told to delete a symlink, don't delete the file it points to!  */
   path = dir_canonical_path(cmd->tmp_pool, cmd->arg);
+
+  /* Stat the path, before it is deleted, so that the size of the file
+   * being deleted can be logged.
+   */
+  pr_fs_clear_cache();
+  pr_fsio_stat(path, &st);
+
   if (!path ||
      !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
      pr_fsio_unlink(path) == -1) {
@@ -3256,13 +3264,13 @@ MODRET core_dele(cmd_rec *cmd) {
   fullpath = dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE);
 
   if (session.sf_flags & SF_ANON) {
-    log_xfer(0, session.c->remote_name, 0,
-             fullpath, (session.sf_flags & SF_ASCII ? 'a' : 'b'),
-             'd', 'a', session.anon_user, 'c');
+    log_xfer(0, session.c->remote_name, st.st_size, fullpath,
+      (session.sf_flags & SF_ASCII ? 'a' : 'b'), 'd', 'a', session.anon_user,
+      'c');
+
   } else {
-    log_xfer(0, session.c->remote_name, 0, fullpath,
-             (session.sf_flags & SF_ASCII ? 'a' : 'b'),
-             'd', 'r', session.user, 'c');
+    log_xfer(0, session.c->remote_name, st.st_size, fullpath,
+      (session.sf_flags & SF_ASCII ? 'a' : 'b'), 'd', 'r', session.user, 'c');
   }
 
   pr_response_add(R_250, "%s command successful.", cmd->argv[0]);
