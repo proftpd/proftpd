@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.166 2003-03-20 02:19:38 castaglia Exp $
+ * $Id: mod_core.c,v 1.167 2003-04-01 18:11:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -33,6 +33,7 @@
 
 #include <ctype.h>
 #include <sys/resource.h>
+#include <signal.h>
 
 #ifdef HAVE_REGEX_H
 # include <regex.h>
