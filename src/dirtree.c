@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.119 2003-09-28 17:04:57 castaglia Exp $
+ * $Id: dirtree.c,v 1.120 2003-10-10 05:37:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3159,9 +3159,7 @@ int fixup_servers(void) {
     next_s = s->next;
 
     if (!s->ServerAddress)
-      s->ServerFQDN = s->ServerAddress = pr_netaddr_get_localaddr_str(s->pool);
-    else
-      s->ServerFQDN = pr_netaddr_get_fqdn(s->pool, s->ServerAddress);
+      s->ServerAddress = pr_netaddr_get_localaddr_str(s->pool);
 
     s->addr = pr_netaddr_get_addr(s->pool, s->ServerAddress, NULL);
     if (s->addr == NULL) {
@@ -3170,6 +3168,8 @@ int fixup_servers(void) {
       xaset_remove(server_list, (xasetmember_t *) s);
       continue;
     }
+
+    s->ServerFQDN = pr_netaddr_get_dnsstr(s->addr);
 
     if (!s->ServerFQDN)
       s->ServerFQDN = s->ServerAddress;

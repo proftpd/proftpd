@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.23 2003-10-10 01:30:08 castaglia Exp $
+ * $Id: netaddr.c,v 1.24 2003-10-10 05:37:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -683,16 +683,6 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
   na->na_have_dnsstr = TRUE;
 
   return na->na_dnsstr;
-}
-
-/* Return the FQDN for a given string. */
-const char *pr_netaddr_get_fqdn(pool *p, const char *name) {
-  struct hostent *host;
-
-  if ((host = gethostbyname(name)) != NULL)
-    return pr_inet_validate(pstrdup(p, host->h_name));
-
-  return NULL;
 }
 
 /* Return the hostname (wrapper for gethostname(2), except returns FQDN). */

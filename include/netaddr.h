@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.11 2003-10-06 03:53:47 castaglia Exp $
+ * $Id: netaddr.h,v 1.12 2003-10-10 05:37:08 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -141,11 +141,6 @@ int pr_netaddr_set_reverse_dns(int);
  * Returns NULL if there was an error.
  */
 const char *pr_netaddr_get_dnsstr(pr_netaddr_t *);
-
-/* Wrapper around gethostbyname(2), returns the associated name, dup'd from
- * the given pool.
- */
-const char *pr_netaddr_get_fqdn(pool *, const char *);
 
 /* Returns the IP address associated with the given pr_netaddr_t.  Returns
  * NULL if there was an error.
