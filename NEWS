@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.9 1999-10-18 05:12:40 macgyver Exp $
+$Id: NEWS,v 1.10 1999-10-23 03:21:51 macgyver Exp $
 
 1.2.0pre9
 
@@ -28,3 +28,4 @@ $Id: NEWS,v 1.9 1999-10-18 05:12:40 macgyver Exp $
 
 - Umask now takes an optional second argument, specifying a directory umask.
 
+- Work around FreeBSD's broken setpassent().

@@ -140,6 +140,9 @@ AC_ARG_ENABLE(autoshadow,
 AC_ARG_ENABLE(sendfile,
   [  --enable-sendfile       enable sendfile support (default=yes)])
 
+AC_ARG_ENABLE(force-setpassent,
+  [  --enable-force-setpassent force use of setpassent (default=yes on FreeBSD)])
+
 AC_CHECK_LIB(security, set_auth_parameters, LIBS="$LIBS -lsecurity")
 AC_CHECK_HEADERS(sys/security.h)
 AC_CHECK_HEADERS(krb.h)
@@ -323,9 +326,20 @@ AC_CHECK_FUNCS(getcwd gethostname gettimeofday mkdir rmdir select socket strerro
 AC_CHECK_FUNCS(strchr memcpy bcopy flock getopt getopt_long strsep)
 # __snprintf and __vsnprintf are only on solaris and _really_ broken there.
 AC_CHECK_FUNCS(vsnprintf snprintf)
-AC_CHECK_FUNCS(setsid setpassent setgroupent seteuid setegid crypt fgetpwent fgetgrent)
+AC_CHECK_FUNCS(setsid setgroupent seteuid setegid crypt fgetpwent fgetgrent)
 AC_CHECK_FUNCS(inet_aton siginterrupt setpgid)
 AC_CHECK_FUNCS(regcomp)
+
+AC_CHECK_FUNC(setpassent,
+[case "$target_os:$enable_force_setpassent" in
+changequote(, )dnl
+  *freebsd[23]\.[0-3]*:) 
+changequote([, ])dnl
+    AC_MSG_WARN(Disabling broken FreeBSD setpassent(), see README for details.)
+	;;
+  *:no) ;;
+  *) AC_DEFINE(HAVE_SETPASSENT) ;;
+esac])
 
 if test x"$enable_sendfile" != xno ; then
 AC_CHECK_FUNCS(sendfile,[

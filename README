@@ -24,14 +24,18 @@ Solaris 2.6
 AIX 3.2 (native compiler)
 AIX 4.2 (tested)
 OpenBSD 2.2/2.3 (tested)
-FreeBSD 2.2.7 (tested)
+FreeBSD 2.2.7 (tested see NOTE)
+FreeBSD 3.3 (see NOTE)
 Digital UNIX 4.0A
 DEC OFS/1 (native compiler)
 
-  [ Note: there is a known problem with FreeBSD 2.2.7 and earlier
-    involving libc.  Expect to see syslog/console messages similar
-    to `cannot open /etc/pwd.db', as well as being unable to see
-    user/group names inside of chroots ]
+   [ NOTE: FreeBSD 2.0 to 3.3-RELEASE has a libc bug involving
+     setpassent().  If you know you have a fixed libc you can
+     use the --enable-force-setpassent to use it with one of these
+     releases otherwise ProFTPD will use its internal persistent
+     password support.  If you'd like more information the bug is
+     FreeBSD PR #14201. ]
+
 
 ProFTPD is designed to be somewhat of a "drop-in" replacement for wu-ftpd.
 Full online documentation is available at http://www.proftpd.org,

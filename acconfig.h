@@ -48,6 +48,9 @@
 /* Define if your system has __progname */
 #undef HAVE___PROGNAME
 
+/* Define this if you have the setpassent function */
+#undef HAVE_SETPASSENT
+
 #define PF_ARGV_NONE		0
 #define PF_ARGV_NEW		1
 #define PF_ARGV_WRITEABLE	2

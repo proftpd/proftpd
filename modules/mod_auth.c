@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.16 1999-10-11 07:20:42 macgyver Exp $
+ * $Id: mod_auth.c,v 1.17 1999-10-23 03:21:51 macgyver Exp $
  */
 
 #include "conf.h"
@@ -506,10 +506,23 @@ static struct passwd *passwd_dup(pool *p, struct passwd *pw)
   return npw;
 }
 
+static void ensure_open_passwd(pool *p)
+{
+  /* Make sure pass/group is open.
+   */
+  auth_setpwent(p);
+  auth_setgrent(p);
+
+  /* On some unices the following is necessary to ensure the files
+   * are open.  (BSDI 3.1)
+   */
+  auth_getpwent(p);
+  auth_getgrent(p);
+}
+
 /* Next function (the biggie) handles all authentication, setting
  * up chroot() jail, etc.
  */
-
 static int _setup_environment(pool *p, char *user, char *pass)
 {
   struct passwd *pw;
@@ -820,15 +833,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   /* Now check to see if the user has an applicable DefaultRoot */
   if(!c && (defroot = _get_default_root(session.pool))) {
 
-    /* Make sure pass/group is open */
-    auth_setpwent(p);
-    auth_setgrent(p);
-
-    /* On some unices the following is necessary to ensure the files
-     * are open.  (BSDI 3.1)
-     */
-    auth_getpwent(p);
-    auth_getgrent(p);
+    ensure_open_passwd(p);
 
     PRIVS_ROOT
 
@@ -862,17 +867,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
       sstrncpy(session.cwd, "/", sizeof(session.cwd));
   }
 
-  if(c) {
-    /* Make sure pass/group is open */
-    auth_setpwent(p);
-    auth_setgrent(p);
-
-    /* On some unices the following is necessary to ensure the files
-     * are open.  (BSDI 3.1)
-     */
-    auth_getpwent(p);
-    auth_getgrent(p);
-  }
+  if(c)
+    ensure_open_passwd(p);
 
   PRIVS_ROOT
 
@@ -1204,12 +1200,6 @@ MODRET cmd_user(cmd_rec *cmd)
 
   }
 
-  /* Make sure the passwd file is open in case we chroot right away,
-   * so we can still access it.
-   */
-
-  auth_setpwent(cmd->tmp_pool);
-  auth_setgrent(cmd->tmp_pool);
   if(nopass)
     add_response(R_331,"Anonymous login ok, send your complete e-mail address as password.");
   else
