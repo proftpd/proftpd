@@ -1,6 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
+ * Copyright (C) 1999, MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +21,9 @@
 /*
  * $Libraries: -lldap -llber$
  * ldap password lookup module for ProFTPD
- * $Id: mod_ldap.c,v 1.1 1999-10-10 10:01:02 macgyver Exp $
+ * Author: John Morrissey <jwm@horde.net>
+ *
+ * $Id: mod_ldap.c,v 1.2 1999-10-10 10:05:58 macgyver Exp $
  */
 
 #include "conf.h"
