@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.154 2003-06-05 19:28:46 castaglia Exp $
+ * $Id: mod_auth.c,v 1.155 2003-06-05 19:34:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1462,8 +1462,8 @@ static void auth_scan_scoreboard(void) {
 
   remove_config(CURRENT_CONF, "CURRENT-CLIENTS", FALSE);
   c = add_config_param_set(&conf, "CURRENT-CLIENTS", 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = cur;
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[0]) = cur;
 
   if (chk_class) {
     remove_config(CURRENT_CONF, "CURRENT-CLASS", FALSE);
@@ -1473,8 +1473,8 @@ static void auth_scan_scoreboard(void) {
       "CURRENT-CLIENTS-CLASS-%s", session.class->name);
     remove_config(CURRENT_CONF, config_class_users, FALSE);
     c = add_config_param_set(&conf, config_class_users, 1, NULL);
-    c->argv[0] = pcalloc(c->pool, sizeof(int));
-    *((int *) c->argv[0]) = ccur;
+    c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[0]) = ccur;
   }
 }
 

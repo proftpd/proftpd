@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.178 2003-06-03 16:25:22 castaglia Exp $
+ * $Id: mod_core.c,v 1.179 2003-06-05 19:34:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2591,7 +2591,8 @@ static void format_size_str(char *buf, size_t buflen, off_t size) {
 int core_display_file(const char *numeric, const char *fn, const char *fs) {
   pr_fh_t *fp = NULL;
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-  int len, classes_enabled = 0, *current_clients = NULL;
+  int len, classes_enabled = 0;
+  unsigned int *current_clients = NULL;
   unsigned int *max_clients = NULL;
   unsigned char *class_engine = NULL;
   off_t fs_size = 0;
@@ -2630,7 +2631,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
 
   current_clients = get_param_ptr(main_server->conf, "CURRENT-CLIENTS", FALSE);
 
-  snprintf(mg_cur, sizeof(mg_cur), "%d", current_clients ? *current_clients: 1);
+  snprintf(mg_cur, sizeof(mg_cur), "%u", current_clients ? *current_clients: 1);
 
   class_engine = get_param_ptr(TOPLEVEL_CONF, "Classes", FALSE);
 
@@ -2638,14 +2639,14 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
     classes_enabled = 1;
 
   if (classes_enabled && session.class && session.class->name) {
-    int *class_users = NULL;
+    unsigned int *class_users = NULL;
 
     snprintf(config_class_users, sizeof(config_class_users),
       "CURRENT-CLIENTS-CLASS-%s", session.class->name);
 
     class_users = get_param_ptr(main_server->conf, config_class_users, FALSE);
 
-    snprintf(mg_cur_class, sizeof(mg_cur_class), "%d",
+    snprintf(mg_cur_class, sizeof(mg_cur_class), "%u",
       class_users ? *class_users : 0);
 
     snprintf(mg_class_limit, sizeof(mg_class_limit), "%u",
