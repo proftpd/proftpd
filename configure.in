@@ -1091,9 +1091,9 @@ AC_TRY_RUN(
       return (fprintf(stderr, "%llu\n", (unsigned long long) 1) == 2 ? 0 : 1);
     }
   ],
-  AC_MSG_RESULT(yes); AC_DEFINE(USE_LLU),
-  AC_MSG_RESULT(no); AC_DEFINE(USE_LU),
-  AC_MSG_RESULT(cross-compiling); AC_DEFINE(USE_LU)
+  AC_MSG_RESULT(yes); AC_DEFINE(HAVE_LLU),
+  AC_MSG_RESULT(no); AC_DEFINE(HAVE_LU),
+  AC_MSG_RESULT(cross-compiling); AC_DEFINE(HAVE_LU)
 )
 
 dnl Add the proftpd support library
