@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.88 2002-06-11 17:09:45 castaglia Exp $
+ * $Id: mod_core.c,v 1.89 2002-06-21 19:36:13 castaglia Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -1298,7 +1298,7 @@ MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", param,
 			  " directive cannot be used on this system, "
 			  "as you do not have POSIX compliant "
-			  "regex support."));
+			  "regex support.", NULL));
 #endif
 }
 
