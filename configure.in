@@ -19,8 +19,8 @@ dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT(include/conf.h)
 
-ac_core_modules="mod_core.o mod_auth.o mod_xfer.o mod_site.o mod_ls.o mod_unixpw.o mod_log.o"
-ac_build_core_modules="modules/mod_core.o modules/mod_auth.o modules/mod_xfer.o modules/mod_site.o modules/mod_ls.o modules/mod_unixpw.o modules/mod_log.o"
+ac_core_modules="mod_core.o mod_xfer.o mod_unixpw.o mod_auth.o mod_ls.o mod_log.o mod_site.o"
+ac_build_core_modules="modules/mod_core.o modules/mod_xfer.o modules/mod_unixpw.o modules/mod_auth.o modules/mod_ls.o modules/mod_log.o modules/mod_site.o"
 
 dnl Get the OS type
 AC_CONFIG_AUX_DIR(./)

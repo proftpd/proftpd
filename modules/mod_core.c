@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.80 2002-05-08 18:39:35 castaglia Exp $
+ * $Id: mod_core.c,v 1.81 2002-05-09 17:36:00 castaglia Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -717,56 +717,59 @@ MODRET set_tcpnodelay(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET set_user(cmd_rec *cmd)
-{
+MODRET set_user(cmd_rec *cmd) {
   struct passwd *pw = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   /* 1.1.7, no longer force user/group lookup inside <Anonymous>
    * it's now defered until authentication occurs.
    */
 
-  if(!cmd->config || cmd->config->config_type != CONF_ANON) {
-    if((pw = auth_getpwnam(cmd->tmp_pool,cmd->argv[1])) == NULL) {
+  if (!cmd->config || cmd->config->config_type != CONF_ANON) {
+    if ((pw = auth_getpwnam(cmd->tmp_pool, cmd->argv[1])) == NULL) {
       auth_endpwent(cmd->tmp_pool);
-      CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"Unknown user '",
-                             cmd->argv[1],"'.",NULL));
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "Unknown user '",
+        cmd->argv[1], "'.", NULL));
     }
   }
 
-  if(pw) {
-    add_config_param("User",1,(void*)pw->pw_uid);
+  if (pw) {
+    config_rec *c = add_config_param("UserID", 1, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(uid_t));
+    *((uid_t *) c->argv[0]) = pw->pw_uid;
+
     /* We don't need extra fds sitting around open */
     auth_endpwent(cmd->tmp_pool);
   }
 
-  add_config_param_str("UserName",1,(void*)cmd->argv[1]);
+  add_config_param_str("UserName", 1, cmd->argv[1]);
   return HANDLED(cmd);
 }
 
-MODRET set_group(cmd_rec *cmd)
-{
+MODRET set_group(cmd_rec *cmd) {
   struct group *grp = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if(!cmd->config || cmd->config->config_type != CONF_ANON) {
-    if((grp = auth_getgrnam(cmd->tmp_pool,cmd->argv[1])) == NULL) {
+  if (!cmd->config || cmd->config->config_type != CONF_ANON) {
+    if ((grp = auth_getgrnam(cmd->tmp_pool, cmd->argv[1])) == NULL) {
       auth_endgrent(cmd->tmp_pool);
-      CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"Unknown group '",
-                             cmd->argv[1],"'.",NULL));
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "Unknown group '",
+        cmd->argv[1], "'.", NULL));
     }
   }
 
-  if(grp) {
-    add_config_param("Group",1,(void*)grp->gr_gid);
+  if (grp) {
+    config_rec *c = add_config_param("GroupID", 1, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(gid_t));
+    *((gid_t *) c->argv[0]) = grp->gr_gid;
     auth_endgrent(cmd->tmp_pool);
   }
-  add_config_param_str("GroupName",1,(void*)cmd->argv[1]);
 
+  add_config_param_str("GroupName", 1, cmd->argv[1]);
   return HANDLED(cmd);
 }
 
@@ -1405,38 +1408,45 @@ MODRET add_anonymousgroup(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET add_hideuser(cmd_rec *cmd)
-{
-  config_rec *c;
-  struct passwd *pw;
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_DIR|CONF_ANON);
+MODRET add_hideuser(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  struct passwd *pw = NULL;
 
-  pw = auth_getpwnam(cmd->tmp_pool,cmd->argv[1]);
-  if(!pw)
-    CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"'",cmd->argv[1],"' is not "
-                   "a valid user.",NULL));
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_DIR|CONF_ANON);
 
-  c = add_config_param("HideUser",1,(void*)((int)pw->pw_uid));
+  pw = auth_getpwnam(cmd->tmp_pool, cmd->argv[1]);
+
+  if (!pw)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
+      "' is not a valid user.", NULL));
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(uid_t));
+  *((uid_t *) c->argv[0]) = pw->pw_uid;
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
-MODRET add_hidegroup(cmd_rec *cmd)
-{
-  config_rec *c;
-  struct group *gr;
+MODRET add_hidegroup(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  struct group *gr = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_DIR|CONF_ANON);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_DIR|CONF_ANON);
 
-  gr = auth_getgrnam(cmd->tmp_pool,cmd->argv[1]);
-  if(!gr)
-    CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"'",cmd->argv[1],"' is not "
-                   "a valid group.",NULL));
+  gr = auth_getgrnam(cmd->tmp_pool, cmd->argv[1]);
 
-  c = add_config_param("HideGroup",1,(void*)((int)gr->gr_gid));
+  if (!gr)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
+      "' is not a valid group.", NULL));
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(gid_t));
+  *((gid_t *) c->argv[0]) = gr->gr_gid;
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 

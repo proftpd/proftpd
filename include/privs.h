@@ -23,7 +23,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* $Id: privs.h,v 1.6 2002-02-28 19:30:01 flood Exp $
+/* $Id: privs.h,v 1.7 2002-05-09 17:36:00 castaglia Exp $
  */
 
 #ifndef __PRIVS_H
@@ -53,32 +53,37 @@
 /* Use setreuid() to perform uid swapping.
  */
 
-#define PRIVS_SETUP(u,g)	{ if(getuid()) { \
-				  session.ouid = session.uid = getuid(); \
-				  session.gid = getgid(); \
-                                  setgid(session.gid); \
-                                  setreuid(session.uid,session.uid); \
-				} else {  \
-                                  session.ouid = getuid(); \
-                                  session.uid = (u); session.gid = (g); \
-                                  setgid(session.gid); \
-				  setreuid(0,session.uid); \
-				} }
+#define PRIVS_SETUP(u,g)	{ log_debug(DEBUG8, "SETUP PRIVS at %s:%d", \
+                                  __FILE__, __LINE__); \
+                                  if (getuid()) { \
+                                    session.ouid = session.uid = getuid(); \
+                                    session.gid = getgid(); \
+                                    setgid(session.gid); \
+                                    setreuid(session.uid, session.uid); \
+                                  } else {  \
+                                    session.ouid = getuid(); \
+                                    session.uid = (u); \
+                                    session.gid = (g); \
+                                    setgid(session.gid); \
+                                    setreuid(0, session.uid); \
+                                  } \
+                                }
 
-#define PRIVS_ROOT		{ log_debug(DEBUG4,"ROOT %s %d", \
+#define PRIVS_ROOT		{ log_debug(DEBUG8, "ROOT PRIVS at %s:%d", \
 				  __FILE__, __LINE__); \
-				  if(!session.disable_id_switching) \
-				    { setreuid(session.uid,0); \
+				  if (!session.disable_id_switching) \
+				    { setreuid(session.uid, 0); \
 				} }
 
-#define PRIVS_USER              { log_debug(DEBUG4,"USER %d %s %d", \
-                                  session.login_uid,__FILE__, __LINE__); \
+#define PRIVS_USER              { log_debug(DEBUG8, "USER PRIVS %d at %s:%d", \
+                                  session.login_uid, __FILE__, __LINE__); \
                                   if(!session.disable_id_switching) \
                                     { setreuid(session.uid,0); \
                                       setreuid(session.uid,session.login_uid); \
                                 } }
 
-#define PRIVS_RELINQUISH	{ log_debug(DEBUG4,"NONROOT %s %d", \
+#define PRIVS_RELINQUISH	{ log_debug(DEBUG8, \
+                                  "RELINQUISH PRIVS at %s:%d", \
 				  __FILE__, __LINE__); \
 				  if(!session.disable_id_switching) \
 				    { if (geteuid()!=0) \
@@ -86,7 +91,9 @@
 					  setreuid(session.uid,session.uid); \
 				} }
 
-#define PRIVS_REVOKE		{ setreuid(0,0); \
+#define PRIVS_REVOKE		{ log_debug(DEBUG8, "REVOKE PRIVS at %s:%d", \
+                                  __FILE__, __LINE__); \
+                                  setreuid(0,0); \
 				  setgid(session.gid); \
                                   setuid(session.uid); }
 #else /* HAVE_SETEUID */
@@ -101,43 +108,60 @@
  *   real/eff/saved group : <group>
  */
 
-#define PRIVS_SETUP(u,g)	{ if(getuid()) { \
-                                  session.ouid = session.uid = getuid(); \
-                                  session.gid = getgid(); \
-                                  setgid(session.gid); \
-                                  setuid(session.uid); \
-				  seteuid(session.uid); \
-                                } else { \
-				  session.ouid = getuid(); \
-                                  session.uid = (u); session.gid = (g); \
-                                  setuid(0); \
-                                  setgid((g)); seteuid((u)); \
+#define PRIVS_SETUP(u,g)	{ log_debug(DEBUG8, "SETUP PRIVS at %s:%d", \
+                                  __FILE__, __LINE__); \
+                                  if (getuid()) { \
+                                    session.ouid = session.uid = getuid(); \
+                                    session.gid = getgid(); \
+                                    setgid(session.gid); \
+                                    setuid(session.uid); \
+				    seteuid(session.uid); \
+                                  } else { \
+				    session.ouid = getuid(); \
+                                    session.uid = (u); \
+                                    session.gid = (g); \
+                                    setuid(0); \
+                                    setgid((g)); \
+                                    seteuid((u)); \
                                 } }
 
 
 /* Switch back to root */
 
 #define PRIVS_ROOT		if(!session.disable_id_switching) \
-				{ seteuid(0); }
+				{ log_debug(DEBUG8, "ROOT PRIVS at %s:%d", \
+                                  __FILE__, __LINE__); \
+                                  seteuid(0); }
 
 /* Switch to the login user */
 #define PRIVS_USER		if(!session.disable_id_switching) \
-				{ if (session.login_uid==0) { \
-				    log_debug(DEBUG1,"Use of PRIVS_USER before session.login_uid set in %s %d", \
-					      __FILE__, __LINE__); \
+				{ if (session.login_uid == 0) { \
+				    log_debug(DEBUG1, \
+                                    "Use of PRIVS_USER before " \
+                                    "session.login_uid set in %s %d", \
+                                    __FILE__, __LINE__); \
 				  } else {\
-				     seteuid(0); seteuid(session.login_uid); \
+                                     log_debug(DEBUG8, \
+                                       "USER PRIVS %d at %s:%d", \
+                                       session.login_uid, __FILE__, __LINE__); \
+				     seteuid(0); \
+                                     seteuid(session.login_uid); \
 				  } }
 
 /* Relinquish privs granted by PRIVS_ROOT or PRIVS_USER */
 
 #define PRIVS_RELINQUISH	if(!session.disable_id_switching) \
 				{ if (geteuid()!=0) { seteuid(0); } \
+                                  log_debug(DEBUG8, \
+                                    "RELINQUISH PRIVS at %s:%d", \
+                                  __FILE__, __LINE__); \
 				  seteuid(session.uid); }
 
 /* Revoke all privs */
 
-#define PRIVS_REVOKE		{ seteuid(0); \
+#define PRIVS_REVOKE		{ log_debug(DEBUG8, "REVOKE PRIVS at %s:%d", \
+                                  __FILE__, __LINE__); \
+                                  seteuid(0); \
 				  setgid(session.gid); \
 				  setuid(session.uid); }
 

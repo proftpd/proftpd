@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.50 2002-05-08 19:21:33 castaglia Exp $
+ * $Id: dirtree.c,v 1.51 2002-05-09 17:36:00 castaglia Exp $
  */
 
 /* History:
@@ -730,12 +730,11 @@ int dir_get_param(pool *pp,char *path,char *param)
   return -1;
 }
 
-static int _dir_check_op(pool *p,xaset_t *c,int op,
-                         uid_t uid,gid_t gid,mode_t mode)
-{
+static int _dir_check_op(pool *p, xaset_t *c, int op, uid_t uid, gid_t gid,
+    mode_t mode) {
   int i, res = 1, user_perms = 0;
-  uid_t u;
-  gid_t *gidp = NULL, g;
+  uid_t *u = NULL;
+  gid_t *g = NULL, *gidp = NULL;
 
   if(!c)
     return 1;				/* Default is to allow */
@@ -782,22 +781,22 @@ static int _dir_check_op(pool *p,xaset_t *c,int op,
 
   switch(op) {
   case OP_HIDE:
-    u = (uid_t) get_param_int(c,"HideUser",FALSE);
+    u = (uid_t *) get_param_ptr(c, "HideUser", FALSE);
 
-    while (u != (uid_t) -1 && (u != uid || u == session.uid))
-      u = (uid_t) get_param_int_next("HideUser",FALSE);
+    while (u && *u != (uid_t) -1 && (*u != uid || *u == session.uid))
+      u = (uid_t *) get_param_ptr_next("HideUser", FALSE);
 
-    if (u == uid) {
+    if (u && *u == uid) {
       res = 0;
       break;
     }
 
-    g = (gid_t) get_param_int(c,"HideGroup",FALSE);
+    g = (gid_t *) get_param_ptr(c, "HideGroup", FALSE);
 
-    while (g != (gid_t) -1 && (g != gid || g == session.gid))
-      g = (gid_t) get_param_int_next("HideGroup",FALSE);
+    while (g && *g != (gid_t) -1 && (*g != gid || *g == session.gid))
+      g = (gid_t *) get_param_ptr_next("HideGroup", FALSE);
 
-    if (g == gid) {
+    if (g && *g == gid) {
       res = 0;
       break;
     }

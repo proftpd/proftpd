@@ -25,7 +25,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.6 2001-12-13 20:35:50 flood Exp $
+ * $Id: modules.h,v 1.7 2002-05-09 17:36:00 castaglia Exp $
  */
 
 #ifndef __MODULES_H
@@ -188,6 +188,7 @@ authtable *mod_find_auth_symbol(char*,int*,authtable*);
 
 /* This function is in main.c, but is prototyped here */
 void set_auth_check(int (*ck)(cmd_rec*));
+
 void xfer_set_data_port(p_in_addr_t*,int);
 
 /* For use from inside module handler functions */

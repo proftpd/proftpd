@@ -25,7 +25,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.76 2002-05-08 19:21:33 castaglia Exp $
+ * $Id: main.c,v 1.77 2002-05-09 17:36:00 castaglia Exp $
  */
 
 /*
@@ -2665,12 +2665,20 @@ int main(int argc, char **argv, char **envp)
   endgrent();
 
   /* Security */
-  daemon_uid = (uid_t) get_param_int(main_server->conf,"User",FALSE);
-  if (daemon_uid == (uid_t) -1)
-    daemon_uid = 0;
-  daemon_gid = (gid_t) get_param_int(main_server->conf,"Group",FALSE);
-  if (daemon_gid == (gid_t) -1)
-    daemon_gid = 0;
+  {
+    uid_t *uid = (uid_t *) get_param_ptr(main_server->conf, "UserID", FALSE);
+    gid_t *gid = (gid_t *) get_param_ptr(main_server->conf, "GroupID", FALSE);
+
+    if (uid)
+      daemon_uid = *uid;
+    else
+      daemon_uid = 0;
+ 
+    if (gid)
+      daemon_gid = *gid;
+    else
+      daemon_gid = 0;
+  }
 
   if (daemon_uid) {
     /* allocate space for daemon supplemental groups

@@ -26,7 +26,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.7 2002-02-28 19:13:34 flood Exp $
+ * $Id: log.h,v 1.8 2002-05-09 17:36:00 castaglia Exp $
  */
 
 #ifndef __LOG_H
@@ -71,6 +71,10 @@ typedef struct {
  * info.  DEBUG0 (the default) prints nothing.
  */
 
+#define DEBUG9		9
+#define DEBUG8		8
+#define DEBUG7		7
+#define DEBUG6		6
 #define DEBUG5		5
 #define DEBUG4		4
 #define	DEBUG3		3

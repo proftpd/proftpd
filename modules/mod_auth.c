@@ -25,7 +25,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.69 2002-05-08 19:21:32 castaglia Exp $
+ * $Id: mod_auth.c,v 1.70 2002-05-09 17:36:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -104,20 +104,54 @@ int _login_timeout(CALLBACK_FRAME)
   return 0;		/* Don't restart the timer */
 }
 
-int auth_init_child()
-{
+static int auth_child_init() {
+  uid_t server_uid, current_euid = geteuid();
+  gid_t server_gid, current_egid = getegid();
+
+  unsigned char switch_server_id = FALSE;
+
   /* Start the login timer */
-  if(TimeoutLogin)
-    add_timer(TimeoutLogin,TIMER_LOGIN,&auth_module,_login_timeout);
-   
+  if (TimeoutLogin) {
+    remove_timer(TIMER_LOGIN, &auth_module);
+    add_timer(TimeoutLogin, TIMER_LOGIN, &auth_module, _login_timeout);
+  }
+
+  /* Set the privs for the configured User/Group of this server */
+  {
+    uid_t *uid = (uid_t *) get_param_ptr(main_server->conf, "UserID", FALSE);
+    gid_t *gid = (gid_t *) get_param_ptr(main_server->conf, "GroupID", FALSE);
+
+    if (uid) {
+      server_uid = *uid;
+      switch_server_id = TRUE;
+
+    } else
+      server_uid = current_euid;
+
+    if (gid) {
+      server_gid = *gid;
+      switch_server_id = TRUE;
+
+    } else
+      server_gid = current_egid;
+  }
+
+  if (switch_server_id) {
+    PRIVS_ROOT
+
+    /* Note: will it be necessary to double check this switch, as is done
+     * in src/main.c?
+     */
+    PRIVS_SETUP(server_uid, server_gid);
+  }
+
   if ((char*)get_param_ptr(main_server->conf,"DisplayConnect",FALSE) != NULL)
     _do_user_counts();
    
   return 0;
 }
 
-int auth_init()
-{
+static int auth_init() {
   /* By default, enable auth checking */
   set_auth_check(check_auth);
   return 0;
@@ -1796,17 +1830,17 @@ MODRET add_userdirroot (cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-static conftable auth_config[] = {
+static conftable auth_conftab[] = {
   { "AuthAliasOnly",		set_authaliasonly,		NULL },
-  { "LoginPasswordPrompt",	set_loginpasswordprompt,	NULL },
   { "DefaultRoot",		add_defaultroot,		NULL },
   { "DefaultChdir",		add_defaultchdir,		NULL },
+  { "LoginPasswordPrompt",	set_loginpasswordprompt,	NULL },
   { "RootLogin",		set_rootlogin,			NULL },
   { "UserDirRoot",		add_userdirroot,		NULL },
   { NULL,			NULL,				NULL }
 };
 
-static cmdtable auth_commands[] = {
+static cmdtable auth_cmdtab[] = {
   { PRE_CMD, C_USER, G_NONE, pre_cmd_user, FALSE, FALSE, CL_AUTH },
   { CMD, C_USER, G_NONE, cmd_user,	FALSE,	FALSE, CL_AUTH },
   { PRE_CMD, C_PASS, G_NONE, pre_cmd_pass, FALSE, FALSE, CL_AUTH },
@@ -1822,9 +1856,10 @@ module auth_module = {
   NULL,NULL,				/* Always NULL */
   0x20,					/* API Version 2.0 */
   "auth",
-  auth_config,	
-  auth_commands,
+  auth_conftab,	
+  auth_cmdtab,
   NULL,
-  auth_init,auth_init_child
+  auth_init,
+  auth_child_init
 };
 
