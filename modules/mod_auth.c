@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.98 2002-10-29 16:41:26 castaglia Exp $
+ * $Id: mod_auth.c,v 1.99 2002-10-30 01:23:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -366,7 +366,7 @@ static config_rec *_auth_resolve_user(pool *p,char **user,
 {
   config_rec *c = NULL, *topc = NULL;
   char *ourname,*anonname = NULL;
-  unsigned char is_alias = FALSE, force_anon = FALSE;
+  unsigned char is_alias = FALSE, force_anon = FALSE, *auth_alias_only = NULL;
 
   /* Precendence rules:
    *   1. Search for UserAlias directive.
@@ -376,7 +376,7 @@ static config_rec *_auth_resolve_user(pool *p,char **user,
 
   ourname = (char*)get_param_ptr(main_server->conf,"UserName",FALSE);
 
-  if(ournamep && ourname)
+  if (ournamep && ourname)
     *ournamep = ourname; 
 
   c = find_config(main_server->conf, CONF_PARAM, "UserAlias", TRUE);
@@ -393,26 +393,23 @@ static config_rec *_auth_resolve_user(pool *p,char **user,
 
   topc = c;
 
-  while (c && c->parent) {
-    int *auth_alias_only = get_param_ptr(c->parent->set, "AuthAliasOnly",
-      FALSE);
-   
+  while (c && c->parent &&
+    (auth_alias_only = get_param_ptr(c->parent->set, "AuthAliasOnly", FALSE))) {
+  
     /* If AuthAliasOnly is on, ignore this one and continue. */
-    if (!auth_alias_only || *auth_alias_only != TRUE)
-      break;
+    if (auth_alias_only && *auth_alias_only == TRUE)
+      continue;
 
     is_alias = FALSE;
 
     find_config_set_top(topc);
     c = find_config_next(c, c->next, CONF_PARAM, "UserAlias", TRUE);
 
-    if (c &&
-        (!strcmp(c->argv[0], "*") ||
-         !strcmp(c->argv[0], *user)))
+    if (c && (!strcmp(c->argv[0], "*") || !strcmp(c->argv[0], *user)))
       is_alias = TRUE;
   }
 
-  if(c) {
+  if (c) {
     *user = c->argv[1];
 
     /* If the alias is applied inside an <Anonymous> context, we have found
@@ -427,32 +424,32 @@ static config_rec *_auth_resolve_user(pool *p,char **user,
 
   /* Next, search for an anonymous entry */
 
-  if(!c)
-    c = find_config(main_server->conf,CONF_ANON,NULL,FALSE);
+  if (!c)
+    c = find_config(main_server->conf, CONF_ANON, NULL, FALSE);
   else
     find_config_set_top(c);
 
-  if(c) do {
-    anonname = (char*)get_param_ptr(c->subset,"UserName",FALSE);
-    if(!anonname)
+  if (c) do {
+    anonname = (char *) get_param_ptr(c->subset, "UserName", FALSE);
+    if (!anonname)
       anonname = ourname;
 
-    if(anonname && !strcmp(anonname,*user)) {
+    if (anonname && !strcmp(anonname, *user)) {
        if(anonnamep)
          *anonnamep = anonname;
        break;
     }
-  } while((c = find_config_next(c,c->next,CONF_ANON,NULL,FALSE)) != NULL);
+  } while((c = find_config_next(c, c->next, CONF_ANON, NULL, FALSE)) != NULL);
 
-  if(!c) {
-    c = _auth_anonymous_group(p,*user);
+  if (!c) {
+    c = _auth_anonymous_group(p, *user);
 
-    if(c)
-      force_anon = 1;
+    if (c)
+      force_anon = TRUE;
   }
 
   if (!is_alias && !force_anon) {
-    int *auth_alias_only = get_param_ptr(c ? c->subset :
+    unsigned char *auth_alias_only = get_param_ptr(c ? c->subset :
       main_server->conf, "AuthAliasOnly", FALSE);
 
     if (auth_alias_only && *auth_alias_only == TRUE) {
@@ -466,7 +463,7 @@ static config_rec *_auth_resolve_user(pool *p,char **user,
       if (*user && auth_alias_only && *auth_alias_only == TRUE)
         *user = NULL;
 
-      if((!user || !c) && anonnamep)
+      if ((!user || !c) && anonnamep)
         *anonnamep = NULL;
     }
   }
@@ -1874,8 +1871,8 @@ MODRET set_authaliasonly(cmd_rec *cmd) {
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = bool;
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
 
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
