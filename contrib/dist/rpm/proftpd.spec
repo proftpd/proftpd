@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.16 2003-05-27 00:46:45 jwm Exp $
+# $Id: proftpd.spec,v 1.17 2003-05-28 23:03:57 jwm Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -29,10 +29,10 @@ URL:		http://www.proftpd.org/
 Source:		ftp://ftp.proftpd.org/distrib/%{name}-%{version}.tar.bz2
 Prefix:		/usr
 BuildRoot:	%{_builddir}/%{name}-%{version}-root
-Requires:	pam >= 0.72
+Requires:	pam >= 0.72, chkconfig
 Provides:	ftpserver
 Prereq:		fileutils
-Obsoletes:	proftpd-core
+Obsoletes:	proftpd-core, proftpd-standalone
 
 %description
 ProFTPD is an enhanced FTP server with a focus toward simplicity, security,
@@ -41,26 +41,17 @@ syntax, and a highly customizable server infrastructure, including support for
 multiple 'virtual' FTP servers, anonymous FTP, and permission-based directory
 visibility.
 
-There are two other packages you can use to setup for inetd or standalone
-operation.
-
-%package standalone
-Summary:	ProFTPD -- Setup for standalone operation.
-Group:		System Environment/Daemons
-Requires:	proftpd chkconfig
-Obsoletes:	proftpd-inetd
-
-%description standalone
-This package is neccesary to setup ProFTPD in standalone operation.
+The base proftpd package installs standalone support. You can install the
+proftpd-inetd package to enable inetd/xinetd support.
 
 %package inetd
-Summary:	ProFTPD -- Setup for inetd operation.
+Summary:	ProFTPD -- Setup for inetd/xinetd operation.
 Group:		System Environment/Daemons
-Requires:	proftpd
+Requires:	proftpd, inetd
 Obsoletes:	proftpd-standalone
 
 %description inetd
-This package is neccesary to setup ProFTPD to run from inetd.
+This package is neccesary to setup ProFTPD to run from inetd/xinetd.
 
 %prep
 %setup -q
@@ -87,6 +78,7 @@ This package is neccesary to setup ProFTPD to run from inetd.
 %install
   rm -rf $RPM_BUILD_ROOT
   make prefix=$RPM_BUILD_ROOT%{prefix} \
+	exec_prefix=$RPM_BUILD_ROOT%{prefix} \
 	sysconfdir=$RPM_BUILD_ROOT/etc \
     mandir=$RPM_BUILD_ROOT/%_mandir \
 	localstatedir=$RPM_BUILD_ROOT/var/run \
@@ -100,12 +92,13 @@ This package is neccesary to setup ProFTPD to run from inetd.
   mkdir -p $RPM_BUILD_ROOT/etc/rc.d/init.d
   sed -e '/FTPSHUT=/c\' \
 	  -e 'FTPSHUT=%{prefix}/sbin/ftpshut' \
-	contrib/dist/rpm/proftpd.init.d \
-  > contrib/dist/rpm/proftpd.init.d.tmp
+	contrib/dist/rpm/proftpd.init.d >contrib/dist/rpm/proftpd.init.d.tmp
   mv --force contrib/dist/rpm/proftpd.init.d.tmp contrib/dist/rpm/proftpd.init.d
   install -m 755 contrib/dist/rpm/proftpd.init.d $RPM_BUILD_ROOT/etc/rc.d/init.d/proftpd
   mkdir -p $RPM_BUILD_ROOT/etc/logrotate.d/
   install -m 644 contrib/dist/rpm/proftpd.logrotate $RPM_BUILD_ROOT/etc/logrotate.d/proftpd
+  mkdir -p $RPM_BUILD_ROOT/etc/xinetd.d/
+  install -m 644 contrib/dist/rpm/xinetd $RPM_BUILD_ROOT/etc/xinetd.d/proftpd
   # We don't want this dangling symlinks to make it into the RPM
   rm -f contrib/README.mod_sql
   mkdir -p $RPM_BUILD_ROOT/%{_docdir}
@@ -119,7 +112,7 @@ This package is neccesary to setup ProFTPD to run from inetd.
 		if [ $gid -le 100 -a "$username" != "ftp" ]; then
 			echo $username
 		fi
-  	done < /etc/passwd > /etc/ftpusers
+  	done </etc/passwd >/etc/ftpusers
   fi
 
 %preun
@@ -129,17 +122,16 @@ This package is neccesary to setup ProFTPD to run from inetd.
     fi
   fi
 
-%post standalone
+%post
   /sbin/chkconfig --add proftpd
   # Force the "ServerType" directive for this operation type.
   tmpfile=/tmp/proftpd-conf.$$
-  sed	-e '/ServerType/c\' \
+  sed -e '/ServerType/c\' \
 	-e 'ServerType	standalone' \
-	/etc/proftpd.conf \
-  > $tmpfile
+	/etc/proftpd.conf >$tmpfile
   mv $tmpfile /etc/proftpd.conf
 
-%preun standalone
+%preun
   if [ "$1" = 0 ]; then
     /sbin/chkconfig --del proftpd
   fi
@@ -149,36 +141,48 @@ This package is neccesary to setup ProFTPD to run from inetd.
   tmpfile=/tmp/proftpd-conf.$$
   sed	-e '/ServerType/c\' \
 	-e 'ServerType	inetd' \
-	/etc/proftpd.conf \
-  > $tmpfile
+	/etc/proftpd.conf >$tmpfile
   mv $tmpfile /etc/proftpd.conf
 
-  # Look if there is already an entry for 'ftp' service even when commented.
-  grep '^[#[:space:]]*ftp' /etc/inetd.conf > /dev/null
-  errcode=$?
-  if [ $errcode -eq 0 ]; then
-  # Found, replace the 'in.ftpd' with 'in.proftpd'
-	tmpfile=/tmp/proftpd-inetd.$$
-	sed	-e '/^[#[:space:]]*ftp/{' \
-		-e 's^in.ftpd.*$^in.proftpd^' \
-		-e '}' \
-		/etc/inetd.conf \
-	> $tmpfile
-	mv $tmpfile /etc/inetd.conf
+  if [ -f /etc/inetd.conf ]; then
+    # Look if there is already an entry for 'ftp' service even when commented.
+    grep '^[#[:space:]]*ftp' /etc/inetd.conf >/dev/null
+    errcode=$?
+    if [ $errcode -eq 0 ]; then
+      # Found, replace the 'in.ftpd' with 'in.proftpd'
+      tmpfile=/tmp/proftpd-inetd.$$
+      sed -e '/^[#[:space:]]*ftp/{' \
+          -e 's^in.ftpd.*$^in.proftpd^' \
+          -e '}' \
+          /etc/inetd.conf >$tmpfile
+      mv $tmpfile /etc/inetd.conf
+    else
+    # Not found, append a new entry.
+      echo 'ftp      stream  tcp     nowait  root    /usr/sbin/tcpd  in.proftpd' >>/etc/inetd.conf
+    fi
+    # Reread 'inetd.conf' file.
+    killall -HUP inetd || :
   else
-  # Not found, append a new entry.
-	echo 'ftp      stream  tcp     nowait  root    /usr/sbin/tcpd  in.proftpd' >> /etc/inetd.conf
+    killall -HUP xinetd || :
   fi
-  # Reread 'inetd.conf' file.
-  killall -HUP inetd || :
 
 %postun inetd
   if [ "$1" = 0 ]; then
-    # Remove ProFTPD entry from /etc/inetd.conf
-    tmpfile=/tmp/proftpd-inetd.$$
-    sed -e '/^.*proftpd.*$/d' /etc/inetd.conf > $tmpfile
-    mv $tmpfile /etc/inetd.conf
-    killall -HUP inetd || :
+	# Return the ServerType to standalone when the inetd subpackage is
+    # uninstalled.
+    tmpfile=/tmp/proftpd-conf.$$
+    sed -e '/ServerType/c\' \
+      -e 'ServerType	standalone' \
+      /etc/proftpd.conf >$tmpfile
+    mv $tmpfile /etc/proftpd.conf
+
+    if [ -f /etc/inetd.conf ]; then
+      # Remove ProFTPD entry from /etc/inetd.conf
+      tmpfile=/tmp/proftpd-inetd.$$
+      sed -e '/^.*proftpd.*$/d' /etc/inetd.conf >$tmpfile
+      mv $tmpfile /etc/inetd.conf
+      killall -HUP inetd || :
+    fi
   fi
 
 %clean
@@ -191,19 +195,17 @@ rm -rf %{_builddir}/%{name}-%{version}
 /usr/bin/*
 %dir /var/run/proftpd
 %dir /home/ftp
+/etc/rc.d/init.d/proftpd
+%config(noreplace) /etc/proftpd.conf
 %config(noreplace) /etc/pam.d/ftp
 %config(noreplace) /etc/logrotate.d/proftpd
+%config(noreplace) /etc/xinetd.d/proftpd
 
 %doc COPYING CREDITS ChangeLog NEWS
 %doc README* doc/*
 %doc contrib/README* contrib/xferstats.holger-preiss
 %doc sample-configurations
 %_mandir/*/*
-
-%files standalone
-%defattr(-,root,root)
-/etc/rc.d/init.d/proftpd
-%config(noreplace) /etc/proftpd.conf
 
 %files inetd
 %defattr(-,root,root)
