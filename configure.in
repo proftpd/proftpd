@@ -276,8 +276,9 @@ if test x"$enable_pam" != xno ; then
   if test `echo $ac_addl_modules | grep -c mod_pam` = "1"; then
 
 	AC_CHECK_LIB(pam, pam_start,
+
 		[AC_DEFINE(HAVE_PAM)
-			LIBS="$LIBS -lutil"],
+			LIBS="$LIBS -lpam"],
 
 		[AC_CHECK_LIB(pam, pam_end,
 				[AC_DEFINE(HAVE_PAM)

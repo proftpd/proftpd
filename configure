@@ -2499,7 +2499,7 @@ if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
 #define HAVE_PAM 1
 EOF
 
-			LIBS="$LIBS -lutil"
+			LIBS="$LIBS -lpam"
 else
   echo "$ac_t""no" 1>&6
 echo $ac_n "checking for pam_end in -lpam""... $ac_c" 1>&6
