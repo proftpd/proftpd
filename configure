@@ -901,6 +901,10 @@ Optional Features:
                           set the default timeout (in secs) for stalled
                           transfers (default=3600)
 
+  --enable-transfer-buffer-size
+                          tune the the size (in bytes) of data transfer
+                          buffers (default=buffer size)
+
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -3345,6 +3349,28 @@ _ACEOF
 
 cat >>confdefs.h <<_ACEOF
 #define PR_TUNABLE_TIMEOUTSTALLED $enableval
+_ACEOF
+
+    fi
+
+fi;
+
+# Check whether --enable-transfer-buffer-size or --disable-transfer-buffer-size was given.
+if test "${enable_transfer_buffer_size+set}" = set; then
+  enableval="$enable_transfer_buffer_size"
+
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      { echo "$as_me:$LINENO: WARNING: transfer buffer size defaulting to regular buffer size" >&5
+echo "$as_me: WARNING: transfer buffer size defaulting to regular buffer size" >&2;}
+
+cat >>confdefs.h <<_ACEOF
+#define PR_TUNABLE_BUFFER_SIZE 1024
+_ACEOF
+
+    else
+
+cat >>confdefs.h <<_ACEOF
+#define PR_TUNABLE_BUFFER_SIZE $enableval
 _ACEOF
 
     fi
@@ -7453,7 +7479,7 @@ done
 
 
 
-for ac_header in netdb.h netinet/in.h netinet/tcp.h arpa/inet.h sys/stat.h
+for ac_header in netdb.h netinet/in.h netinet/ip.h netinet/tcp.h arpa/inet.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if eval "test \"\${$as_ac_Header+set}\" = set"; then
@@ -7598,7 +7624,8 @@ done
 
 
 
-for ac_header in errno.h sys/socket.h sys/termios.h sys/termio.h
+
+for ac_header in sys/stat.h errno.h sys/socket.h sys/termios.h sys/termio.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if eval "test \"\${$as_ac_Header+set}\" = set"; then
