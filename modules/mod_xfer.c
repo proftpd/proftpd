@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.96 2002-11-13 16:32:13 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.97 2002-11-15 16:03:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -474,7 +474,7 @@ static void _stor_chown(void) {
       
       if (fs_chmod(xfer_path, sbuf.st_mode) < 0)
         log_debug(DEBUG0, "chmod(%s) to %04o failed: %s", xfer_path,
-          sbuf.st_mode, strerror(errno));
+          (unsigned int) sbuf.st_mode, strerror(errno));
     }
 
   } else if ((session.fsgid != (gid_t) -1) && xfer_path) {
@@ -493,7 +493,7 @@ static void _stor_chown(void) {
 
       if (fs_chmod(xfer_path, sbuf.st_mode) < 0)
         log_debug(DEBUG0, "chmod(%s) to %04o failed: %s", xfer_path,
-          sbuf.st_mode, strerror(errno));
+          (unsigned int) sbuf.st_mode, strerror(errno));
     }
   }
 }
