@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.59 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: log.c,v 1.60 2003-09-09 21:15:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -390,7 +390,7 @@ static void log_write(int priority, int f, char *s) {
       snprintf(serverinfo + strlen(serverinfo),
         sizeof(serverinfo) - strlen(serverinfo), " (%s[%s])",
         session.c->remote_name,
-        pr_netaddr_get_dnsstr(session.c->remote_addr));
+        pr_netaddr_get_ipstr(session.c->remote_addr));
       serverinfo[sizeof(serverinfo)-1] = '\0';
     }
   }
