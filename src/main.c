@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.265 2004-12-02 01:45:47 castaglia Exp $
+ * $Id: main.c,v 1.266 2004-12-05 07:58:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -366,11 +366,15 @@ static void end_login_noexit(void) {
   /* These are necessary in order that cleanups associated with these pools
    * (and their subpools) are properly run.
    */
-  if (session.d)
+  if (session.d) {
     pr_inet_close(session.pool, session.d);
+    session.d = NULL;
+  }
 
-  if (session.c)
+  if (session.c) {
     pr_inet_close(session.pool, session.c);
+    session.c = NULL;
+  }
 
   /* Run all the exit handlers */
   pr_event_generate("core.exit", NULL);
