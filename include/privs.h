@@ -17,7 +17,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-/* $Id: privs.h,v 1.2 1999-10-01 03:49:07 macgyver Exp $
+/* $Id: privs.h,v 1.3 2000-01-03 21:28:39 macgyver Exp $
  */
 
 #ifndef __PRIVS_H
@@ -65,10 +65,19 @@
 				    { setreuid(session.uid,0); \
 				} }
 
+#define PRIVS_USER              { log_debug(DEBUG4,"USER %d %s %d", \
+                                  session.login_uid,__FILE__, __LINE__); \
+                                  if(!session.disable_id_switching) \
+                                    { setreuid(session.uid,0); \
+                                      setreuid(session.uid,session.login_uid); \
+                                } }
+
 #define PRIVS_RELINQUISH	{ log_debug(DEBUG4,"NONROOT %s %d", \
 				  __FILE__, __LINE__); \
 				  if(!session.disable_id_switching) \
-				    { setreuid(session.uid,session.uid); \
+				    { if (geteuid()!=0) \
+					{ setreuid(session.uid,0); } \
+					  setreuid(session.uid,session.uid); \
 				} }
 
 #define PRIVS_REVOKE		{ setreuid(0,0); \
@@ -105,10 +114,20 @@
 #define PRIVS_ROOT		if(!session.disable_id_switching) \
 				{ seteuid(0); }
 
-/* Relinquish privs granted by PRIVS_ROOT */
+/* Switch to the login user */
+#define PRIVS_USER		if(!session.disable_id_switching) \
+				{ if (session.login_uid==0) { \
+				    log_debug(DEBUG1,"Use of PRIVS_USER before session.login_uid set in %s %d", \
+					      __FILE__, __LINE__); \
+				  } else {\
+				     seteuid(0); seteuid(session.login_uid); \
+				  } }
+
+/* Relinquish privs granted by PRIVS_ROOT or PRIVS_USER */
 
 #define PRIVS_RELINQUISH	if(!session.disable_id_switching) \
-				{ seteuid(session.uid); }
+				{ if (geteuid()!=0) { seteuid(0); } \
+				  seteuid(session.uid); }
 
 /* Revoke all privs */
 

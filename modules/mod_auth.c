@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.22 1999-12-30 18:41:29 macgyver Exp $
+ * $Id: mod_auth.c,v 1.23 2000-01-03 21:28:39 macgyver Exp $
  */
 
 #include "conf.h"
@@ -487,7 +487,17 @@ static char *_get_default_root(pool *p)
     else {
       char *realdir;
 
+      /*
+      ** We need to be the final user here so that if the user has their home
+      ** directory with a mode the user proftpd is running (ie the User
+      ** directive) as can not traverse down, we can still have the default
+      ** root as ~/public_html/
+      */
+      PRIVS_USER
+
       realdir = dir_realpath(p,dir);
+
+      PRIVS_RELINQUISH
 
       if(realdir)
         dir = realdir;
@@ -584,6 +594,10 @@ static int _setup_environment(pool *p, char *user, char *pass)
   
   session.user = pstrdup(p, pw->pw_name);
   session.group = pstrdup(p, auth_gid_name(p, pw->pw_gid));
+
+  /* Set the login_uid and login_uid */
+  session.login_uid = pw->pw_uid;
+  session.login_gid = pw->pw_gid;
 
   /* set force_anon (for AnonymousGroup) and build a custom
    * anonymous config for this session.

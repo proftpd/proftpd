@@ -18,7 +18,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.7 1999-10-01 07:57:31 macgyver Exp $
+ * $Id: proftpd.h,v 1.8 2000-01-03 21:28:39 macgyver Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -112,6 +112,10 @@ typedef struct {
   int fsgid;				/* Saved file gid */
 
   char *user,*group;			/* username/groupname after login */
+  int login_uid,login_gid;		/* UID and GID after login before
+					 * the uid and gid fields above are
+					 * changed.
+					 */
   class_t *class;			/* session class */
   char *proc_prefix;			/* The "prefix" of our process name */
 
