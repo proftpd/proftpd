@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.39 2000-07-26 11:12:04 macgyver Exp $
+ * $Id: main.c,v 1.40 2000-07-26 23:09:31 macgyver Exp $
  */
 
 /*
@@ -1041,7 +1041,7 @@ void cmd_loop(server_rec *server, conn_t *c)
         destroy_pool(cmd->pool);
       } else {
 	send_response(R_500, 
-		      "Invalid command '%s': Try being more creative.\r\n",
+		      "Invalid command '%s': Try being more creative.",
 		      cp);
       }
     }
@@ -1358,7 +1358,7 @@ void fork_server(int fd,conn_t *l,int nofork)
                inet_ntoa(*session.c->remote_ipaddr));
 
       send_response(R_500, 
-		    "FTP server shut down (%s) -- please try again later.\r\n",
+		    "FTP server shut down (%s) -- please try again later.",
 		    reason); 
       exit(0);
     }
@@ -1369,7 +1369,7 @@ void fork_server(int fd,conn_t *l,int nofork)
    */
   if(!serv) {
     send_response(R_500,
-		  "Sorry, no server available to handle request on %s.\r\n",
+		  "Sorry, no server available to handle request on %s.",
 		  inet_getname(conn->pool, conn->local_ipaddr));
     exit(0);
   }
