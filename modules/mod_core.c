@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.212 2003-11-15 23:49:52 castaglia Exp $
+ * $Id: mod_core.c,v 1.213 2003-12-02 03:06:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3930,9 +3930,9 @@ MODRET core_mdtm(cmd_rec *cmd) {
         "TimesGMT", FALSE);
 
       if (!times_gmt || *times_gmt == TRUE)
-         tm = gmtime(&sbuf.st_mtime);
+         tm = pr_gmtime(cmd->tmp_pool, &sbuf.st_mtime);
       else
-         tm = localtime(&sbuf.st_mtime);
+         tm = pr_localtime(cmd->tmp_pool, &sbuf.st_mtime);
 
       if (tm)
         snprintf(buf, sizeof(buf), "%04d%02d%02d%02d%02d%02d",
