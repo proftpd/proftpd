@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.156 2004-09-29 21:04:30 castaglia Exp $
+ * $Id: dirtree.c,v 1.157 2004-10-09 22:24:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -70,11 +70,12 @@ static unsigned int server_id = 0;
 /* Used only while reading configuration files */
 
 static struct {
-  pool *tpool;
-  array_header *sstack,*cstack;
-  server_rec **curserver;
-  config_rec **curconfig;
-} conf;
+  pool *pool;
+  array_header *servstack, *confstack;
+  server_rec **curr_server;
+  config_rec **curr_config;
+
+} parser;
 
 typedef struct conf_stack_struc {
   struct conf_stack_struc *cs_next;
@@ -783,36 +784,38 @@ static cmd_rec *get_config_cmd(pool *ppool) {
 }
 
 static void init_dyn_stacks(pool *p, config_rec *top) {
-  conf.sstack = make_array(p, 1, sizeof(server_rec *));
-  conf.curserver = (server_rec **) push_array(conf.sstack);
-  *conf.curserver = main_server;
-  conf.cstack = make_array(p, 3, sizeof(config_rec *));
-  conf.curconfig = (config_rec **) push_array(conf.cstack);
-  *conf.curconfig = NULL;
-  conf.curconfig = (config_rec **) push_array(conf.cstack);
-  *conf.curconfig = top;
+  parser.servstack = make_array(p, 1, sizeof(server_rec *));
+  parser.curr_server = (server_rec **) push_array(parser.servstack);
+  *parser.curr_server = main_server;
+
+  parser.confstack = make_array(p, 3, sizeof(config_rec *));
+  parser.curr_config = (config_rec **) push_array(parser.confstack);
+  *parser.curr_config = NULL;
+
+  parser.curr_config = (config_rec **) push_array(parser.confstack);
+  *parser.curr_config = top;
 }
 
 static void free_dyn_stacks(void) {
-  memset(&conf, '\0', sizeof(conf));
+  memset(&parser, '\0', sizeof(parser));
 }
 
 void init_conf_stacks(void) {
-  pool *conf_pool = make_sub_pool(permanent_pool);
-  pr_pool_tag(conf_pool, "init_conf_stacks() parser pool");
+  pool *parser_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(parser_pool, "Parser Pool");
 
-  conf.tpool = conf_pool;
-  conf.sstack = make_array(conf_pool, 1, sizeof(server_rec *));
-  conf.curserver = (server_rec **) push_array(conf.sstack);
-  *conf.curserver = main_server;
-  conf.cstack = make_array(conf_pool, 10, sizeof(config_rec *));
-  conf.curconfig = (config_rec **) push_array(conf.cstack);
-  *conf.curconfig = NULL;
+  parser.pool = parser_pool;
+  parser.servstack = make_array(parser.pool, 1, sizeof(server_rec *));
+  parser.curr_server = (server_rec **) push_array(parser.servstack);
+  *parser.curr_server = main_server;
+  parser.confstack = make_array(parser.pool, 10, sizeof(config_rec *));
+  parser.curr_config = (config_rec **) push_array(parser.confstack);
+  *parser.curr_config = NULL;
 }
 
 void free_conf_stacks(void) {
-  destroy_pool(conf.tpool);
-  memset(&conf, '\0', sizeof(conf));
+  destroy_pool(parser.pool);
+  memset(&parser, '\0', sizeof(parser));
 }
 
 /* Used by modules to start/end configuration sections */
@@ -840,29 +843,29 @@ server_rec *start_new_server(const char *addrstr) {
   /* Default server port */
   s->ServerPort = pr_inet_getservport(s->pool, "ftp", "tcp");
 
-  conf.curserver = (server_rec **) push_array(conf.sstack);
-  *conf.curserver = s;
+  parser.curr_server = (server_rec **) push_array(parser.servstack);
+  *parser.curr_server = s;
 
   return s;
 }
 
 server_rec *end_new_server(void) {
-  if (!*conf.curserver)
+  if (!*parser.curr_server)
     return NULL;
 
-  if (conf.curserver == (server_rec**)conf.sstack->elts)
+  if (parser.curr_server == (server_rec **) parser.servstack->elts)
     return NULL; /* Disallow underflows */
 
-  conf.curserver--;
-  conf.sstack->nelts--;
+  parser.curr_server--;
+  parser.servstack->nelts--;
 
-  return *conf.curserver;
+  return *parser.curr_server;
 }
 
 /* Starts a sub-configuration */
 
 config_rec *start_sub_config(const char *name) {
-  config_rec *c = NULL, *parent = *conf.curconfig;
+  config_rec *c = NULL, *parent = *parser.curr_config;
   pool *c_pool = NULL, *parent_pool = NULL;
   xaset_t **set = NULL;
 
@@ -871,8 +874,8 @@ config_rec *start_sub_config(const char *name) {
     set = &parent->subset;
 
   } else {
-    parent_pool = (*conf.curserver)->pool;
-    set = &(*conf.curserver)->conf;
+    parent_pool = (*parser.curr_server)->pool;
+    set = &(*parser.curr_server)->conf;
   }
 
   /* Allocate a sub-pool for this config_rec.  Note: special exception for
@@ -910,12 +913,12 @@ config_rec *start_sub_config(const char *name) {
     c->flags |= CF_DYNAMIC;
 
   /* Now insert another level onto the stack */
-  if (!*conf.curconfig)
-    *conf.curconfig = c;
+  if (!*parser.curr_config)
+    *parser.curr_config = c;
 
   else {
-    conf.curconfig = (config_rec**)push_array(conf.cstack);
-    *conf.curconfig = c;
+    parser.curr_config = (config_rec **) push_array(parser.confstack);
+    *parser.curr_config = c;
   }
 
   return c;
@@ -923,14 +926,14 @@ config_rec *start_sub_config(const char *name) {
 
 /* Pop one level off the stack */
 config_rec *end_sub_config(unsigned char *empty) {
-  config_rec *c = *conf.curconfig;
+  config_rec *c = *parser.curr_config;
 
   /* Note that if the current config is empty, it should simply be removed.
    * Such empty configs can happen for <Directory> sections that
    * contain no directives, for example.
    */
 
-  if (conf.curconfig == (config_rec **) conf.cstack->elts) {
+  if (parser.curr_config == (config_rec **) parser.confstack->elts) {
     if (!c->subset || !c->subset->xas_list) {
       xaset_remove(c->set, (xasetmember_t *) c);
       destroy_pool(c->pool);
@@ -939,8 +942,8 @@ config_rec *end_sub_config(unsigned char *empty) {
         *empty = TRUE;
     }
 
-    if (*conf.curconfig)
-      *conf.curconfig = NULL;
+    if (*parser.curr_config)
+      *parser.curr_config = NULL;
     return NULL;
   }
 
@@ -952,10 +955,10 @@ config_rec *end_sub_config(unsigned char *empty) {
       *empty = TRUE;
   }
 
-  conf.curconfig--;
-  conf.cstack->nelts--;
+  parser.curr_config--;
+  parser.confstack->nelts--;
 
-  return *conf.curconfig;
+  return *parser.curr_config;
 }
 
 /* Adds a config_rec to the specified set */
@@ -1008,10 +1011,10 @@ config_rec *add_config(server_rec *s, const char *name) {
   xaset_t **set = NULL;
 
   if (!s)
-    s = *conf.curserver;
+    s = *parser.curr_server;
 
-  if (conf.curconfig)
-    c =  *conf.curconfig;
+  if (parser.curr_config)
+    c =  *parser.curr_config;
 
   if (c) {
     parent = c;
@@ -2111,8 +2114,8 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
             conftable *conftab;
             char found = FALSE;
 
-            cmd->server = *conf.curserver;
-            cmd->config = *conf.curconfig;
+            cmd->server = *parser.curr_server;
+            cmd->config = *parser.curr_config;
 
             conftab = pr_stash_get_symbol(PR_SYM_CONF, cmd->argv[0], NULL,
               &cmd->stash_index);
@@ -3046,7 +3049,7 @@ void *get_param_ptr_next(const char *name,int recurse) {
 }
 
 int remove_config(xaset_t *set, const char *name, int recurse) {
-  server_rec *s = (conf.curserver ? *conf.curserver : main_server);
+  server_rec *s = (parser.curr_server ? *parser.curr_server : main_server);
   config_rec *c;
   int found = 0;
   xaset_t *fset;
@@ -3210,8 +3213,8 @@ int parse_config_file(pool *p, const char *fname) {
       conftable *conftab;
       char found = FALSE;
 
-      cmd->server = *conf.curserver;
-      cmd->config = *conf.curconfig;
+      cmd->server = *parser.curr_server;
+      cmd->config = *parser.curr_config;
 
       conftab = pr_stash_get_symbol(PR_SYM_CONF, cmd->argv[0], NULL,
         &cmd->stash_index);
