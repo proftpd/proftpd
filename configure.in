@@ -626,6 +626,7 @@ for module in $ac_addl_modules; do
 
     alib=`cat $srcdir/modules/$src | grep "\\\$Libraries:" | sed -e 's/^.*\$Libraries: \(.*\)\\$/\1/'`
 
+    dnl Test for duplicate libraries, just in case.
     for thelib in $alib; do
 	dup="no"
 
@@ -638,7 +639,7 @@ for module in $ac_addl_modules; do
 	done
 	
 	if test "$dup" = "no"; then
-		addonlibs="$thelib $addonlibs"
+		addonlibs="$addonlibs $thelib"
 	fi
     done
 
