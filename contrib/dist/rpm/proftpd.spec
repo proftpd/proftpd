@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.22 2003-09-26 19:02:39 jwm Exp $
+# $Id: proftpd.spec,v 1.23 2003-10-14 13:41:59 jwm Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -25,7 +25,7 @@ Release:		1
 License:		GPL
 Group:			System Environment/Daemons
 Packager:		John Morrissey <jwm@proftpd.org>
-Vendor:			The ProFTPD Group
+Vendor:			The ProFTPD Project
 URL:			http://www.proftpd.org/
 Source:			ftp://ftp.proftpd.org/distrib/%{name}-%{version}.tar.bz2
 Prefix:			/usr
