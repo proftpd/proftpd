@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.10 2004-10-29 21:46:29 castaglia Exp $
+ * $Id: event.c,v 1.11 2004-12-16 03:01:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -82,14 +82,18 @@ int pr_event_register(module *m, const char *event,
     if (strcmp(evl->event, event) == 0) {
       struct event_handler *evhi = evl->handlers;
 
-      /* Make sure this event handler is added to the end of the list,
-       * in order to preserve module load order handling of events.
-       */ 
-      while (evhi && evhi->next)
-        evhi = evhi->next;
+      if (evhi) {
+        /* Make sure this event handler is added to the end of the list,
+         * in order to preserve module load order handling of events.
+         */ 
+        while (evhi && evhi->next)
+          evhi = evhi->next;
 
-      evh->prev = evhi;
-      evhi->next = evh;
+        evh->prev = evhi;
+        evhi->next = evh;
+
+      } else
+        evl->handlers = evh;
 
       /* All done */
       return 0;
@@ -118,11 +122,6 @@ int pr_event_unregister(module *m, const char *event,
     void (*cb)(const void *, void *)) {
   struct event_list *evl;
 
-  if (!event) {
-    errno = EINVAL;
-    return -1;
-  }
-
   if (!events)
     return 0;
 
@@ -133,7 +132,7 @@ int pr_event_unregister(module *m, const char *event,
    */
 
   for (evl = events; evl; evl = evl->next) {
-    if (strcmp(evl->event, event) == 0) {
+    if (!event || strcmp(evl->event, event) == 0) {
       struct event_handler *evh;
 
       /* If there are no handlers for this event, this is nothing to
