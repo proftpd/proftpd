@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.74 2003-11-09 23:32:07 castaglia Exp $
+ * $Id: data.c,v 1.75 2004-05-09 20:05:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -441,7 +441,8 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
     reason = filename;
 
   /* Passive data transfers... */
-  if (session.sf_flags & SF_PASSIVE) {
+  if (session.sf_flags & SF_PASSIVE ||
+      session.sf_flags & SF_EPSV_ALL) {
     if (!session.d) {
       pr_log_pri(PR_LOG_ERR, "Internal error: PASV mode set, but no data "
         "connection listening.");
