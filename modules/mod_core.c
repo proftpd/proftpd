@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.188 2003-09-23 19:10:53 castaglia Exp $
+ * $Id: mod_core.c,v 1.189 2003-09-26 06:53:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2616,9 +2616,8 @@ MODRET end_virtualhost(cmd_rec *cmd) {
   else
     address = pr_netaddr_get_localaddr_str(cmd->tmp_pool);
 
-  /* We check if the given name maps to multiple addresses here, and handle
-   * them appropriately (e.g. by implicitly adding Bind records for those
-   * additional addresses).
+  /* Any additional addresses associated with the configured address have
+   * already been handled, so we can ignore them here.
    */
   addr = pr_netaddr_get_addr(cmd->tmp_pool, address, NULL);
   if (addr == NULL)
