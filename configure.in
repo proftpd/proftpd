@@ -829,19 +829,43 @@ AC_CHECK_FUNCS(siginterrupt setpgid)
 AC_CHECK_FUNCS(regcomp)
 AC_CHECK_FUNCS(tzset)
 AC_CHECK_FUNCS(pathconf fpathconf)
-
 AC_CHECK_FUNCS(fgetspent)
 
 AC_CHECK_FUNC(setpassent,
 [case "$target_os:$enable_force_setpassent" in
 changequote(, )dnl
-  *freebsd[23]\.[0-3]*:) 
+  *freebsd[23]\.[0-3]*:)
 changequote([, ])dnl
     AC_MSG_WARN(Disabling broken FreeBSD setpassent(), see README for details.)
-	;;
+        ;;
   *:no) ;;
   *) AC_DEFINE(HAVE_SETPASSENT) ;;
 esac])
+
+dnl IPv6-related checks
+PR_CHECK_SS_FAMILY
+PR_CHECK_SS_LEN
+
+AC_MSG_CHECKING([whether struct addrinfo is defined])
+AC_TRY_COMPILE(
+[ #include <stdio.h>
+  #ifdef HAVE_UNISTD_H
+  # include <unistd.h>
+  #endif
+  #include <sys/types.h>
+  #include <sys/socket.h>
+  #include <netdb.h>
+],
+[ do {
+   struct addrinfo a;
+   (void) a.ai_flags;
+  } while(0)
+],
+[ AC_MSG_RESULT(yes)
+  AC_DEFINE(HAVE_STRUCT_ADDRINFO,, [define if you have struct addrinfo])
+],
+[ AC_MSG_RESULT(no)
+]) 
 
 if test x"$enable_sendfile" = xyes ; then
 AC_CACHE_CHECK([which sendfile() implementation to use], pr_cv_func_sendfile,

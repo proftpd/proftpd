@@ -522,6 +522,21 @@
 /* Define if you have the security library (-lsecurity).  */
 #undef HAVE_LIBSECURITY
 
+/* Define if you have the addrinfo struct.  */
+#undef HAVE_STRUCT_ADDRINFO
+
+/* Define if you have the ss_family sockaddr_storage struct member.  */
+#undef HAVE_SS_FAMILY
+
+/* Define if you have the __ss_family sockaddr_storage struct member.  */
+#undef HAVE___SS_FAMILY
+
+/* Define if you have the ss_len sockaddr_storage struct member.  */
+#undef HAVE_SS_LEN
+
+/* Define if you have the __ss_len sockaddr_storage struct member.  */
+#undef HAVE___SS_LEN
+
 /* Define if you have the socket library (-lsocket).  */
 #undef HAVE_LIBSOCKET
 #ifndef STDIN_FILENO

@@ -39,3 +39,100 @@ AC_DEFUN(PR_CHECK_CC_OPT,
    rm -f conftest*
   ])
 
+# PR_CHECK_SS_FAMILY
+# ---------------------
+# Check which member of the struct sockaddr_storage contains the family
+# information
+AC_DEFUN([PR_CHECK_SS_FAMILY],
+[
+  AC_MSG_CHECKING([whether ss_family is defined])
+  AC_TRY_COMPILE([
+    #include <stdio.h>
+    #include <unistd.h>
+    #include <sys/types.h>
+    #include <sys/socket.h>
+  ],
+  [
+    do {
+     struct sockaddr_storage a;
+     (void) a.ss_family;
+    } while(0)
+  ],
+  [
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(HAVE_SS_FAMILY)
+  ],
+  [
+    AC_MSG_RESULT(no)
+    AC_MSG_CHECKING([whether __ss_family is defined])
+    AC_TRY_COMPILE([
+      #include <stdio.h>
+      #include <unistd.h>
+      #include <sys/types.h>
+      #include <sys/socket.h>
+    ],
+    [
+      do {
+       struct sockaddr_storage a;
+       (void) a.__ss_family;
+      } while(0)
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(HAVE___SS_FAMILY)
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ])
+  ])
+])
+
+# PR_CHECK_SS_LEN
+# ---------------------
+# Check which member of the struct sockaddr_storage contains the length
+# information
+AC_DEFUN([PR_CHECK_SS_LEN],
+[
+  AC_MSG_CHECKING([whether ss_len is defined])
+  AC_TRY_COMPILE([
+    #include <stdio.h>
+    #include <unistd.h>
+    #include <sys/types.h>
+    #include <sys/socket.h>
+  ],
+  [
+    do {
+     struct sockaddr_storage a;
+     (void) a.ss_len;
+    } while(0)
+  ],
+  [
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(HAVE_SS_LEN)
+  ],
+  [
+    AC_MSG_RESULT(no)
+    AC_MSG_CHECKING([whether __ss_len is defined])
+    AC_TRY_COMPILE([
+      #include <stdio.h>
+      #include <unistd.h>
+      #include <sys/types.h>
+      #include <sys/socket.h>
+    ],
+    [
+      do {
+       struct sockaddr_storage a;
+       (void) a.__ss_len;
+      } while(0)
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(HAVE___SS_LEN)
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ])
+  ])
+])
+
+
