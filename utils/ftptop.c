@@ -25,7 +25,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.4 2002-09-27 20:01:10 castaglia Exp $
+ * $Id: ftptop.c,v 1.5 2002-09-28 00:28:27 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.8.2"
@@ -35,7 +35,6 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/types.h>
-#include <arpa/inet.h>
 
 #include "utils.h"
 
@@ -46,7 +45,7 @@ static const char *program = "ftptop";
 
 /* Display options */
 #define FTPTOP_DISPLAY_FORMAT \
-  "%-5d %s %-.10s %-.7s %s:%-3d 0 %-.20s\n"
+  "%-5d %s %-.10s %-.7s %s 0 %-.20s\n"
 
 #define FTPTOP_SHOW_DOWNLOAD		0x0001
 #define FTPTOP_SHOW_UPLOAD		0x0002
@@ -201,7 +200,7 @@ static void read_scoreboard(void) {
 
     snprintf(buf, sizeof(buf), FTPTOP_DISPLAY_FORMAT, 
       score->sce_pid, status, score->sce_user, score->sce_client_addr,
-      inet_ntoa(score->sce_server_ip), score->sce_server_port, score->sce_cmd);
+      score->sce_server_addr, score->sce_cmd);
     buf[sizeof(buf)-1] = '\0';
 
     /* Make sure there is enough memory allocated in the session list.
