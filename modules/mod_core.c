@@ -19,7 +19,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.14 1999-09-30 05:13:53 macgyver Exp $
+ * $Id: mod_core.c,v 1.15 1999-10-01 03:33:12 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -206,22 +206,6 @@ MODRET set_serverport(cmd_rec *cmd)
     CONF_ERROR(cmd,"value must be between 0 and 65535");
 
   s->ServerPort = port;
-  return HANDLED(cmd);
-}
-
-MODRET set_bandwidth(cmd_rec *cmd)
-{
-  server_rec *s = cmd->server;
-  int bw;
-
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL);
-
-  bw = atoi(cmd->argv[1]);
-  if(bw < 1 || bw > 2048)
-    CONF_ERROR(cmd,"value must be between 1 and 2048 Kbps");
-
-  s->Bandwidth = bw * 1024;
   return HANDLED(cmd);
 }
 
@@ -784,7 +768,6 @@ MODRET set_allowforeignaddress(cmd_rec *cmd)
 
 MODRET set_commandbuffersize(cmd_rec *cmd)
 {
-  server_rec *s = cmd->server;
   int size;
 
   CHECK_ARGS(cmd, 1);
@@ -2260,7 +2243,6 @@ static conftable core_conftable[] = {
   { "WtmpLog",			set_wtmplog,			NULL },
   { "Bind",			add_bind,			NULL },
   { "Port",			set_serverport, 		NULL },
-  { "Bandwidth",		set_bandwidth, 		        NULL },
   { "SocketBindTight",		set_socketbindtight,		NULL },
   { "IdentLookups",		set_identlookups,		NULL },
   { "tcpBackLog",		set_tcpbacklog,			NULL },
