@@ -3941,7 +3941,7 @@ static int sql_getconf(void)
     cmap.status = 0;
     cmap.sql_fstor = NULL;
     cmap.sql_frate = NULL;
-    log_debug(DEBUG0, _MOD_VERSION ": warning: no SQLConnectInfo specified. mod_sql is OFF");
+    log_debug(DEBUG1, _MOD_VERSION ": warning: no SQLConnectInfo specified. mod_sql is OFF");
   } else {
     if (!strcasecmp(c->argv[3], "percall")) percall = 1;
 
