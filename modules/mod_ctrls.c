@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.14 2004-05-25 23:31:22 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.15 2004-05-29 19:52:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -642,7 +642,7 @@ static int ctrls_accept(int sockfd, uid_t *uid, gid_t *gid, pid_t *pid) {
   char *tmp = NULL;
   time_t stale_time;
   struct sockaddr_un sock;
-  struct stat statbuf;
+  struct stat st;
 
   len = sizeof(sock);
 
@@ -665,7 +665,7 @@ static int ctrls_accept(int sockfd, uid_t *uid, gid_t *gid, pid_t *pid) {
 
   /* Check the path -- hmmm... */
   PRIVS_ROOT
-  while (stat(sock.sun_path, &statbuf) < 0) {
+  while (stat(sock.sun_path, &st) < 0) {
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
@@ -679,7 +679,7 @@ static int ctrls_accept(int sockfd, uid_t *uid, gid_t *gid, pid_t *pid) {
   PRIVS_RELINQUISH
 
   /* Is it a socket? */
-  if (!S_ISSOCK(statbuf.st_mode)) {
+  if (!S_ISSOCK(st.st_mode)) {
     errno = ENOTSOCK;
     ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to accept connection: not a socket");
@@ -687,8 +687,8 @@ static int ctrls_accept(int sockfd, uid_t *uid, gid_t *gid, pid_t *pid) {
   }
 
   /* Are the perms _not_ rwx------? */
-  if (statbuf.st_mode & (S_IRWXG | S_IRWXO) ||
-      ((statbuf.st_mode & S_IRWXU) != PR_CTRLS_CL_MODE)) {
+  if (st.st_mode & (S_IRWXG | S_IRWXO) ||
+      ((st.st_mode & S_IRWXU) != PR_CTRLS_CL_MODE)) {
     errno = EPERM;
     ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to accept connection: incorrect mode");
@@ -698,14 +698,30 @@ static int ctrls_accept(int sockfd, uid_t *uid, gid_t *gid, pid_t *pid) {
   /* Is it new enough? */
   stale_time = time(NULL) - ctrls_cl_freshness;
 
-  if (statbuf.st_atime < stale_time ||
-      statbuf.st_ctime < stale_time ||
-      statbuf.st_mtime < stale_time) {
+  if (st.st_atime < stale_time ||
+      st.st_ctime < stale_time ||
+      st.st_mtime < stale_time) {
     char *msg = "error: stale connection";
 
     ctrls_log(MOD_CTRLS_VERSION,
       "unable to accept connection: stale connection");
 
+    /* Log the times being compared, to aid in debugging this situation. */
+    if (st.st_atime < stale_time)
+      ctrls_log(MOD_CTRLS_VERSION,
+         "last access time of '%s' is %lu (older than %lu)", sock.sun_path,
+         (unsigned long) st.st_atime, (unsigned long) stale_time);
+
+    if (st.st_ctime < stale_time)
+      ctrls_log(MOD_CTRLS_VERSION,
+         "last change time of '%s' is %lu (older than %lu)", sock.sun_path,
+         (unsigned long) st.st_ctime, (unsigned long) stale_time);
+
+    if (st.st_mtime < stale_time)
+      ctrls_log(MOD_CTRLS_VERSION,
+         "last modified time of '%s' is %lu (older than %lu)", sock.sun_path,
+         (unsigned long) st.st_mtime, (unsigned long) stale_time);
+ 
     if (pr_ctrls_send_msg(cl_fd, -1, 1, &msg) < 0)
       ctrls_log("error sending message: %s", strerror(errno));
     close(cl_fd);
@@ -727,10 +743,10 @@ static int ctrls_accept(int sockfd, uid_t *uid, gid_t *gid, pid_t *pid) {
 
   /* Return the IDs of the caller */
   if (uid)
-    *uid = statbuf.st_uid;
+    *uid = st.st_uid;
 
   if (gid)
-    *gid = statbuf.st_gid;
+    *gid = st.st_gid;
 
   if (pid)
     *pid = cl_pid;
