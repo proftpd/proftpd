@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.2 2003-11-09 02:08:22 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.3 2003-11-09 02:34:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1553,6 +1553,21 @@ MODRET set_ctrlssocketowner(cmd_rec *cmd) {
 /* Event handlers
  */
 
+static void ctrls_exit_ev(const void *event_data, void *user_data) {
+  if (!is_master || !ctrls_engine)
+    return;
+
+  /* Close any connected clients */
+  if (cl_list) {
+    pr_ctrls_cl_t *cl = NULL;
+
+    for (cl = cl_list; cl; cl = cl->cl_next)
+      close(cl->cl_fd);
+  }
+
+  return;
+}
+
 static void ctrls_restart_ev(const void *event_data, void *user_data) {
 
   /* Close any connected clients */
@@ -1593,28 +1608,13 @@ static void ctrls_restart_ev(const void *event_data, void *user_data) {
 }
 
 static void ctrls_startup_ev(const void *event_data, void *user_data) {
+
   /* Start a timer for the checking/processing of the ctrl socket.  */
   add_timer(ctrls_interval, CTRLS_TIMER_ID, &ctrls_module, ctrls_timer_cb);
-
 }
 
 /* Initialization routines
  */
-
-static void ctrls_exit_cb(void) {
-  if (!is_master || !ctrls_engine)
-    return;
-
-  /* Close any connected clients */
-  if (cl_list) {
-    pr_ctrls_cl_t *cl = NULL;
-
-    for (cl = cl_list; cl; cl = cl->cl_next)
-      close(cl->cl_fd);
-  }
-
-  return;
-}
 
 static int ctrls_init(void) {
   register unsigned int i = 0; 
@@ -1643,11 +1643,9 @@ static int ctrls_init(void) {
     log_pri(PR_LOG_NOTICE, "notice: unable to listen to local socket: %s",
       strerror(errno));
 
-  pr_event_register(&ctrls_module, "core.startup", ctrls_startup_ev, NULL);
+  pr_event_register(&ctrls_module, "core.exit", ctrls_exit_ev, NULL);
   pr_event_register(&ctrls_module, "core.restart", ctrls_restart_ev, NULL);
-
-  /* Be prepared for SIGTERMs */
-  pr_exit_register_handler(ctrls_exit_cb);
+  pr_event_register(&ctrls_module, "core.startup", ctrls_startup_ev, NULL);
 
   return 0;
 }
