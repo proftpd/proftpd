@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.22 2002-11-19 17:57:48 castaglia Exp $
+ * $Id: dirtree.h,v 1.23 2002-11-25 18:28:45 castaglia Exp $
  */
 
 #ifndef __DIRTREE_H
@@ -56,9 +56,6 @@ typedef struct server_struc {
   int tcp_swin_override;	/* Specifically override tcp swin */
 
   char *ServerAdmin;		/* Administrator's name */
-  char *ServerMessage;		/* Server's welcome message */
-
-  int AnonymousGreeting;	/* Do not greet until after user login */  
 
   p_in_addr_t *ipaddr;		/* Internal address of this server */
   struct conn_struc *listen;	/* Our listening connection */
