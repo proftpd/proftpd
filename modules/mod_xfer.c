@@ -25,7 +25,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.59 2001-12-17 20:07:59 flood Exp $
+ * $Id: mod_xfer.c,v 1.60 2001-12-17 20:36:37 flood Exp $
  */
 
 /* History Log:
@@ -959,6 +959,7 @@ MODRET cmd_abor(cmd_rec *cmd)
 
   add_response(R_226,"Abort successful");
   data_abort(0,FALSE);
+  data_reset();
   data_cleanup();
   
   return HANDLED(cmd);

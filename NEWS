@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.145 2001-12-17 20:07:59 flood Exp $
+$Id: NEWS,v 1.146 2001-12-17 20:36:37 flood Exp $
 
 1.2.5rc1 - CVS
 ---------------------------------
@@ -29,6 +29,7 @@ $Id: NEWS,v 1.145 2001-12-17 20:07:59 flood Exp $
              finalization slot
 - Bug 1392 - Added LOG_CMD_ERR cleanup handler for LIST/NLST/RETR/
              STOR/APPE/STOU, to defer clearing of transfer counters.
+- Bug 1391 - ABOR handler now clears session.xfer
 
 1.2.4 - Released 10/19/2001
 ---------------------------------
