@@ -82,7 +82,7 @@ install-proftpd: proftpd $(DESTDIR)$(localstatedir) $(DESTDIR)$(sysconfdir) $(DE
 		rm -f $(DESTDIR)$(sbindir)/in.proftpd ; \
 	fi
 	ln -s proftpd $(DESTDIR)$(sbindir)/in.proftpd
-	chown -h $(INSTALL_USER):$(INSTALL_GROUP) $(DESTDIR)$(sbindir)/in.proftpd
+	-chown -h $(INSTALL_USER):$(INSTALL_GROUP) $(DESTDIR)$(sbindir)/in.proftpd
 
 install-utils: $(DESTDIR)$(sbindir) $(DESTDIR)$(bindir)
 	$(INSTALL_BIN)  ftpcount $(DESTDIR)$(bindir)/ftpcount
