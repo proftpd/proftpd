@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.4 2003-11-12 19:14:23 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.5 2003-11-16 00:49:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -54,8 +54,8 @@ static ctrls_acttab_t ctrls_admin_acttab[];
 /* Pool for this module's use */
 static pool *ctrls_admin_pool = NULL;
 
-/* For debugging, both config and memory */
-static pr_ctrls_t *ctrls_debug_ctrl = NULL;
+/* For the 'dump' action */
+static pr_ctrls_t *ctrls_dump_ctrl = NULL;
 
 /* Support routines
  */
@@ -70,7 +70,7 @@ static void ctrls_admin_printf(const char *fmt, ...) {
 
   buf[sizeof(buf)-1] = '\0';
 
-  pr_ctrls_add_response(ctrls_debug_ctrl, "%s", buf);
+  pr_ctrls_add_response(ctrls_dump_ctrl, "%s", buf);
 }
 
 #if 0
@@ -133,25 +133,60 @@ static int ctrls_handle_debug(pr_ctrls_t *ctrl, int reqargc,
     ctrls_log(MOD_CTRLS_ADMIN_VERSION, "debug: level set to %d", level);
     pr_ctrls_add_response(ctrl, "debug level set to %d", level);
 
-  /* Handle 'debug config' requests */
+  } else {
+    pr_ctrls_add_response(ctrl, "unknown debug action: '%s'", reqargv[0]);
+    return -1;
+  }
+
+  return 0;
+}
+
+static int ctrls_handle_dump(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+
+  /* Check the dump ACL */
+  if (!ctrls_check_acl(ctrl, ctrls_admin_acttab, "dump")) {
+
+    /* Access denied */
+    pr_ctrls_add_response(ctrl, "access denied");
+    return -1;
+  }
+
+  /* Sanity check */
+  if (reqargc == 0 || reqargv == NULL) {
+    pr_ctrls_add_response(ctrl, "dump: missing required parameters");
+    return -1;
+  }
+
+  /* Handle 'dump classes' requests */
+  if (strcmp(reqargv[0], "classes") == 0) {
+    pr_ctrls_add_response(ctrl, "'dump classes' currently not supported");
+    return -1;
+
+  /* Handle 'dump config' requests */
   } else if (strcmp(reqargv[0], "config") == 0) {
 
-    ctrls_debug_ctrl = ctrl;
+    ctrls_dump_ctrl = ctrl;
     pr_conf_debug_config(ctrls_admin_printf, main_server->conf, NULL);
 
     pr_ctrls_add_response(ctrl, "%s", "");
     pr_ctrls_add_response(ctrl, "config dumped");
 
-  /* Handle 'debug memory' requests */
+  /* Handle 'dump dirs' requests */
+  } else if (strcmp(reqargv[0], "dirs") == 0) {
+    pr_ctrls_add_response(ctrl, "'dump dirs' currently not supported");
+    return -1;
+
+  /* Handle 'dump memory' requests */
   } else if (strcmp(reqargv[0], "memory") == 0) {
 
-    ctrls_debug_ctrl = ctrl;
+    ctrls_dump_ctrl = ctrl;
     pr_pool_debug_memory(ctrls_admin_printf);
 
     pr_ctrls_add_response(ctrl, "memory dumped");
 
   } else {
-    pr_ctrls_add_response(ctrl, "unknown debug action: '%s'", reqargv[0]);
+    pr_ctrls_add_response(ctrl, "unknown dump action: '%s'", reqargv[0]);
     return -1;
   }
 
@@ -761,8 +796,10 @@ static int ctrls_admin_init(void) {
 }
 
 static ctrls_acttab_t ctrls_admin_acttab[] = {
-  { "debug",    "perform debugging operations",	NULL,
+  { "debug",    "set debugging level",		NULL,
     ctrls_handle_debug },
+  { "dump",	"dump internal information",	NULL,
+    ctrls_handle_dump },
   { "get",      "",	NULL,
     ctrls_handle_get },
   { "restart",  "restart the daemon (similar to using HUP)",	NULL,
