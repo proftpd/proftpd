@@ -27,10 +27,10 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.14 2003-03-06 00:11:54 castaglia Exp $
+ * $Id: mod_radius.c,v 1.15 2003-03-21 06:44:00 castaglia Exp $
  */
 
-#define MOD_RADIUS_VERSION "mod_radius/0.7rc7"
+#define MOD_RADIUS_VERSION "mod_radius/0.8rc2"
 
 #include "conf.h"
 #include "privs.h"
@@ -47,9 +47,9 @@
 /* From RFC2138 */
 #define RADIUS_STRING_LEN	254
 
-/* RADIUS attribute structure
+/* RADIUS attribute structures
  */
-typedef struct radius_attrib_obj {
+typedef struct {
   unsigned char type;
   unsigned char length;
   unsigned char data[1];
@@ -57,7 +57,7 @@ typedef struct radius_attrib_obj {
 
 /* RADIUS packet header
  */
-typedef struct radius_packet_obj {
+typedef struct {
   unsigned char code;
   unsigned char id;
   unsigned short length;
@@ -87,6 +87,7 @@ typedef struct radius_packet_obj {
 #define RADIUS_OLD_PASSWORD		17
 #define RADIUS_REPLY_MESSAGE		18
 #define RADIUS_STATE			24
+#define RADIUS_VENDOR_SPECIFIC		26
 #define RADIUS_SESSION_TIMEOUT		27
 #define RADIUS_IDLE_TIMEOUT		28
 #define RADIUS_CALLING_STATION_ID	31
@@ -174,17 +175,33 @@ static unsigned char radius_auth_reject = FALSE;
 /* "Fake" user/group information for RADIUS users. */
 static unsigned char radius_have_user_info = FALSE;
 static struct passwd radius_passwd;
-static unsigned int radius_suppl_group_count = 0;
-static char **radius_suppl_group_names = NULL;
-static gid_t *radius_suppl_group_ids = NULL;
 
-/* Custom attribute IDs that may be used for server-supplied RadiusUserInfo
+static unsigned char radius_have_group_info = FALSE;
+static char *radius_prime_group_name = NULL;
+static unsigned int radius_addl_group_count = 0;
+static char **radius_addl_group_names = NULL;
+static char *radius_addl_group_names_str = NULL;
+static gid_t *radius_addl_group_ids = NULL;
+static char *radius_addl_group_ids_str = NULL;
+
+/* Vendor information, defaults to Unix (Vendor-Id of 4) */
+static const char *radius_vendor_name = "Unix";
+static unsigned int radius_vendor_id = 4;
+
+/* Custom VSA IDs that may be used for server-supplied RadiusUserInfo
  * parameters.
  */
 static int radius_uid_attr_id = 0;
 static int radius_gid_attr_id = 0;
 static int radius_home_attr_id = 0;
 static int radius_shell_attr_id = 0;
+
+/* Custom VSA IDs that may be used for server-supplied RadiusGroupInfo
+ * parameters.
+ */
+static int radius_prime_group_name_attr_id = 0;
+static int radius_addl_group_names_attr_id = 0;
+static int radius_addl_group_ids_attr_id = 0;
 
 /* For tracking the ID of the last accounting packet (to prevent the
  * same ID from being reused).
@@ -208,13 +225,19 @@ static int radius_close_socket(int);
 static void radius_get_acct_digest(radius_packet_t *, char *);
 static radius_attrib_t *radius_get_attrib(radius_packet_t *, unsigned char);
 static void radius_get_rnd_digest(radius_packet_t *);
+static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *,
+  unsigned char);
 static int radius_log(const char *, ...);
 static radius_server_t *radius_make_server(pool *);
 static int radius_openlog(void);
 static int radius_open_socket(void);
-static unsigned char radius_parse_group_info(config_rec *, char *, char *);
+static unsigned char radius_parse_gids_str(pool *, char *, gid_t **,
+  unsigned int *);
+static unsigned char radius_parse_groups_str(pool *, char *, char ***,
+  unsigned int *);
 static void radius_parse_var(char *, int *, char **);
 static void radius_process_accpt_packet(radius_packet_t *);
+static void radius_process_group_info(config_rec *);
 static void radius_process_user_info(config_rec *);
 static radius_packet_t *radius_recv_packet(int, unsigned int);
 static int radius_send_packet(int, radius_packet_t *, radius_server_t *);
@@ -334,33 +357,21 @@ static void radius_parse_var(char *var, int *attr_id, char **attr_default) {
   destroy_pool(tmp_pool);
 }
 
-static unsigned char radius_parse_group_info(config_rec *c, char *group_str,
-    char *gid_str) {
-  char *name = NULL;
-  array_header *group_names = NULL, *group_ids = NULL;
-
-  /* Allocate arrays */
-  group_names = make_array(c->pool, 0, sizeof(char **));
-  group_ids = make_array(c->pool, 0, sizeof(gid_t *));
-
-  /* Add each name to the array. */
-  while ((name = radius_argsep(&group_str)) != NULL) {
-    char *tmp = pstrdup(c->pool, name);
-
-    /* Push the name into the name array. */
-    *((char **) push_array(group_names)) = tmp;
-  }
+static unsigned char radius_parse_gids_str(pool *p, char *gids_str, 
+    gid_t **gids, unsigned int *ngids) {
+  char *val = NULL;
+  array_header *group_ids = make_array(p, 0, sizeof(gid_t *));
 
   /* Add each GID to the array. */
-  while ((name = radius_argsep(&gid_str)) != NULL) {
+  while ((val = radius_argsep(&gids_str)) != NULL) {
     gid_t gid;
     char *endp = NULL;
 
     /* Make sure the given ID is a valid number. */
-    gid = strtoul(name, &endp, 10);
+    gid = strtoul(val, &endp, 10);
 
     if (endp && *endp) {
-      log_pri(PR_LOG_NOTICE, "%s: badly formed group ID: %s", c->name, name);
+      log_pri(PR_LOG_NOTICE, "RadiusGroupInfo badly formed group ID: %s", val);
       return FALSE;
     }
 
@@ -368,18 +379,27 @@ static unsigned char radius_parse_group_info(config_rec *c, char *group_str,
     *((gid_t *) push_array(group_ids)) = gid;
   }
 
-  /* Does the number of names match the number of GIDs? */
-  if (group_names->nelts != group_ids->nelts) {
-    log_pri(PR_LOG_NOTICE, "%s: mismatched number of group names and IDs",
-      c->name);
-    return FALSE;
+  *gids = (gid_t *) group_ids->elts;
+  *ngids = group_ids->nelts;
+
+  return TRUE;
+}
+
+static unsigned char radius_parse_groups_str(pool *p, char *groups_str,
+    char ***groups, unsigned int *ngroups) {
+  char *name = NULL;
+  array_header *group_names = make_array(p, 0, sizeof(char **));
+
+  /* Add each name to the array. */
+  while ((name = radius_argsep(&groups_str)) != NULL) {
+    char *tmp = pstrdup(p, name);
+
+    /* Push the name into the name array. */
+    *((char **) push_array(group_names)) = tmp;
   }
 
-  /* Add the constructed lists to the config_rec. */
-  c->argv[4] = pcalloc(c->pool, sizeof(unsigned int));
-  *((unsigned int *) c->argv[4]) = group_names->nelts;
-  c->argv[5] = group_names->elts;
-  c->argv[6] = group_ids->elts;
+  *groups = (char **) group_names->elts;
+  *ngroups = group_names->nelts;
 
   return TRUE;
 }
@@ -396,139 +416,347 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
    * if RadiusUserInfo is indeed in effect.
    */
 
-  if (!radius_have_user_info)
-
+  if (!radius_have_user_info && !radius_have_group_info)
     /* Return now if there's no reason for doing extra work. */
     return;
 
   if (radius_uid_attr_id || radius_gid_attr_id ||
-      radius_home_attr_id || radius_shell_attr_id) 
+      radius_home_attr_id || radius_shell_attr_id) {
     radius_log("parsing packet for RadiusUserInfo attributes");
 
-  /* These custom values will been supplied in the configuration file, and
-   * set when the RadiusUserInfo config_rec is retrieved, during
-   * child_init.
+    /* These custom values will been supplied in the configuration file, and
+     * set when the RadiusUserInfo config_rec is retrieved, during
+     * session initialization.
+     */
+
+    if (radius_uid_attr_id) {
+      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
+        radius_uid_attr_id);
+
+      if (attrib) {
+        int uid = -1;
+
+        /* Parse the attribute value into an int, then cast it into the
+         * radius_passwd.pw_uid field.  Make sure it's a sane UID
+         * (ie non-negative).
+         */
+
+        /* Dare we trust attrib->length? */
+        memcpy(&uid, attrib->data, attrib->length);
+        uid = ntohl(uid);
+
+        if (uid < 0)
+          radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+            "illegal user ID: '%u'", radius_vendor_name, radius_uid_attr_id,
+            uid);
+
+        else {
+          radius_passwd.pw_uid = uid;
+
+          radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+            "user ID: '%u'", radius_vendor_name, radius_uid_attr_id,
+            radius_passwd.pw_uid);
+        }
+
+      } else
+        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
+          "user ID: defaulting to '%u'", radius_vendor_name, radius_uid_attr_id,
+          radius_passwd.pw_uid);
+    }
+
+    if (radius_gid_attr_id) {
+      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
+        radius_gid_attr_id);
+
+      if (attrib) {
+        int gid = -1;
+
+        /* Parse the attribute value into an int, then cast it into the
+         * radius_passwd.pw_gid field.  Make sure it's a sane GID
+         * (ie non-negative).
+         */
+
+        /* Dare we trust attrib->length? */
+        memcpy(&gid, attrib->data, attrib->length);
+        gid = ntohl(gid);
+
+        if (gid < 0)
+          radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+            "illegal group ID: '%u'", radius_vendor_name, radius_gid_attr_id,
+            gid);
+
+        else {
+          radius_passwd.pw_gid = gid;
+
+          radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+            "group ID: '%u'", radius_vendor_name, radius_gid_attr_id,
+            radius_passwd.pw_gid);
+        }
+
+      } else
+        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
+          "group ID: defaulting to '%u'", radius_vendor_name,
+          radius_gid_attr_id, radius_passwd.pw_gid);
+    }
+
+    if (radius_home_attr_id) {
+      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
+        radius_home_attr_id);
+
+      if (attrib) {
+
+        /* RADIUS strings are not NUL-terminated. */
+        char *home = pcalloc(radius_pool, attrib->length + 1);
+
+        /* Parse the attribute value into a string of the necessary length,
+         * then replace radius_passwd.pw_dir with it.  Make sure it's a sane
+         * home directory (ie starts with a '/').
+         */
+
+        /* Dare we trust attrib->length? */
+        memcpy(home, attrib->data, attrib->length);
+
+        if (*home != '/')
+          radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+            "illegal home: '%s'", radius_vendor_name, radius_home_attr_id,
+            home);
+
+        else {
+          radius_passwd.pw_dir = home;
+
+          radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+            "home directory: '%s'", radius_vendor_name, radius_home_attr_id,
+            radius_passwd.pw_dir);
+        }
+
+      } else
+        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
+          "home directory: defaulting to '%s'", radius_vendor_name,
+          radius_home_attr_id, radius_passwd.pw_dir);
+    }
+
+    if (radius_shell_attr_id) {
+      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
+        radius_shell_attr_id);
+
+      if (attrib) {
+        /* RADIUS strings are not NUL-terminated. */
+        char *shell = pcalloc(radius_pool, attrib->length + 1);
+
+        /* Parse the attribute value into a string of the necessary length,
+         * then replace radius_passwd.pw_shell with it.  Make sure it's a sane
+         * shell (ie starts with a '/').
+         */
+
+        /* Dare we trust attrib->length? */
+        memcpy(shell, attrib->data, attrib->length);
+
+        if (*shell != '/')
+          radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+            "illegal shell: '%s'", radius_vendor_name, radius_shell_attr_id,
+            shell);
+
+        else {
+          radius_passwd.pw_shell = shell;
+
+          radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+            "shell: '%s'", radius_vendor_name, radius_shell_attr_id,
+            radius_passwd.pw_shell);
+        }
+
+      } else
+        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
+          "shell: defaulting to '%s'", radius_vendor_name, radius_shell_attr_id,
+          radius_passwd.pw_shell);
+    }
+  }
+
+  if (radius_prime_group_name_attr_id ||
+      radius_addl_group_names_attr_id ||
+      radius_addl_group_ids_attr_id) {
+    unsigned int ngroups = 0, ngids = 0;
+    char **groups = NULL;
+    gid_t *gids = NULL;
+
+    radius_log("parsing packet for RadiusGroupInfo attributes");
+
+    if (radius_prime_group_name_attr_id) {
+      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
+        radius_prime_group_name_attr_id);
+
+      if (attrib) {
+        /* RADIUS strings are not NUL-terminated. */
+        char *group_name = pcalloc(radius_pool, attrib->length + 1);
+
+        /* Dare we trust attrib->length? */
+        memcpy(group_name, attrib->data, attrib->length);
+
+        radius_prime_group_name = group_name;
+
+        radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+          "primary group name: '%s'", radius_vendor_name,
+          radius_prime_group_name_attr_id, radius_prime_group_name);
+
+      } else
+        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
+          "prime group name: defaulting to '%s'", radius_vendor_name,
+          radius_prime_group_name_attr_id, radius_prime_group_name);
+    }
+
+    if (radius_addl_group_names_attr_id) {
+      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
+        radius_addl_group_names_attr_id);
+
+      if (attrib) {
+        /* RADIUS strings are not NUL-terminated. */
+        char *group_names = pcalloc(radius_pool, attrib->length + 1);
+        char *group_names_str = NULL;
+
+        /* Dare we trust attrib->length? */
+        memcpy(group_names, attrib->data, attrib->length);
+
+        /* Make a copy of the string, for logging purposes.  The parsing
+         * of the original string will consume it.
+         */
+        group_names_str = pstrdup(radius_pool, group_names);
+
+        if (!radius_parse_groups_str(radius_pool, group_names, &groups,
+            &ngroups))
+          radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+            "illegal additional group names: '%s'", radius_vendor_name,
+            radius_addl_group_names_attr_id, group_names_str);
+
+        else
+          radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+            "additional group names: '%s'", radius_vendor_name,
+            radius_addl_group_names_attr_id, group_names_str);
+
+      } else
+        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
+          "additional group names: defaulting to '%s'", radius_vendor_name,
+          radius_addl_group_names_attr_id, radius_addl_group_names_str);
+    }     
+
+    if (radius_addl_group_ids_attr_id) {
+      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
+        radius_addl_group_ids_attr_id);
+
+      if (attrib) {
+        /* RADIUS strings are not NUL-terminated. */
+        char *group_ids = pcalloc(radius_pool, attrib->length + 1);
+        char *group_ids_str = NULL;
+
+        /* Dare we trust attrib->length? */
+        memcpy(group_ids, attrib->data, attrib->length);
+
+        /* Make a copy of the string, for logging purposes.  The parsing
+         * of the original string will consume it.
+         */
+        group_ids_str = pstrdup(radius_pool, group_ids);
+
+        if (!radius_parse_gids_str(radius_pool, group_ids, &gids, &ngids))
+          radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+            "illegal additional group IDs: '%s'", radius_vendor_name,
+            radius_addl_group_ids_attr_id, group_ids_str);
+
+        else
+          radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+            "additional group IDs: '%s'", radius_vendor_name,
+            radius_addl_group_ids_attr_id, group_ids_str);
+
+      } else
+        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
+          "additional group IDs: defaulting to '%s'", radius_vendor_name,
+          radius_addl_group_ids_attr_id, radius_addl_group_ids_str);
+    }    
+
+    /* One last RadiusGroupInfo check: does the number of returned group
+     * names match the number of returned group IDs?
+     */
+    if (ngroups == ngids) {
+      radius_have_group_info = TRUE;
+      radius_addl_group_count = ngroups;
+      radius_addl_group_names = groups;
+      radius_addl_group_ids = gids;
+
+    } else
+      radius_log("server provided mismatched number of group names (%u) "
+        "and group IDs (%u), ignoring them", ngroups, ngids);
+  }
+}
+
+static void radius_process_group_info(config_rec *c) {
+  char *param = NULL;
+  unsigned char have_illegal_value = FALSE;
+
+  /* Parse out any configured attribute/defaults here. The stored strings will
+   * already have been sanitized by the configuration handler, so I don't
+   * need to worry about that here.
    */
 
-  if (radius_uid_attr_id) {
-    radius_attrib_t *attrib = radius_get_attrib(packet, radius_uid_attr_id);
+  param = (char *) c->argv[0];
 
-    if (attrib) {
-      int uid = -1;
+  if (RADIUS_IS_VAR(param)) {
+    radius_parse_var(param, &radius_prime_group_name_attr_id,
+      &radius_prime_group_name);
 
-      /* Parse the attribute value into an int, then cast it into the
-       * radius_passwd.pw_uid field.  Make sure it's a sane UID
-       * (ie non-negative).
-       */
+  } else 
+    radius_prime_group_name = param;
 
-      /* Dare we trust attrib->length? */
-      memcpy(&uid, attrib->data, attrib->length);
-      uid = ntohl(uid);
+  /* If the group count (c->argv[1]) is zero, then I know that the data
+   * are VSA variable strings.  Otherwise, the group information has
+   * already been parsed.
+   */
+  if (*((unsigned int *) c->argv[1]) == 0) {
+    unsigned int ngroups = 0, ngids = 0;
+    char **groups = NULL;
+    gid_t *gids = NULL;
 
-      if (uid < 0)
-        radius_log("packet includes attribute %d for illegal user ID: '%u'",
-          radius_uid_attr_id, uid);
+    radius_parse_var((char *) c->argv[2], &radius_addl_group_names_attr_id,
+      &radius_addl_group_names_str);
 
-      else
-        radius_passwd.pw_uid = uid;
+    /* Now, parse the default value provided. */
+    if (!radius_parse_groups_str(c->pool, radius_addl_group_names_str,
+        &groups, &ngroups)) {
+      radius_log("badly formatted RadiusGroupInfo default additional "
+        "group names");
+      have_illegal_value = TRUE;
+    }
 
-      radius_log("packet includes attribute %d for user ID: '%u'",
-        radius_uid_attr_id, radius_passwd.pw_uid);
+    radius_parse_var((char *) c->argv[3], &radius_addl_group_ids_attr_id,
+      &radius_addl_group_ids_str);
 
-    } else
-      radius_log("packet lacks attribute %d for user ID: defaulting to '%u'",
-        radius_uid_attr_id, radius_passwd.pw_uid);
+    /* Similarly, parse the default value provided. */
+    if (!radius_parse_gids_str(c->pool, radius_addl_group_ids_str,
+        &gids, &ngids)) {
+      radius_log("badly formatted RadiusGroupInfo default additional "
+        "group IDs");
+      have_illegal_value = TRUE;
+    }
+
+    if (!have_illegal_value && ngroups != ngids) {
+      radius_log("mismatched number of RadiusGroupInfo default additional "
+        "group names (%u) and IDs (%u)", ngroups, ngids);
+      have_illegal_value = TRUE;
+    }
+
+    if (!have_illegal_value) {
+      radius_have_group_info = TRUE;
+      radius_addl_group_count = ngroups;
+      radius_addl_group_names = groups;
+      radius_addl_group_ids = gids;
+    }
+
+  } else {
+    radius_have_group_info = TRUE;
+    radius_addl_group_count = *((unsigned int *) c->argv[1]);
+    radius_addl_group_names = (char **) c->argv[2];
+    radius_addl_group_ids = (gid_t *) c->argv[3];
   }
 
-  if (radius_gid_attr_id) {
-    radius_attrib_t *attrib = radius_get_attrib(packet, radius_gid_attr_id);
-
-    if (attrib) {
-      int gid = -1;
-
-      /* Parse the attribute value into an int, then cast it into the
-       * radius_passwd.pw_gid field.  Make sure it's a sane GID
-       * (ie non-negative).
-       */
-
-      /* Dare we trust attrib->length? */
-      memcpy(&gid, attrib->data, attrib->length);
-      gid = ntohl(gid);
-
-      if (gid < 0)
-        radius_log("packet includes attribute %d for illegal group ID: '%u'",
-          radius_gid_attr_id, gid);
-
-      else
-        radius_passwd.pw_gid = gid;
-
-      radius_log("packet includes attribute %d for group ID: '%u'",
-        radius_gid_attr_id, radius_passwd.pw_gid);
-
-    } else
-      radius_log("packet lacks attribute %d for group ID: defaulting to '%u'",
-        radius_gid_attr_id, radius_passwd.pw_gid);
-  }
-
-  if (radius_home_attr_id) {
-    radius_attrib_t *attrib = radius_get_attrib(packet, radius_home_attr_id);
-
-    if (attrib) {
-
-      /* RADIUS strings are not NUL-terminated. */
-      char *home = pcalloc(radius_pool, attrib->length + 1);
-
-      /* Parse the attribute value into a string of the necessary length,
-       * then replace radius_passwd.pw_dir with it.  Make sure it's a sane
-       * home directory (ie starts with a '/').
-       */
-
-      /* Dare we trust attrib->length? */
-      memcpy(home, attrib->data, attrib->length);
-
-      if (*home != '/')
-        radius_log("packet includes attribute %d for illegal home: '%s'",
-          radius_home_attr_id, home);
-
-      else
-        radius_passwd.pw_dir = home;
-
-      radius_log("packet includes attribute %d for home directory: '%s'",
-        radius_home_attr_id, radius_passwd.pw_dir);
-
-    } else
-      radius_log("packet lacks attribute %d for home directory: "
-        "defaulting to '%s'", radius_home_attr_id, radius_passwd.pw_dir);
-  }
-
-  if (radius_shell_attr_id) {
-    radius_attrib_t *attrib = radius_get_attrib(packet, radius_shell_attr_id);
-
-    if (attrib) {
-      /* RADIUS strings are not NUL-terminated. */
-      char *shell = pcalloc(radius_pool, attrib->length + 1);
-
-      /* Parse the attribute value into a string of the necessary length,
-       * then replace radius_passwd.pw_shell with it.  Make sure it's a sane
-       * shell (ie starts with a '/').
-       */
-
-      /* Dare we trust attrib->length? */
-      memcpy(shell, attrib->data, attrib->length);
-
-      if (*shell != '/')
-        radius_log("packet includes attribute %d for illegal shell: '%s'",
-          radius_shell_attr_id, shell);
-
-      else
-        radius_passwd.pw_shell = shell;
-
-      radius_log("packet includes attribute %d for shell: '%s'",
-        radius_shell_attr_id, radius_passwd.pw_shell);
-
-    } else
-      radius_log("packet lacks attribute %d for shell: defaulting to '%s'",
-        radius_shell_attr_id, radius_passwd.pw_shell);
+  if (have_illegal_value) {
+    radius_have_group_info = FALSE;
+    radius_log("error with RadiusGroupInfo parameters, ignoring them");
   }
 }
 
@@ -654,13 +882,6 @@ static void radius_process_user_info(config_rec *c) {
 
     /* Param already checked in this case. */
     radius_passwd.pw_shell = param;
-
-  /* Process the optional supplemental group information. */
-  if (c->argv[5] && c->argv[6]) {
-    radius_suppl_group_count = *((unsigned int *) c->argv[4]);
-    radius_suppl_group_names = (char **) c->argv[5];
-    radius_suppl_group_ids = (gid_t *) c->argv[6];
-  }
 
   if (!have_illegal_value)
     radius_have_user_info = TRUE;
@@ -1255,6 +1476,60 @@ static radius_attrib_t *radius_get_attrib(radius_packet_t *packet,
   return attrib;
 }
 
+/* Find a Vendor-Specific Attribute (VSA) in a RADIUS packet.  Note that
+ * the packet length is always kept in network byte order.
+ *
+ * In this first cut, the looked-for vendor is hardcoded to be Unix
+ * (Vendor-Id of 4).
+ */
+static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *packet,
+    unsigned char type) {
+  radius_attrib_t *attrib = (radius_attrib_t *) &packet->data;
+  int len = ntohs(packet->length) - RADIUS_HEADER_LEN;
+
+  while (attrib) {
+    unsigned int vendor_id = 0;
+    radius_attrib_t *vsa = NULL;
+
+    if (attrib->length <= 0)
+      return NULL;
+
+    if (attrib->type != RADIUS_VENDOR_SPECIFIC) {
+      len -= attrib->length;
+      attrib = (radius_attrib_t *) ((char *) attrib + attrib->length);
+      continue;
+    }
+
+    /* The first four octets (bytes) of data will contain the Vendor-Id. */
+    memcpy(&vendor_id, attrib->data, sizeof(unsigned int));
+    vendor_id = ntohl(vendor_id);
+
+    if (vendor_id != radius_vendor_id) {
+      len -= attrib->length;
+      attrib = (radius_attrib_t *) ((char *) attrib + attrib->length);
+      continue;
+    }
+
+    /* Parse the data value for this attribute into a VSA structure. */
+    vsa = (radius_attrib_t *) ((char *) attrib->data + sizeof(int));
+
+    /* Does this VSA have the type requested? */
+    if (vsa->type != type) {
+      len -= attrib->length;
+      attrib = (radius_attrib_t *) ((char *) attrib + attrib->length);
+      continue;
+    }
+
+    /* Adjust the VSA length (I'm not sure why this is necessary, but a reading
+     * of the FreeRADIUS sources show it to be.  Weird.)
+     */
+    vsa->length -= 2;
+    return vsa;
+  }
+
+  return NULL;
+}
+
 /* Build a RADIUS packet, initializing some of the header and adding
  * common attributes.
  */
@@ -1793,28 +2068,45 @@ MODRET radius_getgrgid(cmd_rec *cmd) {
 
 MODRET radius_getgroups(cmd_rec *cmd) {
 
-  if (radius_have_user_info) {
+  if (radius_have_group_info) {
     array_header *gids = NULL, *groups = NULL;
     register unsigned int i = 0;
 
     /* Return the faked group information. */
 
+    /* Don't forget to include the primary GID (with accompanying name!)
+     * in the returned info -- if provided.  Otherwise, well...the user
+     * is out of luck.
+     */
+
     /* Check for NULL values */
     if (cmd->argv[1]) {
       gids = (array_header *) cmd->argv[1];
 
-      for (i = 0; i < radius_suppl_group_count; i++)
-        *((gid_t *) push_array(gids)) = radius_suppl_group_ids[i];
+      if (radius_have_user_info)
+         *((gid_t *) push_array(gids)) = radius_passwd.pw_gid;
+
+      for (i = 0; i < radius_addl_group_count; i++)
+        *((gid_t *) push_array(gids)) = radius_addl_group_ids[i];
     }
 
     if (cmd->argv[2]) {
       groups = (array_header *) cmd->argv[2];
 
-      for (i = 0; i < radius_suppl_group_count; i++)
-        *((char **) push_array(groups)) = radius_suppl_group_names[i];
+      if (radius_have_user_info)
+        *((char **) push_array(groups)) = radius_prime_group_name;
+
+      for (i = 0; i < radius_addl_group_count; i++)
+        *((char **) push_array(groups)) = radius_addl_group_names[i];
     }
 
-    return mod_create_data(cmd, (void *) radius_suppl_group_count);
+    /* Increment this count, for the sake of proper reporting back to the
+     * getgroups() caller.
+     */
+    if (radius_have_user_info)
+      radius_addl_group_count++;
+
+    return mod_create_data(cmd, (void *) radius_addl_group_count);
   }
 
   return DECLINED(cmd);
@@ -2134,6 +2426,61 @@ MODRET set_radiusengine(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+/* usage: RadiusGroupInfo primary-name addl-names add-ids */
+MODRET set_radiusgroupinfo(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  unsigned char group_names_vsa = FALSE;
+  unsigned char group_ids_vsa = FALSE;
+
+  CHECK_ARGS(cmd, 3);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  group_names_vsa = radius_chk_var(cmd->argv[2]);
+  group_ids_vsa = radius_chk_var(cmd->argv[3]);
+
+  if ((group_names_vsa && !group_ids_vsa) ||
+      (!group_names_vsa && group_ids_vsa))
+    CONF_ERROR(cmd, "supplemental group names/IDs parameters must both either be VSA variables, or both not be variables");
+
+  /* There will be four parameters to this config_rec:
+   *
+   *  primary-group-name, addl-group-count, addl-group-names, addl-group-ids
+   */
+  c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
+  c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+  c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
+
+  if (group_names_vsa && group_ids_vsa) {
+    
+    /* As VSA variables, the group names and IDs won't be resolved until
+     * session time, so just store the variable strings as is.
+     */
+    *((unsigned int *) c->argv[1]) = 0;
+    c->argv[2] = pstrdup(c->pool, cmd->argv[2]);
+    c->argv[3] = pstrdup(c->pool, cmd->argv[3]);
+
+  } else {
+    unsigned int ngroups = 0, ngids = 0;
+    char **groups = NULL;
+    gid_t *gids = NULL;
+
+    if (!radius_parse_groups_str(c->pool, cmd->argv[2], &groups, &ngroups))
+      CONF_ERROR(cmd, "badly formatted group names");
+
+    if (!radius_parse_gids_str(c->pool, cmd->argv[3], &gids, &ngids))
+      CONF_ERROR(cmd, "badly formatted group IDs");
+
+    if (ngroups != ngids)
+      CONF_ERROR(cmd, "mismatched number of group names and IDs");
+
+    *((unsigned int *) c->argv[1]) = ngroups;
+    c->argv[2] = (void *) groups;
+    c->argv[3] = (void *) gids;
+  }
+
+  return HANDLED(cmd);
+}
+
 /* usage: RadiusLog file|"none" */
 MODRET set_radiuslog(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
@@ -2152,15 +2499,9 @@ MODRET set_radiusrealm(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-/* usage: RadiusUserInfo uid gid home shell [suppl-group-names
- *   suppl-group-ids]
- */
+/* usage: RadiusUserInfo uid gid home shell */
 MODRET set_radiususerinfo(cmd_rec *cmd) {
-  config_rec *c = NULL;
-
-  if (cmd->argc-1 != 4 && cmd->argc-1 != 6)
-    CONF_ERROR(cmd, "wrong number of parameters");
-
+  CHECK_ARGS(cmd, 4);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if (!radius_chk_var(cmd->argv[1])) {
@@ -2199,20 +2540,35 @@ MODRET set_radiususerinfo(cmd_rec *cmd) {
       CONF_ERROR(cmd, "shell relative path not allowed");
   }
 
-  /* There will be seven parameters to this config_rec:
-   *
-   *  uid, gid, home, shell, group-count, group-names, group-ids
-   */
-  c = add_config_param(cmd->argv[0], 7, NULL, NULL, NULL, NULL, NULL,
-    NULL, NULL);
-  c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
-  c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
-  c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
-  c->argv[3] = pstrdup(c->pool, cmd->argv[4]);
+  add_config_param_str(cmd->argv[0], 4, cmd->argv[1], cmd->argv[2],
+    cmd->argv[3], cmd->argv[4]);
 
-  if (cmd->argc-1 == 6)
-    if (!radius_parse_group_info(c, cmd->argv[5], cmd->argv[6]))
-      CONF_ERROR(cmd, "badly formatted supplemental group information");
+  return HANDLED(cmd);
+}
+
+/* usage: RadiusVendor name id */
+MODRET set_radiusvendor(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  long id = 0;
+  char *tmp = NULL;
+
+  CHECK_ARGS(cmd, 2);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  /* Make sure that the given vendor ID number is valid. */
+  id = strtol(cmd->argv[2], &tmp, 10);
+
+  if (tmp && *tmp)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": vendor id '", cmd->argv[2],
+      "' is not a valid number", NULL));
+
+  if (id < 0)
+    CONF_ERROR(cmd, "vendor id must be a positive number");
+
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+  c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[1]) = id;
 
   return HANDLED(cmd);
 }
@@ -2237,7 +2593,7 @@ static void radius_rehash_cb(void *data) {
   return;
 }
 
-static int radius_child_init(void) {
+static int radius_sess_init(void) {
   int res = 0;
   config_rec *c = NULL;
   radius_server_t **current_server = NULL;
@@ -2275,6 +2631,15 @@ static int radius_child_init(void) {
   time(&radius_session_start);
   radius_session_bytes_in = 0;
   radius_session_bytes_out = 0;
+
+  if ((c = find_config(main_server->conf, CONF_PARAM, "RadiusVendor",
+      FALSE)) != NULL) {
+    radius_vendor_name = c->argv[0];
+    radius_vendor_id = *((unsigned int *) c->argv[1]);
+
+    radius_log("RadiusVendor '%s' (Vendor-Id %u) configured",
+      radius_vendor_name, radius_vendor_id);
+  }
 
   /* Find any configured RADIUS servers for this session */
   c = find_config(main_server->conf, CONF_PARAM, "RadiusAcctServer", FALSE);
@@ -2323,6 +2688,22 @@ static int radius_child_init(void) {
       radius_have_user_info = FALSE;
   }
 
+  /* Prepare any configured fake group information. */
+  if ((c = find_config(main_server->conf, CONF_PARAM, "RadiusGroupInfo",
+      FALSE)) != NULL) {
+
+    /* Process the parameter string stored in the found config_rec. */
+    radius_process_group_info(c);
+
+    /* Only use the faked information if authentication via RADIUS is
+     * possible.  The radius_have_group_info flag will be set to
+     * TRUE by radius_process_group_info(), unless there was some
+     * illegal value.
+     */
+    if (!radius_auth_server)
+      radius_have_group_info = FALSE;
+  }
+
   /* Check for a configured RadiusRealm.  If present, use username + realm
    * in RADIUS packets as the user name, else just use the username.
    */
@@ -2352,9 +2733,11 @@ static conftable radius_conftab[] = {
   { "RadiusAcctServer", 	set_radiusacctserver,	NULL },
   { "RadiusAuthServer", 	set_radiusauthserver,	NULL },
   { "RadiusEngine",		set_radiusengine,	NULL },
+  { "RadiusGroupInfo",		set_radiusgroupinfo,	NULL },
   { "RadiusLog",		set_radiuslog,		NULL },
   { "RadiusRealm",		set_radiusrealm,	NULL },
   { "RadiusUserInfo",		set_radiususerinfo,	NULL },
+  { "RadiusVendor",		set_radiusvendor,	NULL },
   { NULL }
 };
 
@@ -2416,6 +2799,6 @@ module radius_module = {
   /* Module initialization function */
   radius_init,
 
-  /* Module "child mode" post-fork initialization function */
-  radius_child_init
+  /* Module session initialization function */
+  radius_sess_init
 };
