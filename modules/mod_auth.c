@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.109 2002-12-04 15:26:25 castaglia Exp $
+ * $Id: mod_auth.c,v 1.110 2002-12-04 19:14:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1359,7 +1359,7 @@ static void auth_scan_scoreboard(void) {
 
 static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
   pr_scoreboard_entry_t *score = NULL;
-  long cur = 0, hcur = 0, ccur = 0, hostsperuser = 0, usersessions = 0;
+  long cur = 0, hcur = 0, ccur = 0, hostsperuser = 1, usersessions = 0;
   config_rec *c, *maxc;
   char *origuser, config_class_users[128] = {'\0'};
   unsigned char classes_enabled = FALSE;
@@ -1428,13 +1428,13 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
 	  /* Take a per-user count of connections. */
 	  if (!strcmp(score->sce_user, user)) {
 	    usersessions++;
-	
-	    /* Count up unique hosts. */
-	    if (!same_host)
-	      hostsperuser++;
-	  }
+
+            /* Count up unique hosts. */
+            if (!same_host)
+              hostsperuser++;
+          }
         }
-	
+
         if (classes_enabled &&
             !strcasecmp(score->sce_class, session.class->name))
           ccur++;
@@ -1559,7 +1559,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     if (maxc->argc > 1)
       maxstr = maxc->argv[1];
 
-    if (*max && hostsperuser >= *max) {
+    if (*max && hostsperuser > *max) {
       snprintf(maxn, sizeof(maxn), "%u", *max);
       send_response(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
