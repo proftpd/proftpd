@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.126 2003-11-09 03:37:28 castaglia Exp $
+ * $Id: dirtree.c,v 1.127 2003-11-09 04:46:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -99,7 +99,7 @@ static int allow_dyn_config(void) {
     if (c->argc == 3) {
       if (!strcmp(c->argv[2], "user")) {
 
-        if (pr_user_or_expression((char **) &c->argv[3])) {
+        if (pr_expr_eval_user_or((char **) &c->argv[3])) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
             /* Set the context precedence. */
@@ -114,7 +114,7 @@ static int allow_dyn_config(void) {
 
       } else if (!strcmp(c->argv[2], "group")) {
 
-        if (pr_group_and_expression((char **) &c->argv[3])) {
+        if (pr_expr_eval_group_and((char **) &c->argv[3])) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
             /* Set the context precedence. */
@@ -129,7 +129,7 @@ static int allow_dyn_config(void) {
 
       } else if (!strcmp(c->argv[2], "class")) {
 
-        if (pr_class_or_expression((char **) &c->argv[3])) {
+        if (pr_expr_eval_class_or((char **) &c->argv[3])) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
             /* Set the context precedence. */
@@ -369,7 +369,7 @@ unsigned char dir_hide_file(const char *path) {
 
       /* check for a specified "user" classifier first... */
       if (strcmp(c->argv[3], "user") == 0) {
-        if (pr_user_or_expression((char **) &c->argv[4])) {
+        if (pr_expr_eval_user_or((char **) &c->argv[4])) {
 
           if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
             ctxt_precedence = *((unsigned int *) c->argv[2]);
@@ -384,7 +384,7 @@ unsigned char dir_hide_file(const char *path) {
 
       /* ...then for a "group" classifier... */
       } else if (strcmp(c->argv[3], "group") == 0) {
-        if (pr_group_and_expression((char **) &c->argv[4])) {
+        if (pr_expr_eval_group_and((char **) &c->argv[4])) {
           if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
             ctxt_precedence = *((unsigned int *) c->argv[2]);
 
@@ -402,7 +402,7 @@ unsigned char dir_hide_file(const char *path) {
        * need to be updated to process class-expressions.
        */
       } else if (strcmp(c->argv[3], "class") == 0) {
-        if (pr_class_or_expression((char **) &c->argv[4])) {
+        if (pr_expr_eval_class_or((char **) &c->argv[4])) {
           if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
             ctxt_precedence = *((unsigned int *) c->argv[2]);
 
@@ -963,7 +963,7 @@ config_rec *add_config(const char *name) {
   return c;
 }
 
-array_header *pr_parse_expression(pool *p, int *argc, char **argv) {
+array_header *pr_expr_create(pool *p, int *argc, char **argv) {
   array_header *acl = NULL;
   int cnt = *argc;
   char *s, *ent;
@@ -990,7 +990,7 @@ array_header *pr_parse_expression(pool *p, int *argc, char **argv) {
 /* Boolean "class-expression" AND matching, returns TRUE if the expression
  * evaluates to TRUE.
  */
-unsigned char pr_class_and_expression(char **expr) {
+unsigned char pr_expr_eval_class_and(char **expr) {
   unsigned char found;
   char *class;
 
@@ -1019,7 +1019,7 @@ unsigned char pr_class_and_expression(char **expr) {
 /* Boolean "class-expression" OR matching, returns TRUE if the expression
  * evaluates to TRUE.
  */
-unsigned char pr_class_or_expression(char **expr) {
+unsigned char pr_expr_eval_class_or(char **expr) {
   unsigned char found;
   char *class;
 
@@ -1048,7 +1048,7 @@ unsigned char pr_class_or_expression(char **expr) {
 /* Boolean "group-expression" AND matching, returns TRUE if the expression
  * evaluates to TRUE.
  */
-unsigned char pr_group_and_expression(char **expr) {
+unsigned char pr_expr_eval_group_and(char **expr) {
   unsigned char found;
   char *grp;
 
@@ -1084,7 +1084,7 @@ unsigned char pr_group_and_expression(char **expr) {
 /* Boolean "group-expression" OR matching, returns TRUE if the expression
  * evaluates to TRUE.
  */
-unsigned char pr_group_or_expression(char **expr) {
+unsigned char pr_expr_eval_group_or(char **expr) {
   unsigned char found;
   char *grp;
 
@@ -1120,7 +1120,7 @@ unsigned char pr_group_or_expression(char **expr) {
 /* Boolean "user-expression" AND matching, returns TRUE if the expression
  * evaluates to TRUE.
  */
-unsigned char pr_user_and_expression(char **expr) {
+unsigned char pr_expr_eval_user_and(char **expr) {
   unsigned char found;
   char *user;
 
@@ -1146,7 +1146,7 @@ unsigned char pr_user_and_expression(char **expr) {
 /* Boolean "user-expression" OR matching, returns TRUE if the expression
  * evaluates to TRUE.
  */
-unsigned char pr_user_or_expression(char **expr) {
+unsigned char pr_expr_eval_user_or(char **expr) {
   unsigned char found;
   char *user;
 
@@ -1434,13 +1434,13 @@ static int _check_user_access(xaset_t *set, char *name) {
 #endif /* HAVE_REGEX_H and HAVE_REGCOMP */
 
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_OR) {
-      res = pr_user_or_expression((char **) &c->argv[1]);
+      res = pr_expr_eval_user_or((char **) &c->argv[1]);
 
       if (res)
         break;
 
     } else if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_AND) {
-      res = pr_user_and_expression((char **) &c->argv[1]);
+      res = pr_expr_eval_user_and((char **) &c->argv[1]);
 
       if (res)
         break;
@@ -1480,13 +1480,13 @@ static int _check_group_access(xaset_t *set, char *name) {
 #endif /* HAVE_REGEX_H and HAVE_REGCOMP */
 
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_OR) {
-      res = pr_group_or_expression((char **) &c->argv[1]);
+      res = pr_expr_eval_group_or((char **) &c->argv[1]);
 
       if (res)
         break;
 
     } else if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_AND) {
-      res = pr_group_and_expression((char **) &c->argv[1]);
+      res = pr_expr_eval_group_and((char **) &c->argv[1]);
 
       if (res)
         break;

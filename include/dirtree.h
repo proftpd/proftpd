@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.45 2003-11-09 03:37:28 castaglia Exp $
+ * $Id: dirtree.h,v 1.46 2003-11-09 04:46:54 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -234,13 +234,23 @@ class_t *find_class(pr_netaddr_t *, const char *);
 
 cmd_rec *pr_cmd_alloc(pool *, int, ...);
 
-array_header *pr_parse_expression(pool *, int *, char **);
-unsigned char pr_class_and_expression(char **);
-unsigned char pr_class_or_expression(char **);
-unsigned char pr_group_and_expression(char **);
-unsigned char pr_group_or_expression(char **);
-unsigned char pr_user_and_expression(char **);
-unsigned char pr_user_or_expression(char **);
+/* Expression API.  (XXX These should be in their own header/src files). */
+array_header *pr_expr_create(pool *, int *, char **);
+unsigned char pr_expr_eval_class_and(char **);
+unsigned char pr_expr_eval_class_or(char **);
+unsigned char pr_expr_eval_group_and(char **);
+unsigned char pr_expr_eval_group_or(char **);
+unsigned char pr_expr_eval_user_and(char **);
+unsigned char pr_expr_eval_user_or(char **);
+
+/* Redefines for legacy modules */
+#define pr_parse_expression	pr_expr_create
+#define pr_class_and_expression	pr_expr_eval_class_and
+#define pr_class_or_expression	pr_expr_eval_class_or
+#define pr_group_and_expression	pr_expr_eval_group_and
+#define pr_group_or_expression	pr_expr_eval_group_or
+#define pr_user_and_expression	pr_expr_eval_user_and
+#define pr_user_or_expression	pr_expr_eval_user_or
 
 long get_param_int(xaset_t *, const char *, int);
 long get_param_int_next(const char *, int);
