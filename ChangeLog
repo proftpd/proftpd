@@ -1,14 +1,129 @@
+2000-07-28 00:52  macgyver
+
+	* NEWS (1.58), modules/mod_site.c (1.7) (utags: R1_2_0RC2):
+	AllowChmod works right now.
+
+2000-07-28 00:47  macgyver
+
+	* NEWS (1.57), acconfig.h (1.7, R1_2_0RC2), config.h.in (1.18,
+	R1_2_0RC2), configure (1.39, R1_2_0RC2), configure.in (1.39,
+	R1_2_0RC2), src/data.c (1.16, R1_2_0RC2): Added --disable-pam,
+	allowing you to disable PAM at configure-time.	Reorganized
+	sendfile detection a bit and added support for HP/UX.
+
+2000-07-27 11:07  macgyver
+
+	* modules/mod_auth.c (1.37, R1_2_0RC2): Work around HP/UX's broken
+	compiler in _do_user_counts().
+
+2000-07-26 23:14  macgyver
+
+	* contrib/mod_ldap.c (1.11, R1_2_0RC2): Updated mod_ldap to
+	latest/greatest.
+
+2000-07-26 18:47  macgyver
+
+	* modules/mod_pam.c (1.20, R1_2_0RC2): Moved around PAM calls to be
+	Sun Compliant(tm), since anything that isn't strictly in that order
+	seems to cause Solaris environments to puke.
+	
+	Set PAM_RHOST, when we can.
+
+2000-07-26 18:09  macgyver
+
+	* src/main.c (1.40, R1_2_0RC2): Remove spurious \r\n from various
+	send_response()s.
+
+2000-07-26 06:12  macgyver
+
+	* src/main.c (1.39): Be verbose about /etc/shutmsg.
+
+2000-07-26 06:03  macgyver
+
+	* include/proftpd.h (1.11, R1_2_0RC2), modules/mod_core.c (1.38,
+	R1_2_0RC2), modules/mod_ls.c (1.31, R1_2_0RC2), modules/mod_xfer.c
+	(1.38, R1_2_0RC2), src/data.c (1.15), src/io.c (1.6, R1_2_0RC2),
+	src/log.c (1.19, R1_2_0RC2): Fixed a crash when STOR called before
+	PORT being issued.  Fixed a crash related to STAT.
+
+2000-07-26 04:49  macgyver
+
+	* lib/pwgrent.c (1.6, R1_2_0RC2): Fixed some warnings on FreeBSD.
+
+2000-07-26 04:36  macgyver
+
+	* src/main.c (1.38): Better checking for empty strings before
+	attempting to call a regex.  Handle empty commands cleaner.
+
+2000-07-26 03:21  macgyver
+
+	* README.LDAP (1.4, R1_2_0RC2), contrib/mod_ldap.c (1.10): Updated
+	mod_ldap to 2.7.1.
+
+2000-07-26 03:19  macgyver
+
+	* lib/: pr_fnmatch.c (1.1), pr_fnmatch_loop.c (1.1) (utags:
+	R1_2_0RC2): fnmatch.c was renamed to pr_fnmatch.c, as well as
+	importing the new fnmatch code from glibc.
+
+2000-07-26 03:18  macgyver
+
+	* lib/fnmatch.c (1.2): fnmatch.c has now become pr_fnmatch.c.
+
+2000-07-26 03:16  macgyver
+
+	* Make.rules.in (1.7, R1_2_0RC2), config.h.in (1.17), configure
+	(1.38), configure.in (1.38), include/libsupp.h (1.2, R1_2_0RC2),
+	lib/Makefile.in (1.2, R1_2_0RC2), lib/glob.c (1.3, R1_2_0RC2),
+	modules/Makefile.in (1.6, R1_2_0RC2), src/Makefile.in (1.3,
+	R1_2_0RC2), src/dirtree.c (1.19, R1_2_0RC2), src/fs.c (1.10,
+	R1_2_0RC2): New fnmatch code in ProFTPD.  Updated from the latest
+	and greatest glibc code.  ProFTPD now always uses our builtin
+	fnmatch to eliminate problems with incompatible implementations as
+	well as namespace collisions.
+
+2000-07-26 02:36  macgyver
+
+	* contrib/mod_ratio.c (1.11, R1_2_0RC2): Transitioned to the new
+	fnmatch() function, and corrected an error where hosts were being
+	treated in a case-sensitive fashion.
+
+2000-07-25 23:41  macgyver
+
+	* configure (1.37), configure.in (1.37): Made fnmatch check more
+	robust and cleaned up gcc detection a bit.
+
+2000-07-25 23:11  macgyver
+
+	* configure (1.36), configure.in (1.36), src/dirtree.c (1.18):
+	Hostname checks should be case insensitive.  Added FNM_CASEFOLD to
+	fnmatch check.
+
+2000-07-25 22:48  macgyver
+
+	* doc/ShowUndocumented (1.4, R1_2_0RC2): Make the grep case
+	insensitive.
+
+2000-07-25 22:42  macgyver
+
+	* config.guess (1.4), config.sub (1.4) (utags: R1_2_0RC2): Updated
+	config.guess and config.sub scripts.
+
+2000-07-21 13:45  macgyver
+
+	* ChangeLog (1.20, R1_2_0RC2): Updated changelog.
+
 2000-07-21 13:44  macgyver
 
 	* ChangeLog (1.19), NEWS (1.56), config.h.in (1.16), configure
 	(1.35), configure.in (1.35), modules/mod_auth.c (1.36),
-	modules/mod_unixpw.c (1.7): Portability fixes and additions on
-	various platforms.  Also corrected a problem in configure where a
-	piece of code was completely bypassed.
+	modules/mod_unixpw.c (1.7, R1_2_0RC2): Portability fixes and
+	additions on various platforms.  Also corrected a problem in
+	configure where a piece of code was completely bypassed.
 
 2000-07-21 01:19  macgyver
 
-	* doc/Configuration.html (1.28): Updated configuration
+	* doc/Configuration.html (1.28, R1_2_0RC2): Updated configuration
 	documentation.
 
 2000-07-21 01:11  macgyver
@@ -17,8 +132,8 @@
 
 2000-07-21 01:09  macgyver
 
-	* src/ftpcount.c (1.9): Handle systems without getopt_long
-	properly.
+	* src/ftpcount.c (1.9, R1_2_0RC2): Handle systems without
+	getopt_long properly.
 
 2000-07-21 00:59  macgyver
 
@@ -99,23 +214,24 @@
 2000-07-11 08:36  macgyver
 
 	* ChangeLog (1.16), contrib/mod_ldap.c (1.8), contrib/mod_quota.c
-	(1.2), contrib/mod_ratio.c (1.10), contrib/mod_sqlpw.c (1.7),
-	contrib/libcap/cap_text.c (1.3), lib/pwgrent.c (1.5),
-	lib/vsnprintf.c (1.4), modules/mod_auth.c (1.35),
-	modules/mod_core.c (1.35), modules/mod_log.c (1.15),
-	modules/mod_ls.c (1.30), modules/mod_pam.c (1.16),
-	modules/mod_readme.c (1.7), modules/mod_site.c (1.6),
-	modules/mod_tar.c (1.7), modules/mod_test.c (1.4),
-	modules/mod_unixpw.c (1.5), modules/mod_xfer.c (1.37), src/auth.c
-	(1.5), src/dirtree.c (1.17), src/fs.c (1.9), src/ftpcount.c (1.8),
-	src/ident.c (1.4), src/inet.c (1.11), src/io.c (1.5), src/log.c
-	(1.18), src/pool.c (1.12), src/support.c (1.18): Minor updates and
-	buffer cleanups.
+	(1.2, R1_2_0RC2), contrib/mod_ratio.c (1.10), contrib/mod_sqlpw.c
+	(1.7, R1_2_0RC2), contrib/libcap/cap_text.c (1.3, R1_2_0RC2),
+	lib/pwgrent.c (1.5), lib/vsnprintf.c (1.4, R1_2_0RC2),
+	modules/mod_auth.c (1.35), modules/mod_core.c (1.35),
+	modules/mod_log.c (1.15, R1_2_0RC2), modules/mod_ls.c (1.30),
+	modules/mod_pam.c (1.16), modules/mod_readme.c (1.7, R1_2_0RC2),
+	modules/mod_site.c (1.6), modules/mod_tar.c (1.7, R1_2_0RC2),
+	modules/mod_test.c (1.4, R1_2_0RC2), modules/mod_unixpw.c (1.5),
+	modules/mod_xfer.c (1.37), src/auth.c (1.5, R1_2_0RC2),
+	src/dirtree.c (1.17), src/fs.c (1.9), src/ftpcount.c (1.8),
+	src/ident.c (1.4, R1_2_0RC2), src/inet.c (1.11, R1_2_0RC2),
+	src/io.c (1.5), src/log.c (1.18), src/pool.c (1.12, R1_2_0RC2),
+	src/support.c (1.18, R1_2_0RC2): Minor updates and buffer cleanups.
 
 2000-07-11 08:35  macgyver
 
-	* include/default_paths.h (1.3), src/main.c (1.32): Added in
-	support for core file debugging.
+	* include/default_paths.h (1.3, R1_2_0RC2), src/main.c (1.32):
+	Added in support for core file debugging.
 
 2000-07-11 08:31  macgyver
 
@@ -124,9 +240,9 @@
 
 2000-07-09 02:01  macgyver
 
-	* include/log.h (1.3), modules/mod_core.c (1.34),
-	modules/mod_xfer.c (1.36), src/log.c (1.17), src/xferlog.5 (1.3):
-	Added in support for a completion field in xferlog.
+	* include/log.h (1.3, R1_2_0RC2), modules/mod_core.c (1.34),
+	modules/mod_xfer.c (1.36), src/log.c (1.17), src/xferlog.5 (1.3,
+	R1_2_0RC2): Added in support for a completion field in xferlog.
 
 2000-07-09 02:01  macgyver
 
@@ -134,8 +250,8 @@
 
 2000-07-09 02:00  macgyver
 
-	* contrib/libcap/include/sys/capability.h (1.2): Added a #define
-	for the kernel.
+	* contrib/libcap/include/sys/capability.h (1.2, R1_2_0RC2): Added a
+	#define for the kernel.
 
 2000-07-09 01:59  macgyver
 
@@ -175,13 +291,13 @@
 
 2000-07-07 02:12  macgyver
 
-	* ChangeLog (1.15), include/version.h (1.10): Updated ChangeLog as
-	well as version.
+	* ChangeLog (1.15), include/version.h (1.10, R1_2_0RC2): Updated
+	ChangeLog as well as version.
 
 2000-07-07 02:09  macgyver
 
-	* contrib/: README.ratio (1.1), mod_ratio.c (1.9): Updated to
-	mod_ratio.
+	* contrib/: README.ratio (1.1, R1_2_0RC2), mod_ratio.c (1.9):
+	Updated to mod_ratio.
 
 2000-07-07 01:41  macgyver
 
@@ -202,9 +318,9 @@
 
 2000-07-06 20:19  macgyver
 
-	* NEWS (1.52), include/support.h (1.4), src/dirtree.c (1.16),
-	src/support.c (1.14): Added access_check() to handle correct
-	permission checking.
+	* NEWS (1.52), include/support.h (1.4, R1_2_0RC2), src/dirtree.c
+	(1.16), src/support.c (1.14): Added access_check() to handle
+	correct permission checking.
 
 2000-07-06 19:26  macgyver
 
@@ -249,9 +365,9 @@
 
 2000-07-06 08:33  macgyver
 
-	* include/inet.h (1.3), src/data.c (1.11), src/inet.c (1.9):
-	AllowForeignAddress directives now work on passive connections as
-	well.
+	* include/inet.h (1.3, R1_2_0RC2), src/data.c (1.11), src/inet.c
+	(1.9): AllowForeignAddress directives now work on passive
+	connections as well.
 
 2000-07-06 07:58  macgyver
 
@@ -291,7 +407,8 @@
 
 2000-07-06 01:13  macgyver
 
-	* src/proftpd.8 (1.6): Added documentation for -t option.
+	* src/proftpd.8 (1.6, R1_2_0RC2): Added documentation for -t
+	option.
 
 2000-07-06 01:08  macgyver
 
@@ -334,8 +451,9 @@
 2000-07-05 22:32  macgyver
 
 	* acconfig.h (1.6), config.h.in (1.13), configure (1.31),
-	configure.in (1.31), include/conf.h (1.5), modules/mod_ls.c (1.25):
-	Fixed a POSIX issue regarding NAME_MAX usage.
+	configure.in (1.31), include/conf.h (1.5, R1_2_0RC2),
+	modules/mod_ls.c (1.25): Fixed a POSIX issue regarding NAME_MAX
+	usage.
 
 2000-07-05 22:31  macgyver
 
@@ -343,7 +461,7 @@
 
 2000-07-05 22:31  macgyver
 
-	* INSTALL (1.6): Updated documentation.
+	* INSTALL (1.6, R1_2_0RC2): Updated documentation.
 
 2000-07-03 13:25  macgyver
 
@@ -358,7 +476,8 @@
 
 2000-07-03 11:03  macgyver
 
-	* README.PAM (1.4): Updated PAM documentation to reflect AuthPAM.
+	* README.PAM (1.4, R1_2_0RC2): Updated PAM documentation to reflect
+	AuthPAM.
 
 2000-07-03 10:55  macgyver
 
@@ -379,7 +498,7 @@
 
 2000-03-06 01:11  macgyver
 
-	* CREDITS (1.2): Updated CREDITS
+	* CREDITS (1.2, R1_2_0RC2): Updated CREDITS
 
 2000-03-06 00:44  macgyver
 
@@ -408,9 +527,9 @@
 
 2000-03-02 09:32  macgyver
 
-	* src/: ftpcount.1 (1.3), ftpshut.8 (1.3), ftpwho.1 (1.3),
-	proftpd.8 (1.4), xferlog.5 (1.2): Cleaned up man pages a bit.  Lots
-	more work still needed, though.
+	* src/: ftpcount.1 (1.3, R1_2_0RC2), ftpshut.8 (1.3, R1_2_0RC2),
+	ftpwho.1 (1.3, R1_2_0RC2), proftpd.8 (1.4), xferlog.5 (1.2):
+	Cleaned up man pages a bit.  Lots more work still needed, though.
 
 2000-03-01 00:13  macgyver
 
@@ -481,8 +600,8 @@
 
 2000-02-28 05:15  macgyver
 
-	* NEWS (1.35), README.Unixware (1.1), config.guess (1.3),
-	config.sub (1.3): Unixware support and updated config.guess,
+	* NEWS (1.35), README.Unixware (1.1, R1_2_0RC2), config.guess
+	(1.3), config.sub (1.3): Unixware support and updated config.guess,
 	config.sub files
 
 2000-02-28 04:50  macgyver
@@ -585,7 +704,7 @@
 
 2000-01-23 17:37  macgyver
 
-	* doc/Undocumented.txt (1.11): Updated Undocumented.txt.
+	* doc/Undocumented.txt (1.11, R1_2_0RC2): Updated Undocumented.txt.
 
 2000-01-23 17:37  macgyver
 
@@ -626,12 +745,12 @@
 
 2000-01-17 21:15  macgyver
 
-	* README (1.5, R1_2_0pre10): Updated with new web site.
+	* README (1.5, R1_2_0RC2, R1_2_0pre10): Updated with new web site.
 
 2000-01-17 21:14  macgyver
 
-	* contrib/dist/rpm/proftpd.spec.in (1.4, R1_2_0pre10): Updated for
-	new web site.
+	* contrib/dist/rpm/proftpd.spec.in (1.4, R1_2_0RC2, R1_2_0pre10):
+	Updated for new web site.
 
 2000-01-17 21:08  macgyver
 
@@ -647,8 +766,8 @@
 
 2000-01-17 20:07  macgyver
 
-	* doc/Configuration.html (1.16), include/dirtree.h (1.7),
-	modules/mod_core.c (1.23), src/dirtree.c (1.12) (utags:
+	* doc/Configuration.html (1.16), include/dirtree.h (1.7,
+	R1_2_0RC2), modules/mod_core.c (1.23), src/dirtree.c (1.12) (utags:
 	R1_2_0pre10): Corrected some errors in .ftpaccess handling.
 
 2000-01-17 20:00  macgyver
@@ -671,7 +790,7 @@
 
 2000-01-03 15:28  macgyver
 
-	* include/privs.h (1.3), include/proftpd.h (1.8),
+	* include/privs.h (1.3, R1_2_0RC2), include/proftpd.h (1.8),
 	modules/mod_auth.c (1.23) (utags: R1_2_0pre10): Added Simon's patch
 	to handle chdir-ing properly into user accounts.
 
@@ -702,13 +821,13 @@
 
 1999-12-28 09:54  macgyver
 
-	* contrib/mod_linuxprivs.c (1.6, R1_2_0pre10), contrib/mod_sqlpw.c
-	(1.3, R1_2_0pre10), modules/mod_auth.c (1.21), modules/mod_core.c
-	(1.21), modules/mod_log.c (1.10, R1_2_0pre10), modules/mod_ls.c
-	(1.19, R1_2_0pre10), modules/mod_readme.c (1.5, R1_2_0pre10),
-	modules/mod_site.c (1.3, R1_2_0pre10), modules/mod_xfer.c (1.28):
-	Ensured that cmdtable structs remained static to the files they're
-	defined in.
+	* contrib/mod_linuxprivs.c (1.6, R1_2_0RC2, R1_2_0pre10),
+	contrib/mod_sqlpw.c (1.3, R1_2_0pre10), modules/mod_auth.c (1.21),
+	modules/mod_core.c (1.21), modules/mod_log.c (1.10, R1_2_0pre10),
+	modules/mod_ls.c (1.19, R1_2_0pre10), modules/mod_readme.c (1.5,
+	R1_2_0pre10), modules/mod_site.c (1.3, R1_2_0pre10),
+	modules/mod_xfer.c (1.28): Ensured that cmdtable structs remained
+	static to the files they're defined in.
 
 1999-12-28 09:43  macgyver
 
@@ -716,9 +835,9 @@
 
 1999-12-28 09:43  macgyver
 
-	* src/: support.c (1.12), utils.c (1.7) (utags: R1_2_0pre10):
-	Cleaned up sstrncpy properly and backed out previous incorrect
-	cleanup.
+	* src/: support.c (1.12), utils.c (1.7, R1_2_0RC2) (utags:
+	R1_2_0pre10): Cleaned up sstrncpy properly and backed out previous
+	incorrect cleanup.
 
 1999-12-28 01:45  macgyver
 
@@ -818,11 +937,13 @@
 
 1999-10-27 00:45  macgyver
 
-	* contrib/.cvsignore (1.4, R1_2_0pre10): Updated for proftpd.spec.
+	* contrib/.cvsignore (1.4, R1_2_0RC2, R1_2_0pre10): Updated for
+	proftpd.spec.
 
 1999-10-27 00:45  macgyver
 
-	* contrib/dist/rpm/.cvsignore (1.1, R1_2_0pre10): New file.
+	* contrib/dist/rpm/.cvsignore (1.1, R1_2_0RC2, R1_2_0pre10): New
+	file.
 
 1999-10-27 00:44  macgyver
 
@@ -832,8 +953,8 @@
 
 1999-10-27 00:43  macgyver
 
-	* Makefile.in (1.8, R1_2_0pre10): Minor path correction for
-	proftpd.spec.
+	* Makefile.in (1.8, R1_2_0RC2, R1_2_0pre10): Minor path correction
+	for proftpd.spec.
 
 1999-10-26 22:06  macgyver
 
@@ -865,8 +986,8 @@
 	* doc/rfc/: draft-bonachea-sftp-00.txt (1.1),
 	draft-ietf-ftpext-mlst-08.txt (1.1),
 	draft-ietf-ftpext-sec-consider-02.txt (1.1), rfc0959.txt (1.1),
-	rfc2228.txt (1.1) (utags: R1_2_0pre10, R1_2_0pre9): Added RFCs to
-	the documentation.
+	rfc2228.txt (1.1) (utags: R1_2_0RC2, R1_2_0pre10, R1_2_0pre9):
+	Added RFCs to the documentation.
 
 1999-10-26 20:08  macgyver
 
@@ -898,8 +1019,9 @@
 
 	* configure (1.23), configure.in (1.23), contrib/ftp.pamd (1.2),
 	contrib/proftpd.spec.in (1.6), contrib/dist/rpm/ftp.pamd (1.1,
-	R1_2_0pre10, R1_2_0pre9), contrib/dist/rpm/proftpd.init.d (1.1,
-	R1_2_0pre10, R1_2_0pre9), contrib/dist/rpm/proftpd.spec.in (1.1),
+	R1_2_0RC2, R1_2_0pre10, R1_2_0pre9),
+	contrib/dist/rpm/proftpd.init.d (1.1, R1_2_0RC2, R1_2_0pre10,
+	R1_2_0pre9), contrib/dist/rpm/proftpd.spec.in (1.1),
 	doc/Undocumented.txt (1.8): Moved around RPM build files.
 
 1999-10-22 22:53  macgyver
@@ -917,8 +1039,8 @@
 
 1999-10-22 22:34  macgyver
 
-	* contrib/libcap/.cvsignore (1.3, R1_2_0pre10, R1_2_0pre9): Updated
-	ignored files.
+	* contrib/libcap/.cvsignore (1.3, R1_2_0RC2, R1_2_0pre10,
+	R1_2_0pre9): Updated ignored files.
 
 1999-10-22 22:21  macgyver
 
@@ -965,13 +1087,14 @@
 
 1999-10-17 14:11  macgyver
 
-	* contrib/genuser.pl (1.1, R1_2_0pre10, R1_2_0pre9): Added in
-	genuser.pl to facilitiate the creation of username:password
-	AuthUserFile entries.
+	* contrib/genuser.pl (1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9):
+	Added in genuser.pl to facilitiate the creation of
+	username:password AuthUserFile entries.
 
 1999-10-12 00:28  macgyver
 
-	* src/ftpwho.c (1.1, R1_2_0pre10, R1_2_0pre9): Added in ftpwho.c.
+	* src/ftpwho.c (1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9): Added in
+	ftpwho.c.
 
 1999-10-11 22:40  macgyver
 
@@ -979,8 +1102,8 @@
 
 1999-10-11 06:14  macgyver
 
-	* contrib/: mod_pgsql.c (1.4, R1_2_0pre10), mod_sqlpw.c (1.2)
-	(utags: R1_2_0pre9): Minor code cleanups.
+	* contrib/: mod_pgsql.c (1.4, R1_2_0RC2, R1_2_0pre10), mod_sqlpw.c
+	(1.2) (utags: R1_2_0pre9): Minor code cleanups.
 
 1999-10-11 02:28  macgyver
 
@@ -1078,13 +1201,13 @@
 
 	* acconfig.h (1.3), config.h.in (1.8), configure (1.19),
 	configure.in (1.19), doc/Undocumented.txt (1.6), include/data.h
-	(1.4, R1_2_0pre10, R1_2_0pre9), src/data.c (1.6, R1_2_0pre9): Added
-	in support for sendfile on BSD platforms.
+	(1.4, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9), src/data.c (1.6,
+	R1_2_0pre9): Added in support for sendfile on BSD platforms.
 
 1999-10-04 23:28  macgyver
 
 	* ChangeLog (1.7), Makefile.in (1.6), doc/Undocumented.txt (1.5),
-	doc/mod_sample.c (1.1, R1_2_0pre10, R1_2_0pre9),
+	doc/mod_sample.c (1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9),
 	modules/mod_sample.c (1.4): Miscellaneous reshuffling.
 
 1999-10-04 19:07  macgyver
@@ -1097,8 +1220,8 @@
 
 1999-10-04 18:57  macgyver
 
-	* changelog (1.21), doc/Changes-1.2.0pre3 (1.1, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8): Moved the old changelog to
+	* changelog (1.21), doc/Changes-1.2.0pre3 (1.1, R1_2_0RC2,
+	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8): Moved the old changelog to
 	doc/Changes-1.2.0pre3 to avoid any confusion.
 
 1999-10-04 18:54  macgyver
@@ -1126,8 +1249,8 @@
 
 1999-10-04 18:34  macgyver
 
-	* contrib/: mod_mysql.c (1.4, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8),
-	mod_pgsql.c (1.2): Fixed references to absolute paths.
+	* contrib/: mod_mysql.c (1.4, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
+	R1_2_0pre8), mod_pgsql.c (1.2): Fixed references to absolute paths.
 
 1999-10-04 18:09  macgyver
 
@@ -1391,14 +1514,14 @@
 
 1999-09-16 22:54  macgyver
 
-	* sample-configurations/complex-virtual.conf (1.1, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7): Added in a new sample
-	configuration.
+	* sample-configurations/complex-virtual.conf (1.1, R1_2_0RC2,
+	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7): Added in a new
+	sample configuration.
 
 1999-09-16 22:54  macgyver
 
-	* contrib/libcap/cap_extint.c (1.3, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7): Corrected gcc warning.
+	* contrib/libcap/cap_extint.c (1.3, R1_2_0RC2, R1_2_0pre10,
+	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7): Corrected gcc warning.
 
 1999-09-16 22:53  macgyver
 
@@ -1407,9 +1530,10 @@
 
 1999-09-16 22:45  macgyver
 
-	* .cvsignore (1.2, R1_2_0pre10, R1_2_0pre9), contrib/.cvsignore
-	(1.3, R1_2_0pre9), contrib/libcap/.cvsignore (1.2) (utags:
-	R1_2_0pre7, R1_2_0pre8): Added some more files to ignore.
+	* .cvsignore (1.2, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9),
+	contrib/.cvsignore (1.3, R1_2_0pre9), contrib/libcap/.cvsignore
+	(1.2) (utags: R1_2_0pre7, R1_2_0pre8): Added some more files to
+	ignore.
 
 1999-09-16 12:20  macgyver
 
@@ -1436,9 +1560,9 @@
 
 1999-09-12 16:11  macgyver
 
-	* README.Solaris2.5x (1.2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7): Additional information regarding Solaris 2.5.x systems
-	added.
+	* README.Solaris2.5x (1.2, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
+	R1_2_0pre8, R1_2_0pre7): Additional information regarding Solaris
+	2.5.x systems added.
 
 1999-09-12 15:28  macgyver
 
@@ -1449,11 +1573,12 @@
 
 1999-09-12 12:04  macgyver
 
-	* doc/: Configuration.html (1.1), FAQ-config.html (1.1,
+	* doc/: Configuration.html (1.1), FAQ-config.html (1.1, R1_2_0RC2,
 	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7), GetConf (1.2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7), ShowUndocumented
-	(1.1, R1_2_0pre8, R1_2_0pre7), Undocumented.txt (1.1, R1_2_0pre7):
-	Added configuration documentation and 'un' documentation.
+	R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7),
+	ShowUndocumented (1.1, R1_2_0pre8, R1_2_0pre7), Undocumented.txt
+	(1.1, R1_2_0pre7): Added configuration documentation and 'un'
+	documentation.
 
 1999-09-12 11:30  macgyver
 
@@ -1465,14 +1590,14 @@
 
 1999-09-11 19:08  macgyver
 
-	* changelog (1.19), contrib/libcap/Makefile (1.4, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7), src/ftpcount.1 (1.2,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7), src/ftpshut.8
+	* changelog (1.19), contrib/libcap/Makefile (1.4, R1_2_0RC2,
+	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7), src/ftpcount.1
 	(1.2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7),
-	src/ftpwho.1 (1.2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7), src/proftpd.8 (1.3, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7) (utags: R1_2_0pre6): Corrected mailing list
-	addresses.
+	src/ftpshut.8 (1.2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
+	R1_2_0pre7), src/ftpwho.1 (1.2, R1_2_0pre10, R1_2_0pre9,
+	R1_2_0pre8, R1_2_0pre7), src/proftpd.8 (1.3, R1_2_0pre10,
+	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7) (utags: R1_2_0pre6): Corrected
+	mailing list addresses.
 
 1999-09-11 19:05  macgyver
 
@@ -1533,9 +1658,9 @@
 
 1999-09-10 00:27  macgyver
 
-	* src/ftpshut.c (1.2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6): Cleaned up ftpshut options to return more
-	meaningful errors.
+	* src/ftpshut.c (1.2, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
+	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6): Cleaned up ftpshut options to
+	return more meaningful errors.
 
 1999-09-09 22:44  macgyver
 
@@ -1614,14 +1739,14 @@
 
 	* Makefile.in (1.4, R1_2_0pre6, R1_2_0pre5), config.h.in (1.3),
 	configure (1.4), configure.in (1.4), include/dirtree.h (1.2,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5), include/fs.h (1.2,
+	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5), include/fs.h (1.2, R1_2_0RC2,
 	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
 	R1_2_0pre5), include/version.h (1.4, R1_2_0pre5), lib/glob.c (1.2,
 	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
 	R1_2_0pre5), src/dirtree.c (1.4, R1_2_0pre6, R1_2_0pre5), src/fs.c
 	(1.4, R1_2_0pre6, R1_2_0pre5), src/ftpcount.c (1.2, R1_2_0pre6,
 	R1_2_0pre5), src/inet.c (1.3), src/log.c (1.3), src/main.c (1.11),
-	src/modules.c (1.3, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
+	src/modules.c (1.3, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
 	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5), src/pool.c (1.4),
 	src/support.c (1.4, R1_2_0pre5): Removed lots of unsafe buffer
 	copies, as well as addressed a couple of Y2K issues.
@@ -1644,17 +1769,18 @@
 
 1999-09-07 18:14  macgyver
 
-	* contrib/libcap/: Makefile (1.3), _makenames.c (1.2, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6), cap_alloc.c (1.2,
+	* contrib/libcap/: Makefile (1.3), _makenames.c (1.2, R1_2_0RC2,
 	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6),
-	cap_extint.c (1.2, R1_2_0pre6), cap_file.c (1.1, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6), cap_flag.c (1.2,
+	cap_alloc.c (1.2, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
+	R1_2_0pre7, R1_2_0pre6), cap_extint.c (1.2, R1_2_0pre6), cap_file.c
+	(1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7,
+	R1_2_0pre6), cap_flag.c (1.2, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
+	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6), cap_proc.c (1.2, R1_2_0RC2,
 	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6),
-	cap_proc.c (1.2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7,
-	R1_2_0pre6), cap_sys.c (1.3, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
+	cap_sys.c (1.3, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
 	R1_2_0pre7, R1_2_0pre6), cap_text.c (1.2, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6), libcap.h (1.2, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6),
+	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6), libcap.h (1.2, R1_2_0RC2,
+	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6),
 	include/sys/capability.h (1.1, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
 	R1_2_0pre7, R1_2_0pre6) (utags: R1_2_0pre5): Updated capabilities
 	library and model.
@@ -1693,12 +1819,12 @@
 
 	* changelog (1.18, R1_2_0pre5), contrib/mod_linuxprivs.c (1.2),
 	contrib/libcap/Makefile (1.2), contrib/libcap/cap_sys.c (1.2),
-	include/options.h (1.2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5), include/pool.h (1.3,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5), modules/mod_core.c (1.7), modules/mod_ls.c (1.8),
-	modules/mod_xfer.c (1.8), src/log.c (1.2), src/main.c (1.10),
-	src/modules.c (1.2), src/pool.c (1.3): Mucho patches.
+	include/options.h (1.2, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
+	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5), include/pool.h
+	(1.3, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7,
+	R1_2_0pre6, R1_2_0pre5), modules/mod_core.c (1.7), modules/mod_ls.c
+	(1.8), modules/mod_xfer.c (1.8), src/log.c (1.2), src/main.c
+	(1.10), src/modules.c (1.2), src/pool.c (1.3): Mucho patches.
 
 1999-03-11 19:58  flood
 
@@ -1722,9 +1848,10 @@
 
 1999-03-05 11:55  flood
 
-	* modules/mod_xfer.c (1.6), src/timers.c (1.3, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5) (utags:
-	R1_2_0pre3): Oops.  Last nights commit royally screwed timers.
+	* modules/mod_xfer.c (1.6), src/timers.c (1.3, R1_2_0RC2,
+	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
+	R1_2_0pre5) (utags: R1_2_0pre3): Oops.	Last nights commit royally
+	screwed timers.
 
 1999-03-04 21:34  flood
 
@@ -1740,13 +1867,13 @@
 
 1999-03-04 20:53  flood
 
-	* changelog (1.12), include/io.h (1.2, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3),
-	modules/mod_xfer.c (1.5), src/ident.c (1.3, R1_2_0pre10,
+	* changelog (1.12), include/io.h (1.2, R1_2_0RC2, R1_2_0pre10,
 	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3), src/io.c (1.3, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3), src/main.c (1.7): Fixed ident & i/o (hanging)
-	problems.
+	R1_2_0pre3), modules/mod_xfer.c (1.5), src/ident.c (1.3,
+	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
+	R1_2_0pre5, R1_2_0pre3), src/io.c (1.3, R1_2_0pre7, R1_2_0pre6,
+	R1_2_0pre5, R1_2_0pre3), src/main.c (1.7): Fixed ident & i/o
+	(hanging) problems.
 
 1999-03-04 18:44  flood
 
@@ -1754,10 +1881,11 @@
 
 1999-03-04 18:29  flood
 
-	* include/timers.h (1.2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3), modules/mod_auth.c
-	(1.4, R1_2_0pre3), src/main.c (1.6), src/support.c (1.3,
-	R1_2_0pre3), src/timers.c (1.2): timer code fixed
+	* include/timers.h (1.2, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
+	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3),
+	modules/mod_auth.c (1.4, R1_2_0pre3), src/main.c (1.6),
+	src/support.c (1.3, R1_2_0pre3), src/timers.c (1.2): timer code
+	fixed
 
 1999-02-13 20:36  flood
 
@@ -1810,9 +1938,9 @@
 1998-11-01 13:08  flood
 
 	* changelog (1.6), configure (1.2, R1_2_0pre2), configure.in (1.2,
-	R1_2_0pre2), contrib/README (1.2, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2), contrib/mod_pam.c (1.1, R1_2_0pre2),
+	R1_2_0pre2), contrib/README (1.2, R1_2_0RC2, R1_2_0pre10,
+	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
+	R1_2_0pre3, R1_2_0pre2), contrib/mod_pam.c (1.1, R1_2_0pre2),
 	contrib/mod_ratio.c (1.2, R1_2_0pre3, R1_2_0pre2),
 	contrib/mod_readme.c (1.1, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
 	R1_2_0pre3, R1_2_0pre2), include/proftpd.h (1.3, R1_2_0pre2),
@@ -1891,28 +2019,29 @@
 1998-10-17 21:24  flood
 
 	* .cvsignore (1.1.1.1, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2), COPYING (1.1.1.1, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	INSTALL (1.1.1.1, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	Make.modules.in (1.1.1.1, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	Make.rules.in (1.1.1.1, R1_2_0pre2), Makefile.in (1.1.1.1), README
-	(1.1.1.1, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), README.Solaris2.5x
-	(1.1.1.1, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	README.linux-privs (1.1.1.1, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	acconfig.h (1.1.1.1, R1_2_0pre2), changelog (1.1.1.1), config.guess
-	(1.1.1.1, R1_2_0pre3, R1_2_0pre2), config.h.in (1.1.1.1,
-	R1_2_0pre2), config.sub (1.1.1.1, R1_2_0pre9, R1_2_0pre8,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	configure (1.1.1.1), configure.in (1.1.1.1), install-sh (1.1.1.1,
+	R1_2_0pre2), COPYING (1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
+	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
+	R1_2_0pre2), INSTALL (1.1.1.1, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
+	Make.modules.in (1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
+	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
+	R1_2_0pre2), Make.rules.in (1.1.1.1, R1_2_0pre2), Makefile.in
+	(1.1.1.1), README (1.1.1.1, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
+	README.Solaris2.5x (1.1.1.1, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
+	R1_2_0pre2), README.linux-privs (1.1.1.1, R1_2_0RC2, R1_2_0pre10,
+	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
+	R1_2_0pre3, R1_2_0pre2), acconfig.h (1.1.1.1, R1_2_0pre2),
+	changelog (1.1.1.1), config.guess (1.1.1.1, R1_2_0pre3,
+	R1_2_0pre2), config.h.in (1.1.1.1, R1_2_0pre2), config.sub
+	(1.1.1.1, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
+	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), configure (1.1.1.1),
+	configure.in (1.1.1.1), install-sh (1.1.1.1, R1_2_0RC2,
 	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
 	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), contrib/.cvsignore (1.1.1.1,
 	R1_2_0pre3, R1_2_0pre2), contrib/README (1.1.1.1),
 	contrib/mod_linuxprivs.c (1.1.1.1, R1_2_0pre3, R1_2_0pre2),
 	contrib/mod_ratio.c (1.1.1.1), contrib/xferstats.holger-preiss
-	(1.1.1.1, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7,
-	R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
+	(1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
+	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
 	contrib/libcap/.cvsignore (1.1.1.1, R1_2_0pre6, R1_2_0pre5,
 	R1_2_0pre3, R1_2_0pre2), contrib/libcap/Makefile (1.1.1.1,
 	R1_2_0pre3, R1_2_0pre2), contrib/libcap/_makenames.c (1.1.1.1,
@@ -1924,60 +2053,63 @@
 	R1_2_0pre3, R1_2_0pre2), contrib/libcap/cap_text.c (1.1.1.1,
 	R1_2_0pre3, R1_2_0pre2), contrib/libcap/capability.h (1.1.1.1,
 	R1_2_0pre3, R1_2_0pre2), contrib/libcap/libcap.h (1.1.1.1,
-	R1_2_0pre3, R1_2_0pre2), doc/API (1.1.1.1, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2), doc/development.notes (1.1.1.1, R1_2_0pre10,
+	R1_2_0pre3, R1_2_0pre2), doc/API (1.1.1.1, R1_2_0RC2, R1_2_0pre10,
 	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2), doc/license.txt (1.1.1.1, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2), include/conf.h (1.1.1.1, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), include/data.h (1.1.1.1),
-	include/default_paths.h (1.1.1.1, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2), include/dirtree.h (1.1.1.1, R1_2_0pre3, R1_2_0pre2),
-	include/fs.h (1.1.1.1, R1_2_0pre3, R1_2_0pre2), include/ftp.h
-	(1.1.1.1, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7,
-	R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), include/ident.h
-	(1.1.1.1, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7,
-	R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), include/inet.h
-	(1.1.1.1, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	include/io.h (1.1.1.1, R1_2_0pre2), include/libsupp.h (1.1.1.1,
+	R1_2_0pre3, R1_2_0pre2), doc/development.notes (1.1.1.1, R1_2_0RC2,
 	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), include/log.h (1.1.1.1,
-	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	include/modules.h (1.1.1.1, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
+	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), doc/license.txt (1.1.1.1,
+	R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7,
+	R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), include/conf.h
+	(1.1.1.1, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
+	include/data.h (1.1.1.1), include/default_paths.h (1.1.1.1,
+	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
+	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), include/dirtree.h (1.1.1.1,
+	R1_2_0pre3, R1_2_0pre2), include/fs.h (1.1.1.1, R1_2_0pre3,
+	R1_2_0pre2), include/ftp.h (1.1.1.1, R1_2_0RC2, R1_2_0pre10,
+	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
+	R1_2_0pre3, R1_2_0pre2), include/ident.h (1.1.1.1, R1_2_0RC2,
+	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
+	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), include/inet.h (1.1.1.1,
+	R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), include/io.h
+	(1.1.1.1, R1_2_0pre2), include/libsupp.h (1.1.1.1, R1_2_0pre10,
+	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
+	R1_2_0pre3, R1_2_0pre2), include/log.h (1.1.1.1, R1_2_0pre7,
+	R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), include/modules.h
+	(1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
 	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
 	include/options.h (1.1.1.1, R1_2_0pre3, R1_2_0pre2), include/pool.h
 	(1.1.1.1), include/privs.h (1.1.1.1, R1_2_0pre7, R1_2_0pre6,
 	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), include/proftpd.h (1.1.1.1),
-	include/sets.h (1.1.1.1, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
+	include/sets.h (1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
+	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
+	R1_2_0pre2), include/support.h (1.1.1.1), include/timers.h
+	(1.1.1.1, R1_2_0pre2), include/version.h (1.1.1.1), lib/.cvsignore
+	(1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
 	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	include/support.h (1.1.1.1), include/timers.h (1.1.1.1,
-	R1_2_0pre2), include/version.h (1.1.1.1), lib/.cvsignore (1.1.1.1,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), lib/Makefile.in (1.1.1.1,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), lib/fnmatch.c (1.1.1.1,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), lib/getopt.c (1.1.1.1,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), lib/getopt.h (1.1.1.1,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), lib/getopt1.c (1.1.1.1,
+	lib/Makefile.in (1.1.1.1, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
+	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
+	lib/fnmatch.c (1.1.1.1, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
+	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
+	lib/getopt.c (1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
+	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
+	R1_2_0pre2), lib/getopt.h (1.1.1.1, R1_2_0RC2, R1_2_0pre10,
+	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
+	R1_2_0pre3, R1_2_0pre2), lib/getopt1.c (1.1.1.1, R1_2_0RC2,
 	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
 	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), lib/glob.c (1.1.1.1,
-	R1_2_0pre3, R1_2_0pre2), lib/glob.h (1.1.1.1, R1_2_0pre10,
+	R1_2_0pre3, R1_2_0pre2), lib/glob.h (1.1.1.1, R1_2_0RC2,
+	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
+	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), lib/pwgrent.c (1.1.1.1,
 	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2), lib/pwgrent.c (1.1.1.1, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2), lib/strsep.c (1.1.1.1, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2), lib/vsnprintf.c (1.1.1.1, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2), modules/.cvsignore (1.1.1.1, R1_2_0pre10, R1_2_0pre9,
-	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2), modules/Makefile.in (1.1.1.1, R1_2_0pre2),
-	modules/glue.sh (1.1.1.1, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
+	R1_2_0pre3, R1_2_0pre2), lib/strsep.c (1.1.1.1, R1_2_0RC2,
+	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
+	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), lib/vsnprintf.c (1.1.1.1,
+	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
+	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), modules/.cvsignore (1.1.1.1,
+	R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7,
+	R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
+	modules/Makefile.in (1.1.1.1, R1_2_0pre2), modules/glue.sh
+	(1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
 	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
 	modules/mod_auth.c (1.1.1.1), modules/mod_core.c (1.1.1.1),
 	modules/mod_log.c (1.1.1.1), modules/mod_ls.c (1.1.1.1),
@@ -1986,37 +2118,37 @@
 	R1_2_0pre2), modules/mod_test.c (1.1.1.1, R1_2_0pre3, R1_2_0pre2),
 	modules/mod_unixpw.c (1.1.1.1, R1_2_0pre3, R1_2_0pre2),
 	modules/mod_xfer.c (1.1.1.1), modules/module_glue.c.tmpl (1.1.1.1,
+	R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7,
+	R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
+	sample-configurations/anonymous.conf (1.1.1.1, R1_2_0RC2,
 	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
 	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	sample-configurations/anonymous.conf (1.1.1.1, R1_2_0pre10,
+	sample-configurations/basic.conf (1.1.1.1, R1_2_0RC2, R1_2_0pre10,
 	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2), sample-configurations/basic.conf (1.1.1.1,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	sample-configurations/virtual.conf (1.1.1.1, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2), src/.cvsignore (1.1.1.1, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2), src/Makefile.in (1.1.1.1, R1_2_0pre8,
+	R1_2_0pre3, R1_2_0pre2), sample-configurations/virtual.conf
+	(1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
 	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
-	src/auth.c (1.1.1.1, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2), src/data.c (1.1.1.1), src/dirtree.c (1.1.1.1),
-	src/fs.c (1.1.1.1), src/ftpcount.1 (1.1.1.1, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2), src/ftpcount.c (1.1.1.1, R1_2_0pre3,
-	R1_2_0pre2), src/ftpshut.8 (1.1.1.1, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2), src/ftpshut.c (1.1.1.1, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2), src/ftpwho.1 (1.1.1.1, R1_2_0pre5, R1_2_0pre3,
-	R1_2_0pre2), src/ident.c (1.1.1.1), src/inet.c (1.1.1.1,
-	R1_2_0pre3, R1_2_0pre2), src/io.c (1.1.1.1), src/log.c (1.1.1.1,
-	R1_2_0pre3, R1_2_0pre2), src/main.c (1.1.1.1), src/modules.c
-	(1.1.1.1, R1_2_0pre3, R1_2_0pre2), src/pool.c (1.1.1.1),
-	src/proftpd.8 (1.1.1.1), src/sets.c (1.1.1.1, R1_2_0pre10,
-	R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5,
-	R1_2_0pre3, R1_2_0pre2), src/support.c (1.1.1.1), src/timers.c
-	(1.1.1.1, R1_2_0pre2), src/utils.c (1.1.1.1, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), src/xferlog.5 (1.1.1.1,
-	R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7, R1_2_0pre6,
-	R1_2_0pre5, R1_2_0pre3, R1_2_0pre2) (utags: R1_2_0pre1, start):
-	Imported source for proftpd 1.2.0
+	src/.cvsignore (1.1.1.1, R1_2_0RC2, R1_2_0pre10, R1_2_0pre9,
+	R1_2_0pre8, R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3,
+	R1_2_0pre2), src/Makefile.in (1.1.1.1, R1_2_0pre8, R1_2_0pre7,
+	R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), src/auth.c
+	(1.1.1.1, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
+	src/data.c (1.1.1.1), src/dirtree.c (1.1.1.1), src/fs.c (1.1.1.1),
+	src/ftpcount.1 (1.1.1.1, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
+	src/ftpcount.c (1.1.1.1, R1_2_0pre3, R1_2_0pre2), src/ftpshut.8
+	(1.1.1.1, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), src/ftpshut.c
+	(1.1.1.1, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), src/ftpwho.1
+	(1.1.1.1, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), src/ident.c
+	(1.1.1.1), src/inet.c (1.1.1.1, R1_2_0pre3, R1_2_0pre2), src/io.c
+	(1.1.1.1), src/log.c (1.1.1.1, R1_2_0pre3, R1_2_0pre2), src/main.c
+	(1.1.1.1), src/modules.c (1.1.1.1, R1_2_0pre3, R1_2_0pre2),
+	src/pool.c (1.1.1.1), src/proftpd.8 (1.1.1.1), src/sets.c (1.1.1.1,
+	R1_2_0RC2, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8, R1_2_0pre7,
+	R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2), src/support.c
+	(1.1.1.1), src/timers.c (1.1.1.1, R1_2_0pre2), src/utils.c
+	(1.1.1.1, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2),
+	src/xferlog.5 (1.1.1.1, R1_2_0pre10, R1_2_0pre9, R1_2_0pre8,
+	R1_2_0pre7, R1_2_0pre6, R1_2_0pre5, R1_2_0pre3, R1_2_0pre2) (utags:
+	R1_2_0pre1, start): Imported source for proftpd 1.2.0
         
 
