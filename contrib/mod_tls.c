@@ -2324,9 +2324,7 @@ MODRET tls_prot(cmd_rec *cmd) {
       pr_response_add_err(R_534, "Unwilling to accept security parameters");
       tls_log("%s: unwilling to accept security parameter (%s), declining",
         cmd->argv[1]);
-
-      /* Allow other RFC2228 modules a chance a handling this command. */
-      return DECLINED(cmd);
+      return ERROR(cmd);
     }
 
   } else if (!strcmp(cmd->argv[1], "P")) {
@@ -2338,17 +2336,20 @@ MODRET tls_prot(cmd_rec *cmd) {
 
   } else if (!strcmp(cmd->argv[1], "S") || !strcmp(cmd->argv[1], "E")) {
     pr_response_add_err(R_536, "PROT %s unsupported", cmd->argv[1]);
-    tls_log("PROT %s unsupported, declining", cmd->argv[1]);
 
-    /* Allow other RFC2228 modules a chance a handling this command. */
-    return DECLINED(cmd);
+    /* By the time the logic reaches this point, there must have been
+     * an SSL/TLS session negotiated; other AUTH mechanisms will handle
+     * things differently, and when they do, the logic of this handler
+     * would not reach this point.  This means that it would not be impolite
+     * to return ERROR here, rather than DECLINED: it shows that mod_tls
+     * is handling the security mechanism, and that this module does not
+     * allow for the unsupported PROT levels.
+     */
+    return ERROR(cmd);
 
   } else {
     pr_response_add_err(R_504, "PROT %s unsupported", cmd->argv[1]);
-    tls_log("PROT %s unsupported, declining", cmd->argv[1]);
-
-    /* Allow other RFC2228 modules a chance a handling this command. */
-    return DECLINED(cmd);
+    return ERROR(cmd);
   }
 
   return HANDLED(cmd);
