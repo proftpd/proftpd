@@ -788,14 +788,17 @@ AC_HEADER_TIME
 AC_STRUCT_TM
 
 dnl Check for generic typedefs
-AC_CHECK_TYPE(umode_t,mode_t)
-AC_CHECK_TYPE(ino_t,ino_t)
-AC_CHECK_TYPES(socklen_t,,AC_DEFINE(socklen_t,int),[
-#if HAVE_NETDB_H
-#include <netdb.h>
-#endif
-#include <sys/socket.h>
-#include <sys/types.h>])
+AC_CHECK_TYPE(umode_t, mode_t)
+AC_CHECK_TYPE(ino_t, ino_t)
+AC_CHECK_TYPES(socklen_t, ,
+  [AC_DEFINE(socklen_t, int)],
+  [
+    #if HAVE_NETDB_H
+    # include <netdb.h>
+    #endif
+    #include <sys/socket.h>
+    #include <sys/types.h>
+  ])
 
 dnl See what type of utmp exists
 AC_CHECK_HEADERS(utmp.h, have_utmp=1, have_utmp=0)
@@ -941,7 +944,16 @@ changequote([, ])dnl
   *) AC_DEFINE(HAVE_SETPASSENT) ;;
 esac])
 
-dnl IPv6-related checks
+dnl IPv4/IPv6-related checks
+AC_CHECK_MEMBER(struct sockaddr_in.sin_len,
+  [AC_DEFINE(SIN_LEN)],,
+  [
+    #if HAVE_NETINET_IN_SYSTM_H
+    # include <netinet/in_systm.h>
+    #endif
+    #include <netinet/in.h>
+  ])
+
 PR_CHECK_STRUCT_ADDRINFO
 PR_CHECK_STRUCT_SS
 PR_CHECK_SS_FAMILY

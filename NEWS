@@ -1,4 +1,8 @@
-$Id: NEWS,v 1.477 2003-09-11 13:33:49 castaglia Exp $
+$Id: NEWS,v 1.478 2003-09-13 23:29:57 castaglia Exp $
+
+CVS
+---------------------------------
+- Bug 2167 - getnameinfo() on FreeBSD doesn't support IP address lookups.
 
 1.2.9rc2 - Released 11-Sep-2003
 ---------------------------------

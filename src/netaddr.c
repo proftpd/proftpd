@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.16 2003-09-09 21:14:41 castaglia Exp $
+ * $Id: netaddr.c,v 1.17 2003-09-13 23:29:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -88,6 +88,11 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
 #ifdef USE_IPV6
   memset(&v6, 0, sizeof(v6));
   v6.sin6_family = AF_INET6;
+
+# ifdef SIN6_LEN
+  v6.sin6_len = sizeof(struct sockaddr_in6);
+# endif /* SIN6_LEN */
+
   res = pr_inet_pton(AF_INET6, name, &v6.sin6_addr);
   if (res > 0) {
     pr_netaddr_set_family(na, AF_INET6);
@@ -101,6 +106,11 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
 
   memset(&v4, 0, sizeof(v4));
   v4.sin_family = AF_INET;
+
+# ifdef SIN_LEN
+  v4.sin_len = sizeof(struct sockaddr_in);
+# endif /* SIN_LEN */
+
   res = pr_inet_pton(AF_INET, name, &v4.sin_addr);
   if (res > 0) {
     pr_netaddr_set_family(na, AF_INET);

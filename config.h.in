@@ -567,6 +567,9 @@
 /* Define if you have the __ss_len sockaddr_storage struct member.  */
 #undef HAVE___SS_LEN
 
+/* Define if you have the sin_len sockaddr_in struct member. */
+#undef SIN_LEN
+
 /* Define if you have the socket library (-lsocket).  */
 #undef HAVE_LIBSOCKET
 #ifndef STDIN_FILENO

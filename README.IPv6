@@ -77,17 +77,6 @@ Known issues:
     o Apache2 mentions the same problem here:
        http://httpd.apache.org/docs-2.0/bind.html#ipv6
 
-    o FreeBSD 4.8 users may need to use --enable-builtin-getnameinfo
-      even when not using --enable-ipv6.  The getnameinfo(3) function in
-      FreeBSD 4.8 has been reported to not work correctly, producing log
-      messages like:
-
-        server - getnameinfo error: Non-recoverable failure in name resolution
-        server - 1.2.3.4:21 masquerading as (null)
-
-      HOWEVER, it has also been reported that using a DNS name, rather than
-      an IP address here, _does_ work.
-
 TODO:
 
   + add support for IPv6 network ACLs
