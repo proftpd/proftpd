@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.11 2003-03-20 02:19:38 castaglia Exp $
+ * $Id: fsio.c,v 1.12 2003-03-20 19:11:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1510,6 +1510,15 @@ int pr_fs_valid_path(const char *path) {
       if (strncmp(fsi->fs_path, path, strlen(fsi->fs_path)) == 0)
         return 0;
     }
+
+  } else {
+
+    /* No map, which means no registered FSs, which means that the default
+     * path of '/' will be used.  In this case, simply check that the given
+     * path starts with a /.
+     */
+    if (*path == '/')
+      return 0;
   }
 
   errno = EINVAL;
