@@ -487,4 +487,4 @@ AC_SUBST(VERSION)
 AC_CONFIG_HEADER(config.h)
 
 CFLAGS="$CFLAGS $use_shadow"
-AC_OUTPUT(lib/Makefile src/Makefile modules/Makefile Makefile Make.rules Make.modules contrib/proftpd.spec)
+AC_OUTPUT(lib/Makefile src/Makefile modules/Makefile Makefile Make.rules Make.modules contrib/dist/rpm/proftpd.spec)
