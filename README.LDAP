@@ -1,137 +1,175 @@
-mod_ldap v2.7.1
+mod_ldap v2.8.1
 ===============
 
 mod_ldap is a module that allows proftpd to do user authentication and
 name/UID lookups against an LDAP database.
 
-**Please note:** Read the CHANGES section below for mod_ldap v2.7 changes;
-some significant changes have been made. Do *NOT* upgrade to mod_ldap v2.7
+**Please note:** Read the CHANGES section below for mod_ldap v2.8 changes;
+some significant changes have been made. Do *NOT* upgrade to mod_ldap v2.8
 before reading the CHANGES section.
 
 
 Sections:
-1. How do I set up mod_ldap?
-2. Changes in v2.5.2 - v2.7.1
-3. To-Do
-4. Thanks
-5. Author
+1. Author
+2. How do I set up mod_ldap?
+3. Changes in v2.8 - v2.8.1
+4. To Do
+5. Thanks
 
+
+=========
+1. Author
+=========
+
+John Morrissey, <jwm@horde.net>, http://horde.net/~jwm/software/mod_ldap/.
+Feedback is much appreciated. If you're using mod_ldap successfully, are
+having problems getting mod_ldap up and running at your site, or have some
+code improvements or ideas for development, please let me know!
 
 ============================
-1. How do I set up mod_ldap?
+2. How do I set up mod_ldap?
 ============================
 
 If you are using a version of mod_ldap included with a ProFTPD release,
 you can simply:
 
-tar xvzf proftpd-version.tar.gz
-cd proftpd-version
-./configure --with-modules=mod_ldap
-make
-make install
-Add the contents of posixAccount-objectclass to your slapd.oc.conf (or
-    equivalent) and restart your LDAP server. If you plan on using mod_ldap
-    for group lookups, also add the contents of posixGroup-objectclass.
-The 'user-ldif' file contains a sample user ldif. Modify it to your liking
-    and say ldapadd -D your-root-dn -w your-root-dn-password < ldif
-Read up on the LDAP config-file directives in doc/Configuration.html. At
-    bare minimum, you'll need to have LDAPServer, LDAPDNInfo, and LDAPDoAuth
-    configuration directives in your proftpd.conf.
+* tar xvzf proftpd-version.tar.gz
+* If you wish to use a newer version of mod_ldap that is not yet included
+  with a release version of ProFTPD, download the file mod_ldap.c and say:
 
-    A sample set of LDAP configuration directives is included here:
+    cp -f mod_ldap.c proftpd-version/contrib
+
+* cd proftpd-version
+* ./configure --with-modules=mod_ldap
+* make
+* make install
+* If your LDAP server runs OpenLDAP 1.x, you need to add schema definitions. 
+  Add the contents of posixAccount-objectclass to your slapd.oc.conf and
+  restart your LDAP server. If you plan on using mod_ldap for group lookups,
+  also add the contents of posixGroup-objectclass. OpenLDAP 2.x (and most
+  other LDAP servers) ship with these schema predefined.
+* The 'user-ldif' file contains a sample user ldif. Modify it to your liking
+  and say ldapadd -D your-root-dn -w your-root-dn-password < ldif
+* You are *strongly* encouraged to read up on the LDAP config-file
+  directives in proftpd-version/doc/Configuration.html. At bare minimum,
+  you'll need to have LDAPServer, LDAPDNInfo, and LDAPDoAuth configuration
+  directives in your proftpd.conf.
+
+  A set of basic mod_ldap configuration directives would look like:
 
     LDAPServer            localhost
-    LDAPDNInfo            cn=your-dn,dc=horde,dc=net dnpass
-    LDAPDoAuth            on "dc=users,dc=horde,dc=net"
+    LDAPDNInfo            cn=your-dn,dc=example,dc=com dnpass
+    LDAPDoAuth            on "dc=users,dc=example,dc=com"
 
+  Of course, you will need to update these configuration directives with
+  the proper values for your environment.
 
-
-If you wish to use a newer version of mod_ldap that is not yet included with
-a release version of ProFTPD, simply download the file mod_ldap.c, say:
-
-cp -f mod_ldap.c proftpd-version/contrib
-
-and then follow the same steps as above.
-
-=============================
-2. Changes in v2.5.2 - v2.7.1
-=============================
+===========================
+3. Changes in v2.8 - v2.8.1
+===========================
 
 Please check the web site for previous changelogs.
 
-v2.7.1:
-* UID/GID caching code updated with MacGyver's portability fixes
+v2.8.1:
+* Fixed a bug that prevented proper permissions being applied to home
+  directories created on demand.
+* Fixed an issue that would prevent per-VirtualHost configuration directives
+  from being properly recognized.
 
-v2.7:
-* Added a fix for picky LDAP servers like Sun Directory Services; using
-AuthBinds with those LDAP servers would break in previous mod_ldap versions.
-See the comments in the code for more details (search for "Sun Directory
-Services").
-* You can now specify custom LDAP search filters at runtime. See the
-configuration guide (doc/Configuration.html) entries for LDAPDo* for more
-details.
-* Objectclass is now enforced. You *must* have an objectclass attribute for
-each of your LDAP objects. This attribute must have a value of
-'posixAccount' ("objectclass: posixAccount"). For groups, this attribute
-must have the value 'posixGroup' ("objectclass: posixGroup"). If you wish to
-disable this objectclass enforcement, use the the LDAP filter "(uid=%u)" for
-Auth and UID lookups (see doc/Configuration.html for how to specify a custom
-LDAP search filter).
-* Removed allowedServices code. The functionality that allowedServices
-provided can now be duplicated with a modified LDAP search filter.
+v2.8:
+* The username escape sequence in search filter templates has changed.
+  You must now use %v instead of %u as the escape for the username. For
+  example, if you had:
 
-For example, to replicate basic allowedServices checking, pass this LDAP
-search filter to LDAPDoAuth:
-(&(uid=%u)(|(allowedServices=*FTP*)(!(allowedService=*))))
+    LDAPDoAuth on dc=example,dc=com (uid=%u)
 
-To emulate deniedServices checking, use this search filter:
-(&(uid=%u)(!(deniedServices=*FTP*)))
+  in your proftpd.conf with a previous version of mod_ldap, you will need
+  to change this to:
 
-To emulate *both* allowedServices and deniedServices checking, use this
-filter (beware line wrap):
-(&(uid=%u)(|(allowedServices=*FTP*)(!(allowedService=*)))(!(deniedServices=*FTP*)))
+    LDAPDoAuth on dc=example,dc=com (uid=%v)
 
-v2.6.1:
-* Fixed a bug that would prevent proper search scope selection.
+* LDAPAuthBinds is now enabled by default. I'm sick of hearing "Your
+  mod_ldap is broken; it won't talk to my LDAP server and I've ignored the
+  convenient error message about userPassword that mod_ldap logs."
 
-v2.6:
-* HomedirOnDemandSuffix - create an additional subdirectory in a user's home
-  directory (/home/user/anotherdirectory) on demand
-* Minor group fixes/cleanups - supplementary groups now work properly
-* Password {scheme}s are now treated in a case-insensitive manner.
-* Password-hash support for any crypto method OpenSSL supports
-  To enable extended OpenSSL password hash support, edit mod_ldap.c and
-  uncomment #define HAVE_OPENSSL. You'll also need to edit Make.rules to
-  link against OpenSSL. Further details are provided in mod_ldap.c.
-* Runtime search scope selection; one-level or subtree searches can be
-  selected from proftpd.conf.
+* The full path to user home directories is now created. Directories leading
+  up to the user's home directory are created root-owned and mode 755 (i.e.,
+  they are not subject to the mode argument to LDAPHomedirOnDemand). Home
+  directory creation now works for all users, not just users with the same
+  UID/GID as the main ProFTPD server. Lastly, the mode argument to
+  LDAPHomedirOnDemand is no longer subject to ProFTPD's Umask.
 
-=======
-3. ToDo
-=======
+* TLS support (You'll need to edit mod_ldap.c to define USE_LDAPV3_TLS and
+  recompile proftpd, then say 'LDAPUseTLS on' in your proftpd.conf). This
+  may or may not work with non-OpenLDAP SDKs; I'd love to hear if anyone has
+  it working with the Mozilla LDAP SDK or any others.
 
-* different log levels in mod_ldap to log varying debug info
-* perror()-like error reporting to improve error messages
-* shadowAccount objectclass stuff - inactive, expiration, etc.
+* The LDAP search sizelimit is now set to prevent LDAP server thrashing with
+  wildcarded usernames.
+
+* Basic caching support has been added. This should cut down on the number
+  of queries made to the directory server. In addition, negative caching
+  is now enabled by default.
+
+* LDAPHomedirOnDemandSuffix can now take multiple arguments (multiple
+  directories to create) and can be activated independently of
+  LDAPHomedirOnDemand.
+
+* With the addition of LDAPHomedirOnDemandPrefix, home directories can now
+  be completely autogenerated, removing the need for a homeDirectory
+  attribute in each user's LDAP entry. Say:
+
+    LDAPHomedirOnDemandPrefix /home
+
+  in your proftpd.conf to give users a home directory with the format
+  /home/username. In this example, the user joe would be given the home
+  directory /home/joe.
+
+* Attribute names are now #defines at the top of mod_ldap.c. You can now
+  change attribute names by editing mod_ldap.c and recompiling.
+
+* The LDAPDefaultUID and LDAPDefaultGID directives can now be forced;
+  enabling LDAPForceDefaultUID or LDAPForceDefaultGID will apply the
+  default UID or GID (respectively) even if a user has a different UID/GID
+  in his uidNumber or gidNumber attribute.
+
+* Fairly extensive code cleanup and comment syncing.
+
+========
+4. To Do
+========
+
+* Multiple-group support. Currently, mod_ldap doesn't pick up a user's
+  supplemental group memberships from the LDAP directory. Steve Luzynski
+  (steve at uniteone dot net) has expressed an interest in implementing
+  this. Please contact him if you can help code or test (or just to say
+  thanks! :-).
+* Debugging information needs to be significantly improved. Currently, error
+  messages (with the complete LDAP error message) are logged for any
+  failures, but it would be nice to have extended debugging information.
+* shadowAccount objectclass stuff - inactive, expiration, etc - Is there
+  any demand for this? It's been months since I've heard anyone express
+  interest.
 
 =========
-4. Thanks
+5. Thanks
 =========
 
-* James <james@wwnet.net> for a copy of his LDAP module that he
-* Krzysztof Dabrowski <brush@pol.pl> for some big virtual-user ideas
-* Peter Deacon <peterd@iea-software.com> for ideas
-* Peter Fabian <fabian@staff.matavnet.hu> for ideas and a tested platform
-* Ralf Kruedewagen <Ralf.Kruedewagen@meocom.de> for a tested platform
-* Scott Murphy <smurphy@berbee.com> for a trouble report
-* Bert Vermeulen <bert@be.easynet.net> for patches
+* Everyone listed in mod_ldap.c for contributing code.
 
-=========
-5. Author
-=========
-
-John Morrissey, <jwm@horde.net>, http://horde.net/~jwm/software/mod_ldap/
-Feedback is much appreciated. If you're using mod_ldap successfully, or
-you're having problems getting mod_ldap up and running at your site, or
-even have some code improvements or ideas for development, please let
-me know!
+* James (james at wwnet dot net) for a copy of his LDAP module that he never
+  released
+* Krzysztof Dabrowski (brush at pol dot pl) for some big virtual-user ideas
+* Peter Deacon (peterd at iea-software dot com) for ideas 
+* Peter Fabian (fabian at staff dot matavnet dot hu) for ideas and a tested
+  platform
+* Justin Hahn (jeh at profitlogic dot com) for good ideas and debate
+* Ralf Kruedewagen (Ralf dot Kruedewagen at meocom dot de) for a tested
+  platform
+* Steve Luzynski (steve at uniteone dot net) for extra help/testing/feedback
+* Scott Murphy (smurphy at berbee dot com) for a trouble report 
+* Marcin Obara for lots of testing
+* Miguel Barreiro Paz (mbpaz at edu dot aytolacoruna dot es) for a supported
+  platform and new supported LDAP server
+* Everyone else who has sent feedback, bug reports, feature requests,
+  and ideas.
