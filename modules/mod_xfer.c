@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.169 2004-09-14 17:49:43 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.170 2004-10-18 16:42:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -923,7 +923,7 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, privdata_t *p) {
     sstrcat(p_hidden->value.str_val, path, maxlen);
     sstrcat(p_hidden->value.str_val, ".", maxlen);
 
-    log_pri(PR_LOG_DEBUG, "HiddenStore: local path, will rename %s to %s",
+    pr_log_pri(PR_LOG_DEBUG, "HiddenStore: local path, will rename %s to %s",
       p_hidden->value.str_val, p->value.str_val);
 
   } else {
@@ -936,7 +936,7 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, privdata_t *p) {
     sstrcat(p_hidden->value.str_val, path + basenamestart, maxlen);
     sstrcat(p_hidden->value.str_val, ".", maxlen);
 
-    log_pri(PR_LOG_DEBUG, "HiddenStore: complex path, will rename %s to %s",
+    pr_log_pri(PR_LOG_DEBUG, "HiddenStore: complex path, will rename %s to %s",
       p_hidden->value.str_val, p->value.str_val);
   }
 
