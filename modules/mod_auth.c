@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.153 2003-06-03 16:25:21 castaglia Exp $
+ * $Id: mod_auth.c,v 1.154 2003-06-05 19:28:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1423,18 +1423,17 @@ auth_failure:
 static void auth_scan_scoreboard(void) {
   config_rec *c = NULL;
   pr_scoreboard_entry_t *score = NULL;
-  int cur = -1, ccur = -1;
+  unsigned int cur = 0, ccur = 0;
   char config_class_users[128] = {'\0'};
   char curr_server_addr[80] = {'\0'};
   xaset_t *conf = NULL;
+
   unsigned char *class_engine = get_param_ptr(main_server->conf,
     "Classes", FALSE);
 
-  if (!class_engine || *class_engine == FALSE)
-    return;
-
-  if (!session.class)
-    return;
+  unsigned char chk_class =
+    (class_engine && *class_engine == TRUE &&
+     session.class && session.class->name) ? TRUE : FALSE;
 
   snprintf(curr_server_addr, sizeof(curr_server_addr), "%s:%d",
     inet_ntoa(*main_server->ipaddr), main_server->ServerPort);
@@ -1451,7 +1450,7 @@ static void auth_scan_scoreboard(void) {
       /* Note: the class member of the scoreboard entry will never be
        * NULL.  At most, it may be the empty string.
        */
-      if (strcasecmp(score->sce_class, session.class->name) == 0)
+      if (chk_class && strcasecmp(score->sce_class, session.class->name) == 0)
         ccur++;
     }
   }
@@ -1466,15 +1465,17 @@ static void auth_scan_scoreboard(void) {
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = cur;
 
-  remove_config(CURRENT_CONF, "CURRENT-CLASS", FALSE);
-  add_config_param_set(&conf, "CURRENT-CLASS", 1, session.class->name);
+  if (chk_class) {
+    remove_config(CURRENT_CONF, "CURRENT-CLASS", FALSE);
+    add_config_param_set(&conf, "CURRENT-CLASS", 1, session.class->name);
 
-  snprintf(config_class_users, sizeof(config_class_users),
-    "CURRENT-CLIENTS-CLASS-%s", session.class->name);
-  remove_config(CURRENT_CONF, config_class_users, FALSE);
-  c = add_config_param_set(&conf, config_class_users, 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = ccur;
+    snprintf(config_class_users, sizeof(config_class_users),
+      "CURRENT-CLIENTS-CLASS-%s", session.class->name);
+    remove_config(CURRENT_CONF, config_class_users, FALSE);
+    c = add_config_param_set(&conf, config_class_users, 1, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(int));
+    *((int *) c->argv[0]) = ccur;
+  }
 }
 
 static void auth_count_scoreboard(cmd_rec *cmd, char *user) {

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.442 2003-06-03 16:25:20 castaglia Exp $
+$Id: NEWS,v 1.443 2003-06-05 19:28:46 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -17,6 +17,7 @@ CVS
   properly.  It was overriding the --enable-buffer-size option, rather than
   the corresponding tunable buffer size.
 - Bug 2069 - Long MKD path causes truncated server response.
+- Fixed handling of %N/%y in DisplayConnect files.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------
