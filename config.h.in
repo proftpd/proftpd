@@ -43,6 +43,27 @@
 /* Define if your <syslog.h> defines the LOG_FTP macro */
 #undef HAVE_LOG_FTP
 
+/* Define if your system has the setproctitle function */
+#undef HAVE_SETPROCTITLE
+
+/* Define if your system has __progname */
+#undef HAVE___PROGNAME
+
+#define PF_ARGV_NONE		0
+#define PF_ARGV_NEW		1
+#define PF_ARGV_WRITEABLE	2
+#define PF_ARGV_PSTAT		3
+#define PF_ARGV_PSSTRINGS	4
+
+/* If you don't have setproctitle, PF_ARGV_TYPE needs to be set to either
+ * PF_ARGV_NEW (replace argv[] arguments), PF_ARGV_WRITEABLE (overwrite
+ * argv[]), PF_ARGV_PSTAT (use the pstat function), or PF_ARGV_PSSTRINGS
+ * (use PS_STRINGS).
+ * 
+ * configure should, we hope <wink>, detect this for you.
+ */
+#undef PF_ARGV_TYPE
+
 
 /* Define if using alloca.c.  */
 #undef C_ALLOCA
@@ -156,6 +177,9 @@
 /* Define if you have the mkdir function.  */
 #undef HAVE_MKDIR
 
+/* Define if you have the pstat function.  */
+#undef HAVE_PSTAT
+
 /* Define if you have the regcomp function.  */
 #undef HAVE_REGCOMP
 
@@ -176,6 +200,9 @@
 
 /* Define if you have the setpgid function.  */
 #undef HAVE_SETPGID
+
+/* Define if you have the setproctitle function.  */
+#undef HAVE_SETPROCTITLE
 
 /* Define if you have the setsid function.  */
 #undef HAVE_SETSID
@@ -228,6 +255,9 @@
 /* Define if you have the <getopt.h> header file.  */
 #undef HAVE_GETOPT_H
 
+/* Define if you have the <libutil.h> header file.  */
+#undef HAVE_LIBUTIL_H
+
 /* Define if you have the <memory.h> header file.  */
 #undef HAVE_MEMORY_H
 
@@ -266,6 +296,9 @@
 
 /* Define if you have the <sys/param.h> header file.  */
 #undef HAVE_SYS_PARAM_H
+
+/* Define if you have the <sys/pstat.h> header file.  */
+#undef HAVE_SYS_PSTAT_H
 
 /* Define if you have the <sys/select.h> header file.  */
 #undef HAVE_SYS_SELECT_H

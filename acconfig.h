@@ -42,6 +42,27 @@
 /* Define if your <syslog.h> defines the LOG_FTP macro */
 #undef HAVE_LOG_FTP
 
+/* Define if your system has the setproctitle function */
+#undef HAVE_SETPROCTITLE
+
+/* Define if your system has __progname */
+#undef HAVE___PROGNAME
+
+#define PF_ARGV_NONE		0
+#define PF_ARGV_NEW		1
+#define PF_ARGV_WRITEABLE	2
+#define PF_ARGV_PSTAT		3
+#define PF_ARGV_PSSTRINGS	4
+
+/* If you don't have setproctitle, PF_ARGV_TYPE needs to be set to either
+ * PF_ARGV_NEW (replace argv[] arguments), PF_ARGV_WRITEABLE (overwrite
+ * argv[]), PF_ARGV_PSTAT (use the pstat function), or PF_ARGV_PSSTRINGS
+ * (use PS_STRINGS).
+ * 
+ * configure should, we hope <wink>, detect this for you.
+ */
+#undef PF_ARGV_TYPE
+
 @TOP@
 /* autoheader generated things inserted here.  */
 @BOTTOM@

@@ -1413,6 +1413,7 @@ int core_display_file(const char *numeric, const char *fn)
 	     "%M",mg_max,
              "%N",mg_cur,
 	     "%E",main_server->ServerAdmin,
+	     "%V",main_server->ServerName,
              NULL);
 
 	if(first) {
@@ -1586,6 +1587,7 @@ MODRET cmd_port(cmd_rec *cmd)
     return ERROR_MSG(cmd,R_500,"Illegal PORT command.");
   }
 
+  memcpy(&session.data_addr, &addr.addr, sizeof(session.data_addr));
   session.data_port = ntohs(port.port);
   session.flags &= (SF_ALL^SF_PASSIVE);
 

@@ -79,7 +79,7 @@ $(localstatedir) $(sysconfdir) $(rundir) $(bindir) $(sbindir) $(mandir) $(mandir
 install-proftpd: proftpd $(localstatedir) $(sysconfdir) $(rundir) $(sbindir)
 	$(INSTALL_SBIN) proftpd $(sbindir)/proftpd
 	if [ ! -f $(sbindir)/in.proftpd ] ; then \
-	  ln -s $(sbindir)/proftpd $(sbindir)/in.proftpd; \
+	  (cd $(sbindir) ; rm -f in.proftpd ; ln -s proftpd in.proftpd) ; \
 	fi
 
 install-utils: $(sbindir) $(bindir)

@@ -19,7 +19,12 @@ DEFAULT_PATHS=-DCONFIG_FILE_PATH=\"$(sysconfdir)/proftpd.conf\" -DRUN_DIR=\"$(ru
 CPPFLAGS=@CPPFLAGS@ $(DEFAULT_PATHS) $(PLATFORM) -I.. -I$(top_srcdir)/include
 CFLAGS=@CFLAGS@
 
-# Use the following to set the proper options below:
+#CFLAGS=-g -DUSESHADOW -DDEBUG_NOFORK 
+# Below is for ANSI c testing, normally not used because system
+# header files generate loads o' warnings.
+#CFLAGS=-g -pedantic -DUSESHADOW -DDEBUG_NOFORK
+
+# Use the following to set the proper options above:
 # -DUSESHADOW
 #   (use the shadow password suite)
 # -DAUTOSHADOW
@@ -30,12 +35,6 @@ CFLAGS=@CFLAGS@
 #   (server in standalone mode will not fork for incoming connections)
 # -DDEBUG_NOSIG
 #   (server will not catch signals that cause termination)
-# -DDEBUG_ENABLE_COREDUMP
-
-#CFLAGS=-g -DUSESHADOW -DDEBUG_NOFORK $(PLATFORM)
-# Below is for ANSI c testing, normally not used because system
-# header files generate loads o' warnings.
-#CFLAGS=-g -pedantic -DUSESHADOW -DDEBUG_NOFORK
 
 OBJS=main.o timers.o sets.o pool.o dirtree.o support.o inet.o log.o \
      io.o ident.o data.o modules.o auth.o fs.o

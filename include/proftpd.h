@@ -18,7 +18,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.3 1998-11-01 19:08:22 flood Exp $
+ * $Id: proftpd.h,v 1.4 1999-03-05 03:34:13 flood Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -67,6 +67,7 @@ typedef struct {
   pool *pool;
 
   long flags;				/* Session & State flags */
+  p_in_addr_t data_addr;		/* Remote data address */
   short data_port;			/* Remote data port */
 
   char *ident_user;			/* User identified by ident protocol */

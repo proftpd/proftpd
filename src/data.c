@@ -125,7 +125,7 @@ int _data_pasv_open(char *reason, unsigned long size)
 
 	inet_reverse_dns(session.xfer.p,rev);
 
-	if(c) {
+	if(c && c->mode != CM_ERROR) {
 		inet_close(session.pool,session.d);
 		inet_setnonblock(session.pool,c);
 		session.d = c;
@@ -138,6 +138,15 @@ int _data_pasv_open(char *reason, unsigned long size)
 				MODE_STRING,reason);
 
 		return 0;
+	}
+
+	/* Check for error conditions.
+	 * - MacGyver
+	 */
+	if(c && c->mode == CM_ERROR) {
+	  log_pri(LOG_ERR,
+		  "Error: unable to accept an incoming data connection (%s)",
+		  strerror(c->xerrno));
 	}
 
 	add_response_err(R_425,"Can't build data connection: %s",
@@ -169,7 +178,7 @@ int _data_active_open(char *reason, unsigned long size)
 
 	rev = inet_reverse_dns(session.pool,ServerUseReverseDNS);
 
-	if(inet_connect(session.d->pool,session.d,session.c->remote_ipaddr,
+	if(inet_connect(session.d->pool,session.d,&session.data_addr,
 			session.data_port) == -1) {
 		add_response_err(R_425,"Can't build data connection: %s",
 				strerror(session.d->xerrno));

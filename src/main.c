@@ -19,7 +19,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.7 1999-03-05 02:53:27 flood Exp $
+ * $Id: main.c,v 1.8 1999-03-05 03:34:17 flood Exp $
  */
 
 /*
@@ -44,6 +44,29 @@
 #ifdef HAVE_GETOPT_H
 # include <getopt.h>
 #endif
+
+#ifdef HAVE_LIBUTIL_H
+# include <libutil.h>
+#endif /* HAVE_LIBUTIL_H */
+
+#if PF_ARGV_TYPE == PF_ARGV_PSTAT
+# ifdef HAVE_SYS_PSTAT_H
+#  include <sys/pstat.h>
+# else
+#  undef PF_ARGV_TYPE
+#  define PF_ARGV_TYPE PF_ARGV_WRITEABLE
+# endif /* HAVE_SYS_PSTAT_H */
+#endif /* PF_ARGV_PSTAT */
+
+#if PF_ARGV_TYPE == PF_ARGV_PSSTRINGS
+# ifndef HAVE_SYS_EXEC_H
+#  undef PF_ARGV_TYPE
+#  define PF_ARGV_TYPE PF_ARGV_WRITEABLE
+# else
+#  include <machine/vmparam.h>
+#  include <sys/exec.h>
+# endif /* HAVE_SYS_EXEC_H */
+#endif /* PF_ARGV_PSSTRINGS */
 
 #include "privs.h"
 
@@ -96,6 +119,7 @@ static pool *resp_pool = NULL;
 static int (*main_check_auth)(cmd_rec*) = NULL;
 static char sbuf[1024];
 static char _ml_numeric[4];
+static char **Environment = NULL;
 static char **Argv = NULL;
 static char *LastArgv = NULL;
 
@@ -235,15 +259,27 @@ conn_t *accept_binding(fd_set *rfd, int *lfd)
   binding_t *b;
   int fd;
 
-  for(b = bind_list; b; b=b->next)
-   if(b->listen && FD_ISSET(b->listen->listen_fd,rfd) &&
-      b->listen->mode == CM_LISTEN) {
-         fd = inet_accept_nowait(b->listen->pool,b->listen);
-         if(fd != -1) { 
-           *lfd = fd;
-           return b->listen;
-         }
-   }
+  for(b = bind_list; b; b=b->next) {
+    if(b->listen && FD_ISSET(b->listen->listen_fd,rfd) &&
+       b->listen->mode == CM_LISTEN) {
+      if((fd = inet_accept_nowait(b->listen->pool,b->listen)) == -1) {
+	/* Handle errors gracefully.  If we're here, then b->listen contains
+	 * either error information, or we just got caught in a blocking
+	 * condition. - MacGyver
+	 */
+	if(b->listen->mode == CM_ERROR) {
+	  log_pri(LOG_ERR, "Error: unable to accept an incoming connection (%s)",
+		  strerror(b->listen->xerrno));
+	  b->listen->xerrno = 0;
+	  b->listen->mode = CM_LISTEN;
+	  return NULL;
+	}
+      }
+      
+      *lfd = fd;
+      return b->listen;
+    }
+  }
 
   return NULL;
 }
@@ -266,25 +302,106 @@ void listen_binding(fd_set *rfd)
   }
 }
 
+static void init_set_proc_title(int argc, char *argv[], char *envp[])
+{
+#ifdef HAVE___PROGNAME
+  extern char *__progname, *__progname_full;
+#endif /* HAVE___PROGNAME */
+  int i;
+  
+  Argv = argv;
+  
+  for(i = 0; i < argc; i++) {
+    if(!i || (LastArgv + 1 == argv[i]))
+      LastArgv = argv[i] + strlen(argv[i]);
+  }
+  
+  for(i = 0; envp[i] != NULL; i++) {
+    if((LastArgv + 1) == envp[i])
+      LastArgv = envp[i] + strlen(envp[i]);
+  }
+  
+#ifdef HAVE___PROGNAME
+  /* Set the __progname and __progname_full variables so glibc and company don't
+   * go nuts. - MacGyver
+   */
+  __progname = strdup("proftpd");
+  __progname_full = strdup(argv[0]);
+#endif /* HAVE___PROGNAME */
+  
+#if 0
+  /* Save argument/environment globals for use by set_proc_title */
+
+  Argv = argv;
+  while(*envp)
+    envp++;
+
+  LastArgv = envp[-1] + strlen(envp[-1]);
+#endif
+}    
+
 void set_proc_title(char *fmt,...)
 {
   va_list msg;
+
+#ifndef HAVE_SETPROCTITLE
+#if PF_ARGV_TYPE == PF_ARGV_PSTAT
+   union pstun pst;
+#endif /* PF_ARGV_PSTAT */
+
+#if PF_ARGV_TYPE == PF_ARGV_PSSTRINGS || PS_ARGV_TYPE == PF_ARGV_NEW
+  static
+#endif
+  char statbuf[2048];
+
   char *p;
-  int i,maxlen = (LastArgv - Argv[0])+1;
-
+  int i,maxlen = (LastArgv - Argv[0]) - 2;
+#endif /* HAVE_SETPROCTITLE */
+  
   va_start(msg,fmt);
-  vsnprintf(sbuf,sizeof(sbuf),fmt,msg);
+
+#ifdef HAVE_SETPROCTITLE
+  setproctitle(fmt,msg);
+#else
+  vsnprintf(statbuf,sizeof(statbuf),fmt,msg);
+#endif /* HAVE_SETPROCTITLE */
+
   va_end(msg);
+  
+#ifdef HAVE_SETPROCTITLE
+  return;
+#else
+  i = strlen(statbuf);
 
-  sbuf[1023] = '\0';
-  i = strlen(sbuf);
-
-  strncpy(Argv[0], sbuf, maxlen);
-  p = &Argv[0][i];
-  while(p < LastArgv)
-    *p++ = ' ';
-
+#if PF_ARGV_TYPE == PF_ARGV_NEW
+  /* We can just replace argv[] arguments.  Nice and easy.
+   */
+  Argv[0] = statbuf;
   Argv[1] = NULL;
+#endif /* PF_ARGV_NEW */
+
+#if PF_ARGV_TYPE == PF_ARGV_WRITEABLE
+  /* We can overwrite individual argv[] arguments.  Semi-nice.
+   */
+  snprintf(Argv[0], maxlen, statbuf);
+  p = &Argv[0][i];
+  
+  while(p < LastArgv)
+    *p++ = '\0';
+  Argv[1] = NULL;
+#endif /* PF_ARGV_WRITEABLE */
+
+#if PF_ARGV_TYPE == PF_ARGV_PSTAT
+  pst.pst_command = statbuf;
+  pstat(PSTAT_SETCMD, pst, i, 0, 0);
+#endif /* PF_ARGV_PSTAT */
+
+#if PF_ARGV_TYPE == PF_ARGV_PSSTRINGS
+  PS_STRINGS->ps_nargvstr = 1;
+  PS_STRINGS->ps_argvstr = statbuf;
+#endif /* PF_ARGV_PSSTRINGS */
+
+#endif /* HAVE_SETPROCTITLE */
 }
   
 void main_set_idle()
@@ -532,6 +649,7 @@ void shutdown_exit(void *d1, void *d2, void *d3, void *d4)
                          session.c->remote_name : "(unknown)"),
 		   "%T",pstrdup(permanent_pool,fmt_time(now)),
 		   "%U",user,
+		   "%V",main_server->ServerName,
                    NULL );
 
     send_response_async(R_421,"FTP server shutting down - %s",msg);
@@ -1116,6 +1234,7 @@ void fork_server(int fd,conn_t *l,int nofork)
                          session.c->remote_name : "(unknown)"),
 		   "%T",pstrdup(permanent_pool,fmt_time(now)),
 		   "%U","NONE",
+		   "%V",main_server->ServerName,
                    NULL );
 
       log_auth(LOG_NOTICE,"connection refused (%s) from %s [%s]",
@@ -1810,13 +1929,9 @@ int main(int argc, char **argv, char **envp)
 
   bzero(&session,sizeof(session));
 
-  /* Save argument/environment globals for use by set_proc_title */
-
-  Argv = argv;
-  while(*envp)
-    envp++;
-
-  LastArgv = envp[-1] + strlen(envp[-1]);
+  /* Initialize stuff for set_proc_title.
+   */
+  init_set_proc_title(argc, argv, envp);
 
   /* getpeername() fails if the fd isn't a socket */
   socketp = sizeof(peer);

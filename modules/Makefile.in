@@ -72,6 +72,13 @@ mod_ls.o: ../include/dirtree.h ../include/io.h ../include/modules.h
 mod_ls.o: ../include/timers.h ../include/inet.h ../include/ident.h
 mod_ls.o: ../include/ftp.h ../include/log.h ../include/data.h
 mod_ls.o: ../include/libsupp.h ../include/fs.h
+mod_pam.o: ../include/conf.h ../include/version.h ../config.h
+mod_pam.o: ../include/default_paths.h ../include/options.h ../include/pool.h
+mod_pam.o: ../include/proftpd.h ../include/support.h ../include/sets.h
+mod_pam.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+mod_pam.o: ../include/timers.h ../include/inet.h ../include/ident.h
+mod_pam.o: ../include/ftp.h ../include/log.h ../include/data.h
+mod_pam.o: ../include/libsupp.h ../include/fs.h ../include/privs.h
 mod_ratio.o: ../include/conf.h ../include/version.h ../config.h
 mod_ratio.o: ../include/default_paths.h ../include/options.h
 mod_ratio.o: ../include/pool.h ../include/proftpd.h ../include/support.h
@@ -79,6 +86,13 @@ mod_ratio.o: ../include/sets.h ../include/dirtree.h ../include/io.h
 mod_ratio.o: ../include/modules.h ../include/timers.h ../include/inet.h
 mod_ratio.o: ../include/ident.h ../include/ftp.h ../include/log.h
 mod_ratio.o: ../include/data.h ../include/libsupp.h ../include/fs.h
+mod_readme.o: ../include/conf.h ../include/version.h ../config.h
+mod_readme.o: ../include/default_paths.h ../include/options.h
+mod_readme.o: ../include/pool.h ../include/proftpd.h ../include/support.h
+mod_readme.o: ../include/sets.h ../include/dirtree.h ../include/io.h
+mod_readme.o: ../include/modules.h ../include/timers.h ../include/inet.h
+mod_readme.o: ../include/ident.h ../include/ftp.h ../include/log.h
+mod_readme.o: ../include/data.h ../include/libsupp.h ../include/fs.h
 mod_sample.o: ../include/conf.h ../include/version.h ../config.h
 mod_sample.o: ../include/default_paths.h ../include/options.h
 mod_sample.o: ../include/pool.h ../include/proftpd.h ../include/support.h
