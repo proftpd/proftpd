@@ -4,10 +4,14 @@
 <h1>Configuration Directives</h1>
 
 <p>The following configuration parameters control ProFTPD features and configuration:</p>
+
+<P><EM>Note: A number of the configuration directives are listed but not fully documented yet..</EM></P>
+
 <ul>
   <li><a href="#AccessGrantMsg">AccessGrantMsg</a></li>
   <li><a href="#Allow">Allow</a></li>
   <li><a href="#AllowAll">AllowAll</a></li>
+  <LI><A HREF="#AllowChmod">AllowChmod</A> (mod_site) <EM>Incomplete</EM>
   <li><a href="#AllowFilter">AllowFilter</a></li>
   <li><a href="#AllowForeignAddress">AllowForeignAddress</a></li>
   <li><a href="#AllowGroup">AllowGroup</a></li>
@@ -15,20 +19,25 @@
   <li><a href="#AllowOverwrite">AllowOverwrite</a></li>
   <li><a href="#AllowRetrieveRestart">AllowRetrieveRestart</a></li>
   <li><a href="#AllowStoreRestart">AllowStoreRestart</a></li>
+  <li><A HREF="#AnonRatio">AnonRatio</A> (mod_ratio) <EM>Incomplete</EM></LI>
   <li><a href="#AnonRequirePassword">AnonRequirePassword</a></li>
   <li><a href="#Anonymous">&lt;Anonymous&gt;</a></li>
   <li><a href="#AnonymousGroup">AnonymousGroup</a></li>
   <li><a href="#AuthAliasOnly">AuthAliasOnly</a></li>
   <li><a href="#AuthGroupFile">AuthGroupFile</a></li>
   <li><a href="#AuthPAMAuthoritative">AuthPAMAuthoritative</a></li>
+  <LI><A HREF="#AuthPAMConfig">AuthPAMConfig</A> (mod_pam)</LI>
   <li><a href="#AuthUserFile">AuthUserFile</a></li>
   <li><a href="#AuthUsingAlias">AuthUsingAlias</a></li>
   <li><a href="#Bind">Bind</a></li>
+  <li><A HREF="#ByteRatioErrMsg">ByteRatioErrMsg</A> (mod_ratio) <EM>Incomplete</EM></LI>
   <li><a href="#CDPath">CDPath</a></li>
   <li><a href="#Class">Class</a></li>
   <li><a href="#Classes">Classes</a></li>
   <li><a href="#CommandBufferSize">CommandBufferSize</a></li>
+  <li><A HREF="#CwdRatioMsg">CwdRatioMsg</A> (mod_ratio) <EM>Incomplete</EM></LI>
   <li><a href="#DefaultChdir">DefaultChdir</a></li>
+  <LI><A HREF="#DefaultQuota">DefaultQuota</A> (mod_quota) <EM>Incomplete</EM>
   <li><a href="#DefaultRoot">DefaultRoot</a></li>
   <li><a href="#DefaultServer">DefaultServer</a></li>
   <li><a href="#DefaultTransferMode">DefaultTransferMode</a></li>
@@ -38,7 +47,7 @@
   <li><a href="#DenyFilter">DenyFilter</a></li>
   <li><a href="#DenyGroup">DenyGroup</a></li>
   <li><a href="#DenyUser">DenyUser</a></li>
-  <li><a href="#Directory">&lt;Directory&gt;</a></li>
+  <li><a href="#Directory">Directory</a></li>
   <li><a href="#DirFakeGroup">DirFakeGroup</a></li>
   <li><a href="#DirFakeMode">DirFakeMode</a></li>
   <li><a href="#DirFakeUser">DirFakeUser</a></li>
@@ -49,18 +58,22 @@
   <li><a href="#DisplayQuit">DisplayQuit</a></li>
   <li><a href="#DisplayReadme">DisplayReadme</a></li>
   <li><a href="#ExtendedLog">ExtendedLog</a></li>
+  <li><a href="#FileRatioErrMsg">FileRatioErrMsg</a> (mod_ratio) <em>Incomplete</em></li>
+  <li><a href="#FooBarDirective">FooBarDirective</a> (mod_sample) <em>Incomplete</em></li>
   <li><a href="#Global">&lt;Global&gt;</a></li>
   <li><a href="#Group">Group</a></li>
   <li><a href="#GroupOwner">GroupOwner</a></li>
   <li><a href="#GroupPassword">GroupPassword</a></li>
+  <li><a href="#GroupRatio">GroupRatio</a> (mod_ratio) <em>Incomplete</em></li>
   <li><a href="#HiddenStor">HiddenStor</a></li>
   <li><a href="#HideGroup">HideGroup</a></li>
   <li><a href="#HideNoAccess">HideNoAccess</a></li>
   <li><a href="#HideUser">HideUser</a></li>
+  <li><a href="#HostRatio">HostRatio</a> (mod_ratio) <em>Incomplete</em></li>
   <li><a href="#IdentLookups">IdentLookups</a></li>
   <li><a href="#IgnoreHidden">IgnoreHidden</a></li>
   <li><a href="#Include">Include</a></li>
-  <li><a href="#Limit">&lt;Limit&gt;</a></li>
+  <li><a href="#Limit">Limit</a></li>
   <li><a href="#LDAPAuthBinds">LDAPAuthBinds</a></li>
   <li><a href="#LDAPDefaultAuthScheme">LDAPDefaultAuthScheme</a></li>
   <li><a href="#LDAPDefaultGID">LDAPDefaultGID</a></li>
@@ -75,6 +88,7 @@
   <li><a href="#LDAPQueryTimeout">LDAPQueryTimeout</a></li>
   <li><a href="#LDAPSearchScope">LDAPSearchScope</a></li>
   <li><a href="#LDAPServer">LDAPServer</a></li>
+  <li><a href="#LeechRatioMsg">LeechRatioMsg</a> (mod_ratio) <em>Incomplete</em></li>
   <li><a href="#LogFormat">LogFormat</a></li>
   <li><a href="#LoginPasswordPrompt">LoginPasswordPrompt</a></li>
   <li><a href="#LsDefaultOptions">LsDefaultOptions</a></li>
@@ -83,20 +97,33 @@
   <li><a href="#MaxInstances">MaxInstances</a></li>
   <li><a href="#MaxLoginAttempts">MaxLoginAttempts</a></li>
   <li><a href="#MultilineRFC2228">MultilineRFC2228</a></li>
+  <LI><A HREF="#MySQLInfo">MySQLInfo</A> (mod_mysql) <EM>Incomplete</EM></LI>
   <li><a href="#Order">Order</a></li>
-  <li><a href="#PAMConfig">PAMConfig</a></li>
+  <li>PAMConfig <EM>Removed as of 1.2.0, see <A HREF="#AuthPAMConfig">AuthPAMConfig</A></EM>
   <li><a href="#PathAllowFilter">PathAllowFilter</a></li>
   <li><a href="#PathDenyFilter">PathDenyFilter</a></li>
   <li><a href="#PersistentPasswd">PersistentPasswd</a></li>
   <li><a href="#Port">Port</a></li>
+  <LI><A HREF="#PostgresInfo">PostgresInfo</A> (mod_pgsql) <EM>Incomplete</EM>
+  <LI><A HREF="#PostgresPort">PostgresPort</A> (mod_pgsql) <EM>Incomplete</EM>
+  <LI><A HREF="#Quotas">Quotas</A> (mod_quota) <EM>Incomplete</EM>
+  <LI><A HREF="#QuotaBlockSize">QuotaBlockSize</A> (mod_quota) <EM>Incomplete</EM>
+  <LI><A HREF="#QuotaBlockName">QuotaBlockName</A> (mod_quota) <EM>Incomplete</EM>
+  <LI><A HREF="#QuotaCalc">QuotaCalc</A> (mod_quota) <EM>Incomplete</EM>
+  <LI><A HREF="#QuotaExempt">QuotaExempt</A> (mod_quota) <EM>Incomplete</EM>
+  <LI><A HREF="#QuotaType">QuotaType</A> (mod_quota) <EM>Incomplete</EM>
   <li><a href="#RateReadBPS">RateReadBPS</a></li>
   <li><a href="#RateReadFreeBytes">RateReadFreeBytes</a></li>
   <li><a href="#RateReadHardBPS">RateReadHardBPS</a></li>
   <li><a href="#RateWriteBPS">RateWriteBPS</a></li>
   <li><a href="#RateWriteFreeBytes">RateWriteFreeBytes</a></li>
   <li><a href="#RateWriteHardBPS">RateWriteHardBPS</a></li>
+  <li><A HREF="#RatioFile">RatioFile</A> (mod_ratio) <EM>Incomplete</EM>
+  <li><A HREF="#Ratios">Ratios</A> (mod_ratio) <EM>Incomplete</EM>
+  <li><A HREF="#RatioTempFile">RatioTempFile</A> (mod_ratio) <EM>Incomplete</EM>
   <li><a href="#RequireValidShell">RequireValidShell</a></li>
   <li><a href="#RootLogin">RootLogin</a></li>
+  <li><A HREF="#SaveRatios">SaveRatios</A> (mod_ratio) <EM>Incomplete</EM>
   <li><a href="#ScoreboardPath">ScoreboardPath</a></li>
   <li><a href="#ServerAdmin">ServerAdmin</a></li>
   <li><a href="#ServerIdent">ServerIdent</a></li>
@@ -105,6 +132,25 @@
   <li><a href="#ShowDotFiles">ShowDotFiles</a></li>
   <li><a href="#ShowSymlinks">ShowSymlinks</a></li>
   <li><a href="#SocketBindTight">SocketBindTight</a></li>
+  <li><A HREF="#SQLAuthoritative">SQLAuthoritative</A> (mod_sqlpw) <EM>Incomplete</EM>
+  <li><A HREF="#SQLEmptyPasswords">SQLEmptyPasswords</A> (mod_sqlpw) <EM>Incomplete</EM>
+  <li><A HREF="#SQLEncryptedPasswords">SQLEncryptedPasswords</A> (mod_sqlpw) <EM>Incomplete</EM>
+  <li><A HREF="#SQLGidField">SQLGidField</A> (mod_sqlpw) <EM>Incomplete</EM>
+  <li><A HREF="#SQLHomedir">SQLHomedir</A> (mod_sqlpw) <EM>Incomplete</EM>
+  <li><A HREF="#SQLHomedirField">SQLHomedirField</A> (mod_sqlpw) <EM>Incomplete</EM>
+  <li><A HREF="#SQLKey">SQLKey</A> (mod_sqlpw) <EM>Incomplete</EM>
+  <li><A HREF="#SQLKeyField">SQLKeyField</A> (mod_sqlpw) <EM>Incomplete</EM>
+  <li><A HREF="#SQLLogDirs">SQLLogDirs</A> (mod_sqlpw) <EM>Incomplete</EM>
+  <li><A HREF="#SQLLogHits">SQLLogHits</A> (mod_sqlpw) <EM>Incomplete</EM>
+  <li><A HREF="#SQLLogHosts">SQLLogHosts</A> (mod_sqlpw) <EM>Incomplete</EM>
+  <li><A HREF="#SQLLoginCountField">SQLLoginCountField</A> (mod_sqlpw) <EM>Incomplete</EM>
+  <li><A HREF="#SQLLogStats">SQLLogStats</A> (mod_sqlpw) <EM>Incomplete</EM>
+  <li><A HREF="#SQLPasswordField">SQLPasswordField</A> (mod_sqlpw) <EM>Incomplete</EM>
+  <li><A HREF="#SQLPlaintextPasswords">SQLPlaintextPasswords</A> (mod_sqlpw) <EM>Incomplete</EM>
+  <li><A HREF="#SQLRatios">SQLRatios</A> (mod_sqlpw) <EM>Incomplete</EM>
+  <li><A HREF="#SQLUidField">SQLUidField</A> (mod_sqlpw) <EM>Incomplete</EM>
+  <li><A HREF="#SQLUserTable">SQLUserTable</A> (mod_sqlpw) <EM>Incomplete</EM>
+  <li><A HREF="#SQLUsernameField">SQLUsernameField</A> (mod_sqlpw) <EM>Incomplete</EM>
   <li><a href="#SyslogFacility">SyslogFacility</a></li>
   <li><a href="#SystemLog">SystemLog</a></li>
   <li><a href="#tcpBackLog">tcpBackLog</a></li>
@@ -125,9 +171,11 @@
   <li><a href="#UserAlias">UserAlias</a></li>
   <li><a href="#UserOwner">UserOwner</a></li>
   <li><a href="#UserPassword">UserPassword</a></li>
-  <li><a href="#VirtualHost">&lt;VirtualHost&gt;</a></li>
+  <li><A HREF="#UserRatio">UserRatio</A> (mod_ratio) <EM>Incomplete</EM>
+  <li><a href="#VirtualHost">VirtualHost</a></li>
   <li><a href="#WtmpLog">WtmpLog</a></li>
 </ul>
+
 <hr>
 <h2><a name="AccessGrantMsg">AccessGrantMsg</a></h2>
 <p><strong>Syntax:</strong> AccessGrantMsg <em>message</em><br>
@@ -190,6 +238,17 @@ href="#Limit">&lt;Limit&gt;</a> block. Although proftpd's default
   behavior is to allow access to a particular object, the default is an implicit 
   allow. AllowAll creates an explicit allow, overriding any higher level denial 
   directives.</p>
+<hr>
+<h2><a name="AllowChmod">AllowChmod</a></h2>
+<p><strong>Syntax:</strong> AllowChmod <em>bool</em><br>
+  <strong>Default:</strong> true<br>
+  <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
+  &lt;Global&gt;<br>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+<p>AllowChmod allows control over whether the &quot;SITE CHMOD&quot; command is allowed to 
+clients.
+<P>Example:
+<p><code>AllowChmod false</code></p>
 <hr>
 <h2><a name="AllowFilter">AllowFilter</a></h2>
 <p><strong>Syntax:</strong> AllowFilter <em>regular-expression</em><br>
@@ -346,6 +405,17 @@ href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em><strong>group-expres
   transfers to be restarted, as this will allow clients to corrupt or increase 
   the size of previously stored files (even if not their own).</p>
 <hr>
+<h2><a name="AnonRatio">AnonRatio</a></h2>
+<p><strong>Syntax:</strong> AnonRatio <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The AnonRatio directive ....</P>
+
+  <P>Example:</P>
+  <P><code>AnonRatio</code></P>
+<hr>
 <h2><a name="Anonymous">&lt;Anonymous&gt;</a></h2>
 <p><strong>Syntax:</strong> &lt;Anonymous <em>root-directory</em>&gt;<br>
   <strong>Default:</strong> None<br>
@@ -464,6 +534,27 @@ href="#AuthUserFile">AuthUserFile</a>).</p>
   and friends to authenticate users, should PAM authentication fail. </p>
 <p><strong>If you are having problems with PAM and using other directives like 
   <a href="#AuthUserFile">AuthUserFile</a>, set this directive to <em>off</em>.</strong></p>
+
+<hr>
+<h2><a name="AuthPAMConfig">AuthPAMConfig</a></h2>
+<p><strong>Syntax:</strong> AuthPAMConfig <em>service</em><br>
+  <strong>Default:</strong> ftp<br>
+  <strong>Context:</strong> server config,&lt;VirtualHost&gt;, &lt;Global&gt;<br>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+
+ <p> This directive allows you to specify the PAM service name used in authentication. 
+    PAM allows you to specify a service name to use when authenticating. This 
+    allows you to configure different PAM service names to be used for different 
+    virtual hosts. </p>
+  <P>The directive was renamed from PAMConfig post 1.2.0 pre10
+
+  <p>Example:</p>
+  <p><code># Virtual host foobar authenticates differently than the rest. AuthPAMConfig 
+    foobar </code></p>
+  <p>This assumes you have a PAM service named <code>foobar</code> configured 
+    in your <code>/etc/pam.conf</code> file or <code>/etc/pam.d</code> directory. 
+  </p>
+
 <hr>
 <h2><a name="AuthUserFile">AuthUserFile</a></h2>
 <p><strong>Syntax:</strong> AuthUserFile <em>path</em><br>
@@ -537,6 +628,17 @@ AuthUsingAlias</p>
   <a href="#SocketBindTight">SocketBindTight</a> is set to <strong><em>on</em></strong>, 
   a specific listen connection is created for each additional address.</p>
 <hr>
+<h2><a name="ByteRatioErrMsg">ByteRatioErrMsg</a></h2>
+<p><strong>Syntax:</strong> ByteRatioErrMsg <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The ByteRatioErrMsg directive ....</P>
+
+  <P>Example:</P>
+  <P><code>ByteRatioErrMsg</code></P>
+<hr>
 <h2><a name="CDPath">CDPath</a></h2>
 <p><strong>Syntax:</strong> CDPath <em>directory</em><br>
   <strong>Default:</strong> None<br>
@@ -596,6 +698,18 @@ This creates two classes, local and default, with local being everything in
   Denial of Service or resource-consumption attacks. </p>
 
 <hr>
+<h2><a name="CwdRatioMsg">CwdRatioMsg</a></h2>
+<p><strong>Syntax:</strong> CwdRatioMsg <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The CwdRatioMsg directive ....</P>
+
+  <P>Example:</P>
+  <P><code>CwdRatioMsg</code></P>
+
+<hr>
 
 <h2><a name="DefaultChdir">DefaultChdir</a></h2>
 
@@ -612,6 +726,18 @@ This creates two classes, local and default, with local being everything in
 
 <p><strong>NOTE:</strong> if the specified directory is not available
   the user will not be able to log in.</p>
+
+<hr>
+<h2><a name="DefaultQuota">DefaultQuota</a></h2>
+<p><strong>Syntax:</strong> DefaultQuota <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The DefaultQuota directive ....</P>
+
+  <P>Example:</P>
+  <P><code>DefaultQuota</code></P>
 
 <hr>
 
@@ -1104,6 +1230,27 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
   the default format), you could:</p>
 <p><code>ExtendedLog /var/log/ftp.log read,write</code></p>
 <p><strong>See Also:</strong> <a href="#LogFormat">LogFormat</a>, <a href="#TransferLog">TransferLog</a></p>
+
+<hr>
+<h2><a name="FileRatioErrMsg">FileRatioErrMsg</a></h2>
+<p><strong>Syntax:</strong> FileRatioErrMsg <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The FileRatioErrMsg directive ....</P>
+
+  <P>Example:</P>
+  <P><code>FileRatioErrMsg</code></P>
+
+<hr>
+<h2><a name="FooBarDirective">FooBarDirective</a></h2>
+<p><strong>Syntax:</strong> FooBarDirective <em>thingy</em><br>
+  <strong>Default:</strong> none<br>
+  <strong>Context:</strong> server config, &lt;Anonymous&gt;, &lt;Limit&gt;<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+<p>FooBarDirective is a dummy directive used for example only.
+
 <hr>
 <h2><a name="Global">&lt;Global&gt;</a></h2>
 <p><strong>Syntax:</strong> &lt;Global&gt;<br>
@@ -1158,6 +1305,19 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
   function. <strong>Extreme care should be taken when using GroupPassword, as 
   serious security problems may arise if group membership is not carefully controlled.</strong></p>
 <p><strong>See Also:</strong> <a href="#UserPassword">UserPassword</a></p>
+
+<hr>
+<h2><a name="GroupRatio">GroupRatio</a></h2>
+<p><strong>Syntax:</strong> GroupRatio <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The GroupRatio directive ....</P>
+
+  <P>Example:</P>
+  <P><code>GroupRatio</code></P>
+
 <hr>
 <h2><a name="HiddenStor">HiddenStor</a></h2>
 <p><strong>Syntax:</strong> HiddenStor <em>on|off</em><br>
@@ -1210,6 +1370,19 @@ href="#Anonymous">&lt;Anonymous&gt;</a> block to hide all directory
 <p><strong>See Also:</strong> <a href="#HideUser">HideUser</a>, <a
 href="#HideGroup">HideGroup</a>, <a
 href="#IgnoreHidden">IgnoreHidden</a></p>
+
+<hr>
+<h2><a name="HostRatio">HostRatio</a></h2>
+<p><strong>Syntax:</strong> HostRatio <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The HostRatio directive ....</P>
+
+  <P>Example:</P>
+  <P><code>HostRatio</code></P>
+
 <hr>
 <h2><a name="HideUser">HideUser</a></h2>
 <p><strong>Syntax:</strong> HideUser <em>userid</em><br>
@@ -1227,6 +1400,7 @@ href="#Anonymous">Anonymous&gt;</a> block to hide all directory
 <p><strong>See Also:</strong> <a href="#HideGroup">HideGroup</a>, <a
 href="#HideNoAccess">HideNoAccess</a>, <a
 href="#IgnoreHidden">IgnoreHidden</a></p>
+
 <hr>
 <h2><a name="IdentLookups">IdentLookups</a></h2>
 <p><strong>Syntax:</strong> IdentLookups <em>on|off</em><br>
@@ -1325,6 +1499,19 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
   directory, they cannot be used to override the file permissions inherent to 
   the base operating/file system.</p>
 <p><strong>See Also:</strong> <a href="#IgnoreHidden">IgnoreHidden</a></p>
+
+<hr>
+<h2><a name="LDAPAuthBinds">LDAPAuthBinds</a></h2>
+<p><strong>Syntax:</strong> LDAPAuthBinds <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The LDAPAuthBinds directive ....</P>
+
+  <P>Example:</P>
+  <P><code>LDAPAuthBinds</code></P>
+
 <hr>
 <h2><a name="LDAPAuthBinds"></a></h2>
 <p><strong>Syntax:</strong> LDAPAuthBinds <em>on|off</em><br>
@@ -1482,6 +1669,18 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
    LDAP server(s) to use for LDAP authentication. If no LDAPServer
    configuration directive is present, the local host will be used for the
    LDAP server.</p>
+<hr>
+<h2><a name="LeechRatioMsg">LeechRatioMsg</a></h2>
+<p><strong>Syntax:</strong> LeechRatioMsg <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The LeechRatioMsg directive ....</P>
+
+  <P>Example:</P>
+  <P><code>LeechRatioMsg</code></P>
+
 <hr>
 <h2><a name="LogFormat">LogFormat</a></h2>
 <p><strong>Syntax:</strong> LogFormat <em>nickname &quot;format-string&quot;</em><br>
@@ -1682,6 +1881,18 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
     may attempt to authenticate to the server during a given connection. After 
     the number of attempts exceeds this value, the user is disconnected and an 
     appropriate message is logged via the syslog mechanism.</p>
+
+  <hr>
+  <h2><a name="MySQLInfo">MySQLInfo</a></h2>
+  <p><strong>Syntax:</strong> MySQLInfo <em>hostname sqluser sqlpass dbname</em><br>
+    <strong>Default:</strong> <code>none</code><br>
+    <strong>Context:</strong> server config, &lt;Global&gt;, &lt;VirtualHost&gt;<br>
+    <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+  <p>
+
+--STILL NEEDS WORK--
+
+
   <hr>
   <h2><a name="MultilineRFC2228">MultilineRFC2228</a></h2>
   <p><strong>Syntax:</strong> MultilineRFC2228 <em>on|off</em><br>
@@ -1752,22 +1963,6 @@ href="#Allow">Allow</a> and <a href="#Deny">Deny</a> directives are checked insi
     <li>Exit with default implicit: <strong>DENY</strong></li>
   </ol>
   <hr>
-  <h2><a name="PAMConfig">PAMConfig</a></h2>
-  <p><strong>Syntax:</strong> PAMConfig <em>service</em><br>
-    <strong>Default:</strong> ftp<br>
-    <strong>Context:</strong> server config,&lt;VirtualHost&gt;, &lt;Global&gt;<br>
-    <strong>Compatibility:</strong> 1.2.0pre3 and later</p>
-  <p> This directive allows you to specify the PAM service name used in authentication. 
-    PAM allows you to specify a service name to use when authenticating. This 
-    allows you to configure different PAM service names to be used for different 
-    virtual hosts. </p>
-  <p>Example:</p>
-  <p><code># Virtual host foobar authenticates differently than the rest. PAMConfig 
-    foobar </code></p>
-  <p>This assumes you have a PAM service named <code>foobar</code> configured 
-    in your <code>/etc/pam.conf</code> file or <code>/etc/pam.d</code> directory. 
-  </p>
-  <hr>
   <h2><a name="PathAllowFilter">PathAllowFilter</a></h2>
   <p><strong>Syntax:</strong> PathAllowFilter <em>regular-expression</em><br>
     <strong>Default:</strong> None<br>
@@ -1836,6 +2031,96 @@ href="#AuthGroupFile">AuthGroupFile</a> directives will force partial support
     The directive can be used in conjunction with <a
 href="#VirtualHost">&lt;VirtualHost&gt;</a> in order to run a virtual server on 
     the same IP address as the master server, but listening on a different port.</p>
+
+<hr>
+<h2><a name="PostgresInfo">PostgresInfo</a></h2>
+<p><strong>Syntax:</strong> PostgresInfo <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The PostgresInfo directive ....</P>
+
+  <P>Example:</P>
+  <P><code>PostgresInfo</code></P>
+<hr>
+<h2><a name="PostgresPort">PostgresPort</a></h2>
+<p><strong>Syntax:</strong> PostgresPort <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The PostgresPort directive ....</P>
+
+  <P>Example:</P>
+  <P><code>PostgresPort</code></P>
+<hr>
+<h2><a name="Quotas">Quotas</a></h2>
+<p><strong>Syntax:</strong> Quotas <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The Quotas directive ....</P>
+
+  <P>Example:</P>
+  <P><code>Quotas</code></P>
+<hr>
+<h2><a name="QuotaBlockSize">QuotaBlockSize</a></h2>
+<p><strong>Syntax:</strong> QuotaBlockSize <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The QuotaBlockSize directive ....</P>
+
+  <P>Example:</P>
+  <P><code>QuotaBlockSize</code></P>
+  <hr>
+<h2><a name="QuotaBlockName">QuotaBlockName</a></h2>
+<p><strong>Syntax:</strong> QuotaBlockName <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The QuotaBlockName directive ....</P>
+
+  <P>Example:</P>
+  <P><code>QuotaBlockName</code></P>
+<hr>
+<h2><a name="QuotaCalc">QuotaCalc</a></h2>
+<p><strong>Syntax:</strong> QuotaCalc <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The QuotaCalc directive ....</P>
+
+  <P>Example:</P>
+  <P><code>QuotaCalc</code></P>
+<hr>
+<h2><a name="QuotaExempt">QuotaExempt</a></h2>
+<p><strong>Syntax:</strong> QuotaExempt <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The QuotaExempt directive ....</P>
+
+  <P>Example:</P>
+  <P><code>QuotaExempt</code></P>
+<hr>
+<h2><a name="QuotaType">QuotaType</a></h2>
+<p><strong>Syntax:</strong> QuotaType <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The QuotaType directive ....</P>
+
+  <P>Example:</P>
+  <P><code>QuotaType</code></P>
+
   <hr>
   <h2><a name="RateReadBPS">RateReadBPS</a></h2>
   <p><strong>Syntax:</strong> RateReadBPS <em>byte_per_sec-number</em><br>
@@ -1914,6 +2199,47 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
     average goes down to the given limit. If the amount of FreeBytes is high and 
     the WriteBPS is low then the user may wait for extended periods of time until 
     the transfer continues. <tt>:-)</tt></p>
+
+  <li><a href="#RateWriteHardBPS">RateWriteHardBPS</a></li>
+  <li>RatioFile (mod_ratio) <EM>Incomplete</EM>
+  <li>Ratios (mod_ratio) <EM>Incomplete</EM>
+  <li>RatioTempFile (mod_ratio) <EM>Incomplete</EM>
+
+<hr>
+<h2><a name="RatioFile">RatioFile</a></h2>
+<p><strong>Syntax:</strong> RatioFile <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The RatioFile directive ....</P>
+
+  <P>Example:</P>
+  <P><code>RatioFile</code></P>
+
+<hr>
+<h2><a name="Ratios">Ratios</a></h2>
+<p><strong>Syntax:</strong> Ratios <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The Ratios directive ....</P>
+
+  <P>Example:</P>
+  <P><code>Ratios</code></P>
+  <hr>
+<h2><a name="RatioTempFile">RatioTempFile</a></h2>
+<p><strong>Syntax:</strong> RatioTempFile <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The RatioTempFile directive ....</P>
+
+  <P>Example:</P>
+  <P><code>RatioTempFile</code></P>
+
   <hr>
   <h2><a name="RequireValidShell">RequireValidShell</a></h2>
   <p><strong>Syntax:</strong> RequireValidShell <em>on|off</em><br>
@@ -1940,6 +2266,19 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
     access control measures deny access); however the root login security message 
     is still sysloged. <strong>Obviously, </strong><strong><u>extreme</u></strong><strong> 
     care should be taken when using this directive.</strong></p>
+
+<hr>
+<h2><a name="SaveRatios">SaveRatios</a></h2>
+<p><strong>Syntax:</strong> SaveRatios <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SaveRatios directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SaveRatios</code></P>
+
   <hr>
   <h2><a name="ScoreboardPath">ScoreboardPath</a></h2>
   <p><strong>Syntax:</strong> ScoreboardPath <em>path</em><br>
@@ -2078,6 +2417,218 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
     to handle request on xxx.xxx.xxx.xxx.&quot;, due to the fact that no listen 
     socket has been bound to the particular address/port pair. This may or may 
     not be aesthetically desirable, depending on your circumstances.</p>
+
+<hr>
+<h2><a name="SQLAuthoritative">SQLAuthoritative</a></h2>
+<p><strong>Syntax:</strong> SQLAuthoritative <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SQLAuthoritative directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SQLAuthoritative</code></P>
+<hr>
+<h2><a name="SQLEmptyPasswords">SQLEmptyPasswords</a></h2>
+<p><strong>Syntax:</strong> SQLEmptyPasswords <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SQLEmptyPasswords directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SQLEmptyPasswords</code></P>
+<hr>
+<h2><a name="SQLEncryptedPasswords">SQLEncryptedPasswords</a></h2>
+<p><strong>Syntax:</strong> SQLEncryptedPasswords <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SQLEncryptedPasswords directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SQLEncryptedPasswords</code></P>
+<hr>
+<h2><a name="SQLGidField">SQLGidField</a></h2>
+<p><strong>Syntax:</strong> SQLGidField <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SQLGidField directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SQLGidField</code></P>
+<hr>
+<h2><a name="SQLHomedir">SQLHomedir</a></h2>
+<p><strong>Syntax:</strong> SQLHomedir <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SQLHomedir directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SQLHomedir</code></P>
+  <hr>
+<h2><a name="SQLHomedirField">SQLHomedirField</a></h2>
+<p><strong>Syntax:</strong> SQLHomedirField <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SQLHomedirField directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SQLHomedirField</code></P>
+<hr>
+<h2><a name="SQLKey">SQLKey</a></h2>
+<p><strong>Syntax:</strong> SQLKey <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SQLKey directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SQLKey</code></P>
+<hr>
+<h2><a name="SQLKeyField">SQLKeyField</a></h2>
+<p><strong>Syntax:</strong> SQLKeyField <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SQLKeyField directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SQLKeyField</code></P>
+<hr>
+<h2><a name="SQLLogDirs">SQLLogDirs</a></h2>
+<p><strong>Syntax:</strong> SQLLogDirs <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SQLLogDirs directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SQLLogDirs</code></P>
+<hr>
+<h2><a name="SQLLogHits">SQLLogHits</a></h2>
+<p><strong>Syntax:</strong> SQLLogHits <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SQLLogHits directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SQLLogHits</code></P>
+<hr>
+<h2><a name="SQLLogHosts">SQLLogHosts</a></h2>
+<p><strong>Syntax:</strong> SQLLogHosts <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SQLLogHosts directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SQLLogHosts</code></P>
+<hr>
+<h2><a name="SQLLoginCountField">SQLLoginCountField</a></h2>
+<p><strong>Syntax:</strong> SQLLoginCountField <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SQLLoginCountField directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SQLLoginCountField</code></P>
+<hr>
+<h2><a name="SQLLogStats">SQLLogStats</a></h2>
+<p><strong>Syntax:</strong> SQLLogStats <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SQLLogStats directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SQLLogStats</code></P>
+<hr>
+<h2><a name="SQLPasswordField">SQLPasswordField</a></h2>
+<p><strong>Syntax:</strong> SQLPasswordField <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SQLPasswordField directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SQLPasswordField</code></P>
+<hr>
+<h2><a name="SQLPlaintextPasswords">SQLPlaintextPasswords</a></h2>
+<p><strong>Syntax:</strong> SQLPlaintextPasswords <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SQLPlaintextPasswords directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SQLPlaintextPasswords</code></P>
+<hr>
+<h2><a name="SQLRatios">SQLRatios</a></h2>
+<p><strong>Syntax:</strong> SQLRatios <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SQLRatios directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SQLRatios</code></P>
+<hr>
+<h2><a name="SQLUidField">SQLUidField</a></h2>
+<p><strong>Syntax:</strong> SQLUidField <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SQLUidField directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SQLUidField</code></P>
+<hr>
+<h2><a name="SQLUserTable">SQLUserTable</a></h2>
+<p><strong>Syntax:</strong> SQLUserTable <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SQLUserTable directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SQLUserTable</code></P>
+<hr>
+<h2><a name="SQLUsernameField">SQLUsernameField</a></h2>
+<p><strong>Syntax:</strong> SQLUsernameField <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The SQLUsernameField directive ....</P>
+
+  <P>Example:</P>
+  <P><code>SQLUsernameField</code></P>
+
+
   <hr>
   <h2><a name="SyslogFacility"><strong>SyslogFacility</strong></a></h2>
   <p><strong>Syntax:</strong> SyslogFacility <em>facility-level</em><br>
@@ -2435,6 +2986,19 @@ href="#tcpBackLog"><u>tcpBackLog</u></a><u> value on heavily loaded
     servers in order to avoid kernel rejected client connections (&quot;Connection 
     refused&quot;).</u></p>
 </div>
+
+<hr>
+<h2><a name="UserRatio">UserRatio</a></h2>
+<p><strong>Syntax:</strong> UserRatio <em>foo1 foo2 foo3</em><br>
+  <strong>Default:</strong> None known<br>
+  <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
+  <strong>Compatibility:</strong> at least 1.2.0 and later</p>
+
+  <p>The UserRatio directive ....</P>
+
+  <P>Example:</P>
+  <P><code>UserRatio</code></P>
+
 <hr>
 <h2><a name="WtmpLog">WtmpLog</a></h2>
 <p><strong>Syntax:</strong> WtmpLog <em>on|off|NONE</em><br>
