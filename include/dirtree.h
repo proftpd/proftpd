@@ -21,7 +21,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.6 1999-12-30 18:41:29 macgyver Exp $
+ * $Id: dirtree.h,v 1.7 2000-01-18 02:07:57 macgyver Exp $
  */
 
 #ifndef __DIRTREE_H
@@ -103,7 +103,7 @@ struct config_struc {
 #define CONF_ANON		(1 << 2) /* Anon. FTP configuration */
 #define CONF_LIMIT		(1 << 3) /* Limits commands available */
 #define CONF_VIRTUAL		(1 << 4) /* Virtual host */
-#define CONF_DYNDIR		(1 << 5) /* Internal use */
+#define CONF_DYNDIR		(1 << 5) /* .ftpaccess file */
 #define CONF_GLOBAL		(1 << 6) /* "Global" context (applies to main server and ALL virtualhosts */
 #define CONF_USERDATA		(1 << 14) /* Runtime user data */
 #define CONF_PARAM		(1 << 15) /* config/args pair */

@@ -19,7 +19,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.11 1999-10-18 05:12:40 macgyver Exp $
+ * $Id: dirtree.c,v 1.12 2000-01-18 02:07:57 macgyver Exp $
  */
 
 /* History:
@@ -2122,17 +2122,24 @@ int check_conf(cmd_rec *cmd, int allowed)
 
 char *get_section_name(cmd_rec *cmd)
 {
+  static char cbuf[20];
+
   if(!cmd->config || cmd->config->config_type == CONF_PARAM)
     return "top level";
 
   switch(cmd->config->config_type) {
+  case CONF_ROOT: return "root";
   case CONF_DIR: return "<Directory>";
   case CONF_ANON: return "<Anonymous>";
   case CONF_LIMIT: return "<Limit>";
+  case CONF_VIRTUAL: return "<VirtualHost>";
+  case CONF_DYNDIR: return ".ftpaccess";
   case CONF_GLOBAL: return "<Global>";
-  };
-
-  return "(null)";
+  case CONF_USERDATA: return "user data";
+  default:
+  sprintf(cbuf, "%d", cmd->config->config_type);
+  return cbuf;
+  }
 }
 
 int get_boolean(cmd_rec *cmd, int av)

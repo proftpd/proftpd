@@ -347,7 +347,7 @@ href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em><strong>group-expres
 <h2><a name="Anonymous">&lt;Anonymous&gt;</a></h2>
 <p><strong>Syntax:</strong> &lt;Anonymous <em>root-directory</em>&gt;<br>
   <strong>Default:</strong> None<br>
-  <strong>Context:</strong> server config,&lt;VirtualHost&gt;<br>
+  <strong>Context:</strong> server config,&lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <strong>Compatibility:</strong> 0.99.0 and later</p>
 <p>The Anonymous configuration block is used to create an anonymous FTP login, 
   and is terminated by a matching &lt;/Anonymous&gt; directive. The root-directory 
@@ -819,7 +819,7 @@ href="#DirFakeUser"><strong>DirFakeUser</strong></a><strong> are completely cosm
 <p><strong>Syntax:</strong> DirFakeMode <em>octal-mode</em><br>
   <strong>Default:</strong> None<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  &lt;Global&gt;<br>
+  &lt;Directory&gt;, &lt;Global&gt;<br>
   <strong>Compatibility:</strong> 1.1.6</p>
 <p>The DirFakeMode directive configures a mode (or permissions) which will be 
   displayed for ALL files and directories in directory listings. For each subset 
@@ -1482,7 +1482,7 @@ href="reference.html#Limit">&lt;Limit&gt;</a> block to completely ignore any hid
   <h2><a name="LsDefaultOptions">LsDefaultOptions</a></h2>
   <p><strong>Syntax:</strong> LsDefaultOptions <em>"options string"</em><br>
     <strong>Default:</strong> None<br>
-    <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+    <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<br>
     <strong>Compatibility:</strong> 1.1.6 and later</p>
   <p>Normally, FTP commands involving directory listings (NLST, LIST and STAT) 
     use the arguments (options) passed by the client to determine what files are 
@@ -1720,7 +1720,7 @@ href="#VirtualHost">&lt;VirtualHost&gt;</a> in order to run a virtual server on
   <p><strong>Syntax:</strong> RateReadBPS <em>byte_per_sec-number</em><br>
     <strong>Default:</strong> <code>0</code><br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-    &lt;Directory&gt;, &lt;Limits&gt;, &lt;Global&gt; <br>
+    &lt;Directory&gt;, &lt;Global&gt; <br>
     <strong>Compatibility:</strong> 1.2.0 and later</p>
   <p>RateReadBPS sets the allowed byte per second download bandwidth in the given 
     config context. Zero means no bandwidth limit. (See <a href="#RateReadFreeBytes">RateReadFreeBytes</a> 
@@ -1733,7 +1733,7 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
   <p><strong>Syntax:</strong> RateReadFreeBytes <em>number of bytes</em><br>
     <strong>Default:</strong> <code>0</code><br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-    &lt;Directory&gt;, &lt;Limits&gt;, &lt;Global&gt; <br>
+    &lt;Directory&gt;, &lt;Global&gt; <br>
     <strong>Compatibility:</strong> 1.2.0 and later</p>
   <p>RateReadFreeBytes is the amount of bytes to be transferred without any <a href="#RateReadBPS">bandwidth 
     limits</a>, so with that option you can give full bandwidth for small files 
@@ -1744,7 +1744,7 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
   <p><strong>Syntax:</strong> RateReadHardBPS <em>on/off</em><br>
     <strong>Default:</strong> <code>off</code><br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-    &lt;Directory&gt;, &lt;Limits&gt;, &lt;Global&gt; <br>
+    &lt;Directory&gt;, &lt;Global&gt; <br>
     <strong>Compatibility:</strong> 1.2.0 and later</p>
   <p>RateReadHardBPS forces the bandwidth to the given <a href="#RateReadBPS">RateReadBPS</a> 
     value after the <a href="#RateReadFreeBytes">RateReadFreeBytes</a> amount 
@@ -1758,7 +1758,7 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
   <p><strong>Syntax:</strong> RateWriteBPS <em>byte_per_sec-number</em><br>
     <strong>Default:</strong> <code>0</code><br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-    &lt;Directory&gt;, &lt;Limits&gt;, &lt;Global&gt; <br>
+    &lt;Directory&gt;, &lt;Global&gt; <br>
     <strong>Compatibility:</strong> 1.2.0 and later</p>
   <p>RateWriteBPS sets the allowed byte per second upload bandwidth in the given 
     config context. Zero means no bandwidth limit. (See <a href="#RateWriteFreeBytes">RateWriteFreeBytes</a> 
@@ -1771,7 +1771,7 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
   <p><strong>Syntax:</strong> RateWriteFreeBytes <em>number of bytes</em><br>
     <strong>Default:</strong> <code>0</code><br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-    &lt;Directory&gt;, &lt;Limits&gt;, &lt;Global&gt; <br>
+    &lt;Directory&gt;, &lt;Global&gt; <br>
     <strong>Compatibility:</strong> 1.2.0 and later</p>
   <p>RateWriteFreeBytes is the amount of bytes to be transferred without any <a href="#RateWriteBPS">bandwidth 
     limits</a>, so with that option you can give full bandwidth for small files 
@@ -1783,7 +1783,7 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
   <p><strong>Syntax:</strong> RateWriteHardBPS <em>on/off</em><br>
     <strong>Default:</strong> <code>off</code><br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-    &lt;Directory&gt;, &lt;Limits&gt;, &lt;Global&gt; <br>
+    &lt;Directory&gt;, &lt;Global&gt; <br>
     <strong>Compatibility:</strong> 1.2.0 and later</p>
   <p>RateWriteHardBPS forces the bandwidth to the given <a href="#RateWriteBPS">RateWriteBPS</a> 
     value after the <a href="#RateWriteFreeBytes">RateWriteFreeBytes</a> amount 

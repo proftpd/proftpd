@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.22 1999-12-30 18:41:29 macgyver Exp $
+ * $Id: mod_core.c,v 1.23 2000-01-18 02:07:57 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -599,7 +599,7 @@ MODRET set_umask(cmd_rec *cmd)
   
   CHECK_VARARGS(cmd, 1, 2);
   CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_DIR |
-	     CONF_ANON | CONF_GLOBAL);
+	     CONF_ANON | CONF_GLOBAL | CONF_DYNDIR);
   
   _umask = strtol(cmd->argv[1], &endp, 8);
   
@@ -866,7 +866,7 @@ MODRET set_allowretrieverestart(cmd_rec *cmd)
 {
   config_rec *c;
   CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_DIR|CONF_ANON|CONF_GLOBAL);
+  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_DIR|CONF_ANON|CONF_GLOBAL|CONF_DYNDIR);
 
   c = add_config_param("AllowRetrieveRestart",1,
                        (void*)get_boolean(cmd,1));
@@ -878,7 +878,7 @@ MODRET set_allowstorerestart(cmd_rec *cmd)
 {
   config_rec *c;
   CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_DIR|CONF_ANON|CONF_GLOBAL);
+  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_DIR|CONF_ANON|CONF_GLOBAL|CONF_DYNDIR);
 
   c = add_config_param("AllowStoreRestart",1,
                        (void*)get_boolean(cmd,1));
@@ -981,7 +981,7 @@ MODRET set_allowoverwrite(cmd_rec *cmd)
   config_rec *c;
 
   CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_DIR|CONF_GLOBAL);
+  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_DIR|CONF_GLOBAL|CONF_DYNDIR);
 
   c = add_config_param("AllowOverwrite",1,(void*)get_boolean(cmd,1));
   c->flags |= CF_MERGEDOWN;
@@ -1303,7 +1303,7 @@ MODRET add_deny(cmd_rec *cmd)
 MODRET set_denyall(cmd_rec *cmd)
 {
   CHECK_ARGS(cmd,0);
-  CHECK_CONF(cmd,CONF_LIMIT|CONF_ANON);
+  CHECK_CONF(cmd,CONF_LIMIT|CONF_ANON|CONF_DIR|CONF_DYNDIR);
 
   add_config_param("DenyAll",1,(void*)1);
   return HANDLED(cmd);
@@ -1312,7 +1312,7 @@ MODRET set_denyall(cmd_rec *cmd)
 MODRET set_allowall(cmd_rec *cmd)
 {
   CHECK_ARGS(cmd,0);
-  CHECK_CONF(cmd,CONF_LIMIT|CONF_ANON);
+  CHECK_CONF(cmd,CONF_LIMIT|CONF_ANON|CONF_DIR|CONF_DYNDIR);
 
   add_config_param("AllowAll",1,(void*)1);
   return HANDLED(cmd);
