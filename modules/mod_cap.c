@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -Llib/libcap -lcap$
  * $Directories: lib/libcap$
- * $Id: mod_cap.c,v 1.5 2003-01-03 03:43:51 jwm Exp $
+ * $Id: mod_cap.c,v 1.6 2003-01-09 04:27:52 jwm Exp $
  */
 
 #include <stdio.h>
@@ -285,7 +285,7 @@ static int cap_sess_init(void) {
     config_rec *c = NULL;
 
     if ((c = find_config(main_server->conf, CONF_PARAM,
-                         "EnableCapabilities", FALSE)) != NULL)
+                         "CapabilitiesSet", FALSE)) != NULL)
     {
       /* use_cap_chown is stored in c->argv[0] */
       if (*((unsigned char *) c->argv[0]) == FALSE) {
@@ -317,8 +317,8 @@ static int cap_module_init(void) {
  */
 
 static conftable cap_conftab[] = {
-  { "EnableCapabilities", set_caps,      NULL },
   { "CapabilitiesEngine", set_capengine, NULL },
+  { "CapabilitiesSet",    set_caps,      NULL },
   { NULL, NULL, NULL }
 };
 
