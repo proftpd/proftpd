@@ -1,6 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
+ * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +20,7 @@
 
 /*
  * ProFTPD logging support
- * $Id: log.c,v 1.13 1999-10-11 03:13:13 macgyver Exp $
+ * $Id: log.c,v 1.14 2000-02-29 01:11:59 macgyver Exp $
  */
 
 /* History Log:
@@ -30,11 +31,6 @@
  *   Also added a command line argument (-d,--debug) to alter the
  *   debug level at runtime.  See main.c.
  */
-
-/* AIX requires this to be the first thing in the file. */
-#if defined(_AIX) && !defined(__GNUC__)
-#pragma alloca
-#endif
 
 #include "conf.h"
 
@@ -291,21 +287,21 @@ static size_t _read_hdr(int fd)
 static int _read_run(int fd, size_t size, logrun_t *ent)
 {
   unsigned char *buf;
-  logrun_t *tmp;
-
-  buf = (unsigned char*)alloca(size);
-
-  while(read(fd,buf,size) == size) {
-    tmp = (logrun_t*)buf;
-
-    if(tmp->pid) {
-      /* Try to determine if the process still exists */
-
-      bcopy(tmp,ent,sizeof(logrun_t));
+  
+  if((buf = (unsigned char *) malloc(size)) == NULL)
+    return -1;
+  
+  while(read(fd, buf, size) == size) {
+    if(((logrun_t *) buf)->pid) {
+      /* Try to determine if the process still exists.
+       */
+      bcopy((logrun_t *) buf, ent, sizeof(logrun_t));
+      free(buf);
       return _pid_exists(ent->pid);
     }
   }
-
+  
+  free(buf);
   return -1;
 }
 

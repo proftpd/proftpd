@@ -19,11 +19,6 @@ not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite
  * header files
  */
 
-/* AIX requires this to be first */
-#if ! defined (__GNUC__) && defined (_AIX)
-#pragma	alloca
-#endif
-
 #define __PROFTPD_SUPPORT_LIBRARY
 
 #include <conf.h>
