@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.158 2004-04-11 20:35:48 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.159 2004-04-11 22:03:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2288,19 +2288,18 @@ MODRET set_ratedeprecated(cmd_rec *cmd) {
 
 static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
 
-  /* Only do this if we're currently downloading. Note that this is a hack
-   * put in to support mod_shaper's antics.  A true TransferRate rescan
-   * would happen on the upload commands as well (but then, trying to
-   * throttle uploads is not that effective).
+  /* Only do this if we're currently involved in a data transfer.
+   * This is a hack * put in to support mod_shaper's antics.
    */
-  if (strcmp(session.curr_cmd, C_RETR) == 0) {
+  if (strcmp(session.curr_cmd, C_APPE) == 0 ||
+      strcmp(session.curr_cmd, C_RETR) == 0 ||
+      strcmp(session.curr_cmd, C_STOR) == 0 ||
+      strcmp(session.curr_cmd, C_STOU) == 0) {
     pool *p = make_sub_pool(session.pool);
-    cmd_rec *cmd = pr_cmd_alloc(p, 1, C_RETR);
+    cmd_rec *cmd = pr_cmd_alloc(p, 1, session.curr_cmd);
 
     /* Rescan the config tree for TransferRates, picking up any possible
-     * changes.  Make sure to preserve the current/old TransferRate
-     * values, in case there were not any TransferRate changes in the config
-     * tree.
+     * changes.
      */
     pr_log_debug(DEBUG2, "rechecking TransferRates");
     xfer_rate_lookup(cmd);
