@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.152 2004-01-12 23:13:09 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.153 2004-02-16 23:05:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -852,6 +852,104 @@ static void xfer_exit_cb(void) {
   }
 }
 
+static int get_hidden_store_path(cmd_rec *cmd, char *path, privdata_t *p) {
+  privdata_t *p_hidden;
+  char *c = NULL;
+  int dotcount = 0, foundslash = 0, basenamestart = 0, maxlen;
+
+  /* We have to also figure out the temporary hidden file name for receiving
+   * this transfer.  Length is +5 due to .in. prepended and "." at end.
+   */
+
+  /* Figure out where the basename starts */
+  for (c = path; *c; ++c) {
+
+    if (*c == '/') {
+      foundslash = 1;
+      basenamestart = dotcount = 0;
+
+    } else if (*c == '.') {
+      ++dotcount;
+
+      /* Keep track of leading dots, ... is normal, . and .. are special.
+       * So if we exceed ".." it becomes a normal file. Retroactively consider
+       * this the possible start of the basename.
+       */
+      if ((dotcount > 2) &&
+          !basenamestart)
+        basenamestart = ((unsigned long) c - (unsigned long) path) - dotcount;
+
+    } else {
+
+      /* We found a nonslash, nondot character; if this is the first time
+       * we found one since the last slash, remember this as the possible
+       * start of the basename.
+       */
+      if (!basenamestart)
+        basenamestart = ((unsigned long) c - (unsigned long) path) - dotcount;
+    }
+  }
+
+  if (!basenamestart) {
+
+    /* This probably shouldn't happen */
+    pr_response_add_err(R_451, "%s: Bad file name", path);
+    return -1;
+  }
+
+  /* Add five for the ".in." and "." characters, plus one for a terminating
+   * NUL.
+   */
+  maxlen = strlen(path) + 6;
+
+  if (maxlen > PR_TUNABLE_PATH_MAX) {
+
+    /* This probably shouldn't happen */
+    pr_response_add_err(R_451, "%s: File name too long", path);
+    return -1;
+  }
+
+  p_hidden = mod_privdata_alloc(cmd, "stor_hidden_filename", maxlen);
+
+  if (!foundslash) {
+
+    /* Simple local file name */
+    sstrncpy(p_hidden->value.str_val, ".in.", maxlen);
+    sstrcat(p_hidden->value.str_val, path, maxlen);
+    sstrcat(p_hidden->value.str_val, ".", maxlen);
+
+    log_pri(PR_LOG_DEBUG, "HiddenStore: local path, will rename %s to %s",
+      p_hidden->value.str_val, p->value.str_val);
+
+  } else {
+
+    /* Complex relative path or absolute path */
+    sstrncpy(p_hidden->value.str_val, path, maxlen);
+    p_hidden->value.str_val[basenamestart] = '\0';
+
+    sstrcat(p_hidden->value.str_val, ".in.", maxlen);
+    sstrcat(p_hidden->value.str_val, path + basenamestart, maxlen);
+    sstrcat(p_hidden->value.str_val, ".", maxlen);
+
+    log_pri(PR_LOG_DEBUG, "HiddenStore: complex path, will rename %s to %s",
+      p_hidden->value.str_val, p->value.str_val);
+  }
+
+  if (file_mode(p_hidden->value.str_val)) {
+    log_debug(DEBUG3, "HiddenStore path '%s' already exists",
+      p_hidden->value.str_val);
+
+    pr_response_add_err(R_550, "%s: Temporary hidden file %s already exists",
+      cmd->arg, p_hidden->value.str_val);
+
+    return -1;
+  }
+
+  session.xfer.xfer_type = STOR_HIDDEN;
+
+  return 0;
+}
+
 /* This is a PRE_CMD handler that checks security, etc, and places the full
  * filename to receive in cmd->private. Note that we CANNOT use cmd->tmp_pool
  * for this, as tmp_pool only lasts for the duration of this function.
@@ -860,7 +958,7 @@ static void xfer_exit_cb(void) {
 MODRET xfer_pre_stor(cmd_rec *cmd) {
   char *dir;
   mode_t fmode;
-  privdata_t *p, *p_hidden;
+  privdata_t *p;
   unsigned char *hidden_stores = NULL, *allow_overwrite = NULL,
     *allow_restart = NULL;
 
@@ -915,80 +1013,8 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   if ((hidden_stores = get_param_ptr(CURRENT_CONF, "HiddenStores",
       FALSE)) != NULL && *hidden_stores == TRUE) {
 
-    /* We have to also figure out the temporary hidden file name for receiving
-     * this transfer.  Length is +5 due to .in. prepended and "." at end.
-     */
-    char *c = NULL;
-    int dotcount, foundslash, basenamestart, maxlen;
-
-    dotcount = foundslash = basenamestart = 0;
-
-    /* Figure out where the basename starts */
-    for (c=dir; *c; ++c) {
-      if (*c == '/') {
-        foundslash = 1;
-        basenamestart = dotcount = 0;
-      } else if (*c == '.') {
-        ++ dotcount;
-
-        /* Keep track of leading dots, ... is normal, . and .. are special.
-         * So if we exceed ".." it becomes a normal file, retroactively consider
-         * this the possible start of the basename
-         */
-        if ((dotcount > 2) && (!basenamestart))
-          basenamestart = ((unsigned long)c - (unsigned long)dir) - dotcount;
-      } else {
-        /* We found a nonslash, nondot character; if this is the first time
-         * we found one since the last slash, remember this as the possible
-         * start of the basename.
-         */
-        if (!basenamestart)
-          basenamestart = ((unsigned long)c - (unsigned long)dir) - dotcount;
-      }
-    }
-
-    if (!basenamestart) {
-      /* This probably shouldn't happen */
-      pr_response_add_err(R_451, "%s: Bad file name", dir);
+    if (get_hidden_store_path(cmd, dir, p) < 0)
       return ERROR(cmd);
-    }
-
-    maxlen = strlen(dir) + 1 + 5;
-
-    if (maxlen > PR_TUNABLE_PATH_MAX) {
-      /* This probably shouldn't happen */
-      pr_response_add_err(R_451, "%s: File name too long", dir);
-      return ERROR(cmd);
-    }
-
-    p_hidden = mod_privdata_alloc(cmd, "stor_hidden_filename", maxlen);
-
-    if (! foundslash) {
-      /* Simple local file name */
-      sstrncpy(p_hidden->value.str_val, ".in.", maxlen);
-      sstrcat(p_hidden->value.str_val, dir, maxlen);
-      sstrcat(p_hidden->value.str_val, ".", maxlen);
-      pr_log_pri(PR_LOG_DEBUG, "Local path, will rename %s to %s.",
-        p_hidden->value.str_val, p->value.str_val);
-
-    } else {
-      /* Complex relative path or absolute path */
-      sstrncpy(p_hidden->value.str_val, dir, maxlen);
-      p_hidden->value.str_val[basenamestart] = '\0';
-      sstrcat(p_hidden->value.str_val, ".in.", maxlen);
-      sstrcat(p_hidden->value.str_val, dir + basenamestart, maxlen);
-      sstrcat(p_hidden->value.str_val, ".", maxlen);
-      pr_log_pri(PR_LOG_DEBUG, "Complex path, will rename %s to %s.",
-        p_hidden->value.str_val, p->value.str_val);
-
-      if (file_mode(p_hidden->value.str_val)) {
-        pr_response_add_err(R_550,"%s: Temporary hidden file %s already exists",
-                cmd->arg, p_hidden->value.str_val);
-        return ERROR(cmd);
-      }
-    }
-
-    session.xfer.xfer_type = STOR_HIDDEN;
   }
 
   return HANDLED(cmd);

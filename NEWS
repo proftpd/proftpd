@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.533 2004-02-15 22:58:05 castaglia Exp $
+$Id: NEWS,v 1.534 2004-02-16 23:05:53 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -89,6 +89,7 @@ CVS
 - Bug 2340 - Problem with parallel builds.  Proper dependencies added when
   building ftpwho and ftptop.
 - Bug 2327 - SQLNegativeCache causes unnecessary errors in server logging.
+- Bug 2237 - HiddenStores does not check for existing file in edge case.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------
