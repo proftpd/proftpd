@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.189 2003-09-26 06:53:16 castaglia Exp $
+ * $Id: mod_core.c,v 1.190 2003-10-08 05:38:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -725,27 +725,26 @@ MODRET set_defaultserver(cmd_rec *cmd) {
 }
 
 MODRET set_masqueradeaddress(cmd_rec *cmd) {
- config_rec *c = NULL;
- pr_netaddr_t *masq_addr = NULL;
- char masq_ip[80] = {'\0'};
+  config_rec *c = NULL;
+  pr_netaddr_t *masq_addr = NULL;
+  char masq_ip[80] = {'\0'};
 
- CHECK_ARGS(cmd, 1);
- CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
- /* Make a copy of the given argument.  */
- sstrncpy(masq_ip, cmd->argv[1], sizeof(masq_ip));
+  /* Make a copy of the given argument.  */
+  sstrncpy(masq_ip, cmd->argv[1], sizeof(masq_ip));
 
- /* We can only masquerade as one address, so we don't need to know if the
-  * given name might map to multiple addresses.
-  */
- masq_addr = pr_netaddr_get_addr(cmd->server->pool, masq_ip, NULL);
- if (masq_addr == NULL)
-   return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
-     (cmd->argv)[0], ": unable to resolve \"", masq_ip, "\"",
-     NULL));
+  /* We can only masquerade as one address, so we don't need to know if the
+   * given name might map to multiple addresses.
+   */
+  masq_addr = pr_netaddr_get_addr(cmd->server->pool, masq_ip, NULL);
+  if (masq_addr == NULL)
+    return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool, cmd->argv[0],
+      ": unable to resolve \"", masq_ip, "\"", NULL));
 
- c = add_config_param(cmd->argv[0], 1, (void *) masq_addr);
- return HANDLED(cmd);
+  c = add_config_param(cmd->argv[0], 1, (void *) masq_addr);
+  return HANDLED(cmd);
 }
 
 MODRET set_maxinstances(cmd_rec *cmd) {
