@@ -287,9 +287,14 @@ module tls_module;
 typedef struct tls_pkey_obj {
   struct tls_pkey_obj *next;
 
-  char *rsa_pkey;
-  char *dsa_pkey;
   size_t pkeysz;
+
+  char *rsa_pkey;
+  void *rsa_pkey_ptr;
+
+  char *dsa_pkey;
+  void *dsa_pkey_ptr;
+
   unsigned int flags;
 
   server_rec *server;
@@ -384,6 +389,8 @@ static void tls_closelog(void);
 static void tls_end_session(SSL *, int);
 static void tls_fatal_error(int, int);
 static const char *tls_get_errors(void);
+static char *tls_get_page(size_t, void **);
+static size_t tls_get_pagesz(void);
 static char *tls_get_subj_name(void);
 
 static int tls_log(const char *, ...)
@@ -621,10 +628,11 @@ static int tls_get_passphrase(const char *path, const char *prompt, char *buf,
 
 #ifdef HAVE_MLOCK
    PRIVS_ROOT
-   if (mlock(buf, buflen) < 0)
-     tls_log("error locking passphrase into memory: %s", strerror(errno));
+   if (mlock(buf, buflen) < 0) 
+     pr_log_debug(DEBUG1, MOD_TLS_VERSION
+       ": error locking passphrase into memory: %s", strerror(errno));
    else
-     tls_log("passphrase locked into memory");
+     pr_log_debug(DEBUG1, MOD_TLS_VERSION ": passphrase locked into memory");
    PRIVS_RELINQUISH
 #endif
 
@@ -667,12 +675,12 @@ static tls_pkey_t *tls_lookup_pkey(void) {
     /* Otherwise, scrub the passphrase's memory areas. */
     if (k->rsa_pkey) {
       pr_memscrub(k->rsa_pkey, k->pkeysz);
-      free(k->rsa_pkey);
+      free(k->rsa_pkey_ptr);
     }
 
     if (k->dsa_pkey) {
       pr_memscrub(k->dsa_pkey, k->pkeysz);
-      free(k->dsa_pkey);
+      free(k->dsa_pkey_ptr);
     }
   }
 
@@ -713,12 +721,12 @@ static void tls_scrub_pkeys(void) {
   for (k = tls_pkey_list; k; k = k->next) {
     if (k->rsa_pkey) {
       pr_memscrub(k->rsa_pkey, k->pkeysz);
-      free(k->rsa_pkey);
+      free(k->rsa_pkey_ptr);
     }
 
     if (k->dsa_pkey) {
       pr_memscrub(k->dsa_pkey, k->pkeysz);
-      free(k->dsa_pkey);
+      free(k->dsa_pkey_ptr);
     }
   }
 }
@@ -1403,6 +1411,42 @@ static const char *tls_get_errors(void) {
   BIO_free(bio);
 
   return str;
+}
+
+/* Return a page-aligned pointer to memory of at least the given size.
+ */
+static char *tls_get_page(size_t sz, void **ptr) {
+  void *d;
+  long pagesz = tls_get_pagesz(), p;
+
+  d = malloc(sz + (pagesz-1));
+  if (d == NULL) {
+    pr_log_pri(PR_LOG_ERR, "out of memory!");
+    exit(1);
+  }
+
+  *ptr = d;
+
+  p = ((long) d + (pagesz-1)) &~ (pagesz-1);
+
+  return ((char *) p);
+}
+
+/* Return the size of a page on this architecture.
+ */
+static size_t tls_get_pagesz(void) {
+  long pagesz;
+
+#if defined(_SC_PAGESIZE)
+  pagesz = sysconf(_SC_PAGESIZE);
+#elif defined(_SC_PAGE_SIZE)
+  pagesz = sysconf(_SC_PAGESIZE);
+#else
+  /* Default to using OpenSSL's defined buffer size for PEM files. */
+  pagesz = PEM_BUFSIZE;
+#endif /* !_SC_PAGESIZE and !_SC_PAGESIZE */
+
+  return pagesz;
 }
 
 static char *tls_get_subj_name(void) {
@@ -3366,7 +3410,7 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
         pr_netaddr_get_ipstr(s->addr), s->ServerPort, s->ServerName);
       buf[sizeof(buf)-1] = '\0';
 
-      k->rsa_pkey = calloc(1, k->pkeysz);
+      k->rsa_pkey = tls_get_page(PEM_BUFSIZE, &k->rsa_pkey_ptr);
       if (k->rsa_pkey == NULL) {
         pr_log_pri(PR_LOG_ERR, "out of memory!");
         exit(1);
@@ -3387,7 +3431,7 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
         pr_netaddr_get_ipstr(s->addr), s->ServerPort, s->ServerName);
       buf[sizeof(buf)-1] = '\0';
 
-      k->dsa_pkey = calloc(1, k->pkeysz);
+      k->dsa_pkey = tls_get_page(PEM_BUFSIZE, &k->dsa_pkey_ptr);
       if (k->dsa_pkey == NULL) {
         pr_log_pri(PR_LOG_ERR, "out of memory!");
         exit(1);
