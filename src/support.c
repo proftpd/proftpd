@@ -20,7 +20,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.16 2000-07-07 06:41:08 macgyver Exp $
+ * $Id: support.c,v 1.17 2000-07-09 06:58:53 macgyver Exp $
  */
 
 /* History Log:
@@ -657,37 +657,59 @@ char *sreplace(pool *p, char *s, ...)
   char *m,*r,*src = s,*cp;
   char **mptr,**rptr;
   char *marr[33],*rarr[33];
-  char buf[2048];
-  int mlen = 0,rlen = 0;
+  char buf[2048] = {'\0'}, *pbuf = NULL;
+  int  mlen = 0, rlen = 0;
+  int  blen, dyn=1;
 
   cp = buf;
   *cp = '\0';
   
   bzero(marr,sizeof(marr));
+  bzero(rarr,sizeof(rarr));
+  blen=strlen(src)+1;
 
   va_start(args,s);
 
   while((m = va_arg(args,char*)) != NULL && mlen < 32) {
     if((r = va_arg(args,char*)) == NULL)
       break;
-
+    blen += (strlen(r) - strlen(m));
     marr[mlen] = m;
     rarr[mlen++] = r;
   }
 
   va_end(args);
 
+  /* Try to handle large buffer situations (i.e. escaping of MAXPATHLEN
+   * (>2048) correctly, but do not allow very big buffer sizes, that may
+   * be dangerous (BUFSIZ may be defined in stdio.h) in some library
+   * functions.
+   */
+#ifndef BUFSIZ
+#define BUFSIZ 8192
+#endif
+
+  if(blen < BUFSIZ) {
+    cp = pbuf = (char *) pcalloc(p, ++blen);
+  }
+  
+  if(!pbuf) {
+    cp   = pbuf = buf;
+    dyn  = 0;
+    blen = sizeof(buf);
+  }
+  
   while(*src) {
     for(mptr = marr, rptr = rarr; *mptr; mptr++, rptr++) {
       mlen = strlen(*mptr);
       rlen = strlen(*rptr);
 
       if(strncmp(src,*mptr,mlen) == 0) {
-        sstrncpy(cp,*rptr,sizeof(buf) - strlen(buf));
-	if(((cp + rlen) - buf + 1) > sizeof(buf)) {
+        sstrncpy(cp,*rptr, blen - strlen(pbuf));
+	if(((cp + rlen) - pbuf + 1) > blen) {
 	  log_pri(LOG_ERR,
 		  "Warning, attempt to overflow internal ProFTPD buffers.");
-	  cp = buf + sizeof(buf) - 1;
+	  cp = pbuf + blen - 1;
 	  goto done;
 	} else {
 	  cp += rlen;
@@ -699,10 +721,10 @@ char *sreplace(pool *p, char *s, ...)
     }
     
     if(!*mptr) {
-      if((cp - buf + 1) > sizeof(buf)) {
+      if((cp - pbuf + 1) > blen) {
 	log_pri(LOG_ERR,
 		"Warning, attempt to overflow internal ProFTPD buffers.");
-	cp = buf + sizeof(buf) - 1;
+	cp = pbuf + blen - 1;
       }
       *cp++ = *src++;
     }
@@ -711,6 +733,8 @@ char *sreplace(pool *p, char *s, ...)
  done:
   *cp = '\0';
 
+  if(dyn)
+    return pbuf;
   return pstrdup(p,buf);
 }
 
