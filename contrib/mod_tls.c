@@ -2574,7 +2574,7 @@ MODRET tls_any(cmd_rec *cmd) {
       !strcmp(cmd->argv[0], C_QUIT))
     return DECLINED(cmd);
 
-  if (tls_required_on_ctrl & !(tls_flags & TLS_SESS_ON_CTRL)) {
+  if (tls_required_on_ctrl && !(tls_flags & TLS_SESS_ON_CTRL)) {
     pr_response_add_err(R_550, "SSL/TLS required on the control channel");
     return ERROR(cmd);
   }
