@@ -23,6 +23,12 @@ not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite
 
 #include <conf.h>
 
+/* From log.c */
+extern void log_pri(int, char *, ...);
+
+/* From utils.c */
+extern char *sstrncpy(char *dest, const char *src, size_t n);
+
 #define NPWDFIELDS 	7
 #define NGRPFIELDS 	4
 
