@@ -98,8 +98,12 @@ struct passwd *fgetpwent(FILE *fp)
 {
   char buf[BUFSIZ] = {'\0'};
 
-  if(fgets(buf, sizeof(buf), fp) != (char*) 0 &&
-     buf[0] != '\0' && buf[0] != '#') {
+  while (fgets(buf, sizeof(buf), fp) != (char*) 0) {
+
+    /* ignore empty and comment lines */
+    if (buf[0] == '\0' || buf[0] == '#')
+      continue;
+
     buf[strlen(buf) - 1] = '\0';
     return _pgetpwent(buf);
   }
@@ -217,8 +221,13 @@ struct group *fgetgrent(FILE *fp)
   char *cp;
   struct group *g;
 
-  if(fgetbufline(&buf,&size,fp) != (char*)0) {
-    if((cp = strchr(buf,'\n')) != (char*)0)
+  while (fgetbufline(&buf,&size,fp) != (char*)0) {
+
+    /* ignore comment and empty lines */
+    if (buf[0] == '\0' || buf[0] == '#')
+      continue;
+
+    if ((cp = strchr(buf,'\n')) != (char*)0)
       *cp = '\0';
 
     g = _pgetgrent(buf);

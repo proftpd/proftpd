@@ -26,7 +26,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.31 2002-02-26 17:35:58 flood Exp $
+ * $Id: log.c,v 1.32 2002-02-28 19:13:35 flood Exp $
  */
 
 /* History Log:
@@ -87,23 +87,23 @@ char *fmt_time(time_t t)
   return buf;
 }
 
-void log_close_xfer()
-{
-  if(xferfd != -1)
+void log_close_xfer() {
+  if (xferfd != -1)
     close(xferfd);
+
   xferfd = -1;
 }
 
-int log_open_xfer(const char *fn)
-{
-  if(!fn) {
-    if(xferfd != -1)
+int log_open_xfer(const char *fn) {
+
+  if (!fn) {
+    if (xferfd != -1)
       log_close_xfer();
     return 0;
   }
 
-  if(xferfd == -1)
-    xferfd = open(fn,O_WRONLY|O_APPEND|O_CREAT,0644);
+  if (xferfd == -1)
+    log_openfile(fn, &xferfd, LOG_XFER_MODE);
 
   return xferfd;
 }
@@ -232,10 +232,10 @@ int log_open_run(pid_t mpid, int trunc, int allow_update)
    * If so, close the file and error out.  If not, truncate as necessary,
    * and continue.
    */
-  if ((runfd = open(runfn, O_RDWR|O_CREAT, 0644)) == -1)
+  if ((runfd = open(runfn, O_RDWR|O_CREAT, LOG_SCOREBOARD_MODE)) == -1)
     return -1;
 
-  if (lstat(runfn, &sbuf) < 0) {
+  if (fstat(runfd, &sbuf) < 0) {
     close(runfd);
     runfd = -1;
     return -1;
@@ -697,79 +697,93 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip)
   return res;
 }
 
-int log_opensyslog(const char *fn)
-{
-  char *ptr;
-  struct stat statbuf;
-  
-  if(set_facility != -1)
-    facility = set_facility;
+int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
+  char *tmp = NULL;
+  struct stat sbuf;
 
-  if(fn)
-    syslog_fn = pstrdup(permanent_pool,fn);
-
-  if(!syslog_fn) {
-    openlog("proftpd",LOG_NDELAY|LOG_PID,facility);
-    syslog_open = TRUE;
-    syslog_fd = -1;
-  } else {
-    if((ptr = rindex(syslog_fn, '/')) == NULL) {
-      log_debug(DEBUG0, "%s rindex failed", syslog_fn);
-      syslog_fn = NULL;
-      return -1;
-    }
-    
-    *ptr = '\0';
-
-    if(stat(syslog_fn, &statbuf) == -1) {
-      log_debug(DEBUG0, "%s stat: %s", syslog_fn, strerror(errno));
-      syslog_fn = NULL;
-      return -1;
-    }
-
-    if(!S_ISDIR(statbuf.st_mode)) {
-      log_debug(DEBUG0, "%s is not a directory", syslog_fn);
-      syslog_fn = NULL;
-      return -1;
-    }
-    
-    if(statbuf.st_mode & S_IWOTH) {
-      log_debug(DEBUG0, "%s is a world writeable directory", syslog_fn);
-      syslog_fn = NULL;
-      return -2;
-    }
-    
-    *ptr = '/';
-
-    if (get_param_int(main_server->conf, "AllowLogSymlinks", FALSE) != TRUE) {
-
-      /* prevent a race condition between stat() and open() by opening the
-       * file now, _then_ checking to see if it's a symlink
-       */
-      if ((syslog_fd = open(syslog_fn, O_APPEND|O_CREAT|O_WRONLY,
-          0640)) == -1) {
-      syslog_fn = NULL;
-      return -1;
-      }
-
-      if (lstat(syslog_fn, &statbuf) != -1 && S_ISLNK(statbuf.st_mode)) {
-        log_debug(DEBUG0, "%s is a symbolic link", syslog_fn);
-        close(syslog_fd);
-        syslog_fd = -1; 
-        syslog_fn = NULL;
-        return -3;
-      }
-
-    } else {
-      if ((syslog_fd = open(syslog_fn,O_CREAT|O_APPEND|O_WRONLY,0640)) == -1) {
-        syslog_fn = NULL;
-        return -1;
-      }
-    }
-
-    syslog_open = TRUE;
+  /* sanity check */
+  if (!log_file || !log_fd) {
+    errno = EINVAL;
+    return -1;
   }
 
+  if ((tmp = strrchr(log_file, '/')) == NULL) {
+    log_debug(DEBUG0, "inappropriate log file: %s", log_file);
+    return -1;
+  }
+
+  /* Set the path separator to zero, in order to obtain the directory
+   * name, so that checks of the directory may be made.
+   */
+  *tmp = '\0';
+
+  if (stat(log_file, &sbuf) == -1) {
+    log_debug(DEBUG0, "error: unable to stat() %s: %s", log_file,
+      strerror(errno));
+    return -1;
+  }
+
+  /* the path must be in a valid directory */
+  if (!S_ISDIR(sbuf.st_mode)) {
+    log_debug(DEBUG0, "error: %s is not a directory", log_file);
+    return -1;
+  }
+
+  /* do not log to world-writeable directories */
+  if (sbuf.st_mode & S_IWOTH) {
+    log_debug(DEBUG0, "error: %s is a world writeable directory", log_file);
+    return -2;
+  }
+
+  /* Restore the path separator so that checks on the file itself may be
+   * done.
+   */
+  *tmp = '/';
+
+  if (get_param_int(main_server->conf, "AllowLogSymlinks", FALSE) != TRUE) {
+
+    /* prevent a race condition between stat() and open() by opening the
+     * file now, _then_ checking to see if it's a symlink
+     */
+    if ((*log_fd = open(log_file, O_APPEND|O_CREAT|O_WRONLY,
+          log_mode)) == -1)
+      return -1;
+
+    /* stat the file using the descriptor, not the path */
+    if (fstat(*log_fd, &sbuf) != -1 && S_ISLNK(sbuf.st_mode)) {
+      log_debug(DEBUG0, "error: %s is a symbolic link", log_file);
+      close(*log_fd);
+      *log_fd = -1;
+      return -3;
+    }
+
+  } else
+    if ((*log_fd = open(log_file, O_CREAT|O_APPEND|O_WRONLY, log_mode)) == -1)
+      return -1;
+
+  return 0;
+}
+
+int log_opensyslog(const char *fn) {
+  int res = 0;
+ 
+  if (set_facility != -1)
+    facility = set_facility;
+
+  if (fn)
+    syslog_fn = pstrdup(permanent_pool, fn);
+
+  if (!syslog_fn) {
+
+    openlog("proftpd", LOG_NDELAY|LOG_PID, facility);
+    syslog_fd = -1;
+
+  } else if ((res = log_openfile(syslog_fn, &syslog_fd, LOG_SYSTEM_MODE)) < 0) {
+    syslog_fn = NULL;
+    return res;
+  }
+
+  syslog_open = TRUE;
   return 0;
 }
 

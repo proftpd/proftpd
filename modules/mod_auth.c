@@ -25,7 +25,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.65 2002-02-26 17:35:57 flood Exp $
+ * $Id: mod_auth.c,v 1.66 2002-02-28 19:13:35 flood Exp $
  */
 
 #include "conf.h"
@@ -521,8 +521,9 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
   origuser = user;
   c = _auth_resolve_user(p,&user,&ourname,&anonname);
+  if (c) session.anon_config = c;
 
-  if(!user) {
+  if (!user) {
     log_auth(LOG_NOTICE,"USER %s: user is not a UserAlias from %s [%s] to %s:%i",
              origuser,session.c->remote_name,
              inet_ascii(p,session.c->remote_ipaddr),
@@ -1074,11 +1075,11 @@ static int _setup_environment(pool *p, char *user, char *pass)
       pstrcat(permanent_pool,session.c->remote_name,
               ": anonymous",NULL);
 
-    session.anon_config = c;
     session.flags = SF_ANON;
+
   } else {
+
     session.proc_prefix = pstrdup(permanent_pool,session.c->remote_name);
-            
     session.flags = 0;
   }
 

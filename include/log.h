@@ -26,7 +26,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.6 2001-06-18 17:12:45 flood Exp $
+ * $Id: log.h,v 1.7 2002-02-28 19:13:34 flood Exp $
  */
 
 #ifndef __LOG_H
@@ -108,9 +108,19 @@ typedef struct {
 
 #endif
 
+/* log_openfile() return values */
+#define LOG_WRITEABLE_DIR	-2
+#define LOG_SYMLINK		-3
+
+/* log modes */
+#define LOG_SCOREBOARD_MODE     0644
+#define LOG_SYSTEM_MODE         0640
+#define LOG_XFER_MODE           0644
+
 char *fmt_time(time_t);
 int log_wtmp(char*,char*,char*,p_in_addr_t*);
 void log_setfacility(int);
+int log_openfile(const char *, int *, mode_t);
 int log_opensyslog(const char *);
 void log_closesyslog();
 void log_pri(int,char*,...);

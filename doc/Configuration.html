@@ -1,4 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+x<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
 
 <html><head><title>ProFTPD Configuration Directives</title></head>
 <body>
@@ -6,9 +6,9 @@
 
 <H2>Notes</H2>
     <ol>
-	<LI>This document is valid for 1.2.2 only.
+	<LI>This document is valid for 1.2.5rc1
 
-	<LI>SQL support was moved from three to a single module
+	<LI>SQL support was merged from three into a single module
     (mod_sql) after 1.2.0rc3
 
     </OL>
@@ -101,12 +101,17 @@ configuration:</p>
   <li><a href="#LDAPDoAuth">LDAPDoAuth</a></li>
   <li><a href="#LDAPDoUIDLookups">LDAPDoUIDLookups</a></li>
   <li><a href="#LDAPDoGIDLookups">LDAPDoGIDLookups</a></li>
+  <li><a href="#LDAPForceDefaultGID">LDAPForceDefaultGID</a></li>
+  <li><a href="#LDAPForceDefaultUID">LDAPForceDefaultUID</a></li>  
   <li><a href="#LDAPHomedirOnDemand">LDAPHomedirOnDemand</a></li>
+  <li><a href="#LDAPHomedirOnDemandPrefix">LDAPHomedirOnDemandPrefix</a></li>
+  <li>LDAPHomedirOnDemandPrefixNoUsername</li>
   <li><a href="#LDAPHomedirOnDemandSuffix">LDAPHomedirOnDemandSuffix</a></li>
   <li><a href="#LDAPNegativeCache">LDAPNegativeCache</a></li>
   <li><a href="#LDAPQueryTimeout">LDAPQueryTimeout</a></li>
   <li><a href="#LDAPSearchScope">LDAPSearchScope</a></li>
   <li><a href="#LDAPServer">LDAPServer</a></li>
+  <li><a href="#LDAPUseTLS">LDAPUseTLS</a></li>
   <li><a href="#LeechRatioMsg">LeechRatioMsg</a></li>
   <li><a href="#LogFormat">LogFormat</a></li>
   <li><a href="#LoginPasswordPrompt">LoginPasswordPrompt</a></li>
@@ -157,46 +162,65 @@ configuration:</p>
   <li><a href="#ShowDotFiles">ShowDotFiles</a></li>
   <li><a href="#ShowSymlinks">ShowSymlinks</a></li>
   <li><a href="#SocketBindTight">SocketBindTight</a></li>
+  <li>SQLAuthenticate</li>
   <LI><A HREF="#SQLAuthTypes">SQLAuthTypes</A>
   <li><A HREF="#SQLAuthoritative">SQLAuthoritative</A> </li>
   <LI><A HREF="#SQLConnectInfo">SQLConnectInfo</A>
   <LI><A HREF="#SQLConnectInfo">SQLDefaultGID</A>
+  <li>SQLDefaultGID</li>
+  <li>SQLDefaultHomedir</li>
   <LI><A HREF="#SQLDefaultUID">SQLDefaultUID</A>
   <LI><A HREF="#SQLDoAuth">SQLDoAuth</A>
   <LI><A HREF="#SQLDoGroupAuth">SQLDoGroupAuth</A>
   <li><A HREF="#SQLEmptyPasswords">SQLEmptyPasswords</A> (<strong>Deprecated use <A HREF="#SQLAuthTypes">SQLAuthTypes</A></strong>) 
   <li><A HREF="#SQLEncryptedPasswords">SQLEncryptedPasswords</A> (<strong>Deprecated use <A HREF="#SQLAuthTypes">SQLAuthTypes</A></strong>) 
-  <li><A HREF="#SQLGIDField">SQLGidField</A>
+  <li><A HREF="#SQLGidField">SQLGidField</A>
   <li><A HREF="#SQLGroupGidField">SQLGroupGidField</A>
+  <li>SQLGroupInfo</li>
   <LI><A HRef="#SQLGroupMembersField">SQLGroupMembersField</A>
   <LI><A href="#SQLGroupnameField">SQLGroupnameField</A>
   <LI><A href="#SQLGroupTable">SQLGroupTable</A>
+  <li>SQLGroupWhereClause</li>
   <li><A HREF="#SQLHomedir">SQLHomedir</A>
   <li><A HREF="#SQLHomedirField">SQLHomedirField</A>
   <LI><A href="#SQLHomedirOnDemand">SQLHomedirOnDemand</A>
   <li><A HREF="#SQLKey">SQLKey</A> (<strong>Deprecated use <A HREF="#SQLWhereClause">SQLWhereClause</A></strong>)
   <li><A HREF="#SQLKeyField">SQLKeyField</A> (<strong>Deprecated use <A HREF="#SQLWhereClause">SQLWhereClause</A></strong>)
+  <li>SQLLog</li>
   <li><A HREF="#SQLLogDirs">SQLLogDirs</A>
   <li><A HREF="#SQLLogHits">SQLLogHits</A>
   <li><A HREF="#SQLLogHosts">SQLLogHosts</A>
   <li><A HREF="#SQLLoginCountField">SQLLoginCountField</A>
   <li><A HREF="#SQLLogStats">SQLLogStats</A>
+  <li>SQLMinUserGID</li>
   <LI><A href="#SQLMinID">SQLMinID</A>
+  <li>SQLMinUserUID</li>
+  <li>SQLNamedQuery</li>
   <li><A HREF="#SQLPasswordField">SQLPasswordField</A>
   <li><A HREF="#SQLPlaintextPasswords">SQLPlaintextPasswords</A> (<strong>Deprecated use <A HREF="#SQLAuthTypes">SQLAuthTypes</A></strong>)
+  <li>SQLProcessGrEnt</li>
+  <li>SQLProcessPwEnt</li>
   <li><A HREF="#SQLRatios">SQLRatios</A> <EM>Incomplete</EM></li>
+  <li>SQLRatioStats</li>
   <LI><A href="#SQLShellField">SQLShellField</A>
+  <li>SQLShowInfo</li>
   <li><A HREF="#SQLUidField">SQLUidField</A>
+  <li>SQLUserInfo</li>
   <li><A HREF="#SQLUserTable">SQLUserTable</A>
   <li><A HREF="#SQLUsernameField">SQLUsernameField</A>
+  <li>SQLUserWhereClause</li>
   <LI><A href="#SQLWhereClause">SQLWhereClause</A>
   <li><a href="#SyslogFacility">SyslogFacility</a></li>
   <li><a href="#SyslogLevel">SyslogLevel</a></li>
   <li><a href="#SystemLog">SystemLog</a></li>
+  <li>TCPAccessFiles</li>
+  <li>TCPAccessSyslogLevels</li>
   <li><a href="#tcpBackLog">tcpBackLog</a></li>
+  <li>TCPGroupAccessFiles</li>
   <li><a href="#tcpNoDelay">tcpNoDelay</a></li>
   <li><a href="#tcpReceiveWindow">tcpReceiveWindow</a></li>
   <li><a href="#tcpSendWindow">tcpSendWindow</a></li>
+  <li>TCPUserAccessFiles</li>
   <li><a href="#TimesGMT">TimesGMT</a></li>
   <li><a href="#TimeoutIdle">TimeoutIdle</a></li>
   <li><a href="#TimeoutLogin">TimeoutLogin</a></li>
@@ -1957,6 +1981,39 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
    is being looked up. By default, the search filter template
    "(&(gidNumber=%u)(objectclass=posixGroup))" is used. Search filter
    templates are only supported in mod_ldap v2.7 and later.
+
+<hr>
+<h2><a name="LDAPForceDefaultGID">LDAPForceDefaultGID</a></h2>
+<p><strong>Syntax:</strong> LDAPForceDefaultGID <em>on|off</em><br>
+  <strong>Default:</strong> off<br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+  <strong>Module:</strong> mod_ldap<BR>
+  <strong>Compatibility:</strong> mod_ldap v2.8 and later</p>
+
+<p>This directive will force all LDAP-authenticated users to use the
+same GID.  Even when a LDAPDefaultGID is configured, mod_ldap will
+allow individual users to have gidNumber attributes that will override
+this default GID. With LDAPForceDefaultGID enabled, all
+LDAP-authenticated users are given the default GID; GIDs may not be
+overridden by gidNumber attributes.
+</p>
+
+<hr>
+<h2><a name="LDAPForceDefaultUID">LDAPForceDefaultUID</a></h2>
+<p><strong>Syntax:</strong> LDAPForceDefaultUID <em>on|off</em><br>
+  <strong>Default:</strong> off<br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+  <strong>Module:</strong> mod_ldap<BR>
+  <strong>Compatibility:</strong> mod_ldap v2.8 and later</p>
+
+<p>This directive will force all LDAP-authenticated users to use the
+same UID.  Even when a LDAPDefaultUID is configured, mod_ldap will
+allow individual users to have uidNumber attributes that will override
+this default UID. With LDAPForceDefaultUID enabled, all
+LDAP-authenticated users are given the default UID; UIDs may not be
+overridden by uidNumber attributes.
+</p>
+
 <hr>
 <h2><a name="LDAPHomedirOnDemand">LDAPHomedirOnDemand</a></h2>
 <p><strong>Syntax:</strong> LDAPHomedirOnDemand <em>on|off directory-mode</em><br>
@@ -1973,6 +2030,28 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
    creating home directories on demand. If no directory mode is specified,
    the default of 0755 is used. Directory mode setting is only supported in
    mod_ldap v2.7 or later.
+
+<hr>
+<h2><a name="LDAPHomedirOnDemandPrefix">LDAPHomedirOnDemandPrefix</a></h2>
+<p><strong>Syntax:</strong> LDAPHomedirOnDemandPrefix <em>[leading path]</em><br>
+  <strong>Default:</strong> off<br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+  <strong>Module:</strong> mod_ldap<BR>
+  <strong>Compatibility:</strong> mod_ldap v2.8 and later</p>
+
+<p>LDAPHomedirOnDemandPrefix enables a prefix to be specified for
+on-demand home directory creation. This is most useful if mod_ldap is
+being used to authenticate against an LDAP directory that does not
+return a homeDirectory attribute, either because it cannot (Microsoft
+Active Directory, for example) or because you do not wish to extend
+your existing directory schema.</p>
+
+<p>For example, setting this directive to &quot;/home&quot; and
+logging in as the user "joe" would result in his home directory being
+created as &quot;/home/joe&quot;. The directory will be created with
+the mode specified in LDAPHomedirOnDemand. To use this directive,
+LDAPHomedirOnDemand must be enabled.</p>
+
 <hr>
 <h2><a name="LDAPHomedirOnDemandSuffix">LDAPHomedirOnDemandSuffix</a></h2>
 <p><strong>Syntax:</strong> LDAPHomedirOnDemandSuffix <em>"additional-directory"</em><br>
@@ -2038,6 +2117,22 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
    LDAP server(s) to use for LDAP authentication. If no LDAPServer
    configuration directive is present, the default LDAP servers specified
    by your LDAP API will be used.</p>
+
+<hr>
+<h2><a name="LDAPUseTLS">LDAPUseTLS</a></h2>
+<p><strong>Syntax:</strong> LDAPUseTLS <em>on | off<br>
+  <strong>Default:</strong> off<br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+  <strong>Module:</strong> mod_ldap<BR>
+  <strong>Compatibility:</strong> mod_ldap v2.8 and later</p>
+
+<p>By default, mod_ldap connects to the LDAP server via a
+non-encrypted connection. Enabling this option causes mod_ldap to use
+an encrypted (TLS/SSL) connection to the LDAP server. If a secure
+connection to the LDAP server fails, mod_ldap will not authenticate
+users (mod_ldap will <strong>not</strong> fall back to an unsecure
+connection).</p>
+
 <hr>
 <h2><a name="LeechRatioMsg">LeechRatioMsg</a></h2>
 <p><strong>Syntax:</strong> LeechRatioMsg <em>foo1 foo2 foo3</em><br>
@@ -3295,8 +3390,8 @@ this module.
 </pre>
 
 <hr>
-<h2><a name="SQLGIDField">SQLGIDField</a></h2>
-<p><strong>Syntax:</strong> SQLGIDField <em>fieldname</em><br>
+<h2><a name="SQLGidField">SQLGidField</a></h2>
+<p><strong>Syntax:</strong> SQLGidField <em>fieldname</em><br>
   <strong>Default:</strong> gid<br>
   <strong>Context:</strong> server config<br>
   <strong>Module:</strong> mod_sql<BR>
@@ -4230,7 +4325,7 @@ href="#tcpBackLog"><u>tcpBackLog</u></a><u> value on heavily loaded
 <HR>
 
 <P>Please report any corrections or additions via <A
-HREF="http://bugs.proftpd.org/">Bugzilla</A> or to <A HREF="mailto:hamster@vom.tm">Mark</A></P>
+HREF="http://bugs.proftpd.org/">Bugzilla</A> or to <A HREF="mailto:hamster@vom.org.uk">Mark</A></P>
  
 </BODY>
 </HTML>

@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.45 2002-02-26 17:35:57 flood Exp $
+ * $Id: dirtree.c,v 1.46 2002-02-28 19:13:35 flood Exp $
  */
 
 /* History:
@@ -1925,16 +1925,18 @@ static void _mergedown(xaset_t *s,int dynamic)
   if(!s || !s->xas_list)
     return;
 
-  for(c = (config_rec*)s->xas_list; c; c=c->next)
-    if(c->flags & CF_MERGEDOWN)
+  for (c = (config_rec*)s->xas_list; c; c=c->next)
+    if ((c->flags & CF_MERGEDOWN) ||
+        (c->flags & CF_MERGEDOWN_MULTI))
       for(dest = (config_rec*)s->xas_list; dest; dest=dest->next)
         if(dest->config_type == CONF_ANON ||
            dest->config_type == CONF_DIR) {
+
           /* If an option of the same name/type is found in the
            * next level down, it overrides, so we don't merge.
            */
-          if(find_config(dest->subset,c->config_type,
-                         c->name,FALSE))
+          if ((c->flags & CF_MERGEDOWN) &&
+              find_config(dest->subset, c->config_type, c->name, FALSE))
             continue;
 
           if(!dest->subset)

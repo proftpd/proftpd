@@ -25,7 +25,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.21 2001-12-13 20:35:50 flood Exp $
+ * $Id: mod_log.c,v 1.22 2002-02-28 19:13:35 flood Exp $
  */
 
 #include "conf.h"
@@ -35,6 +35,7 @@
 extern response_t *resp_list,*resp_err_list;
 
 #define LOGBUF_SIZE		1025
+#define LOG_EXTENDED_MODE	0644
 
 typedef struct logformat_struc	logformat_t;
 typedef struct logfile_struc 	logfile_t;
@@ -369,36 +370,36 @@ MODRET set_systemlog(cmd_rec *cmd)
 
   syslogfn = cmd->argv[1];
 
-  if(strcasecmp(syslogfn,"NONE") == 0) {
+  if (strcasecmp(syslogfn, "NONE") == 0) {
     log_discard();
     return HANDLED(cmd);
   }
 
-  if(*syslogfn != '/') 
+  if (*syslogfn != '/') 
     syslogfn = dir_canonical_path(cmd->tmp_pool,syslogfn);
 
   block_signals();
   PRIVS_ROOT
 
-    if((ret = log_opensyslog(syslogfn)) < 0) {
-      int xerrno = errno;
+  if ((ret = log_opensyslog(syslogfn)) < 0) {
+    int xerrno = errno;
       
-      PRIVS_RELINQUISH
-      unblock_signals();
-      
-      /* NB: these negative values really should be #defined */
-      
-      if(ret == -2) {
-	CONF_ERROR(cmd, "you are attempting to log to a world writeable directory");
+    PRIVS_RELINQUISH
+    unblock_signals();
+    
+    if (ret == LOG_WRITEABLE_DIR) {
+      CONF_ERROR(cmd,
+        "you are attempting to log to a world writeable directory");
 
-      } else if (ret == -3) {
-        CONF_ERROR(cmd, "you are attempting to log to a symbolic link");
+    } else if (ret == LOG_SYMLINK) {
+      CONF_ERROR(cmd, "you are attempting to log to a symbolic link");
 
-      } else {
-	CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"unable to redirect logging to '",
-			       syslogfn,"': ",strerror(xerrno),NULL));
-      }
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "unable to redirect logging to '", syslogfn, "': ",
+        strerror(xerrno), NULL));
     }
+  }
   
   PRIVS_RELINQUISH
   unblock_signals();
@@ -876,90 +877,38 @@ static
 int log_child_init()
 {
   /* open all log files */
-  logfile_t *lf;
-  int log_open = FALSE;
+  logfile_t *lf = NULL;
 
   get_extendedlogs();
 
-  for(lf = logs; lf; lf=lf->next) {
-    char *ptr;
-    struct stat statbuf;
+  for (lf = logs; lf; lf = lf->next) {
 
-    if(lf->lf_fd == -1) {
-      log_open = FALSE;
+    if (lf->lf_fd == -1) {
+      int res = 0;
+
       block_signals();
       PRIVS_ROOT
-
-      /* make sure we're not logging to a world-writeable directory, and
-       * that we're not logging to a symlink
-       */
-      if ((ptr = rindex(lf->lf_filename, '/')) != NULL) {
-        *ptr = '\0';
-
-        if (stat(lf->lf_filename, &statbuf) == -1) {
-          PRIVS_RELINQUISH
-          unblock_signals();
-          log_debug(DEBUG0, "error: stat(%s): %s", lf->lf_filename,
-            strerror(errno));
-          continue;
-        }
-
-        if (!S_ISDIR(statbuf.st_mode)) {
-          PRIVS_RELINQUISH
-          unblock_signals();
-          log_debug(DEBUG0, "%s is not a directory", lf->lf_filename);
-          continue;
-        }
-
-        if (statbuf.st_mode & S_IWOTH) {
-          PRIVS_RELINQUISH
-          unblock_signals();
-          log_debug(DEBUG0, "%s is a world writeable directory",
-            lf->lf_filename);
-          continue;
-        }
-
-        *ptr = '/';
-      }
-
-      if (get_param_int(main_server->conf, "AllowLogSymlinks", FALSE) != TRUE) {
-
-        /* prevent a race condition between stat() and open() by opening the
-         * file now, _then_ checking to see if it's a symlink
-         */
-        if ((lf->lf_fd = open(lf->lf_filename, O_APPEND|O_CREAT|O_WRONLY,
-            0644)) == -1) {
-          PRIVS_RELINQUISH
-          unblock_signals();
-          log_pri(LOG_NOTICE, "Unable to open ExtendedLog '%s': %s",
-            lf->lf_filename, strerror(errno));
-          continue;
-        }
-
-        if (lstat(lf->lf_filename, &statbuf) != -1 &&
-            S_ISLNK(statbuf.st_mode)) {
-          PRIVS_RELINQUISH
-          unblock_signals();
-          log_pri(LOG_NOTICE,
-            "Unable to open ExtendedLog '%s': %s is a symbolic link",
-            lf->lf_filename, lf->lf_filename);
-          close(lf->lf_fd);
-          lf->lf_fd = -1;
-          continue;
-        }
-
-        log_open = TRUE;
-      }
-
-      if (!log_open)
-        lf->lf_fd = open(lf->lf_filename,O_CREAT|O_APPEND|O_WRONLY,0644);
-
+      res = log_openfile(lf->lf_filename, &lf->lf_fd, LOG_EXTENDED_MODE);
       PRIVS_RELINQUISH
       unblock_signals();
 
-      if(lf->lf_fd == -1)
-        log_pri(LOG_NOTICE, "Unable to open ExtendedLog '%s': %s",
-                lf->lf_filename, strerror(errno));
+      if (res == -1) {
+        log_pri(LOG_NOTICE, "unable to open ExtendedLog '%s': %s",
+          lf->lf_filename, strerror(errno));
+        continue;
+
+      } else if (res == LOG_WRITEABLE_DIR) {
+        log_pri(LOG_NOTICE, "unable to open ExtendedLog '%s': "
+          "containing directory is world writeable", lf->lf_filename);
+        continue;
+
+      } else if (res == LOG_SYMLINK) {
+        log_pri(LOG_NOTICE, "unable to open ExtendedLog '%s': "
+          "%s is a symbolic link", lf->lf_filename, lf->lf_filename);
+        close(lf->lf_fd);
+        lf->lf_fd = -1;
+        continue;
+      }
     }
   }
 

@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.76 2001-12-13 20:35:50 flood Exp $
+ * $Id: mod_core.c,v 1.77 2002-02-28 19:13:35 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -1057,16 +1057,24 @@ MODRET set_syslogfacility(cmd_rec *cmd)
       block_signals();
       PRIVS_ROOT
 	switch(log_opensyslog(NULL)) {
-	case -2:
+
+        case -1:
+          PRIVS_RELINQUISH
+          unblock_signals();
+          CONF_ERROR(cmd, "unable to open syslog");
+          break;
+
+	case LOG_WRITEABLE_DIR:
 	  PRIVS_RELINQUISH
 	  unblock_signals();
-	  CONF_ERROR(cmd, "you are attempting to log to a world writeable directory");
+	  CONF_ERROR(cmd,
+            "you are attempting to log to a world writeable directory");
 	  break;
 	  
-	case -1:
+	case LOG_SYMLINK:
 	  PRIVS_RELINQUISH
 	  unblock_signals();
-	  CONF_ERROR(cmd, "unable to open syslog");
+	  CONF_ERROR(cmd, "you are attempting to log to a symbolic link");
 	  break;
 	  
 	default:

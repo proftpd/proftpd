@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.153 2002-02-26 17:35:56 flood Exp $
+$Id: NEWS,v 1.154 2002-02-28 19:13:34 flood Exp $
 
 1.2.5rc2 - CVS
 ---------------------------------
@@ -15,6 +15,12 @@ $Id: NEWS,v 1.153 2002-02-26 17:35:56 flood Exp $
 - Bug 1465 - can't bind to port that hasn't been closed by forked child
              process
 - Bug 1379 - replace bzero/bcopy with memset/memcpy
+- Bug 1476 - doc updates
+- Bug 1520 - security checks for TransferLogs
+- Bug 1435 - AccessDenyMsg for <Anonymous> not working
+- Bug 1492 - Bad interaction between HiddenStor and UserOwner
+- Bug 1493 - incorrect parsing of AuthUserFile
+- Bug 1485 - Adds CF_MERGEDOWN_MULTI config_rec flag
 
 1.2.5rc1 - Released 12/18/2001
 ---------------------------------
