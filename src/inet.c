@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.70 2003-08-07 07:09:40 castaglia Exp $
+ * $Id: inet.c,v 1.71 2003-08-09 16:08:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -65,7 +65,7 @@ static void create_inet_pool(void) {
 
 #if !defined(HAVE_GETNAMEINFO) || defined(USE_GETNAMEINFO)
 int pr_getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host,
-    socklen_t hostlen, char *serv, socklen_t servlen, int flags) {
+    size_t hostlen, char *serv, size_t servlen, int flags) {
 
   struct sockaddr_in *sai = (struct sockaddr_in *) sa;
 
@@ -124,7 +124,7 @@ int pr_getaddrinfo(const char *node, const char *service,
     return EAI_MEMORY;
 
   if ((saddr = malloc(sizeof(struct sockaddr_in))) == NULL) {
-    free(answer);
+    free(ans);
     return EAI_MEMORY;
   }
 
