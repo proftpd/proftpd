@@ -19,7 +19,7 @@
 
 /*
  * ProFTPD logging support
- * $Id: log.c,v 1.5 1999-09-10 21:17:02 macgyver Exp $
+ * $Id: log.c,v 1.6 1999-09-12 20:28:12 macgyver Exp $
  */
 
 /* History Log:
@@ -527,7 +527,7 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip)
   int res = 0;
   static int fd = -1;
 
-#ifdef SVR4
+#if defined(SVR4) || defined(__SVR4)
 #if !(defined(LINUX) || defined(__hpux) || defined (_AIX))
   /* This "auxilliary" utmp doesn't exist under linux. */
   struct utmpx utx;

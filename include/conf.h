@@ -18,7 +18,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.1 1998-10-18 02:24:41 flood Exp $
+ * $Id: conf.h,v 1.2 1999-09-12 20:28:12 macgyver Exp $
  */
 
 #ifndef __CONF_H
@@ -183,6 +183,10 @@ char *strchr(),*strrchr();
 
 #ifdef HAVE_UTMP_H
 # include <utmp.h>
+#endif
+
+#ifdef HAVE_UTMPX_H
+# include <utmpx.h>
 #endif
 
 /* Solaris 2.5 needs sys/termios.h for TIOCNOTTY.  Due to complications

@@ -288,6 +288,9 @@
 /* Define if you have the <regex.h> header file.  */
 #undef HAVE_REGEX_H
 
+/* Define if you have the <utmpx.h> header file.  */
+#undef HAVE_UTMPX_H
+
 /* Define if you have the <shadow.h> header file.  */
 #undef HAVE_SHADOW_H
 
