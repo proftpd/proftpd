@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.223 2004-04-29 03:35:39 castaglia Exp $
+ * $Id: main.c,v 1.224 2004-04-29 19:28:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -93,17 +93,6 @@ struct rehash {
 unsigned long max_connects = 0UL;
 unsigned int max_connect_interval = 1;
 
-typedef struct _pidrec {
-  struct _pidrec *next,*prev;
-
-  pool *pool;
-  pid_t pid;
-  time_t when;
-
-  int sempipe;				/* semaphore pipe fd (parent) */
-  unsigned char dead;
-} pidrec_t;
-
 session_t session;
 
 /* Is this daemon operating in standalone mode? */
@@ -122,9 +111,7 @@ array_header *daemon_gids;
 static time_t shut = 0, deny = 0, disc = 0;
 static char shutmsg[81] = {'\0'};
 
-static xaset_t *child_list = NULL;
 static unsigned char have_dead_child = FALSE;
-static unsigned long child_listlen = 0;
 
 static char sbuf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
 
@@ -167,19 +154,21 @@ static void finish_terminate(void);
 static const char *config_filename = CONFIG_FILE_PATH;
 
 /* Add child semaphore fds into the rfd for selecting */
-static int semaphore_fds(fd_set *rfd, int max_fd) {
-  pidrec_t *p;
+static int semaphore_fds(fd_set *rfd, int maxfd) {
 
-  if (child_list)
-    for (p = (pidrec_t *) child_list->xas_list; p; p = p->next) {
-      if (p->sempipe != -1) {
-	FD_SET(p->sempipe,rfd);
-	if (p->sempipe > max_fd)
-	  max_fd = p->sempipe;
+  if (child_count()) {
+    pr_child_t *ch;
+
+    for (ch = child_get(NULL); ch; ch = child_get(ch)) {
+      if (ch->ch_pipefd != -1) {
+	FD_SET(ch->ch_pipefd, rfd);
+	if (ch->ch_pipefd > maxfd)
+	  maxfd = ch->ch_pipefd;
       }
     }
+  }
 
-  return max_fd;
+  return maxfd;
 }
 
 #ifdef HAVE___PROGNAME
@@ -866,36 +855,41 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
   struct rehash *rh = NULL;
 
   if (is_master && mpid) {
-    int max_fd;
-    fd_set child_fds;
+    int maxfd;
+    fd_set childfds;
 
     pr_log_pri(PR_LOG_NOTICE, "received SIGHUP -- master server rehashing "
       "configuration file");
 
     /* Make sure none of our children haven't completed start up */
-    FD_ZERO(&child_fds);
-    max_fd = -1;
+    FD_ZERO(&childfds);
+    maxfd = -1;
 
-    if ((max_fd = semaphore_fds(&child_fds, max_fd)) > -1) {
+    maxfd = semaphore_fds(&childfds, maxfd);
+    if (maxfd > -1) {
       pr_log_pri(PR_LOG_NOTICE, "waiting for child processes to complete "
         "initialization");
 
-      while (max_fd != -1) {
+      while (maxfd != -1) {
 	int i;
-	pidrec_t *cp;
 	
-	i = select(max_fd + 1, &child_fds, NULL, NULL, NULL);
+	i = select(maxfd + 1, &childfds, NULL, NULL, NULL);
 
-	if (i > 0)
-	  for (cp = (pidrec_t *) child_list->xas_list; cp; cp = cp->next)
-	    if (cp->sempipe != -1 && FD_ISSET(cp->sempipe, &child_fds)) {
-	      close(cp->sempipe);
-	      cp->sempipe = -1;
-	    }
+        if (i > 0) {
+          pr_child_t *ch;
 
-	FD_ZERO(&child_fds);
-        max_fd = -1;
-	max_fd = semaphore_fds(&child_fds, max_fd);
+          for (ch = child_get(NULL); ch; ch = child_get(ch)) {
+            if (ch->ch_pipefd != -1 &&
+               FD_ISSET(ch->ch_pipefd, &childfds)) {
+              close(ch->ch_pipefd);
+              ch->ch_pipefd = -1;
+            }
+          }
+        }
+
+	FD_ZERO(&childfds);
+        maxfd = -1;
+	maxfd = semaphore_fds(&childfds, maxfd);
       }
     }
 
@@ -1002,16 +996,14 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   conn_t *conn = NULL;
   unsigned char *ident_lookups = NULL;
   int i, rev;
-  int sempipe[2] = { -1, -1 };
+  int semfds[2] = { -1, -1 };
   int xerrno = 0;
 
 #ifndef PR_DEVEL_NO_FORK
   pid_t pid;
   sigset_t sig_set;
-  pool *pidrec_pool = NULL, *set_pool = NULL;
 
   if (!nofork) {
-    pidrec_t *cpid;
 
     /* A race condition exists on heavily loaded servers where the parent
      * catches SIGHUP and attempts to close/re-open the main listening
@@ -1020,18 +1012,18 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
      * the child has closed all former listening sockets.
      */
 
-    if (pipe(sempipe) == -1) {
+    if (pipe(semfds) == -1) {
       pr_log_pri(PR_LOG_ERR, "pipe(): %s", strerror(errno));
       close(fd);
       return;
     }
 
     /* Need to make sure the child (writer) end of the pipe isn't
-     * < 2 (stdio,stdout,stderr) as this will cause problems later.
+     * < 2 (stdio/stdout/stderr) as this will cause problems later.
      */
 
-    if (sempipe[1] < 3)
-      sempipe[1] = dup_low_fd(sempipe[1]);
+    if (semfds[1] < 3)
+      semfds[1] = dup_low_fd(semfds[1]);
 
     /* We block SIGCHLD to prevent a race condition if the child
      * dies before we can record it's pid.  Also block SIGTERM to
@@ -1054,7 +1046,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
       sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
 
       /* No longer need the read side of the semaphore pipe. */
-      close(sempipe[0]);
+      close(semfds[0]);
       break;
 
     case -1:
@@ -1063,8 +1055,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
       /* The parent doesn't need the socket open. */
       close(fd);
-      close(sempipe[0]);
-      close(sempipe[1]);
+      close(semfds[0]);
+      close(semfds[1]);
 
       return;
 
@@ -1072,38 +1064,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
       /* The parent doesn't need the socket open */
       close(fd);
 
-      if (!child_list) {
-
-        /* allocate a subpool from permanent_pool for the set
-         */
-        set_pool = make_sub_pool(permanent_pool);
-        pr_pool_tag(set_pool, "Child List Pool");
-
-        child_list = xaset_create(set_pool, NULL);
-        child_list->pool = set_pool;
-
-        /* now, make a subpool for the pidrec_t to be allocated
-         */
-        pidrec_pool = make_sub_pool(set_pool);
-
-      } else {
-
-        /* allocate a subpool for the pidrec_t to be allocated
-         */
-        pidrec_pool = make_sub_pool(child_list->pool);
-      }
-
-      pr_pool_tag(pidrec_pool, "pidrec subpool");
-
-      cpid = (pidrec_t *) pcalloc(pidrec_pool, sizeof(pidrec_t));
-      cpid->pid = pid;
-      time(&cpid->when);
-      cpid->sempipe = sempipe[0];
-      cpid->pool = pidrec_pool;
-      xaset_insert(child_list,(xasetmember_t*)cpid);
-      child_listlen++;
-
-      close(sempipe[1]);
+      child_add(pid, semfds[0]);
+      close(semfds[1]);
 
       /* Unblock the signals now as sig_child() will catch
        * an "immediate" death and remove the pid from the children list
@@ -1236,7 +1198,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
    * we are all grown up and have finished housekeeping (closing
    * former listen sockets).
    */
-  close(sempipe[1]);
+  close(semfds[1]);
 
   /* Now perform reverse dns */
   if (ServerUseReverseDNS) {
@@ -1365,9 +1327,9 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
 static void disc_children(void) {
 
-  if (disc && disc <= time(NULL) && child_list) {
+  if (disc && disc <= time(NULL) && child_count()) {
     sigset_t sig_set;
-    pidrec_t *cp;
+    pr_child_t *ch;
 
     sigemptyset(&sig_set);
     sigaddset(&sig_set, SIGTERM);
@@ -1377,13 +1339,9 @@ static void disc_children(void) {
 
     sigprocmask(SIG_BLOCK, &sig_set, NULL);
 
-    /* Note: I don't think these PRIVS macros are necessary here.  The
-     * daemon process has the necessary privs for sending signals to the
-     * session processes.
-     */
     PRIVS_ROOT
-    for (cp = (pidrec_t *) child_list->xas_list; cp; cp = cp->next)
-      kill(cp->pid, SIGUSR1);
+    for (ch = child_get(NULL); ch; ch = child_get(ch))
+      kill(ch->ch_pid, SIGUSR1);
     PRIVS_RELINQUISH
 
     sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
@@ -1391,10 +1349,10 @@ static void disc_children(void) {
 }
 
 static void daemon_loop(void) {
-  fd_set listen_fds;
+  fd_set listenfds;
   conn_t *listen_conn;
-  int fd, max_fd;
-  int i,err_count = 0;
+  int fd, maxfd;
+  int i, err_count = 0;
   unsigned long nconnects = 0UL;
   time_t last_error;
   struct timeval tv;
@@ -1407,12 +1365,12 @@ static void daemon_loop(void) {
   while (TRUE) {
     run_schedule();
 
-    FD_ZERO(&listen_fds);
-    max_fd = 0;
-    max_fd = pr_ipbind_listen(&listen_fds);
+    FD_ZERO(&listenfds);
+    maxfd = 0;
+    maxfd = pr_ipbind_listen(&listenfds);
 
     /* Monitor children pipes */
-    max_fd = semaphore_fds(&listen_fds, max_fd);
+    maxfd = semaphore_fds(&listenfds, maxfd);
 
     /* Check for ftp shutdown message file */
     switch (check_shutmsg(&shut, &deny, &disc, shutmsg, sizeof(shutmsg))) {
@@ -1463,7 +1421,7 @@ static void daemon_loop(void) {
 
     running = 1;
 
-    i = select(max_fd + 1, &listen_fds, NULL, NULL, &tv);
+    i = select(maxfd + 1, &listenfds, NULL, NULL, &tv);
 
     if (i == -1 && errno == EINTR) {
       pr_signals_handle();
@@ -1472,7 +1430,6 @@ static void daemon_loop(void) {
 
     if (have_dead_child) {
       sigset_t sig_set;
-      pidrec_t *cp,*cpnext;
 
       sigemptyset(&sig_set);
       sigaddset(&sig_set, SIGCHLD);
@@ -1481,27 +1438,7 @@ static void daemon_loop(void) {
       sigprocmask(SIG_BLOCK, &sig_set, NULL);
 
       have_dead_child = FALSE;
-      if (child_list) {
-        for (cp = (pidrec_t*) child_list->xas_list; cp; cp=cpnext) {
-          cpnext = cp->next;
-
-          /* if the pidrec_t is marked "dead", remove it from the set,
-           * and recover its resources
-           */
-          if (cp->dead) {
-	    if (cp->sempipe != -1)
-	      close(cp->sempipe);
-            xaset_remove(child_list, (xasetmember_t *) cp);
-            destroy_pool(cp->pool);
-          }
-        }
-      }
-
-      /* Don't need the pool anymore */
-      if (!child_list->xas_list) {
-        destroy_pool(child_list->pool);
-        child_list = NULL;
-      }
+      child_update();
 
       sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
       pr_alarms_unblock();
@@ -1535,20 +1472,21 @@ static void daemon_loop(void) {
     nconnects = 1UL;
 
     /* See if child semaphore pipes have signaled */
-    if (child_list) {
-      pidrec_t *cp = NULL;
+    if (child_count()) {
+      pr_child_t *ch;
       time_t now = time(NULL);
 
-      for (cp = (pidrec_t *) child_list->xas_list; cp; cp = cp->next) {
-	if (cp->sempipe != -1 && FD_ISSET(cp->sempipe, &listen_fds)) {
-	  close(cp->sempipe);
-	  cp->sempipe = -1;
+      for (ch = child_get(NULL); ch; ch = child_get(ch)) {
+	if (ch->ch_pipefd != -1 &&
+            FD_ISSET(ch->ch_pipefd, &listenfds)) {
+	  close(ch->ch_pipefd);
+	  ch->ch_pipefd = -1;
 	}
 
         /* While we're looking, tally up the number of children forked in
          * the past interval.
          */
-        if (cp->when >= (now - (unsigned long) max_connect_interval))
+        if (ch->ch_when >= (now - (unsigned long) max_connect_interval))
           nconnects++;
       }
     }
@@ -1556,7 +1494,7 @@ static void daemon_loop(void) {
     pr_signals_handle();
 
     /* Accept the connection. */
-    listen_conn = pr_ipbind_accept_conn(&listen_fds, &fd);
+    listen_conn = pr_ipbind_accept_conn(&listenfds, &fd);
 
     /* Fork off servers to handle each connection our job is to get back to
      * answering connections asap, so leave the work of determining which
@@ -1566,7 +1504,7 @@ static void daemon_loop(void) {
     if (listen_conn) {
 
       /* Check for exceeded MaxInstances. */
-      if (ServerMaxInstances && (child_listlen >= ServerMaxInstances)) {
+      if (ServerMaxInstances && (child_count() >= ServerMaxInstances)) {
         pr_event_generate("core.max-instances", NULL);
         
         pr_log_pri(PR_LOG_WARNING,
@@ -1800,8 +1738,7 @@ static RETSIGTYPE sig_terminate(int signo) {
 
 static void handle_chld(void) {
   sigset_t sig_set;
-  pid_t child_pid;
-  pidrec_t *child = NULL, *child_next = NULL;
+  pid_t pid;
 
   sigemptyset(&sig_set);
   sigaddset(&sig_set, SIGTERM);
@@ -1814,19 +1751,9 @@ static void handle_chld(void) {
    */
   sigprocmask(SIG_BLOCK, &sig_set, NULL);
 
-  while ((child_pid = waitpid(-1, NULL, WNOHANG)) > 0) {
-    if (child_list) {
-      for (child = (pidrec_t *) child_list->xas_list; child;
-          child = child_next) {
-        child_next = child->next;
-
-        if (child->pid == child_pid) {
-          child_listlen--;
-          have_dead_child = TRUE;
-          child->dead = TRUE;
-        }
-      }
-    }
+  while ((pid = waitpid(-1, NULL, WNOHANG)) > 0) {
+    if (child_remove(pid) == 0)
+      have_dead_child = TRUE;
   }
 
   sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
@@ -1869,16 +1796,17 @@ static void handle_terminate_other(void) {
 }
 
 static void handle_terminate(void) {
-  pidrec_t *pid = NULL;
 
   /* Do not log if we are a child that has been terminated. */
   if (is_master) {
 
     /* Send a SIGTERM to all our children */
-    if (child_list) {
+    if (child_count()) {
+      pr_child_t *ch;
+
       PRIVS_ROOT
-      for (pid = (pidrec_t *) child_list->xas_list; pid; pid = pid->next)
-        kill(pid->pid, SIGTERM);
+      for (ch = child_get(NULL); ch; ch = child_get(ch))
+        kill(ch->ch_pid, SIGTERM);
       PRIVS_RELINQUISH
     }
 
