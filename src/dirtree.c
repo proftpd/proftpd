@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.65 2002-09-05 21:13:04 castaglia Exp $
+ * $Id: dirtree.c,v 1.66 2002-09-06 15:18:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1100,83 +1100,95 @@ static int _check_group_access(xaset_t *conf, char *name)
  * returns 0 if no match
  */
 
-int match_ip(p_in_addr_t *addr, char *name, const char *match) {
-  char buf[1024];
+int match_ip(p_in_addr_t *cli_addr, char *cli_str, const char *acl_match) {
+  char acl_str[1024];
   char *mask,*cp;
   int cidr_mode = 0, cidr_bits;
   p_in_addr_t cidr_addr;
   u_int_32 cidr_mask = 0;
 
-  if (!strcasecmp(match, "ALL"))
+  if (!strcasecmp(acl_match, "ALL"))
     return 1;
 
-  if (!strcasecmp(match, "NONE"))
+  if (!strcasecmp(acl_match, "NONE"))
     return -1;
 
-  memset(buf, '\0', sizeof(buf));
-  mask = buf;
+  memset(acl_str, '\0', sizeof(acl_str));
+  mask = acl_str;
 
-  if (*match == '.') {
+  if (*acl_match == '.') {
     *mask++ = '*';
     *mask = '\0';
-    sstrcat(buf, match, sizeof(buf));
+    sstrcat(acl_str, acl_match, sizeof(acl_str));
 
-  } else if (*(match + strlen(match) - 1) == '.') {
-    sstrcat(buf, match, sizeof(buf));
-    sstrcat(buf, "*", sizeof(buf));
+  } else if (*(acl_match + strlen(acl_match) - 1) == '.') {
+    sstrcat(acl_str, acl_match, sizeof(acl_str));
+    sstrcat(acl_str, "*", sizeof(acl_str));
 
-  } else if ((cp = strchr(match, '/')) != NULL) { /* check for CIDR notation */
+  /* Check for CIDR notation. */
+  } else if ((cp = strchr(acl_match, '/')) != NULL) {
     /* first portion of CIDR should be dotted quad, second portion
      * is netmask
      */
-    sstrncpy(buf, match, (cp-match)+1 <= sizeof(buf) ?
-                         (cp-match)+1 :  sizeof(buf));    
+    sstrncpy(acl_str, acl_match, (cp-acl_match)+1 <= sizeof(acl_str) ?
+                                 (cp-acl_match)+1 :  sizeof(acl_str));    
     cidr_bits = atoi(cp+1);
     
-    if(cidr_bits > 0 && cidr_bits < 33) {
+    if (cidr_bits > 0 && cidr_bits < 33) {
       int shift = 32 - cidr_bits;
       
       cidr_mode = 1;
-      while(cidr_bits--)
+      while (cidr_bits--)
 	cidr_mask = (cidr_mask << 1) | 1;
       cidr_mask = cidr_mask << shift;
 #ifdef HAVE_INET_ATON
-      if(inet_aton(mask,&cidr_addr) == 0)
+      if (inet_aton(mask,&cidr_addr) == 0)
 	return 0;
 #else
       cidr_addr.s_addr = inet_addr(mask);
 #endif
       cidr_addr.s_addr &= htonl(cidr_mask);
+
     } else {
       return 0;
     }
 
   } else {
-    sstrcat(buf, match, sizeof(buf));
+    sstrcat(acl_str, acl_match, sizeof(acl_str));
   }
   
   if (cidr_mode) {
-    if((addr->s_addr & htonl(cidr_mask)) == cidr_addr.s_addr)
+    if ((cli_addr->s_addr & htonl(cidr_mask)) == cidr_addr.s_addr)
       return 1;
 
   } else {
     int fnm_flags = PR_FNM_NOESCAPE|PR_FNM_CASEFOLD;
     pool *tmp_pool = make_sub_pool(permanent_pool);
-    p_in_addr_t *buf_addr = inet_getaddr(tmp_pool, buf);
-    char *buf_ascii = inet_ascii(tmp_pool, buf_addr),
-      *addr_ascii = inet_ascii(tmp_pool, addr);
-    
+    char *acl_ascii = NULL, *cli_ascii = NULL;
+
     /* Note: do NOT use inet_ntoa(3) here, but rather use inet_ascii()
      * wrapper function.  inet_ntoa(3)'s return value is a pointer to a
      * buffer that is overwritten on subsequent calls.
      */
+    p_in_addr_t *acl_addr = inet_getaddr(tmp_pool, acl_str);
+
+    /* As acl_str may contain the '*' globbing character, an attempt
+     * to resolve it to an IP address may very well fail, in which case this
+     * will be NULL.  Handle this case accordingly.
+     */
+    if (acl_addr)
+      acl_ascii = inet_ascii(tmp_pool, acl_addr);
+    else
+      acl_ascii = acl_str;
+
+    cli_ascii = inet_ascii(tmp_pool, cli_addr);
 
     log_debug(DEBUG6, "comparing addresses '%s' (%s) and '%s' (%s)",
-      buf, buf_ascii, name, addr_ascii);
+      acl_str, acl_ascii, cli_str, cli_ascii);
 
-    if (!pr_fnmatch(buf, name, fnm_flags) ||
-        !pr_fnmatch(buf, addr_ascii, fnm_flags) ||
-        !pr_fnmatch(buf_ascii, addr_ascii, fnm_flags)) {
+    if (!pr_fnmatch(acl_str, cli_str, fnm_flags) ||
+        !pr_fnmatch(acl_str, cli_ascii, fnm_flags) ||
+        !pr_fnmatch(acl_ascii, cli_ascii, fnm_flags)) {
       log_debug(DEBUG6, "addresses match");
       destroy_pool(tmp_pool);
       return 1;

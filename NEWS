@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.218 2002-09-06 01:06:12 castaglia Exp $
+$Id: NEWS,v 1.219 2002-09-06 15:18:27 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -11,6 +11,7 @@ CVS
 - Bug 1592 - mod_sql doesn't cache failed uid lookups
 - Bug 1719 - Add RFC2228 stuff to distribution
 - Bug 1663 - Add SITE CHGRP command
+- Bug 1725 - disconnect when specify multiple ranges on Allow
 
 1.2.6 - Released 2002-09-04
 ---------------------------------
