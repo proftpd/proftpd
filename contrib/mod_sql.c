@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#define MOD_SQL_VERSION "mod_sql/3.1.2"
+#define MOD_SQL_VERSION "mod_sql/3.1.4"
 
 /* This is mod_sql, contrib software for proftpd 1.2.0rc3 and above.
    Originally written and maintained as 'mod_sqlpw' by Johnie 
@@ -28,6 +28,11 @@
    Currently maintained by Andrew Houghton.
 */
 
+#include <stdlib.h>
+#include <stdarg.h>
+#include <string.h>
+#include <sys/types.h>
+
 #include "conf.h"
 #include "privs.h"
 #include "fs.h"
@@ -36,7 +41,12 @@
 #include <crypt.h>
 #endif
 
-/* Uncomment the following define to allow OpenSSL hashed password checking */
+#ifdef HAVE_LIMITS_H
+#include <limits.h>
+#endif
+
+/* Uncomment the following define to allow OpenSSL hashed password checking;  you'll
+ * also need to link with OpenSSL's crypto library ( -lcrypto ) */
 /* #define HAVE_OPENSSL */
 
 #ifdef HAVE_OPENSSL
@@ -56,6 +66,8 @@
 unsigned int sql_backend_escape_string(char *, char *, unsigned int);
 int sql_backend_check_auth(cmd_rec *, const char *, const char *);
 int sql_backend_check_connectinfo(char *);
+
+static char *sql_where(pool *p, int cnt, ...);
 
 struct sqldata_struc
 {
@@ -160,7 +172,8 @@ static struct
    * other information 
    */
 
-  char *where;                  /* where clause */
+  char *where;                  /* users where clause */
+  char *groupwhere;             /* groups where clause */
   array_header *authlist;       /* auth handler list */
   char *defaulthomedir;         /* default homedir if no field specified */
   int buildhomedir;             /* create homedir if it doesn't exist? */
@@ -418,30 +431,7 @@ MODRET modsql_select(cmd_rec * cmd, const char *query)
   c = _make_cmd(cmd->tmp_pool, 1, query);
   mr = _dispatch_sql(c, "dbd_select");
 
-  /*
-  if (c->tmp_pool)
-    destroy_pool(c->tmp_pool);
-  */
-
   return mr;
-}
-
-MODRET modsql_queryuser(cmd_rec * cmd, const char *user, const char *query,
-                        int update)
-{
-  char *realquery;
-
-  if (update)
-    realquery = pstrcat(cmd->tmp_pool, "update ", cmap.usrtable,
-                        " set ", query, " where ", cmap.usrfield, " = '",
-                        user, "' ", cmap.where, NULL);
-  else
-    realquery = pstrcat(cmd->tmp_pool, "select ", query, " from ",
-                        cmap.usrtable, " where ", cmap.usrfield,
-                        " = '", user, "' ", cmap.where, NULL);
-
-  return (update) ? modsql_update(cmd, realquery)
-      : modsql_select(cmd, realquery);
 }
 
 static char *_uservar(cmd_rec * cmd, const char *user, const char *var)
@@ -450,10 +440,13 @@ static char *_uservar(cmd_rec * cmd, const char *user, const char *var)
   modret_t *mr;
   char *query;
   sqldata_t *sd;
+  char *usrwhere, *where;
+
+  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", user, "'", NULL);
+  where = sql_where(cmd->tmp_pool, 2, usrwhere, cmap.where );
 
   query = pstrcat(cmd->tmp_pool, "select ", var, " from ",
-                  cmap.usrtable, " where ", cmap.usrfield,
-                  " = '", user, "' ", cmap.where, NULL);
+                  cmap.usrtable, where, NULL);
 
   c = _make_cmd(cmd->tmp_pool, 1, query);
 
@@ -693,6 +686,50 @@ static auth_type_entry *get_auth_entry(char *name)
  * INTERNAL HELPER FUNCTIONS
  *
  *****************************************************************/
+
+char *sql_where(pool *p, int cnt, ...)
+{
+  int tcnt;
+  int flag;
+  int len;
+  char *res, *tchar;
+  va_list dummy;
+
+  flag = 0;
+
+  len = 0;
+  va_start(dummy,cnt);
+  for (tcnt = 0; tcnt<cnt; tcnt++) {
+    res = va_arg(dummy, char *);
+    if (res != NULL && *res != '\0') {
+      if (flag++) len += 5;
+      len += strlen(res);
+      len += 2;
+    }
+  }
+  va_end(dummy);
+
+  if (len) len += 7;
+
+  res = (char *) pcalloc(p, sizeof(char) * (len+1));
+  flag = 0;
+
+  if (len) strcat(res, " where ");
+
+  va_start(dummy,cnt);
+  for (tcnt = 0; tcnt<cnt; tcnt++) {
+    tchar = va_arg(dummy, char *);
+    if (tchar != NULL && *tchar != '\0') {
+      if (flag++) sstrcat(res, " and ", len+1);
+      sstrcat(res, "(", len+1);
+      sstrcat(res, tchar, len+1);
+      sstrcat(res, ")", len+1);
+    }
+  }
+  va_end(dummy);
+
+  return res;
+}
 
 static void sql_shutdown(void)
 {
@@ -958,6 +995,7 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
   char uidstr[BUFSIZE] = { '\0' };
   char *temp_ptr = NULL;
   struct stat st;
+  char *usrwhere, *where;
 
   if (p == NULL)
     return NULL;
@@ -989,9 +1027,11 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
      */
     snprintf(uidstr, BUFSIZE, "%d", (uid_t) p->pw_uid);
 
+    usrwhere = pstrcat(cmd->tmp_pool, cmap.uidfield, " = ", uidstr, NULL);
+    where = sql_where(cmd->tmp_pool, 2, usrwhere, cmap.where );
+
     query = pstrcat(cmd->tmp_pool, "select ", cmap.usrfield, " from ",
-                    cmap.usrtable, " where ", cmap.uidfield, " = ",
-                    uidstr, " limit 1", NULL);
+                    cmap.usrtable, where, " limit 1", NULL);
 
     mr = modsql_select(cmd, query);
 
@@ -1007,6 +1047,8 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
 
     username = pstrdup(cmd->tmp_pool, sd->data[0]);
   }
+
+  log_debug( DEBUG_WARN, "NO CACHE HIT FOR USER '%s'", username );
 
   pwd = pcalloc(session.pool, sizeof(struct passwd));
 
@@ -1071,6 +1113,8 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
   array_header *ah = NULL;
   char *members = NULL;
   char *member = NULL;
+  char *grpwhere;
+  char *where;
 
   if (g == NULL)
     return NULL;
@@ -1090,9 +1134,11 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
      */
     snprintf(gidstr, BUFSIZE, "%d", (gid_t) g->gr_gid);
 
+    grpwhere = pstrcat(cmd->tmp_pool, cmap.grpgidfield, " = ", gidstr, NULL);
+    where = sql_where(cmd->tmp_pool, 2, grpwhere, cmap.groupwhere);
+
     query = pstrcat(cmd->tmp_pool, "select ", cmap.grpfield, " from ",
-                    cmap.grptable, " where ", cmap.grpgidfield, " = ",
-                    gidstr, " limit 1", NULL);
+                    cmap.grptable, where, " limit 1", NULL);
 
     mr = modsql_select(cmd, query);
 
@@ -1109,10 +1155,12 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
     groupname = pstrdup(cmd->tmp_pool, sd->data[0]);
   }
 
+  grpwhere = pstrcat(cmd->tmp_pool, cmap.grpfield, " = '", groupname, "'", NULL);
+  where = sql_where(cmd->tmp_pool, 2, grpwhere, cmap.groupwhere);
+
   query = pstrcat(cmd->tmp_pool, "select ", cmap.grpfield, ", ",
                   cmap.grpgidfield, ", ", cmap.grpmembersfield,
-                  " from ", cmap.grptable, " where ",
-                  cmap.grpfield, " = '", groupname, "'", NULL);
+                  " from ", cmap.grptable, where, NULL);
 
   mr = modsql_select(cmd, query);
 
@@ -1224,7 +1272,7 @@ static char *fixup_SQLWhereClause(char *clause)
    * at start, clause == SQLWhereClause.  
    */
   if (clause) {
-    whereclause = pstrcat(session.pool, " and (", clause, ")", NULL);
+    whereclause = pstrcat(session.pool, "(", clause, ")", NULL);
   } else {
     /*
      * SQLWhereClause doesn't exist -- this whole section goes away in 1.3 
@@ -1243,7 +1291,7 @@ static char *fixup_SQLWhereClause(char *clause)
      */
     if (key && keyfield) {
       whereclause =
-          pstrcat(session.pool, " and (", keyfield, " = ", key, ")", NULL);
+          pstrcat(session.pool, "(", keyfield, " = ", key, ")", NULL);
     }
   }
 
@@ -1257,6 +1305,8 @@ static void _setstats(cmd_rec * cmd, int fstor, int fretr,
    * if anyone has a better way of doing this, let me know.. 
    */
   char query[256] = { '\0' };
+  char *realquery;
+  char *usrwhere, *where;
 
   snprintf(query, sizeof(query),
            "%s = %s + %i, %s = %s + %i, %s = %s + %i, %s = %s + %i",
@@ -1265,7 +1315,14 @@ static void _setstats(cmd_rec * cmd, int fstor, int fretr,
            cmap.sql_bstor, cmap.sql_bstor, bstor, cmap.sql_bretr,
            cmap.sql_bretr, bretr);
 
-  modsql_queryuser(cmd, cmap.authuser, query, TRUE);
+  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", cmap.authuser, "'", NULL);
+  where = sql_where(cmd->tmp_pool, 2, usrwhere, cmap.where );
+
+
+  realquery = pstrcat(cmd->tmp_pool, "update ", cmap.usrtable,
+		      " set ", query, where, NULL);
+
+  modsql_update(cmd, realquery);
 }
 
 /*****************************************************************
@@ -1276,9 +1333,6 @@ static void _setstats(cmd_rec * cmd, int fstor, int fretr,
 
 MODRET post_cmd_stor(cmd_rec * cmd)
 {
-  if (!cmap.doauth)
-    return DECLINED(cmd);
-
   log_debug(DEBUG_FUNC, "%s: entering post_cmd_stor", MOD_SQL_VERSION);
 
   if (cmap.sql_fstor)
@@ -1294,13 +1348,10 @@ MODRET cmd_retr(cmd_rec * cmd)
   int i;
   char *path, *filename, *query;
 
-  if (!cmap.doauth)
-    return DECLINED(cmd);
-
   log_debug(DEBUG_FUNC, "%s: entering cmd_retr", MOD_SQL_VERSION);
 
   if (cmap.sql_hittable) {
-    path = dir_realpath(cmd->tmp_pool, cmd->argv[1]);
+    path = dir_realpath(cmd->tmp_pool, cmd->arg);
 
     if (cmap.sql_dir && cmap.sql_dir[0]) {
       for (i = strlen(path), filename = path + i;
@@ -1327,9 +1378,6 @@ MODRET cmd_retr(cmd_rec * cmd)
 
 MODRET post_cmd_retr(cmd_rec * cmd)
 {
-  if (!cmap.doauth)
-    return DECLINED(cmd);
-
   log_debug(DEBUG_FUNC, "%s: entering post_cmd_retr", MOD_SQL_VERSION);
 
   if (cmap.sql_fretr)
@@ -1343,24 +1391,29 @@ MODRET post_cmd_retr(cmd_rec * cmd)
 MODRET log_cmd_pass(cmd_rec * cmd)
 {
   char *query;
-
-  if (!cmap.doauth)
-    return DECLINED(cmd);
+  char *usrwhere, *where;
 
   log_debug(DEBUG_FUNC, "%s: entering log_cmd_pass", MOD_SQL_VERSION);
 
+  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", cmap.authuser, "'", NULL);
+  where = sql_where(cmd->tmp_pool,2,  usrwhere, cmap.where );
+
   if (cmap.sql_fhost) {
-    query = pstrcat(cmd->tmp_pool, cmap.sql_fhost, " = '",
-                    session.c->remote_name, "', ", cmap.sql_faddr,
-                    " = '", inet_ntoa(*session.c->remote_ipaddr),
-                    "', ", cmap.sql_ftime, " = now()", NULL);
-    modsql_queryuser(cmd, cmap.authuser, query, TRUE);
+    query = pstrcat(cmd->tmp_pool, "update ", cmap.usrtable,
+		    " set ", cmap.sql_fhost, " = '",
+		    session.c->remote_name, "', ", cmap.sql_faddr,
+		    " = '", inet_ntoa(*session.c->remote_ipaddr),
+		    "', ", cmap.sql_ftime, " = now()", where, NULL);
+
+    modsql_update(cmd, query);
   }
 
   if (cmap.logcountfield) {
-    query = pstrcat(cmd->tmp_pool, cmap.logcountfield, " = ",
-                    cmap.logcountfield, " + 1", NULL);
-    modsql_queryuser(cmd, cmap.authuser, query, TRUE);
+    query = pstrcat(cmd->tmp_pool, "update ", cmap.usrtable,
+		    " set ", cmap.logcountfield, " = ",
+		    cmap.logcountfield, " + 1", where, NULL);
+
+    modsql_update(cmd, query);
   }
 
   /*
@@ -1383,15 +1436,20 @@ MODRET log_cmd_pass(cmd_rec * cmd)
 
 MODRET log_cmd_cwd(cmd_rec * cmd)
 {
-  if (!cmap.doauth)
-    return DECLINED(cmd);
+  char *usrwhere, *where;
+  char *query;
 
   log_debug(DEBUG_FUNC, "%s: entering log_cmd_cwd", MOD_SQL_VERSION);
 
+  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", cmap.authuser, "'", NULL);
+  where = sql_where(cmd->tmp_pool, 2, usrwhere, cmap.where );
+
   if (cmap.sql_fcdir) {
-    char *query = pstrcat(cmd->tmp_pool, cmap.sql_fcdir, " = '",
-                          session.cwd, "'", NULL);
-    modsql_queryuser(cmd, cmap.authuser, query, TRUE);
+    query = pstrcat(cmd->tmp_pool, "update ", cmap.usrtable,
+		    " set ", cmap.sql_fcdir, " = '",
+		    session.cwd, "'", where, NULL);
+    
+    modsql_update(cmd, query);
   }
 
   log_debug(DEBUG_FUNC, "%s: exiting  log_cmd_cwd", MOD_SQL_VERSION);
@@ -1414,6 +1472,7 @@ MODRET auth_cmd_setpwent(cmd_rec * cmd)
   struct passwd lpw;
   char *userid;
   char **userids;
+  char *where;
 
   if (!cmap.doauth)
     return DECLINED(cmd);
@@ -1427,10 +1486,11 @@ MODRET auth_cmd_setpwent(cmd_rec * cmd)
     return (cmap.authoritative ? mod_create_data( cmd, (void *) 1 ) : DECLINED(cmd));
   }
 
-  /* retrieve our list of passwds -- this 'where 1' crap is an ugly hack, but it 
-   * makes life easier for us in all the other user table calls. */
+  /* retrieve our list of passwds */
+  where = sql_where(cmd->tmp_pool, 1, cmap.where );
+
   query = pstrcat(cmd->tmp_pool, "select ", cmap.usrfield, " from ",
-                  cmap.usrtable, " where 1 ", cmap.where, NULL );
+                  cmap.usrtable, where, NULL );
   
   mr = modsql_select(cmd, query);
 
@@ -1530,6 +1590,7 @@ MODRET auth_cmd_setgrent(cmd_rec * cmd)
   struct group lgr;
   char *groupname;
   char **groups;
+  char *where;
 
   if (!cmap.doauth)
     return DECLINED(cmd);
@@ -1547,8 +1608,10 @@ MODRET auth_cmd_setgrent(cmd_rec * cmd)
   }
 
   /* retrieve our list of groups */
+  where = sql_where(cmd->tmp_pool, 1, cmap.groupwhere);
+
   query = pstrcat(cmd->tmp_pool, "select distinct ", cmap.grpfield, " from ",
-                  cmap.grptable, NULL );
+                  cmap.grptable, where, NULL );
   
   mr = modsql_select(cmd, query);
 
@@ -1752,15 +1815,18 @@ MODRET auth_cmd_auth(cmd_rec * cmd)
   modret_t *mr;
   char *user = cmd->argv[0];
   sqldata_t *sd;
+  char *usrwhere, *where;
 
   if (!cmap.doauth)
     return DECLINED(cmd);
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_auth", MOD_SQL_VERSION);
 
+  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", user, "'", NULL);
+  where = sql_where(cmd->tmp_pool, 2, usrwhere, cmap.where );
+
   query = pstrcat(cmd->tmp_pool, "select ", cmap.pwdfield, " from ",
-                  cmap.usrtable, " where ", cmap.usrfield,
-                  " = '", user, "' ", cmap.where, " limit 1", NULL);
+                  cmap.usrtable, where, " limit 1", NULL);
 
   mr = modsql_select(cmd, query);
 
@@ -1952,18 +2018,20 @@ MODRET auth_cmd_getstats(cmd_rec * cmd)
   modret_t *mr;
   char *query;
   sqldata_t *sd;
+  char *usrwhere, *where;
 
   if (!cmap.doauth)
     return DECLINED(cmd);
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_getstats", MOD_SQL_VERSION);
 
+  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", cmap.authuser, "'", NULL);
+  where = sql_where(cmd->tmp_pool, 2, usrwhere, cmap.where );
+
   if (cmap.sql_fstor) {
     query = pstrcat(cmd->tmp_pool, "select ", cmap.sql_fstor, ", ",
                     cmap.sql_fretr, ", ", cmap.sql_bstor, ", ",
-                    cmap.sql_bretr, " from ", cmap.usrtable, " where ",
-                    cmap.usrfield, " = '", cmap.authuser, "' ", cmap.where,
-                    NULL);
+                    cmap.sql_bretr, " from ", cmap.usrtable, where, NULL);
 
     mr = modsql_select(cmd, query);
 
@@ -1988,18 +2056,20 @@ MODRET auth_cmd_getratio(cmd_rec * cmd)
   modret_t *mr;
   char *query;
   sqldata_t *sd;
+  char *usrwhere, *where;
 
   if (!cmap.doauth)
     return DECLINED(cmd);
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_getratio", MOD_SQL_VERSION);
 
+  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", cmap.authuser, "'", NULL);
+  where = sql_where(cmd->tmp_pool, 2, usrwhere, cmap.where );
+
   if (cmap.sql_frate) {
     query = pstrcat(cmd->tmp_pool, "select ", cmap.sql_frate, ", ",
                     cmap.sql_fcred, ", ", cmap.sql_brate, ", ",
-                    cmap.sql_bcred, " from ", cmap.usrtable, " where ",
-                    cmap.usrfield, " = '", cmap.authuser, "' ", cmap.where,
-                    NULL);
+                    cmap.sql_bcred, " from ", cmap.usrtable, where, NULL);
 
     mr = modsql_select(cmd, query);
 
@@ -2227,6 +2297,15 @@ MODRET set_sqlhomedirondemand(cmd_rec * cmd)
   return add_virtualbool(cmd);
 }
 
+MODRET set_sqllog(cmd_rec * cmd)
+{
+  /* SQLLog table fieldset [commandclass] [logdirectives] [whereclause] */
+
+  return add_virtualstr(cmd);
+}
+
+/* start of deprecated directives */
+
 MODRET set_sqlauthoritative(cmd_rec * cmd)
 {
   return add_virtualbool(cmd);
@@ -2336,7 +2415,7 @@ MODRET set_sqlauthtypes(cmd_rec * cmd)
     CONF_ERROR(cmd, conf_warning);
   }
 
-  ah = make_array(permanent_pool, cmd->argc - 1, sizeof(auth_type_entry *));
+  ah = make_array( permanent_pool, cmd->argc - 1, sizeof(auth_type_entry *));
 
   /*
    * walk through our cmd->argv 
@@ -2370,6 +2449,11 @@ MODRET set_sqlwhereclause(cmd_rec * cmd)
     CONF_ERROR(cmd, conf_warning);
   }
 
+  return add_virtualstr(cmd);
+}
+
+MODRET set_sqlgroupwhereclause(cmd_rec * cmd)
+{
   return add_virtualstr(cmd);
 }
 
@@ -2543,6 +2627,7 @@ MODRET set_sqlscrambledpasswords(cmd_rec * cmd)
   return add_virtualbool(cmd);
 }
 
+#ifdef HAVE_OPENSSL
 MODRET set_sqlsslhashedpasswords(cmd_rec * cmd)
 {
   char *dep_warning =
@@ -2560,6 +2645,7 @@ MODRET set_sqlsslhashedpasswords(cmd_rec * cmd)
 
   return add_virtualbool(cmd);
 }
+#endif
 
 MODRET set_sqlencryptedpasswords(cmd_rec * cmd)
 {
@@ -2908,6 +2994,10 @@ static int sql_getconf()
 
   temp_ptr = get_param_ptr(main_server->conf, "SQLWhereClause", FALSE);
   cmap.where = fixup_SQLWhereClause((char *) temp_ptr);
+  if ( cmap.where == NULL ) cmap.where = "";
+
+  temp_ptr = get_param_ptr(main_server->conf, "SQLGroupWhereClause", FALSE);
+  cmap.groupwhere = temp_ptr ? temp_ptr : "";
 
   temp_ptr = get_param_ptr(main_server->conf, "SQLAuthTypes", FALSE);
   cmap.authlist = fixup_SQLAuthTypes((array_header *) temp_ptr);
@@ -2988,6 +3078,8 @@ static int sql_getconf()
 
   if (!(cmap.defaulthomedir || cmap.homedirfield)
       && !cmap.sql_fhost && !cmap.sql_fstor && !cmap.sql_fcdir) {
+    cmap.doauth = 0;
+    log_debug(DEBUG_WARN, "%s: missing defaulthomedir or homedirfield, or we have nothing to log", MOD_SQL_VERSION);
     log_debug(DEBUG_FUNC, "%s: exiting  sql_getconf", MOD_SQL_VERSION);
     return 0;
   }
@@ -3098,6 +3190,7 @@ static conftable sql_conftab[] = {
 
   {"SQLAuthTypes", set_sqlauthtypes, NULL},
   {"SQLWhereClause", set_sqlwhereclause, NULL},
+  {"SQLGroupWhereClause", set_sqlgroupwhereclause, NULL},
 
   {"SQLMinID", set_sqlminid, NULL},
   {"SQLMinUserUID", set_sqlminuseruid, NULL},
@@ -3114,6 +3207,8 @@ static conftable sql_conftab[] = {
   {"SQLLoginCountField", set_sqllogincountfield, NULL},
   {"SQLHomedir", set_sqlhomedir, NULL},
   {"SQLHomedirOnDemand", set_sqlhomedirondemand, NULL},
+
+  {"SQLLog", set_sqllog, NULL},
 
   /*
    * The following are DEPRECATED. Expect them to disappear in 1.3 
