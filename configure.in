@@ -492,7 +492,10 @@ ADDL_DIRS="$ac_addl_dirs"
 
 dnl Check for dynmaic loading libraries, if applicable.
 if test `echo $ac_addl_modules | grep -c mod_pam` = "1"; then
-  AC_CHECK_LIB(dl, dlopen, LIBS="$LIBS -ldl")
+  dnl Otherwise compilation will fail since -lsupp isn't compiled yet.
+  tmplibs="$LIBS"
+  LIBS=""
+  AC_CHECK_LIB(dl, dlopen, LIBS="$tmplibs -ldl")
 fi
 
 MODULES="$ac_core_modules $ac_addl_modules"
