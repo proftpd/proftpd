@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.107 2002-11-25 17:33:49 castaglia Exp $
+ * $Id: mod_auth.c,v 1.108 2002-11-25 21:28:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1408,14 +1408,18 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
 	
           *d = '\0';
 	
-	  /* Count up sessions on a per-host basis.  This first small hack
-           * increments the hcur counter properly when dealing with anonymous
-           * logins. */
-          if (c && hcur == 0)
-            hcur = 1;
+	  /* Count up sessions on a per-host basis. */
 
           if (!strcmp(ip, inet_ntoa(*session.c->remote_ipaddr))) {
 	    same_host = TRUE;
+
+            /* This small hack makes sure that hcur is incremented properly
+             * when dealing with anonymous logins (the timing of anonymous
+             * login updates to the scoreboard makes this...odd).
+             */
+            if (c && c->config_type == CONF_ANON && hcur == 0)
+              hcur = 1;
+
             hcur++;
 	  }
 	
