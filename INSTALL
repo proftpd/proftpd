@@ -1,4 +1,4 @@
-ProFTPD 1.2.x Installation Instructions
+ProFTPD 1.2.0 Installation Instructions
 ----------------------------------------
 
 ProFTPD is designed to be configured for compilation on the target system
@@ -122,9 +122,32 @@ Good luck!  If you run into problems with configuration, *check your
 syslog*.  Proftpd logs all error conditions it encounters, including
 parsing problems with one or more configuration files.
 
- Bug reports & patches: http://bugs.proftpd.net
+
+How and where to get help
+--------------------------
+You've downloaded the source, compiled and installed or you've installed
+from a package and it still doesn't work.
+
+What next?
+
+1. First there are the documents which are bundled with the tarballs, in
+   the /docs/ and the / directory.
+       Configuration Directive list
+       README* files on various subjects.
+
+2. Documentation on the homepage http://www.proftpd.net/docs/
+
+3. Mailing lists, please read the documenation and FAQ before asking
+   on the mailing list, many of the common questions are answered in
+   those documents.  When posting to the lists try to be clear,
+   concise and give enough information to enable people to help (ie
+   config fragments, information from log files, OS/version etc etc)
+
+------------------------------------------------------------------------
+  Bug reports & patches: http://bugs.proftpd.net/
  End User Mailing List: proftpd@proftpd.net
 Developer Mailing List: proftpd-devel@proftpd.net
                Patches: macgyver@tos.net or proftpd-devel@proftpd.net
-                   WWW: http://www.proftpd.net
-                   FTP: ftp://ftp.proftpd.net/pub/proftpd
+                    WWW: http://www.proftpd.net/
+                    FTP: ftp://ftp.proftpd.net/pub/proftpd/
+------------------------------------------------------------------------
