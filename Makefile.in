@@ -139,6 +139,7 @@ dist: depend distclean
 	rm -rf `find . -name .cvsignore`
 	rm -rf `find . -name core`
 	rm -rf `find . -name '*~'`
+	rm -fr `find . -name '*.bak'`
 	# RPM needs this in the top-level directory in order to support '-t'
 	mv -f contrib/dist/rpm/proftpd.spec .
 
