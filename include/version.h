@@ -1,2 +1,2 @@
-#define VERSION                 "1.2.0pre7"
-#define INTERNAL_VERSION        0x01020007
+#define VERSION                 "1.2.0pre8"
+#define INTERNAL_VERSION        0x01020008
