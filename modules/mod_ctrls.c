@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.13 2004-05-24 23:27:40 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.14 2004-05-25 23:31:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -451,8 +451,8 @@ static int ctrls_closelog(void) {
   /* sanity check */
   if (ctrls_logfd != -1) {
     close(ctrls_logfd);
-
     ctrls_logfd = -1;
+
     ctrls_logname = NULL;
   }
 
@@ -623,6 +623,8 @@ static void ctrls_del_cl(pr_ctrls_cl_t *cl) {
     cl_list = cl->cl_next;
 
   close(cl->cl_fd);
+  cl->cl_fd = -1;
+
   destroy_pool(cl->cl_pool);
 
   cl_listlen--;
@@ -707,6 +709,7 @@ static int ctrls_accept(int sockfd, uid_t *uid, gid_t *gid, pid_t *pid) {
     if (pr_ctrls_send_msg(cl_fd, -1, 1, &msg) < 0)
       ctrls_log("error sending message: %s", strerror(errno));
     close(cl_fd);
+    cl_fd = -1;
 
     /* Done with the path now */
     PRIVS_ROOT
@@ -995,11 +998,17 @@ static int ctrls_recv_cl_reqs(void) {
   while (cl_listlen < cl_maxlistlen) {
     int res = 0;
 
+    pr_signals_handle();
+
+    if (ctrls_sockfd < 0)
+      break;
+
     FD_ZERO(&cl_rset);
     FD_SET(ctrls_sockfd, &cl_rset);
     max_fd = ctrls_sockfd + 1;
 
-    if ((res = select(max_fd + 1, &cl_rset, NULL, NULL, &timeout)) == 0) {
+    res = select(max_fd + 1, &cl_rset, NULL, NULL, &timeout);
+    if (res == 0) {
 
       /* Go through the client list */
       ctrls_cls_read();
@@ -1107,6 +1116,7 @@ static int ctrls_timer_cb(CALLBACK_FRAME) {
   /* If the ControlsEngine is not to run, do nothing from here on out */
   if (!ctrls_engine) {
     close(ctrls_sockfd);
+    ctrls_sockfd = -1;
 
     if (is_master)
       /* Remove the local socket path as well */
@@ -1337,8 +1347,8 @@ static int ctrls_handle_rmctrl(pr_ctrls_t *ctrl, int reqargc,
       pr_ctrls_add_response(ctrl, "restart the daemon to re-enable controls");
 
       close(ctrls_sockfd);
-
       ctrls_sockfd = -1;
+
       ctrls_engine = FALSE;
     }
   }
@@ -1481,6 +1491,7 @@ MODRET set_ctrlssocket(cmd_rec *cmd) {
   pr_log_debug(DEBUG3, MOD_CTRLS_VERSION ": closing ctrls socket '%s'",
     ctrls_sock_file);
   close(ctrls_sockfd);
+  ctrls_sockfd = -1;
 
   /* Change the path. */
   if (strcmp(cmd->argv[1], ctrls_sock_file) != 0)
@@ -1568,8 +1579,10 @@ static void ctrls_exit_ev(const void *event_data, void *user_data) {
   if (cl_list) {
     pr_ctrls_cl_t *cl = NULL;
 
-    for (cl = cl_list; cl; cl = cl->cl_next)
+    for (cl = cl_list; cl; cl = cl->cl_next) {
       close(cl->cl_fd);
+      cl->cl_fd = -1;
+    }
   }
 
   return;
@@ -1578,12 +1591,17 @@ static void ctrls_exit_ev(const void *event_data, void *user_data) {
 static void ctrls_restart_ev(const void *event_data, void *user_data) {
   register unsigned int i;
 
+  /* Block alarms while we're preparing for the restart. */
+  pr_alarms_block();
+
   /* Close any connected clients */
   if (cl_list) {
     pr_ctrls_cl_t *cl = NULL;
 
-    for (cl = cl_list; cl; cl = cl->cl_next)
+    for (cl = cl_list; cl; cl = cl->cl_next) {
       close(cl->cl_fd);
+      cl->cl_fd = -1;
+    }
   }
 
   /* Reset the client list */
@@ -1593,6 +1611,7 @@ static void ctrls_restart_ev(const void *event_data, void *user_data) {
   pr_log_debug(DEBUG3, MOD_CTRLS_VERSION ": closing ctrls socket '%s'",
     ctrls_sock_file);
   close(ctrls_sockfd);
+  ctrls_sockfd = -1;
   ctrls_closelog();
 
   /* Clear the existing pool */
@@ -1615,6 +1634,7 @@ static void ctrls_restart_ev(const void *event_data, void *user_data) {
     ctrls_init_acl(ctrls_acttab[i].act_acl);
   }
 
+  pr_alarms_unblock();
   return;
 }
 
