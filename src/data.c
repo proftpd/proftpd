@@ -26,7 +26,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.48 2002-12-06 21:05:05 castaglia Exp $
+ * $Id: data.c,v 1.49 2002-12-06 23:45:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -43,7 +43,7 @@
 
 /* local macro */
 
-#define MODE_STRING	(session.flags & (SF_ASCII|SF_ASCII_OVERRIDE) ? \
+#define MODE_STRING	(session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE) ? \
 			 "ASCII" : "BINARY")
 
 /* Internal usage: pointer to current data connection stream in use (may be
@@ -68,7 +68,7 @@ static int stalled_timeout_cb(CALLBACK_FRAME) {
  */
 static RETSIGTYPE data_urgent(int sig) {
   if (nstrm) {
-    session.flags |= SF_ABORT;
+    session.sf_flags |= SF_ABORT;
     pr_netio_abort(nstrm);
   }
 
@@ -383,14 +383,15 @@ void data_reset(void) {
   if (session.d && session.d->pool)
     destroy_pool(session.d->pool);
   session.d = NULL;
-  session.flags &= (SF_ALL^(SF_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
+  session.sf_flags &= (SF_ALL^(SF_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
 }
 
 void data_init(char *filename, int direction) {
-  if(!session.xfer.p) {
-    _data_new_xfer(filename,direction);
+  if (!session.xfer.p) {
+    _data_new_xfer(filename, direction);
+
   } else {
-    if(!(session.flags & SF_PASSIVE))
+    if (!(session.sf_flags & SF_PASSIVE))
       log_debug(DEBUG0,
 		"data_init oddity: session.xfer exists in non-PASV mode.");
     
@@ -410,7 +411,7 @@ int data_open(char *filename, char *reason, int direction, off_t size) {
     reason = filename;
 
   /* Passive data transfers... */  
-  if (session.flags & SF_PASSIVE) {
+  if (session.sf_flags & SF_PASSIVE) {
     if (!session.d) {
       log_pri(PR_LOG_ERR, "Internal error: PASV mode set, but no data "
         "connection listening.");
@@ -456,7 +457,7 @@ int data_open(char *filename, char *reason, int direction, off_t size) {
       nstrm = session.d->outstrm;
     }
     
-    session.flags |= SF_XFER;
+    session.sf_flags |= SF_XFER;
     
     if (TimeoutNoXfer)
       reset_timer(TIMER_NOXFER, ANY_MODULE);
@@ -512,8 +513,8 @@ void data_close(int quiet) {
   if (TimeoutStalled)
     remove_timer(TIMER_STALLED, ANY_MODULE);
   
-  session.flags &= (SF_ALL^SF_PASSIVE);
-  session.flags &= (SF_ALL^(SF_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
+  session.sf_flags &= (SF_ALL^SF_PASSIVE);
+  session.sf_flags &= (SF_ALL^(SF_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
   session_set_idle();
   
   if (!quiet)
@@ -561,8 +562,8 @@ void data_abort(int err, int quiet) {
   if (TimeoutStalled)
     remove_timer(TIMER_STALLED, ANY_MODULE);
   
-  session.flags &= (SF_ALL^SF_PASSIVE);
-  session.flags &= (SF_ALL^(SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
+  session.sf_flags &= (SF_ALL^SF_PASSIVE);
+  session.sf_flags &= (SF_ALL^(SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
   session_set_idle();
   
   /* Aborts no longer necessary */
@@ -724,8 +725,8 @@ void data_abort(int err, int quiet) {
     /* ??? syslog the response for the help desk??? */
   }
   
-  if(true_abort)
-    session.flags |= SF_POST_ABORT;
+  if (true_abort)
+    session.sf_flags |= SF_POST_ABORT;
 }
 
 /* data_xfer actually transfers the data on the data connection ..
@@ -740,9 +741,9 @@ int data_xfer(char *cl_buf, int cl_size) {
   int len = 0;
   int total = 0;
   
-  if(session.xfer.direction == PR_NETIO_IO_RD) {
-    if(session.d) {
-      if(session.flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
+  if (session.xfer.direction == PR_NETIO_IO_RD) {
+    if (session.d) {
+      if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
         int adjlen,buflen;
 	do {
 	  buflen = session.xfer.buflen;        /* how much remains in buf */
@@ -838,7 +839,7 @@ int data_xfer(char *cl_buf, int cl_size) {
         char *wb = buf;
         unsigned int wsize = size, adjlen = 0;
 
-        if (session.flags & (SF_ASCII|SF_ASCII_OVERRIDE))
+        if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE))
           _xlate_ascii_write(&wb, &wsize, session.xfer.bufsize, &adjlen);
 
         if (pr_netio_write(session.d->outstrm, wb, wsize) == -1)

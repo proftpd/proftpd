@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.107 2002-12-06 23:13:03 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.108 2002-12-06 23:45:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -240,14 +240,14 @@ static void _log_transfer(char direction, char abort_flag) {
 
   fullpath = dir_abs_path(session.xfer.p, session.xfer.path, TRUE);
 
-  if ((session.flags & SF_ANON) != 0) {
+  if ((session.sf_flags & SF_ANON) != 0) {
     log_xfer(end_time.tv_sec, session.c->remote_name, session.xfer.total_bytes,
-      fullpath, (session.flags & SF_ASCII ? 'a' : 'b'), direction,
+      fullpath, (session.sf_flags & SF_ASCII ? 'a' : 'b'), direction,
       'a', session.anon_user, abort_flag);
 
   } else {
     log_xfer(end_time.tv_sec, session.c->remote_name, session.xfer.total_bytes,
-      fullpath, (session.flags & SF_ASCII ? 'a' : 'b'), direction,
+      fullpath, (session.sf_flags & SF_ASCII ? 'a' : 'b'), direction,
       'r', session.user, abort_flag);
   }
 
@@ -603,7 +603,7 @@ static int _transmit_sendfile(off_t count, off_t *offset,
    */
   if (have_xfer_rate ||
      !(session.xfer.file_size - count) ||
-     (session.flags & (SF_ASCII | SF_ASCII_OVERRIDE))) {
+     (session.sf_flags & (SF_ASCII | SF_ASCII_OVERRIDE))) {
     return 0;
   }
 
@@ -774,7 +774,7 @@ static void stor_complete(void) {
 
 /* Exit handler, call abort functions if a transfer is in progress. */
 static void xfer_exit_cb(void) {
-  if (session.flags & SF_XFER) {
+  if (session.sf_flags & SF_XFER) {
 
     if (session.xfer.direction == PR_NETIO_IO_RD)
        /* An upload is occurring... */
@@ -1584,14 +1584,14 @@ MODRET xfer_type(cmd_rec *cmd) {
        !strcmp(cmd->argv[2], "7"))) {
 
     /* TYPE A(SCII) or TYPE L 7. */
-    session.flags |= SF_ASCII;
+    session.sf_flags |= SF_ASCII;
 
   } else if (!strcmp(cmd->argv[1], "I") ||
       (cmd->argc == 3 && !strcmp(cmd->argv[1], "L") &&
        !strcmp(cmd->argv[2], "8"))) {
 
     /* TYPE I(MAGE) or TYPE L 8. */
-    session.flags &= (SF_ALL^SF_ASCII);
+    session.sf_flags &= (SF_ALL^SF_ASCII);
 
   } else {
     add_response_err(R_500, "'%s' not understood.", get_full_cmd(cmd));
@@ -1718,7 +1718,7 @@ MODRET xfer_log_retr(cmd_rec *cmd) {
 }
 
 static int noxfer_timeout_cb(CALLBACK_FRAME) {
-  if (session.flags & SF_XFER)
+  if (session.sf_flags & SF_XFER)
     /* Transfer in progress, ignore this timeout */
     return 1;
 

@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.114 2002-12-06 21:04:56 castaglia Exp $
+ * $Id: mod_auth.c,v 1.115 2002-12-06 23:45:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1225,12 +1225,12 @@ static int _setup_environment(pool *p, char *user, char *pass)
       pstrcat(permanent_pool,session.c->remote_name,
               ": anonymous",NULL);
 
-    session.flags = SF_ANON;
+    session.sf_flags = SF_ANON;
 
   } else {
 
     session.proc_prefix = pstrdup(permanent_pool,session.c->remote_name);
-    session.flags = 0;
+    session.sf_flags = 0;
   }
 
    /* Check for dynamic configuration.  This check needs to be after the
@@ -1252,9 +1252,9 @@ static int _setup_environment(pool *p, char *user, char *pass)
     "DefaultTransferMode", FALSE);
 
   if (defaulttransfermode && strcasecmp(defaulttransfermode, "binary") == 0)
-	session.flags &= (SF_ALL^SF_ASCII);
+	session.sf_flags &= (SF_ALL^SF_ASCII);
   else
-	session.flags |= SF_ASCII;
+	session.sf_flags |= SF_ASCII;
 
   /* Authentication complete, user logged in, now kill the login
    * timer.
@@ -1460,10 +1460,10 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     add_config_param_set(&cmd->server->conf, config_class_users, 1, ccur);
 
     /* Too many users in this class? */
-    if(ccur >= session.class->max_connections) {
+    if (ccur >= session.class->max_connections) {
       char *display = NULL;
 
-      if(session.flags & SF_ANON)
+      if (session.sf_flags & SF_ANON)
 	display = (char*) get_param_ptr(session.anon_config->subset,
 					"DisplayGoAway",FALSE);
 
@@ -1722,7 +1722,7 @@ MODRET auth_pass(cmd_rec *cmd) {
 
     remove_config(cmd->server->conf, C_PASS, FALSE);
 
-    if (session.flags & SF_ANON) {
+    if (session.sf_flags & SF_ANON) {
       add_config_param_set(&cmd->server->conf, C_PASS, 1,
         pstrdup(cmd->server->pool, cmd->arg));
       display = get_param_ptr(session.anon_config->subset, "DisplayLogin",
@@ -1744,7 +1744,7 @@ MODRET auth_pass(cmd_rec *cmd) {
 
     } else {
 
-      if (session.flags & SF_ANON)
+      if (session.sf_flags & SF_ANON)
         add_response(auth_pass_resp_code,
           "Anonymous access granted, restrictions apply.");
       else

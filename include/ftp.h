@@ -26,7 +26,7 @@
 
 /* FTP commands and responses (may not all be implemented)
  *
- * $Id: ftp.h,v 1.6 2002-12-05 20:30:18 castaglia Exp $
+ * $Id: ftp.h,v 1.7 2002-12-06 23:45:26 castaglia Exp $
  */
 
 #ifndef __FTP_H
@@ -149,7 +149,10 @@
 #define R_551	"551"		/* Requested action not taken, page type unknown */
 #define R_552	"552"		/* Requested file action aborted, exceeding storage allocation */
 #define	R_553	"553"		/* Requested action not taken, file name not allowed */
-#define R_554   "554"           /* Requested action not taken, invalid REST parameter (rfc1123) */
+#define R_554   "554"           /* Requested action not taken, invalid REST parameter (RFC 1123) */
+#define R_631	"631"		/* Integrity protected response (RFC 2228) */
+#define R_632	"632"		/* Privacy protected response (RFC 2228) */
+#define R_633	"633"		/* Confidentiality protected response (RFC 2228) */
 #define R_DUP	NULL		/* Duplicate last numeric in ml response */
 
 #endif /* __FTP_H */

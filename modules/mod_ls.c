@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.72 2002-12-06 23:08:44 castaglia Exp $
+ * $Id: mod_ls.c,v 1.73 2002-12-06 23:45:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1130,9 +1130,9 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
     parse_list_opts(&list_options, &glob_flags, TRUE);
 
   /* open data connection */
-  if(!opt_STAT) {
-    session.flags |= SF_ASCII_OVERRIDE;
-    if(data_open(NULL,"file list", PR_NETIO_IO_WR, 0) < 0)
+  if (!opt_STAT) {
+    session.sf_flags |= SF_ASCII_OVERRIDE;
+    if (data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
       return -1;
   }
   
@@ -1343,13 +1343,13 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
   int res = 0;
 
   /* If the data connection isn't open, open it now. */
-  if ((session.flags & SF_XFER) == 0) {
+  if ((session.sf_flags & SF_XFER) == 0) {
     if (data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
       data_reset();
       return -1;
     }
 
-    session.flags |= SF_ASCII_OVERRIDE;
+    session.sf_flags |= SF_ASCII_OVERRIDE;
   }
 
   if (dir_hide_file(file))
@@ -1434,14 +1434,14 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
         continue;
 
       /* If the data connection isn't open, open it now. */
-      if ((session.flags & SF_XFER) == 0) {
+      if ((session.sf_flags & SF_XFER) == 0) {
 	if (data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
 	  data_reset();
 	  count = -1;
 	  continue;
 	}
 
-	session.flags |= SF_ASCII_OVERRIDE;
+	session.sf_flags |= SF_ASCII_OVERRIDE;
       }
       
       if ((mode = file_mode(f)) == 0)
@@ -1518,7 +1518,7 @@ MODRET genericlist(cmd_rec *cmd) {
     data_abort(0, 0);
     res = -1;
 
-  } else if(session.flags & SF_XFER)
+  } else if (session.sf_flags & SF_XFER)
     ls_done(cmd);
 
   opt_l = 0;
@@ -1755,11 +1755,11 @@ MODRET ls_nlst(cmd_rec *cmd) {
     ret = -1;
 
   } else {
-    if (ret == 0 && !count && (session.flags & SF_XFER) == 0) {
+    if (ret == 0 && !count && (session.sf_flags & SF_XFER) == 0) {
       add_response_err(R_550, "No files found");
       ret = -1;
 
-    } else if (session.flags & SF_XFER)
+    } else if (session.sf_flags & SF_XFER)
 
       /* Note that the data connection is NOT cleared here,
        * as an error in NLST still leaves data ready for

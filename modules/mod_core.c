@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.129 2002-12-06 23:13:03 castaglia Exp $
+ * $Id: mod_core.c,v 1.130 2002-12-06 23:45:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2580,7 +2580,7 @@ MODRET core_clear_fs(cmd_rec *cmd) {
 MODRET core_quit(cmd_rec *cmd) {
   char *display = NULL;
   
-  if (session.flags & SF_ANON)
+  if (session.sf_flags & SF_ANON)
     display = (char *)get_param_ptr(session.anon_config->subset,
       "DisplayQuit", FALSE);
 
@@ -2686,7 +2686,7 @@ MODRET core_pasv(cmd_rec *cmd) {
 
   /* Now tell the client our address/port */
   session.data_port = session.d->local_port;
-  session.flags |= SF_PASSIVE;
+  session.sf_flags |= SF_PASSIVE;
   
   addr.addr = *session.d->local_ipaddr;
 
@@ -2781,7 +2781,7 @@ MODRET core_port(cmd_rec *cmd) {
 
   memcpy(&session.data_addr, &addr.addr, sizeof(session.data_addr));
   session.data_port = ntohs(port.port);
-  session.flags &= (SF_ALL^SF_PASSIVE);
+  session.sf_flags &= (SF_ALL^SF_PASSIVE);
 
   /* If we already have a data connection open, kill it. */
   if (session.d) {
@@ -2789,7 +2789,7 @@ MODRET core_port(cmd_rec *cmd) {
     session.d = NULL;
   }
   
-  session.flags |= SF_PORT;
+  session.sf_flags |= SF_PORT;
   add_response(R_200, "PORT command successful");
 
   return HANDLED(cmd);
@@ -3252,13 +3252,13 @@ MODRET core_dele(cmd_rec *cmd) {
   
   fullpath = dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE);
   
-  if(session.flags & SF_ANON) {
+  if (session.sf_flags & SF_ANON) {
     log_xfer(0, session.c->remote_name, 0,
-	     fullpath, (session.flags & SF_ASCII ? 'a' : 'b'),
+	     fullpath, (session.sf_flags & SF_ASCII ? 'a' : 'b'),
 	     'd', 'a', session.anon_user, 'c');
   } else {
     log_xfer(0, session.c->remote_name, 0, fullpath,
-	     (session.flags & SF_ASCII ? 'a' : 'b'),
+	     (session.sf_flags & SF_ASCII ? 'a' : 'b'),
 	     'd', 'r', session.user, 'c');
   }
   

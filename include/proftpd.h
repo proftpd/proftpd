@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.35 2002-12-06 21:43:46 jwm Exp $
+ * $Id: proftpd.h,v 1.36 2002-12-06 23:45:27 castaglia Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -98,7 +98,9 @@ struct config_struc;
 typedef struct {
   pool *pool;
 
-  volatile int flags;			/* Session & State flags */
+  volatile int sf_flags;		/* Session/State flags */
+  volatile int sp_flags;		/* Session/Protection flags */
+
   p_in_addr_t data_addr;		/* Remote data address */
   short data_port;			/* Remote data port */
 
@@ -218,8 +220,15 @@ extern const char	*pwdfname,*grpfname;
 #define SF_ALL		(SF_PASSIVE|SF_ABORT|SF_XFER|SF_ASCII| \
                         SF_ASCII_OVERRIDE|SF_ANON|SF_POST_ABORT|SF_PORT)
 
+/* Session/Protection flags (RFC 2228) */
+
+#define SP_CCC		(1 << 0)	/* Clear command channel */
+#define SP_ENC		(1 << 1)	/* Privacy protected command */
+#define SP_MIC		(1 << 2)	/* Integrity protected command */
+#define SP_CONF		(1 << 3)	/* Confidentiality protected command */
+
 /* Macro to test global abort flag */
-#define XFER_ABORTED	(session.flags & SF_ABORT)
+#define XFER_ABORTED	(session.sf_flags & SF_ABORT)
 
 /* Server Types */
 #define SERVER_INETD		0

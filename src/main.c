@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.134 2002-12-06 21:05:09 castaglia Exp $
+ * $Id: main.c,v 1.135 2002-12-06 23:45:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -826,7 +826,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
         success = -1;
       }
 
-      if (session.user && !(session.flags & SF_XFER) && cmd_type == CMD)
+      if (session.user && !(session.sf_flags & SF_XFER) && cmd_type == CMD)
         session_set_idle();
 
       destroy_pool(cmd->tmp_pool);
@@ -952,7 +952,7 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf) {
 
 static int idle_timeout_cb(CALLBACK_FRAME) {
   /* We don't want to quit in the middle of a transfer */
-  if (session.flags & SF_XFER) {
+  if (session.sf_flags & SF_XFER) {
 
     /* Restart the timer. */
     return 1;
@@ -1493,6 +1493,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   session.pool = permanent_pool;
   session.c = conn;
   session.data_port = conn->remote_port - 1;
+  session.sf_flags = 0;
+  session.sp_flags = 0;
 
   /* Close the write side of the semaphore pipe to tell the parent
    * we are all grown up and have finished housekeeping (closing
@@ -1501,7 +1503,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   close(sempipe[1]);
   
   /* Now perform reverse dns */
-  if(ServerUseReverseDNS) {
+  if (ServerUseReverseDNS) {
     rev = inet_reverse_dns(permanent_pool, ServerUseReverseDNS);
     inet_resolve_ip(permanent_pool, conn);
     inet_reverse_dns(permanent_pool, rev);
@@ -1932,8 +1934,8 @@ static RETSIGTYPE sig_disconnect(int signo) {
   /* If this is an anonymous session, or a transfer is in progress,
    * perform the exit a little later...
    */
-  if ((session.flags & SF_ANON) ||
-      (session.flags & SF_XFER))
+  if ((session.sf_flags & SF_ANON) ||
+      (session.sf_flags & SF_XFER))
     recvd_signal_flags |= RECEIVED_SIG_EXIT;
   else
     recvd_signal_flags |= RECEIVED_SIG_SHUTDOWN;
