@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.86 2003-02-24 18:15:17 castaglia Exp $
+ * $Id: mod_ls.c,v 1.87 2003-03-24 20:02:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -688,13 +688,12 @@ static int cmp(const void *a, const void *b) {
   return strcmp(*(const char **)a, *(const char **)b);
 }
 
-static char **sreaddir(pool *workp, const char *dirname, const int sort) {
+static char **sreaddir(const char *dirname, const int sort) {
   DIR 		*d;
   struct	dirent *de;
   struct	stat st;
   int		i;
   char		**p;
-  char		*s, *s_end;
   int		dsize, ssize;
   int		dir_fd;
 
@@ -740,58 +739,47 @@ static char **sreaddir(pool *workp, const char *dirname, const int sort) {
 
   ssize *= ((dsize / 4) + 1);
 
-  /* Allocate array for pointers to filenames */
-  p = (char **) palloc(workp, dsize * sizeof(char *));
-
-  /* Allocate first block for holding filenames themselves */
-  s = (char *) palloc(workp, ssize * sizeof(char));
-  s_end = s + (ssize * sizeof(char));
+  /* Allocate first block for holding filenames.  Yes, we are explicitly using
+   * malloc (and realloc, and calloc, later) rather than the memory pools.
+   * Recursive directory listings would eat up a lot of pool memory that is
+   * only freed when the _entire_ directory structure has been parse.  Also,
+   * this helps to keep the memory footprint a little smaller.
+   */
+  if ((p = (char **) malloc(dsize * sizeof(char *))) == NULL) {
+    log_pri(PR_LOG_ERR, "fatal: memory exhausted");
+    exit(1);
+  }
 
   i = 0;
 
   while ((de = pr_fsio_readdir(d)) != NULL) {
+
     if (i >= dsize - 1) {
+      char **newp;
+
       /* The test above goes off one item early in case this is the last item
        * in the directory and thus next time we will want to NULL-terminate
        * the array.
        */
-      char **new_p;
-
-      log_debug(DEBUG0,
-                "Reallocating sreaddir buffer from %d entries to %d entries.",
-                dsize, dsize * 2);
+      log_debug(DEBUG0, "Reallocating sreaddir buffer from %d entries to %d "
+        "entries", dsize, dsize * 2);
 
       /* Allocate bigger array for pointers to filenames */
-      new_p = (char **) palloc(workp, 2 * dsize * sizeof(char *));
-
-      /* Copy across */
-      memcpy(new_p, p, dsize * sizeof(char *));
+      if ((newp = (char **) realloc(p, 2 * dsize * sizeof(char *))) == NULL) {
+        log_pri(PR_LOG_ERR, "fatal: memory exhausted");
+        exit(1);
+      }
+      p = newp;
       dsize *= 2;
-
-      /* We should do a pfree(workp, p), however there is no mechanism to free
-       * a block...so we leak...bleed...just plain yucky.  Fortunately, this
-       * only lasts a short time -- the memory pool used is freed when the
-       * massive, recursive and ugly functions like listdir() and nlstdir()
-       * finish calling this function.
-       */
-      p = new_p;
     }
 
-    if (s + strlen(de->d_name) + 1 >= s_end) {
-      log_debug(DEBUG0, "Allocating another sreaddir buffer of %d bytes.",
-                ssize);
-
-      /* Allocate another block for holding filenames themselves */
-      /* (don't free the last one, elements of p[] still point at it! ) */
-      s = (char *) palloc(workp, ssize * sizeof(char));
-      s_end = s + (ssize * sizeof(char));
+    /* Append the filename to the block. */
+    if ((p[i] = (char *) calloc(strlen(de->d_name) + 1,
+        sizeof(char))) == NULL) {
+      log_pri(PR_LOG_ERR, "fatal: memory exhausted");
+      exit(1);
     }
-
-    /* Append the filename to the block.
-     */
-    sstrncpy(s, de->d_name, strlen(de->d_name) + 1);
-    p[i++] = s;
-    s += strlen(de->d_name) + 1;
+    sstrncpy(p[i++], de->d_name, strlen(de->d_name) + 1);
   }
 
   pr_fsio_closedir(d);
@@ -812,6 +800,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
   int dest_workp = 0;
   config_rec *c = NULL;
   unsigned char ignore_hidden = FALSE;
+  register unsigned int i = 0;
 
   if (XFER_ABORTED)
     return -1;
@@ -825,7 +814,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
     dest_workp++;
   }
 
-  dir = sreaddir(workp, ".", TRUE);
+  dir = sreaddir(".", TRUE);
 
   /* Search for relevant <Limit>'s to this LIST command.  If found,
    * check to see whether hidden files should be ignored.
@@ -853,7 +842,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
 #endif
 
     s = dir;
-    while(*s) {
+    while (*s) {
       if (**s == '.') {
         if (!opt_a && (!opt_A || is_dotdir(*s))) {
           d = 0;
@@ -880,6 +869,15 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
     if (outputfiles(cmd) < 0) {
       if (dest_workp)
         destroy_pool(workp);
+
+      /* Explicitly free the memory allocated for containing the list of
+       * filenames.
+       */
+      i = 0;
+      while (dir[i] != NULL)
+        free(dir[i++]);
+      free(dir);
+
       return -1;
     }
 
@@ -929,6 +927,14 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
           if (dest_workp)
             destroy_pool(workp);
 
+          /* Explicitly free the memory allocated for containing the list of
+           * filenames.
+           */
+          i = 0;
+          while (dir[i] != NULL)
+            free(dir[i++]);
+          free(dir);
+
           return -1;
         }
 
@@ -940,6 +946,14 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
 
   if (dest_workp)
     destroy_pool(workp);
+
+  /* Explicitly free the memory allocated for containing the list of
+   * filenames.
+   */
+  i = 0;
+  while (dir[i] != NULL)
+    free(dir[i++]);
+  free(dir);
 
   return 0;
 }
@@ -1381,7 +1395,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
     return 0;
   }
 
-  if ((list = sreaddir(workp, ".", FALSE)) == NULL) {
+  if ((list = sreaddir(".", FALSE)) == NULL) {
     if (!curdir)
       pop_cwd(cwd_buf, &symhold);
     destroy_pool(workp);
@@ -1455,6 +1469,14 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
     pop_cwd(cwd_buf, &symhold);
 
   destroy_pool(workp);
+
+  /* Explicitly free the memory allocated for containing the list of
+   * filenames.
+   */
+  i = 0;
+  while (list[i] != NULL)
+    free(list[i++]);
+  free(list);
 
   return count;
 }

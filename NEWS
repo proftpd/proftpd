@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.410 2003-03-24 06:14:00 castaglia Exp $
+$Id: NEWS,v 1.411 2003-03-24 20:02:49 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -77,6 +77,17 @@ CVS
   (VSAs) rather than the normal RADIUS attributes; VSAs are more flexible.
 - Fixed a bug with mod_tls' use of SSL_shutdown(), to prevent it from hanging
   when interacting with some buggy FTPS clients (e.g FlashFXP, SmartFTP)
+- Bug 1935 - mod_ls memory leak.  When a recursive directory listing is
+  requested (and allowed), proftpd would use its memory pool system,
+  allocating memory for every file to be listed.  For large/deep directory
+  structures, this memory usage could grow quite large.  And, due to the
+  way in which the underlying memory allocator (the C library, usually)
+  works, that memory is never really released back to the operating system.
+  This means that tools like ps and top reporting a never-shrinking memory
+  footprint for the process.  To help alleviate this, proftpd has been
+  altered to use malloc/realloc when providing recursive directory listings,
+  making the memory footprint a little smaller.  The caching behavior of
+  the underlying memory allocator cannot be changed, though.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------
