@@ -98,6 +98,20 @@ if test $ac_cv_prog_gcc = yes; then
   CFLAGS="$fullCFLAGS"
 fi
 
+dnl We substitute these in the man page templates.
+if test x$exec_prefix = xNONE; then
+  exec_prefix=$prefix
+fi
+
+BINDIR=`eval echo $bindir`
+AC_SUBST(BINDIR)
+LOCALSTATEDIR=`eval echo $localstatedir`
+AC_SUBST(LOCALSTATEDIR)
+SBINDIR=`eval echo $sbindir`
+AC_SUBST(SBINDIR)
+SYSCONFDIR=`eval echo $sysconfdir`
+AC_SUBST(SYSCONFDIR)
+
 dnl Check whether the C compiler accepts -Wno-long-double. This helps to
 dnl quell unnecessary OSX compiler complaints.
 PR_CHECK_CC_OPT(Wno-long-double)
@@ -1110,8 +1124,8 @@ VERSION=`cat $srcdir/include/version.h | grep "#define VERSION " | sed -e 's/^.*
 
 dnl Substitute in our configuration paths as appropriate.  We also have to
 dnl sweet talk the environment into helping us get this right, like so...
-savedPrefix="$prefix"
-savedExecPrefix="$exec_prefix"
+pr_saved_prefix="$prefix"
+pr_saved_exec_prefix="$exec_prefix"
 
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
 test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
@@ -1123,8 +1137,8 @@ AC_DEFINE_UNQUOTED(PID_FILE_PATH,
 AC_DEFINE_UNQUOTED(RUN_DIR,
 			"`eval echo "${localstatedir}/proftpd"`")
 
-prefix="$savedPrefix"
-exec_prefix="$savedExecPrefix"
+prefix="$pr_saved_prefix"
+exec_prefix="$pr_saved_exec_prefix"
 
 if test x"$devel" = xyes ; then
   AC_DEFINE(USE_DEVEL)
