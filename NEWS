@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.287 2002-11-23 05:20:52 jwm Exp $
+$Id: NEWS,v 1.288 2002-11-25 16:18:39 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -20,6 +20,8 @@ CVS
   statfs()/statvfs() support beyond FreeBSD.
 - Bug 1680 - Error in startup script. Add /usr/local/sbin/ to the included
   rc script's $PATH
+- Bug 1852 - Proftpd gets signal 11 on "quote site".  The mod_site module
+  was not properly checking the number of parameters for SITE commands.
 
 1.2.7rc3 - Released 15-11-2002
 ---------------------------------

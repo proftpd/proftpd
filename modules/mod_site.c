@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.25 2002-10-23 17:27:16 castaglia Exp $
+ * $Id: mod_site.c,v 1.26 2002-11-25 16:18:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -382,7 +382,7 @@ modret_t *site_dispatch(cmd_rec *cmd) {
   register unsigned int i = 0;
 
   if (!cmd->argc) {
-    add_response_err(R_500, "'SITE' requires argument");
+    add_response_err(R_500, "'SITE' requires parameters");
     return ERROR(cmd);
   }
 
@@ -405,16 +405,16 @@ modret_t *site_dispatch(cmd_rec *cmd) {
  */
 
 MODRET site_pre_cmd(cmd_rec *cmd) {
-  if (!strcasecmp(cmd->argv[1], "help"))
+  if (cmd->argc > 1 && !strcasecmp(cmd->argv[1], "help"))
     add_response(R_214,
       "The following SITE commands are recognized (* =>'s unimplemented).");
   return DECLINED(cmd);
- }
+}
 
 MODRET site_cmd(cmd_rec *cmd) {
   char *cp = NULL;
   cmd_rec *tmpcmd = NULL;
-  MODRET ret;
+  MODRET res;
 
   /* Make a copy of the cmd structure for passing to call_module */
   tmpcmd = pcalloc(cmd->tmp_pool, sizeof(cmd_rec));
@@ -427,17 +427,17 @@ MODRET site_cmd(cmd_rec *cmd) {
     for (cp = tmpcmd->argv[0]; *cp; cp++)
       *cp = toupper(*cp);
 
-  ret = site_dispatch(tmpcmd);
+  res = site_dispatch(tmpcmd);
 
   /* Copy private data back to original cmd */
   cmd->private = tmpcmd->private;
   cmd->privarr = tmpcmd->privarr;
 
-  return ret;
+  return res;
 }
 
 MODRET site_post_cmd(cmd_rec *cmd) {
-  if (!strcasecmp(cmd->argv[1], "help"))
+  if (cmd->argc > 1 && !strcasecmp(cmd->argv[1], "help"))
     add_response(R_214, "Direct comments to %s.",
       (cmd->server->ServerAdmin ? cmd->server->ServerAdmin : "ftp-admin"));
   return DECLINED(cmd);
