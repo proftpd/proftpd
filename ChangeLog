@@ -1,3 +1,11 @@
+2000-07-21 13:44  macgyver
+
+	* ChangeLog (1.19), NEWS (1.56), config.h.in (1.16), configure
+	(1.35), configure.in (1.35), modules/mod_auth.c (1.36),
+	modules/mod_unixpw.c (1.7): Portability fixes and additions on
+	various platforms.  Also corrected a problem in configure where a
+	piece of code was completely bypassed.
+
 2000-07-21 01:19  macgyver
 
 	* doc/Configuration.html (1.28): Updated configuration
