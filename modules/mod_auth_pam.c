@@ -35,7 +35,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.9 2004-10-01 00:43:32 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.10 2004-10-16 00:43:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -179,7 +179,7 @@ static void auth_pam_exit_ev(const void *event_data, void *user_data) {
 }
 
 MODRET pam_auth(cmd_rec *cmd) {
-  int pam_error = 0, retval = 0, success = 0;
+  int pam_error = 0, retval = PR_AUTH_ERROR, success = 0;
   config_rec *c = NULL;
   unsigned char *auth_pam = NULL, *auth_pam_authoritative = NULL,
     pam_authoritative = FALSE;

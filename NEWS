@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.614 2004-10-15 17:07:48 castaglia Exp $
+$Id: NEWS,v 1.615 2004-10-16 00:43:26 castaglia Exp $
 
 CVS
 --------------------------------
@@ -39,6 +39,7 @@ CVS
   session.
 - Bug 2494 - ABOR problem with Cisco routers copy ftp flash.
 - Bug 2499 - make_cmd() does not NULL-terminate cmd->argv[].
+- Bug 2497 - Users can login without password if pam_start() fails.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------
