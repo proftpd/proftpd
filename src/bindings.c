@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.21 2003-11-09 01:55:28 castaglia Exp $
+ * $Id: bindings.c,v 1.22 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -32,19 +32,19 @@
 /* Some convenience macros */
 #define PR_CLOSE_NAMEBIND(n, a, p) \
   if ((res = pr_namebind_close((n), (a), (p))) < 0) \
-    log_pri(PR_LOG_NOTICE, \
+    pr_log_pri(PR_LOG_NOTICE, \
       "%s:%d: notice, unable to close namebind '%s': %s", \
       __FILE__, __LINE__, (n), strerror(errno))
 
 #define PR_CREATE_NAMEBIND(s, n, a, p) \
   if ((res = pr_namebind_create((s), (n), (a), (p))) < 0) \
-    log_pri(PR_LOG_NOTICE, \
+    pr_log_pri(PR_LOG_NOTICE, \
       "%s:%d: notice: unable to create namebind '%s': %s", \
       __FILE__, __LINE__, (n), strerror(errno))
 
 #define PR_OPEN_NAMEBIND(n, a, p) \
   if ((res = pr_namebind_open((n), (a), (p))) < 0) \
-    log_pri(PR_LOG_NOTICE, \
+    pr_log_pri(PR_LOG_NOTICE, \
       "%s:%d: notice: unable to open namebind '%s': %s", \
       __FILE__, __LINE__, (n), strerror(errno))
 
@@ -120,7 +120,7 @@ conn_t *pr_ipbind_accept_conn(fd_set *readfds, int *listenfd) {
          * we just got caught in a blocking condition.
          */
         if (listener->mode == CM_ERROR) {
-          log_pri(PR_LOG_ERR, "error: unable to accept an incoming "
+          pr_log_pri(PR_LOG_ERR, "error: unable to accept an incoming "
             "connection (%s)", strerror(listener->xerrno));
           listener->xerrno = 0;
           listener->mode = CM_LISTEN;
@@ -153,8 +153,8 @@ int pr_ipbind_add_binds(server_rec *serv) {
 
     addr = pr_netaddr_get_addr(serv->pool, c->argv[0], NULL);
     if (!addr) {
-      log_pri(PR_LOG_NOTICE, "notice: unable to determine IP address of '%s'",
-        (char *) c->argv[0]);
+      pr_log_pri(PR_LOG_NOTICE,
+       "notice: unable to determine IP address of '%s'", (char *) c->argv[0]);
       c = find_config_next(c, c->next, CONF_PARAM, "Bind", FALSE);
       continue;
     }
@@ -195,7 +195,7 @@ int pr_ipbind_close(pr_netaddr_t *addr, unsigned int port,
     i = ipbind_hash_addr(addr);
 
     if (ipbind_table[i] == NULL) {
-      log_pri(PR_LOG_NOTICE, "notice: no ipbind found for %s:%d",
+      pr_log_pri(PR_LOG_NOTICE, "notice: no ipbind found for %s:%d",
         pr_netaddr_get_ipstr(addr), port);
       errno = ENOENT;
       return -1;
@@ -210,7 +210,7 @@ int pr_ipbind_close(pr_netaddr_t *addr, unsigned int port,
     }
 
     if (!have_ipbind) {
-      log_pri(PR_LOG_NOTICE, "notice: no ipbind found for %s:%d",
+      pr_log_pri(PR_LOG_NOTICE, "notice: no ipbind found for %s:%d",
         pr_netaddr_get_ipstr(addr), port);
       errno = ENOENT;
       return -1;
@@ -341,7 +341,7 @@ int pr_ipbind_create(server_rec *server, pr_netaddr_t *addr) {
         ipbind->ib_port == server->ServerPort) {
 
       /* An ipbind already exists for this IP address */
-      log_pri(PR_LOG_NOTICE, "notice: '%s' (%s:%u) already bound to '%s'",
+      pr_log_pri(PR_LOG_NOTICE, "notice: '%s' (%s:%u) already bound to '%s'",
         server->ServerName, pr_netaddr_get_ipstr(addr), server->ServerPort,
         ipbind->ib_server->ServerName);
 
@@ -778,10 +778,10 @@ static void init_inetd_bindings(void) {
 
   /* Fill in all the important connection information. */
   if (pr_inet_get_conn_info(main_server->listen, STDIN_FILENO) == -1) {
-    log_pri(PR_LOG_ERR, "fatal: %s", strerror(errno));
+    pr_log_pri(PR_LOG_ERR, "fatal: %s", strerror(errno));
 
     if (errno == ENOTSOCK)
-      log_pri(PR_LOG_ERR, "(Running from command line? "
+      pr_log_pri(PR_LOG_ERR, "(Running from command line? "
         "Use `ServerType standalone' in config file!)");
     exit(1);
   }

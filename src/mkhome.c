@@ -24,7 +24,7 @@
 
 /*
  * Home-on-demand support
- * $Id: mkhome.c,v 1.2 2003-03-26 03:34:09 castaglia Exp $
+ * $Id: mkhome.c,v 1.3 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -40,7 +40,7 @@ static int create_dir(const char *dir, uid_t uid, gid_t gid,
   res = pr_fsio_stat(dir, &st);
 
   if (res == -1 && errno != ENOENT) {
-    log_pri(PR_LOG_WARNING, "error checking '%s': %s", dir,
+    pr_log_pri(PR_LOG_WARNING, "error checking '%s': %s", dir,
       strerror(errno));
     return -1;
   }
@@ -55,13 +55,13 @@ static int create_dir(const char *dir, uid_t uid, gid_t gid,
   prevmask = umask(0);
 
   if (pr_fsio_mkdir(dir, mode) < 0) {
-    log_pri(PR_LOG_WARNING, "error creating '%s': %s", dir,
+    pr_log_pri(PR_LOG_WARNING, "error creating '%s': %s", dir,
       strerror(errno));
     return -1;
   }
 
   if (pr_fsio_chown(dir, uid, gid) < 0) {
-    log_pri(PR_LOG_WARNING, "error setting ownership of '%s': %s", dir,
+    pr_log_pri(PR_LOG_WARNING, "error setting ownership of '%s': %s", dir,
       strerror(errno));
     return -1;
   }
@@ -132,7 +132,7 @@ static int copy_file(pool *p, const char *src, const char *dst, uid_t uid,
 
   while ((res = pr_fsio_read(src_fh, buf, sizeof(buf))) > 0) {
     if (pr_fsio_write(dst_fh, buf, res) != res) {
-      log_pri(PR_LOG_WARNING, "CreateHome: error writing to '%s': %s",
+      pr_log_pri(PR_LOG_WARNING, "CreateHome: error writing to '%s': %s",
         dst, strerror(errno));
       break;
     }
@@ -142,16 +142,16 @@ static int copy_file(pool *p, const char *src, const char *dst, uid_t uid,
 
   /* Make sure the destination file has the proper ownership and mode. */
   if (pr_fsio_chown(dst, uid, gid) < 0)
-    log_pri(PR_LOG_WARNING, "CreateHome: error chown'ing '%s' to %u/%u: %s",
+    pr_log_pri(PR_LOG_WARNING, "CreateHome: error chown'ing '%s' to %u/%u: %s",
       dst, (unsigned int) uid, (unsigned int) gid, strerror(errno));
  
   if (pr_fsio_chmod(dst, mode) < 0)
-    log_pri(PR_LOG_WARNING, "CreateHome: error chmod'ing '%s' to %04o: %s",
+    pr_log_pri(PR_LOG_WARNING, "CreateHome: error chmod'ing '%s' to %04o: %s",
       dst, (unsigned int) mode, strerror(errno));
 
   pr_fsio_close(src_fh);
   if (pr_fsio_close(dst_fh) < 0)
-    log_pri(PR_LOG_WARNING, "CreateHome: error closing '%s': %s", dst,
+    pr_log_pri(PR_LOG_WARNING, "CreateHome: error closing '%s': %s", dst,
       strerror(errno));
 
   return 0;
@@ -163,8 +163,8 @@ static int copy_symlink(pool *p, const char *src_dir, const char *src_path,
   int len;
 
   if ((len = pr_fsio_readlink(src_path, link_path, sizeof(link_path)-1)) < 0) {
-    log_pri(PR_LOG_WARNING, "CreateHome: error reading link '%s': %s", src_path,
-      strerror(errno));
+    pr_log_pri(PR_LOG_WARNING, "CreateHome: error reading link '%s': %s",
+      src_path, strerror(errno));
     return -1;
   }
   link_path[len] = '\0';
@@ -176,14 +176,14 @@ static int copy_symlink(pool *p, const char *src_dir, const char *src_path,
     link_path = pdircat(p, dst_dir, link_path + strlen(src_dir), NULL);
 
   if (pr_fsio_symlink(link_path, dst_path) < 0) {
-    log_pri(PR_LOG_WARNING, "CreateHome: error symlinking '%s' to '%s': %s",
+    pr_log_pri(PR_LOG_WARNING, "CreateHome: error symlinking '%s' to '%s': %s",
       link_path, dst_path, strerror(errno));
     return -1;
   }
 
   /* Make sure the new symlink has the proper ownership. */
   if (pr_fsio_chown(dst_path, uid, gid) < 0)
-    log_pri(PR_LOG_WARNING, "CreateHome: error chown'ing '%s' to %u/%u: %s",
+    pr_log_pri(PR_LOG_WARNING, "CreateHome: error chown'ing '%s' to %u/%u: %s",
       dst_path, (unsigned int) uid, (unsigned int) gid, strerror(errno));
 
   return 0; 
@@ -198,8 +198,9 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
   DIR *dh = NULL;
   struct dirent *dent = NULL;
 
-  if ((dh = opendir(src_dir)) == NULL) {
-    log_pri(PR_LOG_WARNING, "CreateHome: error copying '%s' skel files: %s",
+  dh = opendir(src_dir);
+  if (dh == NULL) {
+    pr_log_pri(PR_LOG_WARNING, "CreateHome: error copying '%s' skel files: %s",
       src_dir, strerror(errno));
     return -1;
   }

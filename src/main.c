@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.208 2003-11-09 02:17:38 castaglia Exp $
+ * $Id: main.c,v 1.209 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -389,7 +389,7 @@ static void end_login_noexit(void) {
     pr_inet_close(session.pool, session.c);
 
   if (!is_master || ServerType == SERVER_INETD)
-    log_pri(PR_LOG_INFO, "FTP session closed.");
+    pr_log_pri(PR_LOG_INFO, "FTP session closed.");
 
 }
 
@@ -414,10 +414,10 @@ void end_login(int exitcode) {
 void session_exit(int pri, void *lv, int exitval, void *dummy) {
   char *msg = (char *) lv;
 
-  log_pri(pri, "%s", msg);
+  pr_log_pri(pri, "%s", msg);
 
   if (is_standalone && is_master) {
-    log_pri(PR_LOG_NOTICE, "ProFTPD " PROFTPD_VERSION_TEXT
+    pr_log_pri(PR_LOG_NOTICE, "ProFTPD " PROFTPD_VERSION_TEXT
       " standalone mode SHUTDOWN");
 
     PRIVS_ROOT
@@ -580,7 +580,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
             cmd_type == LOG_CMD ||
             cmd_type == LOG_CMD_ERR) {
           if (MODRET_ERRMSG(mr))
-            log_pri(PR_LOG_NOTICE, "%s", MODRET_ERRMSG(mr));
+            pr_log_pri(PR_LOG_NOTICE, "%s", MODRET_ERRMSG(mr));
 
         } else if (send_error) {
           if (MODRET_ERRNUM(mr) && MODRET_ERRMSG(mr))
@@ -784,7 +784,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
   /* Make sure we can receive OOB data */
   pr_inet_set_async(session.pool, session.c);
 
-  log_pri(PR_LOG_INFO, "FTP session opened.");
+  pr_log_pri(PR_LOG_INFO, "FTP session opened.");
 
   while (TRUE) {
     pr_signals_handle();
@@ -816,7 +816,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
         cmd_buf_size = 512;
 
       else if (*buf_size + 1 > sizeof(buf)) {
-	log_pri(PR_LOG_WARNING, "Invalid CommandBufferSize size given. "
+	pr_log_pri(PR_LOG_WARNING, "Invalid CommandBufferSize size given. "
           "Resetting to 512.");
 	cmd_buf_size = 512;
       }
@@ -870,7 +870,7 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     int max_fd;
     fd_set child_fds;
 
-    log_pri(PR_LOG_NOTICE, "received SIGHUP -- master server rehashing "
+    pr_log_pri(PR_LOG_NOTICE, "received SIGHUP -- master server rehashing "
       "configuration file");
 
     /* Make sure none of our children haven't completed start up */
@@ -878,7 +878,7 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     max_fd = -1;
 
     if ((max_fd = semaphore_fds(&child_fds, max_fd)) > -1) {
-      log_pri(PR_LOG_NOTICE, "waiting for child processes to complete "
+      pr_log_pri(PR_LOG_NOTICE, "waiting for child processes to complete "
         "initialization");
 
       while (max_fd != -1) {
@@ -915,7 +915,8 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     PRIVS_ROOT
     if (parse_config_file(config_filename) == -1) {
       PRIVS_RELINQUISH
-      log_pri(PR_LOG_ERR, "Fatal: unable to read configuration file '%s': %s",
+      pr_log_pri(PR_LOG_ERR,
+        "Fatal: unable to read configuration file '%s': %s",
         config_filename, strerror(errno));
       end_login(1);
     }
@@ -945,7 +946,7 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
   } else
 
     /* Child process -- cannot rehash, log error */
-    log_pri(PR_LOG_ERR, "received SIGHUP, cannot rehash child process");
+    pr_log_pri(PR_LOG_ERR, "received SIGHUP, cannot rehash child process");
 }
 
 #ifndef PR_DEVEL_NO_FORK
@@ -1020,7 +1021,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
      */
 
     if (pipe(sempipe) == -1) {
-      log_pri(PR_LOG_ERR, "pipe(): %s", strerror(errno));
+      pr_log_pri(PR_LOG_ERR, "pipe(): %s", strerror(errno));
       close(fd);
       return;
     }
@@ -1058,7 +1059,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
     case -1:
       sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
-      log_pri(PR_LOG_ERR, "fork(): %s", strerror(errno));
+      pr_log_pri(PR_LOG_ERR, "fork(): %s", strerror(errno));
 
       /* The parent doesn't need the socket open. */
       close(fd);
@@ -1180,7 +1181,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   pr_signals_unblock();
 
   if (!conn) {
-    log_pri(PR_LOG_ERR, "Fatal: unable to open incoming connection: %s",
+    pr_log_pri(PR_LOG_ERR, "Fatal: unable to open incoming connection: %s",
       strerror(errno));
     exit(1);
   }
@@ -1278,7 +1279,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 		   "%V", main_server->ServerName,
                    NULL );
 
-      log_auth(PR_LOG_NOTICE, "connection refused (%s) from %s [%s]",
+      pr_log_auth(PR_LOG_NOTICE, "connection refused (%s) from %s [%s]",
                reason, session.c->remote_name,
                pr_netaddr_get_ipstr(session.c->remote_addr));
 
@@ -1308,7 +1309,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
   /* Check config tree for <Limit LOGIN> directives */
   if (!login_check_limits(main_server->conf, TRUE, FALSE, &i)) {
-    log_pri(PR_LOG_NOTICE, "Connection from %s [%s] denied.",
+    pr_log_pri(PR_LOG_NOTICE, "Connection from %s [%s] denied.",
       session.c->remote_name,
       pr_netaddr_get_ipstr(session.c->remote_addr));
     exit(0);
@@ -1450,11 +1451,11 @@ static void daemon_loop(void) {
       time_t now = time(NULL);
 
       if (difftime(deny, now) < 0.0) {
-        log_pri(PR_LOG_ERR, SHUTMSG_PATH " present: all incoming connections "
-          "will be refused.");
+        pr_log_pri(PR_LOG_ERR, SHUTMSG_PATH
+          " present: all incoming connections will be refused.");
 
       } else {
-        log_pri(PR_LOG_ERR, SHUTMSG_PATH " present: incoming connections "
+        pr_log_pri(PR_LOG_ERR, SHUTMSG_PATH " present: incoming connections "
           "will be denied starting %s", CHOP(ctime(&deny)));
       }
     }
@@ -1511,7 +1512,7 @@ static void daemon_loop(void) {
       time(&this_error);
 
       if ((this_error - last_error) <= 5 && err_count++ > 10) {
-        log_pri(PR_LOG_ERR, "Fatal: select() failing repeatedly, shutting "
+        pr_log_pri(PR_LOG_ERR, "Fatal: select() failing repeatedly, shutting "
           "down.");
         exit(1);
 
@@ -1520,8 +1521,8 @@ static void daemon_loop(void) {
         err_count = 0;
       }
 
-      log_pri(PR_LOG_NOTICE, "select() failed in daemon_loop(): %s",
-              strerror(errno));
+      pr_log_pri(PR_LOG_NOTICE, "select() failed in daemon_loop(): %s",
+        strerror(errno));
     }
 
     if (i == 0)
@@ -1567,7 +1568,7 @@ static void daemon_loop(void) {
       if (ServerMaxInstances && (child_listlen >= ServerMaxInstances)) {
         pr_event_generate("core.max-instances", NULL);
         
-        log_pri(PR_LOG_WARNING,
+        pr_log_pri(PR_LOG_WARNING,
           "MaxInstances (%d) reached, new connection denied",
           ServerMaxInstances);
         close(fd);
@@ -1576,7 +1577,7 @@ static void daemon_loop(void) {
       } else if (max_connects && (nconnects > max_connects)) {
         pr_event_generate("core.max-connection-rate", NULL);
 
-        log_pri(PR_LOG_WARNING,
+        pr_log_pri(PR_LOG_WARNING,
           "MaxConnectionRate (%lu/%u secs) reached, new connection denied",
           max_connects, max_connect_interval);
         close(fd);
@@ -1748,7 +1749,7 @@ static char *prepare_core(void) {
     chdir(dir);
 
   else
-    log_pri(PR_LOG_ERR, "unable to create '%s': %s", dir, strerror(errno));
+    pr_log_pri(PR_LOG_ERR, "unable to create '%s': %s", dir, strerror(errno));
   return dir;
 }
 #endif /* PR_DEVEL_COREDUMP */
@@ -1761,10 +1762,10 @@ static RETSIGTYPE sig_abort(int signo) {
 static void handle_abort(void) {
 
 #ifdef PR_DEVEL_COREDUMP
-  log_pri(PR_LOG_NOTICE, "ProFTPD received SIGABRT signal, generating core "
+  pr_log_pri(PR_LOG_NOTICE, "ProFTPD received SIGABRT signal, generating core "
     "file in %s", prepare_core());
 #else
-  log_pri(PR_LOG_NOTICE, "ProFTPD received SIGABRT signal, no core dump");
+  pr_log_pri(PR_LOG_NOTICE, "ProFTPD received SIGABRT signal, no core dump");
 #endif /* PR_DEVEL_COREDUMP */
 
   end_login_noexit();
@@ -1783,8 +1784,8 @@ static RETSIGTYPE sig_terminate(int signo) {
      * process is terminating anyway, why not?  It helps when knowing/logging
      * that a segfault happened...
      */
-    log_pri(PR_LOG_NOTICE, "ProFTPD terminating (signal 11)");
-    log_pri(PR_LOG_INFO, "FTP session closed.");
+    pr_log_pri(PR_LOG_NOTICE, "ProFTPD terminating (signal 11)");
+    pr_log_pri(PR_LOG_INFO, "FTP session closed.");
 
     /* Restore the default signal handler. */
     signal(SIGSEGV, SIG_DFL);
@@ -1848,7 +1849,7 @@ static void debug_memory(const char *fmt, ...) {
 
   buf[sizeof(buf)-1] = '\0';
 
-  log_pri(PR_LOG_NOTICE, "%s", buf);
+  pr_log_pri(PR_LOG_NOTICE, "%s", buf);
 }
 
 static void handle_debug(void) {
@@ -1857,12 +1858,12 @@ static void handle_debug(void) {
 #endif /* !USE_CTRLS */
 
 static void handle_xcpu(void) {
-  log_pri(PR_LOG_NOTICE, "ProFTPD CPU limit exceeded (signal %d)", SIGXCPU);
+  pr_log_pri(PR_LOG_NOTICE, "ProFTPD CPU limit exceeded (signal %d)", SIGXCPU);
   finish_terminate();
 }
 
 static void handle_terminate_other(void) {
-  log_pri(PR_LOG_ERR, "ProFTPD terminating (signal %d)", term_signo);
+  pr_log_pri(PR_LOG_ERR, "ProFTPD terminating (signal %d)", term_signo);
   finish_terminate();
 }
 
@@ -1880,7 +1881,7 @@ static void handle_terminate(void) {
       PRIVS_RELINQUISH
     }
 
-    log_pri(PR_LOG_NOTICE, "ProFTPD killed (signal %d)", term_signo);
+    pr_log_pri(PR_LOG_NOTICE, "ProFTPD killed (signal %d)", term_signo);
   }
 
   finish_terminate();
@@ -1915,7 +1916,7 @@ static void finish_terminate(void) {
     PRIVS_RELINQUISH
 
     if (is_standalone) {
-      log_pri(PR_LOG_NOTICE, "ProFTPD " PROFTPD_VERSION_TEXT
+      pr_log_pri(PR_LOG_NOTICE, "ProFTPD " PROFTPD_VERSION_TEXT
         " standalone mode SHUTDOWN");
 
       /* Clean up the scoreboard */
@@ -2005,7 +2006,8 @@ void set_daemon_rlimits(void) {
   struct rlimit rlim;
 
   if (getrlimit(RLIMIT_CORE, &rlim) == -1)
-    log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_CORE): %s", strerror(errno));
+    pr_log_pri(PR_LOG_ERR, "error: getrlimit(RLIMIT_CORE): %s",
+      strerror(errno));
 
   else {
 #ifdef PR_DEVEL_COREDUMP
@@ -2017,7 +2019,8 @@ void set_daemon_rlimits(void) {
     PRIVS_ROOT
     if (setrlimit(RLIMIT_CORE, &rlim) == -1) {
       PRIVS_RELINQUISH
-      log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_CORE): %s", strerror(errno));
+      pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_CORE): %s",
+        strerror(errno));
       return;
     }
     PRIVS_RELINQUISH
@@ -2035,7 +2038,7 @@ void set_daemon_rlimits(void) {
       PRIVS_ROOT
       if (setrlimit(RLIMIT_CPU, cpu_rlimit) == -1) {
         PRIVS_RELINQUISH
-        log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_CPU): %s",
+        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_CPU): %s",
           strerror(errno));
         return;
       }
@@ -2060,20 +2063,21 @@ void set_daemon_rlimits(void) {
 #  if defined(RLIMIT_AS)
       if (setrlimit(RLIMIT_AS, memory_rlimit) == -1) {
         PRIVS_RELINQUISH
-        log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_AS): %s", strerror(errno));
+        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_AS): %s",
+          strerror(errno));
         return;
       }
 #  elif defined(RLIMIT_DATA)
       if (setrlimit(RLIMIT_DATA, memory_rlimit) == -1) {
         PRIVS_RELINQUISH
-        log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_DATA): %s",
+        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_DATA): %s",
           strerror(errno));
         return;
       }
 #  elif defined(RLIMIT_VMEM)
       if (setrlimit(RLIMIT_VMEM, memory_rlimit) == -1) {
         PRIVS_RELINQUISH
-        log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_VMEM): %s",
+        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_VMEM): %s",
           strerror(errno));
         return;
       }
@@ -2099,14 +2103,14 @@ void set_daemon_rlimits(void) {
 #  if defined(RLIMIT_NOFILE)
       if (setrlimit(RLIMIT_NOFILE, nofile_rlimit) == -1) {
         PRIVS_RELINQUISH
-        log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_NOFILE): %s",
+        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_NOFILE): %s",
           strerror(errno));
         return;
       }
 #  elif defined(RLIMIT_OFILE)
       if (setrlimit(RLIMIT_OFILE, nofile_rlimit) == -1) {
         PRIVS_RELINQUISH
-        log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_OFILE): %s",
+        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_OFILE): %s",
           strerror(errno));
         return;
       }
@@ -2136,7 +2140,7 @@ void set_session_rlimits(void) {
       PRIVS_ROOT
       if (setrlimit(RLIMIT_CPU, cpu_rlimit) == -1) {
         PRIVS_RELINQUISH
-        log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_CPU): %s",
+        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_CPU): %s",
           strerror(errno));
         return;
       }
@@ -2161,20 +2165,21 @@ void set_session_rlimits(void) {
 #  if defined(RLIMIT_AS)
       if (setrlimit(RLIMIT_AS, memory_rlimit) == -1) {
         PRIVS_RELINQUISH
-        log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_AS): %s", strerror(errno));
+        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_AS): %s",
+          strerror(errno));
         return;
       }
 #  elif defined(RLIMIT_DATA)
       if (setrlimit(RLIMIT_DATA, memory_rlimit) == -1) {
         PRIVS_RELINQUISH
-        log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_DATA): %s",
+        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_DATA): %s",
           strerror(errno));
         return;
       }
 #  elif defined(RLIMIT_VMEM)
       if (setrlimit(RLIMIT_VMEM, memory_rlimit) == -1) {
         PRIVS_RELINQUISH
-        log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_VMEM): %s",
+        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_VMEM): %s",
           strerror(errno));
         return;
       }
@@ -2200,14 +2205,14 @@ void set_session_rlimits(void) {
 #  if defined(RLIMIT_NOFILE)
       if (setrlimit(RLIMIT_NOFILE, nofile_rlimit) == -1) {
         PRIVS_RELINQUISH
-        log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_NOFILE): %s",
+        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_NOFILE): %s",
           strerror(errno));
         return;
       }
 #  elif defined(RLIMIT_OFILE)
       if (setrlimit(RLIMIT_OFILE, nofile_rlimit) == -1) {
         PRIVS_RELINQUISH
-        log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_OFILE): %s",
+        pr_log_pri(PR_LOG_ERR, "error: setrlimit(RLIMIT_OFILE): %s",
           strerror(errno));
         return;
       }
@@ -2308,12 +2313,12 @@ static void inetd_main(void) {
 
     switch (res) {
       case PR_SCORE_ERR_BAD_MAGIC:
-        log_pri(PR_LOG_ERR, "error opening scoreboard: bad/corrupted file");
+        pr_log_pri(PR_LOG_ERR, "error opening scoreboard: bad/corrupted file");
         return;
 
       case PR_SCORE_ERR_OLDER_VERSION:
       case PR_SCORE_ERR_NEWER_VERSION:
-        log_pri(PR_LOG_ERR, "error opening scoreboard: wrong version, "
+        pr_log_pri(PR_LOG_ERR, "error opening scoreboard: wrong version, "
           "writing new scoreboard");
 
         /* Delete the scoreboard, then open it again (and assume that the
@@ -2325,7 +2330,7 @@ static void inetd_main(void) {
         break;
 
       default:
-        log_pri(PR_LOG_ERR, "error opening scoreboard: %s",
+        pr_log_pri(PR_LOG_ERR, "error opening scoreboard: %s",
           strerror(errno));
         return;
     }
@@ -2346,7 +2351,7 @@ static void inetd_main(void) {
     int af = AF_INET6;
     if (setsockopt(STDIN_FILENO, IPPROTO_IPV6, IPV6_ADDRFORM, &af,
         sizeof(af)) < 0) {
-      log_pri(PR_LOG_NOTICE, "error converting stdin to IPv6 socket: %s",
+      pr_log_pri(PR_LOG_NOTICE, "error converting stdin to IPv6 socket: %s",
         strerror(errno));
     }
   }
@@ -2393,20 +2398,22 @@ static void standalone_main(void) {
 
     switch (res) {
       case PR_SCORE_ERR_BAD_MAGIC:
-        log_pri(PR_LOG_ERR, "error opening scoreboard: bad/corrupted file");
+        pr_log_pri(PR_LOG_ERR,
+          "error opening scoreboard: bad/corrupted file");
         return;
 
       case PR_SCORE_ERR_OLDER_VERSION:
-        log_pri(PR_LOG_ERR, "error opening scoreboard: bad version (too old)");
+        pr_log_pri(PR_LOG_ERR,
+          "error opening scoreboard: bad version (too old)");
         return;
 
       case PR_SCORE_ERR_NEWER_VERSION:
-        log_pri(PR_LOG_ERR, "error opening scoreboard: bad version (too new)");
+        pr_log_pri(PR_LOG_ERR,
+          "error opening scoreboard: bad version (too new)");
         return;
 
       default:
-        log_pri(PR_LOG_ERR, "error opening scoreboard: %s",
-          strerror(errno));
+        pr_log_pri(PR_LOG_ERR, "error opening scoreboard: %s", strerror(errno));
         return;
     }
   }
@@ -2420,7 +2427,7 @@ static void standalone_main(void) {
 
   init_bindings();
 
-  log_pri(PR_LOG_NOTICE, "ProFTPD %s (built %s) standalone mode STARTUP",
+  pr_log_pri(PR_LOG_NOTICE, "ProFTPD %s (built %s) standalone mode STARTUP",
     PROFTPD_VERSION_TEXT " " PR_STATUS, BUILD_STAMP);
 
   write_pid();
@@ -2513,14 +2520,15 @@ int main(int argc, char *argv[], char **envp) {
    */
   if ((logfd = open(RUN_DIR "/proftpd-memory.log",
 		   O_WRONLY | O_CREAT | O_APPEND, 0644))< 0) {
-	log_pri(PR_LOG_ERR, "Error opening error logfile: %s", strerror(errno));
+	pr_log_pri(PR_LOG_ERR, "Error opening error logfile: %s",
+          strerror(errno));
 	exit(1);
   }
 
   close(fileno(stderr));
   if (dup2(logfd, fileno(stderr)) == -1) {
-	log_pri(PR_LOG_ERR, "Error converting standard error to a logfile: %s",
-					strerror(errno));
+	pr_log_pri(PR_LOG_ERR,
+          "Error converting standard error to a logfile: %s", strerror(errno));
 	exit(1);
   }
   close(logfd);
@@ -2585,7 +2593,7 @@ int main(int argc, char *argv[], char **envp) {
 
     case 'D':
       if (!optarg) {
-        log_pri(PR_LOG_ERR, "Fatal: -D requires definition argument");
+        pr_log_pri(PR_LOG_ERR, "Fatal: -D requires definition argument");
         exit(1);
       }
 
@@ -2608,7 +2616,7 @@ int main(int argc, char *argv[], char **envp) {
 
     case 'd':
       if (!optarg) {
-        log_pri(PR_LOG_ERR, "Fatal: -d requires debugging level argument.");
+        pr_log_pri(PR_LOG_ERR, "Fatal: -d requires debugging level argument.");
         exit(1);
       }
       log_setdebuglevel(atoi(optarg));
@@ -2616,7 +2624,8 @@ int main(int argc, char *argv[], char **envp) {
 
     case 'c':
       if (!optarg) {
-        log_pri(PR_LOG_ERR, "Fatal: -c requires configuration path argument.");
+        pr_log_pri(PR_LOG_ERR,
+          "Fatal: -c requires configuration path argument.");
         exit(1);
       }
 
@@ -2640,7 +2649,7 @@ int main(int argc, char *argv[], char **envp) {
     case 'p': {
       if (!optarg ||
           ((persistent_passwd = atoi(optarg)) != 1 && persistent_passwd != 0)) {
-        log_pri(PR_LOG_ERR, "Fatal: -p requires boolean (0|1) argument.");
+        pr_log_pri(PR_LOG_ERR, "Fatal: -p requires boolean (0|1) argument.");
         exit(1);
       }
 
@@ -2659,20 +2668,21 @@ int main(int argc, char *argv[], char **envp) {
       show_usage(0);
 
     case '?':
-      log_pri(PR_LOG_ERR, "unknown option: %c", (char)optopt);
+      pr_log_pri(PR_LOG_ERR, "unknown option: %c", (char)optopt);
       show_usage(1);
     }
   }
 
   if (show_version) {
     if (show_version == 1)
-      log_pri(PR_LOG_NOTICE, "ProFTPD Version " PROFTPD_VERSION_TEXT);
+      pr_log_pri(PR_LOG_NOTICE, "ProFTPD Version " PROFTPD_VERSION_TEXT);
 
     else {
-      log_pri(PR_LOG_NOTICE, "         Version: %s",
+      pr_log_pri(PR_LOG_NOTICE, "         Version: %s",
         PROFTPD_VERSION_TEXT " " PR_STATUS);
-      log_pri(PR_LOG_NOTICE, "Scoreboard Version: %08x", PR_SCOREBOARD_VERSION);
-      log_pri(PR_LOG_NOTICE, "     Build Stamp: %s", BUILD_STAMP);
+      pr_log_pri(PR_LOG_NOTICE, "Scoreboard Version: %08x",
+        PR_SCOREBOARD_VERSION);
+      pr_log_pri(PR_LOG_NOTICE, "     Build Stamp: %s", BUILD_STAMP);
     }
 
     exit(0);
@@ -2700,7 +2710,7 @@ int main(int argc, char *argv[], char **envp) {
    * that the given configuration path is valid.
    */
   if (pr_fs_valid_path(config_filename) < 0) {
-    log_pri(PR_LOG_ERR, "Fatal: -c requires an absolute path");
+    pr_log_pri(PR_LOG_ERR, "Fatal: -c requires an absolute path");
     exit(1);
   }
 
@@ -2709,7 +2719,7 @@ int main(int argc, char *argv[], char **envp) {
   pr_event_generate("core.preparse", NULL);
 
   if (parse_config_file(config_filename) == -1) {
-    log_pri(PR_LOG_ERR, "Fatal: unable to read configuration file '%s': %s",
+    pr_log_pri(PR_LOG_ERR, "Fatal: unable to read configuration file '%s': %s",
       config_filename, strerror(errno));
     exit(1);
   }
@@ -2719,7 +2729,7 @@ int main(int argc, char *argv[], char **envp) {
   free_conf_stacks();
 
   if (fixup_servers() < 0) {
-    log_pri(PR_LOG_ERR, "Fatal: error processing configuration file '%s'",
+    pr_log_pri(PR_LOG_ERR, "Fatal: error processing configuration file '%s'",
       config_filename);
     exit(1);
   }
@@ -2764,7 +2774,7 @@ int main(int argc, char *argv[], char **envp) {
       log_debug(DEBUG2, "unable to retrieve daemon supplemental groups");
 
     if (set_groups(permanent_pool, daemon_gid, daemon_gids) < 0)
-      log_pri(PR_LOG_ERR, "unable to set daemon groups: %s",
+      pr_log_pri(PR_LOG_ERR, "unable to set daemon groups: %s",
         strerror(errno));
   }
 
@@ -2787,13 +2797,13 @@ int main(int argc, char *argv[], char **envp) {
    */
 
   if (geteuid() != daemon_uid) {
-    log_pri(PR_LOG_ERR, "unable to set uid to %lu, current uid: %lu",
+    pr_log_pri(PR_LOG_ERR, "unable to set uid to %lu, current uid: %lu",
 		    (unsigned long)daemon_uid,(unsigned long)geteuid());
     exit(1);
   }
 
   if (getegid() != daemon_gid) {
-    log_pri(PR_LOG_ERR, "unable to set gid to %lu, current gid: %lu",
+    pr_log_pri(PR_LOG_ERR, "unable to set gid to %lu, current gid: %lu",
 		    (unsigned long)daemon_gid,(unsigned long)getegid());
     exit(1);
   }

@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.82 2003-11-01 07:11:07 castaglia Exp $
+ * $Id: inet.c,v 1.83 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -36,7 +36,12 @@ extern server_rec *main_server;
 /* A private work pool for all pr_inet_* functions to use. */
 static pool *inet_pool = NULL;
 
+static int ip_proto = IPPROTO_IP;
+#ifdef USE_IPV6
+static int ipv6_proto = IPPROTO_IPV6;
+#endif /* USE_IPV6 */
 static int tcp_proto = IPPROTO_TCP;
+
 static int inet_errno = 0;		/* Holds errno */
 
 /* The default address family to use when creating a socket, if a pr_netaddr_t
@@ -432,7 +437,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
       /* On failure, destroy the connection and return NULL. */
       inet_errno = errno;
       if (reporting)
-        log_pri(PR_LOG_ERR, "socket() failed in connection initialization: "
+        pr_log_pri(PR_LOG_ERR, "socket() failed in connection initialization: "
           "%s", strerror(inet_errno));
       destroy_pool(c->pool);
       return NULL;
@@ -441,15 +446,43 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     /* Allow address reuse. */
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void *) &one,
         sizeof(one)) < 0)
-      log_pri(PR_LOG_NOTICE, "error setting SO_REUSEADDR: %s", strerror(errno));
+      pr_log_pri(PR_LOG_NOTICE, "error setting SO_REUSEADDR: %s",
+        strerror(errno));
 
     memset(&na, 0, sizeof(na));
     pr_netaddr_set_family(&na, addr_family);
 
     if (bind_addr)
       pr_netaddr_set_sockaddr(&na, pr_netaddr_get_sockaddr(bind_addr));
-    else
+
+    else {
       pr_netaddr_set_sockaddr_any(&na);
+
+#if defined(USE_IPV6) && defined(IPV6_V6ONLY)
+      if (addr_family == AF_INET6) {
+        int off = 0;
+
+# ifdef SOL_IP
+        int level = SOL_IP;
+# else
+        int level = ipv6_proto;
+# endif /* SOL_IP */
+
+      	/* If creating a wildcard socket IPv6 socket, make sure that it
+         * will accept IPv4 connections as well.  This is the default on
+         * Linux and Solaris; BSD usually defaults to allowing only IPv6
+         * (depending on the net.inet6.ip6.v6only sysctl value).
+         *
+         * Ideally, this setsockopt() call would be configurable via the
+         * SocketOptions directive.
+         */
+
+        if (setsockopt(fd, level, IPV6_V6ONLY, (void *) &off, sizeof(off)) < 0)
+          pr_log_pri(PR_LOG_NOTICE, "error setting IPV6_V6ONLY: %s",
+            strerror(errno));
+      }
+#endif /* USE_IPV6 and IPV6_V6ONLY */
+    }
 
     pr_netaddr_set_port(&na, htons(port));
 
@@ -500,9 +533,9 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
       }
 
       if (reporting) {
-        log_pri(PR_LOG_ERR, "Failed binding to %s, port %d: %s",
+        pr_log_pri(PR_LOG_ERR, "Failed binding to %s, port %d: %s",
           pr_netaddr_get_ipstr(&na), port, strerror(hold_errno));
-        log_pri(PR_LOG_ERR, "Check the ServerType directive to ensure "
+        pr_log_pri(PR_LOG_ERR, "Check the ServerType directive to ensure "
           "you are configured correctly.");
       }
 
@@ -608,7 +641,7 @@ conn_t *pr_inet_create_connection_portrange(pool *p, xaset_t *servers,
         FALSE, FALSE);
 
       if (!c && inet_errno != EADDRINUSE) {
-        log_pri(PR_LOG_ERR, "error initializing connection: %s",
+        pr_log_pri(PR_LOG_ERR, "error initializing connection: %s",
           strerror(inet_errno));
         end_login(1);
       }
@@ -662,7 +695,7 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
 #ifdef SOL_IP
   int ip_level = SOL_IP;
 #else
-  int ip_level = IPPROTO_IP;
+  int ip_level = ip_proto;
 #endif /* SOL_IP */
 
 #ifdef SOL_TCP
@@ -684,13 +717,13 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
     if (c->wfd != -1)
       if (setsockopt(c->wfd, tcp_level, TCP_NODELAY, (void *) &nodelay,
           sizeof(nodelay)) < 0)
-        log_pri(PR_LOG_NOTICE, "error setting write fd TCP_NODELAY: %s",
+        pr_log_pri(PR_LOG_NOTICE, "error setting write fd TCP_NODELAY: %s",
           strerror(errno));
 
     if (c->rfd != -1)
       if (setsockopt(c->rfd, IPPROTO_TCP, TCP_NODELAY, (void *) &nodelay,
           sizeof(nodelay)) < 0)
-        log_pri(PR_LOG_NOTICE, "error setting read fd TCP_NODELAY: %s",
+        pr_log_pri(PR_LOG_NOTICE, "error setting read fd TCP_NODELAY: %s",
           strerror(errno));
   }
 #endif /* TCP_NODELAY */
@@ -698,12 +731,12 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
 #ifdef TCP_MAXSEG
   if (c->wfd != -1 && mss)
     if (setsockopt(c->wfd, tcp_level, TCP_MAXSEG, &mss, sizeof(mss)) < 0)
-      log_pri(PR_LOG_NOTICE, "error setting write fd TCP_MAXSEG(%d): %s",
+      pr_log_pri(PR_LOG_NOTICE, "error setting write fd TCP_MAXSEG(%d): %s",
         mss, strerror(errno));
 
   if (c->rfd != -1 && mss)
     if (setsockopt(c->wfd, tcp_level, TCP_MAXSEG, &mss, sizeof(mss)) < 0)
-      log_pri(PR_LOG_NOTICE, "error setting read fd TCP_MAXSEG(%d): %s",
+      pr_log_pri(PR_LOG_NOTICE, "error setting read fd TCP_MAXSEG(%d): %s",
         mss, strerror(errno));
 #endif /* TCP_MAXSEG */
 
@@ -720,12 +753,12 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
 #ifdef IP_TOS
   if (c->wfd != -1)
     if (setsockopt(c->wfd, ip_level, IP_TOS, (void *) &tos, sizeof(tos)) < 0)
-      log_pri(PR_LOG_NOTICE, "error setting write fd IP_TOS: %s",
+      pr_log_pri(PR_LOG_NOTICE, "error setting write fd IP_TOS: %s",
         strerror(errno));
 
   if (c->rfd != -1)
     if (setsockopt(c->rfd, ip_level, IP_TOS, (void *) &tos, sizeof(tos)) < 0)
-      log_pri(PR_LOG_NOTICE, "error setting read fd IP_TOS: %s",
+      pr_log_pri(PR_LOG_NOTICE, "error setting read fd IP_TOS: %s",
         strerror(errno));
 #endif /* IP_TOS */
 
@@ -734,13 +767,13 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
   if (c->wfd != -1)
     if (setsockopt(c->wfd, tcp_level, TCP_NOPUSH, (void *) &nopush,
         sizeof(nopush)) < 0)
-      log_pri(PR_LOG_NOTICE, "error setting write fd TCP_NOPUSH: %s",
+      pr_log_pri(PR_LOG_NOTICE, "error setting write fd TCP_NOPUSH: %s",
         strerror(errno));
 
   if (c->rfd != -1)
     if (setsockopt(c->rfd, tcp_level, TCP_NOPUSH, (void *) &nopush,
         sizeof(nopush)) < 0)
-      log_pri(PR_LOG_NOTICE, "error setting read fd TCP_NOPUSH: %s",
+      pr_log_pri(PR_LOG_NOTICE, "error setting read fd TCP_NOPUSH: %s",
         strerror(errno));
 #endif /* TCP_NOPUSH */
 
@@ -763,7 +796,7 @@ int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf) {
   if (c->wfd != -1) {
     if (setsockopt(c->wfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &no_keep_alive,
         sizeof(int)) < 0)
-      log_pri(PR_LOG_NOTICE, "error setting write fd SO_KEEPALIVE: %s",
+      pr_log_pri(PR_LOG_NOTICE, "error setting write fd SO_KEEPALIVE: %s",
         strerror(errno));
 
     len = sizeof(csndbuf);
@@ -772,7 +805,8 @@ int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf) {
     if (sndbuf && sndbuf > csndbuf)
       if (setsockopt(c->wfd, SOL_SOCKET, SO_SNDBUF, (void *) &sndbuf,
           sizeof(sndbuf)) < 0)
-        log_pri(PR_LOG_NOTICE, "error setting SO_SNBUF: %s", strerror(errno));
+        pr_log_pri(PR_LOG_NOTICE, "error setting SO_SNBUF: %s",
+          strerror(errno));
 
     c->sndbuf = (sndbuf ? sndbuf : csndbuf);
   }
@@ -780,7 +814,7 @@ int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf) {
   if (c->rfd != -1) {
     if (setsockopt(c->rfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &no_keep_alive,
         sizeof(int)) < 0)
-      log_pri(PR_LOG_NOTICE, "error setting read fd SO_KEEPALIVE: %s",
+      pr_log_pri(PR_LOG_NOTICE, "error setting read fd SO_KEEPALIVE: %s",
         strerror(errno));
 
     len = sizeof(crcvbuf);
@@ -789,7 +823,8 @@ int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf) {
     if (rcvbuf && rcvbuf > crcvbuf)
       if (setsockopt(c->rfd, SOL_SOCKET, SO_RCVBUF, (void *) &rcvbuf,
           sizeof(rcvbuf)) < 0)
-        log_pri(PR_LOG_NOTICE, "error setting SO_RCVFBUF: %s", strerror(errno));
+        pr_log_pri(PR_LOG_NOTICE, "error setting SO_RCVFBUF: %s",
+          strerror(errno));
 
     c->rcvbuf = (rcvbuf ? rcvbuf : crcvbuf);
   }
@@ -802,7 +837,8 @@ static void set_oobinline(int fd) {
   int on = 1;
   if (fd != -1)
     if (setsockopt(fd, SOL_SOCKET, SO_OOBINLINE, (void*)&on, sizeof(on)) < 0)
-      log_pri(PR_LOG_NOTICE, "error setting SO_OOBINLINE: %s", strerror(errno));
+      pr_log_pri(PR_LOG_NOTICE, "error setting SO_OOBINLINE: %s",
+        strerror(errno));
 }
 #endif
 
@@ -897,7 +933,7 @@ int pr_inet_listen(pool *p, conn_t *c, int backlog) {
         continue;
       }
 
-      log_pri(PR_LOG_ERR, "listen() failed in inet_listen(): %s",
+      pr_log_pri(PR_LOG_ERR, "listen() failed in inet_listen(): %s",
         strerror(errno));
       end_login(1);
 
@@ -1083,8 +1119,9 @@ conn_t *pr_inet_accept(pool *p, conn_t *d, conn_t *c, int rfd, int wfd,
           (getpeername(fd, pr_netaddr_get_sockaddr(&na), &nalen) != -1)) {
 
         if (pr_netaddr_cmp(&na, c->remote_addr) != 0) {
-          log_pri(PR_LOG_NOTICE, "SECURITY VIOLATION: Passive connection from "
-            "%s rejected.", pr_netaddr_get_ipstr(&na));
+          pr_log_pri(PR_LOG_NOTICE,
+            "SECURITY VIOLATION: Passive connection from %s rejected.",
+            pr_netaddr_get_ipstr(&na));
           close(fd);
           continue;
         }
@@ -1316,7 +1353,7 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
       continue;
     }
 
-    log_pri(PR_LOG_WARNING, "error calling ioctl(RPROTDIS): %s", 
+    pr_log_pri(PR_LOG_WARNING, "error calling ioctl(RPROTDIS): %s", 
       strerror(errno));
     break;
   }
@@ -1332,7 +1369,18 @@ void init_inet(void) {
   setprotoent(FALSE);
 #endif
 
-  if ((pr = getprotobyname("tcp")) != NULL)
+  pr = getprotobyname("ip"); 
+  if (pr != NULL)
+    ip_proto = pr->p_proto;
+
+#ifdef USE_IPV6
+  pr = getprotobyname("ipv6"); 
+  if (pr != NULL)
+    ipv6_proto = pr->p_proto;
+#endif /* USE_IPV6 */
+
+  pr = getprotobyname("tcp");
+  if (pr != NULL)
     tcp_proto = pr->p_proto;
 
 #ifdef HAVE_ENDPROTOENT

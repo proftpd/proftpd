@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.17 2003-11-06 04:43:39 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.18 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -239,7 +239,7 @@ static struct group *af_getgrp(const char *buf) {
   }
 
   if (i < (NGRPFIELDS - 1)) {
-    log_pri(PR_LOG_ERR, "Malformed entry in group file: %s", buf);
+    pr_log_pri(PR_LOG_ERR, "Malformed entry in group file: %s", buf);
     return NULL;
   }
 
@@ -406,7 +406,7 @@ static unsigned char af_setgrent(void) {
 
     if (!af_open_file(af_current_group_file)) {
       /* Log the error */
-      log_pri(PR_LOG_ERR, "error: unable to open group file '%s': %s",
+      pr_log_pri(PR_LOG_ERR, "error: unable to open group file '%s': %s",
         af_current_group_file->af_path, strerror(errno));
 
       /* Move to the next file in the list. */
@@ -560,7 +560,7 @@ static unsigned char af_setpwent(void) {
 
     if (!af_open_file(af_current_user_file)) {
       /* Log the error */
-      log_pri(PR_LOG_ERR, "error: unable to open passwd file '%s': %s",
+      pr_log_pri(PR_LOG_ERR, "error: unable to open passwd file '%s': %s",
         af_current_user_file->af_path, strerror(errno));
 
       /* Move to the next file in the list. */

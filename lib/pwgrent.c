@@ -25,7 +25,7 @@ not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite
 
 /* From log.c/log.h */
 #define PR_LOG_ERR LOG_ERR
-extern void log_pri(int, char *, ...);
+extern void pr_log_pri(int, char *, ...);
 
 /* From support.c */
 extern char *sstrncpy(char *dest, const char *src, size_t n);
@@ -196,7 +196,7 @@ static struct group *supp_getgrent(const char *buf) {
   }
 
   if (i < (NGRPFIELDS - 1)) {
-    log_pri(PR_LOG_ERR, "Malformed entry in group file: %s", buf);
+    pr_log_pri(PR_LOG_ERR, "Malformed entry in group file: %s", buf);
     return NULL;
   }
 

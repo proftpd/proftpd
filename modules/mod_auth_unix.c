@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.12 2003-10-31 19:41:41 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.13 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -146,7 +146,7 @@ static void p_setpwent(void) {
 
   else
     if ((pwdf = fopen(PASSWD,"r")) == NULL)
-      log_pri(PR_LOG_ERR, "Unable to open password file %s for reading: %s",
+      pr_log_pri(PR_LOG_ERR, "Unable to open password file %s for reading: %s",
         PASSWD, strerror(errno));
 }
 
@@ -163,7 +163,7 @@ static RETSETGRENTTYPE p_setgrent(void) {
 
   else
     if ((grpf = fopen(GROUP,"r")) == NULL)
-      log_pri(PR_LOG_ERR, "Unable to open group file %s for reading: %s",
+      pr_log_pri(PR_LOG_ERR, "Unable to open group file %s for reading: %s",
         GROUP, strerror(errno));
 
 #ifndef SETGRENT_VOID
@@ -679,17 +679,17 @@ MODRET pw_check(cmd_rec *cmd) {
   PRIVS_ROOT
   if ((res = sia_ses_init(&ent, 1, info, NULL, user, NULL, 0,
       NULL)) != SIASUCCESS) {
-    log_auth(PR_LOG_NOTICE, "sia_ses_init() returned %d for user '%s'", res,
+    pr_log_auth(PR_LOG_NOTICE, "sia_ses_init() returned %d for user '%s'", res,
       user);
 
   } else {
 
     if ((res = sia_ses_authent(NULL, pw, ent)) != SIASUCCESS)
-      log_auth(PR_LOG_NOTICE, "sia_ses_authent() returned %d for user '%s'",
+      pr_log_auth(PR_LOG_NOTICE, "sia_ses_authent() returned %d for user '%s'",
         res, user);
 
     if ((res = sia_ses_release(&ent)) != SIASUCCESS)
-      log_auth(PR_LOG_NOTICE, "sia_ses_release() returned %d", res);
+      pr_log_auth(PR_LOG_NOTICE, "sia_ses_release() returned %d", res);
   }
   PRIVS_RELINQUISH
 
@@ -729,7 +729,7 @@ MODRET pw_check(cmd_rec *cmd) {
 
       if ((token = cygwin_logon_user((const struct passwd *) pwent,
           pw)) == INVALID_HANDLE_VALUE) {
-        log_pri(PR_LOG_NOTICE, "error authenticating Cygwin user: %s",
+        pr_log_pri(PR_LOG_NOTICE, "error authenticating Cygwin user: %s",
           strerror(errno));
         return ERROR(cmd);
       }

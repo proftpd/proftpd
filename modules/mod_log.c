@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.58 2003-11-01 07:11:07 castaglia Exp $
+ * $Id: mod_log.c,v 1.59 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -343,24 +343,36 @@ static int _parse_classes(char *s) {
         *nextp++ = '\0';
     }
 
-    if (!strcasecmp(s,"NONE"))
-      { classes = CL_NONE; break; }
-    if (!strcasecmp(s,"ALL"))
-      { classes = CL_ALL; break; }
-    else if (!strcasecmp(s,"AUTH"))
+    if (strcasecmp(s, "NONE") == 0) {
+      classes = CL_NONE;
+      break;
+    }
+
+    if (strcasecmp(s, "ALL") == 0) {
+      classes = CL_ALL;
+      break;
+
+    } else if (strcasecmp(s, "AUTH") == 0) {
       classes |= CL_AUTH;
-    else if (!strcasecmp(s,"INFO"))
+
+    } else if (strcasecmp(s, "INFO") == 0) {
       classes |= CL_INFO;
-    else if (!strcasecmp(s,"DIRS"))
+
+    } else if (strcasecmp(s, "DIRS") == 0) {
       classes |= CL_DIRS;
-    else if (!strcasecmp(s,"READ"))
+
+    } else if (strcasecmp(s, "READ") == 0) {
       classes |= CL_READ;
-    else if (!strcasecmp(s,"WRITE"))
+
+    } else if (strcasecmp(s, "WRITE") == 0) {
       classes |= CL_WRITE;
-    else if (!strcasecmp(s,"MISC"))
+
+    } else if (strcasecmp(s, "MISC") == 0) {
       classes |= CL_MISC;
-    else
-      log_pri(PR_LOG_NOTICE, "ExtendedLog class '%s' is not defined.", s);
+
+    } else
+      pr_log_pri(PR_LOG_NOTICE, "ExtendedLog class '%s' is not defined.", s);
+
   } while ((s = nextp));
 
   return classes;
@@ -756,7 +768,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
           snprintf(argp + strlen(argp), sizeof(arg) - strlen(argp),
             "%c%.2d%.2d]", sign, timz/60, timz%60);
         else
-          log_pri(PR_LOG_NOTICE, "notice: %%t expansion yields excessive "
+          pr_log_pri(PR_LOG_NOTICE, "notice: %%t expansion yields excessive "
             "string, ignoring");
       }
     }
@@ -1011,8 +1023,9 @@ static void find_extendedlogs(void) {
           break;
 
       if (!logfmt) {
-        log_pri(PR_LOG_NOTICE, "ExtendedLog '%s' uses unknown format nickname "
-          "'%s'", logfname, logfmt_s);
+        pr_log_pri(PR_LOG_NOTICE,
+          "ExtendedLog '%s' uses unknown format nickname '%s'", logfname,
+          logfmt_s);
         goto loop_extendedlogs;
       }
 
@@ -1132,22 +1145,22 @@ static int log_sess_init(void) {
 
         pr_signals_block();
         PRIVS_ROOT
-        res = log_openfile(lf->lf_filename, &lf->lf_fd, EXTENDED_LOG_MODE);
+        res = pr_log_openfile(lf->lf_filename, &lf->lf_fd, EXTENDED_LOG_MODE);
         PRIVS_RELINQUISH
         pr_signals_unblock();
 
         if (res == -1) {
-          log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': %s",
+          pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': %s",
             lf->lf_filename, strerror(errno));
           continue;
 
         } else if (res == LOG_WRITEABLE_DIR) {
-          log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
+          pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
             "containing directory is world writeable", lf->lf_filename);
           continue;
 
         } else if (res == LOG_SYMLINK) {
-          log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
+          pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
             "%s is a symbolic link", lf->lf_filename, lf->lf_filename);
           close(lf->lf_fd);
           lf->lf_fd = -1;

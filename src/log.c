@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.62 2003-11-01 07:11:07 castaglia Exp $
+ * $Id: log.c,v 1.63 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -90,7 +90,7 @@ int log_open_xfer(const char *path) {
 
   if (xfer_fd == -1) {
     log_debug(DEBUG6, "opening TransferLog '%s'", path);
-    log_openfile(path, &xfer_fd, LOG_XFER_MODE);
+    pr_log_openfile(path, &xfer_fd, LOG_XFER_MODE);
   }
 
   return xfer_fd;
@@ -148,7 +148,7 @@ int log_wtmp(char *line, const char *name, const char *host,
   static int fdx = -1;
 
   if (fdx < 0 && (fdx = open(WTMPX_FILE, O_WRONLY|O_APPEND, 0)) < 0) {
-    log_pri(PR_LOG_WARNING, "wtmpx %s: %s", WTMPX_FILE, strerror(errno));
+    pr_log_pri(PR_LOG_WARNING, "wtmpx %s: %s", WTMPX_FILE, strerror(errno));
     return -1;
   }
 
@@ -190,7 +190,7 @@ int log_wtmp(char *line, const char *name, const char *host,
 #else /* Non-SVR4 systems */
 
   if (fd < 0 && (fd = open(WTMP_FILE,O_WRONLY|O_APPEND,0)) < 0) {
-    log_pri(PR_LOG_WARNING, "wtmp %s: %s", WTMP_FILE, strerror(errno));
+    pr_log_pri(PR_LOG_WARNING, "wtmp %s: %s", WTMP_FILE, strerror(errno));
     return -1;
   }
 
@@ -238,7 +238,7 @@ int log_wtmp(char *line, const char *name, const char *host,
   return res;
 }
 
-int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
+int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   pool *tmp_pool = NULL;
   char *tmp = NULL, *lf;
   unsigned char have_stat = FALSE, *allow_log_symlinks = NULL;
@@ -283,7 +283,7 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
 
   /* Do not log to world-writeable directories */
   if (sbuf.st_mode & S_IWOTH) {
-    log_pri(PR_LOG_NOTICE, "error: %s is a world writeable directory", lf);
+    pr_log_pri(PR_LOG_NOTICE, "error: %s is a world writeable directory", lf);
     destroy_pool(tmp_pool);
     return LOG_WRITEABLE_DIR;
   }
@@ -403,6 +403,37 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   return 0;
 }
 
+int pr_log_writefile(int logfd, const char *ident, const char *fmt, ...) {
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+  time_t timestamp = time(NULL);
+  struct tm *t = NULL;
+  va_list msg;
+
+  t = localtime(&timestamp);
+
+  /* Prepend the timestamp */
+  strftime(buf, sizeof(buf), "%b %d %H:%M:%S ", t);
+  buf[sizeof(buf)-1] = '\0';
+
+  /* Prepend a small header */
+  snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "%s[%u]: ",
+    ident, (unsigned int) getpid());
+  buf[sizeof(buf)-1] = '\0';
+
+  /* Affix the message */
+  va_start(msg, fmt);
+  vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), fmt, msg);
+  va_end(msg);
+
+  buf[sizeof(buf)-1] = '\0';
+  buf[strlen(buf)] = '\n';
+
+  if (write(logfd, buf, strlen(buf)) < 0)
+    return -1;
+
+  return 0;
+}
+
 int log_opensyslog(const char *fn) {
   int res = 0;
 
@@ -424,7 +455,7 @@ int log_opensyslog(const char *fn) {
       return -1;
     systemlog_fd = -1;
 
-  } else if ((res = log_openfile(systemlog_fn, &systemlog_fd,
+  } else if ((res = pr_log_openfile(systemlog_fn, &systemlog_fd,
       LOG_SYSTEM_MODE)) < 0) {
     memset(systemlog_fn, '\0', sizeof(systemlog_fn));
     return res;
@@ -529,7 +560,7 @@ static void log_write(int priority, int f, char *s) {
     syslog_sockfd = pr_openlog("proftpd", LOG_NDELAY|LOG_PID, facility);
 }
 
-void log_pri(int priority, const char *fmt, ...) {
+void pr_log_pri(int priority, const char *fmt, ...) {
   char buf[LOGBUFFER_SIZE] = {'\0'};
   va_list msg;
 
@@ -543,11 +574,10 @@ void log_pri(int priority, const char *fmt, ...) {
   log_write(priority, facility, buf);
 }
 
-/* Like log_pri(), but sends the log entry in the LOG_AUTHPRIV
- * facility (presumable it doesn't need to be seen by everyone
+/* Like pr_log_pri(), but sends the log entry in the LOG_AUTHPRIV
+ * facility (presumably it doesn't need to be seen by everyone).
  */
-
-void log_auth(int priority, const char *fmt, ...) {
+void pr_log_auth(int priority, const char *fmt, ...) {
   char buf[LOGBUFFER_SIZE] = {'\0'};
   va_list msg;
 
@@ -573,7 +603,7 @@ void log_stderr(int bool) {
  * numbers mean print more, DEBUG0 (0) == print no debugging log
  * (default)
  */
-int log_setdebuglevel(int level) {
+int pr_log_setdebuglevel(int level) {
   int old_level = debug_level;
   debug_level = level;
   return old_level;

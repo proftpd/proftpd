@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.33 2003-11-06 04:35:19 castaglia Exp $
+ * $Id: auth.c,v 1.34 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -166,12 +166,12 @@ struct passwd *auth_getpwent(pool *p) {
 
   /* Make sure the UID and GID are not -1 */
   if (res->pw_uid == (uid_t) -1) {
-    log_pri(PR_LOG_ERR, "error: UID of -1 not allowed");
+    pr_log_pri(PR_LOG_ERR, "error: UID of -1 not allowed");
     return NULL;
   }
 
   if (res->pw_gid == (gid_t) -1) {
-    log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
+    pr_log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
     return NULL;
   }
 
@@ -200,7 +200,7 @@ struct group *auth_getgrent(pool *p) {
 
   /* Make sure the GID is not -1 */
   if (res->gr_gid == (gid_t) -1) {
-    log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
+    pr_log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
     return NULL;
   }
 
@@ -225,18 +225,18 @@ struct passwd *auth_getpwnam(pool *p, const char *name) {
 
   /* Sanity check */
   if (res == NULL) {
-    log_pri(PR_LOG_NOTICE, "no such user '%s'", name);
+    pr_log_pri(PR_LOG_NOTICE, "no such user '%s'", name);
     return NULL;
   }
 
   /* Make sure the UID and GID are not -1 */
   if (res->pw_uid == (uid_t) -1) {
-    log_pri(PR_LOG_ERR, "error: UID of -1 not allowed");
+    pr_log_pri(PR_LOG_ERR, "error: UID of -1 not allowed");
     return NULL;
   }
 
   if (res->pw_gid == (gid_t) -1) {
-    log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
+    pr_log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
     return NULL;
   }
 
@@ -261,18 +261,18 @@ struct passwd *auth_getpwuid(pool *p, uid_t uid) {
 
   /* Sanity check */
   if (res == NULL) {
-    log_pri(PR_LOG_NOTICE, "no such UID '%lu'", (unsigned long)uid);
+    pr_log_pri(PR_LOG_NOTICE, "no such UID '%lu'", (unsigned long)uid);
     return NULL;
   }
 
   /* Make sure the UID and GID are not -1 */
   if (res->pw_uid == (uid_t) -1) {
-    log_pri(PR_LOG_ERR, "error: UID of -1 not allowed");
+    pr_log_pri(PR_LOG_ERR, "error: UID of -1 not allowed");
     return NULL;
   }
 
   if (res->pw_gid == (gid_t) -1) {
-    log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
+    pr_log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
     return NULL;
   }
 
@@ -297,13 +297,13 @@ struct group *auth_getgrnam(pool *p, const char *name) {
 
   /* Sanity check */
   if (res == NULL) {
-    log_pri(PR_LOG_NOTICE, "no such group '%s'", name);
+    pr_log_pri(PR_LOG_NOTICE, "no such group '%s'", name);
     return NULL;
   }
 
   /* Make sure the GID is not -1 */
   if (res->gr_gid == (gid_t) -1) {
-    log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
+    pr_log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
     return NULL;
   }
 
@@ -328,13 +328,13 @@ struct group *auth_getgrgid(pool *p, gid_t gid) {
 
   /* Sanity check */
   if (res == NULL) {
-    log_pri(PR_LOG_NOTICE, "no such GID '%lu'", (unsigned long)gid);
+    pr_log_pri(PR_LOG_NOTICE, "no such GID '%lu'", (unsigned long)gid);
     return NULL;
   }
 
   /* Make sure the GID is not -1 */
   if (res->gr_gid == (gid_t) -1) {
-    log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
+    pr_log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
     return NULL;
   }
 

@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.3 2003-11-09 02:34:20 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.4 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -507,21 +507,21 @@ static int ctrls_openlog(void) {
     return 0;
 
   PRIVS_ROOT
-  res = log_openfile(ctrls_logname, &ctrls_logfd, 0640);
+  res = pr_log_openfile(ctrls_logname, &ctrls_logfd, 0640);
   PRIVS_RELINQUISH
 
   if (res == -1) {
-    log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
+    pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
       ": unable to open ControlsLog '%s': %s", ctrls_logname,
       strerror(errno));
 
   } else if (res == LOG_WRITEABLE_DIR) {
-    log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
+    pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
       ": unable to open ControlsLog '%s': "
       "containing directory is world writeable", ctrls_logname);
 
   } else if (res == LOG_SYMLINK) {
-    log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
+    pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
       ": unable to open ControlsLog '%s': %s is a symbolic link",
       ctrls_logname, ctrls_logname);
   }
@@ -1119,8 +1119,8 @@ static int ctrls_timer_cb(CALLBACK_FRAME) {
     /* Change the ownership on the socket to that configured by the admin */
     PRIVS_ROOT
     if (chown(ctrls_sock_file, ctrls_sock_uid, ctrls_sock_gid) < 0)
-      log_pri(PR_LOG_INFO, "mod_ctrls: unable to chown local socket: %s",
-      strerror(errno));
+      pr_log_pri(PR_LOG_INFO, "mod_ctrls: unable to chown local socket: %s",
+        strerror(errno));
     PRIVS_RELINQUISH
 
     first = FALSE;
@@ -1596,7 +1596,7 @@ static void ctrls_restart_ev(const void *event_data, void *user_data) {
   PRIVS_ROOT
   ctrls_sockfd = ctrls_listen(ctrls_sock_file);
   if (ctrls_sockfd < 0)
-    log_pri(PR_LOG_NOTICE, "notice: unable to listen to local socket: %s",
+    pr_log_pri(PR_LOG_NOTICE, "notice: unable to listen to local socket: %s",
       strerror(errno));
   PRIVS_RELINQUISH
 
@@ -1632,7 +1632,7 @@ static int ctrls_init(void) {
 
     if (pr_ctrls_register(&ctrls_module, ctrls_acttab[i].act_action,
         ctrls_acttab[i].act_desc, ctrls_acttab[i].act_cb) < 0)
-      log_pri(PR_LOG_INFO, MOD_CTRLS_VERSION
+      pr_log_pri(PR_LOG_INFO, MOD_CTRLS_VERSION
         ": error registering '%s' control: %s",
         ctrls_acttab[i].act_action, strerror(errno));
   }
@@ -1640,7 +1640,7 @@ static int ctrls_init(void) {
   /* Start listening on the ctrl socket */
   ctrls_sockfd = ctrls_listen(ctrls_sock_file);
   if (ctrls_sockfd < 0)
-    log_pri(PR_LOG_NOTICE, "notice: unable to listen to local socket: %s",
+    pr_log_pri(PR_LOG_NOTICE, "notice: unable to listen to local socket: %s",
       strerror(errno));
 
   pr_event_register(&ctrls_module, "core.exit", ctrls_exit_ev, NULL);

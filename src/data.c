@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.72 2003-11-01 07:11:07 castaglia Exp $
+ * $Id: data.c,v 1.73 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -54,7 +54,7 @@ static pr_netio_stream_t *nstrm = NULL;
 /* Called if the "Stalled" timer goes off
  */
 static int stalled_timeout_cb(CALLBACK_FRAME) {
-  log_pri(PR_LOG_NOTICE, "Data transfer stall timeout: %d seconds",
+  pr_log_pri(PR_LOG_NOTICE, "Data transfer stall timeout: %d seconds",
     TimeoutStalled);
   end_login(1);
 
@@ -151,7 +151,7 @@ static unsigned int xlate_ascii_write(char **buf, unsigned int *buflen,
   if ((res = (bufsize - tmplen - lfcount)) <= 0) {
     char *copybuf = malloc(tmplen);
     if (!copybuf) {
-      log_pri(PR_LOG_ERR, "fatal: memory exhausted");
+      pr_log_pri(PR_LOG_ERR, "fatal: memory exhausted");
       exit(1);
     }
 
@@ -301,7 +301,7 @@ static int data_pasv_open(char *reason, off_t size) {
 
   /* Check for error conditions. */
   if (c && c->mode == CM_ERROR)
-    log_pri(PR_LOG_ERR, "Error: unable to accept an incoming data "
+    pr_log_pri(PR_LOG_ERR, "Error: unable to accept an incoming data "
       "connection (%s)", strerror(c->xerrno));
 
   pr_response_add_err(R_425, "Unable to build data connection: %s",
@@ -443,7 +443,7 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
   /* Passive data transfers... */
   if (session.sf_flags & SF_PASSIVE) {
     if (!session.d) {
-      log_pri(PR_LOG_ERR, "Internal error: PASV mode set, but no data "
+      pr_log_pri(PR_LOG_ERR, "Internal error: PASV mode set, but no data "
         "connection listening.");
       end_login(1);
     }
@@ -453,7 +453,7 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
   /* Active data transfers... */
   } else {
     if (session.d) {
-      log_pri(PR_LOG_ERR, "Internal error: non-PASV mode, yet data "
+      pr_log_pri(PR_LOG_ERR, "Internal error: non-PASV mode, yet data "
         "connection already exists?!?");
       end_login(1);
     }

@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.169 2003-11-09 05:11:50 castaglia Exp $
+ * $Id: mod_auth.c,v 1.170 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -62,7 +62,7 @@ static int lockdown(char *newroot) {
   PRIVS_ROOT
   if (pr_fsio_chroot(newroot) == -1) {
     PRIVS_RELINQUISH
-    log_pri(PR_LOG_ERR, "%s chroot(\"%s\"): %s", session.user, newroot,
+    pr_log_pri(PR_LOG_ERR, "%s chroot(\"%s\"): %s", session.user, newroot,
       strerror(errno));
     return -1;
   }
@@ -151,7 +151,7 @@ static int auth_sess_init(void) {
 
   /* Create an entry in the scoreboard for this session. */
   if (pr_scoreboard_add_entry() < 0)
-    log_pri(PR_LOG_NOTICE, "notice: unable to add scoreboard entry: %s",
+    pr_log_pri(PR_LOG_NOTICE, "notice: unable to add scoreboard entry: %s",
       strerror(errno));
 
   pr_scoreboard_update_entry(getpid(),
@@ -757,18 +757,22 @@ static int _setup_environment(pool *p, char *user, char *pass) {
 
   origuser = user;
   c = _auth_resolve_user(p,&user,&ourname,&anonname);
-  if (c) session.anon_config = c;
+
+  if (c)
+    session.anon_config = c;
 
   if (!user) {
-    log_auth(PR_LOG_NOTICE, "USER %s: user is not a UserAlias from %s [%s] "
+    pr_log_auth(PR_LOG_NOTICE, "USER %s: user is not a UserAlias from %s [%s] "
       "to %s:%i", origuser,session.c->remote_name,
       pr_netaddr_get_ipstr(session.c->remote_addr),
       pr_netaddr_get_ipstr(session.c->local_addr), session.c->local_port);
     goto auth_failure;
   }
 
-  if ((pw = auth_getpwnam(p, user)) == NULL) {
-    log_auth(PR_LOG_NOTICE, "USER %s: no such user found from %s [%s] to %s:%i",
+  pw = auth_getpwnam(p, user);
+  if (pw == NULL) {
+    pr_log_auth(PR_LOG_NOTICE,
+      "USER %s: no such user found from %s [%s] to %s:%i",
       user, session.c->remote_name,
       pr_netaddr_get_ipstr(session.c->remote_addr),
       pr_netaddr_get_ipstr(session.c->local_addr), session.c->local_port);
@@ -789,11 +793,11 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     if ((root_allow = get_param_ptr(c ? c->subset : main_server->conf,
         "RootLogin", FALSE)) == NULL || *root_allow != TRUE) {
       pr_memscrub(pass, strlen(pass));
-      log_auth(PR_LOG_CRIT, "SECURITY VIOLATION: root login attempted.");
+      pr_log_auth(PR_LOG_CRIT, "SECURITY VIOLATION: root login attempted.");
       return 0;
 
     } else {
-      log_auth(PR_LOG_WARNING, "ROOT FTP login successful.");
+      pr_log_auth(PR_LOG_WARNING, "ROOT FTP login successful.");
     }
   }
 
@@ -860,7 +864,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
         char errstr[200] = {'\0'};
 
         regerror(re_res, pw_regex, errstr, sizeof(errstr));
-        log_auth(PR_LOG_NOTICE, "ANON %s: AnonRejectPasswords denies login",
+        pr_log_auth(PR_LOG_NOTICE, "ANON %s: AnonRejectPasswords denies login",
           origuser);
         goto auth_failure;
       }
@@ -868,15 +872,15 @@ static int _setup_environment(pool *p, char *user, char *pass) {
 #endif
 
     if (!login_check_limits(c->subset, FALSE, TRUE, &i) || (!aclp && !i) ){
-      log_auth(PR_LOG_NOTICE, "ANON %s (Login failed): Limit access denies "
+      pr_log_auth(PR_LOG_NOTICE, "ANON %s (Login failed): Limit access denies "
         "login.", origuser);
       goto auth_failure;
     }
   }
 
   if (!c && !aclp) {
-    log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Limit access denies login",
-      origuser);
+    pr_log_auth(PR_LOG_NOTICE,
+      "USER %s (Login failed): Limit access denies login", origuser);
     goto auth_failure;
   }
 
@@ -897,7 +901,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
        */
       if (auth_using_alias && *auth_using_alias == TRUE) {
         user_name = origuser;
-        log_auth(PR_LOG_NOTICE, "ANON AUTH: User %s, Auth Alias %s", user,
+        pr_log_auth(PR_LOG_NOTICE, "ANON AUTH: User %s, Auth Alias %s", user,
           user_name);
       }
     }
@@ -935,22 +939,22 @@ static int _setup_environment(pool *p, char *user, char *pass) {
         break;
 
       case PR_AUTH_NOPWD:
-        log_auth(PR_LOG_NOTICE, "USER %s (Login failed): No such user found.",
-          user);
+        pr_log_auth(PR_LOG_NOTICE,
+          "USER %s (Login failed): No such user found.", user);
         goto auth_failure;
 
       case PR_AUTH_BADPWD:
-        log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Incorrect password.",
-          origuser);
+        pr_log_auth(PR_LOG_NOTICE,
+          "USER %s (Login failed): Incorrect password.", origuser);
         goto auth_failure;
 
       case PR_AUTH_AGEPWD:
-        log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Password expired.",
+        pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Password expired.",
           user);
         goto auth_failure;
 
       case PR_AUTH_DISABLEDPWD:
-        log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Account disabled.",
+        pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Account disabled.",
           user);
         goto auth_failure;
 
@@ -969,13 +973,13 @@ static int _setup_environment(pool *p, char *user, char *pass) {
   auth_setgrent(p);
 
   if (!auth_check_shell((c ? c->subset : main_server->conf), pw->pw_shell)) {
-    log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Invalid shell: '%s'", user,
-      pw->pw_shell);
+    pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Invalid shell: '%s'",
+      user, pw->pw_shell);
     goto auth_failure;
   }
 
   if (!auth_check_ftpusers((c ? c->subset : main_server->conf), pw->pw_name)) {
-    log_auth(PR_LOG_NOTICE, "USER %s (Login failed): User in " FTPUSERS_PATH,
+    pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): User in " FTPUSERS_PATH,
       user);
     goto auth_failure;
   }
@@ -998,7 +1002,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
 
     PRIVS_ROOT
     if ((res = set_groups(p, pw->pw_gid, session.gids)) < 0)
-      log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
+      pr_log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
         strerror(errno));
 
 #ifndef PR_DEVEL_COREDUMP
@@ -1030,7 +1034,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     /* return all privileges back to that of the daemon, for now */
     PRIVS_ROOT
     if ((res = set_groups(p, daemon_gid, daemon_gids)) < 0)
-      log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
+      pr_log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
         strerror(errno));
 
 #ifndef PR_DEVEL_COREDUMP
@@ -1054,7 +1058,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
 
       PRIVS_RELINQUISH
 
-      log_pri(PR_LOG_ERR, "changing from %s back to daemon uid/gid: %s",
+      pr_log_pri(PR_LOG_ERR, "changing from %s back to daemon uid/gid: %s",
             session.user, strerror(errno));
 
       end_login(1);
@@ -1067,8 +1071,8 @@ static int _setup_environment(pool *p, char *user, char *pass) {
       session.anon_user = pstrdup(session.pool, pass);
 
     if (!session.chroot_path) {
-      log_pri(PR_LOG_ERR, "%s: Directory %s is not accessible.", session.user,
-        c->name);
+      pr_log_pri(PR_LOG_ERR, "%s: Directory %s is not accessible.",
+        session.user, c->name);
       pr_response_add_err(R_530, "Unable to set anonymous privileges.");
       goto auth_failure;
     }
@@ -1129,7 +1133,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
 
   if (!login_check_limits((c ? c->subset : main_server->conf), FALSE, TRUE,
       &i)) {
-    log_auth(PR_LOG_NOTICE, "%s %s: Limit access denies login.",
+    pr_log_auth(PR_LOG_NOTICE, "%s %s: Limit access denies login.",
       (c != NULL) ? "ANON" : C_USER, origuser);
     goto auth_failure;
   }
@@ -1144,7 +1148,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
   if (c && c->subset)
     resolve_anonymous_dirs(c->subset);
 
-  log_auth(PR_LOG_NOTICE, "%s %s: Login successful.",
+  pr_log_auth(PR_LOG_NOTICE, "%s %s: Login successful.",
     (c != NULL) ? "ANON" : C_USER, origuser);
 
   /* Write the login to wtmp.  This must be done here because we won't
@@ -1194,7 +1198,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     log_open_xfer(xferlog);
 
   if ((res = set_groups(p, pw->pw_gid, session.gids)) < 0)
-    log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
+    pr_log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
       strerror(errno));
 
   PRIVS_RELINQUISH
@@ -1205,7 +1209,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     ensure_open_passwd(p);
 
     if (lockdown(defroot) == -1) {
-      log_pri(PR_LOG_ERR, "error: unable to set default root directory");
+      pr_log_pri(PR_LOG_ERR, "error: unable to set default root directory");
       pr_response_send(R_530, "Login incorrect.");
       end_login(1);
     }
@@ -1228,7 +1232,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     ensure_open_passwd(p);
 
   if (c && lockdown(session.chroot_path) == -1) {
-    log_pri(PR_LOG_ERR, "error: unable to set anonymous privileges");
+    pr_log_pri(PR_LOG_ERR, "error: unable to set anonymous privileges");
     pr_response_send(R_530, "Login incorrect.");
     end_login(1);
   }
@@ -1261,7 +1265,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
      geteuid() != pw->pw_uid) {
 
     PRIVS_RELINQUISH
-    log_pri(PR_LOG_ERR, "error: %s setregid() or setreuid(): %s",
+    pr_log_pri(PR_LOG_ERR, "error: %s setregid() or setreuid(): %s",
       session.user, strerror(errno));
     pr_response_send(R_530, "Login incorrect.");
 
@@ -1271,7 +1275,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
 
   /* If the home directory is NULL or "", reject the login. */
   if (pw->pw_dir == NULL || !strcmp(pw->pw_dir, "")) {
-    log_pri(PR_LOG_ERR, "error: user %s home directory is NULL or \"\"",
+    pr_log_pri(PR_LOG_ERR, "error: user %s home directory is NULL or \"\"",
       session.user);
     pr_response_send(R_530, "Login incorrect.");
     end_login(1);
@@ -1307,7 +1311,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
         (session.chroot_path ? session.chroot_path : defroot));
 
       if (pr_fsio_chdir_canon("/", !showsymlinks) == -1) {
-        log_pri(PR_LOG_ERR, "%s chdir(\"/\"): %s", session.user,
+        pr_log_pri(PR_LOG_ERR, "%s chdir(\"/\"): %s", session.user,
           strerror(errno));
         pr_response_send(R_530,"Login incorrect.");
         end_login(1);
@@ -1322,8 +1326,8 @@ static int _setup_environment(pool *p, char *user, char *pass) {
         "directory %s", session.cwd, strerror(errno), pw->pw_dir);
 
       if (pr_fsio_chdir_canon(pw->pw_dir, !showsymlinks) == -1) {
-        log_pri(PR_LOG_ERR, "%s chdir(\"%s\"): %s", session.user, session.cwd,
-          strerror(errno));
+        pr_log_pri(PR_LOG_ERR, "%s chdir(\"%s\"): %s", session.user,
+          session.cwd, strerror(errno));
         pr_response_send(R_530, "Login incorrect.");
         end_login(1);
       }
@@ -1333,7 +1337,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
       /* Unable to switch to user's real home directory, which is not
        * allowed.
        */
-      log_pri(PR_LOG_ERR, "%s chdir(\"%s\"): %s", session.user, session.cwd,
+      pr_log_pri(PR_LOG_ERR, "%s chdir(\"%s\"): %s", session.user, session.cwd,
         strerror(errno));
       pr_response_send(R_530, "Login incorrect.");
       end_login(1);
@@ -1610,8 +1614,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
 
       remove_config(cmd->server->conf, C_PASS, FALSE);
 
-      log_auth(PR_LOG_NOTICE, "Connection refused (max clients for class %s).",
-        session.class->name);
+      pr_log_auth(PR_LOG_NOTICE,
+        "Connection refused (max clients for class %s).", session.class->name);
 
       end_login(0);
     }
@@ -1639,8 +1643,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
       snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
-      log_auth(PR_LOG_NOTICE, "Connection refused (max clients per host %u).",
-        *max);
+      pr_log_auth(PR_LOG_NOTICE,
+        "Connection refused (max clients per host %u).", *max);
       end_login(0);
     }
   }
@@ -1663,8 +1667,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
       snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
-      log_auth(PR_LOG_NOTICE, "Connection refused (max clients per user %u).",
-        *max);
+      pr_log_auth(PR_LOG_NOTICE,
+        "Connection refused (max clients per user %u).", *max);
       end_login(0);
     }
   }
@@ -1686,7 +1690,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
       snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
-      log_auth(PR_LOG_NOTICE, "Connection refused (max clients %u).", *max);
+      pr_log_auth(PR_LOG_NOTICE, "Connection refused (max clients %u).", *max);
       end_login(0);
     }
   }
@@ -1708,7 +1712,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
       snprintf(maxn, sizeof(maxn), "%u", *max);
       pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
-      log_auth(PR_LOG_NOTICE, "Connection refused (max hosts per host %u).",
+      pr_log_auth(PR_LOG_NOTICE, "Connection refused (max hosts per host %u).",
         *max);
       end_login(0);
     }
@@ -1725,7 +1729,7 @@ MODRET auth_pre_user(cmd_rec *cmd) {
 
   /* Check for a user name that exceeds PR_TUNABLE_LOGIN_MAX. */
   if (strlen(cmd->arg) > PR_TUNABLE_LOGIN_MAX) {
-    log_pri(PR_LOG_NOTICE, "USER %s (Login failed): "
+    pr_log_pri(PR_LOG_NOTICE, "USER %s (Login failed): "
       "maximum login length exceeded", cmd->arg);
     pr_response_add_err(R_501, "Login incorrect.");
     return ERROR(cmd);
@@ -1772,7 +1776,7 @@ MODRET auth_user(cmd_rec *cmd) {
       remove_config(cmd->server->conf, C_USER, FALSE);
       remove_config(cmd->server->conf, C_PASS, FALSE);
 
-      log_pri(PR_LOG_NOTICE, "USER %s (Login failed): Not a UserAlias.",
+      pr_log_pri(PR_LOG_NOTICE, "USER %s (Login failed): Not a UserAlias.",
         origuser);
       pr_response_send(R_530, "Login incorrect.");
 
@@ -1794,7 +1798,7 @@ MODRET auth_user(cmd_rec *cmd) {
         remove_config(cmd->server->conf, C_USER, FALSE);
         remove_config(cmd->server->conf, C_PASS, FALSE);
 
-        log_auth(PR_LOG_NOTICE, "ANON %s: Limit access denies login.",
+        pr_log_auth(PR_LOG_NOTICE, "ANON %s: Limit access denies login.",
           origuser);
         pr_response_send(R_530, "Login incorrect.");
 
@@ -1806,7 +1810,8 @@ MODRET auth_user(cmd_rec *cmd) {
       remove_config(cmd->server->conf, C_USER, FALSE);
       remove_config(cmd->server->conf, C_PASS, FALSE);
 
-      log_auth(PR_LOG_NOTICE, "USER %s: Limit access denies login.", origuser);
+      pr_log_auth(PR_LOG_NOTICE,
+        "USER %s: Limit access denies login.", origuser);
       pr_response_send(R_530, "Login incorrect.");
 
       end_login(0);
@@ -1928,7 +1933,7 @@ MODRET auth_pass(cmd_rec *cmd) {
       else
         pr_response_send(R_530, "Login incorrect.");
 
-      log_auth(PR_LOG_NOTICE, "Maximum login attempts (%u) exceeded",
+      pr_log_auth(PR_LOG_NOTICE, "Maximum login attempts (%u) exceeded",
         max_logins);
 
       /* Generate an event about this limit being exceeded. */

@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.62 2003-11-01 07:11:07 castaglia Exp $
+ * $Id: support.c,v 1.63 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -774,7 +774,7 @@ char *sreplace(pool *p, char *s, ...) {
       if (strncmp(src, *mptr, mlen) == 0) {
         sstrncpy(cp, *rptr, blen - strlen(pbuf));
 	if (((cp + rlen) - pbuf + 1) > blen) {
-	  log_pri(PR_LOG_ERR,
+	  pr_log_pri(PR_LOG_ERR,
 		  "WARNING: attempt to overflow internal ProFTPD buffers");
 	  cp = pbuf + blen - 1;
 	  goto done;
@@ -790,7 +790,7 @@ char *sreplace(pool *p, char *s, ...) {
 
     if (!*mptr) {
       if ((cp - pbuf + 1) > blen) {
-	log_pri(PR_LOG_ERR,
+	pr_log_pri(PR_LOG_ERR,
 		"WARNING: attempt to overflow internal ProFTPD buffers");
 	cp = pbuf + blen - 1;
       }

@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.98 2003-11-01 07:11:07 castaglia Exp $
+ * $Id: mod_ls.c,v 1.99 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -478,7 +478,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
               snprintf(buf, sizeof(nameline) - strlen(nameline) - 4,
                 " -> %s", l);
             else
-              log_pri(PR_LOG_NOTICE, "notice: symlink '%s' yields an "
+              pr_log_pri(PR_LOG_NOTICE, "notice: symlink '%s' yields an "
                 "excessive string, ignoring", name);
           }
 
@@ -769,7 +769,7 @@ static char **sreaddir(const char *dirname, const int sort) {
    * this helps to keep the memory footprint a little smaller.
    */
   if ((p = (char **) malloc(dsize * sizeof(char *))) == NULL) {
-    log_pri(PR_LOG_ERR, "fatal: memory exhausted");
+    pr_log_pri(PR_LOG_ERR, "fatal: memory exhausted");
     exit(1);
   }
 
@@ -789,7 +789,7 @@ static char **sreaddir(const char *dirname, const int sort) {
 
       /* Allocate bigger array for pointers to filenames */
       if ((newp = (char **) realloc(p, 2 * dsize * sizeof(char *))) == NULL) {
-        log_pri(PR_LOG_ERR, "fatal: memory exhausted");
+        pr_log_pri(PR_LOG_ERR, "fatal: memory exhausted");
         exit(1);
       }
       p = newp;
@@ -799,7 +799,7 @@ static char **sreaddir(const char *dirname, const int sort) {
     /* Append the filename to the block. */
     if ((p[i] = (char *) calloc(strlen(de->d_name) + 1,
         sizeof(char))) == NULL) {
-      log_pri(PR_LOG_ERR, "fatal: memory exhausted");
+      pr_log_pri(PR_LOG_ERR, "fatal: memory exhausted");
       exit(1);
     }
     sstrncpy(p[i++], de->d_name, strlen(de->d_name) + 1);

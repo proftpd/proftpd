@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.30 2003-11-08 22:45:20 castaglia Exp $
+ * $Id: fsio.c,v 1.31 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -348,7 +348,7 @@ static pr_fs_t *lookup_dir_fs(const char *path, int op) {
        */
       if (fsm->trigger) {
         if (fsm->trigger(fs, tmp_path, op) <= 0)
-          log_pri(LOG_DEBUG, "error: fs_match '%s' trigger failed",
+          pr_log_pri(PR_LOG_DEBUG, "error: fs_match '%s' trigger failed",
             fsm->name);
       }
 
@@ -587,7 +587,7 @@ int pr_insert_fs(pr_fs_t *fs, const char *path) {
     for (i = 0; i < fs_map->nelts; i++) {
       fsi = fs_objs[i];
       if (strcmp(fsi->fs_path, cleaned_path) == 0) {
-        log_pri(LOG_DEBUG, "error: duplicate fs paths not allowed: '%s'",
+        pr_log_pri(PR_LOG_DEBUG, "error: duplicate fs paths not allowed: '%s'",
           cleaned_path);
         errno = EEXIST;
         return FALSE;
@@ -815,7 +815,7 @@ pr_fs_match_t *pr_create_fs_match(pool *p, const char *name,
     regerror(res, regexp, regerr, sizeof(regerr));
     pr_regexp_free(regexp);
 
-    log_pri(LOG_ERR, "unable to compile regex '%s': %s", pattern, regerr);
+    pr_log_pri(PR_LOG_ERR, "unable to compile regex '%s': %s", pattern, regerr);
 
     /* Destroy the just allocated pr_fs_match_t */
     destroy_pool(fsm->fsm_pool);
@@ -848,8 +848,8 @@ int pr_insert_fs_match(pr_fs_match_t *fsm) {
 
     /* Prevent pr_fs_match_ts with duplicate names */
     if (strcmp(fsmi->fsm_name, fsm->fsm_name) == 0) {
-      log_pri(LOG_DEBUG, "error: duplicate fs_match names not allowed: '%s'",
-        fsm->fsm_name);
+      pr_log_pri(PR_LOG_DEBUG,
+        "error: duplicate fs_match names not allowed: '%s'", fsm->fsm_name);
       return FALSE;
     }
 
@@ -857,8 +857,8 @@ int pr_insert_fs_match(pr_fs_match_t *fsm) {
       fsmi = fsmi->fsm_next;
 
       if (strcmp(fsmi->fsm_name, fsm->fsm_name) == 0) {
-        log_pri(LOG_DEBUG, "error: duplicate fs_match names not allowed: '%s'",
-          fsm->fsm_name);
+        pr_log_pri(PR_LOG_DEBUG,
+          "error: duplicate fs_match names not allowed: '%s'", fsm->fsm_name);
         return FALSE;
       }
     }
@@ -2776,12 +2776,13 @@ int init_fs(void) {
   char cwdbuf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
 
   /* Establish the default pr_fs_t that will handle any path */
-  if ((root_fs = pr_create_fs(permanent_pool, "system")) == NULL) {
+  root_fs = pr_create_fs(permanent_pool, "system");
+  if (root_fs == NULL) {
 
     /* Do not insert this fs into the FS map.  This will allow other
      * modules to insert filesystems at "/", if they want.
      */
-    log_pri(LOG_ERR, "error: unable to initialize default fs");
+    pr_log_pri(PR_LOG_ERR, "error: unable to initialize default fs");
     exit(1);
   }
 

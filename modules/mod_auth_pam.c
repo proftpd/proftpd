@@ -35,7 +35,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.3 2003-09-08 00:51:19 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.4 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -146,11 +146,11 @@ static void modpam_exit(void) {
 #else
   if ((pam_error = pam_setcred(pamh, PAM_DELETE_CRED)) != PAM_SUCCESS)
 #endif /* !PAM_CRED_DELETE */
-    log_pri(PR_LOG_NOTICE, "PAM(setcred): %s",
+    pr_log_pri(PR_LOG_NOTICE, "PAM(setcred): %s",
       pam_strerror(pamh, pam_error));
 
   if ((pam_error = pam_close_session(pamh, PAM_SILENT)) != PAM_SUCCESS)
-    log_pri(PR_LOG_NOTICE, "PAM(close_session): %s",
+    pr_log_pri(PR_LOG_NOTICE, "PAM(close_session): %s",
       pam_strerror(pamh, pam_error));
 
 #ifndef SOLARIS2
@@ -290,7 +290,7 @@ MODRET pam_auth(cmd_rec *cmd) {
         break;
     }
 
-    log_pri(PR_LOG_NOTICE, "PAM(%s): %s.", cmd->argv[0],
+    pr_log_pri(PR_LOG_NOTICE, "PAM(%s): %s.", cmd->argv[0],
       pam_strerror(pamh, pam_error));
     goto done;
   }
@@ -326,7 +326,7 @@ MODRET pam_auth(cmd_rec *cmd) {
         break;
     }
 
-    log_pri(PR_LOG_NOTICE, "PAM(%s): %s.", cmd->argv[0],
+    pr_log_pri(PR_LOG_NOTICE, "PAM(%s): %s.", cmd->argv[0],
       pam_strerror(pamh, pam_error));
     goto done;
   }
@@ -342,7 +342,7 @@ MODRET pam_auth(cmd_rec *cmd) {
         break;
     }
 
-    log_pri(PR_LOG_NOTICE, "PAM(%s): %s.", cmd->argv[0],
+    pr_log_pri(PR_LOG_NOTICE, "PAM(%s): %s.", cmd->argv[0],
       pam_strerror(pamh, pam_error));
     goto done;
   }
@@ -369,7 +369,7 @@ MODRET pam_auth(cmd_rec *cmd) {
         break;
     }
 
-    log_pri(PR_LOG_NOTICE, "PAM(%s): %s.", cmd->argv[0],
+    pr_log_pri(PR_LOG_NOTICE, "PAM(%s): %s.", cmd->argv[0],
       pam_strerror(pamh, pam_error));
     goto done;
   }

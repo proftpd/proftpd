@@ -24,7 +24,7 @@
 
 /* ProFTPD bindings support routines.
  *
- * $Id: bindings.h,v 1.8 2003-11-09 01:55:28 castaglia Exp $
+ * $Id: bindings.h,v 1.9 2003-11-09 21:09:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -186,25 +186,25 @@ void free_bindings(void);
 /* Macro error-handling wrappers */
 #define PR_ADD_IPBINDS(s) \
   if ((res = pr_ipbind_add_binds((s))) < 0) \
-    log_pri(LOG_NOTICE, \
+    pr_log_pri(PR_LOG_NOTICE, \
       "%s:%d: notice: unable to add binds to ipbind '%s': %s", \
       __FILE__, __LINE__, (s)->ServerAddress, strerror(errno))
 
 #define PR_CLOSE_IPBIND(a, p, c) \
   if ((res = pr_ipbind_close((a), (p), (c))) < 0) \
-    log_pri(LOG_NOTICE, \
+    pr_log_pri(PR_LOG_NOTICE, \
       "%s:%d: notice: unable to close ipbind: %s", \
       __FILE__, __LINE__, strerror(errno))
 
 #define PR_CREATE_IPBIND(s, a) \
   if ((res = pr_ipbind_create((s), (a))) < 0) \
-    log_pri(LOG_NOTICE, \
+    pr_log_pri(PR_LOG_NOTICE, \
       "%s:%d: notice: unable to create ipbind '%s': %s", \
       __FILE__, __LINE__, (s)->ServerAddress, strerror(errno))
 
 #define PR_OPEN_IPBIND(a, p, c, d, l, o) \
   if ((res = pr_ipbind_open((a), (p), (c), (d), (l), (o))) < 0) \
-    log_pri(LOG_NOTICE, \
+    pr_log_pri(PR_LOG_NOTICE, \
       "%s:%d: notice: unable to open ipbind '%s': %s", \
       __FILE__, __LINE__, pr_netaddr_get_ipstr((a)), strerror(errno))
 

@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.32 2003-11-09 01:55:28 castaglia Exp $
+ * $Id: modules.c,v 1.33 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -545,7 +545,7 @@ int module_preparse_init(void) {
     m->priority = i;
 
     if (m->api_version < PR_MODULE_API_VERSION) {
-      log_pri(PR_LOG_ERR, "Fatal: module '%s' API version (0x%x) is too old "
+      pr_log_pri(PR_LOG_ERR, "Fatal: module '%s' API version (0x%x) is too old "
         "(need at least 0x%x)", m->name, m->api_version, PR_MODULE_API_VERSION);
 	exit(1);
     }
@@ -567,7 +567,7 @@ int module_preparse_init(void) {
           ++numauth;
 
     } else
-      log_pri(PR_LOG_ERR, "error: initialization of 'mod_%s' module failed",
+      pr_log_pri(PR_LOG_ERR, "error: initialization of 'mod_%s' module failed",
         m->name);
   }
 

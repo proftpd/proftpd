@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -Llib/libcap -lcap$
  * $Directories: lib/libcap$
- * $Id: mod_cap.c,v 1.9 2003-09-07 23:55:58 castaglia Exp $
+ * $Id: mod_cap.c,v 1.10 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -69,16 +69,16 @@ static void lp_debug(void) {
   cap_t caps;
 
   if (! (caps = cap_get_proc())) {
-    log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": cap_get_proc failed: %s",
+    pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": cap_get_proc failed: %s",
             strerror(errno));
     return;
   }
 
   if (! (res = cap_to_text(caps, &len))) {
-    log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": cap_to_text failed: %s",
+    pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": cap_to_text failed: %s",
       strerror(errno));
     if (cap_free(caps) < 0)
-      log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION
+      pr_log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION
         ": error freeing cap at line %d: %s", __LINE__ - 2, strerror(errno));
     return;
   }
@@ -87,7 +87,7 @@ static void lp_debug(void) {
   cap_free(res);
 
   if (cap_free(caps) < 0)
-    log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION
+    pr_log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION
       ": error freeing cap at line %d: %s", __LINE__ - 2, strerror(errno));
 }
 
@@ -95,7 +95,7 @@ static void lp_debug(void) {
 static int lp_init_cap(void) {
 
   if (! (capabilities = cap_init())) {
-    log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": initializing cap failed: %s",
+    pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": initializing cap failed: %s",
       strerror(errno));
     return -1;
   }
@@ -108,7 +108,7 @@ static int lp_init_cap(void) {
 static void lp_free_cap(void) {
   if (have_capabilities) {
     if (cap_free(capabilities) < 0)
-      log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION
+      pr_log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION
         ": error freeing cap at line %d: %s", __LINE__ - 2, strerror(errno));
   }
 }
@@ -116,7 +116,7 @@ static void lp_free_cap(void) {
 /* add a capability to a given set */
 static int lp_add_cap(cap_value_t cap, cap_flag_t set) {
   if (cap_set_flag(capabilities, set, 1, &cap, CAP_SET) == -1) {
-    log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": cap_set_flag failed: %s",
+    pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": cap_set_flag failed: %s",
             strerror(errno));
     return -1;
   }
@@ -127,7 +127,7 @@ static int lp_add_cap(cap_value_t cap, cap_flag_t set) {
 /* send the capabilities to the kernel */
 static int lp_set_cap(void) {
   if (cap_set_proc(capabilities) == -1) {
-    log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": cap_set_proc failed: %s",
+    pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": cap_set_proc failed: %s",
             strerror(errno));
     return -1;
   }
@@ -213,7 +213,7 @@ MODRET cap_post_pass(cmd_rec *cmd) {
    * workaround.
    */
   if (setreuid(session.uid, 0) == -1) {
-    log_pri(PR_LOG_ERR, MOD_CAP_VERSION
+    pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION
       ": setreuid: %s", strerror(errno));
     pr_signals_unblock();
     return DECLINED(cmd);
@@ -239,7 +239,7 @@ MODRET cap_post_pass(cmd_rec *cmd) {
     ret = lp_set_cap();
 
   if (setreuid(0, session.uid) == -1) {
-    log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": setreuid: %s", strerror(errno));
+    pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": setreuid: %s", strerror(errno));
     lp_free_cap();
     pr_signals_unblock();
     end_login(1);
@@ -270,7 +270,7 @@ MODRET cap_post_pass(cmd_rec *cmd) {
     lp_debug();
 
   } else
-    log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION ": attempt to configure "
+    pr_log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION ": attempt to configure "
             "capabilities failed, reverting to normal operation");
 
   return DECLINED(cmd);
@@ -326,8 +326,8 @@ static int cap_module_init(void) {
   }
 
   if (res && cap_free(res) < 0)
-    log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION ": error freeing cap at line %d: %s",
-      __LINE__ - 2, strerror(errno));
+    pr_log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION
+      ": error freeing cap at line %d: %s", __LINE__ - 2, strerror(errno));
 
   return 0;
 }

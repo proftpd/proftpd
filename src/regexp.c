@@ -26,7 +26,7 @@
 
 /*
  * Regex management code
- * $Id: regexp.c,v 1.10 2003-11-01 07:11:07 castaglia Exp $
+ * $Id: regexp.c,v 1.11 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -81,7 +81,7 @@ regex_t *pr_regexp_alloc(void) {
   }
 
   if ((preg = calloc(1, sizeof(regex_t))) == NULL) {
-    log_pri(PR_LOG_ERR, "fatal: memory exhausted");
+    pr_log_pri(PR_LOG_ERR, "fatal: memory exhausted");
     exit(1);
   }
 

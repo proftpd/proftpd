@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.127 2003-11-09 04:46:54 castaglia Exp $
+ * $Id: dirtree.c,v 1.128 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1650,7 +1650,7 @@ static int _check_ip_negative(const config_rec *c) {
         /* -1 signifies a NONE match, which isn't valid for negative
          * conditions.
          */
-        log_pri(PR_LOG_ERR, "ooops, it looks like !NONE was used in an ACL "
+        pr_log_pri(PR_LOG_ERR, "ooops, it looks like !NONE was used in an ACL "
           "somehow.");
         return FALSE;
 
@@ -2113,9 +2113,11 @@ void build_dyn_config(pool *p, char *_path, struct stat *_sbuf,
                 cmd->argv[0] = c->directive;
                 found++;
 
-                if ((mr = call_module(c->m, c->handler, cmd)) != NULL) {
+                mr = call_module(c->m, c->handler, cmd);
+                if (mr != NULL) {
                   if (MODRET_ERRMSG(mr)) {
-                    log_pri(PR_LOG_WARNING, "warning: %s", MODRET_ERRMSG(mr));
+                    pr_log_pri(PR_LOG_WARNING, "warning: %s",
+                      MODRET_ERRMSG(mr));
 		  }
                 }
 
@@ -2127,7 +2129,7 @@ void build_dyn_config(pool *p, char *_path, struct stat *_sbuf,
             }
 
             if (!found)
-              log_pri(PR_LOG_WARNING,
+              pr_log_pri(PR_LOG_WARNING,
                 "warning: unknown configuration directive '%s' on "
                 "line %d of '%s'", cmd->argv[0], cs->cs_lineno,
                 dynpath);
@@ -3151,7 +3153,7 @@ int parse_config_file(const char *fname) {
           mr = call_module(c->m, c->handler, cmd);
           if (mr != NULL) {
             if (MODRET_ISERROR(mr)) {
-              log_pri(PR_LOG_ERR, "Fatal: %s", MODRET_ERRMSG(mr));
+              pr_log_pri(PR_LOG_ERR, "Fatal: %s", MODRET_ERRMSG(mr));
               exit(1);
             }
           }
@@ -3163,8 +3165,8 @@ int parse_config_file(const char *fname) {
         }
 
        if (!found) {
-         log_pri(PR_LOG_ERR, "Fatal: unknown configuration directive '%s' on "
-           "line %d of '%s'.", cmd->argv[0], cs->cs_lineno, fname);
+         pr_log_pri(PR_LOG_ERR, "Fatal: unknown configuration directive '%s' "
+           "on line %d of '%s'.", cmd->argv[0], cs->cs_lineno, fname);
          exit(1);
        }
     }
@@ -3205,7 +3207,7 @@ int fixup_servers(void) {
 
     s->addr = pr_netaddr_get_addr(s->pool, s->ServerAddress, NULL);
     if (s->addr == NULL) {
-      log_pri(PR_LOG_ERR, "error: unable to determine IP address of '%s'",
+      pr_log_pri(PR_LOG_ERR, "error: unable to determine IP address of '%s'",
         s->ServerAddress);
       xaset_remove(server_list, (xasetmember_t *) s);
       destroy_pool(s->pool);
@@ -3233,7 +3235,7 @@ int fixup_servers(void) {
 
     if ((c = find_config(s->conf, CONF_PARAM, "MasqueradeAddress",
         FALSE)) != NULL) {
-      log_pri(PR_LOG_INFO, "%s:%d masquerading as %s",
+      pr_log_pri(PR_LOG_INFO, "%s:%d masquerading as %s",
         pr_netaddr_get_ipstr(s->addr), s->ServerPort,
         pr_netaddr_get_ipstr((pr_netaddr_t *) c->argv[0]));
     }
@@ -3247,7 +3249,7 @@ int fixup_servers(void) {
       if (!SocketBindTight)
         pr_netaddr_set_sockaddr_any(s->addr);
       else
-        log_pri(PR_LOG_NOTICE,
+        pr_log_pri(PR_LOG_NOTICE,
           "SocketBindTight in effect, ignoring DefaultServer");
     }
 
@@ -3259,7 +3261,7 @@ int fixup_servers(void) {
    * it's possible to have all vhosts (even the default) rejected.
    */
   if (server_list->xas_list == NULL) {
-    log_pri(PR_LOG_NOTICE, "error: no valid servers configured");
+    pr_log_pri(PR_LOG_NOTICE, "error: no valid servers configured");
     return -1;
   }
 

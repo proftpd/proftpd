@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.2 2003-11-09 07:47:07 castaglia Exp $
+ * $Id: ctrls.c,v 1.3 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -916,7 +916,7 @@ int pr_check_actions(void) {
     if (act->flags & PR_CTRLS_ACT_SOLITARY) {
       /* This is a territorial action -- only one instance allowed */
       if (ctrls_lookup_action(NULL, act->action, FALSE)) {
-        log_pri(PR_LOG_NOTICE,
+        pr_log_pri(PR_LOG_NOTICE,
           "duplicate controls for '%s' action not allowed",
           act->action);
         return -1;

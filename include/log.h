@@ -27,7 +27,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.20 2003-11-01 00:12:45 castaglia Exp $
+ * $Id: log.h,v 1.21 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #ifndef PR_LOG_H
@@ -57,7 +57,7 @@
 #define DEBUG1		1
 #define DEBUG0		0
 
-/* log_openfile() return values */
+/* pr_log_openfile() return values */
 #define LOG_WRITEABLE_DIR	-2
 #define LOG_SYMLINK		-3
 
@@ -67,39 +67,54 @@
 
 char *fmt_time(time_t);
 int log_wtmp(char *, const char *, const char *, pr_netaddr_t *);
-void log_setfacility(int);
-int log_openfile(const char *, int *, mode_t);
-int log_opensyslog(const char *);
+
+/* file-based logging functions */
+int pr_log_openfile(const char *, int *, mode_t);
+int pr_log_writefile(int, const char *, const char *, ...);
+
+/* syslog-based logging functions.  Note that the open/close functions are
+ * not part of the public API; use the pr_log_pri() function to log via
+ * syslog.
+ */
 void log_closesyslog(void);
+int log_opensyslog(const char *);
+void log_setfacility(int);
 
 /* Utilize gcc's __attribute__ pragma for signalling that it should perform
  * printf-style checking of this function's arguments.
  */
-void log_pri(int, const char *, ...)
+void pr_log_pri(int, const char *, ...)
 #ifdef __GNUC__
        __attribute__ ((format (printf, 2, 3)));
 #else
        ;
 #endif
 
-void log_auth(int, const char *, ...);
+void pr_log_auth(int, const char *, ...);
+
+/* Utilize gcc's __attribute__ pragma for signalling that it should perform
+ * printf-style checking of this function's arguments.
+ */
+void pr_log_debug(int, const char *, ...)
+#ifdef __GNUC__
+       __attribute__ ((format (printf, 2, 3)));
+#else
+       ;
+#endif
+
+int  pr_log_setdebuglevel(int);
+
 void log_stderr(int);
-int  log_setdebuglevel(int);
-
-/* Utilize gcc's __attribute__ pragma for signalling that it should perform
- * printf-style checking of this function's arguments.
- */
-void log_debug(int, const char *, ...)
-#ifdef __GNUC__
-       __attribute__ ((format (printf, 2, 3)));
-#else
-       ;
-#endif
-
 void log_discard(void);
 void init_log(void);
 
 int log_str2sysloglevel(const char *);
+
+/* Transition macros */
+#define log_openfile	pr_log_openfile
+#define log_pri		pr_log_pri
+#define log_debug	pr_log_debug
+#define	log_auth	pr_log_auth
 
 /* TransferLog routines */
 int log_open_xfer(const char *);

@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.37 2003-11-09 01:55:28 castaglia Exp $
+ * $Id: pool.c,v 1.38 2003-11-09 21:09:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -70,7 +70,7 @@ static void *null_alloc(size_t size) {
   if (size == 0)
     ret = malloc(size);
   if (ret == 0) {
-    log_pri(PR_LOG_ERR, "fatal: Memory exhausted");
+    pr_log_pri(PR_LOG_ERR, "fatal: Memory exhausted");
     exit(1);
   }
 
@@ -127,7 +127,7 @@ static void chk_on_blk_list(union block_hdr *blok, union block_hdr *free_blk) {
 
   while (free_blk) {
     if (free_blk == blok) {
-      log_pri(PR_LOG_ERR, "Fatal: DEBUG: Attempt to free already free block "
+      pr_log_pri(PR_LOG_ERR, "Fatal: DEBUG: Attempt to free already free block "
        "in chk_on_blk_list()");
       exit(1);
     }
