@@ -27,6 +27,9 @@
  * SUCH DAMAGE.
  */
 
+/* $Id: pr-syslog.c,v 1.11 2003-05-12 18:20:11 castaglia Exp $
+ */
+
 #include "conf.h"
 
 #if defined(SOLARIS2) || defined(IRIX6)
