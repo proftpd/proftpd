@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.67 2004-01-29 03:37:38 castaglia Exp $
+ * $Id: log.c,v 1.68 2004-01-31 00:08:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -423,12 +423,6 @@ static void log_write(int priority, int f, char *s) {
   if (main_server && main_server->ServerFQDN) {
     snprintf(serverinfo, sizeof(serverinfo), "%s", main_server->ServerFQDN);
     serverinfo[sizeof(serverinfo)-1] = '\0';
-
-#ifdef PR_DEVEL
-      snprintf(serverinfo + strlen(serverinfo),
-        sizeof(serverinfo) - strlen(serverinfo), "[%lu]",
-        (unsigned long) getpid());
-#endif /* PR_DEVEL */
 
     if (session.c && session.c->remote_name) {
       snprintf(serverinfo + strlen(serverinfo),
