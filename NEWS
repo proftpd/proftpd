@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.256 2002-10-23 23:53:55 castaglia Exp $
+$Id: NEWS,v 1.257 2002-10-24 17:16:27 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -7,6 +7,12 @@ CVS
 - Added --enable-scoreboard-buffer-size option to configure script, for
   tuning the size of some scoreboard fields (e.g. the full client command
   and the current working directory).
+- Bug 1287 - Error compile with autoshadow option.  AIX does not have
+  traditional shadow support, and uses other mechanisms.  This means that
+  the --enable-autoshadow and --enable-shadow configure options should not
+  be used when configuring proftpd for AIX.  The configure script has been
+  updated to detect when these options are used on AIX, and to automatically
+  disable them.
 
 1.2.7rc2 - Released 2002-10-22
 ---------------------------------

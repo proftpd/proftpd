@@ -148,7 +148,15 @@ dnl Auto-detection of shadow passwords.
 AC_ARG_ENABLE(autoshadow,
   [  --enable-autoshadow     enable run-time auto-detection of shadowed passwords (requires shadow)
   ],
-  [ if test "$enableval" != "no" ; then
+  [
+    dnl AIX does not have shadow file/library support.  Try to prevent a
+    dnl bad build if the admin, configuring on an AIX box, uses this option.
+    if test "$enableval" = "yes" && test "$OSTYPE" = "-DAIX4"; then
+      AC_MSG_WARN(AIX does not support traditional shadowed passwords)
+      enableval="no"
+    fi
+
+    if test "$enableval" != "no" ; then
       AC_DEFINE(USE_SHADOW)
       AC_DEFINE(AUTO_SHADOW)
       force_shadow="yes"
@@ -177,7 +185,15 @@ dnl Check for enabled shadow password support.
 AC_ARG_ENABLE(shadow,
   [  --enable-shadow         force compilation of shadowed password support
   ],
-  [ if test "$enableval" = "no" ; then
+  [
+    dnl AIX does not have shadow file/library support.  Try to prevent a
+    dnl bad build if the admin, configuring on an AIX box, uses this option.
+    if test "$enableval" = "yes" && test "$OSTYPE" = "-DAIX4"; then
+      AC_MSG_WARN(AIX does not support traditional shadowed passwords)
+      enableval="no" 
+    fi
+
+    if test "$enableval" = "no" ; then
       use_shadow=""
       force_shadow="no"
     else
