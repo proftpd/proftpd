@@ -22,7 +22,7 @@
  */
 
 /*
- * mod_ldap v2.8.9
+ * mod_ldap v2.8.10
  *
  * Thanks for patches go to (in alphabetical order):
  * 
@@ -43,7 +43,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  * 
- * $Id: mod_ldap.c,v 1.24 2002-08-24 15:15:17 jwm Exp $
+ * $Id: mod_ldap.c,v 1.25 2002-08-31 00:45:02 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -133,6 +133,7 @@ static xaset_t *gid_table[HASH_TABLE_SIZE];
 static char *ldap_server, *ldap_dn, *ldap_dnpass,
             *ldap_auth_filter, *ldap_uid_filter,
             *ldap_group_gid_filter, *ldap_group_name_filter,
+            *ldap_group_member_filter,
             *ldap_auth_basedn, *ldap_uid_basedn, *ldap_gid_basedn,
             *ldap_defaultauthscheme, *ldap_authbind_dn,
             *ldap_hdod_prefix, **ldap_hdod_suffix;
@@ -333,13 +334,39 @@ create_homedir(pool *p, const char *homedir)
   }
 }
 
-static struct passwd
-*pr_ldap_user_lookup(pool *p,
-                     char *filter_template, const char *replace,
-                     char *basedn, char *ldap_attrs[],
-                     char **user_dn)
+static char *
+pr_ldap_generate_filter(pool *p, char *template, const char *entity)
 {
-  char filter[BUFSIZ] = {'\0'}, **values, *dn;
+    char *filter, *pos;
+    int num_escapes = 0, i = 0, j = 0;
+
+	pos = template;
+	while ((pos = strstr(pos + 2, "%v")) != NULL)
+		++num_escapes;
+
+    /* -2 for the %v, +1 for the NULL */
+    filter = pcalloc(p, strlen(template) - (num_escapes * 2) + (num_escapes * strlen(entity)) + 1);
+
+	while (template[i] != '\0') {
+		if (template[i] == '%' && template[i + 1] == 'v') {
+			strcat(filter, entity);
+			j += strlen(entity);
+			i += 2;
+		}
+		else
+			filter[j++] = template[i++];
+	}
+
+    return filter;
+}
+
+static struct passwd *
+pr_ldap_user_lookup(pool *p,
+                    char *filter_template, const char *replace,
+                    char *basedn, char *ldap_attrs[],
+                    char **user_dn)
+{
+  char *filter, **values, *dn;
   int i = 0, ret;
   LDAPMessage *result, *e;
 
@@ -356,7 +383,7 @@ static struct passwd
       return NULL;
   }
 
-  ldap_build_filter(filter, sizeof(filter), filter_template, NULL, NULL, NULL, replace, NULL);
+  filter = pr_ldap_generate_filter(p, filter_template, replace);
 
   if ((ret = ldap_search_st(ld, basedn, ldap_search_scope, filter, ldap_attrs, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
     if (ret == LDAP_SERVER_DOWN) {
@@ -501,11 +528,12 @@ static struct passwd
   return pw;
 }
 
-static struct group
-*pr_ldap_group_lookup(char *filter_template, const char *replace,
-                      char *ldap_attrs[])
+static struct group *
+pr_ldap_group_lookup(pool *p,
+                     char *filter_template, const char *replace,
+                     char *ldap_attrs[])
 {
-  char filter[BUFSIZ] = {'\0'}, **values, *dn;
+  char *filter, **values, *dn;
   int i = 0, j = 0, ret;
   LDAPMessage *result, *e;
 
@@ -522,7 +550,7 @@ static struct group
       return NULL;
   }
 
-  ldap_build_filter(filter, sizeof(filter), filter_template, NULL, NULL, NULL, replace, NULL);
+  filter = pr_ldap_generate_filter(p, filter_template, replace);
 
   if ((ret = ldap_search_st(ld, ldap_gid_basedn, ldap_search_scope, filter, ldap_attrs, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
     if (ret == LDAP_SERVER_DOWN) {
@@ -599,7 +627,7 @@ pr_ldap_getgrnam(pool *p, const char *group_name)
 {
   char *group_attrs[] = {CN_ATTR, GIDNUMBER_ATTR, MEMBERUID_ATTR, NULL};
 
-  return pr_ldap_group_lookup(ldap_group_name_filter, group_name, group_attrs);
+  return pr_ldap_group_lookup(p, ldap_group_name_filter, group_name, group_attrs);
 }
 
 static struct group *
@@ -610,7 +638,7 @@ pr_ldap_getgrgid(pool *p, gid_t gid)
 
   snprintf(gidstr, sizeof(gidstr), "%d", gid);
 
-  return pr_ldap_group_lookup(ldap_group_gid_filter, (const char *)gidstr, group_attrs);
+  return pr_ldap_group_lookup(p, ldap_group_gid_filter, (const char *)gidstr, group_attrs);
 }
 
 static struct passwd *
@@ -796,7 +824,7 @@ handle_ldap_getgrgid(cmd_rec *cmd)
 MODRET
 handle_ldap_getgroups(cmd_rec *cmd)
 {
-  char filter[BUFSIZ] = {'\0'}, **gidNumber, **cn,
+  char *filter, **gidNumber, **cn,
        *w[] = {GIDNUMBER_ATTR, CN_ATTR, NULL};
   int ret;
   struct passwd *pw;
@@ -831,7 +859,7 @@ handle_ldap_getgroups(cmd_rec *cmd)
       goto return_groups;
   }
 
-  ldap_build_filter(filter, sizeof(filter), "(&(memberUid=%v)(objectclass=posixGroup))", NULL, NULL, NULL, cmd->argv[0], NULL);
+  filter = pr_ldap_generate_filter(cmd->tmp_pool, ldap_group_member_filter, cmd->argv[0]);
 
   pr_ldap_set_sizelimit(-1);
   if ((ret = ldap_search_st(ld, ldap_gid_basedn, ldap_search_scope, filter, w, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
@@ -1275,6 +1303,8 @@ set_ldap_dogid(cmd_rec *cmd)
     c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
   if (cmd->argc > 4)
     c->argv[3] = pstrdup(c->pool, cmd->argv[4]);
+  if (cmd->argc > 5)
+    c->argv[4] = pstrdup(c->pool, cmd->argv[5]);
 
   return HANDLED(cmd);
 }
@@ -1508,6 +1538,11 @@ ldap_getconf(void)
         ldap_group_gid_filter = pstrdup(session.pool, c->argv[3]);
       else
         ldap_group_gid_filter = "(&(gidNumber=%v)(objectclass=posixGroup))";
+
+      if (c->argc > 4)
+        ldap_group_member_filter = pstrdup(session.pool, c->argv[3]);
+      else
+        ldap_group_member_filter = "(&(memberUid=%v)(objectclass=posixGroup))";
     }
   }
 
