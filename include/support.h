@@ -19,13 +19,21 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.4 2000-07-07 01:19:27 macgyver Exp $
+ * $Id: support.h,v 1.5 2000-10-08 22:24:46 macgyver Exp $
  */
 
 #ifndef __SUPPORT_H
 #define __SUPPORT_H
 
 #define CHOP(s)		strip_end((s),"\r\n")
+
+#if defined(NAME_MAX)
+# define NAME_MAX_GUESS		(NAME_MAX)
+#elif defined(MAXNAMELEN)
+# define NAME_MAX_GUESS		(MAXNAMELEN - 1)
+#else
+# define NAME_MAX_GUESS		(255)
+#endif
 
 /* Functions [optionally] provided by libsupp.a */
 #ifndef HAVE_GETOPT
@@ -64,6 +72,8 @@ void schedule(void (*f)(void*,void*,void*,void*),int nloops,
               void*,void*,void*,void*);
 void run_schedule();
 int schedulep();
+
+int get_name_max(char*, int);
 
 mode_t file_mode(char*);
 int file_exists(char*);

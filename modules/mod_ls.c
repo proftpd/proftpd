@@ -19,7 +19,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.31 2000-07-26 11:03:17 macgyver Exp $
+ * $Id: mod_ls.c,v 1.32 2000-10-08 22:24:46 macgyver Exp $
  */
 
 #include "conf.h"
@@ -587,6 +587,7 @@ char **sreaddir(pool *workp, const char *dirname, const int sort)
   char		**p;
   char		*s, *s_end;
   int		dsize, ssize;
+  int		dirfd;
 
   if(fs_stat(dirname, &st) < 0) 
     return NULL;
@@ -609,40 +610,25 @@ char **sreaddir(pool *workp, const char *dirname, const int sort)
   dsize = (st.st_size / 4) + 10;	 /* Guess number of entries in dir */
 
   /*
-  ** Guess number of bytes total needed to store all filenames in dir.
-  ** Any OS supporting multple file system types cannot define NAME_MAX
-  ** (POSIX 1003.1a, section 2.9.5) since this value will not be constant.
   ** The directory has been opened already, but portably accessing the file
-  ** descriptor inside the DIR struct is difficult.  Some systems use "dd_fd"
-  ** or "__dd_fd" rather than "d_fd", and others work really hard at opacity.
-  ** So, with a loss of efficiency, use pathconf() rather than fpathconf(),
-  ** unless "d->d_fd" happens to work.
+  ** descriptor inside the DIR struct isn't easy.  Some systems use "dd_fd" or
+  ** "__dd_fd" rather than "d_fd".  Still others work really hard at opacity.
   */
-#ifdef NAME_MAX
-# define MOD_LS_NAME_MAX_GUESS NAME_MAX
+#if defined(HAVE_STRUCT_DIR_D_FD)
+  dirfd = d->d_fd;
+#elif defined(HAVE_STRUCT_DIR_DD_FD)
+  dirfd = d->dd_fd;
+#elif defined(HAVE_STRUCT_DIR___DD_FD)
+  dirfd = d->__dd_fd;
 #else
-# define MOD_LS_NAME_MAX_GUESS 255
+  dirfd = 0;
 #endif
-#define MOD_LS_DQSTR(x)	(#x)
-#if defined(HAVE_FPATHCONF) && defined(HAVE_STRUCT_DIR_D_FD)
-  if ( (ssize = fpathconf(d->d_fd, _PC_NAME_MAX)) < 1 ) {
-    log_debug(DEBUG1, "fpathconf(%s, _PC_NAME_MAX) = %d, using %s",
-    		dirname, ssize, MOD_LS_DQSTR(MOD_LS_NAME_MAX_GUESS));
-    ssize = MOD_LS_NAME_MAX_GUESS;
+  if((ssize = get_name_max((char *) dirname, dirfd)) < 1 ) {
+    log_debug(DEBUG1, "get_name_max(%s, %d) = %d, using %d",
+	      dirname, dirfd, ssize, NAME_MAX_GUESS);
+    ssize = NAME_MAX_GUESS;
   }
-#elif defined(HAVE_PATHCONF)
-  if ( (ssize = pathconf(dirname, _PC_NAME_MAX)) < 1 ) {
-    log_debug(DEBUG1, "pathconf(%s, _PC_NAME_MAX) = %d, using %s",
-    		dirname, ssize, MOD_LS_DQSTR(MOD_LS_NAME_MAX_GUESS));
-    ssize = MOD_LS_NAME_MAX_GUESS;
-  }
-#elif defined(NAME_MAX)
-  ssize = NAME_MAX;
-#elif defined(MAXNAMELEN)
-  ssize = MAXNAMELEN - 1;
-#else
-  ssize = MOD_LS_NAME_MAX_GUESS;
-#endif
+  
   ssize *= ((dsize / 4) + 1);
 
   /* Allocate array for pointers to filenames */

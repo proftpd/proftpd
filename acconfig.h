@@ -39,6 +39,12 @@
 /* Define if you want support for PAM based authentication */
 #undef HAVE_PAM
 
+/* Define if your DIR structure has member dd_fd */
+#undef HAVE_STRUCT_DIR_DD_FD
+
+/* Define if your DIR structure has member __dd_fd */
+#undef HAVE_STRUCT_DIR___DD_FD
+
 /* Define if your system has __progname */
 #undef HAVE___PROGNAME
 

@@ -411,21 +411,36 @@ if test "$have_syslog_h" = "yes"; then
   fi
 fi
 
-dnl Check for member d_fd in struct DIR
-AC_MSG_CHECKING(for d_fd in DIR structure)
-AC_TRY_COMPILE([
+dnl Check for directory file descriptor member ("d_fd", "dd_fd" or "__dd_fd")
+dnl of the DIR struct, possibly defining one of:
+dnl	HAVE_STRUCT_DIR_D_FD
+dnl	HAVE_STRUCT_DIR_DD_FD
+dnl	HAVE_STRUCT_DIR___DD_FD
+dnl Should use AC_C_STRUCT_MEMBER, when available in an official release.
+dnl The autoconf-2.14.1 floating around is NOT an official release.
+dnl Note: use of either the _POSIX_C_SOURCE or the _XOPEN_SOURCE preprocessor
+dnl macro could result in a wrong answer unless it is also defined here.
+dnl Doing so may be automatic or may take some care or reordering.
+dnl NB: autoheader won't pick up these macros, requiring acconfig.h entries.
+dnl
+for dirfd in d_fd dd_fd __dd_fd ; do
+	AC_MSG_CHECKING(for $dirfd in DIR structure)
+	AC_TRY_COMPILE([
 #include <stdio.h>
 #include <dirent.h>
 ], [
 DIR *dirp;
-int i = dirp->d_fd;
-], ac_cv_struct_dir_d_fd=yes,)
-if test x"$ac_cv_struct_dir_d_fd" = xyes ; then
-	AC_DEFINE(HAVE_STRUCT_DIR_D_FD)
-	AC_MSG_RESULT(yes)
-else
-	AC_MSG_RESULT(no)
-fi
+int i = dirp->$dirfd;
+], eval ac_cv_struct_dir_$dirfd=yes,)
+	if test "`eval echo x'$''ac_cv_struct_dir_'$dirfd`" = xyes ; then
+		ucdirfd=`echo $dirfd | tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'`
+		AC_DEFINE_UNQUOTED(HAVE_STRUCT_DIR_$ucdirfd)
+		AC_MSG_RESULT(yes)
+		break
+	else
+		AC_MSG_RESULT(no)
+	fi
+done
 
 
 dnl Checks for library functions.

@@ -20,7 +20,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.18 2000-07-11 13:36:52 macgyver Exp $
+ * $Id: support.c,v 1.19 2000-10-08 22:24:46 macgyver Exp $
  */
 
 /* History Log:
@@ -195,6 +195,57 @@ int schedulep()
   handle_sig_alarm();
   return (scheds && scheds->xas_list);
 }
+
+
+/*
+** Get the maximum size of a file name (pathname component).
+** If a directory file descriptor, e.g. the d_fd DIR structure element,
+** is not available, the second argument should be 0.
+**
+** Note: a POSIX compliant system typically should NOT define NAME_MAX,
+** since the value almost certainly varies across different file system types.
+** Refer to POSIX 1003.1a, Section 2.9.5, Table 2-5.
+** Alas, current (Jul 2000) Linux systems define NAME_MAX anyway.
+** NB: NAME_MAX_GUESS is defined in support.h.
+*/
+int
+get_name_max(char *dirname, int dir_fd)
+{
+	int	name_max = 0;
+#if defined(HAVE_FPATHCONF) || defined(HAVE_PATHCONF)
+	char	*msgfmt = "";
+
+# if defined(HAVE_FPATHCONF)
+	if ( dir_fd > 0 ) {
+		name_max = fpathconf(dir_fd, _PC_NAME_MAX);
+		msgfmt = "fpathconf(%s, _PC_NAME_MAX) = %d, errno = %d";
+	}
+	else
+# endif
+# if defined(HAVE_PATHCONF)
+	if ( dirname != NULL ) {
+		name_max = pathconf(dirname, _PC_NAME_MAX);
+		msgfmt = "pathconf(%s, _PC_NAME_MAX) = %d, errno = %d";
+	}
+	else
+# endif
+		/* no data provided to use either pathconf() or fpathconf() */
+		return -1;
+	if ( name_max < 0 ) {
+		/*
+		** NB: errno may not be set if the failure is due
+		** to a limit or option not being supported.
+		*/
+		log_debug(DEBUG1, msgfmt,
+				dirname ? dirname : "(NULL)", name_max, errno);
+	}
+#else
+	name_max = NAME_MAX_GUESS;
+#endif
+
+	return name_max;
+}
+
 
 /* Interpolates a pathname, expanding ~ notation if necessary
  */
