@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.96 2003-09-06 17:44:14 castaglia Exp $
+ * $Id: mod_ls.c,v 1.97 2003-10-20 07:02:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -443,21 +443,21 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
         if (!opt_n) {
 
           /* Format nameline using user/group names. */
-          snprintf(nameline, sizeof(nameline),
-                   "%s %3d %-8s %-8s %8" PR_LU " %s %2d %s %s",
-                   m, (int)st.st_nlink,
-                   MAP_UID(st.st_uid), MAP_GID(st.st_gid), st.st_size,
-                   months[t->tm_mon], t->tm_mday, timeline, name);
+          snprintf(nameline, sizeof(nameline)-1,
+            "%s %3d %-8s %-8s %8" PR_LU " %s %2d %s %s", m, (int) st.st_nlink,
+            MAP_UID(st.st_uid), MAP_GID(st.st_gid), st.st_size,
+            months[t->tm_mon], t->tm_mday, timeline, name);
 
         } else {
 
           /* Format nameline using user/group IDs. */
-          snprintf(nameline, sizeof(nameline),
-                   "%s %3d %-8u %-8u %8" PR_LU " %s %2d %s %s",
-                   m, (int)st.st_nlink,
-                   (unsigned)st.st_uid, (unsigned)st.st_gid, st.st_size,
-                   months[t->tm_mon], t->tm_mday, timeline, name);
+          snprintf(nameline, sizeof(nameline)-1,
+            "%s %3d %-8u %-8u %8" PR_LU " %s %2d %s %s", m, (int) st.st_nlink,
+            (unsigned) st.st_uid, (unsigned) st.st_gid, st.st_size,
+            months[t->tm_mon], t->tm_mday, timeline, name);
         }
+
+        nameline[sizeof(nameline)-1] = '\0';
 
         if (S_ISLNK(st.st_mode)) {
           char *buf = nameline + strlen(nameline);
@@ -474,8 +474,14 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
               suffix[0] = '*';
           }
 
-          if (!opt_L && list_show_symlinks)
-            snprintf(buf, sizeof(nameline) - strlen(nameline) - 4, " -> %s", l);
+          if (!opt_L && list_show_symlinks) {
+            if (sizeof(nameline) - strlen(nameline) > 4)
+              snprintf(buf, sizeof(nameline) - strlen(nameline) - 4,
+                " -> %s", l);
+            else
+              log_pri(PR_LOG_NOTICE, "notice: symlink '%s' yields an "
+                "excessive string, ignoring", name);
+          }
 
           nameline[sizeof(nameline)-1] = '\0';
         }
