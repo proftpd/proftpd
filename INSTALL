@@ -284,17 +284,14 @@ Installation Instructions
 
 10. Create the runtime state directory.
     In order for the MaxClients and MaxClientsPerHost directives and the
-    ftpwho and ftpcount utilities to work, proftpd must have a directory to
-    hold its scoreboard files.  The default is '/usr/local/var/proftpd/',
-    though it may have been changed in the configuration process in Step 1.
+    ftpwho and ftpcount utilities to work, proftpd must have a scoreboard
+    file.  The default is '/usr/local/var/proftpd/proftpd.scoreboard', though
+    it may have been changed in the configuration process in Step 1.
     The default location also can be overriden at run-time by using the
-    ScoreboardPath directive in the proftpd.conf configuration file.
-    Whatever diretory is used, it must exist prior to starting proftpd.
-    If you have installed from an installation package, the installation
-    scripts may have created the default directory.  Nonetheless, if it does
-    not already exist you must create it manually.  No special permissions
-    are needed on the directory, unless you wish to restrict who is allowed
-    to run ftpwho and ftpcount.
+    ScoreboardFile directive in the proftpd.conf configuration file.
+    If the indicated file does not exist, it will be created when the daemon
+    starts up.  If you have installed from an installation package, the
+    installation scripts may have created the default directory. 
 
 
 11. Verify operation.
@@ -316,7 +313,7 @@ Installation Instructions
                            FAQ: http://pdd.sourceforge.net/faq/proftpdfaq.html
 
     Note that some systems will require special system-specific preparation
-    of the anonymous ftp and any other chroot directories.  Also, be aware
+    of the anonymous ftp and any other chroot directories.  PLEASE NOTE
     that the configuration directives "PersistentPasswd", "RequireValidShell",
     and "UseFtpUsers" may require special attention.
 
