@@ -413,6 +413,7 @@ if test "$pr_cv_var__pw_stayopen" = "yes"; then
 fi
 
 AC_CHECK_LIB(security, set_auth_parameters)
+AC_CHECK_LIB(sec, setprpwent)
 
 AC_CHECK_HEADERS(sys/security.h)
 AC_CHECK_HEADERS(krb.h)

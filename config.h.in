@@ -459,6 +459,9 @@
 /* Define if you have the resolv library (-lresolv).  */
 #undef HAVE_LIBRESOLV
 
+/* Define if you have the sec library (-lsec).  */
+#undef HAVE_LIBSEC
+
 /* Define if you have the security library (-lsecurity).  */
 #undef HAVE_LIBSECURITY
 
