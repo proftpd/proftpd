@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.621 2004-11-04 22:48:17 castaglia Exp $
+$Id: NEWS,v 1.622 2004-11-09 02:45:54 castaglia Exp $
 
 CVS
 --------------------------------
@@ -51,6 +51,10 @@ CVS
 - Bug 2071 - Add Variables API.
 - Added DSO support.  See the README.DSO file for more information.
 - Bug 2509 - sendfile() usage fails with > 2GB files.
+- Bug 2480 - Remote users discovery. Leon Juranic described an information
+  leak via timing differences in the handling of the USER command for
+  valid versus invalid users.  The mod_delay module was added to address
+  this timing difference.  See doc/modules/mod_delay.html for details.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------
