@@ -9,7 +9,7 @@ mandir=@mandir@
 
 PLATFORM=@OSREL@ @OSTYPE@
 LDFLAGS=@LDFLAGS@
-LIBS=@LIBS@ @LIBRARIES@
+LIBS=@LIBRARIES@ @LIBS@
 CURSES_LIBS=@CURSES_LIBS@
 
 # The following compilation flags are valid:
