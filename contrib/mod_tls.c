@@ -38,6 +38,7 @@
 #include "privs.h"
 
 #include <openssl/ssl.h>
+#include <openssl/evp.h>
 #include <openssl/x509v3.h>
 #include <openssl/err.h>
 #include <openssl/rand.h>
@@ -589,6 +590,40 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylength) {
 
   return NULL;
 }
+
+/* Post 0.9.7a, RSA blinding is turned on by default, so there is no need to
+ * do this manually.
+ */
+#if OPENSSL_VERSION_NUMBER < 0x0090702fL
+static void tls_blinding_on(SSL *ssl) {
+  /* RSA keys are subject to timing attacks.  To attempt to make such
+   * attacks harder, use RSA blinding.
+   */
+  EVP_PKEY *pkey = SSL_get_privatekey(ssl);
+  RSA *rsa = EVP_PKEY_get1_RSA(pkey);
+
+  if (rsa) {
+    if (RSA_blinding_on(rsa, NULL) != 1)
+      tls_log("error setting RSA blinding: %s",
+        ERR_error_string(ERR_get_error(), NULL));
+    else
+      tls_log("set RSA blinding on");
+
+    /* Now, "free" the RSA pointer, to properly decrement the reference
+     * counter.
+     */
+    RSA_free(rsa);
+
+  } else {
+
+    /* The administrator may have configured DSA keys rather than RSA keys.
+     * In this case, there is nothing to do.
+     */
+  }
+
+  return;
+}
+#endif
 
 static int tls_init_ctxt(void) {
   SSL_load_error_strings();
@@ -1933,6 +1968,13 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
         }
       }
 
+#if OPENSSL_VERSION_NUMBER < 0x0090702fL
+      /* Make sure blinding is turned on. (For some reason, this only seems
+       * to be allowed on SSL objects, not on SSL_CTX objects.  Bummer).
+       */
+      tls_blinding_on((SSL *) nstrm->strm_data);
+#endif
+
       if (ctrl_cert)
         X509_free(ctrl_cert);
 
@@ -2262,6 +2304,14 @@ MODRET tls_auth(cmd_rec *cmd) {
        pr_response_add_err(R_550, "TLS handshake failed");
        return ERROR(cmd);
      }
+
+#if OPENSSL_VERSION_NUMBER < 0x0090702fL
+     /* Make sure blinding is turned on. (For some reason, this only seems
+      * to be allowed on SSL objects, not on SSL_CTX objects.  Bummer).
+      */
+     tls_blinding_on(ctrl_ssl);
+#endif
+
      tls_flags |= TLS_SESS_ON_CTRL;
 
   } else if (!strcmp(cmd->argv[1], "SSL") ||
@@ -2278,6 +2328,14 @@ MODRET tls_auth(cmd_rec *cmd) {
       pr_response_add_err(R_550, "TLS handshake failed");
       return ERROR(cmd);
     }
+
+#if OPENSSL_VERSION_NUMBER < 0x0090702fL
+    /* Make sure blinding is turned on. (For some reason, this only seems
+     * to be allowed on SSL objects, not on SSL_CTX objects.  Bummer).
+     */
+    tls_blinding_on(ctrl_ssl);
+#endif
+
     tls_flags |= TLS_SESS_ON_CTRL;
     tls_flags |= TLS_SESS_NEED_DATA_PROT;
 
