@@ -25,7 +25,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.71 2002-06-22 20:17:58 jwm Exp $
+ * $Id: mod_xfer.c,v 1.72 2002-06-25 16:52:35 castaglia Exp $
  */
 
 /* History Log:
@@ -94,7 +94,7 @@ static void _log_transfer(char direction, char abort_flag) {
              direction,'r',session.user, abort_flag);
   }
 
-  log_debug(DEBUG1, "Transfer %s %lu bytes in %d.%02d seconds.",
+  log_debug(DEBUG1, "Transfer %s %" PR_LU " bytes in %d.%02d seconds.",
 	    abort_flag == 'c' ? "completed:" : "aborted after",
 	    session.xfer.total_bytes, (int) end_time.tv_sec,
 	    (int) (end_time.tv_usec / 10000));
