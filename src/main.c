@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.173 2003-03-24 20:26:36 castaglia Exp $
+ * $Id: main.c,v 1.174 2003-03-28 07:34:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -447,7 +447,10 @@ static int get_command_class(const char *name) {
   while (c && c->cmd_type != CMD)
     c = pr_stash_get_symbol(PR_SYM_CMD, name, c, NULL);
 
-  return (c ? c->class : 0);
+  /* By default, every command has a class of CL_ALL.  This insures that
+   * any configured ExtendedLogs that default to "all" will log the command.
+   */
+  return (c ? c->class : CL_ALL);
 }
 
 static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
