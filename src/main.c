@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.226 2004-05-03 17:25:23 castaglia Exp $
+ * $Id: main.c,v 1.227 2004-05-10 17:51:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -737,6 +737,9 @@ static void cmd_loop(server_rec *server, conn_t *c) {
     c->remote_addr ? pr_netaddr_get_ipstr(c->remote_addr) : "?",
     c->remote_port ? c->remote_port : 0);
 
+  /* Make sure we can receive OOB data */
+  pr_inet_set_async(session.pool, session.c);
+
   /* Setup the main idle timer */
   if (TimeoutIdle)
     add_timer(TimeoutIdle, TIMER_IDLE, NULL, idle_timeout_cb);
@@ -768,9 +771,6 @@ static void cmd_loop(server_rec *server, conn_t *c) {
 
   } else
     pr_response_send(R_220, "%s FTP server ready", serveraddress);
-
-  /* Make sure we can receive OOB data */
-  pr_inet_set_async(session.pool, session.c);
 
   pr_log_pri(PR_LOG_INFO, "FTP session opened.");
 
