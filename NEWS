@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.385 2003-03-04 19:50:18 castaglia Exp $
+$Id: NEWS,v 1.386 2003-03-04 21:30:36 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -9,6 +9,8 @@ CVS
 - Bug 1960 - Add removed file size by DELE command to xferlog.
 - Bug 1967 - Add display of uptime to ftpwho, ftptop.
 - Added AnonRejectPasswords directive.
+- Added ftpshut -D command-line option, for deleting the ftpshut shutdown
+  file.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------

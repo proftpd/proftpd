@@ -26,28 +26,26 @@
 /* Simply utility to create the proftpd shutdown message file, allowing
  * an admin to configure the shutdown, deny, disc and messages.
  *
- * Usage: ftpshut [ -l min ] [ -d min ] time [ warning-message ... ]
+ * $Id: ftpshut.c,v 1.6 2003-03-04 21:30:37 castaglia Exp $
  */
 
 #include "conf.h"
 
-static void show_usage(char *progname)
-{
-  printf("usage: %s [ -l min ] [ -d min ] time [ warning-message ... ]\n",
-         progname);
+static void show_usage(char *progname) {
+  printf("usage: %s [ -R ] [ -l min ] [ -d min ] time "
+    " [ warning-message ... ]\n", progname);
 
   exit(1);
 }
 
-static int isnumeric(char *str)
-{
+static int isnumeric(char *str) {
   while (str && isspace((int) *str))
     str++;
 
-  if(!str || !*str)
+  if (!str || !*str)
     return 0;
 
-  for(; str && *str; str++) {
+  for (; str && *str; str++) {
     if (!isdigit((int) *str))
       return 0;
   }
@@ -55,8 +53,7 @@ static int isnumeric(char *str)
   return 1;
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   int deny = 10,disc = 5,c;
   FILE *outf;
   char *shut,*msg,*progname = argv[0];
@@ -66,39 +63,48 @@ int main(int argc, char *argv[])
 
   opterr = 0;
 
-  while((c = getopt(argc,argv,"l:d:")) != -1) {
-    switch(c) {
-    case 'l':
-    case 'd':
-      if(!optarg) {
-        fprintf(stderr,"%s: -%c requires an argument.\n", progname, c);
+  while ((c = getopt(argc, argv, "Rl:d:")) != -1) {
+    switch (c) {
+      case 'R':
+        if (unlink(SHUTMSG_PATH) < 0) {
+          fprintf(stderr, "%s: error removing '" SHUTMSG_PATH "': %s\n",
+            progname, strerror(errno));
+          exit(1);
+        }
+        fprintf(stdout, "%s: " SHUTMSG_PATH " removed\n", progname);
+        exit(0);
+
+      case 'l':
+      case 'd':
+        if (!optarg) {
+          fprintf(stderr, "%s: -%c requires an argument\n", progname, c);
+          show_usage(progname);
+        }
+
+        if (!isnumeric(optarg)) {
+	  fprintf(stderr, "%s: -%c requires a numeric argument\n", progname, c);
+	  show_usage(progname);
+        }
+
+        if (c == 'd')
+	  disc = atoi(optarg);
+
+        else if (c == 'l')
+	  deny = atoi(optarg);
+
+        break;
+
+      case '?':
+        fprintf(stderr, "%s: unknown option '%c'\n", progname, (char)optopt);
+
+      case 'h':
+      default:
         show_usage(progname);
-      }
-
-      if(!isnumeric(optarg)) {
-	fprintf(stderr, "%s: -%c requires a numeric argument.\n",
-		progname, c);
-	show_usage(progname);
-      }
-
-      if(c == 'd')
-	disc = atoi(optarg);
-      else if(c == 'l')
-	deny = atoi(optarg);
-
-      break;
-
-    case '?':
-      fprintf(stderr,"%s: unknown option '%c'.\n",progname,(char)optopt);
-
-    case 'h':
-    default:
-      show_usage(progname);
     }
   }
 
-  /* everything left on the command line is the message */
-  if(optind >= argc)
+  /* Everything left on the command line is the message */
+  if (optind >= argc)
     show_usage(progname);
 
   shut = argv[optind++];
@@ -160,9 +166,9 @@ int main(int argc, char *argv[])
   }
 
   umask(022);
-  if((outf = fopen(SHUTMSG_PATH,"w")) == NULL) {
-    fprintf(stderr,"%s: %s: %s\n",progname,
-            SHUTMSG_PATH,strerror(errno));
+  if ((outf = fopen(SHUTMSG_PATH, "w")) == NULL) {
+    fprintf(stderr,"%s: error opening '" SHUTMSG_PATH "': %s\n", progname,
+      strerror(errno));
     exit(1);
   }
 
