@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.139 2003-04-30 00:03:00 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.140 2003-05-14 19:05:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1170,28 +1170,35 @@ MODRET xfer_stor(cmd_rec *cmd) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
-  if (preg && ((ret = regexec(preg,cmd->arg, 0, NULL, 0)) != 0)) {
-    char errmsg[200];
-    regerror(ret, preg, errmsg, sizeof(errmsg));
-    log_debug(DEBUG2, "'%s' denied by PathAllowFilter: %s", cmd->arg, errmsg);
-    pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
-    return ERROR(cmd);
+  if (preg) {
+    if ((ret = regexec(preg,cmd->arg, 0, NULL, 0)) != 0) {
+      log_debug(DEBUG2, "'%s' denied by PathAllowFilter", cmd->arg);
+      pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
+      return ERROR(cmd);
 
-  } else if (preg)
-    log_debug(DEBUG8, "'%s' allowed by PathAllowFilter", cmd->arg);
+    } else {
+      char errmsg[200];
+      regerror(ret, preg, errmsg, sizeof(errmsg));
+      log_debug(DEBUG8, "'%s' allowed by PathAllowFilter (%s)", cmd->arg,
+        errmsg);
+    }
+  }
 
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
-  if (preg && ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) == 0)) {
-    char errmsg[200];
-    regerror(ret, preg, errmsg, sizeof(errmsg));
-    log_debug(DEBUG2, "'%s' denied by PathDenyFilter: %s", cmd->arg, errmsg);
-    pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
-    return ERROR(cmd);
+  if (preg) {
+    if ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) == 0) {
+      log_debug(DEBUG2, "'%s' denied by PathDenyFilter", cmd->arg);
+      pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
+      return ERROR(cmd);
 
-  } else if (preg)
-    log_debug(DEBUG8, "'%s' allowed by PathDenyFilter", cmd->arg);
-
+    } else {
+      char errmsg[200];
+      regerror(ret, preg, errmsg, sizeof(errmsg));
+      log_debug(DEBUG8, "'%s' allowed by PathDenyFilter (%s)", cmd->arg,
+        errmsg);
+    }
+  }
 #endif /* REGEX */
 
   if (session.xfer.xfer_type == STOR_HIDDEN)
