@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.88 2002-09-30 15:56:42 castaglia Exp $
+ * $Id: mod_auth.c,v 1.89 2002-10-01 16:19:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1516,9 +1516,9 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     }
   }
 
-  /* Try to determine what MaxClients or MaxHosts applies to the user
-   * (if any) and count through the runtime file to see
-   * if this would exceed the max.
+  /* Try to determine what MaxClients/MaxHosts limits apply to this session
+   * (if any) and count through the runtime file to see if this limit would
+   * be exceeded.
    */
   maxc = find_config((c ? c->subset : cmd->server->conf),
 		     CONF_PARAM, "MaxClientsPerHost", FALSE);
@@ -1547,7 +1547,29 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
       end_login(0);
     }
   }
-  
+
+  /* Check for any configured MaxClientsPerUser. */ 
+  if ((maxc = find_config((c ? c->subset : cmd->server->conf),
+      CONF_PARAM, "MaxClientsPerUser", FALSE)) != NULL) {
+
+    char *maxstr = "Sorry, maximum number clients (%m) for this user already connected.";
+    unsigned int *max = maxc->argv[0];
+    char maxn[20] = {'\0'};
+
+    snprintf(maxn, sizeof(maxn), "%u", *max);
+
+    if (maxc->argc > 1)
+      maxstr = maxc->argv[1];
+   
+    if (usersessions >= *max) {
+      send_response(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
+        NULL));
+      log_auth(LOG_NOTICE, "Connection refused (max clients per user %u).",
+        *max);
+      end_login(0);
+    }
+  }
+
   maxc = find_config((c ? c->subset : cmd->server->conf),
 		     CONF_PARAM, "MaxClients", FALSE);
 
@@ -2048,6 +2070,45 @@ MODRET set_loginpasswordprompt(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+/* usage: MaxClientsPerUser max ["message"] */
+MODRET set_maxuserclients(cmd_rec *cmd) {
+  int max;
+  config_rec *c = NULL;
+
+  if (cmd->argc < 2 || cmd->argc > 3)
+    CONF_ERROR(cmd, "wrong number of parameters");
+ 
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  if (!strcasecmp(cmd->argv[1], "none"))
+    max = -1;
+
+  else {
+    char *endp = NULL;
+
+    max = (int) strtol(cmd->argv[1], &endp, 10);
+
+    if ((endp && *endp) || max < 1)
+      CONF_ERROR(cmd, "parameter must be 'none' or a number greater than 0");
+  }
+
+  if (cmd->argc == 3) {
+    c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[0]) = max;
+    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
+
+  } else {
+    c = add_config_param(cmd->argv[0], 1, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[0]) = max;
+  }
+
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
 MODRET set_maxloginattempts(cmd_rec *cmd) {
   int max;
 
@@ -2277,6 +2338,7 @@ static conftable auth_conftab[] = {
   { "DefaultRoot",		add_defaultroot,		NULL },
   { "GroupPassword",		set_grouppassword,		NULL },
   { "LoginPasswordPrompt",	set_loginpasswordprompt,	NULL },
+  { "MaxClientsPerUser",	set_maxuserclients,		NULL },
   { "MaxLoginAttempts",		set_maxloginattempts,		NULL },
   { "RequireValidShell",	set_requirevalidshell,		NULL },
   { "RootLogin",		set_rootlogin,			NULL },

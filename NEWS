@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.241 2002-09-30 20:57:52 castaglia Exp $
+$Id: NEWS,v 1.242 2002-10-01 16:19:02 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -34,6 +34,7 @@ CVS
 - Bug 1475 - Minor changes to SITE command handling
 - Bug 1748 - SQLLog doesn't work with DELE (no filename with %f)
 - Bug 1694 - SQLLog QUIT doesn't execute on connection close
+- Bug 1675 - add new MaxClientsPerUser configuration option
 
 1.2.6 - Released 2002-09-04
 ---------------------------------
