@@ -1440,11 +1440,11 @@ static size_t tls_get_pagesz(void) {
 #if defined(_SC_PAGESIZE)
   pagesz = sysconf(_SC_PAGESIZE);
 #elif defined(_SC_PAGE_SIZE)
-  pagesz = sysconf(_SC_PAGESIZE);
+  pagesz = sysconf(_SC_PAGE_SIZE);
 #else
   /* Default to using OpenSSL's defined buffer size for PEM files. */
   pagesz = PEM_BUFSIZE;
-#endif /* !_SC_PAGESIZE and !_SC_PAGESIZE */
+#endif /* !_SC_PAGESIZE and !_SC_PAGE_SIZE */
 
   return pagesz;
 }
