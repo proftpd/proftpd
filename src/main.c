@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.26 2000-02-29 07:25:52 macgyver Exp $
+ * $Id: main.c,v 1.27 2000-07-03 14:30:30 macgyver Exp $
  */
 
 /*
@@ -395,7 +395,10 @@ void set_proc_title(char *fmt,...)
   vsnprintf(statbuf, sizeof(statbuf), fmt, msg);
 
 #ifdef HAVE_SETPROCTITLE
-  setproctitle(statbuf);
+  /* On systems with setproctitle(), v*printf are used on the arguments.
+   * Prevent any possible format attacks.
+   */
+  setproctitle("%s", statbuf);
 #endif /* HAVE_SETPROCTITLE */
 
   va_end(msg);
