@@ -25,7 +25,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.22 2001-06-18 17:12:45 flood Exp $
+ * $Id: support.c,v 1.23 2001-06-18 17:35:06 flood Exp $
  */
 
 /* History Log:
@@ -299,7 +299,7 @@ char *dir_best_path(pool *p, const char *path)
   int fini = 0;
 
   if(*path == '~') {
-    if(fs_interpolate(path,workpath,MAXPATHLEN) == -1)
+    if(fs_interpolate(path,workpath,MAXPATHLEN) != 1)
       fs_dircat(workpath,sizeof(workpath),fs_getcwd(),path);
   } else {
     fs_dircat(workpath,sizeof(workpath),fs_getcwd(),path);
@@ -339,7 +339,7 @@ char *dir_canonical_path(pool *p, const char *path)
   char work[MAXPATHLEN + 1] = {'\0'};
 
   if(*path == '~') {
-    if(fs_interpolate(path,work,MAXPATHLEN) == -1)
+    if(fs_interpolate(path,work,MAXPATHLEN) != 1)
       fs_dircat(work, sizeof(work), fs_getcwd(), path);
   } else {
     fs_dircat(work, sizeof(work), fs_getcwd(), path);
@@ -369,7 +369,7 @@ char *dir_virtual_chdir(pool *p, const char *path)
   char work[MAXPATHLEN + 1] = {'\0'};
 
   if(*path == '~') {
-    if(fs_interpolate(path,work,MAXPATHLEN) == -1)
+    if(fs_interpolate(path,work,MAXPATHLEN) != 1)
       fs_dircat(work,sizeof(work),fs_getvwd(),path);
   } else
     fs_dircat(work,sizeof(work),fs_getvwd(),path);

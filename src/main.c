@@ -25,7 +25,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.64 2001-06-18 17:12:45 flood Exp $
+ * $Id: main.c,v 1.65 2001-06-18 17:35:06 flood Exp $
  */
 
 /*
@@ -86,7 +86,7 @@
 
 /* From mod_core.c
  */
-extern int core_display_file(const char *numeric, const char *fn);
+extern int core_display_file(const char *numeric, const char *fn, const char *fs);
 
 struct rehash {
   struct rehash *next;
@@ -1012,7 +1012,7 @@ void cmd_loop(server_rec *server, conn_t *c)
 
   display = (char*)get_param_ptr(server->conf,"DisplayConnect",FALSE);
   if(display) {
-      core_display_file(R_220,display);
+      core_display_file(R_220,display,NULL);
   }
 
   if((id = find_config(server->conf,CONF_PARAM,"ServerIdent",FALSE)) == NULL ||

@@ -25,14 +25,14 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.60 2001-06-18 17:12:45 flood Exp $
+ * $Id: mod_auth.c,v 1.61 2001-06-18 17:35:06 flood Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 
 /* From the core module */
-extern int core_display_file(const char *,const char *);
+extern int core_display_file(const char *,const char *,const char *);
 extern pid_t mpid;
 
 module auth_module;
@@ -1281,7 +1281,7 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
 					"DisplayGoAway",FALSE);
       
       if(display)
-	core_display_file(R_530, display);
+	core_display_file(R_530, display, NULL);
       else
 	send_response(R_530, "Too many users in your class, "
 		      "please try again later.");
@@ -1541,7 +1541,7 @@ MODRET cmd_pass(cmd_rec *cmd) {
 				      "DisplayLogin", FALSE);
 
     if(display)
-      core_display_file(R_230, display);
+      core_display_file(R_230, display, NULL);
     
     if((grantmsg = (char*)get_param_ptr((session.anon_config ?
         session.anon_config->subset : cmd->server->conf),

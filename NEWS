@@ -1,7 +1,12 @@
-$Id: NEWS,v 1.108 2001-06-18 17:12:44 flood Exp $
+$Id: NEWS,v 1.109 2001-06-18 17:35:06 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+- Bug 1155 - non rfc behavior on filenames with spaces
+- Bug 1193 - Error "~" processing while renaming files
+- Bug 1203 - negation ('!') notation in Allow/Deny ACL broken
+- Bug 1161 - %F magic cookie now displays free space on cwd
+- Bug 1151 - Allow <Limit> searching in vhost or main server conf
 - Copyright/License updated to allow linking to OpenSSL
 - Bug 1183 - Removed duplicate find_class() call
 - Bug 1189 - <Directory> duping checked for

@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.66 2001-06-18 17:12:45 flood Exp $
+ * $Id: mod_core.c,v 1.67 2001-06-18 17:35:06 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -1946,7 +1946,7 @@ MODRET end_virtualhost(cmd_rec *cmd)
  *          0 if file display
  */
 
-int core_display_file(const char *numeric, const char *fn)
+int core_display_file(const char *numeric, const char *fn, const char *fs)
 {
   fsdir_t *fp;
   char buf[1024] = {'\0'};
@@ -1963,7 +1963,7 @@ int core_display_file(const char *numeric, const char *fn)
   short first = 1;
 
 #if defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
-  fs_size = get_fs_size((char*)fn);
+  fs_size = get_fs_size((fs ? (char*)fs : (char*)fn));
   snprintf(mg_size, sizeof(mg_size), "%lu", fs_size);
 #endif
 
@@ -2130,7 +2130,7 @@ MODRET cmd_quit(cmd_rec *cmd)
 	display = (char*)get_param_ptr(cmd->server->conf, "DisplayQuit", FALSE);
 
   if(display) {
-	core_display_file(R_221, display);
+	core_display_file(R_221, display, NULL);
 	/* hack or feature, core_display_file() always puts a hyphen
 	 * on the last line
 	 */
@@ -2524,7 +2524,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir)
 
     if(fs_stat(display,&sbuf) != -1 && !S_ISDIR(sbuf.st_mode) &&
        sbuf.st_mtime > last)
-      core_display_file(R_250,display);
+      core_display_file(R_250,display,session.cwd);
   }
 
   add_response(R_250,"CWD command successful.");

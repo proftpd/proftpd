@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.34 2001-06-18 17:12:45 flood Exp $
+ * $Id: dirtree.c,v 1.35 2001-06-18 17:35:06 flood Exp $
  */
 
 /* History:
@@ -961,55 +961,126 @@ int match_ip(p_in_addr_t *addr, char *name, const char *match)
 }
 
 /* As of 1.2.0rc3, a '!' character in front of the IP address
- * negates the logic (i.e. doesn't match)
+ * negates the logic (i.e. doesn't match).
+ *
+ * Here are our rules for matching an IP/host list:
+ *
+ * (negate-cond-1 && negate-cond-2 && ... negate-cond-n) &&
+ * (cond-1 || cond-2 || ... cond-n)
+ *
+ * This boils down to the following two rules:
+ *
+ * 1. ALL negative ('!') conditions must evaluate to
+ * logically TRUE.
+ *
+ * .. and ..
+ * 
+ * 2. One (or more) normal conditions must evaluate to
+ * logically TRUE.
  */
+
+/* Check an ACL for negative (!) rules and make sure all of them evaluate to
+ * TRUE.  Default (if none exist) is TRUE.
+ */
+static int _check_ip_negative(const config_rec *c)
+{
+  char *arg,**argv;
+  int argc;
+  
+  for(argc = c->argc, argv = (char**)c->argv; argc; argc--, argv++) {
+    arg = *argv;
+    if(*arg != '!')
+      continue;
+
+    arg++;
+    switch(match_ip(session.c->remote_ipaddr,session.c->remote_name,arg)) {
+      case 1:
+        /* This actually means we DIDN'T match, and it's ok to short circuit
+         * everything (negative)
+         */
+        return FALSE;
+
+      case -1:
+        /* -1 signifies a NONE match, which isn't valid for negative
+         * conditions.
+         */
+        log_pri(LOG_ERR,"ooops, it looks like !NONE was used in an ACL somehow.");
+        return FALSE;
+
+      default:
+        /* This means our match is actually true and we can continue */
+        break;
+    }
+  }
+ 
+  /* If we got this far either all conditions were TRUE or there were no
+   * conditions.
+   */
+  
+  return TRUE;
+}
+
+/* Check an ACL for positive conditions, short-circuiting if ANY of them are
+ * TRUE.  Default return is FALSE.
+ */
+static int _check_ip_positive(const config_rec *c)
+{
+  char *arg,**argv;
+  int argc;
+
+  for(argc = c->argc, argv = (char**)c->argv; argc; argc--, argv++) {
+    arg = *argv;
+    if(*arg == '!')
+      continue;
+
+    switch(match_ip(session.c->remote_ipaddr,session.c->remote_name,arg)) {
+      case 1:
+        /* Found it! */
+        return TRUE;
+        
+      case -1:
+        /* Special value "NONE", meaning nothing can match, so we can
+         * short-circuit on this as well.
+         */
+        return FALSE;
+        
+      default:
+        /* No match, keep trying */
+        break;
+    }
+  }
+
+  /* default return value is FALSE */
+  return FALSE;
+}
 
 static int _check_ip_access(xaset_t *conf, char *name)
 {
   char *arg,**argv;
-  int argc; 
-  int negate = 0;
+  int res = FALSE;
   
   config_rec *c = find_config(conf,CONF_PARAM,name,FALSE);
 
   while(c) {
-    for(argc = c->argc, argv = (char**)c->argv; argc; argc--, argv++) {
-      arg = *argv;
-      if(*arg == '!') {
-	negate++;
-	arg++;
-      } else negate = 0;
-      
-      switch(match_ip(session.c->remote_ipaddr,session.c->remote_name,arg)) {
-	case 1: 
-	  /* If in logical negate mode, we specifically did NOT find what we
-	   * were looking for.
-	   */
-	  if(negate) break;
-	  
-	  /* otherwise, we did */
-	  return TRUE;
+    res = _check_ip_negative(c);
 
-	case -1: 
-	  /* -1 is only returned on an explicit mismatch, which can only
-	   * happen for "NONE".  Negate is not valid in this case, and is
-	   * disallowed by mod_core's _add_allow_deny().
-	   */
-	  return FALSE;
-
-        default:
-	  /* No match, but if we are in negate mode, that means it IS 
-	   * a match.
-	   */
-	  if(negate) return TRUE;
-	  break;
-      }
-    }
-
+    /* If the negative check failed (default is success), short-circuit and
+     * return FALSE
+     */
+    if(res != TRUE)
+      return res;
+    
+    /* Otherwise, continue on with boolean or check */
+    if((res = _check_ip_positive(c)) != TRUE)
+      return FALSE;
+    
+    /* Continue on, in case there are other acls that need to be checked (acls
+     * are boolean ANDed)
+     */
     c = find_config_next(c,c->next,CONF_PARAM,name,FALSE);
   }
 
-  return FALSE;
+  return res;
 }
 
 /* 1 if allowed, 0 otherwise */
@@ -1157,7 +1228,8 @@ int login_check_limits(xaset_t *conf, int recurse,
   return res;
 }
 
-int dir_check_limits(config_rec *c, char *cmd, int hidden)
+static
+int _check_limits(xaset_t *set, char *cmd, int hidden)
 {
   /* Check limit directives */
   int res = 1,ignore_hidden = -1;
@@ -1165,58 +1237,55 @@ int dir_check_limits(config_rec *c, char *cmd, int hidden)
   register int i;
 
   errno = 0;
-    
-  for(; c && (res == 1); c = c->parent) {
+  
+  if(!set)
+    return res;
+  
+  for(lc = (config_rec*)set->xas_list;
+      lc && (res == 1); lc = lc->next) {
 
-    if(c->subset) {
-      for(lc = (config_rec*)c->subset->xas_list;
-	        lc && (res == 1); lc = lc->next) {
-
-        if(lc->config_type == CONF_LIMIT) {
-          for(i = 0; i < lc->argc; i++) {
-            if(!strcasecmp(cmd,(char*)(lc->argv[i])))
-              break;
-	  }
+    if(lc->config_type == CONF_LIMIT) {
+      for(i = 0; i < lc->argc; i++) {
+        if(!strcasecmp(cmd,(char*)(lc->argv[i])))
+          break;
+      }
 	  
 /*
-          log_debug(DEBUG5,"cmd=%s i=%d lc->argc=%d lc->argv[0]=%s\n",
-                    cmd, i, lc->argc, (char*)(lc->argv[i]));
+      log_debug(DEBUG5,"cmd=%s i=%d lc->argc=%d lc->argv[0]=%s\n",
+                   cmd, i, lc->argc, (char*)(lc->argv[i]));
 */
 
-          if(i == lc->argc)
-            continue;
+      if(i == lc->argc)
+        continue;
 	  
-          /* Found a limit directive associated with the current
-           * command.  ignore_hidden defaults to -1, if an explicit
-           * IgnoreHidden off is seen, it is set to 0 and the check will not
-           * be done again up the chain.  If an explicit IgnoreHidden on is
-           * seen, checking short-circuits and we set ENOENT.
-           */
-          if (hidden && ignore_hidden == -1) {
-            ignore_hidden = get_param_int(lc->subset,"IgnoreHidden",FALSE);
-            if(ignore_hidden == 1) {
-              res = 0;
-              errno = ENOENT;
-              break;
-            }
-          }
-
-          switch(_check_limit(lc)) {
-          case 1:
-	    res++;
-	    break;
-	    
-          case -1:
-          case -2:
-	    res = 0;
-	    break;
-	    
-          default:
-	    continue;
-          }
-	  
+      /* Found a limit directive associated with the current
+       * command.  ignore_hidden defaults to -1, if an explicit
+       * IgnoreHidden off is seen, it is set to 0 and the check will not
+       * be done again up the chain.  If an explicit IgnoreHidden on is
+       * seen, checking short-circuits and we set ENOENT.
+       */
+     
+      if (hidden && ignore_hidden == -1) {
+          ignore_hidden = get_param_int(lc->subset,"IgnoreHidden",FALSE);
+        if(ignore_hidden == 1) {
+          res = 0;
+          errno = ENOENT;
           break;
-	}
+        }
+      }
+
+      switch(_check_limit(lc)) {
+      case 1:
+        res++;
+        break;
+	    
+      case -1:
+      case -2:
+        res = 0;
+        break;
+	    
+      default:
+        continue;
       }
     }
   }
@@ -1227,6 +1296,22 @@ int dir_check_limits(config_rec *c, char *cmd, int hidden)
   return res;
 }
 
+int dir_check_limits(config_rec *c, char *cmd, int hidden)
+{
+  int res = 1;
+  
+  for(; c && (res == 1); c = c->parent)
+    res = _check_limits(c->subset, cmd, hidden);
+      
+  if(!c && (res == 1))
+    /* vhost or main server has been reached without an explicit permit or deny,
+     * so try the current server.
+     */
+    res = _check_limits(main_server->conf, cmd, hidden);
+
+  return res;
+}
+    
 void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
 {
   char *fullpath,*path,*dynpath,*cp;

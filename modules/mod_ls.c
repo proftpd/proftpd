@@ -24,7 +24,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.39 2001-06-18 17:12:45 flood Exp $
+ * $Id: mod_ls.c,v 1.40 2001-06-18 17:35:06 flood Exp $
  */
 
 #include "conf.h"
@@ -988,60 +988,47 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
   }
   
   if(arg && *arg) {
-    int justone;
-    
-    justone = 1;
-    while(arg) {
-      glob_t g;
-      int    a;
-      char   pbuffer[MAXPATHLEN + 1];
+    int justone = 1;
+    glob_t g;
+    int    a;
+    char   pbuffer[MAXPATHLEN + 1] = "";
       
-      char   *endarg = strchr(arg,' ');
-      
-      if(endarg) {
-        *endarg++ = '\0';
-        justone = 0;
-      }
-      
-      if(*arg == '~') {
-        struct passwd *pw;
-	int i;
-        const char *p;
+    if(*arg == '~') {
+      struct passwd *pw;
+      int i;
+      const char *p;
 
-	for(i = 0, p = arg + 1;
-	    (i < sizeof(pbuffer) - 1) && p && *p && *p != '/';
-	    pbuffer[i++] = *p++);
+      for(i = 0, p = arg + 1;
+	  (i < sizeof(pbuffer) - 1) && p && *p && *p != '/';
+	  pbuffer[i++] = *p++);
 	
-        pbuffer[i] = '\0';
+      pbuffer[i] = '\0';
 	
-        if((pw = auth_getpwnam(cmd->tmp_pool,i ? pbuffer : session.user))) {
-          snprintf(pbuffer, sizeof(pbuffer), "%s%s", pw->pw_dir, p);
-	} else {
-          *pbuffer = '\0';
-	}
-      } else {
-        *pbuffer = '\0';
-      }
+      if((pw = auth_getpwnam(cmd->tmp_pool,i ? pbuffer : session.user))) {
+        snprintf(pbuffer, sizeof(pbuffer), "%s%s", pw->pw_dir, p);
+      } else
+        pbuffer[0] = '\0';
+    } 
+    
+    /* check perms on the directory/file we are about to scan */
+    if(!ls_perms_full(cmd->tmp_pool, cmd,
+		      (*pbuffer ? (char *) pbuffer : (char *) arg),NULL)) {
+      a = -1;
+      skiparg = 1;
+    } else {
+      skiparg = 0;
+      a = fs_glob(*pbuffer ? pbuffer : arg, glob_flags, NULL, &g);
+    }
       
-      /* check perms on the directory/file we are about to scan */
-      if(!ls_perms_full(cmd->tmp_pool, cmd,
-			(*pbuffer ? (char *) pbuffer : (char *) arg),NULL)) {
-        a = -1;
-	skiparg = 1;
-      } else {
-        skiparg = 0;
-        a = fs_glob(*pbuffer ? pbuffer : arg, glob_flags, NULL, &g);
-      }
-      
-      if(!a) {
-        char **path;
+    if(!a) {
+      char **path;
 	
-        path = g.gl_pathv;
-        if(path && path[0] && path[1])
-          justone = 0;
+      path = g.gl_pathv;
+      if(path && path[0] && path[1])
+        justone = 0;
 	
-        while(path && *path) {
-          struct stat st;
+      while(path && *path) {
+        struct stat st;
 
           /* I believe this code may be unnecessary here because it's only
            * used if args are passed to LIST/STAT, and then only to display
@@ -1063,94 +1050,90 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
           }
 #endif
           
-          if(fs_lstat(*path,&st) == 0) {
-            mode_t target_mode,lmode;
-	    target_mode = st.st_mode;
+        if(fs_lstat(*path,&st) == 0) {
+          mode_t target_mode,lmode;
+	  target_mode = st.st_mode;
 
-            if(S_ISLNK(st.st_mode) && (lmode = file_mode((char*)*path)) != 0) {
-              if(opt_L || !showsymlinks)
-                st.st_mode = lmode;
-              target_mode = lmode;
-            }
+          if(S_ISLNK(st.st_mode) && (lmode = file_mode((char*)*path)) != 0) {
+            if(opt_L || !showsymlinks)
+              st.st_mode = lmode;
+            target_mode = lmode;
+          }
 
-            if(opt_d || !(S_ISDIR(target_mode))) {
-              if(listfile(cmd,NULL,*path) < 0) {
-                ls_terminate();
-		fs_globfree(&g);
-                return -1;
-              }
-              **path = '\0';
+          if(opt_d || !(S_ISDIR(target_mode))) {
+            if(listfile(cmd,NULL,*path) < 0) {
+              ls_terminate();
+	      fs_globfree(&g);
+              return -1;
             }
-          } else {
             **path = '\0';
           }
-          path++;
+        } else {
+          **path = '\0';
         }
-
-	if(outputfiles(cmd) < 0) {
-          ls_terminate();
-          fs_globfree(&g);
-	  return -1;
-        }
-
-        path = g.gl_pathv;
-        while(path && *path) {
-          if(**path && ls_perms_full(cmd->tmp_pool,cmd,*path,NULL)) {
-            char cwd[MAXPATHLEN + 1] = {'\0'};
-            int symhold;
-
-            if(!justone) {
-              if(opt_STAT) {
-		add_response(R_211, "");
-		add_response(R_211, "%s:", *path);
-	      } else
-                sendline("\n%s:\n", *path);
-            }
-
-            push_cwd(cwd,&symhold);
-
-            if(!fs_chdir_canon(*path, !opt_L && showsymlinks)) {
-              int ret = listdir(cmd, NULL, *path);
-              pop_cwd(cwd, &symhold);
-
-              if(ret < 0) {
-                ls_terminate();
-		fs_globfree(&g);
-                return -1;
-              }
-            }
-          }
-
-          if(XFER_ABORTED) {
-	    discard_output();
-            fs_globfree(&g);
-	    return -1;
-	  }
-
-          path++;
-        }
-
-      } else if(!skiparg) {
-        if(a == GLOB_NOSPACE) {
-          add_response(R_226,"Out of memory during globbing of %s", arg);
-        } else if(a == GLOB_ABORTED) {
-          add_response(R_226,"Read error during globbing of %s", arg);
-        } else if(a != GLOB_NOMATCH) {
-          add_response(R_226,"Unknown error during globbing of %s", arg);
-        }
+        path++;
       }
 
-      if(!skiparg)
+      if(outputfiles(cmd) < 0) {
+        ls_terminate();
         fs_globfree(&g);
+	return -1;
+      }
 
-      arg = endarg;
+      path = g.gl_pathv;
+      while(path && *path) {
+        if(**path && ls_perms_full(cmd->tmp_pool,cmd,*path,NULL)) {
+          char cwd[MAXPATHLEN + 1] = {'\0'};
+          int symhold;
 
-      if(XFER_ABORTED) {
-	discard_output();
-        return -1;
+          if(!justone) {
+            if(opt_STAT) {
+	      add_response(R_211, "");
+	      add_response(R_211, "%s:", *path);
+	    } else
+              sendline("\n%s:\n", *path);
+          }
+
+          push_cwd(cwd,&symhold);
+
+          if(!fs_chdir_canon(*path, !opt_L && showsymlinks)) {
+            int ret = listdir(cmd, NULL, *path);
+            pop_cwd(cwd, &symhold);
+
+            if(ret < 0) {
+              ls_terminate();
+	      fs_globfree(&g);
+              return -1;
+            }
+          }
+        }
+
+        if(XFER_ABORTED) {
+	  discard_output();
+          fs_globfree(&g);
+	  return -1;
+	}
+
+        path++;
+      }
+
+    } else if(!skiparg) {
+      if(a == GLOB_NOSPACE) {
+        add_response(R_226,"Out of memory during globbing of %s", arg);
+      } else if(a == GLOB_ABORTED) {
+        add_response(R_226,"Read error during globbing of %s", arg);
+      } else if(a != GLOB_NOMATCH) {
+        add_response(R_226,"Unknown error during globbing of %s", arg);
       }
     }
 
+    if(!skiparg)
+      fs_globfree(&g);
+
+    if(XFER_ABORTED) {
+      discard_output();
+      return -1;
+    }
   } else {
 
     if(ls_perms_full(cmd->tmp_pool,cmd,".",NULL)) {
