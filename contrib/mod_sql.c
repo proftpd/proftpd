@@ -23,7 +23,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-#define _MOD_VERSION "mod_sql/4.07"
+#define _MOD_VERSION "mod_sql/4.08"
 
 #ifdef HAVE_CRYPT_H
 #include <crypt.h>
@@ -523,7 +523,7 @@ static modret_t *check_auth_openssl(cmd_rec * cmd, const char *c_clear,
 
   returnValue = strcmp(buff, hashvalue);
 
-  return returnValue ? HANDLED(cmd) : ERROR_INT(cmd, AUTH_BADPWD);
+  return returnValue ? ERROR_INT(cmd, AUTH_BADPWD) : HANDLED(cmd);
 }
 #endif
 
