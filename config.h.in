@@ -10,6 +10,9 @@
  * if configure didn't make a correct guess for your system.
  *************************************************************************/
 
+/* Define to be the build platform. */
+#undef PLATFORM
+
 /* Define to `int' if <sys/types.h> doesn't define. */
 #undef ino_t
 
@@ -643,6 +646,9 @@
 /* Define if curses support, if available, should be used.  */
 #undef USE_CURSES
 
+/* Define if you are a developer. */
+#undef USE_DEVEL
+
 /* Define if use of builtin getaddrinfo() is desired.  */
 #undef USE_GETADDRINFO
 
@@ -651,6 +657,9 @@
 
 /* Define if IPv6 support is desired.  */
 #undef USE_IPV6
+
+/* Define if largfile support is desired.  */
+#undef USE_LARGEFILES
 
 /* Define if the %llu format should be used.  */
 #undef HAVE_LLU
@@ -661,14 +670,14 @@
 /* Define if ncurses support, if available, should be used.  */
 #undef USE_NCURSES
 
+/* Define if sendfile support, if available, should be used.  */
+#undef USE_SENDFILE
+
 /* Define if using /etc/shadow files.  */
 #undef USE_SHADOW
 
 /* Define if using Tru64's C2 SIA authentication.  */
 #undef USE_SIA
-
-/* Define if you are a developer. */
-#undef USE_DEVEL
 
 /* Tunable parameters */
 #undef PR_TUNABLE_BUFFER_SIZE

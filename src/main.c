@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.244 2004-09-04 22:46:28 castaglia Exp $
+ * $Id: main.c,v 1.245 2004-09-05 21:10:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2379,6 +2379,96 @@ static struct option opts[] = {
 };
 #endif /* HAVE_GETOPT_LONG */
 
+static void show_settings(void) {
+  printf("Compile-time Settings:\n");
+  printf("  Version: " PROFTPD_VERSION_TEXT "\n");
+  printf("  Platform: " PLATFORM "\n");
+
+  printf("\n  Files:\n");
+  printf("    Configuration File:\n");
+  printf("      " CONFIG_FILE_PATH "\n");
+  printf("    Pid File:\n");
+  printf("      " PID_FILE_PATH "\n");
+  printf("    Scoreboard File:\n");
+  printf("      " RUN_DIR "/proftpd.scoreboard\n");
+
+  /* Feature settings */
+  printf("\n  Features:\n");
+#ifdef USE_AUTO_SHADOW
+  printf("    +Autoshadow support\n");
+#else
+  printf("    -Autoshadow support\n");
+#endif /* USE_AUTO_SHADOW */
+
+#ifdef USE_CTRLS
+  printf("    +Controls support\n");
+#else
+  printf("    -Controls support\n");
+#endif /* USE_CTRLS */
+
+#ifdef USE_CURSES
+  printf("    +curses support\n");
+#else
+  printf("    -curses support\n");
+#endif /* USE_CURSES */
+
+#ifdef USE_DEVEL
+  printf("    +Developer support\n");
+#else
+  printf("    -Developer support\n");
+#endif /* USE_DEVEL */
+
+#ifdef USE_IPV6
+  printf("    +IPv6 support\n");
+#else
+  printf("    -IPv6 support\n");
+#endif /* USE_IPV6 */
+
+#ifdef USE_LARGEFILES
+  printf("    +Largefile support\n");
+#else
+  printf("    -Largefile support\n");
+#endif /* USE_LARGEFILES */
+
+#ifdef USE_NCURSES
+  printf("    +ncurses support\n");
+#else
+  printf("    -ncurses support\n");
+#endif /* USE_NCURSES */
+
+#ifdef USE_SHADOW
+  printf("    +Shadow file support\n");
+#else
+  printf("    -Shadow file suppport\n");
+#endif /* USE_SHADOW */
+
+#ifdef USE_SENDFILE
+  printf("    +Sendfile support\n")
+#else
+  printf("    -Sendfile support\n");
+#endif /* USE_SENDFILE */
+
+  /* Tunable settings */
+  printf("\n  Tunable Options:\n");
+  printf("    PR_TUNABLE_BUFFER_SIZE = %u\n", PR_TUNABLE_BUFFER_SIZE);
+  printf("    PR_TUNABLE_GLOBBING_MAX = %u\n", PR_TUNABLE_GLOBBING_MAX);
+  printf("    PR_TUNABLE_HASH_TABLE_SIZE = %u\n", PR_TUNABLE_HASH_TABLE_SIZE);
+  printf("    PR_TUNABLE_NEW_POOL_SIZE = %u\n", PR_TUNABLE_NEW_POOL_SIZE);
+  printf("    PR_TUNABLE_SCOREBOARD_BUFFER_SIZE = %u\n",
+    PR_TUNABLE_SCOREBOARD_BUFFER_SIZE);
+  printf("    PR_TUNABLE_SCOREBOARD_SCRUB_TIMER = %u\n",
+    PR_TUNABLE_SCOREBOARD_SCRUB_TIMER);
+  printf("    PR_TUNABLE_SELECT_TIMEOUT = %u\n", PR_TUNABLE_SELECT_TIMEOUT);
+  printf("    PR_TUNABLE_TIMEOUTIDENT = %u\n", PR_TUNABLE_TIMEOUTIDENT);
+  printf("    PR_TUNABLE_TIMEOUTIDLE = %u\n", PR_TUNABLE_TIMEOUTIDLE);
+  printf("    PR_TUNABLE_TIMEOUTLINGER = %u\n", PR_TUNABLE_TIMEOUTLINGER);
+  printf("    PR_TUNABLE_TIMEOUTLOGIN = %u\n", PR_TUNABLE_TIMEOUTLOGIN);
+  printf("    PR_TUNABLE_TIMEOUTNOXFER = %u\n", PR_TUNABLE_TIMEOUTNOXFER);
+  printf("    PR_TUNABLE_TIMEOUTSTALLED = %u\n", PR_TUNABLE_TIMEOUTSTALLED);
+  printf("    PR_TUNABLE_XFER_BUFFER_SIZE = %u\n\n",
+    PR_TUNABLE_XFER_BUFFER_SIZE);
+}
+
 static struct option_help {
   const char *long_opt,*short_opt,*desc;
 } opts_help[] = {
@@ -2400,6 +2490,8 @@ static struct option_help {
     "List all compiled-in modules" },
   { "--configtest", "-t",
     "Test the syntax of the specified config" },
+  { "--settings", "-V",
+    "Print compile-time settings and exit" },
   { "--version", "-v",
     "Print version number and exit" },
   { "--version-status", "-vv",
@@ -2425,7 +2517,7 @@ static void show_usage(int exit_code) {
 
 int main(int argc, char *argv[], char **envp) {
   int optc, show_version = 0;
-  const char *cmdopts = "D:nqd:c:p:lhtv";
+  const char *cmdopts = "D:Vc:d:hlnp:qtv";
   mode_t *main_umask = NULL;
   socklen_t peerlen;
   struct sockaddr peer;
@@ -2493,6 +2585,8 @@ int main(int argc, char *argv[], char **envp) {
    *
    * -D parameter       set run-time configuration parameter
    * --define parameter
+   * -V
+   * --settings         report compile-time settings
    * -c path            set the configuration path
    * --config path
    * -d n               set the debug level
@@ -2530,6 +2624,11 @@ int main(int argc, char *argv[], char **envp) {
         server_defines = make_array(permanent_pool, 0, sizeof(char *));
 
       *((char **) push_array(server_defines)) = pstrdup(permanent_pool, optarg);
+      break;
+
+    case 'V':
+      show_settings();
+      exit(0);
       break;
 
     case 'n':

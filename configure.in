@@ -28,12 +28,18 @@ dnl Get the OS type
 AC_CONFIG_AUX_DIR(./)
 AC_CANONICAL_SYSTEM
 
-OSTYPE=-D`echo $build_os | sed 's/\..*$//g' | sed 's/-.*//g' | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ`
-OSREL=-D`echo $build_os | sed 's/-.*//g' | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ | tr '.' '_'`
+ostype=`echo $build_os | sed 's/\..*$//g' | sed 's/-.*//g' | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ`
+osrel=`echo $build_os | sed 's/-.*//g' | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ | tr '.' '_'`
+
+OSTYPE="-D$ostype"
+OSREL="-D$osrel"
+PLATFORM="\"$ostype ($osrel)\""
 
 if test "$OSTYPE" = "$OSREL" ; then
   OSTYPE=""
+  PLATFORM="\"$ostype\""
 fi
+AC_DEFINE_UNQUOTED(PLATFORM, $PLATFORM)
 AC_SUBST(OSREL)
 AC_SUBST(OSTYPE)
 
@@ -1025,6 +1031,13 @@ AC_CHECK_MEMBER(struct sockaddr_in.sin_len,
     #endif
   ])
 
+dnl Largefile support
+if test x"$enable_largefile" = xno; then
+  AC_DEFINE(USE_LARGEFILES, 0)
+else
+  AC_DEFINE(USE_LARGEFILES, 1)
+fi
+
 PR_CHECK_STRUCT_ADDRINFO
 PR_CHECK_STRUCT_SS
 PR_CHECK_SS_FAMILY
@@ -1101,6 +1114,9 @@ if test x"$enable_sendfile" = xyes ; then
 
   if test "$pr_cv_func_sendfile" != "None"; then
     AC_DEFINE(HAVE_SENDFILE)
+    AC_DEFINE(USE_SENDFILE, 1)
+  else
+    AC_DEFINE(USE_SENDFILE, 0)
   fi
 
   case "$pr_cv_func_sendfile" in
