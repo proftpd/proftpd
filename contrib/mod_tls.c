@@ -403,7 +403,7 @@ static char *tls_x509_name_oneline(X509_NAME *);
 
 static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
   X509 *cert = NULL;
-  int nexts = 0;
+  STACK_OF(GENERAL_NAME) *sk_alt_names;
   unsigned char ok = FALSE, have_dns_ext = FALSE, have_ipaddr_ext = FALSE;
 
   /* Only perform these more stringent checks if asked to verify clients. */
@@ -424,81 +424,73 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
   /* Note: this should _never_ return NULL in this case. */
   cert = SSL_get_peer_certificate(ssl);
 
-  if ((nexts = X509_get_ext_count(cert)) > 0) {
-    register unsigned int i = 0;
+  sk_alt_names = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
+  if (sk_alt_names) {
+    register unsigned int i;
+    int nnames = sk_GENERAL_NAME_num(sk_alt_names);
 
-    for (i = 0; i < nexts; i++) {
-      X509_EXTENSION *ext = X509_get_ext(cert, i);
-      const char *extstr = OBJ_nid2sn(OBJ_obj2nid(
-        X509_EXTENSION_get_object(ext)));
+    for (i = 0; i < nnames; i++) {
+      GENERAL_NAME *name = sk_GENERAL_NAME_value(sk_alt_names, i);
 
-      if (!strcmp(extstr, "subjectAltName")) {
-        register unsigned int j = 0;
-        void *ext_str = NULL;
-        STACK_OF(CONF_VALUE) *sk_vals = NULL;
-        X509V3_EXT_METHOD *ext_meth = NULL;
+      /* Only interested in the DNS and IP address types right now. */
+      switch (name->type) {
+        case GEN_DNS:
+          if (tls_opts & TLS_OPT_VERIFY_CERT_FQDN) {
+            const char *cert_dns_name = name->d.ia5->data;
+            have_dns_ext = TRUE;
 
-        if ((ext_meth = X509V3_EXT_get(ext)) == NULL)
+            if (strcmp(cert_dns_name, conn->remote_name) != 0) {
+              tls_log("client cert dNSName value '%s' != client FQDN '%s'",
+                cert_dns_name, conn->remote_name);
+
+              GENERAL_NAME_free(name);
+              sk_GENERAL_NAME_free(sk_alt_names);
+              X509_free(cert);
+              return FALSE;
+            }
+
+            tls_log("%s", "client cert dNSName matches client FQDN");
+            ok = TRUE;
+            continue;
+          }
           break;
 
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
-        if (ext_meth->it)
-          ext_str = ASN1_item_d2i(NULL, &ext->value->data, ext->value->length,
-            ASN1_ITEM_ptr(ext_meth->it));
-        else
-#endif
-           ext_str = ext_meth->d2i(NULL, &ext->value->data, ext->value->length);
-
-        sk_vals = ext_meth->i2v(ext_meth, ext_str, NULL);
-
-        for (j = 0; j < sk_CONF_VALUE_num(sk_vals); j++) {
-          CONF_VALUE *val = sk_CONF_VALUE_value(sk_vals, j);
-
-          if (tls_opts & TLS_OPT_VERIFY_CERT_FQDN) {
-            if (!strcmp(val->name, "DNS")) {
-              have_dns_ext = TRUE;
-
-              if (strcmp(val->value, conn->remote_name)) {
-                X509_free(cert);
-                tls_log("client cert dNSName value '%s' != client FQDN '%s'",
-                  val->value, conn->remote_name);
-                return FALSE;
-              }
-
-              tls_log("%s", "client cert dNSName matches client FQDN");
-              ok = TRUE;
-              continue;
-            }
-          }
-
+        case GEN_IPADD:
           if (tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) {
-            if (!strcmp(val->name, "IP Address")) {
-              have_ipaddr_ext = TRUE;
+            char cert_ipstr[INET_ADDRSTRLEN] = {'\0'};
+            const char *cert_ipaddr = name->d.ia5->data;
 
-              if (strcmp(val->value, pr_netaddr_get_ipstr(conn->remote_addr))) {
-                X509_free(cert);
-                tls_log("client cert iPAddress value '%s' != client IP '%s'",
-                  val->value, pr_netaddr_get_ipstr(conn->remote_addr));
-                return FALSE;
-              }
+            /* Note: OpenSSL doesn't support IPv6 addresses in the
+             * ipAddress name yet.
+             */
+            sprintf(cert_ipstr, "%u.%u.%u.%u", cert_ipaddr[0],
+              cert_ipaddr[1], cert_ipaddr[2], cert_ipaddr[3]);
+            have_ipaddr_ext = TRUE;
 
-              tls_log("%s", "client cert iPAddress matches client IP"); 
-              ok = TRUE;
-              continue;
+            if (strcmp(cert_ipstr, pr_netaddr_get_ipstr(conn->remote_addr))) {
+              tls_log("client cert iPAddress value '%s' != client IP '%s'",
+                cert_ipstr, pr_netaddr_get_ipstr(conn->remote_addr));
+
+              GENERAL_NAME_free(name);
+              sk_GENERAL_NAME_free(sk_alt_names);
+              X509_free(cert);
+              return FALSE;
             }
+
+            tls_log("%s", "client cert iPAddress matches client IP");
+            ok = TRUE;
+            continue;
           }
-        }
+          break;
 
-        sk_CONF_VALUE_pop_free(sk_vals, X509V3_conf_free);
-
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
-        if (ext_meth->it)
-          ASN1_item_free(ext_str, ASN1_ITEM_ptr(ext_meth->it));
-        else
-#endif
-          ext_meth->ext_free(ext_str);
+        default:
+          break;
       }
-    }
+
+      GENERAL_NAME_free(name);
+    } 
+
+    sk_GENERAL_NAME_free(sk_alt_names);
   }
 
   if ((tls_opts & TLS_OPT_VERIFY_CERT_FQDN) && !have_dns_ext)
@@ -1383,7 +1375,8 @@ static const char *tls_get_errors(void) {
   unsigned int count = 0;
   unsigned long e = ERR_get_error();
   BIO *bio = NULL;
-  char *tmp = NULL;
+  char *data = NULL;
+  long datalen;
   const char *str = "(unknown)";
 
   /* Use ERR_print_errors() and a memory BIO to build up a string with
@@ -1398,17 +1391,19 @@ static const char *tls_get_errors(void) {
     e = ERR_get_error(); 
   }
 
-  BIO_get_mem_data(bio, &tmp);
-  str = pstrdup(main_server->pool, tmp);
+  datalen = BIO_get_mem_data(bio, &data);
+  data[datalen] = '\0';
+
+  str = pstrdup(main_server->pool, data);
   BIO_free(bio);
 
   return str;
 }
 
 static char *tls_get_subj_name(void) {
-  X509 *cert = NULL;
+  X509 *cert = SSL_get_peer_certificate(ctrl_ssl);
 
-  if ((cert = SSL_get_peer_certificate(ctrl_ssl))) {
+  if (cert) {
     char *name = tls_x509_name_oneline(X509_get_subject_name(cert));
     X509_free(cert);
     return name;
@@ -1827,7 +1822,8 @@ static void tls_setup_cert_dn_environ(const char *env_prefix, X509_NAME *name) {
 }
 
 static void tls_setup_cert_environ(const char *env_prefix, X509 *cert) {
-  char *tmp = NULL;
+  char *data = NULL;
+  long datalen = 0;
   BIO *bio = NULL;
 
   if (tls_opts & TLS_OPT_STD_ENV_VARS) {
@@ -1866,33 +1862,38 @@ static void tls_setup_cert_environ(const char *env_prefix, X509 *cert) {
 
     bio = BIO_new(BIO_s_mem());
     ASN1_TIME_print(bio, X509_get_notBefore(cert));
-    BIO_get_mem_data(bio, &tmp);
-    putenv(pstrcat(main_server->pool, env_prefix, "V_START=", tmp, NULL));
+    datalen = BIO_get_mem_data(bio, &data);
+    data[datalen] = '\0';
+    putenv(pstrcat(main_server->pool, env_prefix, "V_START=", data, NULL));
     BIO_free(bio);
 
     bio = BIO_new(BIO_s_mem());
     ASN1_TIME_print(bio, X509_get_notAfter(cert));
-    BIO_get_mem_data(bio, &tmp);
-    putenv(pstrcat(main_server->pool, env_prefix, "V_END=", tmp, NULL));
+    datalen = BIO_get_mem_data(bio, &data);
+    data[datalen] = '\0';
+    putenv(pstrcat(main_server->pool, env_prefix, "V_END=", data, NULL));
     BIO_free(bio);
 
     bio = BIO_new(BIO_s_mem());
     i2a_ASN1_OBJECT(bio, cert->cert_info->signature->algorithm);
-    BIO_get_mem_data(bio, &tmp);
-    putenv(pstrcat(main_server->pool, env_prefix, "A_SIG=", tmp, NULL));
+    datalen = BIO_get_mem_data(bio, &data);
+    data[datalen] = '\0';
+    putenv(pstrcat(main_server->pool, env_prefix, "A_SIG=", data, NULL));
     BIO_free(bio);
 
     bio = BIO_new(BIO_s_mem());
     i2a_ASN1_OBJECT(bio, cert->cert_info->key->algor->algorithm);
-    BIO_get_mem_data(bio, &tmp);
-    putenv(pstrcat(main_server->pool, env_prefix, "A_KEY=", tmp, NULL));
+    datalen = BIO_get_mem_data(bio, &data);
+    data[datalen] = '\0';
+    putenv(pstrcat(main_server->pool, env_prefix, "A_KEY=", data, NULL));
     BIO_free(bio);
   }
 
   bio = BIO_new(BIO_s_mem());
   PEM_write_bio_X509(bio, cert);
-  BIO_get_mem_data(bio, &tmp);
-  putenv(pstrcat(main_server->pool, env_prefix, "CERT=", tmp, NULL));
+  datalen = BIO_get_mem_data(bio, &data);
+  data[datalen] = '\0';
+  putenv(pstrcat(main_server->pool, env_prefix, "CERT=", data, NULL));
   BIO_free(bio);
 }
 
@@ -1960,7 +1961,8 @@ static void tls_setup_environ(SSL *ssl) {
   }
 
   if ((sk_cert_chain = SSL_get_peer_cert_chain(ssl))) {
-    char *tmp = NULL;
+    char *data = NULL;
+    long datalen = 0;
     register unsigned int i = 0;
     BIO *bio = NULL;
 
@@ -1970,8 +1972,9 @@ static void tls_setup_environ(SSL *ssl) {
       BIO_printf(bio, "TLS_CLIENT_CERT_CHAIN%u=", i);
       PEM_write_bio_X509(bio, sk_X509_value(sk_cert_chain, i));
 
-      BIO_get_mem_data(bio, &tmp);
-      if (putenv(pstrdup(main_server->pool, tmp)) < 0)
+      datalen = BIO_get_mem_data(bio, &data);
+      data[datalen] = '\0';
+      if (putenv(pstrdup(main_server->pool, data)) < 0)
         tls_log("error setting environ variable: %s", strerror(errno));
 
       BIO_free(bio);
@@ -2229,15 +2232,16 @@ static char *tls_x509_name_oneline(X509_NAME *x509_name) {
   /* Sigh...do it the hard way. */
   BIO *mem = BIO_new(BIO_s_mem());
   char *data = NULL;
-  int data_len = 0, ok;
+  long datalen = 0;
+  int ok;
    
   if ((ok = X509_NAME_print_ex(mem, x509_name, 0, XN_FLAG_ONELINE)))
-     data_len = BIO_get_mem_data(mem, &data);
+     datalen = BIO_get_mem_data(mem, &data);
 
   if (data) {
     memset(&buf, '\0', sizeof(buf));
-    memcpy(buf, data, data_len);
-    buf[data_len] = '\0';
+    memcpy(buf, data, datalen);
+    buf[datalen] = '\0';
     buf[sizeof(buf)-1] = '\0';
 
     BIO_free(mem);
