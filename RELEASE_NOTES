@@ -1,0 +1,82 @@
+                    1.2.10 Release Notes
+                  ------------------------
+
+This file contains a description of the major changes to ProFTPD for the
+1.2.10 release cycle, from the 1.2.10rc1 release to the 1.2.10-stable release.
+More information on these changes can be found in the NEWS and ChangeLog
+files.
+
+
+NOTES
+-----
+  When upgrading to 1.2.10rc1, please take note of the following:
+
+  + The new Class support will require changes to proftpd.conf files that
+    use the old Class/Classes directives.  See README.classes for details.
+
+
+1.2.10rc1
+---------
+  + Support for Mac OSX 10.3.3
+
+  + New configuration directives:
+      <Class>
+      AllowClass
+      DenyClass
+      MaxClientsPerClass
+      SetEnv
+      UnsetEnv
+
+  + Enhanced configuration directives:
+      The Include configuration directive now functions similarly to
+      Apache's Include directive, able to include all files within a
+      given directory, or only those files that match a simple glob
+      pattern.
+
+  + Deprecated configuration directives:
+      AuthPAMAuthoritative
+      Class
+      Classes
+
+  + New configuration file variable:
+      Using "%{env:<var>}" in your proftpd.conf will cause the string
+      to be replaced with the value of the named environment variable.
+      For example:
+
+        DefaultAddress ${env:PR_DEFAULT_ADDR}
+
+      would be expanded to:
+
+        DefaultAddress 127.0.0.1
+
+      assuming the PR_DEFAULT_ADDR environment variable value was
+      "127.0.0.1".
+
+  + New programs:
+      The ftpdctl program, which can be used to communicate with the
+      running daemon using Unix domain sockets.  See README.controls for
+      more information.
+
+  + New modules:
+      mod_quotatab, a collection of modules related to quota management.
+      See contrib/mod_quotatab.html
+
+      mod_ctrls_admin, a module implementing various administrative
+      ftpdctl commands.  See contrib/mod_ctrls_admin.html and
+      README.controls.
+
+      mod_site_misc, a module implementing commonly used SITE commands.
+      See contrib/mod_site_misc.html
+
+  + Enhanced modules:
+      The mod_tls module can now handle passphrase-protected certificates
+
+  + Documentation
+     The doc/howto directory contains a collection of useful HOWTOs for
+     ProFTPD users.
+
+     The doc/modules directory contains HTML documentation for some of
+     ProFTPD's optional modules (e.g. mod_cap, mod_ctrls).
+
+
+Last Updated: $Date: 2004-04-28 17:43:03 $

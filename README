@@ -1,5 +1,5 @@
 
-                        ProFTPD 1.2 README
+                        ProFTPD 1.2.x README
                         ==================
 
 Introduction
@@ -31,9 +31,10 @@ Conectiva and Trustix.
 Latest Release
 --------------
 
-        ftp://ftp.proftpd.org/distrib/
-        http://www.proftpd.org/
+     ftp://ftp.proftpd.org/distrib/
+     http://www.proftpd.org/
 
+     + see RELEASE_NOTES for an overview of the changes in this release
 
 Major Features
 --------------
