@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (C) 1999, MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
+ * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.26 2000-02-01 16:59:46 macgyver Exp $
+ * $Id: mod_auth.c,v 1.27 2000-02-28 18:56:39 macgyver Exp $
  */
 
 #include "conf.h"
@@ -594,7 +594,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
       log_auth(LOG_CRIT, "SECURITY VIOLATION: root login attempted.");
       return 0;
     } else {
-      log_auth(LOG_WARNING, "root login successful.");
+      log_auth(LOG_WARNING, "ROOT FTP login successful.");
     }
   }
   
@@ -659,7 +659,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
     if(c && origuser && strcasecmp(user,origuser) &&
        get_param_int(c->subset,"AuthUsingAlias",FALSE) == 1) {
       user_name = origuser;
-      log_auth(LOG_NOTICE,"ANON AUTH: User %s, Auth Alias %s",user,user_name);
+      log_auth(LOG_NOTICE,"ANON AUTH: User %s, Auth Alias %s",
+	       user, user_name);
     }
     
     if(c)
