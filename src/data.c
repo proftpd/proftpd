@@ -20,7 +20,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.19 2001-02-02 23:09:26 flood Exp $
+ * $Id: data.c,v 1.20 2001-02-03 02:59:02 flood Exp $
  */
 
 #include "conf.h"
@@ -614,9 +614,13 @@ int data_xfer(char *cl_buf, int cl_size) {
 	  adjlen = 0;
 	
 	  if((len = io_read(session.d->inf, buf + buflen,
-		  session.xfer.bufsize - buflen, 1)) > 0)
+		  session.xfer.bufsize - buflen, 1)) > 0) {
 	    buflen += len;
-	
+
+	    if(TimeoutStalled)
+	      reset_timer(TIMER_STALLED, ANY_MODULE);
+	  }
+
 	  /* if buflen > 0, data remains in the buffer to be copied. */
 	  if(len >= 0 && buflen > 0) {
 
@@ -723,7 +727,7 @@ int data_xfer(char *cl_buf, int cl_size) {
   
   session.xfer.total_bytes += total;
   session.total_bytes += total;
-  return len;
+  return (len < 0 ? -1 : len);
 }
 
 #ifdef HAVE_SENDFILE
