@@ -1,6 +1,6 @@
-$Id: NEWS,v 1.381 2003-03-03 00:42:12 castaglia Exp $
+$Id: NEWS,v 1.382 2003-03-04 05:25:41 castaglia Exp $
 
-CVS
+1.2.8 - Released 04-Mar-2003
 ---------------------------------
 - Bug 1863 - Unable to build under UnixWare 7
 - Bug 1943 - Unable to install on FreeBSD 5.0.  FreeBSD 5.0's header files
