@@ -26,7 +26,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.32 2002-02-28 19:13:35 flood Exp $
+ * $Id: log.c,v 1.33 2002-03-01 02:49:40 flood Exp $
  */
 
 /* History Log:
@@ -698,7 +698,8 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip)
 }
 
 int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
-  char *tmp = NULL;
+  pool *pool;
+  char *tmp = NULL,*lf;
   struct stat sbuf;
 
   /* sanity check */
@@ -707,8 +708,13 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
     return -1;
   }
 
-  if ((tmp = strrchr(log_file, '/')) == NULL) {
-    log_debug(DEBUG0, "inappropriate log file: %s", log_file);
+  /* make a temporary copy of log_file in case it's a constant */
+  pool = make_sub_pool(permanent_pool);
+  lf = pstrdup(pool,log_file);
+  
+  if ((tmp = strrchr(lf, '/')) == NULL) {
+    log_debug(DEBUG0, "inappropriate log file: %s", lf);
+    destroy_pool(pool);
     return -1;
   }
 
@@ -717,21 +723,24 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
    */
   *tmp = '\0';
 
-  if (stat(log_file, &sbuf) == -1) {
-    log_debug(DEBUG0, "error: unable to stat() %s: %s", log_file,
+  if (stat(lf, &sbuf) == -1) {
+    log_debug(DEBUG0, "error: unable to stat() %s: %s", lf,
       strerror(errno));
+    destroy_pool(pool);
     return -1;
   }
 
   /* the path must be in a valid directory */
   if (!S_ISDIR(sbuf.st_mode)) {
-    log_debug(DEBUG0, "error: %s is not a directory", log_file);
+    log_debug(DEBUG0, "error: %s is not a directory", lf);
+    destroy_pool(pool);
     return -1;
   }
 
   /* do not log to world-writeable directories */
   if (sbuf.st_mode & S_IWOTH) {
-    log_debug(DEBUG0, "error: %s is a world writeable directory", log_file);
+    log_debug(DEBUG0, "error: %s is a world writeable directory", lf);
+    destroy_pool(pool);
     return -2;
   }
 
@@ -745,22 +754,28 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
     /* prevent a race condition between stat() and open() by opening the
      * file now, _then_ checking to see if it's a symlink
      */
-    if ((*log_fd = open(log_file, O_APPEND|O_CREAT|O_WRONLY,
-          log_mode)) == -1)
+    if ((*log_fd = open(lf, O_APPEND|O_CREAT|O_WRONLY,
+          log_mode)) == -1) {
+      destroy_pool(pool);
       return -1;
-
+    }
+    
     /* stat the file using the descriptor, not the path */
     if (fstat(*log_fd, &sbuf) != -1 && S_ISLNK(sbuf.st_mode)) {
-      log_debug(DEBUG0, "error: %s is a symbolic link", log_file);
+      log_debug(DEBUG0, "error: %s is a symbolic link", lf);
       close(*log_fd);
       *log_fd = -1;
+      destroy_pool(pool);
       return -3;
     }
 
   } else
-    if ((*log_fd = open(log_file, O_CREAT|O_APPEND|O_WRONLY, log_mode)) == -1)
+    if ((*log_fd = open(lf, O_CREAT|O_APPEND|O_WRONLY, log_mode)) == -1) {
+      destroy_pool(pool);
       return -1;
-
+    }
+  
+  destroy_pool(pool);
   return 0;
 }
 
