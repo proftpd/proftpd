@@ -22,6 +22,7 @@
 #endif
 
 #include <config.h>
+#include "options.h"
 
 /* Make alloca work the best possible way.  */
 #ifdef __GNUC__
@@ -36,7 +37,7 @@ char *alloca ();
 #endif /* not HAVE_ALLOCA_H */
 #endif /* not __GNUC__ */
 
-#define MAX_RECURSION 8
+#define MAX_RECURSION 	PR_TUNABLE_GLOBBING_MAX
 #define MAX_RESULTS 100000UL
 
 /* Enable GNU extensions in glob.h.  */

@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.11 2002-12-05 22:47:48 castaglia Exp $
+ * $Id: options.h,v 1.12 2002-12-12 18:01:00 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -132,6 +132,13 @@
 
 #ifndef PR_TUNABLE_SCOREBOARD_BUFFER_SIZE
 # define PR_TUNABLE_SCOREBOARD_BUFFER_SIZE	80
+#endif
+
+/* Max number of recursion/directory levels to support when globbing.
+ */
+
+#ifndef PR_TUNABLE_GLOBBING_MAX	
+# define PR_TUNABLE_GLOBBING_MAX	8
 #endif
 
 /* Loopback network, this should generally not need to be changed,
