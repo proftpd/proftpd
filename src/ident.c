@@ -32,7 +32,7 @@
 static int ident_timeout;
 static pr_netio_stream_t *nstrm = NULL;
 
-static int ident_timer_cb(CALLBACK_FRAME) {
+static int ident_timeout_cb(CALLBACK_FRAME) {
   ident_timeout++;
 
   if (nstrm)
@@ -64,7 +64,7 @@ char *get_ident(pool *p, conn_t *c) {
  
   /* Set up our timer before going any further. */
   if ((timer = add_timer(PR_TUNABLE_TIMEOUTIDENT, -1, NULL,
-      (callback_t) ident_timer_cb)) <= 0) {
+      (callback_t) ident_timeout_cb)) <= 0) {
     destroy_pool(tmp_pool);
     return pstrdup(p, ret);
   }
@@ -141,7 +141,7 @@ char *get_ident(pool *p, conn_t *c) {
     c->local_port);
 
   /* If the timer fires while in netio_gets(), netio_gets() will simply return
-   * either a partial string, or NULL.  This works because ident_timer_cb
+   * either a partial string, or NULL.  This works because ident_timeout_cb
    * aborts the stream from which we are reading.  netio_set_poll_interval() is
    * used to make sure significant delays don't occur on systems that
    * automatically restart syscalls after the SIGALRM signal.

@@ -25,7 +25,7 @@
  */
 
 /* Network IO stream layer
- * $Id: netio.h,v 1.1 2002-09-13 23:14:41 castaglia Exp $
+ * $Id: netio.h,v 1.2 2002-11-25 16:04:04 castaglia Exp $
  */
 
 #ifndef PR_NETIO_H
@@ -156,8 +156,8 @@ int pr_netio_printf(pr_netio_stream_t *, char *, ...);
 
 /* pr_netio_printf_async() is for use inside alarm handlers, where no
  * pr_netio_poll() blocking is allowed.  This is necessary because otherwise,
- * pr_netio_poll() can potentially hang forever if the Send-Q is maxed and the
- * socket has been closed.
+ * pr_netio_poll() can potentially hang forever if the send queue is maxed and
+ * the socket has been closed.
  */
 int pr_netio_printf_async(pr_netio_stream_t *, char *,...);
 

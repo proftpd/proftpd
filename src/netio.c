@@ -93,11 +93,11 @@ static pr_netio_buffer_t *netio_buffer_alloc(pr_netio_stream_t *nstrm) {
 /* Default core NetIO handlers
  */
 
-static void core_netio_abort(pr_netio_stream_t *nstrm) {
+static void core_netio_abort_cb(pr_netio_stream_t *nstrm) {
   nstrm->strm_flags |= PR_NETIO_SESS_ABORT;
 }
 
-static int core_netio_close(pr_netio_stream_t *nstrm) {
+static int core_netio_close_cb(pr_netio_stream_t *nstrm) {
   int res;
 
   res = close(nstrm->strm_fd);
@@ -106,7 +106,7 @@ static int core_netio_close(pr_netio_stream_t *nstrm) {
   return res;
 }
 
-static pr_netio_stream_t *core_netio_open(pr_netio_stream_t *nstrm, int fd,
+static pr_netio_stream_t *core_netio_open_cb(pr_netio_stream_t *nstrm, int fd,
     int mode) {
 
   nstrm->strm_fd = fd;
@@ -118,7 +118,7 @@ static pr_netio_stream_t *core_netio_open(pr_netio_stream_t *nstrm, int fd,
   return nstrm;
 }
 
-static int core_netio_poll(pr_netio_stream_t *nstrm) {
+static int core_netio_poll_cb(pr_netio_stream_t *nstrm) {
   fd_set rfds, wfds;
   struct timeval tval;
 
@@ -138,15 +138,16 @@ static int core_netio_poll(pr_netio_stream_t *nstrm) {
   return select(nstrm->strm_fd + 1, &rfds, &wfds, NULL, &tval);
 }
 
-static int core_netio_postopen(pr_netio_stream_t *nstream) {
+static int core_netio_postopen_cb(pr_netio_stream_t *nstream) {
   return 0;
 }
 
-static int core_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
+static int core_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
+    size_t buflen) {
   return read(nstrm->strm_fd, buf, buflen);
 }
 
-static pr_netio_stream_t *core_netio_reopen(pr_netio_stream_t *nstrm, int fd,
+static pr_netio_stream_t *core_netio_reopen_cb(pr_netio_stream_t *nstrm, int fd,
     int mode) {
 
   if (nstrm->strm_fd != -1)
@@ -158,7 +159,7 @@ static pr_netio_stream_t *core_netio_reopen(pr_netio_stream_t *nstrm, int fd,
   return nstrm;
 }
 
-static int core_netio_write(pr_netio_stream_t *nstrm, char *buf,
+static int core_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
     size_t buflen) {
   return write(nstrm->strm_fd, buf, buflen);
 }
@@ -460,7 +461,7 @@ int pr_netio_postopen(pr_netio_stream_t *nstrm) {
 
 int pr_netio_printf(pr_netio_stream_t *nstrm, char *fmt, ...) {
   va_list msg;
-  char buf[1025] = {'\0'};
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
 
   if (!nstrm) {
     errno = EINVAL;
@@ -475,9 +476,9 @@ int pr_netio_printf(pr_netio_stream_t *nstrm, char *fmt, ...) {
   return pr_netio_write(nstrm, buf, strlen(buf));
 }
 
-int netio_printf_async(pr_netio_stream_t *nstrm, char *fmt, ...) {
+int pr_netio_printf_async(pr_netio_stream_t *nstrm, char *fmt, ...) {
   va_list msg;
-  char buf[1025] = {'\0'};
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
 
   if (!nstrm) {
     errno = EINVAL;
@@ -932,14 +933,14 @@ pr_netio_t *pr_alloc_netio(pool *parent_pool) {
   netio->pool = netio_pool;
 
   /* Set the default NetIO handlers to the core handlers. */
-  netio->abort = core_netio_abort;
-  netio->close= core_netio_close;
-  netio->open = core_netio_open;
-  netio->poll = core_netio_poll;
-  netio->postopen = core_netio_postopen;
-  netio->read = core_netio_read;
-  netio->reopen = core_netio_reopen;
-  netio->write = core_netio_write;
+  netio->abort = core_netio_abort_cb;
+  netio->close= core_netio_close_cb;
+  netio->open = core_netio_open_cb;
+  netio->poll = core_netio_poll_cb;
+  netio->postopen = core_netio_postopen_cb;
+  netio->read = core_netio_read_cb;
+  netio->reopen = core_netio_reopen_cb;
+  netio->write = core_netio_write_cb;
 
   return netio;
 }

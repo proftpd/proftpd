@@ -32,7 +32,7 @@
 
 /*
  * sample module for ProFTPD
- * $Id: mod_sample.c,v 1.3 2002-09-11 18:59:46 castaglia Exp $
+ * $Id: mod_sample.c,v 1.4 2002-11-25 16:04:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -60,7 +60,7 @@ MODRET sample_pre_any(cmd_rec *cmd) {
  * _after_ they have been processed, and additional only IF they were
  * successful.
  */
-MODRET same_log_any(cmd_rec *cmd) {
+MODRET sample_log_any(cmd_rec *cmd) {
   log_debug(DEBUG0, "SUCCESSFUL: command '%s', arguments '%s'.",
     cmd->argv[0], cmd->arg);
 
