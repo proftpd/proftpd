@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.180 2004-03-11 02:02:11 castaglia Exp $
+ * $Id: mod_auth.c,v 1.181 2004-04-05 17:59:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -128,7 +128,10 @@ static int auth_sess_init(void) {
   }
 
   PRIVS_ROOT
-  if ((res = pr_open_scoreboard(O_RDWR)) < 0) {
+  res = pr_open_scoreboard(O_RDWR);
+  PRIVS_RELINQUISH
+
+  if (res < 0) {
     switch (res) {
       case PR_SCORE_ERR_BAD_MAGIC:
         pr_log_debug(DEBUG0, "error opening scoreboard: bad/corrupted file");
@@ -147,7 +150,6 @@ static int auth_sess_init(void) {
         break;
     }
   }
-  PRIVS_RELINQUISH
 
   /* Create an entry in the scoreboard for this session. */
   if (pr_scoreboard_add_entry() < 0)
@@ -1463,7 +1465,10 @@ static void auth_scan_scoreboard(void) {
   curr_server_addr[sizeof(curr_server_addr)-1] = '\0';
 
   /* Determine how many users are currently connected */
-  pr_rewind_scoreboard();
+  if (pr_rewind_scoreboard() < 0)
+    pr_log_pri(PR_LOG_NOTICE, "error rewinding scoreboard: %s",
+      strerror(errno));
+
   while ((score = pr_scoreboard_read_entry()) != NULL) {
 
     /* Make sure it matches our current server */
@@ -1524,7 +1529,10 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
       pr_netaddr_get_ipstr(main_server->addr), main_server->ServerPort);
     curr_server_addr[sizeof(curr_server_addr)-1] = '\0';
 
-    pr_rewind_scoreboard();
+    if (pr_rewind_scoreboard() < 0)
+      pr_log_pri(PR_LOG_NOTICE, "error rewinding scoreboard: %s",
+        strerror(errno));
+
     while ((score = pr_scoreboard_read_entry()) != NULL) {
       unsigned char same_host = FALSE;
 

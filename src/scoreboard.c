@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.28 2003-11-09 23:32:08 castaglia Exp $
+ * $Id: scoreboard.c,v 1.29 2004-04-05 17:59:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,6 +35,7 @@
 /* From src/dirtree.c */
 extern char ServerType;
 
+static pid_t scoreboard_opener = 0;
 static int scoreboard_fd = -1;
 static char scoreboard_file[PR_TUNABLE_PATH_MAX] = RUN_DIR "/proftpd.scoreboard";
 
@@ -238,6 +239,8 @@ int pr_close_scoreboard(void) {
   }
 
   scoreboard_fd = -1;
+  scoreboard_opener = 0;
+
   return 0;
 }
 
@@ -254,6 +257,7 @@ void pr_delete_scoreboard(void) {
   }
 
   scoreboard_fd = -1;
+  scoreboard_opener = 0;
 
   if (*scoreboard_file) {
     struct stat st;
@@ -273,6 +277,15 @@ const char *pr_get_scoreboard(void) {
 int pr_open_scoreboard(int flags) {
   int res;
   struct stat st;
+
+  /* Try to prevent a file descriptor leak by only opening the scoreboard
+   * file if the scoreboard file descriptor is not already positive, i.e.
+   * if the scoreboard has not already been opened.
+   */
+  if (scoreboard_fd >= 0 && scoreboard_opener == getpid()) {
+    pr_log_debug(DEBUG7, "scoreboard already opened");
+    return 0;
+  }
 
   pr_log_debug(DEBUG7, "opening scoreboard '%s'", scoreboard_file);
 
@@ -343,6 +356,8 @@ int pr_open_scoreboard(int flags) {
     scoreboard_fd = -1;
     return -1;
   }
+
+  scoreboard_opener = getpid();
 
   /* Check the header of this scoreboard file. */
   if ((res = read_scoreboard_header(&header)) == -1) {
