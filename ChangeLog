@@ -1,3 +1,19 @@
+2001-02-02 18:11  flood
+
+	* modules/mod_core.c: Bug #407 - Include pathnames must now be
+	absolute
+
+2001-02-02 18:09  flood
+
+	* include/options.h, modules/mod_xfer.c, src/data.c, src/fs.c,
+	src/io.c: Bug #399 - incorrect handling of CRs during ascii
+	transfers, also made default buffer size a macron in options.h:
+	TUNABLE_BUFFER_SIZE
+
+2001-02-01 22:12  flood
+
+	* CREDITS, INSTALL, NEWS: Updated minor documentation
+
 2001-02-01 17:58  flood
 
 	* include/version.h, src/auth.c: Bug #435 - uid/gid checking for
