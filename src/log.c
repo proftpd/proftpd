@@ -21,7 +21,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.26 2001-02-22 01:48:59 flood Exp $
+ * $Id: log.c,v 1.27 2001-04-11 18:57:43 flood Exp $
  */
 
 /* History Log:
@@ -160,6 +160,29 @@ void log_run_setpath(const char *path)
     scoreboard_path[strlen(scoreboard_path)-1] = '\0';
 }
 
+/* this function is meant to be used before opening any scoreboard file; the
+ * following function is only called by ftpcount at the moment.
+ */
+int log_open_checkpath(void) {
+  struct stat sbuf;
+
+  if (stat(scoreboard_path, &sbuf) < 0)
+    return -1;
+
+  if (!S_ISDIR(sbuf.st_mode)) {
+    errno = ENOTDIR;
+    return -1;
+  }
+
+  /* never write to a world-writeable directory */
+  if (sbuf.st_mode & S_IWOTH) {
+    errno = EPERM;
+    return -1;
+  }
+
+  return 0;
+}
+
 int log_run_checkpath(void)
 {
   struct stat sbuf;
@@ -179,6 +202,7 @@ int log_open_run(pid_t mpid, int trunc, int allow_update)
 {
   char fname[MAXPATHLEN + 1] = {'\0'};
   logrun_header_t hdr;
+  struct stat sbuf;
   int i;
 
   if(runfd > -1)
@@ -194,9 +218,32 @@ int log_open_run(pid_t mpid, int trunc, int allow_update)
     runfn = pstrdup(permanent_pool,fname);
   }
 
-  if((runfd = open(runfn,O_RDWR|O_CREAT|(trunc ? O_TRUNC : 0),
-                   0644)) == -1)
+  /* check the scoreboard path */
+  if (log_open_checkpath() < 0)
     return -1;
+
+  /* prevent writing to a symlink while avoiding a race condition: open
+   * the file name O_RDWR|O_CREAT first, then check to see if it's a symlink.
+   * If so, close the file and error out.  If not, truncate as necessary,
+   * and continue.
+   */
+  if ((runfd = open(runfn, O_RDWR|O_CREAT, 0644)) == -1)
+    return -1;
+
+  if (fstat(runfd, &sbuf) < 0) {
+    close(runfd);
+    runfd = -1;
+    return -1;
+  }
+
+  if (sbuf.st_mode & S_IFLNK) {
+    close(runfd);
+    runfd = -1;
+    return -1;
+  }
+
+  if (trunc)
+    ftruncate(runfd, 0);
 
   /* Attempt to read header */
   i = read(runfd, &hdr, sizeof(hdr));
@@ -678,10 +725,31 @@ int log_opensyslog(const char *fn)
     }
     
     *ptr = '/';
-    syslog_fd = open(syslog_fn,O_CREAT|O_APPEND|O_WRONLY,0640);
-    if(syslog_fd == -1) {
+
+    if (get_param_int(main_server->conf, "AllowLogSymlinks", FALSE) != TRUE) {
+
+      /* prevent a race condition between stat() and open() by opening the
+       * file now, _then_ checking to see if it's a symlink
+       */
+      if ((syslog_fd = open(syslog_fn, O_APPEND|O_CREAT|O_WRONLY,
+          0640)) == -1) {
       syslog_fn = NULL;
       return -1;
+      }
+
+      if (fstat(syslog_fd, &statbuf) != -1 && statbuf.st_mode & S_IFLNK) {
+        log_debug(DEBUG0, "%s is a symbolic link", syslog_fn);
+        close(syslog_fd);
+        syslog_fd = -1; 
+        syslog_fn = NULL;
+        return -3;
+      }
+
+    } else {
+      if ((syslog_fd = open(syslog_fn,O_CREAT|O_APPEND|O_WRONLY,0640)) == -1) {
+        syslog_fn = NULL;
+        return -1;
+      }
     }
 
     syslog_open = TRUE;

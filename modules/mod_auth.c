@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.56 2001-03-24 15:56:25 flood Exp $
+ * $Id: mod_auth.c,v 1.57 2001-04-11 18:57:42 flood Exp $
  */
 
 #include "conf.h"
@@ -1096,7 +1096,7 @@ static void _do_user_counts()
          l->server_port == main_server->ServerPort) {
 	 
 	cur++;
-        if(strcmp(l->class, session.class->name) == 0)
+        if(strcasecmp(l->class, session.class->name) == 0)
         	ccur++;
       }
   PRIVS_RELINQUISH;
@@ -1193,7 +1193,7 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
 	  }
         }
 	
-        if(classes_enabled && strcmp(l->class, session.class->name) == 0)
+        if(classes_enabled && strcasecmp(l->class, session.class->name) == 0)
         	ccur++;
       }
     }

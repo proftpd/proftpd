@@ -20,7 +20,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.30 2001-03-23 13:17:52 flood Exp $
+ * $Id: dirtree.c,v 1.31 2001-04-11 18:57:43 flood Exp $
  */
 
 /* History:
@@ -1169,7 +1169,7 @@ int dir_check_limits(config_rec *c, char *cmd, int hidden)
 
         if(lc->config_type == CONF_LIMIT) {
           for(i = 0; i < lc->argc; i++) {
-            if(!strcmp(cmd,(char*)(lc->argv[i])))
+            if(!strcasecmp(cmd,(char*)(lc->argv[i])))
               break;
 	  }
 	  
@@ -1453,7 +1453,9 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
   if(!_kludge_disable_umask) {
     /* Check for a directory Umask.
      */
-    if(S_ISDIR(sbuf.st_mode) || !strcmp(cmd, C_MKD) || !strcmp(cmd, C_XMKD))
+    if(S_ISDIR(sbuf.st_mode) ||
+		!strcasecmp(cmd, C_MKD) ||
+		!strcasecmp(cmd, C_XMKD))
       _umask = get_param_int(CURRENT_CONF, "DirUmask", FALSE);
     
     /* It's either a file, or we had no directory Umask.
@@ -1570,7 +1572,9 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
   if(!_kludge_disable_umask) {
     /* Check for a directory Umask.
      */
-    if(S_ISDIR(sbuf.st_mode) || !strcmp(cmd, C_MKD) || !strcmp(cmd, C_XMKD))
+    if(S_ISDIR(sbuf.st_mode) ||
+		!strcasecmp(cmd, C_MKD) ||
+		!strcasecmp(cmd, C_XMKD))
       _umask = get_param_int(CURRENT_CONF, "DirUmask", FALSE);
     
     /* It's either a file, or we had no directory Umask.
@@ -2021,7 +2025,7 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
       /* If deep recursion yielded no match try the current subset */
       for(c = top; c; c=c->next)
         if((type == -1 || type == c->config_type) &&
-            (!name || !strcmp(name,c->name)))
+            (!name || !strcasecmp(name,c->name)))
           return c;
               
       /* Restart the search at the previous level if required */
@@ -2037,7 +2041,7 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
   } else {
     for(c = top; c; c=c->next)
       if((type == -1 || type == c->config_type) &&
-         (!name || !strcmp(name,c->name)))
+         (!name || !strcasecmp(name,c->name)))
         return c;
   }
 

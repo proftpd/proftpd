@@ -20,7 +20,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.16 2000-08-01 21:23:39 macgyver Exp $
+ * $Id: mod_log.c,v 1.17 2001-04-11 18:57:42 flood Exp $
  */
 
 #include "conf.h"
@@ -334,6 +334,22 @@ MODRET add_extendedlog(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
+/* Syntax: AllowLogSymlinks <on|off> */
+
+MODRET set_allowlogsymlinks(cmd_rec *cmd) {
+  int bool;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  add_config_param("AllowLogSymlinks", 1, (void *) bool);
+
+  return HANDLED(cmd);
+}
+
 /* Syntax: SystemLog <filename> */
 
 MODRET set_systemlog(cmd_rec *cmd)
@@ -365,8 +381,14 @@ MODRET set_systemlog(cmd_rec *cmd)
       PRIVS_RELINQUISH
       unblock_signals();
       
+      /* NB: these negative values really should be #defined */
+      
       if(ret == -2) {
 	CONF_ERROR(cmd, "you are attempting to log to a world writeable directory");
+
+      } else if (ret == -3) {
+        CONF_ERROR(cmd, "you are attempting to log to a symbolic link");
+
       } else {
 	CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"unable to redirect logging to '",
 			       syslogfn,"': ",strerror(xerrno),NULL));
@@ -843,32 +865,93 @@ int log_child_init()
 {
   /* open all log files */
   logfile_t *lf;
-  int xerrno;
+  int log_open = FALSE;
 
   get_extendedlogs();
 
-  for(lf = logs; lf; lf=lf->next)
+  for(lf = logs; lf; lf=lf->next) {
+    char *ptr;
+    struct stat statbuf;
+
     if(lf->lf_fd == -1) {
+      log_open = FALSE;
       block_signals();
       PRIVS_ROOT
 
-      lf->lf_fd = 
-         open(lf->lf_filename,O_CREAT|O_APPEND|O_WRONLY,0644);
-      xerrno = errno;
+      /* make sure we're not logging to a world-writeable directory, and
+       * that we're not logging to a symlink
+       */
+      if ((ptr = rindex(lf->lf_filename, '/')) != NULL) {
+        *ptr = '\0';
+
+        if (stat(lf->lf_filename, &statbuf) == -1) {
+          PRIVS_RELINQUISH
+          log_debug(DEBUG0, "error: stat(%s): %s", lf->lf_filename,
+            strerror(errno));
+          continue;
+        }
+
+        if (!S_ISDIR(statbuf.st_mode)) {
+          PRIVS_RELINQUISH
+          log_debug(DEBUG0, "%s is not a directory", lf->lf_filename);
+          continue;
+        }
+
+        if (statbuf.st_mode & S_IWOTH) {
+          PRIVS_RELINQUISH
+          log_debug(DEBUG0, "%s is a world writeable directory",
+            lf->lf_filename);
+          continue;
+        }
+
+        *ptr = '/';
+      }
+
+      if (get_param_int(main_server->conf, "AllowLogSymlinks", FALSE) != TRUE) {
+
+        /* prevent a race condition between stat() and open() by opening the
+         * file now, _then_ checking to see if it's a symlink
+         */
+        if ((lf->lf_fd = open(lf->lf_filename, O_APPEND|O_CREAT|O_WRONLY,
+            0644)) == -1) {
+      PRIVS_RELINQUISH
+          log_pri(LOG_NOTICE, "Unable to open ExtendedLog '%s': %s",
+            lf->lf_filename, strerror(errno));
+          continue;
+        }
+
+        if (fstat(lf->lf_fd, &statbuf) != -1 &&
+            statbuf.st_mode & S_IFLNK) {
+          PRIVS_RELINQUISH
+          log_pri(LOG_NOTICE,
+            "Unable to open ExtendedLog '%s': %s is a symbolic link",
+            lf->lf_filename, lf->lf_filename);
+          close(lf->lf_fd);
+          lf->lf_fd = -1;
+          continue;
+        }
+
+        log_open = TRUE;
+      }
+
+      if (!log_open)
+        lf->lf_fd = open(lf->lf_filename,O_CREAT|O_APPEND|O_WRONLY,0644);
 
       PRIVS_RELINQUISH
       unblock_signals();
 
       if(lf->lf_fd == -1)
-        log_pri(LOG_NOTICE, "Unable to open ExtendedLog '%s': %s.",
+        log_pri(LOG_NOTICE, "Unable to open ExtendedLog '%s': %s",
                 lf->lf_filename, strerror(errno));
     }
+  }
 
   return 0;
 }
 
 
 static conftable log_config[] = {
+  { "AllowLogSymlinks",	set_allowlogsymlinks,			NULL },
   { "LogFormat",	add_logformat,				NULL },
   { "ExtendedLog",	add_extendedlog,			NULL },
   { "SystemLog",	set_systemlog,				NULL },

@@ -21,7 +21,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.4 2000-08-02 05:25:24 macgyver Exp $
+ * $Id: log.h,v 1.5 2001-04-11 18:57:42 flood Exp $
  */
 
 #ifndef __LOG_H
@@ -117,6 +117,7 @@ void log_discard();
 void init_log();
 void log_run_setpath(const char *);
 const char *log_run_getpath(void);
+int log_open_checkpath(void);
 int log_run_checkpath(void);
 void log_run_address(const char *, const p_in_addr_t*);
 void log_run_cwd(const char *);

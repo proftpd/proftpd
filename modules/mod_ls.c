@@ -19,7 +19,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.36 2001-02-22 23:32:12 flood Exp $
+ * $Id: mod_ls.c,v 1.37 2001-04-11 18:57:42 flood Exp $
  */
 
 #include "conf.h"
@@ -93,9 +93,9 @@ static config_rec *_find_ls_limit(char *ftp_cmd) {
 
             /* match any of the appropriate <Limit> arguments
              */
-            if (!strcmp(ftp_cmd, (char *) (limit_c->argv[index])) ||
-                !strcmp("DIRS", (char *) (limit_c->argv[index])) ||
-                !strcmp("ALL", (char *) (limit_c->argv[index])))
+            if (!strcasecmp(ftp_cmd, (char *) (limit_c->argv[index])) ||
+                !strcasecmp("DIRS", (char *) (limit_c->argv[index])) ||
+                !strcasecmp("ALL", (char *) (limit_c->argv[index])))
               break;
           }
 

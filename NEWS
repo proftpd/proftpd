@@ -1,4 +1,11 @@
-$Id: NEWS,v 1.93 2001-03-27 02:57:54 flood Exp $
+$Id: NEWS,v 1.94 2001-04-11 18:57:41 flood Exp $
+
+1.2.2rc2 - CVS
+---------------------------------
+- Bug 1093 - Checking for world writable log files and symlinks.
+- Bug 1094 - AuthUserFile/AuthGroupFile disallow relative paths.
+- Bug 1096 - Case sensitivity issues in config, better checking of
+  RLimit* directive arguments.
 
 1.2.2rc1 - Released 03/24/2001
 ---------------------------------

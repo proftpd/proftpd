@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.60 2001-03-23 13:17:51 flood Exp $
+ * $Id: mod_core.c,v 1.61 2001-04-11 18:57:42 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -871,16 +871,29 @@ MODRET set_rlimitcpu(cmd_rec *cmd) {
   if (getrlimit(RLIMIT_CPU, rlim) == -1)
     log_pri(LOG_ERR, "error: getrlimit(RLIMIT_CPU): %s", strerror(errno));
 
-  if (!strcmp("max", cmd->argv[1]))
+  if (!strcasecmp("max", cmd->argv[1]))
     rlim->rlim_cur = RLIM_INFINITY;
-  else
-    rlim->rlim_cur = atol(cmd->argv[1]);
+  else {
+    unsigned long num;
 
+    /* check that the non-max argument is a number, and error out if not */
+    if (sscanf(cmd->argv[1], "%lu", &num) != 1)
+      CONF_ERROR(cmd, "badly formatted argument");
+
+    rlim->rlim_cur = num;
+  }
+  
   if (cmd->argc >= 3) {
-    if (!strcmp("max", cmd->argv[2]))
+    if (!strcasecmp("max", cmd->argv[2]))
       rlim->rlim_max = RLIM_INFINITY;
-    else
-      rlim->rlim_max = atol(cmd->argv[2]);
+    else {
+      unsigned long num;
+
+      if (sscanf(cmd->argv[2], "%lu", &num) != 1)
+        CONF_ERROR(cmd, "badly formatted argument");
+      
+      rlim->rlim_max = num;
+    }
   }
 
   add_config_param("RLimitCPU", 1, (void *) rlim);
@@ -916,7 +929,7 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
     log_pri(LOG_ERR, "error: getrlimit(RLIMIT_VMEM): %s", strerror(errno));
 #endif
 
-  if (!strcmp("max", cmd->argv[1]))
+  if (!strcasecmp("max", cmd->argv[1]))
     rlim->rlim_cur = RLIM_INFINITY;
   else
     rlim->rlim_cur = get_num_bytes(cmd->argv[1]);
@@ -928,7 +941,7 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
     CONF_ERROR(cmd, "badly formatted parameter");
 
   if (cmd->argc >= 3) {
-    if (!strcmp("max", cmd->argv[2]))
+    if (!strcasecmp("max", cmd->argv[2]))
       rlim->rlim_max = RLIM_INFINITY;
     else
       rlim->rlim_max = get_num_bytes(cmd->argv[2]);
@@ -970,13 +983,13 @@ MODRET set_rlimitopenfiles(cmd_rec *cmd) {
     log_pri(LOG_ERR, "error: getrlimit(RLIMIT_OFILE): %s", strerror(errno));
 #endif
 
-  if (!strcmp("max", cmd->argv[1]))
+  if (!strcasecmp("max", cmd->argv[1]))
     rlim->rlim_cur = RLIM_INFINITY;
   else
     rlim->rlim_cur = atol(cmd->argv[1]);
 
   if (cmd->argc >= 3) {
-    if (!strcmp("max", cmd->argv[2]))
+    if (!strcasecmp("max", cmd->argv[2]))
       rlim->rlim_max = RLIM_INFINITY;
     else
       rlim->rlim_max = atol(cmd->argv[2]);
@@ -2306,7 +2319,7 @@ MODRET cmd_help(cmd_rec *cmd)
     for(cp = cmd->argv[1]; *cp; cp++)
       *cp = toupper(*cp);
 
-    if(!strcmp(cmd->argv[1],"SITE"))
+    if(!strcasecmp(cmd->argv[1],"SITE"))
       return call_module(&site_module,site_dispatch,cmd);
 
     for(i = 0; _help[i].cmd; i++)
@@ -2937,7 +2950,7 @@ static class_t *get_class(char *name)
 
 	c = class_list;
 	while (c) {
-		if (name && strcmp(name, c->name) == 0)
+		if (name && strcasecmp(name, c->name) == 0)
 			return c;
 	
 		c = c->next;
