@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.152 2002-12-27 00:52:07 castaglia Exp $
+ * $Id: main.c,v 1.153 2002-12-27 02:36:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1664,15 +1664,6 @@ static void handle_abort(void) {
   abort();
 }
 
-#ifdef USE_DEVEL
-static void internal_abort(void) {
-  log_pri(PR_LOG_NOTICE, "core file dumped to %s", prepare_core());
-  signal(SIGABRT, SIG_DFL);
-  end_login_noexit();
-  abort();
-}
-#endif /* USE_DEVEL */
-
 static RETSIGTYPE sig_terminate(int signo) {
 
   if (signo == SIGSEGV) {
@@ -1804,10 +1795,6 @@ static void finish_terminate(void) {
       PRIVS_RELINQUISH
     }
   }
-
-#ifdef USE_DEVEL
-  internal_abort();
-#endif /* USE_DEVEL */
 
   end_login(1);
 }
