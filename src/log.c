@@ -19,7 +19,7 @@
 
 /*
  * ProFTPD logging support
- * $Id: log.c,v 1.11 1999-09-26 06:00:34 macgyver Exp $
+ * $Id: log.c,v 1.12 1999-10-01 07:57:32 macgyver Exp $
  */
 
 /* History Log:
@@ -390,7 +390,7 @@ void log_run_cwd(const char *cwd)
  * NULL clears the entry.
  */
 
-int log_add_run(pid_t mpid, time_t *idle_since, char *user,
+int log_add_run(pid_t mpid, time_t *idle_since, char *user,char *class,
                 p_in_addr_t *server_ip, unsigned short server_port, 
                 unsigned long tx_size, unsigned long tx_done, char *op, ...)
 {
@@ -454,6 +454,10 @@ int log_add_run(pid_t mpid, time_t *idle_since, char *user,
   if(user) {
     bzero(ent.user,sizeof(ent.user));
     sstrncpy(ent.user,user,sizeof(ent.user));
+  }
+  if(class) {
+    bzero(ent.class,sizeof(ent.class));
+    sstrncpy(ent.class,class,sizeof(ent.class));
   }
   if(buf[0]) {
     bzero(ent.op,sizeof(ent.op));

@@ -1,6 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
+ * Copyright (C) 1999, MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.17 1999-09-17 07:31:45 macgyver Exp $
+ * $Id: main.c,v 1.18 1999-10-01 07:57:32 macgyver Exp $
  */
 
 /*
@@ -71,6 +72,10 @@
 #ifdef HAVE_REGEX_H
 #include <regex.h>
 #endif
+
+#ifdef HAVE_REGEXP_H
+# include <regexp.h>
+#endif /* HAVE_REGEXP_H */
 
 #include "privs.h"
 
@@ -291,8 +296,9 @@ conn_t *accept_binding(fd_set *rfd, int *lfd)
   return NULL;
 }
 
-void listen_binding(fd_set *rfd)
+int listen_binding(fd_set *rfd)
 {
+  int max_fd = 0;
   binding_t *b;
 
   FD_ZERO(rfd);
@@ -303,10 +309,14 @@ void listen_binding(fd_set *rfd)
 
       if(b->listen->mode == CM_ACCEPT)
         inet_resetlisten(b->listen->pool,b->listen);
-      if(b->listen->mode == CM_LISTEN)
+      if(b->listen->mode == CM_LISTEN) {
         FD_SET(b->listen->listen_fd,rfd);
+	if (b->listen->listen_fd > max_fd)
+		max_fd = b->listen->listen_fd;
+      }
     }
   }
+  return max_fd;
 }
 
 static void init_set_proc_title(int argc, char *argv[], char *envp[])
@@ -359,7 +369,7 @@ void set_proc_title(char *fmt,...)
   char *p;
   int i,maxlen = (LastArgv - Argv[0]) - 2;
 #endif /* HAVE_SETPROCTITLE */
-  
+
   va_start(msg,fmt);
 
   memset(statbuf, 0, sizeof(statbuf));
@@ -413,12 +423,13 @@ void main_set_idle()
 
   time(&now);
 
-  log_add_run(mpid,&now,session.user,
-              main_server->ipaddr,(unsigned short)main_server->ServerPort,
-              0,0,"proftpd: %s - %s: IDLE",
-              session.user,session.proc_prefix);
-  set_proc_title("proftpd: %s - %s: IDLE",
-              session.user,session.proc_prefix);
+  log_add_run(mpid, &now,session.user,
+	      (session.class && session.class->name) ?
+	      session.class->name : "",
+              main_server->ipaddr, (unsigned short) main_server->ServerPort,
+              0, 0, "proftpd: %s - %s: IDLE",
+	      session.user,session.proc_prefix);
+  set_proc_title("proftpd: %s - %s: IDLE", session.user, session.proc_prefix);
 }
 
 static void send_response_list(response_t **head)
@@ -605,7 +616,7 @@ void end_login_noexit()
       log_wtmp(sbuf,"",
         (session.c && session.c->remote_name ? session.c->remote_name : ""),
         (session.c && session.c->remote_ipaddr ? session.c->remote_ipaddr : NULL));
-    log_add_run(mpid,NULL,NULL,NULL,0,0,0,NULL);
+    log_add_run(mpid,NULL,NULL,NULL,NULL,0,0,0,NULL);
     log_close_run();
   }
 }
@@ -716,7 +727,10 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
 
       if(session.user && (session.flags & SF_XFER) == 0 &&
          cmd_type == CMD) {
-        log_add_run(mpid,NULL,session.user,NULL,0,0,0,"proftpd: %s - %s: %s",
+        log_add_run(mpid, NULL, session.user,
+		    (session.class && session.class->name) ?
+		    session.class->name : "",
+		    NULL, 0, 0, 0, "proftpd: %s - %s: %s",
                     session.user,session.proc_prefix,
                     make_arg_str(cmd->tmp_pool,cmd->argc,cmd->argv));
         set_proc_title("proftpd: %s - %s: %s",
@@ -1118,12 +1132,13 @@ void fork_server(int fd,conn_t *l,int nofork)
 {
   server_rec *s,*serv = NULL;
   conn_t *conn;
-  pid_t pid;
-  sigset_t sigset;
-  pool *p;
   int i;
 
 #ifndef DEBUG_NOFORK
+  pid_t pid;
+  sigset_t sigset;
+  pool *p;
+
   if(!nofork) {
     pidrec_t *cpid;
 
@@ -1345,6 +1360,9 @@ void fork_server(int fd,conn_t *l,int nofork)
   /* Inform all the modules that we are now a child */
   init_child_modules();
 
+  /* find class */
+  session.class = (class_t *) find_class(conn->remote_ipaddr, conn->remote_name);
+
   /* xfer_set_data_port(conn->local_ipaddr,conn->local_port-1); */
   cmd_loop(serv,conn);
 }
@@ -1376,7 +1394,7 @@ void server_loop()
 {
   fd_set rfd;
   conn_t *listen;
-  int fd;
+  int fd, max_fd;
   int i,err_count = 0;
   time_t last_error;
   struct timeval tv;
@@ -1388,7 +1406,7 @@ void server_loop()
   while(1) {
     run_schedule();
 
-    listen_binding(&rfd);
+    max_fd = listen_binding(&rfd);
 
     /* Check for ftp shutdown message file */
     switch(check_shutmsg(&shut,&deny,&disc,shutmsg,sizeof(shutmsg))) {
@@ -1404,7 +1422,7 @@ void server_loop()
       tv.tv_sec = 30L;
     }
 
-    i = select(NFDBITS,&rfd,NULL,NULL,&tv);
+    i = select(max_fd + 1, &rfd, NULL, NULL,&tv);
 
     if(child_flag) {
       sigset_t sigset;

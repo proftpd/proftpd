@@ -2563,7 +2563,7 @@ else
 fi
 done
 
-for ac_hdr in sys/statvfs.h sys/vfs.h sys/select.h
+for ac_hdr in sys/statvfs.h sys/vfs.h sys/select.h sys/sendfile.h
 do
 ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
@@ -3954,7 +3954,7 @@ fi
 
 fi
 
-for ac_func in getcwd gethostname gettimeofday mkdir rmdir select socket strerror strtol
+for ac_func in getcwd gethostname gettimeofday mkdir rmdir select sendfile socket strerror strtol
 do
 echo $ac_n "checking for $ac_func""... $ac_c" 1>&6
 echo "configure:3961: checking for $ac_func" >&5

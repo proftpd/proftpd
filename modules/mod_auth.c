@@ -1,6 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
+ * Copyright (C) 1999, MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.11 1999-10-01 03:49:07 macgyver Exp $
+ * $Id: mod_auth.c,v 1.12 1999-10-01 07:57:31 macgyver Exp $
  */
 
 #include "conf.h"
@@ -513,7 +514,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   struct stat sbuf;
   config_rec *c;
   char *origuser,*ourname,*anonname = NULL,*anongroup = NULL,*ugroup = NULL;
-  char ttyname[20];
+  char ttyname[20], *defaulttransfermode;
   char *defroot = NULL,*defchdir = NULL,*xferlog = NULL;
   int aclp,i,force_anon = 0,wtmp_log = -1,showsymlinks;
 
@@ -1016,8 +1017,12 @@ static int _setup_environment(pool *p, char *user, char *pass)
   auth_endpwent(p);
 
   /* Default transfer mode is ASCII */
-  session.flags |= SF_ASCII;
- 
+  defaulttransfermode = (char*)get_param_ptr(CURRENT_CONF, "DefaultTransferMode", FALSE);
+  if (defaulttransfermode && strcasecmp(defaulttransfermode, "binary") == 0)
+	session.flags &= (SF_ALL^SF_ASCII);
+  else
+	session.flags |= SF_ASCII;
+
   /* Authentication complete, user logged in, now kill the login
    * timer.
    */
@@ -1041,12 +1046,11 @@ auth_failure:
   
 MODRET cmd_user(cmd_rec *cmd)
 {
-  int nopass = 0,cur = 0,hcur = 0;
+  int nopass = 0, cur = 0,hcur = 0, ccur = 0;
   logrun_t *l;
   config_rec *c,*maxc;
-  char *user,*origuser;
-  int failnopwprompt = 0;
-  int aclp,i;
+  char *user,*origuser, config_class_users[128];
+  int failnopwprompt = 0, aclp,i, classes_enabled;
 
   if(logged_in)
     return ERROR_MSG(cmd,R_503,"You are already logged in!");
@@ -1109,6 +1113,13 @@ MODRET cmd_user(cmd_rec *cmd)
     }
   }
   
+  if((classes_enabled = get_param_int(main_server->conf,"Classes",FALSE)) < 0)
+    classes_enabled = 0;
+  
+  if(classes_enabled)
+    session.class = (class_t *) find_class(session.c->remote_ipaddr,
+					   session.c->remote_name);
+  
   /* Determine how many users are currently connected */
 
   if(user) {
@@ -1130,14 +1141,47 @@ MODRET cmd_user(cmd_rec *cmd)
           if(!strcmp(ip, inet_ntoa(*session.c->remote_ipaddr)))
             hcur++;
         }
+	
+        if(classes_enabled && strcmp(l->class, session.class->name) == 0)
+        	ccur++;
       }
     PRIVS_RELINQUISH
   }
 
   remove_config(cmd->server->conf,"CURRENT-CLIENTS",FALSE);
-  add_config_param_set(&cmd->server->conf,"CURRENT-CLIENTS",1,
-                       (void*)cur);
+  add_config_param_set(&cmd->server->conf,"CURRENT-CLIENTS",1,(void*)cur);
 
+  if (classes_enabled) {
+    remove_config(cmd->server->conf,"CURRENT-CLASS",FALSE);
+    add_config_param_set(&cmd->server->conf,"CURRENT-CLASS",1,session.class->name);
+
+    snprintf(config_class_users, sizeof(config_class_users), "%s-%s", "CURRENT-CLIENTS-CLASS", session.class->name);
+    remove_config(cmd->server->conf,config_class_users,FALSE);
+    add_config_param_set(&cmd->server->conf,config_class_users,1,ccur);
+
+    /* too many users in this class ? */
+    if (ccur == session.class->max_connections) {
+	char *display = NULL;
+
+	if(session.flags & SF_ANON)
+	  display = (char*) get_param_ptr(session.anon_config->subset,
+					  "DisplayGoAway",FALSE);
+           
+	if(!display)
+	  display = (char*) get_param_ptr(cmd->server->conf,
+					  "DisplayGoAway",FALSE);
+
+	if (display)
+	  core_display_file(R_530, display);
+	else
+	  send_response(R_530,
+			"Too many users in your class, please try again later.");
+	
+	log_auth(LOG_NOTICE,"connection refused (max clients for class %s)",session.class->name);
+	end_login(0);
+    }
+  }
+  
   /* Try to determine what MaxClients applies to the user
    * (if any) and count through the runtime file to see
    * if this would exceed the max.

@@ -18,7 +18,7 @@
  */
 
 /* Data connection management prototypes
- * $Id: data.h,v 1.2 1999-01-19 01:34:50 flood Exp $
+ * $Id: data.h,v 1.3 1999-10-01 07:57:31 macgyver Exp $
  */
 
 #ifndef __DATACONN_H
@@ -31,5 +31,9 @@ void data_close(int);
 void data_abort(int,int);
 int data_xfer(char*,int);
 void data_reset();
+
+#ifdef HAVE_SENDFILE
+int data_sendfile(int retr_fd, off_t *offset, size_t count);
+#endif /* HAVE_SENDFILE */
 
 #endif /* __DATACONN_H */

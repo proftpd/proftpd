@@ -184,7 +184,7 @@ AC_CHECK_HEADERS(ctype.h getopt.h crypt.h bstring.h strings.h)
 AC_CHECK_HEADERS(sys/types.h sys/param.h sys/file.h)
 AC_CHECK_HEADERS(netdb.h netinet/in.h netinet/tcp.h arpa/inet.h sys/stat.h)
 AC_CHECK_HEADERS(errno.h sys/socket.h sys/termios.h sys/termio.h)
-AC_CHECK_HEADERS(sys/statvfs.h sys/vfs.h sys/select.h)
+AC_CHECK_HEADERS(sys/statvfs.h sys/vfs.h sys/select.h sys/sendfile.h)
 AC_CHECK_HEADERS(utmpx.h)
 AC_CHECK_HEADERS(regex.h)
 AC_CHECK_HEADER(glob.h,have_glob_h="yes",)
@@ -319,7 +319,7 @@ AC_PROG_GCC_TRADITIONAL
 AC_FUNC_SETPGRP
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS(getcwd gethostname gettimeofday mkdir rmdir select socket strerror strtol)
+AC_CHECK_FUNCS(getcwd gethostname gettimeofday mkdir rmdir select sendfile socket strerror strtol)
 AC_CHECK_FUNCS(strchr memcpy bcopy flock getopt getopt_long strsep)
 AC_CHECK_FUNCS(vsnprintf __vsnprintf snprintf __snprintf)
 AC_CHECK_FUNCS(setsid setpassent seteuid setegid crypt fgetpwent fgetgrent)

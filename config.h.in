@@ -192,6 +192,9 @@
 /* Define if you have the select function.  */
 #undef HAVE_SELECT
 
+/* Define if you have the sendfile function.  */
+#undef HAVE_SENDFILE
+
 /* Define if you have the set_auth_parameters function.  */
 #undef HAVE_SET_AUTH_PARAMETERS
 
@@ -315,14 +318,17 @@
 /* Define if you have the <sys/param.h> header file.  */
 #undef HAVE_SYS_PARAM_H
 
-/* Define if you have the <sys/security.h> header file.  */
-#undef HAVE_SYS_SECURITY_H
-
 /* Define if you have the <sys/pstat.h> header file.  */
 #undef HAVE_SYS_PSTAT_H
 
+/* Define if you have the <sys/security.h> header file.  */
+#undef HAVE_SYS_SECURITY_H
+
 /* Define if you have the <sys/select.h> header file.  */
 #undef HAVE_SYS_SELECT_H
+
+/* Define if you have the <sys/sendfile.h> header file.  */
+#undef HAVE_SYS_SENDFILE_H
 
 /* Define if you have the <sys/socket.h> header file.  */
 #undef HAVE_SYS_SOCKET_H

@@ -1,6 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
+ * Copyright (C) 1999, MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.15 1999-10-01 03:33:12 macgyver Exp $
+ * $Id: mod_core.c,v 1.16 1999-10-01 07:57:31 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -1354,6 +1355,30 @@ MODRET set_displayfirstchdir(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
+MODRET set_displayquit(cmd_rec *cmd)
+{
+  config_rec *c;
+
+  CHECK_ARGS(cmd,1);
+  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+
+  c = add_config_param_str("DisplayQuit",1,(void*)cmd->argv[1]);
+  c->flags |= CF_MERGEDOWN;
+  return HANDLED(cmd);
+}
+
+MODRET set_displaygoaway(cmd_rec *cmd)
+{
+  config_rec *c;
+
+  CHECK_ARGS(cmd,1);
+  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+
+  c = add_config_param_str("DisplayGoAway",1,(void*)cmd->argv[1]);
+  c->flags |= CF_MERGEDOWN;
+  return HANDLED(cmd);
+}
+
 MODRET set_authaliasonly(cmd_rec *cmd)
 {
   int b;
@@ -1408,16 +1433,17 @@ int core_display_file(const char *numeric, const char *fn)
 {
   fsdir_t *fp;
   char buf[1024];
-  int len,max,fd;
+  int len, max, fd, classes_enabled;
   unsigned long fs_size = 0;
   pool *p;
   xaset_t *s;
-  char *outs,*mg_time,mg_size[12],mg_max[12] = "unlimited";
-  char mg_cur[12];
+  char *outs,*mg_time,mg_size[12],mg_max[12] = "unlimited", mg_class_limit[12];
+  char mg_cur[12],mg_xfer_bytes[12],mg_cur_class[12], config_class_users[128];
   short first = 1;
 
 #if defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
   fs_size = get_fs_size((char*)fn);
+  snprintf(mg_size, sizeof(mg_size), "%lu", fs_size);
 #endif
 
   if((fp = fs_open_canon(fn,O_RDONLY,&fd)) == NULL)
@@ -1432,6 +1458,20 @@ int core_display_file(const char *numeric, const char *fn)
   max = get_param_int(s,"MaxClients",FALSE);
   snprintf(mg_cur, sizeof(mg_cur), "%d",(int)get_param_int(main_server->conf,
           "CURRENT-CLIENTS",FALSE)+1);
+
+  if((classes_enabled = get_param_int(CURRENT_CONF,"Classes",FALSE)) < 0)
+    classes_enabled = 0;
+  
+  if (classes_enabled && session.class && session.class->name) {
+	snprintf(config_class_users,sizeof(config_class_users),"%s-%s","CURRENT-CLIENTS-CLASS",session.class->name);
+	snprintf(mg_cur_class,sizeof(mg_cur_class),"%d",(int)get_param_int(main_server->conf,config_class_users,FALSE)+1);
+	snprintf(mg_class_limit, sizeof(mg_class_limit), "%u",
+		 session.class->max_connections);
+  } else
+	mg_cur_class[0] = 0;
+
+  snprintf(mg_xfer_bytes, sizeof(mg_xfer_bytes), "%lu",
+	   session.total_bytes >> 10);
 
   if(max != -1)
     snprintf(mg_max, sizeof(mg_max), "%d",max);
@@ -1455,10 +1495,14 @@ int core_display_file(const char *numeric, const char *fn)
 	     "%L",main_server->ServerFQDN,
              "%u",session.ident_user,
 	     "%U",(char*)get_param_ptr(main_server->conf,"USER",FALSE),
+	     "%K",mg_xfer_bytes,
 	     "%M",mg_max,
              "%N",mg_cur,
 	     "%E",main_server->ServerAdmin,
 	     "%V",main_server->ServerName,
+	     "%x",(classes_enabled && session.class) ? session.class->name : "",
+	     "%y",mg_cur_class,
+	     "%z",mg_class_limit,
              NULL);
 
     if(first) {
@@ -1478,8 +1522,25 @@ int core_display_file(const char *numeric, const char *fn)
 
 MODRET cmd_quit(cmd_rec *cmd)
 {
-  send_response(R_221,"Goodbye.");
-  log_pri(LOG_NOTICE,"FTP session closed.");
+  char *display = NULL;
+  
+  if(session.flags & SF_ANON)
+	display = (char*)get_param_ptr(session.anon_config->subset, "DisplayQuit", FALSE);
+
+  if(!display)
+	display = (char*)get_param_ptr(cmd->server->conf, "DisplayQuit", FALSE);
+
+  if(display) {
+	core_display_file(R_221, display);
+	/* hack or feature, core_display_file() always puts a hyphen
+	 * on the last line
+	 */
+	send_response(R_221, "");
+  } else {
+        send_response(R_221, "Goodbye.");
+  }
+  
+  log_pri(LOG_NOTICE, "FTP session closed.");
   end_login(0);
   return HANDLED(cmd);			/* Avoid compiler warning */
 }
@@ -2230,6 +2291,200 @@ MODRET cmd_noop(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
+MODRET set_defaulttransfermode(cmd_rec *cmd)
+{                                               
+  config_rec *c;
+
+  CHECK_ARGS(cmd,1);
+  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (strcasecmp(cmd->argv[1], "ascii") != 0 && strcasecmp(cmd->argv[1], "binary") != 0) {
+	CONF_ERROR(cmd, "parameter must be 'ascii' or 'binary'.");
+  } else
+  	c = add_config_param_str("DefaultTransferMode", 1, cmd->argv[1]);
+
+  c->flags |= CF_MERGEDOWN;
+  return HANDLED(cmd);
+}
+
+MODRET set_classes(cmd_rec *cmd)
+{
+  int b;
+  config_rec *c;
+
+  CHECK_ARGS(cmd,1);
+  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+
+  b = get_boolean(cmd,1);
+  if (b == -1)
+    CONF_ERROR(cmd, "requires a boolean value");
+
+  c = add_config_param("Classes",1,(void*)b);
+  c->flags |= CF_MERGEDOWN;
+  return HANDLED(cmd);
+}
+
+static cdir_t *cdir_list = NULL;
+static class_t *class_list = NULL;
+
+static cdir_t *add_cdir(class_t *class, u_int_32 address, u_int_8 netmask)
+{
+	cdir_t *n;
+
+	n = calloc(1, sizeof(cdir_t));
+
+	n->class = class;
+	while (netmask--) {
+		n->netmask >>= 1;
+		n->netmask |= 0x80000000;
+	}
+	n->address = address & n->netmask;
+
+	n->next = cdir_list;
+	cdir_list = n;	                
+
+	return n;
+}
+
+static cdir_t *find_cdir(u_int_32 address)
+{
+	cdir_t *c, *f;
+
+	c = cdir_list;
+	f = NULL;
+	while (c) {
+		/* within cdir range ? && more specific netmask ? */
+		if (((address & c->netmask) == c->address) && (f == NULL || (f && (f->netmask < c->netmask))))
+			f = c;
+
+		c = c->next;
+	}
+	return f;
+}
+
+static class_t *add_class(char *name)
+{
+	class_t *n;
+
+	n = calloc(1, sizeof(class_t));
+
+	n->name = strdup(name);
+	n->max_connections = 100;
+
+	n->next = class_list;
+	class_list = n;	                
+
+	return n;
+}
+
+static class_t *get_class(char *name)
+{
+	class_t *c;
+
+	c = class_list;
+	while (c) {
+		if (name && strcmp(name, c->name) == 0)
+			return c;
+	
+		c = c->next;
+	}
+	return NULL;
+}
+
+class_t *find_class(p_in_addr_t *addr, char *remote_name)
+{
+	cdir_t *ip;
+	class_t *c, *f;
+
+	if ((ip = find_cdir(ntohl(addr->s_addr))) != NULL)
+		return ip->class;
+
+	c = class_list;
+	f = NULL;
+	while (c) {
+		if (c->preg && (regexec(c->preg, remote_name, 0, NULL, 0)) == 0) 
+			if (f == NULL || (f && f->max_connections < c->max_connections))
+				f = c;
+		c = c->next;
+	}
+	if (f)
+		return f;
+	else
+		return get_class("default");
+}
+
+MODRET set_class(cmd_rec *cmd)
+{
+  int bits, ret;
+  class_t *n;
+  regex_t *preg;
+  p_in_addr_t *res;
+  char *ptr, ipaddress[20], errmsg[80];
+
+  CHECK_ARGS(cmd,3);
+  CHECK_CONF(cmd,CONF_ROOT);
+
+  /* setup "default" class if necesarry */
+  if((n = get_class("default")) == NULL)
+    n = add_class("default");
+  
+  /* find class, add if necessary */
+  if((n = get_class(cmd->argv[1])) == NULL)
+    n = add_class(cmd->argv[1]);
+  
+  /* what to do ? */
+  if(strcasecmp(cmd->argv[2], "limit") == 0) {
+    ret = atoi(cmd->argv[3]);
+    if (ret < 0)
+      ret = 100;
+    n->max_connections = ret;
+    log_debug(DEBUG4, "class '%s' maxconnections set to %d",
+	      n->name, n->max_connections);
+  } else if (strcasecmp(cmd->argv[2], "regex") == 0) {
+    preg = calloc(1, sizeof(regex_t));
+    
+    if((ret = regcomp(preg, cmd->argv[3],
+		      REG_EXTENDED|REG_NOSUB|REG_ICASE)) != 0) {
+      regerror(ret, preg, errmsg, sizeof(errmsg));
+      regfree(preg);
+      
+      n->preg = NULL;
+      log_pri(LOG_ERR, "failed regexp '%s' compilation: ", cmd->argv[3]);
+    } else {
+      n->preg = preg;
+    }
+  } else if(strcasecmp(cmd->argv[2], "ip") == 0) {
+    sstrncpy(ipaddress, cmd->argv[3], sizeof(ipaddress));
+    if((ptr = strchr(ipaddress, '/')) == NULL) {
+      log_pri(LOG_ERR, "class '%s' ipmask %s skipped.",
+	      cmd->argv[1], cmd->argv[3]);
+      CONF_ERROR(cmd, "wrong syntax error.");
+    } else {
+      bits = atol(ptr + 1);
+      
+      if (bits < 0 || bits > 32) {
+	log_pri(LOG_ERR, "class '%s' ipmask %s skipped: wrong netmask",
+		cmd->argv[1], cmd->argv[3]);
+      }
+      
+      *ptr = 0;
+    }
+    
+    if((res = inet_getaddr(cmd->pool, ipaddress)) != NULL) {
+      add_cdir(n, ntohl(res->s_addr), bits);
+      log_debug(DEBUG4, "class '%s' ipmask %p/%d added.",
+		cmd->argv[1], res, bits);
+    } else {
+      log_pri(LOG_ERR, "Class '%s' ip could not parse '%s'",
+	      cmd->argv[1], cmd->argv[3]);
+    }
+  } else {
+    CONF_ERROR(cmd, "unknown argument.");
+  }
+  
+  return HANDLED(cmd);
+}
+
 /* Configuration directive table */
 
 static conftable core_conftable[] = {
@@ -2300,6 +2555,8 @@ static conftable core_conftable[] = {
   { "</Limit>", 		end_limit, 			NULL },
   { "DisplayLogin",		set_displaylogin,		NULL },
   { "DisplayConnect",		set_displayconnect,		NULL },
+  { "DisplayQuit",		set_displayquit,		NULL },
+  { "DisplayGoAway",		set_displaygoaway,		NULL },
   { "<Anonymous>",		add_anonymous,			NULL },
   { "UserAlias",		add_useralias, 			NULL },
   { "AnonRequirePassword",	set_anonrequirepassword,	NULL },
@@ -2312,6 +2569,9 @@ static conftable core_conftable[] = {
   { "</Anonymous>",		end_anonymous,			NULL },
   { "<Global>",			add_global,			NULL },
   { "</Global>",		end_global,			NULL },
+  { "DefaultTransferMode",	set_defaulttransfermode,	NULL },
+  { "Class",			set_class,			NULL },
+  { "Classes",			set_classes,			NULL },
   { NULL, NULL, NULL }
 };
 
@@ -2350,5 +2610,5 @@ module core_module = {
   core_conftable,
   core_commands,
   NULL,
-  NULL,NULL			/* No initialization needed */
+  NULL,NULL                    /* No initialization needed */
 };

@@ -1,6 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
+ * Copyright (C) 1999, MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +20,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.7 1999-09-17 07:31:44 macgyver Exp $
+ * $Id: mod_log.c,v 1.8 1999-10-01 07:57:31 macgyver Exp $
  */
 
 #include "conf.h"
@@ -67,6 +68,7 @@ struct logfile_struc {
 #define META_SERVERNAME		13
 #define META_USER		14
 #define META_RESPONSE_CODE	15
+#define META_CLASS		16
 
 static pool			*log_pool;
 static logformat_t		*formats = NULL;
@@ -75,6 +77,7 @@ static logfile_t		*logs = NULL;
 static xaset_t			*log_set = NULL;
 
 /* format string args:
+   %c			- class
    %b			- bytes sent for request
    %f			- filename
    %{FOOBAR}e		- contents of environment variable FOOBAR
@@ -154,6 +157,9 @@ void logformat(char *nickname, char *fmts)
           continue;
         case 'b':
           add_meta(&outs,META_BYTES_SENT,0);
+          break;
+        case 'c':
+          add_meta(&outs,META_CLASS,0);
           break;
         case 'f':
           add_meta(&outs,META_FILENAME,0);
@@ -406,6 +412,15 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
     else
       sstrncpy(argp, "-", sizeof(arg));
 
+    m++;
+    break;
+
+  case META_CLASS:
+    argp = arg;
+    if(get_param_int(TOPLEVEL_CONF, "Classes", FALSE) > 0)
+      sstrncpy(argp, session.class->name, sizeof(arg));
+    else
+      sstrncpy(argp, "-", sizeof(arg));
     m++;
     break;
 

@@ -18,7 +18,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.6 1999-09-14 08:43:59 macgyver Exp $
+ * $Id: proftpd.h,v 1.7 1999-10-01 07:57:31 macgyver Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -56,6 +56,25 @@ typedef unsigned long ULONG;
 
 typedef int (*callback_t)(CALLBACK_FRAME);
 
+/* Class structure */
+
+typedef struct class_struc {
+  struct class_struc *next;
+
+  char *name;				/* class name */
+  int max_connections;			/* max number of users in this class */
+  void *preg;				/* compiled regexp */
+
+} class_t;
+
+
+typedef struct cdir_struc {
+  struct cdir_struc *next;
+
+  u_int_32 address;
+  u_int_32 netmask;
+  class_t *class;
+} cdir_t;
 
 struct conn_struc;
 struct cmd_struc;
@@ -93,6 +112,7 @@ typedef struct {
   int fsgid;				/* Saved file gid */
 
   char *user,*group;			/* username/groupname after login */
+  class_t *class;			/* session class */
   char *proc_prefix;			/* The "prefix" of our process name */
 
   int wtmp_log;				/* Are we logging to wtmp? */
@@ -128,6 +148,8 @@ typedef struct {
     int (*complete)(struct IO_File*);
     int (*abort)(struct IO_File*,int err);
   } xfer;
+
+  unsigned long total_bytes;          /* Total bytes transfered for this session */
 
 } session_t;
 

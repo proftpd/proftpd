@@ -19,7 +19,7 @@
 
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
- * $Id: log.h,v 1.1 1998-10-18 02:24:41 flood Exp $
+ * $Id: log.h,v 1.2 1999-10-01 07:57:31 macgyver Exp $
  */
 
 #ifndef __LOG_H
@@ -57,7 +57,7 @@ typedef struct {
   char user[100],op[200];
   unsigned long transfer_size,transfer_complete;
   char address[80],cwd[100];
-  char spare[100];
+  char class[32], spare[100];
 } logrun_t;
 
 /* These are the debug levels, higher numbers print more debugging
@@ -88,7 +88,7 @@ const char *log_run_getpath(void);
 int log_run_checkpath(void);
 void log_run_address(const char *, const p_in_addr_t*);
 void log_run_cwd(const char *);
-int log_add_run(pid_t,time_t*,char*,p_in_addr_t*,unsigned short,
+int log_add_run(pid_t,time_t*,char*,char*,p_in_addr_t*,unsigned short,
                 unsigned long,unsigned long,char*,...);
 logrun_t *log_read_run(pid_t*);
 int log_open_run(pid_t,int,int);

@@ -1,6 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
+ * Copyright (C) 1999, MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +21,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.3 1999-10-01 03:32:18 macgyver Exp $
+ * $Id: dirtree.h,v 1.4 1999-10-01 07:57:31 macgyver Exp $
  */
 
 #ifndef __DIRTREE_H
@@ -175,6 +176,7 @@ config_rec *find_config_next(config_rec*,config_rec*,int,const char*,int);
 config_rec *find_config(xaset_t*,int,const char*,int);
 void find_config_set_top(config_rec*);
 int remove_config(xaset_t*,const char*,int);
+class_t *find_class(p_in_addr_t *addr, char *remote_name);
 
 array_header *parse_group_expression(pool*,int*,char**);
 array_header *parse_user_expression(pool*,int*,char**);

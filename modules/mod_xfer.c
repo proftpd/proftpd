@@ -1,6 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
+ * Copyright (C) 1999, MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.14 1999-10-01 03:36:23 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.15 1999-10-01 07:57:31 macgyver Exp $
  */
 
 /* History Log:
@@ -598,34 +599,40 @@ MODRET pre_cmd_retr(cmd_rec *cmd)
 
 MODRET cmd_retr(cmd_rec *cmd)
 {
-  char *dir;
+  char *dir, *lbuf;
   struct stat sbuf;
-  char *lbuf;
-  int bufsize,len;
-  unsigned long respos = 0,cnt = 0,cnt_steps = 0,cnt_next = 0;
-  privdata_t *p;
-  long rate_bytes=0, rate_freebytes=0, rate_bps=0;
-  int rate_hardbps=0;
   struct timeval rate_tvstart;
+  privdata_t *p;
+  int bufsize, len = 0;
+  int rate_hardbps = 0;
+  unsigned long respos = 0,cnt = 0,cnt_steps = 0,cnt_next = 0;
+  long rate_bytes = 0, rate_freebytes = 0, rate_bps = 0;
+  off_t off;
 
-  if( (rate_bps = get_param_int(CURRENT_CONF,"RateReadBPS",FALSE)) == -1 ) { rate_bps=0; }
-  if( (rate_freebytes = get_param_int(CURRENT_CONF,"RateReadFreeBytes",FALSE)) == -1 ) { rate_freebytes=0; }
+  if((rate_bps = get_param_int(CURRENT_CONF, "RateReadBPS", FALSE)) == -1)
+    rate_bps = 0;
+
+  if((rate_freebytes = get_param_int(CURRENT_CONF,
+				     "RateReadFreeBytes", FALSE)) == -1)
+    rate_freebytes = 0;
+  
   rate_hardbps = get_param_int(CURRENT_CONF,"RateReadHardBPS",FALSE) == 1;
-
-  if( rate_bps != 0 ) {
+  
+  if(rate_bps != 0) {
       /* I am not sure this _is_ allowed in ftp protocol... ideas, anyone?
-       add_response(R_211,"Allowed bandwidth is %ld bps (starting at %ld).",rate_bps,rate_freebytes);
-       */
-      log_debug(DEBUG2,"Allowed bandwidth is %ld bps (starting at %ld).",rate_bps,rate_freebytes);
+	 add_response(R_211,"Allowed bandwidth is %ld bps (starting at %ld).",rate_bps,rate_freebytes);
+      */
+    log_debug(DEBUG2,"Allowed bandwidth is %ld bps (starting at %ld).",rate_bps,rate_freebytes);
   }
-
+  
   p = mod_privdata_find(cmd,"retr_filename",NULL);
-
+  
   if(!p) {
-    add_response_err(R_550,"%s: internal error, what happened to cmd_pre_retr?!?",cmd->arg);
+    add_response_err(R_550, "%s: internal error, what happened to "
+		     "cmd_pre_retr?!?", cmd->arg);
     return ERROR(cmd);
   }
-
+  
   dir = p->value.str_val;
   retr_file = fs_open(dir,O_RDONLY,&retr_fd);
 
@@ -663,31 +670,66 @@ MODRET cmd_retr(cmd_rec *cmd)
     lbuf = (char*)palloc(cmd->tmp_pool,bufsize);
 
     cnt = respos;
-    log_add_run(mpid,NULL,session.user,NULL,0,session.xfer.file_size,0,NULL);
+    log_add_run(mpid, NULL, session.user,
+		(session.class && session.class->name) ? session.class->name :
+		"",
+		NULL, 0, session.xfer.file_size, 0, NULL);
 
     gettimeofday(&rate_tvstart, NULL);
-    while((len = fs_read(retr_file,retr_fd,lbuf,bufsize)) > 0) {
+    off = respos;
+    
+    while(cnt != session.xfer.file_size) {
+      if((len = fs_read(retr_file, retr_fd, lbuf, bufsize)) <= 0)
+	break;
+      
       if(XFER_ABORTED)
         break;
+      
+#ifdef HAVE_SENDFILE
+      if(session.flags & (SF_ASCII | SF_ASCII_OVERRIDE)) {
+	len = data_xfer(lbuf, len);
+	goto done;
+      }
+      
+      len = data_sendfile(retr_fd, &off, session.xfer.file_size - cnt);
+      if(len == -1) {
+	log_pri(LOG_ERR, "data_sendfile error: %d:%s",
+		errno, strerror(errno));
+	switch (errno) {
+	case EAGAIN:
+	  continue;
+	default:
+	  log_pri(LOG_ERR, "unknown data_sendfile() error %d: %s",
+		  errno, strerror(errno));
+	}
+      }
 
-      len = data_xfer(lbuf,len);
+    done:
+#else
+      len = data_xfer(lbuf, len);
+#endif /* HAVE_SENDFILE */
+
+      
       if(len < 0) {
         _retr_abort();
         data_abort(session.d->outf->xerrno,FALSE);
         return ERROR(cmd);
-      } else {
-        cnt += len;
-	rate_bytes += len;
+      }
 
-        if((cnt / cnt_steps) != cnt_next) {
-          cnt_next = cnt / cnt_steps;
-	  log_add_run(mpid,NULL,session.user,NULL,0,session.xfer.file_size,cnt,NULL);
-        }
-
-	if(rate_bps) {
-	    _rate_throttle(cnt, rate_bytes, rate_tvstart, rate_freebytes,
-			   rate_bps, rate_hardbps);
-	}
+      cnt += len;
+      rate_bytes += len;
+      
+      if((cnt / cnt_steps) != cnt_next) {
+	cnt_next = cnt / cnt_steps;
+	log_add_run(mpid, NULL, session.user,
+		    (session.class && session.class->name) ?
+		    session.class->name : "",
+		    NULL, 0, session.xfer.file_size, cnt, NULL);
+      }
+      
+      if(rate_bps) {
+	_rate_throttle(cnt, rate_bytes, rate_tvstart, rate_freebytes,
+		       rate_bps, rate_hardbps);
       }
     }
     
@@ -704,6 +746,7 @@ MODRET cmd_retr(cmd_rec *cmd)
       data_close(FALSE);
     }
   }
+  
   return HANDLED(cmd);
 }
 
