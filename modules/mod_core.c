@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.200 2003-11-08 22:19:30 castaglia Exp $
+ * $Id: mod_core.c,v 1.201 2003-11-08 23:34:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -465,21 +465,21 @@ MODRET set_debuglevel(cmd_rec *cmd) {
 
 MODRET set_defaultaddress(cmd_rec *cmd) {
   pr_netaddr_t *main_addr = NULL;
-  config_rec *c = NULL;
   array_header *addrs = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  c = add_config_param(cmd->argv[0], 1, NULL);
-
-  main_addr = pr_netaddr_get_addr(c->pool, cmd->argv[1], &addrs);
+  main_addr = pr_netaddr_get_addr(main_server->pool, cmd->argv[1], &addrs);
   if (main_addr == NULL) 
     return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
       (cmd->argv)[0], ": unable to resolve \"", cmd->argv[1], "\"",
       NULL));
 
-  c->argv[0] = main_addr;
+  log_debug(DEBUG0, "setting default address to %s",
+    pr_netaddr_get_ipstr(main_addr));
+
+  main_server->addr = main_addr;
 
   if (addrs) {
     register unsigned int i;
@@ -2671,12 +2671,16 @@ MODRET end_virtualhost(cmd_rec *cmd) {
       const char *serv_addrstr = NULL;
       pr_netaddr_t *serv_addr = NULL;
 
-      if (s->ServerAddress)
-        serv_addrstr = s->ServerAddress;
-      else
-        serv_addrstr = pr_netaddr_get_localaddr_str(cmd->tmp_pool);
+      if (s->addr) {
+        serv_addr = s->addr;
 
-      serv_addr = pr_netaddr_get_addr(cmd->tmp_pool, serv_addrstr, NULL);
+      } else {
+        serv_addrstr = s->ServerAddress ? s->ServerAddress :
+          pr_netaddr_get_localaddr_str(cmd->tmp_pool);
+
+        serv_addr = pr_netaddr_get_addr(cmd->tmp_pool, serv_addrstr, NULL);
+      }
+
       if (!serv_addr) {
         log_pri(PR_LOG_ERR, "error: unable to determine IP address of '%s'",
           serv_addrstr);
@@ -2684,7 +2688,8 @@ MODRET end_virtualhost(cmd_rec *cmd) {
       } else if (pr_netaddr_cmp(addr, serv_addr) == 0 &&
           cmd->server->ServerPort == s->ServerPort) {
         log_pri(PR_LOG_ERR, "error: \"%s\" address/port (%s:%d) already in use "
-          "by \"%s\"", cmd->server->ServerName,
+          "by \"%s\"",
+          cmd->server->ServerName ? cmd->server->ServerName : "ProFTPD",
           pr_netaddr_get_ipstr(addr), cmd->server->ServerPort,
           s->ServerName ? s->ServerName : "ProFTPD");
         xaset_remove(server_list, (xasetmember_t *) s);

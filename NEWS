@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.504 2003-11-08 22:19:29 castaglia Exp $
+$Id: NEWS,v 1.505 2003-11-08 23:34:24 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -16,6 +16,7 @@ CVS
   The getaddrinfo symbol is a macro, not a function, on that platform.
 - Bug 2255 - RADIUS Service-Type should reflect attribute expectations.
 - Added Event API.
+- Bug 2272 - Address/port collision check needs to handle DefaultAddress.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------

@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.18 2003-11-01 07:11:07 castaglia Exp $
+ * $Id: bindings.c,v 1.19 2003-11-08 23:34:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -793,14 +793,6 @@ static void init_standalone_bindings(void) {
   config_rec *c = NULL;
   server_rec *serv = NULL;
   unsigned char *default_server = NULL, is_default = FALSE;
-
-  /* Check for a configured DefaultAddress for the main_server */
-  if ((c = find_config(main_server->conf, CONF_PARAM, "DefaultAddress",
-      FALSE)) != NULL) {
-    log_debug(DEBUG0, "setting default server address to %s",
-      pr_netaddr_get_ipstr((pr_netaddr_t *) c->argv[0]));
-    main_server->addr = (pr_netaddr_t *) c->argv[0];
-  }
 
   /* If a port is set to zero, the address/port is not bound to a socket
    * at all.
