@@ -19,7 +19,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.13 2000-01-24 05:47:06 macgyver Exp $
+ * $Id: dirtree.c,v 1.14 2000-02-16 00:33:22 macgyver Exp $
  */
 
 /* History:
@@ -1213,7 +1213,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
   config_rec *c;
   struct stat sbuf;
   pool *p;
-  int res = 1, hid,_umask = 0, isfile;
+  int res = 1, hid, _umask = -1, isfile;
 
   if(!hidden)
     hidden = &hid;
@@ -1252,20 +1252,19 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
   if(!c && session.anon_config)
     c = session.anon_config;
 
-  _umask = 0;
+  _umask = -1;
   
   if(!_kludge_disable_umask) {
     /* Check for a directory Umask.
      */
-    if(S_ISDIR(sbuf.st_mode))
+    if(S_ISDIR(sbuf.st_mode) || !strcmp(cmd, C_MKD) || !strcmp(cmd, C_XMKD))
       _umask = get_param_int(CURRENT_CONF, "DirUmask", FALSE);
     
     /* It's either a file, or we had no directory Umask.
      */
-    if(!S_ISDIR(sbuf.st_mode) || (S_ISDIR(sbuf.st_mode) && _umask == -1)) {
-      if((_umask = get_param_int(CURRENT_CONF, "Umask", FALSE)) == -1)
-	_umask = 0;
-    }
+    if(_umask == -1 &&
+       ((_umask = get_param_int(CURRENT_CONF, "Umask", FALSE)) == -1))
+      _umask = 0022;
   }
   
   if((grpowner = get_param_ptr(CURRENT_CONF,"GroupOwner",FALSE)) != NULL) {
@@ -1296,7 +1295,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
       res = dir_check_limits(c,"ALL",*hidden);
   }
 
-  if(res && _umask)
+  if(res && _umask != -1)
     umask(_umask);
 
   destroy_pool(p);
@@ -1314,7 +1313,7 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
   config_rec *c;
   struct stat sbuf;
   pool *p;
-  int res = 1, hid, _umask = 0, isfile;
+  int res = 1, hid, _umask = -1, isfile;
 
   p = make_sub_pool(pp);
 
@@ -1347,20 +1346,19 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
   if(!c && session.anon_config)
     c = session.anon_config;
 
-  _umask = 0;
+  _umask = -1;
   
   if(!_kludge_disable_umask) {
     /* Check for a directory Umask.
      */
-    if(S_ISDIR(sbuf.st_mode))
+    if(S_ISDIR(sbuf.st_mode) || !strcmp(cmd, C_MKD) || !strcmp(cmd, C_XMKD))
       _umask = get_param_int(CURRENT_CONF, "DirUmask", FALSE);
     
     /* It's either a file, or we had no directory Umask.
      */
-    if(!S_ISDIR(sbuf.st_mode) || (S_ISDIR(sbuf.st_mode) && _umask == -1)) {
-      if((_umask = get_param_int(CURRENT_CONF, "Umask", FALSE)) == -1)
-	_umask = 0;
-    }
+    if(_umask == -1 &&
+       ((_umask = get_param_int(CURRENT_CONF, "Umask", FALSE)) == -1))
+      _umask = 0022;
   }
 
   if((grpowner = get_param_ptr(CURRENT_CONF, "GroupOwner", FALSE)) != NULL) {
@@ -1393,7 +1391,7 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
       res = dir_check_limits(c, "ALL", *hidden);
   }
 
-  if(res && _umask)
+  if(res && _umask != -1)
     umask(_umask);
 
   destroy_pool(p);

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.26 2000-02-16 00:09:02 macgyver Exp $
+$Id: NEWS,v 1.27 2000-02-16 00:33:22 macgyver Exp $
 
 1.2.0 - Released: ???
 ---------------------
@@ -6,6 +6,7 @@ $Id: NEWS,v 1.26 2000-02-16 00:09:02 macgyver Exp $
 - Fixed a minor bug related to group permissions.
 - Fixed a bug in calculating file system size when using statvfs.
 - Fixed a bug when a 'TYPE L' directive is passed improperly.
+- Fixed Umask directive handling in directories.
 
 1.2.0pre10 - Released: 1/17/00
 ------------------------------
