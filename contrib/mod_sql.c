@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.60 2003-10-20 07:15:53 castaglia Exp $
+ * $Id: mod_sql.c,v 1.61 2003-10-31 08:02:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1652,7 +1652,7 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
 
   case 'U':
     argp = arg;
-    if (!session.user) {
+    {
       char *login_user = get_param_ptr(main_server->conf, C_USER, FALSE);
 
       if (!login_user)
