@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.3 2003-01-02 17:28:16 castaglia Exp $
+ * $Id: fsio.h,v 1.4 2003-03-13 02:56:32 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -79,6 +79,7 @@
 /* Modular filesystem object */
 
 typedef struct fs_rec pr_fs_t;
+typedef struct fh_rec pr_fh_t;
 
 struct fs_rec {
 
@@ -100,18 +101,20 @@ struct fs_rec {
 
   /* FS function pointers */
   int (*stat)(pr_fs_t *, const char *, struct stat *);
+  int (*fstat)(pr_fh_t *, int, struct stat *);
   int (*lstat)(pr_fs_t *, const char *, struct stat *);
   int (*rename)(pr_fs_t *, const char *, const char *);
   int (*unlink)(pr_fs_t *, const char *);
   int (*open)(pr_fs_t *, const char *, int);
   int (*creat)(pr_fs_t *, const char *, mode_t);
-  int (*close)(pr_fs_t *, int);
-  int (*read)(pr_fs_t *, int, char *, size_t);
-  int (*write)(pr_fs_t *, int, const char *, size_t);
-  off_t (*lseek)(pr_fs_t *, int, off_t, int);
+  int (*close)(pr_fh_t *, int);
+  int (*read)(pr_fh_t *, int, char *, size_t);
+  int (*write)(pr_fh_t *, int, const char *, size_t);
+  off_t (*lseek)(pr_fh_t *, int, off_t, int);
   int (*link)(pr_fs_t *, const char *, const char *);
   int (*readlink)(pr_fs_t *, const char *, char *, size_t);
   int (*symlink)(pr_fs_t *, const char *, const char *);
+  int (*ftruncate)(pr_fh_t *, int, off_t);
   int (*truncate)(pr_fs_t *, const char *, off_t);
   int (*chmod)(pr_fs_t *, const char *, mode_t);
   int (*chown)(pr_fs_t *, const char *, uid_t, gid_t);
@@ -130,7 +133,7 @@ struct fs_rec {
   int (*rmdir)(pr_fs_t *, const char *);
 };
 
-typedef struct {
+struct fh_rec {
 
   /* Pool for this object's use */
   pool *fh_pool;
@@ -138,13 +141,15 @@ typedef struct {
   int fh_fd;
   char *fh_path;
 
+  /* Arbitrary data associated with this file. */
+  void *fh_data;
+
   /* Pointer to the filesystem in which this file is located. */
   pr_fs_t *fh_fs;
 
   /* For buffer I/O on this file, should anything choose to use it. */
   pr_buffer_t *fh_buf;
-
-} pr_fh_t;
+};
 
 /* Macros for that code that needs to get into the internals of pr_fs_t.
  * (These will help keep the internals as opaque as possible).
@@ -176,7 +181,7 @@ struct fs_match_rec {
   /* "trigger" function to be called whenever a path that matches the
    * compiled regex is given.
    */
-  int (*trigger)(pr_fs_t *, const char *, int);
+  int (*trigger)(pr_fh_t *, const char *, int);
 
   /* NOTE: need some way of keeping track of the pr_fs_t registered by
    *  an fs_match's trigger function, such that when an fs_match is
@@ -189,6 +194,7 @@ struct fs_match_rec {
 
 int pr_fsio_stat(const char *, struct stat *);
 int pr_fsio_stat_canon(const char *, struct stat *);
+int pr_fsio_fstat(pr_fh_t *, struct stat *);
 int pr_fsio_lstat(const char *, struct stat *);
 int pr_fsio_lstat_canon(const char *, struct stat *);
 int pr_fsio_readlink(const char *, char *, size_t);
@@ -215,6 +221,7 @@ int pr_fsio_link(const char *, const char *);
 int pr_fsio_link_canon(const char *, const char *);
 int pr_fsio_symlink(const char *, const char *);
 int pr_fsio_symlink_canon(const char *, const char *);
+int pr_fsio_ftruncate(pr_fh_t *, off_t);
 int pr_fsio_truncate(const char *, off_t);
 int pr_fsio_truncate_canon(const char *, off_t);
 int pr_fsio_chmod(const char *, mode_t);

@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.9 2003-01-18 00:13:22 castaglia Exp $
+ * $Id: fsio.c,v 1.10 2003-03-13 02:56:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -85,6 +85,10 @@ static int sys_stat(pr_fs_t *fs, const char *path, struct stat *sbuf) {
   return stat(path, sbuf);
 }
 
+static int sys_fstat(pr_fh_t *fh, int fd, struct stat *sbuf) {
+  return fstat(fd, sbuf);
+}
+
 static int sys_lstat(pr_fs_t *fs, const char *path, struct stat *sbuf) {
   return lstat(path, sbuf);
 }
@@ -105,19 +109,19 @@ static int sys_creat(pr_fs_t *fs, const char *path, mode_t mode) {
   return creat(path, mode);
 }
 
-static int sys_close(pr_fs_t *fs, int fd) {
+static int sys_close(pr_fh_t *fh, int fd) {
   return close(fd);
 }
 
-static int sys_read(pr_fs_t *fs, int fd, char *buf, size_t size) {
+static int sys_read(pr_fh_t *fh, int fd, char *buf, size_t size) {
   return read(fd, buf, size);
 }
 
-static int sys_write(pr_fs_t *fs, int fd, const char *buf, size_t size) {
+static int sys_write(pr_fh_t *fh, int fd, const char *buf, size_t size) {
   return write(fd, buf, size);
 }
 
-static off_t sys_lseek(pr_fs_t *fs, int fd, off_t offset, int whence) {
+static off_t sys_lseek(pr_fh_t *fh, int fd, off_t offset, int whence) {
   return lseek(fd, offset, whence);
 }
 
@@ -134,8 +138,12 @@ static int sys_readlink(pr_fs_t *fs, const char *path, char *buf,
   return readlink(path, buf, buflen);
 }
 
-static int sys_truncate(pr_fs_t *fs, const char *path, off_t length) {
-  return truncate(path, length);
+static int sys_ftruncate(pr_fh_t *fh, int fd, off_t len) {
+  return ftruncate(fd, len);
+}
+
+static int sys_truncate(pr_fs_t *fs, const char *path, off_t len) {
+  return truncate(path, len);
 }
 
 static int sys_chmod(pr_fs_t *fs, const char *path, mode_t mode) {
@@ -264,13 +272,13 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *sbuf,
 /* Necessary prototype for static function */
 static pr_fs_t *fs_lookup_file_canon(const char *, char **, int);
 
-/* fs_lookup_dir() is called when we want to perform some sort of
- * directory operation on a directory or file.  A "closest" match
- * algorithm is used.  If the lookup fails or is not "close enough"
- * (i.e. the final target does not exactly match an existing pr_fs_t)
- * scan the list of fs_matches for matchable targets and call any
- * callback functions, then rescan the pr_fs_t list.  The rescan is
- * performed in case any modules registered pr_fs_ts during the hit.
+/* fs_lookup_dir() is called when we want to perform some sort of directory
+ * operation on a directory or file.  A "closest" match algorithm is used.  If
+ * the lookup fails or is not "close enough" (i.e. the final target does not
+ * exactly match an existing pr_fs_t) scan the list of fs_matches for
+ * matchable targets and call any callback functions, then rescan the pr_fs_t
+ * list.  The rescan is performed in case any modules registered pr_fs_ts
+ * during the hit.
  */
 static pr_fs_t *fs_lookup_dir(const char *path, int op) {
   char buf[MAXPATHLEN + 1] = {'\0'};
@@ -377,8 +385,7 @@ static pr_fs_t *fs_lookup_file(const char *path, char **deref, int op) {
       int i;
 
       if (fs_cwd->readlink &&
-          (i = fs_cwd->readlink(fs_cwd, path, &linkbuf[2],
-                               MAXPATHLEN - 3)) != -1) {
+          (i = fs_cwd->readlink(fs_cwd, path, &linkbuf[2], MAXPATHLEN-3)) != -1) {
         linkbuf[i] = '\0';
         if (!strchr(linkbuf, '/')) {
           if (i + 3 > MAXPATHLEN)
@@ -486,11 +493,12 @@ pr_fs_t *pr_create_fs(pool *p, const char *name) {
   /* This is NULL until set by pr_insert_fs() */
   fs->fs_path = NULL;
 
-  /* Set the standard system fs functions, first.  The caller can provide their
-   * own custom implementation function pointers using the returned
-   * pr_fs_t pointer
+  /* Set the standard system FSIO functions, first.  The caller can provide
+   * their own custom implementation function pointers using the returned
+   * pr_fs_t pointer.
    */
   fs->stat = sys_stat;
+  fs->fstat = sys_fstat;
   fs->lstat = sys_lstat;
   fs->rename = sys_rename;
   fs->unlink = sys_unlink;
@@ -503,6 +511,7 @@ pr_fs_t *pr_create_fs(pool *p, const char *name) {
   fs->link = sys_link;
   fs->readlink = sys_readlink;
   fs->symlink = sys_symlink;
+  fs->ftruncate = sys_ftruncate;
   fs->truncate = sys_truncate;
   fs->chmod = sys_chmod;
   fs->chown = sys_chown;
@@ -1831,6 +1840,21 @@ int pr_fsio_stat(const char *path, struct stat *sbuf) {
   return fs_cache_stat(fs, path, sbuf);
 }
 
+int pr_fsio_fstat(pr_fh_t *fh, struct stat *sbuf) {
+  if (!fh) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (!fh->fh_fs->fstat) {
+    errno = EPERM;
+    return -1;
+  }
+
+  log_debug(DEBUG9, "FS: using %s fstat()", fh->fh_fs->fs_name);
+  return fh->fh_fs->fstat(fh, fh->fh_fd, sbuf);
+}
+
 int pr_fsio_lstat_canon(const char *path, struct stat *sbuf) {
   pr_fs_t *fs = fs_lookup_file_canon(path, NULL, FSIO_FILE_LSTAT);
 
@@ -2097,7 +2121,7 @@ int pr_fsio_close(pr_fh_t *fh) {
   }
 
   log_debug(DEBUG9, "FS: using %s close()", fh->fh_fs->fs_name);
-  res = fh->fh_fs->close(fh->fh_fs, fh->fh_fd);
+  res = fh->fh_fs->close(fh, fh->fh_fd);
 
   destroy_pool(fh->fh_pool);
   return res;
@@ -2115,7 +2139,7 @@ int pr_fsio_read(pr_fh_t *fh, char *buf, size_t size) {
   }
 
   log_debug(DEBUG9, "FS: using %s read()", fh->fh_fs->fs_name);
-  return fh->fh_fs->read(fh->fh_fs, fh->fh_fd, buf, size);
+  return fh->fh_fs->read(fh, fh->fh_fd, buf, size);
 }
 
 int pr_fsio_write(pr_fh_t *fh, const char *buf, size_t size) {
@@ -2130,7 +2154,7 @@ int pr_fsio_write(pr_fh_t *fh, const char *buf, size_t size) {
   }
 
   log_debug(DEBUG9, "FS: using %s write()", fh->fh_fs->fs_name);
-  return fh->fh_fs->write(fh->fh_fs, fh->fh_fd, buf, size);
+  return fh->fh_fs->write(fh, fh->fh_fd, buf, size);
 }
 
 off_t pr_fsio_lseek(pr_fh_t *fh, off_t offset, int whence) {
@@ -2145,7 +2169,7 @@ off_t pr_fsio_lseek(pr_fh_t *fh, off_t offset, int whence) {
   }
 
   log_debug(DEBUG9, "FS: using %s lseek()", fh->fh_fs->fs_name);
-  return fh->fh_fs->lseek(fh->fh_fs, fh->fh_fd, offset, whence);
+  return fh->fh_fs->lseek(fh, fh->fh_fd, offset, whence);
 }
 
 int pr_fsio_link_canon(const char *lfrom, const char *lto) {
@@ -2206,7 +2230,22 @@ int pr_fsio_symlink(const char *lfrom, const char *lto) {
   return fs->symlink(fs, lfrom, lto);
 }
 
-int pr_fsio_truncate_canon(const char *path, off_t length) {
+int pr_fsio_ftruncate(pr_fh_t *fh, off_t len) {
+  if (!fh) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (!fh->fh_fs->ftruncate) {
+    errno = EPERM;
+    return -1;
+  }
+
+  log_debug(DEBUG9, "FS: using %s ftruncate()", fh->fh_fs->fs_name);
+  return fh->fh_fs->ftruncate(fh, fh->fh_fd, len);
+}
+
+int pr_fsio_truncate_canon(const char *path, off_t len) {
   pr_fs_t *fs = fs_lookup_file_canon(path, NULL, FSIO_FILE_TRUNC);
 
   if (!fs->truncate) {
@@ -2215,10 +2254,10 @@ int pr_fsio_truncate_canon(const char *path, off_t length) {
   }
 
   log_debug(DEBUG9, "FS: using %s truncate()", fs->fs_name);
-  return fs->truncate(fs, path, length);
+  return fs->truncate(fs, path, len);
 }
 
-int pr_fsio_truncate(const char *path, off_t length) {
+int pr_fsio_truncate(const char *path, off_t len) {
   pr_fs_t *fs = fs_lookup_file(path, NULL, FSIO_FILE_TRUNC);
 
   if (!fs->truncate) {
@@ -2227,7 +2266,7 @@ int pr_fsio_truncate(const char *path, off_t length) {
   }
 
   log_debug(DEBUG9, "FS: using %s truncate()", fs->fs_name);
-  return fs->truncate(fs, path, length);
+  return fs->truncate(fs, path, len);
 }
 
 int pr_fsio_chmod_canon(const char *name, mode_t mode) {
