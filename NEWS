@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.617 2004-10-17 23:29:43 castaglia Exp $
+$Id: NEWS,v 1.618 2004-10-28 19:11:12 castaglia Exp $
 
 CVS
 --------------------------------
@@ -47,6 +47,7 @@ CVS
   of the session is now done by LOG_CMD/LOG_CMD_ERR handlers for the QUIT
   command.  This allows modules that wish to do POST_CMD processing of
   QUIT, like mod_sql, a chance to see the command.
+- Bug 2484 - Better ftptop formatting.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

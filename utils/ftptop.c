@@ -26,7 +26,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.29 2004-03-05 03:24:36 castaglia Exp $
+ * $Id: ftptop.c,v 1.30 2004-10-28 19:11:14 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.9"
@@ -66,8 +66,8 @@ static const char *program = "ftptop";
 #define FTPTOP_REG_DISPLAY_FMT	"%-5u %s %-8.8s %-20.20s %-15s %-6.6s %4s %-*.*s\n"
 
 /* These are for displaying tranfer data: "PID S USER CLIENT KB/s %DONE" */
-#define FTPTOP_XFER_HEADER_FMT	"%-5s %s %-8s %-20s %-5s    %-*s\n"
-#define FTPTOP_XFER_DISPLAY_FMT	"%-5u %s %-8.8s %-46.46s %-3.2f %6s%%s\n"
+#define FTPTOP_XFER_HEADER_FMT	"%-5s %s %-8s %-44s %-10s %-*s\n"
+#define FTPTOP_XFER_DISPLAY_FMT	"%-5u %s %-8.8s %-44.44s %-10.2f %-*s\n"
 
 #define FTPTOP_REG_ARG_MIN_SIZE		20
 #define FTPTOP_XFER_DONE_MIN_SIZE	6
@@ -441,6 +441,7 @@ static void read_scoreboard(void) {
         (unsigned int) score->sce_pid, status, score->sce_user,
         score->sce_client_name,
         (score->sce_xfer_len / 1024.0) / (score->sce_xfer_elapsed / 1000),
+        FTPTOP_XFER_DONE_SIZE,
         *status == 'D' ?
           calc_percent_done(score->sce_xfer_size, score->sce_xfer_done) :
           "(n/a)");
