@@ -29,7 +29,7 @@
 
 #include "conf.h"
 
-#ifdef SOLARIS2
+#if defined(SOLARIS2) || defined(IRIX6)
 #include <sys/strlog.h>
 #include <stropts.h>
 #endif
@@ -51,7 +51,7 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
   size_t buflen = 0;
   int saved_errno = errno;
 
-#ifdef SOLARIS2
+#if defined(SOLARIS2) || defined(IRIX6)
   struct strbuf ctl, dat;
   struct log_ctl lc;
 #endif
@@ -71,7 +71,7 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
   if ((pri & LOG_FACMASK) == 0)
     pri |= log_facility;
 
-#ifndef SOLARIS2
+#if !defined(SOLARIS2) && !defined(IRIX6)
   snprintf(logbuf, sizeof(logbuf), "<%d>", pri);
   logbuf[sizeof(logbuf)-1] = '\0';
   buflen = strlen(logbuf);
@@ -125,7 +125,7 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
   if (sock_type == SOCK_STREAM)
     ++buflen;
 
-#ifndef SOLARIS2
+#if !defined(SOLARIS2) && !defined(IRIX6)
   send(sockfd, logbuf, buflen, 0);
 #else
 
@@ -153,7 +153,7 @@ void pr_syslog(int sockfd, int pri, const char *fmt, ...) {
   va_end(ap);
 }
 
-#ifndef SOLARIS2
+#if !defined(SOLARIS2) && !defined(IRIX6)
 /* AF_UNIX address of local logger */
 static struct sockaddr syslog_addr;
 #endif
@@ -169,7 +169,7 @@ int pr_openlog(const char *ident, int opts, int facility) {
   if (facility != 0 && (facility &~ LOG_FACMASK) == 0)
     log_facility = facility;
 
-#ifndef SOLARIS2
+#if !defined(SOLARIS2) && !defined(IRIX6)
   while (1) {
     if (sockfd == -1) {
       syslog_addr.sa_family = AF_UNIX;
