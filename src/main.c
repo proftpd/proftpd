@@ -25,7 +25,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.67 2001-08-01 15:03:12 flood Exp $
+ * $Id: main.c,v 1.68 2001-08-24 17:33:17 flood Exp $
  */
 
 /*
@@ -803,6 +803,12 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
 
       cmd->tmp_pool = make_named_sub_pool(cmd->pool,"temp - dispatch pool");
 
+      /* make sure we don't display any sensitive information via argstr
+       * -tj 2001-08-18
+       */
+      if (!strcasecmp(cmd->argv[0], "PASS"))
+        argstr = "PASS (hidden)";
+      else
       argstr = make_arg_str(cmd->tmp_pool,cmd->argc,cmd->argv);
 
       if(session.user && (session.flags & SF_XFER) == 0 &&
@@ -811,21 +817,13 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
 		    (session.class && session.class->name) ?
 		    session.class->name : "",
 		    NULL, 0, 0, 0, "proftpd: %s - %s: %s",
-                    session.user,session.proc_prefix,
-                    make_arg_str(cmd->tmp_pool,cmd->argc,cmd->argv));
+                    session.user, session.proc_prefix, argstr);
         set_proc_title("proftpd: %s - %s: %s",
-                       session.user,session.proc_prefix,
-                       argstr);
+                       session.user, session.proc_prefix, argstr);
       }
 
-      /* Hack to hide passwords */
-
-      if(send_error) {
-        if(!strcasecmp(cmd->argv[0],"PASS"))
-          log_debug(DEBUG4,"received: PASS (hidden)");
-        else
+      if (send_error)
           log_debug(DEBUG4,"received: %s",argstr);
-      }
 
       cmd->class |= c->class;
 
