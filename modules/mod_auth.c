@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.195 2004-10-30 20:45:51 castaglia Exp $
+ * $Id: mod_auth.c,v 1.196 2004-10-31 18:53:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -36,8 +36,6 @@
 # include <regex.h>
 #endif /* HAVE_REGEX_H */
 
-/* From the core module */
-extern int core_display_file(const char *,const char *,const char *);
 extern pid_t mpid;
 
 module auth_module;
@@ -346,7 +344,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
   /* Handle a DisplayLogin file. */
   displaylogin = get_param_ptr(TOPLEVEL_CONF, "DisplayLogin", FALSE);
   if (displaylogin)
-    core_display_file(auth_pass_resp_code, displaylogin, NULL);
+    pr_display_file(displaylogin, NULL, auth_pass_resp_code);
 
   grantmsg = get_param_ptr(TOPLEVEL_CONF, "AccessGrantMsg", FALSE);
   if (!grantmsg) {

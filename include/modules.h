@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.43 2004-10-26 23:24:56 castaglia Exp $
+ * $Id: modules.h,v 1.44 2004-10-31 18:53:05 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -207,7 +207,6 @@ modret_t *mod_create_data(cmd_rec *, void *);
 void pr_cmd_dispatch(cmd_rec *);
 
 /* Implemented in mod_core.c */
-int core_display_file(const char *, const char *, const char *);
 int core_chgrp(cmd_rec *, char *, uid_t, gid_t);
 int core_chmod(cmd_rec *, char *, mode_t);
 

@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.257 2004-10-31 18:45:32 castaglia Exp $
+ * $Id: main.c,v 1.258 2004-10-31 18:53:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -83,10 +83,6 @@ unsigned char persistent_passwd = FALSE;
 extern module *static_modules[];
 
 extern xaset_t *server_list;
-
-/* From mod_core.c. */
-extern int core_display_file(const char *numeric, const char *fn,
-  const char *fs);
 
 struct rehash {
   struct rehash *next;
@@ -766,8 +762,9 @@ static void cmd_loop(server_rec *server, conn_t *c) {
     serveraddress = pr_netaddr_get_ipstr(masq_addr);
   }
 
-  if ((display = get_param_ptr(server->conf, "DisplayConnect", FALSE)) != NULL)
-    core_display_file(R_220, display, NULL);
+  display = get_param_ptr(server->conf, "DisplayConnect", FALSE);
+  if (display != NULL)
+    pr_display_file(display, NULL, R_220);
 
   if ((id = find_config(server->conf, CONF_PARAM, "ServerIdent",
       FALSE)) == NULL || *((unsigned char *) id->argv[0]) == FALSE) {
@@ -2777,6 +2774,7 @@ int main(int argc, char *argv[], char **envp) {
   init_ctrls();
 #endif /* USE_CTRLS */
 
+  var_init();
   modules_init();
 
   /* Now, once the modules have had a chance to initialize themselves
