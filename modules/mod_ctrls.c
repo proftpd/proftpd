@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.5 2003-11-09 23:10:56 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.6 2004-01-18 18:11:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1601,10 +1601,11 @@ static void ctrls_restart_ev(const void *event_data, void *user_data) {
 
   PRIVS_ROOT
   ctrls_sockfd = ctrls_listen(ctrls_sock_file);
+  PRIVS_RELINQUISH
+
   if (ctrls_sockfd < 0)
     pr_log_pri(PR_LOG_NOTICE, "notice: unable to listen to local socket: %s",
       strerror(errno));
-  PRIVS_RELINQUISH
 
   /* "Bounce" the log file descriptor */
   ctrls_closelog();
