@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.38 2003-11-17 18:58:11 castaglia Exp $
+ * $Id: netaddr.c,v 1.39 2003-11-19 20:57:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,6 +35,181 @@
 
 /* Do reverse DNS lookups? */
 static int reverse_dns = 1;
+
+/* Provide replacements for needed functions. */
+
+#if !defined(HAVE_GETNAMEINFO) || defined(USE_GETNAMEINFO)
+int pr_getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host,
+    size_t hostlen, char *serv, size_t servlen, int flags) {
+
+  struct sockaddr_in *sai = (struct sockaddr_in *) sa;
+
+  if (!sai || sai->sin_family != AF_INET)
+    return EAI_FAMILY;
+
+  if (serv != NULL && servlen > (size_t) 1)
+    snprintf(serv, servlen, "%lu", (unsigned long) ntohs(sai->sin_port));
+
+  if (host != NULL && hostlen > (size_t) 1) {
+    struct hostent *he = NULL;
+
+    if ((flags & NI_NUMERICHOST) == 0 &&
+        (he = gethostbyaddr((const char *) &(sai->sin_addr),
+          sizeof(sai->sin_addr), AF_INET)) != NULL &&
+        he->h_name != NULL &&
+        *he->h_name != 0) {
+
+      if (strlen(he->h_name) >= hostlen)
+          goto handle_numeric_ip;
+      sstrncpy(host, he->h_name, hostlen);
+
+    } else {
+      char *ipstr = NULL;
+
+      handle_numeric_ip:
+      ipstr = inet_ntoa(sai->sin_addr);
+      if (ipstr == NULL)
+        return EAI_SYSTEM;
+
+      if (strlen(ipstr) >= hostlen)
+        return EAI_FAIL;
+
+      sstrncpy(host, ipstr, hostlen);
+    }
+  }
+
+  return 0;
+}
+#endif /* HAVE_GETNAMEINFO or USE_GETNAMEINFO */
+
+#if !defined(HAVE_GETADDRINFO) || defined(USE_GETADDRINFO)
+int pr_getaddrinfo(const char *node, const char *service,
+    const struct addrinfo *hints, struct addrinfo **res) {
+
+  struct addrinfo *ans = NULL;
+  struct sockaddr_in *saddr = NULL;
+  const char *proto_name = "tcp";
+  int socktype = SOCK_STREAM;
+  unsigned short port = 0;
+
+  if (!res)
+    return EAI_FAIL;
+  *res = NULL;
+
+  ans = malloc(sizeof(struct addrinfo));
+  if (ans == NULL)
+    return EAI_MEMORY;
+
+  saddr = malloc(sizeof(struct sockaddr_in));
+  if (saddr == NULL) {
+    free(ans);
+    return EAI_MEMORY;
+  }
+
+  ans->ai_family = AF_INET;
+  ans->ai_addrlen = sizeof *saddr;
+  ans->ai_addr = (struct sockaddr *) saddr;
+  ans->ai_next = NULL;
+  memset(saddr, 0, sizeof(*saddr));
+  saddr->sin_family = AF_INET;
+
+  if (hints != NULL) {
+    struct protoent *pe = NULL;
+
+    if ((pe = getprotobynumber(hints->ai_protocol)) != NULL &&
+         pe->p_name != NULL &&
+         *pe->p_name != 0)
+      proto_name = pe->p_name;
+
+    if (hints->ai_socktype != 0)
+      socktype = hints->ai_socktype;
+
+    else if (strcasecmp(proto_name, "udp") == 0)
+      socktype = SOCK_DGRAM;
+  }
+
+  if (service != NULL) {
+    struct servent *se = NULL;
+
+    if ((se = getservbyname(service, proto_name)) != NULL &&
+        se->s_port > 0)
+      port = se->s_port;
+
+    else if ((port = (unsigned short) strtoul(service, NULL, 0)) <= 0 ||
+        port > 65535)
+      port = 0;
+  }
+
+  if (hints != NULL &&
+      (hints->ai_flags & AI_PASSIVE) != 0)
+    saddr->sin_addr.s_addr = htonl(INADDR_ANY);
+
+  if (node != NULL) {
+    struct hostent *he = NULL;
+
+    if ((he = gethostbyname(node)) != NULL &&
+         he->h_addr_list != NULL &&
+         he->h_addr_list[0] != NULL &&
+         he->h_length > 0 &&
+         he->h_length <= (int) sizeof(saddr->sin_addr))
+      memcpy(&saddr->sin_addr, he->h_addr_list[0], he->h_length);
+  }
+
+  ans->ai_socktype = socktype;
+  saddr->sin_port = htons(port);
+  *res = ans;
+
+  return 0;
+}
+
+void pr_freeaddrinfo(struct addrinfo *ai) {
+  if (!ai)
+    return;
+
+  if (ai->ai_addr != NULL) {
+    free(ai->ai_addr);
+    ai->ai_addr = NULL;
+  }
+  free(ai);
+}
+#endif /* HAVE_GETADDRINFO or USE_GETADDRINFO */
+
+#if !defined(HAVE_INET_NTOP)
+const char *pr_inet_ntop(int af, const void *src, char *dst, size_t len) {
+  char *res;
+
+  if (af != AF_INET) {
+    errno = EAFNOSUPPORT;
+    return NULL;
+  }
+
+  res = inet_ntoa(*((struct in_addr *) src));
+  if (res == NULL)
+    return NULL;
+
+  memcpy(dst, res, len);
+  return dst;
+}
+#endif /* !HAVE_INET_NTOP */
+
+#if !defined(HAVE_INET_PTON)
+int pr_inet_pton(int af, const char *src, void *dst) {
+  unsigned long res;
+
+  if (af != AF_INET) {
+    errno = EAFNOSUPPORT;
+    return -1;
+  }
+
+  /* inet_aton(3) would be better. However, it is not ubiquitous.  */
+  res = inet_addr(src);
+  if (res == 0)
+    return 0;
+
+  memcpy(dst, &res, sizeof(res));
+  return 1;
+}
+#endif /* !HAVE_INET_PTON */
 
 #ifdef HAVE_GETHOSTBYNAME2
 static void *get_v4inaddr(pr_netaddr_t *na) {
