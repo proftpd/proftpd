@@ -28,10 +28,10 @@ all:
 Makefile: Makefile.in ../config.status
 	cd ../ && ./config.status
 
-.c.o:
+%.o: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
-$(SHARED_MODULE_OBJS):
+%.la: %.c
 	$(LIBTOOL) --mode=compile $(CC) $(CPPFLAGS) $(CFLAGS) $(SHARED_CFLAGS) -c $(basename $@).c
 	$(LIBTOOL) --mode=link $(CC) -o $@ -rpath $(LIBEXECDIR) $(LDFLAGS) $(SHARED_LDFLAGS) $(basename $@).lo `cat $(top_srcdir)/modules/$(basename $@).c | grep '$$Libraries:' | sed -e 's/^.*\$$Libraries: \(.*\)\\$$/\1/'`
 
