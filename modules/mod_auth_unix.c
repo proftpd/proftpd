@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.17 2004-07-21 23:58:10 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.18 2004-09-05 00:31:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -112,6 +112,8 @@ typedef struct _idmap {
 
   char *name;			/* user or group name */
 } idmap_t;
+
+module auth_unix_module;
 
 static xaset_t *uid_table[HASH_TABLE_SIZE];
 static xaset_t *gid_table[HASH_TABLE_SIZE];
@@ -934,13 +936,18 @@ MODRET set_persistentpasswd(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-/* Initialization routines
+/* Events handlers
  */
 
-static void auth_unix_sess_exit(void) {
+static void auth_unix_exit_ev(const void *event_data, void *user_data) {
   auth_endpwent(session.pool);
   auth_endgrent(session.pool);
+
+  return;
 }
+
+/* Initialization routines
+ */
 
 static int auth_unix_init(void) {
   memset(uid_table, 0 ,sizeof(uid_table));
@@ -972,7 +979,7 @@ static int auth_unix_sess_init(void) {
     p_setgrent();
   }
 
-  pr_exit_register_handler(auth_unix_sess_exit);
+  pr_event_register(&auth_unix_module, "core.exit", auth_unix_exit_ev, NULL);
   return 0;
 }
 
