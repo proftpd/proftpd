@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.89 2004-12-16 18:17:41 castaglia Exp $
+ * $Id: mod_sql.c,v 1.90 2004-12-23 19:55:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3623,7 +3623,7 @@ MODRET set_sqlauthenticate(cmd_rec *cmd) {
 
   if (cmd->argc < 2 ||
       cmd->argc > 5)
-    CONF_ERROR(cmd, "requires 1 to 4 arguments. Check the mod_sql docs.");
+    CONF_ERROR(cmd, "requires 1 to 4 arguments. Check the mod_sql docs");
 
   /* We're setting our authmask here -- we have a bunch of checks needed to
    * make sure users aren't trying to screw around with us.
@@ -3803,7 +3803,7 @@ MODRET set_sqlconnectinfo(cmd_rec *cmd) {
 
   if (cmd->argc < 2 ||
       cmd->argc > 5)
-    CONF_ERROR(cmd, "requires 1 to 4 arguments.  Check the mod_sql docs.");
+    CONF_ERROR(cmd, "requires 1 to 4 arguments.  Check the mod_sql docs");
 
   if (cmd->argc > 1)
     info = cmd->argv[1];
