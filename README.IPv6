@@ -85,6 +85,9 @@ Known issues:
         server - getnameinfo error: Non-recoverable failure in name resolution
         server - 1.2.3.4:21 masquerading as (null)
 
+      HOWEVER, it has also been reported that using a DNS name, rather than
+      an IP address here, _does_ work.
+
 TODO:
 
   + add support for IPv6 network ACLs
