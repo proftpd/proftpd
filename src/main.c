@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.37 2000-07-21 06:11:15 macgyver Exp $
+ * $Id: main.c,v 1.38 2000-07-26 09:36:28 macgyver Exp $
  */
 
 /*
@@ -846,7 +846,7 @@ static void dispatch_cmd(cmd_rec *cmd)
    */
   preg = (regex_t*) get_param_ptr(TOPLEVEL_CONF, "AllowFilter", FALSE);
   
-  if(preg && ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) != 0)) {
+  if(preg && cmd->arg && ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) != 0)) {
     char errmsg[200];
     
     regerror(ret, preg, errmsg, 200);
@@ -858,7 +858,7 @@ static void dispatch_cmd(cmd_rec *cmd)
   
   preg = (regex_t*) get_param_ptr(TOPLEVEL_CONF, "DenyFilter", FALSE);
   
-  if(preg && ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) == 0)) {
+  if(preg && cmd->arg && ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) == 0)) {
     add_response_err(R_550, "%s: Forbidden command argument", cmd->arg);
     send_response_list(&resp_err_list);
     return;
@@ -902,35 +902,38 @@ static void dispatch_cmd(cmd_rec *cmd)
   }
 }
 
-cmd_rec *make_cmd(pool *p, char *buf)
+static cmd_rec *make_cmd(pool *p, char *buf)
 {
   char *cp = buf, *wrd;
   cmd_rec *newcmd;
   pool *newpool;
   array_header *tarr;
 
+  /* Nothing there...bail out.
+   */
+  if((wrd = get_word(&cp)) == NULL)
+    return NULL;
+
   newpool = make_sub_pool(p);
-  newcmd = (cmd_rec*)pcalloc(newpool,sizeof(cmd_rec));
+  newcmd = (cmd_rec *) pcalloc(newpool,sizeof(cmd_rec));
   newcmd->pool = newpool;
   newcmd->symtable_index = -1;
+    
+  tarr = make_array(newpool, 2, sizeof(char *));
   
-  tarr = make_array(newpool,2,sizeof(char*));
-
-  if((wrd = get_word(&cp)) != NULL) {
-    *((char**)push_array(tarr)) = pstrdup(newpool,wrd);
+  *((char **) push_array(tarr)) = pstrdup(newpool, wrd);
+  newcmd->argc++;
+  newcmd->arg = pstrdup(newpool, cp);
+  
+  while((wrd = get_word(&cp)) != NULL) {
+    *((char **) push_array(tarr)) = pstrdup(newpool, wrd);
     newcmd->argc++;
-    newcmd->arg = pstrdup(newpool,cp);
- 
-    while((wrd = get_word(&cp)) != NULL) {
-      *((char**)push_array(tarr)) = pstrdup(newpool,wrd);
-      newcmd->argc++;
-    }
   }
-
-  *((char**)push_array(tarr)) = NULL;
-
-  newcmd->argv = (char**)tarr->elts;
-
+  
+  *((char **) push_array(tarr)) = NULL;
+  
+  newcmd->argv = (char **) tarr->elts;
+  
   return newcmd;
 }
 
@@ -1032,10 +1035,14 @@ void cmd_loop(server_rec *server, conn_t *c)
     if(*cp) {
       cmd_rec *cmd;
 
-      cmd = make_cmd(permanent_pool,cp);
+      cmd = make_cmd(permanent_pool, cp);
       if(cmd) {
         dispatch_cmd(cmd);
         destroy_pool(cmd->pool);
+      } else {
+	send_response(R_500, 
+		      "Invalid command '%s': Try being more creative.\r\n",
+		      cp);
       }
     }
   }
