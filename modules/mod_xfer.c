@@ -25,7 +25,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.54 2001-06-18 17:12:45 flood Exp $
+ * $Id: mod_xfer.c,v 1.55 2001-07-03 14:49:23 flood Exp $
  */
 
 /* History Log:
@@ -912,14 +912,11 @@ MODRET cmd_abor(cmd_rec *cmd)
     return ERROR(cmd);
   }
 
-  if(session.flags & (SF_POST_ABORT|SF_ABORT)) {
-    session.flags &= ~(SF_POST_ABORT|SF_ABORT);
-    add_response(R_226,"Abort successful");
-    return HANDLED(cmd);
-  }
-
-  add_response_err(R_500,"No command to abort.");
-  return ERROR(cmd);
+  add_response(R_226,"Abort successful");
+  data_abort(0,FALSE);
+  data_cleanup();
+  
+  return HANDLED(cmd);
 }
 
 MODRET cmd_type(cmd_rec *cmd)

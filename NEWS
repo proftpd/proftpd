@@ -1,7 +1,8 @@
-$Id: NEWS,v 1.117 2001-07-02 18:56:17 flood Exp $
+$Id: NEWS,v 1.118 2001-07-03 14:49:23 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+- Bug 1234 - ABOR now always returns 226 (as per RFC959)
 - New mod_sql from upstream maintainer
 
 1.2.2rc3 - Released 06/19/2001
