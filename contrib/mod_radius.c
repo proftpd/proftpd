@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.19 2003-10-20 07:15:52 castaglia Exp $
+ * $Id: mod_radius.c,v 1.20 2003-11-08 20:40:29 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.8rc2"
@@ -103,7 +103,8 @@ typedef struct {
 
 /* RADIUS service types
  */
-#define RADIUS_AUTHENTICATE_ONLY	8
+#define RADIUS_SVC_LOGIN		1
+#define RADIUS_SVC_AUTHENTICATE_ONLY	8
 
 /* RADIUS status types
  */
@@ -183,6 +184,9 @@ static char **radius_addl_group_names = NULL;
 static char *radius_addl_group_names_str = NULL;
 static gid_t *radius_addl_group_ids = NULL;
 static char *radius_addl_group_ids_str = NULL;
+
+/* Other info */
+static unsigned char radius_have_other_info = FALSE;
 
 /* Vendor information, defaults to Unix (Vendor-Id of 4) */
 static const char *radius_vendor_name = "Unix";
@@ -2189,7 +2193,7 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
   radius_packet_t *request = NULL, *response = NULL;
   radius_server_t *auth_server = NULL;
   unsigned char recvd_response = FALSE;
-  unsigned long service = htonl(RADIUS_AUTHENTICATE_ONLY);
+  unsigned long service;
   char *user = (char *) get_param_ptr(cmd->server->conf, C_USER, FALSE);
 
   /* Check to see whether RADIUS authentication should even be done. */
@@ -2208,6 +2212,18 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
 
   /* Clear the OK flag. */
   radius_auth_ok = FALSE;
+
+  /* If mod_radius expects to find VSAs in the returned packet, it needs
+   * to send a service type of Login, otherwise, use the Authenticate-Only
+   * service type.
+   */
+  if (radius_have_user_info ||
+      radius_have_group_info ||
+      radius_have_other_info)
+    service = htonl(RADIUS_SVC_LOGIN);
+
+  else
+    service = htonl(RADIUS_SVC_AUTHENTICATE_ONLY);
 
   /* Loop through the list of servers, trying each one until the packet is
    * successfully sent.
