@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.334 2002-12-27 16:27:47 jwm Exp $
+$Id: NEWS,v 1.335 2002-12-27 17:21:18 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -79,6 +79,7 @@ CVS
 - Bug 1903 - ftpwho depends on snprintf but doesn't link in lib/libsupp.a
   Primarily of issue under Solaris 2.5 and Tru64 4.0D.
 - Bug 1863 - Unable to build under UnixWare 7
+- Bug 1906 - Add description strings to AC_DEFINE
 
 1.2.7 - Released 05-Dec-2002
 ----------------------------
