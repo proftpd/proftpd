@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.151 2002-12-19 21:45:40 castaglia Exp $
+ * $Id: main.c,v 1.152 2002-12-27 00:52:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -325,13 +325,13 @@ static void end_login_noexit(void) {
      * an exiting child process.
      */
     if (!is_master && pr_scoreboard_del_entry(TRUE) < 0)
-      log_pri(PR_LOG_NOTICE, "error deleting scoreboard entry: %s",
+      log_debug(DEBUG1, "error deleting scoreboard entry: %s",
         strerror(errno));
 
   } else if (ServerType == SERVER_INETD) {
     /* For inetd-spawned daemons, we always clear the scoreboard slot. */
     if (pr_scoreboard_del_entry(TRUE) < 0)
-      log_pri(PR_LOG_NOTICE, "error deleting scoreboard entry: %s",
+      log_debug(DEBUG1, "error deleting scoreboard entry: %s",
         strerror(errno));
   }
 
