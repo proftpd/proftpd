@@ -26,7 +26,7 @@
 
 /* BSD socket manipulation tools.
  *
- * $Id: inet.h,v 1.9 2002-06-23 19:03:22 castaglia Exp $
+ * $Id: inet.h,v 1.10 2002-06-26 02:54:40 castaglia Exp $
  */
 
 #ifndef __INET_H
@@ -94,6 +94,7 @@ conn_t *inet_create_connection(pool *, xaset_t *, int, p_in_addr_t *, int, int);
 conn_t *inet_create_connection_portrange(pool *, xaset_t *, p_in_addr_t *,
   int, int);
 void inet_close(pool *, conn_t *);
+void inet_lingering_close(pool *, conn_t *);
 int inet_setnonblock(pool *, conn_t *);
 int inet_setblock(pool *, conn_t *);
 int inet_setoptions(pool *, conn_t *, int, int);

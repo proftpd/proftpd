@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.194 2002-06-25 21:58:18 castaglia Exp $
+$Id: NEWS,v 1.195 2002-06-26 02:54:40 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -22,6 +22,9 @@ CVS
              a trailing \ before the newline character.
 - Removed the deprecated AllowChmod and ShowDotFiles configuration directives.
 - Bug 1655 - Added support for a -n option when listing directories.
+- Bug 1502 - Added a lingering_close function.  As discussed in the bug
+             report, this may cause issues with some clients; keep an eye
+             for this, as the timeout (ten minutes) may be too long or short.
 
 1.2.5 - Released 2002-06-08
 ---------------------------------

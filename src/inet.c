@@ -678,6 +678,22 @@ void inet_close(pool *pool, conn_t *c)
   destroy_pool(c->pool);
 }
 
+/* perform shutdown/read on streams */
+void inet_lingering_close(pool *pool, conn_t *c)
+{
+  inet_setblock(pool,c);
+
+  if(c->outf)
+    io_lingering_close(c->outf);
+  if(c->inf != c->outf)
+    io_lingering_close(c->inf);
+
+  c->outf = NULL;
+  c->inf = NULL;
+
+  destroy_pool(c->pool);
+}
+
 int inet_set_proto_options(pool *pool, conn_t *c,
 			int nodelay,
 			int lowdelay,
@@ -731,15 +747,10 @@ int inet_set_proto_options(pool *pool, conn_t *c,
 int inet_setoptions(pool *pool, conn_t *c, int rcvbuf, int sndbuf)
 {
   int no_keep_alive = 0;
-  struct linger li;
   int len,crcvbuf,csndbuf;
-
-  li.l_onoff = 0;
-  li.l_linger = 0;
 
   if(c->wfd != -1) {
     setsockopt(c->wfd,SOL_SOCKET,SO_KEEPALIVE,(void*)&no_keep_alive,sizeof(int));
-    setsockopt(c->wfd,SOL_SOCKET,SO_LINGER,(void*)&li,sizeof(li));
 
     /* Linux and "most" newer networking OSes probably use a highly
      * adaptive window size system, which generally wouldn't require
@@ -759,7 +770,6 @@ int inet_setoptions(pool *pool, conn_t *c, int rcvbuf, int sndbuf)
 
   if(c->rfd != -1) {
     setsockopt(c->rfd,SOL_SOCKET,SO_KEEPALIVE,(void*)&no_keep_alive,sizeof(int));
-    setsockopt(c->wfd,SOL_SOCKET,SO_LINGER,(void*)&li,sizeof(li));
 
     len = sizeof(crcvbuf);
     getsockopt(c->rfd,SOL_SOCKET,SO_RCVBUF,(void*)&crcvbuf,&len);
