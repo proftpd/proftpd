@@ -1,3 +1,50 @@
+2000-07-21 01:19  macgyver
+
+	* doc/Configuration.html (1.28): Updated configuration
+	documentation.
+
+2000-07-21 01:11  macgyver
+
+	* src/main.c (1.37): Check for getopt_long was backwards.
+
+2000-07-21 01:09  macgyver
+
+	* src/ftpcount.c (1.9): Handle systems without getopt_long
+	properly.
+
+2000-07-21 00:59  macgyver
+
+	* modules/mod_core.c (1.37): Removed unused variables thanks to gcc
+	-Wall.
+
+2000-07-21 00:57  macgyver
+
+	* src/main.c (1.36): Removed 2 printfs that were just plain wrong
+	in a situation where a site is administratively shutdown (ala
+	shutmsg, etc).	Also corrected a getopt_long related issue in
+	show_usage.
+
+2000-07-21 00:38  macgyver
+
+	* modules/mod_pam.c (1.19): Don't close PAM handle until we exit so
+	we survive across jailed environments.
+
+2000-07-21 00:37  macgyver
+
+	* NEWS (1.55): Updated news.
+
+2000-07-21 00:37  macgyver
+
+	* ChangeLog (1.18): Updated changelog.
+
+2000-07-21 00:18  macgyver
+
+	* src/main.c (1.35): Command line options are constants.
+
+2000-07-21 00:18  macgyver
+
+	* src/main.c (1.34): Be mindful of systems without getopt_long.
+
 2000-07-21 00:06  macgyver
 
 	* modules/mod_pam.c (1.18): Typo with AuthPAMConfig and PAMConfig.

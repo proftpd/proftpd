@@ -87,6 +87,10 @@
    This function is required for alloca.c support on those systems.  */
 #undef CRAY_STACKSEG_END
 
+/* Define to the type of elements in the array set by `getgroups'.
+   Usually this is either `int' or `gid_t'.  */
+#undef GETGROUPS_T
+
 /* Define to `int' if <sys/types.h> doesn't define.  */
 #undef gid_t
 
@@ -107,6 +111,15 @@
 
 /* Define if you have the vprintf function.  */
 #undef HAVE_VPRINTF
+
+/* Define as __inline if that's what the C compiler calls it.  */
+#undef inline
+
+/* Define to `int' if <sys/types.h> doesn't define.  */
+#undef mode_t
+
+/* Define to `long' if <sys/types.h> doesn't define.  */
+#undef off_t
 
 /* Define to `int' if <sys/types.h> doesn't define.  */
 #undef pid_t
@@ -140,6 +153,12 @@
 
 /* Define to `int' if <sys/types.h> doesn't define.  */
 #undef uid_t
+
+/* The number of bytes in a long long.  */
+#undef SIZEOF_LONG_LONG
+
+/* The number of bytes in a unsigned long long.  */
+#undef SIZEOF_UNSIGNED_LONG_LONG
 
 /* Define if you have the bcopy function.  */
 #undef HAVE_BCOPY

@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.35 2000-07-11 13:36:52 macgyver Exp $
+ * $Id: mod_auth.c,v 1.36 2000-07-21 18:44:30 macgyver Exp $
  */
 
 #include "conf.h"
@@ -214,7 +214,7 @@ static void build_group_arrays(pool *p, struct passwd *pw, char *name,
   
   /* Populate the array of GIDs.
    */
-  xgids->nelts = getgroups(total, (gid_t *) xgids->elts);
+  xgids->nelts = getgroups(total, (GETGROUPS_T *) xgids->elts);
   
   /* Now populate the names of the groups.
    */
@@ -1125,15 +1125,17 @@ static void _do_user_counts()
       }
   PRIVS_RELINQUISH;
 
-  remove_config(CURRENT_CONF,"CURRENT-CLIENTS",FALSE);
-  add_config_param_set(&CURRENT_CONF,"CURRENT-CLIENTS",1,(void*)cur);
-
+  remove_config(CURRENT_CONF, "CURRENT-CLIENTS", FALSE);
+  add_config_param_set(&(CURRENT_CONF), "CURRENT-CLIENTS", 1, (void *) cur);
+  
   remove_config(CURRENT_CONF,"CURRENT-CLASS",FALSE);
-  add_config_param_set(&CURRENT_CONF,"CURRENT-CLASS",1,session.class->name);
-
-  snprintf(config_class_users, sizeof(config_class_users), "%s-%s", "CURRENT-CLIENTS-CLASS", session.class->name);
-  remove_config(CURRENT_CONF,config_class_users,FALSE);
-  add_config_param_set(&CURRENT_CONF,config_class_users,1,ccur);
+  add_config_param_set(&(CURRENT_CONF), "CURRENT-CLASS", 1,
+		       session.class->name);
+  
+  snprintf(config_class_users, sizeof(config_class_users), "%s-%s",
+	   "CURRENT-CLIENTS-CLASS", session.class->name);
+  remove_config(CURRENT_CONF, config_class_users, FALSE);
+  add_config_param_set(&(CURRENT_CONF), config_class_users, 1, ccur);
 }
 
 MODRET cmd_user(cmd_rec *cmd)

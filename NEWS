@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.55 2000-07-21 05:37:41 macgyver Exp $
+$Id: NEWS,v 1.56 2000-07-21 18:44:30 macgyver Exp $
 
 1.2.0 - Released: ???
 ---------------------
@@ -7,6 +7,7 @@ $Id: NEWS,v 1.55 2000-07-21 05:37:41 macgyver Exp $
 - Added descriptions for more errors to be more RFC compliant.
 - UID/GID handling is more portable now on systems with unusual UID/GID sizes.
 - PAM handles should be persistent across jailed environments.
+- Various additions to configure to make it more portable and correct.
 
 1.2.0RCl - Released: 07/11/2000
 -------------------------------

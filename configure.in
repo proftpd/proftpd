@@ -30,23 +30,19 @@ AC_PROG_INSTALL
 
 LDFLAGS="-Llib $LDFLAGS"
 
-if test x"$CFLAGS" = x ; then
+if test x"$CFLAGS" = "x-g -O2" && test $ac_cv_prog_gcc = yes; then
   fullCFLAGS="$CFLAGS"
 
   dnl Compilation tests
-  dnl First test to see if -O2 will work
-  AC_MSG_CHECKING([whether the C compiler accepts -O2])
-  CFLAGS="-O2"
-  AC_TRY_COMPILE(,,
-    AC_MSG_RESULT(yes); fullCFLAGS="$CFLAGS",
-    AC_MSG_RESULT(no))
 
-  dnl test for -malign-jumps=2
-  AC_MSG_CHECKING([whether the C compiler accepts -malign-jumps])
-  CFLAGS="-malign-jumps=2"
-  AC_TRY_COMPILE(,,
-    AC_MSG_RESULT(yes); fullCFLAGS="$fullCFLAGS $CFLAGS",
-    AC_MSG_RESULT(no))
+  dnl test for -malign-jumps=2 -malign-loops=2 -malign-functions=2
+  if echo $ac_cv_build_cpu | egrep "^i[[34567]]86$" > /dev/null 2>&1; then
+    AC_MSG_CHECKING([whether the C compiler accepts -malign-jumps -malign-loops -malign-functions])
+    CFLAGS="-malign-jumps=2 -malign-loops=2 -malign-functions=2"
+    AC_TRY_COMPILE(,,
+      AC_MSG_RESULT(yes); fullCFLAGS="$fullCFLAGS $CFLAGS",
+      AC_MSG_RESULT(no))
+  fi
 
   dnl test for -Wall
   AC_MSG_CHECKING([whether the C compiler accepts -Wall])
@@ -209,9 +205,15 @@ AC_CHECK_HEADER(syslog.h,have_syslog_h="yes",)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
+AC_C_INLINE
 AC_TYPE_UID_T
 AC_TYPE_PID_T
 AC_TYPE_SIZE_T
+AC_TYPE_MODE_T
+AC_TYPE_OFF_T
+AC_TYPE_GETGROUPS
+AC_CHECK_SIZEOF(long long, 0)
+AC_CHECK_SIZEOF(unsigned long long, 0)
 AC_HEADER_TIME
 AC_STRUCT_TM
 
