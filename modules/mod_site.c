@@ -19,7 +19,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.6 2000-07-11 13:36:52 macgyver Exp $
+ * $Id: mod_site.c,v 1.7 2000-07-28 05:52:39 macgyver Exp $
  */
 
 #include "conf.h"
@@ -55,6 +55,7 @@ static char *_get_full_cmd(cmd_rec *cmd)
 }
 
 MODRET set_allowchmod(cmd_rec *cmd) {
+  config_rec *c;
   int b;
 
   CHECK_ARGS(cmd, 1);
@@ -63,7 +64,9 @@ MODRET set_allowchmod(cmd_rec *cmd) {
   if((b = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
 
-  add_config_param("AllowChmod", 1, (void*) b);
+  c = add_config_param("AllowChmod", 1, (void*) b);
+  c->flags |= CF_MERGEDOWN;
+  
   return HANDLED(cmd);
 }
 

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.57 2000-07-28 05:47:09 macgyver Exp $
+$Id: NEWS,v 1.58 2000-07-28 05:52:39 macgyver Exp $
 
 1.2.0RC2 - Released: 07/??/2000
 ---------------------
@@ -8,7 +8,7 @@ $Id: NEWS,v 1.57 2000-07-28 05:47:09 macgyver Exp $
 - UID/GID handling is more portable now on systems with unusual UID/GID sizes.
 - PAM handles should be persistent across jailed environments.
 - Various additions to configure to make it more portable and correct.
-- Fix AllowChmod.
+- AllowChmod works properly now.
 - HP/UX sendfile support.
 - Cleaned up configure and supporting files.
 
