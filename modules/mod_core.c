@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.18 1999-10-11 03:13:12 macgyver Exp $
+ * $Id: mod_core.c,v 1.19 1999-10-18 05:12:40 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -596,17 +596,31 @@ MODRET set_umask(cmd_rec *cmd)
   config_rec *c;
   char *endp;
   int _umask;
-
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_DIR|CONF_ANON|CONF_GLOBAL);
-
-  _umask = strtol(cmd->argv[1],&endp,8);
-
+  
+  CHECK_VARARGS(cmd, 1, 2);
+  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_DIR |
+	     CONF_ANON | CONF_GLOBAL);
+  
+  _umask = strtol(cmd->argv[1], &endp, 8);
+  
   if(endp && *endp)
-    CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"'",cmd->argv[1],"' is not "
-                           "a valid umask.",NULL));
-
-  c = add_config_param("Umask",1,(void*)_umask);
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' is not "
+			    "a valid umask.", NULL));
+  
+  c = add_config_param("Umask", 1, (void *) _umask);
+  
+  /* Have we specified a directory umask as well?
+   */
+  if(CHECK_HASARGS(cmd, 2)) {
+    _umask = strtol(cmd->argv[2], &endp, 8);
+    
+    if(endp && *endp)
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[2], "' is not "
+			      "a valid umask.", NULL));
+    
+    c = add_config_param("DirUmask", 1, (void *) _umask);
+  }
+  
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 }

@@ -19,7 +19,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.10 1999-10-01 03:32:17 macgyver Exp $
+ * $Id: dirtree.c,v 1.11 1999-10-18 05:12:40 macgyver Exp $
  */
 
 /* History:
@@ -220,7 +220,7 @@ void free_dyn_stacks()
 void free_conf_stacks()
 {
   destroy_pool(conf.tpool);
-  bzero(&conf,sizeof(conf));
+  bzero(&conf, sizeof(conf));
 }
 
 /* Used by modules to start/end configuration sections */
@@ -1198,7 +1198,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
   config_rec *c;
   struct stat sbuf;
   pool *p;
-  int res = 1,hid,_umask = 0,isfile;
+  int res = 1, hid,_umask = 0, isfile;
 
   if(!hidden)
     hidden = &hid;
@@ -1221,26 +1221,38 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
   fullpath = path;
 
   if(session.anon_root)
-    fullpath = pdircat(p,session.anon_root,fullpath,NULL);
+    fullpath = pdircat(p, session.anon_root, fullpath, NULL);
 
-  log_debug(DEBUG5,"in dir_check(): path = '%s', fullpath = '%s'.",
-            path,fullpath);
+  log_debug(DEBUG5, "in dir_check(): path = '%s', fullpath = '%s'.",
+            path, fullpath);
 
   /* Check and build all appropriate dynamic configuration entries */
-  if((isfile = fs_stat(path,&sbuf)) == -1)
-    bzero(&sbuf,sizeof(sbuf));
-
+  if((isfile = fs_stat(path, &sbuf)) == -1)
+    bzero(&sbuf, sizeof(sbuf));
+  
   build_dyn_config(p,path,&sbuf,1);
-
+  
   session.dir_config = c = dir_match_path(p,fullpath);
 
   if(!c && session.anon_config)
     c = session.anon_config;
 
-  if(_kludge_disable_umask || 
-      (_umask = get_param_int(CURRENT_CONF,"Umask",FALSE)) == -1)
-    _umask = 0;
-
+  _umask = 0;
+  
+  if(!_kludge_disable_umask) {
+    /* Check for a directory Umask.
+     */
+    if(S_ISDIR(sbuf.st_mode))
+      _umask = get_param_int(CURRENT_CONF, "DirUmask", FALSE);
+    
+    /* It's either a file, or we had no directory Umask.
+     */
+    if(!S_ISDIR(sbuf.st_mode) || (S_ISDIR(sbuf.st_mode) && _umask == -1)) {
+      if((_umask = get_param_int(CURRENT_CONF, "Umask", FALSE)) == -1)
+	_umask = 0;
+    }
+  }
+  
   if((grpowner = get_param_ptr(CURRENT_CONF,"GroupOwner",FALSE)) != NULL) {
     /* attempt chgrp on all new files */
     struct group *gr;
@@ -1248,7 +1260,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
     if((gr = auth_getgrnam(p,grpowner)) != NULL)
       session.fsgid = gr->gr_gid;
   }
-
+  
   if(isfile != -1) {
     *hidden = !_dir_check_op(p,CURRENT_CONF,OP_HIDE,sbuf.st_uid,sbuf.st_gid,sbuf.st_mode);
     res = _dir_check_op(p,CURRENT_CONF,OP_COMMAND,sbuf.st_uid,sbuf.st_gid,sbuf.st_mode);
@@ -1287,7 +1299,7 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
   config_rec *c;
   struct stat sbuf;
   pool *p;
-  int res = 1,hid,_umask = 0,isfile;
+  int res = 1, hid, _umask = 0, isfile;
 
   p = make_sub_pool(pp);
 
@@ -1310,33 +1322,47 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
   *hidden = 0;
 
   /* Check and build all appropriate dynamic configuration entries */
-  if((isfile = fs_stat(path,&sbuf)) == -1)
-    bzero(&sbuf,sizeof(sbuf));
+  if((isfile = fs_stat(path, &sbuf)) == -1)
+    bzero(&sbuf, sizeof(sbuf));
 
-  build_dyn_config(p,path,&sbuf,0);
+  build_dyn_config(p, path, &sbuf, 0);
 
-  session.dir_config = c = dir_match_path(p,fullpath);
+  session.dir_config = c = dir_match_path(p, fullpath);
 
   if(!c && session.anon_config)
     c = session.anon_config;
 
-  if(_kludge_disable_umask ||
-       (_umask = get_param_int(CURRENT_CONF,"Umask",FALSE)) == -1)
-    _umask = 0;
+  _umask = 0;
+  
+  if(!_kludge_disable_umask) {
+    /* Check for a directory Umask.
+     */
+    if(S_ISDIR(sbuf.st_mode))
+      _umask = get_param_int(CURRENT_CONF, "DirUmask", FALSE);
+    
+    /* It's either a file, or we had no directory Umask.
+     */
+    if(!S_ISDIR(sbuf.st_mode) || (S_ISDIR(sbuf.st_mode) && _umask == -1)) {
+      if((_umask = get_param_int(CURRENT_CONF, "Umask", FALSE)) == -1)
+	_umask = 0;
+    }
+  }
 
-  if((grpowner = get_param_ptr(CURRENT_CONF,"GroupOwner",FALSE)) != NULL) {
+  if((grpowner = get_param_ptr(CURRENT_CONF, "GroupOwner", FALSE)) != NULL) {
     /* attempt chgrp on all new files */
     struct group *gr;
 
-    if((gr = auth_getgrnam(p,grpowner)) != NULL)
+    if((gr = auth_getgrnam(p, grpowner)) != NULL)
       session.fsgid = gr->gr_gid;
   }
-
+  
   if(isfile != -1) {
-    *hidden = !_dir_check_op(p,CURRENT_CONF,OP_HIDE,sbuf.st_uid,sbuf.st_gid,sbuf.st_mode);
-    res = _dir_check_op(p,CURRENT_CONF,OP_COMMAND,sbuf.st_uid,sbuf.st_gid,sbuf.st_mode);
+    *hidden = !_dir_check_op(p, CURRENT_CONF, OP_HIDE, sbuf.st_uid,
+			     sbuf.st_gid, sbuf.st_mode);
+    res = _dir_check_op(p, CURRENT_CONF, OP_COMMAND, sbuf.st_uid, sbuf.st_gid,
+			sbuf.st_mode);
   }
-
+  
   if(res) {
     res = dir_check_limits(c,cmd,*hidden);
 
@@ -1345,11 +1371,11 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
      */
 
     if(res == 1 && group)
-      res = dir_check_limits(c,group,*hidden);
-
+      res = dir_check_limits(c, group, *hidden);
+    
     /* if still == 1, no explicit allow so check lowest priority "ALL" group */
     if(res == 1)
-      res = dir_check_limits(c,"ALL",*hidden);
+      res = dir_check_limits(c, "ALL", *hidden);
   }
 
   if(res && _umask)

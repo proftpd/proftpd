@@ -1,8 +1,10 @@
-$Id: NEWS,v 1.8 1999-10-11 07:28:45 macgyver Exp $
+$Id: NEWS,v 1.9 1999-10-18 05:12:40 macgyver Exp $
 
 1.2.0pre9
 
 - New support for BSD sendfile() semantics.
+
+- sendfile() deprecates politely on Linux 2.0.x.
 
 - AuthPAMAuthoritative now defaults to False.  This should clear up any
   confusion on using PAM with AuthUserFile and friends.
@@ -21,4 +23,8 @@ $Id: NEWS,v 1.8 1999-10-11 07:28:45 macgyver Exp $
     as seperate binaries.
 
 - Fixed the 'no names, just UIDs' bug.
+
+- Added genuser.pl to facilitate AuthUserFile entry creation.
+
+- Umask now takes an optional second argument, specifying a directory umask.
 

@@ -21,7 +21,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.4 1999-10-01 07:57:31 macgyver Exp $
+ * $Id: dirtree.h,v 1.5 1999-10-18 05:12:40 macgyver Exp $
  */
 
 #ifndef __DIRTREE_H
@@ -143,11 +143,16 @@ extern int			TimeoutNoXfer;
 extern int			TimeoutStalled;
 
 /* These macros are used to help handle configuration in modules */
-#define CONF_ERROR(x,s)		return ERROR_MSG((x),NULL,pstrcat((x)->tmp_pool, \
+#define CONF_ERROR(x, s)	return ERROR_MSG((x),NULL,pstrcat((x)->tmp_pool, \
 				(x)->argv[0],": ",(s),NULL));
 
-#define CHECK_ARGS(x,n)		if((x)->argc-1 < n) \
+#define CHECK_ARGS(x, n)	if((x)->argc-1 < n) \
 				CONF_ERROR(x,"missing arguments")
+
+#define CHECK_VARARGS(x, n, m)	if((x)->argc - 1 < n || (x)->argc - 1 > m) \
+				CONF_ERROR(x,"missing arguments")
+
+#define CHECK_HASARGS(x, n)	((x)->argc - 1) == n
 
 #define CHECK_CONF(x,p)		if(!check_conf((x),(p))) \
 				CONF_ERROR((x), \

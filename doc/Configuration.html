@@ -2546,7 +2546,8 @@ version 1.1.7 and later</em>).</p>
 
 <h2><a name="Umask">Umask</a></h2>
 
-<p><strong>Syntax:</strong> Umask <em>octal-mask</em><br>
+<p><strong>Syntax:</strong> Umask <em>file octal-mask</em> [<em>directory
+octal-mask]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, &lt;Anonymous&gt;,
 &lt;VirtualHost&gt;, &lt;Directory&gt;, &lt;Global&gt;, .ftpaccess<br>
@@ -2554,12 +2555,16 @@ version 1.1.7 and later</em>).</p>
 
 <p>Umask sets the mask applied to newly created file and
 directory permissions within a given context. By default, the
-Umask in the server configuration, <a href="#VirtualHost">&lt;VirtualHost&gt;</a>
+Umask in the server configuration,
+<a href="#VirtualHost">&lt;VirtualHost&gt;</a>
 or <a href="#Anonymous">&lt;Anonymous&gt;</a> block is used,
 unless overridden by a &quot;per-directory&quot; Umask setting.
-The argument supplied must be an octal number, in the format
-0xxx. For more information on umasks, consult your operating
-system documentation/man pages.</p>
+Any arguments supplied must be an octal number, in the format
+0xxx.  An optional second argument can specify a Umask to be used when
+creating directories.  If a second argument isn't specified, directories
+are created using the default Umask in the first argument.  For more
+information on umasks, consult your operating system
+documentation/man pages.</p>
 
 <hr>
 
