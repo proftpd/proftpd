@@ -19,7 +19,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.9 1999-09-07 23:09:10 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.10 1999-09-14 08:44:00 macgyver Exp $
  */
 
 /* History Log:
@@ -112,18 +112,20 @@ void _retr_done()
   retr_file = NULL;
 }
 
-static
-void _stor_abort()
-{
+static void _stor_abort() {
   fs_close(stor_file,stor_fd);
   stor_file = NULL;
-  if(session.xfer.path)
+
+  if(session.xfer.xfer_type == STOR_HIDDEN) {
+    /* If hidden stor aborted, remove only hidden file, not real one */
+    if(session.xfer.path_hidden)
+      unlink(session.xfer.path_hidden);
+  } else if(session.xfer.path) {
     unlink(session.xfer.path);
+  }
 }
 
-static
-void _retr_abort()
-{
+static void _retr_abort() {
   /* Isn't necessary to send anything here, just cleanup */
   fs_close(retr_file,retr_fd);
   retr_file = NULL;
@@ -135,11 +137,10 @@ void _retr_abort()
  * of this function.
  */
 
-MODRET pre_cmd_stor(cmd_rec *cmd)
-{
+MODRET pre_cmd_stor(cmd_rec *cmd) {
   char *dir;
   mode_t fmode;
-  privdata_t *p;
+  privdata_t *p, *p_hidden;
 
   if(cmd->argc < 2) {
     add_response_err(R_500,"'%s' not understood.",get_full_cmd(cmd));
@@ -155,7 +156,7 @@ MODRET pre_cmd_stor(cmd_rec *cmd)
 
   fmode = file_mode(dir);
 
-  if(fmode && !session.xfer.stor_append && 
+  if(fmode && (session.xfer.xfer_type != STOR_APPEND) && 
 	       get_param_int(CURRENT_CONF,"AllowOverwrite",FALSE) != 1) {
     add_response_err(R_550,"%s: Overwrite permission denied",cmd->arg);
     return ERROR(cmd);
@@ -170,12 +171,13 @@ MODRET pre_cmd_stor(cmd_rec *cmd)
    * AllowStoreRestart is set, permit it
    */
 
-  if(fmode && (session.restart_pos || session.xfer.stor_append) &&
+  if(fmode &&
+     (session.restart_pos || (session.xfer.xfer_type == STOR_APPEND)) &&
      get_param_int(CURRENT_CONF,"AllowStoreRestart",FALSE) != TRUE) {
     add_response_err(R_451,"%s: Append/Restart not permitted, try again.",
                   cmd->arg);
     session.restart_pos = 0L;
-    session.xfer.stor_append = 0;
+    session.xfer.xfer_type = STOR_DEFAULT;
     return ERROR(cmd);
   }
 
@@ -183,16 +185,89 @@ MODRET pre_cmd_stor(cmd_rec *cmd)
   p = mod_privdata_alloc(cmd,"stor_filename",strlen(dir)+1);
   strncpy(p->value.str_val, dir, strlen(dir) + 1);
 
+  if(get_param_int(CURRENT_CONF,"HiddenStor",FALSE) == 1) {
+    /* We have to also figure out the temporary hidden file name for
+     * receiving this transfer.
+     * Length is +5 due to .in. prepended and "." at end.
+     */
+
+    char *origname, *c;
+    int dotcount, foundslash, basenamestart, maxlen;
+
+    dotcount = foundslash = basenamestart = 0;
+
+    /* Figure out where the basename starts */
+    for (c=dir; *c; ++c) {
+      if (*c == '/') {
+	foundslash = 1;
+	basenamestart = dotcount = 0;
+      } else if (*c == '.') {
+	++ dotcount;
+
+	/* Keep track of leading dots, ... is normal, . and .. are special.
+	 * So if we exceed ".." it becomes a normal file, retroactively consider
+	 * this the possible start of the basename
+	 */
+	if ((dotcount > 2) && (!basenamestart))
+	  basenamestart = ((unsigned long)c - (unsigned long)dir) - dotcount;
+      } else {
+	/* We found a nonslash, nondot character; if this is the first time
+	 * we found one since the last slash, remember this as the possible
+	 * start of the basename.
+	 */
+	if (!basenamestart)
+	  basenamestart = ((unsigned long)c - (unsigned long)dir) - dotcount;
+      }
+    }
+
+    if (! basenamestart) {
+      /* This probably shouldn't happen */
+      add_response_err(R_451,"%s: Bad file name.", dir);
+      return ERROR(cmd);
+    }
+
+    maxlen = strlen(dir) + 1 + 5;
+    p_hidden = mod_privdata_alloc(cmd, "stor_hidden_filename", maxlen);
+
+    if (! foundslash) {
+      /* Simple local file name */
+      strncpy(p_hidden->value.str_val, ".in", maxlen);
+      sstrcat(p_hidden->value.str_val, dir, maxlen);
+      sstrcat(p_hidden->value.str_val, ".", maxlen);
+      log_pri(LOG_DEBUG,"Local path, will rename %s to %s",
+	p_hidden->value.str_val, p->value.str_val);
+    } else {
+      /* Complex relative path or absolute path */
+      strncpy(p_hidden->value.str_val, dir, maxlen);
+      p_hidden->value.str_val[basenamestart] = '\0';
+      sstrcat(p_hidden->value.str_val, ".in.", maxlen);
+      sstrcat(p_hidden->value.str_val, dir + basenamestart, maxlen);
+      sstrcat(p_hidden->value.str_val, ".", maxlen);
+      log_pri(LOG_DEBUG,"Complex path, will rename %s to %s",
+	p_hidden->value.str_val, p->value.str_val);
+
+      if(file_mode(p_hidden->value.str_val)) {
+        add_response_err(R_550,"%s: Temporary hidden file %s already exists",
+		cmd->arg, p_hidden->value.str_val);
+        return ERROR(cmd);
+      }
+    }
+
+    session.xfer.xfer_type = STOR_HIDDEN;
+  }
+
+
+
   return HANDLED(cmd);
 }
 
 /* cmd_pre_appe is the PRE_CMD handler for the APPEnd command, which
- * simply sets stor_append and calls pre_cmd_stor
+ * simply sets xfer_type to STOR_APPEND and calls pre_cmd_stor
  */
 
 MODRET pre_cmd_appe(cmd_rec *cmd)
 {
-  session.xfer.stor_append = 1;
+  session.xfer.xfer_type = STOR_APPEND;
   session.restart_pos = 0L;
   
   return pre_cmd_stor(cmd);
@@ -200,11 +275,11 @@ MODRET pre_cmd_appe(cmd_rec *cmd)
 
 MODRET cmd_stor(cmd_rec *cmd)
 {
-  char *dir;
+  char *dir, *dir_hidden;
   char *lbuf;
   int bufsize,len;
   unsigned long respos = 0;
-  privdata_t *p;
+  privdata_t *p, *p_hidden;
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *preg;
   int ret;
@@ -213,8 +288,18 @@ MODRET cmd_stor(cmd_rec *cmd)
   p = mod_privdata_find(cmd,"stor_filename",NULL);
 
   if(!p) {
-    add_response_err(R_550,"%s: internal error, what happened to cmd_pre_retr?!?",cmd->arg);
+    add_response_err(R_550,"%s: internal error, stor_filename not set by cmd_pre_retr",cmd->arg);
     return ERROR(cmd);
+  }
+
+  dir = p->value.str_val;
+
+  if(session.xfer.xfer_type == STOR_HIDDEN) {
+    p_hidden = mod_privdata_find(cmd,"stor_hidden_filename",NULL);
+    if(!p_hidden) {
+      add_response_err(R_550,"%s: internal error, stor_hidden_filename not set by cmd_pre_retr",cmd->arg);
+      return ERROR(cmd);
+    }
   }
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
@@ -236,12 +321,17 @@ MODRET cmd_stor(cmd_rec *cmd)
   }
 #endif
 
-  dir = p->value.str_val;
+  if(session.xfer.xfer_type == STOR_HIDDEN)
+    stor_file = fs_open(p_hidden->value.str_val,
+	O_WRONLY|(session.restart_pos ? 0 : O_CREAT|O_EXCL),&stor_fd);
 
-  if(session.xfer.stor_append)
-	  stor_file = fs_open(dir,O_WRONLY|O_CREAT|O_APPEND,&stor_fd);
-  else
-	  stor_file = fs_open(dir,O_WRONLY|(session.restart_pos ? 0 : O_TRUNC|O_CREAT),&stor_fd);
+  else if(session.xfer.xfer_type == STOR_APPEND)
+    stor_file = fs_open(dir, O_WRONLY|O_CREAT|O_APPEND,&stor_fd);
+
+  else /* Normal session */
+    stor_file = fs_open(dir,
+	O_WRONLY|(session.restart_pos ? 0 : O_TRUNC|O_CREAT),&stor_fd);
+
 
   if(stor_file && session.restart_pos) {
     if(fs_lseek(stor_file,stor_fd,session.restart_pos,SEEK_SET) == -1) {
@@ -266,6 +356,11 @@ MODRET cmd_stor(cmd_rec *cmd)
     data_init(cmd->arg,IO_READ);
 
     session.xfer.path = pstrdup(session.xfer.p,dir);
+    if(session.xfer.xfer_type == STOR_HIDDEN)
+      session.xfer.path_hidden = pstrdup(session.xfer.p, p_hidden->value.str_val);
+    else
+      session.xfer.path_hidden = NULL;
+      
     session.xfer.file_size = respos;
 
     if(data_open(cmd->arg,NULL,IO_READ,0) < 0) {
@@ -311,6 +406,22 @@ MODRET cmd_stor(cmd_rec *cmd)
       data_abort(session.d->inf->xerrno,FALSE);
       return ERROR(cmd);
     } else {
+      if(session.xfer.path && session.xfer.path_hidden) {
+        if(fs_rename(session.xfer.path_hidden,session.xfer.path) != 0) {
+          /* This should only fail on a race condition with a chmod/chown
+           * or if STOR_APPEND is on and the permissions are squirrely.
+           * The poor user will have to re-upload, but we've got more important
+           * problems to worry about and this failure should be fairly rare.
+           */
+           log_pri(LOG_WARNING,"Rename of %s to %s failed: %s",
+             session.xfer.path_hidden, session.xfer.path, strerror(errno));
+           add_response_err(R_550,"%s: rename of hidden file %s failed: %s",
+             session.xfer.path, session.xfer.path_hidden, strerror(errno));
+           unlink(session.xfer.path_hidden);
+
+           return ERROR(cmd);
+         }
+      }
       _stor_done();
       data_close(FALSE);
     }

@@ -18,7 +18,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.5 1999-03-07 17:18:51 flood Exp $
+ * $Id: proftpd.h,v 1.6 1999-09-14 08:43:59 macgyver Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -111,10 +111,11 @@ typedef struct {
   struct {
     struct pool *p;
 
-    int stor_append;			/* append to file? */
+    int xfer_type;     /* xfer session attributes, default/append/hidden */
     int direction;
     char *filename;			/* As shown to user */
     char *path;				/* As used in transfer */
+    char *path_hidden;			/* As used in hidden stor */
 
     char *bufstart,*buf;
     int bufsize,buflen;
@@ -129,6 +130,11 @@ typedef struct {
   } xfer;
 
 } session_t;
+
+/* Possible values for xfer.xfer_type, mutually exclusive */
+#define STOR_DEFAULT	0
+#define STOR_APPEND	1
+#define STOR_HIDDEN	2
 
 extern session_t	session;
 extern char		ServerType;

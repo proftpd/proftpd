@@ -19,7 +19,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.9 1999-09-12 16:30:01 macgyver Exp $
+ * $Id: mod_core.c,v 1.10 1999-09-14 08:43:59 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -977,6 +977,18 @@ MODRET set_allowoverwrite(cmd_rec *cmd)
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_DIR|CONF_GLOBAL);
 
   c = add_config_param("AllowOverwrite",1,(void*)get_boolean(cmd,1));
+  c->flags |= CF_MERGEDOWN;
+  return HANDLED(cmd);
+}
+
+MODRET set_hiddenstor(cmd_rec *cmd)
+{
+  config_rec *c;
+
+  CHECK_ARGS(cmd,1);
+  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_DIR|CONF_GLOBAL);
+
+  c = add_config_param("HiddenStor",1,(void*)get_boolean(cmd,1));
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 }
@@ -2268,6 +2280,7 @@ static conftable core_conftable[] = {
   { "HideGroup",		add_hidegroup,			NULL },
   { "GroupOwner",		add_groupowner,			NULL },
   { "AllowOverwrite",		set_allowoverwrite,		NULL },
+  { "HiddenStor",		set_hiddenstor,			NULL },
   { "DisplayFirstChdir",	set_displayfirstchdir,		NULL },
   { "AuthAliasOnly",		set_authaliasonly,		NULL },
   { "AllowRetrieveRestart",	set_allowretrieverestart,	NULL },
