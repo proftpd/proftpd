@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.331 2002-12-27 16:04:49 jwm Exp $
+$Id: NEWS,v 1.332 2002-12-27 16:08:02 jwm Exp $
 
 CVS
 ---------------------------------
@@ -78,6 +78,7 @@ CVS
 - Bug 1905 - AIX needs "config.h" included before *anything* else.
 - Bug 1903 - ftpwho depends on snprintf but doesn't link in lib/libsupp.a
   Primarily of issue under Solaris 2.5 and Tru64 4.0D.
+- Bug 1863 - Unable to build under UnixWare 7
 
 1.2.7 - Released 05-12-2002
 ---------------------------------
