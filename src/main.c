@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.219 2004-02-20 18:34:38 castaglia Exp $
+ * $Id: main.c,v 1.220 2004-04-15 02:47:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2218,12 +2218,14 @@ static void write_pid(void) {
     PidPath = PID_FILE_PATH;
 
   PRIVS_ROOT
-  if ((pidf = fopen(PidPath, "w")) == NULL) {
-    PRIVS_RELINQUISH
-    perror(PidPath);
+  pidf = fopen(PidPath, "w");
+  PRIVS_RELINQUISH
+
+  if (pidf == NULL) {
+    fprintf(stderr, "error opening PidFile '%s': %s\n", PidPath,
+      strerror(errno));
     exit(1);
   }
-  PRIVS_RELINQUISH
 
   fprintf(pidf, "%lu\n", (unsigned long) getpid());
   fclose(pidf);
