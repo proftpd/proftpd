@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.453 2003-07-28 22:57:51 castaglia Exp $
+$Id: NEWS,v 1.454 2003-07-29 15:15:49 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -43,6 +43,8 @@ CVS
 - Corrected handling of mod_tls' TLSCACertificateFile and TLSCACertificatePath
   directives so that they are properly allowed in <VirtualHost> and <Global>
   contexts.
+- Bug 2119 - FEAT response format does not conform to RFC2389.  Extraneous
+  leading whitespace removed.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------

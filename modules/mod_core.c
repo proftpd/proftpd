@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.181 2003-07-07 18:27:11 castaglia Exp $
+ * $Id: mod_core.c,v 1.182 2003-07-29 15:15:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3655,9 +3655,8 @@ MODRET core_feat(cmd_rec *cmd) {
   pr_response_add(R_211, "Features:");
 
   feat = pr_feat_get();
-
   while (feat) {
-    pr_response_add(R_DUP, " %s", feat);
+    pr_response_add(R_DUP, "%s", feat);
     feat = pr_feat_get_next();
   }
 
