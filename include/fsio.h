@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project
+ * Copyright (c) 2001, 2002, 2003, 2004, 2005 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.10 2004-11-13 22:47:57 castaglia Exp $
+ * $Id: fsio.h,v 1.11 2005-02-26 17:28:58 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -54,18 +54,19 @@
 #define FSIO_FILE_TRUNC		(1 << 12)
 #define FSIO_FILE_CHMOD		(1 << 13)
 #define FSIO_FILE_CHOWN		(1 << 14)
+#define FSIO_FILE_ACCESS	(1 << 15)
 
 /* Macro that defines the most common file ops */
 #define FSIO_FILE_COMMON	(FSIO_FILE_OPEN|FSIO_FILE_READ|FSIO_FILE_WRITE|\
                                  FSIO_FILE_CLOSE|FSIO_FILE_CREAT)
 
-#define FSIO_DIR_CHROOT		(1 << 15)
-#define FSIO_DIR_CHDIR		(1 << 16)
-#define FSIO_DIR_OPENDIR	(1 << 17)
-#define FSIO_DIR_CLOSEDIR	(1 << 18)
-#define FSIO_DIR_READDIR	(1 << 19)
-#define FSIO_DIR_MKDIR		(1 << 20)
-#define FSIO_DIR_RMDIR		(1 << 21)
+#define FSIO_DIR_CHROOT		(1 << 16)
+#define FSIO_DIR_CHDIR		(1 << 17)
+#define FSIO_DIR_OPENDIR	(1 << 18)
+#define FSIO_DIR_CLOSEDIR	(1 << 19)
+#define FSIO_DIR_READDIR	(1 << 20)
+#define FSIO_DIR_MKDIR		(1 << 21)
+#define FSIO_DIR_RMDIR		(1 << 22)
 
 /* Macro that defines directory operations */
 #define FSIO_DIR_COMMON		(FSIO_DIR_CHROOT|FSIO_DIR_CHDIR|\
@@ -118,6 +119,8 @@ struct fs_rec {
   int (*truncate)(pr_fs_t *, const char *, off_t);
   int (*chmod)(pr_fs_t *, const char *, mode_t);
   int (*chown)(pr_fs_t *, const char *, uid_t, gid_t);
+  int (*access)(pr_fs_t *, const char *, int, uid_t, gid_t, array_header *);
+  int (*faccess)(pr_fh_t *, int, uid_t, gid_t, array_header *);
 
   /* For actual operations on the directory (or subdirs)
    * we cast the return from opendir to DIR* in src/fs.c, so
@@ -229,6 +232,8 @@ int pr_fsio_chmod_canon(const char *, mode_t);
 int pr_fsio_chown(const char *, uid_t, gid_t);
 int pr_fsio_chown_canon(const char *, uid_t, gid_t);
 int pr_fsio_chroot(const char *);
+int pr_fsio_access(const char *, int, uid_t, gid_t, array_header *);
+int pr_fsio_faccess(pr_fh_t *, int, uid_t, gid_t, array_header *);
 off_t pr_fsio_lseek(pr_fh_t *, off_t, int);
 
 /* FS-related functions */
@@ -273,10 +278,12 @@ int pr_fs_glob(const char *, int, int (*errfunc)(const char *, int), glob_t *);
 void pr_fs_globfree(glob_t *);
 void pr_resolve_fs_map(void);
 
-int init_fs(void);
-
-#if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
+#if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || \
+  defined(HAVE_SYS_VFS_H)
 off_t pr_fs_getsize(char *);
 #endif
+
+/* For internal use only. */
+int init_fs(void);
 
 #endif /* PR_FSIO_H */

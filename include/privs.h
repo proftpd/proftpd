@@ -24,23 +24,11 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* $Id: privs.h,v 1.28 2004-09-23 21:37:00 castaglia Exp $
+/* $Id: privs.h,v 1.29 2005-02-26 17:28:58 castaglia Exp $
  */
 
 #ifndef PR_PRIVS_H
 #define PR_PRIVS_H
-
-/* Definition of root user/group IDs (non-Unix platforms may have these as
- * different from 0/0).
- */
-
-#ifdef __CYGWIN__
-# define PR_ROOT_UID    18
-# define PR_ROOT_GID    544
-#else
-# define PR_ROOT_UID    0
-# define PR_ROOT_GID    0
-#endif /* __CYGWIN__ */
 
 /* Macros for manipulating saved, real and effective uid for easy
  * switching from/to root.

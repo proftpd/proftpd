@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.200 2004-12-23 20:17:15 castaglia Exp $
+ * $Id: mod_auth.c,v 1.201 2005-02-26 17:28:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -920,11 +920,9 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     else
       session.chroot_path = dir_realpath(p, c->name);
 
-    /* Check access using access_check() which uses euid instead of ruid,
-     * if everything is ok copy it into the session pool. -jss 2/22/2001
-     */
-
-    if (session.chroot_path && access_check(session.chroot_path, X_OK) != 0)
+    if (session.chroot_path &&
+        pr_fsio_access(session.chroot_path, X_OK, session.uid,
+          session.gid, session.gids) != 0)
       session.chroot_path = NULL;
     else
       session.chroot_path = pstrdup(session.pool, session.chroot_path);

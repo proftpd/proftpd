@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.75 2004-11-24 20:38:35 castaglia Exp $
+ * $Id: support.c,v 1.76 2005-02-26 17:28:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -436,83 +436,6 @@ int dir_exists(char *path) {
 
 int exists(char *path) {
   return _exists(path, -1);
-}
-
-/* Perform access check for effective user id, similar to accessx(...,
- * ACC_SELF) on AIX.
- */
-int access_check(char *path, int mode) {
-  mode_t mask;
-  struct stat buf;
-
-  pr_fs_clear_cache();
-  if (pr_fsio_stat(path, &buf) < 0) {
-    errno = ENOENT;
-    return -1;
-  }
-
-  /* If root, always return succeed. */
-  if (session.uid == 0)
-    return 0;
-
-  /* Initialize `mask' to reflect the permission bits that are
-   * applicable for the effective user. `mask' contains the user-bits
-   * if the effective user id equals the id of the file owner. `mask'
-   * contains the group bits if the group id is if the effective user
-   * belongs to the group of the file. `mask' will always contain the
-   * other bits of the permission bits.
-   */
-  mask = S_IROTH | S_IWOTH | S_IXOTH;
-
-  if (buf.st_uid == session.uid)
-    mask |= S_IRUSR|S_IWUSR|S_IXUSR;
-
-  /* Check the current group, as well as all supplementary groups.
-   * Fortunately, we have this information cached, so accessing it is
-   * almost free.
-   */
-  if (buf.st_gid == session.gid) {
-    mask |= S_IRGRP | S_IWGRP | S_IXGRP;
-
-  } else {
-    if (session.gids) {
-      register unsigned int i = 0;
-
-      for (i = 0; i < session.gids->nelts; i++) {
-        if (buf.st_gid == ((gid_t *) session.gids->elts)[i]) {
-	  mask |= S_IRGRP|S_IWGRP|S_IXGRP;
-	  break;
-        }
-      }
-    }
-  }
-
-  mask &= buf.st_mode;
-
-  /* Perform requested access checks */
-  if (mode & R_OK) {
-    if (!(mask & (S_IRUSR|S_IRGRP|S_IROTH))) {
-      errno = EACCES;
-      return -1;
-    }
-  }
-
-  if (mode & W_OK) {
-    if (!(mask & (S_IWUSR|S_IWGRP|S_IWOTH))) {
-      errno = EACCES;
-      return -1;
-    }
-  }
-
-  if (mode & X_OK) {
-    if (!(mask & (S_IXUSR|S_IXGRP|S_IXOTH))) {
-      errno = EACCES;
-      return -1;
-    }
-  }
-
-  /* F_OK already checked by checking the return value of stat */
-  return 0;
 }
 
 char *pr_str_strip(pool *p, char *str) {

@@ -34,11 +34,20 @@
 /* Define if you have AIX send_file() semantics. */
 #undef HAVE_AIX_SENDFILE
 
+/* Define if you have BSD POSIX ACLs. */
+#undef HAVE_BSD_POSIX_ACL
+
 /* Define if you have BSD sendfile() semantics. */
 #undef HAVE_BSD_SENDFILE
 
+/* Define if you have Linux POSIX ACLs. */
+#undef HAVE_LINUX_POSIX_ACL
+
 /* Define if you have Linux sendfile() semantics. */
 #undef HAVE_LINUX_SENDFILE
+
+/* Define if you have Solaris POSIX ACLs. */
+#undef HAVE_SOLARIS_POSIX_ACL
 
 /* Define if you have Solaris sendfile() semantics. */
 #undef HAVE_SOLARIS_SENDFILE
@@ -75,6 +84,9 @@
 
 /* Define if your system has _pw_stayopen variable (IRIX specific?) */
 #undef HAVE__PW_STAYOPEN
+
+/* Define if your system has POSIX ACL support */
+#undef HAVE_POSIX_ACL
 
 /* Define if your system has the sendfile function */
 #undef HAVE_SENDFILE
@@ -399,6 +411,9 @@
 /* Define if you have the vsnprintf function.  */
 #undef HAVE_VSNPRINTF
 
+/* Define if you have the <acl/libacl.h> header file.  */
+#undef HAVE_ACL_LIBACL_H
+
 /* Define if you have the <arpa/inet.h> header file.  */
 #undef HAVE_ARPA_INET_H
 
@@ -504,6 +519,9 @@
 /* Define if you have the <stropts.h> header file.  */
 #undef HAVE_STROPTS_H
 
+/* Define if you have the <sys/acl.h> header file.  */
+#undef HAVE_SYS_ACL_H
+
 /* Define if you have the <sys/dir.h> header file.  */
 #undef HAVE_SYS_DIR_H
 
@@ -581,6 +599,9 @@
 
 /* Define if you have the "vmsdir.h" header file.  */
 #undef HAVE_VMSDIR_H
+
+/* Define if you have the acl library (-lacl).  */
+#undef HAVE_LIBACL
 
 /* Define if you have the bind library (-lbind).  */
 #undef HAVE_LIBBIND
@@ -686,6 +707,9 @@
 
 /* Define if DSO support is desired.  */
 #undef PR_USE_DSO
+
+/* Define if use of POSIX ACL support is desired.  */
+#undef PR_USE_FACL
 
 /* Define if use of builtin getaddrinfo() is desired.  */
 #undef PR_USE_GETADDRINFO

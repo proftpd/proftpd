@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.52 2004-12-04 06:59:51 castaglia Exp $
+ * $Id: proftpd.h,v 1.53 2005-02-26 17:28:58 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -40,6 +40,17 @@
 #ifndef FALSE
 # define FALSE				0
 #endif
+
+/* Definition of root user/group IDs (non-Unix platforms may have these as
+ * different from 0/0).
+ */
+#ifdef __CYGWIN__
+# define PR_ROOT_UID    18
+# define PR_ROOT_GID    544
+#else
+# define PR_ROOT_UID    0
+# define PR_ROOT_GID    0
+#endif /* __CYGWIN__ */
 
 #define CALLBACK_FRAME	\
   unsigned long p1, unsigned long p2, unsigned long p3, void *data

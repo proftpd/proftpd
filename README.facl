@@ -1,0 +1,22 @@
+
+POSIX ACLs (File ACLs)
+----------------------
+
+  EXPERIMENTAL
+
+  automatically check for POSIX ACL support
+
+  --enable-facl
+  --with-modules=mod_facl
+
+  copy_file
+
+  mod_ls changes: '+', ACL MASK as group mode
+
+  libtool: link: cannot find the library `/lib/libattr.la'
+    RH /usr/lib/libacl.la points to /lib/libattr.la, rather than
+    /usr/lib/libattr.la.  We hatesses RH.
+
+  Future Work:
+    mod_ls, '+'
+    manipulating ACLs via SITE commands?

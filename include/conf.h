@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.59 2004-11-02 18:18:58 castaglia Exp $
+ * $Id: conf.h,v 1.60 2005-02-26 17:28:57 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -73,6 +73,10 @@
 
 #ifdef HAVE_LIMITS_H
 # include <limits.h>
+#endif
+
+#ifdef HAVE_SYS_ACL_H
+# include <sys/acl.h>
 #endif
 
 #ifdef HAVE_SYS_SELECT_H

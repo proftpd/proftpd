@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.644 2005-02-25 02:01:23 castaglia Exp $
+$Id: NEWS,v 1.645 2005-02-26 17:28:57 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -114,6 +114,8 @@ CVS
   linker in question was Solaris ld, not GNU ld; the Solaris linker is
   more particular about the order of specified libraries.  GNU ld is
   less strict.
+- Bug 2331 - ProFTPD does not honor POSIX ACLs.  Please read the README.facl
+  file for more information on POSIX ACL support in ProFTPD.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

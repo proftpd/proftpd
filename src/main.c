@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.270 2004-12-16 18:33:16 castaglia Exp $
+ * $Id: main.c,v 1.271 2005-02-26 17:28:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2458,6 +2458,12 @@ static void show_settings(void) {
 #else
   printf("    - ncurses support\n");
 #endif /* PR_USE_NCURSES */
+
+#ifdef PR_USE_FACL
+  printf("    + POSIX ACL support\n");
+#else
+  printf("    - POSIX ACL support\n");
+#endif /* PR_USE_FACL */
 
 #ifdef PR_USE_SHADOW
   printf("    + Shadow file support\n");

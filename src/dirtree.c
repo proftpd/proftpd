@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.165 2004-11-29 22:28:29 castaglia Exp $
+ * $Id: dirtree.c,v 1.166 2005-02-26 17:28:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -986,144 +986,86 @@ config_rec *dir_match_path(pool *p, char *path) {
   return res;
 }
 
-static int _dir_check_op(pool *p, xaset_t *c, int op, uid_t uid, gid_t gid,
-    mode_t mode) {
-  int res = 1, user_perms = 0;
+/* Returns TRUE to allow, FALSE to deny. */
+static int dir_check_op(pool *p, xaset_t *c, int op, const char *path,
+    uid_t uid, gid_t gid, mode_t mode) {
+  int res = TRUE;
   uid_t *u = NULL;
-  gid_t *g = NULL, *gidp = NULL;
+  gid_t *g = NULL;
   unsigned char *hide_no_access = NULL;
 
+  /* Default is to allow. */
   if (!c)
-    return 1;				/* Default is to allow */
-
-  /* Attempt to match the UID and GID of the file against that of the
-   * current user and groups.
-   */
-  if (uid == session.uid) {
-
-    /* The UID of the file is that of the current user. */
-    user_perms |= (mode & S_IRWXU);
-
-  } else if (gid == session.gid) {
-
-    /* The primary GID of the file is that of the current user. */
-    user_perms |= (mode & S_IRWXG);
-
-  } else {
-    unsigned char found_gid_match = FALSE;
-
-    if (session.gids) {
-      register unsigned int i = 0;
-
-      /* Loop through the user's auxiliary groups, checking if these
-       * memberships match that of the file
-       */
-      for (i = session.gids->nelts, gidp = (gid_t *) session.gids->elts;
-         i; i--, gidp++) {
-
-        /* Matched an auxiliary GID against the file GID. */
-        if (*gidp == gid) {
-          found_gid_match = TRUE;
-          user_perms |= (mode & S_IRWXG);
-          break;
-        }
-      }
-    }
-
-    /* No matching GIDs.  Assume the current user can read, as other,
-     * by default.
-     */
-    if (!found_gid_match)
-      user_perms |= (mode & S_IRWXO);
-  }
+    return TRUE;
 
   switch (op) {
-  case OP_HIDE:
-    u = (uid_t *) get_param_ptr(c, "HideUser", FALSE);
+    case OP_HIDE:
+      u = get_param_ptr(c, "HideUser", FALSE);
 
-    while (u && *u != (uid_t) -1 && (*u != uid || *u == session.uid))
-      u = (uid_t *) get_param_ptr_next("HideUser", FALSE);
+      while (u &&
+             *u != (uid_t) -1 &&
+             (*u != uid || *u == session.uid))
+        u = get_param_ptr_next("HideUser", FALSE);
 
-    if (u && *u == uid) {
-      res = 0;
-      break;
-    }
-
-    g = (gid_t *) get_param_ptr(c, "HideGroup", FALSE);
-
-    while (g && *g != (gid_t) -1 && (*g != gid || *g == session.gid))
-      g = (gid_t *) get_param_ptr_next("HideGroup", FALSE);
-
-    if (g && *g == gid) {
-      res = 0;
-      break;
-    }
-
-    hide_no_access = get_param_ptr(c, "HideNoAccess", FALSE);
-
-    if (hide_no_access && *hide_no_access == TRUE) {
-      if (S_ISDIR(mode)) {
-
-        /* check to see if the mode of this directory allows the
-         * current user to list its contents
-         */
-        res = user_perms &= (S_IXUSR|S_IXGRP|S_IXOTH);
-
-      } else {
-
-        /* check to see if the mode of this file allows the current
-         * user to read it.  The below expression is fairly compact,
-         * but achieves its goal, which is:
-         *
-         * If the file is readable (by user, group, or other)
-         *   return > 1 (the user_perms work for this)
-         *
-         * If the file is unreadable
-         *   return 0 (which user_perms will be)
-         */
-        res = user_perms &= (S_IRUSR|S_IRGRP|S_IROTH);
+      if (u &&
+          *u == uid) {
+        res = 0;
+        break;
       }
-    }
-    break;
 
-  case OP_COMMAND:
-    {
-      unsigned char *allow_all = get_param_ptr(c, "AllowAll", FALSE),
-        *deny_all = get_param_ptr(c, "DenyAll", FALSE);
+      g = get_param_ptr(c, "HideGroup", FALSE);
 
-      if (allow_all && *allow_all == TRUE)
-        /* nop */;
+      while (g &&
+             *g != (gid_t) -1 &&
+             (*g != gid || *g == session.gid))
+        g = get_param_ptr_next("HideGroup", FALSE);
 
-      else if (deny_all && *deny_all == TRUE) {
+      if (g &&
+          *g == gid) {
+        res = 0;
+        break;
+      }
+
+      hide_no_access = get_param_ptr(c, "HideNoAccess", FALSE);
+      if (hide_no_access &&
+          *hide_no_access == TRUE) {
+
+        if (S_ISDIR(mode)) {
+          /* Check to see if the mode of this directory allows the
+           * current user to list its contents.
+           */
+          res = pr_fsio_access(path, X_OK, session.uid, session.gid,
+            session.gids) == 0 ? TRUE : FALSE;
+
+        } else {
+          /* Check to see if the mode of this file allows the current
+           * user to read it.
+           */
+          res = pr_fsio_access(path, R_OK, session.uid, session.gid,
+            session.gids) == 0 ? TRUE : FALSE;
+        }
+      }
+      break;
+
+    case OP_COMMAND: {
+      unsigned char *allow_all = get_param_ptr(c, "AllowAll", FALSE);
+      unsigned char *deny_all = get_param_ptr(c, "DenyAll", FALSE);
+
+      if (allow_all &&
+          *allow_all == TRUE)
+        /* No-op */
+        ;
+
+      else if (deny_all &&
+               *deny_all == TRUE) {
         res = 0;
         errno = EACCES;
       }
     }
     break;
-
   }
 
   return res;
-}
-
-int dir_check_op_mode(pool *p, char *path, int op, uid_t uid, gid_t gid,
-    mode_t mode) {
-  char *fullpath;
-  xaset_t *c;
-  config_rec *sc;
-
-  if (*path != '/')
-    fullpath = pdircat(p, session.cwd, path, NULL);
-  else
-    fullpath = pstrdup(p, path);
-
-  if (session.chroot_path)
-    fullpath = pdircat(p, session.chroot_path, fullpath, NULL);
-
-  c = CURRENT_CONF;
-  sc = recur_match_path(p, c, fullpath);
-
-  return _dir_check_op(p, sc ? sc->subset : c, op, uid, gid, mode);
 }
 
 static int _check_user_access(xaset_t *set, char *name) {
@@ -1787,7 +1729,7 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
 int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   char *fullpath, *owner, *tmp = NULL;
   config_rec *c;
-  struct stat sbuf;
+  struct stat st;
   pool *p;
   mode_t _umask = (mode_t) -1;
   int res = 1, isfile;
@@ -1801,18 +1743,6 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   p = make_sub_pool(pp);
   pr_pool_tag(p, "dir_check_full() subpool");
 
-  /* flood -- this is no longer needed, as all paths passed to
-   * dir_check should have gone through either dir_canonical or
-   * dir_real first (depending on if they are supposed to pre-exist
-
-  fullpath = dir_realpath(p,path);
-
-  if (!fullpath)
-    fullpath = pdircat(p,session.cwd,path,NULL);
-  else
-    path = fullpath;
-  */
-
   fullpath = path;
 
   if (session.chroot_path)
@@ -1823,16 +1753,15 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
 
   /* Check and build all appropriate dynamic configuration entries */
   pr_fs_clear_cache();
-  if ((isfile = pr_fsio_stat(path, &sbuf)) == -1)
-    memset(&sbuf, '\0', sizeof(sbuf));
+  isfile = pr_fsio_stat(path, &st);
+  if (isfile == -1)
+    memset(&st, '\0', sizeof(st));
 
-  build_dyn_config(p, path, &sbuf, TRUE);
+  build_dyn_config(p, path, &st, TRUE);
 
   /* Check to see if this path is hidden by HideFiles. */
-  if ((tmp = strrchr(fullpath, '/')) != NULL)
-    regex_hidden = dir_hide_file(++tmp);
-  else
-    regex_hidden = dir_hide_file(fullpath);
+  tmp = strrchr(fullpath, '/');
+  regex_hidden = tmp ? dir_hide_file(++tmp) : dir_hide_file(fullpath);
 
   /* Cache a pointer to the set of configuration data for this directory in
    * session.dir_config.
@@ -1843,37 +1772,27 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
     c = session.anon_config;
 
   if (!_kludge_disable_umask) {
-    /* Check for a directory Umask.
-     */
-    if (S_ISDIR(sbuf.st_mode) ||
-        !strcasecmp(cmd, C_MKD) || !strcasecmp(cmd, C_XMKD)) {
-      mode_t *dir_umask = (mode_t *) get_param_ptr(CURRENT_CONF, "DirUmask",
-        FALSE);
-
-      if (dir_umask == NULL)
-        _umask = (mode_t) -1;
-      else
-        _umask = *dir_umask;
+    /* Check for a directory Umask. */
+    if (S_ISDIR(st.st_mode) ||
+        strcmp(cmd, C_MKD) == 0 ||
+        strcmp(cmd, C_XMKD) == 0) {
+      mode_t *dir_umask = get_param_ptr(CURRENT_CONF, "DirUmask", FALSE);
+      _umask = dir_umask ? *dir_umask : (mode_t) -1;
     }
 
-    /* It's either a file, or we had no directory Umask.
-     */
+    /* It's either a file, or we had no directory Umask. */
     if (_umask == (mode_t) -1) {
-      mode_t *file_umask = (mode_t *) get_param_ptr(CURRENT_CONF, "Umask",
-        FALSE);
-
-      if (file_umask == NULL)
-        _umask = (mode_t) 0022;
-      else
-        _umask = *file_umask;
+      mode_t *file_umask = get_param_ptr(CURRENT_CONF, "Umask", FALSE);
+      _umask = file_umask ? *file_umask : (mode_t) 0022;
     }
   }
 
   session.fsuid = (uid_t) -1;
   session.fsgid = (gid_t) -1;
 
-  if ((owner = get_param_ptr(CURRENT_CONF, "UserOwner", FALSE)) != NULL) {
-    /* Attempt chown on all new files. */
+  owner = get_param_ptr(CURRENT_CONF, "UserOwner", FALSE);
+  if (owner != NULL) {
+    /* Attempt chown() on all new files. */
     struct passwd *pw;
 
     pw = pr_auth_getpwnam(p, owner);
@@ -1881,8 +1800,9 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
       session.fsuid = pw->pw_uid;
   }
 
-  if ((owner = get_param_ptr(CURRENT_CONF, "GroupOwner", FALSE)) != NULL) {
-    /* Attempt chgrp on all new files. */
+  owner = get_param_ptr(CURRENT_CONF, "GroupOwner", FALSE);
+  if (owner != NULL) {
+    /* Attempt chgrp() on all new files. */
     struct group *gr;
 
     gr = pr_auth_getgrnam(p, owner);
@@ -1891,19 +1811,15 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   }
 
   if (isfile != -1) {
+    /* Check to see if the current config "hides" the path or not. */
+    op_hidden = !dir_check_op(p, CURRENT_CONF, OP_HIDE, fullpath,
+      st.st_uid, st.st_gid, st.st_mode);
 
-    /* Check to see if the current config "hides" the path or not
-     */
-
-    op_hidden = !_dir_check_op(p,CURRENT_CONF,OP_HIDE,sbuf.st_uid,sbuf.st_gid,
-                                 sbuf.st_mode);
-
-    res = _dir_check_op(p,CURRENT_CONF,OP_COMMAND,sbuf.st_uid,sbuf.st_gid,
-      sbuf.st_mode);
+    res = dir_check_op(p, CURRENT_CONF, OP_COMMAND, fullpath,
+      st.st_uid, st.st_gid, st.st_mode);
   }
 
   if (res) {
-
     /* Note that dir_check_limits() also handles IgnoreHidden.  If it is set,
      * these return 0 (no access), and also set errno to ENOENT so it looks
      * like the file doesn't exist.
@@ -1928,10 +1844,11 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
       res = dir_check_limits(c, "ALL", op_hidden || regex_hidden);
   }
 
-  if (res && _umask != (mode_t) -1)
+  if (res &&
+      _umask != (mode_t) -1)
     pr_log_debug(DEBUG5,
       "in dir_check_full(): setting umask to %04o (was %04o)",
-        (unsigned int)_umask, (unsigned int)umask(_umask));
+        (unsigned int) _umask, (unsigned int) umask(_umask));
 
   destroy_pool(p);
 
@@ -1949,7 +1866,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
 int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   char *fullpath, *owner, *tmp = NULL;
   config_rec *c;
-  struct stat sbuf;
+  struct stat st;
   pool *p;
   mode_t _umask = (mode_t) -1;
   int res = 1, isfile;
@@ -1978,16 +1895,15 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
 
   /* Check and build all appropriate dynamic configuration entries */
   pr_fs_clear_cache();
-  if ((isfile = pr_fsio_stat(path, &sbuf)) == -1)
-    memset(&sbuf, 0, sizeof(sbuf));
+  isfile = pr_fsio_stat(path, &st);
+  if (isfile == -1)
+    memset(&st, 0, sizeof(st));
 
-  build_dyn_config(p, path, &sbuf, FALSE);
+  build_dyn_config(p, path, &st, FALSE);
 
   /* Check to see if this path is hidden by HideFiles. */
-  if ((tmp = strrchr(fullpath, '/')) != NULL)
-    regex_hidden = dir_hide_file(++tmp);
-  else
-    regex_hidden = dir_hide_file(fullpath);
+  tmp = strrchr(fullpath, '/');
+  regex_hidden = tmp ? dir_hide_file(++tmp) : dir_hide_file(fullpath);
 
   /* Cache a pointer to the set of configuration data for this directory in
    * session.dir_config.
@@ -1998,22 +1914,17 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
     c = session.anon_config;
 
   if (!_kludge_disable_umask) {
-    /* Check for a directory Umask.
-     */
-    if (S_ISDIR(sbuf.st_mode) ||
-        !strcasecmp(cmd, C_MKD) || !strcasecmp(cmd, C_XMKD)) {
-      mode_t *dir_umask = (mode_t *) get_param_ptr(CURRENT_CONF, "DirUmask",
-        FALSE);
-
+    /* Check for a directory Umask. */
+    if (S_ISDIR(st.st_mode) ||
+        strcmp(cmd, C_MKD) == 0 ||
+        strcmp(cmd, C_XMKD) == 0) {
+      mode_t *dir_umask = get_param_ptr(CURRENT_CONF, "DirUmask", FALSE);
       _umask = dir_umask ? *dir_umask : (mode_t) -1;
     }
 
-    /* It's either a file, or we had no directory Umask.
-     */
+    /* It's either a file, or we had no directory Umask. */
     if (_umask == (mode_t) -1) {
-      mode_t *file_umask = (mode_t *) get_param_ptr(CURRENT_CONF, "Umask",
-        FALSE);
-
+      mode_t *file_umask = get_param_ptr(CURRENT_CONF, "Umask", FALSE);
       _umask = file_umask ? *file_umask : (mode_t) 0022;
     }
   }
@@ -2021,43 +1932,43 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   session.fsuid = (uid_t) -1;
   session.fsgid = (gid_t) -1;
 
-  if ((owner = get_param_ptr(CURRENT_CONF, "UserOwner", FALSE)) != NULL) {
-
+  owner = get_param_ptr(CURRENT_CONF, "UserOwner", FALSE);
+  if (owner != NULL) {
     /* Attempt chown() on all new files. */
-    struct passwd *pw = pr_auth_getpwnam(p, owner);
+    struct passwd *pw;
 
+    pw = pr_auth_getpwnam(p, owner);
     if (pw != NULL)
       session.fsuid = pw->pw_uid;
   }
 
-  if ((owner = get_param_ptr(CURRENT_CONF, "GroupOwner",FALSE)) != NULL) {
-
+  owner = get_param_ptr(CURRENT_CONF, "GroupOwner", FALSE);
+  if (owner != NULL) {
     /* Attempt chgrp() on all new files. */
-    struct group *gr = pr_auth_getgrnam(p, owner);
+    struct group *gr;
 
+    gr = pr_auth_getgrnam(p, owner);
     if (gr != NULL)
       session.fsgid = gr->gr_gid;
   }
 
   if (isfile != -1) {
-
-    /* if not already marked as hidden by its name, check to see if the path
+    /* If not already marked as hidden by its name, check to see if the path
      * is to be hidden by nature of its mode
      */
-    op_hidden = !_dir_check_op(p, CURRENT_CONF, OP_HIDE, sbuf.st_uid,
-    			         sbuf.st_gid, sbuf.st_mode);
+    op_hidden = !dir_check_op(p, CURRENT_CONF, OP_HIDE, fullpath,
+      st.st_uid, st.st_gid, st.st_mode);
 
-    res = _dir_check_op(p, CURRENT_CONF, OP_COMMAND, sbuf.st_uid, sbuf.st_gid,
-			sbuf.st_mode);
+    res = dir_check_op(p, CURRENT_CONF, OP_COMMAND, fullpath,
+      st.st_uid, st.st_gid, st.st_mode);
   }
 
   if (res) {
     res = dir_check_limits(c, cmd, op_hidden || regex_hidden);
 
     /* If specifically allowed, res will be > 1 and we don't want to
-     * check the command group limit
+     * check the command group limit.
      */
-
     if (res == 1 && group)
       res = dir_check_limits(c, group, op_hidden || regex_hidden);
 
@@ -2073,9 +1984,10 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
       res = dir_check_limits(c, "ALL", op_hidden || regex_hidden);
   }
 
-  if (res && _umask != (mode_t) -1)
+  if (res &&
+      _umask != (mode_t) -1)
     pr_log_debug(DEBUG5, "in dir_check(): setting umask to %04o (was %04o)",
-        (unsigned int)_umask, (unsigned int)umask(_umask));
+        (unsigned int) _umask, (unsigned int) umask(_umask));
 
   destroy_pool(p);
 

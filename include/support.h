@@ -25,7 +25,7 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.24 2004-11-22 00:21:48 castaglia Exp $
+ * $Id: support.h,v 1.25 2005-02-26 17:28:58 castaglia Exp $
  */
 
 #ifndef PR_SUPPORT_H
@@ -82,7 +82,6 @@ mode_t file_mode(char *);
 int file_exists(char *);
 int dir_exists(char *);
 int exists(char *);
-int access_check(char *, int);
 char *make_arg_str(pool *, int, char **);
 
 char *pr_str_strip(pool *, char *);

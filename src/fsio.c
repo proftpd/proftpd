@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (C) 2001, 2002, 2003, 2004 The ProFTPD Project
+ * Copyright (C) 2001, 2002, 2003, 2004, 2005 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.39 2005-02-04 23:54:55 castaglia Exp $
+ * $Id: fsio.c,v 1.40 2005-02-26 17:28:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,6 +44,10 @@
 
 #ifdef AIX3
 # include <sys/statfs.h>
+#endif
+
+#ifdef HAVE_ACL_LIBACL_H
+# include <acl/libacl.h>
 #endif
 
 typedef struct fsopendir fsopendir_t;
@@ -161,6 +165,87 @@ static int sys_chmod(pr_fs_t *fs, const char *path, mode_t mode) {
 
 static int sys_chown(pr_fs_t *fs, const char *path, uid_t uid, gid_t gid) {
   return chown(path, uid, gid);
+}
+
+/* We provide our own equivalent of access(2) here, rather than using
+ * access(2) directly, because access(2) uses the real IDs, rather than
+ * the effective IDs, of the process.
+ */
+static int sys_access(pr_fs_t *fs, const char *path, int mode, uid_t uid,
+    gid_t gid, array_header *suppl_gids) {
+  mode_t mask;
+  struct stat st;
+
+  pr_fs_clear_cache();
+  if (pr_fsio_stat(path, &st) < 0)
+    return -1;
+
+  /* Root always succeeds. */
+  if (uid == PR_ROOT_UID)
+    return 0;
+
+  /* Initialize mask to reflect the permission bits that are applicable for
+   * the given user. mask contains the user-bits if the user ID equals the
+   * ID of the file owner. mask contains the group bits if the group ID
+   * belongs to the group of the file. mask will always contain the other
+   * bits of the permission bits.
+   */
+  mask = S_IROTH|S_IWOTH|S_IXOTH;
+
+  if (st.st_uid == uid)
+    mask |= S_IRUSR|S_IWUSR|S_IXUSR;
+
+  /* Check the current group, as well as all supplementary groups.
+   * Fortunately, we have this information cached, so accessing it is
+   * almost free.
+   */
+  if (st.st_gid == gid) {
+    mask |= S_IRGRP|S_IWGRP|S_IXGRP;
+
+  } else {
+    if (suppl_gids) {
+      register unsigned int i = 0;
+
+      for (i = 0; i < suppl_gids->nelts; i++) {
+        if (st.st_gid == ((gid_t *) suppl_gids->elts)[i]) {
+          mask |= S_IRGRP|S_IWGRP|S_IXGRP;
+          break;
+        }
+      }
+    }
+  }
+
+  mask &= st.st_mode;
+
+  /* Perform requested access checks. */
+  if (mode & R_OK) {
+    if (!(mask & (S_IRUSR|S_IRGRP|S_IROTH))) {
+      errno = EACCES;
+      return -1;
+    }
+  }
+
+  if (mode & W_OK) {
+    if (!(mask & (S_IWUSR|S_IWGRP|S_IWOTH))) {
+      errno = EACCES;
+      return -1;
+    }
+  }
+
+  if (mode & X_OK) {
+    if (!(mask & (S_IXUSR|S_IXGRP|S_IXOTH))) {
+      errno = EACCES;
+      return -1;
+    }
+  }
+
+  /* F_OK already checked by checking the return value of stat. */
+  return 0;
+}
+
+static int sys_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
+    array_header *suppl_gids) {
+  return sys_access(fh->fh_fs, fh->fh_path, mode, uid, gid, suppl_gids);
 }
 
 static int sys_chroot(pr_fs_t *fs, const char *path) {
@@ -473,7 +558,8 @@ void pr_fs_clear_cache(void) {
 int pr_fs_copy_file(const char *src, const char *dst) {
   pr_fh_t *src_fh, *dst_fh;
   struct stat st;
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+  char *buf;
+  size_t bufsz;
   int res;
 
   src_fh = pr_fsio_open(src, O_RDONLY);
@@ -511,10 +597,31 @@ int pr_fs_copy_file(const char *src, const char *dst) {
     return -1;
   }
 
+  /* Stat the source file to find its optimal copy block size. */
+  if (pr_fsio_fstat(src_fh, &st) < 0) {
+    int xerrno = errno;
+    pr_log_pri(PR_LOG_WARNING, "error checking source file '%s' "
+      "for copying: %s", src, strerror(errno));
+
+    pr_fsio_close(src_fh);
+    pr_fsio_close(dst_fh);
+    pr_fsio_unlink(dst);
+
+    errno = xerrno;
+    return -1;
+  }
+
+  bufsz = st.st_blksize;
+  buf = malloc(bufsz);
+  if (!buf) {
+    pr_log_pri(PR_LOG_CRIT, "Out of memory!");
+    end_login(1);
+  }
+
   /* Make sure the destination file starts with a zero size. */
   pr_fsio_truncate(dst, 0);
 
-  while ((res = pr_fsio_read(src_fh, buf, sizeof(buf))) > 0) {
+  while ((res = pr_fsio_read(src_fh, buf, bufsz)) > 0) {
     if (pr_fsio_write(dst_fh, buf, res) != res) {
       pr_log_pri(PR_LOG_WARNING, "error copying to '%s': %s", dst,
         strerror(errno));
@@ -523,6 +630,75 @@ int pr_fs_copy_file(const char *src, const char *dst) {
 
     pr_signals_handle();
   }
+
+  free(buf);
+
+#if defined(HAVE_POSIX_ACL) && defined(PR_USE_FACL)
+  {
+    /* Copy any ACLs from the source file to the destination file as well. */
+# if defined(HAVE_BSD_POSIX_ACL)
+    acl_t facl, facl_dup = NULL;
+    int have_facl = FALSE, have_dup = FALSE;
+
+    facl = acl_get_fd(PR_FH_FD(src_fh));
+    if (facl)
+      have_facl = TRUE;
+
+    if (have_facl)
+        facl_dup = acl_dup(facl);
+
+    if (facl_dup)
+      have_dup = TRUE;
+
+    if (have_dup &&
+        acl_set_fd(PR_FH_FD(dst_fh), facl_dup) < 0)
+      pr_log_debug(DEBUG3, "error applying ACL to destination file: %s",
+        strerror(errno));
+
+    if (have_dup)
+      acl_free(facl_dup);
+
+# elif defined(HAVE_LINUX_POSIX_ACL)
+
+    /* Linux provides the handy perm_copy_fd(3) function in its libacl
+     * library just for this purpose.
+     */
+    if (perm_copy_fd(src, PR_FH_FD(src_fh), dst, PR_FH_FD(dst_fh), NULL) < 0)
+      pr_log_debug(DEBUG3, "error copying ACL to destination file: %s",
+        strerror(errno));
+
+# elif defined(HAVE_SOLARIS_POSIX_ACL)
+    int nents;
+
+    nents = facl(PR_FH_FD(src_fh), GETACLCNT, 0, NULL);
+    if (nents < 0)
+      pr_log_debug(DEBUG3, "error getting source file ACL count: %s",
+        strerror(errno));
+
+    else {
+      aclent_t *acls;
+
+      acls = malloc(sizeof(aclent_t) * nents);
+      if (!acls) {
+        pr_log_pri(PR_LOG_CRIT, "Out of memory!");
+        end_login(1);
+      }
+
+      if (facl(PR_FH_FD(src_fh), GETACL, nents, acls) < 0)
+        pr_log_debug(DEBUG3, "error getting source file ACLs: %s",
+          strerror(errno));
+
+      else {
+        if (facl(PR_FH_FD(dst_fh), SETACL, nents, acls) < 0)
+          pr_log_debug(DEBUG3, "error setting dest file ACLs: %s",
+            strerror(errno));
+      }
+
+      free(acls);
+    }
+# endif /* HAVE_SOLARIS_POSIX_ACL && PR_USE_FACL */
+  }
+#endif /* HAVE_POSIX_ACL */
 
   pr_fsio_close(src_fh);
   if (pr_fsio_close(dst_fh) < 0)
@@ -2646,6 +2822,45 @@ int pr_fsio_chown(const char *name, uid_t uid, gid_t gid) {
   return res;
 }
 
+int pr_fsio_access(const char *path, int mode, uid_t uid, gid_t gid,
+    array_header *suppl_gids) {
+  pr_fs_t *fs;
+
+  if (!path) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_ACCESS);
+
+  /* Find the first non-NULL custom access handler.  If there are none,
+   * use the system access.
+   */
+  while (fs && fs->fs_next && !fs->access)
+    fs = fs->fs_next;
+
+  pr_log_debug(DEBUG9, "FS: using %s access()", fs->fs_name);
+  return fs->access(fs, path, mode, uid, gid, suppl_gids);
+}
+
+int pr_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
+    array_header *suppl_gids) {
+  if (!fh) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Find the first non-NULL custom faccess handler.  If there are none,
+   * use the system faccess.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->faccess)
+    fs = fs->fs_next;
+
+  pr_log_debug(DEBUG9, "FS: using %s faccess()", fs->fs_name);
+  return fh->fh_fs->faccess(fh, mode, uid, gid, suppl_gids);
+}
+
 /* If the wrapped chroot() function suceeds (eg returns 0), then all
  * pr_fs_ts currently registered in the fs_map will have their paths
  * rewritten to reflect the new root.
@@ -3002,6 +3217,8 @@ int init_fs(void) {
   root_fs->truncate = sys_truncate;
   root_fs->chmod = sys_chmod;
   root_fs->chown = sys_chown;
+  root_fs->access = sys_access;
+  root_fs->faccess = sys_faccess;
 
   root_fs->chdir = sys_chdir;
   root_fs->chroot = sys_chroot;

@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.121 2005-01-13 00:19:16 castaglia Exp $
+ * $Id: mod_ls.c,v 1.122 2005-02-26 17:28:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2194,7 +2194,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
       res = nlstfile(cmd, target);
 
     else if (S_ISDIR(st.st_mode)) {
-      if (access_check(target, R_OK) != 0) {
+      if (pr_fsio_access(target, R_OK, session.uid, session.gid,
+          session.gids) != 0) {
         pr_response_add_err(R_450, "%s: %s", cmd->arg, strerror(errno));
         return ERROR(cmd);
       }
