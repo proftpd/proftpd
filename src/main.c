@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.33 2000-07-11 14:10:33 macgyver Exp $
+ * $Id: main.c,v 1.34 2000-07-21 05:18:04 macgyver Exp $
  */
 
 /*
@@ -2082,6 +2082,12 @@ int main(int argc, char **argv, char **envp)
   int _umask = 0,c;
   int check_config_syntax = 0;
   struct sockaddr peer;
+  char *cmdopts = "nd:c:p:lhtv"
+
+#ifdef DEBUG_CORE
+    "o"
+#endif /* DEBUG_CORE */
+    ;
 
 #ifdef DEBUG_MEMORY
   int logfd;
@@ -2155,11 +2161,13 @@ int main(int argc, char **argv, char **envp)
    */
 
   opterr = 0;
-  while((c = getopt_long(argc, argv, "nd:c:p:lhtv"
-#ifdef DEBUG_CORE
-			 "o"
-#endif /* DEBUG_CORE */
-			 , opts, NULL)) != -1) {
+  while((c =
+#ifdef HAVE_GETOPT_LONG
+	 getopt(argc, argv, cmdopts)
+#else /* HAVE_GETOPT_LONG */
+	 getopt_long(argc, argv, cmdopts, opts, NULL)
+#endif /* HAVE_GETOPT_LONG */
+	 ) != -1) {
     switch(c) {
     case 'n': 
       nodaemon++;
