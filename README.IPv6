@@ -32,8 +32,7 @@ case that is now different is when a DNS name is given as a parameter.
 
 It's possible for a DNS name to have multiple IP addresses, both A and AAAA
 records.  Thus DefaultAddress and <VirtualHost> will resolve a DNS name to its
-address(es); if multiple addresses are found, Bind directives will be
-implicitly added.  For example:
+address(es); if multiple addresses are found, they will be added automatically.
 
   <VirtualHost localhost>
     ...
