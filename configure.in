@@ -971,7 +971,7 @@ AC_TRY_LINK(
   ]
 )
 
-AC_CHECK_FUNCS(getcwd gethostbyname2 gethostname getnameinfo)
+AC_CHECK_FUNCS(getcwd getenv gethostbyname2 gethostname getnameinfo)
 AC_CHECK_FUNCS(getopt_long gettimeofday hstrerror inet_aton inet_ntop inet_pton)
 AC_CHECK_FUNCS(memcpy mempcpy mkdir mkstemp mlock mlockall munlock munlockall)
 AC_CHECK_FUNCS(rmdir select setgroups socket statfs strchr strcoll strerror)
