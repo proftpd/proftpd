@@ -48,7 +48,7 @@ static unsigned char ldaptab_lookup(quota_table_t *ldaptab, const char *name,
   }
 
   /* Find the cmdtable for the ldap_quota_lookup command. */
-  if ((ldap_cmdtab = pr_stash_get_symbol(PR_SYM_CMD, "ldap_quota_lookup", NULL, NULL)) == NULL) {
+  if ((ldap_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "ldap_quota_lookup", NULL, NULL)) == NULL) {
     quotatab_log("error: unable to find LDAP hook symbol 'ldap_quota_lookup'");
     return FALSE;
   }
@@ -57,7 +57,7 @@ static unsigned char ldaptab_lookup(quota_table_t *ldaptab, const char *name,
   tmp_pool = make_sub_pool(ldaptab->tab_pool);
 
   /* Prepare the command and call the handler. */
-  ldap_cmd = pr_cmd_alloc(tmp_pool, 4, name);
+  ldap_cmd = pr_cmd_alloc(tmp_pool, 1, name);
   ldap_res = call_module(ldap_cmdtab->m, ldap_cmdtab->handler, ldap_cmd);
 
   destroy_pool(tmp_pool);
