@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.87 2004-11-03 16:44:53 castaglia Exp $
+ * $Id: mod_sql.c,v 1.88 2004-12-12 17:53:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -34,10 +34,6 @@
 
 #if defined(HAVE_CRYPT_H) && !defined(AIX4) && !defined(AIX5)
 # include <crypt.h>
-#endif
-
-#ifdef HAVE_LIMITS_H
-# include <limits.h>
 #endif
 
 /* Uncomment the following define to allow OpenSSL hashed password checking;  
@@ -77,16 +73,18 @@
 #define MOD_SQL_BUFSIZE 32
 
 /* Named Query defines */
-#define SQL_SELECT_C "SELECT"
-#define SQL_INSERT_C "INSERT"
-#define SQL_UPDATE_C "UPDATE"
-#define SQL_FREEFORM_C "FREEFORM"
+#define SQL_SELECT_C		"SELECT"
+#define SQL_INSERT_C		"INSERT"
+#define SQL_UPDATE_C		"UPDATE"
+#define SQL_FREEFORM_C		"FREEFORM"
+
+/* SQLEngine flags */
+#define SQL_ENGINE_FL_AUTH	0x001
+#define SQL_ENGINE_FL_LOG	0x002
 
 /* authmask defines */
 #define SQL_AUTH_USERS             (1<<0)
 #define SQL_AUTH_GROUPS            (1<<1)
-#define SQL_AUTH_USERS_DEFINITIVE  (1<<2)
-#define SQL_AUTH_GROUPS_DEFINITIVE (1<<3)
 #define SQL_AUTH_USERSET           (1<<4)
 #define SQL_AUTH_GROUPSET          (1<<5)
 #define SQL_FAST_USERSET           (1<<6)
@@ -98,8 +96,6 @@
 #define SQL_USERSET            (cmap.authmask & SQL_AUTH_USERSET)
 #define SQL_FASTGROUPS         (cmap.authmask & SQL_FAST_GROUPSET)
 #define SQL_FASTUSERS          (cmap.authmask & SQL_FAST_USERSET)
-#define SQL_GROUPGOD           (cmap.authmask & SQL_AUTH_GROUPS_DEFINITIVE)
-#define SQL_USERGOD            (cmap.authmask & SQL_AUTH_USERS_DEFINITIVE)
 
 /*
  * externs, function signatures.. whatever necessary to make
@@ -142,7 +138,7 @@ static struct {
    * generic status information
    */
 
-  int status;                   /* is mod_sql on? */
+  int engine;                   /* is mod_sql on? */
   int authmask;                 /* authentication mask.
                                  * see set_sqlauthenticate for info */
 
@@ -358,20 +354,6 @@ cmd_rec *_sql_make_cmd(pool *p, int argc, ...) {
   cmd->argv[argc] = NULL;
 
   return cmd;
-}
-
-static void _sql_check_cmd(cmd_rec *cmd, char *msg) {
-  if (!cmd ||
-      !cmd->tmp_pool) {
-    pr_log_pri(PR_LOG_ERR,
-      MOD_SQL_VERSION ": '%s' was passed an invalid cmd_rec. Shutting down.",
-      msg);
-    sql_log(DEBUG_WARN, "'%s' was passed an invalid cmd_rec. Shutting down.",
-      msg);
-    end_login(1);
-  }
-
-  return;
 }
 
 static modret_t *_sql_check_response(modret_t *mr) {
@@ -1515,41 +1497,62 @@ static int _sql_getgroups(cmd_rec *cmd) {
   return -1;
 }
 
-/*****************************************************************
- *
- * CLIENT COMMAND HANDLERS
- *
- *****************************************************************/
+/* Command handlers
+ */
+
+MODRET sql_pre_pass(cmd_rec *cmd) {
+  config_rec *c = NULL, *anon_config = NULL;
+  char *user = NULL;
+
+  if (cmap.engine == 0)
+    return DECLINED(cmd);
+
+  sql_log(DEBUG_FUNC, "%s", ">>> sql_pre_pass");
+
+  user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
+  if (!user) {
+    sql_log(DEBUG_FUNC, "%s", "Missing user name, skipping");
+    sql_log(DEBUG_FUNC, "%s", "<<< sql_pre_pass");
+    return DECLINED(cmd);
+  }
+
+  /* Use the looked-up user name to determine whether this is to be
+   * an anonymous session.
+   */
+  anon_config = pr_auth_get_anon_config(cmd->pool, &user, NULL, NULL);
+
+  c = find_config(anon_config ? anon_config->subset : main_server->conf,
+    CONF_PARAM, "SQLEngine", FALSE);
+  if (c)
+    cmap.engine = *((int *) c->argv[0]);
+
+  sql_log(DEBUG_FUNC, "%s", "<<< sql_pre_pass");
+  return DECLINED(cmd);
+}
 
 MODRET sql_post_stor(cmd_rec *cmd) {
-  _sql_check_cmd(cmd, "post_cmd_stor");
-
-  sql_log(DEBUG_FUNC, "%s", ">>> post_cmd_stor");
-
-  if (!cmap.status)
+  if (cmap.engine == 0)
     return DECLINED(cmd);
+
+  sql_log(DEBUG_FUNC, "%s", ">>> sql_post_stor");
 
   if (cmap.sql_fstor)
     _setstats(cmd, 1, 0, session.xfer.total_bytes, 0);
 
-  sql_log(DEBUG_FUNC, "%s", "<<< post_cmd_stor");
-
+  sql_log(DEBUG_FUNC, "%s", "<<< sql_post_stor");
   return DECLINED(cmd);
 }
 
 MODRET sql_post_retr(cmd_rec *cmd) {
-  _sql_check_cmd(cmd, "post_cmd_retr");
-
-  if (!cmap.status)
+  if (cmap.engine == 0)
     return DECLINED(cmd);
 
-  sql_log(DEBUG_FUNC, "%s", ">>> post_cmd_retr");
+  sql_log(DEBUG_FUNC, "%s", ">>> sql_post_retr");
 
   if (cmap.sql_fretr)
     _setstats(cmd, 0, 1, 0, session.xfer.total_bytes);
 
-  sql_log(DEBUG_FUNC, "%s", "<<< post_cmd_retr");
-
+  sql_log(DEBUG_FUNC, "%s", "<<< sql_post_retr");
   return DECLINED(cmd);
 }
 
@@ -1949,9 +1952,8 @@ MODRET log_master(cmd_rec *cmd) {
   config_rec *c = NULL;
   modret_t *mr = NULL;
 
-  _sql_check_cmd(cmd, "log_master");
-
-  if (!cmap.status) return DECLINED(cmd);
+  if (!(cmap.engine & SQL_ENGINE_FL_LOG))
+    return DECLINED(cmd);
   
   /* handle explicit queries */
   name = pstrcat(cmd->tmp_pool, "SQLLog_", cmd->argv[0], NULL);
@@ -2025,9 +2027,8 @@ MODRET err_master(cmd_rec *cmd) {
   config_rec *c = NULL;
   modret_t *mr = NULL;
 
-  _sql_check_cmd(cmd, "err_master");
-
-  if (!cmap.status) return DECLINED(cmd);
+  if (!(cmap.engine & SQL_ENGINE_FL_LOG))
+    return DECLINED(cmd);
   
   /* handle explicit errors */
   name = pstrcat(cmd->tmp_pool, "SQLLog_ERR_", cmd->argv[0], NULL);
@@ -2104,9 +2105,8 @@ MODRET info_master(cmd_rec *cmd) {
   modret_t *mr = NULL;
   sql_data_t *sd = NULL;
 
-  _sql_check_cmd(cmd, "info_master");
-
-  if (!cmap.status) return DECLINED(cmd);
+  if (!(cmap.engine & SQL_ENGINE_FL_LOG))
+    return DECLINED(cmd);
 
   /* process explicit handlers */
   name = pstrcat(cmd->tmp_pool, "SQLShowInfo_", cmd->argv[0], NULL);
@@ -2269,9 +2269,8 @@ MODRET errinfo_master(cmd_rec *cmd) {
   modret_t *mr = NULL;
   sql_data_t *sd = NULL;
 
-  _sql_check_cmd(cmd, "errinfo_master");
-
-  if (!cmap.status) return DECLINED(cmd);
+  if (!(cmap.engine & SQL_ENGINE_FL_LOG))
+    return DECLINED(cmd);
 
   /* process explicit handlers */
   name = pstrcat(cmd->tmp_pool, "SQLShowInfo_ERR_", cmd->argv[0], NULL);
@@ -2448,9 +2447,7 @@ MODRET sql_lookup(cmd_rec *cmd) {
   array_header *ah = NULL;
   int cnt = 0;
 
-  _sql_check_cmd(cmd, "sql_lookup");
-
-  if (!cmap.status)
+  if (cmap.engine == 0)
     return DECLINED(cmd);
 
   sql_log(DEBUG_FUNC, "%s", ">>> sql_lookup");
@@ -2491,9 +2488,7 @@ MODRET sql_change(cmd_rec *cmd) {
   char *type = NULL;
   modret_t *mr = NULL;
 
-  _sql_check_cmd(cmd, "sql_change");
-
-  if (!cmap.status)
+  if (cmap.engine == 0)
     return DECLINED(cmd);
 
   sql_log(DEBUG_FUNC, "%s", ">>> sql_change");
@@ -2555,10 +2550,9 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
   
   struct passwd lpw;
 
-  _sql_check_cmd(cmd, "cmd_setpwent");
-
-  if (!SQL_USERSET)
-    return (SQL_USERGOD ? mod_create_data(cmd,(void *)0):DECLINED(cmd));
+  if (!SQL_USERSET ||
+      !(cmap.engine & SQL_ENGINE_FL_AUTH))
+    return DECLINED(cmd);
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_setpwent");
 
@@ -2566,7 +2560,7 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
   if ( cmap.passwd_cache_filled ) {
     cmap.curr_passwd = passwd_name_cache->head;
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_setpwent");
-    return (SQL_USERGOD ? mod_create_data( cmd, (void *) 1 ) : DECLINED(cmd));
+    return DECLINED(cmd);
   }
 
   /* single select or not? */
@@ -2660,28 +2654,26 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
   cmap.curr_passwd = passwd_name_cache->head;
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_setpwent");
-
-  return (SQL_USERGOD ? mod_create_data( cmd, (void *) 1 ) : DECLINED(cmd));
+  return DECLINED(cmd);
 }
 
 MODRET cmd_getpwent(cmd_rec *cmd) {
   struct passwd *pw;
   modret_t *mr;
 
-  _sql_check_cmd(cmd, "cmd_getpwent");
-
-  if (!SQL_USERSET)
-    return (SQL_USERGOD ? mod_create_data(cmd,(void *)NULL):DECLINED(cmd));
+  if (!SQL_USERSET ||
+      !(cmap.engine & SQL_ENGINE_FL_AUTH))
+    return DECLINED(cmd);
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_getpwent");
 
   /* make sure our passwd cache is complete  */
-  if ( !cmap.passwd_cache_filled ) {
+  if (!cmap.passwd_cache_filled) {
     mr = cmd_setpwent(cmd);
-    if ( mr->data == ( void * ) 0 ) {
+    if (mr->data == NULL) {
       /* something didn't work in the setpwent call */
       sql_log(DEBUG_FUNC, "%s", "<<< cmd_getpwent");
-      return (SQL_USERGOD  ? mod_create_data( cmd, (void *) NULL ) : DECLINED(cmd));
+      return DECLINED(cmd);
     }
   }
 
@@ -2695,25 +2687,24 @@ MODRET cmd_getpwent(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_getpwent");
 
-  if (pw == NULL || pw->pw_uid == (uid_t) -1)
-    return (SQL_USERGOD ? mod_create_data( cmd, (void *) pw) : DECLINED(cmd) );
+  if (pw == NULL ||
+      pw->pw_uid == (uid_t) -1)
+    return DECLINED(cmd);
 
-  return mod_create_data( cmd, (void *) pw);
+  return mod_create_data(cmd, (void *) pw);
 }
 
 MODRET cmd_endpwent(cmd_rec *cmd) {
-  _sql_check_cmd(cmd, "cmd_endpwent");
-
-  if (!SQL_USERSET)
-    return (SQL_USERGOD ? mod_create_data(cmd,(void *)0):DECLINED(cmd));
+  if (!SQL_USERSET ||
+      !(cmap.engine & SQL_ENGINE_FL_AUTH))
+    return DECLINED(cmd);
   
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_endpwent");
   
   cmap.curr_passwd = NULL;
   
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_endpwent");
-  
-  return (SQL_USERGOD ? mod_create_data( cmd, (void *) 0 ) : DECLINED(cmd));
+  return DECLINED(cmd);
 }
 
 MODRET cmd_setgrent(cmd_rec *cmd) {
@@ -2729,37 +2720,36 @@ MODRET cmd_setgrent(cmd_rec *cmd) {
   char *iterator = NULL;
   char *member = NULL;
 
-  _sql_check_cmd(cmd, "cmd_setgrent");
-
-  if (!SQL_GROUPSET)
-    return (SQL_GROUPGOD ? mod_create_data(cmd,(void *)0):DECLINED(cmd));
+  if (!SQL_GROUPSET ||
+      !(cmap.engine & SQL_ENGINE_FL_AUTH))
+    return DECLINED(cmd);
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_setgrent");
 
   /* if we've already filled the passwd group, just reset curr_group */
-  if ( cmap.group_cache_filled ) {
+  if (cmap.group_cache_filled) {
     cmap.curr_group = group_name_cache->head;
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_setgrent");
-    return (SQL_GROUPGOD ? mod_create_data( cmd, (void *) 1 ) : DECLINED(cmd));
+    return DECLINED(cmd);
   }
 
   if (SQL_FASTGROUPS) {
     /* retrieve our list of groups */
     where = _sql_where(cmd->tmp_pool, 1, cmap.groupwhere);
     
-    mr = _sql_dispatch( _sql_make_cmd( cmd->tmp_pool, 6, "default",
-				       cmap.grptable, cmap.grpfields, where, NULL ),
-			"sql_select");
+    mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 6, "default",
+      cmap.grptable, cmap.grpfields, where, NULL), "sql_select");
     _sql_check_response(mr);
     
     sd = (sql_data_t *) mr->data;
     
     /* for each group, fill our array header and call _sql_addgroup */
 
-    for ( cnt = 0; cnt < sd->rnum; cnt ++ ) {
+    for (cnt = 0; cnt < sd->rnum; cnt ++) {
       /* if the groupname is NULL for whatever reason, skip the row */
       groupname = sd->data[cnt * 3];
-      if ( groupname == NULL ) continue;
+      if (groupname == NULL)
+        continue;
 
       gid = (gid_t) atol(sd->data[(cnt * 3) + 1]);
       grp_mem = sd->data[(cnt * 3) + 2];
@@ -2768,7 +2758,8 @@ MODRET cmd_setgrent(cmd_rec *cmd) {
       iterator = grp_mem;
 
       for (member = strsep(&iterator, " ,"); member; member = strsep(&iterator, " ,")) {
-	if (*member=='\0') continue;
+	if (*member == '\0')
+          continue;
 	*((char **) push_array(ah)) = member;
       }
 
@@ -2778,18 +2769,18 @@ MODRET cmd_setgrent(cmd_rec *cmd) {
     /* retrieve our list of groups */
     where = _sql_where(cmd->tmp_pool, 1, cmap.groupwhere);
     
-    mr = _sql_dispatch( _sql_make_cmd( cmd->tmp_pool, 6, "default",
-				       cmap.grptable, cmap.grpfield, where, NULL, "DISTINCT" ),
-			"sql_select");
+    mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 6, "default",
+      cmap.grptable, cmap.grpfield, where, NULL, "DISTINCT"), "sql_select");
     _sql_check_response(mr);
     
     sd = (sql_data_t *) mr->data;
     
-    for ( cnt = 0; cnt < sd->rnum; cnt++ ) {
+    for (cnt = 0; cnt < sd->rnum; cnt++) {
       groupname = sd->data[cnt];
       
       /* if the groupname is NULL for whatever reason, skip it */
-      if ( groupname == NULL ) continue;
+      if (groupname == NULL)
+        continue;
       
       /* otherwise, add it to the cache */
       lgr.gr_gid = -1;
@@ -2803,28 +2794,26 @@ MODRET cmd_setgrent(cmd_rec *cmd) {
   cmap.curr_group = group_name_cache->head;
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_setgrent");
-
-  return (SQL_GROUPGOD ? mod_create_data( cmd, (void *) 1 ) : DECLINED(cmd));
+  return DECLINED(cmd);
 }
 
 MODRET cmd_getgrent(cmd_rec *cmd) {
   struct group *gr;
   modret_t *mr;
 
-  _sql_check_cmd(cmd, "cmd_getgrent");
-
-  if (!SQL_GROUPSET)
-    return (SQL_GROUPGOD ? mod_create_data(cmd,(void *)NULL):DECLINED(cmd));
+  if (!SQL_GROUPSET ||
+      !(cmap.engine & SQL_ENGINE_FL_AUTH))
+    return DECLINED(cmd);
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_getgrent");
 
   /* make sure our group cache is complete  */
-  if ( !cmap.group_cache_filled ) {
+  if (!cmap.group_cache_filled) {
     mr = cmd_setgrent(cmd);
-    if ( mr->data == ( void * ) 0 ) {
+    if (mr->data == NULL) {
       /* something didn't work in the setgrent call */
       sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgrent");
-      return (SQL_GROUPGOD ? mod_create_data( cmd, (void *) NULL ) : DECLINED(cmd));
+      return DECLINED(cmd);
     }
   }
 
@@ -2838,34 +2827,32 @@ MODRET cmd_getgrent(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgrent");
 
-  if (gr == NULL || gr->gr_gid == (gid_t) -1)
-    return (SQL_GROUPGOD ? mod_create_data( cmd, (void *) gr) : DECLINED(cmd));
+  if (gr == NULL ||
+      gr->gr_gid == (gid_t) -1)
+    return DECLINED(cmd);
 
-  return mod_create_data( cmd, (void *) gr);
+  return mod_create_data(cmd, (void *) gr);
 }
 
 MODRET cmd_endgrent(cmd_rec *cmd) {
-  _sql_check_cmd(cmd, "cmd_endgrent");
-
-  if (!SQL_GROUPSET)
-    return (SQL_GROUPGOD ? mod_create_data(cmd,(void *)0):DECLINED(cmd));
+  if (!SQL_GROUPSET ||
+      !(cmap.engine & SQL_ENGINE_FL_AUTH))
+    return DECLINED(cmd);
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_endgrent");
 
   cmap.curr_group = NULL;
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_endgrent");
-
-  return (SQL_GROUPGOD ? mod_create_data( cmd, (void *) 0 ) : DECLINED(cmd));
+  return DECLINED(cmd);
 }
 
 MODRET cmd_getpwnam(cmd_rec *cmd) {
   struct passwd *pw;
   struct passwd lpw;
 
-  _sql_check_cmd(cmd, "getpwnam");
-
-  if (!SQL_USERS)
+  if (!SQL_USERS ||
+      !(cmap.engine & SQL_ENGINE_FL_AUTH))
     return DECLINED(cmd);
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_getpwnam");
@@ -2874,13 +2861,13 @@ MODRET cmd_getpwnam(cmd_rec *cmd) {
   lpw.pw_name = cmd->argv[0];
   pw = _sql_getpasswd(cmd, &lpw);
 
-  if (pw == NULL || pw->pw_uid == (uid_t) -1) {
+  if (pw == NULL ||
+      pw->pw_uid == (uid_t) -1) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_getpwnam");
-    return SQL_USERGOD ? ERROR(cmd) : DECLINED(cmd);
+    return DECLINED(cmd);
   }
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_getpwnam");
-
   return mod_create_data(cmd, pw);
 }
 
@@ -2888,9 +2875,8 @@ MODRET cmd_getpwuid(cmd_rec *cmd) {
   struct passwd *pw;
   struct passwd lpw;
 
-  _sql_check_cmd(cmd, "cmd_getpwuid");
-
-  if (!SQL_USERS)
+  if (!SQL_USERS ||
+      !(cmap.engine & SQL_ENGINE_FL_AUTH))
     return DECLINED(cmd);
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_getpwuid");
@@ -2899,13 +2885,13 @@ MODRET cmd_getpwuid(cmd_rec *cmd) {
   lpw.pw_name = NULL;
   pw = _sql_getpasswd(cmd, &lpw);
 
-  if (pw == NULL || pw->pw_uid == (uid_t) -1) {
+  if (pw == NULL ||
+      pw->pw_uid == (uid_t) -1) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_getpwuid");
-    return SQL_USERGOD ? ERROR(cmd) : DECLINED(cmd);
+    return DECLINED(cmd);
   }
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_getpwuid");
-
   return mod_create_data(cmd, pw);
 }
 
@@ -2913,9 +2899,8 @@ MODRET cmd_getgrnam(cmd_rec *cmd) {
   struct group *gr;
   struct group lgr;
 
-  _sql_check_cmd(cmd, "cmd_getgrname");
-
-  if (!SQL_GROUPS)
+  if (!SQL_GROUPS ||
+      !(cmap.engine & SQL_ENGINE_FL_AUTH))
     return DECLINED(cmd);
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_getgrnam");
@@ -2924,9 +2909,10 @@ MODRET cmd_getgrnam(cmd_rec *cmd) {
   lgr.gr_name = cmd->argv[0];
   gr = _sql_getgroup(cmd, &lgr);
 
-  if (gr == NULL || gr->gr_gid == (gid_t) -1) {
+  if (gr == NULL ||
+      gr->gr_gid == (gid_t) -1) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgrnam");
-    return SQL_GROUPGOD ? ERROR(cmd) : DECLINED(cmd);
+    return DECLINED(cmd);
   }
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgrnam");
@@ -2937,9 +2923,8 @@ MODRET cmd_getgrgid(cmd_rec *cmd) {
   struct group *gr;
   struct group lgr;
 
-  _sql_check_cmd(cmd, "cmd_getgrgid");
-
-  if (!SQL_GROUPS)
+  if (!SQL_GROUPS ||
+      !(cmap.engine & SQL_ENGINE_FL_AUTH))
     return DECLINED(cmd);
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_getgrgid");
@@ -2948,9 +2933,10 @@ MODRET cmd_getgrgid(cmd_rec *cmd) {
   lgr.gr_name = NULL;
   gr = _sql_getgroup(cmd, &lgr);
 
-  if (gr == NULL || gr->gr_gid == (gid_t) -1) {
+  if (gr == NULL ||
+      gr->gr_gid == (gid_t) -1) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgrgid");
-    return SQL_GROUPGOD ? ERROR(cmd) : DECLINED(cmd);
+    return DECLINED(cmd);
   }
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgrgid");
@@ -2962,9 +2948,8 @@ MODRET cmd_auth(cmd_rec *cmd) {
   struct passwd lpw, *pw;
   modret_t *mr = NULL;
 
-  _sql_check_cmd(cmd, "cmd_auth");
-
-  if (!SQL_USERS)
+  if (!SQL_USERS ||
+      !(cmap.engine & SQL_ENGINE_FL_AUTH))
     return DECLINED(cmd);
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_auth");
@@ -2973,8 +2958,8 @@ MODRET cmd_auth(cmd_rec *cmd) {
   user = pr_str_strip(cmd->tmp_pool, cmd->argv[0]);
 
   /* escape our username */
-  mr = _sql_dispatch( _sql_make_cmd( cmd->tmp_pool, 2, "default", 
-				     user ), "sql_escapestring" );
+  mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default", user),
+    "sql_escapestring" );
   _sql_check_response(mr);
   
   user = (char *) mr->data;
@@ -2986,9 +2971,10 @@ MODRET cmd_auth(cmd_rec *cmd) {
       !auth_check(cmd->tmp_pool, pw->pw_passwd, cmd->argv[0], cmd->argv[1])) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_auth");
     return HANDLED(cmd);
+
   } else {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_auth");
-    return ( SQL_USERGOD ? ERROR_INT(cmd, PR_AUTH_BADPWD) : DECLINED(cmd) );
+    return DECLINED(cmd);
   }
 }
 
@@ -3009,17 +2995,21 @@ MODRET cmd_check(cmd_rec *cmd) {
   struct stat st;
   modret_t *mr = NULL;
 
-  _sql_check_cmd(cmd, "cmd_check");
-
-  if (!SQL_USERS)
+  if (!SQL_USERS ||
+      !(cmap.engine & SQL_ENGINE_FL_AUTH))
     return DECLINED(cmd);
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_check");
 
   if (cmd->argv[0] == NULL) {
     sql_log(DEBUG_AUTH, "%s", "NULL hashed password");
+
+  } else if (cmd->argv[1] == NULL) {
+    sql_log(DEBUG_AUTH, "%s", "NULL user name");
+
   } else if (cmd->argv[2] == NULL) {
     sql_log(DEBUG_AUTH, "%s", "NULL clear password");
+
   } else {
     c_hash = cmd->argv[0];
     c_clear = cmd->argv[2];
@@ -3073,7 +3063,7 @@ MODRET cmd_check(cmd_rec *cmd) {
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_check");
 
   if (!success)
-    return SQL_USERGOD ? ERROR(cmd) : DECLINED(cmd);
+    return DECLINED(cmd);
 
   return mr;
 }
@@ -3084,9 +3074,8 @@ MODRET cmd_uid2name(cmd_rec *cmd) {
   struct passwd lpw;
   char uidstr[MOD_SQL_BUFSIZE] = {'\0'};
 
-  _sql_check_cmd(cmd, "cmd_uid2name");
-
-  if (!SQL_USERS)
+  if (!SQL_USERS ||
+      !(cmap.engine & SQL_ENGINE_FL_AUTH))
     return DECLINED(cmd);
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_uid2name");
@@ -3095,22 +3084,19 @@ MODRET cmd_uid2name(cmd_rec *cmd) {
   lpw.pw_name = NULL;
 
   /* check to see if we're looking up the current user */
-  if ( cmap.authpasswd && (lpw.pw_uid == cmap.authpasswd->pw_uid)) {
+  if (cmap.authpasswd &&
+      lpw.pw_uid == cmap.authpasswd->pw_uid) {
     sql_log(DEBUG_INFO, "%s", "matched current user");
     pw = cmap.authpasswd;
+
   } else {
     pw = _sql_getpasswd(cmd, &lpw);
   }
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_uid2name");
 
-  if (pw == NULL) {
-    if (!SQL_USERGOD)
-      return DECLINED(cmd);
-
-    snprintf(uidstr, MOD_SQL_BUFSIZE, "%lu", (unsigned long) cmd->argv[0]);
-    return mod_create_data(cmd, uidstr);
-  }
+  if (pw == NULL)
+    return DECLINED(cmd);
 
   /* In the case of a lookup of a negatively cached UID, the pw_name
    * member will be NULL, which causes an undesired handling by
@@ -3133,11 +3119,9 @@ MODRET cmd_gid2name(cmd_rec *cmd) {
   struct group lgr;
   char gidstr[MOD_SQL_BUFSIZE]={'\0'};
 
-  _sql_check_cmd(cmd, "cmd_gid2name");
-
-  if (!SQL_GROUPS) {
+  if (!SQL_GROUPS ||
+      !(cmap.engine & SQL_ENGINE_FL_AUTH))
     return DECLINED(cmd);
-  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_gid2name");
 
@@ -3147,13 +3131,8 @@ MODRET cmd_gid2name(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_gid2name");
 
-  if (gr == NULL) {
-    if (!SQL_GROUPGOD)
-      return DECLINED(cmd);
-
-    snprintf(gidstr, MOD_SQL_BUFSIZE, "%lu", (unsigned long) cmd->argv[0]);
-    return mod_create_data(cmd, gidstr);
-  }
+  if (gr == NULL)
+    return DECLINED(cmd);
 
   /* In the case of a lookup of a negatively cached GID, the gr_name
    * member will be NULL, which causes an undesired handling by
@@ -3174,11 +3153,9 @@ MODRET cmd_name2uid(cmd_rec *cmd) {
   struct passwd *pw;
   struct passwd lpw;
 
-  _sql_check_cmd(cmd, "cmd_name2uid");
-
-  if (!SQL_USERS) {
+  if (!SQL_USERS ||
+      !(cmap.engine & SQL_ENGINE_FL_AUTH))
     return DECLINED(cmd);
-  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_name2uid");
 
@@ -3187,20 +3164,21 @@ MODRET cmd_name2uid(cmd_rec *cmd) {
 
   /* check to see if we're looking up the current user */
   if (cmap.authpasswd && 
-      (strcmp(lpw.pw_name, cmap.authpasswd->pw_name) == 0)) {
+      strcmp(lpw.pw_name, cmap.authpasswd->pw_name) == 0) {
     sql_log(DEBUG_INFO, "%s", "matched current user");
     pw = cmap.authpasswd;
+
   } else {
     pw = _sql_getpasswd(cmd, &lpw);
   }
 
-  if (pw == NULL || pw->pw_uid == (uid_t) -1) {
+  if (pw == NULL ||
+      pw->pw_uid == (uid_t) -1) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_name2uid");
-    return SQL_USERGOD ? ERROR(cmd) : DECLINED(cmd);
+    return DECLINED(cmd);
   }
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_name2uid");
-
   return mod_create_data(cmd, (void *) &pw->pw_uid);
 }
 
@@ -3208,11 +3186,9 @@ MODRET cmd_name2gid(cmd_rec *cmd) {
   struct group *gr;
   struct group lgr;
 
-  _sql_check_cmd(cmd, "cmd_name2gid");
-
-  if (!SQL_GROUPS) {
+  if (!SQL_GROUPS ||
+      !(cmap.engine & SQL_ENGINE_FL_AUTH))
     return DECLINED(cmd);
-  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_name2gid");
 
@@ -3220,24 +3196,22 @@ MODRET cmd_name2gid(cmd_rec *cmd) {
   lgr.gr_name = cmd->argv[0];
   gr = _sql_getgroup(cmd, &lgr);
 
-  if (gr == NULL || gr->gr_gid == (gid_t) -1) {
+  if (gr == NULL ||
+      gr->gr_gid == (gid_t) -1) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_name2gid");
-    return SQL_GROUPGOD ? ERROR(cmd) : DECLINED(cmd);
+    return DECLINED(cmd);
   }
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_name2gid");
-
   return mod_create_data(cmd, (void *) &gr->gr_gid);
 }
 
 MODRET cmd_getgroups(cmd_rec *cmd) {
   int res;
 
-  _sql_check_cmd(cmd, "cmd_getgroups");
-
-  if (!SQL_GROUPS) {
+  if (!SQL_GROUPS ||
+      !(cmap.engine & SQL_ENGINE_FL_AUTH))
     return DECLINED(cmd);
-  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_getgroups");
 
@@ -3245,11 +3219,10 @@ MODRET cmd_getgroups(cmd_rec *cmd) {
 
   if (res < 0) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgroups");
-    return SQL_GROUPGOD ? ERROR(cmd) : DECLINED(cmd); 
+    return DECLINED(cmd); 
   }
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgroups");
-
   return mod_create_data(cmd, (void *) &res);
 }
 
@@ -3258,8 +3231,6 @@ MODRET cmd_getstats(cmd_rec *cmd) {
   char *query;
   sql_data_t *sd;
   char *usrwhere, *where;
-
-  _sql_check_cmd(cmd, "cmd_getstats");
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_getstats");
 
@@ -3295,11 +3266,8 @@ MODRET cmd_getratio(cmd_rec *cmd) {
   sql_data_t *sd;
   char *usrwhere, *where;
 
-  _sql_check_cmd(cmd, "cmd_getratio");
-
-  if (!cmap.sql_frate) {
+  if (!cmap.sql_frate)
     return DECLINED(cmd);
-  }
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_getratio");
 
@@ -3850,8 +3818,42 @@ MODRET set_sqlconnectinfo(cmd_rec *cmd) {
     ttl = "0";
 
   c = add_config_param_str(cmd->argv[0], 4, info, user, pass, ttl);
-
   c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
+/* usage: SQLEngine on|off|auth|log */
+MODRET set_sqlengine(cmd_rec *cmd) {
+  config_rec *c;
+  int engine = -1;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL|CONF_ANON);
+
+  engine = get_boolean(cmd, 1);
+  if (engine == -1) {
+    /* The parameter is not a boolean; check for "auth" or "log". */
+    if (strcasecmp(cmd->argv[1], "auth") == 0)
+      engine = SQL_ENGINE_FL_AUTH;
+
+    else if (strcasecmp(cmd->argv[1], "log") == 0)
+      engine = SQL_ENGINE_FL_LOG;
+
+    else
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown SQLEngine parameter '",
+        cmd->argv[1], "'", NULL));
+
+  } else {
+    if (engine == 1)
+      /* Convert an "on" into a auth|log combination. */
+      engine = SQL_ENGINE_FL_AUTH|SQL_ENGINE_FL_LOG;
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = engine;
+  c->flags = CF_MERGEDOWN;
 
   return HANDLED(cmd);
 }
@@ -4048,7 +4050,7 @@ static void sql_exit_ev(const void *event_data, void *user_data) {
    * as well.
    */
 
-  if (!cmap.status)
+  if (cmap.engine == 0)
     return;
 
   /* handle EXIT queries */
@@ -4228,12 +4230,9 @@ static int sql_sess_init(void) {
     cmap.authmask = SQL_AUTH_GROUPS|SQL_AUTH_USERS|SQL_AUTH_GROUPSET|
       SQL_AUTH_USERSET;
 
-  if ((negative_cache = get_param_ptr(main_server->conf, "SQLNegativeCache",
-      FALSE)) != NULL)
-    cmap.negative_cache = *negative_cache;
-
-  else
-    cmap.negative_cache = FALSE;
+  negative_cache = get_param_ptr(main_server->conf, "SQLNegativeCache",
+    FALSE);
+  cmap.negative_cache = negative_cache ? *negative_cache : FALSE;
 
   /* SQLHomedirOnDemand defaults to NO */
   temp_ptr = get_param_ptr(main_server->conf, "SQLHomedirOnDemand", FALSE);
@@ -4268,8 +4267,8 @@ static int sql_sess_init(void) {
       config_rec *custom_c = NULL;
       char *named_query = pstrcat(tmp_pool, "SQLNamedQuery_", temp_ptr, NULL);
 
-      if ((custom_c = find_config(main_server->conf, CONF_PARAM, named_query,
-          FALSE)) == NULL) {
+      custom_c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
+      if (custom_c == NULL) {
         sql_log(DEBUG_INFO, "error: unable to resolve custom "
           "SQLNamedQuery name '%s'", temp_ptr);
 
@@ -4355,15 +4354,16 @@ static int sql_sess_init(void) {
   temp_ptr = get_param_ptr(main_server->conf, "SQLDefaultGID", FALSE);
   cmap.defaultgid = temp_ptr ? *((gid_t *) temp_ptr) : MOD_SQL_DEF_GID;
 
-  if ((c = find_config(main_server->conf, CONF_PARAM, "SQLRatioStats",
-      FALSE))) {
+  c = find_config(main_server->conf, CONF_PARAM, "SQLRatioStats", FALSE);
+  if (c) {
     cmap.sql_fstor = c->argv[0];
     cmap.sql_fretr = c->argv[1];
     cmap.sql_bstor = c->argv[2];
     cmap.sql_bretr = c->argv[3];
   }
 
-  if ((c = find_config(main_server->conf, CONF_PARAM, "SQLRatios", FALSE))) {
+  c = find_config(main_server->conf, CONF_PARAM, "SQLRatios", FALSE);
+  if (c) {
     if (!cmap.sql_fstor) {
       pr_log_pri(PR_LOG_WARNING,
         MOD_SQL_VERSION ": warning: SQLRatios directive ineffective "
@@ -4371,14 +4371,17 @@ static int sql_sess_init(void) {
       sql_log(DEBUG_WARN, "%s", "warning: SQLRatios directive ineffective "
         "without SQLRatioStats on");
     }
+
     cmap.sql_frate = c->argv[0];
     cmap.sql_fcred = c->argv[1];
     cmap.sql_brate = c->argv[2];
     cmap.sql_bcred = c->argv[3];
   }
 
-  if ((!cmap.homedirfield) && (!cmap.defaulthomedir)) {
+  if (!cmap.homedirfield &&
+      !cmap.defaulthomedir) {
     cmap.authmask ^= SQL_AUTH_USERS;
+
     pr_log_pri(PR_LOG_WARNING, MOD_SQL_VERSION
       ": warning: no homedir field and no default specified. "
       "User authentication is OFF");
@@ -4387,10 +4390,10 @@ static int sql_sess_init(void) {
       "User authentication is OFF");
   }
 
-  if (!(c = find_config(main_server->conf, CONF_PARAM, "SQLConnectInfo",
-      FALSE))) {
+  c = find_config(main_server->conf, CONF_PARAM, "SQLConnectInfo", FALSE);
+  if (!c) {
     cmap.authmask = 0;
-    cmap.status = 0;
+    cmap.engine = 0;
     cmap.sql_fstor = NULL;
     cmap.sql_frate = NULL;
     sql_log(DEBUG_WARN, "%s",
@@ -4418,31 +4421,21 @@ static int sql_sess_init(void) {
         "backend will not be checked until first use.");
     }
 
-    cmap.status = 1;
+    cmap.engine = SQL_ENGINE_FL_AUTH|SQL_ENGINE_FL_LOG;
   }
 
-  sql_log(DEBUG_INFO, "mod_sql status     : %s", cmap.status ? "on" : "off" );
+  sql_log(DEBUG_INFO, "mod_sql engine     : %s", cmap.engine ? "on" : "off");
 
   sql_log(DEBUG_INFO, "negative_cache     : %s",
-            cmap.negative_cache ? "on" : "off" );
+            cmap.negative_cache ? "on" : "off");
 
   authstr = "";
 
-  if (SQL_USERS) {
-    if (SQL_USERGOD)
-      authstr = pstrcat(tmp_pool, authstr, "users* ", NULL);
+  if (SQL_USERS)
+    authstr = pstrcat(tmp_pool, authstr, "users ", NULL);
 
-    else
-      authstr = pstrcat(tmp_pool, authstr, "users ", NULL);
-  }
-
-  if (SQL_GROUPS) {
-    if (SQL_GROUPGOD)
-      authstr = pstrcat(tmp_pool, authstr, "groups* ", NULL);
-
-    else
-      authstr = pstrcat(tmp_pool, authstr, "groups ", NULL);
-  }
+  if (SQL_GROUPS)
+    authstr = pstrcat(tmp_pool, authstr, "groups ", NULL);
 
   if (SQL_USERSET) {
     if (SQL_FASTUSERS)
@@ -4466,6 +4459,7 @@ static int sql_sess_init(void) {
     sql_log(DEBUG_INFO, "usertable          : %s", cmap.usrtable);
     sql_log(DEBUG_INFO, "userid field       : %s", cmap.usrfield);
   }
+
   if (SQL_USERS) {
     sql_log(DEBUG_INFO, "password field     : %s", cmap.pwdfield);
     sql_log(DEBUG_INFO, "uid field          : %s",
@@ -4534,76 +4528,78 @@ static conftable sql_conftab[] = {
   { "SQLAuthTypes",	set_sqlauthtypes,	NULL },
   { "SQLBackend",	set_sqlbackend,		NULL },
   { "SQLConnectInfo",	set_sqlconnectinfo,	NULL },
+  { "SQLEngine",	set_sqlengine,		NULL },
 
-  {"SQLUserInfo", set_sqluserinfo, NULL},
-  {"SQLUserWhereClause", set_sqluserwhereclause, NULL},
+  { "SQLUserInfo", set_sqluserinfo, NULL},
+  { "SQLUserWhereClause", set_sqluserwhereclause, NULL },
 
-  {"SQLGroupInfo", set_sqlgroupinfo, NULL},
-  {"SQLGroupWhereClause", set_sqlgroupwhereclause, NULL},
+  { "SQLGroupInfo", set_sqlgroupinfo, NULL },
+  { "SQLGroupWhereClause", set_sqlgroupwhereclause, NULL },
 
-  {"SQLMinID", set_sqlminid, NULL},
-  {"SQLMinUserUID", set_sqlminuseruid, NULL},
-  {"SQLMinUserGID", set_sqlminusergid, NULL},
-  {"SQLDefaultUID", set_sqldefaultuid, NULL},
-  {"SQLDefaultGID", set_sqldefaultgid, NULL},
+  { "SQLMinID", set_sqlminid, NULL },
+  { "SQLMinUserUID", set_sqlminuseruid, NULL },
+  { "SQLMinUserGID", set_sqlminusergid, NULL },
+  { "SQLDefaultUID", set_sqldefaultuid, NULL },
+  { "SQLDefaultGID", set_sqldefaultgid, NULL },
 
-  {"SQLNegativeCache", set_sqlnegativecache, NULL},
+  { "SQLNegativeCache", set_sqlnegativecache, NULL },
 
-  {"SQLRatios", set_sqlratios, NULL},
-  {"SQLRatioStats", set_sqlratiostats, NULL},
+  { "SQLRatios", set_sqlratios, NULL },
+  { "SQLRatioStats", set_sqlratiostats, NULL },
 
-  {"SQLDefaultHomedir", set_sqldefaulthomedir, NULL},
-  {"SQLHomedirOnDemand", set_sqlhomedirondemand, NULL},
+  { "SQLDefaultHomedir", set_sqldefaulthomedir, NULL },
+  { "SQLHomedirOnDemand", set_sqlhomedirondemand, NULL },
 
-  {"SQLLog", set_sqllog, NULL},
-  {"SQLLogFile", set_sqllogfile, NULL},
-  {"SQLNamedQuery", set_sqlnamedquery, NULL},
-  {"SQLShowInfo", set_sqlshowinfo, NULL},
+  { "SQLLog", set_sqllog, NULL },
+  { "SQLLogFile", set_sqllogfile, NULL },
+  { "SQLNamedQuery", set_sqlnamedquery, NULL },
+  { "SQLShowInfo", set_sqlshowinfo, NULL },
 
-  {NULL, NULL, NULL}
+  { NULL, NULL, NULL }
 };
 
 static cmdtable sql_cmdtab[] = {
-  {PRE_CMD,      C_QUIT,       G_NONE, log_master,     FALSE, FALSE},
-  {POST_CMD,     C_STOR,       G_NONE, sql_post_stor,  FALSE, FALSE},
-  {POST_CMD,     C_RETR,       G_NONE, sql_post_retr,  FALSE, FALSE},
-  {POST_CMD,     C_ANY,        G_NONE, info_master,    FALSE, FALSE},
-  {POST_CMD_ERR, C_ANY,        G_NONE, errinfo_master, FALSE, FALSE},
-  {LOG_CMD,      C_ANY,        G_NONE, log_master,     FALSE, FALSE},
-  {LOG_CMD_ERR,  C_ANY,        G_NONE, err_master,     FALSE, FALSE},
+  { PRE_CMD,		C_QUIT,	G_NONE,	log_master,	FALSE,	FALSE },
+  { PRE_CMD,		C_PASS,	G_NONE, sql_pre_pass,	FALSE, 	FALSE },
+  { POST_CMD,		C_RETR,	G_NONE,	sql_post_retr,	FALSE,	FALSE },
+  { POST_CMD,		C_STOR,	G_NONE,	sql_post_stor,	FALSE,	FALSE },
+  { POST_CMD,		C_ANY,	G_NONE,	info_master,	FALSE,	FALSE },
+  { POST_CMD_ERR,	C_ANY,	G_NONE,	errinfo_master,	FALSE,	FALSE },
+  { LOG_CMD,		C_ANY,	G_NONE,	log_master,	FALSE,	FALSE },
+  { LOG_CMD_ERR,	C_ANY,	G_NONE,	err_master,	FALSE,	FALSE },
 
   /* Module hooks */
   { HOOK,	"sql_change",	G_NONE,	sql_change,	FALSE, FALSE }, 
   { HOOK,	"sql_escapestr",G_NONE,	sql_escapestr,	FALSE, FALSE },
   { HOOK,	"sql_lookup",	G_NONE,	sql_lookup,	FALSE, FALSE },
 
-  {0, NULL}
+  { 0, NULL }
 };
 
 static authtable sql_authtab[] = {
-  {0, "setpwent",	cmd_setpwent	},
-  {0, "getpwent",	cmd_getpwent	},
-  {0, "endpwent",	cmd_endpwent	},
-  {0, "setgrent",	cmd_setgrent	},
-  {0, "getgrent",	cmd_getgrent	},
-  {0, "endgrent",	cmd_endgrent	},
-  {0, "getpwnam",	cmd_getpwnam	},
-  {0, "getpwuid",	cmd_getpwuid	},
-  {0, "getgrnam",	cmd_getgrnam	},
-  {0, "getgrgid",	cmd_getgrgid	},
-  {0, "auth",		cmd_auth	},
-  {0, "check",		cmd_check	},
-  {0, "uid2name",	cmd_uid2name	},
-  {0, "gid2name",	cmd_gid2name	},
-  {0, "name2uid",	cmd_name2uid	},
-  {0, "name2gid",	cmd_name2gid	},
-  {0, "getgroups",	cmd_getgroups	},
+  { 0, "setpwent",	cmd_setpwent },
+  { 0, "getpwent",	cmd_getpwent },
+  { 0, "endpwent",	cmd_endpwent },
+  { 0, "setgrent",	cmd_setgrent },
+  { 0, "getgrent",	cmd_getgrent },
+  { 0, "endgrent",	cmd_endgrent },
+  { 0, "getpwnam",	cmd_getpwnam },
+  { 0, "getpwuid",	cmd_getpwuid },
+  { 0, "getgrnam",	cmd_getgrnam },
+  { 0, "getgrgid",	cmd_getgrgid },
+  { 0, "auth",		cmd_auth     },
+  { 0, "check",		cmd_check    },
+  { 0, "uid2name",	cmd_uid2name },
+  { 0, "gid2name",	cmd_gid2name },
+  { 0, "name2uid",	cmd_name2uid },
+  { 0, "name2gid",	cmd_name2gid },
+  { 0, "getgroups",	cmd_getgroups },
 
   /* Note: these should be HOOKs, and in the cmdtab. */
-  {0, "getstats",	cmd_getstats},
-  {0, "getratio",	cmd_getratio},
+  { 0, "getstats",	cmd_getstats },
+  { 0, "getratio",	cmd_getratio },
 
-  {0, NULL, NULL}
+  { 0, NULL, NULL }
 };
 
 module sql_module = {

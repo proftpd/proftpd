@@ -10,15 +10,6 @@ files.
 1.3.0rc1
 ---------
   + New configuration directives:
-      mod_sql now supports a SQLBackend configuration directive, for
-      selecting the specific database backend module to use on a per-vhost
-      basis.  Previously, mod_sql could only be compiled with one
-      backend module at a time; the module has been enhanced to support
-      multiple backend modules.  Since multiple backends are now
-      possible, SQLBackend was added so that the administrator could
-      specify which to use.  If only one backend module is used,
-      e.g. mod_sql_mysql, then that backend is used by default, and
-      no SQLBackend directive is required.
 
       MaxConnectionsPerHost
         Similar to MaxClientsPerHost, the administrator can configure
@@ -26,6 +17,24 @@ files.
         one time.  Unlike MaxClientsPerHost, though, the
         MaxConnectionsPerHost limit is evaluated prior to authentication,
         i.e. before the client has sent any USER and PASS commands.
+
+      SQLBackend
+        mod_sql now supports a SQLBackend configuration directive, for
+        selecting the specific database backend module to use on a per-vhost
+        basis.  Previously, mod_sql could only be compiled with one
+        backend module at a time; the module has been enhanced to support
+        multiple backend modules.  Since multiple backends are now
+        possible, SQLBackend was added so that the administrator could
+        specify which to use.  If only one backend module is used,
+        e.g. mod_sql_mysql, then that backend is used by default, and
+        no SQLBackend directive is required.
+
+      SQLEngine
+        mod_sql supports a new SQLEngine directive.  This directive can
+        be used to configure mod_sql to only be used for authentication,
+        or only for logging, or for both.  It is also used to create
+        an <Anonymous> section that does not use mod_sql for lookups,
+        but still have mod_sql used for non-anonymous users.
 
       UseSendfile
         ProFTPD now automatically checks for sendfile support, and uses
@@ -62,8 +71,8 @@ files.
       %{total_files_xfer}
 
   + Deprecated configuration directives:
-      Bind
 
+      Bind
         The Bind directive was causing too much confusion, and did not
         do as many system administrators assumed it.  Rather than using
         Bind to associate a server configuration with an IP address,
@@ -84,4 +93,4 @@ files.
             ...
           </VirtualHost>
 
-Last Updated: $Date: 2004-12-04 07:02:14 $
+Last Updated: $Date: 2004-12-12 17:53:28 $
