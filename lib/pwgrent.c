@@ -92,9 +92,8 @@ struct passwd *fgetpwent(FILE *fp)
 {
   char buf[BUFSIZ];
 
-  if (fgets(buf,sizeof(buf),fp) != (char*)0)
-  {
-    buf[strlen(buf)-1] = '\0';
+  if(fgets(buf, sizeof(buf), fp) != (char*) 0) {
+    buf[strlen(buf) - 1] = '\0';
     return _pgetpwent(buf);
   }
 
@@ -167,18 +166,18 @@ _pgetgrent(const char *buf)
   int i;
   char *cp;
 
-  i = strlen(buf);
-
+  i = strlen(buf) + 1;
+  
   if(!grpbuf)
     grpbuf = malloc(i);
   else
-    grpbuf = realloc(grpbuf,i);
-
+    grpbuf = realloc(grpbuf, i);
+  
   if(!grpbuf)
     return NULL;
-
-  strncpy(grpbuf,buf,i);
-  grpbuf[i-1] = '\0';
+  
+  sstrncpy(grpbuf, buf, i);
+  
   if((cp = strrchr(grpbuf,'\n')))
     *cp = '\0';
 
