@@ -68,6 +68,15 @@ module *curmodule = NULL;			/* Current running module */
 
 extern module *static_modules[];
 
+typedef struct postparse_cb {
+  struct postparse_cb *next, *prev;
+
+  int (*module_postparse_init_cb)(void);
+} postparse_t;
+
+static pool *postparse_init_pool = NULL;
+static xaset_t *postparse_inits = NULL;
+
 /* hash lookup code and management */
 
 static int _compare_sym(struct symbol_hash *s1, struct symbol_hash *s2)
@@ -377,14 +386,14 @@ modret_t *mod_create_error(cmd_rec *cmd,int mr_errno)
  * need to know we are a child and have a connection.
  */
 
-int init_child_modules(void) {
+int pr_init_session_modules(void) {
   module *prev_module = curmodule;
   module *m;
 
-  for(m = (module*)installed_modules->xas_list; m; m=m->next)
-    if(m && m->module_init_child) {
+  for (m = (module*) installed_modules->xas_list; m; m=m->next)
+    if (m && m->module_init_session_cb) {
       curmodule = m;
-      m->module_init_child();
+      m->module_init_session_cb();
     }
   
   curmodule = prev_module;
@@ -430,40 +439,41 @@ void list_modules(void) {
   }
 }
 
-int init_modules(void)
-{
-  int i,numconf = 0,numcmd = 0,numauth = 0;
+int pr_preparse_init_modules(void) {
+  int numconf = 0,numcmd = 0,numauth = 0;
   module *m;
   conftable *c,*wrk;
   cmdtable *cmd,*cmdwrk;
   authtable *auth,*authwrk;
+  register unsigned int i = 0;
 
   memset(symtable, '\0', sizeof(symtable));
   installed_modules = xaset_create(permanent_pool,NULL);
 
-  for(i = 0; static_modules[i]; i++)
-  {
+  for (i = 0; static_modules[i]; i++) {
     m = static_modules[i];
     m->priority = i;
 
-    if(m->ver < 0x20) {
-	log_pri(PR_LOG_ERR, "Fatal: module '%s' API version (0x%x) is "
-                "too old (need at least 0x%x)", m->name, m->ver,0x20);
+    if (m->api_version < PR_MODULE_API_VERSION) {
+      log_pri(PR_LOG_ERR, "Fatal: module '%s' API version (0x%x) is too old "
+        "(need at least 0x%x)", m->name, m->api_version, PR_MODULE_API_VERSION);
 	exit(1);
     }
 
-    if(!m->module_init ||
-       (m->module_init() != -1)) {
+    if (!m->module_init_cb ||
+        (m->module_init_cb() != -1)) {
       xaset_insert(installed_modules,(xasetmember_t*)m);
 
-      if(m->conftable)
-        for(c = m->conftable; c->directive; c++)
+      if (m->conftable)
+        for (c = m->conftable; c->directive; c++)
           ++numconf;
-      if(m->cmdtable)
-        for(cmd = m->cmdtable; cmd->command; cmd++)
+
+      if (m->cmdtable)
+        for (cmd = m->cmdtable; cmd->command; cmd++)
           ++numcmd;
-      if(m->authtable)
-        for(auth = m->authtable; auth->name; auth++)
+
+      if (m->authtable)
+        for (auth = m->authtable; auth->name; auth++)
           ++numauth;
     }
   }
@@ -474,35 +484,35 @@ int init_modules(void)
   ++numauth;
 
   /* Create an array to store the master conf dispatch table */
-  mconfarr = make_array(permanent_pool,numconf,sizeof(conftable));
-  mcmdarr = make_array(permanent_pool,numcmd,sizeof(cmdtable));
-  mautharr = make_array(permanent_pool,numauth,sizeof(authtable));
+  mconfarr = make_array(permanent_pool, numconf, sizeof(conftable));
+  mcmdarr = make_array(permanent_pool, numcmd, sizeof(cmdtable));
+  mautharr = make_array(permanent_pool, numauth, sizeof(authtable));
 
-  for(m = (module*)installed_modules->xas_list; m; m=m->next) {
+  for (m = (module*)installed_modules->xas_list; m; m=m->next) {
 
-    if(m->conftable)
+    if (m->conftable)
       for(c = m->conftable; c->directive; c++) {
         wrk = (conftable*)push_array(mconfarr);
-        memcpy(wrk,c,sizeof(conftable));
+        memcpy(wrk, c, sizeof(conftable));
         wrk->m = m;
 
         /* insert into our hash table */
         _hash_insert_conf(wrk);
       }
 
-    if(m->cmdtable)
-      for(cmd = m->cmdtable; cmd->command; cmd++) {
+    if (m->cmdtable)
+      for (cmd = m->cmdtable; cmd->command; cmd++) {
         cmdwrk = (cmdtable*)push_array(mcmdarr);
-        memcpy(cmdwrk,cmd,sizeof(cmdtable));
+        memcpy(cmdwrk, cmd, sizeof(cmdtable));
         cmdwrk->m = m;
 
         _hash_insert_cmd(cmdwrk);
       }
 
-    if(m->authtable)
-      for(auth = m->authtable; auth->name; auth++) {
+    if (m->authtable)
+      for (auth = m->authtable; auth->name; auth++) {
         authwrk = (authtable*)push_array(mautharr);
-        memcpy(authwrk,auth,sizeof(authtable));
+        memcpy(authwrk, auth, sizeof(authtable));
         authwrk->m = m;
 
         _hash_insert_auth(authwrk);
@@ -520,3 +530,41 @@ int init_modules(void)
 
   return 0;
 }
+
+int pr_postparse_init_modules(void) {
+  postparse_t *pp = NULL;
+
+  if (!postparse_inits)
+    return 0;
+
+  for (pp = (postparse_t *) postparse_inits->xas_list; pp; pp = pp->next)
+    pp->module_postparse_init_cb();
+
+  return 0;
+}
+
+void pr_register_postparse_init(int (*cb)(void)) {
+  postparse_t *pp = NULL;
+
+  if (!postparse_init_pool)
+    postparse_init_pool = make_sub_pool(permanent_pool);
+
+  if (!postparse_inits)
+    postparse_inits = xaset_create(postparse_init_pool, NULL);
+
+  pp = pcalloc(postparse_init_pool, sizeof(postparse_t));
+  pp->module_postparse_init_cb = cb;
+
+  xaset_insert(postparse_inits, (xasetmember_t *) pp);
+}
+
+void pr_remove_postparse_inits(void) {
+  if (postparse_inits)
+    postparse_inits = NULL;
+
+  if (postparse_init_pool) {
+    destroy_pool(postparse_init_pool);
+    postparse_init_pool = NULL;
+  }
+}
+

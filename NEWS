@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.300 2002-12-05 20:30:18 castaglia Exp $
+$Id: NEWS,v 1.301 2002-12-05 20:37:15 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -11,6 +11,7 @@ CVS
   the AUTH_* macros, to help prevent namespace collisions.  This means that
   some third-party auth modules may need to be updated.
 - Bug 1806 - Add RFC2389 support.
+- Bug 1833 - Add ability to have add'l module initialization callback.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------

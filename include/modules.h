@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.16 2002-12-05 20:30:18 castaglia Exp $
+ * $Id: modules.h,v 1.17 2002-12-05 20:37:18 castaglia Exp $
  */
 
 #ifndef __MODULES_H
@@ -170,15 +170,15 @@ typedef struct {
 struct module_struc {
   module *next,*prev;
 
-  int ver;				/* API version _not_ module version */
+  int api_version;			/* API version _not_ module version */
   char *name;				/* Module name */
 
   conftable *conftable;			/* Configuration directive table */
   cmdtable *cmdtable;			/* Command table */ 
   authtable *authtable; 		/* Authentication handler table */
 
-  int (*module_init)(void); 		/* Module initialization */
-  int (*module_init_child)(void);	/* Initialize newly forked child */
+  int (*module_init_cb)(void); 		/* Module initialization */
+  int (*module_init_session_cb)(void);	/* Session initialization */
 
   int priority;				/* internal use, higher == higher priority */
 };
@@ -195,8 +195,12 @@ extern cmdtable *m_cmdtable;			/* Master cmdtable */
 unsigned char command_exists(char *);
 unsigned char module_exists(const char *);
 void list_modules(void);
-int init_modules(void);				/* Initialize modules */
-int init_child_modules(void);
+int pr_preparse_init_modules(void);			/* Initialize modules */
+int pr_postparse_init_modules(void);
+int pr_init_session_modules(void);
+void pr_register_postparse_init(int (*)(void));
+void pr_remove_postparse_inits(void);
+
 modret_t *call_module(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
 modret_t *call_module_cmd(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
 modret_t *call_module_auth(module *, modret_t *(*)(cmd_rec *), cmd_rec *);

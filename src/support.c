@@ -26,7 +26,8 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.45 2002-12-04 15:26:25 castaglia Exp $
+ *
+ * $Id: support.c,v 1.46 2002-12-05 20:37:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -47,14 +48,14 @@
 
 static pool *exithandler_pool = NULL;
 
-typedef struct _exithandler {
-  struct _exithandler *next,*prev;
+typedef struct exit_cb {
+  struct exit_cb *next, *prev;
 
   void (*exit)();
 } exithandler_t;
 
-typedef struct _sched {
-  struct _sched *next,*prev;
+typedef struct sched_cb {
+  struct sched_cb *next, *prev;
 
   pool *pool;
   void (*f)(void*,void*,void*,void*);
