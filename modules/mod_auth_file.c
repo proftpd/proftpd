@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.15 2003-08-08 22:15:09 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.16 2003-09-08 00:33:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -783,7 +783,7 @@ MODRET authfile_getgroups(cmd_rec *cmd) {
 
   if (groups &&
       (grp = af_getgrgid(af_current_group_file, pwd->pw_gid)) != NULL)
-    *((char **) push_array(groups)) = pstrdup(permanent_pool, grp->gr_name);
+    *((char **) push_array(groups)) = pstrdup(session.pool, grp->gr_name);
 
   /* The above call to af_getgrgid() will position the file pointer in
    * the AuthGroupFile just after the group with the primary GID.
@@ -815,8 +815,7 @@ MODRET authfile_getgroups(cmd_rec *cmd) {
           *((gid_t *) push_array(gids)) = grp->gr_gid;
 
         if (groups && pwd->pw_gid != grp->gr_gid)
-          *((char **) push_array(groups)) = pstrdup(permanent_pool,
-            grp->gr_name);
+          *((char **) push_array(groups)) = pstrdup(session.pool, grp->gr_name);
       }
     }
   }

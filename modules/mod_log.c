@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.54 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: mod_log.c,v 1.55 2003-09-08 00:33:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1017,16 +1017,16 @@ static void find_extendedlogs(void) {
       logfmt = formats;
     }
 
-    extlog = (logfile_t *) pcalloc(permanent_pool, sizeof(logfile_t));
+    extlog = (logfile_t *) pcalloc(session.pool, sizeof(logfile_t));
 
-    extlog->lf_filename = pstrdup(permanent_pool, logfname);
+    extlog->lf_filename = pstrdup(session.pool, logfname);
     extlog->lf_fd = -1;
     extlog->lf_syslog_level = -1;
     extlog->lf_classes = logclasses;
     extlog->lf_format = logfmt;
     extlog->lf_conf = c->parent;
     if (!log_set)
-      log_set = xaset_create(permanent_pool, NULL);
+      log_set = xaset_create(session.pool, NULL);
 
     xaset_insert(log_set, (xasetmember_t *) extlog);
     logs = (logfile_t *) log_set->xas_list;

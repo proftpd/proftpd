@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.183 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: mod_core.c,v 1.184 2003-09-08 00:33:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2717,7 +2717,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
   if ((fp = pr_fsio_open_canon(fn, O_RDONLY)) == NULL)
     return -1;
 
-  p = make_sub_pool(permanent_pool);
+  p = make_sub_pool(session.pool);
 
   s = (session.anon_config ? session.anon_config->subset : main_server->conf);
 
