@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.149 2003-01-07 17:30:59 castaglia Exp $
+ * $Id: mod_core.c,v 1.150 2003-01-11 00:26:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1562,6 +1562,10 @@ MODRET add_directory(cmd_rec *cmd) {
 
   c->config_type = CONF_DIR;
   c->flags |= flags;
+
+  log_debug(DEBUG2, "<Directory %s>: adding section for resolved path '%s'",
+    cmd->argv[1], dir);
+
   return HANDLED(cmd);
 }
 
