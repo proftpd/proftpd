@@ -15,7 +15,7 @@ all:
 	@echo "Running make from top level directory."
 	cd ../; $(MAKE) all
 
-src: $(OBJS) $(FTPCOUNT_OBJS) $(FTPSHUT_OBJS)
+src: $(OBJS) $(FTPCOUNT_OBJS) $(FTPWHO_OBJS) $(FTPSHUT_OBJS)
 
 clean:
 	rm -f *.o *.save core *~
@@ -63,6 +63,7 @@ ftpcount.o: ../include/dirtree.h ../include/io.h ../include/modules.h
 ftpcount.o: ../include/timers.h ../include/inet.h ../include/ident.h
 ftpcount.o: ../include/ftp.h ../include/log.h ../include/data.h
 ftpcount.o: ../include/libsupp.h ../include/fs.h
+ftpwho.o: ftpcount.c
 ftpshut.o: ../include/conf.h ../include/version.h ../config.h
 ftpshut.o: ../include/default_paths.h ../include/options.h ../include/pool.h
 ftpshut.o: ../include/proftpd.h ../include/support.h ../include/sets.h

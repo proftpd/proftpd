@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.6 1999-10-11 03:13:12 macgyver Exp $
+$Id: NEWS,v 1.7 1999-10-11 04:45:46 macgyver Exp $
 
 1.2.0pre9
 
@@ -17,3 +17,5 @@ $Id: NEWS,v 1.6 1999-10-11 03:13:12 macgyver Exp $
 
 - mod_ldap for authentication against LDAP directories is now in place.
 
+- ftpwho/ftpcount -- a grammatical error corrected, and they now build
+    as seperate binaries.

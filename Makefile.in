@@ -17,6 +17,7 @@ include ./Make.modules
 DIRS=@ADDL_DIRS@
 BUILD=$(BUILD_OBJS) $(BUILD_MODULES) modules/module_glue.o
 FTPCOUNT=$(BUILD_FTPCOUNT_OBJS)
+FTPWHO=$(BUILD_FTPWHO_OBJS)
 FTPSHUT=$(BUILD_FTPSHUT_OBJS)
 INSTALL=@INSTALL@
 
@@ -53,10 +54,13 @@ proftpd: lib src modules dirs
 ftpcount: lib src
 	$(CC) $(LDFLAGS) -o $@ $(FTPCOUNT) $(LIBS)
 
+ftpwho: lib src
+	$(CC) $(LDFLAGS) -o $@ $(FTPWHO) $(LIBS)
+
 ftpshut: lib src
 	$(CC) $(LDFLAGS) -o $@ $(FTPSHUT) $(LIBS)
 
-utils: ftpcount ftpshut
+utils: ftpcount ftpwho ftpshut
 
 clean:
 	cd src ; $(MAKE) clean
@@ -85,7 +89,7 @@ install-proftpd: proftpd $(localstatedir) $(sysconfdir) $(rundir) $(sbindir)
 
 install-utils: $(sbindir) $(bindir)
 	$(INSTALL_BIN) ftpcount $(bindir)/ftpcount
-	(cd $(bindir) ; rm -f ftpwho ; ln -s ftpcount ftpwho)
+	$(INSTALL_BIN) ftpwho $(bindir)/ftpwho
 	$(INSTALL_SBIN) ftpshut $(sbindir)/ftpshut
 
 install-conf: $(sysconfdir)

@@ -51,6 +51,9 @@ LIB_OBJS=getopt.o getopt1.o fnmatch.o strsep.o vsnprintf.o glob.o pwgrent.o
 FTPCOUNT_OBJS=ftpcount.o pool.o log.o utils.o
 BUILD_FTPCOUNT_OBJS=src/ftpcount.o src/pool.o src/log.o src/utils.o
 
+FTPWHO_OBJS=ftpwho.o pool.o log.o utils.o
+BUILD_FTPWHO_OBJS=src/ftpwho.o src/pool.o src/log.o src/utils.o
+
 FTPSHUT_OBJS=ftpshut.o
 BUILD_FTPSHUT_OBJS=src/ftpshut.o
 
