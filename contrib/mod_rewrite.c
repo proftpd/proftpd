@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.11 2003-04-30 18:13:09 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.12 2003-05-14 04:56:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -32,7 +32,7 @@
 
 #include <sys/ioctl.h>
 
-#define MOD_REWRITE_VERSION "mod_rewrite/0.6.6"
+#define MOD_REWRITE_VERSION "mod_rewrite/0.6.7"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001020801
@@ -40,12 +40,32 @@
 #endif
 
 #ifdef HAVE_REGEX_H
-#include <regex.h>
+# include <regex.h>
 
 #define REWRITE_FIFO_MAXLEN		256
 #define REWRITE_LOG_MODE		0640
 #define REWRITE_MAX_MATCHES		10
 #define REWRITE_U32_BITS		0xffffffff
+
+/* RewriteCondition operations */
+typedef enum {
+  REWRITE_COND_OP_REGEX = 1,
+  REWRITE_COND_OP_LEX_LT,
+  REWRITE_COND_OP_LEX_GT,
+  REWRITE_COND_OP_LEX_EQ,
+  REWRITE_COND_OP_TEST_DIR,
+  REWRITE_COND_OP_TEST_FILE,
+  REWRITE_COND_OP_TEST_SYMLINK,
+  REWRITE_COND_OP_TEST_SIZE
+} rewrite_cond_op_t;
+
+/* RewriteCondition flags */
+#define REWRITE_COND_FLAG_NOCASE	0x001	/* nocase|NC */
+#define REWRITE_COND_FLAG_ORNEXT	0x002	/* ornext|OR */
+
+/* RewriteRule flags */
+#define REWRITE_RULE_FLAG_NOCASE	0x001	/* nocase|NC */
+#define REWRITE_RULE_FLAG_LAST		0x002	/* last|L */
 
 /* Module structures */
 typedef struct {
@@ -103,14 +123,17 @@ static char rewrite_vars[REWRITE_MAX_VARS][3] = {
 
 /* Necessary prototypes
  */
+static char *rewrite_argsep(char **);
 static void rewrite_closelog(void);
 static char *rewrite_expand_var(cmd_rec *, const char *, const char *);
 static void rewrite_log(char *format, ...);
 static unsigned char rewrite_match_cond(cmd_rec *, config_rec *);
 static void rewrite_openlog(void);
 static unsigned char rewrite_open_fifo(config_rec *);
+static unsigned int rewrite_parse_cond_flags(pool *, const char *);
 static unsigned char rewrite_parse_map_str(char *, rewrite_map_t *);
 static unsigned char rewrite_parse_map_txt(rewrite_map_txt_t *);
+static unsigned int rewrite_parse_rule_flags(pool *, const char *);
 static int rewrite_read_fifo(int, char *, size_t);
 static regex_t *rewrite_regalloc(void);
 static unsigned char rewrite_regexec(const char *, regex_t *, unsigned char,
@@ -224,18 +247,213 @@ static char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
   return NULL;
 }
 
+static char *rewrite_argsep(char **arg) {
+  char *res = NULL, *dst = NULL;
+  char quote_mode = 0;
+
+  if (!arg || !*arg || !**arg)
+    return NULL;
+
+  while (**arg && isspace((int) **arg))
+    (*arg)++;
+
+  if (!**arg)
+    return NULL;
+
+  res = dst = *arg;
+
+  if (**arg == '\"') {
+    quote_mode++;
+    (*arg)++;
+  }
+
+  while (**arg && **arg != ',' &&
+      (quote_mode ? (**arg != '\"') : (!isspace((int) **arg)))) {
+
+    if (**arg == '\\' && quote_mode) {
+
+      /* escaped char */
+      if (*((*arg) + 1))
+        *dst = *(++(*arg));
+    }
+
+    *dst++ = **arg;
+    ++(*arg);
+  }
+
+  if (**arg)
+    (*arg)++;
+
+  *dst = '\0';
+  return res;
+}
+
+static unsigned int rewrite_parse_cond_flags(pool *p, const char *flags_str) {
+  char *opt = NULL, *str = NULL, **opts;
+  array_header *opt_list = NULL;
+  unsigned int flags = 0;
+  register unsigned int i = 0;
+
+  opt_list = make_array(p, 0, sizeof(char **));
+
+  /* Make a duplicate of the given string, as the argsep() function consumes
+   * the string.
+   */
+  str = pstrdup(p, flags_str);
+
+  /* Skip past the first [ in the string, and trim the last ]. */
+  str++;
+  str[strlen(str)-1] = '\0';
+
+  while ((opt = rewrite_argsep(&str)) != NULL)
+    *((char **) push_array(opt_list)) = pstrdup(p, opt);
+
+  opts = opt_list->elts;
+  for (i = 0; i < opt_list->nelts; i++) {
+    if (strcmp(opts[i], "nocase") == 0 || strcmp(opts[i], "NC") == 0)
+      flags |= REWRITE_COND_FLAG_NOCASE;
+  
+    else if (strcmp(opts[i], "ornext") == 0 || strcmp(opts[i], "OR") == 0)
+      flags |= REWRITE_COND_FLAG_ORNEXT;
+  }
+
+  return flags;
+}
+
+static unsigned int rewrite_parse_rule_flags(pool *p, const char *flags_str) {
+  char *opt = NULL, *str = NULL, **opts;
+  array_header *opt_list = NULL;
+  unsigned int flags = 0;
+  register unsigned int i = 0;
+
+  opt_list = make_array(p, 0, sizeof(char **));
+
+  /* Make a duplicate of the given string, as the argsep() function consumes
+   * the string.
+   */
+  str = pstrdup(p, flags_str);
+
+  /* Skip past the first [ in the string, and trim the last ]. */
+  str++;
+  str[strlen(str)-1] = '\0';
+
+  while ((opt = rewrite_argsep(&str)) != NULL)
+    *((char **) push_array(opt_list)) = pstrdup(p, opt);
+
+  opts = opt_list->elts;
+  for (i = 0; i < opt_list->nelts; i++) {
+    if (strcmp(opts[i], "nocase") == 0 || strcmp(opts[i], "NC") == 0)
+      flags |= REWRITE_RULE_FLAG_NOCASE;
+
+    else if (strcmp(opts[i], "last") == 0 || strcmp(opts[i], "L") == 0)
+      flags |= REWRITE_RULE_FLAG_LAST;
+  }
+
+  return flags;
+}
+
 static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
   char *cond_str = cond->argv[0];
+  unsigned char negated = *((unsigned char *) cond->argv[2]);
+  rewrite_cond_op_t cond_op = *((rewrite_cond_op_t *) cond->argv[3]);
+
   rewrite_log("rewrite_match_cond(): original cond: '%s'", cond_str);
 
   cond_str = rewrite_subst(cmd, cond->argv[0]);
   rewrite_log("rewrite_match_cond: subst'd cond: '%s'", cond_str);
 
   /* Check the condition */
-  memset(&rewrite_cond_matches, '\0', sizeof(rewrite_cond_matches));
-  rewrite_cond_matches.match_string = cond->argv[0];
-  return rewrite_regexec(cond_str, (regex_t *) cond->argv[1],
-    *((unsigned char *) cond->argv[2]), &rewrite_cond_matches);
+  switch (cond_op) {
+    case REWRITE_COND_OP_LEX_LT: {
+      int res = strcmp(cond_str, (char *) cond->argv[1]);
+      rewrite_log("rewrite_match_cond(): checking lexical LT cond");
+
+      if (!negated)
+        return (res < 0 ? TRUE : FALSE);
+      else
+        return (res < 0 ? FALSE : TRUE);
+    }
+
+    case REWRITE_COND_OP_LEX_GT: {
+      int res = strcmp(cond_str, (char *) cond->argv[1]);
+      rewrite_log("rewrite_match_cond(): checking lexical GT cond");
+
+      if (!negated)
+        return (res > 0 ? TRUE : FALSE);
+      else
+        return (res > 0 ? FALSE : TRUE);
+    }
+
+    case REWRITE_COND_OP_LEX_EQ: {
+      int res = strcmp(cond_str, (char *) cond->argv[1]);
+      rewrite_log("rewrite_match_cond(): checking lexical EQ cond");
+
+      if (!negated)
+        return (res == 0 ? TRUE : FALSE);
+      else
+        return (res == 0 ? FALSE : TRUE);
+    }
+
+    case REWRITE_COND_OP_REGEX: {
+      rewrite_log("rewrite_match_cond(): checking regex cond");
+
+      memset(&rewrite_cond_matches, '\0', sizeof(rewrite_cond_matches));
+      rewrite_cond_matches.match_string = cond->argv[0];
+      return rewrite_regexec(cond_str, (regex_t *) cond->argv[1], negated,
+        &rewrite_cond_matches);
+    }
+
+    case REWRITE_COND_OP_TEST_DIR: {
+      struct stat st;
+      rewrite_log("rewrite_match_cond(): checking dir test cond");
+
+      pr_fs_clear_cache();
+      if (pr_fsio_lstat(cond_str, &st) >= 0 && S_ISDIR(st.st_mode))
+        return TRUE;
+
+      return FALSE;
+    }
+
+    case REWRITE_COND_OP_TEST_FILE: {
+      struct stat st;
+      rewrite_log("rewrite_match_cond(): checking file test cond");
+
+      pr_fs_clear_cache();
+      if (pr_fsio_lstat(cond_str, &st) >= 0 && S_ISREG(st.st_mode))
+        return TRUE;
+
+      return FALSE;
+    }
+
+    case REWRITE_COND_OP_TEST_SYMLINK: {
+      struct stat st;
+      rewrite_log("rewrite_match_cond(): checking symlink test cond");
+
+      pr_fs_clear_cache();
+      if (pr_fsio_lstat(cond_str, &st) >= 0 && S_ISLNK(st.st_mode))
+        return TRUE;
+
+      return FALSE;
+    }
+
+    case REWRITE_COND_OP_TEST_SIZE: {
+      struct stat st;
+      rewrite_log("rewrite_match_cond(): checking size test cond");
+
+      pr_fs_clear_cache();
+      if (pr_fsio_lstat(cond_str, &st) >= 0 && S_ISREG(st.st_mode) &&
+          st.st_size > 0)
+        return TRUE;
+
+      return FALSE;
+    }
+
+    default:
+      rewrite_log("rewrite_match_cond(): unknown cond op: %d", cond_op);
+      break;
+  }
+
+  return FALSE;
 }
 
 static unsigned char rewrite_parse_map_str(char *str, rewrite_map_t *map) {
@@ -1265,16 +1483,19 @@ static void rewrite_log(char *format, ...) {
 /* Configuration directive handlers
  */
 
-/* usage: RewriteCondition condition pattern */
+/* usage: RewriteCondition condition pattern [flags] */
 MODRET set_rewritecondition(cmd_rec *cmd) {
   config_rec *c = NULL;
   pool *cond_pool = NULL;
-  regex_t *preg = NULL;
+  void *cond_data = NULL;
+  unsigned int cond_flags = 0;
   char *var = NULL;
   unsigned char negated = FALSE;
-  int res = -1;
+  rewrite_cond_op_t cond_op = 0;
+  int regex_flags = REG_EXTENDED, res = -1;
 
-  CHECK_ARGS(cmd, 2);
+  if (cmd->argc-1 < 2 || cmd->argc-1 > 3)
+    CONF_ERROR(cmd, "bad number of parameters");
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
   /* The following variables are not allowed in RewriteConditions:
@@ -1283,22 +1504,21 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
   if (strstr(cmd->argv[2], "%P") || strstr(cmd->argv[2], "%t"))
     CONF_ERROR(cmd, "illegal RewriteCondition variable used");
 
-  preg = rewrite_regalloc();
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
-  /* Check for a leading '!' negation prefix to the regex pattern */
-  if (*cmd->argv[2] == '!') {
-    cmd->argv[2]++;
-    negated = TRUE;
-  }
+  /* Make sure that, if present, the flags parameter is correctly formatted. */
+  if (cmd->argc-1 == 3) {
+    if (cmd->argv[3][0] != '[' || cmd->argv[3][strlen(cmd->argv[3])-1] != ']')
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        ": badly formatted flags parameter: '", cmd->argv[3], "'", NULL));
 
-  if ((res = regcomp(preg, cmd->argv[2], REG_EXTENDED)) != 0) {
-    char errstr[200] = {'\0'};
+    /* We need to parse the flags parameter here, to see if any flags which
+     * affect the compilation of the regex (e.g. NC) are present.
+     */
+    cond_flags = rewrite_parse_cond_flags(cmd->tmp_pool, cmd->argv[3]);
 
-    regerror(res, preg, errstr, sizeof(errstr));
-    regfree(preg);
-
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to compile '",
-      cmd->argv[2], "' regex: ", errstr, NULL));
+    if (cond_flags & REWRITE_COND_FLAG_NOCASE)
+      regex_flags |= REG_ICASE;
   }
 
   if (!rewrite_conds) {
@@ -1307,6 +1527,54 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
 
     rewrite_cond_pool = make_sub_pool(rewrite_pool);
     rewrite_conds = make_array(rewrite_cond_pool, 0, sizeof(config_rec *));
+  }
+
+  /* Check for a leading '!' negation prefix to the regex pattern */
+  if (*cmd->argv[2] == '!') {
+    cmd->argv[2]++;
+    negated = TRUE;
+  }
+
+  /* Check the next character in the given pattern.  It may be a lexical
+   * or a file test pattern...
+   */
+  if (*cmd->argv[2] == '>') {
+    cond_op = REWRITE_COND_OP_LEX_LT;
+    cond_data = pstrdup(rewrite_pool, ++cmd->argv[2]);
+
+  } else if (*cmd->argv[2] == '<') {
+    cond_op = REWRITE_COND_OP_LEX_GT;
+    cond_data = pstrdup(rewrite_pool, ++cmd->argv[2]);
+
+  } else if (*cmd->argv[2] == '=') {
+    cond_op = REWRITE_COND_OP_LEX_EQ;
+    cond_data = pstrdup(rewrite_pool, ++cmd->argv[2]);
+
+  } else if (strcmp(cmd->argv[2], "-d") == 0) {
+    cond_op = REWRITE_COND_OP_TEST_DIR;
+
+  } else if (strcmp(cmd->argv[2], "-f") == 0) {
+    cond_op = REWRITE_COND_OP_TEST_FILE;
+
+  } else if (strcmp(cmd->argv[2], "-l") == 0) {
+    cond_op = REWRITE_COND_OP_TEST_SYMLINK;
+
+  } else if (strcmp(cmd->argv[2], "-s") == 0) {
+    cond_op = REWRITE_COND_OP_TEST_SIZE;
+
+  } else {
+    cond_op = REWRITE_COND_OP_REGEX;
+    cond_data = rewrite_regalloc();
+
+    if ((res = regcomp(cond_data, cmd->argv[2], regex_flags)) != 0) {
+      char errstr[200] = {'\0'};
+
+      regerror(res, cond_data, errstr, sizeof(errstr));
+      regfree(cond_data);
+
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to compile '",
+        cmd->argv[2], "' regex: ", errstr, NULL));
+    }
   }
 
   /* Make sure the variables used, if any, are valid. */
@@ -1340,13 +1608,19 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
   c->pool = cond_pool;
   c->name = pstrdup(c->pool, cmd->argv[0]);
   c->config_type = CONF_PARAM;
-  c->argc = 3;
-  c->argv = pcalloc(c->pool, 4 * sizeof(void *));
+  c->argc = 5;
+  c->argv = pcalloc(c->pool, (c->argc+1) * sizeof(void *));
   c->argv[0] = pstrdup(c->pool, cmd->argv[1]); 
-  c->argv[1] = (void *) preg;
+  c->argv[1] = (void *) cond_data;
 
   c->argv[2] = palloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[2]) = negated;
+
+  c->argv[3] = pcalloc(c->pool, sizeof(rewrite_cond_op_t));
+  *((rewrite_cond_op_t *) c->argv[3]) = cond_op;
+
+  c->argv[4] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[4]) = cond_flags;
 
   /* Add this config_rec to an array, to be added to the RewriteRule when
    * (if?) it appears.
@@ -1509,17 +1783,35 @@ MODRET set_rewritemap(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-/* usage: RewriteRule pattern substitution */
+/* usage: RewriteRule pattern substitution [flags] */
 MODRET set_rewriterule(cmd_rec *cmd) {
   config_rec *c = NULL;
   regex_t *preg = NULL;
-  char *tmp = NULL;
+  unsigned int rule_flags = 0;
   unsigned char negated = FALSE;
-  int res = -1;
+  int regex_flags = REG_EXTENDED, res = -1;
+  char *tmp = NULL;
   register unsigned int i = 0;
 
-  CHECK_ARGS(cmd, 2);
+  if (cmd->argc-1 < 2 || cmd->argc-1 > 3)
+    CONF_ERROR(cmd, "bad number of parameters");
+
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
+
+  /* Make sure that, if present, the flags parameter is correctly formatted. */
+  if (cmd->argc-1 == 3) {
+    if (cmd->argv[3][0] != '[' || cmd->argv[3][strlen(cmd->argv[3])-1] != ']')
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        ": badly formatted flags parameter: '", cmd->argv[3], "'", NULL));
+
+    /* We need to parse the flags parameter here, to see if any flags which
+     * affect the compilation of the regex (e.g. NC) are present.
+     */
+    rule_flags = rewrite_parse_rule_flags(cmd->tmp_pool, cmd->argv[3]);
+
+    if (rule_flags & REWRITE_RULE_FLAG_NOCASE)
+      regex_flags |= REG_ICASE;
+  }
 
   preg = rewrite_regalloc();
 
@@ -1529,7 +1821,7 @@ MODRET set_rewriterule(cmd_rec *cmd) {
     cmd->argv[1]++;
   }
 
-  if ((res = regcomp(preg, cmd->argv[1], REG_EXTENDED)) != 0) {
+  if ((res = regcomp(preg, cmd->argv[1], regex_flags)) != 0) {
     char errstr[200] = {'\0'};
 
     regerror(res, preg, errstr, sizeof(errstr));
@@ -1544,7 +1836,7 @@ MODRET set_rewriterule(cmd_rec *cmd) {
    */
   tmp = NULL;
 
-  c = add_config_param(cmd->argv[0], 5, preg, NULL, NULL, NULL, NULL);
+  c = add_config_param(cmd->argv[0], 6, preg, NULL, NULL, NULL, NULL, NULL);
 
   /* Note: how to handle the substitution expression? Later? */
   c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
@@ -1579,11 +1871,14 @@ MODRET set_rewriterule(cmd_rec *cmd) {
   } else
     c->argv[3] = NULL;
 
+  c->argv[4] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[4]) = rule_flags;
+
   /* The very last slot is to be filled by a unique ID (just a counter
    * value).
    */
-  c->argv[4] = pcalloc(c->pool, sizeof(unsigned int));
-  *((unsigned int *) c->argv[4]) = rewrite_nrules++;
+  c->argv[5] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[5]) = rewrite_nrules++;
 
   c->flags |= CF_MERGEDOWN_MULTI;
   return HANDLED(cmd);
@@ -1624,7 +1919,7 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
     if (seen_rules->nelts > 0) {
       register unsigned int i = 0;
       unsigned char saw_rule = FALSE;
-      unsigned int id = *((unsigned int *) c->argv[4]), *ids = seen_rules->elts;
+      unsigned int id = *((unsigned int *) c->argv[5]), *ids = seen_rules->elts;
 
       for (i = 0; i < seen_rules->nelts; i++) {
         if (ids[i] == id) {
@@ -1634,17 +1929,16 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
       }
 
       if (saw_rule) {
-        rewrite_log("rewrite_fixup(): already saw this Rule, skipping");
+        rewrite_log("rewrite_fixup(): already saw this RewriteRule, skipping");
         c = find_config_next(c, c->next, CONF_PARAM, "RewriteRule", FALSE);
         continue;
       }
     }
 
     /* Add this Rule's ID to the list of seen Rules. */
-    *((unsigned int *) push_array(seen_rules)) = *((unsigned int *) c->argv[4]);
+    *((unsigned int *) push_array(seen_rules)) = *((unsigned int *) c->argv[5]);
 
-    /* Make sure the given RewriteRule regex matches the command argument.
-     */
+    /* Make sure the given RewriteRule regex matches the command argument. */
     memset(&rewrite_rule_matches, '\0', sizeof(rewrite_rule_matches));
     rewrite_rule_matches.match_string = cmd->arg;
     if (!rewrite_regexec(cmd->arg, (regex_t *) c->argv[0],
@@ -1663,15 +1957,24 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
         register unsigned int i = 0;
         config_rec **conds = (config_rec **) c->argv[3];
 
-        rewrite_log("rewrite_fixup(): examing RewriteRule conditions");
+        rewrite_log("rewrite_fixup(): examining RewriteRule conditions");
         exec_rule = TRUE;
 
         for (i = 0; conds[i] != NULL; i++) {
+          unsigned int cond_flags = *((unsigned int *) conds[i]->argv[4]);
+
           if (!rewrite_match_cond(cmd, conds[i])) {
-            rewrite_log("rewrite_fixup(): condition not met, skipping this "
-              "Rule");
-            exec_rule = FALSE;
-            break;
+
+            /* If this condition is not to be OR'd with the next condition,
+             * or there is no next condition, fail the Rule.
+             */
+            if (!(cond_flags & REWRITE_COND_FLAG_ORNEXT) ||
+                conds[i+1] == NULL) {
+              exec_rule = FALSE;
+              rewrite_log("rewrite_fixup(): condition not met, skipping this "
+                "Rule");
+              break;
+            }
 
           } else
             rewrite_log("rewrite_fixup(): condition met");
@@ -1684,8 +1987,9 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
 
     if (exec_rule) {
       char *new_arg = NULL;
-      rewrite_log("rewrite_fixup(): executing RewriteRule");
+      unsigned int rule_flags = *((unsigned int *) c->argv[4]);
 
+      rewrite_log("rewrite_fixup(): executing RewriteRule");
       new_arg = rewrite_subst(cmd, (char *) c->argv[1]);
 
       if (strlen(new_arg) > 0) {
@@ -1694,6 +1998,13 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
 
       } else
         rewrite_log("rewrite_fixup(): error processing RewriteRule");
+
+      /* If this Rule is marked as "last", break out of the loop. */
+      if (rule_flags & REWRITE_RULE_FLAG_LAST) {
+        rewrite_log("rewrite_fixup(): Rule marked as 'last', done processing "
+          "Rules");
+        break;
+      }
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "RewriteRule", FALSE);
@@ -1837,4 +2148,4 @@ module rewrite_module = {
   rewrite_sess_init
 };
 
-#endif
+#endif /* HAVE_REGEX_H */

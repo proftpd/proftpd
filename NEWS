@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.430 2003-05-14 04:43:25 castaglia Exp $
+$Id: NEWS,v 1.431 2003-05-14 04:56:20 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -128,6 +128,10 @@ CVS
   for verification.
 - Bug 2047 - 1024 or more chars in .ftpaccess causes lockup.  Certain conditions
   allowed for parsing of configuration files to enter an infinite loop.
+- Bug 2031 - Add support for flags for RewriteCondition, RewriteRule
+  (a la Apache's mod_rewrite).  mod_rewrite now supports various tests that
+  can be used in RewriteConditions, the NC and OR flags for RewriteConditions,
+  and the NC and L flags for RewriteRules.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------
