@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.10 2004-02-13 22:44:36 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.11 2004-02-13 23:28:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -34,8 +34,8 @@
 #define MOD_IFSESSION_VERSION	"mod_ifsession/0.9"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001020901
-# error "ProFTPD 1.2.9rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001021001
+# error "ProFTPD 1.2.10rc1 or later required"
 #endif
 
 #define IFSESS_CLASS_NUMBER	100
