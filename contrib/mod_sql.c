@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#define MOD_SQL_VERSION "mod_sql/3.02"
+#define MOD_SQL_VERSION "mod_sql/3.1"
 
 /* This is mod_sql, contrib software for proftpd 1.2.0rc3 and above.
    Originally written and maintained as 'mod_sqlpw' by Johnie 
@@ -94,8 +94,15 @@ typedef struct sqldata_struc sqldata_t;
 #define SQL_DEFAULT_UID 65533
 #define SQL_DEFAULT_GID 65533
 
-
 #define BUFSIZE 32
+
+typedef struct cache_entry {
+  struct cache_entry *list_next;
+
+  struct cache_entry *bucket_next;
+
+  void *data;
+} cache_entry_t;
 
 /* this struct holds invariant information for the current session */
 static struct
@@ -160,6 +167,11 @@ static struct
   uid_t defaultuid;             /* default UID if none in database */
   gid_t defaultgid;             /* default GID if none in database */
 
+  cache_entry_t *curr_group;    /* next group in group array for getgrent */
+  cache_entry_t *curr_passwd;   /* next passwd in passwd array for getpwent */
+  int group_cache_filled;
+  int passwd_cache_filled;
+
   /*
    * STILL NOT SURE 
    */
@@ -204,6 +216,8 @@ static cmd_rec *_make_cmd(pool * cp, int argc, ...)
 
   c->argv = pcalloc(cp, sizeof(void *) * (argc + 1));
   c->argv[0] = MOD_SQL_VERSION;
+  c->pool = cp;
+
   va_start(args, argc);
 
   for (i = 0; i < argc; i++)
@@ -233,6 +247,116 @@ static modret_t *_dispatch_sql(cmd_rec * cmd, char *match)
 
   return mr;
 }
+
+/*****************************************************************
+ *
+ * GROUP AND PASSWD CACHE FUNCTIONS
+ *
+ *****************************************************************/
+
+#define CACHE_SIZE         13
+
+typedef unsigned int ( * val_func ) ( const void * ); 
+typedef int ( * cmp_func ) ( const void *, const void * );
+
+typedef struct {
+  /* memory pool for this object */
+  pool *pool;
+
+  /* cache buckets */
+  cache_entry_t *buckets[ CACHE_SIZE ];
+
+  /* cache functions */
+  val_func hash_val;
+  cmp_func cmp;
+
+  /* list pointers */
+  cache_entry_t *head;
+
+  /* list size */
+  unsigned int nelts;
+} cache_t;
+
+static cache_t *make_cache( pool *p, val_func hash_val, cmp_func cmp )
+{
+  cache_t *res;
+
+  if ( ( p == NULL ) || ( hash_val == NULL ) || 
+       ( cmp == NULL ) )
+    return NULL;
+
+  res = ( cache_t * ) pcalloc( p, sizeof( cache_t ) );
+
+  res->pool = p;
+  res->hash_val = hash_val;
+  res->cmp = cmp;
+
+  res->head = NULL;
+
+  res->nelts = 0;
+
+  return res;
+}
+
+cache_entry_t *cache_addentry( cache_t *cache, void *data )
+{
+  cache_entry_t *entry;
+  int hashval;
+
+  if ( ( cache == NULL ) || ( data == NULL ) ) return NULL;
+
+  /* create the entry */
+  entry = ( cache_entry_t * ) pcalloc( cache->pool, 
+				       sizeof( cache_entry_t ) );
+  entry->data = data;
+
+  /* deal with the list */
+
+  if ( cache->head == NULL ) {
+    cache->head = entry;
+  } else {
+    entry->list_next = cache->head;
+    cache->head = entry;
+  }
+
+  /* deal with the buckets */
+  hashval = cache->hash_val( data ) % CACHE_SIZE;
+  if ( cache->buckets[ hashval ] == NULL ) {
+    cache->buckets[ hashval ] = entry;
+  } else {
+    entry->bucket_next = cache->buckets[ hashval ];
+    cache->buckets[ hashval ] = entry;
+  }
+  
+  cache->nelts++;
+
+  return entry;
+}
+
+void *cache_findvalue( cache_t *cache, void *data )
+{
+  cache_entry_t *entry;
+  int hashval;
+
+  if ( ( cache == NULL ) || ( data == NULL ) ) return NULL;
+  
+  hashval = cache->hash_val( data ) % CACHE_SIZE;
+
+  entry = cache->buckets[ hashval ];
+  while ( entry != NULL ) {
+    if ( cache->cmp( data, entry->data ) )
+      break;
+    else
+      entry = entry->bucket_next;
+  }
+
+  return ( ( entry == NULL ) ? NULL : entry->data );
+}
+
+cache_t *group_name_cache;
+cache_t *group_gid_cache;
+cache_t *passwd_name_cache;
+cache_t *passwd_uid_cache;
 
 /*****************************************************************
  *
@@ -290,8 +414,10 @@ MODRET modsql_select(cmd_rec * cmd, const char *query)
   c = _make_cmd(cmd->tmp_pool, 1, query);
   mr = _dispatch_sql(c, "dbd_select");
 
+  /*
   if (c->tmp_pool)
     destroy_pool(c->tmp_pool);
+  */
 
   return mr;
 }
@@ -564,6 +690,105 @@ static auth_type_entry *get_auth_entry(char *name)
  *
  *****************************************************************/
 
+static void sql_shutdown(void)
+{
+  log_debug(DEBUG_INFO, "%s: closing backend connection", MOD_SQL_VERSION );
+  modsql_close( NULL );
+  return;
+}
+
+static int _sql_strcmp( const char *s1, const char *s2 )
+{
+  if ( ( s1 == NULL ) || ( s2 == NULL ) ) return 1;
+
+  return strcmp( s1, s2 );
+}
+
+static unsigned int _group_gid( const void *val ) 
+{
+  if ( val == NULL ) return 0;
+
+  return ( ( struct group * ) val )->gr_gid;
+} 
+
+static unsigned int _group_name( const void *val )
+{
+  char *name;
+  int cnt;
+  unsigned int nameval = 0;
+
+  if ( val == NULL ) return 0;
+
+  name = ( ( struct group * ) val )->gr_name;
+
+  if ( name == NULL ) return 0;
+
+  for ( cnt=0; cnt < strlen( name ); cnt++ ) {
+    nameval += name[cnt];
+  }
+
+  return nameval;
+}
+
+static int _groupcmp ( const void *val1, const void *val2 ) 
+{
+  if ( ( val1 == NULL ) || ( val2 == NULL ) ) return 0;
+  
+  /* either the groupnames match or the gids match */
+  
+  if ( _sql_strcmp( ( ( struct group * ) val1 )->gr_name, 
+		    ( ( struct group * ) val2 )->gr_name )  == 0 )
+    return 1;
+
+  if ( ( ( struct group * ) val1 )->gr_gid == 
+       ( ( struct group * ) val2 )->gr_gid )
+    return 1;
+
+  return 0;
+}
+
+static unsigned int _passwd_uid( const void *val ) 
+{
+  if ( val == NULL ) return 0;
+
+  return ( ( struct passwd * ) val )->pw_uid;
+} 
+
+static unsigned int _passwd_name( const void *val )
+{
+  char *name;
+  int cnt;
+  unsigned int nameval = 0;
+
+  if ( val == NULL ) return 0;
+
+  name = ( ( struct passwd * ) val )->pw_name;
+
+  if ( name == NULL ) return 0;
+
+  for ( cnt=0; cnt < strlen( name ); cnt++ ) {
+    nameval += name[cnt];
+  }
+
+  return nameval;
+}
+
+static int _passwdcmp ( const void *val1, const void *val2 )
+{
+  if ( ( val1 == NULL ) || ( val2 == NULL ) ) return 0;
+  
+  /* either the usernames match or the uids match */
+  if ( _sql_strcmp( ( ( struct passwd * ) val1 )->pw_name, 
+		    ( ( struct passwd * ) val2 )->pw_name )  == 0 )
+    return 1;
+
+  if ( ( ( struct passwd * ) val1 )->pw_uid == 
+       ( ( struct passwd * ) val2 )->pw_uid )
+    return 1;
+
+  return 0;
+}
+
 static void show_group(struct group *g)
 {
   /* this is an expeditious hack */
@@ -582,8 +807,8 @@ static void show_group(struct group *g)
   member = g->gr_mem;
 
   while (*member != NULL) {
-    if (flag) strcat(members, ", ");
-    strcat(members, *member); 
+    if (flag) strncat( members, ", ", 2048 - strlen( members ) );
+    strncat(members, *member, 2048 - strlen( members ) ); 
     flag = 1;
     member++;
   } 
@@ -737,6 +962,13 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
     return NULL;
   }
 
+  /* check to see if the passwd already exists in one of the passwd caches */
+  if ( ((pwd = (struct passwd *) cache_findvalue( passwd_name_cache, p )) != NULL ) ||
+       ((pwd = (struct passwd *) cache_findvalue( passwd_uid_cache, p )) != NULL )) {
+    log_debug( DEBUG_AUTH, "%s: cache hit for user %s", MOD_SQL_VERSION, pwd->pw_name );
+    return pwd;
+  }
+
   if (p->pw_name != NULL) {
     username = pstrdup(cmd->tmp_pool, p->pw_name);
 
@@ -816,6 +1048,9 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
                   pwd->pw_gid);
   }
 
+  cache_addentry( passwd_name_cache, pwd );
+  cache_addentry( passwd_uid_cache, pwd );
+
   show_passwd( pwd );
   return pwd;
 }
@@ -837,6 +1072,13 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
 
   if (g == NULL)
     return NULL;
+
+  /* check to see if the group already exists in one of the group caches */
+  if ( ((grp = (struct group *) cache_findvalue( group_name_cache, g )) != NULL ) ||
+       ((grp = (struct group *) cache_findvalue( group_gid_cache, g )) != NULL )) {
+    log_debug( DEBUG_AUTH, "%s: cache hit for group %s", MOD_SQL_VERSION, grp->gr_name );
+    return grp;
+  }
 
   if (g->gr_name != NULL) {
     groupname = pstrdup(cmd->tmp_pool, g->gr_name);
@@ -913,6 +1155,9 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
   memcpy(grp->gr_mem, ah->elts, ah->nelts * sizeof(char *));
   grp->gr_mem[ ah->nelts ]='\0';
   
+  cache_addentry( group_name_cache, grp );
+  cache_addentry( group_gid_cache, grp );
+
   show_group( grp );
   return grp;
 }
@@ -1026,20 +1271,6 @@ static void _setstats(cmd_rec * cmd, int fstor, int fretr,
  * CLIENT COMMAND HANDLERS
  *
  *****************************************************************/
-
-MODRET pre_cmd_quit(cmd_rec * cmd)
-{
-  if (!cmap.doauth)
-    return DECLINED(cmd);
-
-  log_debug(DEBUG_FUNC, "%s: entering pre_cmd_quit", MOD_SQL_VERSION);
-
-  modsql_close(cmd);
-
-  log_debug(DEBUG_FUNC, "%s: exiting  pre_cmd_quit", MOD_SQL_VERSION);
-
-  return DECLINED(cmd);
-}
 
 MODRET post_cmd_stor(cmd_rec * cmd)
 {
@@ -1174,30 +1405,103 @@ MODRET log_cmd_cwd(cmd_rec * cmd)
 
 MODRET auth_cmd_setpwent(cmd_rec * cmd)
 {
+  char *query;
+  modret_t *mr;
+  sqldata_t *sd;
+  int cnt, numrows;
+  struct passwd lpw;
+  char *userid;
+  char **userids;
+
   if (!cmap.doauth)
     return DECLINED(cmd);
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_setpwent", MOD_SQL_VERSION);
 
-  log_debug(DEBUG_WARN, "%s: setpwent is UNIMPLEMENTED", MOD_SQL_VERSION);
+  /* if we've already filled the passwd cache, just reset the curr_passwd */
+  if ( cmap.passwd_cache_filled ) {
+    cmap.curr_passwd = passwd_name_cache->head;
+    log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_setpwent", MOD_SQL_VERSION);
+    return (cmap.authoritative ? mod_create_data( cmd, (void *) 1 ) : DECLINED(cmd));
+  }
+
+  /* retrieve our list of passwds */
+  query = pstrcat(cmd->tmp_pool, "select ", cmap.usrfield, " from ",
+                  cmap.usrtable, NULL );
+  
+  mr = modsql_select(cmd, query);
+
+  if (!(MODRET_HASDATA(mr)) || ( mr->data == NULL)) {
+    /*
+     * nothing from db.. we were unsuccessful..
+     */
+    log_debug(DEBUG_WARN, "%s: no passwd information returned from db", MOD_SQL_VERSION);
+    log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_setpwent", MOD_SQL_VERSION);
+    return (cmap.authoritative ? mod_create_data( cmd, (void *) 0 ) : DECLINED(cmd));
+  }
+
+  sd = (sqldata_t *) mr->data;
+  numrows = sd->rowcount;
+
+  /* copy our userids into a local array;  they get trod over otherwise */
+  userids = pcalloc( cmd->tmp_pool, numrows * sizeof( char * ) );
+  for ( cnt = 0; cnt < numrows; cnt ++ ) {
+    userids[ cnt ] = pstrdup( cmd->tmp_pool, sd->data[ cnt ] );
+  }
+
+  for ( cnt = 0; cnt < numrows; cnt++ ) {
+    userid = userids[cnt];
+
+    /* if the userid is NULL for whatever reason, skip it */
+    if ( userid == NULL ) continue;
+
+    /* otherwise, add it to the cache */
+    lpw.pw_uid = -1;
+    lpw.pw_name = userid;
+    _sql_getpasswd(cmd, &lpw);
+  }
+  
+  cmap.passwd_cache_filled = 1;
+  cmap.curr_passwd = passwd_name_cache->head;
 
   log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_setpwent", MOD_SQL_VERSION);
 
-  return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
+  return ( cmap.authoritative ? mod_create_data( cmd, (void *) 1 ) : DECLINED(cmd));
 }
 
 MODRET auth_cmd_getpwent(cmd_rec * cmd)
 {
+  struct passwd *pw;
+  modret_t *mr;
+
   if (!cmap.doauth)
     return DECLINED(cmd);
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_getpwent", MOD_SQL_VERSION);
 
-  log_debug(DEBUG_WARN, "%s: getpwent is UNIMPLEMENTED", MOD_SQL_VERSION);
+  /* make sure our passwd cache is complete  */
+  if ( !cmap.passwd_cache_filled ) {
+    mr = auth_cmd_setpwent( cmd );
+    if ( mr->data == ( void * ) 0 ) {
+      /* something didn't work in the setpwent call */
+      log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_getpwent", MOD_SQL_VERSION);
+      return ( cmap.authoritative ? mod_create_data( cmd, (void *) NULL ) : DECLINED(cmd));
+    }
+  }
+
+  if ( cmap.curr_passwd != NULL ) {
+    pw = ( struct passwd * ) cmap.curr_passwd->data;
+    cmap.curr_passwd = cmap.curr_passwd->list_next;
+  } else {
+    pw = NULL;
+  }
 
   log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_getpwent", MOD_SQL_VERSION);
 
-  return cmap.authoritative ? HANDLED(cmd) : DECLINED(cmd);
+  if ( pw == NULL )
+    return ( cmap.authoritative ? mod_create_data( cmd, (void *) pw) : DECLINED(cmd) );
+
+  return mod_create_data( cmd, (void *) pw);
 }
 
 MODRET auth_cmd_endpwent(cmd_rec * cmd)
@@ -1207,45 +1511,119 @@ MODRET auth_cmd_endpwent(cmd_rec * cmd)
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_endpwent", MOD_SQL_VERSION);
 
-  log_debug(DEBUG_WARN, "%s: endpwent is UNIMPLEMENTED", MOD_SQL_VERSION);
+  cmap.curr_passwd = NULL;
 
   log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_endpwent", MOD_SQL_VERSION);
 
-  return cmap.authoritative ? HANDLED(cmd) : DECLINED(cmd);
+  return (cmap.authoritative ? mod_create_data( cmd, (void *) 0 ) : DECLINED(cmd));
 }
 
 MODRET auth_cmd_setgrent(cmd_rec * cmd)
 {
+  char *query;
+  modret_t *mr;
+  sqldata_t *sd;
+  int cnt, numrows;
+  struct group lgr;
+  char *groupname;
+  char **groups;
+
   if (!cmap.doauth)
     return DECLINED(cmd);
 
-  if (!cmap.dogroupauth)
-    return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
+  if ( !cmap.dogroupauth )
+    return cmap.authoritative ? ERROR (cmd) : DECLINED( cmd );
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_setgrent", MOD_SQL_VERSION);
 
-  log_debug(DEBUG_WARN, "%s: setgrent is UNIMPLEMENTED", MOD_SQL_VERSION);
+  /* if we've already filled the passwd group, just reset curr_group */
+  if ( cmap.group_cache_filled ) {
+    cmap.curr_group = group_name_cache->head;
+    log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_setgrent", MOD_SQL_VERSION);
+    return (cmap.authoritative ? mod_create_data( cmd, (void *) 1 ) : DECLINED(cmd));
+  }
+
+  /* retrieve our list of groups */
+  query = pstrcat(cmd->tmp_pool, "select distinct ", cmap.grpfield, " from ",
+                  cmap.grptable, NULL );
+  
+  mr = modsql_select(cmd, query);
+
+  if (!(MODRET_HASDATA(mr))) {
+    /*
+     * nothing from db.. we were unsuccessful..
+     */
+    log_debug(DEBUG_WARN, "%s: no group information returned from db", MOD_SQL_VERSION);
+    log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_setgrent", MOD_SQL_VERSION);
+    return (cmap.authoritative ? mod_create_data( cmd, (void *) 0 ) : DECLINED(cmd));
+  }
+
+  sd = (sqldata_t *) mr->data;
+  numrows = sd->rowcount;
+
+  /* copy our groupnames into a local array;  they get trod over otherwise */
+  groups = pcalloc( cmd->tmp_pool, numrows * sizeof( char * ) );
+  for ( cnt = 0; cnt < numrows; cnt ++ ) {
+    groups[ cnt ] = pstrdup( cmd->tmp_pool, sd->data[ cnt ] );
+  }
+
+  for ( cnt = 0; cnt < numrows; cnt++ ) {
+    groupname = groups[cnt];
+
+    /* if the groupname is NULL for whatever reason, skip it */
+    if ( groupname == NULL ) continue;
+
+    /* otherwise, add it to the cache */
+    lgr.gr_gid = -1;
+    lgr.gr_name = groupname;
+
+    _sql_getgroup(cmd, &lgr);
+  }
+  
+  cmap.group_cache_filled = 1;
+  cmap.curr_group = group_name_cache->head;
 
   log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_setgrent", MOD_SQL_VERSION);
 
-  return cmap.authoritative ? HANDLED(cmd) : DECLINED(cmd);
+  return (cmap.authoritative ? mod_create_data( cmd, (void *) 1 ) : DECLINED(cmd));
 }
 
 MODRET auth_cmd_getgrent(cmd_rec * cmd)
 {
+  struct group *gr;
+  modret_t *mr;
+
   if (!cmap.doauth)
     return DECLINED(cmd);
 
-  if (!cmap.dogroupauth)
-    return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
+  if ( !cmap.dogroupauth )
+    return cmap.authoritative ? ERROR (cmd) : DECLINED( cmd );
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_getgrent", MOD_SQL_VERSION);
 
-  log_debug(DEBUG_WARN, "%s: getgrent is UNIMPLEMENTED", MOD_SQL_VERSION);
+  /* make sure our group cache is complete  */
+  if ( !cmap.group_cache_filled ) {
+    mr = auth_cmd_setgrent( cmd );
+    if ( mr->data == ( void * ) 0 ) {
+      /* something didn't work in the setgrent call */
+      log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_getgrent", MOD_SQL_VERSION);
+      return (cmap.authoritative ? mod_create_data( cmd, (void *) NULL ) : DECLINED(cmd));
+    }
+  }
+
+  if ( cmap.curr_group != NULL ) {
+    gr = ( struct group * ) cmap.curr_group->data;
+    cmap.curr_group = cmap.curr_group->list_next;
+  } else {
+    gr = NULL;
+  }
 
   log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_getgrent", MOD_SQL_VERSION);
 
-  return cmap.authoritative ? HANDLED(cmd) : DECLINED(cmd);
+  if ( gr == NULL )
+    return (cmap.authoritative ? mod_create_data( cmd, (void *) gr) : DECLINED(cmd));
+
+  return mod_create_data( cmd, (void *) gr);
 }
 
 MODRET auth_cmd_endgrent(cmd_rec * cmd)
@@ -1253,16 +1631,16 @@ MODRET auth_cmd_endgrent(cmd_rec * cmd)
   if (!cmap.doauth)
     return DECLINED(cmd);
 
-  if (!cmap.dogroupauth)
-    return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
+  if ( !cmap.dogroupauth )
+    return cmap.authoritative ? ERROR (cmd) : DECLINED( cmd );
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_endgrent", MOD_SQL_VERSION);
 
-  log_debug(DEBUG_WARN, "%s: endgrent is UNIMPLEMENTED", MOD_SQL_VERSION);
+  cmap.curr_group = NULL;
 
   log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_endgrent", MOD_SQL_VERSION);
 
-  return cmap.authoritative ? HANDLED(cmd) : DECLINED(cmd);
+  return (cmap.authoritative ? mod_create_data( cmd, (void *) 0 ) : DECLINED(cmd));
 }
 
 MODRET auth_cmd_getpwnam(cmd_rec * cmd)
@@ -1565,7 +1943,7 @@ MODRET auth_cmd_name_gid(cmd_rec * cmd)
   modret_t *mr = NULL;
   char *query = NULL;
   sqldata_t *sd;
-  gid_t groupid = NULL;
+  gid_t groupid;
 
   if (!cmap.doauth)
     return DECLINED(cmd);
@@ -2033,7 +2411,7 @@ MODRET set_sqlminid(cmd_rec * cmd)
 
   val = strtoul(cmd->argv[1], &endptr, 10);
 
-  if (*endptr != NULL) {
+  if (*endptr != '\0') {
     CONF_ERROR(cmd, "requires a numeric argument");
   }
 
@@ -2065,7 +2443,7 @@ MODRET set_sqldefaultuid(cmd_rec * cmd)
 
   val = strtoul(cmd->argv[1], &endptr, 10);
 
-  if (*endptr != NULL) {
+  if (*endptr != '\0') {
     CONF_ERROR(cmd, "requires a numeric argument");
   }
 
@@ -2093,7 +2471,7 @@ MODRET set_sqldefaultgid(cmd_rec * cmd)
 
   val = strtoul(cmd->argv[1], &endptr, 10);
 
-  if (*endptr != NULL) {
+  if (*endptr != '\0') {
     CONF_ERROR(cmd, "requires a numeric argument");
   }
 
@@ -2405,10 +2783,7 @@ MODRET set_postgresinfo(cmd_rec * cmd)
 
 static int sql_init(void)
 {
-  /*
-   * when we implement uid/gid cacheing as per mod_ldap, initialization goes
-   * here. 
-   */
+  add_exit_handler( sql_shutdown );
   return 0;
 }
 
@@ -2419,6 +2794,17 @@ static int sql_getconf()
   void *temp_ptr;
 
   log_debug(DEBUG_FUNC, "%s: entering sql_getconf", MOD_SQL_VERSION);
+
+  group_name_cache = make_cache( session.pool, _group_name, _groupcmp );
+  passwd_name_cache = make_cache( session.pool, _passwd_name, _passwdcmp );
+  group_gid_cache = make_cache( session.pool, _group_gid, _groupcmp );
+  passwd_uid_cache = make_cache( session.pool, _passwd_uid, _passwdcmp );
+
+  cmap.group_cache_filled = 0;
+  cmap.passwd_cache_filled = 0;
+
+  cmap.curr_group = NULL;
+  cmap.curr_passwd = NULL;
 
   /*
    * construct our internal cache structure for this fork 
@@ -2699,7 +3085,6 @@ static conftable sql_conftab[] = {
 };
 
 static cmdtable sql_cmdtab[] = {
-  {PRE_CMD, C_QUIT, G_NONE, pre_cmd_quit, FALSE, FALSE},
   {POST_CMD, C_STOR, G_NONE, post_cmd_stor, FALSE, FALSE},
   {CMD, C_RETR, G_NONE, cmd_retr, FALSE, FALSE},
   {POST_CMD, C_RETR, G_NONE, post_cmd_retr, FALSE, FALSE},
