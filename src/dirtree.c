@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.123 2003-10-31 18:46:20 castaglia Exp $
+ * $Id: dirtree.c,v 1.124 2003-10-31 23:57:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3108,7 +3108,11 @@ int parse_config_file(const char *fname) {
           cmd->argv[0] = c->directive;
           ++found;
 
-          if ((mr = call_module(c->m, c->handler, cmd)) != NULL) {
+          log_debug(DEBUG8, "dispatching directive '%s' to module mod_%s",
+            c->directive, c->m->name);
+
+          mr = call_module(c->m, c->handler, cmd);
+          if (mr != NULL) {
             if (MODRET_ISERROR(mr)) {
               log_pri(PR_LOG_ERR, "Fatal: %s", MODRET_ERRMSG(mr));
               exit(1);
