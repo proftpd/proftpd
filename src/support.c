@@ -19,7 +19,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.4 1999-09-07 23:29:07 macgyver Exp $
+ * $Id: support.c,v 1.5 1999-09-09 03:18:46 macgyver Exp $
  */
 
 /* History Log:
@@ -607,7 +607,7 @@ char *sreplace(pool *p, char *s, ...)
       rlen = strlen(*rptr);
 
       if(strncmp(src,*mptr,mlen) == 0) {
-        strncpy(cp,*rptr,sizeof(buf) - strlen(cp));
+        strncpy(cp,*rptr,sizeof(buf) - strlen(buf));
         cp += rlen;
         src += mlen;
         break;
