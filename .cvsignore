@@ -8,6 +8,7 @@ ftpshut
 ftpwho
 ftpcount
 ftptop
+ftpdctl
 Makefile
 Make.rules
 Make.modules
