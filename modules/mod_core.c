@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.228 2004-04-11 20:12:25 castaglia Exp $
+ * $Id: mod_core.c,v 1.229 2004-04-14 20:25:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -424,7 +424,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
       (cmd->argv)[0], ": unable to resolve \"", cmd->argv[1], "\"",
       NULL));
 
-  pr_log_debug(DEBUG0, "setting default address to %s",
+  pr_log_pri(PR_LOG_INFO, "setting default address to %s",
     pr_netaddr_get_ipstr(main_addr));
 
   main_server->ServerAddress = pr_netaddr_get_ipstr(main_addr);
