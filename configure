@@ -863,7 +863,7 @@ Optional Features:
 
   --enable-cap            enable POSIX.1e capabilities (default=yes on Linux)
 
-  --disable-ipv6          disable IPv6 support (default=no)
+  --enable-ipv6           enable IPv6 support (default=no)
 
   --enable-sendfile       enable sendfile support (default=no)
 
@@ -3099,15 +3099,10 @@ fi;
 # Check whether --enable-ipv6 or --disable-ipv6 was given.
 if test "${enable_ipv6+set}" = set; then
   enableval="$enable_ipv6"
-   if test "$enableval" != "no" ; then
+   if test "$enableval" = "yes" ; then
 
 cat >>confdefs.h <<\_ACEOF
 #define USE_IPV6 1
-_ACEOF
-
-    else
-      cat >>confdefs.h <<\_ACEOF
-#define USE_IPV6 0
 _ACEOF
 
     fi
