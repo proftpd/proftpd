@@ -422,6 +422,8 @@ EOF
 	  echo alpha-unknown-linux-gnu ; exit 0
 	elif test "${UNAME_MACHINE}" = "sparc" ; then
 	  echo sparc-unknown-linux-gnu ; exit 0
+        elif test "${UNAME_MACHINE}" = "armv4l" ; then
+          echo arm-unknown-linux-gnu ; exit 0
 	else
 	  # Either a pre-BFD a.out linker (linux-gnuoldld) or one that does not give us
 	  # useful --help.  Gcc wants to distinguish between linux-gnuoldld and linux-gnuaout.
