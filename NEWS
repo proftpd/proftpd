@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.374 2003-02-24 02:37:18 castaglia Exp $
+$Id: NEWS,v 1.375 2003-02-24 16:06:10 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -29,6 +29,7 @@ CVS
   more autoconf portability checks.
 - Bug 1958 - ftpwho -o oneline has newlines when client is idle.
 - Bug 1908 - ExtendedLog to work properly again in <Anonymous> context.
+- Bug 1966 - SCO OpenServer 5.0.5 and inetd.
 
 1.2.8rc2 - Released 29-Jan-2003
 ---------------------------------
