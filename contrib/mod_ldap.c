@@ -19,12 +19,11 @@
  */
 
 /*
- * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lldap -llber$
- * $Id: mod_ldap.c,v 1.3 1999-10-11 03:13:12 macgyver Exp $
- *
- * LDAP lookup module for ProFTPD
+ * ldap password lookup module for ProFTPD
  * Author: John Morrissey <jwm@horde.net>
+ *
+ * $Id: mod_ldap.c,v 1.4 1999-10-23 02:48:25 macgyver Exp $
  */
 
 #include "conf.h"
@@ -38,7 +37,7 @@
 
 #include "privs.h"
 
-static const char *grpfname="/etc/group";
+static const char *grpfname = "/etc/group";
 
 #ifdef HAVE__PW_STAYOPEN
 extern int _pw_stayopen;
@@ -73,35 +72,99 @@ static int persistent_group = 0;
 #define	GROUP		grpfname
 
 /* Config entries */
-char *ldap_server, *ldap_prefix, *ldap_dn, *ldap_dnpass;
-int ldap_negcache;
+static char *ldap_server, *ldap_prefix, *ldap_dn, *ldap_dnpass;
+static int ldap_negcache;
 
 static LDAP *ld;
-static char *name_attrs[] = {"userPassword", "uidNumber", "gidNumber", "homeDirectory", "loginShell", NULL};
-static char *uid_attrs[] = {"uid", "userPassword", "gidNumber", "homeDirectory", "loginShell", NULL};
-static char *pass_attrs[] = {"userPassword", NULL};
 
 static void p_setpwent()
 {
   /* FUTURE: secondary ldap server? */
 
+  /* If we're not configured at all, just return. Everything else will
+     check for a NULL ld and will handle this gracefully. */
+  if (ldap_server == NULL && ldap_prefix == NULL && ldap_dn == NULL &&
+      ldap_dnpass == NULL)
+    return;
+
   if ((ld = ldap_open(ldap_server, LDAP_PORT)) == NULL) {
-    log_pri(LOG_ERR, "ldap_auth: p_setpwent(): ldap_open() to %s failed.",
-	    ldap_server);
+    log_pri(LOG_ERR, "ldap_auth: p_setpwent(): ldap_open() to %s failed", ldap_server);
     return;
   }
   if (ldap_simple_bind(ld, ldap_dn, ldap_dnpass) == -1) {
-    log_pri(LOG_ERR, "ldap_auth: p_setpwent(): ldap_simple_bind() "
-	    "as %s failed.", ldap_dn);
+    log_pri(LOG_ERR, "ldap_auth: p_setpwent(): ldap_simple_bind() as %s failed", ldap_dn);
     return;
   }
+
+  ldap_ufn_setprefix(ld, ldap_prefix);
 }
 
 static void p_endpwent()
 {
   if (ld != NULL)
     if (ldap_unbind(ld) == -1)
-      log_pri(LOG_NOTICE, "ldap_auth: p_endpwent(): ldap_unbind() failed.");
+      log_pri(LOG_NOTICE, "ldap_auth: p_endpwent(): ldap_unbind() failed");
+
+  ld = NULL;
+}
+
+static struct passwd *ldap_lookup(char *filter, char *ldap_attrs[])
+{
+  LDAPMessage *result, *e;
+  char **values;
+  unsigned short int i = 0;
+  struct passwd *pw;
+
+  /* If the LDAP connection has gone away or hasn't been established
+     yet, attempt to establish it now. */
+  if (ld == NULL) {
+	p_setpwent();
+
+    /* If we _still_ can't connect, give up and return NULL. */
+    if (ld == NULL)
+      return NULL;
+  }
+
+  if (ldap_ufn_search_s(ld, filter, ldap_attrs, 0, &result) == -1) {
+    log_pri(LOG_ERR, "ldap_auth: ldap_lookup(): ldap_ufn_search_s() failed");
+    return NULL;
+  }
+
+  if ((e = ldap_first_entry(ld, result)) == NULL) {
+    ldap_msgfree(result);
+    return NULL; /* No LDAP entries for this user */
+  }
+
+  pw = pcalloc(session.pool, sizeof(struct passwd));
+
+  while (ldap_attrs[i] != NULL) {
+    if ((values = ldap_get_values(ld, e, ldap_attrs[i])) == NULL) {
+      ldap_msgfree(result);
+      log_pri(LOG_ERR, "ldap_auth: ldap_lookup(): ldap_get_values() failed for attr %s", ldap_attrs[i]);
+      return NULL;
+    }
+
+    if (strcasecmp(ldap_attrs[i], "uid") == 0)
+      pw->pw_name = pstrdup(session.pool, values[0]);
+    else if (strcasecmp(ldap_attrs[i], "userPassword") == 0)
+      pw->pw_passwd = pstrdup(session.pool, values[0]);
+    else if (strcasecmp(ldap_attrs[i], "uidNumber") == 0)
+      pw->pw_uid = (uid_t) atoi(values[0]);
+    else if (strcasecmp(ldap_attrs[i], "gidNumber") == 0)
+      pw->pw_gid = (gid_t) atoi(values[0]);
+    else if (strcasecmp(ldap_attrs[i], "homeDirectory") == 0)
+      pw->pw_dir = pstrdup(session.pool, values[0]);
+    else if (strcasecmp(ldap_attrs[i], "loginShell") == 0)
+      pw->pw_shell = pstrdup(session.pool, values[0]);
+    else
+      log_pri(LOG_WARNING, "ldap_auth: ldap_lookup(): ldap_get_values() loop found unknown attr %s", ldap_attrs[i]);
+
+    ldap_value_free(values);
+    ++i;
+  }
+
+  ldap_msgfree(result);
+  return pw;
 }
 
 static void p_setgrent()
@@ -138,131 +201,38 @@ static struct group *p_getgrent()
 static struct passwd *p_getpwnam(cmd_rec *cmd, const char *name)
 {  
   struct passwd *pw;
-  BerElement *ber;
-  LDAPMessage *result, *e;
-  char *filter, **values;
-  unsigned short int i;
+  char *filter,
+       *name_attrs[] = {"userPassword", "uidNumber", "gidNumber",
+       					"homeDirectory", "loginShell", NULL};
 
-  pw = palloc(session.pool, sizeof(struct passwd));
-  pw->pw_name = pstrdup(session.pool, name);
-
-  /* If the LDAP connection has gone away or hasn't been established
-     yet, attempt to establish it now. */
-  if (ld == NULL)
-	p_setpwent();
-
-  /* If we _still_ can't connect, give up and return NULL. */
-  if (ld == NULL)
-    return NULL;
-
-  ldap_ufn_setprefix(ld, ldap_prefix);
   filter = pstrcat(cmd->tmp_pool, "uid=", name, NULL);
 
-  if (ldap_ufn_search_s(ld, filter, name_attrs, 0, &result) == -1) {
-    log_pri(LOG_ERR, "ldap_auth: p_getpwnam(): ldap_ufn_search_s() failed.");
-    return NULL;
+  if ((pw = ldap_lookup(filter, name_attrs)) != NULL) {
+    pw->pw_name = pstrdup(session.pool, name);
+    return pw; /* ldap_lookup() found an entry, so return it. */
   }
 
-  if ((e = ldap_first_entry(ld, result)) == NULL) {
-    ldap_msgfree(result);
-    return NULL; /* No LDAP entries for this user */
-  }
-
-  for (i = 0; i <= sizeof(name_attrs) / sizeof(*name_attrs) - 2; ++i) {
-    if ((values = ldap_get_values(ld, e, name_attrs[i])) == NULL) {
-      ldap_msgfree(result);
-      log_pri(LOG_ERR, "ldap_auth: p_getpwnam(): ldap_get_values() failed "
-	      "for attr %s.", name_attrs[i]);
-      return NULL;
-    }
-
-    if (strcasecmp(name_attrs[i], "userPassword") == 0)
-      pw->pw_passwd = pstrdup(session.pool, values[0]);
-    else if (strcasecmp(name_attrs[i], "uidNumber") == 0)
-      pw->pw_uid = (uid_t) atoi(values[0]);
-    else if (strcasecmp(name_attrs[i], "gidNumber") == 0)
-      pw->pw_gid = (gid_t) atoi(values[0]);
-    else if (strcasecmp(name_attrs[i], "homeDirectory") == 0)
-      pw->pw_dir = pstrdup(session.pool, values[0]);
-    else if (strcasecmp(name_attrs[i], "loginShell") == 0)
-      pw->pw_shell = pstrdup(session.pool, values[0]);
-    else
-      log_pri(LOG_WARNING, "ldap_auth: p_getpwnam(): ldap_get_values() loop "
-	      "found unknown attr %s.", name_attrs[i]);
-
-    ldap_value_free(values);
-  }
-
-  ldap_msgfree(result);
-
-  return pw;
+  /* ldap_lookup() didn't find it, or encountered an error. */
+  return NULL;
 }
 
 static struct passwd *p_getpwuid(cmd_rec *cmd, uid_t uid)
 {   
   struct passwd *pw;
-
-  BerElement *ber;
-  LDAPMessage *result, *e;
-  char *filter, **values, uidstr[BUFSIZ]; 
-  unsigned short int i;
-
-  pw = palloc(session.pool, sizeof(struct passwd));
-  pw->pw_uid = uid;
-
-  p_setpwent();
-
-  /* If the LDAP connection has gone away, attempt to reestablish it. */
-  if (ld == NULL)
-	p_setpwent();
-
-  /* If we _still_ can't connect, give up and return NULL. */
-  if (ld == NULL)
-    return NULL;
-
-  ldap_ufn_setprefix(ld, ldap_prefix);
+  char *filter, uidstr[BUFSIZ],
+       *uid_attrs[] = {"uid", "userPassword", "gidNumber", "homeDirectory",
+                       "loginShell", NULL};
 
   snprintf(uidstr, sizeof(uidstr), "%d", uid);
-  filter = pstrcat(session.pool, "uidNumber=", uidstr, NULL);
+  filter = pstrcat(cmd->tmp_pool, "uidNumber=", uidstr, NULL);
 
-  if (ldap_ufn_search_s(ld, filter, uid_attrs, 0, &result) == -1) {
-    log_pri(LOG_ERR, "ldap_auth: p_getpwuid(): ldap_ufn_search_s() failed.");
-    return NULL;
+  if ((pw = ldap_lookup(filter, uid_attrs)) != NULL) {
+    pw->pw_uid = uid;
+    return pw; /* ldap_lookup() found an entry, so return it. */
   }
 
-  if ((e = ldap_first_entry(ld, result)) == NULL) {
-    ldap_msgfree(result);
-    return NULL; /* No LDAP entries found for this user. */
-  }
-
-  for (i = 0; i <= sizeof(uid_attrs) / sizeof(*uid_attrs) - 2; ++i) {
-    if ((values = ldap_get_values(ld, e, uid_attrs[i])) == NULL) {
-      ldap_msgfree(result);
-      log_pri(LOG_ERR, "ldap_auth: p_getpwuid(): ldap_get_values() failed for "
-	      "attr %s.", uid_attrs[i]);
-      return NULL;
-    }
-
-    if (strcasecmp(uid_attrs[i], "userPassword") == 0)
-      pw->pw_passwd = pstrdup(session.pool, values[0]);
-    else if (strcasecmp(uid_attrs[i], "uid") == 0)
-      pw->pw_uid = (uid_t) atoi(values[0]);
-    else if (strcasecmp(uid_attrs[i], "gid") == 0)
-      pw->pw_gid = (gid_t) atoi(values[0]);
-    else if (strcasecmp(uid_attrs[i], "homeDir") == 0)
-      pw->pw_dir = pstrdup(session.pool, values[0]);
-    else if (strcasecmp(uid_attrs[i], "shell") == 0)
-      pw->pw_shell = pstrdup(session.pool, values[0]);
-    else
-      log_pri(LOG_WARNING, "ldap_auth: p_getpwuid(): ldap_get_values() loop "
-	      "found unknown attr %s.", uid_attrs[i]);
-
-    ldap_value_free(values);
-  }
-
-  ldap_msgfree(result);
-
-  return pw;
+  /* ldap_lookup() didn't find it, or encountered an error. */
+  return NULL;
 }
 
 static struct group *p_getgrnam(const char *name)
@@ -440,54 +410,28 @@ MODRET pw_getgrgid(cmd_rec *cmd)
 MODRET pw_auth(cmd_rec *cmd)
 {
   time_t now;
-  char *cpw;
   time_t lstchg = -1,max = -1,inact = -1,disable = -11;
   const char *name;
 
-  BerElement *ber;
-  LDAPMessage *result, *e;
-  char *filter, **values;
+  struct passwd *pw;
+  char *filter, *pass_attrs[] = {"userPassword", NULL};
 
   name = cmd->argv[0];
   time(&now);
 
+  /* OK, here's the scoop. If don't find an entry for the user at all
+     (or there's an error gathering the LDAP info), we decline, so other
+     modules can have a shot at it. If we do find an entry for the user,
+     but there's no password, we return AUTH_NOPWD. */
 
-  /* If the LDAP connection has gone away, attempt to reestablish it. */
-  if (ld == NULL)
-	p_setpwent();
-
-  /* If we _still_ can't connect, give up and return NULL. */
-  if (ld == NULL)
-    return NULL;
-
-  ldap_ufn_setprefix(ld, ldap_prefix);
   filter = pstrcat(cmd->tmp_pool, "uid=", name, NULL);
+  if ((pw = ldap_lookup(filter, pass_attrs)) == NULL)
+    return DECLINED(cmd);
 
-  if (ldap_ufn_search_s(ld, filter, pass_attrs, 0, &result) == -1) {
-    log_pri(LOG_ERR, "ldap_auth: pw_auth(): ldap_ufn_search_s() failed.");
-    return NULL;
-  }
-
-  if ((e = ldap_first_entry(ld, result)) == NULL) {
-    ldap_msgfree(result);
-    return NULL; /* No LDAP entries found for this user. */
-  }
-
-  if ((values = ldap_get_values(ld, e, "userPassword")) == NULL) {
-    ldap_msgfree(result);
-    log_pri(LOG_ERR, "ldap_auth: pw_auth(): ldap_get_values() failed.");
-    return NULL;
-  }
-
-  cpw = pstrdup(cmd->tmp_pool, values[0]);
-  ldap_value_free(values);
-  ldap_msgfree(result);
-
-
-  if(!cpw)
+  if(!pw->pw_passwd)
     return ERROR_INT(cmd,AUTH_NOPWD);
 
-  if(auth_check(cmd->tmp_pool,cpw,cmd->argv[0],cmd->argv[1]))
+  if(auth_check(cmd->tmp_pool,pw->pw_passwd,cmd->argv[0],cmd->argv[1]))
     return ERROR_INT(cmd,AUTH_BADPWD);
 
   if(lstchg > (time_t)0 && max > (time_t)0 &&
@@ -515,18 +459,22 @@ MODRET pw_check(cmd_rec *cmd)
   cpw = cmd->argv[0];
   pw = cmd->argv[2];
 
-  /* Check to see how the password is encrypted. */
-
+  /* Get the length of "scheme" in the leading {scheme} so we can skip it
+     in the password comparison. */
   encname_len = strcspn(cpw + 1, "}");
-  if (strncmp(cpw + 1, "crypt", encname_len) == 0) { /* It's crypt()ed */
-    if(strcmp(crypt(pw,cpw + encname_len + 2),cpw + encname_len + 2) != 0)
-      return DECLINED(cmd);
+
+  /* Check to see how the password is encrypted, and check accordingly. */
+
+  if (encname_len == strlen(cpw + 1)) { /* No leading {scheme}, so crypt()'d */
+    if (strcmp(crypt(pw,cpw),cpw) != 0)
+      return ERROR(cmd);
   }
-  else {
-    log_pri(LOG_ERR, "ldap_auth: pw_check(): can't determine encryption "
-	    "scheme from '%s'.", cpw);
+  else if (strncmp(cpw + 1, "crypt", encname_len) == 0) { /* {crypt} */
+    if (strcmp(crypt(pw,cpw + encname_len + 2),cpw + encname_len + 2) != 0)
+      return ERROR(cmd);
+  }
+  else /* Can't find a supported {scheme} */
     return DECLINED(cmd);
-  }
 
   return HANDLED(cmd);
 }
@@ -635,15 +583,6 @@ MODRET set_persistentpasswd(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET set_authuserfile(cmd_rec *cmd)
-{
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-
-  add_config_param_str("AuthUserFile",1,cmd->argv[1]);
-  return HANDLED(cmd);
-}
-
 MODRET set_authgroupfile(cmd_rec *cmd)
 {
   CHECK_ARGS(cmd,1);
@@ -715,7 +654,7 @@ MODRET set_ldapnegcache(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-static int ldap_child()
+static int ldap_getconf()
 {
   const char *file;
 
@@ -779,5 +718,5 @@ module ldap_module = {
   ldap_config,				/* Configuration directive table */
   NULL,						/* No command handlers */
   ldap_auth,				/* Authentication handlers */
-  ldappw_init,ldap_child	/* Initialization functions */
+  ldappw_init,ldap_getconf	/* Initialization functions */
 };
