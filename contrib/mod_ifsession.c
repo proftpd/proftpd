@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.13 2004-04-09 16:54:23 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.14 2004-07-08 21:38:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,6 +44,8 @@
 #define	IFSESS_GROUP_TEXT	"<IfGroup>"
 #define IFSESS_USER_NUMBER	102
 #define	IFSESS_USER_TEXT	"<IfUser>"
+
+static int ifsess_merged = FALSE;
 
 /* Support routines
  */
@@ -328,6 +330,8 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
         resolve_deferred_dirs(main_server);
         fixup_dirs(main_server, CF_DEFER);
 
+        ifsess_merged = TRUE;
+
       } else
         pr_log_debug(DEBUG9, MOD_IFSESSION_VERSION
           ": <IfGroup> not matched, skipping");
@@ -391,6 +395,8 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
         resolve_deferred_dirs(main_server);
         fixup_dirs(main_server, CF_DEFER);
 
+        ifsess_merged = TRUE;
+
       } else
         pr_log_debug(DEBUG9, MOD_IFSESSION_VERSION
           ": <IfUser> not matched, skipping");
@@ -407,11 +413,13 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
 
   destroy_pool(tmp_pool);
 
-  /* Try to honor any <Limit LOGIN> sections that may have been merged in. */
-  if (!login_check_limits(main_server->conf, FALSE, TRUE, &found)) {
-    pr_log_auth(PR_LOG_NOTICE, "%s %s: Limit access denies login.",
-      session.anon_config ? "ANON" : C_USER, session.user);
-    end_login(0);
+  if (ifsess_merged) {
+    /* Try to honor any <Limit LOGIN> sections that may have been merged in. */
+    if (!login_check_limits(TOPLEVEL_CONF, FALSE, TRUE, &found)) {
+      pr_log_auth(PR_LOG_NOTICE, "%s %s: Limit access denies login.",
+        session.anon_config ? "ANON" : C_USER, session.user);
+      end_login(0);
+    }
   }
 
   return DECLINED(cmd);
@@ -467,6 +475,8 @@ static int ifsess_sess_init(void) {
 
         resolve_deferred_dirs(main_server);
         fixup_dirs(main_server, CF_DEFER);
+
+        ifsess_merged = TRUE;
 
       } else
         pr_log_debug(DEBUG9, MOD_IFSESSION_VERSION
