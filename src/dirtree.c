@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.130 2003-11-10 03:55:02 castaglia Exp $
+ * $Id: dirtree.c,v 1.131 2003-11-15 19:52:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -929,12 +929,19 @@ config_rec *add_config_set(xaset_t **set, const char *name) {
   return c;
 }
 
-/* Adds a config_rec on the current "level" */
-config_rec *add_config(const char *name) {
-  server_rec *s = *conf.curserver;
-  config_rec *parent = NULL, *c = *conf.curconfig;
+/* Adds a config_rec to the given server.  If no server is specified, the
+ * config_rec is added to the current "level".
+ */
+config_rec *add_config(server_rec *s, const char *name) {
+  config_rec *parent = NULL, *c = NULL;
   pool *p = NULL;
   xaset_t **set = NULL;
+
+  if (!s)
+    s = *conf.curserver;
+
+  if (conf.curconfig)
+    c =  *conf.curconfig;
 
   if (c) {
     parent = c;
@@ -3081,7 +3088,36 @@ config_rec *add_config_param_set(xaset_t **set,const char *name,int num,...)
 }
 
 config_rec *add_config_param_str(const char *name, int num, ...) {
-  config_rec *c = add_config(name);
+  config_rec *c = add_config(NULL, name);
+  char *arg = NULL;
+  void **argv = NULL;
+  va_list ap;
+
+  if (c) {
+    c->config_type = CONF_PARAM;
+    c->argc = num;
+    c->argv = pcalloc(c->pool, (num+1) * sizeof(char *));
+
+    argv = c->argv;
+    va_start(ap, num);
+
+    while (num-- > 0) {
+      arg = va_arg(ap, char *);
+      if (arg)
+        *argv++ = pstrdup(c->pool, arg);
+      else
+        *argv++ = NULL;
+    }
+
+    va_end(ap);
+  }
+
+  return c;
+}
+
+config_rec *pr_conf_add_server_config_param_str(server_rec *s, const char *name,
+    int num, ...) {
+  config_rec *c = add_config(s, name);
   char *arg = NULL;
   void **argv = NULL;
   va_list ap;
@@ -3109,7 +3145,7 @@ config_rec *add_config_param_str(const char *name, int num, ...) {
 }
 
 config_rec *add_config_param(const char *name, int num, ...) {
-  config_rec *c = add_config(name);
+  config_rec *c = add_config(NULL, name);
   void **argv;
   va_list ap;
 
@@ -3220,10 +3256,40 @@ int fixup_servers(void) {
 
     next_s = s->next;
 
-    if (!s->ServerAddress)
+    if (!s->ServerAddress) {
+      array_header *addrs = NULL;
+
       s->ServerAddress = pr_netaddr_get_localaddr_str(s->pool);
 
-    s->addr = pr_netaddr_get_addr(s->pool, s->ServerAddress, NULL);
+      s->addr = pr_netaddr_get_addr(s->pool, s->ServerAddress, &addrs);
+     
+      if (addrs) {
+        register unsigned int i;
+        pr_netaddr_t **elts = addrs->elts;
+
+        /* For every additional address, implicitly add a Bind record. */
+        for (i = 0; i < addrs->nelts; i++) {
+          const char *ipstr = pr_netaddr_get_ipstr(elts[i]);
+
+#ifdef USE_IPV6
+          char ipbuf[INET6_ADDRSTRLEN];
+          if (pr_netaddr_get_family(elts[i]) == AF_INET) {
+
+            /* Create the Bind record using the IPv4-mapped IPv6 version of
+             * this address.
+             */
+            snprintf(ipbuf, sizeof(ipbuf), "::ffff:%s", ipstr);
+            ipstr = ipbuf;
+          }
+#endif /* USE_IPV6 */
+
+          pr_conf_add_server_config_param_str(s, "Bind", 1, ipstr);
+        }
+      }
+ 
+    } else 
+      s->addr = pr_netaddr_get_addr(s->pool, s->ServerAddress, NULL);
+
     if (s->addr == NULL) {
       pr_log_pri(PR_LOG_ERR, "error: unable to determine IP address of '%s'",
         s->ServerAddress);

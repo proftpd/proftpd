@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.47 2003-11-10 03:55:02 castaglia Exp $
+ * $Id: dirtree.h,v 1.48 2003-11-15 19:52:22 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -221,10 +221,12 @@ void set_config_stream(FILE *, unsigned int);
 char *get_config_line(char *, size_t);
 int parse_config_file(const char *);
 config_rec *add_config_set(xaset_t **, const char *);
-config_rec *add_config(const char *);
+config_rec *add_config(server_rec *, const char *);
 config_rec *add_config_param(const char *, int, ...);
 config_rec *add_config_param_str(const char *, int, ...);
 config_rec *add_config_param_set(xaset_t **, const char *, int, ...);
+config_rec *pr_conf_add_server_config_param_str(server_rec *, const char *,
+  int, ...);
 config_rec *find_config_next(config_rec *, config_rec *, int,
   const char *, int);
 config_rec *find_config(xaset_t *, int, const char *, int);
