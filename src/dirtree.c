@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.157 2004-10-09 22:24:00 castaglia Exp $
+ * $Id: dirtree.c,v 1.158 2004-10-11 16:33:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2591,21 +2591,21 @@ static config_rec *_find_best_dir(xaset_t *set,char *path,int *matchlen)
  * in directory tree order
  */
 
-static void _reorder_dirs(xaset_t *set, int mask) {
+static void _reorder_dirs(xaset_t *set, int flags) {
   config_rec *c = NULL, *cnext = NULL, *newparent = NULL;
   int tmp, defer = 0;
 
   if (!set || !set->xas_list)
     return;
 
-  if (!(mask & CF_DEFER))
+  if (!(flags & CF_DEFER))
     defer = 1;
 
   for (c = (config_rec *) set->xas_list; c; c = cnext) {
     cnext = c->next;
 
     if (c->config_type == CONF_DIR) {
-      if (mask && !(c->flags & mask))
+      if (flags && !(c->flags & flags))
         continue;
 
       if (defer && (c->flags & CF_DEFER))
@@ -2641,7 +2641,7 @@ static void _reorder_dirs(xaset_t *set, int mask) {
   /* Top level is now sorted, now we recursively sort all the sublevels. */
   for (c = (config_rec *) set->xas_list; c; c = c->next)
     if (c->config_type == CONF_DIR || c->config_type == CONF_ANON)
-      _reorder_dirs(c->subset, mask);
+      _reorder_dirs(c->subset, flags);
 }
 
 static void config_dumpf(const char *fmt, ...) {
@@ -2858,20 +2858,31 @@ static void fixup_globals(void) {
   }
 }
 
-void fixup_dirs(server_rec *s, int mask) {
-  if (!s || !s->conf)
+void fixup_dirs(server_rec *s, int flags) {
+  if (!s)
     return;
 
-  _reorder_dirs(s->conf, mask);
+  if (!s->conf) {
+    if (!(flags & CF_SILENT)) {
+      pr_log_debug(DEBUG5, "%s", "");
+      pr_log_debug(DEBUG5, "Config for %s:", s->ServerName);
+    }
+
+    return;
+  }
+ 
+  _reorder_dirs(s->conf, flags);
 
   /* Merge mergeable configuration items down. */
   _mergedown(s->conf, FALSE);
 
-  if (!(mask & CF_SILENT)) {
+  if (!(flags & CF_SILENT)) {
     pr_log_debug(DEBUG5, "%s", "");
     pr_log_debug(DEBUG5, "Config for %s:", s->ServerName);
     pr_config_dump(config_dumpf, s->conf, NULL);
   }
+
+  return;
 }
 
 config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
@@ -3378,7 +3389,6 @@ int fixup_servers(void) {
     unsigned char *default_server = NULL;
 
     next_s = s->next;
-
     if (!s->ServerAddress) {
       array_header *addrs = NULL;
 
