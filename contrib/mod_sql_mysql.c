@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.33 2004-09-26 18:24:26 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.34 2004-10-17 17:47:43 castaglia Exp $
  */
 
 /*
@@ -675,9 +675,9 @@ static modret_t *cmd_exit(cmd_rec *cmd) {
     conn_entry_t *entry = ((conn_entry_t **) conn_cache->elts)[i];
 
     if (entry->connections > 0) {
-      cmd_rec *cmd = _sql_make_cmd(conn_pool, 2, entry->name, "1");
-      cmd_close(cmd);
-      destroy_pool(cmd->pool);
+      cmd_rec *close_cmd = _sql_make_cmd(conn_pool, 2, entry->name, "1");
+      cmd_close(close_cmd);
+      destroy_pool(close_cmd->pool);
     }
   }
 
