@@ -1073,13 +1073,6 @@ static void tls_end_session(SSL *ssl, int strms) {
         pr_netio_shutdown(session.d->instrm, 1);
     }
 
-#if 0
-    /* This is probably a hack, but it seems necessary with some buggy
-     * clients.
-     */
-    SSL_set_shutdown(ssl, SSL_RECEIVED_SHUTDOWN);
-#endif
-
     /* Now call SSL_shutdown again. */
     if (SSL_shutdown(ssl) == -1) {
       tls_log("error shutting down TLS session");
