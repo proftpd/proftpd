@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.306 2002-12-05 22:47:47 castaglia Exp $
+$Id: NEWS,v 1.307 2002-12-05 22:53:16 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -24,6 +24,10 @@ CVS
   his code through so many versions of ProFTPD.
 - Bug 1788 - Add ability to configure auth module checking order.  This is
   now configurable via the new AuthOrder directive.
+- Bug 1205 - Add debug option to SystemLog.  Actually, this feature request
+  has been resolved by adding a new DebugLevel configuration directive, so
+  that a debugging verbosity can be set in the configuration file as well
+  as on the command line.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------

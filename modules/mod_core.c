@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.126 2002-12-05 22:47:48 castaglia Exp $
+ * $Id: mod_core.c,v 1.127 2002-12-05 22:53:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -324,6 +324,31 @@ MODRET add_include(cmd_rec *cmd) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "Unable to include configuration "
       "file '", cmd->argv[1], "'.", NULL));
   
+  return HANDLED(cmd);
+}
+
+MODRET set_debuglevel(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  int debuglevel = -1;
+  char *endp = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  /* Make sure the parameter is a valid number. */
+  debuglevel = strtol(cmd->argv[1], &endp, 10);
+
+  if (endp && *endp)
+    CONF_ERROR(cmd, "not a valid number");
+
+  /* Make sure the number is within the valid debug level range. */
+  if (debuglevel < 0 || debuglevel > 9)
+    CONF_ERROR(cmd, "invalid debug level configured");
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[0]) = debuglevel;
+
   return HANDLED(cmd);
 }
 
@@ -3720,11 +3745,17 @@ static int core_init(void) {
 
 static int core_sess_init(void) {
   config_rec *c = NULL;
+  unsigned int *debug_level = NULL;
 
   /* Check for a server-specific TimeoutIdle */
   if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutIdle",
       FALSE)) != NULL)
     TimeoutIdle = *((int *) c->argv[0]);
+
+  /* Check for a configured DebugLevel */
+  if ((debug_level = get_param_ptr(main_server->conf, "DebugLevel",
+      FALSE)) != NULL)
+    log_setdebuglevel(*debug_level);
 
   return 0;
 }
@@ -3762,6 +3793,7 @@ static conftable core_conftab[] = {
   { "Class",			set_class,			NULL },
   { "Classes",			set_classes,			NULL },
   { "CommandBufferSize",	set_commandbuffersize,		NULL },
+  { "DebugLevel",		set_debuglevel,			NULL },
   { "DefaultAddress",		set_defaultaddress,		NULL },
   { "DefaultServer",		set_defaultserver,		NULL },
   { "DefaultTransferMode",	set_defaulttransfermode,	NULL },
