@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.6 2004-01-19 17:58:20 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.7 2004-01-19 18:00:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -772,13 +772,6 @@ static void ctrls_admin_restart_ev(const void *event_data, void *user_data) {
     ctrls_admin_acttab[i].act_acl = pcalloc(ctrls_admin_pool,
       sizeof(ctrls_acl_t));
     ctrls_init_acl(ctrls_admin_acttab[i].act_acl);
-
-    if (pr_ctrls_register(&ctrls_admin_module,
-        ctrls_admin_acttab[i].act_action, ctrls_admin_acttab[i].act_desc,
-        ctrls_admin_acttab[i].act_cb) < 0)
-     pr_log_pri(PR_LOG_INFO, MOD_CTRLS_ADMIN_VERSION
-        ": error registering '%s' control: %s",
-        ctrls_admin_acttab[i].act_action, strerror(errno));
   }
 
   return;

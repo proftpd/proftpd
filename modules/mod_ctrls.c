@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.8 2004-01-19 17:58:22 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.9 2004-01-19 18:00:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1601,12 +1601,6 @@ static void ctrls_restart_ev(const void *event_data, void *user_data) {
     /* Allocate and initialize the ACL for this control. */
     ctrls_acttab[i].act_acl = pcalloc(ctrls_pool, sizeof(ctrls_acl_t));
     ctrls_init_acl(ctrls_acttab[i].act_acl);
-
-    if (pr_ctrls_register(&ctrls_module, ctrls_acttab[i].act_action,
-        ctrls_acttab[i].act_desc, ctrls_acttab[i].act_cb) < 0)
-      pr_log_pri(PR_LOG_INFO, MOD_CTRLS_VERSION
-        ": error registering '%s' control: %s",
-        ctrls_acttab[i].act_action, strerror(errno));
   }
 
   /* Restart listening on the ctrl socket */
