@@ -26,14 +26,12 @@
 
 /*
  * Regex management code
- * $Id: regexp.c,v 1.12 2004-09-05 00:36:43 castaglia Exp $
+ * $Id: regexp.c,v 1.13 2004-09-05 00:38:14 castaglia Exp $
  */
 
 #include "conf.h"
 
 #ifdef HAVE_REGEX_H
-
-extern module core_module;
 
 static pool *regexp_pool = NULL;
 static array_header *regexp_list = NULL;
@@ -128,8 +126,8 @@ void init_regexp(void) {
    *
    * This registration is done here so that it only happens once.
    */
-  pr_event_register(&core_module, "core.restart", regexp_restart_ev, NULL);
-  pr_event_register(&core_module, "core.exit", regexp_exit_ev, NULL);
+  pr_event_register(NULL, "core.restart", regexp_restart_ev, NULL);
+  pr_event_register(NULL, "core.exit", regexp_exit_ev, NULL);
 }
 
 #endif
