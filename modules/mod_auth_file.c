@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.21 2004-07-21 23:58:09 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.22 2004-08-01 19:02:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1191,8 +1191,10 @@ static int authfile_sess_init(void) {
  */
 c->name = "";
 
-    file->af_next = af_user_file_list;
-    af_user_file_list = file;
+    if (!af_user_file_list) {
+      file->af_next = af_user_file_list;
+      af_user_file_list = file;
+    }
 
     c = find_config_next(c, c->next, CONF_PARAM, "AuthUserFile", FALSE);
   }
@@ -1209,8 +1211,10 @@ c->name = "";
  */
 c->name = "";
 
-    file->af_next = af_group_file_list;
-    af_group_file_list = file;
+    if (!af_group_file_list) {
+      file->af_next = af_group_file_list;
+      af_group_file_list = file;
+    }
 
     c = find_config_next(c, c->next, CONF_PARAM, "AuthGroupFile", FALSE);
   }
