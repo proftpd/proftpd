@@ -31,7 +31,7 @@
  *   Copyright (C) 1985, 86, 87, 88, 89, 91, 92, 93, 1994, 1995, 1997
  *     Free Software Foundation, Inc.
  * 
- * $Id: mod_load.c.in,v 1.2 2005-01-01 20:04:49 castaglia Exp $
+ * $Id: mod_load.c.in,v 1.3 2005-01-06 23:39:59 castaglia Exp $
  * $Libraries: @MODULE_LIBS@ $
  */
 
@@ -988,7 +988,7 @@ MODRET set_maxload(cmd_rec *cmd) {
 
   if (cmd->argc-1 == 2) {
     c->argv[1] = pcalloc(c->pool, sizeof(char *));
-    ((char *) c->argv[1]) = pstrdup(c->pool, cmd->argv[2]);
+    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
   }
  
   return HANDLED(cmd);

@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_radius -- a module for RADIUS authentication and accounting
  *
- * Copyright (c) 2001-2003 TJ Saunders
+ * Copyright (c) 2001-2005 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.25 2004-12-16 23:26:24 castaglia Exp $
+ * $Id: mod_radius.c,v 1.26 2005-01-06 23:40:00 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.8rc2"
@@ -2386,8 +2386,8 @@ MODRET set_radiusacctserver(cmd_rec *cmd) {
       CONF_ERROR(cmd, "timeout must be greater than or equal to zero");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(radius_server_t));
-  ((radius_server_t *) c->argv[0]) = radius_server;
+  c->argv[0] = pcalloc(c->pool, sizeof(radius_server_t *));
+  *((radius_server_t **) c->argv[0]) = radius_server;
 
   return HANDLED(cmd);
 }
@@ -2432,8 +2432,8 @@ MODRET set_radiusauthserver(cmd_rec *cmd) {
       CONF_ERROR(cmd, "timeout must be greater than or equal to zero");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(radius_server_t));
-  ((radius_server_t *) c->argv[0]) = radius_server;
+  c->argv[0] = pcalloc(c->pool, sizeof(radius_server_t *));
+  *((radius_server_t **) c->argv[0]) = radius_server;
 
   return HANDLED(cmd);
 }
@@ -2699,7 +2699,7 @@ static int radius_sess_init(void) {
   current_server = &radius_acct_server;
 
   while (c) {
-    *current_server = (radius_server_t *) c->argv[0];
+    *current_server = *((radius_server_t **) c->argv[0]);
     current_server = &(*current_server)->next;
 
     c = find_config_next(c, c->next, CONF_PARAM, "RadiusAcctServer", FALSE);
@@ -2714,7 +2714,7 @@ static int radius_sess_init(void) {
   current_server = &radius_auth_server;
 
   while (c) {
-    *current_server = (radius_server_t *) c->argv[0];
+    *current_server = *((radius_server_t **) c->argv[0]);
     current_server = &(*current_server)->next;
 
     c = find_config_next(c, c->next, CONF_PARAM, "RadiusAuthServer", FALSE);

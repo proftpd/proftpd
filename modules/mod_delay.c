@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.7 2004-12-30 22:23:47 castaglia Exp $
+ * $Id: mod_delay.c,v 1.8 2005-01-06 23:40:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -318,7 +318,7 @@ static int delay_table_init(void) {
 
     pr_log_debug(DEBUG2, MOD_DELAY_VERSION
       ": expected table size %" PR_LU ", found %" PR_LU ", resetting table",
-      tab_size, st.st_size);
+      (pr_off_t) tab_size, (pr_off_t) st.st_size);
     reset_table = TRUE;
   }
 
