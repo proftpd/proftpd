@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.19 2003-03-21 05:58:22 castaglia Exp $
+ * $Id: scoreboard.c,v 1.20 2003-03-21 06:00:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -241,17 +241,16 @@ int pr_open_scoreboard(int flags) {
   int res;
   struct stat st;
 
+  log_debug(DEBUG7, "opening scoreboard '%s'", scoreboard_file);
+
   /* Prevent writing to a symlink while avoiding a race condition: open
    * the file name O_RDWR|O_CREAT first, then check to see if it's a symlink.
    * If so, close the file and error out.  If not, truncate as necessary,
    * and continue.
    */
   if ((scoreboard_fd = open(scoreboard_file, flags|O_CREAT,
-      PR_SCOREBOARD_MODE)) < 0) {
-    log_debug(DEBUG7, "error opening scoreboard '%s': %s", scoreboard_file,
-      strerror(errno));
+      PR_SCOREBOARD_MODE)) < 0)
     return -1;
-  }
 
   /* Make certain that the scoreboard mode will be read-only for everyone
    * except the user owner (this allows for non-root-running daemons to
