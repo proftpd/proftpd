@@ -71,8 +71,8 @@ static void add_readme_response(const char *file) {
       *tptr = '\0';
     }
     
-    add_response(R_DUP, "Please read the file %s", file);
-    add_response(R_DUP, "   it was last modified on %.26s - %i day%s ago",
+    pr_response_add(R_DUP, "Please read the file %s", file);
+    pr_response_add(R_DUP, "   it was last modified on %.26s - %i day%s ago",
 		 ctime_str, days, days == 1 ? "" : "s" );
   }
 }
@@ -88,13 +88,14 @@ static void add_pattern_response(const char *pattern) {
       add_readme_response(*path);
       path++;
     }
-  } else if(a == GLOB_NOSPACE) {
-    add_response(R_226, "Out of memory during globbing of %s", pattern);
-  } else if(a == GLOB_ABORTED) {
-    add_response(R_226, "Read error during globbing of %s", pattern);
-  } else if(a != GLOB_NOMATCH) {
-    add_response(R_226, "Unknown error during globbing of %s", pattern);
-  }
+  } else if (a == GLOB_NOSPACE)
+    pr_response_add(R_226, "Out of memory during globbing of %s", pattern);
+
+  else if (a == GLOB_ABORTED)
+    pr_response_add(R_226, "Read error during globbing of %s", pattern);
+
+  else if (a != GLOB_NOMATCH)
+    pr_response_add(R_226, "Unknown error during globbing of %s", pattern);
   
   pr_fs_globfree(&g);
 }

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.138 2002-12-11 23:33:19 castaglia Exp $
+ * $Id: mod_core.c,v 1.139 2002-12-13 17:27:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2511,14 +2511,14 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
       NULL);
 
     if (first) {
-      send_response_raw("%s-%s", numeric, outs);
+      pr_response_send_raw("%s-%s", numeric, outs);
       first = FALSE;
 
     } else {
       if (MultilineRFC2228)
-        send_response_raw("%s-%s", numeric, outs);
+        pr_response_send_raw("%s-%s", numeric, outs);
       else
-        send_response_raw(" %s", outs);
+        pr_response_send_raw(" %s", outs);
     }
   }
 
@@ -2560,7 +2560,7 @@ MODRET regex_filters(cmd_rec *cmd) {
       regexec(a_reg, cmd->arg, 0, NULL, 0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by AllowFilter", cmd->argv[0],
       cmd->arg);
-    add_response_err(R_550, "%s: Forbidden command argument", cmd->arg);
+    pr_response_add_err(R_550, "%s: Forbidden command argument", cmd->arg);
     return ERROR(cmd);
   }
 
@@ -2574,7 +2574,7 @@ MODRET regex_filters(cmd_rec *cmd) {
       regexec(d_reg, cmd->arg, 0, NULL, 0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by DenyFilter", cmd->argv[0],
       cmd->arg);
-    add_response_err(R_550, "%s: Forbidden command argument", cmd->arg);
+    pr_response_add_err(R_550, "%s: Forbidden command argument", cmd->arg);
     return ERROR(cmd);
   }
 
@@ -2605,10 +2605,10 @@ MODRET core_quit(cmd_rec *cmd) {
     /* Hack or feature, core_display_file() always puts a hyphen on the
      * last line
      */
-    send_response(R_221, "%s", "");
+    pr_response_send(R_221, "%s", "");
 
   } else
-    send_response(R_221, "Goodbye.");
+    pr_response_send(R_221, "Goodbye.");
 
   end_login(0);
 
@@ -2631,11 +2631,11 @@ MODRET core_pwd(cmd_rec *cmd) {
   CHECK_CMD_ARGS(cmd, 1);
 
   if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.vwd, NULL)) {
-    add_response_err(R_550, "%s: %s", cmd->argv[0], strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->argv[0], strerror(errno));
     return ERROR(cmd);
   }
 
-  add_response(R_257,"\"%s\" is current directory.",
+  pr_response_add(R_257,"\"%s\" is current directory.",
     quote_dir(cmd, session.vwd));
 
   return HANDLED(cmd);
@@ -2685,7 +2685,8 @@ MODRET core_pasv(cmd_rec *cmd) {
       session.c->local_ipaddr, INPORT_ANY, FALSE);
 
   if (!session.d) {
-    add_response_err(R_425, "Unable to build data connection: Internal error");
+    pr_response_add_err(R_425, "Unable to build data connection: "
+      "Internal error");
     return ERROR(cmd);
   }
 
@@ -2714,7 +2715,7 @@ MODRET core_pasv(cmd_rec *cmd) {
             (int)addr.u[0],(int)addr.u[1],(int)addr.u[2],
             (int)addr.u[3],(int)port.u[0],(int)port.u[1]);
 
-  add_response(R_227, "Entering Passive Mode (%u,%u,%u,%u,%u,%u).",
+  pr_response_add(R_227, "Entering Passive Mode (%u,%u,%u,%u,%u,%u).",
                (int)addr.u[0],(int)addr.u[1],(int)addr.u[2],
                (int)addr.u[3],(int)port.u[0],(int)port.u[1]);
 
@@ -2761,7 +2762,7 @@ MODRET core_port(cmd_rec *cmd) {
   }
 
   if (cnt != 6 || (a && *a)) {
-    add_response_err(R_501, "Illegal PORT command");
+    pr_response_add_err(R_501, "Illegal PORT command");
     return ERROR(cmd);
   }
 
@@ -2775,7 +2776,7 @@ MODRET core_port(cmd_rec *cmd) {
   if (allow_foreign_addr && *allow_foreign_addr == FALSE) {
     if (addr.addr.s_addr != session.c->remote_ipaddr->s_addr || !port.port) {
       log_pri(PR_LOG_WARNING, "Refused PORT %s (address mismatch)", cmd->arg);
-      add_response_err(R_500, "Illegal PORT command");
+      pr_response_add_err(R_500, "Illegal PORT command");
       return ERROR(cmd);
     }
   }
@@ -2786,7 +2787,7 @@ MODRET core_port(cmd_rec *cmd) {
 
   if (ntohs(port.port) < 1024) {
     log_pri(PR_LOG_WARNING, "Refused PORT %s (bounce attack)", cmd->arg);
-    add_response_err(R_500, "Illegal PORT command");
+    pr_response_add_err(R_500, "Illegal PORT command");
     return ERROR(cmd);
   }
 
@@ -2801,7 +2802,7 @@ MODRET core_port(cmd_rec *cmd) {
   }
 
   session.sf_flags |= SF_PORT;
-  add_response(R_200, "PORT command successful");
+  pr_response_add(R_200, "PORT command successful");
 
   return HANDLED(cmd);
 }
@@ -2817,7 +2818,7 @@ MODRET core_help(cmd_rec *cmd) {
 
     memset(outa, '\0', sizeof(outa));
 
-    add_response(R_214,
+    pr_response_add(R_214,
       "The following commands are recognized (* =>'s unimplemented).");
     for (i = 0; _help[i].cmd; i++) {
 
@@ -2840,14 +2841,14 @@ MODRET core_help(cmd_rec *cmd) {
         }
 
         if (*outs)
-          add_response(R_214,"%s",outs);
+          pr_response_add(R_214, "%s", outs);
         outs = "";
         c = 0;
         memset(outa, '\0', sizeof(outa));
       }
     }
 
-    add_response(R_214,"Direct comments to %s.",
+    pr_response_add(R_214,"Direct comments to %s.",
                          (cmd->server->ServerAdmin ? cmd->server->ServerAdmin :
                           "ftp-admin"));
   } else {
@@ -2861,11 +2862,11 @@ MODRET core_help(cmd_rec *cmd) {
 
     for (i = 0; _help[i].cmd; i++)
       if (!strcasecmp(cmd->argv[1],_help[i].cmd)) {
-        add_response(R_214,"Syntax: %s %s",cmd->argv[1],_help[i].syntax);
+        pr_response_add(R_214, "Syntax: %s %s", cmd->argv[1], _help[i].syntax);
         return HANDLED(cmd);
       }
 
-    add_response_err(R_502,"Unknown command '%s'.",cmd->argv[1]);
+    pr_response_add_err(R_502, "Unknown command '%s'.", cmd->argv[1]);
     return ERROR(cmd);
   }
 
@@ -2873,7 +2874,7 @@ MODRET core_help(cmd_rec *cmd) {
 }
 
 MODRET core_syst(cmd_rec *cmd) {
-  add_response(R_215,"UNIX Type: L8");
+  pr_response_add(R_215, "UNIX Type: L8");
   return HANDLED(cmd);
 }
 
@@ -2925,7 +2926,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
         }
       }
       if (!cdpath) {
-        add_response_err(R_550,"%s: %s",odir,strerror(errno));
+        pr_response_add_err(R_550, "%s: %s", odir, strerror(errno));
         return ERROR(cmd);
       }
     }
@@ -2955,7 +2956,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
         }
       }
       if (!cdpath) {
-        add_response_err(R_550,"%s: %s",odir,strerror(errno));
+        pr_response_add_err(R_550, "%s: %s", odir, strerror(errno));
         return ERROR(cmd);
       }
     }
@@ -3003,7 +3004,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
       core_display_file(R_250, display, session.cwd);
   }
 
-  add_response(R_250,"%s command successful.", cmd->argv[0]);
+  pr_response_add(R_250,"%s command successful.", cmd->argv[0]);
   return HANDLED(cmd);
 }
 
@@ -3021,7 +3022,7 @@ MODRET core_rmd(cmd_rec *cmd) {
   if (preg && regexec(preg,cmd->arg,0,NULL,0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
-    add_response_err(R_550,"%s: Forbidden filename",cmd->arg);
+    pr_response_add_err(R_550,"%s: Forbidden filename",cmd->arg);
     return ERROR(cmd);
   }
 
@@ -3030,7 +3031,7 @@ MODRET core_rmd(cmd_rec *cmd) {
   if (preg && regexec(preg,cmd->arg,0,NULL,0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
-    add_response_err(R_550,"%s: Forbidden filename",cmd->arg);
+    pr_response_add_err(R_550,"%s: Forbidden filename",cmd->arg);
     return ERROR(cmd);
   }
 #endif
@@ -3041,10 +3042,10 @@ MODRET core_rmd(cmd_rec *cmd) {
 
   if (!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
      pr_fsio_rmdir(dir) == -1) {
-    add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
+    pr_response_add_err(R_550,"%s: %s",cmd->arg,strerror(errno));
     return ERROR(cmd);
   } else
-    add_response(R_250,"%s command successful.",cmd->argv[0]);
+    pr_response_add(R_250,"%s command successful.",cmd->argv[0]);
 
   return HANDLED(cmd);
 }
@@ -3059,7 +3060,7 @@ MODRET core_mkd(cmd_rec *cmd) {
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
   if (strchr(cmd->arg, '*')) {
-    add_response_err(R_550, "%s: Invalid directory name", cmd->argv[1]);
+    pr_response_add_err(R_550, "%s: Invalid directory name", cmd->argv[1]);
     return ERROR(cmd);
   }
 
@@ -3069,7 +3070,7 @@ MODRET core_mkd(cmd_rec *cmd) {
     if (preg && regexec(preg,cmd->arg,0,NULL,0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
-      add_response_err(R_550,"%s: Forbidden filename",cmd->arg);
+      pr_response_add_err(R_550,"%s: Forbidden filename",cmd->arg);
       return ERROR(cmd);
     }
 
@@ -3078,7 +3079,7 @@ MODRET core_mkd(cmd_rec *cmd) {
     if (preg && regexec(preg,cmd->arg,0,NULL,0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
-      add_response_err(R_550,"%s: Forbidden filename",cmd->arg);
+      pr_response_add_err(R_550,"%s: Forbidden filename",cmd->arg);
       return ERROR(cmd);
     }
 #endif
@@ -3088,7 +3089,7 @@ MODRET core_mkd(cmd_rec *cmd) {
   if (!dir ||
       !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group,dir, NULL) ||
        pr_fsio_mkdir(dir, 0777) == -1) {
-    add_response_err(R_550, "%s: %s", cmd->argv[1], strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->argv[1], strerror(errno));
     return ERROR(cmd);
 
   } else {
@@ -3128,7 +3129,7 @@ MODRET core_mkd(cmd_rec *cmd) {
           (unsigned long) session.fsgid);
     }
 
-    add_response(R_257, "\"%s\" - Directory successfully created",
+    pr_response_add(R_257, "\"%s\" - Directory successfully created",
       quote_dir(cmd, dir));
   }
 
@@ -3167,13 +3168,13 @@ MODRET core_mdtm(cmd_rec *cmd) {
 
   if (!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) ||
      pr_fsio_stat(path, &sbuf) == -1) {
-    add_response_err(R_550,"%s: %s",cmd->argv[1],strerror(errno));
+    pr_response_add_err(R_550,"%s: %s",cmd->argv[1],strerror(errno));
     return ERROR(cmd);
 
   } else {
 
     if (!S_ISREG(sbuf.st_mode)) {
-      add_response_err(R_550,"%s: not a plain file.",cmd->argv[1]);
+      pr_response_add_err(R_550,"%s: not a plain file.",cmd->argv[1]);
       return ERROR(cmd);
 
     } else {
@@ -3192,7 +3193,7 @@ MODRET core_mdtm(cmd_rec *cmd) {
       else
         snprintf(buf, sizeof(buf), "00000000000000");
 
-      add_response(R_213,"%s",buf);
+      pr_response_add(R_213, "%s", buf);
     }
   }
 
@@ -3207,17 +3208,19 @@ MODRET core_size(cmd_rec *cmd) {
 
   path = dir_realpath(cmd->tmp_pool,cmd->arg);
 
-  if (!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) ||
+  if (!path ||
+      !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
       pr_fsio_stat(path, &sbuf) == -1) {
-    add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
+
   } else {
     if (!S_ISREG(sbuf.st_mode)) {
-      add_response_err(R_550,"%s: not a regular file.",cmd->arg);
+      pr_response_add_err(R_550, "%s: not a regular file", cmd->arg);
       return ERROR(cmd);
     }
     else
-      add_response(R_213, "%" PR_LU, sbuf.st_size);
+      pr_response_add(R_213, "%" PR_LU, sbuf.st_size);
   }
 
   return HANDLED(cmd);
@@ -3238,7 +3241,7 @@ MODRET core_dele(cmd_rec *cmd) {
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
-    add_response_err(R_550, "%s: Forbidden filename", cmd->arg);
+    pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
   }
 
@@ -3247,7 +3250,7 @@ MODRET core_dele(cmd_rec *cmd) {
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
-    add_response_err(R_550, "%s: Forbidden filename", cmd->arg);
+    pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
   }
 #endif
@@ -3257,7 +3260,7 @@ MODRET core_dele(cmd_rec *cmd) {
   if (!path ||
      !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
      pr_fsio_unlink(path) == -1) {
-    add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
 
@@ -3273,7 +3276,7 @@ MODRET core_dele(cmd_rec *cmd) {
              'd', 'r', session.user, 'c');
   }
 
-  add_response(R_250, "%s command successful.", cmd->argv[0]);
+  pr_response_add(R_250, "%s command successful.", cmd->argv[0]);
   return HANDLED(cmd);
 }
 
@@ -3291,7 +3294,7 @@ MODRET core_rnto(cmd_rec *cmd) {
       memset(&session.xfer, '\0', sizeof(session.xfer));
     }
 
-    add_response_err(R_503,"Bad sequence of commands.");
+    pr_response_add_err(R_503,"Bad sequence of commands.");
     return ERROR(cmd);
   }
 
@@ -3301,7 +3304,7 @@ MODRET core_rnto(cmd_rec *cmd) {
   if (preg && regexec(preg,cmd->arg,0,NULL,0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
-    add_response_err(R_550,"%s: Forbidden filename", cmd->arg);
+    pr_response_add_err(R_550,"%s: Forbidden filename", cmd->arg);
     destroy_pool(session.xfer.p);
     memset(&session.xfer, '\0', sizeof(session.xfer));
 
@@ -3313,7 +3316,7 @@ MODRET core_rnto(cmd_rec *cmd) {
   if (preg && regexec(preg,cmd->arg,0,NULL,0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
-    add_response_err(R_550,"%s: Forbidden filename", cmd->arg);
+    pr_response_add_err(R_550,"%s: Forbidden filename", cmd->arg);
     destroy_pool(session.xfer.p);
     memset(&session.xfer, '\0', sizeof(session.xfer));
 
@@ -3325,14 +3328,14 @@ MODRET core_rnto(cmd_rec *cmd) {
 
   if (!path || !dir_check_canon(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL)
      || pr_fsio_rename(session.xfer.path, path) == -1) {
-    add_response_err(R_550, "rename: %s", strerror(errno));
+    pr_response_add_err(R_550, "rename: %s", strerror(errno));
     destroy_pool(session.xfer.p);
     memset(&session.xfer, '\0', sizeof(session.xfer));
 
     return ERROR(cmd);
   }
 
-  add_response(R_250, "rename successful.");
+  pr_response_add(R_250, "rename successful");
 
   destroy_pool(session.xfer.p);
   memset(&session.xfer, '\0', sizeof(session.xfer));
@@ -3354,7 +3357,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
   if (preg && regexec(preg,cmd->arg,0,NULL,0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
-    add_response_err(R_550,"%s: Forbidden filename",cmd->arg);
+    pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
   }
 
@@ -3363,7 +3366,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
   if (preg && regexec(preg,cmd->arg,0,NULL,0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
-    add_response_err(R_550,"%s: Forbidden filename",cmd->arg);
+    pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
   }
 #endif
@@ -3373,7 +3376,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
 
   if (!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) ||
      !exists(path)) {
-    add_response_err(R_550,"%s: %s",cmd->argv[1],strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->argv[1], strerror(errno));
     return ERROR(cmd);
   }
 
@@ -3385,13 +3388,13 @@ MODRET core_rnfr(cmd_rec *cmd) {
 
   session.xfer.p = make_sub_pool(session.pool);
   session.xfer.path = pstrdup(session.xfer.p,path);
-  add_response(R_350, "File or directory exists, ready for destination name.");
+  pr_response_add(R_350, "File or directory exists, ready for destination name.");
 
   return HANDLED(cmd);
 }
 
 MODRET core_noop(cmd_rec *cmd) {
-  add_response(R_200,"NOOP command successful.");
+  pr_response_add(R_200, "NOOP command successful");
   return HANDLED(cmd);
 }
 
@@ -3399,16 +3402,16 @@ MODRET core_feat(cmd_rec *cmd) {
   const char *feat = NULL;
   CHECK_CMD_ARGS(cmd, 1);
 
-  add_response(R_211, "Features:");
+  pr_response_add(R_211, "Features:");
 
   feat = pr_get_feat();
 
   while (feat) {
-    add_response(R_DUP, " %s", feat);
+    pr_response_add(R_DUP, " %s", feat);
     feat = pr_get_next_feat();
   }
 
-  add_response(R_DUP, "End");
+  pr_response_add(R_DUP, "End");
   return HANDLED(cmd);
 }
 
@@ -3431,7 +3434,7 @@ MODRET core_opts(cmd_rec *cmd) {
     *cp = toupper(*cp);
 
   if (!command_exists(opts_cmd)) {
-    add_response_err(R_501, "%s: %s not understood", cmd->argv[0],
+    pr_response_add_err(R_501, "%s: %s not understood", cmd->argv[0],
       cmd->argv[1]);
     return ERROR(cmd);
   }
@@ -3449,12 +3452,12 @@ MODRET core_opts(cmd_rec *cmd) {
    */
 
   if (cmd->argc == 3) {
-    add_response_err(R_501, "%s: %s options '%s' not understood", cmd->argv[0],
-      cmd->argv[1], cmd->argv[2]);
+    pr_response_add_err(R_501, "%s: %s options '%s' not understood",
+      cmd->argv[0], cmd->argv[1], cmd->argv[2]);
     return ERROR(cmd);
   }
 
-  add_response(R_200, "%s command successful", cmd->argv[0]);
+  pr_response_add(R_200, "%s command successful", cmd->argv[0]);
   return HANDLED(cmd);
 }
 

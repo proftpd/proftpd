@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.113 2002-12-11 23:28:40 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.114 2002-12-13 17:28:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -805,14 +805,14 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     *allow_restart = NULL;
 
   if (cmd->argc < 2) {
-    add_response_err(R_500, "'%s' not understood.", get_full_cmd(cmd));
+    pr_response_add_err(R_500, "'%s' not understood", get_full_cmd(cmd));
     return ERROR(cmd);
   }
 
   dir = dir_best_path(cmd->tmp_pool, cmd->arg);
 
   if (!dir || !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL)) {
-    add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
 
@@ -823,12 +823,12 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   if (fmode && (session.xfer.xfer_type != STOR_APPEND) &&
       (!allow_overwrite || *allow_overwrite == FALSE)) {
     log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
-    add_response_err(R_550, "%s: Overwrite permission denied", cmd->arg);
+    pr_response_add_err(R_550, "%s: Overwrite permission denied", cmd->arg);
     return ERROR(cmd);
   }
 
   if (fmode && !S_ISREG(fmode)) {
-    add_response_err(R_550, "%s: Not a regular file", cmd->arg);
+    pr_response_add_err(R_550, "%s: Not a regular file", cmd->arg);
     return ERROR(cmd);
   }
 
@@ -841,7 +841,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
      (session.restart_pos || (session.xfer.xfer_type == STOR_APPEND)) &&
      (!allow_restart || *allow_restart == FALSE)) {
 
-    add_response_err(R_451, "%s: Append/Restart not permitted, try again",
+    pr_response_add_err(R_451, "%s: Append/Restart not permitted, try again",
       cmd->arg);
     session.restart_pos = 0L;
     session.xfer.xfer_type = STOR_DEFAULT;
@@ -887,9 +887,9 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       }
     }
 
-    if (! basenamestart) {
+    if (!basenamestart) {
       /* This probably shouldn't happen */
-      add_response_err(R_451,"%s: Bad file name.", dir);
+      pr_response_add_err(R_451, "%s: Bad file name", dir);
       return ERROR(cmd);
     }
 
@@ -897,7 +897,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
 
     if (maxlen > MAXPATHLEN) {
       /* This probably shouldn't happen */
-      add_response_err(R_451,"%s: File name too long.", dir);
+      pr_response_add_err(R_451, "%s: File name too long", dir);
       return ERROR(cmd);
     }
 
@@ -921,7 +921,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
         p_hidden->value.str_val, p->value.str_val);
 
       if (file_mode(p_hidden->value.str_val)) {
-        add_response_err(R_550,"%s: Temporary hidden file %s already exists",
+        pr_response_add_err(R_550,"%s: Temporary hidden file %s already exists",
                 cmd->arg, p_hidden->value.str_val);
         return ERROR(cmd);
       }
@@ -951,7 +951,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
    */
 
   if (cmd->argc > 2) {
-    add_response_err(R_500, "'%s' not understood.", get_full_cmd(cmd));
+    pr_response_add_err(R_500, "'%s' not understood.", get_full_cmd(cmd));
     return ERROR(cmd);
   }
 
@@ -960,7 +960,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
    *   REST: session.restart_pos > 0
    */
   if (session.restart_pos) {
-    add_response_err(R_550, "STOU incompatible with REST");
+    pr_response_add_err(R_550, "STOU incompatible with REST");
     return ERROR(cmd);
   }
 
@@ -980,7 +980,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
     log_pri(PR_LOG_ERR, "error: unable to use mkstemp(): %s", strerror(errno));
 
     /* If we can't guarantee a unique filename, refuse the command. */
-    add_response_err(R_450, "%s: unable to generate unique filename",
+    pr_response_add_err(R_450, "%s: unable to generate unique filename",
       cmd->argv[0]);
     return ERROR(cmd);
 
@@ -1007,7 +1007,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
      */
     pr_fsio_unlink(cmd->arg);
 
-    add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
 
@@ -1021,7 +1021,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
   if (mode && session.xfer.xfer_type != STOR_APPEND &&
       (!allow_overwrite || *allow_overwrite == FALSE)) {
     log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
-    add_response_err(R_550, "%s: Overwrite permission denied", cmd->arg);
+    pr_response_add_err(R_550, "%s: Overwrite permission denied", cmd->arg);
     return ERROR(cmd);
   }
 
@@ -1029,7 +1029,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
    */
   if (mode && !S_ISREG(mode)) {
     pr_fsio_unlink(cmd->arg);
-    add_response_err(R_550, "%s: Not a regular file", cmd->arg);
+    pr_response_add_err(R_550, "%s: Not a regular file", cmd->arg);
     return ERROR(cmd);
   }
 
@@ -1097,7 +1097,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   p = mod_privdata_find(cmd, "stor_filename", NULL);
 
   if (!p) {
-    add_response_err(R_550,"%s: internal error, stor_filename not set by cmd_pre_stor",cmd->arg);
+    pr_response_add_err(R_550,"%s: internal error, stor_filename not set by cmd_pre_stor",cmd->arg);
     return ERROR(cmd);
   }
 
@@ -1106,7 +1106,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   if (session.xfer.xfer_type == STOR_HIDDEN) {
     p_hidden = mod_privdata_find(cmd,"stor_hidden_filename",NULL);
     if (!p_hidden) {
-      add_response_err(R_550,"%s: internal error, stor_hidden_filename not set by cmd_pre_retr",cmd->arg);
+      pr_response_add_err(R_550,"%s: internal error, stor_hidden_filename not set by cmd_pre_retr",cmd->arg);
       return ERROR(cmd);
     }
   }
@@ -1118,14 +1118,14 @@ MODRET xfer_stor(cmd_rec *cmd) {
     char errmsg[200];
     regerror(ret,preg,errmsg,200);
     log_debug(DEBUG2, "'%s' didn't pass regex: %s.", cmd->arg, errmsg);
-    add_response_err(R_550,"%s: Forbidden filename", cmd->arg);
+    pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
   }
 
   preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathDenyFilter",FALSE);
 
   if (preg && ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) == 0)) {
-    add_response_err(R_550, "%s: Forbidden filename", cmd->arg);
+    pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
   }
 #endif /* REGEX */
@@ -1167,7 +1167,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
      * file being resumed.
      */
     if (stor_fh && session.restart_pos > sbuf.st_size) {
-      add_response_err(R_554, "%s: invalid REST argument", cmd->arg);
+      pr_response_add_err(R_554, "%s: invalid REST argument", cmd->arg);
       pr_fsio_close(stor_fh);
       stor_fh = NULL;
       return ERROR(cmd);
@@ -1178,7 +1178,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   }
 
   if (!stor_fh) {
-    add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
 
@@ -1300,7 +1300,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
         log_pri(PR_LOG_WARNING, "Rename of %s to %s failed: %s.",
           session.xfer.path_hidden, session.xfer.path, strerror(errno));
 
-        add_response_err(R_550,"%s: rename of hidden file %s failed: %s",
+        pr_response_add_err(R_550,"%s: rename of hidden file %s failed: %s",
           session.xfer.path, session.xfer.path_hidden, strerror(errno));
 
         pr_fsio_unlink(session.xfer.path_hidden);
@@ -1320,28 +1320,29 @@ MODRET xfer_rest(cmd_rec *cmd) {
   unsigned char *hidden_stores = NULL;
 
   if (cmd->argc != 2) {
-    add_response_err(R_500, "'%s': command not understood.", get_full_cmd(cmd));
+    pr_response_add_err(R_500, "'%s': command not understood",
+      get_full_cmd(cmd));
     return ERROR(cmd);
   }
 
   /* If we're using HiddenStores, then REST won't work. */
   if ((hidden_stores = get_param_ptr(CURRENT_CONF, "HiddenStores",
       FALSE)) != NULL && *hidden_stores == TRUE) {
-    add_response_err(R_501, "REST not compatible with server configuration");
+    pr_response_add_err(R_501, "REST not compatible with server configuration");
     return ERROR(cmd);
   }
 
   pos = strtol(cmd->argv[1],&endp,10);
 
   if ((endp && *endp) || pos < 0) {
-    add_response_err(R_501, "REST requires a value greater than or equal to 0");
+    pr_response_add_err(R_501, "REST requires a value greater than or equal to 0");
     return ERROR(cmd);
   }
 
   session.restart_pos = pos;
 
-  add_response(R_350, "Restarting at %ld. Send STORE or RETRIEVE to initiate "
-    "transfer", pos);
+  pr_response_add(R_350, "Restarting at %ld. Send STORE or RETRIEVE to "
+    "initiate transfer", pos);
   return HANDLED(cmd);
 }
 
@@ -1356,14 +1357,14 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
   unsigned char *allow_restart = NULL;
 
   if (cmd->argc < 2) {
-    add_response_err(R_500,"'%s' not understood.",get_full_cmd(cmd));
+    pr_response_add_err(R_500, "'%s' not understood", get_full_cmd(cmd));
     return ERROR(cmd);
   }
 
   dir = dir_realpath(cmd->tmp_pool,cmd->arg);
 
   if (!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL)) {
-    add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
 
@@ -1371,9 +1372,9 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 
   if (!S_ISREG(fmode)) {
     if (!fmode)
-      add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     else
-      add_response_err(R_550, "%s: Not a regular file", cmd->arg);
+      pr_response_add_err(R_550, "%s: Not a regular file", cmd->arg);
     return ERROR(cmd);
   }
 
@@ -1384,7 +1385,8 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 
   if (session.restart_pos &&
      (allow_restart && *allow_restart == FALSE)) {
-    add_response_err(R_451, "%s: Restart not permitted, try again", cmd->arg);
+    pr_response_add_err(R_451, "%s: Restart not permitted, try again",
+      cmd->arg);
     session.restart_pos = 0L;
     return ERROR(cmd);
   }
@@ -1412,8 +1414,8 @@ MODRET xfer_retr(cmd_rec *cmd) {
   p = mod_privdata_find(cmd, "retr_filename", NULL);
 
   if (!p) {
-    add_response_err(R_550, "%s: internal error, what happened to "
-                     "cmd_pre_retr?!?", cmd->arg);
+    pr_response_add_err(R_550, "%s: internal error, what happened to "
+      "cmd_pre_retr?!?", cmd->arg);
     return ERROR(cmd);
   }
 
@@ -1421,13 +1423,13 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
   if ((retr_fh = pr_fsio_open(dir, O_RDONLY)) == NULL) {
     /* Error opening the file. */
-    add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
 
   if (pr_fsio_stat(dir, &sbuf) < 0) {
     /* Error stat'ing the file. */
-    add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
 
@@ -1437,7 +1439,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
      * file being resumed.
      */
     if (session.restart_pos > sbuf.st_size) {
-      add_response_err(R_554, "%s: invalid REST argument", cmd->arg);
+      pr_response_add_err(R_554, "%s: invalid REST argument", cmd->arg);
       pr_fsio_close(stor_fh);
       stor_fh = NULL;
       return ERROR(cmd);
@@ -1557,11 +1559,11 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
 MODRET xfer_abor(cmd_rec *cmd) {
   if (cmd->argc != 1) {
-    add_response_err(R_500, "'%s' not understood.", get_full_cmd(cmd));
+    pr_response_add_err(R_500, "'%s' not understood", get_full_cmd(cmd));
     return ERROR(cmd);
   }
 
-  add_response(R_226, "Abort successful");
+  pr_response_add(R_226, "Abort successful");
   data_abort(0, FALSE);
   data_reset();
   data_cleanup();
@@ -1571,7 +1573,7 @@ MODRET xfer_abor(cmd_rec *cmd) {
 
 MODRET xfer_type(cmd_rec *cmd) {
   if (cmd->argc < 2 || cmd->argc > 3) {
-    add_response_err(R_500, "'%s' not understood.", get_full_cmd(cmd));
+    pr_response_add_err(R_500, "'%s' not understood", get_full_cmd(cmd));
     return ERROR(cmd);
   }
 
@@ -1592,17 +1594,17 @@ MODRET xfer_type(cmd_rec *cmd) {
     session.sf_flags &= (SF_ALL^SF_ASCII);
 
   } else {
-    add_response_err(R_500, "'%s' not understood.", get_full_cmd(cmd));
+    pr_response_add_err(R_500, "'%s' not understood", get_full_cmd(cmd));
     return ERROR(cmd);
   }
 
-  add_response(R_200, "Type set to %s.", cmd->argv[1]);
+  pr_response_add(R_200, "Type set to %s", cmd->argv[1]);
   return HANDLED(cmd);
 }
 
 MODRET xfer_stru(cmd_rec *cmd) {
   if (cmd->argc != 2) {
-    add_response_err(R_501, "'%s' not understood.", get_full_cmd(cmd));
+    pr_response_add_err(R_501, "'%s' not understood", get_full_cmd(cmd));
     return ERROR(cmd);
   }
 
@@ -1611,7 +1613,7 @@ MODRET xfer_stru(cmd_rec *cmd) {
   switch ((int) cmd->argv[1][0]) {
     case 'F':
       /* Should 202 be returned instead??? */
-      add_response(R_200, "Structure set to F.");
+      pr_response_add(R_200, "Structure set to F.");
       return HANDLED(cmd);
       break;
 
@@ -1630,13 +1632,13 @@ MODRET xfer_stru(cmd_rec *cmd) {
 
     case 'P':
       /* RFC-1123 recommends against implementing P. */
-      add_response_err(R_504, "'%s' unsupported structure type.",
+      pr_response_add_err(R_504, "'%s' unsupported structure type.",
         get_full_cmd(cmd));
       return ERROR(cmd);
       break;
 
     default:
-      add_response_err(R_501, "'%s' unrecognized structure type.",
+      pr_response_add_err(R_501, "'%s' unrecognized structure type.",
         get_full_cmd(cmd));
       return ERROR(cmd);
       break;
@@ -1645,7 +1647,7 @@ MODRET xfer_stru(cmd_rec *cmd) {
 
 MODRET xfer_mode(cmd_rec *cmd) {
   if (cmd->argc != 2) {
-    add_response_err(R_501, "'%s' not understood.", get_full_cmd(cmd));
+    pr_response_add_err(R_501, "'%s' not understood", get_full_cmd(cmd));
     return ERROR(cmd);
   }
 
@@ -1654,7 +1656,7 @@ MODRET xfer_mode(cmd_rec *cmd) {
   switch ((int) cmd->argv[1][0]) {
     case 'S':
       /* Should 202 be returned instead??? */
-      add_response(R_200, "Mode set to S.");
+      pr_response_add(R_200, "Mode set to S.");
       return HANDLED(cmd);
       break;
 
@@ -1662,13 +1664,13 @@ MODRET xfer_mode(cmd_rec *cmd) {
       /* FALLTHROUGH */
 
     case 'C':
-      add_response_err(R_504, "'%s' unsupported transfer mode.",
+      pr_response_add_err(R_504, "'%s' unsupported transfer mode.",
         get_full_cmd(cmd));
       return ERROR(cmd);
       break;
 
     default:
-      add_response_err(R_501, "'%s' unrecognized transfer mode.",
+      pr_response_add_err(R_501, "'%s' unrecognized transfer mode.",
         get_full_cmd(cmd));
       return ERROR(cmd);
       break;
@@ -1676,12 +1678,12 @@ MODRET xfer_mode(cmd_rec *cmd) {
 }
 
 MODRET xfer_allo(cmd_rec *cmd) {
-  add_response(R_202, "No storage allocation necessary.");
+  pr_response_add(R_202, "No storage allocation necessary.");
   return HANDLED(cmd);
 }
 
 MODRET xfer_smnt(cmd_rec *cmd) {
-  add_response(R_502, "SMNT command not implemented.");
+  pr_response_add(R_502, "SMNT command not implemented.");
   return HANDLED(cmd);
 }
 
@@ -1720,7 +1722,7 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
     /* Transfer in progress, ignore this timeout */
     return 1;
 
-  send_response_async(R_421, "No Transfer Timeout (%d seconds): closing "
+  pr_response_send_async(R_421, "No Transfer Timeout (%d seconds): closing "
     "control connection.", TimeoutNoXfer);
 
   remove_timer(TIMER_IDLE, ANY_MODULE);

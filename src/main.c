@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.142 2002-12-10 21:02:11 castaglia Exp $
+ * $Id: main.c,v 1.143 2002-12-13 17:28:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -123,10 +123,8 @@ static xaset_t *child_list = NULL;
 static unsigned char have_dead_child = FALSE;
 static unsigned long child_listlen = 0;
 
-response_t *resp_list = NULL,*resp_err_list = NULL;
-static pool *resp_pool = NULL;
-static char sbuf[1024] = {'\0'};
-static char _ml_numeric[4] = {'\0'};
+static char sbuf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+
 static char **Argv = NULL;
 static char *LastArgv = NULL;
 static const char *PidPath = PID_FILE_PATH;
@@ -136,6 +134,9 @@ extern array_header *server_defines;
 
 /* From mod_unixpw.c */
 extern unsigned char unixpw_persistent;
+
+/* from response.c */
+extern pr_response_t *resp_list, *resp_err_list;
 
 static int nodaemon = 0;
 static int shutdownp = 0;
@@ -304,163 +305,6 @@ void session_set_idle(void) {
   set_proc_title("%s - %s: IDLE", session.user, session.proc_prefix);
 }
 
-static void send_response_list(response_t **head)
-{
-  int ml = 0;
-  char *last_numeric = NULL;
-  response_t *t;
-
-  for (t = *head; t; t=t->next) {
-    if (ml) {
-      /* look for end of multiline */
-      if (!t->next || (t->num && strcmp(t->num, last_numeric) != 0)) {
-        pr_netio_printf(session.c->outstrm, "%s %s\r\n", last_numeric, t->msg);
-        ml = 0;
-
-      } else {
-	if (MultilineRFC2228)
-	  pr_netio_printf(session.c->outstrm, "%s-%s\r\n", last_numeric,
-            t->msg);
-	else
-	  pr_netio_printf(session.c->outstrm, " %s\r\n" ,t->msg);
-      }
-
-    } else {
-      /* look for start of multiline */
-      if (t->next && (!t->next->num || strcmp(t->num, t->next->num) == 0)) {
-        pr_netio_printf(session.c->outstrm, "%s-%s\r\n", t->num, t->msg);
-        ml = 1;
-        last_numeric = t->num;
-
-      } else
-        pr_netio_printf(session.c->outstrm, "%s %s\r\n", t->num, t->msg);
-    }
-  }
-
-  *head = NULL;
-}
-
-void add_response_err(const char *numeric, const char *fmt, ...)
-{
-  va_list msg;
-  response_t *t,**head;
-
-  va_start(msg,fmt);
-  vsnprintf(sbuf, sizeof(sbuf), fmt, msg);
-  va_end(msg);
-
-  sbuf[sizeof(sbuf) - 1] = '\0';
-
-  t = (response_t*) pcalloc(resp_pool, sizeof(response_t));
-  t->num = (numeric ? pstrdup(resp_pool, numeric) : NULL);
-  t->msg = pstrdup(resp_pool, sbuf);
-
-  for (head = &resp_err_list; *head && (!numeric || !(*head)->num ||
-      strcmp((*head)->num,numeric) <= 0); head = &(*head)->next) ;
-
-  t->next = *head;
-  *head = t;
-}
-
-void add_response(const char *numeric, const char *fmt, ...) {
-  va_list msg;
-  response_t *t,**head;
-
-  va_start(msg,fmt);
-  vsnprintf(sbuf, sizeof(sbuf), fmt, msg);
-  va_end(msg);
-
-  sbuf[sizeof(sbuf) - 1] = '\0';
-
-  t = (response_t*) pcalloc(resp_pool, sizeof(response_t));
-  t->num = (numeric ? pstrdup(resp_pool, numeric) : NULL);
-  t->msg = pstrdup(resp_pool, sbuf);
-
-  for (head = &resp_list; *head && (!numeric || !(*head)->num ||
-      strcmp((*head)->num,numeric) <= 0); head = &(*head)->next) ;
-
-  t->next = *head;
-  *head = t;
-}
-
-void send_response_raw(const char *fmt, ...) {
-  va_list msg;
-
-  va_start(msg,fmt);
-  vsnprintf(sbuf, sizeof(sbuf), fmt, msg);
-  va_end(msg);
-
-  sbuf[sizeof(sbuf) - 1] = '\0';
-  pr_netio_printf(session.c->outstrm, "%s\r\n", sbuf);
-}
-
-void send_response_async(const char *resp_numeric, const char *fmt, ...) {
-  char buf[1024] = {'\0'};
-  va_list msg;
-  int maxlen;
-
-  sstrncpy(buf, resp_numeric, sizeof(buf));
-  sstrcat(buf, " ", sizeof(buf));
-
-  maxlen = sizeof(buf) - strlen(buf) - 1;
-
-  va_start(msg, fmt);
-  vsnprintf(buf + strlen(buf), maxlen, fmt, msg);
-  va_end(msg);
-
-  buf[sizeof(buf) - 1] = '\0';
-  sstrcat(buf, "\r\n", sizeof(buf));
-
-  pr_netio_write_async(session.c->outstrm, buf, strlen(buf));
-}
-
-void send_response(const char *resp_numeric, const char *fmt, ...) {
-  va_list msg;
-
-  va_start(msg,fmt);
-  vsnprintf(sbuf, sizeof(sbuf), fmt, msg);
-  va_end(msg);
-
-  sbuf[sizeof(sbuf) - 1] = '\0';
-  pr_netio_printf(session.c->outstrm, "%s %s\r\n", resp_numeric, sbuf);
-}
-
-void send_response_ml_start(const char *resp_numeric, const char *fmt, ...) {
-  va_list msg;
-
-  va_start(msg,fmt);
-  vsnprintf(sbuf, sizeof(sbuf), fmt, msg);
-  va_end(msg);
-
-  sbuf[sizeof(sbuf) - 1] = '\0';
-  sstrncpy(_ml_numeric, resp_numeric, sizeof(_ml_numeric));
-  pr_netio_printf(session.c->outstrm, "%s-%s\r\n", _ml_numeric, sbuf);
-}
-
-void send_response_ml(const char *fmt, ...) {
-  va_list msg;
-
-  va_start(msg,fmt);
-  vsnprintf(sbuf, sizeof(sbuf), fmt, msg);
-  va_end(msg);
-
-  sbuf[sizeof(sbuf) - 1] = '\0';
-
-  pr_netio_printf(session.c->outstrm, " %s\r\n", sbuf);
-}
-
-void send_response_ml_end(const char *fmt, ...) {
-  va_list msg;
-
-  va_start(msg,fmt);
-  vsnprintf(sbuf, sizeof(sbuf), fmt, msg);
-  va_end(msg);
-
-  sbuf[sizeof(sbuf) - 1] = '\0';
-
-  pr_netio_printf(session.c->outstrm, "%s %s\r\n", _ml_numeric, sbuf);
-}
-
 void set_auth_check(int (*chk)(cmd_rec*)) {
   cmd_auth_chk = chk;
 }
@@ -580,7 +424,7 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
 		   "%V", main_server->ServerName,
                    NULL );
 
-    send_response_async(R_421,"FTP server shutting down - %s",msg);
+    pr_response_send_async(R_421,"FTP server shutting down - %s",msg);
 
     session_exit(PR_LOG_NOTICE, msg, 0, NULL);
   }
@@ -684,9 +528,9 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
 
         } else if (send_error) {
           if (MODRET_ERRNUM(mr) && MODRET_ERRMSG(mr))
-            add_response_err(MODRET_ERRNUM(mr),"%s",MODRET_ERRMSG(mr));
+            pr_response_add_err(MODRET_ERRNUM(mr), "%s", MODRET_ERRMSG(mr));
           else if (MODRET_ERRMSG(mr))
-            send_response_raw("%s",MODRET_ERRMSG(mr));
+            pr_response_send_raw("%s", MODRET_ERRMSG(mr));
         }
 
         success = -1;
@@ -699,11 +543,11 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
     }
 
     if (!success)
-      c = mod_find_cmd_symbol(match,index_cache,c);
+      c = mod_find_cmd_symbol(match, index_cache, c);
   }
 
   if (!c && !success && validate) {
-    add_response_err(R_500, "%s not understood.", cmd->argv[0]);
+    pr_response_add_err(R_500, "%s not understood", cmd->argv[0]);
     success = -1;
   }
 
@@ -716,7 +560,9 @@ static void dispatch_cmd(cmd_rec *cmd) {
 
   cmd->server = main_server;
   resp_list = resp_err_list = NULL;
-  resp_pool = cmd->pool;
+
+  /* Set the pool used for the response lists for this command. */
+  pr_response_set_pool(cmd->pool);
 
   for (cp = cmd->argv[0]; *cp; cp++)
     *cp = toupper(*cp);
@@ -742,7 +588,7 @@ static void dispatch_cmd(cmd_rec *cmd) {
     _dispatch(cmd, LOG_CMD_ERR, FALSE, C_ANY);
     _dispatch(cmd, LOG_CMD_ERR, FALSE, NULL);
 
-    send_response_list(&resp_err_list);
+    pr_response_flush(&resp_err_list);
     return;
   }
 
@@ -759,7 +605,7 @@ static void dispatch_cmd(cmd_rec *cmd) {
     _dispatch(cmd, LOG_CMD, FALSE, C_ANY);
     _dispatch(cmd, LOG_CMD, FALSE, NULL);
 
-    send_response_list(&resp_list);
+    pr_response_flush(&resp_list);
 
   } else if (success < 0) {
 
@@ -772,7 +618,7 @@ static void dispatch_cmd(cmd_rec *cmd) {
     _dispatch(cmd, LOG_CMD_ERR, FALSE, C_ANY);
     _dispatch(cmd, LOG_CMD_ERR, FALSE, NULL);
 
-    send_response_list(&resp_err_list);
+    pr_response_flush(&resp_err_list);
   }
 }
 
@@ -824,7 +670,7 @@ static int idle_timeout_cb(CALLBACK_FRAME) {
     return 1;
   }
 
-  send_response_async(R_421,"Idle Timeout (%d seconds): closing control "
+  pr_response_send_async(R_421,"Idle Timeout (%d seconds): closing control "
     "connection.", TimeoutIdle);
 
   session_exit(PR_LOG_INFO, "FTP session idle timeout, disconnected.", 0, NULL);
@@ -867,17 +713,18 @@ static void cmd_loop(server_rec *server, conn_t *c) {
       "DeferWelcome", FALSE);
 
     if (id && id->argc > 1)
-      send_response(R_220, "%s", (char *) id->argv[1]);
+      pr_response_send(R_220, "%s", (char *) id->argv[1]);
 
     else if (defer_welcome && *defer_welcome == TRUE)
-      send_response(R_220, "ProFTPD " PROFTPD_VERSION_TEXT " Server ready.");
+      pr_response_send(R_220, "ProFTPD " PROFTPD_VERSION_TEXT
+        " Server ready.");
 
     else
-      send_response(R_220, "ProFTPD " PROFTPD_VERSION_TEXT " Server (%s) [%s]",
-           server->ServerName,serveraddress);
+      pr_response_send(R_220, "ProFTPD " PROFTPD_VERSION_TEXT
+        " Server (%s) [%s]", server->ServerName,serveraddress);
 
   } else
-    send_response(R_220, "%s FTP server ready.", serveraddress);
+    pr_response_send(R_220, "%s FTP server ready", serveraddress);
 
   /* Make sure we can receive OOB data */
   inet_setasync(session.pool, session.c);
@@ -937,7 +784,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
         destroy_pool(cmd->pool);
 
       } else
-	send_response(R_500, "Invalid command: try being more creative.");
+	pr_response_send(R_500, "Invalid command: try being more creative");
     }
 
     /* release any working memory allocated in inet */
@@ -1345,9 +1192,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
                reason, session.c->remote_name,
                inet_ntoa(*session.c->remote_ipaddr));
 
-      send_response(R_500,
-		    "FTP server shut down (%s) -- please try again later.",
-		    reason);
+      pr_response_send(R_500, "FTP server shut down (%s) -- please try again "
+        "later", reason);
       exit(0);
     }
   }
@@ -1356,9 +1202,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
    * connected to, drop them.
    */
   if (!serv) {
-    send_response(R_500,
-		  "Sorry, no server available to handle request on %s.",
-		  inet_getname(conn->pool, conn->local_ipaddr));
+    pr_response_send(R_500, "Sorry, no server available to handle request on "
+      "%s", inet_getname(conn->pool, conn->local_ipaddr));
     exit(0);
   }
 

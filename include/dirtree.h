@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.29 2002-12-11 23:28:38 castaglia Exp $
+ * $Id: dirtree.h,v 1.30 2002-12-13 17:27:18 castaglia Exp $
  */
 
 #ifndef __DIRTREE_H
@@ -165,17 +165,17 @@ extern int			TimeoutStalled;
 				get_context_name((x)), \
 				" context",NULL))
 
-#define CHECK_CMD_ARGS(x, n)	if((x)->argc != (n)) { \
-				  add_response_err(R_501, \
-					"Invalid number of arguments."); \
-				  return ERROR((x)); \
-				}
+#define CHECK_CMD_ARGS(x, n)	\
+  if ((x)->argc != (n)) { \
+    pr_response_add_err(R_501, "Invalid number of arguments."); \
+    return ERROR((x)); \
+  }
 
-#define CHECK_CMD_MIN_ARGS(x, n)	if((x)->argc < (n)) { \
-					  add_response_err(R_501, \
-					     "Invalid number of arguments."); \
-					  return ERROR((x)); \
-					}
+#define CHECK_CMD_MIN_ARGS(x, n)	\
+  if ((x)->argc < (n)) { \
+    pr_response_add_err(R_501, "Invalid number of arguments."); \
+    return ERROR((x)); \
+  }
 
 /* Prototypes */
 

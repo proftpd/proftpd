@@ -32,7 +32,7 @@
 
 /*
  * sample module for ProFTPD
- * $Id: mod_sample.c,v 1.5 2002-12-05 18:47:41 castaglia Exp $
+ * $Id: mod_sample.c,v 1.6 2002-12-13 17:27:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -105,18 +105,18 @@ MODRET sample_xfoo(cmd_rec *cmd) {
   char *path = NULL;
 
   if (cmd->argc < 2) {
-    add_response_err(R_500, "XFOO command needs at least one argument");
+    pr_response_add_err(R_500, "XFOO command needs at least one argument");
     return ERROR(cmd);
   }
 
   path = dir_realpath(cmd->tmp_pool, cmd->arg);
 
   if (!path) {
-    add_response_err(R_500, "It appears that '%s' does not exist.", cmd->arg);
+    pr_response_add_err(R_500, "It appears that '%s' does not exist.", cmd->arg);
     return ERROR(cmd);
   }
 
-  add_response_err(R_200, "XFOO command successful (yeah right!)");
+  pr_response_add_err(R_200, "XFOO command successful (yeah right!)");
   return HANDLED(cmd);
 }
 

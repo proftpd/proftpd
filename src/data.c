@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.51 2002-12-07 21:57:12 jwm Exp $
+ * $Id: data.c,v 1.52 2002-12-13 17:28:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -249,10 +249,10 @@ static int _data_pasv_open(char *reason, off_t size) {
 
     if (session.xfer.xfer_type != STOR_UNIQUE) {
       if (size)
-        send_response(R_150, "Opening %s mode data connection for %s "
+        pr_response_send(R_150, "Opening %s mode data connection for %s "
           "(%" PR_LU " bytes)", MODE_STRING, reason, size);
       else
-        send_response(R_150,"Opening %s mode data connection for %s",
+        pr_response_send(R_150,"Opening %s mode data connection for %s",
           MODE_STRING, reason);
 
     } else {
@@ -276,7 +276,7 @@ static int _data_pasv_open(char *reason, off_t size) {
        *    where pppp represents the unique pathname of the file that
        *    will be written.
        */
-      send_response(R_150, "FILE: %s", reason);
+      pr_response_send(R_150, "FILE: %s", reason);
     }
 
     return 0;
@@ -287,8 +287,8 @@ static int _data_pasv_open(char *reason, off_t size) {
     log_pri(PR_LOG_ERR, "Error: unable to accept an incoming data "
       "connection (%s)", strerror(c->xerrno));
 
-  add_response_err(R_425, "Unable to build data connection: %s",
-		   strerror(session.d->xerrno));
+  pr_response_add_err(R_425, "Unable to build data connection: %s",
+    strerror(session.d->xerrno));
   destroy_pool(session.d->pool);
   session.d = NULL;
   return -1;
@@ -314,8 +314,8 @@ static int _data_active_open(char *reason, off_t size) {
 
   if (inet_connect(session.d->pool, session.d, &session.data_addr,
 		  session.data_port) == -1) {
-    add_response_err(R_425, "Unable to build data connection: %s",
-		     strerror(session.d->xerrno));
+    pr_response_add_err(R_425, "Unable to build data connection: %s",
+      strerror(session.d->xerrno));
     destroy_pool(session.d->pool);
     session.d = NULL;
     return -1;
@@ -335,10 +335,10 @@ static int _data_active_open(char *reason, off_t size) {
 
     if (session.xfer.xfer_type != STOR_UNIQUE) {
       if (size)
-        send_response(R_150, "Opening %s mode data connection for %s "
+        pr_response_send(R_150, "Opening %s mode data connection for %s "
           "(%" PR_LU " bytes)", MODE_STRING, reason, size);
       else
-        send_response(R_150, "Opening %s mode data connection for %s",
+        pr_response_send(R_150, "Opening %s mode data connection for %s",
           MODE_STRING, reason);
 
     } else {
@@ -362,7 +362,7 @@ static int _data_active_open(char *reason, off_t size) {
        *    where pppp represents the unique pathname of the file that
        *    will be written.
        */
-      send_response(R_150, "FILE: %s", reason);
+      pr_response_send(R_150, "FILE: %s", reason);
     }
 
     inet_close(session.pool,session.d);
@@ -372,8 +372,8 @@ static int _data_active_open(char *reason, off_t size) {
   }
 
 
-  add_response_err(R_425, "Unable to build data connection: %s",
-		   strerror(session.d->xerrno));
+  pr_response_add_err(R_425, "Unable to build data connection: %s",
+    strerror(session.d->xerrno));
   destroy_pool(session.d->pool);
   session.d = NULL;
   return -1;
@@ -518,7 +518,7 @@ void data_close(int quiet) {
   session_set_idle();
 
   if (!quiet)
-    add_response(R_226, "Transfer complete.");
+    pr_response_add(R_226, "Transfer complete.");
 }
 
 /* Note: true_abort may be false in real abort situations, because
@@ -718,11 +718,9 @@ void data_abort(int err, int quiet) {
 		    err) > 0 )
 	msg = msgbuf;
     }
-    add_response_err(respcode,
-		     fmt ? fmt : "Transfer aborted.  %s",
-		     msg ? msg : ""
-		     );
-    /* ??? syslog the response for the help desk??? */
+
+    pr_response_add_err(respcode, fmt ? fmt : "Transfer aborted.  %s",
+      msg ? msg : "");
   }
 
   if (true_abort)

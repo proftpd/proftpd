@@ -400,8 +400,8 @@ pre_cmd_retr (cmd_rec * cmd)
 
   if (stats.frate && stats.files < 1)
     {
-      add_response_err (R_550, "%s", g.filemsg);
-      add_response_err (R_550,
+      pr_response_add_err (R_550, "%s", g.filemsg);
+      pr_response_add_err (R_550,
 			"%s: FILE RATIO: %s  Down: %i  Up: only %i!",
 			cmd->arg, stats.ftext, stats.fretr, stats.fstor);
       return ERROR (cmd);
@@ -417,8 +417,8 @@ pre_cmd_retr (cmd_rec * cmd)
 
       if ((stats.bytes - (fsize / 1024)) < 0)
 	{
-	  add_response_err (R_550, "%s", g.bytemsg);
-	  add_response_err (R_550,
+	  pr_response_add_err (R_550, "%s", g.bytemsg);
+	  pr_response_add_err (R_550,
 			    "%s: BYTE RATIO: %s  Down: %imb  Up: only %imb!",
 	cmd->arg, stats.btext, (stats.bretr / 1024), (stats.bstor / 1024));
 	  return ERROR (cmd);
@@ -471,7 +471,7 @@ cmd_cwd (cmd_rec * cmd)
 	{
 	  if (!*((char *) c->argv[0]))
 	    return DECLINED (cmd);
-	  add_response (R_250, "%s", (char *)c->argv[0]);
+	  pr_response_add (R_250, "%s", (char *)c->argv[0]);
 	  c = find_config_next (c, c->next, CONF_PARAM, "CwdRatioMsg", FALSE);
 	}
     }
@@ -578,14 +578,14 @@ ratio_cmd (cmd_rec * cmd)
 
       if (RATIO_ENFORCE)
 	{
-	  add_response (r, "%s%s%s", sbuf1, sbuf2, sbuf3);
+	  pr_response_add (r, "%s%s%s", sbuf1, sbuf2, sbuf3);
 	  if (stats.frate && stats.files < 0)
-	    add_response (r, "%s", g.filemsg);
+	    pr_response_add (r, "%s", g.filemsg);
 	  if (stats.brate && stats.bytes < 0)
-	    add_response (r, "%s", g.bytemsg);
+	    pr_response_add (r, "%s", g.bytemsg);
 	}
       else
-	add_response (r, "%s%s%s", sbuf1, g.leechmsg ? "  " : "", g.leechmsg);
+	pr_response_add (r, "%s%s%s", sbuf1, g.leechmsg ? "  " : "", g.leechmsg);
     }
   return DECLINED (cmd);
 }
@@ -601,14 +601,14 @@ cmd_site (cmd_rec * cmd)
   if(!strcasecmp(cmd->argv[1], "RATIO")) {
     _calc_ratios(cmd);
     snprintf(buf, sizeof(buf), RATIO_STUFFS);
-    add_response(R_214, "Current Ratio: ( %s )", buf);
+    pr_response_add(R_214, "Current Ratio: ( %s )", buf);
     if(stats.frate)
-      add_response(R_214,
+      pr_response_add(R_214,
 		   "Files: %s  Down: %i  Up: %i  CR: %i file%s",
 		   stats.ftext, stats.fretr, stats.fstor,
 		   stats.files, (stats.files != 1) ? "s" : "");
     if(stats.brate)
-      add_response(R_214,
+      pr_response_add(R_214,
 		   "Bytes: %s  Down: %imb  Up: %imb  CR: %i Mbytes",
 		   stats.btext, (stats.bretr / 1024), (stats.bstor / 1024),
 		   (stats.bytes / 1024));
@@ -616,9 +616,9 @@ cmd_site (cmd_rec * cmd)
   }
   
   if(!strcasecmp (cmd->argv[1], "HELP")) {
-    add_response(R_214,
+    pr_response_add(R_214,
 		 "The following SITE extensions are recognized:");
-    add_response(R_214, "RATIO " "-- show all ratios in effect");
+    pr_response_add(R_214, "RATIO " "-- show all ratios in effect");
   }
   
   return DECLINED (cmd);

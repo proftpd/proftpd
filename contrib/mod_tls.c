@@ -2177,12 +2177,12 @@ MODRET tls_any(cmd_rec *cmd) {
 
   /* Some commands need not be hindered. */
   if (!strcmp(cmd->argv[0], C_SYST) ||
-      !strcmp(cmd->argv[0], "AUTH") ||
+      !strcmp(cmd->argv[0], C_AUTH) ||
       !strcmp(cmd->argv[0], C_QUIT))
     return DECLINED(cmd);
 
   if (tls_required_on_ctrl & !(tls_flags & TLS_SESS_ON_CTRL)) {
-    add_response_err(R_550, "SSL/TLS required on the control channel");
+    pr_response_add_err(R_550, "SSL/TLS required on the control channel");
     return ERROR(cmd);
   }
 
@@ -2216,7 +2216,7 @@ MODRET tls_auth(cmd_rec *cmd) {
    */
 
   if (cmd->argc < 2) {
-    add_response_err(R_504, "AUTH requires at least one argument");
+    pr_response_add_err(R_504, "AUTH requires at least one argument");
     return ERROR(cmd);
   }
 
@@ -2226,7 +2226,7 @@ MODRET tls_auth(cmd_rec *cmd) {
 
   if (!strcmp(cmd->argv[1], "TLS") ||
       !strcmp(cmd->argv[1], "TLS-C")) {
-     send_response(R_234, "AUTH %s successful", cmd->argv[1]);
+     pr_response_send(R_234, "AUTH %s successful", cmd->argv[1]);
 
      tls_log("%s", "TLS/TLS-C requested, starting TLS handshake");
      if (tls_accept(session.c, FALSE) < 0) {
@@ -2235,14 +2235,14 @@ MODRET tls_auth(cmd_rec *cmd) {
        if (tls_required_on_ctrl)
          end_login(1);
 
-       add_response_err(R_550, "TLS handshake failed");
+       pr_response_add_err(R_550, "TLS handshake failed");
        return ERROR(cmd);
      }
      tls_flags |= TLS_SESS_ON_CTRL;
 
   } else if (!strcmp(cmd->argv[1], "SSL") ||
      !strcmp(cmd->argv[1], "TLS-P")) {
-    send_response(R_234, "AUTH %s successful", cmd->argv[1]);
+    pr_response_send(R_234, "AUTH %s successful", cmd->argv[1]);
 
     tls_log("%s", "SSL/TLS-P requested, starting TLS handshake");
     if (tls_accept(session.c, FALSE) < 0) {
@@ -2251,14 +2251,14 @@ MODRET tls_auth(cmd_rec *cmd) {
       if (tls_required_on_ctrl)
         end_login(1);
 
-      add_response_err(R_550, "TLS handshake failed");
+      pr_response_add_err(R_550, "TLS handshake failed");
       return ERROR(cmd);
     }
     tls_flags |= TLS_SESS_ON_CTRL;
     tls_flags |= TLS_SESS_NEED_DATA_PROT;
 
   } else {
-    add_response_err(R_504, "AUTH %s unsupported", cmd->argv[1]);
+    pr_response_add_err(R_504, "AUTH %s unsupported", cmd->argv[1]);
     return ERROR(cmd);
   }
 
@@ -2273,15 +2273,15 @@ MODRET tls_pbsz(cmd_rec *cmd) {
   CHECK_CMD_ARGS(cmd, 2);
 
   if (!(tls_flags & TLS_SESS_ON_CTRL)) {
-    add_response_err(R_503, "PBSZ not allowed on insecure control connection");
+    pr_response_add_err(R_503, "PBSZ not allowed on insecure control connection");
     return ERROR(cmd);
   }
 
   /* We expect "PBSZ 0" */
   if (!strcmp(cmd->argv[1], "0"))
-    add_response(R_200, "PBSZ 0 successful");
+    pr_response_add(R_200, "PBSZ 0 successful");
   else
-    add_response(R_200, "PBSZ=0 successful");
+    pr_response_add(R_200, "PBSZ=0 successful");
 
   tls_flags |= TLS_SESS_PBSZ_OK;
   return HANDLED(cmd);
@@ -2295,7 +2295,7 @@ MODRET tls_prot(cmd_rec *cmd) {
   CHECK_CMD_ARGS(cmd, 2);
 
   if (!(tls_flags & TLS_SESS_PBSZ_OK)) {
-    add_response_err(R_503, "You must issue the PBSZ command prior to PROT");
+    pr_response_add_err(R_503, "You must issue the PBSZ command prior to PROT");
     return ERROR(cmd);
   }
 
@@ -2309,11 +2309,11 @@ MODRET tls_prot(cmd_rec *cmd) {
        * connections.
        */
       tls_flags &= ~TLS_SESS_NEED_DATA_PROT;
-      add_response(R_200, "%s", mesg);
+      pr_response_add(R_200, "%s", mesg);
       tls_log("%s", mesg);
 
     } else {
-      add_response_err(R_534, "Unwilling to accept security parameters");
+      pr_response_add_err(R_534, "Unwilling to accept security parameters");
       return ERROR(cmd);
     }
 
@@ -2321,15 +2321,15 @@ MODRET tls_prot(cmd_rec *cmd) {
     char *mesg = "Protection set to Private";
 
     tls_flags |= TLS_SESS_NEED_DATA_PROT;
-    add_response(R_200, "%s", mesg);
+    pr_response_add(R_200, "%s", mesg);
     tls_log("%s", mesg);
 
   } else if (!strcmp(cmd->argv[1], "S") || !strcmp(cmd->argv[1], "E")) {
-    add_response_err(R_536, "PROT %s unsupported", cmd->argv[1]);
+    pr_response_add_err(R_536, "PROT %s unsupported", cmd->argv[1]);
     return ERROR(cmd);
 
   } else {
-    add_response_err(R_504, "PROT %s unsupported", cmd->argv[1]);
+    pr_response_add_err(R_504, "PROT %s unsupported", cmd->argv[1]);
     return ERROR(cmd);
   }
 

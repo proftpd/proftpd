@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.76 2002-12-10 21:01:56 castaglia Exp $
+ * $Id: mod_ls.c,v 1.77 2002-12-13 17:27:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -326,7 +326,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
       t = localtime((time_t *) &mtime);
 
     if (!t) {
-      add_response_err(R_421,"Fatal error (localtime() returned NULL?!?)");
+      pr_response_add_err(R_421, "Fatal error (localtime() returned NULL?!?)");
       return -1;
     }
 
@@ -453,7 +453,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
         }
 
         if (opt_STAT)
-          add_response(R_211, "%s%s", nameline, suffix);
+          pr_response_add(R_211, "%s%s", nameline, suffix);
         else
           addfile(cmd, nameline, suffix, mtime);
       }
@@ -838,7 +838,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
 #if 0
     if (opt_l) {
       if (opt_STAT)
-        add_response(R_211,"total 0");
+        pr_response_add(R_211, "total 0");
       else if (sendline("total 0\n") < 0)
         return -1;
     }
@@ -902,8 +902,8 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
           subdir = pdircat(workp,name,*r,NULL);
 
         if (opt_STAT) {
-          add_response(R_211, "%s", "");
-          add_response(R_211, "%s:", subdir);
+          pr_response_add(R_211, "%s", "");
+          pr_response_add(R_211, "%s:", subdir);
 
         } else if (sendline("\n%s:\n", subdir) < 0 ||
             sendline(NULL) < 0) {
@@ -949,7 +949,7 @@ static void ls_terminate(void) {
     ls_errno = 0;
 
   } else if (ls_errno) {
-    add_response(R_211, "ERROR: %s", strerror(ls_errno));
+    pr_response_add(R_211, "ERROR: %s", strerror(ls_errno));
     ls_errno = 0;
   }
 }
@@ -1256,8 +1256,8 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
           if (!justone) {
             if (opt_STAT) {
-              add_response(R_211, "%s", "");
-              add_response(R_211, "%s:", *path);
+              pr_response_add(R_211, "%s", "");
+              pr_response_add(R_211, "%s:", *path);
 
             } else {
               sendline("\n%s:\n", *path);
@@ -1291,13 +1291,14 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
       }
 
     } else if (!skiparg) {
-      if (a == GLOB_NOSPACE) {
-        add_response(R_226,"Out of memory during globbing of %s", arg);
-      } else if (a == GLOB_ABORTED) {
-        add_response(R_226,"Read error during globbing of %s", arg);
-      } else if (a != GLOB_NOMATCH) {
-        add_response(R_226,"Unknown error during globbing of %s", arg);
-      }
+      if (a == GLOB_NOSPACE)
+        pr_response_add(R_226, "Out of memory during globbing of %s", arg);
+
+      else if (a == GLOB_ABORTED)
+        pr_response_add(R_226, "Read error during globbing of %s", arg);
+
+      else if (a != GLOB_NOMATCH)
+        pr_response_add(R_226, "Unknown error during globbing of %s", arg);
     }
 
     if (!skiparg && use_globbing)
@@ -1543,7 +1544,7 @@ MODRET ls_stat(cmd_rec *cmd) {
   config_rec *c = NULL;
 
   if (cmd->argc < 2) {
-    add_response_err(R_500, "'%s' not understood.", get_full_cmd(cmd));
+    pr_response_add_err(R_500, "'%s' not understood", get_full_cmd(cmd));
     return ERROR(cmd);
   }
 
@@ -1591,9 +1592,9 @@ MODRET ls_stat(cmd_rec *cmd) {
   opt_C = opt_d = opt_F = opt_R;
   opt_a = opt_l = opt_STAT = 1;
 
-  add_response(R_211,"status of %s:", arg && *arg ? arg : ".");
+  pr_response_add(R_211, "status of %s:", arg && *arg ? arg : ".");
   dolist(cmd,cmd->arg,FALSE);
-  add_response(R_211,"End of Status");
+  pr_response_add(R_211, "End of Status");
   return HANDLED(cmd);
 }
 
@@ -1658,7 +1659,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
     memset(&g, '\0', sizeof(glob_t));
 
     if (pr_fs_glob(target, GLOB_PERIOD,NULL, &g) != 0) {
-      add_response_err(R_550, "No files found");
+      pr_response_add_err(R_550, "No files found");
       return ERROR(cmd);
     }
 
@@ -1702,7 +1703,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
     struct stat st;
 
     if (!ls_perms(cmd->tmp_pool, cmd, target, &hidden)) {
-      add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
       return ERROR(cmd);
     }
 
@@ -1714,9 +1715,9 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
       if ((c = _find_ls_limit(target)) != NULL &&
           (ignore_hidden && *ignore_hidden == TRUE))
-        add_response_err(R_550, "%s: %s", cmd->arg, strerror(ENOENT));
+        pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(ENOENT));
       else
-        add_response_err(R_550, "%s: %s", cmd->arg, strerror(EACCES));
+        pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EACCES));
 
       return ERROR(cmd);
     }
@@ -1725,7 +1726,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
      * and that we have access to it.
      */
     if (pr_fsio_stat(target, &st) < 0) {
-      add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
       return ERROR(cmd);
     }
 
@@ -1734,14 +1735,14 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
     else if (S_ISDIR(st.st_mode)) {
       if (access_check(target, R_OK) != 0) {
-        add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+        pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
         return ERROR(cmd);
       }
 
       ret = nlstdir(cmd,target);
 
     } else {
-      add_response_err(R_550, "%s: Not a regular file", cmd->arg);
+      pr_response_add_err(R_550, "%s: Not a regular file", cmd->arg);
       return ERROR(cmd);
     }
 
@@ -1755,7 +1756,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
   } else {
     if (ret == 0 && !count && (session.sf_flags & SF_XFER) == 0) {
-      add_response_err(R_550, "No files found");
+      pr_response_add_err(R_550, "No files found");
       ret = -1;
 
     } else if (session.sf_flags & SF_XFER)

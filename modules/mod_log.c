@@ -26,13 +26,13 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.43 2002-12-10 21:01:55 castaglia Exp $
+ * $Id: mod_log.c,v 1.44 2002-12-13 17:27:52 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 
-extern response_t *resp_list,*resp_err_list;
+extern pr_response_t *resp_list,*resp_err_list;
 
 #define EXTENDED_LOG_BUFFER_SIZE		1025
 #define EXTENDED_LOG_MODE			0644
@@ -807,7 +807,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
   case META_RESPONSE_CODE:
     {
-      response_t *r;
+      pr_response_t *r;
 
       argp = arg;
       r = (resp_list ? resp_list : resp_err_list);

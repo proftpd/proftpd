@@ -102,7 +102,7 @@
  * externs, function signatures.. whatever necessary to make
  * the compiler happy..
  */
-extern response_t *resp_list,*resp_err_list;
+extern pr_response_t *resp_list,*resp_err_list;
 static char *_sql_where(pool *p, int cnt, ...);
 MODRET cmd_getgrent(cmd_rec *);
 MODRET cmd_setgrent(cmd_rec *);
@@ -1546,7 +1546,7 @@ static char *resolve_tag(cmd_rec *cmd, char tag)
   case 's':
     argp = arg;
     {
-      response_t *r;
+      pr_response_t *r;
       
       r = (resp_list ? resp_list : resp_err_list);
       
@@ -1948,7 +1948,7 @@ MODRET info_master(cmd_rec * cmd)
       *outsp++ = 0;
 
       /* add the response */
-      add_response( c->argv[0], outs);
+      pr_response_add( c->argv[0], outs);
 
     } while((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 
@@ -2022,7 +2022,7 @@ MODRET info_master(cmd_rec * cmd)
       *outsp++ = 0;
 
       /* add the response */
-      add_response( c->argv[0], outs);
+      pr_response_add( c->argv[0], outs);
 
     } while((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 
@@ -2114,7 +2114,7 @@ MODRET errinfo_master(cmd_rec * cmd)
       *outsp++ = 0;
 
       /* add the response */
-      add_response_err( c->argv[0], outs);
+      pr_response_add_err( c->argv[0], outs);
 
     } while((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 
@@ -2188,7 +2188,7 @@ MODRET errinfo_master(cmd_rec * cmd)
       *outsp++ = 0;
 
       /* add the response */
-      add_response( c->argv[0], outs);
+      pr_response_add( c->argv[0], outs);
 
     } while((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 

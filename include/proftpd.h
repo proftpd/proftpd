@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.36 2002-12-06 23:45:27 castaglia Exp $
+ * $Id: proftpd.h,v 1.37 2002-12-13 17:27:22 castaglia Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -254,76 +254,7 @@ extern const char	*pwdfname,*grpfname;
 #define TIMER_STALLED		4
 #define TIMER_SESSION		5
 
-/* Response structure */
-
-typedef struct response_struc {
-  struct response_struc *next;
-
-  char *num;
-  char *msg;
-} response_t;
-
 /* Misc Prototypes */
-
-/* Utilize gcc's __attribute__ pragma for signalling that it should perform
- * printf-style checking of this function's arguments.
- */
-
-void send_response_raw(const char *, ...)
-#ifdef __GNUC__
-       __attribute__ ((format (printf, 1, 2)));
-#else
-       ;
-#endif
-
-void send_response_async(const char *, const char *, ...)
-#ifdef __GNUC__
-       __attribute__ ((format (printf, 2, 3)));
-#else
-       ;
-#endif
-
-void send_response(const char *, const char *, ...)
-#ifdef __GNUC__
-       __attribute__ ((format (printf, 2, 3)));
-#else
-       ;
-#endif
-
-void send_response_ml_start(const char *, const char *, ...)
-#ifdef __GNUC__
-       __attribute__ ((format (printf, 2, 3)));
-#else
-       ;
-#endif
-
-void send_response_ml(const char *, ...)
-#ifdef __GNUC__
-       __attribute__ ((format (printf, 1, 2)));
-#else
-       ;
-#endif
-
-void send_response_ml_end(const char *, ...)
-#ifdef __GNUC__
-       __attribute__ ((format (printf, 1, 2)));
-#else
-       ;
-#endif
-
-void add_response(const char *, const char *, ...)
-#ifdef __GNUC__
-       __attribute__ ((format (printf, 2, 3)));
-#else
-       ;
-#endif
-
-void add_response_err(const char *, const char *, ...)
-#ifdef __GNUC__
-       __attribute__ ((format (printf, 2, 3)));
-#else
-       ;
-#endif
 
 void end_login(int);
 void pr_handle_signals(void);
