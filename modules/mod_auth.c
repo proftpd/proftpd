@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.82 2002-09-06 00:59:04 castaglia Exp $
+ * $Id: mod_auth.c,v 1.83 2002-09-13 19:58:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1178,8 +1178,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
     
     if (session.anon_root != NULL || defroot) {
 
-      log_debug(DEBUG2, "unable to chdir to %s, defaulting to chroot "
-        "directory %s", session.cwd,
+      log_debug(DEBUG2, "unable to chdir to %s (%s), defaulting to chroot "
+        "directory %s", session.cwd, strerror(errno),
         (session.anon_root ? session.anon_root : defroot));
 
       if (fs_chdir_canon("/", !showsymlinks) == -1) {
@@ -1194,8 +1194,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
       /* If we've got defchdir, failure is ok as well, simply switch to
        * user's homedir.
        */
-      log_debug(DEBUG2, "unable to chdir to %s, defaulting to home "
-        "directory %s", session.cwd, pw->pw_dir);
+      log_debug(DEBUG2, "unable to chdir to %s (%s), defaulting to home "
+        "directory %s", session.cwd, strerror(errno), pw->pw_dir);
 
       if (fs_chdir_canon(pw->pw_dir, !showsymlinks) == -1) {
         log_pri(LOG_ERR, "%s chdir(\"%s\"): %s", session.user, session.cwd,
