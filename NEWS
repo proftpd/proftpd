@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.420 2003-04-15 06:22:24 castaglia Exp $
+$Id: NEWS,v 1.421 2003-04-15 06:42:13 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -105,6 +105,7 @@ CVS
 - Bug 2019 - proftpd support for Solaris 8/9 native sendfile
 - Bug 2002 - Per-<Directory> PathAllowFilter/PathDenyFilter.
 - Added RootRevoke directive.
+- Bug 2021 - Inetd mode and scoreboard format changes.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------

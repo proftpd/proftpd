@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.176 2003-04-07 22:53:48 castaglia Exp $
+ * $Id: main.c,v 1.177 2003-04-15 06:42:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2210,12 +2210,17 @@ static void inetd_main(void) {
         return;
 
       case PR_SCORE_ERR_OLDER_VERSION:
-        log_pri(PR_LOG_ERR, "error opening scoreboard: bad version (too old)");
-        return;
-
       case PR_SCORE_ERR_NEWER_VERSION:
-        log_pri(PR_LOG_ERR, "error opening scoreboard: bad version (too new)");
-        return;
+        log_pri(PR_LOG_ERR, "error opening scoreboard: wrong version, "
+          "writing new scoreboard");
+
+        /* Delete the scoreboard, then open it again (and assume that the
+         * open succeeds).
+         */
+        PRIVS_ROOT
+        pr_delete_scoreboard();
+        pr_open_scoreboard(O_RDWR);
+        break;
 
       default:
         log_pri(PR_LOG_ERR, "error opening scoreboard: %s",
