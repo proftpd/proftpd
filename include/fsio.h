@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.7 2003-10-17 06:15:37 castaglia Exp $
+ * $Id: fsio.h,v 1.8 2003-11-08 22:45:20 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -59,13 +59,13 @@
 #define FSIO_FILE_COMMON	(FSIO_FILE_OPEN|FSIO_FILE_READ|FSIO_FILE_WRITE|\
                                  FSIO_FILE_CLOSE|FSIO_FILE_CREAT)
 
-#define FSIO_DIR_CHROOT		(1 << 0)
-#define FSIO_DIR_CHDIR		(1 << 1)
-#define FSIO_DIR_OPENDIR	(1 << 2)
-#define FSIO_DIR_CLOSEDIR	(1 << 3)
-#define FSIO_DIR_READDIR	(1 << 4)
-#define FSIO_DIR_MKDIR		(1 << 5)
-#define FSIO_DIR_RMDIR		(1 << 6)
+#define FSIO_DIR_CHROOT		(1 << 15)
+#define FSIO_DIR_CHDIR		(1 << 16)
+#define FSIO_DIR_OPENDIR	(1 << 17)
+#define FSIO_DIR_CLOSEDIR	(1 << 18)
+#define FSIO_DIR_READDIR	(1 << 19)
+#define FSIO_DIR_MKDIR		(1 << 20)
+#define FSIO_DIR_RMDIR		(1 << 21)
 
 /* Macro that defines directory operations */
 #define FSIO_DIR_COMMON		(FSIO_DIR_CHROOT|FSIO_DIR_CHDIR|\
@@ -105,8 +105,8 @@ struct fs_rec {
   int (*lstat)(pr_fs_t *, const char *, struct stat *);
   int (*rename)(pr_fs_t *, const char *, const char *);
   int (*unlink)(pr_fs_t *, const char *);
-  int (*open)(pr_fs_t *, const char *, int);
-  int (*creat)(pr_fs_t *, const char *, mode_t);
+  int (*open)(pr_fh_t *, const char *, int);
+  int (*creat)(pr_fh_t *, const char *, mode_t);
   int (*close)(pr_fh_t *, int);
   int (*read)(pr_fh_t *, int, char *, size_t);
   int (*write)(pr_fh_t *, int, const char *, size_t);
@@ -241,6 +241,7 @@ pr_fs_t *pr_register_fs(pool *, const char *, const char *);
 pr_fs_t *pr_create_fs(pool *, const char *);
 pr_fs_t *pr_get_fs(const char *, int *);
 int pr_insert_fs(pr_fs_t *, const char *);
+pr_fs_t *pr_remove_fs(const char *);
 int pr_unregister_fs(const char *);
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_RECOMP)
