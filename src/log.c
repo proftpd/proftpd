@@ -21,7 +21,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.24 2001-02-21 02:33:54 flood Exp $
+ * $Id: log.c,v 1.25 2001-02-21 22:33:05 flood Exp $
  */
 
 /* History Log:
@@ -278,10 +278,10 @@ static int _pid_exists(pid_t pid)
   if( (res == -1 && errno == EPERM) || !res ||
     stat(procfn,&sbuf) != -1)
 #else
-  if( (res == -1) )
+  if( (res == -1) && errno != EPERM )
 #endif
-    return 1;
-  return 0;
+    return 0;
+  return 1;
 }
 
 static size_t _read_hdr(int fd)
