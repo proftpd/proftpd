@@ -24,7 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* $Id: privs.h,v 1.27 2004-04-16 16:33:45 castaglia Exp $
+/* $Id: privs.h,v 1.28 2004-09-23 21:37:00 castaglia Exp $
  */
 
 #ifndef PR_PRIVS_H
@@ -142,6 +142,11 @@
 #  define PRIVS_RELINQUISH  { \
     pr_log_debug(DEBUG9, "RELINQUISH PRIVS at %s:%d", __FILE__, __LINE__); \
     if (!session.disable_id_switching) { \
+      if (geteuid() != PR_ROOT_UID) { \
+        if (setreuid(session.uid, PR_ROOT_UID)) \
+          pr_log_pri(PR_LOG_ERR, "PRIVS_RELINQUISH: unable to " \
+            "setreuid(session.uid, PR_ROOT_UID): %s", strerror(errno)); \
+      } \
       if (getegid() != PR_ROOT_GID) { \
         if (setregid(session.gid, PR_ROOT_GID)) \
           pr_log_pri(PR_LOG_ERR, "PRIVS_RELINQUISH: unable to " \
@@ -150,11 +155,6 @@
       if (setregid(session.gid, session.gid)) \
         pr_log_pri(PR_LOG_ERR, "PRIVS_RELINQUISH: unable to setregid(session.gid, " \
           "session.gid): %s", strerror(errno)); \
-      if (geteuid() != PR_ROOT_UID) { \
-        if (setreuid(session.uid, PR_ROOT_UID)) \
-          pr_log_pri(PR_LOG_ERR, "PRIVS_RELINQUISH: unable to " \
-            "setreuid(session.uid, PR_ROOT_UID): %s", strerror(errno)); \
-      } \
       if (setreuid(session.uid, session.uid)) \
         pr_log_pri(PR_LOG_ERR, "PRIVS_RELINQUISH: unable to setreuid(session.uid, " \
           "session.uid): %s", strerror(errno)); \
