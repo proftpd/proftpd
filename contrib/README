@@ -1,68 +1,52 @@
-The contrib/ directory contains third-party scripts, binaries and proftpd
-modules.  Such found here are completely unsupported by the proftpd team,
-have not been tested and may or may not work as documented.  In other
-words, use at your own risk.
+The contrib/ directory contains third-party scripts, binaries and ProFTPD
+modules. Such found here are completely unsupported by the ProFTPD team,
+have not been tested and may or may not work as documented. In other words,
+use at your own risk.
 
 Contents:
 -=-=-=-=-
 
 xferstats.holger-preiss (BSD license, I think)
 
-	A port of the infamous wu-ftpd xferlog perl analysis script,
-	w/ bug fixes and some modifications.  Useful for analyzing
-	your /var/log/xferlog files.  See xferlog(5).
+  A port of the infamous wu-ftpd xferlog perl analysis script, w/ bug fixes
+  and some modifications. Useful for analyzing your /var/log/xferlog files. 
+  See xferlog(5).
 
 mod_read.c (License unknown - jan.menzel@gmx.de)
 
-	A 3rd party module which implements a new configuration directive,
-	"DisplayReadme."  The directive can be used to display a list
-	of "readme" files, including their last modification date.
-	See contrib/mod_readme.c for details.
-
-mod_pam.c (GPL license - macgyver@tos.net)
-
-        A 3rd party module which implements PAM (Pluggable Authentication
-	Modules) support for proftpd.  An additional directive,
-	AuthPAMAuthoritative, is available when using this module, which
-	controls whether the authentication provided by PAM is absolutely
-	authoritative over logins, or whether proftpd should try other
-	authentications methods.
-
-	To build with mod_pam, simply:
-
-		./configure --with-modules=mod_pam
+  A third-party module which implements a new configuration directive,
+  "DisplayReadme." The directive can be used to display a list of "readme"
+  files, including their last modification dates. See contrib/mod_readme.c
+  for details.
 
 mod_ratio.c (GPL license)
 
-	A 3rd party module (distributed w/ the debian proftpd package)
-	which implements file/byte ratios in proftpd.  To install,
-	run:
+  A third-party module which implements file/byte ratios in proftpd.
+  To install, run:
 
-		./configure --with-modules=mod_ratio
+    ./configure --with-modules=mod_ratio
 
-	From the top-level source directory.  See the comments
-	at the top of mod_ratio.c for add'l directives and usage.
+  From the top-level source directory. See the comments at the top of
+  mod_ratio.c for additional directives and usage.
 
 mod_linuxprivs.c (GPL license)
 
-	This module takes advantage of current Linux development kernel's
-	(2.1.x) POSIX.1e security model enhancements (consisting of
-	capabilities and capability sets at the moment).  Use of this
-	module _greatly_ enhances security (for one thing, it makes
-	escaping from a chroot'd jail next to _impossible_).  This
-	module requires Linux kernel version 2.1.104 or newer.
-	A modified version of the libcap library is included (see below)
-	and automagically built when you include this module in your
-	proftpd build.  Tested under Linux 2.1.122.  To build simply:
+  This module takes advantage of current Linux development kernel's
+  (2.1.x) POSIX.1e security model enhancements (consisting of
+  capabilities and capability sets at the moment). Use of this module
+  _greatly_ enhances security (for one thing, it makes escaping from a
+  chroot'd jail next to _impossible_). This module requires Linux kernel
+  version 2.1.104 or newer. A modified version of the libcap library is
+  included (see below) and automagically built when you include this module
+  in your ProFTPD build. To build simply:
 
-	./configure --with-modules=mod_linuxprivs
+  ./configure --with-modules=mod_linuxprivs
 
-	For detailed information see README.linux-privs
+  See README.linux-privs for detailed information.
 
 libcap (Unknown license, probably GPL)
 
-	This library provides the interface between mod_linuxprivs
-	(above) and the capability syscalls in Linux 2.1.  YOU DO
-	NOT NEED TO BUILD THIS LIBRARY.  If you include mod_linuxprivs
-	in your proftpd build, running 'make' from the top-level directory
-	will automatically build libcap and link it in.
+  This library provides the interface between mod_linuxprivs (above) and the
+  capability syscalls in Linux 2.1. YOU DO NOT NEED TO BUILD THIS LIBRARY.
+  If you include mod_linuxprivs in your ProFTPD build, running 'make' from
+  the top-level directory will automatically build libcap and link it in.
