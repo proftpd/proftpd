@@ -24,7 +24,7 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.7 2001-12-13 20:35:50 flood Exp $
+ * $Id: support.h,v 1.8 2002-05-21 20:47:15 castaglia Exp $
  */
 
 #ifndef __SUPPORT_H
@@ -42,7 +42,7 @@
 
 /* Functions [optionally] provided by libsupp.a */
 #ifndef HAVE_GETOPT
-int getopt(int argc, char * const argv[], const char *optstring);
+int getopt(int, char * const [], const char *);
 extern char *optarg;
 extern int optind,opterr,optopt;
 #endif
@@ -55,49 +55,48 @@ struct option {
   int val;
 };
 
-int getopt_long(int argc, char * const argv[],
-                const char *optstring,
-                const struct option *longopts, int *longindex);
+int getopt_long(int, char * const [], const char *, const struct option *,
+  int *);
 #endif
 
-void block_signals();
-void unblock_signals();
+void block_signals(void);
+void unblock_signals(void);
 
-char *dir_interpolate(pool*,const char*);
-char *dir_abs_path(pool*,const char*,int);
-char *dir_realpath(pool*,const char*);
-char *dir_canonical_path(pool*,const char*);
-char *dir_best_path(pool*,const char*);
-char *dir_virtual_chdir(pool*,const char*);
+char *dir_interpolate(pool *, const char *);
+char *dir_abs_path(pool *, const char *, int);
+char *dir_realpath(pool *, const char *);
+char *dir_canonical_path(pool *, const char *);
+char *dir_best_path(pool *, const char *);
+char *dir_virtual_chdir(pool *, const char *);
 
 void add_exit_handler(void (*f)());
-void remove_exit_handlers();
-void run_exit_handlers();
+void remove_exit_handlers(void);
+void run_exit_handlers(void);
 
-void schedule(void (*f)(void*,void*,void*,void*),int nloops,
-              void*,void*,void*,void*);
-void run_schedule();
-int schedulep();
+void schedule(void (*f)(void *, void *, void *, void *), int, void *, void *,
+  void *, void *);
+void run_schedule(void);
+int schedulep(void);
 
-int get_name_max(char*, int);
+int get_name_max(char *, int);
 
-mode_t file_mode(char*);
-int file_exists(char*);
-int dir_exists(char*);
-int exists(char*);
+mode_t file_mode(char *);
+int file_exists(char *);
+int dir_exists(char *);
+int exists(char *);
 int access_check(char *, int);
-char *make_arg_str(pool*,int,char**);
+char *make_arg_str(pool *, int, char **);
 
-char *strip_end(char*,char*);
-char *get_token(char**,char*);
-char *safe_token(char**);
-int check_shutmsg(time_t*,time_t*,time_t*,char*,size_t);
+char *strip_end(char *, char *);
+char *get_token(char **, char *);
+char *safe_token(char **);
+int check_shutmsg(time_t *, time_t *, time_t *, char *, size_t);
 
-char *sstrcat(char *dest, const char *src, size_t n);
-char *sstrncpy(char *dest, const char *src, size_t n);
-char *sreplace(pool*,char*,...);
+char *sstrcat(char *, const char *, size_t);
+char *sstrncpy(char *, const char *, size_t);
+char *sreplace(pool *, char *, ...);
 
 #if defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
-unsigned long get_fs_size(char*);
+unsigned long get_fs_size(char *);
 #endif
 #endif /* __SUPPORT_H */

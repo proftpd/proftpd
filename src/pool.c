@@ -289,7 +289,7 @@ static long __walk_pools(pool *p, int level)
   return total;
 }
 
-void debug_pool_info()
+void debug_pool_info(void)
 {
   if(block_freelist)
     log_pri(LOG_NOTICE,"Free block list: 0x%08x bytes",
@@ -301,7 +301,7 @@ void debug_pool_info()
   log_pri(LOG_NOTICE,"%u count blocks reused.",stat_freehit); 
 }
 
-void debug_walk_pools()
+void debug_walk_pools(void)
 {
   log_pri(LOG_NOTICE,"Memory pool allocation:");
   log_pri(LOG_NOTICE,"Total 0x%08x bytes allocated",
@@ -376,7 +376,9 @@ struct pool *make_sub_pool(struct pool *p)
 
 /* Initialize the pool system by creating the base permanent_pool. */
 
-void init_alloc() { permanent_pool = make_named_sub_pool(NULL,"permanent_pool"); }
+void init_alloc(void) {
+  permanent_pool = make_named_sub_pool(NULL, "permanent_pool");
+}
 
 static void clear_pool(struct pool *p)
 {
@@ -419,7 +421,7 @@ void destroy_pool(pool *p)
 }
 
 long bytes_in_pool(pool *p) { return bytes_in_block_list(p->first); }
-long bytes_in_free_blocks() { return bytes_in_block_list(block_freelist); }
+long bytes_in_free_blocks(void) { return bytes_in_block_list(block_freelist); }
 
 /* Allocation inteface ... 
  */
@@ -743,7 +745,7 @@ static void cleanup_pool_for_exec(pool *p)
     cleanup_pool_for_exec(p);
 }
 
-void cleanup_for_exec()
+void cleanup_for_exec(void)
 {
   block_alarms();
   cleanup_pool_for_exec(permanent_pool);

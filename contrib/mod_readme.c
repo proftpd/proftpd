@@ -58,7 +58,7 @@ static void add_readme_response(const char *file) {
     tp = gmtime(&buf.st_mtime);
     days -= (int)(365.25 * tp->tm_year) + tp->tm_yday;
 
-    bzero(ctime_str, sizeof(ctime_str));
+    memset(ctime_str, '\0', sizeof(ctime_str));
     snprintf(ctime_str,sizeof(ctime_str),"%.26s",ctime(&buf.st_mtime));
     
     if((tptr = strchr(ctime_str, '\n')) != NULL) {

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.172 2002-05-21 18:59:15 castaglia Exp $
+$Id: NEWS,v 1.173 2002-05-21 20:47:14 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -7,6 +7,8 @@ CVS
              the data connection to be closed prematurely via data_cleanup()
 - Bug 1627 - Fixed bug in timer code where timers were being blocked
              indefinitely, manifesting as non-functioning idle timeouts
+- Bug 1521 - Cleanup of function prototypes
+- Bug 1379 - Changing remaining bzero/bcopy occurrences to memset/memcpy
 
 1.2.5rc2 - Released 2002-05-13
 ---------------------------------

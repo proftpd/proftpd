@@ -25,7 +25,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.80 2002-05-19 20:45:42 castaglia Exp $
+ * $Id: main.c,v 1.81 2002-05-21 20:47:23 castaglia Exp $
  */
 
 /*
@@ -157,57 +157,6 @@ static int abort_core = 0;
 #endif /* DEBUG_CORE */
 
 char *config_filename = CONFIG_FILE_PATH;
-
-#if 0
-void test_fs()
-{
-  glob_t pglob;
-  char buf[1024];
-  char **cp;
-  int fd;
-  fsdir_t *f;
-  size_t l;
-
-  memset(&pglob,0,sizeof(pglob));
-
-  chdir("/");
-  fs_setcwd("/");
-  if(fs_chdir("~flood/test",TRUE) == -1)
-    perror("fs_chdir [tmp]");
-
-  fs_chdir("test.tar/foo",1);
-
-  printf("cwd: %s\n",fs_getcwd());
-  printf("vwd: %s\n",fs_getvwd());
-
-  f = fs_open("TESTFILE",O_RDONLY,&fd);
-  if(!f) {
-    perror("fs_open");
-    exit(1);
-  }
-
-  fs_lseek(f,fd,-1024,SEEK_END);
-  while((l = fs_read(f,fd,buf,sizeof(buf)-1)) > 0) {
-    buf[l] = '\0';
-    printf("%s",buf);
-  }
-
-  fs_close(f,fd);
-  exit(0);
-
-  if(fs_glob("*",GLOB_PERIOD,0,&pglob) == -1)
-    perror("fs_glob");
-  else {
-    cp = pglob.gl_pathv;
-    while(pglob.gl_pathc--) {
-      printf("matched: %s\n",*cp);
-      cp++;
-    }
-  }
-
-  exit(0);
-}
-#endif
 
 int add_binding(server_rec *server, p_in_addr_t *ipaddr, conn_t *listen,
                 char isdefault, char islocalhost)
@@ -470,7 +419,7 @@ static void set_proc_title(char *fmt,...)
 #endif /* HAVE_SETPROCTITLE */
 }
   
-void main_set_idle()
+void main_set_idle(void)
 {
   time_t now;
 
@@ -650,7 +599,7 @@ void set_auth_check(int (*ck)(cmd_rec*))
   main_check_auth = ck;
 }
 
-void end_login_noexit()
+void end_login_noexit(void)
 {
   /* Run all the exit handlers */
   run_exit_handlers();
@@ -1624,7 +1573,7 @@ void fork_server(int fd, conn_t *l, int nofork) {
   cmd_loop(serv,conn);
 }
 
-void disc_children()
+void disc_children(void)
 {
   sigset_t sigset;
   pidrec_t *cp;
@@ -1647,7 +1596,7 @@ void disc_children()
   }
 }
 
-void server_loop()
+void server_loop(void)
 {
   fd_set rfd;
   conn_t *listen;
@@ -1872,7 +1821,7 @@ static RETSIGTYPE sig_child(int sig)
 }
 
 #ifdef DEBUG_CORE
-static char *_prepare_core()
+static char *_prepare_core(void)
 {
   static char dir[256];
   
@@ -1902,7 +1851,7 @@ static RETSIGTYPE sig_abort(int sig)
 }  
 
 #ifdef DEBUG_CORE
-static void _internal_abort()
+static void _internal_abort(void)
 {
   if(abort_core) {
     log_pri(LOG_NOTICE, "core file dumped to %s", _prepare_core());
@@ -1982,7 +1931,7 @@ static RETSIGTYPE sig_terminate(int sig) {
   end_login(1);
 }
 
-static void install_signal_handlers()
+static void install_signal_handlers(void)
 {
   sigset_t sigset;
 
@@ -2056,7 +2005,7 @@ static void install_signal_handlers()
   sigprocmask(SIG_UNBLOCK,&sigset,NULL);
 }
 
-void set_rlimits() {
+void set_rlimits(void) {
   config_rec *c = NULL;
   struct rlimit rlim;
 
@@ -2148,7 +2097,7 @@ void set_rlimits() {
   }
 }
 
-void pr_write_pid()
+void pr_write_pid(void)
 {
   FILE *pidf;
   
@@ -2168,7 +2117,7 @@ void pr_write_pid()
   PRIVS_RELINQUISH
 }
   
-void start_daemon()
+void start_daemon(void)
 {
 #ifndef HAVE_SETSID
   int ttyfd;
@@ -2252,7 +2201,7 @@ void addl_bindings(server_rec *s)
   }
 }
 
-void inetd_main()
+void inetd_main(void)
 {
   server_rec *s;
   int isdefault;
@@ -2314,7 +2263,7 @@ void inetd_main()
   fork_server(STDIN_FILENO,main_server->listen,TRUE);
 }
 
-void standalone_main()
+void standalone_main(void)
 {
   server_rec *s;
   int isdefault;

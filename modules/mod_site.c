@@ -24,7 +24,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.13 2001-10-18 17:10:47 flood Exp $
+ * $Id: mod_site.c,v 1.14 2002-05-21 20:47:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -301,7 +301,7 @@ MODRET site_help(cmd_rec *cmd)
     char *outa[8];
     char *outs = "";
 
-    bzero(outa,sizeof(outa));
+    memset(outa, '\0', sizeof(outa));
 
     add_response(R_214,
     "The following SITE commands are recognized (* =>'s unimplemented).");
@@ -327,7 +327,8 @@ MODRET site_help(cmd_rec *cmd)
           add_response(R_214,"%s",outs);
         outs = "";
         c = 0;
-        bzero(outa,sizeof(outa));
+
+        memset(outa, '\0', sizeof(outa));
       }
     }
 

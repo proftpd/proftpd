@@ -376,7 +376,7 @@ modret_t *mod_create_error(cmd_rec *cmd,int mr_errno)
  * need to know we are a child and have a connection.
  */
 
-int init_child_modules()
+int init_child_modules(void)
 {
   module *prev_module = curmodule;
   module *m;
@@ -391,7 +391,7 @@ int init_child_modules()
   return 0;
 }
 
-void list_modules()
+void list_modules(void)
 {
   int i;
   module *m;
@@ -404,7 +404,7 @@ void list_modules()
   }
 }
 
-int init_modules()
+int init_modules(void)
 {
   int i,numconf = 0,numcmd = 0,numauth = 0;
   module *m;
@@ -412,7 +412,7 @@ int init_modules()
   cmdtable *cmd,*cmdwrk;
   authtable *auth,*authwrk;
 
-  bzero(symtable,sizeof(symtable));
+  memset(symtable, '\0', sizeof(symtable));
   installed_modules = xaset_create(permanent_pool,NULL);
 
   for(i = 0; static_modules[i]; i++)

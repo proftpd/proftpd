@@ -24,7 +24,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.48 2001-12-18 16:14:43 flood Exp $
+ * $Id: mod_ls.c,v 1.49 2002-05-21 20:47:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -649,7 +649,7 @@ int outputfiles(cmd_rec *cmd)
 
 
 static
-void discard_output()
+void discard_output(void)
 {
   if(fpool)
     destroy_pool(fpool);

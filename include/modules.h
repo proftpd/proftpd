@@ -25,7 +25,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.7 2002-05-09 17:36:00 castaglia Exp $
+ * $Id: modules.h,v 1.8 2002-05-21 20:47:15 castaglia Exp $
  */
 
 #ifndef __MODULES_H
@@ -159,8 +159,8 @@ struct module_struc {
   cmdtable *cmdtable;			/* Command table */ 
   authtable *authtable; 		/* Authentication handler table */
 
-  int (*module_init)(); 		/* Module initialization */
-  int (*module_init_child)(); 		/* Initialize newly forked child */
+  int (*module_init)(void); 		/* Module initialization */
+  int (*module_init_child)(void);	/* Initialize newly forked child */
 
   int priority;				/* internal use, higher == higher priority */
 };
@@ -174,47 +174,46 @@ extern cmdtable *m_cmdtable;			/* Master cmdtable */
 
 /* Prototypes */
 
-void list_modules();
-int init_modules();				/* Initialize modules */
-int init_child_modules();
-modret_t *call_module(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd);
-modret_t *call_module_cmd(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd);
-modret_t *call_module_auth(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd);
+void list_modules(void);
+int init_modules(void);				/* Initialize modules */
+int init_child_modules(void);
+modret_t *call_module(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
+modret_t *call_module_cmd(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
+modret_t *call_module_auth(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
 
 /* Symbol table lookup functions */
-conftable *mod_find_conf_symbol(char*,int*,conftable*);
-cmdtable *mod_find_cmd_symbol(char*,int*,cmdtable*);
-authtable *mod_find_auth_symbol(char*,int*,authtable*);
+conftable *mod_find_conf_symbol(char *, int *, conftable *);
+cmdtable *mod_find_cmd_symbol(char *, int *, cmdtable *);
+authtable *mod_find_auth_symbol(char *, int *, authtable *);
 
 /* This function is in main.c, but is prototyped here */
-void set_auth_check(int (*ck)(cmd_rec*));
-
-void xfer_set_data_port(p_in_addr_t*,int);
+void set_auth_check(int (*ck)(cmd_rec *));
+void xfer_set_data_port(p_in_addr_t *, int);
 
 /* For use from inside module handler functions */
-modret_t *mod_create_ret(cmd_rec*,unsigned char,char*,char*);
-modret_t *mod_create_error(cmd_rec*,int);
-modret_t *mod_create_data(cmd_rec*,void*);
-privdata_t *mod_privdata_alloc(cmd_rec*,char*,int);
-privdata_t *mod_privdata_find(cmd_rec*,char*,module*);
+modret_t *mod_create_ret(cmd_rec *, unsigned char, char *, char *);
+modret_t *mod_create_error(cmd_rec *, int);
+modret_t *mod_create_data(cmd_rec *, void *);
+privdata_t *mod_privdata_alloc(cmd_rec *, char *, int);
+privdata_t *mod_privdata_find(cmd_rec *, char *, module *);
 
 /* prototypes for auth.c */
-void auth_setpwent(pool*);
-void auth_endpwent(pool*);
-void auth_setgrent(pool*);
-void auth_endgrent(pool*);
-struct passwd *auth_getpwent(pool*);
-struct group *auth_getgrent(pool*);
-struct passwd *auth_getpwnam(pool*,const char*);
-struct passwd *auth_getpwuid(pool*,uid_t);
-struct group *auth_getgrnam(pool*,const char*);
-struct group *auth_getgrgid(pool*,gid_t);
-int auth_authenticate(pool*,const char*,const char*);
-int auth_check(pool*,const char*,const char*,const char*);
-const char *auth_uid_name(pool*,uid_t);
-const char *auth_gid_name(pool*,gid_t);
-uid_t auth_name_uid(pool*,const char*);
-gid_t auth_name_gid(pool*,const char*);
+void auth_setpwent(pool *);
+void auth_endpwent(pool *);
+void auth_setgrent(pool *);
+void auth_endgrent(pool *);
+struct passwd *auth_getpwent(pool *);
+struct group *auth_getgrent(pool *);
+struct passwd *auth_getpwnam(pool *, const char *);
+struct passwd *auth_getpwuid(pool *, uid_t);
+struct group *auth_getgrnam(pool *, const char *);
+struct group *auth_getgrgid(pool *, gid_t);
+int auth_authenticate(pool *, const char *, const char *);
+int auth_check(pool *, const char *, const char *, const char *);
+const char *auth_uid_name(pool *, uid_t);
+const char *auth_gid_name(pool *, gid_t);
+uid_t auth_name_uid(pool *, const char *);
+gid_t auth_name_gid(pool *, const char *);
 int auth_getgroups(pool *, const char *, array_header **, array_header **);
 
 int set_groups(pool *, gid_t, array_header *);

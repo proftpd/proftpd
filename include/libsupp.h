@@ -28,7 +28,7 @@
 
 /* ProFTPD support library definitions.
  *
- * $Id: libsupp.h,v 1.5 2001-06-18 17:12:45 flood Exp $
+ * $Id: libsupp.h,v 1.6 2002-05-21 20:47:15 castaglia Exp $
  */
 
 #include <glibc-glob.h>
@@ -45,30 +45,30 @@
 /* Value returned by `pr_fnmatch' if STRING does not match PATTERN.  */
 #define	PR_FNM_NOMATCH	1
 
-int pr_fnmatch(const char *pattern, const char *strings, int flags);
+int pr_fnmatch(const char *, const char *, int);
 
 #ifndef HAVE_STRSEP
 
-char *strsep(char **stringp, const char *delim);
+char *strsep(char **, const char *);
 
 #endif /* HAVE_STRSEP */
 
 #ifndef HAVE_VSNPRINTF
 
-int vsnprintf(char *,size_t,const char*,va_list);
+int vsnprintf(char *, size_t, const char *, va_list);
 
 #endif /* HAVE_VSNPRINTF */
 
 #ifndef HAVE_SNPRINTF
 
-int snprintf(char *,size_t,const char*,...);
+int snprintf(char *, size_t, const char *, ...);
 
 #endif
 
 #ifndef HAVE_FGETPWENT
-struct passwd *fgetpwent(FILE*);
+struct passwd *fgetpwent(FILE *);
 #endif /* HAVE_FGETPWENT */
 
 #ifndef HAVE_FGETGRENT
-struct group *fgetgrent(FILE*);
+struct group *fgetgrent(FILE *);
 #endif /* HAVE_FGETGRENT */

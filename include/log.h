@@ -26,7 +26,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.8 2002-05-09 17:36:00 castaglia Exp $
+ * $Id: log.h,v 1.9 2002-05-21 20:47:15 castaglia Exp $
  */
 
 #ifndef __LOG_H
@@ -122,34 +122,33 @@ typedef struct {
 #define LOG_XFER_MODE           0644
 
 char *fmt_time(time_t);
-int log_wtmp(char*,char*,char*,p_in_addr_t*);
+int log_wtmp(char *, char *, char *, p_in_addr_t *);
 void log_setfacility(int);
 int log_openfile(const char *, int *, mode_t);
 int log_opensyslog(const char *);
-void log_closesyslog();
-void log_pri(int,char*,...);
-void log_auth(int,char*,...);
+void log_closesyslog(void);
+void log_pri(int, char *, ...);
+void log_auth(int, char *, ...);
 void log_stderr(int);
 int  log_setdebuglevel(int);
-void log_debug(int,char*,...);
-void log_discard();
-void init_log();
+void log_debug(int, char *, ...);
+void log_discard(void);
+void init_log(void);
 void log_run_setpath(const char *);
 const char *log_run_getpath(void);
 int log_open_checkpath(void);
 int log_run_checkpath(void);
-void log_run_address(const char *, const p_in_addr_t*);
+void log_run_address(const char *, const p_in_addr_t *);
 void log_run_cwd(const char *);
-int log_add_run(pid_t,time_t*,char*,char*,p_in_addr_t*,unsigned short,
-                unsigned long,unsigned long,char*,...);
-logrun_t *log_read_run(pid_t*);
-int log_open_run(pid_t,int,int);
-int log_close_run();
-void log_rm_run();
-int log_open_xfer(const char*);
-void log_close_xfer();
-int log_xfer(int xfertime,char *remhost,unsigned long fsize,
-              char *fname,char xfertype,char direction,
-              char access,char *user,char abort_flag);
+int log_add_run(pid_t, time_t *, char *, char *, p_in_addr_t *, unsigned short,
+  unsigned long, unsigned long, char *, ...);
+logrun_t *log_read_run(pid_t *);
+int log_open_run(pid_t, int, int);
+int log_close_run(void);
+void log_rm_run(void);
+int log_open_xfer(const char *);
+void log_close_xfer(void);
+int log_xfer(int, char *, unsigned long, char *, char, char, char,
+  char *, char);
 
 #endif /* __LOG_H */

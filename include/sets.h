@@ -23,7 +23,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* $Id: sets.h,v 1.3 2001-06-18 17:12:45 flood Exp $
+/* $Id: sets.h,v 1.4 2002-05-21 20:47:15 castaglia Exp $
  */
 
 #ifndef __SETS_H
@@ -33,7 +33,7 @@
 
 typedef struct XAsetmember xasetmember_t;
 typedef struct XAset xaset_t;
-typedef int (*XASET_COMPARE)(xasetmember_t *v1,xasetmember_t *v2);
+typedef int (*XASET_COMPARE)(xasetmember_t *v1, xasetmember_t *v2);
 typedef xasetmember_t* (*XASET_MCOPY)(xasetmember_t *mem);
 
 struct XAsetmember {
@@ -48,19 +48,14 @@ struct XAset {
 };
 
 /* Prototypes */
-xaset_t *xaset_create(pool *pool,XASET_COMPARE compf);
-xaset_t *xaset_copy(pool *pool,xaset_t *set, size_t msize,
-                    XASET_MCOPY copyf);
-xaset_t *xaset_subtract(pool *pool, xaset_t *set1, xaset_t *set2, 
-                        size_t msize,
-                        XASET_MCOPY copyf);
-xaset_t *xaset_union(pool *pool, xaset_t *set1, xaset_t *set2,
-                     size_t msize,
-	             XASET_MCOPY copyf);
+xaset_t *xaset_create(pool *, XASET_COMPARE);
+xaset_t *xaset_copy(pool *, xaset_t *, size_t, XASET_MCOPY);
+xaset_t *xaset_subtract(pool *, xaset_t *, xaset_t *, size_t, XASET_MCOPY);
+xaset_t *xaset_union(pool *, xaset_t *, xaset_t *, size_t, XASET_MCOPY);
 
-int xaset_insert(xaset_t *set, xasetmember_t *member);
-int xaset_insert_end(xaset_t *set, xasetmember_t *member);
-int xaset_remove(xaset_t *set, xasetmember_t *member);
-int xaset_insert_sort(xaset_t *set, xasetmember_t *member, int dupes_allowed);
+int xaset_insert(xaset_t *, xasetmember_t *);
+int xaset_insert_end(xaset_t *, xasetmember_t *);
+int xaset_remove(xaset_t *, xasetmember_t *);
+int xaset_insert_sort(xaset_t *, xasetmember_t *, int);
 
 #endif /* __SETS_H */

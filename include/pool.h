@@ -26,7 +26,7 @@
 /* Memory allocation/anti-leak system.  Yes, this *IS* stolen from Apache
  * also.  What can I say?  It makes sense, and it's safe (more overhead
  * though)
- * $Id: pool.h,v 1.6 2001-06-18 17:12:45 flood Exp $
+ * $Id: pool.h,v 1.7 2002-05-21 20:47:15 castaglia Exp $
  */
 
 #ifndef __POOL_H
@@ -35,30 +35,30 @@
 typedef struct pool pool;
 
 extern pool *permanent_pool;
-void init_alloc();
-pool *make_sub_pool(pool*);		/* All pools are sub-pools of perm */
-pool *make_named_sub_pool(pool*,const char*);
+void init_alloc(void);
+pool *make_sub_pool(pool *);		/* All pools are sub-pools of perm */
+pool *make_named_sub_pool(pool *, const char *);
 
 /* Low-level memory allocation */
 void *xmalloc(size_t);
-void *xcalloc(size_t,size_t);
-void *xrealloc(void*,size_t);
+void *xcalloc(size_t, size_t);
+void *xrealloc(void *, size_t);
 void pool_release_free_block_list(void);
 
 /* Clears out _everything_ in a pool, destroying any sub-pools */
-void destroy_pool(struct pool*);
-void cleanup_for_exec();
+void destroy_pool(struct pool *);
+void cleanup_for_exec(void);
 
 /* allocate memory from a pool */
-void *palloc(struct pool*, int nbytes);
-void *pcalloc(struct pool*, int nbytes);
-extern char *pstrdup(struct pool*, const char *s);
-extern char *pstrndup(struct pool*, const char *s, int n);
-char *pstrcat(struct pool*,...);       /* Must be char* */
-char *pdircat(struct pool*,...);	/* Must be char* */
+void *palloc(struct pool *, int);
+void *pcalloc(struct pool *, int);
+extern char *pstrdup(struct pool *, const char *);
+extern char *pstrndup(struct pool *, const char *, int);
+char *pstrcat(struct pool *, ...);       /* Must be char * */
+char *pdircat(struct pool *, ...);	/* Must be char * */
 
 /* MM debugging */
-void debug_walk_pools();
+void debug_walk_pools(void);
 
 /* Array management */
 
@@ -70,42 +70,41 @@ typedef struct {
   void *elts;
 } array_header;
 
-array_header *make_array(pool *p, int nelts, int elt_size);
-void *push_array(array_header*);
-void array_cat(array_header *dst, const array_header *src);
-array_header *append_arrays(pool *, const array_header *,
-                            const array_header *);
-array_header *copy_array(pool *p, const array_header *src);
-array_header *copy_array_str(pool *p, const array_header *src);
-array_header *copy_array_hdr(pool *p, const array_header *src);
+array_header *make_array(pool *, int, int);
+void *push_array(array_header *);
+void array_cat(array_header *, const array_header *);
+array_header *append_arrays(pool *, const array_header *, const array_header *);
+array_header *copy_array(pool *, const array_header *);
+array_header *copy_array_str(pool *, const array_header *);
+array_header *copy_array_hdr(pool *, const array_header *);
  
 /* Alarm signals can easily interfere with the pooled memory operations,
    thus block_alarms() and unblock_alarms() provide for re-entrant
    security. */
 
-extern void block_alarms();
-extern void unblock_alarms();
+extern void block_alarms(void);
+extern void unblock_alarms(void);
 
-FILE *pfopen(struct pool *, const char *name, const char *fmode);
-FILE *pfdopen(struct pool *, int fd, const char *fmode);
-int popenf(struct pool *, const char *name, int flg, int mode);
+FILE *pfopen(struct pool *, const char *, const char *);
+FILE *pfdopen(struct pool *, int, const char *);
+int popenf(struct pool *, const char *, int, int);
 
 int pfclose(struct pool *, FILE *);
-int pclosef(struct pool *, int fd);
+int pclosef(struct pool *, int);
 
 
 /* Functions for cleanup handlers */
-void register_cleanup(pool*,void*,void (*plain_cleanup)(void*),
-                      void (*child_cleanup)(void*));
-void kill_cleanup(pool*,void*,void (*cleanup)(void*));
-void cleanup_for_exec();
+void register_cleanup(pool *, void *, void (*plain_cleanup)(void *),
+  void (*child_cleanup)(void *));
+void kill_cleanup(pool *, void *, void (*cleanup)(void *));
+void cleanup_for_exec(void);
 
 /* minimum free bytes in a new block pool */
 
 #define BLOCK_MINFREE TUNABLE_NEW_POOL_SIZE
 
 /* accounting */
-long bytes_in_pool(pool *p);
-long bytes_in_free_blocks();
+long bytes_in_pool(pool *);
+long bytes_in_free_blocks(void);
 
 #endif /* __POOL_H */

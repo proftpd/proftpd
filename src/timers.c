@@ -24,7 +24,7 @@
 
 /* 
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.8 2002-05-21 18:59:15 castaglia Exp $
+ * $Id: timers.c,v 1.9 2002-05-21 20:47:23 castaglia Exp $
  */
 
 #include <signal.h>
@@ -138,7 +138,7 @@ void sig_alarm(int signum) {
   }
 }
 
-void set_sig_alarm() {
+void set_sig_alarm(void) {
   struct sigaction act;
 
   act.sa_handler = sig_alarm;
@@ -153,7 +153,7 @@ void set_sig_alarm() {
 #endif
 }
 
-void handle_sig_alarm() {
+void handle_sig_alarm(void) {
   int new_timeout = 0;
 
   /* We need to adjust for any time that might be remaining on the alarm,
@@ -299,11 +299,11 @@ int add_timer(int seconds, int timerno, module *mod, callback_t cb) {
  * block/unblock functions.
  */
 
-void block_alarms() {
+void block_alarms(void) {
   ++alarms_blocked;
 }
 
-void unblock_alarms() {
+void unblock_alarms(void) {
   --alarms_blocked;
   if (alarms_blocked == 0 && alarm_pending) {
     alarm_pending = 0;

@@ -26,7 +26,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.34 2002-05-19 20:45:42 castaglia Exp $
+ * $Id: log.c,v 1.35 2002-05-21 20:47:22 castaglia Exp $
  */
 
 /* History Log:
@@ -87,7 +87,7 @@ char *fmt_time(time_t t)
   return buf;
 }
 
-void log_close_xfer() {
+void log_close_xfer(void) {
   if (xferfd != -1)
     close(xferfd);
 
@@ -131,7 +131,7 @@ int log_xfer(int xfertime, char *remhost, unsigned long fsize, char *fname,
   return(write(xferfd, buf, strlen(buf)));
 }
 
-void log_rm_run()
+void log_rm_run(void)
 {
   if(runfd > -1)
     close(runfd);
@@ -141,7 +141,7 @@ void log_rm_run()
   runfd = -1;
 }
 
-int log_close_run()
+int log_close_run(void)
 {
   if(runfd == -1)
     return 0;
@@ -800,7 +800,7 @@ int log_opensyslog(const char *fn) {
   return 0;
 }
 
-void log_closesyslog()
+void log_closesyslog(void)
 {
   if(syslog_fd != -1)
     close(syslog_fd);
@@ -816,7 +816,7 @@ void log_setfacility(int f)
   set_facility = f;
 }
 
-void log_discard()
+void log_discard(void)
 {
   syslog_discard = TRUE;
 }
@@ -966,7 +966,7 @@ void log_debug(int level,char *str,...)
   log(LOG_DEBUG, facility, buf);
 }
 
-void init_log()
+void init_log(void)
 {
   char buf[256] = {'\0'};
 

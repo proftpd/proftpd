@@ -26,7 +26,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.14 2002-02-28 19:13:34 flood Exp $
+ * $Id: dirtree.h,v 1.15 2002-05-21 20:47:15 castaglia Exp $
  */
 
 #ifndef __DIRTREE_H
@@ -185,56 +185,57 @@ extern int			TimeoutStalled;
  * Directory walking code will be completely redesigned in 1.3,
  * this is only necessary for perfomance reasons in 1.1/1.2
  */
-void kludge_disable_umask();
-void kludge_enable_umask();
+void kludge_disable_umask(void);
+void kludge_enable_umask(void);
 
-void init_config();
-void fixup_servers();
-int parse_config_file(const char*);
-config_rec *add_config_set(xaset_t**,const char*);
-config_rec *add_config(const char*);
-config_rec *add_config_param(const char*,int,...);
-config_rec *add_config_param_str(const char*,int,...);
-config_rec *add_config_param_set(xaset_t**,const char*,int,...);
-config_rec *find_config_next(config_rec*,config_rec*,int,const char*,int);
-config_rec *find_config(xaset_t*,int,const char*,int);
-void find_config_set_top(config_rec*);
-int remove_config(xaset_t*,const char*,int);
-class_t *find_class(p_in_addr_t *addr, char *remote_name);
+void init_config(void);
+void fixup_servers(void);
+int parse_config_file(const char *);
+config_rec *add_config_set(xaset_t **, const char *);
+config_rec *add_config(const char *);
+config_rec *add_config_param(const char *, int, ...);
+config_rec *add_config_param_str(const char *, int, ...);
+config_rec *add_config_param_set(xaset_t **, const char *, int, ...);
+config_rec *find_config_next(config_rec *, config_rec *, int,
+  const char *, int);
+config_rec *find_config(xaset_t *, int, const char *, int);
+void find_config_set_top(config_rec *);
+int remove_config(xaset_t *, const char *, int);
+class_t *find_class(p_in_addr_t *, char *);
 
-array_header *parse_group_expression(pool*,int*,char**);
-array_header *parse_user_expression(pool*,int*,char**);
-int group_expression(char**);
-int user_expression(char**);
+array_header *parse_group_expression(pool *, int *, char **);
+array_header *parse_user_expression(pool *, int *, char **);
+int group_expression(char **);
+int user_expression(char **);
 
-long get_param_int(xaset_t*,const char*,int);
-long get_param_int_next(const char*,int);
-void *get_param_ptr(xaset_t*,const char*,int);
-void *get_param_ptr_next(const char*,int);
-void init_conf_stacks();
-void free_conf_stacks();
-server_rec *start_new_server(const char*);
-server_rec *end_new_server();
-config_rec *start_sub_config(const char*);
-config_rec *end_sub_config();
-char *get_word(char**);
+long get_param_int(xaset_t *, const char *, int);
+long get_param_int_next(const char *, int);
+void *get_param_ptr(xaset_t *, const char *, int);
+void *get_param_ptr_next(const char *, int);
+void init_conf_stacks(void);
+void free_conf_stacks(void);
+server_rec *start_new_server(const char *);
+server_rec *end_new_server(void);
+config_rec *start_sub_config(const char *);
+config_rec *end_sub_config(void);
+char *get_word(char **);
 
-config_rec *dir_match_path(pool*,char*);
-void build_dyn_config(pool*,char*,struct stat*,int);
-int dir_check_hidden(const char *path);
-int dir_check_op_mode(pool*,char*,int,uid_t,gid_t,mode_t);
-int dir_check_full(pool*,char*,char*,char*,int*);
-int dir_check(pool*,char*,char*,char*,int*);
-int dir_check_canon(pool*,char*,char*,char*,int*);
+config_rec *dir_match_path(pool *, char *);
+void build_dyn_config(pool *, char *, struct stat *, int);
+int dir_check_hidden(const char *);
+int dir_check_op_mode(pool *, char *, int, uid_t, gid_t, mode_t);
+int dir_check_full(pool *, char *, char *, char *, int *);
+int dir_check(pool *, char *, char *, char *, int *);
+int dir_check_canon(pool *, char *, char *, char *, int *);
 int is_dotdir(const char *);
-int login_check_limits(xaset_t*,int,int,int*);
-void resolve_anonymous_dirs(xaset_t*);
-void resolve_defered_dirs(server_rec*);
-void fixup_dirs(server_rec*,int);
+int login_check_limits(xaset_t *, int, int, int *);
+void resolve_anonymous_dirs(xaset_t *);
+void resolve_defered_dirs(server_rec *);
+void fixup_dirs(server_rec *, int);
 unsigned char check_conf(cmd_rec *, int);
 char *get_context_name(cmd_rec *);
-int get_boolean(cmd_rec*,int);
-char *get_full_cmd(cmd_rec*);
-int match_ip(p_in_addr_t*, char*, const char *);
+int get_boolean(cmd_rec *, int);
+char *get_full_cmd(cmd_rec *);
+int match_ip(p_in_addr_t *, char *, const char *);
 
 #endif /* __DIRTREE_H */

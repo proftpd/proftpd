@@ -25,7 +25,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.71 2002-05-09 20:15:14 castaglia Exp $
+ * $Id: mod_auth.c,v 1.72 2002-05-21 20:47:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -40,7 +40,7 @@ module auth_module;
 static int logged_in = 0;
 static int auth_tries = 0;
 
-static void _do_user_counts();
+static void _do_user_counts(void);
 
 /* Perform a chroot or equivalent action to lockdown the process into a
  * particular directory.
@@ -104,7 +104,7 @@ int _login_timeout(CALLBACK_FRAME)
   return 0;		/* Don't restart the timer */
 }
 
-static int auth_child_init() {
+static int auth_child_init(void) {
   uid_t server_uid, current_euid = geteuid();
   gid_t server_gid, current_egid = getegid();
   unsigned char switch_server_id = FALSE;
@@ -150,7 +150,7 @@ static int auth_child_init() {
   return 0;
 }
 
-static int auth_init() {
+static int auth_init(void) {
   /* By default, enable auth checking */
   set_auth_check(check_auth);
   return 0;
@@ -706,8 +706,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
         authcode = 0;
       }
     }
-      
-    bzero(pass,strlen(pass));
+    
+    memset(pass, '\0', strlen(pass));  
 
     switch(authcode) {
     case AUTH_NOPWD:
@@ -1193,7 +1193,7 @@ auth_failure:
    CURRENT_CLASS based counters and an estimate for the number of clients. The
    primary prupose is to make it so that the %N/%y escapes work in a 
    DisplayConnect greeting */
-static void _do_user_counts()
+static void _do_user_counts(void)
 {
   logrun_t *l;
   int cur = -1, ccur = -1;

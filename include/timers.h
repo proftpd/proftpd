@@ -40,10 +40,10 @@ typedef struct timer_struc {
 
 
 /* Prototypes */
-int add_timer(int seconds,int timerno,module *mod, callback_t cb);
-int remove_timer(int timerno,module *mod);
-int reset_timer(int timerno,module *mod);
+int add_timer(int, int, module *, callback_t);
+int remove_timer(int, module *);
+int reset_timer(int, module *);
 int timer_sleep(int);
-void handle_sig_alarm();
+void handle_sig_alarm(void);
 
 #endif /* __TIMERS_H */

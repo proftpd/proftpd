@@ -24,7 +24,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.20 2002-05-19 20:45:42 castaglia Exp $
+ * $Id: proftpd.h,v 1.21 2002-05-21 20:47:15 castaglia Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -238,9 +238,9 @@ void send_response_ml_end(const char *, ...);
 void add_response(const char*, const char *, ...);
 void add_response_err(const char *, const char *, ...);
 void end_login(int);
-void main_exit(void*,void*,void*,void*);
-void main_set_idle();
-void register_rehash(void*,void(*)(void*));
+void main_exit(void *, void *, void *, void *);
+void main_set_idle(void);
+void register_rehash(void *, void(*)(void *));
 void set_rlimits(void);
 
 #endif /* __PROFTPD_H */

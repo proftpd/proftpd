@@ -26,6 +26,6 @@
 #ifndef __IDENT_H
 #define __IDENT_H
 
-char *get_ident(pool*,conn_t*);
+char *get_ident(pool *, conn_t *);
 
 #endif /* __IDENT_H */

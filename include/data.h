@@ -24,19 +24,19 @@
  */
 
 /* Data connection management prototypes
- * $Id: data.h,v 1.7 2001-06-18 17:12:45 flood Exp $
+ * $Id: data.h,v 1.8 2002-05-21 20:47:15 castaglia Exp $
  */
 
 #ifndef __DATACONN_H
 #define __DATACONN_H
 
-void data_init(char*,int);
-void data_cleanup();
-int data_open(char*,char*,int,unsigned long);
+void data_init(char *, int);
+void data_cleanup(void);
+int data_open(char *, char *, int, unsigned long);
 void data_close(int);
-void data_abort(int,int);
-int data_xfer(char*,int);
-void data_reset();
+void data_abort(int, int);
+int data_xfer(char *, int);
+void data_reset(void);
 
 #ifdef HAVE_SENDFILE
 typedef

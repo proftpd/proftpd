@@ -62,7 +62,7 @@ static void _inet_pool_cleanup(void *ignore)
 /* Create the private inet pool
  */
 
-static void _create_inet_pool()
+static void _create_inet_pool(void)
 {
   inet_pool = make_sub_pool(permanent_pool);
 
@@ -78,7 +78,7 @@ static void _create_inet_pool()
  * to free up memory.
  */
 
-void clear_inet_pool()
+void clear_inet_pool(void)
 {
   if(!inet_pool)		/* Sanity check */
     return;
@@ -1239,7 +1239,7 @@ void inet_resolve_ip(pool *pool, conn_t *c)
   }
 }
 
-void init_inet()
+void init_inet(void)
 {
   struct protoent *pr;
 

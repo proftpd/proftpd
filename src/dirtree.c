@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.52 2002-05-10 17:28:54 castaglia Exp $
+ * $Id: dirtree.c,v 1.53 2002-05-21 20:47:22 castaglia Exp $
  */
 
 /* History:
@@ -152,12 +152,12 @@ int dir_check_hidden(const char *path) {
   return FALSE;	
 }
 
-void kludge_disable_umask()
+void kludge_disable_umask(void)
 {
   _kludge_disable_umask = 1;
 }
 
-void kludge_enable_umask()
+void kludge_enable_umask(void)
 {
   _kludge_disable_umask = 0;
 }
@@ -284,7 +284,7 @@ void init_dyn_stacks(pool *p,config_rec *top)
   *conf.curconfig = top;
 }
 
-void init_conf_stacks()
+void init_conf_stacks(void)
 {
   pool *pool = make_sub_pool(permanent_pool);
 
@@ -297,15 +297,15 @@ void init_conf_stacks()
   *conf.curconfig = NULL;
 }
 
-void free_dyn_stacks()
+void free_dyn_stacks(void)
 {
-  memset(&conf,0,sizeof(conf));
+  memset(&conf, 0, sizeof(conf));
 }
 
-void free_conf_stacks()
+void free_conf_stacks(void)
 {
   destroy_pool(conf.tpool);
-  memset(&conf,0,sizeof(conf));
+  memset(&conf, 0, sizeof(conf));
 }
 
 /* Used by modules to start/end configuration sections */
@@ -338,7 +338,7 @@ server_rec *start_new_server(const char *addr)
   return s;
 }
 
-server_rec *end_new_server()
+server_rec *end_new_server(void)
 {
   if(!*conf.curserver)
     return NULL;
@@ -413,7 +413,7 @@ config_rec *start_sub_config(const char *name) {
 }
 
 /* Pop one level off the stack */
-config_rec *end_sub_config()
+config_rec *end_sub_config(void)
 {
   if(conf.curconfig == (config_rec**)conf.cstack->elts) {
     if(*conf.curconfig)
@@ -2078,7 +2078,7 @@ void _copy_global_to_all(xaset_t *set)
       _copy_recur(&s->conf,s->pool,c,NULL);
 }
 
-void fixup_globals()
+void fixup_globals(void)
 {
   server_rec *s,*smain;
   config_rec *c,*cnext;
@@ -2472,7 +2472,7 @@ int parse_config_file(const char *fname)
  * otherwise fill in defaults where applicable
  */
 
-void fixup_servers()
+void fixup_servers(void)
 {
   config_rec *c;
   server_rec *s;
@@ -2533,7 +2533,7 @@ void fixup_servers()
   clear_inet_pool();
 }
 
-void init_config() {
+void init_config(void) {
   pool *pool = make_sub_pool(permanent_pool);
 
   /* Make sure global_config_pool is destroyed */

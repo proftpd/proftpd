@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.83 2002-05-10 17:28:54 castaglia Exp $
+ * $Id: mod_core.c,v 1.84 2002-05-21 20:47:16 castaglia Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -2365,7 +2365,7 @@ MODRET cmd_help(cmd_rec *cmd)
     char *outa[8];
     char *outs = "";
 
-    bzero(outa,sizeof(outa));
+    memset(outa, '\0', sizeof(outa));
 
     add_response(R_214,
       "The following commands are recognized (* =>'s unimplemented).");
@@ -2393,7 +2393,7 @@ MODRET cmd_help(cmd_rec *cmd)
           add_response(R_214,"%s",outs);
         outs = "";
         c = 0;
-        bzero(outa,sizeof(outa));
+        memset(outa, '\0', sizeof(outa));
       }
     }
 
@@ -2943,9 +2943,9 @@ MODRET cmd_rnfr(cmd_rec *cmd)
   }
 
   /* We store the path in session.xfer.path */
-  if(session.xfer.p) {
+  if (session.xfer.p) {
     destroy_pool(session.xfer.p);
-    bzero(&session.xfer,sizeof(session.xfer));
+    memset(&session.xfer, '\0', sizeof(session.xfer));
   }
 
   session.xfer.p = make_sub_pool(session.pool);

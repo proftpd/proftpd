@@ -25,7 +25,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.22 2002-02-28 19:13:35 flood Exp $
+ * $Id: mod_log.c,v 1.23 2002-05-21 20:47:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -124,8 +124,8 @@ static void add_meta(unsigned char **s, unsigned char meta, int args,
     while(args--) {
       arglen = va_arg(ap, int);
       arg = va_arg(ap, char *);
-      
-      bcopy(arg, *s, arglen);
+     
+      memcpy(*s, arg, arglen); 
       (*s) = (*s) + arglen;
       **s = META_ARG_END;
       (*s) = (*s) + 1;
@@ -247,7 +247,7 @@ void logformat(char *nickname, char *fmts)
   lf = (logformat_t *) pcalloc(log_pool, sizeof(logformat_t));
   lf->lf_nickname = pstrdup(log_pool, nickname);
   lf->lf_format = palloc(log_pool, outs - format);
-  bcopy(format, lf->lf_format, outs - format);
+  memcpy(lf->lf_format, format, outs - format);
   
   if(!format_set)
     format_set = xaset_create(log_pool, NULL);
@@ -706,7 +706,7 @@ void do_log(cmd_rec *cmd, logfile_t *lf)
         if(tmp > size)
           tmp = size;
 
-        bcopy(s,bp,tmp);
+        memcpy(bp, s, tmp);
         size -= tmp;
         bp += tmp;
       }
@@ -756,7 +756,7 @@ void log_rehash(void *d)
 }
   
 static 
-int log_init()
+int log_init(void)
 {
   log_pool = make_sub_pool(permanent_pool);
   /* add the "default" extendedlog format */
@@ -765,7 +765,7 @@ int log_init()
   return 0;
 }
 
-static void get_extendedlogs() {
+static void get_extendedlogs(void) {
   config_rec *c;
   char *logfname;
   int logclasses = CL_ALL;
@@ -874,7 +874,7 @@ MODRET log_auth_complete(cmd_rec *cmd)
 }
 
 static
-int log_child_init()
+int log_child_init(void)
 {
   /* open all log files */
   logfile_t *lf = NULL;

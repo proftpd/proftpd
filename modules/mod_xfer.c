@@ -25,7 +25,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.64 2002-05-19 20:50:13 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.65 2002-05-21 20:47:19 castaglia Exp $
  */
 
 /* History Log:
@@ -286,7 +286,7 @@ static long _transmit_data(int rate_bps, unsigned long count, off_t offset,
 #endif /* HAVE_SENDFILE */
 }
 
-static void _stor_chown() {
+static void _stor_chown(void) {
   struct stat sbuf;
   char *xfer_path = NULL;
 
@@ -345,17 +345,17 @@ static void _stor_chown() {
   }
 }
 
-static void _stor_done() {
+static void _stor_done(void) {
   fs_close(stor_file, stor_fd);
   stor_file = NULL;
 }
 
-static void _retr_done() {
+static void _retr_done(void) {
   fs_close(retr_file,retr_fd);
   retr_file = NULL;
 }
 
-static void _stor_abort() {
+static void _stor_abort(void) {
   fs_close(stor_file,stor_fd);
   stor_file = NULL;
 
@@ -371,7 +371,7 @@ static void _stor_abort() {
   _log_transfer('i', 'i');
 }
 
-static void _retr_abort() {
+static void _retr_abort(void) {
   /* Isn't necessary to send anything here, just cleanup */
   fs_close(retr_file,retr_fd);
   retr_file = NULL;
@@ -379,7 +379,7 @@ static void _retr_abort() {
 }
 
 /* Exit handler, call abort functions if a transfer is in progress. */
-static void _xfer_exit() {
+static void _xfer_exit(void) {
   if(session.flags & SF_XFER) {
     if(session.xfer.direction == IO_READ) /* stor */
       _stor_abort();
@@ -1148,7 +1148,7 @@ static int _noxfer_timeout(CALLBACK_FRAME)
   return 0;
 }
 
-int xfer_init_child()
+int xfer_init_child(void)
 {
   /* Setup TimeoutNoXfer timer */
   if(TimeoutNoXfer)

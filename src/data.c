@@ -25,7 +25,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.29 2002-02-26 17:35:57 flood Exp $
+ * $Id: data.c,v 1.30 2002-05-21 20:47:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -259,7 +259,7 @@ static int _data_active_open(char *reason, unsigned long size) {
   return -1;
 }
 
-void data_reset() {
+void data_reset(void) {
   if(session.d && session.d->pool)
     destroy_pool(session.d->pool);
   session.d = NULL;
@@ -367,14 +367,6 @@ void data_close(int quiet) {
     session.d = NULL;
   }
   
-#if 0
-  if(session.xfer.p)
-    destroy_pool(session.xfer.p);
-  
-  bzero(&session.xfer,sizeof(session.xfer));
-  session.data_port = session.c->remote_port - 1;
-#endif
-  
   /* aborts no longer necessary */
   signal(SIGURG,SIG_IGN);
   
@@ -401,7 +393,7 @@ void data_close(int quiet) {
  * flags in any case.  session flags will end up have SF_POST_ABORT
  * set if the OOB byte won the race.
  */
-void data_cleanup() {
+void data_cleanup(void) {
   /* sanity check */
   if(session.d) {
     inet_close(session.pool,session.d);
@@ -431,20 +423,10 @@ void data_abort(int err, int quiet) {
     session.d = NULL;
   }
   
-  /*
-  if(session.xfer.p)
-    destroy_pool(session.xfer.p);
-  
-  bzero(&session.xfer,sizeof(session.xfer));
-
-  session.data_port = session.c->remote_port - 1;
-  */
-  
-  
-  if(TimeoutNoXfer)
+  if (TimeoutNoXfer)
     reset_timer(TIMER_NOXFER,ANY_MODULE);
   
-  if(TimeoutStalled)
+  if (TimeoutStalled)
     remove_timer(TIMER_STALLED,ANY_MODULE);
   
   session.flags &= (SF_ALL^SF_PASSIVE);

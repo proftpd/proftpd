@@ -25,7 +25,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.28 2002-02-28 19:30:02 flood Exp $
+ * $Id: support.c,v 1.29 2002-05-21 20:47:23 castaglia Exp $
  */
 
 /* History Log:
@@ -125,12 +125,12 @@ static void _block_signals(int block)
     sigprocmask(SIG_UNBLOCK,&sigset,NULL);
 }
 
-void block_signals()
+void block_signals(void)
 {
   _block_signals(1);
 }
 
-void unblock_signals()
+void unblock_signals(void)
 {
   _block_signals(0);
 }
@@ -150,7 +150,7 @@ void add_exit_handler(void (*exit)()) {
   xaset_insert(exits, (xasetmember_t *) e);
 }
 
-void remove_exit_handlers() {
+void remove_exit_handlers(void) {
   if (exits)
     exits = NULL;
 
@@ -160,7 +160,7 @@ void remove_exit_handlers() {
   }
 }
 
-void run_exit_handlers() {
+void run_exit_handlers(void) {
   exithandler_t *e = NULL;
 
   if (!exits)
@@ -192,7 +192,7 @@ void schedule(void (*f)(void*,void*,void*,void*),int nloops,
   xaset_insert(scheds,(xasetmember_t*)s);
 }
 
-void run_schedule()
+void run_schedule(void)
 {
   sched_t *s,*snext;
 
@@ -211,7 +211,7 @@ void run_schedule()
 }
 
 /* Returns TRUE if there is a scheduled function waiting */
-int schedulep()
+int schedulep(void)
 {
   handle_sig_alarm();
   return (scheds && scheds->xas_list);
