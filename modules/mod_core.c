@@ -19,7 +19,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.12 1999-09-17 07:31:44 macgyver Exp $
+ * $Id: mod_core.c,v 1.13 1999-09-26 10:02:02 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -340,7 +340,7 @@ MODRET set_maxclients(cmd_rec *cmd)
   else {
     max = (int)strtol(cmd->argv[1],&endp,10);
 
-    if((endp && *endp) || max < 1)
+    if((endp && *endp) || max < 1) 
       CONF_ERROR(cmd,"argument must be 'none' or a number greater than 0.");
   }
 
@@ -778,6 +778,21 @@ MODRET set_allowforeignaddress(cmd_rec *cmd)
     CONF_ERROR(cmd,"expected boolean argument.");
 
   add_config_param("AllowForeignAddress",1,(void*)b);
+
+  return HANDLED(cmd);
+}
+
+MODRET set_commandbuffersize(cmd_rec *cmd)
+{
+  server_rec *s = cmd->server;
+  int size;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_GLOBAL);
+  
+  size = atoi(cmd->argv[1]);
+  
+  add_config_param("CommandBufferSize", 1, (void*) size);
 
   return HANDLED(cmd);
 }
@@ -2306,6 +2321,7 @@ static conftable core_conftable[] = {
   { "<Anonymous>",		add_anonymous,			NULL },
   { "UserAlias",		add_useralias, 			NULL },
   { "AnonRequirePassword",	set_anonrequirepassword,	NULL },
+  { "CommandBufferSize",	set_commandbuffersize,		NULL },
   { "AllowFilter",		set_allowfilter,		NULL },
   { "DenyFilter",		set_denyfilter,			NULL },
   { "PathAllowFilter",		set_pathallowfilter,		NULL },
