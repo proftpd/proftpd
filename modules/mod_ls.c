@@ -24,7 +24,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.57 2002-06-24 15:23:13 castaglia Exp $
+ * $Id: mod_ls.c,v 1.58 2002-06-25 21:58:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -63,6 +63,7 @@ static int
     opt_F = 0,
     opt_l = 0,
     opt_L = 0,
+    opt_n = 0,
     opt_R = 0,
     opt_r = 0,
     opt_t = 0,
@@ -398,10 +399,23 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
         else
           snprintf(timeline, sizeof(timeline), "%02d:%02d",t->tm_hour,t->tm_min);
 
-        snprintf(nameline, sizeof(nameline), "%s %3d %-8s %-8s %8" PR_LU " %s %2d %s %s",
-                 m, st.st_nlink, MAP_UID(st.st_uid), MAP_GID(st.st_gid),
-                 st.st_size, months[t->tm_mon],
-                 t->tm_mday, timeline, name);
+        if (!opt_n) {
+
+          /* Format nameline using user/group names. */
+          snprintf(nameline, sizeof(nameline), "%s %3d %-8s %-8s %8" PR_LU
+            " %s %2d %s %s", m, st.st_nlink, MAP_UID(st.st_uid),
+            MAP_GID(st.st_gid), st.st_size, months[t->tm_mon], t->tm_mday,
+            timeline, name);
+
+        } else {
+
+          /* Format nameline using user/group IDs. */
+          snprintf(nameline, sizeof(nameline), "%s %3d %-8u %-8u %8" PR_LU
+            " %s %2d %s %s", m, st.st_nlink, st.st_uid, st.st_gid,
+            st.st_size, months[t->tm_mon], t->tm_mday,
+            timeline, name);
+
+        }
 
         if(S_ISLNK(st.st_mode)) {
           char *p = nameline + strlen(nameline);
@@ -954,6 +968,9 @@ void _parse_options(char **opt, int *glob_flags)
       case 'L':
         opt_L++;
         break;
+      case 'n':
+        opt_n = 1;
+        break;
       case '1':
         opt_l = opt_C = 0;
         break;
@@ -999,7 +1016,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
   ls_curtime = time(NULL);
 
   if(clearflags) {
-    opt_a = opt_C = opt_d = opt_F = opt_r = opt_R = opt_t = opt_STAT = 0;
+    opt_a = opt_C = opt_d = opt_F = opt_n = opt_r = opt_R = opt_t = opt_STAT = 0;
     opt_L = 0;
   }
 
