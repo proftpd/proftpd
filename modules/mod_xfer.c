@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.95 2002-11-12 22:27:59 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.96 2002-11-13 16:32:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -440,16 +440,13 @@ static void _stor_chown(void) {
     xfer_path = session.xfer.path_hidden;
   else
     xfer_path = session.xfer.path;
- 
+
   /* session.fsgid defaults to -1, so chown(2) won't chgrp unless specifically
-   * requested via GroupOwner
-   * jss - 07/04/2001
+   * requested via GroupOwner.
    */
   if ((session.fsuid != (uid_t) -1) && xfer_path) {
     int err = 0, iserr = 0;
-    
-    fs_stat(xfer_path, &sbuf);
-    
+
     PRIVS_ROOT
     if (fs_chown(xfer_path, session.fsuid, session.fsgid) == -1) {
       iserr++;
@@ -457,36 +454,46 @@ static void _stor_chown(void) {
     }
     PRIVS_RELINQUISH
 
-    if (iserr) {
+    if (iserr) 
       log_pri(LOG_WARNING, "chown(%s) as root failed: %s", xfer_path,
         strerror(err));
     
-    } else {
+    else {
+
       if (session.fsgid != (gid_t) -1)
         log_debug(DEBUG2, "root chown(%s) to uid %lu, gid %lu successful",
-                  xfer_path,
-                  (unsigned long)session.fsuid,
-                  (unsigned long)session.fsgid);
+          xfer_path, (unsigned long) session.fsuid,
+          (unsigned long) session.fsgid);
+
       else
-        log_debug(DEBUG2, "root chown(%s) to uid %lu successful",
-                  xfer_path,
-                  (unsigned long)session.fsuid);
+        log_debug(DEBUG2, "root chown(%s) to uid %lu successful", xfer_path,
+          (unsigned long) session.fsuid);
+
+      fs_clear_statcache();
+      fs_stat(xfer_path, &sbuf);
       
-      fs_chmod(xfer_path, sbuf.st_mode);
+      if (fs_chmod(xfer_path, sbuf.st_mode) < 0)
+        log_debug(DEBUG0, "chmod(%s) to %04o failed: %s", xfer_path,
+          sbuf.st_mode, strerror(errno));
     }
 
   } else if ((session.fsgid != (gid_t) -1) && xfer_path) {
-    fs_stat(xfer_path, &sbuf);
 
-    if (fs_chown(xfer_path, (uid_t)-1, session.fsgid) == -1) {
+    if (fs_chown(xfer_path, (uid_t) -1, session.fsgid) == -1)
       log_pri(LOG_WARNING, "chown(%s) failed: %s", xfer_path,
-         strerror(errno));
+        strerror(errno));
 
-    } else {
-      log_debug(DEBUG2, "chown(%s) to gid %lu successful",
-                xfer_path,
-                (unsigned long)session.fsgid);
-      fs_chmod(xfer_path, sbuf.st_mode);
+    else {
+
+      log_debug(DEBUG2, "chown(%s) to gid %lu successful", xfer_path,
+        (unsigned long) session.fsgid);
+
+      fs_clear_statcache();
+      fs_stat(xfer_path, &sbuf);
+
+      if (fs_chmod(xfer_path, sbuf.st_mode) < 0)
+        log_debug(DEBUG0, "chmod(%s) to %04o failed: %s", xfer_path,
+          sbuf.st_mode, strerror(errno));
     }
   }
 }
