@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001, 2002, 2003, 2004 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.160 2004-10-30 23:16:41 castaglia Exp $
+ * $Id: dirtree.c,v 1.161 2004-10-31 01:32:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -64,27 +64,6 @@ static config_rec *_last_param_ptr = NULL;
 static unsigned char _kludge_disable_umask = 0;
 
 array_header *server_defines = NULL;
-
-static unsigned int server_id = 0;
-
-/* Used only while reading configuration files */
-
-static struct {
-  pool *pool;
-  array_header *servstack, *confstack;
-  server_rec **curr_server;
-  config_rec **curr_config;
-
-} parser;
-
-typedef struct conf_stack_struc {
-  struct conf_stack_struc *cs_next;
-  pool *cs_pool;
-  pr_fh_t *cs_file;
-  unsigned int cs_lineno;
-} conf_stack_t;
-
-static conf_stack_t *config_stack = NULL;
 
 static int allow_dyn_config(void) {
   config_rec *c = NULL;
@@ -613,356 +592,6 @@ cmd_rec *pr_cmd_alloc(pool *p, int argc, ...) {
   return c;
 }
 
-static conf_stack_t *push_config_stack(pr_fh_t *fh, unsigned int lineno) {
-  pool *tmp_pool = make_sub_pool(permanent_pool);
-  conf_stack_t *cs = pcalloc(tmp_pool, sizeof(conf_stack_t));
-
-  pr_pool_tag(tmp_pool, "push_config_stack() tmp pool");
-
-  cs->cs_next = NULL;
-  cs->cs_pool = tmp_pool;
-  cs->cs_file = fh;
-  cs->cs_lineno = lineno;
-
-  if (!config_stack)
-    config_stack = cs;
-
-  else {
-    cs->cs_next = config_stack;
-    config_stack = cs;
-  }
-
-  return cs;
-}
-
-static void pop_config_stack(void) {
-  conf_stack_t *cs = config_stack;
-  config_stack = cs->cs_next;
-
-  destroy_pool(cs->cs_pool);
-}
-
-/* This functions returns the next line from the configuration stream,
- * skipping commented-out lines and trimming trailing and leading whitespace,
- * returning, in effect, the next line of configuration data on which to
- * act.  At present, the configuration stream is indicated by the static
- * conf_stack pr_fh_t pointer -- in the future, this might change to a
- * more generic and flexible configuration stream data type (eg confstream_t).
- * This function has the advantage that it can be called by functions that
- * don't have access to that FILE pointer, such as the <IfDefine> and <IfModule>
- * configuration handlers.  In the future, the requirement will be that
- * functions wishing to access the configuration stream _must_ call
- * set_config_stack() prior to calling all configuration stream functions
- * (of which this is one of but several potential such functions).
- */
-char *get_config_line(char *buf, size_t len) {
-
-  /* Always use the config stream at the top of the stack. */
-  conf_stack_t *cs = config_stack;
-
-  if (!cs->cs_file)
-    return NULL;
-
-  /* Check for error conditions. */
-
-  while ((pr_fsio_getline(buf, len, cs->cs_file, &(cs->cs_lineno))) != NULL) {
-    char *bufp = NULL;
-    size_t buflen = strlen(buf);
-
-    /* Trim off the trailing newline, if present. */
-    if (buflen && buf[buflen - 1] == '\n')
-      buf[buflen - 1] = '\0';
-
-    /* Advance past any leading whitespace. */
-    for (bufp = buf; *bufp && isspace((int) *bufp); bufp++);
-
-    /* Check for commented or blank lines at this point, and just continue on
-     * to the next configuration line if found.  If not, return the
-     * configuration line.
-     */
-    if (*bufp == '#' || !*bufp) {
-      continue;
-
-    } else {
-
-      /* Copy the value of bufp back into the pointer passed in
-       * and return it.
-       */
-      buf = bufp;
-
-      return buf;
-    }
-  }
-
-  return NULL;
-}
-
-static char *get_config_word(pool *p, char *word) {
-#ifdef HAVE_GETENV
-  /* Does the given word use the environment syntax? */
-  if (strlen(word) > 7 &&
-      strncmp(word, "%{env:", 6) == 0 &&
-      word[strlen(word)-1] == '}') {
-    char *env;
-
-    word[strlen(word)-1] = '\0';
-
-    env = getenv(word + 6);
-
-    return env ? pstrdup(p, env) : "";
-  }
-#endif /* HAVE_GETENV */
-
-  return pstrdup(p, word);
-}
-
-static cmd_rec *get_config_cmd(pool *ppool) {
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'}, *word = NULL;
-  cmd_rec *new_cmd = NULL;
-  pool *new_pool = NULL;
-  array_header *tarr = NULL;
-
-  while (get_config_line(buf, sizeof(buf)-1) != NULL) {
-    char *bufp = buf;
-
-    /* Build a new pool for the command structure and array */
-    new_pool = make_sub_pool(ppool);
-    pr_pool_tag(new_pool, "get_config_cmd() subpool");
-
-    new_cmd = (cmd_rec *) pcalloc(new_pool, sizeof(cmd_rec));
-    new_cmd->pool = new_pool;
-    new_cmd->stash_index = -1;
-    tarr = make_array(new_pool, 4, sizeof(char **));
-
-    /* Add each word to the array */
-    while ((word = pr_str_get_word(&bufp, 0)) != NULL) {
-
-      /* Should this word be replaced with a value from the environment?
-       * If so, tmp will contain the expanded value, otherwise tmp will
-       * contain a string duped from the given pool.
-       */
-      char *tmp = get_config_word(new_pool, word);
-
-      *((char **) push_array(tarr)) = tmp;
-      new_cmd->argc++;
-    }
-
-    *((char **) push_array(tarr)) = NULL;
-
-    /* The array header's job is done, we can forget about it and
-     * it will get purged when the command's pool is cleared
-     */
-
-    new_cmd->argv = (char **) tarr->elts;
-
-    /* Perform a fixup on configuration directives so that:
-     * -argv[0]--  -argv[1]-- ----argv[2]-----
-     * <Option     /etc/adir  /etc/anotherdir>
-     *   .. becomes ..
-     * -argv[0]--  -argv[1]-  ----argv[2]----
-     * <Option>    /etc/adir  /etc/anotherdir
-     */
-
-    if (new_cmd->argc && *(new_cmd->argv[0]) == '<') {
-      char *cp = new_cmd->argv[new_cmd->argc-1];
-
-      if (*(cp + strlen(cp)-1) == '>' && new_cmd->argc > 1) {
-        if (!strcmp(cp, ">")) {
-          new_cmd->argv[new_cmd->argc-1] = NULL;
-          new_cmd->argc--;
-        } else
-          *(cp + strlen(cp)-1) = '\0';
-
-        cp = new_cmd->argv[0];
-        if (*(cp + strlen(cp)-1) != '>')
-          new_cmd->argv[0] = pstrcat(new_cmd->pool,cp, ">",NULL);
-      }
-    }
-
-    return new_cmd;
-  }
-
-  return NULL;
-}
-
-static void init_dyn_stacks(pool *p, config_rec *top) {
-  parser.servstack = make_array(p, 1, sizeof(server_rec *));
-  parser.curr_server = (server_rec **) push_array(parser.servstack);
-  *parser.curr_server = main_server;
-
-  parser.confstack = make_array(p, 3, sizeof(config_rec *));
-  parser.curr_config = (config_rec **) push_array(parser.confstack);
-  *parser.curr_config = NULL;
-
-  parser.curr_config = (config_rec **) push_array(parser.confstack);
-  *parser.curr_config = top;
-}
-
-static void free_dyn_stacks(void) {
-  memset(&parser, '\0', sizeof(parser));
-}
-
-void init_conf_stacks(void) {
-  pool *parser_pool = make_sub_pool(permanent_pool);
-  pr_pool_tag(parser_pool, "Parser Pool");
-
-  parser.pool = parser_pool;
-  parser.servstack = make_array(parser.pool, 1, sizeof(server_rec *));
-  parser.curr_server = (server_rec **) push_array(parser.servstack);
-  *parser.curr_server = main_server;
-  parser.confstack = make_array(parser.pool, 10, sizeof(config_rec *));
-  parser.curr_config = (config_rec **) push_array(parser.confstack);
-  *parser.curr_config = NULL;
-}
-
-void free_conf_stacks(void) {
-  destroy_pool(parser.pool);
-  memset(&parser, '\0', sizeof(parser));
-}
-
-/* Used by modules to start/end configuration sections */
-
-server_rec *start_new_server(const char *addrstr) {
-  server_rec *s;
-  pool *p;
-
-  p = make_sub_pool(permanent_pool);
-  pr_pool_tag(p, "<VirtualHost> Pool");
-
-  s = (server_rec *) pcalloc(p, sizeof(server_rec));
-  s->pool = p;
-  s->config_type = CONF_VIRTUAL;
-  s->sid = ++server_id;
-
-  /* Have to make sure it ends up on the end of the chain, otherwise
-   * main_server becomes useless.
-   */
-  xaset_insert_end(server_list, (xasetmember_t *) s);
-  s->set = server_list;
-  if (addrstr)
-    s->ServerAddress = pstrdup(s->pool, addrstr);
-
-  /* Default server port */
-  s->ServerPort = pr_inet_getservport(s->pool, "ftp", "tcp");
-
-  parser.curr_server = (server_rec **) push_array(parser.servstack);
-  *parser.curr_server = s;
-
-  return s;
-}
-
-server_rec *end_new_server(void) {
-  if (!*parser.curr_server)
-    return NULL;
-
-  if (parser.curr_server == (server_rec **) parser.servstack->elts)
-    return NULL; /* Disallow underflows */
-
-  parser.curr_server--;
-  parser.servstack->nelts--;
-
-  return *parser.curr_server;
-}
-
-/* Starts a sub-configuration */
-
-config_rec *start_sub_config(const char *name) {
-  config_rec *c = NULL, *parent = *parser.curr_config;
-  pool *c_pool = NULL, *parent_pool = NULL;
-  xaset_t **set = NULL;
-
-  if (parent) {
-    parent_pool = parent->pool;
-    set = &parent->subset;
-
-  } else {
-    parent_pool = (*parser.curr_server)->pool;
-    set = &(*parser.curr_server)->conf;
-  }
-
-  /* Allocate a sub-pool for this config_rec.  Note: special exception for
-   * <Global> configs -- the parent pool is global_config_pool (a pool just for
-   * this context), not the pool of the parent server.  This keeps <Global>
-   * config recs from being freed prematurely, and helps to avoid memory leaks.
-   */
-  if (strcmp(name, "<Global>") == 0) {
-    if (!global_config_pool) {
-      global_config_pool = make_sub_pool(permanent_pool);
-      pr_pool_tag(global_config_pool, "<Global> Pool");
-    }
-
-    parent_pool = global_config_pool;
-  }
-
-  c_pool = make_sub_pool(parent_pool);
-  pr_pool_tag(c_pool, "sub-config pool");
-
-  c = (config_rec *) pcalloc(c_pool, sizeof(config_rec));
-
-  if (!*set)
-    *set = xaset_create(parent_pool, NULL);
-
-  xaset_insert(*set, (xasetmember_t*)c);
-
-  c->pool = c_pool;
-  c->set = *set;
-  c->parent = parent;
-
-  if (name)
-    c->name = pstrdup(c->pool, name);
-
-  if (parent && (parent->config_type == CONF_DYNDIR))
-    c->flags |= CF_DYNAMIC;
-
-  /* Now insert another level onto the stack */
-  if (!*parser.curr_config)
-    *parser.curr_config = c;
-
-  else {
-    parser.curr_config = (config_rec **) push_array(parser.confstack);
-    *parser.curr_config = c;
-  }
-
-  return c;
-}
-
-/* Pop one level off the stack */
-config_rec *end_sub_config(unsigned char *empty) {
-  config_rec *c = *parser.curr_config;
-
-  /* Note that if the current config is empty, it should simply be removed.
-   * Such empty configs can happen for <Directory> sections that
-   * contain no directives, for example.
-   */
-
-  if (parser.curr_config == (config_rec **) parser.confstack->elts) {
-    if (!c->subset || !c->subset->xas_list) {
-      xaset_remove(c->set, (xasetmember_t *) c);
-      destroy_pool(c->pool);
-
-      if (empty)
-        *empty = TRUE;
-    }
-
-    if (*parser.curr_config)
-      *parser.curr_config = NULL;
-    return NULL;
-  }
-
-  if (!c->subset || !c->subset->xas_list) {
-    xaset_remove(c->set, (xasetmember_t *) c);
-    destroy_pool(c->pool);
-
-    if (empty)
-      *empty = TRUE;
-  }
-
-  parser.curr_config--;
-  parser.confstack->nelts--;
-
-  return *parser.curr_config;
-}
-
 /* Adds a config_rec to the specified set */
 config_rec *add_config_set(xaset_t **set, const char *name) {
   pool *conf_pool = NULL, *set_pool = NULL;
@@ -1013,10 +642,9 @@ config_rec *add_config(server_rec *s, const char *name) {
   xaset_t **set = NULL;
 
   if (!s)
-    s = *parser.curr_server;
+    s = pr_parser_server_ctxt_get();
 
-  if (parser.curr_config)
-    c =  *parser.curr_config;
+  c = pr_parser_config_ctxt_get();
 
   if (c) {
     parent = c;
@@ -1985,8 +1613,6 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
   char *fullpath = NULL, *path = NULL, *dynpath = NULL, *cp = NULL;
   struct stat st;
   config_rec *d = NULL;
-  pr_fh_t *fp = NULL;
-  cmd_rec *cmd = NULL;
   xaset_t **set = NULL;
   int isfile, removed = 0;
 
@@ -2092,84 +1718,18 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
       d->argv[0] = pcalloc(d->pool, sizeof(time_t));
       *((time_t *) d->argv[0]) = st.st_mtime;
 
-      fp = pr_fsio_open(dynpath, O_RDONLY);
-      if (fp != NULL) {
-        unsigned char updated = FALSE;
-        conf_stack_t *cs = NULL;
+      pr_parser_prepare(p, NULL);
 
-        removed = 0;
+      d->config_type = CONF_DYNDIR;
 
-        /* Push the configuration stream information onto the stack of
-         * configuration streams being parsed.
-         */
-        cs = push_config_stack(fp, 0);
+      if (pr_parser_parse_file(p, dynpath, d, PR_PARSER_FL_DYNAMIC_CONFIG) < 0)
+        pr_log_debug(DEBUG0, "error parsing '%s': %s", dynpath,
+          strerror(errno));
 
-        init_dyn_stacks(p, d);
-        d->config_type = CONF_DYNDIR;
+      d->config_type = CONF_DIR;
+      pr_parser_cleanup();
 
-        while ((cmd = get_config_cmd(p)) != NULL) {
-
-          /* while() loops should always handle signals. */
-          pr_signals_handle();
-
-          if (cmd->argc) {
-            conftable *conftab;
-            char found = FALSE;
-
-            cmd->server = *parser.curr_server;
-            cmd->config = *parser.curr_config;
-
-            conftab = pr_stash_get_symbol(PR_SYM_CONF, cmd->argv[0], NULL,
-              &cmd->stash_index);
-
-            while (conftab) {
-              modret_t *mr;
-
-              cmd->argv[0] = conftab->directive;
-              found = TRUE;
-
-              mr = call_module(conftab->m, conftab->handler, cmd);
-              if (mr != NULL) {
-                if (MODRET_ERRMSG(mr))
-                  pr_log_pri(PR_LOG_WARNING, "warning: %s on line %u of '%s'",
-                    MODRET_ERRMSG(mr), cs->cs_lineno, dynpath);
-              }
-
-              if (!MODRET_ISDECLINED(mr))
-                  found = TRUE;
-
-              conftab = pr_stash_get_symbol(PR_SYM_CONF, cmd->argv[0],
-                conftab, &cmd->stash_index);
-            }
-            destroy_pool(cmd->tmp_pool);
-
-            if (!found)
-              pr_log_pri(PR_LOG_WARNING,
-                "warning: unknown configuration directive '%s' on "
-                "line %u of '%s'", cmd->argv[0], cs->cs_lineno,
-                dynpath);
-
-            else
-              updated = TRUE;
-          }
-
-          destroy_pool(cmd->pool);
-        }
-
-        if (updated)
-	  pr_log_debug(DEBUG5, "dynamic configuration added/updated for %s",
-            fullpath);
-
-        d->config_type = CONF_DIR;
-        free_dyn_stacks();
-
-        _mergedown(*set, TRUE);
-
-        /* Pop this configuration stream from the stack. */
-        pop_config_stack();
-
-        pr_fsio_close(fp);
-      }
+      _mergedown(*set, TRUE);
     }
 
     if (isfile == -1 && removed && d && set) {
@@ -2688,10 +2248,10 @@ static void _mergedown(xaset_t *s,int dynamic)
   if (!s || !s->xas_list)
     return;
 
-  for (c = (config_rec*)s->xas_list; c; c=c->next)
+  for (c = (config_rec*)s->xas_list; c; c=c->next) {
     if ((c->flags & CF_MERGEDOWN) ||
         (c->flags & CF_MERGEDOWN_MULTI))
-      for (dest = (config_rec*)s->xas_list; dest; dest=dest->next)
+      for (dest = (config_rec*)s->xas_list; dest; dest=dest->next) {
         if (dest->config_type == CONF_ANON ||
            dest->config_type == CONF_DIR) {
 
@@ -2716,6 +2276,8 @@ static void _mergedown(xaset_t *s,int dynamic)
             *argv++ = *sargv++;
           *argv++ = NULL;
         }
+      }
+  }
 
   /* Top level merged, recursively merge lower levels */
   for (c = (config_rec*)s->xas_list; c; c=c->next)
@@ -3064,10 +2626,13 @@ void *get_param_ptr_next(const char *name,int recurse) {
 }
 
 int remove_config(xaset_t *set, const char *name, int recurse) {
-  server_rec *s = (parser.curr_server ? *parser.curr_server : main_server);
+  server_rec *s = pr_parser_server_ctxt_get();
   config_rec *c;
   int found = 0;
   xaset_t *fset;
+
+  if (!s)
+    s = main_server;
 
   while ((c = find_config(set, -1, name, recurse)) != NULL) {
     found++;
@@ -3202,82 +2767,6 @@ config_rec *add_config_param(const char *name, int num, ...) {
   return c;
 }
 
-int parse_config_file(pool *p, const char *fname) {
-  pr_fh_t *fh = NULL;
-  conf_stack_t *cs = NULL;
-  cmd_rec *cmd = NULL;
-  pool *tmp_pool = make_sub_pool(p ? p : permanent_pool);
-
-  pr_pool_tag(tmp_pool, "parse_config_file() tmp pool");
-
-  pr_log_debug(DEBUG2, "parsing '%s' configuration", fname);
-
-  fh = pr_fsio_open(fname, O_RDONLY);
-  if (fh == NULL) {
-    destroy_pool(tmp_pool);
-    return -1;
-  }
-
-  /* Push the configuration stream information onto the stack of
-   * configuration streams.
-   */
-  cs = push_config_stack(fh, 0);
-
-  while ((cmd = get_config_cmd(tmp_pool)) != NULL) {
-    if (cmd->argc) {
-      conftable *conftab;
-      char found = FALSE;
-
-      cmd->server = *parser.curr_server;
-      cmd->config = *parser.curr_config;
-
-      conftab = pr_stash_get_symbol(PR_SYM_CONF, cmd->argv[0], NULL,
-        &cmd->stash_index);
-
-      while (conftab) {
-        modret_t *mr;
- 
-        cmd->argv[0] = conftab->directive;
-
-        pr_log_debug(DEBUG8, "dispatching directive '%s' to module mod_%s",
-          conftab->directive, conftab->m->name);
-
-        mr = call_module(conftab->m, conftab->handler, cmd);
-        if (mr != NULL) {
-          if (MODRET_ISERROR(mr)) {
-            pr_log_pri(PR_LOG_ERR, "Fatal: %s on line %u of '%s'",
-              MODRET_ERRMSG(mr), cs->cs_lineno, fname);
-            exit(1);
-          }
-        }
-
-        if (!MODRET_ISDECLINED(mr))
-          found = TRUE;
-
-        conftab = pr_stash_get_symbol(PR_SYM_CONF, cmd->argv[0],
-          conftab, &cmd->stash_index);
-      }
-      destroy_pool(cmd->tmp_pool);
-
-      if (!found) {
-        pr_log_pri(PR_LOG_ERR, "Fatal: unknown configuration directive '%s' "
-          "on line %u of '%s'.", cmd->argv[0], cs->cs_lineno, fname);
-        exit(1);
-      }
-    }
-
-    destroy_pool(cmd->pool);
-  }
-
-  /* Pop this configuration stream from the stack. */
-  pop_config_stack();
-
-  pr_fsio_close(fh);
-
-  destroy_pool(tmp_pool);
-  return 0;
-}
-
 static int config_cmp(const void *a, const void *b) {
   return strcmp(*((char **) a), *((char **) b));
 }
@@ -3365,27 +2854,27 @@ int parse_config_path(pool *p, const char *path) {
 
       for (i = 0; i < file_list->nelts; i++) {
         char *file = ((char **) file_list->elts)[i];
-        parse_config_file(p, file);
+        pr_parser_parse_file(p, file, NULL, 0);
       }
     }
 
     return 0;
   }
 
-  return parse_config_file(p, path);
+  return pr_parser_parse_file(p, path, NULL, 0);
 }
 
 /* Go through each server configuration and complain if important information
  * is missing (post reading configuration files).  Otherwise, fill in defaults
  * where applicable.
  */
-int fixup_servers(void) {
+int fixup_servers(xaset_t *list) {
   config_rec *c = NULL;
   server_rec *s = NULL, *next_s = NULL;
 
   fixup_globals();
 
-  s = (server_rec *) server_list->xas_list;
+  s = (server_rec *) list->xas_list;
   if (s && !s->ServerName)
     s->ServerName = pstrdup(s->pool, "ProFTPD");
 
@@ -3430,7 +2919,7 @@ int fixup_servers(void) {
     if (s->addr == NULL) {
       pr_log_pri(PR_LOG_WARNING,
         "warning: unable to determine IP address of '%s'", s->ServerAddress);
-      xaset_remove(server_list, (xasetmember_t *) s);
+      xaset_remove(list, (xasetmember_t *) s);
       destroy_pool(s->pool);
       continue;
     }
@@ -3444,7 +2933,7 @@ int fixup_servers(void) {
       s->ServerAdmin = pstrcat(s->pool, "root@", s->ServerFQDN, NULL);
 
     if (!s->ServerName) {
-      server_rec *m = (server_rec *) server_list->xas_list;
+      server_rec *m = (server_rec *) list->xas_list;
       s->ServerName = pstrdup(s->pool, m->ServerName);
     }
 
@@ -3477,11 +2966,11 @@ int fixup_servers(void) {
     fixup_dirs(s, 0);
   }
 
-  /* Make sure there actually are server_recs remaining in the server_list
+  /* Make sure there actually are server_recs remaining in the list
    * before continuing.  Badly configured/resolved vhosts are rejected, and
    * it's possible to have all vhosts (even the default) rejected.
    */
-  if (server_list->xas_list == NULL) {
+  if (list->xas_list == NULL) {
     pr_log_pri(PR_LOG_NOTICE, "error: no valid servers configured");
     return -1;
   }
@@ -3521,14 +3010,11 @@ void init_config(void) {
 
   main_server->pool = conf_pool;
   main_server->set = server_list;
-  main_server->sid = ++server_id;
+  main_server->sid = 1;
 
   /* Default server port */
   main_server->ServerPort = pr_inet_getservport(main_server->pool,
     "ftp", "tcp");
-
-  /* Reset the sid counter. */
-  server_id = 0;
 
   return;
 }

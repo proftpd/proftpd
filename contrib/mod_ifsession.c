@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.15 2004-10-31 00:57:31 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.16 2004-10-31 01:32:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -144,7 +144,7 @@ MODRET start_ifctxt(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  c = start_sub_config(cmd->argv[0]);
+  c = pr_parser_config_ctxt_open(cmd->argv[0]);
 
   /* "Inherit" the parent's context type. */
   c->config_type = (cmd->config && cmd->config->config_type != CONF_PARAM ?
@@ -250,7 +250,7 @@ MODRET start_ifctxt(cmd_rec *cmd) {
 }
 
 MODRET end_ifctxt(cmd_rec *cmd) {
-  end_sub_config(NULL);
+  pr_parser_config_ctxt_close(NULL);
   return HANDLED(cmd);
 }
 

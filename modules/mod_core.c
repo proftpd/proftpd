@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.252 2004-10-30 23:14:00 castaglia Exp $
+ * $Id: mod_core.c,v 1.253 2004-10-31 01:32:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -248,7 +248,7 @@ MODRET start_ifdefine(cmd_rec *cmd) {
    * preventing them from being parsed) up to and including the closing
    * directive.
    */
-  while (ifdefine_ctx_count && (config_line = get_config_line(buf,
+  while (ifdefine_ctx_count && (config_line = pr_parser_read_line(buf,
       sizeof(buf))) != NULL) {
 
     if (strncasecmp(config_line, "<IfDefine", 9) == 0)
@@ -305,7 +305,7 @@ MODRET start_ifmodule(cmd_rec *cmd) {
    * preventing them from being parsed) up to and including the closing
    * directive.
    */
-  while (ifmodule_ctx_count && (config_line = get_config_line(buf,
+  while (ifmodule_ctx_count && (config_line = pr_parser_read_line(buf,
       sizeof(buf))) != NULL) {
     char *bufp;
 
@@ -1840,11 +1840,11 @@ MODRET add_directory(cmd_rec *cmd) {
   if (strstr(dir, "%u") && !(flags & CF_DEFER))
     flags |= CF_DEFER;
 
-  c = start_sub_config(dir);
+  c = pr_parser_config_ctxt_open(dir);
   c->argc = 2;
-  c->argv = pcalloc(c->pool,3*sizeof(void*));
+  c->argv = pcalloc(c->pool, 3 * sizeof(void *));
   if (rootdir)
-    c->argv[1] = pstrdup(c->pool,rootdir);
+    c->argv[1] = pstrdup(c->pool, rootdir);
 
   c->config_type = CONF_DIR;
   c->flags |= flags;
@@ -2207,12 +2207,12 @@ MODRET set_allowoverride(cmd_rec *cmd) {
 }
 
 MODRET end_directory(cmd_rec *cmd) {
-  unsigned char empty_ctxt = FALSE;
+  int empty_ctxt = FALSE;
 
   CHECK_ARGS(cmd, 0);
   CHECK_CONF(cmd, CONF_DIR);
 
-  end_sub_config(&empty_ctxt);
+  pr_parser_config_ctxt_close(&empty_ctxt);
 
   if (empty_ctxt)
     pr_log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
@@ -2241,25 +2241,25 @@ MODRET add_anonymous(cmd_rec *cmd) {
     CONF_ERROR(cmd,"'/' not permitted for anonymous root directory.");
 
   if (*(dir+strlen(dir)-1) != '/')
-    dir = pstrcat(cmd->tmp_pool,dir,"/",NULL);
+    dir = pstrcat(cmd->tmp_pool, dir, "/", NULL);
 
   if (!dir)
-    CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,cmd->argv[1],": ",
-               strerror(errno),NULL));
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[1], ": ",
+      strerror(errno), NULL));
 
-  c = start_sub_config(dir);
+  c = pr_parser_config_ctxt_open(dir);
 
   c->config_type = CONF_ANON;
   return HANDLED(cmd);
 }
 
 MODRET end_anonymous(cmd_rec *cmd) {
-  unsigned char empty_ctxt = FALSE;
+  int empty_ctxt = FALSE;
 
   CHECK_ARGS(cmd, 0);
   CHECK_CONF(cmd, CONF_ANON);
 
-  end_sub_config(&empty_ctxt);
+  pr_parser_config_ctxt_close(&empty_ctxt);
 
   if (empty_ctxt)
     pr_log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
@@ -2302,19 +2302,19 @@ MODRET add_global(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 0);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
-  c = start_sub_config("<Global>");
+  c = pr_parser_config_ctxt_open("<Global>");
   c->config_type = CONF_GLOBAL;
 
   return HANDLED(cmd);
 }
 
 MODRET end_global(cmd_rec *cmd) {
-  unsigned char empty_ctxt = FALSE;
+  int empty_ctxt = FALSE;
 
   CHECK_ARGS(cmd, 0);
   CHECK_CONF(cmd, CONF_GLOBAL);
 
-  end_sub_config(&empty_ctxt);
+  pr_parser_config_ctxt_close(&empty_ctxt);
 
   if (empty_ctxt)
     pr_log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
@@ -2331,7 +2331,7 @@ MODRET add_limit(cmd_rec *cmd) {
     CONF_ERROR(cmd,"directive requires one or more FTP commands.");
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_DIR|CONF_ANON|CONF_DYNDIR|CONF_GLOBAL);
 
-  c = start_sub_config("Limit");
+  c = pr_parser_config_ctxt_open("Limit");
   c->config_type = CONF_LIMIT;
   cargc = cmd->argc-1;
   cargv = cmd->argv+1;
@@ -2608,12 +2608,12 @@ MODRET set_authorder(cmd_rec *cmd) {
 }
 
 MODRET end_limit(cmd_rec *cmd) {
-  unsigned char empty_ctxt = FALSE;
+  int empty_ctxt = FALSE;
 
   CHECK_ARGS(cmd, 0);
   CHECK_CONF(cmd, CONF_LIMIT);
 
-  end_sub_config(&empty_ctxt);
+  pr_parser_config_ctxt_close(&empty_ctxt);
 
   if (empty_ctxt)
     pr_log_debug(DEBUG3, "%s: ignoring empty context", cmd->argv[0]);
@@ -2703,7 +2703,8 @@ MODRET add_virtualhost(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  if ((s = start_new_server(cmd->argv[1])) == NULL)
+  s = pr_parser_server_ctxt_open(cmd->argv[1]);
+  if (s == NULL)
     CONF_ERROR(cmd, "unable to create virtual server configuration.");
 
   /* It's possible for a server to have multiple IP addresses (e.g. a DNS
@@ -2792,7 +2793,7 @@ MODRET end_virtualhost(cmd_rec *cmd) {
     }
   }
 
-  if (!end_new_server())
+  if (pr_parser_server_ctxt_close() == NULL)
     CONF_ERROR(cmd, "must have matching <VirtualHost> directive");
     
   return HANDLED(cmd);

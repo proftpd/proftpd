@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.57 2004-10-26 23:24:55 castaglia Exp $
+ * $Id: dirtree.h,v 1.58 2004-10-31 01:32:49 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -221,10 +221,7 @@ void kludge_enable_umask(void);
 
 unsigned char define_exists(const char *);
 void init_config(void);
-int fixup_servers(void);
-void set_config_stream(FILE *, unsigned int);
-char *get_config_line(char *, size_t);
-int parse_config_file(pool *, const char *);
+int fixup_servers(xaset_t *list);
 int parse_config_path(pool *, const char *);
 config_rec *add_config_set(xaset_t **, const char *);
 config_rec *add_config(server_rec *, const char *);
@@ -264,13 +261,6 @@ long get_param_int_next(const char *, int);
 void *get_param_ptr(xaset_t *, const char *, int);
 void *get_param_ptr_next(const char *, int);
 xaset_t *get_dir_ctxt(pool *, char *);
-
-void init_conf_stacks(void);
-void free_conf_stacks(void);
-server_rec *start_new_server(const char *);
-server_rec *end_new_server(void);
-config_rec *start_sub_config(const char *);
-config_rec *end_sub_config(unsigned char *);
 
 char *pr_str_get_word(char **, int);
 #define PR_STR_FL_PRESERVE_COMMENTS		0x0001

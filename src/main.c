@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.255 2004-10-30 23:18:57 castaglia Exp $
+ * $Id: main.c,v 1.256 2004-10-31 01:32:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -81,6 +81,8 @@ unsigned char persistent_passwd = FALSE;
 
 /* From modules/module_glue.c */
 extern module *static_modules[];
+
+extern xaset_t *server_list;
 
 /* From mod_core.c. */
 extern int core_display_file(const char *numeric, const char *fn,
@@ -930,10 +932,10 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     init_log();
     init_class();
     init_config();
-    init_conf_stacks();
+    pr_parser_prepare(NULL, NULL);
 
     PRIVS_ROOT
-    if (parse_config_file(NULL, config_filename) == -1) {
+    if (pr_parser_parse_file(NULL, config_filename, NULL, 0) == -1) {
       PRIVS_RELINQUISH
       pr_log_pri(PR_LOG_ERR,
         "Fatal: unable to read configuration file '%s': %s",
@@ -941,7 +943,7 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
       end_login(1);
     }
     PRIVS_RELINQUISH
-    free_conf_stacks();
+    pr_parser_cleanup();
 
     /* After configuration is complete, make sure that passwd, group
      * aren't held open (unnecessary fds for master daemon)
@@ -953,7 +955,7 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     set_daemon_rlimits();
 
     /* XXX What should be done if fixup_servers() returns -1? */
-    fixup_servers();
+    fixup_servers(server_list);
 
     pr_event_generate("core.postparse", NULL);
 
@@ -2780,19 +2782,19 @@ int main(int argc, char *argv[], char **envp) {
     exit(1);
   }
 
-  init_conf_stacks();
+  pr_parser_prepare(NULL, NULL);
 
   pr_event_generate("core.preparse", NULL);
 
-  if (parse_config_file(NULL, config_filename) == -1) {
+  if (pr_parser_parse_file(NULL, config_filename, NULL, 0) == -1) {
     pr_log_pri(PR_LOG_ERR, "Fatal: unable to read configuration file '%s': %s",
       config_filename, strerror(errno));
     exit(1);
   }
 
-  free_conf_stacks();
+  pr_parser_cleanup();
 
-  if (fixup_servers() < 0) {
+  if (fixup_servers(server_list) < 0) {
     pr_log_pri(PR_LOG_ERR, "Fatal: error processing configuration file '%s'",
       config_filename);
     exit(1);
