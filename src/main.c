@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.194 2003-09-28 22:43:35 castaglia Exp $
+ * $Id: main.c,v 1.195 2003-09-29 00:00:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -885,7 +885,7 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
       }
     }
 
-    pr_free_bindings();
+    free_bindings();
 
     /* Run through the list of registered rehash callbacks. */
     for (rh = rehash_list; rh; rh = rh->next)
@@ -923,7 +923,7 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     /* Recreate the listen connection.  Can an inetd-spawned server accept
      * and process HUP?
      */
-    pr_init_bindings();
+    init_bindings();
 
   } else
 
@@ -2291,7 +2291,7 @@ static void inetd_main(void) {
   }
 #endif /* USE_IPV6 and IPV6_ADDRFORM */
 
-  pr_init_bindings();
+  init_bindings();
 
   /* Check our shutdown status */
   if (check_shutmsg(&shut, &deny, &disc, shutmsg, sizeof(shutmsg)) == 1)
@@ -2350,7 +2350,7 @@ static void standalone_main(void) {
   module_daemon_startup();
   module_remove_daemon_startups();
 
-  pr_init_bindings();
+  init_bindings();
 
   log_pri(PR_LOG_NOTICE, "ProFTPD %s (built %s) standalone mode STARTUP",
     PROFTPD_VERSION_TEXT " " PR_STATUS, BUILD_STAMP);
@@ -2617,7 +2617,7 @@ int main(int argc, char *argv[], char **envp) {
   pr_init_inet();
   pr_init_netio();
   pr_init_fs();
-  pr_free_bindings();
+  free_bindings();
   init_config();
   init_stash();
   module_preparse_init();

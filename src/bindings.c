@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.15 2003-09-27 20:48:31 castaglia Exp $
+ * $Id: bindings.c,v 1.16 2003-09-29 00:00:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -722,7 +722,7 @@ int pr_namebind_open(const char *name, pr_netaddr_t *addr, unsigned int port) {
   return 0;
 }
 
-void pr_free_bindings(void) {
+void free_bindings(void) {
   if (binding_pool) {
     destroy_pool(binding_pool);
     binding_pool = NULL;
@@ -893,7 +893,7 @@ static void init_standalone_bindings(void) {
   return;
 }
 
-void pr_init_bindings(void) {
+void init_bindings(void) {
   if (ServerType == SERVER_INETD)
     init_inetd_bindings();
 

@@ -24,7 +24,7 @@
 
 /* ProFTPD bindings support routines.
  *
- * $Id: bindings.h,v 1.6 2003-08-29 17:20:34 castaglia Exp $
+ * $Id: bindings.h,v 1.7 2003-09-29 00:00:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -171,11 +171,11 @@ int pr_namebind_open(const char *name, pr_netaddr_t *addr, unsigned int port);
 
 /* Initialize the Bindings layer.
  */
-void pr_init_bindings(void);
+void init_bindings(void);
 
 /* Free the Bindings layer.
  */
-void pr_free_bindings(void);
+void free_bindings(void);
 
 /* Macro error-handling wrappers */
 #define PR_ADD_IPBINDS(s) \
