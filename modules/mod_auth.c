@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.124 2002-12-13 17:27:26 castaglia Exp $
+ * $Id: mod_auth.c,v 1.125 2002-12-17 23:11:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1360,7 +1360,7 @@ static void auth_scan_scoreboard(void) {
 static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
   pr_scoreboard_entry_t *score = NULL;
   long cur = 0, hcur = 0, ccur = 0, hostsperuser = 1, usersessions = 0;
-  config_rec *c, *maxc;
+  config_rec *c = NULL, *anon_config = NULL, *maxc = NULL;
   char *origuser, config_class_users[128] = {'\0'};
   unsigned char classes_enabled = FALSE,
     *class_engine = get_param_ptr(main_server->conf, "Classes", FALSE);
@@ -1380,7 +1380,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
 
   /* Determine how many users are currently connected. */
   origuser = user;
-  c = _auth_resolve_user(cmd->tmp_pool, &user, NULL, NULL);
+  anon_config = _auth_resolve_user(cmd->tmp_pool, &user, NULL, NULL);
 
   /* Gather our statistics. */
   if (user) {
@@ -1501,8 +1501,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
    * be exceeded.
    */
 
-  if ((maxc = find_config((c ? c->subset : cmd->server->conf),
-      CONF_PARAM, "MaxClientsPerHost", FALSE)) != NULL) {
+  if ((maxc = find_config((anon_config ? anon_config->subset :
+      cmd->server->conf), CONF_PARAM, "MaxClientsPerHost", FALSE)) != NULL) {
     char *maxstr = "Sorry, the maximum number clients (%m) from your host are "
       "already connected.";
     unsigned int *max = maxc->argv[0];
@@ -1523,8 +1523,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
   }
 
   /* Check for any configured MaxClientsPerUser. */
-  if ((maxc = find_config((c ? c->subset : cmd->server->conf),
-      CONF_PARAM, "MaxClientsPerUser", FALSE)) != NULL) {
+  if ((maxc = find_config((anon_config ? anon_config->subset :
+      cmd->server->conf), CONF_PARAM, "MaxClientsPerUser", FALSE)) != NULL) {
     char *maxstr = "Sorry, maximum number of clients (%m) for this user are "
       "already connected.";
     unsigned int *max = maxc->argv[0];
@@ -1544,8 +1544,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     }
   }
 
-  if ((maxc = find_config((c ? c->subset : cmd->server->conf),
-      CONF_PARAM, "MaxClients", FALSE)) != NULL) {
+  if ((maxc = find_config((anon_config ? anon_config->subset :
+      cmd->server->conf), CONF_PARAM, "MaxClients", FALSE)) != NULL) {
     char *maxstr = "Sorry, the maximum number of allowed clients (%m) are "
       "already connected.";
     unsigned int *max = maxc->argv[0];
@@ -1564,8 +1564,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     }
   }
 
-  if ((maxc = find_config((c ? c->subset : cmd->server->conf),
-      CONF_PARAM, "MaxHostsPerUser", FALSE)) != NULL) {
+  if ((maxc = find_config((anon_config ? anon_config->subset :
+      cmd->server->conf), CONF_PARAM, "MaxHostsPerUser", FALSE)) != NULL) {
     char *maxstr = "Sorry, the maximum number of hosts (%m) for this user are "
       "already connected.";
     unsigned int *max = maxc->argv[0];
