@@ -1,4 +1,4 @@
-<!-- $Id: mod_ctrls.html,v 1.1 2004-04-16 00:36:57 castaglia Exp $ -->
+<!-- $Id: mod_ctrls.html,v 1.2 2004-04-16 00:54:59 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_ctrls.html,v $ -->
 
 <html>
@@ -22,8 +22,8 @@ Installation instructions are discussed <a href="#Installation">here</a>.
 This module implements the server side of a Unix domain socket, used for
 communication with a running <code>proftpd</code> daemon.  The client used for
 this communication is <code>ftpdctl</code>, part of the Controls API.
-See the <a href="../doc/ftpdctl.html">documentation</a> for use of that
-program; details on the <a href="#Usage">usage</a> of this module follow
+See the <code>ftpdctl</code> man page for details on using that program;
+details on the <a href="#Usage">usage</a> of this module follow
 the directive descriptions.
 
 <p>
@@ -299,28 +299,20 @@ it simply cannot be done.  Stevens' method is the next best thing right now.
 <p>
 <hr>
 <h2><a name="Installation">Installation</a></h2>
-This module requires the Controls API patch, found
-<a href="http://www.castaglia.org/proftpd/#Experimental">here</a>.  The
-patch includes the <code>ftpdctl</code> program.
-
-<p>
-After unpacking and patching the latest proftpd-1.2 source code, copy the
-<code>mod_ctrls.c</code> and <code>mod_ctrls.h</code> files into:
+The <code>mod_ctrls</code> module is distributed with ProFTPD.  To enable
+use of Controls, use the <code>--enable-ctrls</code> configure option:
 <pre>
-  <i>proftpd-dir</i>/contrib/
-</pre>
-Then follow the usual steps for using third-party modules with proftpd:
-<pre>
-  ./configure --with-modules=mod_ctrls
+  ./configure --enable-ctrls
   make
   make install
 </pre>
+This option causes <code>mod_ctrls</code> to be compiled into
+<code>proftpd</code>.
 
 <p>
-<hr><br>
-
+<hr>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2004-04-16 00:36:57 $</i><br>
+Last Updated: <i>$Date: 2004-04-16 00:54:59 $</i><br>
 
 <br><hr>
 
