@@ -26,7 +26,7 @@
 
 EGREP=egrep
 SED=sed
-max_cmd_len=1024
+max_cmd_len=4096
 
 basename="s,^.*/,,g"
 
