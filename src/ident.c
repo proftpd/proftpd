@@ -23,53 +23,47 @@
 
 #include "conf.h"
 
-static int ident_timeout;
-
-static
-int set_ident_timeout(CALLBACK_FRAME)
-{
-  ident_timeout++;
-  return 0;				/* Don't restart timer */
-}
-
 char *get_ident(pool *p,conn_t *c)
 {
   char *ret = "UNKNOWN";
   conn_t *ident_conn,*ident_io;
   char buf[256],*tok,*tmp;
-  int timer,i = 0;
-
+  int i = 0;
+  int ident_timeout = 0;
   int ident_port = inet_getservport(p,"ident","tcp");
 
   if(ident_port == -1)
     return pstrdup(p,ret);    
 
-  ident_timeout = 0;
-  timer = add_timer(TUNABLE_TIMEOUTIDENT,-1,NULL,set_ident_timeout);
-
   ident_conn = inet_create_connection(p,NULL,-1,c->local_ipaddr,INPORT_ANY,FALSE);
   inet_setnonblock(p,ident_conn);
+  i = inet_connect_nowait(p,ident_conn,c->remote_ipaddr,ident_port);
 
   while(!i && !ident_timeout) {
-    i = inet_connect_nowait(p,ident_conn,c->remote_ipaddr,ident_port);
-    if(i == 0) {
-      fd_set rfd;
-
-      FD_ZERO(&rfd);
-      FD_SET(ident_conn->listen_fd,&rfd);
-      select(1,&rfd,NULL,NULL,NULL);
+    fd_set rfd;
+    struct timeval tv;
+    
+    tv.tv_sec = TUNABLE_TIMEOUTIDENT;
+    tv.tv_usec = 0;
+    FD_ZERO(&rfd);
+    FD_SET(ident_conn->listen_fd,&rfd);
+    i = select(1,&rfd,NULL,NULL,&tv);
+    switch(i) {
+    	case -1: if(errno == EINTR) continue;
+		 break;
+	case 0:  ident_timeout++; break;
+	default: 
+		 ident_conn->mode = CM_OPEN;
+		 inet_get_conn_info(ident_conn,ident_conn->listen_fd);
+		 inet_setblock(ident_conn->pool,ident_conn);
+		 break;
     }
   }
 
   if(i < 0 || ident_timeout) {
-    if(!ident_timeout)
-      remove_timer(timer,NULL);
-
     inet_close(p,ident_conn);
     return pstrdup(p,ret);
   }
-
-  remove_timer(timer,NULL);
 
   ident_io = inet_openrw(p,ident_conn,NULL,-1,-1,-1,FALSE);
   inet_setblock(p,ident_io);

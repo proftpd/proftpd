@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.3 1999-01-19 01:34:51 flood Exp $
+ * $Id: mod_ls.c,v 1.4 1999-01-21 16:32:39 flood Exp $
  */
 
 #include "conf.h"
@@ -77,18 +77,28 @@ static void pop_cwd(char *_cwd, int *symhold)
   showsymlinks = *symhold;
 }
 
-static int ls_perms(pool *p, cmd_rec *cmd, const char *path)
+static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden)
 {
-  int ret,hidden;
+  int ret,ishidden,canon = 0;
   char *fullpath;
 
-  fullpath = pdircat(p,fs_getcwd(),path,NULL);
-  fullpath = dir_canonical_path(p,fullpath);
+  fullpath = dir_realpath(p,path);
+  if(!fullpath) {
+    fullpath = dir_canonical_path(p,path);
+    canon = 1;
+  } if(!fullpath)
+    fullpath = pstrdup(p,path);
   
-  ret = dir_check(p,cmd->argv[0],cmd->group,fullpath,&hidden);
+  if(canon)
+    ret = dir_check_canon(p,cmd->argv[0],cmd->group,fullpath,&ishidden);
+  else
+    ret = dir_check(p,cmd->argv[0],cmd->group,fullpath,&ishidden);
 
   if(hidden)
-    return 0;
+	*hidden = ishidden;
+  
+  if(ishidden)
+  	return 0;
 
   if(session.dir_config) {
     showsymlinks = get_param_int(session.dir_config->subset,
@@ -101,24 +111,25 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path)
   return ret;
 }
 
-static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path)
+static int ls_perms(pool *p, cmd_rec *cmd, const char *path, int *hidden)
 {
-  int ret,hidden,canon = 0;
-  char *fullpath;
+  int ret,ishidden;
+  char fullpath[MAXPATHLEN];
 
-  fullpath = dir_realpath(p,path);
-  if(!fullpath) {
-    fullpath = dir_canonical_path(p,path);
-    canon = 1;
-  } if(!fullpath)
-    fullpath = pstrdup(p,path);
-  
-  if(canon)
-    ret = dir_check_canon(p,cmd->argv[0],cmd->group,fullpath,&hidden);
+  if(*path == '~')
+	return ls_perms_full(p,cmd,path,hidden);
+
+  if(*path != '/')
+  	fs_clean_path(pdircat(p,fs_getcwd(),path,NULL),fullpath,MAXPATHLEN);
   else
-    ret = dir_check(p,cmd->argv[0],cmd->group,fullpath,&hidden);
+	fs_clean_path(path,fullpath,MAXPATHLEN);
+  
+  ret = dir_check(p,cmd->argv[0],cmd->group,fullpath,&ishidden);
 
   if(hidden)
+	  *hidden = ishidden;
+  
+  if(ishidden)
     return 0;
 
   if(session.dir_config) {
@@ -183,15 +194,15 @@ int listfile(cmd_rec *cmd, const char *name)
       if(fs_stat(name,&l_st) != -1) {
         memcpy(&st,&l_st,sizeof(st));
         m[fs_readlink(name,m,sizeof(m))] = '\0';
-        if(!ls_perms_full(cmd->tmp_pool,cmd,m))
+        if(!ls_perms_full(cmd->tmp_pool,cmd,m,NULL))
           return 0;
       } else
         return 0;
     } else if(S_ISLNK(st.st_mode)) {
       l[fs_readlink(name,l,sizeof(l))] = '\0';
-      if(!ls_perms_full(cmd->tmp_pool,cmd,l))
+      if(!ls_perms_full(cmd->tmp_pool,cmd,l,NULL))
         return 0;
-    } else if(!ls_perms(cmd->tmp_pool,cmd,name))
+    } else if(!ls_perms(cmd->tmp_pool,cmd,name,NULL))
       return 0;
 
     mtime = st.st_mtime;
@@ -514,7 +525,7 @@ static int cmp(const void *a, const void *b)
 }
 
 static
-char **sreaddir(pool *workp, const char *dirname)
+char **sreaddir(pool *workp, const char *dirname, const int sort)
 {
   DIR 		*d;
   struct	dirent *de;
@@ -523,14 +534,6 @@ char **sreaddir(pool *workp, const char *dirname)
   char		**p;
   char		*s;
   int		dsize;
-
-  if(fs_stat(dirname,&st) < 0) 
-    return NULL;
-
-  if(!S_ISDIR(st.st_mode)) {
-    errno = ENOTDIR;
-    return NULL;
-  }
 
   if((d = opendir(dirname)) == NULL)
     return NULL;
@@ -558,7 +561,9 @@ realloc_buf:
   closedir(d);
   p[i] = NULL;
 
-  qsort(p,i,sizeof(char*),cmp);
+  if(sort)
+	qsort(p,i,sizeof(char*),cmp);
+  
   return p;
 }
 
@@ -576,7 +581,7 @@ int listdir(cmd_rec *cmd, pool *workp, const char *name, int list_dotdirs)
     dest_workp++;
   }
 
-  dir = sreaddir(workp,".");
+  dir = sreaddir(workp,".",TRUE);
 
   if(dir) {
     char **s;
@@ -584,10 +589,15 @@ int listdir(cmd_rec *cmd, pool *workp, const char *name, int list_dotdirs)
 
     int d = 0;
 
-    if(opt_l)
-      if(sendline("total 0\n") < 0)
+#if 0
+    if(opt_l) {
+      if(opt_STAT)
+        add_response(R_211,"total 0");
+      else if(sendline("total 0\n") < 0)
         return -1;
-
+    }
+#endif
+    
     s = dir;
     while(*s) {
       if(**s != '.') {
@@ -628,7 +638,8 @@ int listdir(cmd_rec *cmd, pool *workp, const char *name, int list_dotdirs)
 
       push_cwd(cwd,&symhold);
       
-      if(*r && ls_perms_full(workp,cmd,(char*)*r) && !fs_chdir_canon(*r,showsymlinks)) {
+      if(*r && ls_perms_full(workp,cmd,(char*)*r,NULL) 
+	    && !fs_chdir_canon(*r,showsymlinks)) {
         char *subdir;
 
 	if(strcmp(name,".") == 0)
@@ -636,9 +647,10 @@ int listdir(cmd_rec *cmd, pool *workp, const char *name, int list_dotdirs)
         else
           subdir = pdircat(workp,name,*r,NULL);
 
-	if(opt_STAT)
-          add_response(R_211,"\r\n%s:\r\n",subdir);
-	else if(sendline("\n%s:\n",subdir) < 0) {
+	if(opt_STAT) {
+	  add_response(R_211,"");
+          add_response(R_211,"%s:",subdir);
+	} else if(sendline("\n%s:\n",subdir) < 0) {
           pop_cwd(cwd,&symhold);
           if(dest_workp)
             destroy_pool(workp);
@@ -788,7 +800,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
         *pbuffer = '\0';
 
       /* check perms on the directory/file we are about to scan */
-      if(!ls_perms_full(cmd->tmp_pool,cmd,(*pbuffer ? (char*)pbuffer:(char*)arg))) {
+      if(!ls_perms_full(cmd->tmp_pool,cmd,(*pbuffer ? (char*)pbuffer:(char*)arg),NULL)) {
         a = -1; skiparg = 1;
       } else {
         skiparg = 0;
@@ -848,14 +860,15 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
 
         path = g.gl_pathv;
         while(path && *path) {
-          if(**path && ls_perms_full(cmd->tmp_pool,cmd,*path)) {
+          if(**path && ls_perms_full(cmd->tmp_pool,cmd,*path,NULL)) {
             char cwd[MAXPATHLEN];
             int symhold;
 
             if(!justone) {
-              if(opt_STAT)
-	        add_response(R_211,"\r\n%s:\r\n",*path);
-              else
+              if(opt_STAT) {
+		add_response(R_211,"");
+		add_response(R_211,"%s:",*path);
+	      } else
                 sendline("\n%s:\n",*path);
             }
 
@@ -900,7 +913,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
       }
     }
   } else {
-    if(ls_perms_full(cmd->tmp_pool,cmd,".")) {
+    if(ls_perms_full(cmd->tmp_pool,cmd,".",NULL)) {
       if(opt_d) {
         if(listfile(cmd,".") < 0) {
           ls_terminate();
@@ -923,164 +936,115 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
   return 0;
 }
 
-/* display simple directory listing
+/* display listing of a single file, no permission checking is done.
+ * error is only returned if the data connection cannot be opened
+ * or is aborted.
  */
 
 static
-int nlstdir(cmd_rec *cmd, const char *dir, int simple)
+int nlstfile(cmd_rec *cmd, const char *file)
 {
-  char **list,*p,*file;
-  pool *workp;
-  int ret = 0;
-  int curdir = 0;
-  mode_t mode;
-  
-  workp = make_sub_pool(cmd->tmp_pool);
-  if(strcmp(dir,".") == 0) curdir = 1;
-  
-  if(ls_perms_full(workp,cmd,dir) &&
-		  (list = sreaddir(workp,dir)))
-	  while(*list && ret >= 0) {
-		  p = *list;
-		  list++;
-		  
-		  file = (curdir ? p : pdircat(workp,dir,p,NULL));
-		  mode = file_mode(file);
-		  if(!simple && !S_ISREG(mode))
-			  continue;
-		  
-		  if(ls_perms(workp,cmd,file)) {
-			  if((session.flags & SF_XFER) == 0)
-				  if(data_open(NULL,"file list",IO_WRITE,0) < 0) {
-					  destroy_pool(workp);
-					  return -1;
-				  }
-			  
-			  ret = sendline("%s\n",file);
+	int err;
 
-		  }
+	/* If the data connection isn't open, open it now. */
+	if((session.flags & SF_XFER) == 0) {
+		if(data_open(NULL,"file list",IO_WRITE,0) < 0) {
+			data_reset();
+			return -1;
+		}
+		session.flags |= SF_ASCII_OVERRIDE;
 	}
 
-  destroy_pool(workp);
-  return ret;
+	if((err = sendline("%s\n",file)) < 0)
+		return err;
+	
+	return 1;
 }
 
+/* display listing of a directory, ACL checks performed on each entry,
+ * sent in NLST fashion.  Files which are inaccessible via ACL are skipped,
+ * error returned if data conn cannot be opened or is aborted.
+ */
+
 static
-int donlst(cmd_rec *cmd, const char *opt)
+int nlstdir(cmd_rec *cmd, const char *dir)
 {
-  int a;
-  int glob_flags = GLOB_PERIOD;
-  char *arg = (char*)opt;
-  int ret = 0;
-  int simple = 1;
+	char	**list,*p,*f,file[MAXPATHLEN];
+	char	cwd[MAXPATHLEN];
+	pool	*workp;
+	int	curdir = 0,i,symhold,count = 0;
+	mode_t	mode;
 
-  matches = 0;
-  if(strpbrk(arg,"~{[*?") != NULL)
-	  simple = 0;
-  
-  /* open data connection */
-  session.flags |= SF_ASCII_OVERRIDE;
+	workp = make_sub_pool(cmd->tmp_pool);
 
-  if(arg && *arg) {
- 
-    while(arg) {
-      glob_t g;
-      int a;
-      char pbuffer[MAXPATHLEN];
-      char *endarg = strchr(arg,' ');
-
-      if(endarg)
-        *endarg++ = '\0';
-
-      if(*arg == '~') {
-	      struct passwd *pw;
-	      int i;
-	      const char *p;
-
-	      i = 0;
-	      p = arg;
-	      p++;
-
-	      while(*p && *p != '/')
-		      pbuffer[i++] = *p++;
-	      pbuffer[i] = '\0';
-
-	      if((pw = auth_getpwnam(cmd->tmp_pool,i ? pbuffer : session.user)))
-		      sprintf(pbuffer,"%s%s",pw->pw_dir,p);
-	      else
-		      *pbuffer = '\0';
-      } else
-	      *pbuffer = '\0';
-
-      a = fs_glob(*pbuffer ? pbuffer:arg, glob_flags, NULL, &g);
-
-      if(!a) {
-	      char **path,*p;
-	      
-	      path = g.gl_pathv;
-
-	      while(path && *path && ret >= 0) {
-		      struct stat st;
-
-		      /* Skip .dotfiles? */
-		      p = *path; path++;
-		      if(*p == '.' && (
-	                  ((p[1] == '\0') ||
-			  ((p[1] == '.') &&
-			   (p[2] == '\0')))) )
-			      continue;
-
-		      if(*p == '.' && showdotfiles != 1)
-			      continue;
-		      
-		      if(fs_stat(p,&st) == 0) {
-			      /* if it's a directory, hand it off
-			       * to nlstdir, NLST doesn't return non
-			       * regular files, so skip if not a dir
-			       * or regular file.
-			       */
-			      if(S_ISDIR(st.st_mode))
-				      ret = nlstdir(cmd,p,simple);
-			      else if((simple || S_ISREG(st.st_mode)) 
-					      && ls_perms(cmd->tmp_pool,cmd,p)) {
-				      if((session.flags & SF_XFER) == 0)
-					      if(data_open(NULL,"file list",
-							      IO_WRITE,0) < 0)
-						      ret = -1;
-				      if(ret >= 0)
-				    	      ret = sendline("%s\n",p);
-			      }
-		      }
-	      }
-	      fs_globfree(&g);
-	} else {
-		switch(a) {
-		case GLOB_NOMATCH:
-			break;
-		case GLOB_NOSPACE:
-			add_response(R_226,
-					"Out of memory during globbing of %s",arg);
-			ret = -1;
-			break;
-		case GLOB_ABORTED:
-			add_response(R_226,
-					"Read error during globbing of %s",arg);
-			ret = -1;
-			break;
-		default:
-			add_response(R_226,
-					"Unknown error during globbing of %s",arg);
-			ret = -1;
-			break;
-		}
+	if(!*dir || (*dir == '.' && !dir[1]) || strncmp(dir,"./",2) == 0) {
+		curdir = 1;
+		dir = "";
+	} else
+		push_cwd(cwd,&symhold);
+	
+	if(fs_chdir_canon(dir,showsymlinks)) {
+		destroy_pool(workp);
+		return 0;
+	}
+	
+	if((list = sreaddir(workp,".",FALSE)) == NULL) {
+		if(!curdir)
+			pop_cwd(cwd,&symhold);
+		destroy_pool(workp);
+		return 0;
 	}
 
-	arg = endarg;
-    }
-  } else
-    ret = nlstdir(cmd,".",1);
+	while(*list && count >= 0) {
+		p = *list; list++;
 
-  return ret;
+		if(*p == '.' && (
+			((p[1] == '\0') ||
+			((p[2] == '.') &&
+			 (p[3] == '\0')))) )
+			continue;
+
+		if(*p == '.' && showdotfiles != 1)
+			continue;
+		
+		if((i = fs_readlink(p,file,sizeof(file))) > 0) {
+			file[i] = '\0';
+			f = file;
+		} else
+			f = p;
+	
+		if(ls_perms(workp,cmd,f,NULL)) {
+			/* If the data connection isn't open, open it now. */
+			if((session.flags & SF_XFER) == 0) {
+				if(data_open(NULL,"file list",IO_WRITE,0) < 0) {
+					data_reset();
+					count = -1;
+					continue;
+				}
+				session.flags |= SF_ASCII_OVERRIDE;
+			}
+
+			if((mode = file_mode(f)) == 0)
+				continue;
+		
+			if(!curdir) {
+				if(sendline("%s/%s\n",dir,p) < 0)
+					count = -1;
+				else count++;
+			} else {
+				if(sendline("%s\n",p) < 0)
+					count = -1;
+				else count++;
+			}
+		}
+	}
+	
+	if(!curdir)
+		pop_cwd(cwd,&symhold);
+
+	destroy_pool(workp);
+
+	return count;
 }
 
 MODRET cmd_list(cmd_rec *cmd)
@@ -1158,10 +1122,12 @@ MODRET cmd_stat(cmd_rec *cmd)
   opt_C = opt_d = opt_F = opt_R;
   opt_a = opt_l = opt_STAT = 1;
 
+#if 0
   if(fs_stat(arg,&sbuf) == -1) {
     add_response_err(R_550,"%s: %s",arg,strerror(errno));
     return ERROR(cmd);
   }
+#endif
 
   add_response(R_211,"status of %s:",arg);
   dolist(cmd,cmd->arg,FALSE);
@@ -1176,41 +1142,149 @@ MODRET cmd_stat(cmd_rec *cmd)
 
 MODRET cmd_nlst(cmd_rec *cmd)
 {
-  int err;
+	char	*target,line[MAXPATHLEN];
+	int	count = 0;
+	int	ret = 0;
 
-  /* In case the client used NLST instead of LIST
-   */
+	/* In case the client used NLST instead of LIST
+	 */
 
-  if(cmd->argc > 1 && cmd->argv[1][0] == '-')
-	  return cmd_list(cmd);
- 
-  showsymlinks = get_param_int(TOPLEVEL_CONF,"ShowSymlinks",FALSE);
+	if(cmd->argc > 1 && cmd->argv[1][0] == '-')
+		return cmd_list(cmd);
 
-  if(showsymlinks == -1)
-    showsymlinks = 1;
-  showdotfiles = get_param_int(TOPLEVEL_CONF,"ShowDotFiles",FALSE);
+	showsymlinks = get_param_int(TOPLEVEL_CONF,"ShowSymlinks",FALSE);
 
-  err = donlst(cmd,cmd->arg);
-  if(XFER_ABORTED) {
-    data_abort(0,0);
-    err = -1;
-  } else {
-    /* if donlst() didn't return an error, but no transfer is active,
-     * this means that no files were actually listed.
-     */
-    if(err >= 0 && (session.flags & SF_XFER) == 0) {
-      add_response_err(R_550,"No files found.");
-      err = -1;
-    } else if(session.flags & SF_XFER)
-      ls_done(cmd);
+	if(showsymlinks == -1)
+		showsymlinks = 1;
+	showdotfiles = get_param_int(TOPLEVEL_CONF,"ShowDotFiles",FALSE);
 
-    /* In case the transfer was supposed to have been started, but
-     * never was, clear out data connection mgmt stuff.
-     */
-    data_reset();
-  }
- 
-  return (err < 0 ? ERROR(cmd) : HANDLED(cmd));
+	if(cmd->argc == 1)
+		target = ".";
+	else
+		target = cmd->arg;
+	
+	/* If the target starts with '~' ... */
+	if(*target == '~') {
+		char pb[MAXPATHLEN];
+		struct passwd *pw;
+		int i;
+		const char *p;
+
+		i = 0;
+		p = target;
+		p++;
+
+		while(*p && *p !='/')
+			pb[i++] = *p++;
+		pb[i] = '\0';
+
+		if((pw = auth_getpwnam(cmd->tmp_pool,i ? pb : session.user))) {
+			sprintf(pb,"%s%s",pw->pw_dir,p);
+			strcpy(line,pb);
+			target = line;
+		}
+	}
+	
+	/* If the target is a glob, get the listing of files/dirs to send
+	 */
+
+	if(strpbrk(target,"{[*?") != NULL) {
+		glob_t g;
+		char **path,*p;
+		
+		if(fs_glob(target,GLOB_PERIOD,NULL,&g) != 0) {
+			add_response_err(R_550,"No files found.");
+			return ERROR(cmd);
+		}
+
+		/* Iterate through each matching entry */
+		path = g.gl_pathv;
+		while(path && *path && ret >= 0) {
+			struct stat st;
+
+			/* Skip ./ and ../ */
+			p = *path; path++;
+			if(*p == '.' && (
+				((p[1] == '\0') ||
+				((p[1] == '.') &&
+				 (p[2] == '\0')))) )
+				continue;
+			
+			if(*p == '.' && showdotfiles != 1)
+				continue;
+
+			if(fs_stat(p,&st) == 0) {
+				/* If it's a directory, hand off to nlstdir */
+				if(S_ISDIR(st.st_mode))
+					ret = nlstdir(cmd,p);
+				else if(S_ISREG(st.st_mode) &&
+						ls_perms(cmd->tmp_pool,cmd,p,NULL))
+					ret = nlstfile(cmd,p);
+				if(ret > 0)
+					count += ret;
+			}
+		}
+		fs_globfree(&g);
+	} else {
+		/* A single target, if it's a directory, list the contents,
+		 * if it's a file, just list the file.
+		 */
+		int hidden;
+		struct stat st;
+		
+		if(!ls_perms(cmd->tmp_pool,cmd,target,&hidden)) {
+			if(hidden)
+				add_response_err(R_550,"%s: No such file or directory",cmd->arg);
+			else
+				add_response_err(R_550,"%s: Permission denied",cmd->arg);
+			return ERROR(cmd);
+		}
+
+		/* Make sure the target is a file or directory,
+		 * and that we have access to it.
+		 */
+		if(fs_stat(target,&st) < 0) {
+			add_response_err(R_550,"%s: %s",
+					cmd->arg,strerror(errno));
+			return ERROR(cmd);
+		}
+
+		if(S_ISREG(st.st_mode))
+			ret = nlstfile(cmd,target);
+		else if(S_ISDIR(st.st_mode)) {
+			if(access(target,R_OK) != 0) {
+				add_response_err(R_550,"%s: %s",
+						cmd->arg,strerror(errno));
+				return ERROR(cmd);
+			}
+			ret = nlstdir(cmd,target);
+		} else {
+			add_response_err(R_550,"%s: Not a regular file",
+					cmd->arg,strerror(errno));
+			return ERROR(cmd);
+		}
+		
+		if(ret > 0)
+			count += ret;
+	}
+	
+	if(XFER_ABORTED) {
+		data_abort(0,0);
+		ret = -1;
+	} else {
+		if(ret == 0 && !count && (session.flags & SF_XFER) == 0) {
+			add_response_err(R_550,"No files found.");
+			ret = -1;
+		} else if(session.flags & SF_XFER)
+			ls_done(cmd);
+
+		/* Note that the data connection is NOT cleared here,
+		 * as an error in NLST still leaves data ready for
+		 * another command
+		 */
+	}
+
+	return (ret < 0 ? ERROR(cmd) : HANDLED(cmd));
 }
 
 MODRET _sethide(cmd_rec *cmd, const char *param)
