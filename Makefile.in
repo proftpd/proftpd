@@ -141,7 +141,13 @@ depend:
 	cd modules; $(MAKE) depend; rm -f Makefile.bak Makefile.in.bak
 	cd lib; $(MAKE) depend; rm -f Makefile.bak Makefile.in.bak
 
-distclean: clean depend
+symlinks:
+	cd contrib; \
+	test -f README.linux-privs || \
+            ln -s ../README.linux-privs README.linux-privs \
+	test -f README.mod_sql || ln -s ../README.mod_sql README.mod_sql
+
+distclean: clean depend symlinks
 	rm -f src/Makefile modules/Makefile lib/Makefile
 	rm -f config.h config.status config.cache config.log \
 	      Makefile proftpd.conf development.notes

@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.51 2001-02-23 02:47:26 flood Exp $
+ * $Id: mod_auth.c,v 1.52 2001-02-24 04:11:24 flood Exp $
  */
 
 #include "conf.h"
@@ -819,8 +819,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
   if(!login_check_limits((c ? c->subset : main_server->conf),FALSE,TRUE,&i))
   {
-    log_auth(LOG_NOTICE, "%s: Limit access denies login (DenyGroup).",
-	     origuser);
+    log_auth(LOG_NOTICE, "%s %s: Limit access denies login.",
+	     (c != NULL) ? "ANON" : "USER", origuser);
     goto auth_failure;
   }
   
