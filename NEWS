@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.526 2004-02-01 20:51:48 castaglia Exp $
+$Id: NEWS,v 1.527 2004-02-03 23:57:28 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -78,6 +78,9 @@ CVS
   explicitly allow dash-style options for LIST or NLST, although many clients
   attempt to use them.  De facto FTP server behaviors handle options for LIST;
   options for NLST will be explicitly rejected.
+- Bug 2315 - Overlapping virtual server causes error.  If a <VirtualHost>
+  was configured to handle the same IP address and port as the "server config"
+  server, the wrong server configuration was being removed.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------

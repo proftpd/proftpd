@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.215 2004-01-29 22:20:52 castaglia Exp $
+ * $Id: mod_core.c,v 1.216 2004-02-03 23:57:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2752,15 +2752,15 @@ MODRET end_virtualhost(cmd_rec *cmd) {
     /* This bad server context will be removed in fixup_servers(), after
      * the parsing has completed, so we need do nothing else here.
      */
-    pr_log_pri(PR_LOG_ERR, "error: unable to determine IP address of '%s'",
-       address);
+    pr_log_pri(PR_LOG_WARNING,
+      "warning: unable to determine IP address of '%s'", address);
 
   /* Check if this server's address/port combination is already being used. */
   for (s = (server_rec *) server_list->xas_list; addr && s; s = next_s) {
     next_s = s->next;
 
-    /* Have to resort to duplicating some of fixup_servers()'s
-     * functionality here, to do this check The Right Way(tm).
+    /* Have to resort to duplicating some of fixup_servers()'s functionality
+     * here, to do this check The Right Way(tm).
      */
     if (s != cmd->server) {
       const char *serv_addrstr = NULL;
@@ -2777,8 +2777,8 @@ MODRET end_virtualhost(cmd_rec *cmd) {
       }
 
       if (!serv_addr) {
-        pr_log_pri(PR_LOG_ERR, "error: unable to determine IP address of '%s'",
-          serv_addrstr);
+        pr_log_pri(PR_LOG_WARNING,
+          "warning: unable to determine IP address of '%s'", serv_addrstr);
 
       } else if (pr_netaddr_cmp(addr, serv_addr) == 0 &&
           cmd->server->ServerPort == s->ServerPort) {
@@ -2787,8 +2787,10 @@ MODRET end_virtualhost(cmd_rec *cmd) {
           cmd->server->ServerName ? cmd->server->ServerName : "ProFTPD",
           pr_netaddr_get_ipstr(addr), cmd->server->ServerPort,
           s->ServerName ? s->ServerName : "ProFTPD");
-        xaset_remove(server_list, (xasetmember_t *) s);
-        destroy_pool(s->pool);
+
+        if (xaset_remove(server_list, (xasetmember_t *) cmd->server) == 1)
+          destroy_pool(cmd->server->pool);
+
         continue;
       }
     }
