@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.140 2002-12-17 01:06:41 castaglia Exp $
+ * $Id: mod_core.c,v 1.141 2002-12-17 01:12:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -89,10 +89,6 @@ static struct {
   { C_NOOP, "(no operation)",			TRUE },
   { C_FEAT, "(returns feature list)",		TRUE },
   { C_OPTS, "<sp> command [<sp> options]",	TRUE },
-  { C_ADAT, "",					FALSE },
-  { C_AUTH, "",					FALSE },
-  { C_PBSZ, "",					FALSE },
-  { C_PROT, "",					FALSE },
   { NULL,   NULL,          			FALSE }
 };
 
