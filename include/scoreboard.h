@@ -24,7 +24,7 @@
 
 /* Scoreboard routines.
  *
- * $Id: scoreboard.h,v 1.11 2003-03-09 23:24:42 castaglia Exp $
+ * $Id: scoreboard.h,v 1.12 2003-10-20 22:20:29 castaglia Exp $
  */
 
 #ifndef PR_SCOREBOARD_H
@@ -66,7 +66,11 @@ typedef struct {
   int sce_server_port;
   char sce_server_addr[80], sce_server_label[32];
 
-  char sce_client_addr[16];
+#ifdef USE_IPV6
+  char sce_client_addr[INET6_ADDRSTRLEN];
+#else
+  char sce_client_addr[INET_ADDRSTRLEN];
+#endif /* USE_IPV6 */
   char sce_client_name[PR_TUNABLE_SCOREBOARD_BUFFER_SIZE];
 
   char sce_class[32];
