@@ -45,7 +45,7 @@
  * (i.e. picking up ALL Anonymous blocks)
  */
 
-static void add_readme_response(const char *file) {
+static void add_readme_response(pool *p, const char *file) {
   int days;
   time_t clock;
   
@@ -58,16 +58,16 @@ static void add_readme_response(const char *file) {
   if (pr_fsio_stat(file, &buf) == 0) {
     (void) time(&clock);
 
-    tp = gmtime(&clock);
+    tp = pr_gmtime(p, &clock);
     days = (int)(365.25 * tp->tm_year) + tp->tm_yday;
 
-    tp = gmtime(&buf.st_mtime);
+    tp = pr_gmtime(p, &buf.st_mtime);
     days -= (int)(365.25 * tp->tm_year) + tp->tm_yday;
 
     memset(ctime_str, '\0', sizeof(ctime_str));
-    snprintf(ctime_str,sizeof(ctime_str),"%.26s",ctime(&buf.st_mtime));
+    snprintf(ctime_str, sizeof(ctime_str), "%.26s", ctime(&buf.st_mtime));
     
-    if((tptr = strchr(ctime_str, '\n')) != NULL) {
+    if ((tptr = strchr(ctime_str, '\n')) != NULL) {
       *tptr = '\0';
     }
     
@@ -77,15 +77,15 @@ static void add_readme_response(const char *file) {
   }
 }
 
-static void add_pattern_response(const char *pattern) {
+static void add_pattern_response(pool *p, const char *pattern) {
   glob_t g;
   int    a;
   char **path;
   
   if (!(a = pr_fs_glob(pattern, 0, NULL, &g))) {
     path = g.gl_pathv;
-    while(path && *path) {
-      add_readme_response(*path);
+    while (path && *path) {
+      add_readme_response(p, *path);
       path++;
     }
   } else if (a == GLOB_NOSPACE)
@@ -110,7 +110,7 @@ MODRET show_readme(cmd_rec *cmd) {
     file = c->argv[0];
     
     pr_log_debug(DEBUG5, "Checking for display pattern %s.", file);
-    add_pattern_response(file);
+    add_pattern_response(cmd->tmp_pool, file);
     
     c = find_config_next(c, c->next, CONF_PARAM, "DisplayReadme",FALSE);
   }
