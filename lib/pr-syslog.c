@@ -42,7 +42,7 @@ extern char *__progname;
 static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
     va_list ap) {
   time_t now;
-  static char logbuf[TUNABLE_BUFFER_SIZE] = {'\0'};
+  static char logbuf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   size_t buflen = 0;
   int saved_errno = errno;
 

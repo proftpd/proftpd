@@ -114,6 +114,11 @@ void pr_init_regexp(void) {
    * This registration is done here so that it only happens once.
    */
   register_rehash(NULL, regexp_rehash_cb);
+
+  /* Use the same rehash handler when exiting, as that callback function
+   * properly frees up memory for allocated regex_ts.
+   */
+  add_exit_handler(regexp_rehash_cb);
 }
 
 #endif

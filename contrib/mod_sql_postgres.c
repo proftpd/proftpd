@@ -1230,7 +1230,7 @@ cmdtable sql_cmdtable[] = {
  */
 static int sql_postgres_init()
 {
-  conn_pool  = make_named_sub_pool(session.pool,"connections");
+  conn_pool  = make_sub_pool(session.pool);
   conn_cache = make_array(session.pool, DEF_CONN_POOL_SIZE,
 			  sizeof(conn_entry_t));
 

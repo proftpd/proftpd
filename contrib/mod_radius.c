@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.1 2002-09-26 01:11:33 castaglia Exp $
+ * $Id: mod_radius.c,v 1.2 2002-10-21 17:06:09 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.7rc5"
@@ -1023,7 +1023,7 @@ static int radius_closelog(void) {
 }
 
 static int radius_log(const char *fmt, ...) {
-  char buf[TUNABLE_BUFFER_SIZE] = {'\0'};
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   time_t timestamp = time(NULL);
   struct tm *t = NULL;
   va_list msg;

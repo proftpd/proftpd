@@ -33,7 +33,7 @@ extern char *sstrncpy(char *dest, const char *src, size_t n);
 #define NGRPFIELDS 	4
 
 #ifndef BUFSIZ
-#define BUFSIZ		TUNABLE_BUFFER_SIZE
+#define BUFSIZ		PR_TUNABLE_BUFFER_SIZE
 #endif
 
 /* Provides fgetpwent()/fgetgrent() functions.  Note that the format of the

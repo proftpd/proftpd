@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.65 2002-10-18 15:14:07 castaglia Exp $
+ * $Id: mod_ls.c,v 1.66 2002-10-21 17:06:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -184,8 +184,7 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden)
   return ret;
 }
 
-static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden)
-{
+static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden) {
   int ret;
   char fullpath[MAXPATHLEN + 1] = {'\0'};
   long _fakemode;
@@ -226,12 +225,12 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden)
 /* sendline() now has an internal buffer, to help speed up LIST output.
  */
 static int sendline(char *fmt, ...) {
-  static char listbuf[TUNABLE_BUFFER_SIZE] = {'\0'};
+  static char listbuf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   va_list msg;
   char buf[1025] = {'\0'};
   int res = 0;
 
-  /* a NULL fmt argument is the signal to flush the buffer */
+  /* A NULL fmt argument is the signal to flush the buffer */
   if (!fmt) {
     if ((res = data_xfer(listbuf, strlen(listbuf))) < 0)
       log_debug(DEBUG3, "data_xfer returned %d, error = %s.", res,
@@ -247,7 +246,7 @@ static int sendline(char *fmt, ...) {
 
   buf[1024] = '\0';
 
-  /* if buf won't fit completely into listbuf, flush listbuf */
+  /* If buf won't fit completely into listbuf, flush listbuf */
   if (strlen(buf) >= (sizeof(listbuf) - strlen(listbuf))) {
     if ((res = data_xfer(listbuf, strlen(listbuf))) < 0)
       log_debug(DEBUG3, "data_xfer returned %d, error = %s.", res,
@@ -260,9 +259,7 @@ static int sendline(char *fmt, ...) {
   return res;
 }
 
-static
-void ls_done(cmd_rec *cmd)
-{
+static void ls_done(cmd_rec *cmd) {
   data_close(FALSE);
 }
 
@@ -525,9 +522,6 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix, time_t m
     fpool = make_sub_pool(cmd->tmp_pool);
 
   p = (struct filename*) pcalloc(fpool, sizeof(struct filename) + l + 1);
-#if 0
-  log_debug(DEBUG4, "alloc: %d.\n", sizeof(struct filename) + l + 1);
-#endif
 
   snprintf(p->line, l + 1, "%s%s", name, suffix);
 
@@ -540,50 +534,39 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix, time_t m
   filenames++;
 }
 
-#if 0
-static
-void RANGE(void *ptr)
-{
-  char *cp = (char*)ptr;
-  if(cp) {
-   *cp;
-  }
-}
-#endif
+static int _compare_file_mtime(
+    const struct sort_filename *f1, const struct sort_filename *f2) {
 
-static
-int _compare_file_mtime(const struct sort_filename *f1,
-                        const struct sort_filename *f2)
-{
-  if(f1->mtime > f2->mtime)
+  if (f1->mtime > f2->mtime)
     return -1;
-  else if(f1->mtime < f2->mtime)
+
+  else if (f1->mtime < f2->mtime)
     return 1;
 
   return 0;
 }
 
-static
-int _compare_file_mtime_reversed(const struct sort_filename *f1,
-                        const struct sort_filename *f2)
-{
+static int _compare_file_mtime_reversed(
+    const struct sort_filename *f1, const struct sort_filename *f2) {
   return -_compare_file_mtime(f1, f2);
 }
 
-static
-void sortfiles(cmd_rec *cmd)
-{
-  struct sort_filename *s;
-  int i;
+static void sortfiles(cmd_rec *cmd) {
+  struct sort_filename *s = NULL;
 
-  if(opt_t && sort_arr) {
+  if (opt_t && sort_arr) {
+    register unsigned int i = 0;
+
     qsort(sort_arr->elts, sort_arr->nelts, sizeof(struct sort_filename),
           (int (*)(const void*,const void*))
 	  (opt_r ? _compare_file_mtime_reversed : _compare_file_mtime));
 
     opt_t = 0;
-    for(i = 0, s = (struct sort_filename*)sort_arr->elts; i < sort_arr->nelts; i++, s++)
-      addfile(cmd,s->name,s->suffix,s->mtime);
+
+    for (i = 0, s = (struct sort_filename *)sort_arr->elts;
+        i < sort_arr->nelts; i++, s++)
+      addfile(cmd, s->name, s->suffix, s->mtime);
+
     opt_t = 1;
   }
     
@@ -680,11 +663,8 @@ static int outputfiles(cmd_rec *cmd) {
   return 0;
 }
 
-
-static
-void discard_output(void)
-{
-  if(fpool)
+static void discard_output(void) {
+  if (fpool)
     destroy_pool(fpool);
   fpool = NULL;
 
@@ -693,15 +673,11 @@ void discard_output(void)
   filenames = 0;
 }
 
-
-static int cmp(const void *a, const void *b)
-{
+static int cmp(const void *a, const void *b) {
   return strcmp(*(const char **)a, *(const char **)b);
 }
 
-static
-char **sreaddir(pool *workp, const char *dirname, const int sort)
-{
+static char **sreaddir(pool *workp, const char *dirname, const int sort) {
   DIR 		*d;
   struct	dirent *de;
   struct	stat st;
@@ -820,8 +796,7 @@ char **sreaddir(pool *workp, const char *dirname, const int sort)
 }
 
 /* listdir required chdir first */
-static int listdir(cmd_rec *cmd, pool *workp, const char *name)
-{
+static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
   char **dir;
   int dest_workp = 0;
 	config_rec *c = NULL;
@@ -972,9 +947,7 @@ static void ls_terminate(void) {
   }
 }
 
-static
-void _parse_options(char **opt, int *glob_flags)
-{
+static void _parse_options(char **opt, int *glob_flags) {
   while(isspace((UCHAR)**opt))
     (*opt)++;
 
@@ -1105,14 +1078,14 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
       }
     }
       
-    if(!a) {
+    if (!a) {
       char **path;
 	
       path = g.gl_pathv;
-      if(path && path[0] && path[1])
+      if (path && path[0] && path[1])
         justone = 0;
 	
-      while(path && *path) {
+      while (path && *path) {
         struct stat st;
 
           /* I believe this code may be unnecessary here because it's only
@@ -1135,8 +1108,8 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
           }
 #endif
           
-        if(fs_lstat(*path,&st) == 0) {
-          mode_t target_mode,lmode;
+        if (fs_lstat(*path, &st) == 0) {
+          mode_t target_mode, lmode;
 	  target_mode = st.st_mode;
 
           if(S_ISLNK(st.st_mode) && (lmode = file_mode((char*)*path)) != 0) {
@@ -1436,19 +1409,17 @@ MODRET genericlist(cmd_rec *cmd) {
   return (res == -1 ? ERROR(cmd) : HANDLED(cmd));
 }
 
-MODRET fini_nlst(cmd_rec *cmd)
-{
+MODRET ls_log_nlst(cmd_rec *cmd) {
   data_cleanup();
   return DECLINED(cmd);
 }
 
-MODRET list_cleanup(cmd_rec *cmd)
-{
+MODRET ls_err_nlst(cmd_rec *cmd) {
   data_cleanup();
   return DECLINED(cmd);
 }
 
-MODRET cmd_stat(cmd_rec *cmd) {
+MODRET ls_stat(cmd_rec *cmd) {
   char *arg = cmd->arg;
   long _fakemode;
   unsigned char *tmp = NULL;
@@ -1504,8 +1475,7 @@ MODRET cmd_stat(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET cmd_list(cmd_rec *cmd)
-{
+MODRET ls_list(cmd_rec *cmd) {
   MODRET ret;
   
   opt_l = 1;
@@ -1518,7 +1488,7 @@ MODRET cmd_list(cmd_rec *cmd)
  * matching the glob(s).
  */
 
-MODRET cmd_nlst(cmd_rec *cmd) {
+MODRET ls_nlst(cmd_rec *cmd) {
   char *target,line[MAXPATHLEN + 1] = {'\0'};
   int count = 0,ret = 0, hidden = 0;
   unsigned char *tmp = NULL;
@@ -1677,14 +1647,16 @@ MODRET cmd_nlst(cmd_rec *cmd) {
   return (ret < 0 ? ERROR(cmd) : HANDLED(cmd));
 }
 
-MODRET ls_chk_glob(cmd_rec *cmd) {
-  long globbing = -1;
+/* Check for the UseGlobbing setting, if any, after the PASS command has
+ * been successfully handled.
+ */
+MODRET ls_post_pass(cmd_rec *cmd) {
+  unsigned char *globbing = NULL;
 
-  if ((globbing = get_param_int(TOPLEVEL_CONF, "UseGlobbing", FALSE)) != -1) {
-    if (!globbing) {
-      log_debug(DEBUG3, "UseGlobbing disabling globbing functionality");
-      use_globbing = FALSE; 
-    }
+  if ((globbing = get_param_ptr(TOPLEVEL_CONF, "UseGlobbing",
+      FALSE)) != NULL && *globbing == FALSE) {
+    log_debug(DEBUG3, "UseGlobbing: disabling globbing functionality");
+    use_globbing = FALSE; 
   }
 
   return DECLINED(cmd);
@@ -1790,13 +1762,18 @@ MODRET set_useglobbing(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean parameter");
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
-  c = add_config_param(cmd->argv[0], 1, (void *) bool);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
 }
+
+/* Module API tables
+ */
 
 static conftable ls_conftab[] = {
   { "DirFakeUser",	set_dirfakeuser,			NULL },
@@ -1809,24 +1786,38 @@ static conftable ls_conftab[] = {
 };
 
 static cmdtable ls_cmdtab[] = {
-  { CMD,  	C_NLST,	G_DIRS,	cmd_nlst,	TRUE, FALSE, CL_DIRS },
-  { CMD,	C_LIST,	G_DIRS,	cmd_list,	TRUE, FALSE, CL_DIRS },
-  { CMD, 	C_STAT,	G_DIRS,	cmd_stat,	TRUE, FALSE, CL_DIRS },
-  { POST_CMD,	C_PASS,	G_NONE,	ls_chk_glob,	FALSE, FALSE },
-  { LOG_CMD,	C_LIST,	G_NONE,	fini_nlst,	FALSE, FALSE },
-  { LOG_CMD,	C_NLST, G_NONE,	fini_nlst,	FALSE, FALSE },
-  { LOG_CMD_ERR,C_LIST, G_NONE, list_cleanup,   FALSE, FALSE },
-  { LOG_CMD_ERR,C_NLST, G_NONE, list_cleanup,   FALSE, FALSE },
+  { CMD,  	C_NLST,	G_DIRS,	ls_nlst,	TRUE, FALSE, CL_DIRS },
+  { CMD,	C_LIST,	G_DIRS,	ls_list,	TRUE, FALSE, CL_DIRS },
+  { CMD, 	C_STAT,	G_DIRS,	ls_stat,	TRUE, FALSE, CL_DIRS },
+  { POST_CMD,	C_PASS,	G_NONE,	ls_post_pass,	FALSE, FALSE },
+  { LOG_CMD,	C_LIST,	G_NONE,	ls_log_nlst,	FALSE, FALSE },
+  { LOG_CMD,	C_NLST, G_NONE,	ls_log_nlst,	FALSE, FALSE },
+  { LOG_CMD_ERR,C_LIST, G_NONE, ls_err_nlst,   FALSE, FALSE },
+  { LOG_CMD_ERR,C_NLST, G_NONE, ls_err_nlst,   FALSE, FALSE },
   { 0, NULL }
 };
 
 module ls_module = {
-  NULL,NULL,			/* Always NULL */
-  0x20,				/* API version */
-  "ls",				/* Module name */
+  NULL, NULL,
+
+  /* Module API version */
+  0x20,
+
+  /* Module name */
+  "ls",
+
+  /* Module configuration handler table */
   ls_conftab,
+
+  /* Module command handler table */
   ls_cmdtab,
+
+  /* Module authentication handler table */
   NULL,
+
+  /* Module initialization */
   NULL,
+
+  /* Session initialization */
   NULL
 };

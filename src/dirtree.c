@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.71 2002-10-17 00:37:45 castaglia Exp $
+ * $Id: dirtree.c,v 1.72 2002-10-21 17:06:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -44,14 +44,14 @@
 
 xaset_t *servers = NULL;
 server_rec *main_server = NULL;
-int tcpBackLog = TUNABLE_DEFAULT_BACKLOG;
+int tcpBackLog = PR_TUNABLE_DEFAULT_BACKLOG;
 int SocketBindTight = FALSE;
 char ServerType = SERVER_STANDALONE;
 int ServerMaxInstances = 0;
 int ServerUseReverseDNS = TRUE;
-int TimeoutIdle = TUNABLE_TIMEOUTIDLE;
-int TimeoutNoXfer = TUNABLE_TIMEOUTNOXFER;
-int TimeoutStalled = TUNABLE_TIMEOUTSTALLED;
+int TimeoutIdle = PR_TUNABLE_TIMEOUTIDLE;
+int TimeoutNoXfer = PR_TUNABLE_TIMEOUTNOXFER;
+int TimeoutStalled = PR_TUNABLE_TIMEOUTSTALLED;
 char MultilineRFC2228 = 0;
 
 /* from src/pool.c */
@@ -548,12 +548,12 @@ char *get_config_line(char *buf, size_t len) {
 }
 
 static cmd_rec *get_config_cmd(pool *ppool) {
-  char buf[TUNABLE_BUFFER_SIZE] = {'\0'}, *word = NULL;
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'}, *word = NULL;
   cmd_rec *new_cmd = NULL;
   pool *new_pool = NULL;
   array_header *tarr = NULL;
 
-  while ((get_config_line(buf, TUNABLE_BUFFER_SIZE))) { 
+  while ((get_config_line(buf, sizeof(buf)))) { 
     char *bufp = buf;
     
     /* Build a new pool for the command structure and array */
@@ -710,8 +710,7 @@ config_rec *start_sub_config(const char *name) {
    */
   if (!strcmp(name, "<Global>")) {
     if (!global_config_pool)
-      global_config_pool = make_named_sub_pool(permanent_pool,
-        "<Global> configs");
+      global_config_pool = make_sub_pool(permanent_pool);
     parent_pool = global_config_pool;
   }
 
@@ -1816,7 +1815,6 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
                 "warning: unknown configuration directive '%s' on "
                 "line %d of '%s'.", cmd->argv[0], cs->cs_lineno,
                 dynpath);
-
           }
  
           destroy_pool(cmd->pool);
@@ -2839,7 +2837,6 @@ int parse_config_file(const char *fname) {
    */
   pop_config_stream();
 
-  pfclose(tmp_pool,fp);
   destroy_pool(tmp_pool);
   return 0;
 }
@@ -2875,10 +2872,10 @@ void fixup_servers(void)
       s->ServerName = pstrdup(s->pool,m->ServerName);
     }
 
-    if(!s->tcp_rwin)
-      s->tcp_rwin = TUNABLE_DEFAULT_RWIN;
-    if(!s->tcp_swin)
-      s->tcp_swin = TUNABLE_DEFAULT_SWIN;
+    if (!s->tcp_rwin)
+      s->tcp_rwin = PR_TUNABLE_DEFAULT_RWIN;
+    if (!s->tcp_swin)
+      s->tcp_swin = PR_TUNABLE_DEFAULT_SWIN;
 
     if ((s->ipaddr = inet_getaddr(s->pool, s->ServerAddress)) == NULL) {
       log_pri(PR_LOG_ERR,"Fatal: unable to determine IP address of '%s'.",

@@ -295,7 +295,7 @@ modret_t *call_module_auth(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd)
   module *prev_module = curmodule;
 
   if(!cmd->tmp_pool)
-    cmd->tmp_pool = make_named_sub_pool(cmd->pool,"temp - auth module call");
+    cmd->tmp_pool = make_sub_pool(cmd->pool);
 
   curmodule = m;
   res = func(cmd);
@@ -310,7 +310,7 @@ modret_t *call_module_cmd(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd)
   module *prev_module = curmodule;
 
   if(!cmd->tmp_pool)
-    cmd->tmp_pool = make_named_sub_pool(cmd->pool,"temp - cmd module call");
+    cmd->tmp_pool = make_sub_pool(cmd->pool);
 
   curmodule = m;
   res = func(cmd);
@@ -325,7 +325,7 @@ modret_t *call_module(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd)
   module *prev_module = curmodule;
 
   if(!cmd->tmp_pool)
-    cmd->tmp_pool = make_named_sub_pool(cmd->pool,"temp - generic module call");
+    cmd->tmp_pool = make_sub_pool(cmd->pool);
   
   curmodule = m;
   res = func(cmd);
@@ -392,15 +392,14 @@ int init_child_modules(void) {
 }
 
 int module_exists(const char *name) {
-  char buf[TUNABLE_BUFFER_SIZE] = {'\0'};
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   register unsigned int i = 0;
 
   /* Check the list of compiled-in modules.
    */
   for (i = 0; static_modules[i]; i++) {
-    memset(buf, '\0', TUNABLE_BUFFER_SIZE);
-    snprintf(buf, TUNABLE_BUFFER_SIZE, "mod_%s.c",
-      (static_modules[i])->name);
+    memset(buf, '\0', sizeof(buf));
+    snprintf(buf, sizeof(buf), "mod_%s.c", (static_modules[i])->name);
     buf[sizeof(buf)-1] = '\0';
 
     if (!strcmp(buf, name))

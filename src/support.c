@@ -26,7 +26,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.39 2002-10-17 00:37:45 castaglia Exp $
+ * $Id: support.c,v 1.40 2002-10-21 17:06:12 castaglia Exp $
  */
 
 /* History Log:
@@ -660,8 +660,7 @@ char *safe_token(char **s)
  */
 
 int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg, 
-                  size_t msg_size)
-{
+                  size_t msg_size) {
   FILE *fp;
   char *deny_str,*disc_str,*cp, buf[1025] = {'\0'};
   char hr[3] = {'\0'}, mn[3] = {'\0'};

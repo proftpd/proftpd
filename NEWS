@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.253 2002-10-18 19:50:26 castaglia Exp $
+$Id: NEWS,v 1.254 2002-10-21 17:06:09 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -20,6 +20,8 @@ CVS
 - Bug 1778 - 1.2.7rc1 fails to link on OpenBSD 3.2-current.  The ftptop
              utility was not properly utilizing the macro detecting the
              presence (or absence) of the ncurses library.
+- Adding new configure options (see configure --help) for setting some of
+  the "tunable" values in options.h via the configure command.
 
 1.2.7rc1 - Released 2002-10-01
 ---------------------------------

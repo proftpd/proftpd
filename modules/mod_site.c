@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.23 2002-10-03 15:30:56 castaglia Exp $
+ * $Id: mod_site.c,v 1.24 2002-10-21 17:06:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -48,8 +48,7 @@ static struct {
   { NULL,	NULL,					FALSE }
 };
 
-static char *_get_full_cmd(cmd_rec *cmd)
-{
+static char *_get_full_cmd(cmd_rec *cmd) {
   char *res = "";
   int i;
 
@@ -459,7 +458,6 @@ static cmdtable site_cmdtab[] = {
 };
 
 module site_module = {
-  /* Always NULL */
   NULL, NULL,
 
   /* Module API version */

@@ -220,16 +220,15 @@ char *inet_ascii(pool *pool, p_in_addr_t *addr)
 }
 
 /* Given an ip addresses, return the FQDN */
-char *inet_getname(pool *pool, p_in_addr_t *addr)
-{
+char *inet_getname(pool *pool, p_in_addr_t *addr) {
   char *res = NULL;
   char **checkaddr;
   struct hostent *hptr_rev = NULL, *hptr_forw = NULL;
   static char *res_cache = NULL;
   static p_in_addr_t *addr_cache = NULL;
 
-  if(reverse_dns) {
-    if(res_cache && addr_cache && addr_cache->s_addr == addr->s_addr) {
+  if (reverse_dns) {
+    if (res_cache && addr_cache && addr_cache->s_addr == addr->s_addr) {
       res = pstrdup(pool, res_cache);
       return inet_validate(res);
     }
@@ -247,10 +246,10 @@ char *inet_getname(pool *pool, p_in_addr_t *addr)
     }
   }
   
-  if(!res)
+  if (!res)
     res = pstrdup(pool, inet_ntoa(*addr));
  
-  if(reverse_dns) {
+  if (reverse_dns) {
     /* cache the result */
     if(!addr_cache)
       addr_cache = malloc(sizeof(p_in_addr_t));
@@ -402,7 +401,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
   array_header *tmp;
   server_rec *s;
   struct sockaddr_in servaddr;
-  int i,res = 0, len, one = 1, hold_errno;
+  int res = 0, len, one = 1, hold_errno;
   
   CHECK_INET_POOL;
   
@@ -417,13 +416,13 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
   c = (conn_t *) pcalloc(subpool, sizeof(conn_t));
   c->pool = subpool;
   
-  if(servers && servers->xas_list) {
+  if (servers && servers->xas_list) {
     for(s = (server_rec *) servers->xas_list; s; s = s->next)
       if(s->ipaddr)
         *((p_in_addr_t *) push_array(tmp)) = *s->ipaddr;
-  } else {
+
+  } else
     *((p_in_addr_t *) push_array(tmp)) = *main_server->ipaddr;
-  }
   
   c->local_port = port;
   c->iplist = copy_array(c->pool, tmp);
@@ -432,25 +431,24 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
   
   /* If fd == -1, there is no currently open socket, so create one.
    */
-  if(fd == -1) {
-    
-    /* Certain versions of Solaris apparently require us to be root
-     * in order to create a socket inside a chroot ??
-     */
+  if (fd == -1) {
+    register unsigned int i = 0;
 
-    /* FreeBSD 2.2.6 (possibly other versions as well), has a security
+    /* Certain versions of Solaris apparently require us to be root
+     * in order to create a socket inside a chroot.
+     *
+     * FreeBSD 2.2.6 (possibly other versions as well), has a security
      * "feature" which disallows SO_REUSEADDR from working if the socket
      * owners don't match.  The easiest thing to do is simply make sure
-     * the socket is created as root.
-     *
-     * Note: this "feature" seems to apply to ALL bsds -jss 2/28/2001
+     * the socket is created as root.  (Note: this "feature" seems to apply
+     * to _all_ BSDs.)
      */
     
 #if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
     defined(FREEBSD4) || defined(__OpenBSD__) || defined(__NetBSD__) || \
     defined(SYSV4_2MP)
 # ifdef SOLARIS2
-    if(port != INPORT_ANY && port < 1024) {
+    if (port != INPORT_ANY && port < 1024) {
 # endif
       block_signals();
       PRIVS_ROOT
@@ -465,7 +463,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     defined(FREEBSD4) || defined(__OpenBSD__) || defined(__NetBSD__) || \
     defined(SYSV4_2MP)
 # ifdef SOLARIS2
-    if(port != INPORT_ANY && port < 1024) {
+    if (port != INPORT_ANY && port < 1024) {
 # endif
       PRIVS_RELINQUISH
       unblock_signals();
@@ -474,34 +472,32 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
 # endif
 #endif
     
-    if(fd == -1) {
-      /* on failure, destroy the connection and return NULL
-       */
+    if (fd == -1) {
 
+      /* On failure, destroy the connection and return NULL. */
       inet_errno = errno;
-      if(reporting)
+      if (reporting)
         log_pri(PR_LOG_ERR, "socket() failed in inet_initialize_connection(): "
           "%s", strerror(inet_errno));
       destroy_pool(c->pool);
       return NULL;
     }
     
-    /* Allow address reuse.
-     */
+    /* Allow address reuse. */
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void *) &one, sizeof(one));
     
     memset(&servaddr, 0, sizeof(servaddr));
     
     servaddr.sin_family = AF_INET;
     
-    if(bind_addr)
+    if (bind_addr)
       memcpy(&servaddr.sin_addr, bind_addr, sizeof(servaddr.sin_addr));
     else
       servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     
     servaddr.sin_port = htons(port);
     
-    if(port != INPORT_ANY && port < 1024) {
+    if (port != INPORT_ANY && port < 1024) {
       block_signals();
       PRIVS_ROOT
     }
@@ -513,7 +509,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
      * nasty kludge retries ten times (once per second) if the
      * port being bound to is INPORT_ANY)
      */
-    for(i = 10; i; i--) {
+    for (i = 10; i; i--) {
       res = bind(fd, (struct sockaddr *) &servaddr, sizeof(servaddr));
       hold_errno = errno;
 
@@ -523,30 +519,30 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
 	continue;
       }
 
-      if(res != -1 || errno != EADDRINUSE ||
+      if (res != -1 || errno != EADDRINUSE ||
 	 (port != INPORT_ANY && !retry_bind))
         break;
       
-      if(port != INPORT_ANY && port < 1024) {
+      if (port != INPORT_ANY && port < 1024) {
         PRIVS_RELINQUISH
         unblock_signals();
       }
       
       timer_sleep(1);
       
-      if(port != INPORT_ANY && port < 1024) {
+      if (port != INPORT_ANY && port < 1024) {
         block_signals();
         PRIVS_ROOT
       }
     }
     
-    if(res == -1) {
-      if(port != INPORT_ANY && port < 1024) {
+    if (res == -1) {
+      if (port != INPORT_ANY && port < 1024) {
         PRIVS_RELINQUISH
         unblock_signals();
       }
 
-      if(reporting) {
+      if (reporting) {
         log_pri(PR_LOG_ERR, "Failed binding to %s, port %d: %s",
                 inet_ntoa(servaddr.sin_addr), port, strerror(hold_errno));
         log_pri(PR_LOG_ERR, "Check the ServerType directive "
@@ -559,7 +555,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
       return NULL;
     }
     
-    if(port != INPORT_ANY && port < 1024) {
+    if (port != INPORT_ANY && port < 1024) {
       PRIVS_RELINQUISH
       unblock_signals();
     }
@@ -569,10 +565,12 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
      * dynamic.
      */
     len = sizeof(servaddr);
-    if(fd >= 0 && getsockname(fd, (struct sockaddr *) &servaddr, &len) != -1) {
-      if(!c->local_ipaddr)
+
+    if (fd >= 0 && getsockname(fd, (struct sockaddr *) &servaddr, &len) != -1) {
+      if (!c->local_ipaddr)
         c->local_ipaddr = (p_in_addr_t *) pcalloc(c->pool,
-						  sizeof(p_in_addr_t));
+          sizeof(p_in_addr_t));
+
       *c->local_ipaddr = servaddr.sin_addr;
       c->local_port = ntohs(servaddr.sin_port);
     }

@@ -27,7 +27,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.46 2002-10-17 00:37:45 castaglia Exp $
+ * $Id: log.c,v 1.47 2002-10-21 17:06:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -370,7 +370,7 @@ void log_discard(void) {
 
 static void log(int priority, int f, char *s) {
   unsigned int *max_priority = NULL;
-  char serverinfo[TUNABLE_BUFFER_SIZE] = {'\0'};
+  char serverinfo[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   
   memset(serverinfo, '\0', sizeof(serverinfo));
   

@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.94 2002-10-14 18:26:53 castaglia Exp $
+ * $Id: mod_auth.c,v 1.95 2002-10-21 17:06:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -38,7 +38,7 @@ extern pid_t mpid;
 
 module auth_module;
 
-static int TimeoutLogin = TUNABLE_TIMEOUTLOGIN;
+static int TimeoutLogin = PR_TUNABLE_TIMEOUTLOGIN;
 static int logged_in = 0;
 static int auth_tries = 0;
 static char *auth_pass_resp_code = R_230;
@@ -192,7 +192,7 @@ static int _do_auth(pool *p, xaset_t *conf, char *u, char *pw) {
   return auth_authenticate(p,u,pw);
 }
 
-MODRET post_cmd_pass(cmd_rec *cmd) {
+MODRET auth_post_pass(cmd_rec *cmd) {
   config_rec *c = NULL;
   unsigned int ctxt_precedence = 0;
   unsigned char have_user_timeout, have_group_timeout, have_class_timeout,
@@ -474,54 +474,53 @@ static config_rec *_auth_resolve_user(pool *p,char **user,
   return c;
 }
 
-static int _auth_check_ftpusers(xaset_t *s, const char *user)
-{
-  int res = 1;
-  FILE *fp;
-  char *u,buf[256] = {'\0'};
+static unsigned char auth_check_ftpusers(xaset_t *s, const char *user) {
+  unsigned char res = TRUE;
+  FILE *ftpusersf = NULL;
+  char *u, buf[256] = {'\0'};
 
-  if(get_param_int(s,"UseFtpUsers",FALSE) != 0) {
+  if (get_param_int(s,"UseFtpUsers",FALSE) != 0) {
     PRIVS_ROOT
-    fp = fopen(FTPUSERS_PATH,"r");
+    ftpusersf = fopen(FTPUSERS_PATH,"r");
     PRIVS_RELINQUISH
 
-    if(!fp)
+    if (!ftpusersf)
       return res;
 
-    while(fgets(buf,sizeof(buf)-1,fp)) {
+    while (fgets(buf, sizeof(buf)-1, ftpusersf)) {
       buf[sizeof(buf)-1] = '\0'; CHOP(buf);
 
       u = buf; while(isspace((UCHAR)*u) && *u) u++;
 
-      if(!*u || *u == '#')
+      if (!*u || *u == '#')
         continue;
 
-      if(!strcmp(u,user)) {
-        res = 0;
+      if (!strcmp(u, user)) {
+        res = FALSE;
         break;
       }
     }
 
-    fclose(fp);
+    fclose(ftpusersf);
   }
 
   return res;
 }
 
-static int _auth_check_shell(xaset_t *s, const char *shell)
-{
-  int res = 1;
-  FILE *shellf;
+static unsigned char auth_check_shell(xaset_t *s, const char *shell) {
+  unsigned char res = TRUE;
+  FILE *shellf = NULL;
   char buf[256] = {'\0'};
 
-  if(get_param_int(s,"RequireValidShell",FALSE) != 0 &&
+  if (get_param_int(s,"RequireValidShell",FALSE) != 0 &&
      (shellf = fopen(VALID_SHELL_PATH,"r")) != NULL) {
-    res = 0;
-    while(fgets(buf,sizeof(buf)-1,shellf)) {
+    res = FALSE;
+
+    while (fgets(buf, sizeof(buf)-1, shellf)) {
       buf[sizeof(buf)-1] = '\0'; CHOP(buf);
 
-      if(!strcmp(shell,buf)) {
-        res = 1;
+      if (!strcmp(shell, buf)) {
+        res = TRUE;
         break;
       }
     }
@@ -535,8 +534,7 @@ static int _auth_check_shell(xaset_t *s, const char *shell)
 /* Determine any applicable chdirs
  */
 
-static char *_get_default_chdir(pool *p, xaset_t *conf)
-{
+static char *_get_default_chdir(pool *p, xaset_t *conf) {
   config_rec *c;
   char *dir = NULL;
   int ret;
@@ -857,13 +855,13 @@ static int _setup_environment(pool *p, char *user, char *pass)
   
   auth_setgrent(p);
 
-  if(!_auth_check_shell((c ? c->subset : main_server->conf),pw->pw_shell)) {
+  if (!auth_check_shell((c ? c->subset : main_server->conf),pw->pw_shell)) {
     log_auth(LOG_NOTICE, "USER %s (Login failed): Invalid shell: %s", user,
       pw->pw_shell);
     goto auth_failure;
   }
 
-  if(!_auth_check_ftpusers((c ? c->subset : main_server->conf),pw->pw_name)) {
+  if (!auth_check_ftpusers((c ? c->subset : main_server->conf),pw->pw_name)) {
     log_auth(LOG_NOTICE, "USER %s (Login failed): User in %s.",
 	     user, FTPUSERS_PATH);
     goto auth_failure;
@@ -1601,14 +1599,14 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
 /* Close the passwd and group databases, because libc won't let us see new
  * entries to these files without this (only in PersistentPasswd mode).
  */
-MODRET pre_cmd_user(cmd_rec *cmd) {
+MODRET auth_pre_user(cmd_rec *cmd) {
   auth_endpwent(cmd->tmp_pool);
   auth_endgrent(cmd->tmp_pool);
 
   return DECLINED(cmd);
 }
 
-MODRET cmd_user(cmd_rec *cmd) {
+MODRET auth_user(cmd_rec *cmd) {
   int nopass = 0;
   config_rec *c;
   char *user, *origuser;
@@ -1708,13 +1706,13 @@ MODRET cmd_user(cmd_rec *cmd) {
 
 /* Close the passwd and group databases, similar to pre_cmd_user().
  */
-MODRET pre_cmd_pass(cmd_rec *cmd) {
+MODRET auth_pre_pass(cmd_rec *cmd) {
   auth_endpwent(cmd->tmp_pool);
   auth_endgrent(cmd->tmp_pool);
   return DECLINED(cmd);
 }
 
-MODRET cmd_pass(cmd_rec *cmd) {
+MODRET auth_pass(cmd_rec *cmd) {
   char *user = NULL;
   int res = 0;
   
@@ -1807,12 +1805,12 @@ MODRET cmd_pass(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET cmd_acct(cmd_rec *cmd) {
+MODRET auth_acct(cmd_rec *cmd) {
   add_response(R_502, "ACCT command not implemented.");
   return HANDLED(cmd);
 }
 
-MODRET cmd_rein(cmd_rec *cmd) {
+MODRET auth_rein(cmd_rec *cmd) {
   add_response(R_502, "REIN command not implemented.");
   return HANDLED(cmd);
 }
@@ -2323,13 +2321,13 @@ static conftable auth_conftab[] = {
 };
 
 static cmdtable auth_cmdtab[] = {
-  { PRE_CMD,	C_USER,	G_NONE,	pre_cmd_user,	FALSE,	FALSE,	CL_AUTH },
-  { CMD,	C_USER,	G_NONE,	cmd_user,	FALSE,	FALSE,	CL_AUTH },
-  { PRE_CMD,	C_PASS,	G_NONE,	pre_cmd_pass,	FALSE,	FALSE,	CL_AUTH },
-  { CMD,	C_PASS,	G_NONE,	cmd_pass,	FALSE,	FALSE,	CL_AUTH },
-  { POST_CMD,	C_PASS,	G_NONE,	post_cmd_pass,	FALSE,	FALSE,	CL_AUTH },
-  { CMD,	C_ACCT,	G_NONE,	cmd_acct,	FALSE,	FALSE,	CL_AUTH },
-  { CMD,	C_REIN,	G_NONE,	cmd_rein,	FALSE,	FALSE,	CL_AUTH },
+  { PRE_CMD,	C_USER,	G_NONE,	auth_pre_user,	FALSE,	FALSE,	CL_AUTH },
+  { CMD,	C_USER,	G_NONE,	auth_user,	FALSE,	FALSE,	CL_AUTH },
+  { PRE_CMD,	C_PASS,	G_NONE,	auth_pre_pass,	FALSE,	FALSE,	CL_AUTH },
+  { CMD,	C_PASS,	G_NONE,	auth_pass,	FALSE,	FALSE,	CL_AUTH },
+  { POST_CMD,	C_PASS,	G_NONE,	auth_post_pass,	FALSE,	FALSE,	CL_AUTH },
+  { CMD,	C_ACCT,	G_NONE,	auth_acct,	FALSE,	FALSE,	CL_AUTH },
+  { CMD,	C_REIN,	G_NONE,	auth_rein,	FALSE,	FALSE,	CL_AUTH },
   { 0, NULL }
 };
 

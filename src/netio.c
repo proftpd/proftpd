@@ -75,14 +75,14 @@ static pr_netio_buffer_t *netio_buffer_alloc(pr_netio_stream_t *nstrm) {
   nbuf = pcalloc(nstrm->strm_pool, sizeof(pr_netio_buffer_t));
 
   /* Allocate a buffer. */
-  nbuf->buf = pcalloc(nstrm->strm_pool, TUNABLE_BUFFER_SIZE);
-  nbuf->buflen = TUNABLE_BUFFER_SIZE;
+  nbuf->buf = pcalloc(nstrm->strm_pool, PR_TUNABLE_BUFFER_SIZE);
+  nbuf->buflen = PR_TUNABLE_BUFFER_SIZE;
  
   /* Position the offset at the start of the buffer, and set the
    * remaining bytes value accordingly.
    */
   nbuf->current = nbuf->buf;
-  nbuf->remaining = TUNABLE_BUFFER_SIZE;
+  nbuf->remaining = PR_TUNABLE_BUFFER_SIZE;
 
   /* Add this buffer to the given stream. */
   nstrm->strm_nbuf = nbuf;

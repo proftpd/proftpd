@@ -487,4 +487,14 @@
 /* Define if using /etc/shadow files.  */
 #undef USE_SHADOW
 
+/* Tunable parameters */
+#undef PR_TUNABLE_BUFFER_SIZE
+#undef PR_TUNABLE_NEW_POOL_SIZE
+#undef PR_TUNABLE_TIMEOUTIDENT
+#undef PR_TUNABLE_TIMEOUTIDLE
+#undef PR_TUNABLE_TIMEOUTLINGER
+#undef PR_TUNABLE_TIMEOUTLOGIN
+#undef PR_TUNABLE_TIMEOUTNOXFER
+#undef PR_TUNABLE_TIMEOUTSTALLED
+
 #endif /* config_h_included */

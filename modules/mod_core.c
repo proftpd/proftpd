@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.112 2002-10-18 19:50:26 castaglia Exp $
+ * $Id: mod_core.c,v 1.113 2002-10-21 17:06:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -171,7 +171,7 @@ static ssize_t get_num_bytes(char *nbytes_str) {
 MODRET start_ifdefine(cmd_rec *cmd) {
   unsigned int ifdefine_ctx_count = 1;
   unsigned char not_define = FALSE, defined = FALSE;
-  char buf[TUNABLE_BUFFER_SIZE] = {'\0'}, *config_line = NULL;
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'}, *config_line = NULL;
 
   CHECK_ARGS(cmd, 1);
 
@@ -199,7 +199,7 @@ MODRET start_ifdefine(cmd_rec *cmd) {
    * directive.
    */
   while (ifdefine_ctx_count && (config_line = get_config_line(buf,
-      TUNABLE_BUFFER_SIZE)) != NULL) {
+      sizeof(buf))) != NULL) {
 
     if (!strncmp(config_line, "<IfDefine", 9))
       ifdefine_ctx_count++;
@@ -227,7 +227,7 @@ MODRET end_ifdefine(cmd_rec *cmd) {
 MODRET start_ifmodule(cmd_rec *cmd) {
   unsigned int ifmodule_ctx_count = 1;
   unsigned char not_module = FALSE, found_module = FALSE;
-  char buf[TUNABLE_BUFFER_SIZE] = {'\0'}, *config_line = NULL;
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'}, *config_line = NULL;
 
   CHECK_ARGS(cmd, 1);
 
@@ -255,7 +255,7 @@ MODRET start_ifmodule(cmd_rec *cmd) {
    * directive.
    */
   while (ifmodule_ctx_count && (config_line = get_config_line(buf,
-      TUNABLE_BUFFER_SIZE)) != NULL) {
+      sizeof(buf))) != NULL) {
 
     if (!strncmp(config_line, "<IfModule", 9))
       ifmodule_ctx_count++;
@@ -349,28 +349,29 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_servername(cmd_rec *cmd)
-{
+MODRET set_servername(cmd_rec *cmd) {
   server_rec *s = cmd->server;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
   s->ServerName = pstrdup(s->pool,cmd->argv[1]);
   return HANDLED(cmd);
 }
 
-MODRET set_servertype(cmd_rec *cmd)
-{
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT);
+MODRET set_servertype(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
 
-  if(!strcasecmp(cmd->argv[1],"inetd"))
+  if (!strcasecmp(cmd->argv[1], "inetd"))
     ServerType = SERVER_INETD;
-  else if(!strcasecmp(cmd->argv[1],"standalone"))
+
+  else if (!strcasecmp(cmd->argv[1], "standalone"))
     ServerType = SERVER_STANDALONE;
+
   else
     CONF_ERROR(cmd,"type must be either 'inetd' or 'standalone'.");
+
   return HANDLED(cmd);
 }
 
@@ -417,29 +418,26 @@ MODRET add_bind(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_serveradmin(cmd_rec *cmd)
-{
+MODRET set_serveradmin(cmd_rec *cmd) {
   server_rec *s = cmd->server;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
-  s->ServerAdmin = pstrdup(s->pool,cmd->argv[1]);
-
+  s->ServerAdmin = pstrdup(s->pool, cmd->argv[1]);
   return HANDLED(cmd);
 }
 
-MODRET set_usereversedns(cmd_rec *cmd)
-{
-  int b;
+MODRET set_usereversedns(cmd_rec *cmd) {
+  int bool = -1;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
 
-  if((b = get_boolean(cmd,1)) == -1)
-    CONF_ERROR(cmd,"expected boolean argument.");
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
-  ServerUseReverseDNS = b;
+  ServerUseReverseDNS = bool;
 
   return HANDLED(cmd);
 }
@@ -459,16 +457,15 @@ MODRET set_scoreboardpath(cmd_rec *cmd) {
   CONF_ERROR(cmd, "deprecated. Use 'ScoreboardFile /path/to/scoreboard/file' instead");
 }
 
-MODRET set_serverport(cmd_rec *cmd)
-{
+MODRET set_serverport(cmd_rec *cmd) {
   server_rec *s = cmd->server;
   int port;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
   port = atoi(cmd->argv[1]);
-  if(port < 0 || port > 65535)
+  if (port < 0 || port > 65535)
     CONF_ERROR(cmd,"value must be between 0 and 65535");
 
   s->ServerPort = port;
@@ -590,8 +587,7 @@ MODRET add_masqueradeaddress(cmd_rec *cmd) {
  return HANDLED(cmd);
 }
 
-MODRET set_maxinstances(cmd_rec *cmd)
-{
+MODRET set_maxinstances(cmd_rec *cmd) {
   int max;
   char *endp;
 
@@ -798,32 +794,30 @@ MODRET set_identlookups(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_tcpbacklog(cmd_rec *cmd)
-{
+MODRET set_tcpbacklog(cmd_rec *cmd) {
   int backlog;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
 
   backlog = atoi(cmd->argv[1]);
 
-  if(backlog < 1 || backlog > 255)
+  if (backlog < 1 || backlog > 255)
     CONF_ERROR(cmd,"parameter must be a number between 1 and 255.");
 
   tcpBackLog = backlog;
   return HANDLED(cmd);
 }
 
-MODRET set_tcpreceivewindow(cmd_rec *cmd)
-{
+MODRET set_tcpreceivewindow(cmd_rec *cmd) {
   int rwin;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
   rwin = atoi(cmd->argv[1]);
 
-  if(rwin < 1024)
+  if (rwin < 1024)
     CONF_ERROR(cmd,"parameter must be number equal to or greater than 1024.");
 
   cmd->server->tcp_rwin = rwin;
@@ -831,16 +825,15 @@ MODRET set_tcpreceivewindow(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET set_tcpsendwindow(cmd_rec *cmd)
-{
+MODRET set_tcpsendwindow(cmd_rec *cmd) {
   int swin;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
   swin = atoi(cmd->argv[1]);
 
-  if(swin < 1024)
+  if (swin < 1024)
     CONF_ERROR(cmd,"parameter must be number equal to or greater than 1024.");
 
   cmd->server->tcp_swin = swin;
@@ -1346,8 +1339,7 @@ MODRET set_rlimitopenfiles(cmd_rec *cmd) {
 #endif
 }
 
-MODRET set_syslogfacility(cmd_rec *cmd)
-{
+MODRET set_syslogfacility(cmd_rec *cmd) {
   int i;
   struct {
     char *name;
@@ -1569,8 +1561,7 @@ MODRET add_cdpath(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET add_directory(cmd_rec *cmd)
-{
+MODRET add_directory(cmd_rec *cmd) {
   config_rec *c;
   char *dir,*rootdir = NULL;
   int flags = 0;
@@ -2557,8 +2548,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs)
 }
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-MODRET regex_filters(cmd_rec *cmd)
-{
+MODRET regex_filters(cmd_rec *cmd) {
   /* This is only called after our virtualhost has been resolved and
    * we are receiving commands, so it's ok to cache the regex for performance.
    */
@@ -2621,7 +2611,7 @@ MODRET core_clear_cache(cmd_rec *cmd) {
   return DECLINED(cmd);
 }
 
-MODRET cmd_quit(cmd_rec *cmd) {
+MODRET core_quit(cmd_rec *cmd) {
   char *display = NULL;
   
   if (session.flags & SF_ANON)
@@ -2656,28 +2646,25 @@ MODRET cmd_quit(cmd_rec *cmd) {
  * the add'l quotes must be duplicated.
  */
 
-static char *quote_dir(cmd_rec *cmd, char *dir)
-{
+static char *quote_dir(cmd_rec *cmd, char *dir) {
   return sreplace(cmd->tmp_pool,dir,"\"","\"\"",NULL);
 }
 
-MODRET cmd_pwd(cmd_rec *cmd)
-{
+MODRET core_pwd(cmd_rec *cmd) {
   CHECK_CMD_ARGS(cmd, 1);
 
   if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.vwd, NULL)) {
     add_response_err(R_550, "%s: %s", cmd->argv[0], strerror(errno));
     return ERROR(cmd);
-
-  } else {
-  add_response(R_257,"\"%s\" is current directory.",
-                quote_dir(cmd,session.vwd));
   }
+
+  add_response(R_257,"\"%s\" is current directory.",
+    quote_dir(cmd, session.vwd));
 
   return HANDLED(cmd);
 }
 
-MODRET cmd_pasv(cmd_rec *cmd) {
+MODRET core_pasv(cmd_rec *cmd) {
   union {
     p_in_addr_t addr;
     unsigned char u[4];
@@ -2704,7 +2691,7 @@ MODRET cmd_pasv(cmd_rec *cmd) {
     int pasv_max_port = *((int *) c->argv[1]);
 
     if (!(session.d = inet_create_connection_portrange(session.pool,
-        NULL, session.c->local_ipaddr, pasv_min_port,pasv_max_port))) {
+        NULL, session.c->local_ipaddr, pasv_min_port, pasv_max_port))) {
 
       /* If not able to open a passive port in the given range, default to
        * normal behavior (using INPORT_ANY), and log the failure.  This
@@ -2757,7 +2744,7 @@ MODRET cmd_pasv(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET cmd_port(cmd_rec *cmd) {
+MODRET core_port(cmd_rec *cmd) {
   union {
     p_in_addr_t addr;
     unsigned char u[4];
@@ -2842,8 +2829,7 @@ MODRET cmd_port(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET cmd_help(cmd_rec *cmd)
-{
+MODRET core_help(cmd_rec *cmd) {
   int i,c = 0;
   char buf[9] = {'\0'};
 
@@ -2909,8 +2895,7 @@ MODRET cmd_help(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET cmd_syst(cmd_rec *cmd)
-{
+MODRET core_syst(cmd_rec *cmd) {
   add_response(R_215,"UNIX Type: L8");
   return HANDLED(cmd);
 }
@@ -3045,8 +3030,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
   return HANDLED(cmd);
 }
 
-MODRET cmd_rmd(cmd_rec *cmd)
-{
+MODRET core_rmd(cmd_rec *cmd) {
   char *dir;
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *preg;
@@ -3088,8 +3072,7 @@ MODRET cmd_rmd(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET cmd_mkd(cmd_rec *cmd)
-{
+MODRET core_mkd(cmd_rec *cmd) {
   char *dir;
   struct stat sbuf;
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
@@ -3175,14 +3158,12 @@ MODRET cmd_mkd(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET cmd_cwd(cmd_rec *cmd)
-{
+MODRET core_cwd(cmd_rec *cmd) {
   CHECK_CMD_MIN_ARGS(cmd, 2);
   return _chdir(cmd,cmd->arg);
 }
 
-MODRET cmd_cdup(cmd_rec *cmd)
-{
+MODRET core_cdup(cmd_rec *cmd) {
   CHECK_CMD_ARGS(cmd, 1);
   return _chdir(cmd,"..");
 }
@@ -3197,7 +3178,7 @@ MODRET cmd_cdup(cmd_rec *cmd)
  * not be correct.
  */
 
-MODRET cmd_mdtm(cmd_rec *cmd) {
+MODRET core_mdtm(cmd_rec *cmd) {
   char *path;
   char buf[16] = {'\0'};
   struct tm *tm;
@@ -3241,8 +3222,7 @@ MODRET cmd_mdtm(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET cmd_size(cmd_rec *cmd)
-{
+MODRET core_size(cmd_rec *cmd) {
   char *path;
   struct stat sbuf;
 
@@ -3266,8 +3246,7 @@ MODRET cmd_size(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET cmd_dele(cmd_rec *cmd)
-{
+MODRET core_dele(cmd_rec *cmd) {
   char *path, *fullpath;
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
@@ -3321,8 +3300,7 @@ MODRET cmd_dele(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET cmd_rnto(cmd_rec *cmd)
-{
+MODRET core_rnto(cmd_rec *cmd) {
   char *path;
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *preg;
@@ -3385,8 +3363,7 @@ MODRET cmd_rnto(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET cmd_rnfr(cmd_rec *cmd)
-{
+MODRET core_rnfr(cmd_rec *cmd) {
   char *path;
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *preg;
@@ -3436,8 +3413,7 @@ MODRET cmd_rnfr(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET cmd_noop(cmd_rec *cmd)
-{
+MODRET core_noop(cmd_rec *cmd) {
   add_response(R_200,"NOOP command successful.");
   return HANDLED(cmd);
 }
@@ -3492,7 +3468,7 @@ static hostname_t *hostname_list = NULL;
 static hostname_t *add_hostname(class_t *class, char *name)
 {
 	hostname_t *n;
-	
+
 	n = calloc(1, sizeof(hostname_t));
 	n->hostname = strdup(name);
 	n->next = hostname_list;
@@ -3602,8 +3578,7 @@ class_t *find_class(p_in_addr_t *addr, char *remote_name)
 		return get_class("default");
 }
 
-MODRET set_class(cmd_rec *cmd)
-{
+MODRET set_class(cmd_rec *cmd) {
   int bits, ret;
   class_t *n;
   p_in_addr_t *res;
@@ -3811,27 +3786,27 @@ static cmdtable core_cmdtab[] = {
   { PRE_CMD, "*",G_NONE,  regex_filters,FALSE,  FALSE, CL_NONE },
 #endif
   { PRE_CMD, C_ANY, G_NONE, core_clear_cache,FALSE, FALSE, CL_NONE },
-  { CMD, C_HELP, G_NONE,  cmd_help,	FALSE,	FALSE, CL_INFO },
-  { CMD, C_PORT, G_NONE,  cmd_port,	TRUE,	FALSE, CL_MISC },
-  { CMD, C_PASV, G_NONE,  cmd_pasv,	TRUE,	FALSE, CL_MISC },
-  { CMD, C_SYST, G_NONE,  cmd_syst,	FALSE,	FALSE, CL_INFO },
-  { CMD, C_PWD,	 G_DIRS,  cmd_pwd,	TRUE,	FALSE, CL_INFO|CL_DIRS },
-  { CMD, C_XPWD, G_DIRS,  cmd_pwd,	TRUE,	FALSE, CL_INFO|CL_DIRS },
-  { CMD, C_CWD,	 G_DIRS,  cmd_cwd,	TRUE,	FALSE, CL_DIRS },
-  { CMD, C_XCWD, G_DIRS,  cmd_cwd,	TRUE,	FALSE, CL_DIRS },
-  { CMD, C_MKD,	 G_WRITE, cmd_mkd,	TRUE,	FALSE, CL_DIRS|CL_WRITE },
-  { CMD, C_XMKD, G_WRITE, cmd_mkd,	TRUE,	FALSE, CL_DIRS|CL_WRITE },
-  { CMD, C_RMD,	 G_WRITE, cmd_rmd,	TRUE,	FALSE, CL_DIRS|CL_WRITE },
-  { CMD, C_XRMD, G_WRITE, cmd_rmd,	TRUE,	FALSE, CL_DIRS|CL_WRITE },
-  { CMD, C_CDUP, G_DIRS,  cmd_cdup,	TRUE,	FALSE, CL_DIRS },
-  { CMD, C_XCUP, G_DIRS,  cmd_cdup,	TRUE,	FALSE, CL_DIRS },
-  { CMD, C_DELE, G_WRITE, cmd_dele,	TRUE,	FALSE, CL_WRITE },
-  { CMD, C_MDTM, G_DIRS,  cmd_mdtm,	TRUE,	FALSE, CL_INFO },
-  { CMD, C_RNFR, G_DIRS,  cmd_rnfr,	TRUE,	FALSE, CL_MISC },
-  { CMD, C_RNTO, G_WRITE, cmd_rnto,	TRUE,	FALSE, CL_MISC },
-  { CMD, C_SIZE, G_READ,  cmd_size,	TRUE,	FALSE, CL_INFO },
-  { CMD, C_QUIT, G_NONE,  cmd_quit,	FALSE,	TRUE,  CL_INFO },
-  { CMD, C_NOOP, G_NONE,  cmd_noop,	FALSE,	TRUE,  CL_MISC },
+  { CMD, C_HELP, G_NONE,  core_help,	FALSE,	FALSE, CL_INFO },
+  { CMD, C_PORT, G_NONE,  core_port,	TRUE,	FALSE, CL_MISC },
+  { CMD, C_PASV, G_NONE,  core_pasv,	TRUE,	FALSE, CL_MISC },
+  { CMD, C_SYST, G_NONE,  core_syst,	FALSE,	FALSE, CL_INFO },
+  { CMD, C_PWD,	 G_DIRS,  core_pwd,	TRUE,	FALSE, CL_INFO|CL_DIRS },
+  { CMD, C_XPWD, G_DIRS,  core_pwd,	TRUE,	FALSE, CL_INFO|CL_DIRS },
+  { CMD, C_CWD,	 G_DIRS,  core_cwd,	TRUE,	FALSE, CL_DIRS },
+  { CMD, C_XCWD, G_DIRS,  core_cwd,	TRUE,	FALSE, CL_DIRS },
+  { CMD, C_MKD,	 G_WRITE, core_mkd,	TRUE,	FALSE, CL_DIRS|CL_WRITE },
+  { CMD, C_XMKD, G_WRITE, core_mkd,	TRUE,	FALSE, CL_DIRS|CL_WRITE },
+  { CMD, C_RMD,	 G_WRITE, core_rmd,	TRUE,	FALSE, CL_DIRS|CL_WRITE },
+  { CMD, C_XRMD, G_WRITE, core_rmd,	TRUE,	FALSE, CL_DIRS|CL_WRITE },
+  { CMD, C_CDUP, G_DIRS,  core_cdup,	TRUE,	FALSE, CL_DIRS },
+  { CMD, C_XCUP, G_DIRS,  core_cdup,	TRUE,	FALSE, CL_DIRS },
+  { CMD, C_DELE, G_WRITE, core_dele,	TRUE,	FALSE, CL_WRITE },
+  { CMD, C_MDTM, G_DIRS,  core_mdtm,	TRUE,	FALSE, CL_INFO },
+  { CMD, C_RNFR, G_DIRS,  core_rnfr,	TRUE,	FALSE, CL_MISC },
+  { CMD, C_RNTO, G_WRITE, core_rnto,	TRUE,	FALSE, CL_MISC },
+  { CMD, C_SIZE, G_READ,  core_size,	TRUE,	FALSE, CL_INFO },
+  { CMD, C_QUIT, G_NONE,  core_quit,	FALSE,	TRUE,  CL_INFO },
+  { CMD, C_NOOP, G_NONE,  core_noop,	FALSE,	TRUE,  CL_MISC },
   { 0, NULL }
 };
 

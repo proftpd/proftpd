@@ -26,7 +26,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.44 2002-10-17 00:37:44 castaglia Exp $
+ * $Id: data.c,v 1.45 2002-10-21 17:06:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -208,8 +208,8 @@ static void _data_new_xfer(char *filename, int direction) {
   session.xfer.p = make_sub_pool(session.pool);
   session.xfer.filename = pstrdup(session.xfer.p,filename);
   session.xfer.direction = direction;
-  session.xfer.bufsize = TUNABLE_BUFFER_SIZE;
-  session.xfer.buf = (char*)palloc(session.xfer.p,TUNABLE_BUFFER_SIZE+1);
+  session.xfer.bufsize = PR_TUNABLE_BUFFER_SIZE;
+  session.xfer.buf = (char*)palloc(session.xfer.p, PR_TUNABLE_BUFFER_SIZE+1);
   session.xfer.buf++;	/* leave room for ascii translation */
   session.xfer.bufstart = session.xfer.buf;
   session.xfer.buflen = 0;
@@ -499,7 +499,7 @@ void data_close(int quiet) {
   nstrm = NULL;
 
   if (session.d) {
-    inet_lingering_close(session.pool, session.d, TUNABLE_TIMEOUTLINGER);
+    inet_lingering_close(session.pool, session.d, PR_TUNABLE_TIMEOUTLINGER);
     session.d = NULL;
   }
   
@@ -532,7 +532,7 @@ void data_close(int quiet) {
 void data_cleanup(void) {
   /* sanity check */
   if (session.d) {
-    inet_lingering_close(session.pool, session.d, TUNABLE_TIMEOUTLINGER);
+    inet_lingering_close(session.pool, session.d, PR_TUNABLE_TIMEOUTLINGER);
     session.d = NULL;
   }
 
@@ -551,7 +551,7 @@ void data_abort(int err, int quiet) {
   nstrm = NULL;
 
   if (session.d) {
-    inet_lingering_close(session.pool, session.d, TUNABLE_TIMEOUTLINGER);
+    inet_lingering_close(session.pool, session.d, PR_TUNABLE_TIMEOUTLINGER);
     session.d = NULL;
   }
   
@@ -828,8 +828,8 @@ int data_xfer(char *cl_buf, int cl_size) {
     while (cl_size) {
       int o_size, size = cl_size;
       
-      if (size > TUNABLE_BUFFER_SIZE)
-        size = TUNABLE_BUFFER_SIZE;
+      if (size > PR_TUNABLE_BUFFER_SIZE)
+        size = PR_TUNABLE_BUFFER_SIZE;
       
       o_size = size;
       memcpy(buf, cl_buf, size);

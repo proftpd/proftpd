@@ -34,7 +34,7 @@
 
 union align {
   char *cp;
-  void (*f)();
+  void (*f)(void);
   long l;
   FILE *fp;
   double d;
@@ -76,15 +76,17 @@ static void *null_alloc(size_t size) {
   return ret;
 }
 
-void *xmalloc(size_t size) {
+static void *xmalloc(size_t size) {
   void *ret;
 
   ret = malloc(size);
-  if(ret == 0)
+  if (ret == 0)
     ret = null_alloc(size);
+
   return ret;
 }
 
+#if 0
 void *xcalloc(size_t num, size_t size) {
   void *ret;
 
@@ -102,6 +104,7 @@ void *xrealloc(void *p, size_t size) {
     p = null_alloc(size);
   return p;
 }
+#endif
 
 /* Grab a completely new block from the system pool.  Relies on malloc()
  * to return truly aligned memory.
@@ -109,10 +112,10 @@ void *xrealloc(void *p, size_t size) {
 
 static union block_hdr *malloc_block(int size) {
   union block_hdr *blok =
-    (union block_hdr*)xmalloc(size + sizeof(union block_hdr));
+    (union block_hdr *) xmalloc(size + sizeof(union block_hdr));
 
   blok->h.next = NULL;
-  blok->h.first_avail = (char *)(blok+1);
+  blok->h.first_avail = (char *) (blok + 1);
   blok->h.endp = size + blok->h.first_avail;
 
   return blok;
@@ -141,21 +144,21 @@ static void free_blocks(union block_hdr *blok) {
 
   union block_hdr *old_free_list = block_freelist;
 
-  if(!blok)
+  if (!blok)
     return;		/* Shouldn't be freeing an empty pool */
 
   block_freelist = blok;
 
   /* Adjust first_avail pointers */
 
-  while(blok->h.next) {
-    chk_on_blk_list(blok,old_free_list);
-    blok->h.first_avail = (char *)(blok + 1);
+  while (blok->h.next) {
+    chk_on_blk_list(blok, old_free_list);
+    blok->h.first_avail = (char *) (blok + 1);
     blok = blok->h.next;
   }
 
-  chk_on_blk_list(blok,old_free_list);
-  blok->h.first_avail = (char*)(blok + 1);
+  chk_on_blk_list(blok, old_free_list);
+  blok->h.first_avail = (char *) (blok + 1);
   blok->h.next = old_free_list;
 }
 
@@ -164,39 +167,40 @@ static void free_blocks(union block_hdr *blok) {
  */
 
 static union block_hdr *new_block(int min_size) {
-  int biggest = 0;
   union block_hdr **lastptr = &block_freelist;
   union block_hdr *blok = block_freelist;
 
   min_size = 1 + ((min_size - 1) / BLOCK_MINFREE);
   min_size *= BLOCK_MINFREE;
 
-  while(blok) {
-    biggest = blok->h.endp - blok->h.first_avail;
-    if(min_size <= blok->h.endp - blok->h.first_avail) {
-      /* It's available */
+  /* Check if we have anything of the requested size on our free list first...
+   */
+  while (blok) {
+    if (min_size <= blok->h.endp - blok->h.first_avail) {
       *lastptr = blok->h.next;
-      stat_freehit++;
       blok->h.next = NULL;
+
+      stat_freehit++;
       return blok;
+
     } else {
       lastptr = &blok->h.next;
       blok = blok->h.next;
     }
   }
 
-  /* malloc a new one */
+  /* Nope...damn.  Have to malloc() a new one. */
   stat_malloc++;
   return malloc_block(min_size);
 }
 
-/* accounting */
+/* Accounting */
 
 static unsigned long bytes_in_block_list(union block_hdr *blok) {
   unsigned long size = 0;
 
   while(blok) {
-    size += blok->h.endp - (char*)(blok+1);
+    size += blok->h.endp - (char *) (blok + 1);
     blok = blok->h.next;
   }
 
@@ -218,7 +222,6 @@ struct pool {
   struct pool *sub_prev;
   struct pool *parent;
   char *free_first_avail;
-  char symbol;
 };
 
 pool *permanent_pool = NULL;
@@ -254,26 +257,16 @@ static long __walk_pools(pool *p, int level)
 
   for(; p; p = p->sub_next) {
     total += bytes_in_block_list(p->first);
-    if(level == 0) {
-      if (p->symbol)
-        log_pri(PR_LOG_NOTICE, "(%s)0x%08lx bytes", &p->symbol,
-          bytes_in_block_list(p->first));
-      else
-        log_pri(PR_LOG_NOTICE, "0x%08lx bytes",
-          bytes_in_block_list(p->first));
+    if (level == 0)
+      log_pri(PR_LOG_NOTICE, "0x%08lx bytes", bytes_in_block_list(p->first));
 
-    } else {
-      if(p->symbol)
-	log_pri(PR_LOG_NOTICE, "%s(%s)\\- 0x%08lx bytes",_levelpad, &p->symbol,
-			bytes_in_block_list(p->first));
-      else
-        log_pri(PR_LOG_NOTICE, "%s\\- 0x%08lx bytes",_levelpad,
-              bytes_in_block_list(p->first));
-    }
+    else
+      log_pri(PR_LOG_NOTICE, "%s\\- 0x%08lx bytes", _levelpad,
+        bytes_in_block_list(p->first));
     
-    /* recurse */
-    if(p->sub_pools)
-      total += __walk_pools(p->sub_pools,level+1);  
+    /* Recurse */
+    if (p->sub_pools)
+      total += __walk_pools(p->sub_pools, level+1);  
   }
 
   return total;
@@ -297,9 +290,12 @@ void debug_walk_pools(void) {
   debug_pool_info();
 }
 
+
+#if 0
+/* NOTE: not used at present */
+
 /* Release the entire free block list */
-void pool_release_free_block_list(void)
-{
+static void pool_release_free_block_list(void) {
   union block_hdr *blok,*next;
 
   block_alarms();
@@ -313,28 +309,30 @@ void pool_release_free_block_list(void)
 
   unblock_alarms();
 }
+#endif
 
-struct pool *make_named_sub_pool(struct pool *p, const char *symbol)
-{
+struct pool *make_sub_pool(struct pool *p) {
   union block_hdr *blok;
   pool *new_pool;
 
   block_alarms();
 
   blok = new_block(0);
-  new_pool = (pool *) blok->h.first_avail;
-  
-  blok->h.first_avail += POOL_HDR_BYTES;
-  memset((char *) new_pool, 0, sizeof(struct pool));
 
+  new_pool = (pool *) blok->h.first_avail;
+  blok->h.first_avail += POOL_HDR_BYTES;
+
+  memset(new_pool, 0, sizeof(struct pool));
   new_pool->free_first_avail = blok->h.first_avail;
   new_pool->first = new_pool->last = blok;
   
-  if(p) {
+  if (p) {
     new_pool->parent = p;
     new_pool->sub_next = p->sub_pools;
-    if(new_pool->sub_next)
+
+    if (new_pool->sub_next)
       new_pool->sub_next->sub_prev = new_pool;
+
     p->sub_pools = new_pool;
   }
 
@@ -343,27 +341,26 @@ struct pool *make_named_sub_pool(struct pool *p, const char *symbol)
   return new_pool;
 }
 
-struct pool *make_sub_pool(struct pool *p) {
-  return make_named_sub_pool(p, NULL);
-}
-
 /* Initialize the pool system by creating the base permanent_pool. */
 
-void init_alloc(void) {
-  permanent_pool = make_named_sub_pool(NULL, "permanent_pool");
+void pr_init_pools(void) {
+  if (!permanent_pool)
+    permanent_pool = make_sub_pool(NULL);
 }
 
-static void clear_pool(struct pool *p)
-{
+static void clear_pool(struct pool *p) {
+
   /* Sanity check. */
-  if (! p)
+  if (!p)
     return;
 
   block_alarms();
 
+  /* Run through any cleanups. */
   run_cleanups(p->cleanups);
   p->cleanups = NULL;
 
+  /* Destroy subpools. */
   while (p->sub_pools)
     destroy_pool(p->sub_pools);
   p->sub_pools = NULL;
@@ -377,36 +374,46 @@ static void clear_pool(struct pool *p)
   unblock_alarms();
 }
 
-void destroy_pool(pool *p)
-{
+void destroy_pool(pool *p) {
   block_alarms();
 
   if (p->parent) {
-    if (p->parent->sub_pools == p) p->parent->sub_pools = p->sub_next;
-    if (p->sub_prev) p->sub_prev->sub_next = p->sub_next;
-    if (p->sub_next) p->sub_next->sub_prev = p->sub_prev;
+    if (p->parent->sub_pools == p)
+      p->parent->sub_pools = p->sub_next;
+
+    if (p->sub_prev)
+      p->sub_prev->sub_next = p->sub_next;
+
+    if (p->sub_next)
+      p->sub_next->sub_prev = p->sub_prev;
   }
 
   clear_pool(p);
   free_blocks(p->first);
-
   unblock_alarms();
 }
 
-long bytes_in_pool(pool *p) { return bytes_in_block_list(p->first); }
-long bytes_in_free_blocks(void) { return bytes_in_block_list(block_freelist); }
+#if 0
+/* NOTE: not used at the moment */
+static long bytes_in_pool(pool *p) {
+  return bytes_in_block_list(p->first);
+}
+
+static long bytes_in_free_blocks(void) {
+  return bytes_in_block_list(block_freelist);
+}
+#endif
 
 /* Allocation inteface ... 
  */
 
-void *palloc(struct pool *p, int reqsize)
-{
-  /* Round up requested size to an even number of aligned units */
+void *palloc(struct pool *p, int reqsize) {
 
+  /* Round up requested size to an even number of aligned units */
   int nclicks = 1 + ((reqsize - 1) / CLICK_SZ);
   int size = nclicks * CLICK_SZ;
 
-  /* For performance, see if space is availabe in most recently
+  /* For performance, see if space is available in the most recently
    * allocated block.
    */
 
@@ -414,19 +421,18 @@ void *palloc(struct pool *p, int reqsize)
   char *first_avail = blok->h.first_avail;
   char *new_first_avail;
 
-  if(reqsize <= 0)
+  if (reqsize <= 0)
     return NULL;
 
-  block_alarms();
   new_first_avail = first_avail + size;
 
-  if(new_first_avail <= blok->h.endp) {
+  if (new_first_avail <= blok->h.endp) {
     blok->h.first_avail = new_first_avail;
-    unblock_alarms();
-    return (void *)first_avail;
+    return (void *) first_avail;
   }
 
   /* Need a new one that's big enough */
+  block_alarms();
 
   blok = new_block(size);
   p->last->h.next = blok;
@@ -436,30 +442,30 @@ void *palloc(struct pool *p, int reqsize)
   blok->h.first_avail += size;
 
   unblock_alarms();
-  return (void*)first_avail;
+  return (void *) first_avail;
 }
 
-void *pcalloc(struct pool *p, int size)
-{
+void *pcalloc(struct pool *p, int size) {
   void *res = palloc(p, size);
   memset(res, '\0', size);
   return res;
 }
 
-char *pstrdup(struct pool *p, const char *s)
-{
+char *pstrdup(struct pool *p, const char *s) {
   char *res;
+  size_t len;
 
   if (!s)
     return NULL;
 
-  res = palloc(p, strlen(s) + 1);
-  sstrncpy(res, s, strlen(s) + 1);
+  len = strlen(s) + 1;
+
+  res = palloc(p, len);
+  sstrncpy(res, s, len);
   return res;
 }
 
-char *pstrndup(struct pool *p, const char *s, int n)
-{
+char *pstrndup(struct pool *p, const char *s, int n) {
   char *res;
 
   if (!s)
@@ -470,19 +476,18 @@ char *pstrndup(struct pool *p, const char *s, int n)
   return res;
 }
 
-char *pdircat(pool *p, ...)
-{
+char *pdircat(pool *p, ...) {
   char *argp, *res;
   char last;
 
   int len = 0, count = 0;
   va_list dummy;
 
-  va_start(dummy,p);
+  va_start(dummy, p);
 
   last = 0;
 
-  while((res = va_arg(dummy,char*)) != NULL) {
+  while ((res = va_arg(dummy,char*)) != NULL) {
     /* If the first argument is "", we have to account for a leading /
      * which must be added.  -jss 3/2/2001
      */
@@ -518,25 +523,24 @@ char *pdircat(pool *p, ...)
   return res;
 }
 
-char *pstrcat(pool *p, ...)
-{
+char *pstrcat(pool *p, ...) {
   char *argp, *res;
 
-  int len = 0;
+  size_t len = 0;
   va_list dummy;
 
-  va_start(dummy,p);
+  va_start(dummy, p);
   
-  while((res = va_arg(dummy, char *)) != NULL)
+  while ((res = va_arg(dummy, char *)) != NULL)
     len += strlen(res);
   
   va_end(dummy);
   
-  res = (char*) pcalloc(p, len + 1);
+  res = (char *) pcalloc(p, len + 1);
+ 
+  va_start(dummy, p);
   
-  va_start(dummy,p);
-  
-  while((argp = va_arg(dummy, char *)) != NULL)
+  while ((argp = va_arg(dummy, char *)) != NULL)
     sstrcat(res, argp, len + 1);
   
   va_end(dummy);
@@ -548,11 +552,10 @@ char *pstrcat(pool *p, ...)
  * Array functions
  */
 
-array_header *make_array(pool *p, int nelts, int elt_size)
-{
-  array_header *res = (array_header*) palloc(p, sizeof(array_header));
+array_header *make_array(pool *p, int nelts, int elt_size) {
+  array_header *res = (array_header *) palloc(p, sizeof(array_header));
 
-  if(nelts < 1) nelts = 1;
+  if (nelts < 1) nelts = 1;
 
   res->elts = pcalloc(p, nelts * elt_size);
   res->pool = p;
@@ -563,8 +566,7 @@ array_header *make_array(pool *p, int nelts, int elt_size)
   return res;
 }
 
-void *push_array(array_header *arr)
-{
+void *push_array(array_header *arr) {
   if(arr->nelts == arr->nalloc) {
     char *new_data = pcalloc(arr->pool, arr->nalloc * arr->elt_size * 2);
 

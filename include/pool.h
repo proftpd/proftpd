@@ -27,7 +27,7 @@
 /* Memory allocation/anti-leak system.  Yes, this *IS* stolen from Apache
  * also.  What can I say?  It makes sense, and it's safe (more overhead
  * though)
- * $Id: pool.h,v 1.9 2002-07-24 22:20:20 castaglia Exp $
+ * $Id: pool.h,v 1.10 2002-10-21 17:06:09 castaglia Exp $
  */
 
 #ifndef PR_POOL_H
@@ -36,15 +36,16 @@
 typedef struct pool pool;
 
 extern pool *permanent_pool;
-void init_alloc(void);
-pool *make_sub_pool(pool *);		/* All pools are sub-pools of perm */
-pool *make_named_sub_pool(pool *, const char *);
 
-/* Low-level memory allocation */
-void *xmalloc(size_t);
-void *xcalloc(size_t, size_t);
-void *xrealloc(void *, size_t);
-void pool_release_free_block_list(void);
+void pr_init_pools(void);
+pool *make_sub_pool(pool *);		/* All pools are sub-pools of perm */
+
+/* The make_named_sub_pool() function, which was never really supported,
+ * has been deprecated.  This macro is for supporting those contrib modules
+ * that still may make use of this old function.  Newer code should simply
+ * use make_sub_pool() directly.
+ */
+#define make_named_sub_pool(p, s)       make_sub_pool((p))
 
 /* Clears out _everything_ in a pool, destroying any sub-pools */
 void destroy_pool(struct pool *);
@@ -98,10 +99,6 @@ void unregister_cleanup(pool *, void *, void (*)(void *));
 
 /* minimum free bytes in a new block pool */
 
-#define BLOCK_MINFREE TUNABLE_NEW_POOL_SIZE
-
-/* accounting */
-long bytes_in_pool(pool *);
-long bytes_in_free_blocks(void);
+#define BLOCK_MINFREE	PR_TUNABLE_NEW_POOL_SIZE
 
 #endif /* PR_POOL_H */

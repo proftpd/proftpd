@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.124 2002-10-17 00:37:45 castaglia Exp $
+ * $Id: main.c,v 1.125 2002-10-21 17:06:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -315,14 +315,14 @@ static void init_set_proc_title(int argc, char *argv[], char *envp[]) {
 #endif /* HAVE___PROGNAME */
   extern char **environ;
   
-  int i, envpsize;
+  register int i, envpsize;
   char **p;
   
   /* Move the environment so setproctitle can use the space.
    */
   for (i = envpsize = 0; envp[i] != NULL; i++)
     envpsize += strlen(envp[i]) + 1;
-  
+ 
   if ((p = (char **)malloc((i + 1) * sizeof(char *))) != NULL) {
     environ = p;
 
@@ -652,6 +652,7 @@ static void end_login_noexit(void) {
 
 void end_login(int exitcode) {
   end_login_noexit();
+  destroy_pool(permanent_pool);
   _exit(exitcode);
 }
 
@@ -762,7 +763,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
       if (c->requires_auth && cmd_auth_chk && !cmd_auth_chk(cmd))
         return -1;
 
-      cmd->tmp_pool = make_named_sub_pool(cmd->pool,"temp - dispatch pool");
+      cmd->tmp_pool = make_sub_pool(cmd->pool);
 
       argstr = make_arg_str(cmd->tmp_pool, cmd->argc, cmd->argv);
 
@@ -1073,13 +1074,11 @@ static void cmd_loop(server_rec *server, conn_t *c) {
   }
 }
 
-static void _server_conn_cleanup(void *connp)
-{
+static void serv_conn_cleanup_cb(void *connp) {
   *((conn_t**)connp) = NULL;
 }
 
-void register_rehash(void *data, void (*fp)(void*))
-{
+void register_rehash(void *data, void (*fp)(void*)) {
   struct rehash *r = (struct rehash*)pcalloc(permanent_pool,
 		  				sizeof(struct rehash));
 
@@ -1089,7 +1088,7 @@ void register_rehash(void *data, void (*fp)(void*))
   rehash_list = r;
 }
 
-static void main_rehash(void *d1, void *d2, void *d3, void *d4) {
+static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
   struct rehash *rh;
   config_rec *c = NULL;
   server_rec *s = NULL;
@@ -1211,8 +1210,8 @@ static void main_rehash(void *d1, void *d2, void *d3, void *d4) {
 
         s->listen = main_server->listen;
         register_cleanup(s->listen->pool,&s->listen,
-                         _server_conn_cleanup,
-                         _server_conn_cleanup);
+                         serv_conn_cleanup_cb,
+                         serv_conn_cleanup_cb);
         add_binding(s,s->ipaddr,NULL,isdefault,0);
         addl_bindings(s);
       }
@@ -1672,7 +1671,7 @@ static void server_loop(void) {
 
     } else {
 
-      tv.tv_sec = TUNABLE_SELECT_TIMEOUT;
+      tv.tv_sec = PR_TUNABLE_SELECT_TIMEOUT;
       tv.tv_usec = 0L;
     }
 
@@ -1876,7 +1875,7 @@ void pr_handle_signals(void) {
     if (recvd_signal_flags & RECEIVED_SIG_REHASH) {
 
       /* NOTE: should this be done here, rather than using a schedule? */
-      schedule(main_rehash, 0, NULL, NULL, NULL, NULL);
+      schedule(core_rehash_cb, 0, NULL, NULL, NULL, NULL);
 
       recvd_signal_flags &= ~RECEIVED_SIG_REHASH;
     }
@@ -2441,24 +2440,24 @@ void set_session_rlimits(void) {
 #endif /* defined RLIMIT_NOFILE or defined RLIMIT_OFILE */
 }
 
-void pr_write_pid(void)
-{
-  FILE *pidf;
+static void write_pid(void) {
+  FILE *pidf = NULL;
   
-  PidPath = (char *) get_param_ptr(main_server->conf, "PidFile", FALSE);
-  if(!PidPath || !*PidPath)
+  PidPath = get_param_ptr(main_server->conf, "PidFile", FALSE);
+  if (!PidPath || !*PidPath)
     PidPath = PID_FILE_PATH;
   
   PRIVS_ROOT
-  if((pidf = fopen(PidPath, "w")) == NULL) {
+  if ((pidf = fopen(PidPath, "w")) == NULL) {
+    PRIVS_RELINQUISH
     perror(PidPath);
     exit(1);
   }
+  PRIVS_RELINQUISH
   
   fprintf(pidf, "%lu\n", (unsigned long) getpid());
   fclose(pidf);
   pidf = NULL;
-  PRIVS_RELINQUISH
 }
   
 static void daemonize(void) {
@@ -2604,8 +2603,8 @@ static void inetd_main(void) {
        */
       s->listen = main_server->listen;
       register_cleanup(s->listen->pool,&s->listen,
-                       _server_conn_cleanup,
-                       _server_conn_cleanup);
+                       serv_conn_cleanup_cb,
+                       serv_conn_cleanup_cb);
       
 
       isdefault = get_param_int(s->conf,"DefaultServer",FALSE);
@@ -2739,8 +2738,8 @@ static void standalone_main(void) {
        
       s->listen = main_server->listen;
       register_cleanup(s->listen->pool,&s->listen,
-                       _server_conn_cleanup,
-                       _server_conn_cleanup);
+                       serv_conn_cleanup_cb,
+                       serv_conn_cleanup_cb);
       add_binding(s,s->ipaddr,NULL,default_server,0);
       addl_bindings(s);
     }
@@ -2748,7 +2747,7 @@ static void standalone_main(void) {
   log_pri(PR_LOG_NOTICE, "ProFTPD %s (built %s) standalone mode STARTUP",
     PROFTPD_VERSION_TEXT " " PR_STATUS, BUILD_STAMP);
 
-  pr_write_pid();
+  write_pid();
   server_loop();
 }
 
@@ -2819,8 +2818,7 @@ static void show_usage(int exit_code) {
   exit(exit_code);
 }
 
-int main(int argc, char **argv, char **envp)
-{
+int main(int argc, char *argv[], char **envp) {
   int socketp, optc;
   mode_t *main_umask = NULL; 
   int check_config_syntax = 0;
@@ -2891,8 +2889,8 @@ int main(int argc, char **argv, char **envp)
   /* Open the syslog */
   log_opensyslog(NULL);
 
-  /* initialize the memory subsystem here */
-  init_alloc();
+  /* Initialize the memory subsystem here */
+  pr_init_pools();
 
   /* Command line options supported:
    *
@@ -3012,7 +3010,7 @@ int main(int argc, char **argv, char **envp)
   }
   
   /* Initialize sub-systems */
-  init_alloc();
+  pr_init_pools();
   pr_init_regexp();
   init_log();
   init_inet();
@@ -3035,7 +3033,7 @@ int main(int argc, char **argv, char **envp)
    */
   if (check_config_syntax) {
     printf("Syntax check complete.\n");
-    exit(0);
+    end_login(0);
   }
  
   /* After configuration is complete, make sure that passwd, group

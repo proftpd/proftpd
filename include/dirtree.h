@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.20 2002-09-13 22:51:12 castaglia Exp $
+ * $Id: dirtree.h,v 1.21 2002-10-21 17:06:09 castaglia Exp $
  */
 
 #ifndef __DIRTREE_H
@@ -145,7 +145,6 @@ extern int			SocketBindTight;
 extern char			ServerType;
 extern int			ServerMaxInstances;
 extern int			ServerUseReverseDNS;
-extern int			TimeoutLogin;
 extern int			TimeoutIdle;
 extern int			TimeoutNoXfer;
 extern int			TimeoutStalled;

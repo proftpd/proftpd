@@ -124,7 +124,7 @@ _make_cmd (pool * cp, int argc, ...)
   int i;
 
   pool *newpool = NULL;
-  newpool = make_named_sub_pool( cp, "temp pool" );
+  newpool = make_sub_pool( cp );
   c = pcalloc(newpool, sizeof(cmd_rec));
 
   c->pool = newpool;

@@ -63,7 +63,7 @@ char *get_ident(pool *p, conn_t *c) {
   }
  
   /* Set up our timer before going any further. */
-  if ((timer = add_timer(TUNABLE_TIMEOUTIDENT, -1, NULL,
+  if ((timer = add_timer(PR_TUNABLE_TIMEOUTIDENT, -1, NULL,
       (callback_t) ident_timer_cb)) <= 0) {
     destroy_pool(tmp_pool);
     return pstrdup(p, ret);

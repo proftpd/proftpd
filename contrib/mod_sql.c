@@ -320,7 +320,7 @@ cmd_rec *_sql_make_cmd(pool * cp, int argc, ...)
   va_list args;
   int i = 0;
 
-  newpool = make_named_sub_pool( cp, "temp sql pool" );
+  newpool = make_sub_pool( cp );
   c = pcalloc(newpool, sizeof(cmd_rec));
   c->argc = argc;
   c->symtable_index = -1;
@@ -3837,7 +3837,7 @@ static int sql_getconf(void)
   pool *tmp_pool = NULL;
 
   /* build a temporary pool */
-  tmp_pool = make_named_sub_pool( session.pool, "temp sql init pool" );
+  tmp_pool = make_sub_pool( session.pool );
 
   /* get our backend info and toss it up */
   cmd = _sql_make_cmd( tmp_pool, 1, "foo" );
@@ -3853,7 +3853,7 @@ static int sql_getconf(void)
 
   log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> sql_getconf");
 
-  sql_pool = make_named_sub_pool( session.pool, "mod_sql pool" );
+  sql_pool = make_sub_pool( session.pool );
 
   group_name_cache = make_cache( sql_pool, _group_name, _groupcmp );
   passwd_name_cache = make_cache( sql_pool, _passwd_name, _passwdcmp );
