@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.61 2002-07-26 17:02:13 castaglia Exp $
+ * $Id: dirtree.c,v 1.62 2002-08-01 22:08:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -254,7 +254,7 @@ static void pop_config_stream(void) {
  * file is being read in, so that errors can be reported with line numbers
  * correctly.
  */
-char *get_line(char *buf, int buflen, FILE *filep, int *lineno) {
+char *get_line(char *buf, int buflen, FILE *filep, unsigned int *lineno) {
   int inlen;
   char *start = buf;
 
