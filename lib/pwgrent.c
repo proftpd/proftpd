@@ -92,7 +92,8 @@ struct passwd *fgetpwent(FILE *fp)
 {
   char buf[BUFSIZ];
 
-  if(fgets(buf, sizeof(buf), fp) != (char*) 0) {
+  if(fgets(buf, sizeof(buf), fp) != (char*) 0 &&
+     buf[0] != '\0' && buf[0] != '#') {
     buf[strlen(buf) - 1] = '\0';
     return _pgetpwent(buf);
   }
