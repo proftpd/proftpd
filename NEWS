@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.637 2004-12-17 18:24:49 castaglia Exp $
+$Id: NEWS,v 1.638 2004-12-30 22:23:47 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -100,6 +100,7 @@ CVS
   directory.
 - Bug 2534 - Add suport for -S ListOption, for sorting files by file size.
 - Bug 2536 - mod_ifsession does not properly merge in all directives.
+- Bug 2540 - Fails to disable mod_delay if no DelayTable file exists.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

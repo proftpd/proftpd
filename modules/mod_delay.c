@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.6 2004-11-25 19:03:57 jwm Exp $
+ * $Id: mod_delay.c,v 1.7 2004-12-30 22:23:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -745,6 +745,9 @@ static int delay_init(void) {
 static int delay_sess_init(void) {
   pr_fh_t *fh;
 
+  if (!delay_engine)
+    return 0;
+
   delay_nuser = 0;
   delay_npass = 0;
 
@@ -762,6 +765,7 @@ static int delay_sess_init(void) {
       ": warning: unable to open DelayTable '%s': %s", delay_tab.dt_path,
       strerror(errno));
     delay_engine = FALSE;
+    return 0;
   }
 
   delay_tab.dt_fd = fh->fh_fd;
