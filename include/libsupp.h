@@ -1,7 +1,8 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
+ * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
+ * Copyright (c) 2001, 2002 The ProFTPD Project team
  *  
  * Parts Copyright (C) 1991, 1992, 1993, 1999, 2000 Free Software
  *   Foundation, Inc.
@@ -28,7 +29,7 @@
 
 /* ProFTPD support library definitions.
  *
- * $Id: libsupp.h,v 1.7 2002-06-11 16:18:07 castaglia Exp $
+ * $Id: libsupp.h,v 1.8 2002-06-23 19:03:22 castaglia Exp $
  */
 
 #include <glibc-glob.h>
