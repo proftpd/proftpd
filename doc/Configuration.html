@@ -558,13 +558,15 @@ href="#AuthUserFile">AuthUserFile</a>).</p>
 <hr>
 
 <h2><a name="AuthPAM">AuthPAM</a></h2>
-<p><strong>Syntax:</strong> AuthPAM <em>UNKNOWN</em><br>
-  <strong>Default:</strong> ftp<br>
+<p><strong>Syntax:</strong> AuthPAM <em>on|off</em><br>
+  <strong>Default:</strong> on<br>
   <strong>Context:</strong> server config,&lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <STRONG>Module:</STRONG> mod_<BR>
-  <strong>Compatibility:</strong> 1.2.0 and later</p>
+  <STRONG>Module:</STRONG> mod_pam<BR>
+  <strong>Compatibility:</strong> 1.2.0rc1 and later</p>
 
-  <p>This directive allows
+  <p>This directive determines whether PAM is used as an authentication 
+      method by ProFTPD.  Enabled by default to fit in with the design 
+      policy of using PAM as the primary authentication mechanism.</P>
 
 <hr>
 
@@ -684,7 +686,7 @@ AuthUsingAlias</p>
 <p><strong>Syntax:</strong> ByteRatioErrMsg <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The ByteRatioErrMsg directive ....</P>
@@ -759,7 +761,7 @@ This creates two classes, local and default, with local being everything in
 <p><strong>Syntax:</strong> CwdRatioMsg <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The CwdRatioMsg directive ....</P>
@@ -791,7 +793,7 @@ This creates two classes, local and default, with local being everything in
 <p><strong>Syntax:</strong> DefaultQuota <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_quota<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The DefaultQuota directive ....</P>
@@ -1045,7 +1047,7 @@ href="#DirFakeUser"><strong>DirFakeUser</strong></a><strong> are completely cosm
 <p><strong>Syntax:</strong> DirFakeMode <em>octal-mode</em><br>
   <strong>Default:</strong> None<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_ls<BR>
   &lt;Directory&gt;, &lt;Global&gt;<br>
   <strong>Compatibility:</strong> 1.1.6</p>
 <p>The DirFakeMode directive configures a mode (or permissions) which will be 
@@ -1065,7 +1067,7 @@ href="#DirFakeUser"><strong>DirFakeUser</strong></a><strong> are completely cosm
 <p><strong>Syntax:</strong> DirFakeUser <em>On|Off [username]</em><br>
   <strong>Default:</strong> <code>DirFakeUser Off</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_ls<BR>
   &lt;Global&gt;<br>
   <strong>Compatibility:</strong> 1.1.5</p>
 <p>See <a href="#DirFakeGroup">DirFakeGroup</a></p>
@@ -1074,7 +1076,7 @@ href="#DirFakeUser"><strong>DirFakeUser</strong></a><strong> are completely cosm
 <p><strong>Syntax:</strong> DisplayConnect <em>filename</em><br>
   <strong>Default:</strong> None<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_code<BR>
   <strong>Compatibility:</strong> 1.2.0pre2 and later</p>
 <p>The DisplayConnect directive configures an ASCII text filename which will be 
   displayed to the user when they initially connect but before they login. The 
@@ -1093,8 +1095,8 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>: %T, %F, %R, %L and %u (see <a h
 <p><strong>Syntax:</strong> DisplayFirstChdir <em>filename</em><br>
   <strong>Default:</strong> None<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_<BR>
   &lt;Directory&gt;, &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_code<BR>
   <strong>Compatibility:</strong> 0.99.0 and later, magic cookies only in 0.99.0pl10 
   and later</p>
 <p>The DisplayFirstChdir directive configures an ASCII text filename which will 
@@ -1314,7 +1316,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
 <p><strong>Syntax:</strong> FileRatioErrMsg <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The FileRatioErrMsg directive ....</P>
@@ -1327,7 +1329,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
 <p><strong>Syntax:</strong> FooBarDirective <em>thingy</em><br>
   <strong>Default:</strong> none<br>
   <strong>Context:</strong> server config, &lt;Anonymous&gt;, &lt;Limit&gt;<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_sample<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 <p>FooBarDirective is a dummy directive used for example only.
 
@@ -1350,8 +1352,8 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
 <p><strong>Syntax:</strong> Group <em>groupid</em><br>
   <strong>Default:</strong> None<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_<BR>
   &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 0.99.0 and later</p>
 <p>The Group directive configures which group the server daemon will normally 
   run at. See <a href="#User">User</a> for more details.</p>
@@ -1378,8 +1380,8 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
 <p><strong>Syntax:</strong> GroupPassword <em>groupid hashed-password</em><br>
   <strong>Default:</strong> None<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_core<BR>
   &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 0.99.0pl5 and later</p>
 <p>The GroupPassword directive creates a special &quot;group&quot; password which 
   allows all users in the specified group to authenticate using a single password. 
@@ -1395,7 +1397,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
 <p><strong>Syntax:</strong> GroupRatio <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The GroupRatio directive ....</P>
@@ -1408,8 +1410,8 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
 <p><strong>Syntax:</strong> HiddenStor <em>on|off</em><br>
   <strong>Default:</strong> <code>HiddenStor off</code><br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;VirtualHost&gt;, 
-  <STRONG>Module:</STRONG> mod_core<BR>
   &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 1.2.0pre5 and later</p>
 <p>The HiddenStor directive enables two-step file uploads: files are uploaded 
   as &quot;<code>.in.<em>filename</em>.</code>&quot; and once the upload is complete, 
@@ -1464,7 +1466,7 @@ href="#IgnoreHidden">IgnoreHidden</a></p>
 <p><strong>Syntax:</strong> HostRatio <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The HostRatio directive ....</P>
@@ -1534,8 +1536,8 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <p><strong>Syntax:</strong> &lt;Limit <em>command|command-group [command2 ..]</em>&gt;<br>
   <strong>Default:</strong> None<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Directory&gt;, 
-  <STRONG>Module:</STRONG> mod_core<BR>
   &lt;Anonymous&gt;, &lt;Global&gt;, .ftpaccess<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
   <strong>Compatibility:</strong> 0.99.0 and later</p>
 <p>The Limit configuration block is used to place access restrictions on one or 
   more FTP commands, within a given context. Limits flow downward, so that a Limit 
@@ -1935,8 +1937,8 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
   <p><strong>Syntax:</strong> MaxClients <em>number|none [message]</em><br>
     <strong>Default:</strong> <code>MaxClients none</code><br>
     <strong>Context:</strong> server config, &lt;Anonymous&gt;, &lt;VirtualHost&gt;, 
-  <STRONG>Module:</STRONG> mod_core<BR>
     &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
   <p>The MaxClients directive configures the maximum number of authenticated clients 
     which may be logged into a server or anonymous account. Once this limit is 
@@ -1960,8 +1962,8 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
   <p><strong>Syntax:</strong> MaxClientsPerHost <em>number|none [message]</em><br>
     <strong>Default:</strong> <code>MaxClientsPerHost none</code><br>
     <strong>Context:</strong> server config, &lt;Anonymous&gt;, &lt;VirtualHost&gt;, 
-  <STRONG>Module:</STRONG> mod_core<BR>
     &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 1.1.7 and later</p>
   <p>The MaxClientsPerHost directive configures the maximum number of clients 
     allowed to connect per host. The optional argument <strong><em>message</em></strong> 
@@ -2091,8 +2093,8 @@ href="#Allow">Allow</a> and <a href="#Deny">Deny</a> directives are checked insi
   <p><strong>Syntax:</strong> PathAllowFilter <em>regular-expression</em><br>
     <strong>Default:</strong> None<br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_core<BR>
     &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 1.1.7 and later</p>
   <p>PathAllowFilter allows the configuration of a regular expression that <strong>must</strong> 
     be matched for all newly uploaded (stored) files. The regular expression is 
@@ -2109,8 +2111,8 @@ href="#Allow">Allow</a> and <a href="#Deny">Deny</a> directives are checked insi
   <p><strong>Syntax:</strong> PathDenyFilter <em>regular-expression</em><br>
     <strong>Default:</strong> None<br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_core<BR>
     &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 1.1.7 and later</p>
   <p>Similar to <a href="#PathAllowFilter">PathAllowFilter</a>, PathDenyFilter 
     specifies a regular expression which must <strong>not</strong> match any uploaded 
@@ -2177,7 +2179,7 @@ href="#VirtualHost">&lt;VirtualHost&gt;</a> in order to run a virtual server on
 <p><strong>Syntax:</strong> PostgresPort <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_pgsql<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The PostgresPort directive ....</P>
@@ -2189,7 +2191,7 @@ href="#VirtualHost">&lt;VirtualHost&gt;</a> in order to run a virtual server on
 <p><strong>Syntax:</strong> Quotas <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_quota<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The Quotas directive ....</P>
@@ -2201,7 +2203,7 @@ href="#VirtualHost">&lt;VirtualHost&gt;</a> in order to run a virtual server on
 <p><strong>Syntax:</strong> QuotaBlockSize <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_quota<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The QuotaBlockSize directive ....</P>
@@ -2213,7 +2215,7 @@ href="#VirtualHost">&lt;VirtualHost&gt;</a> in order to run a virtual server on
 <p><strong>Syntax:</strong> QuotaBlockName <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_quota<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The QuotaBlockName directive ....</P>
@@ -2225,7 +2227,7 @@ href="#VirtualHost">&lt;VirtualHost&gt;</a> in order to run a virtual server on
 <p><strong>Syntax:</strong> QuotaCalc <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_quota<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The QuotaCalc directive ....</P>
@@ -2237,7 +2239,7 @@ href="#VirtualHost">&lt;VirtualHost&gt;</a> in order to run a virtual server on
 <p><strong>Syntax:</strong> QuotaExempt <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_quota<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The QuotaExempt directive ....</P>
@@ -2249,7 +2251,7 @@ href="#VirtualHost">&lt;VirtualHost&gt;</a> in order to run a virtual server on
 <p><strong>Syntax:</strong> QuotaType <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_quota<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The QuotaType directive ....</P>
@@ -2262,8 +2264,8 @@ href="#VirtualHost">&lt;VirtualHost&gt;</a> in order to run a virtual server on
   <p><strong>Syntax:</strong> RateReadBPS <em>byte_per_sec-number</em><br>
     <strong>Default:</strong> <code>0</code><br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_xfer<BR>
     &lt;Directory&gt;, &lt;Global&gt; <br>
+  <STRONG>Module:</STRONG> mod_xfer<BR>
     <strong>Compatibility:</strong> 1.2.0 and later</p>
   <p>RateReadBPS sets the allowed byte per second download bandwidth in the given 
     config context. Zero means no bandwidth limit. (See <a href="#RateReadFreeBytes">RateReadFreeBytes</a> 
@@ -2276,8 +2278,8 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
   <p><strong>Syntax:</strong> RateReadFreeBytes <em>number of bytes</em><br>
     <strong>Default:</strong> <code>0</code><br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_xfer<BR>
     &lt;Directory&gt;, &lt;Global&gt; <br>
+  <STRONG>Module:</STRONG> mod_xfer<BR>
     <strong>Compatibility:</strong> 1.2.0 and later</p>
   <p>RateReadFreeBytes is the amount of bytes to be transferred without any <a href="#RateReadBPS">bandwidth 
     limits</a>, so with that option you can give full bandwidth for small files 
@@ -2289,8 +2291,8 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
   <p><strong>Syntax:</strong> RateReadHardBPS <em>on/off</em><br>
     <strong>Default:</strong> <code>off</code><br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_xfer<BR>
     &lt;Directory&gt;, &lt;Global&gt; <br>
+  <STRONG>Module:</STRONG> mod_xfer<BR>
     <strong>Compatibility:</strong> 1.2.0 and later</p>
   <p>RateReadHardBPS forces the bandwidth to the given <a href="#RateReadBPS">RateReadBPS</a> 
     value after the <a href="#RateReadFreeBytes">RateReadFreeBytes</a> amount 
@@ -2318,8 +2320,8 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
   <p><strong>Syntax:</strong> RateWriteFreeBytes <em>number of bytes</em><br>
     <strong>Default:</strong> <code>0</code><br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_xfer<BR>
     &lt;Directory&gt;, &lt;Global&gt; <br>
+  <STRONG>Module:</STRONG> mod_xfer<BR>
     <strong>Compatibility:</strong> 1.2.0 and later</p>
   <p>RateWriteFreeBytes is the amount of bytes to be transferred without any <a href="#RateWriteBPS">bandwidth 
     limits</a>, so with that option you can give full bandwidth for small files 
@@ -2331,8 +2333,8 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
   <p><strong>Syntax:</strong> RateWriteHardBPS <em>on/off</em><br>
     <strong>Default:</strong> <code>off</code><br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_xfer<BR>
     &lt;Directory&gt;, &lt;Global&gt; <br>
+  <STRONG>Module:</STRONG> mod_xfer<BR>
     <strong>Compatibility:</strong> 1.2.0 and later</p>
   <p>RateWriteHardBPS forces the bandwidth to the given <a href="#RateWriteBPS">RateWriteBPS</a> 
     value after the <a href="#RateWriteFreeBytes">RateWriteFreeBytes</a> amount 
@@ -2352,7 +2354,7 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
 <p><strong>Syntax:</strong> RatioFile <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The RatioFile directive ....</P>
@@ -2365,7 +2367,7 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
 <p><strong>Syntax:</strong> Ratios <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The Ratios directive ....</P>
@@ -2377,7 +2379,7 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
 <p><strong>Syntax:</strong> RatioTempFile <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The RatioTempFile directive ....</P>
@@ -2390,8 +2392,8 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
   <p><strong>Syntax:</strong> RequireValidShell <em>on|off</em><br>
     <strong>Default:</strong> <code>RequireValidShell on</code><br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_core<BR>
     &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
   <p>The RequireValidShell directive configures the server, virtual host or anonymous 
     login to allow or deny logins which do not have a shell binary listed in /etc/shells. 
@@ -2403,8 +2405,8 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
   <p><strong>Syntax:</strong> RootLogin <em>on|off</em><br>
     <strong>Default:</strong> <code>RootLogin off</code><br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_auth<BR>
     &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_auth<BR>
     <strong>Compatibility:</strong> 1.1.5 and later</p>
   <p>Normally, proftpd disallows root logins under any circumstance. If a client 
     attempts to login as root, using the correct password, a special security 
@@ -2419,7 +2421,7 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
 <p><strong>Syntax:</strong> SaveRatios <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The SaveRatios directive ....</P>
@@ -2432,7 +2434,7 @@ href="#Directory">&lt;Directory&gt;</a> sections. </p>
   <p><strong>Syntax:</strong> ScoreboardPath <em>path</em><br>
     <strong>Default:</strong> <code>ScoreboardPath /var/run</code><br>
     <strong>Context:</strong> server config<br>
-  <STRONG>Module:</STRONG> mod_ore<BR>
+  <STRONG>Module:</STRONG> mod_core<BR>
     <strong>Compatibility:</strong> 1.1.6 and later</p>
   <p>The ScoreboardPath directive sets the directory where proftpd run-time scoreboard 
     files (proftpd-*) are kept. These file(s) are necessary for <a href="#MaxClients">MaxClients</a> 
@@ -2579,7 +2581,6 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
 <p><strong>Syntax:</strong> SQLAuthoritative <em>bool</em><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> server, &lt;Global&gt;, &lt;VirtualHost&gt;<BR>
-  <STRONG>Module:</STRONG> mod_<BR>
   <strong>Module:</strong> mod_sqlpw<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
@@ -3102,7 +3103,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <p><strong>Syntax:</strong> UserAlias <em>login-user userid</em><br>
     <strong>Default:</strong> None<br>
     <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_auth<BR>
     &lt;Global&gt;<br>
     <strong>Compatibility:</strong> 0.99.0 and later</p>
   <p>The UserAlias directive creates a mapping from a login name transmitted by 
@@ -3190,7 +3191,7 @@ href="#tcpBackLog"><u>tcpBackLog</u></a><u> value on heavily loaded
 <p><strong>Syntax:</strong> UserRatio <em>foo1 foo2 foo3</em><br>
   <strong>Default:</strong> None known<br>
   <strong>Context:</strong> &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;,.ftpaccess<br>
-  <STRONG>Module:</STRONG> mod_<BR>
+  <STRONG>Module:</STRONG> mod_ratio<BR>
   <strong>Compatibility:</strong> at least 1.2.0 and later</p>
 
   <p>The UserRatio directive ....</P>
@@ -3202,13 +3203,13 @@ href="#tcpBackLog"><u>tcpBackLog</u></a><u> value on heavily loaded
 <h2><a name="WtmpLog">WtmpLog</a></h2>
 <p><strong>Syntax:</strong> WtmpLog <em>on|off|NONE</em><br>
   <strong>Default:</strong> <code>WtmpLog on</code><br>
-  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
-  &lt;Global&gt;<br>
   <strong>Compatibility:</strong> 1.1.7 and later</p>
-<p>The WtmpLog directive controls proftpd's logging of ftp connections to the 
-  host system's wtmp file (used by such commands as `last'). By default, all connections 
-  are logged via wtmp.</p>
+
+  <p>The WtmpLog directive controls proftpd's logging of ftp
+  connections to the host system's wtmp file (used by such commands as
+  `last'). By default, all connections are logged via wtmp.</p>
 
 <HR>
 
