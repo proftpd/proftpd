@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2004 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.115 2004-09-14 17:49:43 castaglia Exp $
+ * $Id: mod_ls.c,v 1.116 2004-10-07 15:53:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -34,8 +34,11 @@
 #define GLOB_ABORTED GLOB_ABEND
 #endif
 
-#define MAP_UID(x)	(fakeuser ? fakeuser : auth_uid2name(cmd->tmp_pool,(x)))
-#define MAP_GID(x)	(fakegroup ? fakegroup : auth_gid2name(cmd->tmp_pool,(x)))
+#define MAP_UID(x) \
+  (fakeuser ? fakeuser : pr_auth_uid2name(cmd->tmp_pool, (x)))
+
+#define MAP_GID(x) \
+  (fakegroup ? fakegroup : pr_auth_gid2name(cmd->tmp_pool, (x)))
 
 static void addfile(cmd_rec *, const char *, const char *, time_t);
 static int outputfiles(cmd_rec *);
@@ -1301,7 +1304,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
       pbuffer[i] = '\0';
 
-      pw = auth_getpwnam(cmd->tmp_pool, i ? pbuffer : session.user);
+      pw = pr_auth_getpwnam(cmd->tmp_pool, i ? pbuffer : session.user);
       if (pw) {
         snprintf(pbuffer, sizeof(pbuffer), "%s%s", pw->pw_dir, p);
 
@@ -1988,7 +1991,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
       pb[i++] = *p++;
     pb[i] = '\0';
 
-    pw = auth_getpwnam(cmd->tmp_pool ,i ? pb : session.user);
+    pw = pr_auth_getpwnam(cmd->tmp_pool, i ? pb : session.user);
     if (pw) {
       snprintf(pb, sizeof(pb), "%s%s", pw->pw_dir, p);
       sstrncpy(buf, pb, sizeof(buf));
