@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.219 2002-09-06 15:18:27 castaglia Exp $
+$Id: NEWS,v 1.220 2002-09-06 16:13:24 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -12,6 +12,7 @@ CVS
 - Bug 1719 - Add RFC2228 stuff to distribution
 - Bug 1663 - Add SITE CHGRP command
 - Bug 1725 - disconnect when specify multiple ranges on Allow
+- Bug 1253 - No ability to configure address for main server
 
 1.2.6 - Released 2002-09-04
 ---------------------------------

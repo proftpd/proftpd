@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.101 2002-09-06 01:06:12 castaglia Exp $
+ * $Id: mod_core.c,v 1.102 2002-09-06 16:13:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -323,6 +323,25 @@ MODRET add_include(cmd_rec *cmd) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "Unable to include configuration "
       "file '", cmd->argv[1], "'.", NULL));
   
+  return HANDLED(cmd);
+}
+
+MODRET set_defaultaddress(cmd_rec *cmd) {
+  p_in_addr_t *main_addr = NULL;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  if ((main_addr = inet_getaddr(c->pool, cmd->argv[1])) == NULL)
+    return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      (cmd->argv)[0], ": unable to resolve \"", cmd->argv[1], "\"",
+      NULL));
+
+  c->argv[0] = main_addr;
+
   return HANDLED(cmd);
 }
 
@@ -3321,6 +3340,7 @@ static conftable core_conftab[] = {
   { "Class",			set_class,			NULL },
   { "Classes",			set_classes,			NULL },
   { "CommandBufferSize",	set_commandbuffersize,		NULL },
+  { "DefaultAddress",		set_defaultaddress,		NULL },
   { "DefaultServer",		set_defaultserver,		NULL },
   { "DefaultTransferMode",	set_defaulttransfermode,	NULL },
   { "DeferWelcome",		set_deferwelcome,		NULL },

@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.99 2002-09-05 20:09:58 castaglia Exp $
+ * $Id: main.c,v 1.100 2002-09-06 16:13:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1090,7 +1090,8 @@ void register_rehash(void *data, void (*fp)(void*))
 
 static void main_rehash(void *d1, void *d2, void *d3, void *d4) {
   struct rehash *rh;
-  server_rec *s;
+  config_rec *c = NULL;
+  server_rec *s = NULL;
   int isdefault;
 
   if (is_master && mpid) {
@@ -1149,6 +1150,14 @@ static void main_rehash(void *d1, void *d2, void *d3, void *d4) {
       bind_pool = NULL;
     }
     bind_list = NULL;
+
+    /* check for a configured DefaultAddress for the main_server */
+    if ((c = find_config(main_server->conf, CONF_PARAM, "DefaultAddress",
+        FALSE)) != NULL) {
+      log_debug(DEBUG0, "setting default server address to %s",
+        inet_ascii(c->pool, (p_in_addr_t *) c->argv[0]));
+      main_server->ipaddr = (p_in_addr_t *) c->argv[0];
+    }
 
     /* Recreate the listen connection */
 
@@ -2375,6 +2384,7 @@ static void inetd_main(void) {
 }
 
 static void standalone_main(void) {
+  config_rec *c = NULL;
   server_rec *s = NULL;
   unsigned char default_server = FALSE;
 
@@ -2396,6 +2406,14 @@ static void standalone_main(void) {
   log_open_run(mpid,TRUE,TRUE);
   log_close_run();
   PRIVS_RELINQUISH
+
+  /* check for a configured DefaultAddress for the main_server */
+  if ((c = find_config(main_server->conf, CONF_PARAM, "DefaultAddress",
+      FALSE)) != NULL) {
+    log_debug(DEBUG0, "setting default server address to %s",
+      inet_ascii(c->pool, (p_in_addr_t *) c->argv[0]));
+    main_server->ipaddr = (p_in_addr_t *) c->argv[0];
+  }
 
   /* If a port is set to 0, the address/port is not bound at all */
 
