@@ -1,3 +1,20 @@
+2001-02-22 21:47  flood
+
+	* NEWS, config.h.in, configure.in, include/modules.h,
+	include/proftpd.h, modules/mod_auth.c, src/auth.c, src/dirtree.c,
+	src/main.c: Bug #259 - supplemental groups should now work better
+	for anonymous logins.
+
+2001-02-22 19:59  flood
+
+	* include/inet.h, src/inet.c, src/main.c: Bug #370 - race condition
+	under heavy load at child startup
+
+2001-02-22 19:53  flood
+
+	* contrib/mod_sql.c: New mod_sql 3.01 from Andrew Houghton
+	<aah@acm.org>
+
 2001-02-22 19:35  flood
 
 	* INSTALL, README, README.AIX, README.FreeBSD, README.modules,
