@@ -26,7 +26,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.45 2002-10-21 17:06:10 castaglia Exp $
+ * $Id: data.c,v 1.46 2002-10-28 17:28:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -894,9 +894,7 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
     if (fcntl(PR_NETIO_FD(session.d->outstrm), F_SETFL, flags^O_NONBLOCK) == -1)
       return -1;
   
-  log_debug(DEBUG4, "data_sendfile(%d,%d,%d)", retr_fd, *offset, count);
-  
-  for(;;) {
+  for (;;) {
 #if defined(HAVE_LINUX_SENDFILE)
     off_t orig_offset = *offset;
     
@@ -995,8 +993,6 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
 
     break;
   }
-  
-  log_debug(DEBUG4, "data_sendfile: %ld", total);
   
   if (flags & O_NONBLOCK)
     fcntl(PR_NETIO_FD(session.d->outstrm), F_SETFL, flags);
