@@ -1,4 +1,4 @@
-<!-- $Id: Limit.html,v 1.5 2004-04-20 23:26:24 castaglia Exp $ -->
+<!-- $Id: Limit.html,v 1.6 2004-07-31 00:07:40 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Limit.html,v $ -->
 
 <html>
@@ -188,6 +188,28 @@ any user in the <code>ftpuser</code> group, to login.  All other users will
 be denied.
 
 <p>
+What if a site wished to allow <b>only</b> anonymous access?  This would be
+configured using the <code>LOGIN</code> command group, as above:
+<pre>
+  &lt;Limit LOGIN&gt;
+    DenyAll
+  &lt;/Limit&gt;
+
+  &lt;Anonymous ~ftp&gt;
+    &lt;Limit LOGIN&gt;
+      AllowAll
+    &lt;/Limit&gt;
+    ...
+  &lt;/Anonymous&gt;
+</pre>
+
+The <code>&lt;Limit&gt;</code> section outside of the
+<code>&lt;Anonymous&gt;</code> section denies logins to everyone.  However,
+the <code>&lt;Anonymous&gt;</code> section has a <code>&lt;Limit&gt;</code>
+that allows everyone to login; anonymous logins are allowed, and non-anonymous
+logins are denied.
+
+<p>
 One situation that often arises is one where the administrator would like
 to give users the ability to upload and dowload files from a given directory,
 but not to be able to delete files from that directory.  This cannot be
@@ -214,7 +236,7 @@ This will allow the user <code>ftpadm</code> to delete files in the
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-04-20 23:26:24 $</i><br>
+Last Updated: <i>$Date: 2004-07-31 00:07:40 $</i><br>
 <hr>
 
 </body>
