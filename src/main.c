@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.228 2004-05-11 16:56:31 castaglia Exp $
+ * $Id: main.c,v 1.229 2004-05-12 02:20:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2259,25 +2259,6 @@ static void inetd_main(void) {
   }
   PRIVS_RELINQUISH
   pr_close_scoreboard();
-
-#if defined(USE_IPV6) && defined(IPV6_ADDRFORM)
-  /* It's possible that inetd may be giving us an IPv4 socket, when we
-   * want an IPv6 one.  To ensure this, use setsockopt(IPV6_ADDRFORM).
-   * If the socket already is an IPv6 socket, the setsockopt() call will
-   * do nothing.
-   *
-   * Of course, if IPV6_ADDRFORM is not defined, we're in a pickle: we
-   * don't have a way of telling what kind of socket we've got.
-   */
-  {
-    int af = AF_INET6;
-    if (setsockopt(STDIN_FILENO, IPPROTO_IPV6, IPV6_ADDRFORM, &af,
-        sizeof(af)) < 0) {
-      pr_log_pri(PR_LOG_NOTICE, "error converting stdin to IPv6 socket: %s",
-        strerror(errno));
-    }
-  }
-#endif /* USE_IPV6 and IPV6_ADDRFORM */
 
   pr_event_generate("core.startup", NULL);
 
