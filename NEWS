@@ -1,6 +1,7 @@
-$Id: NEWS,v 1.1 1999-10-05 05:39:31 macgyver Exp $
+$Id: NEWS,v 1.2 1999-10-06 03:40:52 macgyver Exp $
 
 1.2.0pre9
 
 - New support for BSD sendfile() semantics.
-
+- AuthPAMAuthoritative now defaults to False.  This should clear up any
+  confusion on using PAM with AuthUserFile and friends.
