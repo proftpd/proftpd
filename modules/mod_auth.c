@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.131 2003-01-05 01:29:38 jwm Exp $
+ * $Id: mod_auth.c,v 1.132 2003-01-18 23:28:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -38,6 +38,7 @@ extern pid_t mpid;
 
 module auth_module;
 
+static unsigned char auth_create_home = FALSE;
 static int TimeoutLogin = PR_TUNABLE_TIMEOUTLOGIN;
 static int logged_in = 0;
 static int auth_tries = 0;
@@ -107,6 +108,7 @@ static int auth_session_timeout_cb(CALLBACK_FRAME) {
 
 static int auth_sess_init(void) {
   config_rec *c = NULL;
+  unsigned char *mkhome = NULL;
 
   /* Check for a server-specific TimeoutLogin */
   if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutLogin",
@@ -141,6 +143,13 @@ static int auth_sess_init(void) {
       session.class->name: "",
     PR_SCORE_BEGIN_SESSION, time(NULL),
     NULL);
+
+  /* Should we create the home for a user, if they don't have one? */
+  if ((mkhome = get_param_ptr(main_server->conf, "CreateHome",
+      FALSE)) != NULL && *mkhome == TRUE)
+    auth_create_home = TRUE;
+  else
+    auth_create_home = FALSE;
 
   /* If DisplayConnect is configured, we'll need to scan the scoreboard
    * now, in order to tally up certain values for substituting in any
@@ -964,6 +973,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
         session.group = pstrdup(p,grp->gr_name);
       }
     }
+
   } else {
     struct group *grp;
     char *homedir;
@@ -985,6 +995,16 @@ static int _setup_environment(pool *p, char *user, char *pass)
       sstrncpy(session.cwd, homedir, MAX_PATH_LEN);
     else
       sstrncpy(session.cwd, pw->pw_dir, MAX_PATH_LEN);
+  }
+
+  /* Create the home directory, if need be. */
+
+  if (!c && auth_create_home) {
+    if (create_home(p, session.cwd, origuser, pw->pw_uid, pw->pw_gid) < 0) {
+
+      /* NOTE: should this cause the login to fail? */
+      goto auth_failure;
+    }
   }
 
   /* Get default chdir (if any) */
@@ -1915,6 +1935,101 @@ MODRET set_authusingalias(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+MODRET set_createhome(cmd_rec *cmd) {
+  int bool = -1;
+  mode_t mode = (mode_t) 0700, dirmode = (mode_t) 0711;
+  char *skel_path = NULL;
+  config_rec *c = NULL;
+
+  if (cmd->argc-1 < 1)
+    CONF_ERROR(cmd, "wrong number of parameters");
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
+
+  /* No need to process the rest if bool is FALSE. */
+  if (bool == FALSE) {
+    c = add_config_param(cmd->argv[0], 1, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+    *((unsigned char *) c->argv[0]) = bool;
+
+    return HANDLED(cmd);
+  }
+
+  /* Check the mode parameter, if present */
+  if (cmd->argc-1 >= 2) {
+    char *tmp = NULL;
+
+    mode = strtol(cmd->argv[2], &tmp, 8);
+
+    if (tmp && *tmp)
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": bad mode parameter: '",
+        cmd->argv[2], "'", NULL));
+  }
+
+  if (cmd->argc-1 > 2) {
+    register unsigned int i = 0;
+
+    /* Cycle through the rest of the parameters */
+    for (i = 3; i < cmd->argc; i++) {
+      if (strcasecmp(cmd->argv[i], "skel") == 0) {
+        struct stat st;
+
+        /* Check that the skel directory, if configured, meets the
+         * requirements.
+         */
+
+        skel_path = cmd->argv[++i];
+
+        if (*skel_path != '/')
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": skel path '",
+            skel_path, "' is not a full path", NULL));
+
+        if (pr_fsio_stat(skel_path, &st) < 0)
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unable to stat '",
+            skel_path, "': ", strerror(errno), NULL));
+
+        if (!S_ISDIR(st.st_mode))
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": '", skel_path,
+            "' is not a directory", NULL));
+
+        /* Must not be world-writeable. */
+        if (st.st_mode & S_IWOTH)
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": '", skel_path,
+            "' is world-writeable", NULL));
+
+      } else if (strcasecmp(cmd->argv[i], "dirmode") == 0) {
+        char *tmp = NULL;
+
+        dirmode = strtol(cmd->argv[++i], &tmp, 8);
+ 
+        if (tmp && *tmp)
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": bad mode parameter: '",
+            cmd->argv[i], "'", NULL));
+
+      } else
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown parameter: '",
+          cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
+  c->argv[1] = pcalloc(c->pool, sizeof(mode_t));
+  *((mode_t *) c->argv[1]) = mode;
+  c->argv[2] = pcalloc(c->pool, sizeof(mode_t));
+  *((mode_t *) c->argv[2]) = dirmode;
+
+  if (skel_path)
+    c->argv[3] = pstrdup(c->pool, skel_path);
+
+  return HANDLED(cmd);
+}
+
 MODRET add_defaultroot(cmd_rec *cmd) {
   config_rec *c;
   char *dir,**argv;
@@ -2453,6 +2568,7 @@ static conftable auth_conftab[] = {
   { "AnonymousGroup",		add_anonymousgroup,		NULL },
   { "AuthAliasOnly",		set_authaliasonly,		NULL },
   { "AuthUsingAlias",		set_authusingalias,		NULL },
+  { "CreateHome",		set_createhome,			NULL },
   { "DefaultChdir",		add_defaultchdir,		NULL },
   { "DefaultRoot",		add_defaultroot,		NULL },
   { "GroupPassword",		set_grouppassword,		NULL },

@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.28 2003-01-02 17:28:15 castaglia Exp $
+ * $Id: conf.h,v 1.29 2003-01-18 23:28:36 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -334,6 +334,7 @@ typedef struct in_addr p_in_addr_t;
 #include "data.h"
 #include "libsupp.h"
 #include "fsio.h"
+#include "mkhome.h"
 #include "pr-syslog.h"
 
 # ifdef HAVE_SETPASSENT

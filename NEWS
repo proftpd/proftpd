@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.357 2003-01-18 02:33:24 castaglia Exp $
+$Id: NEWS,v 1.358 2003-01-18 23:28:36 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -41,6 +41,8 @@ CVS
   Use the 't' key to toggle between ftptop display modes.
 - Bug 1926 - AuthOrder doesn't work
 - Bug 1918 - AuthUserFile not works normally.
+- Bug 1241 - Additional functionality: HomedirOnDemand.  This has been added
+  as a new configuration directive, CreateHome.
 
 1.2.8rc1 - Released 28-Dec-2002
 ---------------------------------
