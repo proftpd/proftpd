@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.29 2000-01-03 20:17:04 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.30 2000-02-16 00:09:02 macgyver Exp $
  */
 
 /* History Log:
@@ -813,10 +813,12 @@ MODRET cmd_type(cmd_rec *cmd)
   /* TYPE A(SCII) or TYPE L 7.
    */
   if(!strcmp(cmd->argv[1], "A") ||
-     (!strcmp(cmd->argv[1], "L") && !strcmp(cmd->argv[2], "7"))) {
+     (cmd->argc == 3 &&
+      !strcmp(cmd->argv[1], "L") && !strcmp(cmd->argv[2], "7"))) {
     session.flags |= SF_ASCII;
   } else if(!strcmp(cmd->argv[1], "I") ||
-	    (!strcmp(cmd->argv[1], "L") && !strcmp(cmd->argv[2], "8"))) {
+	    (cmd->argc == 3 &&
+	     !strcmp(cmd->argv[1], "L") && !strcmp(cmd->argv[2], "8"))) {
     /* TYPE I(MAGE) or TYPE L 8.
      */
     session.flags &= (SF_ALL^SF_ASCII);
