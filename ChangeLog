@@ -1,3 +1,8 @@
+2001-12-17 15:39  flood
+
+	* NEWS, modules/mod_xfer.c: - Check retr_file for validity when
+	RESToring
+
 2001-12-17 15:36  flood
 
 	* NEWS, modules/mod_xfer.c: - Bug 1391 - ABOR handler now clears
