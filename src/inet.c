@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.92 2005-02-07 18:15:50 castaglia Exp $
+ * $Id: inet.c,v 1.93 2005-03-05 17:33:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -286,34 +286,33 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     if (bind_addr)
       pr_netaddr_set_sockaddr(&na, pr_netaddr_get_sockaddr(bind_addr));
 
-    else {
+    else
       pr_netaddr_set_sockaddr_any(&na);
 
 #if defined(PR_USE_IPV6) && defined(IPV6_V6ONLY)
-      if (addr_family == AF_INET6) {
-        int off = 0;
+    if (addr_family == AF_INET6) {
+      int on = 0;
 
 # ifdef SOL_IP
-        int level = SOL_IP;
+      int level = SOL_IP;
 # else
-        int level = ipv6_proto;
+      int level = ipv6_proto;
 # endif /* SOL_IP */
 
-      	/* If creating a wildcard socket IPv6 socket, make sure that it
-         * will accept IPv4 connections as well.  This is the default on
-         * Linux and Solaris; BSD usually defaults to allowing only IPv6
-         * (depending on the net.inet6.ip6.v6only sysctl value).
-         *
-         * Ideally, this setsockopt() call would be configurable via the
-         * SocketOptions directive.
-         */
+      /* If creating a wildcard socket IPv6 socket, make sure that it
+       * will accept IPv4 connections as well.  This is the default on
+       * Linux and Solaris; BSD usually defaults to allowing only IPv6
+       * (depending on the net.inet6.ip6.v6only sysctl value).
+       *
+       * Ideally, this setsockopt() call would be configurable via the
+       * SocketOptions directive.
+       */
 
-        if (setsockopt(fd, level, IPV6_V6ONLY, (void *) &off, sizeof(off)) < 0)
-          pr_log_pri(PR_LOG_NOTICE, "error setting IPV6_V6ONLY: %s",
-            strerror(errno));
-      }
-#endif /* PR_USE_IPV6 and IPV6_V6ONLY */
+      if (setsockopt(fd, level, IPV6_V6ONLY, (void *) &on, sizeof(on)) < 0)
+        pr_log_pri(PR_LOG_NOTICE, "error setting IPV6_V6ONLY: %s",
+          strerror(errno));
     }
+#endif /* PR_USE_IPV6 and IPV6_V6ONLY */
 
     pr_netaddr_set_port(&na, htons(port));
 
