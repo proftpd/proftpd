@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.380 2003-03-03 00:31:36 castaglia Exp $
+$Id: NEWS,v 1.381 2003-03-03 00:42:12 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -43,6 +43,10 @@ CVS
   by control messages in the STREAMS device (and thus relevant only to
   systems that use STREAMS).
 - Portability fixes for FreeBSD-5.0.
+- Bug 1976 - Login hangs, spawned process runs in endless loop in mod_auth.
+  This was caused by a combination of "AuthAliasOnly on" and UserAlias
+  directives in which the alias and the username were identical.  Different
+  alias and username in a UserAlias directive is now required.
 
 1.2.8rc2 - Released 29-Jan-2003
 ---------------------------------
