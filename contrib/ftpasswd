@@ -21,7 +21,7 @@
 # format, or AuthGroupFile, in group(5) format.  The idea is somewhat similar
 # to Apache's htpasswd program.
 #
-#  $Id: ftpasswd,v 1.2 2002-11-14 16:53:20 castaglia Exp $
+#  $Id: ftpasswd,v 1.3 2002-11-14 16:55:21 castaglia Exp $
 #
 # ---------------------------------------------------------------------------
 
@@ -645,10 +645,10 @@ usage: $program [--help] [--hash|--group|--passwd]
  
   By default, using --passwd will write output to "$default_passwd_file".
 
-  Return values:
+  Error exit values:
 
   To make it easier for wrapper scripts to interact with $program, $program
-  will exit with the following values for the reasons described:
+  will exit with the following error values for the reasons described:
 
     1       no such user
     2       password matches current password
