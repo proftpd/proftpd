@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.52 2001-02-22 04:51:10 flood Exp $
+ * $Id: main.c,v 1.53 2001-02-23 01:00:00 flood Exp $
  */
 
 /*
@@ -95,6 +95,7 @@ typedef struct _pidrec {
 
   pool *pool;
   pid_t pid;
+  int sempipe;				/* semaphore pipe fd (parent) */
   int dead;
 } pidrec_t;
 
@@ -302,12 +303,10 @@ conn_t *accept_binding(fd_set *rfd, int *lfd)
   return NULL;
 }
 
-int listen_binding(fd_set *rfd)
+int listen_binding(fd_set *rfd, int max_fd)
 {
-  int max_fd = 0;
   binding_t *b;
 
-  FD_ZERO(rfd);
   for(b = bind_list; b; b=b->next) {
     if(b->listen) {
       if(b->listen->mode == CM_NONE)
@@ -322,6 +321,23 @@ int listen_binding(fd_set *rfd)
       }
     }
   }
+  return max_fd;
+}
+
+/* Add child semaphore fds into the rfd for selecting */
+static int semaphore_fds(fd_set *rfd, int max_fd)
+{
+  pidrec_t *p;
+
+  if(children)
+    for(p = (pidrec_t*)children->xas_list; p; p=p->next) {
+      if(p->sempipe != -1) {
+	FD_SET(p->sempipe,rfd);
+	if(p->sempipe > max_fd)
+	  max_fd = p->sempipe;
+      }
+    }
+  
   return max_fd;
 }
 
@@ -1079,6 +1095,8 @@ void main_rehash(void *d1,void *d2,void *d3,void *d4)
   server_rec *s,*snext,*old_main;
   xaset_t *old_servers;
   int isdefault;
+  int max_fd;
+  fd_set rfd;
 
   rehash++;
 
@@ -1087,6 +1105,29 @@ void main_rehash(void *d1,void *d2,void *d3,void *d4)
 
   if(master && mpid) {
     log_pri(LOG_NOTICE,"received SIGHUP -- master server rehashing configuration file.");
+
+    /* Make sure none of our children haven't completed start up */
+    FD_ZERO(&rfd); max_fd = -1;
+    if((max_fd = semaphore_fds(&rfd,max_fd)) > -1) {
+      log_pri(LOG_NOTICE,"waiting for child processes to complete initialization.");
+      
+      while(max_fd != -1) {
+	int i;
+	pidrec_t *cp;
+	
+	i = select(max_fd + 1, &rfd, NULL, NULL, NULL);
+
+	if(i > 0)
+	  for(cp = (pidrec_t*)children->xas_list; cp; cp = cp->next)
+	    if(cp->sempipe != -1 && FD_ISSET(cp->sempipe,&rfd)) {
+	      close(cp->sempipe);
+	      cp->sempipe = -1;
+	    }
+
+	FD_ZERO(&rfd); max_fd = -1;
+	max_fd = semaphore_fds(&rfd,max_fd);
+      }
+    }
 
     for(rh = rehash_list; rh; rh=rh->next)
       rh->rehash(rh->data);
@@ -1181,12 +1222,30 @@ void main_rehash(void *d1,void *d2,void *d3,void *d4)
     log_pri(LOG_ERR,"received SIGHUP, cannot rehash child process");
 }
 
+static int _dup_low_fd(int fd)
+{
+  int i,need_close[3] = {-1, -1, -1};
+
+  for(i = 0; i < 3; i++)
+    if(fd == i) {
+      fd = dup(fd);
+      need_close[i] = 1;
+    }
+
+  for(i = 0; i < 3; i++)
+    if(need_close[i] > -1)
+      close(i);
+
+  return fd;
+}
+
 void fork_server(int fd,conn_t *l,int nofork)
 {
   server_rec *s,*serv = NULL;
   conn_t *conn;
   int i, rev;
-
+  int sempipe[2] = { -1, -1 };
+  
 #ifndef DEBUG_NOFORK
   pid_t pid;
   sigset_t sigset;
@@ -1195,6 +1254,26 @@ void fork_server(int fd,conn_t *l,int nofork)
   if(!nofork) {
     pidrec_t *cpid;
 
+    /* A race condition exists on heavily loaded servers where the parent
+     * catches SIGHUP and attempts to close/re-open the main listening
+     * socket(s), however the children haven't finished closing them
+     * (EADDRINUSE).  We use a semaphore pipe here to flag the parent once
+     * the child has closed all former listening sockets.
+     */
+
+    if(pipe(sempipe) == -1) {
+      log_pri(LOG_ERR,"pipe(): %s",strerror(errno));
+      close(fd);
+      return;
+    }
+
+    /* Need to make sure the child (writer) end of the pipe isn't
+     * < 2 (stdio,stdout,stderr) as this will cause problems later.
+     */
+
+    if(sempipe[1] < 3)
+      sempipe[1] = _dup_low_fd(sempipe[1]);
+    
     /* We block SIGCHLD to prevent a race condition if the child
      * dies before we can record it's pid.  Also block SIGTERM to
      * prevent sig_terminate() from examining the child list
@@ -1212,13 +1291,16 @@ void fork_server(int fd,conn_t *l,int nofork)
     case 0: /* child */
       master = FALSE;		/* We aren't the master anymore */
       sigprocmask(SIG_UNBLOCK,&sigset,NULL);
+
+      /* don't need the read side of the semaphore pipe */
+      close(sempipe[0]);
       break;
     case -1:
       sigprocmask(SIG_UNBLOCK,&sigset,NULL);
       log_pri(LOG_ERR,"fork(): %s",strerror(errno));
 
       /* the parent doesn't need the socket open */
-      close(fd);
+      close(fd); close(sempipe[0]); close(sempipe[1]);
 
       return;
     default: /* parent */
@@ -1246,10 +1328,12 @@ void fork_server(int fd,conn_t *l,int nofork)
 
       cpid = (pidrec_t *) pcalloc(pidrec_pool, sizeof(pidrec_t));
       cpid->pid = pid;
+      cpid->sempipe = sempipe[0];
       cpid->pool = pidrec_pool;
       xaset_insert(children,(xasetmember_t*)cpid);
       child_count++;
 
+      close(sempipe[1]);
       /* Unblock the signals now as sig_child() will catch
        * an "immediate" death and remove the pid from the children list
        */
@@ -1295,17 +1379,13 @@ void fork_server(int fd,conn_t *l,int nofork)
 
   log_closesyslog();
 
-  /* It's safe to call inet_openrw now (it might block),
-   * because the parent is off answering new connections.
-   *
-   * We save the state of our current disposition for doing reverse
-   * lookups, and then set it to what the configuration wants it to
-   * be.
+  /*
+   * Specifically DON'T perform reverse dns at this point, to alleviate
+   * the race condition mentioned above.  Instead we do it after closing
+   * all former listening sockets.
    */
-  rev = inet_reverse_dns(permanent_pool, ServerUseReverseDNS);
   conn = inet_openrw(permanent_pool, l, NULL, fd,
-                     STDIN_FILENO, STDOUT_FILENO, TRUE);
-  inet_reverse_dns(permanent_pool, rev);
+                     STDIN_FILENO, STDOUT_FILENO, FALSE);
   
   /* Now do the permanent syslog open
    */
@@ -1375,6 +1455,19 @@ void fork_server(int fd,conn_t *l,int nofork)
   session.pool = permanent_pool;
   session.c = conn;
   session.data_port = conn->remote_port - 1;
+
+  /* Close the write side of the semaphore pipe to tell the parent
+   * we are all grown up and have finished housekeeping (closing
+   * former listen sockets).
+   */
+  close(sempipe[1]);
+  
+  /* Now perform reverse dns */
+  if(ServerUseReverseDNS) {
+    rev = inet_reverse_dns(permanent_pool, ServerUseReverseDNS);
+    inet_resolve_ip(permanent_pool, conn);
+    inet_reverse_dns(permanent_pool, rev);
+  }
 
   /* Check and see if we are shutdown */
   if(shutdownp) {
@@ -1498,8 +1591,11 @@ void server_loop()
   while(1) {
     run_schedule();
 
-    max_fd = listen_binding(&rfd);
-
+    FD_ZERO(&rfd); max_fd = 0;
+    max_fd = listen_binding(&rfd,max_fd);
+    /* Monitor children pipes */
+    max_fd = semaphore_fds(&rfd,max_fd);
+    
     /* Check for ftp shutdown message file */
     switch(check_shutmsg(&shut,&deny,&disc,shutmsg,sizeof(shutmsg))) {
     case 1: if(!shutdownp) disc_children(); shutdownp = 1; break;
@@ -1561,6 +1657,8 @@ void server_loop()
            * and recover its resources
            */
           if (cp->dead) {
+	    if(cp->sempipe != -1)
+	      close(cp->sempipe);
             xaset_remove(children,(xasetmember_t*)cp);
             destroy_pool(cp->pool);
         }
@@ -1598,6 +1696,17 @@ void server_loop()
 
     if(i == 0)
       continue;
+    
+    /* See if child semaphore pipes have signaled */
+    if(children) {
+      pidrec_t *cp;
+
+      for(cp = (pidrec_t*)children->xas_list; cp; cp = cp->next)
+	if(cp->sempipe != -1 && FD_ISSET(cp->sempipe,&rfd)) {
+	  close(cp->sempipe);
+	  cp->sempipe = -1;
+	}
+    }
 
     /* fork off servers to handle each connection
      * our job is to get back to answering connections asap,

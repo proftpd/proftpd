@@ -1166,6 +1166,21 @@ conn_t *inet_openrw(pool *pool, conn_t *c, p_in_addr_t *addr, int fd,
   return res;
 }
 
+/* Perform reverse ip dns resolution on an existing
+ * connection.
+ */
+
+void inet_resolve_ip(pool *pool, conn_t *c)
+{
+  if(c->remote_ipaddr) {
+    c->remote_name = inet_getname(c->pool,c->remote_ipaddr);
+
+    if(!c->remote_name)
+      c->remote_name = pstrdup(c->pool,inet_ntoa(*c->remote_ipaddr));
+
+  }
+}
+
 void init_inet()
 {
   struct protoent *pr;

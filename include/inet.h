@@ -20,7 +20,7 @@
 
 /* BSD socket manipulation tools.
  *
- * $Id: inet.h,v 1.5 2001-01-29 00:23:21 flood Exp $
+ * $Id: inet.h,v 1.6 2001-02-23 00:59:59 flood Exp $
  */
 
 #ifndef __INET_H
@@ -105,5 +105,6 @@ conn_t *inet_associate(pool*,conn_t*,p_in_addr_t *addr,
                        IOFILE *inf, IOFILE *outf,int resolve);
 conn_t *inet_openrw(pool*,conn_t*,p_in_addr_t *addr,
                     int fd,int rfd,int wfd,int resolve);
+void inet_resolve_ip(pool*,conn_t*);
 
 #endif /* __INET_H */
