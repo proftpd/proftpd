@@ -33,13 +33,14 @@ extern char *sstrncpy(char *dest, const char *src, size_t n);
 #define NGRPFIELDS 	4
 
 #ifndef BUFSIZ
-#define BUFSIZ		1024
+#define BUFSIZ		TUNABLE_BUFFER_SIZE
 #endif
 
-/* provides fgetpwent()/fgetgrent() functions.  Note that the
- * format of the files is probably NOT platform dependant, so
- * use of these functions will require a strict format
- * "username:password:uid:gid:gecos:home:default_shell"
+/* Provides fgetpwent()/fgetgrent() functions.  Note that the format of the
+ * files is probably NOT platform dependent, so use of these functions will
+ * require a strict format:
+ *
+ *   "username:password:uid:gid:gecos:home:shell"
  */
 
 #ifndef HAVE_FGETPWENT
@@ -48,42 +49,42 @@ static char pwdbuf[BUFSIZ];
 static char *pwdfields[NPWDFIELDS];
 static struct passwd pwent;
 
-static struct passwd *_pgetpwent(const char *buf)
-{
-  register	int	i;
-  register	char	*cp;
-  char			*ep;
-  char			**fields;
-  char			*buffer;
-  struct	passwd	*pwd;
+static struct passwd *supp_getpwent(const char *buf) {
+  register unsigned int i;
+  register char *cp;
+  char *ep = NULL, *buffer = NULL;
+  char **fields = NULL;
+  struct passwd *pwd = NULL;
 
   fields = pwdfields;
   buffer = pwdbuf;
   pwd = &pwent;
 
-  strncpy(buffer,buf,BUFSIZ-1);
+  strncpy(buffer, buf, BUFSIZ-1);
   buffer[BUFSIZ-1] = '\0';
 
   for(cp = buffer, i = 0; i < NPWDFIELDS && cp; i++) {
     fields[i] = cp;
-    while(*cp && *cp != ':')
+    while (*cp && *cp != ':')
       ++cp;
-    if(*cp)
+
+    if (*cp)
       *cp++ = '\0';
     else
       cp = 0;
   }
 
-  if(i != NPWDFIELDS || *fields[2] == '\0' || *fields[3] == '\0')
+  if (i != NPWDFIELDS || *fields[2] == '\0' || *fields[3] == '\0')
     return 0;
 
   pwd->pw_name = fields[0];
   pwd->pw_passwd = fields[1];
-  if(fields[2][0] == '\0' ||
+
+  if (fields[2][0] == '\0' ||
      ((pwd->pw_uid = strtol(fields[2], &ep, 10)) == 0 && *ep))
        return 0;
 
-  if(fields[3][0] == '\0' ||
+  if (fields[3][0] == '\0' ||
      ((pwd->pw_gid = strtol(fields[3], &ep, 10)) == 0 && *ep))
        return 0;
 
@@ -94,8 +95,7 @@ static struct passwd *_pgetpwent(const char *buf)
   return pwd;  
 }
 
-struct passwd *fgetpwent(FILE *fp)
-{
+struct passwd *fgetpwent(FILE *fp) {
   char buf[BUFSIZ] = {'\0'};
 
   while (fgets(buf, sizeof(buf), fp) != (char*) 0) {
@@ -104,8 +104,8 @@ struct passwd *fgetpwent(FILE *fp)
     if (buf[0] == '\0' || buf[0] == '#')
       continue;
 
-    buf[strlen(buf) - 1] = '\0';
-    return _pgetpwent(buf);
+    buf[strlen(buf)-1] = '\0';
+    return supp_getpwent(buf);
   }
 
   return NULL;
@@ -113,8 +113,6 @@ struct passwd *fgetpwent(FILE *fp)
 #endif /* HAVE_FGETPWENT */
 
 #ifndef HAVE_FGETGRENT
-
-
 #define MAXMEMBERS 4096
 
 static char *grpbuf = NULL;
@@ -122,120 +120,120 @@ static struct group grent;
 static char *grpfields[NGRPFIELDS];
 static char *members[MAXMEMBERS+1];
 
-static char *fgetbufline(char **buf, int *size, FILE *fp)
-{
-  char *rbuf = NULL,*cp;
+static char *fgetbufline(char **buf, int *buflen, FILE *fp) {
+  char *cp = *buf;
 
-  if(!*size || !*buf) {
-    *size = BUFSIZ;
-    *buf = rbuf = malloc(*size);
-    if(!rbuf)
-      return 0;
+  while (fgets(cp, (*buflen) - (cp - *buf), fp) != NULL) {
+
+    /* Is this a full line? */
+    if (strchr(cp, '\n'))
+      return *buf;
+
+    /* No -- allocate a larger buffer, doubling buflen. */
+    *buflen += *buflen;
+
+    { 
+      char *new_buf;
+
+      if ((new_buf = realloc(*buf, *buflen)) == NULL)
+        break;
+
+      *buf = new_buf;
+    }
+
+    cp = *buf + (cp - *buf);
+    cp = strchr(cp, '\0');
   }
 
-  cp = rbuf;
+  free(*buf);
+  *buf = NULL;
+  *buflen = 0;
 
-  while(fgets(cp,(*size) - (cp - rbuf), fp) != (char *)0) {
-    if(strchr(cp,'\n'))
-      return rbuf;
-
-    *size += *size;
-    *buf = realloc(rbuf,*size);
-
-    if(!*buf)
-      break;
-
-    cp = *buf + (cp - rbuf);
-    rbuf = *buf;
-    cp = strchr(cp,'\0');
-  }
-
-  free(rbuf);
-  *buf = NULL; *size = 0;
-  return 0;
+  return NULL;
 }
 
-static char **_grlist(char *s)
-{
+static char **supp_grplist(char *s) {
   int nmembers = 0;
 
-  while(s && *s && nmembers < MAXMEMBERS) {
+  while (s && *s && nmembers < MAXMEMBERS) {
     members[nmembers++] = s;
-    while(*s && *s != ',')
+    while (*s && *s != ',')
       s++;
-    if(*s)
+
+    if (*s)
       *s++ = '\0';
   }
 
-  members[nmembers] = (char*)0;
+  members[nmembers] = NULL;
   return members;
 }
 
-static struct group *
-_pgetgrent(const char *buf)
-{
+static struct group *supp_getgrent(const char *buf) {
   int i;
   char *cp;
 
   i = strlen(buf) + 1;
   
-  if(!grpbuf)
+  if (!grpbuf)
     grpbuf = malloc(i);
   else
     grpbuf = realloc(grpbuf, i);
   
-  if(!grpbuf)
+  if (!grpbuf)
     return NULL;
   
   sstrncpy(grpbuf, buf, i);
   
-  if((cp = strrchr(grpbuf,'\n')))
+  if ((cp = strrchr(grpbuf, '\n')))
     *cp = '\0';
 
-  for(cp = grpbuf, i = 0; i < NGRPFIELDS && cp; i++) {
+  for (cp = grpbuf, i = 0; i < NGRPFIELDS && cp; i++) {
     grpfields[i] = cp;
-    if((cp = strchr(cp,':')))
+
+    if ((cp = strchr(cp, ':')))
       *cp++ = 0;
   }
 
-  if(i < (NGRPFIELDS - 1)) {
+  if (i < (NGRPFIELDS - 1)) {
     log_pri(LOG_ERR, "Malformed entry in group file: %s", buf);
-    return 0;
+    return NULL;
   }
   
-  if(*grpfields[2] == '\0')
-    return 0;
+  if (*grpfields[2] == '\0')
+    return NULL;
 
   grent.gr_name = grpfields[0];
   grent.gr_passwd = grpfields[1];
   grent.gr_gid = atoi(grpfields[2]);
-  grent.gr_mem = _grlist(grpfields[3]);
+  grent.gr_mem = supp_grplist(grpfields[3]);
 
   return &grent;
 }
 
-struct group *fgetgrent(FILE *fp)
-{
-  char *buf = NULL;
-  int size = 0;
-  char *cp;
-  struct group *g;
+struct group *fgetgrent(FILE *fp) {
+  char *cp = NULL, *buf = malloc(BUFSIZ);
+  int buflen = BUFSIZ;
+  struct group *grp = NULL;
 
-  while (fgetbufline(&buf,&size,fp) != (char*)0) {
+  if (!buf)
+    return NULL;
+
+  while (fgetbufline(&buf, &buflen, fp) != NULL) {
 
     /* ignore comment and empty lines */
     if (buf[0] == '\0' || buf[0] == '#')
       continue;
 
-    if ((cp = strchr(buf,'\n')) != (char*)0)
+    if ((cp = strchr(buf, '\n')) != NULL)
       *cp = '\0';
 
-    g = _pgetgrent(buf);
+    grp = supp_getgrent(buf);
     free(buf);
-    return g;
+
+    return grp;
   }
 
-  return 0;
+  return NULL;
 }
 
 #endif /* HAVE_FGETGRENT */
