@@ -4557,7 +4557,7 @@ fi
 
 if test x"$enable_auth_pam" != xno ; then
 
-for ac_header in security/pam_appl.h
+for ac_header in security/pam_appl.h pam/pam_appl.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 echo "$as_me:4563: checking for $ac_header" >&5
