@@ -25,13 +25,11 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.73 2003-08-29 05:44:04 castaglia Exp $
+ * $Id: inet.c,v 1.74 2003-09-08 00:26:49 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
-
-#define CHECK_INET_POOL	 if (!inet_pool) create_inet_pool()
 
 extern server_rec *main_server;
 
@@ -45,21 +43,6 @@ static int inet_errno = 0;		/* Holds errno */
  * is not given.  This is mainly for the benefit of initialize_connection().
  */
 static int inet_family = 0;
-
-/* Cleanup for inet_pool. */
-static void inet_pool_cleanup_cb(void *data) {
-  inet_pool = NULL;
-}
-
-/* Create the private inet pool. */
-static void create_inet_pool(void) {
-  inet_pool = make_sub_pool(permanent_pool);
-
-  /* Necessary to register a cleanup, in case the whole process execs and
-   * we lose our pool.
-   */
-  register_cleanup(inet_pool, NULL, inet_pool_cleanup_cb, inet_pool_cleanup_cb);
-}
 
 /* Provide replacements for needed functions. */
 
@@ -238,11 +221,6 @@ int pr_inet_pton(int af, const char *src, void *dst) {
  * to free up memory.
  */
 void pr_inet_clear(void) {
-  /* Sanity check. */
-  if (!inet_pool)		/* Sanity check */
-    return;
-
-  unregister_cleanup(inet_pool, NULL, inet_pool_cleanup_cb);
   destroy_pool(inet_pool);
   inet_pool = NULL;
 }
@@ -350,9 +328,6 @@ conn_t *pr_inet_copy_connection(pool *p, conn_t *c) {
   if (c->remote_name)
     res->remote_name = pstrdup(res->pool, c->remote_name);
 
-  if (c->iplist)
-    res->iplist = copy_array(sub_pool, c->iplist);
-
   register_cleanup(res->pool, (void *) res, conn_cleanup_cb, conn_cleanup_cb);
   return res;
 }
@@ -364,40 +339,23 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     pr_netaddr_t *bind_addr, int port, int retry_bind, int reporting) {
   pool *sub_pool = NULL;
   conn_t *c;
-  array_header *tmp;
-  server_rec *s;
   pr_netaddr_t na;
   int addr_family;
   int res = 0, one = 1, hold_errno;
 
-  CHECK_INET_POOL;
+  if (!inet_pool)
+    inet_pool = make_sub_pool(permanent_pool);
 
   if ((!servers || !servers->xas_list) && !main_server) {
     errno = EINVAL;
     return NULL;
   }
 
-  /* Build the accept IPs dynamically using the inet work pool.
-   * Once built, move into the conn struc.
-   */
-  tmp = make_array(inet_pool, 5, sizeof(pr_netaddr_t));
   sub_pool = make_sub_pool(p);
   c = (conn_t *) pcalloc(sub_pool, sizeof(conn_t));
   c->pool = sub_pool;
 
-  if (servers && servers->xas_list) {
-    for (s = (server_rec *) servers->xas_list; s; s = s->next)
-      if (s->addr)
-        memcpy((pr_netaddr_t *) push_array(tmp), s->addr,
-          sizeof(pr_netaddr_t));
-
-  } else
-    memcpy((pr_netaddr_t *) push_array(tmp), main_server->addr,
-      sizeof(pr_netaddr_t));
-
   c->local_port = port;
-  c->iplist = copy_array(c->pool, tmp);
-  c->niplist = c->iplist->nelts;
   c->rfd = c->wfd = -1;
 
   if (bind_addr)
@@ -604,7 +562,8 @@ conn_t *pr_inet_create_connection_portrange(pool *p, xaset_t *servers,
   conn_t *c = NULL;
 
   /* Make sure the temporary inet work pool exists. */
-  CHECK_INET_POOL;
+  if (!inet_pool)
+    inet_pool = make_sub_pool(permanent_pool); 
 
   range_len = high_port - low_port + 1;
   range = (int *) pcalloc(inet_pool, range_len * sizeof(int));
@@ -1362,4 +1321,8 @@ void pr_init_inet(void) {
 #ifdef HAVE_ENDPROTOENT
   endprotoent();
 #endif
+
+  if (inet_pool)
+    destroy_pool(inet_pool);
+  inet_pool = make_sub_pool(permanent_pool);
 }

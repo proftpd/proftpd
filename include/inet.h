@@ -25,7 +25,7 @@
  */
 
 /* BSD socket manipulation tools.
- * $Id: inet.h,v 1.21 2003-08-12 17:07:09 castaglia Exp $
+ * $Id: inet.h,v 1.22 2003-09-08 00:26:48 castaglia Exp $
  */
 
 #ifndef PR_INET_H
@@ -267,9 +267,6 @@ typedef struct conn_struc {
   int rcvbuf,sndbuf;			/* Socket recv and send sizes */
 
   int xerrno;				/* Set to error if mode == CM_ERROR */
-
-  array_header *iplist;
-  int niplist;				/* IPs we are listening to */
 
   int rfd,wfd;				/* Read and write fds */
   pr_netio_stream_t *instrm, *outstrm;	/* Input/Output streams */
