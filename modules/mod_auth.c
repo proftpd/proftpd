@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.37 2000-07-27 16:07:24 macgyver Exp $
+ * $Id: mod_auth.c,v 1.38 2000-08-01 20:13:07 macgyver Exp $
  */
 
 #include "conf.h"
@@ -875,7 +875,6 @@ static int _setup_environment(pool *p, char *user, char *pass)
 #else
   snprintf(ttyname, sizeof(ttyname), "ftpd%d",(int)getpid());
 #endif
-  ttyname[sizeof(ttyname)-1] = '\0';
 
   /* Perform wtmp logging only if not turned off in <Anonymous>
    * or the current server
@@ -1141,16 +1140,153 @@ static void _do_user_counts()
   add_config_param_set(&conf, config_class_users, 1, ccur);
 }
 
-MODRET cmd_user(cmd_rec *cmd)
-{
-  int nopass = 0, cur = 0,hcur = 0, ccur = 0;
+static void _auth_check_count(cmd_rec *cmd, char *user) {
+  int cur = 0, hcur = 0, ccur = 0;
   logrun_t *l;
-  config_rec *c,*maxc;
-  char *user,*origuser, config_class_users[128] = {'\0'};
-  int failnopwprompt = 0, aclp,i, classes_enabled;
+  config_rec *c, *maxc;
+  char *origuser, config_class_users[128] = {'\0'};
+  int classes_enabled = 0;
+  
+  if((classes_enabled = get_param_int(main_server->conf,
+				      "Classes", FALSE)) != 1)
+    classes_enabled = 0;
+  
+  if(classes_enabled)
+    session.class = (class_t *) find_class(session.c->remote_ipaddr,
+					   session.c->remote_name);
+  
+  /* Determine how many users are currently connected.
+   */
+  origuser = user;
+  c = _auth_resolve_user(cmd->tmp_pool, &user, NULL, NULL);
+  
+  if(user) {
+    PRIVS_ROOT;
+    while((l = log_read_run(NULL)) != NULL)
+      /* Make sure it matches our current server */
+      if(l->server_ip.s_addr == main_server->ipaddr->s_addr &&
+         l->server_port == main_server->ServerPort) {
+        if((c && c->config_type == CONF_ANON && !strcmp(l->user,user)) || !c) {
+          char *s, *d, ip[32] = {'\0'};
+          int mpos = sizeof(ip) - 1;
+	  
+          cur++;
+          s = strchr (l->address, '[');
+          d = ip;
+          if (s != NULL) s++;
+          while (*s && *s != ']' && d<ip+mpos) *d++ = *s++;
+          *d = '\0';
+	  
+          if(!strcmp(ip, inet_ntoa(*session.c->remote_ipaddr)))
+            hcur++;
+        }
+	
+        if(classes_enabled && strcmp(l->class, session.class->name) == 0)
+        	ccur++;
+      }
+    PRIVS_RELINQUISH;
+  }
+  
+  remove_config(cmd->server->conf, "CURRENT-CLIENTS", FALSE);
+  add_config_param_set(&cmd->server->conf, "CURRENT-CLIENTS", 1, (void *) cur);
+  
+  if(classes_enabled) {
+    remove_config(cmd->server->conf, "CURRENT-CLASS", FALSE);
+    add_config_param_set(&cmd->server->conf, "CURRENT-CLASS", 1,
+			 session.class->name);
+
+    snprintf(config_class_users, sizeof(config_class_users), "%s-%s",
+	     "CURRENT-CLIENTS-CLASS", session.class->name);
+    remove_config(cmd->server->conf, config_class_users, FALSE);
+    add_config_param_set(&cmd->server->conf, config_class_users, 1, ccur);
+    
+    /* Too many users in this class?
+     */
+    if(ccur >= session.class->max_connections) {
+      char *display = NULL;
+      
+      if(session.flags & SF_ANON)
+	display = (char*) get_param_ptr(session.anon_config->subset,
+					"DisplayGoAway",FALSE);
+      
+      if(!display)
+	display = (char*) get_param_ptr(cmd->server->conf,
+					"DisplayGoAway",FALSE);
+      
+      if(display)
+	core_display_file(R_530, display);
+      else
+	send_response(R_530, "Too many users in your class, "
+		      "please try again later.");
+	
+      log_auth(LOG_NOTICE, "Connection refused (max clients for class %s).",
+	       session.class->name);
+      
+      end_login(0);
+    }
+  }
+  
+  /* Try to determine what MaxClients applies to the user
+   * (if any) and count through the runtime file to see
+   * if this would exceed the max.
+   */
+  maxc = find_config((c ? c->subset : cmd->server->conf),
+		     CONF_PARAM, "MaxClientsPerHost", FALSE);
+  
+  if(maxc) {
+    int max = (int) maxc->argv[0];
+    char *maxstr = "Sorry, maximum number clients (%m) from your host "
+      "already connected.";
+    char maxn[10] = {'\0'};
+    
+    snprintf(maxn, sizeof(maxn), "%d", max);
+    
+    if(maxc->argc > 1)
+      maxstr = maxc->argv[1];
+    
+    if(hcur >= max) {
+      send_response(R_530, "%s",
+		    sreplace(cmd->tmp_pool,maxstr, "%m", maxn, NULL));
+      
+      log_auth(LOG_NOTICE, "Connection refused (max clients per host %d).",
+	       max);
+      
+      end_login(0);
+    }
+  }
+  
+  maxc = find_config((c ? c->subset : cmd->server->conf),
+		     CONF_PARAM, "MaxClients", FALSE);
+
+  if(maxc) {
+    int max = (int) maxc->argv[0];
+    char *maxstr = "Sorry, maximum number of allowed clients (%m) "
+      "already connected.";
+    char maxn[10] = {'\0'};
+    
+    snprintf(maxn, sizeof(maxn), "%d", max);
+
+    if(maxc->argc > 1)
+      maxstr = maxc->argv[1];
+    
+    if(cur >= max) {
+      send_response(R_530, "%s",
+		    sreplace(cmd->tmp_pool, maxstr, "%m", maxn, NULL));
+      log_auth(LOG_NOTICE, "Connection refused (max clients %d).", max);
+      end_login(0);
+    }
+  }
+}
+
+MODRET cmd_user(cmd_rec *cmd) {
+  int nopass = 0;
+  config_rec *c;
+  char *user, *origuser;
+  int failnopwprompt = 0, aclp, i;
 
   if(logged_in)
     return ERROR_MSG(cmd,R_503,"You are already logged in!");
+
   if(cmd->argc != 2)
     return ERROR_MSG(cmd,R_500,"'USER': command requires a parameter.");
 
@@ -1164,12 +1300,16 @@ MODRET cmd_user(cmd_rec *cmd)
   c = _auth_resolve_user(cmd->tmp_pool,&user,NULL,NULL);
 
   switch(get_param_int((c && c->config_type == CONF_ANON ? c->subset :
-                     main_server->conf),"LoginPasswordPrompt",FALSE))
-  {
-    case 0: failnopwprompt = 1; break;
-    default: failnopwprompt = 0; break;
-  }
+                     main_server->conf),"LoginPasswordPrompt",FALSE)) {
+  case 0:
+    failnopwprompt = 1;
+    break;
 
+  default:
+    failnopwprompt = 0;
+    break;
+  }
+  
   if(failnopwprompt) {
     if(!user) {
       log_pri(LOG_NOTICE, "USER %s (Login failed): Not a UserAlias.",
@@ -1181,7 +1321,7 @@ MODRET cmd_user(cmd_rec *cmd)
     aclp = login_check_limits(main_server->conf,FALSE,TRUE,&i);
 
     if(c && c->config_type != CONF_ANON) {
-      c = (config_rec*)pcalloc(session.pool,sizeof(config_rec));
+      c = (config_rec *) pcalloc(session.pool, sizeof(config_rec));
       c->config_type = CONF_ANON;
       c->name = "";	/* don't really need this yet */
       c->subset = main_server->conf;
@@ -1191,153 +1331,26 @@ MODRET cmd_user(cmd_rec *cmd)
       if(!login_check_limits(c->subset,FALSE,TRUE,&i) || (!aclp && !i) ) {
 	log_auth(LOG_NOTICE, "ANON %s: Limit access denies login.",
 		 origuser);
-	send_response(R_530,"Login incorrect.");
+	send_response(R_530, "Login incorrect.");
 	end_login(0);
       }
     }
     
     if(!c && !aclp) {
       log_auth(LOG_NOTICE, "USER %s: Limit access denies login.", origuser);
-      send_response(R_530,"Login incorrect.");
+      send_response(R_530, "Login incorrect.");
       end_login(0);
     }
   }
+
+  _auth_check_count(cmd, origuser);
   
-  if((classes_enabled = get_param_int(main_server->conf,"Classes",FALSE)) < 0)
-    classes_enabled = 0;
-  
-  if(classes_enabled)
-    session.class = (class_t *) find_class(session.c->remote_ipaddr,
-					   session.c->remote_name);
-  
-  /* Determine how many users are currently connected */
-
-  if(user) {
-    PRIVS_ROOT;
-    while((l = log_read_run(NULL)) != NULL)
-      /* Make sure it matches our current server */
-      if(l->server_ip.s_addr == main_server->ipaddr->s_addr &&
-         l->server_port == main_server->ServerPort) {
-        if((c && c->config_type == CONF_ANON && !strcmp(l->user,user)) || !c) {
-          char *s, *d, ip[32] = {'\0'};
-          int  mpos=sizeof(ip)-1;
-
-          cur++;
-          s = strchr (l->address, '[');
-          d = ip;
-          if (s != NULL) s++;
-          while (*s && *s != ']' && d<ip+mpos) *d++ = *s++;
-          *d = '\0';
-
-          if(!strcmp(ip, inet_ntoa(*session.c->remote_ipaddr)))
-            hcur++;
-        }
-	
-        if(classes_enabled && strcmp(l->class, session.class->name) == 0)
-        	ccur++;
-      }
-    PRIVS_RELINQUISH;
-  }
-
-  remove_config(cmd->server->conf,"CURRENT-CLIENTS",FALSE);
-  add_config_param_set(&cmd->server->conf,"CURRENT-CLIENTS",1,(void*)cur);
-
-  if (classes_enabled) {
-    remove_config(cmd->server->conf,"CURRENT-CLASS",FALSE);
-    add_config_param_set(&cmd->server->conf,"CURRENT-CLASS",1,session.class->name);
-
-    snprintf(config_class_users, sizeof(config_class_users), "%s-%s", "CURRENT-CLIENTS-CLASS", session.class->name);
-    remove_config(cmd->server->conf,config_class_users,FALSE);
-    add_config_param_set(&cmd->server->conf,config_class_users,1,ccur);
-
-    /* too many users in this class ? */
-    if(ccur >= session.class->max_connections) {
-	char *display = NULL;
-
-	if(session.flags & SF_ANON)
-	  display = (char*) get_param_ptr(session.anon_config->subset,
-					  "DisplayGoAway",FALSE);
-           
-	if(!display)
-	  display = (char*) get_param_ptr(cmd->server->conf,
-					  "DisplayGoAway",FALSE);
-
-	if (display)
-	  core_display_file(R_530, display);
-	else
-	  send_response(R_530,
-			"Too many users in your class, "
-			"please try again later.");
-	
-	log_auth(LOG_NOTICE, "Connection refused (max clients for class %s).",
-		 session.class->name);
-	
-	end_login(0);
-    }
-  }
-  
-  /* Try to determine what MaxClients applies to the user
-   * (if any) and count through the runtime file to see
-   * if this would exceed the max.
-   */
-
-
-  if(c && user && get_param_int(c->subset,"AnonRequirePassword",FALSE) != 1)
+  if(c && user && get_param_int(c->subset, "AnonRequirePassword", FALSE) != 1)
       nopass++;
 
-
-  maxc = find_config((c ? c->subset : cmd->server->conf),
-                  CONF_PARAM,"MaxClientsPerHost",FALSE);
-
-  if(maxc) {
-    int max = (int)maxc->argv[0];
-    char *maxstr = "Sorry, maximum number clients (%m) from your host already connected.";
-    char maxn[10] = {'\0'};
-
-    snprintf(maxn, sizeof(maxn), "%d",max);
-    maxn[sizeof(maxn)-1] = '\0';
-
-    if(maxc->argc > 1)
-      maxstr = maxc->argv[1];
-    
-    if(hcur >= max) {
-      send_response(R_530,"%s",
-                    sreplace(cmd->tmp_pool,maxstr,"%m",maxn,NULL));
-
-      log_auth(LOG_NOTICE, "Connection refused (max clients per host %d).",
-	       max);
-      
-      end_login(0);
-    }
-
-  }
-
-
-  maxc = find_config((c ? c->subset : cmd->server->conf),
-                  CONF_PARAM,"MaxClients",FALSE);
-
-  if(maxc) {
-    int max = (int)maxc->argv[0];
-    char *maxstr = "Sorry, maximum number of allowed clients (%m) already connected.";
-    char maxn[10] = {'\0'};
-
-    snprintf(maxn, sizeof(maxn), "%d",max);
-    maxn[sizeof(maxn)-1] = '\0';
-
-    if(maxc->argc > 1)
-      maxstr = maxc->argv[1];
-    
-    if(cur >= max) {
-      send_response(R_530, "%s",
-		    sreplace(cmd->tmp_pool, maxstr, "%m", maxn, NULL));
-      log_auth(LOG_NOTICE, "Connection refused (max clients %d).", max);
-      end_login(0);
-    }
-
-  }
-
   if(nopass)
-    add_response(R_331, "Anonymous login ok, send your complete e-mail address as password.");
+    add_response(R_331, "Anonymous login ok, send your complete email "
+		 "address as your password.");
   else
     add_response(R_331, "Password required for %s.", cmd->argv[1]);
 
@@ -1362,6 +1375,8 @@ MODRET cmd_pass(cmd_rec *cmd)
 
   if(!user)
     return ERROR_MSG(cmd,R_503,"Login with USER first.");
+  
+  _auth_check_count(cmd, user);
   
   if((res = _setup_environment(cmd->tmp_pool,user,cmd->arg)) == 1) {
     add_config_param_set(&cmd->server->conf,"authenticated",1,(void*)1);
