@@ -1,3 +1,8 @@
+2001-01-28 21:14  flood
+
+	* modules/mod_core.c, src/dirtree.c: Bug #353 - Allows use of '!'
+	negation operator in Allow/Deny.
+
 2001-01-28 19:23  flood
 
 	* doc/Configuration.html, include/inet.h, modules/mod_core.c,
