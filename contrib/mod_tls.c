@@ -2259,6 +2259,7 @@ MODRET tls_auth(cmd_rec *cmd) {
 
   } else {
     pr_response_add_err(R_504, "AUTH %s unsupported", cmd->argv[1]);
+    tls_log("AUTH %s unsupported, declining", cmd->argv[1]);
 
     /* Allow other RFC2228 modules a chance a handling this command. */
     return DECLINED(cmd);
@@ -2275,8 +2276,11 @@ MODRET tls_pbsz(cmd_rec *cmd) {
   CHECK_CMD_ARGS(cmd, 2);
 
   if (!(tls_flags & TLS_SESS_ON_CTRL)) {
-    pr_response_add_err(R_503, "PBSZ not allowed on insecure control connection");
-    return ERROR(cmd);
+    pr_response_add_err(R_503,
+      "PBSZ not allowed on insecure control connection");
+
+    /* Allow other RFC2228 modules a chance a handling this command. */
+    return DECLINED(cmd);
   }
 
   /* We expect "PBSZ 0" */
@@ -2298,7 +2302,9 @@ MODRET tls_prot(cmd_rec *cmd) {
 
   if (!(tls_flags & TLS_SESS_PBSZ_OK)) {
     pr_response_add_err(R_503, "You must issue the PBSZ command prior to PROT");
-    return ERROR(cmd);
+
+    /* Allow other RFC2228 modules a chance a handling this command. */
+    return DECLINED(cmd);
   }
 
   /* Only PROT C or PROT P is valid with respect to SSL/TLS. */
@@ -2316,7 +2322,11 @@ MODRET tls_prot(cmd_rec *cmd) {
 
     } else {
       pr_response_add_err(R_534, "Unwilling to accept security parameters");
-      return ERROR(cmd);
+      tls_log("%s: unwilling to accept security parameter (%s), declining",
+        cmd->argv[1]);
+
+      /* Allow other RFC2228 modules a chance a handling this command. */
+      return DECLINED(cmd);
     }
 
   } else if (!strcmp(cmd->argv[1], "P")) {
@@ -2328,11 +2338,17 @@ MODRET tls_prot(cmd_rec *cmd) {
 
   } else if (!strcmp(cmd->argv[1], "S") || !strcmp(cmd->argv[1], "E")) {
     pr_response_add_err(R_536, "PROT %s unsupported", cmd->argv[1]);
-    return ERROR(cmd);
+    tls_log("PROT %s unsupported, declining", cmd->argv[1]);
+
+    /* Allow other RFC2228 modules a chance a handling this command. */
+    return DECLINED(cmd);
 
   } else {
     pr_response_add_err(R_504, "PROT %s unsupported", cmd->argv[1]);
-    return ERROR(cmd);
+    tls_log("PROT %s unsupported, declining", cmd->argv[1]);
+
+    /* Allow other RFC2228 modules a chance a handling this command. */
+    return DECLINED(cmd);
   }
 
   return HANDLED(cmd);
