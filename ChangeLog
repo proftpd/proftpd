@@ -1,4 +1,81 @@
+1999-10-01  MacGyver  <macgyver@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/src/io.c, /var/proftpd/proftpd-1.2/src/log.c, /var/proftpd/proftpd-1.2/src/main.c, /var/proftpd/proftpd-1.2/config.h.in, /var/proftpd/proftpd-1.2/configure, /var/proftpd/proftpd-1.2/configure.in, /var/proftpd/proftpd-1.2/include/data.h, /var/proftpd/proftpd-1.2/include/dirtree.h, /var/proftpd/proftpd-1.2/include/log.h, /var/proftpd/proftpd-1.2/include/proftpd.h, /var/proftpd/proftpd-1.2/modules/mod_auth.c, /var/proftpd/proftpd-1.2/modules/mod_core.c, /var/proftpd/proftpd-1.2/modules/mod_log.c, /var/proftpd/proftpd-1.2/modules/mod_xfer.c:
+	Added classes support, new bandwidth support, and sendfile support.
+
+	* /var/proftpd/proftpd-1.2/src/data.c: Added support for sendfile().
+
+	* /var/proftpd/proftpd-1.2/doc/Undocumented.txt:
+	Regenerated the undocumented directives.
+
+	* /var/proftpd/proftpd-1.2/include/privs.h, /var/proftpd/proftpd-1.2/modules/mod_auth.c:
+	Added in support for setresuid on HP/UX.
+
+	* /var/proftpd/proftpd-1.2/doc/Configuration.html, /var/proftpd/proftpd-1.2/modules/mod_xfer.c:
+	Added new Bandwidth code and documentation.
+
+	* /var/proftpd/proftpd-1.2/modules/mod_auth.c:
+	Corrected a tricky bug with parsing of configuration files.  Thanks Klaus.
+
+	* /var/proftpd/proftpd-1.2/modules/mod_ls.c:
+	Fixed a silly typo with snprintf.
+
+	* /var/proftpd/proftpd-1.2/modules/mod_unixpw.c:
+	Added support for HP/UX-style security.
+
+	* /var/proftpd/proftpd-1.2/modules/mod_core.c:
+	Removed old and naieve bandwidth code.
+
+	* /var/proftpd/proftpd-1.2/include/dirtree.h, /var/proftpd/proftpd-1.2/src/dirtree.c:
+	Remove old and naieve bandwidth code.
+
+	* /var/proftpd/proftpd-1.2/config.h.in, /var/proftpd/proftpd-1.2/configure, /var/proftpd/proftpd-1.2/configure.in:
+	HP/UX security detection added.
+
+1999-09-30  MacGyver  <macgyver@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/modules/mod_auth.c:
+	Fix a potential security hole.
+
+	* /var/proftpd/proftpd-1.2/modules/mod_ls.c:
+	DirFakeMode available inside <Directory> blocks.
+
+	* /var/proftpd/proftpd-1.2/configure, /var/proftpd/proftpd-1.2/configure.in:
+	Corrected configure portability issues.
+
+	* /var/proftpd/proftpd-1.2/modules/mod_ls.c:
+	Corrected static declarations.
+
+	* /var/proftpd/proftpd-1.2/contrib/mod_linuxprivs.c:
+	Added support for PowerPC architectures.
+
+	* /var/proftpd/proftpd-1.2/src/dirtree.c:
+	Corrected a couple of problems related to IP LIMIT directives.
+
+	* /var/proftpd/proftpd-1.2/contrib/mod_readme.c:
+	Deleted spurious mod_readme file.
+
+	* /var/proftpd/proftpd-1.2/modules/mod_core.c:
+	Fixed compliance with RFC 929 with respect to RNTO.
+
+1999-09-29  MacGyver  <macgyver@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/modules/mod_auth.c, /var/proftpd/proftpd-1.2/modules/mod_ls.c:
+	Minor bug fixes.
+
+	* /var/proftpd/proftpd-1.2/src/dirtree.c:
+	Fixed a bug in match_ip that was causing some LIMIT directives to fail.
+
+1999-09-28  MacGyver  <macgyver@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/src/inet.c:
+	Corrected an incorrect call to inet_validate in inet_getaddr.
+
 1999-09-26  MacGyver  <macgyver@starbase.tos.net>
+
+	* /var/proftpd/proftpd-1.2/doc/Configuration.html: Fixed a small typo.
+
+	* /var/proftpd/proftpd-1.2/ChangeLog: Added in a real ChangeLog.
 
 	* /var/proftpd/proftpd-1.2/doc/Undocumented.txt, /var/proftpd/proftpd-1.2/modules/mod_core.c:
 	Added in CommandBufferSize.
