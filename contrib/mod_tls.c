@@ -2918,6 +2918,13 @@ static int tls_sess_init(void) {
   /* Initialize the OpenSSL context for this server's configuration. */
   res = tls_init_server();
 
+  /* Add the additional features implemented by this module into the
+   * list, to be displayed in response to a FEAT command.
+   */
+  pr_add_feat("AUTH TLS");
+  pr_add_feat("PBSZ");
+  pr_add_feat("PROT");
+
   return 0;
 }
 
