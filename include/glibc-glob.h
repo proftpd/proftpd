@@ -49,24 +49,6 @@ extern "C" {
 # define __PMT(x) __P(x)
 #endif
 
-/* We need `size_t' for the following definitions.  */
-#ifndef __size_t
-# if defined __GNUC__ && __GNUC__ >= 2
-typedef __SIZE_TYPE__ __size_t;
-#  ifdef _XOPEN_SOURCE
-typedef __SIZE_TYPE__ size_t;
-#  endif
-# else
-/* This is a guess.  */
-typedef unsigned long int __size_t;
-# endif
-#else
-/* The GNU CC stddef.h version defines __size_t as empty.  We need a real
-   definition.  */
-# undef __size_t
-# define __size_t size_t
-#endif
-
 /* Bits set in the FLAGS argument to `glob'.  */
 #define	GLOB_ERR	(1 << 0)/* Return on read errors.  */
 #define	GLOB_MARK	(1 << 1)/* Append a slash to each name.  */
@@ -117,9 +99,9 @@ struct stat;
 #endif
 typedef struct
   {
-    __size_t gl_pathc;		/* Count of paths matched by the pattern.  */
+    size_t gl_pathc;		/* Count of paths matched by the pattern.  */
     char **gl_pathv;		/* List of matched pathnames.  */
-    __size_t gl_offs;		/* Slots to reserve in `gl_pathv'.  */
+    size_t gl_offs;		/* Slots to reserve in `gl_pathv'.  */
     int gl_flags;		/* Set to FLAGS, maybe | GLOB_MAGCHAR.  */
 
     /* If the GLOB_ALTDIRFUNC flag is set, the following functions
@@ -147,9 +129,9 @@ struct stat64;
 # endif
 typedef struct
   {
-    __size_t gl_pathc;
+    size_t gl_pathc;
     char **gl_pathv;
-    __size_t gl_offs;
+    size_t gl_offs;
     int gl_flags;
 
     /* If the GLOB_ALTDIRFUNC flag is set, the following functions

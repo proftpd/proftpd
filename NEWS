@@ -1,8 +1,13 @@
-$Id: NEWS,v 1.363 2003-01-30 19:05:01 jwm Exp $
+$Id: NEWS,v 1.364 2003-02-01 18:11:49 castaglia Exp $
 
 CVS
 ---
 - Bug 1863 - Unable to build under UnixWare 7
+- Bug 1943 - Unable to install on FreeBSD 5.0.  FreeBSD 5.0's header files
+  have been rewritten, and glibc's glob.h collided with the new files.  The
+  fix was simply to use size_t, rather than trying to determine and use
+  __size_t (glob.h was intended to be used during library compilation, not
+  during application compilation).
 
 1.2.8rc2 - Released 29-Jan-2003
 ---------------------------------
