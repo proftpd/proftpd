@@ -19,7 +19,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.35 2001-02-22 22:39:41 flood Exp $
+ * $Id: mod_ls.c,v 1.36 2001-02-22 23:32:12 flood Exp $
  */
 
 #include "conf.h"
@@ -778,7 +778,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name)
 	 * check to see whether hidden files should be ignored
    */
 	if ((c = _find_ls_limit(cmd->argv[0])) != NULL &&
-      get_param_int(c->subset, "IgnoreHidden", FALSE))
+      get_param_int(c->subset, "IgnoreHidden", FALSE) == TRUE)
     ignore_hidden = TRUE;
 
   if(dir) {
@@ -1038,7 +1038,14 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
         while(path && *path) {
           struct stat st;
 
-	  /* If we have a leading '.', two conditions must be true for us to
+          /* I believe this code may be unnecessary here because it's only
+           * used if args are passed to LIST/STAT, and then only to display
+           * the initial directories/files from a glob.  listdir() will hide
+           * .dotfiles correctly, so ...  jss - 2/20/01
+           */
+
+#if 0
+          /* If we have a leading '.', two conditions must be true for us to
 	   * invalidate it:
 	   *
 	   * - opt_a is not set
@@ -1049,7 +1056,8 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
             path++;
             continue;
           }
-	  
+#endif
+          
           if(fs_lstat(*path,&st) == 0) {
             mode_t target_mode,lmode;
 	    target_mode = st.st_mode;
