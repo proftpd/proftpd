@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.2 2002-12-07 16:29:10 jwm Exp $
+ * $Id: bindings.c,v 1.3 2002-12-07 21:25:10 jwm Exp $
  */
 
 #include "conf.h"
@@ -69,7 +69,7 @@ static unsigned int ipbind_hash_addr(p_in_addr_t *addr) {
 
   /* NOTE: use inet_addr() accessor functions in the future */
   unsigned int key = addr->s_addr;
-  
+
   key ^= (key >> 16);
   return ((key >> 8) ^ key) % PR_BINDINGS_TABLE_SIZE;
 }
@@ -259,12 +259,12 @@ int pr_ipbind_close(p_in_addr_t *addr, unsigned int port,
     /* A NULL addr has a special meaning: close _all_ ipbinds in the
      * list.
      */
- 
-    for (i = 0; i < PR_BINDINGS_TABLE_SIZE; i++) { 
+
+    for (i = 0; i < PR_BINDINGS_TABLE_SIZE; i++) {
       pr_ipbind_t *ipbind = NULL;
       for (ipbind = ipbind_table[i]; ipbind; ipbind = ipbind->ib_next) {
 
-        if (SocketBindTight && ipbind->ib_server->listen != NULL) { 
+        if (SocketBindTight && ipbind->ib_server->listen != NULL) {
           inet_close(main_server->pool, ipbind->ib_server->listen);
           ipbind->ib_server->listen = NULL;
         }
@@ -362,7 +362,7 @@ pr_ipbind_t *pr_ipbind_find(p_in_addr_t *addr, unsigned int port,
     unsigned char skip_inactive) {
   pr_ipbind_t *ipbind = NULL;
   register unsigned int i = ipbind_hash_addr(addr);
-  
+
   for (ipbind = ipbind_table[i]; ipbind; ipbind = ipbind->ib_next) {
 
     if (skip_inactive && !ipbind->ib_isactive)
@@ -405,7 +405,7 @@ server_rec *pr_ipbind_get_server(p_in_addr_t *addr, unsigned int port) {
     /* NOTE: use the inet_addr() accessor functions in the future */
     if ((tmp.s_addr & loopmask.s_addr) == loopback.s_addr &&
         (!ipbind_localhost_server->ib_port ||
-         port == ipbind_localhost_server->ib_port)) 
+         port == ipbind_localhost_server->ib_port))
     {
       return ipbind_localhost_server->ib_server;
     }
@@ -583,7 +583,7 @@ int pr_namebind_create(server_rec *server, const char *name, p_in_addr_t *addr,
   } else {
     register unsigned int i = 0;
     namebinds = (pr_namebind_t **) ipbind->ib_namebinds->elts;
-  
+
     /* See if there is already a namebind for the given name. */
     for (i = 0; i < ipbind->ib_namebinds->nelts; i++) {
       namebind = namebinds[i];
@@ -591,7 +591,7 @@ int pr_namebind_create(server_rec *server, const char *name, p_in_addr_t *addr,
         errno = EEXIST;
         return -1;
       }
-    } 
+    }
   }
 
   /* Allocate a new namebind */
