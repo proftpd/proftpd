@@ -1,5 +1,5 @@
 /*
- * mod_tls - an RFC2228 SSL/TLS module for ProFTPD
+ * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
  * Copyright (c) 2002-2005 TJ Saunders <tj@castaglia.org>
@@ -47,7 +47,7 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.0.7"
+#define MOD_TLS_VERSION		"mod_tls/2.1"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001021001 
@@ -330,6 +330,7 @@ static unsigned char *tls_authenticated = NULL;
 #define TLS_SESS_NEED_DATA_PROT		0x0100
 #define TLS_SESS_CTRL_RENEGOTIATING	0x0200
 #define TLS_SESS_DATA_RENEGOTIATING	0x0400
+#define TLS_SESS_HAVE_CCC		0x0800
 
 /* mod_tls option flags */
 #define TLS_OPT_NO_CERT_REQUEST		0x0001
@@ -388,7 +389,7 @@ static RSA *tls_tmp_rsa = NULL;
 
 /* SSL/TLS support functions */
 static void tls_closelog(void);
-static void tls_end_sess(SSL *, int);
+static void tls_end_sess(SSL *, int, int);
 static void tls_fatal_error(int, int);
 static const char *tls_get_errors(void);
 static char *tls_get_page(size_t, void **);
@@ -749,7 +750,7 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
     } else if (tls_renegotiate_required) {
       tls_log("%s", "requested TLS renegotiation timed out on control channel");
       tls_log("%s", "shutting down control channel TLS session");
-      tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL);
+      tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, TRUE);
       tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
         ctrl_ssl = NULL;
     }
@@ -765,7 +766,8 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
     } else if (tls_renegotiate_required) {
       tls_log("%s", "requested TLS renegotiation timed out on data channel");
       tls_log("%s", "shutting down data channel TLS session");
-      tls_end_sess((SSL *) tls_data_wr_nstrm->strm_data, PR_NETIO_STRM_DATA);
+      tls_end_sess((SSL *) tls_data_wr_nstrm->strm_data, PR_NETIO_STRM_DATA,
+        TRUE);
       tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = NULL;
     }
   }
@@ -1233,7 +1235,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
     if (tls_handshake_timed_out) {
       tls_log("TLS negotiation timed out (%u seconds)", tls_handshake_timeout);
-      tls_end_sess(ssl, on_data ? PR_NETIO_STRM_DATA : PR_NETIO_STRM_CTRL);
+      tls_end_sess(ssl, on_data ? PR_NETIO_STRM_DATA : PR_NETIO_STRM_CTRL,
+        TRUE);
       return -4;
     }
 
@@ -1278,7 +1281,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
         break;
     }
 
-    tls_end_sess(ssl, on_data ? PR_NETIO_STRM_DATA : PR_NETIO_STRM_CTRL);
+    tls_end_sess(ssl, on_data ? PR_NETIO_STRM_DATA : PR_NETIO_STRM_CTRL,
+      TRUE);
     return -3;
   }
 
@@ -1362,33 +1366,80 @@ static void tls_cleanup(void) {
   EVP_cleanup();
 }
 
-static void tls_end_sess(SSL *ssl, int strms) {
+static void tls_end_sess(SSL *ssl, int strms, int use_shutdown) {
+  int res;
+
   if (!ssl)
     return;
 
-  if (SSL_shutdown(ssl) == 0) {
+  res = SSL_shutdown(ssl);
+  if (res == 0) {
+    if (use_shutdown) {
+      /* Try calling SSL_shutdown() again.  First, though, send a TCP FIN
+       * to trigger the remote end's close_notify SSL message, via shutdown().
+       */
+      if (strms & PR_NETIO_STRM_CTRL) {
+        pr_netio_shutdown(session.c->outstrm, 1);
 
-    /* Try calling SSL_shutdown() again.  First, though, send a TCP FIN
-     * to trigger the remote end's close_notify SSL message, via shutdown().
-     */
-    if (strms & PR_NETIO_STRM_CTRL) {
-      pr_netio_shutdown(session.c->outstrm, 1);
+        if (session.c->instrm != session.c->outstrm)
+          pr_netio_shutdown(session.c->instrm, 1);
+      }
 
-      if (session.c->instrm != session.c->outstrm)
-        pr_netio_shutdown(session.c->instrm, 1);
-    }
+      if (strms & PR_NETIO_STRM_DATA) {
+        pr_netio_shutdown(session.d->outstrm, 1);
 
-    if (strms & PR_NETIO_STRM_DATA) {
-      pr_netio_shutdown(session.d->outstrm, 1);
-
-      if (session.d->instrm != session.d->outstrm)
-        pr_netio_shutdown(session.d->instrm, 1);
+        if (session.d->instrm != session.d->outstrm)
+          pr_netio_shutdown(session.d->instrm, 1);
+      }
     }
 
     /* Now call SSL_shutdown again. */
-    if (SSL_shutdown(ssl) == -1) {
-      tls_log("error shutting down TLS session");
-      tls_fatal_error(SSL_get_error(ssl, -1), __LINE__);
+    res = SSL_shutdown(ssl);
+    if (res == 0) {
+      int err = SSL_get_error(ssl, res);
+
+      switch (err) {
+        case SSL_ERROR_WANT_READ:
+          tls_log("SSL_shutdown() error: WANT_READ");
+          pr_log_debug(DEBUG0, MOD_TLS_VERSION
+            ": SSL_shutdown() error: WANT_READ");
+          break;
+
+        case SSL_ERROR_WANT_WRITE:
+          tls_log("SSL_shutdown() error: WANT_WRITE");
+          pr_log_debug(DEBUG0, MOD_TLS_VERSION
+            ": SSL_shutdown() error: WANT_WRITE");
+          break;
+
+        case SSL_ERROR_SYSCALL:
+          if (errno != EOF &&
+              errno != EBADF &&
+              errno != EPIPE) {
+            tls_log("SSL_shutdown() syscall error: %s", strerror(errno));
+            pr_log_debug(DEBUG0, MOD_TLS_VERSION
+              ": SSL_shutdown() syscall error: %s", strerror(errno));
+          }
+          break;
+
+        default:
+          tls_log("SSL_shutdown() error: %s", tls_get_errors());
+          pr_log_debug(DEBUG0, MOD_TLS_VERSION
+            ": SSL_shutdown() error: %s", tls_get_errors());
+          break;
+      }
+    }
+
+  } else if (res < 0) {
+    int err = SSL_get_error(ssl, res);
+
+    switch (err) {
+      case SSL_ERROR_ZERO_RETURN:
+        /* Clean shutdown, nothing we need to do. */
+        break;
+
+      default:
+        tls_fatal_error(err, __LINE__);
+        break;
     }
   }
 
@@ -2364,7 +2415,7 @@ static int tls_netio_close_cb(pr_netio_stream_t *nstrm) {
 
     if (nstrm->strm_type == PR_NETIO_STRM_CTRL &&
         nstrm->strm_mode == PR_NETIO_IO_WR) {
-      tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type);
+      tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type, TRUE);
       tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
         nstrm->strm_data = NULL;
       tls_ctrl_netio = NULL;
@@ -2373,7 +2424,7 @@ static int tls_netio_close_cb(pr_netio_stream_t *nstrm) {
 
     if (nstrm->strm_type == PR_NETIO_STRM_DATA &&
         nstrm->strm_mode == PR_NETIO_IO_WR) {
-      tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type);
+      tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type, TRUE);
       tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data =
         nstrm->strm_data = NULL;
       tls_data_netio = NULL;
@@ -2483,7 +2534,7 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
           X509_free(data_cert);
 
           /* Properly shutdown the SSL session. */
-          tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type);
+          tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type, TRUE);
 
           tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data =
             nstrm->strm_data = NULL;
@@ -2830,30 +2881,36 @@ MODRET tls_auth(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
+  if (tls_flags & TLS_SESS_HAVE_CCC) {
+    tls_log("Unwilling to accept AUTH after CCC for this session");
+    pr_response_add_err(R_534, "Unwilling to accept security parameters");
+    return ERROR(cmd);
+  }
+
   /* Convert the parameter to upper case */
   for (i = 0; i < strlen(cmd->argv[1]); i++)
     (cmd->argv[1])[i] = toupper((cmd->argv[1])[i]);
 
   if (!strcmp(cmd->argv[1], "TLS") ||
       !strcmp(cmd->argv[1], "TLS-C")) {
-     pr_response_send(R_234, "AUTH %s successful", cmd->argv[1]);
+    pr_response_send(R_234, "AUTH %s successful", cmd->argv[1]);
 
-     tls_log("%s", "TLS/TLS-C requested, starting TLS handshake");
-     if (tls_accept(session.c, FALSE) < 0) {
-       tls_log("%s", "TLS/TLS-C negotiation failed on control channel");
+    tls_log("%s", "TLS/TLS-C requested, starting TLS handshake");
+    if (tls_accept(session.c, FALSE) < 0) {
+      tls_log("%s", "TLS/TLS-C negotiation failed on control channel");
 
-       if (tls_required_on_ctrl)
-         end_login(1);
+      if (tls_required_on_ctrl)
+        end_login(1);
 
-       pr_response_add_err(R_550, "TLS handshake failed");
-       return ERROR(cmd);
-     }
+      pr_response_add_err(R_550, "TLS handshake failed");
+      return ERROR(cmd);
+    }
 
 #if OPENSSL_VERSION_NUMBER < 0x0090702fL
-     /* Make sure blinding is turned on. (For some reason, this only seems
-      * to be allowed on SSL objects, not on SSL_CTX objects.  Bummer).
-      */
-     tls_blinding_on(ctrl_ssl);
+    /* Make sure blinding is turned on. (For some reason, this only seems
+     * to be allowed on SSL objects, not on SSL_CTX objects.  Bummer).
+     */
+    tls_blinding_on(ctrl_ssl);
 #endif
 
      tls_flags |= TLS_SESS_ON_CTRL;
@@ -2894,9 +2951,54 @@ MODRET tls_auth(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+MODRET tls_ccc(cmd_rec *cmd) {
+
+  if (!tls_engine ||
+      !session.rfc2228_mech ||
+      strcmp(session.rfc2228_mech, "TLS") != 0)
+    return DECLINED(cmd);
+
+  if (!(tls_flags & TLS_SESS_ON_CTRL)) {
+    pr_response_add_err(R_533,
+      "CCC not allowed on insecure control connection");
+    return ERROR(cmd);
+  }
+
+  /* Check for <Limit> restrictions. */
+  if (!dir_check(cmd->tmp_pool, C_CCC, G_NONE, session.cwd, NULL)) {
+    pr_response_add_err(R_534, "Unwilling to accept security parameters");
+    tls_log("%s: unwilling to accept security parameters", cmd->argv[0]);
+    return ERROR(cmd);
+  }
+
+  tls_log("received CCC, clearing control channel protection");
+
+  /* Send the OK response asynchronously; the spec dictates that the
+   * response be sent prior to performing the SSL session shutdown.
+   */
+  pr_response_send_async(R_200, "Clearing control channel protection");
+
+  /* Close the SSL session, but only one the control channel.
+   * The data channel, if protected, should remain so.
+   */
+
+  tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL, FALSE);
+  ctrl_ssl = tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data = NULL;
+
+  /* Remove our NetIO for the control channel. */
+  pr_unregister_netio(PR_NETIO_STRM_CTRL);
+
+  tls_flags &= ~TLS_SESS_ON_CTRL;
+  tls_flags |= TLS_SESS_HAVE_CCC;
+
+  return HANDLED(cmd);
+}
+
 MODRET tls_pbsz(cmd_rec *cmd) {
 
-  if (!tls_engine)
+  if (!tls_engine ||
+      !session.rfc2228_mech ||
+      strcmp(session.rfc2228_mech, "TLS") != 0)
     return DECLINED(cmd);
 
   CHECK_CMD_ARGS(cmd, 2);
@@ -2904,13 +3006,11 @@ MODRET tls_pbsz(cmd_rec *cmd) {
   if (!(tls_flags & TLS_SESS_ON_CTRL)) {
     pr_response_add_err(R_503,
       "PBSZ not allowed on insecure control connection");
-
-    /* Allow other RFC2228 modules a chance a handling this command. */
-    return DECLINED(cmd);
+    return ERROR(cmd);
   }
 
   /* We expect "PBSZ 0" */
-  if (!strcmp(cmd->argv[1], "0"))
+  if (strcmp(cmd->argv[1], "0") == 0)
     pr_response_add(R_200, "PBSZ 0 successful");
   else
     pr_response_add(R_200, "PBSZ=0 successful");
@@ -2950,20 +3050,26 @@ MODRET tls_post_pass(cmd_rec *cmd) {
 
 MODRET tls_prot(cmd_rec *cmd) {
 
-  if (!tls_engine)
+  if (!tls_engine ||
+      !session.rfc2228_mech ||
+      strcmp(session.rfc2228_mech, "TLS") != 0)
     return DECLINED(cmd);
 
   CHECK_CMD_ARGS(cmd, 2);
 
+  if (!(tls_flags & TLS_SESS_ON_CTRL)) {
+    pr_response_add_err(R_503,
+      "PROT not allowed on insecure control connection");
+    return ERROR(cmd);
+  }
+
   if (!(tls_flags & TLS_SESS_PBSZ_OK)) {
     pr_response_add_err(R_503, "You must issue the PBSZ command prior to PROT");
-
-    /* Allow other RFC2228 modules a chance a handling this command. */
-    return DECLINED(cmd);
+    return ERROR(cmd);
   }
 
   /* Only PROT C or PROT P is valid with respect to SSL/TLS. */
-  if (!strcmp(cmd->argv[1], "C")) {
+  if (strcmp(cmd->argv[1], "C") == 0) {
     char *mesg = "Protection set to Clear";
 
     if (!tls_required_on_data) {
@@ -2984,14 +3090,15 @@ MODRET tls_prot(cmd_rec *cmd) {
       return ERROR(cmd);
     }
 
-  } else if (!strcmp(cmd->argv[1], "P")) {
+  } else if (strcmp(cmd->argv[1], "P") == 0) {
     char *mesg = "Protection set to Private";
 
     tls_flags |= TLS_SESS_NEED_DATA_PROT;
     pr_response_add(R_200, "%s", mesg);
     tls_log("%s", mesg);
 
-  } else if (!strcmp(cmd->argv[1], "S") || !strcmp(cmd->argv[1], "E")) {
+  } else if (strcmp(cmd->argv[1], "S") == 0 ||
+             strcmp(cmd->argv[1], "E") == 0) {
     pr_response_add_err(R_536, "PROT %s unsupported", cmd->argv[1]);
 
     /* By the time the logic reaches this point, there must have been
@@ -3621,7 +3728,13 @@ static void tls_sess_exit_ev(const void *event_data, void *user_data) {
 static int tls_init(void) {
   int res = 0;
 
-  /* Install our control channel NetIO handlers. */
+  /* Install our control channel NetIO handlers.  This is done here
+   * specifically because we need to cache a pointer to the nstrm that
+   * is passed to the open callback().  Ideally we'd only install our
+   * custom NetIO handlers if the appropriate AUTH command was given.
+   * But by then, the open() callback will have already been called, and
+   * we will not have a chance to get that nstrm pointer.
+   */
   tls_netio_install_ctrl();
 
   /* Initialize the OpenSSL context. */
@@ -3788,6 +3901,7 @@ static conftable tls_conftab[] = {
 static cmdtable tls_cmdtab[] = {
   { PRE_CMD,	C_ANY,	G_NONE,	tls_any,	FALSE,	FALSE },
   { CMD,	C_AUTH,	G_NONE,	tls_auth,	FALSE,	FALSE,	CL_SEC },
+  { CMD,	C_CCC,	G_NONE,	tls_ccc,	FALSE,	FALSE,	CL_SEC },
   { CMD,	C_PBSZ,	G_NONE,	tls_pbsz,	FALSE,	FALSE,	CL_SEC },
   { CMD,	C_PROT,	G_NONE,	tls_prot,	FALSE,	FALSE,	CL_SEC },
   { POST_CMD,	C_PASS,	G_NONE,	tls_post_pass,	FALSE,	FALSE,	CL_SEC },
@@ -3824,6 +3938,9 @@ module tls_module = {
   tls_init,
 
   /* Session initialization */
-  tls_sess_init
+  tls_sess_init,
+
+  /* Module version */
+  MOD_TLS_VERSION
 };
 

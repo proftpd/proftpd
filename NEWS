@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.652 2005-03-18 18:25:53 castaglia Exp $
+$Id: NEWS,v 1.653 2005-03-25 16:41:21 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -124,6 +124,7 @@ CVS
   difference.
 - Bug 2551 - Recursive LIST with symlinked directories gives duplicate results.
 - Bug 2576 - PWD command does not handle " character properly.
+- Bug 2493 - mod_tls should support CCC command.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------
