@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.50 2004-01-29 22:20:52 castaglia Exp $
+ * $Id: dirtree.h,v 1.51 2004-02-20 18:34:38 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -220,7 +220,8 @@ void init_config(void);
 int fixup_servers(void);
 void set_config_stream(FILE *, unsigned int);
 char *get_config_line(char *, size_t);
-int parse_config_file(const char *);
+int parse_config_file(pool *, const char *);
+int parse_config_path(pool *, const char *);
 config_rec *add_config_set(xaset_t **, const char *);
 config_rec *add_config(server_rec *, const char *);
 config_rec *add_config_param(const char *, int, ...);
@@ -277,6 +278,7 @@ int dir_check_limits(config_rec *, char *, int);
 int dir_check(pool *, char *, char *, char *, int *);
 int dir_check_canon(pool *, char *, char *, char *, int *);
 int is_dotdir(const char *);
+int is_fnmatch(const char *);
 int login_check_limits(xaset_t *, int, int, int *);
 char *path_subst_uservar(pool *, char **);
 void resolve_anonymous_dirs(xaset_t *);

@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.218 2004-01-30 16:42:48 castaglia Exp $
+ * $Id: main.c,v 1.219 2004-02-20 18:34:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -912,7 +912,7 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     init_conf_stacks();
 
     PRIVS_ROOT
-    if (parse_config_file(config_filename) == -1) {
+    if (parse_config_file(NULL, config_filename) == -1) {
       PRIVS_RELINQUISH
       pr_log_pri(PR_LOG_ERR,
         "Fatal: unable to read configuration file '%s': %s",
@@ -2701,7 +2701,7 @@ int main(int argc, char *argv[], char **envp) {
 
   pr_event_generate("core.preparse", NULL);
 
-  if (parse_config_file(config_filename) == -1) {
+  if (parse_config_file(NULL, config_filename) == -1) {
     pr_log_pri(PR_LOG_ERR, "Fatal: unable to read configuration file '%s': %s",
       config_filename, strerror(errno));
     exit(1);

@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.137 2004-02-03 23:57:28 castaglia Exp $
+ * $Id: dirtree.c,v 1.138 2004-02-20 18:34:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -183,6 +183,39 @@ int is_dotdir(const char *dir) {
   if (strcmp(dir, ".") == 0 || strcmp(dir, "./") == 0 ||
       strcmp(dir, "..") == 0 || strcmp(dir, "../") == 0)
     return TRUE;
+
+  return FALSE;
+}
+
+/* Return true if str contains any of the glob(7) characters. */
+int is_fnmatch(const char *str) {
+  int have_bracket = 0;
+
+  while (*str) {
+    switch (*str) {
+      case '?':
+      case '*':
+        return TRUE;
+
+      case '\\':
+        if (*str++ == '\0')
+          return FALSE;
+        break;
+
+      case '[':
+        have_bracket++;
+        break;
+
+      case ']':
+        if (have_bracket)
+          return TRUE;
+        break;
+
+      default:
+    }
+
+    str++;
+  }
 
   return FALSE;
 }
@@ -3119,12 +3152,12 @@ config_rec *add_config_param(const char *name, int num, ...) {
   return c;
 }
 
-int parse_config_file(const char *fname) {
+int parse_config_file(pool *p, const char *fname) {
   pr_fh_t *fh = NULL;
   conf_stack_t *cs = NULL;
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
-  pool *tmp_pool = make_sub_pool(permanent_pool);
+  pool *tmp_pool = make_sub_pool(p ? p : permanent_pool);
 
   pr_pool_tag(tmp_pool, "parse_config_file() tmp pool");
 
@@ -3188,6 +3221,103 @@ int parse_config_file(const char *fname) {
 
   destroy_pool(tmp_pool);
   return 0;
+}
+
+static int config_cmp(const void *a, const void *b) {
+  return strcmp(*((char **) a), *((char **) b));
+}
+
+int parse_config_path(pool *p, const char *path) {
+  struct stat st;
+  int have_glob;
+  
+  if (!path) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  have_glob = is_fnmatch(path); 
+
+  if (!have_glob && pr_fsio_lstat(path, &st) < 0)
+    return -1;
+
+  if (have_glob ||
+      (!S_ISLNK(st.st_mode) && S_ISDIR(st.st_mode))) {
+    void *dirh;
+    struct dirent *dent;
+    array_header *file_list;
+    char *dup_path = pstrdup(p, path);
+    char *tmp = strrchr(dup_path, '/');
+
+    if (have_glob && tmp) {
+      *tmp++ = '\0';
+
+      if (is_fnmatch(dup_path)) {
+        pr_log_pri(PR_LOG_ERR, "error: wildcard patterns not allowed in "
+          "configuration directory name '%s'", dup_path);
+        errno = EINVAL;
+        return -1;
+      }
+
+      /* Check the directory component. */
+      pr_fsio_lstat(dup_path, &st);
+
+      if (S_ISLNK(st.st_mode) || !S_ISDIR(st.st_mode)) {
+        pr_log_pri(PR_LOG_ERR, "error: cannot read configuration path '%s'",
+          dup_path);
+        errno = EINVAL;
+        return -1;
+      }
+
+      if (!is_fnmatch(tmp)) {
+        pr_log_pri(PR_LOG_ERR, "error: wildcard pattern required for file '%s'",
+          tmp);
+        errno = EINVAL;
+        return -1;
+      }
+    }
+
+    pr_log_pri(PR_LOG_INFO, "processing configuration directory '%s'",
+      dup_path);
+
+    dirh = pr_fsio_opendir(dup_path);
+    if (!dirh) {
+      pr_log_pri(PR_LOG_ERR,
+        "error: unable to open configuration directory '%s': %s", dup_path,
+        strerror(errno));
+      errno = EINVAL;
+      return -1;
+    }
+
+    file_list = make_array(p, 0, sizeof(char *));
+
+    while ((dent = pr_fsio_readdir(dirh)) != NULL) {
+      if (strcmp(dent->d_name, ".") != 0 &&
+          strcmp(dent->d_name, "..") != 0 &&
+          (!have_glob ||
+           pr_fnmatch(tmp, dent->d_name, PR_FNM_PERIOD) == 0))
+        *((char **) push_array(file_list)) = pdircat(p, dup_path,
+          dent->d_name, NULL);
+    }
+
+    pr_fsio_closedir(dirh);
+
+    if (file_list->nelts) {
+      register unsigned int i;
+
+      qsort((void *) file_list->elts, file_list->nelts, sizeof(char *),
+        config_cmp);
+
+      for (i = 0; i < file_list->nelts; i++) {
+        char *file = ((char **) file_list->elts)[i];
+        parse_config_file(p, file);
+      }
+    }
+
+    return 0;
+  }
+
+  return parse_config_file(p, path);
 }
 
 /* Go through each server configuration and complain if important information

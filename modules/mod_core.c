@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.218 2004-02-17 02:15:59 castaglia Exp $
+ * $Id: mod_core.c,v 1.219 2004-02-20 18:34:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -372,9 +372,16 @@ MODRET add_include(cmd_rec *cmd) {
       "unable to use path for configuration file '", cmd->argv[1], "'", NULL));
   }
 
-  if (parse_config_file(cmd->argv[1]) == -1)
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to include configuration "
-      "file '", cmd->argv[1], "': ", strerror(errno), NULL));
+  if (parse_config_path(cmd->tmp_pool, cmd->argv[1]) == -1) {
+    if (errno != EINVAL)
+      pr_log_pri(PR_LOG_WARNING, "warning: unable to include '%s': %s",
+        cmd->argv[1], strerror(errno));
+
+    else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error including '", cmd->argv[1],
+        "': ", strerror(errno), NULL));
+    }
+  }
 
   return HANDLED(cmd);
 }
