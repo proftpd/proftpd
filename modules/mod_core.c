@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.258 2004-11-14 23:58:10 castaglia Exp $
+ * $Id: mod_core.c,v 1.259 2004-11-15 00:21:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3815,6 +3815,13 @@ MODRET core_size(cmd_rec *cmd) {
   struct stat sbuf;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
+
+  /* Refuse the command if we're in ASCII mode. */
+  if (session.sf_flags & SF_ASCII) {
+    pr_log_debug(DEBUG5, "%s not allowed in ASCII mode", cmd->argv[0]);
+    pr_response_add_err(R_550, "%s: %s", cmd->argv[0], strerror(EPERM));
+    return ERROR(cmd);
+  }
 
   path = dir_realpath(cmd->tmp_pool, cmd->arg);
 
