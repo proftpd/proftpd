@@ -124,7 +124,6 @@ char *get_ident(pool *p, conn_t *c) {
   if ((ident_io = inet_openrw(tmp_pool, ident_conn, NULL, -1, -1, -1,
       FALSE)) == NULL) {
     remove_timer(timer, NULL);
-    io_close(io);
     inet_close(tmp_pool, ident_conn);
     destroy_pool(tmp_pool);
     return pstrdup(p, ret);

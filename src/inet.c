@@ -1052,9 +1052,11 @@ int inet_get_conn_info(conn_t *c, int fd) {
   
   /* Sanity check.
    */
-  if (fd < 0)
+  if (fd < 0) {
+    errno = EBADF;
     return -1;
-  
+  }
+ 
   if (getsockname(fd, (struct sockaddr *) &servaddr, &len) != -1) {
     if (!c->local_ipaddr)
       c->local_ipaddr = (p_in_addr_t *) pcalloc(c->pool, sizeof(p_in_addr_t));     
@@ -1153,49 +1155,59 @@ conn_t *inet_associate(pool *pool, conn_t *c, p_in_addr_t *addr,
 conn_t *inet_openrw(pool *pool, conn_t *c, p_in_addr_t *addr, int fd,
                     int rfd,int wfd, int resolve)
 {
-  conn_t *res;
+  conn_t *res = NULL;
   int close_fd = TRUE;
 
   res = inet_copy_connection(pool,c);
 
   res->listen_fd = -1;
 
-  if (inet_get_conn_info(res, fd) < 0)
+  /* Note: there are some cases where the given file descriptor will
+   * intentionally be bad (e.g. in get_ident() lookups).  In this case,
+   * errno will have a value of EBADF; this is an "acceptable" error.  Any
+   * other errno value constitutes an unacceptable error.
+   */
+  if (inet_get_conn_info(res, fd) < 0 && errno != EBADF)
     return NULL;
 
-  if(addr) {
-    if(!res->remote_ipaddr)
+  if (addr) {
+    if (!res->remote_ipaddr)
       res->remote_ipaddr = (p_in_addr_t*)palloc(res->pool,sizeof(p_in_addr_t));
     *res->remote_ipaddr = *addr;
   }
 
-  if(resolve && res->remote_ipaddr)
+  if (resolve && res->remote_ipaddr)
     res->remote_name = inet_getname(res->pool,res->remote_ipaddr);
 
-  if(!res->remote_name)
+  if (!res->remote_name)
     res->remote_name = pstrdup(res->pool,inet_ntoa(*res->remote_ipaddr));
 
-  if(fd == -1 && c->listen_fd != -1)
+  if (fd == -1 && c->listen_fd != -1)
     fd = c->listen_fd;
 
-  if(rfd != -1) {
-    if(fd != rfd) dup2(fd,rfd);
-    else close_fd = FALSE;
+  if (rfd != -1) {
+    if (fd != rfd)
+      dup2(fd, rfd);
+    else
+      close_fd = FALSE;
+
   } else
     rfd = dup(fd);
 
-  if(wfd != -1) {
-    if(fd != wfd) {
-      if(wfd == STDOUT_FILENO)
+  if (wfd != -1) {
+    if (fd != wfd) {
+      if (wfd == STDOUT_FILENO)
         fflush(stdout);
-      dup2(fd,wfd);
+      dup2(fd, wfd);
+
     } else
       close_fd = FALSE;
+
   } else
     wfd = dup(fd);
 
   /* Now discard the original socket */
-  if(rfd != -1 && wfd != -1 && close_fd)
+  if (rfd != -1 && wfd != -1 && close_fd)
     close(fd);
 
   res->rfd = rfd;
@@ -1204,7 +1216,7 @@ conn_t *inet_openrw(pool *pool, conn_t *c, p_in_addr_t *addr, int fd,
   res->inf = io_open(res->pool,res->rfd,IO_READ);
   res->outf = io_open(res->pool,res->wfd,IO_WRITE);
 
-  /* Set options on the sockets */
+  /* Set options on the sockets. */
   inet_setoptions(res->pool,res,0,0);
   inet_setblock(res->pool,res);
 
