@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.6 2004-02-13 22:45:47 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.7 2004-04-07 19:02:51 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -1234,6 +1234,9 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
       quotatab_tally.files_in_used = 0U;
       quotatab_tally.files_out_used = 0U;
       quotatab_tally.files_xfer_used = 0U;
+
+      quotatab_log("per session setting in effect: updates will not be "
+        "tracked in the QuotaTallyTable");
     }
 
   } else {
