@@ -26,7 +26,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.79 2002-09-10 16:07:37 jwm Exp $
+ * $Id: mod_xfer.c,v 1.80 2002-09-10 19:36:27 castaglia Exp $
  */
 
 /* History Log:
@@ -67,6 +67,159 @@ static int stor_fd;
 static int retr_fd;
 
 module xfer_module;
+
+static int xfer_errno;
+
+static unsigned long find_max_nbytes(char *directive) {
+  config_rec *c = NULL;
+  unsigned int ctxt_precedence = 0;
+  unsigned char have_user_limit, have_group_limit, have_class_limit,
+    have_all_limit;
+  unsigned long max_nbytes = 0UL;
+
+  have_user_limit = have_group_limit = have_class_limit =
+    have_all_limit = FALSE; 
+
+  c = find_config(CURRENT_CONF, CONF_PARAM, directive, FALSE);
+
+  while (c) {
+    if (c->argc == 3) {
+      if (!strcmp(c->argv[1], "user")) {
+
+        if (user_expression((char **) &c->argv[2])) {
+          if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
+
+            /* Set the context precedence */
+            ctxt_precedence = *((unsigned int *) c->argv[1]);
+
+            max_nbytes = *((unsigned long *) c->argv[0]);
+
+            have_group_limit = have_class_limit = have_all_limit = FALSE;
+            have_user_limit = TRUE;
+          }
+        }
+
+      } else if (!strcmp(c->argv[1], "group")) {
+
+        if (group_expression((char **) &c->argv[2])) {
+          if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
+
+            /* Set the context precedence */
+            ctxt_precedence = *((unsigned int *) c->argv[1]);
+
+            max_nbytes = *((unsigned long *) c->argv[0]);
+
+            have_user_limit = have_class_limit = have_all_limit = FALSE;
+            have_group_limit = TRUE;
+          }
+        }
+
+      } else if (!strcmp(c->argv[1], "class")) {
+
+        if (session.class && session.class->name &&
+            !strcmp(session.class->name, c->argv[2])) {
+          if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
+
+            /* Set the context precedence */
+            ctxt_precedence = *((unsigned int *) c->argv[1]);
+
+            max_nbytes = *((unsigned long *) c->argv[0]);
+
+            have_user_limit = have_group_limit = have_all_limit = FALSE;
+            have_class_limit = TRUE;
+          }
+        }
+      }
+
+    } else {
+
+      if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
+
+        /* Set the context precedence. */
+        ctxt_precedence = *((unsigned int *) c->argv[1]);
+
+        max_nbytes = *((unsigned long *) c->argv[0]);
+
+        have_user_limit = have_group_limit = have_class_limit = FALSE;
+        have_all_limit = TRUE;
+      }
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, directive, FALSE);
+  }
+
+  /* Print out some nice debugging information. */
+  if (have_user_limit || have_group_limit ||
+      have_class_limit || have_all_limit) {
+    log_debug(DEBUG5, "%s (%lu bytes) in effect for %s",
+      directive, max_nbytes,
+      have_user_limit ? "user " : have_group_limit ? "group " :
+      have_class_limit ? "class " : "all");
+  }
+
+  return max_nbytes;
+}
+
+static unsigned long parse_max_nbytes(char *nbytes_str, char *units_str) {
+  long res;
+  unsigned long nbytes;
+  char *endp = NULL;
+  float units_factor = 0.0;
+
+  /* clear any previous local errors */
+  xfer_errno = 0;
+
+  /* first, check the given units to determine the correct mulitplier
+   */
+  if (!strcasecmp("Gb", units_str)) {
+    units_factor = 1024.0 * 1024.0 * 1024.0;
+
+  } else if (!strcasecmp("Mb", units_str)) {
+    units_factor = 1024.0 * 1024.0;
+
+  } else if (!strcasecmp("Kb", units_str)) {
+    units_factor = 1024.0;
+
+  } else if (!strcasecmp("b", units_str)) {
+    units_factor = 1.0;
+
+  } else {
+    xfer_errno = EINVAL;
+    return 0;
+  }
+
+  /* make sure a number was given */
+  if (!isdigit(*nbytes_str)) {
+    xfer_errno = EINVAL;
+    return 0;
+  }
+
+  /* knowing the factor, now convert the given number string to a real
+   * number
+   */
+  res = strtol(nbytes_str, &endp, 10);
+
+  if (errno == ERANGE) {
+    xfer_errno = ERANGE;
+    return 0;
+  }
+
+  if (endp && *endp) {
+    xfer_errno = EINVAL;
+    return 0;
+  }
+
+  /* don't bother to apply the factor if that will cause the number to
+   * overflow
+   */
+  if (res > (ULONG_MAX / units_factor)) {
+    xfer_errno = ERANGE;
+    return 0;
+  }
+
+  nbytes = (unsigned long) res * units_factor;
+  return nbytes;
+}
 
 static void _log_transfer(char direction, char abort_flag) {
   struct timeval end_time;
@@ -661,6 +814,8 @@ MODRET cmd_stor(cmd_rec *cmd)
   char *dir;
   char *lbuf;
   int bufsize,len;
+  off_t nbytes_stored, nbytes_max_store = 0;
+  unsigned char have_limit = FALSE;
   struct stat sbuf;
   off_t respos = 0;
   privdata_t *p, *p_hidden;
@@ -796,6 +951,37 @@ MODRET cmd_stor(cmd_rec *cmd)
       return HANDLED(cmd);
     }
 
+    /* initialize the number of bytes stored */
+    nbytes_stored = 0;
+
+    /* retrieve the number of bytes to store, maximum, if present.
+     * This check is needed during the data_xfer() loop, below, because
+     * the size of the file being uploaded isn't known in advance
+     */
+    if ((nbytes_max_store = find_max_nbytes("MaxStoreFileSize")) == 0 &&
+        xfer_errno == ENOENT)
+      have_limit = FALSE;
+    else
+      have_limit = TRUE;
+
+    /* check the MaxStoreFileSize, and abort now if zero
+     */
+    if (have_limit && nbytes_max_store == 0) {
+
+      log_pri(LOG_INFO, "MaxStoreFileSize (%" PR_LU " byte%s) reached: "
+        "aborting transfer of '%s'", nbytes_max_store,
+        nbytes_max_store != 1 ? "s" : "", dir);
+
+      /* abort the transfer
+       */
+      _stor_abort();
+
+      /* set errno to EPERM ("Operation not permitted");
+       */
+      data_abort(EPERM, FALSE);
+      return ERROR(cmd);
+    }
+
     bufsize = (main_server->tcp_rwin > 0 ? 
 	       main_server->tcp_rwin : TUNABLE_BUFFER_SIZE);
     lbuf = (char*) palloc(cmd->tmp_pool, bufsize);
@@ -804,6 +990,30 @@ MODRET cmd_stor(cmd_rec *cmd)
     while ((len = data_xfer(lbuf, bufsize)) > 0) {
       if(XFER_ABORTED)
         break;
+
+      nbytes_stored += len;
+
+      /* double-check the current number of bytes stored against the
+       * MaxStoreFileSize, if configured.
+       */
+      if (have_limit && nbytes_stored > nbytes_max_store) {
+
+        log_pri(LOG_INFO, "MaxStoreFileSize (%" PR_LU " bytes) reached: "
+          "aborting transfer of '%s'", nbytes_max_store, dir);
+
+        /* unlink the file being written
+         */
+        fs_unlink(dir);
+
+        /* abort the transfer
+         */
+        _stor_abort();
+
+        /* set errno to EPERM ("Operation not permitted")
+         */
+        data_abort(EPERM, FALSE);
+        return ERROR(cmd);
+      }
 
       len = fs_write(stor_file, stor_fd, lbuf, len);
       if(len < 0) {
@@ -945,6 +1155,8 @@ MODRET cmd_retr(cmd_rec *cmd)
   char *dir, *lbuf;
   struct stat sbuf;
   struct timeval rate_tvstart;
+  unsigned long nbytes_max_retrieve = -1;
+  unsigned char have_limit = FALSE;
   privdata_t *p;
   long bufsize, len = 0;
   long rate_hardbps = 0;
@@ -1009,6 +1221,34 @@ MODRET cmd_retr(cmd_rec *cmd)
       return ERROR(cmd);
     }
     
+    /* retrieve the number of bytes to retrieve, maximum, if present */
+    if ((nbytes_max_retrieve = find_max_nbytes("MaxRetrieveFileSize")) == 0 &&
+        xfer_errno == ENOENT)
+      have_limit = FALSE;
+    else
+      have_limit = TRUE;
+
+    /* check the MaxRetrieveFileSize.  If it is zero, or if the size
+     * of the file being retrieved is greater than the MaxRetrieveFileSize,
+     * then signal an error and abort the transfer now.
+     */
+    if (have_limit &&
+        ((nbytes_max_retrieve == 0) || (sbuf.st_size > nbytes_max_retrieve))) {
+
+      log_pri(LOG_INFO, "MaxRetrieveFileSize (%lu byte%s) reached: "
+        "aborting transfer of '%s'", nbytes_max_retrieve,
+        nbytes_max_retrieve != 1 ? "s" : "", dir);
+
+      /* abort the transfer
+       */
+      _retr_abort();
+
+      /* set errno to EPERM ("Operation not permitted");
+       */
+      data_abort(EPERM, FALSE);
+      return ERROR(cmd);
+    }
+ 
     bufsize = (main_server->tcp_swin > 0 ?
 	       main_server->tcp_swin : TUNABLE_BUFFER_SIZE);
     lbuf = (char *) palloc(cmd->tmp_pool, bufsize);
@@ -1299,6 +1539,125 @@ MODRET set_hiddenstores(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+MODRET set_maxfilesize(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  unsigned long nbytes;
+  unsigned int precedence = 0;
+
+  int ctxt = (cmd->config && cmd->config->config_type != CONF_PARAM ?
+     cmd->config->config_type : cmd->server->config_type ?
+     cmd->server->config_type : CONF_ROOT);
+
+  if (cmd->argc-1 != 2 && cmd->argc-1 != 4)
+    CONF_ERROR(cmd, "incorrect number of parameters");
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_ANON|CONF_VIRTUAL|CONF_GLOBAL|CONF_DIR|
+    CONF_DYNDIR);
+
+  /* Set the precedence for this config_rec based on its configuration
+   * context.
+   */
+  if (ctxt & CONF_GLOBAL)
+    precedence = 1;
+
+  /* These will never appear simultaneously */
+  else if (ctxt & CONF_ROOT || ctxt & CONF_VIRTUAL)
+    precedence = 2;
+
+  else if (ctxt & CONF_ANON)
+    precedence = 3;
+
+  else if (ctxt & CONF_DIR)
+    precedence = 4;
+
+  /* If the directive was used with four arguments, it means the optional
+   * classifiers and expression were used.  Make sure the classifier is a valid
+   * one.
+   */
+  if (cmd->argc-1 == 4) {
+    if (!strcmp(cmd->argv[3], "user") ||
+        !strcmp(cmd->argv[3], "group") ||
+        !strcmp(cmd->argv[3], "class")) {
+
+       /* no-op */
+
+     } else
+       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown classifier used: '",
+         cmd->argv[3], "'", NULL));
+  }
+
+  if (!strcmp(cmd->argv[1], "*")) {
+
+    /* Do nothing here -- the "*" signifies an unlimited size, which is
+     * what the server provides by default.
+     */
+    nbytes = 0UL;
+
+  } else {
+
+    /* Pass the cmd_rec off to see what number of bytes was
+     * requested/configured.
+     */
+    if ((nbytes = parse_max_nbytes(cmd->argv[1], cmd->argv[2])) == 0) {
+      char ulong_max[80] = {'\0'};
+      sprintf(ulong_max, "%lu", ULONG_MAX);
+
+      if (xfer_errno == EINVAL)
+        CONF_ERROR(cmd, "invalid parameters");
+
+      if (xfer_errno == ERANGE)
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+         "number of bytes must be between 0 and ", ulong_max, NULL));
+    }
+  }
+
+  if (cmd->argc-1 == 2) {
+    c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+    *((unsigned long *) c->argv[0]) = nbytes;
+    c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[1]) = precedence;
+ 
+  } else {
+    array_header *acl = NULL;
+    int argc = cmd->argc - 4;
+    char **argv = cmd->argv + 3;
+
+    acl = parse_group_expression(cmd->tmp_pool, &argc, argv);
+
+    c = add_config_param(cmd->argv[0], 0);
+    c->argc = argc + 3;
+    c->argv = pcalloc(c->pool, ((argc + 4) * sizeof(char *)));
+
+    argv = (char **) c->argv;
+
+    /* Copy in the configured bytes */
+    *argv = pcalloc(c->pool, sizeof(unsigned long));
+    *((unsigned long *) *argv++) = nbytes;
+
+    /* Copy in the precedence */
+    *argv = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) *argv++) = precedence;
+
+    /* Copy in the classifier. */ 
+    *argv++ = pstrdup(c->pool, cmd->argv[3]);
+
+    if (argc && acl) {
+      while (argc--) {
+        *argv++ = pstrdup(c->pool, *((char **) acl->elts));
+        acl->elts = ((char **) acl->elts) + 1;
+      }
+    }
+
+    /* Don't forget the terminating NULL */
+    *argv = NULL;
+  }
+
+  c->flags |= CF_MERGEDOWN_MULTI;
+
+  return HANDLED(cmd);
+}
+
 MODRET add_ratenum(cmd_rec *cmd) {
   config_rec *c;
   long ratenum;
@@ -1367,6 +1726,8 @@ static conftable xfer_conftab[] = {
   { "DeleteAbortedStores",	set_deleteabortedstores,	},
   { "HiddenStor",		set_hiddenstores,		},
   { "HiddenStores",		set_hiddenstores,		},
+  { "MaxRetrieveFileSize",	set_maxfilesize,		},
+  { "MaxStoreFileSize",		set_maxfilesize,		},
   { "RateReadBPS",		add_ratenum,                 },
   { "RateReadFreeBytes",	add_ratenum,	             },
   { "RateReadHardBPS",		add_ratebool,                },

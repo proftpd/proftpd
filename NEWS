@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.226 2002-09-10 18:50:12 castaglia Exp $
+$Id: NEWS,v 1.227 2002-09-10 19:36:26 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -19,6 +19,7 @@ CVS
 - Bug 1486 - mod_ls is extremly slow
 - Bug 1669 - Filename meta (%f) not correctly expanded for some commands
              in WRITE logging class
+- Bug 1065 - New directives to limit file size on upload and download
 
 1.2.6 - Released 2002-09-04
 ---------------------------------
