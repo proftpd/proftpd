@@ -31,7 +31,7 @@
  *   Copyright (C) 1985, 86, 87, 88, 89, 91, 92, 93, 1994, 1995, 1997
  *     Free Software Foundation, Inc.
  * 
- * $Id: mod_load.c,v 1.2 2005-01-01 18:49:30 castaglia Exp $
+ * $Id: mod_load.c,v 1.3 2005-01-01 18:55:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -935,6 +935,7 @@ int getloadavg(double *loadavg, int nelem) {
 #endif /* !HAVE_GETLOADAVG */
 
 static double load_get_system_load() {
+  int res;
   double loadavg = -1.0;
 
   /* It is necessary on some platforms (such as Solaris) to have root
@@ -942,11 +943,14 @@ static double load_get_system_load() {
    * the image of the running kernel (yikes!)
    */
   PRIVS_ROOT
-  if (getloadavg(&loadavg, 1) != 1) {
-    PRIVS_RELINQUISH
-    return -1.0;
-  }
+  res = getloadavg(&loadavg, 1);
   PRIVS_RELINQUISH
+
+  /* Return the default value if we did not receive the expected number
+   * of elements from getloadavg().
+   */
+  if (res != 1)
+    return -1.0;
 
   return loadavg;
 }
