@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.26 2000-01-24 00:46:24 macgyver Exp $
+ * $Id: mod_core.c,v 1.27 2000-02-28 10:19:57 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -1478,7 +1478,7 @@ MODRET end_virtualhost(cmd_rec *cmd)
   CHECK_ARGS(cmd,0);
 
   if(cmd->server == main_server)
-    CONF_ERROR(cmd,"must be matched with <VirtualServer> directive.");
+    CONF_ERROR(cmd,"must be matched with <VirtualHost> directive.");
 
   end_new_server();
   return HANDLED(cmd);
