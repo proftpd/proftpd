@@ -25,13 +25,15 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.29 2003-01-18 23:28:36 castaglia Exp $
+ * $Id: conf.h,v 1.30 2003-01-23 05:48:05 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
 #define PR_CONF_H
 
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+# define _GNU_SOURCE
+#endif
 
 #include "version.h"
 #include "config.h"
