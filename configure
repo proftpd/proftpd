@@ -7454,7 +7454,8 @@ fi
 
 
 
-for ac_header in ctype.h getopt.h crypt.h bstring.h limits.h
+
+for ac_header in ctype.h getopt.h crypt.h bstring.h inttypes.h limits.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if eval "test \"\${$as_ac_Header+set}\" = set"; then
@@ -11948,6 +11949,66 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 fi
+
+echo "$as_me:$LINENO: checking for intptr_t" >&5
+echo $ECHO_N "checking for intptr_t... $ECHO_C" >&6
+if test "${ac_cv_type_intptr_t+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+  #if HAVE_INTTYPES_H
+  # include <inttypes.h>
+  #endif
+
+
+int
+main ()
+{
+if ((intptr_t *) 0)
+  return 0;
+if (sizeof (intptr_t))
+  return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_type_intptr_t=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_cv_type_intptr_t=no
+fi
+rm -f conftest.$ac_objext conftest.$ac_ext
+fi
+echo "$as_me:$LINENO: result: $ac_cv_type_intptr_t" >&5
+echo "${ECHO_T}$ac_cv_type_intptr_t" >&6
+if test $ac_cv_type_intptr_t = yes; then
+  cat >>confdefs.h <<\_ACEOF
+#define HAVE_INTPTR_T 1
+_ACEOF
+
+fi
+
 
 echo "$as_me:$LINENO: checking for socklen_t" >&5
 echo $ECHO_N "checking for socklen_t... $ECHO_C" >&6
