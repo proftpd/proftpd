@@ -1,5 +1,5 @@
 /*
- * $Id: cap_text.c,v 1.1 2003-01-03 02:16:17 jwm Exp $
+ * $Id: cap_text.c,v 1.2 2003-05-15 00:49:13 castaglia Exp $
  *
  * Copyright (c) 1997-8 Andrew G Morgan <morgan@linux.kernel.org>
  * Copyright (c) 1997 Andrew Main <zefram@dcs.warwick.ac.uk>
@@ -261,8 +261,7 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
 	    m = t;
 
     /* blank is not a valid capability set */
-    memset(buf,'\0',sizeof(buf));
-    p = snprintf(buf, sizeof(buf), "=%s%s%s",
+    p = sprintf(buf, "=%s%s%s",
 		(m & LIBCAP_EFF) ? "e" : "",
 		(m & LIBCAP_INH) ? "i" : "",
 		(m & LIBCAP_PER) ? "p" : "" ) + buf;
@@ -273,11 +272,9 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
 	    for (n = 0; n != __CAP_BITS; n++)
 		if (getstateflags(caps, n) == t) {
 		    if (_cap_names[n])
-			p += snprintf(p, sizeof(buf)-strlen(buf)-1,
-                                      "%s,", _cap_names[n]);
+			p += sprintf(p, "%s,", _cap_names[n]);
 		    else
-			p += snprintf(p, sizeof(buf)-strlen(buf)-1,
-                                        "%d,", n);
+			p += sprintf(p, "%d,", n);
 		    if (p - buf > CAP_TEXT_SIZE) {
 			errno = ERANGE;
 			return NULL;
@@ -286,15 +283,13 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
 	    p--;
 	    n = t & ~m;
 	    if (n)
-		p += snprintf(p, sizeof(buf)-strlen(buf)-1,
-                             "+%s%s%s",
+		p += sprintf(p, "+%s%s%s",
 			     (n & LIBCAP_EFF) ? "e" : "",
 			     (n & LIBCAP_INH) ? "i" : "",
 			     (n & LIBCAP_PER) ? "p" : "");
 	    n = ~t & m;
 	    if (n)
-		p += snprintf(p, sizeof(buf)-strlen(buf)-1,
-                             "-%s%s%s",
+		p += sprintf(p, "-%s%s%s",
 			     (n & LIBCAP_EFF) ? "e" : "",
 			     (n & LIBCAP_INH) ? "i" : "",
 			     (n & LIBCAP_PER) ? "p" : "");
@@ -309,12 +304,17 @@ char *cap_to_text(cap_t caps, ssize_t *length_p)
 	*length_p = p - buf;
     }
 
-    return (strdup(buf));
+    return (_libcap_strdup(buf));
 }
 
 /*
  * $Log: cap_text.c,v $
- * Revision 1.1  2003-01-03 02:16:17  jwm
+ * Revision 1.2  2003-05-15 00:49:13  castaglia
+ *
+ * Bug#2000 - mod_cap should not use bundled libcap.  This patch updates the
+ * bundled libcap; I won't be closing the bug report just yet.
+ *
+ * Revision 1.1  2003/01/03 02:16:17  jwm
  *
  * Turning mod_linuxprivs into a core module, mod_cap. This is by no means
  * complete.

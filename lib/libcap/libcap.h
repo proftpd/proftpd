@@ -1,5 +1,5 @@
 /*
- * $Id: libcap.h,v 1.1 2003-01-03 02:16:17 jwm Exp $
+ * $Id: libcap.h,v 1.2 2003-05-15 00:49:13 castaglia Exp $
  *
  * Copyright (c) 1997 Andrew G Morgan <morgan@linux.kernel.org>
  *
@@ -12,7 +12,6 @@
 #ifndef LIBCAP_H
 #define LIBCAP_H
 
-#include <sys/types.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,10 +40,12 @@
 
 #define CAP_T_MAGIC 0xCA90D0
 struct _cap_struct {
-    int magic;
     struct __user_cap_header_struct head;
     struct __user_cap_data_struct set;
 };
+
+/* string magic for cap_free */
+#define CAP_S_MAGIC 0xCA95D0
 
 /*
  * Do we match the local kernel?
@@ -76,7 +77,9 @@ typedef struct {
  * Private definitions for internal use by the library.
  */
 
-#define good_cap_t(c)      ((c) && (c)->magic == CAP_T_MAGIC)
+#define __libcap_check_magic(c,magic) ((c) && *(-1+(__u32 *)(c)) == (magic))
+#define good_cap_t(c)        __libcap_check_magic(c, CAP_T_MAGIC)
+#define good_cap_string(c)   __libcap_check_magic(c, CAP_S_MAGIC)
 
 /*
  * library debugging
@@ -91,7 +94,7 @@ typedef struct {
 }
 # define _cap_debugcap(s, c) \
     fprintf(stderr, __FUNCTION__ "(" __FILE__ ":%d): " s \
-       "%08x\n", __LINE__, c)
+       "%08x\n", __LINE__, *(c))
 
 #else /* !DEBUG */
 
@@ -99,6 +102,8 @@ typedef struct {
 # define _cap_debugcap(s, c)
 
 #endif /* DEBUG */
+
+extern char *_libcap_strdup(const char *text);
 
 /*
  * These are semi-public prototypes, they will only be defined in
@@ -115,7 +120,12 @@ extern int capsetp(pid_t pid, cap_t cap_d);
 
 /*
  * $Log: libcap.h,v $
- * Revision 1.1  2003-01-03 02:16:17  jwm
+ * Revision 1.2  2003-05-15 00:49:13  castaglia
+ *
+ * Bug#2000 - mod_cap should not use bundled libcap.  This patch updates the
+ * bundled libcap; I won't be closing the bug report just yet.
+ *
+ * Revision 1.1  2003/01/03 02:16:17  jwm
  *
  * Turning mod_linuxprivs into a core module, mod_cap. This is by no means
  * complete.

@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -Llib/libcap -lcap$
  * $Directories: lib/libcap$
- * $Id: mod_cap.c,v 1.7 2003-04-23 06:53:23 castaglia Exp $
+ * $Id: mod_cap.c,v 1.8 2003-05-15 00:49:13 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -83,7 +83,6 @@ static void lp_debug(void) {
 
   log_debug(DEBUG1, MOD_CAP_VERSION ": capabilities '%s'.", res);
   cap_free(&caps);
-  free(res);
 }
 
 /* create a new capability structure */
