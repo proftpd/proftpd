@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.1 2004-10-26 22:14:16 castaglia Exp $
+ * $Id: table.c,v 1.2 2004-10-31 21:22:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -70,8 +70,12 @@ static unsigned int key_hash(const void *key, size_t keysz) {
   unsigned int i = 0;
   size_t sz = !keysz ? strlen((const char *) key) : keysz;
 
-  while (sz--)
-    i = (i * 33) + *((const char *) key)++;
+  while (sz--) {
+    unsigned int c = *((const char *) key);
+    key++;
+
+    i = (i * 33) + c;
+  }
 
   return i; 
 }
