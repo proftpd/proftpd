@@ -21,7 +21,7 @@
  */
 
 /*
- * mod_ldap v2.8.11
+ * mod_ldap v2.8.12
  *
  * Thanks for patches go to (in alphabetical order):
  *
@@ -32,6 +32,7 @@
  * Gaute Nessan (gaute at kpnqwest dot no) - OpenLDAP 2.0 fixes
  * Marcin Obara (gryzzli at wp-sa dot pl) - User/group caching code, Sun
  *                                          LDAP library portability fixes
+ * Phil Oester (phil at theoesters dot com) - Group code memory manip fixes
  * Michael Schout (mschout at gkg dot net) - Full-path HomedirOnDemand and
  *                                           multiple-HomedirOnDemandSuffix
  *                                           support
@@ -44,7 +45,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.29 2003-03-06 02:18:06 jwm Exp $
+ * $Id: mod_ldap.c,v 1.30 2003-07-10 16:09:23 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -163,7 +164,8 @@ static char *ldap_server, *ldap_dn, *ldap_dnpass,
             *ldap_auth_basedn, *ldap_uid_basedn, *ldap_gid_basedn,
             *ldap_quota_basedn,
             *ldap_defaultauthscheme, *ldap_authbind_dn,
-            *ldap_hdod_prefix, **ldap_hdod_suffix;
+            *ldap_hdod_prefix, **ldap_hdod_suffix,
+            *ldap_default_quota;
 static int ldap_doauth = 0, ldap_douid = 0, ldap_dogid = 0, ldap_doquota = 0,
            ldap_authbinds = 1, ldap_negcache = 1,
            ldap_querytimeout = 0, ldap_hdod = 0, ldap_hdod_prefix_nouname = 0,
@@ -216,6 +218,20 @@ pr_ldap_set_sizelimit(int limit)
 #endif
 }
 
+static void
+pr_ldap_unbind(void)
+{
+  int ret;
+
+  if (! ld)
+    return;
+
+  if ((ret = ldap_unbind_s(ld)) != LDAP_SUCCESS)
+    log_pri(LOG_NOTICE, "mod_ldap: pr_ldap_unbind(): ldap_unbind() failed: %s", ldap_err2string(ret));
+
+  ld = NULL;
+}
+
 static int
 pr_ldap_connect(void)
 {
@@ -230,7 +246,7 @@ pr_ldap_connect(void)
   }
 
 #ifdef USE_LDAPV3_TLS
-  if (ldap_use_tls) {
+  if (ldap_use_tls == 1) {
     if ((ret = ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &version)) != LDAP_OPT_SUCCESS) {
       log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): Setting LDAP version option failed: %s", ldap_err2string(ret));
       pr_ldap_unbind();
@@ -257,20 +273,6 @@ pr_ldap_connect(void)
   ldap_querytimeout_tp.tv_usec = 0;
 
   return 1;
-}
-
-static void
-pr_ldap_unbind(void)
-{
-  int ret;
-
-  if (! ld)
-    return;
-
-  if ((ret = ldap_unbind_s(ld)) != LDAP_SUCCESS)
-    log_pri(LOG_NOTICE, "mod_ldap: pr_ldap_unbind(): ldap_unbind() failed: %s", ldap_err2string(ret));
-
-  ld = NULL;
 }
 
 static void
@@ -626,7 +628,7 @@ pr_ldap_group_lookup(pool *p,
                      char *ldap_attrs[])
 {
   char *filter, **values, *dn;
-  int i = 0, j = 0, ret;
+  int i = 0, value_count, value_offset, ret;
   LDAPMessage *result, *e;
 
   if (! ldap_gid_basedn) {
@@ -679,7 +681,7 @@ pr_ldap_group_lookup(pool *p,
   while (ldap_attrs[i] != NULL) {
     if ((values = ldap_get_values(ld, e, ldap_attrs[i])) == NULL) {
       if (strcasecmp(ldap_attrs[i], MEMBERUID_ATTR) == 0) {
-        gr->gr_mem = palloc(session.pool, sizeof(char *));
+        gr->gr_mem = palloc(session.pool, 2 * sizeof(char *));
         gr->gr_mem[0] = pstrdup(session.pool, "");
         gr->gr_mem[1] = NULL;
 
@@ -698,11 +700,11 @@ pr_ldap_group_lookup(pool *p,
     else if (strcasecmp(ldap_attrs[i], GIDNUMBER_ATTR) == 0)
       gr->gr_gid = strtoul(values[0], (char **)NULL, 10);
     else if (strcasecmp(ldap_attrs[i], MEMBERUID_ATTR) == 0) {
-      gr->gr_mem = palloc(session.pool, sizeof(char *));
+      value_count = ldap_count_values(values);
+      gr->gr_mem = (char **) palloc(session.pool, value_count * sizeof(char *));
 
-      while (values[j] != NULL)
-        ++j;
-      memcpy(gr->gr_mem, values, j + 1);
+      for (value_offset = 0; value_offset < value_count; ++value_offset)
+        gr->gr_mem[value_offset] = pstrdup(session.pool, values[value_offset]);
     }
     else
       log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_group_lookup(): ldap_get_values() loop found unknown attr %s", ldap_attrs[i]);
@@ -715,12 +717,27 @@ pr_ldap_group_lookup(pool *p,
   return gr;
 }
 
+static void
+parse_quota(pool *p, const char *replace, char *str)
+{
+  char **elts, *token;
+
+  if (cached_quota == NULL)
+    cached_quota = make_array(p, 9, sizeof(char *));
+  elts = (char **)cached_quota->elts;
+  elts[0] = pstrdup(session.pool, replace);
+  cached_quota->nelts = 1;
+
+  while ((token = strsep(&str, ","))) {
+    *((char **)push_array(cached_quota)) = pstrdup(session.pool, token);
+  }
+}
+
 static unsigned char
 pr_ldap_quota_lookup(pool *p, char *filter_template, const char *replace,
                      char *basedn)
 {
-  char *filter, **values, *value, *token, *attrs[] = {QUOTA_ATTR, NULL},
-       **elts;
+  char *filter, **values, *attrs[] = {QUOTA_ATTR, NULL};
   int ret;
   LDAPMessage *result, *e;
 
@@ -765,30 +782,32 @@ pr_ldap_quota_lookup(pool *p, char *filter_template, const char *replace,
   if (ldap_count_entries(ld, result) > 1) {
     log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): LDAP search returned multiple entries, aborting query");
     ldap_msgfree(result);
+    if (ldap_default_quota != NULL) {
+      parse_quota(p, replace, pstrdup(p, ldap_default_quota));
+      return TRUE;
+    }
     return FALSE;
   }
 
   if ((e = ldap_first_entry(ld, result)) == NULL) {
     ldap_msgfree(result);
+    if (ldap_default_quota != NULL) {
+      parse_quota(p, replace, pstrdup(p, ldap_default_quota));
+      return TRUE;
+    }
     return FALSE; /* No LDAP entries for this user. */
   }
 
   if ((values = ldap_get_values(ld, e, attrs[0])) == NULL) {
     ldap_msgfree(result);
+    if (ldap_default_quota != NULL) {
+      parse_quota(p, replace, pstrdup(p, ldap_default_quota));
+      return TRUE;
+    }
     return FALSE; /* No quota attr for this user. */
   }
 
-  if (cached_quota == NULL)
-    cached_quota = make_array(p, 9, sizeof(char *));
-  elts = (char **)cached_quota->elts;
-  elts[0] = pstrdup(session.pool, replace);
-  cached_quota->nelts = 1;
-
-  value = values[0];
-  while ((token = strsep(&value, ","))) {
-    *((char **)push_array(cached_quota)) = pstrdup(session.pool, token);
-  }
-
+  parse_quota(p, replace, pstrdup(p, values[0]));
   ldap_value_free(values);
   ldap_msgfree(result);
 
@@ -922,7 +941,7 @@ _auth_lookup_id(xaset_t **id_table, pr_idauth_t id)
 MODRET
 handle_ldap_quota_lookup(cmd_rec *cmd)
 {
-  char **elts;
+  char **elts = NULL;
  
   if (cached_quota != NULL)
     elts = (char **)cached_quota->elts;
@@ -1149,7 +1168,8 @@ handle_ldap_is_auth(cmd_rec *cmd)
   if (!pw || (pw && pw->pw_name && strcasecmp(pw->pw_name, username) != 0))
     if ((pw = pr_ldap_user_lookup(cmd->tmp_pool, ldap_auth_filter, username,
                                   pr_ldap_generate_filter(cmd->tmp_pool, ldap_auth_basedn, username),
-                                  pass_attrs, ldap_authbinds ? &ldap_authbind_dn : NULL)) == NULL)
+                                  ldap_authbinds ? pass_attrs + 1 : pass_attrs,
+                                  ldap_authbinds ? &ldap_authbind_dn : NULL)) == NULL)
       return DECLINED(cmd); /* Can't find the user in the LDAP directory. */
 
   if (!ldap_authbinds && !pw->pw_passwd)
@@ -1184,6 +1204,9 @@ handle_ldap_check(cmd_rec *cmd)
   char *pass, *cryptpass, *hash_method;
   int encname_len;
   LDAP *ld_auth;
+#ifdef USE_LDAPV3_TLS
+  int ret, version = LDAP_VERSION3;
+#endif
 
 #ifdef HAVE_OPENSSL
   EVP_MD_CTX EVP_Context;
@@ -1211,6 +1234,23 @@ handle_ldap_check(cmd_rec *cmd)
       log_pri(PR_LOG_ERR, "mod_ldap: ldap_is_auth(): ldap_init() to %s failed", ldap_server);
       return DECLINED(cmd);
     }
+
+#ifdef USE_LDAPV3_TLS
+  if (ldap_use_tls == 1) {
+    if ((ret = ldap_set_option(ld_auth, LDAP_OPT_PROTOCOL_VERSION, &version)) != LDAP_OPT_SUCCESS) {
+      log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): Setting LDAP version option on rebind failed: %s", ldap_err2string(ret));
+      pr_ldap_unbind();
+      return ERROR(cmd);
+    }
+
+    log_debug(DEBUG2, "mod_ldap: Starting TLS for rebind connection.");
+    if ((ret = ldap_start_tls_s(ld_auth, NULL, NULL)) != LDAP_SUCCESS) {
+      log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): Starting TLS for rebind failed: %s", ldap_err2string(ret));
+      pr_ldap_unbind();
+      return ERROR(cmd);
+    }
+  }
+#endif /* USE_LDAPV3_TLS */
 
     if (ldap_simple_bind_s(ld_auth, ldap_authbind_dn, cmd->argv[2]) != LDAP_SUCCESS) {
       ldap_unbind(ld_auth);
@@ -1539,6 +1579,8 @@ set_ldap_doquota(cmd_rec *cmd)
     c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
   if (cmd->argc > 3)
     c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
+  if (cmd->argc > 4)
+    c->argv[3] = pstrdup(c->pool, cmd->argv[4]);
 
   return HANDLED(cmd);
 }
@@ -1804,6 +1846,9 @@ ldap_getconf(void)
         ldap_quota_filter = pstrdup(session.pool, c->argv[2]);
       else
         ldap_quota_filter = "(&(" UIDNUMBER_ATTR "=%v)(objectclass=posixAccount))";
+
+      if (c->argc > 3)
+        ldap_default_quota = pstrdup(session.pool, c->argv[3]);
     }
   }
 
