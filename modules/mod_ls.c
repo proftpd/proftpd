@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.64 2002-09-13 23:14:41 castaglia Exp $
+ * $Id: mod_ls.c,v 1.65 2002-10-18 15:14:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -266,60 +266,58 @@ void ls_done(cmd_rec *cmd)
   data_close(FALSE);
 }
 
-static
-int listfile(cmd_rec *cmd, pool *p, const char *name)
-{
+static char months[12][4] =
+  { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+
+static int listfile(cmd_rec *cmd, pool *p, const char *name) {
   int		rval = 0, len;
   time_t	mtime;
   char		m[1024] = {'\0'},l[1024] = {'\0'};
   struct	stat st;
-  char		months[12][4] =
-  { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
   
   struct	tm *t;
   char		suffix[2];
   int           hidden = 0;
   
-  if(!p) p = cmd->tmp_pool;
+  if (!p) p = cmd->tmp_pool;
   
-  if(fs_lstat(name,&st) == 0) {
+  if (fs_lstat(name, &st) == 0) {
     suffix[0] = suffix[1] = '\0';
 
-    if(S_ISLNK(st.st_mode) && (opt_L || !list_show_symlinks)) {
-      /* attempt to fully dereference symlink */
+    if (S_ISLNK(st.st_mode) && (opt_L || !list_show_symlinks)) {
+      /* Attempt to fully dereference symlink */
       struct stat l_st;
 
-      if(fs_stat(name,&l_st) != -1) {
-        memcpy(&st,&l_st,sizeof(st));
+      fs_clear_statcache();
+      if (fs_stat(name, &l_st) != -1) {
+        memcpy(&st, &l_st, sizeof(struct stat));
 
-	if((len = fs_readlink(name, m, sizeof(m))) < 0)
+	if ((len = fs_readlink(name, m, sizeof(m))) < 0)
 	  return 0;
 	
 	m[len] = '\0';
-	
-        if(!ls_perms_full(p,cmd,m,NULL))
+
+        if (!ls_perms_full(p, cmd, m, NULL))
           return 0;
 
-      } else {
+      } else
         return 0;
-      }
 
-    } else if(S_ISLNK(st.st_mode)) {
+    } else if (S_ISLNK(st.st_mode)) {
 
-      if((len = fs_readlink(name, l, sizeof(l))) < 0)
+      if ((len = fs_readlink(name, l, sizeof(l))) < 0)
 	return 0;
       
       l[len] = '\0';
-      
-      if(!ls_perms_full(p,cmd,l,&hidden))
+
+      if (!ls_perms_full(p, cmd, l, &hidden))
         return 0;
 
-    } else if(!ls_perms(p,cmd,name,&hidden)) {
+    } else if (!ls_perms(p, cmd, name, &hidden))
       return 0;
-    }
 
-    if(hidden)
+    if (hidden)
       return 0;
 
     mtime = st.st_mtime;
@@ -334,17 +332,19 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
       return -1;
     }
     
-    if(opt_F) {
-      if(S_ISLNK(st.st_mode))
+    if (opt_F) {
+      if (S_ISLNK(st.st_mode))
         suffix[0] = '@';
-      else if(S_ISDIR(st.st_mode)) {
+
+      else if (S_ISDIR(st.st_mode)) {
         suffix[0] = '/';
         rval = 1;
-      } else if(st.st_mode & 0111)
+
+      } else if (st.st_mode & 0111)
         suffix[0] = '*';
     }
     
-    if(opt_l) {
+    if (opt_l) {
       sstrncpy(m, " ---------", sizeof(m));
       switch(st.st_mode & S_IFMT) {
       case S_IFREG:
@@ -371,23 +371,18 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
         break;
       }
 
-      if(m[0] != ' ') {
+      if (m[0] != ' ') {
         char nameline[MAXPATHLEN + MAXPATHLEN + 128] = {'\0'};
         char timeline[6] = {'\0'};
         mode_t mode = st.st_mode;
 
-        if(fakemodep) {
+        if (fakemodep) {
           mode = fakemode;
 
-          if(S_ISDIR(st.st_mode)) {
-
-            if(mode & S_IROTH)
-              mode |= S_IXOTH;
-            if(mode & S_IRGRP)
-              mode |= S_IXGRP;
-            if(mode & S_IRUSR)
-              mode |= S_IXUSR;
-
+          if (S_ISDIR(st.st_mode)) {
+            if (mode & S_IROTH) mode |= S_IXOTH;
+            if (mode & S_IRGRP) mode |= S_IXGRP;
+            if (mode & S_IRUSR) mode |= S_IXUSR;
           }
         }
 
@@ -412,10 +407,12 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
         m[2] = (mode & S_IWUSR) ? 'w' : '-';
         m[1] = (mode & S_IRUSR) ? 'r' : '-';
 
-        if(ls_curtime - mtime > 180 * 24 * 60 * 60)
-          snprintf(timeline, sizeof(timeline), "%5d",t->tm_year+1900);
+        if (ls_curtime - mtime > 180 * 24 * 60 * 60)
+          snprintf(timeline, sizeof(timeline), "%5d", t->tm_year+1900);
+
         else
-          snprintf(timeline, sizeof(timeline), "%02d:%02d",t->tm_hour,t->tm_min);
+          snprintf(timeline, sizeof(timeline), "%02d:%02d", t->tm_hour,
+            t->tm_min);
 
         if (!opt_n) {
 
@@ -432,32 +429,35 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
             " %s %2d %s %s", m, st.st_nlink, st.st_uid, st.st_gid,
             st.st_size, months[t->tm_mon], t->tm_mday,
             timeline, name);
-
         }
 
-        if(S_ISLNK(st.st_mode)) {
+        if (S_ISLNK(st.st_mode)) {
           char *p = nameline + strlen(nameline);
 
           suffix[0] = '\0';
-          if(opt_F && fs_stat(name, &st) == 0) {
-            if(S_ISLNK(st.st_mode))
+          if (opt_F && fs_stat(name, &st) == 0) {
+            if (S_ISLNK(st.st_mode))
               suffix[0] = '@';
-            else if(S_ISDIR(st.st_mode))
+
+            else if (S_ISDIR(st.st_mode))
               suffix[0] = '/';
-            else if(st.st_mode & 0111)
+
+            else if (st.st_mode & 0111)
               suffix[0] = '*';
           }
 
-          snprintf(p, sizeof(nameline) - strlen(nameline) - 4, " -> %s", l);
+          if (!opt_L && list_show_symlinks)
+            snprintf(p, sizeof(nameline) - strlen(nameline) - 4, " -> %s", l);
+
           nameline[sizeof(nameline)-1] = '\0';
         }
 
-	if(opt_STAT)
-	  add_response(R_211,"%s%s",nameline,suffix);
-	      else {
-          addfile(cmd,nameline,suffix,mtime);
+        if (opt_STAT)
+          add_response(R_211, "%s%s", nameline, suffix);
+        else
+          addfile(cmd, nameline, suffix, mtime);
       }
-      }
+
     } else {
       if(S_ISREG(st.st_mode) ||
          S_ISDIR(st.st_mode) ||

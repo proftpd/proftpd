@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.250 2002-10-16 18:14:10 castaglia Exp $
+$Id: NEWS,v 1.251 2002-10-18 15:14:06 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -14,6 +14,9 @@ CVS
 - Bug 1644 - LogFormat local IP and FQDN tags missing.  Added %L to LogFormat
              meta sequences for logging local server IP address, and %V for
              logging local server FQDN.
+- Bug 1785 - Bad handling of symlinks.  This bug appeared as a consequence
+             of Bug#1486's fix, which involved caching of struct stats in
+             order to effect a speed-up of directory listings.
 
 1.2.7rc1 - Released 2002-10-01
 ---------------------------------
