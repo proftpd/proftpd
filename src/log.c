@@ -19,7 +19,7 @@
 
 /*
  * ProFTPD logging support
- * $Id: log.c,v 1.4 1999-09-08 06:57:12 macgyver Exp $
+ * $Id: log.c,v 1.5 1999-09-10 21:17:02 macgyver Exp $
  */
 
 /* History Log:
@@ -106,14 +106,21 @@ int log_xfer(int xfertime,char *remhost,unsigned long fsize,
              char *fname,char xfertype,char direction,
              char access,char *user)
 {
-  char buf[1024];
+  char buf[1024], fbuf[1024];
+  int i;
 
   if(xferfd == -1)
     return 0;
 
+  for(i = 0; (i + 1 < sizeof(fbuf)) && fname[i] != '\0'; i++) {
+    fbuf[i] = (isspace(fname[i]) || iscntrl(fname[i])) ? '_' : fname[i];
+  }
+  
+  fbuf[i] = '\0';
+  
   snprintf(buf,sizeof(buf),"%s %d %s %lu %s %c _ %c %c %s ftp 0 *\n",
-          fmt_time(time(NULL)),xfertime,remhost,fsize,
-          fname,xfertype,direction,access,user);
+	   fmt_time(time(NULL)),xfertime,remhost,fsize,
+	   fbuf,xfertype,direction,access,user);
 
   return(write(xferfd,buf,strlen(buf)));
 }
