@@ -1,22 +1,22 @@
-
 mod_ratio.c - Ratio system module for ProFTPD - README
 
-Copyright (c) 1998-1999 Johnie Ingram. <johnie@netgod.net>
-Portions Copyright (c) Dynamic Web Development <jd@pcglobal.com>
+Copyright (c) 2000 Jim Dogopoulos <jd@dynw.com>
+Portions Copyright (c) 1998-1999 Johnie Ingram. <johnie@netgod.net>
 
---------------------------------------------------------------------
+-----------------------------------------------------------------------
 
 LATEST CHANGES:
 
-2000-14-03: v3.1: Added support to save user stats to disk (SaveRatios
-in config see mod_ratio.README). Changed display to MBytes rather than
-Bytes. Tracks to the nearest Kilobyte rather than byte. - JD
+* 2000-08-01: v3.2: Fixed CwdRatio directive. Ratios are no longer part
+  of CWD or NOOP commands. Fixed file byte ratio printing. It is now
+  UL:DL - the way it was meant to be. Updated README.ratio file.
 
 -- See mod_ratio.c for previous version changes.
 
+
 NOTES: 
 
-SaveRatios, RatioFile, RatioTempFile
+SaveRatios, RatioFile, RatioTempFile:
 
 In order to have SaveRatios working properly, you must point
 RatioFile and RatioTempFile to files that are read/writable for all
@@ -43,7 +43,7 @@ and then restrict ALL access to these directorys within ProFTPD...
 
 INSTALLATION:
 
-To install, copy mod_ratio.c into modules/ and do:
+To install, cconfigure it with ProFTPD like so,
 ./configure --with-modules=mod_ratio
 
 This module is inactive unless configured, which can be done with an
@@ -68,8 +68,12 @@ Ratios on				# enable module
 
 SaveRatios on				# Save ratios in plain text.
 					  READ Above.
+
 RatioFile "/path/tofile"		# Required for SaveRatios
 RatioTempFile "/path/tofile"		# Required for SaveRatios
+
+CwdRatioMsg "Please Upload!"		# Displayed after every directory
+					  change.
 
 UserRatio ftp 0 0 0 0
 HostRatio master.debian.org 0 0 0 0 	# leech access (default)
@@ -78,18 +82,37 @@ GroupRatio proftpd 100 10 5 100000 	# 100:1 files, 10 file cred 5:1
 					  bytes, 100k byte cred
 
 AnonRatio billg@microsoft.com 1 0 1 0 	# 1:1 ratio, no credits
-UserRatio * 5 5 5 50000 		# special default case
+UserRatio * 5 5 5 5000			# special default case
 
 FileRatioErrMsg "Come on you can send more files than that...."
 ByteRatioErrMsg "This file is %i big, you know...."
 LeechRatioMsg "Access: Unlimited"
 
+
+UserRatio Directive Examples:
+
+The UserRatio command controls the initial ratios and credits for all
+users on the system. The format is:
+
+UserRatio username FILERATIO FILECREDITS BYTERATIO BYTECREDITS(kB)
+
+So "UserRatio * 0 0 3 10000" would give all users the default of
+10000k bytes credit (9.7mb) and a 1:3 byte ratio, which will give the
+user 3 bytes of creadit for every 1 byte uploaded.
+
+Specifying a ratio as a negative number will swap the ratio, for
+instance... "UserRatio jd 0 0 -3 0" would give the user jd a 3:1 byte
+ratio, requiring jd to upload 3 bytes for every 1 byte he downloads.
+
+
+MORE Notes:
+
 Setting "Ratios on" without configuring anything else will enable leech
 mode: it logs activity and sends status messages to the ftp client, but
 doesn't restrict traffic. Ratio module activity is recorded to syslog at
 DEBUG0; it usually shows up in /var/log/debug, like this: foo in /: CWD
-/foo :-15/3450 +0/0 (my 5 15 5 150000) =0/146550 [NO F] This example is
-for someone who (1) has downloaded 15 files totalling 3450k, (2) has
+/foo :-15/3450 +0/0 (my 5 15 5 15000) =0/146 [NO F] This example is
+for someone who (1) has downloaded 15 files totalling 14mb, (2) has
 uploaded nothing, (3) has a ratio of 5:1 files and 15:1 bytes, (4) has
 0 files and 146k credit remaining, (5) got the ratio from the MySQL
 record ("my") and (6) is changing directory from / to /foo. Note that
@@ -97,7 +120,9 @@ if this module is turned on globally, any user can create a personal
 ratio area with a .ftpaccess file. One way to prevent this is with:
 PathDenyFilter "\.ftpaccess$"
 
-DISC-LAIMER
+
+DISCLAIMER:
+
 The authors of this module, this ProFTPD software, and this OS and
 kernel disclaim all warranties and are not responsible for what random
 users of this module may do.

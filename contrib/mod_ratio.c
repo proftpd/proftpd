@@ -1,8 +1,7 @@
 /*
  * ProFTPD: mod_ratio -- Support upload/download ratios.
- * Time-stamp: <2000-02-15 15:18:22 root>
- * Copyright (c) 1998-1999 Johnie Ingram.
- * Portions Copyright (c) 2000 Jim Dogopoulos
+ * Copyright (c) 2000 Jim Dogopoulos.
+ * Portions Copyright (c) 1998-1999 Johnie Ingram.
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,17 +18,21 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#define MOD_RATIO_VERSION "mod_ratio/3.1"
+#define MOD_RATIO_VERSION "mod_ratio/3.2"
 
-/* This is mod_ratio, contrib software for proftpd 1.2.0pre3 and above.
-   For more information contact Johnie Ingram <johnie@netgod.net> or
-   Jim D. <jd@pcglobal.com>.
+/* This is mod_ratio, contrib software for proftpd 1.2.0pre10 and above.
+   For more information contact Jim Dogopoulos <jd@dynw.com> or
+   Johnie Ingram <johnie@netgod.net>.
 
    History Log:
 
+   * 2000-08-01: v3.2: Fixed CwdRatio directive. Ratios are no longer part
+     of CWD or NOOP commands. Fixed file byte ratio printing. It is now
+     UL:DL - the way it should be. Updated README.ratio file. - jD
+
    * 2000-02-15: v3.1: Added support to save user stats to plain text file.
      (See README.ratio) Changed display to MBytes rather than Bytes. Tracks
-     to the nearest Kilobyte rather than byte. - Jim D.
+     to the nearest Kilobyte rather than byte. - jD
 
    * 1999-10-03: v3.0: Uses generic API to access SQL data at runtime.
      Supports negative ratios (upload X to get 1) by popular demand.
@@ -50,11 +53,6 @@
 
    * 1998-09-08: v1.0: Accepted into CVS as a contrib module.
 
-   * 1998-07-14: v0.2: Trimmed some debug output, added HostRatio
-     directive, included in Debian ProFTPD binary package.
-
-   * 1998-04-18: v0.1: Initial release.
-
 */
 
 #include "conf.h"
@@ -68,21 +66,11 @@ int gotratuser,fileerr;
 
 static struct
 {
-  int fstor;
-  int fretr;
-  int bstor;
-  int bretr;
+  int fstor,fretr,bstor,bretr;
+  int frate,fcred,brate,bcred;
+  int files,bytes;
 
-  int frate;
-  int fcred;
-  int brate;
-  int bcred;
-
-  int files;
-  int bytes;
-
-  char ftext [64];
-  char btext [64];
+  char ftext [64],btext [64];
 
 } stats;
 
@@ -202,25 +190,25 @@ stats.frate = stats.fcred = stats.brate = stats.bcred = 0;
   if (stats.frate >= 0)
     {
       stats.files = (stats.frate * stats.fstor) + stats.fcred - stats.fretr;
-      snprintf (stats.ftext, sizeof(stats.ftext), "%i:1F", stats.frate);
+      snprintf (stats.ftext, sizeof(stats.ftext), "1:%iF", stats.frate);
     }
   else
     {
       stats.files = (stats.fstor / (stats.frate * -1))
 	+ stats.fcred - stats.fretr;
-      snprintf (stats.ftext, sizeof(stats.ftext), "1:%iF", stats.frate * -1);
+      snprintf (stats.ftext, sizeof(stats.ftext), "%i:1F", stats.frate * -1);
     }
 
   if (stats.brate >= 0)
     {
       stats.bytes = (stats.brate * stats.bstor) + stats.bcred - stats.bretr;
-      snprintf (stats.btext, sizeof(stats.btext), "%i:1B", stats.brate);
+      snprintf (stats.btext, sizeof(stats.btext), "1:%iB", stats.brate);
     }
   else
     {
       stats.bytes = (stats.bstor / (stats.brate * -1))
 	+ stats.bcred - stats.bretr;
-      snprintf (stats.btext, sizeof(stats.btext), "1:%iB", stats.brate * -1);
+      snprintf (stats.btext, sizeof(stats.btext), "%i:1B", stats.brate * -1);
     }
 }
 
@@ -457,8 +445,6 @@ pre_cmd (cmd_rec * cmd)
   return DECLINED (cmd);
 }
 
-/* FIXME: Unnecessarily site-specific directive best left undocumented. */
-
 MODRET
 cmd_cwd (cmd_rec * cmd)
 {
@@ -471,8 +457,7 @@ cmd_cwd (cmd_rec * cmd)
 	{
 	  if (!*((char *) c->argv[0]))
 	    return DECLINED (cmd);
-	  add_response (R_250, "%s?user=%s&dir=%s",
-			c->argv[0], g.user, &dir[1]);
+	  add_response (R_250, "%s", c->argv[0]);
 	  c = find_config_next (c, c->next, CONF_PARAM, "CwdRatioMsg", FALSE);
 	}
     }
@@ -558,8 +543,7 @@ ratio_cmd (cmd_rec * cmd)
   if (g.enable)
     {
       int cwding = !strcasecmp (cmd->argv[0], "CWD");
-      char *r = (cwding) ? R_250 : R_DUP;
-
+    char *r = (cwding) ? R_250 : R_DUP;
       sbuf1[0] = sbuf2[0] = sbuf3[0] = 0;
       if (cwding || !strcasecmp (cmd->argv[0], "PASS"))
 	_calc_ratios (cmd);
@@ -596,25 +580,25 @@ cmd_site (cmd_rec * cmd)
     {
       _calc_ratios (cmd);
       snprintf (buf, sizeof(buf), RATIO_STUFFS);
-      add_response (R_214, "\"%s\" is current ratio.", buf);
+      add_response (R_214, "Current Ratio: ( %s )", buf);
       if (stats.frate)
 	add_response (R_214,
-		      "Files: %s  Down: %i  Up: %i  CR: %i more file%s",
+		      "Files: %s  Down: %i  Up: %i  CR: %i file%s",
 		      stats.ftext, stats.fretr, stats.fstor,
 		      stats.files, (stats.files != 1) ? "s" : "");
       if (stats.brate)
 	add_response (R_214,
-		      "Bytes: %s  Down: %imb  Up: %imb  CR: %i more Mbyte%s",
+		      "Bytes: %s  Down: %imb  Up: %imb  CR: %i Mbytes",
 		      stats.btext, (stats.bretr / 1024), (stats.bstor / 1024),
-		      (stats.bytes / 1024), (stats.bytes != 1024) ? "s" : "");
+		      (stats.bytes / 1024), stats.bytes);
       return HANDLED (cmd);
     }
 
   if (!strcasecmp (cmd->argv[1], "HELP"))
     {
-      add_response (R_214,
-		    "The following SITE extensions are recognized:");
-      add_response (R_214, "RATIO        " "-- show all ratios in effect");
+      add_response (R_214,            
+                    "The following SITE extensions are recognized:");
+      add_response (R_214, "RATIO " "-- show all ratios in effect");
     }
   return DECLINED (cmd);
 }
@@ -665,8 +649,6 @@ static cmdtable ratio_cmdtab[] = {
   { CMD,      C_SITE,	G_NONE, cmd_site, 	FALSE, FALSE },
   { CMD,      C_CWD,	G_NONE, cmd_cwd, 	FALSE, FALSE },
 
-  { PRE_CMD,  C_CWD,	G_NONE, ratio_cmd, 	FALSE, FALSE },
-  { POST_CMD, C_NOOP,	G_NONE, ratio_cmd, 	FALSE, FALSE },
   { POST_CMD, C_LIST,	G_NONE, ratio_cmd, 	FALSE, FALSE },
   { POST_CMD, C_NLST,	G_NONE, ratio_cmd, 	FALSE, FALSE },
   { POST_CMD, C_PASS,	G_NONE, ratio_cmd, 	FALSE, FALSE },
