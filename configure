@@ -5505,7 +5505,7 @@ INCLUDES="$ac_build_addl_includes"
 LIBRARIES="$ac_build_addl_libraries"
 MODULES="$ac_core_modules $ac_addl_modules"
 BUILD_MODULES="$ac_build_core_modules $ac_build_addl_modules"
-VERSION=`cat $srcdir/include/version.h | grep "#define VERSION" | sed -e 's/^.*\"\(.*\)\"/\1/'`
+VERSION=`cat $srcdir/include/version.h | grep "#define VERSION " | sed -e 's/^.*\"\(.*\)\"/\1/'`
 
 savedPrefix="$prefix"
 savedExecPrefix="$exec_prefix"

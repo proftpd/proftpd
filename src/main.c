@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.49 2001-02-20 04:50:38 flood Exp $
+ * $Id: main.c,v 1.50 2001-02-20 20:34:17 flood Exp $
  */
 
 /*
@@ -2117,6 +2117,7 @@ struct option opts[] = {
   { "persistent", 1, NULL, 'p' },
   { "list",       0, NULL, 'l' },
   { "version",    0, NULL, 'v' },
+  { "version-status",0,NULL,1 },
   { "configtest", 0, NULL, 't' },
 #ifdef DEBUG_CORE
   { "core",     0, NULL, 'o' },
@@ -2147,6 +2148,8 @@ struct option_help {
 #endif /* DEBUG_CORE */
   { "--version", "-v",
     "Print version number and exit" },
+  { "--version-status","-vv",
+    "Print extended version information and exit" },
   { NULL, NULL, NULL }
 };
 
@@ -2180,6 +2183,7 @@ int main(int argc, char **argv, char **envp)
   int daemon_uid,daemon_gid,socketp;
   int _umask = 0,c;
   int check_config_syntax = 0;
+  int show_version = 0;
   struct sockaddr peer;
   const char *cmdopts = "nd:c:p:lhtv"
 
@@ -2318,8 +2322,11 @@ int main(int argc, char **argv, char **envp)
       break;
 #endif /* DEBUG_CORE */
     case 'v':
-      log_pri(LOG_NOTICE,"ProFTPD Version " VERSION);
-      exit(0);
+      show_version++;
+      break;
+    case 1:
+      show_version = 2;
+      break;
     case 'h':
       show_usage(0);
     case '?':
@@ -2328,6 +2335,15 @@ int main(int argc, char **argv, char **envp)
     }
   }
 
+  if(show_version) {
+    if(show_version == 1)
+      log_pri(LOG_NOTICE,"ProFTPD Version " VERSION);
+    else
+      log_pri(LOG_NOTICE,"Version Status: %s Internal Version: %08x",
+              VERSION_STATUS,INTERNAL_VERSION);
+    exit(0);
+  }
+  
   /* Initialize sub-systems */
   init_alloc();
   init_log();
