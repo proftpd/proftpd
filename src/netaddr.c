@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.21 2003-10-09 19:34:02 castaglia Exp $
+ * $Id: netaddr.c,v 1.22 2003-10-09 19:40:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -622,19 +622,15 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
       struct hostent *hent = NULL;
       unsigned char ok = FALSE;
 
-       /* Note: here, gethostbyname() is fine, as it returns both IPv4 and IPv6
-        * entries (ideally).  However, gethostbyname(2) has been marked
-        * (in some literature) as a legacy interface, and use of the newer
-        * getipnodebyname(2) is recommended.  Not every platform provides
-        * getipnodebyname(2), though, which means we'll stick with
-        * gethostbyname(2) for now.
-        *
-        * XXX other places in this file use gethostbyname(2) as well, so don't
-        * forget them when we change to using a newer function.
-        * entries.
-        */
-
+#ifdef HAVE_GETHOSTBYNAME2
+      /* On *BSD platforms, gethostbyname2() is provided as the function to
+       * handle names with AF_INET6 addresses.
+       */
+      hent = gethostbyname2(buf, pr_netaddr_get_family(na));
+#else
       hent = gethostbyname(buf);
+#endif /* HAVE_GETHOSTBYNAME2 */
+
       if (hent != NULL) {
         switch (hent->h_addrtype) {
           case AF_INET:
@@ -667,7 +663,10 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
         }
 
         name = ok ? buf : NULL;
-      }
+
+      } else
+        log_pri(PR_LOG_NOTICE, "notice: unable to resolve '%s': %s", buf,
+          hstrerror(errno));
     }
   }
 

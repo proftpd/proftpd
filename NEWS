@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.488 2003-10-09 19:34:02 castaglia Exp $
+$Id: NEWS,v 1.489 2003-10-09 19:40:18 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -31,6 +31,8 @@ CVS
 - Bug 2188 - Wildcard sockets not properly handled on FreeBSD.
   Similar to bugs 2167, the sin_len/sin6_len members of socket structures
   were not being properly set for wildcard sockets.
+- Bug 2204 - Reverse DNS lookups not happening properly on connected clients
+  on FreeBSD.  The gethostbyname2() function needs to be used on FreeBSD.
 
 1.2.9rc2 - Released 11-Sep-2003
 ---------------------------------
