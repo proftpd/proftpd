@@ -14704,7 +14704,8 @@ _ACEOF
 fi
 
 
-echo "$as_me:$LINENO: checking for initscr in -lcurses" >&5
+if test x"$ac_cv_header_curses_h" == xyes; then
+  echo "$as_me:$LINENO: checking for initscr in -lcurses" >&5
 echo $ECHO_N "checking for initscr in -lcurses... $ECHO_C" >&6
 if test "${ac_cv_lib_curses_initscr+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
@@ -14759,15 +14760,19 @@ fi
 echo "$as_me:$LINENO: result: $ac_cv_lib_curses_initscr" >&5
 echo "${ECHO_T}$ac_cv_lib_curses_initscr" >&6
 if test $ac_cv_lib_curses_initscr = yes; then
-  CURSES_LIBS="-lcurses"
+   CURSES_LIBS="-lcurses"
 
 cat >>confdefs.h <<\_ACEOF
 #define HAVE_LIBCURSES 1
 _ACEOF
 
+
 fi
 
-echo "$as_me:$LINENO: checking for initscr in -lncurses" >&5
+fi
+
+if test x"$ac_cv_header_ncurses_h" == xyes; then
+  echo "$as_me:$LINENO: checking for initscr in -lncurses" >&5
 echo $ECHO_N "checking for initscr in -lncurses... $ECHO_C" >&6
 if test "${ac_cv_lib_ncurses_initscr+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
@@ -14822,14 +14827,16 @@ fi
 echo "$as_me:$LINENO: result: $ac_cv_lib_ncurses_initscr" >&5
 echo "${ECHO_T}$ac_cv_lib_ncurses_initscr" >&6
 if test $ac_cv_lib_ncurses_initscr = yes; then
-  CURSES_LIBS="-lncurses"
+   CURSES_LIBS="-lncurses"
 
 cat >>confdefs.h <<\_ACEOF
 #define HAVE_LIBNCURSES 1
 _ACEOF
 
+
 fi
 
+fi
 
 if test x"$enable_curses" != xno ; then
   cat >>confdefs.h <<\_ACEOF
