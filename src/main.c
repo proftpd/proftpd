@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.264 2004-11-22 00:26:04 castaglia Exp $
+ * $Id: main.c,v 1.265 2004-12-02 01:45:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -348,9 +348,6 @@ static void end_login_noexit(void) {
         strerror(errno));
   }
 
-  /* Run all the exit handlers */
-  pr_event_generate("core.exit", NULL);
-
   /* If session.user is set, we have a valid login */
   if (session.user) {
 #if (defined(BSD) && (BSD >= 199103))
@@ -374,6 +371,9 @@ static void end_login_noexit(void) {
 
   if (session.c)
     pr_inet_close(session.pool, session.c);
+
+  /* Run all the exit handlers */
+  pr_event_generate("core.exit", NULL);
 
   if (!is_master ||
       (ServerType == SERVER_INETD && !syntax_check))
