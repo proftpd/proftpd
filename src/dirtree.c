@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.117 2003-09-08 00:41:37 castaglia Exp $
+ * $Id: dirtree.c,v 1.118 2003-09-09 01:04:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -760,25 +760,6 @@ server_rec *start_new_server(const char *addrstr) {
 
   conf.curserver = (server_rec **) push_array(conf.sstack);
   *conf.curserver = s;
-
-#if 0
-  if (addrstr) {
-    pr_netaddr_t *addr = NULL;
-    array_header *addrs;
-
-    /* Resolve the given address string to its address(es). */
-    addr = pr_netaddr_get_addr(s->pool, addrstr, &addrs);
-
-    if (addrs) {
-      register unsigned int i;
-      pr_netaddr_t **elts = addrs->elts;
-
-      /* For every additional address, implicitly add a Bind record. */
-      for (i = 0; i < addrs->nelts; i++) 
-        add_config_param_str("Bind", 1, pr_netaddr_get_ipstr(elts[i]));
-    }
-  }
-#endif
 
   return s;
 }
