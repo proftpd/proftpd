@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.10 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: bindings.c,v 1.11 2003-08-07 15:49:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -66,8 +66,7 @@ static void server_cleanup_cb(void *conn) {
  * is stolen from Apache's http_vhost.c
  */
 static unsigned int ipbind_hash_addr(pr_netaddr_t *addr) {
-  size_t offset = (pr_netaddr_get_family(addr) == AF_INET6 ?
-    sizeof(struct in6_addr) : sizeof(struct in_addr));
+  size_t offset = pr_netaddr_get_inaddr_len(addr);
 
   /* The key is the last four bytes of the IP address.
    * For IPv4, this is the entire address, as always.

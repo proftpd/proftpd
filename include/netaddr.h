@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.3 2003-08-07 07:09:40 castaglia Exp $
+ * $Id: netaddr.h,v 1.4 2003-08-07 15:49:44 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -59,12 +59,26 @@ int pr_netaddr_cmp(const pr_netaddr_t *, const pr_netaddr_t *);
  */
 int pr_netaddr_ncmp(const pr_netaddr_t *, const pr_netaddr_t *, int);
 
+/* Compare the given pr_netaddr_t against a glob pattern, as intended for
+ * fnmatch(3).  The given pattern will be matched first against the DNS
+ * string of the netaddr, if present.  If that doesn't match, a comparison
+ * against the IP address string will be tried.
+ */
+int pr_netaddr_fnmatch(const pr_netaddr_t *, const char *);
+
 /* Returns the size of the contained address (or -1, with errno set to EINVAL,
  * if NULL is used as the argument).  If the pr_netaddr_t is of the AF_INET
  * family, the size of struct sockaddr_in is returned; if of the AF_INET6
  * family, the size of struct sockaddr_in6 is returned.
  */
-int pr_netaddr_get_sockaddr_len(const pr_netaddr_t *);
+size_t pr_netaddr_get_sockaddr_len(const pr_netaddr_t *);
+
+/* Returns the size of the contained address (or -1, with errno set to EINVAL,
+ * if NULL is used as the argument).  If the pr_netaddr_t is of the AF_INET
+ * family, the size of struct in_addr is returned; if of the AF_INET6
+ * family, the size of struct in6_addr is returned.
+ */
+size_t pr_netaddr_get_inaddr_len(const pr_netaddr_t *);
 
 /* Returns the family of the given pr_netaddr_t, either AF_INET or AF_INET6.
  * A NULL pr_netaddr_t will result in -1 being returned, and errno set to

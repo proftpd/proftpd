@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.3 2003-08-07 07:09:40 castaglia Exp $
+ * $Id: netaddr.c,v 1.4 2003-08-07 15:49:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -170,7 +170,7 @@ int pr_netaddr_set_family(pr_netaddr_t *na, int family) {
   return 0;
 }
 
-int pr_netaddr_get_sockaddr_len(const pr_netaddr_t *na) {
+size_t pr_netaddr_get_sockaddr_len(const pr_netaddr_t *na) {
   if (!na) {
     errno = EINVAL;
     return -1;
@@ -184,6 +184,26 @@ int pr_netaddr_get_sockaddr_len(const pr_netaddr_t *na) {
     case AF_INET6:
       return sizeof(struct sockaddr_in6);
 #endif /* USE_IPV6 */   
+  }
+
+  errno = EPERM;
+  return -1;
+}
+
+size_t pr_netaddr_get_inaddr_len(const pr_netaddr_t *na) {
+  if (!na) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  switch (pr_netaddr_get_family(na)) {
+    case AF_INET:
+      return sizeof(struct in_addr);
+
+#ifdef USE_IPV6
+    case AF_INET6:
+      return sizeof(struct in6_addr);
+#endif /* USE_IPV6 */
   }
 
   errno = EPERM;
@@ -354,6 +374,13 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
 
 int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
     int nbits) {
+
+  /* XXX will be implemented for Class matching and ACLs. */
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_netaddr_fnmatch(const pr_netaddr_t *na, const char *pattern) {
 
   /* XXX will be implemented for Class matching and ACLs. */
   errno = ENOSYS;
