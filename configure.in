@@ -123,6 +123,8 @@ AC_SUBST(SBINDIR)
 SYSCONFDIR=`eval echo $sysconfdir`
 AC_SUBST(SYSCONFDIR)
 
+LIB_DEPS="\"\""
+
 AC_ARG_VAR(LIBS, [linker flags, e.g. -l<lib>.{a,so} if you have nonstandard libraries to link])
 
 dnl configure command line options...
