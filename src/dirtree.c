@@ -19,7 +19,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.8 1999-09-29 20:45:52 macgyver Exp $
+ * $Id: dirtree.c,v 1.9 1999-09-30 05:54:01 macgyver Exp $
  */
 
 /* History:
@@ -752,6 +752,7 @@ int match_ip(p_in_addr_t *addr, char *name, const char *match)
   if(!strcasecmp(match,"NONE"))
     return -1;
 
+  memset(buf,0,sizeof(buf));
   mask = buf;
 
   if(*match == '.') {
@@ -765,8 +766,8 @@ int match_ip(p_in_addr_t *addr, char *name, const char *match)
     /* first portion of CIDR should be dotted quad, second portion
      * is netmask
      */
-    sstrncpy(buf, match, (cp - match));
-    
+    sstrncpy(buf, match, (cp-match)+1 <= sizeof(buf) ?
+                         (cp-match)+1 :  sizeof(buf));    
     cidr_bits = atoi(cp+1);
     
     if(cidr_bits > 0 && cidr_bits < 33) {
