@@ -1,6 +1,6 @@
-$Id: NEWS,v 1.584 2004-07-11 21:52:42 castaglia Exp $
+$Id: NEWS,v 1.585 2004-07-13 18:32:54 castaglia Exp $
 
-CVS
+1.2.10rc2 - Released 13-Jul-2004
 ---------------------------------
 - Bug 2396 - NLST command doesn't understand options.  This was caused by
   the solution for Bug 2322.  However, it is not a popular solution, so
