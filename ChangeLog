@@ -1,3 +1,20 @@
+2001-02-05 14:48  flood
+
+	* NEWS, contrib/README.mod_sqlpw, contrib/mod_mysql.c,
+	contrib/mod_pgsql.c, contrib/mod_sqlpw.c, contrib/mod_test.c,
+	modules/mod_tar.c, modules/mod_test.c: moved mod_tar.c,
+	mod_sqlpw.c, mod_mysql.c and mod_pgsql.c to attic, mod_test.c to
+	contrib/.  Adjusted README.sqlpw accordingly.
+
+2001-02-05 14:37  flood
+
+	* configure.in, contrib/mod_ratio.c,
+	contrib/dist/rpm/proftpd.spec.in, modules/mod_auth.c,
+	modules/mod_xfer.c: Bug #279 - Correct use of sendfile. #29 -
+	updated rpm spec. #433 - initial .ftpaccess in cwd. #453 mod_ratio
+	now uses new dir_check().  initgroups/getgroups use now requires
+	--enable-initgroups.
+
 2001-02-05 13:28  flood
 
 	* src/log.c: Bug #455 - SyslogLevel now works as documented.
