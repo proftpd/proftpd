@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.35 2004-05-29 20:03:50 castaglia Exp $
+ * $Id: modules.h,v 1.36 2004-05-29 21:02:50 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -195,7 +195,7 @@ extern authtable *m_authtable;			/* Master authtable */
 unsigned char command_exists(char *);
 int modules_init(void);
 void modules_list(void);
-int module_session_init(void);
+int modules_session_init(void);
 
 unsigned char pr_module_exists(const char *);
 module *pr_module_get(const char *);

@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.37 2004-05-29 20:13:50 castaglia Exp $
+ * $Id: modules.c,v 1.38 2004-05-29 21:02:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -460,7 +460,7 @@ modret_t *mod_create_error(cmd_rec *cmd, int mr_errno) {
 /* Called after forking in order to inform/initialize modules
  * need to know we are a child and have a connection.
  */
-int module_session_init(void) {
+int modules_session_init(void) {
   module *prev_module = curr_module;
   module *m;
 

@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.234 2004-05-29 20:04:02 castaglia Exp $
+ * $Id: main.c,v 1.235 2004-05-29 21:02:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1307,7 +1307,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   /* Inform all the modules that we are now a child */
   pr_log_debug(DEBUG7, "performing module session initializations");
 
-  module_session_init();
+  modules_session_init();
 
   pr_log_debug(DEBUG4, "connected - local  : %s:%d",
     pr_netaddr_get_ipstr(session.c->local_addr), session.c->local_port);
