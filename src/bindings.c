@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.19 2003-11-08 23:34:24 castaglia Exp $
+ * $Id: bindings.c,v 1.20 2003-11-09 00:52:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -790,7 +790,6 @@ static void init_inetd_bindings(void) {
 
 static void init_standalone_bindings(void) {
   int res = 0;
-  config_rec *c = NULL;
   server_rec *serv = NULL;
   unsigned char *default_server = NULL, is_default = FALSE;
 
