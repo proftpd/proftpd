@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.23 1999-10-27 06:26:25 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.24 1999-10-27 20:43:03 macgyver Exp $
  */
 
 /* History Log:
@@ -865,6 +865,11 @@ int xfer_init_child()
 
 int xfer_init_parent()
 {
+  /* Minor optimization so we're not testing EVERY time.
+   */
+  if(have_sendfile)
+    return 0;
+  
 #if defined(HAVE_SENDFILE) && defined(HAVE_LINUX_SENDFILE)
   if(!sendfile(1, 0, NULL, 0) || errno != ENOSYS) {
   	have_sendfile = 1;
