@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.13 2003-03-23 20:00:20 castaglia Exp $
+ * $Id: netio.c,v 1.14 2003-06-03 16:25:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -468,7 +468,7 @@ int pr_netio_postopen(pr_netio_stream_t *nstrm) {
 
 int pr_netio_printf(pr_netio_stream_t *nstrm, const char *fmt, ...) {
   va_list msg;
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+  char buf[PR_RESPONSE_BUFFER_SIZE] = {'\0'};
 
   if (!nstrm) {
     errno = EINVAL;
@@ -485,7 +485,7 @@ int pr_netio_printf(pr_netio_stream_t *nstrm, const char *fmt, ...) {
 
 int pr_netio_printf_async(pr_netio_stream_t *nstrm, char *fmt, ...) {
   va_list msg;
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+  char buf[PR_RESPONSE_BUFFER_SIZE] = {'\0'};
 
   if (!nstrm) {
     errno = EINVAL;

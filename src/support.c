@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.58 2003-04-30 19:32:15 castaglia Exp $
+ * $Id: support.c,v 1.59 2003-06-03 16:25:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -269,28 +269,35 @@ char *dir_interpolate(pool *p, const char *path) {
  */
 
 char *dir_best_path(pool *p, const char *path) {
-  char workpath[MAXPATHLEN + 1] = {'\0'};
-  char realpath_buf[MAXPATHLEN + 1] = {'\0'};
+  char workpath[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
+  char realpath_buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   char *target = NULL, *ntarget;
   int fini = 0;
 
   if (*path == '~') {
-    if (pr_fs_interpolate(path, workpath, MAXPATHLEN) != 1)
-      pr_fs_dircat(workpath, sizeof(workpath), pr_fs_getcwd(), path);
+    if (pr_fs_interpolate(path, workpath, sizeof(workpath)-1) != 1) {
+      if (pr_fs_dircat(workpath, sizeof(workpath), pr_fs_getcwd(), path) < 0)
+        return NULL;
+    }
 
-  } else
-    pr_fs_dircat(workpath, sizeof(workpath), pr_fs_getcwd(), path);
+  } else {
+    if (pr_fs_dircat(workpath, sizeof(workpath), pr_fs_getcwd(), path) < 0)
+      return NULL;
+  }
 
-  pr_fs_clean_path(pstrdup(p, workpath), workpath, MAXPATHLEN);
+  pr_fs_clean_path(pstrdup(p, workpath), workpath, sizeof(workpath)-1);
 
   while (!fini && *workpath) {
-    if (pr_fs_resolve_path(workpath, realpath_buf, MAXPATHLEN, 0) != -1)
+    if (pr_fs_resolve_path(workpath, realpath_buf,
+        sizeof(realpath_buf)-1, 0) != -1)
       break;
 
     ntarget = strrchr(workpath, '/');
     if (ntarget) {
-      if (target)
-        pr_fs_dircat(workpath, sizeof(workpath), workpath, target);
+      if (target) {
+        if (pr_fs_dircat(workpath, sizeof(workpath), workpath, target) < 0)
+          return NULL;
+      }
 
       target = ntarget;
       *target++ = '\0';
@@ -300,45 +307,56 @@ char *dir_best_path(pool *p, const char *path) {
   }
 
   if (!fini && *workpath) {
-    if (target)
-      pr_fs_dircat(workpath, sizeof(workpath), realpath_buf, target);
+    if (target) {
+      if (pr_fs_dircat(workpath, sizeof(workpath), realpath_buf, target) < 0)
+        return NULL;
 
-    else
+    } else
       sstrncpy(workpath, realpath_buf, sizeof(workpath));
 
-  } else
-    pr_fs_dircat(workpath, sizeof(workpath), "/", target);
+  } else {
+    if (pr_fs_dircat(workpath, sizeof(workpath), "/", target) < 0)
+      return NULL;
+  }
 
   return pstrdup(p, workpath);
 }
 
 char *dir_canonical_path(pool *p, const char *path) {
-  char buf[MAXPATHLEN + 1]  = {'\0'};
-  char work[MAXPATHLEN + 1] = {'\0'};
+  char buf[PR_TUNABLE_PATH_MAX + 1]  = {'\0'};
+  char work[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
 
   if (*path == '~') {
-    if (pr_fs_interpolate(path, work, MAXPATHLEN) != 1)
-      pr_fs_dircat(work, sizeof(work), pr_fs_getcwd(), path);
+    if (pr_fs_interpolate(path, work, sizeof(work)-1) != 1) {
+      if (pr_fs_dircat(work, sizeof(work), pr_fs_getcwd(), path) < 0)
+        return NULL;
+    }
 
-  } else
-    pr_fs_dircat(work, sizeof(work), pr_fs_getcwd(), path);
+  } else {
+    if (pr_fs_dircat(work, sizeof(work), pr_fs_getcwd(), path) < 0)
+      return NULL;
+  }
 
-  pr_fs_clean_path(work, buf, MAXPATHLEN);
+  pr_fs_clean_path(work, buf, sizeof(buf)-1);
   return pstrdup(p, buf);
 }
 
 char *dir_canonical_vpath(pool *p, const char *path) {
-  char buf[MAXPATHLEN + 1]  = {'\0'};
-  char work[MAXPATHLEN + 1] = {'\0'};
+  char buf[PR_TUNABLE_PATH_MAX + 1]  = {'\0'};
+  char work[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
 
   if (*path == '~') {
-    if (pr_fs_interpolate(path, work, MAXPATHLEN) != 1)
-      pr_fs_dircat(work, sizeof(work), pr_fs_getvwd(), path);
+    if (pr_fs_interpolate(path, work, sizeof(work)-1) != 1) {
+      if (pr_fs_dircat(work, sizeof(work), pr_fs_getvwd(), path) < 0)
+        return NULL;
+    }
 
-  } else
-    pr_fs_dircat(work, sizeof(work), pr_fs_getvwd(), path);
+  } else {
+    if (pr_fs_dircat(work, sizeof(work), pr_fs_getvwd(), path) < 0)
+      return NULL;
+  }
 
-  pr_fs_clean_path(work, buf, MAXPATHLEN);
+  pr_fs_clean_path(work, buf, sizeof(buf)-1);
   return pstrdup(p, buf);
 }
 
@@ -347,9 +365,9 @@ char *dir_canonical_vpath(pool *p, const char *path) {
  */
 
 char *dir_realpath(pool *p, const char *path) {
-  char buf[MAXPATHLEN + 1] = {'\0'};
+  char buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
 
-  if (pr_fs_resolve_partial(path, buf, MAXPATHLEN, 0) == -1)
+  if (pr_fs_resolve_partial(path, buf, sizeof(buf)-1, 0) == -1)
     return NULL;
 
   return pstrdup(p, buf);
@@ -385,12 +403,12 @@ char *dir_abs_path(pool *p, const char *path, int interpolate) {
   return res;
 }
 
-/* Return the mode (including the file type)
-   of the file pointed to by symlink PATH, or 0 if it doesn't exist.
-   Catch symlink loops using LAST_INODE and RCOUNT.  */
-
+/* Return the mode (including the file type) of the file pointed to by symlink
+ * PATH, or 0 if it doesn't exist. Catch symlink loops using LAST_INODE and
+ * RCOUNT.
+ */
 static mode_t _symlink(char *path, ino_t last_inode, int rcount) {
-  char buf[MAXPATHLEN + 1];
+  char buf[PR_TUNABLE_PATH_MAX + 1];
   struct stat sbuf;
   int i;
 
@@ -441,9 +459,10 @@ mode_t file_mode(char *path) {
 }
 
 /* If DIRP == 1, fail unless PATH is an existing directory.
-   If DIRP == 0, fail unless PATH is an existing non-directory.
-   If DIRP == -1, fail unless PATH exists; the caller doesn't care whether
-   PATH is a file or a directory. */
+ * If DIRP == 0, fail unless PATH is an existing non-directory.
+ * If DIRP == -1, fail unless PATH exists; the caller doesn't care whether
+ * PATH is a file or a directory.
+ */
 
 static int _exists(char *path, int dirp) {
   mode_t fmode;
@@ -714,20 +733,20 @@ char *sreplace(pool *p, char *s, ...) {
   char *m,*r,*src = s,*cp;
   char **mptr,**rptr;
   char *marr[33],*rarr[33];
-  char buf[2048] = {'\0'}, *pbuf = NULL;
+  char buf[PR_TUNABLE_PATH_MAX] = {'\0'}, *pbuf = NULL;
   int  mlen = 0, rlen = 0;
-  int  blen, dyn=1;
+  int  blen, dyn = 1;
 
   cp = buf;
   *cp = '\0';
 
-  memset(marr,'\0',sizeof(marr));
-  memset(rarr,'\0',sizeof(rarr));
-  blen=strlen(src)+1;
+  memset(marr, '\0', sizeof(marr));
+  memset(rarr, '\0', sizeof(rarr));
+  blen = strlen(src) + 1;
 
-  va_start(args,s);
+  va_start(args, s);
 
-  while((m = va_arg(args, char *)) != NULL && mlen < 32) {
+  while ((m = va_arg(args, char *)) != NULL && mlen < 32) {
     if ((r = va_arg(args, char *)) == NULL)
       break;
     blen += (strlen(r) - strlen(m));
@@ -737,37 +756,37 @@ char *sreplace(pool *p, char *s, ...) {
 
   va_end(args);
 
-  /* Try to handle large buffer situations (i.e. escaping of MAXPATHLEN
+  /* Try to handle large buffer situations (i.e. escaping of PR_TUNABLE_PATH_MAX
    * (>2048) correctly, but do not allow very big buffer sizes, that may
    * be dangerous (BUFSIZ may be defined in stdio.h) in some library
    * functions.
    */
 #ifndef BUFSIZ
-#define BUFSIZ 8192
+# define BUFSIZ 8192
 #endif
 
-  if (blen < BUFSIZ) {
+  if (blen < BUFSIZ)
     cp = pbuf = (char *) pcalloc(p, ++blen);
-  }
 
   if (!pbuf) {
-    cp   = pbuf = buf;
-    dyn  = 0;
+    cp = pbuf = buf;
+    dyn = 0;
     blen = sizeof(buf);
   }
 
-  while(*src) {
+  while (*src) {
     for (mptr = marr, rptr = rarr; *mptr; mptr++, rptr++) {
       mlen = strlen(*mptr);
       rlen = strlen(*rptr);
 
-      if (strncmp(src,*mptr,mlen) == 0) {
-        sstrncpy(cp,*rptr, blen - strlen(pbuf));
+      if (strncmp(src, *mptr, mlen) == 0) {
+        sstrncpy(cp, *rptr, blen - strlen(pbuf));
 	if (((cp + rlen) - pbuf + 1) > blen) {
 	  log_pri(PR_LOG_ERR,
-		  "Warning, attempt to overflow internal ProFTPD buffers.");
+		  "WARNING: attempt to overflow internal ProFTPD buffers");
 	  cp = pbuf + blen - 1;
 	  goto done;
+
 	} else {
 	  cp += rlen;
 	}
@@ -780,7 +799,7 @@ char *sreplace(pool *p, char *s, ...) {
     if (!*mptr) {
       if ((cp - pbuf + 1) > blen) {
 	log_pri(PR_LOG_ERR,
-		"Warning, attempt to overflow internal ProFTPD buffers.");
+		"WARNING: attempt to overflow internal ProFTPD buffers");
 	cp = pbuf + blen - 1;
       }
       *cp++ = *src++;
@@ -792,7 +811,8 @@ char *sreplace(pool *p, char *s, ...) {
 
   if (dyn)
     return pbuf;
-  return pstrdup(p,buf);
+
+  return pstrdup(p, buf);
 }
 
 /* "safe" memset() (code borrowed from OpenSSL).  This function should be

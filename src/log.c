@@ -27,7 +27,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.56 2003-05-23 19:43:37 castaglia Exp $
+ * $Id: log.c,v 1.57 2003-06-03 16:25:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -42,7 +42,7 @@ static int logstderr = TRUE;
 static int debug_level = DEBUG0;	/* Default is no debug logging */
 static int facility = LOG_DAEMON;
 static int set_facility = -1;
-static char systemlog_fn[MAX_PATH_LEN] = {'\0'};
+static char systemlog_fn[PR_TUNABLE_PATH_MAX] = {'\0'};
 static char systemlog_host[256] = {'\0'};
 static int systemlog_fd = -1;
 

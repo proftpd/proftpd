@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.177 2003-05-31 00:07:59 castaglia Exp $
+ * $Id: mod_core.c,v 1.178 2003-06-03 16:25:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2829,7 +2829,7 @@ MODRET core_quit(cmd_rec *cmd) {
  */
 
 static char *quote_dir(cmd_rec *cmd, char *dir) {
-  return sreplace(cmd->tmp_pool,dir,"\"","\"\"",NULL);
+  return sreplace(cmd->tmp_pool, dir, "\"", "\"\"", NULL);
 }
 
 MODRET core_pwd(cmd_rec *cmd) {
@@ -3303,54 +3303,56 @@ MODRET core_mkd(cmd_rec *cmd) {
     }
 #endif
 
-  dir = dir_canonical_path(cmd->tmp_pool,cmd->arg);
+  dir = dir_canonical_path(cmd->tmp_pool, cmd->arg);
 
   if (!dir ||
-      !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group,dir, NULL) ||
-       pr_fsio_mkdir(dir, 0777) == -1) {
+      !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL) ||
+      pr_fsio_mkdir(dir, 0777) == -1) {
     pr_response_add_err(R_550, "%s: %s", cmd->argv[1], strerror(errno));
     return ERROR(cmd);
+  }
 
-  } else {
-    if (session.fsuid != (uid_t) -1) {
-      int err = 0,iserr = 0;
+  /* Check to see if we need to change the ownership (user and/or group) of
+   * the newly created directory.
+   */
+  if (session.fsuid != (uid_t) -1) {
+    int err = 0,iserr = 0;
 
-      pr_fsio_stat(dir, &sbuf);
+    pr_fsio_stat(dir, &sbuf);
 
-      PRIVS_ROOT
-      if (pr_fsio_chown(dir, session.fsuid, session.fsgid) == -1) {
-        iserr++;
-        err = errno;
-      }
-      PRIVS_RELINQUISH
+    PRIVS_ROOT
+    if (pr_fsio_chown(dir, session.fsuid, session.fsgid) == -1) {
+      iserr++;
+      err = errno;
+    }
+    PRIVS_RELINQUISH
 
-      if (iserr)
-        log_pri(PR_LOG_WARNING, "chown() as root failed: %s", strerror(err));
+    if (iserr)
+      log_pri(PR_LOG_WARNING, "chown() as root failed: %s", strerror(err));
 
-      else {
-        if (session.fsgid != (gid_t) -1)
-          log_debug(DEBUG2, "root chown(%s) to uid %lu, gid %lu successful",
-            dir, (unsigned long) session.fsuid, (unsigned long) session.fsgid);
-
-        else
-          log_debug(DEBUG2, "root chown(%s) to uid %lu successful", dir,
-            (unsigned long) session.fsuid);
-      }
-
-    } else if (session.fsgid != (gid_t) -1) {
-      pr_fsio_stat(dir, &sbuf);
-
-      if (pr_fsio_chown(dir, (uid_t) -1, session.fsgid) == -1)
-        log_pri(PR_LOG_WARNING, "chown() failed: %s", strerror(errno));
+    else {
+      if (session.fsgid != (gid_t) -1)
+        log_debug(DEBUG2, "root chown(%s) to uid %lu, gid %lu successful",
+          dir, (unsigned long) session.fsuid, (unsigned long) session.fsgid);
 
       else
-        log_debug(DEBUG2, "chown(%s) to gid %lu successful", dir,
-          (unsigned long) session.fsgid);
+        log_debug(DEBUG2, "root chown(%s) to uid %lu successful", dir,
+          (unsigned long) session.fsuid);
     }
 
-    pr_response_add(R_257, "\"%s\" - Directory successfully created",
-      quote_dir(cmd, dir));
+  } else if (session.fsgid != (gid_t) -1) {
+    pr_fsio_stat(dir, &sbuf);
+
+    if (pr_fsio_chown(dir, (uid_t) -1, session.fsgid) == -1)
+      log_pri(PR_LOG_WARNING, "chown() failed: %s", strerror(errno));
+
+    else
+      log_debug(DEBUG2, "chown(%s) to gid %lu successful", dir,
+        (unsigned long) session.fsgid);
   }
+
+  pr_response_add(R_257, "\"%s\" - Directory successfully created",
+    quote_dir(cmd, dir));
 
   return HANDLED(cmd);
 }

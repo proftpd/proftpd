@@ -26,7 +26,7 @@
 
 /* Scoreboard routines.
  *
- * $Id: utils.h,v 1.16 2003-03-22 19:09:15 castaglia Exp $
+ * $Id: utils.h,v 1.17 2003-06-03 16:25:23 castaglia Exp $
  */
 
 #ifndef UTIL_SCOREBOARD_H
@@ -75,8 +75,6 @@
 
 #define	FALSE	0
 #define TRUE	1
-
-#define MAX_PATH_LEN	256
 
 /* UTIL_SCOREBOARD_VERSION is used for checking for scoreboard compatibility
  */

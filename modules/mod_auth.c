@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.152 2003-05-14 05:17:12 castaglia Exp $
+ * $Id: mod_auth.c,v 1.153 2003-06-03 16:25:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1086,9 +1086,9 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     PRIVS_RELINQUISH
 
     if (homedir)
-      sstrncpy(session.cwd, homedir, MAX_PATH_LEN);
+      sstrncpy(session.cwd, homedir, sizeof(session.cwd));
     else
-      sstrncpy(session.cwd, pw->pw_dir, MAX_PATH_LEN);
+      sstrncpy(session.cwd, pw->pw_dir, sizeof(session.cwd));
   }
 
   /* Create the home directory, if need be. */
@@ -1105,7 +1105,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
   defchdir = _get_default_chdir(p,(c ? c->subset : main_server->conf));
 
   if (defchdir)
-    sstrncpy(session.cwd, defchdir, MAX_PATH_LEN);
+    sstrncpy(session.cwd, defchdir, sizeof(session.cwd));
 
   /* Check limits again to make sure deny/allow directives still permit
    * access.

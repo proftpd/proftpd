@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.109 2003-05-14 05:17:13 castaglia Exp $
+ * $Id: dirtree.c,v 1.110 2003-06-03 16:25:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2165,6 +2165,11 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   int res = 1, isfile;
   int op_hidden = FALSE, regex_hidden = FALSE;
 
+  if (!path) {
+    errno = EINVAL;
+    return -1;
+  }
+
   p = make_sub_pool(pp);
 
   /* flood -- this is no longer needed, as all paths passed to
@@ -2308,6 +2313,11 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   int res = 1, isfile;
   int op_hidden = FALSE, regex_hidden = FALSE;
 
+  if (!path) {
+    errno = EINVAL;
+    return -1;
+  }
+
   p = make_sub_pool(pp);
 
   fullpath = path;
@@ -2426,23 +2436,18 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   return res;
 }
 
-/* dir_check_canon() canonocalizes as much of the path as possible
- * (which may not be all of it, as the target may not yet exist
- * then we hand off to dir_check()
+/* dir_check_canon() canonocalizes as much of the path as possible (which may
+ * not be all of it, as the target may not yet exist) then we hand off to
+ * dir_check().
  */
-
-int dir_check_canon(pool *pp, char *cmd, char *group, char *path, int *hidden)
-{
-  return dir_check(pp,cmd,group,dir_best_path(pp,path),hidden);
+int dir_check_canon(pool *pp, char *cmd, char *group, char *path, int *hidden) {
+  return dir_check(pp, cmd, group, dir_best_path(pp, path), hidden);
 }
 
-/*
- * Move all the members (i.e. a "branch") of one config set to
- * a different parent.
+/* Move all the members (i.e. a "branch") of one config set to a different
+ * parent.
  */
-
-static void _reparent_all(config_rec *newparent,xaset_t *set)
-{
+static void _reparent_all(config_rec *newparent, xaset_t *set) {
   config_rec *c,*cnext;
 
   if (!newparent->subset)

@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.5 2003-03-20 02:19:38 castaglia Exp $
+ * $Id: fsio.h,v 1.6 2003-06-03 16:25:21 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -259,7 +259,7 @@ void pr_fs_clear_cache(void);
 void pr_fs_setcwd(const char *);
 const char *pr_fs_getcwd(void);
 const char *pr_fs_getvwd(void);
-void pr_fs_dircat(char *, int, const char *, const char *);
+int pr_fs_dircat(char *, int, const char *, const char *);
 int pr_fs_interpolate(const char *, char *, size_t);
 int pr_fs_resolve_partial(const char *, char *, size_t, int);
 int pr_fs_resolve_path(const char *, char *, size_t, int);

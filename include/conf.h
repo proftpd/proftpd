@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.34 2003-05-02 17:07:43 castaglia Exp $
+ * $Id: conf.h,v 1.35 2003-06-03 16:25:21 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -39,12 +39,6 @@
 #include "config.h"
 
 #include "default_paths.h"
-
-/* This is no longer used, autoconf provides us with a top level
- * config.h
- */
-/* #include "platform.h" */
-#include "options.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -219,6 +213,12 @@ char *strchr(),*strrchr();
 # endif /* HAVE_SYS_TERMIO_H */
 #endif /* HAVE_SYS_TERMIOS_H */
 
+/* The tunable options header needs to be included after all the system headers,
+ * so that limits are picked up properly.
+ */
+
+#include "options.h"
+
 /* Solaris 2.5 seems to already have a typedef for 'timer_t', so
  * #define timer_t to something else as a workaround.
  */
@@ -273,11 +273,6 @@ off_t lseek(int, off_t, int);
 #if defined(HAVE_GETOPT) && defined(AIX3)
 /* AIX 3.2.5 libc exports symbol optopt but is forgotten in includes */
 extern int optopt;
-#endif
-
-/* GNU HURD (and maybe others) do not define MAXPATHLEN */
-#ifndef MAXPATHLEN
-#define MAXPATHLEN      1024
 #endif
 
 /* Necessary for alloca to work */
@@ -354,6 +349,11 @@ typedef struct in_addr p_in_addr_t;
 # ifdef HAVE_SETGROUPENT
 #  define setgrent()	setgroupent(1)
 # endif /* HAVE_SETGROUPENT */
+
+/* Define a buffer size to use for responses, making sure it is big enough
+ * to handle large path names (e.g. for MKD responses).
+ */
+#define PR_RESPONSE_BUFFER_SIZE	 (PR_TUNABLE_BUFFER_SIZE + PR_TUNABLE_PATH_MAX)
 
 #endif /* __PROFTPD_SUPPORT_LIBRARY */
 

@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.144 2003-06-02 16:23:24 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.145 2003-06-03 16:25:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -955,7 +955,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
 
     maxlen = strlen(dir) + 1 + 5;
 
-    if (maxlen > MAXPATHLEN) {
+    if (maxlen > PR_TUNABLE_PATH_MAX) {
       /* This probably shouldn't happen */
       pr_response_add_err(R_451, "%s: File name too long", dir);
       return ERROR(cmd);

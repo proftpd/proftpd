@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.22 2003-06-03 16:17:23 castaglia Exp $
+ * $Id: fsio.c,v 1.23 2003-06-03 16:25:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -75,8 +75,8 @@ static pr_fs_t *fs_cache_fsdir = NULL;
 static unsigned char chk_fs_map = FALSE;
 
 /* Virtual working directory */
-static char vwd[MAXPATHLEN + 1] = "/";
-static char cwd[MAXPATHLEN + 1] = "/";
+static char vwd[PR_TUNABLE_PATH_MAX + 1] = "/";
+static char cwd[PR_TUNABLE_PATH_MAX + 1] = "/";
 
 /* The following static functions are simply wrappers for system functions
  */
@@ -209,7 +209,7 @@ static int fs_cmp(const void *a, const void *b) {
 
 /* Statcache stuff */
 typedef struct {
-  char sc_path[MAXPATHLEN+1];
+  char sc_path[PR_TUNABLE_PATH_MAX+1];
   struct stat sc_stat;
   int sc_errno;
 
@@ -223,7 +223,7 @@ static fs_statcache_t statcache;
 static int cache_stat(pr_fs_t *fs, const char *path, struct stat *sbuf,
     unsigned int op) {
   int res = -1;
-  char pathbuf[MAXPATHLEN + 1] = {'\0'};
+  char pathbuf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   int (*mystat)(pr_fs_t *, const char *, struct stat *) = NULL;
 
   /* Sanity checks */
@@ -242,19 +242,19 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *sbuf,
    * realpath(3), which only introduces more stat system calls.
    */
   if (*path != '/') {
-    sstrcat(pathbuf, cwd, MAXPATHLEN);
+    sstrcat(pathbuf, cwd, sizeof(pathbuf)-1);
 
     /* If the cwd is "/", we don't need to duplicate the path separator. 
      * On some systems (e.g. Cygwin), this duplication can cause problems,
      * as the path may then have different semantics.
      */
     if (strcmp(cwd, "/") != 0)
-      sstrcat(pathbuf, "/", MAXPATHLEN);
+      sstrcat(pathbuf, "/", sizeof(pathbuf)-1);
 
-    sstrcat(pathbuf, path, MAXPATHLEN);
+    sstrcat(pathbuf, path, sizeof(pathbuf)-1);
 
   } else
-    sstrncpy(pathbuf, path, MAXPATHLEN);
+    sstrncpy(pathbuf, path, sizeof(pathbuf)-1);
 
   /* Determine which filesystem function to use, stat() or lstat() */
   mystat = (op == FSIO_FILE_STAT) ? fs->stat : fs->lstat;
@@ -275,7 +275,7 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *sbuf,
 
   /* Update the cache */
   memset(statcache.sc_path, '\0', sizeof(statcache.sc_path));
-  sstrncpy(statcache.sc_path, pathbuf, MAXPATHLEN);
+  sstrncpy(statcache.sc_path, pathbuf, sizeof(statcache.sc_path));
   memcpy(&statcache.sc_stat, sbuf, sizeof(struct stat));
   statcache.sc_errno = errno;
 
@@ -296,8 +296,8 @@ static pr_fs_t *fs_lookup_file_canon(const char *, char **, int);
  * during the hit.
  */
 static pr_fs_t *fs_lookup_dir(const char *path, int op) {
-  char buf[MAXPATHLEN + 1] = {'\0'};
-  char tmp_path[MAXPATHLEN + 1] = {'\0'};
+  char buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
+  char tmp_path[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   pr_fs_t *fs = NULL;
   int exact = FALSE;
 
@@ -307,9 +307,11 @@ static pr_fs_t *fs_lookup_dir(const char *path, int op) {
 
   sstrncpy(buf, path, sizeof(buf));
 
-  if (buf[0] != '/')
-    pr_fs_dircat(tmp_path, sizeof(tmp_path), cwd, buf);
-  else
+  if (buf[0] != '/') {
+    if (pr_fs_dircat(tmp_path, sizeof(tmp_path), cwd, buf) < 0)
+      return NULL;
+
+  } else
     sstrncpy(tmp_path, buf, sizeof(tmp_path));
 
   /* Make sure that if this is a directory operation, the path being
@@ -396,15 +398,19 @@ static pr_fs_t *fs_lookup_file(const char *path, char **deref, int op) {
       /* The given path is a symbolic link, in which case we need to find
        * the actual path referenced, and return an pr_fs_t for _that_ path
        */
-      char linkbuf[MAXPATHLEN + 1];
+      char linkbuf[PR_TUNABLE_PATH_MAX + 1];
       int i;
 
+      /* Three characters are reserved at the end of linkbuf for some path
+       * characters (and a trailing NUL).
+       */
       if (fs_cwd->readlink &&
-          (i = fs_cwd->readlink(fs_cwd, path, &linkbuf[2], MAXPATHLEN-3)) != -1) {
+          (i = fs_cwd->readlink(fs_cwd, path, &linkbuf[2],
+           sizeof(linkbuf)-3)) != -1) {
         linkbuf[i] = '\0';
         if (!strchr(linkbuf, '/')) {
-          if (i + 3 > MAXPATHLEN)
-            i = MAXPATHLEN - 3;
+          if (i + 3 > PR_TUNABLE_PATH_MAX)
+            i = PR_TUNABLE_PATH_MAX - 3;
 
           memmove(&linkbuf[2], linkbuf, i + 1);
 
@@ -426,17 +432,20 @@ static pr_fs_t *fs_lookup_file(const char *path, char **deref, int op) {
 }
 
 static pr_fs_t *fs_lookup_file_canon(const char *path, char **deref, int op) {
-  static char workpath[MAXPATHLEN + 1];
+  static char workpath[PR_TUNABLE_PATH_MAX + 1];
 
   memset(workpath,'\0',sizeof(workpath));
 
-  if (pr_fs_resolve_partial(path, workpath, MAXPATHLEN, FSIO_FILE_OPEN) == -1) {
+  if (pr_fs_resolve_partial(path, workpath, sizeof(workpath)-1,
+      FSIO_FILE_OPEN) == -1) {
     if (*path == '/' || *path == '~') {
-      if (pr_fs_interpolate(path, workpath, MAXPATHLEN) != -1)
+      if (pr_fs_interpolate(path, workpath, sizeof(workpath)-1) != -1)
         sstrncpy(workpath, path, sizeof(workpath));
 
-    } else
-      pr_fs_dircat(workpath, sizeof(workpath), cwd, path);
+    } else {
+      if (pr_fs_dircat(workpath, sizeof(workpath), cwd, path) < 0)
+        return NULL;
+    }
   }
 
   if (deref)
@@ -543,7 +552,7 @@ pr_fs_t *pr_create_fs(pool *p, const char *name) {
 }
 
 int pr_insert_fs(pr_fs_t *fs, const char *path) {
-  char cleaned_path[MAXPATHLEN] = {'\0'};
+  char cleaned_path[PR_TUNABLE_PATH_MAX] = {'\0'};
 
   if (!fs_map) {
     pool *map_pool = make_sub_pool(permanent_pool);
@@ -960,7 +969,7 @@ pr_fs_match_t *pr_get_fs_match(const char *path, int op) {
 #endif /* HAVE_REGEX_H && HAVE_REGCOMP */
 
 void pr_fs_setcwd(const char *dir) {
-  pr_fs_resolve_path(dir, cwd, MAXPATHLEN, FSIO_DIR_CHDIR);
+  pr_fs_resolve_path(dir, cwd, sizeof(cwd)-1, FSIO_DIR_CHDIR);
   sstrncpy(cwd, dir, sizeof(cwd));
   fs_cwd = fs_lookup_dir(cwd, FSIO_DIR_CHDIR);
   cwd[sizeof(cwd) - 1] = '\0';
@@ -974,38 +983,37 @@ const char *pr_fs_getvwd(void) {
   return vwd;
 }
 
-void pr_fs_dircat(char *buf, int len, const char *dir1, const char *dir2) {
-  /* make temporary copies so that memory areas can overlap */
+int pr_fs_dircat(char *buf, int buflen, const char *dir1, const char *dir2) {
+  /* Make temporary copies so that memory areas can overlap */
   char *_dir1 = NULL, *_dir2 = NULL;
-  size_t i = 0;
+  size_t dir1len = 0;
 
-  /* This is an experimental test to see if we've got reasonable
-   * directories to concatenate.  If we don't, then we default to
-   * the root directory.
+  /* This is a test to see if we've got reasonable directories to concatenate.
    */
-  if ((strlen(dir1) + strlen(dir2) + 1) > MAXPATHLEN) {
-    sstrncpy(buf, "/", len);
-    return;
+  if ((strlen(dir1) + strlen(dir2) + 1) >= PR_TUNABLE_PATH_MAX) {
+    errno = ENAMETOOLONG;
+    buf[0] = '\0';  
+    return -1;
   }
 
   _dir1 = strdup(dir1);
   _dir2 = strdup(dir2);
 
-  i = strlen(_dir1) - 1;
+  dir1len = strlen(_dir1) - 1;
 
   if (*_dir2 == '/') {
-    sstrncpy(buf, _dir2, len);
+    sstrncpy(buf, _dir2, buflen);
     free(_dir1);
     free(_dir2);
-    return;
+    return 0;
   }
 
-  sstrncpy(buf, _dir1, len);
+  sstrncpy(buf, _dir1, buflen);
 
-  if (len && *(_dir1 + i) != '/')
-    sstrcat(buf, "/", MAXPATHLEN);
+  if (buflen && *(_dir1 + dir1len) != '/')
+    sstrcat(buf, "/", buflen);
 
-  sstrcat(buf, _dir2, MAXPATHLEN);
+  sstrcat(buf, _dir2, buflen);
 
   if (!*buf) {
    *buf++ = '/';
@@ -1014,6 +1022,8 @@ void pr_fs_dircat(char *buf, int len, const char *dir1, const char *dir2) {
 
   free(_dir1);
   free(_dir2);
+
+  return 0;
 }
 
 /* This function performs any tilde expansion needed and then returns the
@@ -1028,7 +1038,7 @@ int pr_fs_interpolate(const char *path, char *buf, size_t buflen) {
   struct passwd *pw = NULL;
   struct stat sbuf;
   char *fname = NULL;
-  char user[MAXPATHLEN + 1] = {'\0'};
+  char user[PR_TUNABLE_LOGIN_MAX + 1] = {'\0'};
   int len;
 
   if (!path) {
@@ -1097,10 +1107,9 @@ int pr_fs_interpolate(const char *path, char *buf, size_t buflen) {
 }
 
 int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
-  char curpath[MAXPATHLEN + 1]  = {'\0'},
-       workpath[MAXPATHLEN + 1] = {'\0'},
-       namebuf[MAXPATHLEN + 1]  = {'\0'},
-       linkpath[MAXPATHLEN + 1] = {'\0'},
+  char curpath[PR_TUNABLE_PATH_MAX + 1]  = {'\0'},
+       workpath[PR_TUNABLE_PATH_MAX + 1] = {'\0'},
+       namebuf[PR_TUNABLE_PATH_MAX + 1]  = {'\0'},
        *where = NULL, *ptr = NULL, *last = NULL;
 
   pr_fs_t *fs = NULL;
@@ -1115,7 +1124,7 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
 
   if (*path != '/') {
     if (*path == '~') {
-      switch (pr_fs_interpolate(path, curpath, sizeof(curpath))) {
+      switch (pr_fs_interpolate(path, curpath, sizeof(curpath)-1)) {
       case -1:
         return -1;
 
@@ -1191,12 +1200,12 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
       if (*namebuf) {
         for (last = namebuf; *last; last++);
         if (*--last != '/')
-          sstrcat(namebuf, "/", MAXPATHLEN);
+          sstrcat(namebuf, "/", sizeof(namebuf)-1);
 
       } else
-        sstrcat(namebuf, "/", MAXPATHLEN);
+        sstrcat(namebuf, "/", sizeof(namebuf)-1);
 
-      sstrcat(namebuf, where, MAXPATHLEN);
+      sstrcat(namebuf, where, sizeof(namebuf)-1);
 
       where = ++ptr;
 
@@ -1206,6 +1215,8 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
         return -1;
 
       if (S_ISLNK(sbuf.st_mode)) {
+        char linkpath[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
+
         /* Detect an obvious recursive symlink */
         if (sbuf.st_ino && (ino_t) sbuf.st_ino == last_inode) {
           errno = ELOOP;
@@ -1219,7 +1230,8 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
         }
 	
         if (fs->readlink &&
-            (len = fs->readlink(fs, namebuf, linkpath, MAXPATHLEN)) <= 0) {
+            (len = fs->readlink(fs, namebuf, linkpath,
+             sizeof(linkpath)-1)) <= 0) {
           errno = ENOENT;
           return -1;
         }
@@ -1229,18 +1241,18 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
           *workpath = '\0';
 
         if (*linkpath == '~') {
-          char tmpbuf[MAXPATHLEN + 1] = {'\0'};
+          char tmpbuf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
 
           *workpath = '\0';
           sstrncpy(tmpbuf, linkpath, sizeof(tmpbuf));
 
-          if (pr_fs_interpolate(tmpbuf, linkpath, sizeof(linkpath)) == -1)
+          if (pr_fs_interpolate(tmpbuf, linkpath, sizeof(linkpath)-1) == -1)
 	    return -1;
         }
 
         if (*where) {
-          sstrcat(linkpath, "/", MAXPATHLEN);
-          sstrcat(linkpath, where, MAXPATHLEN);
+          sstrcat(linkpath, "/", sizeof(linkpath)-1);
+          sstrcat(linkpath, where, sizeof(linkpath)-1);
         }
 
         sstrncpy(curpath, linkpath, sizeof(curpath));
@@ -1272,10 +1284,9 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
 }
 
 int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
-  char curpath[MAXPATHLEN + 1]  = {'\0'},
-       workpath[MAXPATHLEN + 1] = {'\0'},
-       namebuf[MAXPATHLEN + 1]  = {'\0'},
-       linkpath[MAXPATHLEN + 1] = {'\0'},
+  char curpath[PR_TUNABLE_PATH_MAX + 1]  = {'\0'},
+       workpath[PR_TUNABLE_PATH_MAX + 1] = {'\0'},
+       namebuf[PR_TUNABLE_PATH_MAX + 1]  = {'\0'},
        *where = NULL, *ptr = NULL, *last = NULL;
 
   pr_fs_t *fs = NULL;
@@ -1289,7 +1300,7 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
     return -1;
   }
 
-  if (pr_fs_interpolate(path, curpath, MAXPATHLEN) != -1)
+  if (pr_fs_interpolate(path, curpath, sizeof(curpath)-1) != -1)
     sstrncpy(curpath, path, sizeof(curpath));
 
   if (curpath[0] != '/')
@@ -1339,12 +1350,12 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
         for (last = namebuf; *last; last++);
 
         if (*--last != '/')
-          sstrcat(namebuf, "/", MAXPATHLEN);
+          sstrcat(namebuf, "/", sizeof(namebuf)-1);
 
       } else
-        sstrcat(namebuf, "/", MAXPATHLEN);
+        sstrcat(namebuf, "/", sizeof(namebuf)-1);
 
-      sstrcat(namebuf, where, MAXPATHLEN);
+      sstrcat(namebuf, where, sizeof(namebuf)-1);
 
       where = ++ptr;
 
@@ -1356,9 +1367,11 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
       }
 
       if (S_ISLNK(sbuf.st_mode)) {
+        char linkpath[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
+
         /* Detect an obvious recursive symlink */
         if (sbuf.st_ino && (ino_t) sbuf.st_ino == last_inode) {
-          errno = ENOENT;
+          errno = ELOOP;
           return -1;
         }
 
@@ -1370,7 +1383,8 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
         }
 
         if (fs->readlink &&
-            (len = fs->readlink(fs, namebuf, linkpath, MAXPATHLEN)) <= 0) {
+            (len = fs->readlink(fs, namebuf, linkpath,
+             sizeof(linkpath)-1)) <= 0) {
           errno = ENOENT;
           return -1;
         }
@@ -1381,18 +1395,18 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
           *workpath = '\0';
 
         if (*linkpath == '~') {
-          char tmpbuf[MAXPATHLEN + 1] = {'\0'};
+          char tmpbuf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
           *workpath = '\0';
 
           sstrncpy(tmpbuf, linkpath, sizeof(tmpbuf));
 
-          if (pr_fs_interpolate(tmpbuf, linkpath, sizeof(linkpath)) == -1)
+          if (pr_fs_interpolate(tmpbuf, linkpath, sizeof(linkpath)-1) == -1)
 	    return -1;
         }
 
         if (*where) {
-          sstrcat(linkpath, "/", MAXPATHLEN);
-          sstrcat(linkpath, where, MAXPATHLEN);
+          sstrcat(linkpath, "/", sizeof(linkpath)-1);
+          sstrcat(linkpath, where, sizeof(linkpath)-1);
         }
 
         sstrncpy(curpath, linkpath, sizeof(curpath));
@@ -1423,9 +1437,9 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
 }
 
 void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
-  char workpath[MAXPATHLEN + 1] = {'\0'};
-  char curpath[MAXPATHLEN + 1]  = {'\0'};
-  char namebuf[MAXPATHLEN + 1]  = {'\0'};
+  char workpath[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
+  char curpath[PR_TUNABLE_PATH_MAX + 1]  = {'\0'};
+  char namebuf[PR_TUNABLE_PATH_MAX + 1]  = {'\0'};
   char *where = NULL, *ptr = NULL, *last = NULL;
   int fini = 1;
 
@@ -1489,13 +1503,13 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
       if (*namebuf) {
         for (last = namebuf; *last; last++);
         if (*--last != '/')
-          sstrcat(namebuf, "/", MAXPATHLEN);
+          sstrcat(namebuf, "/", sizeof(namebuf)-1);
 
       } else
-        sstrcat(namebuf, "/", MAXPATHLEN);
+        sstrcat(namebuf, "/", sizeof(namebuf)-1);
 
-      sstrcat(namebuf, where, MAXPATHLEN);
-      namebuf[MAXPATHLEN-1] = '\0';
+      sstrcat(namebuf, where, sizeof(namebuf)-1);
+      namebuf[sizeof(namebuf)-1] = '\0';
 
       where = ++ptr;
 
@@ -1536,9 +1550,9 @@ int pr_fs_valid_path(const char *path) {
 }
 
 void pr_fs_virtual_path(const char *path, char *buf, size_t buflen) {
-  char curpath[MAXPATHLEN + 1]  = {'\0'},
-       workpath[MAXPATHLEN + 1] = {'\0'},
-       namebuf[MAXPATHLEN + 1]  = {'\0'},
+  char curpath[PR_TUNABLE_PATH_MAX + 1]  = {'\0'},
+       workpath[PR_TUNABLE_PATH_MAX + 1] = {'\0'},
+       namebuf[PR_TUNABLE_PATH_MAX + 1]  = {'\0'},
        *where = NULL, *ptr = NULL, *last = NULL;
 
   int fini = 1;
@@ -1546,7 +1560,7 @@ void pr_fs_virtual_path(const char *path, char *buf, size_t buflen) {
   if (!path)
     return;
 
-  if (pr_fs_interpolate(path, curpath, MAXPATHLEN) != -1)
+  if (pr_fs_interpolate(path, curpath, sizeof(curpath)-1) != -1)
     sstrncpy(curpath, path, sizeof(curpath));
 
   if (curpath[0] != '/')
@@ -1611,12 +1625,12 @@ void pr_fs_virtual_path(const char *path, char *buf, size_t buflen) {
       if (*namebuf) {
         for (last = namebuf; *last; last++);
         if (*--last != '/')
-          sstrcat(namebuf, "/", MAXPATHLEN);
+          sstrcat(namebuf, "/", sizeof(namebuf)-1);
 
       } else
-        sstrcat(namebuf, "/", MAXPATHLEN);
+        sstrcat(namebuf, "/", sizeof(namebuf)-1);
 
-      sstrcat(namebuf, where, MAXPATHLEN);
+      sstrcat(namebuf, where, sizeof(namebuf)-1);
 
       where = ++ptr;
 
@@ -1631,11 +1645,12 @@ void pr_fs_virtual_path(const char *path, char *buf, size_t buflen) {
 }
 
 int pr_fsio_chdir_canon(const char *path, int hidesymlink) {
-  char resbuf[MAXPATHLEN + 1] = {'\0'};
+  char resbuf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   pr_fs_t *fs = NULL;
   int res = 0;
 
-  if (pr_fs_resolve_partial(path, resbuf, MAXPATHLEN, FSIO_DIR_CHDIR) == -1)
+  if (pr_fs_resolve_partial(path, resbuf, sizeof(resbuf)-1,
+      FSIO_DIR_CHDIR) == -1)
     return -1;
 
   fs = fs_lookup_dir(resbuf, FSIO_DIR_CHDIR);
@@ -1655,7 +1670,7 @@ int pr_fsio_chdir_canon(const char *path, int hidesymlink) {
      fs_cwd = fs;
 
      if (hidesymlink)
-       pr_fs_virtual_path(path, vwd, MAXPATHLEN);
+       pr_fs_virtual_path(path, vwd, sizeof(vwd)-1);
      else
        sstrncpy(vwd, resbuf, sizeof(vwd));
   }
@@ -1664,11 +1679,11 @@ int pr_fsio_chdir_canon(const char *path, int hidesymlink) {
 }
 
 int pr_fsio_chdir(const char *path, int hidesymlink) {
-  char resbuf[MAXPATHLEN + 1] = {'\0'};
+  char resbuf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   pr_fs_t *fs = NULL;
   int res;
 
-  pr_fs_clean_path(path, resbuf, MAXPATHLEN);
+  pr_fs_clean_path(path, resbuf, sizeof(resbuf)-1);
 
   fs = fs_lookup_dir(path, FSIO_DIR_CHDIR);
 
@@ -1687,7 +1702,7 @@ int pr_fsio_chdir(const char *path, int hidesymlink) {
      fs_cwd = fs;
 
      if (hidesymlink)
-       pr_fs_virtual_path(path, vwd, MAXPATHLEN);
+       pr_fs_virtual_path(path, vwd, sizeof(vwd)-1);
      else
        sstrncpy(vwd, resbuf, sizeof(vwd));
   }
@@ -1709,9 +1724,9 @@ void *pr_fsio_opendir(const char *path) {
     fs = fs_cwd;
 
   } else {
-    char buf[MAXPATHLEN + 1] = {'\0'};
+    char buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
 
-    if (pr_fs_resolve_partial(path, buf, MAXPATHLEN, FSIO_DIR_OPENDIR) == -1)
+    if (pr_fs_resolve_partial(path, buf, sizeof(buf)-1, FSIO_DIR_OPENDIR) == -1)
       return NULL;
 
     fs = fs_lookup_dir(buf, FSIO_DIR_OPENDIR);
@@ -2697,7 +2712,7 @@ void pr_resolve_fs_map(void) {
 }
 
 int pr_init_fs(void) {
-  char cwdbuf[MAXPATHLEN + 1] = {'\0'};
+  char cwdbuf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
 
   /* Establish the default pr_fs_t that will handle any path */
   if ((root_fs = pr_create_fs(permanent_pool, "system")) == NULL) {
@@ -2711,7 +2726,8 @@ int pr_init_fs(void) {
 
   root_fs->fs_path = pstrdup(root_fs->fs_pool, "/");
 
-  if (getcwd(cwdbuf, MAXPATHLEN)) {
+  if (getcwd(cwdbuf, sizeof(cwdbuf)-1)) {
+    cwdbuf[sizeof(cwdbuf)-1] = '\0';
     pr_fs_setcwd(cwdbuf);
 
   } else {

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.441 2003-06-03 16:04:59 castaglia Exp $
+$Id: NEWS,v 1.442 2003-06-03 16:25:20 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -16,6 +16,7 @@ CVS
 - Bug 2076 - The --enable-transfer-buffer-size configure option doesn't work
   properly.  It was overriding the --enable-buffer-size option, rather than
   the corresponding tunable buffer size.
+- Bug 2069 - Long MKD path causes truncated server response.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------

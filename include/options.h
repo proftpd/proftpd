@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.16 2003-03-09 22:28:16 castaglia Exp $
+ * $Id: options.h,v 1.17 2003-06-03 16:25:21 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -93,6 +93,20 @@
 # define PR_TUNABLE_XFER_BUFFER_SIZE	PR_TUNABLE_BUFFER_SIZE
 #endif
 
+/* Maximum path length.  GNU HURD (and some others) do not define
+ * MAXPATHLEN.  POSIX' PATH_MAX is mandated to be at least 256 
+ * (according to some), so 1K, in the absense of MAXPATHLEN, should be
+ * a reasonable default.
+ */
+
+#ifndef PR_TUNABLE_PATH_MAX
+# ifdef MAXPATHLEN
+#  define PR_TUNABLE_PATH_MAX           MAXPATHLEN
+# else
+#  define PR_TUNABLE_PATH_MAX           1024
+# endif
+#endif
+
 /* Default timeouts, if not explicitly configured via
  * the TimeoutLogin, TimeoutIdle, etc directives.
  */
@@ -153,6 +167,17 @@
 
 #ifndef PR_TUNABLE_GLOBBING_MAX	
 # define PR_TUNABLE_GLOBBING_MAX	8
+#endif
+
+/* Maximum length of login name.
+ */
+
+#ifndef PR_TUNABLE_LOGIN_MAX
+# ifdef _POSIX_LOGIN_NAME_MAX
+#  define PR_TUNABLE_LOGIN_MAX		_POSIX_LOGIN_NAME_MAX
+# else
+#  define PR_TUNABLE_LOGIN_MAX		9
+# endif
 #endif
 
 /* Loopback network, this should generally not need to be changed,

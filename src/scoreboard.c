@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.22 2003-03-29 23:55:04 castaglia Exp $
+ * $Id: scoreboard.c,v 1.23 2003-06-03 16:25:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -36,7 +36,7 @@
 extern char ServerType;
 
 static int scoreboard_fd = -1;
-static char scoreboard_file[MAX_PATH_LEN] = RUN_DIR "/proftpd.scoreboard";
+static char scoreboard_file[PR_TUNABLE_PATH_MAX] = RUN_DIR "/proftpd.scoreboard";
 
 static off_t current_pos = 0;
 static pr_scoreboard_header_t header;
@@ -255,7 +255,7 @@ void pr_delete_scoreboard(void) {
 
   scoreboard_fd = -1;
 
-  if (scoreboard_file)
+  if (*scoreboard_file)
     unlink(scoreboard_file);
 }
 
@@ -412,7 +412,7 @@ int pr_rewind_scoreboard(void) {
 }
 
 int pr_set_scoreboard(const char *path) {
-  char dir[MAX_PATH_LEN] = {'\0'};
+  char dir[PR_TUNABLE_PATH_MAX] = {'\0'};
   struct stat st;
   char *tmp = NULL;
 

@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.42 2003-04-22 20:47:04 castaglia Exp $
+ * $Id: proftpd.h,v 1.43 2003-06-03 16:25:21 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -44,7 +44,6 @@
 
 #define ASSERT(x)			assert(x)
 #include <assert.h>
-#define MAX_PATH_LEN			256
 
 /* adjust per platform */
 /* unsigned 32 bit integer */
@@ -104,8 +103,8 @@ typedef struct {
 					 * used
 					 */
 
-  char cwd[MAX_PATH_LEN];		/* Current working directory */
-  char vwd[MAX_PATH_LEN];		/* Current virtual working directory */
+  char cwd[PR_TUNABLE_PATH_MAX];		/* Current working directory */
+  char vwd[PR_TUNABLE_PATH_MAX];		/* Current virtual working directory */
 
   struct config_struc *dir_config;	/* Closest matching configuration
                                          * for current operation

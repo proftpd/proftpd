@@ -23,7 +23,7 @@
  */
 
 /* Command response routines
- * $Id: response.c,v 1.3 2003-01-02 18:25:27 castaglia Exp $
+ * $Id: response.c,v 1.4 2003-06-03 16:25:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -32,7 +32,7 @@ pr_response_t *resp_list = NULL, *resp_err_list = NULL;
 
 static pool *resp_pool = NULL;
 
-static char resp_buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+static char resp_buf[PR_RESPONSE_BUFFER_SIZE] = {'\0'};
 static char resp_ml_numeric[4] = {'\0'};
 
 static char *(*resp_handler_cb)(pool *, const char *, ...) = NULL;

@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.91 2003-04-08 17:18:29 castaglia Exp $
+ * $Id: mod_ls.c,v 1.92 2003-06-03 16:25:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -82,7 +82,7 @@ static int
     opt_t = 0,
     opt_STAT = 0;
 
-static char cwd[MAXPATHLEN + 1] = "";
+static char cwd[PR_TUNABLE_PATH_MAX+1] = "";
 
 /* Find a <Limit> block that limits the given command (which will probably
  * be LIST).  This code borrowed for src/dirtree.c's _dir_check_limit().
@@ -141,7 +141,7 @@ static void push_cwd(char *_cwd, unsigned char *symhold) {
   if (!symhold)
     *symhold = show_symlinks_hold;
 
-  sstrncpy(_cwd, pr_fs_getcwd(), MAXPATHLEN + 1);
+  sstrncpy(_cwd, pr_fs_getcwd(), PR_TUNABLE_PATH_MAX + 1);
   *symhold = list_show_symlinks;
 }
 
@@ -196,7 +196,7 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
 
 static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden) {
   int res = 0;
-  char fullpath[MAXPATHLEN + 1] = {'\0'};
+  char fullpath[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   mode_t *fake_mode = NULL;
 
   /* No need to process dotdirs. */
@@ -208,9 +208,9 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden) {
 
   if (*path != '/')
     pr_fs_clean_path(pdircat(p, pr_fs_getcwd(), path, NULL), fullpath,
-      MAXPATHLEN);
+      PR_TUNABLE_PATH_MAX);
   else
-    pr_fs_clean_path(path, fullpath, MAXPATHLEN);
+    pr_fs_clean_path(path, fullpath, PR_TUNABLE_PATH_MAX);
 
   res = dir_check(p, cmd->argv[0], cmd->group, fullpath, hidden);
 
@@ -398,7 +398,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
       }
 
       if (m[0] != ' ') {
-        char nameline[MAXPATHLEN + MAXPATHLEN + 128] = {'\0'};
+        char nameline[(PR_TUNABLE_PATH_MAX * 2) + 128] = {'\0'};
         char timeline[6] = {'\0'};
         mode_t mode = st.st_mode;
 
@@ -930,7 +930,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
 
     r = dir;
     while (opt_R && r != s) {
-      char cwd_buf[MAXPATHLEN + 1] = {'\0'};
+      char cwd_buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
       unsigned char symhold;
 
       if (*r && (strcmp(*r, ".") == 0 || strcmp(*r, "..") == 0)) {
@@ -1240,7 +1240,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
     int justone = 1;
     glob_t g;
     int    a;
-    char   pbuffer[MAXPATHLEN + 1] = "";
+    char   pbuffer[PR_TUNABLE_PATH_MAX + 1] = "";
 
     /* make sure the glob_t is initialized */
     memset(&g, '\0', sizeof(glob_t));
@@ -1331,7 +1331,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
       path = g.gl_pathv;
       while (path && *path) {
         if (**path && ls_perms_full(cmd->tmp_pool, cmd, *path, NULL)) {
-          char cwd_buf[MAXPATHLEN + 1] = {'\0'};
+          char cwd_buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
           unsigned char symhold;
 
           if (!justone) {
@@ -1459,8 +1459,8 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
  */
 static int nlstdir(cmd_rec *cmd, const char *dir) {
   char **list, *p, *f,
-       file[MAXPATHLEN + 1] = {'\0'};
-  char cwd_buf[MAXPATHLEN + 1] = {'\0'};
+       file[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
+  char cwd_buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   pool *workp;
   unsigned char symhold;
   int curdir = 0, i, j, count = 0, hidden = 0;
@@ -1795,7 +1795,7 @@ MODRET ls_list(cmd_rec *cmd) {
  */
 
 MODRET ls_nlst(cmd_rec *cmd) {
-  char *target,line[MAXPATHLEN + 1] = {'\0'};
+  char *target,line[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   int count = 0, res = 0, hidden = 0;
   unsigned char *tmp = NULL;
 
@@ -1816,14 +1816,14 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
   /* If the target starts with '~' ... */
   if (*target == '~') {
-    char pb[MAXPATHLEN + 1] = {'\0'};
+    char pb[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
     struct passwd *pw = NULL;
     int i = 0;
     const char *p = target;
 
     p++;
 
-    while (*p && *p !='/' && i < MAXPATHLEN)
+    while (*p && *p !='/' && i < PR_TUNABLE_PATH_MAX)
       pb[i++] = *p++;
     pb[i] = '\0';
 
