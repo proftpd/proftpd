@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.41 2004-09-14 17:49:42 castaglia Exp $
+ * $Id: modules.h,v 1.42 2004-09-26 20:12:00 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -42,30 +42,6 @@ struct modret_struc {
   char   *mr_message;			/* text message */
   void	 *data;				/* add'l data -- undefined */
 };
-
-/* Possible return codes for auth handlers
- */
-
-/* Account authenticated by RFC2228 security data exchange */
-#define PR_AUTH_RFC2228_OK		2
-
-/* Account authenticated normally */
-#define PR_AUTH_OK			0
-
-/* Error occurred in auth handler */
-#define PR_AUTH_ERROR			-1
-
-/* Account does not exist */
-#define PR_AUTH_NOPWD			-2
-
-/* Password mismatch */
-#define PR_AUTH_BADPWD			-3
-
-/* Password hasn't been changed recently enough */
-#define PR_AUTH_AGEPWD			-4
-
-/* Account has been disabled */
-#define PR_AUTH_DISABLEDPWD		-5
 
 /* The following macros are for creating basic modret_t, and can
  * only be used inside of module handlers
@@ -236,26 +212,5 @@ void pr_cmd_dispatch(cmd_rec *);
 int core_display_file(const char *, const char *, const char *);
 int core_chgrp(cmd_rec *, char *, uid_t, gid_t);
 int core_chmod(cmd_rec *, char *, mode_t);
-
-/* Implemented in auth.c */
-void auth_setpwent(pool *);
-void auth_endpwent(pool *);
-void auth_setgrent(pool *);
-void auth_endgrent(pool *);
-struct passwd *auth_getpwent(pool *);
-struct group *auth_getgrent(pool *);
-struct passwd *auth_getpwnam(pool *, const char *);
-struct passwd *auth_getpwuid(pool *, uid_t);
-struct group *auth_getgrnam(pool *, const char *);
-struct group *auth_getgrgid(pool *, gid_t);
-int auth_authenticate(pool *, const char *, const char *);
-int auth_check(pool *, const char *, const char *, const char *);
-const char *auth_uid2name(pool *, uid_t);
-const char *auth_gid2name(pool *, gid_t);
-uid_t auth_name2uid(pool *, const char *);
-gid_t auth_name2gid(pool *, const char *);
-int auth_getgroups(pool *, const char *, array_header **, array_header **);
-
-int set_groups(pool *, gid_t, array_header *);
 
 #endif /* PR_MODULES_H */

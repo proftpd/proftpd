@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001, 2002, 2003, 2004 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.37 2004-09-14 17:49:43 castaglia Exp $
+ * $Id: auth.c,v 1.38 2004-09-26 20:12:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -88,7 +88,7 @@ static modret_t *dispatch_auth(cmd_rec *cmd, char *match) {
   return mr;
 }
 
-void auth_setpwent(pool *p) {
+void pr_auth_setpwent(pool *p) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
 
@@ -103,7 +103,7 @@ void auth_setpwent(pool *p) {
   return;
 }
 
-void auth_endpwent(pool *p) {
+void pr_auth_endpwent(pool *p) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
 
@@ -118,7 +118,7 @@ void auth_endpwent(pool *p) {
   return;
 }
 
-void auth_setgrent(pool *p) {
+void pr_auth_setgrent(pool *p) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
 
@@ -133,7 +133,7 @@ void auth_setgrent(pool *p) {
   return;
 }
 
-void auth_endgrent(pool *p) {
+void pr_auth_endgrent(pool *p) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
 
@@ -148,7 +148,7 @@ void auth_endgrent(pool *p) {
   return;
 }
 
-struct passwd *auth_getpwent(pool *p) {
+struct passwd *pr_auth_getpwent(pool *p) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   struct passwd *res = NULL;
@@ -182,7 +182,7 @@ struct passwd *auth_getpwent(pool *p) {
   return res;
 }
 
-struct group *auth_getgrent(pool *p) {
+struct group *pr_auth_getgrent(pool *p) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   struct group *res = NULL;
@@ -211,7 +211,7 @@ struct group *auth_getgrent(pool *p) {
   return res;
 }
 
-struct passwd *auth_getpwnam(pool *p, const char *name) {
+struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   struct passwd *res = NULL;
@@ -247,7 +247,7 @@ struct passwd *auth_getpwnam(pool *p, const char *name) {
   return res;
 }
 
-struct passwd *auth_getpwuid(pool *p, uid_t uid) {
+struct passwd *pr_auth_getpwuid(pool *p, uid_t uid) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   struct passwd *res = NULL;
@@ -283,7 +283,7 @@ struct passwd *auth_getpwuid(pool *p, uid_t uid) {
   return res;
 }
 
-struct group *auth_getgrnam(pool *p, const char *name) {
+struct group *pr_auth_getgrnam(pool *p, const char *name) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   struct group *res = NULL;
@@ -314,7 +314,7 @@ struct group *auth_getgrnam(pool *p, const char *name) {
   return res;
 }
 
-struct group *auth_getgrgid(pool *p, gid_t gid) {
+struct group *pr_auth_getgrgid(pool *p, gid_t gid) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   struct group *res = NULL;
@@ -345,7 +345,7 @@ struct group *auth_getgrgid(pool *p, gid_t gid) {
   return res;
 }
 
-int auth_authenticate(pool *p, const char *name, const char *pw) {
+int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   int res = PR_AUTH_NOPWD;
@@ -367,7 +367,7 @@ int auth_authenticate(pool *p, const char *name, const char *pw) {
   return res;
 }
 
-int auth_check(pool *p, const char *cpw, const char *name, const char *pw) {
+int pr_auth_check(pool *p, const char *cpw, const char *name, const char *pw) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   int res = PR_AUTH_BADPWD;
@@ -386,7 +386,7 @@ int auth_check(pool *p, const char *cpw, const char *name, const char *pw) {
   return res;
 }
 
-const char *auth_uid2name(pool *p, uid_t uid) {
+const char *pr_auth_uid2name(pool *p, uid_t uid) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   static char namebuf[64];
@@ -411,7 +411,7 @@ const char *auth_uid2name(pool *p, uid_t uid) {
   return res;
 }
 
-const char *auth_gid2name(pool *p, gid_t gid) {
+const char *pr_auth_gid2name(pool *p, gid_t gid) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   static char namebuf[64];
@@ -436,7 +436,7 @@ const char *auth_gid2name(pool *p, gid_t gid) {
   return res;
 }
 
-uid_t auth_name2uid(pool *p, const char *name) {
+uid_t pr_auth_name2uid(pool *p, const char *name) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   uid_t res = (uid_t) -1;
@@ -457,7 +457,7 @@ uid_t auth_name2uid(pool *p, const char *name) {
   return res;
 }
 
-gid_t auth_name2gid(pool *p, const char *name) {
+gid_t pr_auth_name2gid(pool *p, const char *name) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   gid_t res = (gid_t) -1;
@@ -478,8 +478,8 @@ gid_t auth_name2gid(pool *p, const char *name) {
   return res;
 }
 
-int auth_getgroups(pool *p, const char *name, array_header **group_ids,
-               array_header **group_names) {
+int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
+    array_header **group_names) {
 
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
@@ -609,7 +609,8 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
     strgids);
 
   /* Set the supplemental groups. */
-  if ((res = setgroups(nproc_gids, proc_gids)) < 0) {
+  res = setgroups(nproc_gids, proc_gids);
+  if (res < 0) {
     destroy_pool(tmp_pool);
     return res;
   }
@@ -618,7 +619,8 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
 #ifndef PR_DEVEL_COREDUMP
   /* Set the primary GID of the process.
    */
-  if ((res = setgid(primary_gid)) < 0) {
+  res = setgid(primary_gid);
+  if (res < 0) {
     if (tmp_pool)
       destroy_pool(tmp_pool);
     return res;

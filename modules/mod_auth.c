@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.189 2004-09-14 17:49:42 castaglia Exp $
+ * $Id: mod_auth.c,v 1.190 2004-09-26 20:12:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -51,6 +51,25 @@ static unsigned int TimeoutSession = 0;
 
 static void auth_scan_scoreboard(void);
 static void auth_count_scoreboard(cmd_rec *, char *);
+
+static void random_delay(void) {
+  struct timeval tv;
+  int randno = rand();
+
+  /* This algorithm should obtain a number of microseconds between 1 and
+   * PR_TUNABLE_AUTH_DELAY * 1000000, resulting in a random delay of at most
+   * PR_TUNABLE_AUTH_DELAY seconds.
+   */
+
+  unsigned long usecs = 1 + (int)
+    (PR_TUNABLE_AUTH_DELAY * 1000000.0 * randno / (RAND_MAX + 1.0));
+
+  tv.tv_sec = 0;
+  tv.tv_usec = usecs;
+
+  /* We're not too concerned with interruptions at the moment. */
+  (void) select(0, NULL, NULL, NULL, &tv);
+}
 
 /* Perform a chroot or equivalent action to lockdown the process into a
  * particular directory.
@@ -216,13 +235,13 @@ static int _do_auth(pool *p, xaset_t *conf, char *u, char *pw) {
   }
 
   if (cpw) {
-    if (!auth_getpwnam(p, u))
+    if (!pr_auth_getpwnam(p, u))
       return PR_AUTH_NOPWD;
 
-    return auth_check(p, cpw, u, pw);
+    return pr_auth_check(p, cpw, u, pw);
   }
 
-  return auth_authenticate(p, u, pw);
+  return pr_auth_authenticate(p, u, pw);
 }
 
 MODRET auth_err_pass(cmd_rec *cmd) {
@@ -380,14 +399,14 @@ static config_rec *_auth_group(pool *p, char *user, char **group,
   c = find_config(main_server->conf, CONF_PARAM, "GroupPassword", TRUE);
 
   if (c) do {
-    grp = auth_getgrnam(p, c->argv[0]);
+    grp = pr_auth_getgrnam(p, c->argv[0]);
 
     if (!grp)
       continue;
 
     for (grmem = grp->gr_mem; *grmem; grmem++)
-      if (!strcmp(*grmem,user)) {
-        if (auth_check(p,c->argv[1],user,pass) == 0)
+      if (strcmp(*grmem, user) == 0) {
+        if (pr_auth_check(p, c->argv[1], user, pass) == 0)
           break;
       }
 
@@ -420,7 +439,7 @@ static config_rec *_auth_anonymous_group(pool *p, char *user) {
    * may work properly.
    */
   if (!session.gids && !session.groups &&
-      (ret = auth_getgroups(p, user, &session.gids, &session.groups)) < 1)
+      (ret = pr_auth_getgroups(p, user, &session.gids, &session.groups)) < 1)
     pr_log_debug(DEBUG2, "no supplemental groups found for user '%s'", user);
 
   c = find_config(main_server->conf, CONF_PARAM, "AnonymousGroup", FALSE);
@@ -744,14 +763,14 @@ static struct passwd *passwd_dup(pool *p, struct passwd *pw) {
 static void ensure_open_passwd(pool *p) {
   /* Make sure pass/group is open.
    */
-  auth_setpwent(p);
-  auth_setgrent(p);
+  pr_auth_setpwent(p);
+  pr_auth_setgrent(p);
 
   /* On some unices the following is necessary to ensure the files
    * are open.  (BSDI 3.1)
    */
-  auth_getpwent(p);
-  auth_getgrent(p);
+  pr_auth_getpwent(p);
+  pr_auth_getgrent(p);
 }
 
 /* Next function (the biggie) handles all authentication, setting
@@ -785,7 +804,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     goto auth_failure;
   }
 
-  pw = auth_getpwnam(p, user);
+  pw = pr_auth_getpwnam(p, user);
   if (pw == NULL) {
     pr_log_auth(PR_LOG_NOTICE,
       "USER %s: no such user found from %s [%s] to %s:%i",
@@ -815,7 +834,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
   }
 
   session.user = pstrdup(p, pw->pw_name);
-  session.group = pstrdup(p, auth_gid2name(p, pw->pw_gid));
+  session.group = pstrdup(p, pr_auth_gid2name(p, pw->pw_gid));
 
   /* Set the login_uid and login_uid */
   session.login_uid = pw->pw_uid;
@@ -826,7 +845,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
 
   /* Get the supplemental groups */
   if (!session.gids && !session.groups &&
-      (res = auth_getgroups(p, pw->pw_name, &session.gids,
+      (res = pr_auth_getgroups(p, pw->pw_name, &session.gids,
        &session.groups)) < 1)
     pr_log_debug(DEBUG2, "no supplemental groups found for user '%s'",
       pw->pw_name);
@@ -954,6 +973,14 @@ static int _setup_environment(pool *p, char *user, char *pass) {
         break;
 
       case PR_AUTH_NOPWD:
+
+        /* Introduce a random delay, to simulate the time that might have
+         * used to authenticate an existing user, in order to mitigate
+         * information leaks based on timing responses for existing and
+         * unknown users.
+         */
+        random_delay();
+
         pr_log_auth(PR_LOG_NOTICE,
           "USER %s (Login failed): No such user found.", user);
         goto auth_failure;
@@ -988,7 +1015,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     session.hide_password = FALSE;
   }
 
-  auth_setgrent(p);
+  pr_auth_setgrent(p);
 
   if (!auth_check_shell((c ? c->subset : main_server->conf), pw->pw_shell)) {
     pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Invalid shell: '%s'",
@@ -1099,10 +1126,10 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     xferlog = get_param_ptr(c->subset, "TransferLog", FALSE);
 
     if (anongroup) {
-      grp = auth_getgrnam(p, anongroup);
+      grp = pr_auth_getgrnam(p, anongroup);
       if (grp) {
         pw->pw_gid = grp->gr_gid;
-        session.group = pstrdup(p,grp->gr_name);
+        session.group = pstrdup(p, grp->gr_name);
       }
     }
 
@@ -1111,7 +1138,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     char *homedir;
 
     if (ugroup) {
-      grp = auth_getgrnam(p, ugroup);
+      grp = pr_auth_getgrnam(p, ugroup);
       if (grp) {
         pw->pw_gid = grp->gr_gid;
         session.group = pstrdup(p, grp->gr_name);
@@ -1396,7 +1423,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
    * in a chroot()ed environment.  Otherwise, mappings from UIDs to names,
    * among other things, would fail. - MacGyver
    */
-  /* auth_endpwent(p); */
+  /* pr_auth_endpwent(p); */
 
   /* Default transfer mode is ASCII */
   defaulttransfermode = (char*)get_param_ptr(main_server->conf,
@@ -1753,8 +1780,8 @@ MODRET auth_pre_user(cmd_rec *cmd) {
   /* Close the passwd and group databases, because libc won't let us see new
    * entries to these files without this (only in PersistentPasswd mode).
    */
-  auth_endpwent(cmd->tmp_pool);
-  auth_endgrent(cmd->tmp_pool);
+  pr_auth_endpwent(cmd->tmp_pool);
+  pr_auth_endgrent(cmd->tmp_pool);
 
   /* Check for a user name that exceeds PR_TUNABLE_LOGIN_MAX. */
   if (strlen(cmd->arg) > PR_TUNABLE_LOGIN_MAX) {
@@ -1868,11 +1895,11 @@ MODRET auth_user(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-/* Close the passwd and group databases, similar to pre_cmd_user().
- */
+/* Close the passwd and group databases, similar to auth_pre_user(). */
 MODRET auth_pre_pass(cmd_rec *cmd) {
-  auth_endpwent(cmd->tmp_pool);
-  auth_endgrent(cmd->tmp_pool);
+  pr_auth_endpwent(cmd->tmp_pool);
+  pr_auth_endgrent(cmd->tmp_pool);
+
   return DECLINED(cmd);
 }
 
