@@ -1,7 +1,8 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
+ * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
+ * Copyright (c) 2001, 2002 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.78 2002-06-27 07:31:54 castaglia Exp $
+ * $Id: mod_auth.c,v 1.79 2002-07-22 22:17:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1784,6 +1785,76 @@ MODRET cmd_rein(cmd_rec *cmd) {
 /* Configuration handlers
  */
 
+MODRET set_accessdenymsg(cmd_rec *cmd) {
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
+MODRET set_accessgrantmsg(cmd_rec *cmd) {
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
+MODRET set_anonrequirepassword(cmd_rec *cmd) {
+  int bool = -1;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ANON);
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean parameter");
+
+  add_config_param(cmd->argv[0], 1, (void *) bool);
+
+  return HANDLED(cmd);
+}
+
+MODRET add_anonymousgroup(cmd_rec *cmd) {
+  int argc;
+  config_rec *c = NULL;
+  char **argv = NULL;
+  array_header *acl = NULL;
+
+  if (cmd->argc < 2)
+    CONF_ERROR(cmd, "wrong number of parameters");
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  argv = cmd->argv;
+  argc = cmd->argc - 1;
+
+  acl = parse_group_expression(cmd->tmp_pool, &argc, argv);
+
+  c = add_config_param(cmd->argv[0], 0);
+  c->argc = argc;
+  c->argv = pcalloc(c->pool,(argc+1) * sizeof(char*));
+  argv = (char **)c->argv;
+
+  if (argc && acl)
+    while (argc--) {
+      *argv++ = pstrdup(c->pool, *((char **) acl->elts));
+      acl->elts = ((char **) acl->elts) + 1;
+    }
+
+  *argv = NULL;
+
+  return HANDLED(cmd);
+}
+
 MODRET set_authaliasonly(cmd_rec *cmd) {
   int bool = -1;
   config_rec *c = NULL;
@@ -1802,37 +1873,31 @@ MODRET set_authaliasonly(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_rootlogin(cmd_rec *cmd) {
+MODRET set_authusingalias(cmd_rec *cmd) {
   int bool = -1;
-  config_rec *c = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-  
-  if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
- 
-  c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = (unsigned char) bool;
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ANON);
 
-  c->flags |= CF_MERGEDOWN;
+  if ((bool = get_boolean(cmd,1)) == -1)
+    CONF_ERROR(cmd, "expected boolean parameter");
+
+  add_config_param(cmd->argv[0], 1, (void *) bool);
+
   return HANDLED(cmd);
 }
 
-MODRET set_loginpasswordprompt(cmd_rec *cmd) {
+MODRET set_deferwelcome(cmd_rec *cmd) {
   int bool = -1;
-  config_rec *c = NULL;
-  
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
- 
-  if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
-  
-  c = add_config_param(cmd->argv[0], 1, (void*) bool);
 
-  c->flags |= CF_MERGEDOWN;
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
+
+  add_config_param(cmd->argv[0], 1, (void *) bool);
+
   return HANDLED(cmd);
 }
 
@@ -1923,6 +1988,89 @@ MODRET add_defaultchdir(cmd_rec *cmd) {
     }
   
   *argv = NULL;
+
+  c->flags |= CF_MERGEDOWN;
+  return HANDLED(cmd);
+}
+
+MODRET set_grouppassword(cmd_rec *cmd) {
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 2);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  c = add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
+MODRET set_loginpasswordprompt(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  c = add_config_param(cmd->argv[0], 1, (void*) bool);
+
+  c->flags |= CF_MERGEDOWN;
+  return HANDLED(cmd);
+}
+
+MODRET set_maxloginattempts(cmd_rec *cmd) {
+  int max;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (!strcasecmp(cmd->argv[1], "none"))
+    max = 0;
+
+  else {
+    char *endp = NULL;
+    max = (int) strtol(cmd->argv[1], &endp, 10);
+
+    if ((endp && *endp) || max < 1)
+      CONF_ERROR(cmd, "parameter must be 'none' or a number greater than 0");
+  }
+
+  add_config_param(cmd->argv[0], 1, (void*)max);
+  return HANDLED(cmd);
+}
+
+MODRET set_requirevalidshell(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  c = add_config_param(cmd->argv[0], 1, bool);
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
+MODRET set_rootlogin(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd,1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = (unsigned char) bool;
 
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
@@ -2032,6 +2180,22 @@ MODRET set_timeoutsession(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+MODRET set_useftpusers(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  c = add_config_param(cmd->argv[0], 1, (void *) bool);
+
+  c->flags |= CF_MERGEDOWN;
+  return HANDLED(cmd);
+}
+
 MODRET add_userdirroot (cmd_rec *cmd) {
   int bool;
   CHECK_ARGS(cmd,1);
@@ -2044,25 +2208,51 @@ MODRET add_userdirroot (cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+MODRET set_userpassword(cmd_rec *cmd) {
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 2);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  c = add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
+/* Module API tables
+ */
+
 static conftable auth_conftab[] = {
+  { "AccessDenyMsg",		set_accessdenymsg,		NULL },
+  { "AccessGrantMsg",		set_accessgrantmsg,		NULL },
+  { "AnonRequirePassword",	set_anonrequirepassword,	NULL },
+  { "AnonymousGroup",		add_anonymousgroup,		NULL },
   { "AuthAliasOnly",		set_authaliasonly,		NULL },
-  { "DefaultRoot",		add_defaultroot,		NULL },
+  { "AuthUsingAlias",		set_authusingalias,		NULL },
   { "DefaultChdir",		add_defaultchdir,		NULL },
+  { "DefaultRoot",		add_defaultroot,		NULL },
+  { "DeferWelcome",		set_deferwelcome,		NULL },
+  { "GroupPassword",		set_grouppassword,		NULL },
   { "LoginPasswordPrompt",	set_loginpasswordprompt,	NULL },
+  { "MaxLoginAttempts",		set_maxloginattempts,		NULL },
+  { "RequireValidShell",	set_requirevalidshell,		NULL },
   { "RootLogin",		set_rootlogin,			NULL },
   { "TimeoutSession",		set_timeoutsession,		NULL },
+  { "UseFtpUsers",		set_useftpusers,		NULL },
   { "UserDirRoot",		add_userdirroot,		NULL },
+  { "UserPassword",		set_userpassword,		NULL },
   { NULL,			NULL,				NULL }
 };
 
 static cmdtable auth_cmdtab[] = {
-  { PRE_CMD, C_USER, G_NONE, pre_cmd_user, FALSE, FALSE, CL_AUTH },
-  { CMD, C_USER, G_NONE, cmd_user,	FALSE,	FALSE, CL_AUTH },
-  { PRE_CMD, C_PASS, G_NONE, pre_cmd_pass, FALSE, FALSE, CL_AUTH },
-  { CMD, C_PASS, G_NONE, cmd_pass,	FALSE,  FALSE, CL_AUTH },
-  { POST_CMD, C_PASS, G_NONE, post_cmd_pass, FALSE, FALSE, CL_AUTH },
-  { CMD, C_ACCT, G_NONE, cmd_acct,	FALSE,  FALSE, CL_AUTH },
-  { CMD, C_REIN, G_NONE, cmd_rein,	FALSE,  FALSE, CL_AUTH },
+  { PRE_CMD,	C_USER,	G_NONE,	pre_cmd_user,	FALSE,	FALSE,	CL_AUTH },
+  { CMD,	C_USER,	G_NONE,	cmd_user,	FALSE,	FALSE,	CL_AUTH },
+  { PRE_CMD,	C_PASS,	G_NONE,	pre_cmd_pass,	FALSE,	FALSE,	CL_AUTH },
+  { CMD,	C_PASS,	G_NONE,	cmd_pass,	FALSE,	FALSE,	CL_AUTH },
+  { POST_CMD,	C_PASS,	G_NONE,	post_cmd_pass,	FALSE,	FALSE,	CL_AUTH },
+  { CMD,	C_ACCT,	G_NONE,	cmd_acct,	FALSE,	FALSE,	CL_AUTH },
+  { CMD,	C_REIN,	G_NONE,	cmd_rein,	FALSE,	FALSE,	CL_AUTH },
   { 0, NULL }
 };
 

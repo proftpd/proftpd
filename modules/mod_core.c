@@ -1,7 +1,8 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
+ * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
+ * Copyright (c) 2001, 2002 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.94 2002-07-18 23:01:44 castaglia Exp $
+ * $Id: mod_core.c,v 1.95 2002-07-22 22:17:05 castaglia Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -449,20 +450,6 @@ MODRET set_serverport(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET set_deferwelcome(cmd_rec *cmd) {
-  int bool = -1;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-
-  if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected Boolean parameter");
-
-  add_config_param(cmd->argv[0], 1, (void *) bool);
-
-  return HANDLED(cmd);
-}
-
 MODRET set_pidfile(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
@@ -650,7 +637,7 @@ MODRET set_maxhostclients(cmd_rec *cmd) {
   if (cmd->argc < 2 || cmd->argc > 3)
     CONF_ERROR(cmd, "wrong number of parameters");
   
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   if (!strcasecmp(cmd->argv[1], "none"))
     max = -1;
@@ -706,43 +693,6 @@ MODRET set_maxhostsperuser(cmd_rec *cmd) {
   
   c->flags |= CF_MERGEDOWN;
  
-  return HANDLED(cmd);
-}
-
-MODRET set_maxloginattempts(cmd_rec *cmd) {
-  int max;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-
-  if (!strcasecmp(cmd->argv[1],"none"))
-    max = 0;
-
-  else {
-    char *endp = NULL;
-    max = (int) strtol(cmd->argv[1], &endp, 10);
-
-    if ((endp && *endp) || max < 1)
-      CONF_ERROR(cmd, "parameter must be 'none' or a number greater than 0");
-  }
-
-  add_config_param(cmd->argv[0], 1, (void*)max);
-  return HANDLED(cmd);
-}
-
-MODRET set_useftpusers(cmd_rec *cmd) {
-  int bool = -1;
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-
-  if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
-
-  c = add_config_param(cmd->argv[0], 1, (void *) bool);
-
-  c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 }
 
@@ -929,54 +879,6 @@ MODRET set_group(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET add_userpassword(cmd_rec *cmd) {
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 2);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-
-  c = add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
-  c->flags |= CF_MERGEDOWN;
-
-  return HANDLED(cmd);
-}
-
-MODRET add_grouppassword(cmd_rec *cmd) {
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 2);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-
-  c = add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
-  c->flags |= CF_MERGEDOWN;
-
-  return HANDLED(cmd);
-}
-
-MODRET set_accessdenymsg(cmd_rec *cmd) {
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-
-  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  c->flags |= CF_MERGEDOWN;
-
-  return HANDLED(cmd);
-}
-
-MODRET set_accessgrantmsg(cmd_rec *cmd) {
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-
-  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  c->flags |= CF_MERGEDOWN;
-
-  return HANDLED(cmd);
-}
-
 MODRET set_umask(cmd_rec *cmd) {
   config_rec *c;
   char *endp;
@@ -1016,22 +918,6 @@ MODRET set_umask(cmd_rec *cmd) {
     c->flags |= CF_MERGEDOWN;
   }
   
-  return HANDLED(cmd);
-}
-
-MODRET set_requirevalidshell(cmd_rec *cmd) {
-  int bool = -1;
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-
-  if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
-
-  c = add_config_param(cmd->argv[0], 1, bool);
-  c->flags |= CF_MERGEDOWN;
-
   return HANDLED(cmd);
 }
 
@@ -1516,23 +1402,6 @@ MODRET set_allowstorerestart(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_deleteabortedstores(cmd_rec *cmd) {
-  int bool = -1;
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
-    CONF_DIR|CONF_DYNDIR);
-
-  if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean parameter");
-
-  c = add_config_param(cmd->argv[0], 1, (void *) bool);
-  c->flags |= CF_MERGEDOWN;
-
-  return HANDLED(cmd);
-}
-
 MODRET set_hidenoaccess(cmd_rec *cmd) {
   int bool = -1;
   config_rec *c = NULL;
@@ -1546,37 +1415,6 @@ MODRET set_hidenoaccess(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, (void *) bool);
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
-}
-
-MODRET add_anonymousgroup(cmd_rec *cmd) {
-  config_rec *c = NULL;
-  int argc;
-  char **argv;
-  array_header *acl;
-
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-
-  if(cmd->argc < 2)
-    CONF_ERROR(cmd,"syntax: AnonymousGroup <group-expression>");
-
-  argv = cmd->argv;
-  argc = cmd->argc - 1;
-
-  acl = parse_group_expression(cmd->tmp_pool,&argc,argv);
-
-  c = add_config_param(cmd->argv[0], 0);
-  c->argc = argc;
-  c->argv = pcalloc(c->pool,(argc+1) * sizeof(char*));
-  argv = (char**)c->argv;
-
-  if(argc && acl)
-    while(argc--) {
-      *argv++ = pstrdup(c->pool,*((char**)acl->elts));
-      acl->elts = ((char**)acl->elts) + 1;
-    }
-
-  *argv = NULL;
   return HANDLED(cmd);
 }
 
@@ -1663,22 +1501,6 @@ MODRET set_allowoverwrite(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_hiddenstor(cmd_rec *cmd) {
-  int bool = -1;
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
-
-  if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean parameter");
-
-  c = add_config_param(cmd->argv[0], 1, (void *) bool);
-  c->flags |= CF_MERGEDOWN;
-
-  return HANDLED(cmd);
-}
-
 MODRET end_directory(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 0);
   CHECK_CONF(cmd, CONF_DIR);
@@ -1718,34 +1540,6 @@ MODRET add_anonymous(cmd_rec *cmd) {
   c = start_sub_config(dir);
 
   c->config_type = CONF_ANON;
-  return HANDLED(cmd);
-}
-
-MODRET set_anonrequirepassword(cmd_rec *cmd) {
-  int bool = -1;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ANON);
-
-  if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean parameter");
-
-  add_config_param(cmd->argv[0], 1, (void *) bool);
-
-  return HANDLED(cmd);
-}
-
-MODRET set_authusingalias(cmd_rec *cmd) {
-  int bool = -1;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ANON);
-
-  if ((bool = get_boolean(cmd,1)) == -1)
-    CONF_ERROR(cmd, "expected boolean parameter");
-
-  add_config_param(cmd->argv[0], 1, (void *) bool);
-
   return HANDLED(cmd);
 }
 
@@ -3364,7 +3158,7 @@ MODRET set_class(cmd_rec *cmd)
 
 /* Configuration directive table */
 
-static conftable core_conftable[] = {
+static conftable core_conftab[] = {
   { "<Anonymous>",		add_anonymous,			NULL },
   { "</Anonymous>",		end_anonymous,			NULL },
   { "<Directory>",		add_directory,			NULL },
@@ -3379,8 +3173,6 @@ static conftable core_conftable[] = {
   { "</Limit>", 		end_limit, 			NULL },
   { "<VirtualHost>",		add_virtualhost,		NULL },
   { "</VirtualHost>",		end_virtualhost,		NULL },
-  { "AccessDenyMsg",		set_accessdenymsg,		NULL },
-  { "AccessGrantMsg",		set_accessgrantmsg,		NULL },
   { "Allow",			add_allow,			NULL },
   { "AllowAll",			set_allowall,			NULL },
   { "AllowFilter",		set_allowfilter,		NULL },
@@ -3390,9 +3182,6 @@ static conftable core_conftable[] = {
   { "AllowRetrieveRestart",	set_allowretrieverestart,	NULL },
   { "AllowStoreRestart",	set_allowstorerestart,		NULL },
   { "AllowUser",		add_allowuser,			NULL },
-  { "AnonRequirePassword",	set_anonrequirepassword,	NULL },
-  { "AnonymousGroup",		add_anonymousgroup,		NULL },
-  { "AuthUsingAlias",		set_authusingalias,		NULL },
   { "Bind",			add_bind,			NULL },
   { "CDPath",			add_cdpath,			NULL },
   { "Class",			set_class,			NULL },
@@ -3400,9 +3189,7 @@ static conftable core_conftable[] = {
   { "CommandBufferSize",	set_commandbuffersize,		NULL },
   { "DefaultServer",		set_defaultserver,		NULL },
   { "DefaultTransferMode",	set_defaulttransfermode,	NULL },
-  { "DeferWelcome",		set_deferwelcome,		NULL },
   { "Define",			add_define,			NULL },
-  { "DeleteAbortedStores",	set_deleteabortedstores,	NULL },
   { "Deny",			add_deny,			NULL },
   { "DenyAll",			set_denyall,			NULL },
   { "DenyFilter",		set_denyfilter,			NULL },
@@ -3415,8 +3202,6 @@ static conftable core_conftable[] = {
   { "DisplayQuit",		set_displayquit,		NULL },
   { "Group",			set_group, 			NULL },
   { "GroupOwner",		add_groupowner,			NULL },
-  { "GroupPassword",		add_grouppassword,		NULL },
-  { "HiddenStor",		set_hiddenstor,			NULL },
   { "HideGroup",		add_hidegroup,			NULL },
   { "HideNoAccess",		set_hidenoaccess,		NULL },
   { "HideUser",			add_hideuser,			NULL },
@@ -3428,7 +3213,6 @@ static conftable core_conftable[] = {
   { "MaxClientsPerHost",	set_maxhostclients,		NULL },
   { "MaxHostsPerUser",		set_maxhostsperuser,		NULL },
   { "MaxInstances",		set_maxinstances,		NULL },
-  { "MaxLoginAttempts",		set_maxloginattempts,		NULL },
   { "MultilineRFC2228",		set_multilinerfc2228,		NULL },
   { "Order",			add_order,			NULL },
   { "PassivePorts",		set_passiveports,		NULL },
@@ -3436,7 +3220,6 @@ static conftable core_conftable[] = {
   { "PathDenyFilter",		set_pathdenyfilter,		NULL },
   { "PidFile",			set_pidfile,	 		NULL },
   { "Port",			set_serverport, 		NULL },
-  { "RequireValidShell",	set_requirevalidshell,		NULL },
   { "RLimitCPU",		set_rlimitcpu,			NULL },
   { "RLimitMemory",		set_rlimitmemory,		NULL },
   { "RLimitOpenFiles",		set_rlimitopenfiles,		NULL },
@@ -3456,12 +3239,10 @@ static conftable core_conftable[] = {
   { "TimesGMT",			set_timesgmt,			NULL },
   { "TransferLog",		add_transferlog,		NULL },
   { "Umask",			set_umask,			NULL },
-  { "UseFtpUsers",		set_useftpusers,		NULL },
   { "UseReverseDNS",		set_usereversedns,		NULL },
   { "User",			set_user,			NULL },
   { "UserAlias",		add_useralias, 			NULL },
   { "UserOwner",		add_userowner,			NULL },
-  { "UserPassword",		add_userpassword,		NULL },
   { "WtmpLog",			set_wtmplog,			NULL },
   { "tcpBackLog",		set_tcpbacklog,			NULL },
   { "tcpNoDelay",		set_tcpnodelay,			NULL },
@@ -3470,7 +3251,7 @@ static conftable core_conftable[] = {
   { NULL, NULL, NULL }
 };
 
-static cmdtable core_commands[] = {
+static cmdtable core_cmdtab[] = {
   /* Added a PRE_CMD handler for all commands so that AllowFilter and
    * DenyFilter can be re-implemented correctly.
    * jss - 5/16/01
@@ -3509,8 +3290,8 @@ module core_module = {
   NULL,NULL,			/* always NULL */
   0x20,				/* API Version 2.0 */
   "core",
-  core_conftable,
-  core_commands,
+  core_conftab,
+  core_cmdtab,
   NULL,
   NULL,NULL                    /* No initialization needed */
 };

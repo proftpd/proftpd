@@ -1,7 +1,8 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
+ * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
+ * Copyright (c) 2001, 2002 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +26,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.75 2002-07-15 15:50:05 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.76 2002-07-22 22:17:06 castaglia Exp $
  */
 
 /* History Log:
@@ -1261,8 +1262,43 @@ int xfer_init_child(void)
   return 0;
 }
 
-MODRET add_ratenum(cmd_rec *cmd)
-{
+/* Configuration handlers
+ */
+
+MODRET set_deleteabortedstores(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
+    CONF_DIR|CONF_DYNDIR);
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean parameter");
+
+  c = add_config_param(cmd->argv[0], 1, (void *) bool);
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
+MODRET set_hiddenstores(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
+
+  c = add_config_param(cmd->argv[0], 1, (void *) bool);
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
+MODRET add_ratenum(cmd_rec *cmd) {
   config_rec *c;
   long ratenum;
   char *endp;
@@ -1290,8 +1326,7 @@ MODRET add_ratenum(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET add_ratebool(cmd_rec *cmd)
-{
+MODRET add_ratebool(cmd_rec *cmd) {
   config_rec *c;
   int b;
 
@@ -1328,6 +1363,9 @@ MODRET set_storeuniqueprefix(cmd_rec *cmd) {
 }
 
 static conftable xfer_conftab[] = {
+  { "DeleteAbortedStores",	set_deleteabortedstores,	},
+  { "HiddenStor",		set_hiddenstores,		},
+  { "HiddenStores",		set_hiddenstores,		},
   { "RateReadBPS",		add_ratenum,                 },
   { "RateReadFreeBytes",	add_ratenum,	             },
   { "RateReadHardBPS",		add_ratebool,                },
