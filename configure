@@ -13329,11 +13329,12 @@ cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 
-    #if HAVE_STDIO_H
-    # include <stdio.h>
-    #endif
+    #include <stdio.h>
     #if HAVE_SYS_TYPES_H
     # include <sys/types.h>
+    #endif
+    #if HAVE_SYS_SOCKET_H
+    # include <sys/socket.h>
     #endif
     #if HAVE_NETDB_H
     # include <netdb.h>
