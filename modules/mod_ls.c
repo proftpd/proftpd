@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.15 1999-09-30 06:03:49 macgyver Exp $
+ * $Id: mod_ls.c,v 1.16 1999-09-30 06:10:16 macgyver Exp $
  */
 
 #include "conf.h"
@@ -82,6 +82,7 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden)
 {
   int ret,ishidden,canon = 0;
   char *fullpath;
+  long _fakemode;
 
   fullpath = dir_realpath(p,path);
   if(!fullpath) {
@@ -109,6 +110,13 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden)
       showsymlinks = 1;
   }
 
+  _fakemode = get_param_int(CURRENT_CONF,"DirFakeMode",FALSE);
+  if(_fakemode != -1) {
+    fakemode = (umode_t)_fakemode;
+    fakemodep = 1;
+  } else
+    fakemodep = 0;
+
   return ret;
 }
 
@@ -116,6 +124,7 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path, int *hidden)
 {
   int ret,ishidden;
   char fullpath[MAXPATHLEN];
+  long _fakemode;
 
   if(*path == '~')
 	return ls_perms_full(p,cmd,path,hidden);
@@ -140,6 +149,13 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path, int *hidden)
     if(showsymlinks == -1)
       showsymlinks = 1;
   }
+
+  _fakemode = get_param_int(CURRENT_CONF,"DirFakeMode",FALSE);
+  if(_fakemode != -1) {
+    fakemode = (umode_t)_fakemode;
+    fakemodep = 1;
+  } else
+    fakemodep = 0;
 
   return ret;
 }
@@ -1366,18 +1382,20 @@ MODRET set_dirfakegroup(cmd_rec *cmd)
 
 MODRET set_dirfakemode(cmd_rec *cmd)
 {
+  config_rec *c;
   unsigned long fake;
   char *endp;
 
   CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL|CONF_DIR);
 
   fake = (unsigned long)strtol(cmd->argv[1],&endp,8);
 
   if(endp && *endp)
     CONF_ERROR(cmd,"argument must be an octal number.");
 
-  add_config_param("DirFakeMode",1,(void*)fake);
+  c = add_config_param("DirFakeMode",1,(void*)fake);
+  c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
 }
