@@ -26,7 +26,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.82 2002-09-13 20:21:51 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.83 2002-09-13 22:59:40 castaglia Exp $
  */
 
 /* History Log:
@@ -1103,20 +1103,19 @@ MODRET cmd_rest(cmd_rec *cmd)
  * of this function.
  */
 
-MODRET pre_cmd_retr(cmd_rec *cmd)
-{
+MODRET pre_cmd_retr(cmd_rec *cmd) {
   char *dir;
   mode_t fmode;
-  privdata_t *p;
+  privdata_t *p = NULL;
 
-  if(cmd->argc < 2) {
+  if (cmd->argc < 2) {
     add_response_err(R_500,"'%s' not understood.",get_full_cmd(cmd));
     return ERROR(cmd);
   }
 
   dir = dir_realpath(cmd->tmp_pool,cmd->arg);
 
-  if(!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL)) {
+  if (!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL)) {
     add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
     return ERROR(cmd);
   }
@@ -1189,10 +1188,32 @@ MODRET cmd_retr(cmd_rec *cmd)
   }
   
   dir = p->value.str_val;
-  retr_file = fs_open(dir,O_RDONLY,&retr_fd);
 
-  if(retr_file && session.restart_pos) {
-    if(fs_lseek(retr_file,retr_fd,session.restart_pos,SEEK_SET) == -1) {
+  if ((retr_file = fs_open(dir, O_RDONLY, &retr_fd)) == NULL) {
+    /* Error opening the file. */
+    add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    return ERROR(cmd);
+  }
+
+  if (fs_stat(dir, &sbuf) < 0) {
+    /* Error stat'ing the file. */
+    add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    return ERROR(cmd);
+  }
+
+  if (session.restart_pos) {
+
+    /* Make sure that the requested offset is valid (within the size of the
+     * file being resumed.
+     */
+    if (session.restart_pos > sbuf.st_size) {
+      add_response_err(R_554, "%s: invalid REST argument", cmd->arg);
+      fs_close(stor_file, stor_fd);
+      return ERROR(cmd);
+    }
+
+    if (fs_lseek(retr_file, retr_fd, session.restart_pos,
+        SEEK_SET) == (off_t) -1) {
       int _errno = errno;
       fs_close(retr_file,retr_fd);
       errno = _errno;
@@ -1203,106 +1224,99 @@ MODRET cmd_retr(cmd_rec *cmd)
     session.restart_pos = 0L;
   }
 
-  if(!retr_file || fs_stat(dir,&sbuf) == -1) {
-    add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
+  /* Send the data */
+  data_init(cmd->arg, IO_WRITE);
+    
+  session.xfer.path = pstrdup(session.xfer.p,dir);
+  session.xfer.file_size = sbuf.st_size;
+  cnt_steps = session.xfer.file_size / 100;
+  if(cnt_steps == 0)
+    cnt_steps = 1;
+
+  if(data_open(cmd->arg, NULL, IO_WRITE, sbuf.st_size - respos) < 0) {
+    data_abort(0, TRUE);
     return ERROR(cmd);
-  } else {
-    /* send the data */
-    data_init(cmd->arg,IO_WRITE);
+  }
     
-    session.xfer.path = pstrdup(session.xfer.p,dir);
-    session.xfer.file_size = sbuf.st_size;
-    cnt_steps = session.xfer.file_size / 100;
-    if(cnt_steps == 0)
-      cnt_steps = 1;
+  /* Retrieve the number of bytes to retrieve, maximum, if present */
+  if ((nbytes_max_retrieve = find_max_nbytes("MaxRetrieveFileSize")) == 0UL)
+    have_limit = FALSE;
+  else
+    have_limit = TRUE;
 
-    if(data_open(cmd->arg, NULL, IO_WRITE, sbuf.st_size - respos) < 0) {
-      data_abort(0, TRUE);
-      return ERROR(cmd);
-    }
-    
-    /* retrieve the number of bytes to retrieve, maximum, if present */
-    if ((nbytes_max_retrieve = find_max_nbytes("MaxRetrieveFileSize")) == 0UL)
-      have_limit = FALSE;
-    else
-      have_limit = TRUE;
+  /* Check the MaxRetrieveFileSize.  If it is zero, or if the size
+   * of the file being retrieved is greater than the MaxRetrieveFileSize,
+   * then signal an error and abort the transfer now.
+   */
+  if (have_limit &&
+      ((nbytes_max_retrieve == 0) || (sbuf.st_size > nbytes_max_retrieve))) {
 
-    /* check the MaxRetrieveFileSize.  If it is zero, or if the size
-     * of the file being retrieved is greater than the MaxRetrieveFileSize,
-     * then signal an error and abort the transfer now.
-     */
-    if (have_limit &&
-        ((nbytes_max_retrieve == 0) || (sbuf.st_size > nbytes_max_retrieve))) {
+    log_pri(LOG_INFO, "MaxRetrieveFileSize (%lu byte%s) reached: "
+      "aborting transfer of '%s'", nbytes_max_retrieve,
+      nbytes_max_retrieve != 1 ? "s" : "", dir);
 
-      log_pri(LOG_INFO, "MaxRetrieveFileSize (%lu byte%s) reached: "
-        "aborting transfer of '%s'", nbytes_max_retrieve,
-        nbytes_max_retrieve != 1 ? "s" : "", dir);
+    /* Abort the transfer. */
+    _retr_abort();
 
-      /* abort the transfer
-       */
-      _retr_abort();
-
-      /* set errno to EPERM ("Operation not permitted");
-       */
-      data_abort(EPERM, FALSE);
-      return ERROR(cmd);
-    }
+    /* Set errno to EPERM ("Operation not permitted") */
+    data_abort(EPERM, FALSE);
+    return ERROR(cmd);
+  }
  
-    bufsize = (main_server->tcp_swin > 0 ?
-	       main_server->tcp_swin : TUNABLE_BUFFER_SIZE);
-    lbuf = (char *) palloc(cmd->tmp_pool, bufsize);
+  bufsize = (main_server->tcp_swin > 0 ?
+             main_server->tcp_swin : TUNABLE_BUFFER_SIZE);
+  lbuf = (char *) palloc(cmd->tmp_pool, bufsize);
 
-    cnt = respos;
-    log_add_run(mpid, NULL, session.user,
-		(session.class && session.class->name) ? session.class->name :
-		"",
-		NULL, 0, session.xfer.file_size, 0, NULL);
+  cnt = respos;
+  log_add_run(mpid, NULL, session.user,
+    (session.class && session.class->name) ? session.class->name : "",
+    NULL, 0, session.xfer.file_size, 0, NULL);
 
-    gettimeofday(&rate_tvstart, NULL);
+  gettimeofday(&rate_tvstart, NULL);
     
-    while (cnt != session.xfer.file_size) {
-      if (XFER_ABORTED)
-        break;
+  while (cnt != session.xfer.file_size) {
+    if (XFER_ABORTED)
+      break;
       
-      /* INSERT CODE HERE */
-      if ((len = _transmit_data(rate_bps, cnt, respos, lbuf, bufsize)) == 0)
-	break;
+    /* INSERT CODE HERE */
+    if ((len = _transmit_data(rate_bps, cnt, respos, lbuf, bufsize)) == 0)
+      break;
       
-      if(len < 0) {
-        _retr_abort();
-        data_abort(session.d->outf->xerrno,FALSE);
-        return ERROR(cmd);
-      }
+    if (len < 0) {
+      _retr_abort();
+      data_abort(session.d->outf->xerrno,FALSE);
+      return ERROR(cmd);
+    }
 
-      cnt += len;
-      rate_bytes += len;
+    cnt += len;
+    rate_bytes += len;
       
-      if((cnt / cnt_steps) != cnt_next) {
-	cnt_next = cnt / cnt_steps;
-	log_add_run(mpid, NULL, session.user,
-		    (session.class && session.class->name) ?
-		    session.class->name : "",
-		    NULL, 0, session.xfer.file_size, cnt, NULL);
-      }
-      
-      if(rate_bps) {
-	_rate_throttle(cnt, rate_bytes, rate_tvstart, rate_freebytes,
-		       rate_bps, rate_hardbps);
-      }
+    if ((cnt / cnt_steps) != cnt_next) {
+      cnt_next = cnt / cnt_steps;
+      log_add_run(mpid, NULL, session.user,
+        (session.class && session.class->name) ?  session.class->name : "",
+        NULL, 0, session.xfer.file_size, cnt, NULL);
     }
+      
+    if (rate_bps) {
+      _rate_throttle(cnt, rate_bytes, rate_tvstart, rate_freebytes,
+        rate_bps, rate_hardbps);
+    }
+  }
     
-    if(XFER_ABORTED) {
-      _retr_abort();
-      data_abort(0,0);
-      return ERROR(cmd);
-    } else if(len < 0) {
-      _retr_abort();
-      data_abort(errno,FALSE);
-      return ERROR(cmd);
-    } else {
-      _retr_done();
-      data_close(FALSE);
-    }
+  if (XFER_ABORTED) {
+    _retr_abort();
+    data_abort(0, 0);
+    return ERROR(cmd);
+
+  } else if (len < 0) {
+    _retr_abort();
+    data_abort(errno, FALSE);
+    return ERROR(cmd);
+
+  } else {
+    _retr_done();
+    data_close(FALSE);
   }
   
   return HANDLED(cmd);
