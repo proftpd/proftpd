@@ -24,6 +24,9 @@ The rest of the installation process is as usual:
     make
     make install
 
+Note: Cygwin does not currently support large files (e.g. files larger than
+2 GB).
+
 Installing as Windows service
 -----------------------------
 
