@@ -25,7 +25,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.12 2002-11-23 18:39:31 jwm Exp $
+ * $Id: ftptop.c,v 1.13 2002-12-12 19:56:17 jwm Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.8.2"
@@ -62,8 +62,8 @@ static const char *program = "ftptop";
 #if defined(HAVE_NCURSES) || defined(HAVE_CURSES)
 
 /* Display options */
-#define FTPTOP_DISPLAY_FORMAT \
-  "%-5d %s %-.10s %-.7s %s 0 %-.20s\n"
+#define FTPTOP_HEADER_FORMAT  "%-5s %s %-8s %-20s %-15s %-4s %-20s\n"
+#define FTPTOP_DISPLAY_FORMAT "%-5d %s %-8.8s %-20.20s %-15s 0    %-20.20s\n"
 
 #define FTPTOP_SHOW_DOWNLOAD		0x0001
 #define FTPTOP_SHOW_UPLOAD		0x0002
@@ -387,9 +387,9 @@ static void show_sessions(void) {
   printw("\n");
 
   attron(A_REVERSE);
-  printw("PID   S USER     ADDR        SRVR    TIME COMMAND");
+  printw(FTPTOP_HEADER_FORMAT, "PID", "S", "USER", "ADDR", "SERVER",
+         "TIME", "COMMAND");
   attroff(A_REVERSE);
-  printw("\n");
 
   /* Write out the scoreboard entries. */
   if (ftp_sessions && ftp_nsessions) {
