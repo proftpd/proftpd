@@ -287,10 +287,10 @@ conn_t *inet_copy_connection(pool *p, conn_t *c)
   return res;
 }
 
-/*
- * Pre-bind a socket to a port, use to bind to a low-numbered port
- */
+#if 0 /* This code is unused right now.  -- MacGyver */
 
+/* Pre-bind a socket to a port, use to bind to a low-numbered port
+ */
 int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port)
 {
   int save_errno,res = -1,s,on = 1,tries;
@@ -299,13 +299,13 @@ int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port)
 #ifdef SOLARIS2
   if(port != INPORT_ANY && port < 1024) {
     block_signals();
-    PRIVS_ROOT
+    PRIVS_ROOT;
   }
 #endif
   s = socket(AF_INET, SOCK_STREAM, 0);
 #ifdef SOLARIS2
   if(port != INPORT_ANY && port < 1024) {
-    PRIVS_RELINQUISH
+    PRIVS_RELINQUISH;
     unblock_signals();
   }
 #endif
@@ -324,7 +324,7 @@ int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port)
   
   if(port != INPORT_ANY && port < 1024) {
     block_signals();
-    PRIVS_ROOT
+    PRIVS_ROOT;
   }
 
   for(tries = 1; tries < 10; tries++) {
@@ -333,132 +333,134 @@ int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port)
     if(errno != EADDRINUSE) break;
 
     if(port != INPORT_ANY && port < 1024) {
-      PRIVS_RELINQUISH
+      PRIVS_RELINQUISH;
       unblock_signals();
     }
     timer_sleep(tries);
     if(port != INPORT_ANY && port < 1024) {
       block_signals();
-      PRIVS_ROOT
+      PRIVS_ROOT;
     }
   }
 
   save_errno = errno;
 
   if(port != INPORT_ANY && port < 1024) {
-    PRIVS_RELINQUISH
+    PRIVS_RELINQUISH;
     unblock_signals();
   }
 
   errno = save_errno;
   return res;
 }
+#endif /* Unused code. -- MacGyver */
 
-/*
- * Initialize a new connection record, also creates a new subpool
+/* Initialize a new connection record, also creates a new subpool
  * just for the new connection.
  */
-
-conn_t *inet_create_connection(pool *p, xaset_t *servers, int fd,
-                               p_in_addr_t *bind_addr, int port, int retry_bind)
+static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
+					  p_in_addr_t *bind_addr, int port,
+					  int retry_bind, int reporting)
 {
   pool *subpool;
   conn_t *c;
   array_header *tmp;
   server_rec *s;
   struct sockaddr_in servaddr;
-  int i,res = 0,len,one = 1,hold_errno;
-
+  int i,res = 0, len, one = 1, hold_errno;
+  
   CHECK_INET_POOL;
   
   if((!servers || !servers->xas_list) && !main_server)
     return NULL;
-
+  
   /* Build the accept IPs dynamically using the inet work pool,
    * once built, move into the conn struc.
    */
-
   tmp = make_array(inet_pool, 5, sizeof(p_in_addr_t));
   subpool = make_sub_pool(p);
-  c = (conn_t*)pcalloc(subpool,sizeof(conn_t));
+  c = (conn_t *) pcalloc(subpool, sizeof(conn_t));
   c->pool = subpool;
   
   if(servers && servers->xas_list) {
-    for(s = (server_rec*)servers->xas_list; s; s=s->next)
+    for(s = (server_rec *) servers->xas_list; s; s = s->next)
       if(s->ipaddr)
-        *((p_in_addr_t*)push_array(tmp)) = *s->ipaddr;
-  } else
-    *((p_in_addr_t*)push_array(tmp)) = *main_server->ipaddr;
-
+        *((p_in_addr_t *) push_array(tmp)) = *s->ipaddr;
+  } else {
+    *((p_in_addr_t *) push_array(tmp)) = *main_server->ipaddr;
+  }
+  
   c->local_port = port;
-  c->iplist = copy_array(c->pool,tmp);
+  c->iplist = copy_array(c->pool, tmp);
   c->niplist = c->iplist->nelts;
   c->rfd = c->wfd = -1;
-
-  /* If fd == -1, there is no currently open socket, so create one */
+  
+  /* If fd == -1, there is no currently open socket, so create one.
+   */
   if(fd == -1) {
+    
+    /* Certain versions of Solaris apparently require us to be root
+     * in order to create a socket inside a chroot ??
+     */
 
-/* Certain version of solaris apparently require us to be root
- * in order to create a socket inside a chroot ??
- */
-
-/* FreeBSD 2.2.6 (possibly other versions as well), has a security
- * "feature" which disallows SO_REUSEADDR from working if the socket
- * owners don't match.  The easiest thing to do is simply make sure
- * the socket is created as root.
- */
-
+    /* FreeBSD 2.2.6 (possibly other versions as well), has a security
+     * "feature" which disallows SO_REUSEADDR from working if the socket
+     * owners don't match.  The easiest thing to do is simply make sure
+     * the socket is created as root.
+     */
+    
 #if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
     defined(FREEBSD4) || defined(OPENBSD2)
 # ifdef SOLARIS2
     if(port != INPORT_ANY && port < 1024) {
 # endif
       block_signals();
-      PRIVS_ROOT
+      PRIVS_ROOT;
 # ifdef SOLARIS2
     }
 # endif
 #endif
+
     fd = socket(AF_INET, SOCK_STREAM, tcp_proto);
+
 #if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
     defined(FREEBSD4) || defined(OPENBSD2)
 # ifdef SOLARIS2
     if(port != INPORT_ANY && port < 1024) {
 # endif
-      PRIVS_RELINQUISH
+      PRIVS_RELINQUISH;
       unblock_signals();
 # ifdef SOLARIS2
     }
 # endif
 #endif
-
+    
     if(fd == -1) {
-      log_pri(LOG_ERR,"socket() failed in inet_create_connection(): %s",
+      log_pri(LOG_ERR, "socket() failed in inet_initialize_connection(): %s",
               strerror(errno));
       end_login(1);
     }
-
-    /* Allow address reusing */
-
-    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void*)&one, sizeof(one));
-
-    memset(&servaddr,0,sizeof(servaddr));
-
+    
+    /* Allow address reuse.
+     */
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void *) &one, sizeof(one));
+    
+    memset(&servaddr, 0, sizeof(servaddr));
+    
     servaddr.sin_family = AF_INET;
-
+    
     if(bind_addr)
-      bcopy(bind_addr,&servaddr.sin_addr,
-            sizeof(servaddr.sin_addr));
+      bcopy(bind_addr, &servaddr.sin_addr, sizeof(servaddr.sin_addr));
     else
       servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-
+    
     servaddr.sin_port = htons(port);
-
+    
     if(port != INPORT_ANY && port < 1024) {
       block_signals();
-      PRIVS_ROOT
+      PRIVS_ROOT;
     }
-
+    
     /* According to one expert, the very nature of the FTP protocol,
      * and it's multiple data-connections creates problems with
      * "rapid-fire" connections (transfering lots of files) causing
@@ -466,63 +468,76 @@ conn_t *inet_create_connection(pool *p, xaset_t *servers, int fd,
      * nasty kludge retries ten times (once per second) if the
      * port being bound to is INPORT_ANY)
      */
-
     for(i = 10; i; i--) {
-      res = bind(fd,(struct sockaddr*)&servaddr,sizeof(servaddr));
+      res = bind(fd, (struct sockaddr *) &servaddr, sizeof(servaddr));
       hold_errno = errno;
-      if(res == -1 && errno == EINTR) { i++; continue; }
-      if(res != -1 || errno != EADDRINUSE || (port != INPORT_ANY && !retry_bind))
-        break;
 
+      if(res == -1 && errno == EINTR) {
+	i++;
+	continue;
+      }
+
+      if(res != -1 || errno != EADDRINUSE ||
+	 (port != INPORT_ANY && !retry_bind))
+        break;
+      
       if(port != INPORT_ANY && port < 1024) {
-        PRIVS_RELINQUISH
+        PRIVS_RELINQUISH;
         unblock_signals();
       }
+      
       timer_sleep(1);
+      
       if(port != INPORT_ANY && port < 1024) {
         block_signals();
-        PRIVS_ROOT
+        PRIVS_ROOT;
       }
     }
-
+    
     if(res == -1) {
       if(port != INPORT_ANY && port < 1024) {
-        PRIVS_RELINQUISH
+        PRIVS_RELINQUISH;
         unblock_signals();
       }
 
-      log_pri(LOG_ERR,"attempted bind to %s, port %d",
-              inet_ntoa(servaddr.sin_addr),
-              port);
-      log_pri(LOG_ERR,"bind() failed in inet_create_connection(): %s",
-              strerror(hold_errno));
-	  log_pri(LOG_ERR,"Check the ServerType directive to ensure you are configured correctly.");
+      log_pri(LOG_ERR, "Failed binding to %s, port %d: %s",
+              inet_ntoa(servaddr.sin_addr), port, strerror(hold_errno));
+      log_pri(LOG_ERR, "Check the ServerType directive "
+	               "to ensure you are configured correctly.");
       end_login(1);
     }
-
+    
     if(port != INPORT_ANY && port < 1024) {
-      PRIVS_RELINQUISH
+      PRIVS_RELINQUISH;
       unblock_signals();
     }
-
+    
     /* We use getsockname here because the caller might be binding
      * to INPORT_ANY (0), in which case our port number will be
      * dynamic.
      */
-
     len = sizeof(servaddr);
-    if(fd >= 0 && getsockname(fd, (struct sockaddr*)&servaddr, &len) != -1) {
+    if(fd >= 0 && getsockname(fd, (struct sockaddr *) &servaddr, &len) != -1) {
       if(!c->local_ipaddr)
-        c->local_ipaddr = (p_in_addr_t*)pcalloc(c->pool,sizeof(p_in_addr_t));
+        c->local_ipaddr = (p_in_addr_t *) pcalloc(c->pool,
+						  sizeof(p_in_addr_t));
       *c->local_ipaddr = servaddr.sin_addr;
       c->local_port = ntohs(servaddr.sin_port);
     }
   }
-
+  
   c->listen_fd = fd;
-  register_cleanup(c->pool,(void*)c,_conn_cleanup,_conn_cleanup);
-
+  register_cleanup(c->pool, (void *) c, _conn_cleanup, _conn_cleanup);
+  
   return c;
+}
+
+conn_t *inet_create_connection(pool *p, xaset_t *servers, int fd,
+                               p_in_addr_t *bind_addr, int port,
+			       int retry_bind)
+{
+  return inet_initialize_connection(p, servers, fd, bind_addr,
+				    port, retry_bind, TRUE);
 }
 
 void inet_close(pool *pool, conn_t *c)
@@ -861,11 +876,9 @@ int inet_accept_nowait(pool *pool, conn_t *c)
   return fd;
 }
 
-/*
- * Accepts a new connection, cloning the existing conn_t and returning
+/* Accepts a new connection, cloning the existing conn_t and returning
  * it, or NULL upon error.
  */
-
 conn_t *inet_accept(pool *pool, conn_t *d, conn_t *c, int rfd, int wfd,
 		    int resolve) {
   conn_t *res = NULL;
@@ -1005,7 +1018,6 @@ conn_t *inet_associate(pool *pool, conn_t *c, p_in_addr_t *addr,
  * non-ZERO, inet_openrw will attempt to reverse resolve the remote
  * address.  A new connection structure is created in the specified pool.
  */
-
 conn_t *inet_openrw(pool *pool, conn_t *c, p_in_addr_t *addr, int fd,
                     int rfd,int wfd, int resolve)
 {
