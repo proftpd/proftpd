@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.14 2004-07-08 21:38:24 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.15 2004-10-31 00:57:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -473,7 +473,6 @@ static int ifsess_sess_init(void) {
          */
         *((config_rec **) push_array(class_remove_list)) = c;
 
-        resolve_deferred_dirs(main_server);
         fixup_dirs(main_server, CF_DEFER);
 
         ifsess_merged = TRUE;
