@@ -24,7 +24,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.56 2002-06-24 15:19:25 castaglia Exp $
+ * $Id: mod_ls.c,v 1.57 2002-06-24 15:23:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1704,22 +1704,6 @@ MODRET set_lsdefaultoptions(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  c->flags |= CF_MERGEDOWN;
-
-  return HANDLED(cmd);
-}
-
-MODRET set_showdotfiles(cmd_rec *cmd) {
-  int bool = -1;
-  config_rec *c = NULL;
-  
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-
-  if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean parameter");
-
-  c = add_config_param(cmd->argv[0], 1, (void *) bool);
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
