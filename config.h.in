@@ -589,6 +589,12 @@
 /* Define if IPv6 support is desired.  */
 #undef USE_IPV6
 
+/* Define if the %llu format should be used.  */
+#undef USE_LLU
+
+/* Define if the %lu format should be used.  */
+#undef USE_LU
+
 /* Define if ncurses support, if available, should be used.  */
 #undef USE_NCURSES
 

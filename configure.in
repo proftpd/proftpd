@@ -1082,6 +1082,20 @@ else
   fi
 fi
 
+dnl Run a small test program to see if the host's printf(3) family can
+dnl actually handle the %llu format.
+AC_MSG_CHECKING([whether printfs support the %llu format]);
+AC_TRY_RUN(
+  [ #include <stdio.h>
+    int main(int argc, char *argv[]) {
+      return (fprintf(stderr, "%llu\n", (unsigned long long) 1) == 2 ? 0 : 1);
+    }
+  ],
+  AC_MSG_RESULT(yes); AC_DEFINE(USE_LLU),
+  AC_MSG_RESULT(no); AC_DEFINE(USE_LU),
+  AC_MSG_RESULT(cross-compiling); AC_DEFINE(USE_LU)
+)
+
 dnl Add the proftpd support library
 LIBS="-lsupp $LIBS"
 

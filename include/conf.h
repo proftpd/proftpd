@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.32 2003-03-09 22:28:16 castaglia Exp $
+ * $Id: conf.h,v 1.33 2003-04-30 07:42:15 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -303,9 +303,9 @@ extern char *alloca();
 
 #endif
 
-#if defined(_FILE_OFFSET_BITS) || defined(_LARGE_FILES) || SIZEOF_OFF_T == 8
+#if defined(USE_LLU)
 # define PR_LU	"llu"
-#else
+#elif defined(USE_LU)
 # define PR_LU	"lu"
 #endif
 
