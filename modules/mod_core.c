@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.44 2000-10-08 21:11:56 macgyver Exp $
+ * $Id: mod_core.c,v 1.45 2000-10-08 21:22:34 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -2282,7 +2282,8 @@ MODRET cmd_size(cmd_rec *cmd)
 
 MODRET cmd_dele(cmd_rec *cmd)
 {
-  char *path;
+  char *path, *fullpath;
+
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *preg;
 #endif
@@ -2290,35 +2291,38 @@ MODRET cmd_dele(cmd_rec *cmd)
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathAllowFilter",FALSE);
+  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathAllowFilter", FALSE);
 
-  if(preg && regexec(preg,cmd->arg,0,NULL,0) != 0) {
-    add_response_err(R_550,"%s: Forbidden filename",cmd->arg);
-    return ERROR(cmd);
-  }
-
-  preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathDenyFilter",FALSE);
-
-  if(preg && regexec(preg,cmd->arg,0,NULL,0) == 0) {
-    add_response_err(R_550,"%s: Forbidden filename",cmd->arg);
-    return ERROR(cmd);
-  }
-#endif
-
-  /* If told to delete a symlink, don't delete the file it points to!  */
-  path = dir_canonical_path(cmd->tmp_pool,cmd->arg);
-  if(!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) ||
-     fs_unlink(path) == -1) {
-    add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
+  if(preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
+    add_response_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
   }
   
+  preg = (regex_t *) get_param_ptr(TOPLEVEL_CONF, "PathDenyFilter", FALSE);
+  
+  if(preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
+    add_response_err(R_550, "%s: Forbidden filename", cmd->arg);
+    return ERROR(cmd);
+  }
+#endif
+  
+  /* If told to delete a symlink, don't delete the file it points to!  */
+  path = dir_canonical_path(cmd->tmp_pool, cmd->arg);
+  if(!path ||
+     !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
+     fs_unlink(path) == -1) {
+    add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    return ERROR(cmd);
+  }
+  
+  fullpath = dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE);
+  
   if(session.flags & SF_ANON) {
     log_xfer(0, session.c->remote_name, 0,
-	     path, (session.flags & SF_ASCII ? 'a' : 'b'),
+	     fullpath, (session.flags & SF_ASCII ? 'a' : 'b'),
 	     'd', 'a', session.anon_user, 'c');
   } else {
-    log_xfer(0, session.c->remote_name, 0, path,
+    log_xfer(0, session.c->remote_name, 0, fullpath,
 	     (session.flags & SF_ASCII ? 'a' : 'b'),
 	     'd', 'r', session.user, 'c');
   }
