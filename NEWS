@@ -1,4 +1,11 @@
-$Id: NEWS,v 1.149 2001-12-18 16:21:22 flood Exp $
+$Id: NEWS,v 1.150 2002-01-24 00:21:53 flood Exp $
+
+1.2.5rc2 - CVS
+---------------------------------
+- Bug 1318 - sendfile() semantics incorrect under Linux
+- Bug 1450 - Timers removed immediately/alarm() return no longer used for
+             timing
+- Bug 1446 - DefaultServer overrides SocketBindTight
 
 1.2.5rc1 - Released 12/18/2001
 ---------------------------------

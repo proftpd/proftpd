@@ -24,7 +24,7 @@
 
 /* 
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.5 2001-12-13 20:35:50 flood Exp $
+ * $Id: timers.c,v 1.6 2002-01-24 00:21:53 flood Exp $
  */
 
 #include <signal.h>
@@ -40,57 +40,54 @@ static xaset_t *recycled = NULL;
 static int _indispatch = 0;
 static int dynamic_timerno = 1024;
 static int _alarm_received = 0;
+static time_t _alarmed_time = 0;
 
 xaset_t *free_timers = NULL;
 
-static int _compare_timer(timer_t *t1, timer_t *t2)
-{
-  if(t1->count < t2->count)
+static int _compare_timer(timer_t *t1, timer_t *t2) {
+  if (t1->count < t2->count)
     return -1;
-  if(t1->count > t2->count)
+
+  if (t1->count > t2->count)
     return 1;
 
   return 0;
 }
 
-static int _reset_timers(int elapsed)
-{
-  timer_t *t,*next;
+static int _reset_timers(int elapsed) {
+  timer_t *t = NULL, *next = NULL;
 
-  if(!recycled)
-    recycled = xaset_create(NULL,NULL);
+  if (!recycled)
+    recycled = xaset_create(NULL, NULL);
 
-  if(!elapsed && !recycled->xas_list)
-    return (timers->xas_list ? ((timer_t*)timers->xas_list)->count :
-            0);
+  if (!elapsed && !recycled->xas_list)
+    return (timers->xas_list ? ((timer_t*) timers->xas_list)->count : 0);
 
   /* Critical code, no interruptions please */
-  if(_indispatch)
+  if (_indispatch)
     return 0;
 
   _indispatch++;
   block_alarms();
 
-  if(elapsed) {
-    for(t = (timer_t*)timers->xas_list; t; t=next) {
+  if (elapsed) {
+    for (t = (timer_t*)timers->xas_list; t; t=next) {
       /* If this timer has already been handled, skip */
       next = t->next;
 
-      if( (t->count -= elapsed) <= 0) {
-        if(t->remove ||
-           t->callback(t->interval, t->timerno, t->interval - t->count,
-             t->mod) == 0) {
+      if (t->remove) {
+        /* Move the timer onto the free_timers chain, for later
+         * reuse
+         */
+        xaset_remove(timers,(xasetmember_t*)t);
+        xaset_insert(free_timers,(xasetmember_t*)t);
 
-          /* Move the timer onto the free_timers chain, for later
-           * reuse
-           */
+      } else if ((t->count -= elapsed) <= 0) {
+        if (t->callback(t->interval, t->timerno, t->interval - t->count,
+            t->mod) == 0) {
+          xaset_remove(timers,(xasetmember_t*)t);
+          xaset_insert(free_timers,(xasetmember_t*)t);
 
-          /*
-           log_debug(DEBUG5,"moving timer %d to free_timers list.",
-                     t->timerno);
-           */
-           xaset_remove(timers,(xasetmember_t*)t);
-           xaset_insert(free_timers,(xasetmember_t*)t);
         } else {
          /*
           log_debug(DEBUG5,"moving timer %d to recycled list.",
@@ -106,10 +103,10 @@ static int _reset_timers(int elapsed)
   }
 
   /* Put the recycled timers back into the main timer list */
-  while((t = (timer_t*)recycled->xas_list) != NULL) {
+  while ((t = (timer_t*)recycled->xas_list) != NULL) {
     /*log_debug(DEBUG5,"moving timer %d off recycled list.",t->timerno);*/
-    xaset_remove(recycled,(xasetmember_t*)t);
-    xaset_insert_sort(timers,(xasetmember_t*)t,TRUE);
+    xaset_remove(recycled, (xasetmember_t*)t);
+    xaset_insert_sort(timers, (xasetmember_t*)t,TRUE);
   }
 
   unblock_alarms();
@@ -121,8 +118,7 @@ static int _reset_timers(int elapsed)
   return (timers->xas_list ? ((timer_t*)timers->xas_list)->count : 0);
 }
 
-void sig_alarm(int signum)
-{
+void sig_alarm(int signum) {
   struct sigaction act;
 
   _alarm_received++;
@@ -139,12 +135,13 @@ void sig_alarm(int signum)
 
   /* Reset the alarm */
   _total_time += _current_timeout;
-  if(_current_timeout)
+  if (_current_timeout) {
+    _alarmed_time = time(NULL);
     alarm(_current_timeout);
+  }
 }
 
-void set_sig_alarm()
-{
+void set_sig_alarm() {
   struct sigaction act;
 
   act.sa_handler = sig_alarm;
@@ -159,9 +156,8 @@ void set_sig_alarm()
 #endif
 }
 
-void handle_sig_alarm()
-{
-  int new_timeout;
+void handle_sig_alarm() {
+  int new_timeout = 0;
 
   /* We need to adjust for any time that might be remaining on the alarm,
    * in case we were called in order change alarm durations.  Note
@@ -175,37 +171,43 @@ void handle_sig_alarm()
    * called, if so, increment alarm_pending and exit swiftly
    */
 
-  while(_alarm_received) {
+  while (_alarm_received) {
     _alarm_received = 0;
-    if(!alarms_blocked) {
-      new_timeout = _total_time + (_current_timeout - alarm(0));
+
+    if (!alarms_blocked) {
+      int alarm_elapsed;
+
+      alarm(0);
+      alarm_elapsed = _alarmed_time ? (int) time(NULL) - _alarmed_time : 0;
+      new_timeout = _total_time + alarm_elapsed;
       _total_time = 0;
       new_timeout = _reset_timers(new_timeout);
 
       /*log_debug(DEBUG5,"alarm(%d)",new_timeout);*/
+      _alarmed_time = time(NULL);
       alarm(_current_timeout = new_timeout);
+
     } else
       alarm_pending++;
   }
 }
 
-int reset_timer(int timerno, module *mod)
-{
-  timer_t *t;
+int reset_timer(int timerno, module *mod) {
+  timer_t *t = NULL;
 
-  if(_indispatch)
+  if (_indispatch)
     return -1;
 
   block_alarms();
 
-  if(!recycled)
-    recycled = xaset_create(NULL,NULL);
+  if (!recycled)
+    recycled = xaset_create(NULL, NULL);
 
-  for(t = (timer_t*)timers->xas_list; t; t=t->next)
-    if(t->timerno == timerno && (t->mod == mod || mod == ANY_MODULE)) {
+  for (t = (timer_t*)timers->xas_list; t; t=t->next)
+    if (t->timerno == timerno && (t->mod == mod || mod == ANY_MODULE)) {
       t->count = t->interval;
-      xaset_remove(timers,(xasetmember_t*)t);
-      xaset_insert(recycled,(xasetmember_t*)t);
+      xaset_remove(timers, (xasetmember_t*)t);
+      xaset_insert(recycled, (xasetmember_t*)t);
       _alarm_received++;
       handle_sig_alarm();
       break;
@@ -216,17 +218,17 @@ int reset_timer(int timerno, module *mod)
   return (t ? t->timerno : 0);
 }
 
-int remove_timer(int timerno, module *mod)
-{
-  timer_t *t;
+int remove_timer(int timerno, module *mod) {
+  timer_t *t = NULL;
 
   block_alarms();
 
-  for(t = (timer_t*)timers->xas_list; t; t=t->next)
-    if(t->timerno == timerno && (t->mod == mod || mod == ANY_MODULE)) {
-      if(_indispatch)
+  for (t = (timer_t*)timers->xas_list; t; t=t->next)
+    if (t->timerno == timerno && (t->mod == mod || mod == ANY_MODULE)) {
+      if (_indispatch) {
         t->remove++;
-      else {
+
+      } else {
         xaset_remove(timers,(xasetmember_t*)t);
         xaset_insert(free_timers,(xasetmember_t*)t);
 	_alarm_received++;
@@ -240,26 +242,26 @@ int remove_timer(int timerno, module *mod)
   return (t ? t->timerno : 0);
 }
 
-int add_timer(int seconds, int timerno, module *mod, callback_t cb)
-{
-  timer_t *t;
+int add_timer(int seconds, int timerno, module *mod, callback_t cb) {
+  timer_t *t = NULL;
 
-  if(!timers)
-    timers = xaset_create(NULL,(XASET_COMPARE)_compare_timer);
-  if(!free_timers)
-    free_timers = xaset_create(NULL,NULL);
+  if (!timers)
+    timers = xaset_create(NULL, (XASET_COMPARE)_compare_timer);
+
+  if (!free_timers)
+    free_timers = xaset_create(NULL, NULL);
 
   /* Try to use an old timer first */
   block_alarms();
-  if((t = (timer_t*)free_timers->xas_list) != NULL)
-    xaset_remove(free_timers,(xasetmember_t*)t);
+  if ((t = (timer_t*)free_timers->xas_list) != NULL)
+    xaset_remove(free_timers, (xasetmember_t*)t);
   else
     /* Must allocate a new one */
-    t = palloc(permanent_pool,sizeof(timer_t));
+    t = palloc(permanent_pool, sizeof(timer_t));
 
-  if(timerno == -1) { 
+  if (timerno == -1) { 
     /* Dynamic timer */
-    if(dynamic_timerno < 1024)
+    if (dynamic_timerno < 1024)
       dynamic_timerno = 1024;
     timerno = dynamic_timerno++;
   }
@@ -274,12 +276,13 @@ int add_timer(int seconds, int timerno, module *mod, callback_t cb)
    * list corruption
    */
 
-  if(_indispatch) {
-    if(!recycled)
-      recycled = xaset_create(NULL,NULL);
-    xaset_insert(recycled,(xasetmember_t*)t);
+  if (_indispatch) {
+    if (!recycled)
+      recycled = xaset_create(NULL, NULL);
+    xaset_insert(recycled, (xasetmember_t*)t);
+
   } else {
-    xaset_insert_sort(timers,(xasetmember_t*)t,TRUE);
+    xaset_insert_sort(timers, (xasetmember_t*)t, TRUE);
     _alarm_received++;
     set_sig_alarm();
     handle_sig_alarm();
@@ -296,43 +299,39 @@ int add_timer(int seconds, int timerno, module *mod, callback_t cb)
  * block/unblock functions.
  */
 
-void block_alarms()
-{
+void block_alarms() {
   ++alarms_blocked;
 }
 
-void unblock_alarms()
-{
+void unblock_alarms() {
   --alarms_blocked;
-  if(alarms_blocked == 0 && alarm_pending) {
+  if (alarms_blocked == 0 && alarm_pending) {
     alarm_pending = 0;
     _alarm_received++;
     handle_sig_alarm();
   }
 }
 
-static int _sleep_callback(CALLBACK_FRAME)
-{
+static int _sleep_callback(CALLBACK_FRAME) {
   _sleep_sem++;
   return 0;
 }
 
-int timer_sleep(int seconds)
-{
-  int timerno;
+int timer_sleep(int seconds) {
+  int timerno = 0;
   sigset_t oset;
 
   _sleep_sem = 0;
 
-  if(alarms_blocked || _indispatch)
+  if (alarms_blocked || _indispatch)
     return -1;
 
-  timerno = add_timer(seconds,-1,NULL,_sleep_callback);
-  if(timerno == -1)
+  timerno = add_timer(seconds, -1, NULL, _sleep_callback);
+  if (timerno == -1)
     return -1;
 
   sigemptyset(&oset);
-  while(!_sleep_sem) {
+  while (!_sleep_sem) {
     sigsuspend(&oset);
     handle_sig_alarm();
   }

@@ -25,7 +25,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.27 2001-12-17 20:07:59 flood Exp $
+ * $Id: data.c,v 1.28 2002-01-24 00:21:53 flood Exp $
  */
 
 #include "conf.h"
@@ -783,7 +783,27 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
      *
      * ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
      */
-    if((len = sendfile(session.d->outf->fd, retr_fd, offset, count)) == -1) {
+    len = sendfile(session.d->outf->fd, retr_fd, offset, count);
+    
+    if(len != -1 && len < count) {
+      /* under linux semantics, this occurs when a signal has interrupted
+       * sendfile().
+       */
+
+      count -= len;
+	
+      if(TimeoutStalled)
+        reset_timer(TIMER_STALLED, ANY_MODULE);
+	
+      if(TimeoutIdle)
+	reset_timer(TIMER_IDLE, ANY_MODULE);
+	
+      session.xfer.total_bytes += len;
+      session.total_bytes += len;
+      total += len;
+        
+      continue;
+    } else if(len == -1) {
       /* Linux updates offset on error, not len like BSD, fix up so
        * BSD-based code works.
        */
