@@ -1,6 +1,6 @@
-$Id: NEWS,v 1.134 2001-10-18 17:10:46 flood Exp $
+$Id: NEWS,v 1.135 2001-10-18 17:13:41 flood Exp $
 
-1.2.3 - CVS
+1.2.3 - Released 10/18/2001
 ---------------------------------
 PASS argument now intentionally hidden in the proctitle.
 - Bug 1242 - More verbose logging of regex evaluations
