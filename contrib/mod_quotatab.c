@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.7 2004-04-07 19:02:51 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.8 2004-09-05 00:15:30 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -49,6 +49,8 @@ typedef struct regtab_obj {
   unsigned int regtab_srcs;
 
 } quota_regtab_t;
+
+module quotatab_module;
 
 /* Quota objects for the current session */
 static quota_table_t *limit_tab;
@@ -428,16 +430,6 @@ static int quotatab_create(void) {
   return TRUE;
 }
 
-static void quotatab_exit_cb(void) {
-  if (use_quotas && have_quota_tally_table)
-    if (quotatab_close(TYPE_TALLY) < 0)
-      quotatab_log("error: unable to close QuotaTallyTable: %s",
-        strerror(errno));
-
-  quotatab_closelog();
-  return;
-}
-
 static int quotatab_open(quota_tabtype_t tab_type) {
 
   if (tab_type == TYPE_TALLY) {
@@ -547,7 +539,7 @@ int quotatab_register(const char *srcname,
 
   /* Note: I know that use of permanent_pool is discouraged as much as
    * possible, but in this particular instance, I need a pool that
-   * persists across rehashes.  The registration of a table type only
+   * persists across restarts.  The registration of a table type only
    * happens once, on module init when the server first starts up, so
    * this will not constitute a memory leak.
    */
@@ -1898,10 +1890,21 @@ MODRET quotatab_site(cmd_rec *cmd) {
   return DECLINED(cmd);
 }
 
-/* Initialization functions
+/* Event handlers
  */
 
-static void quotatab_rehash(void *data) {
+static void quotatab_exit_ev(const void *event_data, void *user_data) {
+
+  if (use_quotas && have_quota_tally_table)
+    if (quotatab_close(TYPE_TALLY) < 0)
+      quotatab_log("error: unable to close QuotaTallyTable: %s",
+        strerror(errno));
+
+  quotatab_closelog();
+  return;
+}
+
+static void quotatab_restart_ev(const void *event_data, void *user_data) {
 
   /* "Bounce" the log file descriptor. */
   quotatab_closelog();
@@ -1910,18 +1913,25 @@ static void quotatab_rehash(void *data) {
   /* Reset the module's memory pool. */
   destroy_pool(quotatab_pool);
   quotatab_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(quotatab_pool, MOD_QUOTATAB_VERSION);
 
   return;
 }
 
+/* Initialization routines
+ */
+
 static int quotatab_init(void) {
 
   /* Initialize the module's memory pool. */
-  if (!quotatab_pool)
+  if (!quotatab_pool) {
     quotatab_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(quotatab_pool, MOD_QUOTATAB_VERSION);
+  }
 
-  /* Register a rehash handler. */
-  pr_rehash_register_handler(NULL, quotatab_rehash);
+  /* Register a restart handler. */
+  pr_event_register(&quotatab_module, "core.restart", quotatab_restart_ev,
+    NULL); 
 
   return 0;
 }
@@ -1990,8 +2000,8 @@ static int quotatab_sess_init(void) {
       use_quotas = FALSE;
   }
 
-  /* Make sure the tables will be closed when the child exits */
-  pr_exit_register_handler(quotatab_exit_cb);
+  /* Make sure the tables will be closed when the child exits. */
+  pr_event_register(&quotatab_module, "core.exit", quotatab_exit_ev, NULL);
 
   /* Check for the units to display for byte quotas. */
   units = get_param_ptr(main_server->conf, "QuotaDisplayUnits", FALSE);
