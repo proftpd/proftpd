@@ -20,7 +20,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.32 2001-04-11 19:00:03 flood Exp $
+ * $Id: dirtree.c,v 1.33 2001-04-11 20:20:53 flood Exp $
  */
 
 /* History:
@@ -2023,9 +2023,16 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
         }
 
       /* If deep recursion yielded no match try the current subset */
+      /* NOTE: the string comparison here is specifically case sensitive.
+       * The config_rec names are supplied by the modules and intentionally
+       * case sensitive (they shouldn't be verbatim from the config file)
+       * Do NOT change this to strcasecmp(), no matter how tempted you are
+       * to do so, it will break stuff. ;)
+       * -jss 4/10/2001
+       */
       for(c = top; c; c=c->next)
         if((type == -1 || type == c->config_type) &&
-            (!name || !strcasecmp(name,c->name)))
+            (!name || !strcmp(name,c->name)))
           return c;
               
       /* Restart the search at the previous level if required */
@@ -2041,7 +2048,7 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
   } else {
     for(c = top; c; c=c->next)
       if((type == -1 || type == c->config_type) &&
-         (!name || !strcasecmp(name,c->name)))
+         (!name || !strcmp(name,c->name)))
         return c;
   }
 

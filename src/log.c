@@ -21,7 +21,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.27 2001-04-11 18:57:43 flood Exp $
+ * $Id: log.c,v 1.28 2001-04-11 20:20:53 flood Exp $
  */
 
 /* History Log:
@@ -230,13 +230,13 @@ int log_open_run(pid_t mpid, int trunc, int allow_update)
   if ((runfd = open(runfn, O_RDWR|O_CREAT, 0644)) == -1)
     return -1;
 
-  if (fstat(runfd, &sbuf) < 0) {
+  if (lstat(runfn, &sbuf) < 0) {
     close(runfd);
     runfd = -1;
     return -1;
   }
 
-  if (sbuf.st_mode & S_IFLNK) {
+  if (S_ISLNK(sbuf.st_mode)) {
     close(runfd);
     runfd = -1;
     return -1;
@@ -737,7 +737,7 @@ int log_opensyslog(const char *fn)
       return -1;
       }
 
-      if (fstat(syslog_fd, &statbuf) != -1 && statbuf.st_mode & S_IFLNK) {
+      if (lstat(syslog_fn, &statbuf) != -1 && S_ISLNK(statbuf.st_mode)) {
         log_debug(DEBUG0, "%s is a symbolic link", syslog_fn);
         close(syslog_fd);
         syslog_fd = -1; 

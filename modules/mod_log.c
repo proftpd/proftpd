@@ -20,7 +20,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.17 2001-04-11 18:57:42 flood Exp $
+ * $Id: mod_log.c,v 1.18 2001-04-11 20:20:53 flood Exp $
  */
 
 #include "conf.h"
@@ -886,6 +886,7 @@ int log_child_init()
 
         if (stat(lf->lf_filename, &statbuf) == -1) {
           PRIVS_RELINQUISH
+          unblock_signals();
           log_debug(DEBUG0, "error: stat(%s): %s", lf->lf_filename,
             strerror(errno));
           continue;
@@ -893,12 +894,14 @@ int log_child_init()
 
         if (!S_ISDIR(statbuf.st_mode)) {
           PRIVS_RELINQUISH
+          unblock_signals();
           log_debug(DEBUG0, "%s is not a directory", lf->lf_filename);
           continue;
         }
 
         if (statbuf.st_mode & S_IWOTH) {
           PRIVS_RELINQUISH
+          unblock_signals();
           log_debug(DEBUG0, "%s is a world writeable directory",
             lf->lf_filename);
           continue;
@@ -915,14 +918,16 @@ int log_child_init()
         if ((lf->lf_fd = open(lf->lf_filename, O_APPEND|O_CREAT|O_WRONLY,
             0644)) == -1) {
       PRIVS_RELINQUISH
+          unblock_signals();
           log_pri(LOG_NOTICE, "Unable to open ExtendedLog '%s': %s",
             lf->lf_filename, strerror(errno));
           continue;
         }
 
-        if (fstat(lf->lf_fd, &statbuf) != -1 &&
-            statbuf.st_mode & S_IFLNK) {
+        if (lstat(lf->lf_filename, &statbuf) != -1 &&
+            S_ISLNK(statbuf.st_mode)) {
           PRIVS_RELINQUISH
+          unblock_signals();
           log_pri(LOG_NOTICE,
             "Unable to open ExtendedLog '%s': %s is a symbolic link",
             lf->lf_filename, lf->lf_filename);
