@@ -124,7 +124,7 @@ dnl problems for certain builds of proftpd, e.g. ProFTPD and MySQL (which
 dnl itself similarly bundles a getopt implementation).  Thus, we need to
 dnl support/handle --without-getopt, to disable use of ProFTPD's getopt.
 dnl I don't know if MySQL supports any similar option.
-pr_lib_objs="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-mkstemp.o pr-syslog.o pwgrent.o"
+LIB_OBJS="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-mkstemp.o pr-syslog.o pwgrent.o"
 ac_pr_check_getopt="yes"
 
 AC_ARG_WITH(getopt,
@@ -133,15 +133,14 @@ AC_ARG_WITH(getopt,
       [prevent proftpd from using its bundled getopt implementation.  This is done automatically if the host supports getopt, but may need to be explicitly used when combining proftpd with other applications, such as MySQL])
   ],
   [
-    if test "$withval" = "no" ; then
-      LIB_OBJS="$pr_lib_objs"
-      ac_pr_check_getopt="no"
-    else 
-      LIB_OBJS="$pr_lib_objs getopt.o getopt1.o"
+    if test "$withval" != "no" ; then
+      LIB_OBJS="$LIB_OBJS getopt.o getopt1.o"
+      AC_CHECK_FUNCS(getopt)
     fi
   ],
   [
-    LIB_OBJS="$pr_lib_objs getopt.o getopt1.o"
+    LIB_OBJS="$LIB_OBJS getopt.o getopt1.o"
+    AC_CHECK_FUNCS(getopt)
   ])
 
 dnl Modules...'nuff said.
@@ -904,12 +903,9 @@ AC_FUNC_VPRINTF
 AC_CHECK_FUNCS(bcopy crypt fgetgrent fgetpwent flock freeaddrinfo)
 AC_CHECK_FUNC(gai_strerror,
   AC_DEFINE(HAVE_GAI_STRERROR),
-  pr_lib_objs="$pr_lib_objs glibc-gai_strerror.o"
+  LIB_OBJS="$LIB_OBJS glibc-gai_strerror.o"
 )
 AC_CHECK_FUNCS(getaddrinfo getcwd gethostname getnameinfo)
-if test "$ac_pr_check_getopt" = "yes" ; then
-  AC_CHECK_FUNCS(getopt)
-fi
 AC_CHECK_FUNCS(getopt_long gettimeofday inet_aton inet_ntop inet_pton)
 AC_CHECK_FUNCS(memcpy mempcpy mkdir mkstemp mlock mlockall munlock munlockall)
 AC_CHECK_FUNCS(rmdir select setgroups socket statfs strchr strcoll strerror)
