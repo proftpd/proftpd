@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.27 2003-01-17 16:46:23 castaglia Exp $
+ * $Id: modules.h,v 1.28 2003-03-04 19:55:20 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -118,29 +118,24 @@ typedef struct {
 /* classes for command table */
 
 #define CL_NONE				0x0
-#define CL_AUTH				(1 << 0)
-/* USER, PASS */
-#define CL_INFO				(1 << 1)
-/* Informational commands (PWD, SYST, etc) */
-#define CL_DIRS				(1 << 2)
-/* Directory commands (LIST, NLST, CWD, etc) */
-#define CL_READ				(1 << 3)
-/* File reading commands (RETR) */
-#define CL_WRITE			(1 << 4)
-/* Writing commands (STOR, MKD, etc) */
-#define CL_MISC				(1 << 5)
-/* Miscellaneous (RNFR/RNTO, SITE, etc) */
+#define CL_AUTH				(1 << 0) /* USER, PASS */
+#define CL_INFO				(1 << 1) /* Informational commands (PWD, SYST, etc) */
+#define CL_DIRS				(1 << 2) /* Directory commands (LIST, NLST, CWD, etc) */
+#define CL_READ				(1 << 3) /* File reading commands (RETR) */
+#define CL_WRITE			(1 << 4) /* Writing commands (STOR, MKD, etc) */
+#define CL_MISC				(1 << 5) /* Miscellaneous (RNFR/RNTO, SITE, etc) */
+
 #define CL_ALL				(CL_AUTH|CL_INFO|CL_DIRS|CL_READ| \
 					CL_WRITE|CL_MISC)
 
-/* command types for command table */
-
+/* Command handler types for command table */
 #define PRE_CMD				1
 #define CMD				2
 #define POST_CMD			3
 #define POST_CMD_ERR			4
 #define LOG_CMD				5
 #define LOG_CMD_ERR			6
+#define HOOK				7
 
 typedef struct {
 
@@ -227,7 +222,8 @@ modret_t *call_module_auth(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
 typedef enum {
   PR_SYM_CONF = 1,
   PR_SYM_CMD,
-  PR_SYM_AUTH
+  PR_SYM_AUTH,
+  PR_SYM_HOOK
 } pr_stash_type_t;
 
 int pr_init_stash(void);

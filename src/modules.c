@@ -39,8 +39,9 @@ struct stash {
 
   union {
     conftable *sym_conf;
-    cmdtable  *sym_cmd;
+    cmdtable *sym_cmd;
     authtable *sym_auth;
+    cmdtable *sym_hook;
     void *sym_generic;
   } ptr;
 };
@@ -153,6 +154,14 @@ int pr_stash_add_symbol(pr_stash_type_t sym_type, void *data) {
       sym->ptr.sym_auth = data;
       break;
 
+    case PR_SYM_HOOK:
+      sym = sym_alloc();
+      sym->sym_type = PR_SYM_HOOK;
+      sym->sym_name = ((cmdtable *) data)->command;
+      sym->sym_module = ((cmdtable *) data)->m;
+      sym->ptr.sym_hook = data;
+      break;
+
     default:
       errno = EINVAL;
       return -1;
@@ -228,6 +237,9 @@ void *pr_stash_get_symbol(pr_stash_type_t sym_type, const char *name,
 
     case PR_SYM_AUTH:
       return sym ? sym->ptr.sym_auth : NULL;
+
+    case PR_SYM_HOOK:
+      return sym ? sym->ptr.sym_hook : NULL;
   }
 
   /* In case the compiler complains */
@@ -314,6 +326,24 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
         }
 
         tab = pr_stash_get_symbol(PR_SYM_AUTH, sym_name, NULL, &idx);
+      }
+
+      break;
+    }
+
+    case PR_SYM_HOOK: {
+      int idx = -1;
+      cmdtable *tab = NULL;
+
+      tab = pr_stash_get_symbol(PR_SYM_HOOK, sym_name, NULL, &idx);
+
+      while (tab) {
+        if (!sym_module || curr_sym->sym_module == sym_module) {
+          xaset_remove(symbol_table[symtab_idx], (xasetmember_t *) curr_sym);
+          destroy_pool(curr_sym->sym_pool);
+        }
+
+        tab = pr_stash_get_symbol(PR_SYM_HOOK, sym_name, NULL, &idx);
       }
 
       break;

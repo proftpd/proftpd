@@ -4321,8 +4321,11 @@ static cmdtable sql_cmdtab[] = {
   {POST_CMD_ERR, C_ANY,        G_NONE, errinfo_master, FALSE, FALSE},
   {LOG_CMD,      C_ANY,        G_NONE, log_master,     FALSE, FALSE},
   {LOG_CMD_ERR,  C_ANY,        G_NONE, err_master,     FALSE, FALSE},
-  {CMD,          "sql_lookup", G_NONE, sql_lookup,     FALSE, FALSE},
-  {CMD,          "sql_change", G_NONE, sql_change,     FALSE, FALSE}, 
+
+  /* Module hooks */
+  {HOOK,	"sql_lookup",	G_NONE,	sql_lookup,	FALSE, FALSE},
+  {HOOK,	"sql_change",	G_NONE,	sql_change,	FALSE, FALSE}, 
+
   {0, NULL}
 };
 
