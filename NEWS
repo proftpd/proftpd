@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.623 2004-11-09 19:17:08 castaglia Exp $
+$Id: NEWS,v 1.624 2004-11-10 18:19:56 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -64,6 +64,9 @@ CVS
   leak via timing differences in the handling of the USER command for
   valid versus invalid users.  The mod_delay module was added to address
   this timing difference.  See doc/modules/mod_delay.html for details.
+- Bug 2518 - Ability to log SSL/TLS commands in an ExtendedLog.  A
+  new "SEC" logging class has been added for use in ExtendedLog directives,
+  e.g 'ExtendedLog /path/to/rfc2228.log SEC'.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

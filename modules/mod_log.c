@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.64 2004-10-31 20:24:12 castaglia Exp $
+ * $Id: mod_log.c,v 1.65 2004-11-10 18:19:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -371,6 +371,9 @@ static int _parse_classes(char *s) {
 
     } else if (strcasecmp(s, "MISC") == 0) {
       classes |= CL_MISC;
+
+    } else if (strcasecmp(s, "SEC") == 0) {
+      classes |= CL_SEC;
 
     } else
       pr_log_pri(PR_LOG_NOTICE, "ExtendedLog class '%s' is not defined.", s);

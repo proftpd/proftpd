@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.44 2004-10-31 18:53:05 castaglia Exp $
+ * $Id: modules.h,v 1.45 2004-11-10 18:19:57 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -100,9 +100,10 @@ typedef struct {
 #define CL_READ				(1 << 3) /* File reading commands (RETR) */
 #define CL_WRITE			(1 << 4) /* Writing commands (STOR, MKD, etc) */
 #define CL_MISC				(1 << 5) /* Miscellaneous (RNFR/RNTO, SITE, etc) */
+#define CL_SEC				(1 << 6) /* RFC2228 Security commands */
 
 #define CL_ALL				(CL_AUTH|CL_INFO|CL_DIRS|CL_READ| \
-					CL_WRITE|CL_MISC)
+					CL_WRITE|CL_MISC|CL_SEC)
 
 /* Command handler types for command table */
 #define PRE_CMD				1

@@ -27,6 +27,9 @@ files.
         MaxConnectionsPerHost limit is evaluated prior to authentication,
         i.e. before the client has sent any USER and PASS commands.
 
+  + Enhanced configuration directives:
+      ExtendedLog's new SEC logging class.
+
   + New command-line options:
       The new -V, --settings display various compile-time settings.
 
@@ -36,4 +39,4 @@ files.
   + New modules:
       mod_dso
 
-Last Updated: $Date: 2004-10-31 19:37:50 $
+Last Updated: $Date: 2004-11-10 18:19:56 $

@@ -3755,10 +3755,10 @@ static conftable tls_conftab[] = {
 
 static cmdtable tls_cmdtab[] = {
   { PRE_CMD,	C_ANY,	G_NONE,	tls_any,	FALSE,	FALSE },
-  { CMD,	C_AUTH,	G_NONE,	tls_auth,	FALSE,	FALSE },
-  { CMD,	C_PBSZ,	G_NONE,	tls_pbsz,	FALSE,	FALSE },
-  { CMD,	C_PROT,	G_NONE,	tls_prot,	FALSE,	FALSE },
-  { POST_CMD,	C_PASS,	G_NONE,	tls_post_pass,	FALSE,	FALSE },
+  { CMD,	C_AUTH,	G_NONE,	tls_auth,	FALSE,	FALSE,	CL_SEC },
+  { CMD,	C_PBSZ,	G_NONE,	tls_pbsz,	FALSE,	FALSE,	CL_SEC },
+  { CMD,	C_PROT,	G_NONE,	tls_prot,	FALSE,	FALSE,	CL_SEC },
+  { POST_CMD,	C_PASS,	G_NONE,	tls_post_pass,	FALSE,	FALSE,	CL_SEC },
   { 0,	NULL }
 };
 
