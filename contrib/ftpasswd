@@ -21,7 +21,7 @@
 # format, or AuthGroupFile, in group(5) format.  The idea is somewhat similar
 # to Apache's htpasswd program.
 #
-#  $Id: ftpasswd,v 1.7 2004-02-17 03:06:30 castaglia Exp $
+#  $Id: ftpasswd,v 1.8 2004-02-20 17:10:54 castaglia Exp $
 #
 # ---------------------------------------------------------------------------
 
@@ -395,7 +395,7 @@ sub get_passwd {
 
     my $hash = crypt($passwd, $syspasswd);
 
-    if ($hash eq $syspasswd) {
+    if (($hash && $syspasswd) && $hash eq $syspasswd) {
 
       if (defined($opts{'stdin'})) {
 
