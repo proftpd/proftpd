@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.13 2002-06-23 19:03:23 castaglia Exp $
+ * $Id: auth.c,v 1.14 2002-06-25 16:37:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -480,9 +480,8 @@ int auth_getgroups(pool *p, const char *name, array_header **group_ids,
   modret_t *mr = NULL;
   int res = -1;
   
-  /* allocate memory for the array_headers of GIDs and group names
-   */
-    if (group_ids)
+  /* Allocate memory for the array_headers of GIDs and group names. */
+  if (group_ids)
     *group_ids = make_array(permanent_pool, 2, sizeof(gid_t));
   
   if (group_names)
@@ -496,13 +495,12 @@ int auth_getgroups(pool *p, const char *name, array_header **group_ids,
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
     res = (int) mr->data;
 
-    /* NOTE: the number of groups returned should, barring error,
+    /* Note: the number of groups returned should, barring error,
      * always be at least 1, as per getgroups(2) behavior.  This one
      * ID is present because it is the primary group membership set in
      * struct passwd, from /etc/passwd.  This will need to be documented
      * for the benefit of auth_getgroup() implementors.
-     * -tj, 2001-10-12
-         */
+     */
   }
  
   if (cmd->tmp_pool) {
