@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.6 1999-02-12 19:38:00 flood Exp $
+ * $Id: mod_ls.c,v 1.7 1999-02-14 02:36:59 flood Exp $
  */
 
 #include "conf.h"
@@ -653,8 +653,13 @@ int listdir(cmd_rec *cmd, pool *workp, const char *name, int list_dotdirs)
       char cwd[MAXPATHLEN];
       int symhold;
 
-      push_cwd(cwd,&symhold);
+      if(*r && (strcmp(*r,".") == 0 || strcmp(*r,"..") == 0)) {
+        r++;
+        continue;
+      }
       
+      push_cwd(cwd,&symhold);
+     
       if(*r && ls_perms_full(workp,cmd,(char*)*r,NULL) 
 	    && !fs_chdir_canon(*r,showsymlinks)) {
         char *subdir;
