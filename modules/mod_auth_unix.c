@@ -26,7 +26,7 @@
 
 /*
  * Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.5 2003-03-04 19:28:29 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.6 2003-03-22 18:16:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -472,7 +472,7 @@ static char *_get_pw_info(pool *p, const char *u,
       *expire = SP_CVT_DAYS(sp->sp_expire);
 #endif /* HAVE_SPWD_SP_EXPIRE */
   }
-#ifdef AUTO_SHADOW
+#ifdef USE_AUTO_SHADOW
   else {
     struct passwd *pw;
 
@@ -492,7 +492,7 @@ static char *_get_pw_info(pool *p, const char *u,
 #else
   endspent();
   PRIVS_RELINQUISH
-#endif /* AUTO_SHADOW */
+#endif /* USE_AUTO_SHADOW */
   return cpw;
 }
 

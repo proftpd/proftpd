@@ -231,6 +231,9 @@
 /* Define if you have the gethostname function.  */
 #undef HAVE_GETHOSTNAME
 
+/* Define if you have the getnameinfo function.  */
+#undef HAVE_GETNAMEINFO
+
 /* Define if you have the getopt function.  */
 #undef HAVE_GETOPT
 
@@ -575,7 +578,10 @@
 #undef _LARGE_FILES
 
 /* Define if auto-detection of shadow passwords is wanted.  */
-#undef AUTO_SHADOW
+#undef USE_AUTO_SHADOW
+
+/* Define if IPv6 support is desired.  */
+#undef USE_IPV6
 
 /* Define if using /etc/shadow files.  */
 #undef USE_SHADOW
