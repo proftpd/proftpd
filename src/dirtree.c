@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.143 2004-04-18 17:00:28 castaglia Exp $
+ * $Id: dirtree.c,v 1.144 2004-04-19 23:33:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2116,8 +2116,8 @@ void build_dyn_config(pool *p, char *_path, struct stat *_sbuf,
                 mr = call_module(c->m, c->handler, cmd);
                 if (mr != NULL) {
                   if (MODRET_ERRMSG(mr)) {
-                    pr_log_pri(PR_LOG_WARNING, "warning: %s",
-                      MODRET_ERRMSG(mr));
+                    pr_log_pri(PR_LOG_WARNING, "warning: %s on line %u of '%s'",
+                      MODRET_ERRMSG(mr), cs->cs_lineno, dynpath);
 		  }
                 }
 
@@ -2131,7 +2131,7 @@ void build_dyn_config(pool *p, char *_path, struct stat *_sbuf,
             if (!found)
               pr_log_pri(PR_LOG_WARNING,
                 "warning: unknown configuration directive '%s' on "
-                "line %d of '%s'", cmd->argv[0], cs->cs_lineno,
+                "line %u of '%s'", cmd->argv[0], cs->cs_lineno,
                 dynpath);
 
             else
