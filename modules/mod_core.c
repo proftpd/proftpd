@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.220 2004-02-24 16:52:57 castaglia Exp $
+ * $Id: mod_core.c,v 1.221 2004-03-04 21:13:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -485,13 +485,27 @@ MODRET set_servertype(cmd_rec *cmd) {
 
 MODRET set_setenv(cmd_rec *cmd) {
 #ifdef HAVE_SETENV
-  CHECK_ARGS(cmd, 2);
-  CHECK_CONF(cmd, CONF_ROOT);
+  int ctxt_type;
 
-  if (setenv(cmd->argv[1], cmd->argv[2], 1) < 0)
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-      "unable to set environment variable '", cmd->argv[1], ": ",
-      strerror(errno), NULL));
+  CHECK_ARGS(cmd, 2);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
+
+  /* In addition, if this is the "server config" context, set the
+   * environ variable now.  If there was a <Daemon> context, that would
+   * be a more appropriate place for configuring parse-time environ
+   * variables.
+   */
+  ctxt_type = (cmd->config && cmd->config->config_type != CONF_PARAM ?
+     cmd->config->config_type : cmd->server->config_type ?
+     cmd->server->config_type : CONF_ROOT);
+
+  if (ctxt_type == CONF_ROOT) {
+    if (setenv(cmd->argv[1], cmd->argv[2], 1) < 0)
+      pr_log_debug(DEBUG1, "%s: unable to set environ variable '%s': %s",
+        cmd->argv[0], cmd->argv[1], strerror(errno));
+  }
 
   return HANDLED(cmd);
 
@@ -499,7 +513,6 @@ MODRET set_setenv(cmd_rec *cmd) {
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
     " directive cannot be used on this system, as it does not have the "
     "setenv() function.", NULL));
-
 #endif /* HAVE_SETENV */
 }
 
@@ -1082,16 +1095,15 @@ MODRET set_umask(cmd_rec *cmd) {
 MODRET set_unsetenv(cmd_rec *cmd) {
 #ifdef HAVE_UNSETENV
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT);
- 
-  unsetenv(cmd->argv[1]);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]); 
   return HANDLED(cmd);
 
 #else
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
     " directive cannot be used on this system, as it does not have the "
     "unsetenv() function.", NULL));
-
 #endif /* HAVE_UNSETENV */
 }
 
@@ -4328,15 +4340,38 @@ static int core_sess_init(void) {
   config_rec *c = NULL;
   unsigned int *debug_level = NULL;
 
-  /* Check for a server-specific TimeoutIdle */
+  /* Check for a server-specific TimeoutIdle. */
   if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutIdle",
       FALSE)) != NULL)
     TimeoutIdle = *((int *) c->argv[0]);
 
-  /* Check for a configured DebugLevel */
+  /* Check for a configured DebugLevel. */
   if ((debug_level = get_param_ptr(main_server->conf, "DebugLevel",
       FALSE)) != NULL)
     pr_log_setdebuglevel(*debug_level);
+
+#ifdef HAVE_SETENV
+  /* Check for configured SetEnvs. */
+  c = find_config(main_server->conf, CONF_PARAM, "SetEnv", FALSE);
+
+  while (c) {
+    if (setenv(c->argv[0], c->argv[1], 1) < 0)
+      pr_log_debug(DEBUG1, "unable to set environ variable '%s': %s",
+        (char *) c->argv[0], strerror(errno));
+
+    c = find_config_next(c, c->next, CONF_PARAM, "SetEnv", FALSE);
+  }
+#endif /* HAVE_SETENV */
+
+#ifdef HAVE_UNSETENV
+  /* Check for configured UnsetEnvs. */
+  c = find_config(main_server->conf, CONF_PARAM, "UnsetEnv", FALSE);
+
+  while (c) {
+    unsetenv(c->argv[0]);
+    c = find_config_next(c, c->next, CONF_PARAM, "UnsetEnv", FALSE);
+  }
+#endif /* HAVE_UNSETENV */
 
   /* Check for a server-specific AuthOrder. */
   if ((c = find_config(main_server->conf, CONF_PARAM, "AuthOrder",
