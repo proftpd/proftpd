@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.124 2005-03-16 06:16:46 castaglia Exp $
+ * $Id: mod_ls.c,v 1.125 2005-03-16 16:16:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -980,7 +980,17 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
         d = listfile(cmd, workp, *s);
       }
 
-      if (d == 2)
+      if (opt_R && d == 0) {
+
+        /* This is a nasty hack.  If listfile() returns a zero, and we
+         * will be recursing (-R option), make sure we don't try to list
+         * this file again by changing the first character of the path
+         * to ".".  Such files are skipped later.
+         */
+        **s = '.';
+        *(*s + 1) = '\0';
+
+      } else if (d == 2)
         break;
 
       s++;
