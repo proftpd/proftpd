@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.572 2004-05-21 17:19:02 castaglia Exp $
+$Id: NEWS,v 1.573 2004-05-30 21:54:26 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -31,6 +31,7 @@ CVS
   kernel bug that caused the Solaris kernel to leak memory.
 - Added a TimeoutLinger directive to complement the --enable-timeout-linger
   configure option.
+- Bug 2125 - -vv command line switch should list versions of modules.
 
 1.2.10rc1 - Released 28-Apr-2004
 ---------------------------------
