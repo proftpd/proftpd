@@ -32,10 +32,12 @@
 
 /*
  * sample module for ProFTPD
- * $Id: mod_sample.c,v 1.8 2003-11-09 22:54:47 castaglia Exp $
+ * $Id: mod_sample.c,v 1.9 2004-09-05 22:01:39 castaglia Exp $
  */
 
 #include "conf.h"
+
+#define MOD_SAMPLE_VERSION		"mod_sample/0.0"
 
 /* Command handlers
  */
@@ -148,9 +150,10 @@ MODRET set_foobardirective(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ANON|CONF_LIMIT);
 
   /* Get the Boolean value of the first directive parameter. */
-  if ((bool = get_boolean(cmd, 1)) == -1) {
+  bool = get_boolean(cmd, 1);
+  if (bool == -1) {
 
-    /* The get_boolean() function returns -1 if the parameter was not
+    /* The get_boolean() function returns -1 if the parameter was not a
      * recognized Boolean parameter.
      */
     CONF_ERROR(cmd, "requires a Boolean parameter");
@@ -316,5 +319,8 @@ module sample_module = {
   sample_init,
 
   /* Session initialization */
-  sample_sess_init
+  sample_sess_init,
+
+  /* Module version */
+  MOD_SAMPLE_VERSION
 };
