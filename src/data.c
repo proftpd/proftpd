@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.64 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: data.c,v 1.65 2003-08-14 01:02:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -75,8 +75,7 @@ static RETSIGTYPE data_urgent(int sig) {
   signal(SIGURG, data_urgent);
 }
 
-static int _xlate_ascii_read(char *buf, int *bufsize, int *adjlen)
-{
+static int _xlate_ascii_read(char *buf, int *bufsize, int *adjlen) {
   char *dest = buf,*src = buf;
   int thislen = *bufsize;
 
@@ -146,7 +145,7 @@ static void _xlate_ascii_write(char **buf, unsigned int *buflen,
    * would be of the same type as the operands: an unsigned int (which will
    * never be less than zero).
    */
-  if ((res = (bufsize - tmplen - lfcount)) < 0) {
+  if ((res = (bufsize - tmplen - lfcount)) <= 0) {
     pool *copy_pool = make_sub_pool(session.xfer.p);
     char *copy_buf = pcalloc(copy_pool, tmplen);
 

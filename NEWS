@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.463 2003-08-13 18:50:00 castaglia Exp $
+$Id: NEWS,v 1.464 2003-08-14 01:02:13 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -56,6 +56,7 @@ CVS
 - Bug 2142 - sstrncpy() not available to lib/vsnprintf.c.  sstrncpy() is now
   implemented in the support library (libsupp.a).
 - Bug 2144 - Rework autoconf handling of --enable-sia option.
+- Bug 2147 - Segmentation fault processing file in ASCII mode.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------
