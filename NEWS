@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.358 2003-01-18 23:28:36 castaglia Exp $
+$Id: NEWS,v 1.359 2003-01-20 02:18:52 jwm Exp $
 
 CVS
 ---------------------------------
@@ -43,6 +43,7 @@ CVS
 - Bug 1918 - AuthUserFile not works normally.
 - Bug 1241 - Additional functionality: HomedirOnDemand.  This has been added
   as a new configuration directive, CreateHome.
+- Bug 1734 - Cygwin - Unable to set uid
 
 1.2.8rc1 - Released 28-Dec-2002
 ---------------------------------

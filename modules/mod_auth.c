@@ -26,8 +26,13 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.132 2003-01-18 23:28:36 castaglia Exp $
+ * $Id: mod_auth.c,v 1.133 2003-01-20 02:18:52 jwm Exp $
  */
+
+#ifdef __CYGWIN__
+#include <windows.h>
+#include <sys/cygwin.h>
+#endif /* __CYGWIN__ */
 
 #include "conf.h"
 #include "privs.h"
@@ -1684,6 +1689,21 @@ MODRET auth_user(cmd_rec *cmd) {
   }
 
   auth_count_scoreboard(cmd, origuser);
+
+#ifdef __CYGWIN__
+  /* We have to do special Windows NT voodoo with Cygwin in order to be
+   * able to switch UID/GID. More info at
+   * http://cygwin.com/cygwin-ug-net/ntsec.html#NTSEC-SETUID
+   */
+  if (GetVersion() < 0x80000000) {
+    HANDLE token;
+
+    if ((token = cygwin_logon_user(user, user->pw_passwd)))
+      goto auth_failure;
+
+    cygwin_set_impersonation_token(token);      
+  }
+#endif /* __CYGWIN__ */
 
   if (c)
     anon_require_passwd = get_param_ptr(c->subset, "AnonRequirePassword",
