@@ -1,3 +1,8 @@
+2001-02-01 17:58  flood
+
+	* include/version.h, src/auth.c: Bug #435 - uid/gid checking for
+	-1, updated version string to 1.2.0rc3
+
 2001-02-01 14:52  flood
 
 	* src/main.c: Bug #451 - check uid/gid after PRIVS_SETUP
