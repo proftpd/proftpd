@@ -315,6 +315,7 @@ static char *tls_logname = NULL;
 static char *tls_protocol = NULL;
 static unsigned char tls_required_on_ctrl = FALSE;
 static unsigned char tls_required_on_data = FALSE;
+static unsigned char *tls_authenticated = NULL;
 
 #define TLS_DEFAULT_CIPHER_SUITE	"ALL:!ADH"
 #define TLS_DEFAULT_PROTOCOL		"SSLv23"
@@ -334,9 +335,10 @@ static unsigned char tls_required_on_data = FALSE;
 #define TLS_OPT_NO_CERT_REQUEST		0x0001
 #define TLS_OPT_VERIFY_CERT_FQDN	0x0002
 #define TLS_OPT_VERIFY_CERT_IP_ADDR	0x0004
-#define TLS_OPT_ALLOW_DOT_LOGIN		0x0010
-#define TLS_OPT_EXPORT_CERT_DATA	0x0020
-#define TLS_OPT_STD_ENV_VARS		0x0040
+#define TLS_OPT_ALLOW_DOT_LOGIN		0x0008
+#define TLS_OPT_EXPORT_CERT_DATA	0x0010
+#define TLS_OPT_STD_ENV_VARS		0x0020
+#define TLS_OPT_ALLOW_PER_USER		0x0040
 
 static char *tls_cipher_suite = NULL;
 static char *tls_crl_file = NULL, *tls_crl_path = NULL;
@@ -2728,8 +2730,18 @@ MODRET tls_any(cmd_rec *cmd) {
     return DECLINED(cmd);
 
   if (tls_required_on_ctrl && !(tls_flags & TLS_SESS_ON_CTRL)) {
-    pr_response_add_err(R_550, "SSL/TLS required on the control channel");
-    return ERROR(cmd);
+
+    if (!(tls_opts & TLS_OPT_ALLOW_PER_USER)) {
+      pr_response_add_err(R_550, "SSL/TLS required on the control channel");
+      return ERROR(cmd);
+
+    } else {
+
+      if (tls_authenticated && *tls_authenticated == TRUE) {
+        pr_response_add_err(R_550, "SSL/TLS required on the control channel");
+        return ERROR(cmd);
+      }
+    }
   }
 
   if (tls_required_on_data && !(tls_flags & TLS_SESS_NEED_DATA_PROT)) {
@@ -2865,6 +2877,35 @@ MODRET tls_pbsz(cmd_rec *cmd) {
 
   tls_flags |= TLS_SESS_PBSZ_OK;
   return HANDLED(cmd);
+}
+
+MODRET tls_post_pass(cmd_rec *cmd) {
+
+  if (!tls_engine)
+    return DECLINED(cmd);
+
+  if (!(tls_opts & TLS_OPT_ALLOW_PER_USER))
+    return DECLINED(cmd);
+
+  tls_authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
+
+  if (tls_authenticated &&
+      *tls_authenticated == TRUE) {
+    config_rec *c;
+
+    c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TLSRequired", FALSE);
+    if (c) {
+
+      /* Lookup the TLSRequired directive again in this context (which could be
+       * <Anonymous>, for example, or modified by mod_ifsession).
+       */
+
+      tls_required_on_ctrl = *((unsigned char *) c->argv[0]);
+      tls_required_on_data = *((unsigned char *) c->argv[1]);
+    }
+  }
+
+  return DECLINED(cmd);
 }
 
 MODRET tls_prot(cmd_rec *cmd) {
@@ -3105,6 +3146,9 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
     if (!strcmp(cmd->argv[i], "AllowDotLogin"))
       opts |= TLS_OPT_ALLOW_DOT_LOGIN;
 
+    else if (!strcmp(cmd->argv[i], "AllowPerUser"))
+      opts |= TLS_OPT_ALLOW_PER_USER;
+
     else if (!strcmp(cmd->argv[i], "ExportCertData"))
       opts |= TLS_OPT_EXPORT_CERT_DATA;
 
@@ -3258,7 +3302,7 @@ MODRET set_tlsrequired(cmd_rec *cmd) {
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   if ((bool = get_boolean(cmd, 1)) == -1) {
 
@@ -3287,6 +3331,7 @@ MODRET set_tlsrequired(cmd_rec *cmd) {
   *((unsigned char *) c->argv[0]) = on_ctrl;
   c->argv[1] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[1]) = on_data;
+  c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
 }
@@ -3671,6 +3716,7 @@ static cmdtable tls_cmdtab[] = {
   { CMD,	C_AUTH,	G_NONE,	tls_auth,	FALSE,	FALSE },
   { CMD,	C_PBSZ,	G_NONE,	tls_pbsz,	FALSE,	FALSE },
   { CMD,	C_PROT,	G_NONE,	tls_prot,	FALSE,	FALSE },
+  { POST_CMD,	C_PASS,	G_NONE,	tls_post_pass,	FALSE,	FALSE },
   { 0,	NULL }
 };
 
