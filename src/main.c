@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.36 2000-07-21 05:57:18 macgyver Exp $
+ * $Id: main.c,v 1.37 2000-07-21 06:11:15 macgyver Exp $
  */
 
 /*
@@ -2175,9 +2175,9 @@ int main(int argc, char **argv, char **envp)
   opterr = 0;
   while((c =
 #ifdef HAVE_GETOPT_LONG
-	 getopt(argc, argv, cmdopts)
-#else /* HAVE_GETOPT_LONG */
 	 getopt_long(argc, argv, cmdopts, opts, NULL)
+#else /* HAVE_GETOPT_LONG */
+	 getopt(argc, argv, cmdopts)
 #endif /* HAVE_GETOPT_LONG */
 	 ) != -1) {
     switch(c) {
