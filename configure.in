@@ -102,6 +102,8 @@ dnl Check whether the C compiler accepts -Wno-long-double. This helps to
 dnl quell unnecessary OSX compiler complaints.
 PR_CHECK_CC_OPT(Wno-long-double)
 
+AC_ARG_VAR(LIBS, [linker flags, e.g. -l<lib>.{a,so} if you have nonstandard libraries to link])
+
 dnl configure command line options...
 
 dnl --with options.
