@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.22 2004-11-02 18:18:59 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.23 2004-12-12 05:59:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -281,7 +281,8 @@ static void ctrls_set_group_acl(pool *grp_acl_pool, ctrls_grp_acl_t *grp_acl,
       return;
 
     } else {
-      if ((gid = auth_name2gid(tmp_pool, group)) == (gid_t) -1)
+      gid = pr_auth_name2gid(tmp_pool, group);
+      if (gid == (gid_t) -1)
         continue;
     }
 
@@ -330,7 +331,8 @@ static void ctrls_set_user_acl(pool *usr_acl_pool, ctrls_usr_acl_t *usr_acl,
       return;
 
     } else {
-      if ((uid = auth_name2uid(tmp_pool, user)) == (uid_t) -1)
+      uid = pr_auth_name2uid(tmp_pool, user);
+      if (uid == (uid_t) -1)
         continue;
     }
 
@@ -1539,7 +1541,8 @@ MODRET set_ctrlssocketowner(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  if ((uid = auth_name2uid(cmd->tmp_pool, cmd->argv[1])) == (uid_t) -1) {
+  uid = pr_auth_name2uid(cmd->tmp_pool, cmd->argv[1]);
+  if (uid == (uid_t) -1) {
     if (errno != EINVAL)
       pr_log_debug(DEBUG0, "%s: %s has UID of -1", cmd->argv[0],
         cmd->argv[1]);
@@ -1551,7 +1554,8 @@ MODRET set_ctrlssocketowner(cmd_rec *cmd) {
   } else
     ctrls_sock_uid = uid;
 
-  if ((gid = auth_name2gid(cmd->tmp_pool, cmd->argv[2])) == (gid_t) -1) {
+  gid = pr_auth_name2gid(cmd->tmp_pool, cmd->argv[2]);
+  if (gid == (gid_t) -1) {
     if (errno != EINVAL)
       pr_log_debug(DEBUG0, "%s: %s has GID of -1", cmd->argv[0],
         cmd->argv[2]);
