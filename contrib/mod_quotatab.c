@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.1 2003-12-03 07:39:36 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.2 2003-12-09 20:08:19 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -655,8 +655,7 @@ int quotatab_write(double bytes_in_inc, double bytes_out_inc,
   memset(&quotatab_deltas, '\0', sizeof(quotatab_deltas));
 
   /* Read in the tally (to catch any possible updates by other processes). */
-  if (quotatab_read() < 0)
-    quotatab_log("error: unable to read current tally: %s", strerror(errno));
+  QUOTATAB_TALLY_READ
 
   /* Only update the tally if the value is not "unlimited". */
   if (quotatab_limit.bytes_in_avail > 0.0) {
@@ -918,11 +917,11 @@ MODRET set_quotatable(cmd_rec *cmd) {
 MODRET quotatab_pre_appe(cmd_rec *cmd) {
   struct stat sbuf;
 
-  /* sanity check */
+  /* Sanity check */
   if (!use_quotas)
     return DECLINED(cmd);
 
-  /* refresh the tally */
+  /* Refresh the tally */
   QUOTATAB_TALLY_READ
 
   /* Briefly cache the size (in bytes) of the file being appended to, so that
@@ -1525,9 +1524,9 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
 
     /* Report the exceeding of the threshhold. */
     quotatab_log("%s denied: quota exceeded: used %s", cmd->argv[0],
-      DISPLAY_FILES_IN(cmd));
+      DISPLAY_FILES_XFER(cmd));
     pr_response_add_err(R_552, "%s denied: quota exceeded: used %s",
-      cmd->argv[0], DISPLAY_FILES_IN(cmd));
+      cmd->argv[0], DISPLAY_FILES_XFER(cmd));
     have_err_response = TRUE;
     return ERROR(cmd);
   }
