@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.77 2003-09-09 01:07:49 castaglia Exp $
+ * $Id: inet.c,v 1.78 2003-09-09 02:49:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1047,11 +1047,6 @@ conn_t *pr_inet_accept(pool *p, conn_t *d, conn_t *c, int rfd, int wfd,
 
   /* Initialize the netaddr. */
   pr_netaddr_initialize(&na);
-
-  /* A directive could enforce only IPv4 or IPv6 connections here, by
-   * actually using a sockaddr argument to accept(2), and checking the
-   * family of the connecting entity.
-   */
 
   pr_netaddr_set_family(&na, pr_netaddr_get_family(c->remote_addr));
   nalen = pr_netaddr_get_sockaddr_len(&na);
