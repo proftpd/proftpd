@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.183 2003-06-11 22:44:26 castaglia Exp $
+ * $Id: main.c,v 1.184 2003-07-16 18:48:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -889,6 +889,7 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     /* Set the (possibly new) resource limits. */
     set_daemon_rlimits();
 
+    /* XXX What should be done if fixup_servers() returns -1? */
     fixup_servers();
 
     /* Recreate the listen connection.  Can an inetd-spawned server accept
@@ -2595,7 +2596,12 @@ int main(int argc, char *argv[], char **envp) {
   }
 
   free_conf_stacks();
-  fixup_servers();
+
+  if (fixup_servers() < 0) {
+    log_pri(PR_LOG_ERR, "Fatal: error processing configuration file '%s'",
+      config_filename);
+    exit(1);
+  }
 
   module_postparse_init();
   module_remove_postparse_inits();

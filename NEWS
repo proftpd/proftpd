@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.449 2003-07-11 01:51:59 castaglia Exp $
+$Id: NEWS,v 1.450 2003-07-16 18:48:50 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -35,6 +35,7 @@ CVS
 - Bug 2100 - Invalid domain in <VirtualHost> tag causes segmentation fault.
 - Fixed handling of mod_tls' TLSCertificateChainFile directive.
 - Bug 2103 - AuthAliasOnly in server context causes hang.
+- Bug 2110 - Segfault if gethostname(2) returns NULL.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------

@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.111 2003-06-16 20:22:21 castaglia Exp $
+ * $Id: dirtree.c,v 1.112 2003-07-16 18:48:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3144,7 +3144,7 @@ int parse_config_file(const char *fname) {
  * otherwise fill in defaults where applicable
  */
 
-void fixup_servers(void) {
+int fixup_servers(void) {
   config_rec *c = NULL;
   server_rec *s = NULL, *next_s = NULL;
 
@@ -3211,7 +3211,17 @@ void fixup_servers(void) {
     fixup_dirs(s, 0);
   }
 
+  /* Make sure there actually are server_recs remaining in the server_list
+   * before continuing.  Badly configured/resolved vhosts are rejected, and
+   * it's possible to have all vhosts (even the default) rejected.
+   */
+  if (server_list->xas_list == NULL) {
+    log_pri(PR_LOG_NOTICE, "error: no valid servers configured");
+    return -1;
+  }
+
   clear_inet_pool();
+  return 0;
 }
 
 void init_config(void) {
