@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.645 2005-02-26 17:28:57 castaglia Exp $
+$Id: NEWS,v 1.646 2005-03-04 17:01:11 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -116,6 +116,7 @@ CVS
   less strict.
 - Bug 2331 - ProFTPD does not honor POSIX ACLs.  Please read the README.facl
   file for more information on POSIX ACL support in ProFTPD.
+- Bug 2573 - TLSProtocol directive in proftpd.conf is ignored.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

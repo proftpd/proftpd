@@ -306,19 +306,19 @@ typedef struct tls_pkey_obj {
 
 static tls_pkey_t *tls_pkey_list = NULL;
 
+#define TLS_DEFAULT_CIPHER_SUITE	"ALL:!ADH"
+#define TLS_DEFAULT_PROTOCOL		"SSLv23"
+
 /* Module variables */
 static unsigned char tls_engine = FALSE;
 static unsigned long tls_flags = 0UL, tls_opts = 0UL;
 static tls_pkey_t *tls_pkey = NULL;
 static int tls_logfd = -1;
 static char *tls_logname = NULL;
-static char *tls_protocol = NULL;
+static char *tls_protocol = TLS_DEFAULT_PROTOCOL;
 static unsigned char tls_required_on_ctrl = FALSE;
 static unsigned char tls_required_on_data = FALSE;
 static unsigned char *tls_authenticated = NULL;
-
-#define TLS_DEFAULT_CIPHER_SUITE	"ALL:!ADH"
-#define TLS_DEFAULT_PROTOCOL		"SSLv23"
 
 /* mod_tls session flags */
 #define	TLS_SESS_ON_CTRL		0x0001
@@ -932,10 +932,6 @@ static int tls_init_server(void) {
   config_rec *c = NULL;
 #endif
   char *tls_ca_cert = NULL, *tls_ca_path = NULL;
-
-  if ((tls_protocol = get_param_ptr(main_server->conf,
-      "TLSProtocol", FALSE)) == NULL)
-    tls_protocol = TLS_DEFAULT_PROTOCOL;
 
   if (!strcasecmp(tls_protocol, "SSLv23"))
     /* This is the default, so there is no need to do anything. */
@@ -3230,13 +3226,13 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  if (!strcasecmp(cmd->argv[1], "SSLv23"))
+  if (strcasecmp(cmd->argv[1], "SSLv23") == 0)
     tls_protocol = "SSLv23";
 
-  else if (!strcasecmp(cmd->argv[1], "SSLv3"))
+  else if (strcasecmp(cmd->argv[1], "SSLv3") == 0)
     tls_protocol = "SSLv3";
 
-  else if (!strcasecmp(cmd->argv[1], "TLSv1"))
+  else if (strcasecmp(cmd->argv[1], "TLSv1") == 0)
     tls_protocol = "TLSv1";
 
   else
