@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.5 2004-01-29 22:20:53 castaglia Exp $
+ * $Id: netacl.c,v 1.6 2004-03-01 16:43:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -38,6 +38,10 @@ struct pr_netacl_t {
   pr_netaddr_t *addr;
   unsigned int masklen;
 };
+
+pr_netacl_type_t pr_netacl_get_type(pr_netacl_t *acl) {
+  return acl->type;
+}
 
 int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
 

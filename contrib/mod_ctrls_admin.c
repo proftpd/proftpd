@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.7 2004-01-19 18:00:30 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.8 2004-03-01 16:43:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -164,17 +164,78 @@ static int ctrls_handle_dump(pr_ctrls_t *ctrl, int reqargc,
 
   /* Handle 'dump classes' requests */
   if (strcmp(reqargv[0], "classes") == 0) {
-    pr_ctrls_add_response(ctrl, "'dump classes' currently not supported");
-    return -1;
+    pr_class_t *cls = pr_class_get(NULL);
+
+    if (!cls) {
+      pr_ctrls_add_response(ctrl, "no classes configured");
+      return 0;
+    }
+
+    while (cls) {
+      pr_ctrls_add_response(ctrl, "Class %s:", cls->cls_name);
+
+      if (cls->cls_acls) {
+        pr_netacl_t **acls = cls->cls_acls->elts;
+        register unsigned int i;
+
+        for (i = 0; i < cls->cls_acls->nelts && acls[i]; i++) {
+          pr_netacl_t *acl = acls[i];
+
+          switch (pr_netacl_get_type(acl)) {
+            case PR_NETACL_TYPE_ALL:
+              pr_ctrls_add_response(ctrl, "  Rule matching ALL");
+              break;
+
+            case PR_NETACL_TYPE_NONE:
+              pr_ctrls_add_response(ctrl, "  Rule matching NONE");
+              break;
+
+            case PR_NETACL_TYPE_IPMASK:
+              pr_ctrls_add_response(ctrl, "  Rule matching IP subnet");
+              break;
+
+            case PR_NETACL_TYPE_IPMATCH:
+              pr_ctrls_add_response(ctrl, "  Rule matching IP address");
+              break;
+
+            case PR_NETACL_TYPE_DNSMATCH:
+              pr_ctrls_add_response(ctrl, "  Rule matching DNS name");
+              break;
+
+            case PR_NETACL_TYPE_IPGLOB:
+              pr_ctrls_add_response(ctrl, "  Rule matching IP wildcard");
+              break;
+
+            case PR_NETACL_TYPE_DNSGLOB:
+              pr_ctrls_add_response(ctrl, "  Rule matching DNS wildcard");
+              break;
+
+            default:
+              /* Do nothing, as it shouldn't ever happen. */
+          }
+        }
+      }
+
+      cls = pr_class_get(cls);
+
+      /* For a prettier output. */
+      if (cls)
+        pr_ctrls_add_response(ctrl, "%s", "");
+    }
+
+    return 0;
 
   /* Handle 'dump config' requests */
   } else if (strcmp(reqargv[0], "config") == 0) {
+    server_rec *s;
 
     ctrls_dump_ctrl = ctrl;
-    pr_conf_debug_config(ctrls_admin_printf, main_server->conf, NULL);
 
-    pr_ctrls_add_response(ctrl, "%s", "");
-    pr_ctrls_add_response(ctrl, "config dumped");
+    for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+      pr_ctrls_add_response(ctrl, "%s", "");
+      pr_ctrls_add_response(ctrl, "Config for %s:", s->ServerName);
+      pr_conf_debug_config(ctrls_admin_printf, s->conf, NULL);
+    }
 
   /* Handle 'dump dirs' requests */
   } else if (strcmp(reqargv[0], "dirs") == 0) {
@@ -188,6 +249,11 @@ static int ctrls_handle_dump(pr_ctrls_t *ctrl, int reqargc,
     pr_pool_debug_memory(ctrls_admin_printf);
 
     pr_ctrls_add_response(ctrl, "memory dumped");
+
+  /* Handle 'dump vars' requests */
+  } else if (strcmp(reqargv[0], "vars") == 0) {
+    pr_ctrls_add_response(ctrl, "'dump classes' currently not supported");
+    return -1;
 
   } else {
     pr_ctrls_add_response(ctrl, "unknown dump action: '%s'", reqargv[0]);
