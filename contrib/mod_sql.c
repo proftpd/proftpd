@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.56 2003-08-11 06:31:15 castaglia Exp $
+ * $Id: mod_sql.c,v 1.57 2003-08-16 15:38:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2854,7 +2854,10 @@ MODRET cmd_check(cmd_rec *cmd) {
     c_hash = cmd->argv[0];
     c_clear = cmd->argv[2];
 
-    for (cnt = 0; cnt < ah->nelts; cnt++) {
+    if (!ah)
+      sql_log(DEBUG_AUTH, "%s", "warning: no SQLAuthTypes configured");
+
+    for (cnt = 0; ah && cnt < ah->nelts; cnt++) {
       auth_entry = ((auth_type_entry **) ah->elts)[cnt];
       sql_log(DEBUG_AUTH, "checking auth_type %s", auth_entry->name);
 
