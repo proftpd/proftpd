@@ -240,7 +240,7 @@ ac_devel_cflags="-g -Wcast-align -Wchar-subscripts -Winline -Wstrict-prototypes 
 
 AC_ARG_ENABLE(devel,
   [AC_HELP_STRING(
-    [--enable-devel]
+    [--enable-devel],
     [enable code of interest to developers])
   ],
   [
