@@ -982,7 +982,7 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
       usrwhere = pstrcat(cmd->tmp_pool, cmap.uidfield, " = ", uidstr, NULL);
 
     else {
-      log_debug( DEBUG_WARN, _MOD_VERSION ": no uid field configured, "
+      log_debug( DEBUG_WARN, _MOD_VERSION ": no user uid field configured, "
         "declining to lookup uid '%s'", uidstr );
 
       /* If no uid field has been configured, return now and let other
@@ -1137,11 +1137,11 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
 
     log_debug( DEBUG_WARN, _MOD_VERSION ": cache miss for gid '%s'", gidstr );
 
-    if (cmap.gidfield)
-      grpwhere = pstrcat(cmd->tmp_pool, cmap.gidfield, " = ", gidstr, NULL);
+    if (cmap.grpgidfield)
+      grpwhere = pstrcat(cmd->tmp_pool, cmap.grpgidfield, " = ", gidstr, NULL);
 
     else {
-      log_debug( DEBUG_WARN, _MOD_VERSION ": no gid field configured, "
+      log_debug( DEBUG_WARN, _MOD_VERSION ": no group gid field configured, "
         "declining to lookup gid '%s'", gidstr );
 
       /* If no gid field has been configured, return now and let other
