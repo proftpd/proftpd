@@ -26,7 +26,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.15 2002-05-21 20:47:15 castaglia Exp $
+ * $Id: dirtree.h,v 1.16 2002-06-11 14:36:42 castaglia Exp $
  */
 
 #ifndef __DIRTREE_H
@@ -188,8 +188,11 @@ extern int			TimeoutStalled;
 void kludge_disable_umask(void);
 void kludge_enable_umask(void);
 
+int define_exists(const char *);
 void init_config(void);
 void fixup_servers(void);
+void set_config_stream(FILE *, unsigned int);
+char *get_config_line(char *, size_t);
 int parse_config_file(const char *);
 config_rec *add_config_set(xaset_t **, const char *);
 config_rec *add_config(const char *);

@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.53 2002-05-21 20:47:22 castaglia Exp $
+ * $Id: dirtree.c,v 1.54 2002-06-11 14:36:42 castaglia Exp $
  */
 
 /* History:
@@ -67,7 +67,9 @@ static void _mergedown(xaset_t*,int);
 /* Used by get_param_int_next & get_param_ptr_next as "placeholders" */
 static config_rec *_last_param_int = NULL;
 static config_rec *_last_param_ptr = NULL;
-static int _kludge_disable_umask = 0;
+static unsigned char _kludge_disable_umask = 0;
+
+array_header *server_defines = NULL;
 
 /* Used only while reading configuration files */
 
@@ -77,6 +79,11 @@ struct {
   server_rec **curserver;
   config_rec **curconfig;
 } conf;
+
+static struct {
+  FILE *file;
+  unsigned int line_number;
+} config_stream;
 
 /* Imported this function from modules/mod_ls.c -- it belongs more with the
  * dir_* functions here, rather than the ls_* functions there.
@@ -152,14 +159,30 @@ int dir_check_hidden(const char *path) {
   return FALSE;	
 }
 
-void kludge_disable_umask(void)
-{
-  _kludge_disable_umask = 1;
+int define_exists(const char *definition) {
+  char **defines = NULL;
+  register unsigned int i = 0;
+
+  /* Check the list of specified definitions, if present.
+   */
+  if (server_defines) {
+    defines = (char **) server_defines->elts;
+    for (i = 0; i < server_defines->nelts; i++) {
+      if (defines[i] && !strcmp(defines[i], definition))
+        return TRUE;
+    }
+  }
+
+  /* default */
+  return FALSE;
 }
 
-void kludge_enable_umask(void)
-{
-  _kludge_disable_umask = 0;
+void kludge_disable_umask(void) {
+  _kludge_disable_umask = TRUE;
+}
+
+void kludge_enable_umask(void) {
+  _kludge_disable_umask = FALSE;
 }
 
 char *get_word(char **cp)
@@ -199,39 +222,100 @@ char *get_word(char **cp)
   return ret;
 }
 
-cmd_rec *get_config_cmd(pool *ppool, FILE *fp, int *line)
-{
-  char buf[1024] = {'\0'}, *cp, *wrd;
-  cmd_rec *newcmd;
-  pool *newpool;
-  array_header *tarr;
-  int i;
-  
-  while(fgets(buf, sizeof(buf) - 1, fp)) {
-    if(line != NULL)
-      (*line)++;
-    
-    i = strlen(buf);
-    if(i && buf[i - 1] == '\n')
-      buf[i - 1] = '\0';
-    
-    for(cp = buf; *cp && isspace((UCHAR)*cp); cp++) ;
+void set_config_stream(FILE *filep, unsigned int line_number) {
+  config_stream.file = filep;
+  config_stream.line_number = line_number;
+}
 
-    if(*cp == '#' || !*cp)		/* Comment or blank line */
+/* This functions returns the next line from the configuration stream,
+ * skipping commented-out lines and trimming trailing and leading whitespace,
+ * returning, in effect, the next line of configuration data on which to
+ * act.  At present, the configuration stream is indicated by the static
+ * config_stream FILE pointer -- in the future, this _will_ change to a
+ * more generic and flexible configuration stream data type (eg confstream_t).
+ * This function has the advantage that it can be called by functions that
+ * don't have access to that FILE pointer, such as the <IfDefine> and <IfModule>
+ * configuration handlers.  In the future, the requirement will be that
+ * functions wishing to access the configuration stream _must_ call
+ * set_config_stream() prior to calling all configuration stream functions
+ * (of which this is one of but several potential such functions).
+ */
+char *get_config_line(char *buf, size_t len) {
+  
+  /* sanity check
+   */
+  if (!config_stream.file)
+    return NULL;
+
+  /* be sure to check for error conditions
+   */
+  while ((fgets(buf, len, config_stream.file)) != NULL) {
+    char *bufp;
+    int buflen = strlen(buf);
+
+    /* increment the line number count */
+    config_stream.line_number++;
+    
+    /* trim off the trailing newline, if present
+     */
+    if (buflen && buf[buflen - 1] == '\n')
+      buf[buflen - 1] = '\0';
+    
+    /* trim off any leading whitespace
+     */
+    for (bufp = buf; *bufp && isspace(*bufp); bufp++);
+
+    /* check for commented or blank lines at this point, and just continue on
+     * to the next configuration line if found.  If not, return the 
+     * configuration line
+     */
+    if (*bufp == '#' || !*bufp)
       continue;
 
+    else {
+
+      /* copy the value of bufp back into the pointer passed in
+       * and return it
+       */
+      buf = bufp;
+
+      return buf;
+    }
+  }
+
+  /* be sure to check for error conditions
+   */
+  if (ferror(config_stream.file))
+    log_pri(LOG_ERR, "error while reading configuration stream: %s",
+      strerror(errno));
+
+  /* default return value
+   */
+  return NULL;
+}
+
+cmd_rec *get_config_cmd(pool *ppool)
+{
+  char buf[TUNABLE_BUFFER_SIZE] = {'\0'}, *word;
+  cmd_rec *new_cmd = NULL;
+  pool *new_pool = NULL;
+  array_header *tarr = NULL;
+
+  while ((get_config_line(buf, TUNABLE_BUFFER_SIZE))) { 
+    char *bufp = buf;
+    
     /* Build a new pool for the command structure and array */
-    newpool = make_sub_pool(ppool);
-    newcmd = (cmd_rec*)pcalloc(newpool,sizeof(cmd_rec));
-    newcmd->pool = newpool;
-    tarr = make_array(newpool,4,sizeof(char**));
+    new_pool = make_sub_pool(ppool);
+    new_cmd = (cmd_rec *) pcalloc(new_pool, sizeof(cmd_rec));
+    new_cmd->pool = new_pool;
+    tarr = make_array(new_pool,4,sizeof(char**));
 
     /* Add each word to the array */
-    while((wrd = get_word(&cp)) != NULL) {
-      char *tmp = pstrdup(newpool, wrd);
+    while((word = get_word(&bufp)) != NULL) {
+      char *tmp = pstrdup(new_pool, word);
       
-      *((char**)push_array(tarr)) = tmp; /* pstrdup(newpool,wrd); */
-      newcmd->argc++;
+      *((char**)push_array(tarr)) = tmp; /* pstrdup(new_pool,word); */
+      new_cmd->argc++;
     }
 
     *((char**)push_array(tarr)) = NULL;
@@ -240,7 +324,7 @@ cmd_rec *get_config_cmd(pool *ppool, FILE *fp, int *line)
      * it will get purged when the command's pool is cleared
      */
 
-    newcmd->argv = (char**)tarr->elts;
+    new_cmd->argv = (char**)tarr->elts;
 
     /* Perform a fixup on configuration directives so that:
      * -argv[0]--  -argv[1]-- ----argv[2]-----
@@ -250,23 +334,23 @@ cmd_rec *get_config_cmd(pool *ppool, FILE *fp, int *line)
      * <Option>    /etc/adir  /etc/anotherdir
      */
 
-    if(newcmd->argc && *(newcmd->argv[0]) == '<') {
-      char *cp = newcmd->argv[newcmd->argc-1];
+    if(new_cmd->argc && *(new_cmd->argv[0]) == '<') {
+      char *cp = new_cmd->argv[new_cmd->argc-1];
 
-      if(*(cp + strlen(cp)-1) == '>' && newcmd->argc > 1) {
+      if(*(cp + strlen(cp)-1) == '>' && new_cmd->argc > 1) {
         if(!strcmp(cp,">")) {
-          newcmd->argv[newcmd->argc-1] = NULL;
-          newcmd->argc--;
+          new_cmd->argv[new_cmd->argc-1] = NULL;
+          new_cmd->argc--;
         } else
           *(cp + strlen(cp)-1) = '\0';
 
-        cp = newcmd->argv[0];
+        cp = new_cmd->argv[0];
         if(*(cp + strlen(cp)-1) != '>')
-          newcmd->argv[0] = pstrcat(newcmd->pool,cp,">",NULL);
+          new_cmd->argv[0] = pstrcat(new_cmd->pool,cp,">",NULL);
       }
     }
         
-    return newcmd;
+    return new_cmd;
   }
 
   return NULL;
@@ -1340,7 +1424,7 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
   FILE *fp;
   cmd_rec *cmd;
   xaset_t **set = NULL;
-  int isfile, line = 0, removed = 0;
+  int isfile, removed = 0;
 
   /* Switch through each directory, from "deepest" up looking for
    * new or updated .ftpaccess files
@@ -1432,10 +1516,13 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
       if(fp) {
         removed = 0;
 
+        /* set the configuration stream information */
+        set_config_stream(fp, 0);
+
         init_dyn_stacks(p,d);
         d->config_type = CONF_DYNDIR;
 
-        while((cmd = get_config_cmd(p, fp, &line)) != NULL) {
+        while((cmd = get_config_cmd(p)) != NULL) {
           if(cmd->argc) {
             conftable *c;
             char found = 0;
@@ -1464,7 +1551,8 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
             if(!found)
               log_pri(LOG_WARNING,
                 "warning: unknown configuration directive '%s' on "
-                "line %d of '%s'.", cmd->argv[0], line, dynpath);
+                "line %d of '%s'.", cmd->argv[0], config_stream.line_number,
+                dynpath);
 
           }
  
@@ -1478,6 +1566,11 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
         free_dyn_stacks();
 
         _mergedown(*set,TRUE);
+
+        /* done with the config_stream information
+         */
+        set_config_stream(NULL, 0);
+
         fclose(fp);
       }
     }
@@ -2422,13 +2515,15 @@ int parse_config_file(const char *fname)
   cmd_rec *cmd;
   pool *tmp_pool = make_sub_pool(permanent_pool);
   modret_t *mr;
-  int line = 0;
  
   fp = pfopen(tmp_pool,fname,"r");
 
+  /* set the configuration stream information */
+  set_config_stream(fp, 0);
+
   if(!fp) { destroy_pool(tmp_pool); return -1; }
   
-  while((cmd = get_config_cmd(tmp_pool, fp, &line)) != NULL) {
+  while((cmd = get_config_cmd(tmp_pool)) != NULL) {
     if(cmd->argc) {
       conftable *c;
       char found = 0;
@@ -2454,13 +2549,17 @@ int parse_config_file(const char *fname)
 
        if(!found) {
          log_pri(LOG_ERR,"Fatal: unknown configuration directive '%s' on line %d of '%s'.",
-                 cmd->argv[0], line, fname);
+                 cmd->argv[0], config_stream.line_number, fname);
          exit(1);
        }
     }
 
     destroy_pool(cmd->pool);
   }
+
+  /* done with the configuration stream information
+   */
+  set_config_stream(NULL, 0);
 
   pfclose(tmp_pool,fp);
   destroy_pool(tmp_pool);

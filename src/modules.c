@@ -391,8 +391,27 @@ int init_child_modules(void)
   return 0;
 }
 
-void list_modules(void)
-{
+int module_exists(const char *name) {
+  char buf[TUNABLE_BUFFER_SIZE] = {'\0'};
+  register unsigned int i = 0;
+
+  /* Check the list of compiled-in modules.
+   */
+  for (i = 0; static_modules[i]; i++) {
+    memset(buf, '\0', TUNABLE_BUFFER_SIZE);
+    snprintf(buf, TUNABLE_BUFFER_SIZE, "mod_%s.c",
+      (static_modules[i])->name);
+    buf[sizeof(buf)-1] = '\0';
+
+    if (!strcmp(buf, name))
+      return TRUE;
+  }
+
+  /* default */
+  return FALSE;
+}
+
+void list_modules(void) {
   int i;
   module *m;
 

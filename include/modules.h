@@ -25,7 +25,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.8 2002-05-21 20:47:15 castaglia Exp $
+ * $Id: modules.h,v 1.9 2002-06-11 14:36:42 castaglia Exp $
  */
 
 #ifndef __MODULES_H
@@ -174,6 +174,7 @@ extern cmdtable *m_cmdtable;			/* Master cmdtable */
 
 /* Prototypes */
 
+int module_exists(const char *);
 void list_modules(void);
 int init_modules(void);				/* Initialize modules */
 int init_child_modules(void);

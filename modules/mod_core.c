@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.84 2002-05-21 20:47:16 castaglia Exp $
+ * $Id: mod_core.c,v 1.85 2002-06-11 14:36:42 castaglia Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -100,6 +100,9 @@ extern xaset_t *servers;
 /* from mod_site */
 extern modret_t *site_dispatch(cmd_rec*);
 
+/* from dirtree.c */
+extern array_header *server_defines;
+
 /* for bytes-retrieving directives */
 #define PR_BYTES_BAD_UNITS	-1
 #define PR_BYTES_BAD_FORMAT	-2
@@ -161,6 +164,148 @@ static ssize_t get_num_bytes(char *nbytes_str) {
   /* Default return value: the given argument was badly formatted.
    */
   return PR_BYTES_BAD_FORMAT;
+}
+
+MODRET start_ifdefine(cmd_rec *cmd) {
+  unsigned int ifdefine_ctx_count = 1;
+  unsigned char not_define = FALSE, defined = FALSE;
+  char buf[TUNABLE_BUFFER_SIZE] = {'\0'}, *config_line = NULL;
+
+  CHECK_ARGS(cmd, 1);
+
+  if (*(cmd->argv[1]) == '!') {
+    not_define = TRUE;
+    (cmd->argv[1])++;
+  }
+
+  defined = define_exists(cmd->argv[1]);
+
+  /* Return now if we don't need to consume the <IfDefine> section
+   * configuration lines.
+   */
+  if ((!not_define && defined) || (not_define && !defined)) {
+    log_debug(DEBUG3, "%s: found '%s' definition", cmd->argv[0], cmd->argv[1]);
+    return HANDLED(cmd);
+
+  } else
+    log_debug(DEBUG3, "%s: skipping '%s' section", cmd->argv[0], cmd->argv[1]);
+
+  /* Rather than communicating with parse_config_file() via some global
+   * variable/flag the need to skip configuration lines, if the requested
+   * module condition is not TRUE, read in the lines here (effectively
+   * preventing them from being parsed) up to and including the closing
+   * directive.
+   */
+  while (ifdefine_ctx_count && (config_line = get_config_line(buf,
+      TUNABLE_BUFFER_SIZE)) != NULL) {
+
+    if (!strncmp(config_line, "<IfDefine", 9))
+      ifdefine_ctx_count++;
+
+    if (!strcmp(config_line, "</IfDefine>"))
+      ifdefine_ctx_count--;
+  }
+
+  /* If there are still unclosed <IfDefine> sections, signal an error.
+   */
+  if (ifdefine_ctx_count)
+    CONF_ERROR(cmd, "unclosed <IfDefine> context");
+
+  return HANDLED(cmd);
+}
+
+/* As with Apache, there is no way of cleanly checking whether an
+ * <IfDefine> section is properly closed.  Extra </IfDefine> directives
+ * will be silently ignored.
+ */
+MODRET end_ifdefine(cmd_rec *cmd) {
+  return HANDLED(cmd);
+}
+
+MODRET start_ifmodule(cmd_rec *cmd) {
+  unsigned int ifmodule_ctx_count = 1;
+  unsigned char not_module = FALSE, found_module = FALSE;
+  char buf[TUNABLE_BUFFER_SIZE] = {'\0'}, *config_line = NULL;
+
+  CHECK_ARGS(cmd, 1);
+
+  if (*(cmd->argv[1]) == '!') {
+    not_module = TRUE;
+    (cmd->argv[1])++;
+  }
+
+  found_module = module_exists(cmd->argv[1]);
+
+  /* Return now if we don't need to consume the <IfModule> section
+   * configuration lines.
+   */
+  if ((!not_module && found_module) || (not_module && !found_module)) {
+    log_debug(DEBUG3, "%s: found '%s' module", cmd->argv[0], cmd->argv[1]);
+    return HANDLED(cmd);
+
+  } else
+    log_debug(DEBUG3, "%s: skipping '%s' section", cmd->argv[0], cmd->argv[1]);
+
+  /* Rather than communicating with parse_config_file() via some global
+   * variable/flag the need to skip configuration lines, if the requested
+   * module condition is not TRUE, read in the lines here (effectively
+   * preventing them from being parsed) up to and including the closing
+   * directive.
+   */
+  while (ifmodule_ctx_count && (config_line = get_config_line(buf,
+      TUNABLE_BUFFER_SIZE)) != NULL) {
+
+    if (!strncmp(config_line, "<IfModule", 9))
+      ifmodule_ctx_count++;
+
+    if (!strcmp(config_line, "</IfModule>"))
+      ifmodule_ctx_count--;
+  }
+
+  /* If there are still unclosed <IfModule> sections, signal an error.
+   */
+  if (ifmodule_ctx_count)
+    CONF_ERROR(cmd, "unclosed <IfModule> context");
+
+  return HANDLED(cmd);
+}
+
+/* As with Apache, there is no way of cleanly checking whether an
+ * <IfModule> section is properly closed.  Extra </IfModule> directives
+ * will be silently ignored.
+ */
+MODRET end_ifmodule(cmd_rec *cmd) {
+  return HANDLED(cmd);
+}
+
+/* Syntax: Define parameter
+ *
+ * Configuration file equivalent of the -D command-line option for
+ * specifying an <IfDefine> value.
+ *
+ * It is suggested the RLimitMemory (a good idea to use anyway) be
+ * used if this directive is present, to prevent Defines was being
+ * used by a malicious local user in a .ftpaccess file.
+ */
+MODRET add_define(cmd_rec *cmd) {
+
+  /* Make sure there's at least one parameter; any others are ignored */
+  CHECK_ARGS(cmd, 1);
+
+  /* This directive can occur in any context, so need need for the
+   * CHECK_CONF macro.
+   */
+
+  /* If this is the first such definition, allocate an array_header
+   * for the definitions
+   */
+  if (!server_defines)
+    server_defines = make_array(permanent_pool, 0, sizeof(char *));
+
+  *((char **) push_array(server_defines)) = pstrdup(permanent_pool,
+    cmd->argv[1]);
+
+  return HANDLED(cmd);
 }
 
 MODRET add_include(cmd_rec *cmd)
@@ -3232,6 +3377,10 @@ static conftable core_conftable[] = {
   { "</Directory>",		end_directory,			NULL },
   { "<Global>",			add_global,			NULL },
   { "</Global>",		end_global,			NULL },
+  { "<IfDefine>",		start_ifdefine,			NULL },
+  { "</IfDefine>",		end_ifdefine,			NULL },
+  { "<IfModule>",		start_ifmodule,			NULL },
+  { "</IfModule>",		end_ifmodule,			NULL },
   { "<Limit>",			add_limit,			NULL },
   { "</Limit>", 		end_limit, 			NULL },
   { "<VirtualHost>",		add_virtualhost,		NULL },
@@ -3258,6 +3407,7 @@ static conftable core_conftable[] = {
   { "DefaultServer",		set_defaultserver,		NULL },
   { "DefaultTransferMode",	set_defaulttransfermode,	NULL },
   { "DeferWelcome",		set_deferwelcome,		NULL },
+  { "Define",			add_define,			NULL },
   { "DeleteAbortedStores",	set_deleteabortedstores,	NULL },
   { "Deny",			add_deny,			NULL },
   { "DenyAll",			set_denyall,			NULL },

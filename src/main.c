@@ -25,7 +25,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.81 2002-05-21 20:47:23 castaglia Exp $
+ * $Id: main.c,v 1.82 2002-06-11 14:36:42 castaglia Exp $
  */
 
 /*
@@ -146,6 +146,9 @@ static char _ml_numeric[4] = {'\0'};
 static char **Argv = NULL;
 static char *LastArgv = NULL;
 static char *PidPath = PID_FILE_PATH;
+
+/* from dirtree.c */
+extern array_header *server_defines;
 
 static int nodaemon = 0;
 static int shutdownp = 0;
@@ -2359,6 +2362,7 @@ extern int optind,opterr,optopt;
 struct option opts[] = {
   { "nodaemon",	  0, NULL, 'n' },
   { "debug",	  1, NULL, 'd' },
+  { "define",	  1, NULL, 'D' },
   { "config",	  1, NULL, 'c' },
   { "persistent", 1, NULL, 'p' },
   { "list",       0, NULL, 'l' },
@@ -2380,7 +2384,9 @@ struct option_help {
   { "--nodaemon", "-n",
     "Disable background daemon mode (all output goes to tty, instead of syslog)" },
   { "--debug", "-d [level]",
-    "Set debugging level (0-5, 5 = most debugging)" },
+    "Set debugging level (0-9, 9 = most debugging)" },
+  { "--define", "-D [definition]",
+    "Set arbitrary IfDefine definition" },
   { "--config", "-c [config-file]",
     "Specify alternate configuration file" },
   { "--persistent", "-p [0|1]",
@@ -2423,7 +2429,7 @@ int main(int argc, char **argv, char **envp)
   int check_config_syntax = 0;
   int show_version = 0;
   struct sockaddr peer;
-  const char *cmdopts = "nd:c:p:lhtv"
+  const char *cmdopts = "D:nd:c:p:lhtv"
 
 #ifdef DEBUG_CORE
     "o"
@@ -2488,20 +2494,25 @@ int main(int argc, char **argv, char **envp)
   /* Open the syslog */
   log_opensyslog(NULL);
 
+  /* initialize the memory subsystem here */
+  init_alloc();
+
   /* Command line options supported:
-   * -c, --config path  Set the configuration path
    *
-   * -d n, --debug n	Set debug level
-   *
-   * -n, --nodaemon	Standalone server doesn't background itself,
-   *                    all logging dumped to stderr
-   *
-   * -o, --core		Enable graceful coredumps, dropping things into
-   *			CORE_DIR
-   *
-   * -t, --configtest	Syntax check the config file
-   *
-   * -v, --version      Report version number
+   * -D parameter       set run-time configuration parameter
+   * --define parameter
+   * -c path            set the configuration path
+   * --config path
+   * -d n               set the debug level
+   * --debug n
+   * -n                 standalone server does not daemonize, all logging
+   * --nodaemon         redirected to stderr
+   * -o                 enable gracefule coredumps, dropping things into
+   * --core                       CORE_DIR
+   * -t                 syntax check of the configuration file
+   * --configtest
+   * -v                 report version number
+   * --version
    */
 
   opterr = 0;
@@ -2513,6 +2524,20 @@ int main(int argc, char **argv, char **envp)
 #endif /* HAVE_GETOPT_LONG */
 	 ) != -1) {
     switch (optc) {
+    case 'D':
+      if (!optarg) {
+        log_pri(LOG_ERR, "Fatal: -D requires definition argument");
+        exit(1);
+      }
+
+      /* if this is the first time through, allocate an array_header
+       * for these command-line definitions
+       */
+      if (!server_defines)
+        server_defines = make_array(permanent_pool, 0, sizeof(char *));
+
+      *((char **) push_array(server_defines)) = pstrdup(permanent_pool, optarg);
+      break;
     case 'n': 
       nodaemon++;
       break;

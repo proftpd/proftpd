@@ -1,9 +1,11 @@
-$Id: NEWS,v 1.179 2002-06-11 14:30:01 castaglia Exp $
+$Id: NEWS,v 1.180 2002-06-11 14:36:42 castaglia Exp $
 
 CVS
 ---------------------------------
 - Bug 1407 - Removed unnecessary check for prior PORT/PASV in STOR
              PRE_CMD handler (RETR PRE_CMD handler did not have these checks)
+Added new Define, <IfDefine>, <IfModule> configuration directives, new
+  command-line option -D (a la Apache)
 
 1.2.5 - Released 2002-06-08
 ---------------------------------
