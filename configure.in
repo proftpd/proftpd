@@ -170,7 +170,6 @@ AC_CHECK_HEADERS(security/pam_appl.h,
 	if test `echo $ac_addl_modules | grep -c mod_pam` = "0"; then
 		ac_addl_modules="mod_pam.o $ac_addl_modules"
 		ac_build_addl_modules="modules/mod_pam.o $ac_build_addl_modules"
-	  fi
     fi ])
 
 AC_CHECK_HEADERS(ctype.h getopt.h crypt.h bstring.h strings.h)
