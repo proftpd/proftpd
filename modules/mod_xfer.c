@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.100 2002-11-25 17:08:33 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.101 2002-12-02 17:04:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -583,7 +583,8 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   allow_overwrite = get_param_ptr(CURRENT_CONF, "AllowOverwrite", FALSE);
 
   if (fmode && (session.xfer.xfer_type != STOR_APPEND) && 
-      !(allow_overwrite && *allow_overwrite == TRUE)) {
+      (!allow_overwrite || *allow_overwrite == FALSE)) {
+    log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
     add_response_err(R_550, "%s: Overwrite permission denied", cmd->arg);
     return ERROR(cmd);
   }
@@ -778,7 +779,8 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
   allow_overwrite = get_param_ptr(CURRENT_CONF, "AllowOverwrite", FALSE);
 
   if (mode && session.xfer.xfer_type != STOR_APPEND &&
-      !(allow_overwrite && *allow_overwrite == TRUE)) {
+      (!allow_overwrite || *allow_overwrite == FALSE)) {
+    log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
     add_response_err(R_550, "%s: Overwrite permission denied", cmd->arg);
     return ERROR(cmd);
   }
@@ -1549,7 +1551,7 @@ MODRET set_allowoverwrite(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = (unsigned char) bool;
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);

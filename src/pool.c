@@ -498,7 +498,7 @@ char *pdircat(pool *p, ...) {
     else if(last && last == '/' && *res == '/')
       len--;
     len += strlen(res);
-    last = res[strlen(res) - 1];
+    last = (*res ? res[strlen(res) - 1] : 0);
   }
 
   va_end(dummy);
@@ -515,7 +515,7 @@ char *pdircat(pool *p, ...) {
       sstrcat(res, "/", len + 1);
     
     sstrcat(res, argp, len + 1);
-    last = res[strlen(res) - 1];
+    last = (*res ? res[strlen(res) - 1] : 0);
   }
 
   va_end(dummy);

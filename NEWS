@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.290 2002-11-26 17:28:20 castaglia Exp $
+$Id: NEWS,v 1.291 2002-12-02 17:04:00 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -29,6 +29,8 @@ CVS
   due to the fact that /dev/log on Solaris (and other platforms?) is a
   STREAMS device, which requires open() and putmsg(), rather than connect()
   and send().
+- 1846 - File overwrites fail.  Tracked down by Sergei Rozinov to involve
+  uninitialized stack data.
  
 1.2.7rc3 - Released 15-11-2002
 ---------------------------------
