@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.44 2001-01-31 21:39:04 flood Exp $
+ * $Id: mod_xfer.c,v 1.45 2001-02-02 23:09:26 flood Exp $
  */
 
 /* History Log:
@@ -605,7 +605,8 @@ MODRET cmd_stor(cmd_rec *cmd)
       return HANDLED(cmd);
     }
 
-    bufsize = (main_server->tcp_rwin > 0 ? main_server->tcp_rwin : 1024);
+    bufsize = (main_server->tcp_rwin > 0 ? 
+	       main_server->tcp_rwin : TUNABLE_BUFFER_SIZE);
     lbuf = (char*) palloc(cmd->tmp_pool, bufsize);
     
     gettimeofday(&rate_tvstart, NULL);
@@ -807,7 +808,8 @@ MODRET cmd_retr(cmd_rec *cmd)
       return ERROR(cmd);
     }
     
-    bufsize = (main_server->tcp_swin > 0 ? main_server->tcp_swin : 1024);
+    bufsize = (main_server->tcp_swin > 0 ?
+	       main_server->tcp_swin : TUNABLE_BUFFER_SIZE);
     lbuf = (char *) palloc(cmd->tmp_pool, bufsize);
 
     cnt = respos;

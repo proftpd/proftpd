@@ -20,7 +20,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.3 2000-08-02 05:25:24 macgyver Exp $
+ * $Id: options.h,v 1.4 2001-02-02 23:09:25 flood Exp $
  */
 
 #ifndef __OPTIONS_H
@@ -60,6 +60,12 @@
 
 #define TUNABLE_DEFAULT_RWIN    8192
 #define TUNABLE_DEFAULT_SWIN    8192
+
+/* Default internal buffer size used for data transfers and other
+ * miscellaneous tasks.
+ */
+
+#define TUNABLE_BUFFER_SIZE	1024
 
 /* Default timeouts, if not explicitly configured via
  * the TimeoutLogin, TimeoutIdle, etc directives.

@@ -20,7 +20,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.18 2000-08-08 00:54:46 macgyver Exp $
+ * $Id: data.c,v 1.19 2001-02-02 23:09:26 flood Exp $
  */
 
 #include "conf.h"
@@ -70,7 +70,35 @@ RETSIGTYPE data_urgent(int sig) {
   signal(SIGURG,data_urgent);
 }
 
-static int _translate_ascii(char **buf, int *bufsize, int *adjlen) {
+static int _xlate_ascii_read(char *buf, int *bufsize, int *adjlen)
+{
+  char *dest = buf,*src = buf;
+  int thislen = *bufsize;
+ 
+  *adjlen = 0;
+  while(thislen--) {
+    if(*src != '\r')
+      *dest++ = *src++;
+    else {
+      if(thislen == 0) {
+	/* copy, but save it for later */
+	*dest++ = *src++;
+	(*adjlen)++;
+	(*bufsize)--;
+      } else {
+	if(*(src+1) == '\n') { /* skip */
+	  (*bufsize)--;
+	  src++;
+	} else
+	  *dest++ = *src++;
+      }
+    }
+  }
+
+  return *bufsize;
+}
+
+static int _xlate_ascii_write(char **buf, int *bufsize, int *adjlen) {
   char *res = *buf;
   int newbufsize = 0;
   int thislen = *bufsize;
@@ -101,9 +129,11 @@ static void _data_new_xfer(char *filename, int direction) {
   session.xfer.p = make_sub_pool(session.pool);
   session.xfer.filename = pstrdup(session.xfer.p,filename);
   session.xfer.direction = direction;
-  session.xfer.bufsize = 1024;
-  session.xfer.buf = (char*)palloc(session.xfer.p,1025);
+  session.xfer.bufsize = TUNABLE_BUFFER_SIZE;
+  session.xfer.buf = (char*)palloc(session.xfer.p,TUNABLE_BUFFER_SIZE+1);
   session.xfer.buf++;	/* leave room for ascii translation */
+  session.xfer.bufstart = session.xfer.buf;
+  session.xfer.buflen = 0;
 }
 
 static int _data_pasv_open(char *reason, unsigned long size) {
@@ -576,24 +606,74 @@ int data_xfer(char *cl_buf, int cl_size) {
   int total = 0;
   
   if(session.xfer.direction == IO_READ) {
-    if(session.d && (len = io_read(session.d->inf, cl_buf, cl_size, 1)) > 0) {
-      if(TimeoutStalled)
-	reset_timer(TIMER_STALLED, ANY_MODULE);
-      
+    if(session.d) {
       if(session.flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
-	char *cp = cl_buf, *dest = cl_buf;
-	register int i = len;
+        int adjlen,buflen;
+	do {
+	  buflen = session.xfer.buflen;        /* how much remains in buf */
+	  adjlen = 0;
 	
-	while(i--)
-	  if(*cp != '\r')
-	    *dest++ = *cp++;
-	  else {
-	    len--; total++;
-	    cp++;
+	  if((len = io_read(session.d->inf, buf + buflen,
+		  session.xfer.bufsize - buflen, 1)) > 0)
+	    buflen += len;
+	
+	  /* if buflen > 0, data remains in the buffer to be copied. */
+	  if(len >= 0 && buflen > 0) {
+
+	    /* Perform translation:
+	     * buflen is returned as the modified buffer length after
+	     *        translation
+	     * adjlen is returned as the number of characters unprocessed in
+	     *        the buffer (to be dealt with later)
+	     *
+	     * We skip the call to _xlate_ascii_read() in one case:
+	     * when we have one character in the buffer and have reached
+	     * end of data, this is so that _xlate_ascii_read() won't sit
+	     * forever waiting for the next character after a final '\r'.
+	     */
+	    if(len > 0 || buflen > 1)
+	      _xlate_ascii_read(buf, &buflen, &adjlen);
+	
+	    /* now copy everything we can into cl_buf */
+	    if(buflen > cl_size) {
+	      /* because we have to cut our buffer short, make sure this
+	       * is made up for later by increasing adjlen.
+	       */
+	      adjlen += (buflen - cl_size);
+	      buflen = cl_size;
+	    }
+  	    bcopy(buf,cl_buf,buflen);
+	
+	    /* copy whatever remains at the end of session.xfer.buf to the
+	     * head of the buffer and adjust buf accordingly
+	     *
+	     * adjlen is now the total bytes still waiting in buf, if
+	     * anything remains, copy it to the start of the buffer
+	     */
+	
+	    if(adjlen > 0)
+	      bcopy(buf+buflen,buf,adjlen);
+
+	    /* store everything back in session.xfer */
+	    session.xfer.buflen = adjlen;
+	    total += buflen;
 	  }
-      }
+	    
+	  /* Restart if data was returned by io_read() (len > 0) but
+	   * no data was copied to the client buffer (buflen = 0).
+	   * This indicates that _xlate_ascii_read() needs more data
+	   * in order to translate, so we need to call io_read() again.
+           */
+	} while(len > 0 && buflen == 0);
+        /* return how much data we actually copied into the client buffer */
+        len = buflen;
+      } else if((len = io_read(session.d->inf, cl_buf, cl_size, 1)) > 0) {
+	  /* non-ascii mode doesn't need to use session.xfer.buf */
+	  if(TimeoutStalled)
+	    reset_timer(TIMER_STALLED, ANY_MODULE);
       
-      total += len;
+	  total += len;
+      }
     }
   } else { /* IO_WRITE */
     
@@ -606,8 +686,8 @@ int data_xfer(char *cl_buf, int cl_size) {
       int wsize,adjlen;
       char *wb;
       
-      if(size > 1024)
-	size = 1024;
+      if(size > TUNABLE_BUFFER_SIZE)
+	size = TUNABLE_BUFFER_SIZE;
       
       o_size = size;
       bcopy(cl_buf,buf,size);
@@ -615,7 +695,7 @@ int data_xfer(char *cl_buf, int cl_size) {
 	wb = buf; wsize = size; adjlen = 0;
 	
 	if(session.flags & (SF_ASCII|SF_ASCII_OVERRIDE))
-	  _translate_ascii(&wb,&wsize,&adjlen);
+	  _xlate_ascii_write(&wb,&wsize,&adjlen);
 	
 	if(io_write(session.d->outf,wb,wsize) == -1)
 	  return -1;
