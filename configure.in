@@ -555,7 +555,7 @@ fi
 dnl The pam test used to disable use_shadow, and I'm not sure why, libpam
 dnl really shouldn't have anything to do with force_shadow or use_shadow.
 if test x"$enable_auth_pam" != xno ; then
-  AC_CHECK_HEADERS(security/pam_appl.h,
+  AC_CHECK_HEADERS(security/pam_appl.h pam/pam_appl.h,
     [ if test `echo $ac_addl_modules | grep -c mod_auth_pam` = "0"; then
         ac_addl_modules="mod_auth_pam.o $ac_addl_modules"
         ac_build_addl_modules="modules/mod_auth_pam.o $ac_build_addl_modules"
