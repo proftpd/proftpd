@@ -1,3 +1,16 @@
+2001-04-11 15:00  flood
+
+	* src/dirtree.c: MasqueradeAddress now prints LOG_INFO message.
+
+2001-04-11 14:57  flood
+
+	* NEWS, contrib/mod_quota.c, include/log.h, modules/mod_auth.c,
+	modules/mod_core.c, modules/mod_log.c, modules/mod_ls.c,
+	modules/mod_unixpw.c, src/dirtree.c, src/ftpcount.c, src/ftpshut.c,
+	src/log.c: Bug #1093 - world writable log/symlinked log files Bug
+	#1094 - Auth{User,Group}File disallow relative paths Bug #1096 -
+	Case insensitivity/RLimit* args
+
 2001-03-26 22:12  flood
 
 	* doc/Configuration.html: Bugs #1088, 1058 & 1041 - Doc updates for
