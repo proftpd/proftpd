@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.140 2001-11-29 18:20:38 flood Exp $
+$Id: NEWS,v 1.141 2001-11-29 18:54:12 flood Exp $
 
 1.2.5rc1 - CVS
 ---------------------------------
@@ -9,6 +9,9 @@ $Id: NEWS,v 1.140 2001-11-29 18:20:38 flood Exp $
 - Bug 1368 umask bug is hopefully squashed for good
 - Bug 1389 fixed hang on PWD
 - Bug 1355 Added POST_CMD_ERR handler to API
+- Bug 1396 DenyFilter works only in server config scope
+- Bug 1410 SIGIO now conditionally compiled
+- Bug 1281 Improper checking of server context
 
 1.2.4 - Released 10/19/2001
 ---------------------------------

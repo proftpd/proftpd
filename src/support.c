@@ -25,7 +25,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.24 2001-08-16 19:54:04 flood Exp $
+ * $Id: support.c,v 1.25 2001-11-29 18:54:13 flood Exp $
  */
 
 /* History Log:
@@ -110,7 +110,9 @@ static void _block_signals(int block)
     sigaddset(&sigset,SIGINT);
     sigaddset(&sigset,SIGQUIT);
     sigaddset(&sigset,SIGALRM);
+#ifdef SIGIO
     sigaddset(&sigset,SIGIO);
+#endif
 #ifdef SIGBUS
     sigaddset(&sigset,SIGBUS);
 #endif

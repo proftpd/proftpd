@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.74 2001-11-29 18:20:38 flood Exp $
+ * $Id: mod_core.c,v 1.75 2001-11-29 18:54:12 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -1937,9 +1937,6 @@ MODRET add_virtualhost(cmd_rec *cmd)
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_ROOT);
 
-  if(cmd->server != main_server)
-    CONF_ERROR(cmd,"directive cannot be nested.");
-
   s = start_new_server(cmd->argv[1]);
   if(!s)
     CONF_ERROR(cmd,"unable to create virtual server configuration.");
@@ -1950,9 +1947,7 @@ MODRET add_virtualhost(cmd_rec *cmd)
 MODRET end_virtualhost(cmd_rec *cmd)
 {
   CHECK_ARGS(cmd,0);
-
-  if(cmd->server == main_server)
-    CONF_ERROR(cmd,"must be matched with <VirtualHost> directive.");
+  CHECK_CONF(cmd, CONF_VIRTUAL);
 
   end_new_server();
   return HANDLED(cmd);
@@ -2094,23 +2089,31 @@ MODRET regex_filters(cmd_rec *cmd)
    * we are receiving commands, so it's ok to cache the regex for performance.
    */
   static regex_t *a_reg = NULL;
-  static int a_reg_cached = 0;
+  static int a_reg_cached = FALSE;
   static regex_t *d_reg = NULL;
-  static int d_reg_cached = 0;
+  static int d_reg_cached = FALSE;
   int ret;
-  
+ 
+  /* if authenticated, do lookups again.  This allows {Allow,Deny}Filter to
+   * operate on the USER command (although I don't know why you'd want that)
+   */
+  if (find_config(cmd->server->conf, CONF_PARAM, "authenticated", FALSE)) {
+    a_reg_cached = FALSE;
+    d_reg_cached = FALSE;
+  }
+
+  /* Don't apply the filter checks to passwords (arguments to the PASS
+   * command).
+   */
+  if (strcasecmp(cmd->argv[0], "PASS") == 0)
+    return DECLINED(cmd);
+
   /* Check for an AllowFilter */
   if(!a_reg_cached) {
     a_reg = (regex_t*) get_param_ptr(TOPLEVEL_CONF, "AllowFilter", FALSE);
     a_reg_cached = TRUE;
   }
   
-  /* Don't apply the filter checks to passwords (arguments to the PASS
-   * command).
-   */
-  if(strcasecmp(cmd->argv[0],"PASS") == 0)
-    return DECLINED(cmd);
-
   if(a_reg && cmd->arg &&
      ((ret = regexec(a_reg, cmd->arg, 0, NULL, 0)) != 0)) {
     log_debug(DEBUG2, "'%s %s' denied by AllowFilter", cmd->argv[0],

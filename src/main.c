@@ -25,7 +25,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.70 2001-11-29 18:20:38 flood Exp $
+ * $Id: main.c,v 1.71 2001-11-29 18:54:13 flood Exp $
  */
 
 /*
@@ -1982,7 +1982,9 @@ static void install_signal_handlers()
 #ifdef SIGSTKFLT
   sigaddset(&sigset,SIGSTKFLT);
 #endif
+#ifdef SIGIO
   sigaddset(&sigset,SIGIO);
+#endif
 #ifdef SIGBUS
   sigaddset(&sigset,SIGBUS);
 #endif
@@ -2005,13 +2007,17 @@ static void install_signal_handlers()
 #ifdef SIGSTKFLT
   signal(SIGSTKFLT,sig_terminate);
 #endif /* SIGSTKFLT */
+#ifdef SIGIO
   signal(SIGIO,sig_terminate);
+#endif
 #ifdef SIGBUS
   signal(SIGBUS,sig_terminate);
 #endif /* SIGBUS */
 #endif /* DEBUG_NOSIG */
 
+#ifdef SIGIO
   signal(SIGIO,SIG_IGN);
+#endif
   signal(SIGURG,SIG_IGN);
 
   /* In case our parent left signals blocked (as happens under some

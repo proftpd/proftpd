@@ -26,7 +26,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.12 2001-09-26 15:34:10 flood Exp $
+ * $Id: dirtree.h,v 1.13 2001-11-29 18:54:12 flood Exp $
  */
 
 #ifndef __DIRTREE_H
@@ -63,6 +63,7 @@ typedef struct server_struc {
   struct conn_struc *listen;	/* Our listening connection */
   xaset_t *conf;		/* Configuration details */
 
+  int config_type;
 } server_rec;
 
 #define CLASS_USER
@@ -162,8 +163,8 @@ extern int			TimeoutStalled;
 #define CHECK_CONF(x,p)		if(!check_conf((x),(p))) \
 				CONF_ERROR((x), \
 				pstrcat((x)->tmp_pool,"directive not allowed in ", \
-				get_section_name((x)), \
-				" section.",NULL))
+				get_context_name((x)), \
+				" context",NULL))
 
 #define CHECK_CMD_ARGS(x, n)	if((x)->argc != (n)) { \
 				  add_response_err(R_501, \
@@ -229,8 +230,8 @@ int login_check_limits(xaset_t*,int,int,int*);
 void resolve_anonymous_dirs(xaset_t*);
 void resolve_defered_dirs(server_rec*);
 void fixup_dirs(server_rec*,int);
-int check_conf(cmd_rec*,int);
-char *get_section_name(cmd_rec*);
+unsigned char check_conf(cmd_rec *, int);
+char *get_context_name(cmd_rec *);
 int get_boolean(cmd_rec*,int);
 char *get_full_cmd(cmd_rec*);
 int match_ip(p_in_addr_t*, char*, const char *);

@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.41 2001-11-29 18:20:38 flood Exp $
+ * $Id: dirtree.c,v 1.42 2001-11-29 18:54:13 flood Exp $
  */
 
 /* History:
@@ -316,6 +316,7 @@ server_rec *start_new_server(const char *addr)
 
   s = (server_rec*)pcalloc(p,sizeof(server_rec));
   s->pool = p;
+  s->config_type = CONF_VIRTUAL;
   
   /* Have to make sure it ends up on the end of the chain,
    * otherwise main_server becomes useless.
@@ -2522,34 +2523,38 @@ void init_config()
 /* These functions are used by modules to help parse configuration.
  */
 
-int check_conf(cmd_rec *cmd, int allowed)
-{
-  int x;
+unsigned char check_conf(cmd_rec *cmd, int allowed) {
+  int ctxt = (cmd->config && cmd->config->config_type != CONF_PARAM ?
+     cmd->config->config_type : cmd->server->config_type ?
+     cmd->server->config_type : CONF_ROOT);
 
-  x = (cmd->config && cmd->config->config_type != CONF_PARAM ?
-       cmd->config->config_type : CONF_ROOT);
+  if (ctxt & allowed)
+    return TRUE;
 
-  return (x & allowed);
+  /* default */
+  return FALSE;
 }
 
-char *get_section_name(cmd_rec *cmd)
-{
+char *get_context_name(cmd_rec *cmd) {
   static char cbuf[20];
 
-  if(!cmd->config || cmd->config->config_type == CONF_PARAM)
-    return "top level";
+  if (!cmd->config || cmd->config->config_type == CONF_PARAM) {
+    if (cmd->server->config_type == CONF_VIRTUAL)
+      return "<VirtualHost>"; 
+    else
+      return "server config";
+  }    
 
   memset(cbuf,'\0',sizeof(cbuf));
   switch(cmd->config->config_type) {
-  case CONF_ROOT: return "root";
   case CONF_DIR: return "<Directory>";
   case CONF_ANON: return "<Anonymous>";
   case CONF_LIMIT: return "<Limit>";
-  case CONF_VIRTUAL: return "<VirtualHost>";
   case CONF_DYNDIR: return ".ftpaccess";
   case CONF_GLOBAL: return "<Global>";
   case CONF_USERDATA: return "user data";
   default:
+    /* in 1.3/2.0, should dispatch to modules here */
   snprintf(cbuf, sizeof(cbuf), "%d", cmd->config->config_type);
   return cbuf;
   }
