@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.162 2004-05-17 18:24:14 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.163 2004-08-03 23:17:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -48,6 +48,8 @@ extern pid_t mpid;
 /* Variables for this module */
 static pr_fh_t *retr_fh = NULL;
 static pr_fh_t *stor_fh = NULL;
+
+static unsigned char have_prot = FALSE;
 
 /* Transfer rate variables */
 static long double xfer_rate_kbps = 0.0, xfer_rate_bps = 0.0;
@@ -617,13 +619,14 @@ static int _transmit_sendfile(off_t count, off_t *offset,
   /* We don't use sendfile() if:
    * - We're using bandwidth throttling.
    * - We're transmitting an ASCII file.
+   * - We're using RFC2228 data channel protection
    * - There's no data left to transmit.
    */
   if (have_xfer_rate ||
      !(session.xfer.file_size - count) ||
-     (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE))) {
+     (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) ||
+     have_prot)
     return 0;
-  }
 
  retry:
   *retval = pr_data_sendfile(PR_FH_FD(retr_fh), offset,
@@ -948,6 +951,15 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, privdata_t *p) {
   session.xfer.xfer_type = STOR_HIDDEN;
 
   return 0;
+}
+
+MODRET xfer_post_prot(cmd_rec *cmd) {
+  CHECK_CMD_ARGS(cmd, 2);
+
+  if (strcmp(cmd->argv[1], "C") != 0)
+    have_prot = TRUE;
+
+  return DECLINED(cmd);
 }
 
 /* This is a PRE_CMD handler that checks security, etc, and places the full
@@ -2412,6 +2424,7 @@ static cmdtable xfer_cmdtab[] = {
   { LOG_CMD_ERR, C_APPE,G_NONE,  xfer_err_cleanup,  FALSE,  FALSE },
   { CMD,     C_ABOR,	G_NONE,	 xfer_abor,	TRUE,	TRUE,  CL_MISC  },
   { CMD,     C_REST,	G_NONE,	 xfer_rest,	TRUE,	FALSE, CL_MISC  },
+  { POST_CMD,C_PROT,	G_NONE,  xfer_post_prot,TRUE,	FALSE },
   { 0,NULL }
 };
 
