@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.26 1999-12-27 02:43:29 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.27 1999-12-28 07:27:32 macgyver Exp $
  */
 
 /* History Log:
@@ -696,7 +696,7 @@ MODRET cmd_retr(cmd_rec *cmd)
         break;
       
 #ifdef HAVE_SENDFILE
-      if(
+      if(rate_bps ||
 #ifdef HAVE_LINUX_SENDFILE
 	 !have_sendfile ||
 #endif /* HAVE_LINUX_SENDFILE */
