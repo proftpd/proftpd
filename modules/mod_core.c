@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.171 2003-04-15 22:56:24 castaglia Exp $
+ * $Id: mod_core.c,v 1.172 2003-04-18 06:26:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2563,12 +2563,25 @@ MODRET end_virtualhost(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+static void format_size_str(char *buf, size_t buflen, off_t size) {
+  char units[] = {'K', 'M', 'G', 'T', 'P'};
+  register unsigned int i = 0;
+
+  /* Determine the appropriate units label to use. */
+  while (size > 1024) {
+    size /= 1024;
+    i++;
+  }
+
+  /* Now, prepare the buffer. */
+  snprintf(buf, buflen, "%.3" PR_LU "%cB", size, units[i]);
+}
+
 /* Display a file via a given response numeric.  File is displayed
  * in normal RFC959 multline mode, unless MultilineRFC2228 is set.
  * Returns: -1 on error
  *          0 if file display
  */
-
 int core_display_file(const char *numeric, const char *fn, const char *fs) {
   pr_fh_t *fp = NULL;
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
@@ -2580,7 +2593,8 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
   xaset_t *s;
   config_rec *c = NULL;
   char *serverfqdn = main_server->ServerFQDN;
-  char *outs, *mg_time, mg_size[12] = {'\0'}, mg_max[12] = "unlimited";
+  char *outs, *mg_time, mg_size[12] = {'\0'}, mg_size_units[12] = {'\0'},
+    mg_max[12] = "unlimited";
   char total_files_in[12] = {'\0'}, total_files_out[12] = {'\0'},
     total_files_xfer[12] = {'\0'};
   char mg_class_limit[12] = {'\0'}, mg_cur[12] = {'\0'},
@@ -2591,8 +2605,10 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
 #if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
   fs_size = pr_fs_getsize((fs ? (char*)fs : (char*)fn));
   snprintf(mg_size, sizeof(mg_size), "%" PR_LU, fs_size);
+  format_size_str(mg_size_units, sizeof(mg_size_units), fs_size);
 #else
   snprintf(mg_size, sizeof(mg_size), "%" PR_LU, fs_size);
+  format_size_str(mg_size_units, sizeof(mg_size_units), fs_size);
 #endif
 
   if ((fp = pr_fsio_open_canon(fn, O_RDONLY)) == NULL)
@@ -2691,6 +2707,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
       "%C", (session.cwd[0] ? session.cwd : "(none)"),
       "%E", main_server->ServerAdmin,
       "%F", mg_size,
+      "%f", mg_size_units,
       "%i", total_files_in,
       "%K", mg_xfer_bytes,
       "%k", mg_xfer_units,
