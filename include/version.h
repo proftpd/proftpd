@@ -5,7 +5,7 @@
 /* VERSION_STATUS is reported by --version-status
  * don't ask why
  */
-#define VERSION_STATUS          "1.2.5"
+#define VERSION_STATUS          "1.2.5 (CVS)"
 
 /* INTERNAL_VERSION is used for checking for scoreboard compatibility
  */

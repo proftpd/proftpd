@@ -25,7 +25,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.65 2002-05-21 20:47:19 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.66 2002-06-11 14:30:02 castaglia Exp $
  */
 
 /* History Log:
@@ -403,16 +403,6 @@ MODRET pre_cmd_stor(cmd_rec *cmd) {
     add_response_err(R_500,"'%s' not understood.",get_full_cmd(cmd));
     return ERROR(cmd);
   }
-  
-  /* No PORT command has been issued.
-   */
-  if(!(session.flags & SF_PASSIVE) &&
-     (session.d != NULL || !(session.flags & SF_PORT))) {
-    add_response_err(R_503, "No PORT command issued first.");
-    return ERROR(cmd);
-  }
-
-  session.flags &= ~SF_PORT;
   
   dir = dir_best_path(cmd->tmp_pool,cmd->arg);
 

@@ -25,7 +25,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.30 2002-05-21 20:47:22 castaglia Exp $
+ * $Id: data.c,v 1.31 2002-06-11 14:30:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -404,8 +404,6 @@ void data_cleanup(void) {
     destroy_pool(session.xfer.p);
   
   memset(&session.xfer,0,sizeof(session.xfer));
-  
-  session.data_port = session.c->remote_port - 1;
 }
 
 /* In order to avoid clearing the transfer counters in session.xfer, we don't
