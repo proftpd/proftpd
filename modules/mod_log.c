@@ -25,13 +25,15 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.61 2004-01-29 22:20:52 castaglia Exp $
+ * $Id: mod_log.c,v 1.62 2004-09-05 00:53:21 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 
-extern pr_response_t *resp_list,*resp_err_list;
+extern pr_response_t *resp_list, *resp_err_list;
+
+module log_module;
 
 #define EXTENDED_LOG_BUFFER_SIZE		1025
 #define EXTENDED_LOG_MODE			0644
@@ -950,11 +952,7 @@ MODRET log_any(cmd_rec *cmd) {
   return DECLINED(cmd);
 }
 
-/* log_rehash_cb() is called whenever the master server rehashes it's
- * config (in response to SIGHUP).
- */
-
-static void log_rehash_cb(void *d) {
+static void log_restart_ev(const void *event_data, void *user_data) {
   destroy_pool(log_pool);
 
   formats = NULL;
@@ -964,7 +962,10 @@ static void log_rehash_cb(void *d) {
 
   log_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(log_pool, "mod_log pool");
+
   logformat("", "%h %l %u %t \"%r\" %s %b");
+
+  return;
 }
 
 static int log_init(void) {
@@ -974,7 +975,7 @@ static int log_init(void) {
   /* Add the "default" extendedlog format */
   logformat("", "%h %l %u %t \"%r\" %s %b");
 
-  pr_rehash_register_handler(NULL, log_rehash_cb);
+  pr_event_register(&log_module, "core.restart", log_restart_ev, NULL);
   return 0;
 }
 
