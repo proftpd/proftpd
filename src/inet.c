@@ -741,9 +741,7 @@ int inet_set_proto_opts(pool *p, conn_t *c, int nodelay, int lowdelay,
 #endif
 
 #ifdef TCP_NOPUSH
-  /* NOTE: TCP_NOPUSH is a FreeBSDism.  On Linux, the closest matching
-   * option is TCP_CORK, but it's usage is slightly different.
-   */
+  /* NOTE: TCP_NOPUSH is a BSDism. */
   if (c->wfd != -1)
     if (setsockopt(c->wfd, IPPROTO_TCP, TCP_NOPUSH, (void *) &nopush,
         sizeof(nopush)) < 0)

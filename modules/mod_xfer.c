@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.129 2003-02-25 01:39:35 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.130 2003-03-04 20:03:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -658,6 +658,19 @@ static int _transmit_sendfile(off_t count, off_t *offset,
 #endif /* HAVE_SENDFILE */
 
 static long _transmit_data(off_t count, off_t offset, char *buf, long bufsize) {
+
+#ifdef TCP_CORK
+  int on = 1;
+  socklen_t len = sizeof(int);
+
+  /* Note: TCP_CORK is a Linuxism, introduced with the 2.4 kernel.  It
+   * has effects similar to BSD's TCP_NOPUSH option.
+   */
+  if (setsockopt(PR_NETIO_FD(session.d->outstrm), SOL_TCP, TCP_CORK, &on,
+      len) < 0)
+    log_pri(PR_LOG_NOTICE, "error setting TCP_CORK: %s", strerror(errno));
+#endif /* TCP_CORK */
+
 #ifdef HAVE_SENDFILE
   pr_sendfile_t retval;
 
@@ -668,6 +681,13 @@ static long _transmit_data(off_t count, off_t offset, char *buf, long bufsize) {
 #else
   return _transmit_normal(buf, bufsize);
 #endif /* HAVE_SENDFILE */
+
+#ifdef TCP_CORK
+  on = 0;
+  if (setsockopt(PR_NETIO_FD(session.d->outstrm), SOL_TCP, TCP_CORK, &on,
+      len) < 0)
+    log_pri(PR_LOG_NOTICE, "error setting TCP_CORK: %s", strerror(errno));
+#endif /* TCP_CORK */
 }
 
 static void _stor_chown(void) {
