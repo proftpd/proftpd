@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.68 2001-06-18 17:39:52 flood Exp $
+ * $Id: mod_core.c,v 1.69 2001-08-01 15:03:11 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -2616,20 +2616,42 @@ MODRET cmd_mkd(cmd_rec *cmd)
     return ERROR(cmd);
   } else {
 
-    if(session.fsuid) {
+    if(session.fsuid != -1) {
+      int err = 0,iserr = 0;
+
       fs_stat(dir,&sbuf);
+
       PRIVS_ROOT;
-      if(chown(dir,(uid_t)session.fsuid,(gid_t)session.fsgid) == -1)
-        log_pri(LOG_WARNING, "chown() as root failed: %s.", strerror(errno));
-      else
-        chmod(dir,sbuf.st_mode);
+      if(fs_chown(dir,session.fsuid,session.fsgid) == -1) {
+        iserr++;
+        err = errno;
+      }
       PRIVS_RELINQUISH;
-    } else if(session.fsgid) {
+
+      if(iserr)
+        log_pri(LOG_WARNING, "chown() as root failed: %s.", strerror(err));
+      else {
+        if(session.fsgid != -1)
+          log_debug(DEBUG2, "root chown(%s) to uid %lu, gid %lu successful",
+                    dir,
+                    (unsigned long)session.fsuid,
+                    (unsigned long)session.fsgid);
+        else
+          log_debug(DEBUG2, "root chown(%s) to uid %lu successful",
+                    dir,
+                    (unsigned long)session.fsuid);
+        fs_chmod(dir,sbuf.st_mode);
+      }
+    } else if(session.fsgid != -1) {
       fs_stat(dir,&sbuf);
-      if(chown(dir,(uid_t)-1,(gid_t)session.fsgid) == -1)
+      if(fs_chown(dir,(uid_t)-1,(gid_t)session.fsgid) == -1)
         log_pri(LOG_WARNING, "chown() failed: %s.", strerror(errno));
-      else
-        chmod(dir,sbuf.st_mode);
+      else {
+        log_debug(DEBUG2, "chown(%s) to gid %lu successful",
+                  dir,
+                  (unsigned long)session.fsgid);
+        fs_chmod(dir,sbuf.st_mode);
+      }
     }
     add_response(R_257,"\"%s\" - Directory successfully created.",
                   quote_dir(cmd,dir));

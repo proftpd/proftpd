@@ -24,7 +24,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.17 2001-06-18 17:12:45 flood Exp $
+ * $Id: proftpd.h,v 1.18 2001-08-01 15:03:11 flood Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -120,6 +120,11 @@ typedef struct {
 
   array_header *gids;
   array_header *groups;
+
+  /* fsuid/fsgid are used for automagic chown after creation or upload,
+   * they are initially -1, meaning no chown/chgrp
+   * jss - 7/4/2001
+   */
   uid_t fsuid;				/* Saved file UID */
   gid_t fsgid;				/* Saved file GID */
 

@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.36 2001-06-18 18:02:55 flood Exp $
+ * $Id: dirtree.c,v 1.37 2001-08-01 15:03:11 flood Exp $
  */
 
 /* History:
@@ -1554,15 +1554,13 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
       _umask = 0022;
   }
   
-  session.fsuid = session.fsgid = 0;
+  session.fsuid = session.fsgid = -1;
   if((owner = get_param_ptr(CURRENT_CONF,"UserOwner",FALSE)) != NULL) {
     /* attempt chown on all new files */
     struct passwd *pw;
 
-    if((pw = auth_getpwnam(p,owner)) != NULL) {
+    if((pw = auth_getpwnam(p,owner)) != NULL)
       session.fsuid = pw->pw_uid;
-      session.fsgid = pw->pw_gid;
-    }
   }
   
   if((owner = get_param_ptr(CURRENT_CONF,"GroupOwner",FALSE)) != NULL) {
@@ -1673,16 +1671,13 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
       _umask = 0022;
   }
 
-  session.fsuid = session.fsgid = 0;
-
+  session.fsuid = session.fsgid = -1;
   if((owner = get_param_ptr(CURRENT_CONF,"UserOwner",FALSE)) != NULL) {
     /* attempt chown on all new files */
     struct passwd *pw;
 
-    if((pw = auth_getpwnam(p,owner)) != NULL) {
+    if((pw = auth_getpwnam(p,owner)) != NULL)
       session.fsuid = pw->pw_uid;
-      session.fsgid = pw->pw_gid;
-  }
   }
   
   if((owner = get_param_ptr(CURRENT_CONF,"GroupOwner",FALSE)) != NULL) {

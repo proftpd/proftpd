@@ -25,7 +25,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.66 2001-06-20 01:19:29 flood Exp $
+ * $Id: main.c,v 1.67 2001-08-01 15:03:12 flood Exp $
  */
 
 /*
@@ -2397,19 +2397,11 @@ void show_usage(int exit_code)
 
   printf("usage: proftpd [options]\n");
   for(h = opts_help; h->long_opt; h++) {
-    printf(
 #ifdef HAVE_GETOPT_LONG
-	   "  %s, "
+    printf(" %s, %s\n ", h->long_opt, h->short_opt);
+#else /* HAVE_GETOPT_LONG */
+    printf(" %s\n", h->short_opt);
 #endif /* HAVE_GETOPT_LONG */
-
-	   "%s\n",
-
-#ifdef HAVE_GETOPT_LONG
-	   h->long_opt,
-#endif /* HAVE_GETOPT_LONG */
-	   
-	   h->short_opt);
-    
     printf("    %s\n", h->desc);
   }
   
