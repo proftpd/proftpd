@@ -24,9 +24,8 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/*
- * Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.9 2003-09-08 00:53:42 castaglia Exp $
+/* Unix authentication module for ProFTPD
+ * $Id: mod_auth_unix.c,v 1.10 2003-09-28 20:31:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -247,8 +246,7 @@ static struct group *p_getgrgid(gid_t gid) {
   return gr;
 }
 
-inline static int _compare_uid(idmap_t *m1, idmap_t *m2)
-{
+inline static int _compare_uid(idmap_t *m1, idmap_t *m2) {
   if (m1->id.uid < m2->id.uid)
     return -1;
 
@@ -258,8 +256,7 @@ inline static int _compare_uid(idmap_t *m1, idmap_t *m2)
   return 0;
 }
 
-inline static int _compare_gid(idmap_t *m1, idmap_t *m2)
-{
+inline static int _compare_gid(idmap_t *m1, idmap_t *m2) {
   if (m1->id.gid < m2->id.gid)
     return -1;
 
@@ -434,10 +431,8 @@ MODRET pw_getgrgid(cmd_rec *cmd) {
 }
 
 #ifdef USE_SHADOW
-static char *_get_pw_info(pool *p, const char *u,
-                          time_t *lstchg, time_t *min, time_t *max,
-                          time_t *warn, time_t *inact, time_t *expire)
-{
+static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
+    time_t *max, time_t *warn, time_t *inact, time_t *expire) {
   struct spwd *sp;
   char *cpw = NULL;
 
@@ -479,13 +474,25 @@ static char *_get_pw_info(pool *p, const char *u,
     PRIVS_RELINQUISH
 
     if ((pw = getpwnam(u)) != NULL) {
-      cpw = pstrdup(p,pw->pw_passwd);
-      if (lstchg) *lstchg = (time_t)-1;
-      if (min) *min = (time_t)-1;
-      if (max) *max = (time_t)-1;
-      if (warn) *warn = (time_t)-1;
-      if (inact) *inact = (time_t)-1;
-      if (expire) *expire = (time_t)-1;
+      cpw = pstrdup(p, pw->pw_passwd);
+
+      if (lstchg)
+        *lstchg = (time_t) -1;
+
+      if (min)
+        *min = (time_t) -1;
+
+      if (max)
+        *max = (time_t) -1;
+
+      if (warn)
+        *warn = (time_t) -1;
+
+      if (inact)
+        *inact = (time_t) -1;
+
+      if (expire)
+        *expire = (time_t) -1;
     }
   }
 #else
@@ -497,10 +504,8 @@ static char *_get_pw_info(pool *p, const char *u,
 
 #else /* USE_SHADOW */
 
-static char *_get_pw_info(pool *p, const char *u,
-                          time_t *lstchg, time_t *min, time_t *max,
-                          time_t *warn, time_t *inact, time_t *expire)
-{
+static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
+    time_t *max, time_t *warn, time_t *inact, time_t *expire) {
   char *cpw = NULL;
 #if defined(HAVE_GETPRPWENT) || defined(COMSEC)
   struct pr_passwd *prpw;
@@ -509,7 +514,7 @@ static char *_get_pw_info(pool *p, const char *u,
   struct passwd *pw;
 #endif
 
- /* some platforms (i.e. bsd) provide "transparent" shadowing, which
+ /* Some platforms (i.e. BSD) provide "transparent" shadowing, which
   * requires that we are root in order to have the password member
   * filled in.
   */
@@ -535,12 +540,24 @@ static char *_get_pw_info(pool *p, const char *u,
 
   if (pw) {
     cpw = pstrdup(p, pw->pw_passwd);
-    if (lstchg) *lstchg = (time_t)-1;
-    if (min) *min = (time_t)-1;
-    if (max) *max = (time_t)-1;
-    if (warn) *warn = (time_t)-1;
-    if (inact) *inact = (time_t)-1;
-    if (expire) *expire = (time_t)-1;
+
+    if (lstchg)
+      *lstchg = (time_t) -1;
+
+    if (min)
+      *min = (time_t) -1;
+
+    if (max)
+      *max = (time_t) -1;
+
+    if (warn)
+      *warn = (time_t) -1;
+
+    if (inact)
+      *inact = (time_t) -1;
+
+    if (expire)
+      *expire = (time_t) -1;
   }
 
   endpwent();
@@ -553,16 +570,28 @@ static char *_get_pw_info(pool *p, const char *u,
   endprpwent();
   setprpwent();
 
-  prpw = getprpwnam((char *)u);
+  prpw = getprpwnam((char *) u);
 
   if (prpw) {
     cpw = pstrdup(p, prpw->ufld.fd_encrypt);
-    if (lstchg) *lstchg = (time_t)-1;
-    if (min) *min = prpw->ufld.fd_min;
-    if (max) *max = (time_t)-1;
-    if (warn) *warn = (time_t)-1;
-    if (inact) *inact = (time_t)-1;
-    if (expire) *expire = prpw->ufld.fd_expire;
+
+    if (lstchg)
+      *lstchg = (time_t) -1;
+
+    if (min)
+      *min = prpw->ufld.fd_min;
+
+    if (max)
+      *max = (time_t) -1;
+
+    if (warn)
+      *warn = (time_t) -1;
+
+    if (inact)
+      *inact = (time_t) -1;
+
+    if (expire)
+      *expire = prpw->ufld.fd_expire;
   }
 
   endprpwent();
@@ -586,12 +615,12 @@ static char *_get_ppw_info(pool *p, const char *u) {
 
   pw = p_getpwnam(u);
   if (pw)
-    cpw = pstrdup(p,pw->pw_passwd);
+    cpw = pstrdup(p, pw->pw_passwd);
 
   return cpw;
 }
 
-/* high-level auth handlers
+/* High-level auth handlers
  */
 
 /* cmd->argv[0] : user name
@@ -608,22 +637,25 @@ MODRET pw_auth(cmd_rec *cmd) {
   time(&now);
 
   if (persistent_passwdf)
-    cpw = _get_ppw_info(cmd->tmp_pool,name);
+    cpw = _get_ppw_info(cmd->tmp_pool, name);
   else
-    cpw = _get_pw_info(cmd->tmp_pool,name,&lstchg,NULL,&max,NULL,&inact,&disable);
+    cpw = _get_pw_info(cmd->tmp_pool, name, &lstchg, NULL, &max, NULL, &inact,
+      &disable);
 
   if (!cpw)
     return ERROR_INT(cmd, PR_AUTH_NOPWD);
 
-  if (auth_check(cmd->tmp_pool,cpw,cmd->argv[0],cmd->argv[1]))
+  if (auth_check(cmd->tmp_pool, cpw, cmd->argv[0], cmd->argv[1]))
     return ERROR_INT(cmd, PR_AUTH_BADPWD);
 
-  if (lstchg > (time_t)0 && max > (time_t)0 &&
-     inact > (time_t)0)
+  if (lstchg > (time_t) 0 &&
+      max > (time_t) 0 &&
+      inact > (time_t)0)
     if (now > lstchg + max + inact)
       return ERROR_INT(cmd, PR_AUTH_AGEPWD);
 
-  if (disable > (time_t)0 && now > disable)
+  if (disable > (time_t) 0 &&
+      now > disable)
     return ERROR_INT(cmd, PR_AUTH_DISABLEDPWD);
 
   return HANDLED(cmd);
@@ -770,8 +802,7 @@ MODRET pw_uid_name(cmd_rec *cmd) {
   return mod_create_data(cmd, m->name);
 }
 
-MODRET pw_gid_name(cmd_rec *cmd)
-{
+MODRET pw_gid_name(cmd_rec *cmd) {
   idmap_t *m;
   idauth_t id;
   struct group *gr;
@@ -804,8 +835,7 @@ MODRET pw_gid_name(cmd_rec *cmd)
   return mod_create_data(cmd, m->name);
 }
 
-MODRET pw_name_uid(cmd_rec *cmd)
-{
+MODRET pw_name_uid(cmd_rec *cmd) {
   struct passwd *pw;
   const char *name;
 
@@ -817,14 +847,13 @@ MODRET pw_name_uid(cmd_rec *cmd)
     pw = getpwnam(name);
 
   if (pw)
-    return mod_create_data(cmd,(void*)pw->pw_uid);
+    return mod_create_data(cmd, (void *) pw->pw_uid);
+
   return ERROR(cmd);
 }
 
-MODRET pw_name_gid(cmd_rec *cmd)
-{
+MODRET pw_name_gid(cmd_rec *cmd) {
   struct group *gr;
-
   const char *name;
 
   name = cmd->argv[0];
@@ -835,7 +864,8 @@ MODRET pw_name_gid(cmd_rec *cmd)
     gr = getgrnam(name);
 
   if (gr)
-    return mod_create_data(cmd,(void*)gr->gr_gid);
+    return mod_create_data(cmd, (void *) gr->gr_gid);
+
   return ERROR(cmd);
 }
 

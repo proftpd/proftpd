@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.164 2003-09-08 00:32:58 castaglia Exp $
+ * $Id: mod_auth.c,v 1.165 2003-09-28 20:31:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1706,10 +1706,11 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
   }
 }
 
-/* Close the passwd and group databases, because libc won't let us see new
- * entries to these files without this (only in PersistentPasswd mode).
- */
 MODRET auth_pre_user(cmd_rec *cmd) {
+
+  /* Close the passwd and group databases, because libc won't let us see new
+   * entries to these files without this (only in PersistentPasswd mode).
+   */
   auth_endpwent(cmd->tmp_pool);
   auth_endgrent(cmd->tmp_pool);
 
