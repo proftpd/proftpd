@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.35 2003-11-09 23:32:07 castaglia Exp $
+ * $Id: netaddr.c,v 1.36 2003-11-13 07:25:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -171,7 +171,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
         for (ai = info->ai_next; ai; ai = ai->ai_next) {
           pr_netaddr_t **elt = push_array(*addrs);
 
-          *elt = palloc(p, sizeof(pr_netaddr_t));
+          *elt = pcalloc(p, sizeof(pr_netaddr_t));
           pr_netaddr_set_family(*elt, ai->ai_family);
           pr_netaddr_set_sockaddr(*elt, ai->ai_addr);
         }
