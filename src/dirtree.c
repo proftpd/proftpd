@@ -25,13 +25,10 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.116 2003-08-18 20:13:05 castaglia Exp $
+ * $Id: dirtree.c,v 1.117 2003-09-08 00:41:37 castaglia Exp $
  */
 
 #include "conf.h"
-
-#include <sys/stat.h>
-#include <stdarg.h>
 
 #ifdef HAVE_ARPA_INET_H
 # include <arpa/inet.h>
@@ -181,13 +178,10 @@ static int allow_dyn_config(void) {
  * dir_* functions here, rather than the ls_* functions there.
  */
 
-/* Return true if dir is ".", "./", "../", or "..".
- */
+/* Return true if dir is ".", "./", "../", or "..". */
 int is_dotdir(const char *dir) {
-  if (!strcmp(dir, ".")  ||
-     !strcmp(dir, "./") ||
-     !strcmp(dir, "..") ||
-     !strcmp(dir, "../"))
+  if (strcmp(dir, ".") == 0 || strcmp(dir, "./") == 0 ||
+      strcmp(dir, "..") == 0 || strcmp(dir, "../") == 0)
     return TRUE;
 
   return FALSE;
@@ -197,25 +191,31 @@ int is_dotdir(const char *dir) {
  * values if the config_rec can appear in <Directory>.  This function
  * works around the issue caused by using the cached directory pointer
  * in session.dir_config.
+ *
+ * The issue with using session.dir_config is that it is assigned when
+ * the client changes directories or doing other directory lookups, and so
+ * dir_config may actually point to the configuration for a directory other
+ * than the target directory for an uploaded, for example.  Unfortunately,
+ * it is more expensive to lookup the configuration for the target directory
+ * every time.  Perhaps some caching of looked up directory configurations
+ * into a table, rather than a single pointer like session.dir_config,
+ * might help.
  */
-xaset_t *get_dir_ctxt(char *dir_path) {
+xaset_t *get_dir_ctxt(pool *p, char *dir_path) {
   config_rec *c = NULL;
   char *full_path = dir_path;
-  pool *tmp_pool = make_sub_pool(permanent_pool);
 
   if (session.chroot_path) {
     if (*dir_path != '/')
-      full_path = pdircat(tmp_pool, session.chroot_path, session.cwd, dir_path,
-      NULL);
+      full_path = pdircat(p, session.chroot_path, session.cwd, dir_path, NULL);
 
     else
-      full_path = pdircat(tmp_pool, session.chroot_path, dir_path, NULL);
+      full_path = pdircat(p, session.chroot_path, dir_path, NULL);
 
   } else if (*dir_path != '/')
-    full_path = pdircat(tmp_pool, session.cwd, dir_path, NULL);
+    full_path = pdircat(p, session.cwd, dir_path, NULL);
 
-  c = dir_match_path(tmp_pool, full_path);
-  destroy_pool(tmp_pool);
+  c = dir_match_path(p, full_path);
 
   return c ? c->subset : session.anon_config ? session.anon_config->subset :
     main_server->conf;
@@ -340,7 +340,7 @@ unsigned char dir_hide_file(const char *path) {
   char *file_name = NULL, *dir_name = NULL;
   config_rec *c = NULL;
   regex_t *regexp = NULL;
-  pool *tmp_pool = make_sub_pool(permanent_pool);
+  pool *tmp_pool = make_sub_pool(session.pool);
   unsigned int ctxt_precedence = 0;
   unsigned char have_user_regex, have_group_regex, have_class_regex,
     have_all_regex, inverted = FALSE;
@@ -359,13 +359,14 @@ unsigned char dir_hide_file(const char *path) {
     file_name = dir_name;
 
   /* Check for any configured HideFiles */
-  c = find_config(get_dir_ctxt(dir_name), CONF_PARAM, "HideFiles", FALSE);
+  c = find_config(get_dir_ctxt(tmp_pool, dir_name), CONF_PARAM, "HideFiles",
+    FALSE);
 
   while (c) {
     if (c->argc >= 4) {
 
       /* check for a specified "user" classifier first... */
-      if (!strcmp(c->argv[3], "user")) {
+      if (strcmp(c->argv[3], "user") == 0) {
         if (pr_user_or_expression((char **) &c->argv[4])) {
 
           if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
@@ -380,7 +381,7 @@ unsigned char dir_hide_file(const char *path) {
         }
 
       /* ...then for a "group" classifier... */
-      } else if (!strcmp(c->argv[3], "group")) {
+      } else if (strcmp(c->argv[3], "group") == 0) {
         if (pr_group_and_expression((char **) &c->argv[4])) {
           if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
             ctxt_precedence = *((unsigned int *) c->argv[2]);
@@ -398,7 +399,7 @@ unsigned char dir_hide_file(const char *path) {
        * core code at some point.  When that happens, then this code will
        * need to be updated to process class-expressions.
        */
-      } else if (!strcmp(c->argv[3], "class")) {
+      } else if (strcmp(c->argv[3], "class") == 0) {
         if (pr_class_or_expression((char **) &c->argv[4])) {
           if (*((unsigned int *) c->argv[2]) > ctxt_precedence) {
             ctxt_precedence = *((unsigned int *) c->argv[2]);
@@ -415,6 +416,7 @@ unsigned char dir_hide_file(const char *path) {
     } else if (c->argc == 1) {
 
       /* This is the "none" HideFiles parameter. */
+      destroy_pool(tmp_pool);
       return FALSE;
 
     } else {
@@ -432,7 +434,6 @@ unsigned char dir_hide_file(const char *path) {
     c = find_config_next(c, c->next, CONF_PARAM, "HideFiles", FALSE);
   }
 
-  destroy_pool(tmp_pool);
 
   if (have_user_regex || have_group_regex ||
       have_class_regex || have_all_regex) {
@@ -442,6 +443,7 @@ unsigned char dir_hide_file(const char *path) {
       have_class_regex ? "class" : "session");
 
     if (regexec(regexp, file_name, 0, NULL, 0) != 0) {
+      destroy_pool(tmp_pool);
 
       /* The file failed to match the HideFiles regex, which means it should
        * be treated as a "visible" file.  If the regex was 'inverted', though,
@@ -450,6 +452,7 @@ unsigned char dir_hide_file(const char *path) {
       return (inverted ? TRUE : FALSE);
 
     } else {
+      destroy_pool(tmp_pool);
 
       /* The file matched the HideFiles regex, which means it should be
        * considered a "hidden" file.  If the regex was 'inverted', though,
@@ -457,11 +460,11 @@ unsigned char dir_hide_file(const char *path) {
        */
       return (inverted ? FALSE : TRUE);
     }
+    destroy_pool(tmp_pool);
   }
 #endif /* !HAVE_REGEX_H and !HAVE_REGCOMP */
 
-  /* return FALSE by default
-   */
+  /* Return FALSE by default. */
   return FALSE;	
 }
 
@@ -1191,7 +1194,7 @@ static config_rec *recur_match_path(pool *p, xaset_t *s, char *path) {
       }
 
       /* Exact path match */
-      if (!strcmp(tmp_path, path))
+      if (strcmp(tmp_path, path) == 0)
         return c;
 
       if (!strstr(tmp_path, "/*")) {
@@ -1201,7 +1204,7 @@ static config_rec *recur_match_path(pool *p, xaset_t *s, char *path) {
         if (*tmp_path && *(tmp_path + tmplen - 1) == '/' && tmplen > 1) {
           *(tmp_path + tmplen - 1) = '\0';
 
-          if (!strcmp(tmp_path, path))
+          if (strcmp(tmp_path, path) == 0)
             return c;
         }
 
@@ -1238,6 +1241,9 @@ config_rec *dir_match_path(pool *p, char *path) {
   config_rec *res = NULL;
   char *tmp = NULL;
   size_t tmplen;
+
+  if (!p || !path || !*path)
+    return NULL;
 
   tmp = pstrdup(p, path);
   tmplen = strlen(tmp);
@@ -2149,7 +2155,7 @@ void build_dyn_config(pool *p, char *_path, struct stat *_sbuf,
     else
       path = NULL;
 
-    if (path) {
+    if (path && *path) {
       if (*(path + strlen(path) - 1) == '*')
         *(path +strlen(path) - 1) = '\0';
 
@@ -2220,6 +2226,9 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   else
     regex_hidden = dir_hide_file(fullpath);
 
+  /* Cache a pointer to the set of configuration data for this directory in
+   * session.dir_config.
+   */
   session.dir_config = c = dir_match_path(p, fullpath);
 
   if (!c && session.anon_config)
@@ -2343,9 +2352,9 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   c = (session.dir_config ? session.dir_config :
         (session.anon_config ? session.anon_config : NULL));
 
-  if (!c || strncmp(c->name,fullpath,strlen(c->name)) != 0) {
+  if (!c || strncmp(c->name, fullpath, strlen(c->name)) != 0) {
     destroy_pool(p);
-    return dir_check_full(pp,cmd,group,path,hidden);
+    return dir_check_full(pp, cmd, group, path, hidden);
   }
 
   /* Check and build all appropriate dynamic configuration entries */
@@ -2361,6 +2370,9 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   else
     regex_hidden = dir_hide_file(fullpath);
 
+  /* Cache a pointer to the set of configuration data for this directory in
+   * session.dir_config.
+   */
   session.dir_config = c = dir_match_path(p, fullpath);
 
   if (!c && session.anon_config)
@@ -2374,10 +2386,7 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
       mode_t *dir_umask = (mode_t *) get_param_ptr(CURRENT_CONF, "DirUmask",
         FALSE);
 
-      if (dir_umask == NULL)
-        _umask = (mode_t) -1;
-      else
-        _umask = *dir_umask;
+      _umask = dir_umask ? *dir_umask : (mode_t) -1;
     }
 
     /* It's either a file, or we had no directory Umask.
@@ -2386,29 +2395,28 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
       mode_t *file_umask = (mode_t *) get_param_ptr(CURRENT_CONF, "Umask",
         FALSE);
 
-      if (file_umask == NULL)
-        _umask = (mode_t) 0022;
-      else
-        _umask = *file_umask;
+      _umask = file_umask ? *file_umask : (mode_t) 0022;
     }
   }
 
   session.fsuid = (uid_t) -1;
   session.fsgid = (gid_t) -1;
 
-  if ((owner = get_param_ptr(CURRENT_CONF, "UserOwner",FALSE)) != NULL) {
-    /* attempt chown on all new files */
-    struct passwd *pw;
+  if ((owner = get_param_ptr(CURRENT_CONF, "UserOwner", FALSE)) != NULL) {
 
-    if ((pw = auth_getpwnam(p,owner)) != NULL)
+    /* Attempt chown() on all new files. */
+    struct passwd *pw = auth_getpwnam(p, owner);
+
+    if (pw != NULL)
       session.fsuid = pw->pw_uid;
   }
 
   if ((owner = get_param_ptr(CURRENT_CONF, "GroupOwner",FALSE)) != NULL) {
-    /* attempt chgrp on all new files */
-    struct group *gr;
 
-    if ((gr = auth_getgrnam(p,owner)) != NULL)
+    /* Attempt chgrp() on all new files. */
+    struct group *gr = auth_getgrnam(p, owner);
+
+    if (gr != NULL)
       session.fsgid = gr->gr_gid;
   }
 

@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.43 2003-08-29 17:20:34 castaglia Exp $
+ * $Id: dirtree.h,v 1.44 2003-09-08 00:41:37 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -241,7 +241,7 @@ long get_param_int(xaset_t *, const char *, int);
 long get_param_int_next(const char *, int);
 void *get_param_ptr(xaset_t *, const char *, int);
 void *get_param_ptr_next(const char *, int);
-xaset_t *get_dir_ctxt(char *);
+xaset_t *get_dir_ctxt(pool *, char *);
 
 void init_conf_stacks(void);
 void free_conf_stacks(void);
