@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.108 2004-04-23 18:35:20 castaglia Exp $
+ * $Id: mod_ls.c,v 1.109 2004-04-23 21:29:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1246,7 +1246,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
     int    a;
     char   pbuffer[PR_TUNABLE_PATH_MAX + 1] = "";
 
-    /* make sure the glob_t is initialized */
+    /* Make sure the glob_t is initialized. */
     memset(&g, '\0', sizeof(glob_t));
 
     if (*arg == '~') {
@@ -1268,7 +1268,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
         pbuffer[0] = '\0';
     }
 
-    /* check perms on the directory/file we are about to scan */
+    /* Check perms on the directory/file we are about to scan. */
     if (!ls_perms_full(cmd->tmp_pool, cmd,
         (*pbuffer ? (char *) pbuffer : (char *) arg), NULL)) {
       a = -1;
@@ -1293,15 +1293,17 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
     }
 
     if (!a) {
+      int list_dir_as_file = FALSE;
       char **path;
 
-      /* If recursion has not been explicitly requested, then act as if the
-       * -d option (list directory entries instead of contents) has been
-       * requested.  This prevents inadvertent recursion via listdir() on
-       * directory paths.
+      /* If glob characters are present, and if recursion has not been
+       * explicitly requested, then do not recurse.  Do this by treating
+       * directories as files for listing purposes.
        */
-      if (!opt_R)
-        opt_d = 1;
+      if (use_globbing &&
+          strpbrk((*pbuffer ? pbuffer : arg), "{[*?") != NULL &&
+          !opt_R)
+        list_dir_as_file = TRUE;
 
       path = g.gl_pathv;
 
@@ -1321,7 +1323,9 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
             target_mode = lmode;
           }
 
-          if (opt_d || !(S_ISDIR(target_mode))) {
+          if (opt_d ||
+              !(S_ISDIR(target_mode)) ||
+              (S_ISDIR(target_mode) && list_dir_as_file)) {
             if (listfile(cmd, NULL, *path) < 0) {
               ls_terminate();
               if (use_globbing)
