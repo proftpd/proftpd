@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.288 2002-11-25 16:18:39 castaglia Exp $
+$Id: NEWS,v 1.289 2002-11-25 17:22:52 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -22,6 +22,9 @@ CVS
   rc script's $PATH
 - Bug 1852 - Proftpd gets signal 11 on "quote site".  The mod_site module
   was not properly checking the number of parameters for SITE commands.
+- 1856 - TimesGMT acts like default is 'off'.  The default for this directive
+  was inadvertently set to "off", rather than the documented default setting
+  of "on".
 
 1.2.7rc3 - Released 15-11-2002
 ---------------------------------

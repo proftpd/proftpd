@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.67 2002-11-23 18:39:31 jwm Exp $
+ * $Id: mod_ls.c,v 1.68 2002-11-25 17:22:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -45,7 +45,7 @@ static int listdir(cmd_rec*, pool*, const char *name);
 
 static int matches = 0;
 static char *default_options;
-static unsigned char list_show_symlinks = TRUE, list_times_gmt = FALSE;
+static unsigned char list_show_symlinks = TRUE, list_times_gmt = TRUE;
 static unsigned char show_symlinks_hold;
 static int cmp(const void *a, const void *b);
 static char *fakeuser, *fakegroup;
