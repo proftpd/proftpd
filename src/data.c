@@ -20,7 +20,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.20 2001-02-03 02:59:02 flood Exp $
+ * $Id: data.c,v 1.21 2001-02-14 04:12:48 flood Exp $
  */
 
 #include "conf.h"
@@ -761,9 +761,7 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
      * ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
      */
     if((len = sendfile(session.d->outf->fd, retr_fd, offset, count)) == -1) {
-#elif defined(HAVE_BSD_SENDFILE) || defined(HAVE_HPUX_SENDFILE)
-
-#if defined(HAVE_BSD_SENDFILE)
+#elif defined(HAVE_BSD_SENDFILE)
     /* BSD semantics for sendfile are flexible...it'd be nice if we could
      * standardize on something like it.  The semantics are:
      *
@@ -776,17 +774,6 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
      */
     if(sendfile(retr_fd, session.d->outf->fd, *offset, count, NULL, &len,
 		  0) == -1) {
-#elif defined(HAVE_HPUX_SENDFILE)
-    /* HP/UX semantics for sendfile() are similar to BSD's, however the
-     * prototype is different:
-     *
-     * #include <sys/socket.h>
-     *
-     * ssize_t sendfile(int out_fd, int in_fd, off_t offset, size_t count,
-     *                  const struct iovec *hdtrl, int flags)
-     */
-    if((len = sendfile(session.d->outf->fd, retr_fd, *offset, count, NULL,
-		       0)) == -1) {
 #endif /* HAVE_BSD_SENDFILE */
 
       /* IMO, BSD's semantics are warped.  Apparently, since we have our
@@ -797,7 +784,12 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
        * page doesn't state any of this.
        *
        * HP/UX has the same semantics, however, EINTR is well documented
-       * as a side effect in the sendfile(2) man page.
+       * as a side effect in the sendfile(2) man page.  HP/UX, however,
+       * is implemented horribly wrong.  If a signal would result in
+       * -1 being returned and EINTR being set, what ACTUALLY happens is
+       * that errno is cleared and the number of bytes written is returned.
+       *
+       * For obvious reasons, HP/UX sendfile is not supported yet - jss
        */
       if(errno == EINTR) {
 	/* If we got everything in this transaction, we're done.

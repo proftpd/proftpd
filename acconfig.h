@@ -24,9 +24,6 @@
 /* Define if your <glob.h> defines GLOB_PERIOD macro. */
 #undef HAVE_GLOB_PERIOD
 
-/* Define if you have HP/UX sendfile() semantics */
-#undef HAVE_HPUX_SENDFILE
-
 /* Define if you have Linux sendfile() semantics */
 #undef HAVE_LINUX_SENDFILE
 

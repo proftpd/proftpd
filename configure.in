@@ -498,7 +498,7 @@ AC_CACHE_CHECK([which sendfile() implementation to use], pr_cv_func_sendfile,
 
   dnl Linux.
 if test "$pr_cv_func_sendfile" = "None"; then
-  AC_TRY_COMPILE([
+  AC_TRY_LINK([
 #include <unistd.h>
 #include <sys/sendfile.h>
 ],[
@@ -511,7 +511,7 @@ fi
 
   dnl BSD.
 if test "$pr_cv_func_sendfile" = "None"; then
-  AC_TRY_COMPILE([
+  AC_TRY_LINK([
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
@@ -523,25 +523,7 @@ struct sf_hdtr h;
 (void)sendfile(i,i,o,n,&h,&o,i);
        ], pr_cv_func_sendfile="BSD")
 fi
-
-  dnl HP/UX.
-if test "$pr_cv_func_sendfile" = "None"; then
-  AC_TRY_COMPILE([
-#include <sys/socket.h>
-],[
-#ifndef __hpux
-#error "Non-HP/UX platform"
-#endif /* __hpux */
-
-int i;
-off_t o;
-size_t n;
-const struct iovec h;
-(void)sendfile(i,i,o,n,&h,i);
-       ], pr_cv_func_sendfile="HP/UX")
-fi
 )
-
   dnl Now, set the appropriate defines based on our investigations...
 
   if test "$pr_cv_func_sendfile" != "None"; then
@@ -550,8 +532,6 @@ fi
 
   case "$pr_cv_func_sendfile" in
 
-	  "None")
-		;;
 
 	  "Linux")
 		AC_CHECK_HEADERS(sys/sendfile.h)
@@ -560,10 +540,6 @@ fi
 
 	  "BSD")
 		AC_DEFINE(HAVE_BSD_SENDFILE)
-		;;
-
-	  "HP/UX")
-		AC_DEFINE(HAVE_HPUX_SENDFILE)
 		;;
   esac
 fi
