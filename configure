@@ -10448,6 +10448,47 @@ fi
 rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
 fi
 
+  if test "$pr_cv_func_sendfile" = "None"; then
+  cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+#include "confdefs.h"
+
+#include <sys/types.h>
+#include <sys/socket.h>
+
+int
+main ()
+{
+
+uint f;
+int h;
+struct sf_parms p;
+(void)send_file(&(h),&(p),f);
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  pr_cv_func_sendfile="AIX"
+else
+  echo "$as_me: failed program was:" >&5
+cat conftest.$ac_ext >&5
+fi
+rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
+fi
+
 fi
 echo "$as_me:$LINENO: result: $pr_cv_func_sendfile" >&5
 echo "${ECHO_T}$pr_cv_func_sendfile" >&6
@@ -10586,6 +10627,13 @@ _ACEOF
 	  "BSD")
 		cat >>confdefs.h <<\_ACEOF
 #define HAVE_BSD_SENDFILE 1
+_ACEOF
+
+		;;
+
+	  "AIX")
+		cat >>confdefs.h <<\_ACEOF
+#define HAVE_AIX_SENDFILE 1
 _ACEOF
 
 		;;
