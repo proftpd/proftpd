@@ -13932,6 +13932,123 @@ esac
 fi
 
 
+echo "$as_me:$LINENO: checking whether struct addrinfo is defined" >&5
+echo $ECHO_N "checking whether struct addrinfo is defined... $ECHO_C" >&6
+ cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+ #include <stdio.h>
+   #ifdef HAVE_UNISTD_H
+   # include <unistd.h>
+   #endif
+   #include <sys/types.h>
+   #include <sys/socket.h>
+   #include <netdb.h>
+
+int
+main ()
+{
+do {
+   struct addrinfo a;
+   (void) a.ai_flags;
+  } while(0)
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_STRUCT_ADDRINFO
+_ACEOF
+
+
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+
+fi
+rm -f conftest.$ac_objext conftest.$ac_ext
+
+echo "$as_me:$LINENO: checking whether struct sockaddr_storage is defined" >&5
+echo $ECHO_N "checking whether struct sockaddr_storage is defined... $ECHO_C" >&6
+ cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+ #include <stdio.h>
+   #ifdef HAVE_UNISTD_H
+   # include <unistd.h>
+   #endif
+   #include <sys/types.h>
+   #include <sys/socket.h>
+   #include <netdb.h>
+
+int
+main ()
+{
+do {
+   struct sockaddr_storage ss;
+  } while(0)
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_STRUCT_SS
+_ACEOF
+
+
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+
+fi
+rm -f conftest.$ac_objext conftest.$ac_ext
+
 
   echo "$as_me:$LINENO: checking whether ss_family is defined" >&5
 echo $ECHO_N "checking whether ss_family is defined... $ECHO_C" >&6
@@ -14168,65 +14285,6 @@ rm -f conftest.$ac_objext conftest.$ac_ext
 fi
 rm -f conftest.$ac_objext conftest.$ac_ext
 
-
-echo "$as_me:$LINENO: checking whether struct addrinfo is defined" >&5
-echo $ECHO_N "checking whether struct addrinfo is defined... $ECHO_C" >&6
-cat >conftest.$ac_ext <<_ACEOF
-#line $LINENO "configure"
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
- #include <stdio.h>
-  #ifdef HAVE_UNISTD_H
-  # include <unistd.h>
-  #endif
-  #include <sys/types.h>
-  #include <sys/socket.h>
-  #include <netdb.h>
-
-int
-main ()
-{
- do {
-   struct addrinfo a;
-   (void) a.ai_flags;
-  } while(0)
-
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext
-if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
-  (eval $ac_compile) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } &&
-         { ac_try='test -s conftest.$ac_objext'
-  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
-  (eval $ac_try) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); }; }; then
-   echo "$as_me:$LINENO: result: yes" >&5
-echo "${ECHO_T}yes" >&6
-
-cat >>confdefs.h <<\_ACEOF
-#define HAVE_STRUCT_ADDRINFO
-_ACEOF
-
-
-else
-  echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
- echo "$as_me:$LINENO: result: no" >&5
-echo "${ECHO_T}no" >&6
-
-fi
-rm -f conftest.$ac_objext conftest.$ac_ext
 
 if test x"$enable_sendfile" = xyes ; then
 echo "$as_me:$LINENO: checking which sendfile() implementation to use" >&5
