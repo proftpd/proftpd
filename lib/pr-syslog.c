@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  */
 
-/* $Id: pr-syslog.c,v 1.11 2003-05-12 18:20:11 castaglia Exp $
+/* $Id: pr-syslog.c,v 1.12 2003-05-12 18:23:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -131,7 +131,7 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
   if (sock_type == SOCK_STREAM)
     ++buflen;
 
-#ifdef HAVE_DEV_LOG_STREAMS
+#ifndef HAVE_DEV_LOG_STREAMS
   send(sockfd, logbuf, buflen, 0);
 #else
 
