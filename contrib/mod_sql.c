@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.80 2004-08-03 00:44:31 castaglia Exp $
+ * $Id: mod_sql.c,v 1.81 2004-09-05 00:19:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -105,6 +105,9 @@
  * the compiler happy..
  */
 extern pr_response_t *resp_list,*resp_err_list;
+
+module sql_module;
+
 static char *_sql_where(pool *p, int cnt, ...);
 MODRET cmd_getgrent(cmd_rec *);
 MODRET cmd_setgrent(cmd_rec *);
@@ -3891,13 +3894,10 @@ MODRET set_sqldefaultgid(cmd_rec * cmd) {
   return HANDLED(cmd);
 }
 
-/*****************************************************************
- *
- * INITIALIZATION / FORK HANDLERS
- *
- *****************************************************************/
+/* Event handlers
+ */
 
-static void sql_exit_cb(void) {
+static void sql_exit_ev(const void *event_data, void *user_data) {
   config_rec *c = NULL;
 
   /* Note: most of this code hacked out of log_master(), which
@@ -3926,9 +3926,9 @@ static void sql_exit_cb(void) {
     type = _named_query_type(cmd, qname);
 
     if (type) {
-      if ((!strcasecmp(type, SQL_UPDATE_C)) ||
-          (!strcasecmp(type, SQL_FREEFORM_C)) ||
-          (!strcasecmp(type, SQL_INSERT_C))) {
+      if (strcasecmp(type, SQL_UPDATE_C) == 0 ||
+          strcasecmp(type, SQL_FREEFORM_C) == 0 ||
+          strcasecmp(type, SQL_INSERT_C) == 0) {
 
         sql_log(DEBUG_FUNC, "running named query '%s' at exit", qname);
         _process_named_query( cmd, qname );
@@ -3947,6 +3947,12 @@ static void sql_exit_cb(void) {
   sql_closelog();
   return;
 }
+
+/*****************************************************************
+ *
+ * INITIALIZATION / FORK HANDLERS
+ *
+ *****************************************************************/
 
 static int sql_getconf(void) {
   char *authstr = NULL;
@@ -4293,7 +4299,7 @@ static int sql_getconf(void) {
   destroy_pool( tmp_pool );
 
   /* add our exit handler */
-  pr_exit_register_handler(sql_exit_cb);
+  pr_event_register(&sql_module, "core.exit", sql_exit_ev, NULL);
 
   return 0;
 }
