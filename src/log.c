@@ -19,7 +19,7 @@
 
 /*
  * ProFTPD logging support
- * $Id: log.c,v 1.3 1999-09-07 23:29:07 macgyver Exp $
+ * $Id: log.c,v 1.4 1999-09-08 06:57:12 macgyver Exp $
  */
 
 /* History Log:
@@ -448,11 +448,11 @@ int log_add_run(pid_t mpid, time_t *idle_since, char *user,
 
   if(user) {
     bzero(ent.user,sizeof(ent.user));
-    strncpy(ent.user,user,sizeof(ent.user)-1);
+    strncpy(ent.user,user,sizeof(ent.user));
   }
   if(buf[0]) {
     bzero(ent.op,sizeof(ent.op));
-    strncpy(ent.op,buf,sizeof(ent.op)-1);
+    strncpy(ent.op,buf,sizeof(ent.op));
   }
 
   if(server_ip)
