@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.17 1999-10-18 05:11:42 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.18 1999-10-23 03:21:01 macgyver Exp $
  */
 
 /* History Log:
@@ -41,9 +41,9 @@
 
 extern module auth_module;
 extern pid_t mpid;
-#ifdef HAVE_SENDFILE
+#if defined(HAVE_SENDFILE) && defined(HAVE_LINUX_SENDFILE)
 static int have_sendfile = 0;
-#endif
+#endif /* HAVE_SENDFILE */
 
 /* From the auth module */
 char *auth_map_uid(int);
@@ -371,7 +371,7 @@ MODRET cmd_stor(cmd_rec *cmd)
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *preg;
   int ret;
-#endif
+#endif /* REGEX */
 
   long rate_pos=0, rate_bytes=0, rate_freebytes=0, rate_bps=0;
   int rate_hardbps=0;
@@ -424,7 +424,7 @@ MODRET cmd_stor(cmd_rec *cmd)
     add_response_err(R_550,"%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
   }
-#endif
+#endif /* REGEX */
 
   if(session.xfer.xfer_type == STOR_HIDDEN)
     stor_file = fs_open(p_hidden->value.str_val,
@@ -695,7 +695,11 @@ MODRET cmd_retr(cmd_rec *cmd)
         break;
       
 #ifdef HAVE_SENDFILE
-      if(!have_sendfile || (session.flags & (SF_ASCII | SF_ASCII_OVERRIDE))) {
+      if(
+#ifdef HAVE_LINUX_SENDFILE
+	 !have_sendfile ||
+#endif /* HAVE_LINUX_SENDFILE */
+	 (session.flags & (SF_ASCII | SF_ASCII_OVERRIDE))) {
 	len = data_xfer(lbuf, len);
 	goto done;
       }
@@ -843,13 +847,13 @@ int xfer_init_child()
 
 int xfer_init_parent()
 {
-#ifdef HAVE_SENDFILE
+#if defined(HAVE_SENDFILE) && defined(HAVE_LINUX_SENDFILE)
   if(!sendfile(1, 0, NULL, 0) || errno != ENOSYS) {
   	have_sendfile = 1;
   } else {
         log_debug(DEBUG2, "Sendfile disabled (%d:%s)", errno, strerror(errno));
   }
-#endif
+#endif /* HAVE_SENDFILE */
 
   return 0;
 }
