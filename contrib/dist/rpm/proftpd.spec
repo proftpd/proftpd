@@ -1,11 +1,11 @@
-# $Id: proftpd.spec,v 1.21 2003-09-23 14:45:37 jwm Exp $
+# $Id: proftpd.spec,v 1.22 2003-09-26 19:02:39 jwm Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
 #
 #   --with mod_tls
 #
-# The following modules can be added in this manner:
+# The following modules/support can be added in this manner:
 #
 #   mod_tls
 #   mod_radius
@@ -16,27 +16,25 @@
 #   mod_sql_postgres
 #   mod_rewrite
 #   mod_ifsession
-#
-# If you want to enable IPv6 support, use:
-#
-#   --with ipv6
+#   ipv6
 
-Summary:	ProFTPD -- Professional FTP Server.
-Name:		proftpd
-Version:	1.2.9rc2
-Release:	1
-License:	GPL
-Group:		System Environment/Daemons
-Packager:	John Morrissey <jwm@proftpd.org>
-Vendor:		The ProFTPD Group
-URL:		http://www.proftpd.org/
-Source:		ftp://ftp.proftpd.org/distrib/%{name}-%{version}.tar.bz2
-Prefix:		/usr
-BuildRoot:	%{_builddir}/%{name}-%{version}-root
-Requires:	pam >= 0.72, chkconfig
-Provides:	ftpserver
-Prereq:		fileutils
-Obsoletes:	proftpd-core, proftpd-standalone
+Summary:		ProFTPD -- Professional FTP Server.
+Name:			proftpd
+Version:		1.2.9rc2
+Release:		1
+License:		GPL
+Group:			System Environment/Daemons
+Packager:		John Morrissey <jwm@proftpd.org>
+Vendor:			The ProFTPD Group
+URL:			http://www.proftpd.org/
+Source:			ftp://ftp.proftpd.org/distrib/%{name}-%{version}.tar.bz2
+Prefix:			/usr
+BuildRoot:		%{_builddir}/%{name}-%{version}-root
+Requires:		pam >= 0.72, chkconfig, %{?_with_mod_tls:openssl krb5-libs}
+BuildPreReq:	%{?_with_mod_tls:openssl-devel krb5-devel}
+Provides:		ftpserver
+Prereq:			fileutils
+Obsoletes:		proftpd-core, proftpd-standalone
 
 %description
 ProFTPD is an enhanced FTP server with a focus toward simplicity, security,
@@ -47,6 +45,9 @@ visibility.
 
 The base proftpd package installs standalone support. You can install the
 proftpd-inetd package to enable inetd/xinetd support.
+
+%{?_with_ipv6: This package is IPv6 enabled.}
+Addtional modules enabled: mod_ratio mod_readme %{?_with_mod_tls: mod_tls}%{?_with_mod_radius: mod_radius}%{?_with_mod_ldap: mod_ldap}%{?_with_mod_wrap: mod_wrap}%{?_with_mod_sql: mod_sql}%{?_with_mod_sql_mysql: mod_sql_mysql}%{?_with_mod_sql_postgres: mod_sql_postgres}%{?_with_mod_rewrite: mod_rewrite}%{?_with_mod_ifsession: mod_ifsession}
 
 %package inetd
 Summary:	ProFTPD -- Setup for inetd/xinetd operation.
@@ -74,6 +75,7 @@ This package is neccesary to setup ProFTPD to run from inetd/xinetd.
 	--sysconfdir=/etc \
 	--localstatedir=/var/run \
 	--mandir=%_mandir \
+	%{?_with_mod_tls:--with-includes=/usr/kerberos/include} \
 	%{?_with_ipv6:--enable-ipv6} \
 	--with-modules=${MODULES}
 
