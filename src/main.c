@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.150 2002-12-19 17:28:00 castaglia Exp $
+ * $Id: main.c,v 1.151 2002-12-19 21:45:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -72,6 +72,12 @@
 #include "privs.h"
 
 int (*cmd_auth_chk)(cmd_rec *);
+
+#ifdef NEED_PERSISTENT_PASSWD
+unsigned char persistent_passwd = TRUE;
+#else
+unsigned char persistent_passwd = TRUE;
+#endif
 
 /* From mod_core.c
  */
@@ -133,7 +139,7 @@ static const char *PidPath = PID_FILE_PATH;
 extern array_header *server_defines;
 
 /* From mod_unixpw.c */
-extern unsigned char unixpw_persistent;
+extern unsigned char persistent_passwd;
 
 /* from response.c */
 extern pr_response_t *resp_list, *resp_err_list;
@@ -2470,7 +2476,7 @@ int main(int argc, char *argv[], char **envp) {
     case 'p':
     {
       if (!optarg ||
-          ((unixpw_persistent = atoi(optarg)) != 1 && unixpw_persistent != 0)) {
+          ((persistent_passwd = atoi(optarg)) != 1 && persistent_passwd != 0)) {
         log_pri(PR_LOG_ERR, "Fatal: -p requires boolean (0|1) argument.");
         exit(1);
       }

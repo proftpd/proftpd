@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.142 2002-12-17 01:52:15 castaglia Exp $
+ * $Id: mod_core.c,v 1.143 2002-12-19 21:45:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1498,8 +1498,8 @@ MODRET add_directory(cmd_rec *cmd) {
   char *dir,*rootdir = NULL;
   int flags = 0;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   dir = cmd->argv[1];
 
@@ -1515,12 +1515,12 @@ MODRET add_directory(cmd_rec *cmd) {
    */
   if (cmd->config && cmd->config->config_type == CONF_ANON &&
      *dir != '/' && *dir != '~') {
-    if (strcmp(dir,"*") != 0)
-      dir = pdircat(cmd->tmp_pool,"/",dir,NULL);
+    if (strcmp(dir, "*") != 0)
+      dir = pdircat(cmd->tmp_pool, "/", dir, NULL);
     rootdir = cmd->config->name;
-  }
-  else {
-    /* if the directory begins with ~, two possibilities:
+
+  } else {
+    /* If the directory begins with ~, two possibilities:
      * ~username/... : resolve to absolute path for ~username
      * ~/... : intended to be defered until authenciation, where
      *         ~ will be replaced w/ user's home dir
@@ -1528,12 +1528,13 @@ MODRET add_directory(cmd_rec *cmd) {
 
     if (*dir == '~' && (!*(dir+1) || *(dir+1) == '/'))
       flags |= CF_DEFER;
+
     else {
-      dir = dir_best_path(cmd->tmp_pool,dir);
+      dir = dir_best_path(cmd->tmp_pool, dir);
 
       if (!dir)
-        CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,cmd->argv[1],": ",
-                       strerror(errno),NULL));
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[1] ,": ",
+          strerror(errno), NULL));
     }
   }
 
@@ -1545,9 +1546,10 @@ MODRET add_directory(cmd_rec *cmd) {
    * probably OK, as this overriding only takes effect for the <Anonymous>
    * user.
    */
+
   if (!check_context(cmd, CONF_ANON) &&
       find_config(cmd->server->conf, CONF_DIR, dir, FALSE) != NULL)
-    return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
       cmd->argv[0], ": <Directory> section already configured for '",
       cmd->argv[1], "'", NULL));
 
