@@ -20,8 +20,15 @@ files.
       e.g. mod_sql_mysql, then that backend is used by default, and
       no SQLBackend directive is required.
 
+      MaxConnectionsPerHost
+        Similar to MaxClientsPerHost, the administrator can configure
+        the maximum number of connected clients from a single host at
+        one time.  Unlike MaxClientsPerHost, though, the
+        MaxConnectionsPerHost limit is evaluated prior to authentication,
+        i.e. before the client has sent any USER and PASS commands.
+
   + New command-line options:
       The new -V, --settings display various compile-time settings.
 
 
-Last Updated: $Date: 2004-09-26 18:09:11 $
+Last Updated: $Date: 2004-10-17 01:21:45 $
