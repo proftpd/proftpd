@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.98 2002-11-18 20:03:03 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.99 2002-11-25 15:52:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1169,7 +1169,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   char *dir = NULL, *lbuf;
   struct stat sbuf;
   struct timeval rate_tvstart;
-  unsigned long nbytes_max_retrieve = -1;
+  off_t nbytes_max_retrieve = 0;
   unsigned char have_limit = FALSE;
   privdata_t *p;
   long bufsize, len = 0;
