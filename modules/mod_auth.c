@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.181 2004-04-05 17:59:45 castaglia Exp $
+ * $Id: mod_auth.c,v 1.182 2004-04-12 17:41:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -880,6 +880,8 @@ static int _setup_environment(pool *p, char *user, char *pass) {
         regerror(re_res, pw_regex, errstr, sizeof(errstr));
         pr_log_auth(PR_LOG_NOTICE, "ANON %s: AnonRejectPasswords denies login",
           origuser);
+ 
+        pr_event_generate("mod_auth.anon-reject-passwords", session.c);
         goto auth_failure;
       }
     }
