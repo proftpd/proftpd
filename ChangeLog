@@ -1,3 +1,58 @@
+2000-08-04 10:07  macgyver
+
+	* doc/Undocumented.txt (1.14): Updated undocumented functions list
+	(none left! :)).
+
+2000-08-04 10:05  macgyver
+
+	* doc/: GetConf (1.3), ShowUndocumented (1.5): Small updates to
+	configuration scripts.
+
+2000-08-04 09:57  macgyver
+
+	* doc/Configuration.html (1.32): Updated documentation.
+
+2000-08-03 10:40  macgyver
+
+	* doc/Undocumented.txt (1.13): Updated undocumented functions list.
+
+2000-08-03 10:39  macgyver
+
+	* contrib/: README.ratio (1.2), mod_ratio.c (1.13): Updated to
+	mod_ratio.
+
+2000-08-03 10:36  macgyver
+
+	* contrib/mod_ldap.c (1.13): Updated to mod_ldap 2.7.3 to remove
+	LDAPSearchFilter.
+
+2000-08-03 10:24  macgyver
+
+	* modules/mod_auth.c (1.44): Oops...more compilation fixes for
+	jail(). :)
+
+2000-08-03 09:10  macgyver
+
+	* doc/Undocumented.txt (1.12): Updated undocumented
+	functions...only two left, wow!
+
+2000-08-03 09:09  macgyver
+
+	* doc/Configuration.html (1.31): Updated documentation.
+
+2000-08-03 09:05  macgyver
+
+	* modules/mod_auth.c (1.43): Correctly obtain the IP address in
+	jail().
+
+2000-08-03 00:50  macgyver
+
+	* modules/mod_auth.c (1.42): Typos in jail() support.
+
+2000-08-02 22:01  macgyver
+
+	* ChangeLog (1.28): Updated ChangeLog.
+
 2000-08-02 21:59  macgyver
 
 	* modules/mod_auth.c (1.41): Added some debug logging to
