@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.5 2003-08-07 18:05:07 castaglia Exp $
+ * $Id: netaddr.c,v 1.6 2003-08-07 18:24:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -469,9 +469,30 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
 
 int pr_netaddr_fnmatch(const pr_netaddr_t *na, const char *pattern) {
 
-  /* XXX will be implemented for Class matching and ACLs. */
-  errno = ENOSYS;
-  return -1;
+  /* NOTE: I'm still not sure why proftpd bundles an fnmatch(3)
+   * implementation rather than using the system library's implementation.
+   * Needs looking into.
+   *
+   * The FNM_CASEFOLD flag is a GNU extension; perhaps the bundled
+   * implementation was added to make that flag available on other platforms.
+   */
+  int flags = PR_FNM_NOESCAPE|PR_FNM_CASEFOLD;
+  char *dnsstr, *ipstr;
+
+  if (!na || !pattern) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  dnsstr = pr_netaddr_get_dnsstr(na);
+  if (pr_fnmatch(pattern, dnsstr, flags) == 0)
+    return TRUE;
+
+  ipstr = pr_netaddr_get_ipstr(na);
+  if (pr_fnmatch(pattern, ipstr, flags) == 0)
+    return TRUE;
+
+  return FALSE;
 }
 
 const char *pr_netaddr_get_ipstr(pr_netaddr_t *na) {
