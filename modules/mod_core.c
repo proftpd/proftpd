@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.111 2002-09-30 15:56:43 castaglia Exp $
+ * $Id: mod_core.c,v 1.112 2002-10-18 19:50:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -453,6 +453,10 @@ MODRET set_scoreboardfile(cmd_rec *cmd) {
       cmd->argv[1], "': ", strerror(errno), NULL));
 
   return HANDLED(cmd);
+}
+
+MODRET set_scoreboardpath(cmd_rec *cmd) {
+  CONF_ERROR(cmd, "deprecated. Use 'ScoreboardFile /path/to/scoreboard/file' instead");
 }
 
 MODRET set_serverport(cmd_rec *cmd)
@@ -3778,6 +3782,7 @@ static conftable core_conftab[] = {
   { "RLimitMemory",		set_rlimitmemory,		NULL },
   { "RLimitOpenFiles",		set_rlimitopenfiles,		NULL },
   { "ScoreboardFile",		set_scoreboardfile,		NULL },
+  { "ScoreboardPath",		set_scoreboardpath,		NULL },
   { "ServerAdmin",		set_serveradmin,		NULL },
   { "ServerIdent",		set_serverident,		NULL },
   { "ServerName",		set_servername, 		NULL },
