@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.24 2004-11-20 20:32:20 castaglia Exp $
+ * $Id: bindings.c,v 1.25 2005-01-06 18:55:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -300,13 +300,15 @@ int pr_ipbind_close(pr_netaddr_t *addr, unsigned int port,
 
 /* Need a way to close all listening fds in a child process. */
 int pr_ipbind_close_listeners(void) {
-  conn_t **listeners = listener_list->elts;
+  conn_t **listeners;
   register unsigned int i = 0;
 
   /* sanity checks */
-  if (listener_list->nelts == 0)
+  if (!listener_list ||
+      listener_list->nelts == 0)
     return 0;
 
+  listeners = listener_list->elts;
   for (i = 0; i < listener_list->nelts; i++) {
     conn_t *listener = listeners[i];
 
