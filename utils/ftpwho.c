@@ -27,7 +27,7 @@
 /* Shows a count of "who" is online via proftpd.  Uses the /var/run/proftpd*
  * log files.
  *
- * $Id: ftpwho.c,v 1.6 2002-11-13 14:55:23 castaglia Exp $
+ * $Id: ftpwho.c,v 1.7 2002-12-02 18:29:23 castaglia Exp $
  */
 
 #include "utils.h"
@@ -401,9 +401,11 @@ int main(int argc, char **argv) {
             (outform & OF_ONELINE) ? "" : "\n");
 
         if (score->sce_class[0])
-          printf("%sclass: %s\n",
+          printf("%sclass: %s",
             (outform & OF_ONELINE) ? " " : "\t",
             score->sce_class);
+
+        printf("%s", "\n");
 
       } else
         printf("%s", "\n");

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.291 2002-12-02 17:04:00 castaglia Exp $
+$Id: NEWS,v 1.292 2002-12-02 18:29:22 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -31,7 +31,9 @@ CVS
   and send().
 - 1846 - File overwrites fail.  Tracked down by Sergei Rozinov to involve
   uninitialized stack data.
- 
+- Bug 1861 - 'ftpwho -v -o oneline' print all connections in one line.  This
+  bug appeared in 1.2.7rc3, a consequnce of Bug#1815.
+
 1.2.7rc3 - Released 15-11-2002
 ---------------------------------
 - Fixed configure script detection and handling of ncurses (HAVE_LIBNCURSES
