@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.18 1999-12-28 07:43:54 macgyver Exp $
+$Id: NEWS,v 1.19 1999-12-28 07:45:13 macgyver Exp $
 
 1.2.0pre10 - Released: ???
 --------------------------
@@ -23,6 +23,8 @@ $Id: NEWS,v 1.18 1999-12-28 07:43:54 macgyver Exp $
 - Fixed various compilation issues on various platforms (isn't this vague :)).
 
 - More informative error messages.
+
+- Minor semi-Y2K issue in mod_readme fixed (don't ask...look at the code :)).
 
 1.2.0pre9 - Released: 10/27/99
 ------------------------------
