@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.21 2003-11-09 21:18:05 castaglia Exp $
+ * $Id: mod_radius.c,v 1.22 2004-09-05 00:16:07 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.8rc2"
@@ -153,6 +153,8 @@ typedef struct radius_server_obj {
   unsigned int timeout;
 
 } radius_server_t;
+
+module radius_module;
 
 static pool *radius_pool = NULL;
 static unsigned char radius_engine = FALSE;
@@ -2601,25 +2603,32 @@ MODRET set_radiusvendor(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-/* Initialization routines
+/* Event handlers
  */
-static void radius_child_exit(void) {
+
+static void radius_exit_ev(const void *event_data, void *user_data) {
+
   if (!radius_stop_accting())
     radius_log("error: unable to stop accounting");
 
   radius_closelog();
-  return; 
+  return;
 }
 
-static void radius_rehash_cb(void *data) {
+static void radius_restart_ev(const void *event_data, void *user_data) {
 
   /* Re-allocate the pool used by this module. */
   if (radius_pool)
     destroy_pool(radius_pool);
 
   radius_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(radius_pool, MOD_RADIUS_VERSION);
+
   return;
 }
+
+/* Initialization routines
+ */
 
 static int radius_sess_init(void) {
   int res = 0;
@@ -2740,7 +2749,7 @@ static int radius_sess_init(void) {
       FALSE)) != NULL)
     radius_log("using RadiusRealm '%s'", radius_realm);
 
-  pr_exit_register_handler(radius_child_exit);
+  pr_event_register(&radius_module, "core.exit", radius_exit_ev, NULL);
   return 0;
 }
 
@@ -2748,9 +2757,10 @@ static int radius_init(void) {
 
   /* Allocate a pool for this module's use. */
   radius_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(radius_pool, MOD_RADIUS_VERSION);
 
-  /* Register a rehash handler, to cleanup the pool. */
-  pr_rehash_register_handler(NULL, radius_rehash_cb);
+  /* Register a restart handler, to cleanup the pool. */
+  pr_event_register(&radius_module, "core.restart", radius_restart_ev, NULL);
 
   return 0;
 }
