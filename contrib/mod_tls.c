@@ -1499,15 +1499,14 @@ static void tls_fatal_error(int error, int lineno) {
          * examine the error value itself.
          */
 
-        if (error == 0)
-          /* EOF */
+        if (errno == EOF)
           tls_log("panic: SSL_ERROR_SYSCALL, line %d: "
             "EOF that violates protocol", lineno);
 
-          else if (error == -1)
-            /* Check errno */
-            tls_log("panic: SSL_ERROR_SYSCALL, line %d: %s", lineno,
-              strerror(errno));
+        else
+          /* Check errno */
+          tls_log("panic: SSL_ERROR_SYSCALL, line %d: %s", lineno,
+            strerror(errno));
 
       } else
         tls_log("panic: SSL_ERROR_SYSCALL, line %d: %s", lineno,
@@ -2672,7 +2671,6 @@ MODRET tls_authenticate(cmd_rec *cmd) {
 
   return DECLINED(cmd);
 }
-
 
 /* This function is called only when UserPassword is involved, used to
  * override the configured password for a user.  I don't know if we really
