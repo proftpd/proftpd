@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.54 2001-02-23 02:47:26 flood Exp $
+ * $Id: main.c,v 1.55 2001-03-09 18:16:23 flood Exp $
  */
 
 /*
@@ -1844,6 +1844,12 @@ static RETSIGTYPE sig_terminate(int sig)
 {
   pidrec_t *pid;
 
+  /* If we caught SIGSEGV, restore the default signal handler.
+   * jss 3/9/2001
+   */
+  if(sig == SIGSEGV)
+    signal(SIGSEGV,SIG_DFL);
+  
   if(sig == SIGTERM) {
     /* Don't log if we are a child that has been terminated */
     if(master) {
