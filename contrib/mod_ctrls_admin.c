@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.3 2003-11-10 03:55:02 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.4 2003-11-12 19:14:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -352,22 +352,23 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
   return 0;
 }
 
-static int common_start_addr(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
+static int admin_start_addr(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
     unsigned int port) {
   pr_ipbind_t *ipbind = NULL;
   int res = 0;
 
   /* Fetch the ipbind associated with this address/port. */
-  if ((ipbind = pr_ipbind_find(addr, port, FALSE)) == NULL) {
+  ipbind = pr_ipbind_find(addr, port, FALSE);
+  if (ipbind == NULL) {
     pr_ctrls_add_response(ctrl,
-      "start: no server associated with %s:%u", pr_netaddr_get_ipstr(addr),
+      "start: no server associated with %s#%u", pr_netaddr_get_ipstr(addr),
       port);
     return -1;
   }
 
   /* If this ipbind is already active, abort now. */
   if (ipbind->ib_isactive) {
-    pr_ctrls_add_response(ctrl, "start: %s:%u already started",
+    pr_ctrls_add_response(ctrl, "start: %s#%u already started",
       pr_netaddr_get_ipstr(addr), port);
     return 0;
   }
@@ -385,17 +386,17 @@ static int common_start_addr(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
       ipbind->ib_server->ServerPort, FALSE);
   }
 
-  ctrls_log(MOD_CTRLS_ADMIN_VERSION, "start: attempting to start %s:%u",
+  ctrls_log(MOD_CTRLS_ADMIN_VERSION, "start: attempting to start %s#%u",
     pr_netaddr_get_ipstr(addr), port);
 
   PR_OPEN_IPBIND(ipbind->ib_server->addr, ipbind->ib_server->ServerPort,
     ipbind->ib_server->listen, FALSE, FALSE, TRUE);
 
   if (res < 0)
-    pr_ctrls_add_response(ctrl, "start: no server listening on %s:%u",
+    pr_ctrls_add_response(ctrl, "start: no server listening on %s#%u",
       pr_netaddr_get_ipstr(addr), port);
   else
-    pr_ctrls_add_response(ctrl, "start: %s:%u started",
+    pr_ctrls_add_response(ctrl, "start: %s#%u started",
       pr_netaddr_get_ipstr(addr), port);
 
   PR_ADD_IPBINDS(ipbind->ib_server);
@@ -431,7 +432,8 @@ static int ctrls_handle_start(pr_ctrls_t *ctrl, int reqargc,
     pr_netaddr_t *server_addr = NULL;
     array_header *addrs = NULL;
 
-    if ((tmp = strchr(server_str, '/')) != NULL) {
+    tmp = strchr(server_str, '#');
+    if (tmp != NULL) {
       server_port = atoi(tmp + 1);
       *tmp = '\0';
     }
@@ -443,7 +445,7 @@ static int ctrls_handle_start(pr_ctrls_t *ctrl, int reqargc,
       return -1;
     }
 
-    if (common_start_addr(ctrl, server_addr, server_port) < 0)
+    if (admin_start_addr(ctrl, server_addr, server_port) < 0)
       return -1;
 
     if (addrs) {
@@ -451,7 +453,7 @@ static int ctrls_handle_start(pr_ctrls_t *ctrl, int reqargc,
       pr_netaddr_t **elts = addrs->elts;
 
       for (j = 0; j < addrs->nelts; j++)
-        if (common_start_addr(ctrl, elts[j], server_port) < 0)
+        if (admin_start_addr(ctrl, elts[j], server_port) < 0)
           return -1;
     }
   }
@@ -459,22 +461,23 @@ static int ctrls_handle_start(pr_ctrls_t *ctrl, int reqargc,
   return 0;
 }
 
-static int common_status_addr(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
+static int admin_status_addr(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
     unsigned int port) {
   pr_ipbind_t *ipbind = NULL;
 
-  ctrls_log(MOD_CTRLS_ADMIN_VERSION, "status: checking %s:%u",
+  ctrls_log(MOD_CTRLS_ADMIN_VERSION, "status: checking %s#%u",
     pr_netaddr_get_ipstr(addr), port);
 
   /* Fetch the ipbind associated with this address/port. */
-  if ((ipbind = pr_ipbind_find(addr, port, FALSE)) == NULL) {
+  ipbind = pr_ipbind_find(addr, port, FALSE);
+  if (ipbind == NULL) {
     pr_ctrls_add_response(ctrl,
-      "status: no server associated with %s:%u", pr_netaddr_get_ipstr(addr),
+      "status: no server associated with %s#%u", pr_netaddr_get_ipstr(addr),
       port);
     return -1;
   }
 
-  pr_ctrls_add_response(ctrl, "status: %s:%u %s", pr_netaddr_get_ipstr(addr),
+  pr_ctrls_add_response(ctrl, "status: %s#%u %s", pr_netaddr_get_ipstr(addr),
     port, ipbind->ib_isactive ? "RUNNING" : "STOPPED");
 
   return 0;
@@ -513,14 +516,15 @@ static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
       while ((ipbind = pr_ipbind_get(ipbind)) != NULL) {
         const char *ipbind_str = pr_netaddr_get_ipstr(ipbind->ib_addr); 
 
-        pr_ctrls_add_response(ctrl, "status: %s/%u %s", ipbind_str,
+        pr_ctrls_add_response(ctrl, "status: %s#%u %s", ipbind_str,
           ipbind->ib_port, ipbind->ib_isactive ? "RUNNING" : "STOPPED");
       }
 
       return 0;
     }
 
-    if ((tmp = strchr(server_str, '/')) != NULL) {
+    tmp = strchr(server_str, '#');
+    if (tmp != NULL) {
       server_port = atoi(tmp + 1);
       *tmp = '\0';
     }
@@ -528,12 +532,12 @@ static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
     server_addr = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, server_str, &addrs);
 
     if (!server_addr) {
-      pr_ctrls_add_response(ctrl, "status: no such server: %s:%u",
+      pr_ctrls_add_response(ctrl, "status: no such server: %s#%u",
         server_str, server_port);
       continue;
     }
 
-    if (common_status_addr(ctrl, server_addr, server_port) < 0)
+    if (admin_status_addr(ctrl, server_addr, server_port) < 0)
       continue;
 
     if (addrs) {
@@ -541,14 +545,14 @@ static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
       pr_netaddr_t **elts = addrs->elts;
 
       for (j = 0; j < addrs->nelts; j++)
-        common_status_addr(ctrl, elts[j], server_port);
+        admin_status_addr(ctrl, elts[j], server_port);
     }
   }
 
   return 0;
 }
 
-static int common_stop_addr(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
+static int admin_stop_addr(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
     unsigned int port) {
 
   ctrls_log(MOD_CTRLS_ADMIN_VERSION, "stop: stopping %s:%u",
@@ -604,7 +608,8 @@ static int ctrls_handle_stop(pr_ctrls_t *ctrl, int reqargc,
       return 0; 
     }
 
-    if ((tmp = strchr(server_str, '/')) != NULL) {
+    tmp = strchr(server_str, '#');
+    if (tmp != NULL) {
       server_port = atoi(tmp + 1);
       *tmp = '\0';
     }
@@ -612,19 +617,19 @@ static int ctrls_handle_stop(pr_ctrls_t *ctrl, int reqargc,
     server_addr = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, server_str, &addrs);
 
     if (!server_addr) {
-      pr_ctrls_add_response(ctrl, "stop: no such server: %s:%u",
+      pr_ctrls_add_response(ctrl, "stop: no such server: %s#%u",
         server_str, server_port);
       continue;
     }
 
-    common_stop_addr(ctrl, server_addr, server_port);
+    admin_stop_addr(ctrl, server_addr, server_port);
 
     if (addrs) {
       register unsigned int j;
       pr_netaddr_t **elts = addrs->elts;
 
       for (j = 0; j < addrs->nelts; j++)
-        common_stop_addr(ctrl, elts[j], server_port);
+        admin_stop_addr(ctrl, elts[j], server_port);
     }
   }
 
