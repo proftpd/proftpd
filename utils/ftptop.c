@@ -26,7 +26,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.24 2003-03-05 21:55:55 castaglia Exp $
+ * $Id: ftptop.c,v 1.25 2003-03-20 17:46:05 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.9"
@@ -41,15 +41,13 @@
 
 static const char *program = "ftptop";
 
+/* ncurses is preferred...*/
+
 #if defined(HAVE_NCURSES_H) && defined(HAVE_LIBNCURSES)
 # define HAVE_NCURSES 1
 # include <ncurses.h>
-#endif /* HAVE_NCURSES_H */
-
-/* We don't want to include both ncurses.h and curses.h. */
-#if defined(HAVE_CURSES_H) && defined(HAVE_LIBCURSES) && !defined(HAVE_NCURSES_H)
-#define HAVE_CURSES 1
-
+#elif defined(HAVE_CURSES_H) && defined(HAVE_LIBCURSES)
+# define HAVE_CURSES 1
 /* Sigh...portability.  It seems that Solaris' curses.h (at least for 2.8)
  * steps on wide-character macros, generating compiler warnings.  This, then
  * is just a hack to silence the compiler.
@@ -58,7 +56,7 @@ static const char *program = "ftptop";
 #  define __lint
 # endif
 # include <curses.h>
-#endif /* HAVE_CURSES_H */
+#endif
 
 #if defined(HAVE_NCURSES) || defined(HAVE_CURSES)
 
