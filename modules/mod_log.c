@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.48 2003-01-16 02:04:46 castaglia Exp $
+ * $Id: mod_log.c,v 1.49 2003-02-24 02:37:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -948,7 +948,7 @@ static int log_init(void) {
   return 0;
 }
 
-static void get_extendedlogs(void) {
+static void find_extendedlogs(void) {
   config_rec *c;
   char *logfname;
   int logclasses = CL_ALL;
@@ -956,7 +956,15 @@ static void get_extendedlogs(void) {
   char *logfmt_s = NULL;
   logfile_t *logf;
 
-  c = find_config(TOPLEVEL_CONF, CONF_PARAM, "ExtendedLog", FALSE);
+  /* We _do_ actually want the recursion here.  The reason is that we want
+   * to find _all_ ExtendedLog directives in the configuration, including
+   * those in <Anonymous> sections.  We have the ability to use root privs
+   * now, to make sure these files can be opened, but after the user has
+   * authenticated (and we know for sure whether they're anonymous or not),
+   * root privs may be permanently revoked.  Yucky...but necessary, I guess.
+   */
+
+  c = find_config(main_server->conf, CONF_PARAM, "ExtendedLog", TRUE);
 
   while (c) {
     logfname = c->argv[0];
@@ -979,8 +987,8 @@ static void get_extendedlogs(void) {
           break;
 
       if (!logfmt) {
-        log_pri(PR_LOG_NOTICE, "Format-Nickname '%s' is not defined.",
-          logfmt_s);
+        log_pri(PR_LOG_NOTICE, "ExtendedLog '%s' uses unknown format nickname "
+          "'%s'", logfname, logfmt_s);
         goto loop_extendedlogs;
       }
 
@@ -1003,7 +1011,7 @@ static void get_extendedlogs(void) {
     logs = (logfile_t *) log_set->xas_list;
 
 loop_extendedlogs:
-    c = find_config_next(c, c->next, CONF_PARAM, "ExtendedLog", FALSE);
+    c = find_config_next(c, c->next, CONF_PARAM, "ExtendedLog", TRUE);
   }
 }
 
@@ -1017,6 +1025,7 @@ MODRET log_post_pass(cmd_rec *cmd) {
     for (lf = logs; lf; lf = lf->next) {
       if (lf->lf_fd != -1 && lf->lf_fd != EXTENDED_LOG_SYSLOG &&
           lf->lf_conf && lf->lf_conf->config_type == CONF_ANON) {
+        log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s'", lf->lf_filename);
         close(lf->lf_fd);
         lf->lf_fd = -1;
       }
@@ -1029,6 +1038,7 @@ MODRET log_post_pass(cmd_rec *cmd) {
     for (lf = logs; lf; lf = lf->next) {
       if (lf->lf_fd != -1 && lf->lf_fd != EXTENDED_LOG_SYSLOG &&
           lf->lf_conf && lf->lf_conf != session.anon_config) {
+        log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s'", lf->lf_filename);
         close(lf->lf_fd);
         lf->lf_fd = -1;
       }
@@ -1047,6 +1057,8 @@ MODRET log_post_pass(cmd_rec *cmd) {
         for (lfi = logs; lfi; lfi = lfi->next) {
           if (lfi->lf_fd != -1 && lfi->lf_fd != EXTENDED_LOG_SYSLOG &&
               !lfi->lf_conf && !strcmp(lfi->lf_filename, lf->lf_filename)) {
+            log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s'",
+              lf->lf_filename);
             close(lfi->lf_fd);
             lfi->lf_fd = -1;
           }
@@ -1055,6 +1067,8 @@ MODRET log_post_pass(cmd_rec *cmd) {
         /* Go ahead and close the log if it's CL_NONE */
         if (lf->lf_fd != -1 && lf->lf_fd != EXTENDED_LOG_SYSLOG &&
             lf->lf_classes == CL_NONE) {
+          log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s'",
+            lf->lf_filename);
           close(lf->lf_fd);
           lf->lf_fd = -1;
         }
@@ -1080,7 +1094,7 @@ static int log_sess_init(void) {
   }
 
   /* Open all the ExtendedLog files. */
-  get_extendedlogs();
+  find_extendedlogs();
 
   for (lf = logs; lf; lf = lf->next) {
 
@@ -1089,6 +1103,8 @@ static int log_sess_init(void) {
       /* Is this ExtendedLog to be written to a file, or to syslog? */
       if (strncasecmp(lf->lf_filename, "syslog:", 7) != 0) {
         int res = 0;
+
+        log_debug(DEBUG7, "mod_log: opening ExtendedLog '%s'", lf->lf_filename);
 
         pr_signals_block();
         PRIVS_ROOT

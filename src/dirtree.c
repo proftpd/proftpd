@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.99 2003-02-10 18:02:57 castaglia Exp $
+ * $Id: dirtree.c,v 1.100 2003-02-24 02:37:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2622,12 +2622,16 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
       config_rec *res = NULL;
 
       for (c = top; c; c=c->next) {
-        if (c->subset && c->subset->xas_list)
-          res = find_config_next(NULL, (config_rec*)c->subset->xas_list,
-                                 type,name,recurse+1);
-          if (res)
-            return res;
+        if (c->subset && c->subset->xas_list) {
+          config_rec *subc = NULL;
+
+          for (subc = (config_rec *) c->subset->xas_list; subc;
+              subc = subc->next) {
+            if ((res = find_config_next(NULL, subc, type, name, recurse+1)))
+              return res;
+          }
         }
+      }
 
       /* If deep recursion yielded no match try the current subset */
       /* NOTE: the string comparison here is specifically case sensitive.
@@ -2636,10 +2640,11 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
        * Do NOT change this to strcasecmp(), no matter how tempted you are
        * to do so, it will break stuff. ;)
        */
-      for (c = top; c; c=c->next)
+      for (c = top; c; c=c->next) {
         if ((type == -1 || type == c->config_type) &&
             (!name || !strcmp(name,c->name)))
           return c;
+      }
 
       /* Restart the search at the previous level if required */
       if (prev->parent && recurse == 1 &&
