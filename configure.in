@@ -932,7 +932,34 @@ AC_CHECK_FUNC(gai_strerror,
   AC_DEFINE(HAVE_GAI_STRERROR),
   LIB_OBJS="$LIB_OBJS glibc-gai_strerror.o"
 )
-AC_CHECK_FUNCS(getaddrinfo getcwd gethostbyname2 gethostname getnameinfo)
+
+dnl getaddrinfo is a #define on Tru64 Unix.  How annoying.
+AC_MSG_CHECKING([for getaddrinfo])
+AC_TRY_LINK(
+  [
+    #if HAVE_STDIO_H
+    # include <stdio.h>
+    #endif
+    #if HAVE_SYS_TYPES_H
+    # include <sys/types.h>
+    #endif
+    #if HAVE_NETDB_H
+    # include <netdb.h>
+    #endif
+  ],
+  [
+    getaddrinfo(NULL, NULL, NULL, NULL);
+  ],
+  [
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(HAVE_GETADDRINFO, 1, [Define if you have getaddrinfo])
+  ],
+  [
+    AC_MSG_RESULT(no)
+  ]
+)
+
+AC_CHECK_FUNCS(getcwd gethostbyname2 gethostname getnameinfo)
 AC_CHECK_FUNCS(getopt_long gettimeofday hstrerror inet_aton inet_ntop inet_pton)
 AC_CHECK_FUNCS(memcpy mempcpy mkdir mkstemp mlock mlockall munlock munlockall)
 AC_CHECK_FUNCS(rmdir select setgroups socket statfs strchr strcoll strerror)

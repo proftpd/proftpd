@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.501 2003-10-31 19:50:16 castaglia Exp $
+$Id: NEWS,v 1.502 2003-11-08 20:26:44 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -12,6 +12,8 @@ CVS
   problems when using mod_auth_unix.c and the AuthOrder configuration
   directive.
 - Bug 2098 - Added SetEnv and UnsetEnv configuration directives.
+- Bug 2271 - Improper autoconf check for getaddrinfo() on Tru64 UNIX 5.1.
+  The getaddrinfo symbol is a macro, not a function, on that platform.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------
