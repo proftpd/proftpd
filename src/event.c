@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.5 2004-03-01 16:42:13 castaglia Exp $
+ * $Id: event.c,v 1.6 2004-04-11 20:22:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -78,9 +78,16 @@ int pr_event_register(module *m, const char *event,
 
   for (evl = events; evl; evl = evl->next) {
     if (strcmp(evl->event, event) == 0) {
-      evh->next = evl->handlers;
-      evl->handlers->prev = evh;
-      evl->handlers = evh;
+      struct event_handler *evhi = evl->handlers;
+
+      /* Make sure this event handler is added to the end of the list,
+       * in order to preserve module load order handling of events.
+       */ 
+      while (evhi && evhi->next)
+        evhi = evhi->next;
+
+      evh->prev = evhi;
+      evhi->next = evh;
 
       /* All done */
       return 0;
