@@ -1,0 +1,129 @@
+ProFTPD 1.2.x Installation Instructions
+----------------------------------------
+
+ProFTPD is designed to be configured for compilation on the target system
+via the GNU autoconf tool.  A single shell script, named 'configure' in
+the source distribution top-level directory will analyze your system and
+create a 'config.h' file which *should* allow proftpd to compile cleanly. 
+On some systems it may be necessary to manually tweak config.h and/or the
+top-level Makefile.  A list of known, tested and untested ports is
+available in the README file. 
+
+The include file include/options.h contains a number of easily tweakable
+compile-time options which affect proftpd's operation.  These are NOT
+modified by the configuration script.  Each option is documented in the
+header file.
+
+INSTALLATION INSTRUCTIONS:
+
+1. Decide which user and group you wish to install proftpd as.  The
+   default is user 'root' and group 'root'.  If you wish to simply
+   use these defaults, type:
+
+   $ ./configure
+
+   From the top level directory.  If you want to install as a different
+   user and group (as you would with BSDI), you need to set the
+   install_user and install_group environment variables.  Assuming
+   sh/ksh/bash, you would do something such as the following on a BSDI
+   system:
+
+   $ install_user=root install_group=wheel ./configure
+
+   By default, the gnu configure script will install all binaries in
+   the /usr/local/bin and /usr/local/sbin directories.  You can change
+   this by adding the `--prefix' argument to the configure script's
+   command line.  For example, if you want to install proftpd in
+   /usr/sbin and support binaries in /usr/bin, you would:
+
+   $ ./configure --prefix=/usr
+
+   You can get a list of all available arguments by running
+   configure --help
+
+   Additional ProFTPD modules may be added with the '--with-modules=LIST'
+   argument.  This option only affects additional modules, such as those
+   found in the contrib/ directory.  The core modules in the modules/
+   directory are mandatory, and not affected at all by the
+   '--with-modules' arg.
+
+2. Watch the output of the configure script.  After configure has run,
+   you might want to scan the config.h file to make sure configure
+   didn't make any wrong "guesses" regarding your platform.  If
+   everything looks good, continue on to the next step.
+
+3. Run 'make' from the top-level source directory.  On systems with
+   antiquated make utilities (such as BSDI), you will need to use
+   GNU make (usually 'gmake') instead.  Watch the output of the compile
+   process and make sure no errors occur.  On some platforms (notably AIX
+   and IRIX) you may see some compilation or link warnings.  These
+   can generally be ignored.  After make has completed building the
+   proftpd binary and related utilities, continue on to step 4.
+
+4. Run 'make install' from the top level source directory.  This
+   will install proftpd into /usr/local/sbin, and utils in
+   /usr/local/bin, as well as copying the "basic.conf" file 
+   (found in sample-configurations/) to /usr/local/etc/proftpd.conf.
+
+5. Edit /usr/local/etc/proftpd.conf.  Make sure that the User/Group
+   specified actually exist on your system, or proftpd WILL NOT RUN.
+
+6. Decide how you want to run proftpd, from either inetd/xinetd or
+   as a standalone daemon.  Once you have decided, you should edit
+   /etc/proftpd.conf and change the ServerType directive to match your
+   choice (either "ServerType inetd" or "ServerType standalone").
+   If you are running in standalone mode, skip step 7.
+
+7. To run proftpd from inetd, you need to edit your /etc/inetd.conf
+   file and send your inetd process the -HUP signal so that it will
+   rehash it's configuration file.  Find the line in /etc/inetd.conf
+   that looks something like:
+
+   ftp stream tcp nowait root	/usr/sbin/in.ftpd in.ftpd -l -a -u022
+
+   And replace this with:
+
+   ftp stream tcp nowait root	/usr/sbin/proftpd proftpd
+
+   ProFTPD can also be used with tcp wrappers, i.e.:
+
+   ftp stream tcp nowait root	/usr/sbin/tcpd    proftpd
+
+8. If running in standalone mode, you'll probably want to edit your
+   boot scripts to start proftpd at boot-time.  You can start it
+   immediately simply by executing it from your shell (remember, it needs
+   to initially be run as root).
+
+9. Try ftping into your system, and make sure everything works.
+   If you run into a problem, *check your syslog*.
+
+10. In order for MaxClients, MaxClientsPerHost and the ftpwho/ftpcount
+    utilities to work, you need to specify a scoreboard path for
+    proftpd's scoreboard files.  By default this is
+    '/usr/local/var/proftpd'.
+
+    You can use the ScoreboardPath directive in proftpd.conf to
+    specify a different directory, or you can mkdir /usr/local/var/proftpd
+    if it does not already exist.  No special permissions are needed
+    on the directory, unless you don't want ALL users to be able to run
+    ftpwho and ftpcount.
+
+11. If you want to add anonymous ftp, or create a more sophisticated
+    ftp configuration, try doing this now (using
+    http://www.proftpd.org/reference.html as a guide).  To test a
+    new configuration you can run proftpd -c <new_config_file>
+    from the command line, and you'll be informed if proftpd can't
+    properly parse the conf file.  If you are running in inetd
+    mode, and your configuration is parsable, you'll see
+    "Fatal: Socket operation on non-socket", which you can safely
+    ignore (it won't happen when inetd spawns the daemon).
+
+Good luck!  If you run into problems with configuration, *check your
+syslog*.  Proftpd logs all error conditions it encounters, including
+parsing problems with one or more configuration files.
+
+   Bug reports
+& mailing list: proftpd-l@evcom.net
+       Patches: bugs@proftpd.org
+           WWW: http://www.proftpd.org
+           FTP: ftp://ftp.proftpd.org/distrib

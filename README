@@ -1,0 +1,70 @@
+ProFTPD 1.2 README
+---------------------
+
+INTRODUCTION
+************
+
+
+ProFTPD is a highly configurable ftp daemon for unix and unix-like
+operating systems.  Currently, the following operating systems are
+supported:
+
+!! NOTE: gcc and gmake are _required_ on all platforms, unless otherwise
+   indicated !!
+
+Linux (recommend kernel 2.0.x or 2.1.x -- _glibc2 (libc6) required_)
+BSDI 2.x (possibly)
+BSDI 3.1 (tested -- use gmake instead of make)
+BSDI 4.0
+IRIX 6.2
+IRIX 6.3 (native compiler or gcc)
+IRIX 6.4 (tested) 
+Solaris 2.5.1 (see README.Solaris2.5x)
+Solaris 2.6
+AIX 3.2 (native compiler)
+AIX 4.2 (tested)
+OpenBSD 2.2/2.3 (tested)
+FreeBSD 2.2.7 (tested)
+Digital UNIX 4.0A
+DEC OFS/1 (native compiler)
+
+  [ Note: there is a known problem with FreeBSD 2.2.7 and earlier
+    involving libc.  Expect to see syslog/console messages similar
+    to `cannot open /etc/pwd.db', as well as being unable to see
+    user/group names inside of chroots ]
+
+ProFTPD is designed to be somewhat of a "drop-in" replacement for wu-ftpd.
+Full online documentation is available at http://www.proftpd.org,
+including a server configuration directive reference manual.
+
+
+INSTALLATION
+************
+
+For detailed installation instructions, see the INSTALL file in the source
+distribution.
+
+1.  Configure the source distribution for your OS type by running the GNU
+autoconf 'configure' script in the root source directory.
+
+2.  If configure runs without a problem, simply type 'make' from the root
+source directory to build the necessary binaries.  You may need to tweak
+config.h and/or Makefile to suit your needs.
+
+3.  'make install' to install proftpd.  By default, the 'proftpd' binary
+is installed into /usr/sbin.  You can alter the default installation
+directories by editing the top level Makefile.
+
+4.  By default, proftpd looks for a single configuration file as
+/usr/local/etc/proftpd.conf.  Copy sample-configurations/basic.conf to
+/usr/local/etc/proftpd.conf and modify to suit your needs.  More advanced
+configuration examples are also included.
+
+5.  If you wish to run proftpd as a standalone daemon, you'll need to
+modify your system startup rc scripts to start proftpd on boot.  Make sure
+you change the ServerType directive in /etc/proftpd.conf in order to tell
+proftpd which mode it is running in.  If you wish to run proftpd from
+inetd (the default), you'll need to modify your /etc/inetd.conf file
+appropriately, and restart the inetd super-server.
+
+6.  All done!

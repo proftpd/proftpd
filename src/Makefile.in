@@ -1,0 +1,142 @@
+CC=@CC@
+
+top_srcdir=@top_srcdir@
+srcdir=@srcdir@
+VPATH=@srcdir@
+
+@SET_MAKE@
+
+include ../Make.rules
+
+.c.o:
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
+
+all:
+	@echo "Running make from top level directory."
+	cd ../; $(MAKE) all
+
+src: $(OBJS) $(FTPCOUNT_OBJS) $(FTPSHUT_OBJS)
+
+clean:
+	rm -f *.o *.save core *~
+
+depend:
+	makedepend $(CPPFLAGS) -Y *.c 2>/dev/null
+	makedepend $(CPPFLAGS) -Y -fMakefile.in *.c 2>/dev/null
+
+# Dependancies written below
+
+# DO NOT DELETE
+
+auth.o: ../include/conf.h ../include/version.h ../config.h
+auth.o: ../include/default_paths.h ../include/options.h ../include/pool.h
+auth.o: ../include/proftpd.h ../include/support.h ../include/sets.h
+auth.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+auth.o: ../include/timers.h ../include/inet.h ../include/ident.h
+auth.o: ../include/ftp.h ../include/log.h ../include/data.h
+auth.o: ../include/libsupp.h ../include/fs.h
+data.o: ../include/conf.h ../include/version.h ../config.h
+data.o: ../include/default_paths.h ../include/options.h ../include/pool.h
+data.o: ../include/proftpd.h ../include/support.h ../include/sets.h
+data.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+data.o: ../include/timers.h ../include/inet.h ../include/ident.h
+data.o: ../include/ftp.h ../include/log.h ../include/data.h
+data.o: ../include/libsupp.h ../include/fs.h
+dirtree.o: ../include/conf.h ../include/version.h ../config.h
+dirtree.o: ../include/default_paths.h ../include/options.h ../include/pool.h
+dirtree.o: ../include/proftpd.h ../include/support.h ../include/sets.h
+dirtree.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+dirtree.o: ../include/timers.h ../include/inet.h ../include/ident.h
+dirtree.o: ../include/ftp.h ../include/log.h ../include/data.h
+dirtree.o: ../include/libsupp.h ../include/fs.h
+fs.o: ../include/conf.h ../include/version.h ../config.h
+fs.o: ../include/default_paths.h ../include/options.h ../include/pool.h
+fs.o: ../include/proftpd.h ../include/support.h ../include/sets.h
+fs.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+fs.o: ../include/timers.h ../include/inet.h ../include/ident.h
+fs.o: ../include/ftp.h ../include/log.h ../include/data.h
+fs.o: ../include/libsupp.h ../include/fs.h
+ftpcount.o: ../include/conf.h ../include/version.h ../config.h
+ftpcount.o: ../include/default_paths.h ../include/options.h ../include/pool.h
+ftpcount.o: ../include/proftpd.h ../include/support.h ../include/sets.h
+ftpcount.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+ftpcount.o: ../include/timers.h ../include/inet.h ../include/ident.h
+ftpcount.o: ../include/ftp.h ../include/log.h ../include/data.h
+ftpcount.o: ../include/libsupp.h ../include/fs.h
+ftpshut.o: ../include/conf.h ../include/version.h ../config.h
+ftpshut.o: ../include/default_paths.h ../include/options.h ../include/pool.h
+ftpshut.o: ../include/proftpd.h ../include/support.h ../include/sets.h
+ftpshut.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+ftpshut.o: ../include/timers.h ../include/inet.h ../include/ident.h
+ftpshut.o: ../include/ftp.h ../include/log.h ../include/data.h
+ftpshut.o: ../include/libsupp.h ../include/fs.h
+ident.o: ../include/conf.h ../include/version.h ../config.h
+ident.o: ../include/default_paths.h ../include/options.h ../include/pool.h
+ident.o: ../include/proftpd.h ../include/support.h ../include/sets.h
+ident.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+ident.o: ../include/timers.h ../include/inet.h ../include/ident.h
+ident.o: ../include/ftp.h ../include/log.h ../include/data.h
+ident.o: ../include/libsupp.h ../include/fs.h
+inet.o: ../include/conf.h ../include/version.h ../config.h
+inet.o: ../include/default_paths.h ../include/options.h ../include/pool.h
+inet.o: ../include/proftpd.h ../include/support.h ../include/sets.h
+inet.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+inet.o: ../include/timers.h ../include/inet.h ../include/ident.h
+inet.o: ../include/ftp.h ../include/log.h ../include/data.h
+inet.o: ../include/libsupp.h ../include/fs.h ../include/privs.h
+io.o: ../include/conf.h ../include/version.h ../config.h
+io.o: ../include/default_paths.h ../include/options.h ../include/pool.h
+io.o: ../include/proftpd.h ../include/support.h ../include/sets.h
+io.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+io.o: ../include/timers.h ../include/inet.h ../include/ident.h
+io.o: ../include/ftp.h ../include/log.h ../include/data.h
+io.o: ../include/libsupp.h ../include/fs.h
+log.o: ../include/conf.h ../include/version.h ../config.h
+log.o: ../include/default_paths.h ../include/options.h ../include/pool.h
+log.o: ../include/proftpd.h ../include/support.h ../include/sets.h
+log.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+log.o: ../include/timers.h ../include/inet.h ../include/ident.h
+log.o: ../include/ftp.h ../include/log.h ../include/data.h
+log.o: ../include/libsupp.h ../include/fs.h
+main.o: ../include/conf.h ../include/version.h ../config.h
+main.o: ../include/default_paths.h ../include/options.h ../include/pool.h
+main.o: ../include/proftpd.h ../include/support.h ../include/sets.h
+main.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+main.o: ../include/timers.h ../include/inet.h ../include/ident.h
+main.o: ../include/ftp.h ../include/log.h ../include/data.h
+main.o: ../include/libsupp.h ../include/fs.h ../include/privs.h
+modules.o: ../include/conf.h ../include/version.h ../config.h
+modules.o: ../include/default_paths.h ../include/options.h ../include/pool.h
+modules.o: ../include/proftpd.h ../include/support.h ../include/sets.h
+modules.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+modules.o: ../include/timers.h ../include/inet.h ../include/ident.h
+modules.o: ../include/ftp.h ../include/log.h ../include/data.h
+modules.o: ../include/libsupp.h ../include/fs.h
+pool.o: ../include/conf.h ../include/version.h ../config.h
+pool.o: ../include/default_paths.h ../include/options.h ../include/pool.h
+pool.o: ../include/proftpd.h ../include/support.h ../include/sets.h
+pool.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+pool.o: ../include/timers.h ../include/inet.h ../include/ident.h
+pool.o: ../include/ftp.h ../include/log.h ../include/data.h
+pool.o: ../include/libsupp.h ../include/fs.h
+sets.o: ../include/conf.h ../include/version.h ../config.h
+sets.o: ../include/default_paths.h ../include/options.h ../include/pool.h
+sets.o: ../include/proftpd.h ../include/support.h ../include/sets.h
+sets.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+sets.o: ../include/timers.h ../include/inet.h ../include/ident.h
+sets.o: ../include/ftp.h ../include/log.h ../include/data.h
+sets.o: ../include/libsupp.h ../include/fs.h
+support.o: ../include/conf.h ../include/version.h ../config.h
+support.o: ../include/default_paths.h ../include/options.h ../include/pool.h
+support.o: ../include/proftpd.h ../include/support.h ../include/sets.h
+support.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+support.o: ../include/timers.h ../include/inet.h ../include/ident.h
+support.o: ../include/ftp.h ../include/log.h ../include/data.h
+support.o: ../include/libsupp.h ../include/fs.h
+timers.o: ../include/conf.h ../include/version.h ../config.h
+timers.o: ../include/default_paths.h ../include/options.h ../include/pool.h
+timers.o: ../include/proftpd.h ../include/support.h ../include/sets.h
+timers.o: ../include/dirtree.h ../include/io.h ../include/modules.h
+timers.o: ../include/timers.h ../include/inet.h ../include/ident.h
+timers.o: ../include/ftp.h ../include/log.h ../include/data.h
+timers.o: ../include/libsupp.h ../include/fs.h

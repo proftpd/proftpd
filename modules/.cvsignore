@@ -1,0 +1,6 @@
+Makefile
+mod_linuxprivs.c
+mod_ratio.c
+module_glue.c
+*.o
+*~

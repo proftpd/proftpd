@@ -1,0 +1,125 @@
+# Edit this top level makefile to change basic build options.
+
+CC=@CC@
+
+@SET_MAKE@
+
+# Installation directories set by configure.  Alter these to
+# your liking.
+
+top_srcdir=@top_srcdir@
+srcdir=@srcdir@
+VPATH=@srcdir@
+
+include ./Make.rules
+include ./Make.modules
+
+DIRS=@ADDL_DIRS@
+BUILD=$(BUILD_OBJS) $(BUILD_MODULES) modules/module_glue.o
+FTPCOUNT=$(BUILD_FTPCOUNT_OBJS)
+FTPSHUT=$(BUILD_FTPSHUT_OBJS)
+INSTALL=@INSTALL@
+
+INSTALL_USER=@install_user@
+INSTALL_GROUP=@install_group@
+
+INSTALL_BIN=$(INSTALL) -s -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0755
+INSTALL_SBIN=$(INSTALL) -s -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0755
+INSTALL_MAN=$(INSTALL) -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0644
+#
+
+all: proftpd utils
+
+dummy:
+
+lib: dummy
+	cd lib ; $(MAKE) lib
+
+src: dummy
+	cd src ; $(MAKE) src
+
+modules: dummy
+	cd modules; $(MAKE) modules
+
+dirs: dummy
+	@dirs="$(DIRS)"; \
+	for dir in $$dirs; do \
+	  if [ -d "$$dir" ]; then cd $$dir; $(MAKE); fi; \
+	done
+
+proftpd: lib src modules dirs
+	$(CC) $(LDFLAGS) -o $@ $(BUILD) $(LIBS)
+
+ftpcount: lib src
+	$(CC) $(LDFLAGS) -o $@ $(FTPCOUNT) $(LIBS)
+
+ftpshut: lib src
+	$(CC) $(LDFLAGS) -o $@ $(FTPSHUT) $(LIBS)
+
+utils: ftpcount ftpshut
+
+clean:
+	cd src ; $(MAKE) clean
+	cd modules; $(MAKE) clean
+	cd lib; $(MAKE) clean
+	@dirs="$(DIRS)"; \
+	for dir in $$dirs; do \
+	  if [ -d "$$dir" ]; then cd $$dir; $(MAKE) clean; fi; \
+	done
+	rm -f proftpd ftpcount ftpwho ftpshut core *~
+
+# BSD install -d doesn't work, so ...
+$(localstatedir) $(sysconfdir) $(rundir) $(sbindir) $(mandir) $(mandir)/man1 $(mandir)/man5 $(mandir)/man8:
+	@if [ ! -d $@ ]; then \
+		mkdir $@; \
+		chown $(INSTALL_USER).$(INSTALL_GROUP) $@; \
+		chmod 0755 $@; \
+	fi
+
+install-proftpd: $(localstatedir) $(sysconfdir) $(rundir) $(sbindir)
+	$(INSTALL_SBIN) proftpd $(sbindir)/proftpd
+	if [ ! -f $(sbindir)/in.proftpd ] ; then \
+	  ln -s $(sbindir)/proftpd $(sbindir)/in.proftpd; \
+	fi
+
+install-utils: $(sbindir) $(bindir)
+	$(INSTALL_BIN) ftpcount $(bindir)/ftpcount
+	(cd $(bindir) ; rm -f ftpwho ; ln -s ftpcount ftpwho)
+	$(INSTALL_SBIN) ftpshut $(sbindir)/ftpshut
+
+install-conf: $(sysconfdir)
+	if [ ! -f $(sysconfdir)/proftpd.conf ] ; then \
+	  $(INSTALL) -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0644 \
+		$(top_srcdir)/sample-configurations/basic.conf \
+        	$(sysconfdir)/proftpd.conf ; \
+	fi
+
+install-man: $(mandir) $(mandir)/man1 $(mandir)/man5 $(mandir)/man8
+	$(INSTALL_MAN) $(top_srcdir)/src/proftpd.8 $(mandir)/man8
+	$(INSTALL_MAN) $(top_srcdir)/src/ftpshut.8 $(mandir)/man8
+	$(INSTALL_MAN) $(top_srcdir)/src/ftpwho.1 $(mandir)/man1
+	$(INSTALL_MAN) $(top_srcdir)/src/ftpcount.1 $(mandir)/man1
+	$(INSTALL_MAN) $(top_srcdir)/src/xferlog.5 $(mandir)/man5
+
+install-all: install-proftpd install-utils install-conf install-man
+
+install: install-all
+
+depend:
+	cd src; $(MAKE) depend; rm -f Makefile.bak Makefile.in.bak
+	cd modules; $(MAKE) depend; rm -f Makefile.bak Makefile.in.bak
+	cd lib; $(MAKE) depend; rm -f Makefile.bak Makefile.in.bak
+
+distclean: clean depend
+	rm -f src/Makefile modules/Makefile lib/Makefile
+	rm -f config.h config.status config.cache config.log \
+	      Makefile proftpd.conf development.notes
+	rm -f Make.modules
+	rm -rf `find . -name "CVS"`
+
+cvsclean: clean
+	cd src; rm -f Makefile Makefile.bak Makefile.in.bak
+	cd modules; rm -f Makefile Makefile.bak Makefile.in.bak
+	cd lib; rm -f Makefile Makefile.bak Makefile.in.bak Make.modules
+	rm -f config.h config.status config.cache config.log \
+	      Makefile proftpd.conf development.notes

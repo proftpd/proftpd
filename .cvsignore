@@ -1,0 +1,11 @@
+config.log
+config.h
+config.cache
+config.status
+proftpd
+ftpshut
+ftpwho
+ftpcount
+Makefile
+*.o
+*~

@@ -1,0 +1,342 @@
+dnl Process this file with autoconf to produce a configure script.
+AC_INIT(include/conf.h)
+
+ac_core_modules="mod_core.o mod_auth.o mod_xfer.o mod_site.o mod_ls.o mod_unixpw.o mod_log.o"
+ac_build_core_modules="modules/mod_core.o modules/mod_auth.o modules/mod_xfer.o modules/mod_site.o modules/mod_ls.o modules/mod_unixpw.o modules/mod_log.o"
+
+dnl Get the OS type
+AC_CONFIG_AUX_DIR(./)
+AC_CANONICAL_SYSTEM
+
+dnl Create symlinks in modules/ and contrib/
+olddir=`pwd`
+cd $srcdir/modules
+test -f mod_ratio.c || ln -s ../contrib/mod_ratio.c mod_ratio.c
+test -f mod_linuxprivs.c || ln -s ../contrib/mod_linuxprivs.c mod_linuxprivs.c
+cd ../contrib
+test -f README.linux-privs || ln -s ../README.linux-privs
+cd $olddir
+
+OSTYPE=-D`echo $build_os | sed 's/\..*$//g' | sed 's/-.*//g' | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ`
+OSREL=-D`echo $build_os | sed 's/-.*//g' | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ | tr '.' '_'`
+
+if test "$OSTYPE" = "$OSREL" ; then
+  OSTYPE=""
+fi
+AC_SUBST(OSREL)
+AC_SUBST(OSTYPE)
+
+dnl Checks for programs.
+AC_PROG_CC
+AC_PROG_MAKE_SET
+AC_PROG_INSTALL
+
+LDFLAGS="-Llib $LDFLAGS"
+
+if test x"$CFLAGS" = x ; then
+  fullCFLAGS="$CFLAGS"
+
+  dnl Compilation tests
+  dnl First test to see if -O2 will work
+  AC_MSG_CHECKING([whether the C compiler accepts -O2])
+  CFLAGS="-O2"
+  AC_TRY_COMPILE(,,
+    AC_MSG_RESULT(yes); fullCFLAGS="$CFLAGS",
+    AC_MSG_RESULT(no))
+
+  dnl test for -malign-jumps=2
+  AC_MSG_CHECKING([whether the C compiler accepts -malign-jumps])
+  CFLAGS="-malign-jumps=2"
+  AC_TRY_COMPILE(,,
+    AC_MSG_RESULT(yes); fullCFLAGS="$fullCFLAGS $CFLAGS",
+    AC_MSG_RESULT(no))
+
+  dnl test for -Wall
+  AC_MSG_CHECKING([whether the C compiler accepts -Wall])
+  CFLAGS="-Wall"
+  AC_TRY_COMPILE(,,
+    AC_MSG_RESULT(yes); fullCFLAGS="$fullCFLAGS $CFLAGS",
+    AC_MSG_RESULT(no))
+
+  CFLAGS="$fullCFLAGS"
+fi
+
+dnl Checks for libraries.  Yes, this is the hard way, but it's necessary.
+AC_CACHE_CHECK(for standalone crypt,pr_cv_lib_standalone_crypt,
+  AC_TRY_LINK(,[crypt();],
+  	pr_cv_lib_standalone_crypt="yes", pr_cv_lib_standalone_crypt="no" ))
+
+if test "$pr_cv_lib_standalone_crypt" = "no"; then
+  AC_CHECK_LIB(crypt,crypt)
+fi
+
+AC_CACHE_CHECK(for standalone gethostbyname,pr_cv_lib_standalone_gethost,
+  AC_TRY_LINK(,[gethostbyname();],
+  	pr_cv_lib_standalone_gethost="yes",
+	pr_cv_lib_standalone_gethost="no" ))
+
+if test "$pr_cv_lib_standalone_gethost" = "no"; then
+  AC_CHECK_LIB(resolv,gethostbyname)
+  AC_CHECK_LIB(resolv,inet_aton)
+fi
+
+AC_CACHE_CHECK(for standalone inet_aton,pr_cv_lib_standalone_aton,
+  AC_TRY_LINK(,[inet_aton();],
+  	pr_cv_lib_standalone_aton="yes",
+	pr_cv_lib_standalone_aton="no" ))
+
+if test "$pr_cv_lib_standalone_aton" = "no"; then
+  AC_CHECK_LIB(bind,inet_aton)
+fi
+
+AC_CACHE_CHECK(for standalone nsl functions,pr_cv_lib_standalone_nsl,[
+  AC_TRY_LINK(,[gethostent();],
+  pr_cv_lib_standalone_nsl="yes", pr_cv_lib_standalone_nsl="no") ])
+
+if test "$pr_cv_lib_standalone_nsl" = "no"; then
+  AC_CHECK_LIB(nsl,gethostent)
+fi
+
+AC_CACHE_CHECK(for standalone socket functions,pr_cv_lib_standalone_sockets,
+  AC_TRY_LINK(,[bind();],
+  pr_cv_lib_standalone_sockets="yes", pr_cv_lib_standalone_sockets="no"))
+
+if test "$pr_cv_lib_standalone_sockets" = "no"; then
+  AC_CHECK_LIB(socket,bind)
+fi
+
+AC_CACHE_CHECK(for _pw_stayopen variable,pr_cv_var__pw_stayopen,
+  AC_TRY_LINK(
+    [extern int _pw_stayopen; ],
+    [_pw_stayopen = 1;],
+    pr_cv_var__pw_stayopen="yes", pr_cv_var__pw_stayopen="no"))
+
+if test "$pr_cv_var__pw_stayopen" = "yes"; then
+  AC_DEFINE(HAVE__PW_STAYOPEN)
+fi
+
+dnl Check for enabled shadow/autoshadow
+AC_ARG_ENABLE(shadow,
+  [  --enable-shadow         force compilation of shadowed password support],
+  [ if test "$enableval" = "no" ; then
+      use_shadow=""
+    else
+      use_shadow="-DUSESHADOW"
+    fi ])
+AC_ARG_ENABLE(autoshadow,
+  [  --enable-autoshadow     enabled auto-detection of shadowed passwords],
+  [ if test "$enableval" != "no" ; then
+      use_shadow="-DUSESHADOW -DAUTOSHADOW"
+    fi ])
+
+dnl Checks for installation user/group
+
+test x"$install_user" = x && install_user='root'
+test x"$install_group" = x && install_group='root'
+
+AC_SUBST(install_user)
+AC_SUBST(install_group)
+
+dnl Checks for header files.
+AC_HEADER_DIRENT
+AC_HEADER_STDC
+AC_HEADER_SYS_WAIT
+AC_CHECK_HEADERS(fcntl.h sys/ioctl.h sys/time.h unistd.h memory.h)
+AC_CHECK_HEADERS(shadow.h,
+  [ if test "$use_shadow" = "" && test -f /etc/shadow ; then
+      use_shadow="-DUSESHADOW"
+    fi ])
+
+AC_CHECK_HEADERS(ctype.h getopt.h crypt.h bstring.h strings.h)
+AC_CHECK_HEADERS(sys/types.h sys/param.h sys/file.h)
+AC_CHECK_HEADERS(netdb.h netinet/in.h netinet/tcp.h arpa/inet.h sys/stat.h)
+AC_CHECK_HEADERS(errno.h sys/socket.h sys/termios.h sys/termio.h)
+AC_CHECK_HEADERS(sys/statvfs.h sys/vfs.h sys/select.h)
+AC_CHECK_HEADERS(regex.h)
+AC_CHECK_HEADER(glob.h,have_glob_h="yes",)
+AC_CHECK_HEADER(fnmatch.h,have_fnmatch_h="yes",)
+AC_CHECK_HEADER(syslog.h,have_syslog_h="yes",)
+
+dnl Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+AC_TYPE_UID_T
+AC_TYPE_PID_T
+AC_TYPE_SIZE_T
+AC_HEADER_TIME
+AC_STRUCT_TM
+
+dnl Check for generic typedefs
+AC_CHECK_TYPE(umode_t,mode_t)
+AC_CHECK_TYPE(ino_t,ino_t)
+
+dnl See what type of utmp exists
+AC_CHECK_HEADERS(utmp.h, have_utmp=1, have_utmp=0)
+
+if test $have_utmp; then
+  AC_CACHE_CHECK(whether your struct utmp has ut_user,
+  		pr_cv_header_utmaxtype,
+	AC_EGREP_HEADER([ *ut_user.*;],utmp.h,
+			pr_cv_header_utmaxtype="yes",
+			pr_cv_header_utmaxtype="no"))
+  AC_CACHE_CHECK(whether your struct utmp has ut_host,
+  		pr_cv_header_ut_host,
+	AC_EGREP_HEADER([ *ut_host.*;],utmp.h,
+			pr_cv_header_ut_host="yes",
+			pr_cv_header_ut_host="no"))
+  if test "$pr_cv_header_utmaxtype" = "yes"; then
+    AC_DEFINE(HAVE_UTMAXTYPE)
+  fi
+  if test "$pr_cv_header_ut_host" = "yes"; then
+    AC_DEFINE(HAVE_UT_UT_HOST)
+  fi
+fi
+
+if test "$have_glob_h" = "yes"; then
+  dnl See if we have GLOB_PERIOD
+  AC_CACHE_CHECK(whether your glob.h defines GLOB_PERIOD,
+  		pr_cv_header_glob_period,
+	AC_EGREP_CPP(yes,[
+#include <glob.h>
+#ifdef GLOB_PERIOD
+  yes
+#endif
+	],pr_cv_header_glob_period="yes",pr_cv_header_glob_period="no"))
+
+  dnl See if we have GLOB_ALTDIRFUNC
+  if test "$pr_cv_header_glob_period" = "yes"; then
+    AC_CACHE_CHECK(whether your glob.h defines GLOB_ALTDIRFUNC,
+    			pr_cv_header_glob_altdirfunc,
+	AC_EGREP_CPP(yes,[
+#include <glob.h>
+#ifdef GLOB_ALTDIRFUNC
+  yes
+#endif
+	],pr_cv_header_glob_altdirfunc="yes",pr_cv_header_glob_altdirfunc="no"))
+
+    if test "$pr_cv_header_glob_altdirfunc" = "yes"; then
+      AC_DEFINE(HAVE_GLOB_H)
+      AC_DEFINE(HAVE_GLOB_PERIOD)
+    fi
+  fi
+fi
+
+dnl Check to see if timer_t is already defined
+AC_MSG_CHECKING(for timer_t)
+AC_CACHE_VAL(pr_cv_header_timer_t,
+	AC_EGREP_HEADER([.*typedef.*timer_t;],sys/types.h,
+			pr_cv_header_timer_t="yes",
+	AC_EGREP_HEADER([.*typedef.*timer_t;],limits.h,
+			pr_cv_header_timer_t="yes",pr_cv_header_timer_t="no")))
+AC_MSG_RESULT($pr_cv_header_timer_t)
+if test "$pr_cv_header_timer_t" = "yes"; then
+  AC_DEFINE(HAVE_TIMER_T)
+fi
+
+dnl See if various LOG_ macros are defined
+if test "$have_syslog_h" = "yes"; then
+  AC_DEFINE(HAVE_SYSLOG_H)
+
+  AC_CACHE_CHECK(whether your syslog.h defines LOG_CRON,
+  		pr_cv_header_syslog_log_cron,
+  	AC_EGREP_CPP(yes,[
+#include <syslog.h>
+#ifdef LOG_CRON
+  yes
+#endif
+	],pr_cv_header_syslog_log_cron="yes",
+	pr_cv_header_syslog_log_cron="no") )
+
+  AC_CACHE_CHECK(whether your syslog.h defines LOG_FTP,
+  		pr_cv_header_syslog_log_ftp,
+  	AC_EGREP_CPP(yes,[
+#include <syslog.h>
+#ifdef LOG_FTP
+  yes
+#endif
+	],pr_cv_header_syslog_log_ftp="yes",
+	pr_cv_header_syslog_log_ftp="no") )
+
+  if test "$pr_cv_header_syslog_log_cron" = "yes"; then
+    AC_DEFINE(HAVE_LOG_CRON)
+  fi
+  if test "$pr_cv_header_syslog_log_ftp" = "yes"; then
+    AC_DEFINE(HAVE_LOG_FTP)
+  fi
+fi
+
+dnl See if we have FNM_NOESCAPE
+if test "$have_fnmatch_h" = "yes"; then
+  AC_CACHE_CHECK(whether your fnmatch.h defines FNM_NOESCAPE,
+  		pr_cv_header_fnmatch_noescape,
+	AC_EGREP_CPP(yes,[
+#include <fnmatch.h>
+#ifdef FNM_NOESCAPE
+  yes
+#endif
+  ],pr_cv_header_fnmatch_noescape="yes", pr_cv_header_fnmatch_noescape="no"))
+fi
+
+dnl Checks for library functions.
+AC_FUNC_ALLOCA
+if test "$pr_cv_header_fnmatch_noescape" = "yes"; then
+  AC_FUNC_FNMATCH
+fi
+AC_PROG_GCC_TRADITIONAL
+AC_FUNC_SETPGRP
+AC_TYPE_SIGNAL
+AC_FUNC_VPRINTF
+AC_CHECK_FUNCS(getcwd gethostname gettimeofday mkdir rmdir select socket strerror strtol)
+AC_CHECK_FUNCS(strchr memcpy bcopy flock getopt getopt_long strsep)
+AC_CHECK_FUNCS(vsnprintf __vsnprintf snprintf __snprintf)
+AC_CHECK_FUNCS(setsid setpassent seteuid setegid crypt fgetpwent fgetgrent)
+AC_CHECK_FUNCS(inet_aton siginterrupt setpgid)
+AC_CHECK_FUNCS(regcomp)
+
+dnl Only check for glob if we have glob.h, GLOB_PERIOD, and GLOB_ALTDIRFUNC
+if test "$have_glob_h" = "yes" && \
+   test "$pr_cv_header_glob_period" = "yes" && \
+   test "$pr_cv_header_glob_altdirfunc" = "yes"; then
+	AC_CHECK_FUNCS(glob)
+fi
+
+dnl Add the proftpd support library
+LIBS="-lsupp $LIBS"
+
+dnl Modules
+AC_ARG_WITH(modules,
+  [  --with-modules=LIST     add additional modules to proftpd
+                          LIST is a ':' separated list of modules to add ],
+  [ ac_addl_modules=`echo "$withval" | sed -e 's/:/.o /g'`.o ;
+    for amodule in $ac_addl_modules; do
+      ac_build_addl_modules="modules/$amodule $ac_build_addl_modules"
+    done ])
+
+for module in $ac_addl_modules; do
+  src=`echo "$module" | sed -e 's/\.o$//'`.c;
+  if ! test -f modules/$src; then
+    echo "source file 'modules/$src' cannot be found -- aborting"
+    exit 1
+  else
+    alib=`cat modules/$src | grep "\\\$Libraries:" | sed -e 's/^.*\$Libraries: \(.*\)\\$/\1/'`
+    test x"$alib" = x || ac_addl_libs="$alib $ac_addl_libs"
+    adir=`cat modules/$src | grep "\\\$Directories:" | sed -e 's/^.*\$Directories: \(.*\)\\$/\1/'`
+    test x"$adir" = x || ac_addl_dirs="$adir $ac_addl_dirs"
+  fi
+done
+
+ac_addl_libs=`echo "$ac_addl_libs" | sed -e 's/ *\$//'`
+test "x$ac_addl_libs" = x || LIBS="$LIBS $ac_addl_libs"
+ac_addl_dirs=`echo "$ac_addl_dirs" | sed -e 's/ *\$//'`
+ADDL_DIRS="$ac_addl_dirs"
+
+MODULES="$ac_core_modules $ac_addl_modules"
+BUILD_MODULES="$ac_build_core_modules $ac_build_addl_modules"
+
+AC_SUBST(MODULES)
+AC_SUBST(BUILD_MODULES)
+AC_SUBST(ADDL_DIRS)
+
+AC_CONFIG_HEADER(config.h)
+
+CFLAGS="$CFLAGS $use_shadow"
+AC_OUTPUT(lib/Makefile src/Makefile modules/Makefile Makefile Make.rules Make.modules)

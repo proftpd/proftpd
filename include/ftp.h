@@ -1,0 +1,123 @@
+/*
+ * ProFTPD - FTP server daemon
+ * Copyright (c) 1997, 1998 Public Flood Software
+ *  
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
+ */
+
+/* FTP commands and responses (may not all be implemented)
+ *
+ * $Id: ftp.h,v 1.1 1998-10-18 02:24:41 flood Exp $
+ */
+
+#ifndef __FTP_H
+#define __FTP_H
+
+/* Commands (minimum required supported level) */
+#define C_USER	"USER"		/* Specify a username */
+#define C_PASS	"PASS"		/* Specify a password */
+#define C_ACCT	"ACCT"		/* Specify an account (not implemented) */
+#define C_CWD	"CWD"		/* Change working directory */
+#define C_XCWD	"XCWD"		/* Change working directory */
+#define C_CDUP	"CDUP"		/* Change CWD up one level */
+#define C_XCUP	"XCUP"		/* Change CWD up one level */
+#define C_SMNT	"SMNT"		/* Mount different file system data structure (not implemented) */
+#define C_REIN	"REIN"		/* Reinitialize account information (not supported) */
+#define C_QUIT	"QUIT"		/* Close control connection and logout (if no transfer pending) */
+#define C_PORT	"PORT"		/* PORT h1,h2,h3,h4,p1,p2 (specify User address/port for data connection) */
+#define C_PASV	"PASV"		/* Next transfer data connection is from client to server */
+#define C_TYPE	"TYPE"		/* A = ASCII, E = EBCDIC, I = Image, L<byte size> = Local byte size */
+#define C_STRU	"STRU"		/* File structure (not implemented) */
+#define C_MODE	"MODE"		/* Transfer Mode (S - Stream, B - Block, C - Compressed (not supported) */
+#define C_RETR	"RETR"		/* Retrieve a file (RETR name) */
+#define C_STOR	"STOR"		/* Store a file (STOR name) */
+#define C_STOU	"STOU"		/* Store unique */
+#define C_APPE	"APPE"		/* Append to the end of a file */
+#define C_ALLO	"ALLO"		/* Allocate storage space (not used) */
+#define C_REST	"REST"		/* Restart a transfer (REST marker) */
+#define C_RNFR	"RNFR"		/* Rename from (RNFR filename) */
+#define C_RNTO	"RNTO"		/* Rename to (RNTO filename) */
+#define C_ABOR	"ABOR"		/* Abort current operation */
+#define C_DELE	"DELE"		/* Delete a file */
+#define C_MDTM	"MDTM"		/* Modification time, NOT in RFC959. */
+#define C_RMD	"RMD"		/* Remove a directory */
+#define C_XRMD	"XRMD"		/* Remove a directory */
+#define C_MKD	"MKD"		/* Create a directory */
+#define C_XMKD	"XMKD"		/* Create a directory */
+#define C_PWD	"PWD"		/* Return current working directory */
+#define C_XPWD	"XPWD"		/* Return current working directory */
+#define C_SIZE	"SIZE"		/* Return the number of octets in a file */
+#define C_LIST	"LIST"		/* Return contents of PWD or specified dir */
+#define C_NLST	"NLST"		/* As list but returns names only */
+#define C_SITE	"SITE"		/* Site specific command */
+#define C_SYST	"SYST"		/* The type of OS (UNIX Type: L8) */
+#define C_STAT	"STAT"		/* Status */
+#define C_HELP	"HELP"		/* Help */
+#define C_NOOP	"NOOP"		/* Returns 200 and does nothing */
+
+#define C_ANY	"*"		/* Special "wildcard" matching command */
+
+/* Command groupings */
+
+#define G_NONE	NULL
+#define G_DIRS	"DIRS"		/* LIST, NLST */
+#define G_READ	"READ"		/* RETR, etc */
+#define G_WRITE "WRITE"		/* WRITE, etc */
+
+/* Responses */
+
+#define R_110	"110"		/* Restart marker reply (MARK yyyy = mmmm) */
+#define R_120	"120"		/* Svc ready in nnn minutes */
+#define R_125	"125"		/* Data connection already open; starting */
+#define R_150	"150"		/* File status ok; opening data conn */
+#define R_200	"200"		/* 'Generic' command ok */
+#define R_202	"202"		/* Command not implemented, superflous at this site */
+#define R_211	"211"		/* System status or system help reply */
+#define R_212	"212"		/* Directory status */
+#define R_213	"213"		/* File status */
+#define R_214	"214"		/* Help message (how to use server or non-standard command) */
+#define R_215	"215"		/* NAME system type.  NAME == Official system name */
+#define R_220	"220"		/* Service ready for new user. */
+#define R_221	"221"		/* Service closing control connection, as per normal */
+#define R_225	"225"		/* Data connection open; no transfer in progress */
+#define R_226	"226"		/* Closing data connection.  File transfer/abort successful */
+#define R_227	"227"		/* Entering passive mode (h1,h2,h3,h4,p1,p2) */
+#define R_230	"230"		/* User logged in, proceed */
+#define R_250	"250"		/* Requested file action okay, completed. */
+#define R_257	"257"		/* "PATHNAME" created. */
+#define R_331	"331"		/* User name okay, need password. */
+#define R_332	"332"		/* Need account for login. */
+#define R_350	"350"		/* Requested file action pending further info */
+#define R_421	"421"		/* Service not available, closing control connection (service is about to be shutdown) */
+#define R_425	"425"		/* Can't open data connection */
+#define R_426	"426"		/* Connection closed; transfer aborted */
+#define R_450	"450"		/* Requested file action not taken (file unavailable; busy) */
+#define R_451	"451"		/* Requested action aborted; local error in processing */
+#define R_452	"452"		/* Requested action not taken; insufficient storage space */
+#define	R_500	"500"		/* Syntax error, command unrecognized */
+#define R_501	"501"		/* Syntax error in parameters or arguments */
+#define R_502	"502"		/* Command not implemented */
+#define R_503	"503"		/* Bad sequence of commands */
+#define R_504	"504"		/* Command not implemented for that parameter */
+#define R_530	"530"		/* Not logged in */
+#define R_532	"532"		/* Need account for storing files */
+#define R_550	"550"		/* Requested action not taken. No access, etc */
+#define R_551	"551"		/* Requested action not taken, page type unknown */
+#define R_552	"552"		/* Requested file action aborted, exceeding storage allocation */
+#define	R_553	"553"		/* Requested action not taken, file name not allowed */
+
+#define R_DUP	NULL		/* Duplicate last numeric in ml response */
+
+#endif /* __FTP_H */
