@@ -26,7 +26,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.86 2002-09-25 23:43:20 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.87 2002-10-04 14:41:44 castaglia Exp $
  */
 
 /* History Log:
@@ -226,27 +226,29 @@ static void _log_transfer(char direction, char abort_flag) {
   struct timeval end_time;
   char *fullpath;
 
-  gettimeofday(&end_time,NULL);
+  gettimeofday(&end_time, NULL);
 
   end_time.tv_sec -= session.xfer.start_time.tv_sec;
-  if(end_time.tv_usec >= session.xfer.start_time.tv_usec)
+  if (end_time.tv_usec >= session.xfer.start_time.tv_usec)
     end_time.tv_usec -= session.xfer.start_time.tv_usec;
+
   else {
     end_time.tv_usec = 1000000L - (session.xfer.start_time.tv_usec -
                        end_time.tv_usec);
     end_time.tv_sec--;
   }
 
-  fullpath = dir_abs_path(session.xfer.p,session.xfer.path,TRUE);
+  fullpath = dir_abs_path(session.xfer.p, session.xfer.path, TRUE);
 
-  if((session.flags & SF_ANON) != 0) {
-    log_xfer(end_time.tv_sec,session.c->remote_name,session.xfer.total_bytes,
-             fullpath,(session.flags & SF_ASCII ? 'a' : 'b'),
-             direction,'a',session.anon_user, abort_flag);
+  if ((session.flags & SF_ANON) != 0) {
+    log_xfer(end_time.tv_sec, session.c->remote_name, session.xfer.total_bytes,
+      fullpath, (session.flags & SF_ASCII ? 'a' : 'b'), direction,
+      'a', session.anon_user, abort_flag);
+
   } else {
-    log_xfer(end_time.tv_sec,session.c->remote_name,session.xfer.total_bytes,
-             fullpath,(session.flags & SF_ASCII ? 'a' : 'b'),
-             direction,'r',session.user, abort_flag);
+    log_xfer(end_time.tv_sec, session.c->remote_name, session.xfer.total_bytes,
+      fullpath, (session.flags & SF_ASCII ? 'a' : 'b'), direction,
+      'r', session.user, abort_flag);
   }
 
   log_debug(DEBUG1, "Transfer %s %" PR_LU " bytes in %ld.%02lu seconds.",
@@ -511,15 +513,18 @@ static void _retr_done(void) {
 }
 
 static void _stor_abort(void) {
-  fs_close(stor_file,stor_fd);
-  stor_file = NULL;
+  if (stor_file) {
+    fs_close(stor_file, stor_fd);
+    stor_file = NULL;
+  }
 
-  if(session.xfer.xfer_type == STOR_HIDDEN) {
+  if (session.xfer.xfer_type == STOR_HIDDEN) {
     /* If hidden stor aborted, remove only hidden file, not real one */
-    if(session.xfer.path_hidden)
+    if (session.xfer.path_hidden)
       fs_unlink(session.xfer.path_hidden);
-  } else if(session.xfer.path) {
-    if(get_param_int(TOPLEVEL_CONF, "DeleteAbortedStores", FALSE) == 1)
+
+  } else if (session.xfer.path) {
+    if (get_param_int(TOPLEVEL_CONF, "DeleteAbortedStores", FALSE) == 1)
       fs_unlink(session.xfer.path);
   }
 
@@ -528,13 +533,17 @@ static void _stor_abort(void) {
 
 static void _retr_abort(void) {
   /* Isn't necessary to send anything here, just cleanup */
-  fs_close(retr_file,retr_fd);
-  retr_file = NULL;
+
+  if (retr_file) {
+    fs_close(retr_file, retr_fd);
+    retr_file = NULL;
+  }
+
   _log_transfer('o', 'i');
 }
 
 /* Exit handler, call abort functions if a transfer is in progress. */
-static void _xfer_exit(void) {
+static void xfer_exit_cb(void) {
   if (session.flags & SF_XFER) {
 
     if (session.xfer.direction == PR_NETIO_IO_RD)
@@ -1534,7 +1543,7 @@ static int xfer_sess_init(void) {
    */
 
   /* Exit handler for HiddenStor cleanup */
-  add_exit_handler(_xfer_exit);
+  add_exit_handler(xfer_exit_cb);
 
   return 0;
 }

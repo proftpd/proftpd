@@ -1,8 +1,9 @@
-$Id: NEWS,v 1.244 2002-10-02 20:49:28 castaglia Exp $
+$Id: NEWS,v 1.245 2002-10-04 14:41:43 castaglia Exp $
 
 CVS
 ---------------------------------
 - Bug 1757 - non-ANSI Syntax in netio.c
+- Bug 1735 - Proftpd 1.2.6 compiled on FreeBSD 4.6.2 exits on signal 11
 
 1.2.7rc1 - Released 2002-10-01
 ---------------------------------
