@@ -1,3 +1,12 @@
+2001-03-26 22:12  flood
+
+	* doc/Configuration.html: Bugs #1088, 1058 & 1041 - Doc updates for
+	1.2.2.
+
+2001-03-26 21:57  flood
+
+	* NEWS: Updated NEWS version
+
 2001-03-24 10:59  flood
 
 	* include/version.h: Bumped version number to 1.2.2rc1.
