@@ -21,7 +21,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.24 2003-07-07 22:59:39 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.25 2003-07-16 06:16:40 castaglia Exp $
  */
 
 /*
@@ -1247,7 +1247,7 @@ MODRET cmd_escapestring(cmd_rec * cmd)
  *  HANDLED(cmd)                        -- passwords match
  *  ERROR_INT(cmd, PR_AUTH_NOPWD)       -- missing password
  *  ERROR_INT(cmd, PR_AUTH_BADPWD)      -- passwords don't match
- *  ERROR_INT(cmd, PR_AUTH_DISABLEPWD) -- password is disabled
+ *  ERROR_INT(cmd, PR_AUTH_DISABLEPWD)  -- password is disabled
  *  ERROR_INT(cmd, PR_AUTH_AGEPWD)      -- password is aged
  *  ERROR(cmd)                          -- unknown error
  *
