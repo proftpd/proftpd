@@ -866,6 +866,8 @@ Optional Features:
 
   --enable-cap            enable POSIX.1e capabilities (default=yes on Linux)
 
+  --enable-ctrls          enable proftpd controls via ftpdctl (default=no)
+
   --disable-curses        disable use of curses (default=no)
 
   --disable-ncurses       disable use of ncurses (default=no)
@@ -3289,6 +3291,19 @@ fi;
 # Check whether --enable-cap or --disable-cap was given.
 if test "${enable_cap+set}" = set; then
   enableval="$enable_cap"
+
+fi;
+
+# Check whether --enable-ctrls or --disable-ctrls was given.
+if test "${enable_ctrls+set}" = set; then
+  enableval="$enable_ctrls"
+   if test "$enableval" = "yes" ; then
+
+cat >>confdefs.h <<\_ACEOF
+#define USE_CTRLS 1
+_ACEOF
+
+    fi
 
 fi;
 
@@ -14726,6 +14741,11 @@ _ACEOF
 esac
 fi
 
+
+if test x"$enable_ctrls" = xyes; then
+  ac_core_modules="$ac_core_modules mod_ctrls.o"
+  ac_build_core_modules="$ac_build_core_modules modules/mod_ctrls.o"
+fi
 
 echo "$as_me:$LINENO: checking for struct sockaddr_in.sin_len" >&5
 echo $ECHO_N "checking for struct sockaddr_in.sin_len... $ECHO_C" >&6
