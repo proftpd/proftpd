@@ -24,7 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* $Id: privs.h,v 1.15 2003-01-02 17:28:18 castaglia Exp $
+/* $Id: privs.h,v 1.16 2003-02-05 21:11:45 castaglia Exp $
  */
 
 #ifndef PR_PRIVS_H
@@ -86,7 +86,8 @@
       if (setreuid(session.uid, 0)) \
         log_pri(PR_LOG_ERR, "PRIVS_ROOT: unable to setreuid(): %s", \
           strerror(errno)); \
-    } \
+    } else \
+      log_debug(DEBUG0, "ROOT PRIVS: ID switching disabled"); \
   }
 
 #define PRIVS_USER \
@@ -100,7 +101,8 @@
       if (setreuid(session.uid, session.login_uid)) \
         log_pri(PR_LOG_ERR, "PRIVS_USER: unable to setreuid(session.uid, " \
           "session.login_uid): %s", strerror(errno)); \
-    } \
+    } else \
+      log_debug(DEBUG0, "ROOT PRIVS: ID switching disabled"); \
   }
 
 #define PRIVS_RELINQUISH  \
@@ -115,7 +117,8 @@
       if (setreuid(session.uid, session.uid)) \
         log_pri(PR_LOG_ERR, "PRIVS_RELINQUISH: unable to setreuid(session.uid, " \
           "session.uid): %s", strerror(errno)); \
-    } \
+    } else \
+      log_debug(DEBUG0, "ROOT PRIVS: ID switching disabled"); \
   }
 
 #define PRIVS_REVOKE \
@@ -183,7 +186,8 @@
     if (seteuid(0)) \
       log_pri(PR_LOG_ERR, "PRIVS_ROOT: unable to seteuid(): %s", \
         strerror(errno)); \
-  }
+  } else \
+    log_debug(DEBUG0, "ROOT PRIVS: ID switching disabled");
 
 /* Switch to the privs of the login user.
  */
@@ -202,7 +206,8 @@
         log_pri(PR_LOG_ERR, "PRIVS_USER: unable to seteuid(session.login_uid): " \
           "%s", strerror(errno)); \
     } \
-  }
+  } else \
+    log_debug(DEBUG0, "ROOT PRIVS: ID switching disabled");
 
 /* Relinquish privs granted by PRIVS_ROOT or PRIVS_USER.
  */
@@ -217,7 +222,8 @@
     if (seteuid(session.uid)) \
       log_pri(PR_LOG_ERR, "PRIVS_RELINQUISH: unable to seteuid(session.uid): %s", \
         strerror(errno)); \
-  }
+  } else \
+    log_debug(DEBUG0, "ROOT PRIVS: ID switching disabled");
 
 /* Revoke all privs.
  */
