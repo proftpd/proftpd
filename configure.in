@@ -232,6 +232,13 @@ AC_ARG_ENABLE(auth-pam,
       AC_MSG_ERROR([You cannot run configure with --disable-auth-pam and include mod_auth_pam in --with-modules at the same time])
     fi ])
 
+dnl Linux capabilities support
+AC_ARG_ENABLE(cap,
+  [AC_HELP_STRING(
+    [--enable-cap],
+    [enable Linux capabilities (default=yes on Linux)])
+  ])
+
 dnl Sendfile support.
 AC_ARG_ENABLE(sendfile,
   [AC_HELP_STRING(
@@ -590,7 +597,7 @@ case "$host" in
     if test $rev -ge 002001097; then
       AC_CHECK_HEADER(linux/capability.h)
 
-      if test $ac_cv_header_linux_capability_h = "yes"; then
+      if test x"$enable_cap" != xno && test $ac_cv_header_linux_capability_h = "yes"; then
         ac_add_mod_cap="yes"
       fi
     fi
