@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.4 2003-11-09 23:32:07 castaglia Exp $
+ * $Id: event.c,v 1.5 2004-03-01 16:42:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -48,6 +48,9 @@ struct event_list {
 
 static pool *event_pool = NULL;
 static struct event_list *events = NULL;
+
+static const char *curr_event = NULL;
+static struct event_list *curr_evl = NULL;
 
 int pr_event_register(module *m, const char *event,
     void (*cb)(const void *, void *), void *user_data) {
@@ -93,6 +96,10 @@ int pr_event_register(module *m, const char *event,
 
   events = evl;
 
+  /* Clear any cached data. */
+  curr_event = NULL;
+  curr_evl = NULL;
+  
   return 0;
 }
 
@@ -147,10 +154,15 @@ int pr_event_unregister(module *m, const char *event,
     }
   }
 
+  /* Clear any cached data. */
+  curr_event = NULL;
+  curr_evl = NULL;
+
   return 0;
 }
 
 void pr_event_generate(const char *event, const void *event_data) {
+  int use_cache = FALSE;
   struct event_list *evl;
 
   if (!event)
@@ -160,8 +172,13 @@ void pr_event_generate(const char *event, const void *event_data) {
   if (!events)
     return;
 
+  /* If there is a cached event, see if the given event matches. */
+  if (curr_event &&
+      strcmp(curr_event, event) == 0)
+    use_cache = TRUE;
+
   /* Lookup callbacks for this event. */
-  for (evl = events; evl; evl = evl->next) {
+  for (evl = use_cache ? curr_evl : events; evl; evl = evl->next) {
 
     if (strcmp(evl->event, event) == 0) {  
       struct event_handler *evh;
@@ -171,6 +188,9 @@ void pr_event_generate(const char *event, const void *event_data) {
         pr_log_debug(DEBUG10, "no event handlers registered for '%s'", event);
         return;
       }
+
+      curr_event = event;
+      curr_evl = evl;
 
       for (evh = evl->handlers; evh; evh = evh->next) {
         pr_log_debug(DEBUG10, "dispatching event '%s' to mod_%s", event,
