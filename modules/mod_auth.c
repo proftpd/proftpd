@@ -25,7 +25,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.75 2002-06-22 00:47:08 castaglia Exp $
+ * $Id: mod_auth.c,v 1.76 2002-06-22 00:54:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -169,12 +169,11 @@ static int auth_init(void) {
   return 0;
 }
 
-static int _do_auth(pool *p, xaset_t *conf, char *u, char *pw)
-{
+static int _do_auth(pool *p, xaset_t *conf, char *u, char *pw) {
   char *cpw = NULL;
   config_rec *c;
 
-  if(conf) {
+  if (conf) {
     c = find_config(conf,CONF_PARAM,"UserPassword",FALSE);
 
     while(c) {
@@ -186,6 +185,16 @@ static int _do_auth(pool *p, xaset_t *conf, char *u, char *pw)
       c = find_config_next(c,c->next,CONF_PARAM,"UserPassword",FALSE);
     }
   }
+
+  if (cpw) {
+    if (!auth_getpwnam(p, u))
+      return AUTH_NOPWD;
+
+    return auth_check(p, cpw, u, pw);
+  }
+
+  return auth_authenticate(p,u,pw);
+}
 
 MODRET post_cmd_pass(cmd_rec *cmd) {
   config_rec *c = NULL;
@@ -279,15 +288,6 @@ MODRET post_cmd_pass(cmd_rec *cmd) {
   }
 
   return HANDLED(cmd);
-}
-
-  if(cpw) {
-    if(!auth_getpwnam(p,u))
-      return AUTH_NOPWD;
-    return auth_check(p,cpw,u,pw);
-  }
-
-  return auth_authenticate(p,u,pw);
 }
 
 /* Handle group based authentication, only checked if pw
