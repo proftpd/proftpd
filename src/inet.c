@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.81 2003-10-17 06:15:37 castaglia Exp $
+ * $Id: inet.c,v 1.82 2003-11-01 07:11:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -297,6 +297,8 @@ conn_t *pr_inet_copy_connection(pool *p, conn_t *c) {
   pool *sub_pool = NULL;
 
   sub_pool = make_sub_pool(p);
+  pr_pool_tag(sub_pool, "pr_inet_copy_connection() subpool");
+
   res = (conn_t *) pcalloc(sub_pool,sizeof(conn_t));
 
   memcpy(res, c, sizeof(conn_t));
@@ -344,13 +346,17 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     return NULL;
   }
 
-  if (!inet_pool)
+  if (!inet_pool) {
     inet_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(inet_pool, "Inet Pool");
+  }
 
   /* Initialize the netaddr. */
   pr_netaddr_clear(&na);
 
   sub_pool = make_sub_pool(p);
+  pr_pool_tag(sub_pool, "inet_initialize_connection() subpool");
+
   c = (conn_t *) pcalloc(sub_pool, sizeof(conn_t));
   c->pool = sub_pool;
 
@@ -560,8 +566,10 @@ conn_t *pr_inet_create_connection_portrange(pool *p, xaset_t *servers,
   conn_t *c = NULL;
 
   /* Make sure the temporary inet work pool exists. */
-  if (!inet_pool)
+  if (!inet_pool) {
     inet_pool = make_sub_pool(permanent_pool); 
+    pr_pool_tag(inet_pool, "Inet Pool");
+  }
 
   range_len = high_port - low_port + 1;
   range = (int *) pcalloc(inet_pool, range_len * sizeof(int));
@@ -1334,4 +1342,5 @@ void init_inet(void) {
   if (inet_pool)
     destroy_pool(inet_pool);
   inet_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(inet_pool, "Inet Pool");
 }

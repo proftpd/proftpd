@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.28 2003-10-31 18:46:20 castaglia Exp $
+ * $Id: fsio.c,v 1.29 2003-11-01 07:11:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -500,6 +500,8 @@ pr_fs_t *pr_create_fs(pool *p, const char *name) {
 
   /* Allocate a subpool, then allocate an pr_fs_t object from that subpool */
   rec_pool = make_sub_pool(p);
+  pr_pool_tag(rec_pool, "FS Pool");
+
   fs = (pr_fs_t *) pcalloc(rec_pool, sizeof(pr_fs_t));
 
   if (!fs)
@@ -557,6 +559,8 @@ int pr_insert_fs(pr_fs_t *fs, const char *path) {
 
   if (!fs_map) {
     pool *map_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(map_pool, "FSIO Map Pool");
+
     fs_map = make_array(map_pool, 0, sizeof(pr_fs_t *));
   }
 
@@ -642,6 +646,8 @@ int pr_unregister_fs(const char *path) {
 
       pool *map_pool = make_sub_pool(permanent_pool);
       array_header *new_map = make_array(map_pool, 0, sizeof(pr_fs_t *));
+
+      pr_pool_tag(map_pool, "FSIO Map Pool");
       old_objs = (pr_fs_t **) fs_map->elts;
 
       for (j = 0; j < fs_map->nelts; j++) {
@@ -1090,6 +1096,8 @@ int pr_fs_interpolate(const char *path, char *buf, size_t buflen) {
      * is destroyed shortly.
      */
     p = make_sub_pool(permanent_pool);
+    pr_pool_tag(p, "pr_fs_interpolate() pool");
+
     pw = auth_getpwnam(p, user);
 
     if (!pw) {
@@ -1761,6 +1769,8 @@ void *pr_fsio_opendir(const char *path) {
   fs_cache_fsdir = fs;
 
   fsod_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(fsod_pool, "fsod subpool");
+
   fsod = pcalloc(fsod_pool, sizeof(fsopendir_t));
 
   if (!fsod) {
@@ -2091,6 +2101,8 @@ pr_fh_t *pr_fsio_open_canon(const char *name, int flags) {
 
   /* Allocate a filehandle. */
   tmp_pool = make_sub_pool(fs->fs_pool);
+  pr_pool_tag(tmp_pool, "pr_fsio_open_canon() subpool");
+
   fh = pcalloc(tmp_pool, sizeof(pr_fh_t));
   fh->fh_pool = tmp_pool;
   fh->fh_path = pstrdup(fh->fh_pool, name);
@@ -2122,6 +2134,8 @@ pr_fh_t *pr_fsio_open(const char *name, int flags) {
 
   /* Allocate a filehandle. */
   tmp_pool = make_sub_pool(fs->fs_pool);
+  pr_pool_tag(tmp_pool, "pr_fsio_open() subpool");
+
   fh = pcalloc(tmp_pool, sizeof(pr_fh_t));
   fh->fh_pool = tmp_pool;
   fh->fh_path = pstrdup(fh->fh_pool, name);
@@ -2154,6 +2168,8 @@ pr_fh_t *pr_fsio_creat_canon(const char *name, mode_t mode) {
 
   /* Allocate a filehandle. */
   tmp_pool = make_sub_pool(fs->fs_pool);
+  pr_pool_tag(tmp_pool, "pr_fsio_creat_canon() subpool");
+
   fh = pcalloc(tmp_pool, sizeof(pr_fh_t));
   fh->fh_pool = tmp_pool;
   fh->fh_path = pstrdup(fh->fh_pool, name);
@@ -2185,6 +2201,8 @@ pr_fh_t *pr_fsio_creat(const char *name, mode_t mode) {
 
   /* Allocate a filehandle. */
   tmp_pool = make_sub_pool(fs->fs_pool);
+  pr_pool_tag(tmp_pool, "pr_fsio_creat() subpool");
+
   fh = pcalloc(tmp_pool, sizeof(pr_fh_t));
   fh->fh_pool = tmp_pool;
   fh->fh_path = pstrdup(fh->fh_pool, name);
@@ -2457,6 +2475,8 @@ int pr_fsio_chroot(const char *path) {
     pool *map_pool = make_sub_pool(permanent_pool);
     array_header *new_map = make_array(map_pool, 0, sizeof(pr_fs_t *));
     pr_fs_t **fs_objs = NULL;
+
+    pr_pool_tag(map_pool, "FSIO Map Pool");
 
     if (fs_map)
       fs_objs = (pr_fs_t **) fs_map->elts;

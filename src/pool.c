@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.35 2003-09-08 00:29:16 castaglia Exp $
+ * $Id: pool.c,v 1.36 2003-11-01 07:11:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -223,6 +223,7 @@ struct pool {
   struct pool *sub_prev;
   struct pool *parent;
   char *free_first_avail;
+  const char *tag;
 };
 
 pool *permanent_pool = NULL;
@@ -259,11 +260,12 @@ static long __walk_pools(pool *p, int level)
   for (; p; p = p->sub_next) {
     total += bytes_in_block_list(p->first);
     if (level == 0)
-      log_pri(PR_LOG_NOTICE, "0x%08lx bytes", bytes_in_block_list(p->first));
+      log_pri(PR_LOG_NOTICE, "%s (%lu bytes)", p->tag ? p->tag : "[none]",
+        bytes_in_block_list(p->first));
 
     else
-      log_pri(PR_LOG_NOTICE, "%s\\- 0x%08lx bytes", _levelpad,
-        bytes_in_block_list(p->first));
+      log_pri(PR_LOG_NOTICE, "%s\\- %s (%lu bytes)", _levelpad,
+        p->tag ? p->tag : "[none]", bytes_in_block_list(p->first));
 
     /* Recurse */
     if (p->sub_pools)
@@ -275,20 +277,27 @@ static long __walk_pools(pool *p, int level)
 
 static void debug_pool_info(void) {
   if (block_freelist)
-    log_pri(PR_LOG_NOTICE, "Free block list: 0x%08lx bytes",
+    log_pri(PR_LOG_NOTICE, "Free block list: %lu bytes",
       bytes_in_block_list(block_freelist));
   else
     log_pri(PR_LOG_NOTICE, "Free block list: EMPTY");
 
-  log_pri(PR_LOG_NOTICE, "%u count blocks malloc'd.", stat_malloc);
-  log_pri(PR_LOG_NOTICE, "%u count blocks reused.", stat_freehit);
+  log_pri(PR_LOG_NOTICE, "%u count blocks allocated", stat_malloc);
+  log_pri(PR_LOG_NOTICE, "%u count blocks reused", stat_freehit);
 }
 
 void debug_walk_pools(void) {
   log_pri(PR_LOG_NOTICE, "Memory pool allocation:");
-  log_pri(PR_LOG_NOTICE, "Total 0x%08lx bytes allocated",
+  log_pri(PR_LOG_NOTICE, "Total %lu bytes allocated",
     __walk_pools(permanent_pool, 0));
   debug_pool_info();
+}
+
+void pr_pool_tag(pool *p, const char *tag) {
+  if (!p || !tag)
+    return;
+
+  p->tag = tag;
 }
 
 /* Release the entire free block list */
@@ -342,6 +351,7 @@ struct pool *make_sub_pool(struct pool *p) {
 void init_pools(void) {
   if (!permanent_pool)
     permanent_pool = make_sub_pool(NULL);
+  pr_pool_tag(permanent_pool, "permanent_pool");
 }
 
 void free_pools(void) {

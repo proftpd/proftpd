@@ -26,7 +26,7 @@
 
 /*
  * Regex management code
- * $Id: regexp.c,v 1.9 2003-09-28 22:43:35 castaglia Exp $
+ * $Id: regexp.c,v 1.10 2003-11-01 07:11:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -76,6 +76,7 @@ regex_t *pr_regexp_alloc(void) {
    */
   if (!regexp_pool) {
     regexp_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(regexp_pool, "Regexp Pool");
     regexp_list = make_array(regexp_pool, 0, sizeof(regex_t *));
   }
 

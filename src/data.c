@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.71 2003-10-31 18:46:20 castaglia Exp $
+ * $Id: data.c,v 1.72 2003-11-01 07:11:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -207,7 +207,9 @@ static void data_new_xfer(char *filename, int direction) {
   }
 
   session.xfer.p = make_sub_pool(session.pool);
-  session.xfer.filename = pstrdup(session.xfer.p,filename);
+  pr_pool_tag(session.xfer.p, "session.xfer pool");
+
+  session.xfer.filename = pstrdup(session.xfer.p, filename);
   session.xfer.direction = direction;
   session.xfer.bufsize = PR_TUNABLE_BUFFER_SIZE;
   session.xfer.buf = pcalloc(session.xfer.p, PR_TUNABLE_BUFFER_SIZE + 1);

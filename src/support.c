@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.61 2003-08-13 06:07:39 castaglia Exp $
+ * $Id: support.c,v 1.62 2003-11-01 07:11:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -105,8 +105,10 @@ void pr_signals_unblock(void) {
 void pr_exit_register_handler(void (*exit_cb)(void)) {
   exithandler_t *e = NULL;
 
-  if (!exithandler_pool)
+  if (!exithandler_pool) {
     exithandler_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(exithandler_pool, "Exit Handler Pool");
+  }
 
   if (!exits)
     exits = xaset_create(exithandler_pool, NULL);
@@ -144,6 +146,7 @@ void schedule(void (*f)(void*,void*,void*,void*),int nloops, void *a1,
 
   if (!scheds) {
    p = make_sub_pool(permanent_pool);
+   pr_pool_tag(p, "Schedules Pool");
    scheds = xaset_create(p, NULL);
 
   } else

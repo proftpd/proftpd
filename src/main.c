@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.203 2003-10-31 18:46:20 castaglia Exp $
+ * $Id: main.c,v 1.204 2003-11-01 07:11:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -189,8 +189,7 @@ static void init_proc_title(int argc, char *argv[], char *envp[]) {
   register int i, envpsize;
   char **p;
 
-  /* Move the environment so setproctitle can use the space.
-   */
+  /* Move the environment so setproctitle can use the space. */
   for (i = envpsize = 0; envp[i] != NULL; i++)
     envpsize += strlen(envp[i]) + 1;
 
@@ -218,7 +217,7 @@ static void init_proc_title(int argc, char *argv[], char *envp[]) {
   /* Set the __progname and __progname_full variables so glibc and company
    * don't go nuts.
    */
-  __progname      = strdup("proftpd");
+  __progname = strdup("proftpd");
   __progname_full = strdup(argv[0]);
 #endif /* HAVE___PROGNAME */
 }
@@ -231,11 +230,14 @@ static void free_proc_title(void) {
     for (i = 0; environ[i] != NULL; i++)
       free(environ[i]);
     free(environ);
+    environ = NULL;
   }
 
 # ifdef HAVE___PROGNAME
   free(__progname);
+  __progname = NULL;
   free(__progname_full);
+  __progname_full = NULL;
 # endif /* HAVE___PROGNAME */
 }
 #endif /* PR_DEVEL */
@@ -1064,6 +1066,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
         /* allocate a subpool from permanent_pool for the set
          */
         set_pool = make_sub_pool(permanent_pool);
+        pr_pool_tag(set_pool, "Child List Pool");
+
         child_list = xaset_create(set_pool, NULL);
         child_list->mempool = set_pool;
 
@@ -1077,6 +1081,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
          */
         pidrec_pool = make_sub_pool(child_list->mempool);
       }
+
+      pr_pool_tag(pidrec_pool, "pidrec subpool");
 
       cpid = (pidrec_t *) pcalloc(pidrec_pool, sizeof(pidrec_t));
       cpid->pid = pid;
@@ -1203,6 +1209,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
    */
 
   session.pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(session.pool, "Session Pool");
+
   session.c = conn;
   session.data_port = conn->remote_port - 1;
   session.sf_flags = 0;

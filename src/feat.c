@@ -24,7 +24,7 @@
 
 /*
  * Feature management code
- * $Id: feat.c,v 1.5 2003-03-09 02:07:00 castaglia Exp $
+ * $Id: feat.c,v 1.6 2003-11-01 07:11:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -38,6 +38,7 @@ void pr_feat_add(const char *feat) {
   /* If no feature-tracking list has been allocated, create one. */
   if (!feat_pool) {
     feat_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(feat_pool, "Feat Pool");
     feat_list = make_array(feat_pool, 0, sizeof(char *));
   }
 

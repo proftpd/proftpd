@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.197 2003-10-31 19:50:16 castaglia Exp $
+ * $Id: mod_core.c,v 1.198 2003-11-01 07:11:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2737,6 +2737,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
     return -1;
 
   p = make_sub_pool(session.pool);
+  pr_pool_tag(p, "core_display_file pool");
 
   s = (session.anon_config ? session.anon_config->subset : main_server->conf);
 
@@ -4116,6 +4117,8 @@ MODRET core_rnfr(cmd_rec *cmd) {
   }
 
   session.xfer.p = make_sub_pool(session.pool);
+  pr_pool_tag(session.xfer.p, "session xfer pool");
+
   session.xfer.path = pstrdup(session.xfer.p,path);
   pr_response_add(R_350, "File or directory exists, ready for destination name.");
 

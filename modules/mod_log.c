@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.57 2003-10-20 07:28:57 castaglia Exp $
+ * $Id: mod_log.c,v 1.58 2003-11-01 07:11:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -957,11 +957,13 @@ static void log_rehash_cb(void *d) {
   log_set = NULL;
 
   log_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(log_pool, "mod_log pool");
   logformat("", "%h %l %u %t \"%r\" %s %b");
 }
 
 static int log_init(void) {
   log_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(log_pool, "mod_log pool");
 
   /* Add the "default" extendedlog format */
   logformat("", "%h %l %u %t \"%r\" %s %b");

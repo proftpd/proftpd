@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.30 2003-09-08 00:39:05 castaglia Exp $
+ * $Id: auth.c,v 1.31 2003-11-01 07:11:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -526,6 +526,7 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
     return 0;
 
   tmp_pool = make_sub_pool(p);
+  pr_pool_tag(tmp_pool, "set_groups() tmp pool");
 
   /* Check for a NULL supplemental group ID list. */
   if (suppl_gids) {

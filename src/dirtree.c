@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.124 2003-10-31 23:57:10 castaglia Exp $
+ * $Id: dirtree.c,v 1.125 2003-11-01 07:11:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -345,6 +345,8 @@ unsigned char dir_hide_file(const char *path) {
   unsigned char have_user_regex, have_group_regex, have_class_regex,
     have_all_regex, inverted = FALSE;
 
+  pr_pool_tag(tmp_pool, "dir_hide_file() tmp pool");
+
   have_user_regex = have_group_regex = have_class_regex = have_all_regex =
     FALSE;
 
@@ -541,11 +543,14 @@ cmd_rec *pr_cmd_alloc(pool *p, int argc, ...) {
   va_list args;
 
   newpool = make_sub_pool(p);
+  pr_pool_tag(newpool, "pr_cmd_alloc() subpool");
+
   c = pcalloc(newpool, sizeof(cmd_rec));
   c->argc = argc;
   c->stash_index = -1;
   c->pool = newpool;
   c->tmp_pool = make_sub_pool(c->pool);
+  pr_pool_tag(c->tmp_pool, "pr_cmd_alloc() tmp pool");
 
   if (argc) {
     register unsigned int i = 0;
@@ -565,6 +570,8 @@ cmd_rec *pr_cmd_alloc(pool *p, int argc, ...) {
 static conf_stack_t *push_config_stack(pr_fh_t *fh, unsigned int lineno) {
   pool *tmp_pool = make_sub_pool(permanent_pool);
   conf_stack_t *cs = pcalloc(tmp_pool, sizeof(conf_stack_t));
+
+  pr_pool_tag(tmp_pool, "push_config_stack() tmp pool");
 
   cs->cs_next = NULL;
   cs->cs_pool = tmp_pool;
@@ -654,6 +661,8 @@ static cmd_rec *get_config_cmd(pool *ppool) {
 
     /* Build a new pool for the command structure and array */
     new_pool = make_sub_pool(ppool);
+    pr_pool_tag(new_pool, "get_config_cmd() subpool");
+
     new_cmd = (cmd_rec *) pcalloc(new_pool, sizeof(cmd_rec));
     new_cmd->pool = new_pool;
     tarr = make_array(new_pool,4,sizeof(char**));
@@ -721,6 +730,7 @@ static void free_dyn_stacks(void) {
 
 void init_conf_stacks(void) {
   pool *conf_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(conf_pool, "init_conf_stacks() parser pool");
 
   conf.tpool = conf_pool;
   conf.sstack = make_array(conf_pool, 1, sizeof(server_rec *));
@@ -743,6 +753,7 @@ server_rec *start_new_server(const char *addrstr) {
   pool *p;
 
   p = make_sub_pool(permanent_pool);
+  pr_pool_tag(p, "<VirtualHost> Pool");
 
   s = (server_rec *) pcalloc(p, sizeof(server_rec));
   s->pool = p;
@@ -800,12 +811,17 @@ config_rec *start_sub_config(const char *name) {
    * config recs from being freed prematurely, and helps to avoid memory leaks.
    */
   if (strcmp(name, "<Global>") == 0) {
-    if (!global_config_pool)
+    if (!global_config_pool) {
       global_config_pool = make_sub_pool(permanent_pool);
+      pr_pool_tag(global_config_pool, "<Global> Pool");
+    }
+
     parent_pool = global_config_pool;
   }
 
   c_pool = make_sub_pool(parent_pool);
+  pr_pool_tag(c_pool, "sub-config pool");
+
   c = (config_rec *) pcalloc(c_pool, sizeof(config_rec));
 
   if (!*set)
@@ -881,6 +897,8 @@ config_rec *add_config_set(xaset_t **set, const char *name) {
 
     /* Allocate a subpool from permanent_pool for the set. */
     set_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(set_pool, "config set pool");
+
     *set = xaset_create(set_pool,NULL);
     (*set)->mempool = set_pool;
 
@@ -896,6 +914,8 @@ config_rec *add_config_set(xaset_t **set, const char *name) {
     /* Allocate a subpool for the config_rec from the parent's pool. */
     conf_pool = make_sub_pool((*set)->mempool);
   }
+
+  pr_pool_tag(conf_pool, "config_rec subpool");
 
   c = (config_rec *) pcalloc(conf_pool, sizeof(config_rec));
 
@@ -924,9 +944,11 @@ config_rec *add_config(const char *name) {
   } else {
     parent = NULL;
 
-    if (!s->conf || !s->conf->xas_list)
+    if (!s->conf || !s->conf->xas_list) {
       p = make_sub_pool(s->pool);
-    else
+      pr_pool_tag(p, "add_config() subpool");
+
+    } else
       p = ((config_rec*)s->conf->xas_list)->pool;
 
     set = &s->conf;
@@ -1544,6 +1566,8 @@ int match_ip(pr_netaddr_t *cli_addr, const char *cli_str,
     int fnm_flags = PR_FNM_NOESCAPE|PR_FNM_CASEFOLD;
     pool *tmp_pool = make_sub_pool(permanent_pool);
     const char *acl_ascii = NULL, *cli_ascii = NULL;
+
+    pr_pool_tag(tmp_pool, "match_ip() tmp pool");
 
     if (strpbrk(acl_str, "[*?") == NULL)
       acl_addr = pr_netaddr_get_addr(tmp_pool, acl_str, NULL);
@@ -2174,6 +2198,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   }
 
   p = make_sub_pool(pp);
+  pr_pool_tag(p, "dir_check_full() subpool");
 
   /* flood -- this is no longer needed, as all paths passed to
    * dir_check should have gone through either dir_canonical or
@@ -2325,6 +2350,7 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   }
 
   p = make_sub_pool(pp);
+  pr_pool_tag(p, "dir_check() subpool");
 
   fullpath = path;
 
@@ -3083,6 +3109,8 @@ int parse_config_file(const char *fname) {
   modret_t *mr = NULL;
   pool *tmp_pool = make_sub_pool(permanent_pool);
 
+  pr_pool_tag(tmp_pool, "parse_config_file() tmp pool");
+
   log_debug(DEBUG2, "parsing '%s' configuration", fname);
 
   if ((fh = pr_fsio_open(fname, O_RDONLY)) == NULL) {
@@ -3232,6 +3260,7 @@ int fixup_servers(void) {
 
 void init_config(void) {
   pool *conf_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(conf_pool, "Config Pool");
 
   /* Make sure global_config_pool is destroyed */
   if (global_config_pool) {
@@ -3253,6 +3282,8 @@ void init_config(void) {
   server_list = xaset_create(conf_pool, NULL);
 
   conf_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(conf_pool, "main_server pool");
+
   main_server = (server_rec *) pcalloc(conf_pool, sizeof(server_rec));
   xaset_insert(server_list, (xasetmember_t *) main_server);
 

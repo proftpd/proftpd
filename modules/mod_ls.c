@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.97 2003-10-20 07:02:44 castaglia Exp $
+ * $Id: mod_ls.c,v 1.98 2003-11-01 07:11:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -48,7 +48,6 @@ static unsigned char list_strict_opts = FALSE;
 static char *list_options = NULL;
 static unsigned char list_show_symlinks = TRUE, list_times_gmt = TRUE;
 static unsigned char show_symlinks_hold;
-static int cmp(const void *a, const void *b);
 static char *fakeuser = NULL, *fakegroup = NULL;
 static mode_t fakemode;
 static unsigned char have_fake_mode = FALSE;
@@ -521,19 +520,21 @@ static struct filename *tail = NULL;
 static array_header *sort_arr = NULL;
 static pool *fpool = NULL;
 
-static void addfile(cmd_rec *cmd, const char *name, const char *suffix, time_t mtime)
-{
-  struct 	filename *p;
-  int		l;
+static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
+    time_t mtime) {
+  struct filename *p;
+  int l;
 
   if (!name || !suffix)
     return;
 
+  if (!fpool) {
+    fpool = make_sub_pool(cmd->tmp_pool);
+    pr_pool_tag(fpool, "mod_ls: addfile() fpool");
+  }
+
   if (opt_t) {
     struct sort_filename *s;
-
-    if (!fpool)
-      fpool = make_sub_pool(cmd->tmp_pool);
 
     if (!sort_arr)
       sort_arr = make_array(fpool,50,sizeof(struct sort_filename));
@@ -552,15 +553,13 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix, time_t m
   if (l > colwidth)
     colwidth = l;
 
-  if (!fpool)
-    fpool = make_sub_pool(cmd->tmp_pool);
-
   p = (struct filename*) pcalloc(fpool, sizeof(struct filename) + l + 1);
 
   snprintf(p->line, l + 1, "%s%s", name, suffix);
 
   if (tail)
     tail->down = p;
+
   else
     head = p;
 
@@ -568,8 +567,8 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix, time_t m
   filenames++;
 }
 
-static int _compare_file_mtime(
-    const struct sort_filename *f1, const struct sort_filename *f2) {
+static int file_mtime_cmp( const struct sort_filename *f1,
+    const struct sort_filename *f2) {
 
   if (f1->mtime > f2->mtime)
     return -1;
@@ -580,9 +579,9 @@ static int _compare_file_mtime(
   return 0;
 }
 
-static int _compare_file_mtime_reversed(
-    const struct sort_filename *f1, const struct sort_filename *f2) {
-  return -_compare_file_mtime(f1, f2);
+static int file_mtime_reverse_cmp(const struct sort_filename *f1,
+    const struct sort_filename *f2) {
+  return -file_mtime_cmp(f1, f2);
 }
 
 static void sortfiles(cmd_rec *cmd) {
@@ -592,8 +591,8 @@ static void sortfiles(cmd_rec *cmd) {
     register unsigned int i = 0;
 
     qsort(sort_arr->elts, sort_arr->nelts, sizeof(struct sort_filename),
-          (int (*)(const void*,const void*))
-          (opt_r ? _compare_file_mtime_reversed : _compare_file_mtime));
+      (int (*)(const void *, const void *))
+        (opt_r ? file_mtime_reverse_cmp : file_mtime_cmp));
 
     opt_t = 0;
 
@@ -672,6 +671,7 @@ static int outputfiles(cmd_rec *cmd) {
       if (q->right) {
         sstrncpy(pad, "\t\t\t\t\t", sizeof(pad));
         pad[(colwidth + 7 - strlen(q->line)) / 8] = '\0';
+
       } else {
         sstrncpy(pad, "\n", sizeof(pad));
       }
@@ -707,7 +707,7 @@ static void discard_output(void) {
   filenames = 0;
 }
 
-static int cmp(const void *a, const void *b) {
+static int dircmp(const void *a, const void *b) {
   return strcmp(*(const char **)a, *(const char **)b);
 }
 
@@ -812,7 +812,7 @@ static char **sreaddir(const char *dirname, const int sort) {
   p[i] = NULL;
 
   if (sort)
-    qsort(p, i, sizeof(char *), cmp);
+    qsort(p, i, sizeof(char *), dircmp);
 
   return p;
 }
@@ -855,10 +855,12 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
 
   if (!workp) {
     workp = make_sub_pool(cmd->tmp_pool);
+    pr_pool_tag(workp, "mod_ls: listdir(): workp (from cmd->tmp_pool)");
     dest_workp++;
 
   } else {
     workp = make_sub_pool(workp);
+    pr_pool_tag(workp, "mod_ls: listdir(): workp (from workp)");
     dest_workp++;
   }
 
@@ -1256,15 +1258,17 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
       pbuffer[i] = '\0';
 
-      if ((pw = auth_getpwnam(cmd->tmp_pool,i ? pbuffer : session.user))) {
+      pw = auth_getpwnam(cmd->tmp_pool, i ? pbuffer : session.user);
+      if (pw) {
         snprintf(pbuffer, sizeof(pbuffer), "%s%s", pw->pw_dir, p);
+
       } else
         pbuffer[0] = '\0';
     }
 
     /* check perms on the directory/file we are about to scan */
     if (!ls_perms_full(cmd->tmp_pool, cmd,
-                      (*pbuffer ? (char *) pbuffer : (char *) arg),NULL)) {
+        (*pbuffer ? (char *) pbuffer : (char *) arg), NULL)) {
       a = -1;
       skiparg = TRUE;
 
@@ -1313,11 +1317,13 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
                 pr_fs_globfree(&g);
               return -1;
             }
+
             **path = '\0';
           }
-        } else {
+
+        } else 
           **path = '\0';
-        }
+
         path++;
       }
 
@@ -1396,8 +1402,8 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
       discard_output();
       return -1;
     }
-  } else {
 
+  } else {
     if (ls_perms_full(cmd->tmp_pool, cmd, ".", NULL)) {
 
       if (opt_d) {
@@ -1412,6 +1418,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
           ls_terminate();
           return -1;
         }
+
         list_ndepth.curr--;
       }
     }
@@ -1494,6 +1501,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   list_ndirs.curr++;
 
   workp = make_sub_pool(cmd->tmp_pool);
+  pr_pool_tag(workp, "mod_ls: nlstdir(): workp (from cmd->tmp_pool)");
 
   if (!*dir || (*dir == '.' && !dir[1]) || strcmp(dir, "./") == 0) {
     curdir = 1;

@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.17 2003-09-29 17:25:19 castaglia Exp $
+ * $Id: bindings.c,v 1.18 2003-11-01 07:11:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -350,9 +350,11 @@ int pr_ipbind_create(server_rec *server, pr_netaddr_t *addr) {
     }
   }
 
-  if (!binding_pool)
+  if (!binding_pool) {
     /* Initialize the working pool, if not present */
     binding_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(binding_pool, "Bindings Pool");
+  }
 
   ipbind = pcalloc(server->pool, sizeof(pr_ipbind_t));
   ipbind->ib_server = server;

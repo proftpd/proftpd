@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.61 2003-10-08 18:13:03 castaglia Exp $
+ * $Id: log.c,v 1.62 2003-11-01 07:11:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -252,6 +252,7 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
 
   /* Make a temporary copy of log_file in case it's a constant */
   tmp_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(tmp_pool, "log_openfile() tmp pool");
   lf = pstrdup(tmp_pool, log_file);
 
   tmp = strrchr(lf, '/');

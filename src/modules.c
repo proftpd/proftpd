@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.30 2003-09-08 00:31:32 castaglia Exp $
+ * $Id: modules.c,v 1.31 2003-11-01 07:11:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -88,7 +88,7 @@ static struct stash *sym_alloc(void) {
   pool *sub_pool = make_sub_pool(symbol_pool);
   struct stash *sym = pcalloc(sub_pool, sizeof(struct stash));
   sym->sym_pool = sub_pool; 
-
+  pr_pool_tag(sub_pool, "symbol subpool");
   count++;
 
   return sym;
@@ -410,8 +410,10 @@ modret_t *call_module(module *m, modret_t *(*func)(cmd_rec *), cmd_rec *cmd) {
   modret_t *res;
   module *prev_module = curr_module;
 
-  if (!cmd->tmp_pool)
+  if (!cmd->tmp_pool) {
     cmd->tmp_pool = make_sub_pool(cmd->pool);
+    pr_pool_tag(cmd->tmp_pool, "call_module() cmd tmp_pool");
+  }
 
   curr_module = m;
   res = func(cmd);
@@ -641,8 +643,10 @@ int module_postparse_init(void) {
 void pr_register_daemon_startup(int (*cb)(void)) {
   module_cb_t *di = NULL;
 
-  if (!daemon_cb_pool)
+  if (!daemon_cb_pool) {
     daemon_cb_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(daemon_cb_pool, "Daemon Startup Callback Pool");
+  }
 
   if (!daemon_startups)
     daemon_startups = xaset_create(daemon_cb_pool, NULL);
@@ -656,8 +660,10 @@ void pr_register_daemon_startup(int (*cb)(void)) {
 void pr_register_postparse_init(int (*cb)(void)) {
   module_cb_t *pp = NULL;
 
-  if (!postparse_init_pool)
+  if (!postparse_init_pool) {
     postparse_init_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(daemon_cb_pool, "Postparse Callback Pool");
+  }
 
   if (!postparse_inits)
     postparse_inits = xaset_create(postparse_init_pool, NULL);
@@ -693,6 +699,7 @@ int init_stash(void) {
     destroy_pool(symbol_pool);
 
   symbol_pool = make_sub_pool(permanent_pool); 
+  pr_pool_tag(symbol_pool, "Stash Pool");
   memset(symbol_table, '\0', sizeof(symbol_table));
 
   return 0;
