@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.234 2002-09-25 23:43:51 castaglia Exp $
+$Id: NEWS,v 1.235 2002-09-26 00:36:16 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -27,6 +27,7 @@ CVS
 - Added NetIO API
 - Bug 1726 - Cygwin's Makefile inconsistency
 - Bug 1713 - Scoreboard changes
+- Bug 1395 - Check return values in PRIVS calls
 
 1.2.6 - Released 2002-09-04
 ---------------------------------

@@ -24,7 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* $Id: privs.h,v 1.9 2002-09-25 23:43:19 castaglia Exp $
+/* $Id: privs.h,v 1.10 2002-09-26 00:36:20 castaglia Exp $
  */
 
 #ifndef PR_PRIVS_H
@@ -54,49 +54,84 @@
 /* Use setreuid() to perform uid swapping.
  */
 
-#define PRIVS_SETUP(u,g)	{ log_debug(DEBUG8, "SETUP PRIVS at %s:%d", \
-                                  __FILE__, __LINE__); \
-                                  if (getuid()) { \
-                                    session.ouid = session.uid = getuid(); \
-                                    session.gid = getgid(); \
-                                    setgid(session.gid); \
-                                    setreuid(session.uid, session.uid); \
-                                  } else {  \
-                                    session.ouid = getuid(); \
-                                    session.uid = (u); \
-                                    session.gid = (g); \
-                                    setgid(session.gid); \
-                                    setreuid(0, session.uid); \
-                                  } \
-                                }
+#define PRIVS_SETUP(u, g) \
+  { \
+    log_debug(DEBUG8, "SETUP PRIVS at %s:%d", __FILE__, __LINE__); \
+    if (getuid()) { \
+      session.ouid = session.uid = getuid(); \
+      session.gid = getgid(); \
+      if (setgid(session.gid)) \
+        log_pri(LOG_ERR, "PRIVS_SETUP: unable to setgid(): %s", \
+          strerror(errno)); \
+      if (setreuid(session.uid, session.uid)) \
+        log_pri(LOG_ERR, "PRIVS_SETUP: unable to setreuid(): %s", \
+          strerror(errno)); \
+    } else {  \
+      session.ouid = getuid(); \
+      session.uid = (u); \
+      session.gid = (g); \
+      if (setgid(session.gid)) \
+        log_pri(LOG_ERR, "PRIVS_SETUP: unable to setgid(): %s", \
+          strerror(errno)); \
+      if (setreuid(0, session.uid)) \
+        log_pri(LOG_ERR, "PRIVS_SETUP: unable to setreuid(): %s", \
+          strerror(errno)); \
+    } \
+  }
 
-#define PRIVS_ROOT		{ log_debug(DEBUG8, "ROOT PRIVS at %s:%d", \
-				  __FILE__, __LINE__); \
-				  if (!session.disable_id_switching) \
-				    { setreuid(session.uid, 0); \
-				} }
+#define PRIVS_ROOT \
+  { \
+    log_debug(DEBUG8, "ROOT PRIVS at %s:%d", __FILE__, __LINE__); \
+    if (!session.disable_id_switching) { \
+      if (setreuid(session.uid, 0)) \
+        log_pri(LOG_ERR, "PRIVS_ROOT: unable to setreuid(): %s", \
+          strerror(errno)); \
+    } \
+  }
 
-#define PRIVS_USER              { log_debug(DEBUG8, "USER PRIVS %d at %s:%d", \
-                                  session.login_uid, __FILE__, __LINE__); \
-                                  if(!session.disable_id_switching) \
-                                    { setreuid(session.uid,0); \
-                                      setreuid(session.uid,session.login_uid); \
-                                } }
+#define PRIVS_USER \
+  { \
+    log_debug(DEBUG8, "USER PRIVS %d at %s:%d", session.login_uid, \
+      __FILE__, __LINE__); \
+    if (!session.disable_id_switching) { \
+      if (setreuid(session.uid,0)) \
+        log_pri(LOG_ERR, "PRIVS_USER: unable to setreuid(session.uid, 0): %s", \
+          strerror(errno)); \
+      if (setreuid(session.uid, session.login_uid)) \
+        log_pri(LOG_ERR, "PRIVS_USER: unable to setreuid(session.uid, " \
+          "session.login_uid): %s", strerror(errno)); \
+    } \
+  }
 
-#define PRIVS_RELINQUISH	{ log_debug(DEBUG8, \
-                                  "RELINQUISH PRIVS at %s:%d", \
-				  __FILE__, __LINE__); \
-				  if(!session.disable_id_switching) \
-				    { if (geteuid()!=0) \
-					{ setreuid(session.uid,0); } \
-					  setreuid(session.uid,session.uid); \
-				} }
+#define PRIVS_RELINQUISH  \
+  { \
+    log_debug(DEBUG8, "RELINQUISH PRIVS at %s:%d", __FILE__, __LINE__); \
+    if (!session.disable_id_switching) { \
+      if (geteuid() != 0) { \
+        if (setreuid(session.uid, 0)) \
+          log_pri(LOG_ERR, "PRIVS_RELINQUISH: unable to " \
+            "setreuid(session.uid, 0): %s", strerror(errno)); \
+      } \
+      if (setreuid(session.uid, session.uid)) \
+        log_pri(LOG_ERR, "PRIVS_RELINQUISH: unable to setreuid(session.uid, " \
+          "session.uid): %s", strerror(errno)); \
+    } \
+  }
 
-#define PRIVS_REVOKE		{ log_debug(DEBUG8, "REVOKE PRIVS at %s:%d", \
-                                  __FILE__, __LINE__); \
-                                  setreuid(0,0); \
-				  setgid(session.gid); \
-                                  setuid(session.uid); }
+#define PRIVS_REVOKE \
+  { \
+    log_debug(DEBUG8, "REVOKE PRIVS at %s:%d", __FILE__, __LINE__); \
+    if (setreuid(0, 0)) \
+      log_pri(LOG_ERR, "PRIVS_REVOKE: unable to setreuid(0, 0): %s", \
+        strerror(errno)); \
+    if (setgid(session.gid)) \
+      log_pri(LOG_ERR, "PRIVS_REVOKE: unable to setgid(): %s", \
+        strerror(errno)); \
+    if (setuid(session.uid)) \
+      log_pri(LOG_ERR, "PRIVS_REVOKE: unable to setuid(): %s", \
+        strerror(errno)); \
+  }
+
 #else /* HAVE_SETEUID */
 
 /* Set the saved uid/gid using setuid/seteuid().  setreuid() is
@@ -109,62 +144,96 @@
  *   real/eff/saved group : <group>
  */
 
-#define PRIVS_SETUP(u,g)	{ log_debug(DEBUG8, "SETUP PRIVS at %s:%d", \
-                                  __FILE__, __LINE__); \
-                                  if (getuid()) { \
-                                    session.ouid = session.uid = getuid(); \
-                                    session.gid = getgid(); \
-                                    setgid(session.gid); \
-                                    setuid(session.uid); \
-				    seteuid(session.uid); \
-                                  } else { \
-				    session.ouid = getuid(); \
-                                    session.uid = (u); \
-                                    session.gid = (g); \
-                                    setuid(0); \
-                                    setgid((g)); \
-                                    seteuid((u)); \
-                                } }
+#define PRIVS_SETUP(u, g) \
+  { \
+    log_debug(DEBUG8, "SETUP PRIVS at %s:%d", __FILE__, __LINE__); \
+    if (getuid()) { \
+      session.ouid = session.uid = getuid(); \
+      session.gid = getgid(); \
+      if (setgid(session.gid)) \
+        log_pri(LOG_ERR, "PRIVS_SETUP: unable to setgid(): %s", \
+          strerror(errno)); \
+      if (setuid(session.uid)) \
+        log_pri(LOG_ERR, "PRIVS_SETUP: unable to setuid(): %s", \
+          strerror(errno)); \
+      if (seteuid(session.uid)) \
+        log_pri(LOG_ERR, "PRIVS_SETUP: unable to seteuid(): %s", \
+          strerror(errno)); \
+    } else { \
+      session.ouid = getuid(); \
+      session.uid = (u); \
+      session.gid = (g); \
+      if (setuid(0)) \
+        log_pri(LOG_ERR, "PRIVS_SETUP: unable to setuid(): %s", \
+          strerror(errno)); \
+      if (setgid((g))) \
+        log_pri(LOG_ERR, "PRIVS_SETUP: unable to setgid(): %s", \
+          strerror(errno)); \
+      if (seteuid((u))) \
+        log_pri(LOG_ERR, "PRIVS_SETUP: unable to seteuid(): %s", \
+          strerror(errno)); \
+    } \
+  }
 
+/* Switch back to root privs.
+ */
+#define PRIVS_ROOT \
+  if (!session.disable_id_switching) { \
+    log_debug(DEBUG8, "ROOT PRIVS at %s:%d", __FILE__, __LINE__); \
+    if (seteuid(0)) \
+      log_pri(LOG_ERR, "PRIVS_ROOT: unable to seteuid(): %s", \
+        strerror(errno)); \
+  }
 
-/* Switch back to root */
+/* Switch to the privs of the login user.
+ */
+#define PRIVS_USER \
+  if (!session.disable_id_switching) { \
+    if (session.login_uid == 0) { \
+      log_debug(DEBUG1, "Use of PRIVS_USER before session.login_uid set " \
+        "in %s %d", __FILE__, __LINE__); \
+    } else { \
+      log_debug(DEBUG8, "USER PRIVS %d at %s:%d", session.login_uid, \
+        __FILE__, __LINE__); \
+      if (seteuid(0)) \
+        log_pri(LOG_ERR, "PRIVS_USER: unable to seteuid(0): %s", \
+          strerror(errno)); \
+      if (seteuid(session.login_uid)) \
+        log_pri(LOG_ERR, "PRIVS_USER: unable to seteuid(session.login_uid): " \
+          "%s", strerror(errno)); \
+    } \
+  }
 
-#define PRIVS_ROOT		if(!session.disable_id_switching) \
-				{ log_debug(DEBUG8, "ROOT PRIVS at %s:%d", \
-                                  __FILE__, __LINE__); \
-                                  seteuid(0); }
+/* Relinquish privs granted by PRIVS_ROOT or PRIVS_USER.
+ */
+#define PRIVS_RELINQUISH \
+  if (!session.disable_id_switching) { \
+    if (geteuid() != 0) { \
+      if (seteuid(0)) \
+        log_pri(LOG_ERR, "PRIVS_RELINQUISH: unable to seteuid(0): %s", \
+          strerror(errno)); \
+    } \
+    log_debug(DEBUG8, "RELINQUISH PRIVS at %s:%d", __FILE__, __LINE__); \
+    if (seteuid(session.uid)) \
+      log_pri(LOG_ERR, "PRIVS_RELINQUISH: unable to seteuid(session.uid): %s", \
+        strerror(errno)); \
+  }
 
-/* Switch to the login user */
-#define PRIVS_USER		if(!session.disable_id_switching) \
-				{ if (session.login_uid == 0) { \
-				    log_debug(DEBUG1, \
-                                    "Use of PRIVS_USER before " \
-                                    "session.login_uid set in %s %d", \
-                                    __FILE__, __LINE__); \
-				  } else {\
-                                     log_debug(DEBUG8, \
-                                       "USER PRIVS %d at %s:%d", \
-                                       session.login_uid, __FILE__, __LINE__); \
-				     seteuid(0); \
-                                     seteuid(session.login_uid); \
-				  } }
-
-/* Relinquish privs granted by PRIVS_ROOT or PRIVS_USER */
-
-#define PRIVS_RELINQUISH	if(!session.disable_id_switching) \
-				{ if (geteuid()!=0) { seteuid(0); } \
-                                  log_debug(DEBUG8, \
-                                    "RELINQUISH PRIVS at %s:%d", \
-                                  __FILE__, __LINE__); \
-				  seteuid(session.uid); }
-
-/* Revoke all privs */
-
-#define PRIVS_REVOKE		{ log_debug(DEBUG8, "REVOKE PRIVS at %s:%d", \
-                                  __FILE__, __LINE__); \
-                                  seteuid(0); \
-				  setgid(session.gid); \
-				  setuid(session.uid); }
+/* Revoke all privs.
+ */
+#define PRIVS_REVOKE \
+  { \
+    log_debug(DEBUG8, "REVOKE PRIVS at %s:%d", __FILE__, __LINE__); \
+    if (seteuid(0)) \
+      log_pri(LOG_ERR, "PRIVS_REVOKE: unable to seteuid(): %s", \
+        strerror(errno)); \
+    if (setgid(session.gid)) \
+      log_pri(LOG_ERR, "PRIVS_REVOKE: unable to setgid(): %s", \
+        strerror(errno)); \
+    if (setuid(session.uid)) \
+      log_pri(LOG_ERR, "PRIVS_REVOKE: unable to setuid(): %s", \
+        strerror(errno)); \
+  }
 
 #endif /* HAVE_SETEUID */
 
