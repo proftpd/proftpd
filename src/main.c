@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.115 2002-09-25 23:43:20 castaglia Exp $
+ * $Id: main.c,v 1.116 2002-09-26 00:01:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -607,7 +607,7 @@ static void end_login_noexit(void) {
   run_exit_handlers();
 
   /* Clear the scoreboard entry. */
-  if (pr_scoreboard_del_entry() < 0)
+  if (!is_master && pr_scoreboard_del_entry() < 0)
     log_pri(LOG_NOTICE, "error deleting scoreboard entry: %s", strerror(errno));
 
   /* If session.user is set, we have a valid login */
