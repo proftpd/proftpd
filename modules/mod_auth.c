@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.198 2004-11-21 19:09:39 castaglia Exp $
+ * $Id: mod_auth.c,v 1.199 2004-12-05 05:50:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -435,145 +435,6 @@ static config_rec *_auth_group(pool *p, char *user, char **group,
   return c;
 }
 
-static config_rec *_auth_anonymous_group(pool *p, char *user) {
-  config_rec *c;
-  int ret = 0;
-
-  /* Retrieve the session group membership information, so that this check
-   * may work properly.
-   */
-  if (!session.gids && !session.groups &&
-      (ret = pr_auth_getgroups(p, user, &session.gids, &session.groups)) < 1)
-    pr_log_debug(DEBUG2, "no supplemental groups found for user '%s'", user);
-
-  c = find_config(main_server->conf, CONF_PARAM, "AnonymousGroup", FALSE);
-
-  if (c)
-    do {
-      ret = pr_expr_eval_group_and((char **) c->argv);
-
-    } while (!ret &&
-      (c = find_config_next(c, c->next, CONF_PARAM, "AnonymousGroup",
-        FALSE)) != NULL);
-
-  return ret ? c : NULL;
-}
-
-static config_rec *_auth_resolve_user(pool *p, char **user, char **ournamep,
-    char **anonnamep) {
-
-  config_rec *c = NULL, *topc = NULL;
-  char *ourname, *anonname = NULL;
-  unsigned char is_alias = FALSE, force_anon = FALSE, *auth_alias_only = NULL;
-
-  /* Precendence rules:
-   *   1. Search for UserAlias directive.
-   *   2. Search for Anonymous directive.
-   *   3. Normal user login
-   */
-
-  ourname = (char *) get_param_ptr(main_server->conf, "UserName", FALSE);
-
-  if (ournamep && ourname)
-    *ournamep = ourname;
-
-  c = find_config(main_server->conf, CONF_PARAM, "UserAlias", TRUE);
-
-  if (c)
-    do {
-      if (!strcmp(c->argv[0], "*") ||
-          !strcmp(c->argv[0], *user)) {
-        is_alias = TRUE;
-        break;
-      }
-    } while ((c = find_config_next(c, c->next, CONF_PARAM, "UserAlias",
-      TRUE)) != NULL);
-
-  topc = c;
-
-  while (c && c->parent &&
-    (auth_alias_only = get_param_ptr(c->parent->set, "AuthAliasOnly", FALSE))) {
-
-    /* while() loops should always handle signals. */
-    pr_signals_handle();
-
-    /* If AuthAliasOnly is on, ignore this one and continue. */
-    if (auth_alias_only && *auth_alias_only == TRUE) {
-      c = find_config_next(c, c->next, CONF_PARAM, "UserAlias", TRUE);
-      continue;
-    }
-
-    is_alias = FALSE;
-
-    find_config_set_top(topc);
-    c = find_config_next(c, c->next, CONF_PARAM, "UserAlias", TRUE);
-
-    if (c && (!strcmp(c->argv[0], "*") || !strcmp(c->argv[0], *user)))
-      is_alias = TRUE;
-  }
-
-  if (c) {
-    *user = c->argv[1];
-
-    /* If the alias is applied inside an <Anonymous> context, we have found
-     * our anon block
-     */
-
-    if (c->parent && c->parent->config_type == CONF_ANON)
-      c = c->parent;
-    else
-      c = NULL;
-  }
-
-  /* Next, search for an anonymous entry */
-
-  if (!c)
-    c = find_config(main_server->conf, CONF_ANON, NULL, FALSE);
-  else
-    find_config_set_top(c);
-
-  if (c) do {
-    anonname = (char *) get_param_ptr(c->subset, "UserName", FALSE);
-    if (!anonname)
-      anonname = ourname;
-
-    if (anonname && !strcmp(anonname, *user)) {
-       if (anonnamep)
-         *anonnamep = anonname;
-       break;
-    }
-  } while((c = find_config_next(c, c->next, CONF_ANON, NULL, FALSE)) != NULL);
-
-  if (!c) {
-    c = _auth_anonymous_group(p, *user);
-
-    if (c)
-      force_anon = TRUE;
-  }
-
-  if (!is_alias && !force_anon) {
-    auth_alias_only = get_param_ptr(c ? c->subset : main_server->conf,
-      "AuthAliasOnly", FALSE);
-
-    if (auth_alias_only && *auth_alias_only == TRUE) {
-      if (c && c->config_type == CONF_ANON)
-        c = NULL;
-      else
-        *user = NULL;
-
-      auth_alias_only = get_param_ptr(main_server->conf, "AuthAliasOnly",
-        FALSE);
-      if (*user && auth_alias_only && *auth_alias_only == TRUE)
-        *user = NULL;
-
-      if ((!user || !c) && anonnamep)
-        *anonnamep = NULL;
-    }
-  }
-
-  return c;
-}
-
 static unsigned char auth_check_ftpusers(xaset_t *s, const char *user) {
   unsigned char res = TRUE;
   FILE *ftpusersf = NULL;
@@ -795,7 +656,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
   session.hide_password = TRUE;
 
   origuser = user;
-  c = _auth_resolve_user(p,&user,&ourname,&anonname);
+  c = pr_auth_get_anon_config(p, &user, &ourname, &anonname);
 
   if (c)
     session.anon_config = c;
@@ -1579,7 +1440,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
 
   /* Determine how many users are currently connected. */
   origuser = user;
-  anon_config = _auth_resolve_user(cmd->tmp_pool, &user, NULL, NULL);
+  anon_config = pr_auth_get_anon_config(cmd->tmp_pool, &user, NULL, NULL);
 
   /* Gather our statistics. */
   if (user) {
@@ -1845,7 +1706,7 @@ MODRET auth_user(cmd_rec *cmd) {
   c->argv[0] = pstrdup(c->pool, user);
 
   origuser = user;
-  c = _auth_resolve_user(cmd->tmp_pool, &user, NULL, NULL);
+  c = pr_auth_get_anon_config(cmd->tmp_pool, &user, NULL, NULL);
 
   login_passwd_prompt = get_param_ptr(
     (c && c->config_type == CONF_ANON) ? c->subset : main_server->conf,

@@ -24,7 +24,7 @@
 
 /* ProFTPD Auth API
  *
- * $Id: auth.h,v 1.1 2004-09-26 20:11:59 castaglia Exp $
+ * $Id: auth.h,v 1.2 2004-12-05 05:50:28 castaglia Exp $
  */
 
 #ifndef PR_AUTH_H
@@ -90,6 +90,13 @@ int pr_auth_getgroups(pool *, const char *, array_header **, array_header **);
 #define auth_name2uid		pr_auth_name2uid
 #define auth_name2gid		pr_auth_name2gid
 #define auth_getgroups		pr_auth_getgroups
+
+/* This is a convenience function used by mod_auth as part of the 
+ * authentication process.  Given a user name, retrieve the <Anonymous>
+ * configuration for that user.  If the user name is not be handled as
+ * an anonymous login, NULL is returned.
+ */
+config_rec *pr_auth_get_anon_config(pool *p, char **, char **, char **);
 
 /* For internal use only. */
 int set_groups(pool *, gid_t, array_header *);

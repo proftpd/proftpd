@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.39 2004-10-15 17:07:49 castaglia Exp $
+ * $Id: auth.c,v 1.40 2004-12-05 05:50:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -545,6 +545,162 @@ int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
   }
 
   return res;
+}
+
+/* Helper function for pr_auth_get_anon_config(), for handling the
+ * (horrible) AnonymousGroup directive.
+ */
+static config_rec *auth_anonymous_group(pool *p, char *user) {
+  config_rec *c;
+  int ret = 0;
+
+  /* Retrieve the session group membership information, so that this check
+   * may work properly.
+   */
+  if (!session.gids && !session.groups &&
+      (ret = pr_auth_getgroups(p, user, &session.gids, &session.groups)) < 1)
+    pr_log_debug(DEBUG2, "no supplemental groups found for user '%s'", user);
+
+  c = find_config(main_server->conf, CONF_PARAM, "AnonymousGroup", FALSE);
+
+  if (c)
+    do {
+      ret = pr_expr_eval_group_and((char **) c->argv);
+
+    } while (!ret &&
+      (c = find_config_next(c, c->next, CONF_PARAM, "AnonymousGroup",
+        FALSE)) != NULL);
+
+  return ret ? c : NULL;
+}
+
+/* This is one messy function.  Yuck.  Yay legacy code. */
+config_rec *pr_auth_get_anon_config(pool *p, char **login, char **user_name,
+    char **anon_name) {
+  config_rec *c = NULL, *topc = NULL;
+  char *config_user_name, *config_anon_name = NULL;
+  unsigned char is_alias = FALSE, force_anon = FALSE, *auth_alias_only = NULL;
+
+  /* Precendence rules:
+   *   1. Search for UserAlias directive.
+   *   2. Search for Anonymous directive.
+   *   3. Normal user login
+   */
+
+  config_user_name = get_param_ptr(main_server->conf, "UserName", FALSE);
+  if (config_user_name && user_name)
+    *user_name = config_user_name;
+
+  c = find_config(main_server->conf, CONF_PARAM, "UserAlias", TRUE);
+  if (c) {
+    do {
+      if (strcmp(c->argv[0], "*") == 0 ||
+          strcmp(c->argv[0], *login) == 0) {
+        is_alias = TRUE;
+        break;
+      }
+
+    } while ((c = find_config_next(c, c->next, CONF_PARAM, "UserAlias",
+      TRUE)) != NULL);
+  }
+
+  /* This is where things get messy, rapidly. */
+  topc = c;
+
+  while (c && c->parent &&
+    (auth_alias_only = get_param_ptr(c->parent->set, "AuthAliasOnly", FALSE))) {
+
+    /* while() loops should always handle signals. */
+    pr_signals_handle();
+
+    /* If AuthAliasOnly is on, ignore this one and continue. */
+    if (auth_alias_only &&
+        *auth_alias_only == TRUE) {
+      c = find_config_next(c, c->next, CONF_PARAM, "UserAlias", TRUE);
+      continue;
+    }
+
+    is_alias = FALSE;
+
+    find_config_set_top(topc);
+    c = find_config_next(c, c->next, CONF_PARAM, "UserAlias", TRUE);
+
+    if (c &&
+        (strcmp(c->argv[0], "*") == 0 ||
+         strcmp(c->argv[0], *login) == 0))
+      is_alias = TRUE;
+  }
+
+  if (c) {
+    *login = c->argv[1];
+
+    /* If the alias is applied inside an <Anonymous> context, we have found
+     * our anon block.
+     */
+    if (c->parent &&
+        c->parent->config_type == CONF_ANON)
+      c = c->parent;
+    else
+      c = NULL;
+  }
+
+  /* Next, search for an anonymous entry. */
+
+  if (!c)
+    c = find_config(main_server->conf, CONF_ANON, NULL, FALSE);
+  else
+    find_config_set_top(c);
+
+  if (c) {
+    do {
+      config_anon_name = get_param_ptr(c->subset, "UserName", FALSE);
+
+      if (!config_anon_name)
+        config_anon_name = config_user_name;
+
+      if (config_anon_name &&
+          strcmp(config_anon_name, *login) == 0) {
+         if (anon_name)
+           *anon_name = config_anon_name;
+         break;
+      }
+ 
+    } while ((c = find_config_next(c, c->next, CONF_ANON, NULL,
+      FALSE)) != NULL);
+  }
+
+  if (!c) {
+    c = auth_anonymous_group(p, *login);
+
+    if (c)
+      force_anon = TRUE;
+  }
+
+  if (!is_alias && !force_anon) {
+    auth_alias_only = get_param_ptr(c ? c->subset : main_server->conf,
+      "AuthAliasOnly", FALSE);
+
+    if (auth_alias_only &&
+        *auth_alias_only == TRUE) {
+      if (c && c->config_type == CONF_ANON)
+        c = NULL;
+      else
+        *login = NULL;
+
+      auth_alias_only = get_param_ptr(main_server->conf, "AuthAliasOnly",
+        FALSE);
+      if (*login &&
+          auth_alias_only &&
+          *auth_alias_only == TRUE)
+        *login = NULL;
+
+      if ((!login || !c) &&
+          anon_name)
+        *anon_name = NULL;
+    }
+  }
+
+  return c;
 }
 
 int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
