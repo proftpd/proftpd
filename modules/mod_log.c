@@ -20,7 +20,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.12 2000-02-28 10:25:47 macgyver Exp $
+ * $Id: mod_log.c,v 1.13 2000-02-28 20:19:50 macgyver Exp $
  */
 
 #include "conf.h"
@@ -69,6 +69,9 @@ struct logfile_struc {
 #define META_USER		14
 #define META_RESPONSE_CODE	15
 #define META_CLASS		16
+#define META_ANON_PASS		17
+#define META_METHOD		18
+#define META_XFER_PATH		19
 
 static pool			*log_pool;
 static logformat_t		*formats = NULL;
@@ -77,13 +80,16 @@ static logfile_t		*logs = NULL;
 static xaset_t			*log_set = NULL;
 
 /* format string args:
+   %A			- anonymous username (password given)
    %c			- class
    %b			- bytes sent for request
    %f			- filename
+   %F			- transfer path (filename for client)
    %{FOOBAR}e		- contents of environment variable FOOBAR
    %h			- remote host
    %a			- remote IP-address
    %l			- remote logname (from identd)
+   %m			- Request (command) method (RETR, etc.)
    %p			- Port of server serving request
    %P			- Process ID of child serving request
    %r			- Full request (command)
@@ -155,55 +161,64 @@ void logformat(char *nickname, char *fmts)
         case '{':
           arg = preparse_arg(&tmp);
           continue;
+        case 'A':
+          add_meta(&outs, META_ANON_PASS, 0);
+          break;
         case 'b':
-          add_meta(&outs,META_BYTES_SENT,0);
+          add_meta(&outs, META_BYTES_SENT, 0);
           break;
         case 'c':
-          add_meta(&outs,META_CLASS,0);
+          add_meta(&outs, META_CLASS, 0);
           break;
         case 'f':
-          add_meta(&outs,META_FILENAME,0);
+          add_meta(&outs, META_FILENAME, 0);
+          break;
+        case 'F':
+          add_meta(&outs, META_XFER_PATH, 0);
           break;
         case 'e':
           if(arg) {
-            add_meta(&outs,META_ENV_VAR,0);
-            add_meta(&outs,META_ARG,1,(int)strlen(arg),arg);
+            add_meta(&outs, META_ENV_VAR, 0);
+            add_meta(&outs, META_ARG, 1, (int) strlen(arg), arg);
           }
           break;
         case 'h':
-          add_meta(&outs,META_REMOTE_HOST,0);
+          add_meta(&outs, META_REMOTE_HOST, 0);
           break;
         case 'a':
-          add_meta(&outs,META_REMOTE_IP,0);
+          add_meta(&outs, META_REMOTE_IP, 0);
           break;
         case 'l':
-          add_meta(&outs,META_IDENT_USER,0);
+          add_meta(&outs, META_IDENT_USER, 0);
+          break;
+        case 'm':
+          add_meta(&outs, META_METHOD, 0);
           break;
         case 'p': 
-          add_meta(&outs,META_SERVER_PORT,0);
+          add_meta(&outs, META_SERVER_PORT, 0);
           break;
         case 'P':
-          add_meta(&outs,META_PID,0);
+          add_meta(&outs, META_PID, 0);
           break;
         case 't':
-          add_meta(&outs,META_TIME,0);
+          add_meta(&outs, META_TIME, 0);
           if(arg)
-            add_meta(&outs,META_ARG,1,(int)strlen(arg),arg);
+            add_meta(&outs, META_ARG, 1, (int) strlen(arg), arg);
           break;
         case 'T':
-          add_meta(&outs,META_SECONDS,0);
+          add_meta(&outs, META_SECONDS, 0);
           break;
         case 'u':
-          add_meta(&outs,META_USER,0);
+          add_meta(&outs, META_USER, 0);
           break;
         case 'r':
-          add_meta(&outs,META_COMMAND,0);
+          add_meta(&outs, META_COMMAND, 0);
           break;
         case 'v':
-          add_meta(&outs,META_SERVERNAME,0);
+          add_meta(&outs, META_SERVERNAME, 0);
           break;
         case 's':
-          add_meta(&outs,META_RESPONSE_CODE,0);
+          add_meta(&outs, META_RESPONSE_CODE, 0);
           break;
         case '%':
           *outs++ = '%';
@@ -218,15 +233,15 @@ void logformat(char *nickname, char *fmts)
 
   *outs++ = 0;
 
-  lf = (logformat_t*)pcalloc(log_pool,sizeof(logformat_t));
-  lf->lf_nickname = pstrdup(log_pool,nickname);
-  lf->lf_format = palloc(log_pool,outs - format);
-  bcopy(format,lf->lf_format,outs-format);
+  lf = (logformat_t*)pcalloc(log_pool, sizeof(logformat_t));
+  lf->lf_nickname = pstrdup(log_pool, nickname);
+  lf->lf_format = palloc(log_pool, outs - format);
+  bcopy(format, lf->lf_format, outs-format);
 
   if(!format_set)
-    format_set = xaset_create(log_pool,NULL);
+    format_set = xaset_create(log_pool, NULL);
 
-  xaset_insert_end(format_set,(xasetmember_t*)lf);
+  xaset_insert_end(format_set, (xasetmember_t*)lf);
   formats = (logformat_t*)format_set->xas_list;
 }
 
@@ -235,10 +250,10 @@ void logformat(char *nickname, char *fmts)
 
 MODRET add_logformat(cmd_rec *cmd)
 {
-  CHECK_ARGS(cmd,2);
-  CHECK_CONF(cmd,CONF_ROOT);
+  CHECK_ARGS(cmd, 2);
+  CHECK_CONF(cmd, CONF_ROOT);
 
-  logformat(cmd->argv[1],cmd->argv[2]);
+  logformat(cmd->argv[1], cmd->argv[2]);
   return HANDLED(cmd);
 }
 
@@ -249,11 +264,11 @@ static int _parse_classes(char *s)
 
   do {
 
-    if((nextp = strchr(s,',')))
+    if((nextp = strchr(s, ',')))
       *nextp++ = '\0';
 
     if(!nextp) {
-      if((nextp = strchr(s,'|')))
+      if((nextp = strchr(s, '|')))
         *nextp++ = '\0';
     }
 
@@ -395,7 +410,7 @@ static
 char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
 {
   unsigned char *m;
-  char arg[256],*argp = NULL;
+  char arg[256], *argp = NULL, *pass;
 
   m = (*f) + 1;
   switch(*m) {
@@ -405,6 +420,18 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
       *argp++ = (char)*m++;
 
     *argp = 0; argp = arg;
+    m++;
+    break;
+
+  case META_ANON_PASS:
+    argp = arg;
+
+    pass = get_param_ptr(cmd->server->conf, C_PASS, FALSE);
+    if(!pass)
+      pass = "UNKNOWN";
+    
+    sstrncpy(argp, pass, sizeof(arg));
+
     m++;
     break;
 
@@ -440,6 +467,17 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
     m++;
     break;
 
+  case META_XFER_PATH:
+    argp = arg;
+    if(session.xfer.p && session.xfer.path) {
+      sstrncpy(argp, session.xfer.path, sizeof(arg));
+    } else {
+      sstrncpy(argp, "-", sizeof(arg));
+    }
+
+    m++;
+    break;
+
   case META_ENV_VAR:
     argp = arg;
     m++;
@@ -468,6 +506,12 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
   case META_IDENT_USER:
     argp = arg;
     sstrncpy(argp, session.ident_user, sizeof(arg));
+    m++;
+    break;
+
+  case META_METHOD:
+    argp = arg;
+    sstrncpy(argp, cmd->argv[0], sizeof(arg));
     m++;
     break;
 

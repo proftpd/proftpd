@@ -1450,6 +1450,11 @@ href="reference.html#Limit">&lt;Limit&gt;</a> block to completely ignore any hid
 <div align="left"> 
   <table border="0" cellpadding="3" cellspacing="0" width="50%">
     <tr> 
+      <td align="right" width="20%"><strong>%A</strong></td>
+      <td>&nbsp;</td>
+      <td>Anonymous username (password given), or UNKNOWN if non-anonymous</td>
+    </tr>
+    <tr> 
       <td align="right" width="20%"><strong>%b</strong></td>
       <td>&nbsp;</td>
       <td>Bytes sent for request</td>
@@ -1457,7 +1462,12 @@ href="reference.html#Limit">&lt;Limit&gt;</a> block to completely ignore any hid
     <tr> 
       <td align="right" width="20%"><strong>%f</strong></td>
       <td>&nbsp;</td>
-      <td>Filename stored or retrieved</td>
+      <td>Filename stored or retrieved, absolute path (not chrooted)</td>
+    </tr>
+    <tr> 
+      <td align="right" width="20%"><strong>%F</strong></td>
+      <td>&nbsp;</td>
+      <td>Filename stored or retrieved, as the client sees it</td>
     </tr>
     <tr> 
       <td align="right" width="20%"><strong>%{FOOBAR}e</strong></td>
@@ -1477,7 +1487,12 @@ href="reference.html#Limit">&lt;Limit&gt;</a> block to completely ignore any hid
     <tr> 
       <td align="right" width="20%"><strong>%l</strong></td>
       <td>&nbsp;</td>
-      <td>Remote username (from ident)</td>
+      <td>Remote username (from ident), or UNKNOWN if ident lookup failed</td>
+    </tr>
+    <tr> 
+      <td align="right" width="20%"><strong>%m</strong></td>
+      <td>&nbsp;</td>
+      <td>Command (method) name received from client, e.g., RETR</td>
     </tr>
     <tr> 
       <td align="right" width="20%"><strong>%p</strong></td>

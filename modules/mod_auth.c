@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.28 2000-02-28 19:06:48 macgyver Exp $
+ * $Id: mod_auth.c,v 1.29 2000-02-28 20:19:50 macgyver Exp $
  */
 
 #include "conf.h"
@@ -1313,12 +1313,18 @@ MODRET cmd_pass(cmd_rec *cmd)
     add_config_param_set(&cmd->server->conf,"authenticated",1,(void*)1);
     set_auth_check(NULL);
 
-    if(session.flags & SF_ANON)
-      display = (char*)get_param_ptr(session.anon_config->subset,
-                                     "DisplayLogin",FALSE);
+    remove_config(cmd->server->conf, C_PASS, FALSE);
+
+    if(session.flags & SF_ANON) {
+      add_config_param_set(&cmd->server->conf, C_PASS, 1,
+			   pstrdup(cmd->server->pool, cmd->arg));
+      display = (char*) get_param_ptr(session.anon_config->subset,
+				      "DisplayLogin", FALSE);
+    }
+    
     if(!display)
-      display = (char*)get_param_ptr(cmd->server->conf,
-                                     "DisplayLogin",FALSE);
+      display = (char*) get_param_ptr(cmd->server->conf,
+				      "DisplayLogin", FALSE);
 
     if(display)
       core_display_file(R_230,display);

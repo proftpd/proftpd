@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.37 2000-02-28 20:02:01 macgyver Exp $
+$Id: NEWS,v 1.38 2000-02-28 20:19:50 macgyver Exp $
 
 1.2.0 - Released: ???
 ---------------------
@@ -22,6 +22,8 @@ $Id: NEWS,v 1.37 2000-02-28 20:02:01 macgyver Exp $
 - Added a -t option to ProFTPD to allow syntax testing of a config file.
 - Made config file errors more useful by giving the filename and line number of
   the error.
+- Added %A, %F, and %m directives to LogFormat to allow for the creation of
+  CLF-style logs.
 
 1.2.0pre10 - Released: 1/17/00
 ------------------------------
