@@ -1,71 +1,207 @@
+-----------------------------------------------------------------------------
+TJ Saunders <tj@castaglia.org>
+2001-03-01
+
 --------------------------------------------------------------------------
-mod_wrap: a proftpd modules links with and uses the TCP wrappers library of
-	Wietse Venema (ftp://ftp.porcupine.org/pub/security/tcp_wrappers_7.6.tar.gz)
+ Description
+--------------------------------------------------------------------------
 
-If proftpd is running in inetd mode, one might wonder what the point of this
-module is, as inetd will already (on most systems, anyway) be configured to
-call/use tcpd and the TCP wrappers library.  There are two main reasons that
-prompted the development of this module: 1) the ability to use the same
-host-based access control when proftpd is run in standalone mode, using
-the same system files as inetd would use (hence a shallower learning curve
-for those who don't want to learn proftpd's Allow and Deny directives), and
-2) the ability to specify different files for different anonymous* and
-virtual servers, hence having different access rules for each server.
+ mod_wrap:
 
-*NOTE: the operation for allowing/denying anonymous logins, via mod_wrap,
-is a little different that logins using system usernames.
+  a ProFTPD module that links with and uses the TCP wrappers library of
+  Wietse Venema
+  (ftp://ftp.porcupine.org/pub/security/tcp_wrappers_7.6.tar.gz)
 
-The syntax for the added configuration directives is as follows:
+                    -------------------------------
+ If proftpd is running in inetd mode, one might wonder what the point of this
+ module is, as inetd will already (on most systems, anyway) be configured to
+ call/use tcpd and the TCP wrappers library.  There are two main reasons that
+ prompted the development of this module: 1) the ability to use the same
+ host-based access control when proftpd is run in standalone mode, using
+ the same system files as inetd would use (hence a shallower learning curve
+ for those who don't want to learn proftpd's Allow and Deny directives), and
+ 2) the ability to specify different files for different anonymous* and
+ virtual servers, hence having different access rules for each server.
 
-	UseHostsAllowFile <full-path-to-allow-file>
-	UseHostsDenyFile <full-path-to-allow-file>
+ Another reason for using tcpwrappers in standalone is that many
+ programs will automatically add entries into the tcpwrappers files,
+ and using this module will allow the standalone version of ProFTPD
+ to adapt as entries are added.  portsentry does this, for example:
+ when illegal access is attempted, it will add hosts to the hosts.deny
+ file.
 
-where the full path to the file is optional -- if the directive is used, and
-no argument given, the module will assume the use of the standard location
-for the allow/deny files, that is, /etc/hosts.allow and /etc/hosts.deny.
-The daemon name that mod_wrap will look for in these files is "proftpd".
+ *NOTE: the operation for allowing/denying anonymous logins, via mod_wrap,
+ is a little different that logins using system usernames.
 
-  HostsAllowSyslogLevel syslog-level
-  HostsDenySyslogLevel  syslog-level
+ The syntax for the added configuration directives is as follows:
+ (NOTE: these directives changed between mod_wrap-1.1 and mod_wrap-1.2.
+        Old mod_wrap-1.1 configuration directives will need to be changed)
 
-where syslog-level is the same range of arguments as accepted by the
-SyslogLevel directive -- read its description for more details.
+                    -------------------------------
 
-Configuration contexts:
+  TCPAccessFiles
 
-The UseHostsAllowFile and UseHostsDenyFile configuration directives are
-allowed in the following configuration contexts:
-"server", <Anonymous>, and <VirtualHost>
+  Syntax: TCPAccessFiles allow-filename deny-filename
+  Default: none
+  Context: server, <Anonymous>, <VirtualHost>, <Global>
+  Module: mod_wrap
+  Compatibility: 1.2.1 and later
 
-The HostsAllowSyslogLevel and HostsDenySyslogLevel configuration directives
-are allowd in the following configuration contexts:
-"server", <Anonymous>, and <VirtualHost>
+  TCPAccessFiles specifies two files, an allow and a deny file, each of
+  which contain the IP addresses, networks or name-based masks to be allowed
+  or denied connections to the server.  The files have the same format as the
+  standard tcpwrappers hosts.allow/deny files.
 
-Further reading for the use of the TCP wrapper files can be found
-by reading hosts_access(3) and hosts_access(5) (a MUST).
+  Both file names are required.  Also, the paths to both files must be
+  the full path, with two exceptions: if the path starts with "~/", the
+  check of that path will be delayed until a user requests a connection,
+  at which time the path will be resolved to that user's home directory;
+  or if the path starts with "~user/", where user is some system user.  In
+  this latter case, mod_wrap will attempt to resolve and verify the given
+  user's home directory on start-up.
 
-Notes:
+  The daemon name for which mod_wrap will look in the indicated access files
+  is "proftpd".
 
-Appropriate HTML configuration entries for this module's directives should
-accompany this file, in "Configuration.html"
+  There is a built-in precedence to the TCPAccessFiles, TCPGroupAccessFiles,
+  and TCPUserAccessFiles directives, if all are used.  mod_wrap will look
+  for applicable TCPUserAccessFiles for the connecting user first.  If no
+  applicable TCPUserAccessFiles is found, mod_wrap will search for
+  TCPGroupAccessFiles which pertain to the connecting user.  If not found,
+  mod_wrap will then look for the server-wide TCPAccessFiles directive.
+  This allows for access control to be set on a per-server basis, and allow
+  for per-user or per-group access control to be handled without interfering
+  with the server access rules.
 
-The ability to set per-user access controls allows for users of a shared
-login/account to restrict access to that account, or (in a more paranoid
-strain) if a user suspects someone on the 'net has his login information and
-wants to be sure their files can only be reached from certain hosts.
+  Example:
+
+    # server-wide access files
+    TCPAccessFiles /etc/ftpd.allow /etc/ftpd.deny
+
+    # per-user access files, which are to be found in the user's home directory
+    TCPAccessFiles ~/my.allow ~/my.deny
+
+  See also: TCPGroupAccessFiles, TCPUserAccessFiles
+
+                    -------------------------------
+
+  TCPAccessSyslogLevels
+
+  Syntax: TCPAccessSyslogLevels allow-level deny-level
+  Default: TCPAccessSyslogLevels info warn
+  Context: server, <Anonymous>, <VirtualHost>, <Global>
+  Module: mod_wrap
+  Compatibility: 1.2.1 and later
+
+  ProFTPD can log when a connection is allowed, or denied, as the result of
+  rules in the files specified in TCPAccessFiles, to the Unix syslog mechanism.
+  A discussion on the syslog levels which can be used is given in the
+  SyslogLevel directive. 
+
+  Example:
+
+    TCPAccessSyslogLevels debug warn
+
+                    -------------------------------
+
+  TCPGroupAccessFiles
+
+  Syntax: TCPGroupAccessFiles group-expression allow-filename deny-filename
+  Default: none
+  Context: server, <VirtualHost>, <Global>
+  Module: mod_wrap
+  Compatibility: 1.2.1 and later
+
+  TCPGroupAccessFiles allows for access control files, the same types of
+  files required by TCPAccessFiles, to be applied to select groups.  The
+  given group-expression is a logical AND expression, which means that
+  the connecting user must be a member of all the groups listed for this
+  directive to apply.  Group names may be negated with a "!" prefix.
+
+  The rules for the filename paths are the same as for TCPAccessFiles settings.
+
+  Example:
+
+    # every member of group wheel must connect from restricted locations
+    TCPGroupAccessFiles wheel /etc/ftpd-strict.allow /etc/ftpd-strict.deny
+
+    # everyone else gets the standard access rules
+    TCPGroupAccessFiles !wheel /etc/hosts.allow /etc/hosts.deny
  
-mod_wrap does not honor AnonymousGroup.  That is, if the user logging in
-is a member of an AnonymousGroup, the HostsAllowFile and HostsDenyFile, if
-used, will be that of the container server context, not <Anonymous> (the
-AnonymousGroup directive isn't allowed in that context, anyway).  The
-reasoning behind this had to do with the process, at authentication-time, of
-determine anonymous versus non-anonymous connection requests, and the order
-in which these determination steps occur.  I just decided it wasn't worth it,
-and don't think it should be a supported feature (unless anyone can provide
-me a practical case where such functionality would be useful).
+  See also: TCPAccessFiles
+
+                    -------------------------------
+
+  TCPUserAccessFiles
+
+  Syntax: TCPUserAccessFiles user-expression allow-filename deny-filename
+  Default: none
+  Context: server, <VirtualHost>, <Global>
+  Module: mod_wrap
+  Compatibility: 1.2.1 and later
+
+  TCPUserAccessFiles allows for access control files, the same types of
+  files required by TCPAccessFiles, to be applied to select users.  The
+  given user-expression is a logical AND expression. Listing multiple users
+  in a user-expression doesn't make much sense; however, this type of AND
+  evaluation allows for expressions such as "everyone _but_ this user" with
+  the use of the "!" negation prefix.
+
+  The rules for the filename paths are the same as for TCPAccessFiles settings.
+
+  Example:
+
+    # user admin might be allowed to connect from anywhere
+    TCPUserAccessFiles admin /etc/ftpd-anywhere.allow /etc/ftpd-anywhere.deny
+
+    # while every other user has to connect from LAN addresses
+    TCPUserAccessFiles !admin /etc/ftpd-lan.allow /etc/ftpd-lan.deny
+
+  See also: TCPAccessFiles
+
+------------------------------------------------------------------------
+ Comments
+------------------------------------------------------------------------
+
+  Further reading for the use of the TCP wrapper files can be found
+  by reading the hosts_access(3) and hosts_access(5) man pages.  HIGHLY
+  RECOMMENDED.
+
+  The ability to set per-user access controls allows for users of a shared
+  login/account to restrict access to that account, or (in a more paranoid
+  strain) if a user suspects someone on the Net of having her login
+  information and wants to be sure their files can only be reached from
+  certain hosts.
+ 
+  mod_wrap does not honor AnonymousGroup.  That is, if the user logging in
+  is a member of an AnonymousGroup, the allow and deny files, if
+  used, will be that of the container server context, not <Anonymous> (the
+  AnonymousGroup directive isn't allowed in that context, anyway).  The
+  reasoning behind this had to do with the process, at authentication-time, of
+  determining anonymous versus non-anonymous connection requests, and the order
+  in which these determination steps occur.  I just decided it wasn't worth it,
+  and don't think it should be a supported feature (unless anyone can provide
+  me a practical case where such functionality would be useful).
+
+  2001-03-01: Updated the configuration directives, as per lung@theuw.net's
+   helpful suggestions.
+
+  The most current version of mod_wrap will be available at:
+
+    http://rad.geology.washington.edu/~tj/proftpd/
+
+  2000-05-29: thanks to David Douthitt <ssrat@mailbag.com> for pointing out
+              the usefulness of using mod_wrap in conjunction with portsentry
+
+  2001-09-24: thanks to Zenon Mousmoulas <cajoline@chaosengine.de> for
+              helping determine that adding -lnsl would help in compiling
+              mod_wrap with the stock RedHat libwrap.a, so that recompiling
+              tcpwrappers without NIS/YP support should no longer be
+              necessary.
+
+  2001-09-27: thanks to Gabe Frost <gfrost@gostnet.com> for helping
+              track down several mergedown bugs.
 
 --------------------------------------------------------------------------
-Copyright 2000 TJ Saunders
-TJ Saunders <tj@digisle.net>
-August 12, 2000
+Copyright 2000,2001 TJ Saunders
 --------------------------------------------------------------------------

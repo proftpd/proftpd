@@ -2,7 +2,7 @@
  * ProFTPD: mod_wrap -- use Wietse Venema's TCP wrappers library for
  *                      access control
  *
- * Copyright (c) 2000 TJ Saunders
+ * Copyright (c) 2000,2001 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,11 +18,16 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  *
- * -- DO NOT MODIFY THE TWO LINES BELOW --
- * $Libraries: -lwrap$
- * $Id: mod_wrap.c,v 1.1 2000-10-08 21:36:51 macgyver Exp $
+ * As a special exemption, TJ Saunders gives permission to link this program
+ * with OpenSSL, and distribute the resulting executable, without including
+ * the source code for OpenSSL in the source distribution.
  *
+ * -- DO NOT MODIFY THE TWO LINES BELOW --
+ * $Libraries: -lwrap -lnsl$
+ * $Id: mod_wrap.c,v 1.2 2001-11-08 17:28:41 flood Exp $
  */
+
+#define MOD_WRAP_VERSION "mod_wrap/1.2.2"
 
 #include "conf.h"
 #include "privs.h"
@@ -31,35 +36,84 @@
 /* these need to be defined for the libwrap functions -- default settings
  * are those from tcpd.h
  */
-
 int allow_severity = LOG_INFO;
 int deny_severity = LOG_WARNING;
+
+/* function prototypes */
+static int wrap_eval_expression(char **, array_header *);
+static char *wrap_get_user_table(cmd_rec *, char *, char *);
+static int wrap_is_usable_file(char *);
+static void wrap_log_request_allowed(int, struct request_info *);
+static void wrap_log_request_denied(int, struct request_info *);
+static config_rec *wrap_resolve_user(pool *, char **);
 
 /* -------------------------------------------------------------------------
     Helper Functions
    ------------------------------------------------------------------------- */
 
+/* boolean "expression" matching, returns TRUE if the entire expression matches
+ */
+static int wrap_eval_expression(char **config_expr,
+    array_header *session_expr) {
+
+  int index, found;
+  char *elem = NULL, **list = NULL;
+
+  /* sanity check */
+  if (!config_expr || !*config_expr || !session_expr)
+    return FALSE;
+
+  list = (char **) session_expr->elts;
+
+  for (; *config_expr; config_expr++) {
+    elem = *config_expr;
+    found = FALSE;
+
+    if (*elem == '!') {
+      found = !found;
+      elem++;
+    }
+
+    for (index = 0; index < session_expr->nelts; index++) {
+      if (list[index] && !strcmp(list[index], elem)) {
+        found = !found;
+        break;
+      }
+    }
+
+    if (!found) {
+      config_expr = NULL;
+      break;
+    }
+  }
+
+  if (config_expr)
+    return TRUE;
+
+  return FALSE;
+}
+
 /* Determine logging-in user's access table locations.  This function was
  * "borrowed" (ie plagiarized/copied/whatever) liberally from modules/
  * mod_auth.c -- the _true_ author is MacGuyver <macguyver@tos.net>.
  */
-
-static char *_get_user_table(cmd_rec *command_rec, char *user, char *path) {
+static char *wrap_get_user_table(cmd_rec *cmd, char *user,
+    char *path) {
 
   char *realpath = NULL;
   struct passwd *pw;
 
-  pw = auth_getpwnam(command_rec->pool, user);
+  pw = auth_getpwnam(cmd->pool, user);
 
   /* For the dir_realpath() function to work, some session members need to
    * be set.
    */
-  session.user = pstrdup(command_rec->pool, pw->pw_name);
+  session.user = pstrdup(cmd->pool, pw->pw_name);
   session.login_uid = pw->pw_uid;
 
   PRIVS_USER;
 
-  realpath = dir_realpath(command_rec->pool, path);
+  realpath = dir_realpath(cmd->pool, path);
 
   PRIVS_RELINQUISH;
 
@@ -69,18 +123,61 @@ static char *_get_user_table(cmd_rec *command_rec, char *user, char *path) {
   return path;
 }
 
+static int wrap_is_usable_file(char *filename) {
+
+  struct stat statbuf;
+  fsdir_t *fs_file = NULL;
+
+  /* check the easy case first */
+  if (filename == NULL)
+    return FALSE;
+
+  if (fs_stat(filename, &statbuf) == -1) {
+    log_pri(LOG_INFO, MOD_WRAP_VERSION ": \"%s\": %s", filename,
+      strerror(errno));
+    return FALSE;
+  }
+
+  /* OK, the file exists.  Now, to make sure that the current process
+   * can _read_ the file
+   */
+  if ((fs_file = fs_open(filename, O_RDONLY, NULL)) == NULL) {
+    log_pri(LOG_INFO, MOD_WRAP_VERSION ": \"%s\": %s", filename,
+      strerror(errno));
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+static void wrap_log_request_allowed(int priority,
+    struct request_info *request) {
+  log_pri(priority, MOD_WRAP_VERSION ": allowed connection from %s",
+    eval_client(request));
+
+  /* done */
+  return;
+}
+
+static void wrap_log_request_denied(int priority,
+    struct request_info *request) {
+  log_pri(priority, MOD_WRAP_VERSION ": refused connection from %s",
+    eval_client(request));
+
+  /* done */
+  return;
+}
+
 /* yet more plagiarizing...this one raided from mod_auth's _auth_resolve_user()
  * function [in case you haven't noticed yet, I'm quite the hack, in the
  * _true_ sense of the world]. =) hmmm...I wonder if it'd be feasible
  * to make some of mod_auth's functions visible from src/auth.c?
  */
-
-config_rec *_resolve_user(pool *pool, char **user, char **ournamep,
-    char **anonnamep) {
+static config_rec *wrap_resolve_user(pool *pool, char **user) {
 
   config_rec *conf, *top_conf;
   char *ourname,*anonname = NULL;
-  int is_alias = 0, force_anon = 0;
+  int is_alias = FALSE, force_anon = FALSE;
 
   /* Precendence rules:
    *   1. Search for UserAlias directive.
@@ -90,16 +187,13 @@ config_rec *_resolve_user(pool *pool, char **user, char **ournamep,
 
   ourname = (char*) get_param_ptr(main_server->conf, "UserName", FALSE);
 
-  if (ournamep && ourname)
-    *ournamep = ourname; 
-
   conf = find_config(main_server->conf, CONF_PARAM, "UserAlias", TRUE);
 
   if (conf) do {
     if (!strcmp(conf->argv[0], "*") || !strcmp(conf->argv[0], *user)) {
-      is_alias = 1;
+      is_alias = TRUE;
       break;
-    }  
+    } 
 
   } while ((conf = find_config_next(conf, conf->next, CONF_PARAM,
     "UserAlias", TRUE)) != NULL);
@@ -110,12 +204,12 @@ config_rec *_resolve_user(pool *pool, char **user, char **ournamep,
   while (conf && conf->parent &&
       find_config(conf->parent->set, CONF_PARAM, "AuthAliasOnly", FALSE)) {
 
-    is_alias = 0;
+    is_alias = FALSE;
     find_config_set_top(top_conf);
     conf = find_config_next(conf, conf->next, CONF_PARAM, "UserAlias", TRUE);
 
     if (conf && (!strcmp(conf->argv[0], "*") || !strcmp(conf->argv[0], *user)))
-      is_alias = 1;
+      is_alias = TRUE;
   }
 
   if (conf) {
@@ -124,16 +218,13 @@ config_rec *_resolve_user(pool *pool, char **user, char **ournamep,
     /* If the alias is applied inside an <Anonymous> context, we have found
      * our anon block
      */
-
     if (conf->parent && conf->parent->config_type == CONF_ANON)
       conf = conf->parent;
-
     else
       conf = NULL;
   }
 
   /* Next, search for an anonymous entry */
-
   if (!conf)
     conf = find_config(main_server->conf, CONF_ANON, NULL, FALSE);
 
@@ -146,12 +237,10 @@ config_rec *_resolve_user(pool *pool, char **user, char **ournamep,
     if (!anonname)
       anonname = ourname;
 
-    if (anonname && !strcmp(anonname,*user)) {
-
-      if (anonnamep)
-        *anonnamep = anonname;
+    if (anonname && !strcmp(anonname, *user)) {
        break;
     }
+
   } while ((conf = find_config_next(conf, conf->next, CONF_ANON, NULL,
     FALSE)) != NULL);
 
@@ -159,7 +248,7 @@ config_rec *_resolve_user(pool *pool, char **user, char **ournamep,
 
     if (find_config((conf ? conf->subset :
         main_server->conf), CONF_PARAM, "AuthAliasOnly", FALSE)) {
-      
+
       if (conf && conf->config_type == CONF_ANON)
         conf = NULL;
 
@@ -169,338 +258,527 @@ config_rec *_resolve_user(pool *pool, char **user, char **ournamep,
       if (*user && find_config(main_server->conf, CONF_PARAM, "AuthAliasOnly",
           FALSE))
         *user = NULL;
-
-      if ((!user || !conf) && anonnamep)
-        *anonnamep = NULL;
     }
   }
 
   return conf;
 }
 
-int is_usable_file(char *filename) {
-
-  struct stat statbuf;
-  fsdir_t *fs_file;
-
-  /* check the easy case first */
-  if (filename == NULL)
-    return 0;
-
-  if (fs_stat(filename, &statbuf) == -1) {
-    log_pri(LOG_INFO, "\"%s\": %s", filename, strerror(errno));
-    return 0;
-  }
-
-  /* OK, the file exists.  Now, to make sure that the current process
-   * can _read_ the file
-   */
-
-  fs_file = fs_open(filename, O_RDONLY, NULL);
-
-  if (!fs_file) {
-    log_pri(LOG_INFO, "\"%s\": %s", filename, strerror(errno));
-    return 0;
-  }
-
-  return 1;
-}
-
-void log_allowed_request(int priority, struct request_info *request) {
-  log_pri(priority, "connect from %s", eval_client(request));
-
-  /* done */
-  return;
-}
-
-void log_denied_request(int priority, struct request_info *request) {
-  log_pri(priority, "refused connect from %s", eval_client(request));
-
-  /* done */
-  return;
-}
-
 /* -------------------------------------------------------------------------
     Configuration Handlers
    ------------------------------------------------------------------------- */
 
-MODRET add_allow_file(cmd_rec *command_rec) {
+MODRET add_accessfiles(cmd_rec *cmd) {
+  config_rec *c = NULL;
 
-  /* assume use of the standard TCP wrappers installation location */
-
+  /* assume use of the standard TCP wrappers installation locations */
   char *allow_filename = "/etc/hosts.allow";
-
-  if (command_rec->argc == 1) {
-
-    /* assume use of "/etc/hosts.allow" -- do nothing */
-    ;
-
-  } else if (command_rec->argc == 2) {
-
-    /* use the user-given file, checking to make sure that it exists and
-     * is readable.
-     */
-
-    allow_filename = command_rec->argv[1];
-
-    /* if the filename begins with a '~', AND it is not immediately followed
-     * by a '/' (ie '~/'), expand it out for checking and storing for later
-     * lookups.  If the filename DOES begin with '~/', do the expansion later,
-     * after authenication.  In other words, do checking of static filenames
-     * now, and checking of dynamic (user-authentication-based) filenames
-     * later.
-     */
-
-    if (allow_filename[0] == '/') {
-
-      /* it's an absolute path, so the filename will be checked as is */
-
-      if (!is_usable_file(allow_filename))
-        CONF_ERROR(command_rec, "usage: must be a usable file");
-
-    } else if (allow_filename[0] == '~' && allow_filename[1] != '/') {
-      char *allow_real_file = NULL;
-
-      allow_real_file = dir_realpath(command_rec->pool, allow_filename);
-
-      if (allow_real_file == NULL || !is_usable_file(allow_real_file))
-        CONF_ERROR(command_rec, "usage: must be a usable file");
-
-      allow_filename = allow_real_file;
-
-    } else if (allow_filename[0] != '~' && allow_filename[0] != '/') {
-
-      /* no relative paths allowed */
-      CONF_ERROR(command_rec,
-        "usage: filename must start with \"/\" or \"~\"");
-
-    } else {
-
-      /* it's a determine-at-login-time filename -- check it later */
-      ;
-    }
-
-  } else
-    CONF_ERROR(command_rec, "syntax: invalid number of arguments");
-
-  CHECK_CONF(command_rec, CONF_ROOT|CONF_ANON|CONF_VIRTUAL);
-
-  add_config_param_str("HostsAllowFile", 1, (void *) allow_filename);
-
-  /* done */
-  return HANDLED(command_rec);
-}
-
-MODRET add_deny_file(cmd_rec *command_rec) {
-
-  /* assume use of the standard TCP wrappers installation location */
-
   char *deny_filename = "/etc/hosts.deny";
 
-  if (command_rec->argc == 1) {
+  CHECK_ARGS(cmd, 2);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_ANON|CONF_VIRTUAL|CONF_GLOBAL);
 
-    /* assume use of "/etc/hosts.deny" -- do nothing */
+  /* use the user-given files, checking to make sure that they exist and
+   * are readable.
+   */
+  allow_filename = cmd->argv[1];
+  deny_filename = cmd->argv[2];
+
+  /* if the filenames begin with a '~', AND this is not immediately followed
+   * by a '/' (ie '~/'), expand it out for checking and storing for later
+   * lookups.  If the filenames DO begin with '~/', do the expansion later,
+   * after authenication.  In other words, do checking of static filenames
+   * now, and checking of dynamic (user-authentication-based) filenames
+   * later.
+   */
+  if (allow_filename[0] == '/') {
+
+    /* it's an absolute path, so the filename will be checked as is */
+    if (!wrap_is_usable_file(allow_filename))
+      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+        cmd->argv[0], ": '", allow_filename, "' must be a usable file", NULL));
+
+  } else if (allow_filename[0] == '~' && allow_filename[1] != '/') {
+    char *allow_real_file = NULL;
+
+    allow_real_file = dir_realpath(cmd->pool, allow_filename);
+
+    if (allow_real_file == NULL || !wrap_is_usable_file(allow_real_file))
+      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+        cmd->argv[0], ": '", allow_filename, "' must be a usable file", NULL));
+
+    allow_filename = allow_real_file;
+
+  } else if (allow_filename[0] != '~' && allow_filename[0] != '/') {
+
+    /* no relative paths allowed */
+    return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      cmd->argv[0], ": '", allow_filename, "' must start with \"/\" or \"~\"",
+      NULL));
+
+  } else {
+
+    /* it's a determine-at-login-time filename -- check it later */
     ;
+  }
 
-  } else if (command_rec->argc == 2) {
+  if (deny_filename[0] == '/') {
 
-    /* use the user-given file, checking to make sure that it exists and
-     * is readable.
-     */
+    /* it's an absolute path, so the filename will be checked as is */
+    if (!wrap_is_usable_file(deny_filename))
+      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+        cmd->argv[0], ": '", deny_filename, "' must be a usable file", NULL));
 
-    deny_filename = command_rec->argv[1];
+  } else if (deny_filename[0] == '~' && deny_filename[1] != '/') {
+    char *deny_real_file = NULL;
 
-    /* if the filename begins with a '~', AND it is not immediately followed
-     * by a '/' (ie '~/'), expand it out for checking and storing for later
-     * lookups.  If the filename DOES begin with '~/', do the expansion later,
-     * after authenication.  In other words, do checking of static filenames
-     * now, and checking of dynamic (user-authentication-based) filenames
-     * later.
-     */
+    deny_real_file = dir_realpath(cmd->pool, deny_filename);
 
-    if (deny_filename[0] == '/') {
+    if (deny_real_file == NULL || !wrap_is_usable_file(deny_real_file))
+      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+        cmd->argv[0], ": '", deny_filename, "' must be a usable file", NULL));
 
-      /* it's an absolute path, so the filename will be checked as is */
+    deny_filename = deny_real_file;
 
-      if (!is_usable_file(deny_filename))
-        CONF_ERROR(command_rec, "usage: must be a usable file");
+  } else if (deny_filename[0] != '~' && deny_filename[0] != '/') {
 
-    } else if (deny_filename[0] == '~' && deny_filename[1] != '/') {
-      char *deny_real_file = NULL;
+    /* no relative paths allowed */
+    return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      cmd->argv[0], ": '", deny_filename, "' must start with \"/\" or \"~\"",
+      NULL));
 
-      deny_real_file = dir_realpath(command_rec->pool, deny_filename);
+  } else {
 
-      if (deny_real_file == NULL || !is_usable_file(deny_real_file))
-        CONF_ERROR(command_rec, "usage: must be a usable file");
+    /* it's a determine-at-login-time filename -- check it later */
+    ;
+  }
 
-      deny_filename = deny_real_file;
-
-    } else if (deny_filename[0] != '~' && deny_filename[0] != '/') {
-
-      /* no relative paths allowed */
-      CONF_ERROR(command_rec,
-        "usage: filename must start with \"/\" or \"~\"");
-
-    } else {
-
-      /* it's a determine-at-login-time filename -- check it later */
-      ;
-    }
-
-  } else
-    CONF_ERROR(command_rec, "syntax: invalid number of arguments");
-
-  CHECK_CONF(command_rec, CONF_ROOT|CONF_ANON|CONF_VIRTUAL);
-
-  add_config_param_str("HostsDenyFile", 1, (void *) deny_filename);
+  c = add_config_param_str("TCPAccessFiles", 2, (void *) allow_filename,
+    (void *) deny_filename);
+  c->flags |= CF_MERGEDOWN;
 
   /* done */
-  return HANDLED(command_rec);
+  return HANDLED(cmd);
 }
 
-/* These two functions are copied, almost verbatim, from the set_sysloglevel()
+MODRET add_groupaccessfiles(cmd_rec *cmd) {
+  int group_argc = 1;
+  char **group_argv = NULL;
+  array_header *group_acl = NULL;
+  config_rec *c = NULL;
+
+  /* assume use of the standard TCP wrappers installation locations */
+  char *allow_filename = NULL, *deny_filename = NULL;
+
+  CHECK_ARGS(cmd, 3);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  /* use the user-given files, checking to make sure that they exist and
+   * are readable.
+   */
+  allow_filename = cmd->argv[2];
+  deny_filename = cmd->argv[3];
+
+  /* if the filenames begin with a '~', AND this is not immediately followed
+   * by a '/' (ie '~/'), expand it out for checking and storing for later
+   * lookups.  If the filenames DO begin with '~/', do the expansion later,
+   * after authenication.  In other words, do checking of static filenames
+   * now, and checking of dynamic (user-authentication-based) filenames
+   * later.
+   */
+  if (allow_filename[0] == '/') {
+
+    /* it's an absolute path, so the filename will be checked as is */
+    if (!wrap_is_usable_file(allow_filename))
+      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+        cmd->argv[0], ": '", allow_filename, "' must be a usable file", NULL));
+
+  } else if (allow_filename[0] == '~' && allow_filename[1] != '/') {
+    char *allow_real_file = NULL;
+
+    allow_real_file = dir_realpath(cmd->pool, allow_filename);
+
+    if (allow_real_file == NULL || !wrap_is_usable_file(allow_real_file))
+      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+        cmd->argv[0], ": '", allow_filename, "' must be a usable file", NULL));
+
+    allow_filename = allow_real_file;
+
+  } else if (allow_filename[0] != '~' && allow_filename[0] != '/') {
+
+    /* no relative paths allowed */
+    return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      cmd->argv[0], ": '", allow_filename, "' must start with \"/\" or \"~\"",
+      NULL));
+
+  } else {
+
+    /* it's a determine-at-login-time filename -- check it later */
+    ;
+  }
+
+  if (deny_filename[0] == '/') {
+
+    /* it's an absolute path, so the filename will be checked as is */
+    if (!wrap_is_usable_file(deny_filename))
+      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+        cmd->argv[0], ": '", deny_filename, "' must be a usable file", NULL));
+
+  } else if (deny_filename[0] == '~' && deny_filename[1] != '/') {
+    char *deny_real_file = NULL;
+
+    deny_real_file = dir_realpath(cmd->pool, deny_filename);
+
+    if (deny_real_file == NULL || !wrap_is_usable_file(deny_real_file))
+      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+        cmd->argv[0], ": '", deny_filename, "' must be a usable file", NULL));
+
+    deny_filename = deny_real_file;
+
+  } else if (deny_filename[0] != '~' && deny_filename[0] != '/') {
+
+    /* no relative paths allowed */
+    return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      cmd->argv[0], ": '", deny_filename, "' must start with \"/\" or \"~\"",
+      NULL));
+
+  } else {
+
+    /* it's a determine-at-login-time filename -- check it later */
+    ;
+  }
+
+  c = add_config_param("TCPGroupAccessFiles", 0);
+
+  group_acl = parse_group_expression(cmd->tmp_pool, &group_argc, &cmd->argv[0]);
+
+  /* build the desired config_rec manually */
+  c->argc = group_argc + 2;
+  c->argv = pcalloc(c->pool, (group_argc + 2) * sizeof(char *));
+  group_argv = (char **) c->argv;
+
+  /* the access files are the first two arguments */
+  *group_argv++ = pstrdup(permanent_pool, allow_filename);
+  *group_argv++ = pstrdup(permanent_pool, deny_filename);
+
+  /* and the group names follow */
+  if (group_argc && group_acl)
+    while (group_argc--) {
+      *group_argv++ = pstrdup(permanent_pool, *((char **) group_acl->elts));
+      group_acl->elts = ((char **) group_acl->elts) + 1;
+    }
+
+  *group_argv = NULL;
+
+  c->flags |= CF_MERGEDOWN;
+
+  /* done */
+  return HANDLED(cmd);
+}
+
+MODRET add_useraccessfiles(cmd_rec *cmd) {
+  int user_argc = 1;
+  char **user_argv = NULL;
+  array_header *user_acl = NULL;
+  config_rec *c = NULL;
+
+  /* assume use of the standard TCP wrappers installation locations */
+  char *allow_filename = NULL, *deny_filename = NULL;
+
+  CHECK_ARGS(cmd, 3);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  /* use the user-given files, checking to make sure that they exist and
+   * are readable.
+   */
+  allow_filename = cmd->argv[2];
+  deny_filename = cmd->argv[3];
+
+  /* if the filenames begin with a '~', AND this is not immediately followed
+   * by a '/' (ie '~/'), expand it out for checking and storing for later
+   * lookups.  If the filenames DO begin with '~/', do the expansion later,
+   * after authenication.  In other words, do checking of static filenames
+   * now, and checking of dynamic (user-authentication-based) filenames
+   * later.
+   */
+  if (allow_filename[0] == '/') {
+
+    /* it's an absolute path, so the filename will be checked as is */
+    if (!wrap_is_usable_file(allow_filename))
+      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+        cmd->argv[0], ": '", allow_filename, "' must be a usable file", NULL));
+
+  } else if (allow_filename[0] == '~' && allow_filename[1] != '/') {
+    char *allow_real_file = NULL;
+
+    allow_real_file = dir_realpath(cmd->pool, allow_filename);
+
+    if (allow_real_file == NULL || !wrap_is_usable_file(allow_real_file))
+      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+        cmd->argv[0], ": '", allow_filename, "' must be a usable file", NULL));
+
+    allow_filename = allow_real_file;
+
+  } else if (allow_filename[0] != '~' && allow_filename[0] != '/') {
+
+    /* no relative paths allowed */
+    return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      cmd->argv[0], ": '", allow_filename, "' must start with \"/\" or \"~\"",
+      NULL));
+
+  } else {
+
+    /* it's a determine-at-login-time filename -- check it later */
+    ;
+  }
+
+  if (deny_filename[0] == '/') {
+
+    /* it's an absolute path, so the filename will be checked as is */
+    if (!wrap_is_usable_file(deny_filename))
+      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+        cmd->argv[0], ": '", deny_filename, "' must be a usable file", NULL));
+
+  } else if (deny_filename[0] == '~' && deny_filename[1] != '/') {
+    char *deny_real_file = NULL;
+
+    deny_real_file = dir_realpath(cmd->pool, deny_filename);
+
+    if (deny_real_file == NULL || !wrap_is_usable_file(deny_real_file))
+      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+        cmd->argv[0], ": '", deny_filename, "' must be a usable file", NULL));
+
+    deny_filename = deny_real_file;
+
+  } else if (deny_filename[0] != '~' && deny_filename[0] != '/') {
+
+    /* no relative paths allowed */
+    return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      cmd->argv[0], ": '", deny_filename, "' must start with \"/\" or \"~\"",
+      NULL));
+
+  } else {
+
+    /* it's a determine-at-login-time filename -- check it later */
+    ;
+  }
+
+  c = add_config_param_str("TCPUserAccessFiles", 0);
+
+  user_acl = parse_user_expression(cmd->tmp_pool, &user_argc, &cmd->argv[0]);
+
+  /* build the desired config_rec manually */
+  c->argc = user_argc + 2;
+  c->argv = pcalloc(c->pool, (user_argc + 2) * sizeof(char *));
+  user_argv = (char **) c->argv;
+
+  /* the access files are the first two arguments */
+  *user_argv++ = pstrdup(permanent_pool, allow_filename);
+  *user_argv++ = pstrdup(permanent_pool, deny_filename);
+
+  /* and the user names follow */
+  if (user_argc && user_acl)
+    while (user_argc--) {
+      *user_argv++ = pstrdup(permanent_pool, *((char **) user_acl->elts));
+      user_acl->elts = ((char **) user_acl->elts) + 1;
+    }
+
+  *user_argv = NULL;
+
+  c->flags |= CF_MERGEDOWN;
+
+  /* done */
+  return HANDLED(cmd);
+}
+
+/* This function was copied, almost verbatim, from the set_sysloglevel()
  * function in modules/mod_core.c.  I hereby cite the source for this code
  * as MacGuyver <macguyver@tos.net>. =)
  */
+MODRET set_accesssysloglevels(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  int allow_level, deny_level;
 
-MODRET set_allow_syslog_level(cmd_rec *command_rec) {
-  CHECK_ARGS(command_rec, 1);
-  CHECK_CONF(command_rec, CONF_ROOT|CONF_VIRTUAL|CONF_ANON);
+  CHECK_ARGS(cmd, 2);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
 
-  if(!strcasecmp(command_rec->argv[1], "emerg")) {
-    add_config_param("HostsAllowSyslogLevel", 1, (void *) PR_LOG_EMERG);
+  if (!strcasecmp(cmd->argv[1], "emerg")) {
+    allow_level = PR_LOG_EMERG;
 
-  } else if(!strcasecmp(command_rec->argv[1], "alert")) {
-    add_config_param("HostsAllowSyslogLevel", 1, (void *) PR_LOG_ALERT);
+  } else if (!strcasecmp(cmd->argv[1], "alert")) {
+    allow_level = PR_LOG_ALERT;
 
-  } else if(!strcasecmp(command_rec->argv[1], "crit")) {
-    add_config_param("HostsAllowSyslogLevel", 1, (void *) PR_LOG_CRIT);
+  } else if (!strcasecmp(cmd->argv[1], "crit")) {
+    allow_level = PR_LOG_CRIT;
 
-  } else if(!strcasecmp(command_rec->argv[1], "error")) {
-    add_config_param("HostsAllowSyslogLevel", 1, (void *) PR_LOG_ERR);
+  } else if (!strcasecmp(cmd->argv[1], "error")) {
+    allow_level = PR_LOG_ERR;
 
-  } else if(!strcasecmp(command_rec->argv[1], "warn")) {
-    add_config_param("HostsAllowSyslogLevel", 1, (void *) PR_LOG_WARNING);
+  } else if (!strcasecmp(cmd->argv[1], "warn")) {
+    allow_level = PR_LOG_WARNING;
 
-  } else if(!strcasecmp(command_rec->argv[1], "notice")) {
-    add_config_param("HostsAllowSyslogLevel", 1, (void *) PR_LOG_NOTICE);
+  } else if (!strcasecmp(cmd->argv[1], "notice")) {
+    allow_level = PR_LOG_NOTICE;
 
-  } else if(!strcasecmp(command_rec->argv[1], "info")) {
-    add_config_param("HostsAllowSyslogLevel", 1, (void *) PR_LOG_INFO);
+  } else if (!strcasecmp(cmd->argv[1], "info")) {
+    allow_level = PR_LOG_INFO;
 
-  } else if(!strcasecmp(command_rec->argv[1], "debug")) {
-    add_config_param("HostsAllowSyslogLevel", 1, (void *) PR_LOG_DEBUG);
+  } else if (!strcasecmp(cmd->argv[1], "debug")) {
+    allow_level = PR_LOG_DEBUG;
 
   } else {
-    CONF_ERROR(command_rec, "HostsAllowSyslogLevel requires level keyword: "
+    CONF_ERROR(cmd, "TCPAccessSyslogLevels requires \"allow\" level keyword: "
       "one of emerg/alert/crit/error/warn/notice/info/debug");
   }
 
-  return HANDLED(command_rec);
-}
+  if (!strcasecmp(cmd->argv[2], "emerg")) {
+    deny_level = PR_LOG_EMERG;
 
-MODRET set_deny_syslog_level(cmd_rec *command_rec) {
-  CHECK_ARGS(command_rec, 1);
-  CHECK_CONF(command_rec, CONF_ROOT|CONF_VIRTUAL|CONF_ANON);
+  } else if(!strcasecmp(cmd->argv[2], "alert")) {
+    deny_level = PR_LOG_ALERT;
 
-  if(!strcasecmp(command_rec->argv[1], "emerg")) {
-    add_config_param("HostsDenySyslogLevel", 1, (void *) PR_LOG_EMERG);
+  } else if(!strcasecmp(cmd->argv[2], "crit")) {
+    deny_level = PR_LOG_CRIT;
 
-  } else if(!strcasecmp(command_rec->argv[1], "alert")) {
-    add_config_param("HostsDenySyslogLevel", 1, (void *) PR_LOG_ALERT);
+  } else if(!strcasecmp(cmd->argv[2], "error")) {
+    deny_level = PR_LOG_ERR;
 
-  } else if(!strcasecmp(command_rec->argv[1], "crit")) {
-    add_config_param("HostsDenySyslogLevel", 1, (void *) PR_LOG_CRIT);
+  } else if(!strcasecmp(cmd->argv[2], "warn")) {
+    deny_level = PR_LOG_WARNING;
 
-  } else if(!strcasecmp(command_rec->argv[1], "error")) {
-    add_config_param("HostsDenySyslogLevel", 1, (void *) PR_LOG_ERR);
+  } else if(!strcasecmp(cmd->argv[2], "notice")) {
+    deny_level = PR_LOG_NOTICE;
 
-  } else if(!strcasecmp(command_rec->argv[1], "warn")) {
-    add_config_param("HostsDenySyslogLevel", 1, (void *) PR_LOG_WARNING);
+  } else if(!strcasecmp(cmd->argv[2], "info")) {
+    deny_level = PR_LOG_INFO;
 
-  } else if(!strcasecmp(command_rec->argv[1], "notice")) {
-    add_config_param("HostsDenySyslogLevel", 1, (void *) PR_LOG_NOTICE);
+  } else if(!strcasecmp(cmd->argv[2], "debug")) {
+    deny_level = PR_LOG_DEBUG;
 
-  } else if(!strcasecmp(command_rec->argv[1], "info")) {
-    add_config_param("HostsDenySyslogLevel", 1, (void *) PR_LOG_INFO);
-
-  } else if(!strcasecmp(command_rec->argv[1], "debug")) {
-    add_config_param("HostsDenySyslogLevel", 1, (void *) PR_LOG_DEBUG);
-  
   } else {
-    CONF_ERROR(command_rec, "HostsDenySyslogLevel requires level keyword: "
+    CONF_ERROR(cmd, "TCPAccessSyslogLevels requires \"deny\" level keyword: "
       "one of emerg/alert/crit/error/warn/notice/info/debug");
   }
 
-  return HANDLED(command_rec);
+  c = add_config_param("TCPAccessSyslogLevels", 2, (void *) allow_level,
+    (void *) deny_level);
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
 }
 
 /* -------------------------------------------------------------------------
     Command Handlers
    ------------------------------------------------------------------------- */
 
-MODRET handle_request(cmd_rec *command_rec) {
+MODRET wrap_handle_request(cmd_rec *cmd) {
 
   /* these variables are names expected to be set by the TCP wrapper code
    */
-
   struct request_info request;
 
-  char *user, *our_name, *anon_name = NULL;
-  config_rec *conf = NULL;
-
+  char *user = NULL;
+  config_rec *conf = NULL, *access_conf = NULL, *syslog_conf = NULL;
   hosts_allow_table = NULL;
   hosts_deny_table = NULL;
 
   /* sneaky...found in mod_auth.c's cmd_pass() function.  Need to find the
    * login UID in order to resolve the possibly-login-dependent filename.
    */
-  user = (char *) get_param_ptr(command_rec->server->conf, C_USER, FALSE);
+  user = (char *) get_param_ptr(cmd->server->conf, C_USER, FALSE);
 
   /* use mod_auth's _auth_resolve_user() [imported for use here] to get the
-   * right configuration set, since the user may be loggin in anonymously,
+   * right configuration set, since the user may be logging in anonymously,
    * and the session struct hasn't yet been set for that yet (thus short-
-   * circuiting the easiest way to the get right context...the macros.
+   * circuiting the easiest way to get the right context...the macros.
    */
+  conf = wrap_resolve_user(cmd->pool, &user);
 
-  conf = _resolve_user(command_rec->pool, &user, &our_name, &anon_name);
-
-  /* Retrieve the configured Hosts*File strings -- this is not as simple as
-   * I would prefer [what I would prefer is a less-monolithic
-   * mod_auth:_setup_environment(), but that's beside the point right now].
-   * Unfortunately, just using the CURRENT_CONF macro won't do, as the
-   * session.anon_config member isn't assigned until _after_ the C_PASS
-   * PRE_CMD and CMD command handler chains have finished, since
-   * it's _after_ the C_PASS command is handled that mod_auth's 
-   * _setup_environment() [which builds/sets session.anon_config] function
-   * is called.  By this time, the command handler won't have a chance to deny
-   * the connection request if necessary.  So, the trick is, how to know
-   * _when_ to look in the <Anonymous> config stuff (as it's handled a little
-   * differently) for the Hosts*File parameters, and when not too, at this
-   * point in the chain, where the engine has not yet verified that the
-   * user requesting the connection is doing so as an anonymous user or
-   * no?  Answer: pilfer mod_auth, and use it's _auth_resolve_user()! (see
-   * above). =)
+  /* search first for user-specific access files.  Multiple TCPUserAccessFiles
+   * directives are allowed.
    */
+  if ((access_conf = find_config(conf ? conf->subset : CURRENT_CONF, CONF_PARAM,
+      "TCPUserAccessFiles", FALSE)) != NULL) {
+    int matched = FALSE;
+    array_header *user_array = NULL;
 
-  hosts_allow_table = (char *) get_param_ptr(
-    conf ? conf->subset : CURRENT_CONF, "HostsAllowFile", FALSE);
-  hosts_deny_table = (char *) get_param_ptr(
-    conf ? conf->subset : CURRENT_CONF, "HostsDenyFile", FALSE);
+    while (access_conf) {
+
+      user_array = make_array(cmd->tmp_pool, 0, sizeof(char *));
+      *((char **) push_array(user_array)) = pstrdup(cmd->tmp_pool, user);
+
+      /* check the user expression -- don't forget the offset, to skip
+       * the access file name strings in argv
+       */
+      if (wrap_eval_expression(((char **) access_conf->argv) + 2,
+          user_array)) {
+        matched = TRUE;
+        break;
+      }
+
+      access_conf = find_config_next(access_conf, access_conf->next,
+        CONF_PARAM, "TCPUserAccessFiles", FALSE);
+    }
+
+    if (!matched)
+      access_conf = NULL;
+  }
+
+  /* Next, search for group-specific access files.  Multiple
+   * TCPGroupAccessFiles directives are allowed.
+   */ 
+  if (!access_conf && (access_conf = find_config(conf ? conf->subset :
+        CURRENT_CONF, CONF_PARAM, "TCPGroupAccessFiles", FALSE)) != NULL) {
+    int matched = FALSE;
+    array_header *group_array = NULL;
+
+    while (access_conf) {
+
+      group_array = make_array(cmd->tmp_pool, 0, sizeof(char *));
+      get_groups(cmd->tmp_pool, user, NULL, &group_array);
+
+      /* check the group expression -- don't forget the offset, to skip
+       * the access file names strings in argv
+       */
+      if (wrap_eval_expression(((char **) access_conf->argv) + 2,
+          group_array)) {
+        matched = TRUE;
+        break;
+      }
+
+      access_conf = find_config_next(access_conf, access_conf->next,
+        CONF_PARAM, "TCPGroupAccessFiles", FALSE);
+    }
+
+    if (!matched)
+      access_conf = NULL;
+  }
+
+  /* Finally for globally-applicable access files.  Only one such directive
+   * is allowed.
+   */
+  if (!access_conf) {
+    access_conf = find_config(conf ? conf->subset : CURRENT_CONF,
+      CONF_PARAM, "TCPAccessFiles", FALSE);
+  }
+
+  if (access_conf) {
+    hosts_allow_table = (char *) access_conf->argv[0];
+    hosts_deny_table = (char *) access_conf->argv[1];
+  }
 
   /* now, check the retrieved filename, and see if it requires a login-time
    * file
    */
-
   if (hosts_allow_table != NULL && hosts_allow_table[0] == '~' &&
       hosts_allow_table[1] == '/') {
     char *allow_real_table = NULL;
 
-    allow_real_table = _get_user_table(command_rec, user, hosts_allow_table);
+    allow_real_table = wrap_get_user_table(cmd, user, hosts_allow_table);
 
-    if (!is_usable_file(allow_real_table)) {
-      log_pri(LOG_INFO, "configured HostsAllowFile %s is unusable",
-        hosts_allow_table);
+    if (!wrap_is_usable_file(allow_real_table)) {
+      log_pri(LOG_WARNING, MOD_WRAP_VERSION ": configured TCPAllowFile %s is "
+        "unusable", hosts_allow_table);
       hosts_allow_table = NULL;
 
     } else
@@ -511,21 +789,20 @@ MODRET handle_request(cmd_rec *command_rec) {
       hosts_deny_table[1] == '/') {
     char *deny_real_table = NULL;
 
-    deny_real_table = dir_realpath(command_rec->pool, hosts_deny_table);
+    deny_real_table = dir_realpath(cmd->pool, hosts_deny_table);
 
-    if (!is_usable_file(deny_real_table)) {
-      log_pri(LOG_INFO, "configured HostsDenyFile %s is unusable",
-        hosts_deny_table);
+    if (!wrap_is_usable_file(deny_real_table)) {
+      log_pri(LOG_WARNING, MOD_WRAP_VERSION ": configured TCPDenyFile %s is "
+        "unusable", hosts_deny_table);
       hosts_deny_table = NULL;
 
     } else 
       hosts_deny_table = deny_real_table;
   }
 
-  /* make sure that _both_ HostsAllowFile and HostsDenyFile are present.
+  /* make sure that _both_ allow and deny TCPAccessFiles are present.
    * If not, log the missing file, and by default allow request to succeed.
    */
-
   if (hosts_allow_table != NULL && hosts_deny_table != NULL) {
 
     /* most common case...nothing more necessary */
@@ -533,37 +810,47 @@ MODRET handle_request(cmd_rec *command_rec) {
   } else if (hosts_allow_table == NULL && hosts_deny_table != NULL) {
 
     /* log the missing file */
-    log_pri(LOG_INFO, "no usable HostsAllowFile -- allowing connection");
+    log_pri(LOG_INFO, MOD_WRAP_VERSION ": no usable allow access file -- "
+      "allowing connection");
 
-    return DECLINED(command_rec);
+    return DECLINED(cmd);
 
   } else if (hosts_allow_table != NULL && hosts_deny_table == NULL) {
 
     /* log the missing file */
-    log_pri(LOG_INFO, "no usable HostsDenyFile -- allowing connection");
+    log_pri(LOG_INFO, MOD_WRAP_VERSION ": no usable deny access file -- "
+      "allowing connection");
 
-    return DECLINED(command_rec);
+    return DECLINED(cmd);
 
   } else {
 
     /* neither set -- assume the admin hasn't configured these directives
      * at all
      */
-
-    return DECLINED(command_rec);
+    return DECLINED(cmd);
   }
+
+  /* log the names of the allow/deny files being used
+   */
+  log_pri(LOG_DEBUG, MOD_WRAP_VERSION ": using TCPAccessFiles: %s, %s",
+    hosts_allow_table, hosts_deny_table);
 
   /* retrieve the user-defined syslog priorities, if any.  Fall back to the
    * defaults as seen in tcpd.h if not defined.
    */
+  syslog_conf = find_config(main_server->conf, CONF_PARAM,
+    "TCPAccessSyslogLevels", FALSE);
 
-  if ((allow_severity = get_param_int(CURRENT_CONF, "HostsAllowSyslogLevel",
-      FALSE)) == -1)
+  if (syslog_conf) {
+    allow_severity = (int) syslog_conf->argv[1];
+    deny_severity = (int) syslog_conf->argv[2];
+
+  } else {
+
     allow_severity = LOG_INFO;
-
-  if ((deny_severity = get_param_int(CURRENT_CONF, "HostsDenySyslogLevel",
-      FALSE)) == -1)
     deny_severity = LOG_WARNING;
+  }
 
   request_init(&request, RQ_DAEMON, "proftpd", RQ_FILE,
     session.c->rfd, 0);
@@ -572,45 +859,43 @@ MODRET handle_request(cmd_rec *command_rec) {
 
   if (STR_EQ(eval_hostname(request.client), paranoid) ||
       !hosts_access(&request)) {
-
-    /* if denying the connection, add an appropriate response for the client.
-     */
-
-    add_response_err(R_550,
-      "Unable to connect to %s: connection refused",
-      command_rec->server->ServerFQDN);
-
-    add_response_err(R_DUP,
-      "Please contact %s for more information",
-      command_rec->server->ServerAdmin);
+    char *denymsg = NULL;
 
     /* log the denied connection */
-    log_denied_request(deny_severity, &request);
+    wrap_log_request_denied(deny_severity, &request);
 
-    return ERROR(command_rec);
+    /* check for AccessDenyMsg */
+    if ((denymsg = (char *) get_param_ptr(cmd->server->conf,
+        "AccessDenyMsg", FALSE)) != NULL) {
+      denymsg = sreplace(cmd->tmp_pool, denymsg, "%u", user, NULL);
+    }
+
+    if (denymsg)
+      return ERROR_MSG(cmd, R_530, denymsg);
+    else
+      return ERROR_MSG(cmd, R_530, "Access denied.");
   }
 
   /* if request is allowable, return DECLINED (for engine to act as if this
    * handler was never called, else ERROR (for engine to abort processing and
    * deny request.
    */
-
   /* log the accepted connection */
-  log_allowed_request(allow_severity, &request);
+  wrap_log_request_allowed(allow_severity, &request);
 
-  return DECLINED(command_rec);
+  return DECLINED(cmd);
 }
 
 static conftable wrap_conftab[] = {
-  { "HostsAllowSyslogLevel", set_allow_syslog_level, NULL },
-  { "HostsDenySyslogLevel", set_deny_syslog_level, NULL },
-  { "UseHostsAllowFile", add_allow_file, NULL },
-  { "UseHostsDenyFile", add_deny_file, NULL },
+  { "TCPAccessFiles",        add_accessfiles,        NULL },
+  { "TCPAccessSyslogLevels", set_accesssysloglevels, NULL },
+  { "TCPGroupAccessFiles",   add_groupaccessfiles,   NULL },
+  { "TCPUserAccessFiles",    add_useraccessfiles,    NULL },
   { NULL }
 };
 
 static cmdtable wrap_cmdtab[] = {
-  { PRE_CMD, C_PASS, G_NONE, handle_request, FALSE, FALSE },
+  { PRE_CMD, C_PASS, G_NONE, wrap_handle_request, FALSE, FALSE },
   { 0, NULL }
 };
 
@@ -619,8 +904,9 @@ module wrap_module = {
   /* pointer to the next module -- _always_ NULL for user-defined modules */
   NULL,
 
-  /* pointer to the previous module -- _always_ NULL for user-defined */
-  /* modules */
+  /* pointer to the previous module -- _always_ NULL for user-defined
+   * modules
+   */
   NULL,
 
   /* Module API version 2.0 */
