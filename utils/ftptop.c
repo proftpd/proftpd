@@ -25,7 +25,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.8 2002-10-28 16:51:51 castaglia Exp $
+ * $Id: ftptop.c,v 1.9 2002-11-04 00:41:34 jwm Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.8.2"
@@ -41,7 +41,17 @@
 static const char *program = "ftptop";
 
 #if defined(HAVE_NCURSES_H) && defined(HAVE_LIBNCURSES)
+#define HAVE_NCURSES 1
 #include <ncurses.h>
+#endif /* HAVE_NCURSES_H */
+
+/* We don't want to include both ncurses.h and curses.h. */
+#if defined(HAVE_CURSES_H) && defined(HAVE_LIBCURSES) && !defined(HAVE_NCURSES_H)
+#define HAVE_CURSES 1
+#include <curses.h>
+#endif /* HAVE_CURSES_H */
+
+#if defined(HAVE_NCURSES) || defined(HAVE_CURSES)
 
 /* Display options */
 #define FTPTOP_DISPLAY_FORMAT \
@@ -449,13 +459,13 @@ int main(int argc, char *argv[]) {
   finish(0);
 }
 
-#else /* no HAVE_NCURSES_H */
+#else /* defined(HAVE_CURSES) || defined(HAVE_NCURSES) */
 
 #include <stdio.h>
 
 int main(int argc, char *argv[]) {
-  fprintf(stdout, "%s: no ncurses library on this system\n", program);
+  fprintf(stdout, "%s: no curses or ncurses library on this system\n", program);
   return 1;
 }
 
-#endif /* HAVE_NCURSES_H */
+#endif /* defined(HAVE_CURSES) || defined(HAVE_NCURSES) */

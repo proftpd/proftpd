@@ -475,7 +475,7 @@ AC_CHECK_HEADERS(dirent.h ndir.h sys/ndir.h sys/dir.h vmsdir.h)
 AC_CHECK_HEADERS(utmpx.h)
 AC_CHECK_HEADERS(regex.h)
 AC_CHECK_HEADER(syslog.h,have_syslog_h="yes",)
-AC_CHECK_HEADERS(ncurses.h)
+AC_CHECK_HEADERS(curses.h ncurses.h)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -691,6 +691,8 @@ fi
 
 AC_CHECK_LIB(ncurses, initscr,
   [LIBS="$LIBS -lncurses" ; AC_DEFINE(HAVE_LIBNCURSES)])
+AC_CHECK_LIB(curses, initscr,
+  [LIBS="$LIBS -lcurses" ; AC_DEFINE(HAVE_LIBCURSES)])
 
 dnl Check for various argv[] replacing functions on various OSs
 AC_CHECK_FUNCS(setproctitle)
