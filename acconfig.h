@@ -36,6 +36,9 @@
 /* Define if your <syslog.h> defines the LOG_FTP macro */
 #undef HAVE_LOG_FTP
 
+/* Define if you want support for PAM based authentication */
+#undef HAVE_PAM
+
 /* Define if your system has __progname */
 #undef HAVE___PROGNAME
 

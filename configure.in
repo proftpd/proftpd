@@ -268,6 +268,23 @@ if test x"$enable_pam" != xno ; then
 	    ac_build_addl_modules="modules/mod_pam.o $ac_build_addl_modules"
 	  fi
       fi ])
+
+  dnl This next check looks funky due to a linker problem with some versions
+  dnl of the PAM library.  Prior to 0.72 release, the Linux PAM shared library
+  dnl omitted requiring libdl linking information. PAM-0.72 or better ships
+  dnl with RedHat 6.2 and Debian 2.2 or better.
+  if test `echo $ac_addl_modules | grep -c mod_pam` = "1"; then
+
+	AC_CHECK_LIB(pam, pam_start,
+		[AC_DEFINE(HAVE_PAM)
+			LIBS="$LIBS -lutil"],
+
+		[AC_CHECK_LIB(pam, pam_end,
+				[AC_DEFINE(HAVE_PAM)
+					LIBS="$LIBS -lpam -ldl"],,
+				[-ldl])])
+  fi
+
 fi
 
 AC_CHECK_HEADERS(ctype.h getopt.h crypt.h bstring.h strings.h)
@@ -445,7 +462,7 @@ changequote([, ])dnl
 esac])
 
 if test x"$enable_sendfile" != xno ; then
-AC_CACHE_CHECK([which sendfile() implementation we have], pr_cv_func_sendfile,
+AC_CACHE_CHECK([which sendfile() implementation to use], pr_cv_func_sendfile,
   pr_cv_func_sendfile="None"
 
   dnl Linux.
@@ -598,6 +615,7 @@ dnl Module handling.
 for module in $ac_addl_modules; do
   src=`echo "$module" | sed -e 's/\.o$//'`.c;
   if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
+
     if test ! -f $srcdir/modules/$src; then
 	olddir=`pwd`
 	cd $srcdir/modules
@@ -606,12 +624,33 @@ for module in $ac_addl_modules; do
     fi
 
     alib=`cat $srcdir/modules/$src | grep "\\\$Libraries:" | sed -e 's/^.*\$Libraries: \(.*\)\\$/\1/'`
-    test x"$alib" = x || ac_addl_libs="$alib $ac_addl_libs"
+
+    for thelib in $alib; do
+	dup="no"
+
+	for somelib in $ac_addl_libs $LIBS; do
+
+		if test "$thelib" = "$somelib"; then
+			dup="yes"
+			break
+		fi
+	done
+	
+	if test "$dup" = "no"; then
+		addonlibs="$thelib $addonlibs"
+	fi
+    done
+
+    test x"$addonlibs" = x || ac_addl_libs="$addonlibs $ac_addl_libs"
+
     adir=`cat $srcdir/modules/$src | grep "\\\$Directories:" | sed -e 's/^.*\$Directories: \(.*\)\\$/\1/'`
     test x"$adir" = x || ac_addl_dirs="$adir $ac_addl_dirs"
+
   else
+
     echo "source file '$srcdir/modules/$src' cannot be found -- aborting"
     exit 1
+
   fi
 done
 
@@ -620,52 +659,29 @@ test "x$ac_addl_libs" = x || LIBS="$LIBS $ac_addl_libs"
 ac_addl_dirs=`echo "$ac_addl_dirs" | sed -e 's/ *\$//'`
 ADDL_DIRS="$ac_addl_dirs"
 
-
-dnl Add '-ldl' to LIBS as required for linking with libpam.  Prior to 0.72,
-dnl the Linux PAM shared library omitted required libdl linking information.
-dnl PAM-0.72 ships with RH6.2 and Debian2.2.
-if test x"$enable_pam" != xno && \
-   test `echo $ac_addl_modules | grep -c mod_pam` = "1"; then
-	AC_CACHE_CHECK([whether libpam requires -ldl], pr_cv_lib_libpam,
-	  dnl Avoid $LIBS as linking will fail since -lsupp isn't compiled yet.
-	  tmp_LIBS="$LIBS"
-	  for LIBS in "-lpam" "$tmp_LIBS -lpam" ; do
-		  AC_TRY_LINK_FUNC(pam_start, pr_cv_lib_libpam="no",
-			  LIBS="$LIBS -ldl"
-			  AC_TRY_LINK_FUNC(pam_start, pr_cv_lib_libpam="yes")
-		  )
-		  test x$pr_cv_lib_libpam != x && break
-	  done
-	  LIBS="$tmp_LIBS"
-	  if test x$pr_cv_lib_libpam != x
-	  then
-	    pr_cv_lib_libpam="yes"
-	  else
-	    pr_cv_lib_libpam="no"
-	  fi
-	)
-
-	if test x$pr_cv_lib_libpam = xyes ; then
-	  tmp_LIBS="$LIBS"
-	  LIBS="$LIBS -ldl"
-	  for i in $tmp_LIBS ; do
-		case $i in
-		-ldl)	LIBS="$tmp_LIBS" ; break ;;
-		esac
-	  done
-	fi
-fi
-
 INCLUDES="$ac_build_addl_includes"
 LIBRARIES="$ac_build_addl_libraries"
 MODULES="$ac_core_modules $ac_addl_modules"
 BUILD_MODULES="$ac_build_core_modules $ac_build_addl_modules"
 VERSION=`cat $srcdir/include/version.h | grep "#define VERSION" | sed -e 's/^.*\"\(.*\)\"/\1/'`
 
-dnl Substitute in our configuration paths as appropriate.
-AC_DEFINE_UNQUOTED(CONFIG_FILE_PATH, "${sysconfdir}/proftpd.conf")
-AC_DEFINE_UNQUOTED(PID_FILE_PATH, "${localstatedir}/proftpd.pid")
-AC_DEFINE_UNQUOTED(RUN_DIR, "${localstatedir}/proftpd")
+dnl Substitute in our configuration paths as appropriate.  We also have to
+dnl sweet talk the environment into helping us get this right, like so...
+savedPrefix="$prefix"
+savedExecPrefix="$exec_prefix"
+
+test "x$prefix" = xNONE && prefix=$ac_default_prefix
+test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
+
+AC_DEFINE_UNQUOTED(CONFIG_FILE_PATH,
+			"`eval echo "${sysconfdir}/proftpd.conf"`")
+AC_DEFINE_UNQUOTED(PID_FILE_PATH,
+			"`eval echo "${localstatedir}/proftpd.pid"`")
+AC_DEFINE_UNQUOTED(RUN_DIR,
+			"`eval echo "${localstatedir}/proftpd"`")
+
+prefix="$savedPrefix"
+exec_prefix="$savedExecPrefix"
 
 dnl And finally, generate the appropriate Make* and config.h
 AC_SUBST(MODULES)
@@ -674,6 +690,7 @@ AC_SUBST(ADDL_DIRS)
 AC_SUBST(INCLUDES)
 AC_SUBST(LIBRARIES)
 AC_SUBST(VERSION)
+
 AC_CONFIG_HEADER(config.h)
 
 CFLAGS="$CFLAGS $use_shadow"
