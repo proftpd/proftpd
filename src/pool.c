@@ -325,20 +325,6 @@ struct pool *make_named_sub_pool(struct pool *p, const char *symbol)
   blok->h.first_avail += POOL_HDR_BYTES;
   memset((char *) new_pool, 0, sizeof(struct pool));
 
-#if 0 /* This is simply unused, and will be removed in 1.3 - MacGyver */  
-  if(symbol) {
-    /* This could be questionable... - MacGyver
-     */
-    sstrncpy(&new_pool->symbol, symbol, strlen(&new_pool->symbol));
-    
-    /* Alignment issues on Sparc, SGI, and probably other hardware,
-     * demand this.
-     */
-    blok->h.first_avail += (strlen(symbol) / POOL_HDR_BYTES + 1) *
-      POOL_HDR_BYTES;
-  }
-#endif
-
   new_pool->free_first_avail = blok->h.first_avail;
   new_pool->first = new_pool->last = blok;
   
@@ -367,20 +353,21 @@ void init_alloc(void) {
 
 static void clear_pool(struct pool *p)
 {
-
-  if(!p)
-    return;			/* Sanity check */
+  /* Sanity check. */
+  if (! p)
+    return;
 
   block_alarms();
 
-  run_cleanups(p->cleanups);	 	p->cleanups = NULL;
+  run_cleanups(p->cleanups);
+  p->cleanups = NULL;
 
-  while(p->sub_pools)
+  while (p->sub_pools)
     destroy_pool(p->sub_pools);
-
   p->sub_pools = NULL;
 
-  free_blocks(p->first->h.next);	p->first->h.next = NULL;
+  free_blocks(p->first->h.next);
+  p->first->h.next = NULL;
 
   p->last = p->first;
   p->first->h.first_avail = p->free_first_avail;
@@ -392,14 +379,13 @@ void destroy_pool(pool *p)
 {
   block_alarms();
 
-  if(p->parent) {
-    if(p->parent->sub_pools == p) p->parent->sub_pools = p->sub_next;
-    if(p->sub_prev) p->sub_prev->sub_next = p->sub_next;
-    if(p->sub_next) p->sub_next->sub_prev = p->sub_prev;
+  if (p->parent) {
+    if (p->parent->sub_pools == p) p->parent->sub_pools = p->sub_next;
+    if (p->sub_prev) p->sub_prev->sub_next = p->sub_next;
+    if (p->sub_next) p->sub_next->sub_prev = p->sub_prev;
   }
 
   clear_pool(p);
-
   free_blocks(p->first);
 
   unblock_alarms();
@@ -453,8 +439,8 @@ void *palloc(struct pool *p, int reqsize)
 
 void *pcalloc(struct pool *p, int size)
 {
-  void *res = palloc(p,size);
-  memset(res,'\0',size);
+  void *res = palloc(p, size);
+  memset(res, '\0', size);
   return res;
 }
 
@@ -462,7 +448,7 @@ char *pstrdup(struct pool *p, const char *s)
 {
   char *res;
 
-  if(!s)
+  if (!s)
     return NULL;
 
   res = palloc(p, strlen(s) + 1);
@@ -474,11 +460,10 @@ char *pstrndup(struct pool *p, const char *s, int n)
 {
   char *res;
 
-  if(!s)
+  if (!s)
     return NULL;
 
   res = palloc(p, n + 1);
-
   sstrncpy(res, s, n + 1);
   return res;
 }
