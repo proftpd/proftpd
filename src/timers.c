@@ -25,12 +25,12 @@
 
 /*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.13 2002-12-07 21:45:44 jwm Exp $
+ * $Id: timers.c,v 1.14 2002-12-27 15:47:44 jwm Exp $
  */
 
-#include <signal.h>
-
 #include "conf.h"
+
+#include <signal.h>
 
 /* From src/main.c */
 volatile extern unsigned int recvd_signal_flags;

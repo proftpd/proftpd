@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.329 2002-12-27 01:05:35 castaglia Exp $
+$Id: NEWS,v 1.330 2002-12-27 15:47:44 jwm Exp $
 
 CVS
 ---------------------------------
@@ -75,6 +75,7 @@ CVS
   uploaded in advance, and cannot determine a "percentage done" value.
 - Bug 1888 - Increase mod_linuxprivs configurability.  Two new directives,
   LinuxPrivsEngine and LinuxPrivsCapabilities, are added.
+- Bug 1905 - AIX needs "config.h" included before *anything* else.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------
