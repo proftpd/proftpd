@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.98 2003-01-25 20:51:19 castaglia Exp $
+ * $Id: dirtree.c,v 1.99 2003-02-10 18:02:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2011,6 +2011,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
             path, fullpath);
 
   /* Check and build all appropriate dynamic configuration entries */
+  pr_fs_clear_cache();
   if ((isfile = pr_fsio_stat(path, &sbuf)) == -1)
     memset(&sbuf, '\0', sizeof(sbuf));
 
@@ -2031,8 +2032,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
     /* Check for a directory Umask.
      */
     if (S_ISDIR(sbuf.st_mode) ||
-		!strcasecmp(cmd, C_MKD) ||
-        !strcasecmp(cmd, C_XMKD)) {
+        !strcasecmp(cmd, C_MKD) || !strcasecmp(cmd, C_XMKD)) {
       mode_t *dir_umask = (mode_t *) get_param_ptr(CURRENT_CONF, "DirUmask",
         FALSE);
 
@@ -2147,8 +2147,9 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   }
 
   /* Check and build all appropriate dynamic configuration entries */
+  pr_fs_clear_cache();
   if ((isfile = pr_fsio_stat(path, &sbuf)) == -1)
-    memset(&sbuf,0,sizeof(sbuf));
+    memset(&sbuf, 0, sizeof(sbuf));
 
   build_dyn_config(p, path, &sbuf, FALSE);
 
@@ -2167,8 +2168,7 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
     /* Check for a directory Umask.
      */
     if (S_ISDIR(sbuf.st_mode) ||
-		!strcasecmp(cmd, C_MKD) ||
-        !strcasecmp(cmd, C_XMKD)) {
+        !strcasecmp(cmd, C_MKD) || !strcasecmp(cmd, C_XMKD)) {
       mode_t *dir_umask = (mode_t *) get_param_ptr(CURRENT_CONF, "DirUmask",
         FALSE);
 

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.366 2003-02-10 16:51:09 castaglia Exp $
+$Id: NEWS,v 1.367 2003-02-10 18:02:51 castaglia Exp $
 
 CVS
 ---
@@ -14,6 +14,8 @@ CVS
 - Bug 1949 - Compiler warns of 'long double' usage on OSX.  Typecasts have
   been added to quell some warnings, and an autoconf check added for compiler
   support for -Wno-long-double to quell others.
+- Bug 1952 - Umask Bug: Server Not Honoring VirtualHost Umask.  This was
+  a statcache caching effect bug.
 
 1.2.8rc2 - Released 29-Jan-2003
 ---------------------------------
