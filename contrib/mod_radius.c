@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.10 2003-01-02 18:25:13 castaglia Exp $
+ * $Id: mod_radius.c,v 1.11 2003-01-07 18:45:27 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.7rc6"
@@ -1900,7 +1900,7 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
   request = (radius_packet_t *) pcalloc(cmd->tmp_pool,
     sizeof(radius_packet_t));
 
-  /* open a RADIUS socket */
+  /* Open a RADIUS socket */
   if ((sockfd = radius_open_socket()) < 0) {
     radius_log("socket open failed");
     return DECLINED(cmd);
@@ -1919,7 +1919,7 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
     /* Build the packet. */
     request->code = RADIUS_AUTH_REQUEST;
     radius_build_packet(request, radius_realm ?
-      pstrcat(radius_pool, user, radius_realm, NULL) : user, cmd->argv[1],
+      pstrcat(radius_pool, user, radius_realm, NULL) : user, cmd->arg,
       auth_server->secret);
 
     radius_add_attrib(request, RADIUS_SERVICE_TYPE, (unsigned char *) &service,
