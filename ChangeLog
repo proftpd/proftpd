@@ -1,3 +1,47 @@
+2002-02-28 14:30  flood
+
+	* NEWS, doc/Configuration.html, include/privs.h, lib/getopt.c,
+	lib/getopt.h, lib/getopt1.c, modules/mod_auth.c,
+	modules/mod_core.c, modules/mod_unixpw.c, src/dirtree.c,
+	src/main.c, src/support.c: #1459 - server fails to send response in
+	some cases #1533 - use memset correctly #1517 - doc update #1461 -
+	modules/mod_unixpw.c pw_getgroups() makes dangerous assumption
+	#1512 - Minor credentials cleanups #1516 - wrong response to
+	CDUP/XCUP/XCWD #1451 - add_config_param_str() no longer uses
+	permanent_pool #1523 - umask allocation in <Global> moved to
+	permanent_pool #1380 - updated getopt library for Tru64/AIX
+
+2002-02-28 14:13  flood
+
+	* NEWS, doc/Configuration.html, include/dirtree.h, include/log.h,
+	lib/pwgrent.c, modules/mod_auth.c, modules/mod_core.c,
+	modules/mod_log.c, modules/mod_xfer.c, src/dirtree.c, src/log.c:
+	#1476 doc updates #1520 security checks for TransferLogs #1435
+	AccessDenyMsg for <Anonymous> not working #1492 Bad interaction
+	between HiddenStor and UserOwner #1493 incorrect parsing of
+	AuthUserFile #1485 Adds CF_MERGEDOWN_MULTI config_rec flag
+
+2002-02-26 12:35  flood
+
+	* NEWS, include/glibc-glob.h, lib/glibc-glob.c, modules/mod_auth.c,
+	src/data.c, src/dirtree.c, src/fs.c, src/inet.c, src/log.c,
+	src/main.c, src/support.c: #1378 Replace alloca stuff in
+	glibc-glob.c with something more standard #1498 <Limit LOGIN> block
+	failing with mod_ldap #1381 include/glibc-glob.h fix for Tru64 UNIX
+	#1465 can't bind to port that hasn't been closed by forked child   
+	   process #1379 replace bzero/bcopy with memset/memcpy
+
+2002-02-14 11:50  flood
+
+	* NEWS, contrib/ftpasswd, contrib/ftpasswd.html: added
+	contrib/ftpasswd utility script (contributed by TJ)
+
+2002-02-14 11:39  flood
+
+	* NEWS, contrib/INSTALL.mod_wrap, contrib/README.mod_wrap,
+	contrib/genuser.pl, contrib/mod_wrap.c, contrib/mod_wrap.html: New
+	mod_wrap (1.2.3) removed contrib/genuser.pl (per TJ)
+
 2002-01-23 19:21  flood
 
 	* NEWS, src/data.c, src/dirtree.c, src/timers.c: #1318 sendfile()
