@@ -20,7 +20,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.13 2000-02-28 20:19:50 macgyver Exp $
+ * $Id: mod_log.c,v 1.14 2000-07-03 16:25:14 macgyver Exp $
  */
 
 #include "conf.h"
@@ -101,31 +101,30 @@ static xaset_t			*log_set = NULL;
    %v			- Servername of server serving request
 */
 
-static
-void add_meta(unsigned char **s, unsigned char meta, int args, ...)
-{
+static void add_meta(unsigned char **s, unsigned char meta, int args,
+		     ...) {
   int arglen;
   char *arg;
-
+  
   **s = META_START;
   (*s) = (*s) + 1;
   **s = meta;
   (*s) = (*s) + 1;
-
+  
   if(args) {
     va_list ap;
-    va_start(ap,args);
+    va_start(ap, args);
 
     while(args--) {
-      arglen = va_arg(ap,int);
-      arg = va_arg(ap,char*);
-
-      bcopy(arg,*s,arglen);
+      arglen = va_arg(ap, int);
+      arg = va_arg(ap, char *);
+      
+      bcopy(arg, *s, arglen);
       (*s) = (*s) + arglen;
       **s = META_ARG_END;
       (*s) = (*s) + 1;
     }
-
+    
     va_end(ap);
   }
 }
@@ -147,10 +146,15 @@ char *preparse_arg(char **s)
 static
 void logformat(char *nickname, char *fmts)
 {
-  char *tmp,*arg;
-  unsigned char format[1024],*outs;
+  char *tmp, *arg;
+  unsigned char format[4096], *outs;
   logformat_t *lf;
 
+  /* This function can cause potential problems.  Custom logformats
+   * might overrun the format buffer.  Fixing this problem involves a
+   * rewrite of most of this module.  This will happen post 1.2.0.
+   */
+  
   outs = format;
   for(tmp = fmts; *tmp; ) {
     if(*tmp == '%') {
@@ -227,22 +231,23 @@ void logformat(char *nickname, char *fmts)
 	tmp++;
 	break;
       }
-    } else
+    } else {
       *outs++ = *tmp++;
+    }
   }
 
   *outs++ = 0;
 
-  lf = (logformat_t*)pcalloc(log_pool, sizeof(logformat_t));
+  lf = (logformat_t *) pcalloc(log_pool, sizeof(logformat_t));
   lf->lf_nickname = pstrdup(log_pool, nickname);
   lf->lf_format = palloc(log_pool, outs - format);
-  bcopy(format, lf->lf_format, outs-format);
-
+  bcopy(format, lf->lf_format, outs - format);
+  
   if(!format_set)
     format_set = xaset_create(log_pool, NULL);
 
-  xaset_insert_end(format_set, (xasetmember_t*)lf);
-  formats = (logformat_t*)format_set->xas_list;
+  xaset_insert_end(format_set, (xasetmember_t *) lf);
+  formats = (logformat_t *) format_set->xas_list;
 }
 
 /* Syntax: LogFormat nickname "format string"
@@ -410,8 +415,13 @@ static
 char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
 {
   unsigned char *m;
-  char arg[256], *argp = NULL, *pass;
-
+  char arg[512], *argp = NULL, *pass;
+  
+  /* This function can cause potential problems.  Custom logformats
+   * might overrun the arg buffer.  Fixing this problem involves a
+   * rewrite of most of this module.  This will happen post 1.2.0.
+   */
+  
   m = (*f) + 1;
   switch(*m) {
   case META_ARG:
@@ -434,7 +444,7 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
 
     m++;
     break;
-
+    
   case META_BYTES_SENT:
     argp = arg;
     if(session.xfer.p)
