@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.345 2003-01-05 04:00:35 jwm Exp $
+$Id: NEWS,v 1.346 2003-01-05 17:33:23 jwm Exp $
 
 CVS
 ---------------------------------
@@ -15,7 +15,7 @@ CVS
 - Bug 1893 - Apple likes to move things. PAM support works on OS X again.
   Submitted by: thesin@users.sourceforge.net (Justin F. Hallett)
 - Bug 1826 - Makefiles are a bit icky
-- Bug 1904 -  Tru64 UNIX 4.0D and sstrncpy()
+- Bug 1904 - Tru64 UNIX 4.0D and sstrncpy()
 
 1.2.8rc1 - Released 28-Dec-2002
 ---------------------------------
