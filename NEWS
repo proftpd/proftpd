@@ -1,7 +1,13 @@
-$Id: NEWS,v 1.101 2001-05-16 14:35:26 flood Exp $
+$Id: NEWS,v 1.102 2001-05-17 03:22:22 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+- Bug 1172 - Compiler clean for getopt code.
+- Bug 1170 - Compiler cleanup for pr_fnmatch code.
+- Bug 1169 - Better handling of DefaultRoot/DefaultChdir
+- Bug 1168 - variable definitions moved from proftpd.h to main.c
+- Bug 1160 - BSD root socket semantics needed for svr4.2mp;UX/4800
+- Bug 1156 - USER command now takes an argument with spaces in it
 - Bug 1152 - Off-by-one in the PassivePorts code
 - Bug 1137 - NLST displayed hidden files
 

@@ -413,7 +413,8 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
      */
     
 #if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
-    defined(FREEBSD4) || defined(OPENBSD2) || defined(__NetBSD__)
+    defined(FREEBSD4) || defined(OPENBSD2) || defined(__NetBSD__) || \
+    defined(SYSV4_2MP)
 # ifdef SOLARIS2
     if(port != INPORT_ANY && port < 1024) {
 # endif
@@ -427,7 +428,8 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     fd = socket(AF_INET, SOCK_STREAM, tcp_proto);
 
 #if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
-    defined(FREEBSD4) || defined(OPENBSD2) || defined(__NetBSD__)
+    defined(FREEBSD4) || defined(OPENBSD2) || defined(__NetBSD__) || \
+    defined(SYSV4_2MP)
 # ifdef SOLARIS2
     if(port != INPORT_ANY && port < 1024) {
 # endif

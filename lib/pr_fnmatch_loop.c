@@ -38,6 +38,7 @@ FCT (pattern, string, no_leading_period, flags)
 {
   register const CHAR *p = pattern, *n = string;
   register UCHAR c;
+  int is_range;
 #ifdef _LIBC
   const UCHAR *collseq = (const UCHAR *)
     _NL_CURRENT(LC_COLLATE, CONCAT(_NL_COLLATE_COLLSEQ,SUFFIX));
@@ -422,7 +423,11 @@ FCT (pattern, string, no_leading_period, flags)
 		  return PR_FNM_NOMATCH;
 		else
 		  {
-		    int is_range = 0;
+		    /* int is_range = 0; declaration moved to start of
+                     * program due to normal_bracket skipping over this
+                     * declaration.
+                     */
+                    is_range = 0;
 
 #ifdef _LIBC
 		    int is_seqval = 0;
@@ -897,7 +902,7 @@ FCT (pattern, string, no_leading_period, flags)
 		    int c1 = 0;
 		    const CHAR *startp = p;
 
-		    while (1)
+		    for (;;)
 		      {
 			c = *++p;
 			if (++c1 == CHAR_CLASS_MAX_LENGTH)
@@ -929,7 +934,7 @@ FCT (pattern, string, no_leading_period, flags)
 		else if (c == L('[') && *p == L('.'))
 		  {
 		    ++p;
-		    while (1)
+		    for (;;)
 		      {
 			c = *++p;
 			if (c == '\0')

@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.60 2001-04-20 15:20:17 flood Exp $
+ * $Id: main.c,v 1.61 2001-05-17 03:22:23 flood Exp $
  */
 
 /*
@@ -122,6 +122,10 @@ int rehash = 0;				/* Performing rehash? */
 struct rehash *rehash_list = NULL;	/* Pre-rehash callbacks */
 binding_t *bind_list = NULL;
 pool *bind_pool = NULL;
+
+uid_t daemon_uid;
+gid_t daemon_gid;
+array_header *daemon_gids;
 
 time_t shut = (time_t)0,deny = (time_t)0, disc = (time_t)0;
 char shutmsg[81] = {'\0'};

@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.57 2001-04-11 18:57:42 flood Exp $
+ * $Id: mod_auth.c,v 1.58 2001-05-17 03:22:22 flood Exp $
  */
 
 #include "conf.h"
@@ -919,10 +919,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
       if(*newcwd == '/')
         newcwd++;
       session.cwd[0] = '/';
-
       sstrncpy(&session.cwd[1], newcwd, sizeof(session.cwd));
-    } else
-      sstrncpy(session.cwd, "/", sizeof(session.cwd));
+    }
   }
 
   if(c)
@@ -991,16 +989,60 @@ static int _setup_environment(pool *p, char *user, char *pass)
   if(showsymlinks == -1)
     showsymlinks = 1;
 
-  if(fs_chdir_canon(session.cwd,!showsymlinks) == -1) {
-    add_response_err(R_530, "Unable to chdir.");
-    log_pri(LOG_ERR, "%s chdir(\"%s\"): %s", session.user,
-            session.cwd, strerror(errno));
+  /* if the home directory is NULL or "", reject the login
+   */
+  if (pw->pw_dir == NULL || !strcmp(pw->pw_dir, "")) {
+    log_pri(LOG_ERR, "error: user %s home directory is NULL or \"\"",
+      session.user);
     end_login(1);
+  }
+
+  /* attempt to change to the correct directory -- use session.cwd first.
+   * This will contain the DefaultChdir directory, if configured...
+   */
+  if(fs_chdir_canon(session.cwd,!showsymlinks) == -1) {
+    add_response_err(R_530, "Unable to chdir()");
+    log_pri(LOG_ERR, "%s chdir(\"%s\"): %s", session.user, session.cwd,
+      strerror(errno));
+
+    /* in this case, if DefaultChdir is not used, then session.cwd _is_
+     * the user's home directory, and the fs_chdir_canon() failed for
+     * a valid reason -- and there's no good fallback.  Thus, end the
+     * login here.
+     */
+    if (!defchdir)
+      end_login(1);
+
+    if (session.anon_root != NULL || defroot) {
+
+      /* ...else if DefaultRoot is configured, chdir to the root (this is
+       * guaranteed to succeed, otherwise the login operation would have
+       * failed before now
+       */
+      log_debug(DEBUG2, "unable to chdir to %s, defaulting to chroot "
+        "directory %s", session.cwd,
+        (session.anon_root ? session.anon_root : defroot));
+
+      if (fs_chdir_canon("/", !showsymlinks) == -1)
+        end_login(1);
+
+    } else {
+
+      /* no DefaultRoot, failed DefaultChdir -- default to the user's home
+       * directory.  This should never fail, either, as a logging in user
+       * is required to have a home directory -- yes, but that home
+       * directory is not guaranteed to be valid. ;)
+       */
+      log_debug(DEBUG2, "unable to chdir to %s, default to home directory %s",
+        session.cwd, pw->pw_dir);
+
+      if (fs_chdir_canon(pw->pw_dir, !showsymlinks) == -1)
+        end_login(1);
+    }
   }
 
   sstrncpy(session.cwd, fs_getcwd(), sizeof(session.cwd));
   sstrncpy(session.vwd, fs_getvwd(), sizeof(session.vwd));
-
 
   /* check dynamic configuration */
   if (fs_stat(session.cwd, &sbuf) != -1)
@@ -1352,10 +1394,10 @@ MODRET cmd_user(cmd_rec *cmd) {
   if(logged_in)
     return ERROR_MSG(cmd,R_503,"You are already logged in!");
 
-  if(cmd->argc != 2)
+  if(cmd->argc < 2)
     return ERROR_MSG(cmd,R_500,"'USER': command requires a parameter.");
 
-  user = cmd->argv[1];
+  user = cmd->arg;
 
   remove_config(cmd->server->conf, C_USER, FALSE);
   remove_config(cmd->server->conf, C_PASS, FALSE);

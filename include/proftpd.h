@@ -19,7 +19,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.15 2001-03-23 13:17:51 flood Exp $
+ * $Id: proftpd.h,v 1.16 2001-05-17 03:22:22 flood Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -165,10 +165,10 @@ typedef struct {
 
 } session_t;
 
-/* Daemon identity values */
-uid_t daemon_uid;
-gid_t daemon_gid;
-array_header *daemon_gids;
+/* Daemon identity values, defined in main.c */
+extern uid_t daemon_uid;
+extern gid_t daemon_gid;
+extern array_header *daemon_gids;
 
 /* Possible values for xfer.xfer_type, mutually exclusive */
 #define STOR_DEFAULT	0

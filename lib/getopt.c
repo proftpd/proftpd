@@ -168,6 +168,8 @@ static enum
 
 char *getenv ();
 
+static char * my_index (const char *str, int chr);
+
 static char *
 my_index (str, chr)
      const char *str;
@@ -213,6 +215,8 @@ static int last_nonopt;
 
    `first_nonopt' and `last_nonopt' are relocated so that they describe
    the new indices of the non-options in ARGV after they are moved.  */
+
+static void exchange (char **argv);
 
 static void
 exchange (argv)
@@ -271,6 +275,8 @@ exchange (argv)
 }
 
 /* Initialize the internal data when the first call is made.  */
+
+static const char * _getopt_initialize (const char * optstring);
 
 static const char *
 _getopt_initialize (optstring)
