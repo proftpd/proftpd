@@ -302,7 +302,8 @@ href="#Limit">&lt;Limit&gt;</a> block. Although proftpd's default
   types of attacks against ProFTPD. The regular expression is applied against 
   the entire command sent by the client, so care must be taken when creating a 
   proper regex. Commands that fail the regex match result in a "Forbidden command" 
-  error being returned to the client.</p>
+  error being returned to the client. Command filtering is not applied to
+  passwords (arguments to the PASS command).</p>
 <p>If the <strong><i>regular-expression</i></strong> argument contains whitespace, 
   it must be enclosed in quotes.</p>
 <p>Example:</p>

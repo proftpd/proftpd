@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.45 2001-01-26 21:51:25 flood Exp $
+ * $Id: main.c,v 1.46 2001-01-28 18:25:08 flood Exp $
  */
 
 /*
@@ -848,7 +848,9 @@ static void dispatch_cmd(cmd_rec *cmd)
    */
   preg = (regex_t*) get_param_ptr(TOPLEVEL_CONF, "AllowFilter", FALSE);
   
-  if(preg && cmd->arg && ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) != 0)) {
+  /* Don't apply the AllowFilter check to passwords (arguments to the PASS
+     command). */
+  if(strcasecmp(cmd->argv[0], "PASS") && preg && cmd->arg && ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) != 0)) {
     char errmsg[200];
     
     regerror(ret, preg, errmsg, 200);

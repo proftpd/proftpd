@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.47 2001-01-25 05:53:06 flood Exp $
+ * $Id: mod_auth.c,v 1.48 2001-01-28 18:25:08 flood Exp $
  */
 
 #include "conf.h"
@@ -1158,9 +1158,17 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
 				      "Classes", FALSE)) != 1)
     classes_enabled = 0;
   
+  /* NOTE: there is an assumption here that if Classes have been enabled,
+   * there will be a corresponding Class defined.  This can cause a
+   * SIGSEGV if not caught.
+   *
+   * The catch is this: if Classes are enabled, but find_class() returns
+   *  NULL, act as if Classes are disabled. -- TJ
+   */
   if(classes_enabled)
-    session.class = (class_t *) find_class(session.c->remote_ipaddr,
-					   session.c->remote_name);
+    if((session.class = (class_t *) find_class(session.c->remote_ipaddr,
+					   session.c->remote_name)) == NULL)
+      classes_enabled = 0;
   
   /* Determine how many users are currently connected.
    */
