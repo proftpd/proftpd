@@ -21,7 +21,7 @@
 # format, or AuthGroupFile, in group(5) format.  The idea is somewhat similar
 # to Apache's htpasswd program.
 #
-#  $Id: ftpasswd,v 1.6 2003-03-28 01:58:33 castaglia Exp $
+#  $Id: ftpasswd,v 1.7 2004-02-17 03:06:30 castaglia Exp $
 #
 # ---------------------------------------------------------------------------
 
@@ -45,10 +45,31 @@ my $version = "1.1.3";
 my @data;
 
 my %opts = ();
-GetOptions(\%opts, 'enable-group-passwd', 'file=s', 'F|force',
-  'gecos=s', 'gid=n', 'group', 'hash', 'h|help', 'home=s', 'm|member=s@',
-  'name=s', 'passwd', 'shell=s', 'stdin', 'uid=n', 'use-cracklib:s',
-  'change-password', 'des', 'md5', 'not-system-password', 'version');
+GetOptions(\%opts,
+  'change-password',
+  'delete-group',
+  'delete-user',
+  'des',
+  'enable-group-passwd',
+  'file=s',
+  'F|force',
+  'gecos=s',
+  'gid=n',
+  'group',
+  'hash',
+  'h|help',
+  'home=s',
+  'md5',
+  'm|member=s@',
+  'name=s',
+  'not-system-password',
+  'passwd',
+  'shell=s',
+  'stdin',
+  'uid=n',
+  'use-cracklib:s',
+  'version',
+);
 
 usage() if (defined($opts{'h'}));
 
@@ -141,7 +162,7 @@ if ((exists($opts{'passwd'}) && exists($opts{'group'})) ||
 
   handle_passwd_entry(name => $opts{'name'}, uid => $opts{'uid'},
     gid => $opts{'gid'}, gecos => $opts{'gecos'}, home => $opts{'home'},
-    shell => $opts{'shell'});
+    shell => $opts{'shell'}, delete_user => $opts{'delete-user'});
 
   close_output_file();
 
@@ -170,7 +191,8 @@ if ((exists($opts{'passwd'}) && exists($opts{'group'})) ||
   open_output_file();
 
   handle_group_entry(gid => $opts{'gid'}, members => $opts{'m'},
-    name => $opts{'name'});
+    name => $opts{'name'}, delete_user => $opts{'delete-user'},
+    delete_group => $opts{'delete-group'});
 
   close_output_file();
 
@@ -478,6 +500,8 @@ sub handle_group_entry {
 
   my $gid = $args{'gid'};
   my $name = $args{'name'};
+  my $delete_group = $args{'delete-group'};
+  my $delete_user = $args{'delete-user'};
   my $passwd;
 
   my $members = "";
@@ -491,7 +515,6 @@ sub handle_group_entry {
     my @entry = split(':', $data[$index]);
 
     if ($name eq $entry[0]) {
-      print STDOUT "$program: updating group entry for group $name\n";
 
       # remove the entry to be updated
       splice(@data, $index, 1);
@@ -502,6 +525,9 @@ sub handle_group_entry {
 
   unless ($found) {
     print STDOUT "$program: creating group entry for group $name\n";
+
+  } else {
+    print STDOUT "$program: updating group entry for group $name\n";
   }
 
   # if present, add the members given to the group.  If none, just leave that
@@ -516,7 +542,7 @@ sub handle_group_entry {
   }
 
   # format: $name:$passwd:$gid:$members
-  push(@data, "$name:$passwd:$gid:$members");
+  push(@data, "$name:$passwd:$gid:$members") unless $delete_group;
 
   # always sort by GIDs before printing out the file
   @data = map { $_->[0] }
@@ -525,12 +551,15 @@ sub handle_group_entry {
                }
           map { [ $_, (split /:/)[0, 1, 2, 3] ] }
           @data;
- 
-  unless ($found) {
-    print STDOUT "$program: entry created\n";
+
+  if ($delete_group) {
+    print STDOUT "$program: entry deleted\n";
+
+  } elsif ($found) {
+    print STDOUT "$program: entry updated\n";
 
   } else {
-    print STDOUT "$program: entry updated\n";
+    print STDOUT "$program: entry created\n";
   }
 }
 
@@ -544,6 +573,7 @@ sub handle_passwd_entry {
   my $gecos = $args{'gecos'};
   my $home = $args{'home'};
   my $shell = $args{'shell'};
+  my $delete_user = $args{'delete_user'};
 
   # Trim any trailing slashes in $home.
   $home =~ s/(.*)\/$/$1/ if ($home =~ /\/$/);
@@ -565,8 +595,6 @@ sub handle_passwd_entry {
     my @entry = split(':', $data[$index]);
 
     if ($name eq $entry[0]) {
-      print STDOUT "$program: updating passwd entry for user $name\n";
-
       $found = 1;
       last;
     }
@@ -574,16 +602,27 @@ sub handle_passwd_entry {
 
   unless ($found) {
     print STDOUT "$program: creating passwd entry for user $name\n";
+
+  } else {
+    print STDOUT "$program: updating passwd entry for user $name\n";
   }
 
-  # check the requested shell against the list in /etc/shells
-  check_shell(shell => $shell);
+  my $passwd;
+  unless ($delete_user) {
+    # check the requested shell against the list in /etc/shells
+    check_shell(shell => $shell);
 
-  # prompt the user for the password
-  my $passwd = get_passwd(name => $name);
+    # prompt the user for the password
+    $passwd = get_passwd(name => $name);
+  }
 
   # remove the entry to be updated
   splice(@data, $index, 1);
+
+  if ($delete_user) {
+    print STDOUT "$program: entry deleted\n";
+    return;
+  }
 
   # format: $name:$passwd:$uid:$gid:$gecos:$home:$shell
   push(@data, "$name:$passwd:$uid:$gid:$gecos:$home:$shell");
@@ -596,11 +635,14 @@ sub handle_passwd_entry {
           map { [ $_, (split /:/)[0, 1, 2, 3, 4, 5, 6] ] }
           @data;
 
-  unless ($found) {
-    print STDOUT "$program: entry created\n";
+  if ($delete_user) {
+    print STDOUT "$program: entry deleted\n";
+
+  } elsif ($found) {
+    print STDOUT "$program: entry updated\n";
 
   } else {
-    print STDOUT "$program: entry updated\n";
+    print STDOUT "$program: entry created\n";
   }
 }
 
@@ -696,6 +738,10 @@ usage: $program [--help] [--hash|--group|--passwd]
                 requests that a new password be given if the entered password
                 is the same as the current password.
 
+    --delete-user
+ 
+                Remove the entry for the given user name from the file.
+
     --not-system-password
 
                 Double-checks the given password against the system password
@@ -727,6 +773,10 @@ usage: $program [--help] [--hash|--group|--passwd]
   By default, using --group will write output to "$default_group_file".
 
   Options:
+
+    --delete-group
+
+                Remove the entry for the given group name from the file.
 
     --enable-group-passwd
 
