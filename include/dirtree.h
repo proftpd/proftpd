@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.52 2004-04-11 20:27:41 castaglia Exp $
+ * $Id: dirtree.h,v 1.53 2004-04-13 16:48:49 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -42,7 +42,7 @@ typedef struct privdata privdata_t;
 struct conn_struc;
 
 typedef struct server_struc {
-  struct server_struc *next,*prev;
+  struct server_struc *next, *prev;
 
   pool *pool;			/* Memory pool for this server */
   xaset_t *set;			/* Set holding all servers */
@@ -70,9 +70,11 @@ typedef struct server_struc {
   int tcp_sndbuf_len;
   unsigned char tcp_sndbuf_override;
 
-  char *ServerAdmin;		/* Administrator's name */
+  /* Administrator name */
+  char *ServerAdmin;
 
-  pr_netaddr_t *addr;		/* Internal address of this server */
+  /* Internal address of this server */
+  pr_netaddr_t *addr;
 
   /* The listener for this server.  Note that this listener, and that
    * pointed to by ipbind->ib_listener (where ipbind->ib_server points to
@@ -82,12 +84,14 @@ typedef struct server_struc {
    */
   struct conn_struc *listen;
 
-  xaset_t *conf;		/* Configuration details */
-
+  /* Configuration details */
+  xaset_t *conf;
   int config_type;
-} server_rec;
 
-#define CLASS_USER
+  /* Internal server ID, automatically assigned */
+  unsigned int sid;
+
+} server_rec;
 
 typedef struct cmd_struc {
   pool *pool;

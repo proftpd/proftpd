@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.141 2004-04-12 17:09:54 castaglia Exp $
+ * $Id: dirtree.c,v 1.142 2004-04-13 16:48:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -50,7 +50,7 @@ int TimeoutNoXfer = PR_TUNABLE_TIMEOUTNOXFER;
 int TimeoutStalled = PR_TUNABLE_TIMEOUTSTALLED;
 char MultilineRFC2228 = 0;
 
-/* from src/pool.c */
+/* From src/pool.c */
 extern pool *global_config_pool;
 
 /* Used by find_config_* */
@@ -64,6 +64,8 @@ static config_rec *_last_param_ptr = NULL;
 static unsigned char _kludge_disable_umask = 0;
 
 array_header *server_defines = NULL;
+
+static unsigned int server_id = 0;
 
 /* Used only while reading configuration files */
 
@@ -774,13 +776,13 @@ static cmd_rec *get_config_cmd(pool *ppool) {
 }
 
 static void init_dyn_stacks(pool *p, config_rec *top) {
-  conf.sstack = make_array(p,1,sizeof(server_rec*));
-  conf.curserver = (server_rec**)push_array(conf.sstack);
+  conf.sstack = make_array(p, 1, sizeof(server_rec *));
+  conf.curserver = (server_rec **) push_array(conf.sstack);
   *conf.curserver = main_server;
-  conf.cstack = make_array(p,3,sizeof(config_rec*));
-  conf.curconfig = (config_rec**)push_array(conf.cstack);
+  conf.cstack = make_array(p, 3, sizeof(config_rec *));
+  conf.curconfig = (config_rec **) push_array(conf.cstack);
   *conf.curconfig = NULL;
-  conf.curconfig = (config_rec**)push_array(conf.cstack);
+  conf.curconfig = (config_rec **) push_array(conf.cstack);
   *conf.curconfig = top;
 }
 
@@ -818,6 +820,7 @@ server_rec *start_new_server(const char *addrstr) {
   s = (server_rec *) pcalloc(p, sizeof(server_rec));
   s->pool = p;
   s->config_type = CONF_VIRTUAL;
+  s->sid = ++server_id;
 
   /* Have to make sure it ends up on the end of the chain, otherwise
    * main_server becomes useless.
@@ -2993,8 +2996,7 @@ void *get_param_ptr(xaset_t *set,const char *name,int recurse)
   return NULL;
 }
 
-void *get_param_ptr_next(const char *name,int recurse)
-{
+void *get_param_ptr_next(const char *name,int recurse) {
   config_rec *c;
 
   if (!_last_param_ptr || !_last_param_ptr->next) {
@@ -3014,8 +3016,7 @@ void *get_param_ptr_next(const char *name,int recurse)
   return NULL;
 }
 
-int remove_config(xaset_t *set, const char *name,int recurse)
-{
+int remove_config(xaset_t *set, const char *name, int recurse) {
   server_rec *s = (conf.curserver ? *conf.curserver : main_server);
   config_rec *c;
   int found = 0;
@@ -3472,6 +3473,7 @@ void init_config(void) {
 
   main_server->pool = conf_pool;
   main_server->set = server_list;
+  main_server->sid = ++server_id;
 
   /* Default server port */
   main_server->ServerPort = pr_inet_getservport(main_server->pool,
