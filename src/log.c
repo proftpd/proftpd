@@ -27,7 +27,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.40 2002-06-23 19:03:24 castaglia Exp $
+ * $Id: log.c,v 1.41 2002-08-01 23:13:52 castaglia Exp $
  */
 
 /* History Log:
@@ -103,8 +103,10 @@ int log_open_xfer(const char *fn) {
     return 0;
   }
 
-  if (xferfd == -1)
+  if (xferfd == -1) {
+    log_debug(DEBUG6, "opening TransferLog '%s'", fn);
     log_openfile(fn, &xferfd, LOG_XFER_MODE);
+  }
 
   return xferfd;
 }
