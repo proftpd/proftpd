@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.19 2003-08-28 00:36:01 jwm Exp $
+# $Id: proftpd.spec,v 1.20 2003-09-11 13:33:49 castaglia Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -19,7 +19,7 @@
 
 Summary:	ProFTPD -- Professional FTP Server.
 Name:		proftpd
-Version:	1.2.9rc1
+Version:	1.2.9rc2
 Release:	1
 License:	GPL
 Group:		System Environment/Daemons

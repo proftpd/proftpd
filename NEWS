@@ -1,6 +1,6 @@
-$Id: NEWS,v 1.476 2003-09-09 14:57:42 castaglia Exp $
+$Id: NEWS,v 1.477 2003-09-11 13:33:49 castaglia Exp $
 
-CVS
+1.2.9rc2 - Released 11-Sep-2003
 ---------------------------------
 - Bug 2051 - freebytes in TransferRate does not work properly.
 - Bug 2043 - Proftpd converts LF to CRLF on PUT on Cygwin.  This turned out
