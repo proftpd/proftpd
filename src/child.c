@@ -23,10 +23,12 @@
  */
 
 /* Children management code
- * $Id: child.c,v 1.3 2004-05-05 17:49:14 castaglia Exp $
+ * $Id: child.c,v 1.4 2004-05-07 03:36:28 castaglia Exp $
  */
 
 #include "conf.h"
+
+#include <signal.h>
 
 static pool *child_pool = NULL;
 static xaset_t *child_list = NULL;
