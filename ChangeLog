@@ -1,3 +1,208 @@
+2004-09-04 11:50  castaglia
+
+	* NEWS, contrib/dist/rpm/proftpd.spec, include/version.h: 
+	Preparing to release 1.2.10-final.
+
+2004-08-25 11:08  castaglia
+
+	* src/data.c: 
+	When using sendfile(), only reset the transmission timers if bytes
+	have actually been written out.  sendfile() can return zero,
+	indicating that it wrote zero bytes -- we do not want to reset the
+	timers in this case, for it could indicate other issues with the
+	file descriptor from which data are being read.
+	
+	This fixes an endless loop seen at a particular site involving use
+	of sendfile() and NFS/SAN-shared files.
+
+2004-08-24 15:24  castaglia
+
+	* modules/mod_xfer.c: 
+	Reset the 'have_prot' flag to false when a successful PROT C
+	command is processed.
+
+2004-08-12 16:24  castaglia
+
+	* modules/mod_xfer.c: 
+	Update to patch to mod_xfer for Bug #2444: the PROT command is
+	allowed before authentication.	The patch was required
+	authentication first, causing issutes for FTPS clients that sent
+	PROT before USER.
+
+2004-08-07 15:22  castaglia
+
+	* NEWS, src/log.c, src/main.c: 
+	Bug#2427 - proftpd gets a memory fault when run from ssh batch
+	mode.
+
+2004-08-07 15:21  castaglia
+
+	* src/main.c: 
+	Two more cases where the IP address contacted by the client should
+	be used, if present, rather than the ServerAddress field of the
+	relevant server_rec.
+
+2004-08-07 13:58  castaglia
+
+	* src/main.c: 
+	Fix a minor bug in the reporting of ServerIdent, where the wrong IP
+	address may be displayed.  For example, with the following
+	configuration:
+	
+	  <VirtualHost 127.0.0.1>
+	    Bind 1.2.3.4
+	    ...
+	  </VirtualHost>
+	
+	a client connecting to 1.2.3.4 should see "[127.0.0.1]" at the tail
+	end of the default ServerIdent displayed, rather than the more
+	appropriate "[1.2.3.4]".  The fix is to use the IP address to which
+	the client connected, rather than the ServerAddress field of the
+	server_rec to which the client connected.  As the case with Bind
+	shows, multiple IP addresses may be associated with the same
+	server_rec, and the IP address displayed to the connecting client
+	should not "leak" this fact.
+
+2004-08-05 19:16  castaglia
+
+	* src/main.c: 
+	Reorder the timing of calling pr_ident_lookup(), making it occur
+	after modules have been initialized.  This makes it possible for
+	mod_ifsession, for example, to alter if ident lookups will be
+	enabled, e.g.:
+	
+	  <IfClass foo>
+	    IdentLookups off
+	  </IfClass>
+	
+	so that ident lookups can be enabled/disabled selectively.
+
+2004-08-05 17:58  castaglia
+
+	* doc/howto/Limit.html: 
+	Add description of applying <Limit> sections to SITE commands.
+
+2004-08-05 12:12  castaglia
+
+	* RELEASE_NOTES: 
+	Updating the release notes.
+
+2004-08-04 11:52  castaglia
+
+	* NEWS, modules/mod_core.c: 
+	Add support for automatically scrubbing the scoreboard for stale
+	sessions on session init time, for inetd proftpds.  Scrubbing is
+	already done periodically for standalone proftpds.
+
+2004-08-03 16:17  castaglia
+
+	* NEWS, modules/mod_xfer.c: 
+	Bug#2444 - Use of sendfile() does not interoperate well with
+	RFC2228 security mechanisms.
+
+2004-08-02 17:44  castaglia
+
+	* contrib/mod_sql.c: 
+	Convert mod_sql to using ProFTPD's sstrcat() function, rather than
+	strcat(3).
+
+2004-08-01 12:02  castaglia
+
+	* NEWS, modules/mod_auth_file.c: 
+	Bug#2445 - AuthUserFile in <Global> context overrides <VirtualHost>
+	setting.  Note that this bug will be revisited in the next release
+	cycle, and fixed The Right Way(tm).
+
+2004-07-30 18:35  castaglia
+
+	* modules/mod_core.c: 
+	Store the original name configured by a MasqueradeAddress directive
+	in the config_rec, along with the resolved netaddr object.  This
+	will make it possible to re-resolve the original name at a later
+	date.
+
+2004-07-30 17:07  castaglia
+
+	* doc/howto/Limit.html: 
+	Add example <Limit LOGIN> configuration that allows only anonymous
+	logins.
+
+2004-07-30 10:42  castaglia
+
+	* modules/mod_core.c: 
+	Make certain that all occurrences of an environment variable are
+	removed when handling the UnsetEnv directive; a environment
+	variable can appear multiple times in the environ array.
+
+2004-07-28 13:41  castaglia
+
+	* doc/howto/Authentication.html: 
+	Updating the section on "Resolving ~", fixing mention of
+	mod_auth_pam.
+
+2004-07-22 14:49  castaglia
+
+	* NEWS, modules/mod_auth_pam.c: 
+	Bug#2442 - Segfault in FreeBSD PAM library with long login names.
+
+2004-07-22 13:53  castaglia
+
+	* README.PAM: 
+	Update the PAM docs about AuthPAMAuthoritative, and add an Issues
+	section.
+
+2004-07-21 17:11  castaglia
+
+	* contrib/: mod_ldap.c, mod_sql.c: 
+	Apply the same criteria for including <crypt.h> to mod_ldap and
+	mod_sql as are used for mod_auth_unix and mod_auth_file.
+
+2004-07-21 16:58  castaglia
+
+	* NEWS, modules/mod_auth_file.c, modules/mod_auth_unix.c: 
+	Bug #2411 - AIX5 portability bug with mod_auth_unix, mod_auth_file.
+	 Using gcc on AIX5, these files compile without complaint. 
+	However, using the IBM compiler and following the instructions in
+	README.AIX, they will fail on AIX5.  The fix is to extend for AIX5
+	the portability hack that is done for AIX4.
+
+2004-07-20 10:39  castaglia
+
+	* NEWS, include/modules.h, modules/mod_core.c, src/auth.c: 
+	Bug #2440 - Unable to use PAM authentication properly.	As
+	explained in the bug report, the deprecation of all *Authoritative
+	directives causes an issue with modules like mod_auth_pam.  This
+	patch makes use of an unused flag variable in the authtable
+	structure in order to implement the setting of auth module
+	authoritativeness via the AuthOrder directive.
+
+2004-07-14 17:08  castaglia
+
+	* modules/mod_ctrls.c: 
+	We were forgetting to remove our previous timer before adding a new
+	one.
+
+2004-07-14 17:07  castaglia
+
+	* src/timers.c: 
+	Prevent add_timer() from adding multiple timers that use the same
+	timerno.
+
+2004-07-14 14:51  castaglia
+
+	* modules/mod_ctrls.c: 
+	We don't want child processes handling these events for mod_ctrls.
+
+2004-07-13 17:20  castaglia
+
+	* include/version.h: 
+	Let's try this again.
+
+2004-07-13 16:58  castaglia
+
+	* ChangeLog: 
+	Updating ChangeLog.
+
 2004-07-13 16:57  castaglia
 
 	* NEWS, contrib/dist/rpm/proftpd.spec, include/version.h: 
@@ -4417,7 +4622,7 @@
 2003-06-11 19:08  castaglia
 
 	* src/: inet.c, modules.c: 
-	Missing $Id: ChangeLog,v 1.122 2004-07-13 23:58:37 castaglia Exp $ keyword.
+	Missing $Id: ChangeLog,v 1.123 2004-09-04 18:54:04 castaglia Exp $ keyword.
 
 2003-06-11 15:45  castaglia
 
@@ -5588,7 +5793,7 @@
 
 	* contrib/: mod_sql.c, mod_sql.h, mod_sql_mysql.c,
 	mod_sql_postgres.c: 
-	Adding $Id: ChangeLog,v 1.122 2004-07-13 23:58:37 castaglia Exp $ tags to the mod_sql files.
+	Adding $Id: ChangeLog,v 1.123 2004-09-04 18:54:04 castaglia Exp $ tags to the mod_sql files.
 
 2003-03-14 07:54  castaglia
 
@@ -6105,12 +6310,12 @@
 
 	* src/netio.c, src/pool.c, src/sets.c, include/ident.h,
 	include/timers.h: 
-	Adding more $Id: ChangeLog,v 1.122 2004-07-13 23:58:37 castaglia Exp $ keywords.
+	Adding more $Id: ChangeLog,v 1.123 2004-09-04 18:54:04 castaglia Exp $ keywords.
 
 2003-02-11 23:34  castaglia
 
 	* src/feat.c: 
-	Added $Id: ChangeLog,v 1.122 2004-07-13 23:58:37 castaglia Exp $ keyword.
+	Added $Id: ChangeLog,v 1.123 2004-09-04 18:54:04 castaglia Exp $ keyword.
 
 2003-02-10 15:34  castaglia
 
