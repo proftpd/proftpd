@@ -157,7 +157,7 @@ _dispatch_ratio (cmd_rec * cmd, char *match)
       m = pr_stash_get_symbol (PR_SYM_AUTH, match, m, &cmd->stash_index);
     }
   if (MODRET_ISERROR (mr))
-    log_debug (DEBUG0, "Aiee! mod_ratio internal!  %s", MODRET_ERRMSG (mr));
+    pr_log_debug (DEBUG0, "Aiee! mod_ratio internal!  %s", MODRET_ERRMSG (mr));
   return mr;
 }
 
@@ -241,7 +241,7 @@ MODRET _calc_ratios (cmd_rec * cmd)
     {
       data = mr->data;
       if (data[4])
-	log_debug (DEBUG4, "ratio: warning: getstats on %s not unique",
+	pr_log_debug (DEBUG4, "ratio: warning: getstats on %s not unique",
 		   g.user);
       _set_stats (data[0], data[1], data[2], data[3]);
     }
@@ -251,7 +251,7 @@ MODRET _calc_ratios (cmd_rec * cmd)
     {
       data = mr->data;
       if (data[4])
-	log_debug (DEBUG4, "ratio: warning: getratio on %s not unique",
+	pr_log_debug (DEBUG4, "ratio: warning: getratio on %s not unique",
 		   g.user);
       _set_ratios (data[0], data[1], data[2], data[3]);
       g.rtype = "U";
@@ -332,7 +332,7 @@ _log_ratios (cmd_rec * cmd)
   char buf[1024] = {'\0'};
 
   snprintf (buf, sizeof(buf), SHORT_RATIO_STUFFS);
-  log_debug (DEBUG0, "%s in %s: %s %s%s%s", g.user,
+  pr_log_debug (DEBUG0, "%s in %s: %s %s%s%s", g.user,
 	     session.cwd, cmd->argv[0], cmd->arg,
 	     RATIO_ENFORCE ? " :" : "", RATIO_ENFORCE ? buf : "");
 }
@@ -348,7 +348,7 @@ _update_stats ()
         newfile=fopen(g.ratiotmp,"w");
           if (newfile == NULL)
           {
-          log_pri (LOG_ERR, "Error opening temporary ratios file.");
+          pr_log_pri (PR_LOG_ERR, "Error opening temporary ratios file.");
           gotratuser=1;
           fileerr=1;
      	  }
@@ -439,7 +439,7 @@ log_cmd_pass (cmd_rec * cmd)
   if (g.enable)
     {
       snprintf (buf, sizeof(buf), RATIO_STUFFS);
-      log_pri (LOG_NOTICE, "Ratio: %s/%s %s[%s]: %s.", g.user,
+      pr_log_pri (PR_LOG_NOTICE, "Ratio: %s/%s %s[%s]: %s.", g.user,
 	       session.group, session.c->remote_name,
 	       pr_netaddr_get_ipstr (session.c->remote_addr), buf);
     }
@@ -491,7 +491,7 @@ ratio_cmd (cmd_rec * cmd)
 	usrfile=fopen(g.ratiofile,"r");
 	if (usrfile == NULL)
 	 {
-	 log_pri (LOG_ERR, "Error opening ratios file.");
+	 pr_log_pri (PR_LOG_ERR, "Error opening ratios file.");
 	 gotratuser=1;
 	 fileerr=1;
 	 }
@@ -527,7 +527,7 @@ ratio_cmd (cmd_rec * cmd)
 	newfile=fopen(g.ratiotmp,"w");
 	  if (newfile == NULL)
 	  {
-	  log_pri (LOG_ERR, "Error opening temporary ratios file.");
+	  pr_log_pri (PR_LOG_ERR, "Error opening temporary ratios file.");
 	  gotratuser=1;
 	  fileerr=1;
           }
@@ -538,7 +538,7 @@ ratio_cmd (cmd_rec * cmd)
         	newfile=fopen(g.ratiotmp,"w");
 		  if (newfile == NULL)
          	  {
-         	  log_pri (LOG_ERR, "Error opening temporary ratios file.");
+         	  pr_log_pri (PR_LOG_ERR, "Error opening temporary ratios file.");
          	  gotratuser=1;
          	  fileerr=1;
          	  }
