@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.119 2003-01-13 04:25:59 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.120 2003-01-30 16:15:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2083,8 +2083,10 @@ MODRET set_transferrate(cmd_rec *cmd) {
   if ((tmp = strchr(cmd->argv[2], ':')) != NULL)
     *tmp = '\0';
 
-  /* Parse the 'kbps' part */
-  rate = (long double) strtoul(cmd->argv[2], &endp, 10);
+  /* Parse the 'kbps' part.  Ideally, we'd be using strtold(3) rather than
+   * strtod(3) here, but FreeBSD doesn't have strtold(3).  Yay.  Portability.
+   */
+  rate = (long double) strtod(cmd->argv[2], &endp);
 
   if (rate < 0.0)
     CONF_ERROR(cmd, "rate must be greater than zero");
