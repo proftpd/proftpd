@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.392 2003-03-06 02:15:41 castaglia Exp $
+$Id: NEWS,v 1.393 2003-03-07 23:11:33 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -27,6 +27,11 @@ CVS
   inaccessible or something similar); subsequent logging in as a different
   user would succeed because the OK flag was not cleared.
 - Added mod_ifsession-0.9rc6.
+- Bug 1932 - Make Max* checks a PASS POST_CMD handler.  One of the consequences
+  of this change is that the Max* limits will always be enforced after the
+  PASS command has been sent, not after the USER command (as used to be done).
+  Also, MaxHostsPerUser and MaxClientsPerUser limits will be determined using
+  the locally resolved username, not using any user aliases.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------

@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.138 2003-03-05 02:05:41 castaglia Exp $
+ * $Id: mod_auth.c,v 1.139 2003-03-07 23:11:34 castaglia Exp $
  */
 
 #ifdef __CYGWIN__
@@ -55,6 +55,7 @@ static char *auth_pass_resp_code = R_230;
 static unsigned int TimeoutSession = 0;
 
 static void auth_scan_scoreboard(void);
+static void auth_count_scoreboard(cmd_rec *, char *);
 
 /* Perform a chroot or equivalent action to lockdown the process into a
  * particular directory.
@@ -210,6 +211,12 @@ MODRET auth_post_pass(cmd_rec *cmd) {
   unsigned int ctxt_precedence = 0;
   unsigned char have_user_timeout, have_group_timeout, have_class_timeout,
     have_all_timeout;
+
+  /* Count up various quantities in the scoreboard, checking them against
+   * the Max* limits to see if the session should be barred from going
+   * any further.
+   */
+  auth_count_scoreboard(cmd, session.user);
 
   have_user_timeout = have_group_timeout = have_class_timeout =
     have_all_timeout = FALSE;
@@ -1419,7 +1426,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
   if (class_engine && *class_engine == TRUE)
     classes_enabled = TRUE;
 
-  /* NOTE: there is an assumption here that if Classes have been enabled,
+  /* Note: there is an assumption here that if Classes have been enabled,
    * there will be a corresponding Class defined.  This can cause a
    * SIGSEGV if not caught.
    *
@@ -1713,8 +1720,6 @@ MODRET auth_user(cmd_rec *cmd) {
     }
   }
 
-  auth_count_scoreboard(cmd, origuser);
-
 #ifdef __CYGWIN__
   /* We have to do special Windows NT voodoo with Cygwin in order to be
    * able to switch UID/GID. More info at
@@ -1774,8 +1779,6 @@ MODRET auth_pass(cmd_rec *cmd) {
 
     return ERROR_MSG(cmd, R_503, "Login with " C_USER " first");
   }
-
-  auth_count_scoreboard(cmd, user);
 
   if ((res = _setup_environment(cmd->tmp_pool, user, cmd->arg)) == 1) {
     char *display = NULL, *grantmsg = NULL;
