@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.227 2004-04-09 16:58:21 castaglia Exp $
+ * $Id: mod_core.c,v 1.228 2004-04-11 20:12:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -59,51 +59,6 @@ extern array_header *server_defines;
 module core_module;
 
 static int core_scrub_timer_id;
-
-static int copy_file(const char *src, const char *dst) {
-  pr_fh_t *src_fh, *dst_fh;
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-  int res;
-
-  src_fh = pr_fsio_open(src, O_RDONLY);
-  if (!src_fh) {
-    pr_log_pri(PR_LOG_WARNING, "error opening source file '%s' "
-      "for copying: %s", src, strerror(errno));
-    return -1;
-  }
-
-  dst_fh = pr_fsio_open(dst, O_WRONLY|O_CREAT);
-  if (!dst_fh) {
-    int xerrno = errno;
-
-    pr_fsio_close(src_fh);
-    errno = xerrno;
-
-    pr_log_pri(PR_LOG_WARNING, "error opening destination file '%s' "
-      "for copying: %s", dst, strerror(errno));
-    return -1;
-  }
-
-  /* Make sure the destination file starts with a zero size. */
-  pr_fsio_truncate(dst, 0);
-
-  while ((res = pr_fsio_read(src_fh, buf, sizeof(buf))) > 0) {
-    if (pr_fsio_write(dst_fh, buf, res) != res) {
-      pr_log_pri(PR_LOG_WARNING, "error copying to '%s': %s", dst,
-        strerror(errno));
-      break;
-    }
-
-    pr_signals_handle();
-  }
-
-  pr_fsio_close(src_fh);
-  if (pr_fsio_close(dst_fh) < 0)
-    pr_log_pri(PR_LOG_WARNING, "error closing '%s': %s", dst,
-      strerror(errno));
-
-  return res;
-}
 
 static ssize_t get_num_bytes(char *nbytes_str) {
   ssize_t nbytes = 0;
