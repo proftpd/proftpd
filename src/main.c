@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.35 2000-07-21 05:18:39 macgyver Exp $
+ * $Id: main.c,v 1.36 2000-07-21 05:57:18 macgyver Exp $
  */
 
 /*
@@ -1350,24 +1350,23 @@ void fork_server(int fd,conn_t *l,int nofork)
                reason, session.c->remote_name,
                inet_ntoa(*session.c->remote_ipaddr));
 
-      printf(R_500, "FTP server shut down (%s) -- please try again later.\r\n",
-             reason); 
-      fflush(stdout);
+      send_response(R_500, 
+		    "FTP server shut down (%s) -- please try again later.\r\n",
+		    reason); 
       exit(0);
     }
   }
-
+  
   /* If no server is configured to handle the addr the user is
    * connected to, drop them.
    */
-
   if(!serv) {
-    printf(R_500, "Sorry, no server available to handle request on %s.\r\n",
-           inet_getname(conn->pool,conn->local_ipaddr));
-    fflush(stdout);
+    send_response(R_500,
+		  "Sorry, no server available to handle request on %s.\r\n",
+		  inet_getname(conn->pool, conn->local_ipaddr));
     exit(0);
   }
-
+  
   if(serv->listen) {
     if(serv->listen->listen_fd == conn->rfd ||
         serv->listen->listen_fd == conn->wfd)
@@ -2070,9 +2069,22 @@ void show_usage(int exit_code)
 
   printf("usage: proftpd [options]\n");
   for(h = opts_help; h->long_opt; h++) {
-    printf("  %s,%s\n",h->long_opt,h->short_opt);
-    printf("    %s\n",h->desc);
+    printf(
+#ifdef HAVE_GETOPT_LONG
+	   "  %s, "
+#endif /* HAVE_GETOPT_LONG */
+
+	   "%s\n",
+
+#ifdef HAVE_GETOPT_LONG
+	   h->long_opt,
+#endif /* HAVE_GETOPT_LONG */
+	   
+	   h->short_opt);
+    
+    printf("    %s\n", h->desc);
   }
+  
   exit(exit_code);
 }
 
