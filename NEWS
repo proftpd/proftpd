@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.67 2000-08-02 06:18:47 macgyver Exp $
+$Id: NEWS,v 1.68 2000-08-02 23:28:04 macgyver Exp $
 
 1.2.0 - Released: 08/??/2000
 ----------------------------
@@ -13,6 +13,8 @@ $Id: NEWS,v 1.67 2000-08-02 06:18:47 macgyver Exp $
 - Honor ExtendedLog NONE.
 - Added SyslogLevel directive.
 - Added --with-includes option to configure.
+- Added --with-libraries option to configure.
+- On systems with wtmpx, don't use wtmp at all.
 
 1.2.0RC2 - Released: 07/28/2000
 -------------------------------

@@ -1,3 +1,47 @@
+2000-08-02 18:26  macgyver
+
+	* Make.rules.in (1.9), configure (1.44), configure.in (1.45): Added
+	in --with-libraries for posterity.
+
+2000-08-02 18:13  macgyver
+
+	* configure.in (1.44): Added copyright info to the configure
+	scripts.
+
+2000-08-02 18:07  macgyver
+
+	* src/log.c (1.21): Only log to WTMP or WTMPX, not both.  Modern
+	systems should all use WTMPX.
+
+2000-08-02 17:57  macgyver
+
+	* modules/mod_pam.c (1.25): Updated Solaris compatibility fix for
+	mod_pam.
+
+2000-08-02 17:38  macgyver
+
+	* stamp-h.in (1.1): Added in stamp-h.in support.
+
+2000-08-02 17:38  macgyver
+
+	* .cvsignore (1.3), Makefile.in (1.9), configure (1.43),
+	configure.in (1.43): Added support for stamp-h.in and automagic
+	rebuilds whenever configure is updated.
+
+2000-08-02 16:46  macgyver
+
+	* acconfig.h (1.8), config.h.in (1.19), configure (1.42),
+	configure.in (1.42): More sendfile detection tweaks. :)
+
+2000-08-02 16:46  macgyver
+
+	* modules/mod_core.c (1.42): Forgot to return HANDLED in
+	add_sysloglevel.
+
+2000-08-02 08:58  macgyver
+
+	* ChangeLog (1.25): Updated ChangeLog.
+
 2000-08-02 01:44  macgyver
 
 	* configure (1.41), configure.in (1.41): Reworked sendfile
