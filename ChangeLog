@@ -1,3 +1,11 @@
+2001-01-25 00:13  flood
+
+	* contrib/README.mod_sqlpw: Added README.mod_sqlpw
+
+2001-01-24 17:51  flood
+
+	* ChangeLog: [no log message]
+
 2001-01-24 17:50  flood
 
 	* ChangeLog, contrib/mod_ratio.c, src/main.c: Bug #430 - format
