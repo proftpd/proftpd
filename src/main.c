@@ -25,7 +25,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.79 2002-05-09 20:42:30 castaglia Exp $
+ * $Id: main.c,v 1.80 2002-05-19 20:45:42 castaglia Exp $
  */
 
 /*
@@ -1591,10 +1591,14 @@ void fork_server(int fd, conn_t *l, int nofork) {
    */
 
   if ((ident_lookups = get_param_ptr(main_server->conf, "IdentLookups",
-     FALSE)) == NULL || *ident_lookups == TRUE)
-    session.ident_user = get_ident(session.pool,conn);
-  else
+     FALSE)) == NULL || *ident_lookups == TRUE) {
+    session.ident_lookups = TRUE;
+    session.ident_user = get_ident(session.pool, conn);
+
+  } else {
+    session.ident_lookups = FALSE;
     session.ident_user = "UNKNOWN";
+  }
 
   /* find class */
   if (get_param_int(main_server->conf, "Classes", FALSE) == 1) {

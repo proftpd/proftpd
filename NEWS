@@ -1,4 +1,8 @@
-$Id: NEWS,v 1.169 2002-05-13 14:05:35 castaglia Exp $
+$Id: NEWS,v 1.170 2002-05-19 20:45:42 castaglia Exp $
+
+CVS
+---------------------------------
+- Bug 1612 - fixed logging of RFC931 usernames in xferlog
 
 1.2.5rc2 - Released 2002-05-13
 ---------------------------------

@@ -26,7 +26,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.33 2002-03-01 02:49:40 flood Exp $
+ * $Id: log.c,v 1.34 2002-05-19 20:45:42 castaglia Exp $
  */
 
 /* History Log:
@@ -108,26 +108,24 @@ int log_open_xfer(const char *fn) {
   return xferfd;
 }
 
-int log_xfer(int xfertime, char *remhost, unsigned long fsize,
-             char *fname, char xfertype, char direction,
-             char access, char *user, char abort_flag)
-{
-  char  buf[LOGBUFFER_SIZE] = {'\0'},
-       fbuf[LOGBUFFER_SIZE] = {'\0'};
-  int i;
+int log_xfer(int xfertime, char *remhost, unsigned long fsize, char *fname,
+    char xfertype, char direction, char access, char *user, char abort_flag) {
 
-  if(xferfd == -1 || !remhost || !user || !fname)
+  char buf[LOGBUFFER_SIZE] = {'\0'}, fbuf[LOGBUFFER_SIZE] = {'\0'};
+  register unsigned int i = 0;
+
+  if (xferfd == -1 || !remhost || !user || !fname)
     return 0;
 
-  for(i = 0; (i + 1 < sizeof(fbuf)) && fname[i] != '\0'; i++) {
+  for (i = 0; (i + 1 < sizeof(fbuf)) && fname[i] != '\0'; i++)
     fbuf[i] = (isspace(fname[i]) || iscntrl(fname[i])) ? '_' : fname[i];
-  }
-  
   fbuf[i] = '\0';
-  
-  snprintf(buf, sizeof(buf), "%s %d %s %lu %s %c _ %c %c %s ftp 0 * %c\n",
-	   fmt_time(time(NULL)), xfertime, remhost, fsize,
-	   fbuf, xfertype, direction, access, user, abort_flag);
+
+  snprintf(buf, sizeof(buf), "%s %d %s %lu %s %c _ %c %c %s ftp %c %s %c\n",
+    fmt_time(time(NULL)), xfertime, remhost, fsize, fbuf, xfertype, direction,
+    access, user, session.ident_lookups == TRUE ? '1' : '0',
+    (session.ident_lookups == TRUE && strcmp(session.ident_user,
+      "UNKNOWN")) ? session.ident_user : "*", abort_flag);
   buf[sizeof(buf)-1] = '\0';
 
   return(write(xferfd, buf, strlen(buf)));

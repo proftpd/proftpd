@@ -24,7 +24,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.19 2002-05-12 20:48:55 castaglia Exp $
+ * $Id: proftpd.h,v 1.20 2002-05-19 20:45:42 castaglia Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -101,6 +101,7 @@ typedef struct {
   p_in_addr_t data_addr;		/* Remote data address */
   short data_port;			/* Remote data port */
 
+  unsigned char ident_lookups;		/* Is RFC931 (ident) protocol used? */
   char *ident_user;			/* User identified by ident protocol */
 
   char cwd[MAX_PATH_LEN];		/* Current working directory */  
