@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.189 2003-08-11 04:41:01 castaglia Exp $
+ * $Id: main.c,v 1.190 2003-09-08 00:42:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -530,9 +530,9 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
        * this is only necessary for perfomance reasons in 1.1/1.2
        */
 
-      if (!c->group || strcmp(c->group,G_WRITE) != 0)
+      if (!c->group || strcmp(c->group, G_WRITE) != 0)
         kludge_disable_umask();
-      mr = call_module_cmd(c->m,c->handler,cmd);
+      mr = call_module(c->m, c->handler, cmd);
       kludge_enable_umask();
 
       if (MODRET_ISHANDLED(mr))
@@ -2458,7 +2458,7 @@ int main(int argc, char *argv[], char **envp) {
   log_opensyslog(NULL);
 
   /* Initialize the memory subsystem here */
-  pr_init_pools();
+  init_pools();
 
   /* Command line options supported:
    *
@@ -2584,7 +2584,7 @@ int main(int argc, char *argv[], char **envp) {
   }
 
   /* Initialize sub-systems */
-  pr_init_pools();
+  init_pools();
   pr_init_regexp();
   init_log();
   pr_init_inet();
@@ -2592,7 +2592,7 @@ int main(int argc, char *argv[], char **envp) {
   pr_init_fs();
   pr_free_bindings();
   init_config();
-  pr_init_stash();
+  init_stash();
   module_preparse_init();
 
   /* Now, once the modules have had a chance to initialize themselves
