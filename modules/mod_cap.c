@@ -31,28 +31,30 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -Llib/libcap -lcap$
  * $Directories: lib/libcap$
- * $Id: mod_cap.c,v 1.4 2003-01-03 03:02:44 jwm Exp $
+ * $Id: mod_cap.c,v 1.5 2003-01-03 03:43:51 jwm Exp $
  */
 
+#include <stdio.h>
 #include <stdlib.h>
+
 
 #ifdef LINUX
 # ifdef __powerpc__
-# define _LINUX_BYTEORDER_GENERIC_H
+#  define _LINUX_BYTEORDER_GENERIC_H
 # endif
 
 # ifdef HAVE_LINUX_CAPABILITY_H
 #  include <linux/capability.h>
 # endif /* HAVE_LINUX_CAPABILITY_H */
-#endif /* LINUX */
+# include "../lib/libcap/include/sys/capability.h"
 
-/* What are these here for? */
-#undef WNOHANG
-#undef WUNTRACED
+/* What are these for? */
+# undef WNOHANG
+# undef WUNTRACED
+#endif /* LINUX */
 
 #include "conf.h"
 #include "privs.h"
-#include "../lib/libcap/include/sys/capability.h"
 
 #define MOD_CAP_VERSION	"mod_cap/1.0"
 
@@ -344,7 +346,7 @@ module cap_module = {
   NULL,
 
   /* Module initialization */
-  cap_init,
+  cap_module_init,
 
   /* Session initialization */
   cap_sess_init
