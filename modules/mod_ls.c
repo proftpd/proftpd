@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.111 2004-05-06 15:35:30 castaglia Exp $
+ * $Id: mod_ls.c,v 1.112 2004-05-07 18:17:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2026,9 +2026,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
     /* Don't display hidden files */
     if (hidden) {
-      config_rec *c = NULL;
-
       c = _find_ls_limit(target);
+
       if (c) {
         unsigned char *ignore_hidden = get_param_ptr(c->subset,
           "IgnoreHidden", FALSE);
