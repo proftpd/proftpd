@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.205 2003-11-08 22:19:30 castaglia Exp $
+ * $Id: main.c,v 1.206 2003-11-08 22:34:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1551,6 +1551,8 @@ static void daemon_loop(void) {
 
       /* Check for exceeded MaxInstances. */
       if (ServerMaxInstances && (child_listlen >= ServerMaxInstances)) {
+        pr_event_generate("core.max-instances", NULL);
+        
         log_pri(PR_LOG_WARNING,
           "MaxInstances (%d) reached, new connection denied",
           ServerMaxInstances);
@@ -1558,6 +1560,8 @@ static void daemon_loop(void) {
 
       /* Check for exceeded MaxConnectionRate. */
       } else if (max_connects && (nconnects > max_connects)) {
+        pr_event_generate("core.max-connection-rate", NULL);
+
         log_pri(PR_LOG_WARNING,
           "MaxConnectionRate (%lu/%u secs) reached, new connection denied",
           max_connects, max_connect_interval);

@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.166 2003-10-31 07:22:12 castaglia Exp $
+ * $Id: mod_auth.c,v 1.167 2003-11-08 22:34:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1925,6 +1925,10 @@ MODRET auth_pass(cmd_rec *cmd) {
 
       log_auth(PR_LOG_NOTICE, "Maximum login attempts (%u) exceeded",
         max_logins);
+
+      /* Generate an event about this limit being exceeded. */
+      pr_event_generate("mod_auth.max-login-attempts", session.c);
+
       end_login(0);
     }
 
