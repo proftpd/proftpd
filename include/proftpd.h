@@ -19,7 +19,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.14 2001-02-23 02:47:26 flood Exp $
+ * $Id: proftpd.h,v 1.15 2001-03-23 13:17:51 flood Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -230,5 +230,6 @@ void end_login(int);
 void main_exit(void*,void*,void*,void*);
 void main_set_idle();
 void register_rehash(void*,void(*)(void*));
+void set_rlimits(void);
 
 #endif /* __PROFTPD_H */

@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.57 2001-03-23 12:54:59 flood Exp $
+ * $Id: main.c,v 1.58 2001-03-23 13:17:52 flood Exp $
  */
 
 /*
@@ -1165,6 +1165,9 @@ void main_rehash(void *d1,void *d2,void *d3,void *d4)
     PRIVS_RELINQUISH
     free_conf_stacks();
 
+    /* set resource limits */
+    set_rlimits();
+
     fixup_servers();
 
     /* Free old configuration completely */
@@ -1895,6 +1898,10 @@ static RETSIGTYPE sig_terminate(int sig)
 
       log_pri(LOG_NOTICE,"ProFTPD killed (signal %d)",sig);
     }
+
+  } else if (sig == SIGXCPU) {
+    log_pri(LOG_NOTICE, "ProFTPD CPU limit exceeded (signal %d)", sig);
+
   } else
     log_pri(LOG_ERR,"ProFTPD terminating (signal %d)",sig);
 
@@ -1965,6 +1972,7 @@ static void install_signal_handlers()
   signal(SIGFPE,sig_terminate);
   signal(SIGSEGV,sig_terminate);
   signal(SIGTERM,sig_terminate);
+  signal(SIGXCPU,sig_terminate);
 #ifdef SIGSTKFLT
   signal(SIGSTKFLT,sig_terminate);
 #endif /* SIGSTKFLT */
@@ -1983,12 +1991,12 @@ static void install_signal_handlers()
   sigprocmask(SIG_UNBLOCK,&sigset,NULL);
 }
 
-static void set_rlimits()
-{
+void set_rlimits() {
+  config_rec *c = NULL;
   struct rlimit rlim;
 
   if(getrlimit(RLIMIT_CORE,&rlim) == -1)
-    log_pri(LOG_ERR,"getrlimit(): %s",strerror(errno));
+    log_pri(LOG_ERR, "error: getrlimit(RLIMIT_CORE): %s", strerror(errno));
   else {
 #ifdef DEBUG_CORE
     if(abort_core)
@@ -2000,10 +2008,78 @@ static void set_rlimits()
     PRIVS_ROOT
     if(setrlimit(RLIMIT_CORE,&rlim) == -1) {
       PRIVS_RELINQUISH
-      log_pri(LOG_ERR,"setrlimit(): %s",strerror(errno));
+      log_pri(LOG_ERR, "error: setrlimit(RLIMIT_CORE): %s", strerror(errno));
       return;
     }
     PRIVS_RELINQUISH
+  }
+
+  /* now check for the configurable rlimits */
+  if ((c = find_config(main_server->conf, CONF_PARAM, "RLimitCPU",
+      FALSE)) != NULL) {
+#ifdef RLIMIT_CPU
+    struct rlimit *cpu_rlimit = (struct rlimit *) c->argv[0];
+
+    PRIVS_ROOT
+    if (setrlimit(RLIMIT_CPU, cpu_rlimit) == -1) {
+      PRIVS_RELINQUISH
+      log_pri(LOG_ERR, "error: setrlimit(RLIMIT_CPU): %s", strerror(errno));
+      return;
+    }
+    PRIVS_RELINQUISH
+#endif /* defined RLIMIT_CPU */
+  }
+
+  if ((c = find_config(main_server->conf, CONF_PARAM, "RLimitMemory",
+      FALSE)) != NULL) {
+    struct rlimit *memory_rlimit = (struct rlimit *) c->argv[0];
+
+    PRIVS_ROOT
+#if defined(RLIMIT_AS)
+    if (setrlimit(RLIMIT_AS, memory_rlimit) == -1) {
+      PRIVS_RELINQUISH
+      log_pri(LOG_ERR, "error: setrlimit(RLIMIT_AS): %s", strerror(errno));
+      return;
+    }
+#elif defined(RLIMIT_DATA)
+    if (setrlimit(RLIMIT_DATA, memory_rlimit) == -1) {
+      PRIVS_RELINQUISH
+      log_pri(LOG_ERR, "error: setrlimit(RLIMIT_DATA): %s", strerror(errno));
+      return;
+    }
+#elif defined(RLIMIT_VMEM)
+    if (setrlimit(RLIMIT_VMEM, memory_rlimit) == -1) {
+      PRIVS_RELINQUISH
+      log_pri(LOG_ERR, "error: setrlimit(RLIMIT_VMEM): %s", strerror(errno));
+      return;
+    }
+#endif
+    PRIVS_RELINQUISH
+  }
+
+  if ((c = find_config(main_server->conf, CONF_PARAM, "RLimitOpenFiles",
+      FALSE)) != NULL) {
+#if defined(RLIMIT_NOFILE) || defined(RLIMIT_OFILE)
+    struct rlimit *nofile_rlimit = (struct rlimit *) c->argv[0];
+
+    PRIVS_ROOT
+#if defined(RLIMIT_NOFILE)
+    if (setrlimit(RLIMIT_NOFILE, nofile_rlimit) == -1) {
+      PRIVS_RELINQUISH
+      log_pri(LOG_ERR, "error: setrlimit(RLIMIT_NOFILE): %s",
+        strerror(errno));
+      return;
+    }
+#elif defined(RLIMIT_OFILE)
+    if (setrlimit(RLIMIT_OFILE, nofile_rlimit) == -1) {
+      PRIVS_RELINQUISH
+      log_pri(LOG_ERR, "error: setrlimit(RLIMIT_OFILE): %s",
+        strerror(errno));
+      return;
+    }
+#endif /* defined RLIMIT_OFILE */
+    PRIVS_RELINQUISH
+#endif /* defined RLIMIT_NOFILE or defined RLIMIT_OFILE */
   }
 }
 

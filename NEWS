@@ -1,9 +1,12 @@
-$Id: NEWS,v 1.89 2001-03-22 21:43:53 flood Exp $
+$Id: NEWS,v 1.90 2001-03-23 13:17:51 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
-- Bug #1049 - New User/Groups weren't being seen after startup w/out a SIGHUP.
-- Bug #1066 - new GNU glob() and friends, which properly limits recursion and
+- New RLimit* directives used to control resource usage on support platforms.
+- Bug 1075 - Sub-contexts (<Directory>, etc) weren't being fully copied from
+  <Global> to vhosts.
+- Bug 1049 - New User/Groups weren't being seen after startup w/out a SIGHUP.
+- Bug 1066 - new GNU glob() and friends, which properly limits recursion and
   avoids DoS issues.  Built-in glob support is now always compiled in to
   proftpd regardless of libc support on build platform.
 - New directive "MasqueradeAddress", used to emit a "fake" (non-interface) IP

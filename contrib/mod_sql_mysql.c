@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#define MOD_SQL_MYSQL_VERSION "mod_sql_mysql/3.0"
+#define MOD_SQL_MYSQL_VERSION "mod_sql_mysql/3.1"
 
 /* -- DO NOT MODIFY THE LINE BELOW UNLESS YOU FEEL LIKE IT --
  * $Libraries: -lm -lmysqlclient $
@@ -316,30 +316,18 @@ unsigned int sql_backend_escape_string(char *to, char *from, unsigned int len)
 int sql_backend_check_auth(cmd_rec * cmd, const char *c_clear,
                            const char *c_hash)
 {
-  MYSQL_RES *result;
-  MYSQL_ROW row;
-  char *query;
+  char scrambled[256]={'\0'};
   int success = 0;
 
   log_debug(DEBUG5, "%s: entering sql_auth_backend_check_auth",
             MOD_SQL_MYSQL_VERSION);
 
-  query = pstrcat(cmd->tmp_pool, "select PASSWORD('", c_clear, "')", NULL);
+  make_scrambled_password( scrambled, c_clear );
 
-  if (mysql_query(mysqldb, query))
-    return 0;
-
-  if ((result = mysql_store_result(mysqldb))) {
-    row = mysql_fetch_row(result);
-
-    log_debug(DEBUG4, "%s: PASSWORD(clear)=='%s'  actual=='%s'",
-              MOD_SQL_MYSQL_VERSION, row[0], c_hash);
-
-    if (!strcmp(row[0], c_hash))
-      success = 1;
-
-    mysql_free_result(result);
-  }
+  if (strcmp(scrambled, c_hash) == 0) 
+    success = 1;
+  else
+    success = 0;
 
   log_debug(DEBUG5, "%s: exiting  sql_auth_backend_check_auth",
             MOD_SQL_MYSQL_VERSION);

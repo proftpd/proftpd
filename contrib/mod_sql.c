@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#define MOD_SQL_VERSION "mod_sql/3.1.4"
+#define MOD_SQL_VERSION "mod_sql/3.1.5"
 
 /* This is mod_sql, contrib software for proftpd 1.2.0rc3 and above.
    Originally written and maintained as 'mod_sqlpw' by Johnie 
@@ -126,6 +126,7 @@ static struct
    */
 
   char *authuser;               /* current authorized user */
+  struct passwd *authpasswd;    /* and their passwd struct */
 
   /*
    * generic status information 
@@ -135,7 +136,9 @@ static struct
   int doauth;                   /* should we bother doing auth at all? */
   int dogroupauth;              /* should we do group auth */
   int connected;                /* are we connected to the database? */
-  int sqlauthorized;            /* Set if sql auth was used. */
+
+  int processgrent;
+  int processpwent;
 
   /*
    * user table and field information 
@@ -996,6 +999,8 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
   char *temp_ptr = NULL;
   struct stat st;
   char *usrwhere, *where;
+  int userlen;
+  char *realname;
 
   if (p == NULL)
     return NULL;
@@ -1012,7 +1017,10 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
   }
 
   if (p->pw_name != NULL) {
-    username = pstrdup(cmd->tmp_pool, p->pw_name);
+    realname = p->pw_name;
+    userlen = (strlen(realname) * 2) + 1;
+    username = pcalloc(cmd->tmp_pool, userlen);
+    sql_backend_escape_string(username, realname, strlen(realname));
 
     /*
      * double check that the user exists.. 
@@ -1045,10 +1053,14 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
       return NULL;
     }
 
-    username = pstrdup(cmd->tmp_pool, sd->data[0]);
+    /* do we really need to escape the string returned from the database? */
+    realname=sd->data[0];
+    userlen = (strlen(realname) * 2) + 1;
+    username = pcalloc(cmd->tmp_pool, userlen);
+    sql_backend_escape_string(username, realname, strlen(realname));
   }
 
-  log_debug( DEBUG_WARN, "NO CACHE HIT FOR USER '%s'", username );
+  log_debug( DEBUG_WARN, "%s: no cache hit for user '%s'", MOD_SQL_VERSION, realname );
 
   pwd = pcalloc(session.pool, sizeof(struct passwd));
 
@@ -1059,7 +1071,7 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
   }
   pwd->pw_dir = pstrdup(session.pool, temp_ptr);
 
-  pwd->pw_name = pstrdup(session.pool, username);
+  pwd->pw_name = pstrdup(session.pool, realname);
 
   if (cmap.uidfield) {
     temp_ptr = _uservar(cmd, username, cmap.uidfield);
@@ -1081,7 +1093,7 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
   pwd->pw_shell = temp_ptr ? pstrdup(session.pool, temp_ptr) : "";
 
   log_debug(DEBUG_INFO, "%s: user \"%s\" (%i/%i) for %s", MOD_SQL_VERSION,
-            username, pwd->pw_uid, pwd->pw_gid, pwd->pw_dir);
+            pwd->pw_name, pwd->pw_uid, pwd->pw_gid, pwd->pw_dir);
 
   /*
    * finally, build the user's homedir if necessary 
@@ -1477,6 +1489,9 @@ MODRET auth_cmd_setpwent(cmd_rec * cmd)
   if (!cmap.doauth)
     return DECLINED(cmd);
 
+  if (!cmap.processpwent)
+    return (cmap.authoritative ? mod_create_data(cmd,(void *)0):DECLINED(cmd));
+
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_setpwent", MOD_SQL_VERSION);
 
   /* if we've already filled the passwd cache, just reset the curr_passwd */
@@ -1540,6 +1555,9 @@ MODRET auth_cmd_getpwent(cmd_rec * cmd)
   if (!cmap.doauth)
     return DECLINED(cmd);
 
+  if (!cmap.processpwent)
+    return (cmap.authoritative ? mod_create_data(cmd,(void *)NULL):DECLINED(cmd));
+
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_getpwent", MOD_SQL_VERSION);
 
   /* make sure our passwd cache is complete  */
@@ -1572,6 +1590,9 @@ MODRET auth_cmd_endpwent(cmd_rec * cmd)
   if (!cmap.doauth)
     return DECLINED(cmd);
 
+  if (!cmap.processpwent)
+    return (cmap.authoritative ? mod_create_data(cmd,(void *)0):DECLINED(cmd));
+
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_endpwent", MOD_SQL_VERSION);
 
   cmap.curr_passwd = NULL;
@@ -1597,6 +1618,9 @@ MODRET auth_cmd_setgrent(cmd_rec * cmd)
 
   if ( !cmap.dogroupauth )
     return cmap.authoritative ? ERROR (cmd) : DECLINED( cmd );
+
+  if (!cmap.processgrent)
+    return (cmap.authoritative ? mod_create_data(cmd,(void *)0):DECLINED(cmd));
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_setgrent", MOD_SQL_VERSION);
 
@@ -1665,6 +1689,9 @@ MODRET auth_cmd_getgrent(cmd_rec * cmd)
   if ( !cmap.dogroupauth )
     return cmap.authoritative ? ERROR (cmd) : DECLINED( cmd );
 
+  if (!cmap.processgrent)
+    return (cmap.authoritative ? mod_create_data(cmd,(void *)NULL):DECLINED(cmd));
+
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_getgrent", MOD_SQL_VERSION);
 
   /* make sure our group cache is complete  */
@@ -1699,6 +1726,9 @@ MODRET auth_cmd_endgrent(cmd_rec * cmd)
 
   if ( !cmap.dogroupauth )
     return cmap.authoritative ? ERROR (cmd) : DECLINED( cmd );
+
+  if (!cmap.processgrent)
+    return (cmap.authoritative ? mod_create_data(cmd,(void *)0):DECLINED(cmd));
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_endgrent", MOD_SQL_VERSION);
 
@@ -1813,14 +1843,22 @@ MODRET auth_cmd_auth(cmd_rec * cmd)
 {
   char *query, **row;
   modret_t *mr;
-  char *user = cmd->argv[0];
+  char *user;
   sqldata_t *sd;
   char *usrwhere, *where;
+  int userlen;
+  char *realuser;
 
   if (!cmap.doauth)
     return DECLINED(cmd);
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_auth", MOD_SQL_VERSION);
+
+  /* escape our username */
+  realuser = cmd->argv[0];
+  userlen = (strlen(realuser) * 2) + 1;
+  user = pcalloc(cmd->tmp_pool, userlen);
+  sql_backend_escape_string(user, realuser, strlen(realuser));
 
   usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", user, "'", NULL);
   where = sql_where(cmd->tmp_pool, 2, usrwhere, cmap.where );
@@ -1848,7 +1886,7 @@ MODRET auth_cmd_auth(cmd_rec * cmd)
     return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
   }    
 
-  if (auth_check(cmd->tmp_pool, row[0], user, cmd->argv[1])) {
+  if (auth_check(cmd->tmp_pool, row[0], realuser, cmd->argv[1])) {
     log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_auth", MOD_SQL_VERSION);
     return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
   }
@@ -1872,6 +1910,9 @@ MODRET auth_cmd_check(cmd_rec * cmd)
   char *c_clear;
   int success = 0;
   int cnt = 0;
+  struct passwd lpw;
+  char *authuser;
+  int userlen;
 
   if (!cmap.doauth)
     return DECLINED(cmd);
@@ -1903,8 +1944,23 @@ MODRET auth_cmd_check(cmd_rec * cmd)
   log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_check", MOD_SQL_VERSION);
 
   if (success) {
-    cmap.authuser = pstrdup(session.pool, cmd->argv[1]);
-    cmap.sqlauthorized = 1;
+    userlen = (strlen(cmd->argv[1]) * 2) + 1;
+    authuser = pcalloc(cmd->tmp_pool, userlen);
+    sql_backend_escape_string(authuser, cmd->argv[1], (userlen-1)/2);
+    cmap.authuser = pstrdup(session.pool, authuser);
+
+    /* this and the associated hack in auth_cmd_uid_name are to support
+     * uid reuse in the database -- people (for whatever reason) are
+     * reusing uids/gids multiple times, and the displayed owner in a 
+     * LIST or NLST needs to match the current user if possible.  This
+     * depends on the fact that if we get success, the user exists in the
+     * database ( -- is this always true? ).
+     */
+
+    lpw.pw_uid = -1;
+    lpw.pw_name = pstrdup(session.pool, cmd->argv[1]);
+    cmap.authpasswd = _sql_getpasswd(cmd, &lpw);
+
     return HANDLED(cmd);
   }
 
@@ -1915,6 +1971,7 @@ MODRET auth_cmd_uid_name(cmd_rec * cmd)
 {
   struct passwd *pw;
   struct passwd lpw;
+  char uidstr[BUFSIZE] = {'\0'};
 
   if (!cmap.doauth)
     return DECLINED(cmd);
@@ -1923,14 +1980,24 @@ MODRET auth_cmd_uid_name(cmd_rec * cmd)
 
   lpw.pw_uid = (uid_t) cmd->argv[0];
   lpw.pw_name = NULL;
-  pw = _sql_getpasswd(cmd, &lpw);
 
-  if (pw == NULL) {
-    log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_uid_name", MOD_SQL_VERSION);
-    return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
+  /* check to see if we're looking up the current user */
+  if ( cmap.authpasswd && (lpw.pw_uid == cmap.authpasswd->pw_uid)) {
+    log_debug(DEBUG_INFO, "%s: matched current user", MOD_SQL_VERSION);
+    pw = cmap.authpasswd;
+  } else {
+    pw = _sql_getpasswd(cmd, &lpw);
   }
 
   log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_uid_name", MOD_SQL_VERSION);
+
+  if (pw == NULL) {
+    if (!cmap.authoritative)
+      return DECLINED(cmd);
+
+    snprintf( uidstr, BUFSIZE, "%d", (uid_t) cmd->argv[0]);
+    return mod_create_data(cmd, uidstr);
+  }
 
   return mod_create_data(cmd, pw->pw_name);
 }
@@ -1939,6 +2006,7 @@ MODRET auth_cmd_gid_name(cmd_rec * cmd)
 {
   struct group *gr;
   struct group lgr;
+  char gidstr[BUFSIZE]={'\0'};
 
   if (!cmap.doauth)
     return DECLINED(cmd);
@@ -1952,12 +2020,15 @@ MODRET auth_cmd_gid_name(cmd_rec * cmd)
   lgr.gr_name = NULL;
   gr = _sql_getgroup(cmd, &lgr);
 
-  if (gr == NULL) {
-    log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_gid_name", MOD_SQL_VERSION);
-    return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
-  }
-
   log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_gid_name", MOD_SQL_VERSION);
+
+  if (gr == NULL) {
+    if (!cmap.authoritative)
+      return DECLINED(cmd);
+
+    snprintf( gidstr, BUFSIZE, "%d", (gid_t) cmd->argv[0]);
+    return mod_create_data(cmd, gidstr);
+  }
 
   return mod_create_data(cmd, gr->gr_name);
 }
@@ -1974,7 +2045,15 @@ MODRET auth_cmd_name_uid(cmd_rec * cmd)
 
   lpw.pw_uid = -1;
   lpw.pw_name = pstrdup( cmd->tmp_pool, cmd->argv[0]);
-  pw = _sql_getpasswd(cmd, &lpw);
+
+  /* check to see if we're looking up the current user */
+  if (cmap.authpasswd && 
+      (strcmp(lpw.pw_name, cmap.authpasswd->pw_name) == 0)) {
+    log_debug(DEBUG_INFO, "%s: matched current user", MOD_SQL_VERSION);
+    pw = cmap.authpasswd;
+  } else {
+    pw = _sql_getpasswd(cmd, &lpw);
+  }
 
   if (pw == NULL) {
     log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_name_uid", MOD_SQL_VERSION);
@@ -2302,6 +2381,16 @@ MODRET set_sqllog(cmd_rec * cmd)
   /* SQLLog table fieldset [commandclass] [logdirectives] [whereclause] */
 
   return add_virtualstr(cmd);
+}
+
+MODRET set_sqlprocessgrent(cmd_rec * cmd)
+{
+  return add_virtualbool(cmd);
+}
+
+MODRET set_sqlprocesspwent(cmd_rec * cmd)
+{
+  return add_virtualbool(cmd);
 }
 
 /* start of deprecated directives */
@@ -2974,6 +3063,22 @@ static int sql_getconf()
   if (cmap.buildhomedir == -1)
     cmap.buildhomedir = 0;
 
+  /*
+   * SQLProcessGrEnt defaults to YES 
+   */
+  cmap.processgrent =
+      get_param_int(main_server->conf, "SQLProcessGrEnt", FALSE);
+  if (cmap.processgrent == -1)
+    cmap.processgrent = 1;
+
+  /*
+   * SQLProcessPwEnt defaults to YES 
+   */
+  cmap.processpwent =
+      get_param_int(main_server->conf, "SQLProcessPwEnt", FALSE);
+  if (cmap.processpwent == -1)
+    cmap.processpwent = 1;
+
   temp_ptr = get_param_ptr(main_server->conf, "SQLUserTable", FALSE);
   cmap.usrtable = temp_ptr ? temp_ptr : SQL_DEFAULT_USERTABLE;
 
@@ -3076,10 +3181,14 @@ static int sql_getconf()
 
   cmap.sql_fcdir = get_param_ptr(main_server->conf, "SQLLogDirs", FALSE);
 
-  if (!(cmap.defaulthomedir || cmap.homedirfield)
-      && !cmap.sql_fhost && !cmap.sql_fstor && !cmap.sql_fcdir) {
+  if ((cmap.defaulthomedir == NULL) &&
+      (cmap.homedirfield == NULL) &&
+      (cmap.sql_fhost == NULL) && 
+      (cmap.sql_fstor == NULL) &&
+      (cmap.sql_fcdir == NULL)) {
     cmap.doauth = 0;
-    log_debug(DEBUG_WARN, "%s: missing defaulthomedir or homedirfield, or we have nothing to log", MOD_SQL_VERSION);
+    log_debug(DEBUG_WARN, "%s: WARNING: mod_sql is missing a defaulthomedir or homedirfield and", MOD_SQL_VERSION);
+    log_debug(DEBUG_WARN, "%s:          there are no logging directives.  mod_sql is NOT BEING USED.", MOD_SQL_VERSION);
     log_debug(DEBUG_FUNC, "%s: exiting  sql_getconf", MOD_SQL_VERSION);
     return 0;
   }
@@ -3122,6 +3231,11 @@ static int sql_getconf()
     log_debug(DEBUG_INFO, "%s: grp members field : %s", MOD_SQL_VERSION,
               cmap.grpmembersfield);
 
+    log_debug(DEBUG_INFO, "%s: processgrent      : %s", MOD_SQL_VERSION,
+              (cmap.processgrent ? "true" : "false"));
+    log_debug(DEBUG_INFO, "%s: processpwent      : %s", MOD_SQL_VERSION,
+              (cmap.processpwent ? "true" : "false"));
+
     log_debug(DEBUG_INFO, "%s: SQLMinUserUID     : %u", MOD_SQL_VERSION,
               cmap.minuseruid);
     log_debug(DEBUG_INFO, "%s: SQLMinUserGID     : %u", MOD_SQL_VERSION,
@@ -3130,8 +3244,6 @@ static int sql_getconf()
               cmap.defaultuid);
     log_debug(DEBUG_INFO, "%s: SQLDefaultGID     : %u", MOD_SQL_VERSION,
               cmap.defaultgid);
-
-
 
     if (cmap.sql_fhost)
       log_debug(DEBUG_INFO, "%s: sql_fhost         : %s", MOD_SQL_VERSION,
@@ -3209,6 +3321,9 @@ static conftable sql_conftab[] = {
   {"SQLHomedirOnDemand", set_sqlhomedirondemand, NULL},
 
   {"SQLLog", set_sqllog, NULL},
+
+  {"SQLProcessGrEnt", set_sqlprocessgrent, NULL},
+  {"SQLProcessPwEnt", set_sqlprocesspwent, NULL},
 
   /*
    * The following are DEPRECATED. Expect them to disappear in 1.3 

@@ -20,7 +20,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.29 2001-03-22 20:56:13 flood Exp $
+ * $Id: dirtree.c,v 1.30 2001-03-23 13:17:52 flood Exp $
  */
 
 /* History:
@@ -1919,9 +1919,9 @@ void _copy_recur(xaset_t **set, pool *p, config_rec *c, config_rec *new_parent)
     *argv++ = NULL;
   }
 
-  if(c->subset && c->subset->xas_list)
-    _copy_recur(&newconf->subset,p,
-                (config_rec*)c->subset->xas_list,newconf);
+  if(c->subset)
+    for(c = (config_rec*)c->subset->xas_list; c; c=c->next)
+      _copy_recur(&newconf->subset,p,c,newconf);
 }
 
 static 

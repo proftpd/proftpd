@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.59 2001-03-23 12:54:59 flood Exp $
+ * $Id: mod_core.c,v 1.60 2001-03-23 13:17:51 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -31,6 +31,7 @@
 #include "privs.h"
 
 #include <ctype.h>
+#include <sys/resource.h>
 
 #ifdef HAVE_REGEX_H
 #include <regex.h>
@@ -93,6 +94,74 @@ extern xaset_t *servers;
 
 /* from mod_site */
 extern modret_t *site_dispatch(cmd_rec*);
+
+/* for bytes-retrieving directives */
+#define PR_BYTES_BAD_UNITS	-1
+#define PR_BYTES_BAD_FORMAT	-2
+
+static ssize_t get_num_bytes(char *nbytes_str) {
+  ssize_t nbytes = 0;
+  unsigned long inb;
+  char units, junk;
+  int result;
+
+  /* scan in the given argument, checking for the leading number-of-bytes
+   * as well as a trailing G, M, K, or B (case-insensitive).  The junk
+   * variable is catch arguments like "2g2" or "number-letter-whatever".
+   *
+   * NOTE: There is no portable way to scan in an ssize_t, so we do unsigned
+   * long and cast it.  This probably places a 32-bit limit on rlimit values
+   * :(
+   *
+   * - jss 3/22/2001
+   */
+  if ((result = sscanf(nbytes_str, "%lu%c%c", &inb, &units, &junk)) == 2) {
+
+    if (units != 'G' && units != 'g' &&
+        units != 'M' && units != 'm' &&
+        units != 'K' && units != 'k' &&
+        units != 'B' && units != 'b')
+      return PR_BYTES_BAD_UNITS;
+
+    nbytes = (ssize_t)inb;
+    /* calculate the actual bytes, multiplying by the given units.  Doing
+     * it this way means that <math.h> and -lm aren't required.
+     */
+    if (units == 'G' || units == 'g')
+      nbytes *= (1024 * 1024 * 1024);
+
+    if (units == 'M' || units == 'm')
+      nbytes *= (1024 * 1024);
+
+    if (units == 'K' || units == 'k')
+      nbytes *= 1024;
+
+    /* silently ignore units of 'B' and 'b', as they don't affect
+     * the requested number of bytes anyway.
+     */
+
+    /* NB: should we check for a maximum numeric value of calculated bytes?
+     *  Probably not, as it varies (int to rlim_t) from platform to
+     *  platform)...at least, not yet.
+     */
+    return nbytes;
+
+  } else if (result == 1) {
+
+    /* no units given -- just return the number of bytes as is
+     */
+    return nbytes;
+
+  } else {
+
+    /* the given argument was badly formatted.
+     */
+    return PR_BYTES_BAD_FORMAT;
+  }
+
+  /* default value */
+  return 0;
+}
 
 MODRET add_include(cmd_rec *cmd)
 {
@@ -783,6 +852,142 @@ MODRET set_requirevalidshell(cmd_rec *cmd)
   c = add_config_param("RequireValidShell",1, bool);
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
+}
+
+MODRET set_rlimitcpu(cmd_rec *cmd) {
+#ifdef RLIMIT_CPU
+  struct rlimit *rlim;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  /* make sure this isn't set twice */
+  if (find_config(cmd->server->conf, CONF_PARAM, "RLimitCPU", FALSE))
+    CONF_ERROR(cmd, "RLimitCPU has already been configured");
+
+  rlim = (struct rlimit *) palloc(cmd->server->pool, sizeof(struct rlimit));
+
+  /* retrieve the current values */
+  if (getrlimit(RLIMIT_CPU, rlim) == -1)
+    log_pri(LOG_ERR, "error: getrlimit(RLIMIT_CPU): %s", strerror(errno));
+
+  if (!strcmp("max", cmd->argv[1]))
+    rlim->rlim_cur = RLIM_INFINITY;
+  else
+    rlim->rlim_cur = atol(cmd->argv[1]);
+
+  if (cmd->argc >= 3) {
+    if (!strcmp("max", cmd->argv[2]))
+      rlim->rlim_max = RLIM_INFINITY;
+    else
+      rlim->rlim_max = atol(cmd->argv[2]);
+  }
+
+  add_config_param("RLimitCPU", 1, (void *) rlim);
+
+  return HANDLED(cmd);
+#else
+  CONF_ERROR(cmd, "RLimitCPU is not supported on this platform");
+#endif
+}
+
+MODRET set_rlimitmemory(cmd_rec *cmd) {
+#if defined(RLIMIT_AS) || defined(RLIMIT_DATA) || defined(RLIMIT_VMEM)
+  struct rlimit *rlim;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  /* make sure this isn't set twice */
+  if (find_config(cmd->server->conf, CONF_PARAM, "RLimitMemory", FALSE))
+    CONF_ERROR(cmd, "RLimitMemory has already been configured");
+
+  rlim = (struct rlimit *) palloc(cmd->server->pool, sizeof(struct rlimit));
+
+  /* retrieve the current values */
+#if defined(RLIMIT_AS)
+  if (getrlimit(RLIMIT_AS, rlim) == -1)
+    log_pri(LOG_ERR, "error: getrlimit(RLIMIT_AS): %s", strerror(errno));
+#elif defined(RLIMIT_DATA)
+  if (getrlimit(RLIMIT_DATA, rlim) == -1)
+    log_pri(LOG_ERR, "error: getrlimit(RLIMIT_DATA): %s", strerror(errno));
+#elif defined(RLIMIT_VMEM)
+  if (getrlimit(RLIMIT_VMEM, rlim) == -1)
+    log_pri(LOG_ERR, "error: getrlimit(RLIMIT_VMEM): %s", strerror(errno));
+#endif
+
+  if (!strcmp("max", cmd->argv[1]))
+    rlim->rlim_cur = RLIM_INFINITY;
+  else
+    rlim->rlim_cur = get_num_bytes(cmd->argv[1]);
+
+  if (rlim->rlim_cur == PR_BYTES_BAD_UNITS)
+    CONF_ERROR(cmd, "unknown units used");
+
+  if (rlim->rlim_cur == PR_BYTES_BAD_FORMAT)
+    CONF_ERROR(cmd, "badly formatted parameter");
+
+  if (cmd->argc >= 3) {
+    if (!strcmp("max", cmd->argv[2]))
+      rlim->rlim_max = RLIM_INFINITY;
+    else
+      rlim->rlim_max = get_num_bytes(cmd->argv[2]);
+
+    if (rlim->rlim_max == PR_BYTES_BAD_UNITS)
+      CONF_ERROR(cmd, "unknown units used");
+
+    if (rlim->rlim_max == PR_BYTES_BAD_FORMAT)
+      CONF_ERROR(cmd, "badly formatted parameter");
+  }
+
+  add_config_param("RLimitMemory", 1, (void *) rlim);
+
+  return HANDLED(cmd);
+#else
+  CONF_ERROR(cmd, "RLimitMemory is not supported on this platform");
+#endif
+}
+
+MODRET set_rlimitopenfiles(cmd_rec *cmd) {
+#if defined(RLIMIT_NOFILE) || defined(RLIMIT_OFILE)
+  struct rlimit *rlim;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  /* make sure this isn't set twice */
+  if (find_config(cmd->server->conf, CONF_PARAM, "RLimitOpenFiles", FALSE))
+    CONF_ERROR(cmd, "RLimitOpenFiles has already been configured");
+
+  rlim = (struct rlimit *) palloc(cmd->server->pool, sizeof(struct rlimit));
+
+  /* retrieve the current values */
+#if defined(RLIMIT_NOFILE)
+  if (getrlimit(RLIMIT_NOFILE, rlim) == -1)
+    log_pri(LOG_ERR, "error: getrlimit(RLIMIT_NOFILE): %s", strerror(errno));
+#elif defined(RLIMIT_OFILE)
+  if (getrlimit(RLIMIT_OFILE, rlim) == -1)
+    log_pri(LOG_ERR, "error: getrlimit(RLIMIT_OFILE): %s", strerror(errno));
+#endif
+
+  if (!strcmp("max", cmd->argv[1]))
+    rlim->rlim_cur = RLIM_INFINITY;
+  else
+    rlim->rlim_cur = atol(cmd->argv[1]);
+
+  if (cmd->argc >= 3) {
+    if (!strcmp("max", cmd->argv[2]))
+      rlim->rlim_max = RLIM_INFINITY;
+    else
+      rlim->rlim_max = atol(cmd->argv[2]);
+  }
+
+  add_config_param("RLimitOpenFiles", 1, (void *) rlim);
+
+  return HANDLED(cmd);
+#else
+  CONF_ERROR(cmd, "RLimitOpenFiles is not supported on this platform");
+#endif
 }
 
 MODRET set_syslogfacility(cmd_rec *cmd)
@@ -2926,6 +3131,9 @@ static conftable core_conftable[] = {
   { "PidFile",			set_pidfile,	 		NULL },
   { "Port",			set_serverport, 		NULL },
   { "RequireValidShell",	set_requirevalidshell,		NULL },
+  { "RLimitCPU",		set_rlimitcpu,			NULL },
+  { "RLimitMemory",		set_rlimitmemory,		NULL },
+  { "RLimitOpenFiles",		set_rlimitopenfiles,		NULL },
   { "ScoreboardPath",		set_scoreboardpath,		NULL },
   { "ServerAdmin",		set_serveradmin,		NULL },
   { "ServerIdent",		set_serverident,		NULL },
