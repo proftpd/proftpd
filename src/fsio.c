@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (C) 2001, 2002, 2003 The ProFTPD Project
+ * Copyright (C) 2001, 2002, 2003, 2004 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.37 2004-10-30 23:16:41 castaglia Exp $
+ * $Id: fsio.c,v 1.38 2004-11-13 22:47:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -258,7 +258,12 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *sbuf,
     sstrncpy(pathbuf, path, sizeof(pathbuf)-1);
 
   /* Determine which filesystem function to use, stat() or lstat() */
-  mystat = (op == FSIO_FILE_STAT) ? fs->stat : fs->lstat;
+  if (op == FSIO_FILE_STAT) {
+    mystat = fs->stat ? fs->stat : sys_stat;
+
+  } else {
+    mystat = fs->lstat ? fs->lstat : sys_lstat;
+  }
 
   /* Can the last cached stat be used? */
   if (strcmp(pathbuf, statcache.sc_path) == 0) {
@@ -520,7 +525,8 @@ pr_fs_t *pr_register_fs(pool *p, const char *name, const char *path) {
   }
 
   /* Instantiate an pr_fs_t */
-  if ((fs = pr_create_fs(p, name)) != NULL) {
+  fs = pr_create_fs(p, name);
+  if (fs != NULL) {
 
     /* Call pr_insert_fs() from here */
     if (!pr_insert_fs(fs, path)) {
@@ -551,54 +557,17 @@ pr_fs_t *pr_create_fs(pool *p, const char *name) {
   fs_pool = make_sub_pool(p);
   pr_pool_tag(fs_pool, "FS Pool");
 
-  fs = (pr_fs_t *) pcalloc(fs_pool, sizeof(pr_fs_t));
-
+  fs = pcalloc(fs_pool, sizeof(pr_fs_t));
   if (!fs)
     return NULL;
 
   fs->fs_pool = fs_pool;
-
-  /* Once layered pr_fs_ts are fully supported, this will be used/set,
-   * probably in pr_insert_fs(), as a linked list of pr_fs_t's interested
-   * in the same path.
-   */
   fs->fs_next = fs->fs_prev = NULL;
-
   fs->fs_name = pstrdup(fs->fs_pool, name);
+  fs->fs_next = root_fs;
 
   /* This is NULL until set by pr_insert_fs() */
   fs->fs_path = NULL;
-
-  /* Set the standard system FSIO functions, first.  The caller can provide
-   * their own custom implementation function pointers using the returned
-   * pr_fs_t pointer.
-   */
-  fs->stat = sys_stat;
-  fs->fstat = sys_fstat;
-  fs->lstat = sys_lstat;
-  fs->rename = sys_rename;
-  fs->unlink = sys_unlink;
-  fs->open = sys_open;
-  fs->creat = sys_creat;
-  fs->close = sys_close;
-  fs->read = sys_read;
-  fs->write = sys_write;
-  fs->lseek = sys_lseek;
-  fs->link = sys_link;
-  fs->readlink = sys_readlink;
-  fs->symlink = sys_symlink;
-  fs->ftruncate = sys_ftruncate;
-  fs->truncate = sys_truncate;
-  fs->chmod = sys_chmod;
-  fs->chown = sys_chown;
-
-  fs->chdir = sys_chdir;
-  fs->chroot = sys_chroot;
-  fs->opendir = sys_opendir;
-  fs->closedir = sys_closedir;
-  fs->readdir = sys_readdir;
-  fs->mkdir = sys_mkdir;
-  fs->rmdir = sys_rmdir;
 
   return fs;
 }
@@ -624,36 +593,46 @@ int pr_insert_fs(pr_fs_t *fs, const char *path) {
   if (!fs->fs_path)
     fs->fs_path = pstrdup(fs->fs_pool, cleaned_path);
 
-  /* For now, disallow any attempts at layering, meaning no duplicate
-   * paths.  Once layering of FS module/pr_fs_ts is allowed, distinguish
-   * between pr_fs_ts of identical paths by name, and extend the check to
-   * bar registration of pr_fs_ts with existing name/path combinations.
-   */
+  /* Check for duplicates. */
   if (fs_map->nelts > 0) {
     pr_fs_t *fsi = NULL, **fs_objs = (pr_fs_t **) fs_map->elts;
     register int i;
 
     for (i = 0; i < fs_map->nelts; i++) {
       fsi = fs_objs[i];
+
       if (strcmp(fsi->fs_path, cleaned_path) == 0) {
-        pr_log_pri(PR_LOG_DEBUG, "error: duplicate fs paths not allowed: '%s'",
-          cleaned_path);
-        errno = EEXIST;
-        return FALSE;
+        /* An entry for this path already exists.  Make sure the FS being
+         * mounted is not the same as the one already present.
+         */
+        if (strcmp(fsi->fs_name, fs->fs_name) == 0) {
+          pr_log_pri(PR_LOG_DEBUG,
+            "error: duplicate fs paths not allowed: '%s'", cleaned_path);
+          errno = EEXIST;
+          return FALSE;
+        }
+
+        /* "Push" the given FS on top of the existing one. */
+        fs->fs_next = fsi;
+        fsi->fs_prev = fs;
+        fs_objs[i] = fs;
+
+        chk_fs_map = TRUE;
+        return TRUE;
       }
     }
   }
 
-  /* Push the new pr_fs_t into the container, then resort the contents. */
+  /* Push the new FS into the container, then resort the contents. */
   *((pr_fs_t **) push_array(fs_map)) = fs;
 
-  /* Sort the pr_fs_ts in the map according to their paths (if there are
+  /* Sort the FSs in the map according to their paths (if there are
    * more than one element in the array_header.
    */
   if (fs_map->nelts > 1)
     qsort(fs_map->elts, fs_map->nelts, sizeof(pr_fs_t *), fs_cmp);
 
-  /* Set the flag so that the fs wrapper functions know that a new pr_fs_t
+  /* Set the flag so that the fs wrapper functions know that a new FS
    * has been registered.
    */
   chk_fs_map = TRUE;
@@ -661,8 +640,8 @@ int pr_insert_fs(pr_fs_t *fs, const char *path) {
   return TRUE;
 }
 
-pr_fs_t *pr_remove_fs(const char *path) {
-  pr_fs_t *fs = NULL, **fs_objs = NULL;
+pr_fs_t *pr_unmount_fs(const char *path, const char *name) {
+  pr_fs_t *fsi = NULL, **fs_objs = NULL;
   register unsigned int i = 0;
 
   /* Sanity check */
@@ -680,44 +659,75 @@ pr_fs_t *pr_remove_fs(const char *path) {
   fs_objs = (pr_fs_t **) fs_map->elts;
 
   for (i = 0; i < fs_map->nelts; i++) {
-    fs = fs_objs[i];
+    fsi = fs_objs[i];
 
-    if (strcmp(fs->fs_path, path) == 0) {
-      register unsigned int j = 0;
+    if (strcmp(fsi->fs_path, path) == 0 &&
+        (name ? strcmp(fsi->fs_name, name) == 0 : TRUE)) {
 
-      /* Exact match -- remove this pr_fs_t.  Allocate a new map. Iterate
-       * through the old map, pushing all other filesystems into the new map.
+      /* Exact match -- remove this FS.  If there is an FS underneath, pop 
+       * the top FS off the stack.  Otherwise, allocate a new map.  Then
+       * iterate through the old map, pushing all other FSs into the new map.
        * Destroy the old map.  Move the new map into place.
        */
 
-      pr_fs_t *tmp_fs, **old_objs = NULL;
+      if (fsi->fs_next == NULL) {
+        register unsigned int j = 0;
+        pr_fs_t *tmp_fs, **old_objs = NULL;
+        pool *map_pool;
+        array_header *new_map;
 
-      pool *map_pool = make_sub_pool(permanent_pool);
-      array_header *new_map = make_array(map_pool, 0, sizeof(pr_fs_t *));
+        /* If removing this FS would leave an empty map, don't bother
+         * allocating a new one.
+         */
+        if (fs_map->nelts == 1) {
+          destroy_pool(fs_map->pool);
+          fs_map = NULL;
+          fs_cwd = root_fs;
 
-      pr_pool_tag(map_pool, "FSIO Map Pool");
-      old_objs = (pr_fs_t **) fs_map->elts;
+          chk_fs_map = TRUE;
+          return NULL;
+        }
 
-      for (j = 0; j < fs_map->nelts; j++) {
-        tmp_fs = old_objs[j];
+        map_pool = make_sub_pool(permanent_pool);
+        new_map = make_array(map_pool, 0, sizeof(pr_fs_t *));
 
-        if (strcmp(tmp_fs->fs_path, path) != 0)
-          *((pr_fs_t **) push_array(new_map)) = old_objs[j];
+        pr_pool_tag(map_pool, "FSIO Map Pool");
+        old_objs = (pr_fs_t **) fs_map->elts;
+
+        for (j = 0; j < fs_map->nelts; j++) {
+          tmp_fs = old_objs[j];
+
+          if (strcmp(tmp_fs->fs_path, path) != 0)
+            *((pr_fs_t **) push_array(new_map)) = old_objs[j];
+        }
+
+        destroy_pool(fs_map->pool);
+        fs_map = new_map;
+
+        /* Don't forget to set the flag so that wrapper functions scan the
+         * new map.
+         */
+        chk_fs_map = TRUE;
+
+        return fsi;
       }
 
-      destroy_pool(fs_map->pool);
-      fs_map = new_map;
+      /* "Pop" this FS off the stack. */
+      if (fsi->fs_next)
+        fsi->fs_next->fs_prev = NULL;
+      fs_objs[i] = fsi->fs_next;
+      fsi->fs_next = fsi->fs_prev = NULL; 
 
-      /* Don't forget to set the flag so that wrapper functions scan the
-       * new map.
-       */
       chk_fs_map = TRUE;
-
-      return fs;
+      return fsi;
     }
   }
 
   return NULL;
+}
+
+pr_fs_t *pr_remove_fs(const char *path) {
+  return pr_unmount_fs(path, NULL);
 }
 
 int pr_unregister_fs(const char *path) {
@@ -732,7 +742,6 @@ int pr_unregister_fs(const char *path) {
    * fs_map.
    */
   fs = pr_remove_fs(path);
-
   if (fs) {
     destroy_pool(fs->fs_pool);
     return 0;
@@ -767,7 +776,8 @@ pr_fs_t *pr_get_fs(const char *path, int *exact) {
   /* Basic optimization -- if there're no elements in the fs_map,
    * return the root_fs.
    */
-  if (!fs_map || fs_map->nelts == 0)
+  if (!fs_map ||
+      fs_map->nelts == 0)
     return root_fs;
 
   fs_objs = (pr_fs_t **) fs_map->elts;
@@ -1748,19 +1758,18 @@ int pr_fsio_chdir_canon(const char *path, int hidesymlink) {
 
   fs = lookup_dir_fs(resbuf, FSIO_DIR_CHDIR);
 
-  if (fs->chdir) {
-    pr_log_debug(DEBUG9, "FS: using %s chdir()",
-      fs->chdir == sys_chdir ? "system" : fs->fs_name);
-    res = fs->chdir(fs, resbuf);
+  /* Find the first non-NULL custom chdir handler.  If there are none,
+   * use the system chdir.
+   */
+  while (fs && fs->fs_next && !fs->chdir)
+    fs = fs->fs_next;
 
-  } else {
-    errno = EPERM;
-    return -1;
-  }
+  pr_log_debug(DEBUG9, "FS: using %s chdir()", fs->fs_name);
+  res = fs->chdir(fs, resbuf);
 
   if (res != -1) {
     /* chdir succeeded, so we set fs_cwd for future references. */
-     fs_cwd = fs;
+     fs_cwd = fs ? fs : root_fs;
 
      if (hidesymlink)
        pr_fs_virtual_path(path, vwd, sizeof(vwd)-1);
@@ -1780,15 +1789,14 @@ int pr_fsio_chdir(const char *path, int hidesymlink) {
 
   fs = lookup_dir_fs(path, FSIO_DIR_CHDIR);
 
-  if (fs->chdir) {
-    pr_log_debug(DEBUG9, "FS: using %s chdir()",
-      fs->chdir == sys_chdir ? "system" : fs->fs_name);
-    res = fs->chdir(fs, resbuf);
+  /* Find the first non-NULL custom chdir handler.  If there are none,
+   * use the system chdir.
+   */
+  while (fs && fs->fs_next && !fs->chdir)
+    fs = fs->fs_next;
 
-  } else {
-    errno = EPERM;
-    return -1;
-  }
+  pr_log_debug(DEBUG9, "FS: using %s chdir()", fs->fs_name);
+  res = fs->chdir(fs, resbuf);
 
   if (res != -1) {
     /* chdir succeeded, so we set fs_cwd for future references. */
@@ -1811,9 +1819,9 @@ void *pr_fsio_opendir(const char *path) {
   pr_fs_t *fs = NULL;
   fsopendir_t *fsod = NULL, *fsodi = NULL;
   pool *fsod_pool = NULL;
-  DIR *ret = NULL;
+  DIR *res = NULL;
 
-  if (!strchr(path, '/')) {
+  if (strchr(path, '/') == NULL) {
     fs = fs_cwd;
 
   } else {
@@ -1825,21 +1833,20 @@ void *pr_fsio_opendir(const char *path) {
     fs = lookup_dir_fs(buf, FSIO_DIR_OPENDIR);
   }
 
-  if (fs->opendir) {
-    pr_log_debug(DEBUG9, "FS: using %s opendir()",
-      fs->opendir == sys_opendir ? "system" : fs->fs_name);
-    ret = fs->opendir(fs, path);
+  /* Find the first non-NULL custom opendir handler.  If there are none,
+   * use the system opendir.
+   */
+  while (fs && fs->fs_next && !fs->opendir)
+    fs = fs->fs_next;
 
-  } else {
-    errno = EPERM;
-    return NULL;
-  }
+  pr_log_debug(DEBUG9, "FS: using %s opendir()", fs->fs_name);
+  res = fs->opendir(fs, path);
 
-  if (!ret)
+  if (!res)
     return NULL;
 
   /* Cache it here */
-  fs_cache_dir = ret;
+  fs_cache_dir = res;
   fs_cache_fsdir = fs;
 
   fsod_pool = make_sub_pool(permanent_pool);
@@ -1850,18 +1857,19 @@ void *pr_fsio_opendir(const char *path) {
   if (!fsod) {
 
     if (fs->closedir) {
-      fs->closedir(fs, ret);
+      fs->closedir(fs, res);
       errno = ENOMEM;
       return NULL;
 
     } else {
-      errno = EPERM;
+      sys_closedir(fs, res);
+      errno = ENOMEM;
       return NULL;
     }
   }
 
   fsod->pool = fsod_pool;
-  fsod->dir = ret;
+  fsod->dir = res;
   fsod->fsdir = fs;
   fsod->next = NULL;
   fsod->prev = NULL;
@@ -1882,7 +1890,7 @@ void *pr_fsio_opendir(const char *path) {
     /* This fsopendir _becomes_ the start of the fsopendir list */
     fsopendir_list = fsod;
 
-  return ret;
+  return res;
 }
 
 static pr_fs_t *find_opendir(void *dir, int closing) {
@@ -1925,155 +1933,179 @@ static pr_fs_t *find_opendir(void *dir, int closing) {
 }
 
 int pr_fsio_closedir(void *dir) {
+  int res;
   pr_fs_t *fs = find_opendir(dir, TRUE);
 
   if (!fs)
     return -1;
 
-  if (!fs->closedir) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom closedir handler.  If there are none,
+   * use the system closedir.
+   */
+  while (fs && fs->fs_next && !fs->closedir)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s closedir()",
-    fs->closedir == sys_closedir ? "system" : fs->fs_name);
-  return fs->closedir(fs, dir);
+  pr_log_debug(DEBUG9, "FS: using %s closedir()", fs->fs_name);
+  res = fs->closedir(fs, dir);
+
+  return res;
 }
 
 struct dirent *pr_fsio_readdir(void *dir) {
+  struct dirent *res;
   pr_fs_t *fs = find_opendir(dir, FALSE);
 
   if (!fs)
     return NULL;
 
-  if (!fs->readdir) {
-    errno = EPERM;
-    return NULL;
-  }
+  /* Find the first non-NULL custom readdir handler.  If there are none,
+   * use the system readdir.
+   */
+  while (fs && fs->fs_next && !fs->readdir)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s readdir()",
-    fs->readdir == sys_readdir ? "system" : fs->fs_name);
-  return fs->readdir(fs, dir);
+  pr_log_debug(DEBUG9, "FS: using %s readdir()", fs->fs_name);
+  res = fs->readdir(fs, dir);
+
+  return res;
 }
 
 int pr_fsio_mkdir(const char *path, mode_t mode) {
+  int res;
   pr_fs_t *fs = lookup_dir_fs(path, FSIO_DIR_MKDIR);
 
-  if (!fs->mkdir) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom mkdir handler.  If there are none,
+   * use the system mkdir.
+   */
+  while (fs && fs->fs_next && !fs->mkdir)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s mkdir()",
-    fs->mkdir == sys_mkdir ? "system" : fs->fs_name);
-  return fs->mkdir(fs, path, mode);
+  pr_log_debug(DEBUG9, "FS: using %s mkdir()", fs->fs_name);
+  res = fs->mkdir(fs, path, mode);
+
+  return res;
 }
 
 int pr_fsio_rmdir(const char *path) {
+  int res;
   pr_fs_t *fs = lookup_dir_fs(path, FSIO_DIR_RMDIR);
 
-  if (!fs->rmdir) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom rmdir handler.  If there are none,
+   * use the system rmdir.
+   */
+  while (fs && fs->fs_next && !fs->rmdir)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s rmdir()",
-    fs->rmdir == sys_rmdir ? "system" : fs->fs_name);
-  return fs->rmdir(fs, path);
+  pr_log_debug(DEBUG9, "FS: using %s rmdir()", fs->fs_name);
+  res = fs->rmdir(fs, path);
+
+  return res;
 }
 
 int pr_fsio_stat_canon(const char *path, struct stat *sbuf) {
   pr_fs_t *fs = lookup_file_canon_fs(path, NULL, FSIO_FILE_STAT);
 
-  if (!fs->stat) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom stat handler.  If there are none,
+   * use the system stat.
+   */
+  while (fs && fs->fs_next && !fs->stat)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s stat()",
-    fs->stat == sys_stat ? "system" : fs->fs_name);
-  return fs_cache_stat(fs, path, sbuf);
+  pr_log_debug(DEBUG9, "FS: using %s stat()", fs ? fs->fs_name : "system");
+  return fs_cache_stat(fs ? fs : root_fs, path, sbuf);
 }
 
 int pr_fsio_stat(const char *path, struct stat *sbuf) {
   pr_fs_t *fs = lookup_file_fs(path, NULL, FSIO_FILE_STAT);
 
-  if (!fs->stat) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom stat handler.  If there are none,
+   * use the system stat.
+   */
+  while (fs && fs->fs_next && !fs->stat)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s stat()",
-    fs->stat == sys_stat ? "system" : fs->fs_name);
-  return fs_cache_stat(fs, path, sbuf);
+  pr_log_debug(DEBUG9, "FS: using %s stat()", fs->fs_name);
+  return fs_cache_stat(fs ? fs : root_fs, path, sbuf);
 }
 
 int pr_fsio_fstat(pr_fh_t *fh, struct stat *sbuf) {
+  int res;
+  pr_fs_t *fs;
+
   if (!fh) {
     errno = EINVAL;
     return -1;
   }
 
-  if (!fh->fh_fs->fstat) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom fstat handler.  If there are none,
+   * use the system fstat.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->fstat)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s fstat()",
-    fh->fh_fs->fstat == sys_fstat ? "system" : fh->fh_fs->fs_name);
-  return fh->fh_fs->fstat(fh, fh->fh_fd, sbuf);
+  pr_log_debug(DEBUG9, "FS: using %s fstat()", fs->fs_name);
+  res = fs->fstat(fh, fh->fh_fd, sbuf);
+
+  return res;
 }
 
 int pr_fsio_lstat_canon(const char *path, struct stat *sbuf) {
   pr_fs_t *fs = lookup_file_canon_fs(path, NULL, FSIO_FILE_LSTAT);
 
-  if (!fs->lstat) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom lstat handler.  If there are none,
+   * use the system lstat.
+   */
+  while (fs && fs->fs_next && !fs->lstat)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s lstat()",
-    fs->lstat == sys_lstat ? "system" : fs->fs_name);
-  return fs_cache_lstat(fs, path, sbuf);
+  pr_log_debug(DEBUG9, "FS: using %s lstat()", fs ? fs->fs_name : "system");
+  return fs_cache_lstat(fs ? fs : root_fs, path, sbuf);
 }
 
 int pr_fsio_lstat(const char *path, struct stat *sbuf) {
   pr_fs_t *fs = lookup_file_fs(path, NULL, FSIO_FILE_LSTAT);
 
-  if (!fs->lstat) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom lstat handler.  If there are none,
+   * use the system lstat.
+   */
+  while (fs && fs->fs_next && !fs->lstat)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s lstat()",
-    fs->lstat == sys_lstat ? "system" : fs->fs_name);
-  return fs_cache_lstat(fs, path, sbuf);
+  pr_log_debug(DEBUG9, "FS: using %s lstat()", fs->fs_name);
+  return fs_cache_lstat(fs ? fs : root_fs, path, sbuf);
 }
 
 int pr_fsio_readlink_canon(const char *path, char *buf, size_t buflen) {
+  int res;
   pr_fs_t *fs = lookup_file_canon_fs(path, NULL, FSIO_FILE_READLINK);
 
-  if (!fs->readlink) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom readlink handler.  If there are none,
+   * use the system readlink.
+   */
+  while (fs && fs->fs_next && !fs->readlink)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s readlink()",
-    fs->readlink == sys_readlink ? "system" : fs->fs_name);
-  return fs->readlink(fs, path, buf, buflen);
+  pr_log_debug(DEBUG9, "FS: using %s readlink()", fs->fs_name);
+  res = fs->readlink(fs, path, buf, buflen);
+
+  return res;
 }
 
 int pr_fsio_readlink(const char *path, char *buf, size_t buflen) {
+  int res;
   pr_fs_t *fs = lookup_file_fs(path, NULL, FSIO_FILE_READLINK);
 
-  if (!fs->readlink) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom readlink handler.  If there are none,
+   * use the system readlink.
+   */
+  while (fs && fs->fs_next && !fs->readlink)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s readlink()",
-    fs->readlink == sys_readlink ? "system" : fs->fs_name);
-  return fs->readlink(fs, path, buf, buflen);
+  pr_log_debug(DEBUG9, "FS: using %s readlink()", fs->fs_name);
+  res = fs->readlink(fs, path, buf, buflen);
+
+  return res;
 }
 
 /* pr_fs_glob() is just a wrapper for glob(3), setting the various gl_
@@ -2100,6 +2132,7 @@ void pr_fs_globfree(glob_t *pglob) {
 }
 
 int pr_fsio_rename_canon(const char *rfrom, const char *rto) {
+  int res;
   pr_fs_t *fs = lookup_file_canon_fs(rfrom, NULL, FSIO_FILE_RENAME);
 
   if (fs != lookup_file_canon_fs(rto, NULL, FSIO_FILE_RENAME)) {
@@ -2107,17 +2140,20 @@ int pr_fsio_rename_canon(const char *rfrom, const char *rto) {
     return -1;
   }
 
-  if (!fs->rename) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom rename handler.  If there are none,
+   * use the system rename.
+   */
+  while (fs && fs->fs_next && !fs->rename)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s rename()",
-    fs->rename == sys_rename ? "system" : fs->fs_name);
-  return fs->rename(fs, rfrom, rto);
+  pr_log_debug(DEBUG9, "FS: using %s rename()", fs->fs_name);
+  res = fs->rename(fs, rfrom, rto);
+
+  return res;
 }
 
 int pr_fsio_rename(const char *rnfm, const char *rnto) {
+  int res;
   pr_fs_t *fs = lookup_file_fs(rnfm, NULL, FSIO_FILE_RENAME);
 
   if (fs != lookup_file_fs(rnto, NULL, FSIO_FILE_RENAME)) {
@@ -2125,40 +2161,48 @@ int pr_fsio_rename(const char *rnfm, const char *rnto) {
     return -1;
   }
 
-  if (!fs->rename) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom rename handler.  If there are none,
+   * use the system rename.
+   */
+  while (fs && fs->fs_next && !fs->rename)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s rename()",
-    fs->rename == sys_rename ? "system" : fs->fs_name);
-  return fs->rename(fs, rnfm, rnto);
+  pr_log_debug(DEBUG9, "FS: using %s rename()", fs->fs_name);
+  res = fs->rename(fs, rnfm, rnto);
+
+  return res;
 }
 
 int pr_fsio_unlink_canon(const char *name) {
+  int res;
   pr_fs_t *fs = lookup_file_canon_fs(name, NULL, FSIO_FILE_UNLINK);
 
-  if (!fs->unlink) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom unlink handler.  If there are none,
+   * use the system unlink.
+   */
+  while (fs && fs->fs_next && !fs->unlink)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s unlink()",
-    fs->unlink == sys_unlink ? "system" : fs->fs_name);
-  return fs->unlink(fs, name);
+  pr_log_debug(DEBUG9, "FS: using %s unlink()", fs->fs_name);
+  res = fs->unlink(fs, name);
+
+  return res;
 }
 	
 int pr_fsio_unlink(const char *name) {
+  int res;
   pr_fs_t *fs = lookup_file_fs(name, NULL, FSIO_FILE_UNLINK);
 
-  if (!fs->unlink) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom unlink handler.  If there are none,
+   * use the system unlink.
+   */
+  while (fs && fs->fs_next && !fs->unlink)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s unlink()",
-    fs->unlink == sys_unlink ? "system" : fs->fs_name);
-  return fs->unlink(fs, name);
+  pr_log_debug(DEBUG9, "FS: using %s unlink()", fs->fs_name);
+  res = fs->unlink(fs, name);
+
+  return res;
 }
 
 pr_fh_t *pr_fsio_open_canon(const char *name, int flags) {
@@ -2167,11 +2211,6 @@ pr_fh_t *pr_fsio_open_canon(const char *name, int flags) {
   pr_fh_t *fh = NULL;
 
   pr_fs_t *fs = lookup_file_canon_fs(name, &deref, FSIO_FILE_OPEN);
-
-  if (!fs->open) {
-    errno = EPERM;
-    return NULL;
-  }
 
   /* Allocate a filehandle. */
   tmp_pool = make_sub_pool(fs->fs_pool);
@@ -2184,8 +2223,13 @@ pr_fh_t *pr_fsio_open_canon(const char *name, int flags) {
   fh->fh_buf = NULL;
   fh->fh_fs = fs;
 
-  pr_log_debug(DEBUG9, "FS: using %s open()",
-    fs->open == sys_open ? "system" : fs->fs_name);
+  /* Find the first non-NULL custom open handler.  If there are none,
+   * use the system open.
+   */
+  while (fs && fs->fs_next && !fs->open)
+    fs = fs->fs_next;
+
+  pr_log_debug(DEBUG9, "FS: using %s open()", fs->fs_name);
   fh->fh_fd = fs->open(fh, deref, flags);
 
   if (fh->fh_fd == -1) {
@@ -2208,11 +2252,6 @@ pr_fh_t *pr_fsio_open(const char *name, int flags) {
 
   fs = lookup_file_fs(name, NULL, FSIO_FILE_OPEN);
 
-  if (!fs->open) {
-    errno = EPERM;
-    return NULL;
-  }
-
   /* Allocate a filehandle. */
   tmp_pool = make_sub_pool(fs->fs_pool);
   pr_pool_tag(tmp_pool, "pr_fsio_open() subpool");
@@ -2224,8 +2263,13 @@ pr_fh_t *pr_fsio_open(const char *name, int flags) {
   fh->fh_buf = NULL;
   fh->fh_fs = fs;
 
-  pr_log_debug(DEBUG9, "FS: using %s open()",
-    fs->open == sys_open ? "system" : fs->fs_name);
+  /* Find the first non-NULL custom open handler.  If there are none,
+   * use the system open.
+   */
+  while (fs && fs->fs_next && !fs->open)
+    fs = fs->fs_next;
+
+  pr_log_debug(DEBUG9, "FS: using %s open()", fs->fs_name);
   fh->fh_fd = fs->open(fh, name, flags);
 
   if (fh->fh_fd == -1) {
@@ -2242,11 +2286,6 @@ pr_fh_t *pr_fsio_creat_canon(const char *name, mode_t mode) {
   pr_fh_t *fh = NULL;
   pr_fs_t *fs = lookup_file_canon_fs(name, &deref, FSIO_FILE_CREAT);
 
-  if (!fs->creat) {
-    errno = EPERM;
-    return NULL;
-  }
-
   /* Allocate a filehandle. */
   tmp_pool = make_sub_pool(fs->fs_pool);
   pr_pool_tag(tmp_pool, "pr_fsio_creat_canon() subpool");
@@ -2258,8 +2297,13 @@ pr_fh_t *pr_fsio_creat_canon(const char *name, mode_t mode) {
   fh->fh_buf = NULL;
   fh->fh_fs = fs;
 
-  pr_log_debug(DEBUG9, "FS: using %s creat()",
-    fs->creat == sys_creat ? "system" : fs->fs_name);
+  /* Find the first non-NULL custom creat handler.  If there are none,
+   * use the system creat.
+   */
+  while (fs && fs->fs_next && !fs->creat)
+    fs = fs->fs_next;
+
+  pr_log_debug(DEBUG9, "FS: using %s creat()", fs->fs_name);
   fh->fh_fd = fs->creat(fh, deref, mode);
 
   if (fh->fh_fd == -1) {
@@ -2275,11 +2319,6 @@ pr_fh_t *pr_fsio_creat(const char *name, mode_t mode) {
   pr_fh_t *fh = NULL;
   pr_fs_t *fs = lookup_file_fs(name, NULL, FSIO_FILE_CREAT);
 
-  if (!fs->creat) {
-    errno = EPERM;
-    return NULL;
-  }
-
   /* Allocate a filehandle. */
   tmp_pool = make_sub_pool(fs->fs_pool);
   pr_pool_tag(tmp_pool, "pr_fsio_creat() subpool");
@@ -2291,8 +2330,13 @@ pr_fh_t *pr_fsio_creat(const char *name, mode_t mode) {
   fh->fh_buf = NULL;
   fh->fh_fs = fs;
 
-  pr_log_debug(DEBUG9, "FS: using %s creat()",
-    fs->creat == sys_creat ? "system" : fs->fs_name);
+  /* Find the first non-NULL custom creat handler.  If there are none,
+   * use the system creat.
+   */
+  while (fs && fs->fs_next && !fs->creat)
+    fs = fs->fs_next;
+
+  pr_log_debug(DEBUG9, "FS: using %s creat()", fs->fs_name);
   fh->fh_fd = fs->creat(fh, name, mode);
 
   if (fh->fh_fd == -1) {
@@ -2305,74 +2349,95 @@ pr_fh_t *pr_fsio_creat(const char *name, mode_t mode) {
 
 int pr_fsio_close(pr_fh_t *fh) {
   int res = 0;
+  pr_fs_t *fs;
 
   if (!fh) {
     errno = EINVAL;
     return -1;
   }
 
-  if (!fh->fh_fs->close) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom close handler.  If there are none,
+   * use the system close.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->close)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s close()",
-    fh->fh_fs->close == sys_close ? "system" : fh->fh_fs->fs_name);
-  res = fh->fh_fs->close(fh, fh->fh_fd);
+  pr_log_debug(DEBUG9, "FS: using %s close()", fs->fs_name);
+  res = fs->close(fh, fh->fh_fd);
 
   destroy_pool(fh->fh_pool);
   return res;
 }
 
 int pr_fsio_read(pr_fh_t *fh, char *buf, size_t size) {
+  int res;
+  pr_fs_t *fs;
+
   if (!fh) {
     errno = EINVAL;
     return -1;
   }
 
-  if (!fh->fh_fs->read) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom read handler.  If there are none,
+   * use the system read.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->read)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s read()",
-    fh->fh_fs->read == sys_read ? "system" : fh->fh_fs->fs_name);
-  return fh->fh_fs->read(fh, fh->fh_fd, buf, size);
+  pr_log_debug(DEBUG9, "FS: using %s read()", fs->fs_name);
+  res = fs->read(fh, fh->fh_fd, buf, size);
+
+  return res;
 }
 
 int pr_fsio_write(pr_fh_t *fh, const char *buf, size_t size) {
+  int res;
+  pr_fs_t *fs;
+
   if (!fh) {
     errno = EINVAL;
     return -1;
   }
 
-  if (!fh->fh_fs->write) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom write handler.  If there are none,
+   * use the system write.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->write)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s write()",
-    fh->fh_fs->write == sys_write ? "system" : fh->fh_fs->fs_name);
-  return fh->fh_fs->write(fh, fh->fh_fd, buf, size);
+  pr_log_debug(DEBUG9, "FS: using %s write()", fs->fs_name);
+  res = fs->write(fh, fh->fh_fd, buf, size);
+
+  return res;
 }
 
 off_t pr_fsio_lseek(pr_fh_t *fh, off_t offset, int whence) {
+  off_t res;
+  pr_fs_t *fs;
+
   if (!fh) {
     errno = EINVAL;
     return -1;
   }
 
-  if (!fh->fh_fs->lseek) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom lseek handler.  If there are none,
+   * use the system lseek.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->lseek)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s lseek()",
-    fh->fh_fs->lseek == sys_lseek ? "system" : fh->fh_fs->fs_name);
-  return fh->fh_fs->lseek(fh, fh->fh_fd, offset, whence);
+  pr_log_debug(DEBUG9, "FS: using %s lseek()", fs->fs_name);
+  res = fs->lseek(fh, fh->fh_fd, offset, whence);
+
+  return res;
 }
 
 int pr_fsio_link_canon(const char *lfrom, const char *lto) {
+  int res;
   pr_fs_t *fs = lookup_file_canon_fs(lfrom, NULL, FSIO_FILE_LINK);
 
   if (fs != lookup_file_canon_fs(lto, NULL, FSIO_FILE_LINK)) {
@@ -2380,17 +2445,20 @@ int pr_fsio_link_canon(const char *lfrom, const char *lto) {
     return -1;
   }
 
-  if (!fs->link) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom link handler.  If there are none,
+   * use the system link.
+   */
+  while (fs && fs->fs_next && !fs->link)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s link()",
-    fs->link == sys_link ? "system" : fs->fs_name);
-  return fs->link(fs, lfrom, lto);
+  pr_log_debug(DEBUG9, "FS: using %s link()", fs->fs_name);
+  res = fs->link(fs, lfrom, lto);
+
+  return res;
 }
 
 int pr_fsio_link(const char *lfrom, const char *lto) {
+  int res;
   pr_fs_t *fs = lookup_file_fs(lfrom, NULL, FSIO_FILE_LINK);
 
   if (fs != lookup_file_fs(lto, NULL, FSIO_FILE_LINK)) {
@@ -2398,135 +2466,167 @@ int pr_fsio_link(const char *lfrom, const char *lto) {
     return -1;
   }
 
-  if (!fs->link) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom link handler.  If there are none,
+   * use the system link.
+   */
+  while (fs && fs->fs_next && !fs->link)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s link()",
-    fs->link == sys_link ? "system" : fs->fs_name);
-  return fs->link(fs, lfrom, lto);
+  pr_log_debug(DEBUG9, "FS: using %s link()", fs->fs_name);
+  res = fs->link(fs, lfrom, lto);
+
+  return res;
 }
 
 int pr_fsio_symlink_canon(const char *lfrom, const char *lto) {
+  int res;
   pr_fs_t *fs = lookup_file_canon_fs(lto, NULL, FSIO_FILE_SYMLINK);
 
-  if (!fs->symlink) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom symlink handler.  If there are none,
+   * use the system symlink
+   */
+  while (fs && fs->fs_next && !fs->symlink)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s symlink()",
-    fs->symlink == sys_symlink ? "system" : fs->fs_name);
-  return fs->symlink(fs, lfrom, lto);
+  pr_log_debug(DEBUG9, "FS: using %s symlink()", fs->fs_name);
+  res = fs->symlink(fs, lfrom, lto);
+
+  return res;
 }
 
 int pr_fsio_symlink(const char *lfrom, const char *lto) {
+  int res;
   pr_fs_t *fs = lookup_file_fs(lto, NULL, FSIO_FILE_SYMLINK);
 
-  if (!fs->symlink) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom symlink handler.  If there are none,
+   * use the system symlink.
+   */
+  while (fs && fs->fs_next && !fs->symlink)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s symlink()",
-    fs->symlink == sys_symlink ? "system" : fs->fs_name);
-  return fs->symlink(fs, lfrom, lto);
+  pr_log_debug(DEBUG9, "FS: using %s symlink()", fs->fs_name);
+  res = fs->symlink(fs, lfrom, lto);
+
+  return res;
 }
 
 int pr_fsio_ftruncate(pr_fh_t *fh, off_t len) {
+  int res;
+  pr_fs_t *fs;
+
   if (!fh) {
     errno = EINVAL;
     return -1;
   }
 
-  if (!fh->fh_fs->ftruncate) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom ftruncate handler.  If there are none,
+   * use the system ftruncate.
+   */
+  fs = fh->fh_fs;
+  while (fs && fs->fs_next && !fs->ftruncate)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s ftruncate()",
-    fh->fh_fs->ftruncate == sys_ftruncate ? "system" : fh->fh_fs->fs_name);
-  return fh->fh_fs->ftruncate(fh, fh->fh_fd, len);
+  pr_log_debug(DEBUG9, "FS: using %s ftruncate()", fs->fs_name);
+  res = fs->ftruncate(fh, fh->fh_fd, len);
+
+  return res;
 }
 
 int pr_fsio_truncate_canon(const char *path, off_t len) {
+  int res;
   pr_fs_t *fs = lookup_file_canon_fs(path, NULL, FSIO_FILE_TRUNC);
 
-  if (!fs->truncate) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom truncate handler.  If there are none,
+   * use the system truncate.
+   */
+  while (fs && fs->fs_next && !fs->truncate)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s truncate()",
-    fs->truncate == sys_truncate ? "system" : fs->fs_name);
-  return fs->truncate(fs, path, len);
+  pr_log_debug(DEBUG9, "FS: using %s truncate()", fs->fs_name);
+  res = fs->truncate(fs, path, len);
+
+  return res;
 }
 
 int pr_fsio_truncate(const char *path, off_t len) {
+  int res;
   pr_fs_t *fs = lookup_file_fs(path, NULL, FSIO_FILE_TRUNC);
 
-  if (!fs->truncate) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom truncate handler.  If there are none,
+   * use the system truncate.
+   */
+  while (fs && fs->fs_next && !fs->truncate)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s truncate()",
-    fs->truncate == sys_truncate ? "system" : fs->fs_name);
-  return fs->truncate(fs, path, len);
+  pr_log_debug(DEBUG9, "FS: using %s truncate()", fs->fs_name);
+  res = fs->truncate(fs, path, len);
+  
+  return res;
 }
 
 int pr_fsio_chmod_canon(const char *name, mode_t mode) {
+  int res;
   char *deref = NULL;
   pr_fs_t *fs = lookup_file_canon_fs(name, &deref, FSIO_FILE_CHMOD);
 
-  if (!fs->chmod) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom chmod handler.  If there are none,
+   * use the system chmod.
+   */
+  while (fs && fs->fs_next && !fs->chmod)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s chmod()",
-    fs->chmod == sys_chmod ? "system" : fs->fs_name);
-  return fs->chmod(fs, deref, mode);
+  pr_log_debug(DEBUG9, "FS: using %s chmod()", fs->fs_name);
+  res = fs->chmod(fs, deref, mode);
+
+  return res;
 }
 
 int pr_fsio_chmod(const char *name, mode_t mode) {
+  int res;
   pr_fs_t *fs = lookup_file_fs(name, NULL, FSIO_FILE_CHMOD);
 
-  if (!fs->chmod) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom chmod handler.  If there are none,
+   * use the system chmod.
+   */
+  while (fs && fs->fs_next && !fs->chmod)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s chmod()",
-    fs->chmod == sys_chmod ? "system" : fs->fs_name);
-  return fs->chmod(fs, name, mode);
+  pr_log_debug(DEBUG9, "FS: using %s chmod()", fs->fs_name);
+  res = fs->chmod(fs, name, mode);
+  
+  return res;
 }
 
 int pr_fsio_chown_canon(const char *name, uid_t uid, gid_t gid) {
+  int res;
   pr_fs_t *fs = lookup_file_canon_fs(name, NULL, FSIO_FILE_CHOWN);
 
-  if (!fs->chown) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom chown handler.  If there are none,
+   * use the system chown.
+   */
+  while (fs && fs->fs_next && !fs->chown)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s chown()",
-    fs->chown == sys_chown ? "system" : fs->fs_name);
-  return fs->chown(fs, name, uid, gid);
+  pr_log_debug(DEBUG9, "FS: using %s chown()", fs->fs_name);
+  res = fs->chown(fs, name, uid, gid);
+  
+  return res;
 }
 
 int pr_fsio_chown(const char *name, uid_t uid, gid_t gid) {
+  int res;
   pr_fs_t *fs = lookup_file_fs(name, NULL, FSIO_FILE_CHOWN);
 
-  if (!fs->chown) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom chown handler.  If there are none,
+   * use the system chown.
+   */
+  while (fs && fs->fs_next && !fs->chown)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s chown()",
-    fs->chown == sys_chown ? "system" : fs->fs_name);
-  return fs->chown(fs, name, uid, gid);
+  pr_log_debug(DEBUG9, "FS: using %s chown()", fs->fs_name);
+  res = fs->chown(fs, name, uid, gid);
+  
+  return res;
 }
 
 /* If the wrapped chroot() function suceeds (eg returns 0), then all
@@ -2537,21 +2637,19 @@ int pr_fsio_chroot(const char *path) {
   int res = 0;
   pr_fs_t *fs = lookup_dir_fs(path, FSIO_DIR_CHROOT);
 
-  if (!fs->chroot) {
-    errno = EPERM;
-    return -1;
-  }
+  /* Find the first non-NULL custom chroot handler.  If there are none,
+   * use the system chroot.
+   */
+  while (fs && fs->fs_next && !fs->chroot)
+    fs = fs->fs_next;
 
-  pr_log_debug(DEBUG9, "FS: using %s chroot()",
-    fs->chroot == sys_chroot ? "system" : fs->fs_name);
-
-  if ((res = fs->chroot(fs, path)) == 0) {
+  pr_log_debug(DEBUG9, "FS: using %s chroot()", fs->fs_name);
+  res = fs->chroot(fs, path);
+  if (res == 0) {
+    unsigned int iter_start = 0;
 
     /* The filesystem handles in fs_map need to be readjusted to the new root.
-     * The fs handle returned by lookup_dir_fs() will be the new root_fs,
-     * and all others will re-inserted and resorted into a new map.
      */
-
     register unsigned int i = 0;
     pool *map_pool = make_sub_pool(permanent_pool);
     array_header *new_map = make_array(map_pool, 0, sizeof(pr_fs_t *));
@@ -2562,16 +2660,17 @@ int pr_fsio_chroot(const char *path) {
     if (fs_map)
       fs_objs = (pr_fs_t **) fs_map->elts;
 
-    /* Adjust the new root fs */
-    if (!strncmp(fs->fs_path, path, strlen(path))) {
-      memmove(fs->fs_path, fs->fs_path + strlen(path),
-        strlen(fs->fs_path) - strlen(path) + 1);
+    if (fs != root_fs) {
+      if (strncmp(fs->fs_path, path, strlen(path)) == 0) {
+        memmove(fs->fs_path, fs->fs_path + strlen(path),
+          strlen(fs->fs_path) - strlen(path) + 1);
+      }
+
+      *((pr_fs_t **) push_array(new_map)) = fs;
+      iter_start = 1;
     }
 
-    *((pr_fs_t **) push_array(new_map)) = fs;
-    root_fs = fs;
-
-    for (i = 1; i < (fs_map ? fs_map->nelts : 0); i++) {
+    for (i = iter_start; i < (fs_map ? fs_map->nelts : 0); i++) {
       pr_fs_t *tmpfs = fs_objs[i];
 
       /* The memory for this field has already been allocated, so futzing
@@ -2580,14 +2679,25 @@ int pr_fsio_chroot(const char *path) {
        * Any absolute paths that are outside of the chroot path are discarded.
        * Deferred-resolution paths (eg "~" paths) and relative paths are kept.
        */
-      if (!strncmp(tmpfs->fs_path, path, strlen(path))) {
+
+      if (strncmp(tmpfs->fs_path, path, strlen(path)) == 0) {
+        pr_fs_t *next;
+
         memmove(tmpfs->fs_path, tmpfs->fs_path + strlen(path),
           strlen(tmpfs->fs_path) - strlen(path) + 1);
-        *((pr_fs_t **) push_array(new_map)) = tmpfs;
 
-      } else if ((tmpfs->fs_path)[0] != '/') {
-        *((pr_fs_t **) push_array(new_map)) = tmpfs;
+        /* Need to do this for any stacked FSs as well. */
+        next = tmpfs->fs_next;
+        while (next) {
+          memmove(next->fs_path, next->fs_path + strlen(path),
+            strlen(next->fs_path) - strlen(path) + 1);
+
+          next = next->fs_next;
+        }
       }
+
+      /* Add this FS to the new fs_map. */
+      *((pr_fs_t **) push_array(new_map)) = tmpfs;
     }
 
     /* Sort the new map */
@@ -2855,6 +2965,34 @@ int init_fs(void) {
   }
 
   root_fs->fs_path = pstrdup(root_fs->fs_pool, "/");
+
+  /* Set the root FSIO handlers. */
+  root_fs->stat = sys_stat;
+  root_fs->fstat = sys_fstat;
+  root_fs->lstat = sys_lstat;
+  root_fs->rename = sys_rename;
+  root_fs->unlink = sys_unlink;
+  root_fs->open = sys_open;
+  root_fs->creat = sys_creat;
+  root_fs->close = sys_close;
+  root_fs->read = sys_read;
+  root_fs->write = sys_write;
+  root_fs->lseek = sys_lseek;
+  root_fs->link = sys_link;
+  root_fs->readlink = sys_readlink;
+  root_fs->symlink = sys_symlink;
+  root_fs->ftruncate = sys_ftruncate;
+  root_fs->truncate = sys_truncate;
+  root_fs->chmod = sys_chmod;
+  root_fs->chown = sys_chown;
+
+  root_fs->chdir = sys_chdir;
+  root_fs->chroot = sys_chroot;
+  root_fs->opendir = sys_opendir;
+  root_fs->closedir = sys_closedir;
+  root_fs->readdir = sys_readdir;
+  root_fs->mkdir = sys_mkdir;
+  root_fs->rmdir = sys_rmdir;
 
   if (getcwd(cwdbuf, sizeof(cwdbuf)-1)) {
     cwdbuf[sizeof(cwdbuf)-1] = '\0';
