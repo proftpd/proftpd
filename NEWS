@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.266 2002-11-02 21:42:13 jwm Exp $
+$Id: NEWS,v 1.267 2002-11-02 22:01:18 jwm Exp $
 
 CVS
 ---------------------------------
@@ -23,6 +23,7 @@ CVS
 - Bug 1803 - Check for SIZEOF_UNSIGNED_LONG_LONG to determine LFS support
   breaks some Linux installations
 - Bug 1805 - PAM support under Mac OS X
+- Bug 1772 - Docs fixup in RPM spec file
 
 1.2.7rc2 - Released 2002-10-22
 ---------------------------------

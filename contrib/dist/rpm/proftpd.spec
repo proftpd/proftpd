@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.1 2002-11-02 21:48:05 jwm Exp $
+# $Id: proftpd.spec,v 1.2 2002-11-02 22:01:19 jwm Exp $
 
 Summary:	ProFTPD -- Professional FTP Server.
 Name:		proftpd
@@ -77,8 +77,8 @@ This package is neccesary to setup ProFTPD to run from inetd.
   > contrib/dist/rpm/proftpd.init.d.tmp
   mv --force contrib/dist/rpm/proftpd.init.d.tmp contrib/dist/rpm/proftpd.init.d
   install contrib/dist/rpm/proftpd.init.d $RPM_BUILD_ROOT/etc/rc.d/init.d/proftpd
-  # replace symlinks with real docs
-  cp -f README.linux-privs README.mod_sql contrib/
+  # We don't want these dangling symlinks to make it into the RPM
+  rm -f contrib/README.linux-privs contrib/README.mod_sql
   mkdir -p $RPM_BUILD_ROOT/%{_docdir}
   install -m 644 COPYING CREDITS ChangeLog NEWS $RPM_BUILD_ROOT/%{_docdir}
 
