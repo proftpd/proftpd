@@ -12,13 +12,6 @@ xferstats.holger-preiss (BSD license, I think)
   and some modifications. Useful for analyzing your /var/log/xferlog files. 
   See xferlog(5).
 
-mod_read.c (License unknown - jan.menzel@gmx.de)
-
-  A third-party module which implements a new configuration directive,
-  "DisplayReadme." The directive can be used to display a list of "readme"
-  files, including their last modification dates. See contrib/mod_readme.c
-  for details.
-
 mod_ratio.c (GPL license)
 
   A third-party module which implements file/byte ratios in proftpd.
@@ -28,25 +21,3 @@ mod_ratio.c (GPL license)
 
   From the top-level source directory. See the comments at the top of
   mod_ratio.c for additional directives and usage.
-
-mod_linuxprivs.c (GPL license)
-
-  This module takes advantage of current Linux development kernel's
-  (2.1.x) POSIX.1e security model enhancements (consisting of
-  capabilities and capability sets at the moment). Use of this module
-  _greatly_ enhances security (for one thing, it makes escaping from a
-  chroot'd jail next to _impossible_). This module requires Linux kernel
-  version 2.1.104 or newer. A modified version of the libcap library is
-  included (see below) and automagically built when you include this module
-  in your ProFTPD build. To build simply:
-
-  ./configure --with-modules=mod_linuxprivs
-
-  See README.linux-privs for detailed information.
-
-libcap (Unknown license, probably GPL)
-
-  This library provides the interface between mod_linuxprivs (above) and the
-  capability syscalls in Linux 2.1. YOU DO NOT NEED TO BUILD THIS LIBRARY.
-  If you include mod_linuxprivs in your ProFTPD build, running 'make' from
-  the top-level directory will automatically build libcap and link it in.
