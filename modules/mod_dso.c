@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.2.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.1 2004-10-29 05:21:07 castaglia Exp $
+ * $Id: mod_dso.c,v 1.2 2004-10-29 15:29:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -115,7 +115,6 @@ static int dso_load_module(char *name) {
 
   *tmp = '\0';
   symbol_name = pstrcat(dso_pool, name+4, "_module", NULL);
-pr_log_debug(DEBUG0, MOD_DSO_VERSION ": symbol_name: '%s'", symbol_name);
 
   /* Lookup module structure symbol by name. */
   m = (module *) lt_dlsym(mh, symbol_name);
