@@ -327,11 +327,9 @@ fi
 dnl Check for various argv[] replacing functions on various OSs
 AC_CHECK_FUNCS(setproctitle)
 AC_CHECK_HEADERS(libutil.h)
-if test "$ac_cv_func_setproctitle" = "no"; then
-    AC_CHECK_LIB(util, setproctitle,
+AC_CHECK_LIB(util, setproctitle,
 	[AC_DEFINE(HAVE_SETPROCTITLE)
-	 ac_cv_func_setproctitle="yes" ; LIBS="$LIBS -lutil"])
-fi
+		ac_cv_func_setproctitle="yes" ; LIBS="$LIBS -lutil"])
 
 if test "$ac_cv_func_setproctitle" = "yes"; then
   AC_DEFINE(PF_ARGV_TYPE, PF_ARGV_NONE)
