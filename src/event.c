@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.9 2004-09-05 22:42:49 castaglia Exp $
+ * $Id: event.c,v 1.10 2004-10-29 21:46:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -42,6 +42,7 @@ struct event_handler {
 
 struct event_list {
   struct event_list *next;
+  pool *pool;
   const char *event;
   struct event_handler *handlers;
 };
@@ -56,6 +57,7 @@ int pr_event_register(module *m, const char *event,
     void (*cb)(const void *, void *), void *user_data) {
   struct event_handler *evh;
   struct event_list *evl;
+  pool *evl_pool;
 
   if (!event || !cb) {
     errno = EINVAL;
@@ -94,10 +96,12 @@ int pr_event_register(module *m, const char *event,
     }
   }
 
-  evl = pcalloc(event_pool, sizeof(struct event_list));
+  evl_pool = pr_pool_create_sz(event_pool, 64);
+  pr_pool_tag(evl_pool, "Event listener list pool");
 
-  /* XXX This may need to be pstrdup()'d in the future. */
-  evl->event = event;
+  evl = pcalloc(evl_pool, sizeof(struct event_list));
+  evl->pool = evl_pool;
+  evl->event = pstrdup(evl->pool, event);
   evl->handlers = evh; 
   evl->next = events;
 
@@ -147,9 +151,13 @@ int pr_event_unregister(module *m, const char *event,
           if (evh->prev)
             evh->prev->next = evh->next;
 
+          else
+            /* This is the head of the list. */
+            evl->handlers = evh->next;
+
           if (evh->next)
             evh->next->prev = evh->prev;
-          
+
           evh = tmp;
   
         } else
