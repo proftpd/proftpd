@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.8 2003-01-02 17:28:20 castaglia Exp $
+ * $Id: fsio.c,v 1.9 2003-01-18 00:13:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1173,10 +1173,8 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
 
       fs = fs_lookup_dir(namebuf, op);
 
-      if (fs_cache_lstat(fs, namebuf, &sbuf) == -1) {
-        errno = ENOENT;
+      if (fs_cache_lstat(fs, namebuf, &sbuf) == -1)
         return -1;
-      }
 
       if (S_ISLNK(sbuf.st_mode)) {
         /* Detect an obvious recursive symlink */
@@ -1582,10 +1580,8 @@ int pr_fsio_chdir_canon(const char *path, int hidesymlink) {
   pr_fs_t *fs = NULL;
   int res = 0;
 
-  if (pr_fs_resolve_partial(path, resbuf, MAXPATHLEN, FSIO_DIR_CHDIR) == -1) {
-    errno = ENOENT;
+  if (pr_fs_resolve_partial(path, resbuf, MAXPATHLEN, FSIO_DIR_CHDIR) == -1)
     return -1;
-  }
 
   fs = fs_lookup_dir(resbuf, FSIO_DIR_CHDIR);
 
@@ -1658,10 +1654,8 @@ void *pr_fsio_opendir(const char *path) {
   } else {
     char buf[MAXPATHLEN + 1] = {'\0'};
 
-    if (pr_fs_resolve_partial(path, buf, MAXPATHLEN, FSIO_DIR_OPENDIR) == -1) {
-      errno = ENOENT;
+    if (pr_fs_resolve_partial(path, buf, MAXPATHLEN, FSIO_DIR_OPENDIR) == -1)
       return NULL;
-    }
 
     fs = fs_lookup_dir(buf, FSIO_DIR_OPENDIR);
   }
