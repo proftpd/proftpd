@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.146 2003-04-22 20:47:06 castaglia Exp $
+ * $Id: mod_auth.c,v 1.147 2003-04-22 23:05:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -763,25 +763,6 @@ static int _setup_environment(pool *p, char *user, char *pass) {
    */
   pw = passwd_dup(p, pw);
 
-#ifdef __CYGWIN__
-  /* We have to do special Windows NT voodoo with Cygwin in order to be
-   * able to switch UID/GID. More info at
-   * http://cygwin.com/cygwin-ug-net/ntsec.html#NTSEC-SETUID
-   */
-  if (GetVersion() < 0x80000000) {
-    HANDLE token;
-
-    if ((token = cygwin_logon_user((const struct passwd *) pw,
-        pass)) == INVALID_HANDLE_VALUE) {
-      log_pri(PR_LOG_NOTICE, "error setting Cygwin logon user: %s",
-        strerror(errno));
-      goto auth_failure;
-    }
-
-    cygwin_set_impersonation_token(token);
-  }
-#endif /* __CYGWIN__ */
-
   if (pw->pw_uid == 0) {
     unsigned char *root_allow = NULL;
 
@@ -900,6 +881,32 @@ static int _setup_environment(pool *p, char *user, char *pass) {
           user_name);
       }
     }
+
+#ifdef __CYGWIN__
+  /* We have to do special Windows NT voodoo with Cygwin in order to be
+   * able to switch UID/GID. More info at
+   * http://cygwin.com/cygwin-ug-net/ntsec.html#NTSEC-SETUID
+   */
+  if (GetVersion() < 0x80000000) {
+    HANDLE token;
+
+    if ((token = cygwin_logon_user((const struct passwd *) pw,
+        pass)) == INVALID_HANDLE_VALUE) {
+      log_pri(PR_LOG_NOTICE, "error authenticating Cygwin user: %s",
+        strerror(errno));
+      goto auth_failure;
+    }
+
+    cygwin_set_impersonation_token(token);
+
+    /* Cygwin does its authentication above, in the cygwin_logon_user()
+     * function.  As such, the "normal" _do_auth() function should not be
+     * called.
+     */
+    auth_code = PR_AUTH_OK;
+
+  } else
+#endif /* __CYGWIN_ */
 
     auth_code = _do_auth(p, c ? c->subset : main_server->conf, user_name, pass);
 
