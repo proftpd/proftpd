@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.6 2004-04-11 20:22:01 castaglia Exp $
+ * $Id: event.c,v 1.7 2004-05-29 23:38:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -130,6 +130,7 @@ int pr_event_unregister(module *m, const char *event,
 
   for (evl = events; evl; evl = evl->next) {
     if (strcmp(evl->event, event) == 0) {
+      struct event_handler *evh;
 
       /* If there are no handlers for this event, this is nothing to
        * unregister.
@@ -137,26 +138,22 @@ int pr_event_unregister(module *m, const char *event,
       if (!evl->handlers)
         return 0;
 
-      if (cb) {
-        struct event_handler *evh;
+      for (evh = evl->handlers; evh;) {
 
-        for (evh = evl->handlers; evh;) {
+        if ((m == NULL || evh->module == m) &&
+            (cb == NULL || evh->cb == cb)) { 
+          struct event_handler *tmp = evh->next;
 
-          if ((m == NULL || evh->module == m) &&
-              (cb == NULL || evh->cb == cb)) { 
-            struct event_handler *tmp = evh->next;
+          if (evh->prev)
+            evh->prev->next = evh->next;
 
-            if (evh->prev)
-              evh->prev->next = evh->next;
-
-            if (evh->next)
-              evh->next->prev = evh->prev;
+          if (evh->next)
+            evh->next->prev = evh->prev;
           
-            evh = tmp;
+          evh = tmp;
   
-          } else
-            evh = evh->next;
-        }
+        } else
+          evh = evh->next;
       }
     }
   }
