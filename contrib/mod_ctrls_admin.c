@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.1 2003-11-10 00:01:46 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.2 2003-11-10 00:51:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -699,10 +699,10 @@ MODRET set_adminctrlsengine(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-/* Initialization routines
+/* Event handlers
  */
 
-static void ctrls_admin_rehash_cb(void *data) {
+static void ctrls_admin_restart_ev(const void *event_data, void *user_data) {
 
   if (ctrls_admin_pool)
     destroy_pool(ctrls_admin_pool);
@@ -713,6 +713,9 @@ static void ctrls_admin_rehash_cb(void *data) {
 
   return;
 }
+
+/* Initialization routines
+ */
 
 static int ctrls_admin_init(void) {
   register unsigned int i = 0;
@@ -737,8 +740,8 @@ static int ctrls_admin_init(void) {
         ctrls_admin_acttab[i].act_action, strerror(errno));
   }
 
-  /* Be prepared for SIGHUPs */
-  pr_rehash_register_handler(NULL, ctrls_admin_rehash_cb);
+  pr_event_register(&ctrls_admin_module, "core.restart",
+    ctrls_admin_restart_ev, NULL);
 
   return 0;
 }
