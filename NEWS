@@ -1,6 +1,6 @@
-$Id: NEWS,v 1.98 2001-04-20 15:20:17 flood Exp $
+$Id: NEWS,v 1.99 2001-04-23 18:18:26 flood Exp $
 
-1.2.2rc2 - CVS
+1.2.2rc2 - Released 04/20/2001
 ---------------------------------
 The `AllowChmod' directive has been deprecated, and will not work
 consistantly.  Use <Limit SITE_CHMOD> instead.
