@@ -1,7 +1,8 @@
-$Id: NEWS,v 1.174 2002-05-30 16:22:46 castaglia Exp $
+$Id: NEWS,v 1.175 2002-05-30 21:09:49 castaglia Exp $
 
-CVS
+1.2.5rc3 - Released 2002-05-30
 ---------------------------------
+New mod_ldap (2.8.6)
 - Bug 1612 - Fixed logging of RFC931 usernames in xferlog
 - Bug 1595 - Transfers that result in error conditions no longer cause
              the data connection to be closed prematurely via data_cleanup()
