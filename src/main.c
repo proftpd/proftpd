@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.30 2000-07-06 06:59:21 macgyver Exp $
+ * $Id: main.c,v 1.31 2000-07-06 19:29:17 macgyver Exp $
  */
 
 /*
@@ -2222,9 +2222,11 @@ int main(int argc, char **argv, char **envp)
   if(daemon_gid == -1)
     daemon_gid = 0;
 
+#ifdef HAVE_INITGROUPS
   if(daemon_uid)
-    initgroups((const char*)get_param_ptr(main_server->conf,"UserName",
-                  FALSE),daemon_gid);
+    initgroups((const char *) get_param_ptr(main_server->conf, "UserName",
+                  FALSE), daemon_gid);
+#endif /* HAVE_INITGROUPS */
   
    if((_umask = get_param_int(main_server->conf,"Umask",FALSE)) == -1)
     _umask = 0022;

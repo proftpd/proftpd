@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.33 2000-07-06 18:33:51 macgyver Exp $
+ * $Id: mod_auth.c,v 1.34 2000-07-06 19:29:18 macgyver Exp $
  */
 
 #include "conf.h"
@@ -177,50 +177,93 @@ static config_rec *_auth_group(pool *p, char *user, char **group,
   return c;
 }
 
-static void build_group_arrays(pool *p, struct passwd *xpw, char *name,
-                            array_header **gids, array_header **groups)
+static void build_group_arrays(pool *p, struct passwd *pw, char *name,
+			       array_header **gids, array_header **groups)
 {
   struct group *gr;
-  struct passwd *pw = xpw;
   array_header *xgids,*xgroups;
-  char **gr_mem;
 
-  xgids = make_array(p,2,sizeof(int));
-  xgroups = make_array(p,2,sizeof(char*));
+#ifdef HAVE_INITGROUPS
+  /* Optimization for large groups, especially.
+   */
+  int i, total;
+  
+  i = total = 0;
 
-  if(!pw && !name) {
-    *gids = xgids;
-    *groups = xgroups;
-    return;
-  }
-
+  /* If we don't have a password file, we create an empty array and punt.
+   */
   if(!pw) {
-    pw = auth_getpwnam(p,name);
+    if(!name || !(pw = (struct passwd *) auth_getpwnam(p, name))) {
+      *gids = make_array(p, 2, sizeof(gid_t));
+      *groups = make_array(p, 2, sizeof(char *));
+      return;
+    }
+  }
+  
+  /* We need root privileges for initgroups to succeed.
+   */
+  PRIVS_ROOT;
+  initgroups(pw->pw_name, pw->pw_gid);
+  PRIVS_RELINQUISH;
+  
+  /* Allocate the appropriate space.
+   */
+  total = getgroups(0, 0);
+  xgids = make_array(p, total, sizeof(gid_t));
+  xgroups = make_array(p, 2, sizeof(char *));
+  
+  /* Populate the array of GIDs.
+   */
+  xgids->nelts = getgroups(total, (gid_t *) xgids->elts);
+  
+  /* Now populate the names of the groups.
+   */
+  for(i = 0; i < total; i++) {
+    if((gr = (struct group *) auth_getgrgid(p, ((gid_t *) xgids->elts)[i])))
+      *((char **) push_array(xgroups)) = pstrdup(p, gr->gr_name);
+  }
+  
+#else /* No HAVE_INITGROUPS */
 
-    if(!pw) {
+  char **gr_mem;
+  
+  /* Allocate space.
+   */
+  xgids = make_array(p, 2, sizeof(gid_t));
+  xgroups = make_array(p, 2, sizeof(char *));
+  
+  /* Nothing there...punt.
+   */
+  if(!pw) {
+    if(!name || !(pw = (struct passwd *) auth_getpwnam(p, name))) {
       *gids = xgids;
       *groups = xgroups;
       return;
     }
   }
-
-  if((gr = auth_getgrgid(p,pw->pw_gid)) != NULL)
-    *((char**)push_array(xgroups)) =
-                         pstrdup(p,gr->gr_name);
-
+  
+  /* Populate the first group name.
+   */
+  if((gr = auth_getgrgid(p, pw->pw_gid)) != NULL)
+    *((char **) push_array(xgroups)) = pstrdup(p, gr->gr_name);
+  
   auth_setgrent(p);
-
+  
+  /* This is where things get slow, expensive, and ugly.
+   * Loop through everything, checking to make sure we haven't already added
+   * it.  This is why we have getgroups() and company.
+   */
   while((gr = auth_getgrent(p)) != NULL && gr->gr_mem)
     for(gr_mem = gr->gr_mem; *gr_mem; gr_mem++) {
-      if(!strcmp(*gr_mem,pw->pw_name)) {
-        *((int*)push_array(xgids)) = (int)gr->gr_gid;
+      if(!strcmp(*gr_mem, pw->pw_name)) {
+        *((int *) push_array(xgids)) = (int) gr->gr_gid;
         if(pw->pw_gid != gr->gr_gid)
-          *((char**)push_array(xgroups)) =
-                         pstrdup(p,gr->gr_name);
+          *((char **) push_array(xgroups)) = pstrdup(p, gr->gr_name);
         break;
       }
     }
-
+#endif /* HAVE_INITGROUPS */
+  
   *gids = xgids;
   *groups = xgroups;
 }
@@ -370,9 +413,9 @@ static int _auth_check_ftpusers(xaset_t *s, const char *user)
   char *u,buf[256];
 
   if(get_param_int(s,"UseFtpUsers",FALSE) != 0) {
-    PRIVS_ROOT
+    PRIVS_ROOT;
     fp = fopen(FTPUSERS_PATH,"r");
-    PRIVS_RELINQUISH
+    PRIVS_RELINQUISH;
 
     if(!fp)
       return res;
@@ -499,11 +542,11 @@ static char *_get_default_root(pool *p)
       ** directive) as can not traverse down, we can still have the default
       ** root as ~/public_html/
       */
-      PRIVS_USER
+      PRIVS_USER;
 
       realdir = dir_realpath(p,dir);
 
-      PRIVS_RELINQUISH
+      PRIVS_RELINQUISH;
 
       if(realdir)
         dir = realdir;
@@ -842,7 +885,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   if(wtmp_log == -1)
     wtmp_log = get_param_int(main_server->conf, "WtmpLog", FALSE);
 
-  PRIVS_ROOT
+  PRIVS_ROOT;
 
   if(wtmp_log != 0) {
     log_wtmp(ttyname, session.user, session.c->remote_name,
@@ -869,18 +912,18 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
   _init_groups(p, pw->pw_gid);
 
-  PRIVS_RELINQUISH
+  PRIVS_RELINQUISH;
 
   /* Now check to see if the user has an applicable DefaultRoot */
   if(!c && (defroot = _get_default_root(session.pool))) {
 
     ensure_open_passwd(p);
 
-    PRIVS_ROOT
+    PRIVS_ROOT;
 
     if(chroot(defroot) == -1) {
 
-      PRIVS_RELINQUISH
+      PRIVS_RELINQUISH;
 
       add_response_err(R_530, "Unable to set default root directory.");
       log_pri(LOG_ERR, "%s chroot(\"%s\"): %s", session.user,
@@ -888,7 +931,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
       end_login(1);
     }
 
-    PRIVS_RELINQUISH
+    PRIVS_RELINQUISH;
 
     session.anon_root = defroot;
 
@@ -911,13 +954,13 @@ static int _setup_environment(pool *p, char *user, char *pass)
   if(c)
     ensure_open_passwd(p);
 
-  PRIVS_ROOT
+  PRIVS_ROOT;
 
   if(c && chroot(session.anon_root) == -1) { 
     if(session.uid)
       _init_groups(p,session.gid);
 
-    PRIVS_RELINQUISH
+    PRIVS_RELINQUISH;
 
     add_response_err(R_530, "Unable to set anonymous privileges.");
     log_pri(LOG_ERR, "%s chroot(): %s", session.user, strerror(errno));
@@ -932,25 +975,25 @@ static int _setup_environment(pool *p, char *user, char *pass)
 #ifndef __hpux
   block_signals();
 
-  PRIVS_ROOT
+  PRIVS_ROOT;
 
   setuid(0);
   setgid(0);
 
-  PRIVS_SETUP(pw->pw_uid,pw->pw_gid)
+  PRIVS_SETUP(pw->pw_uid,pw->pw_gid);
 
   unblock_signals();
 #else
   session.uid = session.ouid = pw->pw_uid;
   session.gid = pw->pw_gid;
-  PRIVS_RELINQUISH
+  PRIVS_RELINQUISH;
 #endif
 
 #ifdef HAVE_GETEUID
   if(getegid() != pw->pw_gid ||
      geteuid() != pw->pw_uid) {
 
-    PRIVS_RELINQUISH
+    PRIVS_RELINQUISH;
 
     add_response_err(R_530, "Unable to set user privileges.");
     log_pri(LOG_ERR, "%s setregid() or setreuid(): %s",
@@ -1069,7 +1112,7 @@ static void _do_user_counts()
     return;
   
   /* Determine how many users are currently connected */
-  PRIVS_ROOT
+  PRIVS_ROOT;
   while((l = log_read_run(NULL)) != NULL)
       /* Make sure it matches our current server */
       if(l->server_ip.s_addr == main_server->ipaddr->s_addr &&
@@ -1079,7 +1122,7 @@ static void _do_user_counts()
         if(strcmp(l->class, session.class->name) == 0)
         	ccur++;
       }
-  PRIVS_RELINQUISH
+  PRIVS_RELINQUISH;
 
   remove_config(CURRENT_CONF,"CURRENT-CLIENTS",FALSE);
   add_config_param_set(&CURRENT_CONF,"CURRENT-CLIENTS",1,(void*)cur);
@@ -1164,7 +1207,7 @@ MODRET cmd_user(cmd_rec *cmd)
   /* Determine how many users are currently connected */
 
   if(user) {
-    PRIVS_ROOT
+    PRIVS_ROOT;
     while((l = log_read_run(NULL)) != NULL)
       /* Make sure it matches our current server */
       if(l->server_ip.s_addr == main_server->ipaddr->s_addr &&
@@ -1186,7 +1229,7 @@ MODRET cmd_user(cmd_rec *cmd)
         if(classes_enabled && strcmp(l->class, session.class->name) == 0)
         	ccur++;
       }
-    PRIVS_RELINQUISH
+    PRIVS_RELINQUISH;
   }
 
   remove_config(cmd->server->conf,"CURRENT-CLIENTS",FALSE);
