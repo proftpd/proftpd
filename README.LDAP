@@ -1,0 +1,91 @@
+LDAP
+====
+
+mod_ldap is a module that allows proftpd to do user authentication and
+name/UID lookups against an LDAP database.
+
+
+Sections:
+1. How do I set up mod_ldap?
+2. To-Do
+3. Author
+
+
+============================
+1. How do I set up mod_ldap?
+============================
+
+Currently, mod_ldap has only been tested with recent versions of
+OpenLDAP-stable, but would probably work with other LDAP servers with
+a bit of minor tweaking.
+
+1. Add the following schema to your slapd.oc.conf and restart slapd:
+
+objectclass posixAccount
+        requires
+                objectclass,
+                cn,
+                uid,
+                uidNumber,
+                gidNumber,
+                homeDirectory
+        allows
+                userPassword,
+                loginShell,
+                gecos,
+                description
+
+2. Create an ldif file and add it to your LDAP server by saying:
+   ldapadd -D your-root-dn -w your-root-dn-password < ldif-file
+
+A sample ldif is included here:
+
+dn: cn=John Morrissey, dc=horde, dc=net
+cn: John Morrissey
+uid: jwmsax
+uidNumber: 2000
+gidNumber: 100
+homeDirectory: /home/jwm
+userPassword: {crypt}SosPSqZVHbI5Y
+loginShell: /bin/bash
+
+3. Read up on the LDAP config-file directives in doc/Configuration.html.
+At bare minimum, you'll need to have LDAPServer, LDAPDN, LDAPDNPass, and
+LDAPPrefix configuration directives in your proftpd.conf.
+
+A sample set of LDAP configuration directives is included here:
+
+LDAPServer         "localhost"
+LDAPPrefix         "dc=horde,dc=net"
+LDAPDN             "cn=thedn,dc=horde,dc=net"
+LDAPDNPass         "ldap_dnpass"
+
+========
+2. To-Do
+========
+
+* LDAP group lookups: Currently, proftpd-ldap is based off of mod_unixpw; I
+  just left the Unix group lookup code alone when I wrote proftpd-ldap, so
+  proftpd-ldap still does Unix group lookups. I imagine someone out there
+  would find LDAP group lookups useful. The next version does this, but I'm
+  currently hung up with a config-file showstopper. Hopefully I'll be able
+  to take care of that and get a release out in the next couple of weeks.
+
+* Support for alternate password hash algorithms, such as SHA1. I'm looking
+  at how qmail-ldap does this; it looks like they just "borrowed" the SHA1
+  source file from OpenBSD.
+
+* Secondary LDAP server: for when the primary is unreachable. 
+
+* Virtual hosting support: vary the LDAPPrefix in a <VirtualHost> config
+  block.
+
+=========
+3. Author
+=========
+
+John Morrissey, <jwm@horde.net>, http://horde.net/~jwm/software/proftpd-ldap
+Feedback is much appreciated. If you're using mod_ldap successfully, or
+you're having problems getting mod_ldap up and running at your site, or
+even have some code improvements or ideas for development, please let
+me know!

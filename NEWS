@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.12 1999-10-23 05:24:19 macgyver Exp $
+$Id: NEWS,v 1.13 1999-10-27 02:36:46 macgyver Exp $
 
 1.2.0pre9
 
@@ -28,10 +28,13 @@ $Id: NEWS,v 1.12 1999-10-23 05:24:19 macgyver Exp $
 
 - Umask now takes an optional second argument, specifying a directory umask.
 
-- Work around FreeBSD's broken setpassent().
+- Work around FreeBSD's broken setpassent(), and a new option to override
+    this in fixed versions of FreeBSD's libc (--enable-force-setpassent).
 
 - Generate RPMs for both inetd and standalone versions of ProFTPD.
 
 - Added AuthUsingAlias to allow for more fine-grain control of anonymous
     logins.
+
+- Added support for 'TYPE L 8' and 'TYPE L 7' per RFC 959.
 

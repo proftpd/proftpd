@@ -1259,7 +1259,7 @@ href="reference.html#Limit">&lt;Limit&gt;</a> block to completely ignore any hid
 <p><strong>Syntax:</strong> LDAPDN <em>"ldap-dn"</em><br>
   <strong>Default:</strong> <code>LDAPDN ""</code> (anonymous bind)<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre8 and later</p>
+  <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
 <p>LDAPDN specifies the Distinguished Name to bind as to the LDAP server for authentication. 
   This usually looks something like "cn=the-dn, dc=domain, dc=com" or "o=Your 
   Organization, c=US". If no LDAPDN configuration directive is present, anonymous 
@@ -1269,7 +1269,7 @@ href="reference.html#Limit">&lt;Limit&gt;</a> block to completely ignore any hid
 <p><strong>Syntax:</strong> LDAPDNPass <em>"ldap-dn-password"</em><br>
   <strong>Default:</strong> <code>LDAPDNPass ""</code> (no password)<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre8 and later</p>
+  <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
 <p>LDAPDNPass allows you to specify the password to be used when binding as <a href="#LDAPDN">LDAPDN</a> 
   to the LDAP server for authentication. If no LDAPDNPass configuration directive 
   is present, no password will be used.</p>
@@ -1278,7 +1278,7 @@ href="reference.html#Limit">&lt;Limit&gt;</a> block to completely ignore any hid
 <p><strong>Syntax:</strong> LDAPServer <em>"ldap-server-name"</em><br>
   <strong>Default:</strong> <code>LDAPServer "localhost"</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre8 and later</p>
+  <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
 <p>LDAPServer allows you to to specify the hostname of the LDAP server to use 
   in LDAP authentication. If no LDAPServer configuration directive is present, 
   the local host will be used for the LDAP server.</p>
@@ -1287,7 +1287,7 @@ href="reference.html#Limit">&lt;Limit&gt;</a> block to completely ignore any hid
 <p><strong>Syntax:</strong> LDAPNegativeCache <em>on/off</em><br>
   <strong>Default:</strong> <code>LDAPNegativeCache off</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre8 and later</p>
+  <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
 <p>LDAPNegativeCache specifies whether or not to cache negative responses from 
   the LDAP server when using LDAP authentication. This option is useful if you 
   also use/are in transition from another authentication system. If there are 
@@ -1303,7 +1303,7 @@ href="reference.html#Limit">&lt;Limit&gt;</a> block to completely ignore any hid
 <p><strong>Syntax:</strong> LDAPPrefix <em>"ldap-prefix"</em><br>
   <strong>Default:</strong> <code>LDAPPrefix ""</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
-  <strong>Compatibility:</strong> 1.2.0pre8 and later</p>
+  <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
 <p>LDAPPrefix allows you to specify the prefix to be used in LDAP authentication 
   queries. This usually looks something like "dc=domain, dc=com" or "o=Your Organization, 
   c=US". If no LDAPPrefix configuration directive is present, a default of no 
