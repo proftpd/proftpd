@@ -123,7 +123,7 @@ syslog*.  Proftpd logs all error conditions it encounters, including
 parsing problems with one or more configuration files.
 
    Bug reports
-& mailing list: proftpd-l@evcom.net
-       Patches: bugs@proftpd.org
+& mailing list: proftpd@proftpd.net
+       Patches: macgyver@tos.net
            WWW: http://www.proftpd.org
-           FTP: ftp://ftp.proftpd.org/distrib
+           FTP: ftp://ftp.tos.net/pub/proftpd

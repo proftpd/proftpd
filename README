@@ -12,7 +12,7 @@ supported:
 !! NOTE: gcc and gmake are _required_ on all platforms, unless otherwise
    indicated !!
 
-Linux (recommend kernel 2.0.x or 2.1.x -- _glibc2 (libc6) required_)
+Linux (recommend kernel 2.0.x or 2.2.x -- _glibc2 (libc6) required_)
 BSDI 2.x (possibly)
 BSDI 3.1 (tested -- use gmake instead of make)
 BSDI 4.0
