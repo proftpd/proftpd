@@ -23,10 +23,10 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Simply utility to create the proftpd shutdown message file, allowing
- * an admin to configure the shutdown, deny, disc and messages.
+/* Simple utility to create the proftpd shutdown message file, allowing
+ * an admin to configure the shutdown, deny, disconnect times and messages.
  *
- * $Id: ftpshut.c,v 1.6 2003-03-04 21:30:37 castaglia Exp $
+ * $Id: ftpshut.c,v 1.7 2003-09-09 14:58:34 castaglia Exp $
  */
 
 #include "conf.h"
