@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.55 2001-03-22 21:43:53 flood Exp $
+ * $Id: mod_auth.c,v 1.56 2001-03-24 15:56:25 flood Exp $
  */
 
 #include "conf.h"
@@ -518,8 +518,11 @@ static int _setup_environment(pool *p, char *user, char *pass)
   c = _auth_resolve_user(p,&user,&ourname,&anonname);
 
   if(!user) {
-    log_pri(LOG_NOTICE, "USER %s (Login failed): User not a UserAlias.",
-	    origuser);
+    log_auth(LOG_NOTICE,"USER %s: user is not a UserAlias from %s [%s] to %s:%i",
+             origuser,session.c->remote_name,
+             inet_ascii(p,session.c->remote_ipaddr),
+             inet_ascii(p,session.c->local_ipaddr),
+             session.c->local_port);
     goto auth_failure;
   }
 
@@ -527,7 +530,11 @@ static int _setup_environment(pool *p, char *user, char *pass)
   aclp = login_check_limits(main_server->conf,FALSE,TRUE,&i);
 
   if((pw = auth_getpwnam(p,user)) == NULL) {
-    log_pri(LOG_NOTICE, "USER %s (Login failed): Can't find user.", user);
+    log_auth(LOG_NOTICE,"USER %s: no such user found from %s [%s] to %s:%i",
+               user,session.c->remote_name,
+               inet_ascii(p,session.c->remote_ipaddr),
+               inet_ascii(p,session.c->local_ipaddr),
+               session.c->local_port);
     goto auth_failure;
   }
 
