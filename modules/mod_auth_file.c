@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.8 2003-01-18 02:33:24 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.9 2003-01-18 06:06:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -666,12 +666,18 @@ MODRET authfile_setpwent(cmd_rec *cmd) {
 }
 
 MODRET authfile_uid2name(cmd_rec *cmd) {
+  struct passwd *pwd = NULL;
 
   /* Do not handle *pw* requests unless we can do so. */
   if (!af_handle_pw)
     return DECLINED(cmd);
 
-  return DECLINED(cmd);
+  if (!af_setpwent())
+    return DECLINED(cmd);
+
+  pwd = af_getpwuid(af_current_user_file, (uid_t) cmd->argv[0]);
+
+  return pwd ? mod_create_data(cmd, pwd->pw_name) : DECLINED(cmd);
 }
 
 MODRET authfile_endgrent(cmd_rec *cmd) {
@@ -805,12 +811,18 @@ MODRET authfile_getgroups(cmd_rec *cmd) {
 }
 
 MODRET authfile_gid2name(cmd_rec *cmd) {
+  struct group *grp = NULL;
 
   /* Do not handle *gr* requests unless we can do so. */
   if (!af_handle_gr)
     return DECLINED(cmd);
 
-  return DECLINED(cmd);
+  if (!af_setgrent())
+    return DECLINED(cmd);
+
+  grp = af_getgrgid(af_current_group_file, (gid_t) cmd->argv[0]);
+
+  return grp ? mod_create_data(cmd, grp->gr_name) : DECLINED(cmd);
 }
 
 MODRET authfile_name2gid(cmd_rec *cmd) {
