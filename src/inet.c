@@ -822,7 +822,7 @@ int inet_setnonblock(pool *p, conn_t *c) {
 
     if (c->wfd != -1) {
       flags = fcntl(c->wfd, F_GETFL);
-      res = fcntl(c->wfd, F_GETFL, flags|O_NONBLOCK);
+      res = fcntl(c->wfd, F_SETFL, flags|O_NONBLOCK);
     }
   }
 
