@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.475 2003-09-09 14:16:09 castaglia Exp $
+$Id: NEWS,v 1.476 2003-09-09 14:57:42 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -98,7 +98,7 @@ CVS
 - Bug 1960 - Add removed file size by DELE command to xferlog.
 - Bug 1967 - Add display of uptime to ftpwho, ftptop.
 - Added AnonRejectPasswords directive.
-- Added ftpshut -D command-line option, for deleting the ftpshut shutdown
+- Added ftpshut -R command-line option, for deleting the ftpshut shutdown
   file.
 - Bug 1972 - %T not correctly shows time at performance of a command "rename".
   This was due to improper use of uninitialized data.
