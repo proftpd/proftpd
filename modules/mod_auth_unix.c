@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.15 2004-04-29 03:35:39 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.16 2004-05-11 23:37:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -308,7 +308,7 @@ MODRET pw_setpwent(cmd_rec *cmd) {
   else
     setpwent();
 
-  return HANDLED(cmd);
+  return DECLINED(cmd);
 }
 
 MODRET pw_endpwent(cmd_rec *cmd) {
@@ -317,7 +317,7 @@ MODRET pw_endpwent(cmd_rec *cmd) {
   else
     endpwent();
 
-  return HANDLED(cmd);
+  return DECLINED(cmd);
 }
 
 MODRET pw_setgrent(cmd_rec *cmd) {
@@ -326,7 +326,7 @@ MODRET pw_setgrent(cmd_rec *cmd) {
   else
     setgrent();
 
-  return HANDLED(cmd);
+  return DECLINED(cmd);
 }
 
 MODRET pw_endgrent(cmd_rec *cmd) {
@@ -335,7 +335,7 @@ MODRET pw_endgrent(cmd_rec *cmd) {
   else
     endgrent();
 
-  return HANDLED(cmd);
+  return DECLINED(cmd);
 }
 
 MODRET pw_getgrent(cmd_rec *cmd) {

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.568 2004-05-10 17:50:59 castaglia Exp $
+$Id: NEWS,v 1.569 2004-05-11 23:37:43 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -23,6 +23,8 @@ CVS
   and logging of them was added.  The setting of this particular socket option
   has been moved earlier in the session, as it was found that short-lived
   TCP connections, as from monitoring systems, would cause this error.
+- Bug 2407 - mod_auth_file does not allow for proper cascading of "end" and
+  "set" auth requests.
 
 1.2.10rc1 - Released 28-Apr-2004
 ---------------------------------

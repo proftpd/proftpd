@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.19 2003-11-09 23:10:55 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.20 2004-05-11 23:37:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -588,7 +588,7 @@ MODRET authfile_endpwent(cmd_rec *cmd) {
 
   af_endpwent();
 
-  return HANDLED(cmd);
+  return DECLINED(cmd);
 }
 
 MODRET authfile_getpwent(cmd_rec *cmd) {
@@ -665,7 +665,7 @@ MODRET authfile_setpwent(cmd_rec *cmd) {
     return DECLINED(cmd);
 
   if (af_setpwent())
-    return HANDLED(cmd);
+    return DECLINED(cmd);
 
   pr_log_debug(DEBUG2,
     MOD_AUTH_FILE_VERSION ": unable to find useable AuthUserFile");
@@ -696,7 +696,7 @@ MODRET authfile_endgrent(cmd_rec *cmd) {
 
   af_endgrent();
 
-  return HANDLED(cmd);
+  return DECLINED(cmd);
 }
 
 MODRET authfile_getgrent(cmd_rec *cmd) {
@@ -866,7 +866,7 @@ MODRET authfile_setgrent(cmd_rec *cmd) {
     return DECLINED(cmd);
 
   if (af_setgrent())
-    return HANDLED(cmd);
+    return DECLINED(cmd);
 
   pr_log_debug(DEBUG2,
     MOD_AUTH_FILE_VERSION ": unable to find useable AuthGroupFile");
