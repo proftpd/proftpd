@@ -21,7 +21,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.23 2003-07-07 20:42:53 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.24 2003-07-07 22:59:39 castaglia Exp $
  */
 
 /*
@@ -489,7 +489,7 @@ MODRET cmd_open(cmd_rec *cmd) {
   /* return HANDLED */
   sql_log(DEBUG_INFO, "connection '%s' opened", entry->name);
 
-  sql_log(DEBUG_INFO, ": connection '%s' count is now %d", entry->name,
+  sql_log(DEBUG_INFO, "connection '%s' count is now %d", entry->name,
     entry->connections);
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
