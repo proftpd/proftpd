@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.1 2004-11-09 02:37:13 castaglia Exp $
+ * $Id: mod_delay.c,v 1.2 2004-11-09 03:07:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -636,7 +636,7 @@ static void delay_postparse_ev(const void *event_data, void *user_data) {
  */
 
 static int delay_init(void) {
-  delay_tab.dt_path = RUN_DIR "/proftpd.delay";
+  delay_tab.dt_path = PR_RUN_DIR "/proftpd.delay";
   delay_tab.dt_data = NULL;
 
   pr_event_register(&delay_module, "core.postparse", delay_postparse_ev, NULL);
