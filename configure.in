@@ -28,12 +28,6 @@ dnl Get the OS type
 AC_CONFIG_AUX_DIR(./)
 AC_CANONICAL_SYSTEM
 
-dnl Create symlinks in modules/ and contrib/
-olddir=`pwd`
-cd contrib
-test -f README.mod_sql || ln -s ../README.mod_sql README.mod_sql
-cd $olddir
-
 OSTYPE=-D`echo $build_os | sed 's/\..*$//g' | sed 's/-.*//g' | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ`
 OSREL=-D`echo $build_os | sed 's/-.*//g' | tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ | tr '.' '_'`
 
