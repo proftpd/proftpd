@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.179 2003-04-25 00:02:59 castaglia Exp $
+ * $Id: main.c,v 1.180 2003-04-25 04:13:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2618,17 +2618,16 @@ int main(int argc, char *argv[], char **envp) {
     if (uid)
       daemon_uid = *uid;
     else
-      daemon_uid = 0;
+      daemon_uid = PR_ROOT_UID;
 
     if (gid)
       daemon_gid = *gid;
     else
-      daemon_gid = 0;
+      daemon_gid = PR_ROOT_GID;
   }
 
-  if (daemon_uid) {
-    /* allocate space for daemon supplemental groups
-     */
+  if (daemon_uid != PR_ROOT_UID) {
+    /* Allocate space for daemon supplemental groups. */
     daemon_gids = make_array(permanent_pool, 2, sizeof(gid_t));
 
     if (auth_getgroups(permanent_pool, (const char *) get_param_ptr(

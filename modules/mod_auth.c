@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.148 2003-04-23 06:53:23 castaglia Exp $
+ * $Id: mod_auth.c,v 1.149 2003-04-25 04:13:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -763,7 +763,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
    */
   pw = passwd_dup(p, pw);
 
-  if (pw->pw_uid == 0) {
+  if (pw->pw_uid == PR_ROOT_UID) {
     unsigned char *root_allow = NULL;
 
     /* If RootLogin is set to true, we allow this... even though we
@@ -1012,8 +1012,8 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     setresuid(0, 0, 0);
     setresgid(0, 0, 0);
 # else
-    setuid(0);
-    setgid(0);
+    setuid(PR_ROOT_UID);
+    setgid(PR_ROOT_GID);
 # endif /* __hpux */
 #endif /* PR_DEVEL_COREDUMP */
 
@@ -1044,8 +1044,8 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     setresuid(0, 0, 0);
     setresgid(0, 0, 0);
 # else
-    setuid(0);
-    setgid(0);
+    setuid(PR_ROOT_UID);
+    setgid(PR_ROOT_GID);
 # endif /* __hpux */
 #endif /* PR_DEVEL_COREDUMP */
 
@@ -1249,8 +1249,8 @@ static int _setup_environment(pool *p, char *user, char *pass) {
   PRIVS_ROOT
 
 # ifndef PR_DEVEL_COREDUMP
-  setuid(0);
-  setgid(0);
+  setuid(PR_ROOT_UID);
+  setgid(PR_ROOT_GID);
 # endif /* PR_DEVEL_COREDUMP */
 
   PRIVS_SETUP(pw->pw_uid, pw->pw_gid)

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.425 2003-04-25 00:02:59 castaglia Exp $
+$Id: NEWS,v 1.426 2003-04-25 04:13:38 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -119,6 +119,7 @@ CVS
   a given RewriteRule will only be processed once.
 - Fixed minor fd leak where listening socket descriptors were not being
   properly closed in a session process, when the session is first starting.
+- Cygwin compilation/portability fixes.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------

@@ -39,7 +39,7 @@ cygrunsrv --install proftpd \
           --args "--nodaemon" \
           --type manual \
           --disp "Cygwin proftpd" \
-          --desc "ProFTPd FTP daemon"
+          --desc "ProFTPD FTP daemon"
 --8<--Cut here--
 
 The --nodaemon option is important. It prevents the process from detaching.
@@ -74,13 +74,16 @@ Some configuration directives need to be changed as follows:
         Needs to be set correctly. Having standalone when running from inetd
         produces daemon processes which are difficult or impossible to kill.
 
-    User   SYSTEM
-    Group  Everyone
+    User   System
+    Group  Administrators
 
         By default, a Windows service runs as the SYSTEM user, and if User
         directive specifies some other user, ProFTPD fails to change to that
         user.  Also, if no User directive given, the daemon tries to change
-        the uid to 'root', which also fails.
+        the uid to the SYSTEM user ID.
+
+        Using a less privileged user and/or group will result in errors
+        when users attempt to login.
 
     <Anonymous directory_name>
 
@@ -93,6 +96,14 @@ Some configuration directives need to be changed as follows:
 
         The encrypted password can be produced with the "openssl passwd"
         command.
+
+When a user logs in, the following non-fatal warnings will appear in the
+proftpd logs:
+
+    error setting write fd IP_TOS: Invalid argument
+    error setting read fd IP_TOS: Invalid argument
+    error setting write fd TCP_NOPUSH: Protocol not available
+    error setting read fd TCP_NOPUSH: Protocol not available
 
 Author:
 Stanislav Sinyagin
