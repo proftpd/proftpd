@@ -19,7 +19,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.1 1998-10-18 02:24:41 flood Exp $
+ * $Id: mod_log.c,v 1.2 1998-10-27 01:53:05 flood Exp $
  */
 
 #include "conf.h"
@@ -146,74 +146,64 @@ void logformat(char *nickname, char *fmts)
     if(*tmp == '%') {
       arg = NULL;
       tmp++;
-      switch(*tmp) {
-      case '{':
-        arg = preparse_arg(&tmp);
-        break;
-      case 'b':
-        add_meta(&outs,META_BYTES_SENT,0);
-        tmp++;
-        break;
-      case 'f':
-        add_meta(&outs,META_FILENAME,0);
-        tmp++;
-        break;
-      case 'e':
-        if(arg) {
-          add_meta(&outs,META_ENV_VAR,0);
-          add_meta(&outs,META_ARG,1,strlen(arg),arg);
-        }        
-        tmp++;
-        break;
-      case 'h':
-        add_meta(&outs,META_REMOTE_HOST,0);
-        tmp++;
-        break;
-      case 'a':
-        add_meta(&outs,META_REMOTE_IP,0);
-        tmp++;
-        break;
-      case 'l':
-        add_meta(&outs,META_IDENT_USER,0);
-        tmp++;
-        break;
-      case 'p': 
-        add_meta(&outs,META_SERVER_PORT,0);
-        tmp++;
-        break;
-      case 'P':
-        add_meta(&outs,META_PID,0);
-        tmp++;
-        break;
-      case 't':
-        add_meta(&outs,META_TIME,0);
-        if(arg)
-          add_meta(&outs,META_ARG,1,strlen(arg),arg);
-        tmp++;
-        break;
-      case 'T':
-        add_meta(&outs,META_SECONDS,0);
-        tmp++;
-        break;
-      case 'u':
-        add_meta(&outs,META_USER,0);
-        tmp++;
-        break;
-      case 'r':
-        add_meta(&outs,META_COMMAND,0);
-        tmp++;
-        break;
-      case 'v':
-        add_meta(&outs,META_SERVERNAME,0);
-        tmp++;
-        break;
-      case 's':
-        add_meta(&outs,META_RESPONSE_CODE,0);
-        tmp++;
-        break;
-      case '%':
-        *outs++ = '%'; tmp++;
-        break;
+      for(;;) {
+        switch(*tmp) {
+        case '{':
+          arg = preparse_arg(&tmp);
+          continue;
+        case 'b':
+          add_meta(&outs,META_BYTES_SENT,0);
+          break;
+        case 'f':
+          add_meta(&outs,META_FILENAME,0);
+          break;
+        case 'e':
+          if(arg) {
+            add_meta(&outs,META_ENV_VAR,0);
+            add_meta(&outs,META_ARG,1,(int)strlen(arg),arg);
+          }
+          break;
+        case 'h':
+          add_meta(&outs,META_REMOTE_HOST,0);
+          break;
+        case 'a':
+          add_meta(&outs,META_REMOTE_IP,0);
+          break;
+        case 'l':
+          add_meta(&outs,META_IDENT_USER,0);
+          break;
+        case 'p': 
+          add_meta(&outs,META_SERVER_PORT,0);
+          break;
+        case 'P':
+          add_meta(&outs,META_PID,0);
+          break;
+        case 't':
+          add_meta(&outs,META_TIME,0);
+          if(arg)
+            add_meta(&outs,META_ARG,1,(int)strlen(arg),arg);
+          break;
+        case 'T':
+          add_meta(&outs,META_SECONDS,0);
+          break;
+        case 'u':
+          add_meta(&outs,META_USER,0);
+          break;
+        case 'r':
+          add_meta(&outs,META_COMMAND,0);
+          break;
+        case 'v':
+          add_meta(&outs,META_SERVERNAME,0);
+          break;
+        case 's':
+          add_meta(&outs,META_RESPONSE_CODE,0);
+          break;
+        case '%':
+          *outs++ = '%';
+          break;
+        }
+	tmp++;
+	break;
       }
     } else
       *outs++ = *tmp++;
@@ -397,9 +387,11 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
   case META_ARG:
     m++; argp = arg;
     while(*m != META_ARG_END)
-      *argp = (char)*m++;
+      *argp++ = (char)*m++;
 
-    m++; break;
+    *argp = 0; argp = arg;
+    m++;
+    break;
 
   case META_BYTES_SENT:
     argp = arg;
