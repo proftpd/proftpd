@@ -1,8 +1,8 @@
-$Id: NEWS,v 1.100 2001-04-24 03:36:51 flood Exp $
+$Id: NEWS,v 1.101 2001-05-16 14:35:26 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
-
+- Bug 1152 - Off-by-one in the PassivePorts code
 - Bug 1137 - NLST displayed hidden files
 
 1.2.2rc2 - Released 04/20/2001

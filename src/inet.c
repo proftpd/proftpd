@@ -588,7 +588,7 @@ conn_t *inet_create_connection_portrange(pool *p, xaset_t *servers,
     range[index] = low_port + index;
   
   for(attempt = 3; attempt > 0 && !c; attempt--) {
-    for(index = range_len; index > 0 && !c; index--) {
+    for(index = range_len - 1; index >= 0 && !c; index--) {
 
       /* If this is the first attempt through the range, randomize
        * the order of the port numbers used.
