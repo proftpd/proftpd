@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.140 2003-03-09 23:24:42 castaglia Exp $
+ * $Id: mod_auth.c,v 1.141 2003-03-12 21:13:11 castaglia Exp $
  */
 
 #ifdef __CYGWIN__
@@ -203,6 +203,16 @@ static int _do_auth(pool *p, xaset_t *conf, char *u, char *pw) {
   }
 
   return auth_authenticate(p,u,pw);
+}
+
+MODRET auth_log_pass(cmd_rec *cmd) {
+
+  /* Remove C_USER here, so that other modules, who may want to lookup the
+   * original USER parameter on a failed login, have a chance to do so.
+   */
+  remove_config(cmd->server->conf, C_USER, FALSE);
+
+  return HANDLED(cmd);
 }
 
 MODRET auth_post_pass(cmd_rec *cmd) {
@@ -1539,7 +1549,6 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
         pr_response_send(R_530, "Too many users in your class, "
           "please try again later.");
 
-      remove_config(cmd->server->conf, C_USER, FALSE);
       remove_config(cmd->server->conf, C_PASS, FALSE);
 
       log_auth(PR_LOG_NOTICE, "Connection refused (max clients for class %s).",
@@ -1832,7 +1841,6 @@ MODRET auth_pass(cmd_rec *cmd) {
     return HANDLED(cmd);
   }
 
-  remove_config(cmd->server->conf, C_USER, FALSE);
   remove_config(cmd->server->conf, C_PASS, FALSE);
 
   if (res == 0) {
@@ -2687,6 +2695,8 @@ static cmdtable auth_cmdtab[] = {
   { PRE_CMD,	C_PASS,	G_NONE,	auth_pre_pass,	FALSE,	FALSE,	CL_AUTH },
   { CMD,	C_PASS,	G_NONE,	auth_pass,	FALSE,	FALSE,	CL_AUTH },
   { POST_CMD,	C_PASS,	G_NONE,	auth_post_pass,	FALSE,	FALSE,	CL_AUTH },
+  { LOG_CMD,	C_PASS,	G_NONE,	auth_log_pass,	FALSE,	FALSE },
+  { LOG_CMD_ERR,C_PASS,	G_NONE,	auth_log_pass,  FALSE,  FALSE },
   { CMD,	C_ACCT,	G_NONE,	auth_acct,	FALSE,	FALSE,	CL_AUTH },
   { CMD,	C_REIN,	G_NONE,	auth_rein,	FALSE,	FALSE,	CL_AUTH },
   { 0, NULL }
