@@ -45,7 +45,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.30 2003-07-10 16:09:23 jwm Exp $
+ * $Id: mod_ldap.c,v 1.31 2003-11-09 21:35:27 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -212,7 +212,7 @@ pr_ldap_set_sizelimit(int limit)
 #ifdef LDAP_OPT_SIZELIMIT
   int ret;
   if ((ret = ldap_set_option(ld, LDAP_OPT_SIZELIMIT, (void *)&limit)) != LDAP_OPT_SUCCESS)
-    log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): ldap_set_option() unable to set query size limit to %d entries: %s", limit, ldap_err2string(ret));
+    pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): ldap_set_option() unable to set query size limit to %d entries: %s", limit, ldap_err2string(ret));
 #else
   ld->ld_sizelimit = limit;
 #endif
@@ -227,7 +227,7 @@ pr_ldap_unbind(void)
     return;
 
   if ((ret = ldap_unbind_s(ld)) != LDAP_SUCCESS)
-    log_pri(LOG_NOTICE, "mod_ldap: pr_ldap_unbind(): ldap_unbind() failed: %s", ldap_err2string(ret));
+    pr_log_pri(PR_LOG_NOTICE, "mod_ldap: pr_ldap_unbind(): ldap_unbind() failed: %s", ldap_err2string(ret));
 
   ld = NULL;
 }
@@ -241,21 +241,21 @@ pr_ldap_connect(void)
 #endif
 
   if ((ld = ldap_init(ldap_server, LDAP_PORT)) == NULL) {
-    log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): ldap_init() to %s failed: %s", ldap_server, strerror(errno));
+    pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): ldap_init() to %s failed: %s", ldap_server, strerror(errno));
     return -1;
   }
 
 #ifdef USE_LDAPV3_TLS
   if (ldap_use_tls == 1) {
     if ((ret = ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &version)) != LDAP_OPT_SUCCESS) {
-      log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): Setting LDAP version option failed: %s", ldap_err2string(ret));
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): Setting LDAP version option failed: %s", ldap_err2string(ret));
       pr_ldap_unbind();
       return -1;
     }
 
-    log_debug(DEBUG2, "mod_ldap: Starting TLS for this connection.");
+    pr_log_debug(DEBUG2, "mod_ldap: Starting TLS for this connection.");
     if ((ret = ldap_start_tls_s(ld, NULL, NULL)) != LDAP_SUCCESS) {
-      log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): Starting TLS failed: %s", ldap_err2string(ret));
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): Starting TLS failed: %s", ldap_err2string(ret));
       pr_ldap_unbind();
       return -1;
     }
@@ -263,7 +263,7 @@ pr_ldap_connect(void)
 #endif /* USE_LDAPV3_TLS */
 
   if ((ret = ldap_simple_bind_s(ld, ldap_dn, ldap_dnpass) != LDAP_SUCCESS)) {
-    log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): ldap_simple_bind() as %s failed: %s", ldap_dn, ldap_err2string(ret));
+    pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): ldap_simple_bind() as %s failed: %s", ldap_dn, ldap_err2string(ret));
     return -1;
   }
 
@@ -288,7 +288,7 @@ pr_ldap_mkdir(char *dir, mode_t mode, uid_t uid, gid_t gid)
   if (ret == 0)
     return;
   else if (errno != ENOENT) {
-    log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_mkdir(): unable to create directory %s: pr_fsio_stat() failed: %s", dir, strerror(errno));
+    pr_log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_mkdir(): unable to create directory %s: pr_fsio_stat() failed: %s", dir, strerror(errno));
     return;
   }
 
@@ -300,17 +300,17 @@ pr_ldap_mkdir(char *dir, mode_t mode, uid_t uid, gid_t gid)
   PRIVS_ROOT;
   if (pr_fsio_mkdir(dir, mode) != 0) {
     PRIVS_RELINQUISH;
-    log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_mkdir(): unable to create directory %s: %s", dir, strerror(errno));
+    pr_log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_mkdir(): unable to create directory %s: %s", dir, strerror(errno));
     return;
   }
   if (pr_fsio_chmod(dir, mode) == -1) {
     PRIVS_RELINQUISH;
-    log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_chmod(): unable to chmod directory %s: %s", dir, strerror(errno));
+    pr_log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_chmod(): unable to chmod directory %s: %s", dir, strerror(errno));
     return;
   }
   if (pr_fsio_chown(dir, uid, gid) == -1) {
     PRIVS_RELINQUISH;
-    log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_mkdir(): unable to chown directory %s: %s", dir, strerror(errno));
+    pr_log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_mkdir(): unable to chown directory %s: %s", dir, strerror(errno));
     return;
   }
   PRIVS_RELINQUISH;
@@ -430,7 +430,7 @@ pr_ldap_user_lookup(pool *p,
   LDAPMessage *result, *e;
 
   if (! basedn) {
-    log_pri(PR_LOG_ERR, "mod_ldap: no LDAP base DN specified for auth/UID lookups, declining request.");
+    pr_log_pri(PR_LOG_ERR, "mod_ldap: no LDAP base DN specified for auth/UID lookups, declining request.");
     return NULL;
   }
 
@@ -447,28 +447,28 @@ pr_ldap_user_lookup(pool *p,
 
   if ((ret = ldap_search_st(ld, basedn, ldap_search_scope, filter, ldap_attrs, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
     if (ret == LDAP_SERVER_DOWN) {
-      log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): LDAP server went away, trying to reconnect");
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): LDAP server went away, trying to reconnect");
 
       if (pr_ldap_connect() == -1) {
-        log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): LDAP server went away, unable to reconnect");
+        pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): LDAP server went away, unable to reconnect");
         ld = NULL;
         return NULL;
       }
 
-      log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): Reconnect to LDAP server successful, resuming normal operations");
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): Reconnect to LDAP server successful, resuming normal operations");
       if ((ret = ldap_search_st(ld, basedn, ldap_search_scope, filter, ldap_attrs, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
-        log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
+        pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
         return NULL;
       }
     }
     else {
-      log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
       return NULL;
     }
   }
 
   if (ldap_count_entries(ld, result) > 1) {
-    log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): LDAP search returned multiple entries, aborting query");
+    pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): LDAP search returned multiple entries, aborting query");
     ldap_msgfree(result);
     return NULL;
   }
@@ -491,7 +491,7 @@ pr_ldap_user_lookup(pool *p,
          struct in with default values from the config file. */
       if (strcasecmp(ldap_attrs[i], UIDNUMBER_ATTR) == 0) {
         if (ldap_defaultuid == -1) {
-          log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): no " UIDNUMBER_ATTR " attr for DN %s and LDAPDefaultUID was not specified!", (dn = ldap_get_dn(ld, e)));
+          pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): no " UIDNUMBER_ATTR " attr for DN %s and LDAPDefaultUID was not specified!", (dn = ldap_get_dn(ld, e)));
           free(dn);
           return NULL;
         }
@@ -502,7 +502,7 @@ pr_ldap_user_lookup(pool *p,
       }
       if (strcasecmp(ldap_attrs[i], GIDNUMBER_ATTR) == 0) {
         if (ldap_defaultgid == -1) {
-          log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): no " GIDNUMBER_ATTR " attr for DN %s and LDAPDefaultGID was not specified!", (dn = ldap_get_dn(ld, e)));
+          pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): no " GIDNUMBER_ATTR " attr for DN %s and LDAPDefaultGID was not specified!", (dn = ldap_get_dn(ld, e)));
           free(dn);
           return NULL;
         }
@@ -514,7 +514,7 @@ pr_ldap_user_lookup(pool *p,
 
       if (strcasecmp(ldap_attrs[i], HOMEDIRECTORY_ATTR) == 0) {
         if (!ldap_hdod || !ldap_hdod_prefix || !*ldap_hdod_prefix) {
-          log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): no " HOMEDIRECTORY_ATTR " attr for DN %s and LDAPHomedirOnDemandPrefix was not enabled!", (dn = ldap_get_dn(ld, e)));
+          pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): no " HOMEDIRECTORY_ATTR " attr for DN %s and LDAPHomedirOnDemandPrefix was not enabled!", (dn = ldap_get_dn(ld, e)));
           free(dn);
           return NULL;
         }
@@ -524,7 +524,7 @@ pr_ldap_user_lookup(pool *p,
         else {
           char **canon_username;
           if ((canon_username = ldap_get_values(ld, e, UID_ATTR)) == NULL) {
-            log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): couldn't get " UID_ATTR " attr for canonical username for %s", (dn = ldap_get_dn(ld, e)));
+            pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): couldn't get " UID_ATTR " attr for canonical username for %s", (dn = ldap_get_dn(ld, e)));
             free(dn);
             return NULL;
           }
@@ -551,7 +551,7 @@ pr_ldap_user_lookup(pool *p,
        * the attr.
        */
 
-      log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): ldap_get_values() failed on attr %s for DN %s, ignoring request (perhaps this DN's entry does not have the attr?)", ldap_attrs[i], (dn = ldap_get_dn(ld, e)));
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): ldap_get_values() failed on attr %s for DN %s, ignoring request (perhaps this DN's entry does not have the attr?)", ldap_attrs[i], (dn = ldap_get_dn(ld, e)));
       free(dn);
       ldap_msgfree(result);
       return NULL;
@@ -581,7 +581,7 @@ pr_ldap_user_lookup(pool *p,
     else if (strcasecmp(ldap_attrs[i], HOMEDIRECTORY_ATTR) == 0) {
       if (ldap_forcehdod) {
         if (!ldap_hdod || !ldap_hdod_prefix || !*ldap_hdod_prefix) {
-          log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): LDAPForceHomedirOnDemand is enabled, but LDAPHomedirOnDemand is not.");
+          pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): LDAPForceHomedirOnDemand is enabled, but LDAPHomedirOnDemand is not.");
           return NULL;
         }
 
@@ -590,7 +590,7 @@ pr_ldap_user_lookup(pool *p,
         else {
           char **canon_username;
           if ((canon_username = ldap_get_values(ld, e, UID_ATTR)) == NULL) {
-            log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): couldn't get " UID_ATTR " attr for canonical username for %s", (dn = ldap_get_dn(ld, e)));
+            pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): couldn't get " UID_ATTR " attr for canonical username for %s", (dn = ldap_get_dn(ld, e)));
             free(dn);
             return NULL;
           }
@@ -605,7 +605,7 @@ pr_ldap_user_lookup(pool *p,
     else if (strcasecmp(ldap_attrs[i], LOGINSHELL_ATTR) == 0)
       pw->pw_shell = pstrdup(session.pool, values[0]);
     else
-      log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_user_lookup(): ldap_get_values() loop found unknown attr %s", ldap_attrs[i]);
+      pr_log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_user_lookup(): ldap_get_values() loop found unknown attr %s", ldap_attrs[i]);
 
     ldap_value_free(values);
     ++i;
@@ -632,7 +632,7 @@ pr_ldap_group_lookup(pool *p,
   LDAPMessage *result, *e;
 
   if (! ldap_gid_basedn) {
-    log_pri(PR_LOG_ERR, "mod_ldap: no LDAP base DN specified for GID lookups");
+    pr_log_pri(PR_LOG_ERR, "mod_ldap: no LDAP base DN specified for GID lookups");
     return NULL;
   }
 
@@ -649,21 +649,21 @@ pr_ldap_group_lookup(pool *p,
 
   if ((ret = ldap_search_st(ld, ldap_gid_basedn, ldap_search_scope, filter, ldap_attrs, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
     if (ret == LDAP_SERVER_DOWN) {
-      log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_group_lookup(): LDAP server went away, trying to reconnect");
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_group_lookup(): LDAP server went away, trying to reconnect");
 
       if (pr_ldap_connect() != -1) {
         if ((ret = ldap_search_st(ld, ldap_gid_basedn, ldap_search_scope, filter, ldap_attrs, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
-          log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_group_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
+          pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_group_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
           return NULL;
         }
       }
       else { /* Still can't connect */
-        log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_group_lookup(): LDAP server went away, unable to reconnect");
+        pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_group_lookup(): LDAP server went away, unable to reconnect");
         return NULL;
       }
     }
     else {
-      log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_group_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_group_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
       return NULL;
     }
   }
@@ -690,7 +690,7 @@ pr_ldap_group_lookup(pool *p,
       }
 
       ldap_msgfree(result);
-      log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_group_lookup(): ldap_get_values() failed on attr %s for DN %s, ignoring request (perhaps that DN does not have that attr?)", ldap_attrs[i], (dn = ldap_get_dn(ld, e)));
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_group_lookup(): ldap_get_values() failed on attr %s for DN %s, ignoring request (perhaps that DN does not have that attr?)", ldap_attrs[i], (dn = ldap_get_dn(ld, e)));
       free(dn);
       return NULL;
     }
@@ -707,7 +707,7 @@ pr_ldap_group_lookup(pool *p,
         gr->gr_mem[value_offset] = pstrdup(session.pool, values[value_offset]);
     }
     else
-      log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_group_lookup(): ldap_get_values() loop found unknown attr %s", ldap_attrs[i]);
+      pr_log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_group_lookup(): ldap_get_values() loop found unknown attr %s", ldap_attrs[i]);
 
     ldap_value_free(values);
     ++i;
@@ -742,7 +742,7 @@ pr_ldap_quota_lookup(pool *p, char *filter_template, const char *replace,
   LDAPMessage *result, *e;
 
   if (! basedn) {
-    log_pri(PR_LOG_ERR, "mod_ldap: no LDAP base DN specified for auth/UID lookups, declining request.");
+    pr_log_pri(PR_LOG_ERR, "mod_ldap: no LDAP base DN specified for auth/UID lookups, declining request.");
     return FALSE;
   }
 
@@ -759,28 +759,28 @@ pr_ldap_quota_lookup(pool *p, char *filter_template, const char *replace,
 
   if ((ret = ldap_search_st(ld, basedn, ldap_search_scope, filter, attrs, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
     if (ret == LDAP_SERVER_DOWN) {
-      log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): LDAP server went away, trying to reconnect");
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): LDAP server went away, trying to reconnect");
 
       if (pr_ldap_connect() == -1) {
-        log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): LDAP server went away, unable to reconnect");
+        pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): LDAP server went away, unable to reconnect");
         ld = NULL;
         return FALSE;
       }
 
-      log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): Reconnect to LDAP server successful, resuming normal operations");
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): Reconnect to LDAP server successful, resuming normal operations");
       if ((ret = ldap_search_st(ld, basedn, ldap_search_scope, filter, attrs, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
-        log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
+        pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
         return FALSE;
       }
     }
     else {
-      log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
       return FALSE;
     }
   }
 
   if (ldap_count_entries(ld, result) > 1) {
-    log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): LDAP search returned multiple entries, aborting query");
+    pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): LDAP search returned multiple entries, aborting query");
     ldap_msgfree(result);
     if (ldap_default_quota != NULL) {
       parse_quota(p, replace, pstrdup(p, ldap_default_quota));
@@ -1067,7 +1067,7 @@ handle_ldap_getgroups(cmd_rec *cmd)
   }
 
   if (! ldap_gid_basedn) {
-    log_pri(PR_LOG_ERR, "mod_ldap: no LDAP base DN specified for GID lookups");
+    pr_log_pri(PR_LOG_ERR, "mod_ldap: no LDAP base DN specified for GID lookups");
     goto return_groups;
   }
 
@@ -1085,21 +1085,21 @@ handle_ldap_getgroups(cmd_rec *cmd)
   pr_ldap_set_sizelimit(-1);
   if ((ret = ldap_search_st(ld, ldap_gid_basedn, ldap_search_scope, filter, w, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
     if (ret == LDAP_SERVER_DOWN) {
-      log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): LDAP server went away, trying to reconnect");
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): LDAP server went away, trying to reconnect");
 
       if (pr_ldap_connect() != -1) {
         if ((ret = ldap_search_st(ld, ldap_gid_basedn, ldap_search_scope, filter, w, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
-          log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): ldap_search_st() failed: %s", ldap_err2string(ret));
+          pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): ldap_search_st() failed: %s", ldap_err2string(ret));
           goto return_groups;
         }
       }
       else {
-        log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): LDAP server went away, unable to reconnect");
+        pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): LDAP server went away, unable to reconnect");
         goto return_groups;
       }
     }
     else {
-      log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): ldap_search_st() failed: %s", ldap_err2string(ret));
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): ldap_search_st() failed: %s", ldap_err2string(ret));
       goto return_groups;
     }
   }
@@ -1110,11 +1110,11 @@ handle_ldap_getgroups(cmd_rec *cmd)
 
   for (e = ldap_first_entry(ld, result); e; e = ldap_next_entry(ld, e)) {
     if (! (gidNumber = ldap_get_values(ld, e, w[0]))) {
-      log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): ldap_get_values() on " GIDNUMBER_ATTR " attr failed, skipping current group: %s", ldap_err2string(ret));
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): ldap_get_values() on " GIDNUMBER_ATTR " attr failed, skipping current group: %s", ldap_err2string(ret));
       continue;
     }
     if (! (cn = ldap_get_values(ld, e, w[1]))) {
-      log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): ldap_get_values() on " CN_ATTR " attr failed, skipping current group: %s", ldap_err2string(ret));
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): ldap_get_values() on " CN_ATTR " attr failed, skipping current group: %s", ldap_err2string(ret));
       continue;
     }
 
@@ -1231,21 +1231,21 @@ handle_ldap_check(cmd_rec *cmd)
       return DECLINED(cmd);
 
     if ((ld_auth = ldap_init(ldap_server, LDAP_PORT)) == NULL) {
-      log_pri(PR_LOG_ERR, "mod_ldap: ldap_is_auth(): ldap_init() to %s failed", ldap_server);
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_is_auth(): ldap_init() to %s failed", ldap_server);
       return DECLINED(cmd);
     }
 
 #ifdef USE_LDAPV3_TLS
   if (ldap_use_tls == 1) {
     if ((ret = ldap_set_option(ld_auth, LDAP_OPT_PROTOCOL_VERSION, &version)) != LDAP_OPT_SUCCESS) {
-      log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): Setting LDAP version option on rebind failed: %s", ldap_err2string(ret));
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): Setting LDAP version option on rebind failed: %s", ldap_err2string(ret));
       pr_ldap_unbind();
       return ERROR(cmd);
     }
 
-    log_debug(DEBUG2, "mod_ldap: Starting TLS for rebind connection.");
+    pr_log_debug(DEBUG2, "mod_ldap: Starting TLS for rebind connection.");
     if ((ret = ldap_start_tls_s(ld_auth, NULL, NULL)) != LDAP_SUCCESS) {
-      log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): Starting TLS for rebind failed: %s", ldap_err2string(ret));
+      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): Starting TLS for rebind failed: %s", ldap_err2string(ret));
       pr_ldap_unbind();
       return ERROR(cmd);
     }
@@ -1290,7 +1290,7 @@ handle_ldap_check(cmd_rec *cmd)
   }
 #ifdef HAVE_OPENSSL
   else { /* Try the cipher mode found */
-    log_debug(DEBUG5, "mod_ldap: %s-encrypted password found, trying to auth.", hash_method);
+    pr_log_debug(DEBUG5, "mod_ldap: %s-encrypted password found, trying to auth.", hash_method);
 
     SSLeay_add_all_digests();
 
@@ -1307,7 +1307,7 @@ handle_ldap_check(cmd_rec *cmd)
         md = EVP_get_digestbyname(hash_method);
 
     if (! md) {
-      log_debug(DEBUG5, "mod_ldap: %s not supported by OpenSSL, declining auth request", hash_method);
+      pr_log_debug(DEBUG5, "mod_ldap: %s not supported by OpenSSL, declining auth request", hash_method);
       return DECLINED(cmd); /* Some other module may support it. */
     }
 
