@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.28 1999-12-28 15:54:44 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.29 2000-01-03 20:17:04 macgyver Exp $
  */
 
 /* History Log:
@@ -697,9 +697,15 @@ MODRET cmd_retr(cmd_rec *cmd)
       
 #ifdef HAVE_SENDFILE
       if(rate_bps ||
+
+#ifdef HAVE_BSD_SENDFILE
+	 !(session.xfer.file_size - cnt) ||
+#endif /* HAVE_BSD_SENDFILE */
+
 #ifdef HAVE_LINUX_SENDFILE
 	 !have_sendfile ||
 #endif /* HAVE_LINUX_SENDFILE */
+
 	 (session.flags & (SF_ASCII | SF_ASCII_OVERRIDE))) {
 	len = data_xfer(lbuf, len);
 	goto done;
