@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.33 2003-08-01 01:05:25 castaglia Exp $
+ * $Id: pool.c,v 1.34 2003-09-05 20:00:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -77,7 +77,7 @@ static void *null_alloc(size_t size) {
   return ret;
 }
 
-static void *xmalloc(size_t size) {
+static void *smalloc(size_t size) {
   void *ret;
 
   ret = malloc(size);
@@ -88,7 +88,7 @@ static void *xmalloc(size_t size) {
 }
 
 #if 0
-void *xcalloc(size_t num, size_t size) {
+void *scalloc(size_t num, size_t size) {
   void *ret;
 
   ret = calloc(num,size);
@@ -97,9 +97,9 @@ void *xcalloc(size_t num, size_t size) {
   return ret;
 }
 
-void *xrealloc(void *p, size_t size) {
+void *srealloc(void *p, size_t size) {
   if (p == 0)
-    return xmalloc(size);
+    return smalloc(size);
   p = realloc(p,size);
   if (p == 0)
     p = null_alloc(size);
@@ -113,7 +113,7 @@ void *xrealloc(void *p, size_t size) {
 
 static union block_hdr *malloc_block(int size) {
   union block_hdr *blok =
-    (union block_hdr *) xmalloc(size + sizeof(union block_hdr));
+    (union block_hdr *) smalloc(size + sizeof(union block_hdr));
 
   blok->h.next = NULL;
   blok->h.first_avail = (char *) (blok + 1);
