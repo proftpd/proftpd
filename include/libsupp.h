@@ -29,7 +29,7 @@
 
 /* ProFTPD support library definitions.
  *
- * $Id: libsupp.h,v 1.11 2003-01-02 17:28:17 castaglia Exp $
+ * $Id: libsupp.h,v 1.12 2003-08-13 06:07:38 castaglia Exp $
  */
 
 #include <glibc-glob.h>
@@ -47,6 +47,7 @@
 #define	PR_FNM_NOMATCH	1
 
 int pr_fnmatch(const char *, const char *, int);
+char *sstrncpy(char *, const char *, size_t);
 
 #ifndef HAVE_STRSEP
 char *strsep(char **, const char *);

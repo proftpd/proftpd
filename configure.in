@@ -124,7 +124,7 @@ dnl problems for certain builds of proftpd, e.g. ProFTPD and MySQL (which
 dnl itself similarly bundles a getopt implementation).  Thus, we need to
 dnl support/handle --without-getopt, to disable use of ProFTPD's getopt.
 dnl I don't know if MySQL supports any similar option.
-ac_lib_objs="pr_fnmatch.o strsep.o vsnprintf.o glibc-glob.o glibc-mkstemp.o pr-syslog.o pwgrent.o"
+ac_lib_objs="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-mkstemp.o pr-syslog.o pwgrent.o"
 ac_pr_check_getopt="yes"
 
 AC_ARG_WITH(getopt,

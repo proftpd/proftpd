@@ -25,7 +25,7 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.19 2003-04-30 19:32:12 castaglia Exp $
+ * $Id: support.h,v 1.20 2003-08-13 06:07:38 castaglia Exp $
  */
 
 #ifndef PR_SUPPORT_H
@@ -95,7 +95,6 @@ int check_shutmsg(time_t *, time_t *, time_t *, char *, size_t);
 void pr_memscrub(void *, size_t);
 
 char *sstrcat(char *, const char *, size_t);
-char *sstrncpy(char *, const char *, size_t);
 char *sreplace(pool *, char *, ...);
 
 #endif /* PR_SUPPORT_H */

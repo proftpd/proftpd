@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.60 2003-08-01 01:05:25 castaglia Exp $
+ * $Id: support.c,v 1.61 2003-08-13 06:07:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -838,24 +838,5 @@ char *sstrcat(char *dest, const char *src, size_t n) {
     *d++ = *src++;
 
   *d = 0;
-  return dest;
-}
-
-/* "safe" strncpy, saves room for \0 at end of dest, and refuses to copy
- * more than "n" bytes.
- */
-char *sstrncpy(char *dest, const char *src, size_t n) {
-  register char *d = dest;
-
-  if (!dest)
-    return NULL;
-
-  if (src && *src) {
-    for (; *src && n > 1; n--)
-      *d++ = *src++;
-  }
-
-  *d = '\0';
-
   return dest;
 }
