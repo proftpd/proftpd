@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.20 1999-12-28 07:18:54 macgyver Exp $
+ * $Id: mod_auth.c,v 1.21 1999-12-28 15:54:44 macgyver Exp $
  */
 
 #include "conf.h"
@@ -1435,7 +1435,7 @@ static conftable auth_config[] = {
   { NULL,			NULL,				NULL }
 };
 
-cmdtable auth_commands[] = {
+static cmdtable auth_commands[] = {
   { CMD, C_USER, G_NONE, cmd_user,	FALSE,	FALSE, CL_AUTH },
   { CMD, C_PASS, G_NONE, cmd_pass,	FALSE,  FALSE, CL_AUTH },
   { 0, NULL }

@@ -20,7 +20,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.9 1999-10-11 03:13:12 macgyver Exp $
+ * $Id: mod_log.c,v 1.10 1999-12-28 15:54:44 macgyver Exp $
  */
 
 #include "conf.h"
@@ -814,7 +814,7 @@ static conftable log_config[] = {
   { NULL,		NULL,					NULL }
 };
 
-cmdtable log_commands[] = {
+static cmdtable log_commands[] = {
   { LOG_CMD,	"*",	G_NONE,		log_command,	FALSE, FALSE },
   { LOG_CMD_ERR,"*",	G_NONE,		log_command,	FALSE, FALSE },
   { POST_CMD,	"PASS",	G_NONE,		log_auth_complete,FALSE,FALSE },

@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.27 1999-12-28 07:27:32 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.28 1999-12-28 15:54:44 macgyver Exp $
  */
 
 /* History Log:
@@ -942,7 +942,7 @@ conftable xfer_config[] = {
   { NULL }
 };
 
-cmdtable xfer_commands[] = {
+static cmdtable xfer_commands[] = {
   { CMD,     C_TYPE,	G_NONE,	 cmd_type,	TRUE,	FALSE, CL_MISC },
   { PRE_CMD, C_RETR,	G_READ,	 pre_cmd_retr,	TRUE,	FALSE },
   { CMD,     C_RETR,	G_READ,	 cmd_retr,	TRUE,	FALSE, CL_READ },

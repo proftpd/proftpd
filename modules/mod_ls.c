@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.18 1999-10-11 03:13:13 macgyver Exp $
+ * $Id: mod_ls.c,v 1.19 1999-12-28 15:54:44 macgyver Exp $
  */
 
 #include "conf.h"
@@ -1435,7 +1435,7 @@ static conftable ls_config[] = {
   { NULL,		NULL,					NULL }
 };
 
-cmdtable ls_commands[] = {
+static cmdtable ls_commands[] = {
   { CMD,  	C_NLST,	G_DIRS,	cmd_nlst,	TRUE, FALSE, CL_DIRS },
   { CMD,	C_LIST,	G_DIRS,	cmd_list,	TRUE, FALSE, CL_DIRS },
   { CMD, 	C_STAT,	G_DIRS,	cmd_stat,	TRUE, FALSE, CL_DIRS },

@@ -19,7 +19,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.2 1999-09-07 23:09:10 macgyver Exp $
+ * $Id: mod_site.c,v 1.3 1999-12-28 15:54:44 macgyver Exp $
  */
 
 #include "conf.h"
@@ -317,7 +317,7 @@ MODRET site_help(cmd_rec *cmd)
  * module.
  */
 
-cmdtable site_commands[] = {
+static cmdtable site_commands[] = {
   { CMD, "HELP",	G_NONE,		site_help,	FALSE, FALSE },
   { CMD, "CHMOD",	G_NONE,		site_chmod,	FALSE, FALSE },
   { 0, NULL }
