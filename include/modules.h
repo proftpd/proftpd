@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002 The ProFTPD Project team
+ * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,11 +26,11 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.25 2002-12-17 16:06:41 castaglia Exp $
+ * $Id: modules.h,v 1.26 2003-01-02 17:28:17 castaglia Exp $
  */
 
-#ifndef __MODULES_H
-#define __MODULES_H
+#ifndef PR_MODULES_H
+#define PR_MODULES_H
 
 typedef struct module_struc	module;
 typedef struct modret_struc	modret_t;
@@ -276,4 +276,4 @@ int auth_getgroups(pool *, const char *, array_header **, array_header **);
 
 int set_groups(pool *, gid_t, array_header *);
 
-#endif /* __MODULES_H */
+#endif /* PR_MODULES_H */

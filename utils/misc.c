@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001, 2002 The ProFTPD Project team
+ * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 
 /* Utility module linked to utilities to provide functions normally
  * present in full src tree.
- * $Id: misc.c,v 1.1 2002-09-25 23:45:24 castaglia Exp $
+ * $Id: misc.c,v 1.2 2003-01-02 17:28:23 castaglia Exp $
  */
 
 #include "conf.h"

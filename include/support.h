@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002 The ProFTPD Project team
+ * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,11 +25,11 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.15 2002-12-10 21:01:45 castaglia Exp $
+ * $Id: support.h,v 1.16 2003-01-02 17:28:18 castaglia Exp $
  */
 
-#ifndef __SUPPORT_H
-#define __SUPPORT_H
+#ifndef PR_SUPPORT_H
+#define PR_SUPPORT_H
 
 #define CHOP(s)		strip_end((s),"\r\n")
 
@@ -97,4 +97,4 @@ char *sstrcat(char *, const char *, size_t);
 char *sstrncpy(char *, const char *, size_t);
 char *sreplace(pool *, char *, ...);
 
-#endif /* __SUPPORT_H */
+#endif /* PR_SUPPORT_H */

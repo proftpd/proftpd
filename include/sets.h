@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002 The ProFTPD Project team
+ * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,11 +24,11 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* $Id: sets.h,v 1.6 2002-12-17 15:18:21 jwm Exp $
+/* $Id: sets.h,v 1.7 2003-01-02 17:28:18 castaglia Exp $
  */
 
-#ifndef __SETS_H
-#define __SETS_H
+#ifndef PR_SETS_H
+#define PR_SETS_H
 
 #include "pool.h"
 
@@ -59,4 +59,4 @@ int xaset_insert_end(xaset_t *, xasetmember_t *);
 int xaset_remove(xaset_t *, xasetmember_t *);
 int xaset_insert_sort(xaset_t *, xasetmember_t *, int);
 
-#endif /* __SETS_H */
+#endif /* PR_SETS_H */

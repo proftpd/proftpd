@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
  *
- * Copyright (c) 2001-2002 TJ Saunders
+ * Copyright (c) 2001-2003 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.2 2002-12-17 01:06:41 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.3 2003-01-02 17:28:14 castaglia Exp $
  */
 
 #include "conf.h"

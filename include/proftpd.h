@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002 The ProFTPD Project team
+ * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.38 2002-12-17 15:18:21 jwm Exp $
+ * $Id: proftpd.h,v 1.39 2003-01-02 17:28:18 castaglia Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -126,8 +126,7 @@ typedef struct {
   array_header *groups;
 
   /* fsuid/fsgid are used for automagic chown after creation or upload,
-   * they are initially -1, meaning no chown/chgrp
-   * jss - 7/4/2001
+   * they are initially -1, meaning no chown/chgrp.
    */
   uid_t fsuid;				/* Saved file UID */
   gid_t fsgid;				/* Saved file GID */

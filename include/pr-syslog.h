@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002 The ProFTPD Project team
+ * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* ProFTPD internal implemenation of syslog(3) routines
  *
- * $Id: pr-syslog.h,v 1.2 2002-11-18 16:02:37 castaglia Exp $
+ * $Id: pr-syslog.h,v 1.3 2003-01-02 17:28:18 castaglia Exp $
  */
 
 #include "conf.h"
