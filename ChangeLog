@@ -1,3 +1,7 @@
+2001-03-12 19:22  flood
+
+	* contrib/mod_sql.c: New mod_sql from maintainer.
+
 2001-03-11 09:23  flood
 
 	* NEWS, modules/mod_core.c, src/main.c: Added MasqueradeAddress
