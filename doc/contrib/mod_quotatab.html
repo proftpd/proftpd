@@ -1,4 +1,4 @@
-<!-- $Id: mod_quotatab.html,v 1.4 2004-12-04 09:20:05 castaglia Exp $ -->
+<!-- $Id: mod_quotatab.html,v 1.5 2004-12-08 22:30:00 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_quotatab.html,v $ -->
 
 <html>
@@ -332,7 +332,9 @@ that, it will check for records of type <code>class</code> that belong to the
 class (if enabled) from which the client is connecting.  If still no matching
 records are found, the table will be searched for a record of type
 <code>all</code>; if absent, the module will assume that no quotas apply to
-the client.
+the client.  Note that there is only <b>one</b> type of limit in effect at a
+given time; <code>mod_quotatab</code> does <b>not</b> combine multiple
+user/group/class/all limits for the same client.
 
 <p>
 Once the limits for the current session have been established,
@@ -476,7 +478,7 @@ for that module.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2004-12-04 09:20:05 $</i><br>
+Last Updated: <i>$Date: 2004-12-08 22:30:00 $</i><br>
 
 <br><hr>
 
