@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.221 2004-04-21 01:15:52 castaglia Exp $
+ * $Id: main.c,v 1.222 2004-04-21 01:23:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1416,8 +1416,16 @@ static void daemon_loop(void) {
 
     /* Check for ftp shutdown message file */
     switch (check_shutmsg(&shut, &deny, &disc, shutmsg, sizeof(shutmsg))) {
-    case 1: if (!shutdownp) disc_children(); shutdownp = 1; break;
-    case 0: shutdownp = 0; deny = disc = (time_t)0; break;
+      case 1:
+        if (!shutdownp)
+          disc_children();
+        shutdownp = 1;
+        break;
+
+      case 0:
+        shutdownp = 0;
+        deny = disc = (time_t) 0;
+        break;
     }
 
     if (shutdownp) {
