@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.55 2001-03-09 18:16:23 flood Exp $
+ * $Id: main.c,v 1.56 2001-03-11 14:23:22 flood Exp $
  */
 
 /*
@@ -696,11 +696,21 @@ void main_exit(void *pv, void *lv, void *ev, void *dummy)
 
 void shutdown_exit(void *d1, void *d2, void *d3, void *d4)
 {
-  char *msg;
-
   if(check_shutmsg(&shut,&deny,&disc,shutmsg,sizeof(shutmsg)) == 1) {
     char *user;
     time_t now;
+    char *msg;
+    char *serveraddress = main_server->ServerAddress;
+    config_rec *c = NULL;
+
+    if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
+        FALSE)) != NULL) {
+
+      p_in_addr_t *masq_addr = (p_in_addr_t *) c->argv[0];
+      char *masq_ip = inet_ntoa((struct in_addr) *masq_addr);
+
+      serveraddress = pstrdup(main_server->pool, masq_ip);
+    }
 
     time(&now);
     if(get_param_int(main_server->conf,"authenticated",FALSE) == 1)
@@ -713,7 +723,7 @@ void shutdown_exit(void *d1, void *d2, void *d3, void *d4)
                    "%r",pstrdup(permanent_pool,fmt_time(deny)),
                    "%d",pstrdup(permanent_pool,fmt_time(disc)),
 		   "%C",(session.cwd[0] ? session.cwd : "(none)"),
-		   "%L",main_server->ServerAddress,
+		   "%L",serveraddress,
 		   "%R",(session.c && session.c->remote_name ?
                          session.c->remote_name : "(unknown)"),
 		   "%T",pstrdup(permanent_pool,fmt_time(now)),
@@ -981,7 +991,8 @@ void cmd_loop(server_rec *server, conn_t *c)
   config_rec *id;
   char buf[1024] = {'\0'};
   char *cp;
-  char *display;
+  char *display, *serveraddress = server->ServerAddress;
+  config_rec *masq_c = NULL;
   int i;
 
   set_proc_title("proftpd: connected: %s (%s:%d)",
@@ -993,6 +1004,15 @@ void cmd_loop(server_rec *server, conn_t *c)
   /* Setup the main idle timer */
   if(TimeoutIdle)
     add_timer(TimeoutIdle,TIMER_IDLE,NULL,_idle_timeout);
+
+  if ((masq_c = find_config(server->conf, CONF_PARAM, "MasqueradeAddress",
+      FALSE)) != NULL) {
+
+    p_in_addr_t *masq_addr = (p_in_addr_t *) masq_c->argv[0];
+    char *masq_ip = inet_ntoa((struct in_addr) *masq_addr);
+
+    serveraddress = pstrdup(server->pool, masq_ip);
+  }
 
   display = (char*)get_param_ptr(server->conf,"DisplayConnect",FALSE);
   if(display) {
@@ -1007,9 +1027,9 @@ void cmd_loop(server_rec *server, conn_t *c)
       send_response("220", "ProFTPD " VERSION " Server ready.");
     else
       send_response("220", "ProFTPD " VERSION " Server (%s) [%s]",
-           server->ServerName,server->ServerAddress);
+           server->ServerName,serveraddress);
   } else {
-    send_response("220", "%s FTP server ready.", server->ServerAddress);
+    send_response("220", "%s FTP server ready.", serveraddress);
   }
 
   /* make sure we can receive OOB data */
@@ -1475,13 +1495,25 @@ void fork_server(int fd,conn_t *l,int nofork)
 
     time(&now);
     if(!deny || deny <= now) {
-      char *reason =
-          sreplace(permanent_pool,shutmsg,
+      config_rec *c = NULL;
+      char *reason = NULL;
+      char *serveraddress = main_server->ServerAddress;
+
+      if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
+        FALSE)) != NULL) {
+
+        p_in_addr_t *masq_addr = (p_in_addr_t *) c->argv[0];
+        char *masq_ip = inet_ntoa((struct in_addr) *masq_addr);
+
+        serveraddress = pstrdup(main_server->pool, masq_ip);
+      }
+
+      reason = sreplace(permanent_pool,shutmsg,
                    "%s",pstrdup(permanent_pool,fmt_time(shut)),
                    "%r",pstrdup(permanent_pool,fmt_time(deny)),
                    "%d",pstrdup(permanent_pool,fmt_time(disc)),
 		   "%C",(session.cwd[0] ? session.cwd : "(none)"),
-		   "%L",main_server->ServerAddress,
+		   "%L",serveraddress,
 		   "%R",(session.c && session.c->remote_name ?
                          session.c->remote_name : "(unknown)"),
 		   "%T",pstrdup(permanent_pool,fmt_time(now)),

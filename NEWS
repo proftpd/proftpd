@@ -1,7 +1,10 @@
-$Id: NEWS,v 1.86 2001-03-09 18:49:51 flood Exp $
+$Id: NEWS,v 1.87 2001-03-11 14:23:22 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+- New directive "MasqueradeAddress", used to emit a "fake" (non-interface) IP
+  in server ident, magic cookies and PASV commands.  Useful for firewalled or
+  NAT'd networks that are not FTP aware.
 - Bug 1044 - New directive "AccessDenyMsg", works just like AccessAllowMsg,
   but does the obvious.
 - Bug 1055 - Not really a bug, but still .. ftpwho/ftpcount now attempt to

@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.57 2001-03-09 18:49:51 flood Exp $
+ * $Id: mod_core.c,v 1.58 2001-03-11 14:23:22 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -330,6 +330,28 @@ MODRET set_defaultserver(cmd_rec *cmd)
 
   add_config_param("DefaultServer",1,(void*)b);
   return HANDLED(cmd);
+}
+
+MODRET add_masqueradeaddress(cmd_rec *cmd) {
+
+ config_rec *c = NULL;
+ p_in_addr_t *masq_addr;
+ char masq_ip[80] = {'\0'};
+
+ CHECK_ARGS(cmd, 1);
+ CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+ /* make a copy of the given argument
+  */
+ sstrncpy(masq_ip, cmd->argv[1], sizeof(masq_ip));
+
+ if ((masq_addr = inet_getaddr(cmd->server->pool, masq_ip)) == NULL)
+   return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+     (cmd->argv)[0], ": unable to resolve \"", masq_ip, "\"",
+     NULL));
+
+ c = add_config_param("MasqueradeAddress", 1, (void *) masq_addr);
+ return HANDLED(cmd);
 }
 
 MODRET set_maxinstances(cmd_rec *cmd)
@@ -1706,6 +1728,8 @@ int core_display_file(const char *numeric, const char *fn)
   unsigned long fs_size = 0;
   pool *p;
   xaset_t *s;
+  config_rec *c = NULL;
+  char *serverfqdn = main_server->ServerFQDN;
   char *outs, *mg_time, mg_size[12] = {'\0'}, mg_max[12] = "unlimited";
   char mg_class_limit[12] = {'\0'}, mg_cur[12] = {'\0'},
        mg_xfer_bytes[12] = {'\0'}, mg_cur_class[12] = {'\0'};
@@ -1767,6 +1791,12 @@ int core_display_file(const char *numeric, const char *fn)
   if (user == 0)
       user = "";
    
+  if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
+      FALSE)) != NULL) {
+    p_in_addr_t *masq_addr = (p_in_addr_t *) c->argv[0];
+    serverfqdn = inet_getname(main_server->pool, masq_addr);
+  }
+ 
   while(fs_gets(buf,sizeof(buf),fp,fd) != NULL) {
     buf[sizeof(buf)-1] = '\0';
 
@@ -1783,7 +1813,7 @@ int core_display_file(const char *numeric, const char *fn)
 		    "%C", (session.cwd[0] ? session.cwd : "(none)"),
 		    "%R", (session.c && session.c->remote_name ?
 			   session.c->remote_name : "(unknown)"),
-		    "%L", main_server->ServerFQDN,
+		    "%L", serverfqdn,
 		    "%u", session.ident_user,
 		    "%U", user,
 		    "%k", mg_xfer_units,
@@ -1920,6 +1950,14 @@ MODRET cmd_pasv(cmd_rec *cmd)
   session.flags |= SF_PASSIVE;
   
   addr.addr = *session.d->local_ipaddr;
+
+  /* check for a MasqueradeAddress configuration record, and return that
+   * addr if appropriate.
+   */
+  if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
+      FALSE)) != NULL)
+   addr.addr = *((p_in_addr_t *) c->argv[0]);
+
   port.port = htons(session.data_port);
   
   log_debug(DEBUG1,"Entering Passive Mode (%u,%u,%u,%u,%u,%u).",
@@ -2878,6 +2916,7 @@ static conftable core_conftable[] = {
   { "IdentLookups",		set_identlookups,		NULL },
   { "IgnoreHidden",		set_ignorehidden,		NULL },
   { "Include",			add_include,	 		NULL },
+  { "MasqueradeAddress",	add_masqueradeaddress,		NULL },
   { "MaxClients",		set_maxclients,			NULL },
   { "MaxClientsPerHost",	set_maxhostclients,		NULL },
   { "MaxHostsPerUser",		set_maxhostsperuser,		NULL },
