@@ -27,10 +27,10 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.11 2003-01-07 18:45:27 castaglia Exp $
+ * $Id: mod_radius.c,v 1.12 2003-01-08 20:44:25 castaglia Exp $
  */
 
-#define MOD_RADIUS_VERSION "mod_radius/0.7rc6"
+#define MOD_RADIUS_VERSION "mod_radius/0.7rc7"
 
 #include "conf.h"
 #include "privs.h"
@@ -1625,7 +1625,7 @@ static unsigned char radius_stop_accting(void) {
     radius_add_attrib(request, RADIUS_ACCT_INPUT_OCTETS,
       (unsigned char *) &radius_session_bytes_in, sizeof(int));
 
-    radius_session_bytes_in = htonl(radius_session_bytes_out);
+    radius_session_bytes_out = htonl(radius_session_bytes_out);
     radius_add_attrib(request, RADIUS_ACCT_OUTPUT_OCTETS,
       (unsigned char *) &radius_session_bytes_out, sizeof(int));
 
