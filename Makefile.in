@@ -20,6 +20,7 @@ FTPCOUNT=$(BUILD_FTPCOUNT_OBJS)
 FTPWHO=$(BUILD_FTPWHO_OBJS)
 FTPSHUT=$(BUILD_FTPSHUT_OBJS)
 INSTALL=@INSTALL@
+EXEEXT=@EXEEXT@
 
 INSTALL_USER=@install_user@
 INSTALL_GROUP=@install_group@
@@ -88,7 +89,7 @@ $(localstatedir) $(sysconfdir) $(rundir) $(bindir) $(sbindir) $(mandir) $(mandir
 	fi
 
 install-proftpd: proftpd $(localstatedir) $(sysconfdir) $(rundir) $(sbindir)
-	$(INSTALL_SBIN) proftpd $(sbindir)/proftpd
+	$(INSTALL_SBIN) proftpd $(sbindir)/proftpd$(EXEEXT)
 	if [ -f $(sbindir)/in.proftpd ] ; then \
 	  rm -f $(sbindir)/in.proftpd ; \
 	fi
@@ -96,9 +97,9 @@ install-proftpd: proftpd $(localstatedir) $(sysconfdir) $(rundir) $(sbindir)
 	chown -h $(INSTALL_USER):$(INSTALL_GROUP) $(sbindir)/in.proftpd
 
 install-utils: $(sbindir) $(bindir)
-	$(INSTALL_BIN) ftpcount $(bindir)/ftpcount
-	$(INSTALL_BIN) ftpwho $(bindir)/ftpwho
-	$(INSTALL_SBIN) ftpshut $(sbindir)/ftpshut
+	$(INSTALL_BIN) ftpcount $(bindir)/ftpcount$(EXEEXT)
+	$(INSTALL_BIN) ftpwho $(bindir)/ftpwho$(EXEEXT)
+	$(INSTALL_SBIN) ftpshut $(sbindir)/ftpshut$(EXEEXT)
 
 install-conf: $(sysconfdir)
 	if [ ! -f $(sysconfdir)/proftpd.conf ] ; then \
