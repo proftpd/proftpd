@@ -26,7 +26,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.88 2002-10-08 15:05:34 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.89 2002-10-08 21:19:16 castaglia Exp $
  */
 
 /* History Log:
@@ -762,7 +762,7 @@ MODRET pre_cmd_stou(cmd_rec *cmd) {
     /* Do not forget to delete the file created by mkstemp(3) if there is
      * an error.
      */
-    unlink(cmd->arg);
+    fs_unlink(cmd->arg);
 
     add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
@@ -783,7 +783,7 @@ MODRET pre_cmd_stou(cmd_rec *cmd) {
   /* Not likely to _not_ be a regular file, but just to be certain...
    */
   if (mode && !S_ISREG(mode)) {
-    unlink(cmd->arg);
+    fs_unlink(cmd->arg);
     add_response_err(R_550, "%s: Not a regular file", cmd->arg);
     return ERROR(cmd);
   }
