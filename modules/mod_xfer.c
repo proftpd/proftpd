@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.171 2004-10-26 23:24:59 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.172 2004-10-27 01:49:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -924,7 +924,7 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path) {
     hidden_path = pstrcat(cmd->tmp_pool, ".in.", path, ".", NULL);
 
     pr_log_pri(PR_LOG_DEBUG, "HiddenStore: local path, will rename %s to %s",
-      hidden_path, path;
+      hidden_path, path);
 
   } else {
 
