@@ -21,7 +21,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.30 2004-05-08 03:21:46 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.31 2004-09-05 02:23:18 castaglia Exp $
  */
 
 /*
@@ -130,7 +130,7 @@
  * Internal define used for debug and logging.  All backends are encouraged
  * to use the same format.
  */
-#define _MOD_VERSION "mod_sql_mysql/4.04"
+#define MOD_SQL_MYSQL_VERSION		"mod_sql_mysql/4.04"
 
 #define _MYSQL_PORT "3306"
 
@@ -252,9 +252,10 @@ static void *_sql_add_connection(pool *p, char *name, db_conn_t *conn)
  *  shutdown.
  */
 static void _sql_check_cmd(cmd_rec *cmd, char *msg) {
-  if ((!cmd) || (!cmd->tmp_pool)) {
-    pr_log_pri(PR_LOG_ERR, _MOD_VERSION ": '%s' was passed an invalid cmd_rec. "
-	    "Shutting down.", msg);
+  if (!cmd || 
+      !cmd->tmp_pool) {
+    pr_log_pri(PR_LOG_ERR, MOD_SQL_MYSQL_VERSION
+      ": '%s' was passed an invalid cmd_rec. Shutting down.", msg);
     sql_log(DEBUG_WARN, "'%s' was passed an invalid cmd_rec. Shutting down.",
       msg);
     end_login(1);
@@ -307,20 +308,16 @@ static void sql_mysql_exit_ev(const void *event_data, void *user_data) {
   return;
 }
 
-/* 
- * _build_error: constructs a modret_t filled with error information;
+/* _build_error: constructs a modret_t filled with error information;
  *  mod_sql_mysql calls this function and returns the resulting mod_ret_t
  *  whenever a call to the database results in an error.  Other backends
  *  may want to use a different method to return error information.
- *
- *  If a backend database does not provide error information, please use
- *  the PR_ERR_SQL_UNKNOWN macro.
  */
 static modret_t *_build_error(cmd_rec *cmd, db_conn_t *conn) {
   char num[20] = {'\0'};
 
   if (!conn)
-    return PR_ERR_SQL_BADCMD(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
 
   snprintf(num, 20, "%u", mysql_errno(conn->mysql) );
 
@@ -344,7 +341,7 @@ static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
   unsigned long i = 0;
 
   if (!conn) 
-    return PR_ERR_SQL_BADCMD(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
 
   mysql = conn->mysql;
 
@@ -412,14 +409,14 @@ MODRET cmd_open(cmd_rec *cmd) {
 
   if (cmd->argc < 1) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
-    return PR_ERR_SQL_BADCMD(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }    
 
   /* get the named connection */
 
   if (!(entry = _sql_get_connection( cmd->argv[0]))) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
-    return PR_ERR_SQL_UNDEF(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
   } 
 
   conn = (db_conn_t *) entry->data;
@@ -442,8 +439,8 @@ MODRET cmd_open(cmd_rec *cmd) {
   conn->mysql = mysql_init(NULL);
 
   if (!conn->mysql) {
-    pr_log_pri(PR_LOG_ERR, _MOD_VERSION ": failed to allocate memory for "
-	    "MYSQL structure.  Shutting down.");
+    pr_log_pri(PR_LOG_ERR, MOD_SQL_MYSQL_VERSION
+      ": failed to allocate memory for MYSQL structure.  Shutting down.");
     sql_log(DEBUG_WARN, "%s", "failed to allocate memory for MYSQL structure. "
       "Shutting down.");
     end_login(1);
@@ -514,8 +511,7 @@ MODRET cmd_open(cmd_rec *cmd) {
  *  If argv[1] exists and is not NULL, the connection should be immediately
  *  closed and the connection count should be reset to 0.
  */
-MODRET cmd_close(cmd_rec *cmd)
-{
+MODRET cmd_close(cmd_rec *cmd) {
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
 
@@ -525,13 +521,13 @@ MODRET cmd_close(cmd_rec *cmd)
 
   if ((cmd->argc < 1) || (cmd->argc > 2)) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_close");
-    return PR_ERR_SQL_BADCMD(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }
 
   /* get the named connection */
   if (!(entry = _sql_get_connection( cmd->argv[0] ))) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_close");
-    return PR_ERR_SQL_UNDEF(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
   }
 
   conn = (db_conn_t *) entry->data;
@@ -614,7 +610,7 @@ MODRET cmd_defineconnection(cmd_rec *cmd)
 
   if ((cmd->argc < 4) || (cmd->argc > 5) || (!cmd->argv[0])) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_defineconnection");
-    return PR_ERR_SQL_BADCMD(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }
 
   conn = (db_conn_t *) palloc(conn_pool, sizeof(db_conn_t));
@@ -659,7 +655,8 @@ MODRET cmd_defineconnection(cmd_rec *cmd)
   /* insert the new conn_info into the connection hash */
   if (!(entry = _sql_add_connection(conn_pool, name, (void *) conn))) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_defineconnection");
-    return PR_ERR_SQL_REDEF(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION,
+      "named connection already exists");
   }
 
   entry->ttl = (cmd->argc == 5) ? 
@@ -727,8 +724,7 @@ MODRET cmd_defineconnection(cmd_rec *cmd)
  *  certain selects could return huge amounts of data.  do whatever is
  *  possible to minimize the amount of data copying here.
  */
-MODRET cmd_select(cmd_rec *cmd)
-{
+MODRET cmd_select(cmd_rec *cmd) {
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
   modret_t *cmr = NULL;
@@ -743,14 +739,14 @@ MODRET cmd_select(cmd_rec *cmd)
 
   if (cmd->argc < 2) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_select");
-    return PR_ERR_SQL_BADCMD(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }
 
   /* get the named connection */
   entry = _sql_get_connection( cmd->argv[0] );
   if (!entry) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_select");
-    return PR_ERR_SQL_UNDEF(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
   }
  
   conn = (db_conn_t *) entry->data;
@@ -860,8 +856,7 @@ MODRET cmd_select(cmd_rec *cmd)
  * Notes:
  *  none
  */
-MODRET cmd_insert(cmd_rec *cmd)
-{
+MODRET cmd_insert(cmd_rec *cmd) {
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
   modret_t *cmr = NULL;
@@ -875,14 +870,14 @@ MODRET cmd_insert(cmd_rec *cmd)
 
   if ((cmd->argc != 2) && (cmd->argc != 4)) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_insert");
-    return PR_ERR_SQL_BADCMD(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }
 
   /* get the named connection */
-  entry = _sql_get_connection( cmd->argv[0] );
+  entry = _sql_get_connection(cmd->argv[0]);
   if (!entry) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_insert");
-    return PR_ERR_SQL_UNDEF(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
   }
 
   conn = (db_conn_t *) entry->data;
@@ -959,8 +954,7 @@ MODRET cmd_insert(cmd_rec *cmd)
  *  argv[3] is optional -- it may be NULL, or it may not exist at all.  
  *  make sure this is handled correctly. 
  */
-MODRET cmd_update(cmd_rec *cmd)
-{
+MODRET cmd_update(cmd_rec *cmd) {
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
   modret_t *cmr = NULL;
@@ -974,14 +968,14 @@ MODRET cmd_update(cmd_rec *cmd)
 
   if ((cmd->argc < 2) || (cmd->argc > 4)) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_update");
-    return PR_ERR_SQL_BADCMD(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }
 
   /* get the named connection */
-  entry = _sql_get_connection( cmd->argv[0] );
+  entry = _sql_get_connection(cmd->argv[0]);
   if (!entry) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_update");
-    return PR_ERR_SQL_UNDEF(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
   }
 
   conn = (db_conn_t *) entry->data;
@@ -1046,22 +1040,22 @@ MODRET cmd_update(cmd_rec *cmd)
  *  not support stored procedures should return an error with a descriptive
  *  error message (something like 'backend does not support procedures').
  */
-MODRET cmd_procedure(cmd_rec *cmd)
-{
+MODRET cmd_procedure(cmd_rec *cmd) {
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_procedure");
 
   _sql_check_cmd(cmd, "cmd_procedure");
 
   if (cmd->argc != 3) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_procedure");
-    return PR_ERR_SQL_BADCMD(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }
 
   /* MySQL does not support procedures.  Nothing to do. */
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_procedure");
 
-  return ERROR_MSG(cmd, _MOD_VERSION, "backend does not support procedures");
+  return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION,
+    "backend does not support procedures");
 }
 
 /*
@@ -1083,8 +1077,7 @@ MODRET cmd_procedure(cmd_rec *cmd)
  * Notes:
  *  None.
  */
-MODRET cmd_query(cmd_rec *cmd)
-{
+MODRET cmd_query(cmd_rec *cmd) {
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
   modret_t *cmr = NULL;
@@ -1098,14 +1091,14 @@ MODRET cmd_query(cmd_rec *cmd)
 
   if (cmd->argc != 2) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_query");
-    return PR_ERR_SQL_BADCMD(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }
 
   /* get the named connection */
-  entry = _sql_get_connection( cmd->argv[0] );
+  entry = _sql_get_connection(cmd->argv[0]);
   if (!entry) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_query");
-    return PR_ERR_SQL_UNDEF(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
   }
 
   conn = (db_conn_t *) entry->data;
@@ -1183,8 +1176,7 @@ MODRET cmd_query(cmd_rec *cmd)
  *  copying the data from argv[0] into the data field of the modret allows
  *  for possible SQL injection attacks when this backend is used.
  */
-MODRET cmd_escapestring(cmd_rec * cmd)
-{
+MODRET cmd_escapestring(cmd_rec * cmd) {
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
   char *unescaped = NULL;
@@ -1196,14 +1188,14 @@ MODRET cmd_escapestring(cmd_rec * cmd)
 
   if (cmd->argc != 2) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_escapestring");
-    return PR_ERR_SQL_BADCMD(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }
 
   /* get the named connection */
-  entry = _sql_get_connection( cmd->argv[0] );
+  entry = _sql_get_connection(cmd->argv[0]);
   if (!entry) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_escapestring");
-    return PR_ERR_SQL_UNDEF(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
   }
 
   conn = (db_conn_t *) entry->data;
@@ -1248,8 +1240,7 @@ MODRET cmd_escapestring(cmd_rec * cmd)
  *  If this backend does not provide this functionality, this cmd *must*
  *  return ERROR.
  */
-MODRET cmd_checkauth(cmd_rec * cmd)
-{
+MODRET cmd_checkauth(cmd_rec * cmd) {
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
   char scrambled[256]={'\0'};
@@ -1263,14 +1254,14 @@ MODRET cmd_checkauth(cmd_rec * cmd)
 
   if (cmd->argc != 3) {
     sql_log(DEBUG_FUNC, "exiting \tmysql cmd_checkauth");
-    return PR_ERR_SQL_BADCMD(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }
 
   /* get the named connection -- not used in this case, but for consistency */
   entry = _sql_get_connection( cmd->argv[0] );
   if (!entry) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_checkauth");
-    return PR_ERR_SQL_UNDEF(cmd);
+    return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
   }
 
   if (cmd->argv[1] == NULL) {
@@ -1327,7 +1318,7 @@ MODRET cmd_identify(cmd_rec * cmd) {
   sd->rnum = 1;
   sd->fnum = 2;
 
-  sd->data[0] = _MOD_VERSION;
+  sd->data[0] = MOD_SQL_MYSQL_VERSION;
   sd->data[1] = MOD_SQL_API_V1;
 
   return mod_create_data(cmd, (void *) sd);

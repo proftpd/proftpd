@@ -22,14 +22,14 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.81 2004-09-05 00:19:14 castaglia Exp $
+ * $Id: mod_sql.c,v 1.82 2004-09-05 02:23:18 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_sql.h"
 
-#define _MOD_VERSION "mod_sql/4.11"
+#define MOD_SQL_VERSION			"mod_sql/4.11"
 
 #if defined(HAVE_CRYPT_H) && !defined(AIX4) && !defined(AIX5)
 # include <crypt.h>
@@ -348,13 +348,16 @@ cmd_rec *_sql_make_cmd(pool *p, int argc, ...) {
 }
 
 static void _sql_check_cmd(cmd_rec *cmd, char *msg) {
-  if ((!cmd) || (!cmd->tmp_pool)) {
-    pr_log_pri(PR_LOG_ERR, _MOD_VERSION ": '%s' was passed an invalid cmd_rec. "
-	    "Shutting down.", msg);
+  if (!cmd ||
+      !cmd->tmp_pool) {
+    pr_log_pri(PR_LOG_ERR,
+      MOD_SQL_VERSION ": '%s' was passed an invalid cmd_rec. Shutting down.",
+      msg);
     sql_log(DEBUG_WARN, "'%s' was passed an invalid cmd_rec. Shutting down.",
       msg);
     end_login(1);
-  }    
+  }
+
   return;
 }
 
@@ -1752,15 +1755,19 @@ static modret_t *_process_named_query(cmd_rec *cmd, char *name) {
 	    
 	    if ((*endptr != '\0') || (num < 0) || 
 		((cmd->argc - 3 ) < num)) {
-	      return ERROR_MSG(cmd, _MOD_VERSION, "reference out-of-bounds in query");
+	      return ERROR_MSG(cmd, MOD_SQL_VERSION,
+                "reference out-of-bounds in query");
 	    }
+
 	  } else {
-	    return ERROR_MSG(cmd, _MOD_VERSION, "malformed reference %{?} in query");
+	    return ERROR_MSG(cmd, MOD_SQL_VERSION,
+              "malformed reference %{?} in query");
 	  }
 	   
 	  esc_arg = cmd->argv[num+2];
+
 	} else {
-	  argp=resolve_tag( cmd, *tmp);
+	  argp = resolve_tag(cmd, *tmp);
 	  mr = _sql_dispatch( _sql_make_cmd( cmd->tmp_pool, 2, "default", 
 					     argp ), "sql_escapestring" );
 	  _sql_check_response(mr);
@@ -1778,25 +1785,30 @@ static modret_t *_process_named_query(cmd_rec *cmd, char *name) {
       
     *outsp++ = 0;
 
-    /* construct our return data based on the type of query */
-    if (!strcasecmp(c->argv[0], SQL_UPDATE_C)) {
+    /* Construct our return data based on the type of query */
+    if (strcasecmp(c->argv[0], SQL_UPDATE_C) == 0) {
       query = pstrcat(cmd->tmp_pool, c->argv[2], " SET ", outs, NULL);
-      mr = _sql_dispatch( _sql_make_cmd( cmd->tmp_pool, 2, "default", query), 
-			  "sql_update");
-    } else if (!strcasecmp(c->argv[0], SQL_INSERT_C)) {
+      mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default", query), 
+        "sql_update");
+
+    } else if (strcasecmp(c->argv[0], SQL_INSERT_C) == 0) {
       query = pstrcat(cmd->tmp_pool, "INTO ", c->argv[2], " VALUES (",
-		     outs, ")", NULL);
-      mr = _sql_dispatch( _sql_make_cmd( cmd->tmp_pool, 2, "default", query), 
-			  "sql_insert");
-    } else if (!strcasecmp(c->argv[0], SQL_FREEFORM_C)) {
-      mr = _sql_dispatch( _sql_make_cmd( cmd->tmp_pool, 2, "default", outs), 
-			  "sql_query");
-    } else if (!strcasecmp(c->argv[0], SQL_SELECT_C)) {
-      mr = _sql_dispatch( _sql_make_cmd( cmd->tmp_pool, 2, "default", outs), 
-			  "sql_select");
+        outs, ")", NULL);
+      mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default", query),
+        "sql_insert");
+
+    } else if (strcasecmp(c->argv[0], SQL_FREEFORM_C) == 0) {
+      mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default", outs),
+        "sql_query");
+
+    } else if (strcasecmp(c->argv[0], SQL_SELECT_C) == 0) {
+      mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default", outs),
+        "sql_select");
+
     } else {
-      mr = ERROR_MSG(cmd, _MOD_VERSION, "unknown NamedQuery type");
+      mr = ERROR_MSG(cmd, MOD_SQL_VERSION, "unknown NamedQuery type");
     }
+
   } else {
     mr = ERROR(cmd);
   }
@@ -3625,7 +3637,7 @@ int sql_log(int level, const char *fmt, ...) {
 
   /* prepend a small header */
   snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-           _MOD_VERSION "[%u]: ", (unsigned int) getpid());
+    MOD_SQL_VERSION "[%u]: ", (unsigned int) getpid());
 
   buf[sizeof(buf) - 1] = '\0';
 
@@ -4154,10 +4166,11 @@ static int sql_getconf(void) {
 
   if ((c = find_config(main_server->conf, CONF_PARAM, "SQLRatios", FALSE))) {
     if (!cmap.sql_fstor) {
-      pr_log_pri(PR_LOG_WARNING, _MOD_VERSION
-              ": warning: SQLRatios directive ineffective without SQLRatioStats on");
-      sql_log(DEBUG_WARN, "%s",
-                "warning: SQLRatios directive ineffective without SQLRatioStats on");
+      pr_log_pri(PR_LOG_WARNING,
+        MOD_SQL_VERSION ": warning: SQLRatios directive ineffective "
+        "without SQLRatioStats on");
+      sql_log(DEBUG_WARN, "%s", "warning: SQLRatios directive ineffective "
+        "without SQLRatioStats on");
     }
     cmap.sql_frate = c->argv[0];
     cmap.sql_fcred = c->argv[1];
@@ -4167,8 +4180,12 @@ static int sql_getconf(void) {
 
   if ((!cmap.homedirfield) && (!cmap.defaulthomedir)) {
     cmap.authmask ^= SQL_AUTH_USERS;
-    pr_log_pri(PR_LOG_WARNING, _MOD_VERSION ": warning: no homedir field and no default specified. User authentication is OFF");
-    sql_log(DEBUG_WARN, "%s", "warning: no homedir field and no default specified. User authentication is OFF");
+    pr_log_pri(PR_LOG_WARNING, MOD_SQL_VERSION
+      ": warning: no homedir field and no default specified. "
+      "User authentication is OFF");
+    sql_log(DEBUG_WARN, "%s",
+      "warning: no homedir field and no default specified. "
+      "User authentication is OFF");
   }
 
   if (!(c = find_config(main_server->conf, CONF_PARAM, "SQLConnectInfo", FALSE))) {
