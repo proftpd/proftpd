@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.543 2004-03-05 03:24:36 castaglia Exp $
+$Id: NEWS,v 1.544 2004-03-05 18:22:02 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -116,6 +116,8 @@ CVS
   to the client if no handshake is done.
 - Bug 2353 - REST doesn't handle offsets greater than 2 GB.
 - Bug 2357 - ftptop should use COLS for determining display width.
+- Bug 2321 - FTP permission checks inconsistent for DELE and RMD/XRMD when
+  symlink is in directory path.  This bug affected the RNFR command as well.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------

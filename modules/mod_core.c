@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.221 2004-03-04 21:13:37 castaglia Exp $
+ * $Id: mod_core.c,v 1.222 2004-03-05 18:22:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3790,8 +3790,9 @@ MODRET core_rmd(cmd_rec *cmd) {
    */
   dir = dir_canonical_path(cmd->tmp_pool, cmd->arg);
 
-  if (!dir || !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL) ||
-     pr_fsio_rmdir(dir) == -1) {
+  if (!dir ||
+      !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL) ||
+      pr_fsio_rmdir(dir) == -1) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
 
@@ -3919,8 +3920,9 @@ MODRET core_mdtm(cmd_rec *cmd) {
 
   path = dir_realpath(cmd->tmp_pool,cmd->arg);
 
-  if (!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) ||
-     pr_fsio_stat(path, &sbuf) == -1) {
+  if (!path ||
+      !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
+      pr_fsio_stat(path, &sbuf) == -1) {
     pr_response_add_err(R_550,"%s: %s",cmd->argv[1],strerror(errno));
     return ERROR(cmd);
 
@@ -4019,8 +4021,8 @@ MODRET core_dele(cmd_rec *cmd) {
   pr_fsio_stat(path, &st);
 
   if (!path ||
-     !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
-     pr_fsio_unlink(path) == -1) {
+      !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
+      pr_fsio_unlink(path) == -1) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
@@ -4096,8 +4098,9 @@ MODRET core_rnto(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  if (!path || !dir_check_canon(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL)
-     || pr_fsio_rename(session.xfer.path, path) == -1) {
+  if (!path ||
+      !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
+      pr_fsio_rename(session.xfer.path, path) == -1) {
     pr_response_add_err(R_550, "Rename: %s", strerror(errno));
     return ERROR(cmd);
   }
@@ -4146,7 +4149,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
   path = dir_canonical_path(cmd->tmp_pool, cmd->arg);
 
   if (!path ||
-      !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
+      !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
       !exists(path)) {
     pr_response_add_err(R_550, "%s: %s", cmd->argv[1], strerror(errno));
     return ERROR(cmd);
@@ -4161,8 +4164,9 @@ MODRET core_rnfr(cmd_rec *cmd) {
   session.xfer.p = make_sub_pool(session.pool);
   pr_pool_tag(session.xfer.p, "session xfer pool");
 
-  session.xfer.path = pstrdup(session.xfer.p,path);
-  pr_response_add(R_350, "File or directory exists, ready for destination name.");
+  session.xfer.path = pstrdup(session.xfer.p, path);
+  pr_response_add(R_350, "File or directory exists, ready for "
+    "destination name.");
 
   return HANDLED(cmd);
 }
