@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.399 2003-03-12 21:55:18 castaglia Exp $
+$Id: NEWS,v 1.400 2003-03-13 23:31:30 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -52,6 +52,7 @@ CVS
   the Postgres backend module and the libpq-fe.h file.  Users may need to
   alter the --with-includes configure option used when building mod_sql.
 - Bug 1915 - Unsafe pointer usage in scoreboard file format.
+- Bug 1983 - Filenames beginning with '#' fail to upload/download.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------

@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.169 2003-03-09 22:28:16 castaglia Exp $
+ * $Id: main.c,v 1.170 2003-03-13 23:31:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -651,7 +651,7 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf) {
 
   /* Nothing there...bail out.
    */
-  if ((wrd = get_word(&cp)) == NULL)
+  if ((wrd = get_word(&cp, TRUE)) == NULL)
     return NULL;
 
   newpool = make_sub_pool(p);
@@ -665,7 +665,7 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf) {
   newcmd->argc++;
   newcmd->arg = pstrdup(newpool, cp);
 
-  while((wrd = get_word(&cp)) != NULL) {
+  while((wrd = get_word(&cp, TRUE)) != NULL) {
     *((char **) push_array(tarr)) = pstrdup(newpool, wrd);
     newcmd->argc++;
   }

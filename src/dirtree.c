@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.103 2003-03-12 02:46:19 castaglia Exp $
+ * $Id: dirtree.c,v 1.104 2003-03-13 23:31:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -378,7 +378,7 @@ void kludge_enable_umask(void) {
   _kludge_disable_umask = FALSE;
 }
 
-char *get_word(char **cp) {
+char *get_word(char **cp, unsigned char ignore_comments) {
   char *ret,*dst;
   char quote_mode = 0;
 
@@ -393,7 +393,7 @@ char *get_word(char **cp) {
   ret = dst = *cp;
 
   /* Stop processing at start of an inline comment. */
-  if (**cp == '#')
+  if (!ignore_comments && **cp == '#')
     return NULL;
 
   if (**cp == '\"') {
@@ -516,7 +516,7 @@ static cmd_rec *get_config_cmd(pool *ppool) {
     tarr = make_array(new_pool,4,sizeof(char**));
 
     /* Add each word to the array */
-    while((word = get_word(&bufp)) != NULL) {
+    while((word = get_word(&bufp, FALSE)) != NULL) {
       char *tmp = pstrdup(new_pool, word);
 
       *((char **)push_array(tarr)) = tmp; /* pstrdup(new_pool,word); */
