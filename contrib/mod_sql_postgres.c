@@ -21,6 +21,8 @@
  * holders give permission to link this program with OpenSSL, and distribute
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
+ *
+ * $Id: mod_sql_postgres.c,v 1.13 2003-03-14 18:27:29 castaglia Exp $
  */
 
 /*

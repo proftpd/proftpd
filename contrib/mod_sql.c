@@ -21,6 +21,8 @@
  * holders give permission to link this program with OpenSSL, and distribute
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
+ *
+ * $Id: mod_sql.c,v 1.44 2003-03-14 18:27:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -30,11 +32,11 @@
 #define _MOD_VERSION "mod_sql/4.10"
 
 #ifdef HAVE_CRYPT_H
-#include <crypt.h>
+# include <crypt.h>
 #endif
 
 #ifdef HAVE_LIMITS_H
-#include <limits.h>
+# include <limits.h>
 #endif
 
 /* Uncomment the following define to allow OpenSSL hashed password checking;  
@@ -43,7 +45,7 @@
 /* #define HAVE_OPENSSL */
 
 #ifdef HAVE_OPENSSL
-#include <openssl/evp.h>
+# include <openssl/evp.h>
 #endif
 
 /* default information for tables and fields */

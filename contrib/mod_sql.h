@@ -22,6 +22,8 @@
  * holders give permission to link this program with OpenSSL, and distribute
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
+ *
+ * $Id: mod_sql.h,v 1.4 2003-03-14 18:27:27 castaglia Exp $
  */
 
 #ifndef MOD_SQL_H
