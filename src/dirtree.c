@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.47 2002-02-28 19:30:02 flood Exp $
+ * $Id: dirtree.c,v 1.48 2002-02-28 19:43:30 flood Exp $
  */
 
 /* History:
@@ -1385,23 +1385,24 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
         newd->argv = pcalloc(newd->pool,2*sizeof(void*));
 	newd->parent = d;
         d = newd;
-      } else if(d->subset && d->subset->xas_list &&
-                strcmp(d->name,fullpath) == 0 && 
+      } else if(strcmp(d->name,fullpath) == 0 && 
                 (isfile == -1 || sbuf.st_mtime > (time_t)d->argv[0])) {
         set = (d->parent ? &d->parent->subset :
                &main_server->conf);
 
-        /* remove all old dynamic entries */
-        for(newd = (config_rec*)d->subset->xas_list; newd; newd=dnext) {
-          dnext = newd->next;
+	if (d->subset && d->subset->xas_list) {
+       	  /* remove all old dynamic entries */
+          for(newd = (config_rec*)d->subset->xas_list; newd; newd=dnext) {
+	    dnext = newd->next;
 
-          if(newd->flags & CF_DYNAMIC) {
-            xaset_remove(d->subset,(xasetmember_t*)newd);
-            removed++;
+            if(newd->flags & CF_DYNAMIC) {
+              xaset_remove(d->subset,(xasetmember_t*)newd);
+              removed++;
+            }
           }
-        }
+	}
 
-        if(!d->subset->xas_list) {
+        if(d->subset && !d->subset->xas_list) {
           destroy_pool(d->subset->mempool);
           d->subset = NULL;
           d->argv[0] = NULL;

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.155 2002-02-28 19:30:01 flood Exp $
+$Id: NEWS,v 1.156 2002-02-28 19:43:30 flood Exp $
 
 1.2.5rc2 - CVS
 ---------------------------------
@@ -30,6 +30,7 @@ $Id: NEWS,v 1.155 2002-02-28 19:30:01 flood Exp $
 - Bug 1451 - add_config_param_str() no longer uses permanent_pool
 - Bug 1523 - umask allocation in <Global> moved to permanent_pool
 - Bug 1380 - updated getopt library for Tru64/AIX
+- Bug 1468 - segfault with empty .ftpaccess
 
 1.2.5rc1 - Released 12/18/2001
 ---------------------------------
