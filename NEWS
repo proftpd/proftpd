@@ -1,9 +1,10 @@
-$Id: NEWS,v 1.114 2001-06-20 01:17:12 flood Exp $
+$Id: NEWS,v 1.115 2001-06-20 01:19:29 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
 - Bugs 1164,1020,1134,1190,1207
   Documentation updates
+- Bug 1215 - Removed setpgid()/setpgrp() from fork_server()
 - Bug 1145 - DirFakeUser can display current logged in user
 - Bug 1210 - Possible silent truncation in net-ascii mode
 - Bug 1212 - special files (devices, etc) didn't show up in directory

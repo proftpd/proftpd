@@ -25,7 +25,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.65 2001-06-18 17:35:06 flood Exp $
+ * $Id: main.c,v 1.66 2001-06-20 01:19:29 flood Exp $
  */
 
 /*
@@ -1360,16 +1360,27 @@ void fork_server(int fd,conn_t *l,int nofork)
       return;
     }
   }
-#ifdef HAVE_SETPGID
-  setpgid(0,getpid());
-#else
-# ifdef SETPGRP_VOID
-  setpgrp();
-# else
-   setpgrp(0,getpid());
-# endif
-#endif
-
+  
+  /* There would appear to be no useful purpose behind setting the process
+   * group of the newly forked child.  In daemon/inetd mode, we should have no
+   * controlling tty and either have the process group of the parent or of
+   * inetd.  In non-daemon mode (-n), doing this may cause SIGTTOU to be
+   * raised on output to the terminal (stderr logging).
+   *
+   * jss 6/16/2001
+   * 
+   * #ifdef HAVE_SETPGID
+   *   setpgid(0,getpid());
+   * #else
+   * # ifdef SETPGRP_VOID
+   *   setpgrp();
+   * # else
+   *   setpgrp(0,getpid());
+   * # endif
+   * #endif
+   *
+   */
+  
   /* Reseed pseudo-randoms */
   srand(time(NULL));
 
