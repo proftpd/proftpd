@@ -68,6 +68,12 @@ Known issues:
       this is only a problem if SocketBindTight is _not_ on, i.e. if
       wildcard sockets are used.
 
+    o On BSD systems, the net.inet6.ip6.v6only sysctl affects how wildcard
+      sockets are bound with respect to IPv6.
+
+    o On Linux systems, the net.ipv6.bindv6only sysctl affects how wildcard
+      sockets are bound with respect to IPv6.
+
     o Apache2 mentions the same problem here:
        http://httpd.apache.org/docs-2.0/bind.html#ipv6
 
