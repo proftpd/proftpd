@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.154 2004-07-01 01:52:36 castaglia Exp $
+ * $Id: dirtree.c,v 1.155 2004-07-01 02:00:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1071,9 +1071,6 @@ unsigned char pr_expr_eval_class_and(char **expr) {
   unsigned char found;
   char *class;
 
-  if (!session.class)
-    return FALSE;
-
   for (; *expr; expr++) {
     class = *expr;
     found = FALSE;
@@ -1083,7 +1080,10 @@ unsigned char pr_expr_eval_class_and(char **expr) {
       class++;
     }
 
-    if (strcmp(session.class->cls_name, class) == 0)
+    if (!session.class && !found)
+      return FALSE;
+
+    if (session.class && strcmp(session.class->cls_name, class) == 0)
       found = !found;
 
     if (!found)
@@ -1100,9 +1100,6 @@ unsigned char pr_expr_eval_class_or(char **expr) {
   unsigned char found;
   char *class;
 
-  if (!session.class)
-    return FALSE;
-
   for (; *expr; expr++) {
     class = *expr;
     found = FALSE;
@@ -1111,6 +1108,9 @@ unsigned char pr_expr_eval_class_or(char **expr) {
       found = !found;
       class++;
     }
+
+    if (!session.class)
+      return found;
 
     if (strcmp(session.class->cls_name, class) == 0)
       found = !found;
