@@ -1,5 +1,5 @@
 
-                        ProFTPD 1.2.0 README.modules
+                        ProFTPD 1.2 README.modules
                         ============================
 
 
@@ -24,7 +24,7 @@ Modules always included:
         Implements the FTP LIST, NLST and STAT commands.
 
     mod_site
-        Implements the FTP SITE command, and the HELP and CHMOD subcommands.
+        Implements the FTP SITE command, and the HELP, CHGRP, CHMOD subcommands.
 
     mod_unixpw
         Interface to the native Unix password system.
@@ -40,15 +40,6 @@ Modules automatically included when supported by the OS:
         PAM (Pluggable Authentication Modules) authentication.
         See README.PAM.
         Originally contributed by MacGyver <macgyver@tos.net>.
-
-
-Optional modules:
-
-    mod_readme
-        Display "readme" files, controlled by the "DisplayReadme" directive.
-        See the comments in contrib/mod_readme.c.
-        Originally contributed by <jan.menzel@gmx.de>.
-
 
 
 Contributed ProFTPD Modules (contrib subdirectory)
@@ -71,6 +62,9 @@ Authentication modules:
         Contributed by Johnie Ingram <johnie@netgod.net>.
         Maintained by Andrew Houghton <aah@acm.org>.
 
+    mod_radius
+       RADIUS (RFC2865) authentication and accounting
+       Contributed by TJ Saunders <tj@castaglia.org>.
 
 Feature modules:
 
@@ -80,15 +74,15 @@ Feature modules:
         kernels 2.1.104 and later.
         See README.linux-privs.
 
-    mod_quota
-        Directory tree based disk quotas.
-        Contributed by Eric Estabrooks <eric@urbanrage.com>.
-
     mod_ratio
         User upload/download ratios.
         See contrib/README.ratio and the comments in mod_ratio.c.
         Contributed by Johnie Ingram <johnie@netgod.net>
         and Jim Dogopoulos <jd@dynw.com>/<jd@downcity.net>.
+
+   mod_readme
+       Display "readme" files, controlled by the "DisplayReadme" directive.
+       Originally contributed by <jan.menzel@gmx.de>.
 
     mod_wrap
         TCP Wrappers.
@@ -100,30 +94,9 @@ Feature modules:
 Other ProFTPD modules (not included in the source distribution)
 ---------------------------------------------------------------
 
-These modules (and patches) are neither evaluated nor sanctioned in any way.
-Draw no implication based on inclusion or non-inclusion in this list.
+Please see
 
-A more complete and current list may be found on the web site:
+    http://www.proftpd.org/module_news.html
 
-        http://www.proftpd.org/docs/
-        http://www.proftpd.org/links.html
-
-
-Authentication modules:
-
-    mod_dbauth
-        Berkeley DB 1.x authentication.
-        ftp://pooh.urbanrage.com/pub/c/
-        Eric Estabrooks <eric@urbanrage.com>
-
-    mod_pwcheck
-        Checks anonymous passwords and connections.
-        ftp://ftp.eos.hokudai.ac.jp/pub/pck/release/
-        Akihiko Yamamoto <star@eos.hokudai.ac.jp>
-
-    mod_opie
-        OPIE (One-time Passwords In Everything) authentication.
-        ftp://pooh.urbanrage.com/pub/c/
-        Eric Estabrooks <eric@urbanrage.com>
-
-
+for a current third-party module list.  These modules (and patches) are
+neither evaluated nor sanctioned in any way.

@@ -20,25 +20,25 @@ address (S).
 N: Jesse Sipprell
 E: jss@inflicted.net
 P: 1024/A2C5F611 75 AA 73 4F BE 30 7E 33  48 F4 25 C3 C6 D5 6E D0
-D: Original proftpd author and current project co-maintainer
+D: Original proftpd author and former project co-maintainer
 
 N: Habeeb J. Dihu
 E: macgyver@tos.net
 W: http://www.macgyver.org
 P: 1024/D6C5774D 8E F5 3F 54 A0 69 CD 18  03 03 12 F4 B9 A4 A1 DA
-D: Original mod_pam author and current project co-maintainer
+D: Original mod_pam author and former project co-maintainer
 
 N: Mark Lowes
 E: hamster@vom.org.uk
 W: http://www.korenwolf.net/
 P: 1024D/31A56701 0CA5 442E CED1 B6D3 2211  64FA BCB0 2153 31A5 6701
-D: Head documentation hacker
+D: Head documentation hacker and webmaster
 
 N: TJ Saunders
 E: tj@castaglia.org
 W: http://www.castaglia.org/
 P: 1024/A511976A 69 7E 68 4D 16 68 D6 96  84 28 40 5C B7 8E 89 3F  A5 11 97 6A
-D: ProFTPD developer
+D: ProFTPD developer, current maintainer
 
 N: John Morrissey
 E: jwm@horde.net
@@ -59,4 +59,4 @@ D: RPM packaging maintainer
 
 N: Andrew Houghton
 E: aah@acm.org
-D: SQL support
+D: SQL support maintainer

@@ -1,5 +1,5 @@
 
-                        ProFTPD 1.2.0 README
+                        ProFTPD 1.2 README
                         ====================
 
 Introduction
@@ -33,8 +33,6 @@ Latest Release
 
         ftp://ftp.proftpd.org/distrib/
         http://www.proftpd.org/
-        http://pdd.sourceforge.net/mirrors.html
-
 
 
 Major Features
@@ -84,9 +82,7 @@ Major Features
 Documentation
 -------------
 
-        http://pdd.sourceforge.net/
         http://www.proftpd.org/docs/
-
 
 
 Installation Overview

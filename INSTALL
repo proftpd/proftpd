@@ -1,5 +1,5 @@
 
-                ProFTPD 1.2.0 Installation Instructions
+                ProFTPD 1.2 Installation Instructions
                 =======================================
 
 ------------
@@ -44,7 +44,7 @@ Build Requirements
         o GNU make, though most system makes should work
         o ANSI C and POSIX run-time libraries
         o BSD sockets API
-        o Disk space: ~2.5 MB to unpack, 6-8 MB to build, ~2 MB to install
+        o Disk space: ~4.5 MB to unpack, 6-8 MB to build, ~2 MB to install
 
 
 
@@ -305,10 +305,8 @@ Installation Instructions
 
         Configuration Examples: sample-configurations/*.conf
        Configuration Reference: doc/Configuration.html
-             Configuration FAQ: doc/FAQ-config.html
-                 Documentation: http://pdd.sourceforge.net/
-                                http://www.proftpd.org/docs/
-                           FAQ: http://pdd.sourceforge.net/faq/proftpdfaq.html
+                 Documentation: http://www.proftpd.org/docs/
+                           FAQ: http://www.proftpd.org/docs/faq/linked/faq.html
 
     Note that some systems will require special system-specific preparation
     of the anonymous ftp and any other chroot directories.  PLEASE NOTE
@@ -427,11 +425,11 @@ T5. If your system has a system call trace utility, you may wish to use it
     Some system call trace utilities:
         o truss (Solaris, SVR4 derivatives, Unixware, AIX5L, FreeBSD)
         o trace (SunOS 4.x)
-        o tusc (HP/UX 11.x: ftp://ftp.cup.hp.com/dist/networking/misc/)
-          trace (HP/UX 10.x: ftp://hpux.cs.utah.edu/hpux/Sysadmin/trace-1.6/)
+        o tusc (HP/UX 11.x: ftp://ftp.cup.hp.com/dist/networking/tools/)
+          trace
             http://hpux.cs.utah.edu/hppd/hpux/Sysadmin/trace-1.6/
             http://devresource.hp.com/devresource/Tools/ToolLibrary.html#perfhp
-        o syscalls, trace (AIX 4.x); sctrace (AIX: [$$$] http://www.tkg.com)
+        o syscalls, trace (AIX 4.x); sctrace
         o par (IRIX)
         o alpha-trace (Digital Unix: ftp://ftp.mrc-lmb.cam.ac.uk/pub/jkb/)
         o ktrace/kdump (NetBSD, OpenBSD)
@@ -520,11 +518,11 @@ R1. Basics.
 
     Various Subjects: README.*, contrib/README.*
    Configuration Ref: doc/Configuration.html
-  Config/Problem FAQ: doc/FAQ-config.html
+  Config/Problem FAQ: doc/faq.html
 
                  WWW: http://www.proftpd.org
                  FTP: ftp://ftp.proftpd.org/distrib/
-    Mirror Site List: http://pdd.sourceforge.net/mirrors.html
+    Mirror Site List: http://www.proftpd.org/wwwmirror.html
 
 
 R2. ProFTPD Documentation Project.
@@ -535,9 +533,7 @@ R2. ProFTPD Documentation Project.
     than you are using.  So, referring to doc/Configuration.html file in
     your source distribution may be less confusing.
 
-              (main): http://pdd.sourceforge.net/
-            (mirror): http://hamster.wibble.org/proftpd/
-            (mirror): http://www.flyhmstr.demon.co.uk/proftpd/
+              (main): http://sourceforge.net/projects/pdd
 
 
 R3. E-Mail Lists.
@@ -545,16 +541,16 @@ R3. E-Mail Lists.
        End User List
      (subscriptions): proftpd-users-request@proftpd.org
        (submissions): proftpd-users@proftpd.org
-          (archives): http://www.proftpd.org/proftpd-l-archive
+          (archives): http://www.geocrawler.com/redir-sf.php3?list=proftp-user
 
       Developer List
      (subscriptions): proftpd-devel-request@proftpd.org
        (submissions): proftpd-devel@proftpd.org
-          (archives): http://www.proftpd.org/proftpd-devel-archive
+          (archives): http://www.geocrawler.com/redir-sf.php3?list=proftp-devel
 
    Announcement List
      (subscriptions): proftpd-announce-request@proftpd.org
-          (archives): http://www.proftpd.org/proftpd-announce-archive
+          (archives): http://www.geocrawler.com/redir-sf.php3?list=proftp-announce
 
     Security Reports: security@proftpd.org
 
@@ -567,12 +563,12 @@ R4. Bug Tracking System (Bugzilla).
 
 R5. CVS Repositories.
 
-       Anonymous CVS: proftpd.org
-      (instructions): http://www.proftpd.org/docs/cvs.html
+       Anonymous CVS: cvs.proftp.sourceforge.net
+      (instructions): http://www.proftpd.org/cvs.html
         CVS tarballs: ftp://ftp.stikman.com/pub/proftpd/
                       ftp://ftp.linuxceptional.com/proftpd/
 
-     Development CVS: cvs.proftpd.net
+     Development CVS: http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/proftp/proftpd/
 
 
 R6. Statement about proftpd.org and proftpd.net.

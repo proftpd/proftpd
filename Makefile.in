@@ -85,8 +85,8 @@ clean:
 	  if [ -d "$$dir" ]; then cd $$dir; $(MAKE) clean; fi; \
 	done
 	rm -f include/buildstamp.h
-	rm -f proftpd$(EXEEXT) ftpcount$(EXEEXT) ftpwho$(EXEEXT) \
-	ftpshut$(EXEEXT) core *~
+	rm -f proftpd$(EXEEXT) ftpcount$(EXEEXT) ftpshut$(EXEEXT) \
+        ftptop$(EXEEXT) ftpwho$(EXEEXT) core *~
 
 # BSD install -d doesn't work, so ...
 $(DESTDIR)$(localstatedir) $(DESTDIR)$(sysconfdir) $(DESTDIR)$(rundir) $(DESTDIR)$(bindir) $(DESTDIR)$(sbindir) $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/man5 $(DESTDIR)$(mandir)/man8:
