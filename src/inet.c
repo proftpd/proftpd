@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.71 2003-08-09 16:08:32 castaglia Exp $
+ * $Id: inet.c,v 1.72 2003-08-13 05:28:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -367,7 +367,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
   array_header *tmp;
   server_rec *s;
   pr_netaddr_t na;
-  int sa_family;
+  int addr_family;
   int res = 0, one = 1, hold_errno;
 
   CHECK_INET_POOL;
@@ -401,10 +401,10 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
   c->rfd = c->wfd = -1;
 
   if (bind_addr)
-    sa_family = pr_netaddr_get_family(bind_addr);
+    addr_family = pr_netaddr_get_family(bind_addr);
 
   else if (inet_family)
-    sa_family = inet_family;
+    addr_family = inet_family;
 
   else {
 
@@ -412,9 +412,9 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
      * support is enabled), otherwise use IPv4.
      */
 #ifdef USE_IPV6
-    sa_family = AF_INET6;
+    addr_family = AF_INET6;
 #else
-    sa_family = AF_INET;
+    addr_family = AF_INET;
 #endif /* USE_IPV6 */
   }
 
@@ -448,7 +448,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
 # endif
 #endif
 
-    fd = socket(sa_family, SOCK_STREAM, tcp_proto);
+    fd = socket(addr_family, SOCK_STREAM, tcp_proto);
 
 #if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
     defined(FREEBSD4) || defined(FREEBSD5) || defined(__OpenBSD__) || \
@@ -481,7 +481,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
       log_pri(PR_LOG_NOTICE, "error setting SO_REUSEADDR: %s", strerror(errno));
 
     memset(&na, 0, sizeof(na));
-    pr_netaddr_set_family(&na, sa_family);
+    pr_netaddr_set_family(&na, addr_family);
 
     if (bind_addr)
       pr_netaddr_set_sockaddr(&na, pr_netaddr_get_sockaddr(bind_addr));
