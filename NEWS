@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.618 2004-10-28 19:11:12 castaglia Exp $
+$Id: NEWS,v 1.619 2004-10-31 18:53:56 castaglia Exp $
 
 CVS
 --------------------------------
@@ -48,6 +48,7 @@ CVS
   command.  This allows modules that wish to do POST_CMD processing of
   QUIT, like mod_sql, a chance to see the command.
 - Bug 2484 - Better ftptop formatting.
+- Bug 2071 - Add Variables API.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------
