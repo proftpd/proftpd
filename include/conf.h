@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.20 2002-09-25 23:43:19 castaglia Exp $
+ * $Id: conf.h,v 1.21 2002-10-28 16:19:26 castaglia Exp $
  */
 
 #ifndef __CONF_H
@@ -215,6 +215,15 @@ char *strchr(),*strrchr();
 
 #ifdef HAVE_TIMER_T
 # define timer_t p_timer_t
+#endif
+
+/* AIX, when compiled using -D_NO_PROTO, lacks some prototypes without
+ * which ProFTPD may do some funny (and not good) things.  Provide the
+ * prototypes as necessary here.
+ */
+
+#if defined(AIX4) && defined(_NO_PROTO)
+off_t lseek(int, off_t, int);
 #endif
 
 /* See if we have bcopy, if not define them to use the memcpy functions */
