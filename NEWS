@@ -1,7 +1,7 @@
-$Id: NEWS,v 1.13 1999-10-27 02:36:46 macgyver Exp $
+$Id: NEWS,v 1.14 1999-10-27 03:01:18 macgyver Exp $
 
-1.2.0pre9
-
+1.2.0pre9 - Released: 10/27/99
+------------------------------
 - New support for BSD sendfile() semantics.
 
 - sendfile() deprecates politely on Linux 2.0.x.
