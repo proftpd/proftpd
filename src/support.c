@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.67 2004-04-29 03:35:39 castaglia Exp $
+ * $Id: support.c,v 1.68 2004-06-07 22:58:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -559,6 +559,35 @@ int access_check(char *path, int mode) {
 
   /* F_OK already checked by checking the return value of stat */
   return 0;
+}
+
+char *pr_str_strip(pool *p, char *str) {
+  char c, *dup, *start, *finish;
+
+  if (!p || !str) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  /* First, find the non-whitespace start of the given string */
+  for (start = str; isspace((int) *start); start++);
+
+  /* Now, find the non-whitespace end of the given string */
+  for (finish = &str[strlen(str)-1]; isspace((int) *finish); finish--);
+
+  /* finish is now pointing to a non-whitespace character.  So advance one
+   * character forward, and set that to NUL.
+   */
+  c = *++finish;
+  *finish = '\0';
+
+  /* The space-stripped string is, then, everything from start to finish. */
+  dup = pstrdup(p, start);
+ 
+  /* Restore the given string buffer contents. */
+  *finish = c;
+
+  return dup;
 }
 
 char *strip_end(char *s, char *ch) {

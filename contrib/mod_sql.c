@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.72 2004-04-23 01:32:26 castaglia Exp $
+ * $Id: mod_sql.c,v 1.73 2004-06-07 22:58:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -384,23 +384,6 @@ static modret_t *_sql_dispatch(cmd_rec *cmd, char *cmdname) {
 
   sql_log(DEBUG_WARN, "unknown backend handler '%s'", cmdname);
   return ERROR(cmd);
-}
-
-static char *_sql_strip_spaces(pool *p, char *str) {
-  char *start = NULL, *finish = NULL;
-
-  if (!str)
-    return NULL;
-
-  /* first, find the non-whitespace start of the given string */
-  for (start = str; isspace((int) *start); start++);
-
-  /* now, find the non-whitespace end of the given string */
-  for (finish = &str[strlen(str)-1]; isspace((int) *finish); finish--);
-  *++finish = '\0';
-
-  /* the space-stripped string is, then, everything from start to finish */
-  return pstrdup(p, start);
 }
 
 /*****************************************************************
@@ -952,7 +935,7 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
   }
 
   if (p->pw_name != NULL) {
-    realname = _sql_strip_spaces(cmd->tmp_pool, p->pw_name);
+    realname = pr_str_strip(cmd->tmp_pool, p->pw_name);
 
     mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default", realname),
       "sql_escapestring" );
@@ -2389,6 +2372,19 @@ MODRET sql_change(cmd_rec *cmd) {
   return mr;
 }
 
+MODRET sql_escapestr(cmd_rec *cmd) {
+  modret_t *mr;
+
+  sql_log(DEBUG_FUNC, "%s", ">>> sql_escapestr");
+
+  mr =_sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default", cmd->argv[0]),
+    "sql_escapestring");
+
+  sql_log(DEBUG_FUNC, "%s", "<<< sql_escapestr");
+
+  return mr;
+}
+
 /*****************************************************************
  *
  * AUTH COMMAND HANDLERS
@@ -2818,7 +2814,7 @@ MODRET cmd_auth(cmd_rec *cmd) {
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_auth");
 
   /* fix up the username, removing leading and trailing whitespace */
-  user = _sql_strip_spaces( cmd->tmp_pool, cmd->argv[0] );
+  user = pr_str_strip(cmd->tmp_pool, cmd->argv[0]);
 
   /* escape our username */
   mr = _sql_dispatch( _sql_make_cmd( cmd->tmp_pool, 2, "default", 
@@ -4340,8 +4336,9 @@ static cmdtable sql_cmdtab[] = {
   {LOG_CMD_ERR,  C_ANY,        G_NONE, err_master,     FALSE, FALSE},
 
   /* Module hooks */
-  {HOOK,	"sql_lookup",	G_NONE,	sql_lookup,	FALSE, FALSE},
-  {HOOK,	"sql_change",	G_NONE,	sql_change,	FALSE, FALSE}, 
+  { HOOK,	"sql_change",	G_NONE,	sql_change,	FALSE, FALSE }, 
+  { HOOK,	"sql_escapestr",G_NONE,	sql_escapestr,	FALSE, FALSE },
+  { HOOK,	"sql_lookup",	G_NONE,	sql_lookup,	FALSE, FALSE },
 
   {0, NULL}
 };

@@ -22,17 +22,19 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_quotatab_sql.c,v 1.4 2004-05-23 00:11:52 castaglia Exp $
+ * $Id: mod_quotatab_sql.c,v 1.5 2004-06-07 22:58:44 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
 #include "mod_sql.h"
 
+#define QUOTATAB_SQL_VALUE_BUFSZ	20
+
 /* For synchronizing on database table operations among sessions. */
 static char *sqltab_lock_file = NULL;
 static int sqltab_lock_fd = -1;
 
-static cmd_rec *sql_cmd_create(pool *parent_pool, int argc, ...) {
+static cmd_rec *sqltab_cmd_create(pool *parent_pool, int argc, ...) {
   pool *cmd_pool = NULL;
   cmd_rec *cmd = NULL;
   register unsigned int i = 0;
@@ -54,6 +56,35 @@ static cmd_rec *sql_cmd_create(pool *parent_pool, int argc, ...) {
   va_end(argp);
 
   return cmd;
+}
+
+static char *sqltab_get_name(pool *p, char *name) {
+  cmdtable *cmdtab;
+  cmd_rec *cmd;
+  modret_t *res;
+
+  /* Find the cmdtable for the sql_escapestr command. */
+  cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_escapestr", NULL, NULL);
+  if (cmdtab == NULL) {
+    quotatab_log("error: unable to find SQL hook symbol 'sql_escapestr'");
+    return name;
+  }
+
+  if (strlen(name) == 0)
+    return name;
+
+  cmd = sqltab_cmd_create(p, 1, pr_str_strip(p, name));
+
+  /* Call the handler. */
+  res = call_module(cmdtab->m, cmdtab->handler, cmd);
+
+  /* Check the results. */
+  if (MODRET_ISERROR(res)) {
+    quotatab_log("error executing 'sql_escapestring'");
+    return name;
+  }
+
+  return res->data;
 }
 
 static int sqltab_close(quota_table_t *sqltab) {
@@ -79,13 +110,13 @@ static int sqltab_create(quota_table_t *sqltab) {
    * files_in_used, files_out_used, files_xfer_used.
    */
   tally_quota_name = pcalloc(tmp_pool, 83 * sizeof(char));
-  tally_quota_type = pcalloc(tmp_pool, 10 * sizeof(char));
-  tally_bytes_in = pcalloc(tmp_pool, 10 * sizeof(char));
-  tally_bytes_out = pcalloc(tmp_pool, 10 * sizeof(char));
-  tally_bytes_xfer = pcalloc(tmp_pool, 10 * sizeof(char));
-  tally_files_in = pcalloc(tmp_pool, 10 * sizeof(char));
-  tally_files_out = pcalloc(tmp_pool, 10 * sizeof(char));
-  tally_files_xfer = pcalloc(tmp_pool, 10 * sizeof(char));
+  tally_quota_type = pcalloc(tmp_pool, QUOTATAB_SQL_VALUE_BUFSZ * sizeof(char));
+  tally_bytes_in = pcalloc(tmp_pool, QUOTATAB_SQL_VALUE_BUFSZ * sizeof(char));
+  tally_bytes_out = pcalloc(tmp_pool, QUOTATAB_SQL_VALUE_BUFSZ * sizeof(char));
+  tally_bytes_xfer = pcalloc(tmp_pool, QUOTATAB_SQL_VALUE_BUFSZ * sizeof(char));
+  tally_files_in = pcalloc(tmp_pool, QUOTATAB_SQL_VALUE_BUFSZ * sizeof(char));
+  tally_files_out = pcalloc(tmp_pool, QUOTATAB_SQL_VALUE_BUFSZ * sizeof(char));
+  tally_files_xfer = pcalloc(tmp_pool, QUOTATAB_SQL_VALUE_BUFSZ * sizeof(char));
 
   /* Execute the INSERT NamedQuery */
   insert_query = ((char **) sqltab->tab_data)[2];
@@ -95,35 +126,57 @@ static int sqltab_create(quota_table_t *sqltab) {
    * quota_type, bytes_in_used, bytes_out_used, bytes_xfer_used,
    * files_in_used, files_out_used, files_xfer_used.
    */
-  snprintf(tally_quota_name, 83, "'%s'", quotatab_tally.name);
+
+  snprintf(tally_quota_name, 83, "'%s'", sqltab_get_name(tmp_pool,
+    quotatab_tally.name));
+  tally_quota_name[82] = '\0';
 
   if (quotatab_tally.quota_type == USER_QUOTA)
-    snprintf(tally_quota_type, 10, "'%s'", "user");
+    snprintf(tally_quota_type, QUOTATAB_SQL_VALUE_BUFSZ, "'%s'", "user");
 
   else if (quotatab_tally.quota_type == GROUP_QUOTA)
-    snprintf(tally_quota_type, 10, "'%s'", "group");
+    snprintf(tally_quota_type, QUOTATAB_SQL_VALUE_BUFSZ, "'%s'", "group");
 
   else if (quotatab_tally.quota_type == CLASS_QUOTA)
-    snprintf(tally_quota_type, 10, "'%s'", "class");
+    snprintf(tally_quota_type, QUOTATAB_SQL_VALUE_BUFSZ, "'%s'", "class");
 
   else if (quotatab_tally.quota_type == ALL_QUOTA)
-    snprintf(tally_quota_type, 10, "'%s'", "all");
+    snprintf(tally_quota_type, QUOTATAB_SQL_VALUE_BUFSZ, "'%s'", "all");
 
-  snprintf(tally_bytes_in, 10, "%f", quotatab_tally.bytes_in_used);
-  snprintf(tally_bytes_out, 10, "%f", quotatab_tally.bytes_out_used);
-  snprintf(tally_bytes_xfer, 10, "%f", quotatab_tally.bytes_xfer_used);
-  snprintf(tally_files_in, 10, "%u", quotatab_tally.files_in_used);
-  snprintf(tally_files_out, 10, "%u", quotatab_tally.files_out_used);
-  snprintf(tally_files_xfer, 10, "%u", quotatab_tally.files_xfer_used);
+  tally_quota_type[QUOTATAB_SQL_VALUE_BUFSZ-1] = '\0';
 
-  sql_cmd = sql_cmd_create(tmp_pool, 10, "sql_change", insert_query,
+  snprintf(tally_bytes_in, QUOTATAB_SQL_VALUE_BUFSZ, "%f",
+    quotatab_tally.bytes_in_used);
+  tally_bytes_in[QUOTATAB_SQL_VALUE_BUFSZ-1] = '\0';
+
+  snprintf(tally_bytes_out, QUOTATAB_SQL_VALUE_BUFSZ, "%f",
+    quotatab_tally.bytes_out_used);
+  tally_bytes_out[QUOTATAB_SQL_VALUE_BUFSZ-1] = '\0';
+
+  snprintf(tally_bytes_xfer, QUOTATAB_SQL_VALUE_BUFSZ, "%f",
+    quotatab_tally.bytes_xfer_used);
+  tally_bytes_xfer[QUOTATAB_SQL_VALUE_BUFSZ-1] = '\0';
+
+  snprintf(tally_files_in, QUOTATAB_SQL_VALUE_BUFSZ, "%u",
+    quotatab_tally.files_in_used);
+  tally_files_in[QUOTATAB_SQL_VALUE_BUFSZ-1] = '\0';
+
+  snprintf(tally_files_out, QUOTATAB_SQL_VALUE_BUFSZ, "%u",
+    quotatab_tally.files_out_used);
+  tally_files_out[QUOTATAB_SQL_VALUE_BUFSZ-1] = '\0';
+
+  snprintf(tally_files_xfer, QUOTATAB_SQL_VALUE_BUFSZ, "%u",
+    quotatab_tally.files_xfer_used);
+  tally_files_xfer[QUOTATAB_SQL_VALUE_BUFSZ-1] = '\0';
+
+  sql_cmd = sqltab_cmd_create(tmp_pool, 10, "sql_change", insert_query,
     tally_quota_name, tally_quota_type,
     tally_bytes_in, tally_bytes_out, tally_bytes_xfer,
     tally_files_in, tally_files_out, tally_files_xfer);
 
   /* Find the cmdtable for the sql_change command. */
-  if ((sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_change", NULL,
-      NULL)) == NULL) {
+  sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_change", NULL, NULL);
+  if (sql_cmdtab == NULL) {
     quotatab_log("error: unable to find SQL hook symbol 'sql_change'");
     destroy_pool(tmp_pool);
     return -1;
@@ -164,16 +217,16 @@ static unsigned char sqltab_lookup(quota_table_t *sqltab, const char *name,
     select_query = (char *) sqltab->tab_data;
 
   /* Find the cmdtable for the sql_lookup command. */
-  if ((sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_lookup", NULL,
-      NULL)) == NULL) {
+  sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_lookup", NULL, NULL);
+  if (sql_cmdtab == NULL) {
     quotatab_log("error: unable to find SQL hook symbol 'sql_lookup'");
     destroy_pool(tmp_pool);
     return FALSE;
   }
 
   /* Prepare the SELECT query. */
-  sql_cmd = sql_cmd_create(tmp_pool, 4, "sql_lookup", select_query,
-    name ? name : "",
+  sql_cmd = sqltab_cmd_create(tmp_pool, 4, "sql_lookup", select_query,
+    name ? sqltab_get_name(tmp_pool, (char *) name) : "",
     quota_type == USER_QUOTA ? "user" : quota_type == GROUP_QUOTA ? "group" :
     quota_type == CLASS_QUOTA ? "class" : "all");
 
@@ -212,16 +265,16 @@ static unsigned char sqltab_lookup(quota_table_t *sqltab, const char *name,
     /* Process each element returned. */
     memmove(quotatab_tally.name, values[0], sizeof(quotatab_tally.name));
 
-    if (!strcasecmp(values[1], "user"))
+    if (strcasecmp(values[1], "user") == 0)
       quotatab_tally.quota_type = USER_QUOTA;
 
-    else if (!strcasecmp(values[1], "group"))
+    else if (strcasecmp(values[1], "group") == 0)
       quotatab_tally.quota_type = GROUP_QUOTA;
 
-    else if (!strcasecmp(values[1], "class"))
+    else if (strcasecmp(values[1], "class") == 0)
       quotatab_tally.quota_type = CLASS_QUOTA;
 
-    else if (!strcasecmp(values[1], "all"))
+    else if (strcasecmp(values[1], "all") == 0)
       quotatab_tally.quota_type = ALL_QUOTA;
 
     /* Check if this is the requested record, now that enough information
@@ -274,16 +327,16 @@ static unsigned char sqltab_lookup(quota_table_t *sqltab, const char *name,
     /* Process each element returned. */
     memmove(quotatab_limit.name, values[0], sizeof(quotatab_limit.name));
 
-    if (!strcasecmp(values[1], "user"))
+    if (strcasecmp(values[1], "user") == 0)
       quotatab_limit.quota_type = USER_QUOTA;
 
-    else if (!strcasecmp(values[1], "group"))
+    else if (strcasecmp(values[1], "group") == 0)
       quotatab_limit.quota_type = GROUP_QUOTA;
 
-    else if (!strcasecmp(values[1], "class"))
+    else if (strcasecmp(values[1], "class") == 0)
       quotatab_limit.quota_type = CLASS_QUOTA;
 
-    else if (!strcasecmp(values[1], "all"))
+    else if (strcasecmp(values[1], "all") == 0)
       quotatab_limit.quota_type = ALL_QUOTA;
 
     /* Check if this is the requested record, now that enough information
@@ -301,16 +354,16 @@ static unsigned char sqltab_lookup(quota_table_t *sqltab, const char *name,
       return FALSE;
     }
 
-    if (!strcasecmp(values[2], "false"))
+    if (strcasecmp(values[2], "false") == 0)
       quotatab_limit.quota_per_session = FALSE;
 
-    else if (!strcasecmp(values[2], "true"))
+    else if (strcasecmp(values[2], "true") == 0)
       quotatab_limit.quota_per_session = TRUE;
 
-    if (!strcasecmp(values[3], "soft"))
+    if (strcasecmp(values[3], "soft") == 0)
       quotatab_limit.quota_limit_type = SOFT_LIMIT;
 
-    else if (!strcasecmp(values[3], "hard"))
+    else if (strcasecmp(values[3], "hard") == 0)
       quotatab_limit.quota_limit_type = HARD_LIMIT;
 
     quotatab_limit.bytes_in_avail = atof(values[4]);
@@ -360,13 +413,13 @@ static int sqltab_write(quota_table_t *sqltab) {
    * members: quota_type, bytes_in_used, bytes_out_used, bytes_xfer_used,
    * files_in_used, files_out_used, files_xfer_used.
    */
-  tally_quota_type = pcalloc(tmp_pool, 20 * sizeof(char));
-  tally_bytes_in = pcalloc(tmp_pool, 20 * sizeof(char));
-  tally_bytes_out = pcalloc(tmp_pool, 20 * sizeof(char));
-  tally_bytes_xfer = pcalloc(tmp_pool, 20 * sizeof(char));
-  tally_files_in = pcalloc(tmp_pool, 20 * sizeof(char));
-  tally_files_out = pcalloc(tmp_pool, 20 * sizeof(char));
-  tally_files_xfer = pcalloc(tmp_pool, 20 * sizeof(char));
+  tally_quota_type = pcalloc(tmp_pool, QUOTATAB_SQL_VALUE_BUFSZ * sizeof(char));
+  tally_bytes_in = pcalloc(tmp_pool, QUOTATAB_SQL_VALUE_BUFSZ * sizeof(char));
+  tally_bytes_out = pcalloc(tmp_pool, QUOTATAB_SQL_VALUE_BUFSZ * sizeof(char));
+  tally_bytes_xfer = pcalloc(tmp_pool, QUOTATAB_SQL_VALUE_BUFSZ * sizeof(char));
+  tally_files_in = pcalloc(tmp_pool, QUOTATAB_SQL_VALUE_BUFSZ * sizeof(char));
+  tally_files_out = pcalloc(tmp_pool, QUOTATAB_SQL_VALUE_BUFSZ * sizeof(char));
+  tally_files_xfer = pcalloc(tmp_pool, QUOTATAB_SQL_VALUE_BUFSZ * sizeof(char));
 
   /* Retrieve the UPDATE NamedQuery */
   update_query = ((char **) sqltab->tab_data)[1];
@@ -378,35 +431,54 @@ static int sqltab_write(quota_table_t *sqltab) {
    */
 
   if (quotatab_tally.quota_type == USER_QUOTA)
-    snprintf(tally_quota_type, 20, "%s", "user");
+    snprintf(tally_quota_type, QUOTATAB_SQL_VALUE_BUFSZ, "%s", "user");
 
   else if (quotatab_tally.quota_type == GROUP_QUOTA)
-    snprintf(tally_quota_type, 20, "%s", "group");
+    snprintf(tally_quota_type, QUOTATAB_SQL_VALUE_BUFSZ, "%s", "group");
 
   else if (quotatab_tally.quota_type == CLASS_QUOTA)
-    snprintf(tally_quota_type, 20, "%s", "class");
+    snprintf(tally_quota_type, QUOTATAB_SQL_VALUE_BUFSZ, "%s", "class");
 
   else if (quotatab_tally.quota_type == ALL_QUOTA)
-    snprintf(tally_quota_type, 20, "%s", "all");
+    snprintf(tally_quota_type, QUOTATAB_SQL_VALUE_BUFSZ, "%s", "all");
+
+  tally_quota_type[QUOTATAB_SQL_VALUE_BUFSZ-1] = '\0';
 
   /* Note: use the deltas data, not the tally members, so that the
    * UPDATE can do an "atomic" read+update all in one shot.
    */
-  snprintf(tally_bytes_in, 20, "%f", quotatab_deltas.bytes_in_delta);
-  snprintf(tally_bytes_out, 20, "%f", quotatab_deltas.bytes_out_delta);
-  snprintf(tally_bytes_xfer, 20, "%f", quotatab_deltas.bytes_xfer_delta);
-  snprintf(tally_files_in, 20, "%d", quotatab_deltas.files_in_delta);
-  snprintf(tally_files_out, 20, "%d", quotatab_deltas.files_out_delta);
-  snprintf(tally_files_xfer, 20, "%d", quotatab_deltas.files_xfer_delta);
+  snprintf(tally_bytes_in, QUOTATAB_SQL_VALUE_BUFSZ, "%f",
+    quotatab_deltas.bytes_in_delta);
+  tally_bytes_in[QUOTATAB_SQL_VALUE_BUFSZ-1] = '\0';
 
-  sql_cmd = sql_cmd_create(tmp_pool, 10, "sql_change", update_query,
+  snprintf(tally_bytes_out, QUOTATAB_SQL_VALUE_BUFSZ, "%f",
+    quotatab_deltas.bytes_out_delta);
+  tally_bytes_out[QUOTATAB_SQL_VALUE_BUFSZ-1] = '\0';
+
+  snprintf(tally_bytes_xfer, QUOTATAB_SQL_VALUE_BUFSZ, "%f",
+    quotatab_deltas.bytes_xfer_delta);
+  tally_bytes_xfer[QUOTATAB_SQL_VALUE_BUFSZ-1] = '\0';
+
+  snprintf(tally_files_in, QUOTATAB_SQL_VALUE_BUFSZ, "%d",
+    quotatab_deltas.files_in_delta);
+  tally_files_in[QUOTATAB_SQL_VALUE_BUFSZ-1] = '\0';
+
+  snprintf(tally_files_out, QUOTATAB_SQL_VALUE_BUFSZ, "%d",
+    quotatab_deltas.files_out_delta);
+  tally_files_out[QUOTATAB_SQL_VALUE_BUFSZ-1] = '\0';
+
+  snprintf(tally_files_xfer, QUOTATAB_SQL_VALUE_BUFSZ, "%d",
+    quotatab_deltas.files_xfer_delta);
+  tally_files_xfer[QUOTATAB_SQL_VALUE_BUFSZ-1] = '\0';
+
+  sql_cmd = sqltab_cmd_create(tmp_pool, 10, "sql_change", update_query,
     tally_bytes_in, tally_bytes_out, tally_bytes_xfer,
     tally_files_in, tally_files_out, tally_files_xfer,
-    quotatab_tally.name, tally_quota_type);
+    sqltab_get_name(tmp_pool, quotatab_tally.name), tally_quota_type);
 
   /* Find the cmdtable for the sql_change command. */
-  if ((sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_change", NULL,
-      NULL)) == NULL) {
+  sql_cmdtab = pr_stash_get_symbol(PR_SYM_HOOK, "sql_change", NULL, NULL);
+  if (sql_cmdtab == NULL) {
     quotatab_log("error: unable to find SQL hook symbol 'sql_change'");
     destroy_pool(tmp_pool);
     return -1;
@@ -485,7 +557,8 @@ static quota_table_t *sqltab_open(pool *parent_pool, quota_tabtype_t tab_type,
      *  "/<select-named-query>/<update-named-query>/<insert-named-query>/"
      */
 
-    if ((start = strchr(srcinfo, '/')) == NULL) {
+    start = strchr(srcinfo, '/');
+    if (start == NULL) {
       quotatab_log("error: badly formatted source info '%s'", srcinfo);
       destroy_pool(tmp_pool);
       errno = EINVAL;
@@ -493,7 +566,8 @@ static quota_table_t *sqltab_open(pool *parent_pool, quota_tabtype_t tab_type,
     }
 
     /* Find the next slash. */
-    if ((finish = strchr(++start, '/')) == NULL) {
+    finish = strchr(++start, '/');
+    if (finish == NULL) {
       quotatab_log("error: badly formatted source info '%s'", srcinfo);
       destroy_pool(tmp_pool);
       errno = EINVAL;
@@ -508,8 +582,8 @@ static quota_table_t *sqltab_open(pool *parent_pool, quota_tabtype_t tab_type,
      */
     named_query = pstrcat(tmp_pool, "SQLNamedQuery_", select_query, NULL);
 
-    if ((c = find_config(main_server->conf, CONF_PARAM, named_query,
-        FALSE)) == NULL) {
+    c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
+    if (c == NULL) {
       quotatab_log("error: unable to resolve SQLNamedQuery name '%s'",
         select_query);
       destroy_pool(tmp_pool);
@@ -519,7 +593,8 @@ static quota_table_t *sqltab_open(pool *parent_pool, quota_tabtype_t tab_type,
 
     /* Now, find the next slash. */
     start = finish;
-    if ((finish = strchr(++start, '/')) == NULL) {
+    finish = strchr(++start, '/');
+    if (finish == NULL) {
       quotatab_log("error: badly formatted source info '%s'", srcinfo);
       destroy_pool(tmp_pool);
       errno = EINVAL;
@@ -534,8 +609,8 @@ static quota_table_t *sqltab_open(pool *parent_pool, quota_tabtype_t tab_type,
      */
     named_query = pstrcat(tmp_pool, "SQLNamedQuery_", update_query, NULL);
 
-    if ((c = find_config(main_server->conf, CONF_PARAM, named_query,
-        FALSE)) == NULL) {
+    c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
+    if (c == NULL) {
       quotatab_log("error: unable to resolve SQLNamedQuery name '%s'",
         update_query);
       destroy_pool(tmp_pool);
@@ -561,8 +636,8 @@ static quota_table_t *sqltab_open(pool *parent_pool, quota_tabtype_t tab_type,
      */
     named_query = pstrcat(tmp_pool, "SQLNamedQuery_", insert_query, NULL);
 
-    if ((c = find_config(main_server->conf, CONF_PARAM, named_query,
-        FALSE)) == NULL) {
+    c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
+    if (c == NULL) {
       quotatab_log("error: unable to resolve SQLNamedQuery name '%s'",
         insert_query);
       destroy_pool(tmp_pool);
@@ -586,7 +661,8 @@ static quota_table_t *sqltab_open(pool *parent_pool, quota_tabtype_t tab_type,
      *  "/<select-named-query>"
      */
 
-    if ((start = strchr(srcinfo, '/')) == NULL) {
+    start = strchr(srcinfo, '/');
+    if (start == NULL) {
       quotatab_log("error: badly formatted source info '%s'", srcinfo);
       destroy_pool(tmp_pool);
       errno = EINVAL;
@@ -599,8 +675,8 @@ static quota_table_t *sqltab_open(pool *parent_pool, quota_tabtype_t tab_type,
      */
     named_query = pstrcat(tmp_pool, "SQLNamedQuery_", select_query, NULL);
 
-    if ((c = find_config(main_server->conf, CONF_PARAM, named_query,
-        FALSE)) == NULL) {
+    c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
+    if (c == NULL) {
       quotatab_log("error: unable to resolve SQLNamedQuery name '%s'",
         select_query);
       destroy_pool(tmp_pool);
@@ -637,20 +713,22 @@ static int sqltab_sess_init(void) {
   quotatab_openlog();
 
   /* Check for a configured lock file. */
-  if ((sqltab_lock_file = get_param_ptr(main_server->conf, "QuotaLock",
-      FALSE)) != NULL) {
+  sqltab_lock_file = get_param_ptr(main_server->conf, "QuotaLock", FALSE);
+  if (sqltab_lock_file != NULL) {
 
     /* Make sure the file exists. */
     PRIVS_ROOT
     if (unlink(sqltab_lock_file) < 0 && errno != ENOENT)
       quotatab_log("error: unable to delete QuotaLock '%s': %s",
         sqltab_lock_file, strerror(errno));
-    if ((sqltab_lock_fd = open(sqltab_lock_file, O_RDWR|O_CREAT, 0600)) < 0) {
+    sqltab_lock_fd = open(sqltab_lock_file, O_RDWR|O_CREAT, 0600);
+    PRIVS_RELINQUISH
+
+    if (sqltab_lock_fd < 0) {
       quotatab_log("error: unable to open QuotaLock '%s': %s",
         sqltab_lock_file, strerror(errno));
       sqltab_lock_file = NULL;
     }
-    PRIVS_RELINQUISH
   }
 
   return 0;

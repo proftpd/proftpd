@@ -25,7 +25,7 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.22 2003-12-02 02:54:28 castaglia Exp $
+ * $Id: support.h,v 1.23 2004-06-07 22:58:44 castaglia Exp $
  */
 
 #ifndef PR_SUPPORT_H
@@ -89,6 +89,7 @@ int exists(char *);
 int access_check(char *, int);
 char *make_arg_str(pool *, int, char **);
 
+char *pr_str_strip(pool *, char *);
 char *strip_end(char *, char *);
 char *get_token(char **, char *);
 char *safe_token(char **);

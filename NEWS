@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.573 2004-05-30 21:54:26 castaglia Exp $
+$Id: NEWS,v 1.574 2004-06-07 22:58:44 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -32,6 +32,9 @@ CVS
 - Added a TimeoutLinger directive to complement the --enable-timeout-linger
   configure option.
 - Bug 2125 - -vv command line switch should list versions of modules.
+- Bug 2420 - Name field is not escaped before querying database.
+  The mod_quotatab module was not properly escaping the name string it
+  used when looking up records from SQL databases.
 
 1.2.10rc1 - Released 28-Apr-2004
 ---------------------------------
