@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.100 2002-09-06 16:13:25 castaglia Exp $
+ * $Id: main.c,v 1.101 2002-09-06 18:05:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -912,12 +912,17 @@ static void dispatch_cmd(cmd_rec *cmd)
   }
 }
 
-static cmd_rec *make_cmd(pool *p, char *buf)
-{
+static cmd_rec *make_ftp_cmd(pool *p, char *buf) {
   char *cp = buf, *wrd;
   cmd_rec *newcmd;
   pool *newpool;
   array_header *tarr;
+
+  /* Be pedantic (and RFC-compliant) by not allowing leading whitespace
+   * in an issued FTP command.  Will this cause troubles with many clients?
+   */
+  if (isspace(buf[0]))
+    return NULL;
 
   /* Nothing there...bail out.
    */
@@ -947,21 +952,23 @@ static cmd_rec *make_cmd(pool *p, char *buf)
   return newcmd;
 }
 
-static int _idle_timeout(CALLBACK_FRAME)
-{
-  /* we don't want to quit in the middle of a transfer */
-  if(session.flags & SF_XFER)
-    return 1;				/* auto-restart the timer */
+static int idle_timeout_cb(CALLBACK_FRAME) {
+  /* We don't want to quit in the middle of a transfer */
+  if (session.flags & SF_XFER) {
 
-  send_response_async(R_421,"Idle Timeout (%d seconds): closing control connection.", 
-                      TimeoutIdle);
+    /* Restart the timer. */
+    return 1;
+  }
+
+  send_response_async(R_421,"Idle Timeout (%d seconds): closing control "
+    "connection.", TimeoutIdle);
 
   main_exit((void*)LOG_INFO,
 		  "FTP session idle timeout, disconnected.",
 		  (void*)0,NULL);
 
-  remove_timer(TIMER_LOGIN,ANY_MODULE);
-  remove_timer(TIMER_NOXFER,ANY_MODULE);
+  remove_timer(TIMER_LOGIN, ANY_MODULE);
+  remove_timer(TIMER_NOXFER, ANY_MODULE);
   return 0;
 }
 
@@ -981,8 +988,8 @@ static void cmd_loop(server_rec *server, conn_t *c) {
 		);
 
   /* Setup the main idle timer */
-  if(TimeoutIdle)
-    add_timer(TimeoutIdle,TIMER_IDLE,NULL,_idle_timeout);
+  if (TimeoutIdle)
+    add_timer(TimeoutIdle, TIMER_IDLE, NULL, idle_timeout_cb);
 
   if ((masq_c = find_config(server->conf, CONF_PARAM, "MasqueradeAddress",
       FALSE)) != NULL) {
@@ -1056,15 +1063,13 @@ static void cmd_loop(server_rec *server, conn_t *c) {
     if(*cp) {
       cmd_rec *cmd;
 
-      cmd = make_cmd(permanent_pool, cp);
-      if(cmd) {
+      cmd = make_ftp_cmd(permanent_pool, cp);
+      if (cmd) {
         dispatch_cmd(cmd);
         destroy_pool(cmd->pool);
-      } else {
-	send_response(R_500, 
-		      "Invalid command '%s': Try being more creative.",
-		      cp);
-      }
+
+      } else
+	send_response(R_500, "Invalid command: try being more creative.");
     }
 
     /* release any working memory allocated in inet */
