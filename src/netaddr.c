@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.42 2004-01-30 23:09:28 castaglia Exp $
+ * $Id: netaddr.c,v 1.43 2004-03-09 00:53:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -309,6 +309,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     if (addrs)
       *addrs = NULL;
 
+    pr_log_debug(DEBUG10, "'%s' resolved to an IPv6 address", name);
     return na;
   }
 #endif
@@ -327,6 +328,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     if (addrs)
       *addrs = NULL;
 
+    pr_log_debug(DEBUG10, "'%s' resolved to an IPv4 address", name);
     return na;
 
   } else if (res == 0) {
@@ -351,6 +353,8 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
 #endif /* USE_IPV6 */
     hints.ai_socktype = SOCK_STREAM;
 
+    pr_log_debug(DEBUG10, "attempting to resolve '%s' via DNS", name);
+
     gai_res = pr_getaddrinfo(name, NULL, &hints, &info);
     if (gai_res != 0) {
       pr_log_pri(PR_LOG_INFO, "getaddrinfo '%s' error: %s", name,
@@ -359,6 +363,9 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     }
 
     if (info) {
+      pr_log_debug(DEBUG10, "resolved '%s' to an %s address", name,
+        info->ai_family == AF_INET ? "IPv4" : "IPv6");
+
       /* Copy the first returned addr into na, as the return value. */
       pr_netaddr_set_family(na, info->ai_family);
       pr_netaddr_set_sockaddr(na, info->ai_addr);
@@ -385,6 +392,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     }
   }
 
+  pr_log_debug(DEBUG10, "failed to resolve '%s' to an IP address", name);
   return NULL;
 }
 
