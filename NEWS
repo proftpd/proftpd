@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.199 2002-07-01 18:18:01 castaglia Exp $
+$Id: NEWS,v 1.200 2002-07-01 18:28:11 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -35,6 +35,8 @@ CVS
              causing some DefaultRoot directives (those that relied on
              group-expressions) not be correctly honored, as mod_sql was
              not supplying the groups for the users.
+- Bug 1543 - Change mod_sql to not remove embedded whitespace within a
+             username, just to strip leading and trailing whitespace.
 
 1.2.5 - Released 2002-06-08
 ---------------------------------

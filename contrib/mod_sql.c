@@ -388,27 +388,19 @@ static modret_t * _sql_dispatch(cmd_rec *cmd, char *cmdname)
 
 static char *_sql_strip_spaces( pool *p, char *str )
 {
-  char *nstr = NULL;
-  char *curr = NULL;
-  char *walk = NULL;
+  char *start = NULL, *finish = NULL;
 
   if (!str) return NULL;
 
-  /* return string may be as long as original */
-  nstr = (char *) pcalloc( p, sizeof(char) * strlen(str) + 1);
+  /* first, find the non-whitespace start of the given string */
+  for (start = str; isspace(*start); start++);
 
-  curr = nstr;
-  walk = str;
+  /* now, find the non-whitespace end of the given string */
+  for (finish = &str[strlen(str)-1]; isspace(*finish); finish--);
+  *++finish = '\0';
 
-  while(*walk) {
-    if (*walk != ' ')
-      *curr++ = *walk;
-    walk++;
-  }
-
-  *curr = '\0';
-
-  return nstr;
+  /* the space-stripped string is, then, everything from start to finish */
+  return pstrdup( p, start );
 }
 
 /*****************************************************************
@@ -2672,7 +2664,7 @@ MODRET cmd_auth(cmd_rec * cmd)
 
   log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_auth");
 
-  /* fix up the username -- we don't accept spaces anywhere in there */
+  /* fix up the username, removing leading and trailing whitespace */
   user = _sql_strip_spaces( cmd->tmp_pool, cmd->argv[0] );
 
   /* escape our username */
