@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.74 2004-11-22 00:27:29 castaglia Exp $
+ * $Id: support.c,v 1.75 2004-11-24 20:38:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -56,7 +56,6 @@ typedef struct sched_obj {
 } sched_t;
 
 static xaset_t *scheds = NULL;
-static xaset_t *exits = NULL;
 
 /* Masks/unmasks all important signals (as opposed to blocking alarms)
  */
