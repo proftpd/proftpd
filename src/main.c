@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.86 2002-06-23 19:03:24 castaglia Exp $
+ * $Id: main.c,v 1.87 2002-06-25 20:42:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2483,6 +2483,7 @@ static void standalone_main(void) {
 extern char *optarg;
 extern int optind,opterr,optopt;
 
+#ifdef HAVE_GETOPT_LONG
 static struct option opts[] = {
   { "nodaemon",	  0, NULL, 'n' },
   { "debug",	  1, NULL, 'd' },
@@ -2499,6 +2500,7 @@ static struct option opts[] = {
   { "help",	0, NULL, 'h' },
   { NULL,	0, NULL,  0  }
 };
+#endif /* HAVE_GETOPT_LONG */
 
 static struct option_help {
   char *long_opt,*short_opt,*desc;

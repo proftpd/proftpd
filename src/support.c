@@ -26,7 +26,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.31 2002-06-23 19:03:25 castaglia Exp $
+ * $Id: support.c,v 1.32 2002-06-25 20:42:57 castaglia Exp $
  */
 
 /* History Log:
@@ -823,13 +823,12 @@ char *sreplace(pool *p, char *s, ...)
   return pstrdup(p,buf);
 }
 
+#if defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
 /* Simple multiplication & division doesn't work with very large
  * filesystems (overflows 32 bits).  This code should handle it.
  */
 
-static
-off_t _calc_fs(size_t blocks, size_t bsize)
-{
+static off_t _calc_fs(size_t blocks, size_t bsize) {
   off_t bl_lo,bl_hi;
   off_t res_lo,res_hi,tmp;
 
@@ -847,9 +846,8 @@ off_t _calc_fs(size_t blocks, size_t bsize)
   return (res_lo >> 10) | (res_hi << 6);
 }
 
-#ifdef HAVE_SYS_STATVFS_H
-off_t get_fs_size(char *s)
-{
+# ifdef HAVE_SYS_STATVFS_H
+off_t get_fs_size(char *s) {
   struct statvfs vfs;
 
   if(statvfs(s,&vfs) != 0)
@@ -857,9 +855,8 @@ off_t get_fs_size(char *s)
 
   return _calc_fs(vfs.f_bavail,vfs.f_frsize);
 }
-#elif defined(HAVE_SYS_VFS_H)
-off_t get_fs_size(char *s)
-{
+# elif defined(HAVE_SYS_VFS_H)
+off_t get_fs_size(char *s) {
   struct statfs vfs;
 
   if(statfs(s,&vfs) != 0)
@@ -867,7 +864,8 @@ off_t get_fs_size(char *s)
 
   return _calc_fs(vfs.f_bavail,vfs.f_bsize);
 }
-#endif /* HAVE_SYS_STATVFS/HAVE_SYS_VFS */
+# endif /* no HAVE_SYS_STATVFS/HAVE_SYS_VFS */
+#endif /* no HAVE_SYS_STATVFS/HAVE_SYS_VFS */
 
 /* "safe" strcat, saves room for \0 at end of dest, and refuses to copy
  * more than "n" bytes.
