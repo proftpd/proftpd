@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.5 2003-03-15 03:18:58 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.6 2003-03-18 07:52:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -490,7 +490,7 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
   register unsigned int i = 0;
   char *new_pattern = NULL;
 
-  for (i = 1; i < REWRITE_MAX_MATCHES; i++) {
+  for (i = 0; i < REWRITE_MAX_MATCHES; i++) {
     if (matches->match_groups[i].rm_so != -1) {
       char buf[3] = {'\0'}, tmp;
 

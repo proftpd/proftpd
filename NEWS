@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.403 2003-03-17 16:48:29 castaglia Exp $
+$Id: NEWS,v 1.404 2003-03-18 07:52:53 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -60,6 +60,11 @@ CVS
   this means that users may use the 'interactive-timeout' option in their
   .cnf files to override the default interactive session timeout (also 8 hours).
 - Bug 1989 - SQLLog '*' doesn't match any commands.
+- Bug 1986 - mod_rewrite backreferences not zero-based (use $1 not $0?). The
+  bug here turned out to be an off-by-one offset; mod_rewrite was starting
+  at 1 when examining matched groups, rather than 0.  Most of the time $0 will
+  not what is desired, however, for $0 refers to the original string being
+  matched.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------
