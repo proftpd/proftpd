@@ -21,7 +21,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.25 2001-02-21 22:33:05 flood Exp $
+ * $Id: log.c,v 1.26 2001-02-22 01:48:59 flood Exp $
  */
 
 /* History Log:
@@ -749,17 +749,16 @@ void log(int priority, int f, char *s)
     
     if(serverinfo && *serverinfo) {
       snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-	       "%s proftpd[%u] %s: %s", syslog_hostname,
+	       "%s proftpd[%u] %s: %s\n", syslog_hostname,
 	       (unsigned int) getpid(), serverinfo, s);
     } else {
       snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-	       "%s proftpd[%u]: %s", syslog_hostname,
+	       "%s proftpd[%u]: %s\n", syslog_hostname,
 	       (unsigned int) getpid(), s);
     }
     
     buf[sizeof(buf) - 1] = '\0';
     write(syslog_fd, buf, strlen(buf));
-    write(syslog_fd, "\n", 1);
     return;
   }
   

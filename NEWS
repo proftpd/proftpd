@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.76 2001-02-21 02:40:35 flood Exp $
+$Id: NEWS,v 1.77 2001-02-22 01:48:59 flood Exp $
 
 1.2.0 (CVS)
 -------------------------------
@@ -10,6 +10,8 @@ $Id: NEWS,v 1.76 2001-02-21 02:40:35 flood Exp $
   out that kill(pid,0) is both valid AND useful. ;) Also removed some
   completely useless and redundant /proc stat code which did the same thing
   as kill(pid,0) on linux systems.
+- logging to file (via SystemLog) is now done with a single write instead of
+  two in order to be atomic.
 
 1.2.0rc3 - Released: 02/05/2001
 -------------------------------
