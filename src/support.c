@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.56 2003-01-16 02:04:47 castaglia Exp $
+ * $Id: support.c,v 1.57 2003-01-25 02:38:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -424,6 +424,7 @@ mode_t file_mode(char *path) {
   struct stat sbuf;
   mode_t res = 0;
 
+  pr_fs_clear_cache();
   if (pr_fsio_lstat(path, &sbuf) != -1) {
     if (S_ISLNK(sbuf.st_mode)) {
       res = _symlink(path, (ino_t) 0, 0);
@@ -479,6 +480,7 @@ int access_check(char *path, int mode) {
   mode_t mask;
   struct stat buf;
 
+  pr_fs_clear_cache();
   if (pr_fsio_stat(path, &buf) < 0) {
     errno = ENOENT;
     return -1;

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.359 2003-01-20 02:18:52 jwm Exp $
+$Id: NEWS,v 1.360 2003-01-25 02:38:00 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -44,6 +44,8 @@ CVS
 - Bug 1241 - Additional functionality: HomedirOnDemand.  This has been added
   as a new configuration directive, CreateHome.
 - Bug 1734 - Cygwin - Unable to set uid
+- Bug 1938 - upload to root directory fails.  This was caused by caching
+  effects.
 
 1.2.8rc1 - Released 28-Dec-2002
 ---------------------------------
