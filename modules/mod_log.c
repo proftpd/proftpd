@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.65 2004-11-10 18:19:57 castaglia Exp $
+ * $Id: mod_log.c,v 1.66 2004-11-11 18:58:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -372,7 +372,8 @@ static int _parse_classes(char *s) {
     } else if (strcasecmp(s, "MISC") == 0) {
       classes |= CL_MISC;
 
-    } else if (strcasecmp(s, "SEC") == 0) {
+    } else if (strcasecmp(s, "SEC") == 0 ||
+               strcasecmp(s, "SECURE") == 0) {
       classes |= CL_SEC;
 
     } else
