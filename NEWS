@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.75 2001-02-21 02:33:53 flood Exp $
+$Id: NEWS,v 1.76 2001-02-21 02:40:35 flood Exp $
 
 1.2.0 (CVS)
 -------------------------------
@@ -6,8 +6,10 @@ $Id: NEWS,v 1.75 2001-02-21 02:33:53 flood Exp $
   maintainer (replacements for mod_sqlpw and friends).
 - intead of using kill(pid,SIGCONT) to determine if scoreboard pids are
   correct, proftpd now uses kill(pid,0) which should be a lot lighter on
-  heavy-load systems.  Also removed some completely useless and redundant
-  /proc stat code which did the same thing on linux systems.
+  heavy-load systems.  Thanks to Rob Schulhof <rrs@digisle.net> for pointing
+  out that kill(pid,0) is both valid AND useful. ;) Also removed some
+  completely useless and redundant /proc stat code which did the same thing
+  as kill(pid,0) on linux systems.
 
 1.2.0rc3 - Released: 02/05/2001
 -------------------------------

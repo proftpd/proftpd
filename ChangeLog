@@ -1,3 +1,20 @@
+2001-02-20 21:33  flood
+
+	* NEWS, doc/Configuration.html, include/ftp.h, modules/mod_xfer.c,
+	src/log.c: Bug #1003/1017 documentation fixes.	Bug #463 - no
+	longer possible to REST past the end of a file.  kill(pid,SIGCONT)
+	in log.c switched to kill(pid,0)
+
+2001-02-20 15:34  flood
+
+	* configure.in, include/version.h, src/main.c: Added
+	--version-status which displays extended version information.
+
+2001-02-19 23:50  flood
+
+	* src/main.c: Timeout and normal logout syslog messages are now
+	logged at LOG_INFO instead of LOG_NOTICE.
+
 2001-02-19 22:26  flood
 
 	* modules/mod_xfer.c: Bug #1012 - Fixed "Unable to throttle
