@@ -325,7 +325,19 @@ if test "$have_fnmatch_h" = "yes"; then
 #ifdef FNM_NOESCAPE
   yes
 #endif
-  ],pr_cv_header_fnmatch_noescape="yes", pr_cv_header_fnmatch_noescape="no"))
+  ], pr_cv_header_fnmatch_noescape="yes", pr_cv_header_fnmatch_noescape="no"))
+fi
+
+dnl See if we have FNM_CASEFOLD
+if test "$have_fnmatch_h" = "yes"; then
+  AC_CACHE_CHECK(whether your fnmatch.h defines FNM_CASEFOLD,
+  		pr_cv_header_fnmatch_casefold,
+	AC_EGREP_CPP(yes,[
+#include <fnmatch.h>
+#ifdef FNM_CASEFOLD
+  yes
+#endif
+  ], pr_cv_header_fnmatch_casefold="yes", pr_cv_header_fnmatch_casefold="no"))
 fi
 
 dnl Check for member d_fd in struct DIR
@@ -347,7 +359,8 @@ fi
 
 dnl Checks for library functions.
 AC_FUNC_ALLOCA
-if test "$pr_cv_header_fnmatch_noescape" = "yes"; then
+if test "$pr_cv_header_fnmatch_noescape" = "yes" && \
+   test "$pr_cv_header_fnmatch_casefold" = "yes"; then
   AC_FUNC_FNMATCH
 fi
 AC_PROG_GCC_TRADITIONAL

@@ -20,7 +20,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.17 2000-07-11 13:36:52 macgyver Exp $
+ * $Id: dirtree.c,v 1.18 2000-07-26 04:11:42 macgyver Exp $
  */
 
 /* History:
@@ -799,8 +799,8 @@ int match_ip(p_in_addr_t *addr, char *name, const char *match)
     if((addr->s_addr & htonl(cidr_mask)) == cidr_addr.s_addr)
       return 1;
   } else {
-    if(fnmatch(buf, name, FNM_NOESCAPE) == 0 ||
-       fnmatch(buf, inet_ntoa(*addr), FNM_NOESCAPE) == 0)
+    if(fnmatch(buf, name, FNM_NOESCAPE | FNM_CASEFOLD) == 0 ||
+       fnmatch(buf, inet_ntoa(*addr), FNM_NOESCAPE | FNM_CASEFOLD) == 0)
       return 1;
   }
   
