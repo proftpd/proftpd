@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.118 2003-01-02 18:25:21 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.119 2003-01-13 04:25:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2084,9 +2084,9 @@ MODRET set_transferrate(cmd_rec *cmd) {
     *tmp = '\0';
 
   /* Parse the 'kbps' part */
-  rate = strtoul(cmd->argv[2], &endp, 10);
+  rate = (long double) strtoul(cmd->argv[2], &endp, 10);
 
-  if (rate == 0)
+  if (rate < 0.0)
     CONF_ERROR(cmd, "rate must be greater than zero");
 
   if (endp && *endp)
