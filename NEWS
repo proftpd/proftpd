@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.495 2003-10-20 07:02:43 castaglia Exp $
+$Id: NEWS,v 1.496 2003-10-31 08:05:18 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -19,6 +19,8 @@ CVS
   snapshots.
 - Check for excessive length of symlink directory listing entries (submitted
   by Michael Hendrickx <michael@scanit.be>)
+- Two memory leaks, seen mostly during recursive directory listings, have
+  been fixed.
 
 1.2.9rc3 - Released 15-Oct-2003
 ---------------------------------
