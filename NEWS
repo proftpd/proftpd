@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.432 2003-05-14 05:17:10 castaglia Exp $
+$Id: NEWS,v 1.433 2003-05-14 17:54:27 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -106,7 +106,7 @@ CVS
 - Bug 2002 - Per-<Directory> PathAllowFilter/PathDenyFilter.
 - Added RootRevoke directive.
 - Bug 2021 - Inetd mode and scoreboard format changes.
-- Bug 1432 - Human readable disk free cookie.  Display* files can now make
+- Bug 1532 - Human readable disk free cookie.  Display* files can now make
   use of a %f magic cookie for displaying the available disk space with
   units (i.e. KB, MB, GB, etc).  This compliments the currently available
   %F cookie, used to display the number of bytes of available space (without
