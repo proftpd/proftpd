@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.7 2004-05-29 23:38:47 castaglia Exp $
+ * $Id: event.c,v 1.8 2004-05-31 22:07:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -203,6 +203,31 @@ void pr_event_generate(const char *event, const void *event_data) {
       }
 
       break;
+    }
+  }
+
+  return;
+}
+
+void pr_event_dump(void (*dumpf)(const char *, ...)) {
+  struct event_list *evl;
+
+  if (!events) {
+    dumpf("%s", "No events registered");
+    return;
+  }
+
+  for (evl = events; evl; evl = evl->next) {
+
+    if (!evl->handlers)
+      dumpf("No handlers registered for '%s'", evl->event);
+
+    else { 
+      struct event_handler *evh;
+
+      dumpf("Registered for '%s':", evl->event);
+      for (evh = evl->handlers; evh; evh = evh->next)
+        dumpf("  mod_%s.c", evh->module->name);
     }
   }
 

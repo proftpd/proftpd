@@ -23,7 +23,7 @@
  */
 
 /* Event management
- * $Id: event.h,v 1.2 2003-11-09 02:17:38 castaglia Exp $
+ * $Id: event.h,v 1.3 2004-05-31 22:07:39 castaglia Exp $
  */
 
 #ifndef PR_EVENT_H
@@ -71,5 +71,8 @@ int pr_event_unregister(module *m, const char *event,
  * data is sent to the registered handlers.
  */
 void pr_event_generate(const char *event, const void *event_data);
+
+/* Dump Events information. */
+void pr_event_dump(void (*)(const char *, ...));
 
 #endif /* PR_EVENT_H */

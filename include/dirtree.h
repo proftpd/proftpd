@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.54 2004-04-26 23:33:14 castaglia Exp $
+ * $Id: dirtree.h,v 1.55 2004-05-31 22:07:39 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -295,6 +295,6 @@ int pr_is_boolean(const char *);
 int get_boolean(cmd_rec *, int);
 char *get_full_cmd(cmd_rec *);
 
-void pr_conf_debug_config(void (*)(const char *, ...), xaset_t *, char *);
+void pr_config_dump(void (*)(const char *, ...), xaset_t *, char *);
 
 #endif /* PR_DIRTREE_H */

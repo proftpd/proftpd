@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.150 2004-05-31 21:20:52 castaglia Exp $
+ * $Id: dirtree.c,v 1.151 2004-05-31 22:07:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2622,7 +2622,7 @@ static void _reorder_dirs(xaset_t *set, int mask) {
       _reorder_dirs(c->subset, mask);
 }
 
-static void debug_config_printf(const char *fmt, ...) {
+static void config_dumpf(const char *fmt, ...) {
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   va_list msg;
 
@@ -2635,7 +2635,7 @@ static void debug_config_printf(const char *fmt, ...) {
   pr_log_debug(DEBUG5, "%s", buf);
 }
 
-void pr_conf_debug_config(void (*debugf)(const char *, ...), xaset_t *s,
+void pr_config_dump(void (*dumpf)(const char *, ...), xaset_t *s,
     char *indent) {
   config_rec *c = NULL;
 
@@ -2646,9 +2646,9 @@ void pr_conf_debug_config(void (*debugf)(const char *, ...), xaset_t *s,
     indent = "";
 
   for (c = (config_rec *) s->xas_list; c; c = c->next) {
-    debugf("%s%s", indent, c->name);
+    dumpf("%s%s", indent, c->name);
     if (c->subset)
-      pr_conf_debug_config(debugf, c->subset,
+      pr_config_dump(dumpf, c->subset,
         pstrcat(c->pool, indent, " ", NULL));
   }
 }
@@ -2846,7 +2846,7 @@ void fixup_dirs(server_rec *s, int mask) {
   if (!(mask & CF_SILENT)) {
     pr_log_debug(DEBUG5, "%s", "");
     pr_log_debug(DEBUG5, "Config for %s:", s->ServerName);
-    pr_conf_debug_config(debug_config_printf, s->conf, NULL);
+    pr_config_dump(config_dumpf, s->conf, NULL);
   }
 }
 
