@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.146 2004-04-29 03:35:39 castaglia Exp $
+ * $Id: dirtree.c,v 1.147 2004-05-19 02:32:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1969,10 +1969,10 @@ int dir_check_limits(config_rec *c, char *cmd, int hidden) {
   return res;
 }
 
-void build_dyn_config(pool *p, char *_path, struct stat *_sbuf,
+void build_dyn_config(pool *p, char *_path, struct stat *stp,
     unsigned char recurse) {
   char *fullpath = NULL, *path = NULL, *dynpath = NULL, *cp = NULL;
-  struct stat sbuf;
+  struct stat st;
   config_rec *d = NULL;
   pr_fh_t *fp = NULL;
   cmd_rec *cmd = NULL;
@@ -1992,9 +1992,9 @@ void build_dyn_config(pool *p, char *_path, struct stat *_sbuf,
 
   path = pstrdup(p, _path);
 
-  memcpy(&sbuf, _sbuf, sizeof(sbuf));
+  memcpy(&st, stp, sizeof(st));
 
-  if (S_ISDIR(sbuf.st_mode))
+  if (S_ISDIR(st.st_mode))
     dynpath = pdircat(p, path, "/.ftpaccess", NULL);
   else
     dynpath = NULL;
@@ -2011,7 +2011,7 @@ void build_dyn_config(pool *p, char *_path, struct stat *_sbuf,
       fullpath = path;
 
     if (dynpath)
-      isfile = pr_fsio_stat(dynpath, &sbuf);
+      isfile = pr_fsio_stat(dynpath, &st);
 
     else
       isfile = -1;
@@ -2043,7 +2043,7 @@ void build_dyn_config(pool *p, char *_path, struct stat *_sbuf,
 
       } else if (strcmp(d->name, fullpath) == 0 &&
           (isfile == -1 ||
-           sbuf.st_mtime > (d->argv[0] ? *((time_t *) d->argv[0]) : 0))) {
+           st.st_mtime > (d->argv[0] ? *((time_t *) d->argv[0]) : 0))) {
 
         set = (d->parent ? &d->parent->subset : &main_server->conf);
 
@@ -2075,13 +2075,14 @@ void build_dyn_config(pool *p, char *_path, struct stat *_sbuf,
     }
 
     if (isfile != -1 && d &&
-        sbuf.st_mtime > (d->argv[0] ? *((time_t *) d->argv[0]) : 0)) {
+        st.st_mtime > (d->argv[0] ? *((time_t *) d->argv[0]) : 0)) {
 
       /* File has been modified or not loaded yet */
       d->argv[0] = pcalloc(d->pool, sizeof(time_t));
-      *((time_t *) d->argv[0]) = sbuf.st_mtime;
+      *((time_t *) d->argv[0]) = st.st_mtime;
 
-      if ((fp = pr_fsio_open(dynpath, O_RDONLY)) != NULL) {
+      fp = pr_fsio_open(dynpath, O_RDONLY);
+      if (fp != NULL) {
         unsigned char updated = FALSE;
         conf_stack_t *cs = NULL;
 
