@@ -1,0 +1,104 @@
+
+mod_ratio.c - Ratio system module for ProFTPD - README
+
+Copyright (c) 1998-1999 Johnie Ingram. <johnie@netgod.net>
+Portions Copyright (c) Dynamic Web Development <jd@pcglobal.com>
+
+--------------------------------------------------------------------
+
+LATEST CHANGES:
+
+2000-14-03: v3.1: Added support to save user stats to disk (SaveRatios
+in config see mod_ratio.README). Changed display to MBytes rather than
+Bytes. Tracks to the nearest Kilobyte rather than byte. - JD
+
+-- See mod_ratio.c for previous version changes.
+
+NOTES: 
+
+SaveRatios, RatioFile, RatioTempFile
+
+In order to have SaveRatios working properly, you must point
+RatioFile and RatioTempFile to files that are read/writable for all
+users that you wish to have ratios saved. If there is a problem
+accessing the files, ProFTPD will revert back to the old per session
+ratio method (u/l d/l stats will be forgotten on disconnect).
+
+touch and chmod both files to allow r/w from all users whos ratios
+will be saved. Enable ratios, users are added to the ratios file as
+they log in and stat tracking begins.
+
+If you are using DefaultRoot along with this command, the Ratio files
+will need to be stored within the Root directory. One easy way is to
+create a sub-directory off of DefaultRoot that is rwx by all users
+and then restrict ALL access to these directorys within ProFTPD...
+
+	<Directory /workdir>
+		<Limit ALL>
+		Deny ALL
+		</Limit>
+	HideNoAccess
+	</Directory>
+
+
+INSTALLATION:
+
+To install, copy mod_ratio.c into modules/ and do:
+./configure --with-modules=mod_ratio
+
+This module is inactive unless configured, which can be done with an
+Anonymous, Directory, or VirtualHost block in proftpd.conf, or with a
+.ftpaccess file. (Ratios must be turned on elsewhere for a directive in
+.ftpaccess to take effect.)
+
+If compiled with -DMOD_MYSQL_RATIOS, this module can get and set session
+stats using mod_mysql, so the only directive needed is "Ratios on". This
+acts like a weak "UserRatio" -- any directive described below can override
+it. It also makes multiple concurrent uploads/downloads possible, with
+persistent credits. See mod_mysql docs for setup details. Most ratio
+directives take four numbers: file ratio, initial file credit, byte ratio,
+and initial byte credit. Setting either ratio to 0 disables that check:
+FooRatio bar [frate] [fcred] [brate] [bcred] The directives are HostRatio
+(matches FQDN -- wildcards are allowed in this one), AnonRatio (matches
+password entered in an anon login, usually an email address), UserRatio
+(accepts "*" for 'any user'), and GroupRatio. Matches are looked for in
+that order. Some examples:
+
+Ratios on				# enable module
+
+SaveRatios on				# Save ratios in plain text.
+					  READ Above.
+RatioFile "/path/tofile"		# Required for SaveRatios
+RatioTempFile "/path/tofile"		# Required for SaveRatios
+
+UserRatio ftp 0 0 0 0
+HostRatio master.debian.org 0 0 0 0 	# leech access (default)
+
+GroupRatio proftpd 100 10 5 100000 	# 100:1 files, 10 file cred 5:1
+					  bytes, 100k byte cred
+
+AnonRatio billg@microsoft.com 1 0 1 0 	# 1:1 ratio, no credits
+UserRatio * 5 5 5 50000 		# special default case
+
+FileRatioErrMsg "Come on you can send more files than that...."
+ByteRatioErrMsg "This file is %i big, you know...."
+LeechRatioMsg "Access: Unlimited"
+
+Setting "Ratios on" without configuring anything else will enable leech
+mode: it logs activity and sends status messages to the ftp client, but
+doesn't restrict traffic. Ratio module activity is recorded to syslog at
+DEBUG0; it usually shows up in /var/log/debug, like this: foo in /: CWD
+/foo :-15/3450 +0/0 (my 5 15 5 150000) =0/146550 [NO F] This example is
+for someone who (1) has downloaded 15 files totalling 3450k, (2) has
+uploaded nothing, (3) has a ratio of 5:1 files and 15:1 bytes, (4) has
+0 files and 146k credit remaining, (5) got the ratio from the MySQL
+record ("my") and (6) is changing directory from / to /foo. Note that
+if this module is turned on globally, any user can create a personal
+ratio area with a .ftpaccess file. One way to prevent this is with:
+PathDenyFilter "\.ftpaccess$"
+
+DISC-LAIMER
+The authors of this module, this ProFTPD software, and this OS and
+kernel disclaim all warranties and are not responsible for what random
+users of this module may do.
+

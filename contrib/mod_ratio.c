@@ -1,7 +1,8 @@
 /*
  * ProFTPD: mod_ratio -- Support upload/download ratios.
- * Time-stamp: <1999-10-04 03:31:31 root>
+ * Time-stamp: <2000-02-15 15:18:22 root>
  * Copyright (c) 1998-1999 Johnie Ingram.
+ * Portions Copyright (c) 2000 Jim Dogopoulos
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,12 +19,17 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#define MOD_RATIO_VERSION "mod_ratio/3.0"
+#define MOD_RATIO_VERSION "mod_ratio/3.1"
 
 /* This is mod_ratio, contrib software for proftpd 1.2.0pre3 and above.
-   For more information contact Johnie Ingram <johnie@netgod.net>.
+   For more information contact Johnie Ingram <johnie@netgod.net> or
+   Jim D. <jd@pcglobal.com>.
 
    History Log:
+
+   * 2000-02-15: v3.1: Added support to save user stats to plain text file.
+     (See README.ratio) Changed display to MBytes rather than Bytes. Tracks
+     to the nearest Kilobyte rather than byte. - Jim D.
 
    * 1999-10-03: v3.0: Uses generic API to access SQL data at runtime.
      Supports negative ratios (upload X to get 1) by popular demand.
@@ -58,6 +64,8 @@
 /* Maximum username field to expect, etc. */
 #define ARBITRARY_MAX                   128
 
+int gotratuser,fileerr;
+
 static struct
 {
   int fstor;
@@ -81,6 +89,7 @@ static struct
 static struct
 {
   int enable;
+  int save;
   char user [ARBITRARY_MAX];
 
   const char *rtype;          /* The ratio type currently in effect. */
@@ -88,22 +97,25 @@ static struct
   const char *filemsg;
   const char *bytemsg;
   const char *leechmsg;
-
+  const char *ratiofile;
+  const char *ratiotmp;
 } g;
 
 #define RATIO_ENFORCE (stats.frate || stats.brate)
 
 #define RATIO_STUFFS "-%i/%i +%i/%i (%i %i %i %i) = %i/%i%s%s", \
-	    stats.fretr, stats.bretr, stats.fstor, stats.bstor, \
+	    stats.fretr, (stats.bretr / 1024), stats.fstor, \
+	    (stats.bstor / 1024), \
             stats.frate, stats.fcred, stats.brate, stats.bcred, \
-            stats.files, stats.bytes, \
+            stats.files, (stats.bytes / 1024), \
 	    (stats.frate && stats.files < 1) ? " [NO F]" : "", \
-	    (stats.brate && stats.bytes < 32768) ? " [LO B]" : ""
+	    (stats.brate && (stats.bytes / 1024) < 5) ? " [LO B]" : ""
 #define SHORT_RATIO_STUFFS "-%i/%i +%i/%i = %i/%i%s%s", \
-	    stats.fretr, stats.bretr, stats.fstor, stats.bstor, \
-            stats.files, stats.bytes, \
+	    stats.fretr, (stats.bretr / 1024), stats.fstor, \
+	    (stats.bstor / 1024), \
+            stats.files, (stats.bytes / 1024), \
 	    (stats.frate && stats.files < 1) ? " [NO F]" : "", \
-	    (stats.brate && stats.bytes < 32768) ? " [LO B]" : ""
+	    (stats.brate && (stats.bytes / 1024) < 5) ? " [LO B]" : ""
 
 /* *INDENT-ON* */
 
@@ -173,10 +185,11 @@ _set_stats (char *fstor, char *fretr, char *bstor, char *bretr)
     stats.bretr = atoi (bretr);
 }
 
+
 static void
 _set_ratios (char *frate, char *fcred, char *brate, char *bcred)
 {
-  stats.frate = stats.fcred = stats.brate = stats.bcred = 0;
+stats.frate = stats.fcred = stats.brate = stats.bcred = 0;
   if (frate)
     stats.frate = atoi (frate);
   if (fcred)
@@ -210,6 +223,7 @@ _set_ratios (char *frate, char *fcred, char *brate, char *bcred)
       snprintf (stats.btext, sizeof(stats.btext), "1:%iB", stats.brate * -1);
     }
 }
+
 
 MODRET _calc_ratios (cmd_rec * cmd)
 {
@@ -321,6 +335,52 @@ _log_ratios (cmd_rec * cmd)
 	     RATIO_ENFORCE ? " :" : "", RATIO_ENFORCE ? buf : "");
 }
 
+static void
+_update_stats ()
+{
+    FILE *usrfile,*newfile;
+    char usrstr[256],*ratname;
+    int ulfiles,ulbytes,dlfiles,dlbytes,cpc;
+
+     	if (!fileerr) {
+        newfile=fopen(g.ratiotmp,"w");
+          if (newfile == NULL)
+          {
+          log_pri (LOG_ERR, "Error opening temporary ratios file.");
+          gotratuser=1;
+          fileerr=1;
+     	  }
+				}
+
+	if (!fileerr) {
+	   usrfile=fopen(g.ratiofile,"r");
+           while (fgets(usrstr,256,usrfile)!=NULL) {
+                ratname = strtok(usrstr, "|");
+                ulfiles = atoi (strtok(NULL, "|"));
+                ulbytes = atoi (strtok(NULL, "|"));
+                dlfiles = atoi (strtok(NULL, "|"));
+                dlbytes = atoi (strtok(NULL, "|"));
+                  if (strcmp(ratname, g.user) == 0) {
+                  fprintf(newfile,"%s|%i|%i|%i|%i\n",g.user,stats.fstor,\
+		  stats.bstor,stats.fretr,stats.bretr);
+                  }
+                else {
+                fprintf(newfile,"%s|%i|%i|%i|%i\n",ratname,ulfiles,ulbytes,\
+		dlfiles,dlbytes);
+                     }
+                }
+        fclose(usrfile);
+        fclose(newfile);
+
+	newfile=fopen(g.ratiotmp,"rb");
+        usrfile=fopen(g.ratiofile,"wb");
+        while ((cpc=getc(newfile))!=EOF) {
+        putc(cpc, usrfile); }
+        fclose(usrfile);
+        fclose(newfile);
+		}
+}
+
 MODRET
 pre_cmd_retr (cmd_rec * cmd)
 {
@@ -353,12 +413,12 @@ pre_cmd_retr (cmd_rec * cmd)
 	  && fs_stat (path, &sbuf) > -1)
 	fsize = sbuf.st_size;
 
-      if ((stats.bytes - fsize) < 0)
+      if ((stats.bytes - (fsize / 1024)) < 0)
 	{
 	  add_response_err (R_550, g.bytemsg);
 	  add_response_err (R_550,
-			    "%s: BYTE RATIO: %s  Down: %i  Up: only %i!",
-			    cmd->arg, stats.btext, stats.bretr, stats.bstor);
+			    "%s: BYTE RATIO: %s  Down: %imb  Up: only %imb!",
+	cmd->arg, stats.btext, (stats.bretr / 1024), (stats.bstor / 1024));
 	  return ERROR (cmd);
 	}
     }
@@ -421,9 +481,77 @@ cmd_cwd (cmd_rec * cmd)
 MODRET
 ratio_cmd (cmd_rec * cmd)
 {
-  char sbuf1[128];
-  char sbuf2[128];
-  char sbuf3[128];
+  FILE *usrfile,*newfile;
+  char sbuf1[128],sbuf2[128],sbuf3[128],usrstr[256];
+  char *ratname;
+  int ulfiles,ulbytes,dlfiles,dlbytes,cpc;
+
+  if (!gotratuser && g.save) {
+	usrfile=fopen(g.ratiofile,"r");
+	if (usrfile == NULL)
+	 {
+	 log_pri (LOG_ERR, "Error opening ratios file.");
+	 gotratuser=1;
+	 fileerr=1;
+	 }
+		   	     }
+
+   if (!gotratuser && !fileerr && g.save) {
+	usrfile=fopen(g.ratiofile,"r");
+        while (fgets(usrstr,256,usrfile)!=NULL) {
+                ratname = strtok(usrstr, "|");
+                ulfiles = atoi (strtok(NULL, "|"));
+                ulbytes = atoi (strtok(NULL, "|"));
+                dlfiles = atoi (strtok(NULL, "|"));
+                dlbytes = atoi (strtok(NULL, "|"));
+
+                if (strcmp(ratname, g.user) == 0)
+                {
+                stats.fretr += dlfiles;
+                stats.bretr += dlbytes;
+		stats.fstor += ulfiles;
+		stats.bstor += ulbytes;
+		gotratuser = 1;
+                }   				}
+        fclose(usrfile);
+
+	/* Entry for user must not exist, create... */
+
+	if (!gotratuser && !fileerr) {
+	newfile=fopen(g.ratiotmp,"w");
+	  if (newfile == NULL)
+	  {
+	  log_pri (LOG_ERR, "Error opening temporary ratios file.");
+	  gotratuser=1;
+	  fileerr=1;
+          }
+				    }
+
+		if (!gotratuser && !fileerr) {
+		usrfile=fopen(g.ratiofile,"r");
+        	newfile=fopen(g.ratiotmp,"w");
+		  if (newfile == NULL)
+         	  {
+         	  log_pri (LOG_ERR, "Error opening temporary ratios file.");
+         	  gotratuser=1;
+         	  fileerr=1;
+         	  }
+                while (fgets(usrstr,256,usrfile)!=NULL) {
+                fprintf(newfile,"%s",usrstr); }
+		fprintf(newfile,"%s|%i|%i|%i|%i\n",g.user,stats.fstor,\
+		stats.bstor,stats.fretr,stats.bretr);
+        	fclose(usrfile);
+        	fclose(newfile);
+			/* Copy temp to actual ratio file.. */
+			newfile=fopen(g.ratiotmp,"rb");
+        		usrfile=fopen(g.ratiofile,"wb");
+        		while ((cpc=getc(newfile))!=EOF) {
+        		putc(cpc, usrfile); }
+        		fclose(usrfile);
+        		fclose(newfile);
+				}
+
+	}
 
   if (g.enable)
     {
@@ -433,15 +561,15 @@ ratio_cmd (cmd_rec * cmd)
       sbuf1[0] = sbuf2[0] = sbuf3[0] = 0;
       if (cwding || !strcasecmp (cmd->argv[0], "PASS"))
 	_calc_ratios (cmd);
-
-      snprintf (sbuf1, sizeof(sbuf1), "Down: %iF (%iB)  Up: %iF (%iB)",
-		stats.fretr, stats.bretr, stats.fstor, stats.bstor);
+	
+      snprintf (sbuf1, sizeof(sbuf1), "Down: %i Files (%imb)  Up: %i Files (%imb)",
+	stats.fretr, (stats.bretr / 1024), stats.fstor, (stats.bstor / 1024));
       if (stats.frate)
-	snprintf (sbuf2, sizeof(sbuf2), 
+	snprintf (sbuf2, sizeof(sbuf2),
 		  "   %s CR: %i", stats.ftext, stats.files);
       if (stats.brate)
 	snprintf (sbuf3, sizeof(sbuf3),
-		  "   %s CR: %i", stats.btext, stats.bytes);
+		  "   %s CR: %i", stats.btext, (stats.bytes / 1024));
 
       if (RATIO_ENFORCE)
 	{
@@ -473,9 +601,9 @@ cmd_site (cmd_rec * cmd)
 		      stats.files, (stats.files != 1) ? "s" : "");
       if (stats.brate)
 	add_response (R_214,
-		      "Bytes: %s  Down: %i  Up: %i  CR: %i more byte%s",
-		      stats.btext, stats.bretr, stats.bstor,
-		      stats.bytes, (stats.bytes != 1) ? "s" : "");
+		      "Bytes: %s  Down: %imb  Up: %imb  CR: %i more Mbyte%s",
+		      stats.btext, (stats.bretr / 1024), (stats.bstor / 1024),
+		      (stats.bytes / 1024), (stats.bytes != 1024) ? "s" : "");
       return HANDLED (cmd);
     }
 
@@ -495,8 +623,9 @@ MODRET
 post_cmd_stor (cmd_rec * cmd)
 {
   stats.fstor++;
-  stats.bstor += session.xfer.total_bytes;
+  stats.bstor += (session.xfer.total_bytes / 1024);
   _calc_ratios (cmd);
+  if (!fileerr && g.save) { _update_stats(); }
   return ratio_cmd (cmd);
 }
 
@@ -504,8 +633,9 @@ MODRET
 post_cmd_retr (cmd_rec * cmd)
 {
   stats.fretr++;
-  stats.bretr += session.xfer.total_bytes;
+  stats.bretr += (session.xfer.total_bytes / 1024);
   _calc_ratios (cmd);
+  if (!fileerr && g.save) { _update_stats(); }
   return ratio_cmd (cmd);
 }
 
@@ -579,6 +709,23 @@ add_ratios (cmd_rec * cmd)
 }
 
 MODRET
+add_saveratios (cmd_rec * cmd)
+{
+  int b;
+  config_rec *c;
+
+  CHECK_ARGS (cmd, 1);
+  CHECK_CONF (cmd, CONF_ROOT | CONF_VIRTUAL
+              | CONF_ANON | CONF_DIR | CONF_GLOBAL);
+  b = get_boolean (cmd, 1);
+  if (b == -1)
+    CONF_ERROR (cmd, "requires a boolean value");
+  c = add_config_param ("SaveRatios", 1, (void *) b);
+  c->flags |= CF_MERGEDOWN;
+  return HANDLED (cmd);
+}
+
+MODRET
 add_str (cmd_rec * cmd)
 {
   CHECK_ARGS (cmd, 1);
@@ -601,6 +748,9 @@ static conftable ratio_conftab[] = {
   { "ByteRatioErrMsg",	add_str,             NULL },
   { "LeechRatioMsg",	add_str,             NULL },
   { "CwdRatioMsg",	add_str,             NULL },
+  { "SaveRatios",	add_saveratios,	     NULL },
+  { "RatioFile",	add_str,	     NULL },
+  { "RatioTempFile",	add_str,	     NULL },
 
   { NULL, NULL, NULL }
 
@@ -615,15 +765,22 @@ ratio_child_init ()
 {
   memset (&g, 0, sizeof (g));
   g.enable = get_param_int (TOPLEVEL_CONF, "Ratios", FALSE) == TRUE;
+  g.save = get_param_int (TOPLEVEL_CONF, "SaveRatios", FALSE) == TRUE;
 
   if (!(g.filemsg = get_param_ptr (TOPLEVEL_CONF, "FileRatioErrMsg", FALSE)))
     g.filemsg = "Too few files uploaded to earn file -- please upload more.";
+
+  if (!(g.ratiofile = get_param_ptr (TOPLEVEL_CONF, "RatioFile", FALSE)))
+    g.ratiofile = "";
+
+  if (!(g.ratiotmp = get_param_ptr (TOPLEVEL_CONF, "RatioTempFile", FALSE)))
+    g.ratiotmp = "";
 
   if (!(g.bytemsg = get_param_ptr (TOPLEVEL_CONF, "ByteRatioErrMsg", FALSE)))
     g.bytemsg = "Too few bytes uploaded to earn more data -- please upload.";
 
   if (!(g.leechmsg = get_param_ptr (TOPLEVEL_CONF, "LeechRatioMsg", FALSE)))
-    g.leechmsg = "[10,000,000:1]  CR: LEECH";
+    g.leechmsg = "10,000,000:1  CR: LEECH";
 
   return 0;
 }
