@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.112 2002-09-13 23:14:42 castaglia Exp $
+ * $Id: main.c,v 1.113 2002-09-23 15:30:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1669,6 +1669,11 @@ static void server_loop(void) {
 
     i = select(max_fd + 1, &rfd, NULL, NULL,&tv);
 
+    if (i == -1 && errno == EINTR) {
+      pr_handle_signals();
+      continue;
+    }
+
     if (have_dead_child) {
       sigset_t sigset;
       pidrec_t *cp,*cpnext;
@@ -1708,13 +1713,6 @@ static void server_loop(void) {
 
     if (i == -1) {
       time_t this_error;
-
-      if (errno == EINTR) {
-
-        /* A signal was received; make sure it is properly handled. */
-        pr_handle_signals();
-        continue;
-      }
 
       time(&this_error);
 
@@ -1905,6 +1903,34 @@ static RETSIGTYPE sig_disconnect(int signo) {
 
 static RETSIGTYPE sig_child(int signo) {
   recvd_signal_flags |= RECEIVED_SIG_CHLD;
+
+  /* We make an exception here to the synchronous processing that is done
+   * for other signals; SIGCHLD is handled asynchronously.  This is made
+   * necessary by two things.
+   *
+   * First, we need to support non-POSIX systems.  Under POSIX, one a
+   * signal handler has been configured for a given signal, that becomes
+   * that signal's disposition, until explicitly changed later.  Non-POSIX
+   * systems, on the other hand, will restore the default disposition of
+   * a signal after a custom signal handler has been configured.  Thus,
+   * to properly support non-POSIX systems, a call to signal(2) is necessary
+   * as one of the last steps in our signal handlers.
+   *
+   * Second, SVR4 systems differ specifically in their semantics of signal(2)
+   * and SIGCHLD.  These systems will check for any unhandled SIGCHLD
+   * signals, waiting to be reaped via wait(2) or waitpid(2), whenever
+   * the disposition of SIGCHLD is changed.  This means that if our process
+   * handles SIGCHLD, but does not call wait() or waitpid(), and then
+   * calls signal(2), another SIGCHLD is generated; this loop repeats,
+   * until the process runs out of stack space and terminates.
+   *
+   * Thus, in order to cover this interaction, we'll need to call handle_chld()
+   * here, asynchronously.  handle_chld() does the work of reaping dead
+   * child processes, and doesn't seem to call any non-reentrant functions,
+   * so it should be safe.
+   */
+
+  handle_chld();
   signal(SIGCHLD, sig_child);
 }
 
@@ -1992,8 +2018,10 @@ static void handle_chld(void) {
    */
   while ((child_pid = waitpid(-1, NULL, WNOHANG)) > 0) {
     if (child_list) {
-      for (child = (pidrec_t *) child_list->xas_list; child; child = child_next) {
+      for (child = (pidrec_t *) child_list->xas_list; child;
+          child = child_next) {
         child_next = child->next;
+
         if (child->pid == child_pid) {
           child_listlen--;
           have_dead_child = TRUE;
