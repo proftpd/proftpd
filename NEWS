@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.447 2003-07-07 18:27:11 castaglia Exp $
+$Id: NEWS,v 1.448 2003-07-07 20:15:03 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -33,6 +33,7 @@ CVS
   was undefined, due to a strange necessity in the Solaris system headers
   for a missing flag.
 - Bug 2100 - Invalid domain in <VirtualHost> tag causes segmentation fault.
+- Fixed handling of mod_tls' TLSCertificateChainFile directive.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------
