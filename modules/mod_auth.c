@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2005 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.201 2005-02-26 17:28:58 castaglia Exp $
+ * $Id: mod_auth.c,v 1.202 2005-03-05 17:46:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -41,6 +41,7 @@ extern pid_t mpid;
 module auth_module;
 
 static unsigned char mkhome = FALSE;
+static unsigned char rfc2228_authenticated = FALSE;
 static int TimeoutLogin = PR_TUNABLE_TIMEOUTLOGIN;
 static int logged_in = 0;
 static int auth_tries = 0;
@@ -692,7 +693,8 @@ static int _setup_environment(pool *p, char *user, char *pass) {
      */
     if ((root_allow = get_param_ptr(c ? c->subset : main_server->conf,
         "RootLogin", FALSE)) == NULL || *root_allow != TRUE) {
-      pr_memscrub(pass, strlen(pass));
+      if (pass)
+        pr_memscrub(pass, strlen(pass));
       pr_log_auth(PR_LOG_CRIT, "SECURITY VIOLATION: root login attempted.");
       return 0;
     }
@@ -805,7 +807,15 @@ static int _setup_environment(pool *p, char *user, char *pass) {
       }
     }
 
-    auth_code = _do_auth(p, c ? c->subset : main_server->conf, user_name, pass);
+    /* It is possible for the user to have already been authenticated during
+     * the handling of the USER command, as by an RFC2228 mechanism.  If
+     * that had happened, we won't need to call _do_auth() here.
+     */
+    if (!rfc2228_authenticated)
+      auth_code = _do_auth(p, c ? c->subset : main_server->conf, user_name,
+        pass);
+    else
+      auth_code = PR_AUTH_RFC2228_OK;
 
     if (auth_code < 0) {
       /* Normal authentication has failed, see if group authentication
@@ -824,11 +834,14 @@ static int _setup_environment(pool *p, char *user, char *pass) {
       }
     }
 
-    pr_memscrub(pass, strlen(pass));
+    if (pass)
+      pr_memscrub(pass, strlen(pass));
 
     switch (auth_code) {
-
       case PR_AUTH_RFC2228_OK:
+        auth_pass_resp_code = R_232;
+        break;
+
       case PR_AUTH_OK:
         auth_pass_resp_code = R_230;
         break;
@@ -1322,7 +1335,8 @@ static int _setup_environment(pool *p, char *user, char *pass) {
   return 1;
 
 auth_failure:
-  pr_memscrub(pass, strlen(pass));
+  if (pass)
+    pr_memscrub(pass, strlen(pass));
   session.user = session.group = NULL;
   session.gids = session.groups = NULL;
   session.wtmp_log = FALSE;
@@ -1683,7 +1697,7 @@ MODRET auth_pre_user(cmd_rec *cmd) {
 }
 
 MODRET auth_user(cmd_rec *cmd) {
-  int nopass = 0;
+  int nopass = FALSE;
   config_rec *c;
   char *user, *origuser;
   int failnopwprompt = 0, aclp, i;
@@ -1767,18 +1781,46 @@ MODRET auth_user(cmd_rec *cmd) {
       FALSE);
 
   if (c && user && (!anon_require_passwd || *anon_require_passwd == FALSE))
-    nopass++;
-
-  if (nopass)
-    pr_response_add(R_331, "Anonymous login ok, send your complete email "
-      "address as your password.");
-  else
-    pr_response_add(R_331, "Password required for %s.", cmd->argv[1]);
+    nopass = TRUE;
 
   session.gids = NULL;
   session.groups = NULL;
   session.user = NULL;
   session.group = NULL;
+
+  if (nopass) {
+    pr_response_add(R_331, "Anonymous login ok, send your complete email "
+      "address as your password.");
+
+  /* If an RFC2228 module is involved, see if it can possibly authenticate
+   * the user now, before we ask for a password.
+   */
+  } else if (session.rfc2228_mech &&
+      pr_auth_authenticate(cmd->tmp_pool, user, NULL) == PR_AUTH_RFC2228_OK) {
+
+    /* Act as if we received a PASS command from the client. */
+    cmd_rec *fakecmd = pr_cmd_alloc(cmd->pool, 2, NULL);
+
+    /* We use pstrdup() here, rather than assigning C_PASS directly, since
+     * code elsewhere will attempt to modify this buffer, and C_PASS is
+     * a string literal.
+     */
+    fakecmd->argv[0] = pstrdup(fakecmd->pool, C_PASS);
+    fakecmd->argv[1] = NULL;
+    fakecmd->arg = NULL;
+
+    c = add_config_param_set(&cmd->server->conf, "authenticated", 1, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+    *((unsigned char *) c->argv[0]) = TRUE;
+
+    rfc2228_authenticated = TRUE;
+    pr_log_auth(PR_LOG_NOTICE, "USER %s: Authenticated by %s RFC2228 mechanism "
+      "without password", user, session.rfc2228_mech);
+
+    pr_cmd_dispatch(fakecmd);
+
+  } else
+    pr_response_add(R_331, "Password required for %s.", cmd->argv[1]);
 
   return HANDLED(cmd);
 }

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.647 2005-03-05 17:33:29 castaglia Exp $
+$Id: NEWS,v 1.648 2005-03-05 17:46:00 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -118,6 +118,7 @@ CVS
   file for more information on POSIX ACL support in ProFTPD.
 - Bug 2573 - TLSProtocol directive in proftpd.conf is ignored.
 - Bug 2559 - IPv6 socket option should be set for ServerType inetd.
+- Bug 2164 - Support non-PASS response codes (i.e. 232).
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

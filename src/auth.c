@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003, 2004 The ProFTPD Project team
+ * Copyright (c) 2001-2005 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.41 2004-12-16 02:30:58 castaglia Exp $
+ * $Id: auth.c,v 1.42 2005-03-05 17:46:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -351,6 +351,9 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   int res = PR_AUTH_NOPWD;
+
+  if (!pw)
+    pw = "";
 
   cmd = make_cmd(p, 2, name, pw);
   mr = dispatch_auth(cmd, "auth");

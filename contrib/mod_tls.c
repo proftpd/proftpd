@@ -2,7 +2,7 @@
  * mod_tls - an RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2004 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2005 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -1543,7 +1543,7 @@ static void tls_fatal_error(int error, int lineno) {
 }
 
 /* This function checks if the client's cert is in the ~/.tlslogin file
- * of the "user"
+ * of the "user".
  */
 static unsigned char tls_dotlogin_allow(const char *user) {
   char buf[512] = {'\0'}, *home = NULL;
@@ -1559,12 +1559,13 @@ static unsigned char tls_dotlogin_allow(const char *user) {
   tmp_pool = make_sub_pool(permanent_pool);
 
   PRIVS_ROOT
-  if (!(pwd = pr_auth_getpwnam(tmp_pool, user))) {
-    PRIVS_RELINQUISH
+  pwd = pr_auth_getpwnam(tmp_pool, user);
+  PRIVS_RELINQUISH
+
+  if (!pwd) {
     destroy_pool(tmp_pool);
     return FALSE;
   }
-  PRIVS_RELINQUISH
 
   /* Handle the case where the user's home directory is a symlink. */
   PRIVS_USER
@@ -1579,14 +1580,16 @@ static unsigned char tls_dotlogin_allow(const char *user) {
   tmp_pool = NULL;
 
   PRIVS_ROOT
-  if (!(fp = fopen(buf, "r"))) {
-    PRIVS_RELINQUISH
+  fp = fopen(buf, "r");
+  PRIVS_RELINQUISH
+
+  if (!fp) {
     tls_log(".tlslogin check: unable to open '%s': %s", buf, strerror(errno));
     return FALSE;
   }
 
-  if (!(client_cert = SSL_get_peer_certificate(ctrl_ssl))) {
-    PRIVS_RELINQUISH
+  client_cert = SSL_get_peer_certificate(ctrl_ssl);
+  if (!client_cert) {
     fclose(fp);
     return FALSE;
   }
@@ -1599,7 +1602,6 @@ static unsigned char tls_dotlogin_allow(const char *user) {
     if (allow_user)
       break;
   }
-  PRIVS_RELINQUISH
 
   X509_free(client_cert);
   fclose(fp);
