@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.90 2002-06-22 00:24:50 castaglia Exp $
+ * $Id: mod_core.c,v 1.91 2002-06-24 23:24:58 castaglia Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -297,7 +297,9 @@ MODRET add_define(cmd_rec *cmd) {
    */
 
   /* If this is the first such definition, allocate an array_header
-   * for the definitions
+   * for the definitions.  Note that this uses the permanent_pool
+   * rather than the containing server's pool so that defined parameters
+   * are properly globally visible.
    */
   if (!server_defines)
     server_defines = make_array(permanent_pool, 0, sizeof(char *));
@@ -523,7 +525,7 @@ MODRET set_serverident(cmd_rec *cmd) {
 
   if(b && cmd->argc == 3) {
     c = add_config_param("ServerIdent",2,(void*)!b,NULL);
-    c->argv[1] = pstrdup(permanent_pool,cmd->argv[2]);
+    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
   } else {
     add_config_param("ServerIdent", 1, (void *) !b);
   }
@@ -635,7 +637,7 @@ MODRET set_maxclients(cmd_rec *cmd)
 
   if(cmd->argc == 3) {
     c = add_config_param("MaxClients",2,(void*)max,NULL);
-    c->argv[1] = pstrdup(permanent_pool,cmd->argv[2]);   
+    c->argv[1] = pstrdup(c->pool,cmd->argv[2]);   
   } else
     c = add_config_param("MaxClients",1,(void*)max);
 
@@ -1454,7 +1456,7 @@ MODRET add_directory(cmd_rec *cmd)
     }
   }
 
-  /* check to see that there isn't already a config for this directory,
+  /* Check to see that there isn't already a config for this directory,
    * but only if we're not in an <Anonymous> section.  Due to the way
    * in which later <Directory> checks are done, <Directory> blocks inside
    * <Anonymous> sections are handled differently than outside, probably
@@ -1472,7 +1474,7 @@ MODRET add_directory(cmd_rec *cmd)
   c->argc = 2;
   c->argv = pcalloc(c->pool,3*sizeof(void*));
   if(rootdir)
-    c->argv[1] = pstrdup(permanent_pool,rootdir);
+    c->argv[1] = pstrdup(c->pool,rootdir);
 
   c->config_type = CONF_DIR;
   c->flags |= flags;
@@ -1569,7 +1571,7 @@ MODRET add_anonymousgroup(cmd_rec *cmd) {
 
   if(argc && acl)
     while(argc--) {
-      *argv++ = pstrdup(permanent_pool,*((char**)acl->elts));
+      *argv++ = pstrdup(c->pool,*((char**)acl->elts));
       acl->elts = ((char**)acl->elts) + 1;
     }
 
@@ -1795,7 +1797,7 @@ MODRET add_limit(cmd_rec *cmd) {
   argv = (char**)c->argv;
 
   while(cargc--)
-    *argv++ = pstrdup(permanent_pool,*cargv++);
+    *argv++ = pstrdup(c->pool, *cargv++);
 
   *argv = NULL;
 
@@ -1846,7 +1848,7 @@ MODRET _add_allow_deny_user(cmd_rec *cmd, char *name) {
   c->argv = pcalloc(c->pool,(argc+1) * sizeof(char*));
   argv = (char**)c->argv;
   while(argc--) {
-    *argv++ = pstrdup(permanent_pool,*((char**)acl->elts));
+    *argv++ = pstrdup(c->pool, *((char**)acl->elts));
     acl->elts = ((char**)acl->elts) + 1;
   }
 
@@ -1877,7 +1879,7 @@ MODRET _add_allow_deny_group(cmd_rec *cmd, char *name) {
   c->argv = pcalloc(c->pool,(argc+1) * sizeof(char*));
   argv = (char**)c->argv;
   while(argc--) {
-    *argv++ = pstrdup(permanent_pool,*((char**)acl->elts));
+    *argv++ = pstrdup(c->pool, *((char**)acl->elts));
     acl->elts = ((char**)acl->elts) + 1;
   }
 
@@ -1958,7 +1960,7 @@ MODRET _add_allow_deny(cmd_rec *cmd, char *name) {
   c->argv = pcalloc(c->pool,(c->argc+1) * sizeof(char*));
   argv = (char**)c->argv;
   while(acl->nelts--) {
-    *argv++ = pstrdup(permanent_pool,*((char**)acl->elts));
+    *argv++ = pstrdup(c->pool, *((char**)acl->elts));
     acl->elts = ((char**)acl->elts) + 1;
   }
 

@@ -25,7 +25,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.76 2002-06-22 00:54:01 castaglia Exp $
+ * $Id: mod_auth.c,v 1.77 2002-06-24 23:24:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1871,11 +1871,11 @@ MODRET add_defaultroot(cmd_rec *cmd) {
   c->argc = argc + 1;
   c->argv = pcalloc(c->pool, (argc + 2) * sizeof(char *));
   argv = (char **) c->argv;
-  *argv++ = pstrdup(permanent_pool, dir);
+  *argv++ = pstrdup(c->pool, dir);
   
   if(argc && acl)
     while(argc--) {
-      *argv++ = pstrdup(permanent_pool, *((char **) acl->elts));
+      *argv++ = pstrdup(c->pool, *((char **) acl->elts));
       acl->elts = ((char **) acl->elts) + 1;
     }
 
@@ -1913,11 +1913,11 @@ MODRET add_defaultchdir(cmd_rec *cmd) {
   c->argc = argc + 1;
   c->argv = pcalloc(c->pool, (argc + 2) * sizeof(char *));
   argv = (char **) c->argv;
-  *argv++ = pstrdup(permanent_pool, dir);
+  *argv++ = pstrdup(c->pool, dir);
   
   if(argc && acl)
     while(argc--) {
-      *argv++ = pstrdup(permanent_pool, *((char **) acl->elts));
+      *argv++ = pstrdup(c->pool, *((char **) acl->elts));
       acl->elts = ((char **) acl->elts) + 1;
     }
   
