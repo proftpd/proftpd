@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.251 2004-09-18 00:38:14 castaglia Exp $
+ * $Id: main.c,v 1.252 2004-10-09 20:44:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1173,6 +1173,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   }
 
   pr_inet_set_proto_opts(permanent_pool, conn, 0, 1, 1, 0, 0);
+
+  pr_event_generate("core.connect", conn);
 
   /* Find the server for this connection. */
   main_server = pr_ipbind_get_server(conn->local_addr, conn->local_port);
