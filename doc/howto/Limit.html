@@ -1,4 +1,4 @@
-<!-- $Id: Limit.html,v 1.6 2004-07-31 00:07:40 castaglia Exp $ -->
+<!-- $Id: Limit.html,v 1.7 2004-08-06 00:58:25 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Limit.html,v $ -->
 
 <html>
@@ -64,6 +64,21 @@ keyword.  If a <code>&lt;Limit&gt;</code> has both &quot;raw&quot; commands
 and command groups, then it boils down to the order of appearance of
 <code>&lt;Limit&gt;</code> sections in <code>proftpd.conf</code> that
 use the &quot;raw&quot; command in question.
+
+<p>
+<b><code>SITE</code> Commands</b><br>
+To apply a <code>&lt;Limit&gt;</code> to a <code>SITE</code> command, combine
+&quot;SITE&quot; and the command (<i>e.g.</i> &quot;CHMOD&quot;) by an
+underscore (&quot;_&quot;), like so:
+<pre>
+  &lt;Limit SITE_<i>command</i>&gt;
+</pre>
+Thus, in order to place a limit on <code>SITE CHMOD</code>, one would have:
+<pre>
+  &lt;Limit SITE_CHMOD&gt;
+    DenyAll
+  &lt;/Limit&gt;
+</pre>
 
 <p>
 <b>Inheritance</b><br>
@@ -236,7 +251,7 @@ This will allow the user <code>ftpadm</code> to delete files in the
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-07-31 00:07:40 $</i><br>
+Last Updated: <i>$Date: 2004-08-06 00:58:25 $</i><br>
 <hr>
 
 </body>
