@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.248 2004-10-17 23:29:44 castaglia Exp $
+ * $Id: mod_core.c,v 1.249 2004-10-29 01:10:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -251,10 +251,10 @@ MODRET start_ifdefine(cmd_rec *cmd) {
   while (ifdefine_ctx_count && (config_line = get_config_line(buf,
       sizeof(buf))) != NULL) {
 
-    if (!strncmp(config_line, "<IfDefine", 9))
+    if (strncasecmp(config_line, "<IfDefine", 9) == 0)
       ifdefine_ctx_count++;
 
-    if (!strcmp(config_line, "</IfDefine>"))
+    if (strcasecmp(config_line, "</IfDefine>") == 0)
       ifdefine_ctx_count--;
   }
 
@@ -312,10 +312,10 @@ MODRET start_ifmodule(cmd_rec *cmd) {
     /* Advance past any leading whitespace. */
     for (bufp = config_line; *bufp && isspace((int) *bufp); bufp++);
 
-    if (strncmp(bufp, "<IfModule", 9) == 0)
+    if (strncasecmp(bufp, "<IfModule", 9) == 0)
       ifmodule_ctx_count++;
 
-    if (strcmp(bufp, "</IfModule>") == 0)
+    if (strcasecmp(bufp, "</IfModule>") == 0)
       ifmodule_ctx_count--;
   }
 
