@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.11 2004-04-09 17:19:27 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.12 2004-04-13 16:46:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,8 +35,8 @@
 #define MOD_CTRLS_ADMIN_VERSION		"mod_ctrls_admin/0.9.2"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001020902
-# error "ProFTPD 1.2.9rc2 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001021001
+# error "ProFTPD 1.2.10rc1 or later required"
 #endif
 
 #ifndef USE_CTRLS
@@ -49,7 +49,7 @@
 #define CTRL_STOP_FULL        (1 << 2)
 #define CTRL_STOP_GRACEFUL    (1 << 3)
 
-/* from src/dirtree.c */
+/* From src/dirtree.c */
 extern xaset_t *server_list;
 
 module ctrls_admin_module;
