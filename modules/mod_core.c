@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.238 2004-07-11 21:52:45 castaglia Exp $
+ * $Id: mod_core.c,v 1.239 2004-07-13 16:54:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3732,7 +3732,7 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
         free(cdir);
 
         if (dir &&
-            dir_check_full(cmd->tmp_pool, cmd->arg, cmd->group, dir, NULL) &&
+            dir_check_full(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL) &&
             pr_fsio_chdir(dir, 0) != -1) {
           break;
         }
@@ -3751,7 +3751,7 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
     dir = dir_realpath(cmd->tmp_pool, ndir);
 
     if (!dir ||
-        !dir_check_full(cmd->tmp_pool, cmd->arg, cmd->group, dir, NULL) ||
+        !dir_check_full(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL) ||
         pr_fsio_chdir_canon(ndir, 1) == -1) {
 
       for (cdpath = find_config(main_server->conf,CONF_PARAM,"CDPath",TRUE);
@@ -3767,7 +3767,7 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
         free(cdir);
 
         if (dir &&
-            dir_check_full(cmd->tmp_pool, cmd->arg, cmd->group, dir, NULL) &&
+            dir_check_full(cmd->tmp_pool, cmd->arg[v0], cmd->group, dir, NULL) &&
             pr_fsio_chdir_canon(ndir, 1) != -1) {
           break;
         }
