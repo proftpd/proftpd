@@ -51,6 +51,10 @@ union block_hdr
 
 union block_hdr *block_freelist = NULL;
 
+/* Statistics */
+unsigned int stat_malloc = 0;	/* incr when malloc required */
+unsigned int stat_freehit = 0;	/* incr when freelist used */
+
 /* Grab a completely new block from the system pool.  Relies on malloc()
  * to return truely aligned memory.
  */
@@ -120,15 +124,19 @@ void free_blocks(union block_hdr *blok)
 
 union block_hdr *new_block(int min_size)
 {
+  int biggest = 0;
   union block_hdr **lastptr = &block_freelist;
   union block_hdr *blok = block_freelist;
 
-  min_size += BLOCK_MINFREE;
+  if(min_size < BLOCK_MINFREE)
+    min_size = BLOCK_MINFREE;
 
   while(blok) {
+    biggest = blok->h.endp - blok->h.first_avail;
     if(min_size <= blok->h.endp - blok->h.first_avail) {
       /* It's available */
       *lastptr = blok->h.next;
+      stat_freehit++;
       blok->h.next = NULL;
       return blok;
     } else {
@@ -138,6 +146,7 @@ union block_hdr *new_block(int min_size)
   }
 
   /* malloc a new one */
+  stat_malloc++;
   return malloc_block(min_size);
 }
 
@@ -181,6 +190,54 @@ pool *permanent_pool = NULL;
 
 #define POOL_HDR_CLICKS (1 + ((sizeof(struct pool) - 1) / CLICK_SZ))
 #define POOL_HDR_BYTES (POOL_HDR_CLICKS * CLICK_SZ)
+
+/* walk all pools, starting with top level permanent pool, displaying a
+ * tree.
+ */
+
+static long __walk_pools(pool *p, int level)
+{
+  char _levelpad[80] = "";
+  long total = 0;
+
+  if(!p)
+    return;
+
+  if(level > 1) {
+    memset(_levelpad,' ',sizeof(_levelpad)-1);
+    if((level - 1) * 3 >= sizeof(_levelpad))
+      _levelpad[sizeof(_levelpad)-1] = 0;
+    else
+      _levelpad[(level - 1) * 3] = '\0';
+  }
+
+  for(; p; p = p->sub_next) {
+    total += bytes_in_block_list(p->first);
+    if(level == 0)
+      log_pri(LOG_NOTICE,"0x%08x bytes",bytes_in_block_list(p->first));
+    else
+      log_pri(LOG_NOTICE,"%s\\- 0x%08x bytes",_levelpad,
+              bytes_in_block_list(p->first));
+
+    /* recurse */
+    if(p->sub_pools)
+      total += __walk_pools(p->sub_pools,level+1);  
+  }
+
+  return total;
+}
+
+void debug_walk_pools()
+{
+  log_pri(LOG_NOTICE,"Memory pool allocation:");
+  log_pri(LOG_NOTICE,"Total 0x%08x bytes allocated",
+          __walk_pools(permanent_pool,0));
+  if(block_freelist)
+    log_pri(LOG_NOTICE,"Free block list: 0x%08x bytes",
+            bytes_in_block_list(block_freelist));
+  log_pri(LOG_NOTICE,"%u count blocks malloc'd.",stat_malloc);
+  log_pri(LOG_NOTICE,"%u count blocks reused.",stat_freehit); 
+}
 
 struct pool *make_sub_pool(struct pool *p)
 {

@@ -19,7 +19,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.1 1998-10-18 02:24:41 flood Exp $
+ * $Id: main.c,v 1.2 1998-10-23 11:21:23 flood Exp $
  */
 
 /*
@@ -94,6 +94,8 @@ static char *LastArgv = NULL;
 static int shutdownp = 0;
 static int abort_core = 0;
 static RETSIGTYPE sig_disconnect(int);
+static RETSIGTYPE sig_debug(int);
+
 char *config_filename = CONFIG_FILE_PATH;
 
 #if 0
@@ -928,6 +930,7 @@ void fork_server(int fd,conn_t *l,int nofork)
     sigaddset(&sigset,SIGTERM);
     sigaddset(&sigset,SIGCHLD);
     sigaddset(&sigset,SIGUSR1);
+    sigaddset(&sigset,SIGUSR2);
 
     sigprocmask(SIG_BLOCK,&sigset,NULL);
 
@@ -978,6 +981,7 @@ void fork_server(int fd,conn_t *l,int nofork)
 
   /* Child is running here */
   signal(SIGUSR1,sig_disconnect);
+  signal(SIGUSR2,sig_debug);
   signal(SIGCHLD,SIG_DFL);
   signal(SIGHUP,SIG_IGN);
 
@@ -1149,6 +1153,7 @@ void disc_children()
     sigaddset(&sigset,SIGTERM);
     sigaddset(&sigset,SIGCHLD);
     sigaddset(&sigset,SIGUSR1);
+    sigaddset(&sigset,SIGUSR2);
 
     sigprocmask(SIG_BLOCK,&sigset,NULL);
 
@@ -1272,6 +1277,14 @@ static RETSIGTYPE sig_rehash(int sig)
   schedule(main_rehash,0,NULL,NULL,NULL,NULL);
 
   signal(SIGHUP,sig_rehash);
+}
+
+/* sig_debug outputs some basic debugging info
+ */
+
+static RETSIGTYPE sig_debug(int sig)
+{
+  debug_walk_pools();
 }
 
 /* sig_disconnect is called in children when the parent daemon
@@ -1421,9 +1434,11 @@ static void install_signal_handlers()
   sigaddset(&sigset,SIGBUS);
 #endif
   sigaddset(&sigset,SIGHUP);
+  sigaddset(&sigset,SIGUSR2);
   
   signal(SIGCHLD,sig_child);
   signal(SIGHUP,sig_rehash);
+  signal(SIGUSR2,sig_debug);
 
 #ifndef DEBUG_NOSIG
   signal(SIGINT,sig_terminate);

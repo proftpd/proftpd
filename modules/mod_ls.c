@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.1 1998-10-18 02:24:41 flood Exp $
+ * $Id: mod_ls.c,v 1.2 1998-10-23 11:21:22 flood Exp $
  */
 
 #include "conf.h"
@@ -35,7 +35,7 @@ static void addfile(cmd_rec*,const char *, const char *, time_t);
 static int outputfiles(cmd_rec*);
 
 static int listfile(cmd_rec*,const char *name);
-static int listdir(cmd_rec*,const char *name,int list_dotdirs);
+static int listdir(cmd_rec*,pool*,const char *name,int list_dotdirs);
 
 static int matches = 0;
 static char *default_options;
@@ -561,15 +561,19 @@ realloc_buf:
 }
 
 /* listdir required chdir first */
-int listdir(cmd_rec *cmd, const char *name, int list_dotdirs)
+int listdir(cmd_rec *cmd, pool *workp, const char *name, int list_dotdirs)
 {
   char **dir;
-  pool *workp;
+  int dest_workp = 0;
 
   if(XFER_ABORTED)
 	return -1;
 
-  workp = make_sub_pool(cmd->tmp_pool);
+  if(!workp) {
+    workp = make_sub_pool(cmd->tmp_pool);
+    dest_workp++;
+  }
+
   dir = sreaddir(workp,".");
 
   if(dir) {
@@ -607,7 +611,8 @@ int listdir(cmd_rec *cmd, const char *name, int list_dotdirs)
     }
 
     if(outputfiles(cmd) < 0) {
-      destroy_pool(workp);
+      if(dest_workp)
+        destroy_pool(workp);
       return -1;
     }
 
@@ -630,13 +635,15 @@ int listdir(cmd_rec *cmd, const char *name, int list_dotdirs)
           add_response(R_211,"\r\n%s:\r\n",subdir);
 	else if(sendline("\n%s:\n",subdir) < 0) {
           pop_cwd(cwd,&symhold);
-          destroy_pool(workp);
+          if(dest_workp)
+            destroy_pool(workp);
           return -1;
         }
 
-        if(listdir(cmd,subdir,list_dotdirs) < 0) {
+        if(listdir(cmd,workp,subdir,list_dotdirs) < 0) {
           pop_cwd(cwd,&symhold);
-          destroy_pool(workp);
+          if(dest_workp)
+            destroy_pool(workp);
           return -1;
         }
 
@@ -646,7 +653,8 @@ int listdir(cmd_rec *cmd, const char *name, int list_dotdirs)
     }
   }
 
-  destroy_pool(workp);
+  if(dest_workp)
+    destroy_pool(workp);
   return 0;
 }
 
@@ -849,7 +857,7 @@ int donlist(cmd_rec *cmd, const char *opt, int clearflags)
             push_cwd(cwd,&symhold);
 
             if(!fs_chdir_canon(*path,showsymlinks)) {
-              int ret = listdir(cmd,*path,FALSE);
+              int ret = listdir(cmd,NULL,*path,FALSE);
               pop_cwd(cwd,&symhold);
 
               if(ret < 0) {
@@ -894,7 +902,7 @@ int donlist(cmd_rec *cmd, const char *opt, int clearflags)
           return -1;
         }
       } else {
-        if(listdir(cmd,".",FALSE) < 0) {
+        if(listdir(cmd,NULL,".",FALSE) < 0) {
           ls_terminate(); 
 	  return -1;
         }
