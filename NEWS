@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.354 2003-01-16 02:04:46 castaglia Exp $
+$Id: NEWS,v 1.355 2003-01-17 03:41:55 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -37,6 +37,8 @@ CVS
 - Bug 1922 - Server allows RNTO an existing file even with AllowOverwrite
   turned off.  Now, RNTOs to existing files are denied unless AllowOverwrite
   is on.
+- ftptop now displays transfer rates in it's "transfer speed" display mode.
+  Use the 't' key to toggle between ftptop display modes.
 
 1.2.8rc1 - Released 28-Dec-2002
 ---------------------------------

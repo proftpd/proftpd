@@ -26,10 +26,10 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.19 2003-01-05 01:31:35 jwm Exp $
+ * $Id: ftptop.c,v 1.20 2003-01-17 03:41:55 castaglia Exp $
  */
 
-#define FTPTOP_VERSION "ftptop/0.8.2"
+#define FTPTOP_VERSION "ftptop/0.9"
 
 #include "utils.h"
 
@@ -63,17 +63,24 @@ static const char *program = "ftptop";
 #if defined(HAVE_NCURSES) || defined(HAVE_CURSES)
 
 /* Display options */
-#define FTPTOP_HEADER_FORMAT  "%-5s %s %-8s %-20s %-15s %-4s %-20s\n"
-#define FTPTOP_DISPLAY_FORMAT "%-5d %s %-8.8s %-20.20s %-15s %lu %-20.20s\n"
+
+/* These are for displaying "PID S USER ADDR SERVER TIME COMMAND" */
+#define FTPTOP_REG_HEADER_FMT	"%-5s %s %-8s %-20s %-15s %-4s %-20s\n"
+#define FTPTOP_REG_DISPLAY_FMT	"%-5u %s %-8.8s %-20.20s %-15s %lu %-20.20s\n"
+
+/* These are for displaying tranfer data: "PID S USER ADDR KB/s %DONE" */
+#define FTPTOP_XFER_HEADER_FMT	"%-5s %s %-8s %-20s %-5s    %-32s\n"
+#define FTPTOP_XFER_DISPLAY_FMT	"%-5u %s %-8.8s %-20.20s %-3.2f %-32.20s\n"
 
 #define FTPTOP_SHOW_DOWNLOAD		0x0001
 #define FTPTOP_SHOW_UPLOAD		0x0002
 #define FTPTOP_SHOW_IDLE		0x0004
-#define	FTPTOP_SHOW_ALL \
+#define	FTPTOP_SHOW_REG \
   (FTPTOP_SHOW_DOWNLOAD|FTPTOP_SHOW_UPLOAD|FTPTOP_SHOW_IDLE)
+#define FTPTOP_SHOW_RATES		0x0010
 
 static int delay = 2;
-static unsigned int display_session = FTPTOP_SHOW_ALL;
+static unsigned int display_mode = FTPTOP_SHOW_REG;
 
 static char *config_filename = CONFIG_FILE_PATH;
 
@@ -113,6 +120,29 @@ static void clear_counters(void) {
 static void finish(int signo) {
   endwin();
   exit(0);
+}
+
+static char *calc_percent_done(off_t size, off_t done) {
+  static char sbuf[32];
+
+  memset(sbuf, '\0', sizeof(sbuf));
+
+  if (done == 0) {
+    util_sstrncpy(sbuf, "0", sizeof(sbuf));
+
+  } else if (size == 0) {
+    util_sstrncpy(sbuf, "Inf", sizeof(sbuf));
+
+  } else if (done >= size) {
+    util_sstrncpy(sbuf, "100", sizeof(sbuf));
+
+  } else {
+    snprintf(sbuf, sizeof(sbuf), "%.0f",
+      ((double) done / (double) size) * 100.0);
+    sbuf[sizeof(sbuf)-1] = '\0';
+  }
+
+  return sbuf;
 }
 
 static int check_scoreboard_file(void) {
@@ -194,6 +224,7 @@ static void scan_config_file(void) {
   if (file)
     util_set_scoreboard(file);
 }
+
 static void process_opts(int argc, char *argv[]) {
   int optc = 0;
   const char *prgopts = "Dd:f:hIiUV";
@@ -201,8 +232,8 @@ static void process_opts(int argc, char *argv[]) {
   while ((optc = getopt(argc, argv, prgopts)) != -1) {
     switch (optc) {
       case 'D':
-        display_session = 0U;
-        display_session |= FTPTOP_SHOW_DOWNLOAD;
+        display_mode = 0U;
+        display_mode |= FTPTOP_SHOW_DOWNLOAD;
         break;
 
       case 'd':
@@ -225,17 +256,17 @@ static void process_opts(int argc, char *argv[]) {
         break;
 
       case 'I':
-        display_session = 0U;
-        display_session |= FTPTOP_SHOW_IDLE;
+        display_mode = 0U;
+        display_mode |= FTPTOP_SHOW_IDLE;
         break;
 
       case 'i':
-        display_session &= ~FTPTOP_SHOW_IDLE;
+        display_mode &= ~FTPTOP_SHOW_IDLE;
         break;
 
       case 'U':
-        display_session = 0U;
-        display_session |= FTPTOP_SHOW_UPLOAD;
+        display_mode = 0U;
+        display_mode |= FTPTOP_SHOW_UPLOAD;
         break;
 
       case 'V':
@@ -293,14 +324,16 @@ static void read_scoreboard(void) {
       status = "I";
       ftp_nidles++;
 
-      if (!(display_session & FTPTOP_SHOW_IDLE))
+      if (display_mode != FTPTOP_SHOW_RATES &&
+          !(display_mode & FTPTOP_SHOW_IDLE))
         continue;
 
     } else if (strstr(score->sce_cmd, "RETR")) {
       status = "D";
       ftp_ndownloads++;
 
-      if (!(display_session & FTPTOP_SHOW_DOWNLOAD))
+      if (display_mode != FTPTOP_SHOW_RATES &&
+          !(display_mode & FTPTOP_SHOW_DOWNLOAD))
         continue;
 
     } else if (strstr(score->sce_cmd, "STOR") ||
@@ -309,18 +342,36 @@ static void read_scoreboard(void) {
       status = "U";
       ftp_nuploads++;
 
-      if (!(display_session & FTPTOP_SHOW_UPLOAD))
+      if (display_mode != FTPTOP_SHOW_RATES &&
+          !(display_mode & FTPTOP_SHOW_UPLOAD))
         continue;
 
     } else if (strstr(score->sce_cmd, "LIST") ||
         strstr(score->sce_cmd, "NLST"))
       status = "L";
 
-    snprintf(buf, sizeof(buf), FTPTOP_DISPLAY_FORMAT,
-      (int)score->sce_pid, status, score->sce_user, score->sce_client_name,
-      score->sce_server_addr, time(NULL) - score->sce_begin_session,
-      score->sce_cmd);
-    buf[sizeof(buf)-1] = '\0';
+    if (display_mode != FTPTOP_SHOW_RATES) {
+      snprintf(buf, sizeof(buf), FTPTOP_REG_DISPLAY_FMT,
+        (unsigned int) score->sce_pid, status, score->sce_user,
+        score->sce_client_name, score->sce_server_addr,
+        time(NULL) - score->sce_begin_session, score->sce_cmd);
+      buf[sizeof(buf)-1] = '\0';
+
+    } else {
+
+      /* Skip sessions unless they are actually transferring data */
+      if (*status != 'U' && *status != 'D')
+        continue;
+
+      snprintf(buf, sizeof(buf), FTPTOP_XFER_DISPLAY_FMT,
+        (unsigned int) score->sce_pid, status, score->sce_user,
+        score->sce_client_name,
+        (score->sce_xfer_len / 1024.0) / (score->sce_xfer_elapsed / 1000000.0),
+        *status == 'D' ?
+          calc_percent_done(score->sce_xfer_size, score->sce_xfer_done) :
+          "(n/a)");
+      buf[sizeof(buf)-1] = '\0';
+    }
 
     /* Make sure there is enough memory allocated in the session list.
      * Allocate more if needed.
@@ -334,10 +385,6 @@ static void read_scoreboard(void) {
     if ((ftp_sessions[ftp_nsessions] = calloc(1, strlen(buf) + 1)) == NULL)
       exit(1);
     strncpy(ftp_sessions[ftp_nsessions++], buf, strlen(buf) + 1);
-
-    /* NOTE: that, right now, updates of the proftpd scoreboard only
-     *  happen for downloads, not for uploads.  Odd.
-     */
   }
 
   scoreboard_close();
@@ -393,8 +440,14 @@ static void show_sessions(void) {
   printw("\n");
 
   attron(A_REVERSE);
-  printw(FTPTOP_HEADER_FORMAT, "PID", "S", "USER", "ADDR", "SERVER",
-         "TIME", "COMMAND");
+
+  if (display_mode != FTPTOP_SHOW_RATES)
+    printw(FTPTOP_REG_HEADER_FMT, "PID", "S", "USER", "ADDR", "SERVER",
+      "TIME", "COMMAND");
+
+  else
+    printw(FTPTOP_XFER_HEADER_FMT, "PID", "S", "USER", "ADDR", "KB/s", "%DONE");
+
   attroff(A_REVERSE);
 
   /* Write out the scoreboard entries. */
@@ -408,20 +461,35 @@ static void show_sessions(void) {
   wrefresh(stdscr);
 }
 
+static void toggle_mode(void) {
+  static unsigned int cached_mode = 0;
+
+  if (cached_mode == 0)
+    cached_mode = display_mode;
+
+  if (display_mode != FTPTOP_SHOW_RATES)
+    display_mode = FTPTOP_SHOW_RATES;
+  else
+    display_mode = cached_mode;
+}
+
 static void show_version(void) {
   fprintf(stdout, FTPTOP_VERSION "\n");
   exit(0);
 }
 
 static void usage(void) {
-  fprintf(stdout, "usage: ftptop [options]\n");
+  fprintf(stdout, "usage: ftptop [options]\n\n");
   fprintf(stdout, "\t-D      \t\tshow only downloading sessions\n");
   fprintf(stdout, "\t-d <num>\t\trefresh delay in seconds\n");
   fprintf(stdout, "\t-f      \t\tconfigures the ScoreboardFile to use\n");
   fprintf(stdout, "\t-h      \t\tdisplays this message\n");
   fprintf(stdout, "\t-i      \t\tignores idle connections when listing\n");
   fprintf(stdout, "\t-U      \t\tshow only uploading sessions\n");
-  fprintf(stdout, "\t-V      \t\tshows version\n\n");
+  fprintf(stdout, "\t-V      \t\tshows version\n");
+  fprintf(stdout, "\n");
+  fprintf(stdout, "  Use the 't' key to toggle between \"regular\" and \"transfer speed\"\n");
+  fprintf(stdout, "  display modes. Use the 'q' key to quit.\n\n");
   exit(0);
 }
 
@@ -471,8 +539,13 @@ int main(int argc, char *argv[]) {
     c = getch();
 #endif
 
-    if (c != -1 && tolower(c) == 'q')
-      finish(0);
+    if (c != -1) {
+      if (tolower(c) == 'q')
+        finish(0);
+
+      if (tolower(c) == 't')
+        toggle_mode();
+    }
 
     show_sessions();
   }
