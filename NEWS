@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.292 2002-12-02 18:29:22 castaglia Exp $
+$Id: NEWS,v 1.293 2002-12-03 15:57:24 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -33,6 +33,7 @@ CVS
   uninitialized stack data.
 - Bug 1861 - 'ftpwho -v -o oneline' print all connections in one line.  This
   bug appeared in 1.2.7rc3, a consequnce of Bug#1815.
+- Bug 1868 - Wrong cmdopts in ftpcount.c.
 
 1.2.7rc3 - Released 15-11-2002
 ---------------------------------

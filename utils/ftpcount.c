@@ -27,7 +27,7 @@
 /* Shows a count of "who" is online via proftpd.  Uses the /var/run/proftpd*
  * log files.
  *
- * $Id: ftpcount.c,v 1.4 2002-10-29 18:06:52 castaglia Exp $
+ * $Id: ftpcount.c,v 1.5 2002-12-03 15:57:27 castaglia Exp $
  */
 
 #include "utils.h"
@@ -166,7 +166,7 @@ int main(int argc, char **argv) {
   int c = 0, res = 0;
   struct scoreboard_class classes[MAX_CLASSES];  
   char *cp, *progname = *argv;
-  const char *cmdopts = "f:hv";
+  const char *cmdopts = "c:f:h";
    
   memset(classes, 0, MAX_CLASSES * sizeof(struct scoreboard_class));
    
