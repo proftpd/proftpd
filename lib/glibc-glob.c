@@ -21,6 +21,11 @@
  #pragma alloca
 #endif
 
+/* HPUX10 & HPUX11 need this */
+#if defined(HPUX10) || defined(HPUX11)
+ #include <alloca.h>
+#endif
+
 #include <config.h>
 
 #define MAX_RECURSION 8

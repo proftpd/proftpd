@@ -1,7 +1,8 @@
-$Id: NEWS,v 1.102 2001-05-17 03:22:22 flood Exp $
+$Id: NEWS,v 1.103 2001-05-21 20:48:52 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+- Bug 1155 - HPUX portability cleanup
 - Bug 1172 - Compiler clean for getopt code.
 - Bug 1170 - Compiler cleanup for pr_fnmatch code.
 - Bug 1169 - Better handling of DefaultRoot/DefaultChdir
