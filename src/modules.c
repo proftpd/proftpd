@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.47 2004-05-31 21:47:09 castaglia Exp $
+ * $Id: modules.c,v 1.48 2004-06-12 02:03:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -329,6 +329,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
             curr_sym->sym_module == sym_module) {
           xaset_remove(symbol_table[symtab_idx], (xasetmember_t *) curr_sym);
           destroy_pool(curr_sym->sym_pool);
+          tab = NULL;
         }
 
         tab = pr_stash_get_symbol(PR_SYM_CONF, sym_name, tab, &idx);
@@ -355,6 +356,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
             curr_sym->sym_module == sym_module) {
           xaset_remove(symbol_table[symtab_idx], (xasetmember_t *) curr_sym);
           destroy_pool(curr_sym->sym_pool);
+          tab = NULL;
         }
 
         tab = pr_stash_get_symbol(PR_SYM_CMD, sym_name, tab, &idx);
@@ -381,6 +383,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
             curr_sym->sym_module == sym_module) {
           xaset_remove(symbol_table[symtab_idx], (xasetmember_t *) curr_sym);
           destroy_pool(curr_sym->sym_pool);
+          tab = NULL;
         }
 
         tab = pr_stash_get_symbol(PR_SYM_AUTH, sym_name, tab, &idx);
@@ -402,6 +405,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
             curr_sym->sym_module == sym_module) {
           xaset_remove(symbol_table[symtab_idx], (xasetmember_t *) curr_sym);
           destroy_pool(curr_sym->sym_pool);
+          tab = NULL;
         }
 
         tab = pr_stash_get_symbol(PR_SYM_HOOK, sym_name, tab, &idx);
