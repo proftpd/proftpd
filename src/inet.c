@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.76 2003-09-09 00:32:52 castaglia Exp $
+ * $Id: inet.c,v 1.77 2003-09-09 01:07:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -304,8 +304,7 @@ conn_t *pr_inet_copy_connection(pool *p, conn_t *c) {
   res->instrm = res->outstrm = NULL;
 
   if (c->local_addr) {
-    res->local_addr = (pr_netaddr_t *) pcalloc(res->pool,
-      sizeof(pr_netaddr_t));
+    res->local_addr = pr_netaddr_alloc(res->pool);
 
     pr_netaddr_set_family(res->local_addr,
       pr_netaddr_get_family(c->local_addr));
@@ -314,8 +313,7 @@ conn_t *pr_inet_copy_connection(pool *p, conn_t *c) {
   }
 
   if (c->remote_addr) {
-    res->remote_addr = (pr_netaddr_t *) pcalloc(res->pool,
-      sizeof(pr_netaddr_t));
+    res->remote_addr = pr_netaddr_alloc(res->pool);
 
     pr_netaddr_set_family(res->remote_addr,
       pr_netaddr_get_family(c->remote_addr));
@@ -520,8 +518,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     salen = pr_netaddr_get_sockaddr_len(&na);
     if (getsockname(fd, pr_netaddr_get_sockaddr(&na), &salen) != -1) {
       if (!c->local_addr)
-        c->local_addr = (pr_netaddr_t *) pcalloc(c->pool,
-          sizeof(pr_netaddr_t));
+        c->local_addr = pr_netaddr_alloc(c->pool);
 
       pr_netaddr_set_family(c->local_addr, pr_netaddr_get_family(&na));
       pr_netaddr_set_sockaddr(c->local_addr, pr_netaddr_get_sockaddr(&na));
@@ -1125,8 +1122,7 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
 
   if (getsockname(fd, pr_netaddr_get_sockaddr(&na), &nalen) != -1) {
     if (!c->local_addr)
-      c->local_addr = (pr_netaddr_t *) pcalloc(c->pool,
-        sizeof(pr_netaddr_t));
+      c->local_addr = pr_netaddr_alloc(c->pool);
 
     /* getsockname(2) will read the local socket information into the struct
      * sockaddr * given.  Which means that the address family of the local
@@ -1150,8 +1146,7 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
   nalen = pr_netaddr_get_sockaddr_len(&na);
 
   if (getpeername(fd, pr_netaddr_get_sockaddr(&na), &nalen) != -1) {
-    c->remote_addr = (pr_netaddr_t *) pcalloc(c->pool,
-      sizeof(pr_netaddr_t));
+    c->remote_addr = pr_netaddr_alloc(c->pool);
 
     pr_netaddr_set_family(c->remote_addr,
       pr_netaddr_get_sockaddr(&na)->sa_family);
@@ -1202,8 +1197,8 @@ conn_t *pr_inet_associate(pool *p, conn_t *c, pr_netaddr_t *addr,
 
   if (addr) {
     if (!res->remote_addr)
-      res->remote_addr = (pr_netaddr_t *) pcalloc(res->pool,
-        sizeof(pr_netaddr_t));
+      res->remote_addr = pr_netaddr_alloc(res->pool);
+
     memcpy(res->remote_addr, addr, sizeof(pr_netaddr_t));
   }
 
@@ -1251,8 +1246,7 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
 
   if (addr) {
     if (!res->remote_addr)
-      res->remote_addr = (pr_netaddr_t *) pcalloc(res->pool,
-        sizeof(pr_netaddr_t));
+      res->remote_addr = pr_netaddr_alloc(res->pool);
 
     memcpy(res->remote_addr, addr, sizeof(pr_netaddr_t));
   }
