@@ -2569,14 +2569,26 @@ MODRET tls_any(cmd_rec *cmd) {
    */
 
   /* Some commands need not be hindered. */
-  if (!strcmp(cmd->argv[0], C_SYST) ||
-      !strcmp(cmd->argv[0], C_AUTH) ||
-      !strcmp(cmd->argv[0], C_QUIT))
+  if (strcmp(cmd->argv[0], C_SYST) == 0 ||
+      strcmp(cmd->argv[0], C_AUTH) == 0 ||
+      strcmp(cmd->argv[0], C_QUIT) == 0)
     return DECLINED(cmd);
 
   if (tls_required_on_ctrl && !(tls_flags & TLS_SESS_ON_CTRL)) {
     pr_response_add_err(R_550, "SSL/TLS required on the control channel");
     return ERROR(cmd);
+  }
+
+  if (tls_required_on_data && !(tls_flags & TLS_SESS_NEED_DATA_PROT)) {
+    if (strcmp(cmd->argv[0], C_APPE) == 0 ||
+        strcmp(cmd->argv[0], C_LIST) == 0 ||
+        strcmp(cmd->argv[0], C_NLST) == 0 ||
+        strcmp(cmd->argv[0], C_RETR) == 0 ||
+        strcmp(cmd->argv[0], C_STOR) == 0 ||
+        strcmp(cmd->argv[0], C_STOU) == 0) {
+      pr_response_add_err(R_550, "SSL/TLS required on the data channel");
+      return ERROR(cmd);
+    }
   }
 
 #ifdef TLS

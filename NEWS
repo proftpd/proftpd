@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.540 2004-02-27 19:27:05 castaglia Exp $
+$Id: NEWS,v 1.541 2004-03-03 00:24:11 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -109,6 +109,11 @@ CVS
   been added to the contrib area.  The mod_site_misc module implements
   SITE SYMLINK, and a few other SITE commands.  See contrib/mod_site_misc.html
   for details.
+- Bug 2355 - Send error message to client when 'TLSRequired on' is in effect.
+  Previously, if SSL/TLS was configured to be required for both control
+  and data channels, if the client did not perform the SSL/TLS handshake for
+  a data transfer, the connection would hang.  Now, an error message is sent
+  to the client if no handshake is done.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------
