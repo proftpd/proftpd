@@ -2,3 +2,7 @@ Makefile
 ftptop
 *.o
 *~
+ftpcount.1
+ftpshut.8
+ftptop.1
+ftpwho.1

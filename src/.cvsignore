@@ -1,3 +1,5 @@
 Makefile
 *.o
 *~
+proftpd.8
+xferlog.5
