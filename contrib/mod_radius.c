@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.15 2003-03-21 06:44:00 castaglia Exp $
+ * $Id: mod_radius.c,v 1.16 2003-06-23 19:58:39 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.8rc2"
@@ -1637,9 +1637,9 @@ static int radius_open_socket(void) {
     radius_sockaddr_in->sin_port = htons(local_port);
 
   } while ((bind(sockfd, &radius_local_sock, sizeof(radius_local_sock)) < 0) &&
-    (local_port < 65535));
+    (local_port < USHRT_MAX));
 
-  if (local_port >= 665535) {
+  if (local_port >= USHRT_MAX) {
     close(sockfd);
     radius_log("notice: unable to bind to socket: no open local ports");
     return -1;
