@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.11 2004-02-13 23:28:53 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.12 2004-02-19 18:13:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -275,6 +275,7 @@ MODRET end_ifctxt(cmd_rec *cmd) {
 MODRET ifsess_post_pass(cmd_rec *cmd) {
   register unsigned int i = 0;
   config_rec *c = NULL;
+  int found = 0;
   pool *tmp_pool = make_sub_pool(session.pool);
   array_header *group_remove_list = make_array(tmp_pool, 1,
     sizeof(config_rec *));
@@ -422,6 +423,14 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
   }
 
   destroy_pool(tmp_pool);
+
+  /* Try to honor any <Limit LOGIN> sections that may have been merged in. */
+  if (!login_check_limits(main_server->conf, FALSE, TRUE, &found)) {
+    pr_log_auth(PR_LOG_NOTICE, "%s %s: Limit access denies login.",
+      session.anon_config ? "ANON" : C_USER, session.user);
+    end_login(0);
+  }
+
   return DECLINED(cmd);
 }
 
