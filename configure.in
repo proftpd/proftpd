@@ -354,10 +354,11 @@ AC_ARG_ENABLE(sia,
       dnl Tru64's C2/SIA authentication requires these headers
       AC_CHECK_HEADERS(sia.h siad.h sys/security.h)
 
-      AC_CHECK_FUNCS(set_auth_parameters, ,
-        [AC_CHECK_LIB(security, set_auth_parameters)])
-      AC_CHECK_FUNCS(getprpwent, ,
-        [AC_CHECK_LIB(sec, getprpwent)])
+      AC_CHECK_LIB(security, set_auth_parameters)
+      AC_CHECK_FUNCS(set_auth_parameters)
+
+      AC_CHECK_LIB(sec, getprpwent)
+      AC_CHECK_FUNCS(getprpwent)
 
       AC_DEFINE(USE_SIA)
     fi
