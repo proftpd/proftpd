@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.23 2004-09-14 17:49:42 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.24 2004-09-26 21:12:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -906,7 +906,7 @@ MODRET authfile_auth(cmd_rec *cmd) {
 
   cleartxt_pass = pstrdup(cmd->tmp_pool, tmp);
 
-  if (auth_check(cmd->tmp_pool, cleartxt_pass, name, cmd->argv[1]))
+  if (pr_auth_check(cmd->tmp_pool, cleartxt_pass, name, cmd->argv[1]))
     return ERROR_INT(cmd, PR_AUTH_BADPWD);
 
   if (lstchg > 0 && max > 0 && inact > 0 && now > (lstchg + max + inact))

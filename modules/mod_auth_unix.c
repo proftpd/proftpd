@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.19 2004-09-14 17:49:42 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.20 2004-09-26 21:07:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -629,7 +629,7 @@ MODRET pw_auth(cmd_rec *cmd) {
   if (!cpw)
     return DECLINED(cmd);
 
-  if (auth_check(cmd->tmp_pool, cpw, cmd->argv[0], cmd->argv[1]))
+  if (pr_auth_check(cmd->tmp_pool, cpw, cmd->argv[0], cmd->argv[1]))
     return ERROR_INT(cmd, PR_AUTH_BADPWD);
 
   if (lstchg > (time_t) 0 &&
@@ -717,7 +717,7 @@ MODRET pw_check(cmd_rec *cmd) {
     tmp_cmd = pr_cmd_alloc(cmd->tmp_pool, 1, cmd->argv[1]);
 
     /* pw_getpwnam() returns a MODRET, so we need to handle that.  Yes, this
-     * might have been easier if we'd used auth_getpwnam(), but that would
+     * might have been easier if we'd used pr_auth_getpwnam(), but that would
      * dispatch through other auth modules, which is _not_ what we want.
      */
     mr = pw_getpwnam(tmp_cmd);
@@ -940,8 +940,8 @@ MODRET set_persistentpasswd(cmd_rec *cmd) {
  */
 
 static void auth_unix_exit_ev(const void *event_data, void *user_data) {
-  auth_endpwent(session.pool);
-  auth_endgrent(session.pool);
+  pr_auth_endpwent(session.pool);
+  pr_auth_endgrent(session.pool);
 
   return;
 }
