@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.89 2004-10-30 20:45:52 castaglia Exp $
+ * $Id: inet.c,v 1.90 2004-10-31 01:57:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -664,7 +664,7 @@ int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf) {
     if (sndbuf && sndbuf > csndbuf)
       if (setsockopt(c->wfd, SOL_SOCKET, SO_SNDBUF, (void *) &sndbuf,
           sizeof(sndbuf)) < 0)
-        pr_log_pri(PR_LOG_NOTICE, "error setting SO_SNBUF: %s",
+        pr_log_pri(PR_LOG_NOTICE, "error setting SO_SNDBUF: %s",
           strerror(errno));
 
     c->sndbuf = (sndbuf ? sndbuf : csndbuf);
