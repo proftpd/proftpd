@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.91 2004-11-02 18:18:59 castaglia Exp $
+ * $Id: inet.c,v 1.92 2005-02-07 18:15:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -69,8 +69,8 @@ int pr_inet_set_default_family(pool *p, int family) {
   return old_family;
 }
 
-/* Find a service and return it's port number. */
-int pr_inet_getservport(pool *p, char *serv, char *proto) {
+/* Find a service and return its port number. */
+int pr_inet_getservport(pool *p, const char *serv, const char *proto) {
   struct servent *servent = getservbyname(serv, proto);
 
   /* getservbyname returns the port in network byte order. */
