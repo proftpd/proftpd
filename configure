@@ -700,7 +700,7 @@ test "$host_alias" != "$target_alias" &&
 
 
 olddir=`pwd`
-cd ../contrib
+cd contrib
 test -f README.linux-privs || ln -s ../README.linux-privs README.linux-privs
 cd $olddir
 

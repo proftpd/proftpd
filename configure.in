@@ -10,7 +10,7 @@ AC_CANONICAL_SYSTEM
 
 dnl Create symlinks in modules/ and contrib/
 olddir=`pwd`
-cd ../contrib
+cd contrib
 test -f README.linux-privs || ln -s ../README.linux-privs README.linux-privs
 cd $olddir
 
