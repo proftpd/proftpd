@@ -8,7 +8,6 @@ In particular, here are some things that may be affected:
   MasqueradeAddress (IPv6)
   UseReverseDNS
   SocketBindTight
-  active/passive transfers (PORT, PASV, EPRT, EPSV)
 
 Please report any IPv6-related problems with the above to the bug tracking
 system as soon as possible, so that we may fix it:
@@ -60,10 +59,6 @@ by the DNS lookup.
 
 Known issues:
 
-  + network ACLs cannot be applied to IPv6 addresses
-
-  + Classes are not yet IPv6 aware
-
   + system/platform dependencies (Linux version, BSD/KAME, etc)
 
     o example: on Darwin (MacOSX), one must two define two different
@@ -76,9 +71,7 @@ Known issues:
     o Apache2 mentions the same problem here:
        http://httpd.apache.org/docs-2.0/bind.html#ipv6
 
-TODO:
-
-  + add support for IPv6 network ACLs
-
-  + refine Class definitions to handle IPv6 clients:
-      http://bugs.proftpd.org/show_bug.cgi?id=1925
+    o Broken HP-UX 11i getaddrinfo() implementation.  To fix this, a
+      patch from HP-UX is needed.  The release notes for IPv6 on HP-UX 11i
+      can be found here:
+        http://docs.hp.com/hpux/onlinedocs/T1306-90004/T1306-90004.html
