@@ -1,3 +1,15 @@
+2001-02-19 22:26  flood
+
+	* modules/mod_xfer.c: Bug #1012 - Fixed "Unable to throttle
+	bandwidth: Interrupted system call" issue.
+
+2001-02-19 16:07  flood
+
+	* README.mod_sql-3.0, contrib/README.mod_sql-3.0,
+	contrib/mod_sql.c, contrib/mod_sql_mysql.c,
+	contrib/mod_sql_postgres.c: Added AAH's newly-maintained mod_sql
+	3.0 back in to CVS.
+
 2001-02-18 11:18  flood
 
 	* contrib/dist/rpm/proftpd.spec.in: Bug #1005 - New RPM .spec.in
