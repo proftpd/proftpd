@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.140 2002-12-07 22:04:20 jwm Exp $
+ * $Id: main.c,v 1.141 2002-12-10 15:16:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -511,6 +511,9 @@ static void end_login_noexit(void) {
 
   if (session.c)
     inet_close(session.pool, session.c);
+
+  if (!is_master)
+    log_pri(PR_LOG_INFO, "FTP session closed.");
 }
 
 /* Finish any cleaning up, mark utmp as closed and exit
@@ -894,7 +897,6 @@ static void cmd_loop(server_rec *server, conn_t *c) {
 	continue;
 
       /* Otherwise, EOF */
-      log_pri(PR_LOG_INFO, "FTP session closed.");
       end_login(0);
     }
 
@@ -1836,6 +1838,7 @@ static RETSIGTYPE sig_terminate(int signo) {
      * that a segfault happened...
      */
     log_pri(PR_LOG_NOTICE, "ProFTPD terminating (signal 11)");
+    log_pri(PR_LOG_INFO, "FTP session closed.");
 
     /* Restore the default signal handler. */
     signal(SIGSEGV, SIG_DFL);

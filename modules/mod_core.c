@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.134 2002-12-07 22:03:39 jwm Exp $
+ * $Id: mod_core.c,v 1.135 2002-12-10 15:16:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2577,7 +2577,6 @@ MODRET core_quit(cmd_rec *cmd) {
   } else
     send_response(R_221, "Goodbye.");
 
-  log_pri(PR_LOG_INFO, "FTP session closed.");
   end_login(0);
 
   /* Even though end_login() does not return, this is necessary to avoid
