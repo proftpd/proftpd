@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.182 2004-04-12 17:41:20 castaglia Exp $
+ * $Id: mod_auth.c,v 1.183 2004-04-24 01:17:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -809,9 +809,6 @@ static int _setup_environment(pool *p, char *user, char *pass) {
       pr_memscrub(pass, strlen(pass));
       pr_log_auth(PR_LOG_CRIT, "SECURITY VIOLATION: root login attempted.");
       return 0;
-
-    } else {
-      pr_log_auth(PR_LOG_WARNING, "ROOT FTP login successful.");
     }
   }
 
@@ -981,6 +978,9 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     /* Catch the case where we forgot to handle a bad auth code above. */
     if (auth_code < 0)
       goto auth_failure;
+
+    if (pw->pw_uid == PR_ROOT_UID)
+      pr_log_auth(PR_LOG_WARNING, "ROOT FTP login successful.");
 
   } else if (c && (!anon_require_passwd || *anon_require_passwd == FALSE)) {
     session.hide_password = FALSE;
