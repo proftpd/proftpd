@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.8 2004-09-05 00:15:30 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.9 2004-09-07 19:41:40 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -981,6 +981,11 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
   if (pr_fsio_lstat(cmd->arg, &sbuf) >= 0)
     append_bytes = sbuf.st_size - quotatab_disk_bytes;
 
+  else {
+    if (errno == ENOENT)
+      append_bytes = 0;
+  }
+
   /* Write out an updated quota entry. */
   QUOTATAB_TALLY_WRITE(append_bytes, 0, session.xfer.total_bytes, 0, 0, 0)
 
@@ -1020,6 +1025,11 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
   pr_fs_clear_cache();
   if (pr_fsio_lstat(cmd->arg, &sbuf) >= 0)
     append_bytes = sbuf.st_size - quotatab_disk_bytes;
+
+  else {
+    if (errno == ENOENT)
+      append_bytes = 0;
+  }
 
   /* Write out an updated quota entry */
   QUOTATAB_TALLY_WRITE(append_bytes, 0, session.xfer.total_bytes, 0, 0, 0)
@@ -1593,6 +1603,11 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
   if (pr_fsio_lstat(cmd->arg, &sbuf) >= 0) 
     store_bytes = sbuf.st_size - quotatab_disk_bytes;
 
+  else {
+    if (errno == ENOENT)
+      store_bytes = 0;
+  }
+
   /* NOTE: if use_dirs is TRUE, also take into consideration the increased
    * disk usage caused by any increase in the size of the containing directory.
    */
@@ -1698,6 +1713,11 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
   pr_fs_clear_cache();
   if (pr_fsio_lstat(cmd->arg, &sbuf) >= 0) 
     store_bytes = sbuf.st_size - quotatab_disk_bytes;
+
+  else {
+    if (errno == ENOENT)
+      store_bytes = 0;
+  }
 
   /* Write out an updated quota entry */
   QUOTATAB_TALLY_WRITE(store_bytes, 0, session.xfer.total_bytes, 0, 0, 0)
