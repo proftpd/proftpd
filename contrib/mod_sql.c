@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#define MOD_SQL_VERSION "mod_sql/3.1"
+#define MOD_SQL_VERSION "mod_sql/3.1.1"
 
 /* This is mod_sql, contrib software for proftpd 1.2.0rc3 and above.
    Originally written and maintained as 'mod_sqlpw' by Johnie 
@@ -86,11 +86,13 @@ typedef struct sqldata_struc sqldata_t;
 #define SQL_DEFAULT_GROUPMEMBERSFIELD "members"
 
 /* default minimum id / default uid / default gid info. 
- * uids and gids less than SQL_MIN_ID get automatically
+ * uids and gids less than SQL_MIN_USER_UID and
+ * SQL_MIN_USER_GID, respectively, get automatically
  * mapped to the defaults, below.  These can be
  * overridden using directives
  */
-#define SQL_MIN_ID 999
+#define SQL_MIN_USER_UID 999
+#define SQL_MIN_USER_GID 999
 #define SQL_DEFAULT_UID 65533
 #define SQL_DEFAULT_GID 65533
 
@@ -164,6 +166,8 @@ static struct
   int buildhomedir;             /* create homedir if it doesn't exist? */
 
   uid_t minid;                  /* users UID must be this or greater */
+  uid_t minuseruid;             /* users UID must be this or greater */
+  gid_t minusergid;             /* users UID must be this or greater */
   uid_t defaultuid;             /* default UID if none in database */
   gid_t defaultgid;             /* default GID if none in database */
 
@@ -1020,7 +1024,7 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
     pwd->pw_uid = atoi(temp_ptr ? temp_ptr : "0");
   }
 
-  if (pwd->pw_uid < cmap.minid)
+  if (pwd->pw_uid < cmap.minuseruid)
     pwd->pw_uid = cmap.defaultuid;
 
   if (cmap.gidfield) {
@@ -1028,16 +1032,14 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
     pwd->pw_gid = atoi(temp_ptr ? temp_ptr : "0");
   }
 
-  if (pwd->pw_gid < cmap.minid)
+  if (pwd->pw_gid < cmap.minusergid)
     pwd->pw_gid = cmap.defaultgid;
 
   temp_ptr = _uservar(cmd, username, cmap.shellfield);
-  pwd->pw_shell = temp_ptr ? temp_ptr : "";
+  pwd->pw_shell = temp_ptr ? pstrdup(session.pool, temp_ptr) : "";
 
   log_debug(DEBUG_INFO, "%s: user \"%s\" (%i/%i) for %s", MOD_SQL_VERSION,
             username, pwd->pw_uid, pwd->pw_gid, pwd->pw_dir);
-
-  cmap.authuser = pstrdup(session.pool, username);
 
   /*
    * finally, build the user's homedir if necessary 
@@ -1425,9 +1427,10 @@ MODRET auth_cmd_setpwent(cmd_rec * cmd)
     return (cmap.authoritative ? mod_create_data( cmd, (void *) 1 ) : DECLINED(cmd));
   }
 
-  /* retrieve our list of passwds */
+  /* retrieve our list of passwds -- this 'where 1' crap is an ugly hack, but it 
+   * makes life easier for us in all the other user table calls. */
   query = pstrcat(cmd->tmp_pool, "select ", cmap.usrfield, " from ",
-                  cmap.usrtable, NULL );
+                  cmap.usrtable, " where 1 ", cmap.where, NULL );
   
   mr = modsql_select(cmd, query);
 
@@ -1834,6 +1837,7 @@ MODRET auth_cmd_check(cmd_rec * cmd)
   log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_check", MOD_SQL_VERSION);
 
   if (success) {
+    cmap.authuser = pstrdup(session.pool, cmd->argv[1]);
     cmap.sqlauthorized = 1;
     return HANDLED(cmd);
   }
@@ -2432,6 +2436,70 @@ MODRET set_sqlminid(cmd_rec * cmd)
   return HANDLED(cmd);
 }
 
+MODRET set_sqlminuseruid(cmd_rec * cmd)
+{
+  config_rec *c;
+  unsigned long val;
+  char *endptr = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT | CONF_GLOBAL | CONF_VIRTUAL);
+
+  val = strtoul(cmd->argv[1], &endptr, 10);
+
+  if (*endptr != '\0') {
+    CONF_ERROR(cmd, "requires a numeric argument");
+  }
+
+  /*
+   * whee! need to check if in the legal range for uid_t
+   */
+  /*
+   * however, I can't think of a cross-platform way of doing this.. if
+   * anyone knows of a way to find the MAX uid_t, let me know.. 
+   */
+  if ((val == ULONG_MAX) && (errno == ERANGE)) {
+    CONF_ERROR(cmd, "the value given is outside the legal range");
+  }
+
+  c = add_config_param("SQLMinUserUID", 1, (void *) (uid_t) val);
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
+MODRET set_sqlminusergid(cmd_rec * cmd)
+{
+  config_rec *c;
+  unsigned long val;
+  char *endptr = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT | CONF_GLOBAL | CONF_VIRTUAL);
+
+  val = strtoul(cmd->argv[1], &endptr, 10);
+
+  if (*endptr != '\0') {
+    CONF_ERROR(cmd, "requires a numeric argument");
+  }
+
+  /*
+   * whee! need to check if in the legal range for gid_t 
+   */
+  /*
+   * however, I can't think of a cross-platform way of doing this.. if
+   * anyone knows of a way to find the MAX gid_t, let me know.. 
+   */
+  if ((val == ULONG_MAX) && (errno == ERANGE)) {
+    CONF_ERROR(cmd, "the value given is outside the legal range");
+  }
+
+  c = add_config_param("SQLMinUserGID", 1, (void *) (gid_t) val);
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
 MODRET set_sqldefaultuid(cmd_rec * cmd)
 {
   config_rec *c;
@@ -2883,7 +2951,16 @@ static int sql_getconf()
       get_param_ptr(main_server->conf, "SQLHomedirField", FALSE);
 
   temp_ptr = get_param_ptr(main_server->conf, "SQLMinID", FALSE);
-  cmap.minid = temp_ptr ? ((uid_t) temp_ptr) : SQL_MIN_ID;
+  if ( temp_ptr ) {
+    cmap.minuseruid = (uid_t) temp_ptr;
+    cmap.minusergid = (gid_t) temp_ptr;
+  } else {
+    temp_ptr = get_param_ptr(main_server->conf, "SQLMinUserUID", FALSE);
+    cmap.minuseruid = temp_ptr ? ((uid_t) temp_ptr) : SQL_MIN_USER_UID;
+
+    temp_ptr = get_param_ptr(main_server->conf, "SQLMinUserGID", FALSE);
+    cmap.minusergid = temp_ptr ? ((uid_t) temp_ptr) : SQL_MIN_USER_GID;
+  }
 
   temp_ptr = get_param_ptr(main_server->conf, "SQLDefaultUID", FALSE);
   cmap.defaultuid = temp_ptr ? ((uid_t) temp_ptr) : SQL_DEFAULT_UID;
@@ -2952,6 +3029,8 @@ static int sql_getconf()
               MOD_SQL_VERSION);
     log_debug(DEBUG_INFO, "%s: SQLDoAuth         : %s", MOD_SQL_VERSION,
               (cmap.doauth ? "true" : "false"));
+    log_debug(DEBUG_INFO, "%s: authoritative     : %s", MOD_SQL_VERSION,
+              (cmap.authoritative ? "true" : "false"));
     log_debug(DEBUG_INFO, "%s: usertable         : %s", MOD_SQL_VERSION,
               cmap.usrtable);
     log_debug(DEBUG_INFO, "%s: userid field      : %s", MOD_SQL_VERSION,
@@ -2982,8 +3061,10 @@ static int sql_getconf()
     log_debug(DEBUG_INFO, "%s: grp members field : %s", MOD_SQL_VERSION,
               cmap.grpmembersfield);
 
-    log_debug(DEBUG_INFO, "%s: SQLMinID          : %u", MOD_SQL_VERSION,
-              cmap.minid);
+    log_debug(DEBUG_INFO, "%s: SQLMinUserUID     : %u", MOD_SQL_VERSION,
+              cmap.minuseruid);
+    log_debug(DEBUG_INFO, "%s: SQLMinUserGID     : %u", MOD_SQL_VERSION,
+              cmap.minusergid);
     log_debug(DEBUG_INFO, "%s: SQLDefaultUID     : %u", MOD_SQL_VERSION,
               cmap.defaultuid);
     log_debug(DEBUG_INFO, "%s: SQLDefaultGID     : %u", MOD_SQL_VERSION,
@@ -3050,6 +3131,8 @@ static conftable sql_conftab[] = {
   {"SQLWhereClause", set_sqlwhereclause, NULL},
 
   {"SQLMinID", set_sqlminid, NULL},
+  {"SQLMinUserUID", set_sqlminuseruid, NULL},
+  {"SQLMinUserGID", set_sqlminusergid, NULL},
   {"SQLDefaultUID", set_sqldefaultuid, NULL},
   {"SQLDefaultGID", set_sqldefaultgid, NULL},
 
