@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.144 2002-12-20 20:20:55 castaglia Exp $
+ * $Id: mod_core.c,v 1.145 2003-01-01 00:35:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1364,21 +1364,22 @@ MODRET set_timesgmt(cmd_rec *cmd) {
 
 MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  regex_t *preg;
-  config_rec *c;
-  int ret;
+  regex_t *preg = NULL;
+  config_rec *c = NULL;
+  int res = 0;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR|
+    CONF_DYNDIR);
 
   log_debug(DEBUG4, "Compiling %s regex '%s'.", type, cmd->argv[1]);
   preg = pr_regexp_alloc();
   log_debug(DEBUG4, "Allocated %s regex at location %p.", type, preg);
 
-  if ((ret = regcomp(preg, cmd->argv[1], REG_EXTENDED | REG_NOSUB)) != 0) {
+  if ((res = regcomp(preg, cmd->argv[1], REG_EXTENDED|REG_NOSUB)) != 0) {
     char errstr[200] = {'\0'};
 
-    regerror(ret, preg, errstr, sizeof(errstr));
+    regerror(res, preg, errstr, sizeof(errstr));
     pr_regexp_free(preg);
 
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' failed regex "
@@ -2538,21 +2539,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
 MODRET regex_filters(cmd_rec *cmd) {
-  /* This is only called after our virtualhost has been resolved and
-   * we are receiving commands, so it's ok to cache the regex for performance.
-   */
-  static regex_t *a_reg = NULL;
-  static int a_reg_cached = FALSE;
-  static regex_t *d_reg = NULL;
-  static int d_reg_cached = FALSE;
-
-  /* if authenticated, do lookups again.  This allows {Allow,Deny}Filter to
-   * operate on the USER command (although I don't know why you'd want that)
-   */
-  if (find_config(cmd->server->conf, CONF_PARAM, "authenticated", FALSE)) {
-    a_reg_cached = FALSE;
-    d_reg_cached = FALSE;
-  }
+  regex_t *allow_regex = NULL, *deny_regex = NULL;
 
   /* Don't apply the filter checks to passwords (arguments to the PASS
    * command).
@@ -2561,13 +2548,10 @@ MODRET regex_filters(cmd_rec *cmd) {
     return DECLINED(cmd);
 
   /* Check for an AllowFilter */
-  if (!a_reg_cached) {
-    a_reg = (regex_t*) get_param_ptr(TOPLEVEL_CONF, "AllowFilter", FALSE);
-    a_reg_cached = TRUE;
-  }
+  allow_regex = get_param_ptr(CURRENT_CONF, "AllowFilter", FALSE);
 
-  if (a_reg && cmd->arg &&
-      regexec(a_reg, cmd->arg, 0, NULL, 0) != 0) {
+  if (allow_regex && cmd->arg &&
+      regexec(allow_regex, cmd->arg, 0, NULL, 0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by AllowFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, "%s: Forbidden command argument", cmd->arg);
@@ -2575,13 +2559,10 @@ MODRET regex_filters(cmd_rec *cmd) {
   }
 
   /* Check for a DenyFilter */
-  if (!d_reg_cached) {
-    d_reg = (regex_t*) get_param_ptr(TOPLEVEL_CONF, "DenyFilter", FALSE);
-    d_reg_cached = TRUE;
-  }
+  deny_regex = get_param_ptr(CURRENT_CONF, "DenyFilter", FALSE);
 
-  if (d_reg && cmd->arg &&
-      regexec(d_reg, cmd->arg, 0, NULL, 0) == 0) {
+  if (deny_regex && cmd->arg &&
+      regexec(deny_regex, cmd->arg, 0, NULL, 0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by DenyFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, "%s: Forbidden command argument", cmd->arg);
