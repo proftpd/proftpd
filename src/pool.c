@@ -327,16 +327,16 @@ struct pool *make_named_sub_pool(struct pool *p, const char *symbol)
   block_alarms();
 
   blok = new_block(0);
-  new_pool = (pool*)blok->h.first_avail;
-
+  new_pool = (pool *) blok->h.first_avail;
+  
   blok->h.first_avail += POOL_HDR_BYTES;
-  memset((char *)new_pool,'\0',sizeof(struct pool));
+  memset((char *) new_pool, '\0', sizeof(struct pool));
 
   if(symbol) {
     /* This could be questionable... - MacGyver
      */
-    sstrncpy(&new_pool->symbol,symbol,strlen(&new_pool->symbol));
-
+    sstrncpy(&new_pool->symbol, symbol, strlen(&new_pool->symbol));
+    
     /* Alignment issues on Sparc, SGI, and probably other hardware,
      * demand this.
      */
@@ -346,7 +346,7 @@ struct pool *make_named_sub_pool(struct pool *p, const char *symbol)
   
   new_pool->free_first_avail = blok->h.first_avail;
   new_pool->first = new_pool->last = blok;
-
+  
   if(p) {
     new_pool->parent = p;
     new_pool->sub_next = p->sub_pools;

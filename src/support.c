@@ -19,7 +19,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.7 1999-09-17 07:31:45 macgyver Exp $
+ * $Id: support.c,v 1.8 1999-09-18 18:25:14 macgyver Exp $
  */
 
 /* History Log:
@@ -244,8 +244,9 @@ char *dir_best_path(pool *p, const char *path)
   if(*path == '~') {
     if(fs_interpolate(path,workpath,MAXPATHLEN) == -1)
       fs_dircat(workpath,sizeof(workpath),fs_getcwd(),path);
-  } else
+  } else {
     fs_dircat(workpath,sizeof(workpath),fs_getcwd(),path);
+  }
 
   fs_clean_path(pstrdup(p,workpath),workpath,MAXPATHLEN);
 
@@ -282,12 +283,13 @@ char *dir_canonical_path(pool *p, const char *path)
 
   if(*path == '~') {
     if(fs_interpolate(path,work,MAXPATHLEN) == -1)
-      fs_dircat(work,sizeof(work),fs_getcwd(),path);
-  } else
-    fs_dircat(work,sizeof(work),fs_getcwd(),path);
-
-  fs_clean_path(work,buf,MAXPATHLEN);
-  return pstrdup(p,buf);
+      fs_dircat(work, sizeof(work), fs_getcwd(), path);
+  } else {
+    fs_dircat(work, sizeof(work), fs_getcwd(), path);
+  }
+  
+  fs_clean_path(work, buf, MAXPATHLEN);
+  return pstrdup(p, buf);
 }
 
 /* dir_realpath() is needed to properly dereference symlinks (getcwd() may
