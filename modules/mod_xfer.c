@@ -19,7 +19,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.11 1999-09-14 18:36:24 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.12 1999-09-17 04:13:32 macgyver Exp $
  */
 
 /* History Log:
@@ -191,7 +191,7 @@ MODRET pre_cmd_stor(cmd_rec *cmd) {
      * Length is +5 due to .in. prepended and "." at end.
      */
 
-    char *origname, *c;
+    char *c;
     int dotcount, foundslash, basenamestart, maxlen;
 
     dotcount = foundslash = basenamestart = 0;
@@ -227,6 +227,13 @@ MODRET pre_cmd_stor(cmd_rec *cmd) {
     }
 
     maxlen = strlen(dir) + 1 + 5;
+
+    if (maxlen > MAXPATHLEN) {
+      /* This probably shouldn't happen */
+      add_response_err(R_451,"%s: File name too long.", dir);
+      return ERROR(cmd);
+    }
+    
     p_hidden = mod_privdata_alloc(cmd, "stor_hidden_filename", maxlen);
 
     if (! foundslash) {
@@ -275,7 +282,7 @@ MODRET pre_cmd_appe(cmd_rec *cmd)
 
 MODRET cmd_stor(cmd_rec *cmd)
 {
-  char *dir, *dir_hidden;
+  char *dir;
   char *lbuf;
   int bufsize,len;
   unsigned long respos = 0;
@@ -284,7 +291,8 @@ MODRET cmd_stor(cmd_rec *cmd)
   regex_t *preg;
   int ret;
 #endif
-
+  
+  p_hidden = NULL;
   p = mod_privdata_find(cmd,"stor_filename",NULL);
 
   if(!p) {
