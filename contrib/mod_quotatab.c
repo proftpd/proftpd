@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.2 2003-12-09 20:08:19 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.3 2003-12-19 21:29:41 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -1425,8 +1425,7 @@ MODRET quotatab_post_rmd(cmd_rec *cmd) {
     return DECLINED(cmd);
 
   /* Write out an updated quota entry. */
-  QUOTATAB_TALLY_WRITE(-quotatab_disk_bytes, 0, -quotatab_disk_bytes,
-    -1, 0, -1)
+  QUOTATAB_TALLY_WRITE(-quotatab_disk_bytes, 0, 0, -1, 0, -1)
 
   /* Clear the cached bytes. */
   quotatab_disk_bytes = 0;
