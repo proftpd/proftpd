@@ -1,7 +1,14 @@
-$Id: NEWS,v 1.59 2000-07-28 13:50:15 macgyver Exp $
+$Id: NEWS,v 1.60 2000-08-01 18:32:58 macgyver Exp $
+
+1.2.0 - Released: 08/??/2000
+----------------------------
+- Passive FTP works properly now (was broken in RC2).
+- Compilation problems fixed on some obscure platforms.
+- PAM authentication finally works again on Solaris (due to an annoying bug in
+  Solaris).
 
 1.2.0RC2 - Released: 07/28/2000
----------------------
+-------------------------------
 - Made sure ServerUseReverseDNS was honored.
 - Compile problems on various problems.
 - Added descriptions for more errors to be more RFC compliant.
