@@ -192,7 +192,12 @@ AC_ARG_ENABLE(buffer-size,
                           (default=1024)
   ],
   [
-    AC_DEFINE_UNQUOTED(PR_TUNABLE_BUFFER_SIZE, $enableval,)
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      AC_MSG_WARN(buffer size defaulting to 1024 bytes)
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_BUFFER_SIZE, 1024,)
+    else
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_BUFFER_SIZE, $enableval,)
+    fi
   ])
 
 AC_ARG_ENABLE(pool-size,
@@ -201,7 +206,12 @@ AC_ARG_ENABLE(pool-size,
                           (default=512)
   ],
   [
-    AC_DEFINE_UNQUOTED(PR_TUNABLE_NEW_POOL_SIZE, $enableval,)
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      AC_MSG_WARN(pool size defaulting to 512 bytes)
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_NEW_POOL_SIZE, 512,)
+    else
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_NEW_POOL_SIZE, $enableval,)
+    fi
   ])
 
 AC_ARG_ENABLE(scoreboard-buffer-size,
@@ -210,7 +220,12 @@ AC_ARG_ENABLE(scoreboard-buffer-size,
                           scoreboard buffers (default=80)
   ],
   [
-    AC_DEFINE_UNQUOTED(PR_TUNABLE_SCOREBOARD_BUFFER_SIZE, $enableval,)
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      AC_MSG_WARN(scoreboard buffer size defaulting to 80 bytes)
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_SCOREBOARD_BUFFER_SIZE, 80,)
+    else
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_SCOREBOARD_BUFFER_SIZE, $enableval,)
+    fi
   ])
 
 
@@ -220,7 +235,12 @@ AC_ARG_ENABLE(timeout-ident,
                           RFC931 connections (default=10)
   ],
   [
-    AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTIDENT, $enableval,)
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      AC_MSG_WARN(ident timeout defaulting to 10 secs)
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTIDENT, 10,)
+    else
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTIDENT, $enableval,)
+    fi
   ])
 
 AC_ARG_ENABLE(timeout-idle,
@@ -229,7 +249,12 @@ AC_ARG_ENABLE(timeout-idle,
                           connections (default=600)
   ],
   [
-    AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTIDLE, $enableval,)
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      AC_MSG_WARN(idle timeout defaulting to 600 secs)
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTIDLE, 600,)
+    else
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTIDLE, $enableval,)
+    fi
   ])
 
 AC_ARG_ENABLE(timeout-linger,
@@ -238,7 +263,12 @@ AC_ARG_ENABLE(timeout-linger,
                           lingering closes (default=180)
   ],
   [
-    AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTLINGER, $enableval,)
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      AC_MSG_WARN(linger timeout defaulting to 180 secs)
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTLINGER, 180,)
+    else
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTLINGER, $enableval,)
+    fi
   ])
 
 AC_ARG_ENABLE(timeout-login,
@@ -247,7 +277,12 @@ AC_ARG_ENABLE(timeout-login,
                           logging in after connecting (default=300)
   ],
   [
-    AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTLOGIN, $enableval,)
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      AC_MSG_WARN(login timeout defaulting to 300 secs)
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTLOGIN, 300,)
+    else
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTLOGIN, $enableval,)
+    fi
   ])
 
 AC_ARG_ENABLE(timeout-no-transfer,
@@ -256,7 +291,12 @@ AC_ARG_ENABLE(timeout-no-transfer,
                           data transferred (default=300)
   ],
   [
-    AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTNOXFER, $enableval,)
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      AC_MSG_WARN(no data transfer timeout defaulting to 300 secs)
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTNOXFER, 300,)
+    else
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTNOXFER, $enableval,)
+    fi
   ])
 
 AC_ARG_ENABLE(timeout-stalled,
@@ -265,7 +305,12 @@ AC_ARG_ENABLE(timeout-stalled,
                           transfers (default=3600)
   ],
   [
-    AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTSTALLED, $enableval,)
+    if test "$enableval" = "yes" || test "$enableval" = "no" ; then
+      AC_MSG_WARN(stalled timeout defaulting to 3600 secs)
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTSTALLED, 3600,)
+    else
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_TIMEOUTSTALLED, $enableval,)
+    fi
   ])
 
 dnl Checks for libraries.  Yes, this is the hard way, but it's necessary.
