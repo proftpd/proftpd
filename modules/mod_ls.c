@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.20 2000-01-23 18:38:11 macgyver Exp $
+ * $Id: mod_ls.c,v 1.21 2000-01-23 22:49:06 macgyver Exp $
  */
 
 #include "conf.h"
@@ -34,14 +34,14 @@
 static void addfile(cmd_rec*,const char *, const char *, time_t);
 static int outputfiles(cmd_rec*);
 
-static int listfile(cmd_rec*,pool*,const char *name);
-static int listdir(cmd_rec*,pool*,const char *name,int list_dotdirs);
+static int listfile(cmd_rec*, pool*, const char *name);
+static int listdir(cmd_rec*, pool*, const char *name, int list_dotdirs);
 
 static int matches = 0;
 static char *default_options;
-static int showdotfiles,showsymlinks,showsymlinks_hold;
+static int showdotfiles, showsymlinks, showsymlinks_hold, timesgmt = 0;
 static int cmp(const void *a, const void *b);
-static char *fakeuser,*fakegroup;
+static char *fakeuser, *fakegroup;
 static umode_t fakemode;
 static int fakemodep;
 static int ls_errno = 0;
@@ -60,10 +60,12 @@ int opt_a = 0,
 
 static char cwd[MAXPATHLEN+1] = "";
 
-static void push_cwd(char *_cwd, int *symhold)
-{
-  if(!_cwd) _cwd = cwd;
-  if(!symhold) symhold = &showsymlinks_hold;
+static void push_cwd(char *_cwd, int *symhold) {
+  if(!_cwd)
+    _cwd = cwd;
+
+  if(!symhold)
+    symhold = &showsymlinks_hold;
 
   sstrncpy(_cwd, fs_getcwd(), MAXPATHLEN);
   *symhold = showsymlinks;
@@ -71,8 +73,11 @@ static void push_cwd(char *_cwd, int *symhold)
 
 static void pop_cwd(char *_cwd, int *symhold)
 {
-  if(!_cwd) _cwd = cwd;
-  if(!symhold) symhold = &showsymlinks_hold;
+  if(!_cwd)
+    _cwd = cwd;
+
+  if(!symhold)
+    symhold = &showsymlinks_hold;
 
   fs_chdir(_cwd,*symhold);
   showsymlinks = *symhold;
@@ -85,6 +90,7 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden)
   long _fakemode;
 
   fullpath = dir_realpath(p,path);
+
   if(!fullpath) {
     fullpath = dir_canonical_path(p,path);
     canon = 1;
@@ -235,12 +241,16 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
     }
 
     mtime = st.st_mtime;
-    t = localtime((time_t*)&mtime);
+    if(timesgmt)
+      t = gmtime((time_t*) &mtime);
+    else 
+      t = localtime((time_t*) &mtime);
+    
     if(!t) {
       add_response_err(R_421,"Fatal error (localtime() returned NULL?!?)");
       return -1;
     }
-
+    
     if(opt_F) {
       if(S_ISLNK(st.st_mode))
         suffix[0] = '@';
@@ -250,7 +260,7 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
       } else if(st.st_mode & 0111)
         suffix[0] = '*';
     }
-
+    
     if(opt_l) {
       sstrncpy(m, " ---------", sizeof(m));
       switch(st.st_mode & S_IFMT) {
@@ -1124,7 +1134,8 @@ MODRET genericlist(cmd_rec *cmd)
   fakegroup = get_param_ptr(TOPLEVEL_CONF,"DirFakeGroup",FALSE);
   _fakemode = (long)get_param_int(TOPLEVEL_CONF,"DirFakeMode",FALSE);
   showdotfiles = get_param_int(TOPLEVEL_CONF,"ShowDotFiles",FALSE);
-
+  timesgmt = get_param_int(TOPLEVEL_CONF, "TimesGMT", FALSE);
+  
   if(_fakemode != -1) {
     fakemode = (umode_t)_fakemode;
     fakemodep = 1;
@@ -1172,6 +1183,7 @@ MODRET cmd_stat(cmd_rec *cmd)
   fakegroup = get_param_ptr(TOPLEVEL_CONF,"DirFakeGroup",FALSE);
   _fakemode = (long)get_param_int(TOPLEVEL_CONF,"DirFakeMode",FALSE);
   showdotfiles = get_param_int(TOPLEVEL_CONF,"ShowDotFiles",FALSE);
+  timesgmt = get_param_int(TOPLEVEL_CONF, "TimesGMT", FALSE);
   
   if(_fakemode != -1) {
     fakemode = (umode_t)_fakemode;
