@@ -19,7 +19,7 @@
 
 /*
  * ProFTPD logging support
- * $Id: log.c,v 1.7 1999-09-16 07:45:54 macgyver Exp $
+ * $Id: log.c,v 1.8 1999-09-17 04:06:15 macgyver Exp $
  */
 
 /* History Log:
@@ -611,6 +611,9 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip)
 
 int log_opensyslog(const char *fn)
 {
+  char *ptr;
+  struct stat statbuf;
+  
   if(set_facility != -1)
     facility = set_facility;
 
@@ -622,6 +625,33 @@ int log_opensyslog(const char *fn)
     syslog_open = TRUE;
     syslog_fd = -1;
   } else {
+    if((ptr = rindex(syslog_fn, '/')) == NULL) {
+      log_debug(DEBUG0, "%s rindex failed", syslog_fn);
+      syslog_fn = NULL;
+      return -1;
+    }
+    
+    *ptr = '\0';
+
+    if(stat(syslog_fn, &statbuf) == -1) {
+      log_debug(DEBUG0, "%s stat: %s", syslog_fn, strerror(errno));
+      syslog_fn = NULL;
+      return -1;
+    }
+
+    if(!S_ISDIR(statbuf.st_mode)) {
+      log_debug(DEBUG0, "%s is not a directory", syslog_fn);
+      syslog_fn = NULL;
+      return -1;
+    }
+    
+    if(statbuf.st_mode & S_IXOTH) {
+      log_debug(DEBUG0, "%s is a world writeable directory", syslog_fn);
+      syslog_fn = NULL;
+      return -2;
+    }
+    
+    *ptr = '/';
     syslog_fd = open(syslog_fn,O_CREAT|O_APPEND|O_WRONLY,0640);
     if(syslog_fd == -1) {
       syslog_fn = NULL;
@@ -687,14 +717,14 @@ void log(int priority, int f, char *s)
     f = set_facility;
 
   if(f != facility || !syslog_open)
-    openlog("proftpd",LOG_NDELAY|LOG_PID,f);
+    openlog("proftpd", LOG_NDELAY | LOG_PID, f);
 
-  syslog(priority,"%s\n",s);
+  syslog(priority, "%s\n", s);
 
   if(!syslog_open)
     closelog();
   else if(f != facility)
-    openlog("proftpd",LOG_NDELAY|LOG_PID,facility);
+    openlog("proftpd", LOG_NDELAY | LOG_PID, facility);
 }
 
 void log_pri(int priority,char *fmt,...)
@@ -703,7 +733,7 @@ void log_pri(int priority,char *fmt,...)
   va_list msg;
 
   va_start(msg,fmt);
-  vsnprintf(buf,sizeof(buf),fmt,msg);
+  vsnprintf(buf, sizeof(buf), fmt, msg);
   va_end(msg);
 
   buf[1023] = '\0';
@@ -721,12 +751,12 @@ void log_auth(int priority, char *fmt, ...)
   va_list msg;
 
   va_start(msg,fmt);
-  vsnprintf(buf,sizeof(buf),fmt,msg);
+  vsnprintf(buf, sizeof(buf), fmt, msg);
   va_end(msg);
 
   buf[1023] = '\0';
 
-  log(priority,LOG_AUTHPRIV,buf);
+  log(priority, LOG_AUTHPRIV, buf);
 }
 
 /* Disable logging to stderr, should be done right before forking
@@ -760,20 +790,20 @@ void log_debug(int level,char *str,...)
     return;
 
   va_start(msg,str);
-  vsnprintf(buf,sizeof(buf),str,msg);
+  vsnprintf(buf, sizeof(buf), str, msg);
   va_end(msg);
 
   buf[1023] = '\0';
 
-  log(LOG_DEBUG,facility,buf);
+  log(LOG_DEBUG, facility, buf);
 }
 
 void init_log()
 {
   char buf[256];
 
-  if(gethostname(buf,sizeof(buf)) == -1)
-    strncpy(buf,"localhost",sizeof(buf));
-
-  syslog_hostname = pstrdup(permanent_pool,buf);
+  if(gethostname(buf, sizeof(buf)) == -1)
+    strncpy(buf, "localhost", sizeof(buf));
+  
+  syslog_hostname = inet_validate(pstrdup(permanent_pool, buf));
 }
