@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.57 2003-08-16 15:38:24 castaglia Exp $
+ * $Id: mod_sql.c,v 1.58 2003-08-16 15:43:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4087,6 +4087,11 @@ static int sql_getconf(void) {
 
   temp_ptr = get_param_ptr(main_server->conf, "SQLAuthTypes", FALSE);
   cmap.authlist = temp_ptr;
+
+  if (!cmap.authlist) {
+    log_pri(PR_LOG_NOTICE, _MOD_VERSION ": error: no SQLAuthTypes configured");
+    sql_log(DEBUG_INFO, "%s", "error: no SQLAuthTypes configured");
+  }
 
   temp_ptr = get_param_ptr(main_server->conf, "SQLMinID", FALSE);
   if ( temp_ptr ) {
