@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.4 2003-11-09 23:32:07 castaglia Exp $
+ * $Id: ctrls.c,v 1.5 2004-04-05 18:01:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -469,7 +469,8 @@ int pr_ctrls_parse_msg(pool *msg_pool, char *msg, unsigned int *msgargc,
 
 int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   pr_ctrls_t *ctrl = NULL, *next_ctrl = NULL;
-  char reqaction[512] = {'\0'}, reqarg[512] = {'\0'};
+  char reqaction[512] = {'\0'}, *reqarg = NULL;
+  size_t reqargsz = 0;
   unsigned int nreqargs = 0, reqarglen = 0;
   int status = 0;
   register int i = 0;
@@ -515,7 +516,7 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
     return -1;
   }
 
-  if (read(cl->cl_fd, &reqaction, reqarglen) < 0) {
+  if (read(cl->cl_fd, reqaction, reqarglen) < 0) {
     pr_signals_unblock();
     return -1;
   }
@@ -533,14 +534,29 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   }
 
   for (i = 0; i < nreqargs; i++) {
-    memset(reqarg, '\0', sizeof(reqarg));
+    memset(reqarg, '\0', reqargsz);
 
     if (read(cl->cl_fd, &reqarglen, sizeof(unsigned int)) < 0) {
       pr_signals_unblock();
       return -1;
     }
 
-    if (read(cl->cl_fd, &reqarg, reqarglen) < 0) {
+    /* Make sure reqarg is large enough to handle the given argument.  If
+     * it is too small, allocate one of the necessary size.
+     */
+
+    if (reqargsz < reqarglen) {
+      reqargsz = reqarglen + 1;
+
+      if (!ctrl->ctrls_tmp_pool) {
+        ctrl->ctrls_tmp_pool = make_sub_pool(ctrls_pool);
+        pr_pool_tag(ctrl->ctrls_tmp_pool, "ctrls tmp pool");
+      }
+
+      reqarg = pcalloc(ctrl->ctrls_tmp_pool, reqargsz);
+    }
+
+    if (read(cl->cl_fd, reqarg, reqarglen) < 0) {
       pr_signals_unblock();
       return -1;
     }
