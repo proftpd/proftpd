@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.25 2002-06-23 19:03:22 castaglia Exp $
+ * $Id: proftpd.h,v 1.26 2002-06-27 07:31:54 castaglia Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -232,14 +232,66 @@ typedef struct response_struc {
 
 /* Misc Prototypes */
 
-void send_response_raw(const char *, ...);
-void send_response_async(const char *, const char *, ...);
-void send_response(const char *, const char *, ...);
-void send_response_ml_start(const char *, const char *, ...);
-void send_response_ml(const char *, ...);
-void send_response_ml_end(const char *, ...);
-void add_response(const char*, const char *, ...);
-void add_response_err(const char *, const char *, ...);
+/* Utilize gcc's __attribute__ pragma for signalling that it should perform
+ * printf-style checking of this function's arguments.
+ */
+
+void send_response_raw(const char *, ...)
+#ifdef __GNUC__
+       __attribute__ ((format (printf, 1, 2)));
+#else
+       ;
+#endif
+
+void send_response_async(const char *, const char *, ...)
+#ifdef __GNUC__
+       __attribute__ ((format (printf, 2, 3)));
+#else
+       ;
+#endif
+
+void send_response(const char *, const char *, ...)
+#ifdef __GNUC__
+       __attribute__ ((format (printf, 2, 3)));
+#else
+       ;
+#endif
+
+void send_response_ml_start(const char *, const char *, ...)
+#ifdef __GNUC__
+       __attribute__ ((format (printf, 2, 3)));
+#else
+       ;
+#endif
+
+void send_response_ml(const char *, ...)
+#ifdef __GNUC__
+       __attribute__ ((format (printf, 1, 2)));
+#else
+       ;
+#endif
+
+void send_response_ml_end(const char *, ...)
+#ifdef __GNUC__
+       __attribute__ ((format (printf, 1, 2)));
+#else
+       ;
+#endif
+
+void add_response(const char *, const char *, ...)
+#ifdef __GNUC__
+       __attribute__ ((format (printf, 2, 3)));
+#else
+       ;
+#endif
+
+void add_response_err(const char *, const char *, ...)
+#ifdef __GNUC__
+       __attribute__ ((format (printf, 2, 3)));
+#else
+       ;
+#endif
+
 void end_login(int);
 void main_exit(void *, void *, void *, void *);
 void main_set_idle(void);

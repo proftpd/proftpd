@@ -25,7 +25,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.77 2002-06-24 23:24:58 castaglia Exp $
+ * $Id: mod_auth.c,v 1.78 2002-06-27 07:31:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -282,8 +282,9 @@ MODRET post_cmd_pass(cmd_rec *cmd) {
   if (have_user_timeout || have_group_timeout ||
       have_class_timeout || have_all_timeout) {
     log_debug(DEBUG4, "setting TimeoutSession of %u seconds for current %s",
+      TimeoutSession,
       have_user_timeout ? "user" : have_group_timeout ? "group" :
-      have_class_timeout ? "class" : "all", TimeoutSession);
+      have_class_timeout ? "class" : "all");
     add_timer(TimeoutSession, TIMER_SESSION, &auth_module, session_timeout);
   }
 

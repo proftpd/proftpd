@@ -25,7 +25,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.72 2002-06-25 16:52:35 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.73 2002-06-27 07:31:54 castaglia Exp $
  */
 
 /* History Log:
@@ -142,11 +142,9 @@ static void _rate_throttle(off_t rate_pos, off_t rate_bytes,
   float dtime, wtime;
 
   /* no rate control unless more than free bytes DL'ed */
-  log_debug(DEBUG5,
-	    "_rate_throttle: rate_bytes=%ld  rate_pos=%ld  rate_freebytes=%ld "
-	    "rate_bps=%ld  rate_hardbps=%i.",
-	    rate_bytes, rate_pos,
-	    rate_freebytes, rate_bps, rate_hardbps);
+  log_debug(DEBUG5, "_rate_throttle: rate_bytes=%" PR_LU
+    " rate_pos=%" PR_LU " rate_freebytes=%ld rate_bps=%ld rate_hardbps=%d.",
+    rate_bytes, rate_pos, rate_freebytes, rate_bps, rate_hardbps);
 
   if(rate_pos < rate_freebytes)
     return;

@@ -27,7 +27,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.11 2002-06-23 19:03:22 castaglia Exp $
+ * $Id: log.h,v 1.12 2002-06-27 07:31:53 castaglia Exp $
  */
 
 #ifndef __LOG_H
@@ -128,11 +128,31 @@ void log_setfacility(int);
 int log_openfile(const char *, int *, mode_t);
 int log_opensyslog(const char *);
 void log_closesyslog(void);
-void log_pri(int, char *, ...);
+
+/* Utilize gcc's __attribute__ pragma for signalling that it should perform
+ * printf-style checking of this function's arguments.
+ */
+void log_pri(int, char *, ...)
+#ifdef __GNUC__
+       __attribute__ ((format (printf, 2, 3)));
+#else
+       ;
+#endif
+
 void log_auth(int, char *, ...);
 void log_stderr(int);
 int  log_setdebuglevel(int);
-void log_debug(int, char *, ...);
+
+/* Utilize gcc's __attribute__ pragma for signalling that it should perform
+ * printf-style checking of this function's arguments.
+ */
+void log_debug(int, char *, ...)
+#ifdef __GNUC__
+       __attribute__ ((format (printf, 2, 3)));
+#else
+       ;
+#endif
+
 void log_discard(void);
 void init_log(void);
 void log_run_setpath(const char *);
