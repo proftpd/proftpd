@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.152 2004-06-17 20:34:28 castaglia Exp $
+ * $Id: dirtree.c,v 1.153 2004-07-01 01:17:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2763,23 +2763,23 @@ void resolve_deferred_dirs(server_rec *s) {
   }
 }
 
-static void _copy_recur(xaset_t **set, pool *p, config_rec *c,
+static void copy_recur(xaset_t **set, pool *p, config_rec *c,
     config_rec *new_parent) {
   config_rec *newconf;
   int argc;
-  void **argv,**sargv;
+  void **argv, **sargv;
 
   if (!*set)
-    *set = xaset_create(p,NULL);
+    *set = xaset_create(p, NULL);
 
-  newconf = add_config_set(set,c->name);
+  newconf = add_config_set(set, c->name);
   newconf->config_type = c->config_type;
   newconf->flags = c->flags;
   newconf->parent = new_parent;
   newconf->argc = c->argc;
 
   if (c->argc) {
-    newconf->argv = pcalloc(newconf->pool, (c->argc+1)*sizeof(void*));
+    newconf->argv = pcalloc(newconf->pool, (c->argc+1) * sizeof(void *));
     argv = newconf->argv;
     sargv = c->argv;
     argc = newconf->argc;
@@ -2792,22 +2792,20 @@ static void _copy_recur(xaset_t **set, pool *p, config_rec *c,
   }
 
   if (c->subset)
-    for (c = (config_rec*)c->subset->xas_list; c; c=c->next)
-      _copy_recur(&newconf->subset,p,c,newconf);
+    for (c = (config_rec *) c->subset->xas_list; c; c = c->next)
+      copy_recur(&newconf->subset, p, c, newconf);
 }
 
-static
-void _copy_global_to_all(xaset_t *set)
-{
+static void copy_global_to_all(xaset_t *set) {
   server_rec *s;
   config_rec *c;
 
   if (!set || !set->xas_list)
     return;
 
-  for (c = (config_rec*)set->xas_list; c; c=c->next)
-    for (s = (server_rec*) server_list->xas_list; s; s=s->next)
-      _copy_recur(&s->conf,s->pool,c,NULL);
+  for (c = (config_rec *) set->xas_list; c; c = c->next)
+    for (s = (server_rec *) server_list->xas_list; s; s = s->next)
+      copy_recur(&s->conf, s->pool, c, NULL);
 }
 
 static void fixup_globals(void) {
@@ -2829,7 +2827,7 @@ static void fixup_globals(void) {
          * (including this one), then pull the block "out of play".
          */
         if (c->subset && c->subset->xas_list)
-          _copy_global_to_all(c->subset);
+          copy_global_to_all(c->subset);
         xaset_remove(s->conf, (xasetmember_t*)c);
         if (!s->conf->xas_list) {
           destroy_pool(s->conf->pool);
