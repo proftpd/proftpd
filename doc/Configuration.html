@@ -25,7 +25,7 @@ configuration:</p>
   <li><a href="#AccessGrantMsg">AccessGrantMsg</a></LI>
   <li><a href="#Allow">Allow</a></LI>
   <li><a href="#AllowAll">AllowAll</a></LI>
-  <LI><A HREF="#AllowChmod">AllowChmod</A></LI>
+  <LI><A HREF="#AllowChmod">AllowChmod</A> (Deprecated)</LI>
   <li><a href="#AllowFilter">AllowFilter</a></LI>
   <LI><a href="#AllowForeignAddress">AllowForeignAddress</a></li>
   <LI><a href="#AllowGroup">AllowGroup</a></li>
@@ -320,11 +320,8 @@ href="#Limit">&lt;Limit&gt;</a> block. Although proftpd's default
   <STRONG>Module:</STRONG> mod_site<BR>
   <strong>Compatibility:</strong> 1.2.0rc1 and later</p>
 
-  <P>AllowChmod allows control over whether the &quot;SITE CHMOD&quot;
-  command is allowed to clients.</P>
-
-<P>Example:
-<p><code>AllowChmod false</code></p>
+  <P>This directive is deprecated, use &lt;Limit SITE_CHMOD&gt;
+  instead.</P>
 
 <hr>
 
@@ -3100,7 +3097,7 @@ this module.
   <strong>Compatibility:</strong> 1.2.0rc2 and later</p>
 
   <P>This directive is DEPRECATED.  Please use <A
-  HREF="SQLAuthTypes">SQLAuthTypes</A> instead.
+  HREF="#SQLAuthTypes">SQLAuthTypes</A> instead.
 
   <P>Specifies whether an empty (non-NULL but zero-length) password is
   acceped from the database.  Default is no, and truly NULL passwords
@@ -3119,7 +3116,7 @@ this module.
   <strong>Compatibility:</strong> 1.2.0rc2 and later</p>
 
   <P>This directive is DEPRECATED.  Please use <A
-  HREF="SQLAuthTypes">SQLAuthTypes</A> instead.
+  HREF="#SQLAuthTypes">SQLAuthTypes</A> instead.
 
   <P>Specifies whether the password in the database may be in UNIX
   crypt() format.  Default is true, with this being the only check

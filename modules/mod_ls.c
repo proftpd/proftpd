@@ -24,7 +24,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.42 2001-06-20 01:17:12 flood Exp $
+ * $Id: mod_ls.c,v 1.43 2001-08-01 15:17:07 flood Exp $
  */
 
 #include "conf.h"
@@ -1378,7 +1378,19 @@ MODRET cmd_stat(cmd_rec *cmd)
 
   default_options = get_param_ptr(TOPLEVEL_CONF,"LsDefaultOptions",FALSE);
   fakeuser = get_param_ptr(TOPLEVEL_CONF,"DirFakeUser",FALSE);
+
+  /* check for a configured "logged in user" DirFakeUser
+   */
+  if (fakeuser && !strcmp(fakeuser, "~"))
+    fakeuser = session.user;
+
   fakegroup = get_param_ptr(TOPLEVEL_CONF,"DirFakeGroup",FALSE);
+
+  /* check for a configured "logged in user" DirFakeGroup
+   */
+  if (fakegroup && !strcmp(fakegroup, "~"))
+    fakegroup = session.group;
+
   _fakemode = (long)get_param_int(TOPLEVEL_CONF,"DirFakeMode",FALSE);
   timesgmt = get_param_int(TOPLEVEL_CONF, "TimesGMT", FALSE);
   

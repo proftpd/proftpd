@@ -1,7 +1,13 @@
-$Id: NEWS,v 1.121 2001-08-01 15:03:11 flood Exp $
+$Id: NEWS,v 1.122 2001-08-01 15:17:06 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+- Bug 1145 - DirFakeUser now applies to STAT
+- Bug 1216 - xferlog man page update
+- Bug 1111 - INSTALL update
+- Bug 1262 - Doc update
+- Bug 1217 - Doc update
+- Bug 1187 - Upstream update to mod_quota
 - Bug 1232 - UserOwner no longer performs chgrp
 - Bug 1219 - compilation fix under gcc 3.0
 - Bug 1230 - Portability fix for Sol 8 (sparcv9)

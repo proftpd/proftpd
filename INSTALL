@@ -255,7 +255,24 @@ Installation Instructions
     ftp line in the /etc/inetd.conf file by inserting a '#' at the beginning
     of the line.  Then signal the inetd process to reread /etc/inetd.conf.
 
-    If your system is using xinetd instead of inetd, see README.xinetd.
+    If your system is using xinetd instead of inetd then either edit
+    your /etc/xinetd.conf file or add a proftpd file in /etc/xinetd.d/
+
+    service ftp
+    {
+       flags           = REUSE
+       socket_type     = stream
+       instances       = 50
+       wait            = no
+       user            = root
+       server          = /usr/sbin/proftpd
+       bind            = <the-ip-you-wish-to-bind-to>
+       log_on_success  = HOST PID
+       log_on_failure  = HOST RECORD
+    }
+
+    More information can be found in the FAQ and Userguide and in the
+    xinetd documentation for your system
 
 
 9.  Modify the system boot scripts.
