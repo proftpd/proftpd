@@ -20,7 +20,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.21 2001-02-14 04:12:48 flood Exp $
+ * $Id: data.c,v 1.22 2001-02-15 14:24:53 flood Exp $
  */
 
 #include "conf.h"
@@ -811,7 +811,6 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
 	
 	continue;
       }
-#endif /* HAVE_LINUX_SENDFILE */
       
       error = errno;
       fcntl(session.d->outf->fd, F_SETFL, flags);
