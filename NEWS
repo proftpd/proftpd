@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.384 2003-03-04 19:28:26 castaglia Exp $
+$Id: NEWS,v 1.385 2003-03-04 19:50:18 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -8,6 +8,7 @@ CVS
   files for "proftpd" and "client" sections.
 - Bug 1960 - Add removed file size by DELE command to xferlog.
 - Bug 1967 - Add display of uptime to ftpwho, ftptop.
+- Added AnonRejectPasswords directive.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------

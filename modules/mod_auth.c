@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.136 2003-03-04 19:28:28 castaglia Exp $
+ * $Id: mod_auth.c,v 1.137 2003-03-04 19:50:20 castaglia Exp $
  */
 
 #ifdef __CYGWIN__
@@ -36,6 +36,10 @@
 
 #include "conf.h"
 #include "privs.h"
+
+#ifdef HAVE_REGEX_H
+#include <regex.h>
+#endif
 
 /* From the core module */
 extern int core_display_file(const char *,const char *,const char *);
@@ -671,7 +675,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
 {
   struct passwd *pw;
   struct stat sbuf;
-  config_rec *c;
+  config_rec *c, *tmpc;
   char *origuser,*ourname,*anonname = NULL,*anongroup = NULL,*ugroup = NULL;
   char sess_ttyname[20] = {'\0'}, *defaulttransfermode;
   char *defroot = NULL,*defchdir = NULL,*xferlog = NULL;
@@ -770,7 +774,28 @@ static int _setup_environment(pool *p, char *user, char *pass)
         anongroup = (char*)get_param_ptr(main_server->conf,"GroupName",FALSE);
     }
 
-    if (!login_check_limits(c->subset,FALSE,TRUE,&i) || (!aclp && !i) ){
+    /* Check for configured AnonRejectPasswords regex here, and fail the login
+     * if the given password matches the regex.
+     */
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+    if ((tmpc = find_config(c->subset, CONF_PARAM, "AnonRejectPasswords",
+        FALSE)) != NULL) {
+      int res;
+      regex_t *pw_regex = (regex_t *) tmpc->argv[0];
+
+      if (pw_regex && pass &&
+          ((res = regexec(pw_regex, pass, 0, NULL, 0)) == 0)) {
+        char errstr[200] = {'\0'};
+
+        regerror(res, pw_regex, errstr, sizeof(errstr));
+        log_auth(PR_LOG_NOTICE, "ANON %s: AnonRejectPasswords denies login",
+          origuser);
+        goto auth_failure;
+      }
+    }
+#endif
+
+    if (!login_check_limits(c->subset, FALSE, TRUE, &i) || (!aclp && !i) ){
       log_auth(PR_LOG_NOTICE, "ANON %s (Login failed): Limit access denies "
         "login.", origuser);
       goto auth_failure;
@@ -1888,6 +1913,37 @@ MODRET set_anonrequirepassword(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+MODRET set_anonrejectpasswords(cmd_rec *cmd) {
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+  config_rec *c = NULL;
+  regex_t *preg = NULL;
+  int res;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ANON);
+
+  preg = pr_regexp_alloc();
+
+  if ((res = regcomp(preg, cmd->argv[1], REG_EXTENDED|REG_NOSUB)) != 0) {
+    char errstr[200] = {'\0'};
+
+    regerror(res, preg, errstr, 200);
+    pr_regexp_free(preg);
+
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "Unable to compile regex '",
+      cmd->argv[1], "': ", errstr, NULL));
+  }
+
+  c = add_config_param(cmd->argv[0], 1, (void *) preg);
+  return HANDLED(cmd);
+
+#else
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0], " directive "
+    "cannot be used on this system, as you do not have POSIX compliant "
+    "regex support", NULL));
+#endif
+}
+
 MODRET add_anonymousgroup(cmd_rec *cmd) {
   int argc;
   config_rec *c = NULL;
@@ -2590,6 +2646,7 @@ static conftable auth_conftab[] = {
   { "AccessDenyMsg",		set_accessdenymsg,		NULL },
   { "AccessGrantMsg",		set_accessgrantmsg,		NULL },
   { "AnonRequirePassword",	set_anonrequirepassword,	NULL },
+  { "AnonRejectPasswords",	set_anonrejectpasswords,	NULL },
   { "AnonymousGroup",		add_anonymousgroup,		NULL },
   { "AuthAliasOnly",		set_authaliasonly,		NULL },
   { "AuthUsingAlias",		set_authusingalias,		NULL },
