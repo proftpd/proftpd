@@ -14,10 +14,40 @@ NOTES
   + The new Class support will require changes to proftpd.conf files that
     use the old Class/Classes directives.  See README.classes for details.
 
+1.2.10-final
+---------
+  + Better support for AIX5
+
+  + Enhanced configuration directives:
+      AuthOrder
+
+    Since various *Authoritative directives are deprecated, yet the
+    authoritativeness functionality is still needed (e.g. when using PAM),
+    the AuthOrder directive has been enhanced to support marking a
+    module's auth response as required.
+
+    For example, to use the standard /etc/passwd file for authentication
+    and to refuse to authenticate users who fail PAM checks, one would
+    use:
+
+      AuthOrder mod_auth_pam.c* mod_auth_unix.c
+
+    The trailing '*' after mod_auth_pam signals that the PAM checks are
+    to be honored.  Without the '*', mod_auth_pam could fail to
+    authenticate the user, but if mod_auth_unix successfully authenticated
+    the user, the login would be allowed.
+
 1.2.10rc2
 ---------
   + New configuration directives:
       TimeoutLinger
+
+    If a client aborts a connection, proftpd will wait, or "linger", for
+    a small amount of time before closing the socket, in order to handle
+    any data that might still be in the network.  By default, this
+    amount of time is 3 minutes.  For sites that experience this delay,
+    the new TimeoutLinger directive can be used to configured a shorter
+    delay.
 
 1.2.10rc1
 ---------
@@ -83,4 +113,4 @@ NOTES
      ProFTPD's optional modules (e.g. mod_cap, mod_ctrls).
 
 
-Last Updated: $Date: 2004-05-21 17:46:21 $
+Last Updated: $Date: 2004-08-05 19:12:14 $
