@@ -1,4 +1,4 @@
-<!-- $Id: Authentication.html,v 1.1 2004-03-22 19:44:48 castaglia Exp $ -->
+<!-- $Id: Authentication.html,v 1.2 2004-04-07 20:12:17 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Authentication.html,v $ -->
 
 <html>
@@ -271,10 +271,12 @@ your SQL tables first, and then default to system users:
 <pre>
   AuthOrder mod_sql.c mod_auth_unix.c
 </pre>
+Note that the <code>mod_auth.c</code> and <code>mod_auth_pam.c</code> modules
+should <b>never</b> be used in an <code>AuthOrder</code> directive.
 
 <p>
 <hr>
-<i>$Date: 2004-03-22 19:44:48 $</i><br>
+<i>$Date: 2004-04-07 20:12:17 $</i><br>
 
 </body>
 </html>
