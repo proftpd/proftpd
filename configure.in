@@ -497,8 +497,8 @@ AC_CACHE_CHECK([which sendfile() implementation to use], pr_cv_func_sendfile,
   dnl Linux.
 if test "$pr_cv_func_sendfile" = "None"; then
   AC_TRY_LINK([
+#include <sys/types.h>
 #include <unistd.h>
-#include <sys/sendfile.h>
 ],[
 int i;
 off_t o;
