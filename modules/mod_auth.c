@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.175 2004-01-14 04:00:10 castaglia Exp $
+ * $Id: mod_auth.c,v 1.176 2004-01-16 00:29:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2131,7 +2131,9 @@ MODRET set_createhome(cmd_rec *cmd) {
   }
 
   /* Check the mode parameter, if present */
-  if (cmd->argc-1 >= 2) {
+  if (cmd->argc-1 >= 2 &&
+      strcmp(cmd->argv[2], "dirmode") != 0 &&
+      strcmp(cmd->argv[2], "skel") != 0) {
     char *tmp = NULL;
 
     mode = strtol(cmd->argv[2], &tmp, 8);
