@@ -26,7 +26,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.25 2003-03-20 17:46:05 castaglia Exp $
+ * $Id: ftptop.c,v 1.26 2003-03-24 20:26:39 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.9"
@@ -444,21 +444,24 @@ static int scoreboard_open(void) {
 
   if ((res = util_open_scoreboard(O_RDONLY)) < 0) {
     switch (res) {
-      case -1:
-        fprintf(stderr, "%s: unable to open scoreboard: %s\n", program,
-          strerror(errno));
-        return res;
-
       case UTIL_SCORE_ERR_BAD_MAGIC:
-        fprintf(stderr, "%s: scoreboard is corrupted or old\n", program);
+        fprintf(stderr, "%s: error opening scoreboard: bad/corrupted file\n",
+          program);
         return res;
 
       case UTIL_SCORE_ERR_OLDER_VERSION:
-        fprintf(stderr, "%s: scoreboard is too old\n", program);
+        fprintf(stderr, "%s: error opening scoreboard: bad version (too old)\n",
+          program);
         return res;
 
       case UTIL_SCORE_ERR_NEWER_VERSION:
-        fprintf(stderr, "%s: scoreboard is too new\n", program);
+        fprintf(stderr, "%s: error opening scoreboard: bad version (too new)\n",
+          program);
+        return res;
+
+      default:
+        fprintf(stderr, "%s: error opening scoreboard: %s\n",
+          program, strerror(errno));
         return res;
     }
   }

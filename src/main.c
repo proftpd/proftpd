@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.172 2003-03-21 03:26:04 castaglia Exp $
+ * $Id: main.c,v 1.173 2003-03-24 20:26:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2201,21 +2201,21 @@ static void inetd_main(void) {
     PRIVS_RELINQUISH
 
     switch (res) {
-      case -1:
-        log_pri(PR_LOG_ERR, "error: unable to open scoreboard: %s",
-          strerror(errno));
-        return;
-
       case PR_SCORE_ERR_BAD_MAGIC:
-        log_pri(PR_LOG_ERR, "error: scoreboard is corrupted or old");
+        log_pri(PR_LOG_ERR, "error opening scoreboard: bad/corrupted file");
         return;
 
       case PR_SCORE_ERR_OLDER_VERSION:
-        log_pri(PR_LOG_ERR, "error: scoreboard is too old");
+        log_pri(PR_LOG_ERR, "error opening scoreboard: bad version (too old)");
         return;
 
       case PR_SCORE_ERR_NEWER_VERSION:
-        log_pri(PR_LOG_ERR, "error: scoreboard is too new");
+        log_pri(PR_LOG_ERR, "error opening scoreboard: bad version (too new)");
+        return;
+
+      default:
+        log_pri(PR_LOG_ERR, "error opening scoreboard: %s",
+          strerror(errno));
         return;
     }
   }
@@ -2257,21 +2257,21 @@ static void standalone_main(void) {
     PRIVS_RELINQUISH
 
     switch (res) {
-      case -1:
-        log_pri(PR_LOG_ERR, "error: unable to open scoreboard: %s",
-          strerror(errno));
-        return;
-
       case PR_SCORE_ERR_BAD_MAGIC:
-        log_pri(PR_LOG_ERR, "error: scoreboard is corrupted or old");
+        log_pri(PR_LOG_ERR, "error opening scoreboard: bad/corrupted file");
         return;
 
       case PR_SCORE_ERR_OLDER_VERSION:
-        log_pri(PR_LOG_ERR, "error: scoreboard is too old");
+        log_pri(PR_LOG_ERR, "error opening scoreboard: bad version (too old)");
         return;
 
       case PR_SCORE_ERR_NEWER_VERSION:
-        log_pri(PR_LOG_ERR, "error: scoreboard is too new");
+        log_pri(PR_LOG_ERR, "error opening scoreboard: bad version (too new)");
+        return;
+
+      default:
+        log_pri(PR_LOG_ERR, "error opening scoreboard: %s",
+          strerror(errno));
         return;
     }
   }

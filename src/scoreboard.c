@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.20 2003-03-21 06:00:07 castaglia Exp $
+ * $Id: scoreboard.c,v 1.21 2003-03-24 20:26:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -300,8 +300,8 @@ int pr_open_scoreboard(int flags) {
 
     return 0;
 
-  } else if (res < 0)
-    return -1;
+  } else
+    return res;
 
   return 0;
 }

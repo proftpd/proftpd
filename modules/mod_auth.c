@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.142 2003-03-19 07:58:35 castaglia Exp $
+ * $Id: mod_auth.c,v 1.143 2003-03-24 20:26:34 castaglia Exp $
  */
 
 #ifdef __CYGWIN__
@@ -132,8 +132,24 @@ static int auth_sess_init(void) {
   }
 
   PRIVS_ROOT
-  if (pr_open_scoreboard(O_RDWR) < 0)
-    log_debug(DEBUG0, "error opening scoreboard: %s", strerror(errno));
+  switch (pr_open_scoreboard(O_RDWR)) {
+    case PR_SCORE_ERR_BAD_MAGIC:
+      log_debug(DEBUG0, "error opening scoreboard: bad/corrupted file");
+      break;
+
+    case PR_SCORE_ERR_OLDER_VERSION:
+      log_debug(DEBUG0, "error opening scoreboard: bad version (too old)");
+      break;
+
+    case PR_SCORE_ERR_NEWER_VERSION:
+      log_debug(DEBUG0, "error opening scoreboard: bad version (too new)");
+      break;
+
+    default:
+      log_debug(DEBUG0, "error opening scoreboard: %s", strerror(errno));
+      break;
+  }
+
   PRIVS_RELINQUISH
 
   /* Create an entry in the scoreboard for this session. */

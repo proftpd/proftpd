@@ -27,7 +27,7 @@
 /* Shows a count of "who" is online via proftpd.  Uses the /var/run/proftpd*
  * log files.
  *
- * $Id: ftpcount.c,v 1.11 2003-03-09 16:23:50 castaglia Exp $
+ * $Id: ftpcount.c,v 1.12 2003-03-24 20:26:39 castaglia Exp $
  */
 
 #include "utils.h"
@@ -224,20 +224,20 @@ int main(int argc, char **argv) {
   count = 0;
   if ((res = util_open_scoreboard(O_RDONLY)) < 0) {
     switch (res) {
-      case -1:
-        fprintf(stderr, "unable to open scoreboard: %s\n", strerror(errno));
-        return 1;
-
       case UTIL_SCORE_ERR_BAD_MAGIC:
-        fprintf(stderr, "scoreboard is corrupted or old\n");
+        fprintf(stderr, "error opening scoreboard: bad/corrupted file\n");
         return 1;
 
       case UTIL_SCORE_ERR_OLDER_VERSION:
-        fprintf(stderr, "scoreboard is too old\n");
+        fprintf(stderr, "error opening scoreboard: bad version (too old)\n");
         return 1;
 
       case UTIL_SCORE_ERR_NEWER_VERSION:
-        fprintf(stderr, "scoreboard is too new");
+        fprintf(stderr, "error opening scoreboard: bad version (too new)\n");
+        return 1;
+
+      default:
+        fprintf(stderr, "error opening scoreboard: %s\n", strerror(errno));
         return 1;
     }
   }
