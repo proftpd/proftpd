@@ -50,7 +50,14 @@ files.
         show the transfer rate for uploads.
 
   + Enhanced configuration directives:
-      ExtendedLog's new SEC logging class.  "sec" and "secure" will work.
+
+      ExtendedLog
+        There is a new logging class, SEC (short for "SECURE").
+        This logging class captures RFC2228-related security FTP commands.
+
+      ListOptions
+        The -S list option, for listing files sorted by file size, has
+        been added.
 
   + New command-line options:
       The new -V, --settings display various compile-time settings.
@@ -93,4 +100,4 @@ files.
             ...
           </VirtualHost>
 
-Last Updated: $Date: 2004-12-12 17:53:28 $
+Last Updated: $Date: 2004-12-12 22:57:39 $
