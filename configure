@@ -4129,7 +4129,7 @@ else
 fi
 done
 
-for ac_func in setsid setpassent seteuid setegid crypt fgetpwent fgetgrent
+for ac_func in setsid setpassent setgroupent seteuid setegid crypt fgetpwent fgetgrent
 do
 echo $ac_n "checking for $ac_func""... $ac_c" 1>&6
 echo "configure:4136: checking for $ac_func" >&5

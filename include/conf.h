@@ -18,7 +18,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.2 1999-09-12 20:28:12 macgyver Exp $
+ * $Id: conf.h,v 1.3 1999-10-11 07:28:45 macgyver Exp $
  */
 
 #ifndef __CONF_H
@@ -306,6 +306,10 @@ typedef struct in_addr p_in_addr_t;
 # ifdef HAVE_SETPASSENT
 #  define setpwent()	setpassent(1)
 # endif /* HAVE_SETPASSENT */
+
+# ifdef HAVE_SETGROUPENT
+#  define setgrent()	setgroupent(1)
+# endif /* HAVE_SETGROUPENT */
 
 #endif /* __PROFTPD_SUPPORT_LIBRARY */
 

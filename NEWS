@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.7 1999-10-11 04:45:46 macgyver Exp $
+$Id: NEWS,v 1.8 1999-10-11 07:28:45 macgyver Exp $
 
 1.2.0pre9
 
@@ -19,3 +19,6 @@ $Id: NEWS,v 1.7 1999-10-11 04:45:46 macgyver Exp $
 
 - ftpwho/ftpcount -- a grammatical error corrected, and they now build
     as seperate binaries.
+
+- Fixed the 'no names, just UIDs' bug.
+
