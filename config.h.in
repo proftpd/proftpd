@@ -273,6 +273,9 @@
 /* Define if you have the hstrerror function.  */
 #undef HAVE_HSTRERROR
 
+/* Define if you have the iconv function.  */
+#undef HAVE_ICONV
+
 /* Define if you have the inet_aton function.  */
 #undef HAVE_INET_ATON
 
@@ -305,6 +308,9 @@
 
 /* Define if you have the munlockall function.  */
 #undef HAVE_MUNLOCKALL
+
+/* Define if you have the nl_langinfo function.  */
+#undef HAVE_NL_LANGINFO
 
 /* Define if you have the pathconf function.  */
 #undef HAVE_PATHCONF
@@ -423,8 +429,14 @@
 /* Define if you have the <krb.h> header file.  */
 #undef HAVE_KRB_H
 
+/* Define if you have the <iconv.h> header file.  */
+#undef HAVE_ICONV_H
+
 /* Define if you have the <inttypes.h> header file.  */
 #undef HAVE_INTTYPES_H
+
+/* Define if you have the <langinfo.h> header file.  */
+#undef HAVE_LANGINFO_H
 
 /* Define if you have the <libutil.h> header file.  */
 #undef HAVE_LIBUTIL_H

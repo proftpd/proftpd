@@ -805,7 +805,7 @@ if test $ac_add_mod_cap = "yes"; then
   ac_build_static_modules="modules/mod_cap.o $ac_build_static_modules"
 fi
 
-AC_CHECK_HEADERS(ctype.h getopt.h crypt.h bstring.h inttypes.h limits.h)
+AC_CHECK_HEADERS(ctype.h getopt.h crypt.h bstring.h iconv.h inttypes.h langinfo.h limits.h)
 AC_CHECK_HEADERS(string.h strings.h stropts.h)
 AC_CHECK_HEADERS(sys/file.h sys/mman.h sys/types.h sys/uio.h)
 
@@ -1016,7 +1016,7 @@ AC_PROG_GCC_TRADITIONAL
 AC_FUNC_SETPGRP
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS(bcopy crypt fgetgrent fgetpwent flock freeaddrinfo)
+AC_CHECK_FUNCS(bcopy crypt fgetgrent fgetpwent flock freeaddrinfo iconv nl_langinfo)
 AC_CHECK_FUNC(gai_strerror,
   AC_DEFINE(HAVE_GAI_STRERROR),
   LIB_OBJS="$LIB_OBJS glibc-gai_strerror.o"
