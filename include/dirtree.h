@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.51 2004-02-20 18:34:38 castaglia Exp $
+ * $Id: dirtree.h,v 1.52 2004-04-11 20:27:41 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -142,6 +142,7 @@ struct config_struc {
 #define CF_MERGEDOWN_MULTI	(1 << 1) /* Merge down, allowing multiple instances */
 #define CF_DYNAMIC		(1 << 2) /* Dynamically added entry */
 #define CF_DEFER		(1 << 3) /* Defer hashing until authentication */
+#define CF_SILENT		(1 << 4) /* Do not print a config dump when merging */
 
 /* Operation codes for dir_* funcs */
 #define OP_HIDE			1	/* Op for hiding dirs/files */

@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.139 2004-02-23 19:30:22 castaglia Exp $
+ * $Id: dirtree.c,v 1.140 2004-04-11 20:27:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2829,10 +2829,11 @@ void fixup_dirs(server_rec *s, int mask) {
   /* Merge mergeable configuration items down. */
   _mergedown(s->conf, FALSE);
 
-  pr_log_debug(DEBUG5, "%s", "");
-  pr_log_debug(DEBUG5, "Config for %s:", s->ServerName);
-
-  pr_conf_debug_config(debug_config_printf, s->conf, NULL);
+  if (!(mask & CF_SILENT)) {
+    pr_log_debug(DEBUG5, "%s", "");
+    pr_log_debug(DEBUG5, "Config for %s:", s->ServerName);
+    pr_conf_debug_config(debug_config_printf, s->conf, NULL);
+  }
 }
 
 config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
