@@ -1,5 +1,5 @@
 /*
- * ProFTPD: mod_mysql -- Support for connecting to MySQL databases.
+ * ProFTPD: mod_sql_mysql -- Support for connecting to MySQL databases.
  * Copyright (c) 2001 Andrew Houghton
  *  
  * This program is free software; you can redistribute it and/or modify
@@ -21,7 +21,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.22 2003-06-28 17:14:11 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.23 2003-07-07 20:42:53 castaglia Exp $
  */
 
 /*

@@ -1,5 +1,5 @@
 /*
- * ProFTPD: mod_postgres -- Support for connecting to Postgres databases.
+ * ProFTPD: mod_sql_postgres -- Support for connecting to Postgres databases.
  * Time-stamp: <1999-10-04 03:21:21 root>
  * Copyright (c) 2001 Andrew Houghton
  *  
@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.17 2003-06-28 17:14:11 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.18 2003-07-07 20:42:53 castaglia Exp $
  */
 
 /*
