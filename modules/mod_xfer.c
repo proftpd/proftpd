@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (C) 1999, MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
+ * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.31 2000-02-26 21:31:39 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.32 2000-02-28 10:37:20 macgyver Exp $
  */
 
 /* History Log:
@@ -35,6 +35,11 @@
  */
 
 #include "conf.h"
+
+#ifdef HAVE_SYS_SENDFILE_H
+#include <sys/sendfile.h>
+#endif
+
 #ifdef HAVE_REGEX_H
 #include <regex.h>
 #endif
