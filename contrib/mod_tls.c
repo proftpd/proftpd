@@ -3478,6 +3478,21 @@ MODRET set_tlsverifydepth(cmd_rec *cmd) {
 /* Event handlers
  */
 
+#if defined(PR_SHARED_MODULE)
+static void tls_mod_unload_ev(const void *event_data, void *user_data) {
+  if (strcmp("mod_tls.c", (const char *) event_data) == 0) {
+    /* Unregister ourselves from all events. */
+    pr_event_unregister(&tls_module, NULL, NULL);
+
+    /* Cleanup the OpenSSL stuff. */
+    tls_cleanup();
+
+    /* Unregister our NetIO handler for the control channel. */
+    pr_unregister_netio(PR_NETIO_STRM_CTRL);
+  }
+}
+#endif /* PR_SHARED_MODULE */
+
 static void tls_postparse_ev(const void *event_data, void *user_data) {
   server_rec *s = NULL;
   char buf[256];
@@ -3616,9 +3631,12 @@ static int tls_init(void) {
 
   pr_log_debug(DEBUG2, MOD_TLS_VERSION ": using " OPENSSL_VERSION_TEXT);
 
+  pr_event_register(&tls_module, "core.exit", tls_daemon_exit_ev, NULL);
+#if defined(PR_SHARED_MODULE)
+  pr_event_register(&tls_module, "core.module-unload", tls_mod_unload_ev, NULL);
+#endif /* PR_SHARED_MODULE */
   pr_event_register(&tls_module, "core.postparse", tls_postparse_ev, NULL);
   pr_event_register(&tls_module, "core.restart", tls_restart_ev, NULL);
-  pr_event_register(&tls_module, "core.exit", tls_daemon_exit_ev, NULL);
 
   return 0;
 }
