@@ -2180,12 +2180,14 @@ static int tls_netio_close_cb(pr_netio_stream_t *nstrm) {
       tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
         nstrm->strm_data = NULL;
       tls_ctrl_netio = NULL;
+      tls_flags &= ~TLS_SESS_ON_CTRL;
     }
 
     if (nstrm->strm_type == PR_NETIO_STRM_DATA) {
       tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data =
         nstrm->strm_data = NULL;
       tls_data_netio = NULL;
+      tls_flags &= ~TLS_SESS_ON_DATA;
     }
   }
 
