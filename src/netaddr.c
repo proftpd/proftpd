@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.28 2003-10-11 19:27:02 castaglia Exp $
+ * $Id: netaddr.c,v 1.29 2003-10-11 19:29:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -36,6 +36,7 @@
 /* Do reverse DNS lookups? */
 static int reverse_dns = 1;
 
+#ifdef HAVE_GETHOSTBYNAME2
 static void *get_v4inaddr(pr_netaddr_t *na) {
   if (!na) {
     errno = EINVAL;
@@ -49,6 +50,7 @@ static void *get_v4inaddr(pr_netaddr_t *na) {
 
   return (((char *) pr_netaddr_get_inaddr(na)) + 12);
 }
+#endif /* HAVE_GETHOSTBYNAME2 */
 
 int pr_netaddr_set_reverse_dns(int enable) {
   int old_enable = reverse_dns;
@@ -638,12 +640,12 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
       int family = pr_netaddr_get_family(na);
       void *inaddr = pr_netaddr_get_inaddr(na);
     
+#ifdef HAVE_GETHOSTBYNAME2
       if (pr_netaddr_v4mappedv6(na)) {
         family = AF_INET;
         inaddr = get_v4inaddr(na);
       }
 
-#ifdef HAVE_GETHOSTBYNAME2
       hent = gethostbyname2(buf, pr_netaddr_get_family(na));
 #else
       hent = gethostbyname(buf);
