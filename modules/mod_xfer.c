@@ -26,7 +26,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.80 2002-09-10 19:36:27 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.81 2002-09-10 23:26:01 castaglia Exp $
  */
 
 /* History Log:
@@ -149,8 +149,9 @@ static unsigned long find_max_nbytes(char *directive) {
   }
 
   /* Print out some nice debugging information. */
-  if (have_user_limit || have_group_limit ||
-      have_class_limit || have_all_limit) {
+  if (max_nbytes > 0UL &&
+      (have_user_limit || have_group_limit ||
+       have_class_limit || have_all_limit)) {
     log_debug(DEBUG5, "%s (%lu bytes) in effect for %s",
       directive, max_nbytes,
       have_user_limit ? "user " : have_group_limit ? "group " :
@@ -958,8 +959,7 @@ MODRET cmd_stor(cmd_rec *cmd)
      * This check is needed during the data_xfer() loop, below, because
      * the size of the file being uploaded isn't known in advance
      */
-    if ((nbytes_max_store = find_max_nbytes("MaxStoreFileSize")) == 0 &&
-        xfer_errno == ENOENT)
+    if ((nbytes_max_store = find_max_nbytes("MaxStoreFileSize")) == 0UL)
       have_limit = FALSE;
     else
       have_limit = TRUE;
@@ -1222,8 +1222,7 @@ MODRET cmd_retr(cmd_rec *cmd)
     }
     
     /* retrieve the number of bytes to retrieve, maximum, if present */
-    if ((nbytes_max_retrieve = find_max_nbytes("MaxRetrieveFileSize")) == 0 &&
-        xfer_errno == ENOENT)
+    if ((nbytes_max_retrieve = find_max_nbytes("MaxRetrieveFileSize")) == 0UL)
       have_limit = FALSE;
     else
       have_limit = TRUE;
