@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.263 2002-10-30 19:10:07 castaglia Exp $
+$Id: NEWS,v 1.264 2002-10-30 19:29:19 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -17,7 +17,7 @@ CVS
 - Make sure session.xfer uses cleared memory so unset structure members
   won't contain random values.
 - Fixed handling of AuthAliasOnly, broken slightly by Bug#1567.
-- Bug 1800 - Proftpd child segfaults when ussing a PASS without no USER first.
+- Bug 1800 - Proftpd child segfaults when using a PASS without no USER first.
   mod_wrap was making a bad assumption about the USER name being available.
   This assumption has been corrected.
 
