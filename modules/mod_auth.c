@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.133 2003-01-20 02:18:52 jwm Exp $
+ * $Id: mod_auth.c,v 1.134 2003-02-10 23:34:45 castaglia Exp $
  */
 
 #ifdef __CYGWIN__
@@ -872,7 +872,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   auth_setgrent(p);
 
   if (!auth_check_shell((c ? c->subset : main_server->conf), pw->pw_shell)) {
-    log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Invalid shell: %s", user,
+    log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Invalid shell: '%s'", user,
       pw->pw_shell);
     goto auth_failure;
   }

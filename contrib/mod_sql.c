@@ -1062,14 +1062,23 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
   }
 
   if (cmap.defaulthomedir)
-    dir =  cmap.defaulthomedir;
-  else 
+    dir = cmap.defaulthomedir;
+  else
     dir = sd->data[i++];
 
-  if (cmap.shellfield)
+  if (cmap.shellfield) {
     shell = sd->data[i++];
-  else
-    shell =  "";
+
+    /* Make sure that, if configured, the shell value is valid, and scream
+     * if it is not.
+     */
+    if (!shell) {
+      sql_log(DEBUG_WARN, "NULL shell column value, setting to \"\"");
+      shell = "";
+    }
+
+  } else
+    shell = "";
   
   if (uid < cmap.minuseruid)
     uid = cmap.defaultuid;
