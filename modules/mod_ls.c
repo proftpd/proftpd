@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.87 2003-03-24 20:02:50 castaglia Exp $
+ * $Id: mod_ls.c,v 1.88 2003-03-25 10:41:35 cyberrobo Exp $
  */
 
 #include "conf.h"
@@ -742,7 +742,7 @@ static char **sreaddir(const char *dirname, const int sort) {
   /* Allocate first block for holding filenames.  Yes, we are explicitly using
    * malloc (and realloc, and calloc, later) rather than the memory pools.
    * Recursive directory listings would eat up a lot of pool memory that is
-   * only freed when the _entire_ directory structure has been parse.  Also,
+   * only freed when the _entire_ directory structure has been parsed.  Also,
    * this helps to keep the memory footprint a little smaller.
    */
   if ((p = (char **) malloc(dsize * sizeof(char *))) == NULL) {
