@@ -23,7 +23,7 @@
  */
 
 /* Network ACL definitions
- * $Id: netacl.h,v 1.2 2003-11-16 00:55:53 castaglia Exp $
+ * $Id: netacl.h,v 1.3 2004-01-29 22:20:52 castaglia Exp $
  */
 
 #ifndef PR_NETACL_H
@@ -47,6 +47,9 @@ typedef enum {
  * the parsing; errno will be set appropriately.
  */
 pr_netacl_t *pr_netacl_create(pool *, char *);
+
+/* Returns a duplicate of the given netacl allocated from the pool. */
+pr_netacl_t *pr_netacl_dup(pool *, pr_netacl_t *);
 
 /* Returns 1 if the given netaddr explicitly matches the ACL, -1 if the
  * netaddr explicitly does not match the ACL (e.g. "none"), and 0 if there is

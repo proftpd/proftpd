@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.135 2003-11-16 00:55:53 castaglia Exp $
+ * $Id: dirtree.c,v 1.136 2004-01-29 22:20:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -168,7 +168,7 @@ static int allow_dyn_config(void) {
       have_user_limit ? "user " : have_group_limit ? "group " :
       have_class_limit ? "class " : "all",
       have_user_limit ? session.user : have_group_limit ? session.group :
-      have_class_limit ? session.class->name : "");
+      have_class_limit ? session.class->cls_name : "");
   }
 
   return allow;
@@ -1036,7 +1036,7 @@ unsigned char pr_expr_eval_class_and(char **expr) {
       class++;
     }
 
-    if (strcmp(session.class->name, class) == 0)
+    if (strcmp(session.class->cls_name, class) == 0)
       found = !found;
 
     if (!found)
@@ -1065,7 +1065,7 @@ unsigned char pr_expr_eval_class_or(char **expr) {
       class++;
     }
 
-    if (strcmp(session.class->name, class) == 0)
+    if (strcmp(session.class->cls_name, class) == 0)
       found = !found;
 
     if (found)
@@ -1528,6 +1528,43 @@ static int _check_group_access(xaset_t *set, char *name) {
   return res;
 }
 
+static int _check_class_access(xaset_t *set, char *name) {
+  int res = 0;
+  config_rec *c = find_config(set, CONF_PARAM, name, FALSE);
+
+  while (c) {
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+    if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_REGEX) {
+      regex_t *preg = (regex_t *) c->argv[1];
+
+      if (session.class &&
+          regexec(preg, session.class->cls_name, 0, NULL, 0) == 0) {
+        res = TRUE;
+        break;
+      }
+
+    } else
+#endif /* HAVE_REGEX_H and HAVE_REGCOMP */
+
+    if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_OR) {
+      res = pr_expr_eval_class_or((char **) &c->argv[1]);
+
+      if (res)
+        break;
+
+    } else if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_AND) {
+      res = pr_expr_eval_class_and((char **) &c->argv[1]);
+
+      if (res)
+        break;
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
+  }
+
+  return res;
+}
+
 /* As of 1.2.0rc3, a '!' character in front of the IP address
  * negates the logic (i.e. doesn't match).
  *
@@ -1665,6 +1702,10 @@ static int _check_limit_allow(config_rec *c) {
   } else if (_check_group_access(c->subset, "AllowGroup"))
     return 1;
 
+  if (session.class &&
+      _check_class_access(c->subset, "AllowClass"))
+    return 1;
+
   if (_check_ip_access(c->subset, "Allow"))
     return 1;
 
@@ -1682,10 +1723,16 @@ static int _check_limit_deny(config_rec *c) {
   if (deny_all && *deny_all == TRUE)
     return 1;
 
-  if (session.user && _check_user_access(c->subset, "DenyUser"))
+  if (session.user &&
+      _check_user_access(c->subset, "DenyUser"))
     return 1;
 
-  if (session.groups && _check_group_access(c->subset, "DenyGroup"))
+  if (session.groups &&
+      _check_group_access(c->subset, "DenyGroup"))
+    return 1;
+
+  if (session.class &&
+      _check_class_access(c->subset, "DenyClass"))
     return 1;
 
   if (_check_ip_access(c->subset, "Deny"))
@@ -3321,44 +3368,67 @@ char *get_context_name(cmd_rec *cmd) {
       return "server config";
   }
 
-  memset(cbuf,'\0',sizeof(cbuf));
   switch (cmd->config->config_type) {
-  case CONF_DIR: return "<Directory>";
-  case CONF_ANON: return "<Anonymous>";
-  case CONF_LIMIT: return "<Limit>";
-  case CONF_DYNDIR: return ".ftpaccess";
-  case CONF_GLOBAL: return "<Global>";
-  case CONF_USERDATA: return "user data";
-  default:
-    /* in 1.3/2.0, should dispatch to modules here */
-  snprintf(cbuf, sizeof(cbuf), "%d", cmd->config->config_type);
-  return cbuf;
+    case CONF_DIR:
+      return "<Directory>";
+
+    case CONF_ANON:
+      return "<Anonymous>";
+
+    case CONF_CLASS:
+      return "<Class>";
+
+    case CONF_LIMIT:
+      return "<Limit>";
+
+    case CONF_DYNDIR:
+      return ".ftpaccess";
+
+    case CONF_GLOBAL:
+      return "<Global>";
+
+    case CONF_USERDATA:
+      return "user data";
+
+    default:
+      /* XXX should dispatch to modules here, to allow them to create and
+       * handle their own arbitrary configuration contexts.
+       */
+      memset(cbuf, '\0', sizeof(cbuf));
+      snprintf(cbuf, sizeof(cbuf), "%d", cmd->config->config_type);
+      return cbuf;
   }
 }
 
-int get_boolean(cmd_rec *cmd, int av)
-{
+int get_boolean(cmd_rec *cmd, int av) {
   char *cp = cmd->argv[av];
 
   /* Boolean string can be "on", "off", "yes", "no", "true", "false",
    * "1" or "0."
    */
 
-  if (!strcasecmp(cp, "on"))
+  if (strcasecmp(cp, "on") == 0)
     return 1;
-  if (!strcasecmp(cp, "off"))
+
+  if (strcasecmp(cp, "off") == 0)
     return 0;
-  if (!strcasecmp(cp, "yes"))
+
+  if (strcasecmp(cp, "yes") == 0)
     return 1;
-  if (!strcasecmp(cp, "no"))
+
+  if (strcasecmp(cp, "no") == 0)
     return 0;
-  if (!strcasecmp(cp, "true"))
+
+  if (strcasecmp(cp, "true") == 0)
     return 1;
-  if (!strcasecmp(cp, "false"))
+
+  if (strcasecmp(cp, "false") == 0)
     return 0;
-  if (!strcasecmp(cp, "1"))
+
+  if (strcasecmp(cp, "1") == 0)
     return 1;
-  if (!strcasecmp(cp, "0"))
+
+  if (strcasecmp(cp, "0") == 0)
     return 0;
 
   return -1;

@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.216 2003-12-30 22:56:07 castaglia Exp $
+ * $Id: main.c,v 1.217 2004-01-29 22:20:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1321,20 +1321,14 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   /* Set the ID/privs for the User/Group in this server */
   set_server_privs();
 
-  /* Find class. */
-  {
-    unsigned char *class_engine = get_param_ptr(main_server->conf,
-      "Classes", FALSE);
+  /* Find the class for this session. */
+  session.class = pr_class_match_addr(session.c->remote_addr);
+  if (session.class != NULL)
+    pr_log_debug(DEBUG2, "FTP session requested from class '%s'",
+      session.class->cls_name);
 
-    if (class_engine && *class_engine == TRUE) {
-      if ((session.class = (class_t *) find_class(conn->remote_addr,
-          conn->remote_name)) != NULL)
-        pr_log_debug(DEBUG2, "FTP session requested from class '%s'",
-          session.class->name);
-      else
-        pr_log_debug(DEBUG2, "FTP session requested from unknown class");
-    }
-  }
+  else
+    pr_log_debug(DEBUG2, "FTP session requested from unknown class");
 
   /* Inform all the modules that we are now a child */
   pr_log_debug(DEBUG7, "performing module session initializations");

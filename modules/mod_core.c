@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.214 2004-01-16 00:45:36 castaglia Exp $
+ * $Id: mod_core.c,v 1.215 2004-01-29 22:20:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1018,6 +1018,56 @@ MODRET set_user(cmd_rec *cmd) {
   }
 
   add_config_param_str("UserName", 1, cmd->argv[1]);
+  return HANDLED(cmd);
+}
+
+MODRET add_from(cmd_rec *cmd) {
+  int cargc;
+  char **cargv;
+
+  CHECK_CONF(cmd, CONF_CLASS);
+
+  cargc = cmd->argc-1;
+  cargv = cmd->argv;
+
+  while (cargc && *(cargv + 1)) {
+    if (strcasecmp("all", *(cargv + 1)) == 0 ||
+        strcasecmp("none", *(cargv + 1)) == 0) {
+      pr_netacl_t *acl = pr_netacl_create(cmd->tmp_pool, *(cargv + 1));
+
+      if (pr_class_add_acl(acl) < 0)
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error adding rule '",
+          *(cargv + 1), "': ", strerror(errno), NULL));
+
+      cargc = 0;
+    }
+
+    break;
+  }
+
+  /* Parse each parameter into a netacl. */
+  while (cargc-- && *(++cargv)) {
+    char *ent = NULL;
+    char *str = pstrdup(cmd->tmp_pool, *cargv);
+
+    while ((ent = get_token(&str, ",")) != NULL) {
+      if (*ent) {
+       pr_netacl_t *acl;
+
+       if (strcasecmp(ent, "all") == 0 ||
+           strcasecmp(ent, "none") == 0) {
+          cargc = 0;
+          break;
+        }
+
+       acl = pr_netacl_create(cmd->tmp_pool, ent);
+       if (pr_class_add_acl(acl) < 0)
+         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error adding rule '", ent,
+           "': ", strerror(errno), NULL));
+      }
+    }
+  }
+
   return HANDLED(cmd);
 }
 
@@ -2214,6 +2264,35 @@ MODRET end_anonymous(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+MODRET add_class(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  if (pr_class_open(main_server->pool, cmd->argv[1]) < 0)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error creating <Class ",
+      cmd->argv[1], ">: ", strerror(errno), NULL));
+
+  return HANDLED(cmd);
+}
+
+MODRET end_class(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 0);
+  CHECK_CONF(cmd, CONF_CLASS);
+
+  if (pr_class_close() < 0)
+    pr_log_pri(PR_LOG_WARNING, "warning: empty <Class> definition");
+
+  return HANDLED(cmd);
+}
+
+MODRET set_class(cmd_rec *cmd) {
+  CONF_ERROR(cmd, "deprecated. Use <Class> sections instead.");
+}
+
+MODRET set_classes(cmd_rec *cmd) {
+  CONF_ERROR(cmd, "deprecated. Use <Class> sections instead.");
+}
+
 MODRET add_global(cmd_rec *cmd) {
   config_rec *c = NULL;
 
@@ -2293,7 +2372,7 @@ MODRET set_order(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_allowdenyusergroup(cmd_rec *cmd) {
+MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
   config_rec *c;
   char **argv;
   int argc, eval_type;
@@ -2304,8 +2383,12 @@ MODRET set_allowdenyusergroup(cmd_rec *cmd) {
   if (cmd->argc < 2)
     CONF_ERROR(cmd, "wrong number of parameters");
 
-  /* For AllowUser and DenyUser, the default expression type is "or". */
-  if (strcmp(cmd->argv[0], "AllowUser") == 0 ||
+  /* For AllowClass/DenyClass and AllowUser/DenyUser, the default expression
+   * type is "or".
+   */
+  if (strcmp(cmd->argv[0], "AllowClass") == 0 ||
+      strcmp(cmd->argv[0], "AllowUser") == 0 ||
+      strcmp(cmd->argv[0], "DenyClass") == 0 ||
       strcmp(cmd->argv[0], "DenyUser") == 0)
     eval_type = PR_EXPR_EVAL_OR;
 
@@ -2739,10 +2822,9 @@ static void format_size_str(char *buf, size_t buflen, off_t size) {
 int core_display_file(const char *numeric, const char *fn, const char *fs) {
   pr_fh_t *fp = NULL;
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-  int len, classes_enabled = 0;
+  int len;
   unsigned int *current_clients = NULL;
   unsigned int *max_clients = NULL;
-  unsigned char *class_engine = NULL;
   off_t fs_size = 0;
   pool *p;
   xaset_t *s;
@@ -2767,7 +2849,8 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
   format_size_str(mg_size_units, sizeof(mg_size_units), fs_size);
 #endif
 
-  if ((fp = pr_fsio_open_canon(fn, O_RDONLY)) == NULL)
+  fp = pr_fsio_open_canon(fn, O_RDONLY);
+  if (fp == NULL)
     return -1;
 
   p = make_sub_pool(session.pool);
@@ -2783,29 +2866,24 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
 
   snprintf(mg_cur, sizeof(mg_cur), "%u", current_clients ? *current_clients: 1);
 
-  class_engine = get_param_ptr(TOPLEVEL_CONF, "Classes", FALSE);
-
-  if (class_engine && *class_engine == TRUE)
-    classes_enabled = 1;
-
-  if (classes_enabled && session.class && session.class->name) {
+  if (session.class && session.class->cls_name) {
     unsigned int *class_users = NULL;
 
     snprintf(config_class_users, sizeof(config_class_users),
-      "CURRENT-CLIENTS-CLASS-%s", session.class->name);
+      "CURRENT-CLIENTS-CLASS-%s", session.class->cls_name);
 
     class_users = get_param_ptr(main_server->conf, config_class_users, FALSE);
 
     snprintf(mg_cur_class, sizeof(mg_cur_class), "%u",
       class_users ? *class_users : 0);
 
-    snprintf(mg_class_limit, sizeof(mg_class_limit), "%u",
-      session.class->max_connections);
+    snprintf(mg_class_limit, sizeof(mg_class_limit), "%u", 0);
 
   } else {
     mg_cur_class[0] = 0;
     snprintf(mg_class_limit, sizeof(mg_class_limit), "%u",
       max_clients ? *max_clients : 0);
+    snprintf(mg_cur_class, sizeof(mg_cur_class), "%u", 0);
   }
 
   snprintf(mg_xfer_bytes, sizeof(mg_xfer_bytes), "%" PR_LU,
@@ -2879,7 +2957,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
       "%U", user,
       "%u", session.ident_user,
       "%V", main_server->ServerName,
-      "%x", (classes_enabled && session.class) ?  session.class->name : "",
+      "%x", session.class ? session.class->cls_name : "(unknown)",
       "%y", mg_cur_class,
       "%z", mg_class_limit,
       NULL);
@@ -4259,231 +4337,6 @@ MODRET set_deferwelcome(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_classes(cmd_rec *cmd) {
-  int bool = -1;
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-
-  if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected Boolean parameter");
-
-  c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
-  c->flags |= CF_MERGEDOWN;
-
-  return HANDLED(cmd);
-}
-
-static cdir_t *cdir_list = NULL;
-static class_t *class_list = NULL;
-static hostname_t *hostname_list = NULL;
-
-static hostname_t *add_hostname(class_t *class, const char *name) {
-        hostname_t *n;
-
-        n = calloc(1, sizeof(hostname_t));
-        n->hostname = strdup(name);
-        n->next = hostname_list;
-        n->class = class;
-        hostname_list = n;
-        return n;
-}
-
-static hostname_t *find_hostname(const char *name) {
-  hostname_t *i;
-
-  for (i = hostname_list; i != NULL; i = i->next)
-    if (strcasecmp(i->hostname,name) == 0)
-      return i;
-  return NULL;
-}
-
-static cdir_t *add_cdir(class_t *class, u_int_32 address, u_int_8 netmask) {
-  cdir_t *n;
-
-  n = calloc(1, sizeof(cdir_t));
-
-  n->class = class;
-  while (netmask--) {
-    n->netmask >>= 1;
-    n->netmask |= 0x80000000;
-  }
-  n->address = address & n->netmask;
-
-  n->next = cdir_list;
-  cdir_list = n;
-
-  return n;
-}
-
-static cdir_t *find_cdir(u_int_32 address)
-{
-  cdir_t *c, *f;
-
-  c = cdir_list;
-  f = NULL;
-  while (c) {
-    /* within cdir range ? && more specific netmask ? */
-    if (((address & c->netmask) == c->address) && (f == NULL || (f && (f->netmask < c->netmask))))
-      f = c;
-
-    c = c->next;
-  }
-
-  return f;
-}
-
-static class_t *add_class(char *name)
-{
-  class_t *n;
-
-  n = calloc(1, sizeof(class_t));
-
-  n->name = strdup(name);
-  n->max_connections = 100;
-
-  n->next = class_list;
-  class_list = n;
-
-  return n;
-}
-
-static class_t *get_class(char *name)
-{
-  class_t *c;
-
-  c = class_list;
-  while (c) {
-    if (name && strcasecmp(name, c->name) == 0)
-      return c;
-
-    c = c->next;
-  }
-
-  return NULL;
-}
-
-class_t *find_class(pr_netaddr_t *addr, const char *remote_name) {
-  cdir_t *ip;
-  hostname_t *host;
-  class_t *c, *f;
-
-  ip = find_cdir(ntohl(pr_netaddr_get_addrno(addr)));
-  if (ip != NULL)
-    return ip->class;
-
-  if ((host = find_hostname(remote_name)) != NULL)
-    return host->class;
-  if ((host = find_hostname(pr_netaddr_get_ipstr(addr))) != NULL)
-    return host->class;
-
-  c = class_list;
-  f = NULL;
-  while (c) {
-    if (c->preg && (regexec(c->preg, remote_name, 0, NULL, 0)) == 0)
-      if (f == NULL || (f && f->max_connections < c->max_connections))
-        f = c;
-    c = c->next;
-  }
-  if (f)
-    return f;
-  else
-    return get_class("default");
-}
-
-MODRET set_class(cmd_rec *cmd) {
-  int bits, ret;
-  class_t *n;
-  pr_netaddr_t *res;
-  char *ptr, ipaddress[20] = {'\0'}, errmsg[80] = {'\0'};
-  unsigned char *class_engine = NULL;
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  regex_t *preg;
-#endif
-
-  CHECK_ARGS(cmd,3);
-  CHECK_CONF(cmd,CONF_ROOT);
-
-  /* Check to see that Classes have been enabled, and issue a warning
-   * if not enabled.
-   */
-  class_engine = get_param_ptr(cmd->server->conf, "Classes", FALSE);
-
-  if (!class_engine || *class_engine == FALSE)
-    pr_log_pri(PR_LOG_WARNING, "warning: Classes disabled - Class directive "
-      "not in effect");
-
-  /* setup "default" class if necesarry */
-  if ((n = get_class("default")) == NULL)
-    n = add_class("default");
-
-  /* find class, add if necessary */
-  if ((n = get_class(cmd->argv[1])) == NULL)
-    n = add_class(cmd->argv[1]);
-
-  /* what to do ? */
-  if (strcasecmp(cmd->argv[2], "limit") == 0) {
-    ret = atoi(cmd->argv[3]);
-    if (ret < 0)
-      ret = 100;
-    n->max_connections = ret;
-    pr_log_debug(DEBUG4, "Class '%s' maxconnections set to %d.",
-              n->name, n->max_connections);
-  } else if (strcasecmp(cmd->argv[2], "regex") == 0) {
-#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-    preg = pr_regexp_alloc();
-
-    if ((ret = regcomp(preg, cmd->argv[3],
-                      REG_EXTENDED|REG_NOSUB|REG_ICASE)) != 0) {
-      regerror(ret, preg, errmsg, sizeof(errmsg));
-      pr_regexp_free(preg);
-
-      n->preg = NULL;
-      pr_log_pri(PR_LOG_ERR, "Failed regexp '%s' compilation: ", cmd->argv[3]);
-    } else {
-      n->preg = preg;
-    }
-#else
-    CONF_ERROR(cmd, "regex-based classes cannot be used, as you do not have POSIX compliant regex support.");
-#endif
-  } else if (strcasecmp(cmd->argv[2], "ip") == 0) {
-    sstrncpy(ipaddress, cmd->argv[3], sizeof(ipaddress));
-    if ((ptr = strchr(ipaddress, '/')) == NULL) {
-      pr_log_pri(PR_LOG_ERR, "Class '%s' ipmask %s skipped.",
-              cmd->argv[1], cmd->argv[3]);
-      CONF_ERROR(cmd, "wrong syntax error.");
-    } else {
-      bits = atol(ptr + 1);
-
-      if (bits < 0 || bits > 32) {
-        pr_log_pri(PR_LOG_ERR, "Class '%s' ipmask %s skipped: wrong netmask.",
-                cmd->argv[1], cmd->argv[3]);
-      }
-
-      *ptr = 0;
-    }
-
-    res = pr_netaddr_get_addr(cmd->pool, ipaddress, NULL);
-    if (res != NULL) {
-      add_cdir(n, ntohl(pr_netaddr_get_addrno(res)), bits);
-      pr_log_debug(DEBUG4, "Class '%s' ipmask %p/%d added.",
-                cmd->argv[1], res, bits);
-    } else {
-      pr_log_pri(PR_LOG_ERR, "Class '%s' ip could not parse '%s'.",
-              cmd->argv[1], cmd->argv[3]);
-    }
-  } else if (strcasecmp(cmd->argv[2], "host") == 0) {
-    add_hostname(n,cmd->argv[3]);
-  } else {
-    CONF_ERROR(cmd, "unknown argument.");
-  }
-
-  return HANDLED(cmd);
-}
-
 /* Event handlers
  */
 
@@ -4606,6 +4459,8 @@ static int core_sess_init(void) {
 static conftable core_conftab[] = {
   { "<Anonymous>",		add_anonymous,			NULL },
   { "</Anonymous>",		end_anonymous,			NULL },
+  { "<Class>",			add_class,			NULL },
+  { "</Class>",			end_class,			NULL },
   { "<Directory>",		add_directory,			NULL },
   { "</Directory>",		end_directory,			NULL },
   { "<Global>",			add_global,			NULL },
@@ -4620,16 +4475,15 @@ static conftable core_conftab[] = {
   { "</VirtualHost>",		end_virtualhost,		NULL },
   { "Allow",			set_allowdeny,			NULL },
   { "AllowAll",			set_allowall,			NULL },
+  { "AllowClass",		set_allowdenyusergroupclass,	NULL },
   { "AllowFilter",		set_allowfilter,		NULL },
   { "AllowForeignAddress",	set_allowforeignaddress,	NULL },
-  { "AllowGroup",		set_allowdenyusergroup,		NULL },
+  { "AllowGroup",		set_allowdenyusergroupclass,	NULL },
   { "AllowOverride",		set_allowoverride,		NULL },
-  { "AllowUser",		set_allowdenyusergroup,		NULL },
+  { "AllowUser",		set_allowdenyusergroupclass,	NULL },
   { "AuthOrder",		set_authorder,			NULL },
   { "Bind",			set_bind,			NULL },
   { "CDPath",			set_cdpath,			NULL },
-  { "Class",			set_class,			NULL },
-  { "Classes",			set_classes,			NULL },
   { "CommandBufferSize",	set_commandbuffersize,		NULL },
   { "DebugLevel",		set_debuglevel,			NULL },
   { "DefaultAddress",		set_defaultaddress,		NULL },
@@ -4639,14 +4493,16 @@ static conftable core_conftab[] = {
   { "Define",			set_define,			NULL },
   { "Deny",			set_allowdeny,			NULL },
   { "DenyAll",			set_denyall,			NULL },
+  { "DenyClass",		set_allowdenyusergroupclass,	NULL },
   { "DenyFilter",		set_denyfilter,			NULL },
-  { "DenyGroup",		set_allowdenyusergroup,		NULL },
-  { "DenyUser",			set_allowdenyusergroup,		NULL },
+  { "DenyGroup",		set_allowdenyusergroupclass,	NULL },
+  { "DenyUser",			set_allowdenyusergroupclass,	NULL },
   { "DisplayConnect",		set_displayconnect,		NULL },
   { "DisplayFirstChdir",	set_displayfirstchdir,		NULL },
   { "DisplayGoAway",		set_displaygoaway,		NULL },
   { "DisplayLogin",		set_displaylogin,		NULL },
   { "DisplayQuit",		set_displayquit,		NULL },
+  { "From",			add_from,			NULL },
   { "Group",			set_group, 			NULL },
   { "GroupOwner",		add_groupowner,			NULL },
   { "HideFiles",		set_hidefiles,			NULL },
@@ -4692,6 +4548,8 @@ static conftable core_conftab[] = {
   { "tcpNoDelay",		set_tcpnodelay,			NULL },
 
   /* Deprecated */
+  { "Class",			set_class,			NULL },
+  { "Classes",			set_classes,			NULL },
   { "ScoreboardPath",		set_scoreboardpath,		NULL },
   { "tcpReceiveWindow",		set_tcpreceivewindow,		NULL },
   { "tcpSendWindow",		set_tcpsendwindow,		NULL },

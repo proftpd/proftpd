@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.63 2003-12-30 23:17:22 castaglia Exp $
+ * $Id: mod_sql.c,v 1.64 2004-01-29 22:20:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1470,30 +1470,25 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
       sstrncpy( argp, "0", sizeof(arg));
     break;
 
-  case 'c': {
-    unsigned char *classes = get_param_ptr(main_server->conf, "Classes", FALSE);
+  case 'c':
     argp = arg;
-
-    if (classes && *classes == TRUE)
-      sstrncpy(argp, session.class->name, sizeof(arg));
-    else
-      sstrncpy(argp, "-", sizeof(arg));
+    sstrncpy(argp, session.class ? session.class->cls_name : "-", sizeof(arg));
     break;
-  }
 
   case 'd':
     argp = arg;
 
-    if (!strcmp(cmd->argv[0], C_CDUP) || !strcmp(cmd->argv[0], C_CWD) ||
-        !strcmp(cmd->argv[0], C_MKD) || !strcmp(cmd->argv[0], C_RMD) ||
-        !strcmp(cmd->argv[0], C_XCWD) || !strcmp(cmd->argv[0], C_XCUP) ||
-        !strcmp(cmd->argv[0], C_XMKD) || !strcmp(cmd->argv[0], C_XRMD)) {
+    if (strcmp(cmd->argv[0], C_CDUP) == 0 ||
+        strcmp(cmd->argv[0], C_CWD) == 0 ||
+        strcmp(cmd->argv[0], C_MKD) == 0 ||
+        strcmp(cmd->argv[0], C_RMD) == 0 ||
+        strcmp(cmd->argv[0], C_XCWD) == 0 ||
+        strcmp(cmd->argv[0], C_XCUP) == 0 ||
+        strcmp(cmd->argv[0], C_XMKD) == 0 ||
+        strcmp(cmd->argv[0], C_XRMD) == 0) {
       char *tmp = strrchr(cmd->arg, '/');
 
-      if (tmp)
-        sstrncpy(argp, tmp, sizeof(arg));
-      else
-        sstrncpy(argp, cmd->arg, sizeof(arg));
+      sstrncpy(argp, tmp ? tmp : cmd->arg, sizeof(arg));
 
     } else
       sstrncpy(argp, "", sizeof(arg));

@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.4 2003-11-16 01:32:25 castaglia Exp $
+ * $Id: netacl.c,v 1.5 2004-01-29 22:20:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -66,7 +66,7 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
         return 1;
       }
       break;
-   
+ 
     case PR_NETACL_TYPE_DNSMATCH:
       if (strcmp(pr_netaddr_get_dnsstr(addr), acl->pattern) == 0) {
         pr_log_debug(DEBUG10, "NetACL: matched DNS name");
@@ -231,6 +231,36 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
   }
 
   return acl;
+}
+
+pr_netacl_t *pr_netacl_dup(pool *p, pr_netacl_t *acl) {
+  pr_netacl_t *acl2;
+
+  if (!p || !acl) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  acl2 = pcalloc(p, sizeof(pr_netacl_t));
+
+  /* A simple memcpy(3) won't suffice; we need a deep copy. */
+  acl2->type = acl->type;
+
+  if (acl->pattern)
+    acl2->pattern = pstrdup(p, acl->pattern);
+
+  acl2->negated = acl->negated;
+
+  if (acl->addr) {
+    acl2->addr = pr_netaddr_alloc(p);
+
+    pr_netaddr_set_family(acl2->addr, pr_netaddr_get_family(acl->addr));
+    pr_netaddr_set_sockaddr(acl2->addr, pr_netaddr_get_sockaddr(acl->addr));
+  }
+
+  acl2->masklen = acl->masklen;
+
+  return acl2;
 }
 
 int pr_netacl_get_negated(pr_netacl_t *acl) {

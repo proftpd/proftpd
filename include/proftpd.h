@@ -25,18 +25,20 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.47 2003-11-09 22:40:42 castaglia Exp $
+ * $Id: proftpd.h,v 1.48 2004-01-29 22:20:52 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
 #define PR_PROFTPD_H
 
+#include "class.h"
+
 #ifndef TRUE
-#define TRUE				1
+# define TRUE				1
 #endif
 
 #ifndef FALSE
-#define FALSE				0
+# define FALSE				0
 #endif
 
 #define CALLBACK_FRAME	\
@@ -45,41 +47,7 @@
 #define ASSERT(x)			assert(x)
 #include <assert.h>
 
-/* adjust per platform */
-/* unsigned 32 bit integer */
-typedef unsigned long u_int_32;
-/* unsigned 16 bit integer */
-typedef unsigned short u_int_16;
-/* unsigned 8 bit integer */
-typedef unsigned char u_int_8;
-
 typedef int (*callback_t)(CALLBACK_FRAME);
-
-/* Class structure */
-
-typedef struct class_struc {
-  struct class_struc *next;
-
-  char *name;				/* class name */
-  int max_connections;			/* max number of users in this class */
-  void *preg;				/* compiled regexp */
-
-} class_t;
-
-
-typedef struct cdir_struc {
-  struct cdir_struc *next;
-
-  u_int_32 address;
-  u_int_32 netmask;
-  class_t *class;
-} cdir_t;
-
-typedef struct hostname_struc {
-  struct hostname_struc *next;
-  char *hostname;
-  class_t *class;
-} hostname_t;
 
 struct conn_struc;
 struct cmd_struc;
@@ -140,7 +108,7 @@ typedef struct {
                                          * session.gid is changed
                                          */
 
-  class_t *class;			/* Session class */
+  pr_class_t *class;			/* Session class */
   char *proc_prefix;			/* The "prefix" of our process name */
 
   int wtmp_log;				/* Are we logging to wtmp? */

@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.46 2003-11-15 23:49:52 castaglia Exp $
+ * $Id: conf.h,v 1.47 2004-01-29 22:20:52 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -374,6 +374,7 @@ typedef struct {
 #include "inet.h"
 #include "netaddr.h"
 #include "netacl.h"
+#include "class.h"
 #include "bindings.h"
 #include "ident.h"
 #include "feat.h"

@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.176 2004-01-16 00:29:01 castaglia Exp $
+ * $Id: mod_auth.c,v 1.177 2004-01-29 22:20:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -161,8 +161,7 @@ static int auth_sess_init(void) {
     PR_SCORE_SERVER_LABEL, main_server->ServerName,
     PR_SCORE_CLIENT_ADDR, session.c->remote_addr,
     PR_SCORE_CLIENT_NAME, session.c->remote_name,
-    PR_SCORE_CLASS, (session.class && session.class->name) ?
-      session.class->name: "",
+    PR_SCORE_CLASS, session.class ? session.class->cls_name : "",
     PR_SCORE_BEGIN_SESSION, time(NULL),
     NULL);
 
@@ -280,8 +279,8 @@ MODRET auth_post_pass(cmd_rec *cmd) {
         }
 
       } else if (!strcmp(c->argv[1], "class")) {
-        if (session.class && session.class->name &&
-            !strcmp(session.class->name, c->argv[2])) {
+        if (session.class &&
+            strcmp(session.class->cls_name, c->argv[2]) == 0) {
 
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
@@ -1452,7 +1451,6 @@ static void auth_scan_scoreboard(void) {
   char config_class_users[128] = {'\0'};
   char curr_server_addr[80] = {'\0'};
   xaset_t *conf = NULL;
-  int have_class = (session.class && session.class->name) ? TRUE : FALSE;
 
   snprintf(curr_server_addr, sizeof(curr_server_addr), "%s:%d",
     pr_netaddr_get_ipstr(main_server->addr), main_server->ServerPort);
@@ -1469,7 +1467,8 @@ static void auth_scan_scoreboard(void) {
       /* Note: the class member of the scoreboard entry will never be
        * NULL.  At most, it may be the empty string.
        */
-      if (have_class && strcasecmp(score->sce_class, session.class->name) == 0)
+      if (session.class &&
+          strcasecmp(score->sce_class, session.class->cls_name) == 0)
         ccur++;
     }
   }
@@ -1484,12 +1483,12 @@ static void auth_scan_scoreboard(void) {
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[0]) = cur;
 
-  if (have_class) {
+  if (session.class) {
     remove_config(CURRENT_CONF, "CURRENT-CLASS", FALSE);
-    add_config_param_set(&conf, "CURRENT-CLASS", 1, session.class->name);
+    add_config_param_set(&conf, "CURRENT-CLASS", 1, session.class->cls_name);
 
     snprintf(config_class_users, sizeof(config_class_users),
-      "CURRENT-CLIENTS-CLASS-%s", session.class->name);
+      "CURRENT-CLIENTS-CLASS-%s", session.class->cls_name);
     remove_config(CURRENT_CONF, config_class_users, FALSE);
     c = add_config_param_set(&conf, config_class_users, 1, NULL);
     c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
@@ -1502,21 +1501,6 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
   long cur = 0, hcur = 0, ccur = 0, hostsperuser = 1, usersessions = 0;
   config_rec *c = NULL, *anon_config = NULL, *maxc = NULL;
   char *origuser, config_class_users[128] = {'\0'};
-  unsigned char classes_enabled = FALSE,
-    *class_engine = get_param_ptr(main_server->conf, "Classes", FALSE);
-
-  if (class_engine && *class_engine == TRUE)
-    classes_enabled = TRUE;
-
-  /* Note: there is an assumption here that if Classes have been enabled,
-   * there will be a corresponding Class defined.  This can cause a
-   * SIGSEGV if not caught.
-   *
-   * The catch is this: if Classes are enabled, but find_class() returns
-   *  NULL, act as if Classes are disabled.
-   */
-  if (classes_enabled && session.class == NULL)
-      classes_enabled = FALSE;
 
   /* Determine how many users are currently connected. */
   origuser = user;
@@ -1575,8 +1559,8 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
           }
         }
 
-        if (classes_enabled &&
-            !strcasecmp(score->sce_class, session.class->name))
+        if (session.class &&
+            strcasecmp(score->sce_class, session.class->cls_name) == 0)
           ccur++;
       }
     }
@@ -1589,49 +1573,51 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = cur;
 
-  if (classes_enabled) {
+  if (session.class) {
     remove_config(cmd->server->conf, "CURRENT-CLASS", FALSE);
     add_config_param_set(&cmd->server->conf, "CURRENT-CLASS", 1,
-                         session.class->name);
+      session.class->cls_name);
 
     snprintf(config_class_users, sizeof(config_class_users), "%s-%s",
-             "CURRENT-CLIENTS-CLASS", session.class->name);
+      "CURRENT-CLIENTS-CLASS", session.class->cls_name);
     remove_config(cmd->server->conf, config_class_users, FALSE);
     c = add_config_param_set(&cmd->server->conf, config_class_users, 1, NULL);
     c->argv[0] = pcalloc(c->pool, sizeof(int));
     *((int *) c->argv[0]) = ccur;
-
-    /* Too many users in this class? */
-    if (ccur >= session.class->max_connections) {
-      char *display = NULL;
-
-      if (session.sf_flags & SF_ANON)
-        display = (char*) get_param_ptr(session.anon_config->subset,
-                                        "DisplayGoAway",FALSE);
-
-      if (!display)
-        display = (char*) get_param_ptr(cmd->server->conf,
-                                        "DisplayGoAway",FALSE);
-
-      if (display)
-        core_display_file(R_530, display, NULL);
-      else
-        pr_response_send(R_530, "Too many users in your class, "
-          "please try again later.");
-
-      remove_config(cmd->server->conf, C_PASS, FALSE);
-
-      pr_log_auth(PR_LOG_NOTICE,
-        "Connection refused (max clients for class %s).", session.class->name);
-
-      end_login(0);
-    }
   }
 
   /* Try to determine what MaxClients/MaxHosts limits apply to this session
    * (if any) and count through the runtime file to see if this limit would
    * be exceeded.
    */
+
+  if ((maxc = find_config(cmd->server->conf, CONF_PARAM, "MaxClientsPerClass",
+      FALSE)) != NULL) {
+    char *maxstr = "Sorry, the maximum number of clients (%m) from your class "
+      "are already connected.";
+    unsigned int *max = maxc->argv[1];
+
+    if (maxc->argc > 2)
+      maxstr = maxc->argv[2];
+
+    if (*max &&
+        ccur > *max &&
+        session.class && 
+        strcmp(maxc->argv[0], session.class->cls_name) == 0) {
+      char maxn[20] = {'\0'};
+
+      pr_event_generate("mod_auth.max-clients-per-class",
+        session.class->cls_name);
+
+      snprintf(maxn, sizeof(maxn), "%u", *max);
+      pr_response_send(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
+        NULL));
+      pr_log_auth(PR_LOG_NOTICE,
+        "Connection refused (max clients %u per class %s).", *max,
+        session.class->cls_name);
+      end_login(0);
+    }
+  }
 
   if ((maxc = find_config((anon_config ? anon_config->subset :
       cmd->server->conf), CONF_PARAM, "MaxClientsPerHost", FALSE)) != NULL) {
@@ -2326,6 +2312,42 @@ MODRET set_loginpasswordprompt(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+/* usage: MaxClientsPerClass class max|"none" ["message"] */
+MODRET set_maxclientsclass(cmd_rec *cmd) {
+  int max;
+  config_rec *c;
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (strcasecmp(cmd->argv[2], "none") == 0)
+    max = 0;
+
+  else {
+    char *endp = NULL;
+
+    max = (int) strtol(cmd->argv[2], &endp, 10);
+
+    if ((endp && *endp) || max < 1)
+      CONF_ERROR(cmd, "max must be 'none' or a number greater than 0");
+  }
+
+  if (cmd->argc == 4) {
+    c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+    c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+    c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[1]) = max;
+    c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
+
+  } else {
+    c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+    c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+    c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[1]) = max;
+  }
+
+  return HANDLED(cmd);
+}
+
 /* usage: MaxClients max|"none" ["message"] */
 MODRET set_maxclients(cmd_rec *cmd) {
   int max;
@@ -2772,6 +2794,7 @@ static conftable auth_conftab[] = {
   { "GroupPassword",		set_grouppassword,		NULL },
   { "LoginPasswordPrompt",	set_loginpasswordprompt,	NULL },
   { "MaxClients",		set_maxclients,			NULL },
+  { "MaxClientsPerClass",	set_maxclientsclass,		NULL },
   { "MaxClientsPerHost",	set_maxhostclients,		NULL },
   { "MaxClientsPerUser",	set_maxuserclients,		NULL },
   { "MaxHostsPerUser",		set_maxhostsperuser,		NULL },

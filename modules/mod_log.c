@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.60 2003-11-09 23:10:56 castaglia Exp $
+ * $Id: mod_log.c,v 1.61 2004-01-29 22:20:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -567,31 +567,25 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
     break;
 
   case META_CLASS:
-    {
-      unsigned char *classes = get_param_ptr(TOPLEVEL_CONF, "Classes", FALSE);
-      argp = arg;
-
-      if (classes && *classes == TRUE)
-        sstrncpy(argp, session.class->name, sizeof(arg));
-      else
-        sstrncpy(argp, "-", sizeof(arg));
-      m++;
-    }
+    argp = arg;
+    sstrncpy(argp, session.class ? session.class->cls_name : "-", sizeof(arg));
+    m++;
     break;
 
   case META_DIR_NAME:
     argp = arg;
 
-    if (!strcmp(cmd->argv[0], C_CDUP) || !strcmp(cmd->argv[0], C_CWD) ||
-        !strcmp(cmd->argv[0], C_MKD) || !strcmp(cmd->argv[0], C_RMD) ||
-        !strcmp(cmd->argv[0], C_XCWD) || !strcmp(cmd->argv[0], C_XCUP) ||
-        !strcmp(cmd->argv[0], C_XMKD) || !strcmp(cmd->argv[0], C_XRMD)) {
+    if (strcmp(cmd->argv[0], C_CDUP) == 0 ||
+        strcmp(cmd->argv[0], C_CWD) == 0 ||
+        strcmp(cmd->argv[0], C_MKD) == 0 ||
+        strcmp(cmd->argv[0], C_RMD) == 0 ||
+        strcmp(cmd->argv[0], C_XCWD) == 0 ||
+        strcmp(cmd->argv[0], C_XCUP) == 0 ||
+        strcmp(cmd->argv[0], C_XMKD) == 0 ||
+        strcmp(cmd->argv[0], C_XRMD) == 0) {
       char *tmp = strrchr(cmd->arg, '/');
 
-      if (tmp)
-        sstrncpy(argp, tmp, sizeof(arg));
-      else
-        sstrncpy(argp, cmd->arg, sizeof(arg));
+      sstrncpy(argp, tmp ? tmp : cmd->arg, sizeof(arg));
 
     } else {
       sstrncpy(argp, "", sizeof(arg));

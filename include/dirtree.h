@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.49 2003-11-15 23:49:52 castaglia Exp $
+ * $Id: dirtree.h,v 1.50 2004-01-29 22:20:52 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -132,7 +132,8 @@ struct config_struc {
 #define CONF_VIRTUAL		(1 << 4) /* Virtual host */
 #define CONF_DYNDIR		(1 << 5) /* .ftpaccess file */
 #define CONF_GLOBAL		(1 << 6) /* "Global" context (applies to main server and ALL virtualhosts */
-#define CONF_NAMED		(1 << 7)  /* Named virtual host */
+#define CONF_CLASS		(1 << 7) /* Class context */
+#define CONF_NAMED		(1 << 8) /* Named virtual host */
 #define CONF_USERDATA		(1 << 14) /* Runtime user data */
 #define CONF_PARAM		(1 << 15) /* config/args pair */
 
@@ -232,7 +233,6 @@ config_rec *find_config_next(config_rec *, config_rec *, int,
 config_rec *find_config(xaset_t *, int, const char *, int);
 void find_config_set_top(config_rec *);
 int remove_config(xaset_t *, const char *, int);
-class_t *find_class(pr_netaddr_t *, const char *);
 
 cmd_rec *pr_cmd_alloc(pool *, int, ...);
 
