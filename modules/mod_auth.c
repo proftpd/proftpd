@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.141 2003-03-12 21:13:11 castaglia Exp $
+ * $Id: mod_auth.c,v 1.142 2003-03-19 07:58:35 castaglia Exp $
  */
 
 #ifdef __CYGWIN__
@@ -1594,7 +1594,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     if (maxc->argc > 1)
       maxstr = maxc->argv[1];
 
-    if (*max && usersessions >= *max) {
+    if (*max && usersessions > *max) {
       char maxn[20] = {'\0'};
 
       snprintf(maxn, sizeof(maxn), "%u", *max);
