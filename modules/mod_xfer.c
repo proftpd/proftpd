@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.181 2004-12-04 06:59:52 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.182 2004-12-12 00:14:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1897,6 +1897,19 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
 
   pr_timer_remove(TIMER_IDLE, ANY_MODULE);
   pr_timer_remove(TIMER_LOGIN, ANY_MODULE);
+
+  /* If this timeout is encountered and we are expecting a passive transfer,
+   * add some logging that suggests things to check and possibly fix
+   * (e.g. network/firewall rules).
+   */
+  if (session.sf_flags & SF_PASSIVE) {
+    pr_log_pri(PR_LOG_INFO,
+      "Passive data transfer failed, possibly due to network issues");
+    pr_log_pri(PR_LOG_INFO,
+      "Check your PassivePorts and MasqueradeAddress settings,");
+    pr_log_pri(PR_LOG_INFO,
+       "and any router, NAT, and firewall rules in the network path.");
+  }
 
   session_exit(PR_LOG_NOTICE, "FTP no transfer timeout, disconnected", 0, NULL);
   return 0;
