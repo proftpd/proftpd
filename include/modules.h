@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.31 2003-04-01 23:56:47 castaglia Exp $
+ * $Id: modules.h,v 1.32 2003-09-08 00:31:32 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -207,8 +207,6 @@ void pr_register_daemon_startup(int (*)(void));
 void pr_register_postparse_init(int (*)(void));
 
 modret_t *call_module(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
-modret_t *call_module_cmd(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
-modret_t *call_module_auth(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
 
 /* Symbol table hash ("stash") support. */
 typedef enum {
@@ -218,7 +216,7 @@ typedef enum {
   PR_SYM_HOOK
 } pr_stash_type_t;
 
-int pr_init_stash(void);
+int init_stash(void);
 int pr_stash_add_symbol(pr_stash_type_t, void *);
 void *pr_stash_get_symbol(pr_stash_type_t, const char *, void *, int *);
 int pr_stash_remove_symbol(pr_stash_type_t, const char *, module *);

@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.29 2003-06-12 02:09:16 castaglia Exp $
+ * $Id: modules.c,v 1.30 2003-09-08 00:31:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -99,7 +99,7 @@ static int sym_cmp(struct stash *s1, struct stash *s2) {
 
   ret = strcmp(s1->sym_name,s2->sym_name);
 
-  /* higher priority modules must go BEFORE lower priority in the
+  /* Higher priority modules must go BEFORE lower priority in the
    * hash tables.
    */
 
@@ -174,7 +174,7 @@ int pr_stash_add_symbol(pr_stash_type_t sym_type, void *data) {
   idx = symtab_hash(sym->sym_name);
 
   if (!symbol_table[idx])
-    symbol_table[idx] = xaset_create(permanent_pool, (XASET_COMPARE) sym_cmp);
+    symbol_table[idx] = xaset_create(symbol_pool, (XASET_COMPARE) sym_cmp);
 
   xaset_insert_sort(symbol_table[idx], (xasetmember_t *) sym, TRUE);
   return idx;
@@ -406,38 +406,7 @@ privdata_t *mod_privdata_find(cmd_rec *cmd, char *tag, module *m)
   return (i < cmd->privarr->nelts ? *p : NULL);
 }
 
-modret_t *call_module_auth(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd)
-{
-  modret_t *res;
-  module *prev_module = curr_module;
-
-  if (!cmd->tmp_pool)
-    cmd->tmp_pool = make_sub_pool(cmd->pool);
-
-  curr_module = m;
-  res = func(cmd);
-  curr_module = prev_module;
-
-  return res;
-}
-
-modret_t *call_module_cmd(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd)
-{
-  modret_t *res;
-  module *prev_module = curr_module;
-
-  if (!cmd->tmp_pool)
-    cmd->tmp_pool = make_sub_pool(cmd->pool);
-
-  curr_module = m;
-  res = func(cmd);
-  curr_module = prev_module;
-
-  return res;
-}
-
-modret_t *call_module(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd)
-{
+modret_t *call_module(module *m, modret_t *(*func)(cmd_rec *), cmd_rec *cmd) {
   modret_t *res;
   module *prev_module = curr_module;
 
@@ -454,8 +423,7 @@ modret_t *call_module(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd)
   return res;
 }
 
-modret_t *mod_create_data(cmd_rec *cmd,void *d)
-{
+modret_t *mod_create_data(cmd_rec *cmd,void *d) {
   modret_t *ret;
 
   ret = pcalloc(cmd->tmp_pool,sizeof(modret_t));
@@ -464,8 +432,7 @@ modret_t *mod_create_data(cmd_rec *cmd,void *d)
   return ret;
 }
 
-modret_t *mod_create_ret(cmd_rec *cmd,unsigned char err,char *n,char *m)
-{
+modret_t *mod_create_ret(cmd_rec *cmd, unsigned char err, char *n, char *m) {
   modret_t *ret;
 
   ret = pcalloc(cmd->tmp_pool,sizeof(modret_t));
@@ -479,8 +446,7 @@ modret_t *mod_create_ret(cmd_rec *cmd,unsigned char err,char *n,char *m)
   return ret;
 }
 
-modret_t *mod_create_error(cmd_rec *cmd,int mr_errno)
-{
+modret_t *mod_create_error(cmd_rec *cmd, int mr_errno) {
   modret_t *ret;
 
   ret = pcalloc(cmd->tmp_pool,sizeof(modret_t));
@@ -565,7 +531,7 @@ int module_preparse_init(void) {
   authtable *auth = NULL;
   register unsigned int i = 0;
 
-  installed_modules = xaset_create(permanent_pool,NULL);
+  installed_modules = xaset_create(permanent_pool, NULL);
 
   for (i = 0; static_modules[i]; i++) {
     m = static_modules[i];
@@ -722,9 +688,11 @@ void module_remove_postparse_inits(void) {
   }
 }
 
-int pr_init_stash(void) {
+int init_stash(void) {
   if (symbol_pool)
-    symbol_pool = make_sub_pool(permanent_pool); 
+    destroy_pool(symbol_pool);
+
+  symbol_pool = make_sub_pool(permanent_pool); 
   memset(symbol_table, '\0', sizeof(symbol_table));
 
   return 0;
