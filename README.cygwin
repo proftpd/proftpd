@@ -13,11 +13,14 @@ system. However, there are some minor differences and compatibility issues.
 Configuring and Compiling 
 -------------------------
 
-In standard Cygwin setup, there's no such username as 'root'. Hence you have
-to specify the installer username, usually 'Administrator'. The rest is as
-usual.
+In standard Cygwin setup, there's no such username as 'root'. By default,
+the configure script assigns 'Administrator' as the installation username.
+Should you want to change this, then specify a username in the
+'install_user' environment variable.
 
-    install_user=Administrator ./configure
+The rest of the installation process is as usual:
+
+    ./configure
     make
     make install
 
@@ -95,3 +98,4 @@ Author:
 Stanislav Sinyagin
 CCIE #5478
 ssinyagin@yahoo.com
+

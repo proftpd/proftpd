@@ -55,19 +55,19 @@ dirs: include/buildstamp.h dummy
 	  if [ -d "$$dir" ]; then cd $$dir; $(MAKE); fi; \
 	done
 
-proftpd: lib src modules dirs
+proftpd$(EXEEXT): lib src modules dirs
 	$(CC) $(LDFLAGS) -o $@ $(BUILD) $(LIBS)
 
-ftpcount: lib src
+ftpcount$(EXEEXT): lib src
 	$(CC) $(LDFLAGS) -o $@ $(FTPCOUNT) $(LIBS)
 
-ftpwho: lib src
+ftpwho$(EXEEXT): lib src
 	$(CC) $(LDFLAGS) -o $@ $(FTPWHO) $(LIBS)
 
-ftpshut: lib src
+ftpshut$(EXEEXT): lib src
 	$(CC) $(LDFLAGS) -o $@ $(FTPSHUT) $(LIBS)
 
-utils: ftpcount ftpwho ftpshut
+utils: ftpcount$(EXEEXT) ftpwho$(EXEEXT) ftpshut$(EXEEXT)
 
 clean:
 	cd src ; $(MAKE) clean
@@ -78,7 +78,8 @@ clean:
 	  if [ -d "$$dir" ]; then cd $$dir; $(MAKE) clean; fi; \
 	done
 	rm -f include/buildstamp.h
-	rm -f proftpd ftpcount ftpwho ftpshut core *~
+	rm -f proftpd$(EXEEXT) ftpcount$(EXEEXT) ftpwho$(EXEEXT) \
+	ftpshut$(EXEEXT) core *~
 
 # BSD install -d doesn't work, so ...
 $(localstatedir) $(sysconfdir) $(rundir) $(bindir) $(sbindir) $(mandir) $(mandir)/man1 $(mandir)/man5 $(mandir)/man8:
@@ -89,7 +90,7 @@ $(localstatedir) $(sysconfdir) $(rundir) $(bindir) $(sbindir) $(mandir) $(mandir
 	fi
 
 install-proftpd: proftpd $(localstatedir) $(sysconfdir) $(rundir) $(sbindir)
-	$(INSTALL_SBIN) proftpd $(sbindir)/proftpd$(EXEEXT)
+	$(INSTALL_SBIN) proftpd $(sbindir)/proftpd
 	if [ -f $(sbindir)/in.proftpd ] ; then \
 	  rm -f $(sbindir)/in.proftpd ; \
 	fi
@@ -97,9 +98,9 @@ install-proftpd: proftpd $(localstatedir) $(sysconfdir) $(rundir) $(sbindir)
 	chown -h $(INSTALL_USER):$(INSTALL_GROUP) $(sbindir)/in.proftpd
 
 install-utils: $(sbindir) $(bindir)
-	$(INSTALL_BIN) ftpcount $(bindir)/ftpcount$(EXEEXT)
-	$(INSTALL_BIN) ftpwho $(bindir)/ftpwho$(EXEEXT)
-	$(INSTALL_SBIN) ftpshut $(sbindir)/ftpshut$(EXEEXT)
+	$(INSTALL_BIN) ftpcount $(bindir)/ftpcount
+	$(INSTALL_BIN) ftpwho $(bindir)/ftpwho
+	$(INSTALL_SBIN) ftpshut $(sbindir)/ftpshut
 
 install-conf: $(sysconfdir)
 	if [ ! -f $(sysconfdir)/proftpd.conf ] ; then \
