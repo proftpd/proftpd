@@ -15,10 +15,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
+ *
+ * Furthermore, John Morrissey gives permission to link this program with
+ * OpenSSL, and distribute the resulting executable, without including the
+ * source code for OpenSSL in the source distribution.
  */
 
 /*
- * mod_ldap v2.8.8
+ * mod_ldap v2.8.9
  *
  * Thanks for patches go to (in alphabetical order):
  * 
@@ -39,7 +43,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  * 
- * $Id: mod_ldap.c,v 1.23 2002-06-25 04:27:47 jwm Exp $
+ * $Id: mod_ldap.c,v 1.24 2002-08-24 15:15:17 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
