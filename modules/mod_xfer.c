@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.154 2004-02-17 02:16:00 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.155 2004-02-24 00:44:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -985,7 +985,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  if (fmode && !S_ISREG(fmode)) {
+  if (fmode && !S_ISREG(fmode) && !S_ISFIFO(fmode)) {
     pr_response_add_err(R_550, "%s: Not a regular file", cmd->arg);
     return ERROR(cmd);
   }
