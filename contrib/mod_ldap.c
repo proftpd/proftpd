@@ -29,7 +29,7 @@
  * Bert Vermeulen <bert@be.easynet.net> - LDAPHomedirOnDemand,
  *                                        LDAPDefaultAuthScheme
  *
- * $Id: mod_ldap.c,v 1.10 2000-07-26 08:21:35 macgyver Exp $
+ * $Id: mod_ldap.c,v 1.11 2000-07-27 04:14:41 macgyver Exp $
  */
 
 /* Default mode to use when creating home directory on demand. */
@@ -381,7 +381,7 @@ static struct group *p_ldap_getgrnam(cmd_rec *cmd, const char *name)
 
 static struct group *p_ldap_getgrgid(cmd_rec *cmd, gid_t gid)
 {
-	char *filter, gidstr[BUFSIZ],
+	char *filter, gidstr[BUFSIZ] = {'\0'},
 		 *group_attrs[] = {"cn", "gidNumber", "memberUid", NULL};
 
 	snprintf(gidstr, sizeof(gidstr), "%d", gid);
@@ -419,7 +419,7 @@ static struct passwd *p_ldap_getpwnam(cmd_rec *cmd, const char *name)
 
 static struct passwd *p_ldap_getpwuid(cmd_rec *cmd, uid_t uid)
 {
-  char *filter, uidstr[BUFSIZ],
+  char *filter, uidstr[BUFSIZ] = {'\0'},
        *uid_attrs[] = {"uid", "uidNumber", "gidNumber", "homeDirectory",
                        "loginShell", NULL};
 
