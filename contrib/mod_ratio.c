@@ -497,6 +497,11 @@ ratio_cmd (cmd_rec * cmd)
 	 }
 		   	     }
 
+   if (session.anon_user)
+     sstrncpy(g.user, session.anon_user, sizeof(g.user));
+   if (strlen(g.user) == 0)
+     strcpy(g.user, "NOBODY\0");
+
    if (!gotratuser && !fileerr && g.save) {
 	usrfile=fopen(g.ratiofile,"r");
         while (fgets(usrstr,sizeof(usrstr),usrfile)!=NULL) {
