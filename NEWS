@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.437 2003-05-26 01:41:24 jwm Exp $
+$Id: NEWS,v 1.438 2003-05-26 01:48:25 jwm Exp $
 
 CVS
 ---------------------------------
@@ -6,6 +6,7 @@ CVS
 - Bug 2043 - Proftpd converts LF to CRLF on PUT on Cygwin.  This turned out
   to be caused by the Cygwin layer.  The fix was to use the Cygwin-specific
   O_BINARY open() flag when opening binary files on Cygwin.
+- Bug 1804 - Permit selection of additional contrib modules when building the RPM
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------
@@ -142,7 +143,6 @@ CVS
 - Bug 1977 - Add %u variable support in configuration file.  With this feature,
   one can configure DefaultRoot paths such as /home/%u/public_ftp, and the
   %u variable will be expanded to the logged in user name.
-- Bug 1804 - Permit selection of additional contrib modules when building the RPM
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------
