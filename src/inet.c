@@ -228,13 +228,18 @@ char *inet_getname(pool *p, p_in_addr_t *addr) {
 
     if ((hptr_rev = gethostbyaddr((const char *)addr,
         sizeof(p_in_addr_t), AF_INET)) != NULL) {
-      if ((hptr_forw = gethostbyname(hptr_rev->h_name)) != NULL) {
+      unsigned char ok = FALSE;
+      res = pstrdup(p, hptr_rev->h_name);
+ 
+      if ((hptr_forw = gethostbyname(res)) != NULL) {
         for (checkaddr = hptr_forw->h_addr_list; *checkaddr; ++checkaddr) {
-          if (((p_in_addr_t *)(*checkaddr))->s_addr == addr->s_addr) {
-            res = pstrdup(p, hptr_rev->h_name);
+          if (((p_in_addr_t *)(*checkaddr))->s_addr == addr->s_addr)
+            ok = TRUE;
             break;
-          }
         }
+
+        if (!ok)
+          res = NULL;
       }
     }
   }
