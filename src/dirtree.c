@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.164 2004-11-20 20:32:20 castaglia Exp $
+ * $Id: dirtree.c,v 1.165 2004-11-29 22:28:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1390,7 +1390,6 @@ static int _check_limit_allow(config_rec *c) {
     return 1;
 
   allow_all = get_param_ptr(c->subset, "AllowAll", FALSE);
-
   if (allow_all && *allow_all == TRUE)
     return 1;
 
@@ -1476,42 +1475,57 @@ int login_check_limits(xaset_t *set, int recurse, int and, int *found) {
     return TRUE;			/* default is to allow */
 
   /* First check top level */
-  for (c = (config_rec*)set->xas_list; c; c=c->next)
+  for (c = (config_rec *) set->xas_list; c; c = c->next)
     if (c->config_type == CONF_LIMIT) {
-      for (argc = c->argc, argv = (char **)c->argv; argc; argc--, argv++)
-        if (!strcasecmp("LOGIN",*argv))
+      for (argc = c->argc, argv = (char **) c->argv; argc; argc--, argv++)
+        if (strcasecmp("LOGIN", *argv) == 0)
           break;
 
       if (argc) {
         if (and) {
           switch (_check_limit(c)) {
-          case 1: res = (res && TRUE); (*found)++; break;
-	  case -1:
-          case -2: res = (res && FALSE); (*found)++; break;
+            case 1:
+              res = (res && TRUE);
+              (*found)++;
+              break;
+
+	    case -1:
+            case -2:
+              res = (res && FALSE);
+              (*found)++;
+              break;
           }
+
           if (!res)
             break;
-        } else
+
+        } else {
           switch (_check_limit(c)) {
-          case 1: res = TRUE;
-	  case -1:
-          case -2: (*found)++; break;
+            case 1:
+              res = TRUE;
+
+	    case -1:
+            case -2:
+              (*found)++;
+              break;
           }
+        }
       }
     }
 
   if ( ((res && and) || (!res && !and && *found)) && recurse ) {
-    for (c = (config_rec*)set->xas_list; c; c=c->next)
+    for (c = (config_rec *) set->xas_list; c; c = c->next)
       if (c->config_type == CONF_ANON && c->subset && c->subset->xas_list) {
        if (and) {
-         res = (res && login_check_limits(c->subset,recurse,and,&rfound));
+         res = (res && login_check_limits(c->subset, recurse, and, &rfound));
          (*found) += rfound;
          if (!res)
            break;
+
        } else {
          int rres;
 
-         rres = login_check_limits(c->subset,recurse,and,&rfound);
+         rres = login_check_limits(c->subset, recurse, and, &rfound);
          if (rfound)
            res = (res || rres);
          (*found) += rfound;
@@ -1523,6 +1537,7 @@ int login_check_limits(xaset_t *set, int recurse, int and, int *found) {
 
   if (!*found && !and)
     return TRUE;			/* Default is to allow */
+
   return res;
 }
 
