@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.131 2003-03-04 23:14:46 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.132 2003-03-04 23:22:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -662,7 +662,13 @@ static long _transmit_data(off_t count, off_t offset, char *buf, long bufsize) {
 #ifdef TCP_CORK
   int on = 1;
   socklen_t len = sizeof(int);
+#endif /* TCP_CORK */
 
+#ifdef HAVE_SENDFILE
+  pr_sendfile_t retval;
+#endif /* HAVE_SENDFILE */
+
+#ifdef TCP_CORK
   /* Note: TCP_CORK is a Linuxism, introduced with the 2.4 kernel.  It
    * has effects similar to BSD's TCP_NOPUSH option.
    */
@@ -672,8 +678,6 @@ static long _transmit_data(off_t count, off_t offset, char *buf, long bufsize) {
 #endif /* TCP_CORK */
 
 #ifdef HAVE_SENDFILE
-  pr_sendfile_t retval;
-
   if (!_transmit_sendfile(count, &offset, &retval))
     return _transmit_normal(buf, bufsize);
   else
