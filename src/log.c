@@ -21,7 +21,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.22 2001-01-24 22:02:04 flood Exp $
+ * $Id: log.c,v 1.23 2001-02-05 18:28:07 flood Exp $
  */
 
 /* History Log:
@@ -704,7 +704,7 @@ void log_discard()
 
 void log(int priority, int f, char *s)
 {
-  int newpriority;
+  int maxpriority;
   char serverinfo[1024];
   
   bzero(serverinfo, sizeof(serverinfo));
@@ -760,9 +760,10 @@ void log(int priority, int f, char *s)
   if(f != facility || !syslog_open)
     openlog("proftpd", LOG_NDELAY | LOG_PID, f);
   
-  if((newpriority = get_param_int(main_server->conf, "SyslogLevel",
+  if((maxpriority = get_param_int(main_server->conf, "SyslogLevel",
 				  FALSE)) != -1)
-    priority = newpriority;
+    if(priority > maxpriority)
+      return;
   
   if(serverinfo && *serverinfo)
     syslog(priority, "%s - %s\n", serverinfo, s);
