@@ -856,16 +856,22 @@ Optional Features:
   --enable-autoshadow     enable run-time auto-detection of shadowed passwords
                           (requires shadow)
 
-  --enable-force-setpassent
-                          force use of setpassent (default=no on FreeBSD)
-
   --enable-auth-pam       enable PAM support (default=yes)
+
+  --enable-builtin-getaddrinfo
+                          force use of builtin getaddrinfo (default=no)
+
+  --enable-builtin-getnameinfo
+                          force use of builtin getnameinfo (default=no)
 
   --enable-cap            enable POSIX.1e capabilities (default=yes on Linux)
 
   --disable-curses        disable use of curses (default=no)
 
   --disable-ncurses       disable use of ncurses (default=no)
+
+  --enable-force-setpassent
+                          force use of setpassent (default=no on FreeBSD)
 
   --enable-ipv6           enable IPv6 support (default=no)
 
@@ -3076,12 +3082,6 @@ _ACEOF
     fi
 fi;
 
-# Check whether --enable-force-setpassent or --disable-force-setpassent was given.
-if test "${enable_force_setpassent+set}" = set; then
-  enableval="$enable_force_setpassent"
-
-fi;
-
 # Check whether --enable-auth-pam or --disable-auth-pam was given.
 if test "${enable_auth_pam+set}" = set; then
   enableval="$enable_auth_pam"
@@ -3091,6 +3091,34 @@ if test "${enable_auth_pam+set}" = set; then
 echo "$as_me: error: You cannot run configure with --disable-auth-pam and include mod_auth_pam in --with-modules at the same time" >&2;}
    { (exit 1); exit 1; }; }
     fi
+fi;
+
+# Check whether --enable-builtin-getaddrinfo or --disable-builtin-getaddrinfo was given.
+if test "${enable_builtin_getaddrinfo+set}" = set; then
+  enableval="$enable_builtin_getaddrinfo"
+
+    if test x"$enableval" = xyes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define USE_GETADDRINFO 1
+_ACEOF
+
+    fi
+
+fi;
+
+# Check whether --enable-builtin-getnameinfo or --disable-builtin-getnameinfo was given.
+if test "${enable_builtin_getnameinfo+set}" = set; then
+  enableval="$enable_builtin_getnameinfo"
+
+    if test x"$enableval" = xyes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define USE_GETNAMEINFO 1
+_ACEOF
+
+    fi
+
 fi;
 
 # Check whether --enable-cap or --disable-cap was given.
@@ -3108,6 +3136,12 @@ fi;
 # Check whether --enable-ncurses or --disable-ncurses was given.
 if test "${enable_ncurses+set}" = set; then
   enableval="$enable_ncurses"
+
+fi;
+
+# Check whether --enable-force-setpassent or --disable-force-setpassent was given.
+if test "${enable_force_setpassent+set}" = set; then
+  enableval="$enable_force_setpassent"
 
 fi;
 
