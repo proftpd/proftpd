@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.39 2003-08-12 05:59:48 castaglia Exp $
+ * $Id: conf.h,v 1.40 2003-08-12 17:07:09 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -322,6 +322,14 @@ extern char *alloca();
  * not for the support library.
  */
 
+#ifndef INET_ADDRSTRLEN
+# define INET_ADDRSTRLEN        16
+#endif /* INET_ADDRSTRLEN */
+
+#ifndef INET6_ADDRSTRLEN
+# define INET6_ADDRSTRLEN       46
+#endif /* INET6_ADDRSTRLEN */
+
 typedef struct {
   int na_family;
 
@@ -331,14 +339,10 @@ typedef struct {
   char na_dnsstr[256];
   int na_have_dnsstr;
 
-  /* Ideally, this buffer would be defined in terms of INET_ADDRSTRLEN or
-   * INET6_ADDRSTRLEN.  However, this struct needs to be typedef'd before
-   * including the other headers, so we'll just do this the hard way.
-   */
 #ifdef USE_IPV6
-  char na_ipstr[46];
+  char na_ipstr[INET6_ADDRSTRLEN];
 #else
-  char na_ipstr[16];
+  char na_ipstr[INET_ADDRSTRLEN];
 #endif /* USE_IPV6 */
   int na_have_ipstr;
 

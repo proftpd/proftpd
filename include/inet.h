@@ -25,7 +25,7 @@
  */
 
 /* BSD socket manipulation tools.
- * $Id: inet.h,v 1.20 2003-08-06 23:05:54 castaglia Exp $
+ * $Id: inet.h,v 1.21 2003-08-12 17:07:09 castaglia Exp $
  */
 
 #ifndef PR_INET_H
@@ -36,14 +36,6 @@
 #ifndef AF_INET6
 # define AF_INET6	AF_UNSPEC
 #endif /* AF_INET6 */
-
-#ifndef INET_ADDRSTRLEN
-# define INET_ADDRSTRLEN	16
-#endif /* INET_ADDRSTRLEN */
-
-#ifndef INET6_ADDRSTRLEN
-# define INET6_ADDRSTRLEN	46
-#endif /* INET6_ADDRSTRLEN */
 
 #ifndef INADDR_ANY
 # define INADDR_ANY	((unsigned long int) 0x00000000)
