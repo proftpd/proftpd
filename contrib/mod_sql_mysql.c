@@ -21,7 +21,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.18 2003-03-15 03:33:26 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.19 2003-03-20 07:54:27 castaglia Exp $
  */
 
 /*
@@ -322,8 +322,7 @@ static void _sql_shutdown(void)
  *  If a backend database does not provide error information, please use
  *  the PR_ERR_SQL_UNKNOWN macro.
  */
-static modret_t *_build_error( cmd_rec *cmd, db_conn_t *conn )
-{
+static modret_t *_build_error(cmd_rec *cmd, db_conn_t *conn) {
   char num[20] = {'\0'};
 
   if (!conn)
@@ -331,7 +330,7 @@ static modret_t *_build_error( cmd_rec *cmd, db_conn_t *conn )
 
   snprintf(num, 20, "%u", mysql_errno(conn->mysql) );
 
-  return ERROR_MSG(cmd, num, mysql_error(conn->mysql));
+  return ERROR_MSG(cmd, num, (char *) mysql_error(conn->mysql));
 }
 
 /*
@@ -340,8 +339,7 @@ static modret_t *_build_error( cmd_rec *cmd, db_conn_t *conn )
  *  that data.  This is MySQL specific; other backends may choose 
  *  to do things differently.
  */
-static modret_t *_build_data( cmd_rec *cmd, db_conn_t *conn )
-{
+static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
   modret_t *mr = NULL;
   MYSQL *mysql = NULL;
   MYSQL_RES *result = NULL;
