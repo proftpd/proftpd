@@ -120,7 +120,7 @@ static int _hash_index(char *name) {
   unsigned char *cp;
   int total = 0;
 
-  for(cp = (unsigned char*)name; *cp; cp++)
+  for (cp = (unsigned char*)name; *cp; cp++)
     total += (int)*cp;
 
   return (total < PR_TUNABLE_HASH_TABLE_SIZE ? total :
@@ -244,7 +244,7 @@ static struct symbol_hash *_hash_find(int index, char *name, int type)
   struct symbol_hash *sym = NULL;
 
   if (name && symtable[index]) {
-    for(sym = (struct symbol_hash*)symtable[index]->xas_list; sym; sym=sym->next)
+    for (sym = (struct symbol_hash*)symtable[index]->xas_list; sym; sym=sym->next)
       if (sym->sym_type == type && !strcmp(sym->sym_name,name))
         break;
   }
@@ -259,7 +259,7 @@ static struct symbol_hash *_hash_find_next(int index, char *name,
   int last_hit = 0;
 
   if (symtable[index]) {
-    for(sym = (struct symbol_hash*)symtable[index]->xas_list; sym; sym=sym->next) {
+    for (sym = (struct symbol_hash*)symtable[index]->xas_list; sym; sym=sym->next) {
       if (last_hit && sym->sym_type == type && !strcmp(sym->sym_name,name))
         break;
       if (sym->ptr.sym_generic == last)
@@ -392,7 +392,7 @@ privdata_t *mod_privdata_find(cmd_rec *cmd, char *tag, module *m)
   if (!m)
     m = curmodule;
 
-  for(i = 0, p = (privdata_t**)cmd->privarr->elts; i < cmd->privarr->nelts; i++, p++) {
+  for (i = 0, p = (privdata_t**)cmd->privarr->elts; i < cmd->privarr->nelts; i++, p++) {
     if (!strcmp((*p)->tag,tag) && (m == ANY_MODULE || (*p)->m == m))
       break;
   }
@@ -592,7 +592,7 @@ int pr_preparse_init_modules(void) {
   for (m = (module*)installed_modules->xas_list; m; m=m->next) {
 
     if (m->conftable)
-      for(c = m->conftable; c->directive; c++) {
+      for (c = m->conftable; c->directive; c++) {
         wrk = (conftable*)push_array(mconfarr);
         memcpy(wrk, c, sizeof(conftable));
         wrk->m = m;

@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.41 2002-12-07 21:43:44 jwm Exp $
+ * $Id: mod_log.c,v 1.42 2002-12-07 22:03:39 jwm Exp $
  */
 
 #include "conf.h"
@@ -182,12 +182,12 @@ void logformat(char *nickname, char *fmts)
    */
 
   outs = format;
-  for(tmp = fmts; *tmp; ) {
+  for (tmp = fmts; *tmp; ) {
     if (*tmp == '%') {
       arg = NULL;
       tmp++;
-      for(;;) {
-        switch(*tmp) {
+      for (;;) {
+        switch (*tmp) {
         case '{':
           arg = preparse_arg(&tmp);
           continue;
@@ -522,7 +522,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
    */
 
   m = (*f) + 1;
-  switch(*m) {
+  switch (*m) {
   case META_ARG:
     m++; argp = arg;
     while(*m != META_ARG_END)
@@ -812,7 +812,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       argp = arg;
       r = (resp_list ? resp_list : resp_err_list);
 
-      for(; r && !r->num; r=r->next) ;
+      for (; r && !r->num; r=r->next) ;
       if (r && r->num)
         sstrncpy(argp,r->num,sizeof(arg));
 

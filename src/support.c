@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.48 2002-12-07 21:45:44 jwm Exp $
+ * $Id: support.c,v 1.49 2002-12-07 22:04:21 jwm Exp $
  */
 
 #include "conf.h"
@@ -175,7 +175,7 @@ void run_schedule(void) {
   if (!scheds || !scheds->xas_list)
     return;
 
-  for(s = (sched_t*)scheds->xas_list; s; s=snext) {
+  for (s = (sched_t*)scheds->xas_list; s; s=snext) {
     snext = s->next;
 
     if (s->loops-- <= 0) {
@@ -762,7 +762,7 @@ char *sreplace(pool *p, char *s, ...)
   }
 
   while(*src) {
-    for(mptr = marr, rptr = rarr; *mptr; mptr++, rptr++) {
+    for (mptr = marr, rptr = rarr; *mptr; mptr++, rptr++) {
       mlen = strlen(*mptr);
       rlen = strlen(*rptr);
 
@@ -829,7 +829,7 @@ void pr_memscrub(void *ptr, size_t ptrlen) {
 char *sstrcat(char *dest, const char *src, size_t n) {
   register char *d;
 
-  for(d = dest; *d && n > 1; d++, n--) ;
+  for (d = dest; *d && n > 1; d++, n--) ;
 
   while(n-- > 1 && *src)
     *d++ = *src++;
@@ -848,7 +848,7 @@ char *sstrncpy(char *dest, const char *src, size_t n) {
     return NULL;
 
   if (src && *src) {
-    for(; *src && n > 1; n--)
+    for (; *src && n > 1; n--)
       *d++ = *src++;
   }
 

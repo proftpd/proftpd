@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.29 2002-12-07 21:43:44 jwm Exp $
+ * $Id: mod_site.c,v 1.30 2002-12-07 22:03:40 jwm Exp $
  */
 
 #include "conf.h"
@@ -52,7 +52,7 @@ static char *_get_full_cmd(cmd_rec *cmd) {
   char *res = "";
   int i;
 
-  for(i = 0; i < cmd->argc; i++)
+  for (i = 0; i < cmd->argc; i++)
     res = pstrcat(cmd->tmp_pool,res,cmd->argv[i]," ",NULL);
 
   while(res[strlen(res)-1] == ' ')
@@ -212,7 +212,7 @@ MODRET site_chmod(cmd_rec *cmd) {
 
       cp = what;
       while(cp) {
-        switch(*who) {
+        switch (*who) {
         case 'u':
           mask = 0077;
           break;
@@ -235,7 +235,7 @@ MODRET site_chmod(cmd_rec *cmd) {
 
         if (invalid) break;
 
-        switch(*how) {
+        switch (*how) {
         case '+':
         case '-':
         case '=':
@@ -246,7 +246,7 @@ MODRET site_chmod(cmd_rec *cmd) {
 
         if (invalid) break;
 
-        switch(*cp) {
+        switch (*cp) {
         case 'r':
           mode_op |= (S_IRUSR|S_IRGRP|S_IROTH);
           break;
@@ -282,7 +282,7 @@ MODRET site_chmod(cmd_rec *cmd) {
           break;
         case '\0':
           /* Apply the mode and move on */
-          switch(*how) {
+          switch (*how) {
           case '+':
           case '=':
             mode |= (mode_op & ~mask);

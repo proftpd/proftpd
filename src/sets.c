@@ -80,7 +80,7 @@ int xaset_insert_end(xaset_t *set, xasetmember_t *member)
   if (!set || !member)
     return 0;
 
-  for(tmp = &set->xas_list; *tmp; prev=*tmp, tmp=&(*tmp)->next) ;
+  for (tmp = &set->xas_list; *tmp; prev=*tmp, tmp=&(*tmp)->next) ;
 
   *tmp = member;
   member->prev = prev;
@@ -105,7 +105,7 @@ int xaset_insert_sort(xaset_t *set, xasetmember_t *member, int dupes_allowed)
   if (!set || !member || !set->xas_compare)
     return 0;
 
-  for(setp = &set->xas_list; *setp; setp=&(*setp)->next) {
+  for (setp = &set->xas_list; *setp; setp=&(*setp)->next) {
     if ((c = set->xas_compare(member,*setp)) <= 0) {
       if (c == 0 && !dupes_allowed)
         return 0;
@@ -173,8 +173,8 @@ xaset_t *xaset_union(pool *pool,xaset_t *set1, xaset_t *set2,
     return NULL;
 
 
-  for(setcp = setv; *setcp; setcp++)
-    for(setp = (*setcp)->xas_list; setp; setp=setp->next) {
+  for (setcp = setv; *setcp; setcp++)
+    for (setp = (*setcp)->xas_list; setp; setp=setp->next) {
       n = copyf ? copyf(setp) : (xasetmember_t*)palloc(pool,msize);
       if (!n)
         return NULL;			/* Could cleanup here */
@@ -218,7 +218,7 @@ xaset_t *xaset_subtract(pool *pool,xaset_t *set1, xaset_t *set2,
   /* NOTE: xaset_insert_sort is not used here for performance
      reasons. */
 
-  for(set1p = set1->xas_list, set2p = set2->xas_list; set1p;
+  for (set1p = set1->xas_list, set2p = set2->xas_list; set1p;
       set1p = set1p->next) {
     if (!set2p || (c = set1->xas_compare(set1p,set2p)) < 0) {
       /* Copy if set2 is exhausted or set1p's "value" is less than
@@ -278,7 +278,7 @@ xaset_t *xaset_copy(pool *pool, xaset_t *set, size_t msize, XASET_MCOPY copyf)
   /* NOTE: xaset_insert_sort is not used here for performance
      reasons. */
 
-  for(p = set->xas_list; p; p=p->next) {
+  for (p = set->xas_list; p; p=p->next) {
     n = copyf ? copyf(p) : (xasetmember_t*)palloc(pool,msize);
     if (!n)
       return NULL;			/* Could clean up here */

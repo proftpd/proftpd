@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.74 2002-12-07 21:43:44 jwm Exp $
+ * $Id: mod_ls.c,v 1.75 2002-12-07 22:03:39 jwm Exp $
  */
 
 #include "conf.h"
@@ -344,7 +344,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
 
     if (opt_l) {
       sstrncpy(m, " ---------", sizeof(m));
-      switch(st.st_mode & S_IFMT) {
+      switch (st.st_mode & S_IFMT) {
       case S_IFREG:
         m[0] = '-';
         break;
@@ -1150,7 +1150,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
       int i;
       const char *p;
 
-      for(i = 0, p = arg + 1;
+      for (i = 0, p = arg + 1;
           (i < sizeof(pbuffer) - 1) && p && *p && *p != '/';
           pbuffer[i++] = *p++);
         

@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.139 2002-12-07 22:02:51 jwm Exp $
+ * $Id: main.c,v 1.140 2002-12-07 22:04:20 jwm Exp $
  */
 
 #include "conf.h"
@@ -356,7 +356,7 @@ void add_response_err(const char *numeric, const char *fmt, ...)
   t->num = (numeric ? pstrdup(resp_pool, numeric) : NULL);
   t->msg = pstrdup(resp_pool, sbuf);
 
-  for(head = &resp_err_list; *head && (!numeric || !(*head)->num ||
+  for (head = &resp_err_list; *head && (!numeric || !(*head)->num ||
       strcmp((*head)->num,numeric) <= 0); head = &(*head)->next) ;
 
   t->next = *head;
@@ -377,7 +377,7 @@ void add_response(const char *numeric, const char *fmt, ...) {
   t->num = (numeric ? pstrdup(resp_pool, numeric) : NULL);
   t->msg = pstrdup(resp_pool, sbuf);
 
-  for(head = &resp_list; *head && (!numeric || !(*head)->num ||
+  for (head = &resp_list; *head && (!numeric || !(*head)->num ||
       strcmp((*head)->num,numeric) <= 0); head = &(*head)->next) ;
 
   t->next = *head;
@@ -1032,13 +1032,13 @@ static int _dup_low_fd(int fd)
 {
   int i,need_close[3] = {-1, -1, -1};
 
-  for(i = 0; i < 3; i++)
+  for (i = 0; i < 3; i++)
     if (fd == i) {
       fd = dup(fd);
       need_close[i] = 1;
     }
 
-  for(i = 0; i < 3; i++)
+  for (i = 0; i < 3; i++)
     if (need_close[i] > -1)
       close(i);
 
@@ -1441,7 +1441,7 @@ static void disc_children(void) {
     sigprocmask(SIG_BLOCK,&sigset,NULL);
 
     PRIVS_ROOT
-    for(cp = (pidrec_t*) child_list->xas_list; cp; cp=cp->next)
+    for (cp = (pidrec_t*) child_list->xas_list; cp; cp=cp->next)
       kill(cp->pid,SIGUSR1);
     PRIVS_RELINQUISH
 
@@ -1533,7 +1533,7 @@ static void server_loop(void) {
 
       have_dead_child = FALSE;
       if (child_list) {
-        for(cp = (pidrec_t*) child_list->xas_list; cp; cp=cpnext) {
+        for (cp = (pidrec_t*) child_list->xas_list; cp; cp=cpnext) {
           cpnext = cp->next;
 
           /* if the pidrec_t is marked "dead", remove it from the set,
@@ -2476,7 +2476,7 @@ static void show_usage(int exit_code) {
   struct option_help *h;
 
   printf("usage: proftpd [options]\n");
-  for(h = opts_help; h->long_opt; h++) {
+  for (h = opts_help; h->long_opt; h++) {
 #ifdef HAVE_GETOPT_LONG
     printf(" %s, %s\n ", h->long_opt, h->short_opt);
 #else /* HAVE_GETOPT_LONG */

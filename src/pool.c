@@ -255,7 +255,7 @@ static long __walk_pools(pool *p, int level)
       _levelpad[(level - 1) * 3] = '\0';
   }
 
-  for(; p; p = p->sub_next) {
+  for (; p; p = p->sub_next) {
     total += bytes_in_block_list(p->first);
     if (level == 0)
       log_pri(PR_LOG_NOTICE, "0x%08lx bytes", bytes_in_block_list(p->first));
@@ -302,7 +302,7 @@ static void pool_release_free_block_list(void) {
 
   blok = block_freelist;
   if (blok) {
-    for(next = blok->h.next; next; blok = next, next = blok->h.next)
+    for (next = blok->h.next; next; blok = next, next = blok->h.next)
       free(blok);
   }
   block_freelist = NULL;
@@ -619,7 +619,7 @@ array_header *copy_array_str(pool *p, const array_header *arr)
   array_header *res = copy_array(p,arr);
   int i;
 
-  for(i = 0; i < arr->nelts; i++)
+  for (i = 0; i < arr->nelts; i++)
     ((char**)res->elts)[i] = pstrdup(p,((char**)res->elts)[i]);
 
   return res;
@@ -727,7 +727,7 @@ static void cleanup_pool_for_exec(pool *p) {
   run_child_cleanups(p->cleanups);
   p->cleanups = NULL;
 
-  for(p = p->sub_pools; p; p = p->sub_next)
+  for (p = p->sub_pools; p; p = p->sub_next)
     cleanup_pool_for_exec(p);
 }
 

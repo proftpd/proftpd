@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.23 2002-12-07 21:45:43 jwm Exp $
+ * $Id: auth.c,v 1.24 2002-12-07 22:04:19 jwm Exp $
  */
 
 #include "conf.h"
@@ -46,7 +46,7 @@ static cmd_rec *_make_cmd(pool *cp, int argc, ...)
 
     va_start(args,argc);
 
-    for(i = 0; i < argc; i++)
+    for (i = 0; i < argc; i++)
       c->argv[i] = (void*)va_arg(args,char*);
 
     va_end(args);

@@ -236,7 +236,7 @@ char *inet_getname(pool *pool, p_in_addr_t *addr) {
     if ((hptr_rev = gethostbyaddr((const char *)addr,
                                  sizeof(p_in_addr_t), AF_INET)) != NULL) {
       if ((hptr_forw = gethostbyname(hptr_rev->h_name)) != NULL) {
-        for(checkaddr = hptr_forw->h_addr_list; *checkaddr; ++checkaddr) {
+        for (checkaddr = hptr_forw->h_addr_list; *checkaddr; ++checkaddr) {
           if (((p_in_addr_t*)(*checkaddr))->s_addr == addr->s_addr) {
             res = pstrdup(pool, hptr_rev->h_name);
             break;
@@ -361,7 +361,7 @@ int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port)
     PRIVS_ROOT
   }
 
-  for(tries = 1; tries < 10; tries++) {
+  for (tries = 1; tries < 10; tries++) {
     if (bind(s,(struct sockaddr *)&servaddr,sizeof(servaddr)) >= 0)
     { res = s; break; }
     if (errno != EADDRINUSE) break;
@@ -417,7 +417,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
   c->pool = subpool;
 
   if (servers && servers->xas_list) {
-    for(s = (server_rec *) servers->xas_list; s; s = s->next)
+    for (s = (server_rec *) servers->xas_list; s; s = s->next)
       if (s->ipaddr)
         *((p_in_addr_t *) push_array(tmp)) = *s->ipaddr;
 
@@ -622,8 +622,8 @@ conn_t *inet_create_connection_portrange(pool *p, xaset_t *servers,
   while(index--)
     range[index] = low_port + index;
 
-  for(attempt = 3; attempt > 0 && !c; attempt--) {
-    for(index = range_len - 1; index >= 0 && !c; index--) {
+  for (attempt = 3; attempt > 0 && !c; attempt--) {
+    for (index = range_len - 1; index >= 0 && !c; index--) {
 
       /* If this is the first attempt through the range, randomize
        * the order of the port numbers used.
@@ -1051,7 +1051,7 @@ conn_t *inet_accept(pool *pool, conn_t *d, conn_t *c, int rfd, int wfd,
   allow_foreign_addr = get_param_ptr(TOPLEVEL_CONF,
     "AllowForeignAddress", FALSE);
 
-  for(;;) {
+  for (;;) {
     if ((newfd = accept(d->listen_fd, (struct sockaddr *) &addr,
         &addrlen)) != -1) {
       if ((allow_foreign_addr && *allow_foreign_addr == FALSE) &&

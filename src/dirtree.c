@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.86 2002-12-07 22:02:51 jwm Exp $
+ * $Id: dirtree.c,v 1.87 2002-12-07 22:04:20 jwm Exp $
  */
 
 #include "conf.h"
@@ -823,7 +823,7 @@ int group_expression(char **expr)
   int cnt,found;
   char *grp;
 
-  for(; *expr; expr++) {
+  for (; *expr; expr++) {
     grp = *expr;
     found = FALSE;
 
@@ -835,7 +835,7 @@ int group_expression(char **expr)
     if (session.group && strcmp(session.group,grp) == 0)
       found = !found;
     else if (session.groups)
-      for(cnt = session.groups->nelts-1; cnt >= 0; cnt--)
+      for (cnt = session.groups->nelts-1; cnt >= 0; cnt--)
         if (strcmp(*(((char**)session.groups->elts)+cnt),grp) == 0) {
           found = !found; break;
         }
@@ -861,7 +861,7 @@ int user_expression(char **expr)
   int found;
   char *user;
 
-  for(; *expr; expr++) {
+  for (; *expr; expr++) {
     user = *expr;
     found = FALSE;
 
@@ -1297,7 +1297,7 @@ static int _check_ip_negative(const config_rec *c)
   char *arg,**argv;
   int argc;
 
-  for(argc = c->argc, argv = (char**)c->argv; argc; argc--, argv++) {
+  for (argc = c->argc, argv = (char**)c->argv; argc; argc--, argv++) {
     arg = *argv;
     if (*arg != '!')
       continue;
@@ -1339,7 +1339,7 @@ static int _check_ip_positive(const config_rec *c)
   char *arg,**argv;
   int argc;
 
-  for(argc = c->argc, argv = (char**)c->argv; argc; argc--, argv++) {
+  for (argc = c->argc, argv = (char**)c->argv; argc; argc--, argv++) {
     arg = *argv;
     if (*arg == '!')
       continue;
@@ -1504,9 +1504,9 @@ int login_check_limits(xaset_t *conf, int recurse,
     return TRUE;			/* default is to allow */
 
   /* First check top level */
-  for(c = (config_rec*)conf->xas_list; c; c=c->next)
+  for (c = (config_rec*)conf->xas_list; c; c=c->next)
     if (c->config_type == CONF_LIMIT) {
-      for(argc = c->argc, argv = (char**)c->argv; argc; argc--, argv++)
+      for (argc = c->argc, argv = (char**)c->argv; argc; argc--, argv++)
         if (!strcasecmp("LOGIN",*argv))
           break;
 
@@ -1529,7 +1529,7 @@ int login_check_limits(xaset_t *conf, int recurse,
     }
 
   if ( ((res && and) || (!res && !and && *found)) && recurse ) {
-    for(c = (config_rec*)conf->xas_list; c; c=c->next)
+    for (c = (config_rec*)conf->xas_list; c; c=c->next)
       if (c->config_type == CONF_ANON && c->subset && c->subset->xas_list) {
        if (and) {
          res = (res && login_check_limits(c->subset,recurse,and,&rfound));
@@ -2145,7 +2145,7 @@ static void _reparent_all(config_rec *newparent,xaset_t *set)
   if (!newparent->subset)
     newparent->subset = xaset_create(newparent->pool,NULL);
 
-  for(c = (config_rec*)set->xas_list; c; c = cnext) {
+  for (c = (config_rec*)set->xas_list; c; c = cnext) {
     cnext = c->next;
     xaset_remove(set,(xasetmember_t*)c);
     xaset_insert(newparent->subset,(xasetmember_t*)c);
@@ -2168,7 +2168,7 @@ static config_rec *_find_best_dir(xaset_t *set,char *path,int *matchlen)
   if (!set || !set->xas_list)
     return NULL;
 
-  for(c = (config_rec*)set->xas_list; c; c=c->next) {
+  for (c = (config_rec*)set->xas_list; c; c=c->next) {
     if (c->config_type == CONF_DIR) {
       if (!strcmp(c->name,path))
         continue;				/* Don't examine the current */
@@ -2224,7 +2224,7 @@ static void _reorder_dirs(xaset_t *set, int mask)
   if (!(mask & CF_DEFER))
     defer = 1;
 
-  for(c = (config_rec*)set->xas_list; c; c=cnext) {
+  for (c = (config_rec*)set->xas_list; c; c=cnext) {
     cnext = c->next;
 
     if (c->config_type == CONF_DIR) {
@@ -2259,7 +2259,7 @@ static void _reorder_dirs(xaset_t *set, int mask)
 
   /* Top level is now sorted, now we recursively sort all the sublevels
    */
-  for(c = (config_rec*)set->xas_list; c; c=c->next)
+  for (c = (config_rec*)set->xas_list; c; c=c->next)
     if (c->config_type == CONF_DIR || c->config_type == CONF_ANON)
       _reorder_dirs(c->subset,mask);
 }
@@ -2289,7 +2289,7 @@ static void _mergedown(xaset_t *s,int dynamic)
   for (c = (config_rec*)s->xas_list; c; c=c->next)
     if ((c->flags & CF_MERGEDOWN) ||
         (c->flags & CF_MERGEDOWN_MULTI))
-      for(dest = (config_rec*)s->xas_list; dest; dest=dest->next)
+      for (dest = (config_rec*)s->xas_list; dest; dest=dest->next)
         if (dest->config_type == CONF_ANON ||
            dest->config_type == CONF_DIR) {
 
@@ -2316,7 +2316,7 @@ static void _mergedown(xaset_t *s,int dynamic)
         }
 
   /* Top level merged, recursively merge lower levels */
-  for(c = (config_rec*)s->xas_list; c; c=c->next)
+  for (c = (config_rec*)s->xas_list; c; c=c->next)
     if (c->subset && (c->config_type == CONF_ANON ||
                      c->config_type == CONF_DIR))
       _mergedown(c->subset,dynamic);
@@ -2334,7 +2334,7 @@ void resolve_anonymous_dirs(xaset_t *clist)
   if (!clist)
     return;
 
-  for(c = (config_rec*)clist->xas_list; c; c=c->next) {
+  for (c = (config_rec*)clist->xas_list; c; c=c->next) {
     if (c->config_type == CONF_DIR) {
       if (c->argv[1]) {
         realdir = dir_best_path(c->pool,c->argv[1]);
@@ -2365,7 +2365,7 @@ void resolve_defered_dirs(server_rec *s)
   if (!s || !s->conf)
     return;
 
-  for(c = (config_rec*)s->conf->xas_list; c; c=c->next) {
+  for (c = (config_rec*)s->conf->xas_list; c; c=c->next) {
     if (c->config_type == CONF_DIR && (c->flags & CF_DEFER)) {
       realdir = dir_best_path(c->pool,c->name);
       if (realdir)
@@ -2406,7 +2406,7 @@ void _copy_recur(xaset_t **set, pool *p, config_rec *c, config_rec *new_parent)
   }
 
   if (c->subset)
-    for(c = (config_rec*)c->subset->xas_list; c; c=c->next)
+    for (c = (config_rec*)c->subset->xas_list; c; c=c->next)
       _copy_recur(&newconf->subset,p,c,newconf);
 }
 
@@ -2419,8 +2419,8 @@ void _copy_global_to_all(xaset_t *set)
   if (!set || !set->xas_list)
     return;
 
-  for(c = (config_rec*)set->xas_list; c; c=c->next)
-    for(s = (server_rec*) server_list->xas_list; s; s=s->next)
+  for (c = (config_rec*)set->xas_list; c; c=c->next)
+    for (s = (server_rec*) server_list->xas_list; s; s=s->next)
       _copy_recur(&s->conf,s->pool,c,NULL);
 }
 
@@ -2429,14 +2429,14 @@ static void fixup_globals(void) {
   config_rec *c = NULL, *cnext = NULL;
 
   smain = (server_rec*) server_list->xas_list;
-  for(s = smain; s; s=s->next) {
+  for (s = smain; s; s=s->next) {
     /* loop through each top level directive looking for a CONF_GLOBAL
      * context
      */
     if (!s->conf || !s->conf->xas_list)
       continue;
 
-    for(c = (config_rec*)s->conf->xas_list; c; c=cnext) {
+    for (c = (config_rec*)s->conf->xas_list; c; c=cnext) {
       cnext = c->next;
       if (c->config_type == CONF_GLOBAL) {
         /* copy the contents of the block to all other servers
@@ -2467,7 +2467,7 @@ void fixup_dirs(server_rec *s, int mask)
   _mergedown(s->conf,FALSE);
 
 /*
-  for(c = (config_rec*)s->conf->xas_list; c; c=c->next)
+  for (c = (config_rec*)s->conf->xas_list; c; c=c->next)
     if (c->config_type == CONF_ANON)
       _reorder_dirs(c->subset);
 */
@@ -2495,7 +2495,7 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
     do {
       config_rec *res = NULL;
 
-      for(c = top; c; c=c->next) {
+      for (c = top; c; c=c->next) {
         if (c->subset && c->subset->xas_list)
           res = find_config_next(NULL,(config_rec*)c->subset->xas_list,
                                  type,name,recurse+1);
@@ -2511,7 +2511,7 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
        * to do so, it will break stuff. ;)
        * -jss 4/10/2001
        */
-      for(c = top; c; c=c->next)
+      for (c = top; c; c=c->next)
         if ((type == -1 || type == c->config_type) &&
             (!name || !strcmp(name,c->name)))
           return c;
@@ -2527,7 +2527,7 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
       break;
     } while(1);
   } else {
-    for(c = top; c; c=c->next)
+    for (c = top; c; c=c->next)
       if ((type == -1 || type == c->config_type) &&
          (!name || !strcmp(name,c->name)))
         return c;
@@ -3008,7 +3008,7 @@ char *get_full_cmd(cmd_rec *cmd)
   if (cmd->arg)
     res = pstrcat(p,cmd->argv[0]," ",cmd->arg,NULL);
   else {
-    for(i = 0; i < cmd->argc; i++)
+    for (i = 0; i < cmd->argc; i++)
       res = pstrcat(p,res,cmd->argv[i]," ",NULL);
 
     while(res[strlen(res)-1] == ' ' && *res)
