@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.104 2002-11-14 17:57:27 castaglia Exp $
+ * $Id: mod_auth.c,v 1.105 2002-11-18 17:15:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1146,18 +1146,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
    * session.gid = pw->pw_gid;
    */
 
-  /* chdir to the proper directory, do this even if anonymous
-   * to make sure we aren't outside our chrooted space.
-   */
-
-  showsymlinks = get_param_int((c ? c->subset : main_server->conf),
-                               "ShowSymlinks",FALSE);
-
-  if(showsymlinks == -1)
-    showsymlinks = 1;
-
-  /* if the home directory is NULL or "", reject the login
-   */
+  /* If the home directory is NULL or "", reject the login. */
   if (pw->pw_dir == NULL || !strcmp(pw->pw_dir, "")) {
     log_pri(LOG_ERR, "error: user %s home directory is NULL or \"\"",
       session.user);
@@ -1165,10 +1154,24 @@ static int _setup_environment(pool *p, char *user, char *pass)
     end_login(1);
   }
 
-  /* attempt to change to the correct directory -- use session.cwd first.
+  {
+    unsigned char *show_symlinks = get_param_ptr(
+      c ? c->subset : main_server->conf, "ShowSymlinks", FALSE);
+
+    if (show_symlinks && *show_symlinks == TRUE)
+      showsymlinks = TRUE;
+    else
+      showsymlinks = FALSE;
+  }
+
+  /* chdir to the proper directory, do this even if anonymous
+   * to make sure we aren't outside our chrooted space.
+   */
+
+  /* Attempt to change to the correct directory -- use session.cwd first.
    * This will contain the DefaultChdir directory, if configured...
    */
-  if(fs_chdir_canon(session.cwd,!showsymlinks) == -1) {
+  if (fs_chdir_canon(session.cwd, !showsymlinks) == -1) {
 
     /* if we've got DefaultRoot or anonymous login, ignore this error
      * and chdir to /
