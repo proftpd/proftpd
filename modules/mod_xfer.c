@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.32 2000-02-28 10:37:20 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.33 2000-07-06 06:45:10 macgyver Exp $
  */
 
 /* History Log:
@@ -421,7 +421,7 @@ MODRET cmd_stor(cmd_rec *cmd)
   p = mod_privdata_find(cmd,"stor_filename",NULL);
 
   if(!p) {
-    add_response_err(R_550,"%s: internal error, stor_filename not set by cmd_pre_retr",cmd->arg);
+    add_response_err(R_550,"%s: internal error, stor_filename not set by cmd_pre_stor",cmd->arg);
     return ERROR(cmd);
   }
 
