@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.44 2004-05-31 17:54:14 castaglia Exp $
+ * $Id: modules.c,v 1.45 2004-05-31 18:58:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -688,20 +688,19 @@ int pr_module_unload(module *m) {
   pr_event_generate("core.module-unload", buf);
 
   /* Remove the module from the loaded_modules list. */
-  if (m->prev) {
+  if (m->prev)
     m->prev->next = m->next;
-    m->prev = NULL;
 
-  } else
+  else
     /* This module is the start of the loaded_modules list (prev is NULL),
      * so we need to update that pointer, too.
      */
     loaded_modules = m->next;
 
-  if (m->next) {
+  if (m->next)
     m->next->prev = m->prev;
-    m->next = NULL;
-  }
+
+  m->prev = m->next = NULL;
 
   /* Remove the module's config, cmd, and auth tables. */
   if (m->conftable) {
