@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.2 2003-03-12 02:46:18 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.3 2003-04-08 22:25:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -336,7 +336,7 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
      * destroy_pool(c->pool) if removed_c is TRUE.
      */
 
-    c = find_config_next(c, c->next, CONF_PARAM, IFSESS_GROUP_TEXT, FALSE);
+    c = find_config_next(c, c->next, -1, IFSESS_GROUP_TEXT, FALSE);
   }
 
   c = find_config(main_server->conf, -1, IFSESS_USER_TEXT, FALSE);
@@ -380,7 +380,7 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
       }
     }
 
-    c = find_config_next(c, c->next, CONF_PARAM, IFSESS_USER_TEXT, FALSE);
+    c = find_config_next(c, c->next, -1, IFSESS_USER_TEXT, FALSE);
   }
 
   return DECLINED(cmd);
@@ -434,7 +434,7 @@ static int ifsess_sess_init(void) {
       }
     }
 
-    c = find_config_next(c, c->next, CONF_PARAM, IFSESS_CLASS_TEXT, FALSE);
+    c = find_config_next(c, c->next, -1, IFSESS_CLASS_TEXT, FALSE);
   }
 
   return 0;
