@@ -25,7 +25,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.4 2001-06-18 17:12:45 flood Exp $
+ * $Id: modules.h,v 1.5 2001-11-29 18:20:38 flood Exp $
  */
 
 #ifndef __MODULES_H
@@ -125,8 +125,9 @@ typedef struct {
 #define PRE_CMD				1
 #define CMD				2
 #define POST_CMD			3
-#define LOG_CMD				4
-#define LOG_CMD_ERR			5
+#define POST_CMD_ERR			4
+#define LOG_CMD				5
+#define LOG_CMD_ERR			6
 
 typedef struct {
   int cmd_type;				/* see above for cmd types */

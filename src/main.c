@@ -25,7 +25,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.69 2001-10-18 17:10:47 flood Exp $
+ * $Id: main.c,v 1.70 2001-11-29 18:20:38 flood Exp $
  */
 
 /*
@@ -769,7 +769,8 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
   static char *last_match = NULL;
   int *index_cache;
 
-  send_error = (cmd_type == CMD || cmd_type == PRE_CMD);
+  send_error = (cmd_type == PRE_CMD || cmd_type == CMD ||
+    cmd_type == POST_CMD_ERR);
 
   if(!match) {
     match = cmd->argv[0];
@@ -827,6 +828,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
           (cmd_type == PRE_CMD ? "PRE_CMD" :
            cmd_type == CMD ? "CMD" :
            cmd_type == POST_CMD ? "POST_CMD" : 
+           cmd_type == POST_CMD_ERR ? "POST_CMD_ERR" : 
            cmd_type == LOG_CMD ? "LOG_CMD" :
            "(unknown)"),
           argstr, c->m->name);
@@ -902,8 +904,16 @@ static void dispatch_cmd(cmd_rec *cmd)
     success = _dispatch(cmd,PRE_CMD,FALSE,NULL);
 
   if(success < 0) {
+
+    /* dispatch to POST_CMD_ERR handlers as well
+     * -tj 2001-08-09
+     */
+    _dispatch(cmd, POST_CMD_ERR, FALSE, "*");
+    _dispatch(cmd, POST_CMD_ERR, FALSE, NULL);
+
     _dispatch(cmd,LOG_CMD_ERR,FALSE,"*");
     _dispatch(cmd,LOG_CMD_ERR,FALSE,NULL);
+
     send_response_list(&resp_err_list);
     return;
   }
@@ -921,7 +931,16 @@ static void dispatch_cmd(cmd_rec *cmd)
     _dispatch(cmd,LOG_CMD,FALSE,NULL);
 
     send_response_list(&resp_list);
+
   } else if(success < 0) {
+
+    /* allow for non-logging command handlers to be run if CMD fails
+     * -tj 2001-08-09
+     */
+    success = _dispatch(cmd, POST_CMD_ERR, FALSE, "*");
+    if (!success)
+      success = _dispatch(cmd, POST_CMD_ERR, FALSE, NULL);
+
     _dispatch(cmd,LOG_CMD_ERR,FALSE,"*");
     _dispatch(cmd,LOG_CMD_ERR,FALSE,NULL);
 
@@ -2408,8 +2427,8 @@ void show_usage(int exit_code)
 
 int main(int argc, char **argv, char **envp)
 {
-  int socketp;
-  int _umask = 0,c;
+  int socketp, optc;
+  mode_t *main_umask = NULL; 
   int check_config_syntax = 0;
   int show_version = 0;
   struct sockaddr peer;
@@ -2464,7 +2483,6 @@ int main(int argc, char **argv, char **envp)
    */
   init_set_proc_title(argc, argv, envp);
 
-
   /* Seed rand */
   srand(time(NULL));
 
@@ -2496,14 +2514,14 @@ int main(int argc, char **argv, char **envp)
    */
 
   opterr = 0;
-  while((c =
+  while((optc =
 #ifdef HAVE_GETOPT_LONG
 	 getopt_long(argc, argv, cmdopts, opts, NULL)
 #else /* HAVE_GETOPT_LONG */
 	 getopt(argc, argv, cmdopts)
 #endif /* HAVE_GETOPT_LONG */
 	 ) != -1) {
-    switch(c) {
+    switch (optc) {
     case 'n': 
       nodaemon++;
       break;
@@ -2630,11 +2648,12 @@ int main(int argc, char **argv, char **envp)
       log_pri(LOG_ERR, "unable to set daemon groups: %s",
         strerror(errno));
   }
-  
-   if((_umask = get_param_int(main_server->conf,"Umask",FALSE)) == -1)
-    _umask = 0022;
+ 
+   main_umask = (mode_t *) get_param_ptr(main_server->conf, "Umask", FALSE);
+   if (main_umask == NULL)
+     *main_umask = (mode_t) 0022; 
 
-  umask(_umask);
+  umask(*main_umask);
 
   /* Give up root and save our uid/gid for later use (if supported)
    * If we aren't currently root, PRIVS_SETUP will get rid of setuid

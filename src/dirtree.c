@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.40 2001-10-19 15:27:58 flood Exp $
+ * $Id: dirtree.c,v 1.41 2001-11-29 18:20:38 flood Exp $
  */
 
 /* History:
@@ -741,7 +741,7 @@ static int _dir_check_op(pool *p,xaset_t *c,int op,
     for (i = session.gids->nelts, gidp = (int *) session.gids->elts;
          i; i--, gidp++) {
 
-			/* matched an auxiliary GID against the file GID
+      /* matched an auxiliary GID against the file GID
        */
       if (*gidp == gid) {
         found_gid_match = TRUE;
@@ -759,22 +759,22 @@ static int _dir_check_op(pool *p,xaset_t *c,int op,
 
   switch(op) {
   case OP_HIDE:
-    u = get_param_int(c,"HideUser",FALSE);
+    u = (uid_t) get_param_int(c,"HideUser",FALSE);
 
-    while(u != -1 && (u != uid || u == session.uid))
-      u = get_param_int_next("HideUser",FALSE);
+    while (u != (uid_t) -1 && (u != uid || u == session.uid))
+      u = (uid_t) get_param_int_next("HideUser",FALSE);
 
-    if(u == uid) {
+    if (u == uid) {
       res = 0;
       break;
     }
 
-    g = get_param_int(c,"HideGroup",FALSE);
+    g = (gid_t) get_param_int(c,"HideGroup",FALSE);
 
-    while(g != -1 && (g != gid || g == session.gid))
-      g = get_param_int_next("HideGroup",FALSE);
+    while (g != (gid_t) -1 && (g != gid || g == session.gid))
+      g = (gid_t) get_param_int_next("HideGroup",FALSE);
 
-    if(g == gid) {
+    if (g == gid) {
       res = 0;
       break;
     }
