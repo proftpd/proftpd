@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.34 2003-09-05 20:00:13 castaglia Exp $
+ * $Id: pool.c,v 1.35 2003-09-08 00:29:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -291,10 +291,6 @@ void debug_walk_pools(void) {
   debug_pool_info();
 }
 
-
-#if 0
-/* NOTE: not used at present */
-
 /* Release the entire free block list */
 static void pool_release_free_block_list(void) {
   union block_hdr *blok,*next;
@@ -310,7 +306,6 @@ static void pool_release_free_block_list(void) {
 
   pr_alarms_unblock();
 }
-#endif
 
 struct pool *make_sub_pool(struct pool *p) {
   union block_hdr *blok;
@@ -344,9 +339,15 @@ struct pool *make_sub_pool(struct pool *p) {
 
 /* Initialize the pool system by creating the base permanent_pool. */
 
-void pr_init_pools(void) {
+void init_pools(void) {
   if (!permanent_pool)
     permanent_pool = make_sub_pool(NULL);
+}
+
+void free_pools(void) {
+  destroy_pool(permanent_pool);
+  permanent_pool = NULL;
+  pool_release_free_block_list();
 }
 
 static void clear_pool(struct pool *p) {
@@ -376,10 +377,10 @@ static void clear_pool(struct pool *p) {
 }
 
 void destroy_pool(pool *p) {
-  pr_alarms_block();
-
   if (p == NULL)
     return;
+
+  pr_alarms_block();
 
   if (p->parent) {
     if (p->parent->sub_pools == p)
@@ -391,9 +392,9 @@ void destroy_pool(pool *p) {
     if (p->sub_next)
       p->sub_next->sub_prev = p->sub_prev;
   }
-
   clear_pool(p);
   free_blocks(p->first);
+
   pr_alarms_unblock();
 }
 
@@ -408,7 +409,7 @@ static long bytes_in_free_blocks(void) {
 }
 #endif
 
-/* Allocation inteface ...
+/* Allocation interface...
  */
 
 void *palloc(struct pool *p, int reqsize) {
@@ -493,7 +494,7 @@ char *pdircat(pool *p, ...) {
 
   while ((res = va_arg(dummy, char *)) != NULL) {
     /* If the first argument is "", we have to account for a leading /
-     * which must be added.  -jss 3/2/2001
+     * which must be added.
      */
     if (!count++ && !*res)
       len++;
