@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.601 2004-09-05 21:29:00 castaglia Exp $
+$Id: NEWS,v 1.602 2004-09-05 21:34:22 castaglia Exp $
 
 CVS
 --------------------------------
@@ -10,7 +10,7 @@ CVS
 - Add support for a -V command-line option, which displays various
   compile-time settings.
 - Bug 2455 - Allow fine-tuning of how often mod_xfer updates the scoreboard.
-  This adds an --enable-tunable-scoreboard-updates configure option.
+  This adds an --enable-scoreboard-updates configure option.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------
