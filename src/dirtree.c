@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.121 2003-10-10 05:45:43 castaglia Exp $
+ * $Id: dirtree.c,v 1.122 2003-10-18 22:14:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -460,8 +460,9 @@ unsigned char dir_hide_file(const char *path) {
        */
       return (inverted ? FALSE : TRUE);
     }
-    destroy_pool(tmp_pool);
   }
+
+  destroy_pool(tmp_pool);
 #endif /* !HAVE_REGEX_H and !HAVE_REGCOMP */
 
   /* Return FALSE by default. */
