@@ -58,7 +58,7 @@ commands.
 .TP
 .BI \-d,\--debug " debuglevel"
 Sets proftpd's internal debug level (normally 0).  The \fIdebuglevel\fP
-should be an integer value from 0 to 9, with higher numbers producing more
+should be an integer value from 0 to 10, with higher numbers producing more
 debug output.  Normally, debug messages are sent to \fBsyslog\fP using the
 \fBDEBUG\fP facility, however if the \fB-n option\fP is used, all such
 output is sent to stderr.
