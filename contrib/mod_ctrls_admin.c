@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.21 2004-11-02 18:18:58 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.22 2004-12-16 23:54:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -905,6 +905,26 @@ MODRET set_adminctrlsengine(cmd_rec *cmd) {
 /* Event handlers
  */
 
+#if defined(PR_SHARED_MODULE)
+static void ctrls_admin_mod_unload_ev(const void *event_data, void *user_data) {
+  if (strcmp("mod_ctrls_admin.c", (const char *) event_data) == 0) {
+    register unsigned int i;
+
+    pr_event_unregister(&ctrls_admin_module, NULL, NULL);
+
+    for (i = 0; ctrls_admin_acttab[i].act_action; i++) {
+      pr_ctrls_unregister(&ctrls_admin_module,
+        ctrls_admin_acttab[i].act_action);
+    }
+
+    if (ctrls_admin_pool) {
+      destroy_pool(ctrls_admin_pool);
+      ctrls_admin_pool = NULL;
+    }
+  }
+}
+#endif /* PR_SHARED_MODULE */
+
 static void ctrls_admin_restart_ev(const void *event_data, void *user_data) {
   register unsigned int i;
 
@@ -984,6 +1004,10 @@ static int ctrls_admin_init(void) {
         ctrls_admin_acttab[i].act_action, strerror(errno));
   }
 
+#if defined(PR_SHARED_MODULE)
+  pr_event_register(&ctrls_admin_module, "core.module-unload",
+    ctrls_admin_mod_unload_ev, NULL);
+#endif /* PR_SHARED_MODULE */
   pr_event_register(&ctrls_admin_module, "core.restart",
     ctrls_admin_restart_ev, NULL);
   pr_event_register(&ctrls_admin_module, "core.startup",
