@@ -27,17 +27,17 @@
  * SUCH DAMAGE.
  */
 
-/* $Id: pr-syslog.c,v 1.12 2003-05-12 18:23:12 castaglia Exp $
+/* $Id: pr-syslog.c,v 1.13 2003-05-27 20:42:46 castaglia Exp $
  */
 
 #include "conf.h"
 
-#if defined(SOLARIS2) || defined(IRIX6)
+#if defined(SOLARIS2) || defined(IRIX6) || defined(SYSV5UNIXWARE7)
 # define HAVE_DEV_LOG_STREAMS 1
-#endif /* defined(SOLARIS2) || defined(IRIX6) */
+#endif /* SOLARIS2 or IRIX6 or SYSV5UNIXWARE7 */
 
 #ifdef HAVE_DEV_LOG_STREAMS
-#include <sys/strlog.h>
+# include <sys/strlog.h>
 #endif
 
 static int sock_type = SOCK_DGRAM;
@@ -77,7 +77,7 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
   if ((pri & LOG_FACMASK) == 0)
     pri |= log_facility;
 
-#ifdef HAVE_DEV_LOG_STREAMS
+#if defined(HAVE_DEV_LOG_STREAMS) && !defined(SYSV5UNIXWARE7)
   snprintf(logbuf, sizeof(logbuf), "<%d>", pri);
   logbuf[sizeof(logbuf)-1] = '\0';
   buflen = strlen(logbuf);
@@ -175,7 +175,7 @@ int pr_openlog(const char *ident, int opts, int facility) {
   if (facility != 0 && (facility &~ LOG_FACMASK) == 0)
     log_facility = facility;
 
-#ifdef HAVE_DEV_LOG_STREAMS
+#if defined(HAVE_DEV_LOG_STREAMS) && !defined(SYSV5UNIXWARE7)
   while (1) {
     if (sockfd == -1) {
       syslog_addr.sa_family = AF_UNIX;
