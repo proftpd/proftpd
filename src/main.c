@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.187 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: main.c,v 1.188 2003-08-11 04:37:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -879,6 +879,9 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     }
     PRIVS_RELINQUISH
     free_conf_stacks();
+
+    module_postparse_init();
+    module_remove_postparse_inits();
 
     /* After configuration is complete, make sure that passwd, group
      * aren't held open (unnecessary fds for master daemon)
