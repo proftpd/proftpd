@@ -16,8 +16,9 @@ LDFLAGS=@LDFLAGS@
 LIBS=@LIBS@
 
 DEFAULT_PATHS=-DCONFIG_FILE_PATH=\"$(sysconfdir)/proftpd.conf\" -DPID_FILE_PATH=\"$(localstatedir)/proftpd.pid\" -DRUN_DIR=\"$(rundir)\"
-CPPFLAGS=@CPPFLAGS@ $(DEFAULT_PATHS) $(PLATFORM) -I.. -I$(top_srcdir)/include
-CFLAGS=@CFLAGS@
+INCLUDES=-I.. -I$(top_srcdir)/include @INCLUDES@
+CPPFLAGS=@CPPFLAGS@ $(DEFAULT_PATHS) $(PLATFORM) $(INCLUDES)
+CFLAGS=@CFLAGS@ $(INCLUDES)
 
 # Defines for memory testing and debugging.
 #CFLAGS=-g3 -DDEBUG_NOFORK -DDEBUG_MEMORY
