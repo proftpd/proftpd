@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.12 2003-05-14 04:56:21 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.13 2003-05-31 00:51:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2095,7 +2095,7 @@ static int rewrite_init(void) {
 
   /* Allocate a pool for this module's use. */
   if (!rewrite_pool)
-    rewrite_pool = make_named_sub_pool(permanent_pool, "mod_rewrite pool");
+    rewrite_pool = make_sub_pool(permanent_pool);
 
   /* Add a rehash handler. */
   pr_rehash_register_handler(NULL, rewrite_rehash_cb);
