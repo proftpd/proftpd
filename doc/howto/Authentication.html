@@ -1,4 +1,4 @@
-<!-- $Id: Authentication.html,v 1.5 2004-04-10 18:01:18 castaglia Exp $ -->
+<!-- $Id: Authentication.html,v 1.6 2004-07-28 20:41:23 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Authentication.html,v $ -->
 
 <html>
@@ -159,13 +159,26 @@ contexts to define &quot;virtual&quot; users directly in their
 user accounts are discussed next.
 
 <p><a name="homedir"><b>Resolving <code>~</code></b><br>
-<castaglia> I think this is what was happening:
-<castaglia> when a user logs in, proftpd looks up that user's info
-<castaglia> to make sure that the user has permission in their home directory
-<castaglia> proftpd uses that user's privs when resolving ~
-<castaglia> your permissions on /home/webuser didn't allow that user to resolve ~ to /home/webuser/andytest
-<castaglia> so the DefaultRoot path is left as '~', rather than being replaced with the real home dir
-<castaglia> make sense?
+The <code>DefaultRoot</code> directive is commonly used to restrict or
+&quot;<a href="Chroot.html">jail</a>&quot; users into specific directories,
+usually their individual home directories.  This is done via:
+<pre>
+  DefaultRoot ~
+</pre>
+where the tilde (<code>~</code>) is expanded to the home directory of the
+logging in user.  Now, when <code>proftpd</code> is resolving the tilde,
+it switches to the privileges of the logging-in user and attempts to resolve
+the home directory.  This ensures that the user will, once restricted to
+that directory, will have the ability to see files and move around.  So
+if using the tilde does not appear to be working in your configuration,
+double-check that the permissions on the home directory of the user in
+question at least allow that user to change into the directory (which requires
+execute permission on the home directory).  If <code>proftpd</code> finds
+that the permissions are too restrictive, an error message like:
+<pre>
+  chroot("~"): No such file or directory
+</pre>
+will be logged.
 
 <p><a name="virtual"><b>Virtual Users</b><br>
 One question that often arises is &quot;How do I create a proftpd user?&quot;
@@ -216,7 +229,8 @@ following authentication modules are all provided with <code>proftpd</code>:
   </li>
 </ul>
 Note that <code>mod_auth_pam</code> is not on this list because it cannot
-provide the necessary user account information.
+provide the necessary user account information.  It can be used to supplement
+other auth modules by adding its PAM checks, however.
 
 <p><a name="order">
 Since <code>proftpd</code> supports multiple authentication modules at the
@@ -271,12 +285,12 @@ your SQL tables first, and then default to system users:
 <pre>
   AuthOrder mod_sql.c mod_auth_unix.c
 </pre>
-Note that the <code>mod_auth.c</code> and <code>mod_auth_pam.c</code> modules
-should <b>never</b> be used in an <code>AuthOrder</code> directive.
+Note that the <code>mod_auth.c</code> module should <b>never</b> be used in an
+<code>AuthOrder</code> directive.
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-04-10 18:01:18 $</i><br>
+Last Updated: <i>$Date: 2004-07-28 20:41:23 $</i><br>
 <hr>
 
 </body>
