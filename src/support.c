@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.68 2004-06-07 22:58:44 castaglia Exp $
+ * $Id: support.c,v 1.69 2004-07-13 17:53:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -562,7 +562,7 @@ int access_check(char *path, int mode) {
 }
 
 char *pr_str_strip(pool *p, char *str) {
-  char c, *dup, *start, *finish;
+  char c, *dupstr, *start, *finish;
 
   if (!p || !str) {
     errno = EINVAL;
@@ -582,12 +582,12 @@ char *pr_str_strip(pool *p, char *str) {
   *finish = '\0';
 
   /* The space-stripped string is, then, everything from start to finish. */
-  dup = pstrdup(p, start);
+  dupstr = pstrdup(p, start);
  
   /* Restore the given string buffer contents. */
   *finish = c;
 
-  return dup;
+  return dupstr;
 }
 
 char *strip_end(char *s, char *ch) {
