@@ -26,7 +26,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.87 2002-10-04 14:41:44 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.88 2002-10-08 15:05:34 castaglia Exp $
  */
 
 /* History Log:
@@ -758,12 +758,21 @@ MODRET pre_cmd_stou(cmd_rec *cmd) {
 
   if (!filename || !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group,
       filename, NULL)) {
+
+    /* Do not forget to delete the file created by mkstemp(3) if there is
+     * an error.
+     */
+    unlink(cmd->arg);
+
     add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
 
   mode = file_mode(filename);
 
+  /* Note: this case should never happen: how one can be appending to
+   * a supposedly unique filename?  Should probably be removed...
+   */
   if (mode &&
       session.xfer.xfer_type != STOR_APPEND &&
       get_param_int(CURRENT_CONF,"AllowOverwrite",FALSE) != 1) {
@@ -774,6 +783,7 @@ MODRET pre_cmd_stou(cmd_rec *cmd) {
   /* Not likely to _not_ be a regular file, but just to be certain...
    */
   if (mode && !S_ISREG(mode)) {
+    unlink(cmd->arg);
     add_response_err(R_550, "%s: Not a regular file", cmd->arg);
     return ERROR(cmd);
   }
