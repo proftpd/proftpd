@@ -612,6 +612,7 @@ LIBS="-lsupp $LIBS"
 
 dnl Module handling.
 for module in $ac_addl_modules; do
+  addonlibs=""
   src=`echo "$module" | sed -e 's/\.o$//'`.c;
   if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
 
@@ -655,8 +656,10 @@ for module in $ac_addl_modules; do
 done
 
 ac_addl_libs=`echo "$ac_addl_libs" | sed -e 's/ *\$//'`
+ac_addl_libs=`echo "$ac_addl_libs" | sed -e 's/^ *//'`
 test "x$ac_addl_libs" = x || LIBS="$LIBS $ac_addl_libs"
 ac_addl_dirs=`echo "$ac_addl_dirs" | sed -e 's/ *\$//'`
+ac_addl_dirs=`echo "$ac_addl_dirs" | sed -e 's/^ *//'`
 ADDL_DIRS="$ac_addl_dirs"
 
 INCLUDES="$ac_build_addl_includes"

@@ -356,6 +356,13 @@ static int check_auth_crypt(cmd_rec * cmd, const char *c_clear,
 
   log_debug(DEBUG_FUNC, "%s: entering check_auth_crypt", MOD_SQL_VERSION);
 
+  /* specifically disallow empty passwords */
+  if (*c_hash == NULL) {
+    log_debug(DEBUG_AUTH, "%s: disallowing empty password in check_auth_crypt",
+	      MOD_SQL_VERSION);
+    return success;
+  }
+
   if (!strcmp((char *) crypt(c_clear, c_hash), c_hash))
     success = 1;
 
@@ -370,6 +377,13 @@ static int check_auth_plaintext(cmd_rec * cmd, const char *c_clear,
   int success = 0;
 
   log_debug(DEBUG_FUNC, "%s: entering check_auth_plaintext", MOD_SQL_VERSION);
+
+  /* specifically disallow empty passwords */
+  if (*c_hash == NULL) {
+    log_debug(DEBUG_AUTH, "%s: disallowing empty password in check_auth_plaintext",
+	      MOD_SQL_VERSION);
+    return success;
+  }
 
   if (!strcmp(c_clear, c_hash))
     success = 1;
@@ -401,6 +415,13 @@ static int check_auth_backend(cmd_rec * cmd, const char *c_clear,
 
   log_debug(DEBUG_FUNC, "%s: entering check_auth_backend", MOD_SQL_VERSION);
 
+  /* specifically disallow empty passwords */
+  if (*c_hash == NULL) {
+    log_debug(DEBUG_AUTH, "%s: disallowing empty password in check_auth_backend",
+	      MOD_SQL_VERSION);
+    return success;
+  }
+  
   success = sql_backend_check_auth(cmd, c_clear, c_hash);
 
   log_debug(DEBUG_FUNC, "%s: exiting  check_auth_backend", MOD_SQL_VERSION);
@@ -795,6 +816,7 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
                   pwd->pw_gid);
   }
 
+  show_passwd( pwd );
   return pwd;
 }
 
