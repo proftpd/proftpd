@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.151 2003-04-30 19:32:13 castaglia Exp $
+ * $Id: mod_auth.c,v 1.152 2003-05-14 05:17:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -628,6 +628,10 @@ static char *_get_default_chdir(pool *p, xaset_t *conf) {
   if (dir && *dir != '/' && *dir != '~')
     dir = pdircat(p,session.cwd,dir,NULL);
 
+  /* Check for any expandable variables. */
+  if (dir)
+    dir = path_subst_uservar(p, &dir);
+
   return dir;
 }
 
@@ -635,15 +639,14 @@ static char *_get_default_chdir(pool *p, xaset_t *conf) {
  * other than /
  */
 
-static char *_get_default_root(pool *p)
-{
-  config_rec *c;
+static char *_get_default_root(pool *p) {
+  config_rec *c = NULL;
   char *dir = NULL;
   int ret;
 
-  c = find_config(main_server->conf,CONF_PARAM,"DefaultRoot",FALSE);
+  c = find_config(main_server->conf, CONF_PARAM, "DefaultRoot", FALSE);
 
-  while(c) {
+  while (c) {
     /* Check the groups acl */
     if (c->argc < 2) {
       dir = c->argv[0];
@@ -657,12 +660,17 @@ static char *_get_default_root(pool *p)
       break;
     }
 
-    c = find_config_next(c,c->next,CONF_PARAM,"DefaultRoot",FALSE);
+    c = find_config_next(c,c->next, CONF_PARAM, "DefaultRoot", FALSE);
   }
 
   if (dir) {
-    if (!strcmp(dir,"/"))
+
+    /* Check for any expandable variables. */
+    dir = path_subst_uservar(p, &dir);
+
+    if (strcmp(dir, "/") == 0)
       dir = NULL;
+
     else {
       char *realdir;
 
@@ -686,8 +694,7 @@ static char *_get_default_root(pool *p)
   return dir;
 }
 
-static struct passwd *passwd_dup(pool *p, struct passwd *pw)
-{
+static struct passwd *passwd_dup(pool *p, struct passwd *pw) {
   struct passwd *npw;
 
   npw = pcalloc(p,sizeof(struct passwd));
@@ -703,8 +710,7 @@ static struct passwd *passwd_dup(pool *p, struct passwd *pw)
   return npw;
 }
 
-static void ensure_open_passwd(pool *p)
-{
+static void ensure_open_passwd(pool *p) {
   /* Make sure pass/group is open.
    */
   auth_setpwent(p);
@@ -782,6 +788,9 @@ static int _setup_environment(pool *p, char *user, char *pass) {
   session.login_uid = pw->pw_uid;
   session.login_gid = pw->pw_gid;
 
+  /* Check for any expandable variables in session.cwd. */
+  pw->pw_dir = path_subst_uservar(p, &pw->pw_dir);
+
   /* Get the supplemental groups */
   if (!session.gids && !session.groups &&
       (res = auth_getgroups(p, pw->pw_name, &session.gids,
@@ -800,7 +809,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
 
     defroot = _get_default_root(session.pool);
     if (!defroot)
-      defroot = pstrdup(session.pool,pw->pw_dir);
+      defroot = pstrdup(session.pool, pw->pw_dir);
 
     c = (config_rec*)pcalloc(session.pool,sizeof(config_rec));
     c->config_type = CONF_ANON;

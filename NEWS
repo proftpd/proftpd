@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.431 2003-05-14 04:56:20 castaglia Exp $
+$Id: NEWS,v 1.432 2003-05-14 05:17:10 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -132,6 +132,9 @@ CVS
   (a la Apache's mod_rewrite).  mod_rewrite now supports various tests that
   can be used in RewriteConditions, the NC and OR flags for RewriteConditions,
   and the NC and L flags for RewriteRules.
+- Bug 1977 - Add %u variable support in configuration file.  With this feature,
+  one can configure DefaultRoot paths such as /home/%u/public_ftp, and the
+  %u variable will be expanded to the logged in user name.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------

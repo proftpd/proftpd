@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.108 2003-05-14 04:43:25 castaglia Exp $
+ * $Id: dirtree.c,v 1.109 2003-05-14 05:17:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -220,6 +220,115 @@ xaset_t *get_dir_ctxt(char *dir_path) {
 
   return c ? c->subset : session.anon_config ? session.anon_config->subset :
     main_server->conf;
+}
+
+/* Substitute any appearance of the %u variable in the given string with
+ * the value.
+ */
+char *path_subst_uservar(pool *path_pool, char **path) {
+  char *new_path = NULL, *substr = NULL, *substr_path = NULL;
+
+  /* Sanity check. */
+  if (!path_pool || !path || !*path) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  /* If no %u string present, do nothing. */
+  if (!strstr(*path, "%u"))
+    return *path;
+
+  /* First, deal with occurrences of "%u[index]" strings.  Note that
+   * with this syntax, the '[' and ']' characters become invalid in paths,
+   * but only if that '[' appears after a "%u" string -- certainly not
+   * a common phenomenon (I hope).  This means that in the future, an escape
+   * mechanism may be needed in this function.  Caveat emptor.
+   */
+
+  substr_path = *path;
+
+  while ((substr = strstr(substr_path, "%u[")) != NULL) {
+    int i = 0;
+    char *substr_end = NULL, *substr_dup = NULL, *endp = NULL;
+    char ref_char[2] = {'\0', '\0'};
+
+    /* Now, find the closing ']'. If not found, it is a syntax error;
+     * continue on without processing this occurrence.
+     */
+    if ((substr_end = strchr(substr, ']')) == NULL)
+
+      /* Just end here. */
+      break;
+
+    /* Make a copy of the entire substring. */
+    substr_dup = pstrdup(path_pool, substr);
+
+    /* The substr_end variable (used as an index) should work here, too
+     * (trying to obtain the entire substring).
+     */
+    substr_dup[substr_end - substr + 1] = '\0';
+
+    /* Advance the substring pointer by three characters, so that it is
+     * pointing at the character after the '['.
+     */
+    substr += 3;
+
+    /* If the closing ']' is the next character after the opening '[', it
+     * is a syntax error.
+     */
+    if (substr_end == substr) {
+
+      /* Do not forget to advance the substring search path pointer. */
+      substr_path = substr;
+
+      continue;
+    }
+
+    /* Temporarily set the ']' to '\0', to make it easy for the string
+     * scanning below.
+     */
+    *substr_end = '\0';
+
+    /* Scan the index string into a number, watching for bad strings. */
+    i = strtol(substr, &endp, 10);
+
+    if (endp && *endp) {
+      substr_path = substr;
+      continue;
+    }
+
+    /* Make sure that index is within bounds. */
+    if (i < 0 || i > strlen(session.user) - 1) {
+
+      /* Put the closing ']' back. */
+      *substr_end = ']';
+
+      /* Syntax error. Advance the substring search path pointer, and move
+       * on.
+       */
+      substr_path = substr;
+
+      continue;
+    }
+
+    ref_char[0] = session.user[i];
+
+    /* Put the closing ']' back. */
+    *substr_end = ']';
+
+    /* Now, to substitute the whole "%u[index]" substring with the
+     * referenced character/string.
+     */
+    substr_path = sreplace(path_pool, substr_path, substr_dup, ref_char, NULL);
+  }
+
+  /* Check for any bare "%u", and handle those if present. */
+  if (strstr(substr_path, "%u"))
+    new_path = sreplace(path_pool, substr_path, "%u", session.user, NULL);
+  else
+    new_path = substr_path;
+
+  return new_path;
 }
 
 /* Check for configured HideFiles directives, and check the given filename
@@ -2560,9 +2669,15 @@ void resolve_defered_dirs(server_rec *s)
 
   for (c = (config_rec*)s->conf->xas_list; c; c=c->next) {
     if (c->config_type == CONF_DIR && (c->flags & CF_DEFER)) {
+
+      /* Check for any expandable variables. */
+      c->name = path_subst_uservar(c->pool, &c->name);
+
       realdir = dir_best_path(c->pool,c->name);
+
       if (realdir)
         c->name = realdir;
+
       else {
         realdir = dir_canonical_path(c->pool,c->name);
         if (realdir)

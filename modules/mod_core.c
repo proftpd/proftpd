@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.175 2003-04-30 18:20:47 castaglia Exp $
+ * $Id: mod_core.c,v 1.176 2003-05-14 05:17:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1678,6 +1678,12 @@ MODRET add_directory(cmd_rec *cmd) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
       cmd->argv[0], ": <Directory> section already configured for '",
       cmd->argv[1], "'", NULL));
+
+  /* Check for any expandable variables, and mark this config_rec for
+   * deferred resolution if present
+   */
+  if (strstr(dir, "%u") && !(flags & CF_DEFER))
+    flags |= CF_DEFER;
 
   c = start_sub_config(dir);
   c->argc = 2;
