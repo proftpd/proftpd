@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.16 2003-09-29 00:00:49 castaglia Exp $
+ * $Id: bindings.c,v 1.17 2003-09-29 17:25:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -155,6 +155,7 @@ int pr_ipbind_add_binds(server_rec *serv) {
     if (!addr) {
       log_pri(PR_LOG_NOTICE, "notice: unable to determine IP address of '%s'",
         (char *) c->argv[0]);
+      c = find_config_next(c, c->next, CONF_PARAM, "Bind", FALSE);
       continue;
     }
 
