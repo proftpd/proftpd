@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.176 2003-05-14 05:17:12 castaglia Exp $
+ * $Id: mod_core.c,v 1.177 2003-05-31 00:07:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3535,9 +3535,6 @@ MODRET core_rnto(cmd_rec *cmd) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
-    destroy_pool(session.xfer.p);
-    memset(&session.xfer, '\0', sizeof(session.xfer));
-
     return ERROR(cmd);
   }
 
@@ -3547,9 +3544,6 @@ MODRET core_rnto(cmd_rec *cmd) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
     pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
-    destroy_pool(session.xfer.p);
-    memset(&session.xfer, '\0', sizeof(session.xfer));
-
     return ERROR(cmd);
   }
 #endif
@@ -3571,18 +3565,19 @@ MODRET core_rnto(cmd_rec *cmd) {
   if (!path || !dir_check_canon(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL)
      || pr_fsio_rename(session.xfer.path, path) == -1) {
     pr_response_add_err(R_550, "Rename: %s", strerror(errno));
-    destroy_pool(session.xfer.p);
-    memset(&session.xfer, '\0', sizeof(session.xfer));
-
     return ERROR(cmd);
   }
 
   pr_response_add(R_250, "Rename successful");
-
-  destroy_pool(session.xfer.p);
-  memset(&session.xfer, '\0', sizeof(session.xfer));
-
   return HANDLED(cmd);
+}
+
+MODRET core_rnto_cleanup(cmd_rec *cmd) {
+  if (session.xfer.p)
+    destroy_pool(session.xfer.p);
+
+  memset(&session.xfer, '\0', sizeof(session.xfer));
+  return DECLINED(cmd);
 }
 
 MODRET core_rnfr(cmd_rec *cmd) {
@@ -4192,6 +4187,8 @@ static cmdtable core_cmdtab[] = {
   { CMD, C_MDTM, G_DIRS,  core_mdtm,	TRUE,	FALSE, CL_INFO },
   { CMD, C_RNFR, G_DIRS,  core_rnfr,	TRUE,	FALSE, CL_MISC },
   { CMD, C_RNTO, G_WRITE, core_rnto,	TRUE,	FALSE, CL_MISC },
+  { LOG_CMD,     C_RNTO, G_NONE, core_rnto_cleanup, TRUE, FALSE, CL_NONE },
+  { LOG_CMD_ERR, C_RNTO, G_NONE, core_rnto_cleanup, TRUE, FALSE, CL_NONE },
   { CMD, C_SIZE, G_READ,  core_size,	TRUE,	FALSE, CL_INFO },
   { CMD, C_QUIT, G_NONE,  core_quit,	FALSE,	FALSE,  CL_INFO },
   { CMD, C_NOOP, G_NONE,  core_noop,	FALSE,	FALSE,  CL_MISC },
