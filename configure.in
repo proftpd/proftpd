@@ -631,7 +631,8 @@ if test $ac_add_mod_cap = "yes"; then
   ac_build_addl_modules="modules/mod_cap.o $ac_build_addl_modules"
 fi
 
-AC_CHECK_HEADERS(ctype.h getopt.h crypt.h bstring.h strings.h limits.h)
+AC_CHECK_HEADERS(ctype.h getopt.h crypt.h bstring.h limits.h)
+AC_CHECK_HEADERS(strings.h stropts.h)
 AC_CHECK_HEADERS(sys/types.h sys/mount.h sys/param.h sys/file.h sys/uio.h)
 AC_CHECK_HEADERS(netdb.h netinet/in.h netinet/tcp.h arpa/inet.h sys/stat.h)
 AC_CHECK_HEADERS(errno.h sys/socket.h sys/termios.h sys/termio.h)

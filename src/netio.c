@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.11 2003-02-12 08:46:35 castaglia Exp $
+ * $Id: netio.c,v 1.12 2003-02-25 18:56:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -677,7 +677,13 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
               break;
           }
 
-        } while (bread == -1 && errno == EINTR);
+#ifdef EAGAIN
+          /* Treat EAGAIN as EINTR */
+	  if (errno == EAGAIN)
+            errno = EINTR;
+#endif
+
+        } while (bread == -1 && (errno == EINTR));
         break;
     }
 

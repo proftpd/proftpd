@@ -31,7 +31,6 @@
 
 #if defined(SOLARIS2) || defined(IRIX6)
 #include <sys/strlog.h>
-#include <stropts.h>
 #endif
 
 static int sock_type = SOCK_DGRAM;

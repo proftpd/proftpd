@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.30 2003-01-23 05:48:05 castaglia Exp $
+ * $Id: conf.h,v 1.31 2003-02-25 18:56:39 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -51,6 +51,10 @@
 #include <stdarg.h>
 #include <pwd.h>
 #include <grp.h>
+
+#ifdef HAVE_STROPTS_H
+# include <stropts.h>
+#endif
 
 #ifdef HAVE_SYS_TYPES_H
 # include <sys/types.h>

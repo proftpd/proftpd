@@ -1266,6 +1266,23 @@ conn_t *inet_openrw(pool *p, conn_t *c, p_in_addr_t *addr,
   inet_setblock(res->pool, res);
 
   res->mode = CM_OPEN;
+
+#if defined(HAVE_STROPTS_H) && defined(I_SRDOPT) && defined(RPROTDIS)
+  /* This is needed to work around control messages in STREAMS devices
+   * (as on Solaris 9/NFS).
+   */
+  while (ioctl(res->rfd, I_SRDOPT, RPROTDIS) < 0) {
+    if (errno == EINTR) {
+      pr_signals_handle();
+      continue;
+    }
+
+    log_pri(PR_LOG_WARNING, "error calling ioctl(RPROTDIS): %s", 
+      strerror(errno));
+    break;
+  }
+#endif
+
   return res;
 }
 
