@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.109 2002-09-09 23:05:46 jwm Exp $
+ * $Id: main.c,v 1.110 2002-09-10 17:26:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1643,10 +1643,9 @@ static void server_loop(void) {
        * will be refused.  If not, note the date at which they will be
        * refused in the future.
        */
-      double difference;
-      time_t currentTime = time(NULL);
+      time_t now = time(NULL);
       
-      if ((difference = difftime(deny, currentTime)) < 0.0) {
+      if (difftime(deny, now) < 0.0) {
         log_pri(LOG_ERR, SHUTMSG_PATH " present: all incoming connections will "
           "be refused.");
 
