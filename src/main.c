@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.145 2002-12-16 15:15:19 jwm Exp $
+ * $Id: main.c,v 1.146 2002-12-16 18:38:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -683,7 +683,7 @@ static int idle_timeout_cb(CALLBACK_FRAME) {
 static void cmd_loop(server_rec *server, conn_t *c) {
   static long cmd_buf_size = -1;
   config_rec *id = NULL;
-  char buf[1024] = {'\0'};
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   char *cp;
   char *display, *serveraddress = server->ServerAddress;
   config_rec *masq_c = NULL;
