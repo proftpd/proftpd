@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.93 2003-08-01 01:05:25 castaglia Exp $
+ * $Id: mod_ls.c,v 1.94 2003-08-11 06:07:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1896,16 +1896,19 @@ MODRET ls_nlst(cmd_rec *cmd) {
     /* Don't display hidden files */
     if (hidden) {
       config_rec *c = NULL;
-      unsigned char *ignore_hidden = get_param_ptr(c->subset,
-        "IgnoreHidden", FALSE);
 
-      if ((c = _find_ls_limit(target)) != NULL &&
-          (ignore_hidden && *ignore_hidden == TRUE))
-        pr_response_add_err(R_450, "%s: %s", cmd->arg, strerror(ENOENT));
-      else
-        pr_response_add_err(R_450, "%s: %s", cmd->arg, strerror(EACCES));
+      c = _find_ls_limit(target);
+      if (c) {
+        unsigned char *ignore_hidden = get_param_ptr(c->subset,
+          "IgnoreHidden", FALSE);
 
-      return ERROR(cmd);
+        if (ignore_hidden && *ignore_hidden == TRUE)
+          pr_response_add_err(R_450, "%s: %s", target, strerror(ENOENT));
+        else
+          pr_response_add_err(R_450, "%s: %s", target, strerror(EACCES));
+
+        return ERROR(cmd);
+      }
     }
 
     /* Make sure the target is a file or directory, and that we have access
