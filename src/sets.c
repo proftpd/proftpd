@@ -25,7 +25,7 @@
 
 /*
  * Generic set manipulation
- * $Id: sets.c,v 1.10 2003-03-12 02:46:19 castaglia Exp $
+ * $Id: sets.c,v 1.11 2003-06-16 20:22:21 castaglia Exp $
  *
  * TODO: Use a hash table to greatly speed up set manipulation on
  *       large sets.
@@ -58,14 +58,18 @@ xaset_t *xaset_create(pool *work_pool, XASET_COMPARE compf) {
  *            is wrong with the set
  *         -1 error (not used)
  */
-int xaset_insert(xaset_t *set, xasetmember_t *member)
-{
-  if (!set || !member)
+int xaset_insert(xaset_t *set, xasetmember_t *member) {
+
+  if (!set || !member) {
+    errno = EINVAL;
     return 0;
+  }
 
   member->next = set->xas_list;
+
   if (set->xas_list)
     set->xas_list->prev = member;
+
   set->xas_list = member;
   return 1;
 }
@@ -73,12 +77,13 @@ int xaset_insert(xaset_t *set, xasetmember_t *member)
 /* Inserts a new member into an existing set at the end
  * of the list.
  */
-int xaset_insert_end(xaset_t *set, xasetmember_t *member)
-{
+int xaset_insert_end(xaset_t *set, xasetmember_t *member) {
   xasetmember_t **tmp,*prev = NULL;
 
-  if (!set || !member)
+  if (!set || !member) {
+    errno = EINVAL;
     return 0;
+  }
 
   for (tmp = &set->xas_list; *tmp; prev=*tmp, tmp=&(*tmp)->next) ;
 
@@ -97,13 +102,14 @@ int xaset_insert_end(xaset_t *set, xasetmember_t *member)
             0 if bad arguments or duplicate member
            -1 error (not used, applicable error would be in errno)
 */
-int xaset_insert_sort(xaset_t *set, xasetmember_t *member, int dupes_allowed)
-{
+int xaset_insert_sort(xaset_t *set, xasetmember_t *member, int dupes_allowed) {
   xasetmember_t **setp,*mprev = NULL;
   int c;
 
-  if (!set || !member || !set->xas_compare)
+  if (!set || !member || !set->xas_compare) {
+    errno = EINVAL;
     return 0;
+  }
 
   for (setp = &set->xas_list; *setp; setp=&(*setp)->next) {
     if ((c = set->xas_compare(member,*setp)) <= 0) {
@@ -132,8 +138,10 @@ int xaset_insert_sort(xaset_t *set, xasetmember_t *member, int dupes_allowed)
 int xaset_remove(xaset_t *set, xasetmember_t *member) {
   xasetmember_t *m = NULL;
 
-  if (!set || !member)
+  if (!set || !member) {
+    errno = EINVAL;
     return 0;
+  }
 
   /* Check if member is actually a member of set. */
   for (m = set->xas_list; m; m = m->next)
@@ -173,8 +181,10 @@ xaset_t *xaset_union(pool *work_pool, xaset_t *set1, xaset_t *set2,
 
   setv[0] = set1; setv[1] = set2; setv[2] = NULL;
 
-  if (!set1 || !set2 || (!msize && !copyf))
+  if (!set1 || !set2 || (!msize && !copyf)) {
+    errno = EINVAL;
     return NULL;
+  }
 
   work_pool = (work_pool ? work_pool :
     (set1->mempool ? set1->mempool : set2->mempool));
@@ -213,8 +223,10 @@ xaset_t *xaset_subtract(pool *work_pool, xaset_t *set1, xaset_t *set2,
   xasetmember_t *set1p,*set2p,*n,**pos;
   int c;
 
-  if (!set1 || !set2 || (!msize && !copyf))
+  if (!set1 || !set2 || (!msize && !copyf)) {
+    errno = EINVAL;
     return NULL;
+  }
 
   work_pool = (work_pool ? work_pool :
     (set1->mempool ? set1->mempool : set2->mempool));
@@ -275,8 +287,10 @@ xaset_t *xaset_copy(pool *work_pool, xaset_t *set, size_t msize,
   xaset_t *newset;
   xasetmember_t *n,*p,**pos;
 
-  if (!copyf && !msize)
+  if (!copyf && !msize) {
+    errno = EINVAL;
     return NULL;
+  }
 
   work_pool = (work_pool ? work_pool : set->mempool);
 

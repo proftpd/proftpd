@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.110 2003-06-03 16:25:22 castaglia Exp $
+ * $Id: dirtree.c,v 1.111 2003-06-16 20:22:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -796,7 +796,7 @@ config_rec *start_sub_config(const char *name) {
    * this context), not the pool of the parent server.  This keeps <Global>
    * config recs from being freed prematurely, and helps to avoid memory leaks.
    */
-  if (!strcmp(name, "<Global>")) {
+  if (strcmp(name, "<Global>") == 0) {
     if (!global_config_pool)
       global_config_pool = make_sub_pool(permanent_pool);
     parent_pool = global_config_pool;
@@ -806,7 +806,7 @@ config_rec *start_sub_config(const char *name) {
   c = (config_rec *) pcalloc(c_pool, sizeof(config_rec));
 
   if (!*set)
-    *set = xaset_create(c_pool, NULL);
+    *set = xaset_create(parent_pool, NULL);
 
   xaset_insert(*set, (xasetmember_t*)c);
 
@@ -2522,8 +2522,8 @@ static config_rec *_find_best_dir(xaset_t *set,char *path,int *matchlen)
  */
 
 static void _reorder_dirs(xaset_t *set, int mask) {
-  config_rec *c,*cnext,*newparent;
-  int tmp,defer = 0;
+  config_rec *c = NULL, *cnext = NULL, *newparent = NULL;
+  int tmp, defer = 0;
 
   if (!set || !set->xas_list)
     return;
@@ -2531,7 +2531,7 @@ static void _reorder_dirs(xaset_t *set, int mask) {
   if (!(mask & CF_DEFER))
     defer = 1;
 
-  for (c = (config_rec*)set->xas_list; c; c=cnext) {
+  for (c = (config_rec *) set->xas_list; c; c = cnext) {
     cnext = c->next;
 
     if (c->config_type == CONF_DIR) {
@@ -2542,21 +2542,25 @@ static void _reorder_dirs(xaset_t *set, int mask) {
         continue;
 
       /* If <Directory *> is used inside <Anonymous>, move all
-       * the directives from '*' into the higher level
+       * the directives from '*' into the higher level.
        */
-      if (!strcmp(c->name, "*") && c->parent &&
-         c->parent->config_type == CONF_ANON) {
+      if (strcmp(c->name, "*") == 0 &&
+          c->parent &&
+          c->parent->config_type == CONF_ANON) {
+
         if (c->subset)
-          _reparent_all(c->parent,c->subset);
-        xaset_remove(c->parent->subset, (xasetmember_t*)c);
+          _reparent_all(c->parent, c->subset);
+
+        xaset_remove(c->parent->subset, (xasetmember_t*) c);
+
       } else {
-        newparent = _find_best_dir(set,c->name,&tmp);
+        newparent = _find_best_dir(set, c->name, &tmp);
         if (newparent) {
           if (!newparent->subset)
-            newparent->subset = xaset_create(newparent->pool,NULL);
+            newparent->subset = xaset_create(newparent->pool, NULL);
 
-          xaset_remove(c->set, (xasetmember_t*)c);
-          xaset_insert(newparent->subset, (xasetmember_t*)c);
+          xaset_remove(c->set, (xasetmember_t *) c);
+          xaset_insert(newparent->subset, (xasetmember_t *) c);
           c->set = newparent->subset;
           c->parent = newparent;
         }
@@ -2564,11 +2568,10 @@ static void _reorder_dirs(xaset_t *set, int mask) {
     }
   }
 
-  /* Top level is now sorted, now we recursively sort all the sublevels
-   */
-  for (c = (config_rec*)set->xas_list; c; c=c->next)
+  /* Top level is now sorted, now we recursively sort all the sublevels. */
+  for (c = (config_rec *) set->xas_list; c; c = c->next)
     if (c->config_type == CONF_DIR || c->config_type == CONF_ANON)
-      _reorder_dirs(c->subset,mask);
+      _reorder_dirs(c->subset, mask);
 }
 
 static void debug_dump_config(xaset_t *s,char *indent) {

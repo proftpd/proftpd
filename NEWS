@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.444 2003-06-09 17:25:26 castaglia Exp $
+$Id: NEWS,v 1.445 2003-06-16 20:22:21 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -22,6 +22,13 @@ CVS
   was caused by a strictly linear search in the AuthGroupFile from the
   current file pointer to end of file, which (depending on the ordering of
   entries in the file) might have skipped necessary group entries.
+- Bug 2088 - proftpd -t segfault.  A very specific configuration would cause
+  a segfault in the configuration parser: if the first sub-context in a given
+  context (e.g. a <Limit> context within a <Directory> context) was empty,
+  the removal of that empty context from the internal structures by the
+  parser would inadvertently trigger a segfault later.  This has been
+  fixed by using a better memory pool, with a longer lifetime, for allocating
+  the internal configuration structures.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------
