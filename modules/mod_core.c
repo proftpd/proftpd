@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.190 2003-10-08 05:38:07 castaglia Exp $
+ * $Id: mod_core.c,v 1.191 2003-10-10 05:49:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2603,7 +2603,7 @@ MODRET add_virtualhost(cmd_rec *cmd) {
 }
 
 MODRET end_virtualhost(cmd_rec *cmd) {
-  server_rec *s = NULL;
+  server_rec *s = NULL, *next_s = NULL;
   pr_netaddr_t *addr = NULL;
   const char *address = NULL;
 
@@ -2627,7 +2627,8 @@ MODRET end_virtualhost(cmd_rec *cmd) {
        address);
 
   /* Check if this server's address/port combination is already being used. */
-  for (s = (server_rec *) server_list->xas_list; addr && s; s = s->next) {
+  for (s = (server_rec *) server_list->xas_list; addr && s; s = next_s) {
+    next_s = s->next;
 
     /* Have to resort to duplicating some of fixup_servers()'s
      * functionality here, to do this check The Right Way(tm).
@@ -2652,7 +2653,9 @@ MODRET end_virtualhost(cmd_rec *cmd) {
           "by \"%s\"", cmd->server->ServerName,
           pr_netaddr_get_ipstr(addr), cmd->server->ServerPort,
           s->ServerName ? s->ServerName : "ProFTPD");
-        CONF_ERROR(cmd, "address/port configuration collision");
+        xaset_remove(server_list, (xasetmember_t *) s);
+        destroy_pool(s->pool);
+        continue;
       }
     }
   }

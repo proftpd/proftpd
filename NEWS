@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.489 2003-10-09 19:40:18 castaglia Exp $
+$Id: NEWS,v 1.490 2003-10-10 05:49:39 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -33,6 +33,14 @@ CVS
   were not being properly set for wildcard sockets.
 - Bug 2204 - Reverse DNS lookups not happening properly on connected clients
   on FreeBSD.  The gethostbyname2() function needs to be used on FreeBSD.
+- Bug 2222 - Overlapping vhosts should warn instead of die.
+  Prior to 1.2.9rc1, it was possible to have multiple vhosts configured that
+  resolved to the same IP address/port combination.  This typically occurs
+  when DNS names are used, and different DNS names resolve to the same IP
+  address.  In 1.2.9rc1, these collisions are scanned for, and such collisions
+  are treated as a fatal error.  With this change, such colliding vhosts
+  are handled similar to vhosts that have unresolvable names: they are
+  logged, then removed from the in-memory list of vhosts.
 
 1.2.9rc2 - Released 11-Sep-2003
 ---------------------------------
