@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.60 2003-09-09 21:15:19 castaglia Exp $
+ * $Id: log.c,v 1.61 2003-10-08 18:13:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -241,10 +241,10 @@ int log_wtmp(char *line, const char *name, const char *host,
 int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   pool *tmp_pool = NULL;
   char *tmp = NULL, *lf;
-  unsigned char *allow_log_symlinks = NULL;
+  unsigned char have_stat = FALSE, *allow_log_symlinks = NULL;
   struct stat sbuf;
 
-  /* sanity check */
+  /* Sanity check */
   if (!log_file || !log_fd) {
     errno = EINVAL;
     return -1;
@@ -254,7 +254,8 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   tmp_pool = make_sub_pool(permanent_pool);
   lf = pstrdup(tmp_pool, log_file);
 
-  if ((tmp = strrchr(lf, '/')) == NULL) {
+  tmp = strrchr(lf, '/');
+  if (tmp == NULL) {
     log_debug(DEBUG0, "inappropriate log file: %s", lf);
     destroy_pool(tmp_pool);
     return -1;
@@ -295,30 +296,107 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
     FALSE);
 
   if (!allow_log_symlinks || *allow_log_symlinks == FALSE) {
+    int flags = O_APPEND|O_CREAT|O_WRONLY;
 
-    /* Prevent a race condition between stat() and open() by opening the
-     * file now, _then_ checking to see if it's a symlink
+#ifdef O_NOFOLLOW
+    /* On systems that support the O_NOFOLLOW flag (e.g. Linux and FreeBSD),
+     * use it so that the path being opened, if it is a symlink, is not
+     * followed.
      */
-    if ((*log_fd = open(lf, O_APPEND|O_CREAT|O_WRONLY,
-          log_mode)) == -1) {
-      destroy_pool(tmp_pool);
-      return -1;
+    flags |= O_NOFOLLOW;
+
+#elif defined(SOLARIS2)
+    /* Solaris doesn't support the O_NOFOLLOW flag.  Instead, in their
+     * wisdom (hah!), Solaris decided that if the given path is a symlink
+     * and the flags O_CREAT and O_EXCL are set, the link is not followed.
+     * Right.  The problem here is the case where the path is not a symlink;
+     * using O_CREAT|O_EXCL will then cause the open() to fail if the
+     * file already exists.
+     */
+    flags |= O_EXCL;
+#endif /* O_NOFOLLOW or SOLARIS2 */
+
+    *log_fd = open(lf, flags, log_mode);
+    if (*log_fd == -1) {
+
+      if (errno != EEXIST) {
+        destroy_pool(tmp_pool);
+
+        /* More portability fun: Linux likes to report ELOOP if O_NOFOLLOW
+         * is used to open a symlink file; FreeBSD likes to return EMLINK.
+         * Both would lead to rather misleading error messages being
+         * logged.  Catch these errnos, and return the value that properly
+         * informs the caller that the given path was an illegal symlink.
+         */
+
+        switch (errno) {
+#ifdef ELOOP
+          case ELOOP:
+            return LOG_SYMLINK;
+#endif /* ELOOP */
+
+#ifdef EMLINK
+          case EMLINK:
+            return LOG_SYMLINK;
+#endif /* EMLINK */
+        }
+
+        return -1;
+
+      } else {
+#if defined(SOLARIS2)
+        /* On Solaris, because of the stupid multiplexing of O_CREAT and
+         * O_EXCL to get open() not to follow a symlink, it's possible that
+         * the path already exists.  Now, we'll try to open() without
+         * O_EXCL, then lstat() the path to see if this pre-existing file is
+         * a symlink or a regular file.
+         *
+         * Note that because this check cannot be done atomically on Solaris,
+         * the possibility of a race condition/symlink attack still exists.
+         * Solaris doesn't provide a good way around this situation.
+         */
+        flags &= ~O_EXCL;
+
+        *log_fd = open(lf, flags, log_mode);
+        if (*log_fd == -1) {
+          destroy_pool(tmp_pool);
+          return -1;
+        }
+
+        /* The race condition on Solaris is here, between the open() call
+         * above and the lstat() call below...
+         */
+
+        if (lstat(lf, &sbuf) != -1)
+          have_stat = TRUE;
+#else
+        destroy_pool(tmp_pool);
+        return -1;
+#endif /* SOLARIS2 */
+      }
     }
 
     /* Stat the file using the descriptor, not the path */
-    if (fstat(*log_fd, &sbuf) != -1 && S_ISLNK(sbuf.st_mode)) {
-      log_debug(DEBUG0, "error: %s is a symbolic link", lf);
+    if (!have_stat && fstat(*log_fd, &sbuf) != -1)
+      have_stat = TRUE;
+
+    if (!have_stat || S_ISLNK(sbuf.st_mode)) {
+      log_debug(DEBUG0, !have_stat ? "error: unable to stat %s" :
+        "error: %s is a symbolic link", lf);
+
       close(*log_fd);
       *log_fd = -1;
       destroy_pool(tmp_pool);
       return LOG_SYMLINK;
     }
 
-  } else
-    if ((*log_fd = open(lf, O_CREAT|O_APPEND|O_WRONLY, log_mode)) == -1) {
+  } else {
+    *log_fd = open(lf, O_CREAT|O_APPEND|O_WRONLY, log_mode);
+    if (*log_fd == -1) {
       destroy_pool(tmp_pool);
       return -1;
     }
+  }
 
   destroy_pool(tmp_pool);
   return 0;

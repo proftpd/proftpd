@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.486 2003-10-06 03:14:33 castaglia Exp $
+$Id: NEWS,v 1.487 2003-10-08 18:13:03 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -22,6 +22,12 @@ CVS
   This happens only with MySQL 4.1.  In MySQL 4.1, the way in which MySQL
   handles its passwords changed, and mod_sql_mysql was using the new
   interface incorrectly.
+- Bug 2202 - AllowLogSymlinks check is flawed.
+  Calling open(2) on a path that is a symlink will follow that symlink;
+  the AllowLogSymlink check assumed that open() did not follow the symlink.
+  The fix is to use the O_NOFOLLOW flag when opening log file paths.  However,
+  this flag does not exist on Solaris machines, and so there still exists
+  a race condition on Solaris when checking that a log path is not a symlink.
 
 1.2.9rc2 - Released 11-Sep-2003
 ---------------------------------
