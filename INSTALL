@@ -63,8 +63,6 @@ Installation Instructions
     mod_unixpw and mod_xfer.  Also, if PAM is detected by configure,
     the mod_pam module will be included automatically.  However, it has
     been reported that some systems still require it to be added explicitly.
-    Further note that the contrib/mod_test module is not functional, and you
-    should not attempt to use it.
 
     You may need to specify the shared library search path on your system.
     See your system and compiler documentation.  Frequently, the -R or -rpath

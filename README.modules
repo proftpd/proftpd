@@ -96,11 +96,6 @@ Feature modules:
         Contributed by TJ Saunders <tj@digisle.net>.
 
 
-Note that the mod_test module is non-functional.
-Do not attempt to compile or use it.
-
-
-
 
 Other ProFTPD modules (not included in the source distribution)
 ---------------------------------------------------------------
