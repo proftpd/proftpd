@@ -26,12 +26,14 @@
 
 /*
  * Regex management code
- * $Id: regexp.c,v 1.11 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: regexp.c,v 1.12 2004-09-05 00:36:43 castaglia Exp $
  */
 
 #include "conf.h"
 
 #ifdef HAVE_REGEX_H
+
+extern module core_module;
 
 static pool *regexp_pool = NULL;
 static array_header *regexp_list = NULL;
@@ -59,12 +61,14 @@ static void regexp_cleanup(void) {
   }
 }
 
-static void regexp_exit_cb(void) {
+static void regexp_exit_ev(const void *event_data, void *user_data) {
   regexp_cleanup();
+  return;
 }
 
-static void regexp_rehash_cb(void *data) {
+static void regexp_restart_ev(const void *event_data, void *user_data) {
   regexp_cleanup();
+  return;
 }
 
 regex_t *pr_regexp_alloc(void) {
@@ -80,7 +84,8 @@ regex_t *pr_regexp_alloc(void) {
     regexp_list = make_array(regexp_pool, 0, sizeof(regex_t *));
   }
 
-  if ((preg = calloc(1, sizeof(regex_t))) == NULL) {
+  preg = calloc(1, sizeof(regex_t));
+  if (preg == NULL) {
     pr_log_pri(PR_LOG_ERR, "fatal: memory exhausted");
     exit(1);
   }
@@ -116,16 +121,15 @@ void pr_regexp_free(regex_t *regex) {
 
 void init_regexp(void) {
 
-  /* Register a rehash handler for the regexp pool, so that when rehashing,
+  /* Register a restart handler for the regexp pool, so that when restarting,
    * regfree(3) is called on each of the regex_t pointers in a
    * regex_t-tracking array, thus preventing memory leaks on a long-running
    * daemon.
    *
    * This registration is done here so that it only happens once.
    */
-  pr_rehash_register_handler(NULL, regexp_rehash_cb);
-
-  pr_exit_register_handler(regexp_exit_cb);
+  pr_event_register(&core_module, "core.restart", regexp_restart_ev, NULL);
+  pr_event_register(&core_module, "core.exit", regexp_exit_ev, NULL);
 }
 
 #endif
