@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.41 2004-05-30 22:46:14 castaglia Exp $
+ * $Id: modules.c,v 1.42 2004-05-31 01:51:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -164,7 +164,22 @@ int pr_stash_add_symbol(pr_stash_type_t sym_type, void *data) {
       return -1;
   }
 
-  idx = symtab_hash(sym->sym_name);
+  /* XXX Ugly hack to support mixed cases of directives in config files. */
+  if (sym_type != PR_SYM_CONF)
+    idx = symtab_hash(sym->sym_name);
+
+  else {
+    register unsigned int i;
+    char buf[1024];
+
+    memset(buf, '\0', sizeof(buf));
+    sstrncpy(buf, sym->sym_name, sizeof(buf)-1);
+
+    for (i = 0; i < strlen(buf); i++)
+      buf[i] = tolower((int) buf[i]);
+
+    idx = symtab_hash(buf);
+  }
 
   if (!symbol_table[idx])
     symbol_table[idx] = xaset_create(symbol_pool, (XASET_COMPARE) sym_cmp);
@@ -181,7 +196,7 @@ static struct stash *stash_lookup(pr_stash_type_t sym_type,
     for (sym = (struct stash *) symbol_table[idx]->xas_list; sym;
         sym = sym->next)
       if (sym->sym_type == sym_type &&
-          (!name || strcmp(sym->sym_name, name) == 0))
+          (!name || strcasecmp(sym->sym_name, name) == 0))
         break;
   }
 
@@ -197,7 +212,7 @@ static struct stash *stash_lookup_next(pr_stash_type_t sym_type,
     for (sym = (struct stash *) symbol_table[idx]->xas_list; sym;
         sym = sym->next) {
       if (last_hit && sym->sym_type == sym_type &&
-          (!name || strcmp(sym->sym_name, name) == 0))
+          (!name || strcasecmp(sym->sym_name, name) == 0))
         break;
       if (sym->ptr.sym_generic == prev)
         last_hit++;
@@ -217,7 +232,23 @@ void *pr_stash_get_symbol(pr_stash_type_t sym_type, const char *name,
 
   else {
 
-    idx = symtab_hash(name);
+    /* XXX Ugly hack to support mixed cases of directives in config files. */
+    if (sym_type != PR_SYM_CONF)
+      idx = symtab_hash(name);
+
+    else {
+      register unsigned int i;
+      char buf[1024];
+
+      memset(buf, '\0', sizeof(buf));
+      sstrncpy(buf, name, sizeof(buf)-1);
+
+      for (i = 0; i < strlen(buf); i++)
+        buf[i] = tolower((int) buf[i]);
+
+      idx = symtab_hash(buf);
+    }
+
     if (idx_cache)
       *idx_cache = idx;
   }
