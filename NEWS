@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.197 2002-06-27 19:27:16 castaglia Exp $
+$Id: NEWS,v 1.198 2002-06-27 22:36:25 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -29,6 +29,8 @@ CVS
              field has been configured to NULL; similarly for GID.
 - Removed mod_quota.c due to bugs, lack of maintainership.  Consult
   http://bugs.proftpd.org for a list of the mod_quota bugs.
+- Bug 1667 - Moved definition of USE_SHADOW, AUTO_SHADOW macros from command
+             line into config.h, with the other macros.
 
 1.2.5 - Released 2002-06-08
 ---------------------------------

@@ -475,4 +475,10 @@
 /* Define for large files, on AIX-style hosts. */
 #undef _LARGE_FILES
 
+/* Define if auto-detection of shadow passwords is wanted.  */
+#undef AUTO_SHADOW
+
+/* Define if using /etc/shadow files.  */
+#undef USE_SHADOW
+
 #endif /* config_h_included */
