@@ -1,6 +1,6 @@
-$Id: NEWS,v 1.242 2002-10-01 16:19:02 castaglia Exp $
+$Id: NEWS,v 1.243 2002-10-01 18:59:49 castaglia Exp $
 
-CVS
+1.2.7rc1 - Released 2002-10-01
 ---------------------------------
 - Bug 1649 - setproctitle() prepends and appends process name
 - Bug 1666 - Auth modules can return duplicate supplemental groups

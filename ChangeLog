@@ -1,3 +1,587 @@
+2002-10-01 09:23  castaglia
+
+	* modules/mod_auth.c: 
+	Minor wording correction for default MaxClientsPerUser message.
+
+2002-10-01 09:19  castaglia
+
+	* NEWS, modules/mod_auth.c: 
+	Bug#1675 - add new MaxClientsPerUser configuration option.  Works
+	just like	     MaxHostsPerUser.
+
+2002-10-01 08:50  jwm
+
+	* configure: updated configure
+
+2002-10-01 08:43  jwm
+
+	* configure.in: Fix for broken headers in OS X 10.1 Submitted by:
+	Thomas Ganter <tganter@mac.com>
+
+2002-09-30 13:57  castaglia
+
+	* NEWS, contrib/mod_sql.c: 
+	Bug#1694 - SQLLog QUIT doesn't execute on connection close.
+	
+	With the various changes to mod_sql (SQLNegativeCache, etc), I'm
+	bumping its version to 4.10.
+
+2002-09-30 13:52  castaglia
+
+	* NEWS: 
+	Forgot to note that Bug#1748 had been fixed.
+
+2002-09-30 08:56  castaglia
+
+	* NEWS, include/modules.h, modules/mod_auth.c, modules/mod_core.c,
+	modules/mod_site.c, src/main.c: 
+	Bug#1475 - Minor changes to SITE command handling.
+
+2002-09-27 19:04  castaglia
+
+	* modules/mod_site.c: 
+	Helps if I put the full code from the fix in CVS, doesn't it?
+
+2002-09-27 19:01  castaglia
+
+	* include/privs.h, modules/mod_site.c: 
+	Casting and variable type fun (based on compiler complaints).
+
+2002-09-27 18:42  castaglia
+
+	* modules/mod_pam.c: 
+	Confirmed -- it's a Solaris-specific thing.  Fixed to (hopefully)
+	not generate error messages when working with Linux/FreeBSD' PAM
+	libraries.
+
+2002-09-27 18:13  castaglia
+
+	* modules/mod_pam.c: 
+	Seems there's a slight discrepancy between the Solaris and Linux
+	PAM implementations with regard to the order of calling pam_end(). 
+	I don't know about FreeBSD PAM yet, though; don't have root privs
+	on a FreeBSD box to verify.
+
+2002-09-27 17:28  castaglia
+
+	* utils/ftptop.c: 
+	With the addition of the sce_server_addr field to the scoreboard
+	entry struct, ftptop no longer needs to use inet_ntoa(3) to
+	stringify the server IP address.
+
+2002-09-27 13:58  castaglia
+
+	* NEWS, modules/mod_pam.c: 
+	Bug#1572 - Need to use pam_end() to close session on Solaris 8. 
+	The cause turned out to be a need to always call pam_end() after
+	pam_authenticate().
+
+2002-09-27 13:51  castaglia
+
+	* include/scoreboard.h, src/scoreboard.c, utils/utils.h: 
+	Seems that gcc-3 has some quirks when it comes to variadic
+	functions.  Adjusting to compensate.
+
+2002-09-27 13:17  castaglia
+
+	* src/scoreboard.c: 
+	Try to handle cases where NULLs might be (inappropriately) sent to
+	pr_scoreboard_update_entry().
+
+2002-09-27 13:01  castaglia
+
+	* utils/: ftptop.c, utils.h: 
+	Make sure that the utils compile on platforms that don't have
+	<getopt.h>
+
+2002-09-26 10:52  castaglia
+
+	* include/scoreboard.h, modules/mod_auth.c, src/scoreboard.c,
+	utils/ftptop.c, utils/ftpwho.c, utils/utils.h: 
+	Adding display of server (IP address/port) string to ftpwho (when
+	-v is used).
+
+2002-09-26 10:20  castaglia
+
+	* utils/ftptop.c: 
+	Removed an unused variable.
+
+2002-09-26 10:17  castaglia
+
+	* utils/utils.h: 
+	Keeping this in sync with include/scoreboard.h
+
+2002-09-26 10:09  castaglia
+
+	* src/main.c: 
+	Make clearing the scoreboard slot one of the first things that
+	happens when a child exits.
+
+2002-09-26 09:59  castaglia
+
+	* utils/ftpwho.c: 
+	Adjusting the spacing of ftpwho fields, trying to make the output
+	prettier.
+
+2002-09-26 09:47  castaglia
+
+	* include/scoreboard.h, src/main.c, src/scoreboard.c: 
+	Adjusting some of the scoreboard entry sizes to be smaller (we can
+	always make them larger later, if need be).  Also adding the
+	clearing of a scoreboard slot in the case of a SIGSEGV in the
+	signal handler itself.
+
+2002-09-25 18:11  castaglia
+
+	* NEWS, contrib/mod_radius.c, contrib/mod_radius.html: 
+	Bug#1687 - Add contrib module for RADIUS authentication, accounting
+
+2002-09-25 18:05  castaglia
+
+	* NEWS, src/dirtree.c: 
+	Bug#1732 - No checking for NULL at inet_ascii and pr_fnmatch.  The
+	fix for this now allows for "inline" comments in the lines of a
+	proftpd.conf file, e.g.:
+	
+	    Port 21 # Some comment here
+	
+	whereas before, that "# Some comment here" would be tokenized and
+	treated as normal input into the configuration directive handler.
+
+2002-09-25 17:36  castaglia
+
+	* NEWS, include/privs.h: 
+	Bug#1395 - Check return values in PRIVS calls
+
+2002-09-25 17:04  castaglia
+
+	* src/: ftpcount.1, ftpcount.c, ftpshut.8, ftpshut.c, ftpwho.1,
+	ftpwho.c: 
+	Removing these files from src/, as they now appear under utils/
+
+2002-09-25 17:01  castaglia
+
+	* src/main.c: 
+	No need to complain of scoreboard slot cleaning error when we're
+	not a child process (e.g. when the daemon is shutting down).
+
+2002-09-25 16:56  castaglia
+
+	* configure: 
+	And the necessary delayed commit of the new configure script, to
+	match the configure.in tweaks.
+
+2002-09-25 16:53  castaglia
+
+	* configure.in: 
+	Needing to tweak this, in order to get the timestamps on
+	configure.in and configure files in the CVS repository to be what
+	we need them to be.
+
+2002-09-25 16:45  castaglia
+
+	* utils/: Makefile.in, ftpcount.1, ftpcount.c, ftpshut.8,
+	ftpshut.c, ftptop.c, ftpwho.1, ftpwho.c, misc.c, scoreboard.c,
+	utils.h: 
+	Populating the new utils/ sub-directory with the source code files
+	for the ftpcount, ftpwho, ftptop, ftpshut utilities.
+
+2002-09-25 16:43  castaglia
+
+	* NEWS: 
+	Forgot to update the NEWS file for the scoreboard changes.
+
+2002-09-25 16:43  castaglia
+
+	* Make.rules.in, Makefile.in, config.h.in, configure, configure.in,
+	contrib/mod_sql.c, include/conf.h, include/log.h, include/privs.h,
+	include/scoreboard.h, include/version.h, lib/Makefile.in,
+	modules/Makefile.in, modules/mod_auth.c, modules/mod_core.c,
+	modules/mod_xfer.c, src/Makefile.in, src/log.c, src/main.c,
+	src/scoreboard.c, src/support.c: 
+	Bug#1713 - Scoreboard changes.	This simple statement covers quite
+	a few changes.
+
+2002-09-24 19:13  jwm
+
+	* modules/mod_xfer.c: * style * silence a compiler warning with a
+	cast (the Cast Nazi yields ground: film   at eleven)
+
+2002-09-24 19:11  jwm
+
+	* src/sets.c: style
+
+2002-09-24 19:11  jwm
+
+	* lib/: glibc-mkstemp.c, strsep.c, vsnprintf.c: * style * silence
+	ranlib warnings if the host OS already has the appropriate  
+	functions
+
+2002-09-23 09:17  castaglia
+
+	* src/main.c: 
+	Corrections in comments.
+
+2002-09-23 08:30  castaglia
+
+	* src/main.c: 
+	Make necessary modification to handling of SIGCHLD, in order to
+	prevent nasty segfaults under non-POSIX, SVR4 systems (e.g. IRIX). 
+	Explanatory comments in sig_child() handler.
+
+2002-09-20 19:12  jwm
+
+	* README.LDAP: 
+	* update for 2.8.10 * postcard-ware
+
+2002-09-20 19:09  jwm
+
+	* contrib/mod_ldap.c: 
+	mod_ldap is now postcard-ware
+
+2002-09-19 12:26  castaglia
+
+	* sample-configurations/basic.conf: 
+	Fix the grammar in the default configuration file a little, and
+	make a minor optimization: <Directory /*> is not really needed, as
+	<Directory /> suffices.
+
+2002-09-16 13:45  castaglia
+
+	* contrib/mod_sql.c: 
+	Changed this logging level, so that it does not show up at DEBUG0
+	(which is the default log level, or at least included in the
+	default logging levels).
+
+2002-09-15 13:50  jwm
+
+	* Makefile.in, NEWS: 
+	Bug 1726 - Cygwin's Makefile inconsistency
+
+2002-09-13 16:14  castaglia
+
+	* Make.rules.in, NEWS, include/conf.h, include/inet.h,
+	include/io.h, include/netio.h, lib/Makefile.in,
+	modules/Makefile.in, modules/mod_core.c, modules/mod_ls.c,
+	modules/mod_xfer.c, src/Makefile.in, src/data.c, src/fs.c,
+	src/ident.c, src/inet.c, src/io.c, src/main.c, src/netio.c: 
+	Adding the NetIO API.
+
+2002-09-13 15:59  castaglia
+
+	* NEWS, modules/mod_xfer.c: 
+	Bug#1736 - RETR does not handle an inappropriate REST
+
+2002-09-13 15:51  castaglia
+
+	* NEWS, include/dirtree.h, modules/mod_core.c, modules/mod_ls.c,
+	src/dirtree.c: 
+	Bug#1737 - Enhance file hiding via regular expressions
+
+2002-09-13 15:01  castaglia
+
+	* contrib/mod_sql.c: 
+	Make this particular mod_sql log message a little less urgent.
+
+2002-09-13 14:35  castaglia
+
+	* modules/mod_auth.c: 
+	Slight correction in the config context used for looking up any
+	configured TimeoutSession.
+
+2002-09-13 13:21  castaglia
+
+	* NEWS, modules/mod_auth.c, modules/mod_core.c, modules/mod_xfer.c,
+	src/data.c, src/dirtree.c: 
+	Bug#1436 - Feature Enhancement: Timeouts on a <Virtualhost> basis
+
+2002-09-13 12:58  castaglia
+
+	* modules/mod_auth.c: 
+	When unable to chdir to a directory, when logging in, add reporting
+	of errno.
+
+2002-09-13 12:33  castaglia
+
+	* NEWS, include/proftpd.h, modules/mod_core.c, src/main.c: 
+	Bug#1658 - Separate session/daemon resource limit settings.
+
+2002-09-13 07:30  jwm
+
+	* configure: 
+	Updated configure from last configure.in commit
+
+2002-09-12 18:19  jwm
+
+	* configure.in: 
+	You can't explicitly include sys/sendfile.h when compiling with
+	large file support.
+	
+	Submitted by: Jan Kasprzak <kas@informatics.muni.cz>
+	http://www.geocrawler.com/lists/3/SourceForge/9189/0/9566710/
+
+2002-09-12 18:10  jwm
+
+	* contrib/mod_ratio.c: 
+	* anonymous ratios are now looked up by the e-mail address used *
+	make sure g.user is defined so the ratio is recorded for
+	*something*
+	
+	Submitted by: Benjamin Schieder <bs1544@bingo-ev.de>
+	http://www.geocrawler.com/lists/3/SourceForge/9190/75/9539913/
+
+2002-09-12 18:02  jwm
+
+	* contrib/dist/rpm/proftpd.spec.in: 
+	Documentation improvements
+	
+	Submitted by: Magnus Stenman <stone@hkust.se>
+	http://www.geocrawler.com/lists/3/SourceForge/9189/0/9564251/
+
+2002-09-12 16:23  castaglia
+
+	* modules/mod_log.c: 
+	Missed a Boolean...
+
+2002-09-12 16:20  castaglia
+
+	* modules/mod_log.c: 
+	Fixed minor problem with duplicate logging: mod_log was a) looking
+	in the wrong context, and b) recursing through configuration
+	subsets in an attempt to fix its wrong context starting point. 
+	Should be remedied now.
+
+2002-09-11 11:59  castaglia
+
+	* doc/mod_sample.c: 
+	Updating the code in the mod_sample.c file to demonstrate things a
+	little better.
+
+2002-09-10 16:26  castaglia
+
+	* modules/mod_xfer.c: 
+	Helps if uploads/downloads actually work...oops. =P
+
+2002-09-10 12:36  castaglia
+
+	* NEWS, modules/mod_xfer.c: 
+	Bug#1065 - Added MaxRetrieveFileSize, MaxStoreFileSize directives.
+
+2002-09-10 11:50  castaglia
+
+	* NEWS, modules/mod_log.c: 
+	Bug#1669 - Filename meta (%f) not correctly expanded for some
+	commands	    in WRITE logging class.  This will necessitate
+	discussion on the	     current state of proftpd's logging
+	variables.
+
+2002-09-10 10:26  castaglia
+
+	* src/main.c: 
+	Removed an unused variable.
+
+2002-09-10 09:29  castaglia
+
+	* src/fs.c: 
+	No need for this cast (I don't think...).
+
+2002-09-10 09:07  jwm
+
+	* modules/mod_xfer.c: 
+	fixup
+
+2002-09-10 09:01  castaglia
+
+	* NEWS, include/fs.h, include/io.h, modules/mod_core.c,
+	modules/mod_ls.c, src/data.c, src/fs.c, src/io.c, src/support.c: 
+	Bug#1486 - lots of changes made to code, adding buffers in an
+	attempt to	      optimize directory listings and ASCII file
+	translation.  We'll	       see how many bugs are added with
+	this commit =).
+
+2002-09-10 08:06  castaglia
+
+	* NEWS, include/conf.h, src/fs.c: 
+	Bug#1662 - #define _GNU_SOURCE, which will quell some compiler
+	warnings	    (e.g. the crypt() warning when using mod_sql).
+
+2002-09-10 04:35  jwm
+
+	* modules/mod_xfer.c: 
+	minor format-type fixups
+
+2002-09-09 16:05  jwm
+
+	* src/main.c: 
+	style
+
+2002-09-09 15:43  castaglia
+
+	* src/main.c: 
+	No comment.
+
+2002-09-09 15:35  castaglia
+
+	* src/main.c: 
+	Spoke too soon. =P
+
+2002-09-09 15:33  castaglia
+
+	* src/main.c: 
+	Don't forget to append the "proftpd: " prefix for
+	non-setproctitle(2) platforms.	Hopefully this ends our fun with
+	Bug#1649.
+
+2002-09-09 13:03  uid43859
+
+	* lib/pr-syslog.c: 
+	Solaris doesn't have the macro LOG_PRI()
+
+2002-09-09 13:01  uid43859
+
+	* src/main.c: 
+	fixed & cleaned up #defines
+
+2002-09-09 07:40  jwm
+
+	* src/main.c: 
+	Fixing the fix for Bug#1649 - the #ifdefs didn't actually change
+	anything
+
+2002-09-07 12:08  castaglia
+
+	* lib/pr-syslog.c: 
+	Forgot to bracket use of __progname in #ifdefs, as not every
+	platform's libc supports __progname.
+
+2002-09-07 12:02  castaglia
+
+	* src/main.c: 
+	Need to match datatypes for the unixpw_persistent variable in
+	main.c and mod_unixpw.c
+
+2002-09-07 10:37  castaglia
+
+	* NEWS: 
+	Oops.  Wrong bug number.
+
+2002-09-06 17:25  castaglia
+
+	* modules/mod_core.c: 
+	Oops.  Forgot to cleanup my debugging/logging.
+
+2002-09-06 11:51  castaglia
+
+	* NEWS, modules/mod_core.c, src/main.c: 
+	Bug#1652 - add a MaxConnectionRate directive, for configuration a  
+		 connection rate limiting mechanism.  This mechanism is
+	really only	       effective when running proftpd in standalone
+	mode; if using		  inet/xinetd, those daemons have their own
+	connection rate 	   limiting mechanisms.
+
+2002-09-06 11:05  castaglia
+
+	* NEWS, src/main.c: 
+	Bug#1432 - adding check to function handling FTP commands received
+	from		clients to be more strictly RFC959-compliant:
+	leading whitespace	      before the FTP command is now not
+	allowed.
+
+2002-09-06 09:13  castaglia
+
+	* NEWS, modules/mod_core.c, src/main.c: 
+	Bug#1253 - added a DefaultAddress directive, for explicitly
+	configuring the 	   IP address to which the "default" server
+	listens.
+
+2002-09-06 08:18  castaglia
+
+	* NEWS, src/dirtree.c: 
+	Bug#1725 - Still fixing the bugs I introduced into match_ip() as a
+	consequence	       of Bug#1701.  This particular bug was caused
+	by an assumption;	     I'd forgotten to take into account
+	globbing characters attached		to address strings in the
+	case of a '.' suffix/prefix.  The	     manipulated string was
+	used as an argument to inet_getaddr(),		  which returns a
+	pointer.  I forgot to check for that pointer being	      NULL.
+
+2002-09-05 18:06  castaglia
+
+	* NEWS, modules/mod_core.c, modules/mod_site.c: 
+	Bug#1663 - Add SITE CHGRP command
+
+2002-09-05 17:59  castaglia
+
+	* NEWS, include/ftp.h, include/modules.h, modules/mod_auth.c,
+	src/auth.c: 
+	Bug#1719 - Adding RFC2228-defined FTP commands and response codes;
+	made minor	      adjustments to allow future RFC2228 modules
+	(will not change	    current/default behavior).
+
+2002-09-05 17:42  castaglia
+
+	* NEWS, contrib/mod_sql.c: 
+	Bug#1593 - added a new mod_sql directive, SQLNegativeCache, to
+	toggle whether		  mod_sql caches negative lookups. 
+	Documentation to be forthcoming.
+
+2002-09-05 17:38  castaglia
+
+	* contrib/: mod_sql.c, mod_sql.h, mod_sql_mysql.c,
+	mod_sql_postgres.c: 
+	Correcting the OpenSSL exemption clause to list the proper
+	copyright holder for these files.
+
+2002-09-05 16:04  castaglia
+
+	* NEWS, modules/mod_pam.c: 
+	Bug#1724 - The AuthPAM* directive lookups were using TOPLEVEL_CONF
+	as their   config context lookup, but the directives themselves
+	were only allowed in   the server config contexts ("server config",
+	<VirtualHost>, and <Globa>).	This had the consequence of those
+	directives not being properly seen    when doing <Anonymous>
+	logins.  The fix was to use main_server->conf as    the lookup
+	context, rather than TOPLEVEL_CONF.
+
+2002-09-05 14:13  castaglia
+
+	* NEWS, modules/mod_auth.c, modules/mod_core.c, src/dirtree.c: 
+	Bug#1076 - Adding an AllowOverride directive, to provide
+	finer-grained		 control over which users, if any, have
+	their .ftpaccess files		  parsed/honored.
+
+2002-09-05 13:09  castaglia
+
+	* Make.rules.in, NEWS, include/conf.h, include/log.h,
+	include/pr-syslog.h, lib/pr-syslog.c, modules/mod_core.c,
+	src/log.c, src/main.c, src/utils.c: 
+	Bug#1682 - Use of chroot(2) and external libraries made necessary
+	the	       implementing of an internal syslog client routine
+	for use by	      proftpd.
+
+2002-09-04 12:27  castaglia
+
+	* Makefile.in, NEWS: 
+	Bug#1654 - Add DESTDIR in Makefile
+
+2002-09-04 11:55  castaglia
+
+	* NEWS, include/version.h, src/auth.c, src/main.c: 
+	Starting in on the work for the 1.2.7 version:
+	
+	Bug#1649 - setproctitle() prepends and appends process name. This
+	is a		FreeBSD-specific bug (yay portability).  Bug#1666 -
+	Auth modules can return duplicate supplemental groups
+
+2002-09-04 09:10  flyhmstr
+
+	* doc/Configuration.html: ML: more fixme's gone
+
+2002-09-04 07:54  castaglia
+
+	* ChangeLog, NEWS, include/version.h: 
+	Ramping up for the release of 1.2.6.
+
 2002-09-04 00:07  flyhmstr
 
 	* doc/Configuration.html: ML: updated directive list
