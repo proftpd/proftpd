@@ -35,29 +35,32 @@ extern int errno;
 #endif
 
 #ifndef HAVE_STRSEP
-
 /* Match STRING against the filename pattern PATTERN, returning zero if
    it matches, nonzero if not.  */
-
-char *strsep(char **stringp, const char *delim)
+char
+*strsep(char **stringp, const char *delim)
 {
   char *res;
 
-  if(!stringp || !*stringp || !**stringp)
+  if (!stringp || !*stringp || !**stringp)
     return (char*)0;
 
   res = *stringp;
-  while(**stringp && !strchr(delim,**stringp))
-    (*stringp)++;
+  while(**stringp && !strchr(delim, **stringp))
+    ++(*stringp);
   
-  if(**stringp) {
+  if (**stringp) {
     **stringp = '\0';
-    (*stringp)++;
+    ++(*stringp);
   }
 
   return res;
 }
-
+#else
+void
+pr_os_already_has_strsep(void)
+{
+}
 #endif  /* HAVE_STRSEP */
 
 #endif	/* _LIBC or not __GNU_LIBRARY__.  */

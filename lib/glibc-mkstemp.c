@@ -97,4 +97,9 @@ int mkstemp (char *tmpl) {
   return -1;
 }
 
+#else /* HAVE_MKSTEMP */
+void
+pr_os_already_has_mkstemp(void)
+{
+}
 #endif /* HAVE_MKSTEMP */

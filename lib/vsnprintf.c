@@ -18,7 +18,6 @@ not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite
 /* Required to tell conf.h not to include the standard ProFTPD
  * header files
  */
-
 #define __PROFTPD_SUPPORT_LIBRARY
 
 #include <conf.h>
@@ -152,6 +151,7 @@ static char *number(char *str, long num, int base, int size, int
 }
 
 
+#ifndef HAVE_VSNPRINTF
 /*
 ** This vsnprintf() emulation does not implement the conversions:
 **	%e, %E, %g, %G, %wc, %ws
@@ -424,10 +424,16 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
   *str = '\0';
   return str - buf;
 }
+#else /* HAVE_VSNPRINTF */
+void
+pr_os_already_has_vsnprintf(void)
+{
+}
+#endif /* HAVE_VSNPRINTF */
 
 #ifndef HAVE_SNPRINTF
-
-int snprintf(char *buf, size_t size, const char *fmt, ...)
+int
+snprintf(char *buf, size_t size, const char *fmt, ...)
 {
   va_list args;
   int i;
@@ -437,6 +443,16 @@ int snprintf(char *buf, size_t size, const char *fmt, ...)
   va_end(args);
   return i;
 }
-
+#else /* HAVE_SNPRINTF */
+void
+pr_os_already_has_snprintf(void)
+{
+}
 #endif /* HAVE_SNPRINTF */
-#endif  /* HAVE_VSNPRINTF */
+
+#else /* !HAVE_VSNPRINTF || !HAVE_SNPRINTF */
+void
+pr_os_already_has_snprintf_and_vsnprintf(void)
+{
+}
+#endif  /* !HAVE_VSNPRINTF || !HAVE_SNPRINTF */
