@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.173 2003-12-11 07:59:56 castaglia Exp $
+ * $Id: mod_auth.c,v 1.174 2003-12-11 08:04:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -709,7 +709,7 @@ static char *_get_default_root(pool *p) {
 
       else
         pr_log_pri(PR_LOG_NOTICE, "notice: unable to resolve '%s': %s", dir,
-          xerrno);
+          strerror(xerrno));
     }
   }
 
