@@ -483,6 +483,8 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
   if ((tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) && !have_ipaddr_ext)
     tls_log("%s", "client cert missing required X509v3 subjectAltName iPAddress");
 
+  X509_free(cert);
+
   if (!ok)
     return FALSE;
 
