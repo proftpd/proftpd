@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.47 2001-02-14 01:05:54 flood Exp $
+ * $Id: mod_xfer.c,v 1.48 2001-02-20 03:26:27 flood Exp $
  */
 
 /* History Log:
@@ -184,9 +184,15 @@ static void _rate_throttle(unsigned long rate_pos, long rate_bytes,
     /* We use select() instead of usleep() because it seems to be far more
      * portable across platforms.
      */
-    if(select(0, (fd_set *) 0, (fd_set *) 0, (fd_set *) 0, &rate_tv) < 0) {
-      log_pri(LOG_WARNING, "Unable to throttle bandwidth: %s.",
-	      strerror(errno));
+
+    /* Look for EINTR and restart the syscall if necessary.
+     * jss 2/20/01
+     */
+    
+    while(select(0, NULL, NULL, NULL, &rate_tv) < 0) {
+      if(errno != EINTR)
+        log_pri(LOG_WARNING, "Unable to throttle bandwidth: %s.",
+	        strerror(errno));
     }
   }
 }
