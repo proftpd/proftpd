@@ -388,7 +388,7 @@ static RSA *tls_tmp_rsa = NULL;
 
 /* SSL/TLS support functions */
 static void tls_closelog(void);
-static void tls_end_session(SSL *, int);
+static void tls_end_sess(SSL *, int);
 static void tls_fatal_error(int, int);
 static const char *tls_get_errors(void);
 static char *tls_get_page(size_t, void **);
@@ -749,7 +749,7 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
     } else if (tls_renegotiate_required) {
       tls_log("%s", "requested TLS renegotiation timed out on control channel");
       tls_log("%s", "shutting down control channel TLS session");
-      tls_end_session(ctrl_ssl, PR_NETIO_STRM_CTRL);
+      tls_end_sess(ctrl_ssl, PR_NETIO_STRM_CTRL);
       tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
         ctrl_ssl = NULL;
     }
@@ -765,7 +765,7 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
     } else if (tls_renegotiate_required) {
       tls_log("%s", "requested TLS renegotiation timed out on data channel");
       tls_log("%s", "shutting down data channel TLS session");
-      tls_end_session((SSL *) tls_data_wr_nstrm->strm_data, PR_NETIO_STRM_DATA);
+      tls_end_sess((SSL *) tls_data_wr_nstrm->strm_data, PR_NETIO_STRM_DATA);
       tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = NULL;
     }
   }
@@ -1211,7 +1211,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     return -1;
   }
 
-  if ((ssl = SSL_new(ssl_ctx)) == NULL) {
+  ssl = SSL_new(ssl_ctx);
+  if (ssl == NULL) {
     tls_log("error: unable to start session: %s",
       ERR_error_string(ERR_get_error(), NULL));
     return -2;
@@ -1236,7 +1237,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
     if (tls_handshake_timed_out) {
       tls_log("TLS negotiation timed out (%u seconds)", tls_handshake_timeout);
-      tls_end_session(ssl, on_data ? PR_NETIO_STRM_DATA : PR_NETIO_STRM_CTRL);
+      tls_end_sess(ssl, on_data ? PR_NETIO_STRM_DATA : PR_NETIO_STRM_CTRL);
       return -4;
     }
 
@@ -1281,7 +1282,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
         break;
     }
 
-    tls_end_session(ssl, on_data ? PR_NETIO_STRM_DATA : PR_NETIO_STRM_CTRL);
+    tls_end_sess(ssl, on_data ? PR_NETIO_STRM_DATA : PR_NETIO_STRM_CTRL);
     return -3;
   }
 
@@ -1302,7 +1303,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
       SSL_get_cipher_bits(ssl, NULL));
 
-    if ((subj = tls_get_subj_name()))
+    subj = tls_get_subj_name();
+    if (subj)
       tls_log("Client: %s", subj);
 
     if (!(tls_opts & TLS_OPT_NO_CERT_REQUEST)) {
@@ -1364,7 +1366,7 @@ static void tls_cleanup(void) {
   EVP_cleanup();
 }
 
-static void tls_end_session(SSL *ssl, int strms) {
+static void tls_end_sess(SSL *ssl, int strms) {
   if (!ssl)
     return;
 
@@ -1739,7 +1741,8 @@ static int tls_seed_prng(void) {
   /* If the device '/dev/urandom' is present, OpenSSL uses it by default.
    * Check if it's present, else we have to make random data ourselves.
    */
-  if ((fp = fopen("/dev/urandom", "r"))) {
+  fp = fopen("/dev/urandom", "r");
+  if (fp) {
     fclose(fp);
     return 0;
   }
@@ -1783,7 +1786,8 @@ static void tls_setup_cert_ext_environ(const char *env_prefix, X509 *cert) {
 #if 0
   int nexts = 0;
 
-  if ((nexts = X509_get_ext_count(cert)) > 0) {
+  nexts = X509_get_ext_count(cert);
+  if (nexts > 0) {
     register unsigned int i = 0;
 
     for (i = 0; i < nexts; i++) {
@@ -2074,10 +2078,12 @@ static void tls_setup_environ(SSL *ssl) {
     } 
   }
 
+  /* Note: SSL_get_certificate() does NOT increment a reference counter,
+   * so we do not call X509_free() on it.
+   */
   cert = SSL_get_certificate(ssl);
   if (cert) {
     tls_setup_cert_environ("TLS_SERVER_", cert);
-    X509_free(cert);
 
   } else
     tls_log("unable to set server certificate environ variables");
@@ -2357,16 +2363,19 @@ static int tls_netio_close_cb(pr_netio_stream_t *nstrm) {
   int res = 0;
 
   if (nstrm->strm_data) {
-    tls_end_session((SSL *) nstrm->strm_data, nstrm->strm_type);
 
-    if (nstrm->strm_type == PR_NETIO_STRM_CTRL) {
+    if (nstrm->strm_type == PR_NETIO_STRM_CTRL &&
+        nstrm->strm_mode == PR_NETIO_IO_WR) {
+      tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type);
       tls_ctrl_rd_nstrm->strm_data = tls_ctrl_wr_nstrm->strm_data =
         nstrm->strm_data = NULL;
       tls_ctrl_netio = NULL;
       tls_flags &= ~TLS_SESS_ON_CTRL;
     }
 
-    if (nstrm->strm_type == PR_NETIO_STRM_DATA) {
+    if (nstrm->strm_type == PR_NETIO_STRM_DATA &&
+        nstrm->strm_mode == PR_NETIO_IO_WR) {
+      tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type);
       tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data =
         nstrm->strm_data = NULL;
       tls_data_netio = NULL;
@@ -2472,15 +2481,14 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
 
       if (ctrl_cert && data_cert) {
         if (X509_cmp(ctrl_cert, data_cert)) {
+          X509_free(ctrl_cert);
+          X509_free(data_cert);
 
           /* Properly shutdown the SSL session. */
-          tls_end_session((SSL *) nstrm->strm_data, nstrm->strm_type);
+          tls_end_sess((SSL *) nstrm->strm_data, nstrm->strm_type);
 
           tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data =
             nstrm->strm_data = NULL;
-
-          X509_free(ctrl_cert);
-          X509_free(data_cert);
 
           tls_log("%s", "unable to open data connection: control/data "
             "certificate mismatch");
