@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.25 2003-10-10 06:36:57 castaglia Exp $
+ * $Id: netaddr.c,v 1.26 2003-10-11 16:57:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -779,7 +779,7 @@ unsigned int pr_netaddr_get_addrno(const pr_netaddr_t *na) {
   return -1;
 }
 
-int pr_netaddr_v4mappedv6(const pr_netaddr_t *na) {
+int pr_netaddr_is_v4mappedv6(const pr_netaddr_t *na) {
   if (!na) {
     errno = EINVAL;
     return -1;

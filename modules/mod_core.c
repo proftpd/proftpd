@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.192 2003-10-10 16:07:00 castaglia Exp $
+ * $Id: mod_core.c,v 1.193 2003-10-11 16:57:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3106,7 +3106,7 @@ MODRET core_port(cmd_rec *cmd) {
      * address if the remote client address is an IPv4-mapped IPv6 address.
      */
     if (pr_netaddr_get_family(remote_addr) == AF_INET6 &&
-        !pr_netaddr_v4mappedv6(remote_addr)) {
+        !pr_netaddr_is_v4mappedv6(remote_addr)) {
       log_pri(PR_LOG_WARNING, "Refused PORT %s (IPv4/IPv6 address mismatch)",
         cmd->arg);
       pr_response_add_err(R_500, "Illegal PORT command");
