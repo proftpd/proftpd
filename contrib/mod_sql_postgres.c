@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.15 2003-05-29 07:29:43 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.16 2003-06-17 20:54:16 castaglia Exp $
  */
 
 /*
@@ -1105,23 +1105,13 @@ MODRET cmd_escapestring(cmd_rec * cmd) {
   conn = (db_conn_t *) entry->data;
 
   /* Note: the PQescapeString() function appeared in the C API as of
-   * Postgres-7.2; this macro allows for functioning with older postgres
-   * installations.  Unfortunately, Postgres' PG_VERSION is defined as
-   * a string, not an actual number, which makes for preprocessor-time checking
-   * of that value much harder.
-   *
-   * Ideally, this function could be detected by a configure script, but
-   * ProFTPD does not yet support per-module configure scripts.
+   * Postgres-7.2.
    */
-#ifndef POSTGRES_NO_PQESCAPESTRING
   unescaped = cmd->argv[1];
   escaped = (char *) pcalloc(cmd->tmp_pool, sizeof(char) *
     (strlen(unescaped) * 2) + 1);
 
   PQescapeString(escaped, unescaped, strlen(unescaped));
-#else
-  escaped = cmd->argv[1];
-#endif
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_escapestring");
   return mod_create_data(cmd, (void *) escaped);
