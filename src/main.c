@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.135 2002-12-06 23:45:28 castaglia Exp $
+ * $Id: main.c,v 1.136 2002-12-07 00:48:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -98,20 +98,8 @@ typedef struct _pidrec {
   unsigned char dead;
 } pidrec_t;
 
-typedef struct _binding {
-  struct _binding *next;
-
-  server_rec *server;			/* server to handle request */
-  p_in_addr_t ipaddr;			/* ip address "bound" to */
-  int        port;
-  conn_t     *listen;			/* listen connection (if separate) */
-  char       isdefault;			/* if default connection */
-  char       islocalhost;		/* if handles localhost */
-} binding_t;
-
-static void addl_bindings(server_rec *);
-
-extern xaset_t *servers;
+/* From src/dirtree.c */
+extern xaset_t *server_list;
 
 session_t session;
 
@@ -123,8 +111,6 @@ static unsigned char is_master = TRUE;
 
 pid_t mpid = 0;				/* Master pid */
 struct rehash *rehash_list = NULL;	/* Pre-rehash callbacks */
-static binding_t *bind_list = NULL;
-static pool *bind_pool = NULL;
 
 uid_t daemon_uid;
 gid_t daemon_gid;
@@ -174,136 +160,15 @@ static int abort_core = 0;
 
 static char *config_filename = CONFIG_FILE_PATH;
 
-static int add_binding(server_rec *server, p_in_addr_t *ipaddr, conn_t *listen,
-    char isdefault, char islocalhost) {
-  binding_t *b = NULL;
-
-  for(b = bind_list; b; b=b->next)
-    if(b->ipaddr.s_addr == ipaddr->s_addr &&
-       b->port == server->ServerPort) {
-      /* binding already exists for this IP */
-      log_pri(PR_LOG_NOTICE, "cannot bind %s:%d to server '%s', already bound "
-        "to '%s'.", inet_ntoa(*ipaddr),server->ServerPort,
-        server->ServerName, b->server->ServerName);
-      return -1;
-    }
-
-  if (!bind_pool)
-    bind_pool = make_sub_pool(permanent_pool);
-
-  b = palloc(bind_pool,sizeof(binding_t));
-  b->server = server;
-  b->port = server->ServerPort;
-  b->ipaddr = *ipaddr;
-  b->listen = listen;
-  b->isdefault = isdefault;
-  b->islocalhost = islocalhost;
-
-  b->next = bind_list;
-  bind_list = b;
-
-  return 0;
-}
-
-static server_rec *find_binding(p_in_addr_t *ipaddr, int port) {
-  binding_t *b,*local_b = NULL,*default_b = NULL;
-
-  for(b = bind_list; b; b=b->next) {
-    if(b->ipaddr.s_addr == ipaddr->s_addr && (!b->port || b->port == port))
-      return b->server;
-
-    if(b->islocalhost)
-      local_b = b;
-    if(b->isdefault)
-      default_b = b;
-  }
-
-  /* Not found in binding list, so see if it's the loopback address */
-  if(local_b) {
-    p_in_addr_t loopback,loopmask,tmp;
-
-#ifdef HAVE_INET_ATON
-    inet_aton(LOOPBACK_NET,&loopback);
-    inet_aton(LOOPBACK_MASK,&loopmask);
-#else
-    loopback.s_addr = inet_addr(LOOPBACK_NET);
-    loopmask.s_addr = inet_addr(LOOPBACK_MASK);
-#endif
-    loopback.s_addr = ntohl(loopback.s_addr);
-    loopmask.s_addr = ntohl(loopmask.s_addr);
-    tmp.s_addr = ntohl(ipaddr->s_addr);
-
-    if((tmp.s_addr & loopmask.s_addr) == loopback.s_addr &&
-       (!local_b->port || port == local_b->port))
-      return local_b->server;
-  }
-
-  /* otherwise, use the default server, if set */
-  if(default_b)
-    return default_b->server;
-
-  return NULL;
-}
-
-static conn_t *accept_binding(fd_set *rfd, int *lfd) {
-  binding_t *b;
-  int fd;
-
-  for(b = bind_list; b; b=b->next) {
-    if(b->listen && FD_ISSET(b->listen->listen_fd,rfd) &&
-       b->listen->mode == CM_LISTEN) {
-      if((fd = inet_accept_nowait(b->listen->pool,b->listen)) == -1) {
-	/* Handle errors gracefully.  If we're here, then b->listen contains
-	 * either error information, or we just got caught in a blocking
-	 * condition. - MacGyver
-	 */
-	if (b->listen->mode == CM_ERROR) {
-	  log_pri(PR_LOG_ERR, "error: unable to accept an incoming connection "
-            "(%s)", strerror(b->listen->xerrno));
-	  b->listen->xerrno = 0;
-	  b->listen->mode = CM_LISTEN;
-	  return NULL;
-	}
-      }
-      
-      *lfd = fd;
-      return b->listen;
-    }
-  }
-
-  return NULL;
-}
-
-static int listen_binding(fd_set *rfd, int max_fd) {
-  binding_t *b;
-
-  for(b = bind_list; b; b=b->next) {
-    if(b->listen) {
-      if(b->listen->mode == CM_NONE)
-        inet_listen(b->listen->pool,b->listen,tcpBackLog);
-
-      if(b->listen->mode == CM_ACCEPT)
-        inet_resetlisten(b->listen->pool,b->listen);
-      if(b->listen->mode == CM_LISTEN) {
-        FD_SET(b->listen->listen_fd,rfd);
-	if (b->listen->listen_fd > max_fd)
-		max_fd = b->listen->listen_fd;
-      }
-    }
-  }
-  return max_fd;
-}
-
 /* Add child semaphore fds into the rfd for selecting */
-static int semaphore_fds(fd_set *rfd, int max_fd)
-{
+static int semaphore_fds(fd_set *rfd, int max_fd) {
   pidrec_t *p;
 
   if (child_list)
-    for(p = (pidrec_t*) child_list->xas_list; p; p=p->next) {
-      if(p->sempipe != -1) {
+    for (p = (pidrec_t *) child_list->xas_list; p; p = p->next) {
+      if (p->sempipe != -1) {
 	FD_SET(p->sempipe,rfd);
-	if(p->sempipe > max_fd)
+	if (p->sempipe > max_fd)
 	  max_fd = p->sempipe;
       }
     }
@@ -1080,10 +945,6 @@ static void cmd_loop(server_rec *server, conn_t *c) {
   }
 }
 
-static void serv_conn_cleanup_cb(void *connp) {
-  *((conn_t**)connp) = NULL;
-}
-
 void register_rehash(void *data, void (*fp)(void*)) {
   struct rehash *r = (struct rehash*)pcalloc(permanent_pool,
 		  				sizeof(struct rehash));
@@ -1095,44 +956,46 @@ void register_rehash(void *data, void (*fp)(void*)) {
 }
 
 static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
-  struct rehash *rh;
-  config_rec *c = NULL;
-  server_rec *s = NULL;
-  int isdefault;
+  struct rehash *rh = NULL;
 
   if (is_master && mpid) {
     int max_fd;
-    fd_set rfd;
+    fd_set child_fds;
 
     log_pri(PR_LOG_NOTICE, "received SIGHUP -- master server rehashing "
       "configuration file");
 
     /* Make sure none of our children haven't completed start up */
-    FD_ZERO(&rfd); max_fd = -1;
+    FD_ZERO(&child_fds);
+    max_fd = -1;
 
-    if ((max_fd = semaphore_fds(&rfd, max_fd)) > -1) {
+    if ((max_fd = semaphore_fds(&child_fds, max_fd)) > -1) {
       log_pri(PR_LOG_NOTICE, "waiting for child processes to complete "
         "initialization");
       
-      while(max_fd != -1) {
+      while (max_fd != -1) {
 	int i;
 	pidrec_t *cp;
 	
-	i = select(max_fd + 1, &rfd, NULL, NULL, NULL);
+	i = select(max_fd + 1, &child_fds, NULL, NULL, NULL);
 
-	if(i > 0)
-	  for(cp = (pidrec_t*) child_list->xas_list; cp; cp = cp->next)
-	    if(cp->sempipe != -1 && FD_ISSET(cp->sempipe,&rfd)) {
+	if (i > 0)
+	  for (cp = (pidrec_t *) child_list->xas_list; cp; cp = cp->next)
+	    if (cp->sempipe != -1 && FD_ISSET(cp->sempipe, &child_fds)) {
 	      close(cp->sempipe);
 	      cp->sempipe = -1;
 	    }
 
-	FD_ZERO(&rfd); max_fd = -1;
-	max_fd = semaphore_fds(&rfd,max_fd);
+	FD_ZERO(&child_fds);
+        max_fd = -1;
+	max_fd = semaphore_fds(&child_fds, max_fd);
       }
     }
 
-    for (rh = rehash_list; rh; rh=rh->next)
+    pr_free_bindings();
+
+    /* Run through the list of registered rehash callbacks. */
+    for (rh = rehash_list; rh; rh = rh->next)
       rh->rehash(rh->data);
    
     init_log();
@@ -1148,82 +1011,19 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     }
     PRIVS_RELINQUISH
     free_conf_stacks();
+
+    /* Set the (possibly new) resource limits. */
+    set_daemon_rlimits();
+    
     fixup_servers();
 
-    /* set resource limits */
-    set_daemon_rlimits();
-
-    /* Destroy the old bind list */
-    if (bind_pool) {
-      destroy_pool(bind_pool);
-      bind_pool = NULL;
-    }
-    bind_list = NULL;
-
-    /* check for a configured DefaultAddress for the main_server */
-    if ((c = find_config(main_server->conf, CONF_PARAM, "DefaultAddress",
-        FALSE)) != NULL) {
-      log_debug(DEBUG0, "setting default server address to %s",
-        inet_ascii(c->pool, (p_in_addr_t *) c->argv[0]));
-      main_server->ipaddr = (p_in_addr_t *) c->argv[0];
-    }
-
-    /* Recreate the listen connection */
-
-    if(main_server->ServerPort)
-      main_server->listen =
-        inet_create_connection(main_server->pool,servers,-1,
-                               (SocketBindTight ? main_server->ipaddr : NULL),
-  		   	       main_server->ServerPort,FALSE);
-    else
-      main_server->listen = NULL;
-
-    isdefault = get_param_int(main_server->conf,"DefaultServer",FALSE);
-    if(isdefault != 1)
-      isdefault = 0;
-
-    if(main_server->ServerPort || isdefault) {
-      add_binding(main_server,main_server->ipaddr,main_server->listen,
-                  isdefault,1);
-      addl_bindings(main_server);
-    }
-
-    for(s = main_server->next; s; s=s->next) {
-      if(s->ServerPort != main_server->ServerPort || SocketBindTight ||
-         !main_server->listen) {
-
-        isdefault = get_param_int(s->conf,"DefaultServer",FALSE);
-        if(isdefault != 1)
-          isdefault = 0;
-
-        if(s->ServerPort) {
-          s->listen = inet_create_connection(
-                        s->pool,servers,-1,
-                        (SocketBindTight ? s->ipaddr : NULL),
-                        s->ServerPort, FALSE);
-          add_binding(s,s->ipaddr,s->listen,isdefault,0);
-          addl_bindings(s);
-        } else if(isdefault) {
-          s->listen = NULL;
-          add_binding(s,s->ipaddr,s->listen,isdefault,0);
-          addl_bindings(s);
-        } else
-          s->listen = NULL;
-      } else {
-        isdefault = get_param_int(s->conf,"DefaultServer",FALSE);
-        if(isdefault != 1)
-          isdefault = 0;
-
-        s->listen = main_server->listen;
-        register_cleanup(s->listen->pool,&s->listen,
-                         serv_conn_cleanup_cb,
-                         serv_conn_cleanup_cb);
-        add_binding(s,s->ipaddr,NULL,isdefault,0);
-        addl_bindings(s);
-      }
-    }
+    /* Recreate the listen connection.  Can an inetd-spawned server accept
+     * and process HUP?
+     */
+    pr_init_bindings();
 
   } else
+
     /* Child process -- cannot rehash, log error */
     log_pri(PR_LOG_ERR, "received SIGHUP, cannot rehash child process");
 }
@@ -1455,8 +1255,9 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   inet_set_proto_options(permanent_pool,conn,1,1,0,0);
 
   /* Find the server for this connection. */
-  serv = find_binding(conn->local_ipaddr,conn->local_port);
+  serv = pr_ipbind_get_server(conn->local_ipaddr, conn->local_port);
 
+#ifndef PR_HACK_DISABLE_VHOST_MEM_FREE
   /* To conserve memory, free all other servers and associated
    * configurations
    */
@@ -1482,11 +1283,12 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
              s->listen->listen_fd = -1;
       }
 
-      xaset_remove(servers,(xasetmember_t*)s);
+      xaset_remove(server_list,(xasetmember_t*)s);
       destroy_pool(s->pool);
     }
     s = s_saved;
   }
+#endif
 
   main_server = serv;
     
@@ -1648,7 +1450,7 @@ static void disc_children(void) {
 }
 
 static void server_loop(void) {
-  fd_set rfd;
+  fd_set listen_fds;
   conn_t *listen;
   int fd, max_fd;
   int i,err_count = 0;
@@ -1661,15 +1463,15 @@ static void server_loop(void) {
 
   time(&last_error);
 
-  while(1) {
+  while (TRUE) {
     run_schedule();
 
-    FD_ZERO(&rfd);
+    FD_ZERO(&listen_fds);
     max_fd = 0;
-    max_fd = listen_binding(&rfd, max_fd);
+    max_fd = pr_ipbind_listen(&listen_fds);
 
     /* Monitor children pipes */
-    max_fd = semaphore_fds(&rfd, max_fd);
+    max_fd = semaphore_fds(&listen_fds, max_fd);
     
     /* Check for ftp shutdown message file */
     switch (check_shutmsg(&shut, &deny, &disc, shutmsg, sizeof(shutmsg))) {
@@ -1712,7 +1514,7 @@ static void server_loop(void) {
     
     running = 1;
 
-    i = select(max_fd + 1, &rfd, NULL, NULL,&tv);
+    i = select(max_fd + 1, &listen_fds, NULL, NULL, &tv);
 
     if (i == -1 && errno == EINTR) {
       pr_handle_signals();
@@ -1789,7 +1591,7 @@ static void server_loop(void) {
       time_t now = time(NULL);
 
       for (cp = (pidrec_t *) child_list->xas_list; cp; cp = cp->next) {
-	if (cp->sempipe != -1 && FD_ISSET(cp->sempipe, &rfd)) {
+	if (cp->sempipe != -1 && FD_ISSET(cp->sempipe, &listen_fds)) {
 	  close(cp->sempipe);
 	  cp->sempipe = -1;
 	}
@@ -1805,7 +1607,7 @@ static void server_loop(void) {
     pr_handle_signals();
 
     /* Accept the connection. */
-    listen = accept_binding(&rfd, &fd);
+    listen = pr_ipbind_accept_conn(&listen_fds, &fd);
 
     /* Fork off servers to handle each connection our job is to get back to
      * answering connections asap, so leave the work of determining which
@@ -2524,41 +2326,8 @@ static void daemonize(void) {
   pr_fsio_chdir("/", 0);
 }
 
-static void addl_bindings(server_rec *s) {
-  config_rec *c;
-  conn_t *listen;
-  p_in_addr_t *ipaddr;
-
-  c = find_config(s->conf,CONF_PARAM,"Bind",FALSE);
-  while(c) {
-    listen = NULL;
-
-    /* If SocketBindTight is set, we create an additional listen
-     * connection for each binding.
-     */
-
-    ipaddr = inet_getaddr(s->pool,c->argv[0]);
-    if (!ipaddr) {
-      log_pri(PR_LOG_NOTICE, "unable to determine IP address of '%s'.",
-              (char *) c->argv[0]);
-
-      continue;
-    }
-
-    if(SocketBindTight && s->ServerPort) {
-      listen = inet_create_connection(s->pool,servers,-1,
-               ipaddr,s->ServerPort,FALSE);
-      add_binding(s,ipaddr,listen,0,0);
-    } else
-      add_binding(s,ipaddr,s->listen,0,0);
-
-    c = find_config_next(c,c->next,CONF_PARAM,"Bind",FALSE);
-  }
-}
-
 static void inetd_main(void) {
-  server_rec *s;
-  int isdefault, res = 0;
+  int res = 0;
 
   /* Make sure the scoreboard file exists. */
   PRIVS_ROOT
@@ -2587,47 +2356,7 @@ static void inetd_main(void) {
   PRIVS_RELINQUISH
   pr_close_scoreboard();
 
-  main_server->listen = 
-    inet_create_connection(main_server->pool,servers,STDIN_FILENO,
-                           NULL,INPORT_ANY,FALSE);
-
-  /* Fill in all the important connection info */
-  if (inet_get_conn_info(main_server->listen, STDIN_FILENO) == -1) {
-    log_pri(PR_LOG_ERR, "Fatal: %s", strerror(errno));
-    if (errno == ENOTSOCK)
-      log_pri(PR_LOG_ERR, "(Running from command line? "
-                      "Use `ServerType standalone' in config file!)");
-    exit(1);
-  }
-
-  isdefault = get_param_int(main_server->conf,"DefaultServer",FALSE);
-  if(isdefault != 1)
-    isdefault = 0;
-
-  add_binding(main_server,main_server->ipaddr,main_server->listen,
-                isdefault,1);
-  addl_bindings(main_server);
-
-  /* Now attach the faked connection to all virtual servers */
-  for(s = main_server->next; s; s=s->next) {
-      /* Because this server is sharing the connection with the
-       * main server, we need a cleanup handler to remove
-       * the server's reference when the original connection's
-       * pool is destroyed.
-       */
-      s->listen = main_server->listen;
-      register_cleanup(s->listen->pool,&s->listen,
-                       serv_conn_cleanup_cb,
-                       serv_conn_cleanup_cb);
-      
-
-      isdefault = get_param_int(s->conf,"DefaultServer",FALSE);
-      if(isdefault != 1)
-        isdefault = 0;
-
-      add_binding(s,s->ipaddr,s->listen,isdefault,0);
-      addl_bindings(s);
-  }
+  pr_init_bindings();
 
   /* Check our shutdown status */
   if (check_shutmsg(&shut, &deny, &disc, shutmsg, sizeof(shutmsg)) == 1)
@@ -2640,9 +2369,6 @@ static void inetd_main(void) {
 }
 
 static void standalone_main(void) {
-  config_rec *c = NULL;
-  server_rec *s = NULL;
-  unsigned char default_server = FALSE;
   int res = 0;
 
   is_standalone = TRUE;
@@ -2686,77 +2412,7 @@ static void standalone_main(void) {
   PRIVS_RELINQUISH
   pr_close_scoreboard();
 
-  /* check for a configured DefaultAddress for the main_server */
-  if ((c = find_config(main_server->conf, CONF_PARAM, "DefaultAddress",
-      FALSE)) != NULL) {
-    log_debug(DEBUG0, "setting default server address to %s",
-      inet_ascii(c->pool, (p_in_addr_t *) c->argv[0]));
-    main_server->ipaddr = (p_in_addr_t *) c->argv[0];
-  }
-
-  /* If a port is set to 0, the address/port is not bound at all */
-
-  if(main_server->ServerPort)
-    main_server->listen =
-      inet_create_connection(main_server->pool,servers,-1,
-                             (SocketBindTight ? main_server->ipaddr :  NULL),
-                             main_server->ServerPort, FALSE);
-  else
-    main_server->listen = NULL;
-
-  default_server = get_param_int(main_server->conf, "DefaultServer", FALSE);
-  if (default_server != TRUE)
-    default_server = FALSE;
-
-  if (main_server->ServerPort || default_server) {
-    add_binding(main_server, main_server->ipaddr, main_server->listen,
-                default_server, 1);
-
-    addl_bindings(main_server);
-  }
-
-  for(s = main_server->next; s; s=s->next)
-    if(s->ServerPort != main_server->ServerPort || SocketBindTight ||
-       !main_server->listen) {
-
-      default_server = get_param_int(s->conf,"DefaultServer",FALSE);
-      if (default_server != TRUE)
-        default_server = FALSE;
-
-      if(s->ServerPort) {
-
-        s->listen = inet_create_connection(
-                      s->pool,servers,-1,
-	  	      (SocketBindTight ? s->ipaddr : NULL),
-                      s->ServerPort,FALSE);        
-        add_binding(s,s->ipaddr,s->listen,default_server,0);
-        addl_bindings(s);
-
-      } else if (default_server) {
-        s->listen = NULL;
-        add_binding(s,s->ipaddr,s->listen,default_server,0);
-        addl_bindings(s);
-
-      } else
-        s->listen = NULL;
-
-    } else {
-      /* Because this server is sharing the connection with the
-       * main server, we need a cleanup handler to remove
-       * the server's reference when the original connection's
-       * pool is destroyed.
-       */
-      default_server = get_param_int(s->conf,"DefaultServer",FALSE);
-      if (default_server != TRUE)
-        default_server = FALSE;
-       
-      s->listen = main_server->listen;
-      register_cleanup(s->listen->pool,&s->listen,
-                       serv_conn_cleanup_cb,
-                       serv_conn_cleanup_cb);
-      add_binding(s,s->ipaddr,NULL,default_server,0);
-      addl_bindings(s);
-    }
+  pr_init_bindings();
 
   log_pri(PR_LOG_NOTICE, "ProFTPD %s (built %s) standalone mode STARTUP",
     PROFTPD_VERSION_TEXT " " PR_STATUS, BUILD_STAMP);
@@ -3030,6 +2686,7 @@ int main(int argc, char *argv[], char **envp) {
   init_inet();
   pr_init_netio();
   pr_init_fs();
+  pr_free_bindings();
   init_config();
   pr_preparse_init_modules();
 

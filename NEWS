@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.312 2002-12-06 23:08:44 castaglia Exp $
+$Id: NEWS,v 1.313 2002-12-07 00:48:31 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -37,6 +37,7 @@ CVS
 - Bug 1789 - Add ability to block recursive directory listings.  The
   LsDefaultOptions configuration directive has been deprecated in favor of
   the more feature-rich ListOptions directive.
+- Added Bindings API
 
 1.2.7 - Released 05-12-2002
 ---------------------------------

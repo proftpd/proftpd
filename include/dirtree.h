@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.25 2002-12-05 21:16:48 castaglia Exp $
+ * $Id: dirtree.h,v 1.26 2002-12-07 00:48:32 castaglia Exp $
  */
 
 #ifndef __DIRTREE_H
@@ -109,6 +109,7 @@ struct config_struc {
 #define CONF_VIRTUAL		(1 << 4) /* Virtual host */
 #define CONF_DYNDIR		(1 << 5) /* .ftpaccess file */
 #define CONF_GLOBAL		(1 << 6) /* "Global" context (applies to main server and ALL virtualhosts */
+#define CONF_NAMED		(1 << 7)  /* Named virtual host */
 #define CONF_USERDATA		(1 << 14) /* Runtime user data */
 #define CONF_PARAM		(1 << 15) /* config/args pair */
 

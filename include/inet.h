@@ -26,7 +26,7 @@
 
 /* BSD socket manipulation tools.
  *
- * $Id: inet.h,v 1.13 2002-09-13 23:14:41 castaglia Exp $
+ * $Id: inet.h,v 1.14 2002-12-07 00:48:32 castaglia Exp $
  */
 
 #ifndef __INET_H
@@ -55,6 +55,7 @@
 
 /* connection structure */
 typedef struct conn_struc {
+  struct conn_struc *next;
   pool *pool;
   int mode;				/* Current connection mode */
   int listen_fd;			/* Listening file descriptor */

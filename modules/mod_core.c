@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.130 2002-12-06 23:45:27 castaglia Exp $
+ * $Id: mod_core.c,v 1.131 2002-12-07 00:48:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -93,7 +93,7 @@ static struct {
 };
 
 extern module site_module;
-extern xaset_t *servers;
+extern xaset_t *server_list;
 
 /* from src/main.c */
 extern unsigned long max_connects;
@@ -578,6 +578,7 @@ MODRET set_serverident(cmd_rec *cmd) {
 MODRET set_defaultserver(cmd_rec *cmd) {
   int bool = -1;
   server_rec *s = NULL;
+  config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
@@ -589,11 +590,14 @@ MODRET set_defaultserver(cmd_rec *cmd) {
     return HANDLED(cmd);
 
   /* DefaultServer is not allowed if already set somewhere */
-  for (s = (server_rec *) servers->xas_list; s; s = s->next)
+  for (s = (server_rec *) server_list->xas_list; s; s = s->next)
     if (find_config(s->conf, CONF_PARAM, cmd->argv[0], FALSE))
       CONF_ERROR(cmd, "DefaultServer has already been set.");
 
-  add_config_param(cmd->argv[0], 1, (void *) bool);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
+
   return HANDLED(cmd);
 }
 

@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.82 2002-12-06 21:05:06 castaglia Exp $
+ * $Id: dirtree.c,v 1.83 2002-12-07 00:48:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -42,7 +42,7 @@
 # include <regex.h>
 #endif
 
-xaset_t *servers = NULL;
+xaset_t *server_list = NULL;
 server_rec *main_server = NULL;
 int tcpBackLog = PR_TUNABLE_DEFAULT_BACKLOG;
 int SocketBindTight = FALSE;
@@ -613,8 +613,8 @@ server_rec *start_new_server(const char *addr)
    * otherwise main_server becomes useless.
    */
 
-  xaset_insert_end(servers,(xasetmember_t*)s);
-  s->set = servers;
+  xaset_insert_end(server_list, (xasetmember_t *) s);
+  s->set = server_list;
   if(addr)
     s->ServerAddress = pstrdup(s->pool,addr);
 
@@ -2420,7 +2420,7 @@ void _copy_global_to_all(xaset_t *set)
     return;
 
   for(c = (config_rec*)set->xas_list; c; c=c->next)
-    for(s = (server_rec*)servers->xas_list; s; s=s->next)
+    for(s = (server_rec*) server_list->xas_list; s; s=s->next)
       _copy_recur(&s->conf,s->pool,c,NULL);
 }
 
@@ -2428,7 +2428,7 @@ static void fixup_globals(void) {
   server_rec *s = NULL, *smain = NULL;
   config_rec *c = NULL, *cnext = NULL;
 
-  smain = (server_rec*)servers->xas_list;
+  smain = (server_rec*) server_list->xas_list;
   for(s = smain; s; s=s->next) {
     /* loop through each top level directive looking for a CONF_GLOBAL
      * context
@@ -2834,7 +2834,7 @@ void fixup_servers(void) {
 
   fixup_globals();
 
-  s = (server_rec *)servers->xas_list;
+  s = (server_rec *) server_list->xas_list;
   if (s && !s->ServerName)
     s->ServerName = pstrdup(s->pool, "ProFTPD");
 
@@ -2849,7 +2849,7 @@ void fixup_servers(void) {
     if ((s->ipaddr = inet_getaddr(s->pool, s->ServerAddress)) == NULL) {
       log_pri(PR_LOG_ERR, "error: unable to determine IP address of '%s'",
         s->ServerAddress);
-      xaset_remove(servers, (xasetmember_t *) s);
+      xaset_remove(server_list, (xasetmember_t *) s);
       continue;
     }
 
@@ -2860,7 +2860,7 @@ void fixup_servers(void) {
       s->ServerAdmin = pstrcat(s->pool, "root@", s->ServerFQDN, NULL);
 
     if (!s->ServerName) {
-      server_rec *m = (server_rec *)servers->xas_list;
+      server_rec *m = (server_rec *) server_list->xas_list;
       s->ServerName = pstrdup(s->pool, m->ServerName);
     }
 
@@ -2903,25 +2903,25 @@ void init_config(void) {
     global_config_pool = NULL;
   }
 
-  if (servers) {
+  if (server_list) {
     server_rec *s, *s_next;
 
     /* Free the old configuration completely */
-    for (s = (server_rec *) servers->xas_list; s; s = s_next) {
+    for (s = (server_rec *) server_list->xas_list; s; s = s_next) {
       s_next = s->next;
       destroy_pool(s->pool);
     }
-    destroy_pool(servers->mempool);
+    destroy_pool(server_list->mempool);
   }
 
-  servers = xaset_create(pool,NULL);
+  server_list = xaset_create(pool,NULL);
 
   pool = make_sub_pool(permanent_pool);
   main_server = (server_rec*) pcalloc(pool,sizeof(server_rec));
-  xaset_insert(servers, (xasetmember_t*) main_server);
+  xaset_insert(server_list, (xasetmember_t*) main_server);
 
   main_server->pool = pool;
-  main_server->set = servers;
+  main_server->set = server_list;
 
   /* default server port */
   main_server->ServerPort = inet_getservport(main_server->pool, "ftp", "tcp");
