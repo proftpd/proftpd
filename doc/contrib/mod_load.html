@@ -1,4 +1,4 @@
-<!-- $Id: mod_load.html,v 1.1 2005-01-01 18:37:42 castaglia Exp $ -->
+<!-- $Id: mod_load.html,v 1.2 2005-01-01 19:41:33 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_load.html,v $ -->
 
 <html>
@@ -82,19 +82,12 @@ modules in proftpd:
   make
   make install
 </pre>
-Solaris users will also need to use the <code>LDFLAGS</code> environment
-variable, like so:
-<pre>
-  LDFLAGS=-lkstat ./configure --with-modules=mod_load
-</pre>
-This is necessary for <code>mod_load</code> to link against
-<code>libkstat</code> on Solaris systems.
 
 <p>
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2005-01-01 18:37:42 $</i><br>
+Last Updated: <i>$Date: 2005-01-01 19:41:33 $</i><br>
 
 <br><hr>
 
