@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.42 2000-08-02 21:46:15 macgyver Exp $
+ * $Id: mod_core.c,v 1.43 2000-08-07 23:17:46 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -252,7 +252,7 @@ MODRET set_sysloglevel(cmd_rec *cmd) {
 
   if(!strcasecmp(cmd->argv[1], "emerg")) {
     add_config_param("SyslogLevel", 1, (void *) PR_LOG_EMERG);
-  } else if(strcasecmp(cmd->argv[1], "alert")) {
+  } else if(!strcasecmp(cmd->argv[1], "alert")) {
     add_config_param("SyslogLevel", 1, (void *) PR_LOG_ALERT);
   } else if(!strcasecmp(cmd->argv[1], "crit")) {
     add_config_param("SyslogLevel", 1, (void *) PR_LOG_CRIT);
@@ -2694,7 +2694,6 @@ static conftable core_conftable[] = {
   { "IdentLookups",		set_identlookups,		NULL },
   { "IgnoreHidden",		set_ignorehidden,		NULL },
   { "Include",			add_include,	 		NULL },
-  { "SyslogLevel",		set_sysloglevel,		NULL },
   { "MaxClients",		set_maxclients,			NULL },
   { "MaxClientsPerHost",	set_maxhostclients,		NULL },
   { "MaxInstances",		set_maxinstances,		NULL },
@@ -2714,6 +2713,7 @@ static conftable core_conftable[] = {
   { "ShowSymlinks",		set_showsymlinks,		NULL },
   { "SocketBindTight",		set_socketbindtight,		NULL },
   { "SyslogFacility",		set_syslogfacility,		NULL },
+  { "SyslogLevel",		set_sysloglevel,		NULL },
   { "TimeoutIdle",		set_timeoutidle,		NULL },
   { "TimeoutLogin",		set_timeoutlogin,		NULL },
   { "TimeoutNoTransfer",	set_timeoutnoxfer,		NULL },
