@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.12 2004-04-14 18:11:42 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.13 2004-05-24 23:27:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -53,7 +53,9 @@ static unsigned int ctrls_interval = 10;
 
 /* Controls listening socket fd */
 static int ctrls_sockfd = -1;
-static char *ctrls_sock_file = RUN_DIR "/proftpd.sock";
+
+#define MOD_CTRLS_DEFAULT_SOCK		RUN_DIR "/proftpd.sock"
+static char *ctrls_sock_file = MOD_CTRLS_DEFAULT_SOCK;
 
 /* User/group ownership of the control socket */
 static uid_t ctrls_sock_uid = 0;
@@ -1478,7 +1480,6 @@ MODRET set_ctrlssocket(cmd_rec *cmd) {
   /* Close the socket. */
   pr_log_debug(DEBUG3, MOD_CTRLS_VERSION ": closing ctrls socket '%s'",
     ctrls_sock_file);
-
   close(ctrls_sockfd);
 
   /* Change the path. */
@@ -1589,9 +1590,18 @@ static void ctrls_restart_ev(const void *event_data, void *user_data) {
   cl_list = NULL;
   cl_listlen = 0;
 
+  pr_log_debug(DEBUG3, MOD_CTRLS_VERSION ": closing ctrls socket '%s'",
+    ctrls_sock_file);
+  close(ctrls_sockfd);
+  ctrls_closelog();
+
   /* Clear the existing pool */
-  if (ctrls_pool)
+  if (ctrls_pool) {
     destroy_pool(ctrls_pool);
+
+    ctrls_logname = NULL;
+    ctrls_sock_file = MOD_CTRLS_DEFAULT_SOCK;
+  }
 
   /* Allocate the pool for this module's use */
   ctrls_pool = make_sub_pool(permanent_pool);
@@ -1604,24 +1614,6 @@ static void ctrls_restart_ev(const void *event_data, void *user_data) {
     ctrls_acttab[i].act_acl = pcalloc(ctrls_pool, sizeof(ctrls_acl_t));
     ctrls_init_acl(ctrls_acttab[i].act_acl);
   }
-
-  /* Restart listening on the ctrl socket */
-  close(ctrls_sockfd);
-
-  PRIVS_ROOT
-  ctrls_sockfd = ctrls_listen(ctrls_sock_file);
-  PRIVS_RELINQUISH
-
-  if (ctrls_sockfd < 0)
-    pr_log_pri(PR_LOG_NOTICE, "notice: unable to listen to local socket: %s",
-      strerror(errno));
-
-  /* "Bounce" the log file descriptor */
-  ctrls_closelog();
-
-  PRIVS_ROOT
-  ctrls_openlog();
-  PRIVS_RELINQUISH
 
   return;
 }
