@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.32 2003-11-09 23:32:07 castaglia Exp $
+ * $Id: fsio.c,v 1.33 2004-04-09 16:58:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -459,6 +459,51 @@ static pr_fs_t *lookup_file_canon_fs(const char *path, char **deref, int op) {
 
 void pr_fs_clear_cache(void) {
   memset(&statcache, '\0', sizeof(statcache));
+}
+
+int pr_fs_copy_file(const char *src, const char *dst) {
+  pr_fh_t *src_fh, *dst_fh;
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+  int res;
+
+  src_fh = pr_fsio_open(src, O_RDONLY);
+  if (!src_fh) {
+    pr_log_pri(PR_LOG_WARNING, "error opening source file '%s' "
+      "for copying: %s", src, strerror(errno));
+    return -1;
+  }
+
+  dst_fh = pr_fsio_open(dst, O_WRONLY|O_CREAT);
+  if (!dst_fh) {
+    int xerrno = errno;
+
+    pr_fsio_close(src_fh);
+    errno = xerrno;
+
+    pr_log_pri(PR_LOG_WARNING, "error opening destination file '%s' "
+      "for copying: %s", dst, strerror(errno));
+    return -1;
+  }
+
+  /* Make sure the destination file starts with a zero size. */
+  pr_fsio_truncate(dst, 0);
+
+  while ((res = pr_fsio_read(src_fh, buf, sizeof(buf))) > 0) {
+    if (pr_fsio_write(dst_fh, buf, res) != res) {
+      pr_log_pri(PR_LOG_WARNING, "error copying to '%s': %s", dst,
+        strerror(errno));
+      break;
+    }
+
+    pr_signals_handle();
+  }
+
+  pr_fsio_close(src_fh);
+  if (pr_fsio_close(dst_fh) < 0)
+    pr_log_pri(PR_LOG_WARNING, "error closing '%s': %s", dst,
+      strerror(errno));
+
+  return res;
 }
 
 pr_fs_t *pr_register_fs(pool *p, const char *name, const char *path) {

@@ -22,9 +22,8 @@
  * OpenSSL in the source distribution.
  */
 
-/*
- * Home-on-demand support
- * $Id: mkhome.c,v 1.4 2003-11-09 23:32:07 castaglia Exp $
+/* Home-on-demand support
+ * $Id: mkhome.c,v 1.5 2004-04-09 16:58:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -106,57 +105,6 @@ static int create_path(pool *p, const char *path, const char *user, uid_t uid,
   }
 
   pr_log_debug(DEBUG3, "home directory '%s' created", path);
-  return 0;
-}
-
-static int copy_file(pool *p, const char *src, const char *dst, uid_t uid,
-    gid_t gid, mode_t mode) {
-  pr_fh_t *src_fh = NULL, *dst_fh = NULL;
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-  int res = 0;
-
-  src_fh = pr_fsio_open(src, O_RDONLY);
-  if (src_fh == NULL) {
-    pr_log_debug(DEBUG2, "CreateHome: trouble with '%s': %s", src, 
-      strerror(errno));
-    return -1;
-  }
-
-  dst_fh = pr_fsio_open(dst, O_WRONLY|O_CREAT|O_EXCL);
-  if (dst_fh == NULL) {
-    pr_log_debug(DEBUG2, "CreateHome: trouble with %s': %s", dst, 
-      strerror(errno));
-    pr_fsio_close(src_fh);
-    return -1;
-  }
-
-  /* Make sure the destination file starts with a zero size. */
-  pr_fsio_truncate(dst, 0);
-
-  while ((res = pr_fsio_read(src_fh, buf, sizeof(buf))) > 0) {
-    if (pr_fsio_write(dst_fh, buf, res) != res) {
-      pr_log_pri(PR_LOG_WARNING, "CreateHome: error writing to '%s': %s",
-        dst, strerror(errno));
-      break;
-    }
-
-    pr_signals_handle();
-  }
-
-  /* Make sure the destination file has the proper ownership and mode. */
-  if (pr_fsio_chown(dst, uid, gid) < 0)
-    pr_log_pri(PR_LOG_WARNING, "CreateHome: error chown'ing '%s' to %u/%u: %s",
-      dst, (unsigned int) uid, (unsigned int) gid, strerror(errno));
- 
-  if (pr_fsio_chmod(dst, mode) < 0)
-    pr_log_pri(PR_LOG_WARNING, "CreateHome: error chmod'ing '%s' to %04o: %s",
-      dst, (unsigned int) mode, strerror(errno));
-
-  pr_fsio_close(src_fh);
-  if (pr_fsio_close(dst_fh) < 0)
-    pr_log_pri(PR_LOG_WARNING, "CreateHome: error closing '%s': %s", dst,
-      strerror(errno));
-
   return 0;
 }
 
@@ -245,7 +193,17 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
       if (dst_mode & S_ISGID)
         dst_mode &= ~S_ISGID;
 
-      copy_file(p, src_path, dst_path, uid, gid, dst_mode);
+      (void) pr_fs_copy_file(src_path, dst_path);
+
+      /* Make sure the destination file has the proper ownership and mode. */
+      if (pr_fsio_chown(dst_path, uid, gid) < 0)
+        pr_log_pri(PR_LOG_WARNING, "CreateHome: error chown'ing '%s' "
+          "to %u/%u: %s", dst_path, (unsigned int) uid, (unsigned int) gid,
+          strerror(errno));
+
+      if (pr_fsio_chmod(dst_path, dst_mode) < 0)
+        pr_log_pri(PR_LOG_WARNING, "CreateHome: error chmod'ing '%s' to "
+          "%04o: %s", dst_path, (unsigned int) dst_mode, strerror(errno));
 
       continue;
 

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.226 2004-04-09 00:23:06 castaglia Exp $
+ * $Id: mod_core.c,v 1.227 2004-04-09 16:58:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4160,7 +4160,7 @@ MODRET core_rnto(cmd_rec *cmd) {
     /* In this case, we'll need to manually copy the file from the source
      * to the destination paths.
      */
-    if (copy_file(session.xfer.path, path) < 0) {
+    if (pr_fs_copy_file(session.xfer.path, path) < 0) {
       pr_response_add_err(R_550, "Rename %s: %s", cmd->arg, strerror(errno));
       return ERROR(cmd);
     }
