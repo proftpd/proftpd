@@ -20,7 +20,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.15 2000-07-26 11:03:17 macgyver Exp $
+ * $Id: data.c,v 1.16 2000-07-28 05:47:09 macgyver Exp $
  */
 
 #include "conf.h"
@@ -667,21 +667,21 @@ int data_xfer(char *cl_buf, int cl_size)
  * ascii translation is not performed.
  * return 0 if reading and data connection closes, or -1 if error
  */
-#if defined(HAVE_LINUX_SENDFILE)
+#if defined(HAVE_LINUX_SENDFILE) || defined(HAVE_HPUX_SENDFILE)
 ssize_t
 #elif defined(HAVE_BSD_SENDFILE)
 off_t
 #else
 #error "You have an unknown sendfile implementation."
-#endif /* HAVE_LINUX_SENDFILE */
+#endif /* HAVE_LINUX_SENDFILE || HAVE_HPUX_SENDFILE */
 data_sendfile(int retr_fd, off_t *offset, size_t count)
 {
   int flags, error;
-#if defined(HAVE_LINUX_SENDFILE)
+#if defined(HAVE_LINUX_SENDFILE) || defined(HAVE_HPUX_SENDFILE)
   ssize_t len = 0, total = 0;
 #elif defined(HAVE_BSD_SENDFILE)
   off_t len = 0, total = 0;
-#endif /* HAVE_LINUX_SENDFILE */
+#endif /* HAVE_LINUX_SENDFILE || HAVE_HPUX_SENDFILE */
   
   if(session.xfer.direction == IO_READ)
     return -1;
@@ -698,17 +698,50 @@ data_sendfile(int retr_fd, off_t *offset, size_t count)
   
   for(;;) {
 #if defined(HAVE_LINUX_SENDFILE)
+    /* Linux semantics are fairly straightforward in a glibc 2.x world:
+     *
+     * #include <sys/sendfile.h>
+     *
+     * ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
+     */
     if((len = sendfile(session.d->outf->fd, retr_fd, offset, count)) == -1) {
-#elif defined(HAVE_BSD_SENDFILE)
+#elif defined(HAVE_BSD_SENDFILE) || defined(HAVE_HPUX_SENDFILE)
+
+#if defined(HAVE_BSD_SENDFILE)
+    /* BSD semantics for sendfile are flexible...it'd be nice if we could
+     * standardize on something like it.  The semantics are:
+     *
+     * #include <sys/types.h>
+     * #include <sys/socket.h>
+     * #include <sys/uio.h>
+     *
+     * int sendfile(int in_fd, int out_fd, off_t offset, size_t count,
+     *              struct sf_hdtr *hdtr, off_t *len, int flags)
+     */
     if(sendfile(retr_fd, session.d->outf->fd, *offset, count, NULL, &len,
 		  0) == -1) {
-	
+#elif defined(HAVE_HPUX_SENDFILE)
+    /* HP/UX semantics for sendfile() are similar to BSD's, however the
+     * prototype is different:
+     *
+     * #include <sys/socket.h>
+     *
+     * ssize_t sendfile(int out_fd, int in_fd, off_t offset, size_t count,
+     *                  const struct iovec *hdtrl, int flags)
+     */
+    if((len = sendfile(session.d->outf->fd, retr_fd, *offset, count, NULL,
+		       0)) == -1) {
+#endif /* HAVE_BSD_SENDFILE */
+
       /* IMO, BSD's semantics are warped.  Apparently, since we have our
        * alarms tagged SA_INTERRUPT (allowing system calls to be
        * interrupted - primarily for select), BSD will interrupt a
        * sendfile operation as well, so we have to catch and handle this
        * case specially.  It should also be noted that the sendfile(2) man
        * page doesn't state any of this.
+       *
+       * HP/UX has the same semantics, however, EINTR is well documented
+       * as a side effect in the sendfile(2) man page.
        */
       if(errno == EINTR) {
 	/* If we got everything in this transaction, we're done.

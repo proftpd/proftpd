@@ -58,7 +58,11 @@ if test $ac_cv_prog_gcc = yes; then
   CFLAGS="$fullCFLAGS"
 fi
 
-dnl Modules
+dnl configure command line options...
+
+dnl --with options.
+
+dnl Modules...'nuff said.
 AC_ARG_WITH(modules,
   [  --with-modules=LIST     add additional modules to proftpd
                           LIST is a ':' separated list of modules to add ],
@@ -66,6 +70,42 @@ AC_ARG_WITH(modules,
     for amodule in $ac_addl_modules; do
       ac_build_addl_modules="modules/$amodule $ac_build_addl_modules"
     done ])
+
+dnl --enable/--disable options.
+
+dnl Auto-detection of shadow passwords.
+AC_ARG_ENABLE(autoshadow,
+  [  --enable-autoshadow     enabled auto-detection of shadowed passwords],
+  [ if test "$enableval" != "no" ; then
+      use_shadow="-DUSESHADOW -DAUTOSHADOW"
+      force_shadow="yes"
+    fi ])
+
+dnl Workaround for broken setpassent on FreeBSD.
+AC_ARG_ENABLE(force-setpassent,
+  [  --enable-force-setpassent force use of setpassent (default=no on FreeBSD)])
+
+dnl PAM support.
+AC_ARG_ENABLE(pam,
+  [  --enable-pam            enable PAM support (default=yes)],
+  [ if test "$enableval" = "no" && \
+       test `echo $ac_addl_modules | grep -c mod_pam` != "0"; then
+      AC_MSG_ERROR(You cannot run configure with --disable-pam and include mod_pam in --with-modules at the same time.)
+    fi ])
+
+dnl Sendfile support.
+AC_ARG_ENABLE(sendfile,
+  [  --enable-sendfile       enable sendfile support (default=yes)])
+
+dnl Check for enabled shadow password support.
+AC_ARG_ENABLE(shadow,
+  [  --enable-shadow         force compilation of shadowed password support],
+  [ if test "$enableval" = "no" ; then
+      use_shadow=""
+    else
+      use_shadow="-DUSESHADOW"
+      force_shadow="yes"
+    fi ])
 
 dnl Checks for libraries.  Yes, this is the hard way, but it's necessary.
 AC_CACHE_CHECK(for standalone crypt,pr_cv_lib_standalone_crypt,
@@ -121,28 +161,6 @@ if test "$pr_cv_var__pw_stayopen" = "yes"; then
   AC_DEFINE(HAVE__PW_STAYOPEN)
 fi
 
-dnl Check for enabled shadow/autoshadow
-AC_ARG_ENABLE(shadow,
-  [  --enable-shadow         force compilation of shadowed password support],
-  [ if test "$enableval" = "no" ; then
-      use_shadow=""
-    else
-      use_shadow="-DUSESHADOW"
-      force_shadow="yes"
-    fi ])
-AC_ARG_ENABLE(autoshadow,
-  [  --enable-autoshadow     enabled auto-detection of shadowed passwords],
-  [ if test "$enableval" != "no" ; then
-      use_shadow="-DUSESHADOW -DAUTOSHADOW"
-      force_shadow="yes"
-    fi ])
-
-AC_ARG_ENABLE(sendfile,
-  [  --enable-sendfile       enable sendfile support (default=yes)])
-
-AC_ARG_ENABLE(force-setpassent,
-  [  --enable-force-setpassent force use of setpassent (default=no on FreeBSD)])
-
 AC_CHECK_LIB(security, set_auth_parameters)
 AC_CHECK_HEADERS(sys/security.h)
 AC_CHECK_HEADERS(krb.h)
@@ -184,17 +202,20 @@ AC_CHECK_HEADERS(shadow.h,
   [ if test "$use_shadow" = "" && test -f /etc/shadow ; then
       use_shadow="-DUSESHADOW"
     fi ])
-AC_CHECK_HEADERS(security/pam_appl.h,
-  [ if test "$force_shadow" != "yes"; then
-	if test "$use_shadow" != ""; then
-	  use_shadow=""
-	fi
 
-	if test `echo $ac_addl_modules | grep -c mod_pam` = "0"; then
-	  ac_addl_modules="mod_pam.o $ac_addl_modules"
-	  ac_build_addl_modules="modules/mod_pam.o $ac_build_addl_modules"
-	fi
-    fi ])
+if test x"$enable_pam" != xno ; then
+  AC_CHECK_HEADERS(security/pam_appl.h,
+    [ if test "$force_shadow" != "yes"; then
+	  if test "$use_shadow" != ""; then
+	    use_shadow=""
+	  fi
+
+	  if test `echo $ac_addl_modules | grep -c mod_pam` = "0"; then
+	    ac_addl_modules="mod_pam.o $ac_addl_modules"
+	    ac_build_addl_modules="modules/mod_pam.o $ac_build_addl_modules"
+	  fi
+      fi ])
+fi
 
 AC_CHECK_HEADERS(ctype.h getopt.h crypt.h bstring.h strings.h)
 AC_CHECK_HEADERS(sys/types.h sys/param.h sys/file.h sys/uio.h)
@@ -372,7 +393,9 @@ esac])
 
 if test x"$enable_sendfile" != xno ; then
 AC_CHECK_FUNCS(sendfile,[
-  AC_MSG_CHECKING(weather we have Linux or BSD sendfile())
+  AC_MSG_CHECKING(which sendfile() implementation we have)
+
+  dnl Linux.
   AC_CACHE_VAL(pr_cv_linux_sendfile,
     AC_TRY_COMPILE([
 #include <unistd.h>
@@ -383,6 +406,8 @@ off_t o;
 size_t c;
 (void)sendfile(i,i,&o,c);
       ], pr_cv_linux_sendfile=yes, pr_cv_linux_sendfile=no))
+
+  dnl BSD.
   AC_CACHE_VAL(pr_cv_bsd_sendfile,
     AC_TRY_COMPILE([
 #include <sys/types.h>
@@ -395,12 +420,30 @@ size_t n;
 struct sf_hdtr h;
 (void)sendfile(i,i,o,n,&h,&o,i);
        ], pr_cv_bsd_sendfile=yes, pr_cv_bsd_sendfile=no))
+
+  dnl HP/UX.
+  AC_CACHE_VAL(pr_cv_hpux_sendfile,
+    AC_TRY_COMPILE([
+#include <sys/socket.h>
+],[
+int i;
+off_t o;
+size_t n;
+const struct iovec h;
+(void)sendfile(i,i,o,n,&h,i);
+       ], pr_cv_hpux_sendfile=yes, pr_cv_hpux_sendfile=no))
+
   if test x"$pr_cv_linux_sendfile" = xyes ; then
     AC_DEFINE(HAVE_LINUX_SENDFILE)
 	AC_MSG_RESULT(Linux)
   elif test x"$pr_cv_bsd_sendfile" = xyes ; then
     AC_DEFINE(HAVE_BSD_SENDFILE)
 	AC_MSG_RESULT(BSD)
+  elif test x"$pr_cv_hpux_sendfile" = xyes ; then
+    AC_DEFINE(HAVE_HPUX_SENDFILE)
+	AC_MSG_RESULT(HP/UX)
+  else
+    AC_MSG_RESULT(None)
   fi
 ])
 fi
@@ -509,7 +552,8 @@ ADDL_DIRS="$ac_addl_dirs"
 dnl Add '-ldl' to LIBS as required for linking with libpam.  Prior to 0.72,
 dnl the Linux PAM shared library omitted required libdl linking information.
 dnl PAM-0.72 ships with RH6.2 and Debian2.2.
-if test `echo $ac_addl_modules | grep -c mod_pam` = "1"; then
+if test x"$enable_pam" != xno && \
+   test `echo $ac_addl_modules | grep -c mod_pam` = "1"; then
 	AC_MSG_CHECKING([whether libpam requires -ldl])
 	dnl Avoid $LIBS as linking will fail since -lsupp isn't compiled yet.
 	tmp_LIBS="$LIBS"
@@ -535,7 +579,6 @@ if test `echo $ac_addl_modules | grep -c mod_pam` = "1"; then
 		done
 	fi
 fi
-
 
 MODULES="$ac_core_modules $ac_addl_modules"
 BUILD_MODULES="$ac_build_core_modules $ac_build_addl_modules"

@@ -1,6 +1,6 @@
-$Id: NEWS,v 1.56 2000-07-21 18:44:30 macgyver Exp $
+$Id: NEWS,v 1.57 2000-07-28 05:47:09 macgyver Exp $
 
-1.2.0 - Released: ???
+1.2.0RC2 - Released: 07/??/2000
 ---------------------
 - Made sure ServerUseReverseDNS was honored.
 - Compile problems on various problems.
@@ -8,6 +8,9 @@ $Id: NEWS,v 1.56 2000-07-21 18:44:30 macgyver Exp $
 - UID/GID handling is more portable now on systems with unusual UID/GID sizes.
 - PAM handles should be persistent across jailed environments.
 - Various additions to configure to make it more portable and correct.
+- Fix AllowChmod.
+- HP/UX sendfile support.
+- Cleaned up configure and supporting files.
 
 1.2.0RCl - Released: 07/11/2000
 -------------------------------

@@ -60,11 +60,14 @@
 #define PF_ARGV_PSTAT		3
 #define PF_ARGV_PSSTRINGS	4
 
-/* Define if you have linux sendfile */
+/* Define if you have Linux sendfile() semantics */
 #undef HAVE_LINUX_SENDFILE
 
-/* Define if you have bsd sendfile */
+/* Define if you have BSD sendfile() semantics */
 #undef HAVE_BSD_SENDFILE
+
+/* Define if you have HP/UX sendfile() semantics */
+#undef HAVE_HPUX_SENDFILE
 
 /* If you don't have setproctitle, PF_ARGV_TYPE needs to be set to either
  * PF_ARGV_NEW (replace argv[] arguments), PF_ARGV_WRITEABLE (overwrite
