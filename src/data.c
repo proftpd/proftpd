@@ -20,7 +20,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.23 2001-04-18 15:40:39 flood Exp $
+ * $Id: data.c,v 1.24 2001-04-18 15:45:39 flood Exp $
  */
 
 #include "conf.h"
@@ -766,7 +766,7 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
       /* Linux updates offset on error, not len like BSD, fix up so
        * BSD-based code works.
        */
-      len = orig_offset - *offset;
+      len = *offset - orig_offset;
       *offset = orig_offset;
       
 #elif defined(HAVE_BSD_SENDFILE)
