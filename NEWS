@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.411 2003-03-24 20:02:49 castaglia Exp $
+$Id: NEWS,v 1.412 2003-03-25 05:52:06 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -88,6 +88,7 @@ CVS
   altered to use malloc/realloc when providing recursive directory listings,
   making the memory footprint a little smaller.  The caching behavior of
   the underlying memory allocator cannot be changed, though.
+- Bug 1997 - UnixWare 7.1.3 & port 20.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------
