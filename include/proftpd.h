@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.49 2004-09-07 22:18:00 castaglia Exp $
+ * $Id: proftpd.h,v 1.50 2004-09-18 00:38:13 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -171,8 +171,9 @@ extern array_header *daemon_gids;
 #define STOR_UNIQUE	3
 
 extern session_t	session;
-extern char		ServerType;
-extern char		MultilineRFC2228;
+extern char AddressCollisionCheck;
+extern char ServerType;
+extern char MultilineRFC2228;
 extern const char	*pwdfname,*grpfname;
 
 /* Session/State flags */

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.246 2004-09-14 17:49:43 castaglia Exp $
+ * $Id: mod_core.c,v 1.247 2004-09-18 00:38:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -57,6 +57,7 @@ extern array_header *server_defines;
 #define PR_BYTES_BAD_FORMAT	-2
 
 module core_module;
+char AddressCollisionCheck = TRUE;
 
 static int core_scrub_timer_id;
 
@@ -2748,43 +2749,45 @@ MODRET end_virtualhost(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_WARNING,
       "warning: unable to determine IP address of '%s'", address);
 
-  /* Check if this server's address/port combination is already being used. */
-  for (s = (server_rec *) server_list->xas_list; addr && s; s = next_s) {
-    next_s = s->next;
+  if (AddressCollisionCheck) {
+    /* Check if this server's address/port combination is already being used. */
+    for (s = (server_rec *) server_list->xas_list; addr && s; s = next_s) {
+      next_s = s->next;
 
-    /* Have to resort to duplicating some of fixup_servers()'s functionality
-     * here, to do this check The Right Way(tm).
-     */
-    if (s != cmd->server) {
-      const char *serv_addrstr = NULL;
-      pr_netaddr_t *serv_addr = NULL;
+      /* Have to resort to duplicating some of fixup_servers()'s functionality
+       * here, to do this check The Right Way(tm).
+       */
+      if (s != cmd->server) {
+        const char *serv_addrstr = NULL;
+        pr_netaddr_t *serv_addr = NULL;
 
-      if (s->addr) {
-        serv_addr = s->addr;
+        if (s->addr) {
+          serv_addr = s->addr;
 
-      } else {
-        serv_addrstr = s->ServerAddress ? s->ServerAddress :
-          pr_netaddr_get_localaddr_str(cmd->tmp_pool);
+        } else {
+          serv_addrstr = s->ServerAddress ? s->ServerAddress :
+            pr_netaddr_get_localaddr_str(cmd->tmp_pool);
 
-        serv_addr = pr_netaddr_get_addr(cmd->tmp_pool, serv_addrstr, NULL);
-      }
+          serv_addr = pr_netaddr_get_addr(cmd->tmp_pool, serv_addrstr, NULL);
+        }
 
-      if (!serv_addr) {
-        pr_log_pri(PR_LOG_WARNING,
-          "warning: unable to determine IP address of '%s'", serv_addrstr);
+        if (!serv_addr) {
+          pr_log_pri(PR_LOG_WARNING,
+            "warning: unable to determine IP address of '%s'", serv_addrstr);
 
-      } else if (pr_netaddr_cmp(addr, serv_addr) == 0 &&
-          cmd->server->ServerPort == s->ServerPort) {
-        pr_log_pri(PR_LOG_WARNING,
-          "warning: \"%s\" address/port (%s:%d) already in use by \"%s\"",
-          cmd->server->ServerName ? cmd->server->ServerName : "ProFTPD",
-          pr_netaddr_get_ipstr(addr), cmd->server->ServerPort,
-          s->ServerName ? s->ServerName : "ProFTPD");
+        } else if (pr_netaddr_cmp(addr, serv_addr) == 0 &&
+            cmd->server->ServerPort == s->ServerPort) {
+          pr_log_pri(PR_LOG_WARNING,
+            "warning: \"%s\" address/port (%s:%d) already in use by \"%s\"",
+            cmd->server->ServerName ? cmd->server->ServerName : "ProFTPD",
+            pr_netaddr_get_ipstr(addr), cmd->server->ServerPort,
+            s->ServerName ? s->ServerName : "ProFTPD");
 
-        if (xaset_remove(server_list, (xasetmember_t *) cmd->server) == 1)
-          destroy_pool(cmd->server->pool);
+          if (xaset_remove(server_list, (xasetmember_t *) cmd->server) == 1)
+            destroy_pool(cmd->server->pool);
 
-        continue;
+          continue;
+        }
       }
     }
   }

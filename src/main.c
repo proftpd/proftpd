@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.250 2004-09-11 17:53:10 castaglia Exp $
+ * $Id: main.c,v 1.251 2004-09-18 00:38:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2364,6 +2364,7 @@ extern int optind,opterr,optopt;
 
 #ifdef HAVE_GETOPT_LONG
 static struct option opts[] = {
+  { "nocollision",    0, NULL, 'N' },
   { "nodaemon",	      0, NULL, 'n' },
   { "quiet",	      0, NULL, 'q' },
   { "debug",	      1, NULL, 'd' },
@@ -2476,6 +2477,8 @@ static struct option_help {
 } opts_help[] = {
   { "--help", "-h",
     "Display proftpd usage"},
+  { "--nocollision", "-N",
+    "Disable address/port collision checking" },
   { "--nodaemon", "-n",
     "Disable background daemon mode (and send all output to stderr)" },
   { "--quiet", "-q",
@@ -2519,7 +2522,7 @@ static void show_usage(int exit_code) {
 
 int main(int argc, char *argv[], char **envp) {
   int optc, show_version = 0;
-  const char *cmdopts = "D:Vc:d:hlnp:qtv";
+  const char *cmdopts = "D:NVc:d:hlnp:qtv";
   mode_t *main_umask = NULL;
   socklen_t peerlen;
   struct sockaddr peer;
@@ -2595,6 +2598,8 @@ int main(int argc, char *argv[], char **envp) {
    * --debug n
    * -q                 quiet mode; don't log to stderr when not daemonized
    * --quiet
+   * -N                 disable address/port collision checks
+   * --nocollision
    * -n                 standalone server does not daemonize, all logging
    * --nodaemon         redirected to stderr
    * -t                 syntax check of the configuration file
@@ -2631,6 +2636,10 @@ int main(int argc, char *argv[], char **envp) {
     case 'V':
       show_settings();
       exit(0);
+      break;
+
+    case 'N':
+      AddressCollisionCheck = FALSE;
       break;
 
     case 'n':

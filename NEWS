@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.603 2004-09-14 17:49:37 castaglia Exp $
+$Id: NEWS,v 1.604 2004-09-18 00:38:12 castaglia Exp $
 
 CVS
 --------------------------------
@@ -12,6 +12,9 @@ CVS
 - Bug 2455 - Allow fine-tuning of how often mod_xfer updates the scoreboard.
   This adds an --enable-scoreboard-updates configure option.
 - Bug 2389 - 64-bit compilation warnings.
+- Bug 2468 - Ability to disable address/port collision checking.  A new
+  command-line option, -N, can be used to disable proftpd's checks for
+  <VirtualHost> address/port collisions.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------
