@@ -27,7 +27,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.41 2002-08-01 23:13:52 castaglia Exp $
+ * $Id: log.c,v 1.42 2002-08-13 22:52:00 castaglia Exp $
  */
 
 /* History Log:
@@ -254,7 +254,10 @@ int log_open_run(pid_t mpid, int trunc, int allow_update)
   /* Attempt to read header */
   i = read(runfd, &hdr, sizeof(hdr));
 
-  if(i <= 0) {
+  /* Note: AIX seems to needs this st_size check.  Weird.  It won't (read:
+   * _shouldn't_) hurt any other platforms.
+   */
+  if (i <= 0 || sbuf.st_size == 0) {
     char buf[sizeof(logrun_t)] = {'\0'};
     runsize = sizeof(logrun_t);
     
@@ -269,7 +272,7 @@ int log_open_run(pid_t mpid, int trunc, int allow_update)
     return runfd;
   }
 
-  if(i < sizeof(hdr)) {
+  if (i < sizeof(hdr)) {
     /* File is corrupt, etc, silently rm it */
     if(allow_update) {
       log_rm_run();
