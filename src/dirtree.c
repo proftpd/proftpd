@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.73 2002-10-28 16:51:50 castaglia Exp $
+ * $Id: dirtree.c,v 1.74 2002-11-13 14:37:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2786,6 +2786,8 @@ int parse_config_file(const char *fname) {
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   pool *tmp_pool = make_sub_pool(permanent_pool);
+
+  log_debug(DEBUG2, "parsing '%s' configuration", fname);
  
   if ((fp = pfopen(tmp_pool, fname, "r")) == NULL) {
     destroy_pool(tmp_pool);
