@@ -26,7 +26,7 @@
 
 /* Scoreboard routines.
  *
- * $Id: utils.h,v 1.6 2002-10-23 23:53:55 castaglia Exp $
+ * $Id: utils.h,v 1.7 2002-10-26 22:57:24 castaglia Exp $
  */
 
 #ifndef UTIL_SCOREBOARD_H
@@ -50,6 +50,15 @@
 #else
 #  include "../lib/getopt.h"
 #endif /* !HAVE_GETOPT_H */
+
+#ifndef HAVE_GETOPT_LONG
+struct option {
+  const char *name;
+  int has_arg;
+  int *flag;
+  int val;
+};
+#endif /* !HAVE_GETOPT_LONG */
 
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>

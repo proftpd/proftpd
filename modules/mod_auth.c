@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.96 2002-10-24 22:19:48 castaglia Exp $
+ * $Id: mod_auth.c,v 1.97 2002-10-26 22:57:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2151,7 +2151,7 @@ MODRET set_timeoutlogin(cmd_rec *cmd) {
 }
 
 MODRET set_timeoutsession(cmd_rec *cmd) {
-  unsigned int seconds = 0, precedence = 0;
+  int seconds = 0, precedence = 0;
   config_rec *c = NULL;
 
   int ctxt = (cmd->config && cmd->config->config_type != CONF_PARAM ?
