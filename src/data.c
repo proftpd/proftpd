@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.59 2003-03-09 22:28:16 castaglia Exp $
+ * $Id: data.c,v 1.60 2003-03-17 23:48:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -949,7 +949,9 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, size_t count) {
       session.total_bytes += len;
       total += len;
 
+      pr_signals_handle();
       continue;
+
     } else if (len == -1) {
       /* Linux updates offset on error, not len like BSD, fix up so
        * BSD-based code works.
