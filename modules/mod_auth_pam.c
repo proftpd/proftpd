@@ -35,7 +35,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.2 2003-01-02 18:25:20 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.3 2003-09-08 00:51:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -107,10 +107,9 @@ static int pam_exchange(num_msg, msg, resp, appdata_ptr)
 
     default:
       /* Must be an error of some sort... */
-      if (response[i].resp != NULL)
-        free(response[i].resp);
-
+      free(response[i].resp);
       free(response);
+
       pam_conv_error = 1;
       return PAM_CONV_ERR;
     }
@@ -216,7 +215,7 @@ MODRET pam_auth(cmd_rec *cmd) {
 
   if ((pam_pass_len = strlen(cmd->argv[1]) + 1) > (PAM_MAX_MSG_SIZE + 1))
     pam_pass_len = PAM_MAX_MSG_SIZE + 1;
-
+ 
   if ((pam_pass = malloc(pam_pass_len)) == NULL) {
     memset(pam_user, '\0', pam_user_len);
     free(pam_user);
@@ -392,7 +391,7 @@ MODRET pam_auth(cmd_rec *cmd) {
 #endif
 
   if (pam_pass != NULL) {
-    memset(pam_pass, '\0', pam_pass_len);
+    pr_memscrub(pam_pass, pam_pass_len);
     free(pam_pass);
     pam_pass = NULL;
     pam_pass_len = 0;
