@@ -35,7 +35,9 @@ static const char *log_ident = NULL;
 static int log_facility = LOG_USER;
 static int log_mask = 0xff;
 
-extern char *__progname;		/* Program name, from crt0. */
+#ifdef HAVE___PROGNAME
+extern char *__progname;
+#endif /* HAVE___PROGNAME */
 
 static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
     va_list ap) {
@@ -66,7 +68,11 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
   time(&now);
  
   if (log_ident == NULL)
+#ifdef HAVE___PROGNAME
     log_ident = __progname;
+#else
+    log_ident = "proftpd";
+#endif /* HAVE___PROGNAME */
 
   if (buflen < sizeof(logbuf) && log_ident != NULL) {
     snprintf(&(logbuf[buflen]), sizeof(logbuf) - buflen, "%s", log_ident);
