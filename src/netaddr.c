@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.18 2003-09-18 19:08:15 castaglia Exp $
+ * $Id: netaddr.c,v 1.19 2003-09-18 19:21:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -235,7 +235,7 @@ size_t pr_netaddr_get_sockaddr_len(const pr_netaddr_t *na) {
 #endif /* USE_IPV6 */   
   }
 
-  errno = EACCES;
+  errno = EPERM;
   return -1;
 }
 
@@ -255,7 +255,7 @@ size_t pr_netaddr_get_inaddr_len(const pr_netaddr_t *na) {
 #endif /* USE_IPV6 */
   }
 
-  errno = EACCES;
+  errno = EPERM;
   return -1;
 }
 
@@ -275,7 +275,7 @@ struct sockaddr *pr_netaddr_get_sockaddr(const pr_netaddr_t *na) {
 #endif /* USE_IPV6 */
   }
 
-  errno = EACCES;
+  errno = EPERM;
   return NULL;
 }
 
@@ -298,7 +298,7 @@ int pr_netaddr_set_sockaddr(pr_netaddr_t *na, struct sockaddr *addr) {
 #endif /* USE_IPV6 */
   }
 
-  errno = EACCES;
+  errno = EPERM;
   return -1;
 }
 
@@ -345,7 +345,7 @@ void *pr_netaddr_get_inaddr(const pr_netaddr_t *na) {
 #endif /* USE_IPV6 */
   }
 
-  errno = EACCES;
+  errno = EPERM;
   return NULL;
 }
 
@@ -365,7 +365,7 @@ unsigned int pr_netaddr_get_port(const pr_netaddr_t *na) {
 #endif /* USE_IPV6 */
   }
 
-  errno = EACCES;
+  errno = EPERM;
   return 0;
 }
 
@@ -387,7 +387,7 @@ int pr_netaddr_set_port(pr_netaddr_t *na, unsigned int port) {
 #endif /* USE_IPV6 */
   }
 
-  errno = EACCES;
+  errno = EPERM;
   return 0;
 }
 
@@ -419,7 +419,7 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
 #endif /* USE_IPV6 */
   }
 
-  errno = EACCES;
+  errno = EPERM;
   return -1;
 }
 
@@ -449,7 +449,7 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
        * for IPv4 addresses (32).
        */
       if (bitlen > 32) {
-        errno = EPERM;
+        errno = EINVAL;
         return -1;
       }
 
@@ -462,7 +462,7 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
        * for IPv6 addresses (128).
        */
       if (bitlen > 128) {
-        errno = EPERM;
+        errno = EINVAL;
         return -1;
       }
 
@@ -471,7 +471,7 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
 #endif /* USE_IPV6 */
 
     default:
-      errno = EACCES;
+      errno = EPERM;
       return -1;
   }
 
@@ -774,7 +774,7 @@ unsigned int pr_netaddr_get_addrno(const pr_netaddr_t *na) {
 #endif /* USE_IPV6 */
   }
 
-  errno = EACCES;
+  errno = EPERM;
   return -1;
 }
 
@@ -804,7 +804,7 @@ int pr_netaddr_v4mappedv6(const pr_netaddr_t *na) {
 #endif /* USE_IPV6 */
   }
 
-  errno = EACCES;
+  errno = EPERM;
   return -1;
 }
 
