@@ -66,6 +66,7 @@ files.
       --enable-dso
 
   + New modules:
+      mod_delay
       mod_dso
       mod_load
 
@@ -101,4 +102,4 @@ files.
             ...
           </VirtualHost>
 
-Last Updated: $Date: 2005-01-01 18:40:23 $
+Last Updated: $Date: 2005-01-02 08:01:33 $
