@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.474 2003-09-08 02:35:27 castaglia Exp $
+$Id: NEWS,v 1.475 2003-09-09 14:16:09 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -85,6 +85,9 @@ CVS
   An index was not being properly incremented in some cases when retrieving
   user information.
 - Bug 2161 - Duplicate autoconf check for sia.h.
+- Bug 2122 - EAGAIN on Solaris can cause an infinite loop.
+  Under certain conditions, when reading from a descriptor on Solaris,
+  EAGAIN can be returned, which proftpd did not handle properly.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------

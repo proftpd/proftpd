@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.15 2003-08-01 01:03:27 castaglia Exp $
+ * $Id: netio.c,v 1.16 2003-09-09 14:16:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -651,6 +651,7 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
     bufmin = buflen;
 
   while (bufmin > 0) {
+    polling:
     switch (pr_netio_poll(nstrm)) {
       case 1:
         return -2;
@@ -681,9 +682,8 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
           }
 
 #ifdef EAGAIN
-          /* Treat EAGAIN as EINTR */
 	  if (errno == EAGAIN)
-            errno = EINTR;
+            goto polling;
 #endif
 
         } while (bread == -1 && (errno == EINTR));
