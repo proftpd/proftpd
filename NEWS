@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.473 2003-09-07 23:54:37 castaglia Exp $
+$Id: NEWS,v 1.474 2003-09-08 02:35:27 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -84,6 +84,7 @@ CVS
 - Bug 2154 - SQL query loses shell information.
   An index was not being properly incremented in some cases when retrieving
   user information.
+- Bug 2161 - Duplicate autoconf check for sia.h.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------

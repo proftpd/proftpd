@@ -602,11 +602,6 @@ fi
 AC_CHECK_HEADERS(krb.h)
 AC_CHECK_HEADERS(prot.h)
 
-dnl Tru64's C2/SIA authentication requires these headers
-if test "$use_sia" = "yes" ; then
-  AC_CHECK_HEADERS(sia.h siad.h)
-fi
-
 dnl HP-UX's hpsecurity.h can multiply define MAXINT and confuse configure
 AC_CHECK_HEADERS(hpsecurity.h, [
     AC_SEARCH_LIBS(getprpwnam, sec)
