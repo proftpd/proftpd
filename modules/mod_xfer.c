@@ -25,7 +25,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.60 2001-12-17 20:36:37 flood Exp $
+ * $Id: mod_xfer.c,v 1.61 2001-12-17 20:39:06 flood Exp $
  */
 
 /* History Log:
@@ -860,7 +860,7 @@ MODRET cmd_retr(cmd_rec *cmd)
   dir = p->value.str_val;
   retr_file = fs_open(dir,O_RDONLY,&retr_fd);
 
-  if(session.restart_pos) {
+  if(retr_file && session.restart_pos) {
     if(fs_lseek(retr_file,retr_fd,session.restart_pos,SEEK_SET) == -1) {
       int _errno = errno;
       fs_close(retr_file,retr_fd);
