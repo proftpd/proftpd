@@ -3467,7 +3467,7 @@ static int tls_init(void) {
   /* Initialize the OpenSSL context. */
   res = tls_init_ctxt();
 
-  pr_log_debug(DEBUG0, MOD_TLS_VERSION ": using " OPENSSL_VERSION_TEXT);
+  pr_log_debug(DEBUG2, MOD_TLS_VERSION ": using " OPENSSL_VERSION_TEXT);
 
   /* Register a postparse callback, for handling any passphrase-protected
    * key files.
