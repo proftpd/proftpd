@@ -3,7 +3,7 @@
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  * Copyright (c) 2001, 2002 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.84 2002-12-07 02:38:44 castaglia Exp $
+ * $Id: dirtree.c,v 1.85 2002-12-07 21:45:43 jwm Exp $
  */
 
 #include "conf.h"
@@ -158,7 +158,7 @@ static int allow_dyn_config(void) {
 
         allow = *((int *) c->argv[0]);
 
-        have_user_limit = have_group_limit = have_class_limit = FALSE; 
+        have_user_limit = have_group_limit = have_class_limit = FALSE;
         have_all_limit = TRUE;
       }
     }
@@ -187,7 +187,7 @@ static int allow_dyn_config(void) {
 /* Return true if dir is ".", "./", "../", or "..".
  */
 int is_dotdir(const char *dir) {
-  if(!strcmp(dir, ".")  ||
+  if (!strcmp(dir, ".")  ||
      !strcmp(dir, "./") ||
      !strcmp(dir, "..") ||
      !strcmp(dir, "../"))
@@ -217,7 +217,7 @@ xaset_t *get_dir_ctxt(char *dir_path) {
 
   return c ? c->subset : session.anon_config ? session.anon_config->subset :
     main_server->conf;
-}  
+}
 
 /* Check for configured HideFiles directives, and check the given filename
  * (not _path_, just filename) against those regexes if configured. Returns
@@ -252,7 +252,7 @@ unsigned char dir_hide_file(const char *path) {
 
   while (c) {
     if (c->argc >= 4) {
-      
+
       /* check for a specified "user" classifier first... */
       if (!strcmp(c->argv[3], "user")) {
         if (user_expression((char **) &c->argv[4])) {
@@ -385,17 +385,17 @@ char *get_word(char **cp) {
   char *ret,*dst;
   char quote_mode = 0;
 
-  if(!cp || !*cp || !**cp)
+  if (!cp || !*cp || !**cp)
     return NULL;
 
   while (**cp && isspace((int) **cp)) (*cp)++;
 
-  if(!**cp)
+  if (!**cp)
     return NULL;
 
   ret = dst = *cp;
 
-  /* Stop processing at start of an inline comment. */ 
+  /* Stop processing at start of an inline comment. */
   if (**cp == '#')
     return NULL;
 
@@ -407,7 +407,7 @@ char *get_word(char **cp) {
   while (**cp && (quote_mode ? (**cp != '\"') : !isspace((int) **cp))) {
     if (**cp == '\\' && quote_mode) {
       /* escaped char */
-      if(*((*cp)+1))
+      if (*((*cp)+1))
         *dst = *(++(*cp));
     }
 
@@ -415,7 +415,7 @@ char *get_word(char **cp) {
     ++(*cp);
   }
 
-  if(**cp) (*cp)++;
+  if (**cp) (*cp)++;
   *dst = '\0';
 
   return ret;
@@ -466,7 +466,7 @@ char *get_config_line(char *buf, size_t len) {
   /* Always use the config stream at the top of the stack.
    */
   conf_stack_t *cs = config_stack;
- 
+
   if (!cs->cs_file)
     return NULL;
 
@@ -478,12 +478,12 @@ char *get_config_line(char *buf, size_t len) {
     /* Trim off the trailing newline, if present. */
     if (buflen && buf[buflen - 1] == '\n')
       buf[buflen - 1] = '\0';
-    
+
     /* Trim off any leading whitespace. */
     for (bufp = buf; *bufp && isspace((int) *bufp); bufp++);
 
     /* Check for commented or blank lines at this point, and just continue on
-     * to the next configuration line if found.  If not, return the 
+     * to the next configuration line if found.  If not, return the
      * configuration line.
      */
     if (*bufp == '#' || !*bufp)
@@ -509,9 +509,9 @@ static cmd_rec *get_config_cmd(pool *ppool) {
   pool *new_pool = NULL;
   array_header *tarr = NULL;
 
-  while (get_config_line(buf, sizeof(buf)) != NULL) { 
+  while (get_config_line(buf, sizeof(buf)) != NULL) {
     char *bufp = buf;
-    
+
     /* Build a new pool for the command structure and array */
     new_pool = make_sub_pool(ppool);
     new_cmd = (cmd_rec *) pcalloc(new_pool, sizeof(cmd_rec));
@@ -521,13 +521,13 @@ static cmd_rec *get_config_cmd(pool *ppool) {
     /* Add each word to the array */
     while((word = get_word(&bufp)) != NULL) {
       char *tmp = pstrdup(new_pool, word);
-      
+
       *((char**)push_array(tarr)) = tmp; /* pstrdup(new_pool,word); */
       new_cmd->argc++;
     }
 
     *((char**)push_array(tarr)) = NULL;
-    
+
     /* The array header's job is done, we can forget about it and
      * it will get purged when the command's pool is cleared
      */
@@ -545,19 +545,19 @@ static cmd_rec *get_config_cmd(pool *ppool) {
     if (new_cmd->argc && *(new_cmd->argv[0]) == '<') {
       char *cp = new_cmd->argv[new_cmd->argc-1];
 
-      if(*(cp + strlen(cp)-1) == '>' && new_cmd->argc > 1) {
-        if(!strcmp(cp,">")) {
+      if (*(cp + strlen(cp)-1) == '>' && new_cmd->argc > 1) {
+        if (!strcmp(cp,">")) {
           new_cmd->argv[new_cmd->argc-1] = NULL;
           new_cmd->argc--;
         } else
           *(cp + strlen(cp)-1) = '\0';
 
         cp = new_cmd->argv[0];
-        if(*(cp + strlen(cp)-1) != '>')
+        if (*(cp + strlen(cp)-1) != '>')
           new_cmd->argv[0] = pstrcat(new_cmd->pool,cp,">",NULL);
       }
     }
-        
+
     return new_cmd;
   }
 
@@ -608,14 +608,14 @@ server_rec *start_new_server(const char *addr)
   s = (server_rec*)pcalloc(p,sizeof(server_rec));
   s->pool = p;
   s->config_type = CONF_VIRTUAL;
-  
+
   /* Have to make sure it ends up on the end of the chain,
    * otherwise main_server becomes useless.
    */
 
   xaset_insert_end(server_list, (xasetmember_t *) s);
   s->set = server_list;
-  if(addr)
+  if (addr)
     s->ServerAddress = pstrdup(s->pool,addr);
 
   /* default server port */
@@ -628,13 +628,13 @@ server_rec *start_new_server(const char *addr)
 
 server_rec *end_new_server(void)
 {
-  if(!*conf.curserver)
+  if (!*conf.curserver)
     return NULL;
 
-  if(conf.curserver == (server_rec**)conf.sstack->elts)
+  if (conf.curserver == (server_rec**)conf.sstack->elts)
     return NULL; /* Disallow underflows */
 
-  
+
   conf.curserver--;
   conf.sstack->nelts--;
 
@@ -643,7 +643,7 @@ server_rec *end_new_server(void)
 }
 
 /* Starts a sub-configuration */
-  
+
 config_rec *start_sub_config(const char *name) {
   config_rec *c = NULL, *parent = *conf.curconfig;
   pool *c_pool = NULL, *parent_pool = NULL;
@@ -677,7 +677,7 @@ config_rec *start_sub_config(const char *name) {
     *set = xaset_create(c_pool, NULL);
 
   xaset_insert(*set, (xasetmember_t*)c);
-  
+
   c->pool = c_pool;
   c->set = *set;
   c->parent = parent;
@@ -689,7 +689,7 @@ config_rec *start_sub_config(const char *name) {
     c->flags |= CF_DYNAMIC;
 
   /* Now insert another level onto the stack */
-  if(!*conf.curconfig)
+  if (!*conf.curconfig)
     *conf.curconfig = c;
   else {
     conf.curconfig = (config_rec**)push_array(conf.cstack);
@@ -702,8 +702,8 @@ config_rec *start_sub_config(const char *name) {
 /* Pop one level off the stack */
 config_rec *end_sub_config(void)
 {
-  if(conf.curconfig == (config_rec**)conf.cstack->elts) {
-    if(*conf.curconfig)
+  if (conf.curconfig == (config_rec**)conf.cstack->elts) {
+    if (*conf.curconfig)
       *conf.curconfig = NULL;
     return NULL;
   }
@@ -720,14 +720,14 @@ config_rec *add_config_set(xaset_t **set,const char *name)
   pool *conf_pool = NULL, *set_pool = NULL;
   config_rec *c,*parent = NULL;
 
-  if(!*set) {
+  if (!*set) {
 
     /* allocate a subpool from permanent_pool for the set
      */
     set_pool = make_sub_pool(permanent_pool);
     *set = xaset_create(set_pool,NULL);
     (*set)->mempool = set_pool;
-    
+
     /* now, make a subpool for the config_rec to be allocated
      */
     conf_pool = make_sub_pool(set_pool);
@@ -736,7 +736,7 @@ config_rec *add_config_set(xaset_t **set,const char *name)
 
     /* find the parent set for the config_rec to be allocated
      */
-    if((*set)->xas_list)
+    if ((*set)->xas_list)
       parent = ((config_rec*)((*set)->xas_list))->parent;
 
     /* allocate a subpool for the config_rec from the parent's pool
@@ -745,11 +745,11 @@ config_rec *add_config_set(xaset_t **set,const char *name)
   }
 
   c = (config_rec *) pcalloc(conf_pool, sizeof(config_rec));
-  
+
   c->pool = conf_pool;
   c->set = *set;
   c->parent = parent;
-  if(name)
+  if (name)
     c->name = pstrdup(conf_pool, name);
   xaset_insert_end(*set,(xasetmember_t*)c);
   return c;
@@ -769,8 +769,8 @@ config_rec *add_config(const char *name) {
 
   } else {
     parent = NULL;
-    
-    if(!s->conf || !s->conf->xas_list)
+
+    if (!s->conf || !s->conf->xas_list)
       p = make_sub_pool(s->pool);
     else
       p = ((config_rec*)s->conf->xas_list)->pool;
@@ -793,12 +793,12 @@ array_header *parse_group_expression(pool *p, int *argc, char **argv)
   int cnt = *argc;
   char *s,*ent;
 
-  if(cnt) {
+  if (cnt) {
     acl = make_array(p,cnt,(sizeof(char*)));
     while(cnt-- && *(++argv)) {
       s = pstrdup(p,*argv);
       while((ent = get_token(&s,",")) != NULL)
-        if(*ent)
+        if (*ent)
           *((char**)push_array(acl)) = ent;
     }
 
@@ -827,31 +827,31 @@ int group_expression(char **expr)
     grp = *expr;
     found = FALSE;
 
-    if(*grp == '!') {
+    if (*grp == '!') {
       found = !found;
       grp++;
     }
 
-    if(session.group && strcmp(session.group,grp) == 0)
+    if (session.group && strcmp(session.group,grp) == 0)
       found = !found;
     else if (session.groups)
       for(cnt = session.groups->nelts-1; cnt >= 0; cnt--)
-        if(strcmp(*(((char**)session.groups->elts)+cnt),grp) == 0) {
+        if (strcmp(*(((char**)session.groups->elts)+cnt),grp) == 0) {
           found = !found; break;
         }
 
-    if(!found) {
+    if (!found) {
       expr = NULL;
       break;
-    } 
+    }
   }
 
-  if(expr)
+  if (expr)
     return TRUE;
 
   return FALSE;
 }
-  
+
 /* boolean "user-expression" matching, returns 1 if the expression
  * matches
  */
@@ -865,21 +865,21 @@ int user_expression(char **expr)
     user = *expr;
     found = FALSE;
 
-    if(*user == '!') {
+    if (*user == '!') {
       found = !found;
       user++;
     }
 
-    if(strcmp(session.user,user) == 0)
+    if (strcmp(session.user,user) == 0)
       found = !found;
 
-    if(!found) {
+    if (!found) {
       expr = NULL;
       break;
     }
   }
 
-  if(expr)
+  if (expr)
     return TRUE;
 
   return FALSE;
@@ -943,9 +943,9 @@ static config_rec *recur_match_path(pool *p, xaset_t *s, char *path) {
        */
 
 #if 0
-      if(pr_fnmatch(tmp_path, path, PR_FNM_PATHNAME) == 0) {
+      if (pr_fnmatch(tmp_path, path, PR_FNM_PATHNAME) == 0) {
 #else
-      if(pr_fnmatch(tmp_path, path, 0) == 0) {
+      if (pr_fnmatch(tmp_path, path, 0) == 0) {
 #endif
         if (c->subset) {
           if ((res = recur_match_path(p, c->subset, path)))
@@ -1017,7 +1017,7 @@ static int _dir_check_op(pool *p, xaset_t *c, int op, uid_t uid, gid_t gid,
   } else {
     unsigned char found_gid_match = FALSE;
 
-    if (session.gids) { 
+    if (session.gids) {
       register unsigned int i = 0;
 
       /* Loop through the user's auxiliary groups, checking if these
@@ -1073,7 +1073,7 @@ static int _dir_check_op(pool *p, xaset_t *c, int op, uid_t uid, gid_t gid,
          * current user to list its contents
          */
         res = user_perms &= (S_IXUSR|S_IXGRP|S_IXOTH);
-     
+
       } else {
 
         /* check to see if the mode of this file allows the current
@@ -1095,9 +1095,9 @@ static int _dir_check_op(pool *p, xaset_t *c, int op, uid_t uid, gid_t gid,
     {
       unsigned char *allow_all = get_param_ptr(c, "AllowAll", FALSE),
         *deny_all = get_param_ptr(c, "DenyAll", FALSE);
-      
+
       if (allow_all && *allow_all == TRUE)
-        /* nop */; 
+        /* nop */;
 
       else if (deny_all && *deny_all == TRUE) {
         res = 0;
@@ -1124,7 +1124,7 @@ int dir_check_op_mode(pool *p, char *path, int op, uid_t uid, gid_t gid,
 
   if (session.chroot_path)
     fullpath = pdircat(p, session.chroot_path, fullpath, NULL);
-  
+
   c = CURRENT_CONF;
   sc = recur_match_path(p, c, fullpath);
 
@@ -1199,12 +1199,12 @@ int match_ip(p_in_addr_t *cli_addr, char *cli_str, const char *acl_match) {
      * is netmask
      */
     sstrncpy(acl_str, acl_match, (cp-acl_match)+1 <= sizeof(acl_str) ?
-                                 (cp-acl_match)+1 :  sizeof(acl_str));    
+                                 (cp-acl_match)+1 :  sizeof(acl_str));
     cidr_bits = atoi(cp+1);
-    
+
     if (cidr_bits > 0 && cidr_bits < 33) {
       int shift = 32 - cidr_bits;
-      
+
       cidr_mode = 1;
       while (cidr_bits--)
 	cidr_mask = (cidr_mask << 1) | 1;
@@ -1224,7 +1224,7 @@ int match_ip(p_in_addr_t *cli_addr, char *cli_str, const char *acl_match) {
   } else {
     sstrcat(acl_str, acl_match, sizeof(acl_str));
   }
-  
+
   if (cidr_mode) {
     if ((cli_addr->s_addr & htonl(cidr_mask)) == cidr_addr.s_addr)
       return 1;
@@ -1266,7 +1266,7 @@ int match_ip(p_in_addr_t *cli_addr, char *cli_str, const char *acl_match) {
 
     destroy_pool(tmp_pool);
   }
-  
+
   return 0;
 }
 
@@ -1284,7 +1284,7 @@ int match_ip(p_in_addr_t *cli_addr, char *cli_str, const char *acl_match) {
  * logically TRUE.
  *
  * .. and ..
- * 
+ *
  * 2. One (or more) normal conditions must evaluate to
  * logically TRUE.
  */
@@ -1296,10 +1296,10 @@ static int _check_ip_negative(const config_rec *c)
 {
   char *arg,**argv;
   int argc;
-  
+
   for(argc = c->argc, argv = (char**)c->argv; argc; argc--, argv++) {
     arg = *argv;
-    if(*arg != '!')
+    if (*arg != '!')
       continue;
 
     arg++;
@@ -1323,11 +1323,11 @@ static int _check_ip_negative(const config_rec *c)
         break;
     }
   }
- 
+
   /* If we got this far either all conditions were TRUE or there were no
    * conditions.
    */
-  
+
   return TRUE;
 }
 
@@ -1341,20 +1341,20 @@ static int _check_ip_positive(const config_rec *c)
 
   for(argc = c->argc, argv = (char**)c->argv; argc; argc--, argv++) {
     arg = *argv;
-    if(*arg == '!')
+    if (*arg == '!')
       continue;
 
     switch(match_ip(session.c->remote_ipaddr,session.c->remote_name,arg)) {
       case 1:
         /* Found it! */
         return TRUE;
-        
+
       case -1:
         /* Special value "NONE", meaning nothing can match, so we can
          * short-circuit on this as well.
          */
         return FALSE;
-        
+
       default:
         /* No match, keep trying */
         break;
@@ -1368,21 +1368,21 @@ static int _check_ip_positive(const config_rec *c)
 static int _check_ip_access(xaset_t *conf, char *name)
 {
   int res = FALSE;
-  
+
   config_rec *c = find_config(conf,CONF_PARAM,name,FALSE);
 
   while(c) {
     /* If the negative check failed (default is success), short-circuit and
      * return FALSE
      */
-    if(_check_ip_negative(c) != TRUE)
+    if (_check_ip_negative(c) != TRUE)
       return FALSE;
-    
+
     /* Otherwise, continue on with boolean or check */
-    if(_check_ip_positive(c) == TRUE)
+    if (_check_ip_positive(c) == TRUE)
       res = TRUE;
-    
-    /* Continue on, in case there are other acls that need to be checked 
+
+    /* Continue on, in case there are other acls that need to be checked
      * (multiple acls are logically OR'd)
      */
     c = find_config_next(c,c->next,CONF_PARAM,name,FALSE);
@@ -1450,7 +1450,7 @@ static int _check_limit_deny(config_rec *c) {
 /* _check_limit returns 1 if allowed, 0 if implicitly allowed,
  * and -1 if implicitly denied and -2 if explicitly denied.
  */
-   
+
 static int _check_limit(config_rec *c) {
   int *tmp = get_param_ptr(c->subset, "Order", FALSE);
   int order = tmp ? *tmp : ORDER_ALLOWDENY;
@@ -1489,7 +1489,7 @@ static int _check_limit(config_rec *c) {
  * TRUE if any <limit LOGIN> allows access.
  */
 
-int login_check_limits(xaset_t *conf, int recurse, 
+int login_check_limits(xaset_t *conf, int recurse,
                        int and, int *found)
 {
   int res = and;
@@ -1500,24 +1500,24 @@ int login_check_limits(xaset_t *conf, int recurse,
 
   *found = 0;
 
-  if(!conf || !conf->xas_list)
+  if (!conf || !conf->xas_list)
     return TRUE;			/* default is to allow */
 
   /* First check top level */
   for(c = (config_rec*)conf->xas_list; c; c=c->next)
-    if(c->config_type == CONF_LIMIT) {
+    if (c->config_type == CONF_LIMIT) {
       for(argc = c->argc, argv = (char**)c->argv; argc; argc--, argv++)
-        if(!strcasecmp("LOGIN",*argv))
+        if (!strcasecmp("LOGIN",*argv))
           break;
 
-      if(argc) {
-        if(and) {
+      if (argc) {
+        if (and) {
           switch(_check_limit(c)) {
           case 1: res = (res && TRUE); (*found)++; break;
 	  case -1:
           case -2: res = (res && FALSE); (*found)++; break;
           }
-          if(!res)
+          if (!res)
             break;
         } else
           switch(_check_limit(c)) {
@@ -1528,28 +1528,28 @@ int login_check_limits(xaset_t *conf, int recurse,
       }
     }
 
-  if( ((res && and) || (!res && !and && *found)) && recurse ) {
+  if ( ((res && and) || (!res && !and && *found)) && recurse ) {
     for(c = (config_rec*)conf->xas_list; c; c=c->next)
-      if(c->config_type == CONF_ANON && c->subset && c->subset->xas_list) {
-       if(and) {
+      if (c->config_type == CONF_ANON && c->subset && c->subset->xas_list) {
+       if (and) {
          res = (res && login_check_limits(c->subset,recurse,and,&rfound));
          (*found) += rfound;
-         if(!res)
+         if (!res)
            break;
        } else {
          int rres;
 
          rres = login_check_limits(c->subset,recurse,and,&rfound);
-         if(rfound)
+         if (rfound)
            res = (res || rres);
          (*found) += rfound;
-         if(res)
+         if (res)
            break;
        }
      }
   }
 
-  if(!*found && !and)
+  if (!*found && !and)
     return TRUE;			/* Default is to allow */
   return res;
 }
@@ -1561,10 +1561,10 @@ static int _check_limits(xaset_t *set, char *cmd, int hidden) {
   config_rec *lc = NULL;
 
   errno = 0;
-  
+
   if (!set)
     return res;
-  
+
   for (lc = (config_rec*)set->xas_list;
       lc && (res == 1); lc = lc->next) {
 
@@ -1575,24 +1575,24 @@ static int _check_limits(xaset_t *set, char *cmd, int hidden) {
         if (!strcasecmp(cmd, (char *) (lc->argv[i])))
           break;
       }
-	  
+	
       if (i == lc->argc)
         continue;
-	  
+	
       /* Found a limit directive associated with the current command.
        * ignore_hidden defaults to -1, if an explicit IgnoreHidden off is seen,
        * it is set to 0 and the check will not be done again up the chain.  If
        * an explicit "IgnoreHidden on" is seen, checking short-circuits and we
        * set ENOENT.
        */
-     
+
       if (hidden && ignore_hidden == -1) {
         unsigned char *ignore = get_param_ptr(lc->subset, "IgnoreHidden",
           FALSE);
 
         if (ignore)
           ignore_hidden = *ignore;
- 
+
         if (ignore_hidden == 1) {
           res = 0;
           errno = ENOENT;
@@ -1604,31 +1604,31 @@ static int _check_limits(xaset_t *set, char *cmd, int hidden) {
         case 1:
           res++;
           break;
-	    
+	
         case -1:
         case -2:
           res = 0;
           break;
-	    
+	
         default:
           continue;
       }
     }
   }
- 
+
   if (!res && !errno)
     errno = EACCES;
- 
+
   return res;
 }
 
 int dir_check_limits(config_rec *c, char *cmd, int hidden) {
   int res = 1;
- 
+
   for (; c && (res == 1); c = c->parent)
     res = _check_limits(c->subset, cmd, hidden);
-      
-  if(!c && (res == 1))
+
+  if (!c && (res == 1))
     /* vhost or main server has been reached without an explicit permit or deny,
      * so try the current server.
      */
@@ -1636,7 +1636,7 @@ int dir_check_limits(config_rec *c, char *cmd, int hidden) {
 
   return res;
 }
-    
+
 void build_dyn_config(pool *p,char *_path, struct stat *_sbuf,
     unsigned char recurse) {
   char *fullpath,*path,*dynpath,*cp;
@@ -1651,7 +1651,7 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf,
    * new or updated .ftpaccess files
    */
 
-  if(!_path)
+  if (!_path)
     return;
 
   /* check to see whether .ftpaccess files are allowed to be parsed
@@ -1695,7 +1695,7 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf,
       d->config_type = CONF_DIR;
       d->argc = 1;
       d->argv = pcalloc(d->pool, 2 * sizeof (void *));
-     
+
     } else if (d) {
       config_rec *newd,*dnext;
 
@@ -1772,7 +1772,7 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf,
 
             cmd->server = *conf.curserver;
             cmd->config = *conf.curconfig;
-              
+
             for (c = m_conftable; c->directive; c++) {
               if (!strcasecmp(c->directive, cmd->argv[0])) {
                 cmd->argv[0] = c->directive;
@@ -1797,7 +1797,7 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf,
                 "line %d of '%s'", cmd->argv[0], cs->cs_lineno,
                 dynpath);
           }
- 
+
           destroy_pool(cmd->pool);
         }
 
@@ -1864,7 +1864,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
 
   p = make_sub_pool(pp);
 
-  /* flood -- this is no longer needed, as all paths passed to 
+  /* flood -- this is no longer needed, as all paths passed to
    * dir_check should have gone through either dir_canonical or
    * dir_real first (depending on if they are supposed to pre-exist
 
@@ -1872,7 +1872,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
 
   if (!fullpath)
     fullpath = pdircat(p,session.cwd,path,NULL);
-  else 
+  else
     path = fullpath;
   */
 
@@ -1885,11 +1885,11 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
             path, fullpath);
 
   /* Check and build all appropriate dynamic configuration entries */
-  if((isfile = pr_fsio_stat(path, &sbuf)) == -1)
+  if ((isfile = pr_fsio_stat(path, &sbuf)) == -1)
     memset(&sbuf, '\0', sizeof(sbuf));
- 
+
   build_dyn_config(p, path, &sbuf, TRUE);
- 
+
   /* Check to see if this path is hidden by HideFiles. */
   if ((tmp = strrchr(fullpath, '/')) != NULL)
     regex_hidden = dir_hide_file(++tmp);
@@ -1898,13 +1898,13 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
 
   session.dir_config = c = dir_match_path(p, fullpath);
 
-  if(!c && session.anon_config)
+  if (!c && session.anon_config)
     c = session.anon_config;
 
-  if(!_kludge_disable_umask) {
+  if (!_kludge_disable_umask) {
     /* Check for a directory Umask.
      */
-    if(S_ISDIR(sbuf.st_mode) ||
+    if (S_ISDIR(sbuf.st_mode) ||
 		!strcasecmp(cmd, C_MKD) ||
         !strcasecmp(cmd, C_XMKD)) {
       mode_t *dir_umask = (mode_t *) get_param_ptr(CURRENT_CONF, "DirUmask",
@@ -1915,7 +1915,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
       else
         _umask = *dir_umask;
     }
-    
+
     /* It's either a file, or we had no directory Umask.
      */
     if (_umask == (mode_t) -1) {
@@ -1928,7 +1928,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
         _umask = *file_umask;
     }
   }
-  
+
   session.fsuid = (uid_t) -1;
   session.fsgid = (gid_t) -1;
 
@@ -1936,23 +1936,23 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
     /* Attempt chown on all new files. */
     struct passwd *pw;
 
-    if((pw = auth_getpwnam(p, owner)) != NULL)
+    if ((pw = auth_getpwnam(p, owner)) != NULL)
       session.fsuid = pw->pw_uid;
   }
-  
+
   if ((owner = get_param_ptr(CURRENT_CONF, "GroupOwner", FALSE)) != NULL) {
     /* Attempt chgrp on all new files. */
     struct group *gr;
 
-    if((gr = auth_getgrnam(p,owner)) != NULL)
+    if ((gr = auth_getgrnam(p,owner)) != NULL)
       session.fsgid = gr->gr_gid;
   }
-  
+
   if (isfile != -1) {
 
     /* Check to see if the current config "hides" the path or not
      */
-   
+
     op_hidden = !_dir_check_op(p,CURRENT_CONF,OP_HIDE,sbuf.st_uid,sbuf.st_gid,
                                  sbuf.st_mode);
 
@@ -2015,13 +2015,13 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   c = (session.dir_config ? session.dir_config :
         (session.anon_config ? session.anon_config : NULL));
 
-  if(!c || strncmp(c->name,fullpath,strlen(c->name)) != 0) {
+  if (!c || strncmp(c->name,fullpath,strlen(c->name)) != 0) {
     destroy_pool(p);
     return dir_check_full(pp,cmd,group,path,hidden);
   }
 
   /* Check and build all appropriate dynamic configuration entries */
-  if((isfile = pr_fsio_stat(path, &sbuf)) == -1)
+  if ((isfile = pr_fsio_stat(path, &sbuf)) == -1)
     memset(&sbuf,0,sizeof(sbuf));
 
   build_dyn_config(p, path, &sbuf, FALSE);
@@ -2037,10 +2037,10 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   if (!c && session.anon_config)
     c = session.anon_config;
 
-  if(!_kludge_disable_umask) {
+  if (!_kludge_disable_umask) {
     /* Check for a directory Umask.
      */
-    if(S_ISDIR(sbuf.st_mode) ||
+    if (S_ISDIR(sbuf.st_mode) ||
 		!strcasecmp(cmd, C_MKD) ||
         !strcasecmp(cmd, C_XMKD)) {
       mode_t *dir_umask = (mode_t *) get_param_ptr(CURRENT_CONF, "DirUmask",
@@ -2051,7 +2051,7 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
       else
         _umask = *dir_umask;
     }
-    
+
     /* It's either a file, or we had no directory Umask.
      */
     if (_umask == (mode_t) -1) {
@@ -2068,23 +2068,23 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   session.fsuid = (uid_t) -1;
   session.fsgid = (gid_t) -1;
 
-  if((owner = get_param_ptr(CURRENT_CONF,"UserOwner",FALSE)) != NULL) {
+  if ((owner = get_param_ptr(CURRENT_CONF,"UserOwner",FALSE)) != NULL) {
     /* attempt chown on all new files */
     struct passwd *pw;
 
-    if((pw = auth_getpwnam(p,owner)) != NULL)
+    if ((pw = auth_getpwnam(p,owner)) != NULL)
       session.fsuid = pw->pw_uid;
   }
-  
-  if((owner = get_param_ptr(CURRENT_CONF,"GroupOwner",FALSE)) != NULL) {
+
+  if ((owner = get_param_ptr(CURRENT_CONF,"GroupOwner",FALSE)) != NULL) {
     /* attempt chgrp on all new files */
     struct group *gr;
 
-    if((gr = auth_getgrnam(p,owner)) != NULL)
+    if ((gr = auth_getgrnam(p,owner)) != NULL)
       session.fsgid = gr->gr_gid;
   }
-  
-  if(isfile != -1) {
+
+  if (isfile != -1) {
 
     /* if not already marked as hidden by its name, check to see if the path
      * is to be hidden by nature of its mode
@@ -2095,7 +2095,7 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
     res = _dir_check_op(p, CURRENT_CONF, OP_COMMAND, sbuf.st_uid, sbuf.st_gid,
 			sbuf.st_mode);
   }
-  
+
   if (res) {
     res = dir_check_limits(c, cmd, op_hidden || regex_hidden);
 
@@ -2105,9 +2105,9 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
 
     if (res == 1 && group)
       res = dir_check_limits(c, group, op_hidden || regex_hidden);
- 
+
     /* if still == 1, no explicit allow so check lowest priority "ALL" group */
-    if (res == 1) 
+    if (res == 1)
       res = dir_check_limits(c, "ALL", op_hidden || regex_hidden);
   }
 
@@ -2142,7 +2142,7 @@ static void _reparent_all(config_rec *newparent,xaset_t *set)
 {
   config_rec *c,*cnext;
 
-  if(!newparent->subset)
+  if (!newparent->subset)
     newparent->subset = xaset_create(newparent->pool,NULL);
 
   for(c = (config_rec*)set->xas_list; c; c = cnext) {
@@ -2165,12 +2165,12 @@ static config_rec *_find_best_dir(xaset_t *set,char *path,int *matchlen)
 
   *matchlen = 0;
 
-  if(!set || !set->xas_list)
+  if (!set || !set->xas_list)
     return NULL;
 
   for(c = (config_rec*)set->xas_list; c; c=c->next) {
-    if(c->config_type == CONF_DIR) {
-      if(!strcmp(c->name,path))
+    if (c->config_type == CONF_DIR) {
+      if (!strcmp(c->name,path))
         continue;				/* Don't examine the current */
       len = strlen(c->name);
       while(len > 0 && (*(c->name+len-1) == '*' ||
@@ -2180,7 +2180,7 @@ static config_rec *_find_best_dir(xaset_t *set,char *path,int *matchlen)
       /*
        * Just a partial match on the pathname does not mean that the longer
        * path is the subdirectory of the other -- they might just be sharing
-       * the last path component! 
+       * the last path component!
        * /var/www/.1
        * /var/www/.14
        *            ^ -- not /, not subdir
@@ -2191,17 +2191,17 @@ static config_rec *_find_best_dir(xaset_t *set,char *path,int *matchlen)
       if (strlen(path) > len && path[len] != '/')
           continue;
 
-      if(!strncmp(c->name,path,len) &&
+      if (!strncmp(c->name,path,len) &&
          len < strlen(path)) {
            rres = _find_best_dir(c->subset,path,&imatchlen);
            tmatchlen = _strmatch(path,c->name);
-           if(!rres && tmatchlen > *matchlen) {
+           if (!rres && tmatchlen > *matchlen) {
              res = c;
              *matchlen = tmatchlen;
-           } else if(imatchlen > *matchlen) {
+           } else if (imatchlen > *matchlen) {
              res = rres;
              *matchlen = imatchlen;
-           }     
+           }
          }
     }
   }
@@ -2218,34 +2218,34 @@ static void _reorder_dirs(xaset_t *set, int mask)
   config_rec *c,*cnext,*newparent;
   int tmp,defer = 0;
 
-  if(!set || !set->xas_list)
+  if (!set || !set->xas_list)
     return;
 
-  if(!(mask & CF_DEFER))
+  if (!(mask & CF_DEFER))
     defer = 1;
 
   for(c = (config_rec*)set->xas_list; c; c=cnext) {
     cnext = c->next;
 
-    if(c->config_type == CONF_DIR) {
-      if(mask && !(c->flags & mask))
+    if (c->config_type == CONF_DIR) {
+      if (mask && !(c->flags & mask))
         continue;
 
-      if(defer && (c->flags & CF_DEFER))
+      if (defer && (c->flags & CF_DEFER))
         continue;
 
       /* If <Directory *> is used inside <Anonymous>, move all
        * the directives from '*' into the higher level
        */
-      if(!strcmp(c->name,"*") && c->parent &&
+      if (!strcmp(c->name,"*") && c->parent &&
          c->parent->config_type == CONF_ANON) {
-        if(c->subset)
+        if (c->subset)
           _reparent_all(c->parent,c->subset);
         xaset_remove(c->parent->subset,(xasetmember_t*)c);
       } else {
         newparent = _find_best_dir(set,c->name,&tmp);
-        if(newparent) {
-          if(!newparent->subset)
+        if (newparent) {
+          if (!newparent->subset)
             newparent->subset = xaset_create(newparent->pool,NULL);
 
           xaset_remove(c->set,(xasetmember_t*)c);
@@ -2260,7 +2260,7 @@ static void _reorder_dirs(xaset_t *set, int mask)
   /* Top level is now sorted, now we recursively sort all the sublevels
    */
   for(c = (config_rec*)set->xas_list; c; c=c->next)
-    if(c->config_type == CONF_DIR || c->config_type == CONF_ANON)
+    if (c->config_type == CONF_DIR || c->config_type == CONF_ANON)
       _reorder_dirs(c->subset,mask);
 }
 
@@ -2282,15 +2282,15 @@ static void _mergedown(xaset_t *s,int dynamic)
   config_rec *c,*dest,*newconf;
   int argc;
   void **argv,**sargv;
-  
-  if(!s || !s->xas_list)
+
+  if (!s || !s->xas_list)
     return;
 
   for (c = (config_rec*)s->xas_list; c; c=c->next)
     if ((c->flags & CF_MERGEDOWN) ||
         (c->flags & CF_MERGEDOWN_MULTI))
       for(dest = (config_rec*)s->xas_list; dest; dest=dest->next)
-        if(dest->config_type == CONF_ANON ||
+        if (dest->config_type == CONF_ANON ||
            dest->config_type == CONF_DIR) {
 
           /* If an option of the same name/type is found in the
@@ -2300,7 +2300,7 @@ static void _mergedown(xaset_t *s,int dynamic)
               find_config(dest->subset, c->config_type, c->name, FALSE))
             continue;
 
-          if(!dest->subset)
+          if (!dest->subset)
             dest->subset = xaset_create(dest->pool,NULL);
 
           newconf = add_config_set(&dest->subset,c->name);
@@ -2314,10 +2314,10 @@ static void _mergedown(xaset_t *s,int dynamic)
             *argv++ = *sargv++;
           *argv++ = NULL;
         }
-          
+
   /* Top level merged, recursively merge lower levels */
   for(c = (config_rec*)s->xas_list; c; c=c->next)
-    if(c->subset && (c->config_type == CONF_ANON ||
+    if (c->subset && (c->config_type == CONF_ANON ||
                      c->config_type == CONF_DIR))
       _mergedown(c->subset,dynamic);
 }
@@ -2331,23 +2331,23 @@ void resolve_anonymous_dirs(xaset_t *clist)
   config_rec *c;
   char *realdir;
 
-  if(!clist)
+  if (!clist)
     return;
 
   for(c = (config_rec*)clist->xas_list; c; c=c->next) {
-    if(c->config_type == CONF_DIR) {
-      if(c->argv[1]) {
+    if (c->config_type == CONF_DIR) {
+      if (c->argv[1]) {
         realdir = dir_best_path(c->pool,c->argv[1]);
-        if(realdir)
+        if (realdir)
           c->argv[1] = realdir;
         else {
           realdir = dir_canonical_path(c->pool,c->argv[1]);
-          if(realdir)
+          if (realdir)
             c->argv[1] = realdir;
         }
       }
 
-      if(c->subset)
+      if (c->subset)
         resolve_anonymous_dirs(c->subset);
     }
   }
@@ -2362,17 +2362,17 @@ void resolve_defered_dirs(server_rec *s)
   config_rec *c;
   char *realdir;
 
-  if(!s || !s->conf)
+  if (!s || !s->conf)
     return;
 
   for(c = (config_rec*)s->conf->xas_list; c; c=c->next) {
-    if(c->config_type == CONF_DIR && (c->flags & CF_DEFER)) {
+    if (c->config_type == CONF_DIR && (c->flags & CF_DEFER)) {
       realdir = dir_best_path(c->pool,c->name);
-      if(realdir)
+      if (realdir)
         c->name = realdir;
       else {
         realdir = dir_canonical_path(c->pool,c->name);
-        if(realdir)
+        if (realdir)
           c->name = realdir;
       }
     }
@@ -2386,7 +2386,7 @@ void _copy_recur(xaset_t **set, pool *p, config_rec *c, config_rec *new_parent)
   int argc;
   void **argv,**sargv;
 
-  if(!*set)
+  if (!*set)
     *set = xaset_create(p,NULL);
 
   newconf = add_config_set(set,c->name);
@@ -2394,29 +2394,29 @@ void _copy_recur(xaset_t **set, pool *p, config_rec *c, config_rec *new_parent)
   newconf->flags = c->flags;
   newconf->parent = new_parent;
   newconf->argc = c->argc;
-  if(c->argc) {
+  if (c->argc) {
     newconf->argv = palloc(newconf->pool,(c->argc+1)*sizeof(void*));
     argv = newconf->argv; sargv = c->argv;
     argc = newconf->argc;
 
     while(argc--)
       *argv++ = *sargv++;
-    if(argv)
+    if (argv)
     *argv++ = NULL;
   }
 
-  if(c->subset)
+  if (c->subset)
     for(c = (config_rec*)c->subset->xas_list; c; c=c->next)
       _copy_recur(&newconf->subset,p,c,newconf);
 }
 
-static 
+static
 void _copy_global_to_all(xaset_t *set)
 {
   server_rec *s;
   config_rec *c;
 
-  if(!set || !set->xas_list)
+  if (!set || !set->xas_list)
     return;
 
   for(c = (config_rec*)set->xas_list; c; c=c->next)
@@ -2433,19 +2433,19 @@ static void fixup_globals(void) {
     /* loop through each top level directive looking for a CONF_GLOBAL
      * context
      */
-    if(!s->conf || !s->conf->xas_list)
+    if (!s->conf || !s->conf->xas_list)
       continue;
 
     for(c = (config_rec*)s->conf->xas_list; c; c=cnext) {
       cnext = c->next;
-      if(c->config_type == CONF_GLOBAL) {
+      if (c->config_type == CONF_GLOBAL) {
         /* copy the contents of the block to all other servers
          * (including this one), then pull the block "out of play".
          */
-        if(c->subset && c->subset->xas_list)
+        if (c->subset && c->subset->xas_list)
           _copy_global_to_all(c->subset);
         xaset_remove(s->conf,(xasetmember_t*)c);
-        if(!s->conf->xas_list) {
+        if (!s->conf->xas_list) {
           destroy_pool(s->conf->mempool);
           s->conf = NULL;
         }
@@ -2456,7 +2456,7 @@ static void fixup_globals(void) {
 
 void fixup_dirs(server_rec *s, int mask)
 {
-  if(!s || !s->conf)
+  if (!s || !s->conf)
     return;
 
   _reorder_dirs(s->conf,mask);
@@ -2468,7 +2468,7 @@ void fixup_dirs(server_rec *s, int mask)
 
 /*
   for(c = (config_rec*)s->conf->xas_list; c; c=c->next)
-    if(c->config_type == CONF_ANON)
+    if (c->config_type == CONF_ANON)
       _reorder_dirs(c->subset);
 */
   log_debug(DEBUG5, "%s", "");
@@ -2485,21 +2485,21 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
    * level first.
    */
 
-  if(!c && !prev)
+  if (!c && !prev)
     return NULL;
 
-  if(!prev)
+  if (!prev)
     prev = top;
 
-  if(recurse) {
+  if (recurse) {
     do {
       config_rec *res = NULL;
 
       for(c = top; c; c=c->next) {
-        if(c->subset && c->subset->xas_list)
+        if (c->subset && c->subset->xas_list)
           res = find_config_next(NULL,(config_rec*)c->subset->xas_list,
                                  type,name,recurse+1);
-          if(res)
+          if (res)
             return res;
         }
 
@@ -2512,12 +2512,12 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
        * -jss 4/10/2001
        */
       for(c = top; c; c=c->next)
-        if((type == -1 || type == c->config_type) &&
+        if ((type == -1 || type == c->config_type) &&
             (!name || !strcmp(name,c->name)))
           return c;
-              
+
       /* Restart the search at the previous level if required */
-      if(prev->parent && recurse == 1 &&
+      if (prev->parent && recurse == 1 &&
          prev->parent->next &&
          prev->parent->set != find_config_top) {
         prev = top = prev->parent->next; c = top;
@@ -2528,17 +2528,17 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
     } while(1);
   } else {
     for(c = top; c; c=c->next)
-      if((type == -1 || type == c->config_type) &&
+      if ((type == -1 || type == c->config_type) &&
          (!name || !strcmp(name,c->name)))
         return c;
   }
 
   return NULL;
 }
-    
+
 void find_config_set_top(config_rec *c)
 {
-  if(c && c->parent)
+  if (c && c->parent)
     find_config_top = c->parent->set;
   else
     find_config_top = NULL;
@@ -2547,7 +2547,7 @@ void find_config_set_top(config_rec *c)
 
 config_rec *find_config(xaset_t *set, int type, const char *name, int recurse)
 {
-  if(!set || !set->xas_list)
+  if (!set || !set->xas_list)
     return NULL;
 
   find_config_set_top((config_rec*)set->xas_list);
@@ -2567,14 +2567,14 @@ long get_param_int(xaset_t *set,const char *name,int recurse)
 {
   config_rec *c;
 
-  if(!set) {
+  if (!set) {
     _last_param_int = NULL;
     return -1;
   }
 
   c = find_config(set,CONF_PARAM,name,recurse);
 
-  if(c && c->argc) {
+  if (c && c->argc) {
     _last_param_int = c;
     return (long)c->argv[0];
   }
@@ -2587,7 +2587,7 @@ long get_param_int_next(const char *name,int recurse)
 {
   config_rec *c;
 
-  if(!_last_param_int || !_last_param_int->next) {
+  if (!_last_param_int || !_last_param_int->next) {
     _last_param_int = NULL;
     return -1;
   }
@@ -2595,7 +2595,7 @@ long get_param_int_next(const char *name,int recurse)
   c = find_config_next(_last_param_int,_last_param_int->next,
                        CONF_PARAM,name,recurse);
 
-  if(c && c->argc) {
+  if (c && c->argc) {
     _last_param_int = c;
     return (long)c->argv[0];
   }
@@ -2608,14 +2608,14 @@ void *get_param_ptr(xaset_t *set,const char *name,int recurse)
 {
   config_rec *c;
 
-  if(!set) {
+  if (!set) {
     _last_param_ptr = NULL;
     return NULL;
   }
 
   c = find_config(set,CONF_PARAM,name,recurse);
 
-  if(c && c->argc) {
+  if (c && c->argc) {
     _last_param_ptr = c;
     return c->argv[0];
   }
@@ -2628,7 +2628,7 @@ void *get_param_ptr_next(const char *name,int recurse)
 {
   config_rec *c;
 
-  if(!_last_param_ptr || !_last_param_ptr->next) {
+  if (!_last_param_ptr || !_last_param_ptr->next) {
     _last_param_ptr = NULL;
     return NULL;
   }
@@ -2636,7 +2636,7 @@ void *get_param_ptr_next(const char *name,int recurse)
   c = find_config_next(_last_param_ptr,_last_param_ptr->next,
                        CONF_PARAM,name,recurse);
 
-  if(c && c->argv) {
+  if (c && c->argv) {
     _last_param_ptr = c;
     return c->argv[0];
   }
@@ -2661,7 +2661,7 @@ int remove_config(xaset_t *set, const char *name,int recurse)
     /* if the set is empty, and has no more contained members in
      * the xas_list, destroy the set
      */
-    if(!fset->xas_list) {
+    if (!fset->xas_list) {
 
       /* first, set any pointers to the container of the set to NULL
        */
@@ -2679,20 +2679,20 @@ int remove_config(xaset_t *set, const char *name,int recurse)
 
       /* if the set was not empty, destroy only the requested config_rec
        */
-      destroy_pool(c->pool); 
+      destroy_pool(c->pool);
     }
   }
 
   return found;
 }
-        
+
 config_rec *add_config_param_set(xaset_t **set,const char *name,int num,...)
 {
   config_rec *c = add_config_set(set,name);
   void **argv;
   va_list ap;
 
-  if(c) {
+  if (c) {
     c->config_type = CONF_PARAM;
     c->argc = num;
     c->argv = pcalloc(c->pool,(num+1)*sizeof(void*));
@@ -2744,11 +2744,11 @@ config_rec *add_config_param(const char *name,int num,...)
   void **argv;
   va_list ap;
 
-  if(c) {
+  if (c) {
     c->config_type = CONF_PARAM;
     c->argc = num;
     c->argv = pcalloc(c->pool,(num+1) * sizeof(void*));
-    
+
     argv = c->argv;
     va_start(ap,num);
 
@@ -2769,7 +2769,7 @@ int parse_config_file(const char *fname) {
   pool *tmp_pool = make_sub_pool(permanent_pool);
 
   log_debug(DEBUG2, "parsing '%s' configuration", fname);
- 
+
   if ((fp = pr_fsio_open(fname, O_RDONLY)) == NULL) {
     destroy_pool(tmp_pool);
     return -1;
@@ -2951,10 +2951,10 @@ char *get_context_name(cmd_rec *cmd) {
 
   if (!cmd->config || cmd->config->config_type == CONF_PARAM) {
     if (cmd->server->config_type == CONF_VIRTUAL)
-      return "<VirtualHost>"; 
+      return "<VirtualHost>";
     else
       return "server config";
-  }    
+  }
 
   memset(cbuf,'\0',sizeof(cbuf));
   switch(cmd->config->config_type) {
@@ -2979,21 +2979,21 @@ int get_boolean(cmd_rec *cmd, int av)
    * "true","false","1" or "0"
    */
 
-  if(!strcasecmp(cp,"on"))
+  if (!strcasecmp(cp,"on"))
     return 1;
-  if(!strcasecmp(cp,"off"))
+  if (!strcasecmp(cp,"off"))
     return 0;
-  if(!strcasecmp(cp,"yes"))
+  if (!strcasecmp(cp,"yes"))
     return 1;
-  if(!strcasecmp(cp,"no"))
+  if (!strcasecmp(cp,"no"))
     return 0;
-  if(!strcasecmp(cp,"true"))
+  if (!strcasecmp(cp,"true"))
     return 1;
-  if(!strcasecmp(cp,"false"))
+  if (!strcasecmp(cp,"false"))
     return 0;
-  if(!strcasecmp(cp,"1"))
+  if (!strcasecmp(cp,"1"))
     return 1;
-  if(!strcasecmp(cp,"0"))
+  if (!strcasecmp(cp,"0"))
     return 0;
 
   return -1;
@@ -3005,7 +3005,7 @@ char *get_full_cmd(cmd_rec *cmd)
   char *res = "";
   int i;
 
-  if(cmd->arg)
+  if (cmd->arg)
     res = pstrcat(p,cmd->argv[0]," ",cmd->arg,NULL);
   else {
     for(i = 0; i < cmd->argc; i++)

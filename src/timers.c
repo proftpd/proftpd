@@ -23,9 +23,9 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* 
+/*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.12 2002-07-09 22:20:10 castaglia Exp $
+ * $Id: timers.c,v 1.13 2002-12-07 21:45:44 jwm Exp $
  */
 
 #include <signal.h>
@@ -264,7 +264,7 @@ int remove_timer(int timerno, module *mod) {
          * is removed.
          */
         handle_alarm();
-      }      
+      }
       break;
     }
 
@@ -290,7 +290,7 @@ int add_timer(int seconds, int timerno, module *mod, callback_t cb) {
     /* Must allocate a new one */
     t = palloc(permanent_pool, sizeof(timer_t));
 
-  if (timerno == -1) { 
+  if (timerno == -1) {
     /* Dynamic timer */
     if (dynamic_timerno < 1024)
       dynamic_timerno = 1024;
@@ -370,6 +370,6 @@ int timer_sleep(int seconds) {
     sigsuspend(&oset);
     handle_alarm();
   }
-  
-  return 0;  
+
+  return 0;
 }

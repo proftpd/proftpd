@@ -3,7 +3,7 @@
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  * Copyright (c) 2001, 2002 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -23,10 +23,10 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  */
- 
+
 /*
  * Data connection management functions
- * $Id: data.c,v 1.49 2002-12-06 23:45:28 castaglia Exp $
+ * $Id: data.c,v 1.50 2002-12-07 21:45:43 jwm Exp $
  */
 
 #include "conf.h"
@@ -79,19 +79,19 @@ static int _xlate_ascii_read(char *buf, int *bufsize, int *adjlen)
 {
   char *dest = buf,*src = buf;
   int thislen = *bufsize;
- 
+
   *adjlen = 0;
   while(thislen--) {
-    if(*src != '\r')
+    if (*src != '\r')
       *dest++ = *src++;
     else {
-      if(thislen == 0) {
+      if (thislen == 0) {
 	/* copy, but save it for later */
 	*dest++ = *src++;
 	(*adjlen)++;
 	(*bufsize)--;
       } else {
-	if(*(src+1) == '\n') { /* skip */
+	if (*(src+1) == '\n') { /* skip */
 	  (*bufsize)--;
 	  src++;
 	} else
@@ -121,7 +121,7 @@ static void _xlate_ascii_write(char **buf, unsigned int *buflen,
   int res = 0;
   register unsigned int i = 0;
 
-  /* Make sure this is zero (could be a holdover from a previous call). */ 
+  /* Make sure this is zero (could be a holdover from a previous call). */
   *expand = 0;
 
   /* First, determine how many bare LFs are present. */
@@ -176,10 +176,10 @@ static void _xlate_ascii_write(char **buf, unsigned int *buflen,
      */
     memmove(&(tmpbuf[1]), &(tmpbuf[0]), bufsize);
     tmpbuf[0] = '\r';
- 
+
     /* Increment the number of "expanded" characters, and decrement the
      * number of bare LFs.
-     */ 
+     */
     (*expand)++;
     lfcount--;
   }
@@ -204,7 +204,7 @@ static void _data_new_xfer(char *filename, int direction) {
     destroy_pool(session.xfer.p);
     memset(&session.xfer, 0, sizeof(session.xfer));
   }
-  
+
   session.xfer.p = make_sub_pool(session.pool);
   session.xfer.filename = pstrdup(session.xfer.p,filename);
   session.xfer.direction = direction;
@@ -218,16 +218,16 @@ static void _data_new_xfer(char *filename, int direction) {
 static int _data_pasv_open(char *reason, off_t size) {
   conn_t *c;
   int rev;
-  
-  if(!reason && session.xfer.filename)
+
+  if (!reason && session.xfer.filename)
     reason = session.xfer.filename;
-  
+
   /* Set the "stalled" timer, if any, to prevent the connection
    * open from taking too long
    */
   if (TimeoutStalled)
     add_timer(TimeoutStalled, TIMER_STALLED, NULL, stalled_timeout_cb);
-  
+
   /* We save the state of our current disposition for doing reverse
    * lookups, and then set it to what the configuration wants it to
    * be.
@@ -235,7 +235,7 @@ static int _data_pasv_open(char *reason, off_t size) {
   rev = inet_reverse_dns(session.xfer.p,ServerUseReverseDNS);
   c = inet_accept(session.xfer.p, session.d, session.c, -1, -1, TRUE);
   inet_reverse_dns(session.xfer.p,rev);
-  
+
   if (c && c->mode != CM_ERROR) {
     inet_close(session.pool, session.d);
     inet_setnonblock(session.pool, c);
@@ -246,8 +246,8 @@ static int _data_pasv_open(char *reason, off_t size) {
     log_debug(DEBUG4, "passive data connection opened - remote : %s:%d",
               inet_ntoa(*session.d->remote_ipaddr),
               session.d->remote_port);
- 
-    if (session.xfer.xfer_type != STOR_UNIQUE) { 
+
+    if (session.xfer.xfer_type != STOR_UNIQUE) {
       if (size)
         send_response(R_150, "Opening %s mode data connection for %s "
           "(%" PR_LU " bytes)", MODE_STRING, reason, size);
@@ -278,15 +278,15 @@ static int _data_pasv_open(char *reason, off_t size) {
        */
       send_response(R_150, "FILE: %s", reason);
     }
-    
+
     return 0;
   }
-  
+
   /* Check for error conditions. */
   if (c && c->mode == CM_ERROR)
     log_pri(PR_LOG_ERR, "Error: unable to accept an incoming data "
       "connection (%s)", strerror(c->xerrno));
-  
+
   add_response_err(R_425, "Unable to build data connection: %s",
 		   strerror(session.d->xerrno));
   destroy_pool(session.d->pool);
@@ -297,21 +297,21 @@ static int _data_pasv_open(char *reason, off_t size) {
 static int _data_active_open(char *reason, off_t size) {
   conn_t *c;
   int rev;
-  
-  if(!reason && session.xfer.filename)
+
+  if (!reason && session.xfer.filename)
     reason = session.xfer.filename;
-  
+
   session.d = inet_create_connection(session.pool, NULL, -1,
     session.c->local_ipaddr, session.c->local_port-1, TRUE);
-  
+
   /* Set the "stalled" timer, if any, to prevent the connection
    * open from taking too long
    */
   if (TimeoutStalled)
     add_timer(TimeoutStalled, TIMER_STALLED, NULL, stalled_timeout_cb);
-  
+
   rev = inet_reverse_dns(session.pool,ServerUseReverseDNS);
-  
+
   if (inet_connect(session.d->pool, session.d, &session.data_addr,
 		  session.data_port) == -1) {
     add_response_err(R_425, "Unable to build data connection: %s",
@@ -320,19 +320,19 @@ static int _data_active_open(char *reason, off_t size) {
     session.d = NULL;
     return -1;
   }
-  
+
   c = inet_openrw(session.pool, session.d, NULL, PR_NETIO_STRM_DATA,
     session.d->listen_fd, -1, -1, TRUE);
-  
+
   inet_reverse_dns(session.pool,rev);
-  
+
   if (c) {
     log_debug(DEBUG4,"active data connection opened - local  : %s:%d",
 	      inet_ntoa(*session.d->local_ipaddr), session.d->local_port);
     log_debug(DEBUG4,"active data connection opened - remote : %s:%d",
 	      inet_ntoa(*session.d->remote_ipaddr),
 	      session.d->remote_port);
-    
+
     if (session.xfer.xfer_type != STOR_UNIQUE) {
       if (size)
         send_response(R_150, "Opening %s mode data connection for %s "
@@ -370,8 +370,8 @@ static int _data_active_open(char *reason, off_t size) {
     session.d = c;
     return 0;
   }
-  
-  
+
+
   add_response_err(R_425, "Unable to build data connection: %s",
 		   strerror(session.d->xerrno));
   destroy_pool(session.d->pool);
@@ -394,30 +394,30 @@ void data_init(char *filename, int direction) {
     if (!(session.sf_flags & SF_PASSIVE))
       log_debug(DEBUG0,
 		"data_init oddity: session.xfer exists in non-PASV mode.");
-    
+
     session.xfer.direction = direction;
   }
 }
 
 int data_open(char *filename, char *reason, int direction, off_t size) {
   int res = 0;
-  
+
   if (!session.xfer.p)
     _data_new_xfer(filename, direction);
   else
     session.xfer.direction = direction;
-  
+
   if (!reason)
     reason = filename;
 
-  /* Passive data transfers... */  
+  /* Passive data transfers... */
   if (session.sf_flags & SF_PASSIVE) {
     if (!session.d) {
       log_pri(PR_LOG_ERR, "Internal error: PASV mode set, but no data "
         "connection listening.");
       end_login(1);
     }
-    
+
     res = _data_pasv_open(reason,size);
 
   /* Active data transfers... */
@@ -427,10 +427,10 @@ int data_open(char *filename, char *reason, int direction, off_t size) {
         "connection already exists?!?");
       end_login(1);
     }
-    
+
     res = _data_active_open(reason,size);
   }
-  
+
   if (res >= 0) {
     struct sigaction act;
 
@@ -456,19 +456,19 @@ int data_open(char *filename, char *reason, int direction, off_t size) {
       inet_set_proto_options(session.pool,session.d,0,0,1,1);
       nstrm = session.d->outstrm;
     }
-    
+
     session.sf_flags |= SF_XFER;
-    
+
     if (TimeoutNoXfer)
       reset_timer(TIMER_NOXFER, ANY_MODULE);
-    
+
     /* allow aborts */
 
     /* Set the current NetIO stream to allow interrupted syscalls, so our
      * SIGURG handler can interrupt it
      */
     pr_netio_set_poll_interval(nstrm, 1);
-    
+
     /* PORTABILITY: sigaction is used here to allow us
      * to indicate (w/ POSIX at least) that we want
      * SIGURG to interrupt syscalls.  Put in whatever
@@ -476,7 +476,7 @@ int data_open(char *filename, char *reason, int direction, off_t size) {
      * as the only _important_ interrupted syscall is select()),
      * which on any sensible system is interrupted.
      */
-    
+
     act.sa_handler = data_urgent;
     sigemptyset(&act.sa_mask);
     act.sa_flags = 0;
@@ -503,20 +503,20 @@ void data_close(int quiet) {
     inet_lingering_close(session.pool, session.d, PR_TUNABLE_TIMEOUTLINGER);
     session.d = NULL;
   }
-  
+
   /* Aborts no longer necessary */
   signal(SIGURG, SIG_IGN);
-  
+
   if (TimeoutNoXfer)
     reset_timer(TIMER_NOXFER, ANY_MODULE);
-  
+
   if (TimeoutStalled)
     remove_timer(TIMER_STALLED, ANY_MODULE);
-  
+
   session.sf_flags &= (SF_ALL^SF_PASSIVE);
   session.sf_flags &= (SF_ALL^(SF_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
   session_set_idle();
-  
+
   if (!quiet)
     add_response(R_226, "Transfer complete.");
 }
@@ -537,9 +537,9 @@ void data_cleanup(void) {
     session.d = NULL;
   }
 
-  if(session.xfer.p)
+  if (session.xfer.p)
     destroy_pool(session.xfer.p);
-  
+
   memset(&session.xfer,0,sizeof(session.xfer));
 }
 
@@ -555,44 +555,44 @@ void data_abort(int err, int quiet) {
     inet_lingering_close(session.pool, session.d, PR_TUNABLE_TIMEOUTLINGER);
     session.d = NULL;
   }
-  
+
   if (TimeoutNoXfer)
     reset_timer(TIMER_NOXFER, ANY_MODULE);
-  
+
   if (TimeoutStalled)
     remove_timer(TIMER_STALLED, ANY_MODULE);
-  
+
   session.sf_flags &= (SF_ALL^SF_PASSIVE);
   session.sf_flags &= (SF_ALL^(SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
   session_set_idle();
-  
+
   /* Aborts no longer necessary */
   signal(SIGURG, SIG_IGN);
-  
+
   if (TimeoutNoXfer)
     reset_timer(TIMER_NOXFER, ANY_MODULE);
-  
+
   if (!quiet) {
     char	*respcode = R_426;
     char	*fmt = NULL;
     char	*msg = NULL;
     char	msgbuf[64];
-    
+
     switch (err) {
-      
+
     case 0:
       respcode = R_426;
       msg = "Data connection closed.";
       break;
-      
+
 #ifdef ENXIO
     case ENXIO:
       respcode = R_451;
       msg = "Unexpected streams hangup.";
       break;
-      
+
 #endif
-      
+
 #ifdef EAGAIN
     case EAGAIN:		/* FALLTHROUGH */
 #endif
@@ -604,7 +604,7 @@ void data_abort(int err, int quiet) {
       msg = "Insufficient memory or file locked.";
       break;
 #endif
-      
+
 #ifdef ETXTBSY
     case ETXTBSY:		/* FALLTHROUGH */
 #endif
@@ -615,13 +615,13 @@ void data_abort(int err, int quiet) {
       respcode = R_451;
       break;
 #endif
-      
+
 #ifdef ENOSPC
     case ENOSPC:
       respcode = R_452;
       break;
 #endif
-      
+
 #ifdef EDQUOT
     case EDQUOT:		/* FALLTHROUGH */
 #endif
@@ -632,7 +632,7 @@ void data_abort(int err, int quiet) {
       respcode = R_552;
       break;
 #endif
-      
+
 #ifdef ECOMM
     case ECOMM:		/* FALLTHROUGH */
 #endif
@@ -675,7 +675,7 @@ void data_abort(int err, int quiet) {
       respcode = R_451;
       break;
 #endif
-      
+
 #ifdef EREMCHG
     case EREMCHG:		/* FALLTHROUGH */
 #endif
@@ -711,7 +711,7 @@ void data_abort(int err, int quiet) {
       break;
 #endif
     }
-    
+
     if ( msg == NULL && (msg = strerror(err)) == NULL ) {
       if ( snprintf(msgbuf, sizeof msgbuf,
 		    "Unknown or out of range errno [%d].",
@@ -724,7 +724,7 @@ void data_abort(int err, int quiet) {
 		     );
     /* ??? syslog the response for the help desk??? */
   }
-  
+
   if (true_abort)
     session.sf_flags |= SF_POST_ABORT;
 }
@@ -740,7 +740,7 @@ int data_xfer(char *cl_buf, int cl_size) {
   char *buf = session.xfer.buf;
   int len = 0;
   int total = 0;
-  
+
   if (session.xfer.direction == PR_NETIO_IO_RD) {
     if (session.d) {
       if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
@@ -749,7 +749,7 @@ int data_xfer(char *cl_buf, int cl_size) {
 	  buflen = session.xfer.buflen;        /* how much remains in buf */
 	  adjlen = 0;
 	
-	  if((len = pr_netio_read(session.d->instrm, buf + buflen,
+	  if ((len = pr_netio_read(session.d->instrm, buf + buflen,
 		  session.xfer.bufsize - buflen, 1)) > 0) {
 	    buflen += len;
 
@@ -758,7 +758,7 @@ int data_xfer(char *cl_buf, int cl_size) {
 	  }
 
 	  /* if buflen > 0, data remains in the buffer to be copied. */
-	  if(len >= 0 && buflen > 0) {
+	  if (len >= 0 && buflen > 0) {
 
 	    /* Perform translation:
 	     * buflen is returned as the modified buffer length after
@@ -771,11 +771,11 @@ int data_xfer(char *cl_buf, int cl_size) {
 	     * end of data, this is so that _xlate_ascii_read() won't sit
 	     * forever waiting for the next character after a final '\r'.
 	     */
-	    if(len > 0 || buflen > 1)
+	    if (len > 0 || buflen > 1)
 	      _xlate_ascii_read(buf, &buflen, &adjlen);
 	
 	    /* now copy everything we can into cl_buf */
-	    if(buflen > cl_size) {
+	    if (buflen > cl_size) {
 	      /* because we have to cut our buffer short, make sure this
 	       * is made up for later by increasing adjlen.
 	       */
@@ -791,14 +791,14 @@ int data_xfer(char *cl_buf, int cl_size) {
 	     * anything remains, copy it to the start of the buffer
 	     */
 	
-	    if(adjlen > 0)
+	    if (adjlen > 0)
 	      memcpy(buf,buf+buflen,adjlen);
 
 	    /* store everything back in session.xfer */
 	    session.xfer.buflen = adjlen;
 	    total += buflen;
 	  }
-	    
+	
 	  /* Restart if data was returned by pr_netio_read() (len > 0) but
 	   * no data was copied to the client buffer (buflen = 0).
 	   * This indicates that _xlate_ascii_read() needs more data
@@ -816,7 +816,7 @@ int data_xfer(char *cl_buf, int cl_size) {
         /* Non-ascii mode doesn't need to use session.xfer.buf */
         if (TimeoutStalled)
           reset_timer(TIMER_STALLED, ANY_MODULE);
-      
+
         total += len;
       }
     }
@@ -828,10 +828,10 @@ int data_xfer(char *cl_buf, int cl_size) {
      */
     while (cl_size) {
       int o_size, size = cl_size;
-      
+
       if (size > PR_TUNABLE_BUFFER_SIZE)
         size = PR_TUNABLE_BUFFER_SIZE;
-      
+
       o_size = size;
       memcpy(buf, cl_buf, size);
 
@@ -859,17 +859,17 @@ int data_xfer(char *cl_buf, int cl_size) {
           buf[size] = '\0';
         }
       }
-      
+
       cl_size -= o_size;
       cl_buf += o_size;
     }
-    
+
     len = total;
   }
-  
-  if(total && TimeoutIdle)
+
+  if (total && TimeoutIdle)
     reset_timer(TIMER_IDLE,ANY_MODULE);
-  
+
   session.xfer.total_bytes += total;
   session.total_bytes += total;
   return (len < 0 ? -1 : len);
@@ -884,21 +884,21 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
   int flags, error;
   pr_sendfile_t len = 0, total = 0;
 
-  if(session.xfer.direction == PR_NETIO_IO_RD)
+  if (session.xfer.direction == PR_NETIO_IO_RD)
     return -1;
-  
+
   if ((flags = fcntl(PR_NETIO_FD(session.d->outstrm), F_GETFL)) == -1)
     return -1;
-  
+
   /* set fd to blocking-mode for sendfile() */
   if (flags & O_NONBLOCK)
     if (fcntl(PR_NETIO_FD(session.d->outstrm), F_SETFL, flags^O_NONBLOCK) == -1)
       return -1;
-  
+
   for (;;) {
 #if defined(HAVE_LINUX_SENDFILE)
     off_t orig_offset = *offset;
-    
+
     /* Linux semantics are fairly straightforward in a glibc 2.x world:
      *
      * #include <sys/sendfile.h>
@@ -906,32 +906,32 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
      * ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
      */
     len = sendfile(PR_NETIO_FD(session.d->outstrm), retr_fd, offset, count);
-    
-    if(len != -1 && len < count) {
+
+    if (len != -1 && len < count) {
       /* under linux semantics, this occurs when a signal has interrupted
        * sendfile().
        */
 
       count -= len;
 	
-      if(TimeoutStalled)
+      if (TimeoutStalled)
         reset_timer(TIMER_STALLED, ANY_MODULE);
 	
-      if(TimeoutIdle)
+      if (TimeoutIdle)
 	reset_timer(TIMER_IDLE, ANY_MODULE);
 	
       session.xfer.total_bytes += len;
       session.total_bytes += len;
       total += len;
-        
+
       continue;
-    } else if(len == -1) {
+    } else if (len == -1) {
       /* Linux updates offset on error, not len like BSD, fix up so
        * BSD-based code works.
        */
       len = *offset - orig_offset;
       *offset = orig_offset;
-      
+
 #elif defined(HAVE_BSD_SENDFILE)
     /* BSD semantics for sendfile are flexible...it'd be nice if we could
      * standardize on something like it.  The semantics are:
@@ -967,7 +967,7 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
 
 	/* If we got everything in this transaction, we're done.
 	 */
-	if((count -= len) <= 0)
+	if ((count -= len) <= 0)
 	  break;
 	
 	*offset += len;
@@ -975,7 +975,7 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
 	if (TimeoutStalled)
 	  reset_timer(TIMER_STALLED, ANY_MODULE);
 	
-	if(TimeoutIdle)
+	if (TimeoutIdle)
 	  reset_timer(TIMER_IDLE, ANY_MODULE);
 	
 	session.xfer.total_bytes += len;
@@ -984,30 +984,30 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
 	
 	continue;
       }
-      
+
       error = errno;
       fcntl(PR_NETIO_FD(session.d->outstrm), F_SETFL, flags);
       errno = error;
-      
+
       return -1;
     }
 
     break;
   }
-  
+
   if (flags & O_NONBLOCK)
     fcntl(PR_NETIO_FD(session.d->outstrm), F_SETFL, flags);
-  
+
   if (TimeoutStalled)
     reset_timer(TIMER_STALLED, ANY_MODULE);
-  
+
   if (TimeoutIdle)
     reset_timer(TIMER_IDLE, ANY_MODULE);
-  
+
   session.xfer.total_bytes += len;
   session.total_bytes += len;
   total += len;
-  
+
   return total;
 }
 #endif /* HAVE_SENDFILE */

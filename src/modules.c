@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 2001, 2002 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -37,7 +37,7 @@
 
 struct symbol_hash {
   struct	symbol_hash *next,*prev;
-  char		*sym_name;			/* pointer to the directive, 
+  char		*sym_name;			/* pointer to the directive,
                                                    command, or other symbol */
   char		sym_type;			/* one of the SYM_* macros */
   module	*sym_module;
@@ -106,10 +106,10 @@ static int sym_cmp(struct symbol_hash *s1, struct symbol_hash *s2) {
    * hash tables.
    */
 
-  if(!ret) {
-    if(s1->sym_module->priority > s2->sym_module->priority)
+  if (!ret) {
+    if (s1->sym_module->priority > s2->sym_module->priority)
       ret = -1;
-    else if(s1->sym_module->priority < s2->sym_module->priority)
+    else if (s1->sym_module->priority < s2->sym_module->priority)
       ret = 1;
   }
 
@@ -131,7 +131,7 @@ static int _hash_insert(struct symbol_hash *sym) {
   int index;
 
   index = _hash_index(sym->sym_name);
-  if(!symtable[index])
+  if (!symtable[index])
     symtable[index] = xaset_create(permanent_pool,
                       (XASET_COMPARE) sym_cmp);
 
@@ -233,7 +233,7 @@ static pr_authsym_t *authsym_find_next(int index, char *symbol,
       if (last_hit && !strcmp(authsym->name, symbol))
         break;
       if (authsym->table == prev)
-        last_hit++; 
+        last_hit++;
   }
 
   return authsym;
@@ -243,9 +243,9 @@ static struct symbol_hash *_hash_find(int index, char *name, int type)
 {
   struct symbol_hash *sym = NULL;
 
-  if(name && symtable[index]) {
+  if (name && symtable[index]) {
     for(sym = (struct symbol_hash*)symtable[index]->xas_list; sym; sym=sym->next)
-      if(sym->sym_type == type && !strcmp(sym->sym_name,name))
+      if (sym->sym_type == type && !strcmp(sym->sym_name,name))
         break;
   }
 
@@ -258,11 +258,11 @@ static struct symbol_hash *_hash_find_next(int index, char *name,
   struct symbol_hash *sym = NULL;
   int last_hit = 0;
 
-  if(symtable[index]) {
+  if (symtable[index]) {
     for(sym = (struct symbol_hash*)symtable[index]->xas_list; sym; sym=sym->next) {
-      if(last_hit && sym->sym_type == type && !strcmp(sym->sym_name,name))
+      if (last_hit && sym->sym_type == type && !strcmp(sym->sym_name,name))
         break;
-      if(sym->ptr.sym_generic == last)
+      if (sym->ptr.sym_generic == last)
         last_hit++;
     }
   }
@@ -275,15 +275,15 @@ conftable *mod_find_conf_symbol(char *name, int *idx_cache, conftable *last)
   int index;
   struct symbol_hash *sym;
 
-  if(idx_cache && *idx_cache != -1)
+  if (idx_cache && *idx_cache != -1)
     index = *idx_cache;
   else {
     index = _hash_index(name);
-    if(idx_cache)
+    if (idx_cache)
       *idx_cache = index;
   }
 
-  if(last)
+  if (last)
     sym = _hash_find_next(index,name,SYM_CONF,last);
   else
     sym = _hash_find(index,name,SYM_CONF);
@@ -295,16 +295,16 @@ cmdtable *mod_find_cmd_symbol(char *name, int *idx_cache, cmdtable *last)
 {
   int index;
   struct symbol_hash *sym;
-  
-  if(idx_cache && *idx_cache != -1)
+
+  if (idx_cache && *idx_cache != -1)
     index = *idx_cache;
   else {
     index = _hash_index(name);
-    if(idx_cache)
+    if (idx_cache)
       *idx_cache = index;
   }
 
-  if(last)
+  if (last)
     sym = _hash_find_next(index,name,SYM_CMD,last);
   else
     sym = _hash_find(index,name,SYM_CMD);
@@ -316,16 +316,16 @@ authtable *mod_find_auth_symbol(char *name, int *idx_cache, authtable *last)
 {
   int index;
   struct symbol_hash *sym;
-  
-  if(idx_cache && *idx_cache != -1)
+
+  if (idx_cache && *idx_cache != -1)
     index = *idx_cache;
   else {
     index = _hash_index(name);
-    if(idx_cache)
+    if (idx_cache)
       *idx_cache = index;
   }
 
-  if(last)
+  if (last)
     sym = _hash_find_next(index,name,SYM_AUTH,last);
   else
     sym = _hash_find(index,name,SYM_AUTH);
@@ -361,17 +361,17 @@ privdata_t *mod_privdata_alloc(cmd_rec *cmd, char *tag, int size)
   privdata_t **pp;
   privdata_t *p;
 
-  if(!tag)
+  if (!tag)
     return NULL;
 
   p = pcalloc(cmd->pool,sizeof(privdata_t));
 
   p->tag = pstrdup(cmd->pool,tag);
-  if(size)
+  if (size)
     p->value.ptr_val = palloc(cmd->pool,size);
   p->m = curmodule;
 
-  if(!cmd->privarr)
+  if (!cmd->privarr)
     cmd->privarr = make_array(cmd->pool,2,sizeof(privdata_t*));
 
   pp = (privdata_t**)push_array(cmd->privarr);
@@ -386,14 +386,14 @@ privdata_t *mod_privdata_find(cmd_rec *cmd, char *tag, module *m)
   int i;
   privdata_t **p;
 
-  if(!tag)
+  if (!tag)
     return NULL;
 
-  if(!m)
+  if (!m)
     m = curmodule;
 
   for(i = 0, p = (privdata_t**)cmd->privarr->elts; i < cmd->privarr->nelts; i++, p++) {
-    if(!strcmp((*p)->tag,tag) && (m == ANY_MODULE || (*p)->m == m))
+    if (!strcmp((*p)->tag,tag) && (m == ANY_MODULE || (*p)->m == m))
       break;
   }
 
@@ -405,7 +405,7 @@ modret_t *call_module_auth(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd)
   modret_t *res;
   module *prev_module = curmodule;
 
-  if(!cmd->tmp_pool)
+  if (!cmd->tmp_pool)
     cmd->tmp_pool = make_sub_pool(cmd->pool);
 
   curmodule = m;
@@ -420,7 +420,7 @@ modret_t *call_module_cmd(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd)
   modret_t *res;
   module *prev_module = curmodule;
 
-  if(!cmd->tmp_pool)
+  if (!cmd->tmp_pool)
     cmd->tmp_pool = make_sub_pool(cmd->pool);
 
   curmodule = m;
@@ -435,9 +435,9 @@ modret_t *call_module(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd)
   modret_t *res;
   module *prev_module = curmodule;
 
-  if(!cmd->tmp_pool)
+  if (!cmd->tmp_pool)
     cmd->tmp_pool = make_sub_pool(cmd->pool);
-  
+
   curmodule = m;
   res = func(cmd);
   curmodule = prev_module;
@@ -465,9 +465,9 @@ modret_t *mod_create_ret(cmd_rec *cmd,unsigned char err,char *n,char *m)
   ret = pcalloc(cmd->tmp_pool,sizeof(modret_t));
   ret->mr_handler_module = curmodule;
   ret->mr_error = err;
-  if(n)
+  if (n)
     ret->mr_numeric = pstrdup(cmd->tmp_pool,n);
-  if(m)
+  if (m)
     ret->mr_message = pstrdup(cmd->tmp_pool,m);
 
   return ret;
@@ -497,7 +497,7 @@ int pr_init_session_modules(void) {
       curmodule = m;
       m->module_init_session_cb();
     }
-  
+
   curmodule = prev_module;
   return 0;
 }
@@ -619,9 +619,9 @@ int pr_preparse_init_modules(void) {
         _hash_insert_auth(authwrk);
       }
   }
- 
+
   /* add a null entry (pcalloc zeros the memory for us) */
-  push_array(mconfarr);  
+  push_array(mconfarr);
   push_array(mcmdarr);
   push_array(mautharr);
 

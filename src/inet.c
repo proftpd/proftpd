@@ -3,7 +3,7 @@
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  * Copyright (c) 2001, 2002 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -122,7 +122,7 @@ int inet_getservport(pool *pool, char *serv, char *proto)
  */
 char *inet_validate(char *buf) {
   char *p;
-  
+
   /* Validate anything returned from a DNS.
    */
   for (p = buf; p && *p; p++) {
@@ -135,7 +135,7 @@ char *inet_validate(char *buf) {
       *p = '_';
     }
   }
-  
+
   return buf;
 }
 
@@ -146,10 +146,10 @@ char *inet_gethostname(pool *pool)
   char buf[256] = {'\0'};
   struct hostent *host;
 
-  if(gethostname(buf,sizeof(buf)-1) != -1) {
+  if (gethostname(buf,sizeof(buf)-1) != -1) {
     buf[sizeof(buf)-1] = '\0';
     host = gethostbyname(buf);
-    if(host)
+    if (host)
       return inet_validate(pstrdup(pool,host->h_name));
 
     return inet_validate(pstrdup(pool,buf));
@@ -165,7 +165,7 @@ char *inet_fqdn(pool *pool, const char *addr)
 {
   struct hostent *host;
 
-  if((host = gethostbyname(addr)) != NULL)
+  if ((host = gethostbyname(addr)) != NULL)
     return inet_validate(pstrdup(pool,host->h_name));
 
   return NULL;
@@ -182,7 +182,7 @@ p_in_addr_t *inet_getaddr(pool *pool, char *name)
 
   /* Try dotted quad notation first */
 #ifdef HAVE_INET_ATON
-  if(inet_aton(name,res))
+  if (inet_aton(name,res))
     return res;
 #else
   /* This is a bit unclean, because inet_addr() is obsolete, and
@@ -191,16 +191,16 @@ p_in_addr_t *inet_getaddr(pool *pool, char *name)
    * this entire function will fail.  Hopefully, you have inet_aton().
    * <grin>
    */
-  if((res->s_addr = inet_addr(name)) != -1)
+  if ((res->s_addr = inet_addr(name)) != -1)
     return res;
 #endif
 
   host = gethostbyname(name);
-  if(host) {
+  if (host) {
     memcpy(res, host->h_addr_list[0], sizeof(p_in_addr_t));
     return res;
   }
-    
+
 
   return NULL;
 }
@@ -213,7 +213,7 @@ char *inet_ascii(pool *pool, p_in_addr_t *addr)
 {
   char *res = NULL;
 
-  if((res = inet_ntoa(*addr)) != NULL)
+  if ((res = inet_ntoa(*addr)) != NULL)
     res = pstrdup(pool,res);
 
   return res;
@@ -232,12 +232,12 @@ char *inet_getname(pool *pool, p_in_addr_t *addr) {
       res = pstrdup(pool, res_cache);
       return inet_validate(res);
     }
-    
-    if((hptr_rev = gethostbyaddr((const char *)addr,
+
+    if ((hptr_rev = gethostbyaddr((const char *)addr,
                                  sizeof(p_in_addr_t), AF_INET)) != NULL) {
-      if((hptr_forw = gethostbyname(hptr_rev->h_name)) != NULL) {
+      if ((hptr_forw = gethostbyname(hptr_rev->h_name)) != NULL) {
         for(checkaddr = hptr_forw->h_addr_list; *checkaddr; ++checkaddr) {
-          if(((p_in_addr_t*)(*checkaddr))->s_addr == addr->s_addr) {
+          if (((p_in_addr_t*)(*checkaddr))->s_addr == addr->s_addr) {
             res = pstrdup(pool, hptr_rev->h_name);
             break;
           }
@@ -245,28 +245,28 @@ char *inet_getname(pool *pool, p_in_addr_t *addr) {
       }
     }
   }
-  
+
   if (!res)
     res = pstrdup(pool, inet_ntoa(*addr));
- 
+
   if (reverse_dns) {
     /* cache the result */
-    if(!addr_cache)
+    if (!addr_cache)
       addr_cache = malloc(sizeof(p_in_addr_t));
 
-    if(addr_cache)
+    if (addr_cache)
       memcpy(addr_cache, addr, sizeof(p_in_addr_t));
 
-    if(res_cache)
+    if (res_cache)
       free(res_cache);
 
     res_cache = strdup(res);
   }
-  
+
   return inet_validate(res);
 }
 
-static void conn_cleanup_cb(void *cv) { 
+static void conn_cleanup_cb(void *cv) {
   conn_t *c = (conn_t*)cv;
 
   if (c->instrm)
@@ -301,20 +301,20 @@ conn_t *inet_copy_connection(pool *p, conn_t *c) {
   res->pool = subpool;
   res->instrm = res->outstrm = NULL;
 
-  if(c->local_ipaddr) {
+  if (c->local_ipaddr) {
     res->local_ipaddr = (p_in_addr_t*)palloc(res->pool,sizeof(p_in_addr_t));
     *res->local_ipaddr = *c->local_ipaddr;
   }
 
-  if(c->remote_ipaddr) {
+  if (c->remote_ipaddr) {
     res->remote_ipaddr = (p_in_addr_t*)palloc(res->pool,sizeof(p_in_addr_t));
     *res->remote_ipaddr = *c->remote_ipaddr;
   }
 
-  if(c->remote_name)
+  if (c->remote_name)
     res->remote_name = pstrdup(res->pool,c->remote_name);
 
-  if(c->iplist)
+  if (c->iplist)
     res->iplist = copy_array(subpool,c->iplist);
 
   register_cleanup(res->pool, (void *) res, conn_cleanup_cb, conn_cleanup_cb);
@@ -331,47 +331,47 @@ int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port)
   struct sockaddr_in servaddr;
 
 #ifdef SOLARIS2
-  if(port != INPORT_ANY && port < 1024) {
+  if (port != INPORT_ANY && port < 1024) {
     block_signals();
     PRIVS_ROOT
   }
 #endif
   s = socket(AF_INET, SOCK_STREAM, 0);
 #ifdef SOLARIS2
-  if(port != INPORT_ANY && port < 1024) {
+  if (port != INPORT_ANY && port < 1024) {
     PRIVS_RELINQUISH
     unblock_signals();
   }
 #endif
 
-  if(s < 0)
+  if (s < 0)
     return -1;
 
   setsockopt(s,SOL_SOCKET,SO_REUSEADDR,(void*)&on,sizeof(on));
   servaddr.sin_family = AF_INET;
-  if(!bind_addr)
+  if (!bind_addr)
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
   else
     servaddr.sin_addr = *bind_addr;
 
   servaddr.sin_port = htons(port);
-  
-  if(port != INPORT_ANY && port < 1024) {
+
+  if (port != INPORT_ANY && port < 1024) {
     block_signals();
     PRIVS_ROOT
   }
 
   for(tries = 1; tries < 10; tries++) {
-    if(bind(s,(struct sockaddr *)&servaddr,sizeof(servaddr)) >= 0)
+    if (bind(s,(struct sockaddr *)&servaddr,sizeof(servaddr)) >= 0)
     { res = s; break; }
-    if(errno != EADDRINUSE) break;
+    if (errno != EADDRINUSE) break;
 
-    if(port != INPORT_ANY && port < 1024) {
+    if (port != INPORT_ANY && port < 1024) {
       PRIVS_RELINQUISH
       unblock_signals();
     }
     timer_sleep(tries);
-    if(port != INPORT_ANY && port < 1024) {
+    if (port != INPORT_ANY && port < 1024) {
       block_signals();
       PRIVS_ROOT
     }
@@ -379,7 +379,7 @@ int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port)
 
   save_errno = errno;
 
-  if(port != INPORT_ANY && port < 1024) {
+  if (port != INPORT_ANY && port < 1024) {
     PRIVS_RELINQUISH
     unblock_signals();
   }
@@ -402,12 +402,12 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
   server_rec *s;
   struct sockaddr_in servaddr;
   int res = 0, len, one = 1, hold_errno;
-  
+
   CHECK_INET_POOL;
-  
-  if((!servers || !servers->xas_list) && !main_server)
+
+  if ((!servers || !servers->xas_list) && !main_server)
     return NULL;
-  
+
   /* Build the accept IPs dynamically using the inet work pool,
    * once built, move into the conn struc.
    */
@@ -415,20 +415,20 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
   subpool = make_sub_pool(p);
   c = (conn_t *) pcalloc(subpool, sizeof(conn_t));
   c->pool = subpool;
-  
+
   if (servers && servers->xas_list) {
     for(s = (server_rec *) servers->xas_list; s; s = s->next)
-      if(s->ipaddr)
+      if (s->ipaddr)
         *((p_in_addr_t *) push_array(tmp)) = *s->ipaddr;
 
   } else
     *((p_in_addr_t *) push_array(tmp)) = *main_server->ipaddr;
-  
+
   c->local_port = port;
   c->iplist = copy_array(c->pool, tmp);
   c->niplist = c->iplist->nelts;
   c->rfd = c->wfd = -1;
-  
+
   /* If fd == -1, there is no currently open socket, so create one.
    */
   if (fd == -1) {
@@ -443,7 +443,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
      * the socket is created as root.  (Note: this "feature" seems to apply
      * to _all_ BSDs.)
      */
-    
+
 #if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
     defined(FREEBSD4) || defined(__OpenBSD__) || defined(__NetBSD__) || \
     defined(SYSV4_2MP)
@@ -471,7 +471,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     }
 # endif
 #endif
-    
+
     if (fd == -1) {
 
       /* On failure, destroy the connection and return NULL. */
@@ -482,26 +482,26 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
       destroy_pool(c->pool);
       return NULL;
     }
-    
+
     /* Allow address reuse. */
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void *) &one, sizeof(one));
-    
+
     memset(&servaddr, 0, sizeof(servaddr));
-    
+
     servaddr.sin_family = AF_INET;
-    
+
     if (bind_addr)
       memcpy(&servaddr.sin_addr, bind_addr, sizeof(servaddr.sin_addr));
     else
       servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    
+
     servaddr.sin_port = htons(port);
-    
+
     if (port != INPORT_ANY && port < 1024) {
       block_signals();
       PRIVS_ROOT
     }
-    
+
     /* According to one expert, the very nature of the FTP protocol,
      * and it's multiple data-connections creates problems with
      * "rapid-fire" connections (transfering lots of files) causing
@@ -522,20 +522,20 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
       if (res != -1 || errno != EADDRINUSE ||
 	 (port != INPORT_ANY && !retry_bind))
         break;
-      
+
       if (port != INPORT_ANY && port < 1024) {
         PRIVS_RELINQUISH
         unblock_signals();
       }
-      
+
       timer_sleep(1);
-      
+
       if (port != INPORT_ANY && port < 1024) {
         block_signals();
         PRIVS_ROOT
       }
     }
-    
+
     if (res == -1) {
       if (port != INPORT_ANY && port < 1024) {
         PRIVS_RELINQUISH
@@ -548,18 +548,18 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
         log_pri(PR_LOG_ERR, "Check the ServerType directive "
 	                 "to ensure you are configured correctly.");
       }
-      
+
       inet_errno = hold_errno;
       destroy_pool(c->pool);
       close(fd);
       return NULL;
     }
-    
+
     if (port != INPORT_ANY && port < 1024) {
       PRIVS_RELINQUISH
       unblock_signals();
     }
-    
+
     /* We use getsockname here because the caller might be binding
      * to INPORT_ANY (0), in which case our port number will be
      * dynamic.
@@ -575,10 +575,10 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
       c->local_port = ntohs(servaddr.sin_port);
     }
   }
-  
+
   c->listen_fd = fd;
   register_cleanup(c->pool, (void *) c, conn_cleanup_cb, conn_cleanup_cb);
-  
+
   return c;
 }
 
@@ -592,8 +592,8 @@ conn_t *inet_create_connection(pool *p, xaset_t *servers, int fd,
   /* This code is somewhat of a kludge, because error handling should
    * NOT occur in inet.c, it should be handled by the caller.
    */
-  
-  if(!c)
+
+  if (!c)
     end_login(1);
 
   return c;
@@ -613,15 +613,15 @@ conn_t *inet_create_connection_portrange(pool *p, xaset_t *servers,
 
   /* Make sure the temporary inet work pool exists. */
   CHECK_INET_POOL;
-  
+
   range_len = high_port - low_port + 1;
   range = (int*)pcalloc(inet_pool, (range_len*sizeof(int)));
   ports = (int*)pcalloc(inet_pool, (range_len*sizeof(int)));
-  
+
   index = range_len;
   while(index--)
     range[index] = low_port + index;
-  
+
   for(attempt = 3; attempt > 0 && !c; attempt--) {
     for(index = range_len - 1; index >= 0 && !c; index--) {
 
@@ -629,7 +629,7 @@ conn_t *inet_create_connection_portrange(pool *p, xaset_t *servers,
        * the order of the port numbers used.
        */
 
-      if(attempt == 3) {
+      if (attempt == 3) {
 	/* obtain a random index into the port array range
 	 */
 	random_index = (int) ((1.0 * index * rand()) / (RAND_MAX+1.0));
@@ -649,7 +649,7 @@ conn_t *inet_create_connection_portrange(pool *p, xaset_t *servers,
 
       c = inet_initialize_connection(p, servers, -1, bind_addr,
 				     ports[index], FALSE, FALSE);
-    
+
       if (!c && inet_errno != EADDRINUSE) {
         log_pri(PR_LOG_ERR, "inet_initialize_connection(): %s",
           strerror(inet_errno));
@@ -757,7 +757,7 @@ int inet_setoptions(pool *pool, conn_t *c, int rcvbuf, int sndbuf)
   int no_keep_alive = 0;
   int len,crcvbuf,csndbuf;
 
-  if(c->wfd != -1) {
+  if (c->wfd != -1) {
     setsockopt(c->wfd,SOL_SOCKET,SO_KEEPALIVE,(void*)&no_keep_alive,sizeof(int));
 
     /* Linux and "most" newer networking OSes probably use a highly
@@ -770,24 +770,24 @@ int inet_setoptions(pool *pool, conn_t *c, int rcvbuf, int sndbuf)
     len = sizeof(csndbuf);
     getsockopt(c->wfd,SOL_SOCKET,SO_SNDBUF,(void*)&csndbuf,&len);
 
-    if(sndbuf && sndbuf > csndbuf)
+    if (sndbuf && sndbuf > csndbuf)
       setsockopt(c->wfd,SOL_SOCKET,SO_SNDBUF,(void*)&sndbuf,sizeof(sndbuf));
 
     c->sndbuf = (sndbuf ? sndbuf : csndbuf);
   }
 
-  if(c->rfd != -1) {
+  if (c->rfd != -1) {
     setsockopt(c->rfd,SOL_SOCKET,SO_KEEPALIVE,(void*)&no_keep_alive,sizeof(int));
 
     len = sizeof(crcvbuf);
     getsockopt(c->rfd,SOL_SOCKET,SO_RCVBUF,(void*)&crcvbuf,&len);
 
-    if(rcvbuf && rcvbuf > crcvbuf)
+    if (rcvbuf && rcvbuf > crcvbuf)
       setsockopt(c->rfd,SOL_SOCKET,SO_RCVBUF,(void*)&rcvbuf,sizeof(rcvbuf));
 
     c->rcvbuf = (rcvbuf ? rcvbuf : crcvbuf);
   }
- 
+
   return 0;
 }
 
@@ -796,7 +796,7 @@ static
 void _set_oobinline(int fd)
 {
   int on = 1;
-  if(fd != -1)
+  if (fd != -1)
     setsockopt(fd, SOL_SOCKET, SO_OOBINLINE, (void*)&on, sizeof(on));
 }
 #endif
@@ -804,8 +804,8 @@ void _set_oobinline(int fd)
 #ifdef F_SETOWN
 static
 void _set_owner(int fd)
-{ 
-  if(fd != -1)
+{
+  if (fd != -1)
     fcntl(fd, F_SETOWN, getpid());
 }
 #endif
@@ -842,16 +842,16 @@ int inet_setnonblock(pool *pool, conn_t *c)
 
   errno = EBADF;		/* Default */
 
-  if(c->mode == CM_LISTEN) {
+  if (c->mode == CM_LISTEN) {
     flags = fcntl(c->listen_fd,F_GETFL);
     res = fcntl(c->listen_fd,F_SETFL,flags | O_NONBLOCK);
   } else {
-    if(c->rfd != -1) {
+    if (c->rfd != -1) {
       flags = fcntl(c->rfd,F_GETFL);
       res = fcntl(c->rfd,F_SETFL,flags | O_NONBLOCK);
     }
 
-    if(c->wfd != -1) {
+    if (c->wfd != -1) {
       flags = fcntl(c->wfd,F_GETFL);
       res = fcntl(c->wfd,F_GETFL,flags | O_NONBLOCK);
     }
@@ -867,16 +867,16 @@ int inet_setblock(pool *pool, conn_t *c)
 
   errno = EBADF;		/* Default */
 
-  if(c->mode == CM_LISTEN) {
+  if (c->mode == CM_LISTEN) {
     flags = fcntl(c->listen_fd,F_GETFL);
     res = fcntl(c->listen_fd,F_SETFL,flags & (U32BITS ^ O_NONBLOCK));
   } else {
-    if(c->rfd != -1) {
+    if (c->rfd != -1) {
       flags = fcntl(c->rfd,F_GETFL);
       res = fcntl(c->rfd,F_SETFL,flags & (U32BITS ^ O_NONBLOCK));
     }
 
-    if(c->wfd != -1) {
+    if (c->wfd != -1) {
       flags = fcntl(c->wfd,F_GETFL);
       res = fcntl(c->wfd,F_SETFL,flags & (U32BITS ^ O_NONBLOCK));
     }
@@ -891,14 +891,14 @@ int inet_setblock(pool *pool, conn_t *c)
 
 int inet_listen(pool *pool, conn_t *c, int backlog)
 {
-  if(!c || c->mode == CM_LISTEN)
+  if (!c || c->mode == CM_LISTEN)
     return -1;
 
   while (1)
     if (listen(c->listen_fd, backlog) == -1) {
       if (errno == EINTR) {
         pr_handle_signals();
-        continue; 
+        continue;
       }
 
       log_pri(PR_LOG_ERR, "listen() failed in inet_listen(): %s",
@@ -907,8 +907,8 @@ int inet_listen(pool *pool, conn_t *c, int backlog)
 
     } else
       break;
-  
-  c->mode = CM_LISTEN;  
+
+  c->mode = CM_LISTEN;
   return 0;
 }
 
@@ -977,8 +977,8 @@ int inet_connect_nowait(pool *pool, conn_t *c, p_in_addr_t *addr, int port) {
   remaddr.sin_port = htons(port);
 
   c->mode = CM_CONNECT;
-  if(connect(c->listen_fd,(struct sockaddr*)&remaddr,sizeof(remaddr)) == -1) {
-    if(errno != EINPROGRESS && errno != EALREADY) {
+  if (connect(c->listen_fd,(struct sockaddr*)&remaddr,sizeof(remaddr)) == -1) {
+    if (errno != EINPROGRESS && errno != EALREADY) {
       c->mode = CM_ERROR;
       c->xerrno = errno;
       return -1;
@@ -1010,12 +1010,12 @@ int inet_accept_nowait(pool *pool, conn_t *c)
   struct sockaddr_in servaddr;
   int len = sizeof(servaddr);
 
-  if(c->mode == CM_LISTEN)
+  if (c->mode == CM_LISTEN)
     inet_setnonblock(c->pool,c);
 
   c->mode = CM_ACCEPT;
-  if((fd = accept(c->listen_fd,(struct sockaddr*)&servaddr,&len)) == -1) {
-    if(errno != EWOULDBLOCK) {
+  if ((fd = accept(c->listen_fd,(struct sockaddr*)&servaddr,&len)) == -1) {
+    if (errno != EWOULDBLOCK) {
       c->mode = CM_ERROR;
       c->xerrno = errno;
       return -1;
@@ -1045,12 +1045,12 @@ conn_t *inet_accept(pool *pool, conn_t *d, conn_t *c, int rfd, int wfd,
   int newfd = -1;
   struct sockaddr_in addr;
   int addrlen = sizeof(addr);
-  
+
   d->mode = CM_ACCEPT;
 
   allow_foreign_addr = get_param_ptr(TOPLEVEL_CONF,
     "AllowForeignAddress", FALSE);
-  
+
   for(;;) {
     if ((newfd = accept(d->listen_fd, (struct sockaddr *) &addr,
         &addrlen)) != -1) {
@@ -1071,7 +1071,7 @@ conn_t *inet_accept(pool *pool, conn_t *d, conn_t *c, int rfd, int wfd,
       d->mode = CM_ERROR;
       d->xerrno = errno;
     }
-    
+
     break;
   }
 
@@ -1081,23 +1081,23 @@ conn_t *inet_accept(pool *pool, conn_t *d, conn_t *c, int rfd, int wfd,
 int inet_get_conn_info(conn_t *c, int fd) {
   static struct sockaddr_in servaddr;
   int len = sizeof(servaddr);
-  
+
   /* Sanity check.
    */
   if (fd < 0) {
     errno = EBADF;
     return -1;
   }
- 
+
   if (getsockname(fd, (struct sockaddr *) &servaddr, &len) != -1) {
     if (!c->local_ipaddr)
-      c->local_ipaddr = (p_in_addr_t *) pcalloc(c->pool, sizeof(p_in_addr_t));     
+      c->local_ipaddr = (p_in_addr_t *) pcalloc(c->pool, sizeof(p_in_addr_t));
     *c->local_ipaddr = servaddr.sin_addr;
     c->local_port = ntohs(servaddr.sin_port);
 
   } else
     return -1;
-  
+
   len = sizeof(servaddr);
 
   if (getpeername(fd, (struct sockaddr *) &servaddr, &len) != -1) {
@@ -1128,11 +1128,11 @@ conn_t *inet_associate(pool *pool, conn_t *c, p_in_addr_t *addr,
   rfd = PR_NETIO_FD(in);
   wfd = PR_NETIO_FD(out);
 
-  if(getsockopt(rfd,SOL_SOCKET,SO_TYPE,(void*)&socktype,&socktype_len) == -1 ||
+  if (getsockopt(rfd,SOL_SOCKET,SO_TYPE,(void*)&socktype,&socktype_len) == -1 ||
      socktype != SOCK_STREAM)
     return NULL;
 
-  if(getsockopt(wfd,SOL_SOCKET,SO_TYPE,(void*)&socktype,&socktype_len) == -1 ||
+  if (getsockopt(wfd,SOL_SOCKET,SO_TYPE,(void*)&socktype,&socktype_len) == -1 ||
      socktype != SOCK_STREAM)
     return NULL;
 
@@ -1149,23 +1149,23 @@ conn_t *inet_associate(pool *pool, conn_t *c, p_in_addr_t *addr,
 
   /* Get the remote address */
 
-  if(addr) {
-    if(!res->remote_ipaddr)
+  if (addr) {
+    if (!res->remote_ipaddr)
       res->remote_ipaddr = (p_in_addr_t*)palloc(res->pool,sizeof(p_in_addr_t));
     *res->remote_ipaddr = *addr;
   }
 
-  if(resolve && res->remote_ipaddr)
+  if (resolve && res->remote_ipaddr)
     res->remote_name = inet_getname(res->pool,res->remote_ipaddr);
 
-  if(!res->remote_name)
+  if (!res->remote_name)
     res->remote_name = pstrdup(res->pool,inet_ntoa(*res->remote_ipaddr));
 
   inet_setoptions(res->pool,res,0,0);
   /* inet_setnonblock(res->pool,res); */
   return res;
 }
-    
+
 /*
  * Open streams for a new socket, if rfd and wfd != -1,
  * two new fds are duped to the respective read/write fds.
@@ -1260,10 +1260,10 @@ conn_t *inet_openrw(pool *pool, conn_t *c, p_in_addr_t *addr,
 
 void inet_resolve_ip(pool *pool, conn_t *c)
 {
-  if(c->remote_ipaddr) {
+  if (c->remote_ipaddr) {
     c->remote_name = inet_getname(c->pool,c->remote_ipaddr);
 
-    if(!c->remote_name)
+    if (!c->remote_name)
       c->remote_name = pstrdup(c->pool,inet_ntoa(*c->remote_ipaddr));
 
   }
@@ -1277,7 +1277,7 @@ void init_inet(void)
   setprotoent(FALSE);
 #endif
 
-  if((pr = getprotobyname("tcp")) != NULL)
+  if ((pr = getprotobyname("tcp")) != NULL)
     tcp_proto = pr->p_proto;
 
 #ifdef HAVE_ENDPROTOENT

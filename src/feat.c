@@ -28,7 +28,7 @@
 
 #include "conf.h"
 
-static pool *feat_pool = NULL; 
+static pool *feat_pool = NULL;
 static array_header *feat_list = NULL;
 static unsigned int feati = 0U;
 

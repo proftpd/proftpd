@@ -3,7 +3,7 @@
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  * Copyright (c) 2001, 2002 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.137 2002-12-07 21:13:03 castaglia Exp $
+ * $Id: main.c,v 1.138 2002-12-07 21:45:44 jwm Exp $
  */
 
 #include "conf.h"
@@ -172,7 +172,7 @@ static int semaphore_fds(fd_set *rfd, int max_fd) {
 	  max_fd = p->sempipe;
       }
     }
-  
+
   return max_fd;
 }
 
@@ -181,35 +181,35 @@ static void init_set_proc_title(int argc, char *argv[], char *envp[]) {
   extern char *__progname, *__progname_full;
 #endif /* HAVE___PROGNAME */
   extern char **environ;
-  
+
   register int i, envpsize;
   char **p;
-  
+
   /* Move the environment so setproctitle can use the space.
    */
   for (i = envpsize = 0; envp[i] != NULL; i++)
     envpsize += strlen(envp[i]) + 1;
- 
+
   if ((p = (char **)malloc((i + 1) * sizeof(char *))) != NULL) {
     environ = p;
 
     for (i = 0; envp[i] != NULL; i++)
       if ((environ[i] = malloc(strlen(envp[i]) + 1)) != NULL)
         strcpy(environ[i], envp[i]);
-    
+
     environ[i] = NULL;
   }
-  
+
   Argv = argv;
-  
+
   for (i = 0; i < argc; i++)
     if (!i || (LastArgv + 1 == argv[i]))
       LastArgv = argv[i] + strlen(argv[i]);
-  
+
   for (i = 0; envp[i] != NULL; i++)
     if ((LastArgv + 1) == envp[i])
       LastArgv = envp[i] + strlen(envp[i]);
-  
+
 #ifdef HAVE___PROGNAME
   /* Set the __progname and __progname_full variables so glibc and company
    * don't go nuts.
@@ -217,12 +217,12 @@ static void init_set_proc_title(int argc, char *argv[], char *envp[]) {
   __progname      = strdup("proftpd");
   __progname_full = strdup(argv[0]);
 #endif /* HAVE___PROGNAME */
-}    
+}
 
 static void set_proc_title(const char *fmt, ...) {
   va_list msg;
   static char statbuf[BUFSIZ];
-  
+
 #ifndef HAVE_SETPROCTITLE
 #if PF_ARGV_TYPE == PF_ARGV_PSTAT
    union pstun pst;
@@ -258,7 +258,7 @@ static void set_proc_title(const char *fmt, ...) {
 #endif /* HAVE_SETPROCTITLE */
 
   va_end(msg);
-  
+
 #ifdef HAVE_SETPROCTITLE
   return;
 #else
@@ -276,7 +276,7 @@ static void set_proc_title(const char *fmt, ...) {
    */
   snprintf(Argv[0], maxlen, "%s", statbuf);
   p = &Argv[0][i];
-  
+
   while(p < LastArgv)
     *p++ = '\0';
   Argv[1] = NULL;
@@ -294,7 +294,7 @@ static void set_proc_title(const char *fmt, ...) {
 
 #endif /* HAVE_SETPROCTITLE */
 }
-  
+
 void session_set_idle(void) {
 
   pr_scoreboard_update_entry(getpid(),
@@ -314,7 +314,7 @@ static void send_response_list(response_t **head)
   for (t = *head; t; t=t->next) {
     if (ml) {
       /* look for end of multiline */
-      if(!t->next || (t->num && strcmp(t->num, last_numeric) != 0)) {
+      if (!t->next || (t->num && strcmp(t->num, last_numeric) != 0)) {
         pr_netio_printf(session.c->outstrm, "%s %s\r\n", last_numeric, t->msg);
         ml = 0;
 
@@ -349,13 +349,13 @@ void add_response_err(const char *numeric, const char *fmt, ...)
   va_start(msg,fmt);
   vsnprintf(sbuf, sizeof(sbuf), fmt, msg);
   va_end(msg);
-  
+
   sbuf[sizeof(sbuf) - 1] = '\0';
-  
+
   t = (response_t*) pcalloc(resp_pool, sizeof(response_t));
   t->num = (numeric ? pstrdup(resp_pool, numeric) : NULL);
   t->msg = pstrdup(resp_pool, sbuf);
-  
+
   for(head = &resp_err_list; *head && (!numeric || !(*head)->num ||
       strcmp((*head)->num,numeric) <= 0); head = &(*head)->next) ;
 
@@ -372,11 +372,11 @@ void add_response(const char *numeric, const char *fmt, ...) {
   va_end(msg);
 
   sbuf[sizeof(sbuf) - 1] = '\0';
-  
+
   t = (response_t*) pcalloc(resp_pool, sizeof(response_t));
   t->num = (numeric ? pstrdup(resp_pool, numeric) : NULL);
   t->msg = pstrdup(resp_pool, sbuf);
-  
+
   for(head = &resp_list; *head && (!numeric || !(*head)->num ||
       strcmp((*head)->num,numeric) <= 0); head = &(*head)->next) ;
 
@@ -402,13 +402,13 @@ void send_response_async(const char *resp_numeric, const char *fmt, ...) {
 
   sstrncpy(buf, resp_numeric, sizeof(buf));
   sstrcat(buf, " ", sizeof(buf));
-  
+
   maxlen = sizeof(buf) - strlen(buf) - 1;
-  
+
   va_start(msg, fmt);
   vsnprintf(buf + strlen(buf), maxlen, fmt, msg);
   va_end(msg);
-  
+
   buf[sizeof(buf) - 1] = '\0';
   sstrcat(buf, "\r\n", sizeof(buf));
 
@@ -421,7 +421,7 @@ void send_response(const char *resp_numeric, const char *fmt, ...) {
   va_start(msg,fmt);
   vsnprintf(sbuf, sizeof(sbuf), fmt, msg);
   va_end(msg);
-  
+
   sbuf[sizeof(sbuf) - 1] = '\0';
   pr_netio_printf(session.c->outstrm, "%s %s\r\n", resp_numeric, sbuf);
 }
@@ -452,7 +452,7 @@ void send_response_ml(const char *fmt, ...) {
 
 void send_response_ml_end(const char *fmt, ...) {
   va_list msg;
- 
+
   va_start(msg,fmt);
   vsnprintf(sbuf, sizeof(sbuf), fmt, msg);
   va_end(msg);
@@ -489,15 +489,15 @@ static void end_login_noexit(void) {
   run_exit_handlers();
 
   /* If session.user is set, we have a valid login */
-  if(session.user) {
+  if (session.user) {
 #if (defined(BSD) && (BSD >= 199103))
     snprintf(sbuf, sizeof(sbuf), "ftp%ld",(long)getpid());
 #else
     snprintf(sbuf, sizeof(sbuf), "ftpd%d",(int)getpid());
 #endif
     sbuf[sizeof(sbuf) - 1] = '\0';
-    
-    if(session.wtmp_log)
+
+    if (session.wtmp_log)
       log_wtmp(sbuf,"",
         (session.c && session.c->remote_name ? session.c->remote_name : ""),
         (session.c && session.c->remote_ipaddr ? session.c->remote_ipaddr : NULL));
@@ -525,9 +525,9 @@ void end_login(int exitcode) {
 
 void session_exit(int pri, void *lv, int exitval, void *dummy) {
   char *log = (char *) lv;
-  
+
   log_pri(pri, "%s", log);
-  
+
   if (is_standalone && is_master) {
     log_pri(PR_LOG_NOTICE, "ProFTPD " PROFTPD_VERSION_TEXT
       " standalone mode SHUTDOWN");
@@ -538,7 +538,7 @@ void session_exit(int pri, void *lv, int exitval, void *dummy) {
       unlink(PidPath);
     PRIVS_RELINQUISH
   }
-  
+
   end_login(exitval);
 }
 
@@ -609,11 +609,11 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
   send_error = (cmd_type == PRE_CMD || cmd_type == CMD ||
     cmd_type == POST_CMD_ERR);
 
-  if(!match) {
+  if (!match) {
     match = cmd->argv[0];
     index_cache = &cmd->symtable_index;
   } else {
-    if(last_match != match) {
+    if (last_match != match) {
       match_index_cache = -1;
       last_match = match;
     }
@@ -623,8 +623,8 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
 
   c = mod_find_cmd_symbol(match,index_cache,NULL);
   while(c && !success) {
-    if(c->cmd_type == cmd_type) {
-      if(c->group)
+    if (c->cmd_type == cmd_type) {
+      if (c->group)
         cmd->group = pstrdup(cmd->pool,c->group);
 
       if (c->requires_auth && cmd_auth_chk && !cmd_auth_chk(cmd))
@@ -654,8 +654,8 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
       log_debug(DEBUG4, "dispatching %s command '%s' to mod_%s",
         (cmd_type == PRE_CMD ? "PRE_CMD" :
          cmd_type == CMD ? "CMD" :
-         cmd_type == POST_CMD ? "POST_CMD" : 
-         cmd_type == POST_CMD_ERR ? "POST_CMD_ERR" : 
+         cmd_type == POST_CMD ? "POST_CMD" :
+         cmd_type == POST_CMD_ERR ? "POST_CMD_ERR" :
          cmd_type == LOG_CMD ? "LOG_CMD" :
          cmd_type == LOG_CMD_ERR ? "LOG_CMD_ERR" :
          "(unknown)"),
@@ -668,23 +668,23 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
        * this is only necessary for perfomance reasons in 1.1/1.2
        */
 
-      if(!c->group || strcmp(c->group,G_WRITE) != 0)
+      if (!c->group || strcmp(c->group,G_WRITE) != 0)
         kludge_disable_umask();
       mr = call_module_cmd(c->m,c->handler,cmd);
       kludge_enable_umask();
 
-      if(MODRET_ISHANDLED(mr))
+      if (MODRET_ISHANDLED(mr))
         success = 1;
-      else if(MODRET_ISERROR(mr)) {
-        if(cmd_type == POST_CMD || cmd_type == LOG_CMD || 
+      else if (MODRET_ISERROR(mr)) {
+        if (cmd_type == POST_CMD || cmd_type == LOG_CMD ||
                                    cmd_type == LOG_CMD_ERR) {
           if (MODRET_ERRMSG(mr))
             log_pri(PR_LOG_NOTICE, "%s", MODRET_ERRMSG(mr));
 
-        } else if(send_error) {
-          if(MODRET_ERRNUM(mr) && MODRET_ERRMSG(mr))
+        } else if (send_error) {
+          if (MODRET_ERRNUM(mr) && MODRET_ERRMSG(mr))
             add_response_err(MODRET_ERRNUM(mr),"%s",MODRET_ERRMSG(mr));
-          else if(MODRET_ERRMSG(mr))
+          else if (MODRET_ERRMSG(mr))
             send_response_raw("%s",MODRET_ERRMSG(mr));
         }
 
@@ -697,11 +697,11 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
       destroy_pool(cmd->tmp_pool);
     }
 
-    if(!success)
+    if (!success)
       c = mod_find_cmd_symbol(match,index_cache,c);
   }
 
-  if(!c && !success && validate) {
+  if (!c && !success && validate) {
     add_response_err(R_500, "%s not understood.", cmd->argv[0]);
     success = -1;
   }
@@ -716,7 +716,7 @@ static void dispatch_cmd(cmd_rec *cmd) {
   cmd->server = main_server;
   resp_list = resp_err_list = NULL;
   resp_pool = cmd->pool;
-  
+
   for (cp = cmd->argv[0]; *cp; cp++)
     *cp = toupper(*cp);
 
@@ -789,29 +789,29 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf) {
 
   /* Nothing there...bail out.
    */
-  if((wrd = get_word(&cp)) == NULL)
+  if ((wrd = get_word(&cp)) == NULL)
     return NULL;
 
   newpool = make_sub_pool(p);
   newcmd = (cmd_rec *) pcalloc(newpool,sizeof(cmd_rec));
   newcmd->pool = newpool;
   newcmd->symtable_index = -1;
-    
+
   tarr = make_array(newpool, 2, sizeof(char *));
-  
+
   *((char **) push_array(tarr)) = pstrdup(newpool, wrd);
   newcmd->argc++;
   newcmd->arg = pstrdup(newpool, cp);
-  
+
   while((wrd = get_word(&cp)) != NULL) {
     *((char **) push_array(tarr)) = pstrdup(newpool, wrd);
     newcmd->argc++;
   }
-  
+
   *((char **) push_array(tarr)) = NULL;
-  
+
   newcmd->argv = (char **) tarr->elts;
-  
+
   return newcmd;
 }
 
@@ -892,7 +892,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
       if (PR_NETIO_ERRNO(session.c->instrm) == EINTR)
         /* Simple interrupted syscall */
 	continue;
-      
+
       /* Otherwise, EOF */
       log_pri(PR_LOG_INFO, "FTP session closed.");
       end_login(0);
@@ -915,20 +915,20 @@ static void cmd_loop(server_rec *server, conn_t *c) {
 	cmd_buf_size = 512;
       }
     }
-    
+
     buf[cmd_buf_size - 1] = '\0';
     i = strlen(buf);
 
-    if(i && (buf[i-1] == '\n' || buf[i-1] == '\r')) {
+    if (i && (buf[i-1] == '\n' || buf[i-1] == '\r')) {
       buf[i-1] = '\0'; i--;
-      if(i && (buf[i-1] == '\n' || buf[i-1] =='\r'))
+      if (i && (buf[i-1] == '\n' || buf[i-1] =='\r'))
         buf[i-1] = '\0';
     }
 
     cp = buf;
-    if(*cp == '\r') cp++;
+    if (*cp == '\r') cp++;
 
-    if(*cp) {
+    if (*cp) {
       cmd_rec *cmd;
 
       cmd = make_ftp_cmd(permanent_pool, cp);
@@ -972,7 +972,7 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     if ((max_fd = semaphore_fds(&child_fds, max_fd)) > -1) {
       log_pri(PR_LOG_NOTICE, "waiting for child processes to complete "
         "initialization");
-      
+
       while (max_fd != -1) {
 	int i;
 	pidrec_t *cp;
@@ -997,7 +997,7 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     /* Run through the list of registered rehash callbacks. */
     for (rh = rehash_list; rh; rh = rh->next)
       rh->rehash(rh->data);
-   
+
     init_log();
     init_config();
     init_conf_stacks();
@@ -1014,7 +1014,7 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
 
     /* Set the (possibly new) resource limits. */
     set_daemon_rlimits();
-    
+
     fixup_servers();
 
     /* Recreate the listen connection.  Can an inetd-spawned server accept
@@ -1033,13 +1033,13 @@ static int _dup_low_fd(int fd)
   int i,need_close[3] = {-1, -1, -1};
 
   for(i = 0; i < 3; i++)
-    if(fd == i) {
+    if (fd == i) {
       fd = dup(fd);
       need_close[i] = 1;
     }
 
   for(i = 0; i < 3; i++)
-    if(need_close[i] > -1)
+    if (need_close[i] > -1)
       close(i);
 
   return fd;
@@ -1083,7 +1083,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   unsigned char *ident_lookups = NULL;
   int i, rev;
   int sempipe[2] = { -1, -1 };
- 
+
 #ifndef DEBUG_NOFORK
   pid_t pid;
   sigset_t sigset;
@@ -1109,9 +1109,9 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
      * < 2 (stdio,stdout,stderr) as this will cause problems later.
      */
 
-    if(sempipe[1] < 3)
+    if (sempipe[1] < 3)
       sempipe[1] = _dup_low_fd(sempipe[1]);
-    
+
     /* We block SIGCHLD to prevent a race condition if the child
      * dies before we can record it's pid.  Also block SIGTERM to
      * prevent sig_terminate() from examining the child list
@@ -1187,13 +1187,13 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
       return;
     }
   }
-  
+
   /* There would appear to be no useful purpose behind setting the process
    * group of the newly forked child.  In daemon/inetd mode, we should have no
    * controlling tty and either have the process group of the parent or of
    * inetd.  In non-daemon mode (-n), doing this may cause SIGTTOU to be
    * raised on output to the terminal (stderr logging).
-   * 
+   *
    * #ifdef HAVE_SETPGID
    *   setpgid(0,getpid());
    * #else
@@ -1205,7 +1205,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
    * #endif
    *
    */
-  
+
   /* Reseed pseudo-randoms */
   srand(time(NULL));
 
@@ -1235,7 +1235,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
    */
   conn = inet_openrw(permanent_pool, l, NULL, PR_NETIO_STRM_CTRL, fd,
     STDIN_FILENO, STDOUT_FILENO, FALSE);
-  
+
   /* Now do the permanent syslog open
    */
   block_signals();
@@ -1264,21 +1264,21 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   s = main_server;
   while (s) {
     s_saved = s->next;
-    if(s != serv) {
-      if(s->listen && s->listen != l) {
+    if (s != serv) {
+      if (s->listen && s->listen != l) {
 	/* If our former listen socket was stdin or stdout (0 or 1),
          * inet_close() will attempt to close it, and in the process
          * close our read/write sockets for this connection.
          */
-        if(s->listen->listen_fd == conn->rfd ||
+        if (s->listen->listen_fd == conn->rfd ||
            s->listen->listen_fd == conn->wfd)
           s->listen->listen_fd = -1;
         else
           inet_close(s->pool,s->listen);
       }
 
-      if(s->listen) {
-        if(s->listen->listen_fd == conn->rfd ||
+      if (s->listen) {
+        if (s->listen->listen_fd == conn->rfd ||
            s->listen->listen_fd == conn->wfd)
              s->listen->listen_fd = -1;
       }
@@ -1291,7 +1291,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 #endif
 
   main_server = serv;
-    
+
   session.pool = permanent_pool;
   session.c = conn;
   session.data_port = conn->remote_port - 1;
@@ -1303,7 +1303,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
    * former listen sockets).
    */
   close(sempipe[1]);
-  
+
   /* Now perform reverse dns */
   if (ServerUseReverseDNS) {
     rev = inet_reverse_dns(permanent_pool, ServerUseReverseDNS);
@@ -1316,7 +1316,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     time_t now;
 
     time(&now);
-    if(!deny || deny <= now) {
+    if (!deny || deny <= now) {
       config_rec *c = NULL;
       char *reason = NULL;
       char *serveraddress = main_server->ServerAddress;
@@ -1345,13 +1345,13 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
                reason, session.c->remote_name,
                inet_ntoa(*session.c->remote_ipaddr));
 
-      send_response(R_500, 
+      send_response(R_500,
 		    "FTP server shut down (%s) -- please try again later.",
-		    reason); 
+		    reason);
       exit(0);
     }
   }
-  
+
   /* If no server is configured to handle the addr the user is
    * connected to, drop them.
    */
@@ -1361,9 +1361,9 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 		  inet_getname(conn->pool, conn->local_ipaddr));
     exit(0);
   }
-  
-  if(serv->listen) {
-    if(serv->listen->listen_fd == conn->rfd ||
+
+  if (serv->listen) {
+    if (serv->listen->listen_fd == conn->rfd ||
         serv->listen->listen_fd == conn->wfd)
           serv->listen->listen_fd = -1;
 
@@ -1404,7 +1404,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
           conn->remote_name)) != NULL)
         log_debug(DEBUG2, "FTP session requested from class '%s'",
           session.class->name);
-      else 
+      else
         log_debug(DEBUG2, "FTP session requested from unknown class");
     }
   }
@@ -1431,7 +1431,7 @@ static void disc_children(void) {
   sigset_t sigset;
   pidrec_t *cp;
 
-  if(disc && disc <= time(NULL) && child_list) {
+  if (disc && disc <= time(NULL) && child_list) {
     sigemptyset(&sigset);
     sigaddset(&sigset,SIGTERM);
     sigaddset(&sigset,SIGCHLD);
@@ -1472,10 +1472,10 @@ static void server_loop(void) {
 
     /* Monitor children pipes */
     max_fd = semaphore_fds(&listen_fds, max_fd);
-    
+
     /* Check for ftp shutdown message file */
     switch (check_shutmsg(&shut, &deny, &disc, shutmsg, sizeof(shutmsg))) {
-    case 1: if(!shutdownp) disc_children(); shutdownp = 1; break;
+    case 1: if (!shutdownp) disc_children(); shutdownp = 1; break;
     case 0: shutdownp = 0; deny = disc = (time_t)0; break;
     }
 
@@ -1501,7 +1501,7 @@ static void server_loop(void) {
        * refused in the future.
        */
       time_t now = time(NULL);
-      
+
       if (difftime(deny, now) < 0.0) {
         log_pri(PR_LOG_ERR, SHUTMSG_PATH " present: all incoming connections "
           "will be refused.");
@@ -1511,7 +1511,7 @@ static void server_loop(void) {
           "will be denied starting %s", CHOP(ctime(&deny)));
       }
     }
-    
+
     running = 1;
 
     i = select(max_fd + 1, &listen_fds, NULL, NULL, &tv);
@@ -1540,7 +1540,7 @@ static void server_loop(void) {
            * and recover its resources
            */
           if (cp->dead) {
-	    if(cp->sempipe != -1)
+	    if (cp->sempipe != -1)
 	      close(cp->sempipe);
             xaset_remove(child_list, (xasetmember_t *) cp);
             destroy_pool(cp->pool);
@@ -1579,12 +1579,12 @@ static void server_loop(void) {
 
     if (i == 0)
       continue;
-  
+
     /* Reset the connection counter.  Take into account this current
      * connection, which does not (yet) have an entry in the child list.
      */
     nconnects = 1UL;
- 
+
     /* See if child semaphore pipes have signaled */
     if (child_list) {
       pidrec_t *cp = NULL;
@@ -1782,12 +1782,12 @@ static RETSIGTYPE sig_child(int signo) {
 static char *_prepare_core(void)
 {
   static char dir[256];
-  
+
   snprintf(dir, sizeof(dir), "%s/proftpd-core-%ld", CORE_DIR, getpid());
-  
+
   if (mkdir(dir, 0700) != -1)
     chdir(dir);
-  
+
   return dir;
 }
 #endif /* DEBUG_CORE */
@@ -1800,21 +1800,21 @@ static RETSIGTYPE sig_abort(int signo) {
 static void handle_abort(void) {
 
 #ifdef DEBUG_CORE
-  if(abort_core)
+  if (abort_core)
     log_pri(PR_LOG_NOTICE,
 	    "ProFTPD received SIGABRT signal, generating core file in %s",
 	    _prepare_core());
   else
 #endif /* DEBUG_CORE */
     log_pri(PR_LOG_NOTICE, "ProFTPD received SIGABRT signal, no core dump.");
-  
+
   end_login_noexit();
   abort();
-}  
+}
 
 #ifdef DEBUG_CORE
 static void _internal_abort(void) {
-  if(abort_core) {
+  if (abort_core) {
     log_pri(PR_LOG_NOTICE, "core file dumped to %s", _prepare_core());
     signal(SIGABRT,SIG_DFL);
     end_login_noexit();
@@ -1839,7 +1839,7 @@ static RETSIGTYPE sig_terminate(int signo) {
 
     /* Restore the default signal handler. */
     signal(SIGSEGV, SIG_DFL);
-  
+
   } else if (signo == SIGTERM)
     recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
 
@@ -1998,7 +1998,7 @@ static void install_signal_handlers(void) {
 #endif
   sigaddset(&sigset,SIGHUP);
   sigaddset(&sigset,SIGUSR2);
-  
+
   signal(SIGCHLD,sig_child);
   signal(SIGHUP,sig_rehash);
   signal(SIGUSR2,sig_debug);
@@ -2063,7 +2063,7 @@ void set_daemon_rlimits(void) {
 #ifdef RLIMIT_CPU
   while (c) {
     /* Does this limit apply to the daemon? */
-    if (c->argv[1] == NULL || !strcmp(c->argv[1], "daemon")) { 
+    if (c->argv[1] == NULL || !strcmp(c->argv[1], "daemon")) {
       struct rlimit *cpu_rlimit = (struct rlimit *) c->argv[0];
 
       PRIVS_ROOT
@@ -2087,7 +2087,7 @@ void set_daemon_rlimits(void) {
 #if defined(RLIMIT_AS) || defined(RLIMIT_DATA) || defined(RLIMIT_VMEM)
   while (c) {
     /* Does this limit apply to the daemon? */
-    if (c->argv[1] == NULL || !strcmp(c->argv[1], "daemon")) {   
+    if (c->argv[1] == NULL || !strcmp(c->argv[1], "daemon")) {
       struct rlimit *memory_rlimit = (struct rlimit *) c->argv[0];
 
       PRIVS_ROOT
@@ -2126,7 +2126,7 @@ void set_daemon_rlimits(void) {
 #if defined(RLIMIT_NOFILE) || defined(RLIMIT_OFILE)
   while (c) {
     /* Does this limit apply to the daemon? */
-    if (c->argv[1] == NULL || !strcmp(c->argv[1], "daemon")) {   
+    if (c->argv[1] == NULL || !strcmp(c->argv[1], "daemon")) {
       struct rlimit *nofile_rlimit = (struct rlimit *) c->argv[0];
 
       PRIVS_ROOT
@@ -2164,7 +2164,7 @@ void set_session_rlimits(void) {
 #ifdef RLIMIT_CPU
   while (c) {
     /* Does this limit apply to the session? */
-    if (c->argv[1] == NULL || !strcmp(c->argv[1], "session")) {   
+    if (c->argv[1] == NULL || !strcmp(c->argv[1], "session")) {
       struct rlimit *cpu_rlimit = (struct rlimit *) c->argv[0];
 
       PRIVS_ROOT
@@ -2188,7 +2188,7 @@ void set_session_rlimits(void) {
 #if defined(RLIMIT_AS) || defined(RLIMIT_DATA) || defined(RLIMIT_VMEM)
   while (c) {
     /* Does this limit apply to the session? */
-    if (c->argv[1] == NULL || !strcmp(c->argv[1], "session")) {  
+    if (c->argv[1] == NULL || !strcmp(c->argv[1], "session")) {
       struct rlimit *memory_rlimit = (struct rlimit *) c->argv[0];
 
       PRIVS_ROOT
@@ -2227,7 +2227,7 @@ void set_session_rlimits(void) {
 #if defined(RLIMIT_NOFILE) || defined(RLIMIT_OFILE)
   while (c) {
     /* Does this limit apply to the session? */
-    if (c->argv[1] == NULL || !strcmp(c->argv[1], "session")) {  
+    if (c->argv[1] == NULL || !strcmp(c->argv[1], "session")) {
       struct rlimit *nofile_rlimit = (struct rlimit *) c->argv[0];
 
       PRIVS_ROOT
@@ -2258,11 +2258,11 @@ void set_session_rlimits(void) {
 
 static void write_pid(void) {
   FILE *pidf = NULL;
-  
+
   PidPath = get_param_ptr(main_server->conf, "PidFile", FALSE);
   if (!PidPath || !*PidPath)
     PidPath = PID_FILE_PATH;
-  
+
   PRIVS_ROOT
   if ((pidf = fopen(PidPath, "w")) == NULL) {
     PRIVS_RELINQUISH
@@ -2270,12 +2270,12 @@ static void write_pid(void) {
     exit(1);
   }
   PRIVS_RELINQUISH
-  
+
   fprintf(pidf, "%lu\n", (unsigned long) getpid());
   fclose(pidf);
   pidf = NULL;
 }
-  
+
 static void daemonize(void) {
 #ifndef HAVE_SETSID
   int ttyfd;
@@ -2290,22 +2290,22 @@ static void daemonize(void) {
   }
 
 #ifdef HAVE_SETSID
-  /* setsid() is the preferred way to disassociate from the 
+  /* setsid() is the preferred way to disassociate from the
    * controlling terminal
    */
   setsid();
 #else
   /* Open /dev/tty to access our controlling tty (if any) */
-  if( (ttyfd = open("/dev/tty",O_RDWR)) != -1)
+  if ( (ttyfd = open("/dev/tty",O_RDWR)) != -1)
   {
-    if(ioctl(ttyfd,TIOCNOTTY,NULL) == -1) {
+    if (ioctl(ttyfd,TIOCNOTTY,NULL) == -1) {
       perror("ioctl"); exit(1);
     }
 
     close(ttyfd);
   }
 #endif /* HAVE_SETSID */
-  
+
   /* Close the three big boys */
   close(fileno(stdin));
   close(fileno(stdout));
@@ -2484,13 +2484,13 @@ static void show_usage(int exit_code) {
 #endif /* HAVE_GETOPT_LONG */
     printf("    %s\n", h->desc);
   }
-  
+
   exit(exit_code);
 }
 
 int main(int argc, char *argv[], char **envp) {
   int socketp, optc;
-  mode_t *main_umask = NULL; 
+  mode_t *main_umask = NULL;
   int check_config_syntax = 0;
   int show_version = 0;
   struct sockaddr peer;
@@ -2514,14 +2514,14 @@ int main(int argc, char *argv[], char **envp) {
   /* Redirect stderr to somewhere appropriate.
    * Ideally, this would be syslog, but alas...
    */
-  if((logfd = open(RUN_DIR "/proftpd-memory.log",
+  if ((logfd = open(RUN_DIR "/proftpd-memory.log",
 		   O_WRONLY | O_CREAT | O_APPEND, 0644))< 0) {
 	log_pri(PR_LOG_ERR, "Error opening error logfile: %s", strerror(errno));
 	exit(1);
   }
 
   close(fileno(stderr));
-  if(dup2(logfd, fileno(stderr)) == -1) {
+  if (dup2(logfd, fileno(stderr)) == -1) {
 	log_pri(PR_LOG_ERR, "Error converting standard error to a logfile: %s",
 					strerror(errno));
 	exit(1);
@@ -2550,7 +2550,7 @@ int main(int argc, char *argv[], char **envp) {
 
   /* getpeername() fails if the fd isn't a socket */
   socketp = sizeof(peer);
-  if(getpeername(fileno(stdin),&peer,&socketp) != -1) {
+  if (getpeername(fileno(stdin),&peer,&socketp) != -1) {
     log_stderr(FALSE);
     socketp = TRUE;
   } else
@@ -2603,18 +2603,18 @@ int main(int argc, char *argv[], char **envp) {
 
       *((char **) push_array(server_defines)) = pstrdup(permanent_pool, optarg);
       break;
-    case 'n': 
+    case 'n':
       nodaemon++;
       break;
-    case 'd': 
-      if(!optarg) {
+    case 'd':
+      if (!optarg) {
         log_pri(PR_LOG_ERR, "Fatal: -d requires debugging level argument.");
         exit(1);
       }
       log_setdebuglevel(atoi(optarg));
       break;
     case 'c':
-      if(!optarg) {
+      if (!optarg) {
         log_pri(PR_LOG_ERR,"Fatal: -c requires configuration path argument.");
         exit(1);
       }
@@ -2631,7 +2631,7 @@ int main(int argc, char *argv[], char **envp) {
       printf("Checking syntax of configuration file\n");
       fflush(stdout);
       break;
-      
+
     case 'p':
     {
 
@@ -2678,7 +2678,7 @@ int main(int argc, char *argv[], char **envp) {
 
     exit(0);
   }
-  
+
   /* Initialize sub-systems */
   pr_init_pools();
   pr_init_regexp();
@@ -2709,7 +2709,7 @@ int main(int argc, char *argv[], char **envp) {
     printf("Syntax check complete.\n");
     end_login(0);
   }
- 
+
   /* After configuration is complete, make sure that passwd, group
    * aren't held open (unnecessary fds for master daemon)
    */
@@ -2725,7 +2725,7 @@ int main(int argc, char *argv[], char **envp) {
       daemon_uid = *uid;
     else
       daemon_uid = 0;
- 
+
     if (gid)
       daemon_gid = *gid;
     else
@@ -2745,7 +2745,7 @@ int main(int argc, char *argv[], char **envp) {
       log_pri(PR_LOG_ERR, "unable to set daemon groups: %s",
         strerror(errno));
   }
- 
+
    if ((main_umask = (mode_t *) get_param_ptr(main_server->conf, "Umask",
        FALSE)) == NULL)
      umask((mode_t) 0022);

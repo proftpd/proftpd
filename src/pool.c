@@ -66,9 +66,9 @@ static unsigned int stat_freehit = 0;	/* incr when freelist used */
 static void *null_alloc(size_t size) {
   void *ret = 0;
 
-  if(size == 0)
+  if (size == 0)
     ret = malloc(size);
-  if(ret == 0) {
+  if (ret == 0) {
     log_pri(PR_LOG_ERR, "fatal: Memory exhausted");
     exit(1);
   }
@@ -91,16 +91,16 @@ void *xcalloc(size_t num, size_t size) {
   void *ret;
 
   ret = calloc(num,size);
-  if(ret == 0)
+  if (ret == 0)
     ret = null_alloc(num * size);
   return ret;
 }
 
 void *xrealloc(void *p, size_t size) {
-  if(p == 0)
+  if (p == 0)
     return xmalloc(size);
   p = realloc(p,size);
-  if(p == 0)
+  if (p == 0)
     p = null_alloc(size);
   return p;
 }
@@ -244,12 +244,12 @@ static long __walk_pools(pool *p, int level)
   char _levelpad[80] = "";
   long total = 0;
 
-  if(!p)
+  if (!p)
     return 0;
 
-  if(level > 1) {
+  if (level > 1) {
     memset(_levelpad,' ',sizeof(_levelpad)-1);
-    if((level - 1) * 3 >= sizeof(_levelpad))
+    if ((level - 1) * 3 >= sizeof(_levelpad))
       _levelpad[sizeof(_levelpad)-1] = 0;
     else
       _levelpad[(level - 1) * 3] = '\0';
@@ -263,10 +263,10 @@ static long __walk_pools(pool *p, int level)
     else
       log_pri(PR_LOG_NOTICE, "%s\\- 0x%08lx bytes", _levelpad,
         bytes_in_block_list(p->first));
-    
+
     /* Recurse */
     if (p->sub_pools)
-      total += __walk_pools(p->sub_pools, level+1);  
+      total += __walk_pools(p->sub_pools, level+1);
   }
 
   return total;
@@ -280,7 +280,7 @@ static void debug_pool_info(void) {
     log_pri(PR_LOG_NOTICE, "Free block list: EMPTY");
 
   log_pri(PR_LOG_NOTICE, "%u count blocks malloc'd.", stat_malloc);
-  log_pri(PR_LOG_NOTICE, "%u count blocks reused.", stat_freehit); 
+  log_pri(PR_LOG_NOTICE, "%u count blocks reused.", stat_freehit);
 }
 
 void debug_walk_pools(void) {
@@ -299,9 +299,9 @@ static void pool_release_free_block_list(void) {
   union block_hdr *blok,*next;
 
   block_alarms();
-  
+
   blok = block_freelist;
-  if(blok) {
+  if (blok) {
     for(next = blok->h.next; next; blok = next, next = blok->h.next)
       free(blok);
   }
@@ -325,7 +325,7 @@ struct pool *make_sub_pool(struct pool *p) {
   memset(new_pool, 0, sizeof(struct pool));
   new_pool->free_first_avail = blok->h.first_avail;
   new_pool->first = new_pool->last = blok;
-  
+
   if (p) {
     new_pool->parent = p;
     new_pool->sub_next = p->sub_pools;
@@ -404,7 +404,7 @@ static long bytes_in_free_blocks(void) {
 }
 #endif
 
-/* Allocation inteface ... 
+/* Allocation inteface ...
  */
 
 void *palloc(struct pool *p, int reqsize) {
@@ -491,11 +491,11 @@ char *pdircat(pool *p, ...) {
     /* If the first argument is "", we have to account for a leading /
      * which must be added.  -jss 3/2/2001
      */
-    if(!count++ && !*res)
+    if (!count++ && !*res)
       len++;
-    else if(last && last != '/' && *res != '/')
+    else if (last && last != '/' && *res != '/')
       len++;
-    else if(last && last == '/' && *res == '/')
+    else if (last && last == '/' && *res == '/')
       len--;
     len += strlen(res);
     last = (*res ? res[strlen(res) - 1] : 0);
@@ -503,17 +503,17 @@ char *pdircat(pool *p, ...) {
 
   va_end(dummy);
   res = (char *) pcalloc(p, len + 1);
-  
+
   va_start(dummy, p);
-  
+
   last = 0;
-  
+
   while((argp = va_arg(dummy, char *)) != NULL) {
-    if(last && last == '/' && *argp == '/')
+    if (last && last == '/' && *argp == '/')
       argp++;
-    else if(last && last != '/' && *argp != '/')
+    else if (last && last != '/' && *argp != '/')
       sstrcat(res, "/", len + 1);
-    
+
     sstrcat(res, argp, len + 1);
     last = (*res ? res[strlen(res) - 1] : 0);
   }
@@ -530,21 +530,21 @@ char *pstrcat(pool *p, ...) {
   va_list dummy;
 
   va_start(dummy, p);
-  
+
   while ((res = va_arg(dummy, char *)) != NULL)
     len += strlen(res);
-  
+
   va_end(dummy);
-  
+
   res = (char *) pcalloc(p, len + 1);
- 
+
   va_start(dummy, p);
-  
+
   while ((argp = va_arg(dummy, char *)) != NULL)
     sstrcat(res, argp, len + 1);
-  
+
   va_end(dummy);
-  
+
   return res;
 }
 
@@ -567,7 +567,7 @@ array_header *make_array(pool *p, int nelts, int elt_size) {
 }
 
 void *push_array(array_header *arr) {
-  if(arr->nelts == arr->nalloc) {
+  if (arr->nelts == arr->nalloc) {
     char *new_data = pcalloc(arr->pool, arr->nalloc * arr->elt_size * 2);
 
     memcpy(new_data, arr->elts, arr->nalloc * arr->elt_size);
@@ -583,11 +583,11 @@ void array_cat(array_header *dst, const array_header *src)
 {
   int elt_size = dst->elt_size;
 
-  if(dst->nelts + src->nelts > dst->nalloc) {
+  if (dst->nelts + src->nelts > dst->nalloc) {
     int new_size = dst->nalloc * 2;
     char *new_data;
 
-    if(new_size == 0) ++new_size;
+    if (new_size == 0) ++new_size;
 
     while(dst->nelts + src->nelts > new_size)
       new_size *= 2;

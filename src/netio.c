@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 2001, 2002 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -77,7 +77,7 @@ static pr_buffer_t *netio_buffer_alloc(pr_netio_stream_t *nstrm) {
   /* Allocate a buffer. */
   pbuf->buf = pcalloc(nstrm->strm_pool, PR_TUNABLE_BUFFER_SIZE);
   pbuf->buflen = PR_TUNABLE_BUFFER_SIZE;
- 
+
   /* Position the offset at the start of the buffer, and set the
    * remaining bytes value accordingly.
    */
@@ -128,7 +128,7 @@ static int core_netio_poll_cb(pr_netio_stream_t *nstrm) {
   if (nstrm->strm_mode == PR_NETIO_IO_RD)
     FD_SET(nstrm->strm_fd, &rfds);
 
-  else 
+  else
     FD_SET(nstrm->strm_fd, &wfds);
 
   tval.tv_sec = ((nstrm->strm_flags & PR_NETIO_SESS_INTR) ?
@@ -396,7 +396,7 @@ int pr_netio_poll(pr_netio_stream_t *nstrm) {
         res = data_netio ? data_netio->poll(nstrm) :
           core_data_netio->poll(nstrm);
         break;
-  
+
       case PR_NETIO_STRM_OTHR:
         res = othr_netio ? othr_netio->poll(nstrm) :
           core_othr_netio->poll(nstrm);
@@ -508,7 +508,7 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
   }
 
   while (buflen) {
-   
+
     switch (pr_netio_poll(nstrm)) {
       case 1:
         return -2;
@@ -544,7 +544,7 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
     }
 
     if (bwritten == -1) {
-      nstrm->strm_errno = errno; 
+      nstrm->strm_errno = errno;
       return -1;
     }
 
@@ -570,8 +570,8 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
     errno = (nstrm->strm_errno ? nstrm->strm_errno : EBADF);
     return -1;
   }
- 
-  /* Prepare the descriptor for nonblocking IO. */ 
+
+  /* Prepare the descriptor for nonblocking IO. */
   if ((flags = fcntl(nstrm->strm_fd, F_GETFL)) == -1)
     return -1;
 
@@ -599,7 +599,7 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
       }
 
     } while (bwritten == -1 && errno == EINTR);
-    
+
     if (bwritten < 0) {
       nstrm->strm_errno = errno;
       fcntl(nstrm->strm_fd, F_SETFL, flags);
@@ -607,7 +607,7 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
       if (nstrm->strm_errno == EWOULDBLOCK)
         /* Give up ... */
         return total;
-   
+
       return -1;
     }
 
@@ -684,7 +684,7 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
       nstrm->strm_errno = 0;
       break;
     }
-    
+
     buf += bread;
     total += bread;
     bufmin -= bread;
@@ -715,7 +715,7 @@ char *pr_netio_gets(char *buf, size_t buflen, pr_netio_stream_t *nstrm) {
         (buflen < pbuf->buflen ?  buflen : pbuf->buflen), 1);
 
       if (toread <= 0) {
-        if(bp != buf) {
+        if (bp != buf) {
           *bp = '\0';
           return buf;
 
@@ -817,7 +817,7 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
               /* Ignore */
               mode = 0;
               continue;
-          }       
+          }
           break;
 
         case WILL:

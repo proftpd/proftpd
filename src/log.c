@@ -27,7 +27,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.50 2002-12-07 21:13:02 castaglia Exp $
+ * $Id: log.c,v 1.51 2002-12-07 21:45:44 jwm Exp $
  */
 
 #include "conf.h"
@@ -59,7 +59,7 @@ char *fmt_time(time_t t) {
   struct tm *tr;
 
   memset(buf,'\0',sizeof(buf));
-  if((tr = localtime(&t)) != NULL) {
+  if ((tr = localtime(&t)) != NULL) {
     snprintf(buf,sizeof(buf),"%s %s %2d %02d:%02d:%02d %d",
             days[tr->tm_wday],
             mons[tr->tm_mon],
@@ -147,7 +147,7 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip) {
 #endif
   static int fdx = -1;
 
-  if(fdx < 0 && (fdx = open(WTMPX_FILE, O_WRONLY|O_APPEND, 0)) < 0) {
+  if (fdx < 0 && (fdx = open(WTMPX_FILE, O_WRONLY|O_APPEND, 0)) < 0) {
     log_pri(PR_LOG_WARNING, "wtmpx %s: %s", WTMPX_FILE, strerror(errno));
     return -1;
   }
@@ -158,7 +158,7 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip) {
    * Insane if you ask me.  Unless there's massive uproar, I prefer to err on
    * the side of caution and always null-terminate our strings.
    */
-  if(fstat(fdx,&buf) == 0) {
+  if (fstat(fdx,&buf) == 0) {
     memset(&utx,0,sizeof(utx));
     sstrncpy(utx.ut_user,name,sizeof(utx.ut_user));
     sstrncpy(utx.ut_id,"ftp",sizeof(utx.ut_user));
@@ -172,7 +172,7 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip) {
 #else
     time(&utx.ut_tv.tv_sec);
 #endif
-    if(*name)
+    if (*name)
       utx.ut_type = USER_PROCESS;
     else
       utx.ut_type = DEAD_PROCESS;
@@ -180,7 +180,7 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip) {
     utx.ut_exit.e_termination = 0;
     utx.ut_exit.e_exit = 0;
 #endif /* HAVE_UT_UT_EXIT */
-    if(write(fdx,(char*)&utx,sizeof(utx)) != sizeof(utx))
+    if (write(fdx,(char*)&utx,sizeof(utx)) != sizeof(utx))
       ftruncate(fdx, buf.st_size);
   } else {
     log_debug(DEBUG0,"%s fstat(): %s",WTMPX_FILE,strerror(errno));
@@ -189,16 +189,16 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip) {
 
 #else /* Non-SVR4 systems */
 
-  if(fd < 0 && (fd = open(WTMP_FILE,O_WRONLY|O_APPEND,0)) < 0) {
+  if (fd < 0 && (fd = open(WTMP_FILE,O_WRONLY|O_APPEND,0)) < 0) {
     log_pri(PR_LOG_WARNING, "wtmp %s: %s", WTMP_FILE, strerror(errno));
     return -1;
   }
- 
-  if(fstat(fd,&buf) == 0) {
+
+  if (fstat(fd,&buf) == 0) {
     memset(&ut,0,sizeof(ut));
 #ifdef HAVE_UTMAXTYPE
 #ifdef LINUX
-    if(ip)
+    if (ip)
       memcpy(&ut.ut_addr,ip,sizeof(ut.ut_addr));
 #else
     sstrncpy(ut.ut_id,"ftp",sizeof(ut.ut_id));
@@ -208,26 +208,26 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip) {
 #endif /* HAVE_UT_UT_EXIT */
 #endif
     sstrncpy(ut.ut_line,line,sizeof(ut.ut_line));
-    if(name && *name)
+    if (name && *name)
       sstrncpy(ut.ut_user,name,sizeof(ut.ut_user));
     ut.ut_pid = getpid();
-    if(name && *name)
+    if (name && *name)
       ut.ut_type = USER_PROCESS;
     else
       ut.ut_type = DEAD_PROCESS;
 #else  /* !HAVE_UTMAXTYPE */
     sstrncpy(ut.ut_line,line,sizeof(ut.ut_line));
-    if(name && *name)
+    if (name && *name)
       sstrncpy(ut.ut_name,name,sizeof(ut.ut_name));
 #endif /* HAVE_UTMAXTYPE */
 
 #ifdef HAVE_UT_UT_HOST
-    if(host && *host)
+    if (host && *host)
       sstrncpy(ut.ut_host,host,sizeof(ut.ut_host));
 #endif /* HAVE_UT_UT_HOST */
 
     time(&ut.ut_time);
-    if(write(fd,(char*)&ut,sizeof(ut)) != sizeof(ut))
+    if (write(fd,(char*)&ut,sizeof(ut)) != sizeof(ut))
       ftruncate(fd,buf.st_size);
   } else {
     log_debug(DEBUG0,"%s fstat(): %s",WTMP_FILE,strerror(errno));
@@ -253,7 +253,7 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   /* Make a temporary copy of log_file in case it's a constant */
   pool = make_sub_pool(permanent_pool);
   lf = pstrdup(pool, log_file);
-  
+
   if ((tmp = strrchr(lf, '/')) == NULL) {
     log_debug(DEBUG0, "inappropriate log file: %s", lf);
     destroy_pool(pool);
@@ -304,7 +304,7 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
       destroy_pool(pool);
       return -1;
     }
-    
+
     /* Stat the file using the descriptor, not the path */
     if (fstat(*log_fd, &sbuf) != -1 && S_ISLNK(sbuf.st_mode)) {
       log_debug(DEBUG0, "error: %s is a symbolic link", lf);
@@ -319,7 +319,7 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
       destroy_pool(pool);
       return -1;
     }
-  
+
   destroy_pool(pool);
   return 0;
 }
@@ -334,7 +334,7 @@ int log_opensyslog(const char *fn) {
     memset(systemlog_fn, '\0', sizeof(systemlog_fn));
     sstrncpy(systemlog_fn, fn, sizeof(systemlog_fn));
   }
- 
+
   if (!*systemlog_fn) {
 
     /* The child may have inherited a valid socket from the parent. */
@@ -379,13 +379,13 @@ void log_discard(void) {
 static void log(int priority, int f, char *s) {
   unsigned int *max_priority = NULL;
   char serverinfo[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-  
+
   memset(serverinfo, '\0', sizeof(serverinfo));
-  
+
   if (main_server && main_server->ServerFQDN) {
     snprintf(serverinfo, sizeof(serverinfo), "%s", main_server->ServerFQDN);
     serverinfo[sizeof(serverinfo)-1] = '\0';
-    
+
     if (session.c && session.c->remote_name) {
       snprintf(serverinfo + strlen(serverinfo),
         sizeof(serverinfo) - strlen(serverinfo), " (%s[%s])",
@@ -393,15 +393,15 @@ static void log(int priority, int f, char *s) {
       serverinfo[sizeof(serverinfo)-1] = '\0';
     }
   }
-  
+
   if (logstderr) {
     fprintf(stderr, "%s - %s\n", serverinfo, s);
     return;
   }
-  
+
   if (syslog_discard)
     return;
-  
+
   if (systemlog_fd != -1) {
     char buf[LOGBUFFER_SIZE] = {'\0'};
     time_t tt = time(NULL);
@@ -410,7 +410,7 @@ static void log(int priority, int f, char *s) {
     t = localtime(&tt);
     strftime(buf, sizeof(buf), "%b %d %H:%M:%S ", t);
     buf[sizeof(buf) - 1] = '\0';
-    
+
     if (*serverinfo) {
       snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
 	       "%s proftpd[%u] %s: %s\n", systemlog_host,
@@ -420,27 +420,27 @@ static void log(int priority, int f, char *s) {
 	       "%s proftpd[%u]: %s\n", systemlog_host,
 	       (unsigned int) getpid(), s);
     }
-    
+
     buf[sizeof(buf) - 1] = '\0';
     write(systemlog_fd, buf, strlen(buf));
     return;
   }
-  
+
   if (set_facility != -1)
     f = set_facility;
 
   if (f != facility || !syslog_open)
     syslog_sockfd = pr_openlog("proftpd", LOG_NDELAY|LOG_PID, f);
- 
+
   if ((max_priority = get_param_ptr(main_server->conf, "SyslogLevel",
       FALSE)) != NULL && priority > *max_priority)
     return;
- 
+
   if (*serverinfo)
     pr_syslog(syslog_sockfd, priority, "%s - %s\n", serverinfo, s);
   else
     pr_syslog(syslog_sockfd, priority, "%s\n", s);
-  
+
   if (!syslog_open) {
     pr_closelog(syslog_sockfd);
     syslog_sockfd = -1;
@@ -452,14 +452,14 @@ static void log(int priority, int f, char *s) {
 void log_pri(int priority, char *fmt, ...) {
   char buf[LOGBUFFER_SIZE] = {'\0'};
   va_list msg;
-  
+
   va_start(msg, fmt);
   vsnprintf(buf, sizeof(buf), fmt, msg);
   va_end(msg);
- 
-  /* Always make sure the buffer is NUL-terminated. */ 
+
+  /* Always make sure the buffer is NUL-terminated. */
   buf[sizeof(buf) - 1] = '\0';
-  
+
   log(priority, facility, buf);
 }
 
@@ -554,7 +554,7 @@ void init_log(void) {
 
   if (gethostname(buf, sizeof(buf)) == -1)
     sstrncpy(buf, "localhost", sizeof(buf));
- 
+
   sstrncpy(systemlog_host, inet_validate(buf), sizeof(systemlog_host));
   memset(systemlog_fn, '\0', sizeof(systemlog_fn));
   log_closesyslog();

@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.10 2002-12-06 21:25:09 castaglia Exp $
+ * $Id: scoreboard.c,v 1.11 2002-12-07 21:45:44 jwm Exp $
  */
 
 #include "conf.h"
@@ -445,7 +445,7 @@ int pr_scoreboard_del_entry(unsigned char verbose) {
 pr_scoreboard_entry_t *pr_scoreboard_read_entry(void) {
   static pr_scoreboard_entry_t scan_entry;
   int res = 0;
- 
+
   if (scoreboard_fd < 0) {
     errno = EINVAL;
     return NULL;
@@ -489,7 +489,7 @@ int pr_scoreboard_update_entry(pid_t pid, ...) {
   va_list ap;
   char *tmp = NULL;
   int entry_tag = 0;
-  
+
   if (scoreboard_fd < 0) {
     errno = EINVAL;
     return -1;
@@ -572,7 +572,7 @@ int pr_scoreboard_update_entry(pid_t pid, ...) {
 
       case PR_SCORE_BEGIN_IDLE:
         /* Ignore this */
-        (void) va_arg(ap, time_t); 
+        (void) va_arg(ap, time_t);
 
         time(&entry.sce_begin_idle);
         break;
@@ -581,7 +581,7 @@ int pr_scoreboard_update_entry(pid_t pid, ...) {
         /* Ignore this */
         (void) va_arg(ap, time_t);
 
-        time(&entry.sce_begin_session); 
+        time(&entry.sce_begin_session);
         break;
 
       case PR_SCORE_XFER_DONE:

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 2001, 2002 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -41,7 +41,7 @@ static int ident_timeout_cb(CALLBACK_FRAME) {
      * are aborted.
      */
     pr_netio_abort(nstrm);
-    
+
   return 0;
 }
 
@@ -59,9 +59,9 @@ char *get_ident(pool *p, conn_t *c) {
 
   if (ident_port == -1) {
     destroy_pool(tmp_pool);
-    return pstrdup(p, ret);    
+    return pstrdup(p, ret);
   }
- 
+
   /* Set up our timer before going any further. */
   if ((timer = add_timer(PR_TUNABLE_TIMEOUTIDENT, -1, NULL,
       (callback_t) ident_timeout_cb)) <= 0) {
@@ -80,9 +80,9 @@ char *get_ident(pool *p, conn_t *c) {
     destroy_pool(tmp_pool);
     return pstrdup(p, ret);
   }
- 
+
   if (!i) {
-    /* Not yet connected. */ 
+    /* Not yet connected. */
     nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR, ident_conn->listen_fd,
       PR_NETIO_IO_RD);
     pr_netio_set_poll_interval(nstrm, 1);
@@ -146,10 +146,10 @@ char *get_ident(pool *p, conn_t *c) {
    * used to make sure significant delays don't occur on systems that
    * automatically restart syscalls after the SIGALRM signal.
    */
-  
+
   if (pr_netio_gets(buf, sizeof(buf), ident_io->instrm)) {
     strip_end(buf, "\r\n");
-    
+
     tmp = buf;
     tok = get_token(&tmp, ":");
     if (tok && (tok = get_token(&tmp, ":"))) {

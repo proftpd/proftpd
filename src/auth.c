@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.22 2002-12-05 20:18:56 castaglia Exp $
+ * $Id: auth.c,v 1.23 2002-12-07 21:45:43 jwm Exp $
  */
 
 #include "conf.h"
@@ -41,7 +41,7 @@ static cmd_rec *_make_cmd(pool *cp, int argc, ...)
   c->argc = argc;
   c->symtable_index = -1;
 
-  if(argc) {
+  if (argc) {
     c->argv = pcalloc(cp,sizeof(void*)*argc);
 
     va_start(args,argc);
@@ -65,13 +65,13 @@ static modret_t *_dispatch_auth(cmd_rec *cmd, char *match)
     log_debug(DEBUG6, "dispatching auth request \"%s\" to module mod_%s",
       match, m->m->name);
     mr = call_module_auth(m->m,m->handler,cmd);
-    if(MODRET_ISHANDLED(mr) || MODRET_ISERROR(mr))
+    if (MODRET_ISHANDLED(mr) || MODRET_ISERROR(mr))
       break;
 
     m = mod_find_auth_symbol(match,&cmd->symtable_index,m);
   }
-    
-  return mr; 
+
+  return mr;
 }
 
 void auth_setpwent(pool *p)
@@ -82,11 +82,11 @@ void auth_setpwent(pool *p)
   c = _make_cmd(p,0);
   mr = _dispatch_auth(c,"setpwent");
 
-  if(c->tmp_pool) {
+  if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
     c->tmp_pool = NULL;
   }
-  return;  
+  return;
 }
 
 void auth_endpwent(pool *p)
@@ -97,11 +97,11 @@ void auth_endpwent(pool *p)
   c = _make_cmd(p,0);
   mr = _dispatch_auth(c,"endpwent");
 
-  if(c->tmp_pool) {
+  if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
     c->tmp_pool = NULL;
   }
-  return;  
+  return;
 }
 
 void auth_setgrent(pool *p)
@@ -112,11 +112,11 @@ void auth_setgrent(pool *p)
   c = _make_cmd(p,0);
   mr = _dispatch_auth(c,"setgrent");
 
-  if(c->tmp_pool) {
+  if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
     c->tmp_pool = NULL;
   }
-  return;  
+  return;
 }
 
 void auth_endgrent(pool *p)
@@ -127,11 +127,11 @@ void auth_endgrent(pool *p)
   c = _make_cmd(p,0);
   mr = _dispatch_auth(c,"endgrent");
 
-  if(c->tmp_pool) {
+  if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
     c->tmp_pool = NULL;
   }
-  return;  
+  return;
 }
 
 struct passwd *auth_getpwent(pool *p)
@@ -143,10 +143,10 @@ struct passwd *auth_getpwent(pool *p)
   c = _make_cmd(p,0);
   mr = _dispatch_auth(c,"getpwent");
 
-  if(MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
+  if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
     ret = mr->data;
 
-  if(c->tmp_pool) {
+  if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
     c->tmp_pool = NULL;
   }
@@ -178,10 +178,10 @@ struct group *auth_getgrent(pool *p)
   c = _make_cmd(p,0);
   mr = _dispatch_auth(c,"getgrent");
 
-  if(MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
+  if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
     ret = mr->data;
 
-  if(c->tmp_pool) {
+  if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
     c->tmp_pool = NULL;
   }
@@ -208,10 +208,10 @@ struct passwd *auth_getpwnam(pool *p, const char *name)
   c = _make_cmd(p,1,name);
   mr = _dispatch_auth(c,"getpwnam");
 
-  if(MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
+  if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
     ret = mr->data;
 
-  if(c->tmp_pool) {
+  if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
     c->tmp_pool = NULL;
   }
@@ -245,10 +245,10 @@ struct passwd *auth_getpwuid(pool *p, uid_t uid)
   c = _make_cmd(p,1,(void*)uid);
   mr = _dispatch_auth(c,"getpwuid");
 
-  if(MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
+  if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
     ret = mr->data;
 
-  if(c->tmp_pool) {
+  if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
     c->tmp_pool = NULL;
   }
@@ -282,10 +282,10 @@ struct group *auth_getgrnam(pool *p, const char *name)
   c = _make_cmd(p,1,name);
   mr = _dispatch_auth(c,"getgrnam");
 
-  if(MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
+  if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
     ret = mr->data;
 
-  if(c->tmp_pool) {
+  if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
     c->tmp_pool = NULL;
   }
@@ -314,10 +314,10 @@ struct group *auth_getgrgid(pool *p, gid_t gid)
   c = _make_cmd(p,1,(void*)gid);
   mr = _dispatch_auth(c,"getgrgid");
 
-  if(MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
+  if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
     ret = mr->data;
 
-  if(c->tmp_pool) {
+  if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
     c->tmp_pool = NULL;
   }
@@ -389,13 +389,13 @@ const char *auth_uid_name(pool *p, uid_t uid)
   c = _make_cmd(p,1,(void*)uid);
   mr = _dispatch_auth(c,"uid_name");
 
-  if(MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
+  if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
     ret = mr->data;
     sstrncpy(namebuf,ret,sizeof(namebuf));
     ret = namebuf;
   }
 
-  if(c->tmp_pool) {
+  if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
     c->tmp_pool = NULL;
   }
@@ -414,13 +414,13 @@ const char *auth_gid_name(pool *p, gid_t gid)
   c = _make_cmd(p,1,(void*)gid);
   mr = _dispatch_auth(c,"gid_name");
 
-  if(MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
+  if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
     ret = mr->data;
     sstrncpy(namebuf,ret,sizeof(namebuf));
     ret = namebuf;
   }
 
-  if(c->tmp_pool) {
+  if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
     c->tmp_pool = NULL;
   }
@@ -442,7 +442,7 @@ uid_t auth_name_uid(pool *p, const char *name)
   else
     errno = EINVAL;
 
-  if(c->tmp_pool) {
+  if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
     c->tmp_pool = NULL;
   }
@@ -464,7 +464,7 @@ gid_t auth_name_gid(pool *p, const char *name)
   else
     errno = EINVAL;
 
-  if(c->tmp_pool) {
+  if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
     c->tmp_pool = NULL;
   }
@@ -478,14 +478,14 @@ int auth_getgroups(pool *p, const char *name, array_header **group_ids,
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   int res = -1;
-  
+
   /* Allocate memory for the array_headers of GIDs and group names. */
   if (group_ids)
     *group_ids = make_array(permanent_pool, 2, sizeof(gid_t));
-  
+
   if (group_names)
     *group_names = make_array(permanent_pool, 2, sizeof(char *));
-  
+
   cmd = _make_cmd(p, 3, name, group_ids ? *group_ids : NULL,
     group_names ? *group_names : NULL);
 
@@ -501,7 +501,7 @@ int auth_getgroups(pool *p, const char *name, array_header **group_ids,
      * for the benefit of auth_getgroup() implementors.
      */
   }
- 
+
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);
     cmd->tmp_pool = NULL;
@@ -548,7 +548,7 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
 
     /* This duplicate ID search only needs to be done after the first GID
      * in the given list is examined, as the first GID cannot be a duplicate.
-     */ 
+     */
     for (j = 0; j < nproc_gids; j++) {
       if (proc_gids[j] == gids[i]) {
         skip_gid = TRUE;

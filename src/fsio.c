@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.3 2002-12-06 21:37:34 castaglia Exp $
+ * $Id: fsio.c,v 1.4 2002-12-07 21:45:43 jwm Exp $
  */
 
 #include "conf.h"
@@ -463,7 +463,7 @@ pr_fs_t *pr_create_fs(pool *p, const char *name) {
   }
 
   /* Allocate a subpool, then allocate an pr_fs_t object from that subpool */
-  rec_pool = make_sub_pool(p); 
+  rec_pool = make_sub_pool(p);
   fs = (pr_fs_t *) pcalloc(rec_pool, sizeof(pr_fs_t));
 
   if (!fs)
@@ -527,7 +527,7 @@ int pr_insert_fs(pr_fs_t *fs, const char *path) {
 
   if (!fs->fs_path)
     fs->fs_path = pstrdup(fs->fs_pool, cleaned_path);
- 
+
   /* For now, disallow any attempts at layering, meaning no duplicate
    * paths.  Once layering of FS module/pr_fs_ts is allowed, distinguish
    * between pr_fs_ts of identical paths by name, and extend the check to
@@ -596,17 +596,17 @@ int pr_unregister_fs(const char *path) {
 
       pr_fs_t *tmp_fs, **old_objs = NULL;
 
-      pool *map_pool = make_sub_pool(permanent_pool); 
+      pool *map_pool = make_sub_pool(permanent_pool);
       array_header *new_map = make_array(map_pool, 0, sizeof(pr_fs_t *));
       old_objs = (pr_fs_t **) fs_map->elts;
- 
+
       for (j = 0; j < fs_map->nelts; j++) {
         tmp_fs = old_objs[j];
 
         if (strcmp(tmp_fs->fs_path, path))
           *((pr_fs_t **) push_array(new_map)) = old_objs[j];
       }
- 
+
       destroy_pool(fs->fs_pool);
       destroy_pool(fs_map->pool);
 
@@ -621,7 +621,7 @@ int pr_unregister_fs(const char *path) {
     }
   }
 
-  return FALSE; 
+  return FALSE;
 }
 
 /* This function returns the best pr_fs_t to handle the given path.  It will
@@ -676,7 +676,7 @@ pr_fs_t *pr_get_fs(const char *path, int *exact) {
     if ((fs->fs_path)[strlen(fs->fs_path) - 1] == '/' &&
         !strncmp(path, fs->fs_path, strlen(fs->fs_path)))
       best_match_fs = fs;
-    
+
     res = strcmp(fs->fs_path, path);
 
     if (res == 0) {
@@ -862,7 +862,7 @@ int pr_unregister_fs_match(const char *name) {
          * remove them as well.
          */
         assoc_fs_objs = (pr_fs_t **) fsm->fsm_fs_objs->elts;
-      
+
         for (assoc_fs = *assoc_fs_objs; assoc_fs; assoc_fs++)
           pr_unregister_fs(assoc_fs->fs_path);
 
@@ -995,21 +995,21 @@ int pr_fs_interpolate(const char *path, char *buf, size_t buflen) {
   char *fname = NULL;
   char user[MAXPATHLEN + 1] = {'\0'};
   int len;
-  
+
   if (!path) {
     errno = EINVAL;
     return -1;
   }
- 
+
   if (path[0] == '~') {
     fname = strchr(path, '/');
-    
+
     /* Copy over the username.
      */
     if (fname) {
       len = fname - path;
       sstrncpy(user, path + 1, len > sizeof(user) ? sizeof(user) : len);
-      
+
       /* Advance past the '/'. */
       fname++;
 
@@ -1017,7 +1017,7 @@ int pr_fs_interpolate(const char *path, char *buf, size_t buflen) {
 
       /* Otherwise, this might be something like "~foo" which could be a file
        * or it could be a user.  Let's find out.
-       * 
+       *
        * Must be a user, if anything...otherwise it's probably a typo.
        */
       len = strlen(path);
@@ -1030,34 +1030,34 @@ int pr_fs_interpolate(const char *path, char *buf, size_t buflen) {
       fname = (char *) path;
       return 0;
     }
-    
+
     /* If the user hasn't been explicitly specified, set it here.  This
      * handles cases such as files beginning with "~", "~/foo" or simply "~".
      */
     if (!*user)
       sstrncpy(user, session.user, sizeof(user));
-    
+
     p = make_sub_pool(permanent_pool);
     pw = auth_getpwnam(p, user);
     destroy_pool(p);
-    
+
     if (!pw) {
       errno = ENOENT;
       return -1;
     }
-    
+
     sstrncpy(buf, pw->pw_dir, buflen);
     len = strlen(buf);
-    
+
     if (fname && len < buflen && buf[len - 1] != '/')
       buf[len++] = '/';
-    
+
     if (fname)
       sstrncpy(&buf[len], fname, buflen - len);
 
   } else
     sstrncpy(buf, path, buflen);
-  
+
   return 1;
 }
 
@@ -1107,7 +1107,7 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
         where++;
         continue;
       }
-      
+
       /* Handle ".." */
       if (!strcmp(where, "..")) {
         where += 2;
@@ -1122,13 +1122,13 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
         *last = '\0';
         continue;
       }
-      
+
       /* Handle "./" */
       if (!strncmp(where, "./", 2)) {
         where += 2;
         continue;
       }
-      
+
       /* Handle "../" */
       if (!strncmp(where, "../", 3)) {
         where += 3;
@@ -1143,7 +1143,7 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
         *last = '\0';
         continue;
       }
-      
+
       ptr = strchr(where, '/');
 
       if (!ptr)
@@ -1160,18 +1160,18 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
 
       } else
         sstrcat(namebuf, "/", MAXPATHLEN);
-      
+
       sstrcat(namebuf, where, MAXPATHLEN);
-      
+
       where = ++ptr;
 
       fs = fs_lookup_dir(namebuf, op);
-     
+
       if (fs_cache_lstat(fs, namebuf, &sbuf) == -1) {
         errno = ENOENT;
         return -1;
       }
-      
+
       if (S_ISLNK(sbuf.st_mode)) {
         /* Detect an obvious recursive symlink */
         if (sbuf.st_ino && (ino_t) sbuf.st_ino == last_inode) {
@@ -1237,7 +1237,7 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
 
   return 0;
 }
-  
+
 int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
   char curpath[MAXPATHLEN + 1]  = {'\0'},
        workpath[MAXPATHLEN + 1] = {'\0'},
@@ -1321,7 +1321,7 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
         errno = ENOENT;
         return -1;
       }
-    
+
       if (S_ISLNK(sbuf.st_mode)) {
         /* Detect an obvious recursive symlink */
         if (sbuf.st_ino && (ino_t) sbuf.st_ino == last_inode) {
@@ -1400,7 +1400,7 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
     return;
 
   sstrncpy(curpath, path, sizeof(curpath));
-  
+
   /* main loop */
   while (fini--) {
     where = curpath;
@@ -1452,7 +1452,7 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
         *ptr = '\0';
 
       sstrncpy(namebuf, workpath, sizeof(namebuf));
-      
+
       if (*namebuf) {
         for (last = namebuf; *last; last++);
         if (*--last != '/')
@@ -1463,7 +1463,7 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
 
       sstrcat(namebuf, where, MAXPATHLEN);
       namebuf[MAXPATHLEN-1] = '\0';
-      
+
       where = ++ptr;
 
       sstrncpy(workpath, namebuf, sizeof(workpath));
@@ -1473,7 +1473,7 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
   if (!workpath[0])
     sstrncpy(workpath, "/", sizeof(workpath));
 
-  sstrncpy(buf, workpath, buflen);  
+  sstrncpy(buf, workpath, buflen);
 }
 
 void pr_fs_virtual_path(const char *path, char *buf, size_t buflen) {
@@ -1568,7 +1568,7 @@ void pr_fs_virtual_path(const char *path, char *buf, size_t buflen) {
   if (!workpath[0])
     sstrncpy(workpath, "/", sizeof(workpath));
 
-  sstrncpy(buf, workpath, buflen);  
+  sstrncpy(buf, workpath, buflen);
 }
 
 int pr_fsio_chdir_canon(const char *path, int hidesymlink) {
@@ -1582,7 +1582,7 @@ int pr_fsio_chdir_canon(const char *path, int hidesymlink) {
   }
 
   fs = fs_lookup_dir(resbuf, FSIO_DIR_CHDIR);
-  
+
   if (fs->chdir) {
     log_debug(DEBUG9, "FS: using %s chdir()", fs->fs_name);
     res = fs->chdir(fs, resbuf);
@@ -1602,7 +1602,7 @@ int pr_fsio_chdir_canon(const char *path, int hidesymlink) {
        sstrncpy(vwd, resbuf, sizeof(vwd));
   }
 
-  return res;  
+  return res;
 }
 
 int pr_fsio_chdir(const char *path, int hidesymlink) {
@@ -1611,9 +1611,9 @@ int pr_fsio_chdir(const char *path, int hidesymlink) {
   int res;
 
   pr_fs_clean_path(path, resbuf, MAXPATHLEN);
-  
+
   fs = fs_lookup_dir(path, FSIO_DIR_CHDIR);
-  
+
   if (fs->chdir) {
     log_debug(DEBUG9, "FS: using %s chdir()", fs->fs_name);
     res = fs->chdir(fs, resbuf);
@@ -1633,10 +1633,10 @@ int pr_fsio_chdir(const char *path, int hidesymlink) {
        sstrncpy(vwd, resbuf, sizeof(vwd));
   }
 
-  return res;  
+  return res;
 }
 
-/* fs_opendir, fs_closedir and fs_readdir all use a nifty 
+/* fs_opendir, fs_closedir and fs_readdir all use a nifty
  * optimization, caching the last-recently-used pr_fs_t, and
  * avoid future pr_fs_t lookups when iterating via readdir.
  */
@@ -1676,7 +1676,7 @@ void *pr_fsio_opendir(const char *path) {
   fs_cache_dir = ret;
   fs_cache_fsdir = fs;
 
-  fsod_pool = make_sub_pool(permanent_pool); 
+  fsod_pool = make_sub_pool(permanent_pool);
   fsod = palloc(fsod_pool, sizeof(fsopendir_t));
 
   if (!fsod) {
@@ -1785,19 +1785,19 @@ struct dirent *pr_fsio_readdir(void *dir) {
 
 int pr_fsio_mkdir(const char *path, mode_t mode) {
   pr_fs_t *fs = fs_lookup_dir(path, FSIO_DIR_MKDIR);
-  
+
   if (!fs->mkdir) {
     errno = EPERM;
     return -1;
   }
 
   log_debug(DEBUG9, "FS: using %s mkdir()", fs->fs_name);
-  return fs->mkdir(fs, path, mode); 
+  return fs->mkdir(fs, path, mode);
 }
 
 int pr_fsio_rmdir(const char *path) {
   pr_fs_t *fs = fs_lookup_dir(path, FSIO_DIR_RMDIR);
-  
+
   if (!fs->rmdir) {
     errno = EPERM;
     return -1;
@@ -1845,7 +1845,7 @@ int pr_fsio_lstat_canon(const char *path, struct stat *sbuf) {
 
 int pr_fsio_lstat(const char *path, struct stat *sbuf) {
   pr_fs_t *fs = fs_lookup_file(path, NULL, FSIO_FILE_LSTAT);
- 
+
   if (!fs->lstat) {
     errno = EPERM;
     return -1;
@@ -1887,7 +1887,7 @@ int pr_fs_glob(const char *pattern, int flags,
 
   if (pglob) {
     flags |= GLOB_ALTDIRFUNC;
-    
+
     pglob->gl_closedir = (void (*)(void *)) pr_fsio_closedir;
     pglob->gl_readdir = pr_fsio_readdir;
     pglob->gl_opendir = pr_fsio_opendir;
@@ -1989,7 +1989,7 @@ pr_fh_t *pr_fsio_open_canon(const char *name, int flags) {
   }
 
   fh->fh_fs = fs;
-  return fh;  
+  return fh;
 }
 
 pr_fh_t *pr_fsio_open(const char *name, int flags) {
@@ -2019,7 +2019,7 @@ pr_fh_t *pr_fsio_open(const char *name, int flags) {
   }
 
   fh->fh_fs = fs;
-  return fh;  
+  return fh;
 }
 
 pr_fh_t *pr_fsio_creat_canon(const char *name, mode_t mode) {
@@ -2297,7 +2297,7 @@ int pr_fsio_chroot(const char *path) {
   if ((res = fs->chroot(fs, path)) == 0) {
 
     /* The fs_t's in fs_map need to be readjusted to the new root.
-     * The pr_fs_t returned by fs_lookup_dir() will be the new root_fs,  
+     * The pr_fs_t returned by fs_lookup_dir() will be the new root_fs,
      * and all others will re-inserted and resorted into a new map.
      */
 
@@ -2345,7 +2345,7 @@ int pr_fsio_chroot(const char *path) {
       destroy_pool(fs_map->pool);
 
     fs_map = new_map;
-    chk_fs_map = TRUE;   
+    chk_fs_map = TRUE;
   }
 
   return res;
@@ -2368,7 +2368,7 @@ char *pr_fsio_gets(char *buf, size_t size, pr_fh_t *fh) {
     fh->fh_buf->remaining = fh->fh_buf->buflen = PR_TUNABLE_BUFFER_SIZE;
   }
 
-  pbuf = fh->fh_buf; 
+  pbuf = fh->fh_buf;
   bp = buf;
 
   while (size) {
@@ -2502,7 +2502,7 @@ int pr_fsio_puts(const char *buf, pr_fh_t *fh) {
     errno = EINVAL;
     return -1;
   }
- 
+
   return pr_fsio_write(fh, buf, strlen(buf));
 }
 

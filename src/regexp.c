@@ -32,7 +32,7 @@
 
 #ifdef HAVE_REGEX_H
 
-static pool *regexp_pool = NULL; 
+static pool *regexp_pool = NULL;
 static array_header *regexp_list = NULL;
 
 static void regexp_rehash_cb(void *data) {
@@ -96,7 +96,7 @@ void pr_regexp_free(regex_t *regex) {
 
       /* This frees memory associated with this pointer by regcomp(3). */
       regfree(regexp[i]);
-      
+
       /* This frees the memory allocated for the pointer itself. */
       free(regexp[i]);
 

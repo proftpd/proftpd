@@ -3,7 +3,7 @@
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  * Copyright (c) 2001, 2002 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.47 2002-12-05 21:16:52 castaglia Exp $
+ * $Id: support.c,v 1.48 2002-12-07 21:45:44 jwm Exp $
  */
 
 #include "conf.h"
@@ -172,13 +172,13 @@ void schedule(void (*f)(void*,void*,void*,void*),int nloops,
 void run_schedule(void) {
   sched_t *s,*snext;
 
-  if(!scheds || !scheds->xas_list)
+  if (!scheds || !scheds->xas_list)
     return;
 
   for(s = (sched_t*)scheds->xas_list; s; s=snext) {
     snext = s->next;
 
-    if(s->loops-- <= 0) {
+    if (s->loops-- <= 0) {
       s->f(s->a1,s->a2,s->a3,s->a4);
       xaset_remove(scheds,(xasetmember_t*)s);
       destroy_pool(s->pool);
@@ -292,7 +292,7 @@ char *dir_best_path(pool *p, const char *path) {
   while (!fini && *workpath) {
     if (pr_fs_resolve_path(workpath, realpath, MAXPATHLEN, 0) != -1)
       break;
-  
+
     ntarget = strrchr(workpath, '/');
     if (ntarget) {
       if (target)
@@ -328,7 +328,7 @@ char *dir_canonical_path(pool *p, const char *path) {
 
   } else
     pr_fs_dircat(work, sizeof(work), pr_fs_getcwd(), path);
-  
+
   pr_fs_clean_path(work, buf, MAXPATHLEN);
   return pstrdup(p, buf);
 }
@@ -372,10 +372,10 @@ char *dir_abs_path(pool *p, const char *path, int interpolate) {
 
   if (interpolate)
     path = dir_interpolate(p, path);
-  
+
   if (!path)
-    return NULL;  
-    
+    return NULL;
+
   if (*path != '/') {
     if (session.chroot_path)
       res = pdircat(p, session.chroot_path, pr_fs_getcwd(), path, NULL);
@@ -484,12 +484,12 @@ int exists(char *path) {
 int access_check(char *path, int mode) {
   mode_t mask;
   struct stat buf;
-  
+
   if (pr_fsio_stat(path, &buf) < 0) {
     errno = ENOENT;
     return -1;
   }
- 
+
   /* If root, always return succeed. */
   if (session.uid == 0)
     return 0;
@@ -502,7 +502,7 @@ int access_check(char *path, int mode) {
    * other bits of the permission bits.
    */
   mask = S_IROTH | S_IWOTH | S_IXOTH;
-  
+
   if (buf.st_uid == session.uid)
     mask |= S_IRUSR|S_IWUSR|S_IXUSR;
 
@@ -525,9 +525,9 @@ int access_check(char *path, int mode) {
       }
     }
   }
-  
+
   mask &= buf.st_mode;
-  
+
   /* Perform requested access checks */
   if (mode & R_OK) {
     if (!(mask & (S_IRUSR|S_IRGRP|S_IROTH))) {
@@ -535,14 +535,14 @@ int access_check(char *path, int mode) {
       return -1;
     }
   }
-  
+
   if (mode & W_OK) {
     if (!(mask & (S_IWUSR|S_IWGRP|S_IWOTH))) {
       errno = EACCES;
       return -1;
     }
   }
-  
+
   if (mode & X_OK) {
     if (!(mask & (S_IXUSR|S_IXGRP|S_IXOTH))) {
       errno = EACCES;
@@ -573,14 +573,14 @@ char *strip_end(char *s, char *ch) {
 char *get_token(char **s, char *sep) {
   char *res;
 
-  if(!s || !*s || !**s)
+  if (!s || !*s || !**s)
     return NULL;
 
   res = *s;
 
   while(**s && !strchr(sep,**s)) (*s)++;
 
-  if(**s) {
+  if (**s) {
     *(*s)++ = '\0';
   }
 
@@ -596,17 +596,17 @@ char *get_token(char **s, char *sep) {
 char *safe_token(char **s) {
   char *res = "";
 
-  if(!s || !*s)
+  if (!s || !*s)
     return res;
 
   while (isspace((int) **s) && **s) (*s)++;
 
-  if(**s) {
+  if (**s) {
     res = *s;
 
     while (!isspace((int) **s) && **s) (*s)++;
 
-    if(**s)
+    if (**s)
       *(*s)++ = '\0';
 
     while (isspace((int) **s) && **s) (*s)++;
@@ -620,7 +620,7 @@ char *safe_token(char **s) {
  * existing ones.
  */
 
-int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg, 
+int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
                   size_t msg_size) {
   FILE *fp;
   char *deny_str,*disc_str,*cp, buf[1025] = {'\0'};
@@ -628,8 +628,8 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
   time_t now,shuttime = (time_t)0;
   struct tm tm;
 
-  if(file_exists(SHUTMSG_PATH) && (fp = fopen(SHUTMSG_PATH,"r"))) {
-    if((cp = fgets(buf,sizeof(buf),fp)) != NULL) {
+  if (file_exists(SHUTMSG_PATH) && (fp = fopen(SHUTMSG_PATH,"r"))) {
+    if ((cp = fgets(buf,sizeof(buf),fp)) != NULL) {
       buf[sizeof(buf)-1] = '\0'; CHOP(cp);
 
       /* We use this to fill in dst, timezone, etc */
@@ -646,23 +646,23 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
       deny_str = safe_token(&cp);
       disc_str = safe_token(&cp);
 
-      if((shuttime = mktime(&tm)) == (time_t) - 1) {
+      if ((shuttime = mktime(&tm)) == (time_t) - 1) {
         fclose(fp);
         return 0;
       }
 
-      if(deny) {
-        if(strlen(deny_str) == 4) {
+      if (deny) {
+        if (strlen(deny_str) == 4) {
           sstrncpy(hr,deny_str,sizeof(hr)); hr[2] = '\0'; deny_str += 2;
           sstrncpy(mn,deny_str,sizeof(mn)); mn[2] = '\0';
-          
+
           *deny = shuttime - ((atoi(hr) * 3600) + (atoi(mn) * 60));
         } else
           *deny = shuttime;
       }
 
-      if(disc) {
-        if(strlen(disc_str) == 4) {
+      if (disc) {
+        if (strlen(disc_str) == 4) {
           sstrncpy(hr,disc_str,sizeof(hr)); hr[2] = '\0'; disc_str += 2;
           sstrncpy(mn,disc_str,sizeof(mn)); mn[2] = '\0';
 
@@ -671,7 +671,7 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
           *disc = shuttime;
       }
 
-      if(fgets(buf,sizeof(buf),fp) && msg) {
+      if (fgets(buf,sizeof(buf),fp) && msg) {
         buf[sizeof(buf)-1] = '\0';
 	CHOP(buf);
         sstrncpy(msg,buf,msg_size-1);
@@ -679,7 +679,7 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
     }
 
     fclose(fp);
-    if(shut)
+    if (shut)
       *shut = shuttime;
     return 1;
   }
@@ -708,7 +708,7 @@ char *make_arg_str(pool *p, int argc, char **argv) {
       res = pstrcat(p, res," ", *argv++, NULL);
     else
       res = pstrcat(p, res, *argv++, NULL);
-  } 
+  }
 
   return res;
 }
@@ -725,7 +725,7 @@ char *sreplace(pool *p, char *s, ...)
 
   cp = buf;
   *cp = '\0';
-  
+
   memset(marr,'\0',sizeof(marr));
   memset(rarr,'\0',sizeof(rarr));
   blen=strlen(src)+1;
@@ -733,7 +733,7 @@ char *sreplace(pool *p, char *s, ...)
   va_start(args,s);
 
   while((m = va_arg(args,char*)) != NULL && mlen < 32) {
-    if((r = va_arg(args,char*)) == NULL)
+    if ((r = va_arg(args,char*)) == NULL)
       break;
     blen += (strlen(r) - strlen(m));
     marr[mlen] = m;
@@ -751,24 +751,24 @@ char *sreplace(pool *p, char *s, ...)
 #define BUFSIZ 8192
 #endif
 
-  if(blen < BUFSIZ) {
+  if (blen < BUFSIZ) {
     cp = pbuf = (char *) pcalloc(p, ++blen);
   }
-  
-  if(!pbuf) {
+
+  if (!pbuf) {
     cp   = pbuf = buf;
     dyn  = 0;
     blen = sizeof(buf);
   }
-  
+
   while(*src) {
     for(mptr = marr, rptr = rarr; *mptr; mptr++, rptr++) {
       mlen = strlen(*mptr);
       rlen = strlen(*rptr);
 
-      if(strncmp(src,*mptr,mlen) == 0) {
+      if (strncmp(src,*mptr,mlen) == 0) {
         sstrncpy(cp,*rptr, blen - strlen(pbuf));
-	if(((cp + rlen) - pbuf + 1) > blen) {
+	if (((cp + rlen) - pbuf + 1) > blen) {
 	  log_pri(PR_LOG_ERR,
 		  "Warning, attempt to overflow internal ProFTPD buffers.");
 	  cp = pbuf + blen - 1;
@@ -781,9 +781,9 @@ char *sreplace(pool *p, char *s, ...)
         break;
       }
     }
-    
-    if(!*mptr) {
-      if((cp - pbuf + 1) > blen) {
+
+    if (!*mptr) {
+      if ((cp - pbuf + 1) > blen) {
 	log_pri(PR_LOG_ERR,
 		"Warning, attempt to overflow internal ProFTPD buffers.");
 	cp = pbuf + blen - 1;
@@ -791,11 +791,11 @@ char *sreplace(pool *p, char *s, ...)
       *cp++ = *src++;
     }
   }
-  
+
  done:
   *cp = '\0';
 
-  if(dyn)
+  if (dyn)
     return pbuf;
   return pstrdup(p,buf);
 }
@@ -828,12 +828,12 @@ void pr_memscrub(void *ptr, size_t ptrlen) {
 
 char *sstrcat(char *dest, const char *src, size_t n) {
   register char *d;
-  
+
   for(d = dest; *d && n > 1; d++, n--) ;
-  
+
   while(n-- > 1 && *src)
     *d++ = *src++;
-  
+
   *d = 0;
   return dest;
 }
@@ -843,16 +843,16 @@ char *sstrcat(char *dest, const char *src, size_t n) {
  */
 char *sstrncpy(char *dest, const char *src, size_t n) {
   register char *d = dest;
-  
-  if(!dest)
+
+  if (!dest)
     return NULL;
-  
-  if(src && *src) {
+
+  if (src && *src) {
     for(; *src && n > 1; n--)
       *d++ = *src++;
   }
-  
+
   *d = '\0';
-  
+
   return dest;
 }
