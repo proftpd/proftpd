@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.86 2002-09-25 23:43:20 castaglia Exp $
+ * $Id: mod_auth.c,v 1.87 2002-09-26 17:52:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -169,10 +169,11 @@ static int auth_sess_init(void) {
 
   pr_scoreboard_update_entry(getpid(),
     PR_SCORE_USER, "(none)",
-    PR_SCORE_SERVER_NAME, main_server->ServerName,
     PR_SCORE_SERVER_IP, main_server->ipaddr,
     PR_SCORE_SERVER_PORT, main_server->ServerPort,
-    PR_SCORE_ADDR, session.c->remote_name, session.c->remote_ipaddr,
+    PR_SCORE_SERVER_ADDR, main_server->ipaddr, main_server->ServerPort,
+    PR_SCORE_SERVER_NAME, main_server->ServerName,
+    PR_SCORE_CLIENT_ADDR, session.c->remote_name, session.c->remote_ipaddr,
     PR_SCORE_CLASS, (session.class && session.class->name) ?
       session.class->name: "",
     PR_SCORE_BEGIN_SESSION, time(NULL),
@@ -1432,7 +1433,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
 	  
           cur++;
 	  
-          s = strchr(score->sce_addr, '[');
+          s = strchr(score->sce_client_addr, '[');
           d = ip;
 	  
           if (s != NULL)

@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.2 2002-09-26 16:47:06 castaglia Exp $
+ * $Id: scoreboard.c,v 1.3 2002-09-26 17:52:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -500,14 +500,14 @@ int pr_scoreboard_update_entry(pid_t pid, ...) {
         sstrncpy(entry.sce_user, tmp, sizeof(entry.sce_user));
         break;
 
-      case PR_SCORE_ADDR:
+      case PR_SCORE_CLIENT_ADDR:
         {
           char *remote_name = va_arg(ap, char *);
           p_in_addr_t *remote_ip = va_arg(ap, p_in_addr_t *);
 
-          snprintf(entry.sce_addr, sizeof(entry.sce_addr),
+          snprintf(entry.sce_client_addr, sizeof(entry.sce_client_addr),
             "%s [%s]", remote_name, inet_ntoa(*remote_ip));
-          entry.sce_addr[sizeof(entry.sce_addr)-1] = '\0';
+          entry.sce_client_addr[sizeof(entry.sce_client_addr)-1] = '\0';
         }
         break;
 
@@ -541,6 +541,17 @@ int pr_scoreboard_update_entry(pid_t pid, ...) {
 
       case PR_SCORE_SERVER_PORT:
         entry.sce_server_port = va_arg(ap, unsigned short);
+        break;
+
+      case PR_SCORE_SERVER_ADDR:
+        {
+          p_in_addr_t *server_ip = va_arg(ap, p_in_addr_t *);
+          unsigned int server_port = va_arg(ap, unsigned int);
+
+          snprintf(entry.sce_server_addr, sizeof(entry.sce_server_addr),
+            "%s:%u", inet_ntoa(*server_ip), server_port);
+          entry.sce_server_addr[sizeof(entry.sce_server_addr)-1] = '\0';
+        }
         break;
 
       case PR_SCORE_SERVER_NAME:

@@ -27,7 +27,7 @@
 /* Shows a count of "who" is online via proftpd.  Uses the /var/run/proftpd*
  * log files.
  *
- * $Id: ftpwho.c,v 1.2 2002-09-26 16:59:46 castaglia Exp $
+ * $Id: ftpwho.c,v 1.3 2002-09-26 17:52:35 castaglia Exp $
  */
 
 #include "utils.h"
@@ -341,8 +341,8 @@ int main(int argc, char **argv) {
           show_time(&score->sce_begin_idle), score->sce_cmd);
 
       if (verbose) {
-        if (score->sce_addr[0])
-          printf("             (host: %s)\n", score->sce_addr);
+        if (score->sce_client_addr[0])
+          printf("             (host: %s)\n", score->sce_client_addr);
         if (score->sce_cwd[0])
           printf("              (cwd: %s)\n", score->sce_cwd);
       }
@@ -374,16 +374,16 @@ int main(int argc, char **argv) {
 
       /* Display additional information, if requested. */
       if (verbose) {
-        if (score->sce_addr[0])
+        if (score->sce_client_addr[0])
           printf("%sclient: %s%s",
             (outform & OF_ONELINE) ? " " : "\n\t",
-            score->sce_addr,
+            score->sce_client_addr,
             (outform & OF_ONELINE) ? "" : "\n");
 
-        if (score->sce_server_name[0])
-          printf("%sserver: %s%s",
+        if (score->sce_server_addr[0])
+          printf("%sserver: %s (%s)%s",
             (outform & OF_ONELINE) ? " " : "\t",
-            score->sce_server_name,
+            score->sce_server_addr, score->sce_server_name,
             (outform & OF_ONELINE) ? "" : "\n");
 
         if (score->sce_cwd[0])
@@ -396,13 +396,22 @@ int main(int argc, char **argv) {
 
     } else {
 
-      printf("%5d %s [%6s] (authenticating)\n", (int) score->sce_pid,
+      printf("%5d %-8s [%6s] (authenticating)\n", (int) score->sce_pid,
         score->sce_user, show_time(&score->sce_begin_session));
 
       /* Display additional information, if requested. */
       if (verbose) {
-        if (score->sce_addr[0])
-          printf("             (host: %s)\n", score->sce_addr);
+        if (score->sce_client_addr[0])
+          printf("%sclient: %s%s",
+            (outform & OF_ONELINE) ? " " : "\n\t",
+            score->sce_client_addr,
+            (outform & OF_ONELINE) ? "" : "\n");
+
+        if (score->sce_server_addr[0])
+          printf("%sserver: %s (%s)%s",
+            (outform & OF_ONELINE) ? " " : "\t",
+            score->sce_server_addr, score->sce_server_name,
+            (outform & OF_ONELINE) ? "" : "\n");
       }
     }
   }

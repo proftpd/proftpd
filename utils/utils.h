@@ -26,7 +26,7 @@
 
 /* Scoreboard routines.
  *
- * $Id: utils.h,v 1.2 2002-09-26 17:17:51 castaglia Exp $
+ * $Id: utils.h,v 1.3 2002-09-26 17:52:35 castaglia Exp $
  */
 
 #ifndef UTIL_SCOREBOARD_H
@@ -110,7 +110,8 @@ typedef struct {
   char sce_user[32];
   p_in_addr_t sce_server_ip;
   unsigned short sce_server_port;
-  char sce_server_name[32], sce_addr[80];
+  char sce_server_addr[80], sce_server_name[32];
+  char sce_client_addr[80];
   char sce_class[32];
   char sce_cwd[80];
   char sce_cmd[80];
