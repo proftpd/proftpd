@@ -57,7 +57,8 @@ mod_linuxprivs.o: ../include/sets.h ../include/dirtree.h ../include/io.h
 mod_linuxprivs.o: ../include/modules.h ../include/timers.h ../include/inet.h
 mod_linuxprivs.o: ../include/ident.h ../include/ftp.h ../include/log.h
 mod_linuxprivs.o: ../include/data.h ../include/libsupp.h ../include/fs.h
-mod_linuxprivs.o: ../include/privs.h ../contrib/libcap/capability.h
+mod_linuxprivs.o: ../include/privs.h
+mod_linuxprivs.o: ../contrib/libcap/include/sys/capability.h
 mod_log.o: ../include/conf.h ../include/version.h ../config.h
 mod_log.o: ../include/default_paths.h ../include/options.h ../include/pool.h
 mod_log.o: ../include/proftpd.h ../include/support.h ../include/sets.h
