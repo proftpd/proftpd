@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.5 2003-11-16 00:49:45 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.6 2004-01-19 17:58:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -37,6 +37,10 @@
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001020902
 # error "ProFTPD 1.2.9rc2 or later required"
+#endif
+
+#ifndef USE_CTRLS
+# error "Controls support required (use --enable-ctrls)"
 #endif
 
 /* Values for the stop flags */
@@ -752,6 +756,7 @@ MODRET set_adminctrlsengine(cmd_rec *cmd) {
  */
 
 static void ctrls_admin_restart_ev(const void *event_data, void *user_data) {
+  register unsigned int i;
 
   if (ctrls_admin_pool)
     destroy_pool(ctrls_admin_pool);
@@ -759,6 +764,22 @@ static void ctrls_admin_restart_ev(const void *event_data, void *user_data) {
   /* Allocate the pool for this module's use */
   ctrls_admin_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(ctrls_admin_pool, MOD_CTRLS_ADMIN_VERSION);
+
+  /* Register the control handlers */
+  for (i = 0; ctrls_admin_acttab[i].act_action; i++) {
+
+    /* Allocate and initialize the ACL for this control. */
+    ctrls_admin_acttab[i].act_acl = pcalloc(ctrls_admin_pool,
+      sizeof(ctrls_acl_t));
+    ctrls_init_acl(ctrls_admin_acttab[i].act_acl);
+
+    if (pr_ctrls_register(&ctrls_admin_module,
+        ctrls_admin_acttab[i].act_action, ctrls_admin_acttab[i].act_desc,
+        ctrls_admin_acttab[i].act_cb) < 0)
+     pr_log_pri(PR_LOG_INFO, MOD_CTRLS_ADMIN_VERSION
+        ": error registering '%s' control: %s",
+        ctrls_admin_acttab[i].act_action, strerror(errno));
+  }
 
   return;
 }
