@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.103 2002-11-13 21:15:27 castaglia Exp $
+ * $Id: mod_auth.c,v 1.104 2002-11-14 17:57:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1357,36 +1357,33 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
   long cur = 0, hcur = 0, ccur = 0, hostsperuser = 0, usersessions = 0;
   config_rec *c, *maxc;
   char *origuser, config_class_users[128] = {'\0'};
-  int classes_enabled = 0;
+  unsigned char classes_enabled = FALSE;
 
-  if((classes_enabled = get_param_int(main_server->conf,
-				      "Classes", FALSE)) != 1)
-    classes_enabled = 0;
+  if ((classes_enabled = get_param_int(main_server->conf, "Classes",
+      FALSE)) != TRUE)
+    classes_enabled = FALSE;
 
   /* NOTE: there is an assumption here that if Classes have been enabled,
    * there will be a corresponding Class defined.  This can cause a
    * SIGSEGV if not caught.
    *
    * The catch is this: if Classes are enabled, but find_class() returns
-   *  NULL, act as if Classes are disabled. -- TJ
+   *  NULL, act as if Classes are disabled.
    */
   if (classes_enabled && session.class == NULL)
-      classes_enabled = 0;
+      classes_enabled = FALSE;
 
-  /* Determine how many users are currently connected.
-   */
+  /* Determine how many users are currently connected. */
   origuser = user;
   c = _auth_resolve_user(cmd->tmp_pool, &user, NULL, NULL);
 
-  /* Gather our statistics.
-   */
+  /* Gather our statistics. */
   if (user) {
     pr_rewind_scoreboard();
     while ((score = pr_scoreboard_read_entry()) != NULL) {
       unsigned char same_host = FALSE;
 
-      /* Make sure it matches our current server.
-       */
+      /* Make sure it matches our current server. */
       if (score->sce_server_ip->s_addr == main_server->ipaddr->s_addr &&
           score->sce_server_port == main_server->ServerPort) {
 
@@ -1394,7 +1391,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
             !strcmp(score->sce_user, user)) || !c) {
           char *s, *d, ip[32] = {'\0'};
           int mpos = sizeof(ip) - 1;
-	
+
           cur++;
 
           s = strchr(score->sce_client_addr, '[');
@@ -1408,20 +1405,22 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
 	
           *d = '\0';
 	
-	  /* Count up sessions on a per-host basis.
-	   */
+	  /* Count up sessions on a per-host basis.  This first small hack
+           * increments the hcur counter properly when dealing with anonymous
+           * logins. */
+          if (c && hcur == 0)
+            hcur = 1;
+
           if (!strcmp(ip, inet_ntoa(*session.c->remote_ipaddr))) {
 	    same_host = TRUE;
             hcur++;
 	  }
 	
-	  /* Take a per-user count of connections.
-	   */
+	  /* Take a per-user count of connections. */
 	  if (!strcmp(score->sce_user, user)) {
 	    usersessions++;
 	
-	    /* Count up unique hosts.
-	     */
+	    /* Count up unique hosts. */
 	    if (!same_host)
 	      hostsperuser++;
 	  }
@@ -1439,7 +1438,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
   remove_config(cmd->server->conf, "CURRENT-CLIENTS", FALSE);
   add_config_param_set(&cmd->server->conf, "CURRENT-CLIENTS", 1, (void *) cur);
 
-  if(classes_enabled) {
+  if (classes_enabled) {
     remove_config(cmd->server->conf, "CURRENT-CLASS", FALSE);
     add_config_param_set(&cmd->server->conf, "CURRENT-CLASS", 1,
 			 session.class->name);
@@ -1449,8 +1448,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     remove_config(cmd->server->conf, config_class_users, FALSE);
     add_config_param_set(&cmd->server->conf, config_class_users, 1, ccur);
 
-    /* Too many users in this class?
-     */
+    /* Too many users in this class? */
     if(ccur >= session.class->max_connections) {
       char *display = NULL;
 
@@ -1492,7 +1490,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     if (maxc->argc > 1)
       maxstr = maxc->argv[1];
 
-    if (*max && hcur >= *max) {
+    if (*max && hcur > *max) {
       snprintf(maxn, sizeof(maxn), "%u", *max);
       send_response(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
