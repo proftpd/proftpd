@@ -119,7 +119,7 @@ distclean: clean depend
 	rm -f src/Makefile modules/Makefile lib/Makefile
 	rm -f config.h config.status config.cache config.log \
 	      Makefile proftpd.conf development.notes
-	rm -f Make.modules Make.rules contrib/proftpd.spec
+	rm -f Make.modules Make.rules contrib/dist/rpm/proftpd.spec
 	rm -f Makefile lib/Makefile modules/Makefile src/Makefile
 	rm -rf `find . -name "CVS"`
 	rm -rf `find . -name "*~"`
