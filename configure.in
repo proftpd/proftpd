@@ -150,7 +150,9 @@ AC_CHECK_FUNCS(set_auth_parameters getprpwent)
 dnl Checks for installation user/group
 
 test x"$install_user" = x && install_user=root
-test x"$install_group" = x && install_group=root
+if test x"$install_group" = x ; then
+	install_group=`sed -n 's/^\(.*\):.*:0:.*/\1/p' /etc/group 2>/dev/null`
+fi
 
 AC_SUBST(install_user)
 AC_SUBST(install_group)

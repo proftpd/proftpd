@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.4 1999-10-07 18:10:54 macgyver Exp $
+$Id: NEWS,v 1.5 1999-10-10 18:33:00 macgyver Exp $
 
 1.2.0pre9
 
@@ -12,4 +12,6 @@ $Id: NEWS,v 1.4 1999-10-07 18:10:54 macgyver Exp $
 - Fixed a rare segfault in mod_auth.
 
 - Added some extra information when logging various conditions.
+
+- mod_ldap for authentication against LDAP directories is now in place.
 
