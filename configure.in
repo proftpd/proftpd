@@ -948,11 +948,12 @@ dnl getaddrinfo is a #define on Tru64 Unix.  How annoying.
 AC_MSG_CHECKING([for getaddrinfo])
 AC_TRY_LINK(
   [
-    #if HAVE_STDIO_H
-    # include <stdio.h>
-    #endif
+    #include <stdio.h>
     #if HAVE_SYS_TYPES_H
     # include <sys/types.h>
+    #endif
+    #if HAVE_SYS_SOCKET_H
+    # include <sys/socket.h>
     #endif
     #if HAVE_NETDB_H
     # include <netdb.h>
