@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.274 2002-11-12 16:19:58 jwm Exp $
+$Id: NEWS,v 1.275 2002-11-13 14:55:22 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -37,6 +37,7 @@ CVS
   implementation.
 - Only link ftptop with lib{n,}curses - it isn't needed in any other
   binaries
+- Bug 1815 - Patch to add class information to ftpwho (with verbose on)
 
 1.2.7rc2 - Released 2002-10-22
 ---------------------------------

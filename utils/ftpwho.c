@@ -27,7 +27,7 @@
 /* Shows a count of "who" is online via proftpd.  Uses the /var/run/proftpd*
  * log files.
  *
- * $Id: ftpwho.c,v 1.5 2002-10-29 18:06:53 castaglia Exp $
+ * $Id: ftpwho.c,v 1.6 2002-11-13 14:55:23 castaglia Exp $
  */
 
 #include "utils.h"
@@ -351,6 +351,8 @@ int main(int argc, char **argv) {
           printf("             (host: %s)\n", score->sce_client_addr);
         if (score->sce_cwd[0])
           printf("              (cwd: %s)\n", score->sce_cwd);
+        if (score->sce_class[0])
+          printf("               (class: %s)\n", score->sce_class);
       }
 
       continue;
@@ -393,9 +395,15 @@ int main(int argc, char **argv) {
             (outform & OF_ONELINE) ? "" : "\n");
 
         if (score->sce_cwd[0])
-          printf("%slocation: %s\n",
+          printf("%slocation: %s%s",
             (outform & OF_ONELINE) ? " " : "\t",
-            score->sce_cwd);
+            score->sce_cwd,
+            (outform & OF_ONELINE) ? "" : "\n");
+
+        if (score->sce_class[0])
+          printf("%sclass: %s\n",
+            (outform & OF_ONELINE) ? " " : "\t",
+            score->sce_class);
 
       } else
         printf("%s", "\n");
@@ -418,6 +426,11 @@ int main(int argc, char **argv) {
             (outform & OF_ONELINE) ? " " : "\t",
             score->sce_server_addr, score->sce_server_name,
             (outform & OF_ONELINE) ? "" : "\n");
+
+        if (score->sce_class[0])
+          printf("%sclass: %s\n",
+            (outform & OF_ONELINE) ? " " : "\t",
+            score->sce_class);
       }
     }
   }
