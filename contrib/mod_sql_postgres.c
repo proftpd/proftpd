@@ -35,7 +35,7 @@
 
 #define _POSTGRES_PORT "5432"
 
-#include <pgsql/libpq-fe.h>
+#include <libpq-fe.h>
 #include "conf.h"
 #include "../contrib/mod_sql.h"
 

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.396 2003-03-09 22:28:16 castaglia Exp $
+$Id: NEWS,v 1.397 2003-03-09 22:40:23 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -26,7 +26,7 @@ CVS
   via RADIUS, but the login process later fails (e.g. home directory
   inaccessible or something similar); subsequent logging in as a different
   user would succeed because the OK flag was not cleared.
-- Added mod_ifsession-0.9rc6.
+- Added contrib module mod_ifsession-0.9rc6.
 - Bug 1932 - Make Max* checks a PASS POST_CMD handler.  One of the consequences
   of this change is that the Max* limits will always be enforced after the
   PASS command has been sent, not after the USER command (as used to be done).
@@ -46,6 +46,11 @@ CVS
   --enable-transfer-buffer-size, is also added, to be used for tuning the
   size of internal buffers used for file transfers.  Using this option to
   configure an 8K buffer size often results in higher transfer speeds.
+- Bug 1849 - Compile can have trouble finding mysql.h.  The MySQL backend
+  module was assuming that mysql.h would be found in a directory named
+  "mysql"; for some distributions this is not the case.  Similarly for
+  the Postgres backend module and the libpq-fe.h file.  Users may need to
+  alter the --with-includes configure option used when building mod_sql.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------

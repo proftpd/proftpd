@@ -132,7 +132,7 @@
 
 #define _MYSQL_PORT "3306"
 
-#include <mysql/mysql.h>
+#include <mysql.h>
 #include "conf.h"
 #include "../contrib/mod_sql.h"
 
