@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.20 2004-09-05 21:29:00 castaglia Exp $
+ * $Id: options.h,v 1.21 2004-10-31 19:09:35 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -75,8 +75,13 @@
  * configured on a per-vhost basis via the SocketOptions directive.
  */
 
-#define PR_TUNABLE_DEFAULT_RCVBUF	8192
-#define PR_TUNABLE_DEFAULT_SNDBUF	8192
+#ifndef PR_TUNABLE_RCVBUFSZ
+# define PR_TUNABLE_RCVBUFSZ		8192
+#endif
+
+#ifndef PR_TUNABLE_SNDBUFSZ
+# define PR_TUNABLE_SNDBUFSZ		8192
+#endif
 
 /* Default internal buffer size used for data transfers and other
  * miscellaneous tasks.

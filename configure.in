@@ -601,7 +601,7 @@ AC_ARG_ENABLE(timeout-stalled,
 AC_ARG_ENABLE(transfer-buffer-size,
   [AC_HELP_STRING(
     [--enable-transfer-buffer-size],
-    [tune the the size (in bytes) of data transfer buffers (default=buffer size)])
+    [tune the the size (in bytes) of data transfer buffers (default=OS dependent)])
   ],
   [
     if test "$enableval" = "yes" || test "$enableval" = "no" ; then
@@ -1297,6 +1297,101 @@ AC_TRY_RUN(
   AC_MSG_RESULT(no); AC_DEFINE(HAVE_LU),
   AC_MSG_RESULT(cross-compiling); AC_DEFINE(HAVE_LU)
 )
+
+dnl Run a small test program to see which is the smaller of a TCP socket's
+dnl buffer size, its send buffer or its receive buffer.  The smaller of
+dnl of the two's size will be used as the default PR_TUNABLE_XFER_BUFFER_SIZE.
+if test -z "$enable_transfer_buffer_size" ; then
+  AC_MSG_CHECKING([for default transfer buffer sizes]);
+  AC_TRY_RUN(
+    [
+      #include <errno.h>
+      #include <stdio.h>
+      #if HAVE_UNISTD_H
+      # include <unistd.h>
+      #endif
+      #if HAVE_SYS_TYPES_H
+      # include <sys/types.h>
+      #endif
+      #if HAVE_NETDB_H
+      # include <netdb.h>
+      #endif
+      #include <sys/socket.h>
+      int main(int argc, char *argv[]) {
+        int proto, sockfd, rcvbufsz, sndbufsz;
+        struct protoent *p;
+        int len;
+        FILE *fp;
+        char rcvbufstr[256], sndbufstr[256], *buf;
+
+        p = getprotobyname("tcp");
+        if (!p) {
+          perror("getprotobyname()");
+          return 1;
+        }
+        proto = p->p_proto;
+
+        sockfd = socket(AF_INET, SOCK_STREAM, proto);
+        if (sockfd < 0) {
+          perror("socket()");
+          return 1;
+        }
+
+        len = sizeof(rcvbufsz);
+        if (getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, (void *) &rcvbufsz,
+            &len) < 0) {
+          perror("getsockopt(SO_RCVBUF)");
+          close(sockfd);
+          return 1;
+        }
+
+        len = sizeof(sndbufsz);
+        if (getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, (void *) &sndbufsz,
+            &len) < 0) {
+          perror("getsockopt(SO_SNDBUF)");
+          close(sockfd);
+          return 1;
+        }
+
+        memset(rcvbufstr, '\0', sizeof(rcvbufstr));
+        snprintf(rcvbufstr, sizeof(rcvbufstr), "%d", rcvbufsz);
+
+        memset(sndbufstr, '\0', sizeof(sndbufstr));
+        snprintf(sndbufstr, sizeof(sndbufstr), "%d", sndbufsz);
+
+        buf = sndbufsz < rcvbufsz ? sndbufstr : rcvbufstr;
+        fp = fopen("conftest.xferbufsz", "w+");
+        fwrite(buf, strlen(buf), 1, fp);
+        fclose(fp);
+
+        fp = fopen("conftest.rcvbufsz", "w+");
+        fwrite(rcvbufstr, strlen(rcvbufstr), 1, fp);
+        fclose(fp);
+
+        fp = fopen("conftest.sndbufsz", "w+");
+        fwrite(sndbufstr, strlen(sndbufstr), 1, fp);
+        fclose(fp);
+
+        return 0;
+      }
+    ],
+    [
+      rcvbufsz=`cat conftest.rcvbufsz`
+      sndbufsz=`cat conftest.sndbufsz`
+      xferbufsz=`cat conftest.xferbufsz`
+      AC_MSG_RESULT($xferbufsz)
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_RCVBUFSZ, $rcvbufsz)
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_SNDBUFSZ, $sndbufsz)
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_XFER_BUFFER_SIZE, $xferbufsz)
+    ],
+    [
+      AC_MSG_RESULT(none)
+    ],
+    [
+      AC_MSG_RESULT(cross-compiling)
+    ]
+  )
+fi
 
 dnl Add the proftpd support library
 LIBS="-lsupp $LIBS"

@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.161 2004-10-31 01:32:49 castaglia Exp $
+ * $Id: dirtree.c,v 1.162 2004-10-31 19:09:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2938,10 +2938,10 @@ int fixup_servers(xaset_t *list) {
     }
 
     if (!s->tcp_rcvbuf_len)
-      s->tcp_rcvbuf_len = PR_TUNABLE_DEFAULT_RCVBUF;
+      s->tcp_rcvbuf_len = PR_TUNABLE_RCVBUFSZ;
 
     if (!s->tcp_sndbuf_len)
-      s->tcp_sndbuf_len = PR_TUNABLE_DEFAULT_SNDBUF;
+      s->tcp_sndbuf_len = PR_TUNABLE_SNDBUFSZ;
 
     if ((c = find_config(s->conf, CONF_PARAM, "MasqueradeAddress",
         FALSE)) != NULL) {
