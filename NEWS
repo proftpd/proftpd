@@ -1,7 +1,8 @@
-$Id: NEWS,v 1.160 2002-05-09 17:42:44 castaglia Exp $
+$Id: NEWS,v 1.161 2002-05-10 13:00:33 jwm Exp $
 
 1.2.5rc2 - CVS
 ---------------------------------
+- New mod_ldap (2.8.3)
 - Bug 1544 - Daemon does not switch to configured User/Group identity in
              <VirtualHost> as documented
 - Bug 1581 - Changed Hide{User,Group} directive to use pointers for
