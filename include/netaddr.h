@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.5 2003-08-07 18:05:06 castaglia Exp $
+ * $Id: netaddr.h,v 1.6 2003-08-08 02:50:26 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -62,7 +62,10 @@ int pr_netaddr_ncmp(const pr_netaddr_t *, const pr_netaddr_t *, unsigned int);
 /* Compare the given pr_netaddr_t against a glob pattern, as intended for
  * fnmatch(3).  The given pattern will be matched first against the DNS
  * string of the netaddr, if present.  If that doesn't match, a comparison
- * against the IP address string will be tried.
+ * against the IP address string will be tried.  A return value of -1, with
+ * errno set to EINVAL, occurs if the netaddr or pattern are NULL.  Otherwise,
+ * TRUE is returned if the address is matched by the pattern, or FALSE if
+ * is not matched.
  */
 int pr_netaddr_fnmatch(const pr_netaddr_t *, const char *);
 
