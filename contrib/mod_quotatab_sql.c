@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_quotatab_sql.c,v 1.1 2003-12-03 07:39:36 castaglia Exp $
+ * $Id: mod_quotatab_sql.c,v 1.2 2003-12-09 19:57:16 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -395,9 +395,9 @@ static int sqltab_write(quota_table_t *sqltab) {
   snprintf(tally_bytes_in, 20, "%f", quotatab_deltas.bytes_in_delta);
   snprintf(tally_bytes_out, 20, "%f", quotatab_deltas.bytes_out_delta);
   snprintf(tally_bytes_xfer, 20, "%f", quotatab_deltas.bytes_xfer_delta);
-  snprintf(tally_files_in, 20, "%u", quotatab_deltas.files_in_delta);
-  snprintf(tally_files_out, 20, "%u", quotatab_deltas.files_out_delta);
-  snprintf(tally_files_xfer, 20, "%u", quotatab_deltas.files_xfer_delta);
+  snprintf(tally_files_in, 20, "%d", quotatab_deltas.files_in_delta);
+  snprintf(tally_files_out, 20, "%d", quotatab_deltas.files_out_delta);
+  snprintf(tally_files_xfer, 20, "%d", quotatab_deltas.files_xfer_delta);
 
   sql_cmd = sql_cmd_create(tmp_pool, 10, "sql_change", update_query,
     tally_bytes_in, tally_bytes_out, tally_bytes_xfer,
