@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.102 2002-09-06 18:51:17 castaglia Exp $
+ * $Id: main.c,v 1.103 2002-09-07 19:02:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2728,7 +2728,7 @@ int main(int argc, char **argv, char **envp)
     {
 
       /* From mod_unixpw.c */
-      extern int unixpw_persistent;
+      extern unsigned char unixpw_persistent;
 
       if (!optarg ||
           ((unixpw_persistent = atoi(optarg)) != 1 && unixpw_persistent != 0)) {
