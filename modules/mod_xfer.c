@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.125 2003-02-17 00:56:36 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.126 2003-02-19 00:01:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1479,9 +1479,9 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
     if (pr_fsio_lseek(retr_fh, session.restart_pos,
         SEEK_SET) == (off_t) -1) {
-      int _errno = errno;
+      int xerrno = errno;
       pr_fsio_close(retr_fh);
-      errno = _errno;
+      errno = xerrno;
       retr_fh = NULL;
     }
 
