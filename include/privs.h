@@ -23,7 +23,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* $Id: privs.h,v 1.5 2001-06-18 17:12:45 flood Exp $
+/* $Id: privs.h,v 1.6 2002-02-28 19:30:01 flood Exp $
  */
 
 #ifndef __PRIVS_H
@@ -54,12 +54,12 @@
  */
 
 #define PRIVS_SETUP(u,g)	{ if(getuid()) { \
-				  session.ouid = session.uid = (int)getuid(); \
-				  session.gid = (int)getgid(); \
+				  session.ouid = session.uid = getuid(); \
+				  session.gid = getgid(); \
                                   setgid(session.gid); \
                                   setreuid(session.uid,session.uid); \
 				} else {  \
-                                  session.ouid = (int)getuid(); \
+                                  session.ouid = getuid(); \
                                   session.uid = (u); session.gid = (g); \
                                   setgid(session.gid); \
 				  setreuid(0,session.uid); \
@@ -102,13 +102,13 @@
  */
 
 #define PRIVS_SETUP(u,g)	{ if(getuid()) { \
-                                  session.ouid = session.uid = (int)getuid(); \
-                                  session.gid = (int)getgid(); \
+                                  session.ouid = session.uid = getuid(); \
+                                  session.gid = getgid(); \
                                   setgid(session.gid); \
                                   setuid(session.uid); \
 				  seteuid(session.uid); \
                                 } else { \
-				  session.ouid = (int)getuid(); \
+				  session.ouid = getuid(); \
                                   session.uid = (u); session.gid = (g); \
                                   setuid(0); \
                                   setgid((g)); seteuid((u)); \

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.154 2002-02-28 19:13:34 flood Exp $
+$Id: NEWS,v 1.155 2002-02-28 19:30:01 flood Exp $
 
 1.2.5rc2 - CVS
 ---------------------------------
@@ -21,6 +21,15 @@ $Id: NEWS,v 1.154 2002-02-28 19:13:34 flood Exp $
 - Bug 1492 - Bad interaction between HiddenStor and UserOwner
 - Bug 1493 - incorrect parsing of AuthUserFile
 - Bug 1485 - Adds CF_MERGEDOWN_MULTI config_rec flag
+- Bug 1459 - server fails to send response in some cases
+- Bug 1533 - use memset correctly
+- Bug 1517 - doc update
+- Bug 1461 - modules/mod_unixpw.c pw_getgroups() makes dangerous assumption
+- Bug 1512 - Minor credentials cleanups
+- Bug 1516 - wrong response to CDUP/XCUP/XCWD
+- Bug 1451 - add_config_param_str() no longer uses permanent_pool
+- Bug 1523 - umask allocation in <Global> moved to permanent_pool
+- Bug 1380 - updated getopt library for Tru64/AIX
 
 1.2.5rc1 - Released 12/18/2001
 ---------------------------------

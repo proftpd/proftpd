@@ -25,7 +25,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.66 2002-02-28 19:13:35 flood Exp $
+ * $Id: mod_auth.c,v 1.67 2002-02-28 19:30:01 flood Exp $
  */
 
 #include "conf.h"
@@ -917,8 +917,9 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
     ensure_open_passwd(p);
 
-    if(lockdown(defroot) == -1) {
-      add_response_err(R_530, "Unable to set default root directory.");
+    if (lockdown(defroot) == -1) {
+      log_pri(LOG_ERR, "error: unable to set default root directory");
+      send_response(R_530, "Login incorrect.");
       end_login(1);
     }
 
@@ -941,8 +942,9 @@ static int _setup_environment(pool *p, char *user, char *pass)
   if(c)
     ensure_open_passwd(p);
 
-  if(c && lockdown(session.anon_root) == -1) {
-    add_response_err(R_530, "Unable to set anonymous privileges.");
+  if (c && lockdown(session.anon_root) == -1) {
+    log_pri(LOG_ERR, "error: unable to set anonymous privileges");
+    send_response(R_530, "Login incorrect.");
     end_login(1);
   }
 
@@ -972,10 +974,9 @@ static int _setup_environment(pool *p, char *user, char *pass)
      geteuid() != pw->pw_uid) {
 
     PRIVS_RELINQUISH
-
-    add_response_err(R_530, "Unable to set user privileges.");
-    log_pri(LOG_ERR, "%s setregid() or setreuid(): %s",
+    log_pri(LOG_ERR, "error: %s setregid() or setreuid(): %s",
             session.user, strerror(errno));
+    send_response(R_530, "Login incorrect.");
 
     end_login(1);
   }
@@ -1009,6 +1010,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   if (pw->pw_dir == NULL || !strcmp(pw->pw_dir, "")) {
     log_pri(LOG_ERR, "error: user %s home directory is NULL or \"\"",
       session.user);
+    send_response(R_530, "Login incorrect.");
     end_login(1);
   }
 

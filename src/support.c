@@ -25,7 +25,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.27 2002-02-26 17:35:58 flood Exp $
+ * $Id: support.c,v 1.28 2002-02-28 19:30:02 flood Exp $
  */
 
 /* History Log:
@@ -748,8 +748,8 @@ char *sreplace(pool *p, char *s, ...)
   cp = buf;
   *cp = '\0';
   
-  memset(marr,NULL,sizeof(marr));
-  memset(rarr,NULL,sizeof(rarr));
+  memset(marr,'\0',sizeof(marr));
+  memset(rarr,'\0',sizeof(rarr));
   blen=strlen(src)+1;
 
   va_start(args,s);

@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.46 2002-02-28 19:13:35 flood Exp $
+ * $Id: dirtree.c,v 1.47 2002-02-28 19:30:02 flood Exp $
  */
 
 /* History:
@@ -353,34 +353,44 @@ server_rec *end_new_server()
 
 /* Starts a sub-configuration */
   
-config_rec *start_sub_config(const char *name)
-{
-  config_rec *c,*parent = *conf.curconfig;
-  pool *p;
-  xaset_t **set;
+config_rec *start_sub_config(const char *name) {
+  config_rec *c = NULL, *parent = *conf.curconfig;
+  pool *c_pool = NULL, *parent_pool = NULL;
+  xaset_t **set = NULL;
 
-  if(parent) {
-    p = make_sub_pool(parent->pool);
+  if (parent) {
+    parent_pool = parent->pool;
     set = &parent->subset;
+
   } else {
-    p = make_sub_pool((*conf.curserver)->pool);
+    parent_pool = (*conf.curserver)->pool;
     set = &(*conf.curserver)->conf;
   }
 
-  c = (config_rec*)pcalloc(p,sizeof(config_rec));
+  /* allocate a sub-pool for this config_rec.  Note: special
+   * exception for <Global> configs -- the parent pool is permanent_pool,
+   * not the pool of the parent server.  This keeps <Global> config recs
+   * from being freed prematurely.
+   */
+  if (!strcmp(name, "<Global>"))
+    parent_pool = permanent_pool;
 
-  if(!*set)
-    *set = xaset_create(p,NULL);
+  c_pool = make_sub_pool(parent_pool);
+  c = (config_rec *) pcalloc(c_pool, sizeof(config_rec));
 
-  xaset_insert(*set,(xasetmember_t*)c);
+  if (!*set)
+    *set = xaset_create(c_pool, NULL);
+
+  xaset_insert(*set, (xasetmember_t*)c);
   
-  c->pool = p;
+  c->pool = c_pool;
   c->set = *set;
   c->parent = parent;
-  if(name)
-    c->name = pstrdup(p,name);
 
-  if(parent && (parent->config_type == CONF_DYNDIR))
+  if (name)
+    c->name = pstrdup(c->pool, name);
+
+  if (parent && (parent->config_type == CONF_DYNDIR))
     c->flags |= CF_DYNAMIC;
 
   /* Now insert another level onto the stack */
@@ -451,17 +461,17 @@ config_rec *add_config_set(xaset_t **set,const char *name)
 }
 
 /* Adds a config_rec on the current "level" */
-config_rec *add_config(const char *name)
-{
+config_rec *add_config(const char *name) {
   server_rec *s = *conf.curserver;
-  config_rec *parent,*c = *conf.curconfig;
-  pool *p;
-  xaset_t **set;
+  config_rec *parent = NULL, *c = *conf.curconfig;
+  pool *p = NULL;
+  xaset_t **set = NULL;
 
-  if(c) {
+  if (c) {
     parent = c;
     p = c->pool;
     set = &c->subset;
+
   } else {
     parent = NULL;
     
@@ -469,13 +479,14 @@ config_rec *add_config(const char *name)
       p = make_sub_pool(s->pool);
     else
       p = ((config_rec*)s->conf->xas_list)->pool;
+
     set = &s->conf;
   }
 
-  if(!*set)
-    *set = xaset_create(p,NULL);
+  if (!*set)
+    *set = xaset_create(p, NULL);
 
-  c = add_config_set(set,name);
+  c = add_config_set(set, name);
   c->parent = parent;
 
   return c;
@@ -2350,25 +2361,24 @@ config_rec *add_config_param_set(xaset_t **set,const char *name,int num,...)
   return c;
 }
 
-config_rec *add_config_param_str(const char *name, int num, ...)
-{
+config_rec *add_config_param_str(const char *name, int num, ...) {
   config_rec *c = add_config(name);
-  char *arg;
-  void **argv;
+  char *arg = NULL;
+  void **argv = NULL;
   va_list ap;
 
-  if(c) {
+  if (c) {
     c->config_type = CONF_PARAM;
     c->argc = num;
-    c->argv = pcalloc(c->pool,(num+1) * sizeof(char*));
+    c->argv = pcalloc(c->pool, (num+1) * sizeof(char*));
 
     argv = c->argv;
-    va_start(ap,num);
+    va_start(ap, num);
 
     while(num-- > 0) {
-      arg = va_arg(ap,char*);
-      if(arg)
-        *argv++ = pstrdup(permanent_pool,arg);
+      arg = va_arg(ap, char*);
+      if (arg)
+        *argv++ = pstrdup(c->pool, arg);
       else
         *argv++ = NULL;
     }

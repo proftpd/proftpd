@@ -25,7 +25,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.73 2002-02-26 17:35:58 flood Exp $
+ * $Id: main.c,v 1.74 2002-02-28 19:30:02 flood Exp $
  */
 
 /*
@@ -1587,13 +1587,6 @@ void fork_server(int fd,conn_t *l,int nofork)
     exit(0);
   }
 
-  log_debug(DEBUG4,"connected - local  : %s:%d",
-                    inet_ntoa(*session.c->local_ipaddr),
-                    session.c->local_port);
-  log_debug(DEBUG4,"connected - remote : %s:%d",
-  		    inet_ntoa(*session.c->remote_ipaddr),
-  		    session.c->remote_port);
-
   /* Use the ident protocol (RFC1413) to try to get remote ident_user
    */
 
@@ -1601,9 +1594,6 @@ void fork_server(int fd,conn_t *l,int nofork)
     session.ident_user = get_ident(session.pool,conn);
   else
     session.ident_user = "UNKNOWN";
-
-  /* Inform all the modules that we are now a child */
-  init_child_modules();
 
   /* find class */
   if (get_param_int(main_server->conf, "Classes", FALSE) == 1) {
@@ -1614,6 +1604,16 @@ void fork_server(int fd,conn_t *l,int nofork)
     else 
       log_debug(DEBUG2, "FTP session requested from unknown class");
   }
+
+  /* Inform all the modules that we are now a child */
+  init_child_modules();
+
+  log_debug(DEBUG4,"connected - local  : %s:%d",
+                    inet_ntoa(*session.c->local_ipaddr),
+                    session.c->local_port);
+  log_debug(DEBUG4,"connected - remote : %s:%d",
+                    inet_ntoa(*session.c->remote_ipaddr),
+                    session.c->remote_port);
 
   /* xfer_set_data_port(conn->local_ipaddr,conn->local_port-1); */
   cmd_loop(serv,conn);

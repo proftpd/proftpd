@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.77 2002-02-28 19:13:35 flood Exp $
+ * $Id: mod_core.c,v 1.78 2002-02-28 19:30:01 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -811,7 +811,7 @@ MODRET set_umask(cmd_rec *cmd)
   config_rec *c;
   char *endp;
   mode_t tmp_umask;
-  
+ 
   CHECK_VARARGS(cmd, 1, 2);
   CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_DIR |
 	     CONF_ANON | CONF_GLOBAL | CONF_DYNDIR);
@@ -1585,7 +1585,7 @@ MODRET add_global(cmd_rec *cmd)
   CHECK_ARGS(cmd,0);
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL);
 
-  c = start_sub_config("Global");
+  c = start_sub_config("<Global>");
   c->config_type = CONF_GLOBAL;
 
   return HANDLED(cmd);
@@ -2553,7 +2553,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir)
       core_display_file(R_250,display,session.cwd);
   }
 
-  add_response(R_250,"CWD command successful.");
+  add_response(R_250,"%s command successful.", cmd->argv[0]);
   return HANDLED(cmd);
 }
 
