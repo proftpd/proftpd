@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.3 2002-11-02 22:44:42 jwm Exp $
+# $Id: proftpd.spec,v 1.4 2002-11-02 22:47:22 jwm Exp $
 
 Summary:	ProFTPD -- Professional FTP Server.
 Name:		proftpd
@@ -161,6 +161,7 @@ rm -rf %{_builddir}/%{name}-%{version}
 %defattr(-,root,root)
 /usr/sbin/*
 /usr/bin/*
+/etc/logrotate.d/proftpd
 %dir /var/run/proftpd
 %dir /home/ftp
 %config(noreplace) /etc/pam.d/ftp
