@@ -19,7 +19,7 @@
 
 /*
  * Core FTPD module
- * $Id
+ * $Id: mod_core.c,v 1.8 1999-09-07 23:08:05 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -79,7 +79,7 @@ static struct {
   { C_SIZE, "<sp> pathname",			TRUE },
   { C_LIST, "[<sp> pathname]",			TRUE },
   { C_NLST, "[<sp> (pathname)]",		TRUE },
-  { C_SITE, "is not implemented",		TRUE },
+  { C_SITE, "<sp> string",		TRUE },
   { C_SYST, "(returns system type)",		TRUE },
   { C_STAT, "[<sp> pathname]",			TRUE },
   { C_HELP, "[<sp> command]",			TRUE },
@@ -206,6 +206,22 @@ MODRET set_serverport(cmd_rec *cmd)
     CONF_ERROR(cmd,"value must be between 0 and 65535");
 
   s->ServerPort = port;
+  return HANDLED(cmd);
+}
+
+MODRET set_bandwidth(cmd_rec *cmd)
+{
+  server_rec *s = cmd->server;
+  int bw;
+
+  CHECK_ARGS(cmd,1);
+  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL);
+
+  bw = atoi(cmd->argv[1]);
+  if(bw < 1 || bw > 2048)
+    CONF_ERROR(cmd,"value must be between 1 and 2048 Kbps");
+
+  s->Bandwidth = bw * 1024;
   return HANDLED(cmd);
 }
 
@@ -497,6 +513,15 @@ MODRET set_tcpsendwindow(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
+MODRET set_tcpnodelay(cmd_rec *cmd)
+{
+  CHECK_ARGS(cmd,1);
+  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  add_config_param("tcpNoDelay",1,get_boolean(cmd,1));
+  return HANDLED(cmd);
+}
+
 MODRET set_user(cmd_rec *cmd)
 {
   struct passwd *pw = NULL;
@@ -699,7 +724,7 @@ MODRET set_pathallowfilter(cmd_rec *cmd)
     regfree(preg);
 
     CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"'",cmd->argv[1],
-               "' failed regex compilation: ",errmsg));
+               "' failed regex compilation: ",errmsg,NULL));
   }
 
   c = add_config_param("PathAllowFilter",1,preg);
@@ -734,7 +759,7 @@ MODRET set_pathdenyfilter(cmd_rec *cmd)
     regfree(preg);
 
     CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"'",cmd->argv[1],
-               "' failed regex compilation: ",errmsg));
+               "' failed regex compilation: ",errmsg,NULL));
   }
 
   c = add_config_param("PathDenyFilter",1,preg);
@@ -981,7 +1006,7 @@ MODRET add_anonymous(cmd_rec *cmd)
 
   if(strchr(dir,'*'))
     CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"(",dir,") wildcards not allowed "
-               "in pathname."));
+               "in pathname.",NULL));
 
   if(!strcmp(dir,"/"))
     CONF_ERROR(cmd,"'/' not permitted for anonymous root directory.");
@@ -1399,13 +1424,13 @@ int core_display_file(const char *numeric, const char *fn)
   s = (session.anon_config ? session.anon_config->subset : main_server->conf);
 
   mg_time = fmt_time(time(NULL));
-  sprintf(mg_size,"%lu",fs_size);
+  snprintf(mg_size, sizeof(mg_size), "%lu",fs_size);
   max = get_param_int(s,"MaxClients",FALSE);
-  sprintf(mg_cur,"%d",(int)get_param_int(main_server->conf,
+  snprintf(mg_cur, sizeof(mg_cur), "%d",(int)get_param_int(main_server->conf,
           "CURRENT-CLIENTS",FALSE)+1);
 
   if(max != -1)
-    sprintf(mg_max,"%d",max);
+    snprintf(mg_max, sizeof(mg_max), "%d",max);
 
   while(fs_gets(buf,sizeof(buf),fp,fd) != NULL) {
     buf[1023] = '\0';
@@ -1649,7 +1674,7 @@ MODRET cmd_help(cmd_rec *cmd)
 
         for(j = 0; j < 8; j++) {
           if(outa[j]) {
-            sprintf(buf,"%-8s",outa[j]);
+            snprintf(buf, sizeof(buf), "%-8s",outa[j]);
             outs = pstrcat(cmd->tmp_pool,outs,buf,NULL);
           } else
             break;
@@ -1724,9 +1749,10 @@ MODRET _chdir(cmd_rec *cmd,char *ndir)
 	  cdpath != NULL; cdpath =
 	    find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
 	cdir = (char *) malloc(strlen(cdpath->argv[0]) + strlen(ndir) + 2);
-	sprintf(cdir,"%s%s%s",cdpath->argv[0],
-		((char *)cdpath->argv[0])[strlen(cdpath->argv[0]) - 1] == '/' ? "" : "/",
-		ndir);
+	snprintf(cdir, strlen(cdpath->argv[0]) + strlen(ndir) + 2,
+		 "%s%s%s",cdpath->argv[0],
+		 ((char *)cdpath->argv[0])[strlen(cdpath->argv[0]) - 1] == '/' ? "" : "/",
+		 ndir);
 	dir = dir_realpath(cmd->tmp_pool,cdir);
 	free(cdir);
 	if(dir &&
@@ -1752,7 +1778,8 @@ MODRET _chdir(cmd_rec *cmd,char *ndir)
 	  cdpath != NULL; cdpath =
 	    find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
 	cdir = (char *) malloc(strlen(cdpath->argv[0]) + strlen(ndir) + 2);
-	sprintf(cdir,"%s%s%s",cdpath->argv[0],
+	snprintf(cdir, strlen(cdpath->argv[0]) + strlen(ndir) + 2,
+		 "%s%s%s",cdpath->argv[0],
 		((char *)cdpath->argv[0])[strlen(cdpath->argv[0]) - 1] == '/' ? "" : "/",
 		ndir);
 	ndir = dir_virtual_chdir(cmd->tmp_pool,cdir);
@@ -1966,11 +1993,11 @@ MODRET cmd_mdtm(cmd_rec *cmd)
     } else {
       tm = gmtime(&sbuf.st_mtime);
       if(tm)
-        sprintf(buf,"%04d%02d%02d%02d%02d%02d",
+        snprintf(buf, sizeof(buf), "%04d%02d%02d%02d%02d%02d",
                 tm->tm_year+1900,tm->tm_mon+1,tm->tm_mday,
                 tm->tm_hour,tm->tm_min,tm->tm_sec);
       else
-        sprintf(buf,"00000000000000");        
+        snprintf(buf, sizeof(buf), "00000000000000");        
       add_response(R_213,"%s",buf);
     }
   }
@@ -2203,11 +2230,13 @@ conftable core_conftable[] = {
   { "WtmpLog",			set_wtmplog,			NULL },
   { "Bind",			add_bind,			NULL },
   { "Port",			set_serverport, 		NULL },
+  { "Bandwidth",		set_bandwidth, 		        NULL },
   { "SocketBindTight",		set_socketbindtight,		NULL },
   { "IdentLookups",		set_identlookups,		NULL },
   { "tcpBackLog",		set_tcpbacklog,			NULL },
   { "tcpReceiveWindow",		set_tcpreceivewindow,		NULL },
   { "tcpSendWindow",		set_tcpsendwindow,		NULL },
+  { "tcpNoDelay",		set_tcpnodelay,			NULL },
   { "DeferWelcome",		set_deferwelcome,		NULL },
   { "DefaultServer",		set_defaultserver,		NULL },
   { "MultilineRFC2228",		set_multilinerfc2228,		NULL },
