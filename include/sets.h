@@ -24,7 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* $Id: sets.h,v 1.5 2002-06-23 19:03:23 castaglia Exp $
+/* $Id: sets.h,v 1.6 2002-12-17 15:18:21 jwm Exp $
  */
 
 #ifndef __SETS_H
@@ -43,7 +43,7 @@ struct XAsetmember {
 
 struct XAset {
   xasetmember_t *xas_list;
-  
+
   pool		*mempool;
   XASET_COMPARE xas_compare;
 };

@@ -3,7 +3,7 @@
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  * Copyright (c) 2001, 2002 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.37 2002-12-13 17:27:22 castaglia Exp $
+ * $Id: proftpd.h,v 1.38 2002-12-17 15:18:21 jwm Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -107,7 +107,7 @@ typedef struct {
   unsigned char ident_lookups;		/* Is RFC931 (ident) protocol used? */
   char *ident_user;			/* User identified by ident protocol */
 
-  char cwd[MAX_PATH_LEN];		/* Current working directory */  
+  char cwd[MAX_PATH_LEN];		/* Current working directory */
   char vwd[MAX_PATH_LEN];		/* Current virtual working directory */
 
   struct config_struc *dir_config;	/* Closest matching configuration
@@ -153,7 +153,7 @@ typedef struct {
 
   struct config_struc *anon_config;	/* Anonymous FTP configuration */
   char *anon_user;			/* E-mail address sent to us */
-  
+
   off_t restart_pos;			/* Restart marked position */
 
   struct {

@@ -24,13 +24,13 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* $Id: privs.h,v 1.12 2002-12-05 20:08:37 castaglia Exp $
+/* $Id: privs.h,v 1.13 2002-12-17 15:18:21 jwm Exp $
  */
 
 #ifndef PR_PRIVS_H
 #define PR_PRIVS_H
 
-/* Macros for manipulating saved, real and effective uid for easy 
+/* Macros for manipulating saved, real and effective uid for easy
  * switching from/to root.
  *
  * Note: In version 1.1.5, all of this changed.  We USED to play games
@@ -50,7 +50,7 @@
 #endif
 
 #if !defined(HAVE_SETEUID)
- 
+
 /* Use setreuid() to perform uid swapping.
  */
 

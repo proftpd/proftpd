@@ -3,7 +3,7 @@
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  * Copyright (c) 2001, 2002 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -26,7 +26,7 @@
 
 /* BSD socket manipulation tools.
  *
- * $Id: inet.h,v 1.14 2002-12-07 00:48:32 castaglia Exp $
+ * $Id: inet.h,v 1.15 2002-12-17 15:18:18 jwm Exp $
  */
 
 #ifndef __INET_H
@@ -65,7 +65,7 @@ typedef struct conn_struc {
 
   array_header *iplist;
   int niplist;				/* IPs we are listening to */
-  
+
   int rfd,wfd;				/* Read and write fds */
   pr_netio_stream_t *instrm, *outstrm;	/* Input/Output streams */
 

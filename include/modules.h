@@ -3,7 +3,7 @@
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  * Copyright (c) 2001, 2002 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.23 2002-12-16 19:07:59 castaglia Exp $
+ * $Id: modules.h,v 1.24 2002-12-17 15:18:19 jwm Exp $
  */
 
 #ifndef __MODULES_H
@@ -120,7 +120,7 @@ typedef struct {
 #define CL_NONE				0x0
 #define CL_AUTH				(1 << 0)
 /* USER, PASS */
-#define CL_INFO				(1 << 1)  
+#define CL_INFO				(1 << 1)
 /* Informational commands (PWD, SYST, etc) */
 #define CL_DIRS				(1 << 2)
 /* Directory commands (LIST, NLST, CWD, etc) */
@@ -177,7 +177,7 @@ struct module_struc {
   char *name;				/* Module name */
 
   conftable *conftable;			/* Configuration directive table */
-  cmdtable *cmdtable;			/* Command table */ 
+  cmdtable *cmdtable;			/* Command table */
   authtable *authtable; 		/* Authentication handler table */
 
   int (*module_init_cb)(void); 		/* Module initialization */

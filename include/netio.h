@@ -3,7 +3,7 @@
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  * Copyright (c) 2001, 2002 The ProFTPD Project
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -25,7 +25,7 @@
  */
 
 /* Network IO stream layer
- * $Id: netio.h,v 1.5 2002-12-12 16:24:02 castaglia Exp $
+ * $Id: netio.h,v 1.6 2002-12-17 15:18:19 jwm Exp $
  */
 
 #ifndef PR_NETIO_H
@@ -137,7 +137,7 @@ typedef struct {
   pr_netio_stream_t *(*reopen)(pr_netio_stream_t *, int, int);
   int (*shutdown)(pr_netio_stream_t *, int);
   int (*write)(pr_netio_stream_t *, char *, size_t);
-  
+
 } pr_netio_t;
 
 /* Network IO function prototypes */

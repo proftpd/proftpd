@@ -3,7 +3,7 @@
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  * Copyright (c) 2001, 2002 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.30 2002-12-13 17:27:18 castaglia Exp $
+ * $Id: dirtree.h,v 1.31 2002-12-17 15:18:17 jwm Exp $
  */
 
 #ifndef __DIRTREE_H
@@ -96,7 +96,7 @@ struct config_struc {
   void **argv;
   long overrides;		/* Override classes */
   long flags;			/* Flags */
-  
+
   server_rec *server;		/* Server this config element is attached to */
   config_rec *parent;		/* Our parent configuration record */
   xaset_t *subset;		/* Sub-configuration */

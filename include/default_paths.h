@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  * Copyright (c) 2001, 2002 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -26,7 +26,7 @@
 /* ProFTPD default path configuration.  Normally, Makefiles generated
  * by the top-level configuration script define the RUN_DIR and
  * CONFIG_FILE_PATH macros, so the two below are typically not used.
- * $Id: default_paths.h,v 1.6 2002-06-23 19:03:22 castaglia Exp $
+ * $Id: default_paths.h,v 1.7 2002-12-17 15:18:17 jwm Exp $
  */
 
 #ifndef PROFTPD_PATHS_H
