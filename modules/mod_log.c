@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.36 2002-12-05 23:38:57 castaglia Exp $
+ * $Id: mod_log.c,v 1.37 2002-12-06 00:50:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -81,6 +81,8 @@ struct logfile_struc {
 #define META_ANON_PASS		20
 #define META_METHOD		21
 #define META_XFER_PATH		22
+#define META_DIR_NAME		23
+#define META_DIR_PATH		24
 
 static pool			*log_pool;
 static logformat_t		*formats = NULL;
@@ -89,28 +91,30 @@ static logfile_t		*logs = NULL;
 static xaset_t			*log_set = NULL;
 
 /* format string args:
-   %a			- Remote client IP address
    %A			- Anonymous username (password given)
-   %c			- Class
+   %a			- Remote client IP address
    %b			- Bytes sent for request
+   %c			- Class
+   %D			- full directory path
+   %d			- directory (for client)
    %{FOOBAR}e		- Contents of environment variable FOOBAR
-   %f			- Filename
    %F			- Transfer path (filename for client)
+   %f			- Filename
    %h			- Remote client DNS name
-   %l			- Remote logname (from identd)
    %L                   - Local server IP address
+   %l			- Remote logname (from identd)
    %m			- Request (command) method (RETR, etc.)
-   %p			- Port of server serving request
    %P			- Process ID of child serving request
+   %p			- Port of server serving request
    %r			- Full request (command)
    %s			- Response code (status)
+   %T			- Time taken to serve request, in seconds
    %t			- Time
    %{format}t		- Formatted time (strftime(3) format)
-   %T			- Time taken to serve request, in seconds
-   %u			- Local user
    %U                   - Original username sent by client
-   %v			- ServerName of server serving request
+   %u			- Local user
    %V                   - DNS name of server serving request
+   %v			- ServerName of server serving request
 */
 
 static void add_meta(unsigned char **s, unsigned char meta, int args,
@@ -192,6 +196,14 @@ void logformat(char *nickname, char *fmts)
 
         case 'c':
           add_meta(&outs, META_CLASS, 0);
+          break;
+
+        case 'D':
+          add_meta(&outs, META_DIR_PATH, 0);
+          break;
+
+        case 'd':
+          add_meta(&outs, META_DIR_NAME, 0);
           break;
 
         case 'e':
@@ -529,6 +541,45 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
     else
       sstrncpy(argp, "-", sizeof(arg));
     m++;
+    break;
+
+  case META_DIR_NAME:
+    argp = arg;
+
+    if (!strcmp(cmd->argv[0], "CDUP") || !strcmp(cmd->argv[0], "CWD") ||
+        !strcmp(cmd->argv[0], "MKD") || !strcmp(cmd->argv[0], "RMD") ||
+        !strcmp(cmd->argv[0], "XCWD") || !strcmp(cmd->argv[0], "XCUP") ||
+        !strcmp(cmd->argv[0], "XMKD") || !strcmp(cmd->argv[0], "XRMD")) {
+      char *tmp = strrchr(cmd->arg, '/');
+
+      if (tmp)
+        sstrncpy(argp, tmp, sizeof(arg));
+      else
+        sstrncpy(argp, cmd->arg, sizeof(arg));
+
+    } else {
+      sstrncpy(argp, "", sizeof(arg));
+    }
+
+    m++;
+    break;
+
+  case META_DIR_PATH:
+    argp = arg;
+
+    if (!strcmp(cmd->argv[0], "CDUP") || !strcmp(cmd->argv[0], "CWD") ||
+        !strcmp(cmd->argv[0], "MKD") || !strcmp(cmd->argv[0], "RMD") ||
+        !strcmp(cmd->argv[0], "XCWD") || !strcmp(cmd->argv[0], "XCUP") ||
+        !strcmp(cmd->argv[0], "XMKD") || !strcmp(cmd->argv[0], "XRMD")) {
+
+      char *fullpath = dir_abs_path(p, cmd->arg, TRUE);
+      sstrncpy(argp, fullpath, sizeof(arg));
+
+    } else
+      sstrncpy(argp, "", sizeof(arg));
+
+    m++;
+
     break;
 
   case META_FILENAME:

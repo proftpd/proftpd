@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.309 2002-12-05 23:38:57 castaglia Exp $
+$Id: NEWS,v 1.310 2002-12-06 00:50:41 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -30,6 +30,8 @@ CVS
   as on the command line.
 - Added mod_rewrite to distribution.
 - Bug 1403 - per-server system logs via ServerLog directive.
+- Bug 1605 - MKD and RMD do not log filepaths with %f or %F option in
+  ExtendedLog.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------
