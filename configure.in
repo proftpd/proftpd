@@ -1176,6 +1176,10 @@ AC_SUBST(VERSION)
 
 AC_CONFIG_HEADER(config.h)
 
-AC_OUTPUT(lib/Makefile src/Makefile modules/Makefile utils/Makefile
+AC_OUTPUT(lib/Makefile
+          modules/Makefile
+          src/Makefile src/proftpd.8 src/xferlog.5
+          utils/Makefile utils/ftpcount.1 utils/ftpshut.8 utils/ftptop.1
+            utils/ftpwho.1
           Makefile Make.rules,
           [echo timestamp > stamp-h])
