@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.12 2004-02-19 18:13:55 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.13 2004-04-09 16:54:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -124,23 +124,6 @@ static void ifsess_dup_set(pool *dst_pool, xaset_t *dst, xaset_t *src) {
 
     ifsess_dup_param(dst_pool, &dst, c, NULL);
   }
-}
-
-/* Hooks
- */
-
-MODRET ifsess_merge(cmd_rec *cmd) {
-
-  /* This assumes that cmd->argv[0] contains a config_rec *, for the
-   * configuration to be merged in.
-   */
-  ifsess_dup_set(main_server->pool, main_server->conf,
-    ((config_rec *) cmd->argv[0])->subset);
-
-  resolve_deferred_dirs(main_server);
-  fixup_dirs(main_server, CF_DEFER);
-
-  return HANDLED(cmd);
 }
 
 /* Configuration handlers
@@ -518,10 +501,6 @@ static conftable ifsess_conftab[] = {
 
 static cmdtable ifsess_cmdtab[] = {
   { POST_CMD, C_PASS, G_NONE, ifsess_post_pass, FALSE, FALSE },
-
-  /* Hooks */
-  { HOOK, "ifsess_merge", G_NONE, ifsess_merge, FALSE, FALSE },
-
   { 0, NULL }
 };
 
