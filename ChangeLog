@@ -1,3 +1,21 @@
+1999-12-28 09:54  macgyver
+
+	* contrib/mod_linuxprivs.c (1.6), contrib/mod_sqlpw.c (1.3),
+	modules/mod_auth.c (1.21), modules/mod_core.c (1.21),
+	modules/mod_log.c (1.10), modules/mod_ls.c (1.19),
+	modules/mod_readme.c (1.5), modules/mod_site.c (1.3),
+	modules/mod_xfer.c (1.28): Ensured that cmdtable structs remained
+	static to the files they're defined in.
+
+1999-12-28 09:43  macgyver
+
+	* ChangeLog (1.11): Updated ChangeLog.
+
+1999-12-28 09:43  macgyver
+
+	* src/: support.c (1.12), utils.c (1.7): Cleaned up sstrncpy
+	properly and backed out previous incorrect cleanup.
+
 1999-12-28 01:43  macgyver
 
 	* NEWS (1.18): Updated NEWS.

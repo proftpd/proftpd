@@ -20,7 +20,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.8 1999-12-29 20:08:02 macgyver Exp $
+ * $Id: data.c,v 1.9 1999-12-30 06:27:24 macgyver Exp $
  */
 
 #include "conf.h"
@@ -547,17 +547,43 @@ data_sendfile(int retr_fd, off_t *offset, size_t count)
       return -1;
   
   log_debug(DEBUG4, "data_sendfile(%d,%d,%d)", retr_fd, *offset, count);
+  
+  for(;;) {
 #if defined(HAVE_LINUX_SENDFILE)
-  if((len = sendfile(session.d->outf->fd, retr_fd, offset, count)) == -1) {
+    if((len = sendfile(session.d->outf->fd, retr_fd, offset, count)) == -1) {
 #elif defined(HAVE_BSD_SENDFILE)
-  if(sendfile(retr_fd, session.d->outf->fd, *offset, count, NULL, &len,
-	      0) == -1) {
+    if(sendfile(retr_fd, session.d->outf->fd, *offset, count, NULL, &len,
+		  0) == -1) {
+	
+      /* IMO, BSD's semantics are warped.  Apparently, since we have our
+       * alarms tagged SA_INTERRUPT (allowing system calls to be
+       * interrupted - primarily for select), BSD will interrupt a
+       * sendfile operation as well, so we have to catch and handle this
+       * case specially.  It should also be noted that the sendfile(2) man
+       * page doesn't state any of this.
+       */
+      if(errno == EINTR) {
+	count -= len;
+	*offset += len;
+	
+	if(TimeoutStalled)
+	  reset_timer(TIMER_STALLED, ANY_MODULE);
+	
+	if(TimeoutIdle)
+	  reset_timer(TIMER_IDLE, ANY_MODULE);
+	
+	continue;
+      }
 #endif /* HAVE_LINUX_SENDFILE */
-    error = errno;
-    fcntl(session.d->outf->fd, F_SETFL, flags);
-    errno = error;
+      
+      error = errno;
+      fcntl(session.d->outf->fd, F_SETFL, flags);
+      errno = error;
+      
+      return -1;
+    }
     
-    return -1;
+    break;
   }
   
   log_debug(DEBUG4, "data_sendfile: %ld", len);
