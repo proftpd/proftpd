@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.28 2003-10-31 08:10:35 castaglia Exp $
+# $Id: proftpd.spec,v 1.29 2003-11-03 00:42:10 jwm Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -90,6 +90,7 @@ This package is neccesary to setup ProFTPD to run from inetd/xinetd.
 	--localstatedir=/var/run \
 	--mandir=%_mandir \
 	%{?_with_mod_tls:--with-includes=/usr/kerberos/include} \
+	%{?_with_mod_sql_mysql:--with-includes=/usr/include/mysql} \
 	%{?_with_ipv6:--enable-ipv6} \
 	--with-modules=${MODULES}
 
@@ -229,6 +230,10 @@ rm -rf %{_builddir}/%{name}-%{version}
 %config(noreplace) /etc/xinetd.d/proftpd
 
 %changelog
+* Sun Nov  2 2003 John Morrissey <jwm@horde.net>
+- This changelog is not frequently updated - please check the CVS revision
+  history at http://cvs.proftpd.org/ instead.
+
 * Tue Sep 23 2003 Daniel Roesen <dr@proftpd.org>
 - Added "--with ipv6" to enable IPv6 support while building the RPM
 
