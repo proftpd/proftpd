@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.92 2002-12-17 01:06:42 castaglia Exp $
+ * $Id: dirtree.c,v 1.93 2002-12-19 17:28:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -713,32 +713,27 @@ config_rec *end_sub_config(void)
 }
 
 /* Adds a config_rec to the specified set */
-config_rec *add_config_set(xaset_t **set,const char *name)
-{
+config_rec *add_config_set(xaset_t **set,const char *name) {
   pool *conf_pool = NULL, *set_pool = NULL;
   config_rec *c,*parent = NULL;
 
   if (!*set) {
 
-    /* allocate a subpool from permanent_pool for the set
-     */
+    /* Allocate a subpool from permanent_pool for the set. */
     set_pool = make_sub_pool(permanent_pool);
     *set = xaset_create(set_pool,NULL);
     (*set)->mempool = set_pool;
 
-    /* now, make a subpool for the config_rec to be allocated
-     */
+    /* Now, make a subpool for the config_rec to be allocated. */
     conf_pool = make_sub_pool(set_pool);
 
   } else {
 
-    /* find the parent set for the config_rec to be allocated
-     */
+    /* Find the parent set for the config_rec to be allocated. */
     if ((*set)->xas_list)
       parent = ((config_rec*)((*set)->xas_list))->parent;
 
-    /* allocate a subpool for the config_rec from the parent's pool
-     */
+    /* Allocate a subpool for the config_rec from the parent's pool. */
     conf_pool = make_sub_pool((*set)->mempool);
   }
 

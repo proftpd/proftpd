@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.78 2002-12-17 01:06:42 castaglia Exp $
+ * $Id: mod_ls.c,v 1.79 2002-12-19 17:28:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -49,7 +49,7 @@ static char *list_options = NULL;
 static unsigned char list_show_symlinks = TRUE, list_times_gmt = TRUE;
 static unsigned char show_symlinks_hold;
 static int cmp(const void *a, const void *b);
-static char *fakeuser, *fakegroup;
+static char *fakeuser = NULL, *fakegroup = NULL;
 static mode_t fakemode;
 static unsigned char have_fake_mode = FALSE;
 static int ls_errno = 0;
@@ -1489,18 +1489,16 @@ MODRET genericlist(cmd_rec *cmd) {
     strict_list_opts = *((unsigned char *) c->argv[1]);
   }
 
-  fakeuser = get_param_ptr(CURRENT_CONF,"DirFakeUser",FALSE);
+  fakeuser = get_param_ptr(CURRENT_CONF, "DirFakeUser", FALSE);
 
-  /* check for a configured "logged in user" DirFakeUser
-   */
-  if (fakeuser && !strcmp(fakeuser, "~"))
+  /* Check for a configured "logged in user" DirFakeUser. */
+  if (fakeuser && strcmp(fakeuser, "~") == 0)
     fakeuser = session.user;
 
-  fakegroup = get_param_ptr(CURRENT_CONF,"DirFakeGroup",FALSE);
+  fakegroup = get_param_ptr(CURRENT_CONF, "DirFakeGroup", FALSE);
 
-  /* check for a configured "logged in user" DirFakeGroup
-   */
-  if (fakegroup && !strcmp(fakegroup, "~"))
+  /* Check for a configured "logged in user" DirFakeGroup. */
+  if (fakegroup && strcmp(fakegroup, "~") == 0)
     fakegroup = session.group;
 
   if ((fake_mode = get_param_ptr(CURRENT_CONF, "DirFakeMode", FALSE))) {
@@ -1565,18 +1563,16 @@ MODRET ls_stat(cmd_rec *cmd) {
     strict_list_opts = *((unsigned char *) c->argv[1]);
   }
 
-  fakeuser = get_param_ptr(CURRENT_CONF,"DirFakeUser",FALSE);
+  fakeuser = get_param_ptr(CURRENT_CONF, "DirFakeUser", FALSE);
 
-  /* check for a configured "logged in user" DirFakeUser
-   */
-  if (fakeuser && !strcmp(fakeuser, "~"))
+  /* Check for a configured "logged in user" DirFakeUser. */
+  if (fakeuser && strcmp(fakeuser, "~") == 0)
     fakeuser = session.user;
 
-  fakegroup = get_param_ptr(CURRENT_CONF,"DirFakeGroup",FALSE);
+  fakegroup = get_param_ptr(CURRENT_CONF, "DirFakeGroup", FALSE);
 
-  /* check for a configured "logged in user" DirFakeGroup
-   */
-  if (fakegroup && !strcmp(fakegroup, "~"))
+  /* Check for a configured "logged in user" DirFakeGroup. */
+  if (fakegroup && strcmp(fakegroup, "~") == 0)
     fakegroup = session.group;
 
   if ((fake_mode = get_param_ptr(CURRENT_CONF, "DirFakeMode", FALSE))) {
@@ -1789,7 +1785,7 @@ MODRET ls_post_pass(cmd_rec *cmd) {
 /* Configuration handlers
  */
 
-MODRET _sethide(cmd_rec *cmd, const char *param) {
+MODRET set_dirfakeusergroup(cmd_rec *cmd) {
   int bool = -1;
   char *as = "ftp";
   config_rec *c = NULL;
@@ -1798,35 +1794,27 @@ MODRET _sethide(cmd_rec *cmd, const char *param) {
     CONF_DIR|CONF_DYNDIR);
 
   if (cmd->argc < 2 || cmd->argc > 3)
-    CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"syntax: ",
-               param," on|off [<id to display>]",NULL));
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "syntax: ", cmd->argv[0],
+      " on|off [<id to display>]", NULL));
 
   if ((bool = get_boolean(cmd,1)) == -1)
      CONF_ERROR(cmd, "expected boolean argument");
 
   if (bool == TRUE) {
-    /* use the configured id to display rather than the default "ftp" */
+    /* Use the configured ID to display rather than the default "ftp". */
     if (cmd->argc > 2)
       as = cmd->argv[2];
 
-    c = add_config_param_str(param, 1, as);
+    c = add_config_param_str(cmd->argv[0], 1, as);
 
   } else {
-    /* still need to add a config_rec to turn off the display of fake ids */
-    c = add_config_param_str(param, 0);
+    /* Still need to add a config_rec to turn off the display of fake IDs. */
+    c = add_config_param_str(cmd->argv[0], 0);
   }
 
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
-}
-
-MODRET set_dirfakeuser(cmd_rec *cmd) {
-  return _sethide(cmd, cmd->argv[0]);
-}
-
-MODRET set_dirfakegroup(cmd_rec *cmd) {
-  return _sethide(cmd, cmd->argv[0]);
 }
 
 MODRET set_dirfakemode(cmd_rec *cmd) {
@@ -1868,7 +1856,7 @@ MODRET set_listoptions(cmd_rec *cmd) {
 
   /* Check for the optional "strict" argument. */
   if (cmd->argc-1 == 2 &&
-      !strcasecmp(cmd->argv[2], "strict"))
+      strcasecmp(cmd->argv[2], "strict") == 0)
     *((unsigned char *) c->argv[1]) = TRUE;
 
   return HANDLED(cmd);
@@ -1918,8 +1906,8 @@ MODRET set_lsdefaultoptions(cmd_rec *cmd) {
  */
 
 static conftable ls_conftab[] = {
-  { "DirFakeUser",	set_dirfakeuser,			NULL },
-  { "DirFakeGroup",	set_dirfakegroup,			NULL },
+  { "DirFakeUser",	set_dirfakeusergroup,			NULL },
+  { "DirFakeGroup",	set_dirfakeusergroup,			NULL },
   { "DirFakeMode",	set_dirfakemode,			NULL },
   { "ListOptions",	set_listoptions,			NULL },
   { "ShowSymlinks",	set_showsymlinks,			NULL },
