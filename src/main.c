@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.125 2002-10-21 17:06:11 castaglia Exp $
+ * $Id: main.c,v 1.126 2002-10-25 16:18:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2020,6 +2020,12 @@ static RETSIGTYPE sig_terminate(int signo) {
 
     /* Make sure the scoreboard slot is properly cleared. */
     pr_scoreboard_del_entry(FALSE);
+
+    /* This is probably not the safest thing to be doing, but since the
+     * process is terminating anyway, why not?  It helps when knowing/logging
+     * that a segfault happened...
+     */
+    log_pri(LOG_NOTICE, "ProFTPD terminating (signal 11)");
 
     /* Restore the default signal handler. */
     signal(SIGSEGV, SIG_DFL);
