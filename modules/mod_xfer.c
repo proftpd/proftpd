@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.46 2001-02-05 19:37:03 flood Exp $
+ * $Id: mod_xfer.c,v 1.47 2001-02-14 01:05:54 flood Exp $
  */
 
 /* History Log:
@@ -257,12 +257,12 @@ static int _transmit_sendfile(int rate_bps, unsigned long count, off_t *offset,
 }
 #endif /* HAVE_SENDFILE */
 
-static long _transmit_data(int rate_bps, unsigned long count, off_t *offset,
+static long _transmit_data(int rate_bps, unsigned long count, off_t offset,
 			   char *buf, long bufsize) {
 #ifdef HAVE_SENDFILE
   pr_sendfile_t retval;
   
-  if(!_transmit_sendfile(rate_bps, count, offset, &retval))
+  if(!_transmit_sendfile(rate_bps, count, &offset, &retval))
     return _transmit_normal(buf, bufsize);
   else
     return (long) retval;
@@ -825,7 +825,7 @@ MODRET cmd_retr(cmd_rec *cmd)
         break;
       
       /* INSERT CODE HERE */
-      if((len = _transmit_data(rate_bps, cnt, &respos, lbuf, bufsize)) == 0)
+      if((len = _transmit_data(rate_bps, cnt, respos, lbuf, bufsize)) == 0)
 	break;
       
       if(len < 0) {
