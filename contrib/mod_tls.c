@@ -942,10 +942,12 @@ static int tls_init_server(void) {
 
     /* Set the locations used for verifying certificates. */
     PRIVS_ROOT
-    if (!SSL_CTX_load_verify_locations(ssl_ctx, tls_ca_cert, tls_ca_path)) {
+    if (SSL_CTX_load_verify_locations(ssl_ctx, tls_ca_cert, tls_ca_path) != 1) {
       PRIVS_RELINQUISH
-      tls_log("unable to set CA verification locations '%s' or '%s': %s",
-        tls_ca_cert, tls_ca_path, ERR_error_string(ERR_get_error(), NULL));
+      tls_log("unable to set CA verification using file '%s' or "
+        "directory '%s': %s", tls_ca_cert ? tls_ca_cert : "(none)",
+        tls_ca_path ? tls_ca_path : "(none)",
+        ERR_error_string(ERR_get_error(), NULL));
       return -1;
     }
     PRIVS_RELINQUISH
