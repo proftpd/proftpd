@@ -131,7 +131,7 @@ clean:
 distclean: clean
 	rm -f Makefile Make.modules Make.rules \
 	      lib/Makefile modules/Makefile src/Makefile utils/Makefile
-	rm -f config.h config.status config.cache config.log
+	rm -f config.h config.status config.cache config.log stamp-h
 	rm -f include/buildstamp.h
 
 dist: depend distclean
