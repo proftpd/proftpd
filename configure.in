@@ -808,11 +808,12 @@ AC_PROG_GCC_TRADITIONAL
 AC_FUNC_SETPGRP
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS(bcopy crypt fgetgrent fgetpwent flock getcwd gethostname)
+AC_CHECK_FUNCS(bcopy crypt fgetgrent fgetpwent flock freeaddrinfo getaddrinfo)
+AC_CHECK_FUNCS(getcwd gethostname)
 if test "$ac_pr_check_getopt" = "yes" ; then
   AC_CHECK_FUNCS(getopt)
 fi
-AC_CHECK_FUNCS(getopt_long gettimeofday inet_aton)
+AC_CHECK_FUNCS(getopt_long gettimeofday inet_aton inet_ntop inet_pton)
 AC_CHECK_FUNCS(memcpy mempcpy mkdir mkstemp rmdir select setgroups socket)
 AC_CHECK_FUNCS(statfs strchr strcoll strerror strsep strtol)
 AC_CHECK_FUNCS(setprotoent endprotoent)
