@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.42 2004-05-31 01:51:55 castaglia Exp $
+ * $Id: modules.c,v 1.43 2004-05-31 17:47:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -292,7 +292,22 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
     return -1;
   }
 
-  symtab_idx = symtab_hash(sym_name);
+  /* XXX Ugly hack to support mixed cases of directives in config files. */
+  if (sym_type != PR_SYM_CONF)
+    symtab_idx = symtab_hash(sym_name);
+
+  else {
+    register unsigned int i;
+    char buf[1024];
+
+    memset(buf, '\0', sizeof(buf));
+    sstrncpy(buf, sym_name, sizeof(buf)-1);
+
+    for (i = 0; i < strlen(buf); i++)
+      buf[i] = tolower((int) buf[i]);
+
+    symtab_idx = symtab_hash(buf);
+  }
 
   switch (sym_type) {
     case PR_SYM_CONF: {
