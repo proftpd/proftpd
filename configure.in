@@ -1348,6 +1348,8 @@ AC_DEFINE_UNQUOTED(CONFIG_FILE_PATH,
 			"`eval echo "${sysconfdir}/proftpd.conf"`")
 AC_DEFINE_UNQUOTED(PID_FILE_PATH,
 			"`eval echo "${localstatedir}/proftpd.pid"`")
+AC_DEFINE_UNQUOTED(CONFIG_DIR,
+			"`eval echo "${sysconfdir}"`")
 AC_DEFINE_UNQUOTED(RUN_DIR,
 			"`eval echo "${localstatedir}/proftpd"`")
 
