@@ -23,66 +23,10 @@
 
 /* ProFTPD support library definitions.
  *
- * $Id: libsupp.h,v 1.3 2000-08-02 05:25:24 macgyver Exp $
+ * $Id: libsupp.h,v 1.4 2001-03-17 20:34:31 flood Exp $
  */
 
-#if !defined HAVE_GLOB && !defined __PROFTPD_SUPPORT_LIBRARY
-
-#ifndef __P
-#define __P(x)	x
-#endif
-
-/* Bits set in the FLAGS argument to `glob'.  */
-#define GLOB_ERR        (1 << 0)/* Return on read errors.  */
-#define GLOB_MARK       (1 << 1)/* Append a slash to each name.  */
-#define GLOB_NOSORT     (1 << 2)/* Don't sort the names.  */
-#define GLOB_DOOFFS     (1 << 3)/* Insert PGLOB->gl_offs NULLs.  */
-#define GLOB_NOCHECK    (1 << 4)/* If nothing matches, return the pattern.  */ 
-#define GLOB_APPEND     (1 << 5)/* Append to results of a previous call.  */   
-#define GLOB_NOESCAPE   (1 << 6)/* Backslashes don't quote metacharacters.  */
-#define GLOB_PERIOD     (1 << 7)/* Leading `.' can be matched by metachars.  */
-# define GLOB_MAGCHAR    (1 << 8)/* Set in gl_flags if any metachars seen.  */
-# define GLOB_ALTDIRFUNC (1 << 9)/* Use gl_opendir et al functions.  */
-# define GLOB_BRACE      (1 << 10)/* Expand "{a,b}" to "a" "b".  */
-# define GLOB_NOMAGIC    (1 << 11)/* If no magic chars, return the pattern.  */
-# define GLOB_TILDE      (1 << 12)/* Expand ~user and ~ to home directories. */
-# define GLOB_ONLYDIR    (1 << 13)/* Match only directories.  */
-# define __GLOB_FLAGS   (GLOB_ERR|GLOB_MARK|GLOB_NOSORT|GLOB_DOOFFS| \
-                         GLOB_NOESCAPE|GLOB_NOCHECK|GLOB_APPEND|     \
-                         GLOB_PERIOD|GLOB_ALTDIRFUNC|GLOB_BRACE|     \
-                         GLOB_NOMAGIC|GLOB_TILDE|GLOB_ONLYDIR)
-#define GLOB_NOSPACE    1       /* Ran out of memory.  */
-#define GLOB_ABORTED    2       /* Read error.  */
-#define GLOB_NOMATCH    3       /* No matches found.  */
-
-/* Structure describing a globbing run.  */
-#if !defined _AMIGA && !defined VMS /* Buggy compiler.   */
-struct stat;
-#endif
-typedef struct
-  {
-    int gl_pathc;               /* Count of paths matched by the pattern.  */
-    char **gl_pathv;            /* List of matched pathnames.  */
-    int gl_offs;                /* Slots to reserve in `gl_pathv'.  */
-    int gl_flags;               /* Set to FLAGS, maybe | GLOB_MAGCHAR.  */
-
-    /* If the GLOB_ALTDIRFUNC flag is set, the following functions
-       are used instead of the normal file access functions.  */  
-    void (*gl_closedir) __P ((void *));
-    struct dirent *(*gl_readdir) __P ((void *));
-    void *(*gl_opendir) __P ((const char *));
-    int (*gl_lstat) __P ((const char *, struct stat *));
-    int (*gl_stat) __P ((const char *, struct stat *));
-  } glob_t;
-
-extern int glob (const char *__pattern, int __flags,
-                      int (*__errfunc)(const char *, int),
-                      glob_t *__pglob);
-extern void globfree (glob_t *__pglob);
-extern int __glob_pattern_p (const char *__pattern, int __quote);
-extern int glob_pattern_p (const char *__pattern, int __quote);
-
-#endif /* HAVE_GLOB */
+#include <glibc-glob.h>
 
 /* Bits set in the FLAGS argument to `pr_fnmatch'.  */
 #define	PR_FNM_PATHNAME	(1 << 0) /* No wildcard can ever match `/'.  */

@@ -63,7 +63,7 @@ BUILD_OBJS=src/main.o src/timers.o src/sets.o src/pool.o src/dirtree.o \
            src/support.o src/inet.o src/log.o src/io.o src/ident.o \
            src/data.o src/modules.o src/auth.o src/fs.o
 
-LIB_OBJS=getopt.o getopt1.o pr_fnmatch.o strsep.o vsnprintf.o glob.o pwgrent.o
+LIB_OBJS=getopt.o getopt1.o pr_fnmatch.o strsep.o vsnprintf.o glibc-glob.o pwgrent.o
 
 FTPCOUNT_OBJS=ftpcount.o pool.o log.o utils.o
 BUILD_FTPCOUNT_OBJS=src/ftpcount.o src/pool.o src/log.o src/utils.o

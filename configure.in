@@ -307,7 +307,6 @@ AC_CHECK_HEADERS(errno.h sys/socket.h sys/termios.h sys/termio.h)
 AC_CHECK_HEADERS(sys/statvfs.h sys/vfs.h sys/select.h)
 AC_CHECK_HEADERS(utmpx.h)
 AC_CHECK_HEADERS(regex.h)
-AC_CHECK_HEADER(glob.h,have_glob_h="yes",)
 AC_CHECK_HEADER(syslog.h,have_syslog_h="yes",)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
@@ -359,35 +358,6 @@ if test $have_utmp; then
   fi
   if test "$pr_cv_header_ut_host" = "yes"; then
     AC_DEFINE(HAVE_UT_UT_HOST)
-  fi
-fi
-
-if test "$have_glob_h" = "yes"; then
-  dnl See if we have GLOB_PERIOD
-  AC_CACHE_CHECK(whether your glob.h defines GLOB_PERIOD,
-  		pr_cv_header_glob_period,
-	AC_EGREP_CPP(yes,[
-#include <glob.h>
-#ifdef GLOB_PERIOD
-  yes
-#endif
-	],pr_cv_header_glob_period="yes",pr_cv_header_glob_period="no"))
-
-  dnl See if we have GLOB_ALTDIRFUNC
-  if test "$pr_cv_header_glob_period" = "yes"; then
-    AC_CACHE_CHECK(whether your glob.h defines GLOB_ALTDIRFUNC,
-    			pr_cv_header_glob_altdirfunc,
-	AC_EGREP_CPP(yes,[
-#include <glob.h>
-#ifdef GLOB_ALTDIRFUNC
-  yes
-#endif
-	],pr_cv_header_glob_altdirfunc="yes",pr_cv_header_glob_altdirfunc="no"))
-
-    if test "$pr_cv_header_glob_altdirfunc" = "yes"; then
-      AC_DEFINE(HAVE_GLOB_H)
-      AC_DEFINE(HAVE_GLOB_PERIOD)
-    fi
   fi
 fi
 
@@ -538,13 +508,6 @@ fi
 		AC_DEFINE(HAVE_BSD_SENDFILE)
 		;;
   esac
-fi
-
-dnl Only check for glob if we have glob.h, GLOB_PERIOD, and GLOB_ALTDIRFUNC
-if test "$have_glob_h" = "yes" && \
-   test "$pr_cv_header_glob_period" = "yes" && \
-   test "$pr_cv_header_glob_altdirfunc" = "yes"; then
-	AC_CHECK_FUNCS(glob)
 fi
 
 dnl Check for various argv[] replacing functions on various OSs

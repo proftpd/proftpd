@@ -38,7 +38,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.7 2000-08-13 15:19:39 macgyver Exp $
+ * $Id: conf.h,v 1.8 2001-03-17 20:34:31 flood Exp $
  */
 
 #ifndef __CONF_H
@@ -156,10 +156,6 @@ char *strchr(),*strrchr();
 
 #ifdef HAVE_SYSLOG_H
 # include <syslog.h>
-#endif
-
-#ifdef HAVE_GLOB
-# include <glob.h>
 #endif
 
 #ifdef HAVE_DIRENT_H

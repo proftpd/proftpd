@@ -18,12 +18,6 @@
 /* Define if you have BSD sendfile() semantics */
 #undef HAVE_BSD_SENDFILE
 
-/* Define if you have the <glob.h> header file. */
-#undef HAVE_GLOB_H
-
-/* Define if your <glob.h> defines GLOB_PERIOD macro. */
-#undef HAVE_GLOB_PERIOD
-
 /* Define if you have Linux sendfile() semantics */
 #undef HAVE_LINUX_SENDFILE
 
