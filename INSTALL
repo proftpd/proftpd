@@ -89,7 +89,7 @@ Installation Instructions
     configure.  Using a Bourne-ish style shell (e.g. sh, ksh, bash), you can
     do this on the command line like this:
 
-        $ ./configure install_user=root install_group=wheel
+        $ install_user=root install_group=wheel ./configure
 
     Similarly, as is typical with GNU autoconf scripts, settings for the
     compilation system can be made, such as the compiler:
