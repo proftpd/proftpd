@@ -391,12 +391,20 @@ int init_child_modules(void) {
   return 0;
 }
 
-int module_exists(const char *name) {
+unsigned char command_exists(char *name) {
+  cmdtable *cmdtab = mod_find_cmd_symbol(name, NULL, NULL);
+
+  while (cmdtab && cmdtab->cmd_type != CMD)
+    cmdtab = mod_find_cmd_symbol(name, NULL, cmdtab);
+
+  return (cmdtab ? TRUE : FALSE);
+}
+
+unsigned char module_exists(const char *name) {
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   register unsigned int i = 0;
 
-  /* Check the list of compiled-in modules.
-   */
+  /* Check the list of compiled-in modules. */
   for (i = 0; static_modules[i]; i++) {
     memset(buf, '\0', sizeof(buf));
     snprintf(buf, sizeof(buf), "mod_%s.c", (static_modules[i])->name);

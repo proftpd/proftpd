@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.15 2002-12-05 20:18:55 castaglia Exp $
+ * $Id: modules.h,v 1.16 2002-12-05 20:30:18 castaglia Exp $
  */
 
 #ifndef __MODULES_H
@@ -192,7 +192,8 @@ extern cmdtable *m_cmdtable;			/* Master cmdtable */
 
 /* Prototypes */
 
-int module_exists(const char *);
+unsigned char command_exists(char *);
+unsigned char module_exists(const char *);
 void list_modules(void);
 int init_modules(void);				/* Initialize modules */
 int init_child_modules(void);
@@ -210,8 +211,6 @@ void set_auth_check(int (*ck)(cmd_rec *));
 
 /* This callback is defined/stored in src/main.c */
 extern int (*cmd_auth_chk)(cmd_rec *);
-
-void xfer_set_data_port(p_in_addr_t *, int);
 
 /* For use from inside module handler functions */
 modret_t *mod_create_ret(cmd_rec *, unsigned char, char *, char *);

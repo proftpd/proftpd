@@ -22,20 +22,15 @@
  * OpenSSL in the source distribution.
  */
 
-/* Regular expression management
- * $Id: regexp.h,v 1.3 2002-12-05 20:30:18 castaglia Exp $
+/* Feature list management
+ * $Id: feat.h,v 1.1 2002-12-05 20:30:18 castaglia Exp $
  */
 
-#ifndef PR_REGEXP_H
-#define PR_REGEXP_H
+#ifndef PR_FEAT_H
+#define PR_FEAT_H
 
-#ifdef HAVE_REGEX_H
-#include <regex.h>
+void pr_add_feat(const char *);
+const char *pr_get_feat(void);
+const char *pr_get_next_feat(void);
 
-regex_t *pr_regexp_alloc(void);
-void pr_regexp_free(regex_t *);
-void pr_init_regexp(void);
-
-#endif /* HAVE_REGEX_H */
-
-#endif /* PR_REGEXP_H */
+#endif /* PR_FEAT_H */

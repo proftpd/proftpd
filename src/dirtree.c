@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.79 2002-12-05 19:48:39 castaglia Exp $
+ * $Id: dirtree.c,v 1.80 2002-12-05 20:30:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -355,7 +355,7 @@ unsigned char dir_hide_file(const char *path) {
   return FALSE;	
 }
 
-int define_exists(const char *definition) {
+unsigned char define_exists(const char *definition) {
 
   /* Check the list of specified definitions, if present.
    */

@@ -22,20 +22,49 @@
  * OpenSSL in the source distribution.
  */
 
-/* Regular expression management
- * $Id: regexp.h,v 1.3 2002-12-05 20:30:18 castaglia Exp $
+/*
+ * Feature management code
  */
 
-#ifndef PR_REGEXP_H
-#define PR_REGEXP_H
+#include "conf.h"
 
-#ifdef HAVE_REGEX_H
-#include <regex.h>
+static pool *feat_pool = NULL; 
+static array_header *feat_list = NULL;
+static unsigned int feati = 0U;
 
-regex_t *pr_regexp_alloc(void);
-void pr_regexp_free(regex_t *);
-void pr_init_regexp(void);
+void pr_add_feat(const char *feat) {
 
-#endif /* HAVE_REGEX_H */
+  /* If no feature-tracking list has been allocated, create one. */
+  if (!feat_pool) {
+    feat_pool = make_sub_pool(permanent_pool);
+    feat_list = make_array(feat_pool, 0, sizeof(char *));
+  }
 
-#endif /* PR_REGEXP_H */
+  /* Make sure that the feature being added isn't already in the list. */
+  if (feat_list->nelts > 0) {
+    register unsigned int i = 0;
+    char **feats = (char **) feat_list->elts;
+
+    for (i = 0; i < feat_list->nelts; i++)
+      if (!strcmp(feats[i], feat))
+        return;
+  }
+
+  *((char **) push_array(feat_list)) = pstrdup(feat_pool, feat);
+}
+
+const char *pr_get_feat(void) {
+  if (feat_list) {
+    feati = 0U;
+    return ((const char **) feat_list->elts)[feati++];
+  }
+
+  return NULL;
+}
+
+const char *pr_get_next_feat(void) {
+  if (feat_list && feati < feat_list->nelts)
+    return ((const char **) feat_list->elts)[feati++];
+
+  return NULL;
+}

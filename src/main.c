@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.129 2002-12-05 20:08:43 castaglia Exp $
+ * $Id: main.c,v 1.130 2002-12-05 20:30:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1611,7 +1611,6 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   /* set the per-child resource limits */
   set_session_rlimits();
 
-  /* xfer_set_data_port(conn->local_ipaddr,conn->local_port-1); */
   cmd_loop(serv,conn);
 }
 

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.299 2002-12-05 20:18:54 castaglia Exp $
+$Id: NEWS,v 1.300 2002-12-05 20:30:18 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -10,6 +10,7 @@ CVS
 - Bug 1825 - AUTH macro namespace cleanup.  A "PR_" prefix has been added to
   the AUTH_* macros, to help prevent namespace collisions.  This means that
   some third-party auth modules may need to be updated.
+- Bug 1806 - Add RFC2389 support.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------

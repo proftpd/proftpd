@@ -24,13 +24,11 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/*
- * Core FTPD module
- * $Id: mod_core.c,v 1.122 2002-12-05 20:08:39 castaglia Exp $
+/* Core FTPD module
+ * $Id: mod_core.c,v 1.123 2002-12-05 20:30:19 castaglia Exp $
  */
 
 #include "conf.h"
-
 #include "privs.h"
 
 #include <ctype.h>
@@ -89,6 +87,8 @@ static struct {
   { C_STAT, "[<sp> pathname]",			TRUE },
   { C_HELP, "[<sp> command]",			TRUE },
   { C_NOOP, "(no operation)",			TRUE },
+  { C_FEAT, "(returns feature list)",		TRUE },
+  { C_OPTS, "<sp> command [<sp> options]",	TRUE },
   { NULL,   NULL,          			FALSE }
 };
 
@@ -3298,6 +3298,69 @@ MODRET core_noop(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+MODRET core_feat(cmd_rec *cmd) {
+  const char *feat = NULL;
+  CHECK_CMD_ARGS(cmd, 1);
+
+  add_response(R_211, "Features:");
+
+  feat = pr_get_feat();
+
+  while (feat) {
+    add_response(R_DUP, " %s", feat);
+    feat = pr_get_next_feat();
+  }
+
+  add_response(R_DUP, "End");
+  return HANDLED(cmd);
+}
+
+MODRET core_opts(cmd_rec *cmd) {
+  char *opts_cmd = NULL, *cp = NULL;
+
+  /* This is an ugly command to implement.
+   */
+
+  CHECK_CMD_MIN_ARGS(cmd, 2);
+
+  /* First, check to see if the FTP command given is supported.  This involves
+   * scanning through the master cmdtab for a CMD handler for that command.
+   * Make sure to check for the command in an all-uppercase fashion.
+   */
+
+  opts_cmd = pstrdup(cmd->tmp_pool, cmd->argv[1]);
+
+  for (cp = opts_cmd; *cp; cp++)
+    *cp = toupper(*cp);
+
+  if (!command_exists(opts_cmd)) {
+    add_response_err(R_501, "%s: %s not understood", cmd->argv[0],
+      cmd->argv[1]);
+    return ERROR(cmd);
+  }
+
+  /* If the command is valid, process any possible options that may have
+   * been specified by the client.  At the moment, only the LIST and NLST
+   * commands are capable of supporting options specified via OPTS.  Note
+   * this is our interpretation of the reality of the situation; RFC959
+   * does not officially sanction the /bin/ls switches often used by clients
+   * when requesting listings.  No clients, as far as I know, use OPTS for
+   * specifying options to LIST/NLST.
+   *
+   * NOTE: this hasn't been implemented yet. For now, if any options are
+   * given, fail the command.
+   */
+
+  if (cmd->argc == 3) {
+    add_response_err(R_501, "%s: %s options '%s' not understood", cmd->argv[0],
+      cmd->argv[1], cmd->argv[2]);
+    return ERROR(cmd);
+  }
+
+  add_response(R_200, "%s command successful", cmd->argv[0]);
+  return HANDLED(cmd);
+}
+
 MODRET set_defaulttransfermode(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -3547,6 +3610,18 @@ MODRET set_class(cmd_rec *cmd) {
 /* Initialization/finalization routines
  */
 
+static int core_init(void) {
+
+  /* Add the additional features implemented by this module into the
+   * list, to be displayed in response to a FEAT command.
+   */
+  pr_add_feat("MDTM");
+  pr_add_feat("REST STREAM");
+  pr_add_feat("SIZE");
+
+  return 0;
+}
+
 static int core_sess_init(void) {
   config_rec *c = NULL;
 
@@ -3675,8 +3750,10 @@ static cmdtable core_cmdtab[] = {
   { CMD, C_RNFR, G_DIRS,  core_rnfr,	TRUE,	FALSE, CL_MISC },
   { CMD, C_RNTO, G_WRITE, core_rnto,	TRUE,	FALSE, CL_MISC },
   { CMD, C_SIZE, G_READ,  core_size,	TRUE,	FALSE, CL_INFO },
-  { CMD, C_QUIT, G_NONE,  core_quit,	FALSE,	TRUE,  CL_INFO },
-  { CMD, C_NOOP, G_NONE,  core_noop,	FALSE,	TRUE,  CL_MISC },
+  { CMD, C_QUIT, G_NONE,  core_quit,	FALSE,	FALSE,  CL_INFO },
+  { CMD, C_NOOP, G_NONE,  core_noop,	FALSE,	FALSE,  CL_MISC },
+  { CMD, C_FEAT, G_NONE,  core_feat,	FALSE,	FALSE,  CL_INFO },
+  { CMD, C_OPTS, G_NONE,  core_opts,    TRUE,	FALSE,	CL_MISC },
   { 0, NULL }
 };
 
@@ -3699,7 +3776,7 @@ module core_module = {
   NULL,
 
   /* Module initialization function */
-  NULL,
+  core_init,
 
   /* Session initialization function */
   core_sess_init

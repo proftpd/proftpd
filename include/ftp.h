@@ -26,7 +26,7 @@
 
 /* FTP commands and responses (may not all be implemented)
  *
- * $Id: ftp.h,v 1.5 2002-09-06 00:59:04 castaglia Exp $
+ * $Id: ftp.h,v 1.6 2002-12-05 20:30:18 castaglia Exp $
  */
 
 #ifndef __FTP_H
@@ -73,6 +73,8 @@
 #define C_STAT	"STAT"		/* Status */
 #define C_HELP	"HELP"		/* Help */
 #define C_NOOP	"NOOP"		/* Returns 200 and does nothing */
+#define C_FEAT	"FEAT"		/* Request list of server-supported features */
+#define C_OPTS	"OPTS"		/* Specify options for FTP commands */
 
 /* RFC2228 FTP Security commands */
 #define C_ADAT  "ADAT"		/* Authentication/security data */
