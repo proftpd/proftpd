@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.1 2003-11-09 01:55:28 castaglia Exp $
+ * $Id: ctrls.c,v 1.2 2003-11-09 07:47:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -134,6 +134,7 @@ static ctrls_action_t *ctrls_action_new(void) {
   ctrls_action_t *act = NULL;
   pool *sub_pool = make_sub_pool(ctrls_pool);
 
+  pr_pool_tag(sub_pool, "ctrls action subpool");
   act = pcalloc(sub_pool, sizeof(ctrls_action_t));
   act->pool = sub_pool;
 
@@ -319,8 +320,10 @@ int pr_ctrls_add_arg(pr_ctrls_t *ctrl, char *ctrls_arg) {
   /* Make sure the pr_ctrls_t has a temporary pool, from which the args will
    * be allocated.
    */
-  if (!ctrl->ctrls_tmp_pool)
+  if (!ctrl->ctrls_tmp_pool) {
     ctrl->ctrls_tmp_pool = make_sub_pool(ctrls_pool);
+    pr_pool_tag(ctrl->ctrls_tmp_pool, "ctrls tmp pool");
+  }
 
   if (!ctrl->ctrls_cb_args)
     ctrl->ctrls_cb_args = make_array(ctrl->ctrls_tmp_pool, 0, sizeof(char *));
@@ -390,8 +393,10 @@ int pr_ctrls_add_response(pr_ctrls_t *ctrl, char *fmt, ...) {
   /* Make sure the pr_ctrls_t has a temporary pool, from which the responses
    * will be allocated
    */
-  if (!ctrl->ctrls_tmp_pool)
+  if (!ctrl->ctrls_tmp_pool) {
     ctrl->ctrls_tmp_pool = make_sub_pool(ctrls_pool);
+    pr_pool_tag(ctrl->ctrls_tmp_pool, "ctrls tmp pool");
+  }
 
   if (!ctrl->ctrls_cb_resps)
     ctrl->ctrls_cb_resps = make_array(ctrl->ctrls_tmp_pool, 0,
@@ -520,7 +525,8 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   /* Find a matching action object, and use it to populate a ctrl object,
    * preparing the ctrl object for dispatching to the action handlers.
    */
-  if ((ctrl = ctrls_lookup_action(NULL, reqaction, TRUE)) == NULL) {
+  ctrl = ctrls_lookup_action(NULL, reqaction, TRUE);
+  if (ctrl == NULL) {
     pr_signals_unblock();
     errno = EINVAL;
     return -1;
@@ -840,7 +846,8 @@ int pr_ctrls_connect(const char *socket_file) {
   pr_signals_block();
 
   /* Create a Unix domain socket */
-  if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+  sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (sockfd < 0) {
     pr_signals_unblock();
     return -1;
   }
@@ -1027,6 +1034,7 @@ void init_ctrls(void) {
     destroy_pool(ctrls_pool);
 
   ctrls_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(ctrls_pool, "Controls Pool");
 
   /* Make sure all of the lists are zero'd out. */
   ctrls_action_list = NULL;
