@@ -20,7 +20,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.17 2000-07-09 06:58:53 macgyver Exp $
+ * $Id: support.c,v 1.18 2000-07-11 13:36:52 macgyver Exp $
  */
 
 /* History Log:
@@ -237,8 +237,8 @@ char *dir_interpolate(pool *p, const char *path)
 
 char *dir_best_path(pool *p, const char *path)
 {
-  char workpath[MAXPATHLEN + 1];
-  char realpath[MAXPATHLEN + 1];
+  char workpath[MAXPATHLEN + 1] = {'\0'};
+  char realpath[MAXPATHLEN + 1] = {'\0'};
   char *target = NULL, *ntarget;
   int fini = 0;
 
@@ -279,8 +279,8 @@ char *dir_best_path(pool *p, const char *path)
 
 char *dir_canonical_path(pool *p, const char *path)
 {
-  char buf[MAXPATHLEN + 1];
-  char work[MAXPATHLEN + 1];
+  char buf[MAXPATHLEN + 1]  = {'\0'};
+  char work[MAXPATHLEN + 1] = {'\0'};
 
   if(*path == '~') {
     if(fs_interpolate(path,work,MAXPATHLEN) == -1)
@@ -299,7 +299,7 @@ char *dir_canonical_path(pool *p, const char *path)
 
 char *dir_realpath(pool *p, const char *path)
 {
-  char buf[MAXPATHLEN + 1];
+  char buf[MAXPATHLEN + 1] = {'\0'};
 
   if(fs_resolve_partial(path,buf,MAXPATHLEN,0) == -1)
     return NULL;
@@ -309,8 +309,8 @@ char *dir_realpath(pool *p, const char *path)
 
 char *dir_virtual_chdir(pool *p, const char *path)
 {
-  char buf[MAXPATHLEN + 1];
-  char work[MAXPATHLEN + 1];
+  char buf[MAXPATHLEN + 1]  = {'\0'};
+  char work[MAXPATHLEN + 1] = {'\0'};
 
   if(*path == '~') {
     if(fs_interpolate(path,work,MAXPATHLEN) == -1)
@@ -574,14 +574,14 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
                   size_t msg_size)
 {
   FILE *fp;
-  char *deny_str,*disc_str,*cp,buf[1025];
-  char hr[3],mn[3];
+  char *deny_str,*disc_str,*cp, buf[1025] = {'\0'};
+  char hr[3] = {'\0'}, mn[3] = {'\0'};
   time_t now,shuttime = (time_t)0;
   struct tm tm;
 
   if(file_exists(SHUTMSG_PATH) && (fp = fopen(SHUTMSG_PATH,"r"))) {
     if((cp = fgets(buf,sizeof(buf),fp)) != NULL) {
-      buf[1024] = '\0'; CHOP(cp);
+      buf[sizeof(buf)-1] = '\0'; CHOP(cp);
 
       /* We use this to fill in dst, timezone, etc */
       time(&now);
@@ -623,7 +623,7 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
       }
 
       if(fgets(buf,sizeof(buf),fp) && msg) {
-        buf[255] = '\0';
+        buf[sizeof(buf)-1] = '\0';
 	CHOP(buf);
         sstrncpy(msg,buf,msg_size-1);
       }

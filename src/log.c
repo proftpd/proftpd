@@ -20,7 +20,7 @@
 
 /*
  * ProFTPD logging support
- * $Id: log.c,v 1.17 2000-07-09 07:01:47 macgyver Exp $
+ * $Id: log.c,v 1.18 2000-07-11 13:36:52 macgyver Exp $
  */
 
 /* History Log:
@@ -64,6 +64,7 @@ char *fmt_time(time_t t)
   { "Sun","Mon","Tue","Wed","Thu","Fri","Sat" };
   struct tm *tr;
 
+  memset(buf,'\0',sizeof(buf));
   if((tr = localtime(&t)) != NULL) {
     snprintf(buf,sizeof(buf),"%s %s %2d %02d:%02d:%02d %d",
             days[tr->tm_wday],
@@ -75,7 +76,8 @@ char *fmt_time(time_t t)
             tr->tm_year + 1900);
   } else
     buf[0] = '\0';
-  
+  buf[sizeof(buf)-1] = '\0';
+
   return buf;
 }
 
@@ -104,7 +106,8 @@ int log_xfer(int xfertime, char *remhost, unsigned long fsize,
              char *fname, char xfertype, char direction,
              char access, char *user, char abort_flag)
 {
-  char buf[LOGBUFFER_SIZE], fbuf[LOGBUFFER_SIZE];
+  char  buf[LOGBUFFER_SIZE] = {'\0'},
+       fbuf[LOGBUFFER_SIZE] = {'\0'};
   int i;
 
   if(xferfd == -1)
@@ -119,6 +122,7 @@ int log_xfer(int xfertime, char *remhost, unsigned long fsize,
   snprintf(buf, sizeof(buf), "%s %d %s %lu %s %c _ %c %c %s ftp 0 * %c\n",
 	   fmt_time(time(NULL)), xfertime, remhost, fsize,
 	   fbuf, xfertype, direction, access, user, abort_flag);
+  buf[sizeof(buf)-1] = '\0';
 
   return(write(xferfd, buf, strlen(buf)));
 }
@@ -172,7 +176,7 @@ int log_run_checkpath(void)
 
 int log_open_run(pid_t mpid, int trunc, int allow_update)
 {
-  char fname[MAXPATHLEN + 1];
+  char fname[MAXPATHLEN + 1] = {'\0'};
   logrun_header_t hdr;
   int i;
 
@@ -183,6 +187,7 @@ int log_open_run(pid_t mpid, int trunc, int allow_update)
     snprintf(fname, sizeof(fname), "%s/proftpd-inetd",scoreboard_path);
   else
     snprintf(fname, sizeof(fname), "%s/proftpd-%d",scoreboard_path,(int)mpid);
+  fname[sizeof(fname)-1] = '\0';
 
   runfn = pstrdup(permanent_pool,fname);
   if((runfd = open(runfn,O_RDWR|O_CREAT|(trunc ? O_TRUNC : 0),
@@ -193,7 +198,7 @@ int log_open_run(pid_t mpid, int trunc, int allow_update)
   i = read(runfd, &hdr, sizeof(hdr));
 
   if(i <= 0) {
-    char buf[sizeof(logrun_t)];
+    char buf[sizeof(logrun_t)] = {'\0'};
     runsize = sizeof(logrun_t);
     
     hdr.r_magic = LOGRUN_MAGIC;
@@ -249,7 +254,7 @@ int log_open_run(pid_t mpid, int trunc, int allow_update)
 static int _pid_exists(pid_t pid)
 {
 #ifdef LINUX
-  char procfn[20];
+  char procfn[20] = {'\0'};
   struct stat sbuf;
 #endif
   int res;
@@ -312,7 +317,7 @@ logrun_t *log_read_run(pid_t *mpid)
   static int fd = -1;
   static logrun_t ent;
   static size_t size = 0;
-  char *cp, buf[MAXPATHLEN + 1];
+  char *cp, buf[MAXPATHLEN + 1] = {'\0'};
 
   errno = 0;
   if(!dir) {
@@ -339,8 +344,9 @@ logrun_t *log_read_run(pid_t *mpid)
         if(mpid)
           *mpid = (pid_t)atoi(cp);
         snprintf(buf, sizeof(buf), "%s/%s",scoreboard_path,dent->d_name);
-        fd = open(buf,O_RDONLY,0644);
+	buf[sizeof(buf)-1] = '\0';
 
+        fd = open(buf,O_RDONLY,0644);
         if(fd != -1) {
           size = _read_hdr(fd);
           if(!size) {
@@ -367,7 +373,7 @@ logrun_t *log_read_run(pid_t *mpid)
 
 void log_run_address(const char *remote_name, const p_in_addr_t *remote_ipaddr)
 {
-  char buf[LOGBUFFER_SIZE];
+  char buf[LOGBUFFER_SIZE] = {'\0'};
 
   snprintf(buf, sizeof(buf), "%s [%s]",
 	   remote_name, inet_ntoa(*remote_ipaddr));
@@ -396,7 +402,7 @@ int log_add_run(pid_t mpid, time_t *idle_since, char *user,char *class,
   logrun_t ent,fent;
   int res = 0,c,first = -1;
   va_list msg;
-  char buf[1500] = "";
+  char buf[1500] = {'\0'};
 
 #ifndef HAVE_FLOCK
   struct flock arg;
@@ -719,7 +725,7 @@ void log(int priority, int f, char *s)
     return;
   
   if(syslog_fd != -1) {
-    char buf[LOGBUFFER_SIZE];
+    char buf[LOGBUFFER_SIZE] = {'\0'};
     time_t tt = time(NULL);
     struct tm *t;
 
@@ -762,7 +768,7 @@ void log(int priority, int f, char *s)
 
 void log_pri(int priority, char *fmt, ...)
 {
-  char buf[LOGBUFFER_SIZE];
+  char buf[LOGBUFFER_SIZE] = {'\0'};
   va_list msg;
   
   va_start(msg,fmt);
@@ -780,7 +786,7 @@ void log_pri(int priority, char *fmt, ...)
 
 void log_auth(int priority, char *fmt, ...)
 {
-  char buf[LOGBUFFER_SIZE];
+  char buf[LOGBUFFER_SIZE] = {'\0'};
   va_list msg;
 
   va_start(msg,fmt);
@@ -822,6 +828,7 @@ void log_debug(int level,char *str,...)
   if(debug_level < level)
     return;
 
+  memset(buf,'\0',sizeof(buf));
   va_start(msg, str);
   vsnprintf(buf, sizeof(buf), str, msg);
   va_end(msg);
@@ -833,7 +840,7 @@ void log_debug(int level,char *str,...)
 
 void init_log()
 {
-  char buf[256];
+  char buf[256] = {'\0'};
 
   if(gethostname(buf, sizeof(buf)) == -1)
     sstrncpy(buf, "localhost", sizeof(buf));

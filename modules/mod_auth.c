@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.34 2000-07-06 19:29:18 macgyver Exp $
+ * $Id: mod_auth.c,v 1.35 2000-07-11 13:36:52 macgyver Exp $
  */
 
 #include "conf.h"
@@ -410,7 +410,7 @@ static int _auth_check_ftpusers(xaset_t *s, const char *user)
 {
   int res = 1;
   FILE *fp;
-  char *u,buf[256];
+  char *u,buf[256] = {'\0'};
 
   if(get_param_int(s,"UseFtpUsers",FALSE) != 0) {
     PRIVS_ROOT;
@@ -444,7 +444,7 @@ static int _auth_check_shell(xaset_t *s, const char *shell)
 {
   int res = 1;
   FILE *shellf;
-  char buf[256];
+  char buf[256] = {'\0'};
 
   if(get_param_int(s,"RequireValidShell",FALSE) != 0 &&
      (shellf = fopen(VALID_SHELL_PATH,"r")) != NULL) {
@@ -596,7 +596,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   struct stat sbuf;
   config_rec *c;
   char *origuser,*ourname,*anonname = NULL,*anongroup = NULL,*ugroup = NULL;
-  char ttyname[20], *defaulttransfermode;
+  char ttyname[20] = {'\0'}, *defaulttransfermode;
   char *defroot = NULL,*defchdir = NULL,*xferlog = NULL;
   int aclp,i,force_anon = 0,wtmp_log = -1,showsymlinks;
 
@@ -875,6 +875,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
 #else
   snprintf(ttyname, sizeof(ttyname), "ftpd%d",(int)getpid());
 #endif
+  ttyname[sizeof(ttyname)-1] = '\0';
 
   /* Perform wtmp logging only if not turned off in <Anonymous>
    * or the current server
@@ -1102,7 +1103,7 @@ static void _do_user_counts()
 {
   logrun_t *l;
   int cur = -1, ccur = -1;
-  char config_class_users[128];
+  char config_class_users[128] = {'\0'};
   
   if(get_param_int(main_server->conf, "Classes", FALSE) != 1)
     return;
@@ -1140,7 +1141,7 @@ MODRET cmd_user(cmd_rec *cmd)
   int nopass = 0, cur = 0,hcur = 0, ccur = 0;
   logrun_t *l;
   config_rec *c,*maxc;
-  char *user,*origuser, config_class_users[128];
+  char *user,*origuser, config_class_users[128] = {'\0'};
   int failnopwprompt = 0, aclp,i, classes_enabled;
 
   if(logged_in)
@@ -1213,13 +1214,14 @@ MODRET cmd_user(cmd_rec *cmd)
       if(l->server_ip.s_addr == main_server->ipaddr->s_addr &&
          l->server_port == main_server->ServerPort) {
         if((c && c->config_type == CONF_ANON && !strcmp(l->user,user)) || !c) {
-          char *s, *d, ip[32];
+          char *s, *d, ip[32] = {'\0'};
+          int  mpos=sizeof(ip)-1;
 
           cur++;
           s = strchr (l->address, '[');
           d = ip;
           if (s != NULL) s++;
-          while (*s && *s != ']') *d++ = *s++;
+          while (*s && *s != ']' && d<ip+mpos) *d++ = *s++;
           *d = '\0';
 
           if(!strcmp(ip, inet_ntoa(*session.c->remote_ipaddr)))
@@ -1285,9 +1287,11 @@ MODRET cmd_user(cmd_rec *cmd)
   if(maxc) {
     int max = (int)maxc->argv[0];
     char *maxstr = "Sorry, maximum number clients (%m) from your host already connected.";
-    char maxn[10];
+    char maxn[10] = {'\0'};
 
     snprintf(maxn, sizeof(maxn), "%d",max);
+    maxn[sizeof(maxn)-1] = '\0';
+
     if(maxc->argc > 1)
       maxstr = maxc->argv[1];
     
@@ -1310,9 +1314,11 @@ MODRET cmd_user(cmd_rec *cmd)
   if(maxc) {
     int max = (int)maxc->argv[0];
     char *maxstr = "Sorry, maximum number of allowed clients (%m) already connected.";
-    char maxn[10];
+    char maxn[10] = {'\0'};
 
     snprintf(maxn, sizeof(maxn), "%d",max);
+    maxn[sizeof(maxn)-1] = '\0';
+
     if(maxc->argc > 1)
       maxstr = maxc->argv[1];
     

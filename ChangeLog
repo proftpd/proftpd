@@ -1,3 +1,59 @@
+2000-07-09 01:58  macgyver
+
+	* include/log.h (1.3), modules/mod_core.c (1.34),
+	modules/mod_xfer.c (1.36), src/log.c (1.17), src/xferlog.5 (1.3):
+	Added in support for a completion field in xferlog.
+
+2000-07-09 01:58  macgyver
+
+	* doc/Configuration.html (1.25): Updated LDAP documentation.
+
+2000-07-09 01:58  macgyver
+
+	* contrib/libcap/include/sys/capability.h (1.2): Added a #define
+	for the kernel.
+
+2000-07-09 01:58  macgyver
+
+	* modules/mod_pam.c (1.15): Added a little more sanity cleanup.
+
+2000-07-09 01:58  macgyver
+
+	* contrib/mod_ldap.c (1.7): Added in -lresolv.
+
+2000-07-09 01:58  macgyver
+
+	* src/support.c (1.17): Try to address potential memory issues with
+	people trying to overflow large path buffers.
+
+2000-07-08 11:26  macgyver
+
+	* modules/mod_pam.c (1.14): Forgot to add in AuthPAM to the
+	configuration tables.
+
+2000-07-08 03:15  macgyver
+
+	* src/inet.c (1.10): Added in some sanity checking so things like
+	getsockname() don't crash on Solaris when called with invalid
+	descriptors.
+
+2000-07-08 03:02  macgyver
+
+	* modules/mod_pam.c (1.13): I must be braindamaged to have let
+	someone else convince me my original code and logic was incorrect
+	about mod_pam.	There was no aforementioned memory leak, and PAM
+	does work exactly as advertised.
+
+2000-07-07 16:11  macgyver
+
+	* contrib/mod_sqlpw.c (1.6): Fixed a bug in SQLAuthoritative
+	detection.
+
+2000-07-07 02:12  macgyver
+
+	* ChangeLog (1.15), include/version.h (1.10): Updated ChangeLog as
+	well as version.
+
 2000-07-07 02:09  macgyver
 
 	* contrib/: README.ratio (1.1), mod_ratio.c (1.9): Updated to

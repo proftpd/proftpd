@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.34 2000-07-09 07:01:47 macgyver Exp $
+ * $Id: mod_core.c,v 1.35 2000-07-11 13:36:52 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -1502,14 +1502,15 @@ MODRET end_virtualhost(cmd_rec *cmd)
 int core_display_file(const char *numeric, const char *fn)
 {
   fsdir_t *fp;
-  char buf[1024];
+  char buf[1024] = {'\0'};
   int len, max, fd, classes_enabled;
   unsigned long fs_size = 0;
   pool *p;
   xaset_t *s;
-  char *outs, *mg_time, mg_size[12], mg_max[12] = "unlimited";
-  char mg_class_limit[12], mg_cur[12], mg_xfer_bytes[12], mg_cur_class[12];
-  char mg_xfer_units[12], config_class_users[128], *user;
+  char *outs, *mg_time, mg_size[12] = {'\0'}, mg_max[12] = "unlimited";
+  char mg_class_limit[12] = {'\0'}, mg_cur[12] = {'\0'},
+       mg_xfer_bytes[12] = {'\0'}, mg_cur_class[12] = {'\0'};
+  char mg_xfer_units[12] = {'\0'}, config_class_users[128] = {'\0'}, *user;
   short first = 1;
 
 #if defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
@@ -1568,7 +1569,7 @@ int core_display_file(const char *numeric, const char *fn)
       user = "";
    
   while(fs_gets(buf,sizeof(buf),fp,fd) != NULL) {
-    buf[1023] = '\0';
+    buf[sizeof(buf)-1] = '\0';
 
     len = strlen(buf);
 
@@ -1796,7 +1797,7 @@ MODRET cmd_port(cmd_rec *cmd)
 MODRET cmd_help(cmd_rec *cmd)
 {
   int i,c = 0;
-  char buf[9];
+  char buf[9] = {'\0'};
 
   if(cmd->argc == 1) {
     /* Print help for all commands */
@@ -1821,6 +1822,7 @@ MODRET cmd_help(cmd_rec *cmd)
         for(j = 0; j < 8; j++) {
           if(outa[j]) {
             snprintf(buf, sizeof(buf), "%-8s",outa[j]);
+            buf[sizeof(buf)-1] = '\0';
             outs = pstrcat(cmd->tmp_pool,outs,buf,NULL);
           } else
             break;
@@ -2112,7 +2114,7 @@ MODRET cmd_cdup(cmd_rec *cmd)
 MODRET cmd_mdtm(cmd_rec *cmd)
 {
   char *path;
-  char buf[16];
+  char buf[16] = {'\0'};
   struct tm *tm;
   struct stat sbuf;
   
@@ -2514,7 +2516,7 @@ MODRET set_class(cmd_rec *cmd)
   class_t *n;
   regex_t *preg;
   p_in_addr_t *res;
-  char *ptr, ipaddress[20], errmsg[80];
+  char *ptr, ipaddress[20] = {'\0'}, errmsg[80] = {'\0'};
 
   CHECK_ARGS(cmd,3);
   CHECK_CONF(cmd,CONF_ROOT);

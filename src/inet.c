@@ -139,10 +139,11 @@ char *inet_validate(char *buf) {
  */
 char *inet_gethostname(pool *pool)
 {
-  char buf[256];
+  char buf[256] = {'\0'};
   struct hostent *host;
 
-  if(gethostname(buf,255) != -1) {
+  if(gethostname(buf,sizeof(buf)-1) != -1) {
+    buf[sizeof(buf)-1] = '\0';
     host = gethostbyname(buf);
     if(host)
       return inet_validate(pstrdup(pool,host->h_name));

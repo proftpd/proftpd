@@ -44,7 +44,7 @@ char *get_ident(pool *p,conn_t *c)
   char *ret = "UNKNOWN";
   pool *tmpp;
   conn_t *ident_conn,*ident_io;
-  char buf[256],*tok,*tmp;
+  char buf[256] = {'\0'}, *tok,*tmp;
   int timer,i = 0;
   int ident_port = inet_getservport(p,"ident","tcp");
 

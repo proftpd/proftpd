@@ -20,7 +20,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.16 2000-07-07 01:19:27 macgyver Exp $
+ * $Id: dirtree.c,v 1.17 2000-07-11 13:36:52 macgyver Exp $
  */
 
 /* History:
@@ -119,7 +119,7 @@ char *get_word(char **cp)
 
 cmd_rec *get_config_cmd(pool *ppool, FILE *fp, int *line)
 {
-  char buf[1024],*cp,*wrd;
+  char buf[1024] = {'\0'}, *cp, *wrd;
   cmd_rec *newcmd;
   pool *newpool;
   array_header *tarr;
@@ -2170,6 +2170,7 @@ char *get_section_name(cmd_rec *cmd)
   if(!cmd->config || cmd->config->config_type == CONF_PARAM)
     return "top level";
 
+  memset(cbuf,'\0',sizeof(cbuf));
   switch(cmd->config->config_type) {
   case CONF_ROOT: return "root";
   case CONF_DIR: return "<Directory>";
@@ -2180,7 +2181,7 @@ char *get_section_name(cmd_rec *cmd)
   case CONF_GLOBAL: return "<Global>";
   case CONF_USERDATA: return "user data";
   default:
-  sprintf(cbuf, "%d", cmd->config->config_type);
+  snprintf(cbuf, sizeof(cbuf), "%d", cmd->config->config_type);
   return cbuf;
   }
 }

@@ -66,7 +66,7 @@ static int skip_atoi(const char **s)
 static char *number(char *str, long num, int base, int size, int
                     precision, int type, size_t *max_size)
 {
-  char c,sign,tmp[66];
+  char c,sign,tmp[66] = {'\0'};
   const char *digits="0123456789abcdefghijklmnopqrstuvwxyz";
   int i;
   size_t msize;
@@ -305,7 +305,7 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
 	{
 		double	dval;
 		int	ndigit, decpt, sign;
-		char	cvtbuf[DECIMAL_STRING_LENGTH];
+		char	cvtbuf[DECIMAL_STRING_LENGTH] = {'\0'};
 		char	*cbp;
 
 		/* Default FP precision */

@@ -20,7 +20,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.14 2000-07-03 16:25:14 macgyver Exp $
+ * $Id: mod_log.c,v 1.15 2000-07-11 13:36:52 macgyver Exp $
  */
 
 #include "conf.h"
@@ -147,7 +147,7 @@ static
 void logformat(char *nickname, char *fmts)
 {
   char *tmp, *arg;
-  unsigned char format[4096], *outs;
+  unsigned char format[4096] = {'\0'}, *outs;
   logformat_t *lf;
 
   /* This function can cause potential problems.  Custom logformats
@@ -415,7 +415,7 @@ static
 char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
 {
   unsigned char *m;
-  char arg[512], *argp = NULL, *pass;
+  char arg[512] = {'\0'}, *argp = NULL, *pass;
   
   /* This function can cause potential problems.  Custom logformats
    * might overrun the arg buffer.  Fixing this problem involves a
@@ -653,7 +653,7 @@ void do_log(cmd_rec *cmd, logfile_t *lf)
 {
   unsigned char *f;
   size_t size = LOGBUF_SIZE-2;
-  char logbuf[LOGBUF_SIZE];
+  char logbuf[LOGBUF_SIZE] = {'\0'};
   logformat_t *fmt;
   char *s,*bp;
 

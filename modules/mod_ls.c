@@ -19,7 +19,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.29 2000-07-07 06:41:08 macgyver Exp $
+ * $Id: mod_ls.c,v 1.30 2000-07-11 13:36:52 macgyver Exp $
  */
 
 #include "conf.h"
@@ -132,7 +132,7 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden)
 static int ls_perms(pool *p, cmd_rec *cmd, const char *path, int *hidden)
 {
   int ret,ishidden;
-  char fullpath[MAXPATHLEN + 1];
+  char fullpath[MAXPATHLEN + 1] = {'\0'};
   long _fakemode;
 
   if(*path == '~')
@@ -173,7 +173,7 @@ static
 int sendline(char *fmt, ...)
 {
   va_list msg;
-  char buf[1025];
+  char buf[1025] = {'\0'};
   int ret;
 
   va_start(msg,fmt);
@@ -201,7 +201,7 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
 {
   int		rval = 0, len;
   time_t	mtime;
-  char		m[1024],l[1024];
+  char		m[1024] = {'\0'},l[1024] = {'\0'};
   struct	stat st;
   char		months[12][4] =
   { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -280,8 +280,8 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
       }
 
       if(m[0] != ' ') {
-        char nameline[MAXPATHLEN + MAXPATHLEN + 128];
-        char timeline[6];
+        char nameline[MAXPATHLEN + MAXPATHLEN + 128] = {'\0'};
+        char timeline[6] = {'\0'};
         umode_t mode = st.st_mode;
 
         if(fakemodep)
@@ -331,6 +331,7 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
           }
 
           snprintf(p, sizeof(nameline) - strlen(nameline) - 4, " -> %s", l);
+          nameline[sizeof(nameline)-1] = '\0';
         }
 
 	if(opt_STAT)
@@ -532,7 +533,7 @@ int outputfiles(cmd_rec *cmd)
     q = p;
     p = p->down;
     while(q) {
-      char pad[6];
+      char pad[6] = {'\0'};
 
       if(q->right) {
         sstrncpy(pad, "\t\t\t\t\t", sizeof(pad));
@@ -779,7 +780,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name)
 
     r = dir;
     while(opt_R && r != s) {
-      char cwd[MAXPATHLEN + 1];
+      char cwd[MAXPATHLEN + 1] = {'\0'};
       int symhold;
 
       if(*r && (strcmp(*r,".") == 0 || strcmp(*r,"..") == 0)) {
@@ -1028,7 +1029,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
         path = g.gl_pathv;
         while(path && *path) {
           if(**path && ls_perms_full(cmd->tmp_pool,cmd,*path,NULL)) {
-            char cwd[MAXPATHLEN + 1];
+            char cwd[MAXPATHLEN + 1] = {'\0'};
             int symhold;
 
             if(!justone) {
@@ -1133,8 +1134,9 @@ int nlstfile(cmd_rec *cmd, const char *file)
  * error returned if data conn cannot be opened or is aborted.
  */
 static int nlstdir(cmd_rec *cmd, const char *dir) {
-  char **list, *p, *f, file[MAXPATHLEN + 1];
-  char cwd[MAXPATHLEN + 1];
+  char **list, *p, *f,
+       file[MAXPATHLEN + 1] = {'\0'};
+  char cwd[MAXPATHLEN + 1]  = {'\0'};
   pool *workp;
   int curdir = 0, i, symhold, count = 0;
   mode_t mode;
@@ -1308,7 +1310,7 @@ MODRET cmd_list(cmd_rec *cmd)
 
 MODRET cmd_nlst(cmd_rec *cmd)
 {
-	char	*target,line[MAXPATHLEN + 1];
+	char	*target,line[MAXPATHLEN + 1] = {'\0'};
 	int	count = 0;
 	int	ret = 0;
 
@@ -1332,7 +1334,7 @@ MODRET cmd_nlst(cmd_rec *cmd)
 	
 	/* If the target starts with '~' ... */
 	if(*target == '~') {
-		char pb[MAXPATHLEN + 1];
+		char pb[MAXPATHLEN + 1] = {'\0'};
 		struct passwd *pw;
 		int i;
 		const char *p;
@@ -1341,7 +1343,7 @@ MODRET cmd_nlst(cmd_rec *cmd)
 		p = target;
 		p++;
 
-		while(*p && *p !='/')
+		while(*p && *p !='/' && i<MAXPATHLEN)
 			pb[i++] = *p++;
 		pb[i] = '\0';
 

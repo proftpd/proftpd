@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.36 2000-07-09 07:01:47 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.37 2000-07-11 13:36:52 macgyver Exp $
  */
 
 /* History Log:
@@ -97,8 +97,6 @@ static void _log_transfer(char direction, char abort_flag)
 	    abort_flag == 'c' ? " completed:" : " aborted after",
 	    session.xfer.total_bytes,end_time.tv_sec,
 	    (end_time.tv_usec / 10000));
-
-  data_cleanup();
 }
 
 /* This routine counts the difference in usec between timeval's
@@ -974,12 +972,14 @@ cmd_stou(cmd_rec *cmd)
 MODRET log_stor(cmd_rec *cmd)
 {
   _log_transfer('i', 'c');
+  data_cleanup();
   return DECLINED(cmd);
 }
 
 MODRET log_retr(cmd_rec *cmd)
 {
   _log_transfer('o', 'c');
+  data_cleanup();
   return DECLINED(cmd);
 }
 

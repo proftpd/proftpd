@@ -229,7 +229,7 @@ MODRET _calc_ratios (cmd_rec * cmd)
 {
   modret_t *mr = 0;
   config_rec *c;
-  char buf[1024];
+  char buf[1024] = {'\0'};
   char *mask;
   char **data;
 
@@ -327,7 +327,7 @@ MODRET _calc_ratios (cmd_rec * cmd)
 static void
 _log_ratios (cmd_rec * cmd)
 {
-  char buf[1024];
+  char buf[1024] = {'\0'};
 
   snprintf (buf, sizeof(buf), SHORT_RATIO_STUFFS);
   log_debug (DEBUG0, "%s in %s: %s %s%s%s", g.user,
@@ -339,7 +339,7 @@ static void
 _update_stats ()
 {
     FILE *usrfile,*newfile;
-    char usrstr[256],*ratname;
+    char usrstr[256] = {'\0'}, *ratname;
     int ulfiles,ulbytes,dlfiles,dlbytes,cpc;
 
      	if (!fileerr) {
@@ -354,7 +354,7 @@ _update_stats ()
 
 	if (!fileerr) {
 	   usrfile=fopen(g.ratiofile,"r");
-           while (fgets(usrstr,256,usrfile)!=NULL) {
+           while (fgets(usrstr,sizeof(usrstr),usrfile)!=NULL) {
                 ratname = strtok(usrstr, "|");
                 ulfiles = atoi (strtok(NULL, "|"));
                 ulbytes = atoi (strtok(NULL, "|"));
@@ -429,7 +429,7 @@ pre_cmd_retr (cmd_rec * cmd)
 MODRET
 log_cmd_pass (cmd_rec * cmd)
 {
-  char buf[120];
+  char buf[120] = {'\0'};
 
   if (session.anon_user)
     sstrncpy (g.user, session.anon_user, sizeof(g.user));
@@ -482,7 +482,8 @@ MODRET
 ratio_cmd (cmd_rec * cmd)
 {
   FILE *usrfile,*newfile;
-  char sbuf1[128],sbuf2[128],sbuf3[128],usrstr[256];
+  char sbuf1[128] = {'\0'},sbuf2[128] = {'\0'},
+       sbuf3[128] = {'\0'},usrstr[256] = {'\0'};
   char *ratname;
   int ulfiles,ulbytes,dlfiles,dlbytes,cpc;
 
@@ -498,7 +499,7 @@ ratio_cmd (cmd_rec * cmd)
 
    if (!gotratuser && !fileerr && g.save) {
 	usrfile=fopen(g.ratiofile,"r");
-        while (fgets(usrstr,256,usrfile)!=NULL) {
+        while (fgets(usrstr,sizeof(usrstr),usrfile)!=NULL) {
                 ratname = strtok(usrstr, "|");
                 ulfiles = atoi (strtok(NULL, "|"));
                 ulbytes = atoi (strtok(NULL, "|"));
@@ -536,7 +537,7 @@ ratio_cmd (cmd_rec * cmd)
          	  gotratuser=1;
          	  fileerr=1;
          	  }
-                while (fgets(usrstr,256,usrfile)!=NULL) {
+                while (fgets(usrstr,sizeof(usrstr),usrfile)!=NULL) {
                 fprintf(newfile,"%s",usrstr); }
 		fprintf(newfile,"%s|%i|%i|%i|%i\n",g.user,stats.fstor,\
 		stats.bstor,stats.fretr,stats.bretr);
@@ -588,7 +589,8 @@ ratio_cmd (cmd_rec * cmd)
 MODRET
 cmd_site (cmd_rec * cmd)
 {
-  char buf[128];
+  char buf[128] = {'\0'};
+
   if (!strcasecmp (cmd->argv[1], "RATIO"))
     {
       _calc_ratios (cmd);

@@ -19,7 +19,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.5 2000-07-06 12:58:46 macgyver Exp $
+ * $Id: mod_site.c,v 1.6 2000-07-11 13:36:52 macgyver Exp $
  */
 
 #include "conf.h"
@@ -271,7 +271,7 @@ MODRET site_chmod(cmd_rec *cmd) {
 MODRET site_help(cmd_rec *cmd)
 {
   int i,c = 0;
-  char buf[9];
+  char buf[9] = {'\0'};
 
   if(cmd->argc == 1 || (cmd->argc == 2 && !strcasecmp(cmd->argv[1],"SITE"))) {
     char *outa[8];
