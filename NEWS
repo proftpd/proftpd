@@ -1,8 +1,10 @@
-$Id: NEWS,v 1.170 2002-05-19 20:45:42 castaglia Exp $
+$Id: NEWS,v 1.171 2002-05-19 20:50:13 castaglia Exp $
 
 CVS
 ---------------------------------
-- Bug 1612 - fixed logging of RFC931 usernames in xferlog
+- Bug 1612 - Fixed logging of RFC931 usernames in xferlog
+- Bug 1595 - Transfers that result in error conditions no longer cause
+             the data connection to be closed prematurely via data_cleanup()
 
 1.2.5rc2 - Released 2002-05-13
 ---------------------------------
