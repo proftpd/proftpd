@@ -10220,8 +10220,8 @@ else
 #line $LINENO "configure"
 #include "confdefs.h"
 
+#include <sys/types.h>
 #include <unistd.h>
-#include <sys/sendfile.h>
 
 #ifdef F77_DUMMY_MAIN
 #  ifdef __cplusplus
