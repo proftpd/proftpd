@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.261 2004-11-11 02:44:05 castaglia Exp $
+ * $Id: main.c,v 1.262 2004-11-20 22:35:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1324,6 +1324,9 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
   /* Create a table for modules to use. */
   session.notes = pr_table_alloc(session.pool, 0);
+
+  /* Prepare the Timers API. */
+  timers_init();
 
   /* Inform all the modules that we are now a child */
   pr_log_debug(DEBUG7, "performing module session initializations");

@@ -23,7 +23,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: timers.h,v 1.12 2004-10-30 21:01:23 castaglia Exp $
+ * $Id: timers.h,v 1.13 2004-11-20 22:35:39 castaglia Exp $
  */
 
 #ifndef PR_TIMERS_H
@@ -67,6 +67,7 @@ int pr_timer_sleep(int secs);
 
 /* For internal use only. */
 void handle_alarm(void);
+void timers_init(void);
 
 /* Compatibility redefines; will be removed at some point the future. */
 #define add_timer	pr_timer_add

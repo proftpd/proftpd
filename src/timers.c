@@ -25,7 +25,7 @@
 
 /*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.23 2004-11-20 21:20:34 castaglia Exp $
+ * $Id: timers.c,v 1.24 2004-11-20 22:35:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -53,12 +53,11 @@ static int _sleep_sem = 0;
 static int alarms_blocked = 0,alarm_pending = 0;
 static xaset_t *timers = NULL;
 static xaset_t *recycled = NULL;
+static xaset_t *free_timers = NULL;
 static int _indispatch = 0;
 static int dynamic_timerno = 1024;
 static unsigned int nalarms = 0;
 static time_t _alarmed_time = 0;
-
-xaset_t *free_timers = NULL;
 
 static int timer_cmp(struct timer *t1, struct timer *t2) {
   if (t1->count < t2->count)
@@ -408,4 +407,20 @@ int pr_timer_sleep(int seconds) {
   }
 
   return 0;
+}
+
+void timers_init(void) {
+
+  /* Reset some of the key static variables. */
+  _current_timeout = 0;
+  _total_time = 0;
+  nalarms = 0;
+  _alarmed_time = 0;
+
+  /* Don't inherit the parent's timer lists. */
+  timers = NULL;
+  recycled = NULL;
+  free_timers = NULL;
+
+ return;
 }

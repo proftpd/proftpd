@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.627 2004-11-20 20:32:19 castaglia Exp $
+$Id: NEWS,v 1.628 2004-11-20 22:35:37 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -75,6 +75,7 @@ CVS
 - Bug 2454 - Extend <VirtualHost> to honor multiple addresses.  With this
   change, the Bind directive is now deprecated.  See the RELEASE_NOTES
   for more details.
+- Bug 2516 - Getting "421 Login Timeout" immediately upon connect.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------
