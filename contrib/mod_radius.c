@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.24 2004-11-02 18:18:58 castaglia Exp $
+ * $Id: mod_radius.c,v 1.25 2004-12-16 23:26:24 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.8rc2"
@@ -2615,6 +2615,19 @@ static void radius_exit_ev(const void *event_data, void *user_data) {
   return;
 }
 
+#if defined(PR_SHARED_MODULE)
+static void radius_mod_unload_ev(const void *event_data, void *user_data) {
+  if (strcmp("mod_radius.c", (const char *) event_data) == 0) {
+    pr_event_unregister(&radius_module, NULL, NULL);
+
+    if (radius_pool) {
+      destroy_pool(radius_pool);
+      radius_pool = NULL;
+    }
+  }
+}
+#endif /* PR_SHARED_MODULE */
+
 static void radius_restart_ev(const void *event_data, void *user_data) {
 
   /* Re-allocate the pool used by this module. */
@@ -2758,6 +2771,11 @@ static int radius_init(void) {
   /* Allocate a pool for this module's use. */
   radius_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(radius_pool, MOD_RADIUS_VERSION);
+
+#if defined(PR_SHARED_MODULE)
+  pr_event_register(&radius_module, "core.module-unload",
+    radius_mod_unload_ev, NULL);
+#endif /* PR_SHARED_MODULE */
 
   /* Register a restart handler, to cleanup the pool. */
   pr_event_register(&radius_module, "core.restart", radius_restart_ev, NULL);
