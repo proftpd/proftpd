@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (C) 1999, MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
+ * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.23 2000-01-24 05:47:06 macgyver Exp $
+ * $Id: main.c,v 1.24 2000-02-28 10:14:31 macgyver Exp $
  */
 
 /*
@@ -324,7 +324,26 @@ static void init_set_proc_title(int argc, char *argv[], char *envp[])
 #ifdef HAVE___PROGNAME
   extern char *__progname, *__progname_full;
 #endif /* HAVE___PROGNAME */
-  int i;
+  extern char **environ;
+  
+  int i, envpsize;
+  char **p;
+  
+  /* Move the environment so setproctitle can use the space.
+   */
+  for(i = envpsize = 0; envp[i] != NULL; i++)
+    envpsize += strlen(envp[i]) + 1;
+  
+  if((p = (char **) malloc((i + 1) * sizeof(char *))) != NULL ) {
+    environ = p;
+
+    for(i = 0; envp[i] != NULL; i++) {
+      if((environ[i] = malloc(strlen(envp[i]) + 1)) != NULL)
+	strcpy(environ[i], envp[i]);
+    }
+    
+    environ[i] = NULL;
+  }
   
   Argv = argv;
   
