@@ -114,6 +114,8 @@ line: while (<LOG>) {
       $offset = $#line - 7;
    } elsif ($line[$#line-6] eq "a" or $line[$#line-6] eq "b") {
       $offset = $#line - 6
+   } elsif ($line[$#line-5] =~ /^(a|g|r)$/) {
+      $offset = $#line - 5;
    } else {
       next;
    }

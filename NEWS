@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.173 2002-05-21 20:47:14 castaglia Exp $
+$Id: NEWS,v 1.174 2002-05-30 16:22:46 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -9,6 +9,7 @@ CVS
              indefinitely, manifesting as non-functioning idle timeouts
 - Bug 1521 - Cleanup of function prototypes
 - Bug 1379 - Changing remaining bzero/bcopy occurrences to memset/memcpy
+- Bug 1394 - ftpstats program is not working
 
 1.2.5rc2 - Released 2002-05-13
 ---------------------------------
