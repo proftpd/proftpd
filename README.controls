@@ -17,7 +17,8 @@ To enable support for Controls, use the --enable-ctrls configure option:
 
 This enables support for the Controls API in the core engine, and causes
 the userland program `ftpdctl' to be functional.  It also causes the
-mod_ctrls module to be automatically compiled into proftpd.
+mod_ctrls module to be automatically compiled into proftpd (hence you should
+NOT use both --enable-ctrls and --with-modules=mod_ctrls).
 
 The mod_ctrls module provides some basic ftpdctl commands:
 
