@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.162 2003-08-16 17:01:57 castaglia Exp $
+ * $Id: mod_auth.c,v 1.163 2003-09-05 18:38:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -194,15 +194,15 @@ static int _do_auth(pool *p, xaset_t *conf, char *u, char *pw) {
   config_rec *c;
 
   if (conf) {
-    c = find_config(conf,CONF_PARAM,"UserPassword",FALSE);
+    c = find_config(conf, CONF_PARAM, "UserPassword", FALSE);
 
-    while(c) {
-      if (!strcmp(c->argv[0],u)) {
-        cpw = (char*)c->argv[1];
+    while (c) {
+      if (strcmp(c->argv[0], u) == 0) {
+        cpw = (char *) c->argv[1];
         break;
       }
 
-      c = find_config_next(c,c->next,CONF_PARAM,"UserPassword",FALSE);
+      c = find_config_next(c, c->next, CONF_PARAM, "UserPassword", FALSE);
     }
   }
 
@@ -213,7 +213,7 @@ static int _do_auth(pool *p, xaset_t *conf, char *u, char *pw) {
     return auth_check(p, cpw, u, pw);
   }
 
-  return auth_authenticate(p,u,pw);
+  return auth_authenticate(p, u, pw);
 }
 
 MODRET auth_log_pass(cmd_rec *cmd) {
@@ -903,7 +903,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
 
     auth_code = _do_auth(p, c ? c->subset : main_server->conf, user_name, pass);
 
-    if (auth_code) {
+    if (auth_code < 0) {
       /* Normal authentication has failed, see if group authentication
        * passes
        */
