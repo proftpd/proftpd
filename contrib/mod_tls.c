@@ -735,9 +735,15 @@ static int tls_init_server(void) {
  
     if ((tls_ca_chain = get_param_ptr(main_server->conf,
         "TLSCertificateChainFile", FALSE))) {
-      SSL_CTX_set_client_CA_list(ssl_ctx,
-        SSL_load_client_CA_file(tls_ca_chain));
+      STACK_OF(X509_NAME) *ca_certs = SSL_load_client_CA_file(tls_ca_chain);
 
+      if (certs)
+        SSL_CTX_set_client_CA_list(ssl_ctx, ca_certs);
+
+      else
+        tls_log("unable to load certificates from '%s': %s", tls_ca_chain,
+          ERR_error_string(ERR_get_error(), NULL));
+ 
     } else if (tls_ca_path) {
       DIR *cacertdir = NULL;
 
