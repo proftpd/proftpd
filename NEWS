@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.370 2003-02-14 15:47:29 castaglia Exp $
+$Id: NEWS,v 1.371 2003-02-17 00:56:35 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -24,6 +24,7 @@ CVS
   by the operating system's chown(2) call) did not use root privs, and thus
   the client did not have permission to write the file.
 - Added FTPS FEAT responses, as per Section 5 of the FTPS Draft.
+- Bug 1956 - Upload transfer rate broken.  The wrong variable was being used.
 
 1.2.8rc2 - Released 29-Jan-2003
 ---------------------------------

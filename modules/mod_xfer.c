@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.124 2003-02-13 00:02:31 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.125 2003-02-17 00:56:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1300,7 +1300,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     }
 
     /* If no throttling is configured, this does nothing. */
-    xfer_rate_throttle(len);
+    xfer_rate_throttle(nbytes_stored);
   }
 
   if (XFER_ABORTED) {
@@ -1316,7 +1316,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   } else {
 
     /* If no throttling is configured, this does nothing. */
-    xfer_rate_throttle(len);
+    xfer_rate_throttle(nbytes_stored);
 
     stor_complete();
 
@@ -1436,7 +1436,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   unsigned char have_limit = FALSE;
   privdata_t *p;
   long bufsize, len = 0;
-  off_t respos = 0, cnt = 0, cnt_steps = 0, cnt_next = 0;
+  off_t respos = 0, nbytes_sent = 0, cnt_steps = 0, cnt_next = 0;
 
   /* This function sets static module variables for later potential
    * throttling of the transfer.
@@ -1533,18 +1533,18 @@ MODRET xfer_retr(cmd_rec *cmd) {
              main_server->tcp_swin : PR_TUNABLE_BUFFER_SIZE);
   lbuf = (char *) palloc(cmd->tmp_pool, bufsize);
 
-  cnt = respos;
+  nbytes_sent = respos;
 
   pr_scoreboard_update_entry(getpid(),
     PR_SCORE_XFER_SIZE, session.xfer.file_size,
     PR_SCORE_XFER_DONE, 0,
     NULL);
 
-  while (cnt != session.xfer.file_size) {
+  while (nbytes_sent != session.xfer.file_size) {
     if (XFER_ABORTED)
       break;
 
-    if ((len = _transmit_data(cnt, respos, lbuf, bufsize)) == 0)
+    if ((len = _transmit_data(nbytes_sent, respos, lbuf, bufsize)) == 0)
       break;
 
     if (len < 0) {
@@ -1553,18 +1553,18 @@ MODRET xfer_retr(cmd_rec *cmd) {
       return ERROR(cmd);
     }
 
-    cnt += len;
+    nbytes_sent += len;
 
-    if ((cnt / cnt_steps) != cnt_next) {
-      cnt_next = cnt / cnt_steps;
+    if ((nbytes_sent / cnt_steps) != cnt_next) {
+      cnt_next = nbytes_sent / cnt_steps;
 
       pr_scoreboard_update_entry(getpid(),
-        PR_SCORE_XFER_DONE, cnt,
+        PR_SCORE_XFER_DONE, nbytes_sent,
         NULL);
     }
 
     /* If no throttling is configured, this simply updates the scoreboard. */
-    xfer_rate_throttle(cnt);
+    xfer_rate_throttle(nbytes_sent);
   }
 
   if (XFER_ABORTED) {
@@ -1580,7 +1580,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   } else {
 
     /* If no throttling is configured, this simply updates the scoreboard. */
-    xfer_rate_throttle(cnt);
+    xfer_rate_throttle(nbytes_sent);
 
     retr_complete();
     pr_data_close(FALSE);
