@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.64 2002-08-28 16:00:22 castaglia Exp $
+ * $Id: dirtree.c,v 1.65 2002-09-05 21:13:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -83,6 +83,99 @@ typedef struct config_stream_struc {
 } config_stream_t;
 
 static config_stream_t *config_stream_stack = NULL;
+
+static int allow_dyn_config(void) {
+  config_rec *c = NULL;
+  unsigned int ctxt_precedence = 0;
+  unsigned char have_user_limit, have_group_limit, have_class_limit,
+    have_all_limit;
+  unsigned char allow = TRUE;
+
+  have_user_limit = have_group_limit = have_class_limit =
+    have_all_limit = FALSE;
+
+  c = find_config(CURRENT_CONF, CONF_PARAM, "AllowOverride", FALSE);
+
+  while (c) {
+    if (c->argc == 3) {
+      if (!strcmp(c->argv[2], "user")) {
+
+        if (user_expression((char **) &c->argv[3])) {
+          if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
+
+            /* Set the context precedence. */
+            ctxt_precedence = *((unsigned int *) c->argv[1]);
+
+            allow = *((int *) c->argv[0]);
+
+            have_group_limit = have_class_limit = have_all_limit = FALSE;
+            have_user_limit = TRUE;
+          }
+        }
+
+      } else if (!strcmp(c->argv[2], "group")) {
+
+        if (group_expression((char **) &c->argv[3])) {
+          if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
+
+            /* Set the context precedence. */
+            ctxt_precedence = *((unsigned int *) c->argv[1]);
+
+            allow = *((int *) c->argv[0]);
+
+            have_user_limit = have_class_limit = have_all_limit = FALSE;
+            have_group_limit = TRUE;
+          }
+        }
+
+      } else if (!strcmp(c->argv[2], "class")) {
+
+        if (session.class && session.class->name &&
+            !strcmp(session.class->name, c->argv[3])) {
+
+          if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
+
+            /* Set the context precedence. */
+            ctxt_precedence = *((unsigned int *) c->argv[1]);
+
+            allow = *((int *) c->argv[0]);
+
+            have_user_limit = have_group_limit = have_all_limit = FALSE;
+            have_class_limit = TRUE;
+          }
+        }
+      }
+
+    } else {
+
+      if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
+
+        /* Set the context precedence. */
+        ctxt_precedence = *((unsigned int *) c->argv[1]);
+
+        allow = *((int *) c->argv[0]);
+
+        have_user_limit = have_group_limit = have_class_limit = FALSE; 
+        have_all_limit = TRUE;
+      }
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "AllowOverride", FALSE);
+  }
+
+  /* Print out some nice debugging information. */
+  if (have_user_limit || have_group_limit ||
+      have_class_limit || have_all_limit) {
+    log_debug(DEBUG4, "AllowOverride %s %s%s .ftpaccess files",
+      allow ? "allows" : "denies",
+      have_user_limit ? "user " : have_group_limit ? "group " :
+      have_class_limit ? "class " : "all",
+      have_user_limit ? session.user : have_group_limit ? session.group :
+      have_class_limit ? session.class->name : "");
+  }
+
+  return allow;
+}
 
 /* Imported this function from modules/mod_ls.c -- it belongs more with the
  * dir_* functions here, rather than the ls_* functions there.
@@ -1463,6 +1556,11 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
   if(!_path)
     return;
 
+  /* check to see whether .ftpaccess files are allowed to be parsed
+   */
+  if (!allow_dyn_config())
+    return;
+
   path = pstrdup(p,_path);
 
   memcpy(&sbuf,_sbuf,sizeof(sbuf));
@@ -1539,6 +1637,7 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
     }
 
     if(isfile != -1 && d && sbuf.st_mtime > (time_t)d->argv[0]) {
+
       /* File has been modified or not loaded yet */
       d->argv[0] = (void*)sbuf.st_mtime;
 

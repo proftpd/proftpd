@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.99 2002-09-05 20:09:58 castaglia Exp $
+ * $Id: mod_core.c,v 1.100 2002-09-05 21:13:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1479,6 +1479,116 @@ MODRET add_userowner(cmd_rec *cmd) {
 
   c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
+MODRET set_allowoverride(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
+  unsigned int precedence = 0;
+
+  int ctxt = (cmd->config && cmd->config->config_type != CONF_PARAM ?
+     cmd->config->config_type : cmd->server->config_type ?
+     cmd->server->config_type : CONF_ROOT);
+
+  /* This directive must have either 1 or 3 arguments */
+  if (cmd->argc-1 != 1 && cmd->argc-1 != 3)
+    CONF_ERROR(cmd, "missing arguments");
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument");
+
+  /* Set the precedence for this config_rec based on its configuration
+   * context.
+   */
+  if (ctxt & CONF_GLOBAL)
+    precedence = 1;
+
+  /* These will never appear simultaneously */
+  else if (ctxt & CONF_ROOT || ctxt & CONF_VIRTUAL)
+    precedence = 2;
+
+  else if (ctxt & CONF_ANON)
+    precedence = 3;
+
+  else if (ctxt & CONF_DIR)
+    precedence = 4;
+
+  /* If the directive was used with 3 arguments, then the optional
+   * classifiers, and classifier expression, were used.  Make sure that
+   * a valid classifier was used.
+   */
+  if (cmd->argc-1 == 3) {
+    if (!strcmp(cmd->argv[2], "user") ||
+        !strcmp(cmd->argv[2], "group") ||
+        !strcmp(cmd->argv[2], "class")) {
+
+      /* no-op */
+
+    } else
+      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool, cmd->argv[0],
+        ": unknown classifier used: '", cmd->argv[2], "'", NULL));
+  }
+
+  if (cmd->argc-1 == 1) {
+    c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(int));
+    *((int *) c->argv[0]) = bool;
+    c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[1]) = precedence;
+
+  } if (cmd->argc-1 == 3) {
+    array_header *acl = NULL;
+    int argc = cmd->argc - 3;
+    char **argv = cmd->argv + 2;
+
+    /* NOTE: for now, this will work.  parse_group_expression() doesn't
+     * check that they are valid system groups, it just parses the expression
+     * into an array_header.
+     */
+    acl = parse_group_expression(cmd->tmp_pool, &argc, argv);
+
+    c = add_config_param(cmd->argv[0], 0);
+    c->argc = argc + 3;
+
+    /* Add 4 to argc for the argv of the config_rec: one for the
+     * precedence, one for the compiled regexp pointer, one for the
+     * classifier, and one for the terminating NULL.
+     */
+    c->argv = pcalloc(c->pool, ((argc + 4) * sizeof(char *)));
+
+    /* Capture the config_rec's argv pointer for doing the by-hand
+     * population.
+     */
+    argv = (char **) c->argv;
+
+    /* Copy in the boolean argument */
+    *argv = pcalloc(c->pool, sizeof(int));
+    *((int *) *argv++) = bool;
+
+    /* Copy in the precedence. */
+    *argv = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) *argv++) = precedence;
+
+    /* copy in the classifier */
+    *argv++ = pstrdup(c->pool, cmd->argv[2]);
+
+    /* Now, copy in the expression arguments */
+    if (argc && acl) {
+      while (argc--) {
+        *argv++ = pstrdup(c->pool, *((char **) acl->elts));
+        acl->elts = ((char **) acl->elts) + 1;
+      }
+    }
+
+    /* Don't forget the terminating NULL */
+    *argv = NULL;
+  }
+
+  c->flags |= CF_MERGEDOWN_MULTI;
 
   return HANDLED(cmd);
 }
@@ -3194,6 +3304,7 @@ static conftable core_conftab[] = {
   { "AllowFilter",		set_allowfilter,		NULL },
   { "AllowForeignAddress",	set_allowforeignaddress,	NULL },
   { "AllowGroup",		add_allowgroup,			NULL },
+  { "AllowOverride",		set_allowoverride,		NULL },
   { "AllowOverwrite",		set_allowoverwrite,		NULL },
   { "AllowRetrieveRestart",	set_allowretrieverestart,	NULL },
   { "AllowStoreRestart",	set_allowstorerestart,		NULL },

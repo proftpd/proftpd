@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.213 2002-09-05 20:09:57 castaglia Exp $
+$Id: NEWS,v 1.214 2002-09-05 21:13:04 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -6,6 +6,7 @@ CVS
 - Bug 1666 - Auth modules can return duplicate supplemental groups
 - Bug 1654 - Add DESTDIR in Makefile
 - Bug 1682 - Broken SyslogFacility requires custom syslog code
+- Bug 1076 - Toggle parsing of .ftpaccess files with a AllowOverride
 
 1.2.6 - Released 2002-09-04
 ---------------------------------

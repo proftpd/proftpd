@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.80 2002-07-22 23:18:50 castaglia Exp $
+ * $Id: mod_auth.c,v 1.81 2002-09-05 21:13:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1226,12 +1226,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
   sstrncpy(session.cwd, fs_getcwd(), sizeof(session.cwd));
   sstrncpy(session.vwd, fs_getvwd(), sizeof(session.vwd));
 
-  /* check dynamic configuration */
-  if (fs_stat(session.cwd, &sbuf) != -1)
-    build_dyn_config(p, session.cwd, &sbuf, 1);
-
-  /* make sure session.dir_config is set correctly */
-  dir_check_full(p,C_PASS,G_NONE,session.cwd,NULL);
+  /* Make sure session.dir_config is set correctly */
+  dir_check_full(p, C_PASS, G_NONE, session.cwd, NULL);
 
   if(c) {
     if(!session.hide_password)
@@ -1250,6 +1246,13 @@ static int _setup_environment(pool *p, char *user, char *pass)
     session.proc_prefix = pstrdup(permanent_pool,session.c->remote_name);
     session.flags = 0;
   }
+
+   /* Check for dynamic configuration.  This check needs to be after the
+    * setting of any possible anon_config, as that context may be allowed
+    * or denied .ftpaccess-parsing separately from the containing server
+    */
+   if (fs_stat(session.cwd, &sbuf) != -1)
+     build_dyn_config(p, session.cwd, &sbuf, 1);
 
   /* While closing the pointer to the password database would avoid any
    * potential attempt to hijack this information, it is unfortunately needed
