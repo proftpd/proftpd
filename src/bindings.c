@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.11 2003-08-07 15:49:44 castaglia Exp $
+ * $Id: bindings.c,v 1.12 2003-08-09 07:50:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -834,10 +834,6 @@ static void init_standalone_bindings(void) {
     main_server->addr = (pr_netaddr_t *) c->argv[0];
   }
 
-log_debug(DEBUG0, "init_standalone_bindings(): main_server->addr: %s", pr_netaddr_get_ipstr(main_server->addr));
-log_debug(DEBUG0, "init_standalone_bindings(): main_server->ServerPort: %d", main_server->ServerPort);
-log_debug(DEBUG0, "init_standalone_bindings(): main_server family: %d", pr_netaddr_get_family(main_server->addr));
-
   /* If a port is set to zero, the address/port is not bound to a socket
    * at all.
    */
@@ -928,7 +924,6 @@ log_debug(DEBUG0, "init_standalone_bindings(): main_server family: %d", pr_netad
     }
   }
 
-log_debug(DEBUG0, "init_standalone_bindings(): done");
   /* done */
   return;
 }
