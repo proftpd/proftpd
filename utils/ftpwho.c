@@ -27,7 +27,7 @@
 /* Shows a count of "who" is online via proftpd.  Uses the /var/run/proftpd*
  * log files.
  *
- * $Id: ftpwho.c,v 1.1 2002-09-25 23:45:24 castaglia Exp $
+ * $Id: ftpwho.c,v 1.2 2002-09-26 16:59:46 castaglia Exp $
  */
 
 #include "utils.h"
@@ -360,13 +360,13 @@ int main(int argc, char **argv) {
          * a pointer to a static buffer, and pushing two invocations onto
          * the stack means that the times thus formatted will be incorrect.
          */
-        printf("%5d %s [%6s] ", (int) score->sce_pid,
+        printf("%5d %-8s [%6s] ", (int) score->sce_pid,
           score->sce_user, show_time(&score->sce_begin_session));
         printf("%6s %s", show_time(&score->sce_begin_idle), score->sce_cmd);
 
       } else {
 
-        printf("%5d %s [%6s] (%s%%) %s", (int) score->sce_pid,
+        printf("%5d %-8s [%6s] (%3s%%) %s", (int) score->sce_pid,
           score->sce_user, show_time(&score->sce_begin_session),
           percent_complete(score->sce_xfer_size, score->sce_xfer_done),
           score->sce_cmd);
