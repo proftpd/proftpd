@@ -25,7 +25,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.5 2002-09-28 00:28:27 castaglia Exp $
+ * $Id: ftptop.c,v 1.6 2002-10-04 22:51:41 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.8.2"
@@ -55,6 +55,8 @@ static const char *program = "ftptop";
 
 static int delay = 2;
 static unsigned int display_session = FTPTOP_SHOW_ALL;
+
+static char *config_filename = CONFIG_FILE_PATH;
 
 /* Scoreboard variables */
 static unsigned int ftp_nsessions = 0;
@@ -94,6 +96,85 @@ static void finish(int signo) {
   exit(0);
 }
 
+static int check_scoreboard_file(void) {
+  struct stat sbuf;
+
+  if (stat(util_get_scoreboard(), &sbuf) < 0)
+    return -1;
+
+  return 0;
+}
+
+/* scan_config_file() is a kludge for 1.2 which does a very simplistic attempt
+ * at determining what the "ScoreboardFile" directive is set to.  It will be
+ * replaced in 1.3 with the abstracted configure system (hopefully).
+ */
+static void scan_config_file(void) {
+  FILE *fp = NULL;
+  char buf[1024] = {'\0'};
+  char *cp, *file = NULL;
+ 
+  if (!config_filename || (fp = fopen(config_filename,"r")) == NULL)
+    return;
+
+  while (!file && fgets(buf, sizeof(buf) - 1, fp)) {
+    int i = strlen(buf);
+
+    if (i && buf[i - 1] == '\n')
+      buf[i-1] = '\0';
+
+    for (cp = buf; *cp && isspace(*cp); cp++);
+
+    if (*cp == '#' || !*cp)
+      continue;
+
+    i = strlen("ScoreboardFile");
+
+    if (strncasecmp(cp, "ScoreboardFile", i) != 0)
+      continue;
+
+    /* Found it! */
+    cp += i;
+
+    /* strip whitespace */
+    while (*cp && isspace(*cp))
+      cp++;
+
+    file = cp;
+
+    /* If the scoreboard file argument is quoted, dequote */
+    if (*cp == '"') {
+      char *src = cp;
+
+      cp++;
+      file++;
+
+      while (*++src) {
+        switch (*src) {
+          case '\\':
+            if (*++src)
+              *cp++ = *src;
+            break;
+
+          case '"':
+            src++;
+            break;
+
+          default:
+            *cp++ = *src;
+        }
+      }
+
+      *cp = '\0';
+    }
+  }
+
+  fclose(fp);
+
+  /* If we got something out of all this, go ahead and set it. */
+  if (file)
+    util_set_scoreboard(file);
+}
 static void process_opts(int argc, char *argv[]) {
   int optc = 0;
   const char *prgopts = "Dd:f:hIiUV";
@@ -147,6 +228,20 @@ static void process_opts(int argc, char *argv[]) {
 
      default:
         break;
+    }
+  }
+
+  /* First attempt to check the supplied/default scoreboard path.  If this is
+   * incorrect, try the config file kludge.
+   */
+  if (check_scoreboard_file() < 0) {
+    scan_config_file();
+   
+    if (check_scoreboard_file() < 0) {
+      fprintf(stderr, "%s: %s\n", util_get_scoreboard(), strerror(errno));
+      fprintf(stderr, "(Perhaps you need to specify the ScoreboardFile with -f, or change\n");
+      fprintf(stderr," the compile-time default directory?)\n");
+      exit(1);
     }
   }
 }
