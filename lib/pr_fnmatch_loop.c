@@ -23,6 +23,8 @@
  * Copyright (C) 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  */
 
+#include <ctype.h>
+
 /* Match STRING against the filename pattern PATTERN, returning zero if
    it matches, nonzero if not.  */
 static int FCT (const CHAR *pattern, const CHAR *string,
