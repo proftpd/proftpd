@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.199 2003-11-06 00:10:07 castaglia Exp $
+ * $Id: mod_core.c,v 1.200 2003-11-08 22:19:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4463,20 +4463,25 @@ MODRET set_class(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-/* Initialization/finalization routines
+/* Event handlers
  */
 
-static int core_startup_cb(void) {
+static void core_restart_ev(const void *event_data, void *user_data) {
+  scrub_scoreboard(NULL);
+}
+
+static void core_startup_ev(const void *event_data, void *user_data) {
 
   /* Add a scoreboard-scrubbing timer. */
   core_scrub_timer_id = add_timer(PR_TUNABLE_SCOREBOARD_SCRUB_TIMER, -1,
     &core_module, core_scrub_scoreboard_cb);
 
-  /* Add a rehash handler to scrub the scoreboard, too. */
-  pr_rehash_register_handler(NULL, scrub_scoreboard);
-
-  return 0;
+  /* Add a restart handler to scrub the scoreboard, too. */
+  pr_event_register(&core_module, "core.restart", core_restart_ev, NULL);
 }
+
+/* Initialization/finalization routines
+ */
 
 static int core_init(void) {
 
@@ -4488,7 +4493,7 @@ static int core_init(void) {
   pr_feat_add("SIZE");
 
   /* Register a startup handler. */
-  pr_register_daemon_startup(core_startup_cb);
+  pr_event_register(&core_module, "core.startup", core_startup_ev, NULL);
 
   return 0;
 }

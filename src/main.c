@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.204 2003-11-01 07:11:07 castaglia Exp $
+ * $Id: main.c,v 1.205 2003-11-08 22:19:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -895,6 +895,8 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     free_bindings();
 
     /* Run through the list of registered rehash callbacks. */
+    pr_event_generate("core.restart", NULL);
+
     for (rh = rehash_list; rh; rh = rh->next)
       rh->rehash(rh->data);
 
@@ -2358,6 +2360,7 @@ static void standalone_main(void) {
   PRIVS_RELINQUISH
   pr_close_scoreboard();
 
+  pr_event_generate("core.startup", NULL);
   module_daemon_startup();
   module_remove_daemon_startups();
 
@@ -2631,6 +2634,7 @@ int main(int argc, char *argv[], char **envp) {
   free_bindings();
   init_config();
   init_stash();
+
   module_preparse_init();
 
   /* Now, once the modules have had a chance to initialize themselves
@@ -2643,11 +2647,16 @@ int main(int argc, char *argv[], char **envp) {
   }
 
   init_conf_stacks();
+
+  pr_event_generate("core.preparse", NULL);
+
   if (parse_config_file(config_filename) == -1) {
     log_pri(PR_LOG_ERR, "Fatal: unable to read configuration file '%s': %s",
       config_filename, strerror(errno));
     exit(1);
   }
+
+  pr_event_generate("core.postparse", NULL);
 
   free_conf_stacks();
 
