@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.267 2004-12-23 20:17:15 castaglia Exp $
+ * $Id: mod_core.c,v 1.268 2004-12-30 22:51:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1770,40 +1770,28 @@ MODRET add_directory(cmd_rec *cmd) {
 
   dir = cmd->argv[1];
 
-  if (*dir != '/' && *dir != '~' &&
-     (!cmd->config || cmd->config->config_type != CONF_ANON))
-    CONF_ERROR(cmd, "relative pathname not allowed in non-anonymous blocks");
+  if (*dir != '/' &&
+      *dir != '~' &&
+      (!cmd->config ||
+       cmd->config->config_type != CONF_ANON))
+    CONF_ERROR(cmd, "relative path not allowed in non-<Anonymous> sections");
 
   /* If in anonymous mode, and path is relative, just cat anon root
-   * and relative path
+   * and relative path.
    *
    * Note: This is no longer necessary, because we don't interpolate anonymous
    * directories at run-time.
    */
-  if (cmd->config && cmd->config->config_type == CONF_ANON &&
-     *dir != '/' && *dir != '~') {
+  if (cmd->config &&
+      cmd->config->config_type == CONF_ANON &&
+      *dir != '/' &&
+      *dir != '~') {
     if (strcmp(dir, "*") != 0)
       dir = pdircat(cmd->tmp_pool, "/", dir, NULL);
     rootdir = cmd->config->name;
 
-  } else {
-    /* If the directory begins with ~, two possibilities:
-     * ~username/... : resolve to absolute path for ~username
-     * ~/... : intended to be defered until authenciation, where
-     *         ~ will be replaced w/ user's home dir
-     */
-
-    if (*dir == '~' && (!*(dir+1) || *(dir+1) == '/'))
-      flags |= CF_DEFER;
-
-    else {
-      dir = dir_best_path(cmd->tmp_pool, dir);
-
-      if (!dir)
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[1] ,": ",
-          strerror(errno), NULL));
-    }
-  }
+  } else
+    flags |= CF_DEFER;
 
   /* Check to see that there isn't already a config for this directory,
    * but only if we're not in an <Anonymous> section.  Due to the way
@@ -1823,7 +1811,8 @@ MODRET add_directory(cmd_rec *cmd) {
   /* Check for any expandable variables, and mark this config_rec for
    * deferred resolution if present
    */
-  if (strstr(dir, "%u") && !(flags & CF_DEFER))
+  if (strstr(dir, "%u") &&
+      !(flags & CF_DEFER))
     flags |= CF_DEFER;
 
   c = pr_parser_config_ctxt_open(dir);
@@ -1835,8 +1824,13 @@ MODRET add_directory(cmd_rec *cmd) {
   c->config_type = CONF_DIR;
   c->flags |= flags;
 
-  pr_log_debug(DEBUG2, "<Directory %s>: adding section for resolved path '%s'",
-    cmd->argv[1], dir);
+  if (!(c->flags & CF_DEFER))
+    pr_log_debug(DEBUG2,
+      "<Directory %s>: adding section for resolved path '%s'", cmd->argv[1],
+      dir);
+  else
+    pr_log_debug(DEBUG2,
+      "<Directory %s>: deferring resolution of path", cmd->argv[1]);
 
   return HANDLED(cmd);
 }
