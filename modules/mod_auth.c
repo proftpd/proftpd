@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.187 2004-05-19 21:44:26 castaglia Exp $
+ * $Id: mod_auth.c,v 1.188 2004-09-04 22:53:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2130,7 +2130,7 @@ MODRET set_authusingalias(cmd_rec *cmd) {
 }
 
 MODRET set_createhome(cmd_rec *cmd) {
-  int bool = -1;
+  int bool = -1, start = 2;
   mode_t mode = (mode_t) 0700, dirmode = (mode_t) 0711;
   char *skel_path = NULL;
   config_rec *c = NULL;
@@ -2140,7 +2140,8 @@ MODRET set_createhome(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   /* No need to process the rest if bool is FALSE. */
@@ -2154,8 +2155,8 @@ MODRET set_createhome(cmd_rec *cmd) {
 
   /* Check the mode parameter, if present */
   if (cmd->argc-1 >= 2 &&
-      strcmp(cmd->argv[2], "dirmode") != 0 &&
-      strcmp(cmd->argv[2], "skel") != 0) {
+      strcasecmp(cmd->argv[2], "dirmode") != 0 &&
+      strcasecmp(cmd->argv[2], "skel") != 0) {
     char *tmp = NULL;
 
     mode = strtol(cmd->argv[2], &tmp, 8);
@@ -2163,13 +2164,15 @@ MODRET set_createhome(cmd_rec *cmd) {
     if (tmp && *tmp)
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": bad mode parameter: '",
         cmd->argv[2], "'", NULL));
+
+    start = 3;
   }
 
   if (cmd->argc-1 > 2) {
-    register unsigned int i = 0;
+    register unsigned int i;
 
     /* Cycle through the rest of the parameters */
-    for (i = 3; i < cmd->argc; i++) {
+    for (i = start; i < cmd->argc;) {
       if (strcasecmp(cmd->argv[i], "skel") == 0) {
         struct stat st;
 
@@ -2180,21 +2183,23 @@ MODRET set_createhome(cmd_rec *cmd) {
         skel_path = cmd->argv[++i];
 
         if (*skel_path != '/')
-          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": skel path '",
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "skel path '",
             skel_path, "' is not a full path", NULL));
 
         if (pr_fsio_stat(skel_path, &st) < 0)
-          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unable to stat '",
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to stat '",
             skel_path, "': ", strerror(errno), NULL));
 
         if (!S_ISDIR(st.st_mode))
-          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": '", skel_path,
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", skel_path,
             "' is not a directory", NULL));
 
         /* Must not be world-writeable. */
         if (st.st_mode & S_IWOTH)
-          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": '", skel_path,
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", skel_path,
             "' is world-writeable", NULL));
+
+        i++;
 
       } else if (strcasecmp(cmd->argv[i], "dirmode") == 0) {
         char *tmp = NULL;
@@ -2202,11 +2207,13 @@ MODRET set_createhome(cmd_rec *cmd) {
         dirmode = strtol(cmd->argv[++i], &tmp, 8);
  
         if (tmp && *tmp)
-          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": bad mode parameter: '",
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad mode parameter: '",
             cmd->argv[i], "'", NULL));
 
+        i++;
+
       } else
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown parameter: '",
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown parameter: '",
           cmd->argv[i], "'", NULL));
     }
   }
