@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.23 2003-06-03 16:25:23 castaglia Exp $
+ * $Id: fsio.c,v 1.24 2003-09-08 00:37:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -260,7 +260,7 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *sbuf,
   mystat = (op == FSIO_FILE_STAT) ? fs->stat : fs->lstat;
 
   /* Can the last cached stat be used? */
-  if (!strcmp(pathbuf, statcache.sc_path)) {
+  if (strcmp(pathbuf, statcache.sc_path) == 0) {
 
     /* Update the given struct stat pointer with the cached info */
     memcpy(sbuf, &statcache.sc_stat, sizeof(struct stat));
@@ -581,7 +581,7 @@ int pr_insert_fs(pr_fs_t *fs, const char *path) {
 
     for (i = 0; i < fs_map->nelts; i++) {
       fsi = fs_objs[i];
-      if (!strcmp(fsi->fs_path, cleaned_path)) {
+      if (strcmp(fsi->fs_path, cleaned_path) == 0) {
         log_pri(LOG_DEBUG, "error: duplicate fs paths not allowed: '%s'",
           cleaned_path);
         return FALSE;
@@ -627,7 +627,7 @@ int pr_unregister_fs(const char *path) {
   for (i = 0; i < fs_map->nelts; i++) {
     fs = fs_objs[i];
 
-    if (!strcmp(fs->fs_path, path)) {
+    if (strcmp(fs->fs_path, path) == 0) {
       register unsigned int j = 0;
 
       /* Exact match -- remove this pr_fs_t.  Allocate a new map. Iterate
@@ -820,7 +820,7 @@ int pr_insert_fs_match(pr_fs_match_t *fsm) {
     fsmi = fs_match_list;
 
     /* Prevent pr_fs_match_ts with duplicate names */
-    if (!strcmp(fsmi->fsm_name, fsm->fsm_name)) {
+    if (strcmp(fsmi->fsm_name, fsm->fsm_name) == 0) {
       log_pri(LOG_DEBUG, "error: duplicate fs_match names not allowed: '%s'",
         fsm->fsm_name);
       return FALSE;
@@ -829,7 +829,7 @@ int pr_insert_fs_match(pr_fs_match_t *fsm) {
     while (fsmi->fsm_next) {
       fsmi = fsmi->fsm_next;
 
-      if (!strcmp(fsmi->fsm_name, fsm->fsm_name)) {
+      if (strcmp(fsmi->fsm_name, fsm->fsm_name) == 0) {
         log_pri(LOG_DEBUG, "error: duplicate fs_match names not allowed: '%s'",
           fsm->fsm_name);
         return FALSE;
@@ -892,7 +892,7 @@ int pr_unregister_fs_match(const char *name) {
     for (fsm = fs_match_list; fsm; fsm = fsm->fsm_next) {
 
       /* Search by name */
-      if ((name && fsm->fsm_name && !strcmp(fsm->fsm_name, name))) {
+      if ((name && fsm->fsm_name && strcmp(fsm->fsm_name, name) == 0)) {
 
         /* Remove this fs_match from the list */
         if (fsm->fsm_prev)
@@ -1082,16 +1082,25 @@ int pr_fs_interpolate(const char *path, char *buf, size_t buflen) {
     if (!*user)
       sstrncpy(user, session.user, sizeof(user));
 
+    /* The permanent pool is used here, rather than session.pool, as path
+     * interpolation can occur during startup parsing, when session.pool does
+     * not exist.  It does not really matter, since the allocated sub pool
+     * is destroyed shortly.
+     */
     p = make_sub_pool(permanent_pool);
     pw = auth_getpwnam(p, user);
-    destroy_pool(p);
 
     if (!pw) {
+      destroy_pool(p);
       errno = ENOENT;
       return -1;
     }
 
     sstrncpy(buf, pw->pw_dir, buflen);
+
+    /* Done with pw, which means we can destroy the temporary pool now. */
+    destroy_pool(p);
+
     len = strlen(buf);
 
     if (fname && len < buflen && buf[len - 1] != '/')
@@ -1147,13 +1156,13 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
     while (*where != '\0') {
 
       /* Handle "." */
-      if (!strcmp(where, ".")) {
+      if (strcmp(where, ".") == 0) {
         where++;
         continue;
       }
 
       /* Handle ".." */
-      if (!strcmp(where, "..")) {
+      if (strcmp(where, "..") == 0) {
         where += 2;
         ptr = last = workpath;
 
@@ -1312,7 +1321,7 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
     where = curpath;
 
     while (*where != '\0') {
-      if (!strcmp(where, ".")) {
+      if (strcmp(where, ".") == 0) {
         where++;
         continue;
       }
@@ -1452,7 +1461,7 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
   while (fini--) {
     where = curpath;
     while (*where != '\0') {
-      if (!strcmp(where, ".")) {
+      if (strcmp(where, ".") == 0) {
         where++;
         continue;
       }
@@ -1464,7 +1473,7 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
       }
 
       /* handle ".." */
-      if (!strcmp(where, "..")) {
+      if (strcmp(where, "..") == 0) {
         where += 2;
         ptr = last = workpath;
 
@@ -1576,7 +1585,7 @@ void pr_fs_virtual_path(const char *path, char *buf, size_t buflen) {
   while (fini--) {
     where = curpath;
     while (*where != '\0') {
-      if (!strcmp(where, ".")) {
+      if (strcmp(where, ".") == 0) {
         where++;
         continue;
       }
@@ -1588,7 +1597,7 @@ void pr_fs_virtual_path(const char *path, char *buf, size_t buflen) {
       }
 
       /* handle ".." */
-      if (!strcmp(where, "..")) {
+      if (strcmp(where, "..") == 0) {
         where += 2;
         ptr = last = workpath;
         while (*ptr) {
