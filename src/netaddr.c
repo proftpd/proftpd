@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.31 2003-10-13 05:02:30 castaglia Exp $
+ * $Id: netaddr.c,v 1.32 2003-10-14 18:22:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -636,7 +636,7 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
         inaddr = get_v4inaddr(na);
       }
 
-      hent = gethostbyname2(buf, pr_netaddr_get_family(na));
+      hent = gethostbyname2(buf, family);
 #else
       hent = gethostbyname(buf);
 #endif /* HAVE_GETHOSTBYNAME2 */
