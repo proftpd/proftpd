@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.164 2004-08-12 23:24:40 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.165 2004-08-24 22:24:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -958,6 +958,8 @@ MODRET xfer_post_prot(cmd_rec *cmd) {
 
   if (strcmp(cmd->argv[1], "C") != 0)
     have_prot = TRUE;
+  else
+    have_prot = FALSE;
 
   return DECLINED(cmd);
 }
