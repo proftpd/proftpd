@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.27 2000-02-28 18:56:39 macgyver Exp $
+ * $Id: mod_auth.c,v 1.28 2000-02-28 19:06:48 macgyver Exp $
  */
 
 #include "conf.h"
@@ -659,7 +659,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
     if(c && origuser && strcasecmp(user,origuser) &&
        get_param_int(c->subset,"AuthUsingAlias",FALSE) == 1) {
       user_name = origuser;
-      log_auth(LOG_NOTICE,"ANON AUTH: User %s, Auth Alias %s",
+      log_auth(LOG_NOTICE, "ANON AUTH: User %s, Auth Alias %s",
 	       user, user_name);
     }
     
@@ -758,7 +758,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
     if(!session.anon_root) {
       log_pri(LOG_ERR, "%s: Directory %s is not accessible.",
               session.user, c->name);
-      add_response_err(R_530,"Unable to set anonymous privileges.");
+      add_response_err(R_530, "Unable to set anonymous privileges.");
       goto auth_failure;
     }
     
@@ -819,7 +819,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   if(c)
     log_auth(LOG_NOTICE, "ANON %s: Login successful.", origuser);
   else
-    log_auth(LOG_NOTICE,"USER %s: Login successful.", origuser);
+    log_auth(LOG_NOTICE, "USER %s: Login successful.", origuser);
 
   /* Write the login to wtmp.  This must be done here because we won't
    * have access after we give up root.  This can result in falsified
@@ -883,7 +883,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
       PRIVS_RELINQUISH
 
-      add_response_err(R_530,"Unable to set default root directory.");
+      add_response_err(R_530, "Unable to set default root directory.");
       log_pri(LOG_ERR, "%s chroot(\"%s\"): %s", session.user,
               defroot, strerror(errno));
       end_login(1);
@@ -920,7 +920,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
     PRIVS_RELINQUISH
 
-    add_response_err(R_530,"Unable to set anonymous privileges.");
+    add_response_err(R_530, "Unable to set anonymous privileges.");
     log_pri(LOG_ERR, "%s chroot(): %s", session.user, strerror(errno));
     
     end_login(1);
@@ -953,7 +953,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
     PRIVS_RELINQUISH
 
-    add_response_err(R_530,"Unable to set user privileges.");
+    add_response_err(R_530, "Unable to set user privileges.");
     log_pri(LOG_ERR, "%s setregid() or setreuid(): %s",
             session.user, strerror(errno));
 
@@ -985,7 +985,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
     showsymlinks = 1;
 
   if(fs_chdir_canon(session.cwd,!showsymlinks) == -1) {
-    add_response_err(R_530,"Unable to chdir.");
+    add_response_err(R_530, "Unable to chdir.");
     log_pri(LOG_ERR, "%s chdir(\"%s\"): %s", session.user,
             session.cwd, strerror(errno));
     end_login(1);
@@ -1283,9 +1283,9 @@ MODRET cmd_user(cmd_rec *cmd)
   }
 
   if(nopass)
-    add_response(R_331,"Anonymous login ok, send your complete e-mail address as password.");
+    add_response(R_331, "Anonymous login ok, send your complete e-mail address as password.");
   else
-    add_response(R_331,"Password required for %s.",cmd->argv[1]);
+    add_response(R_331, "Password required for %s.", cmd->argv[1]);
 
   session.gids = NULL;
   session.groups = NULL;
@@ -1326,14 +1326,14 @@ MODRET cmd_pass(cmd_rec *cmd)
     if((grantmsg = 
         (char*)get_param_ptr((session.anon_config ? session.anon_config->subset :
                               cmd->server->conf),"AccessGrantMsg",FALSE)) != NULL) {
-      grantmsg = sreplace(cmd->tmp_pool,grantmsg,"%u",user,NULL);
+      grantmsg = sreplace(cmd->tmp_pool, grantmsg, "%u", user, NULL);
 
-      add_response(R_230,"%s",grantmsg,NULL);
+      add_response(R_230, "%s", grantmsg, NULL);
     } else {
       if(session.flags & SF_ANON)
-        add_response(R_230,"Anonymous access granted, restrictions apply.");
+        add_response(R_230, "Anonymous access granted, restrictions apply.");
       else
-        add_response(R_230,"User %s logged in.",user);
+        add_response(R_230, "User %s logged in.", user);
     }
 
     logged_in = 1;

@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.29 2000-02-28 18:57:18 macgyver Exp $
+ * $Id: mod_core.c,v 1.30 2000-02-28 19:06:48 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -2212,7 +2212,7 @@ MODRET cmd_dele(cmd_rec *cmd)
 	     'd', 'r', session.user);
   }
   
-  add_response(R_250,"%s command successful.",cmd->argv[0]);
+  add_response(R_250, "%s command successful.", cmd->argv[0]);
   return HANDLED(cmd);
 }
 
