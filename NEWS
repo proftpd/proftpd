@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.575 2004-06-10 18:27:37 castaglia Exp $
+$Id: NEWS,v 1.576 2004-06-10 21:51:54 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -36,6 +36,8 @@ CVS
   The mod_quotatab module was not properly escaping the name string it
   used when looking up records from SQL databases.
 - Bug 2424 - SQLDefaultHomedir overrides column value.
+- Bug 2411 - Caching effects cause RNTO to fail if AllowOverwrite is off and
+  target path does not exist.
 
 1.2.10rc1 - Released 28-Apr-2004
 ---------------------------------

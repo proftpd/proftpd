@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.235 2004-05-30 22:46:14 castaglia Exp $
+ * $Id: mod_core.c,v 1.236 2004-06-10 21:51:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4134,9 +4134,10 @@ MODRET core_rnto(cmd_rec *cmd) {
   /* Deny the rename if AllowOverwrites are not allowed, and the destination
    * rename file already exists.
    */
+  pr_fs_clear_cache();
   if ((!allow_overwrite || *allow_overwrite == FALSE) &&
       pr_fsio_stat(path, &st) == 0) {
-    pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
+    pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", path);
     pr_response_add_err(R_550, "%s: Rename permission denied", cmd->arg);
     return ERROR(cmd);
   }
