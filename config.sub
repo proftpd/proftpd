@@ -5,7 +5,6 @@
 
 timestamp='2003-01-02'
 
-#
 # This file is (in principle) common to ALL GNU software.
 # The presence of a machine in this file suggests that SOME GNU software
 # can handle that machine.  It does not imply ALL GNU software can.
