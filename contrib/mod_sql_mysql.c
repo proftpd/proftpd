@@ -408,13 +408,9 @@ static modret_t *_build_data( cmd_rec *cmd, db_conn_t *conn )
  *  compatibility; a connection should not be closed unless the count
  *  reaches 0, and ideally will not need to be re-opened for counts > 1.
  */
-MODRET cmd_open(cmd_rec *cmd)
-{
+MODRET cmd_open(cmd_rec *cmd) {
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
-  static const char *config_file_groups[]= { "proftpd", "client", NULL };
-  int argc = 1;
-  char *argv[] = { "proftpd", NULL };
 
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_open");
 
@@ -448,7 +444,7 @@ MODRET cmd_open(cmd_rec *cmd)
     return HANDLED(cmd);
   }
 
-  /* make sure we have a new conn struct */
+  /* Make sure we have a new conn struct */
   conn->mysql = mysql_init(NULL);
 
   if (!conn->mysql) {
@@ -459,18 +455,17 @@ MODRET cmd_open(cmd_rec *cmd)
     end_login(1);
   }
 
-  /* make sure the MySQL config files are read in.  This will read in
-   * options from groups "proftpd" and "client" in the MySQL .cnf files.
+  /* Make sure the MySQL config files are read in.  This will read in
+   * options from group "client" in the MySQL .cnf files.
    */
-  load_defaults("my", config_file_groups, &argc, (char ***) &argv);
+  mysql_options(conn->mysql, MYSQL_READ_DEFAULT_GROUP, "client");
 
-  if (!mysql_real_connect(conn->mysql, conn->host, conn->user,
-			  conn->pass, conn->db, 
-			  (int) strtol(conn->port, (char **) NULL, 10), 
-			  NULL, 0)) {
-    /* if it didn't work, return an error */
+  if (!mysql_real_connect(conn->mysql, conn->host, conn->user, conn->pass,
+      conn->db, (int) strtol(conn->port, (char **) NULL, 10), NULL, 0)) {
+
+    /* If it didn't work, return an error. */
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
-    return _build_error( cmd, conn );
+    return _build_error(cmd, conn);
   }
 
   /* bump connections */
