@@ -1,6 +1,6 @@
-$Id: NEWS,v 1.294 2002-12-04 15:26:25 castaglia Exp $
+$Id: NEWS,v 1.295 2002-12-05 15:30:21 castaglia Exp $
 
-CVS
+1.2.7 - Released 05-12-2002
 ---------------------------------
 - Bug 1840 - Problem with syslog default destination on HP-UX.  HPUX uses
   a default device of /dev/log.un rather than /dev/log.

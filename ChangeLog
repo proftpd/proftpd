@@ -1,3 +1,210 @@
+2002-12-04 11:14  castaglia
+
+	* modules/mod_auth.c: 
+	Patching to fix off-by-one bug in MaxHostsPerUser directive
+	handling.
+
+2002-12-04 07:26  castaglia
+
+	* NEWS, include/support.h, modules/mod_auth.c, src/support.c: 
+	Adding memory scrubber for memset() issue mentioned here:
+	
+	  http://online.securityfocus.com/archive/1/298598
+
+2002-12-03 07:57  castaglia
+
+	* NEWS, utils/ftpcount.c: 
+	Bug#1868 - Wrong cmdopts in ftpcount.c
+
+2002-12-02 13:57  jwm
+
+	* contrib/dist/rpm/.cvsignore: this shouldn't be ignoring
+	proftpd.spec anymore
+
+2002-12-02 10:29  castaglia
+
+	* NEWS, utils/ftpwho.c: 
+	Bug#1861 - 'ftpwho -v -o oneline' print all connections in one
+	line.
+
+2002-12-02 10:18  castaglia
+
+	* src/dirtree.c: 
+	Minor preprocessor changes.
+
+2002-12-02 10:16  castaglia
+
+	* src/dirtree.c: 
+	Removed unused variable.
+
+2002-12-02 09:04  castaglia
+
+	* NEWS, modules/mod_xfer.c, src/pool.c: 
+	Bug#1846 - File overwrites fail.  Thanks to Sergei Rozinov for
+	tracking down this bug.
+
+2002-11-26 10:54  castaglia
+
+	* src/support.c: 
+	Minor style change: use macros for FTP commands.
+
+2002-11-26 09:28  castaglia
+
+	* NEWS, lib/pr-syslog.c: 
+	Bug#1853 - SyslogFacility: unable to open syslog.
+
+2002-11-25 13:28  castaglia
+
+	* modules/mod_auth.c: 
+	Moving hcur increment to a more appropriate location.  There still
+	seems to be lingering issues with these limits, though.  Yay.
+
+2002-11-25 13:12  castaglia
+
+	* modules/mod_core.c: 
+	Oops.  A little too zealous on the previous change -- mg_size
+	should always be filled, even if get_fs_size() is not supported on
+	the host.
+
+2002-11-25 13:02  castaglia
+
+	* modules/mod_core.c: 
+	Adjust core_display_file() to use get_param_ptr() when looking up a
+	MaxClients setting to display.	The MaxClients configuration
+	handler had been changed to storing a pointer, but this function
+	hadn't been updated to reflect that configuration handler change.
+
+2002-11-25 10:28  castaglia
+
+	* include/dirtree.h: 
+	Removing unused struct members.
+
+2002-11-25 09:33  castaglia
+
+	* contrib/mod_radius.c, modules/mod_auth.c, modules/mod_ls.c,
+	src/dirtree.c, src/ident.c, src/support.c, utils/ftpshut.c: 
+	Removed use of UCHAR cast from core code.  It is meant specifically
+	for the fnmatch code, and is a #define to an unsigned char -- but
+	the ANSI C standards define the parameter to many of the is*()
+	functions to be an int, and the UCHAR cast was being used with
+	those is*() functions.	Instead, those UCHAR casts have been
+	replaced with int casts.
+
+2002-11-25 09:22  castaglia
+
+	* NEWS, modules/mod_ls.c: 
+	Bug#1856 - TimesGMT acts like default is 'off'.
+
+2002-11-25 09:08  castaglia
+
+	* modules/mod_xfer.c: 
+	%lu crept back in when PR_LU is needed...
+
+2002-11-25 08:18  castaglia
+
+	* NEWS, modules/mod_site.c: 
+	Bug#1852 - Proftpd gets signal 11 on "quote site".
+
+2002-11-25 08:04  castaglia
+
+	* doc/mod_sample.c, include/fs.h, include/netio.h, src/ident.c,
+	src/netio.c: 
+	Updating my documentation this weekend,  and came across some minor
+	inconsistencies...
+
+2002-11-25 07:52  castaglia
+
+	* modules/mod_xfer.c: 
+	Datatype overflow.
+
+2002-11-23 10:39  jwm
+
+	* modules/mod_ls.c, utils/ftpshut.c, utils/ftptop.c: 
+	Silence remaining compiler warnings under Solaris 8 (save for the
+	utmp code, bug Bug 1824 will address that).
+	
+	The nlink_t/pid_t casts will be unnecessary once the Solaris _LP64
+	ABI is the default (see sys/isa_defs.h for more info on the Solaris
+	ABIs). I didn't want to move from _ILP32 (the historical default)
+	to _LP64 because I wasn't sure of the ramifications. We don't have
+	any DSOs to worry about, but I'm not sure what else would
+	change/break.
+
+2002-11-22 21:20  jwm
+
+	* NEWS, contrib/dist/rpm/proftpd.init.d: Bug 1680 - Error in
+	startup script
+
+2002-11-22 11:21  jwm
+
+	* configure: updated configure
+
+2002-11-22 11:19  jwm
+
+	* config.h.in, configure.in, NEWS, src/support.c: Bug 1839 -
+	undefined reference to `get_fs_size'
+
+2002-11-21 16:19  castaglia
+
+	* NEWS, utils/ftptop.c: 
+	Bug#1848 - undefined reference to `halfdelay'.
+
+2002-11-21 08:20  castaglia
+
+	* NEWS, modules/mod_log.c: 
+	Bug#1812 - Double logging lines for ExtendedLog.
+
+2002-11-19 09:57  castaglia
+
+	* NEWS, include/dirtree.h, modules/mod_auth.c, modules/mod_core.c,
+	src/dirtree.c: 
+	Bug#1838 - Since 1.2.6: in add_useralias() setting flag
+	CF_MERGEDOWN breaks aliased anonymous functionality.
+
+2002-11-18 12:03  castaglia
+
+	* modules/mod_xfer.c: 
+	Minor problem with HiddenStores (related to the making of
+	HiddenStores a synonym for HiddenStor, with the eventual goal of
+	deprecating HiddenStor in favor of HiddenStores).
+
+2002-11-18 09:15  castaglia
+
+	* modules/mod_auth.c: 
+	Handling of ShowSymlinks in this module still used get_param_int()
+	rather than get_param_ptr().
+
+2002-11-18 08:15  castaglia
+
+	* NEWS, modules/mod_core.c: 
+	Bug#1844 - DisplayLogin %y macro is off by 1.
+
+2002-11-18 08:02  castaglia
+
+	* NEWS, include/pr-syslog.h: 
+	Bug#1840 - Problem with syslog default destination on HP-UX.
+
+2002-11-16 17:15  jwm
+
+	* utils/.cvsignore: 
+	ignore ftptop
+
+2002-11-16 17:14  jwm
+
+	* lib/pr-syslog.c: 
+	cast the return value from getpid() to silence a compiler warning
+	under solaris
+
+2002-11-15 09:09  jwm
+
+	* contrib/dist/rpm/proftpd.spec: d'oh - /etc/logrotate.d/ should
+	exist in $RPM_BUILD_ROOT before I try to put stuff in it...
+
+2002-11-15 08:45  castaglia
+
+	* ChangeLog, NEWS, include/version.h: 
+	Ramping up for 1.2.7rc3 release.
+
 2002-11-15 08:37  castaglia
 
 	* modules/mod_pam.c: 
