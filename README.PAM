@@ -29,7 +29,7 @@ PAM authentication should now work properly.
 
 Linux:
 To use PAM with ProFTPD, you must edit /etc/pam.d/ftp and add the
-following lines:
+following lines for RedHat installations:
 
 #%PAM-1.0
 auth       required     /lib/security/pam_listfile.so item=user sense=deny file=/etc/ftpusers onerr=succeed
@@ -37,7 +37,15 @@ auth       required     /lib/security/pam_pwdb.so shadow nullok
 account    required     /lib/security/pam_pwdb.so
 session    required     /lib/security/pam_pwdb.so
 
-These settings are valid for a RedHat Linux system.  Other Linux
+For SuSE:
+
+#%PAM-1.0
+auth       required     /lib/security/pam_listfile.so item=user sense=deny file=/etc/ftpusers onerr=succeed
+auth       required     /lib/security/pam_unix.so shadow nullok
+account    required     /lib/security/pam_unix.so
+session    required     /lib/security/pam_unix.so
+
+These settings are valid for RedHat and SuSE Linux systems.  Other Linux
 distributions may differ.
 
 PAM Configuration Options
@@ -64,7 +72,6 @@ FreeBSD, you would need to add lines such as the following:
 
 ftp.myhost auth    required    pam_unix.so         try_first_pass
 ftp.myhost account required    pam_unix.so         try_first_pass
-ftp.myhost session required    pam_unix.so         try_first_pass
 
 to your /etc/pam.conf file.  Under Linux, or if you're using a
 directory like /etc/pam.d, you could simply copy the Linux
@@ -81,14 +88,14 @@ program.
 
 The directive AuthPAMAuthoritative refers to whether you want PAM to
 be the final arbitrator of what is and is not a valid ProFTPD user.
-It defaults to On for security purposes.  With this directive on,
-things like AuthUserFile directives will *NOT* work properly, since
-PAM will detect these as invalid users and inform ProFTPD not to
-attempt to process users through any other authentication mechanisms.
-If you set AuthPAMAuthoritative to Off, then if PAM cannot
-authenticate a specified user, it allows ProFTPD to select other
-authentication mechanisms such as AuthUserFile and attempt to process
-them in that fashion.
+It defaults to Off.  With this directive on, things like AuthUserFile
+directives will *NOT* work properly, since PAM will detect these as
+invalid users and inform ProFTPD not to attempt to process users
+through any other authentication mechanisms.  If you set
+AuthPAMAuthoritative to Off, then if PAM cannot authenticate a
+specified user, it allows ProFTPD to select other authentication
+mechanisms such as AuthUserFile and attempt to process them in that
+fashion.
 
 # Setting this to 'on' makes PAM the final authority on what gets
 # authenticated.  Turning this off will tell PAM to allow other
