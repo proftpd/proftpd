@@ -2202,8 +2202,8 @@ static int tls_log(const char *fmt, ...) {
   vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), fmt, msg);
   va_end(msg);
 
-  buf[strlen(buf)] = '\n';
   buf[sizeof(buf)-1] = '\0';
+  buf[strlen(buf)] = '\n';
 
   if (write(tls_logfd, buf, strlen(buf)) < 0)
     return -1;

@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.18 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: mod_radius.c,v 1.19 2003-10-20 07:15:52 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.8rc2"
@@ -1275,8 +1275,8 @@ static int radius_log(const char *fmt, ...) {
   vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), fmt, msg);
   va_end(msg);
 
-  buf[strlen(buf)] = '\n';
   buf[sizeof(buf) - 1] = '\0';
+  buf[strlen(buf)] = '\n';
 
   if (write(radius_logfd, buf, strlen(buf)) < 0)
     return -1;

@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.59 2003-09-07 23:54:37 castaglia Exp $
+ * $Id: mod_sql.c,v 1.60 2003-10-20 07:15:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3604,8 +3604,8 @@ int sql_log(int level, const char *fmt, ...) {
   vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), fmt, msg);
   va_end(msg);
 
-  buf[strlen(buf)] = '\n';
   buf[sizeof(buf) - 1] = '\0';
+  buf[strlen(buf)] = '\n';
 
   if (write(sql_logfd, buf, strlen(buf)) < 0)
     return -1;
