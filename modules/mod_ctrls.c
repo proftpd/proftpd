@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.10 2004-04-11 20:42:37 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.11 2004-04-12 17:35:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -187,7 +187,7 @@ unsigned char ctrls_check_acl(const pr_ctrls_t *ctrl,
   register unsigned int i = 0;
 
   for (i = 0; acttab[i].act_action; i++) {
-    if (!strcmp(acttab[i].act_action, action)) {
+    if (strcmp(acttab[i].act_action, action) == 0) {
 
       if (!ctrls_check_user_acl(ctrl->ctrls_cl->cl_uid,
             &(acttab[i].act_acl->acl_usrs)) &&
@@ -359,7 +359,7 @@ char *ctrls_set_module_acls(ctrls_acttab_t *acttab, pool *acl_pool,
       continue;
 
     for (j = 0; acttab[j].act_action; j++) {
-      if (!strcmp(actions[i], acttab[j].act_action)) {
+      if (strcmp(actions[i], acttab[j].act_action) == 0) {
         valid_action = TRUE;
         break;
       }
@@ -376,16 +376,16 @@ char *ctrls_set_module_acls(ctrls_acttab_t *acttab, pool *acl_pool,
       all_actions = TRUE;
 
     for (j = 0; acttab[j].act_action; j++) {
-      if (all_actions || !strcmp(actions[i], acttab[j].act_action)) {
+      if (all_actions || strcmp(actions[i], acttab[j].act_action) == 0) {
 
         /* Use the type parameter to determine whether the list is of users or
          * of groups.
          */
-        if (!strcmp(type, "user"))
+        if (strcmp(type, "user") == 0)
           ctrls_set_user_acl(acl_pool, &(acttab[j].act_acl->acl_usrs),
             allow, list);
 
-        else if (!strcmp(type, "group"))
+        else if (strcmp(type, "group") == 0)
           ctrls_set_group_acl(acl_pool, &(acttab[j].act_acl->acl_grps),
             allow, list);
       }
@@ -407,7 +407,7 @@ char *ctrls_unregister_module_actions(ctrls_acttab_t *acttab,
     unsigned char valid_action = FALSE;
 
     for (j = 0; acttab[j].act_action; j++) {
-      if (!strcmp(actions[i], acttab[j].act_action)) {
+      if (strcmp(actions[i], acttab[j].act_action) == 0) {
         valid_action = TRUE;
         break;
       }
@@ -425,7 +425,7 @@ char *ctrls_unregister_module_actions(ctrls_acttab_t *acttab,
     unsigned char have_action = FALSE;
 
     for (j = 0; actions[j]; j++) {
-      if (!strcmp(acttab[i].act_action, actions[j])) {
+      if (strcmp(acttab[i].act_action, actions[j]) == 0) {
         have_action = TRUE;
         break;
       }
@@ -1177,7 +1177,7 @@ static int ctrls_handle_help(pr_ctrls_t *ctrl, int reqargc,
 
 static int ctrls_handle_insctrl(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  module *mod = NULL;
+  module *m = ANY_MODULE;
 
   /* Enable a control into the registered controls list. This requires the
    * action and, optionally, the module of the control to be enabled.
@@ -1208,14 +1208,14 @@ static int ctrls_handle_insctrl(pr_ctrls_t *ctrl, int reqargc,
       snprintf(buf, sizeof(buf), "mod_%s.c", (static_modules[i])->name);
       buf[sizeof(buf)-1] = '\0';
 
-      if (!strcmp(buf, reqargv[1])) {
-        mod = static_modules[i];
+      if (strcmp(buf, reqargv[1]) == 0) {
+        m = static_modules[i];
         break;
       }
     }
   }
 
-  if (pr_set_registered_actions(NULL, reqargv[0], FALSE, 0) < 0) {
+  if (pr_set_registered_actions(m, reqargv[0], FALSE, 0) < 0) {
 
     if (errno == ENOENT)
       pr_ctrls_add_response(ctrl, "no such control: '%s'", reqargv[0]);
@@ -1265,7 +1265,7 @@ static int ctrls_handle_lsctrl(pr_ctrls_t *ctrl, int reqargc,
 
 static int ctrls_handle_rmctrl(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  module *mod = NULL;
+  module *m = ANY_MODULE;
   
   /* Disable a control from the registered controls list. This requires the
    * action and, optionally, the module of the control to be removed.
@@ -1287,8 +1287,8 @@ static int ctrls_handle_rmctrl(pr_ctrls_t *ctrl, int reqargc,
   /* The three controls added by this module _cannot_ be removed (at least
    * not via this control handler).
    */
-  if (strcmp(reqargv[0], "insctrl") == 0||
-      strcmp(reqargv[0], "lsctrl") == 0||
+  if (strcmp(reqargv[0], "insctrl") == 0 ||
+      strcmp(reqargv[0], "lsctrl") == 0 ||
       strcmp(reqargv[0], "rmctrl") == 0) {
     pr_ctrls_add_response(ctrl, "'%s' control cannot be removed", reqargv[0]);
     return -1;
@@ -1306,14 +1306,14 @@ static int ctrls_handle_rmctrl(pr_ctrls_t *ctrl, int reqargc,
       snprintf(buf, sizeof(buf), "mod_%s.c", (static_modules[i])->name);
       buf[sizeof(buf)-1] = '\0';
 
-      if (!strcmp(buf, reqargv[1])) {
-        mod = static_modules[i];
+      if (strcmp(buf, reqargv[1]) == 0) {
+        m = static_modules[i];
         break;
       }
     }
   }
 
-  if (pr_set_registered_actions(NULL, reqargv[0], FALSE,
+  if (pr_set_registered_actions(m, reqargv[0], FALSE,
       PR_CTRLS_ACT_DISABLED) < 0) {
 
     if (errno == ENOENT)
@@ -1323,7 +1323,7 @@ static int ctrls_handle_rmctrl(pr_ctrls_t *ctrl, int reqargc,
         strerror(errno));
 
   } else {
-    if (strcmp(reqargv[0], "all")) 
+    if (strcmp(reqargv[0], "all") != 0) 
       pr_ctrls_add_response(ctrl, "'%s' control disabled", reqargv[0]);
 
     else {
@@ -1365,11 +1365,13 @@ MODRET set_ctrlsacls(cmd_rec *cmd) {
   actions = ctrls_parse_acl(cmd->tmp_pool, cmd->argv[1]);
 
   /* Check the second parameter to make sure it is "allow" or "deny" */
-  if (strcmp(cmd->argv[2], "allow") && strcmp(cmd->argv[2], "deny"))
+  if (strcmp(cmd->argv[2], "allow") != 0 &&
+      strcmp(cmd->argv[2], "deny") != 0)
     CONF_ERROR(cmd, "second parameter must be 'allow' or 'deny'");
 
   /* Check the third parameter to make sure it is "user" or "group" */
-  if (strcmp(cmd->argv[3], "user") && strcmp(cmd->argv[3], "group"))
+  if (strcmp(cmd->argv[3], "user") != 0 &&
+      strcmp(cmd->argv[3], "group") != 0)
     CONF_ERROR(cmd, "third parameter must be 'user' or 'group'");
 
   if ((bad_action = ctrls_set_module_acls(ctrls_acttab, ctrls_pool, actions,
@@ -1480,7 +1482,7 @@ MODRET set_ctrlssocket(cmd_rec *cmd) {
   close(ctrls_sockfd);
 
   /* Change the path. */
-  if (strcmp(cmd->argv[1], ctrls_sock_file))
+  if (strcmp(cmd->argv[1], ctrls_sock_file) != 0)
     ctrls_sock_file = pstrdup(ctrls_pool, cmd->argv[1]);
 
   /* Open the socket. */
