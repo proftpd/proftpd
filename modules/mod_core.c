@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.159 2003-03-09 02:07:00 castaglia Exp $
+ * $Id: mod_core.c,v 1.160 2003-03-09 02:24:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2355,6 +2355,15 @@ MODRET add_virtualhost(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
+  /* Specifically block use of "0.0.0.0", as no client will ever be able
+   * to use that address, meaning that such a vhost will never be reached.
+   *
+   * Note: once IPv6 support is added, also check for similar IPv6 versions.
+   */
+  if (strcmp(cmd->argv[1], "0.0.0.0") == 0)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "illegal IP address: ",
+      cmd->argv[1], NULL));
+
   if ((s = start_new_server(cmd->argv[1])) == NULL)
     CONF_ERROR(cmd, "unable to create virtual server configuration.");
 
@@ -2362,11 +2371,52 @@ MODRET add_virtualhost(cmd_rec *cmd) {
 }
 
 MODRET end_virtualhost(cmd_rec *cmd) {
+  server_rec *s = NULL;
+  p_in_addr_t *ipaddr = NULL;
+  char *address = NULL;
+
   CHECK_ARGS(cmd, 0);
   CHECK_CONF(cmd, CONF_VIRTUAL);
 
-  end_new_server();
+  if (cmd->server->ServerAddress)
+    address = cmd->server->ServerAddress;
+  else
+    address = inet_gethostname(cmd->tmp_pool);
 
+  ipaddr = inet_getaddr(cmd->tmp_pool, address);
+
+  /* Check if this server's address/port combination is already being used.
+   */
+  for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+
+    /* Have to resort to duplicating some of fixup_servers()'s
+     * functionality here, to do this check The Right Way(tm).
+     */
+    if (s != cmd->server) {
+      char *serv_addr = NULL;
+      p_in_addr_t *serv_ipaddr = NULL;
+
+      if (s->ServerAddress)
+        serv_addr = s->ServerAddress;
+      else
+        serv_addr = inet_gethostname(cmd->tmp_pool);
+
+      serv_ipaddr = inet_getaddr(cmd->tmp_pool, serv_addr);
+
+      if (ipaddr->s_addr == serv_ipaddr->s_addr &&
+          cmd->server->ServerPort == s->ServerPort) {
+        log_pri(PR_LOG_ERR, "error: \"%s\" address/port (%s:%d) already in use "
+          "by \"%s\"", cmd->server->ServerName,
+          inet_ascii(cmd->tmp_pool, ipaddr), cmd->server->ServerPort,
+          s->ServerName ? s->ServerName : "ProFTPD");
+        CONF_ERROR(cmd, "address/port configuration collision");
+      }
+    }
+  }
+
+  if (!end_new_server())
+    CONF_ERROR(cmd, "must have matching <VirtualHost> directive");
+    
   return HANDLED(cmd);
 }
 
@@ -3912,11 +3962,11 @@ static conftable core_conftab[] = {
   { "WtmpLog",			set_wtmplog,			NULL },
   { "tcpBackLog",		set_tcpbacklog,			NULL },
   { "tcpNoDelay",		set_tcpnodelay,			NULL },
-  { "tcpReceiveWindow",		set_tcpreceivewindow,		NULL },
-  { "tcpSendWindow",		set_tcpsendwindow,		NULL },
 
   /* Deprecated */
   { "ScoreboardPath",		set_scoreboardpath,		NULL },
+  { "tcpReceiveWindow",		set_tcpreceivewindow,		NULL },
+  { "tcpSendWindow",		set_tcpsendwindow,		NULL },
 
   { NULL, NULL, NULL }
 };
