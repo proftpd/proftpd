@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.144 2004-04-19 23:33:51 castaglia Exp $
+ * $Id: dirtree.c,v 1.145 2004-04-26 23:33:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3538,38 +3538,41 @@ char *get_context_name(cmd_rec *cmd) {
   }
 }
 
-int get_boolean(cmd_rec *cmd, int av) {
-  char *cp = cmd->argv[av];
-
-  /* Boolean string can be "on", "off", "yes", "no", "true", "false",
-   * "1" or "0."
-   */
-
-  if (strcasecmp(cp, "on") == 0)
+/* Boolean string can be "on", "off", "yes", "no", "true", "false",
+ * "1" or "0."
+ */
+int pr_is_boolean(const char *str) {
+  if (strcasecmp(str, "on") == 0)
     return 1;
 
-  if (strcasecmp(cp, "off") == 0)
+  if (strcasecmp(str, "off") == 0)
     return 0;
 
-  if (strcasecmp(cp, "yes") == 0)
+  if (strcasecmp(str, "yes") == 0)
     return 1;
 
-  if (strcasecmp(cp, "no") == 0)
+  if (strcasecmp(str, "no") == 0)
     return 0;
 
-  if (strcasecmp(cp, "true") == 0)
+  if (strcasecmp(str, "true") == 0)
     return 1;
 
-  if (strcasecmp(cp, "false") == 0)
+  if (strcasecmp(str, "false") == 0)
     return 0;
 
-  if (strcasecmp(cp, "1") == 0)
+  if (strcasecmp(str, "1") == 0)
     return 1;
 
-  if (strcasecmp(cp, "0") == 0)
+  if (strcasecmp(str, "0") == 0)
     return 0;
 
   return -1;
+}
+
+int get_boolean(cmd_rec *cmd, int av) {
+  char *cp = cmd->argv[av];
+
+  return pr_is_boolean(cp);
 }
 
 char *get_full_cmd(cmd_rec *cmd) {
