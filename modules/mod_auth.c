@@ -25,7 +25,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.61 2001-06-18 17:35:06 flood Exp $
+ * $Id: mod_auth.c,v 1.62 2001-07-03 14:51:32 flood Exp $
  */
 
 #include "conf.h"
@@ -1015,43 +1015,43 @@ static int _setup_environment(pool *p, char *user, char *pass)
    * This will contain the DefaultChdir directory, if configured...
    */
   if(fs_chdir_canon(session.cwd,!showsymlinks) == -1) {
-    add_response_err(R_530, "Unable to chdir()");
-    log_pri(LOG_ERR, "%s chdir(\"%s\"): %s", session.user, session.cwd,
-      strerror(errno));
 
-    /* in this case, if DefaultChdir is not used, then session.cwd _is_
-     * the user's home directory, and the fs_chdir_canon() failed for
-     * a valid reason -- and there's no good fallback.  Thus, end the
-     * login here.
+    /* if we've got DefaultRoot or anonymous login, ignore this error
+     * and chdir to /
      */
-    if (!defchdir)
-      end_login(1);
-
+    
     if (session.anon_root != NULL || defroot) {
 
-      /* ...else if DefaultRoot is configured, chdir to the root (this is
-       * guaranteed to succeed, otherwise the login operation would have
-       * failed before now
-       */
       log_debug(DEBUG2, "unable to chdir to %s, defaulting to chroot "
         "directory %s", session.cwd,
         (session.anon_root ? session.anon_root : defroot));
 
-      if (fs_chdir_canon("/", !showsymlinks) == -1)
+      if (fs_chdir_canon("/", !showsymlinks) == -1) {
+        log_pri(LOG_ERR,"%s chdir(\"/\"): %s", session.user,
+                strerror(errno));
+        send_response(R_530,"Login incorrect.");
         end_login(1);
+      }
 
-    } else {
-
-      /* no DefaultRoot, failed DefaultChdir -- default to the user's home
-       * directory.  This should never fail, either, as a logging in user
-       * is required to have a home directory -- yes, but that home
-       * directory is not guaranteed to be valid. ;)
-       */
-      log_debug(DEBUG2, "unable to chdir to %s, default to home directory %s",
+    } else if(defchdir) {
+    /* if we've got defchdir, failure is ok as well, simply switch to
+     * user's homedir.
+     */
+      log_debug(DEBUG2, "unable to chdir to %s, defaulting to home directory %s",
         session.cwd, pw->pw_dir);
 
-      if (fs_chdir_canon(pw->pw_dir, !showsymlinks) == -1)
-        end_login(1);
+      if (fs_chdir_canon(pw->pw_dir, !showsymlinks) == -1) {
+          log_pri(LOG_ERR, "%s chdir(\"%s\"): %s", session.user, session.cwd,
+                  strerror(errno));
+          send_response(R_530,"Login incorrect.");
+          end_login(1);
+      }
+    } else {
+    /* can't switch to user's real home directory, which is not allowed. */
+      log_pri(LOG_ERR, "%s chdir(\"%s\"): %s", session.user, session.cwd,
+              strerror(errno));
+      send_response(R_530,"Login incorrect.");
+      end_login(1);
     }
   }
 

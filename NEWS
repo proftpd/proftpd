@@ -1,7 +1,9 @@
-$Id: NEWS,v 1.118 2001-07-03 14:49:23 flood Exp $
+$Id: NEWS,v 1.119 2001-07-03 14:51:32 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+- Bug 1169 - Fix bug introduced by 1098, breaking DefaultRoot other
+  than "~*"
 - Bug 1234 - ABOR now always returns 226 (as per RFC959)
 - New mod_sql from upstream maintainer
 
