@@ -26,11 +26,10 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.31 2002-10-25 16:54:04 castaglia Exp $
+ * $Id: mod_log.c,v 1.32 2002-11-15 15:46:39 castaglia Exp $
  */
 
 #include "conf.h"
-
 #include "privs.h"
 
 extern response_t *resp_list,*resp_err_list;
@@ -734,35 +733,35 @@ char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f)
     return NULL;
 }
 
-static
-void do_log(cmd_rec *cmd, logfile_t *lf)
-{
-  unsigned char *f;
+static void do_log(cmd_rec *cmd, logfile_t *lf) {
+  unsigned char *f = NULL;
   size_t size = LOGBUF_SIZE-2;
   char logbuf[LOGBUF_SIZE] = {'\0'};
-  logformat_t *fmt;
-  char *s,*bp;
+  logformat_t *fmt = NULL;
+  char *s, *bp;
 
   fmt = lf->lf_format;
   f = fmt->lf_format;
   bp = logbuf;
 
-  while(*f && size) {
-    if(*f == META_START) {
-      s = get_next_meta(cmd->tmp_pool,cmd,&f);
-      if(s) {
+  while (*f && size) {
+    if (*f == META_START) {
+      s = get_next_meta(cmd->tmp_pool, cmd, &f);
+
+      if (s) {
         size_t tmp;
 
         tmp = strlen(s);
-        if(tmp > size)
+        if (tmp > size)
           tmp = size;
 
         memcpy(bp, s, tmp);
         size -= tmp;
         bp += tmp;
       }
+
     } else {
-      *bp++ = (char)*f++;
+      *bp++ = (char) *f++;
       size--;
     }
   }
@@ -770,7 +769,9 @@ void do_log(cmd_rec *cmd, logfile_t *lf)
   *bp++ = '\n';
   *bp = '\0';
 
-  write(lf->lf_fd,logbuf,strlen(logbuf));
+  /* NOTE: call pr_syslog() here, if need be, for logging via syslog */
+
+  write(lf->lf_fd, logbuf, strlen(logbuf));
 }
 
 MODRET log_command(cmd_rec *cmd)
@@ -792,9 +793,7 @@ MODRET log_command(cmd_rec *cmd)
  * config (in response to SIGHUP).
  */
 
-static
-void log_rehash(void *d)
-{
+static void log_rehash(void *d) {
   destroy_pool(log_pool);
 
   formats = NULL;
@@ -803,16 +802,16 @@ void log_rehash(void *d)
   log_set = NULL;
 
   log_pool = make_sub_pool(permanent_pool);
-  logformat("","%h %l %u %t \"%r\" %s %b");
+  logformat("", "%h %l %u %t \"%r\" %s %b");
 }
   
-static 
-int log_init(void)
-{
+static int log_init(void) {
   log_pool = make_sub_pool(permanent_pool);
-  /* add the "default" extendedlog format */
-  logformat("","%h %l %u %t \"%r\" %s %b");
-  register_rehash(NULL,log_rehash);
+
+  /* Add the "default" extendedlog format */
+  logformat("", "%h %l %u %t \"%r\" %s %b");
+
+  register_rehash(NULL, log_rehash);
   return 0;
 }
 
@@ -872,8 +871,7 @@ loop_extendedlogs:
   }
 }
 
-MODRET log_auth_complete(cmd_rec *cmd)
-{
+MODRET log_auth_complete(cmd_rec *cmd) {
   logfile_t *lf;
 
   /* authentication is complete, if we aren't in anon-mode, close
@@ -924,10 +922,8 @@ MODRET log_auth_complete(cmd_rec *cmd)
   return DECLINED(cmd);
 }
 
-static
-int log_child_init(void)
-{
-  /* open all log files */
+static int log_sess_init(void) {
+  /* Open all log files */
   logfile_t *lf = NULL;
 
   get_extendedlogs();
@@ -966,11 +962,13 @@ int log_child_init(void)
   return 0;
 }
 
+/* Module API tables
+ */
 
 static conftable log_conftab[] = {
   { "AllowLogSymlinks",	set_allowlogsymlinks,			NULL },
-  { "LogFormat",	add_logformat,				NULL },
   { "ExtendedLog",	add_extendedlog,			NULL },
+  { "LogFormat",	add_logformat,				NULL },
   { "SystemLog",	set_systemlog,				NULL },
   { NULL,		NULL,					NULL }
 };
@@ -984,12 +982,26 @@ static cmdtable log_cmdtab[] = {
 };
 
 module log_module = {
-  NULL,NULL,			/* Always NULL */
-  0x20,				/* API version */
-  "log",			/* Module name */
+  NULL, NULL,
+
+  /* Module API version */
+  0x20,
+
+  /* Module name */
+  "log",
+
+  /* Module configuration handler table */
   log_conftab,
+
+  /* Module command handler table */
   log_cmdtab,
+
+  /* Module authentication handler table */
   NULL,
+
+  /* Module initialization */
   log_init,
-  log_child_init
+
+  /* Session initialization */
+  log_sess_init
 };
