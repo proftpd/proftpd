@@ -1866,7 +1866,7 @@ static int tls_netio_poll_cb(pr_netio_stream_t *nstrm) {
 static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
 
   /* If this is a data stream, and it's for writing, and TLS is required,
-   * then do an TLS handshake.
+   * then do a TLS handshake.
    */
 
   if (nstrm->strm_type == PR_NETIO_STRM_DATA &&
