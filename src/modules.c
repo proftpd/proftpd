@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.36 2004-05-29 20:04:02 castaglia Exp $
+ * $Id: modules.c,v 1.37 2004-05-29 20:13:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -491,8 +491,10 @@ module *pr_module_get(const char *name) {
   char buf[80] = {'\0'};
   register unsigned int i = 0;
 
-  if (!name)
+  if (!name) {
+    errno = EINVAL;
     return NULL;
+  }
 
   /* Check the list of compiled-in modules. */
   for (i = 0; loaded_modules[i]; i++) {
@@ -504,6 +506,7 @@ module *pr_module_get(const char *name) {
       return loaded_modules[i];
   }
 
+  errno = ENOENT;
   return NULL;
 }
 
