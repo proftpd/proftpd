@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.105 2002-09-09 20:01:15 uid43859 Exp $
+ * $Id: main.c,v 1.106 2002-09-09 22:33:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -310,8 +310,7 @@ static int semaphore_fds(fd_set *rfd, int max_fd)
   return max_fd;
 }
 
-static void init_set_proc_title(int argc, char *argv[], char *envp[])
-{
+static void init_set_proc_title(int argc, char *argv[], char *envp[]) {
 #ifdef HAVE___PROGNAME
   extern char *__progname, *__progname_full;
 #endif /* HAVE___PROGNAME */
@@ -354,8 +353,7 @@ static void init_set_proc_title(int argc, char *argv[], char *envp[])
 #endif /* HAVE___PROGNAME */
 }    
 
-static void set_proc_title(char *fmt,...)
-{
+static void set_proc_title(char *fmt,...) {
   va_list msg;
   static char statbuf[BUFSIZ];
   
@@ -370,15 +368,28 @@ static void set_proc_title(char *fmt,...)
   va_start(msg,fmt);
 
   memset(statbuf, 0, sizeof(statbuf));
-  vsnprintf(statbuf, sizeof(statbuf), fmt, msg);
 
 #ifdef HAVE_SETPROCTITLE
-#ifdef __FreeBSD__ >= 4 && !defined(FREEBSD4_0) && !defined(FREEBSD4_1)
+#  ifdef __FreeBSD__ >= 4 && !defined(FREEBSD4_0) && !defined(FREEBSD4_1)
   /* FreeBSD's setproctitle() automatically prepends the process name. */
+  vsnprintf(statbuf, sizeof(statbuf), fmt, msg);
+
   setproctitle("%s", statbuf);
-#else
+
+#  else
+  /* Manually append the process name for non-FreeBSD platforms. */
+  snprintf(statbuf, sizeof(statbuf), "%s", "proftpd: ");
+  vsnprintf(statbuf + strlen(statbuf), sizeof(statbuf) - strlen(statbuf),
+    fmt, msg);
+
   setproctitle("proftpd: %s", statbuf);
-#endif /* FREEBSD4 */
+
+#  endif /* FREEBSD4 */
+  /* Manually append the process name for non-setproctitle() platforms. */
+  snprintf(statbuf, sizeof(statbuf), "%s", "proftpd: ");
+  vsnprintf(statbuf + strlen(statbuf), sizeof(statbuf) - strlen(statbuf),
+    fmt, msg);
+
 #endif /* HAVE_SETPROCTITLE */
 
   va_end(msg);
