@@ -35,7 +35,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.5 2004-02-17 03:53:09 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.6 2004-07-22 21:49:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -51,6 +51,11 @@
 # endif /* HPUX11 */
 # include <security/pam_appl.h>
 #endif /* HAVE_SECURITY_PAM_APPL_H */
+
+/* Needed for the MAXLOGNAME restriction. */
+#ifdef HAVE_SYS_PARAM_H
+# include <sys/param.h>
+#endif
 
 #ifdef HAVE_PAM_PAM_APPL_H
 #include <pam/pam_appl.h>
@@ -208,6 +213,17 @@ MODRET pam_auth(cmd_rec *cmd) {
   if ((pam_user_len = strlen(cmd->argv[0]) + 1) > (PAM_MAX_MSG_SIZE + 1))
     pam_user_len = PAM_MAX_MSG_SIZE + 1;
 
+#ifdef MAXLOGNAME
+  /* Some platforms' PAM libraries do not handle login strings that
+   * exceed this length.
+   */
+  if (pam_user_len >= MAXLOGNAME) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "PAM(%s): Name exceeds maximum login length (%u)", cmd->argv[0],
+      MAXLOGNAME);
+    return DECLINED(cmd);
+  }
+#endif
   if ((pam_user = malloc(pam_user_len)) == NULL)
     return pam_authoritative ? ERROR(cmd) : DECLINED(cmd);
 
