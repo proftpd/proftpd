@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.375 2003-02-24 16:06:10 castaglia Exp $
+$Id: NEWS,v 1.376 2003-02-24 18:13:55 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -30,6 +30,8 @@ CVS
 - Bug 1958 - ftpwho -o oneline has newlines when client is idle.
 - Bug 1908 - ExtendedLog to work properly again in <Anonymous> context.
 - Bug 1966 - SCO OpenServer 5.0.5 and inetd.
+- Bug 1953 - STAT -R does not work.  There were some variable initialization
+  issues in the handling of options for the STAT command.
 
 1.2.8rc2 - Released 29-Jan-2003
 ---------------------------------

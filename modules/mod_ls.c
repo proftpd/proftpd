@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.84 2003-02-18 17:55:23 castaglia Exp $
+ * $Id: mod_ls.c,v 1.85 2003-02-24 18:13:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1593,11 +1593,11 @@ MODRET ls_stat(cmd_rec *cmd) {
   if ((tmp = get_param_ptr(TOPLEVEL_CONF, "TimesGMT", FALSE)) != NULL)
     list_times_gmt = *tmp;
 
-  opt_C = opt_d = opt_F = opt_R;
+  opt_C = opt_d = opt_F = opt_R = 0;
   opt_a = opt_l = opt_STAT = 1;
 
   pr_response_add(R_211, "status of %s:", arg && *arg ? arg : ".");
-  dolist(cmd,cmd->arg,FALSE);
+  dolist(cmd,cmd->arg, FALSE);
   pr_response_add(R_211, "End of Status");
   return HANDLED(cmd);
 }
