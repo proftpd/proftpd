@@ -26,7 +26,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.43 2002-10-15 17:01:03 castaglia Exp $
+ * $Id: data.c,v 1.44 2002-10-17 00:37:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -54,7 +54,8 @@ static pr_netio_stream_t *nstrm = NULL;
 /* Called if the "Stalled" timer goes off
  */
 static int stalled_timeout_cb(CALLBACK_FRAME) {
-  log_pri(LOG_NOTICE,"Data transfer stall timeout: %d seconds", TimeoutStalled);
+  log_pri(PR_LOG_NOTICE, "Data transfer stall timeout: %d seconds",
+    TimeoutStalled);
   end_login(1);
 
   /* Prevent compiler warning.
@@ -282,11 +283,9 @@ static int _data_pasv_open(char *reason, off_t size) {
   }
   
   /* Check for error conditions. */
-  if (c && c->mode == CM_ERROR) {
-    log_pri(LOG_ERR,
-	    "Error: unable to accept an incoming data connection (%s)",
-	    strerror(c->xerrno));
-  }
+  if (c && c->mode == CM_ERROR)
+    log_pri(PR_LOG_ERR, "Error: unable to accept an incoming data "
+      "connection (%s)", strerror(c->xerrno));
   
   add_response_err(R_425, "Unable to build data connection: %s",
 		   strerror(session.d->xerrno));
@@ -413,7 +412,8 @@ int data_open(char *filename, char *reason, int direction, off_t size) {
   /* Passive data transfers... */  
   if (session.flags & SF_PASSIVE) {
     if (!session.d) {
-      log_pri(LOG_ERR,"Internal error: PASV mode set, but no data connection listening.");
+      log_pri(PR_LOG_ERR, "Internal error: PASV mode set, but no data "
+        "connection listening.");
       end_login(1);
     }
     
@@ -422,7 +422,8 @@ int data_open(char *filename, char *reason, int direction, off_t size) {
   /* Active data transfers... */
   } else {
     if (session.d) {
-      log_pri(LOG_ERR,"Internal error: non-PASV mode, yet data connection already exists?!?");
+      log_pri(PR_LOG_ERR, "Internal error: non-PASV mode, yet data "
+        "connection already exists?!?");
       end_login(1);
     }
     

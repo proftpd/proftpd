@@ -27,7 +27,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.45 2002-10-15 00:11:07 castaglia Exp $
+ * $Id: log.c,v 1.46 2002-10-17 00:37:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -143,8 +143,8 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip) {
 #endif
   static int fdx = -1;
 
-  if(fdx < 0 && (fdx = open(WTMPX_FILE, O_WRONLY | O_APPEND, 0)) < 0) {
-    log_pri(LOG_WARNING,"wtmpx %s: %s",WTMPX_FILE,strerror(errno));
+  if(fdx < 0 && (fdx = open(WTMPX_FILE, O_WRONLY|O_APPEND, 0)) < 0) {
+    log_pri(PR_LOG_WARNING, "wtmpx %s: %s", WTMPX_FILE, strerror(errno));
     return -1;
   }
 
@@ -186,7 +186,7 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip) {
 #else /* Non-SVR4 systems */
 
   if(fd < 0 && (fd = open(WTMP_FILE,O_WRONLY|O_APPEND,0)) < 0) {
-    log_pri(LOG_WARNING,"wtmp %s: %s",WTMP_FILE,strerror(errno));
+    log_pri(PR_LOG_WARNING, "wtmp %s: %s", WTMP_FILE, strerror(errno));
     return -1;
   }
  
@@ -508,7 +508,7 @@ void log_debug(int level, char *fmt, ...) {
   /* Always make sure the buffer is NUL-terminated. */
   buf[sizeof(buf) - 1] = '\0';
 
-  log(LOG_DEBUG, facility, buf);
+  log(PR_LOG_DEBUG, facility, buf);
 }
 
 void init_log(void) {

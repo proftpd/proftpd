@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.70 2002-10-09 16:55:09 castaglia Exp $
+ * $Id: dirtree.c,v 1.71 2002-10-17 00:37:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -539,7 +539,7 @@ char *get_config_line(char *buf, size_t len) {
 
   /* Check for error conditions. */
   if (ferror(cs->cs_file))
-    log_pri(LOG_ERR, "error while reading configuration stream: %s",
+    log_pri(PR_LOG_ERR, "error while reading configuration stream: %s",
       strerror(errno));
 
   /* default return value
@@ -1363,7 +1363,8 @@ static int _check_ip_negative(const config_rec *c)
         /* -1 signifies a NONE match, which isn't valid for negative
          * conditions.
          */
-        log_pri(LOG_ERR,"ooops, it looks like !NONE was used in an ACL somehow.");
+        log_pri(PR_LOG_ERR, "ooops, it looks like !NONE was used in an ACL "
+          "somehow.");
         return FALSE;
 
       default:
@@ -1792,26 +1793,26 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
             cmd->server = *conf.curserver;
             cmd->config = *conf.curconfig;
               
-            for(c = m_conftable; c->directive; c++) {
+            for (c = m_conftable; c->directive; c++) {
               if (!strcasecmp(c->directive, cmd->argv[0])) {
                 cmd->argv[0] = c->directive;
                 found++;
 
-                if((mr = call_module(c->m,c->handler,cmd)) != NULL) {
-                  if(MODRET_ERRMSG(mr)) {
-                    log_pri(LOG_WARNING, "warning: %s",MODRET_ERRMSG(mr));
+                if ((mr = call_module(c->m, c->handler, cmd)) != NULL) {
+                  if (MODRET_ERRMSG(mr)) {
+                    log_pri(PR_LOG_WARNING, "warning: %s", MODRET_ERRMSG(mr));
 		  }
                 }
 
-		if(MODRET_ISDECLINED(mr))
-			found--;
+		if (MODRET_ISDECLINED(mr))
+                  found--;
 
 		destroy_pool(cmd->tmp_pool);
               }
             }
 
-            if(!found)
-              log_pri(LOG_WARNING,
+            if (!found)
+              log_pri(PR_LOG_WARNING,
                 "warning: unknown configuration directive '%s' on "
                 "line %d of '%s'.", cmd->argv[0], cs->cs_lineno,
                 dynpath);
@@ -2813,7 +2814,7 @@ int parse_config_file(const char *fname) {
 
           if ((mr = call_module(c->m, c->handler, cmd)) != NULL) {
             if (MODRET_ISERROR(mr)) {
-              log_pri(LOG_ERR, "Fatal: %s", MODRET_ERRMSG(mr));
+              log_pri(PR_LOG_ERR, "Fatal: %s", MODRET_ERRMSG(mr));
               exit(1);
 	    }
           }
@@ -2825,7 +2826,7 @@ int parse_config_file(const char *fname) {
         }
 
        if (!found) {
-         log_pri(LOG_ERR, "Fatal: unknown configuration directive '%s' on "
+         log_pri(PR_LOG_ERR, "Fatal: unknown configuration directive '%s' on "
            "line %d of '%s'.", cmd->argv[0], cs->cs_lineno, fname);
          exit(1);
        }
@@ -2880,14 +2881,14 @@ void fixup_servers(void)
       s->tcp_swin = TUNABLE_DEFAULT_SWIN;
 
     if ((s->ipaddr = inet_getaddr(s->pool, s->ServerAddress)) == NULL) {
-      log_pri(LOG_ERR,"Fatal: unable to determine IP address of '%s'.",
+      log_pri(PR_LOG_ERR,"Fatal: unable to determine IP address of '%s'.",
         s->ServerAddress);
       exit(1);
     }
 
     if ((c = find_config(s->conf, CONF_PARAM, "MasqueradeAddress",
         FALSE)) != NULL) {
-      log_pri(LOG_INFO, "%s:%d masquerading as %s",
+      log_pri(PR_LOG_INFO, "%s:%d masquerading as %s",
         inet_ascii(s->pool, s->ipaddr), s->ServerPort,
         inet_ascii(s->pool, (p_in_addr_t *) c->argv[0]));
     }
@@ -2899,7 +2900,7 @@ void fixup_servers(void)
       if (!SocketBindTight)
         s->ipaddr->s_addr = 0;
       else
-        log_pri(LOG_NOTICE,
+        log_pri(PR_LOG_NOTICE,
           "SocketBindTight in effect, ignoring DefaultServer");
     }
 

@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.7 2002-10-04 19:08:26 castaglia Exp $
+ * $Id: scoreboard.c,v 1.8 2002-10-17 00:37:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -414,7 +414,8 @@ int pr_scoreboard_add_entry(void) {
   entry.sce_gid = getegid();
 
   if (write_entry() < 0)
-    log_pri(LOG_NOTICE, "error writing scoreboard entry: %s", strerror(errno));
+    log_pri(PR_LOG_NOTICE, "error writing scoreboard entry: %s",
+      strerror(errno));
 
   /* We can unlock the scoreboard now. */
   unlock_scoreboard();
@@ -434,7 +435,8 @@ int pr_scoreboard_del_entry(unsigned char verbose) {
   /* Write-lock this entry */
   wlock_entry();
   if (write_entry() < 0 && verbose)
-    log_pri(LOG_NOTICE, "error deleting scoreboard entry: %s", strerror(errno));
+    log_pri(PR_LOG_NOTICE, "error deleting scoreboard entry: %s",
+      strerror(errno));
   unlock_entry();
 
   return 0;
@@ -599,7 +601,8 @@ int pr_scoreboard_update_entry(pid_t pid, ...) {
   /* Write-lock this entry */
   wlock_entry();
   if (write_entry() < 0)
-    log_pri(LOG_NOTICE, "error writing scoreboard entry: %s", strerror(errno));
+    log_pri(PR_LOG_NOTICE, "error writing scoreboard entry: %s",
+      strerror(errno));
   unlock_entry();
 
   return 0;

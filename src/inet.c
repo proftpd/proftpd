@@ -480,8 +480,8 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
 
       inet_errno = errno;
       if(reporting)
-        log_pri(LOG_ERR,"socket() failed in inet_initialize_connection(): %s",
-			strerror(inet_errno));
+        log_pri(PR_LOG_ERR, "socket() failed in inet_initialize_connection(): "
+          "%s", strerror(inet_errno));
       destroy_pool(c->pool);
       return NULL;
     }
@@ -547,9 +547,9 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
       }
 
       if(reporting) {
-        log_pri(LOG_ERR, "Failed binding to %s, port %d: %s",
+        log_pri(PR_LOG_ERR, "Failed binding to %s, port %d: %s",
                 inet_ntoa(servaddr.sin_addr), port, strerror(hold_errno));
-        log_pri(LOG_ERR, "Check the ServerType directive "
+        log_pri(PR_LOG_ERR, "Check the ServerType directive "
 	                 "to ensure you are configured correctly.");
       }
       
@@ -652,9 +652,9 @@ conn_t *inet_create_connection_portrange(pool *p, xaset_t *servers,
       c = inet_initialize_connection(p, servers, -1, bind_addr,
 				     ports[index], FALSE, FALSE);
     
-      if(!c && inet_errno != EADDRINUSE) {
-        log_pri(LOG_ERR,"inet_initialize_connection(): %s",
-  		        strerror(inet_errno));
+      if (!c && inet_errno != EADDRINUSE) {
+        log_pri(PR_LOG_ERR, "inet_initialize_connection(): %s",
+          strerror(inet_errno));
         end_login(1);
       }
     }
@@ -893,7 +893,8 @@ int inet_listen(pool *pool, conn_t *c, int backlog)
         continue; 
       }
 
-      log_pri(LOG_ERR,"listen() failed in inet_listen(): %s", strerror(errno));
+      log_pri(PR_LOG_ERR, "listen() failed in inet_listen(): %s",
+        strerror(errno));
       end_login(1);
 
     } else
@@ -1048,7 +1049,7 @@ conn_t *inet_accept(pool *pool, conn_t *d, conn_t *c, int rfd, int wfd,
       if ((allow_foreign_addr && *allow_foreign_addr == FALSE) &&
 	 (getpeername(newfd, (struct sockaddr *) &addr, &addrlen) != -1)) {
 	if (addr.sin_addr.s_addr != c->remote_ipaddr->s_addr) {
-	  log_pri(LOG_NOTICE, "SECURITY VIOLATION: Passive connection from "
+	  log_pri(PR_LOG_NOTICE, "SECURITY VIOLATION: Passive connection from "
             "%s rejected.", inet_ntoa(addr.sin_addr));
 	  close(newfd);
 	  continue;

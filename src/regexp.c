@@ -72,7 +72,7 @@ regex_t *pr_regexp_alloc(void) {
   }
 
   if ((preg = calloc(1, sizeof(regex_t))) == NULL) {
-    log_pri(LOG_ERR, "fatal: memory exhausted");
+    log_pri(PR_LOG_ERR, "fatal: memory exhausted");
     exit(1);
   }
 

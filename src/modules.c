@@ -440,8 +440,8 @@ int init_modules(void)
     m->priority = i;
 
     if(m->ver < 0x20) {
-	log_pri(LOG_ERR,"Fatal: module '%s' API version (0x%x) is "
-                "too old (need at least 0x%x).",m->name,m->ver,0x20);
+	log_pri(PR_LOG_ERR, "Fatal: module '%s' API version (0x%x) is "
+                "too old (need at least 0x%x)", m->name, m->ver,0x20);
 	exit(1);
     }
 

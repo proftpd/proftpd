@@ -26,7 +26,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.38 2002-10-09 16:55:09 castaglia Exp $
+ * $Id: support.c,v 1.39 2002-10-17 00:37:45 castaglia Exp $
  */
 
 /* History Log:
@@ -809,7 +809,7 @@ char *sreplace(pool *p, char *s, ...)
       if(strncmp(src,*mptr,mlen) == 0) {
         sstrncpy(cp,*rptr, blen - strlen(pbuf));
 	if(((cp + rlen) - pbuf + 1) > blen) {
-	  log_pri(LOG_ERR,
+	  log_pri(PR_LOG_ERR,
 		  "Warning, attempt to overflow internal ProFTPD buffers.");
 	  cp = pbuf + blen - 1;
 	  goto done;
@@ -824,7 +824,7 @@ char *sreplace(pool *p, char *s, ...)
     
     if(!*mptr) {
       if((cp - pbuf + 1) > blen) {
-	log_pri(LOG_ERR,
+	log_pri(PR_LOG_ERR,
 		"Warning, attempt to overflow internal ProFTPD buffers.");
 	cp = pbuf + blen - 1;
       }
