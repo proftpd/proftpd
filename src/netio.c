@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.16 2003-09-09 14:16:09 castaglia Exp $
+ * $Id: netio.c,v 1.17 2003-10-17 06:15:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -994,7 +994,7 @@ pr_netio_t *pr_alloc_netio(pool *parent_pool) {
   return netio;
 }
 
-void pr_init_netio(void) {
+void init_netio(void) {
   signal(SIGPIPE, SIG_IGN);
   signal(SIGURG, SIG_IGN);
 

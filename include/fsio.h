@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.6 2003-06-03 16:25:21 castaglia Exp $
+ * $Id: fsio.h,v 1.7 2003-10-17 06:15:37 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -268,8 +268,9 @@ void pr_fs_virtual_path(const char *, char *, size_t);
 void pr_fs_clean_path(const char *, char *, size_t);
 int pr_fs_glob(const char *, int, int (*errfunc)(const char *, int), glob_t *);
 void pr_fs_globfree(glob_t *);
-int pr_init_fs(void);
 void pr_resolve_fs_map(void);
+
+int init_fs(void);
 
 #if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
 off_t pr_fs_getsize(char *);

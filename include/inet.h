@@ -25,7 +25,7 @@
  */
 
 /* BSD socket manipulation tools.
- * $Id: inet.h,v 1.23 2003-09-08 02:55:27 castaglia Exp $
+ * $Id: inet.h,v 1.24 2003-10-17 06:15:37 castaglia Exp $
  */
 
 #ifndef PR_INET_H
@@ -308,7 +308,6 @@ typedef struct conn_struc {
 
 
 /* Prototypes */
-void pr_init_inet(void);
 void pr_inet_clear(void);
 int pr_inet_reverse_dns(pool *, int);
 int pr_inet_getservport(pool *, char *, char *);
@@ -340,5 +339,7 @@ conn_t *pr_inet_associate(pool *, conn_t *, pr_netaddr_t *,
   pr_netio_stream_t *, pr_netio_stream_t *, int);
 conn_t *pr_inet_openrw(pool *, conn_t *, pr_netaddr_t *, int, int, int,
   int, int);
+
+void init_inet(void);
 
 #endif /* PR_INET_H */

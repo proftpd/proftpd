@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.80 2003-10-08 04:48:20 castaglia Exp $
+ * $Id: inet.c,v 1.81 2003-10-17 06:15:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1317,7 +1317,7 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, pr_netaddr_t *addr, int strm_type,
   return res;
 }
 
-void pr_init_inet(void) {
+void init_inet(void) {
   struct protoent *pr = NULL;
 
 #ifdef HAVE_SETPROTOENT

@@ -25,7 +25,7 @@
  */
 
 /* Network IO stream layer
- * $Id: netio.h,v 1.7 2003-01-02 17:28:17 castaglia Exp $
+ * $Id: netio.h,v 1.8 2003-10-17 06:15:37 castaglia Exp $
  */
 
 #ifndef PR_NETIO_H
@@ -221,6 +221,6 @@ int pr_unregister_netio(int);
 
 /* Initialize the network I/O layer.
  */
-void pr_init_netio(void);
+void init_netio(void);
 
 #endif /* PR_NETIO_H */

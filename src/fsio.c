@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.24 2003-09-08 00:37:40 castaglia Exp $
+ * $Id: fsio.c,v 1.25 2003-10-17 06:15:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2720,7 +2720,7 @@ void pr_resolve_fs_map(void) {
   return;
 }
 
-int pr_init_fs(void) {
+int init_fs(void) {
   char cwdbuf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
 
   /* Establish the default pr_fs_t that will handle any path */
