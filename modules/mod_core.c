@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.61 2001-04-11 18:57:42 flood Exp $
+ * $Id: mod_core.c,v 1.62 2001-04-13 18:32:05 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -2820,15 +2820,27 @@ MODRET cmd_rnfr(cmd_rec *cmd)
 MODRET cmd_site(cmd_rec *cmd)
 {
   char *cp;
+  cmd_rec *tmpcmd;
+  MODRET ret;
+  
+  /* Make a copy of the cmd structure for passing to call_module */
+  tmpcmd = pcalloc(cmd->tmp_pool,sizeof(cmd_rec));
+  memcpy(tmpcmd,cmd,sizeof(cmd_rec));
+  
+  tmpcmd->argc--;
+  tmpcmd->argv++;
 
-  cmd->argc--;
-  cmd->argv++;
-
-  if(cmd->argc)
-    for(cp = cmd->argv[0]; *cp; cp++)
+  if(tmpcmd->argc)
+    for(cp = tmpcmd->argv[0]; *cp; cp++)
       *cp = toupper(*cp);
 
-  return call_module(&site_module,site_dispatch,cmd);
+  ret = call_module(&site_module,site_dispatch,tmpcmd);
+
+  /* Copy private data back to original cmd */
+  cmd->private = tmpcmd->private;
+  cmd->privarr = tmpcmd->privarr;
+
+  return ret;
 }
 
 MODRET cmd_noop(cmd_rec *cmd)
