@@ -19,7 +19,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.27 2000-07-06 06:18:32 macgyver Exp $
+ * $Id: mod_ls.c,v 1.28 2000-07-07 06:21:37 macgyver Exp $
  */
 
 #include "conf.h"
@@ -35,11 +35,11 @@ static void addfile(cmd_rec*,const char *, const char *, time_t);
 static int outputfiles(cmd_rec*);
 
 static int listfile(cmd_rec*, pool*, const char *name);
-static int listdir(cmd_rec*, pool*, const char *name, int list_dotdirs);
+static int listdir(cmd_rec*, pool*, const char *name);
 
 static int matches = 0;
 static char *default_options;
-static int showdotfiles, showsymlinks, showsymlinks_hold, timesgmt = 0;
+static int showsymlinks, showsymlinks_hold, timesgmt = 0;
 static int cmp(const void *a, const void *b);
 static char *fakeuser, *fakegroup;
 static umode_t fakemode;
@@ -48,7 +48,9 @@ static int ls_errno = 0;
 static time_t ls_curtime = 0;
 
 /* ls options */
-int opt_a = 0,
+static int
+    opt_a = 0,
+    opt_A = 0,
     opt_C = 0,
     opt_d = 0,
     opt_F = 0,
@@ -310,8 +312,8 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
           snprintf(timeline, sizeof(timeline), "%02d:%02d",t->tm_hour,t->tm_min);
 
         snprintf(nameline, sizeof(nameline), "%s %3d %-8s %-8s %8d %s %2d %s %s", m,
-                (int)st.st_nlink, MAP_UID((int)st.st_uid), 
-                MAP_GID((int)st.st_gid),
+                (int)st.st_nlink, MAP_UID(st.st_uid), 
+                MAP_GID(st.st_gid),
                 (unsigned int)st.st_size, months[t->tm_mon],
                 t->tm_mday, timeline, name);
 
@@ -708,8 +710,20 @@ char **sreaddir(pool *workp, const char *dirname, const int sort)
   return p;
 }
 
+/* Return true iff S is ".", "./", "../", or "..". */
+static int is_dotdir(char *s)
+{
+  if(!strcmp(s, ".")  ||
+     !strcmp(s, "./") ||
+     !strcmp(s, "..") ||
+     !strcmp(s, "../"))
+    return 1;
+  
+  return 0;
+}
+
 /* listdir required chdir first */
-static int listdir(cmd_rec *cmd, pool *workp, const char *name, int list_dotdirs)
+static int listdir(cmd_rec *cmd, pool *workp, const char *name)
 {
   char **dir;
   int dest_workp = 0;
@@ -744,28 +758,16 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name, int list_dotdirs
     
     s = dir;
     while(*s) {
-      if(**s != '.') {
-        d = listfile(cmd,workp,*s);
-      } else if(!opt_a && showdotfiles != 1 && list_dotdirs) {
-        if( (((*s)[1] == '\0') ||
-            (((*s)[1] == '.') &&
-             ((*s)[2] == '\0')))) {
-          d = listfile(cmd,workp,*s);
-          if(d > 0)
-            d = 0;
-        }
-      } else if(opt_a || showdotfiles == 1) {
-        if(!opt_a && (((*s)[1] == '\0') ||
-           (((*s)[1] == '.') &&
-            ((*s)[2] == '\0'))))
-          d = 0;
-	else
-	  d = listfile(cmd,workp,*s);
+      if (**s == '.'
+	  && !opt_a
+	  && (!opt_A || is_dotdir(*s))) {
+	d = 0;
       } else {
-        d = 0;
+        d = listfile(cmd,workp,*s);
       }
+
       if(!d)
-        *s = NULL;
+	*s = NULL;
       s++;
     }
 
@@ -806,7 +808,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name, int list_dotdirs
           return -1;
         }
 
-        if(listdir(cmd,workp,subdir,list_dotdirs) < 0) {
+        if(listdir(cmd,workp,subdir) < 0) {
           pop_cwd(cwd,&symhold);
           if(dest_workp)
             destroy_pool(workp);
@@ -854,10 +856,13 @@ void _parse_options(char **opt, int *glob_flags)
     while((*opt)++ && isalnum((UCHAR)**opt)) {
       switch(**opt) {
       case 'a':
-        opt_a++;
+        opt_a = 1;
+        break;
+      case 'A':
+        opt_A = 1;
         break;
       case 'l':
-        opt_l++;
+        opt_l = 1;
         opt_C = 0;
         break;
       case 'L':
@@ -868,22 +873,22 @@ void _parse_options(char **opt, int *glob_flags)
         break;
       case 'C':
         opt_l = 0;
-        opt_C++;
+        opt_C = 1;
         break;
       case 'F':
-        opt_F++;
+        opt_F = 1;
         break;
       case 'r':
-        opt_r++;
+        opt_r = 1;
         break;
       case 'R':
-        opt_R++;
+        opt_R = 1;
         break;
       case 'd':
-        opt_d++;
+        opt_d = 1;
         break;
       case 't':
-        opt_t++;
+        opt_t = 1;
         if(glob_flags)
           *glob_flags |= GLOB_NOSORT;;
         break;
@@ -895,6 +900,8 @@ void _parse_options(char **opt, int *glob_flags)
   }
 }
 
+/* The main work for LIST and STAT (not NLST).
+   Return -1 on error, 0 if successful.  */
 static
 int dolist(cmd_rec *cmd, const char *opt, int clearflags)
 {
@@ -919,23 +926,23 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
     if(data_open(NULL,"file list",IO_WRITE,0) < 0)
       return -1;
   }
-
+  
   if(arg && *arg) {
     int justone;
-
+    
     justone = 1;
     while(arg) {
       glob_t g;
       int    a;
       char   pbuffer[MAXPATHLEN];
-
+      
       char   *endarg = strchr(arg,' ');
-
+      
       if(endarg) {
         *endarg++ = '\0';
         justone = 0;
       }
-
+      
       if(*arg == '~') {
         struct passwd *pw;
 	int i;
@@ -965,29 +972,29 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
         skiparg = 0;
         a = fs_glob(*pbuffer ? pbuffer : arg, glob_flags, NULL, &g);
       }
-
+      
       if(!a) {
         char **path;
-
+	
         path = g.gl_pathv;
         if(path && path[0] && path[1])
           justone = 0;
-
+	
         while(path && *path) {
           struct stat st;
 
-          /* if opt_a is not set, don't display dot files, except for
-           * ./ and ../
-           */
-
-          if(**path == '.' && !opt_a && showdotfiles != 1 && 
-	     (*path)[1] != '\0'  && ((*path)[1] != '.' ||
-				     ((*path)[1] == '.' && (*path)[2] != '\0'))) {
+	  /* If we have a leading '.', two conditions must be true for us to
+	   * invalidate it:
+	   *
+	   * - opt_a is not set
+	   * - We don't have '.' or '..'.
+	   */
+	  if(**path == '.' && !opt_a && !is_dotdir(*path)) {
             **path = '\0';
             path++;
             continue;
           }
-
+	  
           if(fs_lstat(*path,&st) == 0) {
             mode_t target_mode,lmode;
 	    target_mode = st.st_mode;
@@ -1026,17 +1033,17 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
 
             if(!justone) {
               if(opt_STAT) {
-		add_response(R_211,"");
-		add_response(R_211,"%s:",*path);
+		add_response(R_211, "");
+		add_response(R_211, "%s:", *path);
 	      } else
-                sendline("\n%s:\n",*path);
+                sendline("\n%s:\n", *path);
             }
 
             push_cwd(cwd,&symhold);
 
             if(!fs_chdir_canon(*path, !opt_L && showsymlinks)) {
-              int ret = listdir(cmd,NULL,*path,FALSE);
-              pop_cwd(cwd,&symhold);
+              int ret = listdir(cmd, NULL, *path);
+              pop_cwd(cwd, &symhold);
 
               if(ret < 0) {
                 ls_terminate();
@@ -1080,7 +1087,7 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
           return -1;
         }
       } else {
-        if(listdir(cmd,NULL,".",FALSE) < 0) {
+        if(listdir(cmd,NULL,".") < 0) {
           ls_terminate(); 
 	  return -1;
         }
@@ -1121,11 +1128,10 @@ int nlstfile(cmd_rec *cmd, const char *file)
 	return 1;
 }
 
-/* display listing of a directory, ACL checks performed on each entry,
+/* Display listing of a directory, ACL checks performed on each entry,
  * sent in NLST fashion.  Files which are inaccessible via ACL are skipped,
  * error returned if data conn cannot be opened or is aborted.
  */
-
 static int nlstdir(cmd_rec *cmd, const char *dir) {
   char **list, *p, *f, file[MAXPATHLEN];
   char cwd[MAXPATHLEN];
@@ -1135,7 +1141,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   
   workp = make_sub_pool(cmd->tmp_pool);
   
-  if(!*dir || (*dir == '.' && !dir[1]) || strncmp(dir,"./",2) == 0) {
+  if(!*dir || (*dir == '.' && !dir[1]) || strcmp(dir, "./") == 0) {
     curdir = 1;
     dir = "";
   } else {
@@ -1157,11 +1163,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   while(*list && count >= 0) {
     p = *list; list++;
     
-    if(*p == '.' && (((p[1] == '\0') || ((p[2] == '.') &&
-					 (p[3] == '\0')))) )
-      continue;
-    
-    if(*p == '.' && showdotfiles != 1)
+    if(*p == '.' && (!opt_A || is_dotdir(p)))
       continue;
     
     if((i = fs_readlink(p, file, sizeof(file))) > 0) {
@@ -1205,6 +1207,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   return count;
 }
 
+/* The LIST command.  */
 MODRET genericlist(cmd_rec *cmd)
 {
   int err;
@@ -1219,8 +1222,10 @@ MODRET genericlist(cmd_rec *cmd)
   fakeuser = get_param_ptr(TOPLEVEL_CONF,"DirFakeUser",FALSE);
   fakegroup = get_param_ptr(TOPLEVEL_CONF,"DirFakeGroup",FALSE);
   _fakemode = (long)get_param_int(TOPLEVEL_CONF,"DirFakeMode",FALSE);
-  showdotfiles = get_param_int(TOPLEVEL_CONF,"ShowDotFiles",FALSE);
   timesgmt = get_param_int(TOPLEVEL_CONF, "TimesGMT", FALSE);
+  
+  if((opt_A = get_param_int(TOPLEVEL_CONF,"ShowDotFiles",FALSE)) < 0)
+    opt_A = 0;
   
   if(_fakemode != -1) {
     fakemode = (umode_t)_fakemode;
@@ -1268,9 +1273,10 @@ MODRET cmd_stat(cmd_rec *cmd)
   fakeuser = get_param_ptr(TOPLEVEL_CONF,"DirFakeUser",FALSE);
   fakegroup = get_param_ptr(TOPLEVEL_CONF,"DirFakeGroup",FALSE);
   _fakemode = (long)get_param_int(TOPLEVEL_CONF,"DirFakeMode",FALSE);
-  showdotfiles = get_param_int(TOPLEVEL_CONF,"ShowDotFiles",FALSE);
   timesgmt = get_param_int(TOPLEVEL_CONF, "TimesGMT", FALSE);
-  
+  /* No need to check ShowDotFiles since we force opt_a below.
+   */
+
   if(_fakemode != -1) {
     fakemode = (umode_t)_fakemode;
     fakemodep = 1;
@@ -1316,8 +1322,9 @@ MODRET cmd_nlst(cmd_rec *cmd)
 
 	if(showsymlinks == -1)
 		showsymlinks = 1;
-	showdotfiles = get_param_int(TOPLEVEL_CONF,"ShowDotFiles",FALSE);
-
+	if((opt_A = get_param_int(TOPLEVEL_CONF,"ShowDotFiles",FALSE)) < 0)
+	  opt_A = 0;
+	
 	if(cmd->argc == 1)
 		target = ".";
 	else
@@ -1362,15 +1369,9 @@ MODRET cmd_nlst(cmd_rec *cmd)
 		while(path && *path && ret >= 0) {
 			struct stat st;
 
-			/* Skip ./ and ../ */
 			p = *path; path++;
-			if(*p == '.' && (
-				((p[1] == '\0') ||
-				((p[1] == '.') &&
-				 (p[2] == '\0')))) )
-				continue;
-			
-			if(*p == '.' && showdotfiles != 1)
+
+			if(*p == '.' && (!opt_A || is_dotdir(p)))
 				continue;
 
 			if(fs_stat(p,&st) == 0) {
@@ -1412,7 +1413,7 @@ MODRET cmd_nlst(cmd_rec *cmd)
 		if(S_ISREG(st.st_mode))
 			ret = nlstfile(cmd,target);
 		else if(S_ISDIR(st.st_mode)) {
-			if(access(target,R_OK) != 0) {
+			if(access_check(target,R_OK) != 0) {
 				add_response_err(R_550,"%s: %s",
 						cmd->arg,strerror(errno));
 				return ERROR(cmd);
