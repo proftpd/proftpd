@@ -308,7 +308,7 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os OSREL OSTYPE CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT SET_MAKE INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA RANLIB ac_ct_RANLIB CPP EGREP install_user install_group ALLOCA INSTALL_STRIP LIB_OBJS MODULE_OBJS BUILD_MODULE_OBJS ADDL_DIRS INCLUDES LIBRARIES CURSES_LIBS VERSION LIBOBJS LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os OSREL OSTYPE CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT SET_MAKE INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA RANLIB ac_ct_RANLIB BINDIR LOCALSTATEDIR SBINDIR SYSCONFDIR CPP EGREP install_user install_group ALLOCA INSTALL_STRIP LIB_OBJS MODULE_OBJS BUILD_MODULE_OBJS ADDL_DIRS INCLUDES LIBRARIES CURSES_LIBS VERSION LIBOBJS LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -2951,6 +2951,19 @@ rm -f conftest.$ac_objext conftest.$ac_ext
 
   CFLAGS="$fullCFLAGS"
 fi
+
+if test x$exec_prefix = xNONE; then
+  exec_prefix=$prefix
+fi
+
+BINDIR=`eval echo $bindir`
+
+LOCALSTATEDIR=`eval echo $localstatedir`
+
+SBINDIR=`eval echo $sbindir`
+
+SYSCONFDIR=`eval echo $sysconfdir`
+
 
 echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wno-long-double" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wno-long-double... $ECHO_C" >&6
@@ -15595,8 +15608,8 @@ MODULE_OBJS="$ac_core_modules $ac_addl_modules"
 BUILD_MODULE_OBJS="$ac_build_core_modules $ac_build_addl_modules"
 VERSION=`cat $srcdir/include/version.h | grep "#define VERSION " | sed -e 's/^.*\"\(.*\)\"/\1/'`
 
-savedPrefix="$prefix"
-savedExecPrefix="$exec_prefix"
+pr_saved_prefix="$prefix"
+pr_saved_exec_prefix="$exec_prefix"
 
 test "x$prefix" = xNONE && prefix=$ac_default_prefix
 test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
@@ -15614,8 +15627,8 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 
-prefix="$savedPrefix"
-exec_prefix="$savedExecPrefix"
+prefix="$pr_saved_prefix"
+exec_prefix="$pr_saved_exec_prefix"
 
 if test x"$devel" = xyes ; then
   cat >>confdefs.h <<\_ACEOF
@@ -16311,6 +16324,10 @@ s,@INSTALL_SCRIPT@,$INSTALL_SCRIPT,;t t
 s,@INSTALL_DATA@,$INSTALL_DATA,;t t
 s,@RANLIB@,$RANLIB,;t t
 s,@ac_ct_RANLIB@,$ac_ct_RANLIB,;t t
+s,@BINDIR@,$BINDIR,;t t
+s,@LOCALSTATEDIR@,$LOCALSTATEDIR,;t t
+s,@SBINDIR@,$SBINDIR,;t t
+s,@SYSCONFDIR@,$SYSCONFDIR,;t t
 s,@CPP@,$CPP,;t t
 s,@EGREP@,$EGREP,;t t
 s,@install_user@,$install_user,;t t
