@@ -1,3 +1,13 @@
+2001-02-15 20:21  flood
+
+	* modules/mod_core.c, src/dirtree.c: Bug #1008 - Port 21 is now
+	default w/out Port directive.
+
+2001-02-15 09:24  flood
+
+	* src/data.c: spurious #ifdef removed, sendfile() should compile
+	again
+
 2001-02-13 23:12  flood
 
 	* acconfig.h, config.h.in, configure.in, src/data.c: sendfile
