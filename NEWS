@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.42 2000-03-06 06:25:11 macgyver Exp $
+$Id: NEWS,v 1.43 2000-07-06 03:31:59 macgyver Exp $
 
 1.2.0 - Released: ???
 ---------------------
@@ -30,6 +30,13 @@ $Id: NEWS,v 1.42 2000-03-06 06:25:11 macgyver Exp $
   mod_ls will be rewritten entirely in 1.3.
 - Added a -L option to mod_ls, so things like mirror work properly with
   symbolic links.
+- Fixed the 'password shows up where username should be' problem with MySQL
+  authentication.
+- Fixed a potential security problem in setproctitle-enabled systems.
+- Documented a buffer issue with CustomLog -- This will be entirely rewritten
+  in 1.3.
+- Fixed a potential buffer problem in mod_ls.
+- Clarified syslog message information in INSTALL.
 
 1.2.0pre10 - Released: 1/17/00
 ------------------------------
