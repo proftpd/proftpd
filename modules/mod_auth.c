@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.172 2003-11-09 23:10:55 castaglia Exp $
+ * $Id: mod_auth.c,v 1.173 2003-12-11 07:59:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -690,6 +690,7 @@ static char *_get_default_root(pool *p) {
 
     else {
       char *realdir;
+      int xerrno;
 
       /* We need to be the final user here so that if the user has their home
        * directory with a mode the user proftpd is running (ie the User
@@ -699,10 +700,16 @@ static char *_get_default_root(pool *p) {
 
       PRIVS_USER
       realdir = dir_realpath(p, dir);
+      if (!realdir)
+        xerrno = errno;
       PRIVS_RELINQUISH
 
       if (realdir)
         dir = realdir;
+
+      else
+        pr_log_pri(PR_LOG_NOTICE, "notice: unable to resolve '%s': %s", dir,
+          xerrno);
     }
   }
 
