@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.26 2003-10-19 21:40:43 jwm Exp $
+# $Id: proftpd.spec,v 1.27 2003-10-19 21:45:58 jwm Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -18,16 +18,26 @@
 #   mod_ifsession
 #   ipv6
 
+%define proftpd_version 1.2.9rc3
+%define usecvsversion             0
+%define proftpd_cvs_version_main  1.2
+%define proftpd_cvs_version_date  20031009
+
 Summary:		ProFTPD -- Professional FTP Server.
 Name:			proftpd
-Version:		1.2.9rc3
 Release:		1
 License:		GPL
 Group:			System Environment/Daemons
 Packager:		John Morrissey <jwm@proftpd.org>
 Vendor:			The ProFTPD Project
 URL:			http://www.proftpd.org/
+%if %{usecvsversion}
+Source:			ftp://ftp.proftpd.org/devel/source/proftpd-%{proftpd_cvs_version_main}-cvs-%{proftpd_cvs_version_date}.tgz
+Version:		%{proftpd_cvs_version_main}cvs%{proftpd_cvs_version_date}
+%else
 Source:			ftp://ftp.proftpd.org/distrib/%{name}-%{version}.tar.bz2
+Version:		%{proftpd_version}
+%endif
 Prefix:			/usr
 BuildRoot:		%{_builddir}/%{name}-%{version}-root
 Requires:		pam >= 0.72, chkconfig, %{?_with_mod_tls:openssl krb5-libs}
@@ -59,7 +69,11 @@ Obsoletes:	proftpd-standalone
 This package is neccesary to setup ProFTPD to run from inetd/xinetd.
 
 %prep
+%if %{usecvsversion}
+%setup -q -n %{name}-%{proftpd_cvs_version_main}
+%else
 %setup -q
+%endif
   MODULES="mod_ratio:mod_readme"
   MODULES="${MODULES}%{?_with_mod_tls::mod_tls}"
   MODULES="${MODULES}%{?_with_mod_radius::mod_radius}"

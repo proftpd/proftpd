@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.493 2003-10-17 15:39:27 castaglia Exp $
+$Id: NEWS,v 1.494 2003-10-19 21:45:58 jwm Exp $
 
 CVS
 ---------------------------------
@@ -15,6 +15,8 @@ CVS
   the process privileges; depending on the order of configuration in
   proftpd.conf, some Included files might not be parseable due to permissions
   problems.
+- Bug 2197 - The RPM .spec has been updated for easy RPM builds from CVS
+  snapshots.
 
 1.2.9rc3 - Released 15-Oct-2003
 ---------------------------------
