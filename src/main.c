@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.121 2002-10-03 15:30:56 castaglia Exp $
+ * $Id: main.c,v 1.122 2002-10-08 14:35:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -602,8 +602,21 @@ void set_auth_check(int (*chk)(cmd_rec*)) {
 static void end_login_noexit(void) {
 
   /* Clear the scoreboard entry. */
-  if (!is_master && pr_scoreboard_del_entry(TRUE) < 0)
-    log_pri(LOG_NOTICE, "error deleting scoreboard entry: %s", strerror(errno));
+  if (ServerType == SERVER_STANDALONE) {
+
+    /* For standalone daemons, we only clear the scoreboard slot if we are
+     * an exiting child process.
+     */
+    if (!is_master && pr_scoreboard_del_entry(TRUE) < 0)
+      log_pri(LOG_NOTICE, "error deleting scoreboard entry: %s",
+        strerror(errno));
+
+  } else if (ServerType == SERVER_INETD) {
+    /* For inetd-spawned daemons, we always clear the scoreboard slot. */
+    if (pr_scoreboard_del_entry(TRUE) < 0)
+      log_pri(LOG_NOTICE, "error deleting scoreboard entry: %s",
+        strerror(errno));
+  }
 
   /* Run all the exit handlers */
   run_exit_handlers();
