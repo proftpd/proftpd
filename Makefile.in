@@ -46,7 +46,7 @@ src: include/buildstamp.h dummy
 
 modules: include/buildstamp.h dummy
 	cd modules/ && $(MAKE) static-modules
-	cd modules/ && $(MAKE) shared-modules
+	test -z $(SHARED_MODULE_OBJS) || (cd modules/ && $(MAKE) shared-modules)
 
 utils: include/buildstamp.h dummy
 	cd utils/ && $(MAKE) utils
