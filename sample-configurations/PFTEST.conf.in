@@ -19,7 +19,7 @@ AuthUserFile			%TestDir%/PFTEST.passwd
 AuthGroupFile			%TestDir%/PFTEST.group
 
 PidFile				%TestDir%/PFTEST.pid
-ScoreboardPath			%TestDir%
+ScoreboardFile			%TestDir%/PFTEST.score
 SystemLog			%TestDir%/PFTEST.syslog
 TransferLog			%TestDir%/PFTEST.xferlog
 
@@ -38,7 +38,7 @@ Umask				022
 MaxInstances			5
 
 # Normally, we want files to be overwriteable.
-<Directory /*>
+<Directory />
 	AllowOverwrite		on
 </Directory>
 
