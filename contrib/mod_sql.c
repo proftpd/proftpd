@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.65 2004-02-15 22:05:08 castaglia Exp $
+ * $Id: mod_sql.c,v 1.66 2004-02-15 22:42:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3513,7 +3513,7 @@ MODRET set_sqlauthenticate(cmd_rec * cmd) {
 	  CONF_ERROR(cmd, "groups already set");
 	
 	if (!strcasecmp("groups*", arg)) {
-          pr_log_debug(DEBUG1, "Use of * in SQLAuthenticate has been deprecated.  Use AuthOrder for setting authoritativeness.");
+          pr_log_debug(DEBUG1, "%s: use of * in SQLAuthenticate has been deprecated.  Use AuthOrder for setting authoritativeness", cmd->argv[0]);
 
 	} else if (strlen(arg) > 6) {
 	  CONF_ERROR(cmd, "unknown argument");
@@ -3526,7 +3526,7 @@ MODRET set_sqlauthenticate(cmd_rec * cmd) {
 	  CONF_ERROR(cmd, "users already set");
 	
 	if (!strcasecmp("users*", arg)) {
-          pr_log_debug(DEBUG1, "Use of * in SQLAuthenticate has been deprecated.  Use AuthOrder for setting authoritativeness.");
+          pr_log_debug(DEBUG1, "%s: use of * in SQLAuthenticate has been deprecated.  Use AuthOrder for setting authoritativeness", cmd->argv[0]);
 
 	} else if (strlen(arg) > 5) {
 	  CONF_ERROR(cmd, "unknown argument");
