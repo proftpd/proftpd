@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.257 2004-11-03 16:53:47 castaglia Exp $
+ * $Id: mod_core.c,v 1.258 2004-11-14 23:58:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -164,7 +164,9 @@ static void scrub_scoreboard(void *data) {
     /* Check to see if the PID in this entry is valid.  If not, erase
      * the slot.
      */
-    if (kill(entry.sce_pid, 0) < 0 && errno == ESRCH) {
+    if (entry.sce_pid &&
+        kill(entry.sce_pid, 0) < 0 &&
+        errno == ESRCH) {
 
       /* OK, the recorded PID is no longer valid. */
       pr_log_debug(DEBUG9, "scrubbing scoreboard slot for PID %u",
