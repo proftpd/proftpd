@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.13 2003-08-01 01:03:27 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.14 2003-08-06 07:07:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -330,14 +330,16 @@ static struct group *af_getgrent(authfile_file_t *groupf) {
   struct group *grp = NULL;
 
   while (TRUE) {
-    pr_signals_handle();
-
 #ifdef HAVE_FGETGRENT
+    pr_signals_handle();
     grp = fgetgrent(groupf->af_file);
 #else
-    char *cp = NULL, *buf = malloc(BUFSIZ);
+    char *cp = NULL, *buf = NULL;
     int buflen = BUFSIZ;
 
+    pr_signals_handle();
+
+    buf = malloc(BUFSIZ);
     if (!buf)
       return NULL;
 
