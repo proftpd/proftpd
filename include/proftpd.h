@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.29 2002-08-14 16:17:35 castaglia Exp $
+ * $Id: proftpd.h,v 1.30 2002-09-13 19:33:38 castaglia Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -310,6 +310,7 @@ void pr_handle_signals(void);
 void main_exit(void *, void *, void *, void *);
 void main_set_idle(void);
 void register_rehash(void *, void(*)(void *));
-void set_rlimits(void);
+void set_daemon_rlimits(void);
+void set_session_rlimits(void);
 
 #endif /* __PROFTPD_H */
