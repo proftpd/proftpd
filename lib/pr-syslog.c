@@ -29,6 +29,11 @@
 
 #include "conf.h"
 
+#ifdef SOLARIS2
+#include <sys/strlog.h>
+#include <stropts.h>
+#endif
+
 static int sock_type = SOCK_DGRAM;
 static int log_opts = 0;
 static const char *log_ident = NULL;
@@ -46,6 +51,11 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
   size_t buflen = 0;
   int saved_errno = errno;
 
+#ifdef SOLARIS2
+  struct strbuf ctl, dat;
+  struct log_ctl lc;
+#endif
+
   /* clear the buffer */
   memset(logbuf, '\0', sizeof(logbuf));
 
@@ -61,9 +71,11 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
   if ((pri & LOG_FACMASK) == 0)
     pri |= log_facility;
 
+#ifndef SOLARIS2
   snprintf(logbuf, sizeof(logbuf), "<%d>", pri);
   logbuf[sizeof(logbuf)-1] = '\0';
   buflen = strlen(logbuf);
+#endif
 
   time(&now);
  
@@ -113,7 +125,25 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
   if (sock_type == SOCK_STREAM)
     ++buflen;
 
+#ifndef SOLARIS2
   send(sockfd, logbuf, buflen, 0);
+#else
+
+  /* Prepare the structs for use by putmsg(). As /dev/log is a STREAMS
+   * device on Solaris (and possibly other platforms?), putmsg() is
+   * used so that syslog facility and level are properly honored; write()
+   * does not seem to work as desired.
+   */
+  ctl.len = ctl.maxlen = sizeof(lc);
+  ctl.buf = (char *) &lc;
+  dat.len = dat.maxlen = buflen;
+  dat.buf = logbuf;
+  lc.level = 0;
+  lc.flags = SL_CONSOLE;
+  lc.pri = pri;
+
+  putmsg(sockfd, &ctl, &dat, 0);
+#endif
 }
 
 void pr_syslog(int sockfd, int pri, const char *fmt, ...) {
@@ -123,8 +153,10 @@ void pr_syslog(int sockfd, int pri, const char *fmt, ...) {
   va_end(ap);
 }
 
+#ifndef SOLARIS2
 /* AF_UNIX address of local logger */
 static struct sockaddr syslog_addr;
+#endif
 
 int pr_openlog(const char *ident, int opts, int facility) {
   int sockfd = -1;
@@ -137,6 +169,7 @@ int pr_openlog(const char *ident, int opts, int facility) {
   if (facility != 0 && (facility &~ LOG_FACMASK) == 0)
     log_facility = facility;
 
+#ifndef SOLARIS2
   while (1) {
     if (sockfd == -1) {
       syslog_addr.sa_family = AF_UNIX;
@@ -168,6 +201,9 @@ int pr_openlog(const char *ident, int opts, int facility) {
     }
     break;
   }
+#else
+  sockfd = open(PR_PATH_LOG, O_WRONLY);
+#endif
 
   return sockfd;
 }
