@@ -7732,7 +7732,8 @@ done
 
 
 
-for ac_header in sys/file.h sys/types.h sys/uio.h
+
+for ac_header in sys/file.h sys/mman.h sys/types.h sys/uio.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if eval "test \"\${$as_ac_Header+set}\" = set"; then
