@@ -417,6 +417,9 @@
 /* Define if you have the <krb.h> header file.  */
 #undef HAVE_KRB_H
 
+/* Define if you have the <inttypes.h> header file.  */
+#undef HAVE_INTTYPES_H
+
 /* Define if you have the <libutil.h> header file.  */
 #undef HAVE_LIBUTIL_H
 

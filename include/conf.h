@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.57 2004-10-31 18:53:05 castaglia Exp $
+ * $Id: conf.h,v 1.58 2004-10-31 21:06:12 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -61,6 +61,10 @@
 
 #ifdef HAVE_SYS_TYPES_H
 # include <sys/types.h>
+#endif
+
+#ifdef HAVE_INTTYPES_H
+# include <inttypes.h>
 #endif
 
 #ifdef HAVE_UNISTD_H
