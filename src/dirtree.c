@@ -19,7 +19,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.6 1999-09-18 18:26:38 macgyver Exp $
+ * $Id: dirtree.c,v 1.7 1999-09-26 05:36:01 macgyver Exp $
  */
 
 /* History:
@@ -144,7 +144,7 @@ cmd_rec *get_config_cmd(pool *ppool, FILE *fp)
     while((wrd = get_word(&cp)) != NULL) {
       char *tmp = pstrdup(newpool, wrd);
       
-      *((char**)push_array(tarr)) = tmp; // pstrdup(newpool,wrd);
+      *((char**)push_array(tarr)) = tmp; /* pstrdup(newpool,wrd); */
       newcmd->argc++;
     }
 
