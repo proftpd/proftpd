@@ -614,7 +614,7 @@ FCT (pattern, string, no_leading_period, flags)
 
 		    if (c == L('-') && *p != L(']'))
 		      {
-#if _LIBC
+#ifdef _LIBC
 			/* We have to find the collation sequence
 			   value for C.  Collation sequence is nothing
 			   we can regularly access.  The sequence

@@ -125,6 +125,8 @@
 
 # define STREQ(s1, s2) ((strcmp (s1, s2) == 0))
 
+# define HANDLE_MULTIBYTE	0
+
 # if defined _LIBC || (defined HAVE_WCTYPE_H && defined HAVE_WCHAR_H)
 /* The GNU C library provides support for user-defined character classes
    and the functions from ISO C amendement 1.  */
@@ -150,6 +152,7 @@
 
 #  if (HAVE_MBSTATE_T && HAVE_MBSRTOWCS) || _LIBC
 /* In this case we are implementing the multibyte character handling.  */
+#   undef HANDLE_MULTIBYTE
 #   define HANDLE_MULTIBYTE	1
 #  endif
 
