@@ -31,6 +31,8 @@
   <li><a href="#AuthUsingAlias">AuthUsingAlias</a></li>
   <li><a href="#Bind">Bind</a></li>
   <li><a href="#CDPath">CDPath</a></li>
+  <li><a href="#Class">Class</a></li>
+  <li><a href="#Classes">Classes</a></li>
   <li><a href="#CommandBufferSize">CommandBufferSize</a></li>
   <li><a href="#DefaultChdir">DefaultChdir</a></li>
   <li><a href="#DefaultRoot">DefaultRoot</a></li>
@@ -111,6 +113,7 @@
   <li><a href="#tcpNoDelay">tcpNoDelay</a></li>
   <li><a href="#tcpReceiveWindow">tcpReceiveWindow</a></li>
   <li><a href="#tcpSendWindow">tcpSendWindow</a></li>
+  <li><a href="#TimesGMT">TimesGMT</a></li>
   <li><a href="#TimeoutIdle">TimeoutIdle</a></li>
   <li><a href="#TimeoutLogin">TimeoutLogin</a></li>
   <li><a href="#TimeoutNoTransfer">TimeoutNoTransfer</a></li>
@@ -553,6 +556,37 @@ provided they have the appropriate rights. So, if /home/public/proftpd exists,
 they currently are in the directory tree.
 <p></p>
 <hr>
+<h2><a name="Class">Class</a></h2>
+<p><strong>Syntax:</strong> Class <em>"name"</em> <em>limit|regex|ip</em> <em>value</em><br>
+  <strong>Default:</strong> None<br>
+  <strong>Context:</strong> server config <br>
+  <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
+<p>Controls class based access. Class base access allows each connecting IP to 
+be classified into a separate class. Each class has its own maximum number
+of connections. <code>limit</code> sets the maximum number of connections
+for that class name, <code>regex</code> sets a hostname regex (POSIX) for
+inclusion in the class and <em>ip</em> sets an IP/netmask based inclusion.
+The default class is called <em>default</em>. Example:
+<pre>
+  Classes on
+  Class local limit 100
+  Class default limit 10
+  Class local regex .*foo.com
+  Class local ip 172.16.1.0/24
+</pre>
+This creates two classes, local and default, with local being everything in 
+*.foo.com and 172.16.1.* combined.
+<p></p>
+<hr>
+<h2><a name="Classes">Classes</a></h2>
+<p><strong>Syntax:</strong> Classes <em>on|off</em> <br>
+  <strong>Default:</strong> Off<br>
+  <strong>Context:</strong> server config <br>
+  <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
+<p>Controls class based access. Enables class based access control.
+ see: <a href="#Class">Class</a>
+<p></p>
+<hr>
 <h2><a name="CommandBufferSize">CommandBufferSize</a></h2>
 <p><strong>Syntax:</strong> CommandBufferSize <em>size</em><br>
   <strong>Default:</strong> <code>None</code><br>
@@ -854,10 +888,11 @@ href="#DirFakeUser"><strong>DirFakeUser</strong></a><strong> are completely cosm
   is running as. As this can lead confusion, absolute pathnames are suggested. 
   If the file cannot be found or accessed, no error occurs and nothing is logged 
   or displayed to the client.</p>
+<!-- Bug fixed 
 <p>DisplayConnect supports a subset of the &quot;magic cookies&quot; used by <a href="#DisplayLogin">DisplayLogin</a> 
   and <a
 href="#DisplayFirstChdir">DisplayFirstChdir</a>: %T, %F, %R, %L and %u (see <a href="#DisplayFirstChdir">DisplayFirstChdir</a> 
-  for details).</p>
+  for details).</p> -->
 <hr>
 <h2><a name="DisplayFirstChdir">DisplayFirstChdir</a></h2>
 <p><strong>Syntax:</strong> DisplayFirstChdir <em>filename</em><br>
@@ -938,6 +973,21 @@ href="reference.html#Anonymous"><u>&lt;Anonymous&gt;</u></a><u>), the file must
         <td>Name of virtual host (if any)</td>
     </tr>
 --> 
+    <tr>
+      <td align="right"><strong>%x</strong></td>
+      <td>&nbsp;</td>
+      <td>The name of the user's class</td>
+    </tr>
+    <tr> 
+      <td align="right"><strong>%y</strong></td>
+      <td>&nbsp;</td>
+      <td>Current number of connections from the user's class</td>
+    </tr>
+    <tr>
+      <td align="right"><strong>%z</strong></td>
+      <td>&nbsp;</td>
+      <td>Max number of connections from the user's class</td>
+    </tr>
   </table>
 </div>
 <p><strong>NOTE:</strong> not all of these may have a rational value, depending 
@@ -2066,6 +2116,16 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
     tcp send windows. It is only used when sending a file from the server to a 
     client on the data connection. For a detailed description of receive/send 
     window sizes see <a href="reference.html#tcpReceiveWindow">tcpReceiveWindow</a>.</p>
+  <hr>
+  <h2><a name="TimesGMT">TimesGMT</a></h2>
+  <p><strong>Syntax:</strong> TimesGMT <em>on|off</em><br>
+    <strong>Default: (versions prior to 1.2.0pre9)</strong> off - but MDTM reports in GMT<br>
+    <strong>Default: (versions 1.2.0pre9 and beyond)</strong> on<br>
+    <strong>Context:</strong> server config<br>
+    <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
+  <p>The TimesGMT option causes the server to report all ls and MDTM times in
+     GMT and not local time.
+  <p></p>
   <hr>
   <h2><a name="TimeoutIdle">TimeoutIdle</a></h2>
   <p><strong>Syntax:</strong> TimeoutIdle <em>seconds</em><br>
