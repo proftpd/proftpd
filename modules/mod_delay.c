@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.3 2004-11-13 22:41:46 castaglia Exp $
+ * $Id: mod_delay.c,v 1.4 2004-11-21 20:26:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -282,7 +282,8 @@ static int delay_table_init(void) {
      */
 
     pr_log_debug(DEBUG2, MOD_DELAY_VERSION
-      ": expected table size %" PR_LU ", found %" PR_LU, tab_size, st.st_size);
+      ": expected table size %" PR_LU ", found %" PR_LU ", resetting table",
+      tab_size, st.st_size);
     reset_table = TRUE;
   }
 
@@ -294,6 +295,9 @@ static int delay_table_init(void) {
      */
     lseek(fh->fh_fd, tab_size-1, SEEK_SET);
     write(fh->fh_fd, "", 1);
+
+    /* Truncate the table, in case we're shrinking an existing table. */
+    pr_fsio_ftruncate(fh, tab_size);
   }
 
   delay_tab.dt_fd = fh->fh_fd;
@@ -312,8 +316,10 @@ static int delay_table_init(void) {
     struct delay_rec *row;
 
     for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+      unsigned int i = s->sid - 1;
+
       /* Row for USER values */
-      row = &((struct delay_rec *) delay_tab.dt_data)[s->sid];
+      row = &((struct delay_rec *) delay_tab.dt_data)[i];
       if (strcmp(pr_netaddr_get_ipstr(s->addr), row->d_addr) != 0) {
         reset_table = TRUE;
         break;
@@ -325,7 +331,7 @@ static int delay_table_init(void) {
       }
 
       /* Row for PASS values */
-      row = &((struct delay_rec *) delay_tab.dt_data)[s->sid + 1];
+      row = &((struct delay_rec *) delay_tab.dt_data)[i + 1];
       if (strcmp(pr_netaddr_get_ipstr(s->addr), row->d_addr) != 0) {
         reset_table = TRUE;
         break;
@@ -339,6 +345,17 @@ static int delay_table_init(void) {
   }
 
   if (reset_table) {
+    /* Seek to the desired table size (actually, one bytes less than the
+     * desired size) and write a single byte, so that there's enough
+     * allocated backing store on the filesystem to support the ensuing
+     * mmap() call.
+     */
+    lseek(fh->fh_fd, tab_size-1, SEEK_SET);
+    write(fh->fh_fd, "", 1);
+
+    /* Truncate the table, in case we're shrinking an existing table. */
+    pr_fsio_ftruncate(fh, tab_size);
+
     pr_log_debug(DEBUG6, MOD_DELAY_VERSION ": resetting DelayTable '%s'",
       delay_tab.dt_path);
     delay_table_reset();
@@ -376,8 +393,10 @@ static void delay_table_reset(void) {
   server_rec *s;
 
   for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+    unsigned int i = s->sid - 1;
+
     /* Row for USER values */
-    struct delay_rec *row = &((struct delay_rec *) delay_tab.dt_data)[s->sid];
+    struct delay_rec *row = &((struct delay_rec *) delay_tab.dt_data)[i];
     row->d_sid = s->sid;
     sstrncpy(row->d_addr, pr_netaddr_get_ipstr(s->addr), sizeof(row->d_addr));
     row->d_port = s->ServerPort;
@@ -385,7 +404,7 @@ static void delay_table_reset(void) {
     memset(row->d_vals, 0, sizeof(row->d_vals));
 
     /* Row for PASS values */
-    row = &((struct delay_rec *) delay_tab.dt_data)[s->sid + 1];
+    row = &((struct delay_rec *) delay_tab.dt_data)[i + 1];
     row->d_sid = s->sid;
     sstrncpy(row->d_addr, pr_netaddr_get_ipstr(s->addr), sizeof(row->d_addr));
     row->d_port = s->ServerPort;
@@ -615,6 +634,49 @@ MODRET delay_pre_user(cmd_rec *cmd) {
 /* Event handlers
  */
 
+static void delay_exit_ev(const void *event_data, void *user_data) {
+  pr_fh_t *fh;
+
+  if (!delay_engine)
+    return;
+
+  /* Write out the DelayTable to the filesystem, thus updating the
+   * file metadata.
+   */
+
+  PRIVS_ROOT
+  fh = pr_fsio_open(delay_tab.dt_path, O_RDWR);
+  PRIVS_RELINQUISH
+
+  if (!fh) {
+    pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
+      ": warning: unable to open DelayTable '%s': %s", delay_tab.dt_path,
+      strerror(errno));
+    return;
+  }
+
+  delay_tab.dt_fd = fh->fh_fd;
+  delay_tab.dt_data = NULL;
+
+  /* Load the DelayTable into memory. */
+  delay_table_load();
+
+  if (pr_fsio_write(fh, delay_tab.dt_data, delay_tab.dt_size) < 0)
+    pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
+      ": warning: error updating DelayTable '%s': %s", delay_tab.dt_path,
+      strerror(errno));
+
+  /* Unload the DelayTable from memory. */
+  delay_table_unload();
+
+  if (pr_fsio_close(fh) < 0)
+    pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
+      ": warning: error writing DelayTable '%s': %s", delay_tab.dt_path,
+      strerror(errno));
+
+  return;
+}
+
 static void delay_postparse_ev(const void *event_data, void *user_data) {
   config_rec *c;
 
@@ -640,6 +702,7 @@ static int delay_init(void) {
   delay_tab.dt_path = PR_RUN_DIR "/proftpd.delay";
   delay_tab.dt_data = NULL;
 
+  pr_event_register(&delay_module, "core.exit", delay_exit_ev, NULL);
   pr_event_register(&delay_module, "core.postparse", delay_postparse_ev, NULL);
   return 0;
 }
@@ -649,6 +712,8 @@ static int delay_sess_init(void) {
 
   delay_nuser = 0;
   delay_npass = 0;
+
+  pr_event_unregister(&delay_module, "core.exit", delay_exit_ev);
 
   pr_log_debug(DEBUG6, MOD_DELAY_VERSION ": opening DelayTable '%s'",
     delay_tab.dt_path);
