@@ -60,17 +60,65 @@ files.
         been added.
 
   + New command-line options:
-      The new -V, --settings display various compile-time settings.
+      The new -V and --settings command-line options display various
+      compile-time settings of the compiled proftpd binary.
 
   + New configure options:
+
       --enable-dso
+        This configure option enables DSO support in the compiled proftpd,
+        and causes the mod_dso module to be compiled in.  See the
+        README.DSO and doc/howto/DSO.html files for details.
+ 
       --enable-facl
+        This configuration option enables support for POSIX ACLs, on
+        systems that support them, in the compiled proftpd.  See the
+        README.facl file for more information.
 
   + New modules:
+
       mod_delay
+        There is the possibility of a timing attack on proftpd, leading
+        to discovery of valid user names (Bug #2480).  This module was
+        added to mitigate this timing attack; see doc/modules/mod_delay.html
+        for more information.
+
       mod_dso
+        This module handles the dynamic loading and unloading of shared
+        modules from the running proftpd server.  Note that this module
+        requires the --enable-dso configure option to be used when compiling
+        proftpd.  See README.DSO for more information on shared modules.
+        The doc/modules/mod_dso.html file contains documentation for this
+        module.
+
       mod_facl
+        This module uses the FSIO API to provide checking of file
+        permissions that use POSIX ACLs.  The --enable-facl configure
+        option must be used when compiling proftpd for this module to
+        be used.  See the README.facl file for more information.
+
       mod_load
+        This module provides the ability to deny a connection if the
+        system load is above a configurable limit; useful for imposing
+        resource restrictions.  The doc/contrib/mod_load.html file
+        contains documentation for this module.
+
+  + Enhanced modules:
+
+      mod_ldap
+        The mod_ldap module has been updated to version 2.8.13.
+
+      mod_quotatab
+        The mod_quotatab module now supports enforcing hard limits at
+        the filesystem level.  This means that if the quota limit is
+        a hard limit, and a client exceeds that limit, the upload
+        will fail.  Previously, the upload would succeed, but the file
+        would be automatically deleted.
+
+      mod_tls
+        The mod_tls module now supports the CCC FTP command, which can
+        be used by FTPS clients to secure data transfers with FTPS
+        servers in a firewalled environment.
 
   + New Display variables:
 
@@ -80,6 +128,8 @@ files.
       %{total_files_in}
       %{total_files_out}
       %{total_files_xfer}
+        These new Display variables use the new variable syntax;
+        see doc/howto/DisplayFiles.html for details.
 
   + Deprecated configuration directives:
 
@@ -104,4 +154,4 @@ files.
             ...
           </VirtualHost>
 
-Last Updated: $Date: 2005-02-26 20:22:21 $
+Last Updated: $Date: 2005-03-26 20:48:05 $
