@@ -2756,11 +2756,6 @@ MODRET tls_any(cmd_rec *cmd) {
     }
   }
 
-#ifdef TLS
-  if (tls_logged_in)
-    reply_code = R_232;
-#endif
-
   /* NOTE: in order for mod_tls to get the proper response code to
    * mod_auth's cmd_pass() (which cannot be circumvented, for it does the
    * setting up of the environment), I'll need to hack the core a little.
