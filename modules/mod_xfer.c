@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.161 2004-04-27 16:58:25 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.162 2004-05-17 18:24:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1857,6 +1857,7 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
     /* Transfer in progress, ignore this timeout */
     return 1;
 
+  pr_event_generate("core.timeout-no-transfer", NULL);
   pr_response_send_async(R_421, "No Transfer Timeout (%d seconds): closing "
     "control connection.", TimeoutNoXfer);
 

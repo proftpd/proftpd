@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.185 2004-05-13 01:13:56 castaglia Exp $
+ * $Id: mod_auth.c,v 1.186 2004-05-17 18:24:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -92,6 +92,7 @@ static int auth_cmd_chk_cb(cmd_rec *cmd) {
  */
 
 static int auth_login_timeout_cb(CALLBACK_FRAME) {
+  pr_event_generate("core.timeout-login", NULL);
   pr_response_send_async(R_421, "Login Timeout (%d seconds): "
     "closing control connection.", TimeoutLogin);
 
@@ -102,6 +103,7 @@ static int auth_login_timeout_cb(CALLBACK_FRAME) {
 }
 
 static int auth_session_timeout_cb(CALLBACK_FRAME) {
+  pr_event_generate("core.timeout-session", NULL);
   pr_response_send_async(R_421, "Session Timeout (%u seconds): "
     "closing control connection", TimeoutSession);
 

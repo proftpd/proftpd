@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.76 2004-05-15 17:25:14 castaglia Exp $
+ * $Id: data.c,v 1.77 2004-05-17 18:24:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -54,6 +54,7 @@ static pr_netio_stream_t *nstrm = NULL;
 /* Called if the "Stalled" timer goes off
  */
 static int stalled_timeout_cb(CALLBACK_FRAME) {
+  pr_event_generate("core.timeout-stalled", NULL);
   pr_log_pri(PR_LOG_NOTICE, "Data transfer stall timeout: %d seconds",
     TimeoutStalled);
   end_login(1);
@@ -891,7 +892,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
   }
 
   if (total && TimeoutIdle)
-    reset_timer(TIMER_IDLE,ANY_MODULE);
+    reset_timer(TIMER_IDLE, ANY_MODULE);
 
   session.xfer.total_bytes += total;
   session.total_bytes += total;

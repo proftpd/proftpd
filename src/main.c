@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.230 2004-05-13 14:02:00 castaglia Exp $
+ * $Id: main.c,v 1.231 2004-05-17 18:24:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -712,9 +712,10 @@ static int idle_timeout_cb(CALLBACK_FRAME) {
     return 1;
   }
 
+  pr_event_generate("core.timeout-idle", NULL);
+
   pr_response_send_async(R_421, "Idle Timeout (%d seconds): closing control "
     "connection.", TimeoutIdle);
-
   session_exit(PR_LOG_INFO, "FTP session idle timeout, disconnected.", 0, NULL);
 
   remove_timer(TIMER_LOGIN, ANY_MODULE);
