@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.190 2003-09-08 00:42:54 castaglia Exp $
+ * $Id: main.c,v 1.191 2003-09-08 00:56:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -185,7 +185,7 @@ extern char *__progname, *__progname_full;
 #endif /* HAVE___PROGNAME */
 extern char **environ;
 
-static void init_set_proc_title(int argc, char *argv[], char *envp[]) {
+static void init_proc_title(int argc, char *argv[], char *envp[]) {
   register int i, envpsize;
   char **p;
 
@@ -220,6 +220,21 @@ static void init_set_proc_title(int argc, char *argv[], char *envp[]) {
    */
   __progname      = strdup("proftpd");
   __progname_full = strdup(argv[0]);
+#endif /* HAVE___PROGNAME */
+}
+
+static void free_proc_title(void) {
+  if (environ) {
+    register unsigned int i;
+
+    for (i = 0; environ[i] != NULL; i++)
+      free(environ[i]);
+    free(environ);
+  }
+
+#ifdef HAVE___PROGNAME
+  free(__progname);
+  free(__progname_full);
 #endif /* HAVE___PROGNAME */
 }
 
@@ -363,6 +378,7 @@ static void end_login_noexit(void) {
 
   if (!is_master || ServerType == SERVER_INETD)
     log_pri(PR_LOG_INFO, "FTP session closed.");
+
 }
 
 /* Finish any cleaning up, mark utmp as closed and exit without flushing
@@ -370,7 +386,13 @@ static void end_login_noexit(void) {
  */
 void end_login(int exitcode) {
   end_login_noexit();
-  destroy_pool(permanent_pool);
+  destroy_pool(session.pool);
+
+  if (is_master) {
+    free_pools();
+    free_proc_title();
+  }
+
   _exit(exitcode);
 }
 
@@ -1172,7 +1194,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
    * }
    */
 
-  session.pool = permanent_pool;
+  session.pool = make_sub_pool(permanent_pool);
   session.c = conn;
   session.data_port = conn->remote_port - 1;
   session.sf_flags = 0;
@@ -1306,6 +1328,13 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   set_session_rlimits();
 
   cmd_loop(main_server, conn);
+
+#ifdef PR_DEVEL_NO_DAEMON
+  /* Cleanup */
+  end_login_noexit();
+  free_pools();
+  free_proc_title();
+#endif /* PR_DEVEL_NO_DAEMON */
 }
 
 static void disc_children(void) {
@@ -2442,9 +2471,8 @@ int main(int argc, char *argv[], char **envp) {
 
   memset(&session, 0, sizeof(session));
 
-  /* Initialize stuff for set_proc_title.
-   */
-  init_set_proc_title(argc, argv, envp);
+  /* Initialize stuff for set_proc_title. */
+  init_proc_title(argc, argv, envp);
 
   /* Seed rand */
   srand(time(NULL));
