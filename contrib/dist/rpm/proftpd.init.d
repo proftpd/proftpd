@@ -13,7 +13,7 @@
 # config: /etc/proftpd.conf
 #
 # By: Osman Elliyasa <osman@Cable.EU.org>
-# $Id: proftpd.init.d,v 1.3 2001-06-03 13:38:04 flood Exp $
+# $Id: proftpd.init.d,v 1.4 2002-05-08 18:39:35 castaglia Exp $
 
 # Source function library.
 . /etc/rc.d/init.d/functions
@@ -33,7 +33,6 @@ case "$1" in
 		su - ftp-master -c "bin/advert.sh fifo"
 	fi
         daemon proftpd $OPTIONS
-        $0 resume
 	echo
 	touch /var/lock/subsys/proftpd
 	;;
@@ -43,7 +42,6 @@ case "$1" in
 		echo -n "Adverts "
 		su - ftp-master -c "bin/advert.sh kfifo"
 	fi
-	$0 suspend
 	killproc proftpd
 	echo
 	rm -f /var/lock/subsys/proftpd

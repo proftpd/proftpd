@@ -924,7 +924,10 @@ int inet_connect(pool *pool, conn_t *c, p_in_addr_t *addr, int port)
   }
 
   c->mode = CM_OPEN;
-  inet_get_conn_info(c,c->listen_fd);
+
+  if (inet_get_conn_info(c, c->listen_fd) < 0)
+    return -1;
+
   inet_setblock(c->pool,c);
   return 1;
 }
@@ -956,7 +959,10 @@ int inet_connect_nowait(pool *pool, conn_t *c, p_in_addr_t *addr, int port)
   }
 
   c->mode = CM_OPEN;
-  inet_get_conn_info(c,c->listen_fd);
+
+  if (inet_get_conn_info(c, c->listen_fd) < 0)
+    return -1;
+
   inet_setblock(c->pool,c);
   return 1;
 }
@@ -1040,34 +1046,33 @@ conn_t *inet_accept(pool *pool, conn_t *d, conn_t *c, int rfd, int wfd,
   return res;
 }
 
-int inet_get_conn_info(conn_t *c, int fd)
-{
+int inet_get_conn_info(conn_t *c, int fd) {
   static struct sockaddr_in servaddr;
   int len = sizeof(servaddr);
   
   /* Sanity check.
    */
-  if(fd < 0)
+  if (fd < 0)
     return -1;
   
-  if(getsockname(fd,(struct sockaddr*)&servaddr,&len) != -1) {
-    if(!c->local_ipaddr)
-      c->local_ipaddr = (p_in_addr_t*)pcalloc(c->pool,sizeof(p_in_addr_t));     
+  if (getsockname(fd, (struct sockaddr *) &servaddr, &len) != -1) {
+    if (!c->local_ipaddr)
+      c->local_ipaddr = (p_in_addr_t *) pcalloc(c->pool, sizeof(p_in_addr_t));     
     *c->local_ipaddr = servaddr.sin_addr;
     c->local_port = ntohs(servaddr.sin_port);
-  } else {
+
+  } else
     return -1;
-  }
   
   len = sizeof(servaddr);
 
-  if(getpeername(fd,(struct sockaddr*)&servaddr,&len) != -1) {
-    c->remote_ipaddr = (p_in_addr_t*)pcalloc(c->pool,sizeof(p_in_addr_t));
+  if (getpeername(fd, (struct sockaddr *) &servaddr, &len) != -1) {
+    c->remote_ipaddr = (p_in_addr_t *) pcalloc(c->pool, sizeof(p_in_addr_t));
     *c->remote_ipaddr = servaddr.sin_addr;
     c->remote_port = ntohs(servaddr.sin_port);
-  } else {
+
+  } else
     return -1;
-  }
 
   return 0;
 }
@@ -1106,8 +1111,8 @@ conn_t *inet_associate(pool *pool, conn_t *c, p_in_addr_t *addr,
   res->outf = outf;
   res->mode = CM_OPEN;
 
-
-  inet_get_conn_info(res,wfd);
+  if (inet_get_conn_info(res, wfd) < 0)
+    return NULL;
 
   /* Get the remote address */
 
@@ -1155,7 +1160,8 @@ conn_t *inet_openrw(pool *pool, conn_t *c, p_in_addr_t *addr, int fd,
 
   res->listen_fd = -1;
 
-  inet_get_conn_info(res,fd);
+  if (inet_get_conn_info(res, fd) < 0)
+    return NULL;
 
   if(addr) {
     if(!res->remote_ipaddr)

@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.48 2002-02-28 19:43:30 flood Exp $
+ * $Id: dirtree.c,v 1.49 2002-05-08 18:39:36 castaglia Exp $
  */
 
 /* History:
@@ -2500,19 +2500,17 @@ void fixup_servers()
     if(!s->tcp_swin)
       s->tcp_swin = TUNABLE_DEFAULT_SWIN;
 
-    s->ipaddr = inet_getaddr(s->pool,s->ServerAddress);
+    if ((s->ipaddr = inet_getaddr(s->pool, s->ServerAddress)) == NULL) {
+      log_pri(LOG_ERR,"Fatal: unable to determine IP address of '%s'.",
+        s->ServerAddress);
+      exit(1);
+    }
 
     if ((c = find_config(s->conf, CONF_PARAM, "MasqueradeAddress",
         FALSE)) != NULL) {
       log_pri(LOG_INFO, "%s:%d masquerading as %s",
         inet_ascii(s->pool, s->ipaddr), s->ServerPort,
         inet_ascii(s->pool, (p_in_addr_t *) c->argv[0]));
-    }
-
-    if(!s->ipaddr) {
-      log_pri(LOG_ERR,"Fatal: unable to determine IP address of `%s'.",
-                      s->ServerAddress);
-      exit(1);
     }
 
     /* honor the DefaultServer directive only if SocketBindTight is not

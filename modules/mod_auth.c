@@ -25,7 +25,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.67 2002-02-28 19:30:01 flood Exp $
+ * $Id: mod_auth.c,v 1.68 2002-05-08 18:39:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -227,9 +227,9 @@ static config_rec *_auth_resolve_user(pool *p,char **user,
                                       char **ournamep,
                                       char **anonnamep)
 {
-  config_rec *c,*topc;
+  config_rec *c = NULL, *topc = NULL;
   char *ourname,*anonname = NULL;
-  int is_alias = 0, force_anon = 0;
+  unsigned char is_alias = FALSE, force_anon = FALSE;
 
   /* Precendence rules:
    *   1. Search for UserAlias directive.
@@ -242,24 +242,37 @@ static config_rec *_auth_resolve_user(pool *p,char **user,
   if(ournamep && ourname)
     *ournamep = ourname; 
 
-  c = find_config(main_server->conf,CONF_PARAM,"UserAlias",TRUE);
-  if(c) do {
-    if(!strcmp(c->argv[0], "*") || !strcmp(c->argv[0],*user)) {
-      is_alias = 1;
-      break;
-    }  
-  } while((c = find_config_next(c,c->next,CONF_PARAM,"UserAlias",TRUE)) != NULL);
+  c = find_config(main_server->conf, CONF_PARAM, "UserAlias", TRUE);
 
-  /* if AuthAliasOnly is set, ignore this one and continue */
+  if (c)
+    do {
+      if (!strcmp(c->argv[0], "*") ||
+          !strcmp(c->argv[0], *user)) {
+        is_alias = TRUE;
+        break;
+      }  
+    } while ((c = find_config_next(c, c->next, CONF_PARAM, "UserAlias",
+      TRUE)) != NULL);
+
   topc = c;
 
-  while(c && c->parent &&
-             find_config(c->parent->set,CONF_PARAM,"AuthAliasOnly",FALSE)) {
-    is_alias = 0;
+  while (c && c->parent) {
+    int *auth_alias_only = get_param_ptr(c->parent->set, "AuthAliasOnly",
+      FALSE);
+   
+    /* If AuthAliasOnly is on, ignore this one and continue. */
+    if (!auth_alias_only || *auth_alias_only != TRUE)
+      break;
+
+    is_alias = FALSE;
+
     find_config_set_top(topc);
-    c = find_config_next(c,c->next,CONF_PARAM,"UserAlias",TRUE);
-    if(c && (!strcmp(c->argv[0],"*") || !strcmp(c->argv[0],*user)))
-      is_alias = 1;
+    c = find_config_next(c, c->next, CONF_PARAM, "UserAlias", TRUE);
+
+    if (c &&
+        (!strcmp(c->argv[0], "*") ||
+         !strcmp(c->argv[0], *user)))
+      is_alias = TRUE;
   }
 
   if(c) {
@@ -301,16 +314,19 @@ static config_rec *_auth_resolve_user(pool *p,char **user,
       force_anon = 1;
   }
 
-  if(!is_alias && !force_anon) {
-    if(find_config((c ? c->subset :
-                   main_server->conf),CONF_PARAM,"AuthAliasOnly",FALSE)) {
-      
-      if(c && c->config_type == CONF_ANON)
+  if (!is_alias && !force_anon) {
+    int *auth_alias_only = get_param_ptr(c ? c->subset :
+      main_server->conf, "AuthAliasOnly", FALSE);
+
+    if (auth_alias_only && *auth_alias_only == TRUE) {
+      if (c && c->config_type == CONF_ANON)
         c = NULL;
       else
         *user = NULL;
 
-      if(*user && find_config(main_server->conf,CONF_PARAM,"AuthAliasOnly",FALSE))
+      auth_alias_only = get_param_ptr(main_server->conf, "AuthAliasOnly",
+        FALSE);
+      if (*user && auth_alias_only && *auth_alias_only == TRUE)
         *user = NULL;
 
       if((!user || !c) && anonnamep)
@@ -698,7 +714,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
   auth_setgrent(p);
 
   if(!_auth_check_shell((c ? c->subset : main_server->conf),pw->pw_shell)) {
-    log_auth(LOG_NOTICE, "USER %s (Login failed): Invalid shell.", user);
+    log_auth(LOG_NOTICE, "USER %s (Login failed): Invalid shell: %s", user,
+      pw->pw_shell);
     goto auth_failure;
   }
 
@@ -1035,24 +1052,30 @@ static int _setup_environment(pool *p, char *user, char *pass)
         send_response(R_530,"Login incorrect.");
         end_login(1);
       }
+
     } else if(defchdir) {
-    /* if we've got defchdir, failure is ok as well, simply switch to
-     * user's homedir.
-     */
-      log_debug(DEBUG2, "unable to chdir to %s, defaulting to home directory %s",
-        session.cwd, pw->pw_dir);
+
+      /* If we've got defchdir, failure is ok as well, simply switch to
+       * user's homedir.
+       */
+      log_debug(DEBUG2, "unable to chdir to %s, defaulting to home "
+        "directory %s", session.cwd, pw->pw_dir);
 
       if (fs_chdir_canon(pw->pw_dir, !showsymlinks) == -1) {
-          log_pri(LOG_ERR, "%s chdir(\"%s\"): %s", session.user, session.cwd,
+        log_pri(LOG_ERR, "%s chdir(\"%s\"): %s", session.user, session.cwd,
                   strerror(errno));
-          send_response(R_530,"Login incorrect.");
-          end_login(1);
+        send_response(R_530, "Login incorrect.");
+        end_login(1);
       }
+
     } else {
-    /* can't switch to user's real home directory, which is not allowed. */
+
+      /* Unable to switch to user's real home directory, which is not
+       * allowed.
+       */
       log_pri(LOG_ERR, "%s chdir(\"%s\"): %s", session.user, session.cwd,
               strerror(errno));
-      send_response(R_530,"Login incorrect.");
+      send_response(R_530, "Login incorrect.");
       end_login(1);
     }
   }
@@ -1614,6 +1637,25 @@ MODRET cmd_rein(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+/* Configuration handlers
+ */
+
+MODRET set_authaliasonly(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = bool;
+
+  return HANDLED(cmd);
+}
 
 MODRET set_rootlogin(cmd_rec *cmd) {
   int bool;
@@ -1746,6 +1788,7 @@ MODRET add_userdirroot (cmd_rec *cmd) {
 }
 
 static conftable auth_config[] = {
+  { "AuthAliasOnly",		set_authaliasonly,		NULL },
   { "RootLogin",		set_rootlogin,			NULL },
   { "LoginPasswordPrompt",	set_loginpasswordprompt,	NULL },
   { "DefaultRoot",		add_defaultroot,		NULL },

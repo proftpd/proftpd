@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.79 2002-03-06 16:56:33 flood Exp $
+ * $Id: mod_core.c,v 1.80 2002-05-08 18:39:35 castaglia Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -405,16 +405,14 @@ MODRET set_defaultserver(cmd_rec *cmd)
 }
 
 MODRET add_masqueradeaddress(cmd_rec *cmd) {
-
  config_rec *c = NULL;
- p_in_addr_t *masq_addr;
+ p_in_addr_t *masq_addr = NULL;
  char masq_ip[80] = {'\0'};
 
  CHECK_ARGS(cmd, 1);
- CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+ CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
- /* make a copy of the given argument
-  */
+ /* Make a copy of the given argument.  */
  sstrncpy(masq_ip, cmd->argv[1], sizeof(masq_ip));
 
  if ((masq_addr = inet_getaddr(cmd->server->pool, masq_ip)) == NULL)
@@ -422,7 +420,7 @@ MODRET add_masqueradeaddress(cmd_rec *cmd) {
      (cmd->argv)[0], ": unable to resolve \"", masq_ip, "\"",
      NULL));
 
- c = add_config_param("MasqueradeAddress", 1, (void *) masq_addr);
+ c = add_config_param(cmd->argv[0], 1, (void *) masq_addr);
  return HANDLED(cmd);
 }
 
@@ -1920,21 +1918,6 @@ MODRET set_displaygoaway(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET set_authaliasonly(cmd_rec *cmd)
-{
-  int b;
-
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
-
-  if((b = get_boolean(cmd,1)) == -1)
-    CONF_ERROR(cmd,"expected boolean argument.");
-
-  add_config_param("AuthAliasOnly",1,(void*)b);
-
-  return HANDLED(cmd);
-}
-
 MODRET add_virtualhost(cmd_rec *cmd)
 {
   server_rec *s;
@@ -2860,7 +2843,7 @@ MODRET cmd_rnto(cmd_rec *cmd)
   if(!session.xfer.path) {
     if(session.xfer.p) {
       destroy_pool(session.xfer.p);
-      bzero(&session.xfer,sizeof(session.xfer));
+      memset(&session.xfer, '\0', sizeof(session.xfer));
     }
 
     add_response_err(R_503,"Bad sequence of commands.");
@@ -2870,19 +2853,25 @@ MODRET cmd_rnto(cmd_rec *cmd)
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathAllowFilter",FALSE);
 
-  if(preg && regexec(preg,cmd->arg,0,NULL,0) != 0) {
+  if (preg && regexec(preg,cmd->arg,0,NULL,0) != 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
-    add_response_err(R_550,"%s: Forbidden filename",cmd->arg);
+    add_response_err(R_550,"%s: Forbidden filename", cmd->arg);
+    destroy_pool(session.xfer.p);
+    memset(&session.xfer, '\0', sizeof(session.xfer));
+
     return ERROR(cmd);
   }
 
   preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathDenyFilter",FALSE);
 
-  if(preg && regexec(preg,cmd->arg,0,NULL,0) == 0) {
+  if (preg && regexec(preg,cmd->arg,0,NULL,0) == 0) {
     log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
-    add_response_err(R_550,"%s: Forbidden filename",cmd->arg);
+    add_response_err(R_550,"%s: Forbidden filename", cmd->arg);
+    destroy_pool(session.xfer.p);
+    memset(&session.xfer, '\0', sizeof(session.xfer));
+
     return ERROR(cmd);
   }
 #endif
@@ -2893,13 +2882,16 @@ MODRET cmd_rnto(cmd_rec *cmd)
      || rename(session.xfer.path,path) == -1) {
     add_response_err(R_550,"rename: %s",strerror(errno));
     destroy_pool(session.xfer.p);
-    bzero(&session.xfer,sizeof(session.xfer));
+    memset(&session.xfer, '\0', sizeof(session.xfer));
+
     return ERROR(cmd);
   }
 
-  add_response(R_250,"rename successful.");
+  add_response(R_250, "rename successful.");
+
   destroy_pool(session.xfer.p);
-  bzero(&session.xfer,sizeof(session.xfer));
+  memset(&session.xfer, '\0', sizeof(session.xfer));
+
   return HANDLED(cmd);
 }
 
@@ -2949,7 +2941,7 @@ MODRET cmd_rnfr(cmd_rec *cmd)
 
   session.xfer.p = make_sub_pool(session.pool);
   session.xfer.path = pstrdup(session.xfer.p,path);
-  add_response(R_350,"File or directory exists, ready for destination name.");
+  add_response(R_350, "File or directory exists, ready for destination name.");
 
   return HANDLED(cmd);
 }
@@ -3248,7 +3240,6 @@ static conftable core_conftable[] = {
   { "AllowUser",		add_allowuser,			NULL },
   { "AnonRequirePassword",	set_anonrequirepassword,	NULL },
   { "AnonymousGroup",		add_anonymousgroup,		NULL },
-  { "AuthAliasOnly",		set_authaliasonly,		NULL },
   { "AuthUsingAlias",		set_authusingalias,		NULL },
   { "Bind",			add_bind,			NULL },
   { "CDPath",			add_cdpath,			NULL },
