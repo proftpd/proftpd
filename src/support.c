@@ -19,7 +19,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.11 1999-12-28 07:33:10 macgyver Exp $
+ * $Id: support.c,v 1.12 1999-12-28 15:43:06 macgyver Exp $
  */
 
 /* History Log:
@@ -705,15 +705,17 @@ char *sstrcat(char *dest, const char *src, size_t n) {
  * more than "n" bytes.
  */
 char *sstrncpy(char *dest, const char *src, size_t n) {
-  register char *d;
+  register char *d = dest;
   
-  if(!dest || !src || !*dest || !*src)
+  if(!dest)
     return NULL;
   
-  for(d = dest; *src && n > 1; n--)
-    *d++ = *src++;
+  if(src && *src) {
+    for(; *src && n > 1; n--)
+      *d++ = *src++;
+  }
   
-  *d = 0;
+  *d = '\0';
   
   return dest;
 }
