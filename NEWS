@@ -1,4 +1,8 @@
-$Id: NEWS,v 1.83 2001-03-01 16:00:23 flood Exp $
+$Id: NEWS,v 1.84 2001-03-09 13:54:28 flood Exp $
+
+1.2.2 - CVS
+---------------------------------
+- Bug 1042 - <Directory /> arbitrarily not matching.
 
 1.2.1 - Released 03/01/2001
 ---------------------------------

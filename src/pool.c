@@ -495,7 +495,7 @@ char *pdircat(pool *p, ...)
   char *argp, *res;
   char last;
 
-  int len = 0;
+  int len = 0, count = 0;
   va_list dummy;
 
   va_start(dummy,p);
@@ -503,7 +503,12 @@ char *pdircat(pool *p, ...)
   last = 0;
 
   while((res = va_arg(dummy,char*)) != NULL) {
-    if(last && last != '/' && *res != '/')
+    /* If the first argument is "", we have to account for a leading /
+     * which must be added.  -jss 3/2/2001
+     */
+    if(!count++ && !*res)
+      len++;
+    else if(last && last != '/' && *res != '/')
       len++;
     else if(last && last == '/' && *res == '/')
       len--;
