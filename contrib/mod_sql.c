@@ -322,7 +322,7 @@ cmd_rec *_sql_make_cmd(pool * cp, int argc, ...)
   newpool = make_sub_pool( cp );
   c = pcalloc(newpool, sizeof(cmd_rec));
   c->argc = argc;
-  c->symtable_index = -1;
+  c->stash_index = -1;
   c->pool = newpool;
   
   c->argv = pcalloc(newpool, sizeof(void *) * (argc));

@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.161 2003-01-14 05:22:22 castaglia Exp $
+ * $Id: main.c,v 1.162 2003-01-17 16:46:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -440,10 +440,10 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
 }
 
 static int get_command_class(const char *name) {
-  cmdtable *c = mod_find_cmd_symbol((char *)name, NULL, NULL);
+  cmdtable *c = pr_stash_get_symbol(PR_SYM_CMD, name, NULL, NULL);
 
-  while(c && c->cmd_type != CMD)
-    c = mod_find_cmd_symbol((char *)name, NULL, c);
+  while (c && c->cmd_type != CMD)
+    c = pr_stash_get_symbol(PR_SYM_CMD, name, c, NULL);
 
   return (c ? c->class : 0);
 }
@@ -463,7 +463,8 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
 
   if (!match) {
     match = cmd->argv[0];
-    index_cache = &cmd->symtable_index;
+    index_cache = &cmd->stash_index;
+
   } else {
     if (last_match != match) {
       match_index_cache = -1;
@@ -473,8 +474,9 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
     index_cache = &match_index_cache;
   }
 
-  c = mod_find_cmd_symbol(match,index_cache,NULL);
-  while(c && !success) {
+  c = pr_stash_get_symbol(PR_SYM_CMD, match, NULL, index_cache);
+
+  while (c && !success) {
     if (c->cmd_type == cmd_type) {
       if (c->group)
         cmd->group = pstrdup(cmd->pool,c->group);
@@ -550,7 +552,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
     }
 
     if (!success)
-      c = mod_find_cmd_symbol(match, index_cache, c);
+      c = pr_stash_get_symbol(PR_SYM_CMD, match, c, index_cache);
   }
 
   if (!c && !success && validate) {
@@ -649,7 +651,7 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf) {
   newpool = make_sub_pool(p);
   newcmd = (cmd_rec *) pcalloc(newpool,sizeof(cmd_rec));
   newcmd->pool = newpool;
-  newcmd->symtable_index = -1;
+  newcmd->stash_index = -1;
 
   tarr = make_array(newpool, 2, sizeof(char *));
 
@@ -2140,9 +2142,15 @@ static void daemonize(void) {
   /* Fork off and have parent exit.
    */
   switch (fork()) {
-    case -1: perror("fork"); exit(1);
-    case 0: break;
-    default: exit(0);
+    case -1:
+      perror("fork");
+      exit(1);
+
+    case 0:
+      break;
+
+    default: 
+      exit(0);
   }
 
 #ifdef HAVE_SETSID
@@ -2152,10 +2160,10 @@ static void daemonize(void) {
   setsid();
 #else
   /* Open /dev/tty to access our controlling tty (if any) */
-  if ( (ttyfd = open("/dev/tty",O_RDWR)) != -1)
-  {
-    if (ioctl(ttyfd,TIOCNOTTY,NULL) == -1) {
-      perror("ioctl"); exit(1);
+  if ((ttyfd = open("/dev/tty", O_RDWR)) != -1) {
+    if (ioctl(ttyfd, TIOCNOTTY, NULL) == -1) {
+      perror("ioctl");
+      exit(1);
     }
 
     close(ttyfd);
@@ -2170,12 +2178,12 @@ static void daemonize(void) {
   /* Portable way to prevent re-acquiring a tty in the future */
 
 #ifdef HAVE_SETPGID
-  setpgid(0,getpid());
+  setpgid(0, getpid());
 #else
 # ifdef SETPGRP_VOID
   setpgrp();
 # else
-  setpgrp(0,getpid());
+  setpgrp(0, getpid());
 # endif
 #endif
 
@@ -2537,6 +2545,7 @@ int main(int argc, char *argv[], char **envp) {
   pr_init_fs();
   pr_free_bindings();
   init_config();
+  pr_init_stash();
   module_preparse_init();
 
   init_conf_stacks();

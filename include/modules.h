@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.26 2003-01-02 17:28:17 castaglia Exp $
+ * $Id: modules.h,v 1.27 2003-01-17 16:46:23 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -200,8 +200,6 @@ typedef struct authsym {
 
 /* These are stored in modules.c */
 
-extern xaset_t *authsymtab[PR_TUNABLE_HASH_TABLE_SIZE];
-
 extern conftable *m_conftable;			/* Master conftable */
 extern cmdtable *m_cmdtable;			/* Master cmdtable */
 extern authtable *m_authtable;			/* Master authtable */
@@ -225,14 +223,17 @@ modret_t *call_module(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
 modret_t *call_module_cmd(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
 modret_t *call_module_auth(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
 
-/* Symbol table creation functions */
-int insert_authsym(xaset_t **, authtable *);
+/* Symbol table hash ("stash") support. */
+typedef enum {
+  PR_SYM_CONF = 1,
+  PR_SYM_CMD,
+  PR_SYM_AUTH
+} pr_stash_type_t;
 
-/* Symbol table lookup functions */
-authtable *get_auth_symbol(char *, int *, authtable *);
-conftable *mod_find_conf_symbol(char *, int *, conftable *);
-cmdtable *mod_find_cmd_symbol(char *, int *, cmdtable *);
-authtable *mod_find_auth_symbol(char *, int *, authtable *);
+int pr_init_stash(void);
+int pr_stash_add_symbol(pr_stash_type_t, void *);
+void *pr_stash_get_symbol(pr_stash_type_t, const char *, void *, int *);
+int pr_stash_remove_symbol(pr_stash_type_t, const char *, module *);
 
 /* This function is in main.c, but is prototyped here */
 void set_auth_check(int (*ck)(cmd_rec *));

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.355 2003-01-17 03:41:55 castaglia Exp $
+$Id: NEWS,v 1.356 2003-01-17 16:46:15 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -39,6 +39,7 @@ CVS
   is on.
 - ftptop now displays transfer rates in it's "transfer speed" display mode.
   Use the 't' key to toggle between ftptop display modes.
+- Bug 1926 - AuthOrder doesn't work
 
 1.2.8rc1 - Released 28-Dec-2002
 ---------------------------------

@@ -29,30 +29,26 @@
 
 #include "conf.h"
 
-/* local symbol hash structure to vastly speed up module symbol lookups
- */
-#define SYM_CONF				1
-#define SYM_CMD					2
-#define SYM_AUTH				3
-
-struct symbol_hash {
-  struct	symbol_hash *next,*prev;
-  char		*sym_name;			/* pointer to the directive,
-                                                   command, or other symbol */
-  char		sym_type;			/* one of the SYM_* macros */
-  module	*sym_module;
+/* This local structure vastly speeds up symbol lookups. */
+struct stash {
+  struct stash *next,*prev;
+  pool *sym_pool;
+  const char *sym_name;
+  pr_stash_type_t sym_type;
+  module *sym_module;
 
   union {
-    conftable	*sym_conf;
-    cmdtable    *sym_cmd;
-    authtable	*sym_auth;
-    void	*sym_generic;
+    conftable *sym_conf;
+    cmdtable  *sym_cmd;
+    authtable *sym_auth;
+    void *sym_generic;
   } ptr;
 };
 
-/* symbol hashes for each type */
-xaset_t *authsymtab[PR_TUNABLE_HASH_TABLE_SIZE];
-static xaset_t *symtable[PR_TUNABLE_HASH_TABLE_SIZE];
+/* Symbol hashes for each type */
+static xaset_t *symbol_table[PR_TUNABLE_HASH_TABLE_SIZE];
+static pool *symbol_pool = NULL;
+static struct stash *curr_sym = NULL;
 
 static xaset_t *installed_modules = NULL;
 static array_header *mconfarr;			/* masterconf array */
@@ -63,7 +59,7 @@ conftable *m_conftable; 			/* Master conf table */
 cmdtable *m_cmdtable;				/* Master cmd table */
 authtable *m_authtable;				/* Master auth table */
 
-module *curmodule = NULL;			/* Current running module */
+module *curr_module = NULL;			/* Current running module */
 
 extern module *static_modules[];
 
@@ -76,28 +72,24 @@ typedef struct postparse_cb {
 static pool *postparse_init_pool = NULL;
 static xaset_t *postparse_inits = NULL;
 
-/* hash lookup code and management */
+/* Symbol stash lookup code and management */
 
-static int authsym_cmp(pr_authsym_t *authsym1, pr_authsym_t *authsym2) {
-  int result;
+/* This wrapper will be used in the future to track when to rehash through
+ * the symbol memory, to prevent symbol_pool from growing too large.
+ */
+static struct stash *sym_alloc(void) {
+  static unsigned int count = 0;
 
-  result = strcmp(authsym1->name, authsym2->name);
+  pool *sub_pool = make_sub_pool(symbol_pool);
+  struct stash *sym = pcalloc(sub_pool, sizeof(struct stash));
+  sym->sym_pool = sub_pool; 
 
-  /* Higher priority modules must go BEFORE lower priority modules in the
-   * hash table.
-   */
-  if (!result) {
-    if (authsym1->module->auth_priority > authsym2->module->auth_priority)
-      result = -1;
+  count++;
 
-    else if (authsym1->module->auth_priority < authsym2->module->auth_priority)
-      result = 1;
-  }
-
-  return result;
+  return sym;
 }
 
-static int sym_cmp(struct symbol_hash *s1, struct symbol_hash *s2) {
+static int sym_cmp(struct stash *s1, struct stash *s2) {
   int ret;
 
   ret = strcmp(s1->sym_name,s2->sym_name);
@@ -116,8 +108,8 @@ static int sym_cmp(struct symbol_hash *s1, struct symbol_hash *s2) {
   return ret;
 }
 
-static int _hash_index(char *name) {
-  unsigned char *cp;
+static int symtab_hash(const char *name) {
+  unsigned char *cp = NULL;
   int total = 0;
 
   for (cp = (unsigned char *)name; *cp; cp++)
@@ -127,141 +119,79 @@ static int _hash_index(char *name) {
     (total % PR_TUNABLE_HASH_TABLE_SIZE));
 }
 
-static int _hash_insert(struct symbol_hash *sym) {
-  int idx;
+int pr_stash_add_symbol(pr_stash_type_t sym_type, void *data) {
+  struct stash *sym = NULL;
+  int idx = 0;
 
-  idx = _hash_index(sym->sym_name);
-  if (!symtable[idx])
-    symtable[idx] = xaset_create(permanent_pool, (XASET_COMPARE) sym_cmp);
+  if (!data) {
+    errno = EINVAL;
+    return -1;
+  }
 
-  xaset_insert_sort(symtable[idx], (xasetmember_t *)sym, TRUE);
+  switch (sym_type) {
+    case PR_SYM_CONF:
+      sym = sym_alloc();
+      sym->sym_type = PR_SYM_CONF;
+      sym->sym_name = ((conftable *) data)->directive;
+      sym->sym_module = ((conftable *) data)->m;
+      sym->ptr.sym_conf = data;
+      break;
+
+    case PR_SYM_CMD:
+      sym = sym_alloc();
+      sym->sym_type = PR_SYM_CMD;
+      sym->sym_name = ((cmdtable *) data)->command;
+      sym->sym_module = ((cmdtable *) data)->m;
+      sym->ptr.sym_cmd = data;
+      break;
+
+    case PR_SYM_AUTH:
+      sym = sym_alloc();
+      sym->sym_type = PR_SYM_AUTH;
+      sym->sym_name = ((authtable *) data)->name;
+      sym->sym_module = ((authtable *) data)->m;
+      sym->ptr.sym_auth = data;
+      break;
+
+    default:
+      errno = EINVAL;
+      return -1;
+  }
+
+  idx = symtab_hash(sym->sym_name);
+
+  if (!symbol_table[idx])
+    symbol_table[idx] = xaset_create(permanent_pool, (XASET_COMPARE) sym_cmp);
+
+  xaset_insert_sort(symbol_table[idx], (xasetmember_t *) sym, TRUE);
   return idx;
 }
 
-static int _hash_insert_conf(conftable *conf) {
-  struct symbol_hash *sym;
+static struct stash *stash_lookup(pr_stash_type_t sym_type,
+    const char *name, int idx) {
+  struct stash *sym = NULL;
 
-  sym = pcalloc(permanent_pool,sizeof(struct symbol_hash));
-  sym->sym_type = SYM_CONF;
-  sym->sym_name = conf->directive;
-  sym->ptr.sym_conf = conf;
-  sym->sym_module = conf->m;
-  return _hash_insert(sym);
-}
-
-static int _hash_insert_cmd(cmdtable *cmd) {
-  struct symbol_hash *sym;
-
-  sym = pcalloc(permanent_pool,sizeof(struct symbol_hash));
-  sym->sym_type = SYM_CMD;
-  sym->sym_name = cmd->command;
-  sym->ptr.sym_cmd = cmd;
-  sym->sym_module = cmd->m;
-  return _hash_insert(sym);
-}
-
-static int _hash_insert_auth(authtable *auth) {
-  struct symbol_hash *sym;
-
-  sym = pcalloc(permanent_pool,sizeof(struct symbol_hash));
-  sym->sym_type = SYM_AUTH;
-  sym->sym_name = auth->name;
-  sym->ptr.sym_auth = auth;
-  sym->sym_module = auth->m;
-
-  insert_authsym(authsymtab, auth);
-
-  return _hash_insert(sym);
-}
-
-int insert_authsym(xaset_t **authsym_tab, authtable *authtab) {
-  pool *authsym_pool = NULL;
-  pr_authsym_t *authsym = NULL;
-  unsigned int idx = 0;
-
-  /* Determine the hash/index for this auth symbol. */
-  idx = _hash_index(authtab->name);
-
-  /* Allocate memory for the auth hash table, if necessary. */
-  authsym_pool = make_sub_pool(permanent_pool);
-
-  if (!authsym_tab[idx])
-    authsym_tab[idx] = xaset_create(authsym_pool,
-      (XASET_COMPARE) authsym_cmp);
-
-  /* Due to the way in which xaset_create() assigns the mempool member
-   * of an xaset_t, the passed in pool (in the above call, authsym_pool)
-   * _is_ the mempool member, so it can be reused here.  Doesn't mean it
-   * _should_ be that way, though.
-   */
-  authsym = pcalloc(authsym_pool, sizeof(pr_authsym_t));
-
-  authsym->name = authtab->name;
-  authsym->module = authtab->m;
-  authsym->table = authtab;
-
-  /* Insert the symbol into the hash in sorted order. */
-  return xaset_insert_sort(authsym_tab[idx], (xasetmember_t *) authsym, TRUE);
-}
-
-static pr_authsym_t *authsym_find(int idx, char *symbol) {
-  pr_authsym_t *authsym = NULL;
-
-  if (symbol && authsymtab[idx]) {
-    for (authsym = (pr_authsym_t *) authsymtab[idx]->xas_list; authsym;
-        authsym = authsym->next)
-
-      /* this comparison is here to handle possible hash collisions */
-      if (!strcmp(authsym->name, symbol))
-        break;
-  }
-
-  return authsym;
-}
-
-static pr_authsym_t *authsym_find_next(int idx, char *symbol,
-    authtable *prev) {
-  pr_authsym_t *authsym = NULL;
-  int last_hit = 0;
-
-  if (authsymtab[idx]) {
-    for (authsym = (pr_authsym_t *) authsymtab[idx]->xas_list; authsym;
-        authsym = authsym->next)
-
-      /* this comparison is here to handle possible hash collisions */
-      if (last_hit && !strcmp(authsym->name, symbol))
-        break;
-      if (authsym->table == prev)
-        last_hit++;
-  }
-
-  return authsym;
-}
-
-static struct symbol_hash *_hash_find(int idx, char *name, int type) {
-  struct symbol_hash *sym = NULL;
-
-  if (name && symtable[idx]) {
-    for (sym = (struct symbol_hash *) symtable[idx]->xas_list; sym;
+  if (name && symbol_table[idx]) {
+    for (sym = (struct stash *) symbol_table[idx]->xas_list; sym;
         sym = sym->next)
-      if (sym->sym_type == type && !strcmp(sym->sym_name, name))
+      if (sym->sym_type == sym_type && !strcmp(sym->sym_name, name))
         break;
   }
 
   return sym;
 }
 
-static struct symbol_hash *_hash_find_next(int idx, char *name, int type,
-    void *last) {
-  struct symbol_hash *sym = NULL;
+static struct stash *stash_lookup_next(pr_stash_type_t sym_type,
+    const char *name, int idx, void *prev) {
+  struct stash *sym = NULL;
   int last_hit = 0;
 
-  if (symtable[idx]) {
-    for (sym = (struct symbol_hash *) symtable[idx]->xas_list; sym;
+  if (symbol_table[idx]) {
+    for (sym = (struct stash *) symbol_table[idx]->xas_list; sym;
         sym = sym->next) {
-      if (last_hit && sym->sym_type == type && !strcmp(sym->sym_name, name))
+      if (last_hit && sym->sym_type == sym_type && !strcmp(sym->sym_name, name))
         break;
-      if (sym->ptr.sym_generic == last)
+      if (sym->ptr.sym_generic == prev)
         last_hit++;
     }
   }
@@ -269,89 +199,132 @@ static struct symbol_hash *_hash_find_next(int idx, char *name, int type,
   return sym;
 }
 
-conftable *mod_find_conf_symbol(char *name, int *idx_cache, conftable *last) {
+void *pr_stash_get_symbol(pr_stash_type_t sym_type, const char *name,
+    void *prev, int *idx_cache) {
   int idx;
-  struct symbol_hash *sym;
+  struct stash *sym = NULL;
 
   if (idx_cache && *idx_cache != -1)
     idx = *idx_cache;
 
   else {
-    idx = _hash_index(name);
+
+    idx = symtab_hash(name);
     if (idx_cache)
       *idx_cache = idx;
-  }
-
-  if (last)
-    sym = _hash_find_next(idx, name, SYM_CONF, last);
-  else
-    sym = _hash_find(idx, name, SYM_CONF);
-
-  return (sym ? sym->ptr.sym_conf : NULL);
-}
-
-cmdtable *mod_find_cmd_symbol(char *name, int *idx_cache, cmdtable *last) {
-  int idx;
-  struct symbol_hash *sym;
-
-  if (idx_cache && *idx_cache != -1)
-    idx = *idx_cache;
-
-  else {
-    idx = _hash_index(name);
-    if (idx_cache)
-      *idx_cache = idx;
-  }
-
-  if (last)
-    sym = _hash_find_next(idx, name, SYM_CMD, last);
-  else
-    sym = _hash_find(idx, name, SYM_CMD);
-
-  return (sym ? sym->ptr.sym_cmd : NULL);
-}
-
-authtable *mod_find_auth_symbol(char *name, int *idx_cache, authtable *last) {
-  int idx;
-  struct symbol_hash *sym;
-
-  if (idx_cache && *idx_cache != -1)
-    idx = *idx_cache;
-
-  else {
-    idx = _hash_index(name);
-    if (idx_cache)
-      *idx_cache = idx;
-  }
-
-  if (last)
-    sym = _hash_find_next(idx, name, SYM_AUTH, last);
-  else
-    sym = _hash_find(idx, name, SYM_AUTH);
-
-  return (sym ? sym->ptr.sym_auth : NULL);
-}
-
-authtable *get_auth_symbol(char *symbol, int *cached_idx, authtable *prev) {
-  int idx;
-  pr_authsym_t *authsym;
-
-  if (cached_idx && *cached_idx != -1) {
-    idx = *cached_idx;
-
-  } else {
-    idx = _hash_index(symbol);
-
-    if (cached_idx)
-      *cached_idx = idx;
   }
 
   if (prev)
-    authsym = authsym_find_next(idx, symbol, prev);
+    curr_sym = sym = stash_lookup_next(sym_type, name, idx, prev);
   else
-    authsym = authsym_find(idx, symbol);
+    curr_sym = sym = stash_lookup(sym_type, name, idx);
 
-  return (authsym ? authsym->table : NULL);
+  switch (sym_type) {
+    case PR_SYM_CONF:
+      return sym ? sym->ptr.sym_conf : NULL;
+
+    case PR_SYM_CMD:
+      return sym ? sym->ptr.sym_cmd : NULL;
+
+    case PR_SYM_AUTH:
+      return sym ? sym->ptr.sym_auth : NULL;
+  }
+
+  /* In case the compiler complains */
+  return NULL;
+}
+
+int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
+    module *sym_module) {
+  int count = 0, symtab_idx = 0;
+
+  if (!sym_name) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  symtab_idx = symtab_hash(sym_name);
+
+  switch (sym_type) {
+    case PR_SYM_CONF: {
+      int idx = -1;
+      conftable *tab = NULL;
+
+      tab = pr_stash_get_symbol(PR_SYM_CONF, sym_name, NULL, &idx);
+
+      while (tab) {
+
+        /* Note: this works because of a hack: the symbol look functions
+         * set a static pointer, curr_sym, to point to the struct stash
+         * just looked up.  curr_sym will not be NULL if pr_stash_get_symbol()
+         * returns non-NULL.
+         */
+
+        if (!sym_module || curr_sym->sym_module == sym_module) {
+          xaset_remove(symbol_table[symtab_idx], (xasetmember_t *) curr_sym);
+          destroy_pool(curr_sym->sym_pool);
+        }
+
+        tab = pr_stash_get_symbol(PR_SYM_CONF, sym_name, tab, &idx);
+      }
+
+      break;
+    }
+
+    case PR_SYM_CMD: {
+      int idx = -1;
+      cmdtable *tab = NULL;
+
+      tab = pr_stash_get_symbol(PR_SYM_CMD, sym_name, NULL, &idx);
+
+      while (tab) {
+
+        /* Note: this works because of a hack: the symbol look functions
+         * set a static pointer, curr_sym, to point to the struct stash
+         * just looked up.  
+         */
+
+        if (!sym_module || curr_sym->sym_module == sym_module) {
+          xaset_remove(symbol_table[symtab_idx], (xasetmember_t *) curr_sym);
+          destroy_pool(curr_sym->sym_pool);
+        }
+
+        tab = pr_stash_get_symbol(PR_SYM_CMD, sym_name, tab, &idx);
+      }
+
+      break;
+    }
+
+    case PR_SYM_AUTH: {
+      int idx = -1;
+      authtable *tab = NULL;
+
+      tab = pr_stash_get_symbol(PR_SYM_AUTH, sym_name, NULL, &idx);
+
+      while (tab) {
+
+        /* Note: this works because of a hack: the symbol look functions
+         * set a static pointer, curr_sym, to point to the struct stash
+         * just looked up.  
+         */
+
+        if (!sym_module || curr_sym->sym_module == sym_module) {
+          xaset_remove(symbol_table[symtab_idx], (xasetmember_t *) curr_sym);
+          destroy_pool(curr_sym->sym_pool);
+        }
+
+        tab = pr_stash_get_symbol(PR_SYM_AUTH, sym_name, tab, &idx);
+      }
+
+      break;
+    }
+
+    default:
+      errno = EINVAL;
+      return -1;
+  }
+
+  return count;
 }
 
 /* functions to manage modular privdata structure inside cmd_rec */
@@ -368,7 +341,7 @@ privdata_t *mod_privdata_alloc(cmd_rec *cmd, char *tag, int size)
   p->tag = pstrdup(cmd->pool,tag);
   if (size)
     p->value.ptr_val = pcalloc(cmd->pool,size);
-  p->m = curmodule;
+  p->m = curr_module;
 
   if (!cmd->privarr)
     cmd->privarr = make_array(cmd->pool,2,sizeof(privdata_t*));
@@ -389,7 +362,7 @@ privdata_t *mod_privdata_find(cmd_rec *cmd, char *tag, module *m)
     return NULL;
 
   if (!m)
-    m = curmodule;
+    m = curr_module;
 
   for (i = 0, p = (privdata_t**)cmd->privarr->elts; i < cmd->privarr->nelts; i++, p++) {
     if (!strcmp((*p)->tag,tag) && (m == ANY_MODULE || (*p)->m == m))
@@ -402,14 +375,14 @@ privdata_t *mod_privdata_find(cmd_rec *cmd, char *tag, module *m)
 modret_t *call_module_auth(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd)
 {
   modret_t *res;
-  module *prev_module = curmodule;
+  module *prev_module = curr_module;
 
   if (!cmd->tmp_pool)
     cmd->tmp_pool = make_sub_pool(cmd->pool);
 
-  curmodule = m;
+  curr_module = m;
   res = func(cmd);
-  curmodule = prev_module;
+  curr_module = prev_module;
 
   return res;
 }
@@ -417,14 +390,14 @@ modret_t *call_module_auth(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd)
 modret_t *call_module_cmd(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd)
 {
   modret_t *res;
-  module *prev_module = curmodule;
+  module *prev_module = curr_module;
 
   if (!cmd->tmp_pool)
     cmd->tmp_pool = make_sub_pool(cmd->pool);
 
-  curmodule = m;
+  curr_module = m;
   res = func(cmd);
-  curmodule = prev_module;
+  curr_module = prev_module;
 
   return res;
 }
@@ -432,14 +405,14 @@ modret_t *call_module_cmd(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd)
 modret_t *call_module(module *m, modret_t *(*func)(cmd_rec*), cmd_rec *cmd)
 {
   modret_t *res;
-  module *prev_module = curmodule;
+  module *prev_module = curr_module;
 
   if (!cmd->tmp_pool)
     cmd->tmp_pool = make_sub_pool(cmd->pool);
 
-  curmodule = m;
+  curr_module = m;
   res = func(cmd);
-  curmodule = prev_module;
+  curr_module = prev_module;
 
   /* Note that we don't clear the pool here because the function may
    * return data which resides in this pool.
@@ -462,7 +435,7 @@ modret_t *mod_create_ret(cmd_rec *cmd,unsigned char err,char *n,char *m)
   modret_t *ret;
 
   ret = pcalloc(cmd->tmp_pool,sizeof(modret_t));
-  ret->mr_handler_module = curmodule;
+  ret->mr_handler_module = curr_module;
   ret->mr_error = err;
   if (n)
     ret->mr_numeric = pstrdup(cmd->tmp_pool,n);
@@ -477,7 +450,7 @@ modret_t *mod_create_error(cmd_rec *cmd,int mr_errno)
   modret_t *ret;
 
   ret = pcalloc(cmd->tmp_pool,sizeof(modret_t));
-  ret->mr_handler_module = curmodule;
+  ret->mr_handler_module = curr_module;
   ret->mr_error = mr_errno;
 
   return ret;
@@ -487,24 +460,24 @@ modret_t *mod_create_error(cmd_rec *cmd,int mr_errno)
  * need to know we are a child and have a connection.
  */
 int module_session_init(void) {
-  module *prev_module = curmodule;
+  module *prev_module = curr_module;
   module *m;
 
   for (m = (module*) installed_modules->xas_list; m; m=m->next)
     if (m && m->module_init_session_cb) {
-      curmodule = m;
+      curr_module = m;
       m->module_init_session_cb();
     }
 
-  curmodule = prev_module;
+  curr_module = prev_module;
   return 0;
 }
 
 unsigned char command_exists(char *name) {
-  cmdtable *cmdtab = mod_find_cmd_symbol(name, NULL, NULL);
+  cmdtable *cmdtab = pr_stash_get_symbol(PR_SYM_CMD, name, NULL, NULL);
 
   while (cmdtab && cmdtab->cmd_type != CMD)
-    cmdtab = mod_find_cmd_symbol(name, NULL, cmdtab);
+    cmdtab = pr_stash_get_symbol(PR_SYM_CMD, name, cmdtab, NULL);
 
   return (cmdtab ? TRUE : FALSE);
 }
@@ -541,12 +514,11 @@ void list_modules(void) {
 int module_preparse_init(void) {
   int numconf = 0,numcmd = 0,numauth = 0;
   module *m;
-  conftable *c,*wrk;
-  cmdtable *cmd,*cmdwrk;
-  authtable *auth,*authwrk;
+  conftable *conf = NULL;
+  cmdtable *cmd = NULL;
+  authtable *auth = NULL;
   register unsigned int i = 0;
 
-  memset(symtable, '\0', sizeof(symtable));
   installed_modules = xaset_create(permanent_pool,NULL);
 
   for (i = 0; static_modules[i]; i++) {
@@ -561,10 +533,10 @@ int module_preparse_init(void) {
 
     if (!m->module_init_cb ||
         (m->module_init_cb() != -1)) {
-      xaset_insert(installed_modules, (xasetmember_t*)m);
+      xaset_insert(installed_modules, (xasetmember_t *) m);
 
       if (m->conftable)
-        for (c = m->conftable; c->directive; c++)
+        for (conf = m->conftable; conf->directive; conf++)
           ++numconf;
 
       if (m->cmdtable)
@@ -587,35 +559,37 @@ int module_preparse_init(void) {
   mcmdarr = make_array(permanent_pool, numcmd, sizeof(cmdtable));
   mautharr = make_array(permanent_pool, numauth, sizeof(authtable));
 
-  for (m = (module*)installed_modules->xas_list; m; m=m->next) {
+  for (m = (module *) installed_modules->xas_list; m; m = m->next) {
 
-    if (m->conftable)
-      for (c = m->conftable; c->directive; c++) {
-        wrk = (conftable*)push_array(mconfarr);
-        memcpy(wrk, c, sizeof(conftable));
-        wrk->m = m;
+    if (m->conftable) {
+      for (conf = m->conftable; conf->directive; conf++) {
+        conftable *conftab = (conftable *) push_array(mconfarr);
+        memcpy(conftab, conf, sizeof(conftable));
+        conftab->m = m;
 
-        /* insert into our hash table */
-        _hash_insert_conf(wrk);
+        pr_stash_add_symbol(PR_SYM_CONF, conftab);
       }
+    }
 
-    if (m->cmdtable)
+    if (m->cmdtable) {
       for (cmd = m->cmdtable; cmd->command; cmd++) {
-        cmdwrk = (cmdtable*)push_array(mcmdarr);
-        memcpy(cmdwrk, cmd, sizeof(cmdtable));
-        cmdwrk->m = m;
+        cmdtable *cmdtab = (cmdtable *) push_array(mcmdarr);
+        memcpy(cmdtab, cmd, sizeof(cmdtable));
+        cmdtab->m = m;
 
-        _hash_insert_cmd(cmdwrk);
+        pr_stash_add_symbol(PR_SYM_CMD, cmdtab);
       }
+    }
 
-    if (m->authtable)
+    if (m->authtable) {
       for (auth = m->authtable; auth->name; auth++) {
-        authwrk = (authtable*)push_array(mautharr);
-        memcpy(authwrk, auth, sizeof(authtable));
-        authwrk->m = m;
+        authtable *authtab = (authtable *) push_array(mautharr);
+        memcpy(authtab, auth, sizeof(authtable));
+        authtab->m = m;
 
-        _hash_insert_auth(authwrk);
+        pr_stash_add_symbol(PR_SYM_AUTH, authtab);
       }
+    }
   }
 
   /* add a null entry (pcalloc zeros the memory for us) */
@@ -667,3 +641,10 @@ void module_remove_postparse_inits(void) {
   }
 }
 
+int pr_init_stash(void) {
+  if (symbol_pool)
+    symbol_pool = make_sub_pool(permanent_pool); 
+  memset(symbol_table, '\0', sizeof(symbol_table));
+
+  return 0;
+}

@@ -131,7 +131,7 @@ _make_cmd (pool * cp, int argc, ...)
   c->argv = pcalloc(newpool, sizeof(void *) * (argc + 1));
 
   c->argc = argc;
-  c->symtable_index = -1;
+  c->stash_index = -1;
 
   c->argv[0] = MOD_RATIO_VERSION;
   va_start (args, argc);
@@ -148,13 +148,13 @@ _dispatch_ratio (cmd_rec * cmd, char *match)
   authtable *m;
   modret_t *mr = NULL;
 
-  m = mod_find_auth_symbol (match, &cmd->symtable_index, NULL);
+  m = pr_stash_get_symbol (PR_SYM_AUTH, match, NULL, &cmd->stash_index);
   while (m)
     {
       mr = call_module_auth (m->m, m->handler, cmd);
       if (MODRET_ISHANDLED (mr) || MODRET_ISERROR (mr))
 	break;
-      m = mod_find_auth_symbol (match, &cmd->symtable_index, m);
+      m = pr_stash_get_symbol (PR_SYM_AUTH, match, m, &cmd->stash_index);
     }
   if (MODRET_ISERROR (mr))
     log_debug (DEBUG0, "Aiee! mod_ratio internal!  %s", MODRET_ERRMSG (mr));

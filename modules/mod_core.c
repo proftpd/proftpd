@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.154 2003-01-16 02:04:46 castaglia Exp $
+ * $Id: mod_core.c,v 1.155 2003-01-17 16:46:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2261,8 +2261,7 @@ MODRET set_authorder(cmd_rec *cmd) {
         cmd->argv[i]);
   }
 
-  c->argv[0] = pcalloc(c->pool, sizeof(array_header *));
-  *((array_header **) c->argv[0]) = auth_module_order;
+  c->argv[0] = (void *) auth_module_order;
 
   return HANDLED(cmd);
 }
@@ -3727,7 +3726,6 @@ MODRET set_class(cmd_rec *cmd) {
  */
 
 static int core_init(void) {
-  config_rec *c = NULL;
 
   /* Add the additional features implemented by this module into the
    * list, to be displayed in response to a FEAT command.
@@ -3735,50 +3733,6 @@ static int core_init(void) {
   pr_add_feat("MDTM");
   pr_add_feat("REST STREAM");
   pr_add_feat("SIZE");
-
-  /* Check for a server-specific AuthOrder. */
-  if ((c = find_config(main_server->conf, CONF_PARAM, "AuthOrder",
-      FALSE)) != NULL) {
-    char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-    authtable *authtab = NULL;
-    array_header *auth_module_order = (array_header *) c->argv[0];
-    int modulec = 0;
-    char **modulev = NULL;
-    register unsigned int i = 0;
-
-    modulec = auth_module_order->nelts;
-    modulev = (char **) auth_module_order->elts;
-
-    /* Free up the memory from the old authsymtab. */
-    for (i = 0; i < PR_TUNABLE_HASH_TABLE_SIZE; i++) {
-      if (authsymtab[i]) {
-        destroy_pool((authsymtab[i])->mempool);
-        authsymtab[i] = NULL;
-      }
-    }
-
-    /* Rebuild a new authsymtab by inserting only those modules listed
-     * by AuthOrder, in the order that they are listed.
-     */
-    if (m_authtable) {
-      for (authtab = m_authtable; authtab->name; authtab++) {
-        memset(buf, '\0', sizeof(buf));
-        snprintf(buf, sizeof(buf), "mod_%s.c", authtab->m->name);
-        buf[sizeof(buf)-1] = '\0';
-
-        /* Iterate through the AuthOrder, looking for a match of the
-         * name of the module owning the authtable pointer from the
-         * master authtable.
-         */
-        for (i = 0; i < modulec; i++) {
-          if (!strcmp(buf, modulev[i])) {
-            authtab->m->auth_priority = modulec - i;
-            insert_authsym(authsymtab, authtab);
-          }
-        }
-      }
-    }
-  }
 
   return 0;
 }
@@ -3796,6 +3750,69 @@ static int core_sess_init(void) {
   if ((debug_level = get_param_ptr(main_server->conf, "DebugLevel",
       FALSE)) != NULL)
     log_setdebuglevel(*debug_level);
+
+  /* Check for a server-specific AuthOrder. */
+  if ((c = find_config(main_server->conf, CONF_PARAM, "AuthOrder",
+      FALSE)) != NULL) {
+    array_header *auth_module_order = (array_header *) c->argv[0];
+    int modulec = 0;
+    char **modulev = NULL;
+    register unsigned int i = 0;
+    const char *auth_syms[] = {
+      "setpwent", "endpwent", "setgrent", "endgrent", "getpwent", "getgrent",
+      "getpwnam", "getgrnam", "getpwuid", "getgrgid", "auth", "check",
+      "uid_name", "gid_name", "name_uid", "name_gid", "getgroups", NULL
+    };
+
+    log_debug(DEBUG3, "AuthOrder in effect, resetting auth module order");
+
+    modulec = auth_module_order->nelts;
+    modulev = (char **) auth_module_order->elts;
+
+    /* First, delete all auth symbols. */
+    for (i = 0; auth_syms[i] != NULL; i++)
+      pr_stash_remove_symbol(PR_SYM_AUTH, auth_syms[i], NULL);
+
+    /* Now, cycle through the list of configured modules, re-adding their
+     * auth symbols, in the order in which they appear.
+     *
+     * NOTE: What is needed is way to get at the module structure for a
+     * module, by name.
+     */
+
+    if (m_authtable) {
+      char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+      authtable *authtab = NULL;
+
+      for (authtab = m_authtable; authtab->name; authtab++) {
+        memset(buf, '\0', sizeof(buf));
+        snprintf(buf, sizeof(buf), "mod_%s.c", authtab->m->name);
+        buf[sizeof(buf)-1] = '\0';
+
+        /* Iterate through the AuthOrder, looking for a match of the
+         * name of the module owning the authtable pointer from the
+         * master authtable.
+         */
+        for (i = 0; i < modulec; i++) {
+          if (!strcmp(buf, modulev[i])) {
+
+            /* Twiddle the module's priority field be insertion into the
+             * symbol table, as the insertion operation does so based on that
+             * priority.  This has no effect other than during symbol
+             * insertion.
+             */
+            authtab->m->priority = modulec - i;
+            pr_stash_add_symbol(PR_SYM_AUTH, authtab);
+          }
+        }
+      }
+    }
+
+    /* NOTE: the master conf/cmd/auth tables/arrays should ideally be
+     * rebuilt after this symbol shuffling, but it's not necessary at this
+     * point.
+     */
+  }
 
   return 0;
 }

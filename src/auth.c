@@ -25,29 +25,28 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.26 2003-01-02 17:28:20 castaglia Exp $
+ * $Id: auth.c,v 1.27 2003-01-17 16:46:25 castaglia Exp $
  */
 
 #include "conf.h"
 
-static cmd_rec *_make_cmd(pool *cp, int argc, ...)
-{
+static cmd_rec *make_cmd(pool *cp, int argc, ...) {
   va_list args;
   cmd_rec *c;
   int     i;
 
-  c = pcalloc(cp,sizeof(cmd_rec));
+  c = pcalloc(cp, sizeof(cmd_rec));
 
   c->argc = argc;
-  c->symtable_index = -1;
+  c->stash_index = -1;
 
   if (argc) {
-    c->argv = pcalloc(cp,sizeof(void*)*argc);
+    c->argv = pcalloc(cp, sizeof(void *) * argc);
 
-    va_start(args,argc);
+    va_start(args, argc);
 
     for (i = 0; i < argc; i++)
-      c->argv[i] = (void *)va_arg(args, char *);
+      c->argv[i] = (void *) va_arg(args, char *);
 
     va_end(args);
   }
@@ -55,295 +54,293 @@ static cmd_rec *_make_cmd(pool *cp, int argc, ...)
   return c;
 }
 
-static modret_t *_dispatch_auth(cmd_rec *cmd, char *match)
-{
-  authtable *m;
+static modret_t *dispatch_auth(cmd_rec *cmd, char *match) {
+  authtable *authtab = NULL;
   modret_t *mr = NULL;
 
-  m = mod_find_auth_symbol(match,&cmd->symtable_index,NULL);
-  while(m) {
+  authtab = pr_stash_get_symbol(PR_SYM_AUTH, match, NULL,
+    &cmd->stash_index);
+
+  while (authtab) {
     log_debug(DEBUG6, "dispatching auth request \"%s\" to module mod_%s",
-      match, m->m->name);
-    mr = call_module_auth(m->m,m->handler,cmd);
+      match, authtab->m->name);
+
+    mr = call_module_auth(authtab->m, authtab->handler, cmd);
+
     if (MODRET_ISHANDLED(mr) || MODRET_ISERROR(mr))
       break;
 
-    m = mod_find_auth_symbol(match,&cmd->symtable_index,m);
+    authtab = pr_stash_get_symbol(PR_SYM_AUTH, match, authtab,
+      &cmd->stash_index);
   }
 
   return mr;
 }
 
-void auth_setpwent(pool *p)
-{
-  cmd_rec *c;
-  modret_t *mr;
+void auth_setpwent(pool *p) {
+  cmd_rec *cmd = NULL;
+  modret_t *mr = NULL;
 
-  c = _make_cmd(p,0);
-  mr = _dispatch_auth(c, "setpwent");
+  cmd = make_cmd(p, 0);
+  mr = dispatch_auth(cmd, "setpwent");
 
-  if (c->tmp_pool) {
-    destroy_pool(c->tmp_pool);
-    c->tmp_pool = NULL;
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+    cmd->tmp_pool = NULL;
   }
+
   return;
 }
 
-void auth_endpwent(pool *p)
-{
-  cmd_rec *c;
-  modret_t *mr;
+void auth_endpwent(pool *p) {
+  cmd_rec *cmd = NULL;
+  modret_t *mr = NULL;
 
-  c = _make_cmd(p,0);
-  mr = _dispatch_auth(c, "endpwent");
+  cmd = make_cmd(p, 0);
+  mr = dispatch_auth(cmd, "endpwent");
 
-  if (c->tmp_pool) {
-    destroy_pool(c->tmp_pool);
-    c->tmp_pool = NULL;
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+    cmd->tmp_pool = NULL;
   }
+
   return;
 }
 
-void auth_setgrent(pool *p)
-{
-  cmd_rec *c;
-  modret_t *mr;
+void auth_setgrent(pool *p) {
+  cmd_rec *cmd = NULL;
+  modret_t *mr = NULL;
 
-  c = _make_cmd(p,0);
-  mr = _dispatch_auth(c, "setgrent");
+  cmd = make_cmd(p, 0);
+  mr = dispatch_auth(cmd, "setgrent");
 
-  if (c->tmp_pool) {
-    destroy_pool(c->tmp_pool);
-    c->tmp_pool = NULL;
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+    cmd->tmp_pool = NULL;
   }
+
   return;
 }
 
-void auth_endgrent(pool *p)
-{
-  cmd_rec *c;
-  modret_t *mr;
+void auth_endgrent(pool *p) {
+  cmd_rec *cmd = NULL;
+  modret_t *mr = NULL;
 
-  c = _make_cmd(p,0);
-  mr = _dispatch_auth(c, "endgrent");
+  cmd = make_cmd(p, 0);
+  mr = dispatch_auth(cmd, "endgrent");
 
-  if (c->tmp_pool) {
-    destroy_pool(c->tmp_pool);
-    c->tmp_pool = NULL;
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+    cmd->tmp_pool = NULL;
   }
+
   return;
 }
 
-struct passwd *auth_getpwent(pool *p)
-{
-  cmd_rec *c;
-  modret_t *mr;
-  struct passwd *ret = NULL;
+struct passwd *auth_getpwent(pool *p) {
+  cmd_rec *cmd = NULL;
+  modret_t *mr = NULL;
+  struct passwd *res = NULL;
 
-  c = _make_cmd(p,0);
-  mr = _dispatch_auth(c, "getpwent");
+  cmd = make_cmd(p, 0);
+  mr = dispatch_auth(cmd, "getpwent");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
-    ret = mr->data;
+    res = mr->data;
 
-  if (c->tmp_pool) {
-    destroy_pool(c->tmp_pool);
-    c->tmp_pool = NULL;
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+    cmd->tmp_pool = NULL;
   }
 
-  /* sanity check */
-  if (ret == NULL)
+  /* Sanity check */
+  if (res == NULL)
     return NULL;
 
-  /* make sure the UID and GID are not -1 */
-  if (ret->pw_uid == (uid_t) -1) {
+  /* Make sure the UID and GID are not -1 */
+  if (res->pw_uid == (uid_t) -1) {
     log_pri(PR_LOG_ERR, "error: UID of -1 not allowed");
     return NULL;
   }
 
-  if (ret->pw_gid == (gid_t) -1) {
+  if (res->pw_gid == (gid_t) -1) {
     log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
     return NULL;
   }
 
-  return ret;
+  return res;
 }
 
-struct group *auth_getgrent(pool *p)
-{
-  cmd_rec *c;
-  modret_t *mr;
-  struct group *ret = NULL;
+struct group *auth_getgrent(pool *p) {
+  cmd_rec *cmd = NULL;
+  modret_t *mr = NULL;
+  struct group *res = NULL;
 
-  c = _make_cmd(p,0);
-  mr = _dispatch_auth(c, "getgrent");
+  cmd = make_cmd(p, 0);
+  mr = dispatch_auth(cmd, "getgrent");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
-    ret = mr->data;
+    res = mr->data;
 
-  if (c->tmp_pool) {
-    destroy_pool(c->tmp_pool);
-    c->tmp_pool = NULL;
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+    cmd->tmp_pool = NULL;
   }
 
-  /* sanity check */
-  if (ret == NULL)
+  /* Sanity check */
+  if (res == NULL)
     return NULL;
 
-  /* make sure the GID is not -1 */
-  if (ret->gr_gid == (gid_t) -1) {
+  /* Make sure the GID is not -1 */
+  if (res->gr_gid == (gid_t) -1) {
     log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
     return NULL;
   }
 
-  return ret;
+  return res;
 }
 
-struct passwd *auth_getpwnam(pool *p, const char *name)
-{
-  cmd_rec *c;
-  modret_t *mr;
-  struct passwd *ret = NULL;
+struct passwd *auth_getpwnam(pool *p, const char *name) {
+  cmd_rec *cmd = NULL;
+  modret_t *mr = NULL;
+  struct passwd *res = NULL;
 
-  c = _make_cmd(p,1,name);
-  mr = _dispatch_auth(c, "getpwnam");
+  cmd = make_cmd(p, 1, name);
+  mr = dispatch_auth(cmd, "getpwnam");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
-    ret = mr->data;
+    res = mr->data;
 
-  if (c->tmp_pool) {
-    destroy_pool(c->tmp_pool);
-    c->tmp_pool = NULL;
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+    cmd->tmp_pool = NULL;
   }
 
-  /* sanity check */
-  if (ret == NULL) {
+  /* Sanity check */
+  if (res == NULL) {
     log_pri(PR_LOG_NOTICE, "no such user '%s'", name);
     return NULL;
   }
 
-  /* make sure the UID and GID are not -1 */
-  if (ret->pw_uid == (uid_t) -1) {
+  /* Make sure the UID and GID are not -1 */
+  if (res->pw_uid == (uid_t) -1) {
     log_pri(PR_LOG_ERR, "error: UID of -1 not allowed");
     return NULL;
   }
 
-  if (ret->pw_gid == (gid_t) -1) {
+  if (res->pw_gid == (gid_t) -1) {
     log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
     return NULL;
   }
 
-  return ret;
+  return res;
 }
 
-struct passwd *auth_getpwuid(pool *p, uid_t uid)
-{
-  cmd_rec *c;
-  modret_t *mr;
-  struct passwd *ret = NULL;
+struct passwd *auth_getpwuid(pool *p, uid_t uid) {
+  cmd_rec *cmd = NULL;
+  modret_t *mr = NULL;
+  struct passwd *res = NULL;
 
-  c = _make_cmd(p,1, (void*)uid);
-  mr = _dispatch_auth(c, "getpwuid");
+  cmd = make_cmd(p, 1, (void *) uid);
+  mr = dispatch_auth(cmd, "getpwuid");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
-    ret = mr->data;
+    res = mr->data;
 
-  if (c->tmp_pool) {
-    destroy_pool(c->tmp_pool);
-    c->tmp_pool = NULL;
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+    cmd->tmp_pool = NULL;
   }
 
-  /* sanity check */
-  if (ret == NULL) {
+  /* Sanity check */
+  if (res == NULL) {
     log_pri(PR_LOG_NOTICE, "no such UID '%lu'", (unsigned long)uid);
     return NULL;
   }
 
-  /* make sure the UID and GID are not -1 */
-  if (ret->pw_uid == (uid_t) -1) {
+  /* Make sure the UID and GID are not -1 */
+  if (res->pw_uid == (uid_t) -1) {
     log_pri(PR_LOG_ERR, "error: UID of -1 not allowed");
     return NULL;
   }
 
-  if (ret->pw_gid == (gid_t) -1) {
+  if (res->pw_gid == (gid_t) -1) {
     log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
     return NULL;
   }
 
-  return ret;
+  return res;
 }
 
-struct group *auth_getgrnam(pool *p, const char *name)
-{
-  cmd_rec *c;
-  modret_t *mr;
-  struct group *ret = NULL;
+struct group *auth_getgrnam(pool *p, const char *name) {
+  cmd_rec *cmd = NULL;
+  modret_t *mr = NULL;
+  struct group *res = NULL;
 
-  c = _make_cmd(p,1,name);
-  mr = _dispatch_auth(c, "getgrnam");
+  cmd = make_cmd(p, 1, name);
+  mr = dispatch_auth(cmd, "getgrnam");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
-    ret = mr->data;
+    res = mr->data;
 
-  if (c->tmp_pool) {
-    destroy_pool(c->tmp_pool);
-    c->tmp_pool = NULL;
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+    cmd->tmp_pool = NULL;
   }
 
-  /* sanity check */
-  if (ret == NULL) {
+  /* Sanity check */
+  if (res == NULL) {
     log_pri(PR_LOG_NOTICE, "no such group '%s'", name);
     return NULL;
   }
 
-  /* make sure the GID is not -1 */
-  if (ret->gr_gid == (gid_t) -1) {
+  /* Make sure the GID is not -1 */
+  if (res->gr_gid == (gid_t) -1) {
     log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
     return NULL;
   }
 
-  return ret;
+  return res;
 }
 
-struct group *auth_getgrgid(pool *p, gid_t gid)
-{
-  cmd_rec *c;
-  modret_t *mr;
-  struct group *ret = NULL;
+struct group *auth_getgrgid(pool *p, gid_t gid) {
+  cmd_rec *cmd = NULL;
+  modret_t *mr = NULL;
+  struct group *res = NULL;
 
-  c = _make_cmd(p,1, (void*)gid);
-  mr = _dispatch_auth(c, "getgrgid");
+  cmd = make_cmd(p, 1, (void *) gid);
+  mr = dispatch_auth(cmd, "getgrgid");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
-    ret = mr->data;
+    res = mr->data;
 
-  if (c->tmp_pool) {
-    destroy_pool(c->tmp_pool);
-    c->tmp_pool = NULL;
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+    cmd->tmp_pool = NULL;
   }
 
-  /* sanity check */
-  if (ret == NULL) {
+  /* Sanity check */
+  if (res == NULL) {
     log_pri(PR_LOG_NOTICE, "no such GID '%lu'", (unsigned long)gid);
     return NULL;
   }
 
-  /* make sure the GID is not -1 */
-  if (ret->gr_gid == (gid_t) -1) {
+  /* Make sure the GID is not -1 */
+  if (res->gr_gid == (gid_t) -1) {
     log_pri(PR_LOG_ERR, "error: GID of -1 not allowed");
     return NULL;
   }
 
-  return ret;
+  return res;
 }
 
 int auth_authenticate(pool *p, const char *name, const char *pw) {
-  cmd_rec *c = NULL;
+  cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   int res = PR_AUTH_NOPWD;
 
-  c = _make_cmd(p, 2, name, pw);
-  mr = _dispatch_auth(c, "auth");
+  cmd = make_cmd(p, 2, name, pw);
+  mr = dispatch_auth(cmd, "auth");
 
   if (MODRET_ISHANDLED(mr))
     res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
@@ -351,125 +348,123 @@ int auth_authenticate(pool *p, const char *name, const char *pw) {
   else if (MODRET_ISERROR(mr))
     res = MODRET_ERROR(mr);
 
-  if (c->tmp_pool) {
-    destroy_pool(c->tmp_pool);
-    c->tmp_pool = NULL;
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+    cmd->tmp_pool = NULL;
   }
 
   return res;
 }
 
 int auth_check(pool *p, const char *cpw, const char *name, const char *pw) {
-  cmd_rec *c = NULL;
+  cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   int res = PR_AUTH_BADPWD;
 
-  c = _make_cmd(p, 3, cpw, name, pw);
-  mr = _dispatch_auth(c, "check");
+  cmd = make_cmd(p, 3, cpw, name, pw);
+  mr = dispatch_auth(cmd, "check");
 
   if (MODRET_ISHANDLED(mr))
     res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
 
-  if (c->tmp_pool) {
-    destroy_pool(c->tmp_pool);
-    c->tmp_pool = NULL;
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+    cmd->tmp_pool = NULL;
   }
 
   return res;
 }
 
-const char *auth_uid_name(pool *p, uid_t uid)
-{
-  cmd_rec *c;
-  modret_t *mr;
+const char *auth_uid_name(pool *p, uid_t uid) {
+  cmd_rec *cmd = NULL;
+  modret_t *mr = NULL;
   static char namebuf[64];
-  char *ret = "ERROR";
+  char *res = "ERROR";
 
-  memset(namebuf,'\0',sizeof(namebuf));
-  c = _make_cmd(p,1, (void*)uid);
-  mr = _dispatch_auth(c, "uid_name");
+  memset(namebuf, '\0', sizeof(namebuf));
+
+  cmd = make_cmd(p, 1, (void *) uid);
+  mr = dispatch_auth(cmd, "uid_name");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
-    ret = mr->data;
-    sstrncpy(namebuf,ret,sizeof(namebuf));
-    ret = namebuf;
+    res = mr->data;
+    sstrncpy(namebuf, res, sizeof(namebuf));
+    res = namebuf;
   }
 
-  if (c->tmp_pool) {
-    destroy_pool(c->tmp_pool);
-    c->tmp_pool = NULL;
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+    cmd->tmp_pool = NULL;
   }
 
-  return ret;
+  return res;
 }
 
-const char *auth_gid_name(pool *p, gid_t gid)
-{
-  cmd_rec *c;
-  modret_t *mr;
+const char *auth_gid_name(pool *p, gid_t gid) {
+  cmd_rec *cmd = NULL;
+  modret_t *mr = NULL;
   static char namebuf[64];
-  char *ret = "ERROR";
+  char *res = "ERROR";
 
-  memset(namebuf,'\0',sizeof(namebuf));
-  c = _make_cmd(p,1, (void*)gid);
-  mr = _dispatch_auth(c, "gid_name");
+  memset(namebuf, '\0', sizeof(namebuf));
+
+  cmd = make_cmd(p, 1, (void *) gid);
+  mr = dispatch_auth(cmd, "gid_name");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
-    ret = mr->data;
-    sstrncpy(namebuf,ret,sizeof(namebuf));
-    ret = namebuf;
+    res = mr->data;
+    sstrncpy(namebuf, res, sizeof(namebuf));
+    res = namebuf;
   }
 
-  if (c->tmp_pool) {
-    destroy_pool(c->tmp_pool);
-    c->tmp_pool = NULL;
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+    cmd->tmp_pool = NULL;
   }
 
-  return ret;
+  return res;
 }
 
-uid_t auth_name_uid(pool *p, const char *name)
-{
-  cmd_rec *c;
-  modret_t *mr;
-  uid_t ret = -1;
+uid_t auth_name_uid(pool *p, const char *name) {
+  cmd_rec *cmd = NULL;
+  modret_t *mr = NULL;
+  uid_t res = -1;
 
-  c = _make_cmd(p,1,name);
-  mr = _dispatch_auth(c, "name_uid");
+  cmd = make_cmd(p, 1, name);
+  mr = dispatch_auth(cmd, "name_uid");
 
   if (MODRET_ISHANDLED(mr))
-    ret = (uid_t) mr->data;
+    res = (uid_t) mr->data;
   else
     errno = EINVAL;
 
-  if (c->tmp_pool) {
-    destroy_pool(c->tmp_pool);
-    c->tmp_pool = NULL;
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+    cmd->tmp_pool = NULL;
   }
 
-  return ret;
+  return res;
 }
 
-gid_t auth_name_gid(pool *p, const char *name)
-{
-  cmd_rec *c;
-  modret_t *mr;
-  gid_t ret = -1;
+gid_t auth_name_gid(pool *p, const char *name) {
+  cmd_rec *cmd = NULL;
+  modret_t *mr = NULL;
+  gid_t res = -1;
 
-  c = _make_cmd(p,1,name);
-  mr = _dispatch_auth(c, "name_gid");
+  cmd = make_cmd(p, 1, name);
+  mr = dispatch_auth(cmd, "name_gid");
 
   if (MODRET_ISHANDLED(mr))
-    ret = (gid_t) mr->data;
+    res = (gid_t) mr->data;
   else
     errno = EINVAL;
 
-  if (c->tmp_pool) {
-    destroy_pool(c->tmp_pool);
-    c->tmp_pool = NULL;
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+    cmd->tmp_pool = NULL;
   }
 
-  return ret;
+  return res;
 }
 
 int auth_getgroups(pool *p, const char *name, array_header **group_ids,
@@ -486,10 +481,10 @@ int auth_getgroups(pool *p, const char *name, array_header **group_ids,
   if (group_names)
     *group_names = make_array(permanent_pool, 2, sizeof(char *));
 
-  cmd = _make_cmd(p, 3, name, group_ids ? *group_ids : NULL,
+  cmd = make_cmd(p, 3, name, group_ids ? *group_ids : NULL,
     group_names ? *group_names : NULL);
 
-  mr = _dispatch_auth(cmd, "getgroups");
+  mr = dispatch_auth(cmd, "getgroups");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
     res = (int) mr->data;
