@@ -21,6 +21,7 @@ configuration:</p>
 <HR>
 
 <ul>
+  <LI><A href="#AccessDenyMsg">AccessDenyMsg</A></LI>
   <li><a href="#AccessGrantMsg">AccessGrantMsg</a></LI>
   <li><a href="#Allow">Allow</a></LI>
   <li><a href="#AllowAll">AllowAll</a></LI>
@@ -109,6 +110,7 @@ configuration:</p>
   <li><a href="#LogFormat">LogFormat</a></li>
   <li><a href="#LoginPasswordPrompt">LoginPasswordPrompt</a></li>
   <li><a href="#LsDefaultOptions">LsDefaultOptions</a></li>
+  <LI><A href="#MasqueradeAddress">MasqueradeAddress</A></LI>
   <li><a href="#MaxClients">MaxClients</a></li>
   <li><a href="#MaxClientsPerHost">MaxClientsPerHost</a></li>
   <LI><a href="#MaxHostsPerUser">MaxHostsPerUser</a>
@@ -216,8 +218,27 @@ configuration:</p>
 </ul>
 
 <hr>
+<h2><a name="AccessDenyMsg">AccessDenyMsg</a></h2>
+<p><strong>Syntax:</strong> AccessDenyMsg <em>&quot;message&quot;</em><br>
+  <strong>Default:</strong> Dependent on login type<br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<br>
+  <STRONG>Module:</STRONG> mod_core<BR>
+  <strong>Compatibility:</strong> 1.2.2 and later</P>
+
+
+  <P>Normally, a 530 response message is sent to an FTP client
+  immediately after a failed authentication attempt, with a standard
+  message indicating the the reason of failure.  In the case of a
+  wrong password, the reason is usually &quot;Login incorrect.&quot;
+  It is this message can be customized with the AccessDenyMsg
+  directive. In the message argument, the magic cookie '%u' is
+  replaced with the username specified by the client during login.
+
+<p><code>AccessDenyMsg &quot;Access for %u has been denied&quot;</code></P>
+
+<hr>
 <h2><a name="AccessGrantMsg">AccessGrantMsg</a></h2>
-<p><strong>Syntax:</strong> AccessGrantMsg <em>message</em><br>
+<p><strong>Syntax:</strong> AccessGrantMsg <em>"message"</em><br>
   <strong>Default:</strong> Dependent on login type<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<br>
   <STRONG>Module:</STRONG> mod_core<BR>
@@ -1682,6 +1703,8 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
     Transfer a file from the server to the client.</li>
   <li><strong>STOR</strong> (STORe)<br>
     Transfer a file from the client to the server.</li>
+  <LI><strong>SITE_CHMOD</strong> (CHange MODe bits)<BR>
+    Change the permissions of files on the server.</li>
 </ul>
 <p>In addition, the following <em><strong>command-groups</strong></em> are accepted. 
   They have a lower precedence than real commands, meaning that a real command 
@@ -2053,6 +2076,22 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
     a certain option (or options) is always present. For example, to force all 
     directory listings to <strong>always</strong> display ".dotfiles", one might:</p>
   <p><code>LsDefaultOptions "-a"</code></p>
+
+  <hr>
+  <h2><a name="MasqueradeAddress">MasqueradeAddress</a></h2>
+  <p><strong>Syntax:</strong> MasqueradeAddress <em>ip-address|dns-hostname</em><br>
+    <strong>Default:</strong> None<br>
+    <strong>Context:</strong> server config, &lt;VirtualHost&gt;<br>
+    <STRONG>Module:</STRONG> mod_core<BR>
+    <strong>Compatibility:</strong> 1.2.2 and later</P>
+
+  <p>MasqueradeAddress causes the server to display the network
+  information for the specified IP address or DNS hostname to the
+  client, on the assumption that that IP address or DNS host is acting
+  as a NAT gateway or port forwarder for the server.</p>
+
+  <P><code>MasqueradeAddress natbox.example.com</code></p>
+
   <hr>
   <h2><a name="MaxClients">MaxClients</a></h2>
   <p><strong>Syntax:</strong> MaxClients <em>number|none [message]</em><br>
@@ -2309,9 +2348,21 @@ href="#Allow">Allow</a> and <a href="#Deny">Deny</a> directives are checked insi
     pathnames. If the regex does match, a "Forbidden filename" error is returned 
     to the client. This can be especially useful for forbidding .ftpaccess or 
     .htaccess files.</p>
-  <p>Example:</p>
-  <p><code># We don't want .ftpaccess or .htaccess files to be uploaded<br>
-    PathDenyFilter &quot;(\\.ftpaccess)|(\\.htaccess)$&quot;</code></p>
+
+  <P>Note, if the regex is placed insite quotes ( ie &quot;foo.*&quot;
+  ) then any slashes will need to be escaped twice.  ie PathDenyFilter
+  &quot;\\.ftpaccess$&quot;
+    
+  <p>Examples:</p>
+  <p><code>
+  # Reject files with some extensions of executable files:
+  PathDenyFilter "\\.(js|vbs|shs|scr|exe)$"
+  # Reject all files with leading periods or dashes:
+  PathDenyFilter "(^|/)[-.]"
+  # Reject all files with either of the above two restrictions:
+  PathDenyFilter "((^|/)[-.])|(\\.(js|vbs|shs|scr|exe)$)"
+  </code></P>
+    
   <hr>
   <h2><a name="PersistentPasswd">PersistentPasswd</a></h2>
   <p><strong>Syntax:</strong> PersistentPasswd <em>on|off</em><br>
