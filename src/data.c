@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.56 2003-01-13 19:20:29 castaglia Exp $
+ * $Id: data.c,v 1.57 2003-01-14 05:22:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -237,14 +237,14 @@ static int data_pasv_open(char *reason, off_t size) {
   /* Protocol and socket options should be set before handshaking. */
 
   if (session.xfer.direction == PR_NETIO_IO_RD) {
-    inet_setoptions(session.d->pool,session.d,
+    inet_set_socket_opts(session.d->pool,session.d,
       (main_server->tcp_rwin_override ?  main_server->tcp_rwin : 0), 0);
-    inet_set_proto_options(session.pool, session.d, 0, 0, 1, 1);
+    inet_set_proto_opts(session.pool, session.d, 0, 0, 1, 1);
     
   } else {
-    inet_setoptions(session.d->pool,session.d, 0,
+    inet_set_socket_opts(session.d->pool,session.d, 0,
       (main_server->tcp_swin_override ?  main_server->tcp_swin : 0));
-    inet_set_proto_options(session.pool, session.d, 0, 0, 1, 1);
+    inet_set_proto_opts(session.pool, session.d, 0, 0, 1, 1);
   }
 
   c = inet_accept(session.xfer.p, session.d, session.c, -1, -1, TRUE);
@@ -329,14 +329,14 @@ static int data_active_open(char *reason, off_t size) {
   /* Protocol and socket options should be set before handshaking. */
 
   if (session.xfer.direction == PR_NETIO_IO_RD) {
-    inet_setoptions(session.d->pool,session.d,
+    inet_set_socket_opts(session.d->pool,session.d,
        (main_server->tcp_rwin_override ?  main_server->tcp_rwin : 0), 0);
-    inet_set_proto_options(session.pool, session.d, 0, 0, 1, 1);
+    inet_set_proto_opts(session.pool, session.d, 0, 0, 1, 1);
     
   } else {
-    inet_setoptions(session.d->pool,session.d, 0,
+    inet_set_socket_opts(session.d->pool,session.d, 0,
       (main_server->tcp_swin_override ?  main_server->tcp_swin : 0));
-    inet_set_proto_options(session.pool, session.d, 0, 0, 1, 1);
+    inet_set_proto_opts(session.pool, session.d, 0, 0, 1, 1);
   }
 
   if (inet_connect(session.d->pool, session.d, &session.data_addr,

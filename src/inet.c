@@ -320,8 +320,7 @@ conn_t *inet_copy_connection(pool *p, conn_t *c) {
 
 /* Pre-bind a socket to a port, use to bind to a low-numbered port
  */
-int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port)
-{
+int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port) {
   int save_errno,res = -1,s,on = 1,tries;
   struct sockaddr_in servaddr;
 
@@ -342,7 +341,9 @@ int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port)
   if (s < 0)
     return -1;
 
-  setsockopt(s,SOL_SOCKET,SO_REUSEADDR, (void*)&on,sizeof(on));
+  if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (void *) &on, sizeof(on)) < 0)
+    log_pri(PR_LOG_NOTICE, "error setting SO_REUSEADDR: %s", strerror(errno));
+
   servaddr.sin_family = AF_INET;
   if (!bind_addr)
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -480,7 +481,9 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     }
 
     /* Allow address reuse. */
-    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void *) &one, sizeof(one));
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void *) &one,
+        sizeof(one)) < 0)
+      log_pri(PR_LOG_NOTICE, "error setting SO_REUSEADDR: %s", strerror(errno));
 
     memset(&servaddr, 0, sizeof(servaddr));
 
@@ -687,7 +690,7 @@ void inet_lingering_close(pool *p, conn_t *c, long linger) {
   destroy_pool(c->pool);
 }
 
-int inet_set_proto_options(pool *p, conn_t *c, int nodelay, int lowdelay,
+int inet_set_proto_opts(pool *p, conn_t *c, int nodelay, int lowdelay,
     int throughput, int nopush) {
   int tos = 0;
 
@@ -697,12 +700,16 @@ int inet_set_proto_options(pool *p, conn_t *c, int nodelay, int lowdelay,
 
   if (!no_delay || *no_delay == TRUE) {
     if (c->wfd != -1)
-      setsockopt(c->wfd, IPPROTO_TCP, TCP_NODELAY, (void *) &nodelay,
-        sizeof(nodelay));
+      if (setsockopt(c->wfd, IPPROTO_TCP, TCP_NODELAY, (void *) &nodelay,
+          sizeof(nodelay)) < 0)
+        log_pri(PR_LOG_NOTICE, "error setting write fd TCP_NODELAY: %s",
+          strerror(errno));
 
     if (c->rfd != -1)
-      setsockopt(c->rfd, IPPROTO_TCP, TCP_NODELAY, (void *) &nodelay,
-        sizeof(nodelay));
+      if (setsockopt(c->rfd, IPPROTO_TCP, TCP_NODELAY, (void *) &nodelay,
+          sizeof(nodelay)) < 0)
+        log_pri(PR_LOG_NOTICE, "error setting read fd TCP_NODELAY: %s",
+          strerror(errno));
   }
 #endif
 
@@ -718,39 +725,48 @@ int inet_set_proto_options(pool *p, conn_t *c, int nodelay, int lowdelay,
 
 #ifdef IP_TOS
   if (c->wfd != -1)
-    setsockopt(c->wfd, IPPROTO_IP, IP_TOS, (void *) &tos, sizeof(tos));
+    if (setsockopt(c->wfd, IPPROTO_IP, IP_TOS, (void *) &tos, sizeof(tos)) < 0)
+      log_pri(PR_LOG_NOTICE, "error setting write fd IP_TOS: %s",
+        strerror(errno));
 
   if (c->rfd != -1)
-    setsockopt(c->rfd, IPPROTO_IP, IP_TOS, (void *) &tos, sizeof(tos));
+    if (setsockopt(c->rfd, IPPROTO_IP, IP_TOS, (void *) &tos, sizeof(tos)) < 0)
+      log_pri(PR_LOG_NOTICE, "error setting read fd IP_TOS: %s",
+        strerror(errno));
 #endif
 
 #ifdef TCP_NOPUSH
+  /* NOTE: TCP_NOPUSH is a FreeBSDism.  On Linux, the closest matching
+   * option is TCP_CORK, but it's usage is slightly different.
+   */
   if (c->wfd != -1)
-    setsockopt(c->wfd, IPPROTO_TCP, TCP_NOPUSH, (void *) &nopush,
-      sizeof(nopush));
+    if (setsockopt(c->wfd, IPPROTO_TCP, TCP_NOPUSH, (void *) &nopush,
+        sizeof(nopush)) < 0)
+      log_pri(PR_LOG_NOTICE, "error setting write fd TCP_NOPUSH: %s",
+        strerror(errno));
 
   if (c->rfd != -1)
-    setsockopt(c->rfd, IPPROTO_TCP, TCP_NOPUSH, (void *) &nopush,
-      sizeof(nopush));
+    if (setsockopt(c->rfd, IPPROTO_TCP, TCP_NOPUSH, (void *) &nopush,
+        sizeof(nopush)) < 0)
+      log_pri(PR_LOG_NOTICE, "error setting read fd TCP_NOPUSH: %s",
+        strerror(errno));
 #endif
 
   return 0;
 }
 
-/*
- * Set socket options on a connection. If set_buffers is non-zero the
- * socket snd/rcv buffers will be set according the the server
- * information.
+/* Set socket options on a connection.
  */
-
-int inet_setoptions(pool *p, conn_t *c, int rcvbuf, int sndbuf) {
+int inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf) {
   int no_keep_alive = 0;
   int crcvbuf, csndbuf;
   socklen_t len;
 
   if (c->wfd != -1) {
-    setsockopt(c->wfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &no_keep_alive,
-      sizeof(int));
+    if (setsockopt(c->wfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &no_keep_alive,
+        sizeof(int)) < 0)
+      log_pri(PR_LOG_NOTICE, "error setting write fd SO_KEEPALIVE: %s",
+        strerror(errno));
 
     /* Linux and "most" newer networking OSes probably use a highly
      * adaptive window size system, which generally wouldn't require
@@ -763,22 +779,26 @@ int inet_setoptions(pool *p, conn_t *c, int rcvbuf, int sndbuf) {
     getsockopt(c->wfd, SOL_SOCKET, SO_SNDBUF, (void *) &csndbuf, &len);
 
     if (sndbuf && sndbuf > csndbuf)
-      setsockopt(c->wfd, SOL_SOCKET, SO_SNDBUF, (void *) &sndbuf,
-        sizeof(sndbuf));
+      if (setsockopt(c->wfd, SOL_SOCKET, SO_SNDBUF, (void *) &sndbuf,
+          sizeof(sndbuf)) < 0)
+        log_pri(PR_LOG_NOTICE, "error setting SO_SNBUF: %s", strerror(errno));
 
     c->sndbuf = (sndbuf ? sndbuf : csndbuf);
   }
 
   if (c->rfd != -1) {
-    setsockopt(c->rfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &no_keep_alive,
-      sizeof(int));
+    if (setsockopt(c->rfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &no_keep_alive,
+        sizeof(int)) < 0)
+      log_pri(PR_LOG_NOTICE, "error setting read fd SO_KEEPALIVE: %s",
+        strerror(errno));
 
     len = sizeof(crcvbuf);
     getsockopt(c->rfd, SOL_SOCKET, SO_RCVBUF, (void *) &crcvbuf, &len);
 
     if (rcvbuf && rcvbuf > crcvbuf)
-      setsockopt(c->rfd, SOL_SOCKET, SO_RCVBUF, (void *) &rcvbuf,
-        sizeof(rcvbuf));
+      if (setsockopt(c->rfd, SOL_SOCKET, SO_RCVBUF, (void *) &rcvbuf,
+          sizeof(rcvbuf)) < 0)
+        log_pri(PR_LOG_NOTICE, "error setting SO_RCVFBUF: %s", strerror(errno));
 
     c->rcvbuf = (rcvbuf ? rcvbuf : crcvbuf);
   }
@@ -790,7 +810,8 @@ int inet_setoptions(pool *p, conn_t *c, int rcvbuf, int sndbuf) {
 static void _set_oobinline(int fd) {
   int on = 1;
   if (fd != -1)
-    setsockopt(fd, SOL_SOCKET, SO_OOBINLINE, (void*)&on, sizeof(on));
+    if (setsockopt(fd, SOL_SOCKET, SO_OOBINLINE, (void*)&on, sizeof(on)) < 0)
+      log_pri(PR_LOG_NOTICE, "error setting SO_OOBINLINE: %s", strerror(errno));
 }
 #endif
 
@@ -1149,7 +1170,7 @@ conn_t *inet_associate(pool *p, conn_t *c, p_in_addr_t *addr,
   if (!res->remote_name)
     res->remote_name = pstrdup(res->pool, inet_ntoa(*res->remote_ipaddr));
 
-  inet_setoptions(res->pool, res, 0, 0);
+  inet_set_socket_opts(res->pool, res, 0, 0);
   /* inet_setnonblock(res->pool,res); */
   return res;
 }
@@ -1236,7 +1257,7 @@ conn_t *inet_openrw(pool *p, conn_t *c, p_in_addr_t *addr,
   res->outstrm = pr_netio_open(res->pool, strm_type, res->wfd, PR_NETIO_IO_WR);
 
   /* Set options on the sockets. */
-  inet_setoptions(res->pool, res, 0, 0);
+  inet_set_socket_opts(res->pool, res, 0, 0);
   inet_setblock(res->pool, res);
 
   res->mode = CM_OPEN;
