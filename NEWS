@@ -1,4 +1,12 @@
-$Id: NEWS,v 1.491 2003-10-15 19:53:02 castaglia Exp $
+$Id: NEWS,v 1.492 2003-10-17 13:19:54 castaglia Exp $
+
+CVS
+---------------------------------
+- Bug 2181 - The prior fix for Bug#2181, handling of the PORT command when the
+  --enable-ipv6 configure option is used, was not quite correct.  A problem
+  still existed when an IPv4 client used the PORT command when talking to
+  an IPv4-only vhost (as opposed to an IPv4 and IPv6 vhost).  Now PORT is
+  properly handled in all cases.
 
 1.2.9rc3 - Released 15-Oct-2003
 ---------------------------------

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.193 2003-10-11 16:57:24 castaglia Exp $
+ * $Id: mod_core.c,v 1.194 2003-10-17 13:19:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3074,10 +3074,11 @@ MODRET core_port(cmd_rec *cmd) {
   port = ((p1 << 8) | p2);
 
 #ifdef USE_IPV6
-  snprintf(buf, sizeof(buf), "::ffff:%u.%u.%u.%u", h1, h2, h3, h4);
-#else
-  snprintf(buf, sizeof(buf), "%u.%u.%u.%u", h1, h2, h3, h4);
+  if (pr_netaddr_get_family(session.c->remote_addr) == AF_INET6)
+    snprintf(buf, sizeof(buf), "::ffff:%u.%u.%u.%u", h1, h2, h3, h4);
+  else
 #endif /* USE_IPV6 */
+  snprintf(buf, sizeof(buf), "%u.%u.%u.%u", h1, h2, h3, h4);
   buf[sizeof(buf)-1] = '\0';
 
   port_addr = pr_netaddr_get_addr(cmd->tmp_pool, buf, NULL);
