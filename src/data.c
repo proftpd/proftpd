@@ -26,7 +26,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.46 2002-10-28 17:28:08 castaglia Exp $
+ * $Id: data.c,v 1.47 2002-10-29 15:51:54 jwm Exp $
  */
 
 #include "conf.h"
@@ -200,16 +200,16 @@ static void _xlate_ascii_write(char **buf, unsigned int *buflen,
 }
 
 static void _data_new_xfer(char *filename, int direction) {
-  if(session.xfer.p) {
+  if (session.xfer.p) {
     destroy_pool(session.xfer.p);
-    memset(&session.xfer,0,sizeof(session.xfer));
+    memset(&session.xfer, 0, sizeof(session.xfer));
   }
   
   session.xfer.p = make_sub_pool(session.pool);
   session.xfer.filename = pstrdup(session.xfer.p,filename);
   session.xfer.direction = direction;
   session.xfer.bufsize = PR_TUNABLE_BUFFER_SIZE;
-  session.xfer.buf = (char*)palloc(session.xfer.p, PR_TUNABLE_BUFFER_SIZE+1);
+  session.xfer.buf = (char *)pcalloc(session.xfer.p, PR_TUNABLE_BUFFER_SIZE + 1);
   session.xfer.buf++;	/* leave room for ascii translation */
   session.xfer.bufstart = session.xfer.buf;
   session.xfer.buflen = 0;
