@@ -1,7 +1,10 @@
-$Id: NEWS,v 1.96 2001-04-18 15:40:39 flood Exp $
+$Id: NEWS,v 1.97 2001-04-20 12:31:41 flood Exp $
 
 1.2.2rc2 - CVS
 ---------------------------------
+The `AllowChmod' directive has been deprecated, and will not work
+consistantly.  Use <Limit SITE_CHMOD> instead.
+
 - Bug 1128 - Fixed possibled Linux sendfile() corruption issue.
 - Bug 1093 - Checking for world writable log files and symlinks.
 - Bug 1094 - AuthUserFile/AuthGroupFile disallow relative paths.

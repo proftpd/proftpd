@@ -19,7 +19,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.10 2000-08-01 20:41:31 macgyver Exp $
+ * $Id: mod_site.c,v 1.11 2001-04-20 12:31:41 flood Exp $
  */
 
 #include "conf.h"
@@ -64,6 +64,17 @@ MODRET set_allowchmod(cmd_rec *cmd) {
   
   if((b = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
+
+  /* As of 1.2.2, AllowChmod is deprecated and should not be used (in favor of
+   * <Limit SITE_CHMOD>.  In order to not break existing configs, I have
+   * chosen to leave it in but emit a warning.  There is no practical way to
+   * implement it this way as it is not checked as part of the normal ACL
+   * phase.
+   *
+   * jss 4/20/2001
+   */
+  
+  log_pri(LOG_WARNING,"AllowChmod is deprecated, and will not work consistantly, use <Limit SITE_CHMOD> instead.");
 
   c = add_config_param("AllowChmod", 1, (void*) b);
   c->flags |= CF_MERGEDOWN;
