@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.154 2002-12-27 16:21:32 jwm Exp $
+ * $Id: main.c,v 1.155 2002-12-31 21:18:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2414,6 +2414,7 @@ int main(int argc, char *argv[], char **envp) {
 #endif /* HAVE_GETOPT_LONG */
 	 ) != -1) {
     switch (optc) {
+
     case 'D':
       if (!optarg) {
         log_pri(PR_LOG_ERR, "Fatal: -D requires definition argument");
@@ -2428,12 +2429,15 @@ int main(int argc, char *argv[], char **envp) {
 
       *((char **) push_array(server_defines)) = pstrdup(permanent_pool, optarg);
       break;
+
     case 'n':
       nodaemon++;
       break;
+
     case 'q':
       quiet++;
       break;
+
     case 'd':
       if (!optarg) {
         log_pri(PR_LOG_ERR, "Fatal: -d requires debugging level argument.");
@@ -2441,11 +2445,18 @@ int main(int argc, char *argv[], char **envp) {
       }
       log_setdebuglevel(atoi(optarg));
       break;
+
     case 'c':
       if (!optarg) {
         log_pri(PR_LOG_ERR, "Fatal: -c requires configuration path argument.");
         exit(1);
       }
+
+      if (*optarg != '/') {
+        log_pri(PR_LOG_ERR, "Fatal: -c requires an absolute path.");
+        exit(1);
+      }
+
       config_filename = strdup(optarg);
       break;
 
