@@ -469,7 +469,7 @@ ac_includes_default="\
 #endif"
 
 ac_subdirs_all="$ac_subdirs_all lib/libltdl"
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os OSREL OSTYPE CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT SET_MAKE INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA LN_S ECHO RANLIB ac_ct_RANLIB STRIP ac_ct_STRIP CPP EGREP LIBTOOL BINDIR LIBEXECIR LOCALSTATEDIR SBINDIR SYSCONFDIR subdirs install_user install_group ALLOCA INSTALL_STRIP INCLTDL INSTALL_DEPS LIB_DEPS LIB_OBJS LIBTOOL_DEPS LIBLTDL MAIN_LDFLAGS MAIN_LIBS MODULE_DEPS MODULE_LDFLAGS MODULE_OBJS BUILD_MODULE_OBJS ADDL_DIRS INCLUDES LIBRARIES CURSES_LIBS VERSION LIBOBJS LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os OSREL OSTYPE CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT SET_MAKE INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA LN_S ECHO RANLIB ac_ct_RANLIB STRIP ac_ct_STRIP CPP EGREP LIBTOOL BINDIR INCLUDEDIR LIBEXECDIR LOCALSTATEDIR PREFIX SBINDIR SYSCONFDIR subdirs install_user install_group ALLOCA INSTALL_STRIP INCLTDL INSTALL_DEPS LIB_DEPS LIB_OBJS LIBTOOL_DEPS LIBLTDL MAIN_LDFLAGS MAIN_LIBS MODULE_DEPS MODULE_LDFLAGS MODULE_OBJS BUILD_MODULE_OBJS ADDL_DIRS INCLUDES LIBRARIES CURSES_LIBS VERSION LIBOBJS LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -8043,7 +8043,7 @@ if test $ac_cv_c_compiler_gnu = no -a "$OSTYPE" = "-DHPUX10"; then
   CFLAGS="$CFLAGS -Ae"
 fi
 
-LDFLAGS="-Llib $LDFLAGS"
+LDFLAGS="-L\$(top_srcdir)/lib $LDFLAGS"
 
 if test $ac_cv_c_compiler_gnu = yes; then
   if test x"$CFLAGS" = "x-g -O2"; then
@@ -8166,9 +8166,13 @@ fi
 
 BINDIR=`eval echo $bindir`
 
+INCLUDEDIR=`eval echo $includedir`
+
 LIBEXECDIR=`eval echo $libexecdir`
 
 LOCALSTATEDIR=`eval echo $localstatedir`
+
+PREFIX=`eval echo $prefix`
 
 SBINDIR=`eval echo $sbindir`
 
@@ -8560,8 +8564,10 @@ if test "${enable_dso+set}" = set; then
       ac_build_core_modules="$ac_build_core_modules modules/mod_dso.o"
       ac_build_addl_includes="$INCLTDL $ac_build_addl_includes"
 
-      MAIN_LDFLAGS="-Llib/libltdl -dlopen self -export-dynamic -rpath \$(DESTDIR)\$(sbindir)"
+      MAIN_LDFLAGS="-L\$(top_srcdir)/lib/libltdl -dlopen self -export-dynamic -rpath \$(DESTDIR)\$(sbindir)"
       MAIN_LIBS="-lltdl"
+
+      MODULE_LDFLAGS="-avoid-version -export-dynamic -module"
 
       INSTALL_DEPS="install-libltdl"
       LIB_DEPS="libltdl"
@@ -23942,8 +23948,10 @@ s,@CPP@,$CPP,;t t
 s,@EGREP@,$EGREP,;t t
 s,@LIBTOOL@,$LIBTOOL,;t t
 s,@BINDIR@,$BINDIR,;t t
-s,@LIBEXECIR@,$LIBEXECIR,;t t
+s,@INCLUDEDIR@,$INCLUDEDIR,;t t
+s,@LIBEXECDIR@,$LIBEXECDIR,;t t
 s,@LOCALSTATEDIR@,$LOCALSTATEDIR,;t t
+s,@PREFIX@,$PREFIX,;t t
 s,@SBINDIR@,$SBINDIR,;t t
 s,@SYSCONFDIR@,$SYSCONFDIR,;t t
 s,@subdirs@,$subdirs,;t t
