@@ -722,11 +722,13 @@ static void tls_scrub_pkeys(void) {
     if (k->rsa_pkey) {
       pr_memscrub(k->rsa_pkey, k->pkeysz);
       free(k->rsa_pkey_ptr);
+      k->rsa_pkey = k->rsa_pkey_ptr = NULL;
     }
 
     if (k->dsa_pkey) {
       pr_memscrub(k->dsa_pkey, k->pkeysz);
       free(k->dsa_pkey_ptr);
+      k->dsa_pkey = k->dsa_pkey_ptr = NULL;
     }
   }
 }
@@ -3490,24 +3492,8 @@ static void tls_sess_exit_ev(const void *event_data, void *user_data) {
   if (tls_data_netio)
     destroy_pool(tls_data_netio->pool);
 
-  if (tls_pkey && (mpid != getpid())) {
-
-    /* Scrub and free any passphrases.  We don't worry about unlocking the
-     * memory, as that will happen by default.
-     */
- 
-    if (tls_pkey->rsa_pkey) { 
-      tls_log("scrubbing RSA passphrase from memory");
-      pr_memscrub(tls_pkey->rsa_pkey, tls_pkey->pkeysz);
-      free(tls_pkey->rsa_pkey);
-    }
-
-    if (tls_pkey->dsa_pkey) {
-      tls_log("scrubbing DSA passphrase from memory");
-      pr_memscrub(tls_pkey->dsa_pkey, tls_pkey->pkeysz);
-      free(tls_pkey->dsa_pkey);
-    }
-  }
+  if (mpid != getpid())
+    tls_scrub_pkeys();
 
   tls_closelog();
   return;
