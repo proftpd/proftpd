@@ -39,7 +39,7 @@ cygrunsrv --install proftpd \
           --desc "ProFTPd FTP daemon"
 --8<--Cut here--
 
-The --nodaemon option is important. It prevents the process from detouching.
+The --nodaemon option is important. It prevents the process from detaching.
 Thus you can always shut it down with "net stop proftpd" command.
 
 After running this script, you may run the daemon with "net start proftpd"
