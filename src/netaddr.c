@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.29 2003-10-11 19:29:03 castaglia Exp $
+ * $Id: netaddr.c,v 1.30 2003-10-11 19:32:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -641,7 +641,7 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
       void *inaddr = pr_netaddr_get_inaddr(na);
     
 #ifdef HAVE_GETHOSTBYNAME2
-      if (pr_netaddr_v4mappedv6(na)) {
+      if (pr_netaddr_is_v4mappedv6(na)) {
         family = AF_INET;
         inaddr = get_v4inaddr(na);
       }
