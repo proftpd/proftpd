@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.178 2004-02-17 02:15:58 castaglia Exp $
+ * $Id: mod_auth.c,v 1.179 2004-02-24 20:13:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1470,6 +1470,10 @@ static void auth_scan_scoreboard(void) {
     if (strcmp(score->sce_server_addr, curr_server_addr) == 0) {
       cur++;
 
+      /* Only count up authenticated clients, as per the documentation. */
+      if (strcmp(score->sce_user, "(none)") == 0)
+        continue;
+
       /* Note: the class member of the scoreboard entry will never be
        * NULL.  At most, it may be the empty string.
        */
@@ -1536,6 +1540,10 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
            */
           if (c && c->config_type == CONF_ANON && cur == 0)
               cur = 1;
+
+          /* Only count authenticated clients, as per the documentation. */
+          if (strcmp(score->sce_user, "(none)") == 0)
+            continue;
 
           cur++;
 
