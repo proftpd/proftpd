@@ -20,7 +20,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.17 2000-08-05 04:43:16 macgyver Exp $
+ * $Id: data.c,v 1.18 2000-08-08 00:54:46 macgyver Exp $
  */
 
 #include "conf.h"
@@ -648,24 +648,12 @@ int data_xfer(char *cl_buf, int cl_size) {
 
 #ifdef HAVE_SENDFILE
 /* data_sendfile actually transfers the data on the data connection.
- * ascii translation is not performed.
+ * ASCII translation is not performed.
  * return 0 if reading and data connection closes, or -1 if error
  */
-#if defined(HAVE_LINUX_SENDFILE) || defined(HAVE_HPUX_SENDFILE)
-ssize_t
-#elif defined(HAVE_BSD_SENDFILE)
-off_t
-#else
-#error "You have an unknown sendfile implementation."
-#endif /* HAVE_LINUX_SENDFILE || HAVE_HPUX_SENDFILE */
-data_sendfile(int retr_fd, off_t *offset, size_t count)
-{
+pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
   int flags, error;
-#if defined(HAVE_LINUX_SENDFILE) || defined(HAVE_HPUX_SENDFILE)
-  ssize_t len = 0, total = 0;
-#elif defined(HAVE_BSD_SENDFILE)
-  off_t len = 0, total = 0;
-#endif /* HAVE_LINUX_SENDFILE || HAVE_HPUX_SENDFILE */
+  pr_sendfile_t len = 0, total = 0;
   
   if(session.xfer.direction == IO_READ)
     return -1;

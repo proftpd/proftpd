@@ -19,7 +19,7 @@
  */
 
 /* Data connection management prototypes
- * $Id: data.h,v 1.5 2000-08-02 05:25:24 macgyver Exp $
+ * $Id: data.h,v 1.6 2000-08-08 00:54:46 macgyver Exp $
  */
 
 #ifndef __DATACONN_H
@@ -34,14 +34,19 @@ int data_xfer(char*,int);
 void data_reset();
 
 #ifdef HAVE_SENDFILE
-#if defined(HAVE_LINUX_SENDFILE)
+typedef
+
+#if defined(HAVE_LINUX_SENDFILE) || defined(HAVE_HPUX_SENDFILE)
 ssize_t
 #elif defined(HAVE_BSD_SENDFILE)
 off_t
 #else
 #error "You have an unknown sendfile implementation."
-#endif /* HAVE_LINUX_SENDFILE */
-data_sendfile(int retr_fd, off_t *offset, size_t count);
+#endif /* HAVE_LINUX_SENDFILE || HAVE_HPUX_SENDFILE */
+
+pr_sendfile_t;
+
+pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count);
 #endif /* HAVE_SENDFILE */
 
 #endif /* __DATACONN_H */

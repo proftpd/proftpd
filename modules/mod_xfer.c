@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.41 2000-08-05 04:42:31 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.42 2000-08-08 00:54:46 macgyver Exp $
  */
 
 /* History Log:
@@ -47,9 +47,6 @@
 
 extern module auth_module;
 extern pid_t mpid;
-#if defined(HAVE_SENDFILE) && defined(HAVE_LINUX_SENDFILE)
-static int have_sendfile = 0;
-#endif /* HAVE_SENDFILE */
 
 /* From the auth module */
 char *auth_map_uid(int);
@@ -65,8 +62,7 @@ static int retr_fd;
 
 module xfer_module;
 
-static void _log_transfer(char direction, char abort_flag)
-{
+static void _log_transfer(char direction, char abort_flag) {
   struct timeval end_time;
   char *fullpath;
 
@@ -195,9 +191,87 @@ static void _rate_throttle(unsigned long rate_pos, long rate_bytes,
   }
 }
 
-static
-void _stor_done()
-{
+static int _transmit_normal(char *buf, long bufsize) {
+  long count;
+  
+  if((count = fs_read(retr_file, retr_fd, buf, bufsize)) <= 0)
+    return 0;
+  
+  return data_xfer(buf, count);
+}
+
+#ifdef HAVE_SENDFILE
+static int _transmit_sendfile(int rate_bps, unsigned long count, off_t offset,
+			       pr_sendfile_t *retval) {
+  
+  /* We don't use sendfile() if:
+   * - We're using bandwidth throttling.
+   * - We're transmitting an ASCII file.
+   * - There's no data left to transmit.
+   */
+  if(rate_bps ||
+     !(session.xfer.file_size - count) ||
+     (session.flags & (SF_ASCII | SF_ASCII_OVERRIDE))) {
+    return 0;
+  }
+
+ retry:
+  *retval = data_sendfile(retr_fd, &offset, session.xfer.file_size - count);
+
+  if(*retval == -1) {
+    switch (errno) {
+    case EAGAIN:
+    case EINTR:
+      /* Interrupted call, or the other side wasn't ready yet.
+       */
+      goto retry;
+      
+    case EPIPE:
+    case ECONNRESET:
+    case ETIMEDOUT:
+    case EHOSTUNREACH:
+      /* Other side broke the connection.
+       */
+      break;
+      
+#ifdef ENOSYS
+    case ENOSYS:
+#endif /* ENOSYS */
+      
+    case EINVAL:
+      /* No sendfile support, apparently.  Try it the normal way.
+       */
+      return 0;
+      break;
+      
+    default:
+      log_pri(LOG_ERR,
+	      "_transmit_sendfile error "
+	      "(reverting to normal data transmission) %d: %s.",
+	      errno, strerror(errno));
+      return 0;
+    }
+  }
+  
+  return 1;
+}
+#endif /* HAVE_SENDFILE */
+
+static long _transmit_data(int rate_bps, unsigned long count, off_t offset,
+			   char *buf, long bufsize) {
+#ifdef HAVE_SENDFILE
+  pr_sendfile_t retval;
+  
+  if(!_transmit_sendfile(rate_bps, count, offset, &retval))
+    return _transmit_normal(buf, bufsize);
+  else
+    return (long) retval;
+#else
+  return _transmit_normal(buf, bufsize);
+#endif /* HAVE_SENDFILE */
+}
+
+static void _stor_done() {
   struct stat sbuf;
 
   fs_close(stor_file,stor_fd);
@@ -222,9 +296,7 @@ void _stor_done()
   }
 }
 
-static
-void _retr_done()
-{
+static void _retr_done() {
   fs_close(retr_file,retr_fd);
   retr_file = NULL;
 }
@@ -662,12 +734,11 @@ MODRET cmd_retr(cmd_rec *cmd)
   struct stat sbuf;
   struct timeval rate_tvstart;
   privdata_t *p;
-  int bufsize, len = 0;
-  int rate_hardbps = 0;
+  long bufsize, len = 0;
+  long rate_hardbps = 0;
   unsigned long respos = 0,cnt = 0,cnt_steps = 0,cnt_next = 0;
   long rate_bytes = 0, rate_freebytes = 0, rate_bps = 0;
-  off_t off;
-
+  
   if((rate_bps = get_param_int(CURRENT_CONF, "RateReadBPS", FALSE)) == -1)
     rate_bps = 0;
 
@@ -714,20 +785,20 @@ MODRET cmd_retr(cmd_rec *cmd)
   } else {
     /* send the data */
     data_init(cmd->arg,IO_WRITE);
-
+    
     session.xfer.path = pstrdup(session.xfer.p,dir);
-    session.xfer.file_size = (unsigned long)sbuf.st_size;
+    session.xfer.file_size = (unsigned long) sbuf.st_size;
     cnt_steps = session.xfer.file_size / 100;
     if(cnt_steps == 0)
       cnt_steps = 1;
 
-    if(data_open(cmd->arg,NULL,IO_WRITE,sbuf.st_size - respos) < 0) {
-      data_abort(0,TRUE);
+    if(data_open(cmd->arg, NULL, IO_WRITE, sbuf.st_size - respos) < 0) {
+      data_abort(0, TRUE);
       return ERROR(cmd);
     }
-
+    
     bufsize = (main_server->tcp_swin > 0 ? main_server->tcp_swin : 1024);
-    lbuf = (char*)palloc(cmd->tmp_pool,bufsize);
+    lbuf = (char *) palloc(cmd->tmp_pool, bufsize);
 
     cnt = respos;
     log_add_run(mpid, NULL, session.user,
@@ -736,59 +807,14 @@ MODRET cmd_retr(cmd_rec *cmd)
 		NULL, 0, session.xfer.file_size, 0, NULL);
 
     gettimeofday(&rate_tvstart, NULL);
-    off = respos;
     
     while(cnt != session.xfer.file_size) {
-      if((len = fs_read(retr_file, retr_fd, lbuf, bufsize)) <= 0)
-	break;
-      
       if(XFER_ABORTED)
         break;
       
-#ifdef HAVE_SENDFILE
-      if(rate_bps ||
-
-#ifdef HAVE_BSD_SENDFILE
-	 !(session.xfer.file_size - cnt) ||
-#endif /* HAVE_BSD_SENDFILE */
-
-#ifdef HAVE_LINUX_SENDFILE
-	 !have_sendfile ||
-#endif /* HAVE_LINUX_SENDFILE */
-
-	 (session.flags & (SF_ASCII | SF_ASCII_OVERRIDE))) {
-	len = data_xfer(lbuf, len);
-	goto done;
-      }
-      
-      len = data_sendfile(retr_fd, &off, session.xfer.file_size - cnt);
-      if(len == -1) {
-	switch (errno) {
-	case EAGAIN:
-	case EINTR:
-	  /* Interrupted call, or the other side wasn't ready yet.
-	   */
-	  continue;
-	  
-	case EPIPE:
-	case ECONNRESET:
-	case ETIMEDOUT:
-	case EHOSTUNREACH:
-	  /* Other side broke the connection.
-	   */
-	  break;
-	  
-	default:
-	  log_pri(LOG_ERR, "data_sendfile error %d: %s.",
-		  errno, strerror(errno));
-	}
-      }
-
-    done:
-#else
-      len = data_xfer(lbuf, len);
-#endif /* HAVE_SENDFILE */
-
+      /* INSERT CODE HERE */
+      if((len = _transmit_data(rate_bps, cnt, respos, lbuf, bufsize)) == 0)
+	break;
       
       if(len < 0) {
         _retr_abort();
@@ -1022,24 +1048,6 @@ int xfer_init_child()
   return 0;
 }
 
-int xfer_init_parent()
-{
-#if defined(HAVE_SENDFILE) && defined(HAVE_LINUX_SENDFILE)
-  /* Minor optimization so we're not testing EVERY time.
-   */
-  if(have_sendfile)
-    return 0;
-  
-  if(!sendfile(1, 0, NULL, 0) || errno != ENOSYS) {
-  	have_sendfile = 1;
-  } else {
-        log_debug(DEBUG2, "Sendfile disabled (%d:%s)", errno, strerror(errno));
-  }
-#endif /* HAVE_SENDFILE */
-
-  return 0;
-}
-
 MODRET add_ratenum(cmd_rec *cmd)
 {
   config_rec *c;
@@ -1126,6 +1134,6 @@ module xfer_module = {
   xfer_config,
   xfer_commands,
   NULL,
-  xfer_init_parent,
+  NULL,
   xfer_init_child
 };
