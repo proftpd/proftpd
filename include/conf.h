@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.35 2003-06-03 16:25:21 castaglia Exp $
+ * $Id: conf.h,v 1.36 2003-06-17 01:23:15 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -129,6 +129,10 @@ char *strchr(),*strrchr();
 
 #ifdef HAVE_NETINET_IN_H
 # include <netinet/in.h>
+#endif
+
+#ifdef HAVE_NETINET_IN_SYSTM_H
+# include <netinet/in_systm.h>
 #endif
 
 #ifdef HAVE_NETINET_IP_H
