@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.51 2001-02-22 01:09:35 flood Exp $
+ * $Id: main.c,v 1.52 2001-02-22 04:51:10 flood Exp $
  */
 
 /*
@@ -2105,7 +2105,8 @@ void standalone_main()
       addl_bindings(s);
     }
 
-  log_pri(LOG_NOTICE,"ProFTPD %s standalone mode STARTUP",VERSION);
+  log_pri(LOG_NOTICE,"ProFTPD %s (built %s) standalone mode STARTUP",
+                      VERSION_STATUS,BUILD_STAMP);
   server_loop();
 }
 
@@ -2340,9 +2341,14 @@ int main(int argc, char **argv, char **envp)
   if(show_version) {
     if(show_version == 1)
       log_pri(LOG_NOTICE,"ProFTPD Version " VERSION);
-    else
-      log_pri(LOG_NOTICE,"Version Status: %s Internal Version: %08x",
-              VERSION_STATUS,INTERNAL_VERSION);
+    else {
+      log_pri(LOG_NOTICE,"         Version: %s",
+              VERSION_STATUS);
+      log_pri(LOG_NOTICE,"Internal Version: %08x",
+              INTERNAL_VERSION);
+      log_pri(LOG_NOTICE,"     Build Stamp: %s",
+              BUILD_STAMP);
+    }
     exit(0);
   }
   

@@ -42,7 +42,7 @@ CPPFLAGS=@CPPFLAGS@ $(DEFAULT_PATHS) $(PLATFORM) $(INCLUDES)
 
 # Our compiler flags.
 #
-CFLAGS=@CFLAGS@ $(INCLUDES)
+CFLAGS=@CFLAGS@
 
 # Defines for memory testing and debugging.
 #CFLAGS=-g3 -DDEBUG_NOFORK -DDEBUG_MEMORY

@@ -31,18 +31,24 @@ INSTALL_MAN=$(INSTALL) -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0644
 
 all: proftpd utils
 
+force-buildstamp:
+	echo \#define BUILD_STAMP \"`date`\" > include/buildstamp.h
+
+include/buildstamp.h:
+	echo \#define BUILD_STAMP \"`date`\" > include/buildstamp.h
+
 dummy:
 
-lib: dummy
+lib: include/buildstamp.h dummy
 	cd lib ; $(MAKE) lib
 
-src: dummy
+src: include/buildstamp.h dummy
 	cd src ; $(MAKE) src
 
-modules: dummy
+modules: include/buildstamp.h dummy
 	cd modules; $(MAKE) modules
 
-dirs: dummy
+dirs: include/buildstamp.h dummy
 	@dirs="$(DIRS)"; \
 	for dir in $$dirs; do \
 	  if [ -d "$$dir" ]; then cd $$dir; $(MAKE); fi; \
@@ -70,6 +76,7 @@ clean:
 	for dir in $$dirs; do \
 	  if [ -d "$$dir" ]; then cd $$dir; $(MAKE) clean; fi; \
 	done
+	rm -f include/buildstamp.h
 	rm -f proftpd ftpcount ftpwho ftpshut core *~
 
 # BSD install -d doesn't work, so ...
@@ -140,6 +147,7 @@ distclean: clean depend
 	      Makefile proftpd.conf development.notes
 	rm -f Make.modules Make.rules contrib/dist/rpm/proftpd.spec
 	rm -f Makefile lib/Makefile modules/Makefile src/Makefile
+	rm -f include/buildstamp.h
 	rm -rf `find . -name "CVS"`
 	rm -rf `find . -name "*~"`
 	rm -rf `find . -name "*.bak"`
@@ -153,3 +161,4 @@ cvsclean: clean
 	rm -f config.h config.status config.cache config.log \
 	      proftpd.conf development.notes
 	rm -f Makefile lib/Makefile modules/Makefile src/Makefile
+	rm -f include/buildstamp.h
