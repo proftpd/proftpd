@@ -23,7 +23,7 @@
  */
 
 /* Variables API implementation
- * $Id: var.c,v 1.2 2004-10-31 19:58:19 castaglia Exp $
+ * $Id: var.c,v 1.3 2004-12-04 07:43:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -205,10 +205,10 @@ int pr_var_set(pool *p, const char *name, const char *desc, int type,
       v->v_val = (var_vstr_cb) val;
 
       if (data) {
-        v->v_data = palloc(p, datasz);
+        v->v_data = data;
         v->v_datasz = datasz;
-        memcpy(v->v_data, data, datasz);
       }
+
       break;
 
     default:
