@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.122 2003-02-12 19:03:35 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.123 2003-02-12 23:54:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -705,9 +705,27 @@ static void _stor_chown(void) {
       pr_fs_clear_cache();
       pr_fsio_stat(xfer_path, &sbuf);
 
+      /* The chmod happens after the chown because chown will remove
+       * the S{U,G}ID bits on some files (namely, directories); the subsequent
+       * chmod is used to restore those dropped bits.  This makes it
+       * necessary to use root privs when doing the chmod as well (at least
+       * in the case of chown'ing the file via root privs) in order to insure
+       * that the mode can be set (a file might be being "given away", and if
+       * root privs aren't used, the chmod() will fail because the old owner/
+       * session user doesn't have the necessary privileges to do so).
+       */
+      is_err = 0;
+      PRIVS_ROOT
       if (pr_fsio_chmod(xfer_path, sbuf.st_mode) < 0)
-        log_debug(DEBUG0, "chmod(%s) to %04o failed: %s", xfer_path,
+        is_err++;
+      PRIVS_RELINQUISH
+
+      if (is_err)
+        log_debug(DEBUG0, "root chmod(%s) to %04o failed: %s", xfer_path,
           (unsigned int) sbuf.st_mode, strerror(errno));
+      else
+        log_debug(DEBUG2, "root chmod(%s) to %04o successful", xfer_path,
+          (unsigned int) sbuf.st_mode);
     }
 
   } else if ((session.fsgid != (gid_t) -1) && xfer_path) {

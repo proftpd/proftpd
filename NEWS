@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.368 2003-02-12 19:03:34 castaglia Exp $
+$Id: NEWS,v 1.369 2003-02-12 23:54:20 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -18,6 +18,11 @@ CVS
   a statcache caching effect bug.
 - Bug 1916 - Transfers hang with strange transfertime in logfile.  This
   appears to have been due to use of an uninitialized value.
+- Bug 1948 - mod_xfer relinquishes privs before chmod takes place.  In
+  places where UserOwner is used to "give away" files, the chmod() attempt
+  that follows the chown() (used to preserve permissions sometimes altered
+  by the operating system's chown(2) call) did not use root privs, and thus
+  the client did not have permission to write the file.
 
 1.2.8rc2 - Released 29-Jan-2003
 ---------------------------------
