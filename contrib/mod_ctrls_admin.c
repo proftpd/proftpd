@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.18 2004-05-30 02:39:18 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.19 2004-05-30 22:46:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -398,6 +398,7 @@ static int ctrls_handle_get(pr_ctrls_t *ctrl, int reqargc,
       res = -1;
     }
 
+  /* Handle 'get directives' requests */
   } else if (strcmp(reqargv[0], "directives") == 0) {
 
     if (reqargc == 1) {

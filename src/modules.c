@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.40 2004-05-30 02:39:21 castaglia Exp $
+ * $Id: modules.c,v 1.41 2004-05-30 22:46:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -55,20 +55,11 @@ static xaset_t *symbol_table[PR_TUNABLE_HASH_TABLE_SIZE];
 static pool *symbol_pool = NULL;
 static struct stash *curr_sym = NULL;
 
-static array_header *mconfarr;			/* masterconf array */
-static array_header *mcmdarr;			/* mastercmd array */
-static array_header *mautharr;			/* masterauth array */
+/* Currently running module */
+module *curr_module = NULL;
 
-conftable *m_conftable; 			/* Master conf table */
-unsigned int n_conftabs;
-
-cmdtable *m_cmdtable;				/* Master cmd table */
-unsigned int n_cmdtabs;
-
-authtable *m_authtable;				/* Master auth table */
-unsigned int n_authtabs;
-
-module *curr_module = NULL;			/* Current running module */
+/* Used to track the priority for loaded modules. */
+static unsigned int curr_module_pri = 0;
 
 typedef struct mod_cb {
   struct mod_cb *next, *prev;
@@ -96,7 +87,7 @@ static struct stash *sym_alloc(void) {
 static int sym_cmp(struct stash *s1, struct stash *s2) {
   int ret;
 
-  ret = strcmp(s1->sym_name,s2->sym_name);
+  ret = strcmp(s1->sym_name, s2->sym_name);
 
   /* Higher priority modules must go BEFORE lower priority in the
    * hash tables.
@@ -373,33 +364,31 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
 }
 
 /* functions to manage modular privdata structure inside cmd_rec */
-privdata_t *mod_privdata_alloc(cmd_rec *cmd, char *tag, int size)
-{
+privdata_t *mod_privdata_alloc(cmd_rec *cmd, char *tag, int size) {
   privdata_t **pp;
   privdata_t *p;
 
   if (!tag)
     return NULL;
 
-  p = pcalloc(cmd->pool,sizeof(privdata_t));
+  p = pcalloc(cmd->pool, sizeof(privdata_t));
 
-  p->tag = pstrdup(cmd->pool,tag);
+  p->tag = pstrdup(cmd->pool, tag);
   if (size)
-    p->value.ptr_val = pcalloc(cmd->pool,size);
+    p->value.ptr_val = pcalloc(cmd->pool, size);
   p->m = curr_module;
 
   if (!cmd->privarr)
-    cmd->privarr = make_array(cmd->pool,2,sizeof(privdata_t*));
+    cmd->privarr = make_array(cmd->pool, 2, sizeof(privdata_t*));
 
-  pp = (privdata_t**)push_array(cmd->privarr);
+  pp = (privdata_t **) push_array(cmd->privarr);
   *pp = p;
 
-  cmd->private = (privdata_t*)cmd->privarr->elts;
+  cmd->private = (privdata_t *) cmd->privarr->elts;
   return p;
 }
 
-privdata_t *mod_privdata_find(cmd_rec *cmd, char *tag, module *m)
-{
+privdata_t *mod_privdata_find(cmd_rec *cmd, char *tag, module *m) {
   int i;
   privdata_t **p;
 
@@ -409,8 +398,11 @@ privdata_t *mod_privdata_find(cmd_rec *cmd, char *tag, module *m)
   if (!m)
     m = curr_module;
 
-  for (i = 0, p = (privdata_t**)cmd->privarr->elts; i < cmd->privarr->nelts; i++, p++) {
-    if (!strcmp((*p)->tag,tag) && (m == ANY_MODULE || (*p)->m == m))
+  for (i = 0, p = (privdata_t **) cmd->privarr->elts;
+       i < cmd->privarr->nelts;
+       i++, p++) {
+    if (strcmp((*p)->tag, tag) == 0 &&
+        (m == ANY_MODULE || (*p)->m == m))
       break;
   }
 
@@ -439,7 +431,7 @@ modret_t *call_module(module *m, modret_t *(*func)(cmd_rec *), cmd_rec *cmd) {
 modret_t *mod_create_data(cmd_rec *cmd,void *d) {
   modret_t *ret;
 
-  ret = pcalloc(cmd->tmp_pool,sizeof(modret_t));
+  ret = pcalloc(cmd->tmp_pool, sizeof(modret_t));
   ret->data = d;
 
   return ret;
@@ -448,13 +440,13 @@ modret_t *mod_create_data(cmd_rec *cmd,void *d) {
 modret_t *mod_create_ret(cmd_rec *cmd, unsigned char err, char *n, char *m) {
   modret_t *ret;
 
-  ret = pcalloc(cmd->tmp_pool,sizeof(modret_t));
+  ret = pcalloc(cmd->tmp_pool, sizeof(modret_t));
   ret->mr_handler_module = curr_module;
   ret->mr_error = err;
   if (n)
-    ret->mr_numeric = pstrdup(cmd->tmp_pool,n);
+    ret->mr_numeric = pstrdup(cmd->tmp_pool, n);
   if (m)
-    ret->mr_message = pstrdup(cmd->tmp_pool,m);
+    ret->mr_message = pstrdup(cmd->tmp_pool, m);
 
   return ret;
 }
@@ -462,7 +454,7 @@ modret_t *mod_create_ret(cmd_rec *cmd, unsigned char err, char *n, char *m) {
 modret_t *mod_create_error(cmd_rec *cmd, int mr_errno) {
   modret_t *ret;
 
-  ret = pcalloc(cmd->tmp_pool,sizeof(modret_t));
+  ret = pcalloc(cmd->tmp_pool, sizeof(modret_t));
   ret->mr_handler_module = curr_module;
   ret->mr_error = mr_errno;
 
@@ -532,116 +524,166 @@ void modules_list(void) {
   }
 }
 
-int modules_init(void) {
-  int numconf = 0,numcmd = 0,numauth = 0;
-  module *m;
-  conftable *conf = NULL;
-  cmdtable *cmd = NULL;
-  authtable *auth = NULL;
-  register unsigned int i = 0;
+int pr_module_load(module *m) {
+  char buf[256];
 
-  for (i = 0; static_modules[i]; i++) {
-    m = static_modules[i];
-    m->priority = i;
-
-    if (m->api_version < PR_MODULE_API_VERSION) {
-      pr_log_pri(PR_LOG_ERR, "Fatal: module '%s' API version (0x%x) is too old "
-        "(need at least 0x%x)", m->name, m->api_version, PR_MODULE_API_VERSION);
-	exit(1);
-    }
-
-    if (!m->init ||
-        m->init() >= 0) {
-
-      /* Add the module to the loaded_modules list. */
-      if (loaded_modules) {
-        m->next = loaded_modules;
-        loaded_modules->prev = m;
-        loaded_modules = m;
-
-      } else
-        loaded_modules = m;
-
-      if (m->conftable)
-        for (conf = m->conftable; conf->directive; conf++)
-          ++numconf;
-
-      if (m->cmdtable)
-        for (cmd = m->cmdtable; cmd->command; cmd++)
-          ++numcmd;
-
-      if (m->authtable)
-        for (auth = m->authtable; auth->name; auth++)
-          ++numauth;
-
-    } else
-      pr_log_pri(PR_LOG_ERR, "error: initialization of 'mod_%s' module failed",
-        m->name);
+  if (!m) {
+    errno = EINVAL;
+    return -1;
   }
 
-  /* Allow for an empty entry */
-  ++numconf;
-  ++numcmd;
-  ++numauth;
+  /* Check the API version the module wants to use. */
+  if (m->api_version < PR_MODULE_API_VERSION) {
+    errno = EACCES;
+    return -1;
+  }
 
-  /* Create an array to store the master conf dispatch table */
-  mconfarr = make_array(permanent_pool, numconf, sizeof(conftable));
-  mcmdarr = make_array(permanent_pool, numcmd, sizeof(cmdtable));
-  mautharr = make_array(permanent_pool, numauth, sizeof(authtable));
+  /* Do not allow multiple modules with the same name. */
+  memset(buf, '\0', sizeof(buf));
+  snprintf(buf, sizeof(buf), "mod_%s.c", m->name);
+  buf[sizeof(buf)-1] = '\0';
 
-  for (m = loaded_modules; m; m = m->next) {
+  if (pr_module_get(buf) != NULL) {
+    errno = EEXIST;
+    return -1;
+  }
 
+  /* Invoke the module's initialization routine. */
+  if (!m->init ||
+      m->init() >= 0) {
+
+    /* Assign a priority to this module. */
+    m->priority = curr_module_pri++;
+
+    /* Add the module's config, cmd, and auth tables. */
     if (m->conftable) {
-      for (conf = m->conftable; conf->directive; conf++) {
-        conftable *conftab = (conftable *) push_array(mconfarr);
-        memcpy(conftab, conf, sizeof(conftable));
-        conftab->m = m;
+      conftable *conftab;
 
+      for (conftab = m->conftable; conftab->directive; conftab++) {
+        conftab->m = m;
         pr_stash_add_symbol(PR_SYM_CONF, conftab);
       }
     }
 
     if (m->cmdtable) {
-      for (cmd = m->cmdtable; cmd->command; cmd++) {
-        cmdtable *cmdtab = (cmdtable *) push_array(mcmdarr);
-        memcpy(cmdtab, cmd, sizeof(cmdtable));
+      cmdtable *cmdtab;
+
+      for (cmdtab = m->cmdtable; cmdtab->command; cmdtab++) {
         cmdtab->m = m;
 
-        /* HOOKs and CMDs share the cmdtable type, so check the cmd_type
-         * when adding this symbol to the stash.
-         */
-        if (cmdtab->cmd_type == HOOK)
-          pr_stash_add_symbol(PR_SYM_HOOK, cmdtab);
-
-        else
+        if (cmdtab->cmd_type == CMD)
           pr_stash_add_symbol(PR_SYM_CMD, cmdtab);
+
+        else if (cmdtab->cmd_type == HOOK)
+          pr_stash_add_symbol(PR_SYM_HOOK, cmdtab);
       }
     }
 
     if (m->authtable) {
-      for (auth = m->authtable; auth->name; auth++) {
-        authtable *authtab = (authtable *) push_array(mautharr);
-        memcpy(authtab, auth, sizeof(authtable));
-        authtab->m = m;
+      authtable *authtab;
 
+      for (authtab = m->authtable; authtab->name; authtab++) {
+        authtab->m = m;
         pr_stash_add_symbol(PR_SYM_AUTH, authtab);
       }
     }
+
+    /* Add the module to the loaded_modules list. */
+    if (loaded_modules) {
+      m->next = loaded_modules;
+      loaded_modules->prev = m;
+      loaded_modules = m;
+
+    } else
+      loaded_modules = m;
+
+    /* Generate an event. */
+    pr_event_generate("core.module-load", buf);
+
+    return 0;
   }
 
-  /* add a null entry (pcalloc zeros the memory for us) */
-  push_array(mconfarr);
-  push_array(mcmdarr);
-  push_array(mautharr);
+  errno = EPERM;
+  return -1;
+}
 
-  m_conftable = (conftable *) mconfarr->elts;
-  n_conftabs = mconfarr->nelts;
+int pr_module_unload(module *m) {
+  char buf[256];
 
-  m_cmdtable = (cmdtable *) mcmdarr->elts;
-  n_cmdtabs = mcmdarr->nelts;
+  if (!m) {
+    errno = EINVAL;
+    return -1;
+  }
 
-  m_authtable = (authtable *) mautharr->elts;
-  n_authtabs = mautharr->nelts;
+  /* Make sure this module has been loaded.  We can't unload a module that
+   * has not been loaded, now can we?
+   */
+
+  memset(buf, '\0', sizeof(buf));
+  snprintf(buf, sizeof(buf), "mod_%s.c", m->name);
+  buf[sizeof(buf)-1] = '\0';
+
+  if (pr_module_get(buf) == NULL) {
+    errno = ENOENT;
+    return -1;
+  } 
+
+  /* Generate an event. */
+  pr_event_generate("core.module-unload", buf);
+
+  /* Remove the module from the loaded_modules list. */
+  if (m->prev) {
+    m->prev->next = m->next;
+    m->prev = NULL;
+  }
+
+  if (m->next) {
+    m->next->prev = m->prev;
+    m->next = NULL;
+  }
+
+  /* Remove the module's config, cmd, and auth tables. */
+  if (m->conftable) {
+    conftable *conftab;
+
+    for (conftab = m->conftable; conftab->directive; conftab++)
+      pr_stash_remove_symbol(PR_SYM_CONF, conftab->directive, conftab->m);
+  }
+
+  if (m->cmdtable) {
+    cmdtable *cmdtab;
+
+    for (cmdtab = m->cmdtable; cmdtab->command; cmdtab++) {
+      if (cmdtab->cmd_type == CMD)
+        pr_stash_remove_symbol(PR_SYM_CMD, cmdtab->command, cmdtab->m);
+
+      else if (cmdtab->cmd_type == HOOK)
+        pr_stash_remove_symbol(PR_SYM_HOOK, cmdtab->command, cmdtab->m);
+    }
+  }
+
+  if (m->authtable) {
+    authtable *authtab;
+
+    for (authtab = m->authtable; authtab->name; authtab++)
+      pr_stash_remove_symbol(PR_SYM_AUTH, authtab->name, authtab->m);
+  }
+
+  return 0;
+}
+
+int modules_init(void) {
+  register unsigned int i = 0;
+
+  for (i = 0; static_modules[i]; i++) {
+    module *m = static_modules[i];
+
+    if (pr_module_load(m) < 0) {
+      pr_log_pri(PR_LOG_ERR, "Fatal: unable to load module 'mod_%s.c': %s",
+        m->name, strerror(errno));
+      exit(1);
+    }
+  }
 
   return 0;
 }

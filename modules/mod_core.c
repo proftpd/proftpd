@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.234 2004-05-29 23:02:45 castaglia Exp $
+ * $Id: mod_core.c,v 1.235 2004-05-30 22:46:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2586,31 +2586,22 @@ MODRET set_allowall(cmd_rec *cmd) {
 MODRET set_authorder(cmd_rec *cmd) {
   register unsigned int i = 0;
   config_rec *c = NULL;
-  array_header *auth_module_order = NULL;
+  array_header *module_list = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   /* Check to see if the directive has already been set */
-  if (find_config(cmd->server->conf, CONF_PARAM, "AuthOrder", FALSE))
+  if (find_config(cmd->server->conf, CONF_PARAM, cmd->argv[0], FALSE))
     CONF_ERROR(cmd, "AuthOrder has already been configured");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
-  auth_module_order = make_array(c->pool, 0, sizeof(char *));
+  module_list = make_array(c->pool, 0, sizeof(char *));
 
-  /* Make sure the given modules exist */
-  for (i = 1; i < cmd->argc; i++) {
-    if (!pr_module_exists(cmd->argv[i]))
-      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
-        cmd->argv[0], ": no such module '", cmd->argv[i], "' installed",
-        NULL));
+  for (i = 1; i < cmd->argc; i++)
+    *((char **) push_array(module_list)) = pstrdup(c->pool, cmd->argv[i]);
 
-    else
-      *((char **) push_array(auth_module_order)) = pstrdup(c->pool,
-        cmd->argv[i]);
-  }
-
-  c->argv[0] = (void *) auth_module_order;
+  c->argv[0] = (void *) module_list;
 
   return HANDLED(cmd);
 }
@@ -4451,9 +4442,9 @@ static int core_sess_init(void) {
 #endif /* HAVE_UNSETENV */
 
   /* Check for a server-specific AuthOrder. */
-  if ((c = find_config(main_server->conf, CONF_PARAM, "AuthOrder",
-      FALSE)) != NULL) {
-    array_header *auth_module_order = (array_header *) c->argv[0];
+  c = find_config(main_server->conf, CONF_PARAM, "AuthOrder", FALSE);
+  if (c != NULL) {
+    array_header *module_list = (array_header *) c->argv[0];
     int modulec = 0;
     char **modulev = NULL;
     register unsigned int i = 0;
@@ -4465,8 +4456,8 @@ static int core_sess_init(void) {
 
     pr_log_debug(DEBUG3, "AuthOrder in effect, resetting auth module order");
 
-    modulec = auth_module_order->nelts;
-    modulev = (char **) auth_module_order->elts;
+    modulec = module_list->nelts;
+    modulev = (char **) module_list->elts;
 
     /* First, delete all auth symbols. */
     for (i = 0; auth_syms[i] != NULL; i++)
@@ -4474,37 +4465,35 @@ static int core_sess_init(void) {
 
     /* Now, cycle through the list of configured modules, re-adding their
      * auth symbols, in the order in which they appear.
-     *
-     * NOTE: What is needed is way to get at the module structure for a
-     * module, by name.
      */
 
-    if (m_authtable) {
-      char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-      authtable *authtab = NULL;
+    for (i = 0; i < modulec; i++) {
+      module *m = pr_module_get(modulev[i]);
 
-      for (authtab = m_authtable; authtab && authtab->name; authtab++) {
-        memset(buf, '\0', sizeof(buf));
-        snprintf(buf, sizeof(buf), "mod_%s.c", authtab->m->name);
-        buf[sizeof(buf)-1] = '\0';
+      if (m) {
 
-        /* Iterate through the AuthOrder, looking for a match of the
-         * name of the module owning the authtable pointer from the
-         * master authtable.
-         */
-        for (i = 0; i < modulec; i++) {
-          if (!strcmp(buf, modulev[i])) {
+        if (m->authtable) {
+          authtable *authtab;
 
-            /* Twiddle the module's priority field be insertion into the
-             * symbol table, as the insertion operation does so based on that
-             * priority.  This has no effect other than during symbol
-             * insertion.
-             */
-            authtab->m->priority = modulec - i;
+          /* Twiddle the module's priority field be insertion into the
+           * symbol table, as the insertion operation does so based on that
+           * priority.  This has no effect other than during symbol
+           * insertion.
+           */
+          m->priority = modulec - i;
+
+          for (authtab = m->authtable; authtab->name; authtab++) {
+            authtab->m = m;
             pr_stash_add_symbol(PR_SYM_AUTH, authtab);
           }
-        }
-      }
+
+        } else
+          pr_log_debug(DEBUG0, "AuthOrder: warning: module '%s' has no "
+            "auth handlers", modulev[i]);
+
+      } else
+        pr_log_debug(DEBUG0, "AuthOrder: warning: module '%s' not loaded",
+          modulev[i]);
     }
 
     /* NOTE: the master conf/cmd/auth tables/arrays should ideally be

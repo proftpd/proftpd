@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.38 2004-05-30 21:34:31 castaglia Exp $
+ * $Id: modules.h,v 1.39 2004-05-30 22:46:14 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -185,12 +185,6 @@ struct module_struc {
   int priority;
 };
 
-/* These are stored in modules.c */
-
-extern conftable *m_conftable;			/* Master conftable */
-extern cmdtable *m_cmdtable;			/* Master cmdtable */
-extern authtable *m_authtable;			/* Master authtable */
-
 #define ANY_MODULE			((module*)0xffffffff)
 
 /* Prototypes */
@@ -202,6 +196,8 @@ int modules_session_init(void);
 
 unsigned char pr_module_exists(const char *);
 module *pr_module_get(const char *);
+int pr_module_load(module *m);
+int pr_module_unload(module *m);
 
 modret_t *call_module(module *, modret_t *(*)(cmd_rec *), cmd_rec *);
 
