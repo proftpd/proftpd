@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.16 2003-11-19 20:57:46 castaglia Exp $
+ * $Id: netaddr.h,v 1.17 2004-01-29 03:19:08 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -213,6 +213,9 @@ int pr_inet_pton(int, const char *, void *);
 
 /* Allocate an initialized netaddr from the given pool. */
 pr_netaddr_t *pr_netaddr_alloc(pool *);
+
+/* Duplicate a netaddr using the given pool. */
+pr_netaddr_t *pr_netaddr_dup(pool *, pr_netaddr_t *);
 
 /* Initialize the given netaddr. */
 void pr_netaddr_clear(pr_netaddr_t *);
