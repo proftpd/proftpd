@@ -14,14 +14,13 @@ compilaton failure stemming from an incompatibility with the <string.h>
 header file when the IBM compiler attempts to inline some string functions.
 
 
-
 Executive Summary
 -----------------
 
 If you are using the IBM xlc/cc compiler with the IBM ld linker:
 
     % env CC=cc \
-        CPPFLAGS='-U__STR__' \
+        CFLAGS='-D_NO_PROTO' \
         LDFLAGS='-blibpath:/usr/lib:/lib:/usr/local/lib' \
         ./configure ...
 
@@ -44,7 +43,6 @@ something like this ought to work (untested):
 Note that the library paths shown here are for example use only.
 You may need to use different paths on your system, particularly when
 linking with any optional libraries (e.g. krb5, ldap, mysql, etc.).
-
 
 
 Linking with the IBM or GNU linker
@@ -123,7 +121,6 @@ which displays shared library information.  A basic proftpd executable
 probably will not require any "-l" options at all.
 
 
-
 Compiling with the IBM xlc/cc compiler
 --------------------------------------
 
@@ -138,3 +135,7 @@ command line by adding '-U__STR__' to the CPPFLAGS variable:
 
     % env CC=cc CPPFLAGS='-U__STR__' ./configure ...
 
+However, with newer versions of proftpd, it has been found that the following
+combination works better when compiling:
+
+    % env CC=cc CFLAGS='-D_NO_PROTO' ./configure ...
