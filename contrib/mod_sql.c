@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.46 2003-03-20 23:23:15 castaglia Exp $
+ * $Id: mod_sql.c,v 1.47 2003-03-22 04:49:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1065,14 +1065,17 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
     dir = sd->data[i++];
 
   if (cmap.shellfield) {
-    shell = sd->data[i++];
+    i++;
+    if (sd->fnum < i || !sd->data[i]) {
 
-    /* Make sure that, if configured, the shell value is valid, and scream
-     * if it is not.
-     */
-    if (!shell) {
+      /* Make sure that, if configured, the shell value is valid, and scream
+       * if it is not.
+       */
       sql_log(DEBUG_WARN, "NULL shell column value, setting to \"\"");
       shell = "";
+
+    } else {
+      shell = sd->data[i];
     }
 
   } else
