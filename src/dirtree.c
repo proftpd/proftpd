@@ -1,6 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
+ * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +20,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.15 2000-02-28 20:02:01 macgyver Exp $
+ * $Id: dirtree.c,v 1.16 2000-07-07 01:19:27 macgyver Exp $
  */
 
 /* History:
@@ -1217,7 +1218,7 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
 
 int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
 {
-  char *fullpath,*grpowner;
+  char *fullpath, *owner;
   config_rec *c;
   struct stat sbuf;
   pool *p;
@@ -1275,11 +1276,21 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
       _umask = 0022;
   }
   
-  if((grpowner = get_param_ptr(CURRENT_CONF,"GroupOwner",FALSE)) != NULL) {
+  session.fsuid = session.fsgid = 0;
+  if((owner = get_param_ptr(CURRENT_CONF,"UserOwner",FALSE)) != NULL) {
+    /* attempt chown on all new files */
+    struct passwd *pw;
+
+    if((pw = auth_getpwnam(p,owner)) != NULL)
+      session.fsuid = pw->pw_uid;
+      session.fsgid = pw->pw_gid;
+  }
+  
+  if((owner = get_param_ptr(CURRENT_CONF,"GroupOwner",FALSE)) != NULL) {
     /* attempt chgrp on all new files */
     struct group *gr;
 
-    if((gr = auth_getgrnam(p,grpowner)) != NULL)
+    if((gr = auth_getgrnam(p,owner)) != NULL)
       session.fsgid = gr->gr_gid;
   }
   
@@ -1317,7 +1328,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
 
 int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
 {
-  char *fullpath,*grpowner;
+  char *fullpath, *owner;
   config_rec *c;
   struct stat sbuf;
   pool *p;
@@ -1369,11 +1380,21 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
       _umask = 0022;
   }
 
-  if((grpowner = get_param_ptr(CURRENT_CONF, "GroupOwner", FALSE)) != NULL) {
+  session.fsuid = session.fsgid = 0;
+  if((owner = get_param_ptr(CURRENT_CONF,"UserOwner",FALSE)) != NULL) {
+    /* attempt chown on all new files */
+    struct passwd *pw;
+
+    if((pw = auth_getpwnam(p,owner)) != NULL)
+      session.fsuid = pw->pw_uid;
+      session.fsgid = pw->pw_gid;
+  }
+  
+  if((owner = get_param_ptr(CURRENT_CONF,"GroupOwner",FALSE)) != NULL) {
     /* attempt chgrp on all new files */
     struct group *gr;
 
-    if((gr = auth_getgrnam(p, grpowner)) != NULL)
+    if((gr = auth_getgrnam(p,owner)) != NULL)
       session.fsgid = gr->gr_gid;
   }
   

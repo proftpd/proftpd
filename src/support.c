@@ -1,6 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
+ * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +20,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.13 2000-02-15 23:48:15 macgyver Exp $
+ * $Id: support.c,v 1.14 2000-07-07 01:19:27 macgyver Exp $
  */
 
 /* History Log:
@@ -424,6 +425,66 @@ int dir_exists(char *path)
 int exists(char *path)
 {
   return _exists(path,-1);
+}
+
+/* Perform access check for effective user id, similar to accessx(...,
+ * ACC_SELF) on AIX.
+ */
+int access_check(char *path, int mode) {
+  int i;
+  mode_t mask;
+  struct stat buf;
+  
+  if(stat(path, &buf) < 0)
+    return -1;
+  
+  /* Initialize `mask' to reflect the permission bits that are
+   * applicable for the effective user. `mask' contains the user-bits
+   * if the effective user id equals the id of the file owner. `mask'
+   * contains the group bits if the group id is if the effective user
+   * belongs to the group of the file. `mask' will always contain the
+   * other bits of the permission bits.
+   */
+  mask = S_IROTH | S_IWOTH | S_IXOTH;
+  
+  if(buf.st_uid == session.uid)
+    mask |= S_IRUSR | S_IWUSR | S_IXUSR;
+
+  /* Check the current group, as well as all supplementary groups.
+   * Fortunately, we have this information cached, so accessing it is
+   * almost free.
+   */
+  if(buf.st_gid == session.gid) {
+    mask |= S_IRGRP | S_IWGRP | S_IXGRP;
+  } else {
+    for(i = 0; i < session.gids->nelts; i++) {
+      if(buf.st_gid == ((gid_t *) session.gids->elts)[i]) {
+	mask |= S_IRGRP | S_IWGRP | S_IXGRP;
+	break;
+      }
+    }
+  }
+  
+  mask &= buf.st_mode;
+  
+  /* Perform requested access checks */
+  if(mode & R_OK) {
+    if(!(mask & (S_IRUSR | S_IRGRP | S_IROTH)))
+      return -1;
+  }
+  
+  if(mode & W_OK) {
+    if(!(mask & (S_IWUSR | S_IWGRP | S_IWOTH)))
+      return -1;
+  }
+  
+  if(mode & X_OK) {
+    if(!(mask & (S_IXUSR | S_IXGRP | S_IXOTH)))
+      return -1;
+  }
+
+  /* F_OK already checked by checking the return value of stat */
+  return 0;
 }
 
 char *strip_end(char *s, char *ch)

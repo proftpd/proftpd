@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.51 2000-07-06 20:08:01 macgyver Exp $
+$Id: NEWS,v 1.52 2000-07-07 01:19:27 macgyver Exp $
 
 1.2.0 - Released: ???
 ---------------------
@@ -52,6 +52,8 @@ $Id: NEWS,v 1.51 2000-07-06 20:08:01 macgyver Exp $
 - Major performance upgrade to groups initialization.  Those that have large
   groups shouldn't see the 'hangs forever on login' problems.
 - Fixed GroupOwner's semantics and added the related UserOwner directive.
+- Added SQLKey, SQLKeyField, and SQLAuthoritative to mod_sql.
+- Fixed access checks for LIST and NLST.
 
 1.2.0pre10 - Released: 1/17/00
 ------------------------------
