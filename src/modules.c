@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.43 2004-05-31 17:47:10 castaglia Exp $
+ * $Id: modules.c,v 1.44 2004-05-31 17:54:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -317,6 +317,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
       tab = pr_stash_get_symbol(PR_SYM_CONF, sym_name, NULL, &idx);
 
       while (tab) {
+        pr_signals_handle();
 
         /* Note: this works because of a hack: the symbol look functions
          * set a static pointer, curr_sym, to point to the struct stash
@@ -324,7 +325,8 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
          * returns non-NULL.
          */
 
-        if (!sym_module || curr_sym->sym_module == sym_module) {
+        if (!sym_module ||
+            curr_sym->sym_module == sym_module) {
           xaset_remove(symbol_table[symtab_idx], (xasetmember_t *) curr_sym);
           destroy_pool(curr_sym->sym_pool);
         }
@@ -342,13 +344,15 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
       tab = pr_stash_get_symbol(PR_SYM_CMD, sym_name, NULL, &idx);
 
       while (tab) {
+        pr_signals_handle();
 
         /* Note: this works because of a hack: the symbol look functions
          * set a static pointer, curr_sym, to point to the struct stash
          * just looked up.  
          */
 
-        if (!sym_module || curr_sym->sym_module == sym_module) {
+        if (!sym_module ||
+            curr_sym->sym_module == sym_module) {
           xaset_remove(symbol_table[symtab_idx], (xasetmember_t *) curr_sym);
           destroy_pool(curr_sym->sym_pool);
         }
@@ -366,13 +370,15 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
       tab = pr_stash_get_symbol(PR_SYM_AUTH, sym_name, NULL, &idx);
 
       while (tab) {
+        pr_signals_handle();
 
         /* Note: this works because of a hack: the symbol look functions
          * set a static pointer, curr_sym, to point to the struct stash
          * just looked up.  
          */
 
-        if (!sym_module || curr_sym->sym_module == sym_module) {
+        if (!sym_module ||
+            curr_sym->sym_module == sym_module) {
           xaset_remove(symbol_table[symtab_idx], (xasetmember_t *) curr_sym);
           destroy_pool(curr_sym->sym_pool);
         }
@@ -390,7 +396,10 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
       tab = pr_stash_get_symbol(PR_SYM_HOOK, sym_name, NULL, &idx);
 
       while (tab) {
-        if (!sym_module || curr_sym->sym_module == sym_module) {
+        pr_signals_handle();
+
+        if (!sym_module ||
+            curr_sym->sym_module == sym_module) {
           xaset_remove(symbol_table[symtab_idx], (xasetmember_t *) curr_sym);
           destroy_pool(curr_sym->sym_pool);
         }
@@ -617,11 +626,12 @@ int pr_module_load(module *m) {
       for (cmdtab = m->cmdtable; cmdtab->command; cmdtab++) {
         cmdtab->m = m;
 
-        if (cmdtab->cmd_type == CMD)
-          pr_stash_add_symbol(PR_SYM_CMD, cmdtab);
-
-        else if (cmdtab->cmd_type == HOOK)
+        if (cmdtab->cmd_type == HOOK)
           pr_stash_add_symbol(PR_SYM_HOOK, cmdtab);
+
+        else
+          /* All other cmd_types are for CMDs: PRE_CMD, CMD, POST_CMD, etc. */
+          pr_stash_add_symbol(PR_SYM_CMD, cmdtab);
       }
     }
 
@@ -681,7 +691,12 @@ int pr_module_unload(module *m) {
   if (m->prev) {
     m->prev->next = m->next;
     m->prev = NULL;
-  }
+
+  } else
+    /* This module is the start of the loaded_modules list (prev is NULL),
+     * so we need to update that pointer, too.
+     */
+    loaded_modules = m->next;
 
   if (m->next) {
     m->next->prev = m->prev;
@@ -700,11 +715,12 @@ int pr_module_unload(module *m) {
     cmdtable *cmdtab;
 
     for (cmdtab = m->cmdtable; cmdtab->command; cmdtab++) {
-      if (cmdtab->cmd_type == CMD)
-        pr_stash_remove_symbol(PR_SYM_CMD, cmdtab->command, cmdtab->m);
-
-      else if (cmdtab->cmd_type == HOOK)
+      if (cmdtab->cmd_type == HOOK)
         pr_stash_remove_symbol(PR_SYM_HOOK, cmdtab->command, cmdtab->m);
+
+      else
+        /* All other cmd_types are for CMDs: PRE_CMD, CMD, POST_CMD, etc. */
+        pr_stash_remove_symbol(PR_SYM_CMD, cmdtab->command, cmdtab->m);
     }
   }
 
