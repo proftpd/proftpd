@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.14 2003-01-02 17:28:22 castaglia Exp $
+ * $Id: scoreboard.c,v 1.15 2003-01-02 18:25:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -66,7 +66,7 @@ static int read_scoreboard_header(pr_scoreboard_header_t *sch) {
       return -1;
 
     if (errno == EINTR) {
-      pr_handle_signals();
+      pr_signals_handle();
       continue;
 
     } else
@@ -105,7 +105,7 @@ static int rlock_scoreboard(void) {
 
   while (fcntl(scoreboard_fd, F_SETLKW, &lock) < 0) {
     if (errno == EINTR) {
-      pr_handle_signals();
+      pr_signals_handle();
       continue;
 
     } else
@@ -124,7 +124,7 @@ static int unlock_entry(void) {
 
   while (fcntl(scoreboard_fd, F_SETLKW, &entry_lock) < 0) {
     if (errno == EINTR) {
-      pr_handle_signals();
+      pr_signals_handle();
       continue;
 
     } else
@@ -153,7 +153,7 @@ static int wlock_entry(void) {
 
   while (fcntl(scoreboard_fd, F_SETLKW, &entry_lock) < 0) {
     if (errno == EINTR) {
-      pr_handle_signals();
+      pr_signals_handle();
       continue;
 
     } else
@@ -173,7 +173,7 @@ static int wlock_scoreboard(void) {
 
   while (fcntl(scoreboard_fd, F_SETLKW, &lock) < 0) {
     if (errno == EINTR) {
-      pr_handle_signals();
+      pr_signals_handle();
       continue;
 
     } else
@@ -195,7 +195,7 @@ static int write_entry(void) {
 
   while (write(scoreboard_fd, &entry, sizeof(entry)) != sizeof(entry)) {
     if (errno == EINTR) {
-      pr_handle_signals();
+      pr_signals_handle();
       continue;
 
     } else
@@ -285,7 +285,7 @@ int pr_open_scoreboard(int flags, pid_t *daemon_pid) {
 
     while (write(scoreboard_fd, &header, sizeof(header)) != sizeof(header)) {
       if (errno == EINTR) {
-        pr_handle_signals();
+        pr_signals_handle();
         continue;
 
       } else
@@ -403,7 +403,7 @@ int pr_scoreboard_add_entry(void) {
       break;
 
     if (errno == EINTR)
-      pr_handle_signals();
+      pr_signals_handle();
   }
 
   memset(&entry, '\0', sizeof(entry));
@@ -460,7 +460,7 @@ pr_scoreboard_entry_t *pr_scoreboard_read_entry(void) {
   while (TRUE) {
     while ((res = read(scoreboard_fd, &scan_entry, sizeof(scan_entry))) <= 0) {
       if (res < 0 && errno == EINTR) {
-        pr_handle_signals();
+        pr_signals_handle();
         continue;
 
       } else {

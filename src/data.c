@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.54 2003-01-02 17:28:20 castaglia Exp $
+ * $Id: data.c,v 1.55 2003-01-02 18:25:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -199,7 +199,7 @@ static void _xlate_ascii_write(char **buf, unsigned int *buflen,
   *buflen = tmplen + (*expand);
 }
 
-static void _data_new_xfer(char *filename, int direction) {
+static void data_new_xfer(char *filename, int direction) {
   if (session.xfer.p) {
     destroy_pool(session.xfer.p);
     memset(&session.xfer, 0, sizeof(session.xfer));
@@ -215,7 +215,7 @@ static void _data_new_xfer(char *filename, int direction) {
   session.xfer.buflen = 0;
 }
 
-static int _data_pasv_open(char *reason, off_t size) {
+static int data_pasv_open(char *reason, off_t size) {
   conn_t *c;
   int rev;
 
@@ -294,7 +294,7 @@ static int _data_pasv_open(char *reason, off_t size) {
   return -1;
 }
 
-static int _data_active_open(char *reason, off_t size) {
+static int data_active_open(char *reason, off_t size) {
   conn_t *c;
   int rev;
 
@@ -313,7 +313,7 @@ static int _data_active_open(char *reason, off_t size) {
   rev = inet_reverse_dns(session.pool,ServerUseReverseDNS);
 
   if (inet_connect(session.d->pool, session.d, &session.data_addr,
-		  session.data_port) == -1) {
+      session.data_port) == -1) {
     pr_response_add_err(R_425, "Unable to build data connection: %s",
       strerror(session.d->xerrno));
     destroy_pool(session.d->pool);
@@ -379,16 +379,16 @@ static int _data_active_open(char *reason, off_t size) {
   return -1;
 }
 
-void data_reset(void) {
+void pr_data_reset(void) {
   if (session.d && session.d->pool)
     destroy_pool(session.d->pool);
   session.d = NULL;
   session.sf_flags &= (SF_ALL^(SF_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
 }
 
-void data_init(char *filename, int direction) {
+void pr_data_init(char *filename, int direction) {
   if (!session.xfer.p) {
-    _data_new_xfer(filename, direction);
+    data_new_xfer(filename, direction);
 
   } else {
     if (!(session.sf_flags & SF_PASSIVE))
@@ -399,11 +399,11 @@ void data_init(char *filename, int direction) {
   }
 }
 
-int data_open(char *filename, char *reason, int direction, off_t size) {
+int pr_data_open(char *filename, char *reason, int direction, off_t size) {
   int res = 0;
 
   if (!session.xfer.p)
-    _data_new_xfer(filename, direction);
+    data_new_xfer(filename, direction);
   else
     session.xfer.direction = direction;
 
@@ -418,7 +418,7 @@ int data_open(char *filename, char *reason, int direction, off_t size) {
       end_login(1);
     }
 
-    res = _data_pasv_open(reason,size);
+    res = data_pasv_open(reason,size);
 
   /* Active data transfers... */
   } else {
@@ -428,7 +428,7 @@ int data_open(char *filename, char *reason, int direction, off_t size) {
       end_login(1);
     }
 
-    res = _data_active_open(reason,size);
+    res = data_active_open(reason,size);
   }
 
   if (res >= 0) {
@@ -496,7 +496,7 @@ int data_open(char *filename, char *reason, int direction, off_t size) {
 }
 
 /* close == successful transfer */
-void data_close(int quiet) {
+void pr_data_close(int quiet) {
   nstrm = NULL;
 
   if (session.d) {
@@ -530,7 +530,7 @@ void data_close(int quiet) {
  * flags in any case.  session flags will end up have SF_POST_ABORT
  * set if the OOB byte won the race.
  */
-void data_cleanup(void) {
+void pr_data_cleanup(void) {
   /* sanity check */
   if (session.d) {
     inet_lingering_close(session.pool, session.d, PR_TUNABLE_TIMEOUTLINGER);
@@ -545,9 +545,9 @@ void data_cleanup(void) {
 
 /* In order to avoid clearing the transfer counters in session.xfer, we don't
  * clear session.xfer here, it should be handled by the appropriate
- * LOG_CMD/LOG_CMD_ERR handler calling data_cleanup().
+ * LOG_CMD/LOG_CMD_ERR handler calling pr_data_cleanup().
  */
-void data_abort(int err, int quiet) {
+void pr_data_abort(int err, int quiet) {
   int true_abort = XFER_ABORTED;
   nstrm = NULL;
 
@@ -727,14 +727,14 @@ void data_abort(int err, int quiet) {
     session.sf_flags |= SF_POST_ABORT;
 }
 
-/* data_xfer actually transfers the data on the data connection ..
- * ascii translation is performed if necessary.  direction set
+/* pr_data_xfer() actually transfers the data on the data connection ..
+ * ASCII translation is performed if necessary.  direction set
  * when data connection was opened determine if the client buffer
  * is read from or written to.  return 0 if reading and data connection
  * closes, or -1 if error
  */
 
-int data_xfer(char *cl_buf, int cl_size) {
+int pr_data_xfer(char *cl_buf, int cl_size) {
   char *buf = session.xfer.buf;
   int len = 0;
   int total = 0;
@@ -874,11 +874,11 @@ int data_xfer(char *cl_buf, int cl_size) {
 }
 
 #ifdef HAVE_SENDFILE
-/* data_sendfile actually transfers the data on the data connection.
+/* pr_data_sendfile() actually transfers the data on the data connection.
  * ASCII translation is not performed.
  * return 0 if reading and data connection closes, or -1 if error
  */
-pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
+pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, size_t count) {
   int flags, error;
   pr_sendfile_t len = 0, total = 0;
 #if defined(HAVE_AIX_SENDFILE)
@@ -979,7 +979,7 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
        * For obvious reasons, HP/UX sendfile is not supported yet - jss
        */
       if (errno == EINTR) {
-        pr_handle_signals();
+        pr_signals_handle();
 
 	/* If we got everything in this transaction, we're done.
 	 */

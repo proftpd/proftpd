@@ -45,7 +45,7 @@ static int ident_timeout_cb(CALLBACK_FRAME) {
   return 0;
 }
 
-char *get_ident(pool *p, conn_t *c) {
+char *pr_ident_lookup(pool *p, conn_t *c) {
   char *ret = "UNKNOWN";
   pool *tmp_pool = NULL;
   conn_t *ident_conn = NULL, *ident_io = NULL;

@@ -25,7 +25,7 @@
 
 /*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.16 2003-01-02 17:28:22 castaglia Exp $
+ * $Id: timers.c,v 1.17 2003-01-02 18:25:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -77,7 +77,7 @@ static int process_timers(int elapsed) {
     return 0;
 
   _indispatch++;
-  block_alarms();
+  pr_alarms_unblock();
 
   if (elapsed) {
     for (t = (timer_t *) timers->xas_list; t; t=next) {
@@ -119,7 +119,7 @@ static int process_timers(int elapsed) {
     xaset_insert_sort(timers, (xasetmember_t *) t, TRUE);
   }
 
-  unblock_alarms();
+  pr_alarms_unblock();
   _indispatch--;
 
   /* If no active timers remain in the list, there is no reason to set the
@@ -215,7 +215,7 @@ int reset_timer(int timerno, module *mod) {
   if (_indispatch)
     return -1;
 
-  block_alarms();
+  pr_alarms_block();
 
   if (!recycled)
     recycled = xaset_create(NULL, NULL);
@@ -235,7 +235,7 @@ int reset_timer(int timerno, module *mod) {
       break;
     }
 
-  unblock_alarms();
+  pr_alarms_unblock();
 
   return (t ? t->timerno : 0);
 }
@@ -247,7 +247,7 @@ int remove_timer(int timerno, module *mod) {
   if (!timers)
     return 0;
 
-  block_alarms();
+  pr_alarms_block();
 
   for (t = (timer_t *) timers->xas_list; t; t = t->next)
     if (t->timerno == timerno && (t->mod == mod || mod == ANY_MODULE)) {
@@ -268,7 +268,7 @@ int remove_timer(int timerno, module *mod) {
       break;
     }
 
-  unblock_alarms();
+  pr_alarms_unblock();
 
   return (t ? t->timerno : 0);
 }
@@ -283,7 +283,7 @@ int add_timer(int seconds, int timerno, module *mod, callback_t cb) {
     free_timers = xaset_create(NULL, NULL);
 
   /* Try to use an old timer first */
-  block_alarms();
+  pr_alarms_block();
   if ((t = (timer_t*)free_timers->xas_list) != NULL)
     xaset_remove(free_timers, (xasetmember_t*)t);
   else
@@ -324,7 +324,7 @@ int add_timer(int seconds, int timerno, module *mod, callback_t cb) {
     handle_alarm();
   }
 
-  unblock_alarms();
+  pr_alarms_unblock();
 
   return timerno;
 }
@@ -335,11 +335,11 @@ int add_timer(int seconds, int timerno, module *mod, callback_t cb) {
  * block/unblock functions.
  */
 
-void block_alarms(void) {
+void pr_alarms_block(void) {
   ++alarms_blocked;
 }
 
-void unblock_alarms(void) {
+void pr_alarms_unblock(void) {
   --alarms_blocked;
   if (alarms_blocked == 0 && alarm_pending) {
     alarm_pending = 0;

@@ -24,9 +24,9 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-#ifndef __IDENT_H
-#define __IDENT_H
+#ifndef PR_IDENT_H
+#define PR_IDENT_H
 
-char *get_ident(pool *, conn_t *);
+char *pr_ident_lookup(pool *, conn_t *);
 
-#endif /* __IDENT_H */
+#endif /* PR_IDENT_H */

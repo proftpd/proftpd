@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.45 2003-01-02 17:28:19 castaglia Exp $
+ * $Id: mod_log.c,v 1.46 2003-01-02 18:25:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -451,14 +451,14 @@ MODRET set_systemlog(cmd_rec *cmd) {
   if (*syslogfn != '/')
     syslogfn = dir_canonical_path(cmd->tmp_pool,syslogfn);
 
-  block_signals();
+  pr_signals_block();
   PRIVS_ROOT
 
   if ((ret = log_opensyslog(syslogfn)) < 0) {
     int xerrno = errno;
 
     PRIVS_RELINQUISH
-    unblock_signals();
+    pr_signals_unblock();
 
     if (ret == LOG_WRITEABLE_DIR) {
       CONF_ERROR(cmd,
@@ -475,7 +475,7 @@ MODRET set_systemlog(cmd_rec *cmd) {
   }
 
   PRIVS_RELINQUISH
-  unblock_signals();
+  pr_signals_unblock();
 
   return HANDLED(cmd);
 }
@@ -919,7 +919,7 @@ static int log_init(void) {
   /* Add the "default" extendedlog format */
   logformat("", "%h %l %u %t \"%r\" %s %b");
 
-  register_rehash(NULL, log_rehash_cb);
+  pr_rehash_register_handler(NULL, log_rehash_cb);
   return 0;
 }
 
@@ -1065,11 +1065,11 @@ static int log_sess_init(void) {
       if (strncasecmp(lf->lf_filename, "syslog:", 7) != 0) {
         int res = 0;
 
-        block_signals();
+        pr_signals_block();
         PRIVS_ROOT
         res = log_openfile(lf->lf_filename, &lf->lf_fd, EXTENDED_LOG_MODE);
         PRIVS_RELINQUISH
-        unblock_signals();
+        pr_signals_unblock();
 
         if (res == -1) {
           log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': %s",

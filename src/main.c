@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.156 2003-01-02 17:28:21 castaglia Exp $
+ * $Id: main.c,v 1.157 2003-01-02 18:25:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -739,7 +739,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
   log_pri(PR_LOG_INFO, "FTP session opened.");
 
   while (TRUE) {
-    pr_handle_signals();
+    pr_signals_handle();
 
     if (pr_netio_telnet_gets(buf, sizeof(buf)-1, session.c->instrm,
         session.c->outstrm) == NULL) {
@@ -798,7 +798,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
   }
 }
 
-void register_rehash(void *data, void (*fp)(void*)) {
+void pr_rehash_register_handler(void *data, void (*fp)(void*)) {
   struct rehash *r = (struct rehash*)pcalloc(permanent_pool,
 		  				sizeof(struct rehash));
 
@@ -1091,13 +1091,13 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
   /* Now do the permanent syslog open
    */
-  block_signals();
+  pr_signals_block();
   PRIVS_ROOT
 
   log_opensyslog(NULL);
 
   PRIVS_RELINQUISH
-  unblock_signals();
+  pr_signals_unblock();
 
   if (!conn) {
     log_pri(PR_LOG_ERR, "Fatal: unable to open incoming connection: %s",
@@ -1235,7 +1235,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   if ((ident_lookups = get_param_ptr(main_server->conf, "IdentLookups",
      FALSE)) == NULL || *ident_lookups == TRUE) {
     session.ident_lookups = TRUE;
-    session.ident_user = get_ident(session.pool, conn);
+    session.ident_user = pr_ident_lookup(session.pool, conn);
 
   } else {
     session.ident_lookups = FALSE;
@@ -1369,7 +1369,7 @@ static void server_loop(void) {
     i = select(max_fd + 1, &listen_fds, NULL, NULL, &tv);
 
     if (i == -1 && errno == EINTR) {
-      pr_handle_signals();
+      pr_signals_handle();
       continue;
     }
 
@@ -1380,7 +1380,7 @@ static void server_loop(void) {
       sigemptyset(&sig_set);
       sigaddset(&sig_set, SIGCHLD);
       sigaddset(&sig_set, SIGTERM);
-      block_alarms();
+      pr_alarms_block();
       sigprocmask(SIG_BLOCK, &sig_set, NULL);
 
       have_dead_child = FALSE;
@@ -1407,7 +1407,7 @@ static void server_loop(void) {
       }
 
       sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
-      unblock_alarms();
+      pr_alarms_unblock();
     }
 
     if (i == -1) {
@@ -1456,7 +1456,7 @@ static void server_loop(void) {
       }
     }
 
-    pr_handle_signals();
+    pr_signals_handle();
 
     /* Accept the connection. */
     listen_conn = pr_ipbind_accept_conn(&listen_fds, &fd);
@@ -1494,7 +1494,7 @@ static void server_loop(void) {
  * race conditions.
  */
 
-void pr_handle_signals(void) {
+void pr_signals_handle(void) {
 
   while (recvd_signal_flags) {
 
@@ -1704,7 +1704,7 @@ static void handle_chld(void) {
   sigaddset(&sig_set, SIGTERM);
   sigaddset(&sig_set, SIGCHLD);
 
-  block_alarms();
+  pr_alarms_block();
   sigprocmask(SIG_BLOCK, &sig_set, NULL);
 
   /* Block SIGTERM in here, so we don't create havoc with the
@@ -1726,7 +1726,7 @@ static void handle_chld(void) {
   }
 
   sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
-  unblock_alarms();
+  pr_alarms_unblock();
 }
 
 static void handle_xcpu(void) {

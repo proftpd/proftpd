@@ -120,9 +120,9 @@ void pr_init_regexp(void) {
    *
    * This registration is done here so that it only happens once.
    */
-  register_rehash(NULL, regexp_rehash_cb);
+  pr_rehash_register_handler(NULL, regexp_rehash_cb);
 
-  add_exit_handler(regexp_exit_cb);
+  pr_exit_register_handler(regexp_exit_cb);
 }
 
 #endif

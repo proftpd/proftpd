@@ -870,7 +870,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     int err = SSL_get_error(ssl, res);
 
     if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE) {
-      pr_handle_signals();
+      pr_signals_handle();
       goto retry;
     }
 
@@ -2080,11 +2080,11 @@ static int tls_openlog(void) {
     return 0;
   }
 
-  block_signals();
+  pr_signals_block();
   PRIVS_ROOT
   res = log_openfile(tls_logname, &tls_logfd, 0600);
   PRIVS_RELINQUISH
-  unblock_signals();
+  pr_signals_unblock();
 
   return res;
 }
@@ -2265,6 +2265,7 @@ MODRET tls_auth(cmd_rec *cmd) {
     return DECLINED(cmd);
   }
 
+  session.rfc2228_mech = "TLS";
   return HANDLED(cmd);
 }
 
@@ -2911,7 +2912,7 @@ static int tls_sess_init(void) {
   /* Install our data channel NetIO handlers. */
   tls_netio_install_data();
 
-  add_exit_handler(tls_sess_exit);
+  pr_exit_register_handler(tls_sess_exit);
 
   /* NOTE: fail session init if TLS server init fails (e.g. res < 0)? */
   /* Initialize the OpenSSL context for this server's configuration. */

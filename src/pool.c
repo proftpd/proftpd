@@ -298,7 +298,7 @@ void debug_walk_pools(void) {
 static void pool_release_free_block_list(void) {
   union block_hdr *blok,*next;
 
-  block_alarms();
+  pr_alarms_block();
 
   blok = block_freelist;
   if (blok) {
@@ -307,7 +307,7 @@ static void pool_release_free_block_list(void) {
   }
   block_freelist = NULL;
 
-  unblock_alarms();
+  pr_alarms_unblock();
 }
 #endif
 
@@ -315,7 +315,7 @@ struct pool *make_sub_pool(struct pool *p) {
   union block_hdr *blok;
   pool *new_pool;
 
-  block_alarms();
+  pr_alarms_block();
 
   blok = new_block(0);
 
@@ -336,7 +336,7 @@ struct pool *make_sub_pool(struct pool *p) {
     p->sub_pools = new_pool;
   }
 
-  unblock_alarms();
+  pr_alarms_unblock();
 
   return new_pool;
 }
@@ -354,7 +354,7 @@ static void clear_pool(struct pool *p) {
   if (!p)
     return;
 
-  block_alarms();
+  pr_alarms_block();
 
   /* Run through any cleanups. */
   run_cleanups(p->cleanups);
@@ -371,11 +371,11 @@ static void clear_pool(struct pool *p) {
   p->last = p->first;
   p->first->h.first_avail = p->free_first_avail;
 
-  unblock_alarms();
+  pr_alarms_unblock();
 }
 
 void destroy_pool(pool *p) {
-  block_alarms();
+  pr_alarms_block();
 
   if (p->parent) {
     if (p->parent->sub_pools == p)
@@ -390,7 +390,7 @@ void destroy_pool(pool *p) {
 
   clear_pool(p);
   free_blocks(p->first);
-  unblock_alarms();
+  pr_alarms_unblock();
 }
 
 #if 0
@@ -432,7 +432,7 @@ void *palloc(struct pool *p, int reqsize) {
   }
 
   /* Need a new one that's big enough */
-  block_alarms();
+  pr_alarms_block();
 
   blok = new_block(size);
   p->last->h.next = blok;
@@ -441,7 +441,7 @@ void *palloc(struct pool *p, int reqsize) {
   first_avail = blok->h.first_avail;
   blok->h.first_avail += size;
 
-  unblock_alarms();
+  pr_alarms_unblock();
   return (void *) first_avail;
 }
 
@@ -693,7 +693,7 @@ void unregister_cleanup(pool *p, void *data, void (*cleanup_cb)(void *)) {
 /* NOTE: unused. */
 #if 0
 void run_cleanup(pool *p, void *data, void (*cleanup_cb)(void *)) {
-  block_alarms();
+  pr_alarms_block();
 
   /* Run the given cleanup callback. */
   (*cleanup_cb)(data);
@@ -701,7 +701,7 @@ void run_cleanup(pool *p, void *data, void (*cleanup_cb)(void *)) {
   /* Remove it. */
   unregister_cleanup(p, data, cleanup_cb);
 
-  unblock_alarms();
+  pr_alarms_unblock();
 }
 #endif
 
@@ -732,9 +732,9 @@ static void cleanup_pool_for_exec(pool *p) {
 }
 
 void cleanup_for_exec(void) {
-  block_alarms();
+  pr_alarms_block();
   cleanup_pool_for_exec(permanent_pool);
-  unblock_alarms();
+  pr_alarms_unblock();
 }
 #endif
 
@@ -753,20 +753,20 @@ static void register_fd_cleanups(pool *p, int fd) {
 int popenf(pool *p, const char *name, int flags, int mode) {
   int fd;
 
-  block_alarms();
+  pr_alarms_block();
   if ((fd = open(name, flags, mode)) >= 0)
     register_fd_cleanups(p, fd);
-  unblock_alarms();
+  pr_alarms_unblock();
   return fd;
 }
 
 int pclosef(pool *p, int fd) {
   int res;
 
-  block_alarms();
+  pr_alarms_block();
   res = close(fd);
   unregister_cleanup(p, (void *)fd, fd_cleanup_cb);
-  unblock_alarms();
+  pr_alarms_unblock();
   return res;
 }
 
@@ -790,7 +790,7 @@ FILE *pfopen(pool *p, const char *name, const char *mode) {
   FILE *fd = NULL;
   int base_flag, desc;
 
-  block_alarms();
+  pr_alarms_block();
 
   if (*mode == 'a') {
     base_flag = (*(mode+1) == '+') ? O_RDWR : O_WRONLY;
@@ -805,27 +805,27 @@ FILE *pfopen(pool *p, const char *name, const char *mode) {
   if (fd)
     register_file_cleanups(p, fd);
 
-  unblock_alarms();
+  pr_alarms_unblock();
   return fd;
 }
 
 FILE *pfdopen(pool *p, int fd, const char *mode) {
   FILE *f;
 
-  block_alarms();
+  pr_alarms_block();
   if ((f = fdopen(fd, mode)) != NULL)
     register_file_cleanups(p, f);
 
-  unblock_alarms();
+  pr_alarms_unblock();
   return f;
 }
 
 int pfclose(pool *p, FILE *fd) {
   int res;
 
-  block_alarms();
+  pr_alarms_block();
   res = fclose(fd);
   unregister_cleanup(p, (void *) fd, file_cleanup_cb);
-  unblock_alarms();
+  pr_alarms_unblock();
   return res;
 }

@@ -379,9 +379,9 @@ static modret_t * _sql_dispatch(cmd_rec *cmd, char *cmdname)
 
   for(i = 0; sql_cmdtable[i].command; i++)
     if(!strcmp(cmdname,sql_cmdtable[i].command)) {
-      block_signals();
+      pr_signals_block();
       mr = sql_cmdtable[i].handler(cmd);
-      unblock_signals();
+      pr_signals_unblock();
       return mr;
     }
 
@@ -3547,11 +3547,11 @@ static int sql_openlog(void)
     return 0;
   }
 
-  block_signals();
+  pr_signals_block();
   PRIVS_ROOT
   res = log_openfile(sql_logfile, &sql_logfd, 0640);
   PRIVS_RELINQUISH
-  unblock_signals();
+  pr_signals_unblock();
 
   return res;
 }
@@ -4222,7 +4222,7 @@ static int sql_getconf(void)
   destroy_pool( tmp_pool );
 
   /* add our exit handler */
-  add_exit_handler(sql_exit_cb);
+  pr_exit_register_handler(sql_exit_cb);
 
   return 0;
 }

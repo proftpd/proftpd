@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.80 2003-01-02 17:28:19 castaglia Exp $
+ * $Id: mod_ls.c,v 1.81 2003-01-02 18:25:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -233,8 +233,8 @@ static int sendline(char *fmt, ...) {
 
   /* A NULL fmt argument is the signal to flush the buffer */
   if (!fmt) {
-    if ((res = data_xfer(listbuf, strlen(listbuf))) < 0)
-      log_debug(DEBUG3, "data_xfer returned %d, error = %s.", res,
+    if ((res = pr_data_xfer(listbuf, strlen(listbuf))) < 0)
+      log_debug(DEBUG3, "pr_data_xfer returned %d, error = %s.", res,
         strerror(PR_NETIO_ERRNO(session.d->outstrm)));
 
     memset(listbuf, '\0', sizeof(listbuf));
@@ -249,8 +249,8 @@ static int sendline(char *fmt, ...) {
 
   /* If buf won't fit completely into listbuf, flush listbuf */
   if (strlen(buf) >= (sizeof(listbuf) - strlen(listbuf))) {
-    if ((res = data_xfer(listbuf, strlen(listbuf))) < 0)
-      log_debug(DEBUG3, "data_xfer returned %d, error = %s.", res,
+    if ((res = pr_data_xfer(listbuf, strlen(listbuf))) < 0)
+      log_debug(DEBUG3, "pr_data_xfer returned %d, error = %s.", res,
         strerror(PR_NETIO_ERRNO(session.d->outstrm)));
 
     memset(listbuf, '\0', sizeof(listbuf));
@@ -261,7 +261,7 @@ static int sendline(char *fmt, ...) {
 }
 
 static void ls_done(cmd_rec *cmd) {
-  data_close(FALSE);
+  pr_data_close(FALSE);
 }
 
 static char months[12][4] =
@@ -888,7 +888,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
       /* Add some signal processing to this while loop, as it can
        * potentially recurse deeply.
        */
-      pr_handle_signals();
+      pr_signals_handle();
 
       push_cwd(cwd_buf, &symhold);
 
@@ -941,9 +941,9 @@ static void ls_terminate(void) {
     discard_output();
     if (!XFER_ABORTED) {  /* an error has occured, other than client ABOR */
       if (ls_errno)
-        data_abort(ls_errno,FALSE);
+        pr_data_abort(ls_errno,FALSE);
       else
-        data_abort((session.d && session.d->outstrm ?
+        pr_data_abort((session.d && session.d->outstrm ?
                    PR_NETIO_ERRNO(session.d->outstrm) : errno),FALSE);
     }
     ls_errno = 0;
@@ -1132,7 +1132,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
   /* open data connection */
   if (!opt_STAT) {
     session.sf_flags |= SF_ASCII_OVERRIDE;
-    if (data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
+    if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0)
       return -1;
   }
 
@@ -1345,8 +1345,8 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
 
   /* If the data connection isn't open, open it now. */
   if ((session.sf_flags & SF_XFER) == 0) {
-    if (data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
-      data_reset();
+    if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
+      pr_data_reset();
       return -1;
     }
 
@@ -1436,8 +1436,8 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
 
       /* If the data connection isn't open, open it now. */
       if ((session.sf_flags & SF_XFER) == 0) {
-        if (data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
-          data_reset();
+        if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
+          pr_data_reset();
           count = -1;
           continue;
         }
@@ -1514,7 +1514,7 @@ MODRET genericlist(cmd_rec *cmd) {
   res = dolist(cmd, cmd->arg, TRUE);
 
   if (XFER_ABORTED) {
-    data_abort(0, 0);
+    pr_data_abort(0, 0);
     res = -1;
 
   } else if (session.sf_flags & SF_XFER)
@@ -1526,12 +1526,12 @@ MODRET genericlist(cmd_rec *cmd) {
 }
 
 MODRET ls_log_nlst(cmd_rec *cmd) {
-  data_cleanup();
+  pr_data_cleanup();
   return DECLINED(cmd);
 }
 
 MODRET ls_err_nlst(cmd_rec *cmd) {
-  data_cleanup();
+  pr_data_cleanup();
   return DECLINED(cmd);
 }
 
@@ -1747,7 +1747,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
   }
 
   if (XFER_ABORTED) {
-    data_abort(0, 0);
+    pr_data_abort(0, 0);
     ret = -1;
 
   } else {

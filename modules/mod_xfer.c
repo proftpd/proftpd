@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.117 2003-01-02 17:28:19 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.118 2003-01-02 18:25:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -561,7 +561,7 @@ static void xfer_rate_throttle(off_t xferlen) {
         strerror(errno));
 
     xfer_rate_sigmask(FALSE);
-    pr_handle_signals();
+    pr_signals_handle();
 
     /* Update the scoreboard. */
     pr_scoreboard_update_entry(getpid(),
@@ -587,7 +587,7 @@ static int _transmit_normal(char *buf, long bufsize) {
   if ((count = pr_fsio_read(retr_fh, buf, bufsize)) <= 0)
     return 0;
 
-  return data_xfer(buf, count);
+  return pr_data_xfer(buf, count);
 }
 
 #ifdef HAVE_SENDFILE
@@ -606,7 +606,7 @@ static int _transmit_sendfile(off_t count, off_t *offset,
   }
 
  retry:
-  *retval = data_sendfile(PR_FH_FD(retr_fh), offset,
+  *retval = pr_data_sendfile(PR_FH_FD(retr_fh), offset,
     session.xfer.file_size - count);
 
   if (*retval == -1) {
@@ -1193,7 +1193,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   }
 
   /* Perform the actual transfer now */
-  data_init(cmd->arg, PR_NETIO_IO_RD);
+  pr_data_init(cmd->arg, PR_NETIO_IO_RD);
 
   session.xfer.path = dir;
 
@@ -1208,9 +1208,9 @@ MODRET xfer_stor(cmd_rec *cmd) {
   /* First, make sure the uploaded file has the requested ownership. */
   _stor_chown();
 
-  if (data_open(cmd->arg, NULL, PR_NETIO_IO_RD, 0) < 0) {
+  if (pr_data_open(cmd->arg, NULL, PR_NETIO_IO_RD, 0) < 0) {
     stor_abort();
-    data_abort(0, TRUE);
+    pr_data_abort(0, TRUE);
     return HANDLED(cmd);
   }
 
@@ -1218,7 +1218,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   nbytes_stored = 0;
 
   /* Retrieve the number of bytes to store, maximum, if present.
-   * This check is needed during the data_xfer() loop, below, because
+   * This check is needed during the pr_data_xfer() loop, below, because
    * the size of the file being uploaded isn't known in advance
    */
   if ((nbytes_max_store = find_max_nbytes("MaxStoreFileSize")) == 0UL)
@@ -1237,7 +1237,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     stor_abort();
 
     /* Set errno to EPERM ("Operation not permitted") */
-    data_abort(EPERM, FALSE);
+    pr_data_abort(EPERM, FALSE);
     return ERROR(cmd);
   }
 
@@ -1245,7 +1245,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     main_server->tcp_rwin : PR_TUNABLE_BUFFER_SIZE);
   lbuf = (char*) palloc(cmd->tmp_pool, bufsize);
 
-  while ((len = data_xfer(lbuf, bufsize)) > 0) {
+  while ((len = pr_data_xfer(lbuf, bufsize)) > 0) {
     if (XFER_ABORTED)
       break;
 
@@ -1266,14 +1266,14 @@ MODRET xfer_stor(cmd_rec *cmd) {
       stor_abort();
 
       /* Set errno to EPERM ("Operation not permitted"). */
-      data_abort(EPERM, FALSE);
+      pr_data_abort(EPERM, FALSE);
       return ERROR(cmd);
     }
 
     if ((len = pr_fsio_write(stor_fh, lbuf, len)) < 0) {
       int s_errno = errno;
       stor_abort();
-      data_abort(s_errno, FALSE);
+      pr_data_abort(s_errno, FALSE);
       return ERROR(cmd);
     }
 
@@ -1283,12 +1283,12 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
   if (XFER_ABORTED) {
     stor_abort();
-    data_abort(0, 0);
+    pr_data_abort(0, 0);
     return ERROR(cmd);
 
   } else if (len < 0) {
     stor_abort();
-    data_abort(PR_NETIO_ERRNO(session.d->instrm), FALSE);
+    pr_data_abort(PR_NETIO_ERRNO(session.d->instrm), FALSE);
     return ERROR(cmd);
 
   } else {
@@ -1318,7 +1318,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
         return ERROR(cmd);
       }
     }
-    data_close(FALSE);
+    pr_data_close(FALSE);
   }
 
   return HANDLED(cmd);
@@ -1468,7 +1468,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   }
 
   /* Send the data */
-  data_init(cmd->arg, PR_NETIO_IO_WR);
+  pr_data_init(cmd->arg, PR_NETIO_IO_WR);
 
   session.xfer.path = dir;
   session.xfer.file_size = sbuf.st_size;
@@ -1477,8 +1477,8 @@ MODRET xfer_retr(cmd_rec *cmd) {
   if (cnt_steps == 0)
     cnt_steps = 1;
 
-  if (data_open(cmd->arg, NULL, PR_NETIO_IO_WR, sbuf.st_size - respos) < 0) {
-    data_abort(0, TRUE);
+  if (pr_data_open(cmd->arg, NULL, PR_NETIO_IO_WR, sbuf.st_size - respos) < 0) {
+    pr_data_abort(0, TRUE);
     return ERROR(cmd);
   }
 
@@ -1503,7 +1503,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     retr_abort();
 
     /* Set errno to EPERM ("Operation not permitted") */
-    data_abort(EPERM, FALSE);
+    pr_data_abort(EPERM, FALSE);
     return ERROR(cmd);
   }
 
@@ -1527,7 +1527,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
     if (len < 0) {
       retr_abort();
-      data_abort(PR_NETIO_ERRNO(session.d->outstrm), FALSE);
+      pr_data_abort(PR_NETIO_ERRNO(session.d->outstrm), FALSE);
       return ERROR(cmd);
     }
 
@@ -1547,12 +1547,12 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
   if (XFER_ABORTED) {
     retr_abort();
-    data_abort(0, 0);
+    pr_data_abort(0, 0);
     return ERROR(cmd);
 
   } else if (len < 0) {
     retr_abort();
-    data_abort(errno, FALSE);
+    pr_data_abort(errno, FALSE);
     return ERROR(cmd);
 
   } else {
@@ -1561,7 +1561,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     xfer_rate_throttle(cnt);
 
     retr_complete();
-    data_close(FALSE);
+    pr_data_close(FALSE);
   }
 
   return HANDLED(cmd);
@@ -1574,9 +1574,9 @@ MODRET xfer_abor(cmd_rec *cmd) {
   }
 
   pr_response_add(R_226, "Abort successful");
-  data_abort(0, FALSE);
-  data_reset();
-  data_cleanup();
+  pr_data_abort(0, FALSE);
+  pr_data_reset();
+  pr_data_cleanup();
 
   return HANDLED(cmd);
 }
@@ -1707,7 +1707,7 @@ MODRET xfer_err_cleanup(cmd_rec *cmd) {
 
 MODRET xfer_log_stor(cmd_rec *cmd) {
   _log_transfer('i', 'c');
-  data_cleanup();
+  pr_data_cleanup();
 
   /* Increment the file counters. */
   session.total_files_in++;
@@ -1718,7 +1718,7 @@ MODRET xfer_log_stor(cmd_rec *cmd) {
 
 MODRET xfer_log_retr(cmd_rec *cmd) {
   _log_transfer('o', 'c');
-  data_cleanup();
+  pr_data_cleanup();
 
   /* Increment the file counters. */
   session.total_files_out++;
@@ -1764,7 +1764,7 @@ static int xfer_sess_init(void) {
    */
 
   /* Exit handler for HiddenStores cleanup */
-  add_exit_handler(xfer_exit_cb);
+  pr_exit_register_handler(xfer_exit_cb);
 
   return 0;
 }

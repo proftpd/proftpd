@@ -23,7 +23,7 @@
  */
 
 /* Command response routines
- * $Id: response.h,v 1.2 2003-01-02 17:28:18 castaglia Exp $
+ * $Id: response.h,v 1.3 2003-01-02 18:25:18 castaglia Exp $
  */
 
 #ifndef PR_RESPONSE_H
@@ -103,7 +103,7 @@ void pr_response_send_raw(const char *, ...)
  * line, before that response is sent to the client.  If no callback is
  * configured, the line will be sent as is.
  */
-void pr_response_register_handler(char *(*)(const char *, ...));
+void pr_response_register_handler(char *(*)(pool *, const char *, ...));
 
 /* Set the pool used for the response lists.
  */

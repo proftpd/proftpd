@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.129 2003-01-02 17:28:19 castaglia Exp $
+ * $Id: mod_auth.c,v 1.130 2003-01-02 18:25:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -883,7 +883,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
      * temporarily switch to the new user's uid.
      */
 
-    block_signals();
+    pr_signals_block();
 
     PRIVS_ROOT
     if ((res = set_groups(p, pw->pw_gid, session.gids)) < 0)
@@ -926,7 +926,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
 #endif
     PRIVS_SETUP(daemon_uid, daemon_gid)
 
-    unblock_signals();
+    pr_signals_unblock();
 
     /* Sanity check, make sure we have daemon_uid and daemon_gid back */
 #ifdef HAVE_GETEUID
@@ -1108,7 +1108,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
    */
 
 #ifndef __hpux
-  block_signals();
+  pr_signals_block();
 
   PRIVS_ROOT
 
@@ -1117,7 +1117,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
   PRIVS_SETUP(pw->pw_uid, pw->pw_gid)
 
-  unblock_signals();
+  pr_signals_unblock();
 #else
   session.uid = session.ouid = pw->pw_uid;
   session.gid = pw->pw_gid;

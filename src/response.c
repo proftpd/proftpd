@@ -23,7 +23,7 @@
  */
 
 /* Command response routines
- * $Id: response.c,v 1.2 2003-01-02 17:28:22 castaglia Exp $
+ * $Id: response.c,v 1.3 2003-01-02 18:25:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,23 +35,25 @@ static pool *resp_pool = NULL;
 static char resp_buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
 static char resp_ml_numeric[4] = {'\0'};
 
-static char *(*resp_handler_cb)(const char *, ...) = NULL;
+static char *(*resp_handler_cb)(pool *, const char *, ...) = NULL;
 
 #define RESPONSE_WRITE_NUM_STR(strm, fmt, numeric, msg) \
   if (resp_handler_cb) \
-    pr_netio_printf((strm), "%s", resp_handler_cb((fmt), (numeric), (msg))); \
+    pr_netio_printf((strm), "%s", resp_handler_cb(resp_pool, (fmt), (numeric), \
+      (msg))); \
   else \
     pr_netio_printf((strm), (fmt), (numeric), (msg));
 
 #define RESPONSE_WRITE_STR(strm, fmt, msg) \
   if (resp_handler_cb) \
-    pr_netio_printf((strm), "%s", resp_handler_cb((fmt), (msg))); \
+    pr_netio_printf((strm), "%s", resp_handler_cb(resp_pool, (fmt), (msg))); \
   else \
     pr_netio_printf((strm), (fmt), (msg));
 
 #define RESPONSE_WRITE_STR_ASYNC(strm, fmt, msg) \
   if (resp_handler_cb) \
-    pr_netio_printf_async((strm), "%s", resp_handler_cb((fmt), (msg))); \
+    pr_netio_printf_async((strm), "%s", resp_handler_cb(resp_pool, (fmt), \
+      (msg))); \
   else \
     pr_netio_printf_async((strm), (fmt), (msg));
 
@@ -59,7 +61,8 @@ void pr_response_set_pool(pool *p) {
   resp_pool = p;
 }
 
-void pr_response_register_handler(char *(*handler_cb)(const char *, ...)) {
+void pr_response_register_handler(char *(*handler_cb)(pool *, const char *,
+    ...)) {
   resp_handler_cb = handler_cb;
 }
 

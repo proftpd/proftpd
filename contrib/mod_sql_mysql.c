@@ -1363,7 +1363,7 @@ static int sql_mysql_init(void) {
   conn_cache = make_array(session.pool, DEF_CONN_POOL_SIZE,
 			  sizeof(conn_entry_t));
 
-  add_exit_handler( _sql_shutdown );
+  pr_exit_register_handler( _sql_shutdown );
 
   return 0;
 }

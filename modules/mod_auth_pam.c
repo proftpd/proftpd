@@ -35,7 +35,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.1 2002-12-19 21:45:40 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.2 2003-01-02 18:25:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -136,7 +136,7 @@ static void modpam_exit(void) {
   /* We need privileges to be able to write to things like lastlog and
    * friends.
    */
-  block_signals();
+  pr_signals_block();
   PRIVS_ROOT
 
   /* Give up our credentials, close our session, and finally close out this
@@ -167,7 +167,7 @@ static void modpam_exit(void) {
   }
 
   PRIVS_RELINQUISH
-  unblock_signals();
+  pr_signals_unblock();
 }
 
 MODRET pam_auth(cmd_rec *cmd) {
@@ -239,7 +239,7 @@ MODRET pam_auth(cmd_rec *cmd) {
   /* Due to the different types of authentication used, such as shadow
    * passwords, etc. we need root privs for this operation.
    */
-  block_signals();
+  pr_signals_block();
   PRIVS_ROOT
 
   /* The order of calls into PAM should be as follows, according to Sun's
@@ -399,7 +399,7 @@ MODRET pam_auth(cmd_rec *cmd) {
   }
 
   PRIVS_RELINQUISH
-  unblock_signals();
+  pr_signals_unblock();
 
   if (!success) {
     if (pam_user != NULL) {
@@ -412,7 +412,7 @@ MODRET pam_auth(cmd_rec *cmd) {
     return pam_authoritative ? ERROR_INT(cmd, retval) : DECLINED(cmd);
 
   } else {
-    add_exit_handler(modpam_exit);
+    pr_exit_register_handler(modpam_exit);
     return HANDLED(cmd);
   }
 }

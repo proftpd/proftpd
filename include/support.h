@@ -25,7 +25,7 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.16 2003-01-02 17:28:18 castaglia Exp $
+ * $Id: support.h,v 1.17 2003-01-02 18:25:18 castaglia Exp $
  */
 
 #ifndef PR_SUPPORT_H
@@ -60,8 +60,8 @@ int getopt_long(int, char * const [], const char *, const struct option *,
   int *);
 #endif
 
-void block_signals(void);
-void unblock_signals(void);
+void pr_signals_block(void);
+void pr_signals_unblock(void);
 
 char *dir_interpolate(pool *, const char *);
 char *dir_abs_path(pool *, const char *, int);
@@ -70,7 +70,7 @@ char *dir_canonical_path(pool *, const char *);
 char *dir_best_path(pool *, const char *);
 char *dir_virtual_chdir(pool *, const char *);
 
-void add_exit_handler(void (*)(void));
+void pr_exit_register_handler(void (*)(void));
 void remove_exit_handlers(void);
 void run_exit_handlers(void);
 

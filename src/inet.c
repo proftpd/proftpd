@@ -327,7 +327,7 @@ int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port)
 
 #ifdef SOLARIS2
   if (port != INPORT_ANY && port < 1024) {
-    block_signals();
+    pr_signals_block();
     PRIVS_ROOT
   }
 #endif
@@ -335,7 +335,7 @@ int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port)
 #ifdef SOLARIS2
   if (port != INPORT_ANY && port < 1024) {
     PRIVS_RELINQUISH
-    unblock_signals();
+    pr_signals_unblock();
   }
 #endif
 
@@ -352,7 +352,7 @@ int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port)
   servaddr.sin_port = htons(port);
 
   if (port != INPORT_ANY && port < 1024) {
-    block_signals();
+    pr_signals_block();
     PRIVS_ROOT
   }
 
@@ -363,11 +363,11 @@ int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port)
 
     if (port != INPORT_ANY && port < 1024) {
       PRIVS_RELINQUISH
-      unblock_signals();
+      pr_signals_unblock();
     }
     timer_sleep(tries);
     if (port != INPORT_ANY && port < 1024) {
-      block_signals();
+      pr_signals_block();
       PRIVS_ROOT
     }
   }
@@ -376,7 +376,7 @@ int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port)
 
   if (port != INPORT_ANY && port < 1024) {
     PRIVS_RELINQUISH
-    unblock_signals();
+    pr_signals_unblock();
   }
 
   errno = save_errno;
@@ -446,7 +446,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
 # ifdef SOLARIS2
     if (port != INPORT_ANY && port < 1024) {
 # endif
-      block_signals();
+      pr_signals_block();
       PRIVS_ROOT
 # ifdef SOLARIS2
     }
@@ -462,7 +462,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     if (port != INPORT_ANY && port < 1024) {
 # endif
       PRIVS_RELINQUISH
-      unblock_signals();
+      pr_signals_unblock();
 # ifdef SOLARIS2
     }
 # endif
@@ -494,7 +494,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     servaddr.sin_port = htons(port);
 
     if (port != INPORT_ANY && port < 1024) {
-      block_signals();
+      pr_signals_block();
       PRIVS_ROOT
     }
 
@@ -510,7 +510,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
       hold_errno = errno;
 
       if (res == -1 && errno == EINTR) {
-        pr_handle_signals();
+        pr_signals_handle();
 	i++;
 	continue;
       }
@@ -521,13 +521,13 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
 
       if (port != INPORT_ANY && port < 1024) {
         PRIVS_RELINQUISH
-        unblock_signals();
+        pr_signals_unblock();
       }
 
       timer_sleep(1);
 
       if (port != INPORT_ANY && port < 1024) {
-        block_signals();
+        pr_signals_block();
         PRIVS_ROOT
       }
     }
@@ -535,7 +535,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     if (res == -1) {
       if (port != INPORT_ANY && port < 1024) {
         PRIVS_RELINQUISH
-        unblock_signals();
+        pr_signals_unblock();
       }
 
       if (reporting) {
@@ -553,7 +553,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
 
     if (port != INPORT_ANY && port < 1024) {
       PRIVS_RELINQUISH
-      unblock_signals();
+      pr_signals_unblock();
     }
 
     /* We use getsockname here because the caller might be binding
@@ -886,7 +886,7 @@ int inet_listen(pool *p, conn_t *c, int backlog) {
   while (TRUE)
     if (listen(c->listen_fd, backlog) == -1) {
       if (errno == EINTR) {
-        pr_handle_signals();
+        pr_signals_handle();
         continue;
       }
 
@@ -927,7 +927,7 @@ int inet_connect(pool *p, conn_t *c, p_in_addr_t *addr, int port) {
   while (TRUE) {
     if ((ret = connect(c->listen_fd, (struct sockaddr *) &remaddr,
         sizeof(remaddr))) == -1 && errno == EINTR) {
-      pr_handle_signals();
+      pr_signals_handle();
       continue;
 
     } else

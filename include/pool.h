@@ -27,7 +27,7 @@
 /* Memory allocation/anti-leak system.  Yes, this *IS* stolen from Apache
  * also.  What can I say?  It makes sense, and it's safe (more overhead
  * though)
- * $Id: pool.h,v 1.12 2003-01-02 17:28:18 castaglia Exp $
+ * $Id: pool.h,v 1.13 2003-01-02 18:25:18 castaglia Exp $
  */
 
 #ifndef PR_POOL_H
@@ -79,12 +79,11 @@ array_header *copy_array(pool *, const array_header *);
 array_header *copy_array_str(pool *, const array_header *);
 array_header *copy_array_hdr(pool *, const array_header *);
 
-/* Alarm signals can easily interfere with the pooled memory operations,
-   thus block_alarms() and unblock_alarms() provide for re-entrant
-   security. */
-
-extern void block_alarms(void);
-extern void unblock_alarms(void);
+/* Alarm signals can easily interfere with the pooled memory operations, thus
+ * pr_alarms_block() and pr_alarms_unblock() provide for re-entrant security.
+ */
+extern void pr_alarms_block(void);
+extern void pr_alarms_unblock(void);
 
 FILE *pfopen(struct pool *, const char *, const char *);
 FILE *pfdopen(struct pool *, int, const char *);

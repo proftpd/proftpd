@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.146 2003-01-02 17:28:19 castaglia Exp $
+ * $Id: mod_core.c,v 1.147 2003-01-02 18:25:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1307,26 +1307,26 @@ MODRET set_syslogfacility(cmd_rec *cmd) {
       log_closesyslog();
       log_setfacility(factable[i].facility);
 
-      block_signals();
+      pr_signals_block();
       PRIVS_ROOT
         switch (log_opensyslog(NULL)) {
 
         case -1:
           PRIVS_RELINQUISH
-          unblock_signals();
+          pr_signals_unblock();
           CONF_ERROR(cmd, "unable to open syslog");
           break;
 
         case LOG_WRITEABLE_DIR:
           PRIVS_RELINQUISH
-          unblock_signals();
+          pr_signals_unblock();
           CONF_ERROR(cmd,
             "you are attempting to log to a world writeable directory");
           break;
         
         case LOG_SYMLINK:
           PRIVS_RELINQUISH
-          unblock_signals();
+          pr_signals_unblock();
           CONF_ERROR(cmd, "you are attempting to log to a symbolic link");
           break;
         
@@ -1334,7 +1334,7 @@ MODRET set_syslogfacility(cmd_rec *cmd) {
           break;
         }
       PRIVS_RELINQUISH
-      unblock_signals();
+      pr_signals_unblock();
 
       return HANDLED(cmd);
     }

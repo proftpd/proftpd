@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.3 2003-01-02 17:28:14 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.4 2003-01-02 18:25:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -619,7 +619,7 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
   }
 
   /* No interruptions, please. */
-  block_signals();
+  pr_signals_block();
 
   /* See if a RewriteLock has been configured. */
   if ((fifo_lockname = (char *) get_param_ptr(main_server->conf, "RewriteLock",
@@ -650,7 +650,7 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
    * Hmmm.
    */
 
-  unblock_signals();
+  pr_signals_unblock();
   if (rewrite_write_fifo(fifo_fd,
       pstrcat(cmd->tmp_pool, map->map_lookup_key, "\n", NULL),
       strlen(map->map_lookup_key) + 1) != strlen(map->map_lookup_key) + 1) {
@@ -666,7 +666,7 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
     /* Return the default value */
     return map->map_default_value;
   }
-  block_signals();
+  pr_signals_block();
 
   /* Make sure the data in the write buffer has been flushed into the FIFO. */
   fsync(fifo_fd);
@@ -675,7 +675,7 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
   value = pcalloc(cmd->pool, sizeof(char) * REWRITE_FIFO_MAXLEN);
 
   /* Read the value from the FIFO, if any. Unblock signals before doing so. */
-  unblock_signals();
+  pr_signals_unblock();
   if ((res = rewrite_read_fifo(fifo_fd, value, REWRITE_FIFO_MAXLEN)) <= 0) {
     
     if (res < 0)
@@ -702,7 +702,7 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
       value = map->map_default_value;
     }
   }
-  block_signals();
+  pr_signals_block();
 
   rewrite_wait_fifo(fifo_fd);
 
@@ -714,7 +714,7 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
     close(fifo_lockfd);
   }
 
-  unblock_signals();
+  pr_signals_unblock();
 
   return value;
 }
@@ -975,12 +975,12 @@ static unsigned char rewrite_open_fifo(config_rec *c) {
   char *fifo = c->argv[2];
 
   /* No interruptions, please. */
-  block_signals();
+  pr_signals_block();
 
   if ((fd = open(fifo, O_RDWR|O_NONBLOCK)) < 0) {
     rewrite_log("rewrite_rdopen_fifo(): unable to open FIFO '%s': %s", fifo,
       strerror(errno));
-    unblock_signals();
+    pr_signals_unblock();
     return FALSE;
 
   } else {
@@ -1009,7 +1009,7 @@ static int rewrite_read_fifo(int fd, char *buf, size_t buflen) {
   /* Blocking select for reading, handling interruptions appropriately. */
   while ((res = select(fd + 1, &rset, NULL, NULL, NULL)) < 0) {
     if (errno == EINTR) {
-      pr_handle_signals();
+      pr_signals_handle();
       continue;
     }
 
@@ -1019,7 +1019,7 @@ static int rewrite_read_fifo(int fd, char *buf, size_t buflen) {
   /* Now, read from the FIFO, again handling interruptions. */
   while ((res = read(fd, buf, buflen)) < 0) {
     if (errno == EINTR) {
-      pr_handle_signals();
+      pr_signals_handle();
       continue;
     } 
 
@@ -1048,7 +1048,7 @@ static void rewrite_wait_fifo(int fd) {
     rewrite_log("rewrite_wait_fifo(): waiting for buffer to be read");
 
     /* Handling signals is always a Good Thing in a while() loop. */
-    pr_handle_signals();
+    pr_signals_handle();
 
     /* Poll every half second. */
     tv.tv_sec = 0;
@@ -1066,7 +1066,7 @@ static int rewrite_write_fifo(int fd, char *buf, size_t buflen) {
 
   while ((res = write(fd, buf, buflen)) < 0) {
     if (errno == EINTR) {
-      pr_handle_signals();
+      pr_signals_handle();
       continue;
     }
 
@@ -1133,11 +1133,11 @@ static void rewrite_openlog(void) {
     return;
   }
 
-  block_signals();
+  pr_signals_block();
   PRIVS_ROOT
   res = log_openfile(rewrite_logfile, &rewrite_logfd, REWRITE_LOG_MODE);
   PRIVS_RELINQUISH
-  unblock_signals();
+  pr_signals_unblock();
 
   if (res < 0)
     log_pri(LOG_NOTICE, MOD_REWRITE_VERSION
@@ -1648,7 +1648,7 @@ static int rewrite_sess_init(void) {
   rewrite_openlog();
 
   /* Make sure proper cleanup is done when a child exits. */
-  add_exit_handler(rewrite_exit);
+  pr_exit_register_handler(rewrite_exit);
 
   /* Loop through all the RewriteMap config_recs for this server, and for
    * all FIFO maps, open FIFO file descriptors.  This has to be done here,
@@ -1658,7 +1658,7 @@ static int rewrite_sess_init(void) {
   c = find_config(main_server->conf, CONF_PARAM, "RewriteMap", FALSE);
 
   while (c) {
-    pr_handle_signals();
+    pr_signals_handle();
 
     if (!strcmp(c->argv[1], "fifo")) {
       PRIVS_ROOT
@@ -1686,7 +1686,7 @@ static int rewrite_init(void) {
     rewrite_pool = make_named_sub_pool(permanent_pool, "mod_rewrite pool");
 
   /* Add a rehash handler. */
-  register_rehash(NULL, rewrite_rehash_cb);
+  pr_rehash_register_handler(NULL, rewrite_rehash_cb);
 
   return 0;
 }

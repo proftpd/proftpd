@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.9 2003-01-02 17:28:14 castaglia Exp $
+ * $Id: mod_radius.c,v 1.10 2003-01-02 18:25:13 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.7rc6"
@@ -1076,11 +1076,11 @@ static int radius_openlog(void) {
     return 0;
   }
 
-  block_signals();
+  pr_signals_block();
   PRIVS_ROOT
   res = log_openfile(radius_logname, &radius_logfd, 0640);
   PRIVS_RELINQUISH
-  unblock_signals();
+  pr_signals_unblock();
 
   return res;
 }
@@ -2326,7 +2326,7 @@ static int radius_child_init(void) {
       FALSE)) != NULL)
     radius_log("using RadiusRealm '%s'", radius_realm);
 
-  add_exit_handler(radius_child_exit);
+  pr_exit_register_handler(radius_child_exit);
   return 0;
 }
 
@@ -2336,7 +2336,7 @@ static int radius_init(void) {
   radius_pool = make_sub_pool(permanent_pool);
 
   /* Register a rehash handler, to cleanup the pool. */
-  register_rehash(radius_rehash, NULL);
+  pr_rehash_register_handler(radius_rehash, NULL);
 
   return 0;
 }

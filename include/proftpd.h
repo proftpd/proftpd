@@ -25,11 +25,11 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.39 2003-01-02 17:28:18 castaglia Exp $
+ * $Id: proftpd.h,v 1.40 2003-01-02 18:25:18 castaglia Exp $
  */
 
-#ifndef __PROFTPD_H
-#define __PROFTPD_H
+#ifndef PR_PROFTPD_H
+#define PR_PROFTPD_H
 
 #ifndef TRUE
 #define TRUE				1
@@ -106,6 +106,10 @@ typedef struct {
 
   unsigned char ident_lookups;		/* Is RFC931 (ident) protocol used? */
   char *ident_user;			/* User identified by ident protocol */
+
+  const char *rfc2228_mech;		/* RFC2228 authentication mechanism
+					 * used
+					 */
 
   char cwd[MAX_PATH_LEN];		/* Current working directory */
   char vwd[MAX_PATH_LEN];		/* Current virtual working directory */
@@ -256,11 +260,11 @@ extern const char	*pwdfname,*grpfname;
 /* Misc Prototypes */
 
 void end_login(int);
-void pr_handle_signals(void);
+void pr_signals_handle(void);
 void session_exit(int, void *, int, void *);
 void session_set_idle(void);
-void register_rehash(void *, void(*)(void *));
+void pr_rehash_register_handler(void *, void(*)(void *));
 void set_daemon_rlimits(void);
 void set_session_rlimits(void);
 
-#endif /* __PROFTPD_H */
+#endif /* PR_PROFTPD_H */

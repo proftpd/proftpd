@@ -25,19 +25,19 @@
  */
 
 /* Data connection management prototypes
- * $Id: data.h,v 1.13 2003-01-02 17:28:15 castaglia Exp $
+ * $Id: data.h,v 1.14 2003-01-02 18:25:17 castaglia Exp $
  */
 
-#ifndef __DATACONN_H
-#define __DATACONN_H
+#ifndef PR_DATACONN_H
+#define PR_DATACONN_H
 
-void data_init(char *, int);
-void data_cleanup(void);
-int data_open(char *, char *, int, off_t);
-void data_close(int);
-void data_abort(int, int);
-int data_xfer(char *, int);
-void data_reset(void);
+void pr_data_init(char *, int);
+void pr_data_cleanup(void);
+int pr_data_open(char *, char *, int, off_t);
+void pr_data_close(int);
+void pr_data_abort(int, int);
+int pr_data_xfer(char *, int);
+void pr_data_reset(void);
 
 #ifdef HAVE_SENDFILE
 typedef
@@ -52,7 +52,7 @@ off_t
 
 pr_sendfile_t;
 
-pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count);
+pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, size_t count);
 #endif /* HAVE_SENDFILE */
 
-#endif /* __DATACONN_H */
+#endif /* PR_DATACONN_H */

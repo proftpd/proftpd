@@ -255,7 +255,7 @@ int pr_netio_lingering_close(pr_netio_stream_t *nstrm, long linger) {
     if ((res = select(nstrm->strm_fd+1, &rs, NULL, NULL, &tv)) == -1) {
       if (errno == EINTR) {
         time_t now = time(NULL);
-        pr_handle_signals();
+        pr_signals_handle();
 
         /* Still here? If the requested five minutes hasn't passed,
          * continue lingering.  Reset the timeval struct's fields to
@@ -388,7 +388,7 @@ int pr_netio_poll(pr_netio_stream_t *nstrm) {
 
   while (TRUE) {
     run_schedule();
-    pr_handle_signals();
+    pr_signals_handle();
 
     switch (nstrm->strm_type) {
       case PR_NETIO_STRM_CTRL:

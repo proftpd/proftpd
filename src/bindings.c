@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.6 2003-01-02 17:28:20 castaglia Exp $
+ * $Id: bindings.c,v 1.7 2003-01-02 18:25:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -103,7 +103,7 @@ conn_t *pr_ipbind_accept_conn(fd_set *readfds, int *listenfd) {
 
   for (i = 0, listener = listener_list; i < listener_listlen;
       i++, listener = listener->next) {
-    pr_handle_signals();
+    pr_signals_handle();
 
     if (FD_ISSET(listener->listen_fd, readfds) &&
         listener->mode == CM_LISTEN) {
