@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.36 2004-05-29 21:02:50 castaglia Exp $
+ * $Id: modules.h,v 1.37 2004-05-29 23:02:44 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -175,8 +175,8 @@ struct module_struc {
   cmdtable *cmdtable;			/* Command table */
   authtable *authtable; 		/* Authentication handler table */
 
-  int (*module_init_cb)(void); 		/* Module initialization */
-  int (*module_init_session_cb)(void);	/* Session initialization */
+  int (*init)(void); 			/* Module initialization */
+  int (*sess_init)(void);		/* Session initialization */
 
   /* Internal use; high number == higher priority. */
   int priority;

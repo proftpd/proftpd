@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.233 2004-05-29 20:03:51 castaglia Exp $
+ * $Id: mod_core.c,v 1.234 2004-05-29 23:02:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -51,9 +51,6 @@ extern modret_t *site_dispatch(cmd_rec*);
 
 /* From src/dirtree.c */
 extern array_header *server_defines;
-
-/* From modules/module_glue.c */
-extern module **loaded_modules;
 
 /* For bytes-retrieving directives */
 #define PR_BYTES_BAD_UNITS	-1

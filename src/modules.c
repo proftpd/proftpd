@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.38 2004-05-29 21:02:54 castaglia Exp $
+ * $Id: modules.c,v 1.39 2004-05-29 23:02:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -47,12 +47,14 @@ struct stash {
   } ptr;
 };
 
+extern module *static_modules[];
+extern module *loaded_modules;
+
 /* Symbol hashes for each type */
 static xaset_t *symbol_table[PR_TUNABLE_HASH_TABLE_SIZE];
 static pool *symbol_pool = NULL;
 static struct stash *curr_sym = NULL;
 
-static xaset_t *installed_modules = NULL;
 static array_header *mconfarr;			/* masterconf array */
 static array_header *mcmdarr;			/* mastercmd array */
 static array_header *mautharr;			/* masterauth array */
@@ -67,8 +69,6 @@ authtable *m_authtable;				/* Master auth table */
 unsigned int n_authtabs;
 
 module *curr_module = NULL;			/* Current running module */
-
-extern module **loaded_modules;
 
 typedef struct mod_cb {
   struct mod_cb *next, *prev;
@@ -461,14 +461,14 @@ modret_t *mod_create_error(cmd_rec *cmd, int mr_errno) {
  * need to know we are a child and have a connection.
  */
 int modules_session_init(void) {
-  module *prev_module = curr_module;
-  module *m;
+  module *prev_module = curr_module, *m;
 
-  for (m = (module*) installed_modules->xas_list; m; m=m->next)
-    if (m && m->module_init_session_cb) {
+  for (m = loaded_modules; m; m = m->next) {
+    if (m && m->sess_init) {
       curr_module = m;
-      m->module_init_session_cb();
+      m->sess_init();
     }
+  }
 
   curr_module = prev_module;
   return 0;
@@ -489,7 +489,7 @@ unsigned char pr_module_exists(const char *name) {
 
 module *pr_module_get(const char *name) {
   char buf[80] = {'\0'};
-  register unsigned int i = 0;
+  module *m;
 
   if (!name) {
     errno = EINVAL;
@@ -497,13 +497,13 @@ module *pr_module_get(const char *name) {
   }
 
   /* Check the list of compiled-in modules. */
-  for (i = 0; loaded_modules[i]; i++) {
+  for (m = loaded_modules; m; m = m->next) {
     memset(buf, '\0', sizeof(buf));
-    snprintf(buf, sizeof(buf), "mod_%s.c", loaded_modules[i]->name);
+    snprintf(buf, sizeof(buf), "mod_%s.c", m->name);
     buf[sizeof(buf)-1] = '\0';
 
     if (strcmp(buf, name) == 0)
-      return loaded_modules[i];
+      return m;
   }
 
   errno = ENOENT;
@@ -512,11 +512,10 @@ module *pr_module_get(const char *name) {
 
 void modules_list(void) {
   register unsigned int i = 0;
-  module *m = NULL;
 
   printf("Compiled-in modules:\n");
-  for (i = 0; loaded_modules[i]; i++) {
-    m = loaded_modules[i];
+  for (i = 0; static_modules[i]; i++) {
+    module *m = static_modules[i];
     printf("  mod_%s.c\n", m->name);
   }
 }
@@ -529,10 +528,8 @@ int modules_init(void) {
   authtable *auth = NULL;
   register unsigned int i = 0;
 
-  installed_modules = xaset_create(permanent_pool, NULL);
-
-  for (i = 0; loaded_modules[i]; i++) {
-    m = loaded_modules[i];
+  for (i = 0; static_modules[i]; i++) {
+    m = static_modules[i];
     m->priority = i;
 
     if (m->api_version < PR_MODULE_API_VERSION) {
@@ -541,9 +538,17 @@ int modules_init(void) {
 	exit(1);
     }
 
-    if (!m->module_init_cb ||
-        (m->module_init_cb() >= 0)) {
-      xaset_insert(installed_modules, (xasetmember_t *) m);
+    if (!m->init ||
+        m->init() >= 0) {
+
+      /* Add the module to the loaded_modules list. */
+      if (loaded_modules) {
+        m->next = loaded_modules;
+        loaded_modules->prev = m;
+        loaded_modules = m;
+
+      } else
+        loaded_modules = m;
 
       if (m->conftable)
         for (conf = m->conftable; conf->directive; conf++)
@@ -572,7 +577,7 @@ int modules_init(void) {
   mcmdarr = make_array(permanent_pool, numcmd, sizeof(cmdtable));
   mautharr = make_array(permanent_pool, numauth, sizeof(authtable));
 
-  for (m = (module *) installed_modules->xas_list; m; m = m->next) {
+  for (m = loaded_modules; m; m = m->next) {
 
     if (m->conftable) {
       for (conf = m->conftable; conf->directive; conf++) {
