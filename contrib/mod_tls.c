@@ -678,11 +678,13 @@ static tls_pkey_t *tls_lookup_pkey(void) {
     if (k->rsa_pkey) {
       pr_memscrub(k->rsa_pkey, k->pkeysz);
       free(k->rsa_pkey_ptr);
+      k->rsa_pkey = k->rsa_pkey_ptr = NULL;
     }
 
     if (k->dsa_pkey) {
       pr_memscrub(k->dsa_pkey, k->pkeysz);
       free(k->dsa_pkey_ptr);
+      k->dsa_pkey = k->dsa_pkey_ptr = NULL;
     }
   }
 
