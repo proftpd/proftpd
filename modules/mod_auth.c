@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.174 2003-12-11 08:04:00 castaglia Exp $
+ * $Id: mod_auth.c,v 1.175 2004-01-14 04:00:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -690,7 +690,7 @@ static char *_get_default_root(pool *p) {
 
     else {
       char *realdir;
-      int xerrno;
+      int xerrno = 0;
 
       /* We need to be the final user here so that if the user has their home
        * directory with a mode the user proftpd is running (ie the User
