@@ -24,7 +24,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lwrap -lnsl$
- * $Id: mod_wrap.c,v 1.12 2003-11-09 05:15:44 castaglia Exp $
+ * $Id: mod_wrap.c,v 1.13 2003-11-09 21:28:29 castaglia Exp $
  */
 
 #define MOD_WRAP_VERSION "mod_wrap/1.2.3"
@@ -132,7 +132,7 @@ static int wrap_is_usable_file(char *filename) {
     return FALSE;
 
   if (pr_fsio_stat(filename, &statbuf) == -1) {
-    log_pri(PR_LOG_INFO, MOD_WRAP_VERSION ": \"%s\": %s", filename,
+    pr_log_pri(PR_LOG_INFO, MOD_WRAP_VERSION ": \"%s\": %s", filename,
       strerror(errno));
     return FALSE;
   }
@@ -140,8 +140,9 @@ static int wrap_is_usable_file(char *filename) {
   /* OK, the file exists.  Now, to make sure that the current process
    * can _read_ the file
    */
-  if ((fh = pr_fsio_open(filename, O_RDONLY)) == NULL) {
-    log_pri(PR_LOG_INFO, MOD_WRAP_VERSION ": \"%s\": %s", filename,
+  fh = pr_fsio_open(filename, O_RDONLY);
+  if (fh == NULL) {
+    pr_log_pri(PR_LOG_INFO, MOD_WRAP_VERSION ": \"%s\": %s", filename,
       strerror(errno));
     return FALSE;
   }
@@ -152,7 +153,7 @@ static int wrap_is_usable_file(char *filename) {
 
 static void wrap_log_request_allowed(int priority,
     struct request_info *request) {
-  log_pri(priority, MOD_WRAP_VERSION ": allowed connection from %s",
+  pr_log_pri(priority, MOD_WRAP_VERSION ": allowed connection from %s",
     eval_client(request));
 
   /* done */
@@ -161,7 +162,7 @@ static void wrap_log_request_allowed(int priority,
 
 static void wrap_log_request_denied(int priority,
     struct request_info *request) {
-  log_pri(priority, MOD_WRAP_VERSION ": refused connection from %s",
+  pr_log_pri(priority, MOD_WRAP_VERSION ": refused connection from %s",
     eval_client(request));
 
   /* done */
@@ -730,7 +731,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
        */
       if (wrap_eval_expression(((char **) access_conf->argv) + 2,
           user_array)) {
-        log_debug(DEBUG4, MOD_WRAP_VERSION
+        pr_log_debug(DEBUG4, MOD_WRAP_VERSION
           ": matched TCPUserAccessFiles expression");
         matched = TRUE;
         break;
@@ -758,7 +759,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
 
     while (access_conf) {
       if (auth_getgroups(cmd->pool, user, &gid_array, &group_array) < 1) {
-        log_debug(DEBUG3, MOD_WRAP_VERSION
+        pr_log_debug(DEBUG3, MOD_WRAP_VERSION
           ": no supplemental groups found for user '%s'", user);
 
       } else {
@@ -768,7 +769,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
          */
         if (wrap_eval_expression(((char **) access_conf->argv) + 2,
             group_array)) {
-          log_debug(DEBUG4, MOD_WRAP_VERSION
+          pr_log_debug(DEBUG4, MOD_WRAP_VERSION
             ": matched TCPGroupAccessFiles expression");
           matched = TRUE;
           break;
@@ -806,7 +807,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
     allow_real_table = wrap_get_user_table(cmd, user, hosts_allow_table);
 
     if (!wrap_is_usable_file(allow_real_table)) {
-      log_pri(PR_LOG_WARNING, MOD_WRAP_VERSION
+      pr_log_pri(PR_LOG_WARNING, MOD_WRAP_VERSION
         ": configured TCPAllowFile %s is unusable", hosts_allow_table);
       hosts_allow_table = NULL;
 
@@ -821,7 +822,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
     deny_real_table = dir_realpath(cmd->pool, hosts_deny_table);
 
     if (!wrap_is_usable_file(deny_real_table)) {
-      log_pri(PR_LOG_WARNING, MOD_WRAP_VERSION
+      pr_log_pri(PR_LOG_WARNING, MOD_WRAP_VERSION
         ": configured TCPDenyFile %s is unusable", hosts_deny_table);
       hosts_deny_table = NULL;
 
@@ -839,7 +840,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
   } else if (hosts_allow_table == NULL && hosts_deny_table != NULL) {
 
     /* Log the missing file */
-    log_pri(PR_LOG_INFO, MOD_WRAP_VERSION ": no usable allow access file -- "
+    pr_log_pri(PR_LOG_INFO, MOD_WRAP_VERSION ": no usable allow access file -- "
       "allowing connection");
 
     return DECLINED(cmd);
@@ -847,7 +848,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
   } else if (hosts_allow_table != NULL && hosts_deny_table == NULL) {
 
     /* log the missing file */
-    log_pri(PR_LOG_INFO, MOD_WRAP_VERSION ": no usable deny access file -- "
+    pr_log_pri(PR_LOG_INFO, MOD_WRAP_VERSION ": no usable deny access file -- "
       "allowing connection");
 
     return DECLINED(cmd);
@@ -861,7 +862,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
   }
 
   /* Log the names of the allow/deny files being used. */
-  log_pri(PR_LOG_DEBUG, MOD_WRAP_VERSION ": using access files: %s, %s",
+  pr_log_pri(PR_LOG_DEBUG, MOD_WRAP_VERSION ": using access files: %s, %s",
     hosts_allow_table, hosts_deny_table);
 
   /* retrieve the user-defined syslog priorities, if any.  Fall back to the
@@ -880,7 +881,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
     deny_severity = PR_LOG_WARNING;
   }
 
-  log_debug(DEBUG4, MOD_WRAP_VERSION ": checking under service name '%s'",
+  pr_log_debug(DEBUG4, MOD_WRAP_VERSION ": checking under service name '%s'",
     wrap_service_name);
   request_init(&request, RQ_DAEMON, wrap_service_name, RQ_FILE,
     session.c->rfd, 0);
