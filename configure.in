@@ -103,6 +103,35 @@ dnl configure command line options...
 
 dnl --with options.
 
+dnl ProFTPD comes bundled with GNU's implementation of getopt, to be used
+dnl in case the host system doesn't have getopt.  However, this causes
+dnl problems for certain builds of proftpd, e.g. ProFTPD and MySQL (which
+dnl itself similarly bundles a getopt implementation).  Thus, we need to
+dnl support/handle --without-getopt, to disable use of ProFTPD's getopt.
+dnl I don't know if MySQL supports any similar option.
+ac_lib_objs="pr_fnmatch.o strsep.o vsnprintf.o glibc-glob.o glibc-mkstemp.o pr-syslog.o pwgrent.o"
+ac_pr_check_getopt="yes"
+
+AC_ARG_WITH(getopt,
+  [
+     --without-getopt        prevent proftpd from using its bundled getopt
+                          implementation.  This is done automatically if
+                          the host supports getopt, but may need to be
+                          explicitly used when combining proftpd with other
+                          applications, such as MySQL
+  ],
+  [
+    if test "$withval" = "no" ; then
+      LIB_OBJS="$ac_lib_objs"
+      ac_pr_check_getopt="no"
+    else 
+      LIB_OBJS="$ac_lib_objs getopt.o getopt1.o"
+    fi
+  ],
+  [
+    LIB_OBJS="$ac_lib_objs getopt.o getopt1.o"
+  ])
+
 dnl Modules...'nuff said.
 AC_ARG_WITH(includes,
   [  --with-includes=LIST    add additional include paths to proftpd
@@ -119,7 +148,7 @@ AC_ARG_WITH(includes,
     done ])
 
 AC_ARG_WITH(libraries,
-  [  --with-libraries=LIST    add additional library paths to proftpd
+  [  --with-libraries=LIST   add additional library paths to proftpd
                           LIST is a ':' separated list of include paths to add
                           e.g. --with-libraries=/some/mysql/libdir:/my/libs
   ],
@@ -609,7 +638,10 @@ AC_FUNC_SETPGRP
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS(bcopy crypt fgetgrent fgetpwent flock getcwd gethostname)
-AC_CHECK_FUNCS(getopt getopt_long gettimeofday inet_aton)
+if test "$ac_pr_check_getopt" = "yes" ; then
+  AC_CHECK_FUNCS(getopt)
+fi
+AC_CHECK_FUNCS(getopt_long gettimeofday inet_aton)
 AC_CHECK_FUNCS(memcpy mempcpy mkdir mkstemp rmdir select setgroups socket)
 AC_CHECK_FUNCS(statfs strchr strcoll strerror strsep strtol)
 AC_CHECK_FUNCS(setprotoent endprotoent)
@@ -853,6 +885,7 @@ prefix="$savedPrefix"
 exec_prefix="$savedExecPrefix"
 
 dnl And finally, generate the appropriate Make* and config.h
+AC_SUBST(LIB_OBJS)
 AC_SUBST(MODULES)
 AC_SUBST(BUILD_MODULES)
 AC_SUBST(ADDL_DIRS)
