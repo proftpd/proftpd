@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.40 2004-12-05 05:50:28 castaglia Exp $
+ * $Id: auth.c,v 1.41 2004-12-16 02:30:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -575,8 +575,8 @@ static config_rec *auth_anonymous_group(pool *p, char *user) {
 }
 
 /* This is one messy function.  Yuck.  Yay legacy code. */
-config_rec *pr_auth_get_anon_config(pool *p, char **login, char **user_name,
-    char **anon_name) {
+config_rec *pr_auth_get_anon_config(pool *p, char **login_name,
+    char **user_name, char **anon_name) {
   config_rec *c = NULL, *topc = NULL;
   char *config_user_name, *config_anon_name = NULL;
   unsigned char is_alias = FALSE, force_anon = FALSE, *auth_alias_only = NULL;
@@ -595,7 +595,7 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login, char **user_name,
   if (c) {
     do {
       if (strcmp(c->argv[0], "*") == 0 ||
-          strcmp(c->argv[0], *login) == 0) {
+          strcmp(c->argv[0], *login_name) == 0) {
         is_alias = TRUE;
         break;
       }
@@ -627,12 +627,12 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login, char **user_name,
 
     if (c &&
         (strcmp(c->argv[0], "*") == 0 ||
-         strcmp(c->argv[0], *login) == 0))
+         strcmp(c->argv[0], *login_name) == 0))
       is_alias = TRUE;
   }
 
   if (c) {
-    *login = c->argv[1];
+    *login_name = c->argv[1];
 
     /* If the alias is applied inside an <Anonymous> context, we have found
      * our anon block.
@@ -659,7 +659,7 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login, char **user_name,
         config_anon_name = config_user_name;
 
       if (config_anon_name &&
-          strcmp(config_anon_name, *login) == 0) {
+          strcmp(config_anon_name, *login_name) == 0) {
          if (anon_name)
            *anon_name = config_anon_name;
          break;
@@ -670,7 +670,7 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login, char **user_name,
   }
 
   if (!c) {
-    c = auth_anonymous_group(p, *login);
+    c = auth_anonymous_group(p, *login_name);
 
     if (c)
       force_anon = TRUE;
@@ -685,16 +685,16 @@ config_rec *pr_auth_get_anon_config(pool *p, char **login, char **user_name,
       if (c && c->config_type == CONF_ANON)
         c = NULL;
       else
-        *login = NULL;
+        *login_name = NULL;
 
       auth_alias_only = get_param_ptr(main_server->conf, "AuthAliasOnly",
         FALSE);
-      if (*login &&
+      if (*login_name &&
           auth_alias_only &&
           *auth_alias_only == TRUE)
-        *login = NULL;
+        *login_name = NULL;
 
-      if ((!login || !c) &&
+      if ((!login_name || !c) &&
           anon_name)
         *anon_name = NULL;
     }
