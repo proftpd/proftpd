@@ -1,3 +1,16 @@
+2001-02-05 13:28  flood
+
+	* src/log.c: Bug #455 - SyslogLevel now works as documented.
+
+2001-02-05 13:16  flood
+
+	* README, configure.in, lib/Makefile.in: Bug #293 - Compilation
+	under OSX.
+
+2001-02-02 21:59  flood
+
+	* src/data.c: Minor fixes to bug 399's patch. ;)
+
 2001-02-02 18:11  flood
 
 	* modules/mod_core.c: Bug #407 - Include pathnames must now be
