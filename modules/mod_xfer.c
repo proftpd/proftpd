@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.97 2002-11-15 16:03:51 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.98 2002-11-18 20:03:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1584,7 +1584,7 @@ MODRET set_hiddenstores(cmd_rec *cmd) {
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
-  c = add_config_param(cmd->argv[0], 1, NULL);
+  c = add_config_param("HiddenStores", 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = bool;
   c->flags |= CF_MERGEDOWN;
