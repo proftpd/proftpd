@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.272 2002-11-12 15:24:19 castaglia Exp $
+$Id: NEWS,v 1.273 2002-11-12 16:10:38 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -29,6 +29,12 @@ CVS
 - ftptop can now use either curses or ncurses
 - Bug 1818 - proftpd doesn't compile on hpux11
 - Bug 1760 - AllowOverwrite not operational.
+- Bug 1703 - mod_sql_mysql compile error.  This was eventually tracked down
+  to an overlap between ProFTPD's bundled getopt implementation, and
+  MySQL's bundled getopt implementation.  To prevent this problem, a new
+  --without-getopt configure option has been added, which tells the ProFTPD
+  build process to explicitly not use the ProFTPD bundled getopt
+  implementation.
 
 1.2.7rc2 - Released 2002-10-22
 ---------------------------------
