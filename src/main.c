@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.246 2004-09-05 21:36:38 castaglia Exp $
+ * $Id: main.c,v 1.247 2004-09-07 22:23:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2476,11 +2476,11 @@ static struct option_help {
   { "--help", "-h",
     "Display proftpd usage"},
   { "--nodaemon", "-n",
-    "Disable background daemon mode and send all output to stderr)" },
+    "Disable background daemon mode (and send all output to stderr)" },
   { "--quiet", "-q",
     "Don't send output to stderr when running with -n or --nodaemon" },
   { "--debug", "-d [level]",
-    "Set debugging level (0-9, 9 = most debugging)" },
+    "Set debugging level (0-10, 10 = most debugging)" },
   { "--define", "-D [definition]",
     "Set arbitrary IfDefine definition" },
   { "--config", "-c [config-file]",
