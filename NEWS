@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.640 2005-01-01 03:02:05 castaglia Exp $
+$Id: NEWS,v 1.641 2005-01-01 18:37:42 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -104,6 +104,8 @@ CVS
 - Bug 2541 - <Directory ~user> path resolved at startup time, rather than at
   session time.
 - Bug 2549 - Allow contrib modules to be built from multiple source files.
+- Bug 1651 - Add contrib module to limit connection acceptance based on system
+  load.  mod_load is now one of the provided contrib/ modules.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

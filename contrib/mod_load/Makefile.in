@@ -1,0 +1,36 @@
+top_builddir=../..
+top_srcdir=../../
+srcdir=@srcdir@
+
+include $(top_srcdir)/Make.rules
+
+SHARED_CFLAGS=-DPR_SHARED_MODULE
+SHARED_LDFLAGS=-avoid-version -export-dynamic -module
+VPATH=@srcdir@
+
+MODULE_NAME=mod_load
+
+# Necessary redefinitions
+INCLUDES=-I. -I../.. -I../../include
+CPPFLAGS= -DHAVE_CONFIG_H $(DEFAULT_PATHS) $(PLATFORM) $(INCLUDES)
+LDFLAGS=-L../../lib
+
+%.o: %.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
+
+%.la: %.c
+	$(LIBTOOL) --mode=compile $(CC) $(CPPFLAGS) $(CFLAGS) $(SHARED_CFLAGS) -c $(basename $@).c
+	$(LIBTOOL) --mode=link $(CC) -o $@ -rpath $(LIBEXECDIR) $(LDFLAGS) $(SHARED_LDFLAGS) $(basename $@).lo `cat $(basename $@).c | grep '$$Libraries:' | sed -e 's/^.*\$$Libraries: \(.*\)\\$$/\1/'`
+
+shared: $(MODULE_NAME).la
+
+static: $(MODULE_NAME).o
+
+install:
+	$(LIBTOOL) --mode=install $(INSTALL_BIN) $(MODULE_NAME).la $(LIBEXECDIR)
+
+clean:
+	$(RM) *.o
+	$(LIBTOOL) --mode=clean $(RM) "$(MODULE_NAME).o"
+	$(LIBTOOL) --mode=clean $(RM) `echo "$(MODULE_NAME).la" | sed 's/\.la$\/.lo/g'`
+
