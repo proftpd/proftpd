@@ -1,14 +1,146 @@
-2002-05-10 08:51  jwm
+2002-05-13 07:05  castaglia
+
+	* NEWS, include/version.h: 
+	
+	TJ: updated NEWS, version.h with date of 1.2.5rc2 release
+
+2002-05-12 22:16  castaglia
+
+	* configure: 
+	
+	TJ: here's the new configure to go with the configure.in
+
+2002-05-12 22:15  castaglia
+
+	* configure.in: 
+	
+	TJ: being pedantic, changing the order of functions check to be
+	alphabetical.	   Also, I need to check configure.in separately
+	from, and before, configure.	  This is so that when users
+	download from CVS, and run ./configure && make,      the make
+	program's check of the timestamp on configure.in shows an     
+	earlier date on configure.in than on configure (if both
+	configure.in and      configure are checked into CVS
+	simultaneously, they will have the same      timestamps, and make
+	will cause the configure script to be run again).      What a pain.
+
+2002-05-12 22:03  castaglia
+
+	* configure.in: 
+	
+	TJ: updated configure.in's copyright information
+
+2002-05-12 16:22  castaglia
+
+	* contrib/README.mod_wrap: 
+	
+	TJ: updated README for mod_wrap-1.2.3.
+
+2002-05-12 15:43  castaglia
+
+	* CREDITS: 
+	
+	TJ: updated PGP key fingerprint
+
+2002-05-12 14:02  flyhmstr
+
+	* doc/: Configuration.html, faq.html: ML: updated directive list
+	and FAQ for rc2
+
+2002-05-12 13:48  castaglia
+
+	* config.h.in, configure, configure.in, include/io.h,
+	include/proftpd.h, modules/mod_xfer.c: 
+	
+	TJ: Added missing checks for functions/headers to configure,
+	needed/used by	   include/glibc-glob.c.  Also made small
+	amendments to code (volatility	   of flag variables and minor
+	spacing).
+
+2002-05-11 06:49  flyhmstr
+
+	* doc/Configuration.html: ML: updated directive list
+
+2002-05-11 02:55  flyhmstr
+
+	* CREDITS, NEWS: ML: updated NEWS and CREDITS
+
+2002-05-11 02:26  flyhmstr
+
+	* NEWS: ML: news update
+
+2002-05-11 02:25  flyhmstr
+
+	* doc/faq.html: ML: adding new format FAQ
+
+2002-05-10 13:14  castaglia
+
+	* NEWS: 
+	
+	Bug#1580 - RPM can't be built by non-root user
+
+2002-05-10 13:08  castaglia
+
+	* contrib/dist/rpm/proftpd.spec.in: 
+	
+	Bug#1580 - RPM can't be built by non-root user
+
+2002-05-10 10:59  flyhmstr
+
+	* CREDITS, NEWS: ML: updated credits and news
+
+2002-05-10 10:53  castaglia
+
+	* NEWS, configure, configure.in: 
+	
+	Bug#1546 - PF_ARGV_WRITABLE, PF_ARGV_WRITEABLE are used mixed.
+
+2002-05-10 10:28  castaglia
+
+	* NEWS, modules/mod_core.c, src/dirtree.c: 
+	
+	Bug#1608 - src/dirtree.c produces two unnecessary warnings Bug#1610
+	- compiling mod_core.c gives an unneeded/dazzling msg
+
+2002-05-10 10:04  flyhmstr
+
+	* NEWS: ML: updating NEWS
+
+2002-05-10 09:52  flyhmstr
+
+	* include/ftp.h: ML: updating licence
+
+2002-05-10 09:50  flyhmstr
+
+	* doc/: Changes-1.2.0pre3, FAQ-config.html, Undocumented.txt,
+	license.txt, mod_sample.c: 
+	ML:   Removed legacy files   The FAQ is removed because it's
+	superceed by the main FAQ.
+	
+	  Updated the base licence text with additional copyright info,
+	  consistancy typo and the SSL exclusion clause.
+
+2002-05-10 06:00  jwm
+
+	* NEWS: 
+	updating for mod_ldap 2.8.3 release
+
+2002-05-10 06:00  jwm
+
+	* ChangeLog: 
+	updating changelog
+
+2002-05-10 05:51  jwm
 
 	* contrib/mod_ldap.c: 
 	updating to 2.8.3
 
-2002-05-10 08:49  jwm
+2002-05-10 05:49  jwm
 
 	* README.LDAP: 
 	new mod_ldap README
 
-2002-05-10 04:05  castaglia
+2002-05-10 01:05  castaglia
 
 	* src/: ident.c, inet.c: 
 	
@@ -17,14 +149,14 @@
 	remaining     difficulties while still retaining the efficacy of
 	Bug#1588's patch.
 
-2002-05-09 18:59  castaglia
+2002-05-09 15:59  castaglia
 
 	* src/ident.c: 
 	
 	TJ: cleaned up get_ident(), adding proper cleanup/resource-freeing
 	code	 at various exit points from the function
 
-2002-05-09 17:29  castaglia
+2002-05-09 14:29  castaglia
 
 	* src/ident.c: 
 	
@@ -32,14 +164,14 @@
 	inet_openrw();	   this was causing segfaults in the case where an
 	identd server was not	  returning a response
 
-2002-05-09 16:42  castaglia
+2002-05-09 13:42  castaglia
 
 	* src/main.c: 
 	
 	TJ: mistakenly changed default setting of IdentLookups to "off"
 	with prior     changes, setting default back to "on"
 
-2002-05-09 16:15  castaglia
+2002-05-09 13:15  castaglia
 
 	* modules/mod_auth.c, modules/mod_core.c, src/main.c, src/timers.c:
 	
@@ -49,13 +181,13 @@
 	use pointers (and thus avoid compiler	    warnings about
 	typecasts)     minor reformatting
 
-2002-05-09 13:42  castaglia
+2002-05-09 10:42  castaglia
 
 	* NEWS: 
 	
 	TJ: updated NEWS
 
-2002-05-09 13:36  castaglia
+2002-05-09 10:36  castaglia
 
 	* configure, configure.in, include/log.h, include/modules.h,
 	include/privs.h, modules/mod_auth.c, modules/mod_core.c,
@@ -65,52 +197,32 @@
 		<VirtualHost> as documented #1581 - uid_t and get_param_int
 	result size
 
-2002-05-08 16:55  flyhmstr
+2002-05-08 13:55  flyhmstr
 
 	* NEWS: ML: news update
 
-2002-05-08 16:51  flyhmstr
+2002-05-08 13:51  flyhmstr
 
 	* doc/Configuration.html: ML: adding new version of the directive
 	list
 
-2002-05-08 16:50  flyhmstr
+2002-05-08 13:50  flyhmstr
 
 	* doc/Configuration.html: ML: removing old version of directive
 	list
 
-2002-05-08 16:34  castaglia
+2002-05-08 13:34  castaglia
 
 	* ChangeLog: 
 	
 	Updated ChangeLog
 
-2002-05-08 15:44  castaglia
+2002-05-08 12:44  castaglia
 
 	* NEWS: 
 	
 	TJ: added NEWS entries for recently committed patches for (fixed?)
 	bug	reports
-
-2002-05-08 15:21  castaglia
-
-	* modules/mod_auth.c, src/dirtree.c, src/inet.c, src/main.c,
-	src/pool.c: 
-	
-	#1523 - "Umask" presented in <Global> block messes up file
-	permissions #1566 - FXP not working properly #1578 - RootLogin
-	directive does not mergedown properly
-
-2002-05-08 14:39  castaglia
-
-	* contrib/dist/rpm/proftpd.init.d, modules/mod_auth.c,
-	modules/mod_core.c, src/dirtree.c, src/inet.c: 
-	
-	#1563 - Proftpd 1.2.4. keeps core dumping sig11 on start #1567 -
-	AuthAliasOnly parsed incorrectly #1570 - MasqueradeAddress contexts
-	do not match documentation #1579 - Contrib init.d script makes
-	inappropriate use of ftpshut #1588 - Port scan of TCP/21 causes
-	segmentation fault #1601 - Rename terminates ProFTPD (signal 11)
 
 2002-05-08 12:21  castaglia
 
