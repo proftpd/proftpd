@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.64 2001-06-03 13:38:04 flood Exp $
+ * $Id: mod_core.c,v 1.65 2001-06-03 15:17:14 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -1265,6 +1265,13 @@ MODRET add_directory(cmd_rec *cmd)
                        strerror(errno),NULL));
     }
   }
+
+  /* check to see that there isn't already a config for this directory
+   */
+  if (find_config(cmd->server->conf, CONF_DIR, dir, FALSE) != NULL)
+    return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      cmd->argv[0], ": <Directory> section already configured for '",
+      cmd->argv[1], "'", NULL));
 
   c = start_sub_config(dir);
   c->argc = 2;

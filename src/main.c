@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.62 2001-06-03 13:38:04 flood Exp $
+ * $Id: main.c,v 1.63 2001-06-03 15:17:14 flood Exp $
  */
 
 /*
@@ -1569,7 +1569,14 @@ void fork_server(int fd,conn_t *l,int nofork)
   init_child_modules();
 
   /* find class */
-  session.class = (class_t *) find_class(conn->remote_ipaddr, conn->remote_name);
+  if (get_param_int(main_server->conf, "Classes", FALSE) == 1) {
+    if ((session.class = (class_t *) find_class(conn->remote_ipaddr,
+        conn->remote_name)) != NULL)
+      log_debug(DEBUG2, "FTP session requested from class '%s'",
+        session.class->name);
+    else 
+      log_debug(DEBUG2, "FTP session requested from unknown class");
+  }
 
   /* xfer_set_data_port(conn->local_ipaddr,conn->local_port-1); */
   cmd_loop(serv,conn);

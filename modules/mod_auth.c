@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.58 2001-05-17 03:22:22 flood Exp $
+ * $Id: mod_auth.c,v 1.59 2001-06-03 15:17:14 flood Exp $
  */
 
 #include "conf.h"
@@ -802,7 +802,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
     }
   } else {
     struct group *grp;
-
+    char *homedir;
+    
     if(ugroup) {
       grp = auth_getgrnam(p,ugroup);
       if(grp) {
@@ -811,7 +812,15 @@ static int _setup_environment(pool *p, char *user, char *pass)
       }
     }
 
-    sstrncpy(session.cwd, pw->pw_dir, MAX_PATH_LEN);
+    /* attempt to resolve any possible symlinks */
+    PRIVS_USER
+    homedir = dir_realpath(p, pw->pw_dir);
+    PRIVS_RELINQUISH
+
+    if(homedir)
+      sstrncpy(session.cwd, homedir, MAX_PATH_LEN);
+    else
+      sstrncpy(session.cwd, pw->pw_dir, MAX_PATH_LEN);
   }
 
   /* Get default chdir (if any) */
@@ -1126,8 +1135,7 @@ static void _do_user_counts()
   if(get_param_int(main_server->conf, "Classes", FALSE) != 1)
     return;
 
-  if((session.class = (class_t *) find_class(session.c->remote_ipaddr,
-					     session.c->remote_name)) == NULL)
+  if (!session.class)
     return;
   
   /* Determine how many users are currently connected */
@@ -1176,9 +1184,7 @@ static void _auth_check_count(cmd_rec *cmd, char *user) {
    * The catch is this: if Classes are enabled, but find_class() returns
    *  NULL, act as if Classes are disabled. -- TJ
    */
-  if(classes_enabled)
-    if((session.class = (class_t *) find_class(session.c->remote_ipaddr,
-					   session.c->remote_name)) == NULL)
+  if (classes_enabled && session.class == NULL)
       classes_enabled = 0;
   
   /* Determine how many users are currently connected.

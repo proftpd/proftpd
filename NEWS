@@ -1,7 +1,10 @@
-$Id: NEWS,v 1.106 2001-06-03 13:38:04 flood Exp $
+$Id: NEWS,v 1.107 2001-06-03 15:17:14 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+- Bug 1183 - Removed duplicate find_class() call
+- Bug 1189 - <Directory> duping checked for
+- Bug 1185 - symlinks in homedirs now resolved at login
 - Bug 1149 - Patch to contrib RPM init script
 - Bug 1132 - Compilation fix for glibc 2.0
 - Bug 1201 - Modifications to contrib/xferstats.holger-preiss
