@@ -1,3 +1,12 @@
+2001-02-13 20:05  flood
+
+	* modules/mod_xfer.c: Bug #462 - sendfile works again on freebsd
+
+2001-02-12 22:05  flood
+
+	* modules/mod_ls.c, src/dirtree.c: Bug #1007 - IgnoreHidden can now
+	be turned off.
+
 2001-02-05 17:29  flood
 
 	* CREDITS, INSTALL, NEWS, README, contrib/dist/rpm/proftpd.spec.in,
