@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.422 2003-04-18 06:26:18 castaglia Exp $
+$Id: NEWS,v 1.423 2003-04-22 23:07:28 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -111,6 +111,7 @@ CVS
   units (i.e. KB, MB, GB, etc).  This compliments the currently available
   %F cookie, used to display the number of bytes of available space (without
   units).
+- Bug 2003 - mod_auth.c does not compile for cygwin on W2K.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------
