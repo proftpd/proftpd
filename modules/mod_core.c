@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.150 2003-01-11 00:26:02 castaglia Exp $
+ * $Id: mod_core.c,v 1.151 2003-01-13 01:27:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -792,7 +792,6 @@ MODRET set_user(cmd_rec *cmd) {
 
   if (!cmd->config || cmd->config->config_type != CONF_ANON) {
     if ((pw = auth_getpwnam(cmd->tmp_pool, cmd->argv[1])) == NULL) {
-      auth_endpwent(cmd->tmp_pool);
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "Unknown user '",
         cmd->argv[1], "'.", NULL));
     }
@@ -802,9 +801,6 @@ MODRET set_user(cmd_rec *cmd) {
     config_rec *c = add_config_param("UserID", 1, NULL);
     c->argv[0] = pcalloc(c->pool, sizeof(uid_t));
     *((uid_t *) c->argv[0]) = pw->pw_uid;
-
-    /* We don't need extra fds sitting around open */
-    auth_endpwent(cmd->tmp_pool);
   }
 
   add_config_param_str("UserName", 1, cmd->argv[1]);
@@ -819,7 +815,6 @@ MODRET set_group(cmd_rec *cmd) {
 
   if (!cmd->config || cmd->config->config_type != CONF_ANON) {
     if ((grp = auth_getgrnam(cmd->tmp_pool, cmd->argv[1])) == NULL) {
-      auth_endgrent(cmd->tmp_pool);
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "Unknown group '",
         cmd->argv[1], "'.", NULL));
     }
@@ -829,7 +824,6 @@ MODRET set_group(cmd_rec *cmd) {
     config_rec *c = add_config_param("GroupID", 1, NULL);
     c->argv[0] = pcalloc(c->pool, sizeof(gid_t));
     *((gid_t *) c->argv[0]) = grp->gr_gid;
-    auth_endgrent(cmd->tmp_pool);
   }
 
   add_config_param_str("GroupName", 1, cmd->argv[1]);

@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.157 2003-01-02 18:25:25 castaglia Exp $
+ * $Id: main.c,v 1.158 2003-01-13 01:27:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -864,6 +864,12 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     }
     PRIVS_RELINQUISH
     free_conf_stacks();
+
+    /* After configuration is complete, make sure that passwd, group
+     * aren't held open (unnecessary fds for master daemon)
+     */
+    endpwent();
+    endgrent();
 
     /* Set the (possibly new) resource limits. */
     set_daemon_rlimits();
