@@ -1,3 +1,39 @@
+2002-06-08 19:38  castaglia
+
+	* NEWS, contrib/mod_sql.c, contrib/mod_sql_mysql.c,
+	include/version.h: 
+	
+	Bug#1379 - Replace bzero/bcopy with memset/memcpy Bug#1576 -
+	SQLHomedirOnDemand segfaults in certain circumstances Bug#1586 -
+	Bad row count assumption in _sql_getgroup() Bug#1625 - Compile
+	problem with mod_sql module
+	
+	Preparing for release of 1.2.5 (stable).
+
+2002-06-06 09:14  castaglia
+
+	* NEWS, contrib/mod_sql.c: 
+	
+	Added the mod_sql-4.08 from Andrew's site
+
+2002-05-30 14:09  castaglia
+
+	* NEWS: 
+	
+	Updated NEWS
+
+2002-05-30 13:13  castaglia
+
+	* include/version.h: 
+	
+	Damn, I forgot to update this file.
+
+2002-05-30 13:07  castaglia
+
+	* ChangeLog: 
+	
+	Updating ChangeLog
+
 2002-05-30 09:22  castaglia
 
 	* NEWS, contrib/xferstats.holger-preiss: 
