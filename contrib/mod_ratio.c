@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ratio -- Support upload/download ratios.
- * Time-stamp: <1998-09-10 13:21:41 root>
- * Copyright (c) 1998 Johnie Ingram.
+ * Time-stamp: <1999-10-04 03:31:31 root>
+ * Copyright (c) 1998-1999 Johnie Ingram.
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,395 +18,623 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-/* This is mod_ratio 1.0, contrib software for proftpd 1.1.6 and above.
+#define MOD_RATIO_VERSION "mod_ratio/3.0"
+
+/* This is mod_ratio, contrib software for proftpd 1.2.0pre3 and above.
    For more information contact Johnie Ingram <johnie@netgod.net>.
 
-   To install, copy this file into modules/ and do:
+   History Log:
 
-      ./configure --with-modules=mod_ratio
+   * 1999-10-03: v3.0: Uses generic API to access SQL data at runtime.
+     Supports negative ratios (upload X to get 1) by popular demand.
+     Added proper SITE command and help.  Various presentation
+     idiosyncracies fixed.
 
-   This module is inactive unless configured, which can be done with
-   an Anonymous, Directory, or VirtualHost block in proftpd.conf, or
-   with a .ftpaccess file.  (Ratios must be turned on elsewhere for a
-   directive in .ftpaccess to take effect.)
+   * 1999-06-13: v2.2: fixed ratio display, it was printing ratios in
+     reverse order.
 
-   The ratio directives take four numbers: file ratio, initial file
-   credit, byte ratio, and initial byte credit.  Setting either ratio
-   to 0 disables that check.
-      
-   The directives are HostRatio (matches FQDN -- wildcards are allowed
-   in this one), AnonRatio (matches password entered in an anon login,
-   usually an email address), UserRatio (accepts "*" for 'any user'),
-   and GroupRatio.  Matches are looked for in that order.
+   * 1999-05-03: v2.1: mod_mysql bugfix; rearranged CWD reply so
+     Netscape shows ratios; fixed recalculation in XRATIO.  Added
+     CwdRatioMsg directive for showing equivalent URLs (always
+     enabled).
+   
+   * 1999-04-08: v2.0: Reformat and rewrite.  Add FileRatioErrMsg,
+     ByteRatioErrMsg, and LeechRatioMsg directives and support for
+     proftpd mod_mysql.
 
-   Some examples:
+   * 1998-09-08: v1.0: Accepted into CVS as a contrib module.
 
-     Ratios on                                    # enable module
-     UserRatio ftp 0 0 0 0
-     HostRatio master.debian.org 0 0 0 0          # leech access (default)
-     GroupRatio proftpd 100 10 5 100000           # 100:1 files, 10 file cred
-                                                    5:1 bytes, 100k byte cred
-     AnonRatio billg@microsoft.com 1 0 1 0        # 1:1 ratio, no credits
-     UserRatio * 5 5 5 50000                      # special default case
+   * 1998-07-14: v0.2: Trimmed some debug output, added HostRatio
+     directive, included in Debian ProFTPD binary package.
 
-   Setting "Ratios on" without configuring anything else will enable
-   leech mode: it logs activity and sends status messages to the ftp
-   client, but doesn't restrict traffic.
-
-   Ratio module activity is recorded to syslog at DEBUG0; it usually
-   shows up in /var/log/debug, like this:
-
-     localhost: -1/82788 +0/0 5/5 4/17212: /art/nudes/young CWD carla
-
-   This example is for someone who (1) has downloaded 1 file of 82k,
-   (2) has uploaded nothing, (3) has a ratio of 5:1 files and 5:1
-   bytes, (4) has 4 files and 17k credit remaining, and (5) is now
-   changing directory to /art/nudes/young/carla.  The initial credit,
-   not shown, was 5 files and 100k (UserRatio * 5 5 5 100000).
-
-   Similar information is available with the XRATIO ftp command, which
-   returns debugging info like this:
-
-     200 localhost: -(1 82788) +(0 0) [5+5 5+100000] 4F 17212B
-
-   Note that if this module is turned on globally, any user can create
-   a personal ratio area with a .ftpaccess file.  One way to prevent
-   this is with: PathDenyFilter "\.ftpaccess$"
-
-   If you have ideas on how to improve this module, please contact
-   Johnie Ingram <johnie@netgod.net>.
+   * 1998-04-18: v0.1: Initial release.
 
 */
 
 #include "conf.h"
 
-static struct {
-  int ratios;
+/* *INDENT-OFF* */
 
-  unsigned int bytes;
-  unsigned int b_credit;
-  unsigned int files;
-  unsigned int f_credit;
+/* Maximum username field to expect, etc. */
+#define ARBITRARY_MAX                   128
 
-  size_t b_stor;
-  size_t b_retr;
-  unsigned int f_stor;
-  unsigned int f_retr;
-
-} ratio;
-
-
-#define RATIO_SHOW (ratio.ratios > 0)
-#define FILE_ENFORCE (RATIO_SHOW && ratio.files)
-#define BYTE_ENFORCE (RATIO_SHOW && ratio.bytes)
-#define RATIO_ENFORCE (RATIO_SHOW && (ratio.bytes + ratio.files))
-#define FILES_ALLOWED (int)((ratio.files * ratio.f_stor) + ratio.f_credit - ratio.f_retr)
-#define BYTES_ALLOWED (int)((ratio.bytes * ratio.b_stor) + ratio.b_credit - ratio.b_retr)
-#define RATIO_SHORT "%s: -%i/%i +%i/%i %i/%i %i/%i%s%s", \
-	    session.c->remote_name, ratio.f_retr, ratio.b_retr, ratio.f_stor, \
-	    ratio.b_stor, ratio.files, ratio.bytes, FILES_ALLOWED, BYTES_ALLOWED, \
-	    (FILE_ENFORCE && FILES_ALLOWED < 1) ? " [F]" : "", \
-	    (BYTE_ENFORCE && BYTES_ALLOWED < 1) ? " [B]" : ""
-#define RATIO_LONG "%s: -(%i %i) +(%i %i) [%i+%i %i+%i] %iF %iB%s%s", \
-	    session.c->remote_name, ratio.f_retr, ratio.b_retr, ratio.f_stor, \
-	    ratio.b_stor, ratio.files, ratio.f_credit, ratio.bytes, \
-	    ratio.b_credit, FILES_ALLOWED, BYTES_ALLOWED, \
-	    (FILE_ENFORCE && FILES_ALLOWED < 1) ? " [FILE LIMIT]" : "", \
-	    (BYTE_ENFORCE && BYTES_ALLOWED < 1) ? " [BYTE LIMIT]" : ""
-
-static void
-log_ratio(cmd_rec *cmd)
+static struct
 {
-  char sbuf[1023];
-  snprintf (sbuf, sizeof(sbuf), RATIO_SHORT);
-  log_debug(DEBUG0, "%s: %s %s %s",
-	    sbuf, session.cwd, cmd->argv[0], cmd->arg);
+  int fstor;
+  int fretr;
+  int bstor;
+  int bretr;
+
+  int frate;
+  int fcred;
+  int brate;
+  int bcred;
+
+  int files;
+  int bytes;
+
+  char ftext [64];
+  char btext [64];
+
+} stats;
+
+static struct
+{
+  int enable;
+  char user [ARBITRARY_MAX];
+
+  const char *rtype;          /* The ratio type currently in effect. */
+
+  const char *filemsg;
+  const char *bytemsg;
+  const char *leechmsg;
+
+} g;
+
+#define RATIO_ENFORCE (stats.frate || stats.brate)
+
+#define RATIO_STUFFS "-%i/%i +%i/%i (%i %i %i %i) = %i/%i%s%s", \
+	    stats.fretr, stats.bretr, stats.fstor, stats.bstor, \
+            stats.frate, stats.fcred, stats.brate, stats.bcred, \
+            stats.files, stats.bytes, \
+	    (stats.frate && stats.files < 1) ? " [NO F]" : "", \
+	    (stats.brate && stats.bytes < 32768) ? " [LO B]" : ""
+#define SHORT_RATIO_STUFFS "-%i/%i +%i/%i = %i/%i%s%s", \
+	    stats.fretr, stats.bretr, stats.fstor, stats.bstor, \
+            stats.files, stats.bytes, \
+	    (stats.frate && stats.files < 1) ? " [NO F]" : "", \
+	    (stats.brate && stats.bytes < 32768) ? " [LO B]" : ""
+
+/* *INDENT-ON* */
+
+static cmd_rec *
+_make_cmd (pool * cp, int argc, ...)
+{
+  va_list args;
+  cmd_rec *c;
+  int i;
+
+  c = pcalloc (cp, sizeof (cmd_rec));
+  c->argc = argc;
+  c->symtable_index = -1;
+
+  c->argv = pcalloc (cp, sizeof (void *) * (argc + 1));
+  c->argv[0] = MOD_RATIO_VERSION;
+  va_start (args, argc);
+  for (i = 0; i < argc; i++)
+    c->argv[i + 1] = (void *) va_arg (args, char *);
+  va_end (args);
+
+  return c;
+}
+
+static modret_t *
+_dispatch_ratio (cmd_rec * cmd, char *match)
+{
+  authtable *m;
+  modret_t *mr = NULL;
+
+  m = mod_find_auth_symbol (match, &cmd->symtable_index, NULL);
+  while (m)
+    {
+      mr = call_module_auth (m->m, m->handler, cmd);
+      if (MODRET_ISHANDLED (mr) || MODRET_ISERROR (mr))
+	break;
+      m = mod_find_auth_symbol (match, &cmd->symtable_index, m);
+    }
+  if (MODRET_ISERROR (mr))
+    log_debug (DEBUG0, "Aiee! mod_ratio internal!  %s", MODRET_ERRMSG (mr));
+  return mr;
+}
+
+static modret_t *
+_dispatch (cmd_rec * cmd, char *match)
+{
+  cmd_rec *cr;
+  modret_t *mr = 0;
+
+  cr = _make_cmd (cmd->tmp_pool, 0);
+  mr = _dispatch_ratio (cr, match);
+  if (cr->tmp_pool)
+    destroy_pool (cr->tmp_pool);
+  return mr;
 }
 
 static void
-add_ratio_response (cmd_rec *cmd)
+_set_stats (char *fstor, char *fretr, char *bstor, char *bretr)
 {
-  char sbuf1[128];
-  char sbuf2[128];
-  char sbuf3[128];
-  sbuf1[0] = sbuf2[0] = sbuf3[0] = 0;
-  snprintf(sbuf1, sizeof(sbuf1),
-	  "Sent: %i (%iB)  Got: %i (%iB)",
-	  ratio.f_retr, ratio.b_retr, ratio.f_stor, ratio.b_stor);
-  if (FILE_ENFORCE)
-    snprintf(sbuf2, sizeof(sbuf2), "  [%i:1F] CR: %iF", ratio.files, FILES_ALLOWED);
-  if (BYTE_ENFORCE)
-    snprintf(sbuf3, sizeof(sbuf3), "  [%i:1B] CR: %iB", ratio.bytes, BYTES_ALLOWED);
-  if (! RATIO_ENFORCE)
-    add_response(R_DUP, "%s  [10,000,000:1]  CR: LEECH", sbuf1);
+  if (fstor)
+    stats.fstor = atoi (fstor);
+  if (fretr)
+    stats.fretr = atoi (fretr);
+  if (bstor)
+    stats.bstor = atoi (bretr);
+  if (bretr)
+    stats.bretr = atoi (bretr);
+}
+
+static void
+_set_ratios (char *frate, char *fcred, char *brate, char *bcred)
+{
+  stats.frate = stats.fcred = stats.brate = stats.bcred = 0;
+  if (frate)
+    stats.frate = atoi (frate);
+  if (fcred)
+    stats.fcred = atoi (fcred);
+  if (brate)
+    stats.brate = atoi (brate);
+  if (bcred)
+    stats.bcred = atoi (bcred);
+
+  if (stats.frate >= 0)
+    {
+      stats.files = (stats.frate * stats.fstor) + stats.fcred - stats.fretr;
+      snprintf (stats.ftext, sizeof(stats.ftext), "%i:1F", stats.frate);
+    }
   else
-    add_response(R_DUP, "%s%s%s", sbuf1, sbuf2, sbuf3);
+    {
+      stats.files = (stats.fstor / (stats.frate * -1))
+	+ stats.fcred - stats.fretr;
+      snprintf (stats.ftext, sizeof(stats.ftext), "1:%iF", stats.frate * -1);
+    }
+
+  if (stats.brate >= 0)
+    {
+      stats.bytes = (stats.brate * stats.bstor) + stats.bcred - stats.bretr;
+      snprintf (stats.btext, sizeof(stats.btext), "%i:1B", stats.brate);
+    }
+  else
+    {
+      stats.bytes = (stats.bstor / (stats.brate * -1))
+	+ stats.bcred - stats.bretr;
+      snprintf (stats.btext, sizeof(stats.btext), "1:%iB", stats.brate * -1);
+    }
+}
+
+MODRET _calc_ratios (cmd_rec * cmd)
+{
+  modret_t *mr = 0;
+  config_rec *c;
+  char buf[1024];
+  char *mask;
+  char **data;
+
+  if (!(g.enable = get_param_int (CURRENT_CONF, "Ratios", FALSE) == TRUE))
+    return DECLINED (cmd);
+
+  mr = _dispatch (cmd, "getstats");
+  if (MODRET_HASDATA (mr))
+    {
+      data = mr->data;
+      if (data[4])
+	log_debug (DEBUG4, "ratio: warning: getstats on %s not unique",
+		   g.user);
+      _set_stats (data[0], data[1], data[2], data[3]);
+    }
+
+  mr = _dispatch (cmd, "getratio");
+  if (MODRET_HASDATA (mr))
+    {
+      data = mr->data;
+      if (data[4])
+	log_debug (DEBUG4, "ratio: warning: getratio on %s not unique",
+		   g.user);
+      _set_ratios (data[0], data[1], data[2], data[3]);
+      g.rtype = "U";
+      return DECLINED (cmd);
+    }
+
+  c = find_config (CURRENT_CONF, CONF_PARAM, "HostRatio", TRUE);
+  while (c)
+    {
+      mask = buf;
+      if (*(char *) c->argv[0] == '.')
+	{
+	  *mask++ = '*';
+	  sstrncpy (mask, c->argv[0], sizeof (buf));
+	}
+      else if (*(char *) (c->argv[0] + (strlen (c->argv[0]) - 1)) == '.')
+	{
+	  sstrncpy (mask, c->argv[0], sizeof(buf) - 2);
+	  sstrcat(buf, "*", sizeof(buf));
+	}
+      else
+	sstrncpy (mask, c->argv[0], sizeof (buf));
+
+      if (!fnmatch (buf, session.c->remote_name, FNM_NOESCAPE) ||
+	  !fnmatch (buf, inet_ntoa (*session.c->remote_ipaddr), FNM_NOESCAPE))
+	{
+	  _set_ratios (c->argv[1], c->argv[2], c->argv[3], c->argv[4]);
+	  g.rtype = "h";
+	  return DECLINED (cmd);
+	}
+      c = find_config_next (c, c->next, CONF_PARAM, "HostRatio", FALSE);
+    }
+
+  c = find_config (CURRENT_CONF, CONF_PARAM, "AnonRatio", TRUE);
+  while (c)
+    {
+      if (session.anon_user && !strcmp (c->argv[0], session.anon_user))
+	{
+	  _set_ratios (c->argv[1], c->argv[2], c->argv[3], c->argv[4]);
+	  g.rtype = "a";
+	  return DECLINED (cmd);
+	}
+      c = find_config_next (c, c->next, CONF_PARAM, "AnonRatio", FALSE);
+    }
+
+  c = find_config (CURRENT_CONF, CONF_PARAM, "UserRatio", TRUE);
+  while (c)
+    {
+      if (*(char *) c->argv[0] == '*' || !strcmp (c->argv[0], g.user))
+	{
+	  _set_ratios (c->argv[1], c->argv[2], c->argv[3], c->argv[4]);
+	  g.rtype = "u";
+	  return DECLINED (cmd);
+	}
+      c = find_config_next (c, c->next, CONF_PARAM, "UserRatio", FALSE);
+    }
+
+  c = find_config (CURRENT_CONF, CONF_PARAM, "GroupRatio", TRUE);
+  while (c)
+    {
+      if (!strcmp (c->argv[0], session.group))
+	{
+	  _set_ratios (c->argv[1], c->argv[2], c->argv[3], c->argv[4]);
+	  g.rtype = "g";
+	  return DECLINED (cmd);
+	}
+      c = find_config_next (c, c->next, CONF_PARAM, "GroupRatio", FALSE);
+    }
+
+  return DECLINED (cmd);
 }
 
 static void
-set_ratios(char *a, char *b, char *c, char *d)
+_log_ratios (cmd_rec * cmd)
 {
-  ratio.files = ratio.f_credit = ratio.bytes = ratio.b_credit = 0;
-  if (a) ratio.files = atoi(a);
-  if (b) ratio.f_credit = atoi(b);
-  if (c) ratio.bytes = atoi(c);
-  if (d) ratio.b_credit = atoi(d);
-}
-
-MODRET calculate_ratios(cmd_rec *cmd)
-{
-  config_rec *cfg;
   char buf[1024];
 
-  ratio.ratios = get_param_int(CURRENT_CONF,"Ratios",FALSE);
-  if (!ratio.ratios || !cmd || !cmd->server || !cmd->server->conf)
-    return DECLINED(cmd);
-
-  cfg = find_config(cmd->server->conf,CONF_PARAM, "HostRatio",TRUE);
-  while(cfg) {
-    if(*(char *)cfg->argv[0] == '.') {
-      *buf = '*';
-      sstrcat(buf, cfg->argv[0], sizeof(buf));
-    } else if(*(char *)(cfg->argv[0] + (strlen(cfg->argv[0]) -1)) == '.') {
-      sstrncpy(buf, cfg->argv[0], sizeof(buf));
-      sstrcat(buf, "*", sizeof(buf));
-    } else {
-      sstrncpy(buf, cfg->argv[0], sizeof(buf) - 1);
-    }
-    
-    if(!fnmatch(buf, session.c->remote_name, FNM_NOESCAPE) ||
-       !fnmatch(buf, inet_ntoa(*session.c->remote_ipaddr), FNM_NOESCAPE)) {
-      set_ratios(cfg->argv[1], cfg->argv[2], cfg->argv[3], cfg->argv[4]);
-      return DECLINED(cmd);
-    }
-    cfg = find_config_next(cfg,cfg->next,CONF_PARAM,"HostRatio",FALSE);
-  }
-  cfg = find_config(cmd->server->conf,CONF_PARAM, "AnonRatio",TRUE);
-  while(cfg) {
-    if(session.anon_user && !strcmp(cfg->argv[0],session.anon_user)) {
-      set_ratios (cfg->argv[1], cfg->argv[2], cfg->argv[3], cfg->argv[4]);
-      return DECLINED(cmd);
-    }
-    cfg = find_config_next(cfg,cfg->next,CONF_PARAM,"AnonRatio",FALSE);
-  }
-  cfg = find_config(cmd->server->conf,CONF_PARAM, "UserRatio",TRUE);
-  while(cfg) {
-    if(* (char *) cfg->argv[0] == '*'
-       || !strcmp(cfg->argv[0],session.user)) {
-      set_ratios (cfg->argv[1], cfg->argv[2], cfg->argv[3], cfg->argv[4]);
-      return DECLINED(cmd);
-    }
-    cfg = find_config_next(cfg,cfg->next,CONF_PARAM,"UserRatio",FALSE);
-  }
-  cfg = find_config(cmd->server->conf,CONF_PARAM, "GroupRatio",TRUE);
-  while(cfg) {
-    if(!strcmp(cfg->argv[0],session.group)) {
-      set_ratios (cfg->argv[1], cfg->argv[2], cfg->argv[3], cfg->argv[4]);
-      return DECLINED(cmd);
-    }
-    cfg = find_config_next(cfg,cfg->next,CONF_PARAM,"GroupRatio",FALSE);
-  }
-  return DECLINED(cmd);
+  snprintf (buf, sizeof(buf), SHORT_RATIO_STUFFS);
+  log_debug (DEBUG0, "%s in %s: %s %s%s%s", g.user,
+	     session.cwd, cmd->argv[0], cmd->arg,
+	     RATIO_ENFORCE ? " :" : "", RATIO_ENFORCE ? buf : "");
 }
 
-MODRET cmd_xratio(cmd_rec *cmd)
-{
-  add_response(R_200, RATIO_LONG);
-  return HANDLED(cmd);
-}
-
-MODRET pre_cmd(cmd_rec *cmd)
-{
-  return calculate_ratios(cmd);
-}
-
-MODRET pre_cmd_log(cmd_rec *cmd)
-{
-  calculate_ratios(cmd);
-  if (! RATIO_SHOW)
-    return DECLINED(cmd);
-  log_ratio(cmd);
-  return DECLINED(cmd);
-}
-
-MODRET post_cmd(cmd_rec *cmd)
-{
-  if (! RATIO_SHOW)
-    return DECLINED(cmd);
-  add_ratio_response(cmd);
-  return DECLINED(cmd);
-}
-
-MODRET post_cmd_log(cmd_rec *cmd)
-{
-  if (! RATIO_SHOW)
-    return DECLINED(cmd);
-  add_ratio_response(cmd);
-  log_ratio(cmd);
-  return DECLINED(cmd);
-}
-
-MODRET pre_cmd_retr(cmd_rec *cmd)
+MODRET
+pre_cmd_retr (cmd_rec * cmd)
 {
   char *path;
   int fsize = 0;
   struct stat sbuf;
 
-  calculate_ratios(cmd);
-  if (! RATIO_SHOW)
-    return DECLINED(cmd);
-  log_ratio(cmd);
-  if (! RATIO_ENFORCE)
-    return DECLINED(cmd);
-  if (FILE_ENFORCE && FILES_ALLOWED < 1)
+  _calc_ratios (cmd);
+  if (!g.enable)
+    return DECLINED (cmd);
+  _log_ratios (cmd);
+
+  if (!RATIO_ENFORCE)
+    return DECLINED (cmd);
+
+  if (stats.frate && stats.files < 1)
     {
-      add_response_err(R_550, "%s: File Ratio: [%i:1F]  Sent: %i  Got: %i",
-		       cmd->arg, ratio.files, ratio.f_retr, ratio.f_stor);
-      add_response_err(R_550,
-	      "Too few files uploaded to earn file -- please upload more.");
-      return ERROR(cmd);
+      add_response_err (R_550, g.filemsg);
+      add_response_err (R_550,
+			"%s: FILE RATIO: %s  Down: %i  Up: only %i!",
+			cmd->arg, stats.ftext, stats.fretr, stats.fstor);
+      return ERROR (cmd);
     }
-  path = dir_realpath(cmd->tmp_pool,cmd->arg);
-  if(path && dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) &&
-     fs_stat(path,&sbuf) > -1)
-    fsize = sbuf.st_size;
-  if (BYTE_ENFORCE && (BYTES_ALLOWED - fsize) <= -1)
+
+  if (stats.brate)
     {
-      add_response_err(R_550, "%s: Byte Ratio: [%i:1B]  Sent: %i  Got: %i",
-		       cmd->arg, ratio.bytes, ratio.b_retr, ratio.b_stor);
-      add_response_err(R_550,
-		       "Too few bytes uploaded to earn file (%iB) -- please upload more.",
-		       fsize);
-      return ERROR(cmd);
+      path = dir_realpath (cmd->tmp_pool, cmd->arg);
+      if (path
+	  && dir_check (cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL)
+	  && fs_stat (path, &sbuf) > -1)
+	fsize = sbuf.st_size;
+
+      if ((stats.bytes - fsize) < 0)
+	{
+	  add_response_err (R_550, g.bytemsg);
+	  add_response_err (R_550,
+			    "%s: BYTE RATIO: %s  Down: %i  Up: only %i!",
+			    cmd->arg, stats.btext, stats.bretr, stats.bstor);
+	  return ERROR (cmd);
+	}
     }
-  return DECLINED(cmd);
+
+  return DECLINED (cmd);
 }
 
-MODRET post_cmd_retr(cmd_rec *cmd)
+MODRET
+log_cmd_pass (cmd_rec * cmd)
 {
-  ratio.f_retr++;
-  ratio.b_retr += session.xfer.total_bytes;
-  if (! RATIO_SHOW)
-    return DECLINED(cmd);
-  add_ratio_response(cmd);
-  return DECLINED(cmd);
+  char buf[120];
+
+  if (session.anon_user)
+    sstrncpy (g.user, session.anon_user, sizeof(g.user));
+  _calc_ratios (cmd);
+  if (g.enable)
+    {
+      snprintf (buf, sizeof(buf), RATIO_STUFFS);
+      log_pri (LOG_NOTICE, "ratio: %s/%s %s[%s]: %s", g.user,
+	       session.group, session.c->remote_name,
+	       inet_ntoa (*session.c->remote_ipaddr), buf);
+    }
+  return DECLINED (cmd);
 }
 
-MODRET post_cmd_stor(cmd_rec *cmd)
+MODRET
+pre_cmd (cmd_rec * cmd)
 {
-  ratio.f_stor++;
-  ratio.b_stor += session.xfer.total_bytes;
-  if (! RATIO_SHOW)
-    return DECLINED(cmd);
-  add_ratio_response(cmd);
-  log_ratio(cmd);
-  return DECLINED(cmd);
+  if (g.enable)
+    {
+      if (!strcasecmp (cmd->argv[0], "STOR"))
+	_calc_ratios (cmd);
+      _log_ratios (cmd);
+    }
+  return DECLINED (cmd);
 }
 
-MODRET log_cmd_pass(cmd_rec *cmd)
+/* FIXME: Unnecessarily site-specific directive best left undocumented. */
+
+MODRET
+cmd_cwd (cmd_rec * cmd)
 {
-  log_pri(LOG_NOTICE, "FTP session opened: %s/%s %s[%s] %s",
-	    session.user, session.group,
-	    session.c->remote_name, inet_ntoa(*session.c->remote_ipaddr),
-	    session.anon_user ? session.anon_user : "");
-  return DECLINED(cmd);
+  char *dir;
+  config_rec *c = find_config (CURRENT_CONF, CONF_PARAM, "CwdRatioMsg", TRUE);
+  if (c)
+    {
+      dir = dir_realpath (cmd->tmp_pool, cmd->argv[1]);
+      while (dir && c)
+	{
+	  if (!*((char *) c->argv[0]))
+	    return DECLINED (cmd);
+	  add_response (R_250, "%s?user=%s&dir=%s",
+			c->argv[0], g.user, &dir[1]);
+	  c = find_config_next (c, c->next, CONF_PARAM, "CwdRatioMsg", FALSE);
+	}
+    }
+  return DECLINED (cmd);
 }
 
-MODRET _add_ratiocmd(cmd_rec *cmd, char *directive)
+MODRET
+ratio_cmd (cmd_rec * cmd)
 {
- config_rec *c;
- CHECK_ARGS(cmd,5);
- CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_DIR|CONF_DYNDIR|CONF_GLOBAL);
- c = add_config_param_str(directive,5,
-                         (void*)cmd->argv[1],(void*)cmd->argv[2],
-                         (void*)cmd->argv[3],(void*)cmd->argv[4],
-                         (void*)cmd->argv[5]);
- c->flags |= CF_MERGEDOWN;
- return HANDLED(cmd);
+  char sbuf1[128];
+  char sbuf2[128];
+  char sbuf3[128];
+
+  if (g.enable)
+    {
+      int cwding = !strcasecmp (cmd->argv[0], "CWD");
+      char *r = (cwding) ? R_250 : R_DUP;
+
+      sbuf1[0] = sbuf2[0] = sbuf3[0] = 0;
+      if (cwding || !strcasecmp (cmd->argv[0], "PASS"))
+	_calc_ratios (cmd);
+
+      snprintf (sbuf1, sizeof(buf), "Down: %iF (%iB)  Up: %iF (%iB)",
+		stats.fretr, stats.bretr, stats.fstor, stats.bstor);
+      if (stats.frate)
+	snprintf (sbuf2, sizeof(sbuf2), 
+		  "   %s CR: %i", stats.ftext, stats.files);
+      if (stats.brate)
+	snprintf (sbuf3, sizeof(sbuf3),
+		  "   %s CR: %i", stats.btext, stats.bytes);
+
+      if (RATIO_ENFORCE)
+	{
+	  add_response (r, "%s%s%s", sbuf1, sbuf2, sbuf3);
+	  if (stats.frate && stats.files < 0)
+	    add_response (r, g.filemsg);
+	  if (stats.brate && stats.bytes < 0)
+	    add_response (r, g.bytemsg);
+	}
+      else
+	add_response (r, "%s%s%s", sbuf1, g.leechmsg ? "  " : "", g.leechmsg);
+    }
+  return DECLINED (cmd);
 }
 
-MODRET add_userratio(cmd_rec *cmd)
+MODRET
+cmd_site (cmd_rec * cmd)
 {
-  return _add_ratiocmd(cmd, "UserRatio");
+  char buf[128];
+  if (!strcasecmp (cmd->argv[1], "RATIO"))
+    {
+      _calc_ratios (cmd);
+      snprintf (buf, sizeof(buf), RATIO_STUFFS);
+      add_response (R_214, "\"%s\" is current ratio.", buf);
+      if (stats.frate)
+	add_response (R_214,
+		      "Files: %s  Down: %i  Up: %i  CR: %i more file%s",
+		      stats.ftext, stats.fretr, stats.fstor,
+		      stats.files, (stats.files != 1) ? "s" : "");
+      if (stats.brate)
+	add_response (R_214,
+		      "Bytes: %s  Down: %i  Up: %i  CR: %i more byte%s",
+		      stats.btext, stats.bretr, stats.bstor,
+		      stats.bytes, (stats.bytes != 1) ? "s" : "");
+      return HANDLED (cmd);
+    }
+
+  if (!strcasecmp (cmd->argv[1], "HELP"))
+    {
+      add_response (R_214,
+		    "The following mod_ratio SITE extensions are recognized.");
+      add_response (R_214, "RATIO        " "-- show all ratios in effect");
+    }
+  return DECLINED (cmd);
 }
 
-MODRET add_groupratio(cmd_rec *cmd)
+/* FIXME: because of how ratio and sql interact, the status sent after
+   STOR and RETR commands is always out-of-date.  Reorder module loading?  */
+
+MODRET
+post_cmd_stor (cmd_rec * cmd)
 {
-  return _add_ratiocmd(cmd, "GroupRatio");
+  stats.fstor++;
+  stats.bstor += session.xfer.total_bytes;
+  _calc_ratios (cmd);
+  return ratio_cmd (cmd);
 }
 
-MODRET add_anonratio(cmd_rec *cmd)
+MODRET
+post_cmd_retr (cmd_rec * cmd)
 {
-  return _add_ratiocmd(cmd, "AnonRatio");
+  stats.fretr++;
+  stats.bretr += session.xfer.total_bytes;
+  _calc_ratios (cmd);
+  return ratio_cmd (cmd);
 }
 
-MODRET add_hostratio(cmd_rec *cmd)
+MODRET
+cmd_user (cmd_rec * cmd)
 {
-  return _add_ratiocmd(cmd, "HostRatio");
+  if (!g.user[0])
+    sstrncpy (g.user, cmd->argv[1], ARBITRARY_MAX);
+  return DECLINED (cmd);
 }
 
-MODRET add_ratios(cmd_rec *cmd)
+static cmdtable ratio_cmdtab[] = {
+/* *INDENT-OFF* */
+
+  { LOG_CMD,  C_PASS,	G_NONE, log_cmd_pass, 	FALSE, FALSE },
+
+  { PRE_CMD,  C_RETR,   G_NONE, pre_cmd_retr,	FALSE, FALSE },
+  { PRE_CMD,  C_CWD,	G_NONE, pre_cmd, 	FALSE, FALSE },
+  { PRE_CMD,  C_STOR,	G_NONE, pre_cmd, 	FALSE, FALSE },
+  { PRE_CMD,  C_LIST,	G_NONE, pre_cmd, 	FALSE, FALSE },
+  { PRE_CMD,  C_NLST,	G_NONE, pre_cmd, 	FALSE, FALSE },
+
+  { CMD,      C_USER,	G_NONE, cmd_user, 	FALSE, FALSE },
+  { CMD,      C_SITE,	G_NONE, cmd_site, 	FALSE, FALSE },
+  { CMD,      C_CWD,	G_NONE, cmd_cwd, 	FALSE, FALSE },
+
+  { PRE_CMD,  C_CWD,	G_NONE, ratio_cmd, 	FALSE, FALSE },
+  { POST_CMD, C_NOOP,	G_NONE, ratio_cmd, 	FALSE, FALSE },
+  { POST_CMD, C_LIST,	G_NONE, ratio_cmd, 	FALSE, FALSE },
+  { POST_CMD, C_NLST,	G_NONE, ratio_cmd, 	FALSE, FALSE },
+  { POST_CMD, C_PASS,	G_NONE, ratio_cmd, 	FALSE, FALSE },
+
+  { POST_CMD, C_STOR,	G_NONE, post_cmd_stor,	FALSE, FALSE },
+  { POST_CMD, C_RETR,   G_NONE, post_cmd_retr,	FALSE, FALSE },
+
+  { 0, NULL }
+
+/* *INDENT-ON* */
+
+};
+
+/* **************************************************************** */
+
+MODRET
+add_ratiodata (cmd_rec * cmd)
+{
+  CHECK_ARGS (cmd, 5);
+  CHECK_CONF (cmd,
+	      CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_DIR | CONF_GLOBAL);
+  add_config_param_str (cmd->argv[0], 5, (void *) cmd->argv[1],
+			(void *) cmd->argv[2], (void *) cmd->argv[3],
+			(void *) cmd->argv[4], (void *) cmd->argv[5]);
+  return HANDLED (cmd);
+}
+
+MODRET
+add_ratios (cmd_rec * cmd)
 {
   int b;
   config_rec *c;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_DIR|CONF_GLOBAL);
-  b = get_boolean(cmd,1);
-  if(b == -1)
-    CONF_ERROR(cmd, "requires a boolean value");
-  c = add_config_param("Ratios",1,(void*)b);
+  CHECK_ARGS (cmd, 1);
+  CHECK_CONF (cmd, CONF_ROOT | CONF_VIRTUAL
+	      | CONF_ANON | CONF_DIR | CONF_GLOBAL);
+  b = get_boolean (cmd, 1);
+  if (b == -1)
+    CONF_ERROR (cmd, "requires a boolean value");
+  c = add_config_param ("Ratios", 1, (void *) b);
   c->flags |= CF_MERGEDOWN;
-  return HANDLED(cmd);
+  return HANDLED (cmd);
 }
 
-static conftable ratio_config[] = {
-  { "Ratios",	        add_ratios,                    },
-  { "UserRatio",	add_userratio,                 },
-  { "GroupRatio",	add_groupratio,                },
-  { "AnonRatio",	add_anonratio,                 },
-  { "HostRatio",	add_hostratio,                 },
-  { NULL }
+MODRET
+add_str (cmd_rec * cmd)
+{
+  CHECK_ARGS (cmd, 1);
+  CHECK_CONF (cmd, CONF_ROOT | CONF_VIRTUAL
+	      | CONF_ANON | CONF_DIR | CONF_GLOBAL);
+  add_config_param_str (cmd->argv[0], 1, (void *) cmd->argv[1]);
+  return HANDLED (cmd);
+}
+
+static conftable ratio_conftab[] = {
+/* *INDENT-OFF* */
+
+  { "UserRatio",	add_ratiodata,       NULL },
+  { "GroupRatio",	add_ratiodata,       NULL },
+  { "AnonRatio",	add_ratiodata,       NULL },
+  { "HostRatio",	add_ratiodata,       NULL },
+  { "Ratios",	        add_ratios,          NULL },
+
+  { "FileRatioErrMsg",	add_str,             NULL },
+  { "ByteRatioErrMsg",	add_str,             NULL },
+  { "LeechRatioMsg",	add_str,             NULL },
+  { "CwdRatioMsg",	add_str,             NULL },
+
+  { NULL, NULL, NULL }
+
+/* *INDENT-ON* */
+
 };
 
-static int ratio_child_init()
+/* **************************************************************** */
+
+static int
+ratio_child_init ()
 {
-  memset (&ratio, 0, sizeof (ratio));
+  memset (&g, 0, sizeof (g));
+  g.enable = get_param_int (TOPLEVEL_CONF, "Ratios", FALSE) == TRUE;
+
+  if (!(g.filemsg = get_param_ptr (TOPLEVEL_CONF, "FileRatioErrMsg", FALSE)))
+    g.filemsg = "Too few files uploaded to earn file -- please upload more.";
+
+  if (!(g.bytemsg = get_param_ptr (TOPLEVEL_CONF, "ByteRatioErrMsg", FALSE)))
+    g.bytemsg = "Too few bytes uploaded to earn more data -- please upload.";
+
+  if (!(g.leechmsg = get_param_ptr (TOPLEVEL_CONF, "LeechRatioMsg", FALSE)))
+    g.leechmsg = "[10,000,000:1]  CR: LEECH";
+
   return 0;
 }
 
-cmdtable ratio_commands[] = {
-  { LOG_CMD,  C_PASS,	G_NONE, log_cmd_pass, 	FALSE, FALSE },
-
-  { PRE_CMD,  C_CWD,	G_NONE, pre_cmd_log, 	FALSE, FALSE },
-  { PRE_CMD,  C_STOR,	G_NONE, pre_cmd, 	FALSE, FALSE },
-  { PRE_CMD,  C_APPE,	G_NONE, pre_cmd,	FALSE, FALSE },
-  { PRE_CMD,  C_PORT,	G_NONE, pre_cmd, 	FALSE, FALSE },
-  { PRE_CMD,  C_LIST,	G_NONE, pre_cmd, 	FALSE, FALSE },
-  { PRE_CMD,  C_NLST,	G_NONE, pre_cmd, 	FALSE, FALSE },
-
-  { POST_CMD, C_LIST,	G_NONE, post_cmd_log, 	FALSE, FALSE },
-  { POST_CMD, C_NLST,	G_NONE, post_cmd_log, 	FALSE, FALSE },
-  { POST_CMD, C_NOOP,	G_NONE, post_cmd, 	FALSE, FALSE },
-  { POST_CMD, C_CWD,	G_NONE, post_cmd, 	FALSE, FALSE },
-
-  { PRE_CMD,  C_RETR,   G_NONE, pre_cmd_retr,	FALSE, FALSE },
-  { POST_CMD, C_RETR,   G_NONE, post_cmd_retr,	FALSE, FALSE },
-  { POST_CMD, C_STOR,	G_NONE, post_cmd_stor,	FALSE, FALSE },
-  { POST_CMD, C_APPE,   G_NONE, post_cmd_stor,  FALSE, FALSE },
-
-  { CMD,      "XRATIO",	G_NONE, cmd_xratio, 	FALSE, FALSE },
-  { 0,	      NULL }
-};
-
 module ratio_module = {
-  NULL,NULL,			/* Always NULL */
+  NULL, NULL,			/* Always NULL */
   0x20,				/* API Version 2.0 */
   "ratio",
-  ratio_config,	        	/* No configuration table */
-  ratio_commands,		/* Our command table is for local use only */
-  NULL,				/* No authentication handlers */
-  NULL, 			/* Initialization function */
+  ratio_conftab,		/* Ratio configuration handler table */
+  ratio_cmdtab,			/* Ratio command handler table */
+  NULL,				/* No authentication handler table */
+  NULL,				/* No initial initialization needed */
   ratio_child_init		/* Post-fork "child mode" init */
 };
-
