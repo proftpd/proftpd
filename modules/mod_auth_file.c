@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.16 2003-09-08 00:33:49 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.17 2003-11-06 04:43:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -814,7 +814,7 @@ MODRET authfile_getgroups(cmd_rec *cmd) {
         if (gids)
           *((gid_t *) push_array(gids)) = grp->gr_gid;
 
-        if (groups && pwd->pw_gid != grp->gr_gid)
+        if (groups)
           *((char **) push_array(groups)) = pstrdup(session.pool, grp->gr_name);
       }
     }
