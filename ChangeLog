@@ -1,3 +1,953 @@
+2003-09-11 06:33  castaglia
+
+	* NEWS, contrib/dist/rpm/proftpd.spec, include/version.h: 
+	Let's get this rc2 show on the road.
+
+2003-09-10 23:36  castaglia
+
+	* include/conf.h: 
+	Add note about possibly using sockaddr_storage in the future.
+
+2003-09-10 07:02  castaglia
+
+	* src/main.c: 
+	Fixing PR_DEVEL_NO_DAEMON.
+
+2003-09-09 14:15  castaglia
+
+	* src/log.c: 
+	Log the client's IP address in the brackets, not the DNS name.
+
+2003-09-09 14:14  castaglia
+
+	* src/netaddr.c: 
+	When doing reverse DNS lookups, actually use the looked up name. 
+	Oops.
+
+2003-09-09 07:58  castaglia
+
+	* utils/ftpshut.c: 
+	Fix grammar in comment.
+
+2003-09-09 07:57  castaglia
+
+	* NEWS: 
+	ftpshut's option -R (for remove), not -D (for delete).
+
+2003-09-09 07:16  castaglia
+
+	* NEWS, src/netio.c: 
+	Bug#2122 - EAGAIN on Solaris can cause an infinite loop.
+
+2003-09-08 22:37  castaglia
+
+	* include/netaddr.h, modules/mod_core.c, src/inet.c, src/netaddr.c:
+	
+	Rename pr_netaddr_initialize() to be pr_netaddr_clear(), as that is
+	what is really happening.
+
+2003-09-08 19:49  castaglia
+
+	* src/inet.c: 
+	Remove duplicate comment.
+
+2003-09-08 18:07  castaglia
+
+	* src/inet.c: 
+	Use the netaddr allocator where appropriate.
+
+2003-09-08 18:04  castaglia
+
+	* src/dirtree.c: 
+	Remove cruft.  The multiple addresses for a server are handled
+	elsewhere.
+
+2003-09-08 17:55  castaglia
+
+	* include/netaddr.h, src/netaddr.c: 
+	Provide a netaddr allocator.
+
+2003-09-08 17:32  castaglia
+
+	* include/netaddr.h, modules/mod_core.c, src/inet.c, src/netaddr.c:
+	
+	Forgot to properly initialize pr_netaddr_t structs declared on the
+	stack.	Provide a wrapper function for this, in case any of the
+	default settings for a pr_netaddr_t need to change (in which case,
+	providing an allocator as well, for pr_netaddr_t * declarations,
+	will be necessary).
+	
+	Also fixed some tabs that crept into inet.c.
+
+2003-09-07 19:58  castaglia
+
+	* configure: 
+	Updating configure.
+
+2003-09-07 19:55  castaglia
+
+	* include/inet.h, modules/mod_core.c, src/inet.c, src/netaddr.c: 
+	Bug#2162 - Move pr_inet_ntop definition to include/inet.h.  Code
+	cleanup.
+
+2003-09-07 19:48  castaglia
+
+	* configure.in: 
+	Clean up configure.in a little, and just use LIB_OBJS (rather than
+	both pr_lib_objs and LIB_OBJS).
+
+2003-09-07 19:39  castaglia
+
+	* configure: 
+	Updating configure.
+
+2003-09-07 19:35  castaglia
+
+	* NEWS, configure.in: 
+	Bug#2161 - Duplicate autoconf check for sia.h.
+
+2003-09-07 17:56  castaglia
+
+	* src/main.c: 
+	Add a function to free up the memory allocated when moving the
+	environment "out of the way" for use by setproctitle() et al;
+	valgrind was complaining about this lost memory.  Also free up the
+	permanent pool, and the free block list, when the daemon shuts
+	down.
+
+2003-09-07 17:53  castaglia
+
+	* modules/mod_auth_unix.c: 
+	Changing permanent_pool to session.pool where appropriate.  Also
+	add a session exit callback that will call endpwent()/endgrent(),
+	freeing up any memory that may have been allocated via
+	setpwent()/setgrent().	Symmetry is a Good Thing.
+
+2003-09-07 17:51  castaglia
+
+	* modules/mod_auth_pam.c: 
+	Removed an unnecessary check for a NULL pointer that will be given
+	to free(3): the POSIX standard says that free() can handle a NULL
+	pointer without choking.  Also, since mod_auth_pam handles the
+	password, when the buffer which holds the password is freed, it
+	should be scrubbed, rather than just using memset().
+
+2003-09-07 17:42  castaglia
+
+	* src/main.c: 
+	Removing cruft, updating calls to subsystem initializers.
+
+2003-09-07 17:41  castaglia
+
+	* include/dirtree.h, src/dirtree.c: 
+	Cleanup.  Fixed some timing and usages of sub pools, particularly
+	in get_dir_ctxt().  Changed permanent_pool to be session.pool where
+	appropriate.  Changed !strcmp() to be strcmp() == 0, and added some
+	checks for paths of zero length (spotted by valgrind).
+
+2003-09-07 17:39  castaglia
+
+	* src/auth.c: 
+	Removing cruft.  Also added some comments on the difference between
+	the static make_cmd() function in this file, and the public
+	pr_cmd_alloc() function.
+
+2003-09-07 17:37  castaglia
+
+	* src/fsio.c: 
+	Style cleanup, mostly.	Using strcmp() == 0 rather than !strcmp()
+	is a little clearer to most people.  Also fixed a bug where a pool
+	was not being destroyed at the proper time.
+
+2003-09-07 17:36  castaglia
+
+	* src/data.c: 
+	Use memcpy() rather than memmove(), as memcpy() is a little more
+	efficient (it doesn't have to check the overlapping buffers). 
+	Also, allocate one space for one more character, to account for the
+	possibility of a LF as the first character in the buffer being
+	adjusted (it would then need to be prefaced by a CR).
+
+2003-09-07 17:33  castaglia
+
+	* modules/: mod_auth_file.c, mod_core.c, mod_log.c: 
+	Changed uses of permanent_pool to session.pool, as is more
+	appropriate in most module code.
+
+2003-09-07 17:32  castaglia
+
+	* modules/mod_auth.c: 
+	Changed some uses of permanent_pool here to be session.pool, as is
+	more appropriate in most module code.
+
+2003-09-07 17:31  castaglia
+
+	* include/modules.h, src/modules.c: 
+	Removing cruft.  The call_module_auth() and call_module_cmd()
+	functions were duplicates of call_module(), so there is no need to
+	keep them around.  Also fixed some of the pools being used when
+	adding symbols to the stash.  Fixed a bug where the stash pool was
+	not being properly allocated from permanent_pool (valgrind found
+	this).
+
+2003-09-07 17:29  castaglia
+
+	* include/pool.h, src/pool.c: 
+	Cleaning up the pool interface.  The pr_ prefix for initializing
+	the pool code, as many of the subsystem initializers are not meant
+	to be called by module code; the pr_ suffix is meant to denote the
+	API for use by module authors.	Also fixed a possible
+	alarm-blocking bug in destroy_pool().
+
+2003-09-07 17:26  castaglia
+
+	* include/inet.h, src/inet.c: 
+	Removing cruft.  The iplist/niplist members of the conn_t struct
+	were not being used anymore.  Also removed some unnecessary
+	complexities (a macro, a cleanup handler).
+
+2003-09-07 17:25  castaglia
+
+	* contrib/mod_ratio.c: 
+	Removing some cruft from the source code, which involves removing
+	mod_ratio's use of one of the crufty functions.
+
+2003-09-07 16:55  castaglia
+
+	* modules/mod_cap.c: 
+	A weekend with valgrind proved very enlightening.  This patch
+	corrects several small leaks that were occurring when handling
+	POSIX capabilities.
+
+2003-09-07 16:54  castaglia
+
+	* NEWS, contrib/mod_sql.c: 
+	Bug#2154 - SQL query loses shell information.
+
+2003-09-06 10:44  castaglia
+
+	* modules/mod_ls.c: 
+	Another leak fixed.  In this case, listdir() was (inappropriately)
+	setting pointers in the array--allocated and returned by
+	sreaddir()--to NULL.  Those pointers were allocated using calloc()
+	in sreaddir(), which meant that later, when listdir() went to free
+	the memory, it couldn't -- the address was lost.  All better now.
+
+2003-09-06 09:56  castaglia
+
+	* src/data.c: 
+	Fixing subtle off-by-one bug (thank you valgrind!).
+
+2003-09-05 13:00  castaglia
+
+	* src/pool.c: 
+	Rename xmalloc, xcalloc, and xrealloc to be smalloc, scalloc, and
+	srealloc ("s" for "safe", just like sstrncpy and sstrcat).  This
+	moves these functions out of the way of dmalloc's symbols (and
+	doesn't hurt proftpd at all).
+
+2003-09-05 12:42  castaglia
+
+	* include/conf.h: 
+	Add conditional include for <dmalloc.h>, for use when using dmalloc
+	to track memory usage.
+
+2003-09-05 11:38  castaglia
+
+	* NEWS, modules/mod_auth.c: 
+	Bug#2153 - Small error in handling PR_AUTH_RFC2228 authentication
+	code.
+
+2003-09-03 13:18  castaglia
+
+	* configure: 
+	Updating configure.
+
+2003-09-03 13:14  castaglia
+
+	* NEWS, configure.in: 
+	Bug#2007 - autoconf header detection problem.
+
+2003-08-30 09:11  castaglia
+
+	* configure: 
+	Updating configure.
+
+2003-08-30 09:07  castaglia
+
+	* configure.in, include/libsupp.h, lib/glibc-gai_strerror.c,
+	src/netaddr.c: 
+	Partial fix for issues mentioned in Bug#2143: bundling
+	gai_strerror(3) implementation (from glibc) in libsupp.a, to be
+	used if the system does not provide a gai_strerror(3) function
+	itself.
+
+2003-08-29 10:20  castaglia
+
+	* include/bindings.h, include/dirtree.h, src/bindings.c: 
+	Add comments about the duplicate
+	ipbind->ib_server->listen/ipbind->ib_listener pointers.  Also,
+	correct the patch for Bug#2146 so that ib_server->listen is still
+	handled properly (as it prior to the patch) in the Bindings API.
+
+2003-08-29 10:01  castaglia
+
+	* NEWS, include/bindings.h, src/bindings.c: 
+	Bug#2146 - DNS names not handled properly when --enable-ipv6 is
+	used.  As mentioned in the report, this was caused by a design
+	assumption revealed by the addition of IPv6 support: that of a
+	one-to-one association between a server_rec and its listening
+	connection.  For DNS names resolving to A and AAAA records, there
+	can be two listening connections for a given server_rec.  The fix
+	occurs in the Bindings API, where a server_rec's listeners are now
+	associated with the bindings for the server_rec, rather than with
+	the server_rec itself.	Multiple bindings can point to the same
+	server_rec.
+
+2003-08-28 23:33  castaglia
+
+	* src/netaddr.c: 
+	Using uninitialized memory can be bad.
+
+2003-08-28 22:44  castaglia
+
+	* src/inet.c: 
+	Only one type of IPv4 service at time: either IPTOS_LOWDELAY or
+	IPTOS_THROUGHPUT but not both.
+	
+	Some discussion on IPng mailing list archives mention that using
+	IP_TOS may be a problem on IPv6 connections...
+
+2003-08-27 20:17  castaglia
+
+	* README.ports: 
+	Adding FreeBSD 4.9-PRERELEASE to the list.  Apparently the source
+	works out-of-the-box.
+
+2003-08-27 17:43  jwm
+
+	* NEWS: 
+	- Bug 2108 - IgnoreHidden should not hide dotfiles   Dotfiles are
+	now displayed when the -a argument is supplied, even when the  
+	IgnoreHidden directive is enabled. To replicate the old behavior of
+	hiding	 dotfiles no matter what, use either of the following
+	directives:	ListOptions "" strict	  HideFiles ^\..*
+
+2003-08-27 17:40  jwm
+
+	* modules/mod_ls.c: 
+	Bug 2108 - IgnoreHidden should not hide dotfiles
+
+2003-08-27 17:37  jwm
+
+	* NEWS: 
+	- Bug 1804 - RPM spec file improvements   The spec file now has
+	xinetd support, builds under newer version of RPM,   installs
+	standalone support with the main proftpd RPM, and accepts --with  
+	mod_modname arguments during the build process.  - Bug 2127 - Entry
+	in the file section   The RPM spec's %files section now honors the
+	install prefix.
+
+2003-08-27 17:36  jwm
+
+	* contrib/dist/rpm/proftpd.spec: 
+	Bug 2127 - Entry in the file section
+
+2003-08-27 17:33  jwm
+
+	* contrib/dist/rpm/xinetd: 
+	add xinetd configuration to go with new .spec
+
+2003-08-27 17:32  jwm
+
+	* contrib/dist/rpm/proftpd.spec: 
+	- don't reset servertype on upgrade - don't explicitly install docs
+	- %doc should include them
+	
+	submitted by: Ivan F. Martinez <ivanfm@os2brasil.com.br> Peter
+	Bieringer <pb@bieringer.de>
+
+2003-08-22 10:29  castaglia
+
+	* README.ports: 
+	Adding NetBSD 1.6.1 to the list.
+
+2003-08-19 18:57  castaglia
+
+	* README.IPv6: 
+	Add note about FreeBSD 4.8 and getnameinfo(3).
+
+2003-08-18 13:13  castaglia
+
+	* NEWS, src/dirtree.c: 
+	Bug#2141 - Glob Allow/Deny parameters cause extraneous log messages
+	when comparing addresses.
+
+2003-08-16 10:01  castaglia
+
+	* NEWS, modules/mod_auth.c: 
+	Bug#2148 - Enforce PR_TUNABLE_LOGIN_MAX.
+
+2003-08-16 08:47  castaglia
+
+	* sample-configurations/mod_sql.conf: 
+	Add comment in mod_sql sample config about SQLAuthTypes being
+	required.
+
+2003-08-16 08:43  castaglia
+
+	* contrib/mod_sql.c: 
+	Add log messages to session init if no SQLAuthTypes configured.
+
+2003-08-16 08:38  castaglia
+
+	* contrib/mod_sql.c: 
+	Using mod_sql for authentication, but not configuring a
+	SQLAuthTypes directive, would result in a segfault in the session
+	process.  This patch catches the segfault, and adds a log message
+	concerning the problem.
+
+2003-08-14 18:33  castaglia
+
+	* NEWS, contrib/mod_ifsession.c: 
+	Fixed mod_ifsession's handling of multiple configuration sets.	The
+	problem was that mod_ifsession, after merging in the configuration
+	from a config_rec, would call xaset_remove() and remove that
+	config_rec from the main server's configuration sets.  This had the
+	side effect of making other config_recs in the set, in the set
+	after the removed config_rec, no longer visible by the iterating
+	function.  As in Perl: don't change the items in a list while
+	iterating over it.  Instead, queue up the changes you want to make
+	while iterating, wait until finished iterating, and then change the
+	list.
+
+2003-08-14 11:34  castaglia
+
+	* include/netaddr.h, src/netaddr.c: 
+	Rather than using typecasts to silence the compiler warnings about
+	loss of the 'const' modifier in pr_netaddr_fnmatch(), simply remove
+	the 'const' from the function signature.
+
+2003-08-13 18:02  castaglia
+
+	* NEWS, src/data.c: 
+	Bug#2147 - Segmentation fault processing file in ASCII mode.
+
+2003-08-13 12:11  castaglia
+
+	* src/netaddr.c: 
+	Silence some compiler warnings.
+
+2003-08-13 11:54  castaglia
+
+	* configure: 
+	Updating configure script.
+
+2003-08-13 11:50  castaglia
+
+	* NEWS, configure.in: 
+	Bug#2144 - Rework autoconf handling of --enable-sia option.
+
+2003-08-13 09:04  castaglia
+
+	* configure: 
+	Updating configure script.
+
+2003-08-12 23:26  castaglia
+
+	* config.h.in, configure.in: 
+	Check for gai_strerror(3).  We'll also need to provide an
+	implementation if gai_strerror() is not present.
+
+2003-08-12 23:21  castaglia
+
+	* configure: 
+	Updating configure script.
+
+2003-08-12 23:07  castaglia
+
+	* NEWS, configure.in, include/libsupp.h, include/support.h,
+	lib/sstrncpy.c, src/support.c: 
+	Bug#2142 - sstrncpy() not available to lib/vsnprintf.c.
+
+2003-08-12 22:28  castaglia
+
+	* src/inet.c: 
+	It seems the 'sa_family' symbol is a macro on IRIX.
+
+2003-08-12 10:07  castaglia
+
+	* include/: conf.h, inet.h: 
+	Move the conditional definitions of INET(6)_ADDRSTRLEN to conf.h,
+	so that the definition of pr_netaddr_t can use them.  Sigh.
+
+2003-08-11 22:59  castaglia
+
+	* include/conf.h: 
+	Can't use INET6_ADDRSTRLEN until include/inet.h is included, but
+	the pr_netaddr_t needs to be typedef'd before then.  So we do it
+	manually.
+
+2003-08-10 23:31  castaglia
+
+	* contrib/mod_sql.c: 
+	Removing use of get_param_int() from mod_sql.
+
+2003-08-10 23:07  castaglia
+
+	* NEWS, modules/mod_ls.c: 
+	Bug#2137 - NLST and IgnoreHidden causes segfault.
+
+2003-08-10 21:41  castaglia
+
+	* src/main.c: 
+	Oops.  Calling of the postparse callbacks should happen after all
+	the servers have been fixed up, in order to make sure that the
+	modules see the "correct" server configuration data.
+
+2003-08-10 21:37  castaglia
+
+	* src/main.c: 
+	Postparse callbacks should be called after the configuration has
+	been parsed during a rehash, too.  Modules that wish to have
+	postparse callbacks invoked during a rehash will need to have
+	rehash handlers that register the postparse callback.
+
+2003-08-09 09:37  castaglia
+
+	* modules/mod_auth.c: 
+	Previous changes to auth_scan_scoreboard() removed some checks that
+	really needed to be there, to prevent segfaults when using
+	configurations that did not use Classes.
+
+2003-08-09 09:08  castaglia
+
+	* src/inet.c: 
+	Fixed function signature to match declared prototype.  Fixed
+	variable name.
+
+2003-08-09 01:09  castaglia
+
+	* contrib/mod_ifsession.c, include/dirtree.h, modules/mod_auth.c,
+	src/dirtree.c: 
+	Spelling correction.
+
+2003-08-09 00:50  castaglia
+
+	* src/bindings.c: 
+	Removed debugging cruft.
+
+2003-08-09 00:22  castaglia
+
+	* include/proftpd.h, src/netaddr.c: 
+	Comment clarification, style fixups, fixing compiler warnings.
+
+2003-08-08 15:15  castaglia
+
+	* modules/mod_auth_file.c: 
+	Fixed position of use of pr_signals() handle, so as not to occur
+	before variable declaration in the case where HAVE_FGETPWENT is
+	false/undef.
+
+2003-08-08 08:10  castaglia
+
+	* NEWS: 
+	Fixed wrong bug report number.
+
+2003-08-07 19:50  castaglia
+
+	* include/netaddr.h: 
+	Complete the description of pr_netaddr_fnmatch().
+
+2003-08-07 13:16  castaglia
+
+	* NEWS, modules/mod_auth.c: 
+	Bug#2130 - %y in DisplayLogin is not updated correctly.  The
+	problem was that the auth_scan_scoreboard() function, which scanned
+	the scoreboard and tallied up the variables used when filling in
+	%y/%N, was only being called if the DisplayConnect directive was
+	used.  Instead, auth_scan_scoreboard() should always be called, to
+	handle any of the Display* directives.
+
+2003-08-07 11:24  castaglia
+
+	* src/netaddr.c: 
+	Added implementation of pr_netaddr_fnmatch().
+
+2003-08-07 11:05  castaglia
+
+	* include/netaddr.h, src/netaddr.c: 
+	Added implementation (untested) of pr_netaddr_ncmp().  Changed the
+	pr_netaddr*() routines to return EACCES if for some reason the	
+	netaddrs on which they operate do not have a recognizable family
+	(AF_INET   or AF_INET6).
+
+2003-08-07 08:49  castaglia
+
+	* include/netaddr.h, src/bindings.c, src/netaddr.c: 
+	Added a pr_netaddr_get_inaddr_len(), to provide sizes of struct
+	in{6}_addr, matching the pr_netaddr_get_sockaddr_len() function.
+	
+	Added a stub for pr_netaddr_fnmatch(), to be implemented soon.
+
+2003-08-07 00:09  castaglia
+
+	* include/netaddr.h, src/inet.c, src/netaddr.c: 
+	Changed pr_netaddr_get_addrlen() to pr_netaddr_get_sockaddr_len(),
+	to more clearly reflect the length returned.
+	
+	Added stub for pr_netaddr_ncmp(), to be implemented shortly.
+
+2003-08-06 18:59  castaglia
+
+	* README.IPv6: 
+	Clarifying that IPv6 sockets handling IPv4 packets only occurs when
+	it is an wildcard IPv6 socket.
+
+2003-08-06 17:55  castaglia
+
+	* NEWS: 
+	Mention the --enable-ipv6 configure option.
+
+2003-08-06 17:42  castaglia
+
+	* include/netaddr.h: 
+	Adding descriptions of the netaddr API functions.
+
+2003-08-06 16:05  castaglia
+
+	* include/inet.h: 
+	Add some comments about the handling of get{addr,name}info symbols.
+	 I'm not quite sure I have all the preprocessor logic for these
+	symbols done correctly yet.
+
+2003-08-06 15:31  castaglia
+
+	* src/netaddr.c: 
+	Typos.
+
+2003-08-06 15:08  castaglia
+
+	* configure: 
+	Updating configure.
+
+2003-08-06 15:03  castaglia
+
+	* ChangeLog, Make.rules.in, NEWS, README.IPv6, config.h.in,
+	configure.in, contrib/mod_ifsession.c, contrib/mod_radius.c,
+	contrib/mod_ratio.c, contrib/mod_rewrite.c, contrib/mod_sql.c,
+	contrib/mod_tls.c, include/bindings.h, include/conf.h,
+	include/dirtree.h, include/ftp.h, include/inet.h, include/log.h,
+	include/netaddr.h, include/proftpd.h, modules/mod_auth.c,
+	modules/mod_core.c, modules/mod_log.c, src/bindings.c, src/data.c,
+	src/dirtree.c, src/ident.c, src/inet.c, src/log.c, src/main.c,
+	src/netaddr.c, src/scoreboard.c, utils/misc.c: 
+	Bug#1711 - IPv6 support.  Let the IPv6 fun begin.
+
+2003-08-06 00:07  castaglia
+
+	* modules/mod_auth_file.c: 
+	Fix code in case where fgetgrent(3) is not present on the system.
+
+2003-08-01 17:30  castaglia
+
+	* contrib/mod_sql_mysql.c: 
+	MySQL-4.1.0 changed the signature for the make_scrambled_password()
+	function, so we handle it by checking the MySQL version.  This
+	commit also includes some style changes.
+
+2003-07-31 18:05  castaglia
+
+	* modules/mod_log.c, modules/mod_ls.c, modules/mod_site.c,
+	src/data.c, src/dirtree.c, src/main.c, src/pool.c, src/support.c: 
+	Style.
+
+2003-07-31 18:03  castaglia
+
+	* contrib/mod_radius.c, contrib/mod_rewrite.c, modules/mod_auth.c,
+	modules/mod_auth_file.c, src/netio.c: 
+	Adding signal handling in while() loops.
+
+2003-07-30 11:01  castaglia
+
+	* NEWS, contrib/mod_sql.c: 
+	Bug#2118 - %F doesn't work for DELE command; %f is inconsistent. 
+	This is exactly the reason why we really need a unified
+	cookie/variable handling interface.  Too much code duplicated
+	around in modules leads to out-of-sync code bugs like this.
+
+2003-07-29 18:52  castaglia
+
+	* contrib/mod_tls.c: 
+	Removing unused code.
+
+2003-07-29 18:34  castaglia
+
+	* NEWS, contrib/mod_tls.c: 
+	Close files that have been fopen()'d always, not just when
+	conditions mean that no errors are encountered.
+
+2003-07-29 10:46  castaglia
+
+	* contrib/mod_tls.html: 
+	Adding description of the $SSL_CERT_DIR TLSLog message
+
+2003-07-29 08:15  castaglia
+
+	* NEWS, modules/mod_core.c: 
+	Bug#2119 - FEAT response format does not conform to RFC2389.
+
+2003-07-29 07:36  castaglia
+
+	* doc/rfc/: rfc2228.txt, rfc2389.txt, rfc2428.txt: 
+	Style.
+
+2003-07-28 15:57  castaglia
+
+	* NEWS: 
+	Mention fix of mod_tls directives.
+
+2003-07-28 15:50  castaglia
+
+	* contrib/mod_tls.c: 
+	TLSCACertificateFile and TLSCACertificatePath are documented to be
+	allowed in all server contexts, not just "server config"; the code
+	was wrong.
+
+2003-07-24 22:36  castaglia
+
+	* sample-configurations/: anonymous.conf, complex-virtual.conf,
+	mod_sql.conf, virtual.conf: 
+	Style.
+
+2003-07-24 18:21  jwm
+
+	* include/pr-syslog.h: silence warning
+
+2003-07-24 08:22  castaglia
+
+	* NEWS, Makefile.in: 
+	Bug#2115 - ftptop depends on snprintf but doesn't link in
+	lib/libsupp.a
+
+2003-07-23 19:44  castaglia
+
+	* doc/rfc/rfc2428.txt: 
+	IPv6 support _is_ going to be added Real Soon Now(tm), so we might
+	as well as the relevant RFC.
+
+2003-07-21 15:03  castaglia
+
+	* NEWS, README.mod_sql, contrib/mod_sql.c: 
+	Bug#2113 - mod_sql default uses mysql keyword.
+
+2003-07-18 12:18  castaglia
+
+	* include/proftpd.h, src/main.c: 
+	Add two new members to the session struct: curr_cmd and curr_phase.
+	 These are for storing pointers to the current FTP command name and
+	current command handler phase, respectively.  They are useful for
+	places like the FSIO API, where callbacks may want to take
+	conditional action depending on the FTP command/phase at the time.
+
+2003-07-16 11:48  castaglia
+
+	* NEWS, include/dirtree.h, src/dirtree.c, src/main.c: 
+	Bug#2110 - Segfault if gethostname(2) returns NULL.  When code was
+	added to simply remove a server_rec whose name could not be
+	resolved from the list, rather than halting the process there
+	(which allows a more Apache-like handling of badly configured
+	vhosts by logging/skipping, rather than choking), an edge case
+	became possible where, after looping through all the server_recs,
+	_none_ remained in the list.  This case was not being handled, and
+	lead to a segfault later in the processing.  This patch checks for
+	the case where no valid server_recs remain in the list.
+
+2003-07-15 23:16  castaglia
+
+	* contrib/mod_sql_mysql.c: 
+	Spacing nit.
+
+2003-07-14 19:57  castaglia
+
+	* modules/mod_xfer.c: 
+	Cruft.
+
+2003-07-10 18:51  castaglia
+
+	* NEWS, modules/mod_auth.c: 
+	Bug#2103 - AuthAliasOnly in server context causes hang.
+
+2003-07-10 09:09  jwm
+
+	* contrib/mod_ldap.c: 
+	release 2.8.12
+
+2003-07-07 15:59  castaglia
+
+	* contrib/mod_sql_mysql.c: 
+	Typo.
+
+2003-07-07 13:42  castaglia
+
+	* contrib/: mod_sql_mysql.c, mod_sql_postgres.c: 
+	Updating module names in comments.
+
+2003-07-07 13:15  castaglia
+
+	* NEWS: 
+	Correcting handling of mod_tls TLSCertificateChainFile directive.
+
+2003-07-07 13:13  castaglia
+
+	* contrib/mod_tls.c: 
+	Change the semantics of TLSCertificateChainFile slightly.  Now,
+	this directive can be used to explicitly configure the chain of
+	certs given to a peer during the TLS handshake.  Any server certs,
+	configured using either CertificateFile or CertificatePath, are
+	added to the list of CAs allowed for clients, but not for servers.
+
+2003-07-07 11:27  castaglia
+
+	* NEWS, modules/mod_core.c: 
+	Bug#2100 - Invalid domain in <VirtualHost> tag causes segmentation
+	fault.
+
+2003-07-03 14:48  castaglia
+
+	* sample-configurations/: anonymous.conf, complex-virtual.conf: 
+	Don't forget the X-variants of FTP commands in <Limit> examples.
+
+2003-06-28 10:14  castaglia
+
+	* contrib/: mod_sql_mysql.c, mod_sql_postgres.c: 
+	Add comments about provide proper escapestring implementations. 
+	Failure to do so allows SQL injection.
+
+2003-06-27 00:13  castaglia
+
+	* modules/mod_core.c: 
+	Be a little more verbose about the exact error cause of
+	log_opensyslog() fails.
+
+2003-06-27 00:10  castaglia
+
+	* lib/pr-syslog.c: 
+	Fix some inadvertently inverted #ifdefs.
+
+2003-06-23 18:47  castaglia
+
+	* NEWS, contrib/mod_rewrite.c, include/conf.h: 
+	Bug#2090 - mod_rewrite doesn't compile on Solaris 8.
+
+2003-06-23 12:58  castaglia
+
+	* contrib/mod_radius.c: 
+	Use USHRT_MAX rather than 65535 (and fix a typo).
+
+2003-06-17 13:54  castaglia
+
+	* contrib/mod_sql_postgres.c: 
+	Removing POSTGRES_NO_ESCAPESTRING #define from mod_sql_postgres. 
+	See Bug#2087.
+
+2003-06-16 18:25  castaglia
+
+	* configure: 
+	Updating configure.
+
+2003-06-16 18:23  castaglia
+
+	* config.h.in, configure.in, include/conf.h: 
+	Configure detection/use for <netinet/in_systm.h> header; this fixes
+	compile errors on BSD platforms.  Patch contributed by Daniel
+	Svensson.
+
+2003-06-16 13:22  castaglia
+
+	* NEWS, src/dirtree.c, src/sets.c: 
+	Bug#2088: proftpd -t segfault.	The functional change of this patch
+	is using parent_pool, rather than c_pool, in start_sub_config()
+	when allocating a new xaset *.	The rest of the patch is style
+	cleanup.
+
+2003-06-12 16:41  castaglia
+
+	* contrib/mod_tls.html: 
+	Minor corrections.
+
+2003-06-12 12:30  castaglia
+
+	* contrib/mod_tls.c: 
+	Better handling of too long certificate verification chains.
+
+2003-06-11 19:08  castaglia
+
+	* src/: inet.c, modules.c: 
+	Missing $Id: ChangeLog,v 1.117 2003-09-11 13:39:58 castaglia Exp $ keyword.
+
+2003-06-11 15:45  castaglia
+
+	* src/ident.c: 
+	Match debug levels with what's in main.c for ident lookups.
+
+2003-06-11 15:44  castaglia
+
+	* src/: ident.c, main.c: 
+	Add some debugging routines to the ident lookups.
+
+2003-06-11 13:46  castaglia
+
+	* config.h.in: 
+	Missing entry for <netinet/ip.h> header file, checked by configure.
+
+2003-06-09 17:38  castaglia
+
+	* contrib/mod_tls.c: 
+	Need to be consistent about names of variables used.
+
+2003-06-09 17:33  castaglia
+
+	* contrib/mod_tls.c: 
+	Better handling of possible errors when loading certs from a
+	CertificateChainFile.
+
+2003-06-09 17:20  castaglia
+
+	* contrib/mod_tls.c: 
+	Fixed typo that prevent TLSCertificateChainFile from working
+	properly.
+
+2003-06-09 10:25  castaglia
+
+	* NEWS, modules/mod_auth_file.c: 
+	Bug#2083 - "550 Access denied" on group permission with
+	AuthGroupFile.
+
+2003-06-05 17:07  castaglia
+
+	* src/main.c: 
+	Add debug output (level 6) for use/nonuse of RFC1413 lookups.
+
+2003-06-05 12:34  castaglia
+
+	* modules/: mod_auth.c, mod_core.c: 
+	Match variable data types.
+
+2003-06-05 12:28  castaglia
+
+	* NEWS, modules/mod_auth.c: 
+	Some inappropriate/ill-timed Class functionality check was
+	preventing %N/%y from being properly counted for DisplayConnect
+	files.
+
+2003-06-04 16:32  castaglia
+
+	* include/options.h: 
+	Increase default PR_TUNABLE_LOGIN_MAX size (and don't use
+	_POSIX_LOGIN_NAME_MAX, even if it is defined).	Should fix
+	Bug#2079.
+
 2003-06-04 10:03  castaglia
 
 	* configure: 
@@ -1105,7 +2055,7 @@
 
 	* contrib/: mod_sql.c, mod_sql.h, mod_sql_mysql.c,
 	mod_sql_postgres.c: 
-	Adding $Id: ChangeLog,v 1.116 2003-08-06 22:03:31 castaglia Exp $ tags to the mod_sql files.
+	Adding $Id: ChangeLog,v 1.117 2003-09-11 13:39:58 castaglia Exp $ tags to the mod_sql files.
 
 2003-03-14 07:54  castaglia
 
@@ -1622,12 +2572,12 @@
 
 	* src/netio.c, src/pool.c, src/sets.c, include/ident.h,
 	include/timers.h: 
-	Adding more $Id: ChangeLog,v 1.116 2003-08-06 22:03:31 castaglia Exp $ keywords.
+	Adding more $Id: ChangeLog,v 1.117 2003-09-11 13:39:58 castaglia Exp $ keywords.
 
 2003-02-11 23:34  castaglia
 
 	* src/feat.c: 
-	Added $Id: ChangeLog,v 1.116 2003-08-06 22:03:31 castaglia Exp $ keyword.
+	Added $Id: ChangeLog,v 1.117 2003-09-11 13:39:58 castaglia Exp $ keyword.
 
 2003-02-10 15:34  castaglia
 
