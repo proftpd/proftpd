@@ -24,7 +24,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lwrap -lnsl$
- * $Id: mod_wrap.c,v 1.10 2003-01-02 17:28:14 castaglia Exp $
+ * $Id: mod_wrap.c,v 1.11 2003-11-09 05:03:13 castaglia Exp $
  */
 
 #define MOD_WRAP_VERSION "mod_wrap/1.2.3"
@@ -351,7 +351,7 @@ MODRET add_tcpaccessfiles(cmd_rec *cmd) {
     ;
   }
 
-  c = add_config_param_str("TCPAccessFiles", 2, (void *) allow_filename,
+  c = add_config_param_str(cmd->argv[0], 2, (void *) allow_filename,
     (void *) deny_filename);
   c->flags |= CF_MERGEDOWN;
 
@@ -446,9 +446,9 @@ MODRET add_tcpgroupaccessfiles(cmd_rec *cmd) {
     ;
   }
 
-  c = add_config_param("TCPGroupAccessFiles", 0);
+  c = add_config_param(cmd->argv[0], 0);
 
-  group_acl = pr_parse_expression(cmd->tmp_pool, &group_argc, &cmd->argv[0]);
+  group_acl = pr_expr_parse(cmd->tmp_pool, &group_argc, &cmd->argv[0]);
 
   /* build the desired config_rec manually */
   c->argc = group_argc + 2;
@@ -562,9 +562,9 @@ MODRET add_tcpuseraccessfiles(cmd_rec *cmd) {
     ;
   }
 
-  c = add_config_param_str("TCPUserAccessFiles", 0);
+  c = add_config_param_str(cmd->argv[0], 0);
 
-  user_acl = pr_parse_expression(cmd->tmp_pool, &user_argc, &cmd->argv[0]);
+  user_acl = pr_expr_parse(cmd->tmp_pool, &user_argc, &cmd->argv[0]);
 
   /* build the desired config_rec manually */
   c->argc = user_argc + 2;
@@ -660,7 +660,7 @@ MODRET set_tcpaccesssysloglevels(cmd_rec *cmd) {
       "one of emerg/alert/crit/error/warn/notice/info/debug");
   }
 
-  c = add_config_param("TCPAccessSyslogLevels", 2, (void *) allow_level,
+  c = add_config_param(cmd->argv[0], 2, (void *) allow_level,
     (void *) deny_level);
   c->flags |= CF_MERGEDOWN;
 
