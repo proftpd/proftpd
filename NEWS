@@ -1,9 +1,12 @@
-$Id: NEWS,v 1.297 2002-12-05 19:20:15 castaglia Exp $
+$Id: NEWS,v 1.298 2002-12-05 19:48:39 castaglia Exp $
 
 CVS
 ---------------------------------
 - Bug 1597 - Problems with HP-UX 10/11 trusted systems, mod_pam, and mod_unixpw.
 - Bug 1482 - Add new %U meta to LogFormat, for logging original username.
+- Bug 1683 - Handling of VirtualHosts on startup.  Now, rather than dying
+  when unable to resolve a <VirtualHost> DNS hostname when starting up, the
+  daemon will log the error, and skip the bad <VirtualHost>.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------

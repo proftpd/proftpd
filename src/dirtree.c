@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.78 2002-12-02 18:18:00 castaglia Exp $
+ * $Id: dirtree.c,v 1.79 2002-12-05 19:48:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2844,42 +2844,47 @@ int parse_config_file(const char *fname) {
  * otherwise fill in defaults where applicable
  */
 
-void fixup_servers(void)
-{
-  config_rec *c;
-  server_rec *s;
+void fixup_servers(void) {
+  config_rec *c = NULL;
+  server_rec *s = NULL, *next_s = NULL;
 
   fixup_globals();
 
-  s = (server_rec*)servers->xas_list;
-  if(s && !s->ServerName)
-    s->ServerName = pstrdup(s->pool,"ProFTPD");
+  s = (server_rec *)servers->xas_list;
+  if (s && !s->ServerName)
+    s->ServerName = pstrdup(s->pool, "ProFTPD");
 
-  for(; s; s=s->next) {
-    if(!s->ServerAddress)
+  for (; s; s = next_s) {
+    next_s = s->next;
+
+    if (!s->ServerAddress)
       s->ServerFQDN = s->ServerAddress = inet_gethostname(s->pool);
     else
-      s->ServerFQDN = inet_fqdn(s->pool,s->ServerAddress);
-    if(!s->ServerFQDN)
+      s->ServerFQDN = inet_fqdn(s->pool, s->ServerAddress);
+
+    if ((s->ipaddr = inet_getaddr(s->pool, s->ServerAddress)) == NULL) {
+      log_pri(PR_LOG_ERR, "error: unable to determine IP address of '%s'",
+        s->ServerAddress);
+      xaset_remove(servers, (xasetmember_t *) s);
+      continue;
+    }
+
+    if (!s->ServerFQDN)
       s->ServerFQDN = s->ServerAddress;
 
-    if(!s->ServerAdmin)
-      s->ServerAdmin = pstrcat(s->pool,"root@",s->ServerFQDN,NULL);
-    if(!s->ServerName) {
-      server_rec *m = (server_rec*)servers->xas_list;
-      s->ServerName = pstrdup(s->pool,m->ServerName);
+    if (!s->ServerAdmin)
+      s->ServerAdmin = pstrcat(s->pool, "root@", s->ServerFQDN, NULL);
+
+    if (!s->ServerName) {
+      server_rec *m = (server_rec *)servers->xas_list;
+      s->ServerName = pstrdup(s->pool, m->ServerName);
     }
 
     if (!s->tcp_rwin)
       s->tcp_rwin = PR_TUNABLE_DEFAULT_RWIN;
+
     if (!s->tcp_swin)
       s->tcp_swin = PR_TUNABLE_DEFAULT_SWIN;
-
-    if ((s->ipaddr = inet_getaddr(s->pool, s->ServerAddress)) == NULL) {
-      log_pri(PR_LOG_ERR,"Fatal: unable to determine IP address of '%s'.",
-        s->ServerAddress);
-      exit(1);
-    }
 
     if ((c = find_config(s->conf, CONF_PARAM, "MasqueradeAddress",
         FALSE)) != NULL) {
@@ -2888,7 +2893,7 @@ void fixup_servers(void)
         inet_ascii(s->pool, (p_in_addr_t *) c->argv[0]));
     }
 
-    /* honor the DefaultServer directive only if SocketBindTight is not
+    /* Honor the DefaultServer directive only if SocketBindTight is not
      * in effect.
      */
     if (get_param_int(s->conf, "DefaultServer", FALSE) == 1) {
@@ -2899,7 +2904,7 @@ void fixup_servers(void)
           "SocketBindTight in effect, ignoring DefaultServer");
     }
 
-    fixup_dirs(s,0);
+    fixup_dirs(s, 0);
   }
 
   clear_inet_pool();
