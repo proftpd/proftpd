@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.251 2002-10-18 15:14:06 castaglia Exp $
+$Id: NEWS,v 1.252 2002-10-18 19:43:59 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -17,6 +17,9 @@ CVS
 - Bug 1785 - Bad handling of symlinks.  This bug appeared as a consequence
              of Bug#1486's fix, which involved caching of struct stats in
              order to effect a speed-up of directory listings.
+- Bug 1778 - 1.2.7rc1 fails to link on OpenBSD 3.2-current.  The ftptop
+             utility was not properly utilizing the macro detecting the
+             presence (or absense) of the ncurses library.
 
 1.2.7rc1 - Released 2002-10-01
 ---------------------------------
