@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.129 2003-11-09 23:32:07 castaglia Exp $
+ * $Id: dirtree.c,v 1.130 2003-11-10 03:55:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2617,16 +2617,31 @@ static void _reorder_dirs(xaset_t *set, int mask) {
       _reorder_dirs(c->subset, mask);
 }
 
-static void debug_dump_config(xaset_t *s,char *indent) {
+static void debug_config_printf(const char *fmt, ...) {
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+  va_list msg;
+
+  va_start(msg, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, msg);
+  va_end(msg);
+
+  buf[sizeof(buf)-1] = '\0';
+
+  pr_log_debug(DEBUG5, "%s", buf);
+}
+
+void pr_conf_debug_config(void (*debugf)(const char *, ...), xaset_t *s,
+    char *indent) {
   config_rec *c = NULL;
 
   if (!indent)
     indent = "";
 
   for (c = (config_rec *) s->xas_list; c; c = c->next) {
-    pr_log_debug(DEBUG5, "%s%s", indent, c->name);
+    debugf("%s%s", indent, c->name);
     if (c->subset)
-      debug_dump_config(c->subset, pstrcat(c->pool, indent, " ", NULL));
+      pr_conf_debug_config(debugf, c->subset,
+        pstrcat(c->pool, indent, " ", NULL));
   }
 }
 
@@ -2822,7 +2837,8 @@ void fixup_dirs(server_rec *s, int mask) {
 
   pr_log_debug(DEBUG5, "%s", "");
   pr_log_debug(DEBUG5, "Config for %s:", s->ServerName);
-  debug_dump_config(s->conf, NULL);
+
+  pr_conf_debug_config(debug_config_printf, s->conf, NULL);
 }
 
 config_rec *find_config_next(config_rec *prev, config_rec *c, int type,

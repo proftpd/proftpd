@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.2 2003-11-10 00:51:12 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.3 2003-11-10 03:55:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -54,13 +54,13 @@ static ctrls_acttab_t ctrls_admin_acttab[];
 /* Pool for this module's use */
 static pool *ctrls_admin_pool = NULL;
 
-/* For memory debugging */
-static pr_ctrls_t *ctrls_debug_mem_ctrl = NULL;
+/* For debugging, both config and memory */
+static pr_ctrls_t *ctrls_debug_ctrl = NULL;
 
 /* Support routines
  */
 
-static void debug_memory(const char *fmt, ...) {
+static void ctrls_admin_printf(const char *fmt, ...) {
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   va_list msg;
 
@@ -70,7 +70,7 @@ static void debug_memory(const char *fmt, ...) {
 
   buf[sizeof(buf)-1] = '\0';
 
-  pr_ctrls_add_response(ctrls_debug_mem_ctrl, "%s", buf);
+  pr_ctrls_add_response(ctrls_debug_ctrl, "%s", buf);
 }
 
 #if 0
@@ -133,11 +133,20 @@ static int ctrls_handle_debug(pr_ctrls_t *ctrl, int reqargc,
     ctrls_log(MOD_CTRLS_ADMIN_VERSION, "debug: level set to %d", level);
     pr_ctrls_add_response(ctrl, "debug level set to %d", level);
 
+  /* Handle 'debug config' requests */
+  } else if (strcmp(reqargv[0], "config") == 0) {
+
+    ctrls_debug_ctrl = ctrl;
+    pr_conf_debug_config(ctrls_admin_printf, main_server->conf, NULL);
+
+    pr_ctrls_add_response(ctrl, "%s", "");
+    pr_ctrls_add_response(ctrl, "config dumped");
+
   /* Handle 'debug memory' requests */
   } else if (strcmp(reqargv[0], "memory") == 0) {
 
-    ctrls_debug_mem_ctrl = ctrl;
-    pr_pool_debug_memory(debug_memory);
+    ctrls_debug_ctrl = ctrl;
+    pr_pool_debug_memory(ctrls_admin_printf);
 
     pr_ctrls_add_response(ctrl, "memory dumped");
 
