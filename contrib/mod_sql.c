@@ -972,13 +972,24 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
     usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, "='", username, "'", NULL);
 
     log_debug( DEBUG_WARN, _MOD_VERSION ": cache miss for user '%s'", realname);
+
   } else {
     /* assume we have a uid */
     snprintf(uidstr, MODSQL_BUFSIZE, "%d", (uid_t) p->pw_uid);
-
-    usrwhere = pstrcat(cmd->tmp_pool, cmap.uidfield, " = ", uidstr, NULL);
-
     log_debug( DEBUG_WARN, _MOD_VERSION ": cache miss for uid '%s'", uidstr );
+
+    if (cmap.uidfield)
+      usrwhere = pstrcat(cmd->tmp_pool, cmap.uidfield, " = ", uidstr, NULL);
+
+    else {
+      log_debug( DEBUG_WARN, _MOD_VERSION ": no uid field configured, "
+        "declining to lookup uid '%s'", uidstr );
+
+      /* If no uid field has been configured, return now and let other
+       * modules possibly have a chance at resolving this UID to a name.
+       */
+      return NULL;
+    }
   }
 
   where = _sql_where(cmd->tmp_pool, 2, usrwhere, cmap.userwhere );
@@ -1117,11 +1128,28 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
 
   if (g->gr_name != NULL) {
     groupname = g->gr_name;
+    log_debug( DEBUG_WARN, _MOD_VERSION ": cache miss for group '%s'",
+      groupname);
+
   } else {
     /* get groupname from gid */
     snprintf(gidstr, MODSQL_BUFSIZE, "%d", (gid_t) g->gr_gid);
 
-    grpwhere = pstrcat(cmd->tmp_pool, cmap.grpgidfield, " = ", gidstr, NULL);
+    log_debug( DEBUG_WARN, _MOD_VERSION ": cache miss for gid '%s'", gidstr );
+
+    if (cmap.gidfield)
+      grpwhere = pstrcat(cmd->tmp_pool, cmap.gidfield, " = ", gidstr, NULL);
+
+    else {
+      log_debug( DEBUG_WARN, _MOD_VERSION ": no gid field configured, "
+        "declining to lookup gid '%s'", gidstr );
+
+      /* If no gid field has been configured, return now and let other
+       * modules possibly have a chance at resolving this GID to a name.
+       */
+      return NULL;
+    }
+
     where = _sql_where(cmd->tmp_pool, 2, grpwhere, cmap.groupwhere);
 
     mr = _sql_dispatch( _sql_make_cmd( cmd->tmp_pool, 5,

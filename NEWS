@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.195 2002-06-26 02:54:40 castaglia Exp $
+$Id: NEWS,v 1.196 2002-06-27 02:33:31 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -25,6 +25,8 @@ CVS
 - Bug 1502 - Added a lingering_close function.  As discussed in the bug
              report, this may cause issues with some clients; keep an eye
              for this, as the timeout (ten minutes) may be too long or short.
+- Bug 1664 - Changed mod_sql to decline UID-to-name resolution if a UID
+             field has been configured to NULL; similarly for GID.
 
 1.2.5 - Released 2002-06-08
 ---------------------------------
