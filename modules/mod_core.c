@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.45 2000-10-08 21:22:34 macgyver Exp $
+ * $Id: mod_core.c,v 1.46 2001-01-26 23:15:13 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -2603,9 +2603,11 @@ MODRET set_class(cmd_rec *cmd)
 {
   int bits, ret;
   class_t *n;
-  regex_t *preg;
   p_in_addr_t *res;
   char *ptr, ipaddress[20] = {'\0'}, errmsg[80] = {'\0'};
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+  regex_t *preg;
+#endif
 
   CHECK_ARGS(cmd,3);
   CHECK_CONF(cmd,CONF_ROOT);
@@ -2627,6 +2629,7 @@ MODRET set_class(cmd_rec *cmd)
     log_debug(DEBUG4, "Class '%s' maxconnections set to %d.",
 	      n->name, n->max_connections);
   } else if (strcasecmp(cmd->argv[2], "regex") == 0) {
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
     preg = calloc(1, sizeof(regex_t));
     
     if((ret = regcomp(preg, cmd->argv[3],
@@ -2639,6 +2642,9 @@ MODRET set_class(cmd_rec *cmd)
     } else {
       n->preg = preg;
     }
+#else
+    CONF_ERROR(cmd, "regex-based classes cannot be used, as you do not have POSIX compliant regex support.");
+#endif
   } else if(strcasecmp(cmd->argv[2], "ip") == 0) {
     sstrncpy(ipaddress, cmd->argv[3], sizeof(ipaddress));
     if((ptr = strchr(ipaddress, '/')) == NULL) {
