@@ -1,0 +1,19 @@
+Below are people who have made a significant contribution to ProFTPD's
+development, and their contact information.  It's modeled after the Linux
+CREDITS file.  If you've contributed, and I've forgotten you, my apologies.
+Feel free to contact me at macgyver@tos.net with any updates to this list.
+
+- MacGyver
+
+This list is sorted by name and formatted to allow easy grepping and
+beautification by scripts.  The fields are: name (N), email (E), web-address
+(W), PGP key ID and fingerprint (P), description (D), and snail-mail
+address (S).
+
+--
+N: Habeeb J. Dihu
+E: macgyver@tos.net
+W: http://www.macgyver.org
+P: 1024/D6C5774D 8E F5 3F 54 A0 69 CD 18  03 03 12 F4 B9 A4 A1 DA
+D: Head ProFTPD hacker
+
