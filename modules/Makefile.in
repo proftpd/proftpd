@@ -16,6 +16,9 @@ INSTALL_USER=@install_user@
 INSTALL_GROUP=@install_group@
 INSTALL_BIN=$(INSTALL) @INSTALL_STRIP@ -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0755
 
+# In case make doesn't provide this
+RM=rm -f
+
 include ../Make.rules
 
 all:
