@@ -60,6 +60,11 @@ features and configuration:</p>
     <li><a href="#IdentLookups">IdentLookups</a></li>
     <li><a href="#IgnoreHidden">IgnoreHidden</a></li>
     <li><a href="#Limit">&lt;Limit&gt;</a></li>
+    <li><a href="#LDAPDN">LDAPDN</a></li>
+    <li><a href="#LDAPDNPass">LDAPDNPass</a></li>
+    <li><a href="#LDAPServer">LDAPServer</a></li>
+    <li><a href="#LDAPNegativeCache">LDAPNegativeCache</a></li>
+    <li><a href="#LDAPPrefix">LDAPPrefix</a></li>
     <li><a href="#LogFormat">LogFormat</a></li>
     <li><a href="#LsDefaultOptions">LsDefaultOptions</a></li>
     <li><a href="#MaxClients">MaxClients</a></li>
@@ -1418,6 +1423,89 @@ override the file permissions inherent to the base operating/file
 system.</p>
 
 <p>See also: <a href="reference.html#IgnoreHidden">IgnoreHidden</a></p>
+
+<hr>
+
+<h2><a name="LDAPDN">LDAPDN</a></h2>
+
+<p><strong>Syntax:</strong> LDAPDN <em>"ldap-dn"</em><br>
+<strong>Default:</strong> <code>LDAPDN ""</code> (anonymous bind)<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.2.0pre8 and later</p>
+
+<p>LDAPDN specifies the Distinguished Name to bind as to the LDAP
+server for authentication. This usually looks something like
+"cn=the-dn, dc=domain, dc=com" or "o=Your Organization, c=US". If no
+LDAPDN configuration directive is present, anonymous binds will be
+used.</p>
+
+<hr>
+
+<h2><a name="LDAPDNPass">LDAPDNPass</a></h2>
+
+<p><strong>Syntax:</strong> LDAPDNPass <em>"ldap-dn-password"</em><br>
+<strong>Default:</strong> <code>LDAPDNPass ""</code> (no password)<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.2.0pre8 and later</p>
+
+<p>LDAPDNPass allows you to specify the password to be used when
+binding as <A HREF="#LDAPDN">LDAPDN</A> to the LDAP server for
+authentication. If no LDAPDNPass configuration directive is present,
+no password will be used.</p>
+
+<hr>
+
+<h2><a name="LDAPServer">LDAPServer</a></h2>
+
+<p><strong>Syntax:</strong> LDAPServer <em>"ldap-server-name"</em><br>
+<strong>Default:</strong> <code>LDAPServer "localhost"</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.2.0pre8 and later</p>
+
+<p>LDAPServer allows you to to specify the hostname of the LDAP
+server to use in LDAP authentication. If no LDAPServer configuration
+directive is present, the local host will be used for the LDAP
+server.</p>
+
+<hr>
+
+<h2><a name="LDAPNegativeCache">LDAPNegativeCache</a></h2>
+
+<p><strong>Syntax:</strong> LDAPNegativeCache <em>on/off</em><br>
+<strong>Default:</strong> <code>LDAPNegativeCache off</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.2.0pre8 and later</p>
+
+<p>LDAPNegativeCache specifies whether or not to cache negative
+responses from the LDAP server when using LDAP authentication.
+This option is useful if you also use/are in transition from
+another authentication system. If there are many users in your
+old authentication system that aren't in the LDAP database, there
+will be a significant delay when a directory listing is performed
+as the UIDs not in the LDAP database are repeatedly looked up in
+the LDAP database in an attempt to present usernames instead of UIDs
+in directory listings. With LDAPNegativeCache set to on, negative
+("not found") responses from the LDAP server will be cached and
+speed will improve on directory listings in situations like this.</p>
+
+<hr>
+
+<h2><a name="LDAPPrefix">LDAPPrefix</a></h2>
+
+<p><strong>Syntax:</strong> LDAPPrefix <em>"ldap-prefix"</em><br>
+<strong>Default:</strong> <code>LDAPPrefix ""</code><br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.2.0pre8 and later</p>
+
+<p>LDAPPrefix allows you to specify the prefix to be used in LDAP
+authentication queries. This usually looks something like "dc=domain,
+dc=com" or "o=Your Organization, c=US". If no LDAPPrefix configuration
+directive is present, a default of no prefix is used.</p>
 
 <hr>
 
