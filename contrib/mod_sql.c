@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.74 2004-06-07 23:00:35 castaglia Exp $
+ * $Id: mod_sql.c,v 1.75 2004-06-10 18:27:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -912,9 +912,9 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
     return NULL;
   }
 
-  if (!cmap.homedirfield && !cmap.defaulthomedir) {
+  if (!cmap.homedirfield &&
+      !cmap.defaulthomedir)
     return NULL;
-  }
 
   /* check to see if the passwd already exists in one of the passwd caches */
   if (((pwd = (struct passwd *) 
@@ -1018,6 +1018,9 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
     }
   }
 
+sql_log(DEBUG_WARN, "getpasswd(): fnum = %d", sd->fnum);
+for (i = 0; i < sd->fnum; i++)
+sql_log(DEBUG_WARN, "sd->data[%d]: '%s'", i, sd->data[i]);
   i = 0;
 
   username = sd->data[i++];
@@ -1043,12 +1046,17 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
     }
   }
 
-  if (cmap.defaulthomedir) {
-    dir = cmap.defaulthomedir;
-    i++;
+  dir = cmap.defaulthomedir;
+  if (sd->data[i]) {
+    if (strcmp(sd->data[i], "") == 0 ||
+        strcmp(sd->data[i], "NULL") == 0)
 
-  } else
-    dir = sd->data[i++];
+      /* Leave dir pointing to the SQLDefaultHomedir, if any. */
+      i++;
+
+    else
+      dir = sd->data[i++];
+  }
 
   if (cmap.shellfield) {
     if (sd->fnum < i || !sd->data[i]) {
@@ -2459,10 +2467,17 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
 	}
       }
 
-      if (cmap.defaulthomedir)
-	dir =  cmap.defaulthomedir;
-      else
-	dir = sd->data[i++];
+      dir = cmap.defaulthomedir;
+      if (sd->data[i]) {
+        if (strcmp(sd->data[i], "") == 0 ||
+            strcmp(sd->data[i], "NULL") == 0)
+
+          /* Leave dir pointing to the SQLDefaultHomedir, if any. */
+          i++;
+
+        else
+          dir = sd->data[i++];
+      }
 
       if (cmap.shellfield)
 	shell = sd->data[i++];
@@ -3346,7 +3361,7 @@ MODRET set_sqlgroupwhereclause(cmd_rec *cmd) {
 }
 
 MODRET set_sqldefaulthomedir(cmd_rec *cmd) {
-  return add_virtualstr( "SQLDefaultHomedir", cmd);
+  return add_virtualstr("SQLDefaultHomedir", cmd);
 }
 
 MODRET set_sqlhomedirondemand(cmd_rec *cmd) {
@@ -4069,7 +4084,7 @@ static int sql_getconf(void) {
     fieldset = pstrcat(tmp_pool, fieldset, ", ", cmap.uidfield, NULL);
   if (cmap.gidfield)
     fieldset = pstrcat(tmp_pool, fieldset, ", ", cmap.gidfield, NULL);
-  if ((!cmap.defaulthomedir) && cmap.homedirfield)
+  if (cmap.homedirfield)
     fieldset = pstrcat(tmp_pool, fieldset, ", ", cmap.homedirfield, NULL);
   if (cmap.shellfield)
     fieldset = pstrcat(tmp_pool, fieldset, ", ", cmap.shellfield, NULL);
@@ -4233,11 +4248,10 @@ static int sql_getconf(void) {
       (cmap.uidfield ? cmap.uidfield : "NULL"));
     sql_log(DEBUG_INFO, "gid field          : %s",
       (cmap.gidfield ? cmap.gidfield : "NULL"));
-    if (cmap.defaulthomedir) {
-      sql_log(DEBUG_INFO, "homedir(defaulted) : '%s'", cmap.defaulthomedir);
-    } else {
+    if (cmap.homedirfield)
       sql_log(DEBUG_INFO, "homedir field      : %s", cmap.homedirfield);
-    } 
+    if (cmap.defaulthomedir)
+      sql_log(DEBUG_INFO, "homedir(defaulted) : '%s'", cmap.defaulthomedir);
     sql_log(DEBUG_INFO, "shell field        : %s",
       (cmap.shellfield ? cmap.shellfield : "NULL"));
     sql_log(DEBUG_INFO, "homedirondemand    : %s",

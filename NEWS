@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.574 2004-06-07 22:58:44 castaglia Exp $
+$Id: NEWS,v 1.575 2004-06-10 18:27:37 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -35,6 +35,7 @@ CVS
 - Bug 2420 - Name field is not escaped before querying database.
   The mod_quotatab module was not properly escaping the name string it
   used when looking up records from SQL databases.
+- Bug 2424 - SQLDefaultHomedir overrides column value.
 
 1.2.10rc1 - Released 28-Apr-2004
 ---------------------------------
