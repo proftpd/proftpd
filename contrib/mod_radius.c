@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.20 2003-11-08 20:40:29 castaglia Exp $
+ * $Id: mod_radius.c,v 1.21 2003-11-09 21:18:05 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.8rc2"
@@ -375,7 +375,8 @@ static unsigned char radius_parse_gids_str(pool *p, char *gids_str,
     gid = strtoul(val, &endp, 10);
 
     if (endp && *endp) {
-      log_pri(PR_LOG_NOTICE, "RadiusGroupInfo badly formed group ID: %s", val);
+      pr_log_pri(PR_LOG_NOTICE, "RadiusGroupInfo badly formed group ID: %s",
+        val);
       return FALSE;
     }
 
@@ -1303,7 +1304,7 @@ static int radius_openlog(void) {
 
   pr_signals_block();
   PRIVS_ROOT
-  res = log_openfile(radius_logname, &radius_logfd, 0640);
+  res = pr_log_openfile(radius_logname, &radius_logfd, 0640);
   PRIVS_RELINQUISH
   pr_signals_unblock();
 
@@ -2625,17 +2626,18 @@ static int radius_sess_init(void) {
   config_rec *c = NULL;
   radius_server_t **current_server = NULL;
 
-  if ((res = radius_openlog()) < 0) {
+  res = radius_openlog();
+  if (res < 0) {
     if (res == -1)
-      log_pri(PR_LOG_NOTICE, "notice: unable to open RadiusLog: %s",
+      pr_log_pri(PR_LOG_NOTICE, "notice: unable to open RadiusLog: %s",
         strerror(errno));
 
     else if (res == LOG_WRITEABLE_DIR)
-      log_pri(PR_LOG_NOTICE, "notice: unable to open RadiusLog: "
+      pr_log_pri(PR_LOG_NOTICE, "notice: unable to open RadiusLog: "
           "parent directory is world writeable");
 
     else if (res == LOG_SYMLINK)
-      log_pri(PR_LOG_NOTICE, "notice: unable to open RadiusLog: "
+      pr_log_pri(PR_LOG_NOTICE, "notice: unable to open RadiusLog: "
           "cannot log to a symbolic link");
   }
 
