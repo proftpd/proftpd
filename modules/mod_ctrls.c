@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.6 2004-01-18 18:11:08 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.7 2004-01-18 18:21:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -506,9 +506,7 @@ static int ctrls_openlog(void) {
   if (ctrls_logname == NULL)
     return 0;
 
-  PRIVS_ROOT
   res = pr_log_openfile(ctrls_logname, &ctrls_logfd, 0640);
-  PRIVS_RELINQUISH
 
   if (res == -1) {
     pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
@@ -1438,7 +1436,8 @@ MODRET set_ctrlslog(cmd_rec *cmd) {
 
   ctrls_logname = pstrdup(ctrls_pool, cmd->argv[1]);
 
-  if ((res = ctrls_openlog()) < 0) {
+  res = ctrls_openlog();
+  if (res < 0) {
     if (res == -1)
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to open '",
         cmd->argv[1], "': ", strerror(errno), NULL));
@@ -1485,11 +1484,10 @@ MODRET set_ctrlssocket(cmd_rec *cmd) {
     ctrls_sock_file = pstrdup(ctrls_pool, cmd->argv[1]);
 
   /* Open the socket. */
-  PRIVS_ROOT
-  if ((ctrls_sockfd = ctrls_listen(ctrls_sock_file)) < 0)
+  ctrls_sockfd = ctrls_listen(ctrls_sock_file);
+  if (ctrls_sockfd < 0)
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unable to listen to local "
       "socket '", cmd->argv[1], "': ", strerror(errno), NULL));
-  PRIVS_RELINQUISH
 
   return HANDLED(cmd);
 }
@@ -1609,7 +1607,10 @@ static void ctrls_restart_ev(const void *event_data, void *user_data) {
 
   /* "Bounce" the log file descriptor */
   ctrls_closelog();
+
+  PRIVS_ROOT
   ctrls_openlog();
+  PRIVS_RELINQUISH
 
   return;
 }
