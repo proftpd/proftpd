@@ -2243,7 +2243,7 @@ if eval "test \"`echo '$ac_cv_header_'$ac_safe`\" = yes"; then
 #define $ac_tr_hdr 1
 EOF
   if test "$force_shadow" != "yes"; then
-	if "$use_shadow" != ""; then
+	if test "$use_shadow" != ""; then
 	  use_shadow=""
 	fi
 

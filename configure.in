@@ -173,7 +173,7 @@ AC_CHECK_HEADERS(shadow.h,
     fi ])
 AC_CHECK_HEADERS(security/pam_appl.h,
   [ if test "$force_shadow" != "yes"; then
-	if "$use_shadow" != ""; then
+	if test "$use_shadow" != ""; then
 	  use_shadow=""
 	fi
 
