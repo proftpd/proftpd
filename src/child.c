@@ -23,7 +23,7 @@
  */
 
 /* Children management code
- * $Id: child.c,v 1.2 2004-04-30 19:01:29 castaglia Exp $
+ * $Id: child.c,v 1.3 2004-05-05 17:49:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -40,8 +40,10 @@ int child_add(pid_t pid, int fd) {
   if (!child_pool) {
     child_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(child_pool, "Child Pool");
-    child_list = xaset_create(child_pool, NULL);
   }
+
+  if (!child_list)
+    child_list = xaset_create(make_sub_pool(child_pool), NULL);
 
   p = make_sub_pool(child_pool);
   pr_pool_tag(p, "child session pool");
