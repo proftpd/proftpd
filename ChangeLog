@@ -4,8 +4,8 @@
 
 2001-01-24 17:50  flood
 
-	* ChangeLog, contrib/mod_ratio.c, src/main.c: Bug #430 - format
-	string fixes in log_pri and mod_ratio.
+	* contrib/mod_ratio.c, src/main.c: Bug #430 - format string fixes
+	in log_pri and mod_ratio.
 
 2001-01-24 17:02  flood
 
@@ -60,10 +60,6 @@
 2000-08-18 16:25  macgyver
 
 	* NEWS: Updates.
-
-2000-08-18 16:25  macgyver
-
-	* ChangeLog: Updated ChangeLog.
 
 2000-08-18 16:16  macgyver
 
@@ -127,10 +123,6 @@
 
 2000-08-04 11:07  macgyver
 
-	* ChangeLog: Updated ChangeLog.
-
-2000-08-04 11:07  macgyver
-
 	* doc/Undocumented.txt: Updated undocumented functions list (none
 	left! :)).
 
@@ -177,10 +169,6 @@
 
 	* modules/mod_auth.c: Typos in jail() support.
 
-2000-08-02 23:01  macgyver
-
-	* ChangeLog: Updated ChangeLog.
-
 2000-08-02 22:59  macgyver
 
 	* modules/mod_auth.c: Added some debug logging to lockdown().
@@ -197,7 +185,7 @@
 
 2000-08-02 21:30  macgyver
 
-	* ChangeLog, NEWS: Updated ChangeLog and NEWS.
+	* NEWS: Updated ChangeLog and NEWS.
 
 2000-08-02 21:29  macgyver
 
@@ -215,7 +203,7 @@
 
 2000-08-02 19:28  macgyver
 
-	* ChangeLog, NEWS: Updated NEWS and ChangeLog.
+	* NEWS: Updated NEWS and ChangeLog.
 
 2000-08-02 19:26  macgyver
 
@@ -254,10 +242,6 @@
 
 	* modules/mod_core.c: Forgot to return HANDLED in add_sysloglevel.
 
-2000-08-02 09:58  macgyver
-
-	* ChangeLog: Updated ChangeLog.
-
 2000-08-02 02:44  macgyver
 
 	* configure, configure.in: Reworked sendfile detection to be
@@ -288,19 +272,11 @@
 	* modules/mod_core.c, src/main.c: Added support for the PidFile
 	directive, to make ProFTPD more Apache-like.
 
-2000-08-01 17:52  macgyver
-
-	* ChangeLog: Updated ChangeLog.
-
 2000-08-01 17:51  macgyver
 
 	* include/proftpd.h, modules/mod_auth.c, src/main.c:
 	AnonRequirePassword should prevent the password from being
 	displayed in ftpwho/ftpcount/ps.
-
-2000-08-01 17:30  macgyver
-
-	* ChangeLog: Updated ChangeLog.
 
 2000-08-01 17:30  macgyver
 
@@ -319,10 +295,6 @@
 
 	* modules/mod_pam.c: More information about PAM and Solaris
 	interaction.
-
-2000-08-01 16:20  macgyver
-
-	* ChangeLog: Updated ChangeLog.
 
 2000-08-01 16:13  macgyver
 
@@ -367,10 +339,6 @@
 
 	* NEWS, modules/mod_site.c: AllowChmod now works in almost any
 	context.
-
-2000-07-28 02:47  macgyver
-
-	* ChangeLog: Updated ChangeLog.
 
 2000-07-28 01:52  macgyver
 
@@ -472,16 +440,12 @@
 	* config.guess, config.sub: Updated config.guess and config.sub
 	scripts.
 
-2000-07-21 14:45  macgyver
-
-	* ChangeLog: Updated changelog.
-
 2000-07-21 14:44  macgyver
 
-	* ChangeLog, NEWS, config.h.in, configure, configure.in,
-	modules/mod_auth.c, modules/mod_unixpw.c: Portability fixes and
-	additions on various platforms.  Also corrected a problem in
-	configure where a piece of code was completely bypassed.
+	* NEWS, config.h.in, configure, configure.in, modules/mod_auth.c,
+	modules/mod_unixpw.c: Portability fixes and additions on various
+	platforms.  Also corrected a problem in configure where a piece of
+	code was completely bypassed.
 
 2000-07-21 02:19  macgyver
 
@@ -513,10 +477,6 @@
 2000-07-21 01:37  macgyver
 
 	* NEWS: Updated news.
-
-2000-07-21 01:37  macgyver
-
-	* ChangeLog: Updated changelog.
 
 2000-07-21 01:18  macgyver
 
@@ -559,26 +519,21 @@
 	* modules/mod_core.c: Fixed a minor typo when there is no regex
 	engine around.
 
-2000-07-11 10:13  macgyver
-
-	* ChangeLog: Updated ChangeLog.
-
 2000-07-11 10:10  macgyver
 
 	* NEWS, src/data.c, src/main.c: Don't ignore ServerUseReverseDNS.
 
 2000-07-11 09:36  macgyver
 
-	* ChangeLog, contrib/mod_ldap.c, contrib/mod_quota.c,
-	contrib/mod_ratio.c, contrib/mod_sqlpw.c,
-	contrib/libcap/cap_text.c, lib/pwgrent.c, lib/vsnprintf.c,
-	modules/mod_auth.c, modules/mod_core.c, modules/mod_log.c,
-	modules/mod_ls.c, modules/mod_pam.c, modules/mod_readme.c,
-	modules/mod_site.c, modules/mod_tar.c, modules/mod_test.c,
-	modules/mod_unixpw.c, modules/mod_xfer.c, src/auth.c,
-	src/dirtree.c, src/fs.c, src/ftpcount.c, src/ident.c, src/inet.c,
-	src/io.c, src/log.c, src/pool.c, src/support.c: Minor updates and
-	buffer cleanups.
+	* contrib/mod_ldap.c, contrib/mod_quota.c, contrib/mod_ratio.c,
+	contrib/mod_sqlpw.c, contrib/libcap/cap_text.c, lib/pwgrent.c,
+	lib/vsnprintf.c, modules/mod_auth.c, modules/mod_core.c,
+	modules/mod_log.c, modules/mod_ls.c, modules/mod_pam.c,
+	modules/mod_readme.c, modules/mod_site.c, modules/mod_tar.c,
+	modules/mod_test.c, modules/mod_unixpw.c, modules/mod_xfer.c,
+	src/auth.c, src/dirtree.c, src/fs.c, src/ftpcount.c, src/ident.c,
+	src/inet.c, src/io.c, src/log.c, src/pool.c, src/support.c: Minor
+	updates and buffer cleanups.
 
 2000-07-11 09:35  macgyver
 
@@ -641,8 +596,7 @@
 
 2000-07-07 03:12  macgyver
 
-	* ChangeLog, include/version.h: Updated ChangeLog as well as
-	version.
+	* include/version.h: Updated ChangeLog as well as version.
 
 2000-07-07 03:09  macgyver
 
@@ -907,9 +861,9 @@
 
 2000-02-28 15:02  macgyver
 
-	* ChangeLog, NEWS, src/dirtree.c, src/main.c: Added -t option to
-	allow for syntax checking of a config file and made config file
-	errors give line and file information on failure
+	* NEWS, src/dirtree.c, src/main.c: Added -t option to allow for
+	syntax checking of a config file and made config file errors give
+	line and file information on failure
 
 2000-02-28 14:06  macgyver
 
@@ -1070,10 +1024,6 @@
 
 	* contrib/dist/rpm/proftpd.spec.in: Updated for new web site.
 
-2000-01-17 22:08  macgyver
-
-	* ChangeLog: Updated for pre10.
-
 2000-01-17 22:04  macgyver
 
 	* include/version.h: Updated for pre10.
@@ -1126,8 +1076,7 @@
 
 1999-12-30 01:27  macgyver
 
-	* ChangeLog, src/data.c: Added a fix for BSD's strange sendfile
-	behavior.
+	* src/data.c: Added a fix for BSD's strange sendfile behavior.
 
 1999-12-29 15:08  macgyver
 
@@ -1140,10 +1089,6 @@
 	modules/mod_ls.c, modules/mod_readme.c, modules/mod_site.c,
 	modules/mod_xfer.c: Ensured that cmdtable structs remained static
 	to the files they're defined in.
-
-1999-12-28 10:43  macgyver
-
-	* ChangeLog: Updated ChangeLog.
 
 1999-12-28 10:43  macgyver
 
@@ -1256,10 +1201,6 @@
 
 	* Makefile.in: Minor path correction for proftpd.spec.
 
-1999-10-26 23:06  macgyver
-
-	* ChangeLog: Updated.
-
 1999-10-26 23:01  macgyver
 
 	* NEWS, contrib/dist/rpm/proftpd.spec.in: Minor cleanups.
@@ -1315,10 +1256,6 @@
 	contrib/proftpd.spec.in, contrib/dist/rpm/ftp.pamd,
 	contrib/dist/rpm/proftpd.init.d, contrib/dist/rpm/proftpd.spec.in,
 	doc/Undocumented.txt: Moved around RPM build files.
-
-1999-10-22 23:53  macgyver
-
-	* ChangeLog: Updated.
 
 1999-10-22 23:52  macgyver
 
@@ -1396,10 +1333,6 @@
 1999-10-11 03:20  macgyver
 
 	* modules/mod_auth.c: Fixed the 'no names, just UIDs' bug.
-
-1999-10-11 01:07  macgyver
-
-	* ChangeLog: Updated.
 
 1999-10-11 00:45  macgyver
 
@@ -1479,29 +1412,17 @@
 
 1999-10-05 00:28  macgyver
 
-	* ChangeLog, Makefile.in, doc/Undocumented.txt, doc/mod_sample.c,
+	* Makefile.in, doc/Undocumented.txt, doc/mod_sample.c,
 	modules/mod_sample.c: Miscellaneous reshuffling.
 
 1999-10-04 20:07  macgyver
 
 	* configure, configure.in: Fixed a small typo.
 
-1999-10-04 19:58  macgyver
-
-	* ChangeLog: Updated.
-
-1999-10-04 19:58  macgyver
-
-	* ChangeLog: [no log message]
-
 1999-10-04 19:57  macgyver
 
 	* changelog, doc/Changes-1.2.0pre3: Moved the old changelog to
 	doc/Changes-1.2.0pre3 to avoid any confusion.
-
-1999-10-04 19:54  macgyver
-
-	* ChangeLog: Updated the ChangeLog.
 
 1999-10-04 19:41  macgyver
 
@@ -1538,14 +1459,6 @@
 1999-10-01 11:57  macgyver
 
 	* doc/Undocumented.txt: Updated undocumented directives.
-
-1999-10-01 04:13  macgyver
-
-	* ChangeLog: Moved to cvs2cl generation of ChangeLogs.
-
-1999-10-01 03:58  macgyver
-
-	* ChangeLog: Updated ChangeLog
 
 1999-10-01 03:57  macgyver
 
@@ -1653,10 +1566,6 @@
 1999-09-26 17:42  macgyver
 
 	* doc/Configuration.html: Fixed a small typo.
-
-1999-09-26 13:03  macgyver
-
-	* ChangeLog: Added in a real ChangeLog.
 
 1999-09-26 06:02  macgyver
 
