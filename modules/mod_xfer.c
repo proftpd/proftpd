@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.93 2002-10-28 16:51:49 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.94 2002-11-12 15:24:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -557,7 +557,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   char *dir;
   mode_t fmode;
   privdata_t *p, *p_hidden;
-  unsigned char *hidden_stores = NULL;
+  unsigned char *hidden_stores = NULL, *allow_overwrite = NULL;
 
   if(cmd->argc < 2) {
     add_response_err(R_500,"'%s' not understood.",get_full_cmd(cmd));
@@ -573,14 +573,16 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
 
   fmode = file_mode(dir);
 
-  if(fmode && (session.xfer.xfer_type != STOR_APPEND) && 
-	       get_param_int(CURRENT_CONF,"AllowOverwrite",FALSE) != 1) {
-    add_response_err(R_550,"%s: Overwrite permission denied",cmd->arg);
+  allow_overwrite = get_param_ptr(CURRENT_CONF, "AllowOverwrite", FALSE);
+
+  if (fmode && (session.xfer.xfer_type != STOR_APPEND) && 
+      !(allow_overwrite && *allow_overwrite == TRUE)) {
+    add_response_err(R_550, "%s: Overwrite permission denied", cmd->arg);
     return ERROR(cmd);
   }
 
-  if(fmode && !S_ISREG(fmode)) {
-    add_response_err(R_550,"%s: Not a regular file",cmd->arg);
+  if (fmode && !S_ISREG(fmode)) {
+    add_response_err(R_550, "%s: Not a regular file", cmd->arg);
     return ERROR(cmd);
   }
 
@@ -693,6 +695,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
   char *prefix = "ftp", *filename = NULL;
   int tmpfd;
   mode_t mode;
+  unsigned char *allow_overwrite = NULL;
 
   /* Some FTP clients are "broken" in that they will send a filename
    * along with STOU.  Technically this violates RFC959, but for now, just
@@ -765,9 +768,10 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
   /* Note: this case should never happen: how one can be appending to
    * a supposedly unique filename?  Should probably be removed...
    */
-  if (mode &&
-      session.xfer.xfer_type != STOR_APPEND &&
-      get_param_int(CURRENT_CONF,"AllowOverwrite",FALSE) != 1) {
+  allow_overwrite = get_param_ptr(CURRENT_CONF, "AllowOverwrite", FALSE);
+
+  if (mode && session.xfer.xfer_type != STOR_APPEND &&
+      !(allow_overwrite && *allow_overwrite == TRUE)) {
     add_response_err(R_550, "%s: Overwrite permission denied", cmd->arg);
     return ERROR(cmd);
   }
@@ -1535,6 +1539,25 @@ static int xfer_sess_init(void) {
 /* Configuration handlers
  */
 
+MODRET set_allowoverwrite(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
+    CONF_DIR|CONF_DYNDIR);
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean parameter");
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
 MODRET set_deleteabortedstores(cmd_rec *cmd) {
   int bool = -1;
   config_rec *c = NULL;
@@ -1791,20 +1814,21 @@ MODRET set_timeoutstalled(cmd_rec *cmd) {
  */
 
 static conftable xfer_conftab[] = {
-  { "DeleteAbortedStores",	set_deleteabortedstores,	},
-  { "HiddenStor",		set_hiddenstores,		},
-  { "HiddenStores",		set_hiddenstores,		},
-  { "MaxRetrieveFileSize",	set_maxfilesize,		},
-  { "MaxStoreFileSize",		set_maxfilesize,		},
+  { "AllowOverwrite",		set_allowoverwrite,		NULL },
+  { "DeleteAbortedStores",	set_deleteabortedstores,	NULL },
+  { "HiddenStor",		set_hiddenstores,		NULL },
+  { "HiddenStores",		set_hiddenstores,		NULL },
+  { "MaxRetrieveFileSize",	set_maxfilesize,		NULL },
+  { "MaxStoreFileSize",		set_maxfilesize,		NULL },
   { "RateReadBPS",		add_ratenum,                 },
   { "RateReadFreeBytes",	add_ratenum,	             },
   { "RateReadHardBPS",		add_ratebool,                },
   { "RateWriteBPS",		add_ratenum,                 },
   { "RateWriteFreeBytes",	add_ratenum,	             },
   { "RateWriteHardBPS",		add_ratebool,                },
-  { "StoreUniquePrefix",	set_storeuniqueprefix,		},
-  { "TimeoutNoTransfer",	set_timeoutnoxfer,		},
-  { "TimeoutStalled",		set_timeoutstalled,		},
+  { "StoreUniquePrefix",	set_storeuniqueprefix,		NULL },
+  { "TimeoutNoTransfer",	set_timeoutnoxfer,		NULL },
+  { "TimeoutStalled",		set_timeoutstalled,		NULL },
   { NULL }
 };
 

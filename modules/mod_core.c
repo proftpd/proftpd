@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.115 2002-10-29 16:41:26 castaglia Exp $
+ * $Id: mod_core.c,v 1.116 2002-11-12 15:24:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1900,23 +1900,6 @@ MODRET set_allowoverride(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_allowoverwrite(cmd_rec *cmd) {
-  int bool = -1;
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
-    CONF_DIR|CONF_DYNDIR);
-
-  if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean parameter");
-
-  c = add_config_param(cmd->argv[0], 1, (void *) bool);
-  c->flags |= CF_MERGEDOWN;
-
-  return HANDLED(cmd);
-}
-
 MODRET end_directory(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 0);
   CHECK_CONF(cmd, CONF_DIR);
@@ -3608,7 +3591,6 @@ static conftable core_conftab[] = {
   { "AllowForeignAddress",	set_allowforeignaddress,	NULL },
   { "AllowGroup",		add_allowgroup,			NULL },
   { "AllowOverride",		set_allowoverride,		NULL },
-  { "AllowOverwrite",		set_allowoverwrite,		NULL },
   { "AllowRetrieveRestart",	set_allowretrieverestart,	NULL },
   { "AllowStoreRestart",	set_allowstorerestart,		NULL },
   { "AllowUser",		add_allowuser,			NULL },
