@@ -1508,7 +1508,11 @@ ADDL_DIRS="$ac_addl_dirs"
 INCLUDES="$ac_build_addl_includes"
 LIBDIRS="$ac_build_addl_libdirs"
 LIBRARIES="$ac_build_addl_libs"
-SHARED_MODULE_OBJS="$ac_shared_modules"
+if test ! -z "$ac_shared_modules" ; then
+  SHARED_MODULE_OBJS="$ac_shared_modules"
+else
+  SHARED_MODULE_OBJS="\"\""
+fi
 STATIC_MODULE_OBJS="$ac_core_modules $ac_static_modules"
 BUILD_SHARED_MODULE_OBJS="$ac_build_shared_modules"
 BUILD_STATIC_MODULE_OBJS="$ac_build_core_modules $ac_build_static_modules"

@@ -18,7 +18,6 @@ INSTALL_BIN=$(INSTALL) @INSTALL_STRIP@ -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m
 
 include ../Make.rules
 
-
 all:
 	@echo "Running make from top level directory."
 	cd .. && $(MAKE) all
@@ -29,7 +28,7 @@ Makefile: Makefile.in ../config.status
 .c.o:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
-$(SHARED_MODULE_OBJS):
+$(SHARED_MODULE_OBJS): mod_%:
 	$(LIBTOOL) --mode=compile $(CC) $(CPPFLAGS) $(CFLAGS) $(SHARED_CFLAGS) -c $(basename $@).c
 	$(LIBTOOL) --mode=link $(CC) -o $@ -rpath $(LIBEXECDIR) $(LDFLAGS) $(SHARED_LDFLAGS) $(basename $@).lo `cat $(top_srcdir)/modules/$(basename $@).c | grep '$$Libraries:' | sed -e 's/^.*\$$Libraries: \(.*\)\\$$/\1/'`
 

@@ -38,7 +38,7 @@ lib: libsupp.a $(LIB_DEPS)
 
 clean:
 	rm -f *.o libsupp.a
-	test -z $(LIB_DEPS) || (cd libltdl/ && $(MAKE) clean)
+	test ! -z $(LIB_DEPS) && (cd libltdl/ && $(MAKE) clean)
 
 depend:
 	makedepend $(CPPFLAGS) -Y *.c 2>/dev/null
