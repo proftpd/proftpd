@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.104 2004-02-24 20:34:53 castaglia Exp $
+ * $Id: mod_ls.c,v 1.105 2004-02-27 22:53:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2241,7 +2241,7 @@ static conftable ls_conftab[] = {
 static cmdtable ls_cmdtab[] = {
   { CMD,  	C_NLST,	G_DIRS,	ls_nlst,	TRUE, FALSE, CL_DIRS },
   { CMD,	C_LIST,	G_DIRS,	ls_list,	TRUE, FALSE, CL_DIRS },
-  { CMD, 	C_STAT,	G_DIRS,	ls_stat,	TRUE, FALSE, CL_DIRS },
+  { CMD, 	C_STAT,	G_DIRS,	ls_stat,	TRUE, FALSE, CL_INFO },
   { POST_CMD,	C_PASS,	G_NONE,	ls_post_pass,	FALSE, FALSE },
   { LOG_CMD,	C_LIST,	G_NONE,	ls_log_nlst,	FALSE, FALSE },
   { LOG_CMD,	C_NLST, G_NONE,	ls_log_nlst,	FALSE, FALSE },
