@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.192 2004-10-02 03:34:43 castaglia Exp $
+ * $Id: mod_auth.c,v 1.193 2004-10-15 02:43:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -241,9 +241,12 @@ MODRET auth_err_pass(cmd_rec *cmd) {
 
 MODRET auth_post_pass(cmd_rec *cmd) {
   config_rec *c = NULL;
+  char *displaylogin = NULL, *grantmsg = NULL, *user;
   unsigned int ctxt_precedence = 0;
   unsigned char have_user_timeout, have_group_timeout, have_class_timeout,
     have_all_timeout, *privsdrop = NULL;
+
+  user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
 
   /* Count up various quantities in the scoreboard, checking them against
    * the Max* limits to see if the session should be barred from going
@@ -336,6 +339,26 @@ MODRET auth_post_pass(cmd_rec *cmd) {
       have_class_timeout ? "class" : "all");
     add_timer(TimeoutSession, TIMER_SESSION, &auth_module,
       auth_session_timeout_cb);
+  }
+
+  /* Handle a DisplayLogin file. */
+  displaylogin = get_param_ptr(TOPLEVEL_CONF, "DisplayLogin", FALSE);
+  if (displaylogin)
+    core_display_file(auth_pass_resp_code, displaylogin, NULL);
+
+  grantmsg = get_param_ptr(TOPLEVEL_CONF, "AccessGrantMsg", FALSE);
+  if (!grantmsg) {
+    /* Append the final greeting lines. */
+    if (session.sf_flags & SF_ANON)
+      pr_response_add(auth_pass_resp_code,
+        "Anonymous access granted, restrictions apply.");
+    else
+      pr_response_add(auth_pass_resp_code, "User %s logged in.", user);
+
+  } else {
+     /* Handle any AccessGrantMsg directive. */
+     grantmsg = sreplace(cmd->tmp_pool, grantmsg, "%u", user, NULL);
+     pr_response_add(auth_pass_resp_code, "%s", grantmsg);
   }
 
   if ((privsdrop = get_param_ptr(TOPLEVEL_CONF, "RootRevoke",
@@ -1889,7 +1912,6 @@ MODRET auth_pass(cmd_rec *cmd) {
   }
 
   if ((res = _setup_environment(cmd->tmp_pool, user, cmd->arg)) == 1) {
-    char *display = NULL, *grantmsg = NULL;
     config_rec *c = NULL;
 
     c = add_config_param_set(&cmd->server->conf, "authenticated", 1, NULL);
@@ -1900,34 +1922,9 @@ MODRET auth_pass(cmd_rec *cmd) {
 
     remove_config(cmd->server->conf, C_PASS, FALSE);
 
-    if (session.sf_flags & SF_ANON) {
+    if (session.sf_flags & SF_ANON)
       add_config_param_set(&cmd->server->conf, C_PASS, 1,
         pstrdup(cmd->server->pool, cmd->arg));
-      display = get_param_ptr(session.anon_config->subset, "DisplayLogin",
-        FALSE);
-    }
-
-    if (!display)
-      display = get_param_ptr(cmd->server->conf, "DisplayLogin", FALSE);
-
-    if (display)
-      core_display_file(auth_pass_resp_code, display, NULL);
-
-    if ((grantmsg = get_param_ptr((session.anon_config ?
-        session.anon_config->subset : cmd->server->conf),
-        "AccessGrantMsg", FALSE)) != NULL) {
-      grantmsg = sreplace(cmd->tmp_pool, grantmsg, "%u", user, NULL);
-
-      pr_response_add(auth_pass_resp_code, "%s", grantmsg);
-
-    } else {
-
-      if (session.sf_flags & SF_ANON)
-        pr_response_add(auth_pass_resp_code,
-          "Anonymous access granted, restrictions apply.");
-      else
-        pr_response_add(auth_pass_resp_code, "User %s logged in.", user);
-    }
 
     logged_in = 1;
     return HANDLED(cmd);
