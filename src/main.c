@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.227 2004-05-10 17:51:00 castaglia Exp $
+ * $Id: main.c,v 1.228 2004-05-11 16:56:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2281,9 +2281,6 @@ static void inetd_main(void) {
 
   pr_event_generate("core.startup", NULL);
 
-  module_daemon_startup();
-  module_remove_daemon_startups();
-
   init_bindings();
 
   /* Check our shutdown status */
@@ -2343,9 +2340,6 @@ static void standalone_main(void) {
   pr_close_scoreboard();
 
   pr_event_generate("core.startup", NULL);
-
-  module_daemon_startup();
-  module_remove_daemon_startups();
 
   init_bindings();
 

@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.33 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: modules.c,v 1.34 2004-05-11 16:56:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -75,9 +75,6 @@ typedef struct mod_cb {
 
   int (*module_cb)(void);
 } module_cb_t;
-
-static pool *daemon_cb_pool = NULL;
-static xaset_t *daemon_startups = NULL;
 
 static pool *postparse_init_pool = NULL;
 static xaset_t *postparse_inits = NULL;
@@ -518,18 +515,6 @@ void list_modules(void) {
   }
 }
 
-int module_daemon_startup(void) {
-  module_cb_t *di = NULL;
-
-  if (!daemon_startups)
-    return 0;
-
-  for (di = (module_cb_t *) daemon_startups->xas_list; di; di = di->next)
-    di->module_cb();
-
-  return 0;
-}
-
 int module_preparse_init(void) {
   int numconf = 0,numcmd = 0,numauth = 0;
   module *m;
@@ -650,23 +635,6 @@ int module_postparse_init(void) {
   return 0;
 }
 
-void pr_register_daemon_startup(int (*cb)(void)) {
-  module_cb_t *di = NULL;
-
-  if (!daemon_cb_pool) {
-    daemon_cb_pool = make_sub_pool(permanent_pool);
-    pr_pool_tag(daemon_cb_pool, "Daemon Startup Callback Pool");
-  }
-
-  if (!daemon_startups)
-    daemon_startups = xaset_create(daemon_cb_pool, NULL);
-
-  di = pcalloc(daemon_cb_pool, sizeof(module_cb_t));
-  di->module_cb = cb;
-
-  xaset_insert(daemon_startups, (xasetmember_t *) di);
-}
-
 void pr_register_postparse_init(int (*cb)(void)) {
   module_cb_t *pp = NULL;
 
@@ -682,16 +650,6 @@ void pr_register_postparse_init(int (*cb)(void)) {
   pp->module_cb = cb;
 
   xaset_insert(postparse_inits, (xasetmember_t *) pp);
-}
-
-void module_remove_daemon_startups(void) {
-  if (daemon_startups)
-    daemon_startups = NULL;
-
-  if (daemon_cb_pool) {
-    destroy_pool(daemon_cb_pool);
-    daemon_cb_pool = NULL;
-  }
 }
 
 void module_remove_postparse_inits(void) {
