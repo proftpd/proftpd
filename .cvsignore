@@ -7,5 +7,7 @@ ftpshut
 ftpwho
 ftpcount
 Makefile
+Make.rules
+Make.modules
 *.o
 *~
