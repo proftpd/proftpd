@@ -1,3 +1,12 @@
+2001-02-01 14:52  flood
+
+	* src/main.c: Bug #451 - check uid/gid after PRIVS_SETUP
+
+2001-01-31 22:05  flood
+
+	* modules/mod_pam.c: Bug #363 - mod_pam now handles blank usernames
+	and passwords without segfaulting.
+
 2001-01-31 16:39  flood
 
 	* configure.in, modules/mod_xfer.c: Bug #35 - call _aborT() funcs
