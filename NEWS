@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.426 2003-04-25 04:13:38 castaglia Exp $
+$Id: NEWS,v 1.427 2003-04-29 17:39:34 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -120,6 +120,9 @@ CVS
 - Fixed minor fd leak where listening socket descriptors were not being
   properly closed in a session process, when the session is first starting.
 - Cygwin compilation/portability fixes.
+- Fixed bug where AllowForeignAddress was not properly blocking "bounce"
+  attacks in some cases.  Noticed and patched by Oliver Tappe
+  <Oliver.Tappe@herrenhaeuser-brandenburg.de>
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------
