@@ -1,3 +1,8 @@
+2001-01-24 17:50  flood
+
+	* ChangeLog, contrib/mod_ratio.c, src/main.c: Bug #430 - format
+	string fixes in log_pri and mod_ratio.
+
 2001-01-24 17:02  flood
 
 	* src/: dirtree.c, log.c, main.c: Bug #408 (1) - add_config_set fix
