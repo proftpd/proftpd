@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.123 2002-12-05 20:30:19 castaglia Exp $
+ * $Id: mod_core.c,v 1.124 2002-12-05 20:53:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2311,10 +2311,12 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
   config_rec *c = NULL;
   char *serverfqdn = main_server->ServerFQDN;
   char *outs, *mg_time, mg_size[12] = {'\0'}, mg_max[12] = "unlimited";
+  char total_files_in[12] = {'\0'}, total_files_out[12] = {'\0'},
+    total_files_xfer[12] = {'\0'};
   char mg_class_limit[12] = {'\0'}, mg_cur[12] = {'\0'},
-       mg_xfer_bytes[12] = {'\0'}, mg_cur_class[12] = {'\0'};
-  char mg_xfer_units[12] = {'\0'}, config_class_users[128] = {'\0'}, *user;
-  short first = 1;
+    mg_xfer_bytes[12] = {'\0'}, mg_cur_class[12] = {'\0'};
+  char mg_xfer_units[12] = {'\0'}, config_class_users[128] = {'\0'}, *user; 
+  unsigned char first = TRUE;
 
 #if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
   fs_size = get_fs_size((fs ? (char*)fs : (char*)fn));
@@ -2380,8 +2382,21 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
     p_in_addr_t *masq_addr = (p_in_addr_t *) c->argv[0];
     serverfqdn = inet_getname(main_server->pool, masq_addr);
   }
+
+  /* "Stringify" the file number for this session. */
+  snprintf(total_files_in, sizeof(total_files_in), "%u",
+    session.total_files_in);
+  total_files_in[sizeof(total_files_in)-1] = '\0';
+
+  snprintf(total_files_out, sizeof(total_files_out), "%u",
+    session.total_files_out);
+  total_files_out[sizeof(total_files_out)-1] = '\0';
+
+  snprintf(total_files_xfer, sizeof(total_files_xfer), "%u",
+    session.total_files_xfer);
+  total_files_xfer[sizeof(total_files_xfer)-1] = '\0';
  
-  while(fs_gets(buf,sizeof(buf),fp,fd) != NULL) {
+  while (fs_gets(buf, sizeof(buf), fp, fd) != NULL) {
     buf[sizeof(buf)-1] = '\0';
 
     len = strlen(buf);
@@ -2391,39 +2406,42 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
       len--;
     }
 
-    outs = sreplace(p,buf,
-		    "%T", mg_time,
-		    "%F", mg_size,
-		    "%C", (session.cwd[0] ? session.cwd : "(none)"),
-		    "%R", (session.c && session.c->remote_name ?
-			   session.c->remote_name : "(unknown)"),
-		    "%L", serverfqdn,
-		    "%u", session.ident_user,
-		    "%U", user,
-		    "%k", mg_xfer_units,
-		    "%K", mg_xfer_bytes,
-		    "%M", mg_max,
-		    "%N", mg_cur,
-		    "%E", main_server->ServerAdmin,
-		    "%V", main_server->ServerName,
-		    "%x", (classes_enabled && session.class) ?
-		    session.class->name : "",
-		    "%y", mg_cur_class,
-		    "%z", mg_class_limit,
-		    NULL);
+    outs = sreplace(p, buf,
+      "%C", (session.cwd[0] ? session.cwd : "(none)"),
+      "%E", main_server->ServerAdmin,
+      "%F", mg_size,
+      "%i", total_files_in,
+      "%K", mg_xfer_bytes,
+      "%k", mg_xfer_units,
+      "%L", serverfqdn,
+      "%M", mg_max,
+      "%N", mg_cur,
+      "%o", total_files_out,
+      "%R", (session.c && session.c->remote_name ?
+        session.c->remote_name : "(unknown)"),
+      "%T", mg_time,
+      "%t", total_files_xfer,
+      "%U", user,
+      "%u", session.ident_user,
+      "%V", main_server->ServerName,
+      "%x", (classes_enabled && session.class) ?  session.class->name : "",
+      "%y", mg_cur_class,
+      "%z", mg_class_limit,
+      NULL);
     
-    if(first) {
-      send_response_raw("%s-%s",numeric,outs);
-      first=0;
+    if (first) {
+      send_response_raw("%s-%s", numeric, outs);
+      first = FALSE;
+
     } else {
-      if(MultilineRFC2228)
-        send_response_raw("%s-%s",numeric,outs);
+      if (MultilineRFC2228)
+        send_response_raw("%s-%s", numeric, outs);
       else
-        send_response_raw(" %s",outs);
-      }
+        send_response_raw(" %s", outs);
+    }
   }
 
-  fs_close(fp,fd);
+  fs_close(fp, fd);
   return 0;
 }
 

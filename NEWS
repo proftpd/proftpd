@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.301 2002-12-05 20:37:15 castaglia Exp $
+$Id: NEWS,v 1.302 2002-12-05 20:53:22 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -12,6 +12,11 @@ CVS
   some third-party auth modules may need to be updated.
 - Bug 1806 - Add RFC2389 support.
 - Bug 1833 - Add ability to have add'l module initialization callback.
+- Bug 1743 - No magic cookie for number of files transfered.  New cookies
+  added for Display* files: "%i" for total number of files uploaded (read "in")
+  during a session, "%o" for total number of files download (written "out")
+  during a session, and "%t" for total number of files transferred (both
+  uploaded and downloaded).
 
 1.2.7 - Released 05-12-2002
 ---------------------------------
