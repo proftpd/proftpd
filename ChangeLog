@@ -1,3 +1,39 @@
+2001-03-01 10:48  flood
+
+	* README, README.mod_sql, README.ports: Updated READMEs.
+
+2001-02-28 22:18  flood
+
+	* NEWS, configure.in, contrib/mod_sql.c, contrib/mod_sql_mysql.c,
+	include/version.h, modules/mod_core.c: New mod_sql maintainer
+	stuff.	Attempting to use classes without "Classes On" emits a
+	warning.
+
+2001-02-28 18:01  flood
+
+	* doc/rfc/draft-ietf-ftpext-mlst-08.txt,
+	doc/rfc/draft-ietf-ftpext-mlst-12.txt, include/pool.h,
+	modules/mod_auth.c, src/inet.c, src/pool.c: Bug #1037 - Fix for
+	netbsd sockets.  Bug #1039 - proper copying of session.groups New
+	MLST draft proposal
+
+2001-02-28 12:07  flood
+
+	* NEWS, configure.in, modules/mod_xfer.c: Bug #1036 -
+	--disable-shadow now works.  More informative message for REST w/
+	HiddenStor.  Default CFLAGS changed from -O6 to -O2
+
+2001-02-27 16:19  flood
+
+	* contrib/: mod_ldap.c, mod_sql.c, dist/rpm/proftpd.spec.in:
+	Updated RPM spec (again) as well as new mod_ldap and mod_sql
+	contrib modules.
+
+2001-02-27 14:20  flood
+
+	* contrib/mod_sql.c, contrib/dist/rpm/proftpd.spec.in,
+	include/version.h: New RPM .spec and mod_sql.c
+
 2001-02-26 15:13  flood
 
 	* Makefile.in, NEWS, include/version.h: Final commit to 1.2.0-final
