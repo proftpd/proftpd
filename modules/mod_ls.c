@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.61 2002-08-14 16:25:29 castaglia Exp $
+ * $Id: mod_ls.c,v 1.62 2002-09-10 16:01:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -202,7 +202,7 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden)
   	fs_clean_path(pdircat(p,fs_getcwd(),path,NULL),fullpath,MAXPATHLEN);
   else
 	fs_clean_path(path,fullpath,MAXPATHLEN);
-  
+ 
   ret = dir_check(p,cmd->argv[0],cmd->group,fullpath,hidden);
 
   if (session.dir_config) {
@@ -223,25 +223,41 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden)
   return ret;
 }
 
-static
-int sendline(char *fmt, ...)
-{
+/* sendline() now has an internal buffer, to help speed up LIST output.
+ */
+static int sendline(char *fmt, ...) {
+  static char listbuf[TUNABLE_BUFFER_SIZE] = {'\0'};
   va_list msg;
   char buf[1025] = {'\0'};
-  int ret;
+  int res = 0;
 
-  va_start(msg,fmt);
-  vsnprintf(buf,sizeof(buf),fmt,msg);
+  /* a NULL fmt argument is the signal to flush the buffer */
+  if (!fmt) {
+    if ((res = data_xfer(listbuf, strlen(listbuf))) < 0)
+      log_debug(DEBUG3, "data_xfer returned %d, error = %s.", res,
+        strerror(session.d->outf->xerrno));
+
+    memset(listbuf, '\0', sizeof(listbuf));
+    return res;
+  }
+
+  va_start(msg, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, msg);
   va_end(msg);
 
   buf[1024] = '\0';
 
-  ret = data_xfer(buf,strlen(buf));
-  if(ret < 0) {
-    log_debug(DEBUG3, "data_xfer returned %d, error = %s.",
-              ret, strerror(session.d->outf->xerrno));
+  /* if buf won't fit completely into listbuf, flush listbuf */
+  if (strlen(buf) >= (sizeof(listbuf) - strlen(listbuf))) {
+    if ((res = data_xfer(listbuf, strlen(listbuf))) < 0)
+      log_debug(DEBUG3, "data_xfer returned %d, error = %s.", res,
+        strerror(session.d->outf->xerrno));
+
+    memset(listbuf, '\0', sizeof(listbuf));
   }
-  return ret;
+
+  sstrcat(listbuf, buf, sizeof(listbuf));
+  return res;
 }
 
 static
@@ -574,12 +590,9 @@ void sortfiles(cmd_rec *cmd)
   sort_arr = NULL;
 }
 
-static
-int outputfiles(cmd_rec *cmd)
-{
-  int		n;
-  struct 	filename *p;
-  struct	filename *q;
+static int outputfiles(cmd_rec *cmd) {
+  int n;
+  struct filename *p = NULL, *q = NULL;
 
   if(opt_t)
     sortfiles(cmd);
@@ -646,7 +659,7 @@ int outputfiles(cmd_rec *cmd)
         sstrncpy(pad, "\n", sizeof(pad));
       }
 
-      if(sendline("%s%s", q->line, pad) < 0)
+      if (sendline("%s%s", q->line, pad) < 0)
         return -1;
 
       q = q->right;
@@ -659,6 +672,11 @@ int outputfiles(cmd_rec *cmd)
   head = tail = NULL;
   colwidth = 0;
   filenames = 0;
+
+  /* flush the buffer */
+  if (sendline(NULL) < 0)
+    return -1;
+
   return 0;
 }
 
@@ -905,11 +923,13 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name)
 	  add_response(R_211, "%s", "");
           add_response(R_211, "%s:", subdir);
 
-	} else if( sendline("\n%s:\n", subdir) < 0) {
+	} else if (sendline("\n%s:\n", subdir) < 0 ||
+            sendline(NULL) < 0) {
           pop_cwd(cwd, &symhold);
 
           if (dest_workp)
             destroy_pool(workp);
+
           return -1;
         }
 
@@ -918,10 +938,11 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name)
 
           if (dest_workp)
             destroy_pool(workp);
+
           return -1;
         }
 
-        pop_cwd(cwd,&symhold);
+        pop_cwd(cwd, &symhold);
       }
       r++;
     }
@@ -1156,17 +1177,19 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 	      add_response(R_211, "%s", "");
 	      add_response(R_211, "%s:", *path);
 
-	    } else
+	    } else {
               sendline("\n%s:\n", *path);
+              sendline(NULL);
+            }
           }
 
           push_cwd(cwd, &symhold);
 
-          if(!fs_chdir_canon(*path, !opt_L && list_show_symlinks)) {
+          if (!fs_chdir_canon(*path, !opt_L && list_show_symlinks)) {
             int ret = listdir(cmd, NULL, *path);
             pop_cwd(cwd, &symhold);
 
-            if(ret < 0) {
+            if (ret < 0) {
               ls_terminate();
 	      if (use_globbing)
                 fs_globfree(&g);
@@ -1232,24 +1255,25 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
  * or is aborted.
  */
 
-static
-int nlstfile(cmd_rec *cmd, const char *file)
-{
-	int err;
+static int nlstfile(cmd_rec *cmd, const char *file) {
+  int res = 0;
 
-	/* If the data connection isn't open, open it now. */
-	if((session.flags & SF_XFER) == 0) {
-		if(data_open(NULL,"file list",IO_WRITE,0) < 0) {
-			data_reset();
-			return -1;
-		}
-		session.flags |= SF_ASCII_OVERRIDE;
-	}
+  /* If the data connection isn't open, open it now. */
+  if ((session.flags & SF_XFER) == 0) {
+    if (data_open(NULL, "file list", IO_WRITE, 0) < 0) {
+      data_reset();
+      return -1;
+    }
 
-	if((err = sendline("%s\n",file)) < 0)
-		return err;
+    session.flags |= SF_ASCII_OVERRIDE;
+  }
+
+  /* Be sure to flush the output */
+  if ((res = sendline("%s\n", file)) < 0 ||
+      (res = sendline(NULL)) < 0)
+    return res;
 	
-	return 1;
+  return 1;
 }
 
 /* Display listing of a directory, ACL checks performed on each entry,
@@ -1335,13 +1359,13 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
 	continue;
       
       if (!curdir) {
-	if (sendline("%s/%s\n", dir, p) < 0)
+	if (sendline("%s/%s\n", dir, p) < 0 || sendline(NULL) < 0)
 	  count = -1;
         else
           count++;
 
       } else {
-	if (sendline("%s\n", p) < 0)
+	if (sendline("%s\n", p) < 0 || sendline(NULL) < 0)
 	  count = -1;
         else
           count++;

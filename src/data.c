@@ -26,7 +26,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.39 2002-08-14 16:17:35 castaglia Exp $
+ * $Id: data.c,v 1.40 2002-09-10 16:01:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -104,26 +104,100 @@ static int _xlate_ascii_read(char *buf, int *bufsize, int *adjlen)
   return *bufsize;
 }
 
-static int _xlate_ascii_write(char **buf, int *bufsize, int *adjlen) {
-  char *res = *buf;
-  int newbufsize = 0;
-  int thislen = *bufsize;
-  
-  if(**buf == '\n') {
-    *--res = '\r';
-    (*buf)++;
-    newbufsize = 2;
-    (*adjlen)++; thislen--;
+/* this function rewrites the contents of the given buffer, making sure that
+ * each LF has a preceding CR, as required by RFC959:
+ *
+ *  buf = pointer to a buffer
+ *  buflen = length of data in buffer
+ *  bufsize = total size of buffer
+ *  expand = will contain the number of expansion bytes (CRs) added,
+ *           and should be the difference between buflen's original
+ *           value and its value when this function returns
+ */
+static void _xlate_ascii_write(char **buf, unsigned int *buflen,
+    unsigned int bufsize, unsigned int *expand) {
+  char *tmpbuf = *buf;
+  unsigned int tmplen = *buflen;
+  unsigned int lfcount = 0;
+  int res = 0;
+  register unsigned int i = 0;
+
+  /* Make sure this is zero (could be a holdover from a previous call). */ 
+  *expand = 0;
+
+  /* First, determine how many bare LFs are present. */
+  if (tmpbuf[0] == '\n')
+    lfcount++;
+
+  for (i = 1; i < tmplen; i++)
+    if (tmpbuf[i] == '\n' && tmpbuf[i-1] != '\r')
+      lfcount++;
+
+  /* Assume that for each LF (including a leading LF), space for another
+   * char (a '\r') is needed.  Determine whether there is enough space in
+   * the buffer for the adjusted data.  If not, allocate a new buffer that is
+   * large enough.  The new buffer is allocated from session.xfer.p, which is
+   * fine; this pool has a lifetime only for this current data transfer, and
+   * will be cleared after the transfer is done, either having succeeded or
+   * failed.
+   *
+   * Note: the res variable is needed in order to force signedness of the
+   * resulting difference.  Without it, this condition would never evaluate
+   * to true, as C's promotion rules would insure that the resulting value
+   * would be of the same type as the operands: an unsigned int (which will
+   * never be less than zero).
+   */
+  if ((res = (bufsize - tmplen - lfcount)) < 0) {
+    pool *copy_pool = make_sub_pool(session.xfer.p);
+    char *copy_buf = pcalloc(copy_pool, tmplen);
+   
+    memmove(copy_buf, tmpbuf, tmplen);
+
+    /* Allocate a new session.xfer.buf of the needed size. */
+    session.xfer.bufsize = tmplen + lfcount;
+    session.xfer.buf = pcalloc(session.xfer.p, session.xfer.bufsize);
+
+    /* Allow space for a CR to be inserted before an LF if an LF is the
+     * first character in the buffer.
+     */
+    session.xfer.buf++;
+    session.xfer.bufstart = session.xfer.buf;
+
+    memmove(session.xfer.buf, copy_buf, tmplen);
+    destroy_pool(copy_pool);
+
+    tmpbuf = session.xfer.buf;
+    bufsize = session.xfer.bufsize;
   }
-  
-  while(thislen-- > 0 && newbufsize < *bufsize && **buf != '\n') {
-    (*buf)++;
-    newbufsize++;
+
+  if (tmpbuf[0] == '\n') {
+
+    /* Shift everything in the buffer to the right one character, making
+     * space for a '\r'
+     */
+    memmove(&(tmpbuf[1]), &(tmpbuf[0]), bufsize);
+    tmpbuf[0] = '\r';
+ 
+    /* Increment the number of "expanded" characters, and decrement the
+     * number of bare LFs.
+     */ 
+    (*expand)++;
+    lfcount--;
   }
-  
-  *bufsize = newbufsize;
-  *buf = res;
-  return newbufsize;
+
+  for (i = 1; i < bufsize && (lfcount > 0); i++) {
+    if (tmpbuf[i] == '\n' && tmpbuf[i-1] != '\r') {
+      memmove(&(tmpbuf[i+1]), &(tmpbuf[i]), bufsize - i);
+      tmpbuf[i] = '\r';
+      (*expand)++;
+      lfcount--;
+    }
+  }
+
+  /* Always make sure the buffer is NUL-terminated. */
+  tmpbuf[tmplen + (*expand)] = '\0';
+  *buf = tmpbuf;
+  *buflen = tmplen + (*expand);
 }
 
 static void _data_new_xfer(char *filename, int direction) {
@@ -725,39 +799,42 @@ int data_xfer(char *cl_buf, int cl_size) {
       }
     }
   } else { /* IO_WRITE */
-    
+
     /* copy client buffer to internal buffer, and
      * xlate ascii as necessary
      */
-    
-    while(cl_size) {
-      int o_size,size = cl_size;
-      int wsize,adjlen;
-      char *wb;
+    while (cl_size) {
+      int o_size, size = cl_size;
       
-      if(size > TUNABLE_BUFFER_SIZE)
-	size = TUNABLE_BUFFER_SIZE;
+      if (size > TUNABLE_BUFFER_SIZE)
+        size = TUNABLE_BUFFER_SIZE;
       
       o_size = size;
-      memcpy(buf,cl_buf,size);
-      while(size) {
-	wb = buf; wsize = size; adjlen = 0;
-	
-	if(session.flags & (SF_ASCII|SF_ASCII_OVERRIDE))
-	  _xlate_ascii_write(&wb,&wsize,&adjlen);
-	
-	if(io_write(session.d->outf,wb,wsize) == -1)
-	  return -1;
-	
-	if(TimeoutStalled)
-	  reset_timer(TIMER_STALLED, ANY_MODULE);
-	
-	total += (wsize - adjlen);
-	size -= (wsize - adjlen);
-	if(size) {
-	  wb = buf + (wsize - adjlen);
-	  memcpy(buf,wb,size);
-	}
+      memcpy(buf, cl_buf, size);
+
+      while (size) {
+        char *wb = buf;
+        unsigned int wsize = size, adjlen = 0;
+
+        if (session.flags & (SF_ASCII|SF_ASCII_OVERRIDE))
+          _xlate_ascii_write(&wb, &wsize, session.xfer.bufsize, &adjlen);
+
+        if (io_write(session.d->outf, wb, wsize) == -1)
+          return -1;
+
+        if (TimeoutStalled)
+          reset_timer(TIMER_STALLED, ANY_MODULE);
+
+        /* Do not take any added CRs into account for the session sum. */	
+        total += (wsize - adjlen);
+        size -= (wsize - adjlen);
+
+        if (size) {
+          /* Advance the output buffer pointer into unsent buffer space. */
+          wb += wsize;
+	  memcpy(buf, wb, size);
+          buf[size] = '\0';
+        }
       }
       
       cl_size -= o_size;

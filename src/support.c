@@ -26,7 +26,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.35 2002-08-14 16:17:35 castaglia Exp $
+ * $Id: support.c,v 1.36 2002-09-10 16:01:06 castaglia Exp $
  */
 
 /* History Log:
@@ -522,7 +522,7 @@ int access_check(char *path, int mode) {
   mode_t mask;
   struct stat buf;
   
-  if(stat(path, &buf) < 0) {
+  if(fs_stat(path, &buf) < 0) {
     errno = ENOENT;
     return -1;
   }

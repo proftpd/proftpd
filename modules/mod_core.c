@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.104 2002-09-07 00:25:33 castaglia Exp $
+ * $Id: mod_core.c,v 1.105 2002-09-10 16:01:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2253,6 +2253,13 @@ MODRET regex_filters(cmd_rec *cmd)
 }
 #endif /* HAVE_REGEX_H && HAVE_REGCOMP */
 
+MODRET core_clear_cache(cmd_rec *cmd) {
+  /* Make sure the FS statcache is clear before each command. */
+  fs_clear_statcache();
+
+  return DECLINED(cmd);
+}
+
 MODRET cmd_quit(cmd_rec *cmd) {
   char *display = NULL;
   
@@ -3442,13 +3449,10 @@ static conftable core_conftab[] = {
 };
 
 static cmdtable core_cmdtab[] = {
-  /* Added a PRE_CMD handler for all commands so that AllowFilter and
-   * DenyFilter can be re-implemented correctly.
-   * jss - 5/16/01
-   */
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   { PRE_CMD, "*",G_NONE,  regex_filters,FALSE,  FALSE, CL_NONE },
 #endif
+  { PRE_CMD, C_ANY, G_NONE, core_clear_cache,FALSE, FALSE, CL_NONE },
   { CMD, C_HELP, G_NONE,  cmd_help,	FALSE,	FALSE, CL_INFO },
   { CMD, C_PORT, G_NONE,  cmd_port,	TRUE,	FALSE, CL_MISC },
   { CMD, C_PASV, G_NONE,  cmd_pasv,	TRUE,	FALSE, CL_MISC },

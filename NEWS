@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.224 2002-09-10 15:06:53 castaglia Exp $
+$Id: NEWS,v 1.225 2002-09-10 16:01:00 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -16,6 +16,7 @@ CVS
 - Bug 1432 - Pedantic handling of leading whitespace in FTP commands
 - Bug 1652 - Add connection-rate limiting mechanism
 - Bug 1662 - Define _GNU_SOURCE
+- Bug 1486 - mod_ls is extremly slow
 
 1.2.6 - Released 2002-09-04
 ---------------------------------
