@@ -1,4 +1,8 @@
-$Id: NEWS,v 1.201 2002-07-02 18:25:35 castaglia Exp $
+$Id: NEWS,v 1.202 2002-07-15 15:39:01 castaglia Exp $
+
+CVS
+---------------------------------
+- Bug 1681 - Fixed bug made when adding <IfDefine>, <IfModule> support.
 
 1.2.6rc1 - Released 2002-07-02
 ---------------------------------

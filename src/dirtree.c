@@ -24,15 +24,9 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* Read configuration file(s), and manage server/configuration
- * structures.
- * $Id: dirtree.c,v 1.59 2002-06-23 22:14:14 castaglia Exp $
- */
-
-/* History:
- * 5/1/97 0.99.0pl2
- *  Used to be named "config.c", renamed to dirtree.c (directive
- *  tree) so as not to conflict with GNU autoconf's top-level config.h.
+/* Read configuration file(s), and manage server/configuration structures.
+ *
+ * $Id: dirtree.c,v 1.60 2002-07-15 15:39:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -81,10 +75,14 @@ static struct {
   config_rec **curconfig;
 } conf;
 
-static struct {
-  FILE *file;
-  unsigned int lineno;
-} config_stream;
+typedef struct config_stream_struc {
+  struct config_stream_struc *cs_next;
+  pool *cs_pool;
+  FILE *cs_file;
+  unsigned int cs_lineno;
+} config_stream_t;
+
+static config_stream_t *config_stream_stack = NULL;
 
 /* Imported this function from modules/mod_ls.c -- it belongs more with the
  * dir_* functions here, rather than the ls_* functions there.
@@ -223,9 +221,31 @@ char *get_word(char **cp)
   return ret;
 }
 
-void set_config_stream(FILE *filep, unsigned int lineno) {
-  config_stream.file = filep;
-  config_stream.lineno = lineno;
+static config_stream_t *push_config_stream(FILE *filep, unsigned int lineno) {
+  pool *tmp_pool = make_sub_pool(permanent_pool);
+  config_stream_t *cs = pcalloc(tmp_pool, sizeof(config_stream_t));
+
+  cs->cs_next = NULL;
+  cs->cs_pool = tmp_pool;
+  cs->cs_file = filep;
+  cs->cs_lineno = lineno;
+
+  if (!config_stream_stack)
+    config_stream_stack = cs;
+
+  else {
+    cs->cs_next = config_stream_stack;
+    config_stream_stack = cs;
+  }
+
+  return cs;
+}
+
+static void pop_config_stream(void) {
+  config_stream_t *cs = config_stream_stack;
+  config_stream_stack = cs->cs_next;
+
+  destroy_pool(cs->cs_pool);
 }
 
 /* get_line() is an fgets() with backslash-newline stripping, copied from
@@ -273,22 +293,19 @@ char *get_line(char *buf, int buflen, FILE *filep, int *lineno) {
  * (of which this is one of but several potential such functions).
  */
 char *get_config_line(char *buf, size_t len) {
-  
-  /* sanity check
+
+  /* Always use the config stream at the top of the stack.
    */
-  if (!config_stream.file)
+  config_stream_t *cs = config_stream_stack;
+ 
+  if (!cs->cs_file)
     return NULL;
 
-  /* be sure to check for error conditions
-   */
-  while ((get_line(buf, len, config_stream.file,
-      &config_stream.lineno)) != NULL) {
+  /* Check for error conditions. */
+  while ((get_line(buf, len, cs->cs_file, &(cs->cs_lineno))) != NULL) {
     char *bufp;
     int buflen = strlen(buf);
 
-    /* increment the line number count */
-    config_stream.lineno++;
-    
     /* trim off the trailing newline, if present
      */
     if (buflen && buf[buflen - 1] == '\n')
@@ -316,9 +333,8 @@ char *get_config_line(char *buf, size_t len) {
     }
   }
 
-  /* be sure to check for error conditions
-   */
-  if (ferror(config_stream.file))
+  /* Check for error conditions. */
+  if (ferror(cs->cs_file))
     log_pri(LOG_ERR, "error while reading configuration stream: %s",
       strerror(errno));
 
@@ -1502,12 +1518,15 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
       /* File has been modified or not loaded yet */
       d->argv[0] = (void*)sbuf.st_mtime;
 
-      fp = fopen(dynpath,"r");
-      if(fp) {
+      if ((fp = fopen(dynpath, "r")) != NULL) {
+        config_stream_t *cs = NULL;
+
         removed = 0;
 
-        /* set the configuration stream information */
-        set_config_stream(fp, 0);
+        /* Push the configuration stream information onto the stack of
+         * configuration streams being parsed.
+         */
+        cs = push_config_stream(fp, 0);
 
         init_dyn_stacks(p,d);
         d->config_type = CONF_DYNDIR;
@@ -1542,7 +1561,7 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
             if(!found)
               log_pri(LOG_WARNING,
                 "warning: unknown configuration directive '%s' on "
-                "line %d of '%s'.", cmd->argv[0], config_stream.lineno,
+                "line %d of '%s'.", cmd->argv[0], cs->cs_lineno,
                 dynpath);
 
           }
@@ -1558,9 +1577,9 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
 
         _mergedown(*set,TRUE);
 
-        /* done with the config_stream information
+        /* Pop this configuration stream from the stack.
          */
-        set_config_stream(NULL, 0);
+        pop_config_stream();
 
         fclose(fp);
       }
@@ -2498,49 +2517,52 @@ config_rec *add_config_param(const char *name,int num,...)
   return c;
 }
 
-int parse_config_file(const char *fname)
-{
-  FILE *fp;
-  cmd_rec *cmd;
+int parse_config_file(const char *fname) {
+  FILE *fp = NULL;
+  config_stream_t *cs = NULL;
+  cmd_rec *cmd = NULL;
+  modret_t *mr = NULL;
   pool *tmp_pool = make_sub_pool(permanent_pool);
-  modret_t *mr;
  
-  fp = pfopen(tmp_pool,fname,"r");
+  if ((fp = pfopen(tmp_pool, fname, "r")) == NULL) {
+    destroy_pool(tmp_pool);
+    return -1;
+  }
 
-  /* set the configuration stream information */
-  set_config_stream(fp, 0);
-
-  if(!fp) { destroy_pool(tmp_pool); return -1; }
-  
-  while((cmd = get_config_cmd(tmp_pool)) != NULL) {
-    if(cmd->argc) {
+  /* Push the configuration stream information onto the stack of
+   * configuration streams.
+   */
+  cs = push_config_stream(fp, 0);
+ 
+  while ((cmd = get_config_cmd(tmp_pool)) != NULL) {
+    if (cmd->argc) {
       conftable *c;
       char found = 0;
 
       cmd->server = *conf.curserver;
       cmd->config = *conf.curconfig;
 
-      for(c = m_conftable; c->directive; c++)
-        if(!strcasecmp(c->directive,cmd->argv[0])) {
+      for (c = m_conftable; c->directive; c++)
+        if (!strcasecmp(c->directive, cmd->argv[0])) {
           cmd->argv[0] = c->directive;
           ++found;
 
-          if((mr = call_module(c->m,c->handler,cmd)) != NULL) {
-            if(MODRET_ISERROR(mr)) {
-	            log_pri(LOG_ERR,"Fatal: %s",MODRET_ERRMSG(mr));
-	            exit(1);
+          if ((mr = call_module(c->m, c->handler, cmd)) != NULL) {
+            if (MODRET_ISERROR(mr)) {
+              log_pri(LOG_ERR, "Fatal: %s", MODRET_ERRMSG(mr));
+              exit(1);
 	    }
           }
 
-	  if(MODRET_ISDECLINED(mr))
+	  if (MODRET_ISDECLINED(mr))
 	    found--;
 
           destroy_pool(cmd->tmp_pool);
         }
 
-       if(!found) {
-         log_pri(LOG_ERR,"Fatal: unknown configuration directive '%s' on line %d of '%s'.",
-                 cmd->argv[0], config_stream.lineno, fname);
+       if (!found) {
+         log_pri(LOG_ERR, "Fatal: unknown configuration directive '%s' on "
+           "line %d of '%s'.", cmd->argv[0], cs->cs_lineno, fname);
          exit(1);
        }
     }
@@ -2548,9 +2570,9 @@ int parse_config_file(const char *fname)
     destroy_pool(cmd->pool);
   }
 
-  /* done with the configuration stream information
+  /* Pop this configuration stream from the stack.
    */
-  set_config_stream(NULL, 0);
+  pop_config_stream();
 
   pfclose(tmp_pool,fp);
   destroy_pool(tmp_pool);
