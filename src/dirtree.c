@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.37 2001-08-01 15:03:11 flood Exp $
+ * $Id: dirtree.c,v 1.38 2001-09-26 15:34:10 flood Exp $
  */
 
 /* History:
@@ -708,10 +708,11 @@ int dir_get_param(pool *pp,char *path,char *param)
 }
 
 static int _dir_check_op(pool *p,xaset_t *c,int op,
-                         int uid,int gid,int mode)
+                         uid_t uid,gid_t gid,mode_t mode)
 {
   int i, res = 1, user_perms = 0;
-  int *gidp = NULL,u,g;
+  uid_t u;
+  gid_t *gidp = NULL, g;
 
   if(!c)
     return 1;				/* Default is to allow */
@@ -819,7 +820,7 @@ static int _dir_check_op(pool *p,xaset_t *c,int op,
 }
 
 int dir_check_op_mode(pool *p,char *path,int op,
-                       int uid,int gid,int mode)
+                       uid_t uid,gid_t gid,mode_t mode)
 {
   char *fullpath;
   xaset_t *c;
@@ -1501,7 +1502,8 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
   config_rec *c;
   struct stat sbuf;
   pool *p;
-  int res = 1, _umask = -1, isfile;
+  mode_t _umask = -1;
+  int res = 1, isfile;
   int op_hidden = FALSE;
 
   p = make_sub_pool(pp);
@@ -1545,12 +1547,12 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden)
     if(S_ISDIR(sbuf.st_mode) ||
 		!strcasecmp(cmd, C_MKD) ||
 		!strcasecmp(cmd, C_XMKD))
-      _umask = get_param_int(CURRENT_CONF, "DirUmask", FALSE);
+      _umask = (mode_t) get_param_int(CURRENT_CONF, "DirUmask", FALSE);
     
     /* It's either a file, or we had no directory Umask.
      */
     if(_umask == -1 &&
-       ((_umask = get_param_int(CURRENT_CONF, "Umask", FALSE)) == -1))
+       ((_umask = (mode_t) get_param_int(CURRENT_CONF, "Umask", FALSE)) == -1))
       _umask = 0022;
   }
   
@@ -1625,7 +1627,8 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
   config_rec *c;
   struct stat sbuf;
   pool *p;
-  int res = 1, _umask = -1, isfile;
+  mode_t _umask = -1;
+  int res = 1, isfile;
   int op_hidden = FALSE;
 
   p = make_sub_pool(pp);
@@ -1662,12 +1665,12 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden)
     if(S_ISDIR(sbuf.st_mode) ||
 		!strcasecmp(cmd, C_MKD) ||
 		!strcasecmp(cmd, C_XMKD))
-      _umask = get_param_int(CURRENT_CONF, "DirUmask", FALSE);
+      _umask = (mode_t) get_param_int(CURRENT_CONF, "DirUmask", FALSE);
     
     /* It's either a file, or we had no directory Umask.
      */
     if(_umask == -1 &&
-       ((_umask = get_param_int(CURRENT_CONF, "Umask", FALSE)) == -1))
+       ((_umask = (mode_t) get_param_int(CURRENT_CONF, "Umask", FALSE)) == -1))
       _umask = 0022;
   }
 

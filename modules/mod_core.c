@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.69 2001-08-01 15:03:11 flood Exp $
+ * $Id: mod_core.c,v 1.70 2001-09-26 15:34:10 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -813,13 +813,13 @@ MODRET set_umask(cmd_rec *cmd)
 {
   config_rec *c;
   char *endp;
-  int _umask;
+  mode_t _umask;
   
   CHECK_VARARGS(cmd, 1, 2);
   CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_DIR |
 	     CONF_ANON | CONF_GLOBAL | CONF_DYNDIR);
   
-  _umask = strtol(cmd->argv[1], &endp, 8);
+  _umask = (mode_t) strtol(cmd->argv[1], &endp, 8);
   
   if(endp && *endp)
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' is not "
@@ -830,7 +830,7 @@ MODRET set_umask(cmd_rec *cmd)
   /* Have we specified a directory umask as well?
    */
   if(CHECK_HASARGS(cmd, 2)) {
-    _umask = strtol(cmd->argv[2], &endp, 8);
+    _umask = (mode_t) strtol(cmd->argv[2], &endp, 8);
     
     if(endp && *endp)
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[2], "' is not "
