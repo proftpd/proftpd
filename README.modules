@@ -109,6 +109,10 @@ Feature modules:
         See contrib/mod_rewrite.html
         Contributed by TJ Saunders <tj@castaglia.org>
 
+    mod_site_misc
+        Miscellaneous SITE commands (e.g. SITE SYLINK, SITE UTIME)
+        see contrib/mod_site_misc.html
+
     mod_wrap
         TCP Wrappers.
         See contrib/README.mod_wrap and contrib/mod_wrap.html.
