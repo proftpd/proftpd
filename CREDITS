@@ -4,6 +4,13 @@ CREDITS file.  If you've contributed, and we've forgotten any of you, please
 accept our apologies.  You can contact the development mailing list at
 proftpd-devel@proftpd.org with any updates.
 
+In addition to the personae dramatis below, a hearty thanks is also deserved
+by numerous users on the mailing lists and IRC channels who take time to
+indefatiguably test bug fixes, patches, endless CVS snapshots, and who provide
+excellent feedback in terms of suggestions and constructive, detailed bug
+reports.  These users, too, deserve credit for helping to make proftpd
+what it is.
+
 This list is sorted by name and formatted to allow easy grepping and
 beautification by scripts.  The fields are: name (N), email (E), web-address
 (W), PGP key ID and fingerprint (P), description (D), and snail-mail
