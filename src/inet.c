@@ -520,7 +520,8 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
       res = bind(fd, (struct sockaddr *) &servaddr, sizeof(servaddr));
       hold_errno = errno;
 
-      if(res == -1 && errno == EINTR) {
+      if (res == -1 && errno == EINTR) {
+        handle_signals();
 	i++;
 	continue;
       }
@@ -886,13 +887,16 @@ int inet_listen(pool *pool, conn_t *c, int backlog)
   if(!c || c->mode == CM_LISTEN)
     return -1;
 
-  while(1)
-    if(listen(c->listen_fd,backlog) == -1) {
-      if(errno == EINTR)
+  while (1)
+    if (listen(c->listen_fd, backlog) == -1) {
+      if (errno == EINTR) {
+        handle_signals();
         continue; 
-      log_pri(LOG_ERR,"listen() failed in inet_listen(): %s",
-              strerror(errno));
+      }
+
+      log_pri(LOG_ERR,"listen() failed in inet_listen(): %s", strerror(errno));
       end_login(1);
+
     } else
       break;
   
@@ -925,10 +929,18 @@ int inet_connect(pool *pool, conn_t *c, p_in_addr_t *addr, int port)
 
   c->mode = CM_CONNECT;
 
-  while( (ret = connect(c->listen_fd,(struct sockaddr*)&remaddr,sizeof(remaddr))) == -1 &&
-         errno == EINTR ) ;
+  while (1)
+    if ((ret = connect(c->listen_fd, (struct sockaddr *) &remaddr,
+        sizeof(remaddr))) == -1) {
+      if (errno == EINTR) {
+        handle_signals();
+        continue;
+      }
 
-  if(ret == -1) {
+    } else
+      break;
+
+  if (ret == -1) {
     c->mode = CM_ERROR;
     c->xerrno = errno;
     return -1;

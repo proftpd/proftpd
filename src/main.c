@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.87 2002-06-25 20:42:57 castaglia Exp $
+ * $Id: main.c,v 1.88 2002-06-28 18:43:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -167,7 +167,6 @@ volatile static unsigned int recvd_signal_flags = 0;
 static int term_signo = 0;
 
 /* Signal dispatcher */
-static void handle_signals(void);
 static void handle_abort(void);
 static void handle_chld(void);
 static void handle_xcpu(void);
@@ -1017,8 +1016,11 @@ static void cmd_loop(server_rec *server, conn_t *c) {
   log_pri(LOG_INFO, "FTP session opened.");
 
   while(1) {
-    if(io_telnet_gets(buf,sizeof(buf)-1,session.c->inf,session.c->outf) == NULL) {
-      if(session.c->inf->xerrno == EINTR)
+    handle_signals();
+
+    if (io_telnet_gets(buf, sizeof(buf)-1, session.c->inf,
+        session.c->outf) == NULL) {
+      if (session.c->inf->xerrno == EINTR)
 	continue;		/* Simple interrupted syscall */
       
       /* Otherwise, EOF */
@@ -1782,7 +1784,7 @@ static void server_loop(void) {
  * race conditions.
  */
 
-static void handle_signals(void) {
+void handle_signals(void) {
 
   while (recvd_signal_flags) {
 

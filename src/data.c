@@ -26,7 +26,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.36 2002-06-26 02:54:40 castaglia Exp $
+ * $Id: data.c,v 1.37 2002-06-28 18:43:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -863,7 +863,9 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
        *
        * For obvious reasons, HP/UX sendfile is not supported yet - jss
        */
-      if(errno == EINTR) {
+      if (errno == EINTR) {
+        handle_signals();
+
 	/* If we got everything in this transaction, we're done.
 	 */
 	if((count -= len) <= 0)

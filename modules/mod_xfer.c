@@ -25,7 +25,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.73 2002-06-27 07:31:54 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.74 2002-06-28 18:43:17 castaglia Exp $
  */
 
 /* History Log:
@@ -149,7 +149,7 @@ static void _rate_throttle(off_t rate_pos, off_t rate_bytes,
   if(rate_pos < rate_freebytes)
     return;
   
-  while(1) {
+  while (1) {
     gettimeofday(&rate_tv, NULL);
   
     if(!rate_hardbps)
@@ -193,11 +193,14 @@ static void _rate_throttle(off_t rate_pos, off_t rate_bytes,
        * jss 2/20/01
        */
     
-      if(select(0, NULL, NULL, NULL, &rate_tv) < 0) {
+      if (select(0, NULL, NULL, NULL, &rate_tv) < 0) {
         if(errno != EINTR) {
           log_pri(LOG_WARNING, "Unable to throttle bandwidth: %s.",
 	          strerror(errno));
-        } else continue;
+        } else {
+          handle_signals();
+          continue;
+        }
       }
     }
     break;
@@ -798,7 +801,7 @@ MODRET cmd_stor(cmd_rec *cmd)
     lbuf = (char*) palloc(cmd->tmp_pool, bufsize);
     
     gettimeofday(&rate_tvstart, NULL);
-    while((len = data_xfer(lbuf, bufsize)) > 0) {
+    while ((len = data_xfer(lbuf, bufsize)) > 0) {
       if(XFER_ABORTED)
         break;
 
@@ -1014,12 +1017,12 @@ MODRET cmd_retr(cmd_rec *cmd)
 
     gettimeofday(&rate_tvstart, NULL);
     
-    while(cnt != session.xfer.file_size) {
-      if(XFER_ABORTED)
+    while (cnt != session.xfer.file_size) {
+      if (XFER_ABORTED)
         break;
       
       /* INSERT CODE HERE */
-      if((len = _transmit_data(rate_bps, cnt, respos, lbuf, bufsize)) == 0)
+      if ((len = _transmit_data(rate_bps, cnt, respos, lbuf, bufsize)) == 0)
 	break;
       
       if(len < 0) {

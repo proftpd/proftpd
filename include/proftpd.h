@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.26 2002-06-27 07:31:54 castaglia Exp $
+ * $Id: proftpd.h,v 1.27 2002-06-28 18:43:17 castaglia Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -293,6 +293,7 @@ void add_response_err(const char *, const char *, ...)
 #endif
 
 void end_login(int);
+void handle_signals(void);
 void main_exit(void *, void *, void *, void *);
 void main_set_idle(void);
 void register_rehash(void *, void(*)(void *));
