@@ -16867,6 +16867,10 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 cat >>confdefs.h <<_ACEOF
+#define CONFIG_DIR "`eval echo "${sysconfdir}"`"
+_ACEOF
+
+cat >>confdefs.h <<_ACEOF
 #define RUN_DIR "`eval echo "${localstatedir}/proftpd"`"
 _ACEOF
 
