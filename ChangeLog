@@ -1,3 +1,18 @@
+2001-02-23 21:37  flood
+
+	* CREDITS, README.mod_sql-3.0, contrib/README.mod_sql-3.0,
+	contrib/README.mod_sqlpw: Removed mod_sql docs per AAH.  New docs
+	will be added with more appropriate filenames.
+
+2001-02-23 18:35  flood
+
+	* CREDITS, README, README.ports, configure.in, contrib/mod_ratio.c,
+	contrib/mod_sql.c, contrib/mod_sql_postgres.c, lib/Makefile.in: Bug
+	#1024 - minor doc changes.  Bug #1025 - stop assuming the system
+	has ranlib.  Bug #1028 - mod_sql_postgres.c patch from maintainer. 
+	Bug #1029 - mod_sql.c patch from maintainer.  Bug #1030 -
+	mod_ratio.c should compile again.
+
 2001-02-22 21:47  flood
 
 	* NEWS, config.h.in, configure.in, include/modules.h,
