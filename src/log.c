@@ -20,7 +20,7 @@
 
 /*
  * ProFTPD logging support
- * $Id: log.c,v 1.15 2000-07-07 00:00:56 macgyver Exp $
+ * $Id: log.c,v 1.16 2000-07-07 06:41:08 macgyver Exp $
  */
 
 /* History Log:
@@ -172,7 +172,7 @@ int log_run_checkpath(void)
 
 int log_open_run(pid_t mpid, int trunc, int allow_update)
 {
-  char fname[MAXPATHLEN];
+  char fname[MAXPATHLEN + 1];
   logrun_header_t hdr;
   int i;
 
@@ -312,7 +312,7 @@ logrun_t *log_read_run(pid_t *mpid)
   static int fd = -1;
   static logrun_t ent;
   static size_t size = 0;
-  char *cp, buf[MAXPATHLEN];
+  char *cp, buf[MAXPATHLEN + 1];
 
   errno = 0;
   if(!dir) {

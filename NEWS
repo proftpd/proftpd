@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.52 2000-07-07 01:19:27 macgyver Exp $
+$Id: NEWS,v 1.53 2000-07-07 06:41:08 macgyver Exp $
 
 1.2.0 - Released: ???
 ---------------------
@@ -54,6 +54,7 @@ $Id: NEWS,v 1.52 2000-07-07 01:19:27 macgyver Exp $
 - Fixed GroupOwner's semantics and added the related UserOwner directive.
 - Added SQLKey, SQLKeyField, and SQLAuthoritative to mod_sql.
 - Fixed access checks for LIST and NLST.
+- Cleaned up use of '.' and '..' in mod_ls.
 
 1.2.0pre10 - Released: 1/17/00
 ------------------------------

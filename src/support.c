@@ -20,7 +20,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.15 2000-07-07 06:18:35 macgyver Exp $
+ * $Id: support.c,v 1.16 2000-07-07 06:41:08 macgyver Exp $
  */
 
 /* History Log:
@@ -237,8 +237,8 @@ char *dir_interpolate(pool *p, const char *path)
 
 char *dir_best_path(pool *p, const char *path)
 {
-  char workpath[MAXPATHLEN];
-  char realpath[MAXPATHLEN];
+  char workpath[MAXPATHLEN + 1];
+  char realpath[MAXPATHLEN + 1];
   char *target = NULL, *ntarget;
   int fini = 0;
 
@@ -279,8 +279,8 @@ char *dir_best_path(pool *p, const char *path)
 
 char *dir_canonical_path(pool *p, const char *path)
 {
-  char buf[MAXPATHLEN];
-  char work[MAXPATHLEN];
+  char buf[MAXPATHLEN + 1];
+  char work[MAXPATHLEN + 1];
 
   if(*path == '~') {
     if(fs_interpolate(path,work,MAXPATHLEN) == -1)
@@ -299,7 +299,7 @@ char *dir_canonical_path(pool *p, const char *path)
 
 char *dir_realpath(pool *p, const char *path)
 {
-  char buf[MAXPATHLEN];
+  char buf[MAXPATHLEN + 1];
 
   if(fs_resolve_partial(path,buf,MAXPATHLEN,0) == -1)
     return NULL;
@@ -309,8 +309,8 @@ char *dir_realpath(pool *p, const char *path)
 
 char *dir_virtual_chdir(pool *p, const char *path)
 {
-  char buf[MAXPATHLEN];
-  char work[MAXPATHLEN];
+  char buf[MAXPATHLEN + 1];
+  char work[MAXPATHLEN + 1];
 
   if(*path == '~') {
     if(fs_interpolate(path,work,MAXPATHLEN) == -1)
