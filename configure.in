@@ -1519,6 +1519,8 @@ dnl CFLAGS environment variable (which may possible cause other autoconf
 dnl tests to fail).
 PR_CHECK_CC_OPT(Wno-long-double)
 
+CFLAGS="-DHAVE_CONFIG_H $CFLAGS"
+
 dnl And finally, generate the appropriate Make* and config.h
 AC_SUBST(INSTALL_STRIP)
 AC_SUBST(INCLTDL)
