@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.7 2002-06-23 19:03:22 castaglia Exp $
+ * $Id: options.h,v 1.8 2002-07-02 17:01:47 castaglia Exp $
  */
 
 #ifndef __OPTIONS_H
@@ -87,6 +87,7 @@
 
 #define TUNABLE_TIMEOUTLOGIN	300
 #define TUNABLE_TIMEOUTIDLE	600
+#define TUNABLE_TIMEOUTLINGER	180
 #define TUNABLE_TIMEOUTNOXFER	300
 #define TUNABLE_TIMEOUTIDENT	10
 #define TUNABLE_TIMEOUTSTALLED	3600

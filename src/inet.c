@@ -680,14 +680,17 @@ void inet_close(pool *pool, conn_t *c)
 }
 
 /* perform shutdown/read on streams */
-void inet_lingering_close(pool *pool, conn_t *c)
-{
-  inet_setblock(pool,c);
+void inet_lingering_close(pool *pool, conn_t *c, long linger) {
+  inet_setblock(pool, c);
 
-  if(c->outf)
-    io_lingering_close(c->outf);
-  if(c->inf != c->outf)
-    io_lingering_close(c->inf);
+  if (c->outf)
+    io_lingering_close(c->outf, linger);
+
+  /* Only close the input stream if it is actually a different stream than
+   * the output stream.
+   */
+  if (c->inf != c->outf)
+    io_lingering_close(c->inf, linger);
 
   c->outf = NULL;
   c->inf = NULL;

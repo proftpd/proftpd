@@ -26,7 +26,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.37 2002-06-28 18:43:17 castaglia Exp $
+ * $Id: data.c,v 1.38 2002-07-02 17:01:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -405,8 +405,9 @@ int data_open(char *filename, char *reason, int direction, off_t size) {
 /* close == successful transfer */
 void data_close(int quiet) {
   curf = NULL;
-  if(session.d) {
-    inet_lingering_close(session.pool,session.d);
+
+  if (session.d) {
+    inet_lingering_close(session.pool, session.d, TUNABLE_TIMEOUTLINGER);
     session.d = NULL;
   }
   
@@ -438,8 +439,8 @@ void data_close(int quiet) {
  */
 void data_cleanup(void) {
   /* sanity check */
-  if(session.d) {
-    inet_lingering_close(session.pool,session.d);
+  if (session.d) {
+    inet_lingering_close(session.pool, session.d, TUNABLE_TIMEOUTLINGER);
     session.d = NULL;
   }
 
@@ -459,8 +460,8 @@ void data_abort(int err, int quiet) {
   int true_abort = XFER_ABORTED;
   
   curf = NULL;
-  if(session.d) {
-    inet_lingering_close(session.pool,session.d);
+  if (session.d) {
+    inet_lingering_close(session.pool, session.d, TUNABLE_TIMEOUTLINGER);
     session.d = NULL;
   }
   
