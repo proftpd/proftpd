@@ -2259,7 +2259,9 @@ MODRET tls_auth(cmd_rec *cmd) {
 
   } else {
     pr_response_add_err(R_504, "AUTH %s unsupported", cmd->argv[1]);
-    return ERROR(cmd);
+
+    /* Allow other RFC2228 modules a chance a handling this command. */
+    return DECLINED(cmd);
   }
 
   return HANDLED(cmd);
