@@ -1,15 +1,15 @@
 mod_ratio.c - Ratio system module for ProFTPD - README
 
-Copyright (c) 2000 Jim Dogopoulos <jd@dynw.com>
+Copyright (c) 2002 James Dogopoulos <james@dynw.com>
 Portions Copyright (c) 1998-1999 Johnie Ingram. <johnie@netgod.net>
 
 -----------------------------------------------------------------------
 
 LATEST CHANGES:
 
-* 2000-08-01: v3.2: Fixed CwdRatio directive. Ratios are no longer part
-  of CWD or NOOP commands. Fixed file byte ratio printing. It is now
-  UL:DL - the way it was meant to be. Updated README.ratio file.
+   * 2002-05-24: v3.3: Fixed numerous bugs and compatibility issues with
+     changing code within ProFTPD. In other words, it /works/ again!
+     Added default AnonRatio support (AnonRatio * ...).
 
 -- See mod_ratio.c for previous version changes.
 
@@ -103,6 +103,17 @@ user 3 bytes of creadit for every 1 byte uploaded.
 Specifying a ratio as a negative number will swap the ratio, for
 instance... "UserRatio jd 0 0 -3 0" would give the user jd a 3:1 byte
 ratio, requiring jd to upload 3 bytes for every 1 byte he downloads.
+
+Here's a multi-user anonymous ratio example:
+
+AnonRatio                       james@dynw.com 0 0 3 50000
+AnonRatio                       * 0 0 3 10000
+
+If someone logs in with anonymous and gives the e-mail address of
+james@dynw.com, they will get 48MB credit. Everyone else will get 9MB.
+It's important to put the individual users BEFORE the global "*" command
+directive or else they will not take effect.
+
 
 
 MORE Notes:

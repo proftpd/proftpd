@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_ratio -- Support upload/download ratios.
- * Copyright (c) 2000 Jim Dogopoulos.
+ * Copyright (c) 2002 James Dogopoulos.
  * Portions Copyright (c) 1998-1999 Johnie Ingram.
  *  
  * This program is free software; you can redistribute it and/or modify
@@ -18,13 +18,17 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#define MOD_RATIO_VERSION "mod_ratio/3.2"
+#define MOD_RATIO_VERSION "mod_ratio/3.3"
 
-/* This is mod_ratio, contrib software for proftpd 1.2.0pre10 and above.
-   For more information contact Jim Dogopoulos <jd@dynw.com> or
+/* This is mod_ratio, contrib software for proftpd 1.2.0 and above.
+   For more information contact James Dogopoulos <jd@dynw.com> or
    Johnie Ingram <johnie@netgod.net>.
 
    History Log:
+
+   * 2002-05-24: v3.3: Fixed numerous bugs and compatibility issues with
+     changing code within ProFTPD. In other words, it /works/ again!
+     Added default AnonRatio support (AnonRatio * ...).
 
    * 2000-08-01: v3.2: Fixed CwdRatio directive. Ratios are no longer part
      of CWD or NOOP commands. Fixed file byte ratio printing. It is now
@@ -114,11 +118,16 @@ _make_cmd (pool * cp, int argc, ...)
   cmd_rec *c;
   int i;
 
-  c = pcalloc (cp, sizeof (cmd_rec));
+  pool *newpool = NULL;
+  newpool = make_named_sub_pool( cp, "temp pool" );
+  c = pcalloc(newpool, sizeof(cmd_rec));
+
+  c->pool = newpool;
+  c->argv = pcalloc(newpool, sizeof(void *) * (argc + 1));
+
   c->argc = argc;
   c->symtable_index = -1;
 
-  c->argv = pcalloc (cp, sizeof (void *) * (argc + 1));
   c->argv[0] = MOD_RATIO_VERSION;
   va_start (args, argc);
   for (i = 0; i < argc; i++)
@@ -168,7 +177,7 @@ _set_stats (char *fstor, char *fretr, char *bstor, char *bretr)
   if (fretr)
     stats.fretr = atoi (fretr);
   if (bstor)
-    stats.bstor = atoi (bretr);
+    stats.bstor = atoi (bstor);
   if (bretr)
     stats.bretr = atoi (bretr);
 }
@@ -194,8 +203,7 @@ stats.frate = stats.fcred = stats.brate = stats.bcred = 0;
     }
   else
     {
-      stats.files = (stats.fstor / (stats.frate * -1))
-	+ stats.fcred - stats.fretr;
+      stats.files = (stats.fstor / (stats.frate * -1)) + stats.fcred - stats.fretr;
       snprintf (stats.ftext, sizeof(stats.ftext), "%i:1F", stats.frate * -1);
     }
 
@@ -206,8 +214,7 @@ stats.frate = stats.fcred = stats.brate = stats.bcred = 0;
     }
   else
     {
-      stats.bytes = (stats.bstor / (stats.brate * -1))
-	+ stats.bcred - stats.bretr;
+      stats.bytes = (stats.bstor / (stats.brate * -1)) + stats.bcred - stats.bretr;
       snprintf (stats.btext, sizeof(stats.btext), "%i:1B", stats.brate * -1);
     }
 }
@@ -221,7 +228,7 @@ MODRET _calc_ratios (cmd_rec * cmd)
   char *mask;
   char **data;
 
-  if (!(g.enable = get_param_int (CURRENT_CONF, "Ratios", FALSE) == TRUE))
+  if (!(g.enable = get_param_int (main_server->conf, "Ratios", FALSE) == TRUE))
     return DECLINED (cmd);
 
   mr = _dispatch (cmd, "getstats");
@@ -246,16 +253,16 @@ MODRET _calc_ratios (cmd_rec * cmd)
       return DECLINED (cmd);
     }
 
-  c = find_config (CURRENT_CONF, CONF_PARAM, "HostRatio", TRUE);
+  c = find_config (main_server->conf, CONF_PARAM, "HostRatio", TRUE);
   while (c)
     {
-      mask = buf;
+     mask = buf;
       if (*(char *) c->argv[0] == '.')
 	{
 	  *mask++ = '*';
 	  sstrncpy (mask, c->argv[0], sizeof (buf));
 	}
-      else if (*(char *) (c->argv[0] + (strlen (c->argv[0]) - 1)) == '.')
+      else if (*(char *) ((char *) c->argv[0] + (strlen (c->argv[0]) - 1)) == '.')
 	{
 	  sstrncpy (mask, c->argv[0], sizeof(buf) - 2);
 	  sstrcat(buf, "*", sizeof(buf));
@@ -274,10 +281,11 @@ MODRET _calc_ratios (cmd_rec * cmd)
       c = find_config_next (c, c->next, CONF_PARAM, "HostRatio", FALSE);
     }
 
-  c = find_config (CURRENT_CONF, CONF_PARAM, "AnonRatio", TRUE);
+  c = find_config (main_server->conf, CONF_PARAM, "AnonRatio", TRUE);
   while (c)
     {
-      if (session.anon_user && !strcmp (c->argv[0], session.anon_user))
+      if ((session.anon_user && !strcmp (c->argv[0], session.anon_user)) ||
+		*(char *) c->argv[0] == '*')
 	{
 	  _set_ratios (c->argv[1], c->argv[2], c->argv[3], c->argv[4]);
 	  g.rtype = "a";
@@ -286,7 +294,7 @@ MODRET _calc_ratios (cmd_rec * cmd)
       c = find_config_next (c, c->next, CONF_PARAM, "AnonRatio", FALSE);
     }
 
-  c = find_config (CURRENT_CONF, CONF_PARAM, "UserRatio", TRUE);
+  c = find_config (main_server->conf, CONF_PARAM, "UserRatio", TRUE);
   while (c)
     {
       if (*(char *) c->argv[0] == '*' || !strcmp (c->argv[0], g.user))
@@ -298,7 +306,7 @@ MODRET _calc_ratios (cmd_rec * cmd)
       c = find_config_next (c, c->next, CONF_PARAM, "UserRatio", FALSE);
     }
 
-  c = find_config (CURRENT_CONF, CONF_PARAM, "GroupRatio", TRUE);
+  c = find_config (main_server->conf, CONF_PARAM, "GroupRatio", TRUE);
   while (c)
     {
       if (!strcmp (c->argv[0], session.group))
@@ -438,7 +446,8 @@ pre_cmd (cmd_rec * cmd)
 {
   if (g.enable)
     {
-      if (!strcasecmp (cmd->argv[0], "STOR"))
+    /*  if (!strcasecmp (cmd->argv[0], "STOR")) */
+      if (strcasecmp (cmd->argv[0], "STOR") || strcasecmp(cmd->argv[0], "RETR"))
 	_calc_ratios (cmd);
       _log_ratios (cmd);
     }
@@ -449,7 +458,7 @@ MODRET
 cmd_cwd (cmd_rec * cmd)
 {
   char *dir;
-  config_rec *c = find_config (CURRENT_CONF, CONF_PARAM, "CwdRatioMsg", TRUE);
+  config_rec *c = find_config (main_server->conf, CONF_PARAM, "CwdRatioMsg", TRUE);
   if (c)
     {
       dir = dir_realpath (cmd->tmp_pool, cmd->argv[1]);
