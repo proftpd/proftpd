@@ -737,7 +737,7 @@ static int tls_init_server(void) {
         "TLSCertificateChainFile", FALSE))) {
       STACK_OF(X509_NAME) *ca_certs = SSL_load_client_CA_file(tls_ca_chain);
 
-      if (certs)
+      if (ca_certs)
         SSL_CTX_set_client_CA_list(ssl_ctx, ca_certs);
 
       else
