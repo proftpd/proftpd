@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.509 2003-11-09 19:53:47 castaglia Exp $
+$Id: NEWS,v 1.510 2003-11-12 16:20:44 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -37,6 +37,7 @@ CVS
 - Bug 2046 - Change RFNR and RNTO logging class to WRITE.  This means that
   ExtendedLogs that use the WRITE logging class will now include the
   RNFR and RNTO commands.
+- Mac OS X 10.3 portability fixes.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------
