@@ -31,7 +31,7 @@
  *   Copyright (C) 1985, 86, 87, 88, 89, 91, 92, 93, 1994, 1995, 1997
  *     Free Software Foundation, Inc.
  * 
- * $Id: mod_load.c,v 1.4 2005-01-01 19:02:06 castaglia Exp $
+ * $Id: mod_load.c,v 1.5 2005-01-01 19:13:35 castaglia Exp $
  * $Libraries: $
  */
 
@@ -449,7 +449,7 @@ static kvm_t *kd;
  * but may be less than NELEM), or -1 if an error occurred.
  */
 
-int getloadavg(double *loadavg, int nelem) {
+static int getloadavg(double *loadavg, int nelem) {
   int elem = 0;                 /* Return value.  */
 
 # ifdef NO_GET_LOAD_AVG
