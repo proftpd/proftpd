@@ -725,7 +725,16 @@ static int tls_init_server(void) {
       verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
 
     SSL_CTX_set_verify(ssl_ctx, verify_mode, tls_verify_cb);
-    SSL_CTX_set_verify_depth(ssl_ctx, tls_verify_depth);
+
+    /* Note: we add one to the configured depth purposefully.  As noted
+     * in the OpenSSL man pages, the verification process will silently
+     * stop at the configured depth, and the error messages ensuing will
+     * be that of an incomplete certificate chain, rather than the
+     * "chain too long" error that might be expected.  To log the "chain
+     * too long" condition, we add one to the configured depth, and catch,
+     * in the verify callback, the exceeding of the actual depth.
+     */
+    SSL_CTX_set_verify_depth(ssl_ctx, tls_verify_depth + 1);
 
     /* Do not forget to configure the certs that the server will send to
      * the client when requesting a client cert.  Use the configured
@@ -1645,7 +1654,12 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
     tls_log("error: cert issuer: %s", tls_x509_name_oneline(
       X509_get_issuer_name(cert)));
 
+    /* Catch a too long certificate chain here. */
+    if (depth > tls_verify_depth)
+      X509_STORE_CTX_set_error(ctx, X509_V_ERR_CERT_CHAIN_TOO_LONG);
+
     switch (ctx->error) {
+      case X509_V_ERR_CERT_CHAIN_TOO_LONG:
       case X509_V_ERR_CERT_HAS_EXPIRED:
       case X509_V_ERR_CERT_REVOKED:
       case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
