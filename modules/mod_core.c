@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.236 2004-06-10 21:51:55 castaglia Exp $
+ * $Id: mod_core.c,v 1.237 2004-07-09 18:24:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2863,6 +2863,8 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
 
   if (session.class && session.class->cls_name) {
     unsigned int *class_users = NULL;
+    config_rec *maxc = NULL;
+    unsigned int max_clients = 0;
 
     snprintf(config_class_users, sizeof(config_class_users),
       "CURRENT-CLIENTS-CLASS-%s", session.class->cls_name);
@@ -2872,7 +2874,33 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
     snprintf(mg_cur_class, sizeof(mg_cur_class), "%u",
       class_users ? *class_users : 0);
 
-    snprintf(mg_class_limit, sizeof(mg_class_limit), "%u", 0);
+    /* For the %z variable, first we scan through the MaxClientsPerClass,
+     * and use the first applicable one.  If none are found, look for
+     * any MaxClients set.
+     */
+
+    maxc = find_config(main_server->conf, CONF_PARAM, "MaxClientsPerClass",
+      FALSE);
+
+    while (maxc) {
+      if (strcmp(maxc->argv[0], session.class->cls_name) != 0) {
+        maxc = find_config_next(maxc, maxc->next, CONF_PARAM,
+          "MaxClientsPerClass", FALSE);
+        continue;
+      }
+
+      max_clients = *((unsigned int *) maxc->argv[1]);
+      break;
+    } 
+
+    if (max_clients == 0) {
+      maxc = find_config(main_server->conf, CONF_PARAM, "MaxClients", FALSE);
+
+      if (maxc)
+        max_clients = *((unsigned int *) maxc->argv[0]);
+    }
+
+    snprintf(mg_class_limit, sizeof(mg_class_limit), "%u", max_clients);
 
   } else {
     mg_cur_class[0] = 0;

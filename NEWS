@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.582 2004-06-30 17:52:25 castaglia Exp $
+$Id: NEWS,v 1.583 2004-07-09 18:24:17 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -44,6 +44,7 @@ CVS
 - Bug 2303 - Problem evaluating multiple <Class> rules.
 - Bug 2419 - Ability to disable TLSRequired on per-user basis (e.g. for
   anonymous logins).
+- Bug 2438 - Display variable %z not expanded properly.
 
 1.2.10rc1 - Released 28-Apr-2004
 ---------------------------------
