@@ -35,7 +35,9 @@ is the remote host name.
 is the size of the transferred file in bytes.
 .TP
 .I filename
-is the name of the transferred file.
+is the name of the transferred file.  If the filename contains any spaces or
+control characters, each such character is replaced by an underscore ('_')
+character.
 .TP
 .I transfer-type
 is a single character indicating the type of transfer. Can be one of:
