@@ -19,7 +19,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.12 1999-09-08 06:59:28 macgyver Exp $
+ * $Id: main.c,v 1.13 1999-09-10 19:49:32 macgyver Exp $
  */
 
 /*
@@ -870,6 +870,7 @@ static int _idle_timeout(CALLBACK_FRAME)
 
 void cmd_loop(server_rec *server, conn_t *c)
 {
+  static int CmdBufSize = -1;
   config_rec *id;
   char buf[1024];
   char *cp;
@@ -917,7 +918,18 @@ void cmd_loop(server_rec *server, conn_t *c)
     if(TimeoutIdle)
       reset_timer(TIMER_IDLE,NULL);
 
-    buf[1023] = '\0';
+    if(CmdBufSize == -1) {
+      if((CmdBufSize = get_param_int(main_server->conf,
+				     "CommandBufferSize", FALSE)) <= 0) {
+	CmdBufSize = 512;
+      } else if(CmdBufSize + 1 > sizeof(buf)) {
+	log_pri(LOG_WARNING,
+		"Invalid CommandBufferSize size given.  Resetting to 512.");
+	CmdBufSize = 512;
+      }
+    }
+    
+    buf[CmdBufSize - 1] = '\0';
     i = strlen(buf);
 
     if(i && (buf[i-1] == '\n' || buf[i-1] == '\n')) {
