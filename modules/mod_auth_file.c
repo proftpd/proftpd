@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.6 2003-01-05 01:29:38 jwm Exp $
+ * $Id: mod_auth_file.c,v 1.7 2003-01-17 21:47:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,7 +35,7 @@
 # include <crypt.h>
 #endif
 
-#define MOD_AUTHFILE_VERSION	"mod_auth_file/0.8.2"
+#define MOD_AUTH_FILE_VERSION	"mod_auth_file/0.8.2"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001020702
@@ -286,14 +286,14 @@ static unsigned char af_allow_grent(authfile_file_t *groupf,
   if (groupf->af_restricted_ids) {
 
     if (grp->gr_gid < groupf->af_min_id.gid) {
-      log_debug(DEBUG3, MOD_AUTHFILE_VERSION ": skipping group '%s': "
+      log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping group '%s': "
         "GID (%u) below the minimum allowed (%u)", grp->gr_name,
         (unsigned int) grp->gr_gid, (unsigned int) groupf->af_min_id.gid);
       return FALSE;
     }
 
     if (grp->gr_gid > groupf->af_max_id.gid) {
-      log_debug(DEBUG3, MOD_AUTHFILE_VERSION ": skipping group '%s': "
+      log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping group '%s': "
         "GID (%u) above the maximum allowed (%u)", grp->gr_name,
         (unsigned int) grp->gr_gid, (unsigned int) groupf->af_max_id.gid);
       return FALSE;
@@ -307,7 +307,7 @@ static unsigned char af_allow_grent(authfile_file_t *groupf,
 
     if ((res != 0 && !groupf->af_name_regex_inverted) ||
         (res == 0 && groupf->af_name_regex_inverted)) {
-      log_debug(DEBUG3, MOD_AUTHFILE_VERSION ": skipping group '%s': "
+      log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping group '%s': "
         "name '%s' does not meet allowed filter '%s'", grp->gr_name,
         grp->gr_name, groupf->af_name_filter);
       return FALSE;
@@ -408,8 +408,11 @@ static unsigned char af_setgrent(void) {
       af_current_group_file = af_current_group_file->af_next;
       continue;
 
-    } else
+    } else {
+      log_debug(DEBUG7, MOD_AUTH_FILE_VERSION ": using group file '%s'",
+        af_current_group_file->af_path);
       return TRUE;
+    }
   }
 
   return FALSE;
@@ -422,14 +425,14 @@ static unsigned char af_allow_pwent(authfile_file_t *passwdf,
   if (passwdf->af_restricted_ids) {
 
     if (pwd->pw_uid < passwdf->af_min_id.uid) {
-      log_debug(DEBUG3, MOD_AUTHFILE_VERSION ": skipping user '%s': "
+      log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping user '%s': "
         "UID (%u) below the minimum allowed (%u)", pwd->pw_name,
         (unsigned int) pwd->pw_uid, (unsigned int) passwdf->af_min_id.uid);
       return FALSE;
     }
 
     if (pwd->pw_uid > passwdf->af_max_id.gid) {
-      log_debug(DEBUG3, MOD_AUTHFILE_VERSION ": skipping user '%s': "
+      log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping user '%s': "
         "UID (%u) above the maximum allowed (%u)", pwd->pw_name,
         (unsigned int) pwd->pw_uid, (unsigned int) passwdf->af_max_id.uid);
       return FALSE;
@@ -443,7 +446,7 @@ static unsigned char af_allow_pwent(authfile_file_t *passwdf,
 
     if ((res != 0 && !passwdf->af_name_regex_inverted) ||
         (res == 0 && passwdf->af_name_regex_inverted)) {
-      log_debug(DEBUG3, MOD_AUTHFILE_VERSION ": skipping user '%s': "
+      log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping user '%s': "
         "name '%s' does not meet allowed filter '%s'", pwd->pw_name,
         pwd->pw_name, passwdf->af_name_filter);
       return FALSE;
@@ -457,7 +460,7 @@ static unsigned char af_allow_pwent(authfile_file_t *passwdf,
 
     if ((res != 0 && !passwdf->af_home_regex_inverted) ||
         (res == 0 && passwdf->af_home_regex_inverted)) {
-      log_debug(DEBUG3, MOD_AUTHFILE_VERSION ": skipping user '%s': "
+      log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping user '%s': "
         "home '%s' does not meet allowed filter '%s'", pwd->pw_name,
         pwd->pw_dir, passwdf->af_home_filter);
       return FALSE;
@@ -555,8 +558,11 @@ static unsigned char af_setpwent(void) {
       af_current_user_file = af_current_user_file->af_next;
       continue;
 
-    } else
+    } else {
+      log_debug(DEBUG7, MOD_AUTH_FILE_VERSION ": using passwd file '%s'",
+        af_current_user_file->af_path);
       return TRUE;
+    }
   }
 
   return FALSE;
@@ -653,7 +659,7 @@ MODRET authfile_setpwent(cmd_rec *cmd) {
     return HANDLED(cmd);
 
   log_debug(DEBUG2,
-    MOD_AUTHFILE_VERSION ": unable to find useable AuthUserFile");
+    MOD_AUTH_FILE_VERSION ": unable to find useable AuthUserFile");
 
   return DECLINED(cmd);
 }
@@ -831,7 +837,7 @@ MODRET authfile_setgrent(cmd_rec *cmd) {
     return HANDLED(cmd);
 
   log_debug(DEBUG2,
-    MOD_AUTHFILE_VERSION ": unable to find useable AuthGroupFile");
+    MOD_AUTH_FILE_VERSION ": unable to find useable AuthGroupFile");
 
   return DECLINED(cmd);
 }
@@ -877,10 +883,6 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
   if (!strcmp(crypt(cleartxt_pass, ciphertxt_pass), ciphertxt_pass))
     return HANDLED(cmd);
 
-  return DECLINED(cmd);
-}
-
-MODRET authfile_needpass(cmd_rec *cmd) {
   return DECLINED(cmd);
 }
 
@@ -1209,7 +1211,8 @@ static authtable authfile_authtab[] = {
   /* Miscellaneous callbacks */
   { 0, "auth",		authfile_auth },
   { 0, "check",		authfile_chkpass },
-  { 0, "needpass",	authfile_needpass }
+
+  { 0, NULL, NULL }
 };
 
 module auth_file_module = {

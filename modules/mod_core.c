@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.155 2003-01-17 16:46:23 castaglia Exp $
+ * $Id: mod_core.c,v 1.156 2003-01-17 21:47:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3784,7 +3784,7 @@ static int core_sess_init(void) {
       char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
       authtable *authtab = NULL;
 
-      for (authtab = m_authtable; authtab->name; authtab++) {
+      for (authtab = m_authtable; authtab && authtab->name; authtab++) {
         memset(buf, '\0', sizeof(buf));
         snprintf(buf, sizeof(buf), "mod_%s.c", authtab->m->name);
         buf[sizeof(buf)-1] = '\0';

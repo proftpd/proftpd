@@ -265,7 +265,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
           destroy_pool(curr_sym->sym_pool);
         }
 
-        tab = pr_stash_get_symbol(PR_SYM_CONF, sym_name, tab, &idx);
+        tab = pr_stash_get_symbol(PR_SYM_CONF, sym_name, NULL, &idx);
       }
 
       break;
@@ -289,7 +289,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
           destroy_pool(curr_sym->sym_pool);
         }
 
-        tab = pr_stash_get_symbol(PR_SYM_CMD, sym_name, tab, &idx);
+        tab = pr_stash_get_symbol(PR_SYM_CMD, sym_name, NULL, &idx);
       }
 
       break;
@@ -313,7 +313,7 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
           destroy_pool(curr_sym->sym_pool);
         }
 
-        tab = pr_stash_get_symbol(PR_SYM_AUTH, sym_name, tab, &idx);
+        tab = pr_stash_get_symbol(PR_SYM_AUTH, sym_name, NULL, &idx);
       }
 
       break;
@@ -597,9 +597,9 @@ int module_preparse_init(void) {
   push_array(mcmdarr);
   push_array(mautharr);
 
-  m_conftable = (conftable*)mconfarr->elts;
-  m_cmdtable = (cmdtable*)mcmdarr->elts;
-  m_authtable = (authtable*)mautharr->elts;
+  m_conftable = (conftable *) mconfarr->elts;
+  m_cmdtable = (cmdtable *) mcmdarr->elts;
+  m_authtable = (authtable *) mautharr->elts;
 
   return 0;
 }
