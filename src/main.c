@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.144 2002-12-16 15:12:58 jwm Exp $
+ * $Id: main.c,v 1.145 2002-12-16 15:15:19 jwm Exp $
  */
 
 #include "conf.h"
@@ -2330,6 +2330,7 @@ int main(int argc, char *argv[], char **envp) {
   int optc, check_config_syntax = 0, show_version = 0;
   const char *cmdopts = "D:nd:c:p:lhtv";
   mode_t *main_umask = NULL;
+  socklen_t socketp;
   struct sockaddr peer;
 
 #ifdef DEBUG_MEMORY
@@ -2380,7 +2381,8 @@ int main(int argc, char *argv[], char **envp) {
   srand(time(NULL));
 
   /* getpeername() fails if the fd isn't a socket */
-  if (getpeername(fileno(stdin), &peer, sizeof(peer)) != -1)
+  socketp = sizeof(peer);
+  if (getpeername(fileno(stdin), &peer, &socketp) != -1)
     log_stderr(FALSE);
 
   /* Open the syslog */
