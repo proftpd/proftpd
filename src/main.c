@@ -25,7 +25,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.75 2002-03-06 16:56:33 flood Exp $
+ * $Id: main.c,v 1.76 2002-05-08 19:21:33 castaglia Exp $
  */
 
 /*
@@ -1164,7 +1164,7 @@ void main_rehash(void *d1,void *d2,void *d3,void *d4)
 
     for(rh = rehash_list; rh; rh=rh->next)
       rh->rehash(rh->data);
-    
+   
     init_config();
     init_conf_stacks();
 

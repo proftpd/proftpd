@@ -231,6 +231,7 @@ struct pool {
 };
 
 pool *permanent_pool = NULL;
+pool *global_config_pool = NULL;
 
 /* Each pool structure is allocated in the start of it's own first block,
  * so there is a need to know how many bytes that is (once properly

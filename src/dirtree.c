@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.49 2002-05-08 18:39:36 castaglia Exp $
+ * $Id: dirtree.c,v 1.50 2002-05-08 19:21:33 castaglia Exp $
  */
 
 /* History:
@@ -55,6 +55,9 @@ int TimeoutIdle = TUNABLE_TIMEOUTIDLE;
 int TimeoutNoXfer = TUNABLE_TIMEOUTNOXFER;
 int TimeoutStalled = TUNABLE_TIMEOUTSTALLED;
 char MultilineRFC2228 = 0;
+
+/* from src/pool.c */
+extern pool *global_config_pool;
 
 /* Used by find_config_* */
 xaset_t *find_config_top = NULL;
@@ -368,12 +371,17 @@ config_rec *start_sub_config(const char *name) {
   }
 
   /* allocate a sub-pool for this config_rec.  Note: special
-   * exception for <Global> configs -- the parent pool is permanent_pool,
-   * not the pool of the parent server.  This keeps <Global> config recs
-   * from being freed prematurely.
+   * exception for <Global> configs -- the parent pool is global_config_pool
+   * (a pool just for this context), not the pool of the parent server.  This
+   * keeps <Global> config recs from being freed prematurely, and helps to
+   * avoid memory leaks.
    */
-  if (!strcmp(name, "<Global>"))
-    parent_pool = permanent_pool;
+  if (!strcmp(name, "<Global>")) {
+    if (!global_config_pool)
+      global_config_pool = make_named_sub_pool(permanent_pool,
+        "<Global> configs");
+    parent_pool = global_config_pool;
+  }
 
   c_pool = make_sub_pool(parent_pool);
   c = (config_rec *) pcalloc(c_pool, sizeof(config_rec));
@@ -2530,9 +2538,14 @@ void fixup_servers()
   clear_inet_pool();
 }
 
-void init_config()
-{
+void init_config() {
   pool *pool = make_sub_pool(permanent_pool);
+
+  /* Make sure global_config_pool is destroyed */
+  if (global_config_pool) {
+    destroy_pool(global_config_pool);
+    global_config_pool = NULL;
+  }
 
   servers = xaset_create(pool,NULL);
 

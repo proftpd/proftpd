@@ -25,7 +25,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.68 2002-05-08 18:39:35 castaglia Exp $
+ * $Id: mod_auth.c,v 1.69 2002-05-08 19:21:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -563,15 +563,17 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
   pw = passwd_dup(p,pw);
 
-  if(pw->pw_uid == 0) {
+  if (pw->pw_uid == 0) {
+    unsigned char *root_allow = NULL;
+ 
     /* If RootLogin is set to true, we allow this... even though we
      * still log a warning. :)
      */
-
-    if(get_param_int((c ? c->subset : main_server->conf),
-		     "RootLogin", FALSE) != 1) {
+    if ((root_allow = get_param_ptr(c ? c->subset : main_server->conf,
+        "RootLogin", FALSE)) == NULL || *root_allow != TRUE) {
       log_auth(LOG_CRIT, "SECURITY VIOLATION: root login attempted.");
       return 0;
+
     } else {
       log_auth(LOG_WARNING, "ROOT FTP login successful.");
     }
@@ -1658,14 +1660,21 @@ MODRET set_authaliasonly(cmd_rec *cmd) {
 }
 
 MODRET set_rootlogin(cmd_rec *cmd) {
-  int bool;
+  int bool = -1;
+  config_rec *c = NULL;
+
   CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
   
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
  
-  add_config_param("RootLogin", 1, (void*) bool);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = (unsigned char) bool;
+
+  c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
@@ -1789,10 +1798,10 @@ MODRET add_userdirroot (cmd_rec *cmd) {
 
 static conftable auth_config[] = {
   { "AuthAliasOnly",		set_authaliasonly,		NULL },
-  { "RootLogin",		set_rootlogin,			NULL },
   { "LoginPasswordPrompt",	set_loginpasswordprompt,	NULL },
   { "DefaultRoot",		add_defaultroot,		NULL },
   { "DefaultChdir",		add_defaultchdir,		NULL },
+  { "RootLogin",		set_rootlogin,			NULL },
   { "UserDirRoot",		add_userdirroot,		NULL },
   { NULL,			NULL,				NULL }
 };
