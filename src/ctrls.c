@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.8 2004-04-14 18:11:42 castaglia Exp $
+ * $Id: ctrls.c,v 1.9 2004-05-26 19:25:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -335,10 +335,10 @@ int pr_ctrls_add_arg(pr_ctrls_t *ctrl, char *ctrls_arg) {
   return 0;
 }
 
-int pr_ctrls_copy_args(pr_ctrls_t *src_ctrl, pr_ctrls_t *dest_ctrl) {
+int pr_ctrls_copy_args(pr_ctrls_t *src_ctrl, pr_ctrls_t *dst_ctrl) {
 
   /* Sanity checks */
-  if (!src_ctrl || !dest_ctrl) {
+  if (!src_ctrl || !dst_ctrl) {
     errno = EINVAL;
     return -1;
   }
@@ -349,19 +349,27 @@ int pr_ctrls_copy_args(pr_ctrls_t *src_ctrl, pr_ctrls_t *dest_ctrl) {
   if (!src_ctrl->ctrls_cb_args)
     return 0;
 
-  /* Overwrite any existing dest_ctrl->ctrls_cb_args.  This is OK, as
+  /* Make sure the pr_ctrls_t has a temporary pool, from which the args will
+   * be allocated.
+   */
+  if (!dst_ctrl->ctrls_tmp_pool) {
+    dst_ctrl->ctrls_tmp_pool = make_sub_pool(ctrls_pool);
+    pr_pool_tag(dst_ctrl->ctrls_tmp_pool, "ctrls tmp pool");
+  }
+
+  /* Overwrite any existing dst_ctrl->ctrls_cb_args.  This is OK, as
    * the ctrl will be reset (cleared) once it has been processed.
    */
-  dest_ctrl->ctrls_cb_args = copy_array(dest_ctrl->ctrls_tmp_pool,
+  dst_ctrl->ctrls_cb_args = copy_array(dst_ctrl->ctrls_tmp_pool,
     src_ctrl->ctrls_cb_args);
 
   return 0;
 }
 
-int pr_ctrls_copy_resps(pr_ctrls_t *src_ctrl, pr_ctrls_t *dest_ctrl) {
+int pr_ctrls_copy_resps(pr_ctrls_t *src_ctrl, pr_ctrls_t *dst_ctrl) {
 
   /* sanity checks */
-  if (!src_ctrl || !dest_ctrl) {
+  if (!src_ctrl || !dst_ctrl) {
     errno = EINVAL;
     return -1;
   }
@@ -369,12 +377,12 @@ int pr_ctrls_copy_resps(pr_ctrls_t *src_ctrl, pr_ctrls_t *dest_ctrl) {
   /* The source ctrl must have a ctrls_cb_resps member, and the destination
    * ctrl must not have a ctrls_cb_resps member.
    */
-  if (!src_ctrl->ctrls_cb_resps || dest_ctrl->ctrls_cb_resps) {
+  if (!src_ctrl->ctrls_cb_resps || dst_ctrl->ctrls_cb_resps) {
     errno = EINVAL;
     return -1;
   }
 
-  dest_ctrl->ctrls_cb_resps = copy_array(dest_ctrl->ctrls_tmp_pool,
+  dst_ctrl->ctrls_cb_resps = copy_array(dst_ctrl->ctrls_tmp_pool,
     src_ctrl->ctrls_cb_resps);
 
   return 0;
