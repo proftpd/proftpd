@@ -44,7 +44,6 @@
 
 #include "conf.h"
 #include "privs.h"
-#include "fs.h"
 #include "mod_sql.h"
 
 /* default information for tables and fields */
