@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.120 2002-12-11 23:28:38 castaglia Exp $
+ * $Id: mod_auth.c,v 1.121 2002-12-11 23:33:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -145,7 +145,7 @@ static int auth_sess_init(void) {
 
   /* If DisplayConnect is configured, we'll need to scan the scoreboard
    * now, in order to tally up certain values for substituting in any
-   * of the DisplayConnect's file variables.
+   * of the Display* file variables.
    */
   if (get_param_ptr(main_server->conf, "DisplayConnect", FALSE) != NULL)
     auth_scan_scoreboard();
@@ -1447,7 +1447,9 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
   }
 
   remove_config(cmd->server->conf, "CURRENT-CLIENTS", FALSE);
-  add_config_param_set(&cmd->server->conf, "CURRENT-CLIENTS", 1, (void *) cur);
+  c = add_config_param_set(&cmd->server->conf, "CURRENT-CLIENTS", 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = cur;
 
   if (classes_enabled) {
     remove_config(cmd->server->conf, "CURRENT-CLASS", FALSE);
@@ -1457,7 +1459,9 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     snprintf(config_class_users, sizeof(config_class_users), "%s-%s",
              "CURRENT-CLIENTS-CLASS", session.class->name);
     remove_config(cmd->server->conf, config_class_users, FALSE);
-    add_config_param_set(&cmd->server->conf, config_class_users, 1, ccur);
+    c = add_config_param_set(&cmd->server->conf, config_class_users, 1, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(int));
+    *((int *) c->argv[0]) = ccur;
 
     /* Too many users in this class? */
     if (ccur >= session.class->max_connections) {

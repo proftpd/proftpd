@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.50 2002-12-10 21:02:17 castaglia Exp $
+ * $Id: support.c,v 1.51 2002-12-11 23:33:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -707,8 +707,7 @@ char *make_arg_str(pool *p, int argc, char **argv) {
   return res;
 }
 
-char *sreplace(pool *p, char *s, ...)
-{
+char *sreplace(pool *p, char *s, ...) {
   va_list args;
   char *m,*r,*src = s,*cp;
   char **mptr,**rptr;

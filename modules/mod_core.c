@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.137 2002-12-11 23:28:39 castaglia Exp $
+ * $Id: mod_core.c,v 1.138 2002-12-11 23:33:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2425,6 +2425,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
 
     snprintf(mg_cur_class, sizeof(mg_cur_class), "%d",
       class_users ? *class_users : 0);
+
     snprintf(mg_class_limit, sizeof(mg_class_limit), "%u",
       session.class->max_connections);
 
