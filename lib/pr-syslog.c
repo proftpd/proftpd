@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  */
 
-/* $Id: pr-syslog.c,v 1.13 2003-05-27 20:42:46 castaglia Exp $
+/* $Id: pr-syslog.c,v 1.14 2003-06-27 07:10:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -77,7 +77,7 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
   if ((pri & LOG_FACMASK) == 0)
     pri |= log_facility;
 
-#if defined(HAVE_DEV_LOG_STREAMS) && !defined(SYSV5UNIXWARE7)
+#ifndef HAVE_DEV_LOG_STREAMS
   snprintf(logbuf, sizeof(logbuf), "<%d>", pri);
   logbuf[sizeof(logbuf)-1] = '\0';
   buflen = strlen(logbuf);
@@ -159,7 +159,7 @@ void pr_syslog(int sockfd, int pri, const char *fmt, ...) {
   va_end(ap);
 }
 
-#ifdef HAVE_DEV_LOG_STREAMS
+#ifndef HAVE_DEV_LOG_STREAMS
 /* AF_UNIX address of local logger */
 static struct sockaddr syslog_addr;
 #endif
@@ -175,7 +175,7 @@ int pr_openlog(const char *ident, int opts, int facility) {
   if (facility != 0 && (facility &~ LOG_FACMASK) == 0)
     log_facility = facility;
 
-#if defined(HAVE_DEV_LOG_STREAMS) && !defined(SYSV5UNIXWARE7)
+#ifndef HAVE_DEV_LOG_STREAMS
   while (1) {
     if (sockfd == -1) {
       syslog_addr.sa_family = AF_UNIX;
