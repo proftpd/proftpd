@@ -335,7 +335,7 @@ struct pool *make_named_sub_pool(struct pool *p, const char *symbol)
   if(symbol) {
     /* This could be questionable... - MacGyver
      */
-    strncpy(&new_pool->symbol,symbol,strlen(symbol));
+    strncpy(&new_pool->symbol,symbol,strlen(&new_pool->symbol));
     blok->h.first_avail += strlen(symbol);
   }
   
