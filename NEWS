@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.446 2003-06-24 01:47:19 castaglia Exp $
+$Id: NEWS,v 1.447 2003-07-07 18:27:11 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -32,6 +32,7 @@ CVS
 - Bug 2090 - mod_rewrite doesn't compile on Solaris 8.  The FIONREAD macro
   was undefined, due to a strange necessity in the Solaris system headers
   for a missing flag.
+- Bug 2100 - Invalid domain in <VirtualHost> tag causes segmentation fault.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.180 2003-06-27 07:13:54 castaglia Exp $
+ * $Id: mod_core.c,v 1.181 2003-07-07 18:27:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2533,11 +2533,15 @@ MODRET end_virtualhost(cmd_rec *cmd) {
   else
     address = inet_gethostname(cmd->tmp_pool);
 
-  ipaddr = inet_getaddr(cmd->tmp_pool, address);
+  if ((ipaddr = inet_getaddr(cmd->tmp_pool, address)) == NULL)
+    /* This bad server context will be removed in fixup_servers, after
+     * the parsing has completed, so we need do nothing else here.
+     */
+    log_pri(PR_LOG_ERR, "error: unable to determine IP address of '%s'",
+       address);
 
-  /* Check if this server's address/port combination is already being used.
-   */
-  for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+  /* Check if this server's address/port combination is already being used. */
+  for (s = (server_rec *) server_list->xas_list; ipaddr && s; s = s->next) {
 
     /* Have to resort to duplicating some of fixup_servers()'s
      * functionality here, to do this check The Right Way(tm).
@@ -2553,7 +2557,11 @@ MODRET end_virtualhost(cmd_rec *cmd) {
 
       serv_ipaddr = inet_getaddr(cmd->tmp_pool, serv_addr);
 
-      if (ipaddr->s_addr == serv_ipaddr->s_addr &&
+      if (!serv_ipaddr) {
+        log_pri(PR_LOG_ERR, "error: unable to determine IP address of '%s'",
+          serv_addr);
+
+      } else if (ipaddr->s_addr == serv_ipaddr->s_addr &&
           cmd->server->ServerPort == s->ServerPort) {
         log_pri(PR_LOG_ERR, "error: \"%s\" address/port (%s:%d) already in use "
           "by \"%s\"", cmd->server->ServerName,
