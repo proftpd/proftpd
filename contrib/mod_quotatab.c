@@ -28,13 +28,13 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.13 2004-12-04 07:52:40 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.14 2004-12-16 22:55:46 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
 
 typedef struct regtab_obj {
-  struct regtab_obj *next;
+  struct regtab_obj *prev, *next;
  
   /* Table source type name */
   const char *regtab_name;
@@ -56,11 +56,13 @@ module quotatab_module;
 static quota_table_t *limit_tab;
 static quota_table_t *tally_tab;
 
-/* Memory pool for this module */
+/* Memory pools for this module */
 static pool *quotatab_pool = NULL;
+static pool *quotatab_backend_pool = NULL;
 
 /* List of registered quotatab sources */
-static quota_regtab_t *quota_regtab_list = NULL;
+static quota_regtab_t *quotatab_backends = NULL;
+static unsigned int quotatab_nbackends = 0;
 
 /* Logging data */
 static int quota_logfd = -1; 
@@ -430,35 +432,39 @@ static int quotatab_create(void) {
   return TRUE;
 }
 
+static quota_regtab_t *quotatab_get_backend(const char *backend,
+    unsigned int srcs) {
+  quota_regtab_t *regtab;
+
+  for (regtab = quotatab_backends; regtab; regtab = regtab->next) {
+    if ((regtab->regtab_srcs & srcs) &&
+        strcmp(regtab->regtab_name, backend) == 0)
+      return regtab;
+  }
+
+  errno = ENOENT;
+  return NULL;
+}
+
 static int quotatab_open(quota_tabtype_t tab_type) {
 
   if (tab_type == TYPE_TALLY) {
     register config_rec *c = NULL;
     register quota_regtab_t *regtab = NULL;
-    unsigned char have_type = FALSE;
 
-    if ((c = find_config(main_server->conf, CONF_PARAM, "QuotaTallyTable",
-        FALSE)) == NULL) {
+    c = find_config(main_server->conf, CONF_PARAM, "QuotaTallyTable", FALSE);
+    if (!c) {
       quotatab_log("notice: no QuotaTallyTable configured");
       return -1;
     }
 
-    /* Look up the table source open routine by name, and invoke it */
-    for (regtab = quota_regtab_list; regtab; regtab = regtab->next) {
-      if ((regtab->regtab_srcs & QUOTATAB_TALLY_SRC) &&
-          !strcmp(regtab->regtab_name, (char *) c->argv[0])) {
-        if ((tally_tab = regtab->regtab_open(quotatab_pool, TYPE_TALLY,
-            c->argv[1])) == NULL)
-          return -1;
+    regtab = quotatab_get_backend(c->argv[0], QUOTATAB_TALLY_SRC);
+    if (regtab) {
+      tally_tab = regtab->regtab_open(quotatab_pool, TYPE_TALLY, c->argv[1]);
+      if (!tally_tab)
+        return -1;
 
-        else {
-          have_type = TRUE;
-          break;
-        }
-      }
-    }
-
-    if (!have_type) {
+    } else {
       quotatab_log("error: unsupported tally table type: '%s'", c->argv[0]);
       return -1;
     }
@@ -466,30 +472,21 @@ static int quotatab_open(quota_tabtype_t tab_type) {
   } else if (tab_type == TYPE_LIMIT) {
     register config_rec *c = NULL;
     register quota_regtab_t *regtab = NULL;
-    unsigned char have_type = FALSE;
 
-    if ((c = find_config(main_server->conf, CONF_PARAM, "QuotaLimitTable",
-        FALSE)) == NULL) {
+    c = find_config(main_server->conf, CONF_PARAM, "QuotaLimitTable", FALSE);
+    if (!c) {
       quotatab_log("notice: no QuotaLimitTable configured");
       return -1;
     }
 
     /* Look up the table source open routine by name, and invoke it */
-    for (regtab = quota_regtab_list; regtab; regtab = regtab->next) {
-      if ((regtab->regtab_srcs & QUOTATAB_LIMIT_SRC) &&
-          !strcmp(regtab->regtab_name, (char *) c->argv[0])) {
-        if ((limit_tab = regtab->regtab_open(quotatab_pool, TYPE_LIMIT,
-            c->argv[1])) == NULL)
-          return -1;
+    regtab = quotatab_get_backend(c->argv[0], QUOTATAB_LIMIT_SRC);
+    if (regtab) {
+      limit_tab = regtab->regtab_open(quotatab_pool, TYPE_LIMIT, c->argv[1]);
+      if (!limit_tab)
+        return -1;
 
-        else {
-          have_type = TRUE;
-          break;
-        }
-      }
-    }
-
-    if (!have_type) {
+    } else {
       quotatab_log("error: unsupported limit table type: '%s'", c->argv[0]);
       return -1;
     }
@@ -533,25 +530,41 @@ int quotatab_read(void) {
   return bread;
 }
 
-int quotatab_register(const char *srcname,
+/* This function is used by mod_quotatab backends, to register their
+ * individual backend table function pointers with the main mod_quotatab
+ * module.
+ */
+int quotatab_register_backend(const char *backend,
     quota_table_t *(*srcopen)(pool *, quota_tabtype_t, const char *),
-    unsigned int tabsrcs) {
+    unsigned int srcs) {
+  quota_regtab_t *regtab;
 
-  /* Note: I know that use of permanent_pool is discouraged as much as
-   * possible, but in this particular instance, I need a pool that
-   * persists across restarts.  The registration of a table type only
-   * happens once, on module init when the server first starts up, so
-   * this will not constitute a memory leak.
-   */
-  quota_regtab_t *regtab = pcalloc(permanent_pool, sizeof(quota_regtab_t));
- 
-  regtab->regtab_name = pstrdup(permanent_pool, srcname);
+  if (!backend || !srcopen) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (!quotatab_backend_pool) {
+    quotatab_backend_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(quotatab_backend_pool, MOD_QUOTATAB_VERSION ": Backend Pool");
+  }
+
+  /* Check to see if this backend has already been registered. */
+  regtab = quotatab_get_backend(backend, srcs);
+  if (regtab) {
+    errno = EEXIST;
+    return -1;
+  }
+
+  regtab = pcalloc(quotatab_backend_pool, sizeof(quota_regtab_t));
+  regtab->regtab_name = pstrdup(quotatab_backend_pool, backend);
   regtab->regtab_open = srcopen;
-  regtab->regtab_srcs = tabsrcs;
+  regtab->regtab_srcs = srcs;
 
   /* Add this object to the list. */
-  regtab->next = quota_regtab_list;
-  quota_regtab_list = regtab;
+  regtab->next = quotatab_backends;
+  quotatab_backends = regtab;
+  quotatab_nbackends++;
 
   return 0;
 }
@@ -579,6 +592,56 @@ static int quotatab_rlock(quota_tabtype_t tab_type) {
   /* default */
   errno = EINVAL;
   return -1;
+}
+
+/* Used by mod_quotatab backends to unregister their backend function pointers
+ * from the main mod_quotatab module.
+ */
+int quotatab_unregister_backend(const char *backend, unsigned int srcs) {
+  quota_regtab_t *regtab;
+
+  if (!backend) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Check to see if this backend has been registered. */
+  regtab = quotatab_get_backend(backend, srcs);
+  if (!regtab) {
+    errno = ENOENT;
+    return -1;
+  }
+
+#if !defined(PR_SHARED_MODULE)
+  /* If there is only one registered backend, it cannot be removed.
+   */
+  if (quotatab_nbackends == 1) {
+    errno = EPERM;
+    return -1;
+  }
+#endif
+
+  /* Remove this backend from the linked list. */
+  if (regtab->prev)
+    regtab->prev->next = regtab->next;
+  else
+    /* This backend is the start of the quotatab_backends list (prev is NULL),
+     * so we need to update the list head pointer as well.
+     */
+    quotatab_backends = regtab->next;
+
+  if (regtab->next)
+    regtab->next->prev = regtab->prev;
+
+  regtab->prev = regtab->next = NULL;
+
+  quotatab_nbackends--;
+
+  /* NOTE: a counter should be kept of the number of unregistrations,
+   * as the memory for a registration is not freed on unregistration.
+   */
+
+  return 0;
 }
 
 /* Note: this function will only find the first occurrence of the given
@@ -900,10 +963,11 @@ MODRET set_quotashowquotas(cmd_rec *cmd) {
 
 /* usage: Quota{Limit,Tally}Table <source-type:source-info> */
 MODRET set_quotatable(cmd_rec *cmd) {
-  register quota_regtab_t *regtab = NULL;
-  unsigned char have_registration = FALSE;
   char *tmp = NULL;
   unsigned int tabflag = 0;
+#if !defined(PR_SHARED_MODULE)
+  register quota_regtab_t *regtab = NULL;
+#endif /* PR_SHARED_MODULE */
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -919,22 +983,18 @@ MODRET set_quotatable(cmd_rec *cmd) {
   /* Verify that the requested source type has been registered, and supports
    * the table type (limit or tally).
    */
-  if (!strcasecmp(cmd->argv[0], "QuotaLimitTable"))
+  if (strcasecmp(cmd->argv[0], "QuotaLimitTable") == 0)
     tabflag = QUOTATAB_LIMIT_SRC;
 
-  else if (!strcasecmp(cmd->argv[0], "QuotaTallyTable"))
+  else if (strcasecmp(cmd->argv[0], "QuotaTallyTable") == 0)
     tabflag = QUOTATAB_TALLY_SRC;
 
-  for (regtab = quota_regtab_list; regtab; regtab = regtab->next)
-    if ((regtab->regtab_srcs & tabflag) &&
-        !strcasecmp(regtab->regtab_name, cmd->argv[1])) {
-      have_registration = TRUE;
-      break;
-    }
-
-  if (!have_registration)
+#if !defined(PR_SHARED_MODULE)
+  regtab = quotatab_get_backend(cmd->argv[1], tabflag);
+  if (!regtab)
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported table source type: '",
       cmd->argv[1], "'", NULL));
+#endif /* PR_SHARED_MODULE */
 
   add_config_param_str(cmd->argv[0], 2, cmd->argv[1], tmp);
   return HANDLED(cmd);
@@ -2116,6 +2176,18 @@ static void quotatab_exit_ev(const void *event_data, void *user_data) {
   return;
 }
 
+#if defined(PR_SHARED_MODULE)
+static void quotatab_mod_unload_ev(const void *event_data, void *user_data) {
+  if (strcmp("mod_quotatab.c", (const char *) event_data) == 0) {
+    pr_event_unregister(&quotatab_module, NULL, NULL);
+    if (quotatab_pool) {
+      destroy_pool(quotatab_pool);
+      quotatab_pool = NULL;
+    }
+  }
+}
+#endif
+
 static void quotatab_restart_ev(const void *event_data, void *user_data) {
 
   /* Reset the module's memory pool. */
@@ -2137,7 +2209,10 @@ static int quotatab_init(void) {
     pr_pool_tag(quotatab_pool, MOD_QUOTATAB_VERSION);
   }
 
-  /* Register a restart handler. */
+#if defined(PR_SHARED_MODULE)
+  pr_event_register(&quotatab_module, "core.module-unload",
+    quotatab_mod_unload_ev, NULL);
+#endif
   pr_event_register(&quotatab_module, "core.restart", quotatab_restart_ev,
     NULL); 
 

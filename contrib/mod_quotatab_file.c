@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_quotatab_file.c,v 1.1 2003-12-03 07:39:36 castaglia Exp $
+ * $Id: mod_quotatab_file.c,v 1.2 2004-12-16 22:55:46 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -41,6 +41,8 @@
 #else
 #  define QUOTATAB_IOV_BASE_TYPE        (void *)
 #endif
+
+module quotatab_file_module;
 
 static int filetab_close(quota_table_t *filetab) {
   int res = close(filetab->tab_handle);
@@ -406,12 +408,32 @@ static quota_table_t *filetab_open(pool *parent_pool,
   return tab;
 }
 
+/* Event handlers
+ */
+
+#if defined(PR_SHARED_MODULE)
+static void filetab_mod_unload_ev(const void *event_data, void *user_data) {
+  if (strcmp("mod_quotatab_file.c", (const char *) event_data) == 0) {
+    pr_event_unregister(&quotatab_file_module, NULL, NULL);
+    quotatab_unregister_backend("file", QUOTATAB_LIMIT_SRC|QUOTATAB_TALLY_SRC);
+  }
+}
+#endif /* PR_SHARED_MODULE */
+
+/* Initialization routines
+ */
+
 static int filetab_init(void) {
 
   /* Initialize the quota source objects for type "file".
    */
-  quotatab_register("file", filetab_open,
+  quotatab_register_backend("file", filetab_open,
     QUOTATAB_LIMIT_SRC|QUOTATAB_TALLY_SRC);
+
+#if defined(PR_SHARED_MODULE)
+  pr_event_register(&quotatab_file_module, "core.module-unload",
+    filetab_mod_unload_ev, NULL);
+#endif /* PR_SHARED_MODULE */
 
   return 0;
 }

@@ -27,6 +27,8 @@
 
 #include "mod_quotatab.h"
 
+module quotatab_ldap_module;
+
 static int ldaptab_close(quota_table_t *ldaptab) {
 
   /* Nothing really needs to be done here. */
@@ -131,8 +133,29 @@ static quota_table_t *ldaptab_open(pool *parent_pool, quota_tabtype_t tab_type,
   return tab;
 }
 
+/* Event handlers
+ */
+
+#if defined(PR_SHARED_MODULE)
+static void ldaptab_mod_unload_ev(const void *event_data, void *user_data) {
+  if (strcmp("mod_quotatab_ldap.c", (const char *) event_data) == 0) {
+    pr_event_unregister(&quotatab_ldap_module, NULL, NULL);
+    quotatab_unregister_backend("ldap", QUOTATAB_LIMIT_SRC);
+  }
+}
+#endif /* PR_SHARED_MODULE */
+
+/* Initialization routines
+ */
+
 static int ldaptab_init(void) {
-  quotatab_register("ldap", ldaptab_open, QUOTATAB_LIMIT_SRC);
+  quotatab_register_backend("ldap", ldaptab_open, QUOTATAB_LIMIT_SRC);
+
+#if defined(PR_SHARED_MODULE)
+  pr_event_register(&quotatab_ldap_module, "core.module-unload",
+    ldaptab_mod_unload_ev, NULL);
+#endif /* PR_SHARED_MODULE */
+
   return 0;
 }
 

@@ -29,7 +29,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.h,v 1.5 2004-12-04 07:52:40 castaglia Exp $
+ * $Id: mod_quotatab.h,v 1.6 2004-12-16 22:55:46 castaglia Exp $
  */
 
 #ifndef MOD_QUOTATAB_H
@@ -38,7 +38,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_QUOTATAB_VERSION "mod_quotatab/1.2.13"
+#define MOD_QUOTATAB_VERSION "mod_quotatab/1.2.14"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030001
@@ -192,9 +192,10 @@ quota_deltas_t quotatab_deltas;
 /* Function prototypes necessary for quotatab sub-modules */
 int quotatab_log(const char *, ...);
 int quotatab_openlog(void);
-int quotatab_register(const char *,
+int quotatab_register_backend(const char *,
   quota_table_t *(*tab_open)(pool *, quota_tabtype_t, const char *),
   unsigned int);
+int quotatab_unregister_backend(const char *, unsigned int);
 
 /* Function prototypes necessary for consumers of quotatab data. */
 

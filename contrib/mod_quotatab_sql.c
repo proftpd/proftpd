@@ -22,13 +22,15 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_quotatab_sql.c,v 1.5 2004-06-07 22:58:44 castaglia Exp $
+ * $Id: mod_quotatab_sql.c,v 1.6 2004-12-16 22:55:46 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
 #include "mod_sql.h"
 
 #define QUOTATAB_SQL_VALUE_BUFSZ	20
+
+module quotatab_sql_module;
 
 /* For synchronizing on database table operations among sessions. */
 static char *sqltab_lock_file = NULL;
@@ -734,11 +736,31 @@ static int sqltab_sess_init(void) {
   return 0;
 }
 
+/* Event handlers
+ */
+
+#if defined(PR_SHARED_MODULE)
+static void sqltab_mod_unload_ev(const void *event_data, void *user_data) {
+  if (strcmp("mod_quotatab_sql.c", (const char *) event_data) == 0) {
+    pr_event_unregister(&quotatab_sql_module, NULL, NULL);
+    quotatab_unregister_backend("sql", QUOTATAB_LIMIT_SRC|QUOTATAB_TALLY_SRC);
+  }
+}
+#endif /* PR_SHARED_MODULE */
+
+/* Initialization routines
+ */
+
 static int sqltab_init(void) {
 
   /* Initialize the quota source objects for type "sql". */
-  quotatab_register("sql", sqltab_open,
+  quotatab_register_backend("sql", sqltab_open,
     QUOTATAB_LIMIT_SRC|QUOTATAB_TALLY_SRC);
+
+#if defined(PR_SHARED_MODULE)
+  pr_event_register(&quotatab_sql_module, "core.module-unload",
+    sqltab_mod_unload_ev, NULL);
+#endif /* PR_SHARED_MODULE */
 
   return 0;
 }
