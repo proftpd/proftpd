@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.61 2003-10-31 08:02:02 castaglia Exp $
+ * $Id: mod_sql.c,v 1.62 2003-11-09 21:22:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -346,7 +346,7 @@ cmd_rec *_sql_make_cmd(pool * cp, int argc, ...)
 
 static void _sql_check_cmd(cmd_rec *cmd, char *msg) {
   if ((!cmd) || (!cmd->tmp_pool)) {
-    log_pri(PR_LOG_ERR, _MOD_VERSION ": '%s' was passed an invalid cmd_rec. "
+    pr_log_pri(PR_LOG_ERR, _MOD_VERSION ": '%s' was passed an invalid cmd_rec. "
 	    "Shutting down.", msg);
     sql_log(DEBUG_WARN, "'%s' was passed an invalid cmd_rec. Shutting down.",
       msg);
@@ -3628,7 +3628,7 @@ static int sql_openlog(void) {
 
   pr_signals_block();
   PRIVS_ROOT
-  res = log_openfile(sql_logfile, &sql_logfd, 0640);
+  res = pr_log_openfile(sql_logfile, &sql_logfd, 0640);
   PRIVS_RELINQUISH
   pr_signals_unblock();
 
@@ -3939,15 +3939,15 @@ static int sql_getconf(void) {
   /* Open any configured SQLLogFile */
   if ((res = sql_openlog()) < 0) {
     if (res == -1)
-      log_pri(PR_LOG_NOTICE, "notice: unable to open SQLLogFile: %s",
+      pr_log_pri(PR_LOG_NOTICE, "notice: unable to open SQLLogFile: %s",
         strerror(errno));
 
     else if (res == LOG_WRITEABLE_DIR)
-      log_pri(PR_LOG_NOTICE, "notice: unable to open SQLLogFile: "
+      pr_log_pri(PR_LOG_NOTICE, "notice: unable to open SQLLogFile: "
           "parent directory is world writeable");
 
     else if (res == LOG_SYMLINK)
-      log_pri(PR_LOG_NOTICE, "notice: unable to open SQLLogFile: "
+      pr_log_pri(PR_LOG_NOTICE, "notice: unable to open SQLLogFile: "
           "cannot log to a symbolic link");
   }
 
@@ -4091,7 +4091,8 @@ static int sql_getconf(void) {
   cmap.authlist = temp_ptr;
 
   if (!cmap.authlist) {
-    log_pri(PR_LOG_NOTICE, _MOD_VERSION ": error: no SQLAuthTypes configured");
+    pr_log_pri(PR_LOG_NOTICE, _MOD_VERSION
+      ": error: no SQLAuthTypes configured");
     sql_log(DEBUG_INFO, "%s", "error: no SQLAuthTypes configured");
   }
 
@@ -4123,7 +4124,7 @@ static int sql_getconf(void) {
 
   if ((c = find_config(main_server->conf, CONF_PARAM, "SQLRatios", FALSE))) {
     if (!cmap.sql_fstor) {
-      log_pri(PR_LOG_WARNING, _MOD_VERSION
+      pr_log_pri(PR_LOG_WARNING, _MOD_VERSION
               ": warning: SQLRatios directive ineffective without SQLRatioStats on");
       sql_log(DEBUG_WARN, "%s",
                 "warning: SQLRatios directive ineffective without SQLRatioStats on");
@@ -4136,7 +4137,7 @@ static int sql_getconf(void) {
 
   if ((!cmap.homedirfield) && (!cmap.defaulthomedir)) {
     cmap.authmask ^= SQL_AUTH_USERS;
-    log_pri(PR_LOG_WARNING, _MOD_VERSION ": warning: no homedir field and no default specified. User authentication is OFF");
+    pr_log_pri(PR_LOG_WARNING, _MOD_VERSION ": warning: no homedir field and no default specified. User authentication is OFF");
     sql_log(DEBUG_WARN, "%s", "warning: no homedir field and no default specified. User authentication is OFF");
   }
 
