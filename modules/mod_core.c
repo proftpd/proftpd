@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.196 2003-10-31 19:23:13 castaglia Exp $
+ * $Id: mod_core.c,v 1.197 2003-10-31 19:50:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -515,6 +515,18 @@ MODRET set_servertype(cmd_rec *cmd) {
 
   else
     CONF_ERROR(cmd,"type must be either 'inetd' or 'standalone'.");
+
+  return HANDLED(cmd);
+}
+
+MODRET set_setenv(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 2);
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  if (setenv(cmd->argv[1], cmd->argv[2], 1) < 0)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+      "unable to set environment variable '", cmd->argv[1], ": ",
+      strerror(errno), NULL));
 
   return HANDLED(cmd);
 }
@@ -1042,6 +1054,18 @@ MODRET set_umask(cmd_rec *cmd) {
     c->flags |= CF_MERGEDOWN;
   }
 
+  return HANDLED(cmd);
+}
+
+MODRET set_unsetenv(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
+ 
+  if (unsetenv(cmd->argv[1]) < 0)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+      "unable to clear environment variable '", cmd->argv[1], ": ",
+      strerror(errno), NULL));
+ 
   return HANDLED(cmd);
 }
 
@@ -4605,6 +4629,7 @@ static conftable core_conftab[] = {
   { "ServerIdent",		set_serverident,		NULL },
   { "ServerName",		set_servername, 		NULL },
   { "ServerType",		set_servertype,			NULL },
+  { "SetEnv",			set_setenv,			NULL },
   { "SocketBindTight",		set_socketbindtight,		NULL },
   { "SocketOptions",		set_socketoptions,		NULL },
   { "SyslogFacility",		set_syslogfacility,		NULL },
@@ -4613,6 +4638,7 @@ static conftable core_conftab[] = {
   { "TimesGMT",			set_timesgmt,			NULL },
   { "TransferLog",		add_transferlog,		NULL },
   { "Umask",			set_umask,			NULL },
+  { "UnsetEnv",			set_unsetenv,			NULL },
   { "UseReverseDNS",		set_usereversedns,		NULL },
   { "User",			set_user,			NULL },
   { "UserOwner",		add_userowner,			NULL },

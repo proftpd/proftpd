@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.500 2003-10-31 19:41:41 castaglia Exp $
+$Id: NEWS,v 1.501 2003-10-31 19:50:16 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -11,6 +11,7 @@ CVS
 - Bug 2174 - mod_auth_unix should not act authoritatively.  This was causing
   problems when using mod_auth_unix.c and the AuthOrder configuration
   directive.
+- Bug 2098 - Added SetEnv and UnsetEnv configuration directives.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------
