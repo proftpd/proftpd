@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.90 2002-10-01 16:23:36 castaglia Exp $
+ * $Id: mod_auth.c,v 1.91 2002-10-03 19:15:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1531,10 +1531,10 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     
     snprintf(maxn, sizeof(maxn), "%d", max);
     
-    if(maxc->argc > 1)
+    if (maxc->argc > 1)
       maxstr = maxc->argv[1];
     
-    if(hcur >= max) {
+    if (hcur > max) {
       send_response(R_530, "%s",
 		    sreplace(cmd->tmp_pool,maxstr, "%m", maxn, NULL));
       
