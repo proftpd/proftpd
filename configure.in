@@ -114,7 +114,7 @@ ac_pr_check_getopt="yes"
 
 AC_ARG_WITH(getopt,
   [
-     --without-getopt        prevent proftpd from using its bundled getopt
+  --without-getopt        prevent proftpd from using its bundled getopt
                           implementation.  This is done automatically if
                           the host supports getopt, but may need to be
                           explicitly used when combining proftpd with other
