@@ -19,14 +19,17 @@
 /* Define to `int' if <sys/socket.h> doesn't define. */
 #undef socklen_t
 
-/* Define if you have AIX send_file() semantics */
+/* Define if you have AIX send_file() semantics. */
 #undef HAVE_AIX_SENDFILE
 
-/* Define if you have BSD sendfile() semantics */
+/* Define if you have BSD sendfile() semantics. */
 #undef HAVE_BSD_SENDFILE
 
-/* Define if you have Linux sendfile() semantics */
+/* Define if you have Linux sendfile() semantics. */
 #undef HAVE_LINUX_SENDFILE
+
+/* Define if you have Solaris sendfile() semantics. */
+#undef HAVE_SOLARIS_SENDFILE
 
 /* Define if your <syslog.h> defines the LOG_CRON macro */
 #undef HAVE_LOG_CRON

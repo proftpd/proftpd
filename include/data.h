@@ -25,7 +25,7 @@
  */
 
 /* Data connection management prototypes
- * $Id: data.h,v 1.14 2003-01-02 18:25:17 castaglia Exp $
+ * $Id: data.h,v 1.15 2003-04-08 18:47:07 castaglia Exp $
  */
 
 #ifndef PR_DATACONN_H
@@ -42,13 +42,14 @@ void pr_data_reset(void);
 #ifdef HAVE_SENDFILE
 typedef
 
-#if defined(HAVE_LINUX_SENDFILE) || defined(HAVE_HPUX_SENDFILE) || defined(HAVE_AIX_SENDFILE)
+#if defined(HAVE_AIX_SENDFILE) || defined(HAVE_HPUX_SENDFILE) || \
+    defined(HAVE_LINUX_SENDFILE) || defined(HAVE_SOLARIS_SENDFILE)
 ssize_t
 #elif defined(HAVE_BSD_SENDFILE)
 off_t
 #else
 #error "You have an unknown sendfile implementation."
-#endif /* HAVE_LINUX_SENDFILE || HAVE_HPUX_SENDFILE */
+#endif
 
 pr_sendfile_t;
 

@@ -887,71 +887,96 @@ PR_CHECK_SS_FAMILY
 PR_CHECK_SS_LEN
 
 if test x"$enable_sendfile" = xyes ; then
-AC_CACHE_CHECK([which sendfile() implementation to use], pr_cv_func_sendfile,
-  pr_cv_func_sendfile="None"
+  AC_CACHE_CHECK(
+    [which sendfile() implementation to use],
+    pr_cv_func_sendfile,
+    pr_cv_func_sendfile="None"
 
-  dnl Linux.
-if test "$pr_cv_func_sendfile" = "None"; then
-  AC_TRY_LINK([
-#include <sys/types.h>
-#include <unistd.h>
-],[
-int i;
-off_t o;
-size_t c;
-(void)sendfile(i,i,&o,c);
-      ], pr_cv_func_sendfile="Linux")
-fi
+    dnl Linux.
+    if test "$pr_cv_func_sendfile" = "None"; then
+      AC_TRY_LINK(
+        [ #include <sys/types.h>
+          #include <sys/sendfile.h>
+          #include <unistd.h>
+        ],
+        [ int i;
+          off_t o;
+          size_t c;
+          (void)sendfile(i,i,&o,c);
+        ], pr_cv_func_sendfile="Linux")
+    fi
 
-  dnl BSD.
-if test "$pr_cv_func_sendfile" = "None"; then
-  AC_TRY_LINK([
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/uio.h>
-],[
-int i;
-off_t o;
-size_t n;
-struct sf_hdtr h;
-(void)sendfile(i,i,o,n,&h,&o,i);
-       ], pr_cv_func_sendfile="BSD")
-fi
+    dnl BSD.
+    if test "$pr_cv_func_sendfile" = "None"; then
+      AC_TRY_LINK(
+        [ #include <sys/types.h>
+          #include <sys/socket.h>
+          #include <sys/uio.h>
+        ],
+        [ int i;
+          off_t o;
+          size_t n;
+          struct sf_hdtr h;
+          (void)sendfile(i,i,o,n,&h,&o,i);
+        ], pr_cv_func_sendfile="BSD")
+    fi
 
-  dnl AIX.
-if test "$pr_cv_func_sendfile" = "None"; then
-  AC_TRY_LINK([
-#include <sys/types.h>
-#include <sys/socket.h>
-],[
-uint f;
-int h;
-struct sf_parms p;
-(void)send_file(&(h),&(p),f);
-       ], pr_cv_func_sendfile="AIX")
-fi
-)
+    dnl AIX.
+    if test "$pr_cv_func_sendfile" = "None"; then
+      AC_TRY_LINK(
+        [ #include <sys/types.h>
+          #include <sys/socket.h>
+        ],
+        [ uint f;
+          int h;
+          struct sf_parms p;
+          (void)send_file(&(h),&(p),f);
+        ], pr_cv_func_sendfile="AIX")
+    fi
+
+    dnl Solaris
+    if test "$pr_cv_func_sendfile" = "None"; then
+      old_ldflags=$LDFLAGS
+      LDFLAGS="-lsendfile $LDFLAGS"
+      AC_TRY_LINK(
+        [ #include <sys/types.h>
+          #include <sys/sendfile.h>
+          #include <unistd.h>
+        ],
+        [ int i;
+          off_t o;
+          size_t c;
+          (void)sendfile(i,i,&o,c);
+        ], pr_cv_func_sendfile="Solaris")
+      LDFLAGS=$old_ldflags
+    fi
+  )
+
   dnl Now, set the appropriate defines based on our investigations...
 
   if test "$pr_cv_func_sendfile" != "None"; then
-	AC_DEFINE(HAVE_SENDFILE)
+    AC_DEFINE(HAVE_SENDFILE)
   fi
 
   case "$pr_cv_func_sendfile" in
+    "Linux")
+      AC_CHECK_HEADERS(sys/sendfile.h)
+      AC_DEFINE(HAVE_LINUX_SENDFILE)
+      ;;
 
+    "BSD")
+      AC_DEFINE(HAVE_BSD_SENDFILE)
+      ;;
 
-	  "Linux")
-		AC_CHECK_HEADERS(sys/sendfile.h)
-		AC_DEFINE(HAVE_LINUX_SENDFILE)
-		;;
+    "AIX")
+      AC_DEFINE(HAVE_AIX_SENDFILE)
+      ;;
 
-	  "BSD")
-		AC_DEFINE(HAVE_BSD_SENDFILE)
-		;;
-
-	  "AIX")
-		AC_DEFINE(HAVE_AIX_SENDFILE)
-		;;
+    "Solaris")
+      AC_CHECK_HEADERS(sys/sendfile.h)
+      AC_DEFINE(HAVE_SOLARIS_SENDFILE)
+      ac_build_addl_libraries="-lsendfile $ac_build_addl_libraries"
+      ;;
   esac
 fi
 

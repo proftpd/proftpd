@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.60 2003-03-17 23:48:14 castaglia Exp $
+ * $Id: data.c,v 1.61 2003-04-08 18:47:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -921,7 +921,7 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, size_t count) {
       return -1;
 
   for (;;) {
-#if defined(HAVE_LINUX_SENDFILE)
+#if defined(HAVE_LINUX_SENDFILE) || defined(HAVE_SOLARIS_SENDFILE)
     off_t orig_offset = *offset;
 
     /* Linux semantics are fairly straightforward in a glibc 2.x world:
