@@ -19,10 +19,11 @@ DEFAULT_PATHS=-DCONFIG_FILE_PATH=\"$(sysconfdir)/proftpd.conf\" -DPID_FILE_PATH=
 CPPFLAGS=@CPPFLAGS@ $(DEFAULT_PATHS) $(PLATFORM) -I.. -I$(top_srcdir)/include
 CFLAGS=@CFLAGS@
 
-#Defines for memory testing and debugging.
-#CFLAGS=-g3 -Dstrncpy="MYSTRNCPY" -DDEBUG_NOFORK -DDEBUG_MEMORY
-#LIBS=-lefence
+# Defines for memory testing and debugging.
+#CFLAGS=-g3 -DDEBUG_NOFORK -DDEBUG_MEMORY
+#LIBS=$(LIBS) -lefence
 #
+# Defines for debugging only.
 #CFLAGS=-g -DUSESHADOW -DDEBUG_NOFORK 
 # Below is for ANSI c testing, normally not used because system
 # header files generate loads o' warnings.
