@@ -19,7 +19,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.8 1999-09-18 18:25:14 macgyver Exp $
+ * $Id: support.c,v 1.9 1999-10-01 23:52:38 macgyver Exp $
  */
 
 /* History Log:
@@ -671,7 +671,7 @@ unsigned long get_fs_size(char *s)
   if(statvfs(s,&vfs) != 0)
     return 0;
 
-  return _calc_fs(vfs.f_bavail,vfs.f_frsize);
+  return _calc_fs(vfs.f_bavail,vfs.f_bsize);
 }
 #elif defined(HAVE_SYS_VFS_H)
 unsigned long get_fs_size(char *s)
