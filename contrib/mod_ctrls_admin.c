@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.8 2004-03-01 16:43:16 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.9 2004-03-01 16:54:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -252,7 +252,7 @@ static int ctrls_handle_dump(pr_ctrls_t *ctrl, int reqargc,
 
   /* Handle 'dump vars' requests */
   } else if (strcmp(reqargv[0], "vars") == 0) {
-    pr_ctrls_add_response(ctrl, "'dump classes' currently not supported");
+    pr_ctrls_add_response(ctrl, "'dump vars' currently not supported");
     return -1;
 
   } else {
