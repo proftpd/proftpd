@@ -1,4 +1,10 @@
-$Id: NEWS,v 1.586 2004-07-13 23:57:22 castaglia Exp $
+$Id: NEWS,v 1.587 2004-07-20 17:39:58 castaglia Exp $
+
+CVS
+--------------------------------
+- Bug 2440 - Unable to use PAM authentication properly.  Use a "*" after
+  the module name in an AuthOrder directive to indicate that an auth
+  module is authoritative.
 
 1.2.10rc3 - Released 13-Jul-2004
 --------------------------------

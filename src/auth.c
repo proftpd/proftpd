@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.35 2003-11-09 23:32:07 castaglia Exp $
+ * $Id: auth.c,v 1.36 2004-07-20 17:39:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -74,7 +74,11 @@ static modret_t *dispatch_auth(cmd_rec *cmd, char *match) {
 
     mr = call_module(authtab->m, authtab->handler, cmd);
 
-    if (MODRET_ISHANDLED(mr) || MODRET_ISERROR(mr))
+    if (authtab->auth_flags & PR_AUTH_FL_REQUIRED)
+      break;
+
+    if (MODRET_ISHANDLED(mr) ||
+        MODRET_ISERROR(mr))
       break;
 
     authtab = pr_stash_get_symbol(PR_SYM_AUTH, match, authtab,

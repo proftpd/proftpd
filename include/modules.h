@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.39 2004-05-30 22:46:14 castaglia Exp $
+ * $Id: modules.h,v 1.40 2004-07-20 17:39:59 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -158,12 +158,14 @@ typedef struct {
 } cmdtable;
 
 typedef struct {
-  int auth_type;			/* future use */
+  int auth_flags;			/* future use */
   char *name;
   modret_t *(*handler)(cmd_rec*);
 
   module *m;
 } authtable;
+
+#define PR_AUTH_FL_REQUIRED		0x00001
 
 struct module_struc {
   module *next,*prev;

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.241 2004-07-13 23:51:33 castaglia Exp $
+ * $Id: mod_core.c,v 1.242 2004-07-20 17:39:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4497,7 +4497,16 @@ static int core_sess_init(void) {
      */
 
     for (i = 0; i < modulec; i++) {
-      module *m = pr_module_get(modulev[i]);
+      module *m;
+      int required = FALSE;
+
+      /* Check for the trailing '*', indicating a required auth module. */
+      if (modulev[i][strlen(modulev[i])-1] == '*') {
+        required = TRUE;
+        modulev[i][strlen(modulev[i])-1] = '\0';
+      }
+
+      m = pr_module_get(modulev[i]);
 
       if (m) {
 
@@ -4513,6 +4522,10 @@ static int core_sess_init(void) {
 
           for (authtab = m->authtable; authtab->name; authtab++) {
             authtab->m = m;
+
+            if (required)
+              authtab->auth_flags |= PR_AUTH_FL_REQUIRED;
+
             pr_stash_add_symbol(PR_SYM_AUTH, authtab);
           }
 
