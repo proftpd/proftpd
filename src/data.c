@@ -20,7 +20,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.22 2001-02-15 14:24:53 flood Exp $
+ * $Id: data.c,v 1.23 2001-04-18 15:40:39 flood Exp $
  */
 
 #include "conf.h"
@@ -738,7 +738,7 @@ int data_xfer(char *cl_buf, int cl_size) {
 pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
   int flags, error;
   pr_sendfile_t len = 0, total = 0;
-  
+
   if(session.xfer.direction == IO_READ)
     return -1;
   
@@ -754,6 +754,8 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
   
   for(;;) {
 #if defined(HAVE_LINUX_SENDFILE)
+    off_t orig_offset = *offset;
+    
     /* Linux semantics are fairly straightforward in a glibc 2.x world:
      *
      * #include <sys/sendfile.h>
@@ -761,6 +763,12 @@ pr_sendfile_t data_sendfile(int retr_fd, off_t *offset, size_t count) {
      * ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
      */
     if((len = sendfile(session.d->outf->fd, retr_fd, offset, count)) == -1) {
+      /* Linux updates offset on error, not len like BSD, fix up so
+       * BSD-based code works.
+       */
+      len = orig_offset - *offset;
+      *offset = orig_offset;
+      
 #elif defined(HAVE_BSD_SENDFILE)
     /* BSD semantics for sendfile are flexible...it'd be nice if we could
      * standardize on something like it.  The semantics are:
