@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.38 2000-07-26 11:03:17 macgyver Exp $
+ * $Id: mod_core.c,v 1.39 2000-08-01 18:59:39 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -896,11 +896,13 @@ MODRET add_directory(cmd_rec *cmd)
 MODRET set_allowretrieverestart(cmd_rec *cmd)
 {
   config_rec *c;
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_DIR|CONF_ANON|CONF_GLOBAL|CONF_DYNDIR);
 
-  c = add_config_param("AllowRetrieveRestart",1,
-                       (void*)get_boolean(cmd,1));
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_DIR | CONF_ANON | CONF_GLOBAL
+	     | CONF_DYNDIR);
+
+  c = add_config_param("AllowRetrieveRestart", 1, 
+		       (void *) get_boolean(cmd, 1));
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 }
@@ -908,11 +910,25 @@ MODRET set_allowretrieverestart(cmd_rec *cmd)
 MODRET set_allowstorerestart(cmd_rec *cmd)
 {
   config_rec *c;
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_DIR|CONF_ANON|CONF_GLOBAL|CONF_DYNDIR);
 
-  c = add_config_param("AllowStoreRestart",1,
-                       (void*)get_boolean(cmd,1));
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_DIR | CONF_ANON | CONF_GLOBAL
+	     | CONF_DYNDIR);
+
+  c = add_config_param("AllowStoreRestart", 1, (void *) get_boolean(cmd, 1));
+  c->flags |= CF_MERGEDOWN;
+  return HANDLED(cmd);
+}
+
+MODRET set_deleteabortedstores(cmd_rec *cmd)
+{
+  config_rec *c;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_DIR | CONF_ANON | CONF_GLOBAL
+	     | CONF_DYNDIR);
+
+  c = add_config_param("DeleteAbortedStores", 1, (void *) get_boolean(cmd, 1));
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 }
@@ -2589,94 +2605,95 @@ MODRET set_class(cmd_rec *cmd)
 /* Configuration directive table */
 
 static conftable core_conftable[] = {
-  { "Include",			add_include,	 		NULL },
-  { "ServerName",		set_servername, 		NULL },
-  { "ServerIdent",		set_serverident,		NULL },
-  { "ServerType",		set_servertype,			NULL },
-  { "ServerAdmin",		set_serveradmin,		NULL },
-  { "UseReverseDNS",		set_usereversedns,		NULL },
-  { "ScoreboardPath",		set_scoreboardpath,		NULL },
-  { "TransferLog",		add_transferlog,		NULL },
-  { "WtmpLog",			set_wtmplog,			NULL },
+  { "<Anonymous>",		add_anonymous,			NULL },
+  { "</Anonymous>",		end_anonymous,			NULL },
+  { "<Directory>",		add_directory,			NULL },
+  { "</Directory>",		end_directory,			NULL },
+  { "<Global>",			add_global,			NULL },
+  { "</Global>",		end_global,			NULL },
+  { "<Limit>",			add_limit,			NULL },
+  { "</Limit>", 		end_limit, 			NULL },
+  { "<VirtualHost>",		add_virtualhost,		NULL },
+  { "</VirtualHost>",		end_virtualhost,		NULL },
+  { "AccessGrantMsg",		set_accessgrantmsg,		NULL },
+  { "Allow",			add_allow,			NULL },
+  { "AllowAll",			set_allowall,			NULL },
+  { "AllowFilter",		set_allowfilter,		NULL },
+  { "AllowForeignAddress",	set_allowforeignaddress,	NULL },
+  { "AllowGroup",		add_allowgroup,			NULL },
+  { "AllowOverwrite",		set_allowoverwrite,		NULL },
+  { "AllowRetrieveRestart",	set_allowretrieverestart,	NULL },
+  { "AllowStoreRestart",	set_allowstorerestart,		NULL },
+  { "AllowUser",		add_allowuser,			NULL },
+  { "AnonRequirePassword",	set_anonrequirepassword,	NULL },
+  { "AnonymousGroup",		add_anonymousgroup,		NULL },
+  { "AuthAliasOnly",		set_authaliasonly,		NULL },
+  { "AuthUsingAlias",		set_authusingalias,		NULL },
   { "Bind",			add_bind,			NULL },
-  { "Port",			set_serverport, 		NULL },
-  { "SocketBindTight",		set_socketbindtight,		NULL },
-  { "IdentLookups",		set_identlookups,		NULL },
-  { "tcpBackLog",		set_tcpbacklog,			NULL },
-  { "tcpReceiveWindow",		set_tcpreceivewindow,		NULL },
-  { "tcpSendWindow",		set_tcpsendwindow,		NULL },
-  { "tcpNoDelay",		set_tcpnodelay,			NULL },
-  { "DeferWelcome",		set_deferwelcome,		NULL },
+  { "CDPath",			add_cdpath,			NULL },
+  { "Class",			set_class,			NULL },
+  { "Classes",			set_classes,			NULL },
+  { "CommandBufferSize",	set_commandbuffersize,		NULL },
   { "DefaultServer",		set_defaultserver,		NULL },
-  { "MultilineRFC2228",		set_multilinerfc2228,		NULL },
-  { "User",			set_user,			NULL },
+  { "DefaultTransferMode",	set_defaulttransfermode,	NULL },
+  { "DeferWelcome",		set_deferwelcome,		NULL },
+  { "DeleteAbortedStores",	set_deleteabortedstores,	NULL },
+  { "Deny",			add_deny,			NULL },
+  { "DenyAll",			set_denyall,			NULL },
+  { "DenyFilter",		set_denyfilter,			NULL },
+  { "DenyGroup",		add_denygroup,			NULL },
+  { "DenyUser",			add_denyuser,			NULL },
+  { "DisplayConnect",		set_displayconnect,		NULL },
+  { "DisplayFirstChdir",	set_displayfirstchdir,		NULL },
+  { "DisplayGoAway",		set_displaygoaway,		NULL },
+  { "DisplayLogin",		set_displaylogin,		NULL },
+  { "DisplayQuit",		set_displayquit,		NULL },
   { "Group",			set_group, 			NULL },
-  { "UserPassword",		add_userpassword,		NULL },
+  { "GroupOwner",		add_groupowner,			NULL },
   { "GroupPassword",		add_grouppassword,		NULL },
-  { "Umask",			set_umask,			NULL },
-  { "MaxLoginAttempts",		set_maxloginattempts,		NULL },
+  { "HiddenStor",		set_hiddenstor,			NULL },
+  { "HideGroup",		add_hidegroup,			NULL },
+  { "HideNoAccess",		add_hidenoaccess,		NULL },
+  { "HideUser",			add_hideuser,			NULL },
+  { "IdentLookups",		set_identlookups,		NULL },
+  { "IgnoreHidden",		set_ignorehidden,		NULL },
+  { "Include",			add_include,	 		NULL },
   { "MaxClients",		set_maxclients,			NULL },
   { "MaxClientsPerHost",	set_maxhostclients,		NULL },
   { "MaxInstances",		set_maxinstances,		NULL },
-  { "RequireValidShell",	set_requirevalidshell,		NULL },
-  { "ShowSymlinks",		set_showsymlinks,		NULL },
-  { "SyslogFacility",		set_syslogfacility,		NULL },
-  { "TimeoutLogin",		set_timeoutlogin,		NULL },
-  { "TimeoutIdle",		set_timeoutidle,		NULL },
-  { "TimeoutNoTransfer",	set_timeoutnoxfer,		NULL },
-  { "TimeoutStalled",		set_timeoutstalled,		NULL },
-  { "UseFtpUsers",		set_useftpusers,		NULL },
-  { "AccessGrantMsg",		set_accessgrantmsg,		NULL },
-  { "AnonymousGroup",		add_anonymousgroup,		NULL },
-  { "<VirtualHost>",		add_virtualhost,		NULL },
-  { "</VirtualHost>",		end_virtualhost,		NULL },
-  { "<Directory>",		add_directory,			NULL },
-  { "CDPath",			add_cdpath,			NULL },
-  { "HideNoAccess",		add_hidenoaccess,		NULL },
-  { "HideUser",			add_hideuser,			NULL },
-  { "HideGroup",		add_hidegroup,			NULL },
-  { "GroupOwner",		add_groupowner,			NULL },
-  { "UserOwner",		add_userowner,			NULL },
-  { "AllowOverwrite",		set_allowoverwrite,		NULL },
-  { "HiddenStor",		set_hiddenstor,			NULL },
-  { "DisplayFirstChdir",	set_displayfirstchdir,		NULL },
-  { "AuthAliasOnly",		set_authaliasonly,		NULL },
-  { "AllowRetrieveRestart",	set_allowretrieverestart,	NULL },
-  { "AllowStoreRestart",	set_allowstorerestart,		NULL },
-  { "</Directory>",		end_directory,			NULL },
-  { "<Limit>",			add_limit,			NULL },
-  { "IgnoreHidden",		set_ignorehidden,		NULL },
+  { "MaxLoginAttempts",		set_maxloginattempts,		NULL },
+  { "MultilineRFC2228",		set_multilinerfc2228,		NULL },
   { "Order",			add_order,			NULL },
-  { "Allow",			add_allow,			NULL },
-  { "Deny",			add_deny,			NULL },
-  { "AllowGroup",		add_allowgroup,			NULL },
-  { "DenyGroup",		add_denygroup,			NULL },
-  { "AllowUser",		add_allowuser,			NULL },
-  { "DenyUser",			add_denyuser,			NULL },
-  { "AllowAll",			set_allowall,			NULL },
-  { "DenyAll",			set_denyall,			NULL },
-  { "</Limit>", 		end_limit, 			NULL },
-  { "DisplayLogin",		set_displaylogin,		NULL },
-  { "DisplayConnect",		set_displayconnect,		NULL },
-  { "DisplayQuit",		set_displayquit,		NULL },
-  { "DisplayGoAway",		set_displaygoaway,		NULL },
-  { "<Anonymous>",		add_anonymous,			NULL },
-  { "UserAlias",		add_useralias, 			NULL },
-  { "AnonRequirePassword",	set_anonrequirepassword,	NULL },
-  { "AuthUsingAlias",		set_authusingalias,		NULL },
-  { "CommandBufferSize",	set_commandbuffersize,		NULL },
-  { "AllowFilter",		set_allowfilter,		NULL },
-  { "DenyFilter",		set_denyfilter,			NULL },
   { "PathAllowFilter",		set_pathallowfilter,		NULL },
   { "PathDenyFilter",		set_pathdenyfilter,		NULL },
-  { "AllowForeignAddress",	set_allowforeignaddress,	NULL },
-  { "</Anonymous>",		end_anonymous,			NULL },
-  { "<Global>",			add_global,			NULL },
-  { "</Global>",		end_global,			NULL },
-  { "DefaultTransferMode",	set_defaulttransfermode,	NULL },
-  { "Class",			set_class,			NULL },
-  { "Classes",			set_classes,			NULL },
+  { "Port",			set_serverport, 		NULL },
+  { "RequireValidShell",	set_requirevalidshell,		NULL },
+  { "ScoreboardPath",		set_scoreboardpath,		NULL },
+  { "ServerAdmin",		set_serveradmin,		NULL },
+  { "ServerIdent",		set_serverident,		NULL },
+  { "ServerName",		set_servername, 		NULL },
+  { "ServerType",		set_servertype,			NULL },
+  { "ShowSymlinks",		set_showsymlinks,		NULL },
+  { "SocketBindTight",		set_socketbindtight,		NULL },
+  { "SyslogFacility",		set_syslogfacility,		NULL },
+  { "TimeoutIdle",		set_timeoutidle,		NULL },
+  { "TimeoutLogin",		set_timeoutlogin,		NULL },
+  { "TimeoutNoTransfer",	set_timeoutnoxfer,		NULL },
+  { "TimeoutStalled",		set_timeoutstalled,		NULL },
   { "TimesGMT",			set_timesgmt,			NULL },
+  { "TransferLog",		add_transferlog,		NULL },
+  { "Umask",			set_umask,			NULL },
+  { "UseFtpUsers",		set_useftpusers,		NULL },
+  { "UseReverseDNS",		set_usereversedns,		NULL },
+  { "User",			set_user,			NULL },
+  { "UserAlias",		add_useralias, 			NULL },
+  { "UserOwner",		add_userowner,			NULL },
+  { "UserPassword",		add_userpassword,		NULL },
+  { "WtmpLog",			set_wtmplog,			NULL },
+  { "tcpBackLog",		set_tcpbacklog,			NULL },
+  { "tcpNoDelay",		set_tcpnodelay,			NULL },
+  { "tcpReceiveWindow",		set_tcpreceivewindow,		NULL },
+  { "tcpSendWindow",		set_tcpsendwindow,		NULL },
   { NULL, NULL, NULL }
 };
 

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.60 2000-08-01 18:32:58 macgyver Exp $
+$Id: NEWS,v 1.61 2000-08-01 18:59:39 macgyver Exp $
 
 1.2.0 - Released: 08/??/2000
 ----------------------------
@@ -6,6 +6,7 @@ $Id: NEWS,v 1.60 2000-08-01 18:32:58 macgyver Exp $
 - Compilation problems fixed on some obscure platforms.
 - PAM authentication finally works again on Solaris (due to an annoying bug in
   Solaris).
+- Added the DeleteAbortedStores directive.
 
 1.2.0RC2 - Released: 07/28/2000
 -------------------------------

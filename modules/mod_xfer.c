@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.39 2000-07-28 21:56:32 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.40 2000-08-01 18:59:39 macgyver Exp $
  */
 
 /* History Log:
@@ -236,10 +236,12 @@ static void _stor_abort() {
   if(session.xfer.xfer_type == STOR_HIDDEN) {
     /* If hidden stor aborted, remove only hidden file, not real one */
     if(session.xfer.path_hidden)
-      unlink(session.xfer.path_hidden);
+      fs_unlink(session.xfer.path_hidden);
   } else if(session.xfer.path) {
-    unlink(session.xfer.path);
+    if(get_param_int(TOPLEVEL_CONF, "DeleteAbortedStores", FALSE) == 1)
+      fs_unlink(session.xfer.path);
   }
+
   _log_transfer('i', 'i');
 }
 
@@ -566,7 +568,7 @@ MODRET cmd_stor(cmd_rec *cmd)
            add_response_err(R_550,"%s: rename of hidden file %s failed: %s",
              session.xfer.path, session.xfer.path_hidden, strerror(errno));
 
-           unlink(session.xfer.path_hidden);
+           fs_unlink(session.xfer.path_hidden);
 
            return ERROR(cmd);
          }
