@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.197 2003-10-01 06:35:32 castaglia Exp $
+ * $Id: main.c,v 1.198 2003-10-06 03:53:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1211,12 +1211,12 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
   /* Now perform reverse dns */
   if (ServerUseReverseDNS) {
-    rev = pr_netaddr_reverse_dns(ServerUseReverseDNS);
+    rev = pr_netaddr_set_reverse_dns(ServerUseReverseDNS);
 
     if (conn->remote_addr)
       conn->remote_name = pr_netaddr_get_dnsstr(conn->remote_addr);
 
-    pr_netaddr_reverse_dns(rev);
+    pr_netaddr_set_reverse_dns(rev);
   }
 
   /* Check and see if we are shutdown */

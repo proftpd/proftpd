@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.10 2003-09-09 05:37:26 castaglia Exp $
+ * $Id: netaddr.h,v 1.11 2003-10-06 03:53:47 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -134,7 +134,7 @@ int pr_netaddr_set_port(pr_netaddr_t *, unsigned int);
 /* Enables or disable use of reverse DNS lookups.  Returns the previous
  * setting.
  */
-int pr_netaddr_reverse_dns(int);
+int pr_netaddr_set_reverse_dns(int);
 
 /* Returns the DNS name associated with the given pr_netaddr_t.  If DNS
  * lookups have been disabled, the returned string will be the IP address.

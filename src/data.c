@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.69 2003-09-27 18:40:10 castaglia Exp $
+ * $Id: data.c,v 1.70 2003-10-06 03:53:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -227,7 +227,7 @@ static int data_pasv_open(char *reason, off_t size) {
    * lookups, and then set it to what the configuration wants it to
    * be.
    */
-  rev = pr_netaddr_reverse_dns(ServerUseReverseDNS);
+  rev = pr_netaddr_set_reverse_dns(ServerUseReverseDNS);
 
   /* Protocol and socket options should be set before handshaking. */
 
@@ -245,7 +245,7 @@ static int data_pasv_open(char *reason, off_t size) {
   }
 
   c = pr_inet_accept(session.xfer.p, session.d, session.c, -1, -1, TRUE);
-  pr_netaddr_reverse_dns(rev);
+  pr_netaddr_set_reverse_dns(rev);
 
   if (c && c->mode != CM_ERROR) {
     pr_inet_close(session.pool, session.d);
@@ -320,7 +320,7 @@ static int data_active_open(char *reason, off_t size) {
   if (TimeoutStalled)
     add_timer(TimeoutStalled, TIMER_STALLED, NULL, stalled_timeout_cb);
 
-  rev = pr_netaddr_reverse_dns(ServerUseReverseDNS);
+  rev = pr_netaddr_set_reverse_dns(ServerUseReverseDNS);
 
   /* Protocol and socket options should be set before handshaking. */
 
@@ -349,7 +349,7 @@ static int data_active_open(char *reason, off_t size) {
   c = pr_inet_openrw(session.pool, session.d, NULL, PR_NETIO_STRM_DATA,
     session.d->listen_fd, -1, -1, TRUE);
 
-  pr_netaddr_reverse_dns(rev);
+  pr_netaddr_set_reverse_dns(rev);
 
   if (c) {
     log_debug(DEBUG4, "active data connection opened - local  : %s:%d",
@@ -441,7 +441,7 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
       end_login(1);
     }
 
-    res = data_pasv_open(reason,size);
+    res = data_pasv_open(reason, size);
 
   /* Active data transfers... */
   } else {
@@ -451,7 +451,7 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
       end_login(1);
     }
 
-    res = data_active_open(reason,size);
+    res = data_active_open(reason, size);
   }
 
   if (res >= 0) {
@@ -477,19 +477,18 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
     if (TimeoutNoXfer)
       reset_timer(TIMER_NOXFER, ANY_MODULE);
 
-    /* allow aborts */
+    /* Allow aborts. */
 
     /* Set the current NetIO stream to allow interrupted syscalls, so our
      * SIGURG handler can interrupt it
      */
     pr_netio_set_poll_interval(nstrm, 1);
 
-    /* PORTABILITY: sigaction is used here to allow us
-     * to indicate (w/ POSIX at least) that we want
-     * SIGURG to interrupt syscalls.  Put in whatever
-     * is necessary for your arch here (probably not necessary
-     * as the only _important_ interrupted syscall is select()),
-     * which on any sensible system is interrupted.
+    /* PORTABILITY: sigaction is used here to allow us to indicate
+     * (w/ POSIX at least) that we want SIGURG to interrupt syscalls.  Put
+     * in whatever is necessary for your arch here; probably not necessary
+     * as the only _important_ interrupted syscall is select(), which on
+     * any sensible system is interrupted.
      */
 
     act.sa_handler = data_urgent;
@@ -500,7 +499,7 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
 #endif
     sigaction(SIGURG, &act, NULL);
 #ifdef HAVE_SIGINTERRUPT
-    /* this is the BSD way of ensuring interruption.
+    /* This is the BSD way of ensuring interruption.
      * Linux uses it too (??)
      */
     siginterrupt(SIGURG, 1);

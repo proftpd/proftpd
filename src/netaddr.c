@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.19 2003-09-18 19:21:12 castaglia Exp $
+ * $Id: netaddr.c,v 1.20 2003-10-06 03:53:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -36,7 +36,7 @@
 /* Do reverse DNS lookups? */
 static int reverse_dns = 1;
 
-int pr_netaddr_reverse_dns(int enable) {
+int pr_netaddr_set_reverse_dns(int enable) {
   int old_enable = reverse_dns;
   reverse_dns = enable;
   return old_enable;
