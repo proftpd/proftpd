@@ -1,3 +1,18 @@
+2001-06-03 11:17  flood
+
+	* NEWS, modules/mod_auth.c, modules/mod_core.c, src/main.c: #1185 -
+	homedir symlink dereference #1189 - duplicated <Directory> contexts
+	not allowed #1183 - removed redundant find_class()
+
+2001-06-03 09:38  flood
+
+	* NEWS, contrib/xferstats.holger-preiss,
+	contrib/dist/rpm/proftpd.init.d, include/glibc-glob.h,
+	modules/mod_core.c, src/main.c: #1201 - Feature addition to
+	contrib/xferstats.holger-preiss #1132 - glibc2.0 compilation #1090
+	- ExtendedLog not reporting errors on all events #1149 -
+	Modification in rpm init script
+
 2001-05-31 12:08  flood
 
 	* NEWS, README.mod_sql, contrib/mod_sql.c, contrib/mod_sql_mysql.c,
