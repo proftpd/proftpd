@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.14 1999-09-29 20:46:13 macgyver Exp $
+ * $Id: mod_ls.c,v 1.15 1999-09-30 06:03:49 macgyver Exp $
  */
 
 #include "conf.h"
@@ -340,7 +340,7 @@ static struct filename *tail = NULL;
 static array_header *sort_arr = NULL;
 static pool *fpool = NULL;
  
-void addfile(cmd_rec *cmd, const char *name, const char *suffix, time_t mtime)
+static void addfile(cmd_rec *cmd, const char *name, const char *suffix, time_t mtime)
 {
   struct 	filename *p;
   int		l;
@@ -600,7 +600,7 @@ realloc_buf:
 }
 
 /* listdir required chdir first */
-int listdir(cmd_rec *cmd, pool *workp, const char *name, int list_dotdirs)
+static int listdir(cmd_rec *cmd, pool *workp, const char *name, int list_dotdirs)
 {
   char **dir;
   int dest_workp = 0;
