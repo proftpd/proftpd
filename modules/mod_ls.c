@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.16 1999-09-30 06:10:16 macgyver Exp $
+ * $Id: mod_ls.c,v 1.17 1999-10-01 03:34:14 macgyver Exp $
  */
 
 #include "conf.h"
@@ -395,7 +395,8 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix, time_t m
   log_debug(DEBUG4,"alloc: %d\n",sizeof(struct filename) + l + 1);
 #endif
 
-  snprintf(l + 1, p->line, "%s%s", name, suffix);
+  snprintf(p->line, l + 1, "%s%s", name, suffix);
+
   if(tail)
     tail->down = p;
   else
