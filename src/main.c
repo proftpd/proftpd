@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.24 2000-02-28 10:14:31 macgyver Exp $
+ * $Id: main.c,v 1.25 2000-02-28 20:02:01 macgyver Exp $
  */
 
 /*
@@ -1968,12 +1968,13 @@ extern char *optarg;
 extern int optind,opterr,optopt;
 
 struct option opts[] = {
-  { "nodaemon",	0, NULL, 'n' },
-  { "debug",	1, NULL, 'd' },
-  { "config",	1, NULL, 'c' },
-  { "persistent",1,NULL, 'p' },
-  { "list",     0, NULL, 'l' },
-  { "version",  0, NULL, 'v' },
+  { "nodaemon",	  0, NULL, 'n' },
+  { "debug",	  1, NULL, 'd' },
+  { "config",	  1, NULL, 'c' },
+  { "persistent", 1, NULL, 'p' },
+  { "list",       0, NULL, 'l' },
+  { "version",    0, NULL, 'v' },
+  { "configtest", 0, NULL, 't' },
 /*
   { "core",     0, NULL, 'o' },
 */
@@ -1984,19 +1985,27 @@ struct option opts[] = {
 struct option_help {
   char *long_opt,*short_opt,*desc;
 } opts_help[] = {
-  { "--help","-h","display proftpd usage"},
-  { "--nodaemon","-n","disable background daemon mode (all output goes to tty, instead of syslog)" },
-  { "--debug","-d [level]","set debugging level (0-5, 5 == most debugging)" },
-  { "--config","-c [config-file]","specify alternate configuration file" },
-  { "--persistent","-p [0|1]","enable/disable default persistent passwd support" },
-  { "--list","-l","list all compiled-in modules" },
+  { "--help", "-h",
+    "Display proftpd usage"},
+  { "--nodaemon", "-n",
+    "Disable background daemon mode (all output goes to tty, instead of syslog)" },
+  { "--debug", "-d [level]",
+    "Set debugging level (0-5, 5 = most debugging)" },
+  { "--config", "-c [config-file]",
+    "Specify alternate configuration file" },
+  { "--persistent", "-p [0|1]",
+    "Enable/disable default persistent passwd support" },
+  { "--list", "-l",
+    "List all compiled-in modules" },
+  { "--configtest", "-t",
+    "Test the syntax of the specified config" },
 /*
   { "--core","-o","enable core dump for profiling/debugging on serious errors"},
 */
-  { "--version","-v","print version number and exit" },
-  { NULL,NULL,NULL }
+  { "--version", "-v",
+    "Print version number and exit" },
+  { NULL, NULL, NULL }
 };
-
 
 void show_usage(int exit_code)
 {
@@ -2014,6 +2023,7 @@ int main(int argc, char **argv, char **envp)
 {
   int daemon_uid,daemon_gid,socketp;
   int _umask = 0,nodaemon = 0,c;
+  int check_config_syntax = 0;
   struct sockaddr peer;
 
 #ifdef DEBUG_MEMORY
@@ -2066,18 +2076,20 @@ int main(int argc, char **argv, char **envp)
   log_opensyslog(NULL);
 
   /* Command line options supported:
-   * -n,--nodaemon	standalone server doesn't background itself,
+   * -c, --config path  Set the configuration path
+   *
+   * -d n, --debug n	Set debug level
+   *
+   * -n, --nodaemon	Standalone server doesn't background itself,
    *                    all logging dumped to stderr
    *
-   * -d n,--debug n	set debug level
+   * -t, --configtest	Syntax check the config file
    *
-   * -c, --config path  set the configuration path
-   *
-   * -v, --version      report version number
+   * -v, --version      Report version number
    */
 
   opterr = 0;
-  while((c = getopt_long(argc,argv,"nd:c:p:lhv",opts,NULL)) != -1) {
+  while((c = getopt_long(argc,argv,"nd:c:p:lhtv",opts,NULL)) != -1) {
     switch(c) {
     case 'n': 
       nodaemon++; break;
@@ -2095,9 +2107,18 @@ int main(int argc, char **argv, char **envp)
       }
       config_filename = strdup(optarg);
       break;
+
     case 'l':
       list_modules();
       exit(0);
+      break;
+
+    case 't':
+      check_config_syntax = 1;
+      printf("Checking syntax of configuration file\n");
+      fflush(stdout);
+      break;
+      
     case 'p':
     {
       extern int persistent;
@@ -2142,13 +2163,18 @@ int main(int argc, char **argv, char **envp)
   }
 
   free_conf_stacks();
-
   fixup_servers();
 
+  /* We're only doing a syntax check of the configuration file.
+   */
+  if(check_config_syntax) {
+    printf("Syntax check complete.\n");
+    exit(0);
+  }
+  
   /* After configuration is complete, make sure that passwd, group
    * aren't held open (unnecessary fds for master daemon)
    */
-
   endpwent();
   endgrent();
 

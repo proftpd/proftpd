@@ -19,7 +19,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.14 2000-02-16 00:33:22 macgyver Exp $
+ * $Id: dirtree.c,v 1.15 2000-02-28 20:02:01 macgyver Exp $
  */
 
 /* History:
@@ -116,19 +116,25 @@ char *get_word(char **cp)
   return ret;
 }
 
-cmd_rec *get_config_cmd(pool *ppool, FILE *fp)
+cmd_rec *get_config_cmd(pool *ppool, FILE *fp, int *line)
 {
-  char buf[256],*cp,*wrd;
+  char buf[1024],*cp,*wrd;
   cmd_rec *newcmd;
   pool *newpool;
   array_header *tarr;
   int i;
-
-  while(fgets(buf,sizeof(buf)-1,fp)) {
+  
+  if(line != NULL)
+    *line = 0;
+  
+  while(fgets(buf, sizeof(buf) - 1, fp)) {
+    if(line != NULL)
+      (*line)++;
+    
     i = strlen(buf);
-    if(i && buf[i-1] == '\n')
-      buf[i-1] = '\0';
-
+    if(i && buf[i - 1] == '\n')
+      buf[i - 1] = '\0';
+    
     for(cp = buf; *cp && isspace((UCHAR)*cp); cp++) ;
 
     if(*cp == '#' || !*cp)		/* Comment or blank line */
@@ -179,7 +185,6 @@ cmd_rec *get_config_cmd(pool *ppool, FILE *fp)
           newcmd->argv[0] = pstrcat(newcmd->pool,cp,">",NULL);
       }
     }
-
         
     return newcmd;
   }
@@ -1042,7 +1047,7 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
   FILE *fp;
   cmd_rec *cmd;
   xaset_t **set = NULL;
-  int isfile,removed = 0;
+  int isfile, line, removed = 0;
 
   /* Switch through each directory, from "deepest" up looking for
    * new or updated .ftpaccess files
@@ -1136,7 +1141,7 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
         init_dyn_stacks(p,d);
         d->config_type = CONF_DYNDIR;
 
-        while((cmd = get_config_cmd(p,fp)) != NULL) {
+        while((cmd = get_config_cmd(p, fp, &line)) != NULL) {
           if(cmd->argc) {
             conftable *c;
             char found = 0;
@@ -1146,12 +1151,14 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
             cmd->config = *conf.curconfig;
               
             for(c = m_conftable; c->directive; c++)
-              if(!strcasecmp(c->directive,cmd->argv[0])) {
-                ++found;
-                if((mr = call_module(c->m,c->handler,cmd)) != NULL) 
-                {
-                  if(MODRET_ERRMSG(mr))
-	                  log_pri(LOG_WARNING,"warning: %s",MODRET_ERRMSG(mr));
+              if(!strcasecmp(c->directive, cmd->argv[0])) {
+                found++;
+
+                if((mr = call_module(c->m,c->handler,cmd)) != NULL) {
+                  if(MODRET_ERRMSG(mr)) {
+		    log_pri(LOG_WARNING, "warning: %s",
+			    MODRET_ERRMSG(mr));
+		  }
                 }
 
 		if(MODRET_ISDECLINED(mr))
@@ -1161,8 +1168,9 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
               }
 
             if(!found)
-              log_pri(LOG_WARNING,"warning: unknown configuration directive '%s'.",
-                      cmd->argv[0]);
+              log_pri(LOG_WARNING,
+		      "warning: unknown configuration directive '%s' on line %d of '%s'.",
+                      cmd->argv[0], line, dynpath);
 
           }
  
@@ -2008,12 +2016,13 @@ int parse_config_file(const char *fname)
   cmd_rec *cmd;
   pool *tmp_pool = make_sub_pool(permanent_pool);
   modret_t *mr;
+  int line;
  
   fp = pfopen(tmp_pool,fname,"r");
 
   if(!fp) { destroy_pool(tmp_pool); return -1; }
   
-  while((cmd = get_config_cmd(tmp_pool,fp)) != NULL) {
+  while((cmd = get_config_cmd(tmp_pool, fp, &line)) != NULL) {
     if(cmd->argc) {
       conftable *c;
       char found = 0;
@@ -2038,8 +2047,8 @@ int parse_config_file(const char *fname)
         }
 
        if(!found) {
-         log_pri(LOG_ERR,"Fatal: unknown configuration directive '%s'.",
-                 cmd->argv[0]);
+         log_pri(LOG_ERR,"Fatal: unknown configuration directive '%s' on line %d of '%s'.",
+                 cmd->argv[0], line, fname);
          exit(1);
        }
     }
