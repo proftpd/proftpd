@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.16 2004-05-29 20:04:02 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.17 2004-05-29 22:31:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -63,7 +63,7 @@ static gid_t ctrls_sock_gid = 0;
 static pool *ctrls_pool = NULL;
 
 /* Required "freshness" of client credential sockets */
-static int ctrls_cl_freshness = 10;
+static unsigned int ctrls_cl_freshness = 10;
 
 /* Start of the client list */
 static pr_ctrls_cl_t *cl_list = NULL;
@@ -705,20 +705,29 @@ static int ctrls_accept(int sockfd, uid_t *uid, gid_t *gid, pid_t *pid) {
       "unable to accept connection: stale connection");
 
     /* Log the times being compared, to aid in debugging this situation. */
-    if (st.st_atime < stale_time)
-      ctrls_log(MOD_CTRLS_VERSION,
-         "last access time of '%s' is %lu (older than %lu)", sock.sun_path,
-         (unsigned long) st.st_atime, (unsigned long) stale_time);
+    if (st.st_atime < stale_time) {
+      time_t age = stale_time - st.st_atime;
 
-    if (st.st_ctime < stale_time)
       ctrls_log(MOD_CTRLS_VERSION,
-         "last change time of '%s' is %lu (older than %lu)", sock.sun_path,
-         (unsigned long) st.st_ctime, (unsigned long) stale_time);
+         "last access time of '%s' is %lu seconds old (must be less than %u)",
+         sock.sun_path, (unsigned long) age, ctrls_cl_freshness);
+    }
 
-    if (st.st_mtime < stale_time)
+    if (st.st_ctime < stale_time) {
+      time_t age = stale_time - st.st_ctime;
+
       ctrls_log(MOD_CTRLS_VERSION,
-         "last modified time of '%s' is %lu (older than %lu)", sock.sun_path,
-         (unsigned long) st.st_mtime, (unsigned long) stale_time);
+         "last change time of '%s' is %lu seconds old (must be less than %u)",
+         sock.sun_path, (unsigned long) age, ctrls_cl_freshness);
+    }
+
+    if (st.st_mtime < stale_time) {
+      time_t age = stale_time - st.st_mtime;
+
+      ctrls_log(MOD_CTRLS_VERSION,
+         "last modified time of '%s' is %lu seconds old (must be less than %u)",
+         sock.sun_path, (unsigned long) age, ctrls_cl_freshness);
+    }
  
     if (pr_ctrls_send_msg(cl_fd, -1, 1, &msg) < 0)
       ctrls_log("error sending message: %s", strerror(errno));
@@ -1389,7 +1398,8 @@ MODRET set_ctrlsauthfreshness(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  if ((freshness = atoi(cmd->argv[1])) <= 0)
+  freshness = atoi(cmd->argv[1]);
+  if (freshness <= 0)
     CONF_ERROR(cmd, "must be a positive number");
 
   ctrls_cl_freshness = freshness;
