@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.5 2004-01-29 01:03:40 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.6 2004-02-13 22:45:47 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -1160,12 +1160,13 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
 
   /* Check for a limit and a tally entry for this class. */
   if (!have_limit_entry && session.class) {
-    if (quotatab_lookup(TYPE_LIMIT, session.class->name, CLASS_QUOTA)) {
-      quotatab_log("found limit entry for class '%s'", session.class->name);
+    if (quotatab_lookup(TYPE_LIMIT, session.class->cls_name, CLASS_QUOTA)) {
+      quotatab_log("found limit entry for class '%s'", session.class->cls_name);
       have_limit_entry = TRUE;
 
-      if (quotatab_lookup(TYPE_TALLY, session.class->name, CLASS_QUOTA)) {
-        quotatab_log("found tally entry for class '%s'", session.class->name);
+      if (quotatab_lookup(TYPE_TALLY, session.class->cls_name, CLASS_QUOTA)) {
+        quotatab_log("found tally entry for class '%s'",
+          session.class->cls_name);
         have_quota_entry = TRUE;
       }
     }
