@@ -26,7 +26,7 @@
 
 /* Scoreboard routines.
  *
- * $Id: utils.h,v 1.15 2003-03-09 23:24:42 castaglia Exp $
+ * $Id: utils.h,v 1.16 2003-03-22 19:09:15 castaglia Exp $
  */
 
 #ifndef UTIL_SCOREBOARD_H
@@ -72,8 +72,6 @@
 #endif
 
 #include "default_paths.h"
-
-typedef struct in_addr p_in_addr_t;
 
 #define	FALSE	0
 #define TRUE	1
