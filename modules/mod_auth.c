@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.84 2002-09-13 20:21:49 castaglia Exp $
+ * $Id: mod_auth.c,v 1.85 2002-09-13 21:35:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -205,7 +205,7 @@ MODRET post_cmd_pass(cmd_rec *cmd) {
   have_user_timeout = have_group_timeout = have_class_timeout =
     have_all_timeout = FALSE;
 
-  if ((c = find_config(CURRENT_CONF, CONF_PARAM, "TimeoutSession",
+  if ((c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TimeoutSession",
       FALSE)) != NULL) {
 
     if (c->argc == 3) {
@@ -2096,7 +2096,7 @@ MODRET set_timeoutsession(cmd_rec *cmd) {
   if (cmd->argc-1 != 1 && cmd->argc-1 != 3)
     CONF_ERROR(cmd, "missing arguments");
 
-  CHECK_CONF(cmd, CONF_ROOT|CONF_ANON|CONF_VIRTUAL|CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   /* Set the precedence for this config_rec based on its configuration
    * context.
