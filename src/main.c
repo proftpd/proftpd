@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.29 2000-07-06 06:08:04 macgyver Exp $
+ * $Id: main.c,v 1.30 2000-07-06 06:59:21 macgyver Exp $
  */
 
 /*
@@ -958,6 +958,12 @@ void cmd_loop(server_rec *server, conn_t *c)
   char *cp;
   char *display;
   int i;
+
+  set_proc_title("proftpd: connected: %s (%s:%d)",
+  		c->remote_name ? c->remote_name : "?",
+		c->remote_ipaddr ? inet_ntoa(*c->remote_ipaddr) : "?",
+		c->remote_port ? c->remote_port : 0
+		);
 
   /* Setup the main idle timer */
   if(TimeoutIdle)
