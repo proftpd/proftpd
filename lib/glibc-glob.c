@@ -145,7 +145,7 @@ extern int errno;
 # define HAVE_D_TYPE	1
 #endif
 
-#if _LIBC
+#ifdef _LIBC
 # define HAVE_DIRENT64	1
 #endif
 
