@@ -37,6 +37,9 @@
 /* Define if you want support for PAM based authentication */
 #undef HAVE_PAM
 
+/* Define if you have the <linux/capabilities.h> header file. */
+#undef HAVE_LINUX_CAPABILITIES_H
+
 /* Define if your DIR structure has member dd_fd */
 #undef HAVE_STRUCT_DIR_DD_FD
 
