@@ -25,7 +25,7 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.23 2004-06-07 22:58:44 castaglia Exp $
+ * $Id: support.h,v 1.24 2004-11-22 00:21:48 castaglia Exp $
  */
 
 #ifndef PR_SUPPORT_H
@@ -71,10 +71,6 @@ char *dir_realpath(pool *, const char *);
 char *dir_canonical_path(pool *, const char *);
 char *dir_canonical_vpath(pool *, const char *);
 char *dir_best_path(pool *, const char *);
-
-void pr_exit_register_handler(void (*)(void));
-void remove_exit_handlers(void);
-void run_exit_handlers(void);
 
 void schedule(void (*f)(void *, void *, void *, void *), int, void *, void *,
   void *, void *);

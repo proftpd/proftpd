@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.262 2004-11-20 22:35:45 castaglia Exp $
+ * $Id: main.c,v 1.263 2004-11-22 00:21:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1868,14 +1868,12 @@ static void finish_terminate(void) {
      * that registration occurs in a different process space.
      */
     pr_event_generate("core.exit", NULL);
-    run_exit_handlers();
 
     /* Remove the registered exit handlers now, so that the ensuing
      * end_login() call (outside the root privs condition) does not call
      * the exit handlers for the master process again.
      */
     pr_event_unregister(NULL, "core.exit", NULL);
-    remove_exit_handlers();
 
     PRIVS_RELINQUISH
 

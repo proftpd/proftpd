@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.72 2004-11-02 18:18:59 castaglia Exp $
+ * $Id: support.c,v 1.73 2004-11-22 00:21:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -100,43 +100,6 @@ void pr_signals_block(void) {
 
 void pr_signals_unblock(void) {
   mask_signals(FALSE);
-}
-
-void pr_exit_register_handler(void (*exit_cb)(void)) {
-  exithandler_t *e = NULL;
-
-  if (!exithandler_pool) {
-    exithandler_pool = make_sub_pool(permanent_pool);
-    pr_pool_tag(exithandler_pool, "Exit Handler Pool");
-  }
-
-  if (!exits)
-    exits = xaset_create(exithandler_pool, NULL);
-
-  e = pcalloc(exithandler_pool, sizeof(exithandler_t));
-  e->exit_cb = exit_cb;
-
-  xaset_insert(exits, (xasetmember_t *) e);
-}
-
-void remove_exit_handlers(void) {
-  if (exits)
-    exits = NULL;
-
-  if (exithandler_pool) {
-    destroy_pool(exithandler_pool);
-    exithandler_pool = NULL;
-  }
-}
-
-void run_exit_handlers(void) {
-  exithandler_t *e = NULL;
-
-  if (!exits)
-    return;
-
-  for (e = (exithandler_t *) exits->xas_list; e; e = e->next)
-    e->exit_cb();
 }
 
 void schedule(void (*f)(void*,void*,void*,void*),int nloops, void *a1,
