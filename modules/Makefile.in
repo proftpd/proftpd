@@ -1,25 +1,17 @@
-CC=@CC@
 @SET_MAKE@
 
 top_builddir=@top_builddir@
 top_srcdir=@top_srcdir@
 srcdir=@srcdir@
 
-LIBEXECDIR=@LIBEXECDIR@
-LIBTOOL=@LIBTOOL@
+GLUE_MODULE_OBJS=@GLUE_MODULE_OBJS@
 SHARED_CFLAGS=-DPR_SHARED_MODULE
 SHARED_LDFLAGS=-avoid-version -export-dynamic -module
 VPATH=@srcdir@
 
-INSTALL=@INSTALL@
-INSTALL_USER=@install_user@
-INSTALL_GROUP=@install_group@
-INSTALL_BIN=$(INSTALL) @INSTALL_STRIP@ -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0755
-
-# In case make doesn't provide this
-RM=rm -f
-
 include ../Make.rules
+
+.PHONY: ""
 
 all:
 	@echo "Running make from top level directory."
@@ -36,22 +28,40 @@ Makefile: Makefile.in ../config.status
 	$(LIBTOOL) --mode=link $(CC) -o $@ -rpath $(LIBEXECDIR) $(LDFLAGS) $(SHARED_LDFLAGS) $(basename $@).lo `cat $(top_srcdir)/modules/$(basename $@).c | grep '$$Libraries:' | sed -e 's/^.*\$$Libraries: \(.*\)\\$$/\1/'`
 
 module_glue.c: module_glue.c.tmpl $(STATIC_MODULE_OBJS)
-	srcdir=$(srcdir) $(srcdir)/glue.sh $(STATIC_MODULE_OBJS)
+	srcdir=$(srcdir) $(srcdir)/glue.sh $(GLUE_MODULE_OBJS)
 
-shared-modules: $(SHARED_MODULE_OBJS)
+shared: $(SHARED_MODULE_OBJS)
+	@dirs="$(SHARED_MODULE_DIRS)"; \
+	for dir in $$dirs; do \
+		(cd $(top_srcdir)/$$dir/ && $(MAKE) shared); \
+	done
 
-static-modules: $(STATIC_MODULE_OBJS) module_glue.o
+static: $(STATIC_MODULE_OBJS) module_glue.o
+	@dirs="$(STATIC_MODULE_DIRS)"; \
+	for dir in $$dirs; do \
+		module=`echo "$$dir" | sed -e 's/^.*\///'`; \
+		(cd $(top_srcdir)/$$dir/ && $(MAKE) static); \
+		cp $(top_srcdir)/$$dir/$$module.o .; \
+	done
 
 install:
 	$(LIBTOOL) --mode=install $(INSTALL_BIN) $(SHARED_MODULE_OBJS) $(LIBEXECDIR)
+	@dirs="$(SHARED_MODULE_DIRS)"; \
+	for dir in $$dirs; do\
+		cd $(top_srcdir)/$$dir/ && $(MAKE) install; \
+	done
 
 clean:
-	rm -f *.o module_glue.c
+	$(RM) *.o module_glue.c
 	$(LIBTOOL) --mode=clean $(RM) $(SHARED_MODULE_OBJS)
 	$(LIBTOOL) --mode=clean $(RM) `echo $(SHARED_MODULE_OBJS) | sed 's/\.la$\/.lo/g'`
+	@dirs="$(SHARED_MODULE_DIRS) $(STATIC_MODULE_DIRS)"; \
+	for dir in $$dirs; do\
+		cd $(top_srcdir)/$$dir/ && $(MAKE) clean; \
+	done
 
 depend:
-	rm -f module_glue.c
+	$(RM) module_glue.c
 	makedepend $(CPPFLAGS) -Y *.c 2>/dev/null
 	makedepend $(CPPFLAGS) -Y -fMakefile.in *.c 2>/dev/null
 

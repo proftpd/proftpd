@@ -106,8 +106,15 @@ if test $ac_cv_prog_gcc = yes; then
 fi
 
 dnl We substitute these in the man page templates.
-if test x$exec_prefix = xNONE; then
+if test x$exec_prefix = xNONE ; then
   exec_prefix=$prefix
+fi
+
+if test x$prefix = xNONE ; then
+  prefix=/usr/local
+  bindir=/usr/local/bin
+  libexecdir=/usr/local/libexec
+  sbindir=/usr/local/sbin
 fi
 
 BINDIR=`eval echo $bindir`
@@ -1421,12 +1428,64 @@ dnl Add the proftpd support library
 LIBS="-lsupp $LIBS"
 
 dnl Module handling.
+ac_shared_module_dirs=
+ac_static_module_dirs=
+GLUE_MODULE_OBJS="$ac_core_modules $ac_static_modules"
+
+for module in $ac_shared_modules ; do
+  moduledir=`echo "$module" | sed -e 's/\.la$//'`;
+
+  if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
+    continue
+
+  elif test -d $srcdir/modules/$moduledir; then
+    ac_shared_module_dirs="$ac_shared_module_dirs modules/$moduledir";
+    ac_shared_modules=`echo "$ac_shared_modules" | sed -e "s/$module//"`
+
+  elif test -d $srcdir/contrib/$moduledir; then
+    ac_shared_module_dirs="$ac_shared_module_dirs contrib/$moduledir";
+    ac_shared_modules=`echo "$ac_shared_modules" | sed -e "s/$module//"`
+  fi
+done
+
+for module in $ac_static_modules ; do
+  moduledir=`echo "$module" | sed -e 's/\.o$//'`;
+
+  if test -f $srcdir/modules/$src -o -f $srcdir/contrib/$src; then
+    continue
+
+  elif test -d $srcdir/modules/$moduledir; then
+    ac_static_module_dirs="$ac_static_module_dirs modules/$moduledir";
+    ac_static_modules=`echo "$ac_static_modules" | sed -e "s/$module//"`
+
+  elif test -d $srcdir/contrib/$moduledir; then
+    ac_static_module_dirs="$ac_static_module_dirs contrib/$moduledir";
+    ac_static_modules=`echo "$ac_static_modules" | sed -e "s/$module//"`
+  fi
+done
+
+dnl Yes, I know that this is not recommended Autoconf practice.  I doubt,
+dnl though, that many users will require the use of
+dnl `./configure --help=recursive' to see all of the options.
+if test ! -z "$ac_shared_module_dirs" ; then
+  AC_CONFIG_SUBDIRS($ac_shared_module_dirs)
+else
+  ac_shared_module_dirs="\"\""
+fi
+
+if test ! -z "$ac_static_module_dirs" ; then
+  AC_CONFIG_SUBDIRS($ac_static_module_dirs)
+else
+  ac_static_module_dirs="\"\""
+fi
+
 for module in $ac_shared_modules; do
   if test x"$enable_dso" != xyes ; then
     echo "cannot build shared modules without DSO support -- aborting"
     exit 1
   fi
 
+  moduledir=`echo "$module" | sed -e 's/\.la$//'`;
   src=`echo "$module" | sed -e 's/\.la$//'`.c;
   srcinc=`echo "$module" | sed -e 's/\.la$//'`.h;
 
@@ -1445,7 +1504,8 @@ for module in $ac_shared_modules; do
       cd $olddir
     fi
 
-    dnl Need to handle the $Libraries$ tag in shared modules
+  elif test -d $srcdir/modules/$moduledir -o -d $srcdir/contrib/$moduledir; then
+    continue
 
   else
     echo "source file '$srcdir/modules/$src' cannot be found -- aborting"
@@ -1455,6 +1515,7 @@ done
 
 for module in $ac_static_modules; do
   addonlibs=""
+  moduledir=`echo "$module" | sed -e 's/\.o$//'`;
   src=`echo "$module" | sed -e 's/\.o$//'`.c;
   srcinc=`echo "$module" | sed -e 's/\.o$//'`.h;
 
@@ -1502,6 +1563,9 @@ for module in $ac_static_modules; do
     adir=`cat $srcdir/modules/$src | grep "\\\$Directories:" | sed -e 's/^.*\$Directories: \(.*\)\\$/\1/'`
     test x"$adir" = x || ac_addl_dirs="$adir $ac_addl_dirs"
 
+  elif test -d $srcdir/modules/$moduledir -o -d $srcdir/contrib/$moduledir; then
+    continue
+
   else
     echo "source file '$srcdir/modules/$src' cannot be found -- aborting"
     exit 1
@@ -1518,11 +1582,13 @@ ADDL_DIRS="$ac_addl_dirs"
 INCLUDES="$ac_build_addl_includes"
 LIBDIRS="$ac_build_addl_libdirs"
 LIBRARIES="$ac_build_addl_libs"
+SHARED_MODULE_DIRS="$ac_shared_module_dirs"
 if test ! -z "$ac_shared_modules" ; then
   SHARED_MODULE_OBJS="$ac_shared_modules"
 else
   SHARED_MODULE_OBJS="\"\""
 fi
+STATIC_MODULE_DIRS="$ac_static_module_dirs"
 STATIC_MODULE_OBJS="$ac_core_modules $ac_static_modules"
 BUILD_SHARED_MODULE_OBJS="$ac_build_shared_modules"
 BUILD_STATIC_MODULE_OBJS="$ac_build_core_modules $ac_build_static_modules"
@@ -1577,6 +1643,7 @@ dnl tests to fail).
 PR_CHECK_CC_OPT(Wno-long-double)
 
 dnl And finally, generate the appropriate Make* and config.h
+AC_SUBST(GLUE_MODULE_OBJS)
 AC_SUBST(INSTALL_STRIP)
 AC_SUBST(INCLTDL)
 AC_SUBST(INSTALL_DEPS)
@@ -1588,7 +1655,9 @@ AC_SUBST(MAIN_LDFLAGS)
 AC_SUBST(MAIN_LIBS)
 AC_SUBST(MODULE_DEPS)
 AC_SUBST(MODULE_LDFLAGS)
+AC_SUBST(SHARED_MODULE_DIRS)
 AC_SUBST(SHARED_MODULE_OBJS)
+AC_SUBST(STATIC_MODULE_DIRS)
 AC_SUBST(STATIC_MODULE_OBJS)
 AC_SUBST(BUILD_SHARED_MODULE_OBJS)
 AC_SUBST(BUILD_STATIC_MODULE_OBJS)
@@ -1608,3 +1677,20 @@ AC_OUTPUT(lib/Makefile
             utils/ftpwho.1
           Makefile Make.rules,
           [echo timestamp > stamp-h])
+
+dnl After everything has been generated, we need to double-check for
+dnl header files in the module directories.
+for moduledir in $ac_shared_module_dirs $ac_static_module_dirs; do
+  srcinc=`echo "$moduledir" | sed -e 's/^.*\///'`.h;
+
+  if test -d $srcdir/$moduledir ; then
+    if test ! -f $srcdir/include/$srcinc ; then
+      if test -f $srcdir/$moduledir/$srcinc ; then
+        olddir=`pwd`
+        cd $srcdir/include
+        ln -s ../$moduledir/$srcinc $srcinc
+        cd $olddir
+      fi
+    fi
+  fi
+done

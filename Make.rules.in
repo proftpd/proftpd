@@ -8,10 +8,22 @@ localstatedir=@localstatedir@
 rundir=@localstatedir@/proftpd
 mandir=@mandir@
 
+CC=@CC@
 PLATFORM=@OSREL@ @OSTYPE@
 LDFLAGS=@LDFLAGS@ @LIBDIRS@
+LIBEXECDIR=@LIBEXECDIR@
 LIBS=@LIBRARIES@ @LIBS@
+LIBTOOL=@LIBTOOL@
 CURSES_LIBS=@CURSES_LIBS@
+
+INSTALL=@INSTALL@
+INSTALL_USER=@install_user@
+INSTALL_GROUP=@install_group@
+INSTALL_BIN=$(INSTALL) @INSTALL_STRIP@ -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0755
+INSTALL_SBIN=$(INSTALL) @INSTALL_STRIP@ -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0755
+INSTALL_MAN=$(INSTALL) -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0644
+
+RM=rm -f
 
 # Directory include paths.
 #
@@ -38,9 +50,11 @@ BUILD_OBJS=src/main.o src/timers.o src/sets.o src/pool.o src/table.o \
            src/display.o src/auth.o src/fsio.o src/mkhome.o src/ctrls.o \
            src/event.o src/var.o
 
+SHARED_MODULE_DIRS=@SHARED_MODULE_DIRS@
 SHARED_MODULE_OBJS=@SHARED_MODULE_OBJS@
 BUILD_SHARED_MODULE_OBJS=@BUILD_SHARED_MODULE_OBJS@
 
+STATIC_MODULE_DIRS=@STATIC_MODULE_DIRS@
 STATIC_MODULE_OBJS=@STATIC_MODULE_OBJS@
 BUILD_STATIC_MODULE_OBJS=@BUILD_STATIC_MODULE_OBJS@ modules/module_glue.o
 

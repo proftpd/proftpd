@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.639 2004-12-30 22:51:40 castaglia Exp $
+$Id: NEWS,v 1.640 2005-01-01 03:02:05 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -103,6 +103,7 @@ CVS
 - Bug 2540 - Fails to disable mod_delay if no DelayTable file exists.
 - Bug 2541 - <Directory ~user> path resolved at startup time, rather than at
   session time.
+- Bug 2549 - Allow contrib modules to be built from multiple source files.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------
