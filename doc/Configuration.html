@@ -48,6 +48,7 @@ features and configuration:</p>
     <li><a href="#DisplayConnect">DisplayConnect</a></li>
     <li><a href="#DisplayFirstChdir">DisplayFirstChdir</a></li>
     <li><a href="#DisplayLogin">DisplayLogin</a></li>
+    <li><a href="#DisplayReadme">DisplayReadme</a></li>
     <li><a href="#ExtendedLog">ExtendedLog</a></li>
     <li><a href="#Global">&lt;Global&gt;</a></li>
     <li><a href="#Group">Group</a></li>
@@ -1065,6 +1066,32 @@ the client.</p>
 
 <p>DisplayLogin supports the same &quot;magic cookies&quot; as <a
 href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
+
+<hr>
+
+<h2><a name="DisplayReadme">DisplayReadme</a></h2>
+
+<p><strong>Syntax:</strong> DisplayReadme <em>filename</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, &lt;VirtualHost&gt;,
+&lt;Anonymous&gt;, &lt;Global&gt;<br>
+<strong>Compatibility:</strong> 1.2.0pre8 and later<br>
+<strong>Module: mod_readme</p>
+
+<P>The DisplayReadme directive notifies the user of the last change
+date of the specified file.  Only a single DisplayReadme directive is
+allowed per configuration scope.
+
+<p><code>DisplayReadme README</code></p>
+
+<p>Will result in:</p>
+
+<p><code>
+ Please read the file README
+   it was last modified on Sun Oct 17 10:36:14 1999 - 0 days ago
+</code></p>
+
+<P>Being displayed to the user on a cwd.
 
 <hr>
 
