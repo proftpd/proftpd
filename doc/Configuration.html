@@ -61,17 +61,20 @@
   <li><a href="#IgnoreHidden">IgnoreHidden</a></li>
   <li><a href="#Include">Include</a></li>
   <li><a href="#Limit">&lt;Limit&gt;</a></li>
-  <li><a href="#LDAPDefaultAuthScheme">LDAPDefaultAuthScheme</LI
-  <li><a href="#LDAPDefaultGID">LDAPDefaultGID</LI>
-  <li><a href="#LDAPDefaultUID">LDAPDefaultUID</LI>
-  <li><a href="#LDAPDNInfo">LDAPDNInfo</LI>
-  <li><a href="#LDAPDoAuth">LDAPDoAuth</LI>
-  <li><a href="#LDAPDoUIDLookups">LDAPDoUIDLookups</LI>
-  <li><a href="#LDAPDoGIDLookups">LDAPDoGIDLookups</LI>
-  <li><a href="#LDAPHomedirOnDemand">LDAPHomedirOnDemand</LI>
-  <li><a href="#LDAPNegativeCache">LDAPNegativeCache</LI>
-  <li><a href="#LDAPQueryTimeout">LDAPQueryTimeout</LI>
-  <li><a href="#LDAPServer">LDAPServer</LI>
+  <li><a href="#LDAPAuthBinds">LDAPAuthBinds</a></li>
+  <li><a href="#LDAPDefaultAuthScheme">LDAPDefaultAuthScheme</a></li>
+  <li><a href="#LDAPDefaultGID">LDAPDefaultGID</a></li>
+  <li><a href="#LDAPDefaultUID">LDAPDefaultUID</a></li>
+  <li><a href="#LDAPDNInfo">LDAPDNInfo</a></li>
+  <li><a href="#LDAPDoAuth">LDAPDoAuth</a></li>
+  <li><a href="#LDAPDoUIDLookups">LDAPDoUIDLookups</a></li>
+  <li><a href="#LDAPDoGIDLookups">LDAPDoGIDLookups</a></li>
+  <li><a href="#LDAPHomedirOnDemand">LDAPHomedirOnDemand</a></li>
+  <li><a href="#LDAPHomedirOnDemandSuffix">LDAPHomedirOnDemandSuffix</a></li>
+  <li><a href="#LDAPNegativeCache">LDAPNegativeCache</a></li>
+  <li><a href="#LDAPQueryTimeout">LDAPQueryTimeout</a></li>
+  <li><a href="#LDAPSearchScope">LDAPSearchScope</a></li>
+  <li><a href="#LDAPServer">LDAPServer</a></li>
   <li><a href="#LogFormat">LogFormat</a></li>
   <li><a href="#LoginPasswordPrompt">LoginPasswordPrompt</a></li>
   <li><a href="#LsDefaultOptions">LsDefaultOptions</a></li>
@@ -1323,6 +1326,23 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
   the base operating/file system.</p>
 <p><strong>See Also:</strong> <a href="#IgnoreHidden">IgnoreHidden</a></p>
 <hr>
+<h2><a name="LDAPAuthBinds"></a></h2>
+<p><strong>Syntax:</strong> LDAPAuthBinds <em>on|off</em><br>
+  <strong>Default:</strong> <code>LDAPAuthBinds off</code><br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+  <strong>Compatibility:</strong> 1.2.0pre10 w/mod_ldap v2.5 and later</p>
+<p>Specifies whether to use authenticated binds. Normally, a privileged
+   LDAP DN will be used to bind to the LDAP server to obtain user
+   information, including the userPassword attribute. If
+   <code>LDAPAuthBinds</code> is set to <em>on</em>, the DN specified
+   by <code>LDAPDNInfo</code> will be used to fetch all user information
+   except the userPassword attribute. Then, mod_ldap will bind to the LDAP
+   server as the user who is logging in via FTP with the user-supplied
+   password. If this bind succeeds, the user is considered authenticated
+   and is allowed to log in. This method of LDAP authentication has the
+   added benefit of supporting any password encryption scheme that your
+   LDAP server supports.
+<hr>
 <h2><a name="LDAPDefaultAuthScheme">LDAPDefaultAuthScheme</a></h2>
 <p><strong>Syntax:</strong> LDAPDefaultAuthScheme <em>crypt|clear</em><br>
   <strong>Default:</strong> <code>LDAPDefaultAuthScheme "crypt"</code><br>
@@ -1403,6 +1423,20 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
    user and group that ProFTPD is running as (see the <a href="#User">User</a>
    and <a href="#Group">Group</a> configuration directives).
 <hr>
+<h2><a name="LDAPHomedirOnDemandSuffix"></a></h2>
+<p><strong>Syntax:</strong> LDAPHomedirOnDemandSuffix <em>"additional-directory"</em><br>
+  <strong>Default:</strong> <code>LDAPHomedirOnDemandSuffix ""</code><br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+<p>LDAPHomedirOnDemandSuffix allows you to specify an additional directory
+   to be created within a user's home directory when it is created on
+   demand. For example, if a user's home directory is "/home/user", setting
+   this configuration directive to <strong><em>"public_html"</em></strong>
+   will also create "/home/user/public_html" on demand. To use this feature,
+   you must also activate <strong><em>
+   <a href="#LDAPHomedirOnDemand">LDAPHomedirOnDemand</a></em></strong> in
+   your configuration.</p>
+<hr>
 <h2><a name="LDAPNegativeCache">LDAPNegativeCache</a></h2>
 <p><strong>Syntax:</strong> LDAPNegativeCache <em>on|off</em><br>
   <strong>Default:</strong> <code>LDAPNegativeCache off</code><br>
@@ -1428,14 +1462,26 @@ href="#Limit">&lt;Limit&gt;</a> block to completely ignore any hidden
 <p>Sets the timeout used for LDAP directory queries. The default is the
    default timeout used by the LDAP API.
 <hr>
+<h2><a name="LDAPSearchScope"></a></h2>
+<p><strong>Syntax:</strong> LDAPSearchScope <em>onelevel|subtree</em><br>
+  <strong>Default:</strong> <code>LDAPSearchScope subtree</code><br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+  <strong>Compatibility:</strong> 1.2.0 and later</p>
+<p>Set the scope used for LDAP searches. Setting this directive to
+   <strong><em>onelevel</em></strong> searches only one level deep in the
+   LDAP tree. The default setting, <strong><em>subtree</em></strong>,
+   searches for all entries in the tree from the current level down.
+   </p>
+<hr>
 <h2><a name="LDAPServer">LDAPServer</a></h2>
-<p><strong>Syntax:</strong> LDAPServer <em>"hostname"</em><br>
+<p><strong>Syntax:</strong> LDAPServer <em>"hostname1:port hostname2:port ..."</em><br>
   <strong>Default:</strong> <code>LDAPServer "localhost"</code><br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
-<p>LDAPServer allows you to to specify the hostname of the LDAP server to
-   use for LDAP authentication. If no LDAPServer configuration directive is
-   present, the local host will be used for the LDAP server.</p>
+<p>LDAPServer allows you to to specify the hostname(s) and port(s) of the
+   LDAP server(s) to use for LDAP authentication. If no LDAPServer
+   configuration directive is present, the local host will be used for the
+   LDAP server.</p>
 <hr>
 <h2><a name="LogFormat">LogFormat</a></h2>
 <p><strong>Syntax:</strong> LogFormat <em>nickname &quot;format-string&quot;</em><br>
