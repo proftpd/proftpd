@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.131 2002-12-05 20:37:19 castaglia Exp $
+ * $Id: main.c,v 1.132 2002-12-05 21:16:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -994,10 +994,8 @@ static void cmd_loop(server_rec *server, conn_t *c) {
     serveraddress = pstrdup(server->pool, inet_ntoa(*masq_addr));
   }
 
-  display = (char*)get_param_ptr(server->conf,"DisplayConnect",FALSE);
-  if(display) {
-      core_display_file(R_220,display,NULL);
-  }
+  if ((display = get_param_ptr(server->conf, "DisplayConnect", FALSE)))
+    core_display_file(R_220, display, NULL);
 
   if((id = find_config(server->conf,CONF_PARAM,"ServerIdent",FALSE)) == NULL ||
 		  !id->argv[0]) {
@@ -1012,12 +1010,12 @@ static void cmd_loop(server_rec *server, conn_t *c) {
     send_response("220", "%s FTP server ready.", serveraddress);
   }
 
-  /* make sure we can receive OOB data */
+  /* Make sure we can receive OOB data */
   inet_setasync(session.pool,session.c);
 
   log_pri(PR_LOG_INFO, "FTP session opened.");
 
-  while(1) {
+  while (1) {
     pr_handle_signals();
 
     if (pr_netio_telnet_gets(buf, sizeof(buf)-1, session.c->instrm,
@@ -1033,8 +1031,8 @@ static void cmd_loop(server_rec *server, conn_t *c) {
     }
 
     /* Data received, reset idle timer */
-    if(TimeoutIdle)
-      reset_timer(TIMER_IDLE,NULL);
+    if (TimeoutIdle)
+      reset_timer(TIMER_IDLE, NULL);
 
     if(CmdBufSize == -1) {
       if((CmdBufSize = get_param_int(main_server->conf,
@@ -1976,7 +1974,7 @@ static char *_prepare_core(void)
   
   snprintf(dir, sizeof(dir), "%s/proftpd-core-%ld", CORE_DIR, getpid());
   
-  if(mkdir(dir, 0700) != -1)
+  if (mkdir(dir, 0700) != -1)
     chdir(dir);
   
   return dir;
@@ -2514,7 +2512,7 @@ static void daemonize(void) {
 # endif
 #endif
 
-  fs_chdir("/", 0);
+  pr_fsio_chdir("/", 0);
 }
 
 static void addl_bindings(server_rec *s) {
@@ -3022,7 +3020,7 @@ int main(int argc, char *argv[], char **envp) {
   init_log();
   init_inet();
   pr_init_netio();
-  init_fs();
+  pr_init_fs();
   init_config();
   pr_preparse_init_modules();
 

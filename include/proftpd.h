@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.32 2002-12-05 20:53:22 castaglia Exp $
+ * $Id: proftpd.h,v 1.33 2002-12-05 21:16:48 castaglia Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -146,7 +146,9 @@ typedef struct {
   struct IO_Request *d_req;		/* Active data connection request */
 
   int hide_password;			/* Hide password in logs/ps listing */
-  char *anon_root;			/* Anonymous root directory */
+
+  char *chroot_path;			/* Chroot directory */
+
   struct config_struc *anon_config;	/* Anonymous FTP configuration */
   char *anon_user;			/* E-mail address sent to us */
   

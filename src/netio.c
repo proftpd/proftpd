@@ -62,32 +62,32 @@ static pr_netio_stream_t *netio_stream_alloc(pool *parent_pool) {
   nstrm->strm_fd = -1;
   nstrm->strm_mode = 0;
   nstrm->strm_flags = 0;
-  nstrm->strm_nbuf = NULL;
+  nstrm->strm_buf = NULL;
   nstrm->strm_data = NULL;
   nstrm->strm_errno = 0;
 
   return nstrm;
 }
 
-static pr_netio_buffer_t *netio_buffer_alloc(pr_netio_stream_t *nstrm) {
-  pr_netio_buffer_t *nbuf = NULL;
+static pr_buffer_t *netio_buffer_alloc(pr_netio_stream_t *nstrm) {
+  pr_buffer_t *pbuf = NULL;
 
-  nbuf = pcalloc(nstrm->strm_pool, sizeof(pr_netio_buffer_t));
+  pbuf = pcalloc(nstrm->strm_pool, sizeof(pr_buffer_t));
 
   /* Allocate a buffer. */
-  nbuf->buf = pcalloc(nstrm->strm_pool, PR_TUNABLE_BUFFER_SIZE);
-  nbuf->buflen = PR_TUNABLE_BUFFER_SIZE;
+  pbuf->buf = pcalloc(nstrm->strm_pool, PR_TUNABLE_BUFFER_SIZE);
+  pbuf->buflen = PR_TUNABLE_BUFFER_SIZE;
  
   /* Position the offset at the start of the buffer, and set the
    * remaining bytes value accordingly.
    */
-  nbuf->current = nbuf->buf;
-  nbuf->remaining = PR_TUNABLE_BUFFER_SIZE;
+  pbuf->current = pbuf->buf;
+  pbuf->remaining = PR_TUNABLE_BUFFER_SIZE;
 
   /* Add this buffer to the given stream. */
-  nstrm->strm_nbuf = nbuf;
+  nstrm->strm_buf = pbuf;
 
-  return nbuf;
+  return pbuf;
 }
 
 /* Default core NetIO handlers
@@ -697,22 +697,22 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
 char *pr_netio_gets(char *buf, size_t buflen, pr_netio_stream_t *nstrm) {
   char *bp = buf;
   int toread;
-  pr_netio_buffer_t *nbuf = NULL;
+  pr_buffer_t *pbuf = NULL;
   buflen--;
 
-  if (nstrm->strm_nbuf)
-    nbuf = nstrm->strm_nbuf;
+  if (nstrm->strm_buf)
+    pbuf = nstrm->strm_buf;
   else
-    nbuf = netio_buffer_alloc(nstrm);
+    pbuf = netio_buffer_alloc(nstrm);
 
   while (buflen) {
 
     /* Is the buffer empty? */
-    if (!nbuf->current ||
-        nbuf->remaining == nbuf->buflen) {
+    if (!pbuf->current ||
+        pbuf->remaining == pbuf->buflen) {
 
-      toread = pr_netio_read(nstrm, nbuf->buf,
-        (buflen < nbuf->buflen ?  buflen : nbuf->buflen), 1);
+      toread = pr_netio_read(nstrm, pbuf->buf,
+        (buflen < pbuf->buflen ?  buflen : pbuf->buflen), 1);
 
       if (toread <= 0) {
         if(bp != buf) {
@@ -723,32 +723,33 @@ char *pr_netio_gets(char *buf, size_t buflen, pr_netio_stream_t *nstrm) {
           return NULL;
       }
 
-      nbuf->remaining = nbuf->buflen - toread;
-      nbuf->current = nbuf->buf;
+      pbuf->remaining = pbuf->buflen - toread;
+      pbuf->current = pbuf->buf;
 
     } else
-      toread = nbuf->buflen - nbuf->remaining;
+      toread = pbuf->buflen - pbuf->remaining;
 
-    while (buflen && *nbuf->current != '\n' && toread--) {
-      if (*nbuf->current & 0x80)
-        nbuf->current++;
+    while (buflen && *pbuf->current != '\n' && toread--) {
+      if (*pbuf->current & 0x80)
+        pbuf->current++;
+
       else {
-        *bp++ = *nbuf->current++;
+        *bp++ = *pbuf->current++;
         buflen--;
       }
-      nbuf->remaining++;
+      pbuf->remaining++;
     }
 
-    if (buflen && toread && *nbuf->current == '\n') {
+    if (buflen && toread && *pbuf->current == '\n') {
       buflen--;
       toread--;
-      *bp++ = *nbuf->current++;
-      nbuf->remaining++;
+      *bp++ = *pbuf->current++;
+      pbuf->remaining++;
       break;
     }
 
     if (!toread)
-      nbuf->current = NULL;
+      pbuf->current = NULL;
   }
 
   *bp = '\0';
@@ -762,25 +763,25 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
   unsigned char cp;
   static unsigned char mode = 0;
   int toread;
-  pr_netio_buffer_t *nbuf = NULL;
+  pr_buffer_t *pbuf = NULL;
   buflen--;
 
-  if (in_nstrm->strm_nbuf)
-    nbuf = in_nstrm->strm_nbuf;
+  if (in_nstrm->strm_buf)
+    pbuf = in_nstrm->strm_buf;
   else
-    nbuf = netio_buffer_alloc(in_nstrm);
+    pbuf = netio_buffer_alloc(in_nstrm);
 
   while (buflen) {
 
     /* Is the buffer empty? */
-    if (!nbuf->current ||
-        nbuf->remaining == nbuf->buflen) {
+    if (!pbuf->current ||
+        pbuf->remaining == pbuf->buflen) {
 
-      toread = pr_netio_read(in_nstrm, nbuf->buf,
-        (buflen < nbuf->buflen ?  buflen : nbuf->buflen), 1);
+      toread = pr_netio_read(in_nstrm, pbuf->buf,
+        (buflen < pbuf->buflen ?  buflen : pbuf->buflen), 1);
 
       if (toread <= 0) {
-        if(bp != buf) {
+        if (bp != buf) {
           *bp = '\0';
           return buf;
 
@@ -788,15 +789,15 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
           return NULL;
       }
 
-      nbuf->remaining = nbuf->buflen - toread;
-      nbuf->current = nbuf->buf;
+      pbuf->remaining = pbuf->buflen - toread;
+      pbuf->current = pbuf->buf;
 
     } else
-      toread = nbuf->buflen - nbuf->remaining;
+      toread = pbuf->buflen - pbuf->remaining;
 
-    while (buflen && *nbuf->current != '\n' && toread--) {
-      cp = *nbuf->current++;
-      nbuf->remaining++;
+    while (buflen && *pbuf->current != '\n' && toread--) {
+      cp = *pbuf->current++;
+      pbuf->remaining++;
 
       switch (mode) {
         case IAC:
@@ -843,16 +844,16 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
       buflen--;
     }
 
-    if (buflen && toread && *nbuf->current == '\n') {
+    if (buflen && toread && *pbuf->current == '\n') {
       buflen--;
       toread--;
-      *bp++ = *nbuf->current++;
-      nbuf->remaining++;
+      *bp++ = *pbuf->current++;
+      pbuf->remaining++;
       break;
     }
 
     if (!toread)
-      nbuf->current = NULL;
+      pbuf->current = NULL;
   }
 
   *bp = '\0';

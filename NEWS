@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.302 2002-12-05 20:53:22 castaglia Exp $
+$Id: NEWS,v 1.303 2002-12-05 21:16:46 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -17,6 +17,8 @@ CVS
   during a session, "%o" for total number of files download (written "out")
   during a session, and "%t" for total number of files transferred (both
   uploaded and downloaded).
+- Bug 1653 - Complete the FS API abstraction implementation.  The Developer
+  Guide will have the complete details on using this API.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------

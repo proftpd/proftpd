@@ -55,7 +55,7 @@ static void add_readme_response(const char *file) {
   char *tptr;
   char ctime_str[28] = {'\0'};
   
-  if(fs_stat(file, &buf) == 0) {
+  if (pr_fsio_stat(file, &buf) == 0) {
     (void) time(&clock);
 
     tp = gmtime(&clock);
@@ -82,7 +82,7 @@ static void add_pattern_response(const char *pattern) {
   int    a;
   char **path;
   
-  if(!(a = fs_glob(pattern, 0, NULL, &g))) {
+  if (!(a = pr_fs_glob(pattern, 0, NULL, &g))) {
     path = g.gl_pathv;
     while(path && *path) {
       add_readme_response(*path);
@@ -96,7 +96,7 @@ static void add_pattern_response(const char *pattern) {
     add_response(R_226, "Unknown error during globbing of %s", pattern);
   }
   
-  fs_globfree(&g);
+  pr_fs_globfree(&g);
 }
 
 MODRET show_readme(cmd_rec *cmd) {

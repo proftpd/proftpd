@@ -805,10 +805,11 @@ static int build_homedir(cmd_rec *cmd, char *path, mode_t omode,
   }
 
   /* sanity check -- make sure the path doesn't exist */
-  if (!fs_stat(path, &st)) {
+  if (!pr_fsio_stat(path, &st)) {
     log_debug(DEBUG_WARN, _MOD_VERSION ": user's homedir already exists");
     log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< build_homedir");
     return 0;
+
   } else if (errno != ENOENT) {
     log_debug(DEBUG_WARN, _MOD_VERSION ": problem with stat of user's homedir");
     log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< build_homedir");
@@ -838,26 +839,26 @@ static int build_homedir(cmd_rec *cmd, char *path, mode_t omode,
     if ( *(local_ptr + 1) == '\0' )
       userdir_flag = 1;
 
-    if ( fs_stat( local_path, &st ) ) {
+    if ( pr_fsio_stat( local_path, &st ) ) {
       /* if the stat failed.. */
       if (errno == ENOENT) {
 	/* and it's 'cause the directory doesn't exist */
 	if ( !userdir_flag ) {
 	  /* if it's an intermediate dir */
-	  if ( mkdir(local_path, S_IRWXU | S_IRWXG | S_IRWXO ) ) {
+	  if ( pr_fsio_mkdir(local_path, S_IRWXU | S_IRWXG | S_IRWXO ) ) {
 	    return -1;
 	  } else {
-	    fs_chown(local_path, p_uid, p_gid );
+	    pr_fsio_chown(local_path, p_uid, p_gid );
 	  }
 	} else {
 	  /* this is the user's homedir, and the final directory  */
 	  old_umask = umask(0);
 	  umask( old_umask & ~(S_IWUSR | S_IXUSR | S_IRUSR) );
-	  if ( mkdir(local_path, omode) ) {
+	  if ( pr_fsio_mkdir(local_path, omode) ) {
 	    umask( old_umask );
 	    return -1;
 	  } else {
-	    fs_chown(local_path, uid, gid);
+	    pr_fsio_chown(local_path, uid, gid);
 	  }
 	  umask( old_umask );
 	}

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.124 2002-12-05 20:53:23 castaglia Exp $
+ * $Id: mod_core.c,v 1.125 2002-12-05 21:16:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2301,9 +2301,9 @@ MODRET end_virtualhost(cmd_rec *cmd) {
  */
 
 int core_display_file(const char *numeric, const char *fn, const char *fs) {
-  fsdir_t *fp;
+  pr_fh_t *fp = NULL;
   char buf[1024] = {'\0'};
-  int len, fd, classes_enabled;
+  int len, classes_enabled;
   unsigned int *max_clients = NULL;
   off_t fs_size = 0;
   pool *p;
@@ -2319,13 +2319,13 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
   unsigned char first = TRUE;
 
 #if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
-  fs_size = get_fs_size((fs ? (char*)fs : (char*)fn));
+  fs_size = pr_fs_getsize((fs ? (char*)fs : (char*)fn));
   snprintf(mg_size, sizeof(mg_size), "%" PR_LU, fs_size);
 #else
   snprintf(mg_size, sizeof(mg_size), "%" PR_LU, fs_size);
 #endif
 
-  if ((fp = fs_open_canon(fn,O_RDONLY, &fd)) == NULL)
+  if ((fp = pr_fsio_open_canon(fn, O_RDONLY)) == NULL)
     return -1;
 
   p = make_sub_pool(permanent_pool);
@@ -2396,7 +2396,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
     session.total_files_xfer);
   total_files_xfer[sizeof(total_files_xfer)-1] = '\0';
  
-  while (fs_gets(buf, sizeof(buf), fp, fd) != NULL) {
+  while (pr_fsio_gets(buf, sizeof(buf), fp) != NULL) {
     buf[sizeof(buf)-1] = '\0';
 
     len = strlen(buf);
@@ -2441,7 +2441,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
     }
   }
 
-  fs_close(fp, fd);
+  pr_fsio_close(fp);
   return 0;
 }
 
@@ -2502,9 +2502,9 @@ MODRET regex_filters(cmd_rec *cmd) {
 }
 #endif /* HAVE_REGEX_H && HAVE_REGCOMP */
 
-MODRET core_clear_cache(cmd_rec *cmd) {
-  /* Make sure the FS statcache is clear before each command. */
-  fs_clear_statcache();
+MODRET core_clear_fs(cmd_rec *cmd) {
+  /* Make sure any FS caches are clear before each command. */
+  pr_fs_clear_cache();
 
   return DECLINED(cmd);
 }
@@ -2802,14 +2802,14 @@ int core_chgrp(cmd_rec *cmd, char *dir, uid_t uid, gid_t gid) {
   if (!dir_check(cmd->tmp_pool, "SITE_CHGRP", "WRITE", dir, NULL)) 
     return -1;
 
-  return fs_chown(dir, uid, gid);
+  return pr_fsio_chown(dir, uid, gid);
 }
 
 int core_chmod(cmd_rec *cmd, char *dir, mode_t mode) {
   if(!dir_check(cmd->tmp_pool, "SITE_CHMOD", "WRITE", dir, NULL))
     return -1;
 
-  return fs_chmod(dir,mode);
+  return pr_fsio_chmod(dir,mode);
 }
 
 MODRET _chdir(cmd_rec *cmd,char *ndir) {
@@ -2828,7 +2828,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
     dir = dir_realpath(cmd->tmp_pool,ndir);
 
     if(!dir || !dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
-        fs_chdir(dir,0) == -1) {
+        pr_fsio_chdir(dir, 0) == -1) {
       for(cdpath = find_config(main_server->conf,CONF_PARAM,"CDPath",TRUE);
 	  cdpath != NULL; cdpath =
 	    find_config_next(cdpath,cdpath->next,CONF_PARAM,"CDPath",TRUE)) {
@@ -2841,7 +2841,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
 	free(cdir);
 	if(dir &&
 	   dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) &&
-	   fs_chdir(dir,0) != -1) {
+	   pr_fsio_chdir(dir, 0) != -1) {
 	  break;
 	}
       }
@@ -2856,7 +2856,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
     dir = dir_realpath(cmd->tmp_pool,ndir);
 
     if(!dir || !dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
-        fs_chdir_canon(ndir,1) == -1) {
+        pr_fsio_chdir_canon(ndir, 1) == -1) {
 
       for(cdpath = find_config(main_server->conf,CONF_PARAM,"CDPath",TRUE);
 	  cdpath != NULL; cdpath =
@@ -2871,7 +2871,7 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
 	free(cdir);
 	if(dir &&
 	   dir_check_full(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) &&
-	   fs_chdir_canon(ndir,1) != -1) {
+	   pr_fsio_chdir_canon(ndir, 1) != -1) {
 	  break;
 	}
       }
@@ -2882,8 +2882,8 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
     }
   }
 
-  sstrncpy(session.cwd,fs_getcwd(),sizeof(session.cwd));
-  sstrncpy(session.vwd,fs_getvwd(),sizeof(session.vwd));
+  sstrncpy(session.cwd, pr_fs_getcwd(), sizeof(session.cwd));
+  sstrncpy(session.vwd, pr_fs_getvwd(), sizeof(session.vwd));
 
   pr_scoreboard_update_entry(getpid(),
     PR_SCORE_CWD, session.cwd,
@@ -2919,9 +2919,9 @@ MODRET _chdir(cmd_rec *cmd,char *ndir) {
       c->argv[0] = (void*)time(NULL);
     }
 
-    if(fs_stat(display,&sbuf) != -1 && !S_ISDIR(sbuf.st_mode) &&
+    if (pr_fsio_stat(display, &sbuf) != -1 && !S_ISDIR(sbuf.st_mode) &&
        sbuf.st_mtime > last)
-      core_display_file(R_250,display,session.cwd);
+      core_display_file(R_250, display, session.cwd);
   }
 
   add_response(R_250,"%s command successful.", cmd->argv[0]);
@@ -2961,7 +2961,7 @@ MODRET core_rmd(cmd_rec *cmd) {
   dir = dir_canonical_path(cmd->tmp_pool,cmd->arg);
 
   if(!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL) ||
-     rmdir(dir) == -1) {
+     pr_fsio_rmdir(dir) == -1) {
     add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
     return ERROR(cmd);
   } else
@@ -3008,7 +3008,7 @@ MODRET core_mkd(cmd_rec *cmd) {
 
   if (!dir ||
       !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group,dir, NULL) ||
-       mkdir(dir, 0777) == -1) {
+       pr_fsio_mkdir(dir, 0777) == -1) {
     add_response_err(R_550, "%s: %s", cmd->argv[1], strerror(errno));
     return ERROR(cmd);
 
@@ -3016,10 +3016,10 @@ MODRET core_mkd(cmd_rec *cmd) {
     if (session.fsuid != (uid_t) -1) {
       int err = 0,iserr = 0;
 
-      fs_stat(dir, &sbuf);
+      pr_fsio_stat(dir, &sbuf);
 
       PRIVS_ROOT
-      if (fs_chown(dir, session.fsuid, session.fsgid) == -1) {
+      if (pr_fsio_chown(dir, session.fsuid, session.fsgid) == -1) {
         iserr++;
         err = errno;
       }
@@ -3039,9 +3039,9 @@ MODRET core_mkd(cmd_rec *cmd) {
       }
 
     } else if (session.fsgid != (gid_t) -1) {
-      fs_stat(dir, &sbuf);
+      pr_fsio_stat(dir, &sbuf);
 
-      if (fs_chown(dir, (uid_t) -1, session.fsgid) == -1)
+      if (pr_fsio_chown(dir, (uid_t) -1, session.fsgid) == -1)
         log_pri(PR_LOG_WARNING, "chown() failed: %s", strerror(errno));
 
       else
@@ -3087,7 +3087,7 @@ MODRET core_mdtm(cmd_rec *cmd) {
   path = dir_realpath(cmd->tmp_pool,cmd->arg);
 
   if(!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) ||
-     fs_stat(path,&sbuf) == -1) {
+     pr_fsio_stat(path, &sbuf) == -1) {
     add_response_err(R_550,"%s: %s",cmd->argv[1],strerror(errno));
     return ERROR(cmd);
 
@@ -3128,8 +3128,8 @@ MODRET core_size(cmd_rec *cmd) {
 
   path = dir_realpath(cmd->tmp_pool,cmd->arg);
 
-  if(!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) ||
-      fs_stat(path,&sbuf) == -1) {
+  if (!path || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) ||
+      pr_fsio_stat(path, &sbuf) == -1) {
     add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
     return ERROR(cmd);
   } else {
@@ -3177,7 +3177,7 @@ MODRET core_dele(cmd_rec *cmd) {
   path = dir_canonical_path(cmd->tmp_pool, cmd->arg);
   if(!path ||
      !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
-     fs_unlink(path) == -1) {
+     pr_fsio_unlink(path) == -1) {
     add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
@@ -3245,8 +3245,8 @@ MODRET core_rnto(cmd_rec *cmd) {
   path = dir_canonical_path(cmd->tmp_pool,cmd->arg);
 
   if(!path || !dir_check_canon(cmd->tmp_pool,cmd->argv[0],cmd->group,path,NULL) 
-     || rename(session.xfer.path,path) == -1) {
-    add_response_err(R_550,"rename: %s",strerror(errno));
+     || pr_fsio_rename(session.xfer.path, path) == -1) {
+    add_response_err(R_550, "rename: %s", strerror(errno));
     destroy_pool(session.xfer.p);
     memset(&session.xfer, '\0', sizeof(session.xfer));
 
@@ -3748,7 +3748,7 @@ static cmdtable core_cmdtab[] = {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   { PRE_CMD, "*",G_NONE,  regex_filters,FALSE,  FALSE, CL_NONE },
 #endif
-  { PRE_CMD, C_ANY, G_NONE, core_clear_cache,FALSE, FALSE, CL_NONE },
+  { PRE_CMD, C_ANY, G_NONE, core_clear_fs,FALSE, FALSE, CL_NONE },
   { CMD, C_HELP, G_NONE,  core_help,	FALSE,	FALSE, CL_INFO },
   { CMD, C_PORT, G_NONE,  core_port,	TRUE,	FALSE, CL_MISC },
   { CMD, C_PASV, G_NONE,  core_pasv,	TRUE,	FALSE, CL_MISC },

@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.46 2002-12-05 20:37:21 castaglia Exp $
+ * $Id: support.c,v 1.47 2002-12-05 21:16:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -239,33 +239,32 @@ get_name_max(char *dirname, int dir_fd)
 /* Interpolates a pathname, expanding ~ notation if necessary
  */
 
-char *dir_interpolate(pool *p, const char *path)
-{
+char *dir_interpolate(pool *p, const char *path) {
   struct passwd *pw;
   char *user,*tmp;
   char *ret = (char*)path;
 
-  if(!ret)
+  if (!ret)
     return NULL;
 
-  if(*ret == '~') {
-    user = pstrdup(p,ret+1);
-    tmp = index(user,'/');
+  if (*ret == '~') {
+    user = pstrdup(p, ret+1);
+    tmp = strchr(user, '/');
 
-    if(tmp)
+    if (tmp)
       *tmp++ = '\0';
 
-    if(!*user)
+    if (!*user)
       user = session.user;
 
-    pw = auth_getpwnam(p,user);
+    pw = auth_getpwnam(p, user);
 
-    if(!pw) {
+    if (!pw) {
       errno = ENOENT;
       return NULL;
     }
 
-    ret = pdircat(p,pw->pw_dir,tmp,NULL);
+    ret = pdircat(p, pw->pw_dir, tmp, NULL);
   }
 
   return ret;
@@ -275,61 +274,62 @@ char *dir_interpolate(pool *p, const char *path)
  * (i.e. if path components at the end don't exist, they are ignored
  */
 
-char *dir_best_path(pool *p, const char *path)
-{
+char *dir_best_path(pool *p, const char *path) {
   char workpath[MAXPATHLEN + 1] = {'\0'};
   char realpath[MAXPATHLEN + 1] = {'\0'};
   char *target = NULL, *ntarget;
   int fini = 0;
 
-  if(*path == '~') {
-    if(fs_interpolate(path,workpath,MAXPATHLEN) != 1)
-      fs_dircat(workpath,sizeof(workpath),fs_getcwd(),path);
-  } else {
-    fs_dircat(workpath,sizeof(workpath),fs_getcwd(),path);
-  }
+  if (*path == '~') {
+    if (pr_fs_interpolate(path, workpath, MAXPATHLEN) != 1)
+      pr_fs_dircat(workpath, sizeof(workpath), pr_fs_getcwd(), path);
 
-  fs_clean_path(pstrdup(p,workpath),workpath,MAXPATHLEN);
+  } else
+    pr_fs_dircat(workpath, sizeof(workpath), pr_fs_getcwd(), path);
 
-  while(!fini && workpath[0]) {
-    if(fs_resolve_path(workpath,realpath,MAXPATHLEN,0) != -1)
+  pr_fs_clean_path(pstrdup(p, workpath), workpath, MAXPATHLEN);
+
+  while (!fini && *workpath) {
+    if (pr_fs_resolve_path(workpath, realpath, MAXPATHLEN, 0) != -1)
       break;
   
-    ntarget = rindex(workpath,'/');
-    if(ntarget) {
-      if(target)
-        fs_dircat(workpath,sizeof(workpath),workpath,target);
+    ntarget = strrchr(workpath, '/');
+    if (ntarget) {
+      if (target)
+        pr_fs_dircat(workpath, sizeof(workpath), workpath, target);
 
       target = ntarget;
       *target++ = '\0';
+
     } else
       fini++;
   }
 
-  if(!fini && workpath[0]) {
-    if(target)
-      fs_dircat(workpath,sizeof(workpath),realpath,target);
-    else
-      sstrncpy(workpath,realpath,sizeof(workpath));
-  } else
-    fs_dircat(workpath,sizeof(workpath),"/",target);
+  if (!fini && *workpath) {
+    if (target)
+      pr_fs_dircat(workpath, sizeof(workpath), realpath, target);
 
-  return pstrdup(p,workpath);
+    else
+      sstrncpy(workpath, realpath, sizeof(workpath));
+
+  } else
+    pr_fs_dircat(workpath, sizeof(workpath), "/", target);
+
+  return pstrdup(p, workpath);
 }
 
-char *dir_canonical_path(pool *p, const char *path)
-{
+char *dir_canonical_path(pool *p, const char *path) {
   char buf[MAXPATHLEN + 1]  = {'\0'};
   char work[MAXPATHLEN + 1] = {'\0'};
 
-  if(*path == '~') {
-    if(fs_interpolate(path,work,MAXPATHLEN) != 1)
-      fs_dircat(work, sizeof(work), fs_getcwd(), path);
-  } else {
-    fs_dircat(work, sizeof(work), fs_getcwd(), path);
-  }
+  if (*path == '~') {
+    if (pr_fs_interpolate(path, work, MAXPATHLEN) != 1)
+      pr_fs_dircat(work, sizeof(work), pr_fs_getcwd(), path);
+
+  } else
+    pr_fs_dircat(work, sizeof(work), pr_fs_getcwd(), path);
   
-  fs_clean_path(work, buf, MAXPATHLEN);
+  pr_fs_clean_path(work, buf, MAXPATHLEN);
   return pstrdup(p, buf);
 }
 
@@ -337,29 +337,28 @@ char *dir_canonical_path(pool *p, const char *path)
  * not work if permissions cause problems somewhere up the tree).
  */
 
-char *dir_realpath(pool *p, const char *path)
-{
+char *dir_realpath(pool *p, const char *path) {
   char buf[MAXPATHLEN + 1] = {'\0'};
 
-  if(fs_resolve_partial(path,buf,MAXPATHLEN,0) == -1)
+  if (pr_fs_resolve_partial(path, buf, MAXPATHLEN, 0) == -1)
     return NULL;
 
-  return pstrdup(p,buf);
+  return pstrdup(p, buf);
 }
 
-char *dir_virtual_chdir(pool *p, const char *path)
-{
+char *dir_virtual_chdir(pool *p, const char *path) {
   char buf[MAXPATHLEN + 1]  = {'\0'};
   char work[MAXPATHLEN + 1] = {'\0'};
 
-  if(*path == '~') {
-    if(fs_interpolate(path,work,MAXPATHLEN) != 1)
-      fs_dircat(work,sizeof(work),fs_getvwd(),path);
-  } else
-    fs_dircat(work,sizeof(work),fs_getvwd(),path);
+  if (*path == '~') {
+    if (pr_fs_interpolate(path, work, MAXPATHLEN) != 1)
+      pr_fs_dircat(work, sizeof(work), pr_fs_getvwd(), path);
 
-  fs_clean_path(work,buf,MAXPATHLEN);
-  return pstrdup(p,buf);
+  } else
+    pr_fs_dircat(work, sizeof(work), pr_fs_getvwd(), path);
+
+  pr_fs_clean_path(work, buf, MAXPATHLEN);
+  return pstrdup(p, buf);
 }
 
 /* Takes a directory and returns it's absolute version.  ~username
@@ -368,25 +367,26 @@ char *dir_virtual_chdir(pool *p, const char *path)
  * dir.
  */
 
-char *dir_abs_path(pool *p, const char *path, int interpolate)
-{
+char *dir_abs_path(pool *p, const char *path, int interpolate) {
   char *res = NULL;
 
-  if(interpolate)
-    path = dir_interpolate(p,path);
+  if (interpolate)
+    path = dir_interpolate(p, path);
   
-  if(!path)
+  if (!path)
     return NULL;  
     
-  if(*path != '/') {
-    if(session.anon_root)
-      res = pdircat(p,session.anon_root,fs_getcwd(),path,NULL);
+  if (*path != '/') {
+    if (session.chroot_path)
+      res = pdircat(p, session.chroot_path, pr_fs_getcwd(), path, NULL);
     else
-      res = pdircat(p,fs_getcwd(),path,NULL);
-  } else if(session.anon_root)
-    res = pdircat(p,session.anon_root,path,NULL);
+      res = pdircat(p, pr_fs_getcwd(), path, NULL);
+
+  } else if (session.chroot_path)
+    res = pdircat(p, session.chroot_path, path, NULL);
+
   else
-    res = pstrdup(p,path);
+    res = pstrdup(p, path);
 
   return res;
 }
@@ -395,51 +395,50 @@ char *dir_abs_path(pool *p, const char *path, int interpolate)
    of the file pointed to by symlink PATH, or 0 if it doesn't exist.
    Catch symlink loops using LAST_INODE and RCOUNT.  */
 
-static mode_t _symlink(char *path, ino_t last_inode, int rcount)
-{
+static mode_t _symlink(char *path, ino_t last_inode, int rcount) {
   char buf[MAXPATHLEN + 1];
   struct stat sbuf;
   int i;
 
-  if(++rcount >= 32) {
+  if (++rcount >= 32) {
     errno = ELOOP;
     return 0;
   }
 
-  memset(buf,'\0',sizeof(buf));
+  memset(buf, '\0', sizeof(buf));
 
-  i = fs_readlink(path,buf,sizeof(buf) - 1);
-  if(i == -1)
+  i = pr_fsio_readlink(path, buf, sizeof(buf) - 1);
+  if (i == -1)
     return (mode_t)0;
   buf[i] = '\0';
 
-  if(fs_lstat(buf,&sbuf) != -1) {
-    if(sbuf.st_ino && (ino_t)sbuf.st_ino == last_inode) {
+  if (pr_fsio_lstat(buf, &sbuf) != -1) {
+    if (sbuf.st_ino && (ino_t) sbuf.st_ino == last_inode) {
       errno = ELOOP;
       return 0;
     }
 
-    if(S_ISLNK(sbuf.st_mode))
-      return _symlink(buf,(ino_t)sbuf.st_ino,rcount);
+    if (S_ISLNK(sbuf.st_mode))
+      return _symlink(buf, (ino_t) sbuf.st_ino, rcount);
     return sbuf.st_mode;
   }
 
   return 0;
 }
 
-mode_t file_mode(char *path)
-{
+mode_t file_mode(char *path) {
   struct stat sbuf;
   mode_t res = 0;
 
-  if(fs_lstat(path,&sbuf) != -1) {
-    if(S_ISLNK(sbuf.st_mode)) {
-      res = _symlink(path,(ino_t)0,0);
+  if (pr_fsio_lstat(path, &sbuf) != -1) {
+    if (S_ISLNK(sbuf.st_mode)) {
+      res = _symlink(path, (ino_t) 0, 0);
+
       if (res == 0)
 	/* a dangling symlink, but it exists to rename or delete. */
 	res = sbuf.st_mode;
-    }
-    else
+
+    } else
       res = sbuf.st_mode;
   }
 
@@ -451,34 +450,32 @@ mode_t file_mode(char *path)
    If DIRP == -1, fail unless PATH exists; the caller doesn't care whether
    PATH is a file or a directory. */
 
-static int _exists(char *path, int dirp)
-{
+static int _exists(char *path, int dirp) {
   mode_t fmode;
 
-  if((fmode = file_mode(path)) != 0) {
-    if(dirp == 1 && !S_ISDIR(fmode))
+  if ((fmode = file_mode(path)) != 0) {
+    if (dirp == 1 && !S_ISDIR(fmode))
       return FALSE;
-    else if(dirp == 0 && S_ISDIR(fmode))
+
+    else if (dirp == 0 && S_ISDIR(fmode))
       return FALSE;
+
     return TRUE;
   }
 
   return FALSE;
 }
 
-int file_exists(char *path)
-{
-  return _exists(path,0);
+int file_exists(char *path) {
+  return _exists(path, 0);
 }
 
-int dir_exists(char *path)
-{
-  return _exists(path,1);
+int dir_exists(char *path) {
+  return _exists(path, 1);
 }
 
-int exists(char *path)
-{
-  return _exists(path,-1);
+int exists(char *path) {
+  return _exists(path, -1);
 }
 
 /* Perform access check for effective user id, similar to accessx(...,
@@ -488,7 +485,7 @@ int access_check(char *path, int mode) {
   mode_t mask;
   struct stat buf;
   
-  if(fs_stat(path, &buf) < 0) {
+  if (pr_fsio_stat(path, &buf) < 0) {
     errno = ENOENT;
     return -1;
   }
@@ -557,11 +554,10 @@ int access_check(char *path, int mode) {
   return 0;
 }
 
-char *strip_end(char *s, char *ch)
-{
+char *strip_end(char *s, char *ch) {
   int i = strlen(s);
 
-  while(i && strchr(ch,*(s+i-1))) {
+  while (i && strchr(ch,*(s+i-1))) {
     *(s+i-1) = '\0';
     i--;
   }
@@ -574,8 +570,7 @@ char *strip_end(char *s, char *ch)
  * empty or NULL, the next token returned is NULL.
  */
 
-char *get_token(char **s, char *sep)
-{
+char *get_token(char **s, char *sep) {
   char *res;
 
   if(!s || !*s || !**s)
@@ -804,56 +799,6 @@ char *sreplace(pool *p, char *s, ...)
     return pbuf;
   return pstrdup(p,buf);
 }
-
-#if defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H) || defined(HAVE_STATFS)
-/* Simple multiplication & division doesn't work with very large
- * filesystems (overflows 32 bits).  This code should handle it.
- */
-
-static off_t _calc_fs(size_t blocks, size_t bsize) {
-  off_t bl_lo,bl_hi;
-  off_t res_lo,res_hi,tmp;
-
-  bl_lo = blocks & 0x0000ffff;
-  bl_hi = blocks & 0xffff0000;
-
-  tmp = (bl_hi >> 16) * bsize;
-  res_hi = tmp & 0xffff0000;
-  res_lo = (tmp & 0x0000ffff) << 16;
-  res_lo += bl_lo * bsize;
-
-  if(res_hi & 0xfc000000)		/* overflow */
-	return 0;
-
-  return (res_lo >> 10) | (res_hi << 6);
-}
-
-off_t get_fs_size(char *s) {
-# if defined(HAVE_SYS_STATVFS_H)
-  struct statvfs fs;
-  
-  if (statvfs(s, &fs) != 0)
-    return 0;
-
-  return _calc_fs(fs.f_bavail, fs.f_frsize);
-
-# elif defined(HAVE_SYS_VFS_H)
-  struct statfs fs;
-
-  if (statfs(s, &fs) != 0)
-    return 0;
-
-  return _calc_fs(fs.f_bavail, fs.f_bsize);
-# elif defined(HAVE_STATFS)
-  struct statfs fs;
-
-  if (statfs(s, &fs) != 0)
-    return 0;
-
-  return _calc_fs(fs.f_bavail, fs.f_bsize);
-# endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
-}
-#endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
 
 /* "safe" memset() (code borrowed from OpenSSL).  This function should be
  * used to clear/scrub sensitive memory areas instead of memset() for the

@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.112 2002-12-05 20:18:55 castaglia Exp $
+ * $Id: mod_auth.c,v 1.113 2002-12-05 21:16:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -54,7 +54,7 @@ static int lockdown(char *newroot) {
     newroot);
 
   PRIVS_ROOT
-  if (chroot(newroot) == -1) {
+  if (pr_fsio_chroot(newroot) == -1) {
     PRIVS_RELINQUISH
     log_pri(PR_LOG_ERR, "%s chroot(\"%s\"): %s", session.user, newroot,
       strerror(errno));
@@ -888,20 +888,19 @@ static int _setup_environment(pool *p, char *user, char *pass)
 #endif
     PRIVS_SETUP(pw->pw_uid, pw->pw_gid)
 
-    if(add_userdir > 0 && strcmp(u, user))
-      session.anon_root = dir_realpath(p, pdircat(p, c->name,
-					       u, NULL));
+    if (add_userdir > 0 && strcmp(u, user))
+      session.chroot_path = dir_realpath(p, pdircat(p, c->name, u, NULL));
     else
-      session.anon_root = dir_realpath(p, c->name);
+      session.chroot_path = dir_realpath(p, c->name);
 
     /* Check access using access_check() which uses euid instead of ruid,
      * if everything is ok copy it into the session pool. -jss 2/22/2001
      */
 
-    if(session.anon_root && access_check(session.anon_root, X_OK) != 0)
-      session.anon_root = NULL;
+    if (session.chroot_path && access_check(session.chroot_path, X_OK) != 0)
+      session.chroot_path = NULL;
     else
-      session.anon_root = pstrdup(session.pool,session.anon_root);
+      session.chroot_path = pstrdup(session.pool, session.chroot_path);
 
     /* return all privileges back to that of the daemon, for now */
     PRIVS_ROOT
@@ -938,9 +937,9 @@ static int _setup_environment(pool *p, char *user, char *pass)
     else
       session.anon_user = pstrdup(session.pool, pass);
 
-    if (!session.anon_root) {
+    if (!session.chroot_path) {
       log_pri(PR_LOG_ERR, "%s: Directory %s is not accessible.",
-              session.user, c->name);
+        session.user, c->name);
       add_response_err(R_530, "Unable to set anonymous privileges.");
       goto auth_failure;
     }
@@ -967,7 +966,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
       }
     }
 
-    /* attempt to resolve any possible symlinks */
+    /* Attempt to resolve any possible symlinks. */
     PRIVS_USER
     homedir = dir_realpath(p, pw->pw_dir);
     PRIVS_RELINQUISH
@@ -1071,8 +1070,6 @@ static int _setup_environment(pool *p, char *user, char *pass)
       end_login(1);
     }
 
-    session.anon_root = defroot;
-
     /* Re-calc the new cwd based on this root dir.  If not applicable
      * place the user in / (of defroot)
      */
@@ -1090,7 +1087,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   if(c)
     ensure_open_passwd(p);
 
-  if (c && lockdown(session.anon_root) == -1) {
+  if (c && lockdown(session.chroot_path) == -1) {
     log_pri(PR_LOG_ERR, "error: unable to set anonymous privileges");
     send_response(R_530, "Login incorrect.");
     end_login(1);
@@ -1130,19 +1127,6 @@ static int _setup_environment(pool *p, char *user, char *pass)
   }
 #endif
 
-  /*
-   *  session.uid = pw->pw_uid;
-   */
-
-  /* Overwrite original uid, so PRIVS_ macros no longer
-   * try to do anything
-   */
-
-  /*
-   * session.ouid = pw->pw_uid;
-   * session.gid = pw->pw_gid;
-   */
-
   /* If the home directory is NULL or "", reject the login. */
   if (pw->pw_dir == NULL || !strcmp(pw->pw_dir, "")) {
     log_pri(PR_LOG_ERR, "error: user %s home directory is NULL or \"\"",
@@ -1168,26 +1152,26 @@ static int _setup_environment(pool *p, char *user, char *pass)
   /* Attempt to change to the correct directory -- use session.cwd first.
    * This will contain the DefaultChdir directory, if configured...
    */
-  if (fs_chdir_canon(session.cwd, !showsymlinks) == -1) {
+  if (pr_fsio_chdir_canon(session.cwd, !showsymlinks) == -1) {
 
     /* if we've got DefaultRoot or anonymous login, ignore this error
      * and chdir to /
      */
 
-    if (session.anon_root != NULL || defroot) {
+    if (session.chroot_path != NULL || defroot) {
 
       log_debug(DEBUG2, "unable to chdir to %s (%s), defaulting to chroot "
         "directory %s", session.cwd, strerror(errno),
-        (session.anon_root ? session.anon_root : defroot));
+        (session.chroot_path ? session.chroot_path : defroot));
 
-      if (fs_chdir_canon("/", !showsymlinks) == -1) {
+      if (pr_fsio_chdir_canon("/", !showsymlinks) == -1) {
         log_pri(PR_LOG_ERR, "%s chdir(\"/\"): %s", session.user,
           strerror(errno));
         send_response(R_530,"Login incorrect.");
         end_login(1);
       }
 
-    } else if(defchdir) {
+    } else if (defchdir) {
 
       /* If we've got defchdir, failure is ok as well, simply switch to
        * user's homedir.
@@ -1195,7 +1179,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
       log_debug(DEBUG2, "unable to chdir to %s (%s), defaulting to home "
         "directory %s", session.cwd, strerror(errno), pw->pw_dir);
 
-      if (fs_chdir_canon(pw->pw_dir, !showsymlinks) == -1) {
+      if (pr_fsio_chdir_canon(pw->pw_dir, !showsymlinks) == -1) {
         log_pri(PR_LOG_ERR, "%s chdir(\"%s\"): %s", session.user, session.cwd,
           strerror(errno));
         send_response(R_530, "Login incorrect.");
@@ -1214,8 +1198,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
     }
   }
 
-  sstrncpy(session.cwd, fs_getcwd(), sizeof(session.cwd));
-  sstrncpy(session.vwd, fs_getvwd(), sizeof(session.vwd));
+  sstrncpy(session.cwd, pr_fs_getcwd(), sizeof(session.cwd));
+  sstrncpy(session.vwd, pr_fs_getvwd(), sizeof(session.vwd));
 
   /* Make sure session.dir_config is set correctly */
   dir_check_full(p, C_PASS, G_NONE, session.cwd, NULL);
@@ -1240,10 +1224,10 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
    /* Check for dynamic configuration.  This check needs to be after the
     * setting of any possible anon_config, as that context may be allowed
-    * or denied .ftpaccess-parsing separately from the containing server
+    * or denied .ftpaccess-parsing separately from the containing server.
     */
-   if (fs_stat(session.cwd, &sbuf) != -1)
-     build_dyn_config(p, session.cwd, &sbuf, 1);
+   if (pr_fsio_stat(session.cwd, &sbuf) != -1)
+     build_dyn_config(p, session.cwd, &sbuf, TRUE);
 
   /* While closing the pointer to the password database would avoid any
    * potential attempt to hijack this information, it is unfortunately needed
@@ -1275,7 +1259,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
   remove_timer(TIMER_LOGIN, &auth_module);
 
-  /* these copies are made from the permanent_pool, instead of the more
+  /* These copies are made from the permanent_pool, instead of the more
    * volatile pool used originally, in order that the copied data maintain
    * its integrity for the lifetime of the session.
    */
@@ -1288,9 +1272,12 @@ static int _setup_environment(pool *p, char *user, char *pass)
     session.gids = copy_array(permanent_pool, session.gids);
 
   /* session.groups is an array of strings, so we must copy the string data
-   * as well as the pointers. -jss 02/28/2001
+   * as well as the pointers.
    */
   session.groups = copy_array_str(permanent_pool, session.groups);
+
+  /* Resolve any deferred-resolution paths in the FS layer */
+  pr_resolve_fs_map();
 
   return 1;
 

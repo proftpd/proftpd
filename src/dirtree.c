@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.80 2002-12-05 20:30:19 castaglia Exp $
+ * $Id: dirtree.c,v 1.81 2002-12-05 21:16:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -78,14 +78,14 @@ static struct {
   config_rec **curconfig;
 } conf;
 
-typedef struct config_stream_struc {
-  struct config_stream_struc *cs_next;
+typedef struct conf_stack_struc {
+  struct conf_stack_struc *cs_next;
   pool *cs_pool;
-  FILE *cs_file;
+  pr_fh_t *cs_file;
   unsigned int cs_lineno;
-} config_stream_t;
+} conf_stack_t;
 
-static config_stream_t *config_stream_stack = NULL;
+static conf_stack_t *config_stack = NULL;
 
 static int allow_dyn_config(void) {
   config_rec *c = NULL;
@@ -206,8 +206,8 @@ xaset_t *get_dir_ctxt(char *dir_path) {
   char *full_path = dir_path;
   pool *tmp_pool = make_sub_pool(permanent_pool);
 
-  if (session.anon_root)
-    full_path = pdircat(tmp_pool, session.anon_root, dir_path, NULL);
+  if (session.chroot_path)
+    full_path = pdircat(tmp_pool, session.chroot_path, dir_path, NULL);
 
   else if (*dir_path != '/')
     full_path = pdircat(tmp_pool, session.cwd, dir_path, NULL);
@@ -421,111 +421,78 @@ char *get_word(char **cp) {
   return ret;
 }
 
-static config_stream_t *push_config_stream(FILE *filep, unsigned int lineno) {
+static conf_stack_t *push_config_stack(pr_fh_t *fh, unsigned int lineno) {
   pool *tmp_pool = make_sub_pool(permanent_pool);
-  config_stream_t *cs = pcalloc(tmp_pool, sizeof(config_stream_t));
+  conf_stack_t *cs = pcalloc(tmp_pool, sizeof(conf_stack_t));
 
   cs->cs_next = NULL;
   cs->cs_pool = tmp_pool;
-  cs->cs_file = filep;
+  cs->cs_file = fh;
   cs->cs_lineno = lineno;
 
-  if (!config_stream_stack)
-    config_stream_stack = cs;
+  if (!config_stack)
+    config_stack = cs;
 
   else {
-    cs->cs_next = config_stream_stack;
-    config_stream_stack = cs;
+    cs->cs_next = config_stack;
+    config_stack = cs;
   }
 
   return cs;
 }
 
-static void pop_config_stream(void) {
-  config_stream_t *cs = config_stream_stack;
-  config_stream_stack = cs->cs_next;
+static void pop_config_stack(void) {
+  conf_stack_t *cs = config_stack;
+  config_stack = cs->cs_next;
 
   destroy_pool(cs->cs_pool);
-}
-
-/* get_line() is an fgets() with backslash-newline stripping, copied from
- * Wietse Venema's tcpwrapppers-7.6 code.  The extra *lineno argument is
- * needed, at the moment, to properly track which line of the configuration
- * file is being read in, so that errors can be reported with line numbers
- * correctly.
- */
-char *get_line(char *buf, int buflen, FILE *filep, unsigned int *lineno) {
-  int inlen;
-  char *start = buf;
-
-  while (fgets(buf, buflen, filep)) {
-    inlen = strlen(buf);
-
-    if (inlen >= 1 && buf[inlen - 1] == '\n') {
-      (*lineno)++;
-
-      if (inlen >= 2 && buf[inlen - 2] == '\\') {
-        inlen -= 2;
-
-      } else
-        return start;
-    }
-
-    buf += inlen;
-    buflen -= inlen;
-    buf[0] = 0;
-  }
-
-  return (buf > start ? start : 0);
 }
 
 /* This functions returns the next line from the configuration stream,
  * skipping commented-out lines and trimming trailing and leading whitespace,
  * returning, in effect, the next line of configuration data on which to
  * act.  At present, the configuration stream is indicated by the static
- * config_stream FILE pointer -- in the future, this _will_ change to a
+ * conf_stack pr_fh_t pointer -- in the future, this might change to a
  * more generic and flexible configuration stream data type (eg confstream_t).
  * This function has the advantage that it can be called by functions that
  * don't have access to that FILE pointer, such as the <IfDefine> and <IfModule>
  * configuration handlers.  In the future, the requirement will be that
  * functions wishing to access the configuration stream _must_ call
- * set_config_stream() prior to calling all configuration stream functions
+ * set_config_stack() prior to calling all configuration stream functions
  * (of which this is one of but several potential such functions).
  */
 char *get_config_line(char *buf, size_t len) {
 
   /* Always use the config stream at the top of the stack.
    */
-  config_stream_t *cs = config_stream_stack;
+  conf_stack_t *cs = config_stack;
  
   if (!cs->cs_file)
     return NULL;
 
   /* Check for error conditions. */
-  while ((get_line(buf, len, cs->cs_file, &(cs->cs_lineno))) != NULL) {
-    char *bufp;
+  while ((pr_fsio_getline(buf, len, cs->cs_file, &(cs->cs_lineno))) != NULL) {
+    char *bufp = NULL;
     int buflen = strlen(buf);
 
-    /* trim off the trailing newline, if present
-     */
+    /* Trim off the trailing newline, if present. */
     if (buflen && buf[buflen - 1] == '\n')
       buf[buflen - 1] = '\0';
     
-    /* trim off any leading whitespace
-     */
+    /* Trim off any leading whitespace. */
     for (bufp = buf; *bufp && isspace((int) *bufp); bufp++);
 
-    /* check for commented or blank lines at this point, and just continue on
+    /* Check for commented or blank lines at this point, and just continue on
      * to the next configuration line if found.  If not, return the 
-     * configuration line
+     * configuration line.
      */
     if (*bufp == '#' || !*bufp)
       continue;
 
     else {
 
-      /* copy the value of bufp back into the pointer passed in
-       * and return it
+      /* Copy the value of bufp back into the pointer passed in
+       * and return it.
        */
       buf = bufp;
 
@@ -533,13 +500,6 @@ char *get_config_line(char *buf, size_t len) {
     }
   }
 
-  /* Check for error conditions. */
-  if (ferror(cs->cs_file))
-    log_pri(PR_LOG_ERR, "error while reading configuration stream: %s",
-      strerror(errno));
-
-  /* default return value
-   */
   return NULL;
 }
 
@@ -549,7 +509,7 @@ static cmd_rec *get_config_cmd(pool *ppool) {
   pool *new_pool = NULL;
   array_header *tarr = NULL;
 
-  while ((get_config_line(buf, sizeof(buf)))) { 
+  while (get_config_line(buf, sizeof(buf)) != NULL) { 
     char *bufp = buf;
     
     /* Build a new pool for the command structure and array */
@@ -582,7 +542,7 @@ static cmd_rec *get_config_cmd(pool *ppool) {
      * <Option>    /etc/adir  /etc/anotherdir
      */
 
-    if(new_cmd->argc && *(new_cmd->argv[0]) == '<') {
+    if (new_cmd->argc && *(new_cmd->argv[0]) == '<') {
       char *cp = new_cmd->argv[new_cmd->argc-1];
 
       if(*(cp + strlen(cp)-1) == '>' && new_cmd->argc > 1) {
@@ -937,15 +897,14 @@ static int _strmatch(register char *s1, register char *s2)
   return len;
 }
 
-static config_rec *_recur_match_path(pool *p,xaset_t *s, char *path)
-{
+static config_rec *recur_match_path(pool *p, xaset_t *s, char *path) {
   char *tmp_path = NULL;
-  config_rec *c,*res;
+  config_rec *c = NULL, *res = NULL;
 
   if (!s)
     return NULL;
 
-  for (c = (config_rec *) s->xas_list; c; c=c->next)
+  for (c = (config_rec *) s->xas_list; c; c = c->next)
     if (c->config_type == CONF_DIR) {
       tmp_path = c->name;
 
@@ -961,10 +920,11 @@ static config_rec *_recur_match_path(pool *p,xaset_t *s, char *path)
         return c;
 
       if (!strstr(tmp_path, "/*")) {
+        size_t tmplen = strlen(tmp_path);
 
         /* Trim a trailing path separator, if present. */
-        if (*tmp_path && *(tmp_path + (strlen(tmp_path)-1)) == '/') {
-          *(tmp_path+(strlen(tmp_path)-1)) = '\0';
+        if (*tmp_path && *(tmp_path + tmplen - 1) == '/' && tmplen > 1) {
+          *(tmp_path + tmplen - 1) = '\0';
 
           if (!strcmp(tmp_path, path))
             return c;
@@ -988,7 +948,7 @@ static config_rec *_recur_match_path(pool *p,xaset_t *s, char *path)
       if(pr_fnmatch(tmp_path, path, 0) == 0) {
 #endif
         if (c->subset) {
-          if ((res = _recur_match_path(p,c->subset,path)))
+          if ((res = recur_match_path(p, c->subset, path)))
             return res;
         }
 
@@ -999,34 +959,34 @@ static config_rec *_recur_match_path(pool *p,xaset_t *s, char *path)
   return NULL;
 }
 
-config_rec *dir_match_path(pool *p, char *path)
-{
-  char *tmp;
+config_rec *dir_match_path(pool *p, char *path) {
   config_rec *res = NULL;
+  char *tmp = NULL;
+  size_t tmplen;
 
-  tmp = pstrdup(p,path);
-  if(*(tmp+strlen(tmp)-1) == '*')
-    *(tmp+strlen(tmp)-1) = '\0';
-  if(*(tmp+strlen(tmp)-1) == '/')
-    *(tmp+strlen(tmp)-1) = '\0';
+  tmp = pstrdup(p, path);
+  tmplen = strlen(tmp);
 
-  if(session.anon_config) {
-    res = _recur_match_path(p,session.anon_config->subset,tmp);
-    if(!res) {
+  if (*(tmp + tmplen - 1) == '*') {
+    *(tmp + tmplen - 1) = '\0';
+    tmplen = strlen(tmp);
+  }
 
-      if(session.anon_root && !strncmp(session.anon_root,tmp,
-                                       strlen(session.anon_root)))
+  if (*(tmp + tmplen - 1) == '/' && tmplen > 1)
+    *(tmp + tmplen - 1) = '\0';
+
+  if (session.anon_config) {
+    res = recur_match_path(p, session.anon_config->subset, tmp);
+
+    if (!res) {
+      if (session.chroot_path &&
+          !strncmp(session.chroot_path, tmp, strlen(session.chroot_path)))
         return NULL;
     }
   }
 
-  if(!res)
-    res = _recur_match_path(p,main_server->conf,tmp);
-
-/*
-  if(!res)
-    res = ((session.anon_config) ? session.anon_config : (config_rec*)main_server->conf->xas_list);
-*/
+  if (!res)
+    res = recur_match_path(p, main_server->conf, tmp);
 
   return res;
 }
@@ -1146,65 +1106,56 @@ static int _dir_check_op(pool *p, xaset_t *c, int op, uid_t uid, gid_t gid,
   return res;
 }
 
-int dir_check_op_mode(pool *p,char *path,int op,
-                       uid_t uid,gid_t gid,mode_t mode)
-{
+int dir_check_op_mode(pool *p, char *path, int op, uid_t uid, gid_t gid,
+    mode_t mode) {
   char *fullpath;
   xaset_t *c;
   config_rec *sc;
-  int res;
 
-  if(*path != '/')
-    fullpath = pdircat(p,session.cwd,path,NULL);
+  if (*path != '/')
+    fullpath = pdircat(p, session.cwd, path, NULL);
   else
-    fullpath = path;
+    fullpath = pstrdup(p, path);
 
-  if(session.anon_root)
-    fullpath = pdircat(p,session.anon_root,fullpath,NULL);
+  if (session.chroot_path)
+    fullpath = pdircat(p, session.chroot_path, fullpath, NULL);
   
   c = CURRENT_CONF;
-  sc = _recur_match_path(p,c,fullpath);
+  sc = recur_match_path(p, c, fullpath);
 
-  if(sc)
-    res = _dir_check_op(p,sc->subset,op,uid,gid,mode);
-  else
-    res = _dir_check_op(p,c,op,uid,gid,mode);
-
-  return res;  
+  return _dir_check_op(p, sc ? sc->subset : c, op, uid, gid, mode);
 }
 
-static int _check_user_access(xaset_t *conf, char *name)
-{
-  int ret = 0;
-  config_rec *c = find_config(conf,CONF_PARAM,name,FALSE);
+static int _check_user_access(xaset_t *conf, char *name) {
+  int res = 0;
+  config_rec *c = find_config(conf, CONF_PARAM, name, FALSE);
 
-  while(c) {
-    ret = user_expression((char**)c->argv);
+  while (c) {
+    res = user_expression((char **) c->argv);
 
-    if(ret)
+    if (res)
       break;
 
-    c = find_config_next(c,c->next,CONF_PARAM,name,FALSE);
+    c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
 
-  return ret;
+  return res;
 }
 
-static int _check_group_access(xaset_t *conf, char *name)
-{
-  int	ret = 0;
-  config_rec *c = find_config(conf,CONF_PARAM,name,FALSE);
+static int _check_group_access(xaset_t *conf, char *name) {
+  int res = 0;
+  config_rec *c = find_config(conf, CONF_PARAM, name, FALSE);
 
-  while(c) {
-    ret = group_expression((char**)c->argv);
+  while (c) {
+    res = group_expression((char **) c->argv);
 
-    if(ret)
+    if (res)
       break;
 
-    c = find_config_next(c,c->next,CONF_PARAM,name,FALSE);
+    c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
   }
 
-  return ret;
+  return res;
 }
 
 /* returns 1 if explicit match
@@ -1664,12 +1615,12 @@ int dir_check_limits(config_rec *c, char *cmd, int hidden)
   return res;
 }
     
-void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
-{
+void build_dyn_config(pool *p,char *_path, struct stat *_sbuf,
+    unsigned char recurse) {
   char *fullpath,*path,*dynpath,*cp;
   struct stat sbuf;
   config_rec *d;
-  FILE *fp;
+  pr_fh_t *fp = NULL;
   cmd_rec *cmd;
   xaset_t **set = NULL;
   int isfile, removed = 0;
@@ -1686,67 +1637,77 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
   if (!allow_dyn_config())
     return;
 
-  path = pstrdup(p,_path);
+  path = pstrdup(p, _path);
 
-  memcpy(&sbuf,_sbuf,sizeof(sbuf));
+  memcpy(&sbuf, _sbuf, sizeof(sbuf));
 
-  if(S_ISDIR(sbuf.st_mode))
-    dynpath = pdircat(p,path,"/.ftpaccess",NULL);
+  if (S_ISDIR(sbuf.st_mode))
+    dynpath = pdircat(p, path, "/.ftpaccess", NULL);
   else
     dynpath = NULL;
 
-  while(path) {
-    if(session.anon_root) {
-      fullpath = pdircat(p,session.anon_root,path,NULL);
+  while (path) {
+    if (session.chroot_path) {
+      fullpath = pdircat(p, session.chroot_path, path, NULL);
 
-      if(strcmp(fullpath,"/") && *(fullpath + strlen(fullpath) - 1) == '/')
+      if (strcmp(fullpath, "/") &&
+          *(fullpath + strlen(fullpath) - 1) == '/')
         *(fullpath + strlen(fullpath) - 1) = '\0';
+
     } else
       fullpath = path;
 
-    if(dynpath)
-      isfile = fs_stat(dynpath,&sbuf);
+    if (dynpath)
+      isfile = pr_fsio_stat(dynpath, &sbuf);
+
     else
       isfile = -1;
 
-    d = dir_match_path(p,fullpath);
+    d = dir_match_path(p, fullpath);
 
-    if(!d && isfile != -1) {
+    if (!d && isfile != -1) {
       set = (session.anon_config ? &session.anon_config->subset :
              &main_server->conf);
-      d = add_config_set(set,fullpath);
+
+      d = add_config_set(set, fullpath);
       d->config_type = CONF_DIR;
       d->argc = 1;
-      d->argv = pcalloc(d->pool,2*sizeof(void*));
-    } else if(d) {
+      d->argv = pcalloc(d->pool, 2 * sizeof (void *));
+     
+    } else if (d) {
       config_rec *newd,*dnext;
 
-      if(isfile != -1 && strcmp(d->name,fullpath) != 0) {
+      if (isfile != -1 &&
+          strcmp(d->name, fullpath) != 0) {
         set = &d->subset;
-        newd = add_config_set(set,fullpath);
+        newd = add_config_set(set, fullpath);
         newd->config_type = CONF_DIR;
         newd->argc = 1;
-        newd->argv = pcalloc(newd->pool,2*sizeof(void*));
+        newd->argv = pcalloc(newd->pool, 2 * sizeof(void *));
 	newd->parent = d;
+
         d = newd;
-      } else if(strcmp(d->name,fullpath) == 0 && 
-                (isfile == -1 || sbuf.st_mtime > (time_t)d->argv[0])) {
-        set = (d->parent ? &d->parent->subset :
-               &main_server->conf);
+
+      } else if (strcmp(d->name, fullpath) == 0 &&
+          (isfile == -1 ||
+           sbuf.st_mtime > (d->argv[0] ? *((time_t *) d->argv[0]) : 0))) {
+
+        set = (d->parent ? &d->parent->subset : &main_server->conf);
 
 	if (d->subset && d->subset->xas_list) {
+
        	  /* remove all old dynamic entries */
-          for(newd = (config_rec*)d->subset->xas_list; newd; newd=dnext) {
+          for (newd = (config_rec *)d->subset->xas_list; newd; newd = dnext) {
 	    dnext = newd->next;
 
-            if(newd->flags & CF_DYNAMIC) {
-              xaset_remove(d->subset,(xasetmember_t*)newd);
+            if (newd->flags & CF_DYNAMIC) {
+              xaset_remove(d->subset, (xasetmember_t *) newd);
               removed++;
             }
           }
 	}
 
-        if(d->subset && !d->subset->xas_list) {
+        if (d->subset && !d->subset->xas_list) {
           destroy_pool(d->subset->mempool);
           d->subset = NULL;
           d->argv[0] = NULL;
@@ -1755,32 +1716,34 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
            * dynamic entry, remove it completely
            */
 
-          if(isfile == -1)
-            xaset_remove(*set,(xasetmember_t*)d);
+          if (isfile == -1)
+            xaset_remove(*set, (xasetmember_t *) d);
         }
       }
     }
 
-    if(isfile != -1 && d && sbuf.st_mtime > (time_t)d->argv[0]) {
+    if (isfile != -1 && d &&
+        sbuf.st_mtime > (d->argv[0] ? *((time_t *) d->argv[0]) : 0)) {
 
       /* File has been modified or not loaded yet */
-      d->argv[0] = (void*)sbuf.st_mtime;
+      d->argv[0] = pcalloc(d->pool, sizeof(time_t));
+      *((time_t *) d->argv[0]) = sbuf.st_mtime;
 
-      if ((fp = fopen(dynpath, "r")) != NULL) {
-        config_stream_t *cs = NULL;
+      if ((fp = pr_fsio_open(dynpath, O_RDONLY)) != NULL) {
+        conf_stack_t *cs = NULL;
 
         removed = 0;
 
         /* Push the configuration stream information onto the stack of
          * configuration streams being parsed.
          */
-        cs = push_config_stream(fp, 0);
+        cs = push_config_stack(fp, 0);
 
-        init_dyn_stacks(p,d);
+        init_dyn_stacks(p, d);
         d->config_type = CONF_DYNDIR;
 
-        while((cmd = get_config_cmd(p)) != NULL) {
-          if(cmd->argc) {
+        while ((cmd = get_config_cmd(p)) != NULL) {
+          if (cmd->argc) {
             conftable *c;
             char found = 0;
             modret_t *mr;
@@ -1809,47 +1772,48 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
             if (!found)
               log_pri(PR_LOG_WARNING,
                 "warning: unknown configuration directive '%s' on "
-                "line %d of '%s'.", cmd->argv[0], cs->cs_lineno,
+                "line %d of '%s'", cmd->argv[0], cs->cs_lineno,
                 dynpath);
           }
  
           destroy_pool(cmd->pool);
         }
 
-	log_debug(DEBUG5,"dynamic configuration added/updated for %s.",
-                         fullpath);
+	log_debug(DEBUG5, "dynamic configuration added/updated for %s",
+          fullpath);
 
         d->config_type = CONF_DIR;
         free_dyn_stacks();
 
-        _mergedown(*set,TRUE);
+        _mergedown(*set, TRUE);
 
-        /* Pop this configuration stream from the stack.
-         */
-        pop_config_stream();
+        /* Pop this configuration stream from the stack. */
+        pop_config_stack();
 
-        fclose(fp);
+        pr_fsio_close(fp);
       }
     }
 
-    if(isfile == -1 && removed && d && set) {
-      log_debug(DEBUG5,"dynamic configuration removed for %s.",
-                       fullpath);
-      _mergedown(*set,FALSE);
+    if (isfile == -1 && removed && d && set) {
+      log_debug(DEBUG5, "dynamic configuration removed for %s", fullpath);
+      _mergedown(*set, FALSE);
     }
 
-    if(!recurse)
+    if (!recurse)
       break;
 
-    cp = rindex(path,'/');
-    if(cp && strcmp(path,"/") != 0)
+    cp = strrchr(path, '/');
+
+    if (cp && strcmp(path, "/") != 0)
       *cp = '\0';
     else
       path = NULL;
-    if(path) {
-      if(*(path+strlen(path)-1) == '*')
-        *(path+strlen(path)-1) = '\0';
-      dynpath = pdircat(p,path,"/.ftpaccess",NULL);
+
+    if (path) {
+      if (*(path + strlen(path) - 1) == '*')
+        *(path +strlen(path) - 1) = '\0';
+
+      dynpath = pdircat(p, path, "/.ftpaccess", NULL);
     }
   }
 }
@@ -1892,17 +1856,17 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
 
   fullpath = path;
 
-  if (session.anon_root)
-    fullpath = pdircat(p, session.anon_root, fullpath, NULL);
+  if (session.chroot_path)
+    fullpath = pdircat(p, session.chroot_path, fullpath, NULL);
 
   log_debug(DEBUG5, "in dir_check_full(): path = '%s', fullpath = '%s'.",
             path, fullpath);
 
   /* Check and build all appropriate dynamic configuration entries */
-  if((isfile = fs_stat(path, &sbuf)) == -1)
-    memset(&sbuf,0,sizeof(sbuf));
-  
-  build_dyn_config(p,path,&sbuf,1);
+  if((isfile = pr_fsio_stat(path, &sbuf)) == -1)
+    memset(&sbuf, '\0', sizeof(sbuf));
+ 
+  build_dyn_config(p, path, &sbuf, TRUE);
  
   /* Check to see if this path is hidden by HideFiles. */
   if ((tmp = strrchr(fullpath, '/')) != NULL)
@@ -1910,7 +1874,7 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   else
     regex_hidden = dir_hide_file(fullpath);
 
-  session.dir_config = c = dir_match_path(p,fullpath);
+  session.dir_config = c = dir_match_path(p, fullpath);
 
   if(!c && session.anon_config)
     c = session.anon_config;
@@ -2023,8 +1987,8 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
 
   fullpath = path;
 
-  if(session.anon_root)
-    fullpath = pdircat(p,session.anon_root,fullpath,NULL);
+  if (session.chroot_path)
+    fullpath = pdircat(p, session.chroot_path, fullpath, NULL);
 
   c = (session.dir_config ? session.dir_config :
         (session.anon_config ? session.anon_config : NULL));
@@ -2035,15 +1999,14 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
   }
 
   /* Check and build all appropriate dynamic configuration entries */
-  if((isfile = fs_stat(path, &sbuf)) == -1)
+  if((isfile = pr_fsio_stat(path, &sbuf)) == -1)
     memset(&sbuf,0,sizeof(sbuf));
 
-  build_dyn_config(p, path, &sbuf, 0);
+  build_dyn_config(p, path, &sbuf, FALSE);
 
   /* Check to see if this path is hidden by HideFiles. */
   if ((tmp = strrchr(fullpath, '/')) != NULL)
     regex_hidden = dir_hide_file(++tmp);
-
   else
     regex_hidden = dir_hide_file(fullpath);
 
@@ -2777,15 +2740,15 @@ config_rec *add_config_param(const char *name,int num,...)
 }
 
 int parse_config_file(const char *fname) {
-  FILE *fp = NULL;
-  config_stream_t *cs = NULL;
+  pr_fh_t *fp = NULL;
+  conf_stack_t *cs = NULL;
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   pool *tmp_pool = make_sub_pool(permanent_pool);
 
   log_debug(DEBUG2, "parsing '%s' configuration", fname);
  
-  if ((fp = pfopen(tmp_pool, fname, "r")) == NULL) {
+  if ((fp = pr_fsio_open(fname, O_RDONLY)) == NULL) {
     destroy_pool(tmp_pool);
     return -1;
   }
@@ -2793,8 +2756,8 @@ int parse_config_file(const char *fname) {
   /* Push the configuration stream information onto the stack of
    * configuration streams.
    */
-  cs = push_config_stream(fp, 0);
- 
+  cs = push_config_stack(fp, 0);
+
   while ((cmd = get_config_cmd(tmp_pool)) != NULL) {
     if (cmd->argc) {
       conftable *c;
@@ -2812,11 +2775,11 @@ int parse_config_file(const char *fname) {
             if (MODRET_ISERROR(mr)) {
               log_pri(PR_LOG_ERR, "Fatal: %s", MODRET_ERRMSG(mr));
               exit(1);
-	    }
+            }
           }
 
-	  if (MODRET_ISDECLINED(mr))
-	    found--;
+          if (MODRET_ISDECLINED(mr))
+            found--;
 
           destroy_pool(cmd->tmp_pool);
         }
@@ -2831,9 +2794,8 @@ int parse_config_file(const char *fname) {
     destroy_pool(cmd->pool);
   }
 
-  /* Pop this configuration stream from the stack.
-   */
-  pop_config_stream();
+  /* Pop this configuration stream from the stack. */
+  pop_config_stack();
 
   destroy_pool(tmp_pool);
   return 0;

@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.26 2002-11-25 16:18:41 castaglia Exp $
+ * $Id: mod_site.c,v 1.27 2002-12-05 21:16:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -186,10 +186,10 @@ MODRET site_chmod(cmd_rec *cmd) {
     umask(curumask);
     mode = 0; 
 
-    if(stat(dir,&sbuf) != -1)
+    if (pr_fsio_stat(dir, &sbuf) != -1)
       curmode = sbuf.st_mode;
 
-    while(1) {
+    while (TRUE) {
       who = pstrdup(cmd->tmp_pool,cp);
       if((tmp = strpbrk(who,"+-=")) != NULL) {
         how = pstrdup(cmd->tmp_pool,tmp);

@@ -25,7 +25,7 @@
  */
 
 /* Network IO stream layer
- * $Id: netio.h,v 1.2 2002-11-25 16:04:04 castaglia Exp $
+ * $Id: netio.h,v 1.3 2002-12-05 21:16:48 castaglia Exp $
  */
 
 #ifndef PR_NETIO_H
@@ -84,7 +84,7 @@ typedef struct {
   /* Number of bytes left in the buffer. */
   int remaining;
 
-} pr_netio_buffer_t;
+} pr_buffer_t;
 
 typedef struct {
 
@@ -109,7 +109,7 @@ typedef struct {
   volatile unsigned long strm_flags;
 
   /* Buffer. */
-  pr_netio_buffer_t *strm_nbuf;
+  pr_buffer_t *strm_buf;
 
   /* Arbitrary data for outside use. */
   void *strm_data;

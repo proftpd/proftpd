@@ -28,163 +28,174 @@ depend:
 
 # DO NOT DELETE
 
-auth.o: ../include/conf.h ../include/version.h ../config.h
-auth.o: ../include/default_paths.h ../include/options.h ../include/pool.h
-auth.o: ../include/regexp.h ../include/proftpd.h ../include/support.h
-auth.o: ../include/sets.h ../include/dirtree.h ../include/netio.h
-auth.o: ../include/modules.h ../include/timers.h ../include/inet.h
-auth.o: ../include/ident.h ../include/feat.h ../include/ftp.h
-auth.o: ../include/log.h ../include/scoreboard.h ../include/data.h
-auth.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
-auth.o: ../include/pr-syslog.h
-data.o: ../include/conf.h ../include/version.h ../config.h
-data.o: ../include/default_paths.h ../include/options.h ../include/pool.h
-data.o: ../include/regexp.h ../include/proftpd.h ../include/support.h
-data.o: ../include/sets.h ../include/dirtree.h ../include/netio.h
-data.o: ../include/modules.h ../include/timers.h ../include/inet.h
-data.o: ../include/ident.h ../include/feat.h ../include/ftp.h
-data.o: ../include/log.h ../include/scoreboard.h ../include/data.h
-data.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
-data.o: ../include/pr-syslog.h
-dirtree.o: ../include/conf.h ../include/version.h ../config.h
-dirtree.o: ../include/default_paths.h ../include/options.h ../include/pool.h
-dirtree.o: ../include/regexp.h ../include/proftpd.h ../include/support.h
-dirtree.o: ../include/sets.h ../include/dirtree.h ../include/netio.h
-dirtree.o: ../include/modules.h ../include/timers.h ../include/inet.h
-dirtree.o: ../include/ident.h ../include/feat.h ../include/ftp.h
-dirtree.o: ../include/log.h ../include/scoreboard.h ../include/data.h
-dirtree.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
-dirtree.o: ../include/pr-syslog.h
-feat.o: ../include/conf.h ../include/version.h ../config.h
-feat.o: ../include/default_paths.h ../include/options.h ../include/pool.h
-feat.o: ../include/regexp.h ../include/proftpd.h ../include/support.h
-feat.o: ../include/sets.h ../include/dirtree.h ../include/netio.h
-feat.o: ../include/modules.h ../include/timers.h ../include/inet.h
-feat.o: ../include/ident.h ../include/feat.h ../include/ftp.h
-feat.o: ../include/log.h ../include/scoreboard.h ../include/data.h
-feat.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
-feat.o: ../include/pr-syslog.h
-fs.o: ../include/conf.h ../include/version.h ../config.h
-fs.o: ../include/default_paths.h ../include/options.h ../include/pool.h
-fs.o: ../include/regexp.h ../include/proftpd.h ../include/support.h
-fs.o: ../include/sets.h ../include/dirtree.h ../include/netio.h
-fs.o: ../include/modules.h ../include/timers.h ../include/inet.h
-fs.o: ../include/ident.h ../include/feat.h ../include/ftp.h ../include/log.h
-fs.o: ../include/scoreboard.h ../include/data.h ../include/libsupp.h
-fs.o: ../include/glibc-glob.h ../include/fs.h ../include/pr-syslog.h
-ident.o: ../include/conf.h ../include/version.h ../config.h
-ident.o: ../include/default_paths.h ../include/options.h ../include/pool.h
-ident.o: ../include/regexp.h ../include/proftpd.h ../include/support.h
-ident.o: ../include/sets.h ../include/dirtree.h ../include/netio.h
-ident.o: ../include/modules.h ../include/timers.h ../include/inet.h
-ident.o: ../include/ident.h ../include/feat.h ../include/ftp.h
-ident.o: ../include/log.h ../include/scoreboard.h ../include/data.h
-ident.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
-ident.o: ../include/pr-syslog.h
-inet.o: ../include/conf.h ../include/version.h ../config.h
-inet.o: ../include/default_paths.h ../include/options.h ../include/pool.h
-inet.o: ../include/regexp.h ../include/proftpd.h ../include/support.h
-inet.o: ../include/sets.h ../include/dirtree.h ../include/netio.h
-inet.o: ../include/modules.h ../include/timers.h ../include/inet.h
-inet.o: ../include/ident.h ../include/feat.h ../include/ftp.h
-inet.o: ../include/log.h ../include/scoreboard.h ../include/data.h
-inet.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
-inet.o: ../include/pr-syslog.h ../include/privs.h
-log.o: ../include/conf.h ../include/version.h ../config.h
-log.o: ../include/default_paths.h ../include/options.h ../include/pool.h
-log.o: ../include/regexp.h ../include/proftpd.h ../include/support.h
-log.o: ../include/sets.h ../include/dirtree.h ../include/netio.h
-log.o: ../include/modules.h ../include/timers.h ../include/inet.h
-log.o: ../include/ident.h ../include/feat.h ../include/ftp.h ../include/log.h
-log.o: ../include/scoreboard.h ../include/data.h ../include/libsupp.h
-log.o: ../include/glibc-glob.h ../include/fs.h ../include/pr-syslog.h
-main.o: ../include/conf.h ../include/version.h ../config.h
-main.o: ../include/default_paths.h ../include/options.h ../include/pool.h
-main.o: ../include/regexp.h ../include/proftpd.h ../include/support.h
-main.o: ../include/sets.h ../include/dirtree.h ../include/netio.h
-main.o: ../include/modules.h ../include/timers.h ../include/inet.h
-main.o: ../include/ident.h ../include/feat.h ../include/ftp.h
-main.o: ../include/log.h ../include/scoreboard.h ../include/data.h
-main.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
-main.o: ../include/pr-syslog.h ../include/privs.h
-modules.o: ../include/conf.h ../include/version.h ../config.h
-modules.o: ../include/default_paths.h ../include/options.h ../include/pool.h
-modules.o: ../include/regexp.h ../include/proftpd.h ../include/support.h
-modules.o: ../include/sets.h ../include/dirtree.h ../include/netio.h
-modules.o: ../include/modules.h ../include/timers.h ../include/inet.h
-modules.o: ../include/ident.h ../include/feat.h ../include/ftp.h
-modules.o: ../include/log.h ../include/scoreboard.h ../include/data.h
-modules.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
-modules.o: ../include/pr-syslog.h
-netio.o: ../include/conf.h ../include/version.h ../config.h
-netio.o: ../include/default_paths.h ../include/options.h ../include/pool.h
-netio.o: ../include/regexp.h ../include/proftpd.h ../include/support.h
-netio.o: ../include/sets.h ../include/dirtree.h ../include/netio.h
-netio.o: ../include/modules.h ../include/timers.h ../include/inet.h
-netio.o: ../include/ident.h ../include/feat.h ../include/ftp.h
-netio.o: ../include/log.h ../include/scoreboard.h ../include/data.h
-netio.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
-netio.o: ../include/pr-syslog.h
-pool.o: ../include/conf.h ../include/version.h ../config.h
-pool.o: ../include/default_paths.h ../include/options.h ../include/pool.h
-pool.o: ../include/regexp.h ../include/proftpd.h ../include/support.h
-pool.o: ../include/sets.h ../include/dirtree.h ../include/netio.h
-pool.o: ../include/modules.h ../include/timers.h ../include/inet.h
-pool.o: ../include/ident.h ../include/feat.h ../include/ftp.h
-pool.o: ../include/log.h ../include/scoreboard.h ../include/data.h
-pool.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
-pool.o: ../include/pr-syslog.h
-regexp.o: ../include/conf.h ../include/version.h ../config.h
-regexp.o: ../include/default_paths.h ../include/options.h ../include/pool.h
-regexp.o: ../include/regexp.h ../include/proftpd.h ../include/support.h
-regexp.o: ../include/sets.h ../include/dirtree.h ../include/netio.h
-regexp.o: ../include/modules.h ../include/timers.h ../include/inet.h
-regexp.o: ../include/ident.h ../include/feat.h ../include/ftp.h
-regexp.o: ../include/log.h ../include/scoreboard.h ../include/data.h
-regexp.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
-regexp.o: ../include/pr-syslog.h
-scoreboard.o: ../include/conf.h ../include/version.h ../config.h
-scoreboard.o: ../include/default_paths.h ../include/options.h
+auth.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+auth.o: ../config.h ../include/default_paths.h ../include/options.h
+auth.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+auth.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+auth.o: ../include/netio.h ../include/modules.h ../include/timers.h
+auth.o: ../include/inet.h ../include/ident.h ../include/feat.h
+auth.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
+auth.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
+auth.o: ../include/fsio.h ../include/pr-syslog.h
+data.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+data.o: ../config.h ../include/default_paths.h ../include/options.h
+data.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+data.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+data.o: ../include/netio.h ../include/modules.h ../include/timers.h
+data.o: ../include/inet.h ../include/ident.h ../include/feat.h
+data.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
+data.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
+data.o: ../include/fsio.h ../include/pr-syslog.h
+dirtree.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+dirtree.o: ../config.h ../include/default_paths.h ../include/options.h
+dirtree.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+dirtree.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+dirtree.o: ../include/netio.h ../include/modules.h ../include/timers.h
+dirtree.o: ../include/inet.h ../include/ident.h ../include/feat.h
+dirtree.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
+dirtree.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
+dirtree.o: ../include/fsio.h ../include/pr-syslog.h
+feat.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+feat.o: ../config.h ../include/default_paths.h ../include/options.h
+feat.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+feat.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+feat.o: ../include/netio.h ../include/modules.h ../include/timers.h
+feat.o: ../include/inet.h ../include/ident.h ../include/feat.h
+feat.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
+feat.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
+feat.o: ../include/fsio.h ../include/pr-syslog.h
+fs.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+fs.o: ../config.h ../include/default_paths.h ../include/options.h
+fs.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+fs.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+fs.o: ../include/netio.h ../include/modules.h ../include/timers.h
+fs.o: ../include/inet.h ../include/ident.h ../include/feat.h ../include/ftp.h
+fs.o: ../include/log.h ../include/scoreboard.h ../include/data.h
+fs.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fsio.h
+fs.o: ../include/pr-syslog.h
+fsio.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+fsio.o: ../config.h ../include/default_paths.h ../include/options.h
+fsio.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+fsio.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+fsio.o: ../include/netio.h ../include/modules.h ../include/timers.h
+fsio.o: ../include/inet.h ../include/ident.h ../include/feat.h
+fsio.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
+fsio.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
+fsio.o: ../include/fsio.h ../include/pr-syslog.h
+ident.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+ident.o: ../config.h ../include/default_paths.h ../include/options.h
+ident.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+ident.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+ident.o: ../include/netio.h ../include/modules.h ../include/timers.h
+ident.o: ../include/inet.h ../include/ident.h ../include/feat.h
+ident.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
+ident.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
+ident.o: ../include/fsio.h ../include/pr-syslog.h
+inet.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+inet.o: ../config.h ../include/default_paths.h ../include/options.h
+inet.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+inet.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+inet.o: ../include/netio.h ../include/modules.h ../include/timers.h
+inet.o: ../include/inet.h ../include/ident.h ../include/feat.h
+inet.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
+inet.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
+inet.o: ../include/fsio.h ../include/pr-syslog.h ../include/privs.h
+log.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+log.o: ../config.h ../include/default_paths.h ../include/options.h
+log.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+log.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+log.o: ../include/netio.h ../include/modules.h ../include/timers.h
+log.o: ../include/inet.h ../include/ident.h ../include/feat.h
+log.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
+log.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
+log.o: ../include/fsio.h ../include/pr-syslog.h
+main.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+main.o: ../config.h ../include/default_paths.h ../include/options.h
+main.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+main.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+main.o: ../include/netio.h ../include/modules.h ../include/timers.h
+main.o: ../include/inet.h ../include/ident.h ../include/feat.h
+main.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
+main.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
+main.o: ../include/fsio.h ../include/pr-syslog.h ../include/privs.h
+modules.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+modules.o: ../config.h ../include/default_paths.h ../include/options.h
+modules.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+modules.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+modules.o: ../include/netio.h ../include/modules.h ../include/timers.h
+modules.o: ../include/inet.h ../include/ident.h ../include/feat.h
+modules.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
+modules.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
+modules.o: ../include/fsio.h ../include/pr-syslog.h
+netio.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+netio.o: ../config.h ../include/default_paths.h ../include/options.h
+netio.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+netio.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+netio.o: ../include/netio.h ../include/modules.h ../include/timers.h
+netio.o: ../include/inet.h ../include/ident.h ../include/feat.h
+netio.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
+netio.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
+netio.o: ../include/fsio.h ../include/pr-syslog.h
+pool.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+pool.o: ../config.h ../include/default_paths.h ../include/options.h
+pool.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+pool.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+pool.o: ../include/netio.h ../include/modules.h ../include/timers.h
+pool.o: ../include/inet.h ../include/ident.h ../include/feat.h
+pool.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
+pool.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
+pool.o: ../include/fsio.h ../include/pr-syslog.h
+regexp.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+regexp.o: ../config.h ../include/default_paths.h ../include/options.h
+regexp.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+regexp.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+regexp.o: ../include/netio.h ../include/modules.h ../include/timers.h
+regexp.o: ../include/inet.h ../include/ident.h ../include/feat.h
+regexp.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
+regexp.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
+regexp.o: ../include/fsio.h ../include/pr-syslog.h
+scoreboard.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+scoreboard.o: ../config.h ../include/default_paths.h ../include/options.h
 scoreboard.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
 scoreboard.o: ../include/support.h ../include/sets.h ../include/dirtree.h
 scoreboard.o: ../include/netio.h ../include/modules.h ../include/timers.h
 scoreboard.o: ../include/inet.h ../include/ident.h ../include/feat.h
 scoreboard.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
 scoreboard.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
-scoreboard.o: ../include/fs.h ../include/pr-syslog.h
-sets.o: ../include/conf.h ../include/version.h ../config.h
-sets.o: ../include/default_paths.h ../include/options.h ../include/pool.h
-sets.o: ../include/regexp.h ../include/proftpd.h ../include/support.h
-sets.o: ../include/sets.h ../include/dirtree.h ../include/netio.h
-sets.o: ../include/modules.h ../include/timers.h ../include/inet.h
-sets.o: ../include/ident.h ../include/feat.h ../include/ftp.h
-sets.o: ../include/log.h ../include/scoreboard.h ../include/data.h
-sets.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
-sets.o: ../include/pr-syslog.h
-support.o: ../include/conf.h ../include/version.h ../config.h
-support.o: ../include/default_paths.h ../include/options.h ../include/pool.h
-support.o: ../include/regexp.h ../include/proftpd.h ../include/support.h
-support.o: ../include/sets.h ../include/dirtree.h ../include/netio.h
-support.o: ../include/modules.h ../include/timers.h ../include/inet.h
-support.o: ../include/ident.h ../include/feat.h ../include/ftp.h
-support.o: ../include/log.h ../include/scoreboard.h ../include/data.h
-support.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
-support.o: ../include/pr-syslog.h
-timers.o: ../include/conf.h ../include/version.h ../config.h
-timers.o: ../include/default_paths.h ../include/options.h ../include/pool.h
-timers.o: ../include/regexp.h ../include/proftpd.h ../include/support.h
-timers.o: ../include/sets.h ../include/dirtree.h ../include/netio.h
-timers.o: ../include/modules.h ../include/timers.h ../include/inet.h
-timers.o: ../include/ident.h ../include/feat.h ../include/ftp.h
-timers.o: ../include/log.h ../include/scoreboard.h ../include/data.h
-timers.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
-timers.o: ../include/pr-syslog.h
-utils.o: ../include/conf.h ../include/version.h ../config.h
-utils.o: ../include/default_paths.h ../include/options.h ../include/pool.h
-utils.o: ../include/regexp.h ../include/proftpd.h ../include/support.h
-utils.o: ../include/sets.h ../include/dirtree.h ../include/netio.h
-utils.o: ../include/modules.h ../include/timers.h ../include/inet.h
-utils.o: ../include/ident.h ../include/feat.h ../include/ftp.h
-utils.o: ../include/log.h ../include/scoreboard.h ../include/data.h
-utils.o: ../include/libsupp.h ../include/glibc-glob.h ../include/fs.h
-utils.o: ../include/pr-syslog.h
+scoreboard.o: ../include/fsio.h ../include/pr-syslog.h
+sets.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+sets.o: ../config.h ../include/default_paths.h ../include/options.h
+sets.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+sets.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+sets.o: ../include/netio.h ../include/modules.h ../include/timers.h
+sets.o: ../include/inet.h ../include/ident.h ../include/feat.h
+sets.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
+sets.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
+sets.o: ../include/fsio.h ../include/pr-syslog.h
+support.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+support.o: ../config.h ../include/default_paths.h ../include/options.h
+support.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+support.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+support.o: ../include/netio.h ../include/modules.h ../include/timers.h
+support.o: ../include/inet.h ../include/ident.h ../include/feat.h
+support.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
+support.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
+support.o: ../include/fsio.h ../include/pr-syslog.h
+timers.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+timers.o: ../config.h ../include/default_paths.h ../include/options.h
+timers.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+timers.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+timers.o: ../include/netio.h ../include/modules.h ../include/timers.h
+timers.o: ../include/inet.h ../include/ident.h ../include/feat.h
+timers.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
+timers.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
+timers.o: ../include/fsio.h ../include/pr-syslog.h
+utils.o: ../include/conf.h ../include/version.h ../include/buildstamp.h
+utils.o: ../config.h ../include/default_paths.h ../include/options.h
+utils.o: ../include/pool.h ../include/regexp.h ../include/proftpd.h
+utils.o: ../include/support.h ../include/sets.h ../include/dirtree.h
+utils.o: ../include/netio.h ../include/modules.h ../include/timers.h
+utils.o: ../include/inet.h ../include/ident.h ../include/feat.h
+utils.o: ../include/ftp.h ../include/log.h ../include/scoreboard.h
+utils.o: ../include/data.h ../include/libsupp.h ../include/glibc-glob.h
+utils.o: ../include/fsio.h ../include/pr-syslog.h

@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.69 2002-11-25 17:33:49 castaglia Exp $
+ * $Id: mod_ls.c,v 1.70 2002-12-05 21:16:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -130,7 +130,7 @@ static void push_cwd(char *_cwd, unsigned char *symhold) {
   if (!symhold)
     *symhold = show_symlinks_hold;
 
-  sstrncpy(_cwd, fs_getcwd(), MAXPATHLEN + 1);
+  sstrncpy(_cwd, pr_fs_getcwd(), MAXPATHLEN + 1);
   *symhold = list_show_symlinks;
 }
 
@@ -141,27 +141,26 @@ static void pop_cwd(char *_cwd, unsigned char *symhold) {
   if (!symhold)
     *symhold = show_symlinks_hold;
 
-  fs_chdir(_cwd, *symhold);
+  pr_fsio_chdir(_cwd, *symhold);
   list_show_symlinks = *symhold;
 }
 
-static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden)
-{
+static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
   int ret, canon = 0;
   char *fullpath;
   long _fakemode;
 
-  fullpath = dir_realpath(p,path);
+  fullpath = dir_realpath(p, path);
 
-  if(!fullpath) {
-    fullpath = dir_canonical_path(p,path);
+  if (!fullpath) {
+    fullpath = dir_canonical_path(p, path);
     canon = 1;
   }
 
-  if(!fullpath)
-    fullpath = pstrdup(p,path);
-  
-  if(canon)
+  if (!fullpath)
+    fullpath = pstrdup(p, path);
+
+  if (canon)
     ret = dir_check_canon(p,cmd->argv[0],cmd->group,fullpath,hidden);
   else
     ret = dir_check(p,cmd->argv[0],cmd->group,fullpath,hidden);
@@ -194,13 +193,14 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden) {
   if (is_dotdir(path))
     return 1;
 
-  if(*path == '~')
-	  return ls_perms_full(p,cmd,path,hidden);
+  if (*path == '~')
+    return ls_perms_full(p,cmd,path,hidden);
 
-  if(*path != '/')
-  	fs_clean_path(pdircat(p,fs_getcwd(),path,NULL),fullpath,MAXPATHLEN);
+  if (*path != '/')
+    pr_fs_clean_path(pdircat(p, pr_fs_getcwd(), path, NULL), fullpath,
+      MAXPATHLEN);
   else
-	fs_clean_path(path,fullpath,MAXPATHLEN);
+    pr_fs_clean_path(path, fullpath, MAXPATHLEN);
  
   ret = dir_check(p,cmd->argv[0],cmd->group,fullpath,hidden);
 
@@ -278,19 +278,19 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
   int           hidden = 0;
   
   if (!p) p = cmd->tmp_pool;
-  
-  if (fs_lstat(name, &st) == 0) {
+ 
+  if (pr_fsio_lstat(name, &st) == 0) {
     suffix[0] = suffix[1] = '\0';
 
     if (S_ISLNK(st.st_mode) && (opt_L || !list_show_symlinks)) {
       /* Attempt to fully dereference symlink */
       struct stat l_st;
 
-      fs_clear_statcache();
-      if (fs_stat(name, &l_st) != -1) {
+      pr_fs_clear_cache();
+      if (pr_fsio_stat(name, &l_st) != -1) {
         memcpy(&st, &l_st, sizeof(struct stat));
 
-	if ((len = fs_readlink(name, m, sizeof(m))) < 0)
+	if ((len = pr_fsio_readlink(name, m, sizeof(m))) < 0)
 	  return 0;
 	
 	m[len] = '\0';
@@ -303,7 +303,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
 
     } else if (S_ISLNK(st.st_mode)) {
 
-      if ((len = fs_readlink(name, l, sizeof(l))) < 0)
+      if ((len = pr_fsio_readlink(name, l, sizeof(l))) < 0)
 	return 0;
       
       l[len] = '\0';
@@ -434,7 +434,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
           char *p = nameline + strlen(nameline);
 
           suffix[0] = '\0';
-          if (opt_F && fs_stat(name, &st) == 0) {
+          if (opt_F && pr_fsio_stat(name, &st) == 0) {
             if (S_ISLNK(st.st_mode))
               suffix[0] = '@';
 
@@ -689,20 +689,20 @@ static char **sreaddir(pool *workp, const char *dirname, const int sort) {
   int		dsize, ssize;
   int		dirfd;
 
-  if(fs_stat(dirname, &st) < 0) 
+  if (pr_fsio_stat(dirname, &st) < 0) 
     return NULL;
 
-  if(!S_ISDIR(st.st_mode)) {
+  if (!S_ISDIR(st.st_mode)) {
     errno = ENOTDIR;
     return NULL;
   }
 
-  if((d = opendir(dirname)) == NULL)
+  if ((d = pr_fsio_opendir(dirname)) == NULL)
     return NULL;
 
   /* It doesn't matter if the following guesses are wrong, but it slows
    * the system a bit and wastes some memory if they are wrong, so
-   * don't guess *too* naiively!
+   * don't guess *too* naively!
    *
    * 'dsize' must be greater than zero or we loop forever.
    * 'ssize' must be at least big enough to hold a maximum-length name.
@@ -740,7 +740,7 @@ static char **sreaddir(pool *workp, const char *dirname, const int sort) {
 
   i = 0;
   
-  while((de = readdir(d)) != NULL) {
+  while ((de = pr_fsio_readdir(d)) != NULL) {
     if(i >= dsize - 1) {
       /* The test above goes off one item early in case this is the last item
        * in the directory and thus next time we will want to NULL-terminate
@@ -785,7 +785,7 @@ static char **sreaddir(pool *workp, const char *dirname, const int sort) {
     s += strlen(de->d_name) + 1;
   }
   
-  closedir(d);
+  pr_fsio_closedir(d);
 
   /* This is correct, since the above is off by one element.
    */
@@ -815,7 +815,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
     dest_workp++;
   }
 
-  dir = sreaddir(workp,".",TRUE);
+  dir = sreaddir(workp, ".", TRUE);
 
   /* search for relevant <Limit>'s to this LIST command.  If found,
    * check to see whether hidden files should be ignored
@@ -888,7 +888,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
       push_cwd(cwd, &symhold);
      
       if (*r && ls_perms_full(workp,cmd,(char*)*r,NULL) &&
-          !fs_chdir_canon(*r, !opt_L && list_show_symlinks)) {
+          !pr_fsio_chdir_canon(*r, !opt_L && list_show_symlinks)) {
         char *subdir;
 
 	if (strcmp(name,".") == 0)
@@ -1068,10 +1068,11 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
       skiparg = FALSE;
 
       if (use_globbing)
-        a = fs_glob(*pbuffer ? pbuffer : arg, glob_flags, NULL, &g);
+        a = pr_fs_glob(*pbuffer ? pbuffer : arg, glob_flags, NULL, &g);
+
       else {
 
-        /* trick the following code into using the non-glob() processed path */
+        /* Trick the following code into using the non-glob() processed path */
         a = 0;
         g.gl_pathv = (char **) pcalloc(cmd->tmp_pool, 2 * sizeof(char *));
         g.gl_pathv[0] = (char *) pstrdup(cmd->tmp_pool,
@@ -1110,11 +1111,11 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
           }
 #endif
           
-        if (fs_lstat(*path, &st) == 0) {
+        if (pr_fsio_lstat(*path, &st) == 0) {
           mode_t target_mode, lmode;
 	  target_mode = st.st_mode;
 
-          if(S_ISLNK(st.st_mode) && (lmode = file_mode((char*)*path)) != 0) {
+          if (S_ISLNK(st.st_mode) && (lmode = file_mode((char*)*path)) != 0) {
             if(opt_L || !list_show_symlinks)
               st.st_mode = lmode;
             target_mode = lmode;
@@ -1124,7 +1125,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
             if(listfile(cmd,NULL,*path) < 0) {
               ls_terminate();
 	      if (use_globbing)
-                fs_globfree(&g);
+                pr_fs_globfree(&g);
               return -1;
             }
             **path = '\0';
@@ -1138,7 +1139,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
       if(outputfiles(cmd) < 0) {
         ls_terminate();
         if (use_globbing) 
-          fs_globfree(&g);
+          pr_fs_globfree(&g);
 	return -1;
       }
 
@@ -1161,14 +1162,14 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
           push_cwd(cwd, &symhold);
 
-          if (!fs_chdir_canon(*path, !opt_L && list_show_symlinks)) {
+          if (!pr_fsio_chdir_canon(*path, !opt_L && list_show_symlinks)) {
             int ret = listdir(cmd, NULL, *path);
             pop_cwd(cwd, &symhold);
 
             if (ret < 0) {
               ls_terminate();
 	      if (use_globbing)
-                fs_globfree(&g);
+                pr_fs_globfree(&g);
               return -1;
             }
           }
@@ -1177,7 +1178,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
         if(XFER_ABORTED) {
 	  discard_output();
           if (use_globbing)
-            fs_globfree(&g);
+            pr_fs_globfree(&g);
 	  return -1;
 	}
 
@@ -1195,7 +1196,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
     }
 
     if (!skiparg && use_globbing)
-      fs_globfree(&g);
+      pr_fs_globfree(&g);
 
     if(XFER_ABORTED) {
       discard_output();
@@ -1203,21 +1204,23 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
     }
   } else {
 
-    if(ls_perms_full(cmd->tmp_pool,cmd,".",NULL)) {
-      if(opt_d) {
-        if(listfile(cmd,NULL,".") < 0) {
+    if (ls_perms_full(cmd->tmp_pool, cmd, ".", NULL)) {
+
+      if (opt_d) {
+        if (listfile(cmd, NULL, ".") < 0) {
           ls_terminate();
           return -1;
         }
+
       } else {
-        if(listdir(cmd,NULL,".") < 0) {
+        if (listdir(cmd, NULL, ".") < 0) {
           ls_terminate(); 
 	  return -1;
         }
       }
     }
 
-    if(outputfiles(cmd) < 0) {
+    if (outputfiles(cmd) < 0) {
       ls_terminate();
       return -1;
     }
@@ -1280,7 +1283,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   } else
     push_cwd(cwd, &symhold);
   
-  if (fs_chdir_canon(dir, !opt_L && list_show_symlinks)) {
+  if (pr_fsio_chdir_canon(dir, !opt_L && list_show_symlinks)) {
     destroy_pool(workp);
     return 0;
   }
@@ -1311,7 +1314,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
       continue;
     }
    
-    if ((i = fs_readlink(p, file, sizeof(file))) > 0) {
+    if ((i = pr_fsio_readlink(p, file, sizeof(file))) > 0) {
       file[i] = '\0';
       f = file;
 
@@ -1537,7 +1540,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
     /* Make sure the glob_t is initialized */
     memset(&g, '\0', sizeof(glob_t));
 
-    if (fs_glob(target, GLOB_PERIOD,NULL, &g) != 0) {
+    if (pr_fs_glob(target, GLOB_PERIOD,NULL, &g) != 0) {
       add_response_err(R_550, "No files found");
       return ERROR(cmd);
     }
@@ -1554,7 +1557,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
       if (*p == '.' && (!opt_A || is_dotdir(p)))
         continue;
 
-      if (fs_stat(p, &st) == 0) {
+      if (pr_fsio_stat(p, &st) == 0) {
         /* If it's a directory, hand off to nlstdir */
         if (S_ISDIR(st.st_mode))
           ret = nlstdir(cmd, p);
@@ -1573,7 +1576,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
       }
     }
 
-    fs_globfree(&g);
+    pr_fs_globfree(&g);
 
   } else {
 
@@ -1603,7 +1606,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
     /* Make sure the target is a file or directory,
      * and that we have access to it.
      */
-    if (fs_stat(target, &st) < 0) {
+    if (pr_fsio_stat(target, &st) < 0) {
       add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
       return ERROR(cmd);
     }

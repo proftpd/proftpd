@@ -60,7 +60,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  * 
- * $Id: mod_ldap.c,v 1.27 2002-12-05 20:18:54 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.28 2002-12-05 21:16:47 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -267,9 +267,9 @@ pr_ldap_mkdir(char *dir, mode_t mode, uid_t uid, gid_t gid)
   mode_t old_umask;
   struct stat st;
 
-  if (fs_stat(dir, &st) == -1) {
+  if (pr_fsio_stat(dir, &st) == -1) {
     if (errno != ENOENT) {
-      log_pri(LOG_WARNING, "mod_ldap: pr_ldap_mkdir(): unable to create directory %s: fs_stat() failed: %s", dir, strerror(errno));
+      log_pri(LOG_WARNING, "mod_ldap: pr_ldap_mkdir(): unable to create directory %s: pr_fsio_stat() failed: %s", dir, strerror(errno));
       return;
     }
   }
@@ -279,12 +279,12 @@ pr_ldap_mkdir(char *dir, mode_t mode, uid_t uid, gid_t gid)
   old_umask = umask(0);
 
   PRIVS_ROOT;
-  if (mkdir(dir, mode) != 0) {
+  if (pr_fsio_mkdir(dir, mode) != 0) {
     PRIVS_RELINQUISH;
     log_pri(LOG_WARNING, "mod_ldap: pr_ldap_mkdir(): unable to create directory %s: %s", dir, strerror(errno));
     return;
   }
-  if (fs_chown(dir, uid, gid) == -1) {
+  if (pr_fsio_chown(dir, uid, gid) == -1) {
     PRIVS_RELINQUISH;
     log_pri(LOG_WARNING, "mod_ldap: pr_ldap_mkdir(): unable to chown directory %s: %s", dir, strerror(errno));
     return;
@@ -302,7 +302,7 @@ pr_ldap_mkpath(pool *p, const char *path, mode_t mode)
 
   /* If the full path already exists, just return without bothering to
      stat() its individual components. */
-  if (fs_stat(path, &st) != -1)
+  if (pr_fsio_stat(path, &st) != -1)
     return 0;
 
   buf = pstrdup(p, path);

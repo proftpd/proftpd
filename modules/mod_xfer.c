@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.103 2002-12-05 20:53:23 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.104 2002-12-05 21:16:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -50,10 +50,8 @@ char *auth_map_gid(int);
 void xfer_abort(pr_netio_stream_t *, int);
 
 /* Variables for this module */
-static fsdir_t *retr_file = NULL;
-static fsdir_t *stor_file = NULL;
-static int stor_fd;
-static int retr_fd;
+static pr_fh_t *retr_fh = NULL;
+static pr_fh_t *stor_fh = NULL;
 
 module xfer_module;
 
@@ -355,7 +353,7 @@ static void _rate_throttle(off_t rate_pos, off_t rate_bytes,
 static int _transmit_normal(char *buf, long bufsize) {
   long count;
   
-  if((count = fs_read(retr_file, retr_fd, buf, bufsize)) <= 0)
+  if((count = pr_fsio_read(retr_fh, buf, bufsize)) <= 0)
     return 0;
   
   return data_xfer(buf, count);
@@ -377,7 +375,8 @@ static int _transmit_sendfile(int rate_bps, off_t count, off_t *offset,
   }
 
  retry:
-  *retval = data_sendfile(retr_fd, offset, session.xfer.file_size - count);
+  *retval = data_sendfile(PR_FH_FD(retr_fh), offset,
+    session.xfer.file_size - count);
 
   if(*retval == -1) {
     switch (errno) {
@@ -423,7 +422,7 @@ static long _transmit_data(int rate_bps, off_t count, off_t offset,
 #ifdef HAVE_SENDFILE
   pr_sendfile_t retval;
   
-  if(!_transmit_sendfile(rate_bps, count, &offset, &retval))
+  if (!_transmit_sendfile(rate_bps, count, &offset, &retval))
     return _transmit_normal(buf, bufsize);
   else
     return (long) retval;
@@ -448,7 +447,7 @@ static void _stor_chown(void) {
     int err = 0, iserr = 0;
 
     PRIVS_ROOT
-    if (fs_chown(xfer_path, session.fsuid, session.fsgid) == -1) {
+    if (pr_fsio_chown(xfer_path, session.fsuid, session.fsgid) == -1) {
       iserr++;
       err = errno;
     }
@@ -469,17 +468,17 @@ static void _stor_chown(void) {
         log_debug(DEBUG2, "root chown(%s) to uid %lu successful", xfer_path,
           (unsigned long) session.fsuid);
 
-      fs_clear_statcache();
-      fs_stat(xfer_path, &sbuf);
+      pr_fs_clear_cache();
+      pr_fsio_stat(xfer_path, &sbuf);
       
-      if (fs_chmod(xfer_path, sbuf.st_mode) < 0)
+      if (pr_fsio_chmod(xfer_path, sbuf.st_mode) < 0)
         log_debug(DEBUG0, "chmod(%s) to %04o failed: %s", xfer_path,
           (unsigned int) sbuf.st_mode, strerror(errno));
     }
 
   } else if ((session.fsgid != (gid_t) -1) && xfer_path) {
 
-    if (fs_chown(xfer_path, (uid_t) -1, session.fsgid) == -1)
+    if (pr_fsio_chown(xfer_path, (uid_t) -1, session.fsgid) == -1)
       log_pri(PR_LOG_WARNING, "chown(%s) failed: %s", xfer_path,
         strerror(errno));
 
@@ -488,10 +487,10 @@ static void _stor_chown(void) {
       log_debug(DEBUG2, "chown(%s) to gid %lu successful", xfer_path,
         (unsigned long) session.fsgid);
 
-      fs_clear_statcache();
-      fs_stat(xfer_path, &sbuf);
+      pr_fs_clear_cache();
+      pr_fsio_stat(xfer_path, &sbuf);
 
-      if (fs_chmod(xfer_path, sbuf.st_mode) < 0)
+      if (pr_fsio_chmod(xfer_path, sbuf.st_mode) < 0)
         log_debug(DEBUG0, "chmod(%s) to %04o failed: %s", xfer_path,
           (unsigned int) sbuf.st_mode, strerror(errno));
     }
@@ -501,44 +500,44 @@ static void _stor_chown(void) {
 static void retr_abort(void) {
   /* Isn't necessary to send anything here, just cleanup */
 
-  if (retr_file) {
-    fs_close(retr_file, retr_fd);
-    retr_file = NULL;
+  if (retr_fh) {
+    pr_fsio_close(retr_fh);
+    retr_fh = NULL;
   }
 
   _log_transfer('o', 'i');
 }
 
 static void retr_complete(void) {
-  fs_close(retr_file,retr_fd);
-  retr_file = NULL;
+  pr_fsio_close(retr_fh);
+  retr_fh = NULL;
 }
 
 static void stor_abort(void) {
   unsigned char *delete_stores = NULL;
 
-  if (stor_file) {
-    fs_close(stor_file, stor_fd);
-    stor_file = NULL;
+  if (stor_fh) {
+    pr_fsio_close(stor_fh);
+    stor_fh = NULL;
   }
 
   if (session.xfer.xfer_type == STOR_HIDDEN) {
     /* If hidden stor aborted, remove only hidden file, not real one */
     if (session.xfer.path_hidden)
-      fs_unlink(session.xfer.path_hidden);
+      pr_fsio_unlink(session.xfer.path_hidden);
 
   } else if (session.xfer.path) {
     if ((delete_stores = get_param_ptr(CURRENT_CONF, "DeleteAbortedStores",
         FALSE)) != NULL && *delete_stores == TRUE)
-      fs_unlink(session.xfer.path);
+      pr_fsio_unlink(session.xfer.path);
   }
 
   _log_transfer('i', 'i');
 }
 
 static void stor_complete(void) {
-  fs_close(stor_file, stor_fd);
-  stor_file = NULL;
+  pr_fsio_close(stor_fh);
+  stor_fh = NULL;
 }
 
 /* Exit handler, call abort functions if a transfer is in progress. */
@@ -573,7 +572,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   
   dir = dir_best_path(cmd->tmp_pool,cmd->arg);
 
-  if(!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL)) {
+  if (!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL)) {
     add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
     return ERROR(cmd);
   }
@@ -765,7 +764,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
     /* Do not forget to delete the file created by mkstemp(3) if there is
      * an error.
      */
-    fs_unlink(cmd->arg);
+    pr_fsio_unlink(cmd->arg);
 
     add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
@@ -788,7 +787,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
   /* Not likely to _not_ be a regular file, but just to be certain...
    */
   if (mode && !S_ISREG(mode)) {
-    fs_unlink(cmd->arg);
+    pr_fsio_unlink(cmd->arg);
     add_response_err(R_550, "%s: Not a regular file", cmd->arg);
     return ERROR(cmd);
   }
@@ -814,7 +813,7 @@ MODRET xfer_post_stou(cmd_rec *cmd) {
    */
   mode_t mode = 0666;
 
-  if (fs_chmod(cmd->arg, mode) < 0) {
+  if (pr_fsio_chmod(cmd->arg, mode) < 0) {
 
     /* Not much to do but log the error. */
     log_pri(PR_LOG_ERR, "error: unable to chmod '%s': %s", cmd->arg,
@@ -867,18 +866,18 @@ MODRET xfer_stor(cmd_rec *cmd) {
   }
   
   p_hidden = NULL;
-  p = mod_privdata_find(cmd,"stor_filename",NULL);
+  p = mod_privdata_find(cmd, "stor_filename", NULL);
 
-  if(!p) {
+  if (!p) {
     add_response_err(R_550,"%s: internal error, stor_filename not set by cmd_pre_stor",cmd->arg);
     return ERROR(cmd);
   }
 
   dir = p->value.str_val;
 
-  if(session.xfer.xfer_type == STOR_HIDDEN) {
+  if (session.xfer.xfer_type == STOR_HIDDEN) {
     p_hidden = mod_privdata_find(cmd,"stor_hidden_filename",NULL);
-    if(!p_hidden) {
+    if (!p_hidden) {
       add_response_err(R_550,"%s: internal error, stor_hidden_filename not set by cmd_pre_retr",cmd->arg);
       return ERROR(cmd);
     }
@@ -897,50 +896,52 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
   preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathDenyFilter",FALSE);
 
-  if(preg && ((ret = regexec(preg,cmd->arg,0,NULL,0)) == 0)) {
-    add_response_err(R_550,"%s: Forbidden filename", cmd->arg);
+  if (preg && ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) == 0)) {
+    add_response_err(R_550, "%s: Forbidden filename", cmd->arg);
     return ERROR(cmd);
   }
 #endif /* REGEX */
 
-  if(session.xfer.xfer_type == STOR_HIDDEN)
-    stor_file = fs_open(p_hidden->value.str_val,
-	O_WRONLY|(session.restart_pos ? 0 : O_CREAT|O_EXCL),&stor_fd);
+  if (session.xfer.xfer_type == STOR_HIDDEN)
+    stor_fh = pr_fsio_open(p_hidden->value.str_val,
+	O_WRONLY|(session.restart_pos ? 0 : O_CREAT|O_EXCL));
 
-  else if(session.xfer.xfer_type == STOR_APPEND) {
-    stor_file = fs_open(dir, O_CREAT|O_WRONLY,&stor_fd);
-    if (stor_file)
-      if (fs_lseek(stor_file,stor_fd,0,SEEK_END) == -1) {
-        fs_close(stor_file,stor_fd);
-        stor_file = NULL;
+  else if (session.xfer.xfer_type == STOR_APPEND) {
+    stor_fh = pr_fsio_open(dir, O_CREAT|O_WRONLY);
+
+    if (stor_fh)
+      if (pr_fsio_lseek(stor_fh, 0, SEEK_END) == (off_t) -1) {
+        pr_fsio_close(stor_fh);
+        stor_fh = NULL;
       }
   }
 
   else /* Normal session */
-    stor_file = fs_open(dir,
-	O_WRONLY|(session.restart_pos ? 0 : O_TRUNC|O_CREAT),&stor_fd);
+    stor_fh = pr_fsio_open(dir,
+	O_WRONLY|(session.restart_pos ? 0 : O_TRUNC|O_CREAT));
 
-  if (stor_file && session.restart_pos) {
+  if (stor_fh && session.restart_pos) {
     int xerrno = 0;
     
-    if (fs_lseek(stor_file, stor_fd, session.restart_pos, SEEK_SET) == -1)
+    if (pr_fsio_lseek(stor_fh, session.restart_pos, SEEK_SET) == -1)
       xerrno = errno;
 
-    else if (fs_stat(dir, &sbuf) == -1)
+    else if (pr_fsio_stat(dir, &sbuf) == -1)
       xerrno = errno;
     
     if (xerrno) {
-      fs_close(stor_file,stor_fd);
+      pr_fsio_close(stor_fh);
       errno = xerrno;
-      stor_file = NULL;
+      stor_fh = NULL;
     }
 
     /* Make sure that the requested offset is valid (within the size of the
      * file being resumed.
      */
-    if (stor_file && session.restart_pos > sbuf.st_size) {
+    if (stor_fh && session.restart_pos > sbuf.st_size) {
       add_response_err(R_554, "%s: invalid REST argument", cmd->arg);
-      fs_close(stor_file, stor_fd);
+      pr_fsio_close(stor_fh);
+      stor_fh = NULL;
       return ERROR(cmd);
     }
     
@@ -949,8 +950,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
     session.restart_pos = 0L;
   }
 
-  if (!stor_file) {
-    add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
+  if (!stor_fh) {
+    add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
 
@@ -1023,7 +1024,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
         "aborting transfer of '%s'", nbytes_max_store, dir);
 
       /* Unlink the file being written. */
-      fs_unlink(dir);
+      pr_fsio_unlink(dir);
 
       /* Abort the transfer. */
       stor_abort();
@@ -1033,7 +1034,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
       return ERROR(cmd);
     }
 
-    if ((len = fs_write(stor_file, stor_fd, lbuf, len)) < 0) {
+    if ((len = pr_fsio_write(stor_fh, lbuf, len)) < 0) {
       int s_errno = errno;
       stor_abort();
       data_abort(s_errno, FALSE);
@@ -1063,7 +1064,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
     if (session.xfer.path && session.xfer.path_hidden) {
 
-      if (fs_rename(session.xfer.path_hidden, session.xfer.path) != 0) {
+      if (pr_fsio_rename(session.xfer.path_hidden, session.xfer.path) != 0) {
 
         /* This should only fail on a race condition with a chmod/chown
          * or if STOR_APPEND is on and the permissions are squirrely.
@@ -1076,7 +1077,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
         add_response_err(R_550,"%s: rename of hidden file %s failed: %s",
           session.xfer.path, session.xfer.path_hidden, strerror(errno));
 
-        fs_unlink(session.xfer.path_hidden);
+        pr_fsio_unlink(session.xfer.path_hidden);
 
         return ERROR(cmd);
       }
@@ -1141,11 +1142,11 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 
   fmode = file_mode(dir);
 
-  if(!S_ISREG(fmode)) {
-    if(!fmode)
-      add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
+  if (!S_ISREG(fmode)) {
+    if (!fmode)
+      add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     else
-      add_response_err(R_550,"%s: Not a regular file",cmd->arg);
+      add_response_err(R_550, "%s: Not a regular file", cmd->arg);
     return ERROR(cmd);
   }
 
@@ -1162,7 +1163,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
   }
 
   /* Otherwise everthing is good */
-  p = mod_privdata_alloc(cmd,"retr_filename",strlen(dir)+1);
+  p = mod_privdata_alloc(cmd, "retr_filename", strlen(dir)+1);
   sstrncpy(p->value.str_val, dir, strlen(dir) + 1);
   return HANDLED(cmd);
 }
@@ -1196,9 +1197,9 @@ MODRET xfer_retr(cmd_rec *cmd) {
 	      rate_bps, rate_freebytes);
   }
   
-  p = mod_privdata_find(cmd,"retr_filename",NULL);
+  p = mod_privdata_find(cmd, "retr_filename", NULL);
   
-  if(!p) {
+  if (!p) {
     add_response_err(R_550, "%s: internal error, what happened to "
 		     "cmd_pre_retr?!?", cmd->arg);
     return ERROR(cmd);
@@ -1206,13 +1207,13 @@ MODRET xfer_retr(cmd_rec *cmd) {
   
   dir = p->value.str_val;
 
-  if ((retr_file = fs_open(dir, O_RDONLY, &retr_fd)) == NULL) {
+  if ((retr_fh = pr_fsio_open(dir, O_RDONLY)) == NULL) {
     /* Error opening the file. */
     add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
 
-  if (fs_stat(dir, &sbuf) < 0) {
+  if (pr_fsio_stat(dir, &sbuf) < 0) {
     /* Error stat'ing the file. */
     add_response_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
@@ -1225,16 +1226,17 @@ MODRET xfer_retr(cmd_rec *cmd) {
      */
     if (session.restart_pos > sbuf.st_size) {
       add_response_err(R_554, "%s: invalid REST argument", cmd->arg);
-      fs_close(stor_file, stor_fd);
+      pr_fsio_close(stor_fh);
+      stor_fh = NULL;
       return ERROR(cmd);
     }
 
-    if (fs_lseek(retr_file, retr_fd, session.restart_pos,
+    if (pr_fsio_lseek(retr_fh, session.restart_pos,
         SEEK_SET) == (off_t) -1) {
       int _errno = errno;
-      fs_close(retr_file,retr_fd);
+      pr_fsio_close(retr_fh);
       errno = _errno;
-      retr_file = NULL;
+      retr_fh = NULL;
     }
 
     respos = session.restart_pos;
@@ -1734,7 +1736,7 @@ MODRET add_ratenum(cmd_rec *cmd) {
   if(cmd->argc != 2 )
       CONF_ERROR(cmd,"invalid number of arguments");
 
-  if(!strcasecmp(cmd->argv[1],"none"))
+  if (!strcasecmp(cmd->argv[1],"none"))
     ratenum = 0;
   else {
     ratenum = (int)strtol(cmd->argv[1],&endp,10);
