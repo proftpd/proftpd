@@ -887,7 +887,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   } else if (conn == session.d)
     tls_data_rd_nstrm->strm_data = tls_data_wr_nstrm->strm_data = (void *) ssl;
 
-  /* SSL handshake on the control channel... */
+  /* TLS handshake on the control channel... */
   if (!on_data) {
     tls_log("%s connection accepted, using cipher %s (%d bits)",
       SSL_get_cipher_version(ssl), SSL_get_cipher_name(ssl),
@@ -912,7 +912,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     /* Setup the TLS environment variables, if requested. */
     tls_setup_environ();
 
-  /* SSL handshake on the data channel... */
+  /* TLS handshake on the data channel... */
   } else {
 
     /* Only be verbose with the first TLS data connection, otherwise there
@@ -1866,7 +1866,7 @@ static int tls_netio_poll_cb(pr_netio_stream_t *nstrm) {
 static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
 
   /* If this is a data stream, and it's for writing, and TLS is required,
-   * then do an SSL handshake.
+   * then do an TLS handshake.
    */
 
   if (nstrm->strm_type == PR_NETIO_STRM_DATA &&
@@ -1876,8 +1876,9 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
     if (tls_required_on_data || (tls_flags & TLS_SESS_NEED_DATA_PROT)) {
       X509 *ctrl_cert = NULL, *data_cert = NULL;
 
+      tls_log("%s", "start TLS handshake on data connection");
       if (tls_accept(session.d, TRUE) < 0) {
-        tls_log("%s", "unable to open data connection: SSL handshake failure");
+        tls_log("%s", "unable to open data connection: TLS negotiation failed");
         session.d->xerrno = EPERM;
         return -1;
       }
@@ -2104,8 +2105,8 @@ MODRET tls_authenticate(cmd_rec *cmd) {
 
   /* Possible authentication combinations:
    *
-   *  SSL handshake + passwd (default)
-   *  SSL handshake + .tlslogin (passwd ignored)
+   *  TLS handshake + passwd (default)
+   *  TLS handshake + .tlslogin (passwd ignored)
    */
 
   if ((tls_flags & TLS_SESS_ON_CTRL) && (tls_opts & TLS_OPT_ALLOW_DOT_LOGIN)) {
@@ -2140,8 +2141,8 @@ MODRET tls_auth_check(cmd_rec *cmd) {
 
   /* Possible authentication combinations:
    *
-   *  SSL handshake + passwd (default)
-   *  SSL handshake + .tlslogin (passwd ignored)
+   *  TLS handshake + passwd (default)
+   *  TLS handshake + .tlslogin (passwd ignored)
    */
 
   if ((tls_flags & TLS_SESS_ON_CTRL) && (tls_opts & TLS_OPT_ALLOW_DOT_LOGIN)) {
