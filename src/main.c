@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.247 2004-09-07 22:23:32 castaglia Exp $
+ * $Id: main.c,v 1.248 2004-09-07 22:29:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2372,6 +2372,7 @@ static struct option opts[] = {
   { "persistent",     1, NULL, 'p' },
   { "list",           0, NULL, 'l' },
   { "version",        0, NULL, 'v' },
+  { "settings",       0, NULL, 'V' },
   { "version-status", 0, NULL, 1   },
   { "configtest",     0, NULL, 't' },
   { "help",	      0, NULL, 'h' },
