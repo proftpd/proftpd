@@ -19,7 +19,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.37 2001-04-11 18:57:42 flood Exp $
+ * $Id: mod_ls.c,v 1.38 2001-04-24 03:36:51 flood Exp $
  */
 
 #include "conf.h"
@@ -1205,7 +1205,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
        file[MAXPATHLEN + 1] = {'\0'};
   char cwd[MAXPATHLEN + 1]  = {'\0'};
   pool *workp;
-  int curdir = 0, i, symhold, count = 0;
+  int curdir = 0, i, symhold, count = 0, hidden = 0;
   mode_t mode;
   
   config_rec *c = NULL;
@@ -1241,7 +1241,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   while(*list && count >= 0) {
     p = *list; list++;
     
-		if (*p == '.') {
+    if (*p == '.') {
 
       if (!opt_a && (!opt_A || is_dotdir(p)))
         continue;
@@ -1259,8 +1259,10 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
       f = p;
     }
     
-    if(ls_perms(workp,cmd,f,NULL)) {
-    
+    if(ls_perms(workp,cmd,f,&hidden)) {
+      if(hidden)
+        continue;
+
       /* If the data connection isn't open, open it now. */
       if((session.flags & SF_XFER) == 0) {
 	if(data_open(NULL,"file list",IO_WRITE,0) < 0) {
@@ -1401,8 +1403,7 @@ MODRET cmd_list(cmd_rec *cmd)
 MODRET cmd_nlst(cmd_rec *cmd)
 {
 	char	*target,line[MAXPATHLEN + 1] = {'\0'};
-	int	count = 0;
-	int	ret = 0;
+	int	count = 0,ret = 0, hidden = 0;
 
 	/* In case the client used NLST instead of LIST
 	 */
@@ -1460,6 +1461,7 @@ MODRET cmd_nlst(cmd_rec *cmd)
 		path = g.gl_pathv;
 		while(path && *path && ret >= 0) {
 			struct stat st;
+                        int hidden = 0;
 
 			p = *path; path++;
 
@@ -1471,8 +1473,13 @@ MODRET cmd_nlst(cmd_rec *cmd)
 				if(S_ISDIR(st.st_mode))
 					ret = nlstdir(cmd,p);
 				else if(S_ISREG(st.st_mode) &&
-						ls_perms(cmd->tmp_pool,cmd,p,NULL))
+						ls_perms(cmd->tmp_pool,cmd,p,&hidden)) {
+                                        /* Don't display hidden files */
+                                        if(hidden)
+                                          continue;
+                                        
 					ret = nlstfile(cmd,p);
+                                }
 				if(ret > 0)
 					count += ret;
 			}
@@ -1484,11 +1491,25 @@ MODRET cmd_nlst(cmd_rec *cmd)
 		 */
 		struct stat st;
 		
-		if(!ls_perms(cmd->tmp_pool,cmd,target,NULL)) {
-                    add_response(R_550,"%s: %s",strerror(errno));
+		if(!ls_perms(cmd->tmp_pool,cmd,target,&hidden)) {
+                    add_response_err(R_550,"%s: %s",cmd->arg,strerror(errno));
 		    return ERROR(cmd);
 		}
 
+                
+                /* Don't display hidden files */
+                if(hidden) {
+                  config_rec *c;
+
+                  if((c = _find_ls_limit(target)) != NULL &&
+                      get_param_int(c->subset, "IgnoreHidden", FALSE) == TRUE)
+                    add_response_err(R_550,"%s: %s", cmd->arg, strerror(ENOENT));
+                  else
+                    add_response_err(R_550,"%s: %s", cmd->arg, strerror(EACCES));
+
+                  return ERROR(cmd);
+                }
+                
 		/* Make sure the target is a file or directory,
 		 * and that we have access to it.
 		 */
