@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.10 2004-04-08 02:39:35 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.11 2004-04-09 17:19:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -365,7 +365,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
   }
 
   /* Handle 'kick user' requests. */
-  if (!strcmp(reqargv[0], "user")) {
+  if (strcmp(reqargv[0], "user") == 0) {
     register unsigned int i = 0;
     pr_scoreboard_entry_t *score = NULL;
 
@@ -462,6 +462,54 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
 
       } else
         pr_ctrls_add_response(ctrl, "host '%s' not connected", addr);
+    }
+
+  /* Handle 'kick class' requests. */
+  } else if (strcmp(reqargv[0], "class") == 0) {
+    register unsigned int i = 0;
+    pr_scoreboard_entry_t *score = NULL;
+
+    if (reqargc == 1) {
+      pr_ctrls_add_response(ctrl, "kick class: missing required class name(s)");
+      return -1;
+    }
+
+    /* Iterate through the scoreboard, and send a SIGTERM to each
+     * pid whose name matches the given class name(s).
+     */
+    for (i = 1; i < reqargc; i++) {
+      unsigned char kicked_class = FALSE;
+
+      if (pr_rewind_scoreboard() < 0)
+        ctrls_log("error rewinding scoreboard: %s", strerror(errno));
+
+      while ((score = pr_scoreboard_read_entry()) != NULL) {
+        if (strcmp(reqargv[i], score->sce_class) == 0) {
+          int res = 0;
+
+          PRIVS_ROOT
+          res = kill(score->sce_pid, SIGTERM);
+          PRIVS_RELINQUISH
+
+          if (res == 0)
+            kicked_class = TRUE;
+
+          else
+            ctrls_log("error kicking class '%s': %s", reqargv[i],
+              strerror(errno));
+        }
+      }
+      if (pr_restore_scoreboard() < 0)
+        ctrls_log("error restoring scoreboard: %s", strerror(errno));
+
+      if (kicked_class) {
+        pr_ctrls_add_response(ctrl, "kicked class '%s'", reqargv[i]);
+        ctrls_log("kicked class '%s'", reqargv[i]);
+        pr_log_debug(DEBUG4, MOD_CTRLS_ADMIN_VERSION ": kicked class '%s'",
+          reqargv[i]);
+
+      } else
+        pr_ctrls_add_response(ctrl, "class '%s' not connected", reqargv[i]);
     }
 
   } else {
@@ -1042,7 +1090,7 @@ static ctrls_acttab_t ctrls_admin_acttab[] = {
     ctrls_handle_dump },
   { "get",      "",	NULL,
     ctrls_handle_get },
-  { "kick",	"disconnect a host or user from the daemon",	NULL,
+  { "kick",	"disconnect a class, host, or user",	NULL,
     ctrls_handle_kick },
   { "restart",  "restart the daemon (similar to using HUP)",	NULL,
     ctrls_handle_restart },
