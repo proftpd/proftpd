@@ -35,7 +35,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.7 2004-09-05 00:31:09 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.8 2004-09-13 01:43:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -291,7 +291,8 @@ MODRET pam_auth(cmd_rec *cmd) {
    * This bug is Sun bugid 4250887, and should be fixed in an update for
    * Solaris.  -- MacGyver
    */
-  snprintf(ttyentry, sizeof(ttyentry), "/dev/ftp%02ld", getpid());
+  snprintf(ttyentry, sizeof(ttyentry), "/dev/ftp%02lu",
+    (unsigned long) getpid());
   pam_set_item(pamh, PAM_TTY, ttyentry);
 #endif /* SOLARIS2 */
 
