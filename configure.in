@@ -143,7 +143,7 @@ AC_ARG_ENABLE(sendfile,
 AC_ARG_ENABLE(force-setpassent,
   [  --enable-force-setpassent force use of setpassent (default=no on FreeBSD)])
 
-AC_CHECK_LIB(security, set_auth_parameters, LIBS="$LIBS -lsecurity")
+AC_CHECK_LIB(security, set_auth_parameters)
 AC_CHECK_HEADERS(sys/security.h)
 AC_CHECK_HEADERS(krb.h)
 AC_CHECK_HEADERS(prot.h)
@@ -189,8 +189,6 @@ AC_CHECK_HEADERS(security/pam_appl.h,
 	if test "$use_shadow" != ""; then
 	  use_shadow=""
 	fi
-
-	AC_CHECK_LIB(dl,dlopen)
 
 	if test `echo $ac_addl_modules | grep -c mod_pam` = "0"; then
 	  ac_addl_modules="mod_pam.o $ac_addl_modules"
@@ -491,6 +489,11 @@ ac_addl_libs=`echo "$ac_addl_libs" | sed -e 's/ *\$//'`
 test "x$ac_addl_libs" = x || LIBS="$LIBS $ac_addl_libs"
 ac_addl_dirs=`echo "$ac_addl_dirs" | sed -e 's/ *\$//'`
 ADDL_DIRS="$ac_addl_dirs"
+
+dnl Check for dynmaic loading libraries, if applicable.
+if test `echo $ac_addl_modules | grep -c mod_pam` = "1"; then
+  AC_CHECK_LIB(dl, dlopen, LIBS="$LIBS -ldl")
+fi
 
 MODULES="$ac_core_modules $ac_addl_modules"
 BUILD_MODULES="$ac_build_core_modules $ac_build_addl_modules"
