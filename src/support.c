@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.76 2005-02-26 17:28:59 castaglia Exp $
+ * $Id: support.c,v 1.77 2005-03-18 18:25:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -632,8 +632,8 @@ char *sreplace(pool *p, char *s, ...) {
   char **mptr,**rptr;
   char *marr[33],*rarr[33];
   char buf[PR_TUNABLE_PATH_MAX] = {'\0'}, *pbuf = NULL;
-  int mlen = 0, rlen = 0;
-  int blen, dyn = 1;
+  size_t mlen = 0, rlen = 0, blen;
+  int dyn = TRUE;
 
   cp = buf;
   *cp = '\0';
@@ -644,12 +644,39 @@ char *sreplace(pool *p, char *s, ...) {
 
   va_start(args, s);
 
-  while ((m = va_arg(args, char *)) != NULL && mlen < 32) {
+  while ((m = va_arg(args, char *)) != NULL && mlen < sizeof(marr)-1) {
+    char *tmp = NULL;
+    size_t count = 0;
+
     if ((r = va_arg(args, char *)) == NULL)
       break;
-    blen += (strlen(r) - strlen(m));
-    marr[mlen] = m;
-    rarr[mlen++] = r;
+
+    /* Increase the length of the needed buffer by the difference between
+     * the given match and replacement strings, multiplied by the number
+     * of times the match string occurs in the source string.
+     */
+    tmp = strstr(s, m);
+    while (tmp) {
+      pr_signals_handle();
+      count++;
+
+      /* Be sure to increment the pointer returned by strstr(3), to
+       * advance past the beginning of the substring for which we are
+       * looking.  Otherwise, we just loop endlessly, seeing the same
+       * value for tmp over and over.
+       */
+      tmp += strlen(m);
+      tmp = strstr(tmp, m);
+    }
+
+    /* We are only concerned about match/replacement strings that actually
+     * occur in the given string.
+     */
+    if (count) {
+      blen += count * (strlen(r) - strlen(m));
+      marr[mlen] = m;
+      rarr[mlen++] = r;
+    }
   }
 
   va_end(args);
@@ -668,7 +695,7 @@ char *sreplace(pool *p, char *s, ...) {
 
   if (!pbuf) {
     cp = pbuf = buf;
-    dyn = 0;
+    dyn = FALSE;
     blen = sizeof(buf);
   }
 
