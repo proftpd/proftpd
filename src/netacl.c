@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.3 2003-11-16 01:25:37 castaglia Exp $
+ * $Id: netacl.c,v 1.4 2003-11-16 01:32:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -233,7 +233,7 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
   return acl;
 }
 
-int pr_netacl_is_negated(pr_netacl_t *acl) {
+int pr_netacl_get_negated(pr_netacl_t *acl) {
   if (!acl) {
     errno = EINVAL;
     return -1;
