@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.h,v 1.1 2004-10-31 01:32:49 castaglia Exp $
+ * $Id: parser.h,v 1.2 2004-10-31 22:26:18 castaglia Exp $
  */
 
 #ifndef PR_PARSER_H
@@ -59,6 +59,10 @@ config_rec *pr_parser_config_ctxt_get(void);
  * or "Anonymous") is provided by the name parameter.
  */
 config_rec *pr_parser_config_ctxt_open(const char *name);
+
+/* Returns the line number of the configuration stream being parsed.
+ */
+unsigned int pr_parser_get_lineno(void);
 
 /* This is the main function to be used by consumers of the Parser
  * API.  Given a pool, a path to a file containing configuration text,

@@ -24,7 +24,7 @@
 
 /*
  * Configuration parser
- * $Id: parser.c,v 1.2 2004-10-31 01:39:47 castaglia Exp $
+ * $Id: parser.c,v 1.3 2004-10-31 22:26:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -49,6 +49,8 @@ struct config_src {
   pr_fh_t *cs_fh;
   unsigned int cs_lineno;
 };
+
+static unsigned int parser_curr_lineno = 0;
 
 /* Note: the parser seems to be touchy about this particular value.  If
  * you see strange segfaults occurring in the mergedown() function, it
@@ -251,6 +253,10 @@ config_rec *pr_parser_config_ctxt_open(const char *name) {
 
   add_config_ctxt(c);
   return c;
+}
+
+unsigned int pr_parser_get_lineno(void) {
+  return parser_curr_lineno;
 }
 
 int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
@@ -477,9 +483,10 @@ int pr_parser_prepare(pool *p, xaset_t **parsed_servers) {
  * <IfDefine> and <IfModule> configuration handlers.
  */
 char *pr_parser_read_line(char *buf, size_t bufsz) {
+  struct config_src *cs;
 
   /* Always use the config stream at the top of the stack. */
-  struct config_src *cs = parser_sources;
+  cs = parser_sources;
 
   if (!buf) {
     errno = EINVAL;
@@ -491,11 +498,15 @@ char *pr_parser_read_line(char *buf, size_t bufsz) {
     return NULL;
   }
 
+  parser_curr_lineno = cs->cs_lineno;
+
   /* Check for error conditions. */
 
   while ((pr_fsio_getline(buf, bufsz, cs->cs_fh, &(cs->cs_lineno))) != NULL) {
     char *bufp = NULL;
     size_t buflen = strlen(buf);
+
+    parser_curr_lineno = cs->cs_lineno;
 
     /* Trim off the trailing newline, if present. */
     if (buflen && buf[buflen - 1] == '\n')
