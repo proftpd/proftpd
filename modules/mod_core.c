@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.49 2001-01-29 02:14:47 flood Exp $
+ * $Id: mod_core.c,v 1.50 2001-01-31 18:43:07 flood Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -156,6 +156,8 @@ MODRET set_wtmplog(cmd_rec *cmd)
 
   if(b != -1)
     add_config_param("WtmpLog",1,(void*)b);
+  else
+    CONF_ERROR(cmd, "expected boolean argument, or \"NONE\"");
 
   return HANDLED(cmd);
 }
@@ -477,11 +479,15 @@ MODRET set_maxloginattempts(cmd_rec *cmd)
 MODRET set_useftpusers(cmd_rec *cmd)
 {
   config_rec *c;
+  int bool;
 
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
 
-  c = add_config_param("UseFtpUsers",1,(void*)get_boolean(cmd,1));
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  c = add_config_param("UseFtpUsers", 1, (void *) bool);
 
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
@@ -509,28 +515,40 @@ MODRET set_timeoutstalled(cmd_rec *cmd)
 
 MODRET set_socketbindtight(cmd_rec *cmd)
 {
+  int bool;
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_ROOT);
 
-  SocketBindTight = get_boolean(cmd,1);
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  SocketBindTight = bool;
   return HANDLED(cmd);  
 }
 
 MODRET set_multilinerfc2228(cmd_rec *cmd)
 {
+  int bool;
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_ROOT);
 
-  MultilineRFC2228 = get_boolean(cmd,1);
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  MultilineRFC2228 = bool;
   return HANDLED(cmd);
 }
 
 MODRET set_identlookups(cmd_rec *cmd)
 {
+  int bool;
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  add_config_param("IdentLookups",1,get_boolean(cmd,1));
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  add_config_param("IdentLookups", 1, bool);
   return HANDLED(cmd);
 }
 
@@ -586,10 +604,14 @@ MODRET set_tcpsendwindow(cmd_rec *cmd)
 
 MODRET set_tcpnodelay(cmd_rec *cmd)
 {
+  int bool;
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  add_config_param("tcpNoDelay",1,get_boolean(cmd,1));
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  add_config_param("tcpNoDelay", 1, bool);
   return HANDLED(cmd);
 }
 
@@ -714,11 +736,15 @@ MODRET set_umask(cmd_rec *cmd)
 MODRET set_requirevalidshell(cmd_rec *cmd)
 {
   config_rec *c;
+  int bool;
 
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
 
-  c = add_config_param("RequireValidShell",1,get_boolean(cmd,1));
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  c = add_config_param("RequireValidShell",1, bool);
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 }
@@ -794,11 +820,15 @@ MODRET set_syslogfacility(cmd_rec *cmd)
 MODRET set_showsymlinks(cmd_rec *cmd)
 {
   config_rec *c;
+  int bool;
 
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
 
-  c = add_config_param("ShowSymlinks",1,get_boolean(cmd,1));
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  c = add_config_param("ShowSymlinks", 1, bool);
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 }
@@ -1010,12 +1040,16 @@ MODRET set_allowretrieverestart(cmd_rec *cmd)
 MODRET set_allowstorerestart(cmd_rec *cmd)
 {
   config_rec *c;
+  int bool;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_DIR | CONF_ANON | CONF_GLOBAL
 	     | CONF_DYNDIR);
 
-  c = add_config_param("AllowStoreRestart", 1, (void *) get_boolean(cmd, 1));
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  c = add_config_param("AllowStoreRestart", 1, (void *) bool);
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 }
@@ -1023,23 +1057,31 @@ MODRET set_allowstorerestart(cmd_rec *cmd)
 MODRET set_deleteabortedstores(cmd_rec *cmd)
 {
   config_rec *c;
+  int bool;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_DIR | CONF_ANON | CONF_GLOBAL
 	     | CONF_DYNDIR);
 
-  c = add_config_param("DeleteAbortedStores", 1, (void *) get_boolean(cmd, 1));
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  c = add_config_param("DeleteAbortedStores", 1, (void *) bool);
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 }
 
-MODRET add_hidenoaccess(cmd_rec *cmd)
+MODRET set_hidenoaccess(cmd_rec *cmd)
 {
+  int bool = 0;
   config_rec *c;
-  CHECK_ARGS(cmd,0);
+  CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_DIR|CONF_ANON);
 
-  c = add_config_param("HideNoAccess",1,(void*)1);
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument");
+
+  c = add_config_param("HideNoAccess", 1, (void *) bool);
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 }
@@ -1138,11 +1180,15 @@ MODRET add_userowner(cmd_rec *cmd)
 MODRET set_allowoverwrite(cmd_rec *cmd)
 {
   config_rec *c;
+  int bool;
 
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_DIR|CONF_GLOBAL|CONF_DYNDIR);
 
-  c = add_config_param("AllowOverwrite",1,(void*)get_boolean(cmd,1));
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  c = add_config_param("AllowOverwrite", 1, (void *) bool);
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 }
@@ -1150,11 +1196,15 @@ MODRET set_allowoverwrite(cmd_rec *cmd)
 MODRET set_hiddenstor(cmd_rec *cmd)
 {
   config_rec *c;
+  int bool;
 
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_DIR|CONF_GLOBAL);
 
-  c = add_config_param("HiddenStor",1,(void*)get_boolean(cmd,1));
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  c = add_config_param("HiddenStor", 1, (void *) bool);
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 }
@@ -1204,11 +1254,14 @@ MODRET add_anonymous(cmd_rec *cmd)
 
 MODRET set_anonrequirepassword(cmd_rec *cmd)
 {
+  int bool;
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_ANON);
 
-  add_config_param("AnonRequirePassword",1,
-                   (void*)get_boolean(cmd,1));
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  add_config_param("AnonRequirePassword", 1, (void *) bool);
   return HANDLED(cmd);
 }
 
@@ -1496,11 +1549,15 @@ MODRET end_limit(cmd_rec *cmd)
 MODRET set_ignorehidden(cmd_rec *cmd)
 {
   config_rec *c;
+  int bool;
 
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_LIMIT);
 
-  c = add_config_param("IgnoreHidden",1,(void*)get_boolean(cmd,1));
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  c = add_config_param("IgnoreHidden", 1, (void *) bool);
   return HANDLED(cmd);
 }
 
@@ -2535,9 +2592,8 @@ MODRET set_classes(cmd_rec *cmd)
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
 
-  b = get_boolean(cmd,1);
-  if (b == -1)
-    CONF_ERROR(cmd, "requires a boolean value");
+  if ((b = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
 
   c = add_config_param("Classes",1,(void*)b);
   c->flags |= CF_MERGEDOWN;
@@ -2792,7 +2848,7 @@ static conftable core_conftable[] = {
   { "GroupPassword",		add_grouppassword,		NULL },
   { "HiddenStor",		set_hiddenstor,			NULL },
   { "HideGroup",		add_hidegroup,			NULL },
-  { "HideNoAccess",		add_hidenoaccess,		NULL },
+  { "HideNoAccess",		set_hidenoaccess,		NULL },
   { "HideUser",			add_hideuser,			NULL },
   { "IdentLookups",		set_identlookups,		NULL },
   { "IgnoreHidden",		set_ignorehidden,		NULL },

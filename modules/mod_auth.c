@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.48 2001-01-28 18:25:08 flood Exp $
+ * $Id: mod_auth.c,v 1.49 2001-01-31 18:43:07 flood Exp $
  */
 
 #include "conf.h"
@@ -1552,20 +1552,28 @@ MODRET cmd_rein(cmd_rec *cmd) {
 
 
 MODRET set_rootlogin(cmd_rec *cmd) {
+  int bool;
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
   
-  add_config_param("RootLogin",1,(void*)get_boolean(cmd,1));
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+ 
+  add_config_param("RootLogin", 1, (void*) bool);
   return HANDLED(cmd);
 }
 
 MODRET set_loginpasswordprompt(cmd_rec *cmd) {
   config_rec *c;
+  int bool;
   
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+ 
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
   
-  c = add_config_param("LoginPasswordPrompt",1,(void*)get_boolean(cmd,1));
+  c = add_config_param("LoginPasswordPrompt", 1, (void*) bool);
   c->flags |= CF_MERGEDOWN;
   
   return HANDLED(cmd);
@@ -1662,10 +1670,14 @@ MODRET add_defaultchdir(cmd_rec *cmd) {
 }
 
 MODRET add_userdirroot (cmd_rec *cmd) {
+  int bool;
   CHECK_ARGS(cmd,1);
   CHECK_CONF (cmd, CONF_ANON);
 
-  add_config_param("UserDirRoot", 1, (void *) get_boolean(cmd, 1));
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  add_config_param("UserDirRoot", 1, (void *) bool);
   return HANDLED(cmd);
 }
 
