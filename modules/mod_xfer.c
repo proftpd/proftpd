@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.43 2001-01-31 20:51:37 flood Exp $
+ * $Id: mod_xfer.c,v 1.44 2001-01-31 21:39:04 flood Exp $
  */
 
 /* History Log:
@@ -324,6 +324,16 @@ static void _retr_abort() {
   _log_transfer('o', 'i');
 }
 
+/* Exit handler, call abort functions if a transfer is in progress. */
+static void _xfer_exit() {
+  if(session.flags & SF_XFER) {
+    if(session.xfer.direction == IO_READ) /* stor */
+      _stor_abort();
+    else				  /* retr */
+      _retr_abort();
+  }
+}
+
 /* cmd_pre_stor is a PRE_CMD handler which checks security, etc, and
  * places the full filename to receive in cmd->private [note that we CANNOT
  * use cmd->tmp_pool for this, as tmp_pool only lasts for the duration
@@ -590,6 +600,7 @@ MODRET cmd_stor(cmd_rec *cmd)
     session.xfer.file_size = respos;
 
     if(data_open(cmd->arg,NULL,IO_READ,0) < 0) {
+      _stor_abort();
       data_abort(0,TRUE);
       return HANDLED(cmd);
     }
@@ -1044,6 +1055,9 @@ int xfer_init_child()
   /* Setup TimeoutNoXfer timer */
   if(TimeoutNoXfer)
     add_timer(TimeoutNoXfer,TIMER_NOXFER,&xfer_module,_noxfer_timeout);
+
+  /* Exit handler for HiddenStor cleanup */
+  add_exit_handler(_xfer_exit);
   return 0;
 }
 

@@ -36,7 +36,7 @@ ac_help="$ac_help
   --enable-pam            enable PAM support (default=yes)
   "
 ac_help="$ac_help
-  --enable-sendfile       enable sendfile support (default=yes)
+  --enable-sendfile       enable sendfile support (default=no)
   "
 ac_help="$ac_help
   --enable-shadow         force compilation of shadowed password support
@@ -4875,7 +4875,7 @@ else
 fi
 
 
-if test x"$enable_sendfile" != xno ; then
+if test x"$enable_sendfile" = xyes ; then
 echo $ac_n "checking which sendfile() implementation to use""... $ac_c" 1>&6
 echo "configure:4881: checking which sendfile() implementation to use" >&5
 if eval "test \"`echo '$''{'pr_cv_func_sendfile'+set}'`\" = set"; then
