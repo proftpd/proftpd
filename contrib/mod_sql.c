@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#define MOD_SQL_VERSION "mod_sql/3.0"
+#define MOD_SQL_VERSION "mod_sql/3.01"
 
 /* This is mod_sql, contrib software for proftpd 1.2.0rc3 and above.
    Originally written and maintained as 'mod_sqlpw' by Johnie 
@@ -29,6 +29,9 @@
 */
 
 #include "conf.h"
+#include "privs.h"
+#include "fs.h"
+
 #ifdef HAVE_CRYPT_H
 #include <crypt.h>
 #endif
@@ -537,85 +540,158 @@ static auth_type_entry *get_auth_entry(char *name)
  *
  *****************************************************************/
 
-static int build_homedir(char *path, mode_t omode, uid_t uid, gid_t gid)
+static void show_group(struct group *g)
 {
-  struct stat sb;
-  mode_t numask, oumask;
-  int first, last, retval;
-  int olduid, oldgid;
-  char *p;
+  /* this is an expeditious hack */
+  char members[2048] = {'\0'};
+  char **member = NULL;
+  int flag = 0;
 
-  log_debug(DEBUG5, "%s: build_homedir called(%s,omode,%i,%i)",
-            MOD_SQL_VERSION, path, uid, gid);
+  log_debug(DEBUG_FUNC, "%s: entering show_group", MOD_SQL_VERSION);
 
-  p = path;
-  oumask = 0;
-  retval = 0;
-
-  /*
-   * Skip leading '/'. 
-   */
-  if (p[0] == '/')
-    ++p;
-
-  for (first = 1, last = 0; !last; ++p) {
-    if (p[0] == '\0')
-      last = 1;
-    else if (p[0] != '/')
-      continue;
-
-    *p = '\0';
-
-    if (p[1] == '\0')
-      last = 1;
-
-    if (first) {
-      oumask = umask(0);
-      numask = oumask & ~(S_IWUSR | S_IXUSR);
-      (void) umask(numask);
-      first = 0;
-    }
-
-    if (last)
-      (void) umask(oumask);
-
-    if (stat(path, &sb)) {
-      olduid = geteuid();
-      oldgid = getegid();
-      seteuid(0);
-      setegid(0);
-
-      if (errno != ENOENT ||
-          mkdir(path, last ? omode : S_IRWXU | S_IRWXG | S_IRWXO) < 0) {
-        seteuid(olduid);
-        setegid(oldgid);
-        retval = 1;
-        break;
-      }
-
-      seteuid(olduid);
-      setegid(oldgid);
-      olduid = geteuid();
-      oldgid = getegid();
-      seteuid(0);
-      setegid(0);
-      chown(path, uid, gid);
-      seteuid(olduid);
-      setegid(olduid);
-    } else if ((sb.st_mode & S_IFMT) != S_IFDIR) {
-      if (last)
-        errno = EEXIST;
-      else
-        errno = ENOTDIR;
-      retval = 1;
-      break;
-    }
-    *p = '/';
+  if (g == NULL ) {
+    log_debug(DEBUG_INFO, "%s: NULL group to show_group", MOD_SQL_VERSION);
+    log_debug(DEBUG_FUNC, "%s: exiting  show_group", MOD_SQL_VERSION);
+    return;
   }
 
-  if (!first && !last)
-    (void) umask(oumask);
+  member = g->gr_mem;
 
+  while (*member != NULL) {
+    if (flag) strcat(members, ", ");
+    strcat(members, *member); 
+    flag = 1;
+    member++;
+  } 
+
+  log_debug(DEBUG_INFO, "%s: grp.gr_name : %s", MOD_SQL_VERSION, g->gr_name);
+  log_debug(DEBUG_INFO, "%s: grp.gr_gid  : %u", MOD_SQL_VERSION, g->gr_gid);
+  log_debug(DEBUG_INFO, "%s: grp.gr_mem  : %s", MOD_SQL_VERSION, members);
+
+  log_debug(DEBUG_FUNC, "%s: exiting  show_group", MOD_SQL_VERSION);
+
+  return;
+}
+
+static void show_passwd(struct passwd *p)
+{
+  log_debug(DEBUG_FUNC, "%s: entering show_passwd", MOD_SQL_VERSION);
+
+  if (p == NULL ) {
+    log_debug(DEBUG_INFO, "%s: NULL group to show_passwd", MOD_SQL_VERSION);
+    log_debug(DEBUG_FUNC, "%s: exiting  show_passwd", MOD_SQL_VERSION);
+    return;
+  }
+
+  log_debug(DEBUG_INFO, "%s: pwd.pw_name  : %s", MOD_SQL_VERSION, p->pw_name);
+  log_debug(DEBUG_INFO, "%s: pwd.pw_uid   : %u", MOD_SQL_VERSION, p->pw_uid);
+  log_debug(DEBUG_INFO, "%s: pwd.pw_gid   : %u", MOD_SQL_VERSION, p->pw_gid);
+  log_debug(DEBUG_INFO, "%s: pwd.pw_shell : %s", MOD_SQL_VERSION, p->pw_shell);
+  log_debug(DEBUG_INFO, "%s: pwd.pw_dir   : %s", MOD_SQL_VERSION, p->pw_dir);
+
+  log_debug(DEBUG_FUNC, "%s: exiting  show_passwd", MOD_SQL_VERSION);
+  
+  return;
+}
+
+static int build_homedir(cmd_rec *cmd, char *path, mode_t omode, uid_t uid, gid_t gid)
+{
+  struct stat st;
+  mode_t old_umask;
+  int retval = 0;
+  char *local_ptr;
+  char *local_path;
+  int userdir_flag = 0;
+  gid_t p_gid;
+  uid_t p_uid;
+
+  log_debug(DEBUG_FUNC, "%s: entering build_homedir(%s,omode,%i,%i)",
+            MOD_SQL_VERSION, path, uid, gid);
+
+  /* we assume we're handed a null-terminated string defining the
+   * user's home directory. we walk it, directory by directory,
+   * creating it if it doesn't exist.  path must start with '/'
+   */
+
+  if (path[0] != '/') {
+    log_debug(DEBUG_WARN, "%s: no '/' at start of user's homedir", MOD_SQL_VERSION);
+    log_debug(DEBUG_FUNC, "%s: exiting  build_homedir", MOD_SQL_VERSION);
+    return -1;
+  }
+
+  /* sanity check -- make sure the path doesn't exist */
+  if (!fs_stat(path, &st)) {
+    log_debug(DEBUG_WARN, "%s: user's homedir already exists", MOD_SQL_VERSION);
+    log_debug(DEBUG_FUNC, "%s: exiting  build_homedir", MOD_SQL_VERSION);
+    return 0;
+  } else if (errno != ENOENT) {
+    log_debug(DEBUG_WARN, "%s: problem with stat of user's homedir", MOD_SQL_VERSION);
+    log_debug(DEBUG_FUNC, "%s: exiting  build_homedir", MOD_SQL_VERSION);
+    return -1;
+  }
+
+  /* make our local copy of path, adding a '/' if necessary..
+   * after this call, we're *guaranteed* a terminating '/'.  We use
+   * this info later. */
+
+  if ( path[(strlen(path) - 1)] == '/' )
+    local_path = pstrdup(cmd->tmp_pool, path);
+  else
+    local_path = pstrcat(cmd->tmp_pool, path, "/", NULL);
+
+  /* gain root for dir creation process */
+  p_gid = getegid();
+  p_uid = geteuid();
+  PRIVS_ROOT;
+
+  /* skip the leading '/' */
+  local_ptr = local_path + 1;
+
+  while ( ( local_ptr = strchr( local_ptr, '/' ) ) != NULL ) {
+    *local_ptr = '\0';
+
+    if ( *(local_ptr + 1) == '\0' )
+      userdir_flag = 1;
+
+    if ( fs_stat( local_path, &st ) ) {
+      /* if the stat failed.. */
+      if (errno == ENOENT) {
+	/* and it's 'cause the directory doesn't exist */
+	if ( !userdir_flag ) {
+	  /* if it's an intermediate dir */
+	  if ( mkdir(local_path, S_IRWXU | S_IRWXG | S_IRWXO ) ) {
+	    return -1;
+	  } else {
+	    fs_chown(local_path, p_uid, p_gid );
+	  }
+	} else {
+	  /* this is the user's homedir, and the final directory  */
+	  old_umask = umask(0);
+	  umask( old_umask & ~(S_IWUSR | S_IXUSR | S_IRUSR) );
+	  if ( mkdir(local_path, omode) ) {
+	    umask( old_umask );
+	    return -1;
+	  } else {
+	    fs_chown(local_path, uid, gid);
+	  }
+	  umask( old_umask );
+	}
+      } else {
+	/* we failed for a reason other than no such
+	 * directory, so we return an error */
+	return -1;
+      }
+    }
+    
+    /* fix local_ptr, and bump it */
+    *local_ptr = '/';
+    local_ptr++;
+  }
+
+  /* relinquish root privileges */
+  PRIVS_RELINQUISH;
+
+  log_debug(DEBUG_FUNC, "%s: exiting  build_homedir", MOD_SQL_VERSION);
   return (retval);
 }
 
@@ -708,7 +784,7 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
    */
 
   if (cmap.buildhomedir && (stat(pwd->pw_dir, &st) == -1 && errno == ENOENT)) {
-    build_homedir(pwd->pw_dir, S_IRWXU | S_IRWXG | S_IRWXO, pwd->pw_uid,
+    build_homedir(cmd, pwd->pw_dir, S_IRWXU | S_IRWXG | S_IRWXO, pwd->pw_uid,
                   pwd->pw_gid);
   }
 
@@ -726,6 +802,9 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
   char gidstr[BUFSIZE] = { '\0' };
   char **rows = NULL;
   int numrows = 0;
+  array_header *ah = NULL;
+  char *members = NULL;
+  char *member = NULL;
 
   if (g == NULL)
     return NULL;
@@ -772,20 +851,32 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
 
   grp->gr_name = pstrdup(session.pool, groupname);
   grp->gr_passwd = NULL;
-  grp->gr_gid = (gid_t) strtol(rows[1], NULL, 10);
-  grp->gr_mem =
-      (char **) pcalloc(session.pool, sizeof(char *) * (numrows + 1));
+  grp->gr_gid = (gid_t) strtoul(rows[1], NULL, 10);
 
   /*
    * painful.. we need to walk through the returned rows and fill in our
    * members. Every third element in a row is a member field, and every
-   * member field can have multiple members. 
+   * member field can have multiple members.
    */
 
+  ah = make_array(cmd->tmp_pool, 10, sizeof(char *));
+
   for (cnt = 0; cnt < numrows; cnt++) {
-    grp->gr_mem[cnt] = pstrdup(session.pool, rows[(cnt * 3) + 2]);
+    members = rows[(cnt * 3) + 2];
+    /* if the row is null, continue.. */
+    if (members == NULL) continue;
+
+    /* for each member in the list, toss 'em into the array */
+    for (member = strtok(members, ","); member; member = strtok(NULL, ",")) {
+      *((char **) push_array(ah)) = pstrdup(session.pool, member);
+    }      
   }
 
+  grp->gr_mem = (char **) pcalloc(session.pool, sizeof(char *) * (ah->nelts + 1));
+  memcpy(grp->gr_mem, ah->elts, ah->nelts * sizeof(char *));
+  grp->gr_mem[ ah->nelts ]='\0';
+  
+  show_group( grp );
   return grp;
 }
 
@@ -949,11 +1040,11 @@ MODRET cmd_retr(cmd_rec * cmd)
       query = pstrcat(cmd->tmp_pool, "update ", cmap.sql_hittable,
                       " set ", cmap.sql_hits, " = ", cmap.sql_hits,
                       " + 1 where ", cmap.sql_dir, " = '", ++path,
-                      "' and ", cmap.sql_filename, " = '", filename, "'", 0);
+                      "' and ", cmap.sql_filename, " = '", filename, "'", NULL);
     } else {
       query = pstrcat(cmd->tmp_pool, "update ", cmap.sql_hittable,
                       " set ", cmap.sql_hits, " = ", cmap.sql_hits,
-                      " + 1 where ", cmap.sql_filename, " = '", path, "'", 0);
+                      " + 1 where ", cmap.sql_filename, " = '", path, "'", NULL);
     }
 
     modsql_update(cmd, query);
@@ -1007,7 +1098,7 @@ MODRET log_cmd_pass(cmd_rec * cmd)
    * disconnect now if no other feature is being used. however, the addition 
    * of the getgrgid, name_gid, etc. calls makes this impossible.  Maybe we
    * could add a directive allowing disconnect and thereby ruining all
-   * functions except auth, check, getpw[nam/uid]? 
+   * auth functions?
    */
 
   /*
@@ -1051,13 +1142,25 @@ MODRET auth_cmd_setpwent(cmd_rec * cmd)
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_setpwent", MOD_SQL_VERSION);
 
-  /*
-   * we're a no-op 
-   */
+  log_debug(DEBUG_WARN, "%s: setpwent is UNIMPLEMENTED", MOD_SQL_VERSION);
 
   log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_setpwent", MOD_SQL_VERSION);
 
   return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
+}
+
+MODRET auth_cmd_getpwent(cmd_rec * cmd)
+{
+  if (!cmap.doauth)
+    return DECLINED(cmd);
+
+  log_debug(DEBUG_FUNC, "%s: entering auth_cmd_getpwent", MOD_SQL_VERSION);
+
+  log_debug(DEBUG_WARN, "%s: getpwent is UNIMPLEMENTED", MOD_SQL_VERSION);
+
+  log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_getpwent", MOD_SQL_VERSION);
+
+  return cmap.authoritative ? HANDLED(cmd) : DECLINED(cmd);
 }
 
 MODRET auth_cmd_endpwent(cmd_rec * cmd)
@@ -1067,9 +1170,7 @@ MODRET auth_cmd_endpwent(cmd_rec * cmd)
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_endpwent", MOD_SQL_VERSION);
 
-  /*
-   * we're a no-op 
-   */
+  log_debug(DEBUG_WARN, "%s: endpwent is UNIMPLEMENTED", MOD_SQL_VERSION);
 
   log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_endpwent", MOD_SQL_VERSION);
 
@@ -1086,11 +1187,26 @@ MODRET auth_cmd_setgrent(cmd_rec * cmd)
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_setgrent", MOD_SQL_VERSION);
 
-  /*
-   * we're a no-op 
-   */
+  log_debug(DEBUG_WARN, "%s: setgrent is UNIMPLEMENTED", MOD_SQL_VERSION);
 
   log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_setgrent", MOD_SQL_VERSION);
+
+  return cmap.authoritative ? HANDLED(cmd) : DECLINED(cmd);
+}
+
+MODRET auth_cmd_getgrent(cmd_rec * cmd)
+{
+  if (!cmap.doauth)
+    return DECLINED(cmd);
+
+  if (!cmap.dogroupauth)
+    return cmap.authoritative ? ERROR(cmd) : DECLINED(cmd);
+
+  log_debug(DEBUG_FUNC, "%s: entering auth_cmd_getgrent", MOD_SQL_VERSION);
+
+  log_debug(DEBUG_WARN, "%s: getgrent is UNIMPLEMENTED", MOD_SQL_VERSION);
+
+  log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_getgrent", MOD_SQL_VERSION);
 
   return cmap.authoritative ? HANDLED(cmd) : DECLINED(cmd);
 }
@@ -1105,9 +1221,7 @@ MODRET auth_cmd_endgrent(cmd_rec * cmd)
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_endgrent", MOD_SQL_VERSION);
 
-  /*
-   * we're a no-op 
-   */
+  log_debug(DEBUG_WARN, "%s: endgrent is UNIMPLEMENTED", MOD_SQL_VERSION);
 
   log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_endgrent", MOD_SQL_VERSION);
 
@@ -1274,25 +1388,32 @@ MODRET auth_cmd_check(cmd_rec * cmd)
 
   log_debug(DEBUG_FUNC, "%s: entering auth_cmd_check", MOD_SQL_VERSION);
 
-  c_hash = pstrdup(cmd->tmp_pool, cmd->argv[0]);
-  c_clear = pstrdup(cmd->tmp_pool, cmd->argv[2]);
+  if (cmd->argv[0] == NULL) {
+    log_debug(DEBUG_AUTH, "%s: NULL hashed password ", MOD_SQL_VERSION);
+  } else if (cmd->argv[2] == NULL) {
+    log_debug(DEBUG_AUTH, "%s: NULL clear password ", MOD_SQL_VERSION);
+  } else {
+    c_hash = pstrdup(cmd->tmp_pool, cmd->argv[0]);
+    c_clear = pstrdup(cmd->tmp_pool, cmd->argv[2]);
 
-  for (cnt = 0; cnt < ah->nelts; cnt++) {
-    auth_entry = ((auth_type_entry **) ah->elts)[cnt];
-    log_debug(DEBUG_AUTH, "%s: checking auth_type %s", MOD_SQL_VERSION,
-              auth_entry->name);
-
-    if (auth_entry->check_function(cmd, c_clear, c_hash)) {
-      log_debug(DEBUG_AUTH, "%s: '%s' auth handler reports success",
-                MOD_SQL_VERSION, auth_entry->name);
-      success = 1;
-      break;
+    for (cnt = 0; cnt < ah->nelts; cnt++) {
+      auth_entry = ((auth_type_entry **) ah->elts)[cnt];
+      log_debug(DEBUG_AUTH, "%s: checking auth_type %s", MOD_SQL_VERSION,
+		auth_entry->name);
+      
+      if (auth_entry->check_function(cmd, c_clear, c_hash)) {
+	log_debug(DEBUG_AUTH, "%s: '%s' auth handler reports success",
+		  MOD_SQL_VERSION, auth_entry->name);
+	success = 1;
+	break;
+      }
     }
   }
 
+  log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_check", MOD_SQL_VERSION);
+
   if (success) {
     cmap.sqlauthorized = 1;
-    log_debug(DEBUG_FUNC, "%s: exiting  auth_cmd_check", MOD_SQL_VERSION);
     return HANDLED(cmd);
   }
 
@@ -1849,13 +1970,13 @@ MODRET set_sqlwhereclause(cmd_rec * cmd)
 MODRET set_sqlminid(cmd_rec * cmd)
 {
   config_rec *c;
-  long val;
+  unsigned long val;
   char *endptr = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT | CONF_GLOBAL | CONF_VIRTUAL);
 
-  val = strtol(cmd->argv[1], &endptr, 10);
+  val = strtoul(cmd->argv[1], &endptr, 10);
 
   if (*endptr != NULL) {
     CONF_ERROR(cmd, "requires a numeric argument");
@@ -1868,8 +1989,8 @@ MODRET set_sqlminid(cmd_rec * cmd)
    * however, I can't think of a cross-platform way of doing this.. if
    * anyone knows of a way to find the MAX uid_t/gid_t, let me know.. 
    */
-  if (val < 0) {
-    CONF_ERROR(cmd, "SQLMinID must be greater than 0");
+  if ((val == ULONG_MAX) && (errno == ERANGE)) {
+    CONF_ERROR(cmd, "the value given is outside the legal range");
   }
 
   c = add_config_param("SQLMinID", 1, (void *) (uid_t) val);
@@ -1881,13 +2002,13 @@ MODRET set_sqlminid(cmd_rec * cmd)
 MODRET set_sqldefaultuid(cmd_rec * cmd)
 {
   config_rec *c;
-  long val;
+  uid_t val;
   char *endptr = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT | CONF_GLOBAL | CONF_VIRTUAL);
 
-  val = strtol(cmd->argv[1], &endptr, 10);
+  val = strtoul(cmd->argv[1], &endptr, 10);
 
   if (*endptr != NULL) {
     CONF_ERROR(cmd, "requires a numeric argument");
@@ -1896,11 +2017,11 @@ MODRET set_sqldefaultuid(cmd_rec * cmd)
   /*
    * whee! need to check is in the legal range for uid_t 
    */
-  if ((val > ((uid_t) ~ (uid_t) 0)) || (val < 0)) {
+  if ((val == ULONG_MAX) && (errno == ERANGE)) {
     CONF_ERROR(cmd, "the value given is outside the legal range");
   }
 
-  c = add_config_param("SQLDefaultUID", 1, (void *) (uid_t) val);
+  c = add_config_param("SQLDefaultUID", 1, (void *) val);
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
@@ -1909,13 +2030,13 @@ MODRET set_sqldefaultuid(cmd_rec * cmd)
 MODRET set_sqldefaultgid(cmd_rec * cmd)
 {
   config_rec *c;
-  long val;
+  gid_t val;
   char *endptr = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT | CONF_GLOBAL | CONF_VIRTUAL);
 
-  val = strtol(cmd->argv[1], &endptr, 10);
+  val = strtoul(cmd->argv[1], &endptr, 10);
 
   if (*endptr != NULL) {
     CONF_ERROR(cmd, "requires a numeric argument");
@@ -1924,11 +2045,11 @@ MODRET set_sqldefaultgid(cmd_rec * cmd)
   /*
    * whee! need to check is in the legal range for gid_t 
    */
-  if ((val > ((gid_t) ~ (gid_t) 0)) || (val < 0)) {
+  if ((val == ULONG_MAX) && (errno == ERANGE)) {
     CONF_ERROR(cmd, "the value given is outside the legal range");
   }
 
-  c = add_config_param("SQLDefaultGID", 1, (void *) (gid_t) val);
+  c = add_config_param("SQLDefaultGID", 1, (void *) val);
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
@@ -2535,8 +2656,10 @@ static cmdtable sql_cmdtab[] = {
 
 static authtable sql_authtab[] = {
   {0, "setpwent", auth_cmd_setpwent},
+  {0, "getpwent", auth_cmd_getpwent},
   {0, "endpwent", auth_cmd_endpwent},
   {0, "setgrent", auth_cmd_setgrent},
+  {0, "getgrent", auth_cmd_getgrent},
   {0, "endgrent", auth_cmd_endgrent},
   {0, "getpwnam", auth_cmd_getpwnam},
   {0, "getpwuid", auth_cmd_getpwuid},
