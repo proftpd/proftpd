@@ -4549,7 +4549,13 @@ done
 
 
 
-test x"$install_user" = x && install_user=root
+if test x"$install_user" = x; then
+  if test "x$target_os" = "xcygwin"; then
+    install_user=Administrator
+  else
+    install_user=root
+  fi
+fi
 if test x"$install_group" = x ; then
 	install_group=`sed -n '/.*:.*:0:/{s/^\(.*\):.*:0:.*/\1/p;q;}' /etc/group 2>/dev/null`
 fi
