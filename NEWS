@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.553 2004-04-09 00:23:06 castaglia Exp $
+$Id: NEWS,v 1.554 2004-04-11 20:42:37 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -139,6 +139,8 @@ CVS
   default type is a size_t.  This mismatch causes problems for 64-bit
   builds.
 - Bug 2385 - Renames fail with error "Invalid cross-device link".
+- Bug 2383 - mod_ctrls.c: ctrls_listen(): Invalid size in bind() argument.
+  The size of struct sockaddr_un is not consistent across platforms.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------
