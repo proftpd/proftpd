@@ -26,12 +26,12 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.3 2003-04-08 22:25:48 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.4 2003-08-06 22:03:32 castaglia Exp $
  */
 
 #include "conf.h"
 
-#define MOD_IFSESSION_VERSION	"mod_ifsession/0.9rc6"
+#define MOD_IFSESSION_VERSION	"mod_ifsession/0.9"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001020901
@@ -60,7 +60,6 @@ static void ifsess_remove_param(xaset_t *set, const char *name) {
     xaset_remove(fset, (xasetmember_t *) c);
   }
 }
-
 
 static void ifsess_dup_param(pool *dst_pool, xaset_t **dst, config_rec *c,
     config_rec *parent) {
@@ -129,6 +128,23 @@ static void ifsess_dup_set(pool *dst_pool, xaset_t *dst, xaset_t *src) {
 
     ifsess_dup_param(dst_pool, &dst, c, NULL);
   }
+}
+
+/* Hooks
+ */
+
+MODRET ifsess_merge(cmd_rec *cmd) {
+
+  /* This assumes that cmd->argv[0] contains a config_rec *, for the
+   * configuration to be merged in.
+   */
+  ifsess_dup_set(main_server->pool, main_server->conf,
+    ((config_rec *) cmd->argv[0])->subset);
+
+  resolve_deferred_dirs(main_server);
+  fixup_dirs(main_server, CF_DEFER);
+
+  return HANDLED(cmd);
 }
 
 /* Configuration handlers
@@ -324,7 +340,10 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
 
         resolve_defered_dirs(main_server);
         fixup_dirs(main_server, CF_DEFER);
-      }
+
+      } else
+        log_debug(DEBUG9, MOD_IFSESSION_VERSION
+          ": <IfGroup> not matched, skipping");
     }
 
     /* Note: it would be more efficient, memory-wise, to destroy the
@@ -377,7 +396,10 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
 
         resolve_defered_dirs(main_server);
         fixup_dirs(main_server, CF_DEFER);
-      }
+
+      } else
+        log_debug(DEBUG9, MOD_IFSESSION_VERSION
+          ": <IfUser> not matched, skipping");
     }
 
     c = find_config_next(c, c->next, -1, IFSESS_USER_TEXT, FALSE);
@@ -431,7 +453,10 @@ static int ifsess_sess_init(void) {
 
         resolve_defered_dirs(main_server);
         fixup_dirs(main_server, CF_DEFER);
-      }
+
+      } else
+        log_debug(DEBUG9, MOD_IFSESSION_VERSION
+          ": <IfClass> not matched, skipping");
     }
 
     c = find_config_next(c, c->next, -1, IFSESS_CLASS_TEXT, FALSE);
@@ -455,6 +480,10 @@ static conftable ifsess_conftab[] = {
 
 static cmdtable ifsess_cmdtab[] = {
   { POST_CMD, C_PASS, G_NONE, ifsess_post_pass, FALSE, FALSE },
+
+  /* Hooks */
+  { HOOK, "ifsess_merge", G_NONE, ifsess_merge, FALSE, FALSE },
+
   { 0, NULL }
 };
 

@@ -26,7 +26,7 @@
 
 /* FTP commands and responses (may not all be implemented)
  *
- * $Id: ftp.h,v 1.9 2003-01-02 17:28:16 castaglia Exp $
+ * $Id: ftp.h,v 1.10 2003-08-06 22:03:32 castaglia Exp $
  */
 
 #ifndef PR_FTP_H
@@ -44,7 +44,9 @@
 #define C_REIN	"REIN"		/* Reinitialize account information (not supported) */
 #define C_QUIT	"QUIT"		/* Close control connection and logout (if no transfer pending) */
 #define C_PORT	"PORT"		/* PORT h1,h2,h3,h4,p1,p2 (specify User address/port for data connection) */
+#define	C_EPRT	"EPRT"		/* Extended PORT */
 #define C_PASV	"PASV"		/* Next transfer data connection is from client to server */
+#define	C_EPSV	"EPSV"		/* Extended PASV */
 #define C_TYPE	"TYPE"		/* A = ASCII, E = EBCDIC, I = Image, L<byte size> = Local byte size */
 #define C_STRU	"STRU"		/* File structure (not implemented) */
 #define C_MODE	"MODE"		/* Transfer Mode (S - Stream, B - Block, C - Compressed (not supported) */
@@ -113,6 +115,7 @@
 #define R_225	"225"		/* Data connection open; no transfer in progress */
 #define R_226	"226"		/* Closing data connection.  File transfer/abort successful */
 #define R_227	"227"		/* Entering passive mode (h1,h2,h3,h4,p1,p2) */
+#define	R_229	"229"		/* Entering extended passive mode (|||p|) */
 #define R_230	"230"		/* User logged in, proceed */
 #define R_232   "232"		/* User logged in, authorized by security data */
 #define R_234   "234"		/* Security data exchange complete */
@@ -138,6 +141,7 @@
 #define R_502	"502"		/* Command not implemented */
 #define R_503	"503"		/* Bad sequence of commands */
 #define R_504	"504"		/* Command not implemented for that parameter */
+#define	R_522	"522"		/* Extended port failure: unknown network protocol */
 #define R_530	"530"		/* Not logged in */
 #define R_532	"532"		/* Need account for storing files */
 #define R_533   "533"		/* Integrity protected command required by policy */

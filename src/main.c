@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.186 2003-08-01 01:05:25 castaglia Exp $
+ * $Id: main.c,v 1.187 2003-08-06 22:03:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -62,7 +62,7 @@
 #endif /* PF_ARGV_PSSTRINGS */
 
 #ifdef HAVE_REGEX_H
-#include <regex.h>
+# include <regex.h>
 #endif
 
 #ifdef HAVE_REGEXP_H
@@ -77,11 +77,11 @@ int (*cmd_auth_chk)(cmd_rec *);
 unsigned char persistent_passwd = TRUE;
 #else
 unsigned char persistent_passwd = FALSE;
-#endif
+#endif /* NEED_PERSISTENT_PASSWD */
 
-/* From mod_core.c
- */
-extern int core_display_file(const char *numeric, const char *fn, const char *fs);
+/* From mod_core.c. */
+extern int core_display_file(const char *numeric, const char *fn,
+  const char *fs);
 
 struct rehash {
   struct rehash *next;
@@ -103,9 +103,6 @@ typedef struct _pidrec {
   int sempipe;				/* semaphore pipe fd (parent) */
   unsigned char dead;
 } pidrec_t;
-
-/* From src/dirtree.c */
-extern xaset_t *server_list;
 
 session_t session;
 
@@ -352,26 +349,25 @@ static void end_login_noexit(void) {
     if (session.wtmp_log)
       log_wtmp(sbuf, "",
         (session.c && session.c->remote_name ? session.c->remote_name : ""),
-        (session.c && session.c->remote_ipaddr ? session.c->remote_ipaddr : NULL));
+        (session.c && session.c->remote_addr ? session.c->remote_addr : NULL));
   }
 
   /* These are necessary in order that cleanups associated with these pools
    * (and their subpools) are properly run.
    */
   if (session.d)
-    inet_close(session.pool, session.d);
+    pr_inet_close(session.pool, session.d);
 
   if (session.c)
-    inet_close(session.pool, session.c);
+    pr_inet_close(session.pool, session.c);
 
   if (!is_master || ServerType == SERVER_INETD)
     log_pri(PR_LOG_INFO, "FTP session closed.");
 }
 
-/* Finish any cleaning up, mark utmp as closed and exit
- * without flushing buffers
+/* Finish any cleaning up, mark utmp as closed and exit without flushing
+ * buffers
  */
-
 void end_login(int exitcode) {
   end_login_noexit();
   destroy_pool(permanent_pool);
@@ -402,7 +398,7 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
     char *user;
     time_t now;
     char *msg;
-    char *serveraddress = main_server->ServerAddress;
+    const char *serveraddress = main_server->ServerAddress;
     config_rec *c = NULL;
     unsigned char *authenticated = get_param_ptr(main_server->conf,
       "authenticated", FALSE);
@@ -410,8 +406,8 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
     if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
         FALSE)) != NULL) {
 
-      p_in_addr_t *masq_addr = (p_in_addr_t *) c->argv[0];
-      serveraddress = pstrdup(main_server->pool, inet_ntoa(*masq_addr));
+      pr_netaddr_t *masq_addr = (pr_netaddr_t *) c->argv[0];
+      serveraddress = pr_netaddr_get_ipstr(masq_addr);
     }
 
     time(&now);
@@ -512,8 +508,8 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
 
         /* ...else the client has not yet authenticated */
         } else
-          set_proc_title("%s:%d: %s", session.c->remote_ipaddr ?
-            inet_ntoa(*session.c->remote_ipaddr) : "?",
+          set_proc_title("%s:%d: %s", session.c->remote_addr ?
+            pr_netaddr_get_ipstr(session.c->remote_addr) : "?",
             session.c->remote_port ? session.c->remote_port : 0, cmdargstr);
       }
 
@@ -706,14 +702,15 @@ static void cmd_loop(server_rec *server, conn_t *c) {
   config_rec *id = NULL;
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   char *cp;
-  char *display, *serveraddress = server->ServerAddress;
+  char *display = NULL;
+  const char *serveraddress = server->ServerAddress;
   config_rec *masq_c = NULL;
   int i;
 
   set_proc_title("connected: %s (%s:%d)",
-                 c->remote_name   ? c->remote_name               : "?",
-                 c->remote_ipaddr ? inet_ntoa(*c->remote_ipaddr) : "?",
-                 c->remote_port   ? c->remote_port               : 0);
+    c->remote_name ? c->remote_name : "?",
+    c->remote_addr ? pr_netaddr_get_ipstr(c->remote_addr) : "?",
+    c->remote_port ? c->remote_port : 0);
 
   /* Setup the main idle timer */
   if (TimeoutIdle)
@@ -721,8 +718,8 @@ static void cmd_loop(server_rec *server, conn_t *c) {
 
   if ((masq_c = find_config(server->conf, CONF_PARAM, "MasqueradeAddress",
       FALSE)) != NULL) {
-    p_in_addr_t *masq_addr = (p_in_addr_t *) masq_c->argv[0];
-    serveraddress = pstrdup(server->pool, inet_ntoa(*masq_addr));
+    pr_netaddr_t *masq_addr = (pr_netaddr_t *) masq_c->argv[0];
+    serveraddress = pr_netaddr_get_ipstr(masq_addr);
   }
 
   if ((display = get_param_ptr(server->conf, "DisplayConnect", FALSE)) != NULL)
@@ -748,7 +745,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
     pr_response_send(R_220, "%s FTP server ready", serveraddress);
 
   /* Make sure we can receive OOB data */
-  inet_setasync(session.pool, session.c);
+  pr_inet_set_async(session.pool, session.c);
 
   log_pri(PR_LOG_INFO, "FTP session opened.");
 
@@ -812,7 +809,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
     }
 
     /* release any working memory allocated in inet */
-    clear_inet_pool();
+    pr_inet_clear();
   }
 }
 
@@ -1101,7 +1098,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   /* From this point on, syslog stays open. We close it first so that the
    * logger will pick up our new PID.
    *
-   * We have to delay calling log_opensyslog() until after inet_openrw()
+   * We have to delay calling log_opensyslog() until after pr_inet_openrw()
    * is called, otherwise the potential exists for the syslog FD to
    * be overwritten and the user to see logging information.
    *
@@ -1114,7 +1111,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
    * the race condition mentioned above.  Instead we do it after closing
    * all former listening sockets.
    */
-  conn = inet_openrw(permanent_pool, l, NULL, PR_NETIO_STRM_CTRL, fd,
+  conn = pr_inet_openrw(permanent_pool, l, NULL, PR_NETIO_STRM_CTRL, fd,
     STDIN_FILENO, STDOUT_FILENO, FALSE);
 
   /* Now do the permanent syslog open
@@ -1133,10 +1130,10 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     exit(1);
   }
 
-  inet_set_proto_opts(permanent_pool,conn, 0, 1, 1, 0, 0);
+  pr_inet_set_proto_opts(permanent_pool, conn, 0, 1, 1, 0, 0);
 
   /* Find the server for this connection. */
-  main_server = pr_ipbind_get_server(conn->local_ipaddr, conn->local_port);
+  main_server = pr_ipbind_get_server(conn->local_addr, conn->local_port);
 
   /* The follow code was ostensibly used to conserve memory, to free all other
    * servers and associated configurations.  However, when large numbers of
@@ -1186,9 +1183,12 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
   /* Now perform reverse dns */
   if (ServerUseReverseDNS) {
-    rev = inet_reverse_dns(permanent_pool, ServerUseReverseDNS);
-    inet_resolve_ip(permanent_pool, conn);
-    inet_reverse_dns(permanent_pool, rev);
+    rev = pr_netaddr_reverse_dns(ServerUseReverseDNS);
+
+    if (conn->remote_addr)
+      conn->remote_name = pr_netaddr_get_dnsstr(conn->remote_addr);
+
+    pr_netaddr_reverse_dns(rev);
   }
 
   /* Check and see if we are shutdown */
@@ -1199,13 +1199,13 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     if (!deny || deny <= now) {
       config_rec *c = NULL;
       char *reason = NULL;
-      char *serveraddress = main_server->ServerAddress;
+      const char *serveraddress = main_server->ServerAddress;
 
       if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
         FALSE)) != NULL) {
 
-        p_in_addr_t *masq_addr = (p_in_addr_t *) c->argv[0];
-        serveraddress = pstrdup(main_server->pool, inet_ntoa(*masq_addr));
+        pr_netaddr_t *masq_addr = (pr_netaddr_t *) c->argv[0];
+        serveraddress = pr_netaddr_get_ipstr(masq_addr);
       }
 
       reason = sreplace(permanent_pool, shutmsg,
@@ -1223,7 +1223,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
       log_auth(PR_LOG_NOTICE, "connection refused (%s) from %s [%s]",
                reason, session.c->remote_name,
-               inet_ntoa(*session.c->remote_ipaddr));
+               pr_netaddr_get_ipstr(session.c->remote_addr));
 
       pr_response_send(R_500, "FTP server shut down (%s) -- please try again "
         "later", reason);
@@ -1236,7 +1236,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
    */
   if (!main_server) {
     pr_response_send(R_500, "Sorry, no server available to handle request on "
-      "%s", inet_getname(conn->pool, conn->local_ipaddr));
+      "%s", pr_netaddr_get_dnsstr(conn->local_addr));
     exit(0);
   }
 
@@ -1252,7 +1252,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   /* Check config tree for <Limit LOGIN> directives */
   if (!login_check_limits(main_server->conf, TRUE, FALSE, &i)) {
     log_pri(PR_LOG_NOTICE, "Connection from %s [%s] denied.",
-            session.c->remote_name, inet_ntoa(*session.c->remote_ipaddr));
+      session.c->remote_name,
+      pr_netaddr_get_ipstr(session.c->remote_addr));
     exit(0);
   }
 
@@ -1265,7 +1266,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     log_debug(DEBUG6, "ident lookup returned '%s'", session.ident_user);
 
   } else {
-    log_debug(DEBUG6, "RFC1413 (ident) lookup disabled");
+    log_debug(DEBUG6, "ident lookup disabled");
     session.ident_lookups = FALSE;
     session.ident_user = "UNKNOWN";
   }
@@ -1279,7 +1280,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
       "Classes", FALSE);
 
     if (class_engine && *class_engine == TRUE) {
-      if ((session.class = (class_t *) find_class(conn->remote_ipaddr,
+      if ((session.class = (class_t *) find_class(conn->remote_addr,
           conn->remote_name)) != NULL)
         log_debug(DEBUG2, "FTP session requested from class '%s'",
           session.class->name);
@@ -1294,13 +1295,11 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   module_session_init();
 
   log_debug(DEBUG4, "connected - local  : %s:%d",
-                    inet_ntoa(*session.c->local_ipaddr),
-                    session.c->local_port);
+    pr_netaddr_get_ipstr(session.c->local_addr), session.c->local_port);
   log_debug(DEBUG4, "connected - remote : %s:%d",
-                    inet_ntoa(*session.c->remote_ipaddr),
-                    session.c->remote_port);
+    pr_netaddr_get_ipstr(session.c->remote_addr), session.c->remote_port);
 
-  /* set the per-child resource limits */
+  /* Set the per-child resource limits. */
   set_session_rlimits();
 
   cmd_loop(main_server, conn);
@@ -2242,6 +2241,25 @@ static void inetd_main(void) {
   PRIVS_RELINQUISH
   pr_close_scoreboard();
 
+#if defined(USE_IPV6) && defined(IPV6_ADDRFORM)
+  /* It's possible that inetd may be giving us an IPv4 socket, when we
+   * want an IPv6 one.  To ensure this, use setsockopt(IPV6_ADDRFORM).
+   * If the socket already is an IPv6 socket, the setsockopt() call will
+   * do nothing.
+   *
+   * Of course, if IPV6_ADDRFORM is not defined, we're in a pickle: we
+   * don't have a way of telling what kind of socket we've got.
+   */
+  {
+    int af = AF_INET6;
+    if (setsockopt(STDIN_FILENO, IPPROTO_IPV6, IPV6_ADDRFORM, &af,
+        sizeof(af)) < 0) {
+      log_pri(PR_LOG_NOTICE, "error converting stdin to IPv6 socket: %s",
+        strerror(errno));
+    }
+  }
+#endif /* USE_IPV6 and IPV6_ADDRFORM */
+
   pr_init_bindings();
 
   /* Check our shutdown status */
@@ -2249,7 +2267,7 @@ static void inetd_main(void) {
     shutdownp = 1;
 
   /* Finally, call right into fork_server() to start servicing the
-   * connection immediately
+   * connection immediately.
    */
   fork_server(STDIN_FILENO, main_server->listen, TRUE);
 }
@@ -2566,7 +2584,7 @@ int main(int argc, char *argv[], char **envp) {
   pr_init_pools();
   pr_init_regexp();
   init_log();
-  init_inet();
+  pr_init_inet();
   pr_init_netio();
   pr_init_fs();
   pr_free_bindings();

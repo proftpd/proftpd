@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.17 2003-08-01 01:03:27 castaglia Exp $
+ * $Id: mod_radius.c,v 1.18 2003-08-06 22:03:32 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.8rc2"
@@ -140,7 +140,7 @@ typedef struct radius_server_obj {
   pool *pool;
 
   /* RADIUS server IP address */
-  p_in_addr_t *addr;
+  pr_netaddr_t *addr;
 
   /* RADIUS server port */
   unsigned short port;
@@ -1563,10 +1563,11 @@ static void radius_build_packet(radius_packet_t *packet, const char *user,
   /* Add a NAS identifier attribute of the service name: 'ftp'. */
   radius_add_attrib(packet, RADIUS_NAS_IDENTIFIER, "ftp", 3);
 
+#ifndef USE_IPV6
   /* Add a NAS IP address attribute. */
-  radius_add_attrib(packet, RADIUS_NAS_IP_ADDRESS,
-    (unsigned char *) &(session.c->local_ipaddr->s_addr),
-    sizeof(session.c->local_ipaddr->s_addr));
+  radius_add_attrib(packet, RADIUS_NAS_IP_ADDRESS, (unsigned char *) &((struct in_addr *) pr_netaddr_get_inaddr(session.c->local_addr))->s_addr,
+    sizeof(((struct in_addr *) pr_netaddr_get_inaddr(session.c->local_addr))->s_addr));
+#endif /* USE_IPV6 */
 
   /* Add a NAS port attribute. */
   radius_add_attrib(packet, RADIUS_NAS_PORT, (unsigned char *) &nas_port,
@@ -1579,7 +1580,7 @@ static void radius_build_packet(radius_packet_t *packet, const char *user,
   /* Add the calling station ID attribute (this is the IP of the connecting
    * client).
    */
-  caller_id = inet_ntoa(*session.c->remote_ipaddr); 
+  caller_id = (char *) pr_netaddr_get_ipstr(session.c->remote_addr); 
 
   radius_add_attrib(packet, RADIUS_CALLING_STATION_ID, caller_id,
     strlen(caller_id));
@@ -1709,7 +1710,7 @@ static int radius_send_packet(int sockfd, radius_packet_t *packet,
   /* Set the members appropriately to send to the descriptor. */
   memset((void *) &radius_remote_sock, '\0', sizeof(radius_remote_sock));
   radius_sockaddr_in->sin_family = AF_INET;
-  radius_sockaddr_in->sin_addr.s_addr = server->addr->s_addr;
+  radius_sockaddr_in->sin_addr.s_addr = pr_netaddr_get_addrno(server->addr);
   radius_sockaddr_in->sin_port = htons(server->port);
 
   if (sendto(sockfd, (char *) packet, ntohs(packet->length), 0, 
@@ -1718,8 +1719,9 @@ static int radius_send_packet(int sockfd, radius_packet_t *packet,
     return -1;
   }
 
-  radius_log("sending packet to %s:%u", inet_ascii(radius_pool,
-    &(radius_sockaddr_in->sin_addr)), ntohs(radius_sockaddr_in->sin_port));
+  radius_log("sending packet to %s:%u",
+    inet_ntoa(radius_sockaddr_in->sin_addr),
+    ntohs(radius_sockaddr_in->sin_port));
 
   return 0;
 }
@@ -2348,14 +2350,15 @@ MODRET set_radiusacctserver(cmd_rec *cmd) {
         "than 1023", NULL));
   }
 
-  if (inet_getaddr(cmd->tmp_pool, cmd->argv[1]) == NULL)
+  if (pr_netaddr_get_addr(cmd->tmp_pool, cmd->argv[1], NULL) == NULL)
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to resolve server address: ",
       cmd->argv[1], NULL));
 
   /* Allocate a RADIUS server rec and populate the members */
   radius_server = radius_make_server(radius_pool);
 
-  radius_server->addr = inet_getaddr(radius_server->pool, cmd->argv[1]);
+  radius_server->addr = pr_netaddr_get_addr(radius_server->pool, cmd->argv[1],
+    NULL);
   radius_server->port = (server_port ? server_port : RADIUS_ACCT_PORT);
   radius_server->secret = pstrdup(radius_server->pool, cmd->argv[2]);
 
@@ -2393,14 +2396,15 @@ MODRET set_radiusauthserver(cmd_rec *cmd) {
         "than 1023", NULL));
   }
 
-  if (inet_getaddr(cmd->tmp_pool, cmd->argv[1]) == NULL)
+  if (pr_netaddr_get_addr(cmd->tmp_pool, cmd->argv[1], NULL) == NULL)
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable resolve server address: ",
       cmd->argv[1], NULL));
 
   /* OK, allocate a RADIUS server rec and populate the members */
   radius_server = radius_make_server(radius_pool);
 
-  radius_server->addr = inet_getaddr(radius_server->pool, cmd->argv[1]);
+  radius_server->addr = pr_netaddr_get_addr(radius_server->pool, cmd->argv[1],
+    NULL);
   radius_server->port = (server_port ? server_port : RADIUS_AUTH_PORT);
   radius_server->secret = pstrdup(radius_server->pool, cmd->argv[2]);
 

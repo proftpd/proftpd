@@ -1,3 +1,221 @@
+2003-06-04 10:03  castaglia
+
+	* configure: 
+	Updating configure.
+
+2003-06-04 09:59  castaglia
+
+	* configure.in, config.h.in: 
+	Add autoconf checks for mlock(2), mlockall(2), munlock(2), and
+	munlockall(2).
+
+2003-06-04 07:53  castaglia
+
+	* src/inet.c: 
+	Typo in inet_setnonblock() (Bug#2077).
+
+2003-06-03 21:37  castaglia
+
+	* README.mod_sql: 
+	Updating example SQL hooks code for current API.
+
+2003-06-03 19:19  castaglia
+
+	* contrib/mod_tls.html: 
+	Updating mod_tls installation instructions.
+
+2003-06-03 13:42  castaglia
+
+	* modules/mod_log.c, src/log.c, src/main.c: 
+	Changing variable names to avoid pedantic compiler warnings emitted
+	by gcc-3.3.
+
+2003-06-03 09:25  castaglia
+
+	* NEWS, include/conf.h, include/fsio.h, include/options.h,
+	include/proftpd.h, modules/mod_auth.c, modules/mod_core.c,
+	modules/mod_ls.c, modules/mod_xfer.c, src/dirtree.c, src/fsio.c,
+	src/log.c, src/netio.c, src/response.c, src/scoreboard.c,
+	src/support.c, utils/scoreboard.c, utils/utils.h: 
+	Bug#2069: Long MKD path causes truncated server response.
+
+2003-06-03 09:17  castaglia
+
+	* src/fsio.c: 
+	Change related to Bug#2043: files always need to be opened using
+	the O_BINARY flag on Cygwin, not just for ASCII transfers.
+
+2003-06-03 09:11  castaglia
+
+	* configure: 
+	Updating configure.
+
+2003-06-03 09:04  castaglia
+
+	* NEWS, config.h.in, configure.in: 
+	Bug#2076 - The --enable-transfer-buffer-size configure option
+	doesn't work properly.
+
+2003-06-02 15:16  castaglia
+
+	* NEWS, src/fsio.c: 
+	Bug#2075 - ls / fails under Cygwin.
+
+2003-06-02 09:23  castaglia
+
+	* NEWS, modules/mod_xfer.c: 
+	Bug#2074: MaxStoreFileSize restriction capabilities ignored.  The
+	find_maxnbytes() function in modules/mod_xfer.c was not checking
+	the argc of the configured config_recs properly, and so was
+	ignoring any configured classifiers on Max{Retrieve,Store}FileSize
+	directives.  This also fixes the handling of a single "*"
+	configuration parameter, which is documented as being allowed.
+
+2003-05-31 09:31  castaglia
+
+	* README.mod_sql: 
+	Increasing suggested passwd column length.
+
+2003-05-30 17:51  castaglia
+
+	* contrib/mod_rewrite.c: 
+	Changed referenced to deprecated make_named_sub_pool() to
+	make_sub_pool().
+
+2003-05-30 17:37  castaglia
+
+	* contrib/mod_sql.c, modules/mod_log.c: 
+	Adding new LogFormat variable, %J (and mod_sql support for it). 
+	This variable expands to the arguments given in an FTP command. 
+	Currently, there is %m for just the command, %r for the full
+	command (command + arguments), but nothing for just the arguments. 
+	Hence the need for a new variable.
+
+2003-05-30 17:07  castaglia
+
+	* modules/mod_core.c: 
+	Changed handling of RNTO slightly.  It would clear session.xfer.p
+	at the end of the CMD phase.  Unfortunately, this meant that for
+	ExtendedLog/SQLLog, which might want to use %f for RNTO, the path
+	allocated from that pool would be gone.  Now, a LOG_CMD/LOG_CMD_ERR
+	handler for RNTO does the clearing of session.xfer.p for RNTO, thus
+	letting mod_log/mod_sql have a chance to do their stuff.
+
+2003-05-29 09:31  castaglia
+
+	* README.cygwin: 
+	Adding note to Cygwin README to use Cygwin 1.3.22 or later, in
+	order to prevent/quell ENOTSOCK errors (Bug#2064).
+
+2003-05-29 00:29  castaglia
+
+	* contrib/: mod_sql_mysql.c, mod_sql_postgres.c: 
+	Add some sanity checks to the backend init handlers. (Note: this
+	actually makes a difference for a different module I'm working on,
+	but the logic is still worthwhile for the existing code.)
+
+2003-05-28 16:03  jwm
+
+	* contrib/dist/rpm/proftpd.spec: 
+	build fixup from Ivan Martinez <ivanfm@os2brasil.com.br>
+
+2003-05-27 19:51  castaglia
+
+	* Makefile.in: 
+	Add an 'all' dependency to the install target, to catch those
+	unsuspecting admins that might skip the 'make' and go straight for
+	the 'make install'.
+
+2003-05-27 13:42  castaglia
+
+	* lib/pr-syslog.c: 
+	UnixWare 7.1 seems to have STREAMS support for /dev/log, similar to
+	Solaris and IRIX.  It's not quite the same, though.  Patch
+	contributed by Olivier PRENANT.
+
+2003-05-26 17:46  jwm
+
+	* contrib/dist/rpm/proftpd.spec: 
+	logrotate script should be config(noreplace)
+
+2003-05-26 17:45  jwm
+
+	* contrib/dist/rpm/proftpd.spec: 
+	Apparently RPM doesn't like user-defined options with dashes in
+	them (--with-module -> --with)
+
+2003-05-26 12:20  castaglia
+
+	* src/data.c: 
+	Style/spacing.
+
+2003-05-25 18:48  jwm
+
+	* NEWS: 
+	I really should pay attention to what I'm doing when I resolve
+	conflicts...
+
+2003-05-25 18:41  jwm
+
+	* NEWS: 
+	Bug 1804 - Permit selection of additional contrib modules when
+	building the RPM
+
+2003-05-25 18:39  jwm
+
+	* contrib/dist/rpm/proftpd.spec: 
+	change the flag name
+
+2003-05-25 18:17  jwm
+
+	* contrib/dist/rpm/proftpd.spec: 
+	Bug 1804 - RPM spec file improvements
+
+2003-05-23 12:43  castaglia
+
+	* src/log.c: 
+	Make the error about logging to world-writeable directories a
+	little more prominent.
+
+2003-05-22 12:26  castaglia
+
+	* NEWS, src/fsio.c: 
+	Bug#2043 - Proftpd converts LF to CRLF on PUT (Cygwin)
+
+2003-05-22 08:01  castaglia
+
+	* modules/mod_xfer.c: 
+	Fix missing case for .ftpaccess files bearing
+	Max{Retrieve,Store}FileSize directives.
+
+2003-05-20 11:00  castaglia
+
+	* contrib/mod_sql.c: 
+	Correcting thinko in mod_sql that affected proper lookup of shell
+	values.  Minor log message correction.
+
+2003-05-19 15:28  castaglia
+
+	* modules/mod_xfer.c: 
+	Make sure that for the TransferRate, when updating the scoreboard,
+	the actual number of bytes sent (not adjusted for free bytes) is
+	used.
+
+2003-05-19 13:12  castaglia
+
+	* NEWS, modules/mod_xfer.c: 
+	Bug#2051 - freebytes in TransferRate does not work properly.
+
+2003-05-16 09:18  castaglia
+
+	* include/version.h: 
+	Bumping the version for CVS.
+
+2003-05-15 21:28  castaglia
+
+	* ChangeLog: 
+	Updating ChangeLog.
+
 2003-05-15 21:25  castaglia
 
 	* NEWS, contrib/dist/rpm/proftpd.spec, include/version.h: 
@@ -887,7 +1105,7 @@
 
 	* contrib/: mod_sql.c, mod_sql.h, mod_sql_mysql.c,
 	mod_sql_postgres.c: 
-	Adding $Id: ChangeLog,v 1.115 2003-05-16 04:28:47 castaglia Exp $ tags to the mod_sql files.
+	Adding $Id: ChangeLog,v 1.116 2003-08-06 22:03:31 castaglia Exp $ tags to the mod_sql files.
 
 2003-03-14 07:54  castaglia
 
@@ -1404,12 +1622,12 @@
 
 	* src/netio.c, src/pool.c, src/sets.c, include/ident.h,
 	include/timers.h: 
-	Adding more $Id: ChangeLog,v 1.115 2003-05-16 04:28:47 castaglia Exp $ keywords.
+	Adding more $Id: ChangeLog,v 1.116 2003-08-06 22:03:31 castaglia Exp $ keywords.
 
 2003-02-11 23:34  castaglia
 
 	* src/feat.c: 
-	Added $Id: ChangeLog,v 1.115 2003-05-16 04:28:47 castaglia Exp $ keyword.
+	Added $Id: ChangeLog,v 1.116 2003-08-06 22:03:31 castaglia Exp $ keyword.
 
 2003-02-10 15:34  castaglia
 

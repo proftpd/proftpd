@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.63 2003-08-01 01:05:25 castaglia Exp $
+ * $Id: data.c,v 1.64 2003-08-06 22:03:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -232,36 +232,35 @@ static int data_pasv_open(char *reason, off_t size) {
    * lookups, and then set it to what the configuration wants it to
    * be.
    */
-  rev = inet_reverse_dns(session.xfer.p, ServerUseReverseDNS);
+  rev = pr_netaddr_reverse_dns(ServerUseReverseDNS);
 
   /* Protocol and socket options should be set before handshaking. */
 
   if (session.xfer.direction == PR_NETIO_IO_RD) {
-    inet_set_socket_opts(session.d->pool, session.d,
+    pr_inet_set_socket_opts(session.d->pool, session.d,
       (main_server->tcp_rcvbuf_override ?  main_server->tcp_rcvbuf_len : 0), 0);
-    inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
+    pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
       0, 1, 1);
     
   } else {
-    inet_set_socket_opts(session.d->pool, session.d,
+    pr_inet_set_socket_opts(session.d->pool, session.d,
       0, (main_server->tcp_sndbuf_override ?  main_server->tcp_sndbuf_len : 0));
-    inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
+    pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
       0, 1, 1);
   }
 
-  c = inet_accept(session.xfer.p, session.d, session.c, -1, -1, TRUE);
-  inet_reverse_dns(session.xfer.p,rev);
+  c = pr_inet_accept(session.xfer.p, session.d, session.c, -1, -1, TRUE);
+  pr_netaddr_reverse_dns(rev);
 
   if (c && c->mode != CM_ERROR) {
-    inet_close(session.pool, session.d);
-    inet_setnonblock(session.pool, c);
+    pr_inet_close(session.pool, session.d);
+    pr_inet_set_nonblock(session.pool, c);
     session.d = c;
 
     log_debug(DEBUG4, "passive data connection opened - local  : %s:%d",
-               inet_ntoa(*session.d->local_ipaddr), session.d->local_port);
+      pr_netaddr_get_ipstr(session.d->local_addr), session.d->local_port);
     log_debug(DEBUG4, "passive data connection opened - remote : %s:%d",
-              inet_ntoa(*session.d->remote_ipaddr),
-              session.d->remote_port);
+      pr_netaddr_get_ipstr(session.d->remote_addr), session.d->remote_port);
 
     if (session.xfer.xfer_type != STOR_UNIQUE) {
       if (size)
@@ -317,8 +316,8 @@ static int data_active_open(char *reason, off_t size) {
   if (!reason && session.xfer.filename)
     reason = session.xfer.filename;
 
-  session.d = inet_create_connection(session.pool, NULL, -1,
-    session.c->local_ipaddr, session.c->local_port-1, TRUE);
+  session.d = pr_inet_create_connection(session.pool, NULL, -1,
+    session.c->local_addr, session.c->local_port-1, TRUE);
 
   /* Set the "stalled" timer, if any, to prevent the connection
    * open from taking too long
@@ -326,24 +325,24 @@ static int data_active_open(char *reason, off_t size) {
   if (TimeoutStalled)
     add_timer(TimeoutStalled, TIMER_STALLED, NULL, stalled_timeout_cb);
 
-  rev = inet_reverse_dns(session.pool, ServerUseReverseDNS);
+  rev = pr_netaddr_reverse_dns(ServerUseReverseDNS);
 
   /* Protocol and socket options should be set before handshaking. */
 
   if (session.xfer.direction == PR_NETIO_IO_RD) {
-    inet_set_socket_opts(session.d->pool, session.d,
+    pr_inet_set_socket_opts(session.d->pool, session.d,
       (main_server->tcp_rcvbuf_override ?  main_server->tcp_rcvbuf_len : 0), 0);
-    inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
+    pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
       0, 1, 1);
     
   } else {
-    inet_set_socket_opts(session.d->pool, session.d,
+    pr_inet_set_socket_opts(session.d->pool, session.d,
       0, (main_server->tcp_sndbuf_override ?  main_server->tcp_sndbuf_len : 0));
-    inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
+    pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
       0, 1, 1);
   }
 
-  if (inet_connect(session.d->pool, session.d, &session.data_addr,
+  if (pr_inet_connect(session.d->pool, session.d, &session.data_addr,
       session.data_port) == -1) {
     pr_response_add_err(R_425, "Unable to build data connection: %s",
       strerror(session.d->xerrno));
@@ -352,17 +351,16 @@ static int data_active_open(char *reason, off_t size) {
     return -1;
   }
 
-  c = inet_openrw(session.pool, session.d, NULL, PR_NETIO_STRM_DATA,
+  c = pr_inet_openrw(session.pool, session.d, NULL, PR_NETIO_STRM_DATA,
     session.d->listen_fd, -1, -1, TRUE);
 
-  inet_reverse_dns(session.pool,rev);
+  pr_netaddr_reverse_dns(rev);
 
   if (c) {
     log_debug(DEBUG4, "active data connection opened - local  : %s:%d",
-	      inet_ntoa(*session.d->local_ipaddr), session.d->local_port);
+      pr_netaddr_get_ipstr(session.d->local_addr), session.d->local_port);
     log_debug(DEBUG4, "active data connection opened - remote : %s:%d",
-	      inet_ntoa(*session.d->remote_ipaddr),
-	      session.d->remote_port);
+      pr_netaddr_get_ipstr(session.d->remote_addr), session.d->remote_port);
 
     if (session.xfer.xfer_type != STOR_UNIQUE) {
       if (size)
@@ -396,12 +394,11 @@ static int data_active_open(char *reason, off_t size) {
       pr_response_send(R_150, "FILE: %s", reason);
     }
 
-    inet_close(session.pool,session.d);
-    inet_setnonblock(session.pool,session.d);
+    pr_inet_close(session.pool, session.d);
+    pr_inet_set_nonblock(session.pool, session.d);
     session.d = c;
     return 0;
   }
-
 
   pr_response_add_err(R_425, "Unable to build data connection: %s",
     strerror(session.d->xerrno));
@@ -414,7 +411,7 @@ void pr_data_reset(void) {
   if (session.d && session.d->pool)
     destroy_pool(session.d->pool);
   session.d = NULL;
-  session.sf_flags &= (SF_ALL^(SF_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
+  session.sf_flags &= (SF_ALL^(SF_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE|SF_EPSV_ALL));
 }
 
 void pr_data_init(char *filename, int direction) {
@@ -523,7 +520,7 @@ void pr_data_close(int quiet) {
   nstrm = NULL;
 
   if (session.d) {
-    inet_lingering_close(session.pool, session.d, PR_TUNABLE_TIMEOUTLINGER);
+    pr_inet_lingering_close(session.pool, session.d, PR_TUNABLE_TIMEOUTLINGER);
     session.d = NULL;
   }
 
@@ -556,7 +553,7 @@ void pr_data_close(int quiet) {
 void pr_data_cleanup(void) {
   /* sanity check */
   if (session.d) {
-    inet_lingering_close(session.pool, session.d, PR_TUNABLE_TIMEOUTLINGER);
+    pr_inet_lingering_close(session.pool, session.d, PR_TUNABLE_TIMEOUTLINGER);
     session.d = NULL;
   }
 
@@ -575,7 +572,7 @@ void pr_data_abort(int err, int quiet) {
   nstrm = NULL;
 
   if (session.d) {
-    inet_lingering_close(session.pool, session.d, PR_TUNABLE_TIMEOUTLINGER);
+    pr_inet_lingering_close(session.pool, session.d, PR_TUNABLE_TIMEOUTLINGER);
     session.d = NULL;
   }
 

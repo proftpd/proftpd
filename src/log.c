@@ -24,10 +24,8 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/*
- * ProFTPD logging support.
- *
- * $Id: log.c,v 1.58 2003-06-03 20:42:29 castaglia Exp $
+/* ProFTPD logging support.
+ * $Id: log.c,v 1.59 2003-08-06 22:03:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -98,7 +96,7 @@ int log_open_xfer(const char *path) {
   return xfer_fd;
 }
 
-int log_xfer(long xfertime, char *remhost, off_t fsize, char *fname,
+int log_xfer(long xfertime, const char *remhost, off_t fsize, char *fname,
     char xfertype, char direction, char access_mode, char *user,
     char abort_flag) {
 
@@ -131,7 +129,8 @@ int log_xfer(long xfertime, char *remhost, off_t fsize, char *fname,
  * but I haven't been able to test them.
  */
 
-int log_wtmp(char *line, const char *name, const char *host, p_in_addr_t *ip) {
+int log_wtmp(char *line, const char *name, const char *host,
+    pr_netaddr_t *ip) {
   struct stat buf;
   struct utmp ut;
   int res = 0;
@@ -390,7 +389,8 @@ static void log_write(int priority, int f, char *s) {
     if (session.c && session.c->remote_name) {
       snprintf(serverinfo + strlen(serverinfo),
         sizeof(serverinfo) - strlen(serverinfo), " (%s[%s])",
-        session.c->remote_name, inet_ntoa(*session.c->remote_ipaddr));
+        session.c->remote_name,
+        pr_netaddr_get_dnsstr(session.c->remote_addr));
       serverinfo[sizeof(serverinfo)-1] = '\0';
     }
   }
@@ -556,7 +556,8 @@ void init_log(void) {
   if (gethostname(buf, sizeof(buf)) == -1)
     sstrncpy(buf, "localhost", sizeof(buf));
 
-  sstrncpy(systemlog_host, inet_validate(buf), sizeof(systemlog_host));
+  sstrncpy(systemlog_host, (char *) pr_inet_validate(buf),
+    sizeof(systemlog_host));
   memset(systemlog_fn, '\0', sizeof(systemlog_fn));
   log_closesyslog();
 }

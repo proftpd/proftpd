@@ -25,8 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- *
- * $Id: dirtree.c,v 1.113 2003-08-01 01:05:25 castaglia Exp $
+ * $Id: dirtree.c,v 1.114 2003-08-06 22:03:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -735,30 +734,49 @@ void free_conf_stacks(void) {
 
 /* Used by modules to start/end configuration sections */
 
-server_rec *start_new_server(const char *addr) {
+server_rec *start_new_server(const char *addrstr) {
   server_rec *s;
   pool *p;
 
   p = make_sub_pool(permanent_pool);
 
-  s = (server_rec*)pcalloc(p,sizeof(server_rec));
+  s = (server_rec *) pcalloc(p, sizeof(server_rec));
   s->pool = p;
   s->config_type = CONF_VIRTUAL;
 
-  /* Have to make sure it ends up on the end of the chain,
-   * otherwise main_server becomes useless.
+  /* Have to make sure it ends up on the end of the chain, otherwise
+   * main_server becomes useless.
    */
-
   xaset_insert_end(server_list, (xasetmember_t *) s);
   s->set = server_list;
-  if (addr)
-    s->ServerAddress = pstrdup(s->pool,addr);
+  if (addrstr)
+    s->ServerAddress = pstrdup(s->pool, addrstr);
 
-  /* default server port */
-  s->ServerPort = inet_getservport(s->pool, "ftp", "tcp");
+  /* Default server port */
+  s->ServerPort = pr_inet_getservport(s->pool, "ftp", "tcp");
 
-  conf.curserver = (server_rec**)push_array(conf.sstack);
+  conf.curserver = (server_rec **) push_array(conf.sstack);
   *conf.curserver = s;
+
+#if 0
+  if (addrstr) {
+    pr_netaddr_t *addr = NULL;
+    array_header *addrs;
+
+    /* Resolve the given address string to its address(es). */
+    addr = pr_netaddr_get_addr(s->pool, addrstr, &addrs);
+
+    if (addrs) {
+      register unsigned int i;
+      pr_netaddr_t **elts = addrs->elts;
+
+      /* For every additional address, implicitly add a Bind record. */
+      for (i = 0; i < addrs->nelts; i++) 
+        add_config_param_str("Bind", 1, pr_netaddr_get_ipstr(elts[i]));
+    }
+  }
+#endif
+
   return s;
 }
 
@@ -1466,11 +1484,14 @@ static int _check_group_access(xaset_t *set, char *name) {
  * returns 0 if no match
  */
 
-int match_ip(p_in_addr_t *cli_addr, char *cli_str, const char *acl_match) {
+/* XXX much nasty ACL code, screaming to be reimplemented. */
+
+int match_ip(pr_netaddr_t *cli_addr, const char *cli_str,
+    const char *acl_match) {
   char acl_str[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   char *mask,*cp;
   int cidr_mode = 0, cidr_bits;
-  p_in_addr_t cidr_addr;
+  struct in_addr cidr_addr;
   u_int_32 cidr_mask = 0;
 
   if (!strcasecmp(acl_match, "ALL"))
@@ -1508,7 +1529,7 @@ int match_ip(p_in_addr_t *cli_addr, char *cli_str, const char *acl_match) {
 	cidr_mask = (cidr_mask << 1) | 1;
       cidr_mask = cidr_mask << shift;
 #ifdef HAVE_INET_ATON
-      if (inet_aton(mask,&cidr_addr) == 0)
+      if (inet_aton(mask, &cidr_addr) == 0)
 	return 0;
 #else
       cidr_addr.s_addr = inet_addr(mask);
@@ -1524,30 +1545,29 @@ int match_ip(p_in_addr_t *cli_addr, char *cli_str, const char *acl_match) {
   }
 
   if (cidr_mode) {
+/* NOTE: encapsulation breakage note/IPv6 change needed here. */
+#if 0
     if ((cli_addr->s_addr & htonl(cidr_mask)) == cidr_addr.s_addr)
+#endif
       return 1;
 
   } else {
     int fnm_flags = PR_FNM_NOESCAPE|PR_FNM_CASEFOLD;
     pool *tmp_pool = make_sub_pool(permanent_pool);
-    char *acl_ascii = NULL, *cli_ascii = NULL;
+    const char *acl_ascii = NULL, *cli_ascii = NULL;
 
-    /* Note: do NOT use inet_ntoa(3) here, but rather use inet_ascii()
-     * wrapper function.  inet_ntoa(3)'s return value is a pointer to a
-     * buffer that is overwritten on subsequent calls.
-     */
-    p_in_addr_t *acl_addr = inet_getaddr(tmp_pool, acl_str);
+    pr_netaddr_t *acl_addr = pr_netaddr_get_addr(tmp_pool, acl_str, NULL);
 
     /* As acl_str may contain the '*' globbing character, an attempt
      * to resolve it to an IP address may very well fail, in which case this
      * will be NULL.  Handle this case accordingly.
      */
     if (acl_addr)
-      acl_ascii = inet_ascii(tmp_pool, acl_addr);
+      acl_ascii = pr_netaddr_get_ipstr(acl_addr);
     else
       acl_ascii = acl_str;
 
-    cli_ascii = inet_ascii(tmp_pool, cli_addr);
+    cli_ascii = pr_netaddr_get_ipstr(cli_addr);
 
     log_debug(DEBUG6, "comparing addresses '%s' (%s) and '%s' (%s)",
       acl_str, acl_ascii, cli_str, cli_ascii);
@@ -1590,8 +1610,7 @@ int match_ip(p_in_addr_t *cli_addr, char *cli_str, const char *acl_match) {
 /* Check an ACL for negative (!) rules and make sure all of them evaluate to
  * TRUE.  Default (if none exist) is TRUE.
  */
-static int _check_ip_negative(const config_rec *c)
-{
+static int _check_ip_negative(const config_rec *c) {
   char *arg,**argv;
   int argc;
 
@@ -1601,7 +1620,7 @@ static int _check_ip_negative(const config_rec *c)
       continue;
 
     arg++;
-    switch (match_ip(session.c->remote_ipaddr,session.c->remote_name,arg)) {
+    switch (match_ip(session.c->remote_addr, session.c->remote_name, arg)) {
       case 1:
         /* This actually means we DIDN'T match, and it's ok to short circuit
          * everything (negative)
@@ -1632,8 +1651,7 @@ static int _check_ip_negative(const config_rec *c)
 /* Check an ACL for positive conditions, short-circuiting if ANY of them are
  * TRUE.  Default return is FALSE.
  */
-static int _check_ip_positive(const config_rec *c)
-{
+static int _check_ip_positive(const config_rec *c) {
   char *arg,**argv;
   int argc;
 
@@ -1642,7 +1660,7 @@ static int _check_ip_positive(const config_rec *c)
     if (*arg == '!')
       continue;
 
-    switch (match_ip(session.c->remote_ipaddr,session.c->remote_name,arg)) {
+    switch (match_ip(session.c->remote_addr, session.c->remote_name, arg)) {
       case 1:
         /* Found it! */
         return TRUE;
@@ -3138,11 +3156,10 @@ int parse_config_file(const char *fname) {
   return 0;
 }
 
-/* Go through each server configuration and complain if important
- * information is missing (post reading configuration files).
- * otherwise fill in defaults where applicable
+/* Go through each server configuration and complain if important information
+ * is missing (post reading configuration files).  Otherwise, fill in defaults
+ * where applicable.
  */
-
 int fixup_servers(void) {
   config_rec *c = NULL;
   server_rec *s = NULL, *next_s = NULL;
@@ -3159,11 +3176,12 @@ int fixup_servers(void) {
     next_s = s->next;
 
     if (!s->ServerAddress)
-      s->ServerFQDN = s->ServerAddress = inet_gethostname(s->pool);
+      s->ServerFQDN = s->ServerAddress = pr_netaddr_get_localaddr_str(s->pool);
     else
-      s->ServerFQDN = inet_fqdn(s->pool, s->ServerAddress);
+      s->ServerFQDN = pr_netaddr_get_fqdn(s->pool, s->ServerAddress);
 
-    if ((s->ipaddr = inet_getaddr(s->pool, s->ServerAddress)) == NULL) {
+    s->addr = pr_netaddr_get_addr(s->pool, s->ServerAddress, NULL);
+    if (s->addr == NULL) {
       log_pri(PR_LOG_ERR, "error: unable to determine IP address of '%s'",
         s->ServerAddress);
       xaset_remove(server_list, (xasetmember_t *) s);
@@ -3190,8 +3208,8 @@ int fixup_servers(void) {
     if ((c = find_config(s->conf, CONF_PARAM, "MasqueradeAddress",
         FALSE)) != NULL) {
       log_pri(PR_LOG_INFO, "%s:%d masquerading as %s",
-        inet_ascii(s->pool, s->ipaddr), s->ServerPort,
-        inet_ascii(s->pool, (p_in_addr_t *) c->argv[0]));
+        pr_netaddr_get_ipstr(s->addr), s->ServerPort,
+        pr_netaddr_get_ipstr((pr_netaddr_t *) c->argv[0]));
     }
 
     /* Honor the DefaultServer directive only if SocketBindTight is not
@@ -3201,7 +3219,7 @@ int fixup_servers(void) {
 
     if (default_server && *default_server == TRUE) {
       if (!SocketBindTight)
-        s->ipaddr->s_addr = 0;
+        pr_netaddr_set_sockaddr_any(s->addr);
       else
         log_pri(PR_LOG_NOTICE,
           "SocketBindTight in effect, ignoring DefaultServer");
@@ -3219,7 +3237,7 @@ int fixup_servers(void) {
     return -1;
   }
 
-  clear_inet_pool();
+  pr_inet_clear();
   return 0;
 }
 
@@ -3252,8 +3270,9 @@ void init_config(void) {
   main_server->pool = conf_pool;
   main_server->set = server_list;
 
-  /* default server port */
-  main_server->ServerPort = inet_getservport(main_server->pool, "ftp", "tcp");
+  /* Default server port */
+  main_server->ServerPort = pr_inet_getservport(main_server->pool,
+    "ftp", "tcp");
 }
 
 /* These functions are used by modules to help parse configuration.

@@ -25,7 +25,7 @@
 
 /*
  * Ident (RFC1413) protocol support
- * $Id: ident.c,v 1.18 2003-06-11 22:45:25 castaglia Exp $
+ * $Id: ident.c,v 1.19 2003-08-06 22:03:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -52,7 +52,7 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
   conn_t *ident_conn = NULL, *ident_io = NULL;
   char buf[256] = {'\0'}, *tok = NULL, *tmp = NULL;
   int timer,i = 0;
-  int ident_port = inet_getservport(p, "ident", "tcp");
+  int ident_port = pr_inet_getservport(p, "ident", "tcp");
 
   tmp_pool = make_sub_pool(p);
   ident_timeout = 0;
@@ -70,14 +70,14 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
     return pstrdup(p, ret);
   }
 
-  ident_conn = inet_create_connection(tmp_pool, NULL, -1, c->local_ipaddr,
+  ident_conn = pr_inet_create_connection(tmp_pool, NULL, -1, c->local_addr,
     INPORT_ANY, FALSE);
-  inet_setnonblock(tmp_pool, ident_conn);
+  pr_inet_set_nonblock(tmp_pool, ident_conn);
 
-  if ((i = inet_connect_nowait(tmp_pool, ident_conn, c->remote_ipaddr,
+  if ((i = pr_inet_connect_nowait(tmp_pool, ident_conn, c->remote_addr,
       ident_port)) < 0) {
     remove_timer(timer, NULL);
-    inet_close(tmp_pool, ident_conn);
+    pr_inet_close(tmp_pool, ident_conn);
     log_debug(DEBUG6, "ident connection failed: %s", strerror(errno));
     destroy_pool(tmp_pool);
     return pstrdup(p, ret);
@@ -96,7 +96,7 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
         if (ident_timeout) {
           remove_timer(timer, NULL);
           pr_netio_close(nstrm);
-          inet_close(tmp_pool, ident_conn);
+          pr_inet_close(tmp_pool, ident_conn);
           log_debug(DEBUG6, "ident lookup timed out, returning '%s'", ret);
           destroy_pool(tmp_pool);
           return pstrdup(p, ret);
@@ -107,7 +107,7 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
       case -1:
         remove_timer(timer, NULL);
         pr_netio_close(nstrm);
-        inet_close(tmp_pool, ident_conn);
+        pr_inet_close(tmp_pool, ident_conn);
         log_debug(DEBUG6, "ident lookup failed (%s), returning '%s'",
           strerror(errno), ret);
         destroy_pool(tmp_pool);
@@ -117,10 +117,11 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
       default:
         ident_conn->mode = CM_OPEN;
 
-        if (inet_get_conn_info(ident_conn, ident_conn->listen_fd) < 0) {
+        if (pr_inet_get_conn_info(ident_conn, ident_conn->listen_fd) < 0) {
           remove_timer(timer, NULL);
           pr_netio_close(nstrm);
-          inet_close(tmp_pool, ident_conn);
+          pr_inet_close(tmp_pool, ident_conn);
+          log_debug(DEBUG2, "ident lookup timed out, returning '%s'", ret);
           destroy_pool(tmp_pool);
           return pstrdup(p, ret);
         }
@@ -128,17 +129,17 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
     }
   }
 
-  if ((ident_io = inet_openrw(tmp_pool, ident_conn, NULL, PR_NETIO_STRM_OTHR,
+  if ((ident_io = pr_inet_openrw(tmp_pool, ident_conn, NULL, PR_NETIO_STRM_OTHR,
       -1, -1, -1, FALSE)) == NULL) {
     remove_timer(timer, NULL);
-    inet_close(tmp_pool, ident_conn);
+    pr_inet_close(tmp_pool, ident_conn);
     destroy_pool(tmp_pool);
     return pstrdup(p, ret);
   }
 
   nstrm = ident_io->instrm;
 
-  inet_setnonblock(tmp_pool, ident_io);
+  pr_inet_set_nonblock(tmp_pool, ident_io);
   pr_netio_set_poll_interval(ident_io->instrm, 1);
   pr_netio_set_poll_interval(ident_io->outstrm, 1);
 
@@ -185,8 +186,8 @@ char *pr_ident_lookup(pool *p, conn_t *c) {
   }
 
   remove_timer(timer, NULL);
-  inet_close(tmp_pool, ident_io);
-  inet_close(tmp_pool, ident_conn);
+  pr_inet_close(tmp_pool, ident_io);
+  pr_inet_close(tmp_pool, ident_conn);
   destroy_pool(tmp_pool);
 
   return pstrdup(p, ret);

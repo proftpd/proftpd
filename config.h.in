@@ -604,6 +604,12 @@
 /* Define if curses support, if available, should be used.  */
 #undef USE_CURSES
 
+/* Define if use of builtin getaddrinfo() is desired.  */
+#undef USE_GETADDRINFO
+
+/* Define if use of builtin getnameinfo() is desired.  */
+#undef USE_GETNAMEINFO
+
 /* Define if IPv6 support is desired.  */
 #undef USE_IPV6
 

@@ -24,7 +24,7 @@
 
 /* ProFTPD bindings support routines.
  *
- * $Id: bindings.h,v 1.3 2003-04-25 00:02:59 castaglia Exp $
+ * $Id: bindings.h,v 1.4 2003-08-06 22:03:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -40,7 +40,7 @@ typedef struct ipbind_rec {
   struct ipbind_rec *ib_next;
 
   /* IP address to which this binding is "bound" */
-  p_in_addr_t ib_addr;
+  pr_netaddr_t *ib_addr;
   unsigned int ib_port;
 
   /* default server to handle requests to this binding.  If namebinds are
@@ -87,14 +87,14 @@ conn_t *pr_ipbind_accept_conn(fd_set *readfds, int *listenfd);
  * arguments. The new binding is added the list maintained by the bindings
  * layer.  Returns 0 on success, -1 on failure.
  */
-int pr_ipbind_create(server_rec *server, p_in_addr_t *addr);
+int pr_ipbind_create(server_rec *server, pr_netaddr_t *addr);
 
 /* Close all IP bindings associated with the given IP address/port combination.
  * The bindings are then marked as inactive, so that future lookups via
  * pr_ipbind_find() skip these bindings.  Returns 0 on success, -1 on failure
  * (eg no associated bindings found).
  */
-int pr_ipbind_close(p_in_addr_t *addr, unsigned int port,
+int pr_ipbind_close(pr_netaddr_t *addr, unsigned int port,
   unsigned char close_namebinds);
 
 /* Close all listenings fds.  This needs to happen just after a process
@@ -112,13 +112,13 @@ int pr_ipbind_add_binds(server_rec *server);
 /* Search the binding list, and return the pr_ipbind_t for the given addr and
  * port.  If requested, skip over inactive bindings while searching.
  */
-pr_ipbind_t *pr_ipbind_find(p_in_addr_t *addr, unsigned int port,
+pr_ipbind_t *pr_ipbind_find(pr_netaddr_t *addr, unsigned int port,
   unsigned char skip_inactive);
 
 /* Search the binding list, and return the server_rec * that is bound to the
  * given IP address/port combination.
  */
-server_rec *pr_ipbind_get_server(p_in_addr_t *addr, unsigned int port);
+server_rec *pr_ipbind_get_server(pr_netaddr_t *addr, unsigned int port);
 
 /* Listens on each file descriptor in the given set, and returns the file
  * descriptor associated with an incoming connection request.  Returns -1
@@ -129,38 +129,38 @@ int pr_ipbind_listen(fd_set *readfds);
 /* Prepares the IP-based binding associated with the given server for listening.
  * Returns 0 on success, -1 on failure.
  */
-int pr_ipbind_open(p_in_addr_t *addr, unsigned int port, conn_t *listen_conn,
+int pr_ipbind_open(pr_netaddr_t *addr, unsigned int port, conn_t *listen_conn,
   unsigned char isdefault, unsigned char islocalhost,
   unsigned char open_namebinds);
 
 /* Close the pr_namebind_t with the given name.
  */
-int pr_namebind_close(const char *name, p_in_addr_t *addr, unsigned int port);
+int pr_namebind_close(const char *name, pr_netaddr_t *addr, unsigned int port);
 
 /* Create a pr_namebind_t, similar to a pr_ipbind_t, which maps the name (usu.
  * DNS hostname) to the server_rec.  The given addr and port are used to
  * associate this pr_namebind_t with the given IP address (to which the DNS
  * hostname should resolve).
  */
-int pr_namebind_create(server_rec *server, const char *name, p_in_addr_t *addr,
-  unsigned int port);
+int pr_namebind_create(server_rec *server, const char *name,
+  pr_netaddr_t *addr, unsigned int port);
 
 /* Search the Bindings layer, and return the pr_namebind_t associated with
  * the given addr, port, and name.  If requested, skip over inactive
  * bindings while searching.
  */
-pr_namebind_t *pr_namebind_find(const char *name, p_in_addr_t *addr,
+pr_namebind_t *pr_namebind_find(const char *name, pr_netaddr_t *addr,
   unsigned int port, unsigned char skip_inactive);
 
 /* Find the server_rec associated with the given name.  If none are found,
  * default to the server_rec of the containing pr_ipbind_t.
  */
-server_rec *pr_namebind_get_server(const char *name, p_in_addr_t *addr,
+server_rec *pr_namebind_get_server(const char *name, pr_netaddr_t *addr,
   unsigned int port);
 
 /* Opens the pr_namebind_t with the given name.
  */
-int pr_namebind_open(const char *name, p_in_addr_t *addr, unsigned int port);
+int pr_namebind_open(const char *name, pr_netaddr_t *addr, unsigned int port);
 
 /* Initialize the Bindings layer.
  */
@@ -193,6 +193,6 @@ void pr_free_bindings(void);
   if ((res = pr_ipbind_open((a), (p), (c), (d), (l), (o))) < 0) \
     log_pri(LOG_NOTICE, \
       "%s:%d: notice: unable to open ipbind '%s': %s", \
-      __FILE__, __LINE__, inet_ntoa(*(a)), strerror(errno))
+      __FILE__, __LINE__, pr_netaddr_get_ipstr((a)), strerror(errno))
 
 #endif /* PR_BINDINGS_H */

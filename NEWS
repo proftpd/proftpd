@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.456 2003-07-30 18:01:02 castaglia Exp $
+$Id: NEWS,v 1.457 2003-08-06 22:03:31 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -49,6 +49,7 @@ CVS
   handling CA certificate files.
 - Bug 2118 - mod_sql's %F doesn't work for DELE command; %f is inconsistent.
   mod_sql's handling of cookies is now updated to match mod_log.
+- Bug 1711 - IPv6 support.  Support for EPRT and EPSV added.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------

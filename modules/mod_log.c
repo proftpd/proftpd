@@ -24,9 +24,8 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/*
- * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.53 2003-08-01 01:05:25 castaglia Exp $
+/* Flexible logging module for proftpd
+ * $Id: mod_log.c,v 1.54 2003-08-06 22:03:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -695,7 +694,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
   case META_REMOTE_IP:
     argp = arg;
-    sstrncpy(argp, inet_ntoa(*session.c->remote_ipaddr), sizeof(arg));
+    sstrncpy(argp, pr_netaddr_get_ipstr(session.c->remote_addr), sizeof(arg));
     m++;
     break;
 
@@ -719,7 +718,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
   case META_LOCAL_IP:
     argp = arg;
-    sstrncpy(argp, inet_ntoa(*session.c->local_ipaddr), sizeof(arg));
+    sstrncpy(argp, pr_netaddr_get_ipstr(session.c->local_addr), sizeof(arg));
     m++;
     break;
 

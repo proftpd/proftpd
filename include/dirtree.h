@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.40 2003-07-16 18:48:50 castaglia Exp $
+ * $Id: dirtree.h,v 1.41 2003-08-06 22:03:32 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -46,13 +46,19 @@ typedef struct server_struc {
 
   pool *pool;			/* Memory pool for this server */
   xaset_t *set;			/* Set holding all servers */
-  char *ServerName;		/* This server name */
-  char *ServerAddress;		/* This server address */
-  char *ServerFQDN;		/* Fully Qualified Domain Name */
+
+  /* The label/name for this server configuration. */
+  const char *ServerName;
+
+  /* The address for this server configuration. */
+  const char *ServerAddress;
+
+  /* The fully qualified domain name for this server configuration. */
+  const char *ServerFQDN;
 
   /* Port number to which to listen. A value of zero disables the server_rec.
    */
-  int ServerPort;
+  unsigned int ServerPort;
 
   /* TCP settings: max segment size, receive/send buffer sizes.
    */
@@ -66,7 +72,7 @@ typedef struct server_struc {
 
   char *ServerAdmin;		/* Administrator's name */
 
-  p_in_addr_t *ipaddr;		/* Internal address of this server */
+  pr_netaddr_t *addr;		/* Internal address of this server */
   struct conn_struc *listen;	/* Our listening connection */
   xaset_t *conf;		/* Configuration details */
 
@@ -211,7 +217,7 @@ config_rec *find_config_next(config_rec *, config_rec *, int,
 config_rec *find_config(xaset_t *, int, const char *, int);
 void find_config_set_top(config_rec *);
 int remove_config(xaset_t *, const char *, int);
-class_t *find_class(p_in_addr_t *, char *);
+class_t *find_class(pr_netaddr_t *, const char *);
 
 cmd_rec *pr_cmd_alloc(pool *, int, ...);
 
@@ -255,6 +261,6 @@ unsigned char check_context(cmd_rec *, int);
 char *get_context_name(cmd_rec *);
 int get_boolean(cmd_rec *, int);
 char *get_full_cmd(cmd_rec *);
-int match_ip(p_in_addr_t *, char *, const char *);
+int match_ip(pr_netaddr_t *, const char *, const char *);
 
 #endif /* PR_DIRTREE_H */

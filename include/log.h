@@ -27,7 +27,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.18 2003-02-12 19:03:35 castaglia Exp $
+ * $Id: log.h,v 1.19 2003-08-06 22:03:32 castaglia Exp $
  */
 
 #ifndef PR_LOG_H
@@ -65,7 +65,7 @@
 #define LOG_XFER_MODE           0644
 
 char *fmt_time(time_t);
-int log_wtmp(char *, const char *, const char *, p_in_addr_t *);
+int log_wtmp(char *, const char *, const char *, pr_netaddr_t *);
 void log_setfacility(int);
 int log_openfile(const char *, int *, mode_t);
 int log_opensyslog(const char *);
@@ -103,6 +103,6 @@ int log_str2sysloglevel(const char *);
 /* TransferLog routines */
 int log_open_xfer(const char *);
 void log_close_xfer(void);
-int log_xfer(long, char *, off_t, char *, char, char, char, char *, char);
+int log_xfer(long, const char *, off_t, char *, char, char, char, char *, char);
 
 #endif /* PR_LOG_H */

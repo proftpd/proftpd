@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.23 2003-06-03 16:25:23 castaglia Exp $
+ * $Id: scoreboard.c,v 1.24 2003-08-06 22:03:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -595,18 +595,17 @@ int pr_scoreboard_update_entry(pid_t pid, ...) {
         sstrncpy(entry.sce_user, tmp, sizeof(entry.sce_user));
         break;
 
-      case PR_SCORE_CLIENT_ADDR:
-        {
-          p_in_addr_t *remote_ip = va_arg(ap, p_in_addr_t *);
+      case PR_SCORE_CLIENT_ADDR: {
+          pr_netaddr_t *remote_addr = va_arg(ap, pr_netaddr_t *);
 
           snprintf(entry.sce_client_addr, sizeof(entry.sce_client_addr),
-            "%s", remote_ip ? inet_ntoa(*remote_ip) : "(unknown)");
+            "%s", remote_addr ? pr_netaddr_get_ipstr(remote_addr) :
+            "(unknown)");
           entry.sce_client_addr[sizeof(entry.sce_client_addr) - 1] = '\0';
         }
         break;
 
-      case PR_SCORE_CLIENT_NAME:
-        {
+      case PR_SCORE_CLIENT_NAME: {
           char *remote_name = va_arg(ap, char *);
           
           snprintf(entry.sce_client_name, sizeof(entry.sce_client_name),
@@ -628,8 +627,7 @@ int pr_scoreboard_update_entry(pid_t pid, ...) {
         sstrncpy(entry.sce_cwd, tmp, sizeof(entry.sce_cwd));
         break;
 
-      case PR_SCORE_CMD:
-        {
+      case PR_SCORE_CMD: {
           char *cmdstr = NULL;
           tmp = va_arg(ap, char *);
           cmdstr = handle_score_str(tmp, ap);
@@ -640,8 +638,7 @@ int pr_scoreboard_update_entry(pid_t pid, ...) {
         }
         break;
 
-      case PR_SCORE_CMD_ARG:
-        {
+      case PR_SCORE_CMD_ARG: {
           char *argstr = NULL;
           tmp = va_arg(ap, char *);
           argstr = handle_score_str(tmp, ap);
@@ -656,14 +653,13 @@ int pr_scoreboard_update_entry(pid_t pid, ...) {
         entry.sce_server_port = va_arg(ap, int);
         break;
 
-      case PR_SCORE_SERVER_ADDR:
-        {
-          p_in_addr_t *server_ip = va_arg(ap, p_in_addr_t *);
+      case PR_SCORE_SERVER_ADDR: {
+          pr_netaddr_t *server_addr = va_arg(ap, pr_netaddr_t *);
           int server_port = va_arg(ap, int);
 
           snprintf(entry.sce_server_addr, sizeof(entry.sce_server_addr),
-            "%s:%d", server_ip ? inet_ntoa(*server_ip) : "(uknown)",
-            server_port);
+            "%s:%d", server_addr ? pr_netaddr_get_ipstr(server_addr) :
+            "(unknown)", server_port);
           entry.sce_server_addr[sizeof(entry.sce_server_addr)-1] = '\0';
         }
         break;

@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.37 2003-06-24 01:47:20 castaglia Exp $
+ * $Id: conf.h,v 1.38 2003-08-06 22:03:32 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -322,9 +322,26 @@ extern char *alloca();
  * not for the support library.
  */
 
-/* Generic typedefs */
+typedef struct {
+  int na_family;
 
-typedef struct in_addr p_in_addr_t;
+  /* Note: this assumes that DNS names have a maximum size of
+   * 256 characters.
+   */
+  char na_dnsstr[256];
+  int na_have_dnsstr;
+
+  char na_ipstr[INET6_ADDRSTRLEN];
+  int na_have_ipstr;
+
+  union {
+    struct sockaddr_in v4;
+#ifdef USE_IPV6
+    struct sockaddr_in6 v6;
+#endif /* USE_IPV6 */
+  } na_addr;
+
+} pr_netaddr_t;
 
 #include "pool.h"
 #include "regexp.h"
@@ -337,6 +354,7 @@ typedef struct in_addr p_in_addr_t;
 #include "response.h"
 #include "timers.h"
 #include "inet.h"
+#include "netaddr.h"
 #include "bindings.h"
 #include "ident.h"
 #include "feat.h"

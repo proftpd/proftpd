@@ -451,10 +451,10 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
             if (!strcmp(val->name, "IP Address")) {
               have_ipaddr_ext = TRUE;
 
-              if (strcmp(val->value, inet_ntoa(*conn->remote_ipaddr))) {
+              if (strcmp(val->value, pr_netaddr_get_ipstr(conn->remote_addr))) {
                 X509_free(cert);
                 tls_log("client cert iPAddress value '%s' != client IP '%s'",
-                  val->value, inet_ntoa(*conn->remote_ipaddr));
+                  val->value, pr_netaddr_get_ipstr(conn->remote_addr));
                 return FALSE;
               }
 

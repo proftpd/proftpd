@@ -276,7 +276,7 @@ MODRET _calc_ratios (cmd_rec * cmd)
 	sstrncpy (mask, c->argv[0], sizeof (buf));
 
       if (!pr_fnmatch (buf, session.c->remote_name, PR_FNM_NOESCAPE | PR_FNM_CASEFOLD) ||
-	  !pr_fnmatch (buf, inet_ntoa (*session.c->remote_ipaddr),
+	  !pr_fnmatch (buf, pr_netaddr_get_ipstr (session.c->remote_addr),
 		       PR_FNM_NOESCAPE | PR_FNM_CASEFOLD))
 	{
 	  _set_ratios (c->argv[1], c->argv[2], c->argv[3], c->argv[4]);
@@ -441,7 +441,7 @@ log_cmd_pass (cmd_rec * cmd)
       snprintf (buf, sizeof(buf), RATIO_STUFFS);
       log_pri (LOG_NOTICE, "Ratio: %s/%s %s[%s]: %s.", g.user,
 	       session.group, session.c->remote_name,
-	       inet_ntoa (*session.c->remote_ipaddr), buf);
+	       pr_netaddr_get_ipstr (session.c->remote_addr), buf);
     }
   return DECLINED (cmd);
 }

@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.157 2003-08-01 01:03:27 castaglia Exp $
+ * $Id: mod_auth.c,v 1.158 2003-08-06 22:03:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -157,9 +157,9 @@ static int auth_sess_init(void) {
   pr_scoreboard_update_entry(getpid(),
     PR_SCORE_USER, "(none)",
     PR_SCORE_SERVER_PORT, main_server->ServerPort,
-    PR_SCORE_SERVER_ADDR, main_server->ipaddr, main_server->ServerPort,
+    PR_SCORE_SERVER_ADDR, main_server->addr, main_server->ServerPort,
     PR_SCORE_SERVER_LABEL, main_server->ServerName,
-    PR_SCORE_CLIENT_ADDR, session.c->remote_ipaddr,
+    PR_SCORE_CLIENT_ADDR, session.c->remote_addr,
     PR_SCORE_CLIENT_NAME, session.c->remote_name,
     PR_SCORE_CLASS, (session.class && session.class->name) ?
       session.class->name: "",
@@ -763,15 +763,16 @@ static int _setup_environment(pool *p, char *user, char *pass) {
   if (!user) {
     log_auth(PR_LOG_NOTICE, "USER %s: user is not a UserAlias from %s [%s] "
       "to %s:%i", origuser,session.c->remote_name,
-      inet_ascii(p, session.c->remote_ipaddr),
-      inet_ascii(p, session.c->local_ipaddr), session.c->local_port);
+      pr_netaddr_get_ipstr(session.c->remote_addr),
+      pr_netaddr_get_ipstr(session.c->local_addr), session.c->local_port);
     goto auth_failure;
   }
 
   if ((pw = auth_getpwnam(p, user)) == NULL) {
     log_auth(PR_LOG_NOTICE, "USER %s: no such user found from %s [%s] to %s:%i",
-      user, session.c->remote_name, inet_ascii(p, session.c->remote_ipaddr),
-      inet_ascii(p, session.c->local_ipaddr), session.c->local_port);
+      user, session.c->remote_name,
+      pr_netaddr_get_ipstr(session.c->remote_addr),
+      pr_netaddr_get_ipstr(session.c->local_addr), session.c->local_port);
     goto auth_failure;
   }
 
@@ -1172,7 +1173,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
 
   if (!wtmp_log || *wtmp_log == TRUE) {
     log_wtmp(sess_ttyname, session.user, session.c->remote_name,
-      session.c->remote_ipaddr);
+      session.c->remote_addr);
     session.wtmp_log = TRUE;
   }
 
@@ -1444,15 +1445,8 @@ static void auth_scan_scoreboard(void) {
   char curr_server_addr[80] = {'\0'};
   xaset_t *conf = NULL;
 
-  unsigned char *class_engine = get_param_ptr(main_server->conf,
-    "Classes", FALSE);
-
-  unsigned char chk_class =
-    (class_engine && *class_engine == TRUE &&
-     session.class && session.class->name) ? TRUE : FALSE;
-
   snprintf(curr_server_addr, sizeof(curr_server_addr), "%s:%d",
-    inet_ntoa(*main_server->ipaddr), main_server->ServerPort);
+    pr_netaddr_get_ipstr(main_server->addr), main_server->ServerPort);
   curr_server_addr[sizeof(curr_server_addr)-1] = '\0';
 
   /* Determine how many users are currently connected */
@@ -1466,7 +1460,7 @@ static void auth_scan_scoreboard(void) {
       /* Note: the class member of the scoreboard entry will never be
        * NULL.  At most, it may be the empty string.
        */
-      if (chk_class && strcasecmp(score->sce_class, session.class->name) == 0)
+      if (strcasecmp(score->sce_class, session.class->name) == 0)
         ccur++;
     }
   }
@@ -1481,17 +1475,15 @@ static void auth_scan_scoreboard(void) {
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[0]) = cur;
 
-  if (chk_class) {
-    remove_config(CURRENT_CONF, "CURRENT-CLASS", FALSE);
-    add_config_param_set(&conf, "CURRENT-CLASS", 1, session.class->name);
+  remove_config(CURRENT_CONF, "CURRENT-CLASS", FALSE);
+  add_config_param_set(&conf, "CURRENT-CLASS", 1, session.class->name);
 
-    snprintf(config_class_users, sizeof(config_class_users),
-      "CURRENT-CLIENTS-CLASS-%s", session.class->name);
-    remove_config(CURRENT_CONF, config_class_users, FALSE);
-    c = add_config_param_set(&conf, config_class_users, 1, NULL);
-    c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
-    *((unsigned int *) c->argv[0]) = ccur;
-  }
+  snprintf(config_class_users, sizeof(config_class_users),
+    "CURRENT-CLIENTS-CLASS-%s", session.class->name);
+  remove_config(CURRENT_CONF, config_class_users, FALSE);
+  c = add_config_param_set(&conf, config_class_users, 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[0]) = ccur;
 }
 
 static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
@@ -1524,7 +1516,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     char curr_server_addr[80] = {'\0'};
 
     snprintf(curr_server_addr, sizeof(curr_server_addr), "%s:%d",
-      inet_ntoa(*main_server->ipaddr), main_server->ServerPort);
+      pr_netaddr_get_ipstr(main_server->addr), main_server->ServerPort);
     curr_server_addr[sizeof(curr_server_addr)-1] = '\0';
 
     pr_rewind_scoreboard();
@@ -1549,7 +1541,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
           /* Count up sessions on a per-host basis. */
 
           if (!strcmp(score->sce_client_addr,
-              inet_ntoa(*session.c->remote_ipaddr))) {
+              pr_netaddr_get_ipstr(session.c->remote_addr))) {
             same_host = TRUE;
 
             /* This small hack makes sure that hcur is incremented properly

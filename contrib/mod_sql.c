@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.54 2003-07-30 18:01:03 castaglia Exp $
+ * $Id: mod_sql.c,v 1.55 2003-08-06 22:03:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1457,7 +1457,7 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
 
   case 'a':
     argp = arg;
-    sstrncpy(argp, inet_ntoa(*session.c->remote_ipaddr), sizeof(arg));
+    sstrncpy(argp, pr_netaddr_get_ipstr(session.c->remote_addr), sizeof(arg));
     break;
 
   case 'b':

@@ -54,14 +54,14 @@ DEFINES=$(PLATFORM)
 #CFLAGS=-g -DDEVEL_NO_FORK -DDEBUG_MEMORY
 #LIBS=$(LIBS) -lefence
 
-OBJS=main.o timers.o sets.o pool.o regexp.o dirtree.o support.o inet.o \
-     log.o bindings.o scoreboard.o feat.o netio.o response.o ident.o \
+OBJS=main.o timers.o sets.o pool.o regexp.o dirtree.o support.o netaddr.o \
+     inet.o log.o bindings.o scoreboard.o feat.o netio.o response.o ident.o \
      data.o modules.o auth.o fsio.o mkhome.o
 BUILD_OBJS=src/main.o src/timers.o src/sets.o src/pool.o src/regexp.o \
-           src/dirtree.o src/support.o src/inet.o src/log.o src/bindings.o \
-           src/scoreboard.o src/feat.o src/netio.o src/response.o \
-           src/ident.o src/data.o src/modules.o src/auth.o src/fsio.o \
-           src/mkhome.o
+           src/dirtree.o src/support.o src/netaddr.o src/inet.o src/log.o \
+           src/bindings.o src/scoreboard.o src/feat.o src/netio.o \
+           src/response.o src/ident.o src/data.o src/modules.o src/auth.o \
+           src/fsio.o src/mkhome.o
 
 MODULE_OBJS=@MODULE_OBJS@
 BUILD_MODULE_OBJS=@BUILD_MODULE_OBJS@ modules/module_glue.o

@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.182 2003-07-29 15:15:50 castaglia Exp $
+ * $Id: mod_core.c,v 1.183 2003-08-06 22:03:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -60,6 +60,8 @@ static struct {
   { C_REIN, "is not implemented",		FALSE },
   { C_PORT, "<sp> h1,h2,h3,h4,p1,p2",		TRUE },
   { C_PASV, "(returns address/port)",		TRUE },
+  { C_EPRT, "<sp> |proto|addr|port|",		TRUE },
+  { C_EPSV, "(returns port |||port|)",		TRUE },
   { C_TYPE, "<sp> type-code (A, I, L 7, L 8)",	TRUE },
   { C_STRU, "is not implemented (always F)",	TRUE },
   { C_MODE, "is not implemented (always S)",	TRUE },
@@ -462,20 +464,31 @@ MODRET set_debuglevel(cmd_rec *cmd) {
 }
 
 MODRET set_defaultaddress(cmd_rec *cmd) {
-  p_in_addr_t *main_addr = NULL;
+  pr_netaddr_t *main_addr = NULL;
   config_rec *c = NULL;
+  array_header *addrs = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
   c = add_config_param(cmd->argv[0], 1, NULL);
 
-  if ((main_addr = inet_getaddr(c->pool, cmd->argv[1])) == NULL)
+  main_addr = pr_netaddr_get_addr(c->pool, cmd->argv[1], &addrs);
+  if (main_addr == NULL) 
     return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
       (cmd->argv)[0], ": unable to resolve \"", cmd->argv[1], "\"",
       NULL));
 
   c->argv[0] = main_addr;
+
+  if (addrs) {
+    register unsigned int i;
+    pr_netaddr_t **elts = addrs->elts;
+
+    /* For every additional address, implicitly add a Bind record. */
+    for (i = 0; i < addrs->nelts; i++)
+      add_config_param_str("Bind", 1, pr_netaddr_get_ipstr(elts[i]));
+  }
 
   return HANDLED(cmd);
 }
@@ -543,10 +556,36 @@ MODRET set_wtmplog(cmd_rec *cmd) {
 }
 
 MODRET set_bind(cmd_rec *cmd) {
+  pr_netaddr_t *addr = NULL;
+  array_header *addrs = NULL;
+  config_rec *c = NULL;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
-  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  /* It's possible for a server to have multiple IP addresses (e.g. a DNS
+   * name that has both A and AAAA records).  We need to handle that case
+   * here by looking up all of a server's addresses, and making sure there
+   * are server_recs for each one.
+   */
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  addr = pr_netaddr_get_addr(c->pool, cmd->argv[1], &addrs);
+  if (!addr)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unable to resolve \"",
+      cmd->argv[1], "\"", NULL));
+
+  c->argv[0] = pstrdup(c->pool, pr_netaddr_get_ipstr(addr));
+
+  if (addrs) {
+    register unsigned int i;
+    pr_netaddr_t **elts = addrs->elts;
+
+    /* For every additional address, implicitly add a Bind record. */
+    for (i = 0; i < addrs->nelts; i++)
+      add_config_param_str(cmd->argv[0], 1, pr_netaddr_get_ipstr(elts[i]));
+  }
 
   return HANDLED(cmd);
 }
@@ -685,9 +724,9 @@ MODRET set_defaultserver(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET add_masqueradeaddress(cmd_rec *cmd) {
+MODRET set_masqueradeaddress(cmd_rec *cmd) {
  config_rec *c = NULL;
- p_in_addr_t *masq_addr = NULL;
+ pr_netaddr_t *masq_addr = NULL;
  char masq_ip[80] = {'\0'};
 
  CHECK_ARGS(cmd, 1);
@@ -696,7 +735,11 @@ MODRET add_masqueradeaddress(cmd_rec *cmd) {
  /* Make a copy of the given argument.  */
  sstrncpy(masq_ip, cmd->argv[1], sizeof(masq_ip));
 
- if ((masq_addr = inet_getaddr(cmd->server->pool, masq_ip)) == NULL)
+ /* We can only masquerade as one address, so we don't need to know if the
+  * given name might map to multiple addresses.
+  */
+ masq_addr = pr_netaddr_get_addr(cmd->server->pool, masq_ip, NULL);
+ if (masq_addr == NULL)
    return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
      (cmd->argv)[0], ": unable to resolve \"", masq_ip, "\"",
      NULL));
@@ -1860,43 +1903,65 @@ MODRET set_hidenoaccess(cmd_rec *cmd) {
 
 MODRET set_hideuser(cmd_rec *cmd) {
   config_rec *c = NULL;
+  char *user = NULL;
   struct passwd *pw = NULL;
+  unsigned char inverted = FALSE;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ANON|CONF_DIR);
 
-  pw = auth_getpwnam(cmd->tmp_pool, cmd->argv[1]);
+  user = cmd->argv[1];
+
+  if (*user == '!') {
+    inverted = TRUE;
+    user++;
+  }
+
+  pw = auth_getpwnam(cmd->tmp_pool, user);
 
   if (!pw)
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
-      "' is not a valid user.", NULL));
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", user,
+      "' is not a valid user", NULL));
 
-  c = add_config_param(cmd->argv[0], 1, NULL);
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(uid_t));
   *((uid_t *) c->argv[0]) = pw->pw_uid;
-  c->flags |= CF_MERGEDOWN;
+  c->argv[1] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[1]) = inverted;
 
+  c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 }
 
 MODRET set_hidegroup(cmd_rec *cmd) {
   config_rec *c = NULL;
+  char *group = NULL;
   struct group *gr = NULL;
+  unsigned char inverted = FALSE;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ANON|CONF_DIR);
 
-  gr = auth_getgrnam(cmd->tmp_pool, cmd->argv[1]);
+  group = cmd->argv[1];
+
+  if (*group == '!') {
+    inverted = TRUE;
+    group++;
+  }
+
+  gr = auth_getgrnam(cmd->tmp_pool, group);
 
   if (!gr)
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
-      "' is not a valid group.", NULL));
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", group,
+      "' is not a valid group", NULL));
 
-  c = add_config_param(cmd->argv[0], 1, NULL);
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(gid_t));
   *((gid_t *) c->argv[0]) = gr->gr_gid;
-  c->flags |= CF_MERGEDOWN;
+  c->argv[1] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[1]) = inverted;
 
+  c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 }
 
@@ -2510,6 +2575,8 @@ MODRET set_displaygoaway(cmd_rec *cmd) {
 
 MODRET add_virtualhost(cmd_rec *cmd) {
   server_rec *s = NULL;
+  pr_netaddr_t *addr = NULL;
+  array_header *addrs = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
@@ -2517,13 +2584,29 @@ MODRET add_virtualhost(cmd_rec *cmd) {
   if ((s = start_new_server(cmd->argv[1])) == NULL)
     CONF_ERROR(cmd, "unable to create virtual server configuration.");
 
+  /* It's possible for a server to have multiple IP addresses (e.g. a DNS
+   * name that has both A and AAAA records).  We need to handle that case
+   * here by looking up all of a server's addresses, and making sure there
+   * are server_recs for each one.
+   */
+
+  addr = pr_netaddr_get_addr(cmd->tmp_pool, cmd->argv[1], &addrs);
+  if (addrs) {
+    register unsigned int i;
+    pr_netaddr_t **elts = addrs->elts;
+
+    /* For every additional address, implicitly add a Bind record. */
+    for (i = 0; i < addrs->nelts; i++)
+      add_config_param_str("Bind", 1, pr_netaddr_get_ipstr(elts[i]));
+  }
+
   return HANDLED(cmd);
 }
 
 MODRET end_virtualhost(cmd_rec *cmd) {
   server_rec *s = NULL;
-  p_in_addr_t *ipaddr = NULL;
-  char *address = NULL;
+  pr_netaddr_t *addr = NULL;
+  const char *address = NULL;
 
   CHECK_ARGS(cmd, 0);
   CHECK_CONF(cmd, CONF_VIRTUAL);
@@ -2531,41 +2614,45 @@ MODRET end_virtualhost(cmd_rec *cmd) {
   if (cmd->server->ServerAddress)
     address = cmd->server->ServerAddress;
   else
-    address = inet_gethostname(cmd->tmp_pool);
+    address = pr_netaddr_get_localaddr_str(cmd->tmp_pool);
 
-  if ((ipaddr = inet_getaddr(cmd->tmp_pool, address)) == NULL)
-    /* This bad server context will be removed in fixup_servers, after
+  /* We check if the given name maps to multiple addresses here, and handle
+   * them appropriately (e.g. by implicitly adding Bind records for those
+   * additional addresses).
+   */
+  addr = pr_netaddr_get_addr(cmd->tmp_pool, address, NULL);
+  if (addr == NULL)
+    /* This bad server context will be removed in fixup_servers(), after
      * the parsing has completed, so we need do nothing else here.
      */
     log_pri(PR_LOG_ERR, "error: unable to determine IP address of '%s'",
        address);
 
   /* Check if this server's address/port combination is already being used. */
-  for (s = (server_rec *) server_list->xas_list; ipaddr && s; s = s->next) {
+  for (s = (server_rec *) server_list->xas_list; addr && s; s = s->next) {
 
     /* Have to resort to duplicating some of fixup_servers()'s
      * functionality here, to do this check The Right Way(tm).
      */
     if (s != cmd->server) {
-      char *serv_addr = NULL;
-      p_in_addr_t *serv_ipaddr = NULL;
+      const char *serv_addrstr = NULL;
+      pr_netaddr_t *serv_addr = NULL;
 
       if (s->ServerAddress)
-        serv_addr = s->ServerAddress;
+        serv_addrstr = s->ServerAddress;
       else
-        serv_addr = inet_gethostname(cmd->tmp_pool);
+        serv_addrstr = pr_netaddr_get_localaddr_str(cmd->tmp_pool);
 
-      serv_ipaddr = inet_getaddr(cmd->tmp_pool, serv_addr);
-
-      if (!serv_ipaddr) {
+      serv_addr = pr_netaddr_get_addr(cmd->tmp_pool, serv_addrstr, NULL);
+      if (!serv_addr) {
         log_pri(PR_LOG_ERR, "error: unable to determine IP address of '%s'",
-          serv_addr);
+          serv_addrstr);
 
-      } else if (ipaddr->s_addr == serv_ipaddr->s_addr &&
+      } else if (pr_netaddr_cmp(addr, serv_addr) == 0 &&
           cmd->server->ServerPort == s->ServerPort) {
         log_pri(PR_LOG_ERR, "error: \"%s\" address/port (%s:%d) already in use "
           "by \"%s\"", cmd->server->ServerName,
-          inet_ascii(cmd->tmp_pool, ipaddr), cmd->server->ServerPort,
+          pr_netaddr_get_ipstr(addr), cmd->server->ServerPort,
           s->ServerName ? s->ServerName : "ProFTPD");
         CONF_ERROR(cmd, "address/port configuration collision");
       }
@@ -2608,7 +2695,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
   pool *p;
   xaset_t *s;
   config_rec *c = NULL;
-  char *serverfqdn = main_server->ServerFQDN;
+  const char *serverfqdn = main_server->ServerFQDN;
   char *outs, *mg_time, mg_size[12] = {'\0'}, mg_size_units[12] = {'\0'},
     mg_max[12] = "unlimited";
   char total_files_in[12] = {'\0'}, total_files_out[12] = {'\0'},
@@ -2692,8 +2779,8 @@ int core_display_file(const char *numeric, const char *fn, const char *fs) {
 
   if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
       FALSE)) != NULL) {
-    p_in_addr_t *masq_addr = (p_in_addr_t *) c->argv[0];
-    serverfqdn = inet_getname(main_server->pool, masq_addr);
+    pr_netaddr_t *masq_addr = (pr_netaddr_t *) c->argv[0];
+    serverfqdn = pr_netaddr_get_dnsstr(masq_addr);
   }
 
   /* "Stringify" the file number for this session. */
@@ -2857,23 +2944,20 @@ MODRET core_pwd(cmd_rec *cmd) {
 }
 
 MODRET core_pasv(cmd_rec *cmd) {
-  union {
-    p_in_addr_t addr;
-    unsigned char u[4];
-  } addr;
-
-  union {
-    unsigned short port;
-    unsigned char u[2];
-  } port;
-
+  unsigned int port = 0;
+  char *addrstr = NULL, *tmp = NULL;
   config_rec *c = NULL;
+
+  if (session.sf_flags & SF_EPSV_ALL) {
+    pr_response_add_err(R_500, "Illegal PASV command, EPSV ALL in effect");
+    return ERROR(cmd);
+  }
 
   CHECK_CMD_ARGS(cmd, 1);
 
   /* If we already have a passive listen data connection open, kill it. */
   if (session.d) {
-    inet_close(session.d->pool, session.d);
+    pr_inet_close(session.d->pool, session.d);
     session.d = NULL;
   }
 
@@ -2882,8 +2966,8 @@ MODRET core_pasv(cmd_rec *cmd) {
     int pasv_min_port = *((int *) c->argv[0]);
     int pasv_max_port = *((int *) c->argv[1]);
 
-    if (!(session.d = inet_create_connection_portrange(session.pool,
-        NULL, session.c->local_ipaddr, pasv_min_port, pasv_max_port))) {
+    if (!(session.d = pr_inet_create_connection_portrange(session.pool,
+        NULL, session.c->local_addr, pasv_min_port, pasv_max_port))) {
 
       /* If not able to open a passive port in the given range, default to
        * normal behavior (using INPORT_ANY), and log the failure.  This
@@ -2896,8 +2980,8 @@ MODRET core_pasv(cmd_rec *cmd) {
 
   /* Open up the connection and pass it back. */
   if (!session.d)
-    session.d = inet_create_connection(session.pool, NULL, -1,
-      session.c->local_ipaddr, INPORT_ANY, FALSE);
+    session.d = pr_inet_create_connection(session.pool, NULL, -1,
+      session.c->local_addr, INPORT_ANY, FALSE);
 
   if (!session.d) {
     pr_response_add_err(R_425, "Unable to build data connection: "
@@ -2905,52 +2989,58 @@ MODRET core_pasv(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  inet_setblock(session.pool, session.d);
-  inet_listen(session.pool, session.d, 1);
+  pr_inet_set_block(session.pool, session.d);
+  pr_inet_listen(session.pool, session.d, 1);
 
   session.d->instrm = pr_netio_open(session.pool, PR_NETIO_STRM_DATA,
     session.d->listen_fd, PR_NETIO_IO_RD);
 
   /* Now tell the client our address/port */
-  session.data_port = session.d->local_port;
+  port = session.data_port = session.d->local_port;
   session.sf_flags |= SF_PASSIVE;
 
-  addr.addr = *session.d->local_ipaddr;
+  addrstr = (char *) pr_netaddr_get_ipstr(session.d->local_addr);
 
   /* Check for a MasqueradeAddress configuration record, and return that
    * addr if appropriate.
    */
   if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
       FALSE)) != NULL)
-   addr.addr = *((p_in_addr_t *) c->argv[0]);
+    addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
 
-  port.port = htons(session.data_port);
+  /* Fixup the address string for the PASV response. */
+  tmp = strrchr(addrstr, ':');
+  if (tmp)
+    addrstr = tmp + 1;
 
-  log_debug(DEBUG1,"Entering Passive Mode (%u,%u,%u,%u,%u,%u).",
-            (int)addr.u[0],(int)addr.u[1],(int)addr.u[2],
-            (int)addr.u[3],(int)port.u[0],(int)port.u[1]);
+  for (tmp = addrstr; *tmp; tmp++)
+    if (*tmp == '.')
+      *tmp = ',';
 
-  pr_response_add(R_227, "Entering Passive Mode (%u,%u,%u,%u,%u,%u).",
-               (int)addr.u[0],(int)addr.u[1],(int)addr.u[2],
-               (int)addr.u[3],(int)port.u[0],(int)port.u[1]);
+  log_debug(DEBUG1, "Entering Passive Mode (%s,%u,%u).", addrstr,
+    (port >> 8) & 255, port & 255);
 
+  pr_response_add(R_227, "Entering Passive Mode (%s,%u,%u).", addrstr,
+    (port >> 8) & 255, port & 255);
+ 
   return HANDLED(cmd);
 }
 
 MODRET core_port(cmd_rec *cmd) {
-  union {
-    p_in_addr_t addr;
-    unsigned char u[4];
-  } addr;
-
-  union {
-    unsigned short port;
-    unsigned char u[2];
-  } port;
-
-  char *a,*endp,*arg;
-  int i,cnt = 0;
+  pr_netaddr_t *port_addr = NULL;
+#ifdef USE_IPV6
+  char buf[INET6_ADDRSTRLEN] = {'\0'};
+#else
+  char buf[INET_ADDRSTRLEN] = {'\0'};
+#endif /* USE_IPV6 */
+  unsigned int h1, h2, h3, h4, p1, p2;
+  unsigned short port;
   unsigned char *allow_foreign_addr = NULL, *privsdrop = NULL;
+
+  if (session.sf_flags & SF_EPSV_ALL) {
+    pr_response_add_err(R_500, "Illegal PORT command, EPSV ALL in effect");
+    return ERROR(cmd);
+  }
 
   CHECK_CMD_ARGS(cmd, 2);
 
@@ -2967,29 +3057,217 @@ MODRET core_port(cmd_rec *cmd) {
   }
 
   /* Format is h1,h2,h3,h4,p1,p2 (ASCII in network order) */
-  a = pstrdup(cmd->tmp_pool,cmd->argv[1]);
-
-  while(a && *a && cnt < 6) {
-    arg = strsep(&a,",");
-
-    if (!arg && a && *a) {
-      arg = a;
-      a = NULL;
-    } else if (!arg)
-      break;
-
-    i = strtol(arg,&endp,10);
-    if (*endp || i < 0 || i > 255)
-      break;
-
-    if (cnt < 4)
-      addr.u[cnt++] = (unsigned char)i;
-    else
-      port.u[cnt++ - 4] = (unsigned char)i;
+  if (sscanf(cmd->argv[1], "%u,%u,%u,%u,%u,%u", &h1, &h2, &h3, &h4, &p1,
+      &p2) != 6) {
+    log_debug(DEBUG2, "PORT '%s' is not syntactically valid", cmd->argv[1]);
+    pr_response_add_err(R_501, "Illegal PORT command");
+    return ERROR(cmd);
   }
 
-  if (cnt != 6 || (a && *a)) {
+  if (h1 > 255 || h2 > 255 || h3 > 255 || h4 > 255 || p1 > 255 || p2 > 255 ||
+      (h1|h2|h3|h4) == 0 || (p1|p2) == 0) {
+    log_debug(DEBUG2, "PORT '%s' has invalid value(s)", cmd->arg);
     pr_response_add_err(R_501, "Illegal PORT command");
+    return ERROR(cmd);
+  }
+  port = ((p1 << 8) | p2);
+
+  snprintf(buf, sizeof(buf), "%u.%u.%u.%u", h1, h2, h3, h4);
+  buf[sizeof(buf)-1] = '\0';
+
+  port_addr = pr_netaddr_get_addr(cmd->tmp_pool, buf, NULL);
+  if (port_addr == NULL) {
+    log_debug(DEBUG1, "error getting sockaddr for '%s': %s", buf,
+      strerror(errno)); 
+    pr_response_add_err(R_501, "Illegal PORT command");
+    return ERROR(cmd);
+  }
+
+  pr_netaddr_set_family(&session.data_addr, pr_netaddr_get_family(port_addr));
+  pr_netaddr_set_port(&session.data_addr, htons(port));
+
+  /* Make sure that the address specified matches the address from which
+   * the control connection is coming.
+   */
+
+  allow_foreign_addr = get_param_ptr(TOPLEVEL_CONF, "AllowForeignAddress",
+    FALSE);
+
+  if (!allow_foreign_addr || *allow_foreign_addr == FALSE) {
+    pr_netaddr_t *remote_addr = session.c->remote_addr;
+
+#ifdef USE_IPV6
+    /* We can only compare the PORT-given address against the remote client
+     * address if the remote client address is an IPv4-mapped IPv6 address.
+     */
+    if (pr_netaddr_get_family(remote_addr) == AF_INET6 &&
+        !pr_netaddr_v4mappedv6(remote_addr)) {
+      log_pri(PR_LOG_WARNING, "Refused PORT %s (IPv4/IPv6 address mismatch)",
+        cmd->arg);
+      pr_response_add_err(R_500, "Illegal PORT command");
+      return ERROR(cmd);
+    }
+#endif /* USE_IPV6 */
+
+    if (pr_netaddr_cmp(port_addr, remote_addr) != 0) {
+      log_pri(PR_LOG_WARNING, "Refused PORT %s (address mismatch)", cmd->arg);
+      pr_response_add_err(R_500, "Illegal PORT command");
+      return ERROR(cmd);
+    }
+  }
+
+  /* Additionally, make sure that the port number used is a "high numbered"
+   * port, to avoid bounce attacks.  For remote Windows machines, the
+   * port numbers mean little.  However, there are also quite a few Unix
+   * machines out there for whom the port number matters...
+   */
+
+  if (port < 1024) {
+    log_pri(PR_LOG_WARNING, "Refused PORT %s (bounce attack)", cmd->arg);
+    pr_response_add_err(R_500, "Illegal PORT command");
+    return ERROR(cmd);
+  }
+
+  memcpy(&session.data_addr, port_addr, sizeof(session.data_addr));
+  session.data_port = port;
+  session.sf_flags &= (SF_ALL^SF_PASSIVE);
+
+  /* If we already have a data connection open, kill it. */
+  if (session.d) {
+    pr_inet_close(session.d->pool, session.d);
+    session.d = NULL;
+  }
+
+  session.sf_flags |= SF_PORT;
+  pr_response_add(R_200, "PORT command successful");
+
+  return HANDLED(cmd);
+}
+
+MODRET core_eprt(cmd_rec *cmd) {
+  pr_netaddr_t na;
+  int family = 0;
+  unsigned short port = 0;
+  unsigned char *allow_foreign_addr = NULL, *privsdrop = NULL;
+  char delim = '\0', *argstr = pstrdup(cmd->tmp_pool, cmd->argv[1]);
+  char *tmp = NULL;
+
+  if (session.sf_flags & SF_EPSV_ALL) {
+    pr_response_add_err(R_500, "Illegal PORT command, EPSV ALL in effect");
+    return ERROR(cmd);
+  }
+
+  CHECK_CMD_ARGS(cmd, 2);
+
+  /* Block active transfers (the EPRT command) if RootRevoke is in effect
+   * and the server's port is below 1025 (binding to the data port in this
+   * case would require root privs, which will have been dropped.
+   */
+  if ((privsdrop = get_param_ptr(TOPLEVEL_CONF, "RootRevoke",
+      FALSE)) != NULL && *privsdrop == TRUE && session.c->local_port < 1025) {
+    log_debug(DEBUG0, "RootRevoke in effect, unable to bind to local "
+      "port %d for active transfer", session.c->local_port);
+    pr_response_add_err(R_500, "Unable to service EPRT commands");
+    return ERROR(cmd);
+  }
+
+  /* Format is <d>proto<d>ip address<d>port<d> (ASCII in network order),
+   * where <d> is an arbitrary delimiter character.
+   */
+  delim = *argstr++;
+
+  /* atoi() will happily any trailing non-numeric characters, so feeding
+   * the parameter string won't hurt.
+   */
+  family = atoi(argstr);
+
+  switch (family) {
+    case 1:
+      break;
+
+#ifdef USE_IPV6
+    case 2:
+      break;
+#endif /* USE_IPV6 */
+
+    default:
+#ifdef USE_IPV6
+      pr_response_add_err(R_522, "Network protocol not supported, use (1,2)");
+#else
+      pr_response_add_err(R_522, "Network protocol not supported, use (1)");
+#endif /* USE_IPV6 */
+      return ERROR(cmd);
+  }
+
+  /* Now, skip past those numeric characters that atoi() used. */
+  while (isdigit((unsigned char) *argstr))
+    argstr++;
+
+  /* If the next character is not the delimiter, it's a badly formatted
+   * parameter.
+   */
+  if (*argstr == delim)
+    argstr++;
+
+  else {
+    pr_response_add_err(R_501, "Illegal EPRT command");
+    return ERROR(cmd);
+  }
+
+  if ((tmp = strchr(argstr, delim)) == NULL) {
+    log_debug(DEBUG3, "badly formatted EPRT argument: '%s'", cmd->argv[1]);
+    pr_response_add_err(R_501, "Illegal EPRT command");
+    return ERROR(cmd);
+  }
+
+  /* Twiddle the string so that just the address portion will be processed
+   * by inet_pton().
+   */
+  *tmp = '\0';
+
+  memset(&na, 0, sizeof(na));
+
+  /* Use inet_pton() to translate the address string into the address value. */
+  switch (family) {
+    case 1: {
+      pr_netaddr_set_family(&na, AF_INET);
+      pr_netaddr_get_sockaddr(&na)->sa_family = AF_INET;
+      if (inet_pton(AF_INET, argstr, pr_netaddr_get_inaddr(&na)) <= 0) {
+        log_debug(DEBUG2, "error converting IPv4 address '%s': %s",
+          argstr, strerror(errno));
+        pr_response_add_err(R_501, "Illegal EPRT command");
+        return ERROR(cmd);
+      }
+      break;
+    }
+
+    case 2: {
+      pr_netaddr_set_family(&na, AF_INET6);
+      pr_netaddr_get_sockaddr(&na)->sa_family = AF_INET6;
+      if (inet_pton(AF_INET6, argstr, pr_netaddr_get_inaddr(&na)) <= 0) {
+        log_debug(DEBUG2, "error converting IPv6 address '%s': %s",
+          argstr, strerror(errno));
+        pr_response_add_err(R_501, "Illegal EPRT command");
+        return ERROR(cmd);
+      }
+      break;
+    }
+  }
+
+  /* Advance past the address portion of the argument. */
+  argstr = ++tmp;
+
+  port = atoi(argstr);
+
+  while (isdigit((unsigned char) *argstr))
+    argstr++;
+
+  /* If the next character is not the delimiter, it's a badly formatted
+   * parameter.
+   */
+  if (*argstr != delim) {
+    log_debug(DEBUG3, "badly formatted EPRT argument: '%s'", cmd->argv[1]);
+    pr_response_add_err(R_501, "Illegal EPRT command");
     return ERROR(cmd);
   }
 
@@ -3001,35 +3279,175 @@ MODRET core_port(cmd_rec *cmd) {
     FALSE);
 
   if (!allow_foreign_addr || *allow_foreign_addr == FALSE) {
-    if (addr.addr.s_addr != session.c->remote_ipaddr->s_addr || !port.port) {
-      log_pri(PR_LOG_WARNING, "Refused PORT %s (address mismatch)", cmd->arg);
-      pr_response_add_err(R_500, "Illegal PORT command");
+    if (pr_netaddr_cmp(&na, session.c->remote_addr) != 0 || !port) {
+      log_pri(PR_LOG_WARNING, "Refused EPRT %s (address mismatch)", cmd->arg);
+      pr_response_add_err(R_500, "Illegal EPRT command");
       return ERROR(cmd);
     }
   }
 
-  /* Additionally, make sure that the port number used is a "high
-   * numbered" port, to avoid bounce attacks
+  /* Additionally, make sure that the port number used is a "high numbered"
+   * port, to avoid bounce attacks.  For remote Windows machines, the
+   * port numbers mean little.  However, there are also quite a few Unix
+   * machines out there for whom the port number matters...
    */
 
-  if (ntohs(port.port) < 1024) {
-    log_pri(PR_LOG_WARNING, "Refused PORT %s (bounce attack)", cmd->arg);
-    pr_response_add_err(R_500, "Illegal PORT command");
+  if (port < 1024) {
+    log_pri(PR_LOG_WARNING, "Refused EPRT %s (bounce attack)", cmd->arg);
+    pr_response_add_err(R_500, "Illegal EPRT command");
     return ERROR(cmd);
   }
 
-  memcpy(&session.data_addr, &addr.addr, sizeof(session.data_addr));
-  session.data_port = ntohs(port.port);
+  /* Make sure we're using network byte order. */
+  pr_netaddr_set_port(&na, htons(port));
+
+  switch (family) {
+    case 1:
+      pr_netaddr_set_family(&session.data_addr, AF_INET);
+      break;
+
+    case 2:
+      pr_netaddr_set_family(&session.data_addr, AF_INET6);
+      break;
+  }
+
+  pr_netaddr_set_sockaddr(&session.data_addr, pr_netaddr_get_sockaddr(&na));
+  pr_netaddr_set_port(&session.data_addr, pr_netaddr_get_port(&na));
+  session.data_port = port;
   session.sf_flags &= (SF_ALL^SF_PASSIVE);
 
   /* If we already have a data connection open, kill it. */
   if (session.d) {
-    inet_close(session.d->pool, session.d);
+    pr_inet_close(session.d->pool, session.d);
     session.d = NULL;
   }
 
   session.sf_flags |= SF_PORT;
-  pr_response_add(R_200, "PORT command successful");
+  pr_response_add(R_200, "EPRT command successful");
+
+  return HANDLED(cmd);
+}
+
+MODRET core_epsv(cmd_rec *cmd) {
+  char *addrstr = "";
+  char *endp = NULL, *arg = NULL;
+  int family = 0;
+  config_rec *c = NULL;
+
+  CHECK_CMD_MIN_ARGS(cmd, 1);
+
+  if (cmd->argc-1 == 1)
+    arg = pstrdup(cmd->tmp_pool, cmd->argv[1]);
+
+  if (arg && strcasecmp(arg, "all") == 0) {
+    session.sf_flags |= SF_EPSV_ALL;
+    pr_response_add(R_200, "EPSV ALL command successful");
+    return HANDLED(cmd);
+  }
+
+  /* If the optional parameter was given, determine the address family from
+   * that.  If not, determine the family from the control connection address
+   * family.
+   */
+  if (arg) {
+    family = strtol(arg, &endp, 10);
+
+    if (endp && *endp) {
+      pr_response_add_err(R_501, "%s: unknown network protocol", cmd->argv[0]);
+      return ERROR(cmd);
+    }
+ 
+  } else {
+
+    switch (pr_netaddr_get_family(session.c->local_addr)) {
+      case AF_INET:
+        family = 1;
+        break;
+
+#ifdef USE_IPV6
+      case AF_INET6:
+        family = 2;
+        break;
+#endif /* USE_IPV6 */
+
+      default:
+        family = 0;
+        break;
+    }
+  }
+
+  switch (family) {
+    case 1:
+      break;
+
+#ifdef USE_IPV6
+    case 2:
+      break;
+#endif /* USE_IPV6 */
+
+    default:
+#ifdef USE_IPV6
+      pr_response_add_err(R_522, "Network protocol not supported, use (1,2)");
+#else
+      pr_response_add_err(R_522, "Network protocol not supported, use (1)");
+#endif /* USE_IPV6 */
+      return ERROR(cmd);
+  }
+
+  if ((c = find_config(main_server->conf, CONF_PARAM, "PassivePorts",
+      FALSE)) != NULL) {
+    int pasv_min_port = *((int *) c->argv[0]);
+    int pasv_max_port = *((int *) c->argv[1]);
+
+    if (!(session.d = pr_inet_create_connection_portrange(session.pool,
+        NULL, session.c->local_addr, pasv_min_port, pasv_max_port))) {
+
+      /* If not able to open a passive port in the given range, default to
+       * normal behavior (using INPORT_ANY), and log the failure.  This
+       * indicates a too-small range configuration.
+       */
+      log_pri(LOG_WARNING, "unable to find open port in PassivePorts range "
+              "%d-%d: defaulting to INPORT_ANY", pasv_min_port, pasv_max_port);
+    }
+  }
+
+  /* Open up the connection and pass it back. */
+  if (!session.d)
+    session.d = pr_inet_create_connection(session.pool, NULL, -1,
+      session.c->local_addr, INPORT_ANY, FALSE);
+
+  if (!session.d) {
+    pr_response_add_err(R_425,
+      "Unable to build data connection: Internal error");
+    return ERROR(cmd);
+  }
+
+  pr_inet_set_block(session.pool, session.d);
+  pr_inet_listen(session.pool, session.d, 1);
+
+  session.d->instrm = pr_netio_open(session.pool, PR_NETIO_STRM_DATA,
+    session.d->listen_fd, PR_NETIO_IO_RD);
+
+  /* Now tell the client our address/port. */
+  session.data_port = session.d->local_port;
+  session.sf_flags |= SF_PASSIVE;
+
+  /* Note: what about masquerading IPv6 addresses?  It seems that RFC2428,
+   * which defines the EPSV command, does not explicitly handle the
+   * case where the server may wish to return a network address in its
+   * EPSV response.  The assumption is that in an IPv6 environment, there
+   * will be no need for NAT, and hence no need for masquerading.  This
+   * may be true in an ideal world, but I think it more likely that current
+   * clients will simply use EPSV, rather than PASV, in existing IPv4 networks.
+   */
+  if ((c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
+      FALSE)) != NULL)
+   addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
+
+  log_debug(DEBUG1, "Entering Extended Passive Mode (||%s|%u|)",
+    addrstr, (unsigned int) session.data_port);
+  pr_response_add(R_229, "Entering Extended Passive Mode (||%s|%u|)",
+    addrstr, (unsigned int) session.data_port);
 
   return HANDLED(cmd);
 }
@@ -3762,8 +4180,7 @@ static cdir_t *cdir_list = NULL;
 static class_t *class_list = NULL;
 static hostname_t *hostname_list = NULL;
 
-static hostname_t *add_hostname(class_t *class, char *name)
-{
+static hostname_t *add_hostname(class_t *class, const char *name) {
         hostname_t *n;
 
         n = calloc(1, sizeof(hostname_t));
@@ -3774,8 +4191,7 @@ static hostname_t *add_hostname(class_t *class, char *name)
         return n;
 }
 
-static hostname_t *find_hostname(char *name)
-{
+static hostname_t *find_hostname(const char *name) {
   hostname_t *i;
 
   for (i = hostname_list; i != NULL; i = i->next)
@@ -3784,8 +4200,7 @@ static hostname_t *find_hostname(char *name)
   return NULL;
 }
 
-static cdir_t *add_cdir(class_t *class, u_int_32 address, u_int_8 netmask)
-{
+static cdir_t *add_cdir(class_t *class, u_int_32 address, u_int_8 netmask) {
   cdir_t *n;
 
   n = calloc(1, sizeof(cdir_t));
@@ -3850,18 +4265,18 @@ static class_t *get_class(char *name)
   return NULL;
 }
 
-class_t *find_class(p_in_addr_t *addr, char *remote_name)
-{
+class_t *find_class(pr_netaddr_t *addr, const char *remote_name) {
   cdir_t *ip;
   hostname_t *host;
   class_t *c, *f;
 
-  if ((ip = find_cdir(ntohl(addr->s_addr))) != NULL)
+  ip = find_cdir(ntohl(pr_netaddr_get_addrno(addr)));
+  if (ip != NULL)
     return ip->class;
 
   if ((host = find_hostname(remote_name)) != NULL)
     return host->class;
-  if ((host = find_hostname(inet_ntoa(*addr))) != NULL)
+  if ((host = find_hostname(pr_netaddr_get_ipstr(addr))) != NULL)
     return host->class;
 
   c = class_list;
@@ -3881,7 +4296,7 @@ class_t *find_class(p_in_addr_t *addr, char *remote_name)
 MODRET set_class(cmd_rec *cmd) {
   int bits, ret;
   class_t *n;
-  p_in_addr_t *res;
+  pr_netaddr_t *res;
   char *ptr, ipaddress[20] = {'\0'}, errmsg[80] = {'\0'};
   unsigned char *class_engine = NULL;
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
@@ -3950,8 +4365,9 @@ MODRET set_class(cmd_rec *cmd) {
       *ptr = 0;
     }
 
-    if ((res = inet_getaddr(cmd->pool, ipaddress)) != NULL) {
-      add_cdir(n, ntohl(res->s_addr), bits);
+    res = pr_netaddr_get_addr(cmd->pool, ipaddress, NULL);
+    if (res != NULL) {
+      add_cdir(n, ntohl(pr_netaddr_get_addrno(res)), bits);
       log_debug(DEBUG4, "Class '%s' ipmask %p/%d added.",
                 cmd->argv[1], res, bits);
     } else {
@@ -4134,7 +4550,7 @@ static conftable core_conftab[] = {
   { "IdentLookups",		set_identlookups,		NULL },
   { "IgnoreHidden",		set_ignorehidden,		NULL },
   { "Include",			add_include,	 		NULL },
-  { "MasqueradeAddress",	add_masqueradeaddress,		NULL },
+  { "MasqueradeAddress",	set_masqueradeaddress,		NULL },
   { "MaxConnectionRate",	set_maxconnrate,		NULL },
   { "MaxInstances",		set_maxinstances,		NULL },
   { "MultilineRFC2228",		set_multilinerfc2228,		NULL },
@@ -4183,6 +4599,8 @@ static cmdtable core_cmdtab[] = {
   { CMD, C_HELP, G_NONE,  core_help,	FALSE,	FALSE, CL_INFO },
   { CMD, C_PORT, G_NONE,  core_port,	TRUE,	FALSE, CL_MISC },
   { CMD, C_PASV, G_NONE,  core_pasv,	TRUE,	FALSE, CL_MISC },
+  { CMD, C_EPRT, G_NONE,  core_eprt,    TRUE,	FALSE, CL_MISC },
+  { CMD, C_EPSV, G_NONE,  core_epsv,	TRUE,	FALSE, CL_MISC },
   { CMD, C_SYST, G_NONE,  core_syst,	FALSE,	FALSE, CL_INFO },
   { CMD, C_PWD,	 G_DIRS,  core_pwd,	TRUE,	FALSE, CL_INFO|CL_DIRS },
   { CMD, C_XPWD, G_DIRS,  core_pwd,	TRUE,	FALSE, CL_INFO|CL_DIRS },

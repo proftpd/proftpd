@@ -25,32 +25,10 @@
 
 /* Utility module linked to utilities to provide functions normally
  * present in full src tree.
- * $Id: misc.c,v 1.4 2003-01-16 02:04:47 castaglia Exp $
+ * $Id: misc.c,v 1.5 2003-08-06 22:03:32 castaglia Exp $
  */
 
 #include "conf.h"
-
-/* Validate anything returned from the 'outside', since it's untrusted
- * information.
- */
-char *inet_validate(char *buf) {
-  char *p;
-
-  /* Validate anything returned from a DNS.
-   */
-  for (p = buf; p && *p; p++) {
-    /* Per RFC requirements, these are all that are valid from a DNS.
-     */
-    if (!isalnum((int) *p) && *p != '.' && *p != '-') {
-      /* We set it to _ because we know that's an invalid, yet safe, option
-       * for a DNS entry.
-       */
-      *p = '_';
-    }
-  }
-
-  return buf;
-}
 
 /* "safe" strcat, saves room for \0 at end of dest, and refuses to copy
  * more than "n" bytes.

@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.44 2003-07-18 19:18:51 castaglia Exp $
+ * $Id: proftpd.h,v 1.45 2003-08-06 22:03:32 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -93,11 +93,16 @@ typedef struct {
   volatile int sf_flags;		/* Session/State flags */
   volatile int sp_flags;		/* Session/Protection flags */
 
-  p_in_addr_t data_addr;		/* Remote data address */
-  short data_port;			/* Remote data port */
+  pr_netaddr_t data_addr;		/* Remote data address */
+  unsigned short data_port;		/* Remote data port */
 
   unsigned char ident_lookups;		/* Is RFC931 (ident) protocol used? */
   char *ident_user;			/* User identified by ident protocol */
+
+  const char *auth_mech;		/* Backend authentication mechanism
+					 * that successfully authenticated
+					 * the client.
+					 */
 
   const char *rfc2228_mech;		/* RFC2228 authentication mechanism
 					 * used
@@ -204,17 +209,19 @@ extern const char	*pwdfname,*grpfname;
 
 /* Session/State flags */
 
-#define SF_PASSIVE	(1 << 0)	/* Data connection is in passive mode */
-#define SF_ABORT	(1 << 1)	/* Abort in progess */
-#define SF_XFER		(1 << 2)	/* Transfer in progress */
-#define SF_ASCII	(1 << 3)	/* ASCII mode transfer */
-#define SF_ASCII_OVERRIDE (1 << 4)	/* ASCII override this xfer only */
-#define SF_ANON		(1 << 5)	/* Anonymous (chroot) login */
-#define SF_POST_ABORT	(1 << 6)	/* After abort has occured */
-#define SF_PORT		(1 << 7)	/* Port command given */
+#define SF_PASSIVE		0x0001	/* Data connection is in passive mode */
+#define SF_ABORT		0x0002	/* Abort in progess */
+#define SF_XFER			0x0004	/* Transfer in progress */
+#define SF_ASCII		0x0010	/* ASCII mode transfer */
+#define SF_ASCII_OVERRIDE 	0x0020	/* ASCII override this xfer only */
+#define SF_ANON			0x0040	/* Anonymous (chroot) login */
+#define SF_POST_ABORT		0x0100	/* After abort has occured */
+#define SF_PORT			0x0200	/* Port command given */
+#define	SF_EPSV_ALL		0x0400	/* EPSV ALL in effect */
 
 #define SF_ALL		(SF_PASSIVE|SF_ABORT|SF_XFER|SF_ASCII| \
-                        SF_ASCII_OVERRIDE|SF_ANON|SF_POST_ABORT|SF_PORT)
+                        SF_ASCII_OVERRIDE|SF_ANON|SF_POST_ABORT|SF_PORT| \
+                        SF_EPSV_ALL)
 
 /* Session/Protection flags (RFC 2228) */
 
