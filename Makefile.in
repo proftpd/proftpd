@@ -56,7 +56,7 @@ ftpcount$(EXEEXT): utils
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPCOUNT_OBJS)
 
 ftpdctl$(EXEEXT): src
-	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPDCTL_OBJS) -lsupp
+	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPDCTL_OBJS) $(LIBS)
 
 ftpshut$(EXEEXT): utils
 	$(CC) $(LDFLAGS) -o $@ $(BUILD_FTPSHUT_OBJS)

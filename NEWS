@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.517 2003-12-16 17:43:28 castaglia Exp $
+$Id: NEWS,v 1.518 2003-12-26 15:59:03 jwm Exp $
 
 CVS
 ---------------------------------
@@ -62,6 +62,9 @@ CVS
 - Bug 2300 - poll() returns 1 and read returns 0, resulting in and inifinite
   loop.  The actual bug was caused by a goto that was being inappropriately
   used; a return value was not being checked to see if it was an error value.
+- Bug 2305 - Compile Problems since > 1.2.9
+  Fix the build under Solaris - ftpdctl needs to be linked against libsocket
+  and libnsl
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------
