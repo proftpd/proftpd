@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.18 2003-08-28 00:32:12 jwm Exp $
+# $Id: proftpd.spec,v 1.19 2003-08-28 00:36:01 jwm Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -187,8 +187,8 @@ rm -rf %{_builddir}/%{name}-%{version}
 
 %files
 %defattr(-,root,root)
-/usr/sbin/*
-/usr/bin/*
+%{prefix}/sbin/*
+%{prefix}/bin/*
 %dir /var/run/proftpd
 %dir /home/ftp
 /etc/rc.d/init.d/proftpd
