@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.138 2004-02-20 18:34:38 castaglia Exp $
+ * $Id: dirtree.c,v 1.139 2004-02-23 19:30:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -212,6 +212,7 @@ int is_fnmatch(const char *str) {
         break;
 
       default:
+        break;
     }
 
     str++;
