@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.9 2004-03-01 16:54:14 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.10 2004-04-08 02:39:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -340,6 +340,133 @@ static int ctrls_handle_get(pr_ctrls_t *ctrl, int reqargc,
 
   } else {
     pr_ctrls_add_response(ctrl, "unknown get type requested: '%s'", reqargv[0]);
+    res = -1;
+  }
+
+  return res;
+}
+
+static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+  int res = 0;
+
+  /* Check the kick ACL */
+  if (!ctrls_check_acl(ctrl, ctrls_admin_acttab, "kick")) {
+
+    /* Access denied */
+    pr_ctrls_add_response(ctrl, "access denied");
+    return -1;
+  }
+
+  /* Sanity check */
+  if (reqargc == 0 || reqargv == NULL) {
+    pr_ctrls_add_response(ctrl, "missing required parameters");
+    return -1;
+  }
+
+  /* Handle 'kick user' requests. */
+  if (!strcmp(reqargv[0], "user")) {
+    register unsigned int i = 0;
+    pr_scoreboard_entry_t *score = NULL;
+
+    if (reqargc == 1) {
+      pr_ctrls_add_response(ctrl, "kick user: missing required user name(s)");
+      return -1;
+    }
+
+    /* Iterate through the scoreboard, and send a SIGTERM to each
+     * pid whose name matches the given user name(s).
+     */
+    for (i = 1; i < reqargc; i++) {
+      unsigned char kicked_user = FALSE;
+
+      if (pr_rewind_scoreboard() < 0)
+        ctrls_log("error rewinding scoreboard: %s", strerror(errno));
+
+      while ((score = pr_scoreboard_read_entry()) != NULL) {
+        if (strcmp(reqargv[i], score->sce_user) == 0) {
+          int res = 0;
+
+          PRIVS_ROOT
+          res = kill(score->sce_pid, SIGTERM);
+          PRIVS_RELINQUISH
+
+          if (res == 0)
+            kicked_user = TRUE;
+
+          else
+            ctrls_log("error kicking user '%s': %s", reqargv[i],
+              strerror(errno));
+        }
+      }
+      if (pr_restore_scoreboard() < 0)
+        ctrls_log("error restoring scoreboard: %s", strerror(errno));
+
+      if (kicked_user) {
+        pr_ctrls_add_response(ctrl, "kicked user '%s'", reqargv[i]);
+        ctrls_log("kicked user '%s'", reqargv[i]);
+        pr_log_debug(DEBUG4, MOD_CTRLS_ADMIN_VERSION ": kicked user '%s'",
+          reqargv[i]);
+
+      } else
+        pr_ctrls_add_response(ctrl, "user '%s' not connected", reqargv[i]);
+    }
+
+  /* Handle 'kick host' requests. */
+  } else if (strcmp(reqargv[0], "host") == 0) {
+    register unsigned int i = 0;
+    pr_scoreboard_entry_t *score = NULL;
+
+    if (reqargc == 1) {
+      pr_ctrls_add_response(ctrl, "kick host: missing required host(s)");
+      return -1;
+    }
+
+    /* Iterate through the scoreboard, and send a SIGTERM to each
+     * pid whose address matches the given host name (resolve to
+     * stringified IP address).
+     */
+
+    for (i = 1; i < reqargc; i++) {
+      unsigned char kicked_host = FALSE;
+      const char *addr;
+      pr_netaddr_t *na;
+
+      na = pr_netaddr_get_addr(ctrl->ctrls_tmp_pool, reqargv[1], NULL);
+      if (!na) {
+        pr_ctrls_add_response(ctrl, "kick host: error resolving '%s': %s",
+          reqargv[1], strerror(errno));
+        continue;
+      }
+
+      addr = pr_netaddr_get_ipstr(na);
+
+      if (pr_rewind_scoreboard() < 0)
+        ctrls_log("error rewinding scoreboard: %s", strerror(errno));
+
+      while ((score = pr_scoreboard_read_entry()) != NULL) {
+        if (strcmp(score->sce_client_addr, addr) == 0) {
+          PRIVS_ROOT
+          if (kill(score->sce_pid, SIGTERM) == 0)
+            kicked_host = TRUE;
+          PRIVS_RELINQUISH
+        }
+      }
+      pr_restore_scoreboard();
+
+      if (kicked_host) {
+        pr_ctrls_add_response(ctrl, "kicked host '%s'", addr);
+        ctrls_log("kicked host '%s'", addr);
+        pr_log_debug(DEBUG4, MOD_CTRLS_ADMIN_VERSION ": kicked host '%s'",
+          addr);
+
+      } else
+        pr_ctrls_add_response(ctrl, "host '%s' not connected", addr);
+    }
+
+  } else {
+    pr_ctrls_add_response(ctrl, "unknown kick type requested: '%s'",
+      reqargv[0]);
     res = -1;
   }
 
@@ -843,6 +970,37 @@ static void ctrls_admin_restart_ev(const void *event_data, void *user_data) {
   return;
 }
 
+static void ctrls_admin_startup_ev(const void *event_data, void *user_data) {
+  int res;
+
+  /* Make sure the process has an fd to the scoreboard. */
+  PRIVS_ROOT
+  res = pr_open_scoreboard(O_RDWR);
+  PRIVS_RELINQUISH
+
+  if (res < 0) {
+    switch (res) {
+      case PR_SCORE_ERR_BAD_MAGIC:
+        pr_log_debug(DEBUG0, "error opening scoreboard: bad/corrupted file");
+        break;
+
+      case PR_SCORE_ERR_OLDER_VERSION:
+        pr_log_debug(DEBUG0, "error opening scoreboard: bad version (too old)");
+        break;
+
+      case PR_SCORE_ERR_NEWER_VERSION:
+        pr_log_debug(DEBUG0, "error opening scoreboard: bad version (too new)");
+        break;
+
+      default:
+        pr_log_debug(DEBUG0, "error opening scoreboard: %s", strerror(errno));
+        break;
+    }
+  }
+
+  return;
+}
+
 /* Initialization routines
  */
 
@@ -871,6 +1029,8 @@ static int ctrls_admin_init(void) {
 
   pr_event_register(&ctrls_admin_module, "core.restart",
     ctrls_admin_restart_ev, NULL);
+  pr_event_register(&ctrls_admin_module, "core.startup",
+    ctrls_admin_startup_ev, NULL);
 
   return 0;
 }
@@ -882,6 +1042,8 @@ static ctrls_acttab_t ctrls_admin_acttab[] = {
     ctrls_handle_dump },
   { "get",      "",	NULL,
     ctrls_handle_get },
+  { "kick",	"disconnect a host or user from the daemon",	NULL,
+    ctrls_handle_kick },
   { "restart",  "restart the daemon (similar to using HUP)",	NULL,
     ctrls_handle_restart },
   { "set",      "",	NULL,
