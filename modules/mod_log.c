@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.27 2002-09-10 18:50:12 castaglia Exp $
+ * $Id: mod_log.c,v 1.28 2002-09-12 23:20:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -782,7 +782,7 @@ static void get_extendedlogs(void) {
   char *logfmt_s = NULL;
   logfile_t *logf;
 
-  c = find_config(main_server->conf,CONF_PARAM,"ExtendedLog",TRUE);
+  c = find_config(TOPLEVEL_CONF, CONF_PARAM, "ExtendedLog", FALSE);
 
   while(c) {
     logfname = c->argv[0];
