@@ -20,12 +20,22 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.39 2000-08-01 21:51:48 macgyver Exp $
+ * $Id: mod_auth.c,v 1.40 2000-08-03 02:46:44 macgyver Exp $
  */
 
 #include "conf.h"
 
 #include "privs.h"
+
+#ifdef HAVE_SYS_JAIL_H
+
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif /* HAVE_SYS_TYPES_H */
+
+#include <sys/jail.h>
+
+#endif /* HAVE_SYS_JAIL_H */
 
 /* From the core module */
 extern int core_display_file(const char *,const char *);
@@ -38,22 +48,75 @@ static int auth_tries = 0;
 
 static void _do_user_counts();
 
+/* Perform a chroot or equivalent action to lockdown the process into a
+ * particular directory.
+ */
+static int lockdown(char *newroot) {
+#ifdef HAVE_JAIL
+  struct jail hell;
+  
+  /* Isn't this line amusing? :)
+   */
+  bzero(hell, sizeof(hell));
+  
+  /* Per FreeBSD documentation, we set the API version to 0.
+   */
+  hell.version = 0;
+  
+  /* Set the path to jail us to.
+   */
+  hell.path = newroot;
+  
+  /* Next, we set the jail hostname.
+   */
+  hell.hostname = main_server->ServerFQDN;
+  
+  /* Finally, we restrict the jail to a particular IP address.  I have a
+   * tough time seeing a practical use of this, but I'm also paranoid...
+   */
+  hell.ip_number = session.c->local_ipaddr;
+  
+  /* Drum roll please...
+   */
+  PRIVS_ROOT;
+
+  if(jail(&hell) == -1) {
+    PRIVS_RELINQUISH;
+    log_pri(LOG_ERR, "%s jail(\"%s\"): %s", session.user,
+	    newroot, strerror(errno));
+    return -1;
+  }
+  
+  PRIVS_RELINQUISH;
+  return 0;
+#else /* HAVE_JAIL */
+  PRIVS_ROOT;
+  
+  if(chroot(newroot) == -1) {
+    PRIVS_RELINQUISH;
+    log_pri(LOG_ERR, "%s chroot(\"%s\"): %s", session.user,
+	    newroot, strerror(errno));
+    return -1;
+  }
+  
+  PRIVS_RELINQUISH;
+  return 0;
+#endif /* HAVE_JAIL */
+}
+
 /* check_auth is hooked into the main server's auth_hook function,
  * so that we can deny all commands until authentication is complete.
  */
-
-int check_auth(cmd_rec *cmd)
-{
+int check_auth(cmd_rec *cmd) {
   if(get_param_int(cmd->server->conf,"authenticated",FALSE) != 1) {
     send_response(R_530,"Please login with USER and PASS.");
     return FALSE;
   }
-
+  
   return TRUE;
 }
 
-int _auth_shutdown(CALLBACK_FRAME)
-{
+int _auth_shutdown(CALLBACK_FRAME) {
   log_pri(LOG_ERR, "scheduled main_exit() never ran "
 	  "[from auth:_login_timeout], terminating.");
   end_login(1);
@@ -919,19 +982,10 @@ static int _setup_environment(pool *p, char *user, char *pass)
 
     ensure_open_passwd(p);
 
-    PRIVS_ROOT;
-
-    if(chroot(defroot) == -1) {
-
-      PRIVS_RELINQUISH;
-
+    if(lockdown(defroot) == -1) {
       add_response_err(R_530, "Unable to set default root directory.");
-      log_pri(LOG_ERR, "%s chroot(\"%s\"): %s", session.user,
-              defroot, strerror(errno));
       end_login(1);
     }
-
-    PRIVS_RELINQUISH;
 
     session.anon_root = defroot;
 
@@ -954,17 +1008,8 @@ static int _setup_environment(pool *p, char *user, char *pass)
   if(c)
     ensure_open_passwd(p);
 
-  PRIVS_ROOT;
-
-  if(c && chroot(session.anon_root) == -1) { 
-    if(session.uid)
-      _init_groups(p,session.gid);
-
-    PRIVS_RELINQUISH;
-
+  if(c && lockdown(session.anon_root) == -1) {
     add_response_err(R_530, "Unable to set anonymous privileges.");
-    log_pri(LOG_ERR, "%s chroot(): %s", session.user, strerror(errno));
-    
     end_login(1);
   }
 

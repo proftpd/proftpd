@@ -1794,7 +1794,7 @@ else
 fi
 echo "$ac_t""$CPP" 1>&6
 
-for ac_hdr in sys/security.h
+for ac_hdr in sys/security.h sys/jail.h
 do
 ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
@@ -1914,7 +1914,7 @@ else
 fi
 done
 
-for ac_func in set_auth_parameters getprpwent
+for ac_func in set_auth_parameters getprpwent jail
 do
 echo $ac_n "checking for $ac_func""... $ac_c" 1>&6
 echo "configure:1921: checking for $ac_func" >&5
