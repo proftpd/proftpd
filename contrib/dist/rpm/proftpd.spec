@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.25 2003-10-15 19:53:02 castaglia Exp $
+# $Id: proftpd.spec,v 1.26 2003-10-19 21:40:43 jwm Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -31,7 +31,7 @@ Source:			ftp://ftp.proftpd.org/distrib/%{name}-%{version}.tar.bz2
 Prefix:			/usr
 BuildRoot:		%{_builddir}/%{name}-%{version}-root
 Requires:		pam >= 0.72, chkconfig, %{?_with_mod_tls:openssl krb5-libs}
-BuildPreReq:	%{?_with_mod_tls:openssl-devel krb5-devel}
+BuildPreReq:	pam-devel %{?_with_mod_tls:openssl-devel krb5-devel}
 Provides:		ftpserver
 Prereq:			fileutils
 Obsoletes:		proftpd-core, proftpd-standalone
