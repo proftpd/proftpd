@@ -21,7 +21,7 @@
 # format, or AuthGroupFile, in group(5) format.  The idea is somewhat similar
 # to Apache's htpasswd program.
 #
-#  $Id: ftpasswd,v 1.5 2003-01-02 17:28:14 castaglia Exp $
+#  $Id: ftpasswd,v 1.6 2003-03-28 01:58:33 castaglia Exp $
 #
 # ---------------------------------------------------------------------------
 
@@ -744,9 +744,9 @@ usage: $program [--help] [--hash|--group|--passwd]
     --help      Displays this message.
 
     -m
-    --member    User to be a member of the group.  This argument may be used
-                multiple times to specify the full list of users to be members
-                of this group.
+    --member    User name to be a member of the group.  This argument may be
+                used multiple times to specify the full list of users to be
+                members of this group.
 
     --des       Use the DES algorithm for encrypting passwords.  The default
                 is the MD5 algorithm.
