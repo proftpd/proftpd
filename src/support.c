@@ -19,7 +19,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.9 1999-10-01 23:52:38 macgyver Exp $
+ * $Id: support.c,v 1.10 1999-12-09 14:54:17 macgyver Exp $
  */
 
 /* History Log:
@@ -512,7 +512,7 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
       time(&now);
       tm = *(localtime(&now));
 
-      tm.tm_year = atoi(safe_token(&cp)) % 100;
+      tm.tm_year = atoi(safe_token(&cp)) - 1900;
       tm.tm_mon = atoi(safe_token(&cp));
       tm.tm_mday = atoi(safe_token(&cp));
       tm.tm_hour = atoi(safe_token(&cp));
@@ -522,7 +522,7 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
       deny_str = safe_token(&cp);
       disc_str = safe_token(&cp);
 
-      if((shuttime = mktime(&tm)) == (time_t)-1) {
+      if((shuttime = mktime(&tm)) == (time_t) - 1) {
         fclose(fp);
         return 0;
       }
