@@ -19,7 +19,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.14 1999-09-16 07:42:14 macgyver Exp $
+ * $Id: main.c,v 1.15 1999-09-16 17:20:51 macgyver Exp $
  */
 
 /*
@@ -379,7 +379,7 @@ void set_proc_title(char *fmt,...)
 #if PF_ARGV_TYPE == PF_ARGV_WRITEABLE
   /* We can overwrite individual argv[] arguments.  Semi-nice.
    */
-  snprintf(Argv[0], "%s", maxlen, statbuf);
+  snprintf(Argv[0], maxlen, "%s", statbuf);
   p = &Argv[0][i];
   
   while(p < LastArgv)
