@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.642 2005-01-25 19:30:44 castaglia Exp $
+$Id: NEWS,v 1.643 2005-02-04 23:54:55 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -107,6 +107,9 @@ CVS
 - Bug 1651 - Add contrib module to limit connection acceptance based on system
   load.  mod_load is now one of the provided contrib/ modules.
 - Bug 2503 - Bundled libcap library does not compile on IA64 machine.
+- Bug 2556 - Rename of directory across devices fails.  The solution is to
+  prevent renaming of directories.  Proper support for copying of directories
+  will require module support.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

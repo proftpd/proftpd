@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.38 2004-11-13 22:47:58 castaglia Exp $
+ * $Id: fsio.c,v 1.39 2005-02-04 23:54:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -472,6 +472,7 @@ void pr_fs_clear_cache(void) {
 
 int pr_fs_copy_file(const char *src, const char *dst) {
   pr_fh_t *src_fh, *dst_fh;
+  struct stat st;
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   int res;
 
@@ -479,6 +480,22 @@ int pr_fs_copy_file(const char *src, const char *dst) {
   if (!src_fh) {
     pr_log_pri(PR_LOG_WARNING, "error opening source file '%s' "
       "for copying: %s", src, strerror(errno));
+    return -1;
+  }
+
+  /* Do not allow copying of directories. open(2) may not fail when
+   * opening the source path, since it is only doing a read-only open,
+   * which does work on directories.
+   */
+
+  /* This should never fail. */
+  (void) pr_fsio_fstat(src_fh, &st);
+  if (S_ISDIR(st.st_mode)) {
+    pr_fsio_close(src_fh);
+
+    errno = EISDIR;
+    pr_log_pri(PR_LOG_WARNING, "warning: cannot copy source '%s': %s", src,
+      strerror(errno));
     return -1;
   }
 
