@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.22 2003-11-09 21:09:59 castaglia Exp $
+ * $Id: bindings.c,v 1.23 2004-10-11 17:03:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -87,12 +87,11 @@ static unsigned int ipbind_hash_addr(pr_netaddr_t *addr) {
  * pr_ipbind_accept_conn() need merely check those listeners, rather than
  * scanning the entire table itself?
  */
-static conn_t *listener_list = NULL;
-static unsigned int listener_listlen = 0;
+
+static array_header *listener_list = NULL;
 
 conn_t *pr_ipbind_accept_conn(fd_set *readfds, int *listenfd) {
-  conn_t *listener = listener_list;
-  int fd = -1;
+  conn_t **listeners = listener_list->elts;
   register unsigned int i = 0;
 
   /* sanity checks */
@@ -106,15 +105,15 @@ conn_t *pr_ipbind_accept_conn(fd_set *readfds, int *listenfd) {
     return NULL;
   }
 
-  for (i = 0, listener = listener_list; i < listener_listlen;
-      i++, listener = listener->next) {
-    pr_signals_handle();
+  for (i = 0; i < listener_list->nelts; i++) {
+    conn_t *listener = listeners[i];
 
+    pr_signals_handle();
     if (FD_ISSET(listener->listen_fd, readfds) &&
         listener->mode == CM_LISTEN) {
+      int fd = pr_inet_accept_nowait(listener->pool, listener);
 
-      if ((fd = pr_inet_accept_nowait(listener->pool, listener)) == -1) {
-
+      if (fd == -1) {
         /* Handle errors gracefully.  If we're here, then
          * ipbind->ib_server->listen contains either error information, or
          * we just got caught in a blocking condition.
@@ -133,6 +132,7 @@ conn_t *pr_ipbind_accept_conn(fd_set *readfds, int *listenfd) {
     }
   }
 
+  errno = ENOENT;
   return NULL;
 }
 
@@ -300,15 +300,16 @@ int pr_ipbind_close(pr_netaddr_t *addr, unsigned int port,
 
 /* Need a way to close all listening fds in a child process. */
 int pr_ipbind_close_listeners(void) {
-  conn_t *listener = listener_list;
+  conn_t **listeners = listener_list->elts;
   register unsigned int i = 0;
 
   /* sanity checks */
-  if (!listener)
+  if (listener_list->nelts == 0)
     return 0;
 
-  for (i = 0, listener = listener_list; i < listener_listlen;
-      i++, listener = listener->next) {
+  for (i = 0; i < listener_list->nelts; i++) {
+    conn_t *listener = listeners[i];
+
     pr_signals_handle();
 
     if (listener->listen_fd != -1) {
@@ -442,7 +443,8 @@ server_rec *pr_ipbind_get_server(pr_netaddr_t *addr, unsigned int port) {
   /* If we've got a binding configured for this exact address, return it
    * straightaway.
    */
-  if ((ipbind = pr_ipbind_find(addr, port, TRUE)) != NULL)
+  ipbind = pr_ipbind_find(addr, port, TRUE);
+  if (ipbind != NULL)
     return ipbind->ib_server;
 
   /* Use the default server, if set */
@@ -469,8 +471,14 @@ int pr_ipbind_listen(fd_set *readfds) {
   FD_ZERO(readfds);
 
   /* Reset the listener list. */
-  listener_list = NULL;
-  listener_listlen = 0;
+  if (!listener_list)
+    listener_list = make_array(binding_pool, 1, sizeof(conn_t *));
+
+  else
+    /* Nasty hack to "clear" the list by making it think it has no
+     * elements.
+     */
+    listener_list->nelts = 0;
 
   /* Slower than the hash lookup, but...we have to check each and every
    * ipbind in the table.
@@ -499,9 +507,7 @@ int pr_ipbind_listen(fd_set *readfds) {
             maxfd = ipbind->ib_listener->listen_fd;
 
           /* Add this to the listener list as well. */
-          ipbind->ib_listener->next = listener_list;
-          listener_list = ipbind->ib_listener;
-          listener_listlen++;
+          *((conn_t **) push_array(listener_list)) = ipbind->ib_listener;
         }
       }
     }
@@ -532,6 +538,7 @@ int pr_ipbind_open(pr_netaddr_t *addr, unsigned int port, conn_t *listen_conn,
     listen_conn->next = NULL;
 
   ipbind->ib_listener = ipbind->ib_server->listen = listen_conn;
+  ipbind->ib_listener = listen_conn;
   ipbind->ib_isdefault = isdefault;
   ipbind->ib_islocalhost = islocalhost;
 
@@ -609,7 +616,8 @@ int pr_namebind_create(server_rec *server, const char *name,
   }
 
   /* First, find the ipbind to hold this namebind. */
-  if ((ipbind = pr_ipbind_find(addr, port, FALSE)) == NULL) {
+  ipbind = pr_ipbind_find(addr, port, FALSE);
+  if (ipbind == NULL) {
     errno = ENOENT;
     return -1;
   }
@@ -763,6 +771,7 @@ void free_bindings(void) {
   if (binding_pool) {
     destroy_pool(binding_pool);
     binding_pool = NULL;
+    listener_list = NULL;
   }
 
   memset(ipbind_table, 0, sizeof(ipbind_table));
