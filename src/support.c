@@ -26,7 +26,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.43 2002-11-25 17:33:51 castaglia Exp $
+ * $Id: support.c,v 1.44 2002-11-26 18:54:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -701,8 +701,8 @@ char *make_arg_str(pool *p, int argc, char **argv) {
   char *res = "";
 
   /* Check for "sensitive" commands. */
-  if (!strcmp(argv[0], "PASS") ||
-      !strcmp(argv[0], "ADAT")) {
+  if (!strcmp(argv[0], C_PASS) ||
+      !strcmp(argv[0], C_ADAT)) {
     argc = 2;
     argv[1] = "(hidden)";
   }
