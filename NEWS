@@ -1,4 +1,9 @@
-$Id: NEWS,v 1.80 2001-02-26 20:13:43 flood Exp $
+$Id: NEWS,v 1.81 2001-02-28 17:07:50 flood Exp $
+
+1.2.0pl1 - CVS
+---------------------------------
+- Defaults CFLAGS changed from "-g3 -O6" to "-g3 -O2" because it is reported
+  that -O6 is highly experimental.
 
 1.2.0-final - Released 02/26/2001
 ---------------------------------

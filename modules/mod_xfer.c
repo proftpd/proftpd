@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.51 2001-02-22 22:39:41 flood Exp $
+ * $Id: mod_xfer.c,v 1.52 2001-02-28 17:07:51 flood Exp $
  */
 
 /* History Log:
@@ -698,7 +698,7 @@ MODRET cmd_rest(cmd_rec *cmd)
 
   /* If we're using HiddenStor, then REST won't work. */
   if(get_param_int(CURRENT_CONF,"HiddenStor",FALSE) == 1) {
-    add_response_err(R_501,"REST not allowed by server configuration.");
+    add_response_err(R_501,"REST not compatible with server configuration.");
     return ERROR(cmd);
   }
 
