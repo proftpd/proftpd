@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.31 2000-07-06 06:53:24 macgyver Exp $
+ * $Id: mod_core.c,v 1.32 2000-07-06 20:08:01 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -1005,6 +1005,18 @@ MODRET add_groupowner(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
+MODRET add_userowner(cmd_rec *cmd)
+{
+  config_rec *c;
+
+  CHECK_ARGS(cmd,1);
+  CHECK_CONF(cmd,CONF_ANON|CONF_DIR);
+
+  c = add_config_param_str("UserOwner",1,cmd->argv[1]);
+  c->flags |= CF_MERGEDOWN;
+  return HANDLED(cmd);
+}
+
 MODRET set_allowoverwrite(cmd_rec *cmd)
 {
   config_rec *c;
@@ -1980,6 +1992,7 @@ MODRET cmd_rmd(cmd_rec *cmd)
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *preg;
 #endif
+  struct stat sbuf;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
@@ -2014,6 +2027,7 @@ MODRET cmd_rmd(cmd_rec *cmd)
 MODRET cmd_mkd(cmd_rec *cmd)
 {
   char *dir;
+  struct stat sbuf;
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *preg;
 #endif
@@ -2048,9 +2062,16 @@ MODRET cmd_mkd(cmd_rec *cmd)
     add_response_err(R_550,"%s: %s",cmd->argv[1],strerror(errno));
     return ERROR(cmd);
   } else {
-    if(session.fsgid) {
-      struct stat sbuf;
 
+    if(session.fsuid) {
+      fs_stat(dir,&sbuf);
+      PRIVS_ROOT;
+      if(chown(dir,(uid_t)session.fsuid,(gid_t)session.fsgid) == -1)
+        log_pri(LOG_WARNING, "chown() as root failed: %s.", strerror(errno));
+      else
+        chmod(dir,sbuf.st_mode);
+      PRIVS_RELINQUISH;
+    } else if(session.fsgid) {
       fs_stat(dir,&sbuf);
       if(chown(dir,(uid_t)-1,(gid_t)session.fsgid) == -1)
         log_pri(LOG_WARNING, "chown() failed: %s.", strerror(errno));
@@ -2607,6 +2628,7 @@ static conftable core_conftable[] = {
   { "HideUser",			add_hideuser,			NULL },
   { "HideGroup",		add_hidegroup,			NULL },
   { "GroupOwner",		add_groupowner,			NULL },
+  { "UserOwner",		add_userowner,			NULL },
   { "AllowOverwrite",		set_allowoverwrite,		NULL },
   { "HiddenStor",		set_hiddenstor,			NULL },
   { "DisplayFirstChdir",	set_displayfirstchdir,		NULL },

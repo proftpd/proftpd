@@ -18,7 +18,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.9 2000-01-24 00:46:24 macgyver Exp $
+ * $Id: proftpd.h,v 1.10 2000-07-06 20:08:01 macgyver Exp $
  */
 
 #ifndef __PROFTPD_H
@@ -115,6 +115,7 @@ typedef struct {
                                          */
   array_header *gids;
   array_header *groups;
+  int fsuid;				/* Saved file uid */
   int fsgid;				/* Saved file gid */
 
   char *user,*group;			/* username/groupname after login */

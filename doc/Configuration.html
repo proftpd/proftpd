@@ -120,6 +120,7 @@
   <li><a href="#User">User</a></li>
   <li><a href="#UserDirRoot">UserDirRoot</a></li>
   <li><a href="#UserAlias">UserAlias</a></li>
+  <li><a href="#UserOwner">UserOwner</a></li>
   <li><a href="#UserPassword">UserPassword</a></li>
   <li><a href="#VirtualHost">&lt;VirtualHost&gt;</a></li>
   <li><a href="#WtmpLog">WtmpLog</a></li>
@@ -1124,19 +1125,21 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
   run at. See <a href="reference.html#User">User</a> for more details.</p>
 <hr>
 <h2><a name="GroupOwner">GroupOwner</a></h2>
-<p><strong>Syntax:</strong> GroupOwner <em>groupid</em><br>
+<p><strong>Syntax:</strong> GroupOwner <em>groupname</em><br>
   <strong>Default:</strong> None<br>
   <strong>Context:</strong> &lt;Anonymous&gt;, &lt;Directory&gt;, .ftpaccess<br>
   <strong>Compatibility:</strong> 0.99.0 and later</p>
 <p>The GroupOwner directive configures which group all newly created directories 
   and files will be owned by, within the context that GroupOwner is applied to. 
+  The group ID of groupname cannot be 0.
   Note that GroupOwner cannot be used to override the host OS/file system user/group 
   paradigm. If the current user is not a member of the specified group, new files 
   and directories will not be able to be chown()ed to the GroupOwner group. If 
   this happens, file STOR (send file from client to server) and MKD (mkdir) operations 
   will succeed normally, however the new directory entries will be owned by the 
   current user's default group (a warning message is also logged) instead of by 
-  the desired group.</p>
+  the desired group.  If you also use <a href="#UserOwner">UserOwner</a>
+  in the same context, this restriction is lifted.</p>
 <hr>
 <h2><a name="GroupPassword">GroupPassword</a></h2>
 <p><strong>Syntax:</strong> GroupPassword <em>groupid hashed-password</em><br>
@@ -1960,10 +1963,11 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
     <strong>Default:</strong><code>ShowDotFiles Off</code><strong><br>
     Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<strong><br>
     Compatibility:</strong> 0.99.0pl6 and later -- <strong>Deprecated</strong></p>
-  <p>If set to <code>on</code>, files starting with a '.' will be displayed in 
+  <p>If set to <code>on</code>, files starting with a '.', except for the
+    directories '.' and '..', will be displayed in 
     directory listings.  This directive has been deprecated in favor of 
     <a href="#LsDefaultOptions">LsDefaultOptions</a> -- e.g., <code>LsDefaultOptions
-     "-a"</code> -- and may be removed in future versions.</p>
+     "-A"</code> -- and may be removed in future versions.</p>
   <p><strong>See Also:</strong> <a href="#LsDefaultOptions">LsDefaultOptions</a></p>
   <hr>
   <h2><a name="ShowSymlinks">ShowSymlinks</a></h2>
@@ -2056,7 +2060,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <p>The SystemLog directive disables proftpd's use of the syslog mechanism and 
     instead redirects all logging output to the specified <strong><em>filename</em></strong>. 
     The <strong><em>filename</em></strong> argument should contain an absolute 
-    path. Use of this directive overrides any facility set by the <a href="SyslogFacility">SyslogFacility</a> 
+    path. Use of this directive overrides any facility set by the <a href="#SyslogFacility">SyslogFacility</a> 
     directive.</p>
   <p>Additionally, the special keyword <strong><em>NONE</em></strong> can be used 
     which disables all syslog style logging for the entire configuration.</p>
@@ -2318,6 +2322,17 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
     the </u><em><strong><u>login-user</u></strong></em><u> parameter is the same 
     as a real system userid, the real userid will no longer be recognized by proftpd.</u></p>
   <hr>
+  <h2><a name="UserOwner">UserOwner</a></h2>
+  <p><strong>Syntax:</strong> UserOwner <em>username</em><br>
+  <strong>Default:</strong> None<br>
+  <strong>Context:</strong> &lt;Anonymous&gt;, &lt;Directory&gt;<br>
+  <strong>Compatibility:</strong> 1.2pre11 and later</p>
+  <p>The UserOwner directive configures which user all newly created directories 
+  and files will be owned by, within the context that UserOwner is applied to. 
+  The user ID of username cannot be 0 (root).
+  Where it is used, the <href="#GroupOwner">GroupOwner</a> directive is not
+  restricted to groups that the current user is a member of.</p>
+<hr>
   <h2><a name="UserPassword">UserPassword</a></h2>
   <p><strong>Syntax:</strong> UserPassword <em>userid hashed-password</em><br>
     <strong>Default:</strong> None<br>

@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.34 2000-07-06 06:53:24 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.35 2000-07-06 20:08:01 macgyver Exp $
  */
 
 /* History Log:
@@ -35,6 +35,7 @@
  */
 
 #include "conf.h"
+#include "privs.h"
 
 #ifdef HAVE_SYS_SENDFILE_H
 #include <sys/sendfile.h>
@@ -198,12 +199,21 @@ static void _rate_throttle(unsigned long rate_pos, long rate_bytes,
 static
 void _stor_done()
 {
+  struct stat sbuf;
+
   fs_close(stor_file,stor_fd);
   stor_file = NULL;
 
-  if(session.fsgid && session.xfer.path) {
-    struct stat sbuf;
-
+  if(session.fsuid && session.xfer.path) {
+    fs_stat(session.xfer.path,&sbuf);
+    PRIVS_ROOT;
+    if(chown(session.xfer.path,(uid_t)session.fsuid,(gid_t)session.fsgid) == -1)
+      log_pri(LOG_WARNING, "chown(%s) as root failed: %s.",
+              session.xfer.path, strerror(errno));
+    else
+      fs_chmod(session.xfer.path,sbuf.st_mode);
+    PRIVS_RELINQUISH;
+  } else if(session.fsgid && session.xfer.path) {
     fs_stat(session.xfer.path,&sbuf);
     if(chown(session.xfer.path,(uid_t)-1,(gid_t)session.fsgid) == -1)
       log_pri(LOG_WARNING, "chown(%s) failed: %s.",
