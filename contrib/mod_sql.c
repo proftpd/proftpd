@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.75 2004-06-10 18:27:37 castaglia Exp $
+ * $Id: mod_sql.c,v 1.76 2004-06-10 18:30:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1018,9 +1018,6 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
     }
   }
 
-sql_log(DEBUG_WARN, "getpasswd(): fnum = %d", sd->fnum);
-for (i = 0; i < sd->fnum; i++)
-sql_log(DEBUG_WARN, "sd->data[%d]: '%s'", i, sd->data[i]);
   i = 0;
 
   username = sd->data[i++];
@@ -4251,7 +4248,7 @@ static int sql_getconf(void) {
     if (cmap.homedirfield)
       sql_log(DEBUG_INFO, "homedir field      : %s", cmap.homedirfield);
     if (cmap.defaulthomedir)
-      sql_log(DEBUG_INFO, "homedir(defaulted) : '%s'", cmap.defaulthomedir);
+      sql_log(DEBUG_INFO, "homedir(default)   : '%s'", cmap.defaulthomedir);
     sql_log(DEBUG_INFO, "shell field        : %s",
       (cmap.shellfield ? cmap.shellfield : "NULL"));
     sql_log(DEBUG_INFO, "homedirondemand    : %s",
