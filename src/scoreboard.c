@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.12 2002-12-10 21:02:15 castaglia Exp $
+ * $Id: scoreboard.c,v 1.13 2002-12-31 20:00:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -46,11 +46,10 @@ static struct flock entry_lock;
 static unsigned char scoreboard_read_locked = FALSE;
 static unsigned char scoreboard_write_locked = FALSE;
 
-/* Internal routines
- */
+/* Internal routines */
 
 static char *handle_score_cmd(const char *fmt, va_list cmdap) {
-  static char buf[80] = {'\0'};
+  static char buf[PR_TUNABLE_SCOREBOARD_BUFFER_SIZE] = {'\0'};
   memset(buf, '\0', sizeof(buf));
   vsnprintf(buf, sizeof(buf), fmt, cmdap);
   buf[sizeof(buf)-1] = '\0';
@@ -510,13 +509,22 @@ int pr_scoreboard_update_entry(pid_t pid, ...) {
 
       case PR_SCORE_CLIENT_ADDR:
         {
-          char *remote_name = va_arg(ap, char *);
           p_in_addr_t *remote_ip = va_arg(ap, p_in_addr_t *);
 
           snprintf(entry.sce_client_addr, sizeof(entry.sce_client_addr),
-            "%s [%s]", remote_name ? remote_name : "(unknown)",
-            remote_ip ? inet_ntoa(*remote_ip) : "(unknown)");
-          entry.sce_client_addr[sizeof(entry.sce_client_addr)-1] = '\0';
+            "%s", remote_ip ? inet_ntoa(*remote_ip) : "(unknown)");
+          entry.sce_client_addr[sizeof(entry.sce_client_addr) - 1] = '\0';
+        }
+        break;
+
+      case PR_SCORE_CLIENT_NAME:
+        {
+          char *remote_name = va_arg(ap, char *);
+          
+          snprintf(entry.sce_client_name, sizeof(entry.sce_client_name),
+            "%s", remote_name ? remote_name : "(unknown)");
+          entry.sce_client_name[sizeof(entry.sce_client_name) - 1] = '\0';
+
         }
         break;
 
@@ -564,10 +572,10 @@ int pr_scoreboard_update_entry(pid_t pid, ...) {
         }
         break;
 
-      case PR_SCORE_SERVER_NAME:
+      case PR_SCORE_SERVER_LABEL:
         tmp = va_arg(ap, char *);
-        memset(entry.sce_server_name, '\0', sizeof(entry.sce_server_name));
-        sstrncpy(entry.sce_server_name, tmp, sizeof(entry.sce_server_name));
+        memset(entry.sce_server_label, '\0', sizeof(entry.sce_server_label));
+        sstrncpy(entry.sce_server_label, tmp, sizeof(entry.sce_server_label));
         break;
 
       case PR_SCORE_BEGIN_IDLE:

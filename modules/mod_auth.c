@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.127 2002-12-31 00:37:33 castaglia Exp $
+ * $Id: mod_auth.c,v 1.128 2002-12-31 20:00:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -134,8 +134,9 @@ static int auth_sess_init(void) {
     PR_SCORE_SERVER_IP, main_server->ipaddr,
     PR_SCORE_SERVER_PORT, main_server->ServerPort,
     PR_SCORE_SERVER_ADDR, main_server->ipaddr, main_server->ServerPort,
-    PR_SCORE_SERVER_NAME, main_server->ServerName,
-    PR_SCORE_CLIENT_ADDR, session.c->remote_name, session.c->remote_ipaddr,
+    PR_SCORE_SERVER_LABEL, main_server->ServerName,
+    PR_SCORE_CLIENT_ADDR, session.c->remote_ipaddr,
+    PR_SCORE_CLIENT_NAME, session.c->remote_name,
     PR_SCORE_CLASS, (session.class && session.class->name) ?
       session.class->name: "",
     PR_SCORE_BEGIN_SESSION, time(NULL),
@@ -1394,8 +1395,6 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
 
         if ((c && c->config_type == CONF_ANON &&
             !strcmp(score->sce_user, user)) || !c) {
-          char *s, *d, ip[32] = {'\0'};
-          int mpos = sizeof(ip) - 1;
 
           /* This small hack makes sure that cur is incremented properly
            * when dealing with anonymous logins (the timing of anonymous
@@ -1406,20 +1405,10 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
 
           cur++;
 
-          s = strchr(score->sce_client_addr, '[');
-          d = ip;
-        
-          if (s != NULL)
-            s++;
-        
-          while (s && *s && *s != ']' && d < ip + mpos)
-            *d++ = *s++;
-        
-          *d = '\0';
-        
           /* Count up sessions on a per-host basis. */
 
-          if (!strcmp(ip, inet_ntoa(*session.c->remote_ipaddr))) {
+          if (!strcmp(score->sce_client_addr,
+              inet_ntoa(*session.c->remote_ipaddr))) {
             same_host = TRUE;
 
             /* This small hack makes sure that hcur is incremented properly

@@ -24,7 +24,7 @@
 
 /* Scoreboard routines.
  *
- * $Id: scoreboard.h,v 1.6 2002-12-06 21:25:08 castaglia Exp $
+ * $Id: scoreboard.h,v 1.7 2002-12-31 20:00:07 castaglia Exp $
  */
 
 #ifndef PR_SCOREBOARD_H
@@ -32,7 +32,7 @@
 
 /* PR_SCOREBOARD_VERSION is used for checking for scoreboard compatibility
  */
-#define PR_SCOREBOARD_VERSION        		0x01040000
+#define PR_SCOREBOARD_VERSION        		0x01040001
 
 /* Structure used as a header for scoreboard files.
  */
@@ -64,8 +64,9 @@ typedef struct {
   char sce_user[32];
   p_in_addr_t *sce_server_ip;
   int sce_server_port;
-  char sce_server_addr[80], sce_server_name[32];
-  char sce_client_addr[80];
+  char sce_server_addr[80], sce_server_label[32];
+  char sce_client_addr[16];
+  char sce_client_name[PR_TUNABLE_SCOREBOARD_BUFFER_SIZE];
   char sce_class[32];
   char sce_cwd[PR_TUNABLE_SCOREBOARD_BUFFER_SIZE];
   char sce_cmd[PR_TUNABLE_SCOREBOARD_BUFFER_SIZE];
@@ -81,19 +82,20 @@ typedef struct {
 /* Scoreboard update tags */
 #define PR_SCORE_USER		1
 #define PR_SCORE_CLIENT_ADDR	2
-#define PR_SCORE_CLASS		3
-#define PR_SCORE_CWD		4
-#define PR_SCORE_CMD		5
-#define PR_SCORE_SERVER_IP	6
-#define PR_SCORE_SERVER_PORT	7
-#define PR_SCORE_SERVER_ADDR	8
-#define PR_SCORE_SERVER_NAME	9
-#define PR_SCORE_XFER_DONE	10	
-#define PR_SCORE_XFER_SIZE	11
-#define PR_SCORE_BEGIN_IDLE	12
-#define PR_SCORE_BEGIN_SESSION	13
-#define PR_SCORE_XFER_LEN	14
-#define PR_SCORE_XFER_ELAPSED	15
+#define PR_SCORE_CLIENT_NAME	3
+#define PR_SCORE_CLASS		4	
+#define PR_SCORE_CWD		5
+#define PR_SCORE_CMD		6
+#define PR_SCORE_SERVER_IP	7
+#define PR_SCORE_SERVER_PORT	8
+#define PR_SCORE_SERVER_ADDR	9
+#define PR_SCORE_SERVER_LABEL	10
+#define PR_SCORE_XFER_DONE	11	
+#define PR_SCORE_XFER_SIZE	12
+#define PR_SCORE_BEGIN_IDLE	13
+#define PR_SCORE_BEGIN_SESSION	14
+#define PR_SCORE_XFER_LEN	15
+#define PR_SCORE_XFER_ELAPSED	16
 
 /* Scoreboard error values */
 #define PR_SCORE_ERR_BAD_MAGIC		-2

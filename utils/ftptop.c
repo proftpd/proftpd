@@ -25,7 +25,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.15 2002-12-27 15:47:44 jwm Exp $
+ * $Id: ftptop.c,v 1.16 2002-12-31 20:00:11 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.8.2"
@@ -316,7 +316,7 @@ static void read_scoreboard(void) {
       status = "L";
 
     snprintf(buf, sizeof(buf), FTPTOP_DISPLAY_FORMAT, 
-      (int)score->sce_pid, status, score->sce_user, score->sce_client_addr,
+      (int)score->sce_pid, status, score->sce_user, score->sce_client_name,
       score->sce_server_addr, score->sce_cmd);
     buf[sizeof(buf)-1] = '\0';
 

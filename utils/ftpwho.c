@@ -27,7 +27,7 @@
 /* Shows a count of "who" is online via proftpd.  Uses the /var/run/proftpd*
  * log files.
  *
- * $Id: ftpwho.c,v 1.13 2002-12-26 20:18:24 castaglia Exp $
+ * $Id: ftpwho.c,v 1.14 2002-12-31 20:00:11 castaglia Exp $
  */
 
 #include "utils.h"
@@ -295,11 +295,11 @@ int main(int argc, char **argv) {
         return 1;
 
       case UTIL_SCORE_ERR_OLDER_VERSION:
-        fprintf(stderr, "scoreboard is too old\n");
+        fprintf(stderr, "scoreboard version is too old\n");
         return 1;
 
       case UTIL_SCORE_ERR_NEWER_VERSION:
-        fprintf(stderr, "scoreboard is too new");
+        fprintf(stderr, "scoreboard version is too new\n");
         return 1;
     }
   }
@@ -360,7 +360,8 @@ int main(int argc, char **argv) {
 
       if (verbose) {
         if (score->sce_client_addr[0])
-          printf("             (host: %s)\n", score->sce_client_addr);
+          printf("             (host: %s [%s])\n", score->sce_client_name,
+            score->sce_client_addr);
         if (score->sce_cwd[0])
           printf("              (cwd: %s)\n", score->sce_cwd);
         if (score->sce_class[0])
@@ -411,15 +412,15 @@ int main(int argc, char **argv) {
       /* Display additional information, if requested. */
       if (verbose) {
         if (score->sce_client_addr[0])
-          printf("%sclient: %s%s",
+          printf("%sclient: %s [%s]%s",
             (outform & OF_ONELINE) ? " " : "\t",
-            score->sce_client_addr,
+            score->sce_client_name, score->sce_client_addr,
             (outform & OF_ONELINE) ? "" : "\n");
 
         if (score->sce_server_addr[0])
           printf("%sserver: %s (%s)%s",
             (outform & OF_ONELINE) ? " " : "\t",
-            score->sce_server_addr, score->sce_server_name,
+            score->sce_server_addr, score->sce_server_label,
             (outform & OF_ONELINE) ? "" : "\n");
 
         if (score->sce_cwd[0])
@@ -446,15 +447,15 @@ int main(int argc, char **argv) {
       /* Display additional information, if requested. */
       if (verbose) {
         if (score->sce_client_addr[0])
-          printf("%sclient: %s%s",
+          printf("%sclient: %s [%s]%s",
             (outform & OF_ONELINE) ? " " : "\n\t",
-            score->sce_client_addr,
+            score->sce_client_name, score->sce_client_addr,
             (outform & OF_ONELINE) ? "" : "\n");
 
         if (score->sce_server_addr[0])
           printf("%sserver: %s (%s)%s",
             (outform & OF_ONELINE) ? " " : "\t",
-            score->sce_server_addr, score->sce_server_name,
+            score->sce_server_addr, score->sce_server_label,
             (outform & OF_ONELINE) ? "" : "\n");
 
         if (score->sce_class[0])
