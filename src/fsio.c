@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.13 2003-03-21 03:26:04 castaglia Exp $
+ * $Id: fsio.c,v 1.14 2003-03-29 17:12:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1626,7 +1626,8 @@ int pr_fsio_chdir_canon(const char *path, int hidesymlink) {
   fs = fs_lookup_dir(resbuf, FSIO_DIR_CHDIR);
 
   if (fs->chdir) {
-    log_debug(DEBUG9, "FS: using %s chdir()", fs->fs_name);
+    log_debug(DEBUG9, "FS: using %s chdir()",
+      fs->chdir == sys_chdir ? "system" : fs->fs_name);
     res = fs->chdir(fs, resbuf);
 
   } else {
@@ -1657,7 +1658,8 @@ int pr_fsio_chdir(const char *path, int hidesymlink) {
   fs = fs_lookup_dir(path, FSIO_DIR_CHDIR);
 
   if (fs->chdir) {
-    log_debug(DEBUG9, "FS: using %s chdir()", fs->fs_name);
+    log_debug(DEBUG9, "FS: using %s chdir()",
+      fs->chdir == sys_chdir ? "system" : fs->fs_name);
     res = fs->chdir(fs, resbuf);
 
   } else {
@@ -1701,7 +1703,8 @@ void *pr_fsio_opendir(const char *path) {
   }
 
   if (fs->opendir) {
-    log_debug(DEBUG9, "FS: using %s opendir()", fs->fs_name);
+    log_debug(DEBUG9, "FS: using %s opendir()",
+      fs->opendir == sys_opendir ? "system" : fs->fs_name);
     ret = fs->opendir(fs, path);
 
   } else {
@@ -1804,7 +1807,8 @@ int pr_fsio_closedir(void *dir) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s closedir()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s closedir()",
+    fs->closedir == sys_closedir ? "system" : fs->fs_name);
   return fs->closedir(fs, dir);
 }
 
@@ -1819,7 +1823,8 @@ struct dirent *pr_fsio_readdir(void *dir) {
     return NULL;
   }
 
-  log_debug(DEBUG9, "FS: using %s readdir()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s readdir()",
+    fs->readdir == sys_readdir ? "system" : fs->fs_name);
   return fs->readdir(fs, dir);
 }
 
@@ -1831,7 +1836,8 @@ int pr_fsio_mkdir(const char *path, mode_t mode) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s mkdir()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s mkdir()",
+    fs->mkdir == sys_mkdir ? "system" : fs->fs_name);
   return fs->mkdir(fs, path, mode);
 }
 
@@ -1843,7 +1849,8 @@ int pr_fsio_rmdir(const char *path) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s rmdir()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s rmdir()",
+    fs->rmdir == sys_rmdir ? "system" : fs->fs_name);
   return fs->rmdir(fs, path);
 }
 
@@ -1855,7 +1862,8 @@ int pr_fsio_stat_canon(const char *path, struct stat *sbuf) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s stat()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s stat()",
+    fs->stat == sys_stat ? "system" : fs->fs_name);
   return fs_cache_stat(fs, path, sbuf);
 }
 
@@ -1867,7 +1875,8 @@ int pr_fsio_stat(const char *path, struct stat *sbuf) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s stat()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s stat()",
+    fs->stat == sys_stat ? "system" : fs->fs_name);
   return fs_cache_stat(fs, path, sbuf);
 }
 
@@ -1882,7 +1891,8 @@ int pr_fsio_fstat(pr_fh_t *fh, struct stat *sbuf) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s fstat()", fh->fh_fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s fstat()",
+    fh->fh_fs->fstat == sys_fstat ? "system" : fh->fh_fs->fs_name);
   return fh->fh_fs->fstat(fh, fh->fh_fd, sbuf);
 }
 
@@ -1894,7 +1904,8 @@ int pr_fsio_lstat_canon(const char *path, struct stat *sbuf) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s lstat()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s lstat()",
+    fs->lstat == sys_lstat ? "system" : fs->fs_name);
   return fs_cache_lstat(fs, path, sbuf);
 }
 
@@ -1906,7 +1917,8 @@ int pr_fsio_lstat(const char *path, struct stat *sbuf) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s lstat()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s lstat()",
+    fs->lstat == sys_lstat ? "system" : fs->fs_name);
   return fs_cache_lstat(fs, path, sbuf);
 }
 
@@ -1918,7 +1930,8 @@ int pr_fsio_readlink_canon(const char *path, char *buf, size_t buflen) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s readlink()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s readlink()",
+    fs->readlink == sys_readlink ? "system" : fs->fs_name);
   return fs->readlink(fs, path, buf, buflen);
 }
 
@@ -1930,7 +1943,8 @@ int pr_fsio_readlink(const char *path, char *buf, size_t buflen) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s readlink()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s readlink()",
+    fs->readlink == sys_readlink ? "system" : fs->fs_name);
   return fs->readlink(fs, path, buf, buflen);
 }
 
@@ -1970,7 +1984,8 @@ int pr_fsio_rename_canon(const char *rfrom, const char *rto) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s rename()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s rename()",
+    fs->rename == sys_rename ? "system" : fs->fs_name);
   return fs->rename(fs, rfrom, rto);
 }
 
@@ -1987,7 +2002,8 @@ int pr_fsio_rename(const char *rnfm, const char *rnto) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s rename()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s rename()",
+    fs->rename == sys_rename ? "system" : fs->fs_name);
   return fs->rename(fs, rnfm, rnto);
 }
 
@@ -1999,7 +2015,8 @@ int pr_fsio_unlink_canon(const char *name) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s unlink()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s unlink()",
+    fs->unlink == sys_unlink ? "system" : fs->fs_name);
   return fs->unlink(fs, name);
 }
 	
@@ -2011,7 +2028,8 @@ int pr_fsio_unlink(const char *name) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s unlink()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s unlink()",
+    fs->unlink == sys_unlink ? "system" : fs->fs_name);
   return fs->unlink(fs, name);
 }
 
@@ -2035,7 +2053,8 @@ pr_fh_t *pr_fsio_open_canon(const char *name, int flags) {
   fh->fh_fd = -1;
   fh->fh_buf = NULL;
 
-  log_debug(DEBUG9, "FS: using %s open()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s open()",
+    fs->open == sys_open ? "system" : fs->fs_name);
   fh->fh_fd = fs->open(fs, deref, flags);
 
   if (fh->fh_fd == -1) {
@@ -2065,7 +2084,8 @@ pr_fh_t *pr_fsio_open(const char *name, int flags) {
   fh->fh_fd = -1;
   fh->fh_buf = NULL;
 
-  log_debug(DEBUG9, "FS: using %s open()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s open()",
+    fs->open == sys_open ? "system" : fs->fs_name);
   fh->fh_fd = fs->open(fs, name, flags);
 
   if (fh->fh_fd == -1) {
@@ -2096,7 +2116,8 @@ pr_fh_t *pr_fsio_creat_canon(const char *name, mode_t mode) {
   fh->fh_fd = -1;
   fh->fh_buf = NULL;
 
-  log_debug(DEBUG9, "FS: using %s creat()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s creat()",
+    fs->creat == sys_creat ? "system" : fs->fs_name);
   fh->fh_fd = fs->creat(fs, deref, mode);
 
   if (fh->fh_fd == -1) {
@@ -2126,7 +2147,8 @@ pr_fh_t *pr_fsio_creat(const char *name, mode_t mode) {
   fh->fh_fd = -1;
   fh->fh_buf = NULL;
 
-  log_debug(DEBUG9, "FS: using %s creat()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s creat()",
+    fs->creat == sys_creat ? "system" : fs->fs_name);
   fh->fh_fd = fs->creat(fs, name, mode);
 
   if (fh->fh_fd == -1) {
@@ -2151,7 +2173,8 @@ int pr_fsio_close(pr_fh_t *fh) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s close()", fh->fh_fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s close()",
+    fh->fh_fs->close == sys_close ? "system" : fh->fh_fs->fs_name);
   res = fh->fh_fs->close(fh, fh->fh_fd);
 
   destroy_pool(fh->fh_pool);
@@ -2169,7 +2192,8 @@ int pr_fsio_read(pr_fh_t *fh, char *buf, size_t size) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s read()", fh->fh_fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s read()",
+    fh->fh_fs->read == sys_read ? "system" : fh->fh_fs->fs_name);
   return fh->fh_fs->read(fh, fh->fh_fd, buf, size);
 }
 
@@ -2184,7 +2208,8 @@ int pr_fsio_write(pr_fh_t *fh, const char *buf, size_t size) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s write()", fh->fh_fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s write()",
+    fh->fh_fs->write == sys_write ? "system" : fh->fh_fs->fs_name);
   return fh->fh_fs->write(fh, fh->fh_fd, buf, size);
 }
 
@@ -2199,7 +2224,8 @@ off_t pr_fsio_lseek(pr_fh_t *fh, off_t offset, int whence) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s lseek()", fh->fh_fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s lseek()",
+    fh->fh_fs->lseek == sys_lseek ? "system" : fh->fh_fs->fs_name);
   return fh->fh_fs->lseek(fh, fh->fh_fd, offset, whence);
 }
 
@@ -2216,7 +2242,8 @@ int pr_fsio_link_canon(const char *lfrom, const char *lto) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s link()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s link()",
+    fs->link == sys_link ? "system" : fs->fs_name);
   return fs->link(fs, lfrom, lto);
 }
 
@@ -2233,7 +2260,8 @@ int pr_fsio_link(const char *lfrom, const char *lto) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s link()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s link()",
+    fs->link == sys_link ? "system" : fs->fs_name);
   return fs->link(fs, lfrom, lto);
 }
 
@@ -2245,7 +2273,8 @@ int pr_fsio_symlink_canon(const char *lfrom, const char *lto) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s symlink()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s symlink()",
+    fs->symlink == sys_symlink ? "system" : fs->fs_name);
   return fs->symlink(fs, lfrom, lto);
 }
 
@@ -2257,7 +2286,8 @@ int pr_fsio_symlink(const char *lfrom, const char *lto) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s symlink()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s symlink()",
+    fs->symlink == sys_symlink ? "system" : fs->fs_name);
   return fs->symlink(fs, lfrom, lto);
 }
 
@@ -2272,7 +2302,8 @@ int pr_fsio_ftruncate(pr_fh_t *fh, off_t len) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s ftruncate()", fh->fh_fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s ftruncate()",
+    fh->fh_fs->ftruncate == sys_ftruncate ? "system" : fh->fh_fs->fs_name);
   return fh->fh_fs->ftruncate(fh, fh->fh_fd, len);
 }
 
@@ -2284,7 +2315,8 @@ int pr_fsio_truncate_canon(const char *path, off_t len) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s truncate()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s truncate()",
+    fs->truncate == sys_truncate ? "system" : fs->fs_name);
   return fs->truncate(fs, path, len);
 }
 
@@ -2296,7 +2328,8 @@ int pr_fsio_truncate(const char *path, off_t len) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s truncate()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s truncate()",
+    fs->truncate == sys_truncate ? "system" : fs->fs_name);
   return fs->truncate(fs, path, len);
 }
 
@@ -2309,7 +2342,8 @@ int pr_fsio_chmod_canon(const char *name, mode_t mode) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s chmod()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s chmod()",
+    fs->chmod == sys_chmod ? "system" : fs->fs_name);
   return fs->chmod(fs, deref, mode);
 }
 
@@ -2321,7 +2355,8 @@ int pr_fsio_chmod(const char *name, mode_t mode) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s chmod()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s chmod()",
+    fs->chmod == sys_chmod ? "system" : fs->fs_name);
   return fs->chmod(fs, name, mode);
 }
 
@@ -2333,7 +2368,8 @@ int pr_fsio_chown_canon(const char *name, uid_t uid, gid_t gid) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s chown()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s chown()",
+    fs->chown == sys_chown ? "system" : fs->fs_name);
   return fs->chown(fs, name, uid, gid);
 }
 
@@ -2345,7 +2381,8 @@ int pr_fsio_chown(const char *name, uid_t uid, gid_t gid) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s chown()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s chown()",
+    fs->chown == sys_chown ? "system" : fs->fs_name);
   return fs->chown(fs, name, uid, gid);
 }
 
@@ -2362,7 +2399,8 @@ int pr_fsio_chroot(const char *path) {
     return -1;
   }
 
-  log_debug(DEBUG9, "FS: using %s chroot()", fs->fs_name);
+  log_debug(DEBUG9, "FS: using %s chroot()",
+    fs->chroot == sys_chroot ? "system" : fs->fs_name);
 
   if ((res = fs->chroot(fs, path)) == 0) {
 
