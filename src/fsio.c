@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.25 2003-10-17 06:15:37 castaglia Exp $
+ * $Id: fsio.c,v 1.26 2003-10-18 23:48:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -66,6 +66,7 @@ static pr_fs_match_t *fs_match_list = NULL;
 #endif /* PR_FS_MATCH */
 
 static fsopendir_t *fsopendir_list;
+
 static void *fs_cache_dir = NULL;
 static pr_fs_t *fs_cache_fsdir = NULL;
 
@@ -1802,33 +1803,36 @@ void *pr_fsio_opendir(const char *path) {
 static pr_fs_t *find_opendir(void *dir, int closing) {
   pr_fs_t *fs = NULL;
 
+  if (fsopendir_list) {
+    fsopendir_t *fsod;
+
+    for (fsod = fsopendir_list; fsod; fsod = fsod->next) {
+      if (fsod->dir && fsod->dir == dir) {
+        fs = fsod->fsdir;
+        break;
+      }
+    }
+   
+    if (closing && fsod) {
+      if (fsod->prev)
+        fsod->prev->next = fsod->next;
+ 
+      if (fsod->next)
+        fsod->next->prev = fsod->prev;
+
+      if (fsod == fsopendir_list)
+        fsopendir_list = fsod->next;
+
+      destroy_pool(fsod->pool);
+    }
+  }
+
   if (dir == fs_cache_dir) {
     fs = fs_cache_fsdir;
+
     if (closing) {
       fs_cache_dir = NULL;
       fs_cache_fsdir = NULL;
-    }
-
-  } else {
-    fsopendir_t *fsod;
-
-    if (fsopendir_list) {
-      for (fsod = fsopendir_list; fsod; fsod = fsod->next) {
-        if (fsod->dir && fsod->dir == dir) {
-          fs = fsod->fsdir;
-          break;
-        }
-      }
-
-      if (closing && fsod) {
-        if (fsod->prev)
-          fsod->prev->next = fsod->next;
-
-        if (fsod->next)
-          fsod->next->prev = fsod->prev;
-
-        destroy_pool(fsod->pool);;
-      }
     }
   }
 
