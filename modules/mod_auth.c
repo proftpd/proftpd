@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.97 2002-10-26 22:57:24 castaglia Exp $
+ * $Id: mod_auth.c,v 1.98 2002-10-29 16:41:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1490,30 +1490,22 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
    * (if any) and count through the runtime file to see if this limit would
    * be exceeded.
    */
-  maxc = find_config((c ? c->subset : cmd->server->conf),
-		     CONF_PARAM, "MaxClientsPerHost", FALSE);
-  
-  if(maxc && (int)maxc->argv[0] != -1) {
-    int max = (int) maxc->argv[0];
+  if ((maxc = find_config((c ? c->subset : cmd->server->conf),
+      CONF_PARAM, "MaxClientsPerHost", FALSE)) != NULL) {
     char *maxstr = "Sorry, the maximum number clients (%m) from your host are "
       "already connected.";
-    char maxn[10] = {'\0'};
-    
-    snprintf(maxn, sizeof(maxn), "%d", max);
+    unsigned int *max = maxc->argv[0];
+    char maxn[20] = {'\0'};
     
     if (maxc->argc > 1)
       maxstr = maxc->argv[1];
-    
-    if (hcur > max) {
-      send_response(R_530, "%s",
-		    sreplace(cmd->tmp_pool,maxstr, "%m", maxn, NULL));
-      
-      remove_config(cmd->server->conf, C_USER, FALSE);
-      remove_config(cmd->server->conf, C_PASS, FALSE);
 
-      log_auth(LOG_NOTICE, "Connection refused (max clients per host %d).",
-	       max);
-      
+    if (*max && hcur > *max) {
+      snprintf(maxn, sizeof(maxn), "%u", *max);
+      send_response(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
+        NULL));
+      log_auth(LOG_NOTICE, "Connection refused (max clients per host %u).",
+        *max);
       end_login(0);
     }
   }
@@ -1521,17 +1513,16 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
   /* Check for any configured MaxClientsPerUser. */ 
   if ((maxc = find_config((c ? c->subset : cmd->server->conf),
       CONF_PARAM, "MaxClientsPerUser", FALSE)) != NULL) {
-
-    char *maxstr = "Sorry, maximum number of clients (%m) for this user already connected.";
+    char *maxstr = "Sorry, maximum number of clients (%m) for this user are "
+      "already connected.";
     unsigned int *max = maxc->argv[0];
     char maxn[20] = {'\0'};
-
-    snprintf(maxn, sizeof(maxn), "%u", *max);
 
     if (maxc->argc > 1)
       maxstr = maxc->argv[1];
    
-    if (usersessions >= *max) {
+    if (*max && usersessions >= *max) {
+      snprintf(maxn, sizeof(maxn), "%u", *max);
       send_response(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
       log_auth(LOG_NOTICE, "Connection refused (max clients per user %u).",
@@ -1540,57 +1531,41 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
     }
   }
 
-  maxc = find_config((c ? c->subset : cmd->server->conf),
-		     CONF_PARAM, "MaxClients", FALSE);
-
-  if(maxc && ((int)maxc->argv[0] != -1)) {
-    int max = (int) maxc->argv[0];
-    char *maxstr = "Sorry, the maximum number of allowed clients (%m) "
+  if ((maxc = find_config((c ? c->subset : cmd->server->conf),
+      CONF_PARAM, "MaxClients", FALSE)) != NULL) {
+    char *maxstr = "Sorry, the maximum number of allowed clients (%m) are "
       "already connected.";
-    char maxn[10] = {'\0'};
+    unsigned int *max = maxc->argv[0];
+    char maxn[20] = {'\0'};
     
-    snprintf(maxn, sizeof(maxn), "%d", max);
-
-    if(maxc->argc > 1)
+    if (maxc->argc > 1)
       maxstr = maxc->argv[1];
     
-    if(cur > max) {
-      send_response(R_530, "%s",
-		    sreplace(cmd->tmp_pool, maxstr, "%m", maxn, NULL));
-
-      log_auth(LOG_NOTICE, "Connection refused (max clients %d).", max);
-
-      remove_config(cmd->server->conf, C_USER, FALSE);
-      remove_config(cmd->server->conf, C_PASS, FALSE);
-
+    if (*max && cur > *max) {
+      snprintf(maxn, sizeof(maxn), "%u", *max);
+      send_response(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
+        NULL));
+      log_auth(LOG_NOTICE, "Connection refused (max clients %u).", *max);
       end_login(0);
     }
   }
 
-  maxc = find_config((c ? c->subset : cmd->server->conf),
-		     CONF_PARAM, "MaxHostsPerUser", FALSE);
-  
-  if(maxc && (int)maxc->argv[0] != -1) {
-    int max = (int) maxc->argv[0];
-    char *maxstr = "Sorry, the maximum number of hosts (%m) for this user "
+  if ((maxc = find_config((c ? c->subset : cmd->server->conf),
+      CONF_PARAM, "MaxHostsPerUser", FALSE)) != NULL) {
+    char *maxstr = "Sorry, the maximum number of hosts (%m) for this user are "
       "already connected.";
-    char maxn[10] = {'\0'};
+    unsigned int *max = maxc->argv[0];
+    char maxn[20] = {'\0'};
     
-    snprintf(maxn, sizeof(maxn), "%d", max);
-    
-    if(maxc->argc > 1)
+    if (maxc->argc > 1)
       maxstr = maxc->argv[1];
     
-    if(hostsperuser >= max) {
-      send_response(R_530, "%s",
-		    sreplace(cmd->tmp_pool,maxstr, "%m", maxn, NULL));
-      
-      remove_config(cmd->server->conf, C_USER, FALSE);
-      remove_config(cmd->server->conf, C_PASS, FALSE);
-
-      log_auth(LOG_NOTICE, "Connection refused (max clients per host %d).",
-	       max);
-      
+    if (*max && hostsperuser >= *max) {
+      snprintf(maxn, sizeof(maxn), "%u", *max);
+      send_response(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
+        NULL));
+      log_auth(LOG_NOTICE, "Connection refused (max clients per host %u).",
+        *max);
       end_login(0);
     }
   }
@@ -2040,7 +2015,86 @@ MODRET set_loginpasswordprompt(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-/* usage: MaxClientsPerUser max ["message"] */
+/* usage: MaxClients max|"none" ["message"] */
+MODRET set_maxclients(cmd_rec *cmd) {
+  int max;
+  config_rec *c = NULL;
+
+  if (cmd->argc < 2 || cmd->argc > 3)
+    CONF_ERROR(cmd, "wrong number of parameters");
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  if (!strcasecmp(cmd->argv[1], "none"))
+    max = 0;
+
+  else {
+    char *endp = NULL;
+
+    max = (int) strtol(cmd->argv[1], &endp, 10);
+
+    if ((endp && *endp) || max < 1)
+      CONF_ERROR(cmd, "parameter must be 'none' or a number greater than 0");
+  }
+
+  if (cmd->argc == 3) {
+    c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[0]) = max;
+    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
+
+  } else {
+    c = add_config_param(cmd->argv[0], 1, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[0]) = max;
+  }
+
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
+/* usage: MaxClientsPerHost max|"none" ["message"] */
+MODRET set_maxhostclients(cmd_rec *cmd) {
+  int max;
+  config_rec *c = NULL;
+
+  if (cmd->argc < 2 || cmd->argc > 3)
+    CONF_ERROR(cmd, "wrong number of parameters");
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  if (!strcasecmp(cmd->argv[1], "none"))
+    max = 0;
+
+  else {
+    char *endp = NULL;
+
+    max = (int) strtol(cmd->argv[1], &endp, 10);
+
+    if ((endp && *endp) || max < 1)
+      CONF_ERROR(cmd, "parameter must be 'none' or a number greater than 0");
+  }
+
+  if (cmd->argc == 3) {
+    c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[0]) = max;
+    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
+
+  } else {
+    c = add_config_param(cmd->argv[0], 1, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[0]) = max;
+  }
+
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
+
+/* usage: MaxClientsPerUser max|"none" ["message"] */
 MODRET set_maxuserclients(cmd_rec *cmd) {
   int max;
   config_rec *c = NULL;
@@ -2051,7 +2105,46 @@ MODRET set_maxuserclients(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   if (!strcasecmp(cmd->argv[1], "none"))
-    max = -1;
+    max = 0;
+
+  else {
+    char *endp = NULL;
+
+    max = (int) strtol(cmd->argv[1], &endp, 10);
+
+    if ((endp && *endp) || max < 1)
+      CONF_ERROR(cmd, "parameter must be 'none' or a number greater than 0");
+  }
+
+  if (cmd->argc == 3) {
+    c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[0]) = max;
+    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
+
+  } else {
+    c = add_config_param(cmd->argv[0], 1, NULL);
+    c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+    *((unsigned int *) c->argv[0]) = max;
+  }
+
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
+/* usage: MaxHostsPerUser max|"none" ["message"] */
+MODRET set_maxhostsperuser(cmd_rec *cmd) {
+  int max;
+  config_rec *c = NULL;
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  if (cmd->argc < 2 || cmd->argc > 3)
+    CONF_ERROR(cmd, "wrong number of parameters");
+
+  if (!strcasecmp(cmd->argv[1], "none"))
+    max = 0;
 
   else {
     char *endp = NULL;
@@ -2308,7 +2401,10 @@ static conftable auth_conftab[] = {
   { "DefaultRoot",		add_defaultroot,		NULL },
   { "GroupPassword",		set_grouppassword,		NULL },
   { "LoginPasswordPrompt",	set_loginpasswordprompt,	NULL },
+  { "MaxClients",		set_maxclients,			NULL },
+  { "MaxClientsPerHost",	set_maxhostclients,		NULL },
   { "MaxClientsPerUser",	set_maxuserclients,		NULL },
+  { "MaxHostsPerUser",		set_maxhostsperuser,		NULL },
   { "MaxLoginAttempts",		set_maxloginattempts,		NULL },
   { "RequireValidShell",	set_requirevalidshell,		NULL },
   { "RootLogin",		set_rootlogin,			NULL },

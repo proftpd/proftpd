@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.114 2002-10-28 22:30:02 castaglia Exp $
+ * $Id: mod_core.c,v 1.115 2002-10-29 16:41:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -607,72 +607,6 @@ MODRET set_maxinstances(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_maxclients(cmd_rec *cmd) {
-  int max;
-  config_rec *c = NULL;
-
-  if (cmd->argc < 2 || cmd->argc > 3)
-    CONF_ERROR(cmd, "wrong number of parameters");
-
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-
-  if (!strcasecmp(cmd->argv[1], "none"))
-    max = -1;
-
-  else {
-    char *endp = NULL;
-
-    max = (int) strtol(cmd->argv[1], &endp, 10);
-
-    if ((endp && *endp) || max < 1) 
-      CONF_ERROR(cmd, "parameter must be 'none' or a number greater than 0");
-  }
-
-  if (cmd->argc == 3) {
-    c = add_config_param(cmd->argv[0], 2, (void *) max, NULL);
-    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
-
-  } else
-    c = add_config_param(cmd->argv[0], 1, (void *) max);
-
-  c->flags |= CF_MERGEDOWN;
-
-  return HANDLED(cmd);
-}
-
-MODRET set_maxhostclients(cmd_rec *cmd) {
-  int max;
-  config_rec *c = NULL;
-
-  if (cmd->argc < 2 || cmd->argc > 3)
-    CONF_ERROR(cmd, "wrong number of parameters");
-  
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-
-  if (!strcasecmp(cmd->argv[1], "none"))
-    max = -1;
-
-  else {
-    char *endp = NULL;
-
-    max = (int) strtol(cmd->argv[1], &endp, 10);
-    
-    if ((endp && *endp) || max < 1)
-      CONF_ERROR(cmd, "parameter must be 'none' or a number greater than 0");
-  }
-  
-  if (cmd->argc == 3) {
-    c = add_config_param(cmd->argv[0], 2, (void *) max, NULL);
-    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
-
-  } else
-    c = add_config_param(cmd->argv[0], 1, (void *) max);
-  
-  c->flags |= CF_MERGEDOWN;
- 
-  return HANDLED(cmd);
-}
-
 /* usage: MaxConnectionRate rate [interval] */
 MODRET set_maxconnrate(cmd_rec *cmd) {
   long conn_max = 0L;
@@ -701,39 +635,6 @@ MODRET set_maxconnrate(cmd_rec *cmd) {
         ": interval must be greater than zero", NULL));
   }
 
-  return HANDLED(cmd);
-}
-
-MODRET set_maxhostsperuser(cmd_rec *cmd) {
-  int max;
-  config_rec *c = NULL;
-
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
-
-  if (cmd->argc < 2 || cmd->argc > 3)
-    CONF_ERROR(cmd, "wrong number of parameters");
-  
-  if (!strcasecmp(cmd->argv[1], "none"))
-    max = -1;
-
-  else {
-    char *endp = NULL;
-
-    max = (int) strtol(cmd->argv[1], &endp, 10);
-    
-    if ((endp && *endp) || max < 1)
-      CONF_ERROR(cmd, "parameter must be 'none' or a number greater than 0");
-  }
-  
-  if (cmd->argc == 3) {
-    c = add_config_param(cmd->argv[0], 2, (void *) max, NULL);
-    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
-
-  } else
-    c = add_config_param(cmd->argv[0], 1, (void *) max);
-  
-  c->flags |= CF_MERGEDOWN;
- 
   return HANDLED(cmd);
 }
 
@@ -3741,10 +3642,7 @@ static conftable core_conftab[] = {
   { "IgnoreHidden",		set_ignorehidden,		NULL },
   { "Include",			add_include,	 		NULL },
   { "MasqueradeAddress",	add_masqueradeaddress,		NULL },
-  { "MaxClients",		set_maxclients,			NULL },
-  { "MaxClientsPerHost",	set_maxhostclients,		NULL },
   { "MaxConnectionRate",	set_maxconnrate,		NULL },
-  { "MaxHostsPerUser",		set_maxhostsperuser,		NULL },
   { "MaxInstances",		set_maxinstances,		NULL },
   { "MultilineRFC2228",		set_multilinerfc2228,		NULL },
   { "Order",			add_order,			NULL },
