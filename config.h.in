@@ -282,6 +282,9 @@
 /* Define if you have the <krb.h> header file.  */
 #undef HAVE_KRB_H
 
+/* Define if you have the <hpsecurity.h> header file.  */
+#undef HAVE_HPSECURITY_H
+
 /* Define if you have the <prot.h> header file.  */
 #undef HAVE_PROT_H
 
