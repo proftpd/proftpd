@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.34 2004-10-17 17:47:43 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.35 2004-10-30 20:57:03 castaglia Exp $
  */
 
 /*
@@ -405,9 +405,9 @@ MODRET cmd_open(cmd_rec *cmd) {
    */
   if ((entry->connections > 0) && (!mysql_ping(conn->mysql))) {
     entry->connections++;
-    if (entry->timer) {
-      reset_timer( entry->timer, &sql_mysql_module );
-    }
+    if (entry->timer)
+      pr_timer_reset(entry->timer, &sql_mysql_module);
+
     sql_log(DEBUG_INFO, "connection '%s' count is now %d", entry->name,
       entry->connections);
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
@@ -444,9 +444,8 @@ MODRET cmd_open(cmd_rec *cmd) {
 
   /* set up our timer if necessary */
   if (entry->ttl > 0) {
-    entry->timer = add_timer(entry->ttl, -1, 
-			     &sql_mysql_module, 
-			     _sql_timer_callback);
+    entry->timer = pr_timer_add(entry->ttl, -1, &sql_mysql_module,
+      _sql_timer_callback);
     sql_log(DEBUG_INFO, "connection '%s' - %d second timer started",
       entry->name, entry->ttl);
 
@@ -530,7 +529,7 @@ MODRET cmd_close(cmd_rec *cmd) {
     entry->connections = 0;
 
     if (entry->timer) {
-      remove_timer( entry->timer, &sql_mysql_module );
+      pr_timer_remove(entry->timer, &sql_mysql_module);
       entry->timer = 0;
       sql_log(DEBUG_INFO, "connection '%s' - timer stopped", entry->name);
     }

@@ -2,7 +2,7 @@
  * mod_tls - an RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2003 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2004 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -777,7 +777,7 @@ static int tls_ctrl_renegotiate_cb(CALLBACK_FRAME) {
     SSL_renegotiate(ctrl_ssl);
     /* SSL_do_handshake(ctrl_ssl); */
 
-    add_timer(tls_renegotiate_timeout, 0, &tls_module,
+    pr_timer_add(tls_renegotiate_timeout, 0, &tls_module,
       tls_renegotiate_timeout_cb);
 
     tls_flags |= TLS_SESS_CTRL_RENEGOTIATING;
@@ -1189,7 +1189,7 @@ static int tls_init_server(void) {
       tls_renegotiate_required = renegotiate_required;
   
       /* Set any control channel renegotiation timers, if need be. */
-      add_timer(ctrl_timeout ? ctrl_timeout : tls_ctrl_renegotiate_timeout,
+      pr_timer_add(ctrl_timeout ? ctrl_timeout : tls_ctrl_renegotiate_timeout,
         0, &tls_module, tls_ctrl_renegotiate_cb);
     }
   }
@@ -1220,8 +1220,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   /* If configured, set a timer for the handshake. */
   if (tls_handshake_timeout)
-    tls_handshake_timer_id = add_timer(tls_handshake_timeout, -1, &tls_module,
-      tls_handshake_timeout_cb);
+    tls_handshake_timer_id = pr_timer_add(tls_handshake_timeout, -1,
+      &tls_module, tls_handshake_timeout_cb);
 
   retry:
   pr_signals_handle();
@@ -1284,7 +1284,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   }
 
   /* Disable the handshake timer. */
-  remove_timer(tls_handshake_timer_id, &tls_module);
+  pr_timer_remove(tls_handshake_timer_id, &tls_module);
 
   /* Stash the SSL object in the pointers of the correct NetIO streams. */
   if (conn == session.c) {
@@ -2546,7 +2546,7 @@ static int tls_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
       SSL_renegotiate((SSL *) nstrm->strm_data);
       /* SSL_do_handshake((SSL *) nstrm->strm_data); */
 
-      add_timer(tls_renegotiate_timeout, 0, &tls_module,
+      pr_timer_add(tls_renegotiate_timeout, 0, &tls_module,
         tls_renegotiate_timeout_cb);
 
       tls_flags |= TLS_SESS_DATA_RENEGOTIATING;

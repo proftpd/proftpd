@@ -3,7 +3,7 @@
  *          server, as well as several utility functions for other Controls
  *          modules
  *
- * Copyright (c) 2000-2003 TJ Saunders
+ * Copyright (c) 2000-2004 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.20 2004-09-14 17:49:43 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.21 2004-10-30 20:57:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1434,8 +1434,8 @@ MODRET set_ctrlsinterval(cmd_rec *cmd) {
   /* Remove the existing timer, and re-install it with this new interval. */
   ctrls_interval = nsecs;
 
-  remove_timer(CTRLS_TIMER_ID, &ctrls_module);
-  add_timer(ctrls_interval, CTRLS_TIMER_ID, &ctrls_module, ctrls_timer_cb);
+  pr_timer_remove(CTRLS_TIMER_ID, &ctrls_module);
+  pr_timer_add(ctrls_interval, CTRLS_TIMER_ID, &ctrls_module, ctrls_timer_cb);
 
   return HANDLED(cmd);
 }
@@ -1639,8 +1639,8 @@ static void ctrls_restart_ev(const void *event_data, void *user_data) {
 static void ctrls_startup_ev(const void *event_data, void *user_data) {
 
   /* Start a timer for the checking/processing of the ctrl socket.  */
-  remove_timer(CTRLS_TIMER_ID, &ctrls_module);
-  add_timer(ctrls_interval, CTRLS_TIMER_ID, &ctrls_module, ctrls_timer_cb);
+  pr_timer_remove(CTRLS_TIMER_ID, &ctrls_module);
+  pr_timer_add(ctrls_interval, CTRLS_TIMER_ID, &ctrls_module, ctrls_timer_cb);
 }
 
 /* Initialization routines
@@ -1688,7 +1688,7 @@ static int ctrls_sess_init(void) {
 
   /* Children are not to listen for or handle control requests */
   ctrls_engine = FALSE;
-  remove_timer(CTRLS_TIMER_ID, &ctrls_module);
+  pr_timer_remove(CTRLS_TIMER_ID, &ctrls_module);
 
   pr_event_unregister(&ctrls_module, "core.exit", ctrls_exit_ev);
   pr_event_unregister(&ctrls_module, "core.restart", ctrls_restart_ev);
