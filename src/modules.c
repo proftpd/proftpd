@@ -367,7 +367,7 @@ privdata_t *mod_privdata_alloc(cmd_rec *cmd, char *tag, int size)
 
   p->tag = pstrdup(cmd->pool,tag);
   if (size)
-    p->value.ptr_val = palloc(cmd->pool,size);
+    p->value.ptr_val = pcalloc(cmd->pool,size);
   p->m = curmodule;
 
   if (!cmd->privarr)

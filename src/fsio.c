@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.5 2002-12-10 21:02:07 castaglia Exp $
+ * $Id: fsio.c,v 1.6 2002-12-13 19:33:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1683,7 +1683,7 @@ void *pr_fsio_opendir(const char *path) {
   fs_cache_fsdir = fs;
 
   fsod_pool = make_sub_pool(permanent_pool);
-  fsod = palloc(fsod_pool, sizeof(fsopendir_t));
+  fsod = pcalloc(fsod_pool, sizeof(fsopendir_t));
 
   if (!fsod) {
 

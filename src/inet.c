@@ -288,19 +288,21 @@ conn_t *inet_copy_connection(pool *p, conn_t *c) {
   pool *sub_pool;
 
   sub_pool = make_sub_pool(p);
-  res = (conn_t *) palloc(sub_pool,sizeof(conn_t));
+  res = (conn_t *) pcalloc(sub_pool,sizeof(conn_t));
 
   memcpy(res, c, sizeof(conn_t));
   res->pool = sub_pool;
   res->instrm = res->outstrm = NULL;
 
   if (c->local_ipaddr) {
-    res->local_ipaddr = (p_in_addr_t *) palloc(res->pool, sizeof(p_in_addr_t));
+    res->local_ipaddr = (p_in_addr_t *) pcalloc(res->pool,
+      sizeof(p_in_addr_t));
     *res->local_ipaddr = *c->local_ipaddr;
   }
 
   if (c->remote_ipaddr) {
-    res->remote_ipaddr = (p_in_addr_t *) palloc(res->pool, sizeof(p_in_addr_t));
+    res->remote_ipaddr = (p_in_addr_t *) pcalloc(res->pool,
+      sizeof(p_in_addr_t));
     *res->remote_ipaddr = *c->remote_ipaddr;
   }
 
@@ -1134,7 +1136,7 @@ conn_t *inet_associate(pool *p, conn_t *c, p_in_addr_t *addr,
 
   if (addr) {
     if (!res->remote_ipaddr)
-      res->remote_ipaddr = (p_in_addr_t *) palloc(res->pool,
+      res->remote_ipaddr = (p_in_addr_t *) pcalloc(res->pool,
         sizeof(p_in_addr_t));
     *res->remote_ipaddr = *addr;
   }
@@ -1186,7 +1188,7 @@ conn_t *inet_openrw(pool *p, conn_t *c, p_in_addr_t *addr,
 
   if (addr) {
     if (!res->remote_ipaddr)
-      res->remote_ipaddr = (p_in_addr_t *) palloc(res->pool,
+      res->remote_ipaddr = (p_in_addr_t *) pcalloc(res->pool,
         sizeof(p_in_addr_t));
     *res->remote_ipaddr = *addr;
   }

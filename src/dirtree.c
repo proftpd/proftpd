@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.90 2002-12-11 23:28:41 castaglia Exp $
+ * $Id: dirtree.c,v 1.91 2002-12-13 19:33:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2421,7 +2421,7 @@ static void _mergedown(xaset_t *s,int dynamic)
           newconf->config_type = c->config_type;
           newconf->flags = c->flags | (dynamic ? CF_DYNAMIC : 0);
           newconf->argc = c->argc;
-          newconf->argv = palloc(newconf->pool,(c->argc+1)*sizeof(void*));
+          newconf->argv = pcalloc(newconf->pool,(c->argc+1)*sizeof(void*));
           argv = newconf->argv; sargv = c->argv;
           argc = newconf->argc;
           while(argc--)
@@ -2509,7 +2509,7 @@ void _copy_recur(xaset_t **set, pool *p, config_rec *c, config_rec *new_parent)
   newconf->parent = new_parent;
   newconf->argc = c->argc;
   if (c->argc) {
-    newconf->argv = palloc(newconf->pool,(c->argc+1)*sizeof(void*));
+    newconf->argv = pcalloc(newconf->pool,(c->argc+1)*sizeof(void*));
     argv = newconf->argv; sargv = c->argv;
     argc = newconf->argc;
 
