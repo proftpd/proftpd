@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.87 2004-10-09 20:46:21 castaglia Exp $
+ * $Id: inet.c,v 1.88 2004-10-12 03:07:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -792,8 +792,8 @@ int pr_inet_listen(pool *p, conn_t *c, int backlog) {
         continue;
       }
 
-      pr_log_pri(PR_LOG_ERR, "listen() failed in inet_listen(): %s",
-        strerror(errno));
+      pr_log_pri(PR_LOG_ERR, "unable to listen on %s#%u: %s",
+        pr_netaddr_get_ipstr(c->local_addr), c->local_port, strerror(errno));
       end_login(1);
 
     } else
