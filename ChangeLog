@@ -1,3 +1,27 @@
+2001-12-13 15:35  flood
+
+	* NEWS, configure.in, doc/Configuration.html, include/modules.h,
+	include/support.h, modules/mod_auth.c, modules/mod_core.c,
+	modules/mod_log.c, modules/mod_ls.c, modules/mod_pam.c,
+	modules/mod_unixpw.c, modules/mod_xfer.c, src/auth.c,
+	src/dirtree.c, src/fs.c, src/inet.c, src/main.c, src/support.c,
+	src/timers.c: - Bug 1364 - Immediate chown() after file creation -
+	Bug 1415 - Change allowed contexts for Include - Bug 1430 -
+	Possible bad handling of Directory contexts - Bug 1426 - sigsegv on
+	`ls ///////////' - Bug 1360 - Add getgroups abstraction for auth
+	modules - Bug 1289 - Increase information passed to timer callbacks
+	- Bug 1341 - Bad tracking of forked processes - Bug 1400 - Improper
+	use of MODRET_HASDATA macro - Bug 1416 - PidFile in <Global>
+	context is unnecessary, even wasteful - Bug 1429 - Trivial fixes to
+	dispatch reporting - Bug 1419 - Remove unnecessary colons from
+	PRIVS_ macros - Bug 1418 - Slight change to exithandler handling to
+	allow module		  finalization slot
+
+2001-12-13 11:15  flood
+
+	* contrib/mod_sql.h: forgot to add contrib/mod_sql.h in previous
+	commit
+
 2001-11-30 12:34  flood
 
 	* NEWS, README.mod_sql, contrib/UPGRADE.mod_sql, contrib/mod_sql.c,
