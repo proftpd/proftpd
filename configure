@@ -4282,7 +4282,8 @@ _ACEOF
 
 fi;
 
-ac_devel_cflags="-g -Wcast-align -Wchar-subscripts -Winline -Wstrict-prototypes -Wmissing-declarations -Wnested-externs -Wpointer-arith -Wshadow -Wundef"
+pr_devel_cflags="-g -Wcast-align -Wchar-subscripts -Winline -Wstrict-prototypes -Wmissing-declarations -Wnested-externs -Wpointer-arith -Wshadow -Wundef"
+pr_devel_libs=""
 
 # Check whether --enable-devel or --disable-devel was given.
 if test "${enable_devel+set}" = set; then
@@ -4293,15 +4294,20 @@ if test "${enable_devel+set}" = set; then
 
 
       if test `echo $enableval | grep -c coredump` = "1" ; then
-        ac_devel_cflags="-DPR_DEVEL_COREDUMP $ac_devel_cflags"
+        pr_devel_cflags="-DPR_DEVEL_COREDUMP $pr_devel_cflags"
       fi
 
       if test `echo $enableval | grep -c nodaemon` = "1" ; then
-        ac_devel_cflags="-DPR_DEVEL_NO_DAEMON $ac_devel_cflags"
+        pr_devel_cflags="-DPR_DEVEL_NO_DAEMON $pr_devel_cflags"
       fi
 
       if test `echo $enableval | grep -c nofork` = "1" ; then
-        ac_devel_cflags="-DPR_DEVEL_NO_FORK $ac_devel_cflags"
+        pr_devel_cflags="-DPR_DEVEL_NO_FORK $pr_devel_cflags"
+      fi
+
+      if test `echo $enableval | grep -c profile` = "1" ; then
+        pr_devel_cflage="-p -pg $pr_devel_cflags"
+        pr_devel_libs="-pg $pr_devel_libs"
       fi
 
     else
@@ -16493,7 +16499,8 @@ _ACEOF
   if test x"$GCC" = xyes; then
 
         CFLAGS=`echo "$CFLAGS" | sed -e 's/\-O2//'`
-    CFLAGS="$CFLAGS $ac_devel_cflags"
+    CFLAGS="$CFLAGS $pr_devel_cflags"
+    LIBS="$LIBS $pr_devel_libs"
 
                 echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wfloat-equal" >&5
 echo $ECHO_N "checking whether ${CC-cc} accepts -Wfloat-equal... $ECHO_C" >&6
