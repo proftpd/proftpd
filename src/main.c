@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.146 2002-12-16 18:38:37 castaglia Exp $
+ * $Id: main.c,v 1.147 2002-12-16 18:45:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -554,7 +554,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
   return success;
 }
 
-static void dispatch_cmd(cmd_rec *cmd) {
+void pr_cmd_dispatch(cmd_rec *cmd) {
   char *cp = NULL;
   int success = 0;
 
@@ -780,7 +780,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
 
       cmd = make_ftp_cmd(permanent_pool, cp);
       if (cmd) {
-        dispatch_cmd(cmd);
+        pr_cmd_dispatch(cmd);
         destroy_pool(cmd->pool);
 
       } else

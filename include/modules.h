@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.21 2002-12-12 17:05:47 castaglia Exp $
+ * $Id: modules.h,v 1.22 2002-12-16 18:45:31 castaglia Exp $
  */
 
 #ifndef __MODULES_H
@@ -242,12 +242,15 @@ modret_t *mod_create_data(cmd_rec *, void *);
 privdata_t *mod_privdata_alloc(cmd_rec *, char *, int);
 privdata_t *mod_privdata_find(cmd_rec *, char *, module *);
 
+/* Implemented in main.c */
+void pr_cmd_dispatch(cmd_rec *);
+
 /* Implemented in mod_core.c */
 int core_display_file(const char *, const char *, const char *);
 int core_chgrp(cmd_rec *, char *, uid_t, gid_t);
 int core_chmod(cmd_rec *, char *, mode_t);
 
-/* prototypes for auth.c */
+/* Implemented in auth.c */
 void auth_setpwent(pool *);
 void auth_endpwent(pool *);
 void auth_setgrent(pool *);
