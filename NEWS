@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.552 2004-04-06 23:17:05 castaglia Exp $
+$Id: NEWS,v 1.553 2004-04-09 00:23:06 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -138,6 +138,7 @@ CVS
   on HP-UX 11 is problematic; many system calls expect an int, and the
   default type is a size_t.  This mismatch causes problems for 64-bit
   builds.
+- Bug 2385 - Renames fail with error "Invalid cross-device link".
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------

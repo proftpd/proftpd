@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.225 2004-03-19 20:22:22 castaglia Exp $
+ * $Id: mod_core.c,v 1.226 2004-04-09 00:23:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -59,6 +59,51 @@ extern array_header *server_defines;
 module core_module;
 
 static int core_scrub_timer_id;
+
+static int copy_file(const char *src, const char *dst) {
+  pr_fh_t *src_fh, *dst_fh;
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+  int res;
+
+  src_fh = pr_fsio_open(src, O_RDONLY);
+  if (!src_fh) {
+    pr_log_pri(PR_LOG_WARNING, "error opening source file '%s' "
+      "for copying: %s", src, strerror(errno));
+    return -1;
+  }
+
+  dst_fh = pr_fsio_open(dst, O_WRONLY|O_CREAT);
+  if (!dst_fh) {
+    int xerrno = errno;
+
+    pr_fsio_close(src_fh);
+    errno = xerrno;
+
+    pr_log_pri(PR_LOG_WARNING, "error opening destination file '%s' "
+      "for copying: %s", dst, strerror(errno));
+    return -1;
+  }
+
+  /* Make sure the destination file starts with a zero size. */
+  pr_fsio_truncate(dst, 0);
+
+  while ((res = pr_fsio_read(src_fh, buf, sizeof(buf))) > 0) {
+    if (pr_fsio_write(dst_fh, buf, res) != res) {
+      pr_log_pri(PR_LOG_WARNING, "error copying to '%s': %s", dst,
+        strerror(errno));
+      break;
+    }
+
+    pr_signals_handle();
+  }
+
+  pr_fsio_close(src_fh);
+  if (pr_fsio_close(dst_fh) < 0)
+    pr_log_pri(PR_LOG_WARNING, "error closing '%s': %s", dst,
+      strerror(errno));
+
+  return res;
+}
 
 static ssize_t get_num_bytes(char *nbytes_str) {
   ssize_t nbytes = 0;
@@ -4106,8 +4151,19 @@ MODRET core_rnto(cmd_rec *cmd) {
   if (!path ||
       !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
       pr_fsio_rename(session.xfer.path, path) == -1) {
-    pr_response_add_err(R_550, "Rename %s: %s", cmd->arg, strerror(errno));
-    return ERROR(cmd);
+
+    if (errno != EXDEV) {
+      pr_response_add_err(R_550, "Rename %s: %s", cmd->arg, strerror(errno));
+      return ERROR(cmd);
+    }
+
+    /* In this case, we'll need to manually copy the file from the source
+     * to the destination paths.
+     */
+    if (copy_file(session.xfer.path, path) < 0) {
+      pr_response_add_err(R_550, "Rename %s: %s", cmd->arg, strerror(errno));
+      return ERROR(cmd);
+    }
   }
 
   pr_response_add(R_250, "Rename successful");
