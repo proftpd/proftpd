@@ -1,3 +1,29 @@
+2001-02-26 12:50  flood
+
+	* contrib/mod_ldap.c: New mod_ldap.c
+
+2001-02-24 21:13  flood
+
+	* contrib/mod_sql.c: Patch from mod_sql maintainer.
+
+2001-02-24 19:40  flood
+
+	* CREDITS, doc/Configuration.html: Bug #1034 - Final clean-up for
+	docs.  CREDITS - added Chuck
+
+2001-02-23 23:11  flood
+
+	* Makefile.in, configure.in, contrib/README.mod_sql,
+	modules/mod_auth.c: Bug #1033 - access denied text fix Minor tweaks
+	to configure, updates distclean rule in Makefile
+
+2001-02-23 22:53  flood
+
+	* README.mod_sql, configure.in, contrib/README.mod_sql,
+	contrib/mod_sql.c: Bug #1031 - update from mod_sql maintainer New
+	README.mod_sql configure no longer duplicates additional modules'
+	libraries.
+
 2001-02-23 21:37  flood
 
 	* CREDITS, README.mod_sql-3.0, contrib/README.mod_sql-3.0,
