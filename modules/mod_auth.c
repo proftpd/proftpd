@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.199 2004-12-05 05:50:28 castaglia Exp $
+ * $Id: mod_auth.c,v 1.200 2004-12-23 20:17:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1913,7 +1913,7 @@ MODRET set_anonrequirepassword(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ANON);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean parameter");
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
@@ -2140,15 +2140,15 @@ MODRET add_defaultroot(cmd_rec *cmd) {
 
   dir = *++argv;
 
-  /* dir must be / or ~
-   */
-  if (*dir != '/' && *dir != '~')
+  /* dir must be / or ~. */
+  if (*dir != '/' &&
+      *dir != '~')
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "(", dir, ") absolute pathname "
-                            "required.", NULL));
+      "required", NULL));
 
   if (strchr(dir, '*'))
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "(", dir, ") wildcards not allowed "
-                            "in pathname.", NULL));
+      "in pathname", NULL));
 
   if (*(dir + strlen(dir) - 1) != '/')
     dir = pstrcat(cmd->tmp_pool, dir, "/", NULL);
@@ -2190,7 +2190,7 @@ MODRET add_defaultchdir(cmd_rec *cmd) {
 
   if (strchr(dir, '*'))
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "(", dir, ") wildcards not allowed "
-                            "in pathname.", NULL));
+      "in pathname", NULL));
 
   if (*(dir + strlen(dir) - 1) != '/')
     dir = pstrcat(cmd->tmp_pool, dir, "/", NULL);
@@ -2507,7 +2507,7 @@ MODRET set_requirevalidshell(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
@@ -2525,7 +2525,7 @@ MODRET set_rootlogin(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
@@ -2685,7 +2685,7 @@ MODRET set_useftpusers(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));

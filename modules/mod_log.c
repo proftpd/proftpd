@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.66 2004-11-11 18:58:23 castaglia Exp $
+ * $Id: mod_log.c,v 1.67 2004-12-23 20:17:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -434,7 +434,7 @@ MODRET set_allowlogsymlinks(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));

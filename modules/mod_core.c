@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.266 2004-12-04 07:40:43 castaglia Exp $
+ * $Id: mod_core.c,v 1.267 2004-12-23 20:17:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -517,7 +517,7 @@ MODRET set_servertype(cmd_rec *cmd) {
     ServerType = SERVER_STANDALONE;
 
   else
-    CONF_ERROR(cmd,"type must be either 'inetd' or 'standalone'.");
+    CONF_ERROR(cmd,"type must be either 'inetd' or 'standalone'");
 
   return HANDLED(cmd);
 }
@@ -551,7 +551,7 @@ MODRET set_setenv(cmd_rec *cmd) {
 #else
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
     " directive cannot be used on this system, as it does not have the "
-    "setenv() function.", NULL));
+    "setenv() function", NULL));
 #endif /* HAVE_SETENV */
 }
 
@@ -735,7 +735,7 @@ MODRET set_defaultserver(cmd_rec *cmd) {
   /* DefaultServer is not allowed if already set somewhere */
   for (s = (server_rec *) server_list->xas_list; s; s = s->next)
     if (find_config(s->conf, CONF_PARAM, cmd->argv[0], FALSE))
-      CONF_ERROR(cmd, "DefaultServer has already been set.");
+      CONF_ERROR(cmd, "DefaultServer has already been set");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
@@ -778,7 +778,7 @@ MODRET set_maxinstances(cmd_rec *cmd) {
     max = (int)strtol(cmd->argv[1],&endp,10);
 
     if ((endp && *endp) || max < 1)
-      CONF_ERROR(cmd,"argument must be 'none' or a number greater than 0.");
+      CONF_ERROR(cmd, "argument must be 'none' or a number greater than 0");
   }
 
   ServerMaxInstances = max;
@@ -862,7 +862,7 @@ MODRET set_socketbindtight(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
   SocketBindTight = bool;
   return HANDLED(cmd);
@@ -928,7 +928,7 @@ MODRET set_multilinerfc2228(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
   MultilineRFC2228 = bool;
   return HANDLED(cmd);
@@ -942,7 +942,7 @@ MODRET set_identlookups(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
@@ -960,7 +960,7 @@ MODRET set_tcpbacklog(cmd_rec *cmd) {
   backlog = atoi(cmd->argv[1]);
 
   if (backlog < 1 || backlog > 255)
-    CONF_ERROR(cmd,"parameter must be a number between 1 and 255.");
+    CONF_ERROR(cmd, "parameter must be a number between 1 and 255");
 
   tcpBackLog = backlog;
   return HANDLED(cmd);
@@ -997,7 +997,7 @@ MODRET set_user(cmd_rec *cmd) {
     pw = pr_auth_getpwnam(cmd->tmp_pool, cmd->argv[1]);
     if (pw == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "Unknown user '",
-        cmd->argv[1], "'.", NULL));
+        cmd->argv[1], "'", NULL));
     }
   }
 
@@ -1071,7 +1071,7 @@ MODRET set_group(cmd_rec *cmd) {
     grp = pr_auth_getgrnam(cmd->tmp_pool, cmd->argv[1]);
     if (grp == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "Unknown group '",
-        cmd->argv[1], "'.", NULL));
+        cmd->argv[1], "'", NULL));
     }
   }
 
@@ -1138,7 +1138,7 @@ MODRET set_unsetenv(cmd_rec *cmd) {
 #else
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
     " directive cannot be used on this system, as it does not have the "
-    "unsetenv() function.", NULL));
+    "unsetenv() function", NULL));
 #endif /* HAVE_UNSETENV */
 }
 
@@ -1658,10 +1658,9 @@ MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
   return HANDLED(cmd);
 
 #else /* no regular expression support at the moment */
-  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", param,
-                          " directive cannot be used on this system, "
-                          "as you do not have POSIX compliant "
-                          "regex support.", NULL));
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", param, " directive cannot be "
+    "used on this system, as you do not have POSIX compliant regex support",
+    NULL));
 #endif
 }
 
@@ -1721,7 +1720,7 @@ MODRET set_allowforeignaddress(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   if ((bool = get_boolean(cmd,1)) == -1)
-    CONF_ERROR(cmd,"expected boolean argument.");
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
@@ -1773,7 +1772,7 @@ MODRET add_directory(cmd_rec *cmd) {
 
   if (*dir != '/' && *dir != '~' &&
      (!cmd->config || cmd->config->config_type != CONF_ANON))
-    CONF_ERROR(cmd,"relative pathname not allowed in non-anonymous blocks.");
+    CONF_ERROR(cmd, "relative pathname not allowed in non-anonymous blocks");
 
   /* If in anonymous mode, and path is relative, just cat anon root
    * and relative path
@@ -1974,10 +1973,9 @@ MODRET set_hidefiles(cmd_rec *cmd) {
   return HANDLED(cmd);
 
 #else /* no regular expression support at the moment */
-  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The HideFiles"
-        " directive cannot be used on this system, "
-        "as you do not have POSIX compliant "
-        "regex support."));
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The HideFiles directive cannot be "
+    "used on this system, as you do not have POSIX compliant regex support",
+    NULL));
 #endif
 }
 
@@ -1989,7 +1987,7 @@ MODRET set_hidenoaccess(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ANON|CONF_DIR);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean parameter");
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
@@ -2103,7 +2101,7 @@ MODRET set_allowoverride(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument");
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
   /* Set the precedence for this config_rec based on its configuration
    * context.
@@ -2217,15 +2215,15 @@ MODRET add_anonymous(cmd_rec *cmd) {
   dir = cmd->argv[1];
 
   if (*dir != '/' && *dir != '~')
-    CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"(",dir,") absolute pathname "
-               "required.",NULL));
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "(", dir, ") absolute pathname "
+      "required", NULL));
 
-  if (strchr(dir,'*'))
-    CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"(",dir,") wildcards not allowed "
-               "in pathname.",NULL));
+  if (strchr(dir, '*'))
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "(", dir, ") wildcards not allowed "
+      "in pathname", NULL));
 
   if (!strcmp(dir,"/"))
-    CONF_ERROR(cmd,"'/' not permitted for anonymous root directory.");
+    CONF_ERROR(cmd, "'/' not permitted for anonymous root directory");
 
   if (*(dir+strlen(dir)-1) != '/')
     dir = pstrcat(cmd->tmp_pool, dir, "/", NULL);
@@ -2307,7 +2305,7 @@ MODRET add_limit(cmd_rec *cmd) {
   char **argv,**cargv;
 
   if (cmd->argc < 2)
-    CONF_ERROR(cmd,"directive requires one or more FTP commands.");
+    CONF_ERROR(cmd, "directive requires one or more FTP commands");
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_DIR|CONF_ANON|CONF_DYNDIR|CONF_GLOBAL);
 
   c = pr_parser_config_ctxt_open("Limit");
@@ -2651,7 +2649,7 @@ MODRET set_ignorehidden(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_LIMIT);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
+    CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
@@ -2728,7 +2726,7 @@ MODRET add_virtualhost(cmd_rec *cmd) {
 
   s = pr_parser_server_ctxt_open(cmd->argv[1]);
   if (s == NULL)
-    CONF_ERROR(cmd, "unable to create virtual server configuration.");
+    CONF_ERROR(cmd, "unable to create virtual server configuration");
 
   /* It's possible for a server to have multiple IP addresses (e.g. a DNS
    * name that has both A and AAAA records).  We need to handle that case
@@ -4193,7 +4191,7 @@ MODRET set_defaulttransfermode(cmd_rec *cmd) {
 
   if (strcasecmp(cmd->argv[1], "ascii") != 0 &&
       strcasecmp(cmd->argv[1], "binary") != 0)
-    CONF_ERROR(cmd, "parameter must be 'ascii' or 'binary'.");
+    CONF_ERROR(cmd, "parameter must be 'ascii' or 'binary'");
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
 
