@@ -19,7 +19,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.4 1999-03-05 00:44:05 flood Exp $
+ * $Id: mod_xfer.c,v 1.5 1999-03-05 02:53:24 flood Exp $
  */
 
 /* History Log:
@@ -527,8 +527,12 @@ static int _noxfer_timeout(CALLBACK_FRAME)
   send_response_async(R_421,
            "No Transfer Timeout (%d seconds): closing control connection.",
            TimeoutNoXfer);
+
+#if 0		/* no longer needed */
   schedule(main_exit,0,(void*)LOG_NOTICE,"FTP no transfer time out, disconnected.",
            (void*)0,NULL);
+#endif
+  
   remove_timer(TIMER_IDLE,ANY_MODULE);
   remove_timer(TIMER_LOGIN,ANY_MODULE);
   return 0;

@@ -19,7 +19,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.6 1999-03-05 00:29:20 flood Exp $
+ * $Id: main.c,v 1.7 1999-03-05 02:53:27 flood Exp $
  */
 
 /*
@@ -405,7 +405,7 @@ void send_response_async(const char *resp_numeric, const char *fmt, ...)
   cp = buf + strlen(buf);
   *cp++ = '\r'; *cp++ = '\n'; *cp++ = '\0';
 
-  io_write(session.c->outf,buf,strlen(buf));
+  io_write_async(session.c->outf,buf,strlen(buf));
 }
 
 void send_response(const char *resp_numeric, const char *fmt, ...)
