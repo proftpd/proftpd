@@ -26,7 +26,7 @@
 
 /* Scoreboard routines.
  *
- * $Id: utils.h,v 1.5 2002-09-27 20:51:19 castaglia Exp $
+ * $Id: utils.h,v 1.6 2002-10-23 23:53:55 castaglia Exp $
  */
 
 #ifndef UTIL_SCOREBOARD_H
@@ -34,6 +34,7 @@
 
 #include "config.h"
 #include "version.h"
+#include "options.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -116,8 +117,8 @@ typedef struct {
   char sce_server_addr[80], sce_server_name[32];
   char sce_client_addr[80];
   char sce_class[32];
-  char sce_cwd[80];
-  char sce_cmd[80];
+  char sce_cwd[PR_TUNABLE_SCOREBOARD_BUFFER_SIZE];
+  char sce_cmd[PR_TUNABLE_SCOREBOARD_BUFFER_SIZE];
   time_t sce_begin_idle, sce_begin_session;
   off_t sce_xfer_size, sce_xfer_done;
 

@@ -1,4 +1,12 @@
-$Id: NEWS,v 1.255 2002-10-22 18:27:28 castaglia Exp $
+$Id: NEWS,v 1.256 2002-10-23 23:53:55 castaglia Exp $
+
+CVS
+---------------------------------
+- Fixed configure script detection and handling of ncurses (HAVE_LIBNCURSES
+  was not being properly defined).
+- Added --enable-scoreboard-buffer-size option to configure script, for
+  tuning the size of some scoreboard fields (e.g. the full client command
+  and the current working directory).
 
 1.2.7rc2 - Released 2002-10-22
 ---------------------------------

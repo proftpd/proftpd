@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.9 2002-10-21 17:06:09 castaglia Exp $
+ * $Id: options.h,v 1.10 2002-10-23 23:53:55 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -118,6 +118,15 @@
 
 #ifndef PR_TUNABLE_NEW_POOL_SIZE
 # define PR_TUNABLE_NEW_POOL_SIZE	512
+#endif
+
+/* Number of bytes in certain scoreboard fields, usually for reporting
+ * the full command received from the connected client, or the current
+ * working directory for the session.
+ */
+
+#ifndef PR_TUNABLE_SCOREBOARD_BUFFER_SIZE
+# define PR_TUNABLE_SCOREBOARD_BUFFER_SIZE	80
 #endif
 
 /* Loopback network, this should generally not need to be changed,
