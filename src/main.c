@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.240 2004-08-06 02:16:17 castaglia Exp $
+ * $Id: main.c,v 1.241 2004-08-07 20:58:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -735,9 +735,11 @@ static void cmd_loop(server_rec *server, conn_t *c) {
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   char *cp;
   char *display = NULL;
-  const char *serveraddress = server->ServerAddress;
+  const char *serveraddress = NULL;
   config_rec *masq_c = NULL;
   int i;
+
+  serveraddress = pr_netaddr_get_ipstr(c->local_addr);
 
   set_proc_title("connected: %s (%s:%d)",
     c->remote_name ? c->remote_name : "?",
