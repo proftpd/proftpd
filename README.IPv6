@@ -69,7 +69,9 @@ Known issues:
     o example: on Darwin (MacOSX), one must two define two different
       vhosts, 0.0.0.0 and ::, in order to accept both IPv4 and IPv6
       connections.  However, on Solaris, binding to an IPv6 address will
-      accept both IPv4 and IPv6 connections to that address.
+      accept both IPv4 and IPv6 connections to that address.  Note that
+      this is only a problem if SocketBindTight is _not_ on, i.e. if
+      wildcard sockets are used.
 
     o Apache2 mentions the same problem here:
        http://httpd.apache.org/docs-2.0/bind.html#ipv6
