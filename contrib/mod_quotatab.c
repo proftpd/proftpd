@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.11 2004-09-17 17:50:28 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.12 2004-09-18 19:08:12 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -1941,10 +1941,6 @@ static void quotatab_exit_ev(const void *event_data, void *user_data) {
 }
 
 static void quotatab_restart_ev(const void *event_data, void *user_data) {
-
-  /* "Bounce" the log file descriptor. */
-  quotatab_closelog();
-  quotatab_openlog();
 
   /* Reset the module's memory pool. */
   destroy_pool(quotatab_pool);
