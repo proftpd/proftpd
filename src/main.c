@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.143 2002-12-13 17:28:31 castaglia Exp $
+ * $Id: main.c,v 1.144 2002-12-16 15:12:58 jwm Exp $
  */
 
 #include "conf.h"
@@ -2327,12 +2327,10 @@ static void show_usage(int exit_code) {
 }
 
 int main(int argc, char *argv[], char **envp) {
-  int socketp, optc;
-  mode_t *main_umask = NULL;
-  int check_config_syntax = 0;
-  int show_version = 0;
-  struct sockaddr peer;
+  int optc, check_config_syntax = 0, show_version = 0;
   const char *cmdopts = "D:nd:c:p:lhtv";
+  mode_t *main_umask = NULL;
+  struct sockaddr peer;
 
 #ifdef DEBUG_MEMORY
   int logfd;
@@ -2382,12 +2380,8 @@ int main(int argc, char *argv[], char **envp) {
   srand(time(NULL));
 
   /* getpeername() fails if the fd isn't a socket */
-  socketp = sizeof(peer);
-  if (getpeername(fileno(stdin),&peer,&socketp) != -1) {
+  if (getpeername(fileno(stdin), &peer, sizeof(peer)) != -1)
     log_stderr(FALSE);
-    socketp = TRUE;
-  } else
-    socketp = FALSE;
 
   /* Open the syslog */
   log_opensyslog(NULL);
