@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.10 2003-08-29 06:33:05 castaglia Exp $
+ * $Id: netaddr.c,v 1.11 2003-08-30 16:07:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -119,7 +119,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     gai_res = pr_getaddrinfo(name, NULL, &hints, &info);
     if (gai_res != 0) {
       log_pri(PR_LOG_INFO, "getaddrinfo '%s' error: %s", name,
-        res != EAI_SYSTEM ? gai_strerror(gai_res) : strerror(errno));
+        res != EAI_SYSTEM ? pr_gai_strerror(gai_res) : strerror(errno));
       return NULL;
     }
 
@@ -522,7 +522,7 @@ const char *pr_netaddr_get_ipstr(pr_netaddr_t *na) {
 
   if (res != 0) {
     log_pri(PR_LOG_NOTICE, "getnameinfo error: %s",
-      res != EAI_SYSTEM ? gai_strerror(res) : strerror(errno));
+      res != EAI_SYSTEM ? pr_gai_strerror(res) : strerror(errno));
     return NULL;
   }
 

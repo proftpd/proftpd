@@ -29,7 +29,7 @@
 
 /* ProFTPD support library definitions.
  *
- * $Id: libsupp.h,v 1.12 2003-08-13 06:07:38 castaglia Exp $
+ * $Id: libsupp.h,v 1.13 2003-08-30 16:07:09 castaglia Exp $
  */
 
 #include <glibc-glob.h>
@@ -48,6 +48,12 @@
 
 int pr_fnmatch(const char *, const char *, int);
 char *sstrncpy(char *, const char *, size_t);
+
+#ifndef HAVE_GAI_STRERROR
+const char *pr_gai_strerror(int);
+#else
+# define pr_gai_strerror	gai_strerror
+#endif /* HAVE_GAI_STRERROR */
 
 #ifndef HAVE_STRSEP
 char *strsep(char **, const char *);

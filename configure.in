@@ -124,7 +124,7 @@ dnl problems for certain builds of proftpd, e.g. ProFTPD and MySQL (which
 dnl itself similarly bundles a getopt implementation).  Thus, we need to
 dnl support/handle --without-getopt, to disable use of ProFTPD's getopt.
 dnl I don't know if MySQL supports any similar option.
-ac_lib_objs="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-mkstemp.o pr-syslog.o pwgrent.o"
+pr_lib_objs="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-mkstemp.o pr-syslog.o pwgrent.o"
 ac_pr_check_getopt="yes"
 
 AC_ARG_WITH(getopt,
@@ -134,14 +134,14 @@ AC_ARG_WITH(getopt,
   ],
   [
     if test "$withval" = "no" ; then
-      LIB_OBJS="$ac_lib_objs"
+      LIB_OBJS="$pr_lib_objs"
       ac_pr_check_getopt="no"
     else 
-      LIB_OBJS="$ac_lib_objs getopt.o getopt1.o"
+      LIB_OBJS="$pr_lib_objs getopt.o getopt1.o"
     fi
   ],
   [
-    LIB_OBJS="$ac_lib_objs getopt.o getopt1.o"
+    LIB_OBJS="$pr_lib_objs getopt.o getopt1.o"
   ])
 
 dnl Modules...'nuff said.
@@ -887,7 +887,11 @@ AC_PROG_GCC_TRADITIONAL
 AC_FUNC_SETPGRP
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS(bcopy crypt fgetgrent fgetpwent flock freeaddrinfo gai_strerror)
+AC_CHECK_FUNCS(bcopy crypt fgetgrent fgetpwent flock freeaddrinfo)
+AC_CHECK_FUNC(gai_strerror,
+  AC_DEFINE(HAVE_GAI_STRERROR),
+  pr_lib_objs="$pr_lib_objs glibc-gai_strerror.o"
+)
 AC_CHECK_FUNCS(getaddrinfo getcwd gethostname getnameinfo)
 if test "$ac_pr_check_getopt" = "yes" ; then
   AC_CHECK_FUNCS(getopt)
