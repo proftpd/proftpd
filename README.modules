@@ -89,6 +89,11 @@ Feature modules:
         See contrib/mod_ifsession.html
         Contributed by TJ Saunders <tj@castaglia.org>
 
+    mod_quotatab, mod_quotatab_file, mod_quotatab_ldap, mod_quotatab_sql
+        User/group/class quotas.
+        See contrib/mod_quotatab.html
+        Contributed by TJ Saunders <tj@castaglia.org>
+
     mod_ratio
         User upload/download ratios.
         See contrib/README.ratio and the comments in mod_ratio.c.
