@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.313 2002-12-07 00:48:31 castaglia Exp $
+$Id: NEWS,v 1.314 2002-12-07 21:12:58 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -38,6 +38,10 @@ CVS
   LsDefaultOptions configuration directive has been deprecated in favor of
   the more feature-rich ListOptions directive.
 - Added Bindings API
+- Bug 1515 - Enable mod_log to log into default log / syslog.  The ExtendedLog
+  directive can now take a "path" of the form: "syslog:level", where the
+  "syslog:" prefix tells mod_log to log that ExtendedLog data via syslog,
+  and the "level" informs mod_log of which syslog level to use.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------

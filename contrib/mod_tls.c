@@ -1022,7 +1022,7 @@ static void tls_handle_error(int error) {
   }
 
   tls_log("%s", "unexpected OpenSSL error, disconnecting");
-  log_pri(LOG_ERR, "%s", MOD_TLS_VERSION
+  log_pri(PR_LOG_ERR, "%s", MOD_TLS_VERSION
     ": unexpected OpenSSL error, disconnecting");
 
   end_login(1);
@@ -1986,7 +1986,7 @@ static void tls_netio_install_ctrl(void) {
   pr_unregister_netio(PR_NETIO_STRM_CTRL);
 
   if (pr_register_netio(netio, PR_NETIO_STRM_CTRL) < 0)
-    log_pri(LOG_INFO, MOD_TLS_VERSION ": error registering netio: %s",
+    log_pri(PR_LOG_INFO, MOD_TLS_VERSION ": error registering netio: %s",
       strerror(errno));
 }
 
@@ -2007,7 +2007,7 @@ static void tls_netio_install_data(void) {
   pr_unregister_netio(PR_NETIO_STRM_DATA);
 
   if (pr_register_netio(netio, PR_NETIO_STRM_DATA) < 0)
-    log_pri(LOG_INFO, MOD_TLS_VERSION ": error registering netio: %s",
+    log_pri(PR_LOG_INFO, MOD_TLS_VERSION ": error registering netio: %s",
       strerror(errno));
 }
 
@@ -2107,7 +2107,7 @@ MODRET tls_authenticate(cmd_rec *cmd) {
     if (tls_dotlogin_allow(cmd->argv[0])) {
       tls_log("TLS/X509 .tlslogin check successful for user '%s'",
        cmd->argv[0]);
-      log_auth(LOG_NOTICE, "USER %s: TLS/X509 .tlslogin authentication "
+      log_auth(PR_LOG_NOTICE, "USER %s: TLS/X509 .tlslogin authentication "
         "successful", cmd->argv[0]);
       return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
 
@@ -2143,7 +2143,7 @@ MODRET tls_auth_check(cmd_rec *cmd) {
     if (tls_dotlogin_allow(cmd->argv[1])) {
       tls_log("TLS/X509 .tlslogin check successful for user '%s'",
        cmd->argv[0]);
-      log_auth(LOG_NOTICE, "USER %s: TLS/X509 .tlslogin authentication "
+      log_auth(PR_LOG_NOTICE, "USER %s: TLS/X509 .tlslogin authentication "
         "successful", cmd->argv[1]);
       return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
 
@@ -2865,15 +2865,15 @@ static int tls_sess_init(void) {
   /* Open the TLSLog, if configured */
   if ((res = tls_openlog()) < 0) {
     if (res == -1)
-      log_pri(LOG_NOTICE, MOD_TLS_VERSION ": notice: unable to open TLSLog: %s",
-        strerror(errno));
+      log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+        ": notice: unable to open TLSLog: %s", strerror(errno));
 
     else if (res == LOG_WRITEABLE_DIR)
-      log_pri(LOG_NOTICE, "notice: unable to open TLSLog: "
-          "parent directory is world writeable");
+      log_pri(PR_LOG_NOTICE, "notice: unable to open TLSLog: "
+        "parent directory is world writeable");
 
     else if (res == LOG_SYMLINK)
-      log_pri(LOG_NOTICE, "notice: unable to open TLSLog: "
+      log_pri(PR_LOG_NOTICE, "notice: unable to open TLSLog: "
           "cannot log to a symbolic link");
   }
 

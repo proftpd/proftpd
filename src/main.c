@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.136 2002-12-07 00:48:32 castaglia Exp $
+ * $Id: main.c,v 1.137 2002-12-07 21:13:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1252,7 +1252,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     exit(1);
   }
 
-  inet_set_proto_options(permanent_pool,conn,1,1,0,0);
+  inet_set_proto_options(permanent_pool,conn, 1, 1, 0, 0);
 
   /* Find the server for this connection. */
   serv = pr_ipbind_get_server(conn->local_ipaddr, conn->local_port);
@@ -1355,7 +1355,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   /* If no server is configured to handle the addr the user is
    * connected to, drop them.
    */
-  if(!serv) {
+  if (!serv) {
     send_response(R_500,
 		  "Sorry, no server available to handle request on %s.",
 		  inet_getname(conn->pool, conn->local_ipaddr));

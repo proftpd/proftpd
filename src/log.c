@@ -27,7 +27,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.49 2002-12-06 21:05:08 castaglia Exp $
+ * $Id: log.c,v 1.50 2002-12-07 21:13:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -38,7 +38,6 @@
 
 static int syslog_open = FALSE;
 static int syslog_discard = FALSE;
-static int syslog_sockfd = -1;
 static int logstderr = TRUE;
 static int debug_level = DEBUG0;	/* Default is no debug logging */
 static int facility = LOG_DAEMON;
@@ -46,10 +45,12 @@ static int set_facility = -1;
 static char systemlog_fn[MAX_PATH_LEN] = {'\0'};
 static char systemlog_host[256] = {'\0'};
 static int systemlog_fd = -1;
-static int xferfd = -1;
 
-char *fmt_time(time_t t)
-{
+static int xfer_fd = -1;
+
+int syslog_sockfd = -1;
+
+char *fmt_time(time_t t) {
   static char buf[30];
   static char *mons[] =
   { "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec" };
@@ -75,26 +76,26 @@ char *fmt_time(time_t t)
 }
 
 void log_close_xfer(void) {
-  if (xferfd != -1)
-    close(xferfd);
+  if (xfer_fd != -1)
+    close(xfer_fd);
 
-  xferfd = -1;
+  xfer_fd = -1;
 }
 
-int log_open_xfer(const char *fn) {
+int log_open_xfer(const char *path) {
 
-  if (!fn) {
-    if (xferfd != -1)
+  if (!path) {
+    if (xfer_fd != -1)
       log_close_xfer();
     return 0;
   }
 
-  if (xferfd == -1) {
-    log_debug(DEBUG6, "opening TransferLog '%s'", fn);
-    log_openfile(fn, &xferfd, LOG_XFER_MODE);
+  if (xfer_fd == -1) {
+    log_debug(DEBUG6, "opening TransferLog '%s'", path);
+    log_openfile(path, &xfer_fd, LOG_XFER_MODE);
   }
 
-  return xferfd;
+  return xfer_fd;
 }
 
 int log_xfer(int xfertime, char *remhost, off_t fsize, char *fname,
@@ -103,22 +104,24 @@ int log_xfer(int xfertime, char *remhost, off_t fsize, char *fname,
   char buf[LOGBUFFER_SIZE] = {'\0'}, fbuf[LOGBUFFER_SIZE] = {'\0'};
   register unsigned int i = 0;
 
-  if (xferfd == -1 || !remhost || !user || !fname)
+  if (xfer_fd == -1 || !remhost || !user || !fname)
     return 0;
 
-  for (i = 0; (i + 1 < sizeof(fbuf)) && fname[i] != '\0'; i++)
+  for (i = 0; (i + 1 < sizeof(fbuf)) && fname[i] != '\0'; i++) {
     fbuf[i] = (isspace((int) fname[i]) || iscntrl((int) fname[i])) ? '_' :
       fname[i];
+  }
   fbuf[i] = '\0';
 
-  snprintf(buf, sizeof(buf), "%s %d %s %" PR_LU " %s %c _ %c %c %s ftp %c %s %c\n",
+  snprintf(buf, sizeof(buf),
+    "%s %d %s %" PR_LU " %s %c _ %c %c %s ftp %c %s %c\n",
     fmt_time(time(NULL)), xfertime, remhost, fsize, fbuf, xfertype, direction,
     access, user, session.ident_lookups == TRUE ? '1' : '0',
     (session.ident_lookups == TRUE && strcmp(session.ident_user,
       "UNKNOWN")) ? session.ident_user : "*", abort_flag);
   buf[sizeof(buf)-1] = '\0';
 
-  return(write(xferfd, buf, strlen(buf)));
+  return write(xfer_fd, buf, strlen(buf));
 }
 
 /* This next function logs an entry to wtmp, it MUST be called as
@@ -482,7 +485,6 @@ void log_auth(int priority, char *fmt, ...) {
  * or disassociation from controlling tty.  After disabling stderr
  * logging, all messages go to syslog.
  */
-
 void log_stderr(int bool) {
   logstderr = bool;
 }
@@ -491,11 +493,42 @@ void log_stderr(int bool) {
  * numbers mean print more, DEBUG0 (0) == print no debugging log
  * (default)
  */
-
 int log_setdebuglevel(int level) {
   int old_level = debug_level;
   debug_level = level;
   return old_level;
+}
+
+/* Convert a string into the matching syslog level value.  Return -1
+ * if no matching level is found.
+ */
+int log_str2sysloglevel(const char *name) {
+
+  if (strcasecmp(name, "emerg") == 0)
+    return PR_LOG_EMERG;
+
+  else if (strcasecmp(name, "alert") == 0)
+    return PR_LOG_ALERT;
+
+  else if (strcasecmp(name, "crit") == 0)
+    return PR_LOG_CRIT;
+
+  else if (strcasecmp(name, "error") == 0)
+    return PR_LOG_ERR;
+
+  else if (strcasecmp(name, "warn") == 0)
+    return PR_LOG_WARNING;
+
+  else if (strcasecmp(name, "notice") == 0)
+    return PR_LOG_NOTICE;
+
+  else if (strcasecmp(name, "info") == 0)
+    return PR_LOG_INFO;
+
+  else if (strcasecmp(name, "debug") == 0)
+    return PR_LOG_DEBUG;
+
+  return -1;
 }
 
 void log_debug(int level, char *fmt, ...) {

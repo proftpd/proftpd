@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.39 2002-12-06 21:05:00 castaglia Exp $
+ * $Id: mod_log.c,v 1.40 2002-12-07 21:13:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -34,8 +34,8 @@
 
 extern response_t *resp_list,*resp_err_list;
 
-#define LOGBUF_SIZE		1025
-#define LOG_EXTENDED_MODE	0644
+#define EXTENDED_LOG_BUFFER_SIZE		1025
+#define EXTENDED_LOG_MODE			0644
 
 typedef struct logformat_struc	logformat_t;
 typedef struct logfile_struc 	logfile_t;
@@ -50,12 +50,22 @@ struct logformat_struc {
 struct logfile_struc {
   logfile_t		*next,*prev;
 
-  int			lf_fd;
-  int			lf_classes;
   char			*lf_filename;
+  int			lf_fd;
+  int			lf_syslog_level;
+
   logformat_t		*lf_format;
-  config_rec		*lf_conf;	/* pointer to the "owning" configuration */
+
+  int			lf_classes;
+
+  /* Pointer to the "owning" configuration */
+  config_rec		*lf_conf;
 };
+
+/* Value for lf_fd signalling that data should be logged via syslog, rather
+ * than written to a file.
+ */
+#define EXTENDED_LOG_SYSLOG	-4
   
 #define META_START		0xff
 #define META_ARG_END		0xfe
@@ -298,16 +308,15 @@ void logformat(char *nickname, char *fmts)
   lf->lf_format = palloc(log_pool, outs - format);
   memcpy(lf->lf_format, format, outs - format);
   
-  if(!format_set)
+  if (!format_set)
     format_set = xaset_create(log_pool, NULL);
 
   xaset_insert_end(format_set, (xasetmember_t *) lf);
   formats = (logformat_t *) format_set->xas_list;
 }
 
-/* Syntax: LogFormat nickname "format string"
- */
-MODRET add_logformat(cmd_rec *cmd) {
+/* Syntax: LogFormat nickname "format string" */
+MODRET set_logformat(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT);
 
@@ -353,9 +362,8 @@ static int _parse_classes(char *s)
   return classes;
 }
 
-/* Syntax: ExtendedLog <log-filename> [<cmd-classes> [<format-nickname>]]
- */
-MODRET add_extendedlog(cmd_rec *cmd) {
+/* Syntax: ExtendedLog file [<cmd-classes> [<nickname>]] */
+MODRET set_extendedlog(cmd_rec *cmd) {
   config_rec *c = NULL;
   int argc;
 
@@ -364,14 +372,25 @@ MODRET add_extendedlog(cmd_rec *cmd) {
   argc = cmd->argc;
 
   if (argc < 2)
-    CONF_ERROR(cmd, "Syntax: ExtendedLog <log-filename> "
-	       "[<Command-Classes> [<Format-Nickname>]]");
+    CONF_ERROR(cmd, "Syntax: ExtendedLog file [<cmd-classes> [<nickname>]]");
 
   c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
 
-  if (cmd->argv[1][0] != '/')
-    c->argv[0] = dir_canonical_path(log_pool, cmd->argv[1]);
-  else
+  if (strncasecmp(cmd->argv[1], "syslog:", 7) == 0) {
+    char *tmp = strchr(cmd->argv[1], ':');
+
+    if (log_str2sysloglevel(++tmp) < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown syslog level: '",
+        tmp, "'", NULL));
+
+    } else
+      c->argv[0] = pstrdup(log_pool, cmd->argv[1]);
+
+  } else if (cmd->argv[1][0] != '/') {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "relative paths not allowed: '",
+        cmd->argv[1], "'", NULL));
+
+  } else
     c->argv[0] = pstrdup(log_pool, cmd->argv[1]);
 
   if (argc > 2)
@@ -818,10 +837,13 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
 static void do_log(cmd_rec *cmd, logfile_t *lf) {
   unsigned char *f = NULL;
-  size_t size = LOGBUF_SIZE-2;
-  char logbuf[LOGBUF_SIZE] = {'\0'};
+  size_t size = EXTENDED_LOG_BUFFER_SIZE-2;
+  char logbuf[EXTENDED_LOG_BUFFER_SIZE] = {'\0'};
   logformat_t *fmt = NULL;
   char *s, *bp;
+
+  /* from src/log.c */
+  extern int syslog_sockfd;
 
   fmt = lf->lf_format;
   f = fmt->lf_format;
@@ -852,30 +874,34 @@ static void do_log(cmd_rec *cmd, logfile_t *lf) {
   *bp++ = '\n';
   *bp = '\0';
 
-  /* NOTE: call pr_syslog() here, if need be, for logging via syslog */
+  if (lf->lf_fd != EXTENDED_LOG_SYSLOG)
+    write(lf->lf_fd, logbuf, strlen(logbuf));
 
-  write(lf->lf_fd, logbuf, strlen(logbuf));
+  else
+    pr_syslog(syslog_sockfd, lf->lf_syslog_level, "%s", logbuf);
 }
 
-MODRET log_command(cmd_rec *cmd) {
-  logfile_t *lf;
-  /* If not in anon mode, only handle logs for main servers */
+MODRET log_any(cmd_rec *cmd) {
+  logfile_t *lf = NULL;
 
-  for(lf = logs; lf; lf=lf->next)
-    if(lf->lf_fd != -1 && (cmd->class & lf->lf_classes)) {
-      if(!session.anon_config && lf->lf_conf && lf->lf_conf->config_type == CONF_ANON)
+  /* If not in anon mode, only handle logs for main servers */
+  for (lf = logs; lf; lf = lf->next)
+    if (lf->lf_fd != -1 && (cmd->class & lf->lf_classes)) {
+      if (!session.anon_config && lf->lf_conf &&
+          lf->lf_conf->config_type == CONF_ANON)
         continue;
-      do_log(cmd,lf);
+
+      do_log(cmd, lf);
     }
 
   return DECLINED(cmd);
 }
 
-/* log_rehash is called whenever the master server rehashes it's
+/* log_rehash_cb() is called whenever the master server rehashes it's
  * config (in response to SIGHUP).
  */
 
-static void log_rehash(void *d) {
+static void log_rehash_cb(void *d) {
   destroy_pool(log_pool);
 
   formats = NULL;
@@ -893,7 +919,7 @@ static int log_init(void) {
   /* Add the "default" extendedlog format */
   logformat("", "%h %l %u %t \"%r\" %s %b");
 
-  register_rehash(NULL, log_rehash);
+  register_rehash(NULL, log_rehash_cb);
   return 0;
 }
 
@@ -907,18 +933,18 @@ static void get_extendedlogs(void) {
 
   c = find_config(TOPLEVEL_CONF, CONF_PARAM, "ExtendedLog", FALSE);
 
-  while(c) {
+  while (c) {
     logfname = c->argv[0];
 
-    if(c->argc > 1) {
+    if (c->argc > 1) {
       logclasses = _parse_classes(c->argv[1]);
-      if(c->argc > 2)
+      if (c->argc > 2)
         logfmt_s = c->argv[2];
     }
     
     /* No logging for this round.
      */
-    if(logclasses == CL_NONE)
+    if (logclasses == CL_NONE)
       goto loop_extendedlogs;
     
     if (logfmt_s) {
@@ -932,14 +958,17 @@ static void get_extendedlogs(void) {
           logfmt_s);
         goto loop_extendedlogs;
       }
+
     } else {
       logfmt = formats;
     }
     
     logf = (logfile_t *) pcalloc(permanent_pool, sizeof(logfile_t));
-    logf->lf_fd = -1;
-    logf->lf_classes = logclasses;
+
     logf->lf_filename = pstrdup(permanent_pool, logfname);
+    logf->lf_fd = -1;
+    logf->lf_syslog_level = -1;
+    logf->lf_classes = logclasses;
     logf->lf_format = logfmt;
     logf->lf_conf = c->parent;
     if(!log_set)
@@ -953,54 +982,61 @@ loop_extendedlogs:
   }
 }
 
-MODRET log_auth_complete(cmd_rec *cmd) {
+MODRET log_post_pass(cmd_rec *cmd) {
   logfile_t *lf;
 
-  /* authentication is complete, if we aren't in anon-mode, close
+  /* Authentication is complete, if we aren't in anon-mode, close
    * all extendedlogs opened inside <Anonymous> blocks.
    */
-  if(!session.anon_config) {
-    for(lf = logs; lf; lf=lf->next)
-      if(lf->lf_fd != -1 && lf->lf_conf && lf->lf_conf->config_type == CONF_ANON) {
+  if (!session.anon_config) {
+    for (lf = logs; lf; lf = lf->next) {
+      if (lf->lf_fd != -1 && lf->lf_fd != EXTENDED_LOG_SYSLOG &&
+          lf->lf_conf && lf->lf_conf->config_type == CONF_ANON) {
         close(lf->lf_fd);
         lf->lf_fd = -1;
       }
+    }
+
   } else {
-    /* close all logs which were opened inside a _different_ anonymous
+    /* Close all logs which were opened inside a _different_ anonymous
      * context.
      */
-    for(lf = logs; lf; lf=lf->next)
-      if(lf->lf_fd != -1 && lf->lf_conf && lf->lf_conf != session.anon_config) {
+    for (lf = logs; lf; lf = lf->next) {
+      if (lf->lf_fd != -1 && lf->lf_fd != EXTENDED_LOG_SYSLOG &&
+          lf->lf_conf && lf->lf_conf != session.anon_config) {
         close(lf->lf_fd);
         lf->lf_fd = -1;
       }
+    }
 
-    /* if any extendedlogs set inside our context match an outer log,
+    /* If any ExtendedLogs set inside our context match an outer log,
      * close the outer (this allows overriding inside <Anonymous>).
      */
-    for(lf = logs; lf; lf=lf->next)
-      if(lf->lf_conf && lf->lf_conf == session.anon_config) {
-        /* this should "override" any lower-level extendedlog with the
+    for (lf = logs; lf; lf = lf->next) {
+      if (lf->lf_conf && lf->lf_conf == session.anon_config) {
+        /* This should "override" any lower-level extendedlog with the
          * same filename.
          */
-        logfile_t *lf2;
+        logfile_t *lfi = NULL;
 
-        for(lf2 = logs; lf2; lf2=lf2->next) {
-          if(lf2->lf_fd != -1 && !lf2->lf_conf &&
-             !strcmp(lf2->lf_filename,lf->lf_filename)) {
-            close(lf2->lf_fd);
-            lf2->lf_fd = -1;
+        for (lfi = logs; lfi; lfi = lfi->next) {
+          if (lfi->lf_fd != -1 && lfi->lf_fd != EXTENDED_LOG_SYSLOG &&
+              !lfi->lf_conf && !strcmp(lfi->lf_filename, lf->lf_filename)) {
+            close(lfi->lf_fd);
+            lfi->lf_fd = -1;
           }
         }
        
-        /* go ahead and close the log if it's CL_NONE */
-
-        if(lf->lf_fd != -1 && lf->lf_classes == CL_NONE) {
+        /* Go ahead and close the log if it's CL_NONE */
+        if (lf->lf_fd != -1 && lf->lf_fd != EXTENDED_LOG_SYSLOG &&
+            lf->lf_classes == CL_NONE) {
           close(lf->lf_fd);
           lf->lf_fd = -1;
         }
       }
+    }
   }
+
   return DECLINED(cmd);
 }
 
@@ -1024,30 +1060,40 @@ static int log_sess_init(void) {
   for (lf = logs; lf; lf = lf->next) {
 
     if (lf->lf_fd == -1) {
-      int res = 0;
 
-      block_signals();
-      PRIVS_ROOT
-      res = log_openfile(lf->lf_filename, &lf->lf_fd, LOG_EXTENDED_MODE);
-      PRIVS_RELINQUISH
-      unblock_signals();
+      /* Is this ExtendedLog to be written to a file, or to syslog? */
+      if (strncasecmp(lf->lf_filename, "syslog:", 7) != 0) {
+        int res = 0;
 
-      if (res == -1) {
-        log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': %s",
-          lf->lf_filename, strerror(errno));
-        continue;
+        block_signals();
+        PRIVS_ROOT
+        res = log_openfile(lf->lf_filename, &lf->lf_fd, EXTENDED_LOG_MODE);
+        PRIVS_RELINQUISH
+        unblock_signals();
 
-      } else if (res == LOG_WRITEABLE_DIR) {
-        log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
-          "containing directory is world writeable", lf->lf_filename);
-        continue;
+        if (res == -1) {
+          log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': %s",
+            lf->lf_filename, strerror(errno));
+          continue;
 
-      } else if (res == LOG_SYMLINK) {
-        log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
-          "%s is a symbolic link", lf->lf_filename, lf->lf_filename);
-        close(lf->lf_fd);
-        lf->lf_fd = -1;
-        continue;
+        } else if (res == LOG_WRITEABLE_DIR) {
+          log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
+            "containing directory is world writeable", lf->lf_filename);
+          continue;
+
+        } else if (res == LOG_SYMLINK) {
+          log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
+            "%s is a symbolic link", lf->lf_filename, lf->lf_filename);
+          close(lf->lf_fd);
+          lf->lf_fd = -1;
+          continue;
+        }
+
+      } else {
+        char *tmp = strchr(lf->lf_filename, ':');
+
+        lf->lf_syslog_level = log_str2sysloglevel(++tmp);
+        lf->lf_fd = EXTENDED_LOG_SYSLOG;
       }
     }
   }
@@ -1060,18 +1106,18 @@ static int log_sess_init(void) {
 
 static conftable log_conftab[] = {
   { "AllowLogSymlinks",	set_allowlogsymlinks,			NULL },
-  { "ExtendedLog",	add_extendedlog,			NULL },
-  { "LogFormat",	add_logformat,				NULL },
+  { "ExtendedLog",	set_extendedlog,			NULL },
+  { "LogFormat",	set_logformat,				NULL },
   { "ServerLog",	set_serverlog,				NULL },
   { "SystemLog",	set_systemlog,				NULL },
   { NULL,		NULL,					NULL }
 };
 
 static cmdtable log_cmdtab[] = {
-  { PRE_CMD, 		C_QUIT,	G_NONE,	log_command,		FALSE, FALSE },
-  { LOG_CMD,		C_ANY,	G_NONE,	log_command,		FALSE, FALSE },
-  { LOG_CMD_ERR,	C_ANY,	G_NONE,	log_command,		FALSE, FALSE },
-  { POST_CMD,		C_PASS,	G_NONE,	log_auth_complete,	FALSE, FALSE },
+  { PRE_CMD, 		C_QUIT,	G_NONE,	log_any,		FALSE, FALSE },
+  { LOG_CMD,		C_ANY,	G_NONE,	log_any,		FALSE, FALSE },
+  { LOG_CMD_ERR,	C_ANY,	G_NONE,	log_any,		FALSE, FALSE },
+  { POST_CMD,		C_PASS,	G_NONE,	log_post_pass,		FALSE, FALSE },
   { 0, NULL }
 };
 

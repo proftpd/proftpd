@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.131 2002-12-07 00:48:32 castaglia Exp $
+ * $Id: mod_core.c,v 1.132 2002-12-07 21:13:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -506,37 +506,12 @@ MODRET set_pidfile(cmd_rec *cmd) {
 
 MODRET set_sysloglevel(cmd_rec *cmd) {
   config_rec *c = NULL;
-  unsigned int level = 0;
+  int level = 0;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-
-  if (!strcasecmp(cmd->argv[1], "emerg"))
-    level = PR_LOG_EMERG;
-
-  else if (!strcasecmp(cmd->argv[1], "alert"))
-    level = PR_LOG_ALERT;
-
-  else if (!strcasecmp(cmd->argv[1], "crit"))
-    level = PR_LOG_CRIT;
-
-  else if (!strcasecmp(cmd->argv[1], "error"))
-    level = PR_LOG_ERR;
-
-  else if (!strcasecmp(cmd->argv[1], "warn"))
-    level = PR_LOG_WARNING;
-
-  else if (!strcasecmp(cmd->argv[1], "notice"))
-    level = PR_LOG_NOTICE;
-
-  else if (!strcasecmp(cmd->argv[1], "info"))
-    level = PR_LOG_INFO;
-
-  else if (!strcasecmp(cmd->argv[1], "debug"))
-    level = PR_LOG_DEBUG;
-
-  else
+  if ((level = log_str2sysloglevel(cmd->argv[1])) < 0)
     CONF_ERROR(cmd, "SyslogLevel requires level keyword: one of "
       "emerg/alert/crit/error/warn/notice/info/debug");
   
@@ -3880,7 +3855,7 @@ static conftable core_conftab[] = {
 
 static cmdtable core_cmdtab[] = {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-  { PRE_CMD, "*",G_NONE,  regex_filters,FALSE,  FALSE, CL_NONE },
+  { PRE_CMD, C_ANY, G_NONE,  regex_filters, FALSE, FALSE, CL_NONE },
 #endif
   { PRE_CMD, C_ANY, G_NONE, core_clear_fs,FALSE, FALSE, CL_NONE },
   { CMD, C_HELP, G_NONE,  core_help,	FALSE,	FALSE, CL_INFO },
