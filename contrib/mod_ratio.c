@@ -613,7 +613,7 @@ cmd_site (cmd_rec * cmd)
   if (!strcasecmp (cmd->argv[1], "HELP"))
     {
       add_response (R_214,
-		    "The following mod_ratio SITE extensions are recognized.");
+		    "The following SITE extensions are recognized:");
       add_response (R_214, "RATIO        " "-- show all ratios in effect");
     }
   return DECLINED (cmd);

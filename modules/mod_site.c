@@ -19,7 +19,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.8 2000-07-28 13:50:15 macgyver Exp $
+ * $Id: mod_site.c,v 1.9 2000-08-01 19:51:05 macgyver Exp $
  */
 
 #include "conf.h"
@@ -321,13 +321,13 @@ MODRET site_help(cmd_rec *cmd)
       *cp = toupper(*cp);
 
     for(i = 0; _help[i].cmd; i++)
-      if(!strcasecmp(cmd->argv[1],_help[i].cmd)) {
-        add_response(R_214,"Syntax: SITE %s %s",cmd->argv[1],
-                            _help[i].syntax);
+      if(!strcasecmp(cmd->argv[1], _help[i].cmd)) {
+        add_response(R_214, "Syntax: SITE %s %s", cmd->argv[1],
+		     _help[i].syntax);
         return HANDLED(cmd);
       }
 
-    add_response_err(R_502,"Unknown command 'SITE %s'.",cmd->argv[2]);
+    add_response_err(R_502, "Unknown command 'SITE %s'.", cmd->arg);
     return ERROR(cmd);
   }
 
