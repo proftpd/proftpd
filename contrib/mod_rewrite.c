@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.21 2004-12-01 18:08:12 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.22 2004-12-16 23:37:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2078,6 +2078,19 @@ static void rewrite_exit_ev(const void *event_data, void *user_data) {
   return;
 }
 
+#if defined(PR_SHARED_MODULE)
+static void rewrite_mod_unload_ev(const void *event_data, void *user_data) {
+  if (strcmp("mod_rewrite.c", (const char *) event_data) == 0) {
+    pr_event_unregister(&rewrite_module, NULL, NULL);
+
+    if (rewrite_pool) {
+      destroy_pool(rewrite_pool);
+      rewrite_pool = NULL;
+    }
+  }
+}
+#endif /* PR_SHARED_MODULE */
+
 static void rewrite_restart_ev(const void *event_data, void *user_data) {
   if (rewrite_regexes) {
     register unsigned int i = 0;
@@ -2153,6 +2166,11 @@ static int rewrite_init(void) {
     rewrite_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(rewrite_pool, MOD_REWRITE_VERSION);
   }
+
+#if defined(PR_SHARED_MODULE)
+  pr_event_register(&rewrite_module, "core.module-unload",
+    rewrite_mod_unload_ev, NULL);
+#endif /* PR_SHARED_MODULE */
 
   /* Add a restart handler. */
   pr_event_register(&rewrite_module, "core.restart", rewrite_restart_ev,
