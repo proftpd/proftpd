@@ -275,8 +275,9 @@ MODRET _calc_ratios (cmd_rec * cmd)
       else
 	sstrncpy (mask, c->argv[0], sizeof (buf));
 
-      if (!fnmatch (buf, session.c->remote_name, FNM_NOESCAPE) ||
-	  !fnmatch (buf, inet_ntoa (*session.c->remote_ipaddr), FNM_NOESCAPE))
+      if (!pr_fnmatch (buf, session.c->remote_name, PR_FNM_NOESCAPE | PR_FNM_CASEFOLD) ||
+	  !pr_fnmatch (buf, inet_ntoa (*session.c->remote_ipaddr),
+		       PR_FNM_NOESCAPE | PR_FNM_CASEFOLD))
 	{
 	  _set_ratios (c->argv[1], c->argv[2], c->argv[3], c->argv[4]);
 	  g.rtype = "h";
