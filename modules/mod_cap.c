@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -Llib/libcap -lcap$
  * $Directories: lib/libcap$
- * $Id: mod_cap.c,v 1.1 2003-01-03 02:36:47 jwm Exp $
+ * $Id: mod_cap.c,v 1.2 2003-01-03 02:47:35 jwm Exp $
  */
 
 #include <stdio.h>
@@ -47,7 +47,7 @@
 #include "privs.h"
 #include "../lib/libcap/include/sys/capability.h"
 
-#define MOD_CAP_VERSION	"mod_linuxprivs/1.0"
+#define MOD_CAP_VERSION	"mod_cap/1.0"
 
 static cap_t capabilities = 0;
 static unsigned char use_capabilities = TRUE;
@@ -308,31 +308,31 @@ static int linuxprivs_init(void) {
 /* Module API tables
  */
 
-static conftable linuxprivs_conftab[] = {
+static conftable cap_conftab[] = {
   { "LinuxPrivsCapabilities", set_linuxprivscaps,   NULL },
   { "LinuxPrivsEngine",       set_linuxprivsengine, NULL },
   { NULL, NULL, NULL }
 };
 
-static cmdtable linuxprivs_cmdtab[] = {
+static cmdtable cap_cmdtab[] = {
   { POST_CMD, C_PASS, G_NONE, linuxprivs_post_pass, TRUE, FALSE },
   { 0, NULL }
 };
 
-module linuxprivs_module = {
+module cap_module = {
   NULL, NULL,
 
   /* Module API version */
   0x20,
 
   /* Module name */
-  "linuxprivs",
+  "cap",
 
   /* Module configuration handler table */
-  linuxprivs_conftab,
+  cap_conftab,
 
   /* Module command handler table */
-  linuxprivs_cmdtab,
+  cap_cmdtab,
 
   /* Module authentication handler table */
   NULL,
