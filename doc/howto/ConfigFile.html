@@ -1,4 +1,4 @@
-<!-- $Id: ConfigFile.html,v 1.2 2004-04-10 00:34:59 castaglia Exp $ -->
+<!-- $Id: ConfigFile.html,v 1.3 2004-04-10 17:42:45 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/ConfigFile.html,v $ -->
 
 <html>
@@ -63,10 +63,7 @@ One of the first decisions you will need to make is whether you will be running
 your ProFTPD server as an <code>inetd</code> service, or as a
 <code>standalone</code> server.  This is controlled in the
 <code>proftpd.conf</code> using the <code>ServerType</code> configuration
-directive:
-<pre>
-  <a href="http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-ServerType.html">http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-ServerType.html</a>
-</pre>
+directive (see the <a href="ServerType.html">ServerType</a> page).
 
 <p><a name="Identity"></a>
 <b>Server Identity</b><br>
@@ -111,14 +108,13 @@ your <code>/etc/passwd</code> file.
 <p>
 Sometimes, though, sites want &quot;virtual&quot;, FTP-only users.  In order
 to support such configurations, the <code>AuthUserFile</code> configuration
-directive can be used:
-<pre>
-  <a href="http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-AuthFiles.html">http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-AuthFiles.html</a>
-</pre>
+directive can be used (see <a href="AuthFiles.html">here</a> for details).
+
+<p>
 For the purpose of authenticating users using other means, there are various
 authentication modules: <code>mod_sql</code>, <code>mod_ldap</code>,
 <code>mod_radius</code>, <i>etc</i>.  Authentication and the login process
-is discussed <a href="http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-Authentication.html">here</a> in more detail.
+is discussed <a href="Authentication.html">here</a> in more detail.
 
 <p>
 For setting up anonymous logins, there is the <a href="http://www.proftpd.org/docs/directives/linked/config_ref_Anonymous.html"><code>&lt;Anonymous&gt;</code></a> configuration context.  If there are no <code>&lt;Anonymous&gt;</code>
@@ -132,10 +128,8 @@ anonymous logins is that ProFTPD automatically chroots anonymous logins.
 For normal, non-anonymous logins, jails/chroots are configured using the
 <a href="http://www.proftpd.org/docs/directives/linked/config_ref_DefaultRoot.html"><code>DefaultRoot</code></a> directive.  This is the configuration directive
 used to restrict users to their home directories, to keep them from browsing
-around the site.  There is a mini-HOWTO covering chrooting:
-<pre>
-  <a href="http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-Chroot.html">http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-Chroot.html</a>
-</pre>
+around the site.  There is a page covering chrooting
+<a href="Chroot.html">here</a>.
 
 <p>
 If you use <code>&lt;VirtualHost&gt;</code> sections, and it seems that your
@@ -146,8 +140,8 @@ different from that of the &quot;default&quot; server.  Many people new
 to ProFTPD get the impression that since the configuration syntax looks
 similar to Apache's, things like name-based virtual hosting will work as well.
 Unfortunately, this is not possible.  It is not a limitation in ProFTPD,
-but rather in the RFCs that define FTP.  See the <a href="http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-Vhost.html">virtual server</a>
-mini-HOWTO for more information.
+but rather in the RFCs that define FTP.  See the
+<a href="Vhost.html">virtual server</a> page for more information.
 
 <p>
 As a workaround, some sites configure virtual servers to run on non-standard
@@ -185,11 +179,11 @@ only for downloads; some sites like to allow downloads, but no browsing
 of directories or their contents.  For configurations to achieve this,
 use combinations of the <code>&lt;Directory&gt;</code> and
 <code>&lt;Limit&gt;</code> configuration directives.  There are separate
-mini-HOWTOs that cover these directives:
-<pre>
-  <a href="http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-Directory.html">http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-Directory.html</a>
-  <a href="http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-Limit.html">http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-Limit.html</a>
-</pre>
+pages that cover these configuration sections:
+<ul>
+  <li><a href="Directory.html"><code>&lt;Directory&gt;</code></a>
+  <li><a href="Limit.html"><code>&lt;Limit&gt;</code></a>
+</ul>
 
 <p><a name="Questions"></a>
 <b>Further Questions</b><br>
@@ -198,16 +192,16 @@ to get you started.  In addition, you should take a look at some of the
 <a href="http://www.proftpd.org/docs/example-conf.html">example configuration files</a>.  Once you are comfortable with the configuration file format, a reading of
 all the configuration directives' descriptions is recommended, especially if
 you plan on having more complex configurations.  When trying to figure out why
-something is not working, make use of server debugging output:
-<pre>
-  <a href="http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-Debugging.html">http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-Debugging.html</a>
-</pre>
+something is not working, make use of server
+<a href="Debugging.html">debugging</a> output.
+
+<p>
 If you still have questions, the <a href="http://www.proftpd.org/lists.html">
 users</a> mailing list is the best place to post them.
 
 <p>
 <hr>
-<i>$Date: 2004-04-10 00:34:59 $</i><br>
+<i>$Date: 2004-04-10 17:42:45 $</i><br>
 <hr>
 
 </body>

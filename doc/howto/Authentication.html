@@ -1,4 +1,4 @@
-<!-- $Id: Authentication.html,v 1.3 2004-04-10 00:34:58 castaglia Exp $ -->
+<!-- $Id: Authentication.html,v 1.4 2004-04-10 17:42:45 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Authentication.html,v $ -->
 
 <html>
@@ -90,7 +90,7 @@ Another reason why a client cannot login might be if the login user is
 <code>root</code> (or has a UID of zero, and hence has root privileges).
 Logging in as <code>root</code> is dangerous, and should be avoided if
 possible.  If you do find it absolutely necessary to login as <code>root</code>,
-<i>please</i> use <a href="http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-TLS.html">SSL/TLS</a>, or at least <a href="http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-SSH.html">tunnel</a> your FTP connection using SSH.  The <a href="http://www.proftpd.org/docs/directives/linked/config_ref_RootLogin.html"><code>RootLogin</code></a> configuration directive is needed
+<i>please</i> use <a href="TLS.html">SSL/TLS</a>, or at least <a href="SSH.html">tunnel</a> your FTP connection using SSH.  The <a href="http://www.proftpd.org/docs/directives/linked/config_ref_RootLogin.html"><code>RootLogin</code></a> configuration directive is needed
 in your <code>proftpd.conf</code> in order for <code>proftpd</code> to
 explicitly allow root logins.
 
@@ -197,7 +197,7 @@ following authentication modules are all provided with <code>proftpd</code>:
 
   <p>
   <li><a href="http://www.castaglia.org/proftpd/modules/mod_auth_file.html"><code>mod_auth_file</code></a><br>
-    Handles the <code>AuthUserFile</code> and <code>AuthGroupFile</code> directives, for storing user account information in <a href="http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-AuthFiles.html">other files</a>
+    Handles the <code>AuthUserFile</code> and <code>AuthGroupFile</code> directives, for storing user account information in <a href="AuthFiles.html">other files</a>
   </li>
 
   <p>
@@ -212,7 +212,7 @@ following authentication modules are all provided with <code>proftpd</code>:
 
   <p>
   <li><a href="http://www.castaglia.org/proftpd/modules/mod_sql.html"><code>mod_sql</code></a><br>
-    Handles user account information stored in <a href="http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-SQL.html">SQL tables</a>
+    Handles user account information stored in <a href="SQL.html">SQL tables</a>
   </li>
 </ul>
 Note that <code>mod_auth_pam</code> is not on this list because it cannot
@@ -276,7 +276,7 @@ should <b>never</b> be used in an <code>AuthOrder</code> directive.
 
 <p>
 <hr>
-Date: <i>$Date: 2004-04-10 00:34:58 $</i><br>
+Date: <i>$Date: 2004-04-10 17:42:45 $</i><br>
 <hr>
 
 </body>

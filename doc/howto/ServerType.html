@@ -1,4 +1,4 @@
-<!-- $Id: ServerType.html,v 1.1 2004-04-10 17:16:50 castaglia Exp $ -->
+<!-- $Id: ServerType.html,v 1.2 2004-04-10 17:42:45 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/ServerType.html,v $ -->
 
 <html>
@@ -110,7 +110,8 @@ of error message will appear in your <code>proftpd</code> logs:
   golem.castaglia.org - Failed binding to 127.0.0.1, port 21: Address already in use
   golem.castaglia.org - Check the ServerType directive to ensure you are configured correctly.
 </pre>
-More information might be found by <a href="http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-Debugging.html">debugging</a> your configuration.
+More information might be found by <a href="Debugging.html">debugging</a> your
+configuration.
 
 <p><a name="Standalone"></a>
 <b>Standalone Mode</b><br>
@@ -125,7 +126,7 @@ there is no need to change any other configuration files other than the
 <p>
 When running in this mode, the server will need to be restarted whenever
 changes are made to the configuration file.  There is a
-<a href="http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-Stopping.html">page</a> that describes how this can be done.
+<a href="Stopping.html">page</a> that describes how this can be done.
 
 <p>
 Many administrators are accustomed to using <code>tcpwrappers</code> to
@@ -148,7 +149,8 @@ some shell wrapper script), this kind of error message will appear in your
   golem.castaglia.org - Fatal: Socket operation on non-socket
   golem.castaglia.org - (Running from command line? Use `ServerType standalone' in config file!)
 </pre>
-More information might be found by <a href="http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-Debugging.html">debugging</a> your configuration.
+More information might be found by <a href="Debugging.html">debugging</a> your
+configuration.
 
 <p>
 <b>Switching Modes</b><br>
@@ -168,7 +170,7 @@ Then, make sure
 is in your <code>proftpd.conf</code>.  Start the <code>proftpd</code>
 server from the command line, to make sure all is working.  You can then
 easily start server from an <code>init.d</code> script such as the one
-mentioned <a href="http://www.castaglia.org/proftpd/doc/contrib/ProFTPD-mini-HOWTO-Stopping.html">here</a>.
+mentioned <a href="Stopping.html">here</a>.
 
 <p>
 To change from <em>standalone</em> to <em>inetd</em>, make sure your
@@ -183,7 +185,7 @@ is there.
 
 <p>
 <hr>
-<i>$Date: 2004-04-10 17:16:50 $</i><br>
+<i>$Date: 2004-04-10 17:42:45 $</i><br>
 <hr>
 
 </body>

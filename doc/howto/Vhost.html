@@ -1,4 +1,4 @@
-<!-- $Id: Vhost.html,v 1.2 2004-04-10 00:34:59 castaglia Exp $ -->
+<!-- $Id: Vhost.html,v 1.3 2004-04-10 17:42:45 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Vhost.html,v $ -->
 
 <html>
@@ -115,7 +115,7 @@ function to determine the IP address to which the default server should listen.
 On a single address, single interface system, this default is fine. It is one
 a multiple address system that the default handling does not always work;
 the administrator may wish to explicitly specify to which address the default
-server should listen.  This is what the <a href="http://www.proftpd.org/docs/directives/linked/config_ref_DefaultAddres.html"><code>DefaultAddress</code></a>
+server should listen.  This is what the <a href="http://www.proftpd.org/docs/directives/linked/config_ref_DefaultAddress.html"><code>DefaultAddress</code></a>
 configuration directive provides: the ability to specify to which IP address
 the &quot;server config&quot; vhost should listen.
 
@@ -179,7 +179,7 @@ know: <a href="http://www.proftpd.org/docs/directives/linked/config_ref_SocketBi
 connection requests of remote clients.  Sometimes, the administrator may
 wish to have the <code>proftpd</code> daemon listen <b>only</b> on the IP
 addresses for which it has been configured, and not <i>every</i> address.
-To accomplish this, simply use the <a href="href="http://www.proftpd.org/docs/directives/linked/config_ref_SocketBindTight.html"><code>SocketBindTight</code></a> configuration directive:
+To accomplish this, simply use the <a href="http://www.proftpd.org/docs/directives/linked/config_ref_SocketBindTight.html"><code>SocketBindTight</code></a> configuration directive:
 <pre>
   SocketBindTight on
 </pre>
@@ -190,7 +190,7 @@ the host machine.
 
 <p>
 <hr>
-<i>$Date: 2004-04-10 00:34:59 $</i><br>
+<i>$Date: 2004-04-10 17:42:45 $</i><br>
 <hr>
 
 </body>
