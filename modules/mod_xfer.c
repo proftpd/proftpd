@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.151 2004-01-12 23:01:00 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.152 2004-01-12 23:13:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -707,7 +707,7 @@ static long _transmit_data(off_t count, off_t offset, char *buf, long bufsize) {
   return res;
 }
 
-static void _stor_chown(void) {
+static void stor_chown(void) {
   struct stat sbuf;
   char *xfer_path = NULL;
 
@@ -1276,7 +1276,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   session.xfer.file_size = respos;
 
   /* First, make sure the uploaded file has the requested ownership. */
-  _stor_chown();
+  stor_chown();
 
   if (pr_data_open(cmd->arg, NULL, PR_NETIO_IO_RD, 0) < 0) {
     stor_abort();
