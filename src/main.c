@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.266 2004-12-05 07:58:54 castaglia Exp $
+ * $Id: main.c,v 1.267 2004-12-05 08:03:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -396,6 +396,7 @@ void end_login(int exitcode) {
   destroy_pool(session.pool);
 
   if (is_master) {
+    main_server = NULL;
     free_pools();
     free_proc_title();
   }
