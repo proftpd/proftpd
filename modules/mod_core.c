@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.243 2004-07-30 17:42:59 castaglia Exp $
+ * $Id: mod_core.c,v 1.244 2004-07-31 01:35:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -751,23 +751,21 @@ MODRET set_defaultserver(cmd_rec *cmd) {
 MODRET set_masqueradeaddress(cmd_rec *cmd) {
   config_rec *c = NULL;
   pr_netaddr_t *masq_addr = NULL;
-  char masq_ip[80] = {'\0'};
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
-  /* Make a copy of the given argument.  */
-  sstrncpy(masq_ip, cmd->argv[1], sizeof(masq_ip));
-
   /* We can only masquerade as one address, so we don't need to know if the
    * given name might map to multiple addresses.
    */
-  masq_addr = pr_netaddr_get_addr(cmd->server->pool, masq_ip, NULL);
+  masq_addr = pr_netaddr_get_addr(cmd->server->pool, cmd->argv[1], NULL);
   if (masq_addr == NULL)
     return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool, cmd->argv[0],
-      ": unable to resolve \"", masq_ip, "\"", NULL));
+      ": unable to resolve \"", cmd->argv[1], "\"", NULL));
 
-  c = add_config_param(cmd->argv[0], 1, (void *) masq_addr);
+  c = add_config_param(cmd->argv[0], 2, (void *) masq_addr, NULL);
+  c->argv[1] = pstrdup(c->pool, cmd->argv[1]);
+
   return HANDLED(cmd);
 }
 
