@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.137 2003-03-04 19:50:20 castaglia Exp $
+ * $Id: mod_auth.c,v 1.138 2003-03-05 02:05:41 castaglia Exp $
  */
 
 #ifdef __CYGWIN__
@@ -780,14 +780,14 @@ static int _setup_environment(pool *p, char *user, char *pass)
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
     if ((tmpc = find_config(c->subset, CONF_PARAM, "AnonRejectPasswords",
         FALSE)) != NULL) {
-      int res;
+      int re_res;
       regex_t *pw_regex = (regex_t *) tmpc->argv[0];
 
       if (pw_regex && pass &&
-          ((res = regexec(pw_regex, pass, 0, NULL, 0)) == 0)) {
+          ((re_res = regexec(pw_regex, pass, 0, NULL, 0)) == 0)) {
         char errstr[200] = {'\0'};
 
-        regerror(res, pw_regex, errstr, sizeof(errstr));
+        regerror(re_res, pw_regex, errstr, sizeof(errstr));
         log_auth(PR_LOG_NOTICE, "ANON %s: AnonRejectPasswords denies login",
           origuser);
         goto auth_failure;
