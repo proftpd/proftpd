@@ -19,7 +19,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.2 1999-01-27 22:06:52 flood Exp $
+ * $Id: support.c,v 1.3 1999-03-05 00:29:21 flood Exp $
  */
 
 /* History Log:
@@ -174,6 +174,7 @@ void run_schedule()
 {
   sched_t *s,*snext;
 
+  handle_sig_alarm();
   if(!scheds || !scheds->xas_list)
     return;
 
@@ -190,6 +191,7 @@ void run_schedule()
 /* Returns TRUE if there is a scheduled function waiting */
 int schedulep()
 {
+  handle_sig_alarm();
   return (scheds && scheds->xas_list);
 }
 

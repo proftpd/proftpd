@@ -19,7 +19,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.5 1999-02-12 19:38:02 flood Exp $
+ * $Id: main.c,v 1.6 1999-03-05 00:29:20 flood Exp $
  */
 
 /*
@@ -741,9 +741,9 @@ static int _idle_timeout(CALLBACK_FRAME)
   send_response_async(R_421,"Idle Timeout (%d seconds): closing control connection.", 
                       TimeoutIdle);
 
-  schedule(main_exit,0,(void*)LOG_NOTICE,
-           "FTP session idle timeout, disconnected.",
-           (void*)0,NULL);
+  main_exit((void*)LOG_NOTICE,
+		  "FTP session idle timeout, disconnected.",
+		  (void*)0,NULL);
 
   remove_timer(TIMER_LOGIN,ANY_MODULE);
   remove_timer(TIMER_NOXFER,ANY_MODULE);

@@ -38,5 +38,6 @@ int add_timer(int seconds,int timerno,module *mod, callback_t cb);
 int remove_timer(int timerno,module *mod);
 int reset_timer(int timerno,module *mod);
 int timer_sleep(int);
+void handle_sig_alarm();
 
 #endif /* __TIMERS_H */

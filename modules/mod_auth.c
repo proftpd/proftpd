@@ -19,7 +19,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.3 1999-02-14 01:47:24 flood Exp $
+ * $Id: mod_auth.c,v 1.4 1999-03-05 00:29:19 flood Exp $
  */
 
 #include "conf.h"
@@ -56,16 +56,27 @@ int _auth_shutdown(CALLBACK_FRAME)
   return 0;				/* Avoid compiler warning */
 }
 
+/* As for 1.2.0, timer callbacks are now non-reentrant, so it's
+ * safe to call main_exit()
+ */
+
 int _login_timeout(CALLBACK_FRAME)
 {
   /* Is this the proper behavior when timing out? */
   send_response_async(R_421,"Login Timeout (%d seconds): closing control connection.",
                       TimeoutLogin);
+  main_exit((void*)LOG_NOTICE,"FTP login timed out, disconnected.",
+		  (void*)0,NULL);
+
+/*
   schedule(main_exit,0,(void*)LOG_NOTICE,"FTP login timed out, disconnected.",
            (void*)0,NULL);
   remove_timer(TIMER_IDLE,ANY_MODULE);
   remove_timer(TIMER_NOXFER,ANY_MODULE);
   add_timer(10,-1,&auth_module,_auth_shutdown);
+*/
+
+/* should never be reached */
   return 0;		/* Don't restart the timer */
 }
 

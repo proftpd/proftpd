@@ -19,7 +19,7 @@
 
 /* 
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.1 1998-10-18 02:24:41 flood Exp $
+ * $Id: timers.c,v 1.2 1999-03-05 00:29:22 flood Exp $
  */
 
 #include <signal.h>
@@ -33,6 +33,7 @@ static xaset_t *timers = NULL;
 static xaset_t *recycled = NULL;
 static int _indispatch = 0;
 static int dynamic_timerno = 1024;
+static int _alarm_received = 0;
 
 xaset_t *free_timers = NULL;
 
@@ -111,11 +112,43 @@ static int _reset_timers(int elapsed)
 
   return (timers->xas_list ? ((timer_t*)timers->xas_list)->count : 0);
 }
-    
+
 void sig_alarm(int signum)
 {
-  int new_timeout;
   struct sigaction act;
+
+  _alarm_received++;
+  act.sa_handler = sig_alarm;
+  sigemptyset(&act.sa_mask);
+  act.sa_flags = 0;
+#ifdef SA_INTERRUPT
+  act.sa_flags |= SA_INTERRUPT;
+#endif
+  sigaction(SIGALRM,&act,NULL);
+#ifdef HAVE_SIGINTERRUPT
+  siginterrupt(SIGALRM,1);
+#endif
+}
+
+void set_sig_alarm()
+{
+  struct sigaction act;
+
+  act.sa_handler = sig_alarm;
+  sigemptyset(&act.sa_mask);
+  act.sa_flags = 0;
+#ifdef SA_INTERRUPT
+  act.sa_flags |= SA_INTERRUPT;
+#endif
+  sigaction(SIGALRM,&act,NULL);
+#ifdef HAVE_SIGINTERRUPT
+  siginterrupt(SIGALRM,1);
+#endif
+}
+
+void handle_sig_alarm()
+{
+  int new_timeout;
 
   /* We need to adjust for any time that might be remaining on the alarm,
    * in case we were called in order change alarm durations.  Note
@@ -129,25 +162,17 @@ void sig_alarm(int signum)
    * called, if so, increment alarm_pending and exit swiftly
    */
 
-  if(!alarms_blocked) {
-    new_timeout = _current_timeout - alarm(0);
-    new_timeout = _reset_timers(new_timeout);
+  while(_alarm_received) {
+    _alarm_received = 0;
+    if(!alarms_blocked) {
+      new_timeout = _current_timeout - alarm(0);
+      new_timeout = _reset_timers(new_timeout);
 
-    /*log_debug(DEBUG5,"alarm(%d)",new_timeout);*/
-    alarm(_current_timeout = new_timeout);
-  } else
-    alarm_pending++;
-
-  act.sa_handler = sig_alarm;
-  sigemptyset(&act.sa_mask);
-  act.sa_flags = 0;
-#ifdef SA_INTERRUPT
-  act.sa_flags |= SA_INTERRUPT;
-#endif
-  sigaction(SIGALRM,&act,NULL);
-#ifdef HAVE_SIGINTERRUPT
-  siginterrupt(SIGALRM,1);
-#endif
+      /*log_debug(DEBUG5,"alarm(%d)",new_timeout);*/
+      alarm(_current_timeout = new_timeout);
+    } else
+      alarm_pending++;
+  }
 }
 
 int reset_timer(int timerno, module *mod)
@@ -167,7 +192,8 @@ int reset_timer(int timerno, module *mod)
       t->count = t->interval;
       xaset_remove(timers,(xasetmember_t*)t);
       xaset_insert(recycled,(xasetmember_t*)t);
-      sig_alarm(SIGALRM);
+      _alarm_received++;
+      handle_sig_alarm();
       break;
     }
 
@@ -189,7 +215,8 @@ int remove_timer(int timerno, module *mod)
       else {
         xaset_remove(timers,(xasetmember_t*)t);
         xaset_insert(free_timers,(xasetmember_t*)t);
-        sig_alarm(SIGALRM);
+	_alarm_received++;
+        handle_sig_alarm();
       }      
       break;
     }
@@ -239,7 +266,9 @@ int add_timer(int seconds, int timerno, module *mod, callback_t cb)
     xaset_insert(recycled,(xasetmember_t*)t);
   } else {
     xaset_insert_sort(timers,(xasetmember_t*)t,TRUE);
-    sig_alarm(SIGALRM);
+    _alarm_received++;
+    set_sig_alarm();
+    handle_sig_alarm();
   }
 
   unblock_alarms();
@@ -263,7 +292,8 @@ void unblock_alarms()
   --alarms_blocked;
   if(alarms_blocked == 0 && alarm_pending) {
     alarm_pending = 0;
-    sig_alarm(SIGALRM);
+    _alarm_received++;
+    handle_sig_alarm();
   }
 }
 
@@ -288,8 +318,10 @@ int timer_sleep(int seconds)
     return -1;
 
   sigemptyset(&oset);
-  while(!_sleep_sem)
+  while(!_sleep_sem) {
     sigsuspend(&oset);
-
+    handle_sig_alarm();
+  }
+  
   return 0;  
 }
