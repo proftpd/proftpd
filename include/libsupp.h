@@ -29,7 +29,7 @@
 
 /* ProFTPD support library definitions.
  *
- * $Id: libsupp.h,v 1.13 2003-08-30 16:07:09 castaglia Exp $
+ * $Id: libsupp.h,v 1.14 2003-10-13 07:25:32 castaglia Exp $
  */
 
 #include <glibc-glob.h>
@@ -55,6 +55,36 @@ const char *pr_gai_strerror(int);
 # define pr_gai_strerror	gai_strerror
 #endif /* HAVE_GAI_STRERROR */
 
+#ifndef HAVE_FGETPWENT
+struct passwd *fgetpwent(FILE *);
+#endif /* HAVE_FGETPWENT */
+
+#ifndef HAVE_FGETGRENT
+struct group *fgetgrent(FILE *);
+#endif /* HAVE_FGETGRENT */
+
+#ifndef HAVE_HSTRERROR
+const char *hstrerror(int);
+#else
+void pr_os_already_has_hstrerror(void);
+#endif /* HAVE_HSTRERROR */
+
+#ifndef HAVE_MKSTEMP
+int mkstemp(char *);
+#else
+void pr_os_already_has_mkstemp(void);
+#endif /* HAVE_MKSTEMP */
+
+#ifndef HAVE_SNPRINTF
+int snprintf(char *, size_t, const char *, ...);
+#else
+void pr_os_already_has_snprintf(void);
+#endif /* HAVE_SNPRINTF */
+
+#if defined(HAVE_VSNPRINTF) && defined(HAVE_SNPRINTF)
+void pr_os_already_has_snprintf_and_vsnprintf(void);
+#endif /* !HAVE_VSNPRINTF || !HAVE_SNPRINTF */
+
 #ifndef HAVE_STRSEP
 char *strsep(char **, const char *);
 #else
@@ -67,26 +97,6 @@ int vsnprintf(char *, size_t, const char *, va_list);
 void pr_os_already_has_vsnprintf(void);
 #endif /* HAVE_VSNPRINTF */
 
-#ifndef HAVE_SNPRINTF
-int snprintf(char *, size_t, const char *, ...);
-#else
-void pr_os_already_has_snprintf(void);
-#endif /* HAVE_SNPRINTF */
-
 #if defined(HAVE_VSNPRINTF) && defined(HAVE_SNPRINTF)
 void pr_os_already_has_snprintf_and_vsnprintf(void);
 #endif /* !HAVE_VSNPRINTF || !HAVE_SNPRINTF */
-
-#ifndef HAVE_MKSTEMP
-int mkstemp(char *);
-#else
-void pr_os_already_has_mkstemp(void);
-#endif /* HAVE_MKSTEMP */
-
-#ifndef HAVE_FGETPWENT
-struct passwd *fgetpwent(FILE *);
-#endif /* HAVE_FGETPWENT */
-
-#ifndef HAVE_FGETGRENT
-struct group *fgetgrent(FILE *);
-#endif /* HAVE_FGETGRENT */
