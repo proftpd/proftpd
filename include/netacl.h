@@ -23,13 +23,24 @@
  */
 
 /* Network ACL definitions
- * $Id: netacl.h,v 1.1 2003-11-15 23:49:52 castaglia Exp $
+ * $Id: netacl.h,v 1.2 2003-11-16 00:55:53 castaglia Exp $
  */
 
 #ifndef PR_NETACL_H
 #define PR_NETACL_H
 
 typedef struct pr_netacl_t pr_netacl_t;
+
+typedef enum {
+  PR_NETACL_TYPE_ALL,
+  PR_NETACL_TYPE_NONE,
+  PR_NETACL_TYPE_IPMASK,
+  PR_NETACL_TYPE_IPMATCH,
+  PR_NETACL_TYPE_DNSMATCH,
+  PR_NETACL_TYPE_IPGLOB,
+  PR_NETACL_TYPE_DNSGLOB
+
+} pr_netacl_type_t;
 
 /* Parses the given string into a network ACL ('netacl') object allocated
  * from the given pool.  NULL is returned if there is an error during
@@ -47,6 +58,9 @@ int pr_netacl_match(pr_netacl_t *, pr_netaddr_t *);
  * and -1 if there was an error.  If -1 is returned, errno will be set
  * appropriately.
  */
-int pr_netacl_is_negated(pr_netacl_t *);
+int pr_netacl_get_negated(pr_netacl_t *);
+
+/* Returns the ACL type. */
+pr_netacl_type_t pr_netacl_get_type(pr_netacl_t *);
 
 #endif /* PR_NETACL_H */

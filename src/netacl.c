@@ -23,26 +23,15 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.1 2003-11-15 23:49:52 castaglia Exp $
+ * $Id: netacl.c,v 1.2 2003-11-16 00:55:53 castaglia Exp $
  */
 
 #include "conf.h"
 
 extern int ServerUseReverseDNS;
 
-typedef enum {
-  NETACL_TYPE_ALL,
-  NETACL_TYPE_NONE,
-  NETACL_TYPE_IPMASK,
-  NETACL_TYPE_IPMATCH,
-  NETACL_TYPE_DNSMATCH,
-  NETACL_TYPE_IPGLOB,
-  NETACL_TYPE_DNSGLOB
-
-} netacl_type_t;
-
 struct pr_netacl_t {
-  netacl_type_t type;
+  pr_netacl_type_t type;
 
   char *pattern;
   int negated;
@@ -56,36 +45,36 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
     return 0;
 
   switch (acl->type) {
-    case NETACL_TYPE_ALL:
+    case PR_NETACL_TYPE_ALL:
       pr_log_debug(DEBUG10, "NetACL: matched 'ALL'");
       return 1;
 
-    case NETACL_TYPE_NONE:
+    case PR-NETACL_TYPE_NONE:
       pr_log_debug(DEBUG10, "NetACL: matched 'NONE'");
       return -1;
 
-    case NETACL_TYPE_IPMASK:
+    case PR_NETACL_TYPE_IPMASK:
       if (pr_netaddr_ncmp(addr, acl->addr, acl->masklen) == 0) {
         pr_log_debug(DEBUG10, "NetACL: matched IP/mask");
         return 1;
       }
       break;
 
-    case NETACL_TYPE_IPMATCH:
+    case PR_NETACL_TYPE_IPMATCH:
       if (pr_netaddr_cmp(addr, acl->addr) == 0) {
         pr_log_debug(DEBUG10, "NetACL: matched IP address");
         return 1;
       }
       break;
    
-    case NETACL_TYPE_DNSMATCH:
+    case PR_NETACL_TYPE_DNSMATCH:
       if (strcmp(pr_netaddr_get_dnsstr(addr), acl->pattern) == 0) {
         pr_log_debug(DEBUG10, "NetACL: matched DNS name");
         return 1;
       }
       break;
 
-    case NETACL_TYPE_IPGLOB:
+    case PR_NETACL_TYPE_IPGLOB:
       if (pr_netaddr_fnmatch(addr, acl->pattern,
           PR_NETADDR_MATCH_IP) == TRUE) {
         pr_log_debug(DEBUG10, "NetACL: matched IP glob pattern");
@@ -93,7 +82,7 @@ int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
       }
       break;
 
-    case NETACL_TYPE_DNSGLOB:
+    case PR_NETACL_TYPE_DNSGLOB:
       if (ServerUseReverseDNS &&
           pr_netaddr_fnmatch(addr, acl->pattern,
             PR_NETADDR_MATCH_DNS) == TRUE) {
@@ -122,15 +111,15 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
   acl = pcalloc(p, sizeof(pr_netacl_t));
 
   if (strcasecmp(aclstr, "all") == 0) {
-    acl->type = NETACL_TYPE_ALL;
+    acl->type = PR_NETACL_TYPE_ALL;
 
   } else if (strcasecmp(aclstr, "none") == 0) {
-    acl->type = NETACL_TYPE_NONE;
+    acl->type = PR_NETACL_TYPE_NONE;
 
   } else if ((cp = strchr(aclstr, '/')) != NULL) {
     char *tmp;
 
-    acl->type = NETACL_TYPE_IPMASK;
+    acl->type = PR_NETACL_TYPE_IPMASK;
     *cp = '\0';
 
     /* Check if the given rule is negated. */
@@ -207,15 +196,15 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
      * first character is a '.', then treat the rule as a glob.
      */
     if (strpbrk(aclstr, "[*?")) {
-      acl->type = NETACL_TYPE_DNSGLOB;
+      acl->type = PR_NETACL_TYPE_DNSGLOB;
       acl->pattern = pstrdup(p, aclstr);
 
     } else if (*aclstr == '.') {
-      acl->type = NETACL_TYPE_DNSGLOB;
+      acl->type = PR_NETACL_TYPE_DNSGLOB;
       acl->pattern = pstrcat(p, "*", aclstr, NULL);
 
     } else {
-      acl->type = NETACL_TYPE_DNSMATCH;
+      acl->type = PR_NETACL_TYPE_DNSMATCH;
       acl->pattern = pstrdup(p, aclstr);
     }
 
@@ -229,11 +218,11 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
 
     /* If the last character is a '.', then treat the rule as a glob. */
     if (aclstr[strlen(aclstr)-1] == '.') {
-      acl->type = NETACL_TYPE_IPGLOB;
+      acl->type = PR_NETACL_TYPE_IPGLOB;
       acl->pattern = pstrcat(p, aclstr, "*", NULL);
 
     } else {
-      acl->type = NETACL_TYPE_IPMATCH;
+      acl->type = PR_NETACL_TYPE_IPMATCH;
       acl->addr = pr_netaddr_get_addr(p, aclstr, NULL);
 
       if (!acl->addr) 

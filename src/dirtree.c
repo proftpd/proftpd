@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.134 2003-11-15 23:49:52 castaglia Exp $
+ * $Id: dirtree.c,v 1.135 2003-11-16 00:55:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1550,7 +1550,7 @@ static int _check_ip_negative(const config_rec *c) {
   pr_netacl_t **aclv;
 
   for (aclc = c->argc, aclv = (pr_netacl_t **) c->argv; aclc; aclc--, aclv++) {
-    if (pr_netacl_is_negated(*aclv) == FALSE)
+    if (pr_netacl_get_negated(*aclv) == FALSE)
       continue;
 
     switch (pr_netacl_match(*aclv, session.c->remote_addr)) {
@@ -1589,7 +1589,7 @@ static int _check_ip_positive(const config_rec *c) {
   pr_netacl_t **aclv;
 
   for (aclc = c->argc, aclv = (pr_netacl_t **) c->argv; aclc; aclc--, aclv++) {
-    if (pr_netacl_is_negated(*aclv) == TRUE)
+    if (pr_netacl_get_negated(*aclv) == TRUE)
       continue;
 
     switch (pr_netacl_match(*aclv, session.c->remote_addr)) {
