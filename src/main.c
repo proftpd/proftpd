@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.239 2004-06-17 20:34:28 castaglia Exp $
+ * $Id: main.c,v 1.240 2004-08-06 02:16:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1295,20 +1295,6 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     exit(0);
   }
 
-  /* Use the ident protocol (RFC1413) to try to get remote ident_user */
-  if ((ident_lookups = get_param_ptr(main_server->conf, "IdentLookups",
-     FALSE)) == NULL || *ident_lookups == TRUE) {
-    pr_log_debug(DEBUG6, "performing ident lookup");
-    session.ident_lookups = TRUE;
-    session.ident_user = pr_ident_lookup(session.pool, conn);
-    pr_log_debug(DEBUG6, "ident lookup returned '%s'", session.ident_user);
-
-  } else {
-    pr_log_debug(DEBUG6, "ident lookup disabled");
-    session.ident_lookups = FALSE;
-    session.ident_user = "UNKNOWN";
-  }
-
   /* Set the ID/privs for the User/Group in this server */
   set_server_privs();
 
@@ -1325,6 +1311,20 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   pr_log_debug(DEBUG7, "performing module session initializations");
 
   modules_session_init();
+
+  /* Use the ident protocol (RFC1413) to try to get remote ident_user */
+  if ((ident_lookups = get_param_ptr(main_server->conf, "IdentLookups",
+     FALSE)) == NULL || *ident_lookups == TRUE) {
+    pr_log_debug(DEBUG6, "performing ident lookup");
+    session.ident_lookups = TRUE;
+    session.ident_user = pr_ident_lookup(session.pool, conn);
+    pr_log_debug(DEBUG6, "ident lookup returned '%s'", session.ident_user);
+
+  } else {
+    pr_log_debug(DEBUG6, "ident lookup disabled");
+    session.ident_lookups = FALSE;
+    session.ident_user = "UNKNOWN";
+  }
 
   pr_log_debug(DEBUG4, "connected - local  : %s:%d",
     pr_netaddr_get_ipstr(session.c->local_addr), session.c->local_port);
