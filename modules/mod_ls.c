@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.23 2000-03-06 06:25:11 macgyver Exp $
+ * $Id: mod_ls.c,v 1.24 2000-07-03 18:25:58 macgyver Exp $
  */
 
 #include "conf.h"
@@ -906,28 +906,29 @@ int dolist(cmd_rec *cmd, const char *opt, int clearflags)
 	int i;
         const char *p;
 
-        i = 0;
-        p = arg;
-        p++;
-
-        while(*p && *p != '/')
-          pbuffer[i++] = *p++;
+	for(i = 0, p = arg + 1;
+	    (i < sizeof(pbuffer) - 1) && p && *p && *p != '/';
+	    pbuffer[i++] = *p++);
+	
         pbuffer[i] = '\0';
-
-        if((pw = auth_getpwnam(cmd->tmp_pool,i ? pbuffer : session.user)))
-          snprintf(pbuffer, sizeof(pbuffer), "%s%s",pw->pw_dir,p);
-        else
+	
+        if((pw = auth_getpwnam(cmd->tmp_pool,i ? pbuffer : session.user))) {
+          snprintf(pbuffer, sizeof(pbuffer), "%s%s", pw->pw_dir, p);
+	} else {
           *pbuffer = '\0';
-      } else
+	}
+      } else {
         *pbuffer = '\0';
-
+      }
+      
       /* check perms on the directory/file we are about to scan */
-      if(!ls_perms_full(cmd->tmp_pool,cmd,(*pbuffer ? (char*)pbuffer:(char*)arg),NULL)) {
-        a = -1; skiparg = 1;
+      if(!ls_perms_full(cmd->tmp_pool, cmd,
+			(*pbuffer ? (char *) pbuffer : (char *) arg), NULL)) {
+        a = -1;
+	skiparg = 1;
       } else {
         skiparg = 0;
-        a = fs_glob(*pbuffer ? pbuffer:arg, glob_flags,
-                 NULL, &g);
+        a = fs_glob(*pbuffer ? pbuffer : arg, glob_flags, NULL, &g);
       }
 
       if(!a) {
