@@ -32,7 +32,7 @@
 
 /*
  * sample module for ProFTPD
- * $Id: mod_sample.c,v 1.7 2003-01-02 17:28:14 castaglia Exp $
+ * $Id: mod_sample.c,v 1.8 2003-11-09 22:54:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -41,7 +41,7 @@
  */
 
 /* Example of a PRE_CMD handler here, which simply logs all received
- * commands via log_debug().  We are careful to return DECLINED, otherwise
+ * commands via pr_log_debug().  We are careful to return DECLINED, otherwise
  * other PRE_CMD handlers wouldn't get the request.  Note that in order
  * for this to work properly, this module would need to be loaded _last_,
  * or after any other modules which don't return DECLINED for all
@@ -50,7 +50,7 @@
  * deny it).
  */
 MODRET sample_pre_any(cmd_rec *cmd) {
-  log_debug(DEBUG0, "RECEIVED: command '%s', arguments '%s'.",
+  pr_log_debug(DEBUG0, "RECEIVED: command '%s', arguments '%s'.",
     cmd->argv[0], cmd->arg);
 
   return DECLINED(cmd);
@@ -61,7 +61,7 @@ MODRET sample_pre_any(cmd_rec *cmd) {
  * successful.
  */
 MODRET sample_log_any(cmd_rec *cmd) {
-  log_debug(DEBUG0, "SUCCESSFUL: command '%s', arguments '%s'.",
+  pr_log_debug(DEBUG0, "SUCCESSFUL: command '%s', arguments '%s'.",
     cmd->argv[0], cmd->arg);
 
   return DECLINED(cmd);
