@@ -1,7 +1,9 @@
-$Id: NEWS,v 1.84 2001-03-09 13:54:28 flood Exp $
+$Id: NEWS,v 1.85 2001-03-09 16:14:38 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+- Bug 1055 - Not really a bug, but still .. ftpwho/ftpcount now attempt to
+  scan proftpd.conf looking for ScoreboardPath, if all else fails
 - Bug 1042 - <Directory /> arbitrarily not matching.
 
 1.2.1 - Released 03/01/2001
