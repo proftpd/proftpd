@@ -220,14 +220,12 @@ char *inet_getname(pool *pool, p_in_addr_t *addr)
   struct hostent *host = NULL;
 
   if(reverse_dns)
-    host = gethostbyaddr((const char *)addr, sizeof(p_in_addr_t), AF_INET);
+    host = gethostbyaddr((const char *) addr, sizeof(p_in_addr_t), AF_INET);
   
-  if(!host) {
-    res = pstrdup(pool,inet_ntoa(*addr));
-    return NULL;
-  }
-  
-  res = pstrdup(pool,host->h_name);
+  if(!host)
+    res = pstrdup(pool, inet_ntoa(*addr));
+  else
+    res = pstrdup(pool, host->h_name);
   
   return inet_validate(res);
 }

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.21 2000-01-18 00:27:32 macgyver Exp $
+$Id: NEWS,v 1.22 2000-01-18 00:41:07 macgyver Exp $
 
 1.2.0pre10 - Released: ???
 --------------------------
@@ -30,6 +30,8 @@ $Id: NEWS,v 1.21 2000-01-18 00:27:32 macgyver Exp $
   of arguments are specified.
 
 - An error message is now generated when ~ expansion is meaningless.
+
+- Invalid host entries don't show up as (null) anymore.
 
 1.2.0pre9 - Released: 10/27/99
 ------------------------------
