@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.535 2004-02-17 03:06:30 castaglia Exp $
+$Id: NEWS,v 1.536 2004-02-17 03:53:09 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -92,6 +92,8 @@ CVS
 - Bug 2237 - HiddenStores does not check for existing file in edge case.
 - Bug 2171 - Add delete options to ftpasswd.  The ftpasswd script now
   supports the --delete-user and --delete-group options.
+- Bug 2105 - Remove Authoritative directives.  The AuthPAMAuthoritative
+  directive, and the "*" syntax of SQLAuthenticate, have been deprecated.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------
