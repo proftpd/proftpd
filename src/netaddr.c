@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.43 2004-03-09 00:53:37 castaglia Exp $
+ * $Id: netaddr.c,v 1.44 2004-06-30 02:42:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -719,11 +719,11 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
 
   /* Next, compare the remaining bits in the addresses. */
   if (nbits > 0) {
-    unsigned int mask;
+    unsigned char mask;
 
     /* Get the bytes in the addresses that have not yet been compared. */
-    unsigned int in1byte = in1[nbytes];
-    unsigned int in2byte = in2[nbytes];
+    unsigned char in1byte = in1[nbytes];
+    unsigned char in2byte = in2[nbytes];
 
     /* Build up a mask covering the bits left to be checked. */
     mask = (0xff << (8 - nbits)) & 0xff;

@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.7 2004-04-23 20:46:39 castaglia Exp $
+ * $Id: netacl.c,v 1.8 2004-06-30 02:42:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -46,7 +46,7 @@ pr_netacl_type_t pr_netacl_get_type(pr_netacl_t *acl) {
 int pr_netacl_match(pr_netacl_t *acl, pr_netaddr_t *addr) {
 
   if (!acl || !addr)
-    return 0;
+    return -2;
 
   switch (acl->type) {
     case PR_NETACL_TYPE_ALL:

@@ -23,7 +23,7 @@
  */
 
 /* Class routines
- * $Id: class.c,v 1.4 2004-05-03 17:25:23 castaglia Exp $
+ * $Id: class.c,v 1.5 2004-06-30 02:42:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -60,7 +60,7 @@ pr_class_t *pr_class_match_addr(pr_netaddr_t *addr) {
      * Satisfy setting: if "any", the class matches if any rule matches;
      * if "all", the class matches only if _all_ rules match.
      */
-    for (i = 0; i < acl_list->nelts && acls[i]; i++) {
+    for (i = 0; i < acl_list->nelts; i++) {
       if (next_class)
         break;
 
@@ -68,6 +68,7 @@ pr_class_t *pr_class_match_addr(pr_netaddr_t *addr) {
         case PR_CLASS_SATISFY_ANY:
           if (pr_netacl_match(acls[i], addr) == 1)
             return cls;
+          break;
 
         case PR_CLASS_SATISFY_ALL:
           if (pr_netacl_match(acls[i], addr) == 0)
