@@ -146,9 +146,24 @@ AC_ARG_ENABLE(force-setpassent,
 AC_CHECK_LIB(security, set_auth_parameters, LIBS="$LIBS -lsecurity")
 AC_CHECK_HEADERS(sys/security.h)
 AC_CHECK_HEADERS(krb.h)
-AC_CHECK_HEADERS(hpsecurity.h)
 AC_CHECK_HEADERS(prot.h)
 AC_CHECK_FUNCS(set_auth_parameters getprpwent)
+
+dnl HP-UX's hpsecurity.h can multiply define MAXINT and confuse configure
+AC_CHECK_HEADERS(hpsecurity.h,,[
+  AC_MSG_CHECKING(for hpsecurity.h workaround)
+  AC_TRY_COMPILE([
+#include <values.h>
+#undef MAXINT
+#include <hpsecurity.h>
+  ], [], ac_cv_header_hpsecurity_h=yes,)
+  if test x"$ac_cv_header_hpsecurity_h" = xyes ; then
+    AC_DEFINE(HAVE_HPSECURITY_H)
+    AC_MSG_RESULT(yes)
+  else
+    AC_MSG_RESULT(no)
+  fi
+])
 
 dnl Checks for installation user/group
 
