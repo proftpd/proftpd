@@ -21,7 +21,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.20 2000-08-02 05:25:24 macgyver Exp $
+ * $Id: log.c,v 1.21 2000-08-02 23:07:27 macgyver Exp $
  */
 
 /* History Log:
@@ -535,8 +535,8 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip)
   int res = 0;
   static int fd = -1;
 
-#if defined(SVR4) || defined(__SVR4)
-#if !(defined(LINUX) || defined(__hpux) || defined (_AIX))
+#if (defined(SVR4) || defined(__SVR4)) && \
+    !(defined(LINUX) || defined(__hpux) || defined (_AIX))
   /* This "auxilliary" utmp doesn't exist under linux. */
   struct utmpx utx;
   static int fdx = -1;
@@ -574,8 +574,7 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip)
     res = -1;
   }
 
-#endif
-#endif /* SVR4 */
+#else /* Non-SVR4 systems */
 
   if(fd < 0 && (fd = open(WTMP_FILE,O_WRONLY|O_APPEND,0)) < 0) {
     log_pri(LOG_WARNING,"wtmp %s: %s",WTMP_FILE,strerror(errno));
@@ -619,6 +618,7 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip)
     log_debug(DEBUG0,"%s fstat(): %s",WTMP_FILE,strerror(errno));
     res = -1;
   }
+#endif /* SVR4 */
 
   return res;
 }
