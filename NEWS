@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.408 2003-03-20 21:38:58 castaglia Exp $
+$Id: NEWS,v 1.409 2003-03-21 06:46:14 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -72,6 +72,9 @@ CVS
   http://www.openssl.org/news/secadv_20030317.txt
 - Bug 1995 - incorrect handling of curses/ncurses header and libraries in
   ftptop
+- New mod_radius directives: RadiusGroupInfo, RadiusVendor.  mod_radius
+  now looks for custom response information in Vendor-Specific Attributes
+  (VSAs) rather than the normal RADIUS attributes; VSAs are more flexible.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------
