@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # ---------------------------------------------------------------------------
-# Copyright (C) 2000,2001 TJ Saunders <tj@castaglia.org>
+# Copyright (C) 2000-2002 TJ Saunders <tj@castaglia.org>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 # format, or AuthGroupFile, in group(5) format.  The idea is somewhat similar
 # to Apache's htpasswd program.
 #
-#  $Id: ftpasswd,v 1.1 2002-02-14 16:50:04 flood Exp $
+#  $Id: ftpasswd,v 1.2 2002-11-14 16:53:20 castaglia Exp $
 #
 # ---------------------------------------------------------------------------
 
@@ -169,7 +169,7 @@ if ((exists($opts{'passwd'}) && exists($opts{'group'})) ||
 
   open_output_file();
 
-  handle_group_entry(gid => $opts{'gid'}, members => $opts{'member'},
+  handle_group_entry(gid => $opts{'gid'}, members => $opts{'m'},
     name => $opts{'name'});
 
   close_output_file();
@@ -357,7 +357,7 @@ sub get_passwd {
         # cannot prompt again if automated.  Simply print an error message
         # and exit.
         print STDOUT "$program: error: password matches current password\n";
-        exit 1;
+        exit 2;
 
       } else {
         print STDOUT "Please use a password that is different from your current password.\n";
@@ -380,7 +380,7 @@ sub get_passwd {
         # cannot prompt again if automated.  Simply print an error message
         # and exit.
         print STDOUT "$program: error: password matches system password\n";
-        exit 1;
+        exit 4;
 
       } else {
         print STDOUT "Please use a password that is different from your system password.\n";
@@ -477,12 +477,11 @@ sub handle_group_entry {
   my %args = @_;
 
   my $gid = $args{'gid'};
-  my $members = "";
-  if (defined($args{'members'})) {
-    $members = join(',', @{ $args{'members'} });
-  }
   my $name = $args{'name'};
   my $passwd;
+
+  my $members = "";
+  $members = join(',', @{$args{'members'}}) if (defined($args{'members'}));
 
   # check to see whether we should update the fields for this group (because
   # it already exists), or to create a new entry
@@ -546,9 +545,17 @@ sub handle_passwd_entry {
   my $home = $args{'home'};
   my $shell = $args{'shell'};
 
-  # trim any trailing slashes in $home
+  # Trim any trailing slashes in $home.
   $home =~ s/(.*)\/$/$1/ if ($home =~ /\/$/);
 
+  # Make sure the given home directory is NOT a relative path (what a
+  # horrible idea).
+ 
+  unless ($home =~ /^\//) {
+    print STDOUT "$program: error: relative path given for home directory\n";
+    exit 8;
+  }
+  
   # check to see whether we should update the fields for this user (because
   # they already exist), or create a new entry
 
@@ -633,66 +640,78 @@ usage: $program [--help] [--hash|--group|--passwd]
   If used with --passwd, $program creates a file in the passwd(5) format,
   suitable for use with proftpd's AuthUserFile configuration directive.
   You will be prompted for the password to use of the user, which will be
-  encrypted, and written out as the encrypted string.
+  encrypted, and written out as the encrypted string.  New entries are
+  appended to the file by default.
  
   By default, using --passwd will write output to "$default_passwd_file".
 
+  Return values:
+
+  To make it easier for wrapper scripts to interact with $program, $program
+  will exit with the following values for the reasons described:
+
+    1       no such user
+    2       password matches current password
+    4       password matches system password
+    8       relative path given for home directory
+
   Options:
 
-    --file      write output to specified file, rather than "$default_passwd_file"
+    --file      Write output to specified file, rather than "$default_passwd_file".
 
-    -F          if the file to be used already exists, delete it and write a
-    --force     new one.
+    -F          If the file to be used already exists, delete it and write a
+    --force     new one.  By default, new entries will be appended to the file.
 
-    --gecos     descriptive string for the given user (usually the user's
+    --gecos     Descriptive string for the given user (usually the user's
                 full name).
 
-    --gid       primary group ID for this user (optional, will default to
-                given --uid value if absent)
+    --gid       Primary group ID for this user (optional, will default to
+                given --uid value if absent).
 
-    -h          displays this message
+    -h          Displays this message.
     --help
 
-    --home      home directory for the user (required)
+    --home      Home directory for the user (required).
 
-    --des       use the DES algorithm for encrypting passwords.  The default
+    --des       Use the DES algorithm for encrypting passwords.  The default
                 is the MD5 algorithm.
 
-    --md5       use the MD5 algorithm for encrypting passwords.  This is the
+    --md5       Use the MD5 algorithm for encrypting passwords.  This is the
                 default.
 
-    --name      name of the user account (required).  If the name does not
+    --name      Name of the user account (required).  If the name does not
                 exist in the specified output-file, an entry will be created
                 for her.  Otherwise, the given fields will be updated.
 
-    --shell     shell for the user (required).  Recommended: /bin/false
+    --shell     Shell for the user (required).  Recommended: /bin/false
 
-    --uid       numerical user ID (required)
+    --uid       Numerical user ID (required)
 
     --change-password
 
-                update only the password field for a user.  This option
-                requires that the --name option be used, but no others.
-                This also double-checks the given password against the
-                user's current password in the existing passwd file, and
+                Update only the password field for a user.  This option
+                requires that the --name and --passwd options be used, but
+                no others.  This also double-checks the given password against
+                the user's current password in the existing passwd file, and
                 requests that a new password be given if the entered password
                 is the same as the current password.
 
     --not-system-password
 
-                double-checks the given password against the system password
+                Double-checks the given password against the system password
                 for the user, and requests that a new password be given if
                 the entered password is the same as the system password.  This
                 helps to enforce different passwords for different types of
                 access.
 
     --stdin
-                read the password directly from standard in rather than
+                Read the password directly from standard in rather than
                 prompting for it.  This is useful for writing scripts that
-                automate use of ftpasswd.
+                automate use of $program.
 
     --use-cracklib
-                causes $program to use Alec Muffet's cracklib routines in
+
+                Causes $program to use Alec Muffet's cracklib routines in
                 order to determine and prevent the use of bad or weak
                 passwords.  The optional path to this option specifies
                 the path to the dictionary files to use -- default path
@@ -700,7 +719,7 @@ usage: $program [--help] [--hash|--group|--passwd]
                 Crypt::Cracklib module to be installed on your system.
 
     --version
-                displays the version of $program.
+                Displays the version of $program.
 
   If used with --group, $program creates a file in the group(5) format,
   suitable for use with proftpd's AuthGroupFile configuration directive.
@@ -711,41 +730,42 @@ usage: $program [--help] [--hash|--group|--passwd]
 
     --enable-group-passwd
 
-                prompt for a group password.  This is disabled by default,
+                Prompt for a group password.  This is disabled by default,
                 as group passwords are not usually a good idea at all.
 
-    --file      write output to specified file, rather than "$default_group_file"
+    --file      Write output to specified file, rather than "$default_group_file".
 
-    -F          if the file be used already exists, delete it and write a new
-    --force     one.
+    -F          If the file be used already exists, delete it and write a new
+    --force     one.  By default, new entries will be appended to the file.
 
-    --gid       numerical group ID (required)
+    --gid       Numerical group ID (required).
 
     -h
-    --help      displays this message
+    --help      Displays this message.
 
     -m
-    --member    user to be a member of the group.  This argument may be used
+    --member    User to be a member of the group.  This argument may be used
                 multiple times to specify the full list of users to be members
                 of this group.
 
-    --des       use the DES algorithm for encrypting passwords.  The default
+    --des       Use the DES algorithm for encrypting passwords.  The default
                 is the MD5 algorithm.
 
-    --md5       use the MD5 algorithm for encrypting passwords.  This is the
+    --md5       Use the MD5 algorithm for encrypting passwords.  This is the
                 default.
 
-    --name      name of the group (required).  If the name does not exist in
+    --name      Name of the group (required).  If the name does not exist in
                 the specified output-file, an entry will be created for them.
                 Otherwise, the given fields will be updated.
 
     --stdin
-                read the password directly from standard in rather than
+                Read the password directly from standard in rather than
                 prompting for it.  This is useful for writing scripts that
-                automate use of ftpasswd.
+                automate use of $program.
 
     --use-cracklib
-                causes $program to use Alec Muffet's cracklib routines in
+
+                Causes $program to use Alec Muffet's cracklib routines in
                 order to determine and prevent the use of bad or weak
                 passwords.  The optional path to this option specifies
                 the path to the dictionary files to use -- default path
@@ -753,7 +773,7 @@ usage: $program [--help] [--hash|--group|--passwd]
                 Crypt::Cracklib module to be installed on your system.
 
     --version
-                displays the version of $program.
+                Displays the version of $program.
 
   If used with --hash, $program generates a hash of a password, as would
   appear in an AuthUserFile.  The hash is written to standard out.
@@ -761,24 +781,28 @@ usage: $program [--help] [--hash|--group|--passwd]
 
   Options:
 
-    --des       use the DES algorithm for encrypting passwords.  The default
+    --des       Use the DES algorithm for encrypting passwords.  The default
                 is the MD5 algorithm.
 
-    --md5       use the MD5 algorithm for encrypting passwords.  This is the
+    --md5       Use the MD5 algorithm for encrypting passwords.  This is the
                 default.
 
     --stdin
-                read the password directly from standard in rather than
+                Read the password directly from standard in rather than
                 prompting for it.  This is useful for writing scripts that
-                automate use of ftpasswd.
+                automate use of $program.
 
     --use-cracklib
-                causes $program to use Alec Muffet's cracklib routines in
+
+                Causes $program to use Alec Muffet's cracklib routines in
                 order to determine and prevent the use of bad or weak
                 passwords.  The optional path to this option specifies
                 the path to the dictionary files to use -- default path
                 is "$default_cracklib_dict".  This requires the Perl
                 Crypt::Cracklib module to be installed on your system.
+
+    --version
+                Displays the version of $program.
 
 END_OF_USAGE
 

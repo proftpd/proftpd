@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.277 2002-11-13 21:15:27 castaglia Exp $
+$Id: NEWS,v 1.278 2002-11-14 16:53:19 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -44,6 +44,7 @@ CVS
 - Bug 1830 - MaxClientsPerHost (small) Bug.  Off-by-one error in the handling
   of the MaxClientsPerHost directive, introduced by the change in timing of
   scoreboard modifications of the new scoreboarding code.
+- ftpasswd now exits with different values, depending on the problem cause.
 
 1.2.7rc2 - Released 2002-10-22
 ---------------------------------
