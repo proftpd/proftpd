@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.278 2002-11-14 16:53:19 castaglia Exp $
+$Id: NEWS,v 1.279 2002-11-14 16:56:39 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -45,6 +45,7 @@ CVS
   of the MaxClientsPerHost directive, introduced by the change in timing of
   scoreboard modifications of the new scoreboarding code.
 - ftpasswd now exits with different values, depending on the problem cause.
+  Thanks to Graham Dunn <gdunn@inscriber.com> for these changes.
 
 1.2.7rc2 - Released 2002-10-22
 ---------------------------------
