@@ -1,5 +1,31 @@
-2001-01-25 13:03  flood
-        * commit email logging test
+2001-01-26 18:15  flood
+
+	* modules/mod_core.c: Bug #390 - Added ifdef to regex code in
+	mod_core
+
+2001-01-26 18:10  flood
+
+	* contrib/dist/rpm/proftpd.init.d: Bug #347 - RPM problem in
+	contrib/
+
+2001-01-26 18:06  flood
+
+	* src/dirtree.c: Bug #397 - Fixed problem with incorrect config
+	file line count
+
+2001-01-26 17:30  flood
+
+	* src/support.c: Bug #441 - off-by-one error when reading month
+	from /etc/shutmsg
+
+2001-01-26 17:26  flood
+
+	* doc/Configuration.html: Bug #429 - Documentation changes
+
+2001-01-26 16:51  flood
+
+	* src/: inet.c, main.c: Bug #398 - overwriting file descriptor in
+	inet_openrw()
 
 2001-01-25 00:53  flood
 
