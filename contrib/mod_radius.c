@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.13 2003-01-24 06:52:27 castaglia Exp $
+ * $Id: mod_radius.c,v 1.14 2003-03-06 00:11:54 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.7rc7"
@@ -1906,6 +1906,9 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
     return DECLINED(cmd);
   }
 
+  /* Clear the OK flag. */
+  radius_auth_ok = FALSE;
+
   /* Loop through the list of servers, trying each one until the packet is
    * successfully sent.
    */
@@ -1972,6 +1975,7 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
 
       case RADIUS_AUTH_REJECT:
         radius_log("authentication failed for user '%s'", user);
+        radius_auth_ok = FALSE;
         radius_auth_reject = TRUE;
         break;
 

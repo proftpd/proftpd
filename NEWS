@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.390 2003-03-05 21:55:53 castaglia Exp $
+$Id: NEWS,v 1.391 2003-03-06 00:11:53 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -21,6 +21,11 @@ CVS
 - Bug 1869 - Add option "-S/--server" to ftpcount, ftptop, ftpwho.  This
   option can be used to specify a ServerName; the utilities will then
   display information for that specific server.
+- Bug 1980 - Login with incorrect password possible when using mod_radius.
+  This was caused by the retaining of the OK state when a user authenticated
+  via RADIUS, but the login process later fails (e.g. home directory
+  inaccessible or something similar); subsequent logging in as a different
+  user would succeed because the OK flag was not cleared.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------
