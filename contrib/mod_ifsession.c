@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.16 2004-10-31 01:32:49 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.17 2004-12-17 01:25:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -152,17 +152,17 @@ MODRET start_ifctxt(cmd_rec *cmd) {
     cmd->server->config_type : CONF_ROOT);
 
   if (strcmp(cmd->argv[0], IFSESS_CLASS_TEXT) == 0) {
-    name = "IfClassList";
+    name = "_IfClassList";
     config_type = IFSESS_CLASS_NUMBER;
     eval_type = PR_EXPR_EVAL_OR;
 
   } else if (strcmp(cmd->argv[0], IFSESS_GROUP_TEXT) == 0) {
-    name = "IfGroupList";
+    name = "_IfGroupList";
     config_type = IFSESS_GROUP_NUMBER;
     eval_type = PR_EXPR_EVAL_AND;
 
   } else if (strcmp(cmd->argv[0], IFSESS_USER_TEXT) == 0) {
-    name = "IfUserList";
+    name = "_IfUserList";
     config_type = IFSESS_USER_NUMBER;
     eval_type = PR_EXPR_EVAL_OR;
   }
