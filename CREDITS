@@ -49,3 +49,7 @@ N: Daniel Roesen
 E: droesen@entire-systems.com
 P: 1024D/7825825C 02C5 22D7 0FB1 A7FF E0AA  1B30 F76C FB64 7825 825C
 D: RPM packaging maintainer
+
+N: Andrew Houghton
+E: aah@acm.org
+D: SQL support
