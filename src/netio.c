@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.19 2003-12-16 17:43:28 castaglia Exp $
+ * $Id: netio.c,v 1.20 2004-06-15 16:45:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -427,17 +427,17 @@ int pr_netio_poll(pr_netio_stream_t *nstrm) {
         nstrm->strm_errno = errno;
         return -1;
 
-    case 0:
-      /* In case the kernel doesn't support interrupted syscalls. */
-      if (nstrm->strm_flags & PR_NETIO_SESS_ABORT) {
-        nstrm->strm_flags &= ~PR_NETIO_SESS_ABORT;
-        return 1;
-      }
+      case 0:
+        /* In case the kernel doesn't support interrupted syscalls. */
+        if (nstrm->strm_flags & PR_NETIO_SESS_ABORT) {
+          nstrm->strm_flags &= ~PR_NETIO_SESS_ABORT;
+          return 1;
+        }
 
-      continue;
+        continue;
 
-    default:
-      return 0;
+      default:
+        return 0;
     }
   }
 
