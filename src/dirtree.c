@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.93 2002-12-19 17:28:00 castaglia Exp $
+ * $Id: dirtree.c,v 1.94 2002-12-19 21:02:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -698,12 +698,28 @@ config_rec *start_sub_config(const char *name) {
 }
 
 /* Pop one level off the stack */
-config_rec *end_sub_config(void)
-{
-  if (conf.curconfig == (config_rec**)conf.cstack->elts) {
+config_rec *end_sub_config(void) {
+  config_rec *c = *conf.curconfig;
+
+  /* Note that if the current config is empty, it should simply be removed.
+   * Such empty configs can happen for <Directory> sections that
+   * contain no directives, for example.
+   */
+
+  if (conf.curconfig == (config_rec **) conf.cstack->elts) {
+    if (!c->subset) {
+      xaset_remove(c->set, (xasetmember_t *) c);
+      destroy_pool(c->pool);
+    }
+
     if (*conf.curconfig)
       *conf.curconfig = NULL;
     return NULL;
+  }
+
+  if (!c->subset) {
+    xaset_remove(c->set, (xasetmember_t *) c);
+    destroy_pool(c->pool);
   }
 
   conf.curconfig--;
@@ -745,6 +761,7 @@ config_rec *add_config_set(xaset_t **set,const char *name) {
   if (name)
     c->name = pstrdup(conf_pool, name);
   xaset_insert_end(*set,(xasetmember_t*)c);
+
   return c;
 }
 
@@ -2618,7 +2635,6 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
        * case sensitive (they shouldn't be verbatim from the config file)
        * Do NOT change this to strcasecmp(), no matter how tempted you are
        * to do so, it will break stuff. ;)
-       * -jss 4/10/2001
        */
       for (c = top; c; c=c->next)
         if ((type == -1 || type == c->config_type) &&
@@ -2635,11 +2651,13 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
 
       break;
     } while(1);
+
   } else {
-    for (c = top; c; c=c->next)
+    for (c = top; c; c=c->next) {
       if ((type == -1 || type == c->config_type) &&
-         (!name || !strcmp(name,c->name)))
+         (!name || !strcmp(name, c->name)))
         return c;
+    }
   }
 
   return NULL;
