@@ -2,7 +2,7 @@
  * ProFTPD: mod_ifsession -- a module supporting conditional
  *                            per-user/group/class configuration contexts.
  *
- * Copyright (c) 2002-2003 TJ Saunders
+ * Copyright (c) 2002-2004 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.17 2004-12-17 01:25:48 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.18 2004-12-17 18:24:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -106,9 +106,10 @@ static void ifsess_dup_param(pool *dst_pool, xaset_t **dst, config_rec *c,
 }
 
 static void ifsess_dup_set(pool *dst_pool, xaset_t *dst, xaset_t *src) {
-  config_rec *c = NULL;
+  config_rec *c, *next;
 
-  for (c = (config_rec *) src->xas_list; c; c = c->next) {
+  for (c = (config_rec *) src->xas_list; c; c = next) {
+    next = c->next;
 
     /* Skip the context lists. */
     if (c->config_type == IFSESS_CLASS_NUMBER ||
