@@ -11884,11 +11884,12 @@ cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 
-#if HAVE_NETDB_H
-#include <netdb.h>
-#endif
-#include <sys/socket.h>
-#include <sys/types.h>
+    #if HAVE_NETDB_H
+    # include <netdb.h>
+    #endif
+    #include <sys/socket.h>
+    #include <sys/types.h>
+
 
 int
 main ()
@@ -14588,6 +14589,109 @@ echo "$as_me: WARNING: Disabling broken FreeBSD setpassent()" >&2;}
 _ACEOF
  ;;
 esac
+fi
+
+
+echo "$as_me:$LINENO: checking for struct sockaddr_in.sin_len" >&5
+echo $ECHO_N "checking for struct sockaddr_in.sin_len... $ECHO_C" >&6
+if test "${ac_cv_member_struct_sockaddr_in_sin_len+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+    #if HAVE_NETINET_IN_SYSTM_H
+    # include <netinet/in_systm.h>
+    #endif
+    #include <netinet/in.h>
+
+
+int
+main ()
+{
+static struct sockaddr_in ac_aggr;
+if (ac_aggr.sin_len)
+return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_member_struct_sockaddr_in_sin_len=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+    #if HAVE_NETINET_IN_SYSTM_H
+    # include <netinet/in_systm.h>
+    #endif
+    #include <netinet/in.h>
+
+
+int
+main ()
+{
+static struct sockaddr_in ac_aggr;
+if (sizeof ac_aggr.sin_len)
+return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_member_struct_sockaddr_in_sin_len=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_cv_member_struct_sockaddr_in_sin_len=no
+fi
+rm -f conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f conftest.$ac_objext conftest.$ac_ext
+fi
+echo "$as_me:$LINENO: result: $ac_cv_member_struct_sockaddr_in_sin_len" >&5
+echo "${ECHO_T}$ac_cv_member_struct_sockaddr_in_sin_len" >&6
+if test $ac_cv_member_struct_sockaddr_in_sin_len = yes; then
+  cat >>confdefs.h <<\_ACEOF
+#define SIN_LEN 1
+_ACEOF
+
 fi
 
 
