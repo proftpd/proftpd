@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.261 2002-10-30 01:23:42 castaglia Exp $
+$Id: NEWS,v 1.262 2002-10-30 01:47:17 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -16,7 +16,7 @@ CVS
 - Bug 1722 - Can't work magic cookie %F on FreeBSD.
 - Make sure session.xfer uses cleared memory so unset structure members
   won't contain random values.
-- Fixed handling of AuthAliasOnly, broken slight by Bug#1567
+- Fixed handling of AuthAliasOnly, broken slightly by Bug#1567.
 
 1.2.7rc2 - Released 2002-10-22
 ---------------------------------
