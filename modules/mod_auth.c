@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.202 2005-03-05 17:46:01 castaglia Exp $
+ * $Id: mod_auth.c,v 1.203 2005-03-17 07:12:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -365,6 +365,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
   if ((privsdrop = get_param_ptr(TOPLEVEL_CONF, "RootRevoke",
       FALSE)) != NULL && *privsdrop == TRUE) {
     pr_signals_block();
+    PRIVS_ROOT
     PRIVS_REVOKE
     pr_signals_unblock();
 
