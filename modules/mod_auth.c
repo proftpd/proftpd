@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.122 2002-12-11 23:35:47 castaglia Exp $
+ * $Id: mod_auth.c,v 1.123 2002-12-12 15:41:41 jwm Exp $
  */
 
 #include "conf.h"
@@ -1581,7 +1581,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
       snprintf(maxn, sizeof(maxn), "%u", *max);
       send_response(R_530, "%s", sreplace(cmd->tmp_pool, maxstr, "%m", maxn,
         NULL));
-      log_auth(PR_LOG_NOTICE, "Connection refused (max clients per host %u).",
+      log_auth(PR_LOG_NOTICE, "Connection refused (max hosts per host %u).",
         *max);
       end_login(0);
     }
