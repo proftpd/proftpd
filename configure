@@ -6450,7 +6450,7 @@ fi
 
 
 
-for ac_header in fcntl.h sys/ioctl.h sys/time.h unistd.h memory.h
+for ac_header in fcntl.h sys/ioctl.h sys/time.h junistd.h memory.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if eval "test \"\${$as_ac_Header+set}\" = set"; then
@@ -8797,7 +8797,8 @@ fi
 done
 
 
-for ac_header in utmpx.h
+
+for ac_header in utime.h utmpx.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if eval "test \"\${$as_ac_Header+set}\" = set"; then
