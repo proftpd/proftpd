@@ -29,6 +29,7 @@ FreeBSD 2.2.7 (tested see NOTE)
 FreeBSD 3.3 (see NOTE)
 Digital UNIX 4.0A
 DEC OFS/1 (native compiler)
+MacOS X 1.02
 
    [ NOTE: FreeBSD 2.0 to 3.3-RELEASE has a libc bug involving
      setpassent().  If you know you have a fixed libc you can

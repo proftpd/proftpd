@@ -13,6 +13,7 @@ include ../Make.rules
 
 libsupp.a: $(LIB_OBJS)
 	ar rc libsupp.a $(LIB_OBJS)
+	ranlib libsupp.a
 
 all:
 	@echo "Running make from top level directory."
