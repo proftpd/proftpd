@@ -25,7 +25,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.77 2002-05-09 17:36:00 castaglia Exp $
+ * $Id: main.c,v 1.78 2002-05-09 20:15:14 castaglia Exp $
  */
 
 /*
@@ -1275,10 +1275,10 @@ static int _dup_low_fd(int fd)
   return fd;
 }
 
-void fork_server(int fd,conn_t *l,int nofork)
-{
-  server_rec *s, *s_saved, *serv = NULL;
-  conn_t *conn;
+void fork_server(int fd, conn_t *l, int nofork) {
+  server_rec *s = NULL, *s_saved = NULL, *serv = NULL;
+  conn_t *conn = NULL;
+  unsigned char *ident_lookups = NULL;
   int i, rev;
   int sempipe[2] = { -1, -1 };
   
@@ -1590,7 +1590,8 @@ void fork_server(int fd,conn_t *l,int nofork)
   /* Use the ident protocol (RFC1413) to try to get remote ident_user
    */
 
-  if(get_param_int(main_server->conf,"IdentLookups",FALSE) != 0)
+  if ((ident_lookups = get_param_ptr(main_server->conf, "IdentLookups",
+     FALSE)) != NULL && *ident_lookups == TRUE)
     session.ident_user = get_ident(session.pool,conn);
   else
     session.ident_user = "UNKNOWN";

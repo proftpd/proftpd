@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.81 2002-05-09 17:36:00 castaglia Exp $
+ * $Id: mod_core.c,v 1.82 2002-05-09 20:15:14 castaglia Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -641,16 +641,20 @@ MODRET set_multilinerfc2228(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET set_identlookups(cmd_rec *cmd)
-{
-  int bool;
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+MODRET set_identlookups(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
 
-  add_config_param("IdentLookups", 1, bool);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
+
   return HANDLED(cmd);
 }
 

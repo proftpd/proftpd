@@ -25,7 +25,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.70 2002-05-09 17:36:00 castaglia Exp $
+ * $Id: mod_auth.c,v 1.71 2002-05-09 20:15:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -107,7 +107,6 @@ int _login_timeout(CALLBACK_FRAME)
 static int auth_child_init() {
   uid_t server_uid, current_euid = geteuid();
   gid_t server_gid, current_egid = getegid();
-
   unsigned char switch_server_id = FALSE;
 
   /* Start the login timer */
@@ -1166,7 +1165,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   log_run_cwd(session.cwd);
   main_set_idle();
 
-  remove_timer(TIMER_LOGIN,&auth_module);
+  remove_timer(TIMER_LOGIN, &auth_module);
 
   /* these copies are made from the permanent_pool, instead of the more
    * volatile pool used originally, in order that the copied data maintain

@@ -24,7 +24,7 @@
 
 /* 
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.6 2002-01-24 00:21:53 flood Exp $
+ * $Id: timers.c,v 1.7 2002-05-09 20:15:14 castaglia Exp $
  */
 
 #include <signal.h>
@@ -223,7 +223,11 @@ int remove_timer(int timerno, module *mod) {
 
   block_alarms();
 
-  for (t = (timer_t*)timers->xas_list; t; t=t->next)
+  /* If there are no timers currently registered, do nothing. */
+  if (!timers)
+    return 0;
+
+  for (t = (timer_t *) timers->xas_list; t; t = t->next)
     if (t->timerno == timerno && (t->mod == mod || mod == ANY_MODULE)) {
       if (_indispatch) {
         t->remove++;
