@@ -1,3 +1,18 @@
+2001-02-21 17:33  flood
+
+	* CREDITS, src/log.c: Bug #1021 - fix for ftpwho/ftpcount not
+	working (_pid_exists() in log.c)
+
+2001-02-20 22:17  flood
+
+	* modules/: mod_unixpw.c, mod_xfer.c: Bug #1015 - Format string for
+	long long uids.  REST command now returns failure message if used
+	where HiddenStor is enabled.
+
+2001-02-20 21:40  flood
+
+	* NEWS: Updated NEWS
+
 2001-02-20 21:33  flood
 
 	* NEWS, doc/Configuration.html, include/ftp.h, modules/mod_xfer.c,
