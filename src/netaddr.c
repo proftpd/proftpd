@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.30 2003-10-11 19:32:52 castaglia Exp $
+ * $Id: netaddr.c,v 1.31 2003-10-13 05:02:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -38,16 +38,6 @@ static int reverse_dns = 1;
 
 #ifdef HAVE_GETHOSTBYNAME2
 static void *get_v4inaddr(pr_netaddr_t *na) {
-  if (!na) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  if (!pr_netaddr_is_v4mappedv6(na)) {
-    errno = EPERM;
-    return NULL;
-  }
-
   return (((char *) pr_netaddr_get_inaddr(na)) + 12);
 }
 #endif /* HAVE_GETHOSTBYNAME2 */
