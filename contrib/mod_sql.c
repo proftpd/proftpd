@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.76 2004-06-10 18:30:58 castaglia Exp $
+ * $Id: mod_sql.c,v 1.77 2004-06-11 21:19:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -318,30 +318,30 @@ static void *cache_findvalue( cache_t *cache, void *data )
   return ( ( entry == NULL ) ? NULL : entry->data );
 }
 
-cmd_rec *_sql_make_cmd(pool * cp, int argc, ...)
-{
+cmd_rec *_sql_make_cmd(pool *p, int argc, ...) {
+  register unsigned int i = 0;
   pool *newpool = NULL;
-  cmd_rec *c = NULL;
+  cmd_rec *cmd = NULL;
   va_list args;
-  int i = 0;
 
-  newpool = make_sub_pool( cp );
-  c = pcalloc(newpool, sizeof(cmd_rec));
-  c->argc = argc;
-  c->stash_index = -1;
-  c->pool = newpool;
+  newpool = make_sub_pool(p);
+  cmd = pcalloc(newpool, sizeof(cmd_rec));
+  cmd->argc = argc;
+  cmd->stash_index = -1;
+  cmd->pool = newpool;
   
-  c->argv = pcalloc(newpool, sizeof(void *) * (argc));
-  c->tmp_pool = newpool;
+  cmd->argv = pcalloc(newpool, sizeof(void *) * (argc));
+  cmd->tmp_pool = newpool;
+  cmd->server = main_server;
 
   va_start(args, argc);
 
   for (i = 0; i < argc; i++)
-    c->argv[i] = (void *) va_arg(args, char *);
+    cmd->argv[i] = (void *) va_arg(args, char *);
 
   va_end(args);
 
-  return c;
+  return cmd;
 }
 
 static void _sql_check_cmd(cmd_rec *cmd, char *msg) {
