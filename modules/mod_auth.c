@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.108 2002-11-25 21:28:39 castaglia Exp $
+ * $Id: mod_auth.c,v 1.109 2002-12-04 15:26:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -698,6 +698,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
      */
     if ((root_allow = get_param_ptr(c ? c->subset : main_server->conf,
         "RootLogin", FALSE)) == NULL || *root_allow != TRUE) {
+      pr_memscrub(pass, strlen(pass));
       log_auth(LOG_CRIT, "SECURITY VIOLATION: root login attempted.");
       return 0;
 
@@ -800,9 +801,9 @@ static int _setup_environment(pool *p, char *user, char *pass)
       }
     }
 
-    memset(pass, '\0', strlen(pass));
+    pr_memscrub(pass, strlen(pass));
 
-    switch(auth_code) {
+    switch (auth_code) {
 
       /* Use an RFC2228 response code if authenticated by an RFC2228 module. */
       case AUTH_RFC2228_OK:
@@ -1298,6 +1299,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
   return 1;
 
 auth_failure:
+  pr_memscrub(pass, strlen(pass));
   session.user = session.group = NULL;
   session.gids = session.groups = NULL;
   session.wtmp_log = 0;

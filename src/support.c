@@ -26,7 +26,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.44 2002-11-26 18:54:35 castaglia Exp $
+ * $Id: support.c,v 1.45 2002-12-04 15:26:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -853,6 +853,28 @@ off_t get_fs_size(char *s) {
 # endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
 }
 #endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
+
+/* "safe" memset() (code borrowed from OpenSSL).  This function should be
+ * used to clear/scrub sensitive memory areas instead of memset() for the
+ * reasons mentioned in this BugTraq thread:
+ *
+ *  http://online.securityfocus.com/archive/1/298598
+ */
+
+unsigned char memscrub_ctr = 0;
+
+void pr_memscrub(void *ptr, size_t ptrlen) {
+  unsigned char *p = ptr;
+  size_t loop = ptrlen;
+
+  while (loop--) {
+    *(p++) = memscrub_ctr++;
+    memscrub_ctr += (17 + (unsigned char)((int) p & 0xF));
+  }
+
+  if (memchr(ptr, memscrub_ctr, ptrlen))
+    memscrub_ctr += 63;
+}
 
 /* "safe" strcat, saves room for \0 at end of dest, and refuses to copy
  * more than "n" bytes.
