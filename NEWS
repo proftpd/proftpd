@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.450 2003-07-16 18:48:50 castaglia Exp $
+$Id: NEWS,v 1.451 2003-07-21 22:03:49 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -36,6 +36,8 @@ CVS
 - Fixed handling of mod_tls' TLSCertificateChainFile directive.
 - Bug 2103 - AuthAliasOnly in server context causes hang.
 - Bug 2110 - Segfault if gethostname(2) returns NULL.
+- Bug 2113 - mod_sql default uses mysql keyword "password".  The default
+  has been changed to "passwd".
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------

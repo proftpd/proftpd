@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.52 2003-05-31 00:37:16 castaglia Exp $
+ * $Id: mod_sql.c,v 1.53 2003-07-21 22:03:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -53,7 +53,7 @@
 #define MOD_SQL_DEF_USERNAMEFIELD     "userid"
 #define MOD_SQL_DEF_USERUIDFIELD      "uid"
 #define MOD_SQL_DEF_USERGIDFIELD      "gid"
-#define MOD_SQL_DEF_USERPASSWORDFIELD "password"
+#define MOD_SQL_DEF_USERPASSWORDFIELD "passwd"
 #define MOD_SQL_DEF_USERSHELLFIELD    "shell"
 #define MOD_SQL_DEF_USERHOMEDIRFIELD  "homedir"
 
