@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.128 2002-12-06 21:04:58 castaglia Exp $
+ * $Id: mod_core.c,v 1.129 2002-12-06 23:13:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3848,7 +3848,6 @@ static conftable core_conftab[] = {
   { "RLimitMemory",		set_rlimitmemory,		NULL },
   { "RLimitOpenFiles",		set_rlimitopenfiles,		NULL },
   { "ScoreboardFile",		set_scoreboardfile,		NULL },
-  { "ScoreboardPath",		set_scoreboardpath,		NULL },
   { "ServerAdmin",		set_serveradmin,		NULL },
   { "ServerIdent",		set_serverident,		NULL },
   { "ServerName",		set_servername, 		NULL },
@@ -3868,6 +3867,10 @@ static conftable core_conftab[] = {
   { "tcpNoDelay",		set_tcpnodelay,			NULL },
   { "tcpReceiveWindow",		set_tcpreceivewindow,		NULL },
   { "tcpSendWindow",		set_tcpsendwindow,		NULL },
+
+  /* Deprecated */
+  { "ScoreboardPath",		set_scoreboardpath,		NULL },
+
   { NULL, NULL, NULL }
 };
 
