@@ -3715,11 +3715,12 @@ static int sql_getconf()
       mr = _sql_dispatch(cmd, "sql_open");
       _sql_check_response(mr);
       _sql_free_cmd(cmd);
-      log_debug(DEBUG_INFO, _MOD_VERSION ": backend successfully connected.",
-		_MOD_VERSION);
+      log_debug(DEBUG_INFO,
+        _MOD_VERSION ": backend successfully connected.");
+
     } else {
-      log_debug(DEBUG_INFO, _MOD_VERSION ": backend will not be checked until first use.",
-		_MOD_VERSION);
+      log_debug(DEBUG_INFO,
+        _MOD_VERSION ": backend will not be checked until first use.");
     }
 
     cmap.status = 1;
