@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.82 2003-01-05 01:29:38 jwm Exp $
+ * $Id: mod_ls.c,v 1.83 2003-01-22 06:12:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1655,7 +1655,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
     memset(&g, '\0', sizeof(glob_t));
 
     if (pr_fs_glob(target, GLOB_PERIOD,NULL, &g) != 0) {
-      pr_response_add_err(R_550, "No files found");
+      pr_response_add_err(R_450, "No files found");
       return ERROR(cmd);
     }
 
@@ -1698,8 +1698,9 @@ MODRET ls_nlst(cmd_rec *cmd) {
      */
     struct stat st;
 
-    if (!ls_perms(cmd->tmp_pool, cmd, target, &hidden)) {
-      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+    if (!ls_perms_full(cmd->tmp_pool, cmd, target, &hidden)) {
+      pr_response_add_err(R_450, "%s: %s", *cmd->arg ? cmd->arg : session.vwd,
+        strerror(errno));
       return ERROR(cmd);
     }
 
@@ -1711,18 +1712,18 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
       if ((c = _find_ls_limit(target)) != NULL &&
           (ignore_hidden && *ignore_hidden == TRUE))
-        pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(ENOENT));
+        pr_response_add_err(R_450, "%s: %s", cmd->arg, strerror(ENOENT));
       else
-        pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EACCES));
+        pr_response_add_err(R_450, "%s: %s", cmd->arg, strerror(EACCES));
 
       return ERROR(cmd);
     }
 
-    /* Make sure the target is a file or directory,
-     * and that we have access to it.
+    /* Make sure the target is a file or directory, and that we have access
+     * to it.
      */
     if (pr_fsio_stat(target, &st) < 0) {
-      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+      pr_response_add_err(R_450, "%s: %s", cmd->arg, strerror(errno));
       return ERROR(cmd);
     }
 
@@ -1731,14 +1732,14 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
     else if (S_ISDIR(st.st_mode)) {
       if (access_check(target, R_OK) != 0) {
-        pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
+        pr_response_add_err(R_450, "%s: %s", cmd->arg, strerror(errno));
         return ERROR(cmd);
       }
 
-      ret = nlstdir(cmd,target);
+      ret = nlstdir(cmd, target);
 
     } else {
-      pr_response_add_err(R_550, "%s: Not a regular file", cmd->arg);
+      pr_response_add_err(R_450, "%s: Not a regular file", cmd->arg);
       return ERROR(cmd);
     }
 
@@ -1752,14 +1753,13 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
   } else {
     if (ret == 0 && !count && (session.sf_flags & SF_XFER) == 0) {
-      pr_response_add_err(R_550, "No files found");
+      pr_response_add_err(R_450, "No files found");
       ret = -1;
 
     } else if (session.sf_flags & SF_XFER)
 
-      /* Note that the data connection is NOT cleared here,
-       * as an error in NLST still leaves data ready for
-       * another command
+      /* Note that the data connection is NOT cleared here, as an error in
+       * NLST still leaves data ready for another command.
        */
       ls_done(cmd);
   }
