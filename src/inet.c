@@ -1,6 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
+ * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -406,7 +407,8 @@ conn_t *inet_create_connection(pool *p, xaset_t *servers, int fd,
  * the socket is created as root.
  */
 
-#if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || defined(OPENBSD2)
+#if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
+    defined(FREEBSD4) || defined(OPENBSD2)
 # ifdef SOLARIS2
     if(port != INPORT_ANY && port < 1024) {
 # endif
@@ -417,7 +419,8 @@ conn_t *inet_create_connection(pool *p, xaset_t *servers, int fd,
 # endif
 #endif
     fd = socket(AF_INET, SOCK_STREAM, tcp_proto);
-#if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || defined(OPENBSD2)
+#if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
+    defined(FREEBSD4) || defined(OPENBSD2)
 # ifdef SOLARIS2
     if(port != INPORT_ANY && port < 1024) {
 # endif
