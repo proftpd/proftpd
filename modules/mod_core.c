@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (C) 1999, MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
+ * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.27 2000-02-28 10:19:57 macgyver Exp $
+ * $Id: mod_core.c,v 1.28 2000-02-28 10:32:47 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -96,9 +96,6 @@ extern modret_t *site_dispatch(cmd_rec*);
 
 MODRET add_include(cmd_rec *cmd)
 {
-  int b;
-  config_rec *c;
-  
   CHECK_ARGS(cmd, 1);
   
   if(parse_config_file(cmd->argv[1]) == -1) {
