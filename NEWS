@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.196 2002-06-27 02:33:31 castaglia Exp $
+$Id: NEWS,v 1.197 2002-06-27 19:27:16 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -27,6 +27,8 @@ CVS
              for this, as the timeout (ten minutes) may be too long or short.
 - Bug 1664 - Changed mod_sql to decline UID-to-name resolution if a UID
              field has been configured to NULL; similarly for GID.
+- Removed mod_quota.c due to bugs, lack of maintainership.  Consult
+  http://bugs.proftpd.org for a list of the mod_quota bugs.
 
 1.2.5 - Released 2002-06-08
 ---------------------------------
