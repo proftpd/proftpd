@@ -19,7 +19,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.6 1999-03-05 17:55:41 flood Exp $
+ * $Id: mod_xfer.c,v 1.7 1999-03-12 01:58:12 flood Exp $
  */
 
 /* History Log:
@@ -487,7 +487,7 @@ MODRET cmd_abor(cmd_rec *cmd)
 
 MODRET cmd_type(cmd_rec *cmd)
 {
-  if(cmd->argc != 2) {
+  if(cmd->argc < 2 || cmd->argc > 3) {
     add_response_err(R_500,"'%s' not understood.",get_full_cmd(cmd));
     return ERROR(cmd);
   }
