@@ -3003,7 +3003,7 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (!strcasecmp(cmd->argv[1], "none")) {
+  if (strcasecmp(cmd->argv[1], "none") == 0) {
     add_config_param(cmd->argv[0], 0);
     return HANDLED(cmd);
   }
@@ -3018,8 +3018,8 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
   c->argv[3] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[3]) = TRUE;
 
-  for (i = 1; i < cmd->argc; i++) {
-    if (!strcmp(cmd->argv[i], "ctrl")) {
+  for (i = 1; i < cmd->argc;) {
+    if (strcmp(cmd->argv[i], "ctrl") == 0) {
       int secs = atoi(cmd->argv[i+1]);
 
       if (secs > 0)
@@ -3031,9 +3031,8 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
           NULL));
 
       i += 2;
-    }
 
-    if (!strcmp(cmd->argv[i], "data")) {
+    } else if (strcmp(cmd->argv[i], "data") == 0) {
       char *tmp = NULL;
       unsigned long kbytes = strtoul(cmd->argv[i+1], &tmp, 10);
 
@@ -3046,9 +3045,8 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
           NULL));
 
       i += 2;
-    }
 
-    if (!strcmp(cmd->argv[i], "required")) {
+    } else if (strcmp(cmd->argv[i], "required") == 0) {
       int bool = get_boolean(cmd, i+1);
 
       if (bool != -1)
@@ -3060,9 +3058,8 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
           NULL));
 
       i += 2;
-    }
 
-    if (!strcmp(cmd->argv[i], "timeout")) {
+    } else if (strcmp(cmd->argv[i], "timeout") == 0) {
       int secs = atoi(cmd->argv[i+1]);
       
       if (secs > 0)
