@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.67 2003-09-08 00:36:18 castaglia Exp $
+ * $Id: data.c,v 1.68 2003-09-23 15:13:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -75,7 +75,7 @@ static RETSIGTYPE data_urgent(int sig) {
   signal(SIGURG, data_urgent);
 }
 
-static int _xlate_ascii_read(char *buf, int *bufsize, int *adjlen) {
+static int xlate_ascii_read(char *buf, int *bufsize, int *adjlen) {
   char *dest = buf,*src = buf;
   int thislen = *bufsize;
 
@@ -112,16 +112,15 @@ static int _xlate_ascii_read(char *buf, int *bufsize, int *adjlen) {
  *           and should be the difference between buflen's original
  *           value and its value when this function returns
  */
-static void _xlate_ascii_write(char **buf, unsigned int *buflen,
-    unsigned int bufsize, unsigned int *expand) {
+static unsigned int xlate_ascii_write(char **buf, unsigned int *buflen,
+    unsigned int bufsize) {
   char *tmpbuf = *buf;
   unsigned int tmplen = *buflen;
   unsigned int lfcount = 0;
+  unsigned int added = 0;
+
   int res = 0;
   register unsigned int i = 0;
-
-  /* Make sure this is zero (could be a holdover from a previous call). */
-  *expand = 0;
 
   /* First, determine how many bare LFs are present. */
   if (tmpbuf[0] == '\n')
@@ -130,6 +129,10 @@ static void _xlate_ascii_write(char **buf, unsigned int *buflen,
   for (i = 1; i < tmplen; i++)
     if (tmpbuf[i] == '\n' && tmpbuf[i-1] != '\r')
       lfcount++;
+
+  if (lfcount == 0)
+    /* No translation needed. */
+    return 0;
 
   /* Assume that for each LF (including a leading LF), space for another
    * char (a '\r') is needed.  Determine whether there is enough space in
@@ -159,7 +162,6 @@ static void _xlate_ascii_write(char **buf, unsigned int *buflen,
      * first character in the buffer.
      */
     session.xfer.buf++;
-    session.xfer.bufstart = session.xfer.buf;
 
     memcpy(session.xfer.buf, copy_buf, tmplen);
     destroy_pool(copy_pool);
@@ -176,10 +178,10 @@ static void _xlate_ascii_write(char **buf, unsigned int *buflen,
     memmove(&(tmpbuf[1]), &(tmpbuf[0]), bufsize);
     tmpbuf[0] = '\r';
 
-    /* Increment the number of "expanded" characters, and decrement the
-     * number of bare LFs.
+    /* Increment the number of added characters, and decrement the number
+     * of bare LFs.
      */
-    (*expand)++;
+    added++;
     lfcount--;
   }
 
@@ -187,15 +189,17 @@ static void _xlate_ascii_write(char **buf, unsigned int *buflen,
     if (tmpbuf[i] == '\n' && tmpbuf[i-1] != '\r') {
       memmove(&(tmpbuf[i+1]), &(tmpbuf[i]), bufsize - i - 1);
       tmpbuf[i] = '\r';
-      (*expand)++;
+      added++;
       lfcount--;
     }
   }
 
   /* Always make sure the buffer is NUL-terminated. */
-  tmpbuf[tmplen + (*expand)] = '\0';
+  tmpbuf[tmplen + added] = '\0';
   *buf = tmpbuf;
-  *buflen = tmplen + (*expand);
+  *buflen = tmplen + added;
+
+  return added;
 }
 
 static void data_new_xfer(char *filename, int direction) {
@@ -208,9 +212,8 @@ static void data_new_xfer(char *filename, int direction) {
   session.xfer.filename = pstrdup(session.xfer.p,filename);
   session.xfer.direction = direction;
   session.xfer.bufsize = PR_TUNABLE_BUFFER_SIZE;
-  session.xfer.buf = (char *)pcalloc(session.xfer.p, PR_TUNABLE_BUFFER_SIZE + 1);
+  session.xfer.buf = pcalloc(session.xfer.p, PR_TUNABLE_BUFFER_SIZE + 1);
   session.xfer.buf++;	/* leave room for ascii translation */
-  session.xfer.bufstart = session.xfer.buf;
   session.xfer.buflen = 0;
 }
 
@@ -754,11 +757,12 @@ void pr_data_abort(int err, int quiet) {
  */
 
 int pr_data_xfer(char *cl_buf, int cl_size) {
-  char *buf = session.xfer.buf;
   int len = 0;
   int total = 0;
 
   if (session.xfer.direction == PR_NETIO_IO_RD) {
+    char *buf = session.xfer.buf;
+
     if (session.d) {
       if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
         int adjlen,buflen;
@@ -783,13 +787,13 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 	     * adjlen is returned as the number of characters unprocessed in
 	     *        the buffer (to be dealt with later)
 	     *
-	     * We skip the call to _xlate_ascii_read() in one case:
+	     * We skip the call to xlate_ascii_read() in one case:
 	     * when we have one character in the buffer and have reached
-	     * end of data, this is so that _xlate_ascii_read() won't sit
+	     * end of data, this is so that xlate_ascii_read() won't sit
 	     * forever waiting for the next character after a final '\r'.
 	     */
 	    if (len > 0 || buflen > 1)
-	      _xlate_ascii_read(buf, &buflen, &adjlen);
+	      xlate_ascii_read(buf, &buflen, &adjlen);
 	
 	    /* now copy everything we can into cl_buf */
 	    if (buflen > cl_size) {
@@ -818,7 +822,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 	
 	  /* Restart if data was returned by pr_netio_read() (len > 0) but
 	   * no data was copied to the client buffer (buflen = 0).
-	   * This indicates that _xlate_ascii_read() needs more data
+	   * This indicates that xlate_ascii_read() needs more data
 	   * in order to translate, so we need to call pr_netio_read() again.
            */
 	} while (len > 0 && buflen == 0);
@@ -840,45 +844,38 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 
   } else { /* PR_NETIO_IO_WR */
 
-    /* copy client buffer to internal buffer, and
-     * xlate ascii as necessary
-     */
     while (cl_size) {
-      int o_size, size = cl_size;
+      int buflen = cl_size;
+      unsigned int xferbuflen;
 
-      if (size > PR_TUNABLE_BUFFER_SIZE)
-        size = PR_TUNABLE_BUFFER_SIZE;
+      if (buflen > PR_TUNABLE_BUFFER_SIZE)
+        buflen = PR_TUNABLE_BUFFER_SIZE;
 
-      o_size = size;
-      memcpy(buf, cl_buf, size);
+      xferbuflen = buflen;
 
-      while (size) {
-        char *wb = buf;
-        unsigned int wsize = size, adjlen = 0;
+      /* Fill up our internal buffer. */
+      memcpy(session.xfer.buf, cl_buf, buflen);
 
-        if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE))
-          _xlate_ascii_write(&wb, &wsize, session.xfer.bufsize, &adjlen);
+      if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
 
-        if (pr_netio_write(session.d->outstrm, wb, wsize) == -1)
-          return -1;
-
-        if (TimeoutStalled)
-          reset_timer(TIMER_STALLED, ANY_MODULE);
-
-        /* Do not take any added CRs into account for the session sum. */
-        total += (wsize - adjlen);
-        size -= (wsize - adjlen);
-
-        if (size) {
-          /* Advance the output buffer pointer into unsent buffer space. */
-          wb += wsize;
-	  memcpy(buf, wb, size);
-          buf[size] = '\0';
-        }
+        /* Scan the internal buffer, looking for LFs with no preceding CRs.
+         * Add CRs (and expand the internal buffer) as necessary. xferbuflen
+         * will be adjusted so that it contains the length of data in
+         * the internal buffer, including any added CRs.
+         */
+        xlate_ascii_write(&session.xfer.buf, &xferbuflen, session.xfer.bufsize);
       }
 
-      cl_size -= o_size;
-      cl_buf += o_size;
+      if (pr_netio_write(session.d->outstrm, session.xfer.buf,
+          xferbuflen) == -1)
+        return -1;
+
+      if (TimeoutStalled)
+        reset_timer(TIMER_STALLED, ANY_MODULE);
+
+      cl_size -= buflen;
+      cl_buf += buflen;
+      total += buflen;
     }
 
     len = total;
