@@ -1,3 +1,24 @@
+2004-07-13 16:57  castaglia
+
+	* NEWS, contrib/dist/rpm/proftpd.spec, include/version.h: 
+	How embarassing.  A typo broke 1.2.10rc2, necessitating a release
+	of rc3.
+
+2004-07-13 16:51  castaglia
+
+	* modules/mod_core.c: 
+	Typo.
+
+2004-07-13 15:19  castaglia
+
+	* include/version.h: 
+	Bump version for CVS checkouts.
+
+2004-07-13 11:34  castaglia
+
+	* ChangeLog: 
+	Updating ChangeLog.
+
 2004-07-13 11:32  castaglia
 
 	* NEWS, include/version.h, contrib/dist/rpm/proftpd.spec: 
@@ -4396,7 +4417,7 @@
 2003-06-11 19:08  castaglia
 
 	* src/: inet.c, modules.c: 
-	Missing $Id: ChangeLog,v 1.121 2004-07-13 18:34:53 castaglia Exp $ keyword.
+	Missing $Id: ChangeLog,v 1.122 2004-07-13 23:58:37 castaglia Exp $ keyword.
 
 2003-06-11 15:45  castaglia
 
@@ -5567,7 +5588,7 @@
 
 	* contrib/: mod_sql.c, mod_sql.h, mod_sql_mysql.c,
 	mod_sql_postgres.c: 
-	Adding $Id: ChangeLog,v 1.121 2004-07-13 18:34:53 castaglia Exp $ tags to the mod_sql files.
+	Adding $Id: ChangeLog,v 1.122 2004-07-13 23:58:37 castaglia Exp $ tags to the mod_sql files.
 
 2003-03-14 07:54  castaglia
 
@@ -6084,12 +6105,12 @@
 
 	* src/netio.c, src/pool.c, src/sets.c, include/ident.h,
 	include/timers.h: 
-	Adding more $Id: ChangeLog,v 1.121 2004-07-13 18:34:53 castaglia Exp $ keywords.
+	Adding more $Id: ChangeLog,v 1.122 2004-07-13 23:58:37 castaglia Exp $ keywords.
 
 2003-02-11 23:34  castaglia
 
 	* src/feat.c: 
-	Added $Id: ChangeLog,v 1.121 2004-07-13 18:34:53 castaglia Exp $ keyword.
+	Added $Id: ChangeLog,v 1.122 2004-07-13 23:58:37 castaglia Exp $ keyword.
 
 2003-02-10 15:34  castaglia
 
