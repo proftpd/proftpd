@@ -18,7 +18,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.3 1999-10-11 07:28:45 macgyver Exp $
+ * $Id: conf.h,v 1.4 2000-03-01 06:12:23 macgyver Exp $
  */
 
 #ifndef __CONF_H
@@ -64,6 +64,7 @@
 #ifdef HAVE_SYS_WAIT_H
 # include <sys/wait.h>
 #endif
+
 #ifndef WEXITSTATUS
 # define WEXITSTATUS(stat_val) ((unsigned)(stat_val)>>8)
 #endif
@@ -160,6 +161,10 @@ char *strchr(),*strrchr();
 #  include <ndir.h>
 # endif
 #endif
+
+#if !defined(NAME_MAX) && defined(MAXNAMELEN)
+#define NAME_MAX (MAXNAMELEN - 1)
+#endif /* NAME_MAX */
 
 #ifdef HAVE_FCNTL_H
 # include <fcntl.h>
