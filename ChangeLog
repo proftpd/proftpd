@@ -1,3 +1,24 @@
+2001-05-16 23:22  flood
+
+	* NEWS, include/proftpd.h, lib/getopt.c, lib/pr_fnmatch.c,
+	lib/pr_fnmatch_loop.c, modules/mod_auth.c, src/inet.c, src/main.c:
+	#1156 - usernames w/ spaces #1160 - svr4.2mp;UX/4800 has bsd root
+	socket semantics #1168 - cleanup #1169 - DefaultRoot/DefaultChdir
+	no longer mutually exclusive #1170 - cleanup #1172 - cleanup
+
+2001-05-16 10:35  flood
+
+	* NEWS, src/inet.c: Bug #1152 - integer array overflow w.r.t.
+	PassivePorts
+
+2001-04-23 23:36  flood
+
+	* NEWS, modules/mod_ls.c: Bug 1137 - NLST displayed hidden files
+
+2001-04-23 14:18  flood
+
+	* NEWS: Final NEWS update for 1.2.2rc2 (old)
+
 2001-04-20 11:20  flood
 
 	* NEWS, include/version.h, src/main.c: Bug 1112 - removed in_addr
