@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.175 2003-04-02 17:45:26 castaglia Exp $
+ * $Id: main.c,v 1.176 2003-04-07 22:53:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1908,8 +1908,9 @@ void set_daemon_rlimits(void) {
   else {
 #ifdef USE_DEVEL
     rlim.rlim_cur = rlim.rlim_max = RLIM_INFINITY;
-#endif /* USE_DEVEL */
+#else
     rlim.rlim_cur = rlim.rlim_max = 0;
+#endif /* USE_DEVEL */
 
     PRIVS_ROOT
     if (setrlimit(RLIMIT_CORE, &rlim) == -1) {
