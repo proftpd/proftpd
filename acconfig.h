@@ -42,11 +42,11 @@
 /* Define if your <syslog.h> defines the LOG_FTP macro */
 #undef HAVE_LOG_FTP
 
-/* Define if your system has the tzset function */
-#undef HAVE_TZSET
-
 /* Define if your system has the setproctitle function */
 #undef HAVE_SETPROCTITLE
+
+/* Define if your DIR structure has member d_fd */
+#undef HAVE_STRUCT_DIR_D_FD
 
 /* Define if your system has __progname */
 #undef HAVE___PROGNAME

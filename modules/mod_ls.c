@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.24 2000-07-03 18:25:58 macgyver Exp $
+ * $Id: mod_ls.c,v 1.25 2000-07-06 03:32:31 macgyver Exp $
  */
 
 #include "conf.h"
@@ -604,9 +604,44 @@ char **sreaddir(pool *workp, const char *dirname, const int sort)
    * 'ssize' must be at least big enough to hold a maximum-length name.
    */
   dsize = (st.st_size / 4) + 10;	 /* Guess number of entries in dir */
-  ssize = NAME_MAX * ((dsize / 4) + 1);  /* Guess number of bytes total needed
-					  * to store all filenames in dir */
-  
+
+  /*
+  ** Guess number of bytes total needed to store all filenames in dir.
+  ** Any OS supporting multple file system types cannot define NAME_MAX
+  ** (POSIX 1003.1a, section 2.9.5) since this value will not be constant.
+  ** The directory has been opened already, but portably accessing the file
+  ** descriptor inside the DIR struct is difficult.  Some systems use "dd_fd"
+  ** or "__dd_fd" rather than "d_fd", and others work really hard at opacity.
+  ** So, with a loss of efficiency, use pathconf() rather than fpathconf(),
+  ** unless "d->d_fd" happens to work.
+  */
+#ifdef NAME_MAX
+# define MOD_LS_NAME_MAX_GUESS NAME_MAX
+#else
+# define MOD_LS_NAME_MAX_GUESS 255
+#endif
+#define MOD_LS_DQSTR(x)	(#x)
+#if defined(HAVE_FPATHCONF) && defined(HAVE_STRUCT_DIR_D_FD)
+  if ( (ssize = fpathconf(d->d_fd, _PC_NAME_MAX)) < 1 ) {
+    log_debug(DEBUG1, "fpathconf(%s, _PC_NAME_MAX) = %d, using %s",
+    		dirname, ssize, MOD_LS_DQSTR(MOD_LS_NAME_MAX_GUESS));
+    ssize = MOD_LS_NAME_MAX_GUESS;
+  }
+#elif defined(HAVE_PATHCONF)
+  if ( (ssize = pathconf(dirname, _PC_NAME_MAX)) < 1 ) {
+    log_debug(DEBUG1, "pathconf(%s, _PC_NAME_MAX) = %d, using %s",
+    		dirname, ssize, MOD_LS_DQSTR(MOD_LS_NAME_MAX_GUESS));
+    ssize = MOD_LS_NAME_MAX_GUESS;
+  }
+#elif defined(NAME_MAX)
+  ssize = NAME_MAX;
+#elif defined(MAXNAMELEN)
+  ssize = MAXNAMELEN - 1;
+#else
+  ssize = MOD_LS_NAME_MAX_GUESS;
+#endif
+  ssize *= ((dsize / 4) + 1);
+
   /* Allocate array for pointers to filenames */
   p = (char **) palloc(workp, dsize * sizeof(char *));
   
