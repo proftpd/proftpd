@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.201 2003-10-17 06:15:37 castaglia Exp $
+ * $Id: main.c,v 1.202 2003-10-22 07:40:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2631,15 +2631,6 @@ int main(int argc, char *argv[], char **envp) {
     exit(1);
   }
 
-  /* Now, once the modules have had a chance to initialize themselves
-   * but before the configuration stream is actually parsed, check
-   * that the given configuration path is valid.
-   */
-  if (pr_fs_valid_path(config_filename) < 0) {
-    log_pri(PR_LOG_ERR, "Fatal: -c requires an absolute path");
-    exit(1);
-  }
-
   init_conf_stacks();
   if (parse_config_file(config_filename) == -1) {
     log_pri(PR_LOG_ERR, "Fatal: unable to read configuration file '%s': %s",
@@ -2658,8 +2649,7 @@ int main(int argc, char *argv[], char **envp) {
   module_postparse_init();
   module_remove_postparse_inits();
 
-  /* We're only doing a syntax check of the configuration file.
-   */
+  /* We're only doing a syntax check of the configuration file. */
   if (check_config_syntax) {
     printf("Syntax check complete.\n");
     end_login(0);
