@@ -626,6 +626,18 @@ array_header *copy_array(pool *p, const array_header *arr)
   return res;
 }
 
+/* copy an array that is assumed to consist solely of strings */
+array_header *copy_array_str(pool *p, const array_header *arr)
+{
+  array_header *res = copy_array(p,arr);
+  int i;
+
+  for(i = 0; i < arr->nelts; i++)
+    ((char**)res->elts)[i] = pstrdup(p,((char**)res->elts)[i]);
+
+  return res;
+}
+
 array_header *copy_array_hdr(pool *p, const array_header *arr)
 {
   array_header *res = (array_header *)palloc(p,sizeof(array_header));

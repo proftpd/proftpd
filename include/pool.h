@@ -21,7 +21,7 @@
 /* Memory allocation/anti-leak system.  Yes, this *IS* stolen from Apache
  * also.  What can I say?  It makes sense, and it's safe (more overhead
  * though)
- * $Id: pool.h,v 1.4 2000-08-02 05:25:24 macgyver Exp $
+ * $Id: pool.h,v 1.5 2001-02-28 23:01:15 flood Exp $
  */
 
 #ifndef __POOL_H
@@ -71,6 +71,7 @@ void array_cat(array_header *dst, const array_header *src);
 array_header *append_arrays(pool *, const array_header *,
                             const array_header *);
 array_header *copy_array(pool *p, const array_header *src);
+array_header *copy_array_str(pool *p, const array_header *src);
 array_header *copy_array_hdr(pool *p, const array_header *src);
  
 /* Alarm signals can easily interfere with the pooled memory operations,

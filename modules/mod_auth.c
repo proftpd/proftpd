@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.52 2001-02-24 04:11:24 flood Exp $
+ * $Id: mod_auth.c,v 1.53 2001-02-28 23:01:16 flood Exp $
  */
 
 #include "conf.h"
@@ -1048,7 +1048,11 @@ static int _setup_environment(pool *p, char *user, char *pass)
   session.user = pstrdup(permanent_pool,session.user);
   session.group = pstrdup(permanent_pool,session.group);
   session.gids = copy_array(permanent_pool, session.gids);
-  session.groups = copy_array(permanent_pool, session.groups);
+
+  /* session.groups is an array of strings, so we must copy the string data
+   * as well as the pointers. -jss 02/28/2001
+   */
+  session.groups = copy_array_str(permanent_pool, session.groups);
 
   return 1;
 

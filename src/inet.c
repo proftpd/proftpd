@@ -408,10 +408,12 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
      * "feature" which disallows SO_REUSEADDR from working if the socket
      * owners don't match.  The easiest thing to do is simply make sure
      * the socket is created as root.
+     *
+     * Note: this "feature" seems to apply to ALL bsds -jss 2/28/2001
      */
     
 #if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
-    defined(FREEBSD4) || defined(OPENBSD2)
+    defined(FREEBSD4) || defined(OPENBSD2) || defined(__NetBSD__)
 # ifdef SOLARIS2
     if(port != INPORT_ANY && port < 1024) {
 # endif
@@ -425,7 +427,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
     fd = socket(AF_INET, SOCK_STREAM, tcp_proto);
 
 #if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
-    defined(FREEBSD4) || defined(OPENBSD2)
+    defined(FREEBSD4) || defined(OPENBSD2) || defined(__NetBSD__)
 # ifdef SOLARIS2
     if(port != INPORT_ANY && port < 1024) {
 # endif
