@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.193 2004-10-15 02:43:25 castaglia Exp $
+ * $Id: mod_auth.c,v 1.194 2004-10-17 01:10:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -177,7 +177,8 @@ static int auth_sess_init(void) {
     mkhome = FALSE;
 
   /* Scan the scoreboard now, in order to tally up certain values for
-   * substituting in any of the Display* file variables.
+   * substituting in any of the Display* file variables.  This function
+   * also performs the MaxConnectionsPerHost enforcement.
    */
   auth_scan_scoreboard();
 
@@ -1473,15 +1474,17 @@ auth_failure:
 /* This function counts the number of connected users. It only fills in the
  * Class-based counters and an estimate for the number of clients. The primary
  * purpose is to make it so that the %N/%y escapes work in a DisplayConnect
- * greeting.
+ * greeting.  A secondary purpose is to enforce any configured
+ * MaxConnectionsPerHost limit.
  */
 static void auth_scan_scoreboard(void) {
   config_rec *c = NULL;
   pr_scoreboard_entry_t *score = NULL;
-  unsigned int cur = 0, ccur = 0;
+  unsigned int cur = 0, ccur = 0, hcur = 0;
   char config_class_users[128] = {'\0'};
   char curr_server_addr[80] = {'\0'};
   xaset_t *conf = NULL;
+  const char *client_addr = pr_netaddr_get_ipstr(session.c->remote_addr);
 
   snprintf(curr_server_addr, sizeof(curr_server_addr), "%s:%d",
     pr_netaddr_get_ipstr(main_server->addr), main_server->ServerPort);
@@ -1497,6 +1500,9 @@ static void auth_scan_scoreboard(void) {
     /* Make sure it matches our current server */
     if (strcmp(score->sce_server_addr, curr_server_addr) == 0) {
       cur++;
+
+      if (strcmp(score->sce_client_addr, client_addr) == 0)
+        hcur++;
 
       /* Only count up authenticated clients, as per the documentation. */
       if (strcmp(score->sce_user, "(none)") == 0)
@@ -1531,6 +1537,38 @@ static void auth_scan_scoreboard(void) {
     c = add_config_param_set(&conf, config_class_users, 1, NULL);
     c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
     *((unsigned int *) c->argv[0]) = ccur;
+  }
+
+  /* Lookup any configured MaxConnectionsPerHost. */
+  c = find_config(main_server->conf, CONF_PARAM, "MaxConnectionsPerHost",
+    FALSE);
+
+  if (c) {
+    unsigned int *max = c->argv[0];
+
+    if (*max &&
+        hcur > *max) {
+
+      char maxstr[20];
+      char *msg = "Sorry, the maximum number of connections (%m) for your host "
+        "are already connected.";
+
+      pr_event_generate("mod_auth.max-connections-per-host", session.c);
+
+      if (c->argc == 2)
+        msg = c->argv[1];
+
+      memset(maxstr, '\0', sizeof(maxstr));
+      snprintf(maxstr, sizeof(maxstr), "%u", *max);
+      maxstr[sizeof(maxstr)-1] = '\0';
+
+      pr_response_send(R_530, "%s", sreplace(session.pool, msg,
+        "%m", maxstr, NULL));
+
+      pr_log_auth(PR_LOG_NOTICE,
+        "Connection refused (MaxConnectionsPerHost %u)", *max);
+      end_login(1);
+    }
   }
 }
 
@@ -2502,6 +2540,41 @@ MODRET set_maxuserclients(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+/* usage: MaxConnectionsPerHost max|"none" ["message"] */
+MODRET set_maxconnectsperhost(cmd_rec *cmd) {
+  int max;
+  config_rec *c;
+
+  if (cmd->argc < 2 || cmd->argc > 3)
+    CONF_ERROR(cmd, "wrong number of parameters");
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (strcasecmp(cmd->argv[1], "none") == 0)
+    max = 0;
+
+  else {
+    char *tmp = NULL;
+
+    max = (int) strtol(cmd->argv[1], &tmp, 10);
+
+    if ((tmp && *tmp) || max < 1)
+      CONF_ERROR(cmd, "parameter must be 'none' or a number greater than 0");
+  }
+
+  if (cmd->argc == 3) {
+    c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
+
+  } else
+    c = add_config_param(cmd->argv[0], 1, NULL);
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[0]) = max;
+
+  return HANDLED(cmd);
+}
+
 /* usage: MaxHostsPerUser max|"none" ["message"] */
 MODRET set_maxhostsperuser(cmd_rec *cmd) {
   int max;
@@ -2833,6 +2906,7 @@ static conftable auth_conftab[] = {
   { "MaxClientsPerClass",	set_maxclientsclass,		NULL },
   { "MaxClientsPerHost",	set_maxhostclients,		NULL },
   { "MaxClientsPerUser",	set_maxuserclients,		NULL },
+  { "MaxConnectionsPerHost",	set_maxconnectsperhost,		NULL },
   { "MaxHostsPerUser",		set_maxhostsperuser,		NULL },
   { "MaxLoginAttempts",		set_maxloginattempts,		NULL },
   { "RequireValidShell",	set_requirevalidshell,		NULL },
