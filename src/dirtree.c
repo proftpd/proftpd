@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.97 2003-01-16 02:04:46 castaglia Exp $
+ * $Id: dirtree.c,v 1.98 2003-01-25 20:51:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2889,7 +2889,7 @@ config_rec *add_config_param(const char *name,int num,...)
 }
 
 int parse_config_file(const char *fname) {
-  pr_fh_t *fp = NULL;
+  pr_fh_t *fh = NULL;
   conf_stack_t *cs = NULL;
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
@@ -2897,7 +2897,7 @@ int parse_config_file(const char *fname) {
 
   log_debug(DEBUG2, "parsing '%s' configuration", fname);
 
-  if ((fp = pr_fsio_open(fname, O_RDONLY)) == NULL) {
+  if ((fh = pr_fsio_open(fname, O_RDONLY)) == NULL) {
     destroy_pool(tmp_pool);
     return -1;
   }
@@ -2905,7 +2905,7 @@ int parse_config_file(const char *fname) {
   /* Push the configuration stream information onto the stack of
    * configuration streams.
    */
-  cs = push_config_stack(fp, 0);
+  cs = push_config_stack(fh, 0);
 
   while ((cmd = get_config_cmd(tmp_pool)) != NULL) {
     if (cmd->argc) {
@@ -2945,6 +2945,8 @@ int parse_config_file(const char *fname) {
 
   /* Pop this configuration stream from the stack. */
   pop_config_stack();
+
+  pr_fsio_close(fh);
 
   destroy_pool(tmp_pool);
   return 0;
