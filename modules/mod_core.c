@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.102 2002-09-06 16:13:24 castaglia Exp $
+ * $Id: mod_core.c,v 1.103 2002-09-06 18:51:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -94,6 +94,10 @@ static struct {
 
 extern module site_module;
 extern xaset_t *servers;
+
+/* from src/main.c */
+extern unsigned long max_connects;
+extern unsigned int max_connect_interval;
 
 /* from mod_site */
 extern modret_t *site_dispatch(cmd_rec*);
@@ -682,6 +686,39 @@ MODRET set_maxhostclients(cmd_rec *cmd) {
   
   c->flags |= CF_MERGEDOWN;
  
+  return HANDLED(cmd);
+}
+
+/* usage: MaxConnectionRate rate [interval] */
+MODRET set_maxconnrate(cmd_rec *cmd) {
+  long conn_max = 0L;
+  char *endp = NULL;
+
+  if (cmd->argc-1 < 1 || cmd->argc-1 > 2)
+    CONF_ERROR(cmd, "wrong number of parameters");
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  conn_max = strtol(cmd->argv[1], &endp, 10);
+
+  if (endp && *endp)
+    CONF_ERROR(cmd, "invalid connection rate");
+
+  if (conn_max < 0)
+    CONF_ERROR(cmd, "connection rate must be positive");
+
+  max_connects = conn_max;
+
+log_debug(DEBUG0, "%s: %lu", cmd->argv[0], max_connects);
+
+  /* If the optional interval parameter is given, parse it. */
+  if (cmd->argc-1 == 2) {
+    max_connect_interval = atoi(cmd->argv[2]);
+
+    if (max_connect_interval < 1)
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        ": interval must be greater than zero", NULL));
+  }
+
   return HANDLED(cmd);
 }
 
@@ -3366,6 +3403,7 @@ static conftable core_conftab[] = {
   { "MasqueradeAddress",	add_masqueradeaddress,		NULL },
   { "MaxClients",		set_maxclients,			NULL },
   { "MaxClientsPerHost",	set_maxhostclients,		NULL },
+  { "MaxConnectionRate",	set_maxconnrate,		NULL },
   { "MaxHostsPerUser",		set_maxhostsperuser,		NULL },
   { "MaxInstances",		set_maxinstances,		NULL },
   { "MultilineRFC2228",		set_multilinerfc2228,		NULL },

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.221 2002-09-06 18:05:23 castaglia Exp $
+$Id: NEWS,v 1.222 2002-09-06 18:51:16 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -14,6 +14,7 @@ CVS
 - Bug 1725 - disconnect when specify multiple ranges on Allow
 - Bug 1253 - No ability to configure address for main server
 - Bug 1432 - Pedantic handling of leading whitespace in FTP commands
+- Bug 1652 - Add connection-rate limiting mechanism
 
 1.2.6 - Released 2002-09-04
 ---------------------------------

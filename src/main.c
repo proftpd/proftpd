@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.101 2002-09-06 18:05:24 castaglia Exp $
+ * $Id: main.c,v 1.102 2002-09-06 18:51:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -82,13 +82,18 @@ struct rehash {
   void (*rehash)(void*);
 };
 
+unsigned long max_connects = 0UL;
+unsigned int max_connect_interval = 1;
+
 typedef struct _pidrec {
   struct _pidrec *next,*prev;
 
   pool *pool;
   pid_t pid;
+  time_t when;
+
   int sempipe;				/* semaphore pipe fd (parent) */
-  int dead;
+  unsigned char dead;
 } pidrec_t;
 
 typedef struct _binding {
@@ -1336,12 +1341,14 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
       cpid = (pidrec_t *) pcalloc(pidrec_pool, sizeof(pidrec_t));
       cpid->pid = pid;
+      time(&cpid->when);
       cpid->sempipe = sempipe[0];
       cpid->pool = pidrec_pool;
       xaset_insert(child_list,(xasetmember_t*)cpid);
       child_listlen++;
 
       close(sempipe[1]);
+
       /* Unblock the signals now as sig_child() will catch
        * an "immediate" death and remove the pid from the children list
        */
@@ -1355,8 +1362,6 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
    * controlling tty and either have the process group of the parent or of
    * inetd.  In non-daemon mode (-n), doing this may cause SIGTTOU to be
    * raised on output to the terminal (stderr logging).
-   *
-   * jss 6/16/2001
    * 
    * #ifdef HAVE_SETPGID
    *   setpgid(0,getpid());
@@ -1418,22 +1423,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
   inet_set_proto_options(permanent_pool,conn,1,1,0,0);
 
+  /* Find the server for this connection. */
   serv = find_binding(conn->local_ipaddr,conn->local_port);
-
-  /* If no server is configured to specifically handle the destination
-   * address, search for the first server with DefaultServer set.
-   */
-
-#if 0
-  if(!serv) {
-    for(s = main_server; s; s=s->next)
-      if(s->listen == l && 
-         get_param_int(s->conf,"DefaultServer",FALSE) == 1) {
-        serv = s;
-        break;
-      }
-  }
-#endif
 
   /* To conserve memory, free all other servers and associated
    * configurations
@@ -1618,6 +1609,7 @@ static void server_loop(void) {
   conn_t *listen;
   int fd, max_fd;
   int i,err_count = 0;
+  unsigned long nconnects = 0UL;
   time_t last_error;
   struct timeval tv;
   static int running = 0;
@@ -1629,11 +1621,12 @@ static void server_loop(void) {
   while(1) {
     run_schedule();
 
-    FD_ZERO(&rfd); max_fd = 0;
-    max_fd = listen_binding(&rfd,max_fd);
+    FD_ZERO(&rfd);
+    max_fd = 0;
+    max_fd = listen_binding(&rfd, max_fd);
 
     /* Monitor children pipes */
-    max_fd = semaphore_fds(&rfd,max_fd);
+    max_fd = semaphore_fds(&rfd, max_fd);
     
     /* Check for ftp shutdown message file */
     switch (check_shutmsg(&shut, &deny, &disc, shutmsg, sizeof(shutmsg))) {
@@ -1655,7 +1648,8 @@ static void server_loop(void) {
      * AND shutdownp (a flag signalling the present of /etc/shutmsg) are
      * true, then log an error stating this -- but don't stop the server.
      */
-    if(shutdownp && !running) {
+    if (shutdownp && !running) {
+
       /* Check the value of the deny time_t struct w/ the current time.
        * If the deny time has passed, log that all incoming connections
        * will be refused.  If not, note the date at which they will be
@@ -1740,33 +1734,60 @@ static void server_loop(void) {
               strerror(errno));
     }
 
-    if(i == 0)
+    if (i == 0)
       continue;
-    
+  
+    /* Reset the connection counter.  Take into account this current
+     * connection, which does not (yet) have an entry in the child list.
+     */
+    nconnects = 1UL;
+ 
     /* See if child semaphore pipes have signaled */
     if (child_list) {
       pidrec_t *cp = NULL;
+      time_t now = time(NULL);
 
-      for(cp = (pidrec_t*) child_list->xas_list; cp; cp = cp->next)
-	if(cp->sempipe != -1 && FD_ISSET(cp->sempipe,&rfd)) {
+      for (cp = (pidrec_t *) child_list->xas_list; cp; cp = cp->next) {
+	if (cp->sempipe != -1 && FD_ISSET(cp->sempipe, &rfd)) {
 	  close(cp->sempipe);
 	  cp->sempipe = -1;
 	}
+
+        /* While we're looking, tally up the number of children forked in
+         * the past interval.
+         */
+        if (cp->when >= (now - (unsigned long) max_connect_interval))
+          nconnects++;
+      }
     }
 
     pr_handle_signals();
 
-    /* Fork off servers to handle each connection
-     * our job is to get back to answering connections asap,
-     * so leave the work of determining which server the connection
-     * is for to our child.
+    /* Accept the connection. */
+    listen = accept_binding(&rfd, &fd);
+
+    /* Fork off servers to handle each connection our job is to get back to
+     * answering connections asap, so leave the work of determining which
+     * server the connection is for to our child.
      */
 
-    listen = accept_binding(&rfd, &fd);
-    if(listen) {
-      if(ServerMaxInstances && child_listlen >= ServerMaxInstances) {
-        log_pri(LOG_WARNING,"MaxInstances (%d) reached, new connection denied.",ServerMaxInstances);
+    if (listen) {
+
+      /* Check for exceeded MaxInstances. */
+      if (ServerMaxInstances && (child_listlen >= ServerMaxInstances)) {
+        log_pri(LOG_WARNING,
+          "MaxInstances (%d) reached, new connection denied",
+          ServerMaxInstances);
         close(fd);
+
+      /* Check for exceeded MaxConnectionRate. */
+      } else if (max_connects && (nconnects > max_connects)) {
+        log_pri(LOG_WARNING,
+          "MaxConnectionRate (%lu/%u secs) reached, new connection denied",
+          max_connects, max_connect_interval);
+        close(fd);
+
+      /* Fork off a child to handle the connection. */
       } else
         fork_server(fd, listen, FALSE);
     }
