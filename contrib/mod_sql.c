@@ -357,7 +357,7 @@ static int check_auth_crypt(cmd_rec * cmd, const char *c_clear,
   log_debug(DEBUG_FUNC, "%s: entering check_auth_crypt", MOD_SQL_VERSION);
 
   /* specifically disallow empty passwords */
-  if (*c_hash == NULL) {
+  if (*c_hash == '\0') {
     log_debug(DEBUG_AUTH, "%s: disallowing empty password in check_auth_crypt",
 	      MOD_SQL_VERSION);
     return success;
@@ -379,7 +379,7 @@ static int check_auth_plaintext(cmd_rec * cmd, const char *c_clear,
   log_debug(DEBUG_FUNC, "%s: entering check_auth_plaintext", MOD_SQL_VERSION);
 
   /* specifically disallow empty passwords */
-  if (*c_hash == NULL) {
+  if (*c_hash == '\0' ) {
     log_debug(DEBUG_AUTH, "%s: disallowing empty password in check_auth_plaintext",
 	      MOD_SQL_VERSION);
     return success;
@@ -416,7 +416,7 @@ static int check_auth_backend(cmd_rec * cmd, const char *c_clear,
   log_debug(DEBUG_FUNC, "%s: entering check_auth_backend", MOD_SQL_VERSION);
 
   /* specifically disallow empty passwords */
-  if (*c_hash == NULL) {
+  if (*c_hash == '\0' ) {
     log_debug(DEBUG_AUTH, "%s: disallowing empty password in check_auth_backend",
 	      MOD_SQL_VERSION);
     return success;
@@ -904,7 +904,7 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
     if (members == NULL) continue;
 
     /* for each member in the list, toss 'em into the array */
-    for (member = strtok(members, ","); member; member = strtok(NULL, ",")) {
+    for (member = strtok(members, " ,"); member; member = strtok(NULL, " ,")) {
       *((char **) push_array(ah)) = pstrdup(session.pool, member);
     }      
   }
