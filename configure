@@ -842,13 +842,17 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --disable-largefile     omit support for large files
+  --disable-auth-unix     omit mod_auth_unix from core modules
+
+  --disable-auth-file     omit mod_auth_file from core modules
+
   --enable-autoshadow     enable run-time auto-detection of shadowed passwords
                           (requires shadow)
 
   --enable-force-setpassent
                           force use of setpassent (default=no on FreeBSD)
 
-  --enable-pam            enable PAM support (default=yes)
+  --enable-auth-pam       enable PAM support (default=yes)
 
   --enable-sendfile       enable sendfile support (default=no)
 
@@ -908,7 +912,7 @@ Optional Packages:
 
   --with-modules=LIST     add additional modules to proftpd. LIST is a
                           colon-separated list of modules to add e.g.
-                          --with-modules=mod_pam:mod_readme
+                          --with-modules=mod_auth_pam:mod_readme
 
 
 Some influential environment variables:
@@ -1297,8 +1301,8 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-ac_core_modules="mod_core.o mod_xfer.o mod_unixpw.o mod_auth.o mod_ls.o mod_log.o mod_site.o"
-ac_build_core_modules="modules/mod_core.o modules/mod_xfer.o modules/mod_unixpw.o modules/mod_auth.o modules/mod_ls.o modules/mod_log.o modules/mod_site.o"
+ac_core_modules="mod_core.o mod_xfer.o mod_auth_unix.o mod_auth_file.o mod_auth.o mod_ls.o mod_log.o mod_site.o"
+ac_build_core_modules="modules/mod_core.o modules/mod_xfer.o modules/mod_auth_unix.o modules/mod_auth_file.o modules/mod_auth.o modules/mod_ls.o modules/mod_log.o modules/mod_site.o"
 
 ac_aux_dir=
 for ac_dir in ./ $srcdir/./; do
@@ -2869,6 +2873,28 @@ if test "${with_modules+set}" = set; then
 fi;
 
 
+# Check whether --enable-auth-unix or --disable-auth-unix was given.
+if test "${enable_auth_unix+set}" = set; then
+  enableval="$enable_auth_unix"
+
+    if test "$enableval" = "no"; then
+      ac_core_modules=`echo "$ac_core_modules" | sed -e 's/mod_auth_unix\.o//'`
+      ac_build_core_modules=`echo "$ac_build_core_modules" | sed -e 's/modules\/mod_auth_unix\.o//'`
+    fi
+
+fi;
+
+# Check whether --enable-auth-file or --disable-auth-file was given.
+if test "${enable_auth_file+set}" = set; then
+  enableval="$enable_auth_file"
+
+    if test "$enableval" = "no"; then
+      ac_core_modules=`echo "$ac_core_modules" | sed -e 's/mod_auth_file\.o//'`
+      ac_build_core_modules=`echo "$ac_build_core_modules" | sed -e 's/modules\/mod_auth_file\.o//'`
+    fi
+
+fi;
+
 # Check whether --enable-autoshadow or --disable-autoshadow was given.
 if test "${enable_autoshadow+set}" = set; then
   enableval="$enable_autoshadow"
@@ -2898,13 +2924,13 @@ if test "${enable_force_setpassent+set}" = set; then
 
 fi;
 
-# Check whether --enable-pam or --disable-pam was given.
-if test "${enable_pam+set}" = set; then
-  enableval="$enable_pam"
+# Check whether --enable-auth-pam or --disable-auth-pam was given.
+if test "${enable_auth_pam+set}" = set; then
+  enableval="$enable_auth_pam"
    if test "$enableval" = "no" && \
-       test `echo $ac_addl_modules | grep -c mod_pam` != "0"; then
-      { { echo "$as_me:$LINENO: error: You cannot run configure with --disable-pam and include mod_pam in --with-modules at the same time." >&5
-echo "$as_me: error: You cannot run configure with --disable-pam and include mod_pam in --with-modules at the same time." >&2;}
+       test `echo $ac_addl_modules | grep -c mod_auth_pam` != "0"; then
+      { { echo "$as_me:$LINENO: error: You cannot run configure with --disable-auth-pam and include mod_auth_pam in --with-modules at the same time" >&5
+echo "$as_me: error: You cannot run configure with --disable-auth-pam and include mod_auth_pam in --with-modules at the same time" >&2;}
    { (exit 1); exit 1; }; }
     fi
 fi;
@@ -5705,7 +5731,7 @@ done
 
 fi
 
-if test x"$enable_pam" != xno ; then
+if test x"$enable_auth_pam" != xno ; then
 
 for ac_header in security/pam_appl.h
 do
@@ -5815,9 +5841,9 @@ if test `eval echo '${'$as_ac_Header'}'` = yes; then
   cat >>confdefs.h <<_ACEOF
 #define `echo "HAVE_$ac_header" | $as_tr_cpp` 1
 _ACEOF
-  if test `echo $ac_addl_modules | grep -c mod_pam` = "0"; then
-        ac_addl_modules="mod_pam.o $ac_addl_modules"
-        ac_build_addl_modules="modules/mod_pam.o $ac_build_addl_modules"
+  if test `echo $ac_addl_modules | grep -c mod_auth_pam` = "0"; then
+        ac_addl_modules="mod_auth_pam.o $ac_addl_modules"
+        ac_build_addl_modules="modules/mod_auth_pam.o $ac_build_addl_modules"
       fi
 fi
 
@@ -5825,7 +5851,7 @@ done
 
 
 
-  if test `echo $ac_addl_modules | grep -c mod_pam` = "1"; then
+  if test `echo $ac_addl_modules | grep -c mod_auth_pam` = "1"; then
 
 	echo "$as_me:$LINENO: checking for pam_start in -lpam" >&5
 echo $ECHO_N "checking for pam_start in -lpam... $ECHO_C" >&6
@@ -10432,6 +10458,77 @@ done
 
 
 for ac_func in pathconf fpathconf
+do
+as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
+echo "$as_me:$LINENO: checking for $ac_func" >&5
+echo $ECHO_N "checking for $ac_func... $ECHO_C" >&6
+if eval "test \"\${$as_ac_var+set}\" = set"; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+#line $LINENO "configure"
+#include "confdefs.h"
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char $ac_func (); below.  */
+#include <assert.h>
+/* Override any gcc2 internal prototype to avoid an error.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+/* We use char because int might match the return type of a gcc2
+   builtin and then its argument prototype would still apply.  */
+char $ac_func ();
+char (*f) ();
+
+int
+main ()
+{
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined (__stub_$ac_func) || defined (__stub___$ac_func)
+choke me
+#else
+f = $ac_func;
+#endif
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+         { ac_try='test -s conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  eval "$as_ac_var=yes"
+else
+  echo "$as_me: failed program was:" >&5
+cat conftest.$ac_ext >&5
+eval "$as_ac_var=no"
+fi
+rm -f conftest.$ac_objext conftest$ac_exeext conftest.$ac_ext
+fi
+echo "$as_me:$LINENO: result: `eval echo '${'$as_ac_var'}'`" >&5
+echo "${ECHO_T}`eval echo '${'$as_ac_var'}'`" >&6
+if test `eval echo '${'$as_ac_var'}'` = yes; then
+  cat >>confdefs.h <<_ACEOF
+#define `echo "HAVE_$ac_func" | $as_tr_cpp` 1
+_ACEOF
+
+fi
+done
+
+
+
+for ac_func in fgetspent
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 echo "$as_me:$LINENO: checking for $ac_func" >&5
