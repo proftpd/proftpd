@@ -342,7 +342,7 @@ int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port)
   if (s < 0)
     return -1;
 
-  setsockopt(s,SOL_SOCKET,SO_REUSEADDR,(void*)&on,sizeof(on));
+  setsockopt(s,SOL_SOCKET,SO_REUSEADDR, (void*)&on,sizeof(on));
   servaddr.sin_family = AF_INET;
   if (!bind_addr)
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -357,7 +357,7 @@ int inet_prebind_socket(pool *p, p_in_addr_t *bind_addr, int port)
   }
 
   for (tries = 1; tries < 10; tries++) {
-    if (bind(s,(struct sockaddr *)&servaddr,sizeof(servaddr)) >= 0)
+    if (bind(s, (struct sockaddr *)&servaddr,sizeof(servaddr)) >= 0)
     { res = s; break; }
     if (errno != EADDRINUSE) break;
 

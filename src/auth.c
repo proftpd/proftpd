@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.24 2002-12-07 22:04:19 jwm Exp $
+ * $Id: auth.c,v 1.25 2002-12-27 16:21:32 jwm Exp $
  */
 
 #include "conf.h"
@@ -47,7 +47,7 @@ static cmd_rec *_make_cmd(pool *cp, int argc, ...)
     va_start(args,argc);
 
     for (i = 0; i < argc; i++)
-      c->argv[i] = (void*)va_arg(args,char*);
+      c->argv[i] = (void *)va_arg(args, char *);
 
     va_end(args);
   }
@@ -80,7 +80,7 @@ void auth_setpwent(pool *p)
   modret_t *mr;
 
   c = _make_cmd(p,0);
-  mr = _dispatch_auth(c,"setpwent");
+  mr = _dispatch_auth(c, "setpwent");
 
   if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
@@ -95,7 +95,7 @@ void auth_endpwent(pool *p)
   modret_t *mr;
 
   c = _make_cmd(p,0);
-  mr = _dispatch_auth(c,"endpwent");
+  mr = _dispatch_auth(c, "endpwent");
 
   if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
@@ -110,7 +110,7 @@ void auth_setgrent(pool *p)
   modret_t *mr;
 
   c = _make_cmd(p,0);
-  mr = _dispatch_auth(c,"setgrent");
+  mr = _dispatch_auth(c, "setgrent");
 
   if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
@@ -125,7 +125,7 @@ void auth_endgrent(pool *p)
   modret_t *mr;
 
   c = _make_cmd(p,0);
-  mr = _dispatch_auth(c,"endgrent");
+  mr = _dispatch_auth(c, "endgrent");
 
   if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);
@@ -141,7 +141,7 @@ struct passwd *auth_getpwent(pool *p)
   struct passwd *ret = NULL;
 
   c = _make_cmd(p,0);
-  mr = _dispatch_auth(c,"getpwent");
+  mr = _dispatch_auth(c, "getpwent");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
     ret = mr->data;
@@ -176,7 +176,7 @@ struct group *auth_getgrent(pool *p)
   struct group *ret = NULL;
 
   c = _make_cmd(p,0);
-  mr = _dispatch_auth(c,"getgrent");
+  mr = _dispatch_auth(c, "getgrent");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
     ret = mr->data;
@@ -206,7 +206,7 @@ struct passwd *auth_getpwnam(pool *p, const char *name)
   struct passwd *ret = NULL;
 
   c = _make_cmd(p,1,name);
-  mr = _dispatch_auth(c,"getpwnam");
+  mr = _dispatch_auth(c, "getpwnam");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
     ret = mr->data;
@@ -242,8 +242,8 @@ struct passwd *auth_getpwuid(pool *p, uid_t uid)
   modret_t *mr;
   struct passwd *ret = NULL;
 
-  c = _make_cmd(p,1,(void*)uid);
-  mr = _dispatch_auth(c,"getpwuid");
+  c = _make_cmd(p,1, (void*)uid);
+  mr = _dispatch_auth(c, "getpwuid");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
     ret = mr->data;
@@ -280,7 +280,7 @@ struct group *auth_getgrnam(pool *p, const char *name)
   struct group *ret = NULL;
 
   c = _make_cmd(p,1,name);
-  mr = _dispatch_auth(c,"getgrnam");
+  mr = _dispatch_auth(c, "getgrnam");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
     ret = mr->data;
@@ -311,8 +311,8 @@ struct group *auth_getgrgid(pool *p, gid_t gid)
   modret_t *mr;
   struct group *ret = NULL;
 
-  c = _make_cmd(p,1,(void*)gid);
-  mr = _dispatch_auth(c,"getgrgid");
+  c = _make_cmd(p,1, (void*)gid);
+  mr = _dispatch_auth(c, "getgrgid");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr))
     ret = mr->data;
@@ -386,8 +386,8 @@ const char *auth_uid_name(pool *p, uid_t uid)
   char *ret = "ERROR";
 
   memset(namebuf,'\0',sizeof(namebuf));
-  c = _make_cmd(p,1,(void*)uid);
-  mr = _dispatch_auth(c,"uid_name");
+  c = _make_cmd(p,1, (void*)uid);
+  mr = _dispatch_auth(c, "uid_name");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
     ret = mr->data;
@@ -411,8 +411,8 @@ const char *auth_gid_name(pool *p, gid_t gid)
   char *ret = "ERROR";
 
   memset(namebuf,'\0',sizeof(namebuf));
-  c = _make_cmd(p,1,(void*)gid);
-  mr = _dispatch_auth(c,"gid_name");
+  c = _make_cmd(p,1, (void*)gid);
+  mr = _dispatch_auth(c, "gid_name");
 
   if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
     ret = mr->data;
@@ -435,7 +435,7 @@ uid_t auth_name_uid(pool *p, const char *name)
   uid_t ret = -1;
 
   c = _make_cmd(p,1,name);
-  mr = _dispatch_auth(c,"name_uid");
+  mr = _dispatch_auth(c, "name_uid");
 
   if (MODRET_ISHANDLED(mr))
     ret = (uid_t) mr->data;
@@ -457,7 +457,7 @@ gid_t auth_name_gid(pool *p, const char *name)
   gid_t ret = -1;
 
   c = _make_cmd(p,1,name);
-  mr = _dispatch_auth(c,"name_gid");
+  mr = _dispatch_auth(c, "name_gid");
 
   if (MODRET_ISHANDLED(mr))
     ret = (gid_t) mr->data;

@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.52 2002-12-13 17:28:24 castaglia Exp $
+ * $Id: data.c,v 1.53 2002-12-27 16:21:32 jwm Exp $
  */
 
 #include "conf.h"
@@ -252,7 +252,7 @@ static int _data_pasv_open(char *reason, off_t size) {
         pr_response_send(R_150, "Opening %s mode data connection for %s "
           "(%" PR_LU " bytes)", MODE_STRING, reason, size);
       else
-        pr_response_send(R_150,"Opening %s mode data connection for %s",
+        pr_response_send(R_150, "Opening %s mode data connection for %s",
           MODE_STRING, reason);
 
     } else {
@@ -327,9 +327,9 @@ static int _data_active_open(char *reason, off_t size) {
   inet_reverse_dns(session.pool,rev);
 
   if (c) {
-    log_debug(DEBUG4,"active data connection opened - local  : %s:%d",
+    log_debug(DEBUG4, "active data connection opened - local  : %s:%d",
 	      inet_ntoa(*session.d->local_ipaddr), session.d->local_port);
-    log_debug(DEBUG4,"active data connection opened - remote : %s:%d",
+    log_debug(DEBUG4, "active data connection opened - remote : %s:%d",
 	      inet_ntoa(*session.d->remote_ipaddr),
 	      session.d->remote_port);
 

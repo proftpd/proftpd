@@ -487,7 +487,7 @@ char *pdircat(pool *p, ...) {
 
   last = 0;
 
-  while ((res = va_arg(dummy,char*)) != NULL) {
+  while ((res = va_arg(dummy, char *)) != NULL) {
     /* If the first argument is "", we have to account for a leading /
      * which must be added.  -jss 3/2/2001
      */
@@ -576,7 +576,7 @@ void *push_array(array_header *arr) {
   }
 
   ++arr->nelts;
-  return ((char*)arr->elts) + (arr->elt_size * (arr->nelts - 1));
+  return ((char *)arr->elts) + (arr->elt_size * (arr->nelts - 1));
 }
 
 void array_cat(array_header *dst, const array_header *src)
@@ -599,7 +599,7 @@ void array_cat(array_header *dst, const array_header *src)
     dst->nalloc = new_size;
   }
 
-  memcpy(((char*)dst->elts) + dst->nelts * elt_size, (char*)src->elts,
+  memcpy(((char *)dst->elts) + dst->nelts * elt_size, (char *)src->elts,
          elt_size * src->nelts);
   dst->nelts += src->nelts;
 }
@@ -620,7 +620,7 @@ array_header *copy_array_str(pool *p, const array_header *arr)
   int i;
 
   for (i = 0; i < arr->nelts; i++)
-    ((char**)res->elts)[i] = pstrdup(p,((char**)res->elts)[i]);
+    ((char **)res->elts)[i] = pstrdup(p, ((char **)res->elts)[i]);
 
   return res;
 }

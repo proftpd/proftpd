@@ -120,7 +120,7 @@ static int _hash_index(char *name) {
   unsigned char *cp;
   int total = 0;
 
-  for (cp = (unsigned char*)name; *cp; cp++)
+  for (cp = (unsigned char *)name; *cp; cp++)
     total += (int)*cp;
 
   return (total < PR_TUNABLE_HASH_TABLE_SIZE ? total :
@@ -561,7 +561,7 @@ int module_preparse_init(void) {
 
     if (!m->module_init_cb ||
         (m->module_init_cb() != -1)) {
-      xaset_insert(installed_modules,(xasetmember_t*)m);
+      xaset_insert(installed_modules, (xasetmember_t*)m);
 
       if (m->conftable)
         for (c = m->conftable; c->directive; c++)

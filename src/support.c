@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.52 2002-12-17 01:06:43 castaglia Exp $
+ * $Id: support.c,v 1.53 2002-12-27 16:21:33 jwm Exp $
  */
 
 #include "conf.h"
@@ -160,7 +160,7 @@ void schedule(void (*f)(void*,void*,void*,void*),int nloops,
   s->a3 = a3;
   s->a4 = a4;
   s->loops = nloops;
-  xaset_insert(scheds,(xasetmember_t*)s);
+  xaset_insert(scheds, (xasetmember_t*)s);
 }
 
 void run_schedule(void) {
@@ -174,7 +174,7 @@ void run_schedule(void) {
 
     if (s->loops-- <= 0) {
       s->f(s->a1,s->a2,s->a3,s->a4);
-      xaset_remove(scheds,(xasetmember_t*)s);
+      xaset_remove(scheds, (xasetmember_t*)s);
       destroy_pool(s->pool);
     }
   }
@@ -236,7 +236,7 @@ get_name_max(char *dirname, int dir_fd)
 char *dir_interpolate(pool *p, const char *path) {
   struct passwd *pw;
   char *user,*tmp;
-  char *ret = (char*)path;
+  char *ret = (char *)path;
 
   if (!ret)
     return NULL;
@@ -622,7 +622,7 @@ int check_shutmsg(time_t *shut, time_t *deny, time_t *disc, char *msg,
   time_t now,shuttime = (time_t)0;
   struct tm tm;
 
-  if (file_exists(SHUTMSG_PATH) && (fp = fopen(SHUTMSG_PATH,"r"))) {
+  if (file_exists(SHUTMSG_PATH) && (fp = fopen(SHUTMSG_PATH, "r"))) {
     if ((cp = fgets(buf, sizeof(buf),fp)) != NULL) {
       buf[sizeof(buf)-1] = '\0'; CHOP(cp);
 
@@ -699,7 +699,7 @@ char *make_arg_str(pool *p, int argc, char **argv) {
 
   while (argc--) {
     if (*res)
-      res = pstrcat(p, res," ", *argv++, NULL);
+      res = pstrcat(p, res, " ", *argv++, NULL);
     else
       res = pstrcat(p, res, *argv++, NULL);
   }
@@ -725,8 +725,8 @@ char *sreplace(pool *p, char *s, ...) {
 
   va_start(args,s);
 
-  while((m = va_arg(args,char*)) != NULL && mlen < 32) {
-    if ((r = va_arg(args,char*)) == NULL)
+  while((m = va_arg(args, char *)) != NULL && mlen < 32) {
+    if ((r = va_arg(args, char *)) == NULL)
       break;
     blen += (strlen(r) - strlen(m));
     marr[mlen] = m;

@@ -27,7 +27,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.52 2002-12-10 21:02:10 castaglia Exp $
+ * $Id: log.c,v 1.53 2002-12-27 16:21:32 jwm Exp $
  */
 
 #include "conf.h"
@@ -58,9 +58,9 @@ char *fmt_time(time_t t) {
   { "Sun","Mon","Tue","Wed","Thu","Fri","Sat" };
   struct tm *tr;
 
-  memset(buf,'\0',sizeof(buf));
+  memset(buf, '\0', sizeof(buf));
   if ((tr = localtime(&t)) != NULL) {
-    snprintf(buf,sizeof(buf),"%s %s %2d %02d:%02d:%02d %d",
+    snprintf(buf,sizeof(buf), "%s %s %2d %02d:%02d:%02d %d",
             days[tr->tm_wday],
             mons[tr->tm_mon],
             tr->tm_mday,
@@ -162,7 +162,7 @@ int log_wtmp(char *line, const char *name, const char *host, p_in_addr_t *ip) {
   if (fstat(fdx,&buf) == 0) {
     memset(&utx,0,sizeof(utx));
     sstrncpy(utx.ut_user,name,sizeof(utx.ut_user));
-    sstrncpy(utx.ut_id,"ftp",sizeof(utx.ut_user));
+    sstrncpy(utx.ut_id, "ftp",sizeof(utx.ut_user));
     sstrncpy(utx.ut_line,line,sizeof(utx.ut_line));
     sstrncpy(utx.ut_host,host,sizeof(utx.ut_host));
     utx.ut_syslen = strlen(utx.ut_host)+1;
@@ -181,10 +181,10 @@ int log_wtmp(char *line, const char *name, const char *host, p_in_addr_t *ip) {
     utx.ut_exit.e_termination = 0;
     utx.ut_exit.e_exit = 0;
 #endif /* HAVE_UT_UT_EXIT */
-    if (write(fdx,(char*)&utx,sizeof(utx)) != sizeof(utx))
+    if (write(fdx, (char *)&utx,sizeof(utx)) != sizeof(utx))
       ftruncate(fdx, buf.st_size);
   } else {
-    log_debug(DEBUG0,"%s fstat(): %s",WTMPX_FILE,strerror(errno));
+    log_debug(DEBUG0, "%s fstat(): %s",WTMPX_FILE,strerror(errno));
     res = -1;
   }
 
@@ -202,7 +202,7 @@ int log_wtmp(char *line, const char *name, const char *host, p_in_addr_t *ip) {
     if (ip)
       memcpy(&ut.ut_addr,ip,sizeof(ut.ut_addr));
 #else
-    sstrncpy(ut.ut_id,"ftp",sizeof(ut.ut_id));
+    sstrncpy(ut.ut_id, "ftp",sizeof(ut.ut_id));
 #ifdef HAVE_UT_UT_EXIT
     ut.ut_exit.e_termination = 0;
     ut.ut_exit.e_exit = 0;
@@ -228,10 +228,10 @@ int log_wtmp(char *line, const char *name, const char *host, p_in_addr_t *ip) {
 #endif /* HAVE_UT_UT_HOST */
 
     time(&ut.ut_time);
-    if (write(fd,(char*)&ut,sizeof(ut)) != sizeof(ut))
+    if (write(fd, (char *)&ut,sizeof(ut)) != sizeof(ut))
       ftruncate(fd,buf.st_size);
   } else {
-    log_debug(DEBUG0,"%s fstat(): %s",WTMP_FILE,strerror(errno));
+    log_debug(DEBUG0, "%s fstat(): %s",WTMP_FILE,strerror(errno));
     res = -1;
   }
 #endif /* SVR4 */

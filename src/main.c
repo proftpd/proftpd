@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.153 2002-12-27 02:36:47 castaglia Exp $
+ * $Id: main.c,v 1.154 2002-12-27 16:21:32 jwm Exp $
  */
 
 #include "conf.h"
@@ -348,7 +348,7 @@ static void end_login_noexit(void) {
     sbuf[sizeof(sbuf) - 1] = '\0';
 
     if (session.wtmp_log)
-      log_wtmp(sbuf,"",
+      log_wtmp(sbuf, "",
         (session.c && session.c->remote_name ? session.c->remote_name : ""),
         (session.c && session.c->remote_ipaddr ? session.c->remote_ipaddr : NULL));
   }
@@ -431,7 +431,7 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
 		   "%V", main_server->ServerName,
                    NULL );
 
-    pr_response_send_async(R_421,"FTP server shutting down - %s",msg);
+    pr_response_send_async(R_421, "FTP server shutting down - %s",msg);
 
     session_exit(PR_LOG_NOTICE, msg, 0, NULL);
   }
@@ -440,10 +440,10 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
 }
 
 static int get_command_class(const char *name) {
-  cmdtable *c = mod_find_cmd_symbol((char*)name, NULL, NULL);
+  cmdtable *c = mod_find_cmd_symbol((char *)name, NULL, NULL);
 
   while(c && c->cmd_type != CMD)
-    c = mod_find_cmd_symbol((char*)name, NULL, c);
+    c = mod_find_cmd_symbol((char *)name, NULL, c);
 
   return (c ? c->class : 0);
 }
@@ -677,7 +677,7 @@ static int idle_timeout_cb(CALLBACK_FRAME) {
     return 1;
   }
 
-  pr_response_send_async(R_421,"Idle Timeout (%d seconds): closing control "
+  pr_response_send_async(R_421, "Idle Timeout (%d seconds): closing control "
     "connection.", TimeoutIdle);
 
   session_exit(PR_LOG_INFO, "FTP session idle timeout, disconnected.", 0, NULL);
@@ -1265,10 +1265,10 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
   module_session_init();
 
-  log_debug(DEBUG4,"connected - local  : %s:%d",
+  log_debug(DEBUG4, "connected - local  : %s:%d",
                     inet_ntoa(*session.c->local_ipaddr),
                     session.c->local_port);
-  log_debug(DEBUG4,"connected - remote : %s:%d",
+  log_debug(DEBUG4, "connected - remote : %s:%d",
                     inet_ntoa(*session.c->remote_ipaddr),
                     session.c->remote_port);
 
@@ -2443,7 +2443,7 @@ int main(int argc, char *argv[], char **envp) {
       break;
     case 'c':
       if (!optarg) {
-        log_pri(PR_LOG_ERR,"Fatal: -c requires configuration path argument.");
+        log_pri(PR_LOG_ERR, "Fatal: -c requires configuration path argument.");
         exit(1);
       }
       config_filename = strdup(optarg);

@@ -25,7 +25,7 @@
 
 /*
  * Timer system, based on alarm() and SIGALRM
- * $Id: timers.c,v 1.14 2002-12-27 15:47:44 jwm Exp $
+ * $Id: timers.c,v 1.15 2002-12-27 16:21:34 jwm Exp $
  */
 
 #include "conf.h"
@@ -255,8 +255,8 @@ int remove_timer(int timerno, module *mod) {
         t->remove++;
 
       } else {
-        xaset_remove(timers,(xasetmember_t*)t);
-        xaset_insert(free_timers,(xasetmember_t*)t);
+        xaset_remove(timers, (xasetmember_t*)t);
+        xaset_insert(free_timers, (xasetmember_t*)t);
 	nalarms++;
 
         /* The handle_alarm() function also readjusts the timers lists
