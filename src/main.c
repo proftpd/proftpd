@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.120 2002-10-02 16:18:55 castaglia Exp $
+ * $Id: main.c,v 1.121 2002-10-03 15:30:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -827,16 +827,15 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
   return success;
 }
 
-static void dispatch_cmd(cmd_rec *cmd)
-{
-  char *cp;
+static void dispatch_cmd(cmd_rec *cmd) {
+  char *cp = NULL;
   int success = 0;
 
   cmd->server = main_server;
   resp_list = resp_err_list = NULL;
   resp_pool = cmd->pool;
   
-  for(cp = cmd->argv[0]; *cp; cp++)
+  for (cp = cmd->argv[0]; *cp; cp++)
     *cp = toupper(*cp);
 
   if (!cmd->class)
@@ -844,52 +843,51 @@ static void dispatch_cmd(cmd_rec *cmd)
 
   /* debug_print_dispatch(cmd); */
 
-  /* first dispatch PRE_CMD with wildcard */
-  success = _dispatch(cmd,PRE_CMD,FALSE,"*");
+  /* First, dispatch to wildcard PRE_CMD handlers. */
+  success = _dispatch(cmd, PRE_CMD, FALSE, C_ANY);
 
-  if(!success)	/* run other pre_cmd */
-    success = _dispatch(cmd,PRE_CMD,FALSE,NULL);
+  if (!success)	/* run other pre_cmd */
+    success = _dispatch(cmd, PRE_CMD, FALSE, NULL);
 
-  if(success < 0) {
+  if (success < 0) {
 
-    /* dispatch to POST_CMD_ERR handlers as well
-     * -tj 2001-08-09
-     */
-    _dispatch(cmd, POST_CMD_ERR, FALSE, "*");
+    /* Dispatch to POST_CMD_ERR handlers as well. */
+
+    _dispatch(cmd, POST_CMD_ERR, FALSE, C_ANY);
     _dispatch(cmd, POST_CMD_ERR, FALSE, NULL);
 
-    _dispatch(cmd,LOG_CMD_ERR,FALSE,"*");
-    _dispatch(cmd,LOG_CMD_ERR,FALSE,NULL);
+    _dispatch(cmd, LOG_CMD_ERR, FALSE, C_ANY);
+    _dispatch(cmd, LOG_CMD_ERR, FALSE, NULL);
 
     send_response_list(&resp_err_list);
     return;
   }
 
-  success = _dispatch(cmd,CMD,FALSE,"*");
-  if(!success)
-    success = _dispatch(cmd,CMD,TRUE,NULL);
+  success = _dispatch(cmd, CMD, FALSE, C_ANY);
 
-  if(success == 1) {
-    success = _dispatch(cmd,POST_CMD,FALSE,"*");
-    if(!success)
-      success = _dispatch(cmd,POST_CMD,FALSE,NULL);
+  if (!success)
+    success = _dispatch(cmd, CMD, TRUE, NULL);
 
-    _dispatch(cmd,LOG_CMD,FALSE,"*");
-    _dispatch(cmd,LOG_CMD,FALSE,NULL);
+  if (success == 1) {
+    success = _dispatch(cmd, POST_CMD, FALSE, C_ANY);
+    if (!success)
+      success = _dispatch(cmd, POST_CMD, FALSE, NULL);
+
+    _dispatch(cmd, LOG_CMD, FALSE, C_ANY);
+    _dispatch(cmd, LOG_CMD, FALSE, NULL);
 
     send_response_list(&resp_list);
 
-  } else if(success < 0) {
+  } else if (success < 0) {
 
-    /* allow for non-logging command handlers to be run if CMD fails
-     * -tj 2001-08-09
-     */
-    success = _dispatch(cmd, POST_CMD_ERR, FALSE, "*");
+    /* Allow for non-logging command handlers to be run if CMD fails. */
+
+    success = _dispatch(cmd, POST_CMD_ERR, FALSE, C_ANY);
     if (!success)
       success = _dispatch(cmd, POST_CMD_ERR, FALSE, NULL);
 
-    _dispatch(cmd,LOG_CMD_ERR,FALSE,"*");
-    _dispatch(cmd,LOG_CMD_ERR,FALSE,NULL);
+    _dispatch(cmd, LOG_CMD_ERR, FALSE, C_ANY);
+    _dispatch(cmd, LOG_CMD_ERR, FALSE, NULL);
 
     send_response_list(&resp_err_list);
   }

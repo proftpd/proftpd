@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.22 2002-10-02 18:13:11 castaglia Exp $
+ * $Id: mod_site.c,v 1.23 2002-10-03 15:30:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -342,9 +342,9 @@ MODRET site_help(cmd_rec *cmd) {
 
     for (i = 0; _help[i].cmd; i++) {
       if (_help[i].implemented)
-        add_response(i != 0 ? R_214 : R_DUP, "%s", _help[i].cmd);
+        add_response(i != 0 ? R_DUP : R_214, "%s", _help[i].cmd);
       else
-        add_response(i != 0 ? R_214 : R_DUP, "%s",
+        add_response(i != 0 ? R_DUP : R_214, "%s",
           pstrcat(cmd->pool, _help[i].cmd, "*", NULL));
     }
 
