@@ -18,7 +18,7 @@
  */
 
 /*
- * mod_ldap v2.8.6
+ * mod_ldap v2.8.7
  *
  * Thanks for patches go to (in alphabetical order):
  * 
@@ -39,7 +39,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  * 
- * $Id: mod_ldap.c,v 1.21 2002-05-30 16:06:53 jwm Exp $
+ * $Id: mod_ldap.c,v 1.22 2002-06-14 16:36:13 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -242,15 +242,34 @@ pr_ldap_unbind(void)
 static void
 pr_ldap_mkdir(char *dir, mode_t mode, uid_t uid, gid_t gid)
 {
+  mode_t old_umask;
+  struct stat st;
+
+  if (fs_stat(dir, &st) == -1) {
+    if (errno != ENOENT) {
+      log_pri(LOG_WARNING, "mod_ldap: pr_ldap_mkdir(): unable to create directory %s: fs_stat() failed: %s", dir, strerror(errno));
+      return;
+    }
+  }
+
+  /* These permissions are absolute; we don't want them to be subject
+     to ProFTPD's Umask. */
+  old_umask = umask(0);
+
+  PRIVS_ROOT;
   if (mkdir(dir, mode) != 0) {
+    PRIVS_RELINQUISH;
     log_pri(LOG_WARNING, "mod_ldap: pr_ldap_mkdir(): unable to create directory %s: %s", dir, strerror(errno));
     return;
   }
-
   if (fs_chown(dir, uid, gid) == -1) {
+    PRIVS_RELINQUISH;
     log_pri(LOG_WARNING, "mod_ldap: pr_ldap_mkdir(): unable to chown directory %s: %s", dir, strerror(errno));
     return;
   }
+  PRIVS_RELINQUISH;
+
+  umask(old_umask);
 }
 
 static int
@@ -258,7 +277,11 @@ pr_ldap_mkpath(pool *p, const char *path, mode_t mode)
 {
   char *curpath, *currdir, *buf;
   struct stat st;
-  mode_t old_umask;
+
+  /* If the full path already exists, just return without bothering to
+     stat() its individual components. */
+  if (fs_stat(path, &st) != -1)
+    return 0;
 
   buf = pstrdup(p, path);
 
@@ -266,81 +289,42 @@ pr_ldap_mkpath(pool *p, const char *path, mode_t mode)
   if (buf && *buf == '/')
     ++buf;
 
-  /* These permissions are absolute; we don't want them to be subject
-     to ProFTPD's Umask. */
-  old_umask = umask(0);
-
   curpath = "";
   while (buf && *buf) {
     currdir = strsep(&buf, "/");
     curpath = pstrcat(p, curpath, "/", currdir, NULL);
 
-    if (fs_stat(curpath, &st) == -1) {
-      if (errno == ENOENT) {
-        /* If buf is NULL, then we're creating the last part of the
-           directory (presumably, the user's home directory itself), so we
-           want to use the mode specified by the configuration and chown it
-           to the user's UID/GID. */
-
-        if ((buf == NULL) || (*buf == '\0'))
-          pr_ldap_mkdir(curpath, mode, session.login_uid, session.login_gid);
-        else
-          pr_ldap_mkdir(curpath, 0755, 0, 0);
-      }
-      else {
-        /* fs_stat() failed for some other (non-ENOENT) reason. */
-        log_pri(LOG_WARNING, "mod_ldap: pr_ldap_mkpath(): fs_stat() of '%s' failed: %s", curpath, strerror(errno));
-        return -1;
-      }
-    }
+    /* If buf is NULL, then we're creating the last part of the
+       directory (presumably, the user's home directory itself), so we
+       want to use the mode specified by the configuration and chown it
+       to the user's UID/GID. */
+    if ((buf == NULL) || (*buf == '\0'))
+      pr_ldap_mkdir(curpath, mode, session.login_uid, session.login_gid);
+    else
+      pr_ldap_mkdir(curpath, 0755, 0, 0);
   }
 
-  umask(old_umask);
   return 0;
 }
 
 static void
-create_homedir(pool *p, const char *username, const char *homedir)
+create_homedir(pool *p, const char *homedir)
 {
   int i;
   char *hdod_fulldir;
-  struct stat st;
 
   /* Make sure we were passed a valid directory to create. */
   if (!homedir || !*homedir)
     return;
 
-  if (ldap_hdod) {
-    if (fs_stat(homedir, &st) == -1) {
-      if (errno != ENOENT) {
-        log_pri(LOG_WARNING, "mod_ldap: create_homedir(): unable to create home directory %s, fs_stat() failed: %s", homedir, strerror(errno));
-        return;
-      }
-
-      PRIVS_ROOT;
-      if (pr_ldap_mkpath(p, homedir, ldap_hdod_mode) != 0) {
-        PRIVS_RELINQUISH;
-        log_pri(LOG_WARNING, "mod_ldap: create_homedir(): unable to create home directory %s: %s", homedir, strerror(errno));
-        return;
-      }
-      PRIVS_RELINQUISH;
-    }
-  }
+  if (ldap_hdod)
+    if (pr_ldap_mkpath(p, homedir, ldap_hdod_mode) != 0)
+      return;
 
   if (ldap_hdod_suffix) {
     for (i = 0; ldap_hdod_suffix[i] != NULL; ++i) {
       hdod_fulldir = pstrcat(p, homedir, "/", ldap_hdod_suffix[i], NULL);
-
-      if (fs_stat(hdod_fulldir, &st) == -1) {
-        if (errno != ENOENT) {
-          log_pri(LOG_WARNING, "mod_ldap: create_homedir(): unable to create home directory suffix %s in %s, fs_stat() failed: %s", ldap_hdod_suffix[i], homedir, strerror(errno));
-          continue;
-        }
-
-        PRIVS_ROOT;
-        pr_ldap_mkdir(hdod_fulldir, ldap_hdod_mode, session.login_uid, session.login_gid);
-        PRIVS_RELINQUISH;
-      }
+      pr_ldap_mkdir(hdod_fulldir, ldap_hdod_mode, session.login_uid, session.login_gid);
     }
   }
 }
@@ -944,7 +928,7 @@ handle_ldap_is_auth(cmd_rec *cmd)
   if (auth_check(cmd->tmp_pool, ldap_authbinds ? "*" : pw->pw_passwd, username, cmd->argv[1]))
     return ERROR_INT(cmd, AUTH_BADPWD);
 
-  create_homedir(cmd->tmp_pool, username, pw->pw_dir);
+  create_homedir(cmd->tmp_pool, pw->pw_dir);
   return HANDLED(cmd);
 }
 
