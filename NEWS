@@ -1,7 +1,11 @@
-$Id: NEWS,v 1.159 2002-05-08 20:55:30 flyhmstr Exp $
+$Id: NEWS,v 1.160 2002-05-09 17:42:44 castaglia Exp $
 
 1.2.5rc2 - CVS
 ---------------------------------
+- Bug 1544 - Daemon does not switch to configured User/Group identity in
+             <VirtualHost> as documented
+- Bug 1581 - Changed Hide{User,Group} directive to use pointers for
+             proper handling of uid_t/gid_t types
 - Migrated to the new form of the directive list from the pdd sgml sources
   (ML)
 - Bug 1563 - Moved checking for bad address lookup up, to prevent segfault
@@ -22,8 +26,8 @@ $Id: NEWS,v 1.159 2002-05-08 20:55:30 flyhmstr Exp $
 - Bug 1578 - RootLogin's configuration directive handler did not properly
              set the mergedown flag
 - New mod_wrap (1.2.3)
-- removed contrib/genuser.pl (per TJ)
-- added contrib/ftpasswd utility script (contributed by TJ)
+- Bug 1509 - removed contrib/genuser.pl (per TJ)
+- Bug 1509 - added contrib/ftpasswd utility script (contributed by TJ)
 - Bug 1318 - sendfile() semantics incorrect under Linux
 - Bug 1450 - Timers removed immediately/alarm() return no longer used for
              timing
