@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.542 2004-03-05 02:13:23 castaglia Exp $
+$Id: NEWS,v 1.543 2004-03-05 03:24:36 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -115,6 +115,7 @@ CVS
   a data transfer, the connection would hang.  Now, an error message is sent
   to the client if no handshake is done.
 - Bug 2353 - REST doesn't handle offsets greater than 2 GB.
+- Bug 2357 - ftptop should use COLS for determining display width.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------

@@ -26,7 +26,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.28 2004-01-18 19:01:53 castaglia Exp $
+ * $Id: ftptop.c,v 1.29 2004-03-05 03:24:36 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.9"
@@ -62,12 +62,21 @@ static const char *program = "ftptop";
 /* Display options */
 
 /* These are for displaying "PID S USER CLIENT SERVER TIME COMMAND" */
-#define FTPTOP_REG_HEADER_FMT	"%-5s %s %-8s %-20s %-15s %-4s %-20s\n"
-#define FTPTOP_REG_DISPLAY_FMT	"%-5u %s %-8.8s %-20.20s %-15s %-4lu %4s %-20.20s\n"
+#define FTPTOP_REG_HEADER_FMT	"%-5s %s %-8s %-20s %-15s %-4s %-*s\n"
+#define FTPTOP_REG_DISPLAY_FMT	"%-5u %s %-8.8s %-20.20s %-15s %-6.6s %4s %-*.*s\n"
 
 /* These are for displaying tranfer data: "PID S USER CLIENT KB/s %DONE" */
-#define FTPTOP_XFER_HEADER_FMT	"%-5s %s %-8s %-20s %-5s    %-32s\n"
-#define FTPTOP_XFER_DISPLAY_FMT	"%-5u %s %-8.8s %-20.20s %-3.2f %-32.20s\n"
+#define FTPTOP_XFER_HEADER_FMT	"%-5s %s %-8s %-20s %-5s    %-*s\n"
+#define FTPTOP_XFER_DISPLAY_FMT	"%-5u %s %-8.8s %-46.46s %-3.2f %6s%%s\n"
+
+#define FTPTOP_REG_ARG_MIN_SIZE		20
+#define FTPTOP_XFER_DONE_MIN_SIZE	6
+#define FTPTOP_REG_ARG_SIZE	\
+  (COLS - (80 - FTPTOP_REG_ARG_MIN_SIZE) < FTPTOP_REG_ARG_MIN_SIZE ? \
+  FTPTOP_REG_ARG_MIN_SIZE : COLS - (80 - FTPTOP_REG_ARG_MIN_SIZE))
+#define FTPTOP_XFER_DONE_SIZE 	\
+  (COLS - (80 - FTPTOP_XFER_DONE_MIN_SIZE) < FTPTOP_XFER_DONE_MIN_SIZE ? \
+  FTPTOP_XFER_DONE_MIN_SIZE : COLS - (80 - FTPTOP_XFER_DONE_MIN_SIZE))
 
 #define FTPTOP_SHOW_DOWNLOAD		0x0001
 #define FTPTOP_SHOW_UPLOAD		0x0002
@@ -141,6 +150,27 @@ static char *calc_percent_done(off_t size, off_t done) {
       ((double) done / (double) size) * 100.0);
     sbuf[sizeof(sbuf)-1] = '\0';
   }
+
+  return sbuf;
+}
+
+/* Borrowed from ftpwho.c */
+static const char *show_time(time_t *i) {
+  time_t now = time(NULL);
+  unsigned long l;
+  static char sbuf[7];
+
+  if (!i || !*i)
+    return "-";
+
+  memset(sbuf, '\0', sizeof(sbuf));
+  l = now - *i;
+
+  if (l < 3600)
+    snprintf(sbuf, sizeof(sbuf), "%lum%lus",(l / 60),(l % 60));
+  else
+    snprintf(sbuf, sizeof(sbuf), "%luh%lum",(l / 3600),
+    ((l - (l / 3600) * 3600) / 60));
 
   return sbuf;
 }
@@ -397,8 +427,8 @@ static void read_scoreboard(void) {
       snprintf(buf, sizeof(buf), FTPTOP_REG_DISPLAY_FMT,
         (unsigned int) score->sce_pid, status, score->sce_user,
         score->sce_client_name, score->sce_server_addr,
-        time(NULL) - score->sce_begin_session, score->sce_cmd,
-        score->sce_cmd_arg);
+        show_time(&score->sce_begin_session), score->sce_cmd,
+       FTPTOP_REG_ARG_SIZE, FTPTOP_REG_ARG_SIZE, score->sce_cmd_arg);
       buf[sizeof(buf)-1] = '\0';
 
     } else {
@@ -501,10 +531,9 @@ static void show_sessions(void) {
 
   if (display_mode != FTPTOP_SHOW_RATES)
     printw(FTPTOP_REG_HEADER_FMT, "PID", "S", "USER", "CLIENT", "SERVER",
-      "TIME", "COMMAND");
-
+      "TIME", FTPTOP_REG_ARG_SIZE, "COMMAND");
   else
-    printw(FTPTOP_XFER_HEADER_FMT, "PID", "S", "USER", "CLIENT", "KB/s", "%DONE");
+    printw(FTPTOP_XFER_HEADER_FMT, "PID", "S", "USER", "CLIENT", "KB/s", FTPTOP_XFER_DONE_SIZE, "%DONE");
 
   attroff(A_REVERSE);
 
