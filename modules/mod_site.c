@@ -19,7 +19,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.3 1999-12-28 15:54:44 macgyver Exp $
+ * $Id: mod_site.c,v 1.4 2000-07-06 04:41:31 macgyver Exp $
  */
 
 #include "conf.h"
@@ -54,8 +54,20 @@ static char *_get_full_cmd(cmd_rec *cmd)
   return res;
 }
 
-MODRET site_chmod(cmd_rec *cmd)
-{
+MODRET set_allowchmod(cmd_rec *cmd) {
+  int b;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_GLOBAL);
+
+  if((b = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean argument.");
+
+  add_config_param("ChmodAllow", 1, (void*) b);
+  return HANDLED(cmd);
+}
+
+MODRET site_chmod(cmd_rec *cmd) {
   mode_t mode = 0;
   char *dir,*endp,*tmp;
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
@@ -67,6 +79,11 @@ MODRET site_chmod(cmd_rec *cmd)
     return NULL;
   }
 
+  if(get_param_int(CURRENT_CONF, "AllowChmod", FALSE) != 1) {
+    add_response_err(R_550, "CHMOD not allowed on %s", cmd->argv[2]);
+    return ERROR(cmd);
+  }
+  
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t*)get_param_ptr(TOPLEVEL_CONF,"PathAllowFilter",FALSE);
 
@@ -340,13 +357,20 @@ modret_t *site_dispatch(cmd_rec *cmd)
   return ERROR(cmd);
 }
 
+/* Configuration directives table */
+
+static conftable site_conftable[] = {
+  { "AllowChmod",	set_allowchmod,		NULL },
+  { NULL, 		NULL,			NULL }
+};
+
 /* Module interface */
 
 module site_module = {
   NULL,NULL,			/* Always NULL */
   0x20,				/* API Version 1.0 */
   "site",
-  NULL,				/* No configuration table */
+  site_conftable,
   NULL,				/* Our command table is for local use only */
   NULL,
   NULL,NULL			/* No initialization needed */

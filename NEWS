@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.45 2000-07-06 04:24:06 macgyver Exp $
+$Id: NEWS,v 1.46 2000-07-06 04:41:31 macgyver Exp $
 
 1.2.0 - Released: ???
 ---------------------
@@ -39,6 +39,7 @@ $Id: NEWS,v 1.45 2000-07-06 04:24:06 macgyver Exp $
 - Clarified syslog message information in INSTALL.
 - ProFTPD will now generate a PID file in standalone operation.
 - DisplayReadme now accepts patterns.
+- Added AllowChmod directive.
 
 1.2.0pre10 - Released: 1/17/00
 ------------------------------
