@@ -27,6 +27,15 @@ not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite
 
 #if !defined(HAVE_VSNPRINTF) || !defined(HAVE_SNPRINTF)
 
+# if defined(HAVE_FCONVERT) || defined(HAVE_FCVT)
+#  ifdef HAVE_FLOATINGPOINT_H
+#   include <floatingpoint.h>
+#  endif
+#  ifndef DECIMAL_STRING_LENGTH
+#   define DECIMAL_STRING_LENGTH 512
+#  endif
+# endif /* HAVE_FCONVERT || HAVE_FCVT */
+
 static size_t strnlen(const char *s, size_t count)
 {
   const char *sc;
@@ -142,6 +151,12 @@ static char *number(char *str, long num, int base, int size, int
   return str;
 }
 
+
+/*
+** This vsnprintf() emulation does not implement the conversions:
+**	%e, %E, %g, %G, %wc, %ws
+** The %f implementation is limited.
+*/
 int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
 {
   int len;
@@ -151,6 +166,7 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
   const char *s;
 
   int flags;
+  int dotflag;
 
   int field_width;
   int precision;
@@ -166,6 +182,7 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
     }
 
     flags = 0;
+    dotflag = 0;
     repeat:
       ++fmt;
       switch(*fmt) {
@@ -190,6 +207,7 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
 
       precision = -1;
       if(*fmt == '.') {
+	dotflag++;
         ++fmt;
         if(isdigit(*fmt))
           precision = skip_atoi(&fmt);
@@ -197,8 +215,7 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
           ++fmt;
           precision = va_arg(args,int);
         }
-        if(precision < 0)
-          precision = 0;
+	/* NB: the default precision value is conversion dependent */
       }
 
       qualifier = -1;
@@ -219,6 +236,8 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
           { *str++ = ' '; size--; }
         continue;
       case 's':
+        if ( dotflag && precision < 0 )
+          precision = 0;
         s = va_arg(args,char*);
         if(!s)
           s = "(null)";
@@ -244,6 +263,8 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
         continue;
 
       case 'p':
+        if ( dotflag && precision < 0 )
+          precision = 0;
         if(field_width == -1) {
           field_width = 2 * sizeof(void*);
           flags |= ZEROPAD;
@@ -279,6 +300,98 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
       case 'u':
         break;
 
+# if defined(HAVE_FCONVERT) || defined(HAVE_FCVT)
+      case 'f':
+	{
+		double	dval;
+		int	ndigit, decpt, sign;
+		char	cvtbuf[DECIMAL_STRING_LENGTH];
+		char	*cbp;
+
+		/* Default FP precision */
+		if ( dotflag && precision < 0 )
+			precision = 6;
+		/* Let's not press our luck too far */
+		ndigit = precision < 16 ? precision : 16;
+
+		dval = va_arg(args, double);
+
+		/*
+		** If available fconvert() is preferred, but fcvt() is
+		** more widely available.  It is included in 4.3BSD,
+		** the SUS1 and SUS2 standards, Gnu libc.
+		*/
+#  if defined(HAVE_FCONVERT)
+		cbp = fconvert(dval, ndigit, &decpt, &sign, cvtbuf);
+#  elif defined(HAVE_FCVT)
+		cbp = fcvt(dval, ndigit, &decpt, &sign);
+		sstrncpy(cvtbuf, cbp, sizeof cvtbuf);
+		cbp = cvtbuf;
+#  endif
+
+		/* XXX Ought to honor field_width, left/right justification */
+
+		/* Result could be "NaN" or "Inf" */
+		if ( ! isdigit(*cbp) ) {
+			for ( i = 0 ; *cbp != '\0' && size > 0 ; i++ ) {
+				*str++ = *cbp++; size--;
+			}
+			continue;
+		}
+
+		if ( size > 0 ) {
+			if ( sign ) {
+				*str++ = '-'; size--;
+			}
+			else if ( flags & PLUS ) {
+				*str++ = '+'; size--;
+			}
+			else if ( flags & SPACE ) {
+				*str++ = ' '; size--;
+			}
+		}
+
+		/* Leading zeros, if needed */
+		if ( decpt <= 0 && size > 0 ) {
+			/* Prepend '0' */
+			*str++ = '0'; size--;
+		}
+		if ( decpt < 0 && size > 0 ) {
+			/* Prepend '.' */
+			*str++ = '.'; size--;
+			for ( i = decpt ; i < 0 && size > 0 ; i++ ) {
+				*str++ = '0'; size--;
+			}
+		}
+		/* Significant digits */
+		for ( i = 0 ; size > 0 ; i++ ) {
+			if ( i == decpt ) {
+				if ( *cbp != '\0' ) {
+					*str++ = '.'; size--;
+					if ( size <= 0 )
+						break;
+				}
+				else {
+					/* Tack on "." or ".0"??? */
+					break;
+				}
+			}
+			if ( *cbp != '\0' ) {
+				*str++ = *cbp++; size--;
+			}
+			else if ( i < decpt ) {
+				*str++ = '0'; size--;
+			}
+			else {
+				/* Tack on "." or ".0"??? */
+				break;
+			}
+		}
+	}
+	continue;
+	/* break; */
+# endif /* HAVE_FCONVERT || HAVE_FCVT */
+
       default:
         if(*fmt != '%')
           *str++ = '%';
@@ -301,6 +414,9 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
         num = va_arg(args,int);
       else
         num = va_arg(args, unsigned int);
+
+      if ( dotflag && precision < 0 )
+        precision = 0;
 
       str = number(str,num,base,field_width,precision,flags,&size);
   }

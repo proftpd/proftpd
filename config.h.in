@@ -147,6 +147,12 @@
 /* Define if you have the crypt function.  */
 #undef HAVE_CRYPT
 
+/* Define if you have the fconvert function.  */
+#undef HAVE_FCONVERT
+
+/* Define if you have the fcvt function.  */
+#undef HAVE_FCVT
+
 /* Define if you have the fgetgrent function.  */
 #undef HAVE_FGETGRENT
 
@@ -275,6 +281,9 @@
 
 /* Define if you have the <fcntl.h> header file.  */
 #undef HAVE_FCNTL_H
+
+/* Define if you have the <floatingpoint.h> header file.  */
+#undef HAVE_FLOATINGPOINT_H
 
 /* Define if you have the <getopt.h> header file.  */
 #undef HAVE_GETOPT_H

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.46 2000-07-06 04:41:31 macgyver Exp $
+$Id: NEWS,v 1.47 2000-07-06 05:58:31 macgyver Exp $
 
 1.2.0 - Released: ???
 ---------------------
@@ -40,6 +40,11 @@ $Id: NEWS,v 1.46 2000-07-06 04:41:31 macgyver Exp $
 - ProFTPD will now generate a PID file in standalone operation.
 - DisplayReadme now accepts patterns.
 - Added AllowChmod directive.
+- Allow comments and blank lines in password files.
+- *snprintf emulation was incomplete on Solaris and other platforms with no
+  *snprintf implementation.
+- PAM now properly registers and closes a session, conforming closer to the PAM
+  specification.
 
 1.2.0pre10 - Released: 1/17/00
 ------------------------------

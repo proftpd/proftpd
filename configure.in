@@ -356,6 +356,11 @@ AC_CHECK_FUNCS(getcwd gethostname gettimeofday mkdir rmdir select socket strerro
 AC_CHECK_FUNCS(strchr memcpy bcopy flock getopt getopt_long strsep)
 # __snprintf and __vsnprintf are only on solaris and _really_ broken there.
 AC_CHECK_FUNCS(vsnprintf snprintf)
+if test x"$ac_cv_func_vsnprintf" != xyes || x"$ac_cv_func_snprintf" != xyes
+then
+	AC_CHECK_FUNCS(fconvert fcvt)
+	AC_CHECK_HEADERS(floatingpoint.h)
+fi
 AC_CHECK_FUNCS(setsid setgroupent seteuid setegid crypt fgetpwent fgetgrent)
 AC_CHECK_FUNCS(inet_aton siginterrupt setpgid)
 AC_CHECK_FUNCS(regcomp)
