@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.251 2004-10-30 20:45:51 castaglia Exp $
+ * $Id: mod_core.c,v 1.252 2004-10-30 23:14:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1007,7 +1007,7 @@ MODRET set_user(cmd_rec *cmd) {
    */
 
   if (!cmd->config || cmd->config->config_type != CONF_ANON) {
-    pw = auth_getpwnam(cmd->tmp_pool, cmd->argv[1]);
+    pw = pr_auth_getpwnam(cmd->tmp_pool, cmd->argv[1]);
     if (pw == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "Unknown user '",
         cmd->argv[1], "'.", NULL));
@@ -1081,7 +1081,7 @@ MODRET set_group(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   if (!cmd->config || cmd->config->config_type != CONF_ANON) {
-    grp = auth_getgrnam(cmd->tmp_pool, cmd->argv[1]);
+    grp = pr_auth_getgrnam(cmd->tmp_pool, cmd->argv[1]);
     if (grp == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "Unknown group '",
         cmd->argv[1], "'.", NULL));
@@ -2028,7 +2028,7 @@ MODRET set_hideuser(cmd_rec *cmd) {
     user++;
   }
 
-  pw = auth_getpwnam(cmd->tmp_pool, user);
+  pw = pr_auth_getpwnam(cmd->tmp_pool, user);
 
   if (!pw)
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", user,
@@ -2060,7 +2060,7 @@ MODRET set_hidegroup(cmd_rec *cmd) {
     group++;
   }
 
-  gr = auth_getgrnam(cmd->tmp_pool, group);
+  gr = pr_auth_getgrnam(cmd->tmp_pool, group);
 
   if (!gr)
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", group,
