@@ -22,7 +22,7 @@
  */
 
 /*
- * mod_ldap v2.8.13
+ * mod_ldap v2.8.14
  *
  * Thanks for patches go to (in alphabetical order):
  *
@@ -47,7 +47,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.35 2004-09-28 01:25:55 jwm Exp $
+ * $Id: mod_ldap.c,v 1.36 2004-10-09 01:16:04 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -73,7 +73,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_LDAP_VERSION	"mod_ldap/2.8.13"
+#define MOD_LDAP_VERSION	"mod_ldap/2.8.14"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001021002
 # error "mod_ldap " MOD_LDAP_VERSION " requires ProFTPD 1.2.10rc2 or later"
@@ -1053,12 +1053,12 @@ handle_ldap_is_auth(cmd_rec *cmd)
     return ERROR_INT(cmd, PR_AUTH_NOPWD);
 
   /* FIXME: If we pass a "" or NULL "crypted password" argument to
-   * auth_check, the mod_unixpw auth handler gets called before the mod_ldap
-   * auth handler, so mod_unixpw will allow in any LDAP auth-bind user with
-   * an incorrect password. Can we kludge around this by setting the
-   * directive to not allow empty passwords? (its name escapes me right now)
-   * For now, we'll kludge around this by passing "*", which mod_unixpw will
-   * happily deny auth to.
+   * auth_check, the mod_auth_unix auth handler gets called before the
+   * mod_ldap auth handler, so mod_auth_unix will allow in any LDAP
+   * auth-bind user with an incorrect password. Can we kludge around this by
+   * setting the directive to not allow empty passwords? (its name escapes
+   * me right now) For now, we'll kludge around this by passing "*", which
+   * mod_auth_unix will happily deny auth to.
    */
   if (auth_check(cmd->tmp_pool, ldap_authbinds ? "*" : pw->pw_passwd,
                  username, cmd->argv[1]))
@@ -1103,13 +1103,21 @@ handle_ldap_check(cmd_rec *cmd)
      * We also need to support the UserPassword directive, so don't do auth
      * binds if we received a crypted password, which seems to indicate the
      * use of that directive. See also the comments in pr_ldap_getpwnam().
+     *
+     * Note that handle_ldap_is_auth() will pass us "*" for a crypted
+     * password to prevent mod_auth_unix from successfully authenticating
+     * the user with an "empty" password. If we receive "*" for a crypted
+     * password, we will still check authentication. This isn't dangerous,
+     * since we bail first if we don't have a DN to authbind with.
      */
     if ( (pass == NULL) || (strlen(pass) == 0) ||
          (ldap_authbind_dn == NULL) || (strlen(ldap_authbind_dn) == 0))
     {
       return DECLINED(cmd);
     }
-    if (cryptpass != NULL && strlen(cryptpass) != 0) {
+    if (cryptpass != NULL && strlen(cryptpass) > 0 &&
+        strcmp(cryptpass, "*") != 0)
+    {
       return DECLINED(cmd);
     }
 
@@ -1712,7 +1720,7 @@ ldap_getconf(void)
       if (c->argc > 2)
         ldap_group_name_filter = pstrdup(session.pool, c->argv[2]);
       else
-        ldap_group_name_filter = pstrcat(session.pool, "(&(", ldap_attr_cn, " =%v)(objectclass=posixGroup))", NULL);
+        ldap_group_name_filter = pstrcat(session.pool, "(&(", ldap_attr_cn, "=%v)(objectclass=posixGroup))", NULL);
 
       if (c->argc > 3)
         ldap_group_gid_filter = pstrdup(session.pool, c->argv[3]);
