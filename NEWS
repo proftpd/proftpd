@@ -1,8 +1,9 @@
-$Id: NEWS,v 1.129 2001-09-26 15:00:33 flood Exp $
+$Id: NEWS,v 1.130 2001-09-26 15:32:47 flood Exp $
 
 1.2.3 - CVS
 ---------------------------------
 PASS argument now intentionally hidden in the proctitle.
+- Bug 1311 - DirFake* can no longer raise sigsegv
 - Bug 1331 - Reverse DNS is now forward checked for security
 - Bug 1305 - limits.h is now included if present
 

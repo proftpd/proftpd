@@ -24,7 +24,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.44 2001-08-16 19:54:04 flood Exp $
+ * $Id: mod_ls.c,v 1.45 2001-09-26 15:32:47 flood Exp $
  */
 
 #include "conf.h"
@@ -1608,16 +1608,21 @@ MODRET _sethide(cmd_rec *cmd, const char *param)
 
   if(cmd->argc < 2 || cmd->argc > 3)
     CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"syntax: ",
-                   param," on|off [<id to display>]",NULL));
+               param," on|off [<id to display>]",NULL));
 
-  bool = get_boolean(cmd,1);
-  if(bool > 0) {
+  if((bool = get_boolean(cmd,1)) == -1)
+     CONF_ERROR(cmd, "expected boolean argument");
+
+  if(bool == TRUE) {
+    /* use the configured id to display rather than the default "ftp" */
     if(cmd->argc > 2)
       as = cmd->argv[2];
 
-    c = add_config_param_str(param,1,as);
-  } else if(!bool)
-    c = add_config_param_str(param,0);
+    c = add_config_param_str(param, 1, as);
+  } else {
+    /* still need to add a config_rec to turn off the display of fake ids */
+    c = add_config_param_str(param, 0);
+  }
 
   c->flags |= CF_MERGEDOWN;
 
