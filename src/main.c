@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.42 2000-08-01 22:20:28 macgyver Exp $
+ * $Id: main.c,v 1.43 2001-01-24 22:02:04 flood Exp $
  */
 
 /*
@@ -93,6 +93,7 @@ struct rehash {
 typedef struct _pidrec {
   struct _pidrec *next,*prev;
 
+  pool *pool;
   pid_t pid;
   int dead;
 } pidrec_t;
@@ -802,9 +803,9 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match)
             log_pri(LOG_NOTICE,"%s",MODRET_ERRMSG(mr));
         } else if(send_error) {
           if(MODRET_ERRNUM(mr) && MODRET_ERRMSG(mr))
-            add_response_err(MODRET_ERRNUM(mr),MODRET_ERRMSG(mr));
+            add_response_err(MODRET_ERRNUM(mr),"%s",MODRET_ERRMSG(mr));
           else if(MODRET_ERRMSG(mr))
-            send_response_raw(MODRET_ERRMSG(mr));
+            send_response_raw("%s",MODRET_ERRMSG(mr));
         }
 
         success = -1;
@@ -1182,7 +1183,7 @@ void fork_server(int fd,conn_t *l,int nofork)
 #ifndef DEBUG_NOFORK
   pid_t pid;
   sigset_t sigset;
-  pool *p;
+  pool *pidrec_pool = NULL, *set_pool = NULL;
 
   if(!nofork) {
     pidrec_t *cpid;
@@ -1208,19 +1209,37 @@ void fork_server(int fd,conn_t *l,int nofork)
     case -1:
       sigprocmask(SIG_UNBLOCK,&sigset,NULL);
       log_pri(LOG_ERR,"fork(): %s",strerror(errno));
+
+      /* the parent doesn't need the socket open */
+      close(fd);
+
       return;
     default: /* parent */
       /* The parent doesn't need the socket open */
       close(fd);
 
       if(!children) {
-        p = make_sub_pool(permanent_pool);
-        children = xaset_create(p,NULL);
-      } else
-        p = children->mempool;
 
-      cpid = (pidrec_t*)pcalloc(p,sizeof(pidrec_t));
+        /* allocate a subpool from permanent_pool for the set
+         */
+        set_pool = make_sub_pool(permanent_pool);
+        children = xaset_create(set_pool, NULL);
+        children->mempool = set_pool;
+
+        /* now, make a subpool for the pidrec_t to be allocated
+         */
+        pidrec_pool = make_sub_pool(set_pool);
+
+      } else {
+
+        /* allocate a subpool for the pidrec_t to be allocated
+         */
+        pidrec_pool = make_sub_pool(children->mempool);
+      }
+
+      cpid = (pidrec_t *) pcalloc(pidrec_pool, sizeof(pidrec_t));
       cpid->pid = pid;
+      cpid->pool = pidrec_pool;
       xaset_insert(children,(xasetmember_t*)cpid);
       child_count++;
 
@@ -1514,10 +1533,17 @@ void server_loop()
       if(children) {
         for(cp = (pidrec_t*)children->xas_list; cp; cp=cpnext) {
           cpnext = cp->next;
-          if(cp->dead)
+
+          /* if the pidrec_t is marked "dead", remove it from the set,
+           * and recover its resources
+           */
+          if (cp->dead) {
             xaset_remove(children,(xasetmember_t*)cp);
+            destroy_pool(cp->pool);
         }
       }
+      }
+
       /* Don't need the pool anymore */
       if(!children->xas_list) {
         destroy_pool(children->mempool);

@@ -21,7 +21,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.21 2000-08-02 23:07:27 macgyver Exp $
+ * $Id: log.c,v 1.22 2001-01-24 22:02:04 flood Exp $
  */
 
 /* History Log:
@@ -184,13 +184,16 @@ int log_open_run(pid_t mpid, int trunc, int allow_update)
   if(runfd > -1)
     return 0;
 
-  if(!mpid)
-    snprintf(fname, sizeof(fname), "%s/proftpd-inetd",scoreboard_path);
-  else
-    snprintf(fname, sizeof(fname), "%s/proftpd-%d",scoreboard_path,(int)mpid);
-  fname[sizeof(fname)-1] = '\0';
+  if (! runfn) {
+    if(!mpid)
+      snprintf(fname, sizeof(fname), "%s/proftpd-inetd",scoreboard_path);
+    else
+      snprintf(fname, sizeof(fname), "%s/proftpd-%d",scoreboard_path,(int)mpid);
+    fname[sizeof(fname)-1] = '\0';
 
-  runfn = pstrdup(permanent_pool,fname);
+    runfn = pstrdup(permanent_pool,fname);
+  }
+
   if((runfd = open(runfn,O_RDWR|O_CREAT|(trunc ? O_TRUNC : 0),
                    0644)) == -1)
     return -1;
