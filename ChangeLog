@@ -1,3 +1,23 @@
+2001-11-29 13:20  flood
+
+	* NEWS, include/modules.h, modules/mod_core.c, src/dirtree.c,
+	src/main.c: #1368 umask bug hopefully squashed for good #1389 fixed
+	hang on PWD #1355 added POST_CMD_ERR handler to API
+
+2001-11-08 12:30  flood
+
+	* NEWS, configure.in: #1113-Make.rules for HPUX incorrectly
+	generated
+
+2001-11-08 12:28  flood
+
+	* NEWS, contrib/README.mod_wrap, contrib/mod_wrap.c: new mod_wrap
+	(1.2.2) from tj
+
+2001-11-08 12:24  flood
+
+	* NEWS, modules/mod_auth.c: #1334-MaxClients none forbids connect
+
 2001-10-19 11:28  flood
 
 	* include/version.h: 1.2.4
