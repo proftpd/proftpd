@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.55 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: mod_sql.c,v 1.56 2003-08-11 06:31:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1468,13 +1468,16 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
       sstrncpy( argp, "0", sizeof(arg));
     break;
 
-  case 'c':
-    argp=arg;
-    if (get_param_int(TOPLEVEL_CONF, "Classes", FALSE) > 0)
+  case 'c': {
+    unsigned char *classes = get_param_ptr(main_server->conf, "Classes", FALSE);
+    argp = arg;
+
+    if (classes && *classes == TRUE)
       sstrncpy(argp, session.class->name, sizeof(arg));
     else
       sstrncpy(argp, "-", sizeof(arg));
     break;
+  }
 
   case 'd':
     argp = arg;
@@ -3544,7 +3547,9 @@ MODRET set_sqlauthenticate(cmd_rec * cmd) {
 		"a corresponding groups or users argument.");
   }
 
-  c = add_config_param("SQLAuthenticate", 1, (void *) authmask);
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = authmask;
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
@@ -3974,8 +3979,11 @@ static int sql_getconf(void) {
 
   memset(&cmap, 0, sizeof(cmap));
 
-  cmap.authmask = get_param_int(main_server->conf, "SQLAuthenticate", FALSE);
-  if (cmap.authmask == -1) 
+  temp_ptr = get_param_ptr(main_server->conf, "SQLAuthenticate", FALSE);
+
+  if (temp_ptr)
+    cmap.authmask = *((int *) temp_ptr);
+  else
     cmap.authmask = SQL_AUTH_GROUPS|SQL_AUTH_USERS|SQL_AUTH_GROUPSET|SQL_AUTH_USERSET;
 
   if ((negative_cache = get_param_ptr(main_server->conf, "SQLNegativeCache",
