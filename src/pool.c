@@ -355,9 +355,8 @@ struct pool *make_named_sub_pool(struct pool *p, const char *symbol)
   return new_pool;
 }
 
-struct pool *make_sub_pool(struct pool *p)
-{
-  return make_named_sub_pool(p,NULL);
+struct pool *make_sub_pool(struct pool *p) {
+  return make_named_sub_pool(p, NULL);
 }
 
 /* Initialize the pool system by creating the base permanent_pool. */
@@ -664,31 +663,35 @@ array_header *append_arrays(pool *p,
  * Generic cleanups
  */
 
-struct cleanup {
+typedef struct cleanup {
   void *data;
-  void (*plain_cleanup)(void*);
-  void (*child_cleanup)(void*);
+  void (*plain_cleanup_cb)(void *);
+  void (*child_cleanup_cb)(void *);
   struct cleanup *next;
-};
+} cleanup_t;
 
-void register_cleanup(pool *p, void *data, void (*plain_cleanup)(void*),
-                      void (*child_cleanup)(void*))
-{
-  struct cleanup *c = (struct cleanup*)palloc(p, sizeof(struct cleanup));
+void register_cleanup(pool *p, void *data, void (*plain_cleanup_cb)(void*),
+    void (*child_cleanup_cb)(void *)) {
+  cleanup_t *c = pcalloc(p, sizeof(cleanup_t));
   c->data = data;
-  c->plain_cleanup = plain_cleanup;
-  c->child_cleanup = child_cleanup;
+  c->plain_cleanup_cb = plain_cleanup_cb;
+  c->child_cleanup_cb = child_cleanup_cb;
+
+  /* Add this cleanup to the given pool's list of cleanups. */
   c->next = p->cleanups;
   p->cleanups = c;
 }
 
-void kill_cleanup(pool *p, void *data, void (*cleanup)(void*))
-{
-  struct cleanup *c = p->cleanups;
-  struct cleanup **lastp = &p->cleanups;
+void unregister_cleanup(pool *p, void *data, void (*cleanup_cb)(void *)) {
+  cleanup_t *c = p->cleanups;
+  cleanup_t **lastp = &p->cleanups;
 
-  while(c) {
-    if(c->data == data && c->plain_cleanup == cleanup) {
+  while (c) {
+    if (c->data == data && c->plain_cleanup_cb == cleanup_cb) {
+
+      /* Remove the given cleanup by pointing the previous next pointer to
+       * the matching cleanup's next pointer.
+       */
       *lastp = c->next;
       break;
     }
@@ -698,32 +701,40 @@ void kill_cleanup(pool *p, void *data, void (*cleanup)(void*))
   }
 }
 
-void run_cleanup(pool *p, void *data, void (*cleanup)(void*))
-{
+/* NOTE: unused. */
+#if 0
+void run_cleanup(pool *p, void *data, void (*cleanup_cb)(void *)) {
   block_alarms();
-  (*cleanup)(data);
-  kill_cleanup(p,data,cleanup);
+
+  /* Run the given cleanup callback. */
+  (*cleanup_cb)(data);
+
+  /* Remove it. */
+  unregister_cleanup(p, data, cleanup_cb);
+
   unblock_alarms();
 }
+#endif
 
-static void run_cleanups(struct cleanup *c)
-{
+static void run_cleanups(cleanup_t *c) {
   while(c) {
-    (*c->plain_cleanup)(c->data);
+    (*c->plain_cleanup_cb)(c->data);
     c = c->next;
   }
 }
 
-static void run_child_cleanups(struct cleanup *c)
-{
-  while(c) {
-    (*c->child_cleanup)(c->data);
+/* NOTE: these cleanup routines are currently unused.
+ * 2002-07-24
+ */
+#if 0
+static void run_child_cleanups(cleanup_t *c) {
+  while (c) {
+    (*c->child_cleanup_cb)(c->data);
     c = c ->next;
   }
 }
 
-static void cleanup_pool_for_exec(pool *p)
-{
+static void cleanup_pool_for_exec(pool *p) {
   run_child_cleanups(p->cleanups);
   p->cleanups = NULL;
 
@@ -731,48 +742,41 @@ static void cleanup_pool_for_exec(pool *p)
     cleanup_pool_for_exec(p);
 }
 
-void cleanup_for_exec(void)
-{
+void cleanup_for_exec(void) {
   block_alarms();
   cleanup_pool_for_exec(permanent_pool);
   unblock_alarms();
 }
+#endif
 
 /*
  * Files and file descriptors
  */
 
-static void fd_cleanup(void *fdv) { close ((int)fdv); }
-
-void note_cleanups_for_fd(pool *p, int fd)
-{
-  register_cleanup(p,(void*)fd,fd_cleanup,fd_cleanup);
+static void fd_cleanup_cb(void *fdv) {
+  close((int)fdv);
 }
 
-void kill_cleanups_for_fd(pool *p, int fd)
-{
-  kill_cleanup(p,(void*)fd,fd_cleanup);
+static void register_fd_cleanups(pool *p, int fd) {
+  register_cleanup(p, (void *)fd, fd_cleanup_cb, fd_cleanup_cb);
 }
 
-int popenf(pool *p, const char *name, int flg, int mode)
-{
+int popenf(pool *p, const char *name, int flags, int mode) {
   int fd;
 
   block_alarms();
-  fd = open(name,flg,mode);
-  if(fd >= 0)
-    note_cleanups_for_fd(p,fd);
+  if ((fd = open(name, flags, mode)) >= 0)
+    register_fd_cleanups(p, fd);
   unblock_alarms();
   return fd;
 }
 
-int pclosef(pool *p, int fd)
-{
+int pclosef(pool *p, int fd) {
   int res;
 
   block_alarms();
   res = close(fd);
-  kill_cleanup(p, (void*)fd, fd_cleanup);
+  unregister_cleanup(p, (void *)fd, fd_cleanup_cb);
   unblock_alarms();
   return res;
 }
@@ -781,59 +785,58 @@ int pclosef(pool *p, int fd)
  * the stream
  */
 
-static void file_cleanup(void *fpv) { fclose((FILE*)fpv); }
-static void file_child_cleanup(void *fpv)
-{ close(fileno((FILE*)fpv)); }
-
-void note_cleanups_for_file(pool *p, FILE *fp)
-{
-  register_cleanup(p,(void*)fp,file_cleanup,file_child_cleanup);
+static void file_cleanup_cb(void *fpv) {
+  fclose((FILE *)fpv);
 }
 
-FILE *pfopen(pool *p, const char *name, const char *mode)
-{
+static void file_child_cleanup_cb(void *fpv) {
+  close(fileno((FILE *) fpv));
+}
+
+void register_file_cleanups(pool *p, FILE *fp) {
+  register_cleanup(p, (void *)fp, file_cleanup_cb, file_child_cleanup_cb);
+}
+
+FILE *pfopen(pool *p, const char *name, const char *mode) {
   FILE *fd = NULL;
-  int baseFlag, desc;
+  int base_flag, desc;
 
   block_alarms();
 
-  if(*mode == 'a') {
-    baseFlag = (*(mode+1) == '+') ? O_RDWR : O_WRONLY;
-    desc = open(name, baseFlag | O_APPEND | O_CREAT,
-                S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
-    if(desc >= 0)
+  if (*mode == 'a') {
+    base_flag = (*(mode+1) == '+') ? O_RDWR : O_WRONLY;
+    desc = open(name, base_flag|O_APPEND|O_CREAT,
+       S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
+    if (desc >= 0)
       fd = fdopen(desc, mode);
-  } else {
-    fd = fopen(name, mode);
-  }
 
-  if(fd)
-    note_cleanups_for_file(p,fd);
+  } else
+    fd = fopen(name, mode);
+
+  if (fd)
+    register_file_cleanups(p, fd);
+
   unblock_alarms();
   return fd;
 }
 
-FILE *pfdopen(pool *p, int fd, const char *mode)
-{
+FILE *pfdopen(pool *p, int fd, const char *mode) {
   FILE *f;
 
   block_alarms();
-  f = fdopen(fd,mode);
-  if(f)
-    note_cleanups_for_file(p,f);
+  if ((f = fdopen(fd, mode)) != NULL)
+    register_file_cleanups(p, f);
 
   unblock_alarms();
   return f;
 }
 
-int pfclose(pool *p, FILE *fd)
-{
+int pfclose(pool *p, FILE *fd) {
   int res;
 
   block_alarms();
   res = fclose(fd);
-  kill_cleanup(p, (void*)fd, file_cleanup);
+  unregister_cleanup(p, (void *) fd, file_cleanup_cb);
   unblock_alarms();
   return res;
 }
-

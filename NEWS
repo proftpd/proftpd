@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.204 2002-07-19 21:25:25 castaglia Exp $
+$Id: NEWS,v 1.205 2002-07-24 22:20:20 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -7,6 +7,7 @@ CVS
 - Bug 1674 - Changed timing of allocation of dynamic buffer (to avoid segfaults)
              in the supplied fgetgrent() function, which is used for
              AuthGroupFiles under FreeBSD.
+- Bug 1697 - Fixed memory leak involving allocated regex_t *s and SIGHUP
 
 1.2.6rc1 - Released 2002-07-02
 ---------------------------------

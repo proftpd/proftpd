@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.90 2002-07-18 23:01:45 castaglia Exp $
+ * $Id: main.c,v 1.91 2002-07-24 22:20:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2737,6 +2737,7 @@ int main(int argc, char **argv, char **envp)
   
   /* Initialize sub-systems */
   init_alloc();
+  pr_init_regexp();
   init_log();
   init_inet();
   init_io();

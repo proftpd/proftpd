@@ -27,11 +27,11 @@
 /* Memory allocation/anti-leak system.  Yes, this *IS* stolen from Apache
  * also.  What can I say?  It makes sense, and it's safe (more overhead
  * though)
- * $Id: pool.h,v 1.8 2002-06-23 19:03:22 castaglia Exp $
+ * $Id: pool.h,v 1.9 2002-07-24 22:20:20 castaglia Exp $
  */
 
-#ifndef __POOL_H
-#define __POOL_H
+#ifndef PR_POOL_H
+#define PR_POOL_H
 
 typedef struct pool pool;
 
@@ -48,7 +48,6 @@ void pool_release_free_block_list(void);
 
 /* Clears out _everything_ in a pool, destroying any sub-pools */
 void destroy_pool(struct pool *);
-void cleanup_for_exec(void);
 
 /* allocate memory from a pool */
 void *palloc(struct pool *, int);
@@ -78,7 +77,7 @@ array_header *append_arrays(pool *, const array_header *, const array_header *);
 array_header *copy_array(pool *, const array_header *);
 array_header *copy_array_str(pool *, const array_header *);
 array_header *copy_array_hdr(pool *, const array_header *);
- 
+
 /* Alarm signals can easily interfere with the pooled memory operations,
    thus block_alarms() and unblock_alarms() provide for re-entrant
    security. */
@@ -93,12 +92,9 @@ int popenf(struct pool *, const char *, int, int);
 int pfclose(struct pool *, FILE *);
 int pclosef(struct pool *, int);
 
-
 /* Functions for cleanup handlers */
-void register_cleanup(pool *, void *, void (*plain_cleanup)(void *),
-  void (*child_cleanup)(void *));
-void kill_cleanup(pool *, void *, void (*cleanup)(void *));
-void cleanup_for_exec(void);
+void register_cleanup(pool *, void *, void (*)(void *), void (*)(void *));
+void unregister_cleanup(pool *, void *, void (*)(void *));
 
 /* minimum free bytes in a new block pool */
 
@@ -108,4 +104,4 @@ void cleanup_for_exec(void);
 long bytes_in_pool(pool *);
 long bytes_in_free_blocks(void);
 
-#endif /* __POOL_H */
+#endif /* PR_POOL_H */

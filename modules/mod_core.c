@@ -26,10 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.96 2002-07-22 23:18:51 castaglia Exp $
- *
- * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
- * 			wu-ftpd style CDPath support.
+ * $Id: mod_core.c,v 1.97 2002-07-24 22:20:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1188,17 +1185,17 @@ MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
   CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_GLOBAL);
   
   log_debug(DEBUG4, "Compiling %s regex '%s'.", type, cmd->argv[1]);
-  preg = calloc(1, sizeof(regex_t));
+  preg = pr_regexp_alloc();
   log_debug(DEBUG4, "Allocated %s regex at location %p.", type, preg);
   
-  if((ret = regcomp(preg, cmd->argv[1], REG_EXTENDED | REG_NOSUB)) != 0) {
-    char errmsg[200] = {'\0'};
+  if ((ret = regcomp(preg, cmd->argv[1], REG_EXTENDED | REG_NOSUB)) != 0) {
+    char errstr[200] = {'\0'};
 
-    regerror(ret, preg, errmsg, 200);
-    regfree(preg);
+    regerror(ret, preg, errstr, sizeof(errstr));
+    pr_regexp_free(preg);
     
-    CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"'",cmd->argv[1],
-			   "' failed regex compilation: ",errmsg,NULL));
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' failed regex "
+      "compilation: ", errstr, NULL));
   }
   
   c = add_config_param(param, 1, preg);
@@ -3121,12 +3118,12 @@ MODRET set_class(cmd_rec *cmd)
 	      n->name, n->max_connections);
   } else if (strcasecmp(cmd->argv[2], "regex") == 0) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-    preg = calloc(1, sizeof(regex_t));
+    preg = pr_regexp_alloc();
     
-    if((ret = regcomp(preg, cmd->argv[3],
+    if ((ret = regcomp(preg, cmd->argv[3],
 		      REG_EXTENDED|REG_NOSUB|REG_ICASE)) != 0) {
       regerror(ret, preg, errmsg, sizeof(errmsg));
-      regfree(preg);
+      pr_regexp_free(preg);
       
       n->preg = NULL;
       log_pri(LOG_ERR, "Failed regexp '%s' compilation: ", cmd->argv[3]);

@@ -55,23 +55,21 @@ static int inet_errno = 0;		/* Holds errno */
 /* Cleanup for inet_pool
  */
 
-static void _inet_pool_cleanup(void *ignore)
-{
+static void inet_pool_cleanup_cb(void *ignore) {
   inet_pool = NULL;
 }
 
 /* Create the private inet pool
  */
 
-static void _create_inet_pool(void)
-{
+static void _create_inet_pool(void) {
   inet_pool = make_sub_pool(permanent_pool);
 
   /* Necessary to register a cleanup, in case the whole process
    * execs and we lose our pool.
    */
 
-  register_cleanup(inet_pool,NULL,_inet_pool_cleanup,_inet_pool_cleanup);
+  register_cleanup(inet_pool, NULL, inet_pool_cleanup_cb, inet_pool_cleanup_cb);
 }
 
 /*
@@ -79,12 +77,11 @@ static void _create_inet_pool(void)
  * to free up memory.
  */
 
-void clear_inet_pool(void)
-{
-  if(!inet_pool)		/* Sanity check */
+void clear_inet_pool(void) {
+  if (!inet_pool)		/* Sanity check */
     return;
 
-  kill_cleanup(inet_pool,NULL,_inet_pool_cleanup);
+  unregister_cleanup(inet_pool, NULL, inet_pool_cleanup_cb);
   destroy_pool(inet_pool);
   inet_pool = NULL;
 }
@@ -270,7 +267,7 @@ char *inet_getname(pool *pool, p_in_addr_t *addr)
   return inet_validate(res);
 }
 
-static void _conn_cleanup(void *cv) { 
+static void conn_cleanup_cb(void *cv) { 
   conn_t *c = (conn_t*)cv;
 
   if(c->inf)
@@ -321,7 +318,7 @@ conn_t *inet_copy_connection(pool *p, conn_t *c)
   if(c->iplist)
     res->iplist = copy_array(subpool,c->iplist);
 
-  register_cleanup(res->pool,(void*)res,_conn_cleanup,_conn_cleanup);
+  register_cleanup(res->pool, (void *) res, conn_cleanup_cb, conn_cleanup_cb);
   return res;
 }
 
@@ -582,7 +579,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
   }
   
   c->listen_fd = fd;
-  register_cleanup(c->pool, (void *) c, _conn_cleanup, _conn_cleanup);
+  register_cleanup(c->pool, (void *) c, conn_cleanup_cb, conn_cleanup_cb);
   
   return c;
 }
@@ -671,7 +668,7 @@ void inet_close(pool *pool, conn_t *c)
   /* It's not necessary to close the fds or schedule IOFILEs for
    * removal, because the creator of the connection (either
    * inet_create_connection() or inet_copy_connection() will
-   * have registered a pool cleanup handler (_conn_cleanup())
+   * have registered a pool cleanup handler (conn_cleanup_cb())
    * which will do all this for us.  Simply destroy the pool
    * and all the dirty work gets done. :-)
    */

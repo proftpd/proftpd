@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.15 2002-06-25 17:35:14 castaglia Exp $
+ * $Id: conf.h,v 1.16 2002-07-24 22:20:20 castaglia Exp $
  */
 
 #ifndef __CONF_H
@@ -304,6 +304,7 @@ extern char *alloca();
 typedef struct in_addr p_in_addr_t;
 
 #include "pool.h"
+#include "regexp.h"
 #include "proftpd.h"
 #include "support.h"
 #include "sets.h"
