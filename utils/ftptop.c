@@ -25,7 +25,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.7 2002-10-18 19:43:59 castaglia Exp $
+ * $Id: ftptop.c,v 1.8 2002-10-28 16:51:51 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.8.2"
@@ -123,7 +123,7 @@ static void scan_config_file(void) {
     if (i && buf[i - 1] == '\n')
       buf[i-1] = '\0';
 
-    for (cp = buf; *cp && isspace(*cp); cp++);
+    for (cp = buf; *cp && isspace((int) *cp); cp++);
 
     if (*cp == '#' || !*cp)
       continue;
@@ -137,7 +137,7 @@ static void scan_config_file(void) {
     cp += i;
 
     /* strip whitespace */
-    while (*cp && isspace(*cp))
+    while (*cp && isspace((int) *cp))
       cp++;
 
     file = cp;

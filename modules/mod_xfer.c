@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.92 2002-10-21 17:06:10 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.93 2002-10-28 16:51:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -179,7 +179,7 @@ static unsigned long parse_max_nbytes(char *nbytes_str, char *units_str) {
   }
 
   /* make sure a number was given */
-  if (!isdigit(*nbytes_str)) {
+  if (!isdigit((int) *nbytes_str)) {
     xfer_errno = EINVAL;
     return 0;
   }

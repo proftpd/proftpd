@@ -27,7 +27,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.47 2002-10-21 17:06:11 castaglia Exp $
+ * $Id: log.c,v 1.48 2002-10-28 16:51:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -107,7 +107,8 @@ int log_xfer(int xfertime, char *remhost, off_t fsize, char *fname,
     return 0;
 
   for (i = 0; (i + 1 < sizeof(fbuf)) && fname[i] != '\0'; i++)
-    fbuf[i] = (isspace(fname[i]) || iscntrl(fname[i])) ? '_' : fname[i];
+    fbuf[i] = (isspace((int) fname[i]) || iscntrl((int) fname[i])) ? '_' :
+      fname[i];
   fbuf[i] = '\0';
 
   snprintf(buf, sizeof(buf), "%s %d %s %" PR_LU " %s %c _ %c %c %s ftp %c %s %c\n",

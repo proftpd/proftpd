@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.127 2002-10-25 16:54:04 castaglia Exp $
+ * $Id: main.c,v 1.128 2002-10-28 16:51:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -919,7 +919,7 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf) {
   /* Be pedantic (and RFC-compliant) by not allowing leading whitespace
    * in an issued FTP command.  Will this cause troubles with many clients?
    */
-  if (isspace(buf[0]))
+  if (isspace((int) buf[0]))
     return NULL;
 
   /* Nothing there...bail out.

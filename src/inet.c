@@ -125,10 +125,10 @@ char *inet_validate(char *buf) {
   
   /* Validate anything returned from a DNS.
    */
-  for(p = buf; p && *p; p++) {
+  for (p = buf; p && *p; p++) {
     /* Per RFC requirements, these are all that are valid from a DNS.
      */
-    if(!isalnum(*p) && *p != '.' && *p != '-') {
+    if (!isalnum((int) *p) && *p != '.' && *p != '-') {
       /* We set it to _ because we know that's an invalid, yet safe, option
        * for a DNS entry.
        */

@@ -26,7 +26,7 @@
 
 /* Read configuration file(s), and manage server/configuration structures.
  *
- * $Id: dirtree.c,v 1.72 2002-10-21 17:06:11 castaglia Exp $
+ * $Id: dirtree.c,v 1.73 2002-10-28 16:51:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -517,7 +517,7 @@ char *get_config_line(char *buf, size_t len) {
     
     /* trim off any leading whitespace
      */
-    for (bufp = buf; *bufp && isspace(*bufp); bufp++);
+    for (bufp = buf; *bufp && isspace((int) *bufp); bufp++);
 
     /* check for commented or blank lines at this point, and just continue on
      * to the next configuration line if found.  If not, return the 
