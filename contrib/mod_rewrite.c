@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.16 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.17 2003-11-09 21:20:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1421,12 +1421,12 @@ static void rewrite_openlog(void) {
 
   pr_signals_block();
   PRIVS_ROOT
-  res = log_openfile(rewrite_logfile, &rewrite_logfd, REWRITE_LOG_MODE);
+  res = pr_log_openfile(rewrite_logfile, &rewrite_logfd, REWRITE_LOG_MODE);
   PRIVS_RELINQUISH
   pr_signals_unblock();
 
   if (res < 0)
-    log_pri(LOG_NOTICE, MOD_REWRITE_VERSION
+    pr_log_pri(LOG_NOTICE, MOD_REWRITE_VERSION
       ": error: unable to open log file '%s': %s", rewrite_logfile,
       strerror(errno));
 
@@ -1440,8 +1440,8 @@ static void rewrite_closelog(void) {
     return;
 
   if (close(rewrite_logfd) < 0) {
-    log_pri(LOG_ERR, MOD_REWRITE_VERSION ": error closing RewriteLog '%s': %s",
-      rewrite_logfile, strerror(errno));
+    pr_log_pri(LOG_ERR, MOD_REWRITE_VERSION
+      ": error closing RewriteLog '%s': %s", rewrite_logfile, strerror(errno));
     return;
   }
 
@@ -1477,11 +1477,11 @@ static void rewrite_log(char *format, ...) {
 
   if (rewrite_logfd > 0) {
     if (write(rewrite_logfd, entry, strlen(entry)) < strlen(entry))
-      log_pri(LOG_ERR, "error writing to RewriteLog '%s': %s",
+      pr_log_pri(LOG_ERR, "error writing to RewriteLog '%s': %s",
         rewrite_logfile, strerror(errno));
 
   } else
-    log_debug(DEBUG3, MOD_REWRITE_VERSION ": %s", mesgbuf);
+    pr_log_debug(DEBUG3, MOD_REWRITE_VERSION ": %s", mesgbuf);
 
   return;
 }
@@ -1597,7 +1597,7 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
       }
     }
     if (!is_valid_var)
-      log_debug(DEBUG1, "invalid RewriteCondition variable used");
+      pr_log_debug(DEBUG1, "invalid RewriteCondition variable used");
 
     var += 2;
   }
@@ -1768,8 +1768,9 @@ MODRET set_rewritemap(cmd_rec *cmd) {
     txtmap->txt_path = pstrdup(txt_pool, mapsrc);    
 
     if (!rewrite_parse_map_txt(txtmap)) {
-      log_debug(DEBUG3, "%s: error parsing map file", cmd->argv[0]);
-      log_debug(DEBUG3, "%s: check the RewriteLog for details", cmd->argv[0]);
+      pr_log_debug(DEBUG3, "%s: error parsing map file", cmd->argv[0]);
+      pr_log_debug(DEBUG3, "%s: check the RewriteLog for details",
+        cmd->argv[0]);
     }
 
     map = (void *) txtmap;
@@ -2092,12 +2093,6 @@ static int rewrite_sess_init(void) {
 }
 
 static int rewrite_init(void) {
-
-  /* Make sure the version of proftpd is as necessary. */
-  if (PROFTPD_VERSION_NUMBER < 0x0001020702) {
-    log_pri(LOG_ERR, MOD_REWRITE_VERSION " requires proftpd 1.2.7rc2 or later");
-    exit(1);
-  }
 
   /* Allocate a pool for this module's use. */
   if (!rewrite_pool)
