@@ -150,14 +150,8 @@ AC_CHECK_FUNCS(set_auth_parameters getprpwent)
 
 dnl Checks for installation user/group
 
-if test -f /usr/xpg4/bin/id ; then
-  id_prog="/usr/xpg4/bin/id"
-else
-  id_prog=`which id`
-fi
-
-test x"$install_user" = x && install_user=`$id_prog -un`
-test x"$install_group" = x && install_group=`$id_prog -gn`
+test x"$install_user" = x && install_user=root
+test x"$install_group" = x && install_group=root
 
 AC_SUBST(install_user)
 AC_SUBST(install_group)
