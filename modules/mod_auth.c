@@ -26,19 +26,19 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.145 2003-04-15 06:22:24 castaglia Exp $
+ * $Id: mod_auth.c,v 1.146 2003-04-22 20:47:06 castaglia Exp $
  */
-
-#ifdef __CYGWIN__
-#include <windows.h>
-#include <sys/cygwin.h>
-#endif /* __CYGWIN__ */
 
 #include "conf.h"
 #include "privs.h"
 
+#ifdef __CYGWIN__
+# include <windows.h>
+# include <sys/cygwin.h>
+#endif /* __CYGWIN__ */
+
 #ifdef HAVE_REGEX_H
-#include <regex.h>
+# include <regex.h>
 #endif
 
 /* From the core module */
@@ -725,8 +725,7 @@ static void ensure_open_passwd(pool *p)
 /* Next function (the biggie) handles all authentication, setting
  * up chroot() jail, etc.
  */
-static int _setup_environment(pool *p, char *user, char *pass)
-{
+static int _setup_environment(pool *p, char *user, char *pass) {
   struct passwd *pw;
   struct stat sbuf;
   config_rec *c, *tmpc;
@@ -759,11 +758,29 @@ static int _setup_environment(pool *p, char *user, char *pass)
     goto auth_failure;
   }
 
-  /* security: other functions perform pw lookups, thus we need to make
-   * a local copy of the user just looked up
+  /* Security: other functions perform pw lookups, thus we need to make
+   * a local copy of the user just looked up.
    */
+  pw = passwd_dup(p, pw);
 
-  pw = passwd_dup(p,pw);
+#ifdef __CYGWIN__
+  /* We have to do special Windows NT voodoo with Cygwin in order to be
+   * able to switch UID/GID. More info at
+   * http://cygwin.com/cygwin-ug-net/ntsec.html#NTSEC-SETUID
+   */
+  if (GetVersion() < 0x80000000) {
+    HANDLE token;
+
+    if ((token = cygwin_logon_user((const struct passwd *) pw,
+        pass)) == INVALID_HANDLE_VALUE) {
+      log_pri(PR_LOG_NOTICE, "error setting Cygwin logon user: %s",
+        strerror(errno));
+      goto auth_failure;
+    }
+
+    cygwin_set_impersonation_token(token);
+  }
+#endif /* __CYGWIN__ */
 
   if (pw->pw_uid == 0) {
     unsigned char *root_allow = NULL;
@@ -1718,7 +1735,7 @@ MODRET auth_user(cmd_rec *cmd) {
   c->argv[0] = pstrdup(c->pool, user);
 
   origuser = user;
-  c = _auth_resolve_user(cmd->tmp_pool,&user,NULL,NULL);
+  c = _auth_resolve_user(cmd->tmp_pool, &user, NULL, NULL);
 
   login_passwd_prompt = get_param_ptr(
     (c && c->config_type == CONF_ANON) ? c->subset : main_server->conf,
@@ -1741,7 +1758,7 @@ MODRET auth_user(cmd_rec *cmd) {
       end_login(0);
     }
 
-    aclp = login_check_limits(main_server->conf,FALSE,TRUE,&i);
+    aclp = login_check_limits(main_server->conf, FALSE, TRUE, &i);
 
     if (c && c->config_type != CONF_ANON) {
       c = (config_rec *) pcalloc(session.pool, sizeof(config_rec));
@@ -1751,7 +1768,8 @@ MODRET auth_user(cmd_rec *cmd) {
     }
 
     if (c) {
-      if (!login_check_limits(c->subset,FALSE,TRUE,&i) || (!aclp && !i) ) {
+      if (!login_check_limits(c->subset, FALSE, TRUE, &i) ||
+          (!aclp && !i) ) {
         remove_config(cmd->server->conf, C_USER, FALSE);
         remove_config(cmd->server->conf, C_PASS, FALSE);
 
@@ -1773,21 +1791,6 @@ MODRET auth_user(cmd_rec *cmd) {
       end_login(0);
     }
   }
-
-#ifdef __CYGWIN__
-  /* We have to do special Windows NT voodoo with Cygwin in order to be
-   * able to switch UID/GID. More info at
-   * http://cygwin.com/cygwin-ug-net/ntsec.html#NTSEC-SETUID
-   */
-  if (GetVersion() < 0x80000000) {
-    HANDLE token;
-
-    if ((token = cygwin_logon_user(user, user->pw_passwd)))
-      goto auth_failure;
-
-    cygwin_set_impersonation_token(token);      
-  }
-#endif /* __CYGWIN__ */
 
   if (c)
     anon_require_passwd = get_param_ptr(c->subset, "AnonRequirePassword",

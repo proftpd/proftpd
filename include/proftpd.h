@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.41 2003-03-09 00:56:24 castaglia Exp $
+ * $Id: proftpd.h,v 1.42 2003-04-22 20:47:04 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -39,15 +39,12 @@
 #define FALSE				0
 #endif
 
-#define CALLBACK_FRAME			LPARAM p1,LPARAM p2,LPARAM p3,void *data
+#define CALLBACK_FRAME	\
+  unsigned long p1, unsigned long p2, unsigned long p3, void *data
+
 #define ASSERT(x)			assert(x)
 #include <assert.h>
 #define MAX_PATH_LEN			256
-
-typedef unsigned long LPARAM;   /* Longest bitsize compatible with
-                                 * a scalar and largest pointer
-                                 * (platform dependant)
-                                 */
 
 /* adjust per platform */
 /* unsigned 32 bit integer */
@@ -56,10 +53,6 @@ typedef unsigned long u_int_32;
 typedef unsigned short u_int_16;
 /* unsigned 8 bit integer */
 typedef unsigned char u_int_8;
-
-typedef unsigned char UCHAR;
-typedef unsigned int UINT;
-typedef unsigned long ULONG;
 
 typedef int (*callback_t)(CALLBACK_FRAME);
 

@@ -39,10 +39,10 @@ FCT (pattern, string, no_leading_period, flags)
      int flags;
 {
   register const CHAR *p = pattern, *n = string;
-  register UCHAR c;
+  register unsigned char c;
   int is_range;
 #ifdef _LIBC
-  const UCHAR *collseq = (const UCHAR *)
+  const unsigned char *collseq = (const unsigned char *)
     _NL_CURRENT(LC_COLLATE, CONCAT(_NL_COLLATE_COLLSEQ,SUFFIX));
 # ifdef WIDE_CHAR_VERSION
   const wint_t *names = (const wint_t *)
@@ -78,7 +78,7 @@ FCT (pattern, string, no_leading_period, flags)
 		return PR_FNM_NOMATCH;
 	      c = FOLD (c);
 	    }
-	  if (FOLD ((UCHAR) *n) != c)
+	  if (FOLD ((unsigned char) *n) != c)
 	    return PR_FNM_NOMATCH;
 	  break;
 
@@ -171,7 +171,7 @@ FCT (pattern, string, no_leading_period, flags)
 		    c = *p;
 		  c = FOLD (c);
 		  for (--p; n < endp; ++n)
-		    if (FOLD ((UCHAR) *n) == c
+		    if (FOLD ((unsigned char) *n) == c
 			&& (FCT (p, n, (no_leading_period
 					&& (n == string
 					    || (n[-1] == L('/')
@@ -213,13 +213,13 @@ FCT (pattern, string, no_leading_period, flags)
 	    c = *p++;
 	    for (;;)
 	      {
-		UCHAR fn = FOLD ((UCHAR) *n);
+		unsigned char fn = FOLD ((unsigned char) *n);
 
 		if (!(flags & PR_FNM_NOESCAPE) && c == L('\\'))
 		  {
 		    if (*p == L('\0'))
 		      return PR_FNM_NOMATCH;
-		    c = FOLD ((UCHAR) *p);
+		    c = FOLD ((unsigned char) *p);
 		    ++p;
 
 		    if (c == fn)
@@ -281,33 +281,33 @@ FCT (pattern, string, no_leading_period, flags)
 		    if ((wt & 0xf0ffff) == 0)
 		      {
 			wt >>= 16;
-			if ((__ctype_b[(UCHAR) *n] & wt) != 0)
+			if ((__ctype_b[(unsigned char) *n] & wt) != 0)
 			  goto matched;
 		      }
 #  else
 		    if (wt <= 0x800)
 		      {
-			if ((__ctype_b[(UCHAR) *n] & wt) != 0)
+			if ((__ctype_b[(unsigned char) *n] & wt) != 0)
 			  goto matched;
 		      }
 #  endif
 		    else
 # endif
-		      if (ISWCTYPE (BTOWC ((UCHAR) *n), wt))
+		      if (ISWCTYPE (BTOWC ((unsigned char) *n), wt))
 			goto matched;
 #else
-		    if ((STREQ (str, L("alnum")) && ISALNUM ((UCHAR) *n))
-			|| (STREQ (str, L("alpha")) && ISALPHA ((UCHAR) *n))
-			|| (STREQ (str, L("blank")) && ISBLANK ((UCHAR) *n))
-			|| (STREQ (str, L("cntrl")) && ISCNTRL ((UCHAR) *n))
-			|| (STREQ (str, L("digit")) && ISDIGIT ((UCHAR) *n))
-			|| (STREQ (str, L("graph")) && ISGRAPH ((UCHAR) *n))
-			|| (STREQ (str, L("lower")) && ISLOWER ((UCHAR) *n))
-			|| (STREQ (str, L("print")) && ISPRINT ((UCHAR) *n))
-			|| (STREQ (str, L("punct")) && ISPUNCT ((UCHAR) *n))
-			|| (STREQ (str, L("space")) && ISSPACE ((UCHAR) *n))
-			|| (STREQ (str, L("upper")) && ISUPPER ((UCHAR) *n))
-			|| (STREQ (str, L("xdigit")) && ISXDIGIT ((UCHAR) *n)))
+		    if ((STREQ (str, L("alnum")) && ISALNUM ((unsigned char) *n))
+			|| (STREQ (str, L("alpha")) && ISALPHA ((unsigned char) *n))
+			|| (STREQ (str, L("blank")) && ISBLANK ((unsigned char) *n))
+			|| (STREQ (str, L("cntrl")) && ISCNTRL ((unsigned char) *n))
+			|| (STREQ (str, L("digit")) && ISDIGIT ((unsigned char) *n))
+			|| (STREQ (str, L("graph")) && ISGRAPH ((unsigned char) *n))
+			|| (STREQ (str, L("lower")) && ISLOWER ((unsigned char) *n))
+			|| (STREQ (str, L("print")) && ISPRINT ((unsigned char) *n))
+			|| (STREQ (str, L("punct")) && ISPUNCT ((unsigned char) *n))
+			|| (STREQ (str, L("space")) && ISSPACE ((unsigned char) *n))
+			|| (STREQ (str, L("upper")) && ISUPPER ((unsigned char) *n))
+			|| (STREQ (str, L("xdigit")) && ISXDIGIT ((unsigned char) *n)))
 		      goto matched;
 #endif
 		    c = *p++;
@@ -315,7 +315,7 @@ FCT (pattern, string, no_leading_period, flags)
 #ifdef _LIBC
 		else if (c == L('[') && *p == L('='))
 		  {
-		    UCHAR str[1];
+		    unsigned char str[1];
 		    uint32_t nrules =
 		      _NL_CURRENT_WORD (LC_COLLATE, _NL_COLLATE_NRULES);
 		    const CHAR *startp = p;
@@ -340,7 +340,7 @@ FCT (pattern, string, no_leading_period, flags)
 
 		    if (nrules == 0)
 		      {
-			if ((UCHAR) *n == str[0])
+			if ((unsigned char) *n == str[0])
 			  goto matched;
 		      }
 		    else
@@ -355,7 +355,7 @@ FCT (pattern, string, no_leading_period, flags)
 # endif
 			const int32_t *indirect;
 			int32_t idx;
-			const UCHAR *cp = (const UCHAR *) str;
+			const unsigned char *cp = (const unsigned char *) str;
 
 			/* This #include defines a local function!  */
 # if WIDE_CHAR_VERSION
@@ -394,7 +394,7 @@ FCT (pattern, string, no_leading_period, flags)
 			    int len = weights[idx];
 # endif
 			    int32_t idx2;
-			    const UCHAR *np = (const UCHAR *) n;
+			    const unsigned char *np = (const unsigned char *) n;
 
 			    idx2 = findidx (&np);
 # if WIDE_CHAR_VERSION
@@ -625,7 +625,7 @@ FCT (pattern, string, no_leading_period, flags)
 			   documented.  */
 			uint32_t fcollseq;
 			uint32_t lcollseq;
-			UCHAR cend = *p++;
+			unsigned char cend = *p++;
 # ifdef WIDE_CHAR_VERSION
 			int idx;
 			size_t cnt;
@@ -667,7 +667,7 @@ FCT (pattern, string, no_leading_period, flags)
 			  }
 # else
 			fcollseq = collseq[fn];
-			lcollseq = is_seqval ? cold : collseq[(UCHAR) cold];
+			lcollseq = is_seqval ? cold : collseq[(unsigned char) cold];
 # endif
 
 			is_seqval = 0;
@@ -857,7 +857,7 @@ FCT (pattern, string, no_leading_period, flags)
 			   values.  This is better than comparing using
 			   `strcoll' since the latter would have surprising
 			   and sometimes fatal consequences.  */
-			UCHAR cend = *p++;
+			unsigned char cend = *p++;
 
 			if (!(flags & PR_FNM_NOESCAPE) && cend == L('\\'))
 			  cend = *p++;
@@ -956,7 +956,7 @@ FCT (pattern, string, no_leading_period, flags)
 	  break;
 
 	default:
-	  if (c != FOLD ((UCHAR) *n))
+	  if (c != FOLD ((unsigned char) *n))
 	    return PR_FNM_NOMATCH;
 	}
 
@@ -975,7 +975,6 @@ FCT (pattern, string, no_leading_period, flags)
 
 #undef FOLD
 #undef CHAR
-#undef UCHAR
 #undef FCT
 #undef STRCHR
 #undef STRCHRNUL

@@ -26,7 +26,7 @@
 
 /*
  * Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.6 2003-03-22 18:16:56 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.7 2003-04-22 20:47:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -717,7 +717,7 @@ MODRET pw_uid_name(cmd_rec *cmd) {
     } else {
       char buf[10] = {'\0'};
 
-      snprintf(buf, sizeof(buf), "%lu", (ULONG)id.uid);
+      snprintf(buf, sizeof(buf), "%lu", (unsigned long) id.uid);
       m->name = pstrdup(permanent_pool, buf);
     }
   }
@@ -746,12 +746,11 @@ MODRET pw_gid_name(cmd_rec *cmd)
     else {
       char buf[10] = {'\0'};
 
-      /* removed cast to unsigned long long here, as it presents a problem
-       * passed to snprintf because there is no ansi standard for the format
-       * string modifier used for long long (is it %llu or %Lu, etc?)
-       * jss 2/21/01
+      /* Removed cast to unsigned long long here, as it presents a problem
+       * passed to snprintf because there is no ANSI standard for the format
+       * string modifier used for long long (is it %llu or %Lu, etc).
        */
-      snprintf(buf, sizeof(buf), "%lu", (ULONG)id.gid);
+      snprintf(buf, sizeof(buf), "%lu", (unsigned long) id.gid);
       m->name = pstrdup(permanent_pool, buf);
     }
   }
