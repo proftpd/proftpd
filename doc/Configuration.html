@@ -35,6 +35,7 @@
   <li><a href="#DefaultChdir">DefaultChdir</a></li>
   <li><a href="#DefaultRoot">DefaultRoot</a></li>
   <li><a href="#DefaultServer">DefaultServer</a></li>
+  <li><a href="#DefaultTransferMode">DefaultTransferMode</a></li>
   <li><a href="#DeferWelcome">DeferWelcome</a></li>
   <li><a href="#Deny">Deny</a></li>
   <li><a href="#DenyAll">DenyAll</a></li>
@@ -47,6 +48,7 @@
   <li><a href="#DirFakeUser">DirFakeUser</a></li>
   <li><a href="#DisplayConnect">DisplayConnect</a></li>
   <li><a href="#DisplayFirstChdir">DisplayFirstChdir</a></li>
+  <li><a href="#DisplayGoAway">DisplayGoAway</a></li>
   <li><a href="#DisplayLogin">DisplayLogin</a></li>
   <li><a href="#DisplayQuit">DisplayQuit</a></li>
   <li><a href="#DisplayReadme">DisplayReadme</a></li>
@@ -94,6 +96,7 @@
   <li><a href="#ServerIdent">ServerIdent</a></li>
   <li><a href="#ServerName">ServerName</a></li>
   <li><a href="#ServerType">ServerType</a></li>
+  <li><a href="#ShowDotFiles">ShowDotFiles</a></li>
   <li><a href="#ShowSymlinks">ShowSymlinks</a></li>
   <li><a href="#SocketBindTight">SocketBindTight</a></li>
   <li><a href="#SyslogFacility">SyslogFacility</a></li>
@@ -198,7 +201,7 @@ href="reference.html#Limit">&lt;Limit&gt;</a> block. Although proftpd's default
 <p>Example:</p>
 <p><code># Only allow commands containing alphanumeric characters and whitespace<br>
   AllowFilter &quot;.*/[a-zA-Z0-9 ]+$&quot;</code></p>
-<p>See Also: <a href="#DenyFilter">DenyFilter</a></p>
+<p><strong>See Also:</strong> <a href="#DenyFilter">DenyFilter</a></p>
 <hr>
 <h2><a name="AllowForeignAddress">AllowForeignAddress</a></h2>
 <p><strong>Syntax:</strong> AllowForeignAddress <em>on|off</em><br>
@@ -234,7 +237,7 @@ href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em><strong>group-expres
   access to the block. The expression is parsed as a boolean &quot;and&quot; list, 
   meaning that ALL elements of the expression must evaluate to logically true 
   in order for the explicit allow to apply.</p>
-<p>See Also: <a href="#DenyGroup">DenyGroup</a>, <a href="#DenyUser">DenyUser</a>, 
+<p><strong>See Also:</strong> <a href="#DenyGroup">DenyGroup</a>, <a href="#DenyUser">DenyUser</a>, 
   <a href="#AllowUser">AllowUser</a></p>
 <hr>
 <h2><a name="AllowUser">AllowUser</a></h2>
@@ -251,7 +254,7 @@ href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em><strong>group-expres
   The expression is parsed as a boolean &quot;and&quot; list, meaning that ALL 
   elements of the expression must evaluate to logically true in order to the explicit 
   allow to apply.</p>
-<p>See also: <a href="#DenyUser">DenyUser</a>, <a href="#DenyGroup">DenyGroup</a>, 
+<p><strong>See Also:</strong> <a href="#DenyUser">DenyUser</a>, <a href="#DenyGroup">DenyGroup</a>, 
   <a href="#AllowGroup">AllowGroup</a></p>
 <hr>
 <h2><a name="AllowOverwrite">AllowOverwrite</a></h2>
@@ -638,6 +641,15 @@ href="#VirtualHost">&lt;VirtualHost&gt;</a> configuration block. Normally such
   destination connections are serviced by the default server. Only a single server 
   configuration can be set to default.</p>
 <hr>
+<h2><a name="DefaultTransferMode">DefaultTransferMode</a></h2>
+<p><strong>Syntax:</strong> DefaultTransferMode <em>ascii|binary</em><br>
+  <strong>Default:</strong> <code>DefaultTransferMode ascii</code><br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
+  <strong>Compatibility:</strong> 1.2.0pre9 and later</p>
+<p>DefaultTransferMode sets the default transfer mode of the server.  By default, 
+  carriage-return/linefeed translation will be performed (ASCII mode).
+</p>
+<hr>
 <h2><a name="DeferWelcome">DeferWelcome</a></h2>
 <p><strong>Syntax:</strong> DeferWelcome <em>on|off</em><br>
   <strong>Default:</strong> <code>DeferWelcome off</code><br>
@@ -695,7 +707,7 @@ href="reference.html#AllowAll">AllowAll</a> are mutually exclusive.</p>
 <p>Example:</p>
 <p><code># We don't want to allow any commands with % being sent to the server<br>
   DenyFilter &quot;%&quot;</code></p>
-<p>See Also: <a href="#AllowFilter">AllowFilter</a></p>
+<p><strong>See Also:</strong> <a href="#AllowFilter">AllowFilter</a></p>
 <hr>
 <h2><a name="DenyGroup">DenyGroup</a></h2>
 <p><strong>Syntax:</strong> DenyGroup <em>group-expression</em><br>
@@ -711,7 +723,7 @@ href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em><strong>group-expres
   access to the block. The expression is parsed as a boolean &quot;and&quot; list, 
   meaning that ALL elements of the expression must evaluate to logically true 
   in order for the explicit deny to apply.</p>
-<p>See Also: <a href="#AllowGroup">AllowGroup</a>, <a href="#AllowUser">AllowUser</a>, 
+<p><strong>See Also:</strong> <a href="#AllowGroup">AllowGroup</a>, <a href="#AllowUser">AllowUser</a>, 
   <a href="#DenyUser">DenyUser</a></p>
 <hr>
 <h2><a name="DenyUser">DenyUser</a></h2>
@@ -727,7 +739,7 @@ href="#Limit">&lt;Limit&gt;</a> block it is applied to. <em> <strong>user-expres
   list, meaning that all elements of the expression must evaluate to logically 
   true in order for the explicit deny to apply.</a></p>
 <a> 
-<p>See also: <a href="#AllowUser">AllowUser</a>, <a href="#DenyGroup">DenyGroup</a>, 
+<p><strong>See Also:</strong> <a href="#AllowUser">AllowUser</a>, <a href="#DenyGroup">DenyGroup</a>, 
   <a href="#AllowGroup">AllowGroup</a></p>
 <hr>
 <h2><a name="Directory">&lt;Directory&gt;</a></h2>
@@ -829,7 +841,7 @@ href="#DirFakeUser"><strong>DirFakeUser</strong></a><strong> are completely cosm
   <strong>Default:</strong> None<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Global&gt;<br>
   <strong>Compatibility:</strong> 1.2.0pre2 and later</p>
-<p>The DisplayConnect directive configures an ascii text filename which will be 
+<p>The DisplayConnect directive configures an ASCII text filename which will be 
   displayed to the user when they initially connect but before they login. The 
   filename can be either relative or absolute. In the case of a relative filename, 
   the file is searched for starting in the home directory of the user the server 
@@ -848,7 +860,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>: %T, %F, %R, %L and %u (see <a h
   &lt;Directory&gt;, &lt;Global&gt;<br>
   <strong>Compatibility:</strong> 0.99.0 and later, magic cookies only in 0.99.0pl10 
   and later</p>
-<p>The DisplayFirstChdir directive configures an ascii text filename which will 
+<p>The DisplayFirstChdir directive configures an ASCII text filename which will 
   be displayed to the user the first time they change into a directory (via CWD) 
   per a given session. The file will also be displayed if proftpd detects that 
   it's last modification time has changed since the previoius CWD into a given 
@@ -925,13 +937,26 @@ href="reference.html#Anonymous"><u>&lt;Anonymous&gt;</u></a><u>), the file must
 <p><strong>NOTE:</strong> not all of these may have a rational value, depending 
   on the context in which they're used (e.g., %u if ident lookups are off).</p>
 <hr>
+<h2><a name="DisplayGoAway">DisplayGoAway</a></h2>
+<p><strong>Syntax:</strong> DisplayGoAway <em>filename</em><br>
+  <strong>Default:</strong> None<br>
+  <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
+  &lt;Global&gt;<br>
+  <strong>Compatibility:</strong> 1.2.0pre8 and later</p>
+<p>The DisplayGoAway directive specifies an ASCII text filename which will be 
+  displayed to the user if the class they're a member of has too many users logged
+  in and their login request has been denied.</p>
+<p>DisplayGoAway supports the same &quot;magic cookies&quot; as <a
+href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
+<p><strong>See Also:</strong> <a href="#DisplayFirstChdir">DisplayFirstChdir</a></p>
+<hr>
 <h2><a name="DisplayLogin">DisplayLogin</a></h2>
 <p><strong>Syntax:</strong> DisplayLogin <em>filename</em><br>
   <strong>Default:</strong> None<br>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
   &lt;Global&gt;<br>
   <strong>Compatibility:</strong> 0.99.0 and later</p>
-<p>The DisplayLogin directive configures an ascii text filename which will be 
+<p>The DisplayLogin directive configures an ASCII text filename which will be 
   displayed to the user when they initially login. The filename can be either 
   relative or absolute. In the case of a relative filename, the file is searched 
   for in the initial directory a user is placed in immediately after login (home 
@@ -949,7 +974,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
   <strong>Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, 
   &lt;Global&gt;<br>
   <strong>Compatibility:</strong> 1.2.0pre8 and later</p>
-<p>DisplayQuit configures an ascii text filename which will be displayed to the 
+<p>DisplayQuit configures an ASCII text filename which will be displayed to the 
   user when they quit. The filename can be either relative or absolute. In the 
   case of a relative filename, the file is searched for in current directory a 
   user is in when they logout -- for this reason, a absolute filename is usually 
@@ -1016,7 +1041,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
 <p>For example, to log all read and write operations to /var/log/ftp.log (using 
   the default format), you could:</p>
 <p><code>ExtendedLog /var/log/ftp.log read,write</code></p>
-<p>See also: <a href="#LogFormat">LogFormat</a>, <a href="#TransferLog">TransferLog</a></p>
+<p><strong>See Also:</strong> <a href="#LogFormat">LogFormat</a>, <a href="#TransferLog">TransferLog</a></p>
 <hr>
 <h2><a name="Global">&lt;Global&gt;</a></h2>
 <p><strong>Syntax:</strong> &lt;Global&gt;<br>
@@ -1068,7 +1093,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>.</p>
   cleartext password which has been passed through the standard unix crypt() library 
   function. <strong>Extreme care should be taken when using GroupPassword, as 
   serious security problems may arise if group membership is not carefully controlled.</strong></p>
-<p>See Also: <a href="#UserPassword">UserPassword</a></p>
+<p><strong>See Also:</strong> <a href="#UserPassword">UserPassword</a></p>
 <hr>
 <h2><a name="HiddenStor">HiddenStor</a></h2>
 <p><strong>Syntax:</strong> HiddenStor <em>on|off</em><br>
@@ -1098,7 +1123,7 @@ href="reference.html#Anonymous">Anonymous&gt;</a> block to hide all directory
   be operated on via other FTP commands (CWD, DELE, RETR, etc). This behavior 
   can be modified via the <a
 href="reference.html#IgnoreHidden">IgnoreHidden</a> directive.</p>
-<p>See also: <a href="reference.html#HideUser">HideUser</a>, <a
+<p><strong>See Also:</strong> <a href="reference.html#HideUser">HideUser</a>, <a
 href="reference.html#HideNoAccess">HideNoAccess</a>, <a
 href="reference.html#IgnoreHidden">IgnoreHidden</a></p>
 <hr>
@@ -1118,7 +1143,7 @@ href="reference.html#Anonymous">&lt;Anonymous&gt;</a> block to hide all director
   object. The directory or file can be made completely invisible to all FTP commands 
   by applying <a href="reference.html#IgnoreHidden">IgnoreHidden</a> in conjunction 
   with HideNoAccess.</p>
-<p>See also: <a href="reference.html#HideUser">HideUser</a>, <a
+<p><strong>See Also:</strong> <a href="reference.html#HideUser">HideUser</a>, <a
 href="reference.html#HideGroup">HideGroup</a>, <a
 href="reference.html#IgnoreHidden">IgnoreHidden</a></p>
 <hr>
@@ -1135,7 +1160,7 @@ href="reference.html#Anonymous">Anonymous&gt;</a> block to hide all directory
   be seen via LIST or NLST commands but <strong>can</strong> be operated on via 
   other FTP commands (CWD, DELE, RETR, etc). This behavior can be modified via 
   the <a href="reference.html#IgnoreHidden">IgnoreHidden</a> directive.</p>
-<p>See also: <a href="reference.html#HideGroup">HideGroup</a>, <a
+<p><strong>See Also:</strong> <a href="reference.html#HideGroup">HideGroup</a>, <a
 href="reference.html#HideNoAccess">HideNoAccess</a>, <a
 href="reference.html#IgnoreHidden">IgnoreHidden</a></p>
 <hr>
@@ -1228,7 +1253,7 @@ href="reference.html#Limit">&lt;Limit&gt;</a> block to completely ignore any hid
   access permission. While limits can be used to restrict a command on a certain 
   directory, they cannot be used to override the file permissions inherent to 
   the base operating/file system.</p>
-<p>See also: <a href="reference.html#IgnoreHidden">IgnoreHidden</a></p>
+<p><strong>See Also:</strong> <a href="reference.html#IgnoreHidden">IgnoreHidden</a></p>
 <hr>
 <h2><a name="LDAPDN">LDAPDN</a></h2>
 <p><strong>Syntax:</strong> LDAPDN <em>"ldap-dn"</em><br>
@@ -1376,7 +1401,7 @@ href="reference.html#Limit">&lt;Limit&gt;</a> block to completely ignore any hid
       <td>Local authenticated userid</td>
     </tr>
   </table>
-  <p>See also: <a href="#ExtendedLog">ExtendedLog</a>, <a href="#TransferLog">TransferLog</a></p>
+  <p><strong>See Also:</strong> <a href="#ExtendedLog">ExtendedLog</a>, <a href="#TransferLog">TransferLog</a></p>
   <hr>
   <h2><a name="LoginPasswordPrompt">LoginPasswordPrompt</a></h2>
   <p><strong>Syntax:</strong> LoginPasswordPrompt <em>on|off</em><br>
@@ -1791,6 +1816,17 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
       the newly connected client.</li>
   </ul>
   <hr>
+  <h2><a name="ShowDotFiles">ShowDotFiles</a></h2>
+  <p><strong>Syntax:</strong> ShowDotFiles <em>on|off</em><br>
+    <strong>Default:</strong><code>ShowDotFiles Off</code><strong><br>
+    Context:</strong> server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;<strong><br>
+    Compatibility:</strong> 0.99.0pl6 and later -- <strong>Deprecated</strong></p>
+  <p>If set to <code>on</code>, files starting with a '.' will be displayed in 
+    directory listings.  This directive has been deprecated in favor of 
+    <a href="#LsDefaultOptions">LsDefaultOptions</a> -- e.g., <code>LsDefaultOptions
+     "-a"</code> -- and may be removed in future versions.</p>
+  <p><strong>See Also:</strong> <a href="#LsDefaultOptions">LsDefaultOptions</a></p>
+  <hr>
   <h2><a name="ShowSymlinks">ShowSymlinks</a></h2>
   <p><strong>Syntax:</strong> ShowSymlinks <em>on|off</em><br>
     <strong>Default: (versions previous to 1.1.5) </strong><code>Off for anonymous 
@@ -1871,7 +1907,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
     following: <strong>AUTH</strong> (or <strong>AUTHPRIV</strong>)<strong>, CRON, 
     DAEMON, KERN, LPR, MAIL, NEWS, USER, UUCP, LOCAL0, LOCAL1, LOCAL2, LOCAL3, 
     LOCAL4, LOCAL5, LOCAL6 or LOCAL7.</strong></p>
-  <p>See also: <a href="#SystemLog">SystemLog</a></p>
+  <p><strong>See Also:</strong> <a href="#SystemLog">SystemLog</a></p>
   <hr>
   <h2><a name="SystemLog"><strong>SystemLog</strong></a></h2>
   <p><strong>Syntax:</strong> SystemLog <em>filename|NONE</em><br>
@@ -1979,7 +2015,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
     properly disconnected (the remote network may have become disconnected from 
     the Internet, etc) will cause a child server to never exit (at least not for 
     a considerable period of time) until manually killed</p>
-  <p>See also: <a href="reference.html#TimeoutLogin">TimeoutLogin</a>, <a href="reference.html#TimeoutNoTransfer">TimeoutNoTransfer</a></p>
+  <p><strong>See Also:</strong> <a href="reference.html#TimeoutLogin">TimeoutLogin</a>, <a href="reference.html#TimeoutNoTransfer">TimeoutNoTransfer</a></p>
   <hr>
   <h2><a name="TimeoutLogin">TimeoutLogin</a></h2>
   <p><strong>Syntax:</strong> TimeoutLogin <em>seconds</em><br>
@@ -1990,7 +2026,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
     is allowed to spend authenticating. The login timer is not reset when a client 
     transmits data, and is only removed once a client has transmitted an acceptable 
     USER/PASS command combination.</p>
-  <p>See Also: <a href="reference.html#TimeoutIdle">TimeoutIdle</a>, <a href="reference.html#TimeoutNoTransfer">TimeoutNoTransfer</a></p>
+  <p><strong>See Also:</strong> <a href="reference.html#TimeoutIdle">TimeoutIdle</a>, <a href="reference.html#TimeoutNoTransfer">TimeoutNoTransfer</a></p>
   <hr>
   <h2><a name="TimeoutNoTransfer">TimeoutNoTransfer</a></h2>
   <p><strong>Syntax:</strong> TimeoutNoTransfer <em>seconds</em><br>
@@ -2001,7 +2037,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
     a client is allowed to spend connected, after authentication, without issuing 
     a command which results in creating an active or passive data connection (i.e. 
     sending/receiving a file, or receiving a directory listing).</p>
-  <p>See Also: <a href="reference.html#TimeoutIdle">TimeoutIdle</a>, <a href="reference.html#TimeoutLogin">TimeoutLogin</a></p>
+  <p><strong>See Also:</strong> <a href="reference.html#TimeoutIdle">TimeoutIdle</a>, <a href="reference.html#TimeoutLogin">TimeoutLogin</a></p>
   <hr>
   <h2><a name="TimeoutStalled">TimeoutStalled</a></h2>
   <p><strong>Syntax:</strong> TimeoutStalled <em>seconds</em><br>
@@ -2026,7 +2062,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
   <p>Additionally, the special keyword <strong><em>NONE</em></strong> can be used, 
     which disables wu-ftpd style transfer logging for the context in which the 
     directive is used (<em>only applicable to version 1.1.7 and later</em>).</p>
-  <p>See also: <a href="#ExtendedLog">ExtendedLog, </a><a href="#LogFormat">LogFormat</a></p>
+  <p><strong>See Also:</strong> <a href="#ExtendedLog">ExtendedLog, </a><a href="#LogFormat">LogFormat</a></p>
   <hr>
   <h2><a name="Umask">Umask</a></h2>
   <p><strong>Syntax:</strong> Umask <em>file octal-mask</em> [<em>directory octal-mask]</em><br>
@@ -2146,7 +2182,7 @@ href="#DisplayFirstChdir">DisplayFirstChdir</a>).</p>
     which has been passed through the standard unix crypt() function. <strong>Do 
     NOT use a cleartext password.</strong> This can be useful when combined with 
     UserAlias to provide multiple logins to an Anonymous FTP site.</p>
-  <p>See Also: <a href="#GroupPassword">GroupPassword</a></p>
+  <p><strong>See Also:</strong> <a href="#GroupPassword">GroupPassword</a></p>
   <hr>
   <h2><a name="VirtualHost">&lt;VirtualHost&gt;</a></h2>
   <p><strong>Syntax:</strong> &lt;VirtualHost <em>address</em>&gt;<br>
