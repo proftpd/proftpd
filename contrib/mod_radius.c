@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.12 2003-01-08 20:44:25 castaglia Exp $
+ * $Id: mod_radius.c,v 1.13 2003-01-24 06:52:27 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.7rc7"
@@ -2223,7 +2223,7 @@ static void radius_child_exit(void) {
   return; 
 }
 
-static void radius_rehash(void *data) {
+static void radius_rehash_cb(void *data) {
 
   /* Re-allocate the pool used by this module. */
   if (radius_pool)
@@ -2336,7 +2336,7 @@ static int radius_init(void) {
   radius_pool = make_sub_pool(permanent_pool);
 
   /* Register a rehash handler, to cleanup the pool. */
-  pr_rehash_register_handler(radius_rehash, NULL);
+  pr_rehash_register_handler(NULL, radius_rehash_cb);
 
   return 0;
 }
