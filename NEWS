@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.412 2003-03-25 05:52:06 castaglia Exp $
+$Id: NEWS,v 1.413 2003-03-28 21:17:21 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -89,6 +89,9 @@ CVS
   making the memory footprint a little smaller.  The caching behavior of
   the underlying memory allocator cannot be changed, though.
 - Bug 1997 - UnixWare 7.1.3 & port 20.
+- Bug 1998 - Add ListOptions for setting limits on -R listings.  New
+  keywords have been added to the ListOptions directive: maxdepth, maxdirs,
+  and maxfiles.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------

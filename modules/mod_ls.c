@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.88 2003-03-25 10:41:35 cyberrobo Exp $
+ * $Id: mod_ls.c,v 1.89 2003-03-28 21:17:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -37,14 +37,14 @@
 #define MAP_UID(x)	(fakeuser ? fakeuser : auth_uid_name(cmd->tmp_pool,(x)))
 #define MAP_GID(x)	(fakegroup ? fakegroup : auth_gid_name(cmd->tmp_pool,(x)))
 
-static void addfile(cmd_rec*,const char *, const char *, time_t);
-static int outputfiles(cmd_rec*);
+static void addfile(cmd_rec *, const char *, const char *, time_t);
+static int outputfiles(cmd_rec *);
 
-static int listfile(cmd_rec*, pool*, const char *name);
-static int listdir(cmd_rec*, pool*, const char *name);
+static int listfile(cmd_rec *, pool *, const char *);
+static int listdir(cmd_rec *, pool *, const char *);
 
 static int matches = 0;
-static unsigned char strict_list_opts = FALSE;
+static unsigned char list_strict_opts = FALSE;
 static char *list_options = NULL;
 static unsigned char list_show_symlinks = TRUE, list_times_gmt = TRUE;
 static unsigned char show_symlinks_hold;
@@ -56,6 +56,16 @@ static int ls_errno = 0;
 static time_t ls_curtime = 0;
 
 static unsigned char use_globbing = TRUE;
+
+/* Directory listing limits */
+struct list_limit_rec {
+  unsigned int curr, max;
+  unsigned char logged;
+};
+
+static struct list_limit_rec list_ndepth;
+static struct list_limit_rec list_ndirs;
+static struct list_limit_rec list_nfiles;
 
 /* ls options */
 static int
@@ -147,7 +157,7 @@ static void pop_cwd(char *_cwd, unsigned char *symhold) {
 }
 
 static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
-  int ret, canon = 0;
+  int res, canon = 0;
   char *fullpath;
   mode_t *fake_mode = NULL;
 
@@ -162,9 +172,9 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
     fullpath = pstrdup(p, path);
 
   if (canon)
-    ret = dir_check_canon(p,cmd->argv[0],cmd->group,fullpath,hidden);
+    res = dir_check_canon(p, cmd->argv[0], cmd->group, fullpath, hidden);
   else
-    ret = dir_check(p,cmd->argv[0],cmd->group,fullpath,hidden);
+    res = dir_check(p, cmd->argv[0], cmd->group, fullpath, hidden);
 
   if (session.dir_config) {
     unsigned char *tmp = get_param_ptr(session.dir_config->subset,
@@ -181,21 +191,20 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
   } else
     have_fake_mode = FALSE;
 
-  return ret;
+  return res;
 }
 
 static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden) {
-  int ret;
+  int res = 0;
   char fullpath[MAXPATHLEN + 1] = {'\0'};
   mode_t *fake_mode = NULL;
 
-  /* no need to process dotdirs
-   */
+  /* No need to process dotdirs. */
   if (is_dotdir(path))
     return 1;
 
   if (*path == '~')
-    return ls_perms_full(p,cmd,path,hidden);
+    return ls_perms_full(p, cmd, path, hidden);
 
   if (*path != '/')
     pr_fs_clean_path(pdircat(p, pr_fs_getcwd(), path, NULL), fullpath,
@@ -203,7 +212,7 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden) {
   else
     pr_fs_clean_path(path, fullpath, MAXPATHLEN);
 
-  ret = dir_check(p,cmd->argv[0],cmd->group,fullpath,hidden);
+  res = dir_check(p, cmd->argv[0], cmd->group, fullpath, hidden);
 
   if (session.dir_config) {
     unsigned char *tmp = get_param_ptr(session.dir_config->subset,
@@ -220,11 +229,10 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden) {
   } else
     have_fake_mode = FALSE;
 
-  return ret;
+  return res;
 }
 
-/* sendline() now has an internal buffer, to help speed up LIST output.
- */
+/* sendline() now has an internal buffer, to help speed up LIST output. */
 static int sendline(char *fmt, ...) {
   static char listbuf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   va_list msg;
@@ -269,16 +277,28 @@ static char months[12][4] =
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 
 static int listfile(cmd_rec *cmd, pool *p, const char *name) {
-  int		rval = 0, len;
-  time_t	mtime;
-  char		m[1024] = {'\0'},l[1024] = {'\0'};
-  struct	stat st;
+  int rval = 0, len;
+  time_t mtime;
+  char m[1024] = {'\0'},l[1024] = {'\0'};
+  struct stat st;
+  struct tm *t = NULL;
+  char suffix[2];
+  int hidden = 0;
 
-  struct	tm *t;
-  char		suffix[2];
-  int           hidden = 0;
+  if (list_nfiles.curr && list_nfiles.max &&
+      list_nfiles.curr >= list_nfiles.max) {
 
-  if (!p) p = cmd->tmp_pool;
+    if (!list_nfiles.logged) {
+      log_debug(DEBUG8, "ListOptions maxfiles (%u) reached", list_nfiles.max);
+      list_nfiles.logged = TRUE;
+    }
+ 
+    return 2;
+  }
+  list_nfiles.curr++;
+
+  if (!p)
+    p = cmd->tmp_pool;
 
   if (pr_fsio_lstat(name, &st) == 0) {
     suffix[0] = suffix[1] = '\0';
@@ -467,11 +487,8 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
       }
 
     } else {
-      if (S_ISREG(st.st_mode) ||
-         S_ISDIR(st.st_mode) ||
-         S_ISLNK(st.st_mode))
-           addfile(cmd,name,suffix,mtime);
-
+      if (S_ISREG(st.st_mode) || S_ISDIR(st.st_mode) || S_ISLNK(st.st_mode))
+           addfile(cmd, name, suffix, mtime);
     }
   }
 
@@ -794,13 +811,38 @@ static char **sreaddir(const char *dirname, const int sort) {
   return p;
 }
 
-/* listdir required chdir first */
+/* This listdir() requires a chdir() first. */
 static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
   char **dir;
   int dest_workp = 0;
   config_rec *c = NULL;
   unsigned char ignore_hidden = FALSE;
   register unsigned int i = 0;
+
+  if (list_ndepth.curr && list_ndepth.max &&
+      list_ndepth.curr >= list_ndepth.max) {
+
+    if (!list_ndepth.logged) {
+      /* Don't forget to take away the one we add to maxdepth internally. */
+      log_debug(DEBUG8, "ListOptions maxdepth (%u) reached",
+        list_ndepth.max - 1);
+      list_ndepth.logged = TRUE;
+    }
+ 
+    return 1;
+  }
+
+  if (list_ndirs.curr && list_ndirs.max &&
+      list_ndirs.curr >= list_ndirs.max) {
+
+    if (!list_ndirs.logged) {
+      log_debug(DEBUG8, "ListOptions maxdirs (%u) reached", list_ndirs.max);
+      list_ndirs.logged = TRUE;
+    }
+
+    return 1;
+  }
+  list_ndirs.curr++;
 
   if (XFER_ABORTED)
     return -1;
@@ -849,19 +891,24 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
 
         } else {
 
-          /* Make sure IgnoreHidden is properly honored.  "." and
-           * ".." are not to be treated as hidden files, though.
+          /* Make sure IgnoreHidden is properly honored. "." and * ".." are
+           * not to be treated as hidden files, though.
            */
           if (is_dotdir(*s) || !ignore_hidden)
-            d = listfile(cmd,workp,*s);
+            d = listfile(cmd, workp, *s);
         }
 
       } else {
-        d = listfile(cmd,workp,*s);
+        d = listfile(cmd, workp, *s);
       }
 
-      if (!d)
+      if (d == 0)
         *s = NULL;
+
+      else if (d == 2) {
+        *s = NULL;
+        break;
+      }
 
       s++;
     }
@@ -896,11 +943,35 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
        */
       pr_signals_handle();
 
+      if (list_ndirs.curr && list_ndirs.max &&
+          list_ndirs.curr >= list_ndirs.max) {
+
+        if (!list_ndirs.logged) {
+          log_debug(DEBUG8, "ListOptions maxdirs (%u) reached", list_ndirs.max);
+          list_ndirs.logged = TRUE;
+        }
+
+        break;
+      }
+
+      if (list_nfiles.curr && list_nfiles.max &&
+          list_nfiles.curr >= list_nfiles.max) {
+
+        if (!list_nfiles.logged) {
+          log_debug(DEBUG8, "ListOptions maxfiles (%u) reached",
+            list_nfiles.max);
+          list_nfiles.logged = TRUE;
+        }
+
+        break;
+      }
+
       push_cwd(cwd_buf, &symhold);
 
       if (*r && ls_perms_full(workp, cmd, (char *) *r, NULL) &&
           !pr_fsio_chdir_canon(*r, !opt_L && list_show_symlinks)) {
         char *subdir;
+        int res = 0;
 
         if (strcmp(name,".") == 0)
           subdir = *r;
@@ -921,9 +992,15 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
           return -1;
         }
 
-        if (listdir(cmd, workp, subdir) < 0) {
-          pop_cwd(cwd_buf, &symhold);
+        list_ndepth.curr++;
+        res = listdir(cmd, workp, subdir);
+        list_ndepth.curr--;
+        pop_cwd(cwd_buf, &symhold);
 
+        if (res > 0) {
+          break;
+
+        } else if (res < 0) {
           if (dest_workp)
             destroy_pool(workp);
 
@@ -937,8 +1014,6 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
 
           return -1;
         }
-
-        pop_cwd(cwd_buf, &symhold);
       }
       r++;
     }
@@ -961,7 +1036,9 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
 static void ls_terminate(void) {
   if (!opt_STAT) {
     discard_output();
-    if (!XFER_ABORTED) {  /* an error has occured, other than client ABOR */
+
+    if (!XFER_ABORTED) {
+      /* An error has occured, other than client ABOR */
       if (ls_errno)
         pr_data_abort(ls_errno,FALSE);
       else
@@ -1118,12 +1195,11 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
   matches = 0;
   ls_curtime = time(NULL);
 
-  if (clearflags) {
-    opt_a = opt_C = opt_d = opt_F = opt_n = opt_r = opt_R = opt_t = opt_STAT = 0;
-    opt_L = 0;
-  }
+  if (clearflags)
+    opt_a = opt_C = opt_d = opt_F = opt_n = opt_r = opt_R =
+      opt_t = opt_STAT = opt_L = 0;
 
-  if (!strict_list_opts) {
+  if (!list_strict_opts) {
     parse_list_opts(&arg, &glob_flags, FALSE);
 
   } else {
@@ -1229,7 +1305,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
           }
 
           if (opt_d || !(S_ISDIR(target_mode))) {
-            if (listfile(cmd,NULL,*path) < 0) {
+            if (listfile(cmd, NULL, *path) < 0) {
               ls_terminate();
               if (use_globbing)
                 pr_fs_globfree(&g);
@@ -1270,10 +1346,18 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
           push_cwd(cwd_buf, &symhold);
 
           if (!pr_fsio_chdir_canon(*path, !opt_L && list_show_symlinks)) {
-            int ret = listdir(cmd, NULL, *path);
+            int res = 0;
+
+            list_ndepth.curr++;
+            res = listdir(cmd, NULL, *path);
+            list_ndepth.curr--;
+
             pop_cwd(cwd_buf, &symhold);
 
-            if (ret < 0) {
+            if (res > 0) {
+              break;
+
+            } else if (res < 0) {
               ls_terminate();
               if (use_globbing)
                 pr_fs_globfree(&g);
@@ -1321,10 +1405,12 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
         }
 
       } else {
+        list_ndepth.curr++;
         if (listdir(cmd, NULL, ".") < 0) {
           ls_terminate();
           return -1;
         }
+        list_ndepth.curr--;
       }
     }
 
@@ -1337,11 +1423,10 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
   return 0;
 }
 
-/* display listing of a single file, no permission checking is done.
- * error is only returned if the data connection cannot be opened
- * or is aborted.
+/* Display listing of a single file, no permission checking is done.
+ * An error is only returned if the data connection cannot be opened or is
+ * aborted.
  */
-
 static int nlstfile(cmd_rec *cmd, const char *file) {
   int res = 0;
 
@@ -1380,6 +1465,31 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   mode_t mode;
   config_rec *c = NULL;
   unsigned char ignore_hidden = FALSE;
+
+  if (list_ndepth.curr && list_ndepth.max &&
+      list_ndepth.curr >= list_ndepth.max) {
+
+    if (!list_ndepth.logged) {
+      /* Don't forget to take away the one we add to maxdepth internally. */
+      log_debug(DEBUG8, "ListOptions maxdepth (%u) reached",
+        list_ndepth.max - 1);
+      list_ndepth.logged = TRUE;
+    }
+
+    return 0;
+  }
+
+  if (list_ndirs.curr && list_ndirs.max &&
+      list_ndirs.curr >= list_ndirs.max) {
+
+    if (!list_ndirs.logged) {
+      log_debug(DEBUG8, "ListOptions maxdirs (%u) reached", list_ndirs.max);
+      list_ndirs.logged = TRUE;
+    }
+
+    return 0;
+  }
+  list_ndirs.curr++;
 
   workp = make_sub_pool(cmd->tmp_pool);
 
@@ -1453,14 +1563,44 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
       if (!curdir) {
         if (sendline("%s/%s\n", dir, p) < 0 || sendline(NULL) < 0)
           count = -1;
-        else
+
+        else {
           count++;
+
+          if (list_nfiles.curr && list_nfiles.max &&
+              list_nfiles.curr >= list_nfiles.max) {
+
+            if (!list_nfiles.logged) {
+              log_debug(DEBUG8, "ListOptions maxfiles (%u) reached",
+                list_nfiles.max);
+              list_nfiles.logged = TRUE;
+            }
+
+            break;
+          }
+          list_nfiles.curr++;
+        }
 
       } else {
         if (sendline("%s\n", p) < 0 || sendline(NULL) < 0)
           count = -1;
-        else
+
+        else {
           count++;
+
+          if (list_nfiles.curr && list_nfiles.max &&
+              list_nfiles.curr >= list_nfiles.max) {
+
+            if (!list_nfiles.logged) {
+              log_debug(DEBUG8, "ListOptions maxfiles (%u) reached",
+                list_nfiles.max);
+              list_nfiles.logged = TRUE;
+            }
+
+            break;
+          }
+          list_nfiles.curr++;
+        }
       }
     }
   }
@@ -1491,12 +1631,28 @@ MODRET genericlist(cmd_rec *cmd) {
   if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE)) != NULL)
     list_show_symlinks = *tmp;
 
-  strict_list_opts = FALSE;
+  list_strict_opts = FALSE;
+
+  list_nfiles.max = list_ndirs.max = list_ndepth.max = 0;
 
   if ((c = find_config(CURRENT_CONF, CONF_PARAM, "ListOptions",
       FALSE)) != NULL) {
     list_options = c->argv[0];
-    strict_list_opts = *((unsigned char *) c->argv[1]);
+    list_strict_opts = *((unsigned char *) c->argv[1]);
+
+    list_ndepth.max = *((unsigned char *) c->argv[2]);
+
+    /* We add one to the configured maxdepth in order to allow it to
+     * function properly: if one configures a maxdepth of 2, one should
+     * allowed to list the current directory, and all subdirectories one
+     * layer deeper.  For the checks to work, the maxdepth of 2 needs to
+     * handled internally as a maxdepth of 3.
+     */
+    if (list_ndepth.max)
+      list_ndepth.max += 1;
+
+    list_nfiles.max = *((unsigned char *) c->argv[3]);
+    list_ndirs.max = *((unsigned char *) c->argv[4]);
   }
 
   fakeuser = get_param_ptr(CURRENT_CONF, "DirFakeUser", FALSE);
@@ -1556,6 +1712,9 @@ MODRET ls_stat(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
+  list_nfiles.curr = list_ndirs.curr = list_ndepth.curr = 0;
+  list_nfiles.logged = list_ndirs.logged = list_ndepth.logged = FALSE;
+
   /* Get to the actual argument. */
   if (*arg == '-')
     while (arg && *arg && !isspace((int) *arg)) arg++;
@@ -1565,12 +1724,27 @@ MODRET ls_stat(cmd_rec *cmd) {
   if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE)) != NULL)
     list_show_symlinks = *tmp;
 
-  strict_list_opts = FALSE;
+  list_strict_opts = FALSE;
+  list_ndepth.max = list_nfiles.max = list_ndirs.max = 0;
 
   if ((c = find_config(CURRENT_CONF, CONF_PARAM, "ListOptions",
       FALSE)) != NULL) {
     list_options = c->argv[0];
-    strict_list_opts = *((unsigned char *) c->argv[1]);
+    list_strict_opts = *((unsigned char *) c->argv[1]);
+
+    list_ndepth.max = *((unsigned char *) c->argv[2]);
+
+    /* We add one to the configured maxdepth in order to allow it to
+     * function properly: if one configures a maxdepth of 2, one should
+     * allowed to list the current directory, and all subdirectories one
+     * layer deeper.  For the checks to work, the maxdepth of 2 needs to
+     * handled internally as a maxdepth of 3.
+     */
+    if (list_ndepth.max)
+      list_ndepth.max += 1;
+
+    list_nfiles.max = *((unsigned char *) c->argv[3]);
+    list_ndirs.max = *((unsigned char *) c->argv[4]);
   }
 
   fakeuser = get_param_ptr(CURRENT_CONF, "DirFakeUser", FALSE);
@@ -1605,11 +1779,11 @@ MODRET ls_stat(cmd_rec *cmd) {
 }
 
 MODRET ls_list(cmd_rec *cmd) {
-  MODRET ret;
+  list_nfiles.curr = list_ndirs.curr = list_ndepth.curr = 0;
+  list_nfiles.logged = list_ndirs.logged = list_ndepth.logged = FALSE;
 
   opt_l = 1;
-  ret = genericlist(cmd);
-  return ret;
+  return genericlist(cmd);
 }
 
 /* NLST is a very simplistic directory listing, unlike LIST (which
@@ -1619,11 +1793,13 @@ MODRET ls_list(cmd_rec *cmd) {
 
 MODRET ls_nlst(cmd_rec *cmd) {
   char *target,line[MAXPATHLEN + 1] = {'\0'};
-  int count = 0,ret = 0, hidden = 0;
+  int count = 0, res = 0, hidden = 0;
   unsigned char *tmp = NULL;
 
-  /* In case the client used NLST instead of LIST
-   */
+  list_nfiles.curr = list_ndirs.curr = list_ndepth.curr = 0;
+  list_nfiles.logged = list_ndirs.logged = list_ndepth.logged = FALSE;
+
+  /* In case the client used NLST instead of LIST. */
   if (cmd->argc > 1 && cmd->argv[1][0] == '-')
     return genericlist(cmd);
 
@@ -1671,7 +1847,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
     /* Iterate through each matching entry */
     path = g.gl_pathv;
-    while (path && *path && ret >= 0) {
+    while (path && *path && res >= 0) {
       struct stat st;
 
       p = *path;
@@ -1683,7 +1859,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
       if (pr_fsio_stat(p, &st) == 0) {
         /* If it's a directory, hand off to nlstdir */
         if (S_ISDIR(st.st_mode))
-          ret = nlstdir(cmd, p);
+          res = nlstdir(cmd, p);
 
         else if (S_ISREG(st.st_mode) &&
             ls_perms(cmd->tmp_pool, cmd, p, &hidden)) {
@@ -1691,11 +1867,11 @@ MODRET ls_nlst(cmd_rec *cmd) {
           if (hidden)
             continue;
 
-          ret = nlstfile(cmd,p);
+          res = nlstfile(cmd,p);
         }
 
-        if (ret > 0)
-          count += ret;
+        if (res > 0)
+          count += res;
       }
     }
 
@@ -1738,7 +1914,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
     }
 
     if (S_ISREG(st.st_mode))
-      ret = nlstfile(cmd, target);
+      res = nlstfile(cmd, target);
 
     else if (S_ISDIR(st.st_mode)) {
       if (access_check(target, R_OK) != 0) {
@@ -1746,25 +1922,25 @@ MODRET ls_nlst(cmd_rec *cmd) {
         return ERROR(cmd);
       }
 
-      ret = nlstdir(cmd, target);
+      res = nlstdir(cmd, target);
 
     } else {
       pr_response_add_err(R_450, "%s: Not a regular file", cmd->arg);
       return ERROR(cmd);
     }
 
-    if (ret > 0)
-      count += ret;
+    if (res > 0)
+      count += res;
   }
 
   if (XFER_ABORTED) {
     pr_data_abort(0, 0);
-    ret = -1;
+    res = -1;
 
   } else {
-    if (ret == 0 && !count && (session.sf_flags & SF_XFER) == 0) {
+    if (res == 0 && !count && (session.sf_flags & SF_XFER) == 0) {
       pr_response_add_err(R_450, "No files found");
-      ret = -1;
+      res = -1;
 
     } else if (session.sf_flags & SF_XFER)
 
@@ -1774,7 +1950,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
       ls_done(cmd);
   }
 
-  return (ret < 0 ? ERROR(cmd) : HANDLED(cmd));
+  return (res < 0 ? ERROR(cmd) : HANDLED(cmd));
 }
 
 /* Check for the UseGlobbing setting, if any, after the PASS command has
@@ -1852,22 +2028,78 @@ MODRET set_dirfakemode(cmd_rec *cmd) {
 MODRET set_listoptions(cmd_rec *cmd) {
   config_rec *c = NULL;
 
-  if (cmd->argc-1 < 1 || cmd->argc-1 > 2)
+  if (cmd->argc-1 < 1)
     CONF_ERROR(cmd, "wrong number of parameters");
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
     CONF_DIR|CONF_DYNDIR);
 
-  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c = add_config_param(cmd->argv[0], 5, NULL, NULL, NULL, NULL, NULL);
+  c->flags |= CF_MERGEDOWN;
+  
   c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+
+  /* The default "strict" setting. */
   c->argv[1] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[1]) = FALSE;
-  c->flags |= CF_MERGEDOWN;
 
-  /* Check for the optional "strict" argument. */
-  if (cmd->argc-1 == 2 &&
-      strcasecmp(cmd->argv[2], "strict") == 0)
-    *((unsigned char *) c->argv[1]) = TRUE;
+  /* The default "maxdepth" setting. */
+  c->argv[2] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[2]) = 0;
+
+  /* The default "maxfiles" setting. */
+  c->argv[3] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[3]) = 0;
+
+  /* The default "maxdirs" setting. */
+  c->argv[4] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[4]) = 0;
+
+  /* Check for, and handle, optional arguments. */
+  if (cmd->argc-1 >= 2) {
+    register unsigned int i = 0;
+
+    for (i = 2; i < cmd->argc; i++) {
+
+      if (strcasecmp(cmd->argv[i], "strict") == 0) {
+        *((unsigned int *) c->argv[1]) = TRUE;
+
+      } else if (strcasecmp(cmd->argv[i], "maxdepth") == 0) {
+        int maxdepth = atoi(cmd->argv[++i]);
+
+        if (maxdepth < 1)
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+            ": maxdepth must be greater than 0: '", cmd->argv[i],
+            "'", NULL));
+
+        *((unsigned int *) c->argv[2]) = maxdepth;
+
+      } else if (strcasecmp(cmd->argv[i], "maxfiles") == 0) {
+        int maxfiles = atoi(cmd->argv[++i]);
+
+        if (maxfiles < 1)
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+            ": maxfiles must be greater than 0: '", cmd->argv[i],
+            "'", NULL));
+
+          *((unsigned int *) c->argv[3]) = maxfiles;
+
+      } else if (strcasecmp(cmd->argv[i], "maxdirs") == 0) {
+        int maxdirs = atoi(cmd->argv[++i]);
+
+        if (maxdirs < 1)
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+            ": maxdirs must be greater than 0: '", cmd->argv[i],
+            "'", NULL));
+
+          *((unsigned int *) c->argv[4]) = maxdirs;
+
+      } else {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown keyword: '",
+          cmd->argv[i], "'", NULL));
+      }
+    }
+  }
 
   return HANDLED(cmd);
 }
