@@ -28,6 +28,7 @@
 #define MOD_SQL_H
 
 /* mod_sql helper functions */
+int sql_log(int, const char *, ...);
 cmd_rec *_sql_make_cmd(pool * cp, int argc, ...);
 void _sql_free_cmd( cmd_rec * );
 

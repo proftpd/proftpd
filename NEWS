@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.338 2003-01-01 00:35:11 castaglia Exp $
+$Id: NEWS,v 1.339 2003-01-01 01:24:48 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -8,6 +8,7 @@ CVS
 - Bug 1272 - Requested Addition: DenyFilter by User or DenyFilter by Directory.
   AllowFilter and DenyFilter are now extended to <Directory> and .ftpaccess
   contexts.
+- Bug 1671 - new directive SQLLogFile.
 
 1.2.8rc1 - Released 28-Dec-2002
 ---------------------------------

@@ -156,8 +156,8 @@ static void _sql_check_cmd(cmd_rec *cmd, char *msg)
   if ((!cmd) || (!cmd->tmp_pool)) {
     log_pri(PR_LOG_ERR, _MOD_VERSION ": '%s' was passed an invalid cmd_rec. "
 	    "Shutting down.", msg);
-    log_debug(DEBUG_WARN, _MOD_VERSION ": '%s' was passed an invalid cmd_rec. "
-	      "Shutting down.", msg);
+    sql_log(DEBUG_WARN, "'%s' was passed an invalid cmd_rec. Shutting down.",
+      msg);
     end_login(1);
   }    
 
@@ -179,8 +179,7 @@ static int _sql_timer_callback(CALLBACK_FRAME)
     entry = ((conn_entry_t **) conn_cache->elts)[cnt];
 
     if (entry->timer == p2) {
-      log_debug(DEBUG_INFO, _MOD_VERSION ": timer expired for connection '%s'",
-		entry->name);
+      sql_log(DEBUG_INFO, "timer expired for connection '%s'", entry->name);
       cmd = _sql_make_cmd( conn_pool, 2, entry->name, "1" );
       cmd_close( cmd );
       _sql_free_cmd( cmd );
@@ -288,19 +287,19 @@ MODRET cmd_open(cmd_rec *cmd)
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": entering \tcmd_open");
+  sql_log(DEBUG_FUNC, "%s", "entering \tpostgres cmd_open");
 
   _sql_check_cmd(cmd, "cmd_open" );
 
   if (cmd->argc < 1) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_open");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
     return PR_ERR_SQL_BADCMD(cmd);
   }    
 
   /* get the named connection */
 
   if (!(entry = _sql_get_connection( cmd->argv[0]))) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_open");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
     return PR_ERR_SQL_UNDEF(cmd);
   } 
 
@@ -315,9 +314,9 @@ MODRET cmd_open(cmd_rec *cmd)
     if (entry->timer) {
       reset_timer( entry->timer, &sql_postgres_module );
     }
-    log_debug(DEBUG_INFO, _MOD_VERSION ": connection '%s' count is now %d",
-	      entry->name, entry->connections);
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_open");
+    sql_log(DEBUG_INFO, "connection '%s' count is now %d", entry->name,
+      entry->connections);
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
     return HANDLED(cmd);
   }
 
@@ -326,7 +325,7 @@ MODRET cmd_open(cmd_rec *cmd)
   
   if (PQstatus(conn->postgres) == CONNECTION_BAD) {
     /* if it didn't work, return an error */
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_open");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
     return _build_error( cmd, conn );
   }
 
@@ -338,9 +337,8 @@ MODRET cmd_open(cmd_rec *cmd)
     entry->timer = add_timer(entry->ttl, -1, 
 			     &sql_postgres_module, 
 			     _sql_timer_callback);
-    log_debug(DEBUG_INFO,
-	      _MOD_VERSION ": connection '%s' - %d second timer started",
-	      entry->name, entry->ttl);
+    sql_log(DEBUG_INFO, "connection '%s' - %d second timer started",
+      entry->name, entry->ttl);
 
     /* timed connections get re-bumped so they don't go away when cmd_close
      * is called.
@@ -349,13 +347,12 @@ MODRET cmd_open(cmd_rec *cmd)
   }
 
   /* return HANDLED */
-  log_debug(DEBUG_INFO, _MOD_VERSION ": connection '%s' opened",
-	    entry->name);
+  sql_log(DEBUG_INFO, "connection '%s' opened", entry->name);
 
-  log_debug(DEBUG_INFO, _MOD_VERSION ": connection '%s' count is now %d",
-	    entry->name, entry->connections);
+  sql_log(DEBUG_INFO, "connection '%s' count is now %d", entry->name,
+    entry->connections);
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_open");
+  sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
   return HANDLED(cmd);
 }
 
@@ -388,18 +385,18 @@ MODRET cmd_close(cmd_rec *cmd)
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": entering \tcmd_close");
+  sql_log(DEBUG_FUNC, "%s", "entering \tpostgres cmd_close");
 
   _sql_check_cmd(cmd, "cmd_close");
 
   if ((cmd->argc < 1) || (cmd->argc > 2)) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_close");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_close");
     return PR_ERR_SQL_BADCMD(cmd);
   }
 
   /* get the named connection */
   if (!(entry = _sql_get_connection( cmd->argv[0] ))) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_close");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_close");
     return PR_ERR_SQL_UNDEF(cmd);
   }
 
@@ -407,10 +404,10 @@ MODRET cmd_close(cmd_rec *cmd)
 
   /* if we're closed already (connections == 0) return HANDLED */
   if (entry->connections == 0) {
-    log_debug(DEBUG_INFO, _MOD_VERSION ": connection '%s' count is now %d",
-	      entry->name, entry->connections);
+    sql_log(DEBUG_INFO, "connection '%s' count is now %d", entry->name,
+      entry->connections);
 
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_close");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_close");
     return HANDLED(cmd);
   }
 
@@ -426,17 +423,15 @@ MODRET cmd_close(cmd_rec *cmd)
     if (entry->timer) {
       remove_timer( entry->timer, &sql_postgres_module );
       entry->timer = 0;
-      log_debug(DEBUG_INFO, _MOD_VERSION ": connection '%s' - timer stopped",
-		entry->name );
+      sql_log(DEBUG_INFO, "connection '%s' - timer stopped", entry->name);
     }
 
-    log_debug(DEBUG_INFO, _MOD_VERSION ": connection '%s' closed",
-	      entry->name);
+    sql_log(DEBUG_INFO, "connection '%s' closed", entry->name);
   }
 
-  log_debug(DEBUG_INFO, _MOD_VERSION ": connection '%s' count is now %d",
-	    entry->name, entry->connections);
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_close");
+  sql_log(DEBUG_INFO, "connection '%s' count is now %d", entry->name,
+    entry->connections);
+  sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_close");
   
   return HANDLED(cmd);
 }
@@ -480,12 +475,12 @@ MODRET cmd_defineconnection(cmd_rec *cmd)
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL; 
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": entering \tcmd_defineconnection");
+  sql_log(DEBUG_FUNC, "%s", "entering \tpostgres cmd_defineconnection");
 
   _sql_check_cmd(cmd, "cmd_defineconnection");
 
   if ((cmd->argc < 4) || (cmd->argc > 5) || (!cmd->argv[0])) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_defineconnection");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_defineconnection");
     return PR_ERR_SQL_BADCMD(cmd);
   }
 
@@ -537,7 +532,7 @@ MODRET cmd_defineconnection(cmd_rec *cmd)
 
   /* insert the new conn_info into the connection hash */
   if (!(entry = _sql_add_connection(conn_pool, name, (void *) conn))) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_defineconnection");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_defineconnection");
     return PR_ERR_SQL_REDEF(cmd);
   }
 
@@ -549,14 +544,14 @@ MODRET cmd_defineconnection(cmd_rec *cmd)
   entry->timer = 0;
   entry->connections = 0;
 
-  log_debug(DEBUG_INFO, _MOD_VERSION ":  name: '%s'", entry->name);
-  log_debug(DEBUG_INFO, _MOD_VERSION ":  user: '%s'", conn->user);
-  log_debug(DEBUG_INFO, _MOD_VERSION ":  host: '%s'", conn->host);
-  log_debug(DEBUG_INFO, _MOD_VERSION ":    db: '%s'", conn->db);
-  log_debug(DEBUG_INFO, _MOD_VERSION ":  port: '%s'", conn->port);
-  log_debug(DEBUG_INFO, _MOD_VERSION ":   ttl: '%d'", entry->ttl);
+  sql_log(DEBUG_INFO, " name: '%s'", entry->name);
+  sql_log(DEBUG_INFO, " user: '%s'", conn->user);
+  sql_log(DEBUG_INFO, " host: '%s'", conn->host);
+  sql_log(DEBUG_INFO, "   db: '%s'", conn->db);
+  sql_log(DEBUG_INFO, " port: '%s'", conn->port);
+  sql_log(DEBUG_INFO, "  ttl: '%d'", entry->ttl);
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_defineconnection");
+  sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_defineconnection");
   return HANDLED(cmd);
 }
 
@@ -616,19 +611,19 @@ MODRET cmd_select(cmd_rec *cmd)
   int cnt = 0;
   cmd_rec *close_cmd;
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": entering \tcmd_select");
+  sql_log(DEBUG_FUNC, "%s", "entering \tpostgres cmd_select");
 
   _sql_check_cmd(cmd, "cmd_select");
 
   if (cmd->argc < 2) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_select");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_select");
     return PR_ERR_SQL_BADCMD(cmd);
   }
 
   /* get the named connection */
   entry = _sql_get_connection( cmd->argv[0] );
   if (!entry) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_select");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_select");
     return PR_ERR_SQL_UNDEF(cmd);
   }
   
@@ -636,7 +631,7 @@ MODRET cmd_select(cmd_rec *cmd)
 
   cmr = cmd_open(cmd);
   if (MODRET_ERROR(cmr)) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_select");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_select");
     return cmr;
   }
 
@@ -669,7 +664,7 @@ MODRET cmd_select(cmd_rec *cmd)
   }
 
   /* log the query string */
-  log_debug( DEBUG_INFO, _MOD_VERSION ": query \"%s\"", query);
+  sql_log(DEBUG_INFO, "query \"%s\"", query);
 
   /* perform the query.  if it doesn't work, log the error, close the
    * connection then return the error from the query processing.
@@ -684,7 +679,7 @@ MODRET cmd_select(cmd_rec *cmd)
     cmd_close(close_cmd);
     _sql_free_cmd( close_cmd );
 
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_select");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_select");
     return dmr;
   }
 
@@ -696,7 +691,7 @@ MODRET cmd_select(cmd_rec *cmd)
   PQclear(conn->result);
 
   if (MODRET_ERROR(dmr)) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_select");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_select");
 
     close_cmd = _sql_make_cmd( cmd->tmp_pool, 1, entry->name );
     cmd_close(close_cmd);
@@ -710,8 +705,7 @@ MODRET cmd_select(cmd_rec *cmd)
   cmd_close(close_cmd);
   _sql_free_cmd( close_cmd );
 
-
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_select");
+  sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_select");
   return dmr;
 }
 
@@ -755,19 +749,19 @@ MODRET cmd_insert(cmd_rec *cmd)
   char *query = NULL;
   cmd_rec *close_cmd;
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": entering \tcmd_insert");
+  sql_log(DEBUG_FUNC, "%s", "entering \tpostgres cmd_insert");
 
   _sql_check_cmd(cmd, "cmd_insert");
 
   if ((cmd->argc != 2) && (cmd->argc != 4)) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_insert");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_insert");
     return PR_ERR_SQL_BADCMD(cmd);
   }
 
   /* get the named connection */
   entry = _sql_get_connection( cmd->argv[0] );
   if (!entry) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_insert");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_insert");
     return PR_ERR_SQL_UNDEF(cmd);
   }
 
@@ -775,7 +769,7 @@ MODRET cmd_insert(cmd_rec *cmd)
 
   cmr = cmd_open(cmd);
   if (MODRET_ERROR(cmr)) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_insert");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_insert");
     return cmr;
   }
 
@@ -789,7 +783,7 @@ MODRET cmd_insert(cmd_rec *cmd)
   }
 
   /* log the query string */
-  log_debug( DEBUG_INFO, _MOD_VERSION ": query \"%s\"", query);
+  sql_log(DEBUG_INFO, "query \"%s\"", query);
 
   /* perform the query.  if it doesn't work, log the error, close the
    * connection then return the error from the query processing.
@@ -804,7 +798,7 @@ MODRET cmd_insert(cmd_rec *cmd)
     cmd_close(close_cmd);
     _sql_free_cmd( close_cmd );
 
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_insert");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_insert");
     return dmr;
   }
 
@@ -815,7 +809,7 @@ MODRET cmd_insert(cmd_rec *cmd)
   cmd_close(close_cmd);
   _sql_free_cmd( close_cmd );
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_insert");
+  sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_insert");
   return HANDLED(cmd);
 }
 
@@ -858,19 +852,19 @@ MODRET cmd_update(cmd_rec *cmd)
   char *query = NULL;
   cmd_rec *close_cmd;
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": entering \tcmd_update");
+  sql_log(DEBUG_FUNC, "%s", "entering \tpostgres cmd_update");
 
   _sql_check_cmd(cmd, "cmd_update");
 
   if ((cmd->argc < 2) || (cmd->argc > 4)) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_update");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_update");
     return PR_ERR_SQL_BADCMD(cmd);
   }
 
   /* get the named connection */
   entry = _sql_get_connection( cmd->argv[0] );
   if (!entry) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_update");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_update");
     return PR_ERR_SQL_UNDEF(cmd);
   }
 
@@ -878,7 +872,7 @@ MODRET cmd_update(cmd_rec *cmd)
 
   cmr = cmd_open(cmd);
   if (MODRET_ERROR(cmr)) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_update");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_update");
     return cmr;
   }
 
@@ -893,7 +887,7 @@ MODRET cmd_update(cmd_rec *cmd)
   }
 
   /* log the query string */
-  log_debug( DEBUG_INFO, _MOD_VERSION ": query \"%s\"", query);
+  sql_log(DEBUG_INFO, "query \"%s\"", query);
 
   /* perform the query.  if it doesn't work, log the error, close the
    * connection then return the error from the query processing.
@@ -908,7 +902,7 @@ MODRET cmd_update(cmd_rec *cmd)
     cmd_close(close_cmd);
     _sql_free_cmd( close_cmd );
 
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_update");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_update");
     return dmr;
   }
 
@@ -919,7 +913,7 @@ MODRET cmd_update(cmd_rec *cmd)
   cmd_close(close_cmd);
   _sql_free_cmd( close_cmd );
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_update");
+  sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_update");
   return HANDLED(cmd);
 }
 
@@ -943,18 +937,18 @@ MODRET cmd_update(cmd_rec *cmd)
  */
 MODRET cmd_procedure(cmd_rec *cmd)
 {
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": entering \tcmd_procedure");
+  sql_log(DEBUG_FUNC, "%s", "entering \tpostgres cmd_procedure");
 
   _sql_check_cmd(cmd, "cmd_procedure");
 
   if (cmd->argc != 3) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_procedure");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_procedure");
     return PR_ERR_SQL_BADCMD(cmd);
   }
 
   /* PostgreSQL supports procedures, but the backend doesn't. */
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_procedure");
+  sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_procedure");
 
   return ERROR_MSG(cmd, _MOD_VERSION, "backend does not support procedures");
 }
@@ -987,19 +981,19 @@ MODRET cmd_query(cmd_rec *cmd)
   char *query = NULL;
   cmd_rec *close_cmd;
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": entering \tcmd_query");
+  sql_log(DEBUG_FUNC, "%s", "entering \tpostgres cmd_query");
 
   _sql_check_cmd(cmd, "cmd_query");
 
   if (cmd->argc != 2) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_query");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_query");
     return PR_ERR_SQL_BADCMD(cmd);
   }
 
   /* get the named connection */
   entry = _sql_get_connection( cmd->argv[0] );
   if (!entry) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_query");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_query");
     return PR_ERR_SQL_UNDEF(cmd);
   }
 
@@ -1007,14 +1001,14 @@ MODRET cmd_query(cmd_rec *cmd)
 
   cmr = cmd_open(cmd);
   if (MODRET_ERROR(cmr)) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_query");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_query");
     return cmr;
   }
 
   query = pstrcat(cmd->tmp_pool, cmd->argv[1], NULL);
 
   /* log the query string */
-  log_debug( DEBUG_INFO, _MOD_VERSION ": query \"%s\"", query);
+  sql_log( DEBUG_INFO, "query \"%s\"", query); 
 
   /* perform the query.  if it doesn't work, log the error, close the
    * connection then return the error from the query processing.
@@ -1030,7 +1024,7 @@ MODRET cmd_query(cmd_rec *cmd)
     cmd_close(close_cmd);
     _sql_free_cmd( close_cmd );
 
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_select");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_select");
     return dmr;
   }
 
@@ -1044,7 +1038,7 @@ MODRET cmd_query(cmd_rec *cmd)
     PQclear(conn->result);
 
     if (MODRET_ERROR(dmr)) {
-      log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_query");
+      sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_query");
     }
   } else {
     dmr = HANDLED(cmd);
@@ -1055,7 +1049,7 @@ MODRET cmd_query(cmd_rec *cmd)
   cmd_close(close_cmd);
   _sql_free_cmd( close_cmd );
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_query");
+  sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_query");
   return dmr;
 }
 
@@ -1089,19 +1083,19 @@ MODRET cmd_escapestring(cmd_rec * cmd)
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": entering \tcmd_escapestring");
+  sql_log(DEBUG_FUNC, "%s", "entering \tpostgres cmd_escapestring");
 
   _sql_check_cmd(cmd, "cmd_escapestring");
 
   if (cmd->argc != 2) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_escapestring");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_escapestring");
     return PR_ERR_SQL_BADCMD(cmd);
   }
 
   /* get the named connection */
   entry = _sql_get_connection( cmd->argv[0] );
   if (!entry) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_escapestring");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_escapestring");
     return PR_ERR_SQL_UNDEF(cmd);
   }
 
@@ -1109,7 +1103,7 @@ MODRET cmd_escapestring(cmd_rec * cmd)
 
   /* PostgreSQL has no way to escape strings internally */
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_escapestring");
+  sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_escapestring");
   return mod_create_data(cmd, (void *) cmd->argv[1]);
 }
 
@@ -1140,25 +1134,25 @@ MODRET cmd_checkauth(cmd_rec * cmd)
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": entering \tcmd_checkauth");
+  sql_log(DEBUG_FUNC, "%s", "entering \tpostgres cmd_checkauth");
 
   _sql_check_cmd(cmd, "cmd_checkauth");
 
   if (cmd->argc != 3) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_checkauth");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_checkauth");
     return PR_ERR_SQL_BADCMD(cmd);
   }
 
   /* get the named connection -- not used in this case, but for consistency */
   entry = _sql_get_connection( cmd->argv[0] );
   if (!entry) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_checkauth");
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_checkauth");
     return PR_ERR_SQL_UNDEF(cmd);
   }
 
   conn = (db_conn_t *) entry->data;
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": exiting \tcmd_checkauth");
+  sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_checkauth");
 
   /* PostgreSQL doesn't provide this functionality */
 

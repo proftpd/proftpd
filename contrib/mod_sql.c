@@ -23,6 +23,10 @@
  * the source distribution.
  */
 
+#include "conf.h"
+#include "privs.h"
+#include "mod_sql.h"
+
 #define _MOD_VERSION "mod_sql/4.10"
 
 #ifdef HAVE_CRYPT_H
@@ -41,10 +45,6 @@
 #ifdef HAVE_OPENSSL
 #include <openssl/evp.h>
 #endif
-
-#include "conf.h"
-#include "privs.h"
-#include "mod_sql.h"
 
 /* default information for tables and fields */
 #define MOD_SQL_DEF_USERTABLE         "users"
@@ -350,8 +350,8 @@ static void _sql_check_cmd(cmd_rec *cmd, char *msg)
   if ((!cmd) || (!cmd->tmp_pool)) {
     log_pri(PR_LOG_ERR, _MOD_VERSION ": '%s' was passed an invalid cmd_rec. "
 	    "Shutting down.", msg);
-    log_debug(DEBUG_WARN, _MOD_VERSION ": '%s' was passed an invalid cmd_rec. "
-	      "Shutting down.", msg);
+    sql_log(DEBUG_WARN, "'%s' was passed an invalid cmd_rec. Shutting down.",
+      msg);
     end_login(1);
   }    
   return;
@@ -362,9 +362,9 @@ static modret_t *_sql_check_response(modret_t * mr)
   if (!MODRET_ISERROR(mr))
     return mr;
 
-  log_debug(DEBUG_WARN, _MOD_VERSION ": unrecoverable backend error");
-  log_debug(DEBUG_WARN, _MOD_VERSION ": (err) '%s'", mr->mr_numeric);
-  log_debug(DEBUG_WARN, _MOD_VERSION ": (msg) '%s'", mr->mr_message);
+  sql_log(DEBUG_WARN, "%s", "unrecoverable backend error");
+  sql_log(DEBUG_WARN, "error: '%s'", mr->mr_numeric);
+  sql_log(DEBUG_WARN, "message: '%s'", mr->mr_message);
 
   end_login(1);
 
@@ -385,8 +385,7 @@ static modret_t * _sql_dispatch(cmd_rec *cmd, char *cmdname)
       return mr;
     }
 
-  log_debug(DEBUG_WARN, _MOD_VERSION ": unknown backend handler '%s'",
-	    cmdname );
+  sql_log(DEBUG_WARN, "unknown backend handler '%s'", cmdname );
   return ERROR(cmd);
 }
 
@@ -397,10 +396,10 @@ static char *_sql_strip_spaces( pool *p, char *str )
   if (!str) return NULL;
 
   /* first, find the non-whitespace start of the given string */
-  for (start = str; isspace(*start); start++);
+  for (start = str; isspace((int) *start); start++);
 
   /* now, find the non-whitespace end of the given string */
-  for (finish = &str[strlen(str)-1]; isspace(*finish); finish--);
+  for (finish = &str[strlen(str)-1]; isspace((int) *finish); finish--);
   *++finish = '\0';
 
   /* the space-stripped string is, then, everything from start to finish */
@@ -741,7 +740,7 @@ static void show_group(struct group *g)
   int flag = 0;
 
   if (g == NULL ) {
-    log_debug(DEBUG_INFO, _MOD_VERSION ": NULL group to show_group");
+    sql_log(DEBUG_INFO, "%s", "NULL group to show_group");
     return;
   }
 
@@ -754,9 +753,9 @@ static void show_group(struct group *g)
     member++;
   } 
 
-  log_debug(DEBUG_INFO, _MOD_VERSION ": grp.gr_name : %s", g->gr_name);
-  log_debug(DEBUG_INFO, _MOD_VERSION ": grp.gr_gid  : %u", g->gr_gid);
-  log_debug(DEBUG_INFO, _MOD_VERSION ": grp.gr_mem  : %s", members);
+  sql_log(DEBUG_INFO, "+ grp.gr_name : %s", g->gr_name);
+  sql_log(DEBUG_INFO, "+ grp.gr_gid  : %u", g->gr_gid);
+  sql_log(DEBUG_INFO, "+ grp.gr_mem  : %s", members);
 
   return;
 }
@@ -764,15 +763,15 @@ static void show_group(struct group *g)
 static void show_passwd(struct passwd *p)
 {
   if (p == NULL ) {
-    log_debug(DEBUG_INFO, _MOD_VERSION ": NULL group to show_passwd");
+    sql_log(DEBUG_INFO, "%s", "NULL group to show_passwd");
     return;
   }
 
-  log_debug(DEBUG_INFO, _MOD_VERSION ": pwd.pw_name  : %s", p->pw_name);
-  log_debug(DEBUG_INFO, _MOD_VERSION ": pwd.pw_uid   : %u", p->pw_uid);
-  log_debug(DEBUG_INFO, _MOD_VERSION ": pwd.pw_gid   : %u", p->pw_gid);
-  log_debug(DEBUG_INFO, _MOD_VERSION ": pwd.pw_shell : %s", p->pw_shell);
-  log_debug(DEBUG_INFO, _MOD_VERSION ": pwd.pw_dir   : %s", p->pw_dir);
+  sql_log(DEBUG_INFO, "+ pwd.pw_name  : %s", p->pw_name);
+  sql_log(DEBUG_INFO, "+ pwd.pw_uid   : %u", p->pw_uid);
+  sql_log(DEBUG_INFO, "+ pwd.pw_gid   : %u", p->pw_gid);
+  sql_log(DEBUG_INFO, "+ pwd.pw_shell : %s", p->pw_shell);
+  sql_log(DEBUG_INFO, "+ pwd.pw_dir   : %s", p->pw_dir);
 
   return;
 }
@@ -789,8 +788,7 @@ static int build_homedir(cmd_rec *cmd, char *path, mode_t omode,
   gid_t p_gid;
   uid_t p_uid;
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> build_homedir(%s,omode,%i,%i)",
-            path, uid, gid);
+  sql_log(DEBUG_FUNC, ">>> build_homedir(%s,omode,%i,%i)", path, uid, gid);
 
   /* we assume we're handed a null-terminated string defining the
    * user's home directory. we walk it, directory by directory,
@@ -798,20 +796,21 @@ static int build_homedir(cmd_rec *cmd, char *path, mode_t omode,
    */
 
   if (path[0] != '/') {
-    log_debug(DEBUG_WARN, _MOD_VERSION ": no '/' at start of user's homedir");
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< build_homedir");
+    sql_log(DEBUG_WARN, "%s", "no '/' at start of user's homedir");
+    sql_log(DEBUG_FUNC, "%s", "<<< build_homedir");
     return -1;
   }
 
   /* sanity check -- make sure the path doesn't exist */
   if (!pr_fsio_stat(path, &st)) {
-    log_debug(DEBUG_WARN, _MOD_VERSION ": user's homedir already exists");
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< build_homedir");
+    sql_log(DEBUG_WARN, "%s", "user's homedir already exists");
+    sql_log(DEBUG_FUNC, "%s", "<<< build_homedir");
     return 0;
 
   } else if (errno != ENOENT) {
-    log_debug(DEBUG_WARN, _MOD_VERSION ": problem with stat of user's homedir");
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< build_homedir");
+    sql_log(DEBUG_WARN, "problem with stat of user's homedir: %s",
+      strerror(errno));
+    sql_log(DEBUG_FUNC, "%s", "<<< build_homedir");
     return -1;
   }
 
@@ -827,7 +826,7 @@ static int build_homedir(cmd_rec *cmd, char *path, mode_t omode,
   /* gain root for dir creation process */
   p_gid = getegid();
   p_uid = geteuid();
-  PRIVS_ROOT;
+  PRIVS_ROOT
 
   /* skip the leading '/' */
   local_ptr = local_path + 1;
@@ -845,6 +844,7 @@ static int build_homedir(cmd_rec *cmd, char *path, mode_t omode,
 	if ( !userdir_flag ) {
 	  /* if it's an intermediate dir */
 	  if ( pr_fsio_mkdir(local_path, S_IRWXU | S_IRWXG | S_IRWXO ) ) {
+            PRIVS_RELINQUISH
 	    return -1;
 	  } else {
 	    pr_fsio_chown(local_path, p_uid, p_gid );
@@ -855,6 +855,7 @@ static int build_homedir(cmd_rec *cmd, char *path, mode_t omode,
 	  umask( old_umask & ~(S_IWUSR | S_IXUSR | S_IRUSR) );
 	  if ( pr_fsio_mkdir(local_path, omode) ) {
 	    umask( old_umask );
+            PRIVS_RELINQUISH
 	    return -1;
 	  } else {
 	    pr_fsio_chown(local_path, uid, gid);
@@ -864,6 +865,7 @@ static int build_homedir(cmd_rec *cmd, char *path, mode_t omode,
       } else {
 	/* we failed for a reason other than no such
 	 * directory, so we return an error */
+        PRIVS_RELINQUISH
 	return -1;
       }
     }
@@ -874,9 +876,9 @@ static int build_homedir(cmd_rec *cmd, char *path, mode_t omode,
   }
 
   /* relinquish root privileges */
-  PRIVS_RELINQUISH;
+  PRIVS_RELINQUISH
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< build_homedir");
+  sql_log(DEBUG_FUNC, "%s", "<<< build_homedir");
   return (retval);
 }
 
@@ -901,7 +903,8 @@ static struct passwd *_sql_addpasswd(cmd_rec *cmd, char *username,
   if ( ((cached = (struct passwd *) 
 	 cache_findvalue( passwd_name_cache, pwd)) != NULL )) {
     pwd = cached;
-    log_debug( DEBUG_INFO, _MOD_VERSION ": cache hit for user '%s'", pwd->pw_name );
+    sql_log( DEBUG_INFO, "cache hit for user '%s'", pwd->pw_name );
+
   } else {
     pwd = pcalloc(sql_pool, sizeof(struct passwd));
 
@@ -921,8 +924,9 @@ static struct passwd *_sql_addpasswd(cmd_rec *cmd, char *username,
     
     cache_addentry( passwd_name_cache, pwd );
     cache_addentry( passwd_uid_cache, pwd );
-    log_debug( DEBUG_INFO, _MOD_VERSION ": cache miss for user '%s'", pwd->pw_name );
-    log_debug( DEBUG_INFO, _MOD_VERSION ": user '%s' cached", pwd->pw_name );
+
+    sql_log(DEBUG_INFO, "cache miss for user '%s'", pwd->pw_name );
+    sql_log(DEBUG_INFO, "user '%s' cached", pwd->pw_name );
     show_passwd( pwd );
   }
 
@@ -947,7 +951,8 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
   gid_t gid = 0;
 
   if (p == NULL) {
-    log_debug( DEBUG_WARN, _MOD_VERSION ": _sql_getpasswd called with NULL passwd struct; this should never happen.");
+    sql_log(DEBUG_WARN, "%s", "_sql_getpasswd called with NULL passwd struct");
+    sql_log(DEBUG_WARN, "%s", "THIS SHOULD NEVER HAPPEN");
     return NULL;
   }
 
@@ -960,14 +965,13 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
 	 cache_findvalue( passwd_name_cache, p )) != NULL ) ||
        ((pwd = (struct passwd *) 
 	 cache_findvalue( passwd_uid_cache, p )) != NULL )) {
-    log_debug( DEBUG_AUTH, _MOD_VERSION ": cache hit for user '%s'", pwd->pw_name );
+    sql_log(DEBUG_AUTH, "cache hit for user '%s'", pwd->pw_name);
 
     /* check for negatively cached passwds, which will have NULL
      * passwd/home/shell
      */
     if ( !pwd->pw_dir ) {
-      log_debug( DEBUG_AUTH, _MOD_VERSION
-        ": negative cache entry for user '%s'", pwd->pw_name );
+      sql_log(DEBUG_AUTH, "negative cache entry for user '%s'", pwd->pw_name);
       return NULL;
     }
 
@@ -985,19 +989,19 @@ static struct passwd *_sql_getpasswd(cmd_rec * cmd, struct passwd *p)
 
     usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, "='", username, "'", NULL);
 
-    log_debug( DEBUG_WARN, _MOD_VERSION ": cache miss for user '%s'", realname);
+    sql_log(DEBUG_WARN, "cache miss for user '%s'", realname);
 
   } else {
     /* assume we have a uid */
     snprintf(uidstr, MOD_SQL_BUFSIZE, "%d", (uid_t) p->pw_uid);
-    log_debug( DEBUG_WARN, _MOD_VERSION ": cache miss for uid '%s'", uidstr );
+    sql_log(DEBUG_WARN, "cache miss for uid '%s'", uidstr);
 
     if (cmap.uidfield)
       usrwhere = pstrcat(cmd->tmp_pool, cmap.uidfield, " = ", uidstr, NULL);
 
     else {
-      log_debug( DEBUG_WARN, _MOD_VERSION ": no user uid field configured, "
-        "declining to lookup uid '%s'", uidstr );
+      sql_log(DEBUG_WARN, "no user uid field configured, declining to "
+        "lookup uid '%s'", uidstr);
 
       /* If no uid field has been configured, return now and let other
        * modules possibly have a chance at resolving this UID to a name.
@@ -1097,7 +1101,8 @@ static struct group *_sql_addgroup(cmd_rec *cmd, char *groupname, gid_t gid,
   /* check to make sure the entry doesn't exist in the cache */
   if ((cached = (struct group *) cache_findvalue( group_name_cache, grp)) != NULL) {
     grp = cached;
-    log_debug( DEBUG_INFO, _MOD_VERSION ": cache hit for group '%s'", grp->gr_name );
+    sql_log(DEBUG_INFO, "cache hit for group '%s'", grp->gr_name);
+
   } else {
     grp = pcalloc(sql_pool, sizeof(struct group));
 
@@ -1117,8 +1122,9 @@ static struct group *_sql_addgroup(cmd_rec *cmd, char *groupname, gid_t gid,
 
     cache_addentry( group_name_cache, grp );
     cache_addentry( group_gid_cache, grp );
-    log_debug( DEBUG_INFO, _MOD_VERSION ": cache miss for group '%s'", grp->gr_name );
-    log_debug( DEBUG_INFO, _MOD_VERSION ": group '%s' cached", grp->gr_name );
+
+    sql_log(DEBUG_INFO, "cache miss for group '%s'", grp->gr_name);
+    sql_log(DEBUG_INFO, "group '%s' cached", grp->gr_name);
     show_group( grp );
   }
 
@@ -1145,20 +1151,19 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
   gid_t gid = 0;
   
   if (g == NULL) {
-    log_debug( DEBUG_WARN, _MOD_VERSION ": _sql_getgroup called with NULL group struct; this should never happen.");
+    sql_log(DEBUG_WARN, "%s", "_sql_getgroup called with NULL group struct");
+    sql_log(DEBUG_WARN, "%s", "THIS SHOULD NEVER HAPPEN");
     return NULL;
   }
 
   /* check to see if the group already exists in one of the group caches */
   if (((grp = (struct group *) cache_findvalue(group_name_cache, g))!=NULL) ||
       ((grp = (struct group *) cache_findvalue(group_gid_cache, g))!=NULL)) {
-    log_debug( DEBUG_AUTH, _MOD_VERSION
-	       ": cache hit for group %s", grp->gr_name );
+    sql_log(DEBUG_AUTH, "cache hit for group %s", grp->gr_name);
 
     /* check for negatively cached groups, which will have NULL gr_mem. */
     if ( !grp->gr_mem ) {
-      log_debug( DEBUG_AUTH, _MOD_VERSION
-        ": negative cache entry for group '%s'", grp->gr_name );
+      sql_log(DEBUG_AUTH, "negative cache entry for group '%s'", grp->gr_name);
       return NULL;
     }
 
@@ -1167,21 +1172,20 @@ static struct group *_sql_getgroup(cmd_rec * cmd, struct group *g)
 
   if (g->gr_name != NULL) {
     groupname = g->gr_name;
-    log_debug( DEBUG_WARN, _MOD_VERSION ": cache miss for group '%s'",
-      groupname);
+    sql_log(DEBUG_WARN, "cache miss for group '%s'", groupname);
 
   } else {
     /* get groupname from gid */
     snprintf(gidstr, MOD_SQL_BUFSIZE, "%d", (gid_t) g->gr_gid);
 
-    log_debug( DEBUG_WARN, _MOD_VERSION ": cache miss for gid '%s'", gidstr );
+    sql_log(DEBUG_WARN, "cache miss for gid '%s'", gidstr);
 
     if (cmap.grpgidfield)
       grpwhere = pstrcat(cmd->tmp_pool, cmap.grpgidfield, " = ", gidstr, NULL);
 
     else {
-      log_debug( DEBUG_WARN, _MOD_VERSION ": no group gid field configured, "
-        "declining to lookup gid '%s'", gidstr );
+      sql_log(DEBUG_WARN, "no group gid field configured, declining to lookup "
+        "gid '%s'", gidstr);
 
       /* If no gid field has been configured, return now and let other
        * modules possibly have a chance at resolving this GID to a name.
@@ -1402,14 +1406,14 @@ MODRET post_cmd_stor(cmd_rec * cmd)
 {
   _sql_check_cmd(cmd, "post_cmd_stor");
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> post_cmd_stor");
+  sql_log(DEBUG_FUNC, "%s", ">>> post_cmd_stor");
 
   if (!cmap.status) return DECLINED(cmd);
 
   if (cmap.sql_fstor)
     _setstats(cmd, 1, 0, session.xfer.total_bytes, 0);
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< post_cmd_stor");
+  sql_log(DEBUG_FUNC, "%s", "<<< post_cmd_stor");
 
   return DECLINED(cmd);
 }
@@ -1420,12 +1424,12 @@ MODRET post_cmd_retr(cmd_rec * cmd)
 
   if (!cmap.status) return DECLINED(cmd);
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> post_cmd_retr");
+  sql_log(DEBUG_FUNC, "%s", ">>> post_cmd_retr");
 
   if (cmap.sql_fretr)
     _setstats(cmd, 0, 1, 0, session.xfer.total_bytes);
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< post_cmd_retr");
+  sql_log(DEBUG_FUNC, "%s", "<<< post_cmd_retr");
 
   return DECLINED(cmd);
 }
@@ -1478,9 +1482,9 @@ static char *resolve_tag(cmd_rec *cmd, char tag)
        * filenames that are not stored in the session.xfer structure; these
        * should be expanded properly as well.
        */
-      if (!strcmp(cmd->argv[0], "DELE") || !strcmp(cmd->argv[0], "MKD") ||
-          !strcmp(cmd->argv[0], "RMD") || !strcmp(cmd->argv[0], "XMKD") ||
-          !strcmp(cmd->argv[0], "XRMD"))
+      if (!strcmp(cmd->argv[0], C_DELE) || !strcmp(cmd->argv[0], C_MKD) ||
+          !strcmp(cmd->argv[0], C_RMD) || !strcmp(cmd->argv[0], C_XMKD) ||
+          !strcmp(cmd->argv[0], C_XRMD))
         sstrncpy(arg, cmd->arg, sizeof(arg));
 
       else
@@ -1618,7 +1622,7 @@ static modret_t *_process_named_query(cmd_rec *cmd, char *name)
   char *argc = 0;
   char *endptr = NULL;
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> _process_named_query");
+  sql_log(DEBUG_FUNC, "%s", ">>> _process_named_query");
 
   /* check for a query by that name */
 
@@ -1695,7 +1699,7 @@ static modret_t *_process_named_query(cmd_rec *cmd, char *name)
     mr = ERROR(cmd);
   }
  
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< _process_named_query");
+  sql_log(DEBUG_FUNC, "%s", "<<< _process_named_query");
 
   return mr;
 }
@@ -1719,7 +1723,7 @@ MODRET log_master(cmd_rec * cmd)
 
   if (c) {
     do {
-      log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> log_master");
+      sql_log(DEBUG_FUNC, "%s", ">>> log_master");
 
       qname = c->argv[0];
       type = _named_query_type(cmd, qname);
@@ -1731,17 +1735,14 @@ MODRET log_master(cmd_rec * cmd)
 	  mr = _process_named_query( cmd, qname );
 	  if (c->argc == 2) _sql_check_response(mr);
 	} else {
-	  log_debug(DEBUG_WARN, _MOD_VERSION ": named query '%s' is not"
-		    " an INSERT, UPDATE, or FREEFORM query",
-		    qname);
+	  sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
+            "FREEFORM query", qname);
 	}
       } else {
-	log_debug(DEBUG_WARN, _MOD_VERSION ": named query '%s' cannot be"
-		  " found",
-		  qname);
+	sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
       }
 
-      log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< log_master");
+      sql_log(DEBUG_FUNC, "%s", "<<< log_master");
     } while((c = find_config_next(c, c->next, 
 				  CONF_PARAM, name, FALSE)) != NULL);
   }
@@ -1753,7 +1754,7 @@ MODRET log_master(cmd_rec * cmd)
 
   if (c) {
     do {
-      log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> log_master");
+      sql_log(DEBUG_FUNC, "%s", ">>> log_master");
 
       qname = c->argv[0];
       type = _named_query_type(cmd, qname);
@@ -1765,17 +1766,14 @@ MODRET log_master(cmd_rec * cmd)
 	  mr = _process_named_query( cmd, qname );
 	  if (c->argc == 2) _sql_check_response(mr);
 	} else {
-	  log_debug(DEBUG_WARN, _MOD_VERSION ": named query '%s' is not"
-		    " an INSERT, UPDATE, or FREEFORM query",
-		    qname);
+	  sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
+            "FREEFORM query", qname);
 	}
       } else {
-	log_debug(DEBUG_WARN, _MOD_VERSION ": named query '%s' cannot be"
-		  " found",
-		  qname);
+	sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
       }
 
-      log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< log_master");
+      sql_log(DEBUG_FUNC, "%s", "<<< log_master");
     } while((c = find_config_next(c, c->next, 
 				  CONF_PARAM, name, FALSE)) != NULL);
   }
@@ -1802,7 +1800,7 @@ MODRET err_master(cmd_rec * cmd)
 
   if (c) {
     do {
-      log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> err_master");
+      sql_log(DEBUG_FUNC, "%s", ">>> err_master");
 
       qname = c->argv[0];
       type = _named_query_type(cmd, qname);
@@ -1814,17 +1812,14 @@ MODRET err_master(cmd_rec * cmd)
 	  mr = _process_named_query( cmd, qname );
 	  if (c->argc == 2) _sql_check_response(mr);
 	} else {
-	  log_debug(DEBUG_WARN, _MOD_VERSION ": named query '%s' is not"
-		    " an INSERT, UPDATE, or FREEFORM query",
-		    qname);
+	  sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
+            "FREEFORM query", qname);
 	}
       } else {
-	log_debug(DEBUG_WARN, _MOD_VERSION ": named query '%s' cannot be"
-		  " found",
-		  qname);
+	sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
       }
 
-      log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< err_master");
+      sql_log(DEBUG_FUNC, "%s", "<<< err_master");
     } while((c = find_config_next(c, c->next, 
 				  CONF_PARAM, name, FALSE)) != NULL);
   }
@@ -1836,7 +1831,7 @@ MODRET err_master(cmd_rec * cmd)
 
   if (c) {
     do {
-      log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> err_master");
+      sql_log(DEBUG_FUNC, "%s", ">>> err_master");
 
       qname = c->argv[0];
       type = _named_query_type(cmd, qname);
@@ -1848,17 +1843,14 @@ MODRET err_master(cmd_rec * cmd)
 	  mr = _process_named_query( cmd, qname );
 	  if (c->argc == 2) _sql_check_response(mr);
 	} else {
-	  log_debug(DEBUG_WARN, _MOD_VERSION ": named query '%s' is not"
-		    " an INSERT, UPDATE, or FREEFORM query",
-		    qname);
+	  sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
+            "FREEFORM query", qname);
 	}
       } else {
-	log_debug(DEBUG_WARN, _MOD_VERSION ": named query '%s' cannot be"
-		  " found",
-		  qname);
+	sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
       }
 
-      log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< err_master");
+      sql_log(DEBUG_FUNC, "%s", "<<< err_master");
     } while((c = find_config_next(c, c->next, 
 				  CONF_PARAM, name, FALSE)) != NULL);
   }
@@ -1886,7 +1878,7 @@ MODRET info_master(cmd_rec * cmd)
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
   if (c) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> info_master");
+    sql_log(DEBUG_FUNC, "%s", ">>> info_master");
 
     /* we now have at least one config_rec.  Take the output string from 
      * each, and process it -- resolve tags, and when we find a named 
@@ -1952,7 +1944,7 @@ MODRET info_master(cmd_rec * cmd)
 
     } while((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< info_master");
+    sql_log(DEBUG_FUNC, "%s", "<<< info_master");
   }
 
   /* process implicit handlers */
@@ -1960,7 +1952,7 @@ MODRET info_master(cmd_rec * cmd)
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
   if (c) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> info_master");
+    sql_log(DEBUG_FUNC, "%s", ">>> info_master");
 
     /* we now have at least one config_rec.  Take the output string from 
      * each, and process it -- resolve tags, and when we find a named 
@@ -2026,7 +2018,7 @@ MODRET info_master(cmd_rec * cmd)
 
     } while((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< info_master");
+    sql_log(DEBUG_FUNC, "%s", "<<< info_master");
   }
 
   return DECLINED(cmd);
@@ -2052,7 +2044,7 @@ MODRET errinfo_master(cmd_rec * cmd)
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
   if (c) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> errinfo_master");
+    sql_log(DEBUG_FUNC, "%s", ">>> errinfo_master");
 
     /* we now have at least one config_rec.  Take the output string from 
      * each, and process it -- resolve tags, and when we find a named 
@@ -2118,7 +2110,7 @@ MODRET errinfo_master(cmd_rec * cmd)
 
     } while((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< errinfo_master");
+    sql_log(DEBUG_FUNC, "%s", "<<< errinfo_master");
   }
 
   /* process implicit handlers */
@@ -2126,7 +2118,7 @@ MODRET errinfo_master(cmd_rec * cmd)
   
   c = find_config(main_server->conf, CONF_PARAM, name, FALSE);
   if (c) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> errinfo_master");
+    sql_log(DEBUG_FUNC, "%s", ">>> errinfo_master");
 
     /* we now have at least one config_rec.  Take the output string from 
      * each, and process it -- resolve tags, and when we find a named 
@@ -2192,7 +2184,7 @@ MODRET errinfo_master(cmd_rec * cmd)
 
     } while((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< errinfo_master");
+    sql_log(DEBUG_FUNC, "%s", "<<< errinfo_master");
   }
 
   return DECLINED(cmd);
@@ -2227,7 +2219,7 @@ MODRET sql_lookup(cmd_rec *cmd)
 
   if (!cmap.status) return DECLINED(cmd);
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> sql_lookup");
+  sql_log(DEBUG_FUNC, "%s", ">>> sql_lookup");
 
   if (cmd->argc < 1) return ERROR(cmd);
 
@@ -2256,7 +2248,7 @@ MODRET sql_lookup(cmd_rec *cmd)
     mr = ERROR(cmd);
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< sql_lookup");
+  sql_log(DEBUG_FUNC, "%s", "<<< sql_lookup");
   return mr;
 }
 
@@ -2269,7 +2261,7 @@ MODRET sql_change(cmd_rec *cmd)
 
   if (!cmap.status) return DECLINED(cmd);
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> sql_change");
+  sql_log(DEBUG_FUNC, "%s", ">>> sql_change");
 
   if (cmd->argc < 1) return ERROR(cmd);
 
@@ -2289,7 +2281,7 @@ MODRET sql_change(cmd_rec *cmd)
     mr = ERROR(cmd);
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< sql_change");
+  sql_log(DEBUG_FUNC, "%s", "<<< sql_change");
   return mr;
 }
 
@@ -2320,12 +2312,12 @@ MODRET cmd_setpwent(cmd_rec * cmd)
   if (!SQL_USERSET)
     return (SQL_USERGOD ? mod_create_data(cmd,(void *)0):DECLINED(cmd));
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_setpwent");
+  sql_log(DEBUG_FUNC, "%s", ">>> cmd_setpwent");
 
   /* if we've already filled the passwd cache, just reset the curr_passwd */
   if ( cmap.passwd_cache_filled ) {
     cmap.curr_passwd = passwd_name_cache->head;
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_setpwent");
+    sql_log(DEBUG_FUNC, "%s", "<<< cmd_setpwent");
     return (SQL_USERGOD ? mod_create_data( cmd, (void *) 1 ) : DECLINED(cmd));
   }
 
@@ -2412,7 +2404,7 @@ MODRET cmd_setpwent(cmd_rec * cmd)
   cmap.passwd_cache_filled = 1;
   cmap.curr_passwd = passwd_name_cache->head;
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_setpwent");
+  sql_log(DEBUG_FUNC, "%s", "<<< cmd_setpwent");
 
   return (SQL_USERGOD ? mod_create_data( cmd, (void *) 1 ) : DECLINED(cmd));
 }
@@ -2427,14 +2419,14 @@ MODRET cmd_getpwent(cmd_rec * cmd)
   if (!SQL_USERSET)
     return (SQL_USERGOD ? mod_create_data(cmd,(void *)NULL):DECLINED(cmd));
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_getpwent");
+  sql_log(DEBUG_FUNC, "%s", ">>> cmd_getpwent");
 
   /* make sure our passwd cache is complete  */
   if ( !cmap.passwd_cache_filled ) {
     mr = cmd_setpwent(cmd);
     if ( mr->data == ( void * ) 0 ) {
       /* something didn't work in the setpwent call */
-      log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_getpwent");
+      sql_log(DEBUG_FUNC, "%s", "<<< cmd_getpwent");
       return (SQL_USERGOD  ? mod_create_data( cmd, (void *) NULL ) : DECLINED(cmd));
     }
   }
@@ -2446,7 +2438,7 @@ MODRET cmd_getpwent(cmd_rec * cmd)
     pw = NULL;
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_getpwent");
+  sql_log(DEBUG_FUNC, "%s", "<<< cmd_getpwent");
 
   if ( pw == NULL )
     return (SQL_USERGOD ? mod_create_data( cmd, (void *) pw) : DECLINED(cmd) );
@@ -2461,11 +2453,11 @@ MODRET cmd_endpwent(cmd_rec * cmd)
   if (!SQL_USERSET)
     return (SQL_USERGOD ? mod_create_data(cmd,(void *)0):DECLINED(cmd));
   
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_endpwent");
+  sql_log(DEBUG_FUNC, "%s", ">>> cmd_endpwent");
   
   cmap.curr_passwd = NULL;
   
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_endpwent");
+  sql_log(DEBUG_FUNC, "%s", "<<< cmd_endpwent");
   
   return (SQL_USERGOD ? mod_create_data( cmd, (void *) 0 ) : DECLINED(cmd));
 }
@@ -2489,12 +2481,12 @@ MODRET cmd_setgrent(cmd_rec * cmd)
   if (!SQL_GROUPSET)
     return (SQL_GROUPGOD ? mod_create_data(cmd,(void *)0):DECLINED(cmd));
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_setgrent");
+  sql_log(DEBUG_FUNC, "%s", ">>> cmd_setgrent");
 
   /* if we've already filled the passwd group, just reset curr_group */
   if ( cmap.group_cache_filled ) {
     cmap.curr_group = group_name_cache->head;
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_setgrent");
+    sql_log(DEBUG_FUNC, "%s", "<<< cmd_setgrent");
     return (SQL_GROUPGOD ? mod_create_data( cmd, (void *) 1 ) : DECLINED(cmd));
   }
 
@@ -2557,7 +2549,7 @@ MODRET cmd_setgrent(cmd_rec * cmd)
   cmap.group_cache_filled = 1;
   cmap.curr_group = group_name_cache->head;
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_setgrent");
+  sql_log(DEBUG_FUNC, "%s", "<<< cmd_setgrent");
 
   return (SQL_GROUPGOD ? mod_create_data( cmd, (void *) 1 ) : DECLINED(cmd));
 }
@@ -2572,14 +2564,14 @@ MODRET cmd_getgrent(cmd_rec * cmd)
   if (!SQL_GROUPSET)
     return (SQL_GROUPGOD ? mod_create_data(cmd,(void *)NULL):DECLINED(cmd));
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_getgrent");
+  sql_log(DEBUG_FUNC, "%s", ">>> cmd_getgrent");
 
   /* make sure our group cache is complete  */
   if ( !cmap.group_cache_filled ) {
     mr = cmd_setgrent(cmd);
     if ( mr->data == ( void * ) 0 ) {
       /* something didn't work in the setgrent call */
-      log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_getgrent");
+      sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgrent");
       return (SQL_GROUPGOD ? mod_create_data( cmd, (void *) NULL ) : DECLINED(cmd));
     }
   }
@@ -2591,7 +2583,7 @@ MODRET cmd_getgrent(cmd_rec * cmd)
     gr = NULL;
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_getgrent");
+  sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgrent");
 
   if ( gr == NULL )
     return (SQL_GROUPGOD ? mod_create_data( cmd, (void *) gr) : DECLINED(cmd));
@@ -2606,11 +2598,11 @@ MODRET cmd_endgrent(cmd_rec * cmd)
   if (!SQL_GROUPSET)
     return (SQL_GROUPGOD ? mod_create_data(cmd,(void *)0):DECLINED(cmd));
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_endgrent");
+  sql_log(DEBUG_FUNC, "%s", ">>> cmd_endgrent");
 
   cmap.curr_group = NULL;
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_endgrent");
+  sql_log(DEBUG_FUNC, "%s", "<<< cmd_endgrent");
 
   return (SQL_GROUPGOD ? mod_create_data( cmd, (void *) 0 ) : DECLINED(cmd));
 }
@@ -2625,18 +2617,18 @@ MODRET cmd_getpwnam(cmd_rec * cmd)
   if (!SQL_USERS)
     return DECLINED(cmd);
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_getpwnam");
+  sql_log(DEBUG_FUNC, "%s", ">>> cmd_getpwnam");
 
   lpw.pw_uid = -1;
   lpw.pw_name = cmd->argv[0];
   pw = _sql_getpasswd(cmd, &lpw);
 
   if (pw == NULL) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_getpwnam");
+    sql_log(DEBUG_FUNC, "%s", "<<< cmd_getpwnam");
     return SQL_USERGOD ? ERROR(cmd) : DECLINED(cmd);
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_getpwnam");
+  sql_log(DEBUG_FUNC, "%s", "<<< cmd_getpwnam");
 
   return mod_create_data(cmd, pw);
 }
@@ -2651,18 +2643,18 @@ MODRET cmd_getpwuid(cmd_rec * cmd)
   if (!SQL_USERS)
     return DECLINED(cmd);
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_getpwuid");
+  sql_log(DEBUG_FUNC, "%s", ">>> cmd_getpwuid");
 
   lpw.pw_uid = (uid_t) cmd->argv[0];
   lpw.pw_name = NULL;
   pw = _sql_getpasswd(cmd, &lpw);
 
   if (pw == NULL) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_getpwuid");
+    sql_log(DEBUG_FUNC, "%s", "<<< cmd_getpwuid");
     return SQL_USERGOD ? ERROR(cmd) : DECLINED(cmd);
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_getpwuid");
+  sql_log(DEBUG_FUNC, "%s", "<<< cmd_getpwuid");
 
   return mod_create_data(cmd, pw);
 }
@@ -2677,18 +2669,18 @@ MODRET cmd_getgrnam(cmd_rec * cmd)
   if (!SQL_GROUPS)
     return DECLINED(cmd);
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_getgrnam");
+  sql_log(DEBUG_FUNC, "%s", ">>> cmd_getgrnam");
 
   lgr.gr_gid = -1;
   lgr.gr_name = cmd->argv[0];
   gr = _sql_getgroup(cmd, &lgr);
 
   if (gr == NULL) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_getgrnam");
+    sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgrnam");
     return SQL_GROUPGOD ? ERROR(cmd) : DECLINED(cmd);
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_getgrnam");
+  sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgrnam");
   return mod_create_data(cmd, gr);
 }
 
@@ -2702,18 +2694,18 @@ MODRET cmd_getgrgid(cmd_rec * cmd)
   if (!SQL_GROUPS)
     return DECLINED(cmd);
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_getgrgid");
+  sql_log(DEBUG_FUNC, "%s", ">>> cmd_getgrgid");
 
   lgr.gr_gid = (gid_t) cmd->argv[0];
   lgr.gr_name = NULL;
   gr = _sql_getgroup(cmd, &lgr);
 
   if (gr == NULL) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_getgrgid");
+    sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgrgid");
     return SQL_GROUPGOD ? ERROR(cmd) : DECLINED(cmd);
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_getgrgid");
+  sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgrgid");
   return mod_create_data(cmd, gr);
 }
 
@@ -2728,7 +2720,7 @@ MODRET cmd_auth(cmd_rec * cmd)
   if (!SQL_USERS)
     return DECLINED(cmd);
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_auth");
+  sql_log(DEBUG_FUNC, "%s", ">>> cmd_auth");
 
   /* fix up the username, removing leading and trailing whitespace */
   user = _sql_strip_spaces( cmd->tmp_pool, cmd->argv[0] );
@@ -2745,10 +2737,10 @@ MODRET cmd_auth(cmd_rec * cmd)
 
   if ((pw = _sql_getpasswd(cmd, &lpw)) && 
       !auth_check(cmd->tmp_pool, pw->pw_passwd, cmd->argv[0], cmd->argv[1])) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_auth");
+    sql_log(DEBUG_FUNC, "%s", "<<< cmd_auth");
     return HANDLED(cmd);
   } else {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_auth");
+    sql_log(DEBUG_FUNC, "%s", "<<< cmd_auth");
     return ( SQL_USERGOD ? ERROR_INT(cmd, PR_AUTH_BADPWD) : DECLINED(cmd) );
   }
 }
@@ -2776,25 +2768,24 @@ MODRET cmd_check(cmd_rec * cmd)
   if (!SQL_USERS)
     return DECLINED(cmd);
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_check");
+  sql_log(DEBUG_FUNC, "%s", ">>> cmd_check");
 
   if (cmd->argv[0] == NULL) {
-    log_debug(DEBUG_AUTH, _MOD_VERSION ": NULL hashed password ");
+    sql_log(DEBUG_AUTH, "%s", "NULL hashed password");
   } else if (cmd->argv[2] == NULL) {
-    log_debug(DEBUG_AUTH, _MOD_VERSION ": NULL clear password ");
+    sql_log(DEBUG_AUTH, "%s", "NULL clear password");
   } else {
     c_hash = cmd->argv[0];
     c_clear = cmd->argv[2];
 
     for (cnt = 0; cnt < ah->nelts; cnt++) {
       auth_entry = ((auth_type_entry **) ah->elts)[cnt];
-      log_debug(DEBUG_AUTH, _MOD_VERSION ": checking auth_type %s",
-		auth_entry->name);
+      sql_log(DEBUG_AUTH, "checking auth_type %s", auth_entry->name);
 
       mr = auth_entry->check_function(cmd, c_clear, c_hash);
       if (!MODRET_ISERROR(mr)) {
-	log_debug(DEBUG_AUTH, _MOD_VERSION ": '%s' auth handler reports success",
-		  auth_entry->name);
+	sql_log(DEBUG_AUTH, "'%s' auth handler reports success",
+          auth_entry->name);
 	success = 1;
 	break;
       }
@@ -2826,11 +2817,11 @@ MODRET cmd_check(cmd_rec * cmd)
 		    cmap.authpasswd->pw_gid);
     }
     
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_check");
+    sql_log(DEBUG_FUNC, "%s", "<<< cmd_check");
     return HANDLED(cmd);
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_check");
+  sql_log(DEBUG_FUNC, "%s", "<<< cmd_check");
 
   if (!success)
     return SQL_USERGOD ? ERROR(cmd) : DECLINED(cmd);
@@ -2850,20 +2841,20 @@ MODRET cmd_uid_name(cmd_rec * cmd)
   if (!SQL_USERS)
     return DECLINED(cmd);
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_uid_name");
+  sql_log(DEBUG_FUNC, "%s", ">>> cmd_uid_name");
 
   lpw.pw_uid = (uid_t) cmd->argv[0];
   lpw.pw_name = NULL;
 
   /* check to see if we're looking up the current user */
   if ( cmap.authpasswd && (lpw.pw_uid == cmap.authpasswd->pw_uid)) {
-    log_debug(DEBUG_INFO, _MOD_VERSION ": matched current user");
+    sql_log(DEBUG_INFO, "%s", "matched current user");
     pw = cmap.authpasswd;
   } else {
     pw = _sql_getpasswd(cmd, &lpw);
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_uid_name");
+  sql_log(DEBUG_FUNC, "%s", "<<< cmd_uid_name");
 
   if (pw == NULL) {
     if (!SQL_USERGOD)
@@ -2901,13 +2892,13 @@ MODRET cmd_gid_name(cmd_rec * cmd)
     return DECLINED(cmd);
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_gid_name");
+  sql_log(DEBUG_FUNC, "%s", ">>> cmd_gid_name");
 
   lgr.gr_gid = (gid_t) cmd->argv[0];
   lgr.gr_name = NULL;
   gr = _sql_getgroup(cmd, &lgr);
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_gid_name");
+  sql_log(DEBUG_FUNC, "%s", "<<< cmd_gid_name");
 
   if (gr == NULL) {
     if (!SQL_GROUPGOD)
@@ -2943,7 +2934,7 @@ MODRET cmd_name_uid(cmd_rec * cmd)
     return DECLINED(cmd);
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_name_uid");
+  sql_log(DEBUG_FUNC, "%s", ">>> cmd_name_uid");
 
   lpw.pw_uid = -1;
   lpw.pw_name = cmd->argv[0];
@@ -2951,18 +2942,18 @@ MODRET cmd_name_uid(cmd_rec * cmd)
   /* check to see if we're looking up the current user */
   if (cmap.authpasswd && 
       (strcmp(lpw.pw_name, cmap.authpasswd->pw_name) == 0)) {
-    log_debug(DEBUG_INFO, _MOD_VERSION ": matched current user");
+    sql_log(DEBUG_INFO, "%s", "matched current user");
     pw = cmap.authpasswd;
   } else {
     pw = _sql_getpasswd(cmd, &lpw);
   }
 
   if (pw == NULL) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_name_uid");
+    sql_log(DEBUG_FUNC, "%s", "<<< cmd_name_uid");
     return SQL_USERGOD ? ERROR(cmd) : DECLINED(cmd);
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_name_uid");
+  sql_log(DEBUG_FUNC, "%s", "<<< cmd_name_uid");
 
   return mod_create_data(cmd, (void *) pw->pw_uid);
 }
@@ -2978,18 +2969,18 @@ MODRET cmd_name_gid(cmd_rec * cmd)
     return DECLINED(cmd);
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_name_gid");
+  sql_log(DEBUG_FUNC, "%s", ">>> cmd_name_gid");
 
   lgr.gr_gid = -1;
   lgr.gr_name = cmd->argv[0];
   gr = _sql_getgroup(cmd, &lgr);
 
   if (gr == NULL) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_name_gid");
+    sql_log(DEBUG_FUNC, "%s", "<<< cmd_name_gid");
     return SQL_GROUPGOD ? ERROR(cmd) : DECLINED(cmd);
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_name_gid");
+  sql_log(DEBUG_FUNC, "%s", "<<< cmd_name_gid");
 
   return mod_create_data(cmd, (void *) gr->gr_gid);
 }
@@ -3004,16 +2995,16 @@ MODRET cmd_getgroups(cmd_rec * cmd)
     return DECLINED(cmd);
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_getgroups");
+  sql_log(DEBUG_FUNC, "%s", ">>> cmd_getgroups");
 
   res = _sql_getgroups(cmd);
 
   if (res < 0) {
-    log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_getgroups");
+    sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgroups");
     return SQL_GROUPGOD ? ERROR(cmd) : DECLINED(cmd); 
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_getgroups");
+  sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgroups");
 
   return mod_create_data(cmd, (void *) res);
 }
@@ -3027,7 +3018,7 @@ MODRET cmd_getstats(cmd_rec * cmd)
 
   _sql_check_cmd(cmd, "cmd_getstats");
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_getstats");
+  sql_log(DEBUG_FUNC, "%s", ">>> cmd_getstats");
 
   if (!cmap.sql_fstor) {
     return DECLINED(cmd);
@@ -3045,7 +3036,7 @@ MODRET cmd_getstats(cmd_rec * cmd)
 		      "sql_select" );
   _sql_check_response(mr);
   
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_getstats");
+  sql_log(DEBUG_FUNC, "%s", "<<< cmd_getstats");
 
   sd = mr->data;
 
@@ -3068,7 +3059,7 @@ MODRET cmd_getratio(cmd_rec * cmd)
     return DECLINED(cmd);
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> cmd_getratio");
+  sql_log(DEBUG_FUNC, "%s", ">>> cmd_getratio");
 
   usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", _sql_realuser(cmd), "'", NULL);
   where = _sql_where(cmd->tmp_pool, 2, usrwhere, cmap.userwhere );
@@ -3082,7 +3073,7 @@ MODRET cmd_getratio(cmd_rec * cmd)
 		      "sql_select" );
   _sql_check_response(mr);
   
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< cmd_getratio");
+  sql_log(DEBUG_FUNC, "%s", "<<< cmd_getratio");
 
   sd = mr->data;
 
@@ -3306,6 +3297,15 @@ MODRET set_sqllog(cmd_rec * cmd)
   return HANDLED(cmd);
 }
 
+MODRET set_sqllogfile(cmd_rec * cmd)
+{
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_GLOBAL);
+
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  return HANDLED(cmd);
+}
+
 MODRET set_sqlnamedquery(cmd_rec * cmd)
 {
   /* SQLNamedQuery name type query-string */
@@ -3477,6 +3477,84 @@ MODRET set_sqlauthenticate(cmd_rec * cmd)
   return HANDLED(cmd);
 }
 
+/* logging stuff */
+
+static char *sql_logfile = NULL;
+static int sql_logfd = -1;
+
+static int sql_closelog(void)
+{
+
+  /* sanity check */
+  if (sql_logfd != -1) {
+    close(sql_logfd);
+    sql_logfd = -1;
+    sql_logfile = NULL;
+  }
+
+  return 0;
+}
+
+int sql_log(int level, const char *fmt, ...)
+{
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+  time_t timestamp = time(NULL);
+  struct tm *t = NULL;
+  va_list msg;
+
+  /* sanity check */
+  if (!sql_logfile)
+    return 0;
+
+  t = localtime(&timestamp);
+
+  /* prepend the timestamp */
+  strftime(buf, sizeof(buf), "%b %d %H:%M:%S ", t);
+  buf[sizeof(buf) - 1] = '\0';
+
+  /* prepend a small header */
+  snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
+           _MOD_VERSION "[%u]: ", (unsigned int) getpid());
+
+  buf[sizeof(buf) - 1] = '\0';
+
+  /* affix the message */
+  va_start(msg, fmt);
+  vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), fmt, msg);
+  va_end(msg);
+
+  buf[strlen(buf)] = '\n';
+  buf[sizeof(buf) - 1] = '\0';
+
+  if (write(sql_logfd, buf, strlen(buf)) < 0)
+    return -1;
+
+  return 0;
+}
+
+static int sql_openlog(void)
+{
+  int res = 0;
+
+  /* Sanity checks */
+  if ((sql_logfile = get_param_ptr(main_server->conf, "SQLLogFile",
+      FALSE)) == NULL)
+    return 0;
+
+  if (!strcasecmp(sql_logfile, "none"))
+  {
+    sql_logfile = NULL;
+    return 0;
+  }
+
+  block_signals();
+  PRIVS_ROOT
+  res = log_openfile(sql_logfile, &sql_logfd, 0640);
+  PRIVS_RELINQUISH
+  unblock_signals();
+
+  return res;
+}
 
 MODRET set_sqlconnectinfo(cmd_rec * cmd)
 {
@@ -3538,8 +3616,7 @@ MODRET set_sqlauthtypes(cmd_rec * cmd)
   for (cnt = 1; cnt < cmd->argc; cnt++) {
     auth_entry = get_auth_entry(cmd->argv[cnt]);
     if (auth_entry == NULL) {
-      log_debug(DEBUG_WARN, _MOD_VERSION ": unknown auth handler '%s'",
-                cmd->argv[cnt]);
+      sql_log(DEBUG_WARN, "unknown auth handler '%s'", cmd->argv[cnt]);
       CONF_ERROR(cmd, "unknown auth handler");
     }
 
@@ -3747,8 +3824,9 @@ MODRET set_deprecated(cmd_rec * cmd)
 
   for (cnt=0; cnt < numdeps; cnt++) {
     if (!strcasecmp(cmd->argv[0], depmap[cnt*2])) {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "deprecated directive; check the mod_sql docs for '",
-			      depmap[cnt*2+1], "'", NULL) );
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "deprecated directive; check the mod_sql docs for '",
+        depmap[cnt*2+1], "'", NULL) );
     }
   }
   
@@ -3763,7 +3841,7 @@ MODRET set_deprecated(cmd_rec * cmd)
  *
  *****************************************************************/
 
-static void sql_exit(void)
+static void sql_exit_cb(void)
 {
   config_rec *c = NULL;
 
@@ -3797,22 +3875,21 @@ static void sql_exit(void)
           (!strcasecmp(type, SQL_FREEFORM_C)) ||
           (!strcasecmp(type, SQL_INSERT_C))) {
 
-        log_debug(DEBUG_FUNC, _MOD_VERSION ": running named query '%s' at exit",
-          qname);
+        sql_log(DEBUG_FUNC, "running named query '%s' at exit", qname);
         _process_named_query( cmd, qname );
 
       } else {
-        log_debug(DEBUG_WARN, _MOD_VERSION ": named query '%s' is not an "
-          "INSERT, UPDATE, or FREEFORM query", qname);
+        sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
+          "FREEFORM query", qname);
       }
 
     } else
-      log_debug(DEBUG_WARN, _MOD_VERSION ": named query '%s' cannot be found",
-        qname);
+      sql_log(DEBUG_WARN, "named query '%s' cannot be found", qname);
 
     c = find_config_next(c, c->next, CONF_PARAM, "SQLLog_EXIT", FALSE);
   }
 
+  sql_closelog();
   return;
 }
 
@@ -3831,12 +3908,28 @@ static int sql_getconf(void)
   cmd_rec *cmd = NULL;
   modret_t *mr = NULL;
   sql_data_t *sd = NULL;
-  int percall = 0;
+  int percall = 0, res = 0;
   char *fieldset = NULL;
   pool *tmp_pool = NULL;
 
   /* build a temporary pool */
   tmp_pool = make_sub_pool( session.pool );
+
+  /* open any configured SQLLogFile */
+  if ((res = sql_openlog()) < 0)
+  {
+    if (res == -1)
+      log_pri(PR_LOG_NOTICE, "notice: unable to open SQLLogFile: %s",
+        strerror(errno));
+
+    else if (res == LOG_WRITEABLE_DIR)
+      log_pri(PR_LOG_NOTICE, "notice: unable to open SQLLogFile: "
+          "parent directory is world writeable");
+
+    else if (res == LOG_SYMLINK)
+      log_pri(PR_LOG_NOTICE, "notice: unable to open SQLLogFile: "
+          "cannot log to a symbolic link");
+  }
 
   /* get our backend info and toss it up */
   cmd = _sql_make_cmd( tmp_pool, 1, "foo" );
@@ -3845,12 +3938,12 @@ static int sql_getconf(void)
 
   sd = (sql_data_t *) mr->data;
 
-  log_debug(DEBUG_INFO, _MOD_VERSION ": backend module '%s'", sd->data[0]);
-  log_debug(DEBUG_INFO, _MOD_VERSION ": backend api    '%s'", sd->data[1]);
+  sql_log(DEBUG_INFO, "backend module '%s'", sd->data[0]);
+  sql_log(DEBUG_INFO, "backend api    '%s'", sd->data[1]);
 
   _sql_free_cmd(cmd);
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": >>> sql_getconf");
+  sql_log(DEBUG_FUNC, "%s", ">>> sql_getconf");
 
   sql_pool = make_sub_pool( session.pool );
 
@@ -3985,8 +4078,8 @@ static int sql_getconf(void)
     if (!cmap.sql_fstor) {
       log_pri(PR_LOG_WARNING, _MOD_VERSION
               ": warning: SQLRatios directive ineffective without SQLRatioStats on");
-      log_debug(DEBUG_WARN, _MOD_VERSION
-                ": warning: SQLRatios directive ineffective without SQLRatioStats on");
+      sql_log(DEBUG_WARN, "%s",
+                "warning: SQLRatios directive ineffective without SQLRatioStats on");
     }
     cmap.sql_frate = c->argv[0];
     cmap.sql_fcred = c->argv[1];
@@ -3997,7 +4090,7 @@ static int sql_getconf(void)
   if ((!cmap.homedirfield) && (!cmap.defaulthomedir)) {
     cmap.authmask ^= SQL_AUTH_USERS;
     log_pri(PR_LOG_WARNING, _MOD_VERSION ": warning: no homedir field and no default specified. User authentication is OFF");
-    log_debug(DEBUG_WARN, _MOD_VERSION ": warning: no homedir field and no default specified. User authentication is OFF");
+    sql_log(DEBUG_WARN, "%s", "warning: no homedir field and no default specified. User authentication is OFF");
   }
 
   if (!(c = find_config(main_server->conf, CONF_PARAM, "SQLConnectInfo", FALSE))) {
@@ -4005,7 +4098,7 @@ static int sql_getconf(void)
     cmap.status = 0;
     cmap.sql_fstor = NULL;
     cmap.sql_frate = NULL;
-    log_debug(DEBUG1, _MOD_VERSION ": warning: no SQLConnectInfo specified. mod_sql is OFF");
+    sql_log(DEBUG_WARN, "%s", "warning: no SQLConnectInfo specified. mod_sql is OFF");
   } else {
     if (!strcasecmp(c->argv[3], "percall")) percall = 1;
 
@@ -4019,21 +4112,19 @@ static int sql_getconf(void)
       mr = _sql_dispatch(cmd, "sql_open");
       _sql_check_response(mr);
       _sql_free_cmd(cmd);
-      log_debug(DEBUG_INFO,
-        _MOD_VERSION ": backend successfully connected.");
+      sql_log(DEBUG_INFO, "%s", "backend successfully connected.");
 
     } else {
-      log_debug(DEBUG_INFO,
-        _MOD_VERSION ": backend will not be checked until first use.");
+      sql_log(DEBUG_INFO, "%s",
+        "backend will not be checked until first use.");
     }
 
     cmap.status = 1;
   }
 
-  log_debug(DEBUG_INFO, _MOD_VERSION ": mod_sql status     : %s",
-	    cmap.status ? "on" : "off" );
+  sql_log(DEBUG_INFO, "mod_sql status     : %s", cmap.status ? "on" : "off" );
 
-  log_debug(DEBUG_INFO, _MOD_VERSION ": negative_cache     : %s",
+  sql_log(DEBUG_INFO, "negative_cache     : %s",
             cmap.negative_cache ? "on" : "off" );
 
   authstr = "";
@@ -4070,89 +4161,68 @@ static int sql_getconf(void)
     }
   }
 
-  log_debug(DEBUG_INFO, _MOD_VERSION ": authenticate       : %s",
-	    (!authstr || *authstr=='\0') ? "off" : authstr);
+  sql_log(DEBUG_INFO, "authenticate       : %s",
+    (!authstr || *authstr=='\0') ? "off" : authstr);
 
   if (SQL_USERS || cmap.sql_fstor || cmap.sql_frate) {
-    log_debug(DEBUG_INFO, _MOD_VERSION ": usertable          : %s",
-      cmap.usrtable);
-    log_debug(DEBUG_INFO, _MOD_VERSION ": userid field       : %s",
-      cmap.usrfield);
+    sql_log(DEBUG_INFO, "usertable          : %s", cmap.usrtable);
+    sql_log(DEBUG_INFO, "userid field       : %s", cmap.usrfield);
   }
   if (SQL_USERS) {
-    log_debug(DEBUG_INFO, _MOD_VERSION ": password field     : %s",
-      cmap.pwdfield);
-    log_debug(DEBUG_INFO, _MOD_VERSION ": uid field          : %s",
+    sql_log(DEBUG_INFO, "password field     : %s", cmap.pwdfield);
+    sql_log(DEBUG_INFO, "uid field          : %s",
       (cmap.uidfield ? cmap.uidfield : "NULL"));
-    log_debug(DEBUG_INFO, _MOD_VERSION ": gid field          : %s",
+    sql_log(DEBUG_INFO, "gid field          : %s",
       (cmap.gidfield ? cmap.gidfield : "NULL"));
     if (cmap.defaulthomedir) {
-      log_debug(DEBUG_INFO, _MOD_VERSION ": homedir(defaulted) : '%s'",
-        cmap.defaulthomedir);
+      sql_log(DEBUG_INFO, "homedir(defaulted) : '%s'", cmap.defaulthomedir);
     } else {
-      log_debug(DEBUG_INFO, _MOD_VERSION ": homedir field      : %s",
-        cmap.homedirfield);
+      sql_log(DEBUG_INFO, "homedir field      : %s", cmap.homedirfield);
     } 
-    log_debug(DEBUG_INFO, _MOD_VERSION ": shell field        : %s",
+    sql_log(DEBUG_INFO, "shell field        : %s",
       (cmap.shellfield ? cmap.shellfield : "NULL"));
-    log_debug(DEBUG_INFO, _MOD_VERSION ": homedirondemand    : %s",
+    sql_log(DEBUG_INFO, "homedirondemand    : %s",
       (cmap.buildhomedir ? "true" : "false"));
   }
 
   if (SQL_GROUPS) {
-    log_debug(DEBUG_INFO, _MOD_VERSION ": group table        : %s",
-      cmap.grptable);
-    log_debug(DEBUG_INFO, _MOD_VERSION ": groupname field    : %s",
-      cmap.grpfield);
-    log_debug(DEBUG_INFO, _MOD_VERSION ": grp gid field      : %s",
-      cmap.grpgidfield);
-    log_debug(DEBUG_INFO, _MOD_VERSION ": grp members field  : %s",
-      cmap.grpmembersfield);
+    sql_log(DEBUG_INFO, "group table        : %s", cmap.grptable);
+    sql_log(DEBUG_INFO, "groupname field    : %s", cmap.grpfield);
+    sql_log(DEBUG_INFO, "grp gid field      : %s", cmap.grpgidfield);
+    sql_log(DEBUG_INFO, "grp members field  : %s", cmap.grpmembersfield);
   }
 
   if (SQL_USERS) {
-    log_debug(DEBUG_INFO, _MOD_VERSION ": SQLMinUserUID      : %u",
-      cmap.minuseruid);
-    log_debug(DEBUG_INFO, _MOD_VERSION ": SQLMinUserGID      : %u",
-      cmap.minusergid);
+    sql_log(DEBUG_INFO, "SQLMinUserUID      : %u", cmap.minuseruid);
+    sql_log(DEBUG_INFO, "SQLMinUserGID      : %u", cmap.minusergid);
   }
    
   if (SQL_GROUPS) {
-    log_debug(DEBUG_INFO, _MOD_VERSION ": SQLDefaultUID      : %u",
-      cmap.defaultuid);
-    log_debug(DEBUG_INFO, _MOD_VERSION ": SQLDefaultGID      : %u",
-      cmap.defaultgid);
+    sql_log(DEBUG_INFO, "SQLDefaultUID      : %u", cmap.defaultuid);
+    sql_log(DEBUG_INFO, "SQLDefaultGID      : %u", cmap.defaultgid);
   }
 
   if (cmap.sql_fstor) {
-    log_debug(DEBUG_INFO, _MOD_VERSION ": sql_fstor          : %s",
-      cmap.sql_fstor);
-    log_debug(DEBUG_INFO, _MOD_VERSION ": sql_fretr          : %s",
-      cmap.sql_fretr);
-    log_debug(DEBUG_INFO, _MOD_VERSION ": sql_bstor          : %s",
-      cmap.sql_bstor);
-    log_debug(DEBUG_INFO, _MOD_VERSION ": sql_bretr          : %s",
-      cmap.sql_bretr);
+    sql_log(DEBUG_INFO, "sql_fstor          : %s", cmap.sql_fstor);
+    sql_log(DEBUG_INFO, "sql_fretr          : %s", cmap.sql_fretr);
+    sql_log(DEBUG_INFO, "sql_bstor          : %s", cmap.sql_bstor);
+    sql_log(DEBUG_INFO, "sql_bretr          : %s", cmap.sql_bretr);
   }
 
   if (cmap.sql_frate) {
-    log_debug(DEBUG_INFO, _MOD_VERSION ": sql_frate          : %s",
-      cmap.sql_frate);
-    log_debug(DEBUG_INFO, _MOD_VERSION ": sql_fcred          : %s",
-      cmap.sql_fcred);
-    log_debug(DEBUG_INFO, _MOD_VERSION ": sql_brate          : %s",
-      cmap.sql_brate);
-    log_debug(DEBUG_INFO, _MOD_VERSION ": sql_bcred          : %s",
-      cmap.sql_bcred);
+    sql_log(DEBUG_INFO, "sql_frate          : %s", cmap.sql_frate);
+    sql_log(DEBUG_INFO, "sql_fcred          : %s", cmap.sql_fcred);
+    sql_log(DEBUG_INFO, "sql_brate          : %s", cmap.sql_brate);
+    sql_log(DEBUG_INFO, "sql_bcred          : %s", cmap.sql_bcred);
   }
 
-  log_debug(DEBUG_FUNC, _MOD_VERSION ": <<< sql_getconf");
+  sql_log(DEBUG_FUNC, "%s", "<<< sql_getconf");
 
   /* get rid of the temp pool */
   destroy_pool( tmp_pool );
 
   /* add our exit handler */
-  add_exit_handler(sql_exit);
+  add_exit_handler(sql_exit_cb);
 
   return 0;
 }
@@ -4190,6 +4260,7 @@ static conftable sql_conftab[] = {
   {"SQLHomedirOnDemand", set_sqlhomedirondemand, NULL},
 
   {"SQLLog", set_sqllog, NULL},
+  {"SQLLogFile", set_sqllogfile, NULL},
   {"SQLNamedQuery", set_sqlnamedquery, NULL},
   {"SQLShowInfo", set_sqlshowinfo, NULL},
 
@@ -4268,3 +4339,4 @@ module sql_module = {
   sql_init,                     /* Pre-fork "parent mode" init */
   sql_getconf                   /* Post-fork "child mode" init */
 };
+
