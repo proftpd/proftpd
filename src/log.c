@@ -19,8 +19,9 @@
  */
 
 /*
- * ProFTPD logging support
- * $Id: log.c,v 1.19 2000-07-26 11:03:17 macgyver Exp $
+ * ProFTPD logging support.
+ *
+ * $Id: log.c,v 1.20 2000-08-02 05:25:24 macgyver Exp $
  */
 
 /* History Log:
@@ -700,6 +701,7 @@ void log_discard()
 
 void log(int priority, int f, char *s)
 {
+  int newpriority;
   char serverinfo[1024];
   
   bzero(serverinfo, sizeof(serverinfo));
@@ -754,6 +756,10 @@ void log(int priority, int f, char *s)
 
   if(f != facility || !syslog_open)
     openlog("proftpd", LOG_NDELAY | LOG_PID, f);
+  
+  if((newpriority = get_param_int(main_server->conf, "SyslogLevel",
+				  FALSE)) != -1)
+    priority = newpriority;
   
   if(serverinfo && *serverinfo)
     syslog(priority, "%s - %s\n", serverinfo, s);

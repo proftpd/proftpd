@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.65 2000-08-01 21:23:39 macgyver Exp $
+$Id: NEWS,v 1.66 2000-08-02 05:25:24 macgyver Exp $
 
 1.2.0 - Released: 08/??/2000
 ----------------------------
@@ -11,6 +11,7 @@ $Id: NEWS,v 1.65 2000-08-01 21:23:39 macgyver Exp $
 - Eliminated a race when logging in with MaxClients.
 - AllowChmod defaults to 'on' now for simplicity and compatibility.
 - Honor ExtendedLog NONE.
+- Added SyslogLevel directive.
 
 1.2.0RC2 - Released: 07/28/2000
 -------------------------------

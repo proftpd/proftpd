@@ -1,6 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
+ * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +20,7 @@
 
 /* FTP commands and responses (may not all be implemented)
  *
- * $Id: ftp.h,v 1.1 1998-10-18 02:24:41 flood Exp $
+ * $Id: ftp.h,v 1.2 2000-08-02 05:25:24 macgyver Exp $
  */
 
 #ifndef __FTP_H

@@ -20,7 +20,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.40 2000-08-01 22:20:28 macgyver Exp $
+ * $Id: mod_core.c,v 1.41 2000-08-02 05:25:24 macgyver Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -240,14 +240,39 @@ MODRET set_deferwelcome(cmd_rec *cmd)
 
 MODRET set_pidfile(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT);
+  CHECK_CONF(cmd, CONF_ROOT | CONF_GLOBAL);
 
   add_config_param_str("PidFile", 1, cmd->argv[1]);
   return HANDLED(cmd);
 }
 
-MODRET set_serverident(cmd_rec *cmd)
-{
+MODRET set_sysloglevel(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_GLOBAL);
+
+  if(!strcasecmp(cmd->argv[1], "emerg")) {
+    add_config_param("SyslogLevel", 1, (void *) PR_LOG_EMERG);
+  } else if(strcasecmp(cmd->argv[1], "alert")) {
+    add_config_param("SyslogLevel", 1, (void *) PR_LOG_ALERT);
+  } else if(!strcasecmp(cmd->argv[1], "crit")) {
+    add_config_param("SyslogLevel", 1, (void *) PR_LOG_CRIT);
+  } else if(!strcasecmp(cmd->argv[1], "error")) {
+    add_config_param("SyslogLevel", 1, (void *) PR_LOG_ERR);
+  } else if(!strcasecmp(cmd->argv[1], "warn")) {
+    add_config_param("SyslogLevel", 1, (void *) PR_LOG_WARNING);
+  } else if(!strcasecmp(cmd->argv[1], "notice")) {
+    add_config_param("SyslogLevel", 1, (void *) PR_LOG_NOTICE);
+  } else if(!strcasecmp(cmd->argv[1], "info")) {
+    add_config_param("SyslogLevel", 1, (void *) PR_LOG_INFO);
+  } else if(!strcasecmp(cmd->argv[1], "debug")) {
+    add_config_param("SyslogLevel", 1, (void *) PR_LOG_DEBUG);
+  } else {
+    CONF_ERROR(cmd, "SyslogLevel requires level keyword: one of "
+	       "emerg/alert/crit/error/warn/notice/info/debug");
+  }
+}
+
+MODRET set_serverident(cmd_rec *cmd) {
   int b;
   config_rec *c;
   
@@ -262,9 +287,10 @@ MODRET set_serverident(cmd_rec *cmd)
   if(b && cmd->argc == 3) {
     c = add_config_param("ServerIdent",2,(void*)!b,NULL);
     c->argv[1] = pstrdup(permanent_pool,cmd->argv[2]);
-  } else
-    add_config_param("ServerIdent",1,(void*)!b);
-
+  } else {
+    add_config_param("ServerIdent", 1, (void *) !b);
+  }
+  
   return HANDLED(cmd);
 }
 
@@ -690,8 +716,8 @@ MODRET set_syslogfacility(cmd_rec *cmd)
   { "UUCP",		LOG_UUCP		},
   { NULL,		0			} };
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
 
   for(i = 0; factable[i].name; i++) {
     if(!strcasecmp(cmd->argv[1],factable[i].name)) {
@@ -2666,6 +2692,7 @@ static conftable core_conftable[] = {
   { "IdentLookups",		set_identlookups,		NULL },
   { "IgnoreHidden",		set_ignorehidden,		NULL },
   { "Include",			add_include,	 		NULL },
+  { "SyslogLevel",		set_sysloglevel,		NULL },
   { "MaxClients",		set_maxclients,			NULL },
   { "MaxClientsPerHost",	set_maxhostclients,		NULL },
   { "MaxInstances",		set_maxinstances,		NULL },
