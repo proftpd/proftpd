@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.151 2003-01-13 01:27:36 castaglia Exp $
+ * $Id: mod_core.c,v 1.152 2003-01-13 05:38:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2599,7 +2599,9 @@ MODRET core_quit(cmd_rec *cmd) {
   } else
     pr_response_send(R_221, "Goodbye.");
 
+#ifndef DEVEL_NO_DAEMON
   end_login(0);
+#endif
 
   /* Even though end_login() does not return, this is necessary to avoid
    * compiler warnings.

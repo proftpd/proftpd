@@ -16,14 +16,23 @@ CURSES_LIBS=@CURSES_LIBS@
 #
 # -DUSESHADOW
 #   Use the shadow password suite.
+#
 # -DAUTOSHADOW
 #   Enable support for automatic run-time shadow detection. NOT recommended
 #   except for binary distributions; use configure --enable-autoshadow to
 #   force this on.
-# -DDEBUG_NOFORK
+#
+# -DDEVEL_NO_FORK
 #   Server in standalone mode will not fork for incoming connections.
-# -DDEBUG_NOSIG
+#
+# -DDEVEL_NO_DAEMON
+#   Process will not go into a daemon loop, but will handle only one
+#   session.  This, in conjunction with DEVEL_NO_FORK, is useful for
+#   building a binary that can be profiled.
+#
+# -DDEVEL_NO_SIG
 #   Server will not catch signals that cause termination.
+#
 # -DDEBUG_MEMORY
 #   Enables memory debugging with Electric Fence. Debugging information
 #   will be written to $(rundir)/proftpd-memory.log.
@@ -42,7 +51,7 @@ CFLAGS=@CFLAGS@
 DEFINES=$(PLATFORM)
 
 # Defines for memory testing and debugging.
-#CFLAGS=-g -DDEBUG_NOFORK -DDEBUG_MEMORY
+#CFLAGS=-g -DDEVEL_NO_FORK -DDEBUG_MEMORY
 #LIBS=$(LIBS) -lefence
 
 OBJS=main.o timers.o sets.o pool.o regexp.o dirtree.o support.o inet.o \

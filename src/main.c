@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.158 2003-01-13 01:27:37 castaglia Exp $
+ * $Id: main.c,v 1.159 2003-01-13 05:38:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -748,8 +748,12 @@ static void cmd_loop(server_rec *server, conn_t *c) {
         /* Simple interrupted syscall */
 	continue;
 
+#ifndef DEVEL_NO_DAEMON
       /* Otherwise, EOF */
       end_login(0);
+#else
+      return;
+#endif /* DEVEL_NO_DAEMON */
     }
 
     /* Data received, reset idle timer */
@@ -887,8 +891,8 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     log_pri(PR_LOG_ERR, "received SIGHUP, cannot rehash child process");
 }
 
-static int _dup_low_fd(int fd)
-{
+#ifndef DEVEL_NO_FORK
+static int dup_low_fd(int fd) {
   int i,need_close[3] = {-1, -1, -1};
 
   for (i = 0; i < 3; i++)
@@ -903,6 +907,7 @@ static int _dup_low_fd(int fd)
 
   return fd;
 }
+#endif /* DEVEL_NO_FORK */
 
 static void set_server_privs(void) {
   uid_t server_uid, current_euid = geteuid();
@@ -943,7 +948,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   int i, rev;
   int sempipe[2] = { -1, -1 };
 
-#ifndef DEBUG_NOFORK
+#ifndef DEVEL_NO_FORK
   pid_t pid;
   sigset_t sig_set;
   pool *pidrec_pool = NULL, *set_pool = NULL;
@@ -969,7 +974,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
      */
 
     if (sempipe[1] < 3)
-      sempipe[1] = _dup_low_fd(sempipe[1]);
+      sempipe[1] = dup_low_fd(sempipe[1]);
 
     /* We block SIGCHLD to prevent a race condition if the child
      * dies before we can record it's pid.  Also block SIGTERM to
@@ -1068,7 +1073,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   /* Reseed pseudo-randoms */
   srand(time(NULL));
 
-#endif /* DEBUG_NOFORK */
+#endif /* DEVEL_NO_FORK */
 
   /* Child is running here */
   signal(SIGUSR1,sig_disconnect);
@@ -1281,7 +1286,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   /* set the per-child resource limits */
   set_session_rlimits();
 
-  cmd_loop(serv,conn);
+  cmd_loop(serv, conn);
 }
 
 static void disc_children(void) {
@@ -1307,7 +1312,7 @@ static void disc_children(void) {
   }
 }
 
-static void server_loop(void) {
+static void daemon_loop(void) {
   fd_set listen_fds;
   conn_t *listen_conn;
   int fd, max_fd;
@@ -1321,7 +1326,9 @@ static void server_loop(void) {
 
   time(&last_error);
 
+#ifndef DEVEL_NO_DAEMON
   while (TRUE) {
+#endif
     run_schedule();
 
     FD_ZERO(&listen_fds);
@@ -1376,7 +1383,9 @@ static void server_loop(void) {
 
     if (i == -1 && errno == EINTR) {
       pr_signals_handle();
+#ifndef DEVEL_NO_DAEMON
       continue;
+#endif
     }
 
     if (have_dead_child) {
@@ -1431,12 +1440,14 @@ static void server_loop(void) {
         err_count = 0;
       }
 
-      log_pri(PR_LOG_NOTICE, "select() failed in server_loop(): %s",
+      log_pri(PR_LOG_NOTICE, "select() failed in daemon_loop(): %s",
               strerror(errno));
     }
 
+#ifndef DEVEL_NO_DAEMON
     if (i == 0)
       continue;
+#endif
 
     /* Reset the connection counter.  Take into account this current
      * connection, which does not (yet) have an entry in the child list.
@@ -1492,7 +1503,9 @@ static void server_loop(void) {
       } else
         fork_server(fd, listen_conn, FALSE);
     }
+#ifndef DEVEL_NO_DAEMON
   }
+#endif
 }
 
 /* This function is to handle the dispatching of actions based on
@@ -1847,7 +1860,7 @@ static void install_signal_handlers(void) {
   signal(SIGHUP, sig_rehash);
   signal(SIGUSR2, sig_debug);
 
-#ifndef DEBUG_NOSIG
+#ifndef DEVEL_NO_SIG
   signal(SIGINT, sig_terminate);
   signal(SIGQUIT, sig_terminate);
   signal(SIGILL, sig_terminate);
@@ -1865,7 +1878,7 @@ static void install_signal_handlers(void) {
 #ifdef SIGBUS
   signal(SIGBUS, sig_terminate);
 #endif /* SIGBUS */
-#endif /* DEBUG_NOSIG */
+#endif /* DEVEL_NO_SIG */
 
 #ifdef SIGIO
   signal(SIGIO, SIG_IGN);
@@ -2261,7 +2274,7 @@ static void standalone_main(void) {
     PROFTPD_VERSION_TEXT " " PR_STATUS, BUILD_STAMP);
 
   write_pid();
-  server_loop();
+  daemon_loop();
 }
 
 extern char *optarg;
@@ -2613,15 +2626,25 @@ int main(int argc, char *argv[], char **envp) {
 
   /* Install a signal handlers/abort handler */
   install_signal_handlers();
+
+#ifndef DEVEL_NO_DAEMON
   set_daemon_rlimits();
+#endif
 
   switch (ServerType) {
     case SERVER_STANDALONE:
       standalone_main();
+      break;
 
     case SERVER_INETD:
       inetd_main();
+      break;
   }
+
+#ifdef DEVEL_NO_DAEMON
+  PRIVS_ROOT
+  chdir("/tmp");
+#endif
 
   return 0;
 }
