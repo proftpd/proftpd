@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.181 2003-06-03 20:42:29 castaglia Exp $
+ * $Id: main.c,v 1.182 2003-06-06 00:07:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1255,10 +1255,12 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   /* Use the ident protocol (RFC1413) to try to get remote ident_user */
   if ((ident_lookups = get_param_ptr(main_server->conf, "IdentLookups",
      FALSE)) == NULL || *ident_lookups == TRUE) {
+    log_debug(DEBUG6, "performing RFC1413 (ident) lookup");
     session.ident_lookups = TRUE;
     session.ident_user = pr_ident_lookup(session.pool, conn);
 
   } else {
+    log_debug(DEBUG6, "RFC1413 (ident) lookup disabled");
     session.ident_lookups = FALSE;
     session.ident_user = "UNKNOWN";
   }
