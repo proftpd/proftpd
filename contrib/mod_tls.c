@@ -892,6 +892,11 @@ static int tls_init_ctxt(void) {
     return -1;
   }
 
+#if OPENSSL_VERSION_NUMBER > 0x000906000L
+  /* The SSL_MODE_AUTO_RETRY mode was added in 0.9.6. */
+  SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
+#endif
+
   /* Make sure that SSLv2 communications are disabled entirely.  If using
    * OpenSSL-0.9.7 or greater, revent session resumptions on renegotiations
    * as well (more secure).
@@ -1630,6 +1635,20 @@ static int tls_readmore(int rfd) {
   return select(rfd + 1, &rfds, NULL, NULL, &tv);
 }
 
+static int tls_writemore(int wfd) {
+  fd_set wfds;
+  struct timeval tv;
+
+  FD_ZERO(&wfds);
+  FD_SET(wfd, &wfds);
+
+  /* Use a timeout of 15 seconds */
+  tv.tv_sec = 15;
+  tv.tv_usec = 0;
+
+  return select(wfd + 1, NULL, &wfds, NULL, &tv);
+}
+
 static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
   ssize_t count;
 
@@ -1648,6 +1667,24 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
          * so we wait a little while for it.
          */
         if ((err = tls_readmore(SSL_get_fd(ssl))) > 0)
+          goto retry;
+
+        else if (err == 0)
+          /* Still missing data after timeout. Simulate an EINTR and return.
+           */
+          errno = EINTR;
+
+          /* If err < 0, i.e. some error from the select(), everything is
+           * already in place; errno is properly set and this function
+           * returns -1.
+           */
+          break;
+
+      case SSL_ERROR_WANT_WRITE:
+        /* OpenSSL needs to write more data to the wire to finish the current
+         * block, so we wait a little while for it.
+         */
+        if ((err = tls_writemore(SSL_get_fd(ssl))) > 0)
           goto retry;
 
         else if (err == 0)
