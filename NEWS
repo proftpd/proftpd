@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.351 2003-01-13 19:22:03 castaglia Exp $
+$Id: NEWS,v 1.352 2003-01-14 03:31:01 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -11,7 +11,8 @@ CVS
 - Bug 1671 - new directive SQLLogFile.
 - mod_linuxprivs has been renamed to mod_cap and is now built into ProFTPD
   by default if the host OS (Linux) supports it. autoconf detection code
-  based on a submission by Mihai RUSU <dizzy@roedu.net>
+  based on a submission by Mihai RUSU <dizzy@roedu.net>.  The mod_cap
+  directives are CapabilitiesEngine and CapabilitiesSet.
 - Bug 1893 - Apple likes to move things. PAM support works on OS X again.
   Submitted by: thesin@users.sourceforge.net (Justin F. Hallett)
 - Bug 1826 - Makefiles are a bit icky
@@ -29,6 +30,7 @@ CVS
 - Fixed broken tcpReceiveWindow and tcpSendWindow configuration directives.
   The setsockopt(2) function was being called at the wrong time during the
   establishment of the data connection.
+- %f for DELE commands was not being properly expanded.
 
 1.2.8rc1 - Released 28-Dec-2002
 ---------------------------------

@@ -26,7 +26,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.46 2003-01-02 18:25:20 castaglia Exp $
+ * $Id: mod_log.c,v 1.47 2003-01-14 03:31:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -610,9 +610,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
     argp = arg;
 
     if (session.xfer.p && session.xfer.path) {
-      char *fullpath;
-      fullpath = dir_abs_path(p,session.xfer.path,TRUE);
-      sstrncpy(argp, fullpath, sizeof(arg));
+      sstrncpy(argp, dir_abs_path(p, session.xfer.path, TRUE), sizeof(arg));
 
     } else {
 
@@ -623,7 +621,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       if (!strcmp(cmd->argv[0], C_DELE) || !strcmp(cmd->argv[0], C_MKD) ||
           !strcmp(cmd->argv[0], C_RMD) || !strcmp(cmd->argv[0], C_XMKD) ||
           !strcmp(cmd->argv[0], C_XRMD))
-        sstrncpy(arg, cmd->arg, sizeof(arg));
+        sstrncpy(arg, dir_abs_path(p, cmd->arg, TRUE), sizeof(arg));
 
       else
         /* All other situations get a "-".  */
@@ -637,8 +635,18 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
     argp = arg;
     if (session.xfer.p && session.xfer.path) {
       sstrncpy(argp, session.xfer.path, sizeof(arg));
+
     } else {
-      sstrncpy(argp, "-", sizeof(arg));
+
+      /* Some commands (i.e. DELE) have associated filenames that are not
+       * stored in the session.xfer structure; these should be expanded
+       * properly as well.
+       */
+      if (!strcmp(cmd->argv[0], C_DELE))
+        sstrncpy(arg, cmd->arg, sizeof(arg));
+
+      else
+        sstrncpy(argp, "-", sizeof(arg));
     }
 
     m++;
