@@ -29,7 +29,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.h,v 1.3 2004-02-13 23:37:27 castaglia Exp $
+ * $Id: mod_quotatab.h,v 1.4 2004-06-07 23:00:35 castaglia Exp $
  */
 
 #ifndef MOD_QUOTATAB_H
@@ -38,7 +38,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_QUOTATAB_VERSION "mod_quotatab/1.2.12"
+#define MOD_QUOTATAB_VERSION "mod_quotatab/1.2.13"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001021001

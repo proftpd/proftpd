@@ -22,14 +22,14 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.73 2004-06-07 22:58:44 castaglia Exp $
+ * $Id: mod_sql.c,v 1.74 2004-06-07 23:00:35 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_sql.h"
 
-#define _MOD_VERSION "mod_sql/4.10"
+#define _MOD_VERSION "mod_sql/4.11"
 
 #ifdef HAVE_CRYPT_H
 # include <crypt.h>
