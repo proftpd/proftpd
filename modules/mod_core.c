@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.262 2004-12-01 18:08:12 castaglia Exp $
+ * $Id: mod_core.c,v 1.263 2004-12-02 23:15:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2378,55 +2378,57 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
   else
     eval_type = PR_EXPR_EVAL_AND;
 
-  /* Check the first parameter to see if it is an evaluation modifier:
-   * "and", "or", or "regex".
-   */
-  if (strcasecmp(cmd->argv[1], "AND") == 0) {
-    eval_type = PR_EXPR_EVAL_AND;
-    argc = cmd->argc-2;
-    argv = cmd->argv+1;
+  if (cmd->argc > 2) {
+    /* Check the first parameter to see if it is an evaluation modifier:
+     * "and", "or", or "regex".
+     */
+    if (strcasecmp(cmd->argv[1], "AND") == 0) {
+      eval_type = PR_EXPR_EVAL_AND;
+      argc = cmd->argc-2;
+      argv = cmd->argv+1;
 
-  } else if (strcasecmp(cmd->argv[1], "OR") == 0) {
-    eval_type = PR_EXPR_EVAL_OR;
-    argc = cmd->argc-2;
-    argv = cmd->argv+1;
+    } else if (strcasecmp(cmd->argv[1], "OR") == 0) {
+      eval_type = PR_EXPR_EVAL_OR;
+      argc = cmd->argc-2;
+      argv = cmd->argv+1;
 
-  } else if (strcasecmp(cmd->argv[1], "regex") == 0) {
+    } else if (strcasecmp(cmd->argv[1], "regex") == 0) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-    regex_t *preg;
-    int res;
+      regex_t *preg;
+      int res;
 
-    if (cmd->argc != 3)
-      CONF_ERROR(cmd, "wrong number of parameters");
+      if (cmd->argc != 3)
+        CONF_ERROR(cmd, "wrong number of parameters");
 
-    preg = pr_regexp_alloc();
+      preg = pr_regexp_alloc();
 
-    res = regcomp(preg, cmd->argv[2], REG_EXTENDED|REG_NOSUB);
-    if (res != 0) {
-      char errstr[200] = {'\0'};
+      res = regcomp(preg, cmd->argv[2], REG_EXTENDED|REG_NOSUB);
+      if (res != 0) {
+        char errstr[200] = {'\0'};
 
-      regerror(res, preg, errstr, sizeof(errstr));
-      pr_regexp_free(preg);
+        regerror(res, preg, errstr, sizeof(errstr));
+        pr_regexp_free(preg);
 
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[2], "' failed "
-        "regex compilation: ", errstr, NULL));
-    }
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[2], "' failed "
+          "regex compilation: ", errstr, NULL));
+      }
 
-    c = add_config_param(cmd->argv[0], 2, NULL, NULL);
-    c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-    *((unsigned char *) c->argv[0]) = PR_EXPR_EVAL_REGEX;
-    c->argv[1] = (void *) preg;
+      c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+      c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+      *((unsigned char *) c->argv[0]) = PR_EXPR_EVAL_REGEX;
+      c->argv[1] = (void *) preg;
 
-    return HANDLED(cmd);
+      return HANDLED(cmd);
 
 #else
-    CONF_ERROR(cmd, "The 'regex' parameter cannot be used on this system, "
-      "as you do not have POSIX compliant regex support");
+      CONF_ERROR(cmd, "The 'regex' parameter cannot be used on this system, "
+        "as you do not have POSIX compliant regex support");
 #endif /* HAVE_REGEX_H and HAVE_REGCOMP */
 
-  } else {
-    argc = cmd->argc-1;
-    argv = cmd->argv;
+    } else {
+      argc = cmd->argc-1;
+      argv = cmd->argv;
+    }
   }
 
   acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
