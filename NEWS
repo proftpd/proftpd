@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.270 2002-11-04 00:41:34 jwm Exp $
+$Id: NEWS,v 1.271 2002-11-05 19:06:55 jwm Exp $
 
 CVS
 ---------------------------------
@@ -27,6 +27,7 @@ CVS
 - Bug 1398 - there is no log rotate for /var/log/xferlog
 - Bug 1814 - class names are truncated in scoreboard entry
 - ftptop can now use either curses or ncurses
+- Bug 1818 - proftpd doesn't compile on hpux11
 
 1.2.7rc2 - Released 2002-10-22
 ---------------------------------

@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.100 2002-11-02 22:32:18 jwm Exp $
+ * $Id: mod_auth.c,v 1.101 2002-11-05 19:06:57 jwm Exp $
  */
 
 #include "conf.h"
@@ -801,7 +801,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
           anongroup = NULL;
         }
 
-        auth_code = AUTH_OK;
+        auth_code = AUTH_FTP_OK;
       }
     }
 
@@ -814,7 +814,7 @@ static int _setup_environment(pool *p, char *user, char *pass)
         auth_pass_resp_code = R_232;
         break;
 
-      case AUTH_OK:
+      case AUTH_FTP_OK:
         auth_pass_resp_code = R_230;
         break;
 

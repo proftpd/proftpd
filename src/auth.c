@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.20 2002-10-18 22:20:09 castaglia Exp $
+ * $Id: auth.c,v 1.21 2002-11-05 19:06:58 jwm Exp $
  */
 
 #include "conf.h"
@@ -346,7 +346,7 @@ int auth_authenticate(pool *p, const char *name, const char *pw) {
   mr = _dispatch_auth(c, "auth");
 
   if (MODRET_ISHANDLED(mr))
-    res = MODRET_HASDATA(mr) ? AUTH_RFC2228_OK : AUTH_OK;
+    res = MODRET_HASDATA(mr) ? AUTH_RFC2228_OK : AUTH_FTP_OK;
 
   else if (MODRET_ISERROR(mr))
     res = MODRET_ERROR(mr);
@@ -368,7 +368,7 @@ int auth_check(pool *p, const char *cpw, const char *name, const char *pw) {
   mr = _dispatch_auth(c, "check");
 
   if (MODRET_ISHANDLED(mr))
-    res = MODRET_HASDATA(mr) ? AUTH_RFC2228_OK : AUTH_OK;
+    res = MODRET_HASDATA(mr) ? AUTH_RFC2228_OK : AUTH_FTP_OK;
 
   if (c->tmp_pool) {
     destroy_pool(c->tmp_pool);

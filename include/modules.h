@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.13 2002-10-25 16:54:04 castaglia Exp $
+ * $Id: modules.h,v 1.14 2002-11-05 19:06:56 jwm Exp $
  */
 
 #ifndef __MODULES_H
@@ -50,7 +50,7 @@ struct modret_struc {
 #define AUTH_RFC2228_OK			1
 
 /* Account authenticated normally */
-#define AUTH_OK				0
+#define AUTH_FTP_OK			0
 
 /* Account does not exist */
 #define AUTH_NOPWD			-1
