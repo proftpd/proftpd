@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.598 2004-09-04 22:56:30 castaglia Exp $
+$Id: NEWS,v 1.599 2004-09-04 23:05:16 castaglia Exp $
 
 CVS
 --------------------------------
@@ -6,6 +6,7 @@ CVS
 - Bug 2457 - Directory listing provides bad info when path ends with /.
 - Bug 2458 - Bad handling of CreateHome parameters.
 - Bug 2463 - mod_xfer doesn't check how many bytes it has written to disk.
+- Bug 2476 - Incorrect detection of symbolic link loop across devices.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

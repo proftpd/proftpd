@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.35 2004-05-09 01:07:26 castaglia Exp $
+ * $Id: fsio.c,v 1.36 2004-09-04 23:05:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1201,6 +1201,7 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
   pr_fs_t *fs = NULL;
   int len = 0, fini = 1, link_cnt = 0;
   ino_t last_inode = 0;
+  dev_t last_device = 0;
   struct stat sbuf;
 
   if (!path) {
@@ -1304,12 +1305,15 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
         char linkpath[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
 
         /* Detect an obvious recursive symlink */
-        if (sbuf.st_ino && (ino_t) sbuf.st_ino == last_inode) {
+        if (sbuf.st_ino && (ino_t) sbuf.st_ino == last_inode &&
+            sbuf.st_dev && (dev_t) sbuf.st_dev == last_device) {
           errno = ELOOP;
           return -1;
         }
 
         last_inode = (ino_t) sbuf.st_ino;
+        last_device = (dev_t) sbuf.st_dev;
+
         if (++link_cnt > 32) {
           errno = ELOOP;
           return -1;
@@ -1379,6 +1383,7 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
 
   int len = 0, fini = 1, link_cnt = 0;
   ino_t last_inode = 0;
+  dev_t last_device = 0;
   struct stat sbuf;
 
   if (!path) {
@@ -1456,12 +1461,14 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
         char linkpath[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
 
         /* Detect an obvious recursive symlink */
-        if (sbuf.st_ino && (ino_t) sbuf.st_ino == last_inode) {
+        if (sbuf.st_ino && (ino_t) sbuf.st_ino == last_inode &&
+            sbuf.st_dev && (dev_t) sbuf.st_dev == last_device) {
           errno = ELOOP;
           return -1;
         }
 
         last_inode = (ino_t) sbuf.st_ino;
+        last_device = (dev_t) sbuf.st_dev;
 
         if (++link_cnt > 32) {
           errno = ELOOP;
