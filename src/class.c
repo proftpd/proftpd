@@ -23,7 +23,7 @@
  */
 
 /* Class routines
- * $Id: class.c,v 1.3 2004-05-01 18:01:36 castaglia Exp $
+ * $Id: class.c,v 1.4 2004-05-03 17:25:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -200,3 +200,7 @@ int pr_class_close(void) {
   return 0;
 }
 
+void init_class(void) {
+  class_list = NULL;
+  return;
+}

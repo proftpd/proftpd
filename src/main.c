@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.225 2004-04-30 19:01:46 castaglia Exp $
+ * $Id: main.c,v 1.226 2004-05-03 17:25:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -902,6 +902,7 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
       rh->rehash(rh->data);
 
     init_log();
+    init_class();
     init_config();
     init_conf_stacks();
 
@@ -2616,6 +2617,7 @@ int main(int argc, char *argv[], char **envp) {
   init_inet();
   init_netio();
   init_fs();
+  init_class();
   free_bindings();
   init_config();
   init_stash();

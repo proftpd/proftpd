@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.564 2004-05-02 15:05:23 castaglia Exp $
+$Id: NEWS,v 1.565 2004-05-03 17:25:22 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -14,6 +14,8 @@ CVS
 - Bug 2399 - Rename start/stop control actions to up/down.
 - Bug 2082 - Add mod_rewrite "replaceall" builtin function.  See the
   RewriteMap documentation for more details.
+- Bug 2403 - Sending SIGHUP to proftpd stops it when using Classes.  The fix
+  for Bug #2400 could result in an infinite loop during a SIGHUP.
 
 1.2.10rc1 - Released 28-Apr-2004
 ---------------------------------

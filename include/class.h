@@ -23,7 +23,7 @@
  */
 
 /* Class definitions
- * $Id: class.h,v 1.2 2004-04-19 23:59:23 castaglia Exp $
+ * $Id: class.h,v 1.3 2004-05-03 17:25:23 castaglia Exp $
  */
 
 #ifndef PR_CLASS_H
@@ -79,5 +79,7 @@ int pr_class_add_acl(pr_netacl_t *);
 /* Set the Satisfy flag on the currently opened class object.
  */
 int pr_class_set_satisfy(int);
+
+void init_class(void);
 
 #endif /* PR_CLASS_H */
