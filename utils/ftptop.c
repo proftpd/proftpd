@@ -26,7 +26,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.23 2003-03-05 19:20:31 castaglia Exp $
+ * $Id: ftptop.c,v 1.24 2003-03-05 21:55:55 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.9"
@@ -90,6 +90,7 @@ static unsigned int ftp_nsessions = 0;
 static unsigned int ftp_nuploads = 0;
 static unsigned int ftp_ndownloads = 0;
 static unsigned int ftp_nidles = 0;
+static char *server_name = NULL;
 static char **ftp_sessions = NULL;
 static unsigned int chunklen = 3;
 
@@ -264,13 +265,17 @@ static void scan_config_file(void) {
 
 static void process_opts(int argc, char *argv[]) {
   int optc = 0;
-  const char *prgopts = "Dd:f:hIiUV";
+  const char *prgopts = "DS:d:f:hIiUV";
 
   while ((optc = getopt(argc, argv, prgopts)) != -1) {
     switch (optc) {
       case 'D':
         display_mode = 0U;
         display_mode |= FTPTOP_SHOW_DOWNLOAD;
+        break;
+
+      case 'S':
+        server_name = strdup(optarg);
         break;
 
       case 'd':
@@ -352,6 +357,10 @@ static void read_scoreboard(void) {
 
     /* Default status: "A" for "authenticating" */
     char *status = "A";
+
+    /* If a ServerName was given, skip unless the scoreboard entry matches. */
+    if (server_name && strcmp(server_name, score->sce_server_label) != 0)
+      continue;
 
     /* Clear the buffer for this run. */
     memset(buf, '\0', sizeof(buf));

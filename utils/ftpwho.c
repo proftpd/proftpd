@@ -26,7 +26,7 @@
 
 /* Shows a count of "who" is online via proftpd.  Uses the scoreboard file.
  *
- * $Id: ftpwho.c,v 1.20 2003-03-05 19:20:32 castaglia Exp $
+ * $Id: ftpwho.c,v 1.21 2003-03-05 21:55:55 castaglia Exp $
  */
 
 #include "utils.h"
@@ -199,11 +199,12 @@ static const char *show_uptime(time_t uptime_since) {
 static struct option_help {
   const char *long_opt,*short_opt,*desc;
 } opts_help[] = {
-  { "--config", "-c", "specify full path to proftpd configuration file" },
-  { "--file", "-f", "specify full path to scoreboard file" },
-  { "--help", "-h", NULL },
-  { "--outform", "-o", "specify an output format" },
-  { "--verbose","-v", "display additional information for each connection" },
+  { "--config",	"-c",	"specify full path to proftpd configuration file" },
+  { "--file",	"-f",	"specify full path to scoreboard file" },
+  { "--help",	"-h",	NULL },
+  { "--outform","-o",	"specify an output format" },
+  { "--verbose","-v",	"display additional information for each connection" },
+  { "--server",	"-S",	"show users only for specified ServerName" },
   { NULL }
 };
 
@@ -214,6 +215,7 @@ static struct option opts[] = {
   { "help",    0, NULL, 'h' },
   { "outform", 1, NULL, 'o' },
   { "verbose", 0, NULL, 'v' },
+  { "server",  1, NULL, 'S' },
   { NULL,      0, NULL, 0   }
 };
 #endif /* HAVE_GETOPT_LONG */
@@ -243,9 +245,10 @@ int main(int argc, char **argv) {
   time_t uptime = 0;
   unsigned int count = 0, total = 0;
   int c = 0, res = 0;
+  char *server_name = NULL;
   struct scoreboard_class classes[MAX_CLASSES];
   char *cp, *progname = *argv;
-  const char *cmdopts = "c:f:ho:v";
+  const char *cmdopts = "S:c:f:ho:v";
   unsigned char verbose = FALSE;
   unsigned long outform = 0;
 
@@ -291,6 +294,10 @@ int main(int argc, char **argv) {
 
         fprintf(stderr, "unknown outform value: '%s'\n", optarg);
         return 1;
+
+      case 'S':
+        server_name = strdup(optarg);
+        break;
 
       case '?':
         fprintf(stderr, "unknown option: %c\n", (char)optopt);
@@ -343,9 +350,16 @@ int main(int argc, char **argv) {
     printf("standalone FTP daemon [%u], up for %s\n", (unsigned int) mpid,
       show_uptime(uptime));
 
+  if (server_name)
+    printf("ProFTPD Server '%s'\n", server_name);
+
   while ((score = util_scoreboard_read_entry()) != NULL) {
     unsigned char uploading = FALSE;
     register unsigned int i = 0;
+
+    /* If a ServerName was given, skip unless the scoreboard entry matches. */
+    if (server_name && strcmp(server_name, score->sce_server_label) != 0)
+      continue;
 
     if (!count++) {
       if (total)

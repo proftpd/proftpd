@@ -27,7 +27,7 @@
 /* Shows a count of "who" is online via proftpd.  Uses the /var/run/proftpd*
  * log files.
  *
- * $Id: ftpcount.c,v 1.9 2003-03-04 19:28:33 castaglia Exp $
+ * $Id: ftpcount.c,v 1.10 2003-03-05 21:55:54 castaglia Exp $
  */
 
 #include "utils.h"
@@ -125,9 +125,10 @@ static int check_scoreboard_file(void) {
 static struct option_help {
   char *long_opt,*short_opt,*desc;
 } opts_help[] = {
-  { "--config","-c","specify full path to proftpd configuration file" },
-  { "--file","-f","specify full path to scoreboard file" },
-  { "--help","-h", NULL },
+  { "--config",	"-c",	"specify full path to proftpd configuration file" },
+  { "--file",	"-f",	"specify full path to scoreboard file" },
+  { "--help",	"-h",	NULL },
+  { "--server",	"-S",	"show count only for specified ServerName" },
   { NULL }
 };
 
@@ -136,6 +137,7 @@ static struct option opts[] = {
   { "config",  1, NULL, 'c' },
   { "file",    1, NULL, 'f' },
   { "help",    0, NULL, 'h' },
+  { "server",  1, NULL, 'S' },
   { NULL,      0, NULL, 0   }
 };
 #endif /* HAVE_GETOPT_LONG */
@@ -161,13 +163,14 @@ static void show_usage(const char *progname, int exit_code) {
 
 int main(int argc, char **argv) {
   pr_scoreboard_entry_t *score = NULL;
-  pid_t oldpid = 0,mpid;
+  pid_t oldpid = 0, mpid;
   time_t uptime = 0;
   unsigned int count = 0, total = 0;
   int c = 0, res = 0;
+  char *server_name = NULL;
   struct scoreboard_class classes[MAX_CLASSES];
   char *cp, *progname = *argv;
-  const char *cmdopts = "c:f:h";
+  const char *cmdopts = "S:c:f:h";
 
   memset(classes, 0, MAX_CLASSES * sizeof(struct scoreboard_class));
 
@@ -192,6 +195,10 @@ int main(int argc, char **argv) {
 
       case 'c':
         config_filename = strdup(optarg);
+        break;
+
+      case 'S':
+        server_name = strdup(optarg);
         break;
 
       case '?':
@@ -254,9 +261,16 @@ int main(int argc, char **argv) {
       else
         printf("Master proftpd process %d:\n",(int) mpid);
 
+      if (server_name)
+        printf("ProFTPD Server '%s'\n", server_name);
+
       oldpid = mpid;
       total = 0;
     }
+
+    /* If a ServerName was given, skip unless the scoreboard entry matches. */
+    if (server_name && strcmp(server_name, score->sce_server_label) != 0)
+      continue;
 
     for (i = 0; i != MAX_CLASSES; i++) {
       if (classes[i].score_class == 0) {
