@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.98 2002-08-14 16:17:35 castaglia Exp $
+ * $Id: mod_core.c,v 1.99 2002-09-05 20:09:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -456,39 +456,45 @@ MODRET set_pidfile(cmd_rec *cmd) {
 }
 
 MODRET set_sysloglevel(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  unsigned int level = 0;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (!strcasecmp(cmd->argv[1], "emerg")) {
-    add_config_param(cmd->argv[0], 1, (void *) PR_LOG_EMERG);
 
-  } else if (!strcasecmp(cmd->argv[1], "alert")) {
-    add_config_param(cmd->argv[0], 1, (void *) PR_LOG_ALERT);
+  if (!strcasecmp(cmd->argv[1], "emerg"))
+    level = PR_LOG_EMERG;
 
-  } else if (!strcasecmp(cmd->argv[1], "crit")) {
-    add_config_param(cmd->argv[0], 1, (void *) PR_LOG_CRIT);
+  else if (!strcasecmp(cmd->argv[1], "alert"))
+    level = PR_LOG_ALERT;
 
-  } else if (!strcasecmp(cmd->argv[1], "error")) {
-    add_config_param(cmd->argv[0], 1, (void *) PR_LOG_ERR);
+  else if (!strcasecmp(cmd->argv[1], "crit"))
+    level = PR_LOG_CRIT;
 
-  } else if (!strcasecmp(cmd->argv[1], "warn")) {
-    add_config_param(cmd->argv[0], 1, (void *) PR_LOG_WARNING);
+  else if (!strcasecmp(cmd->argv[1], "error"))
+    level = PR_LOG_ERR;
 
-  } else if(!strcasecmp(cmd->argv[1], "notice")) {
-    add_config_param(cmd->argv[0], 1, (void *) PR_LOG_NOTICE);
+  else if (!strcasecmp(cmd->argv[1], "warn"))
+    level = PR_LOG_WARNING;
 
-  } else if(!strcasecmp(cmd->argv[1], "info")) {
-    add_config_param(cmd->argv[0], 1, (void *) PR_LOG_INFO);
+  else if(!strcasecmp(cmd->argv[1], "notice"))
+    level = PR_LOG_NOTICE;
 
-  } else if(!strcasecmp(cmd->argv[1], "debug")) {
-    add_config_param(cmd->argv[0], 1, (void *) PR_LOG_DEBUG);
+  else if(!strcasecmp(cmd->argv[1], "info"))
+    level = PR_LOG_INFO;
 
-  } else {
+  else if(!strcasecmp(cmd->argv[1], "debug"))
+    level = PR_LOG_DEBUG;
+
+  else
     CONF_ERROR(cmd, "SyslogLevel requires level keyword: one of "
-	       "emerg/alert/crit/error/warn/notice/info/debug");
-  }
+      "emerg/alert/crit/error/warn/notice/info/debug");
   
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
+  *((unsigned int *) c->argv[0]) = level;
+
   return HANDLED(cmd);
 }
 

@@ -27,7 +27,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.42 2002-08-13 22:52:00 castaglia Exp $
+ * $Id: log.c,v 1.43 2002-09-05 20:09:58 castaglia Exp $
  */
 
 /* History Log:
@@ -47,13 +47,14 @@
 
 static int syslog_open = FALSE;
 static int syslog_discard = FALSE;
+static int syslog_sockfd = -1;
 static int logstderr = TRUE;
 static int debug_level = DEBUG0;	/* Default is no debug logging */
 static int facility = LOG_DAEMON;
 static int set_facility = -1;
-static char *syslog_fn = NULL;
-static char *syslog_hostname;
-static int syslog_fd = -1;
+static char systemlog_fn[MAX_PATH_LEN] = {'\0'};
+static char systemlog_host[256] = {'\0'};
+static int systemlog_fd = -1;
 static int runfd = -1;
 static char scoreboard_path[MAX_PATH_LEN] = RUN_DIR;
 static char *runfn = NULL;
@@ -789,20 +790,28 @@ int log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
 
 int log_opensyslog(const char *fn) {
   int res = 0;
- 
+
   if (set_facility != -1)
     facility = set_facility;
 
-  if (fn)
-    syslog_fn = pstrdup(permanent_pool, fn);
+  if (fn) {
+    memset(systemlog_fn, '\0', sizeof(systemlog_fn));
+    sstrncpy(systemlog_fn, fn, sizeof(systemlog_fn));
+  }
+ 
+  if (!*systemlog_fn) {
 
-  if (!syslog_fn) {
+    /* The child may have inherited a valid socket from the parent. */
+    pr_closelog(syslog_sockfd);
 
-    openlog("proftpd", LOG_NDELAY|LOG_PID, facility);
-    syslog_fd = -1;
+    if ((syslog_sockfd = pr_openlog("proftpd", LOG_NDELAY|LOG_PID,
+        facility)) < 0)
+      return -1;
+    systemlog_fd = -1;
 
-  } else if ((res = log_openfile(syslog_fn, &syslog_fd, LOG_SYSTEM_MODE)) < 0) {
-    syslog_fn = NULL;
+  } else if ((res = log_openfile(systemlog_fn, &systemlog_fd,
+      LOG_SYSTEM_MODE)) < 0) {
+    memset(systemlog_fn, '\0', sizeof(systemlog_fn));
     return res;
   }
 
@@ -810,42 +819,42 @@ int log_opensyslog(const char *fn) {
   return 0;
 }
 
-void log_closesyslog(void)
-{
-  if(syslog_fd != -1)
-    close(syslog_fd);
-  else
-    closelog();
+void log_closesyslog(void) {
+  if (systemlog_fd != -1) {
+    close(systemlog_fd);
+    systemlog_fd = -1;
 
-  syslog_fd = -1;
+  } else {
+    pr_closelog(syslog_sockfd);
+    syslog_sockfd = -1;
+  }
+
   syslog_open = FALSE;
 }
 
-void log_setfacility(int f)
-{
+void log_setfacility(int f) {
   set_facility = f;
 }
 
-void log_discard(void)
-{
+void log_discard(void) {
   syslog_discard = TRUE;
 }
 
 static void log(int priority, int f, char *s) {
-  int maxpriority;
-  char serverinfo[1024];
+  unsigned int *max_priority = NULL;
+  char serverinfo[TUNABLE_BUFFER_SIZE] = {'\0'};
   
   memset(serverinfo, '\0', sizeof(serverinfo));
   
-  if(main_server && main_server->ServerFQDN) {
+  if (main_server && main_server->ServerFQDN) {
     snprintf(serverinfo, sizeof(serverinfo), "%s", main_server->ServerFQDN);
-    serverinfo[sizeof(serverinfo) - 1] = '\0';
+    serverinfo[sizeof(serverinfo)-1] = '\0';
     
-    if(session.c && session.c->remote_name) {
+    if (session.c && session.c->remote_name) {
       snprintf(serverinfo + strlen(serverinfo),
-	       sizeof(serverinfo) - strlen(serverinfo), " (%s[%s])",
-	       session.c->remote_name, inet_ntoa(*session.c->remote_ipaddr));
-      serverinfo[sizeof(serverinfo) - 1] = '\0';
+        sizeof(serverinfo) - strlen(serverinfo), " (%s[%s])",
+        session.c->remote_name, inet_ntoa(*session.c->remote_ipaddr));
+      serverinfo[sizeof(serverinfo)-1] = '\0';
     }
   }
   
@@ -857,7 +866,7 @@ static void log(int priority, int f, char *s) {
   if (syslog_discard)
     return;
   
-  if (syslog_fd != -1) {
+  if (systemlog_fd != -1) {
     char buf[LOGBUFFER_SIZE] = {'\0'};
     time_t tt = time(NULL);
     struct tm *t;
@@ -868,16 +877,16 @@ static void log(int priority, int f, char *s) {
     
     if (*serverinfo) {
       snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-	       "%s proftpd[%u] %s: %s\n", syslog_hostname,
+	       "%s proftpd[%u] %s: %s\n", systemlog_host,
 	       (unsigned int) getpid(), serverinfo, s);
     } else {
       snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-	       "%s proftpd[%u]: %s\n", syslog_hostname,
+	       "%s proftpd[%u]: %s\n", systemlog_host,
 	       (unsigned int) getpid(), s);
     }
     
     buf[sizeof(buf) - 1] = '\0';
-    write(syslog_fd, buf, strlen(buf));
+    write(systemlog_fd, buf, strlen(buf));
     return;
   }
   
@@ -885,22 +894,23 @@ static void log(int priority, int f, char *s) {
     f = set_facility;
 
   if (f != facility || !syslog_open)
-    openlog("proftpd", LOG_NDELAY | LOG_PID, f);
-  
-  if ((maxpriority = get_param_int(main_server->conf, "SyslogLevel",
-				  FALSE)) != -1)
-    if (priority > maxpriority)
-      return;
-  
+    syslog_sockfd = pr_openlog("proftpd", LOG_NDELAY|LOG_PID, f);
+ 
+  if ((max_priority = get_param_ptr(main_server->conf, "SyslogLevel",
+      FALSE)) != NULL && priority > *max_priority)
+    return;
+ 
   if (*serverinfo)
-    syslog(priority, "%s - %s\n", serverinfo, s);
+    pr_syslog(syslog_sockfd, priority, "%s - %s\n", serverinfo, s);
   else
-    syslog(priority, "%s\n", s);
+    pr_syslog(syslog_sockfd, priority, "%s\n", s);
   
-  if (!syslog_open)
-    closelog();
-  else if (f != facility)
-    openlog("proftpd", LOG_NDELAY | LOG_PID, facility);
+  if (!syslog_open) {
+    pr_closelog(syslog_sockfd);
+    syslog_sockfd = -1;
+
+  } else if (f != facility)
+    syslog_sockfd = pr_openlog("proftpd", LOG_NDELAY|LOG_PID, facility);
 }
 
 void log_pri(int priority, char *fmt, ...) {
@@ -940,8 +950,7 @@ void log_auth(int priority, char *fmt, ...) {
  * logging, all messages go to syslog.
  */
 
-void log_stderr(int bool)
-{
+void log_stderr(int bool) {
   logstderr = bool;
 }
 
@@ -950,8 +959,7 @@ void log_stderr(int bool)
  * (default)
  */
 
-int log_setdebuglevel(int level)
-{
+int log_setdebuglevel(int level) {
   int old_level = debug_level;
   debug_level = level;
   return old_level;
@@ -975,12 +983,13 @@ void log_debug(int level, char *fmt, ...) {
   log(LOG_DEBUG, facility, buf);
 }
 
-void init_log(void)
-{
+void init_log(void) {
   char buf[256] = {'\0'};
 
-  if(gethostname(buf, sizeof(buf)) == -1)
+  if (gethostname(buf, sizeof(buf)) == -1)
     sstrncpy(buf, "localhost", sizeof(buf));
-  
-  syslog_hostname = inet_validate(pstrdup(permanent_pool, buf));
+ 
+  sstrncpy(systemlog_host, inet_validate(buf), sizeof(systemlog_host));
+  memset(systemlog_fn, '\0', sizeof(systemlog_fn));
+  log_closesyslog();
 }

@@ -27,7 +27,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.12 2002-06-27 07:31:53 castaglia Exp $
+ * $Id: log.h,v 1.13 2002-09-05 20:09:58 castaglia Exp $
  */
 
 #ifndef __LOG_H
@@ -82,36 +82,6 @@ typedef struct {
 #define DEBUG2		2
 #define DEBUG1		1
 #define DEBUG0		0
-
-/* These are log levels used to determine at which level we should log to.
- */
-#ifdef HAVE_SYSLOG
-
-#define PR_LOG_EMERG     LOG_EMERG     /* system is unusable */
-#define PR_LOG_ALERT     LOG_ALERT     /* action must be taken immediately */
-#define PR_LOG_CRIT      LOG_CRIT      /* critical conditions */
-#define PR_LOG_ERR       LOG_ERR       /* error conditions */
-#define PR_LOG_WARNING   LOG_WARNING   /* warning conditions */
-#define PR_LOG_NOTICE    LOG_NOTICE    /* normal but significant condition */
-#define PR_LOG_INFO      LOG_INFO      /* informational */
-#define PR_LOG_DEBUG     LOG_DEBUG     /* debug-level messages */
-
-#define PR_LOG_LEVELMASK LOG_PRIMASK   /* mask off the level value */
-
-#else
-
-#define	PR_LOG_EMERG		0	/* system is unusable */
-#define	PR_LOG_ALERT		1	/* action must be taken immediately */
-#define	PR_LOG_CRIT		2	/* critical conditions */
-#define	PR_LOG_ERR		3	/* error conditions */
-#define	PR_LOG_WARNING		4	/* warning conditions */
-#define	PR_LOG_NOTICE		5	/* normal but significant condition */
-#define	PR_LOG_INFO		6	/* informational */
-#define	PR_LOG_DEBUG		7	/* debug-level messages */
-
-#define	PR_LOG_LEVELMASK	7	/* mask off the level value */
-
-#endif
 
 /* log_openfile() return values */
 #define LOG_WRITEABLE_DIR	-2

@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.98 2002-09-04 18:55:09 castaglia Exp $
+ * $Id: main.c,v 1.99 2002-09-05 20:09:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1125,6 +1125,7 @@ static void main_rehash(void *d1, void *d2, void *d3, void *d4) {
     for (rh = rehash_list; rh; rh=rh->next)
       rh->rehash(rh->data);
    
+    init_log();
     init_config();
     init_conf_stacks();
 
@@ -1360,19 +1361,15 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
 #endif /* DEBUG_NOFORK */
 
-
   /* Child is running here */
   signal(SIGUSR1,sig_disconnect);
   signal(SIGUSR2,sig_debug);
   signal(SIGCHLD,SIG_DFL);
   signal(SIGHUP,SIG_IGN);
 
-  /* From this point on, syslog stays open */
-  /* We close it first so that the logger will pick up our
-   * new pid.
-   */
-
-  /* Bug #398 - jss
+  /* From this point on, syslog stays open. We close it first so that the
+   * logger will pick up our new PID.
+   *
    * We have to delay calling log_opensyslog() until after inet_openrw()
    * is called, otherwise the potential exists for the syslog FD to
    * be overwritten and the user to see logging information.
@@ -1380,20 +1377,17 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
    * This isn't that big of a deal because the logging functions will
    * just open it dynamically if they need to.
    */
-
   log_closesyslog();
 
-  /*
-   * Specifically DON'T perform reverse dns at this point, to alleviate
+  /* Specifically DO NOT perform reverse DNS at this point, to alleviate
    * the race condition mentioned above.  Instead we do it after closing
    * all former listening sockets.
    */
-  conn = inet_openrw(permanent_pool, l, NULL, fd,
-                     STDIN_FILENO, STDOUT_FILENO, FALSE);
+  conn = inet_openrw(permanent_pool, l, NULL, fd, STDIN_FILENO,
+    STDOUT_FILENO, FALSE);
   
   /* Now do the permanent syslog open
    */
- 
   block_signals();
   PRIVS_ROOT
 
@@ -1402,9 +1396,9 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   PRIVS_RELINQUISH
   unblock_signals();
 
-  if(!conn) {
-    log_pri(LOG_ERR,"Fatal: unable to open incoming connection: %s",
-                   strerror(errno));
+  if (!conn) {
+    log_pri(LOG_ERR, "Fatal: unable to open incoming connection: %s",
+      strerror(errno));
     exit(1);
   }
 
