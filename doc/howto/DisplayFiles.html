@@ -1,4 +1,4 @@
-<!-- $Id: DisplayFiles.html,v 1.1 2004-12-16 00:50:47 castaglia Exp $ -->
+<!-- $Id: DisplayFiles.html,v 1.2 2004-12-16 00:54:42 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/DisplayFiles.html,v $ -->
 
 <html>
@@ -180,11 +180,41 @@ value, depending on the context in which they are used (<i>e.g.</i>,
     <td>%z</td>
     <td>Maximum number of connections from the user's <code>Class</code></td>
   </tr>
+
+  <tr>
+    <td>%{total_bytes_in}</td>
+    <td>The number of bytes uploaded (input) in this session</td>
+  </tr>
+
+  <tr>
+    <td>%{total_bytes_out}</td>
+    <td>The number of bytes downloaded (output) in this session</td>
+  </tr>
+
+  <tr>
+    <td>%{total_bytes_xfer}</td>
+    <td>The number of bytes transferred (uploaded and downloaded) in this session</td>
+  </tr>
+
+  <tr>
+    <td>%{total_files_in}</td>
+    <td>The number of files uploaded (input) in this session</td>
+  </tr>
+
+  <tr>
+    <td>%{total_files_out}</td>
+    <td>The number of files downloaded (output) in this session</td>
+  </tr>
+
+  <tr>
+    <td>%{total_files_xfer}</td>
+    <td>The number of files transferred (uploaded and downloaded) in this session</td>
+  </tr>
 </table>
 
 <p>
 <hr>
-<i>$Date: 2004-12-16 00:50:47 $</i><br>
+<i>$Date: 2004-12-16 00:54:42 $</i><br>
 
 </body>
 </html>
