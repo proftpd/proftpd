@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.252 2004-10-09 20:44:47 castaglia Exp $
+ * $Id: main.c,v 1.253 2004-10-26 23:25:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -711,6 +711,7 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, int flags) {
   *((char **) push_array(tarr)) = NULL;
   cmd->argv = (char **) tarr->elts;
 
+  cmd->notes = pr_table_alloc(cmd->pool, 0);
   return cmd;
 }
 
@@ -1319,10 +1320,13 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   else
     pr_log_debug(DEBUG2, "FTP session requested from unknown class");
 
+  /* Create a table for modules to use. */
+  session.notes = pr_table_alloc(session.pool, 0);
+
   /* Inform all the modules that we are now a child */
   pr_log_debug(DEBUG7, "performing module session initializations");
-
-  modules_session_init();
+  if (modules_session_init() < 0)
+    end_login(1);
 
   /* Use the ident protocol (RFC1413) to try to get remote ident_user */
   if ((ident_lookups = get_param_ptr(main_server->conf, "IdentLookups",

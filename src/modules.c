@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.48 2004-06-12 02:03:50 castaglia Exp $
+ * $Id: modules.c,v 1.49 2004-10-26 23:25:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -422,52 +422,6 @@ int pr_stash_remove_symbol(pr_stash_type_t sym_type, const char *sym_name,
   return count;
 }
 
-/* functions to manage modular privdata structure inside cmd_rec */
-privdata_t *mod_privdata_alloc(cmd_rec *cmd, char *tag, int size) {
-  privdata_t **pp;
-  privdata_t *p;
-
-  if (!tag)
-    return NULL;
-
-  p = pcalloc(cmd->pool, sizeof(privdata_t));
-
-  p->tag = pstrdup(cmd->pool, tag);
-  if (size)
-    p->value.ptr_val = pcalloc(cmd->pool, size);
-  p->m = curr_module;
-
-  if (!cmd->privarr)
-    cmd->privarr = make_array(cmd->pool, 2, sizeof(privdata_t*));
-
-  pp = (privdata_t **) push_array(cmd->privarr);
-  *pp = p;
-
-  cmd->private = (privdata_t *) cmd->privarr->elts;
-  return p;
-}
-
-privdata_t *mod_privdata_find(cmd_rec *cmd, char *tag, module *m) {
-  int i;
-  privdata_t **p;
-
-  if (!tag)
-    return NULL;
-
-  if (!m)
-    m = curr_module;
-
-  for (i = 0, p = (privdata_t **) cmd->privarr->elts;
-       i < cmd->privarr->nelts;
-       i++, p++) {
-    if (strcmp((*p)->tag, tag) == 0 &&
-        (m == ANY_MODULE || (*p)->m == m))
-      break;
-  }
-
-  return (i < cmd->privarr->nelts ? *p : NULL);
-}
-
 modret_t *call_module(module *m, modret_t *(*func)(cmd_rec *), cmd_rec *cmd) {
   modret_t *res;
   module *prev_module = curr_module;
@@ -529,7 +483,11 @@ int modules_session_init(void) {
   for (m = loaded_modules; m; m = m->next) {
     if (m && m->sess_init) {
       curr_module = m;
-      m->sess_init();
+      if (m->sess_init() < 0) {
+        pr_log_pri(PR_LOG_ERR, "mod_%s.c: error initializing session: %s",
+          m->name, strerror(errno));
+        return -1;
+      }
     }
   }
 

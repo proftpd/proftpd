@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.50 2004-09-18 00:38:13 castaglia Exp $
+ * $Id: proftpd.h,v 1.51 2004-10-26 23:24:56 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -105,6 +105,8 @@ typedef struct {
   gid_t login_gid;                      /* GID after login, but before
                                          * session.gid is changed
                                          */
+
+  pr_table_t *notes;			/* Session notes table */
 
   pr_class_t *class;			/* Session class */
   char *proc_prefix;			/* The "prefix" of our process name */

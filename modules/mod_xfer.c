@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.170 2004-10-18 16:42:20 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.171 2004-10-26 23:24:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -857,9 +857,8 @@ static void stor_complete(void) {
   stor_fh = NULL;
 }
 
-static int get_hidden_store_path(cmd_rec *cmd, char *path, privdata_t *p) {
-  privdata_t *p_hidden;
-  char *c = NULL;
+static int get_hidden_store_path(cmd_rec *cmd, char *path) {
+  char *c = NULL, *hidden_path;
   int dotcount = 0, foundslash = 0, basenamestart = 0, maxlen;
 
   /* We have to also figure out the temporary hidden file name for receiving
@@ -914,41 +913,47 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path, privdata_t *p) {
     return -1;
   }
 
-  p_hidden = mod_privdata_alloc(cmd, "stor_hidden_filename", maxlen);
+  if (pr_table_add(cmd->notes, "mod_xfer.store-hidden-path", NULL, 0) < 0)
+    pr_log_pri(PR_LOG_NOTICE,
+      "notice: error adding 'mod_xfer.store-hidden-path': %s",
+      strerror(errno));
 
   if (!foundslash) {
 
     /* Simple local file name */
-    sstrncpy(p_hidden->value.str_val, ".in.", maxlen);
-    sstrcat(p_hidden->value.str_val, path, maxlen);
-    sstrcat(p_hidden->value.str_val, ".", maxlen);
+    hidden_path = pstrcat(cmd->tmp_pool, ".in.", path, ".", NULL);
 
     pr_log_pri(PR_LOG_DEBUG, "HiddenStore: local path, will rename %s to %s",
-      p_hidden->value.str_val, p->value.str_val);
+      hidden_path, path;
 
   } else {
 
     /* Complex relative path or absolute path */
-    sstrncpy(p_hidden->value.str_val, path, maxlen);
-    p_hidden->value.str_val[basenamestart] = '\0';
+    hidden_path = pstrndup(cmd->pool, path, maxlen);
+    hidden_path[basenamestart] = '\0';
 
-    sstrcat(p_hidden->value.str_val, ".in.", maxlen);
-    sstrcat(p_hidden->value.str_val, path + basenamestart, maxlen);
-    sstrcat(p_hidden->value.str_val, ".", maxlen);
+    hidden_path = pstrcat(cmd->pool, hidden_path, ".in.",
+      path + basenamestart, ".", NULL);
 
     pr_log_pri(PR_LOG_DEBUG, "HiddenStore: complex path, will rename %s to %s",
-      p_hidden->value.str_val, p->value.str_val);
+      hidden_path, path);
   }
 
-  if (file_mode(p_hidden->value.str_val)) {
-    log_debug(DEBUG3, "HiddenStore path '%s' already exists",
-      p_hidden->value.str_val);
+  if (file_mode(hidden_path)) {
+    pr_log_debug(DEBUG3, "HiddenStore path '%s' already exists",
+      hidden_path);
 
     pr_response_add_err(R_550, "%s: Temporary hidden file %s already exists",
-      cmd->arg, p_hidden->value.str_val);
+      cmd->arg, hidden_path);
 
     return -1;
   }
+
+  if (pr_table_set(cmd->notes, "mod_xfer.store-hidden-path",
+      hidden_path, 0) < 0)
+    pr_log_pri(PR_LOG_NOTICE,
+      "notice: error setting 'mod_xfer.store-hidden-path': %s",
+      strerror(errno));
 
   session.xfer.xfer_type = STOR_HIDDEN;
 
@@ -967,14 +972,13 @@ MODRET xfer_post_prot(cmd_rec *cmd) {
 }
 
 /* This is a PRE_CMD handler that checks security, etc, and places the full
- * filename to receive in cmd->private. Note that we CANNOT use cmd->tmp_pool
- * for this, as tmp_pool only lasts for the duration of this function.
+ * filename to receive in cmd->notes, under the key 'mod_xfer.store-path'.
+ * Note that we CANNOT use cmd->tmp_pool for this, as tmp_pool only lasts for
+ * the duration of this function.
  */
-
 MODRET xfer_pre_stor(cmd_rec *cmd) {
   char *dir;
   mode_t fmode;
-  privdata_t *p;
   unsigned char *hidden_stores = NULL, *allow_overwrite = NULL,
     *allow_restart = NULL;
 
@@ -1023,13 +1027,15 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   }
 
   /* Otherwise everthing is good */
-  p = mod_privdata_alloc(cmd, "stor_filename", strlen(dir) + 1);
-  sstrncpy(p->value.str_val, dir, strlen(dir) + 1);
+  if (pr_table_add(cmd->notes, "mod_xfer.store-path",
+      pstrdup(cmd->pool, dir), 0) < 0)
+    pr_log_pri(PR_LOG_NOTICE, "notice: error adding 'mod_xfer.store-path': %s",
+      strerror(errno));
 
   if ((hidden_stores = get_param_ptr(CURRENT_CONF, "HiddenStores",
       FALSE)) != NULL && *hidden_stores == TRUE) {
 
-    if (get_hidden_store_path(cmd, dir, p) < 0)
+    if (get_hidden_store_path(cmd, dir) < 0)
       return ERROR(cmd);
   }
 
@@ -1042,7 +1048,6 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
  */
 MODRET xfer_pre_stou(cmd_rec *cmd) {
   config_rec *c = NULL;
-  privdata_t *priv = NULL;
   char *prefix = "ftp", *filename = NULL;
   int tmpfd;
   mode_t mode;
@@ -1100,8 +1105,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
     close(tmpfd);
   }
 
-  /* It's OK to reuse the char * pointer for filename.
-   */
+  /* It's OK to reuse the char * pointer for filename. */
   filename = dir_best_path(cmd->tmp_pool, cmd->arg);
 
   if (!filename || !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group,
@@ -1110,7 +1114,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
     /* Do not forget to delete the file created by mkstemp(3) if there is
      * an error.
      */
-    pr_fsio_unlink(cmd->arg);
+    (void) pr_fsio_unlink(cmd->arg);
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
@@ -1130,20 +1134,20 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  /* Not likely to _not_ be a regular file, but just to be certain...
-   */
+  /* Not likely to _not_ be a regular file, but just to be certain... */
   if (mode && !S_ISREG(mode)) {
-    pr_fsio_unlink(cmd->arg);
+    (void) pr_fsio_unlink(cmd->arg);
     pr_response_add_err(R_550, "%s: Not a regular file", cmd->arg);
     return ERROR(cmd);
   }
 
   /* Otherwise everthing is good */
-  priv = mod_privdata_alloc(cmd, "stor_filename", strlen(filename) + 1);
-  sstrncpy(priv->value.str_val, filename, strlen(filename) + 1);
+  if (pr_table_add(cmd->notes, "mod_xfer.store-path",
+      pstrdup(cmd->pool, filename), 0) < 0)
+    pr_log_pri(PR_LOG_NOTICE, "notice: error adding 'mod_xfer.store-path': %s",
+      strerror(errno));
 
   session.xfer.xfer_type = STOR_UNIQUE;
-
   return HANDLED(cmd);
 }
 
@@ -1172,7 +1176,6 @@ MODRET xfer_post_stou(cmd_rec *cmd) {
 /* xfer_pre_appe() is the PRE_CMD handler for the APPE command, which
  * simply sets xfer_type to STOR_APPEND and calls xfer_pre_stor().
  */
-
 MODRET xfer_pre_appe(cmd_rec *cmd) {
   session.xfer.xfer_type = STOR_APPEND;
   session.restart_pos = 0L;
@@ -1188,39 +1191,26 @@ MODRET xfer_stor(cmd_rec *cmd) {
   unsigned char have_limit = FALSE;
   struct stat sbuf;
   off_t respos = 0;
-  privdata_t *p, *p_hidden;
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   regex_t *preg;
   int ret;
 #endif /* REGEX */
 
-  /* this function sets static module variables for later throttling */
+  /* This function sets static module variables for later throttling */
   xfer_rate_lookup(cmd);
 
-  p_hidden = NULL;
-  p = mod_privdata_find(cmd, "stor_filename", NULL);
+  session.xfer.path = pr_table_get(cmd->notes, "mod_xfer.store-path", NULL);
+  session.xfer.path_hidden = NULL;
 
-  if (!p) {
-    pr_response_add_err(R_550,"%s: internal error, stor_filename not set by cmd_pre_stor",cmd->arg);
-    return ERROR(cmd);
-  }
-
-  dir = p->value.str_val;
-
-  if (session.xfer.xfer_type == STOR_HIDDEN) {
-    p_hidden = mod_privdata_find(cmd,"stor_hidden_filename",NULL);
-    if (!p_hidden) {
-      pr_response_add_err(R_550,"%s: internal error, stor_hidden_filename not set by cmd_pre_retr",cmd->arg);
-      return ERROR(cmd);
-    }
-  }
+  dir = session.xfer.path;
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
   if (preg) {
-    if ((ret = regexec(preg,cmd->arg, 0, NULL, 0)) != 0) {
+    ret = regexec(preg, cmd->arg, 0, NULL, 0);
+    if (ret != 0) {
       pr_log_debug(DEBUG2, "'%s' denied by PathAllowFilter", cmd->arg);
       pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
       return ERROR(cmd);
@@ -1236,7 +1226,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
   if (preg) {
-    if ((ret = regexec(preg, cmd->arg, 0, NULL, 0)) == 0) {
+    ret = regexec(preg, cmd->arg, 0, NULL, 0);
+    if (ret == 0) {
       pr_log_debug(DEBUG2, "'%s' denied by PathDenyFilter", cmd->arg);
       pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
       return ERROR(cmd);
@@ -1251,8 +1242,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
 #endif /* REGEX */
 
   if (session.xfer.xfer_type == STOR_HIDDEN)
-    stor_fh = pr_fsio_open(p_hidden->value.str_val,
-        O_WRONLY|(session.restart_pos ? 0 : O_CREAT|O_EXCL));
+    stor_fh = pr_fsio_open(dir,
+      O_WRONLY|(session.restart_pos ? 0 : O_CREAT|O_EXCL));
 
   else if (session.xfer.xfer_type == STOR_APPEND) {
     stor_fh = pr_fsio_open(dir, O_CREAT|O_WRONLY);
@@ -1307,13 +1298,17 @@ MODRET xfer_stor(cmd_rec *cmd) {
   /* Perform the actual transfer now */
   pr_data_init(cmd->arg, PR_NETIO_IO_RD);
 
-  session.xfer.path = dir;
+  /* pr_data_init() creates the session.xfer.p pool, if not already
+   * present.  That is why we need to wait until after it is called
+   * before dup'ing the hidden path into session.xfer.path_hidden.
+   */
+  if (session.xfer.xfer_type == STOR_HIDDEN)
+    session.xfer.path_hidden = pstrdup(session.xfer.p,
+      pr_table_get(cmd->notes, "mod_xfer.store-hidden-path", NULL));
 
   if (session.xfer.xfer_type == STOR_HIDDEN)
     session.xfer.path_hidden = pstrdup(session.xfer.p,
-      p_hidden->value.str_val);
-  else
-    session.xfer.path_hidden = NULL;
+      pr_table_get(cmd->notes, "mod_xfer.store-hidden-path", NULL));
 
   session.xfer.file_size = respos;
 
@@ -1418,7 +1413,6 @@ MODRET xfer_stor(cmd_rec *cmd) {
     stor_complete();
 
     if (session.xfer.path && session.xfer.path_hidden) {
-
       if (pr_fsio_rename(session.xfer.path_hidden, session.xfer.path) != 0) {
 
         /* This should only fail on a race condition with a chmod/chown
@@ -1479,13 +1473,12 @@ MODRET xfer_rest(cmd_rec *cmd) {
 }
 
 /* This is a PRE_CMD handler that checks security, etc, and places the full
- * filename to send in cmd->private [note that we CANNOT use cmd->tmp_pool
- * for this, as tmp_pool only lasts for the duration of this function.
+ * filename to send in cmd->notes (note that we CANNOT use cmd->tmp_pool
+ * for this, as tmp_pool only lasts for the duration of this function).
  */
 MODRET xfer_pre_retr(cmd_rec *cmd) {
   char *dir = NULL;
   mode_t fmode;
-  privdata_t *p = NULL;
   unsigned char *allow_restart = NULL;
 
   if (cmd->argc < 2) {
@@ -1493,7 +1486,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  dir = dir_realpath(cmd->tmp_pool,cmd->arg);
+  dir = dir_realpath(cmd->tmp_pool, cmd->arg);
 
   if (!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL)) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
@@ -1524,8 +1517,11 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
   }
 
   /* Otherwise everthing is good */
-  p = mod_privdata_alloc(cmd, "retr_filename", strlen(dir)+1);
-  sstrncpy(p->value.str_val, dir, strlen(dir) + 1);
+  if (pr_table_add(cmd->notes, "mod_xfer.retr-path",
+      pstrdup(cmd->pool, dir), 0) < 0)
+    pr_log_pri(PR_LOG_NOTICE, "notice: error adding 'mod_xfer.retr-path': %s",
+      strerror(errno));
+
   return HANDLED(cmd);
 }
 
@@ -1534,7 +1530,6 @@ MODRET xfer_retr(cmd_rec *cmd) {
   struct stat sbuf;
   off_t nbytes_max_retrieve = 0;
   unsigned char have_limit = FALSE;
-  privdata_t *p;
   long bufsize, len = 0;
   off_t respos = 0, nbytes_sent = 0, cnt_steps = 0, cnt_next = 0;
 
@@ -1543,17 +1538,10 @@ MODRET xfer_retr(cmd_rec *cmd) {
    */
   xfer_rate_lookup(cmd);
 
-  p = mod_privdata_find(cmd, "retr_filename", NULL);
+  dir = pr_table_get(cmd->notes, "mod_xfer.retr-path", NULL);
 
-  if (!p) {
-    pr_response_add_err(R_550, "%s: internal error, what happened to "
-      "cmd_pre_retr?!?", cmd->arg);
-    return ERROR(cmd);
-  }
-
-  dir = p->value.str_val;
-
-  if ((retr_fh = pr_fsio_open(dir, O_RDONLY)) == NULL) {
+  retr_fh = pr_fsio_open(dir, O_RDONLY);
+  if (retr_fh == NULL) {
     /* Error opening the file. */
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);

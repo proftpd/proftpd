@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.42 2004-09-14 17:49:43 castaglia Exp $
+ * $Id: mod_site.c,v 1.43 2004-10-26 23:24:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -431,10 +431,9 @@ MODRET site_pre_cmd(cmd_rec *cmd) {
 MODRET site_cmd(cmd_rec *cmd) {
   char *cp = NULL;
   cmd_rec *tmpcmd = NULL;
-  MODRET res;
 
   /* Make a copy of the cmd structure for passing to call_module */
-  tmpcmd = pcalloc(cmd->tmp_pool, sizeof(cmd_rec));
+  tmpcmd = pcalloc(cmd->pool, sizeof(cmd_rec));
   memcpy(tmpcmd, cmd, sizeof(cmd_rec));
 
   tmpcmd->argc--;
@@ -442,15 +441,11 @@ MODRET site_cmd(cmd_rec *cmd) {
 
   if (tmpcmd->argc)
     for (cp = tmpcmd->argv[0]; *cp; cp++)
-      *cp = toupper(*cp);
+      *cp = toupper((int) *cp);
 
-  res = site_dispatch(tmpcmd);
+  tmpcmd->notes = cmd->notes;
 
-  /* Copy private data back to original cmd */
-  cmd->private = tmpcmd->private;
-  cmd->privarr = tmpcmd->privarr;
-
-  return res;
+  return site_dispatch(tmpcmd);
 }
 
 MODRET site_post_cmd(cmd_rec *cmd) {

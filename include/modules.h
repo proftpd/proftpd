@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.42 2004-09-26 20:12:00 castaglia Exp $
+ * $Id: modules.h,v 1.43 2004-10-26 23:24:56 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -202,8 +202,6 @@ extern int (*cmd_auth_chk)(cmd_rec *);
 modret_t *mod_create_ret(cmd_rec *, unsigned char, char *, char *);
 modret_t *mod_create_error(cmd_rec *, int);
 modret_t *mod_create_data(cmd_rec *, void *);
-privdata_t *mod_privdata_alloc(cmd_rec *, char *, int);
-privdata_t *mod_privdata_find(cmd_rec *, char *, module *);
 
 /* Implemented in main.c */
 void pr_cmd_dispatch(cmd_rec *);
