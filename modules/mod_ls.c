@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.123 2005-03-12 17:36:52 castaglia Exp $
+ * $Id: mod_ls.c,v 1.124 2005-03-16 06:16:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -970,7 +970,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
 
         } else {
 
-          /* Make sure IgnoreHidden is properly honored. "." and * ".." are
+          /* Make sure IgnoreHidden is properly honored. "." and ".." are
            * not to be treated as hidden files, though.
            */
           d = listfile(cmd, workp, *s);
