@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.224 2004-04-29 19:28:25 castaglia Exp $
+ * $Id: main.c,v 1.225 2004-04-30 19:01:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1329,7 +1329,6 @@ static void disc_children(void) {
 
   if (disc && disc <= time(NULL) && child_count()) {
     sigset_t sig_set;
-    pr_child_t *ch;
 
     sigemptyset(&sig_set);
     sigaddset(&sig_set, SIGTERM);
@@ -1340,8 +1339,7 @@ static void disc_children(void) {
     sigprocmask(SIG_BLOCK, &sig_set, NULL);
 
     PRIVS_ROOT
-    for (ch = child_get(NULL); ch; ch = child_get(ch))
-      kill(ch->ch_pid, SIGUSR1);
+    child_signal(SIGUSR1);
     PRIVS_RELINQUISH
 
     sigprocmask(SIG_UNBLOCK, &sig_set, NULL);
@@ -1802,11 +1800,8 @@ static void handle_terminate(void) {
 
     /* Send a SIGTERM to all our children */
     if (child_count()) {
-      pr_child_t *ch;
-
       PRIVS_ROOT
-      for (ch = child_get(NULL); ch; ch = child_get(ch))
-        kill(ch->ch_pid, SIGTERM);
+      child_signal(SIGTERM);
       PRIVS_RELINQUISH
     }
 

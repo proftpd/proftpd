@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.14 2004-04-20 20:57:44 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.15 2004-04-30 19:01:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -48,6 +48,9 @@
 #define CTRL_STOP_CLEAN       (1 << 1)
 #define CTRL_STOP_FULL        (1 << 2)
 #define CTRL_STOP_GRACEFUL    (1 << 3)
+
+/* For the 'shutdown' control action */
+#define CTRLS_DEFAULT_SHUTDOWN_WAIT	5
 
 /* From src/dirtree.c */
 extern xaset_t *server_list;
@@ -563,14 +566,63 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
     return -1;
   }
 
-  /* Sanity check */
-  if (reqargc != 0 || reqargv != NULL) {
-    pr_ctrls_add_response(ctrl, "wrong number of parameters");
-    return -1;
-  }
-
   /* Add a response */
   pr_ctrls_add_response(ctrl, "shutting down");
+
+  if (reqargc >= 1 &&
+      strcmp(reqargv[0], "graceful") == 0) {
+    unsigned long nkids = 0;
+    unsigned int wait = CTRLS_DEFAULT_SHUTDOWN_WAIT;
+    unsigned int timeout = 0;
+    time_t now;
+
+    if (reqargc == 2) {
+      timeout = atoi(reqargv[1]);
+      time(&now);
+
+      ctrls_log(MOD_CTRLS_ADMIN_VERSION,
+        "shutdown: waiting %u seconds before shutting down", timeout);
+
+      /* If the timeout is less than the wait period, reduce the
+       * wait period by half.
+       */
+      if (timeout < wait)
+        wait /= 2;
+    }
+
+    /* Now, simply wait for all sessions to be done.  For bonus points,
+     * the admin should be able to specify a timeout, after which any
+     * sessions will be summarily terminated.  And, even better, have a
+     * way to indicate to the sessions that the daemon wants to shut down,
+     * and the session, if it is not involved in a data transfer, should
+     * end itself.
+     */
+
+    nkids = child_count();
+    while (nkids > 0) {
+      if (timeout &&
+          time(NULL) - now > timeout) {
+
+        ctrls_log(MOD_CTRLS_ADMIN_VERSION,
+          "shutdown: %u seconds elapsed, ending remaining sessions",
+          timeout);
+
+        /* End all remaining sessions at this point. */
+        PRIVS_ROOT
+        child_signal(SIGTERM);
+        PRIVS_RELINQUISH
+
+        break;
+      }
+
+      ctrls_log(MOD_CTRLS_ADMIN_VERSION,
+        "shutdown: waiting for %lu sessions to end", nkids);
+      sleep(wait);
+
+      child_update();
+      nkids = child_count();     
+    }
+  }
 
   /* This is one of the rare cases where the control handler needs to
    * flush the responses out to the client manually, rather than waiting
@@ -597,24 +649,6 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
     ctrls_log(MOD_CTRLS_ADMIN_VERSION,
       "shutdown: flushed to %s/%s client: '%s'",
       ctrl->ctrls_cl->cl_user, ctrl->ctrls_cl->cl_group, respargv[i]);
-
-  /* For this control action to handle a 'graceful' option (see Bug#2034),
-   * we'll need some core changes.  Specifically, there needs to be an API
-   * for accessing the pidrec list maintained in src/main.c.
-   *
-   * I'm thinking that a separate src/child.c, pr_child_t object, and
-   * pr_child_add()/pr_child_get()/pr_child_del() API would suffice.
-   *
-   * In addition, we'd need a way to tell the daemon to not accept
-   * any more connections.  Similar to a shutmsg file in a way, but this
-   * can be done internally, since this function executes within the
-   * context of the daemon process.  Actually...we don't need to do
-   * anything.  As long as this function doesn't return (or get interrupted),
-   * the daemon process (us) will never return accepting clients.
-   *
-   * So, we just need to loop through the children, waiting for them all
-   * end.  How long do we wait?
-   */
 
   /* Shutdown by raising SIGTERM.  Easy. */
   raise(SIGTERM);

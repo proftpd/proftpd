@@ -1,10 +1,12 @@
-$Id: NEWS,v 1.559 2004-04-29 01:55:21 castaglia Exp $
+$Id: NEWS,v 1.560 2004-04-30 19:01:28 castaglia Exp $
 
 CVS
 ---------------------------------
 - Bug 2396 - NLST command doesn't understand options.  This was caused by
   the solution for Bug 2322.  However, it is not a popular solution, so
   NLST will once again handle options, but only the relevant options.
+- Bug 2034 - Add support for a "graceful shutdown" signal. See
+  contrib/mod_ctrls_admin.html#shutdown for details.
 
 1.2.10rc1 - Released 28-Apr-2004
 ---------------------------------

@@ -23,7 +23,7 @@
  */
 
 /* Management of child objects
- * $Id: child.h,v 1.1 2004-04-29 19:28:24 castaglia Exp $
+ * $Id: child.h,v 1.2 2004-04-30 19:01:29 castaglia Exp $
  */
 
 #ifndef PR_CHILD_H
@@ -44,6 +44,7 @@ int child_add(pid_t, int);
 unsigned long child_count(void);
 pr_child_t *child_get(pr_child_t *);
 int child_remove(pid_t);
+void child_signal(int);
 void child_update(void);
 
 #endif /* PR_CHILD_H */

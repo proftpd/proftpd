@@ -23,7 +23,7 @@
  */
 
 /* Children management code
- * $Id: child.c,v 1.1 2004-04-29 19:28:25 castaglia Exp $
+ * $Id: child.c,v 1.2 2004-04-30 19:01:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -88,6 +88,19 @@ int child_remove(pid_t pid) {
 
   errno = ENOENT;
   return -1;
+}
+
+void child_signal(int signo) {
+  pr_child_t *ch;
+
+  if (!child_list)
+    return;
+
+  for (ch = (pr_child_t *) child_list->xas_list; ch; ch = ch->next) {
+    kill(ch->ch_pid, signo);
+  }
+
+  return;
 }
 
 void child_update(void) {
