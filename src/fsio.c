@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.40 2005-02-26 17:28:58 castaglia Exp $
+ * $Id: fsio.c,v 1.41 2005-02-26 17:55:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2845,6 +2845,8 @@ int pr_fsio_access(const char *path, int mode, uid_t uid, gid_t gid,
 
 int pr_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
     array_header *suppl_gids) {
+  pr_fs_t *fs;
+
   if (!fh) {
     errno = EINVAL;
     return -1;
