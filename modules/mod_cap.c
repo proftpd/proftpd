@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -Llib/libcap -lcap$
  * $Directories: lib/libcap$
- * $Id: mod_cap.c,v 1.12 2004-02-27 19:44:45 castaglia Exp $
+ * $Id: mod_cap.c,v 1.13 2004-05-30 21:50:58 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -398,5 +398,8 @@ module cap_module = {
   cap_module_init,
 
   /* Session initialization */
-  cap_sess_init
+  cap_sess_init,
+
+  /* Module version */
+  MOD_CAP_VERSION
 };

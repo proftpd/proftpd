@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.237 2004-05-30 21:48:54 castaglia Exp $
+ * $Id: main.c,v 1.238 2004-05-30 21:50:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2599,7 +2599,7 @@ int main(int argc, char *argv[], char **envp) {
           desc = buf;
         }
 
-        pr_log_pri(PR_LOG_NOTICE, "  Module: %s", desc);
+        pr_log_pri(PR_LOG_NOTICE, "    Module: %s", desc);
       }
     }
 
