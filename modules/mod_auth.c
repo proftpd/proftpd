@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.40 2000-08-03 02:46:44 macgyver Exp $
+ * $Id: mod_auth.c,v 1.41 2000-08-03 02:59:58 macgyver Exp $
  */
 
 #include "conf.h"
@@ -76,6 +76,10 @@ static int lockdown(char *newroot) {
    */
   hell.ip_number = session.c->local_ipaddr;
   
+  log_debug(DEBUG1, "Preparing to jail() the environment"
+	    "(version - '%d', path - '%s', hostname - '%s', ip_number - '%s'",
+	    hell.version, hell.path, hell.hostname, inet_ntoa(hell.ip_number));
+  
   /* Drum roll please...
    */
   PRIVS_ROOT;
@@ -88,9 +92,15 @@ static int lockdown(char *newroot) {
   }
   
   PRIVS_RELINQUISH;
+
+  log_debug(DEBUG1, "Environment successfully jail()ed.");
+
   return 0;
 #else /* HAVE_JAIL */
   PRIVS_ROOT;
+  
+  log_debug(DEBUG1, "Preparing to chroot() the environment (path - '%s'",
+	    newroot);
   
   if(chroot(newroot) == -1) {
     PRIVS_RELINQUISH;
@@ -100,6 +110,9 @@ static int lockdown(char *newroot) {
   }
   
   PRIVS_RELINQUISH;
+
+  log_debug(DEBUG1, "Environment successfully chroot()ed.");
+
   return 0;
 #endif /* HAVE_JAIL */
 }
