@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.113 2004-05-07 21:31:30 castaglia Exp $
+ * $Id: mod_ls.c,v 1.114 2004-09-04 22:51:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1907,7 +1907,7 @@ MODRET ls_list(cmd_rec *cmd) {
  */
 
 MODRET ls_nlst(cmd_rec *cmd) {
-  char *target,line[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
+  char *target, buf[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
   config_rec *c = NULL;
   int count = 0, res = 0, hidden = 0;
   int glob_flags = GLOB_PERIOD;
@@ -1987,15 +1987,37 @@ MODRET ls_nlst(cmd_rec *cmd) {
       pb[i++] = *p++;
     pb[i] = '\0';
 
-    if ((pw = auth_getpwnam(cmd->tmp_pool,i ? pb : session.user))) {
+    pw = auth_getpwnam(cmd->tmp_pool ,i ? pb : session.user);
+    if (pw) {
       snprintf(pb, sizeof(pb), "%s%s", pw->pw_dir, p);
-      sstrncpy(line, pb, sizeof(line));
-      target = line;
+      sstrncpy(buf, pb, sizeof(buf));
+      target = buf;
     }
   }
 
-  /* If the target is a glob, get the listing of files/dirs to send
-   */
+  /* Clean the path. */
+  if (*target != '/') {
+    pr_fs_clean_path(pdircat(cmd->tmp_pool, pr_fs_getcwd(), target, NULL),
+      buf, sizeof(buf));
+
+    target = buf;
+
+    /* If the given target was not an absolute path, advance past the
+     * current working directory prefix in the cleaned up target path.
+     */
+
+    target += strlen(pr_fs_getcwd()) + 1;
+
+  } else {
+    pr_fs_clean_path(target, buf, sizeof(buf));
+    target = buf;
+  }
+
+  /* Remove any trailing separators. */
+  while (target[strlen(target)-1] == '/')
+    target[strlen(target)-1] = '\0';
+
+  /* If the target is a glob, get the listing of files/dirs to send. */
   if (use_globbing && strpbrk(target, "{[*?") != NULL) {
     glob_t g;
     char **path,*p;
