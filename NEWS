@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.545 2004-03-11 00:13:03 castaglia Exp $
+$Id: NEWS,v 1.546 2004-03-11 02:02:10 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -118,6 +118,7 @@ CVS
 - Bug 2357 - ftptop should use COLS for determining display width.
 - Bug 2321 - FTP permission checks inconsistent for DELE and RMD/XRMD when
   symlink is in directory path.  This bug affected the RNFR command as well.
+- Bug 2361 - Second USER command causes problems with chrooted session.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------
