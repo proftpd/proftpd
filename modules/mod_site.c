@@ -24,7 +24,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.14 2002-05-21 20:47:18 castaglia Exp $
+ * $Id: mod_site.c,v 1.15 2002-06-22 00:24:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -60,15 +60,15 @@ static char *_get_full_cmd(cmd_rec *cmd)
 }
 
 MODRET set_allowchmod(cmd_rec *cmd) {
-  config_rec *c;
-  int b;
+  int bool = -1;
+  config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_DIR | CONF_ANON |
-	     CONF_GLOBAL | CONF_DYNDIR);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
+    CONF_DIR|CONF_DYNDIR);
   
-  if((b = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean parameter");
 
   /* As of 1.2.2, AllowChmod is deprecated and should not be used (in favor of
    * <Limit SITE_CHMOD>.  In order to not break existing configs, I have
@@ -81,7 +81,7 @@ MODRET set_allowchmod(cmd_rec *cmd) {
   
   log_pri(LOG_WARNING,"AllowChmod is deprecated, and will not work consistantly, use <Limit SITE_CHMOD> instead.");
 
-  c = add_config_param("AllowChmod", 1, (void*) b);
+  c = add_config_param(cmd->argv[0], 1, (void *) bool);
   c->flags |= CF_MERGEDOWN;
   
   return HANDLED(cmd);
@@ -384,7 +384,7 @@ modret_t *site_dispatch(cmd_rec *cmd)
 
 /* Configuration directives table */
 
-static conftable site_conftable[] = {
+static conftable site_conftab[] = {
   { "AllowChmod",	set_allowchmod,		NULL },
   { NULL, 		NULL,			NULL }
 };
@@ -395,8 +395,9 @@ module site_module = {
   NULL,NULL,			/* Always NULL */
   0x20,				/* API Version 1.0 */
   "site",
-  site_conftable,
-  NULL,				/* Our command table is for local use only */
+  site_conftab,
   NULL,
-  NULL,NULL			/* No initialization needed */
+  NULL,
+  NULL,
+  NULL
 };

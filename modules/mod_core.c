@@ -25,7 +25,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.89 2002-06-21 19:36:13 castaglia Exp $
+ * $Id: mod_core.c,v 1.90 2002-06-22 00:24:50 castaglia Exp $
  *
  * 11/5/98	Habeeb J. Dihu aka MacGyver (macgyver@tos.net): added
  * 			wu-ftpd style CDPath support.
@@ -308,8 +308,7 @@ MODRET add_define(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET add_include(cmd_rec *cmd)
-{
+MODRET add_include(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL|CONF_DIR);
   
@@ -354,42 +353,45 @@ MODRET set_servertype(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET add_transferlog(cmd_rec *cmd)
-{
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+MODRET add_transferlog(cmd_rec *cmd) {
+  config_rec *c = NULL;
 
-  add_config_param_str("TransferLog",1,(void*)cmd->argv[1]);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
 }
 
-MODRET set_wtmplog(cmd_rec *cmd)
-{
-  int b;
+MODRET set_wtmplog(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if(strcasecmp(cmd->argv[1],"NONE") == 0)
-    b = 0;
+  if (strcasecmp(cmd->argv[1],"NONE") == 0)
+    bool = 0;
   else
-    b = get_boolean(cmd,1);
+    bool = get_boolean(cmd, 1);
 
-  if(b != -1)
-    add_config_param("WtmpLog",1,(void*)b);
-  else
+  if (bool != -1) {
+    c = add_config_param(cmd->argv[0], 1, (void *) bool);
+    c->flags |= CF_MERGEDOWN;
+
+  } else
     CONF_ERROR(cmd, "expected boolean argument, or \"NONE\"");
 
   return HANDLED(cmd);
 }
 
-MODRET add_bind(cmd_rec *cmd)
-{
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL);
+MODRET add_bind(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
-  add_config_param_str("Bind",1,(void*)cmd->argv[1]);
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
 
   return HANDLED(cmd);
 }
@@ -471,25 +473,34 @@ MODRET set_pidfile(cmd_rec *cmd) {
 }
 
 MODRET set_sysloglevel(cmd_rec *cmd) {
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_GLOBAL);
 
-  if(!strcasecmp(cmd->argv[1], "emerg")) {
-    add_config_param("SyslogLevel", 1, (void *) PR_LOG_EMERG);
-  } else if(!strcasecmp(cmd->argv[1], "alert")) {
-    add_config_param("SyslogLevel", 1, (void *) PR_LOG_ALERT);
-  } else if(!strcasecmp(cmd->argv[1], "crit")) {
-    add_config_param("SyslogLevel", 1, (void *) PR_LOG_CRIT);
-  } else if(!strcasecmp(cmd->argv[1], "error")) {
-    add_config_param("SyslogLevel", 1, (void *) PR_LOG_ERR);
-  } else if(!strcasecmp(cmd->argv[1], "warn")) {
-    add_config_param("SyslogLevel", 1, (void *) PR_LOG_WARNING);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (!strcasecmp(cmd->argv[1], "emerg")) {
+    add_config_param(cmd->argv[0], 1, (void *) PR_LOG_EMERG);
+
+  } else if (!strcasecmp(cmd->argv[1], "alert")) {
+    add_config_param(cmd->argv[0], 1, (void *) PR_LOG_ALERT);
+
+  } else if (!strcasecmp(cmd->argv[1], "crit")) {
+    add_config_param(cmd->argv[0], 1, (void *) PR_LOG_CRIT);
+
+  } else if (!strcasecmp(cmd->argv[1], "error")) {
+    add_config_param(cmd->argv[0], 1, (void *) PR_LOG_ERR);
+
+  } else if (!strcasecmp(cmd->argv[1], "warn")) {
+    add_config_param(cmd->argv[0], 1, (void *) PR_LOG_WARNING);
+
   } else if(!strcasecmp(cmd->argv[1], "notice")) {
-    add_config_param("SyslogLevel", 1, (void *) PR_LOG_NOTICE);
+    add_config_param(cmd->argv[0], 1, (void *) PR_LOG_NOTICE);
+
   } else if(!strcasecmp(cmd->argv[1], "info")) {
-    add_config_param("SyslogLevel", 1, (void *) PR_LOG_INFO);
+    add_config_param(cmd->argv[0], 1, (void *) PR_LOG_INFO);
+
   } else if(!strcasecmp(cmd->argv[1], "debug")) {
-    add_config_param("SyslogLevel", 1, (void *) PR_LOG_DEBUG);
+    add_config_param(cmd->argv[0], 1, (void *) PR_LOG_DEBUG);
+
   } else {
     CONF_ERROR(cmd, "SyslogLevel requires level keyword: one of "
 	       "emerg/alert/crit/error/warn/notice/info/debug");
@@ -697,13 +708,12 @@ MODRET set_maxhostsperuser(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET set_maxloginattempts(cmd_rec *cmd)
-{
+MODRET set_maxloginattempts(cmd_rec *cmd) {
   int max;
-  char *endp;
+  char *endp = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if(!strcasecmp(cmd->argv[1],"none"))
     max = 0;
@@ -714,22 +724,21 @@ MODRET set_maxloginattempts(cmd_rec *cmd)
       CONF_ERROR(cmd,"argument must be 'none' or a number greater than 0.");
   }
 
-  add_config_param("MaxLoginAttempts",1,(void*)max);
+  add_config_param(cmd->argv[0], 1, (void*)max);
   return HANDLED(cmd);
 }
 
-MODRET set_useftpusers(cmd_rec *cmd)
-{
-  config_rec *c;
-  int bool;
+MODRET set_useftpusers(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
 
-  c = add_config_param("UseFtpUsers", 1, (void *) bool);
+  c = add_config_param(cmd->argv[0], 1, (void *) bool);
 
   c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
@@ -917,49 +926,62 @@ MODRET set_group(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET add_userpassword(cmd_rec *cmd)
-{
-  CHECK_ARGS(cmd,2);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+MODRET add_userpassword(cmd_rec *cmd) {
+  config_rec *c = NULL;
 
-  add_config_param_str("UserPassword",2,cmd->argv[1],cmd->argv[2]);
+  CHECK_ARGS(cmd, 2);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  c = add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
+  c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
-MODRET add_grouppassword(cmd_rec *cmd)
-{
-  CHECK_ARGS(cmd,2);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+MODRET add_grouppassword(cmd_rec *cmd) {
+  config_rec *c = NULL;
 
-  add_config_param_str("GroupPassword",2,cmd->argv[1],cmd->argv[2]);
+  CHECK_ARGS(cmd, 2);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  c = add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
+  c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
 MODRET set_accessdenymsg(cmd_rec *cmd) {
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  config_rec *c = NULL;
 
-  add_config_param_str("AccessDenyMsg", 1, cmd->argv[1]);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
 MODRET set_accessgrantmsg(cmd_rec *cmd) {
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  config_rec *c = NULL;
 
-  add_config_param_str("AccessGrantMsg",1,cmd->argv[1]);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
-MODRET set_umask(cmd_rec *cmd)
-{
+MODRET set_umask(cmd_rec *cmd) {
   config_rec *c;
   char *endp;
   mode_t tmp_umask;
  
   CHECK_VARARGS(cmd, 1, 2);
-  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_DIR |
-	     CONF_ANON | CONF_GLOBAL | CONF_DYNDIR);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
+    CONF_DIR|CONF_DYNDIR);
   
   tmp_umask = (mode_t) strtol(cmd->argv[1], &endp, 8);
   
@@ -994,19 +1016,19 @@ MODRET set_umask(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET set_requirevalidshell(cmd_rec *cmd)
-{
-  config_rec *c;
-  int bool;
+MODRET set_requirevalidshell(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
 
-  c = add_config_param("RequireValidShell",1, bool);
+  c = add_config_param(cmd->argv[0], 1, bool);
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
@@ -1052,7 +1074,7 @@ MODRET set_rlimitcpu(cmd_rec *cmd) {
     }
   }
 
-  add_config_param("RLimitCPU", 1, (void *) rlim);
+  add_config_param(cmd->argv[0], 1, (void *) rlim);
 
   return HANDLED(cmd);
 #else
@@ -1109,7 +1131,7 @@ MODRET set_rlimitmemory(cmd_rec *cmd) {
       CONF_ERROR(cmd, "badly formatted parameter");
   }
 
-  add_config_param("RLimitMemory", 1, (void *) rlim);
+  add_config_param(cmd->argv[0], 1, (void *) rlim);
 
   return HANDLED(cmd);
 #else
@@ -1151,7 +1173,7 @@ MODRET set_rlimitopenfiles(cmd_rec *cmd) {
       rlim->rlim_max = atol(cmd->argv[2]);
   }
 
-  add_config_param("RLimitOpenFiles", 1, (void *) rlim);
+  add_config_param(cmd->argv[0], 1, (void *) rlim);
 
   return HANDLED(cmd);
 #else
@@ -1235,35 +1257,35 @@ MODRET set_syslogfacility(cmd_rec *cmd)
   CONF_ERROR(cmd, "argument must be a valid syslog facility");
 }
 
-MODRET set_showsymlinks(cmd_rec *cmd)
-{
-  config_rec *c;
-  int bool;
+MODRET set_showsymlinks(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
 
-  c = add_config_param("ShowSymlinks", 1, bool);
+  c = add_config_param(cmd->argv[0], 1, bool);
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
-MODRET set_timesgmt(cmd_rec *cmd)
-{
-  config_rec *c;
-  int b;
+MODRET set_timesgmt(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
     
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if((b = get_boolean(cmd, 1)) == -1)
+  if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
 
-  c = add_config_param("TimesGMT", 1, (void*) b);
+  c = add_config_param(cmd->argv[0], 1, (void*) bool);
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
@@ -1303,15 +1325,14 @@ MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
 }
 
 MODRET set_allowfilter(cmd_rec *cmd) {
-  return set_regex(cmd, "AllowFilter", "allow");
+  return set_regex(cmd, cmd->argv[0], "allow");
 }
 
 MODRET set_denyfilter(cmd_rec *cmd) {
-  return set_regex(cmd, "DenyFilter", "deny");
+  return set_regex(cmd, cmd->argv[0], "deny");
 }
 
 MODRET set_passiveports(cmd_rec *cmd) {
-
   int pasv_min_port, pasv_max_port;
 
   CHECK_ARGS(cmd, 2);
@@ -1332,56 +1353,57 @@ MODRET set_passiveports(cmd_rec *cmd) {
   if(pasv_max_port < pasv_min_port)
     CONF_ERROR(cmd, "min port must be equal to or less than max port");
 
-  add_config_param("PassivePorts", 2, (void*)pasv_min_port, (void*)pasv_max_port);
+  add_config_param(cmd->argv[0], 2, (void*)pasv_min_port, (void*)pasv_max_port);
 
   return HANDLED(cmd);
 }
 
 MODRET set_pathallowfilter(cmd_rec *cmd) {
-  return set_regex(cmd, "PathAllowFilter", "allow");
+  return set_regex(cmd, cmd->argv[0], "allow");
 }
 
 MODRET set_pathdenyfilter(cmd_rec *cmd) {
-  return set_regex(cmd, "PathDenyFilter", "deny");
+  return set_regex(cmd, cmd->argv[0], "deny");
 }
 
-MODRET set_allowforeignaddress(cmd_rec *cmd)
-{
-  int b = -1;
+MODRET set_allowforeignaddress(cmd_rec *cmd) {
+  int bool = -1;
   config_rec *c = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if((b = get_boolean(cmd,1)) == -1)
+  if ((bool = get_boolean(cmd,1)) == -1)
     CONF_ERROR(cmd,"expected boolean argument.");
 
-  c = add_config_param("AllowForeignAddress",1,(void*)b);
+  c = add_config_param(cmd->argv[0], 1, (void *) bool);
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
 }
 
-MODRET set_commandbuffersize(cmd_rec *cmd)
-{
+MODRET set_commandbuffersize(cmd_rec *cmd) {
   int size;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_GLOBAL);
-  
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+ 
+  /* NOTE: need to add checks for maximum possible sizes, negative sizes. */ 
   size = atoi(cmd->argv[1]);
-  
-  add_config_param("CommandBufferSize", 1, (void*) size);
+ 
+  add_config_param(cmd->argv[0], 1, (void*) size);
 
   return HANDLED(cmd);
 }
 
-MODRET add_cdpath(cmd_rec *cmd)
-{
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+MODRET add_cdpath(cmd_rec *cmd) {
+  config_rec *c = NULL;
 
-  add_config_param_str("CDPath",1,(void*)cmd->argv[1]);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
 }
@@ -1457,77 +1479,80 @@ MODRET add_directory(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET set_allowretrieverestart(cmd_rec *cmd)
-{
+MODRET set_allowretrieverestart(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
+    CONF_DIR|CONF_DYNDIR);
+
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean parameter");
+
+  c = add_config_param(cmd->argv[0], 1, (void *) bool);
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
+MODRET set_allowstorerestart(cmd_rec *cmd) {
+  int bool = -1;
   config_rec *c;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_DIR | CONF_ANON | CONF_GLOBAL
-	     | CONF_DYNDIR);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
+    CONF_DIR|CONF_DYNDIR);
 
-  c = add_config_param("AllowRetrieveRestart", 1, 
-		       (void *) get_boolean(cmd, 1));
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean parameter");
+
+  c = add_config_param(cmd->argv[0], 1, (void *) bool);
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
-MODRET set_allowstorerestart(cmd_rec *cmd)
-{
-  config_rec *c;
-  int bool;
+MODRET set_deleteabortedstores(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_DIR | CONF_ANON | CONF_GLOBAL
-	     | CONF_DYNDIR);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
+    CONF_DIR|CONF_DYNDIR);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
+    CONF_ERROR(cmd, "expected boolean parameter");
 
-  c = add_config_param("AllowStoreRestart", 1, (void *) bool);
+  c = add_config_param(cmd->argv[0], 1, (void *) bool);
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
-MODRET set_deleteabortedstores(cmd_rec *cmd)
-{
-  config_rec *c;
-  int bool;
+MODRET set_hidenoaccess(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_DIR | CONF_ANON | CONF_GLOBAL
-	     | CONF_DYNDIR);
+  CHECK_CONF(cmd, CONF_ANON|CONF_DIR);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
+    CONF_ERROR(cmd, "expected boolean parameter");
 
-  c = add_config_param("DeleteAbortedStores", 1, (void *) bool);
+  c = add_config_param(cmd->argv[0], 1, (void *) bool);
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
-MODRET set_hidenoaccess(cmd_rec *cmd)
-{
-  int bool = 0;
-  config_rec *c;
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_DIR|CONF_ANON);
-
-  if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument");
-
-  c = add_config_param("HideNoAccess", 1, (void *) bool);
-  c->flags |= CF_MERGEDOWN;
-  return HANDLED(cmd);
-}
-
-MODRET add_anonymousgroup(cmd_rec *cmd)
-{
-  config_rec *c;
+MODRET add_anonymousgroup(cmd_rec *cmd) {
+  config_rec *c = NULL;
   int argc;
   char **argv;
   array_header *acl;
 
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if(cmd->argc < 2)
     CONF_ERROR(cmd,"syntax: AnonymousGroup <group-expression>");
@@ -1537,7 +1562,7 @@ MODRET add_anonymousgroup(cmd_rec *cmd)
 
   acl = parse_group_expression(cmd->tmp_pool,&argc,argv);
 
-  c = add_config_param("AnonymousGroup",0);
+  c = add_config_param(cmd->argv[0], 0);
   c->argc = argc;
   c->argv = pcalloc(c->pool,(argc+1) * sizeof(char*));
   argv = (char**)c->argv;
@@ -1594,78 +1619,78 @@ MODRET add_hidegroup(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET add_groupowner(cmd_rec *cmd)
-{
-  config_rec *c;
+MODRET add_groupowner(cmd_rec *cmd) {
+  config_rec *c = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ANON|CONF_DIR|CONF_DYNDIR);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ANON|CONF_DIR|CONF_DYNDIR);
 
-  c = add_config_param_str("GroupOwner",1,cmd->argv[1]);
+  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
-MODRET add_userowner(cmd_rec *cmd)
-{
-  config_rec *c;
+MODRET add_userowner(cmd_rec *cmd) {
+  config_rec *c = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ANON|CONF_DIR);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ANON|CONF_DIR);
 
-  c = add_config_param_str("UserOwner",1,cmd->argv[1]);
+  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
-MODRET set_allowoverwrite(cmd_rec *cmd)
-{
-  config_rec *c;
-  int bool;
+MODRET set_allowoverwrite(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_DIR|CONF_GLOBAL|CONF_DYNDIR);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
+    CONF_DIR|CONF_DYNDIR);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
+    CONF_ERROR(cmd, "expected boolean parameter");
 
-  c = add_config_param("AllowOverwrite", 1, (void *) bool);
+  c = add_config_param(cmd->argv[0], 1, (void *) bool);
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
-MODRET set_hiddenstor(cmd_rec *cmd)
-{
-  config_rec *c;
-  int bool;
+MODRET set_hiddenstor(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_DIR|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
+    CONF_ERROR(cmd, "expected boolean parameter");
 
-  c = add_config_param("HiddenStor", 1, (void *) bool);
+  c = add_config_param(cmd->argv[0], 1, (void *) bool);
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
-MODRET end_directory(cmd_rec *cmd)
-{
-  CHECK_ARGS(cmd,0);
-  CHECK_CONF(cmd,CONF_DIR);
+MODRET end_directory(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 0);
+  CHECK_CONF(cmd, CONF_DIR);
 
   end_sub_config();
+
   return HANDLED(cmd);
 }
 
-MODRET add_anonymous(cmd_rec *cmd)
-{
-  config_rec *c;
+MODRET add_anonymous(cmd_rec *cmd) {
+  config_rec *c = NULL;
   char *dir;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   dir = cmd->argv[1];
 
@@ -1693,49 +1718,48 @@ MODRET add_anonymous(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET set_anonrequirepassword(cmd_rec *cmd)
-{
-  int bool;
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ANON);
+MODRET set_anonrequirepassword(cmd_rec *cmd) {
+  int bool = -1;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ANON);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
-    CONF_ERROR(cmd, "expected boolean argument.");
+    CONF_ERROR(cmd, "expected boolean parameter");
 
-  add_config_param("AnonRequirePassword", 1, (void *) bool);
-  return HANDLED(cmd);
-}
-
-MODRET set_authusingalias(cmd_rec *cmd)
-{
-  int b;
-
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ANON);
-
-  if((b = get_boolean(cmd,1)) == -1)
-    CONF_ERROR(cmd,"expected boolean argument.");
-
-  add_config_param("AuthUsingAlias",1,(void*)b);
+  add_config_param(cmd->argv[0], 1, (void *) bool);
 
   return HANDLED(cmd);
 }
 
-MODRET end_anonymous(cmd_rec *cmd)
-{
-  CHECK_ARGS(cmd,0);
-  CHECK_CONF(cmd,CONF_ANON);
+MODRET set_authusingalias(cmd_rec *cmd) {
+  int bool = -1;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ANON);
+
+  if ((bool = get_boolean(cmd,1)) == -1)
+    CONF_ERROR(cmd, "expected boolean parameter");
+
+  add_config_param(cmd->argv[0], 1, (void *) bool);
+
+  return HANDLED(cmd);
+}
+
+MODRET end_anonymous(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 0);
+  CHECK_CONF(cmd, CONF_ANON);
 
   end_sub_config();
+
   return HANDLED(cmd);
 }
 
-MODRET add_global(cmd_rec *cmd)
-{
-  config_rec *c;
+MODRET add_global(cmd_rec *cmd) {
+  config_rec *c = NULL;
 
-  CHECK_ARGS(cmd,0);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL);
+  CHECK_ARGS(cmd, 0);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
   c = start_sub_config("<Global>");
   c->config_type = CONF_GLOBAL;
@@ -1743,18 +1767,17 @@ MODRET add_global(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET end_global(cmd_rec *cmd)
-{
-  CHECK_ARGS(cmd,0);
-  CHECK_CONF(cmd,CONF_GLOBAL);
+MODRET end_global(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 0);
+  CHECK_CONF(cmd, CONF_GLOBAL);
 
   end_sub_config();
+
   return HANDLED(cmd);
 }
 
-MODRET add_limit(cmd_rec *cmd)
-{
-  config_rec *c;
+MODRET add_limit(cmd_rec *cmd) {
+  config_rec *c = NULL;
   int cargc;
   char **argv,**cargv;
 
@@ -1779,12 +1802,11 @@ MODRET add_limit(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET add_order(cmd_rec *cmd)
-{
+MODRET add_order(cmd_rec *cmd) {
   int order = -1,argc = cmd->argc;
   char *arg = "",**argv = cmd->argv+1;
 
-  CHECK_CONF(cmd,CONF_LIMIT);
+  CHECK_CONF(cmd, CONF_LIMIT);
 
   while(--argc && *argv)
     arg = pstrcat(cmd->tmp_pool,arg,*argv++,NULL);
@@ -1796,13 +1818,13 @@ MODRET add_order(cmd_rec *cmd)
   else
     CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"'",arg,"': invalid argument",NULL));
 
-  add_config_param("Order",1,(void*)order);
+  add_config_param(cmd->argv[0], 1, (void*) order);
+
   return HANDLED(cmd);
 }
 
-MODRET _add_allow_deny_user(cmd_rec *cmd, char *name)
-{
-  config_rec *c;
+MODRET _add_allow_deny_user(cmd_rec *cmd, char *name) {
+  config_rec *c = NULL;
   char **argv;
   int argc;
   array_header *acl = NULL;
@@ -1818,7 +1840,7 @@ MODRET _add_allow_deny_user(cmd_rec *cmd, char *name)
 
   acl = parse_user_expression(cmd->tmp_pool,&argc,argv);
 
-  c = add_config_param(name,0);
+  c = add_config_param(name, 0);
 
   c->argc = argc;
   c->argv = pcalloc(c->pool,(argc+1) * sizeof(char*));
@@ -1832,10 +1854,9 @@ MODRET _add_allow_deny_user(cmd_rec *cmd, char *name)
   return HANDLED(cmd);
 }
 
-MODRET _add_allow_deny_group(cmd_rec *cmd, char *name)
-{
-  config_rec *c;
-  char **argv;
+MODRET _add_allow_deny_group(cmd_rec *cmd, char *name) {
+  config_rec *c = NULL;
+  char **argv = NULL;
   int argc;
   array_header *acl = NULL;
 
@@ -1850,7 +1871,7 @@ MODRET _add_allow_deny_group(cmd_rec *cmd, char *name)
 
   acl = parse_group_expression(cmd->tmp_pool,&argc,argv);
 
-  c = add_config_param(name,0);
+  c = add_config_param(name, 0);
 
   c->argc = argc;
   c->argv = pcalloc(c->pool,(argc+1) * sizeof(char*));
@@ -1864,34 +1885,29 @@ MODRET _add_allow_deny_group(cmd_rec *cmd, char *name)
   return HANDLED(cmd);
 }
 
-MODRET add_allowgroup(cmd_rec *cmd)
-{
-  return _add_allow_deny_group(cmd,"AllowGroup");
+MODRET add_allowgroup(cmd_rec *cmd) {
+  return _add_allow_deny_group(cmd, cmd->argv[0]);
 }
 
-MODRET add_denygroup(cmd_rec *cmd)
-{
-  return _add_allow_deny_group(cmd,"DenyGroup");
+MODRET add_denygroup(cmd_rec *cmd) {
+  return _add_allow_deny_group(cmd, cmd->argv[0]);
 }
 
-MODRET add_allowuser(cmd_rec *cmd)
-{
-  return _add_allow_deny_user(cmd,"AllowUser");
+MODRET add_allowuser(cmd_rec *cmd) {
+  return _add_allow_deny_user(cmd, cmd->argv[0]);
 }
 
-MODRET add_denyuser(cmd_rec *cmd)
-{
-  return _add_allow_deny_user(cmd,"DenyUser");
+MODRET add_denyuser(cmd_rec *cmd) {
+  return _add_allow_deny_user(cmd, cmd->argv[0]);
 }
 
-MODRET _add_allow_deny(cmd_rec *cmd, char *name)
-{
+MODRET _add_allow_deny(cmd_rec *cmd, char *name) {
   int argc;
   char *s,*ent,**argv;
   array_header *acl;
   config_rec *c;
 
-  CHECK_CONF(cmd,CONF_LIMIT);
+  CHECK_CONF(cmd, CONF_LIMIT);
 
   /* Syntax: allow [from] [all|none]|host|network[,...] */
   acl = make_array(cmd->tmp_pool,cmd->argc,sizeof(char*));
@@ -1950,148 +1966,143 @@ MODRET _add_allow_deny(cmd_rec *cmd, char *name)
   return HANDLED(cmd);
 }
 
-MODRET add_allow(cmd_rec *cmd)
-{
-  return _add_allow_deny(cmd,"Allow");
+MODRET add_allow(cmd_rec *cmd) {
+  return _add_allow_deny(cmd, cmd->argv[0]);
 }
 
-MODRET add_deny(cmd_rec *cmd)
-{
-  return _add_allow_deny(cmd,"Deny");
+MODRET add_deny(cmd_rec *cmd) {
+  return _add_allow_deny(cmd, cmd->argv[0]);
 }
 
-MODRET set_denyall(cmd_rec *cmd)
-{
-  CHECK_ARGS(cmd,0);
-  CHECK_CONF(cmd,CONF_LIMIT|CONF_ANON|CONF_DIR|CONF_DYNDIR);
+MODRET set_denyall(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 0);
+  CHECK_CONF(cmd, CONF_LIMIT|CONF_ANON|CONF_DIR|CONF_DYNDIR);
 
-  add_config_param("DenyAll",1,(void*)1);
+  add_config_param(cmd->argv[0], 1, (void *) TRUE);
+
   return HANDLED(cmd);
 }
 
-MODRET set_allowall(cmd_rec *cmd)
-{
-  CHECK_ARGS(cmd,0);
-  CHECK_CONF(cmd,CONF_LIMIT|CONF_ANON|CONF_DIR|CONF_DYNDIR);
+MODRET set_allowall(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 0);
+  CHECK_CONF(cmd, CONF_LIMIT|CONF_ANON|CONF_DIR|CONF_DYNDIR);
 
-  add_config_param("AllowAll",1,(void*)1);
+  add_config_param(cmd->argv[0], 1, (void*) TRUE);
+
   return HANDLED(cmd);
 }
 
-MODRET end_limit(cmd_rec *cmd)
-{
-  CHECK_ARGS(cmd,0);
-  CHECK_CONF(cmd,CONF_LIMIT);
+MODRET end_limit(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 0);
+  CHECK_CONF(cmd, CONF_LIMIT);
 
   end_sub_config();
+
   return HANDLED(cmd);
 }
 
-MODRET set_ignorehidden(cmd_rec *cmd)
-{
-  config_rec *c;
-  int bool;
+MODRET set_ignorehidden(cmd_rec *cmd) {
+  int bool = -1;
+  config_rec *c = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_LIMIT);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_LIMIT);
 
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
 
-  c = add_config_param("IgnoreHidden", 1, (void *) bool);
-  return HANDLED(cmd);
-}
-
-MODRET add_useralias(cmd_rec *cmd)
-{
-  CHECK_ARGS(cmd,2);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
-
-  add_config_param_str("UserAlias",2,(void*)cmd->argv[1],(void*)cmd->argv[2]);
+  c = add_config_param(cmd->argv[0], 1, (void *) bool);
 
   return HANDLED(cmd);
 }
 
-MODRET set_displaylogin(cmd_rec *cmd)
-{
-  config_rec *c;
+MODRET add_useralias(cmd_rec *cmd) {
+  config_rec *c = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 2);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  c = add_config_param_str("DisplayLogin",1,(void*)cmd->argv[1]);
+  c = add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
-MODRET set_displayconnect(cmd_rec *cmd)
-{
-  config_rec *c;
+MODRET set_displaylogin(cmd_rec *cmd) {
+  config_rec *c = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  c = add_config_param_str("DisplayConnect",1,(void*)cmd->argv[1]);
+  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
-MODRET set_displayfirstchdir(cmd_rec *cmd)
-{
-  config_rec *c;
+MODRET set_displayconnect(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_DIR|CONF_GLOBAL);
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
 
-  c = add_config_param_str("DisplayFirstChdir",1,(void*)cmd->argv[1]);
+  return HANDLED(cmd);
+}
+
+MODRET set_displayfirstchdir(cmd_rec *cmd) {
+  config_rec *c = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
+
+  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
-MODRET set_displayquit(cmd_rec *cmd)
-{
-  config_rec *c;
+MODRET set_displayquit(cmd_rec *cmd) {
+  config_rec *c = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  c = add_config_param_str("DisplayQuit",1,(void*)cmd->argv[1]);
+  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
-MODRET set_displaygoaway(cmd_rec *cmd)
-{
-  config_rec *c;
+MODRET set_displaygoaway(cmd_rec *cmd) {
+  config_rec *c = NULL;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  c = add_config_param_str("DisplayGoAway",1,(void*)cmd->argv[1]);
+  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   c->flags |= CF_MERGEDOWN;
-  return HANDLED(cmd);
-}
-
-MODRET add_virtualhost(cmd_rec *cmd)
-{
-  server_rec *s;
-
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT);
-
-  s = start_new_server(cmd->argv[1]);
-  if(!s)
-    CONF_ERROR(cmd,"unable to create virtual server configuration.");
 
   return HANDLED(cmd);
 }
 
-MODRET end_virtualhost(cmd_rec *cmd)
-{
-  CHECK_ARGS(cmd,0);
+MODRET add_virtualhost(cmd_rec *cmd) {
+  server_rec *s = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  if ((s = start_new_server(cmd->argv[1])) == NULL)
+    CONF_ERROR(cmd, "unable to create virtual server configuration.");
+
+  return HANDLED(cmd);
+}
+
+MODRET end_virtualhost(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 0);
   CHECK_CONF(cmd, CONF_VIRTUAL);
 
   end_new_server();
+
   return HANDLED(cmd);
 }
 
@@ -3115,19 +3126,16 @@ MODRET cmd_noop(cmd_rec *cmd)
   return HANDLED(cmd);
 }
 
-MODRET set_defaulttransfermode(cmd_rec *cmd)
-{                                               
-  config_rec *c;
+MODRET set_defaulttransfermode(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  if (strcasecmp(cmd->argv[1], "ascii") != 0 &&
+      strcasecmp(cmd->argv[1], "binary") != 0)
+    CONF_ERROR(cmd, "parameter must be 'ascii' or 'binary'.");
 
-  if (strcasecmp(cmd->argv[1], "ascii") != 0 && strcasecmp(cmd->argv[1], "binary") != 0) {
-	CONF_ERROR(cmd, "parameter must be 'ascii' or 'binary'.");
-  } else
-  	c = add_config_param_str("DefaultTransferMode", 1, cmd->argv[1]);
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
 
-  c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 }
 

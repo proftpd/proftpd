@@ -24,7 +24,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.54 2002-06-21 18:54:25 castaglia Exp $
+ * $Id: mod_ls.c,v 1.55 2002-06-22 00:24:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1645,28 +1645,28 @@ MODRET ls_chk_glob(cmd_rec *cmd) {
 /* Configuration handlers
  */
 
-MODRET _sethide(cmd_rec *cmd, const char *param)
-{
-  int bool;
+MODRET _sethide(cmd_rec *cmd, const char *param) {
+  int bool = -1;
   char *as = "ftp";
   config_rec *c = NULL;
 
   CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL|
     CONF_DIR|CONF_DYNDIR);
 
-  if(cmd->argc < 2 || cmd->argc > 3)
+  if (cmd->argc < 2 || cmd->argc > 3)
     CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"syntax: ",
                param," on|off [<id to display>]",NULL));
 
-  if((bool = get_boolean(cmd,1)) == -1)
+  if ((bool = get_boolean(cmd,1)) == -1)
      CONF_ERROR(cmd, "expected boolean argument");
 
-  if(bool == TRUE) {
+  if (bool == TRUE) {
     /* use the configured id to display rather than the default "ftp" */
     if(cmd->argc > 2)
       as = cmd->argv[2];
 
     c = add_config_param_str(param, 1, as);
+
   } else {
     /* still need to add a config_rec to turn off the display of fake ids */
     c = add_config_param_str(param, 0);
@@ -1677,31 +1677,28 @@ MODRET _sethide(cmd_rec *cmd, const char *param)
   return HANDLED(cmd);
 }
 
-MODRET set_dirfakeuser(cmd_rec *cmd)
-{
-  return _sethide(cmd,"DirFakeUser");
+MODRET set_dirfakeuser(cmd_rec *cmd) {
+  return _sethide(cmd, cmd->argv[0]);
 }
 
-MODRET set_dirfakegroup(cmd_rec *cmd)
-{
-  return _sethide(cmd,"DirFakeGroup");
+MODRET set_dirfakegroup(cmd_rec *cmd) {
+  return _sethide(cmd, cmd->argv[0]);
 }
 
-MODRET set_dirfakemode(cmd_rec *cmd)
-{
+MODRET set_dirfakemode(cmd_rec *cmd) {
   config_rec *c;
   unsigned long fake;
   char *endp;
 
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL|CONF_DIR);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
   fake = (unsigned long)strtol(cmd->argv[1],&endp,8);
 
   if(endp && *endp)
     CONF_ERROR(cmd,"argument must be an octal number.");
 
-  c = add_config_param("DirFakeMode",1,(void*)fake);
+  c = add_config_param(cmd->argv[0], 1, (void *) fake);
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
@@ -1720,15 +1717,18 @@ MODRET set_lsdefaultoptions(cmd_rec *cmd) {
 }
 
 MODRET set_showdotfiles(cmd_rec *cmd) {
-  int b;
+  int bool = -1;
+  config_rec *c = NULL;
   
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if((b = get_boolean(cmd,1)) == -1)
-    CONF_ERROR(cmd,"expected boolean argument.");
+  if ((bool = get_boolean(cmd, 1)) == -1)
+    CONF_ERROR(cmd, "expected boolean parameter");
 
-  add_config_param("ShowDotFiles",1,(void*)b);
+  c = add_config_param(cmd->argv[0], 1, (void *) bool);
+  c->flags |= CF_MERGEDOWN;
+
   return HANDLED(cmd);
 }
 
@@ -1748,7 +1748,7 @@ MODRET set_useglobbing(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-static conftable ls_config[] = {
+static conftable ls_conftab[] = {
   { "DirFakeUser",	set_dirfakeuser,			NULL },
   { "DirFakeGroup",	set_dirfakegroup,			NULL },
   { "DirFakeMode",	set_dirfakemode,			NULL },
@@ -1758,7 +1758,7 @@ static conftable ls_config[] = {
   { NULL,		NULL,					NULL }
 };
 
-static cmdtable ls_commands[] = {
+static cmdtable ls_cmdtab[] = {
   { CMD,  	C_NLST,	G_DIRS,	cmd_nlst,	TRUE, FALSE, CL_DIRS },
   { CMD,	C_LIST,	G_DIRS,	cmd_list,	TRUE, FALSE, CL_DIRS },
   { CMD, 	C_STAT,	G_DIRS,	cmd_stat,	TRUE, FALSE, CL_DIRS },
@@ -1774,8 +1774,9 @@ module ls_module = {
   NULL,NULL,			/* Always NULL */
   0x20,				/* API version */
   "ls",				/* Module name */
-  ls_config,
-  ls_commands,
+  ls_conftab,
+  ls_cmdtab,
   NULL,
-  NULL,NULL
+  NULL,
+  NULL
 };

@@ -25,7 +25,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.69 2002-06-11 17:09:47 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.70 2002-06-22 00:24:50 castaglia Exp $
  */
 
 /* History Log:
@@ -1310,8 +1310,8 @@ MODRET set_storeuniqueprefix(cmd_rec *cmd) {
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR|
-    CONF_DYNDIR);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
+    CONF_DIR|CONF_DYNDIR);
 
   /* make sure there are no slashes in the prefix */
   if (strchr(cmd->argv[1], '/') != NULL)

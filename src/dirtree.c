@@ -25,7 +25,7 @@
 
 /* Read configuration file(s), and manage server/configuration
  * structures.
- * $Id: dirtree.c,v 1.55 2002-06-11 14:49:27 castaglia Exp $
+ * $Id: dirtree.c,v 1.56 2002-06-22 00:24:50 castaglia Exp $
  */
 
 /* History:
@@ -294,8 +294,7 @@ char *get_config_line(char *buf, size_t len) {
   return NULL;
 }
 
-cmd_rec *get_config_cmd(pool *ppool)
-{
+cmd_rec *get_config_cmd(pool *ppool) {
   char buf[TUNABLE_BUFFER_SIZE] = {'\0'}, *word;
   cmd_rec *new_cmd = NULL;
   pool *new_pool = NULL;
@@ -1532,7 +1531,8 @@ void build_dyn_config(pool *p,char *_path, struct stat *_sbuf, int recurse)
             cmd->config = *conf.curconfig;
               
             for(c = m_conftable; c->directive; c++) {
-              if(!strcasecmp(c->directive, cmd->argv[0])) {
+              if (!strcasecmp(c->directive, cmd->argv[0])) {
+                cmd->argv[0] = c->directive;
                 found++;
 
                 if((mr = call_module(c->m,c->handler,cmd)) != NULL) {
@@ -2533,7 +2533,9 @@ int parse_config_file(const char *fname)
 
       for(c = m_conftable; c->directive; c++)
         if(!strcasecmp(c->directive,cmd->argv[0])) {
+          cmd->argv[0] = c->directive;
           ++found;
+
           if((mr = call_module(c->m,c->handler,cmd)) != NULL) {
             if(MODRET_ISERROR(mr)) {
 	            log_pri(LOG_ERR,"Fatal: %s",MODRET_ERRMSG(mr));

@@ -25,7 +25,7 @@
 
 /*
  * Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.24 2002-06-11 17:09:46 castaglia Exp $
+ * $Id: mod_log.c,v 1.25 2002-06-22 00:24:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -258,9 +258,7 @@ void logformat(char *nickname, char *fmts)
 
 /* Syntax: LogFormat nickname "format string"
  */
-
-MODRET add_logformat(cmd_rec *cmd)
-{
+MODRET add_logformat(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT);
 
@@ -308,14 +306,12 @@ static int _parse_classes(char *s)
 
 /* Syntax: ExtendedLog <log-filename> [<cmd-classes> [<format-nickname>]]
  */
-
-MODRET add_extendedlog(cmd_rec *cmd)
-{
-  config_rec *c;
+MODRET add_extendedlog(cmd_rec *cmd) {
+  config_rec *c = NULL;
   int argc;
   char **argv;
 
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
   argc = cmd->argc;
   argv = cmd->argv;
@@ -324,7 +320,8 @@ MODRET add_extendedlog(cmd_rec *cmd)
     CONF_ERROR(cmd, "Syntax: ExtendedLog <log-filename> "
 	       "[<Command-Classes> [<Format-Nickname>]]");
 
-  c = add_config_param("ExtendedLog",3,NULL,NULL,NULL);
+  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+  c->flags |= CF_MERGEDOWN;
 
   if(cmd->argv[1][0] != '/')
     c->argv[0] = dir_canonical_path(log_pool,cmd->argv[1]);
@@ -341,9 +338,8 @@ MODRET add_extendedlog(cmd_rec *cmd)
 }
 
 /* Syntax: AllowLogSymlinks <on|off> */
-
 MODRET set_allowlogsymlinks(cmd_rec *cmd) {
-  int bool;
+  int bool = -1;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -351,20 +347,18 @@ MODRET set_allowlogsymlinks(cmd_rec *cmd) {
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
 
-  add_config_param("AllowLogSymlinks", 1, (void *) bool);
+  add_config_param(cmd->argv[0], 1, (void *) bool);
 
   return HANDLED(cmd);
 }
 
 /* Syntax: SystemLog <filename> */
-
-MODRET set_systemlog(cmd_rec *cmd)
-{
-  char *syslogfn;
+MODRET set_systemlog(cmd_rec *cmd) {
+  char *syslogfn = NULL;
   int ret;
   
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
 
   log_closesyslog();
 
@@ -916,7 +910,7 @@ int log_child_init(void)
 }
 
 
-static conftable log_config[] = {
+static conftable log_conftab[] = {
   { "AllowLogSymlinks",	set_allowlogsymlinks,			NULL },
   { "LogFormat",	add_logformat,				NULL },
   { "ExtendedLog",	add_extendedlog,			NULL },
@@ -924,7 +918,7 @@ static conftable log_config[] = {
   { NULL,		NULL,					NULL }
 };
 
-static cmdtable log_commands[] = {
+static cmdtable log_cmdtab[] = {
   { PRE_CMD, 		C_QUIT,	G_NONE,	log_command,		FALSE, FALSE },
   { LOG_CMD,		C_ANY,	G_NONE,	log_command,		FALSE, FALSE },
   { LOG_CMD_ERR,	C_ANY,	G_NONE,	log_command,		FALSE, FALSE },
@@ -936,8 +930,9 @@ module log_module = {
   NULL,NULL,			/* Always NULL */
   0x20,				/* API version */
   "log",			/* Module name */
-  log_config,
-  log_commands,
+  log_conftab,
+  log_cmdtab,
   NULL,
-  log_init,log_child_init
+  log_init,
+  log_child_init
 };

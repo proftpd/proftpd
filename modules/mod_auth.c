@@ -25,7 +25,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.73 2002-06-11 14:49:27 castaglia Exp $
+ * $Id: mod_auth.c,v 1.74 2002-06-22 00:24:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1151,7 +1151,9 @@ static int _setup_environment(pool *p, char *user, char *pass)
   /* auth_endpwent(p); */
 
   /* Default transfer mode is ASCII */
-  defaulttransfermode = (char*)get_param_ptr(CURRENT_CONF, "DefaultTransferMode", FALSE);
+  defaulttransfermode = (char*)get_param_ptr(main_server->conf,
+    "DefaultTransferMode", FALSE);
+
   if (defaulttransfermode && strcasecmp(defaulttransfermode, "binary") == 0)
 	session.flags &= (SF_ALL^SF_ASCII);
   else
@@ -1662,12 +1664,10 @@ MODRET cmd_pass(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-
 MODRET cmd_acct(cmd_rec *cmd) {
   add_response(R_502, "ACCT command not implemented.");
   return HANDLED(cmd);
 }
-
 
 MODRET cmd_rein(cmd_rec *cmd) {
   add_response(R_502, "REIN command not implemented.");
@@ -1691,6 +1691,7 @@ MODRET set_authaliasonly(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = bool;
 
+  c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 }
 
@@ -1709,23 +1710,22 @@ MODRET set_rootlogin(cmd_rec *cmd) {
   *((unsigned char *) c->argv[0]) = (unsigned char) bool;
 
   c->flags |= CF_MERGEDOWN;
-
   return HANDLED(cmd);
 }
 
 MODRET set_loginpasswordprompt(cmd_rec *cmd) {
-  config_rec *c;
-  int bool;
+  int bool = -1;
+  config_rec *c = NULL;
   
-  CHECK_ARGS(cmd,1);
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
  
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
   
-  c = add_config_param("LoginPasswordPrompt", 1, (void*) bool);
+  c = add_config_param(cmd->argv[0], 1, (void*) bool);
+
   c->flags |= CF_MERGEDOWN;
-  
   return HANDLED(cmd);
 }
 
@@ -1760,7 +1760,7 @@ MODRET add_defaultroot(cmd_rec *cmd) {
   
   acl = parse_group_expression(cmd->tmp_pool, &argc, argv);
   
-  c = add_config_param("DefaultRoot", 0);
+  c = add_config_param(cmd->argv[0], 0);
   
   c->argc = argc + 1;
   c->argv = pcalloc(c->pool, (argc + 2) * sizeof(char *));
@@ -1783,7 +1783,7 @@ MODRET add_defaultchdir(cmd_rec *cmd) {
   int argc;
   array_header *acl = NULL;
 
-  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_ANON | CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
   
   if(cmd->argc < 2)
     CONF_ERROR(cmd, "syntax: DefaultChdir <directory> [<group-expression>]");
@@ -1802,7 +1802,7 @@ MODRET add_defaultchdir(cmd_rec *cmd) {
   
   acl = parse_group_expression(cmd->tmp_pool, &argc, argv);
   
-  c = add_config_param("DefaultChdir", 0);
+  c = add_config_param(cmd->argv[0], 0);
   
   c->argc = argc + 1;
   c->argv = pcalloc(c->pool, (argc + 2) * sizeof(char *));
@@ -1816,6 +1816,8 @@ MODRET add_defaultchdir(cmd_rec *cmd) {
     }
   
   *argv = NULL;
+
+  c->flags |= CF_MERGEDOWN;
   return HANDLED(cmd);
 }
 
@@ -1827,7 +1829,7 @@ MODRET add_userdirroot (cmd_rec *cmd) {
   if ((bool = get_boolean(cmd, 1)) == -1)
     CONF_ERROR(cmd, "expected boolean argument.");
 
-  add_config_param("UserDirRoot", 1, (void *) bool);
+  add_config_param(cmd->argv[0], 1, (void *) bool);
   return HANDLED(cmd);
 }
 
