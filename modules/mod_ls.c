@@ -19,7 +19,7 @@
 
 /*
  * Directory listing module for proftpd
- * $Id: mod_ls.c,v 1.21 2000-01-23 22:49:06 macgyver Exp $
+ * $Id: mod_ls.c,v 1.22 2000-03-01 06:13:49 macgyver Exp $
  */
 
 #include "conf.h"
@@ -581,10 +581,10 @@ char **sreaddir(pool *workp, const char *dirname, const int sort)
   struct	stat st;
   int		i;
   char		**p;
-  char		*s;
-  int		dsize;
+  char		*s, *s_end;
+  int		dsize, ssize;
 
-  if(fs_stat(dirname,&st) < 0) 
+  if(fs_stat(dirname, &st) < 0) 
     return NULL;
 
   if(!S_ISDIR(st.st_mode)) {
@@ -595,34 +595,79 @@ char **sreaddir(pool *workp, const char *dirname, const int sort)
   if((d = opendir(dirname)) == NULL)
     return NULL;
 
-  dsize = st.st_size / 2 + 256;
+  /* It doesn't matter if the following guesses are wrong, but it slows
+   * the system a bit and wastes some memory if they are wrong, so
+   * don't guess *too* naiively!
+   *
+   * 'dsize' must be greater than zero or we loop forever.
+   * 'ssize' must be at least big enough to hold a maximum-length name.
+   */
+  dsize = (st.st_size / 4) + 10;	 /* Guess number of entries in dir */
+  ssize = NAME_MAX * ((dsize / 4) + 1);  /* Guess number of bytes total needed
+					  * to store all filenames in dir */
+  
+  /* Allocate array for pointers to filenames */
+  p = (char **) palloc(workp, dsize * sizeof(char *));
+  
+  /* Allocate first block for holding filenames themselves */
+  s = (char *) palloc(workp, ssize * sizeof(char));
+  s_end = s + (ssize * sizeof(char));
 
-realloc_buf:
-  p = (char**)palloc(workp,dsize);
-
-  s = dsize + (char*)p;
   i = 0;
-
+  
   while((de = readdir(d)) != NULL) {
-    if((unsigned int)p + (i+1)*sizeof(char*) + strlen(de->d_name) + 1
-         > (unsigned int)s) {
+    if(i >= dsize - 1) {
+      /* The test above goes off one item early in case this is the last item
+       * in the directory and thus next time we will want to NULL-terminate
+       * the array.
+       */
+      char **new_p;
+      
       log_debug(DEBUG0,
-		"reallocating sreaddir buffer from %d bytes to %d bytes.",
-		dsize, dsize*2);
+		"Reallocating sreaddir buffer from %d entries to %d entries.",
+		dsize, dsize * 2);
+      
+      /* Allocate bigger array for pointers to filenames */
+      new_p = (char **) palloc(workp, 2 * dsize * sizeof(char *));
+      
+      /* Copy across */
+      memcpy(new_p, p, dsize * sizeof(char *));
       dsize *= 2;
-      rewinddir(d);
-      goto realloc_buf;
+
+      /* We should do a pfree(workp, p), however there is no mechanism to free
+       * a block...so we leak...bleed...just plain yucky.  Fortunately, this
+       * only lasts a short time -- the memory pool used is freed when the
+       * massive, recursive and ugly functions like listdir() and nlstdir()
+       * finish calling this function.
+       */
+      p = new_p;
     }
-    s -= strlen(de->d_name) + 1;
+    
+    if(s + strlen(de->d_name) + 1 >= s_end) {
+      log_debug(DEBUG0, "Allocating another sreaddir buffer of %d bytes.",
+		ssize);
+      
+      /* Allocate another block for holding filenames themselves */
+      /* (don't free the last one, elements of p[] still point at it! ) */
+      s = (char *) palloc(workp, ssize * sizeof(char));
+      s_end = s + (ssize * sizeof(char));
+    }
+
+    /* Append the filename to the block.
+     */
     sstrncpy(s, de->d_name, strlen(de->d_name) + 1);
     p[i++] = s;
+    s += strlen(de->d_name) + 1;
   }
-
+  
   closedir(d);
+
+  /* This is correct, since the above is off by one element.
+   */
   p[i] = NULL;
 
   if(sort)
-	qsort(p,i,sizeof(char*),cmp);
+    qsort(p, i, sizeof(char *), cmp);
   
   return p;
 }
