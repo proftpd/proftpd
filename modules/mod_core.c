@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.136 2002-12-11 16:50:05 castaglia Exp $
+ * $Id: mod_core.c,v 1.137 2002-12-11 23:28:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1638,7 +1638,7 @@ MODRET set_hidefiles(cmd_rec *cmd) {
     int argc = cmd->argc - 3;
     char **argv = cmd->argv + 2;
 
-    acl = parse_expression(cmd->tmp_pool, &argc, argv);
+    acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
 
     c = add_config_param(cmd->argv[0], 0);
     c->argc = argc + 4;
@@ -1838,7 +1838,7 @@ MODRET set_allowoverride(cmd_rec *cmd) {
     int argc = cmd->argc - 3;
     char **argv = cmd->argv + 2;
 
-    acl = parse_expression(cmd->tmp_pool, &argc, argv);
+    acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
 
     c = add_config_param(cmd->argv[0], 0);
     c->argc = argc + 3;
@@ -2022,7 +2022,7 @@ MODRET set_allowdenyuser(cmd_rec *cmd) {
   if (strcmp(cmd->argv[1], "regex") != 0) {
     char **argv = cmd->argv;
     int argc = cmd->argc-1;
-    array_header *acl = parse_expression(cmd->tmp_pool, &argc, argv);
+    array_header *acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
 
     c = add_config_param(cmd->argv[0], 0);
 
@@ -2085,7 +2085,7 @@ MODRET set_allowdenygroup(cmd_rec *cmd) {
   if (strcmp(cmd->argv[1], "regex") != 0) {
     char **argv = cmd->argv;
     int argc = cmd->argc-1;
-    array_header *acl = parse_expression(cmd->tmp_pool, &argc, argv);
+    array_header *acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
 
     c = add_config_param(cmd->argv[0], 0);
 

@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.119 2002-12-11 16:50:03 castaglia Exp $
+ * $Id: mod_auth.c,v 1.120 2002-12-11 23:28:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -202,7 +202,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
 
     if (c->argc == 3) {
       if (!strcmp(c->argv[1], "user")) {
-        if (user_or_expression((char **) &c->argv[2])) {
+        if (pr_user_or_expression((char **) &c->argv[2])) {
 
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
@@ -217,7 +217,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
         }
 
       } else if (!strcmp(c->argv[1], "group")) {
-        if (group_and_expression((char **) &c->argv[2])) {
+        if (pr_group_and_expression((char **) &c->argv[2])) {
 
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
@@ -350,7 +350,7 @@ static config_rec *_auth_anonymous_group(pool *p, char *user)
   c = find_config(main_server->conf,CONF_PARAM,"AnonymousGroup",FALSE);
 
   if (c) do {
-    ret = group_and_expression((char**)c->argv);
+    ret = pr_group_and_expression((char**)c->argv);
   } while (!ret && (c = find_config_next(c,c->next,CONF_PARAM,"AnonymousGroup",FALSE)) != NULL);
 
   return ret ? c : NULL;
@@ -546,7 +546,7 @@ static char *_get_default_chdir(pool *p, xaset_t *conf) {
       break;
     }
 
-    ret = group_and_expression(((char**)c->argv)+1);
+    ret = pr_group_and_expression(((char**)c->argv)+1);
 
     if (ret) {
       dir = c->argv[0];
@@ -584,7 +584,7 @@ static char *_get_default_root(pool *p)
       break;
     }
 
-    ret = group_and_expression(((char**)c->argv)+1);
+    ret = pr_group_and_expression(((char**)c->argv)+1);
 
     if (ret) {
       dir = c->argv[0];
@@ -1860,7 +1860,7 @@ MODRET add_anonymousgroup(cmd_rec *cmd) {
   argv = cmd->argv;
   argc = cmd->argc - 1;
 
-  acl = parse_expression(cmd->tmp_pool, &argc, argv);
+  acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
 
   c = add_config_param(cmd->argv[0], 0);
   c->argc = argc;
@@ -1942,7 +1942,7 @@ MODRET add_defaultroot(cmd_rec *cmd) {
   if (*(dir + strlen(dir) - 1) != '/')
     dir = pstrcat(cmd->tmp_pool, dir, "/", NULL);
 
-  acl = parse_expression(cmd->tmp_pool, &argc, argv);
+  acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
 
   c = add_config_param(cmd->argv[0], 0);
 
@@ -1984,7 +1984,7 @@ MODRET add_defaultchdir(cmd_rec *cmd) {
   if (*(dir + strlen(dir) - 1) != '/')
     dir = pstrcat(cmd->tmp_pool, dir, "/", NULL);
 
-  acl = parse_expression(cmd->tmp_pool, &argc, argv);
+  acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
 
   c = add_config_param(cmd->argv[0], 0);
 
@@ -2334,7 +2334,7 @@ MODRET set_timeoutsession(cmd_rec *cmd) {
     int argc = cmd->argc - 3;
     char **argv = cmd->argv + 2;
 
-    acl = parse_expression(cmd->tmp_pool, &argc, argv);
+    acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
 
     c = add_config_param(cmd->argv[0], 0);
     c->argc = argc + 2;
