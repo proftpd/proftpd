@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.455 2003-07-30 01:34:14 castaglia Exp $
+$Id: NEWS,v 1.456 2003-07-30 18:01:02 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -47,6 +47,8 @@ CVS
   leading whitespace removed.
 - Fixed file descriptor leaks that occur if mod_tls encounters errors when
   handling CA certificate files.
+- Bug 2118 - mod_sql's %F doesn't work for DELE command; %f is inconsistent.
+  mod_sql's handling of cookies is now updated to match mod_log.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------

@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.53 2003-07-21 22:03:49 castaglia Exp $
+ * $Id: mod_sql.c,v 1.54 2003-07-30 18:01:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1477,16 +1477,63 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
     break;
 
   case 'd':
-    argp = session.cwd;
-    if (!argp)
-      argp="-";
+    argp = arg;
+
+    if (!strcmp(cmd->argv[0], C_CDUP) || !strcmp(cmd->argv[0], C_CWD) ||
+        !strcmp(cmd->argv[0], C_MKD) || !strcmp(cmd->argv[0], C_RMD) ||
+        !strcmp(cmd->argv[0], C_XCWD) || !strcmp(cmd->argv[0], C_XCUP) ||
+        !strcmp(cmd->argv[0], C_XMKD) || !strcmp(cmd->argv[0], C_XRMD)) {
+      char *tmp = strrchr(cmd->arg, '/');
+
+      if (tmp)
+        sstrncpy(argp, tmp, sizeof(arg));
+      else
+        sstrncpy(argp, cmd->arg, sizeof(arg));
+
+    } else
+      sstrncpy(argp, "", sizeof(arg));
+
+    break;
+
+  case 'D':
+    argp = arg;
+
+    if (!strcmp(cmd->argv[0], C_CDUP) || !strcmp(cmd->argv[0], C_MKD) ||
+        !strcmp(cmd->argv[0], C_RMD) || !strcmp(cmd->argv[0], C_XCUP) ||
+        !strcmp(cmd->argv[0], C_XMKD) || !strcmp(cmd->argv[0], C_XRMD)) {
+      sstrncpy(argp, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE), sizeof(arg));
+
+    } else if (!strcmp(cmd->argv[0], C_CWD) || !strcmp(cmd->argv[0], C_XCWD)) {
+
+      /* Note: by this point in the dispatch cycle, the current working
+       * directory has already been changed.  For the CWD/XCWD commands,
+       * this means that dir_abs_path() may return an improper path,
+       * with the target directory being reported twice.  To deal with this,
+       * don't use dir_abs_path(), and use pr_fs_getvwd()/pr_fs_getcwd()
+       * instead.
+       */
+
+      if (session.chroot_path) {
+        /* Chrooted session. */
+        sstrncpy(arg, strcmp(pr_fs_getvwd(), "/") ?
+          pdircat(cmd->tmp_pool, session.chroot_path, pr_fs_getvwd(), NULL) :
+          session.chroot_path, sizeof(arg));
+
+      } else
+
+        /* Non-chrooted session. */
+        sstrncpy(arg, pr_fs_getcwd(), sizeof(arg));
+
+    } else
+      sstrncpy(argp, "", sizeof(arg));
+
     break;
 
   case 'f':
     argp = arg;
     if (session.xfer.p && session.xfer.path) {
-      char *fullpath = dir_abs_path(cmd->tmp_pool, session.xfer.path, TRUE);
-      sstrncpy(argp, fullpath, sizeof(arg));
+      sstrncpy(argp, dir_abs_path(cmd->tmp_pool, session.xfer.path, TRUE),
+        sizeof(arg));
 
     } else {
 
@@ -1497,7 +1544,7 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
       if (!strcmp(cmd->argv[0], C_DELE) || !strcmp(cmd->argv[0], C_MKD) ||
           !strcmp(cmd->argv[0], C_RMD) || !strcmp(cmd->argv[0], C_XMKD) ||
           !strcmp(cmd->argv[0], C_XRMD))
-        sstrncpy(arg, cmd->arg, sizeof(arg));
+        sstrncpy(arg, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE), sizeof(arg));
 
       else
         /* All other situations get a "-".  */
@@ -1507,10 +1554,19 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
 
   case 'F':
     argp = arg;
-    if(session.xfer.p && session.xfer.path) {
+    if (session.xfer.p && session.xfer.path) {
       sstrncpy(argp, session.xfer.path, sizeof(arg));
+
     } else {
-      sstrncpy(argp, "-", sizeof(arg));
+      /* Some commands (i.e. DELE) have associated filenames that are not
+       * stored in the session.xfer structure; these should be expanded
+       * properly as well.
+       */
+      if (!strcmp(cmd->argv[0], C_DELE))
+        sstrncpy(arg, cmd->arg, sizeof(arg));
+
+      else
+        sstrncpy(argp, "-", sizeof(arg));
     }
     break;
 
