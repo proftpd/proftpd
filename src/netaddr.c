@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.27 2003-10-11 17:01:30 castaglia Exp $
+ * $Id: netaddr.c,v 1.28 2003-10-11 19:27:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,6 +35,20 @@
 
 /* Do reverse DNS lookups? */
 static int reverse_dns = 1;
+
+static void *get_v4inaddr(pr_netaddr_t *na) {
+  if (!na) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  if (!pr_netaddr_is_v4mappedv6(na)) {
+    errno = EPERM;
+    return NULL;
+  }
+
+  return (((char *) pr_netaddr_get_inaddr(na)) + 12);
+}
 
 int pr_netaddr_set_reverse_dns(int enable) {
   int old_enable = reverse_dns;
@@ -621,6 +635,13 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
       char **checkaddr;
       struct hostent *hent = NULL;
       unsigned char ok = FALSE;
+      int family = pr_netaddr_get_family(na);
+      void *inaddr = pr_netaddr_get_inaddr(na);
+    
+      if (pr_netaddr_v4mappedv6(na)) {
+        family = AF_INET;
+        inaddr = get_v4inaddr(na);
+      }
 
 #ifdef HAVE_GETHOSTBYNAME2
       hent = gethostbyname2(buf, pr_netaddr_get_family(na));
@@ -631,11 +652,9 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
       if (hent != NULL) {
         switch (hent->h_addrtype) {
           case AF_INET:
-            if (pr_netaddr_get_family(na) == AF_INET) {
+            if (family == AF_INET) {
               for (checkaddr = hent->h_addr_list; *checkaddr; ++checkaddr) {
-                if (memcmp(*checkaddr, pr_netaddr_get_inaddr(na),
-                    hent->h_length) == 0) {
-
+                if (memcmp(*checkaddr, inaddr, hent->h_length) == 0) {
                   ok = TRUE;
                   break;
                 }
@@ -645,11 +664,9 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
 
 #ifdef USE_IPV6
           case AF_INET6:
-            if (pr_netaddr_get_family(na) == AF_INET6) {
+            if (family == AF_INET6) {
               for (checkaddr = hent->h_addr_list; *checkaddr; ++checkaddr) {
-                if (memcmp(*checkaddr, pr_netaddr_get_inaddr(na),
-                    hent->h_length) == 0) {
-
+                if (memcmp(*checkaddr, inaddr, hent->h_length) == 0) {
                   ok = TRUE;
                   break;
                 }
