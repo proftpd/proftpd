@@ -64,10 +64,12 @@ files.
 
   + New configure options:
       --enable-dso
+      --enable-facl
 
   + New modules:
       mod_delay
       mod_dso
+      mod_facl
       mod_load
 
   + New Display variables:
@@ -102,4 +104,4 @@ files.
             ...
           </VirtualHost>
 
-Last Updated: $Date: 2005-01-02 08:01:33 $
+Last Updated: $Date: 2005-02-26 20:22:21 $
