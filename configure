@@ -12811,7 +12811,7 @@ done
 
 
 
-for ac_func in memcpy mempcpy mkdir mkstemp rmdir select setgroups socket
+for ac_func in memcpy mempcpy mkdir mkstemp mlock mlockall munlock munlockall
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 echo "$as_me:$LINENO: checking for $ac_func" >&5
@@ -12900,7 +12900,9 @@ done
 
 
 
-for ac_func in statfs strchr strcoll strerror strsep strtol
+
+
+for ac_func in rmdir select setgroups socket statfs strchr strcoll strerror
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 echo "$as_me:$LINENO: checking for $ac_func" >&5
@@ -12985,7 +12987,9 @@ done
 
 
 
-for ac_func in setprotoent endprotoent
+
+
+for ac_func in strsep strtol setprotoent endprotoent
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 echo "$as_me:$LINENO: checking for $ac_func" >&5
