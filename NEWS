@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.189 2002-06-23 21:56:53 castaglia Exp $
+$Id: NEWS,v 1.190 2002-06-23 22:10:21 jwm Exp $
 
 CVS
 ---------------------------------
@@ -16,7 +16,7 @@ CVS
 - Bug 1306 - Added a TimeoutSession directive that can be used to set a maximum
              time limit on an entire session.
 - Bug 1643 - Cleaned up several source code files.
-- Added README.cygwin
+- Bug 1304 - Cygwin support, added README.cygwin
 
 1.2.5 - Released 2002-06-08
 ---------------------------------
