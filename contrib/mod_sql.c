@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.69 2004-02-24 19:45:47 castaglia Exp $
+ * $Id: mod_sql.c,v 1.70 2004-02-27 22:42:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1443,8 +1443,8 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
   case 'A': {
       char *pass;
 
-      argp=arg;
-      pass=get_param_ptr(main_server->conf, C_PASS, FALSE);
+      argp = arg;
+      pass = get_param_ptr(main_server->conf, C_PASS, FALSE);
       if (!pass)
 	pass = "UNKNOWN";
       
@@ -1458,7 +1458,7 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
     break;
 
   case 'b':
-    argp=arg;
+    argp = arg;
     if (session.xfer.p)
       snprintf(argp, sizeof(arg), "%" PR_LU, session.xfer.total_bytes);
     else
@@ -1493,12 +1493,16 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
   case 'D':
     argp = arg;
 
-    if (!strcmp(cmd->argv[0], C_CDUP) || !strcmp(cmd->argv[0], C_MKD) ||
-        !strcmp(cmd->argv[0], C_RMD) || !strcmp(cmd->argv[0], C_XCUP) ||
-        !strcmp(cmd->argv[0], C_XMKD) || !strcmp(cmd->argv[0], C_XRMD)) {
+    if (strcmp(cmd->argv[0], C_CDUP) == 0 ||
+        strcmp(cmd->argv[0], C_MKD) == 0 ||
+        strcmp(cmd->argv[0], C_RMD) == 0 ||
+        strcmp(cmd->argv[0], C_XCUP) == 0 ||
+        strcmp(cmd->argv[0], C_XMKD) == 0 ||
+        strcmp(cmd->argv[0], C_XRMD) == 0) {
       sstrncpy(argp, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE), sizeof(arg));
 
-    } else if (!strcmp(cmd->argv[0], C_CWD) || !strcmp(cmd->argv[0], C_XCWD)) {
+    } else if (strcmp(cmd->argv[0], C_CWD) == 0 ||
+               strcmp(cmd->argv[0], C_XCWD) == 0) {
 
       /* Note: by this point in the dispatch cycle, the current working
        * directory has already been changed.  For the CWD/XCWD commands,
@@ -1536,9 +1540,11 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
        * filenames that are not stored in the session.xfer structure; these
        * should be expanded properly as well.
        */
-      if (!strcmp(cmd->argv[0], C_DELE) || !strcmp(cmd->argv[0], C_MKD) ||
-          !strcmp(cmd->argv[0], C_RMD) || !strcmp(cmd->argv[0], C_XMKD) ||
-          !strcmp(cmd->argv[0], C_XRMD))
+      if (strcmp(cmd->argv[0], C_DELE) == 0 ||
+          strcmp(cmd->argv[0], C_MKD) == 0 ||
+          strcmp(cmd->argv[0], C_RMD) == 0 ||
+          strcmp(cmd->argv[0], C_XMKD) == 0 ||
+          strcmp(cmd->argv[0], C_XRMD) == 0)
         sstrncpy(arg, dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE), sizeof(arg));
 
       else
@@ -1557,7 +1563,7 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
        * stored in the session.xfer structure; these should be expanded
        * properly as well.
        */
-      if (!strcmp(cmd->argv[0], C_DELE))
+      if (strcmp(cmd->argv[0], C_DELE) == 0)
         sstrncpy(arg, cmd->arg, sizeof(arg));
 
       else
@@ -1573,6 +1579,11 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
   case 'h':
     argp = arg;
     sstrncpy(argp, session.c->remote_name, sizeof(arg));
+    break;
+
+  case 'L':
+    argp = arg;
+    sstrncpy(argp, pr_netaddr_get_ipstr(session.c->local_addr), sizeof(arg));
     break;
 
   case 'l':
@@ -1603,41 +1614,44 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
       sstrncpy(argp, get_full_cmd(cmd), sizeof(arg));
     break;
 
-  case 's':
-    argp = arg;
-    {
+  case 's': {
       pr_response_t *r;
+      argp = arg;
       
       r = (resp_list ? resp_list : resp_err_list);
       
-      for(; r && !r->num; r=r->next) ;
-      if(r && r->num)
-	sstrncpy(argp,r->num,sizeof(arg));
+      for (; r && !r->num; r=r->next);
+
+      if (r && r->num)
+        sstrncpy(argp, r->num, sizeof(arg));
       else
-	sstrncpy(argp,"-",sizeof(arg));
+        sstrncpy(argp, "-", sizeof(arg));
     }
     break;
 
   case 'T':
     argp = arg;
-    if(session.xfer.p) {
+    if (session.xfer.p) {
       struct timeval end_time;
       
-      gettimeofday(&end_time,NULL);
+      gettimeofday(&end_time, NULL);
       end_time.tv_sec -= session.xfer.start_time.tv_sec;
-      if(end_time.tv_usec >= session.xfer.start_time.tv_usec)
-	end_time.tv_usec -= session.xfer.start_time.tv_usec;
+
+      if (end_time.tv_usec >= session.xfer.start_time.tv_usec)
+        end_time.tv_usec -= session.xfer.start_time.tv_usec;
+
       else {
-	end_time.tv_usec = 1000000L - (session.xfer.start_time.tv_usec -
-				       end_time.tv_usec);
-	end_time.tv_sec--;
+        end_time.tv_usec = 1000000L - (session.xfer.start_time.tv_usec -
+          end_time.tv_usec);
+        end_time.tv_sec--;
       }
       
       snprintf(argp, sizeof(arg), "%lu.%03lu", (unsigned long) end_time.tv_sec,
-	       (unsigned long) (end_time.tv_usec / 1000));
-    } else {
-      sstrncpy(argp,"0.0",sizeof(arg));
-    }
+        (unsigned long) (end_time.tv_usec / 1000));
+
+    } else
+      sstrncpy(argp, "0.0", sizeof(arg));
+
     break;
 
   case 'U':
@@ -1655,22 +1669,28 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
   case 'u':
     argp = arg;
 
-    if(!session.user) {
+    if (!session.user) {
       char *u;
 
-      u = get_param_ptr(main_server->conf,"UserName",FALSE);
-      if(!u)
+      u = get_param_ptr(main_server->conf, "UserName", FALSE);
+      if (!u)
         u = "root";
 
       sstrncpy(argp, u, sizeof(arg));
-    } else {
+
+    } else
       sstrncpy(argp, session.user, sizeof(arg));
-    }
+
+    break;
+
+  case 'V':
+    argp = arg;
+    sstrncpy(argp, cmd->server->ServerFQDN, sizeof(arg));
     break;
 
   case 'v':
     argp = arg;
-    sstrncpy(argp,cmd->server->ServerName,sizeof(arg));
+    sstrncpy(argp, cmd->server->ServerName, sizeof(arg));
     break;
 
   case '%':
@@ -1678,7 +1698,7 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
     break;
 
   default:
-    argp="{UNKNOWN TAG}";
+    argp = "{UNKNOWN TAG}";
     break;
   }
 
