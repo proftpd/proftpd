@@ -25,7 +25,7 @@
  */
 
 /* BSD socket manipulation tools.
- * $Id: inet.h,v 1.19 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: inet.h,v 1.20 2003-08-06 23:05:54 castaglia Exp $
  */
 
 #ifndef PR_INET_H
@@ -131,6 +131,10 @@ struct addrinfo {
 /* These AI_ defines are for use by getaddrinfo(3). */
 
 #if defined(HAVE_GETADDRINFO) && !defined(USE_GETADDRINFO)
+/* Use the system getaddrinfo(2) and freeaddrinfo(2) by redefining the
+ * 'pr_getaddrinfo' and 'pr_freeaddrinfo' symbols to be 'getaddrinfo' and
+ * 'freeaddrinfo', respectively.
+ */
 # define pr_getaddrinfo    	getaddrinfo
 # define pr_freeaddrinfo	freeaddrinfo
 #else
@@ -152,6 +156,9 @@ void pr_freeaddrinfo(struct addrinfo *);
 /* These NI_ defines are for use by getnameinfo(3). */
 
 #if defined(HAVE_GETNAMEINFO) && !defined(USE_GETNAMEINFO)
+/* Use the system getnameinfo(2) by redefining the 'pr_getnameinfo' symbol
+ * to be simply 'getnameinfo'.
+ */
 # define pr_getnameinfo    	getnameinfo
 #else
 int pr_getnameinfo(const struct sockaddr *, socklen_t, char *, size_t,
