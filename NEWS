@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.70 2000-08-03 02:46:44 macgyver Exp $
+$Id: NEWS,v 1.71 2000-08-18 20:25:37 macgyver Exp $
 
 1.2.0 - Released: 08/??/2000
 ----------------------------
@@ -17,6 +17,7 @@ $Id: NEWS,v 1.70 2000-08-03 02:46:44 macgyver Exp $
 - On systems with wtmpx, don't use wtmp at all.
 - Handle files that begin with ~ properly.
 - ProFTPD will now use the jail() system call, if available for better security.
+- Documentation updated for PAM on FreeBSD operating systems.
 
 1.2.0RC2 - Released: 07/28/2000
 -------------------------------
