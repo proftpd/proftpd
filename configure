@@ -842,9 +842,11 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --disable-largefile     omit support for large files
-  --enable-autoshadow     enable run-time auto-detection of shadowed passwords (requires shadow)
+  --enable-autoshadow     enable run-time auto-detection of shadowed passwords
+                          (requires shadow)
 
-  --enable-force-setpassent force use of setpassent (default=no on FreeBSD)
+  --enable-force-setpassent
+                          force use of setpassent (default=no on FreeBSD)
 
   --enable-pam            enable PAM support (default=yes)
 
@@ -852,37 +854,31 @@ Optional Features:
 
   --enable-shadow         force compilation of shadowed password support
 
-  --enable-buffer-size
-                          tune the the size (in bytes) of internal buffers
+  --enable-buffer-size    tune the the size (in bytes) of internal buffers
                           (default=1024)
 
-  --enable-pool-size
-                          tune the size (in bytes) of memory pools
+  --enable-pool-size      tune the size (in bytes) of memory pools
                           (default=512)
 
   --enable-scoreboard-buffer-size
-                          tune the the size (in bytes) of certain
-                          scoreboard buffers (default=80)
+                          tune the the size (in bytes) of certain scoreboard
+                          buffers (default=80)
 
-  --enable-timeout-ident
-                          set the default timeout (in secs) for
-                          RFC931 connections (default=10)
+  --enable-timeout-ident  set the default timeout (in secs) for RFC931
+                          connections (default=10)
 
-  --enable-timeout-idle
-                          set the default timeout (in secs) for idle
+  --enable-timeout-idle   set the default timeout (in secs) for idle
                           connections (default=600)
 
-  --enable-timeout-linger
-                          set the default timeout (in secs) for
-                          lingering closes (default=180)
+  --enable-timeout-linger set the default timeout (in secs) for lingering
+                          closes (default=180)
 
-  --enable-timeout-login
-                          set the default timeout (in secs) for
-                          logging in after connecting (default=300)
+  --enable-timeout-login  set the default timeout (in secs) for logging in
+                          after connecting (default=300)
 
   --enable-timeout-no-transfer
-                          set the default timeout (in secs) for no
-                          data transferred (default=300)
+                          set the default timeout (in secs) for no data
+                          transferred (default=300)
 
   --enable-timeout-stalled
                           set the default timeout (in secs) for stalled
@@ -892,24 +888,23 @@ Optional Features:
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-
   --without-getopt        prevent proftpd from using its bundled getopt
-                          implementation.  This is done automatically if
-                          the host supports getopt, but may need to be
-                          explicitly used when combining proftpd with other
-                          applications, such as MySQL
+                          implementation. This is done automatically if the
+                          host supports getopt, but may need to be explicitly
+                          used when combining proftpd with other applications,
+                          such as MySQL
 
-  --with-includes=LIST    add additional include paths to proftpd
-                          LIST is a ':' separated list of include paths to add
-                          e.g. --with-includes=/some/mysql/include:/my/include
+  --with-includes=LIST    add additional include paths to proftpd. LIST is a
+                          colon-separated list of include paths to add e.g.
+                          --with-includes=/some/mysql/include:/my/include
 
-  --with-libraries=LIST   add additional library paths to proftpd
-                          LIST is a ':' separated list of include paths to add
-                          e.g. --with-libraries=/some/mysql/libdir:/my/libs
+  --with-libraries=LIST   add additional library paths to proftpd. LIST is a
+                          colon-separated list of include paths to add e.g.
+                          --with-libraries=/some/mysql/libdir:/my/libs
 
-  --with-modules=LIST     add additional modules to proftpd
-                          LIST is a ':' separated list of modules to add
-                          e.g. --with-modules=mod_pam:mod_readme
+  --with-modules=LIST     add additional modules to proftpd. LIST is a
+                          colon-separated list of modules to add e.g.
+                          --with-modules=mod_pam:mod_readme
 
 
 Some influential environment variables:
@@ -2716,7 +2711,7 @@ fi
 # The native HP-UX 10 compiler needs -Ae to enable Extended ANSI compliance
 # (-Ae is the default in the native compiler under HP-UX 11).
 if test $ac_cv_c_compiler_gnu = no -a "$OSTYPE" = "-DHPUX10"; then
-	CFLAGS="$CFLAGS -Ae"
+  CFLAGS="$CFLAGS -Ae"
 fi
 
 LDFLAGS="-Llib $LDFLAGS"
