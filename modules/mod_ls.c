@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.120 2004-12-12 22:56:49 castaglia Exp $
+ * $Id: mod_ls.c,v 1.121 2005-01-13 00:19:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1330,12 +1330,13 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
   if (arg && *arg) {
     int justone = 1;
     glob_t g;
-    int    a;
+    int globbed = FALSE;
+    int a;
     char   pbuffer[PR_TUNABLE_PATH_MAX + 1] = "";
     char *target;
 
     /* Make sure the glob_t is initialized. */
-    memset(&g, '\0', sizeof(glob_t));
+    memset(&g, '\0', sizeof(g));
 
     if (*arg == '~') {
       struct passwd *pw;
@@ -1388,10 +1389,11 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
       skiparg = FALSE;
 
       if (use_globbing &&
-          strpbrk(target, "{[*?") != NULL)
+          strpbrk(target, "{[*?") != NULL) {
         a = pr_fs_glob(target, glob_flags, NULL, &g);
+        globbed = TRUE;
 
-      else {
+      } else {
 
         /* Trick the following code into using the non-glob() processed path */
         a = 0;
@@ -1437,7 +1439,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
               (S_ISDIR(target_mode) && list_dir_as_file)) {
             if (listfile(cmd, NULL, *path) < 0) {
               ls_terminate();
-              if (use_globbing)
+              if (use_globbing && globbed)
                 pr_fs_globfree(&g);
               return -1;
             }
@@ -1453,8 +1455,9 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
       if (outputfiles(cmd) < 0) {
         ls_terminate();
-        if (use_globbing)
+        if (use_globbing && globbed) {
           pr_fs_globfree(&g);
+        }
         return -1;
       }
 
@@ -1491,7 +1494,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
             } else if (res < 0) {
               ls_terminate();
-              if (use_globbing)
+              if (use_globbing && globbed)
                 pr_fs_globfree(&g);
               return -1;
             }
@@ -1500,7 +1503,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
         if (XFER_ABORTED) {
           discard_output();
-          if (use_globbing)
+          if (use_globbing && globbed)
             pr_fs_globfree(&g);
           return -1;
         }
@@ -1519,7 +1522,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
         pr_response_add(R_226, "Unknown error during globbing of %s", arg);
     }
 
-    if (!skiparg && use_globbing)
+    if (!skiparg && use_globbing && globbed)
       pr_fs_globfree(&g);
 
     if (XFER_ABORTED) {
