@@ -25,7 +25,7 @@
 
 /*
  * Module handling routines
- * $Id: modules.c,v 1.46 2004-05-31 19:33:55 castaglia Exp $
+ * $Id: modules.c,v 1.47 2004-05-31 21:47:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -645,13 +645,12 @@ int pr_module_load(module *m) {
     }
 
     /* Add the module to the loaded_modules list. */
-    if (loaded_modules) {
-      m->next = loaded_modules;
-      loaded_modules->prev = m;
-      loaded_modules = m;
+    m->next = loaded_modules;
 
-    } else
-      loaded_modules = m;
+    if (loaded_modules)
+      loaded_modules->prev = m;
+
+    loaded_modules = m;
 
     /* Generate an event. */
     pr_event_generate("core.module-load", buf);
