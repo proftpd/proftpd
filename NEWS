@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.404 2003-03-18 07:52:53 castaglia Exp $
+$Id: NEWS,v 1.405 2003-03-18 15:19:42 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -65,6 +65,7 @@ CVS
   at 1 when examining matched groups, rather than 0.  Most of the time $0 will
   not what is desired, however, for $0 refers to the original string being
   matched.
+- Bug 1987 - mod_rewrite seems not to handle more than one backreference.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------

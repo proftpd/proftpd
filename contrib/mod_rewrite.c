@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.6 2003-03-18 07:52:54 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.7 2003-03-18 15:19:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -230,6 +230,7 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
   rewrite_log("rewrite_match_cond: subst'd cond: '%s'", cond_str);
 
   /* Check the condition */
+  memset(&rewrite_cond_matches, '\0', sizeof(rewrite_cond_matches));
   rewrite_cond_matches.match_string = cond->argv[0];
   return rewrite_regexec(cond_str, (regex_t *) cond->argv[1],
     *((unsigned char *) cond->argv[2]), &rewrite_cond_matches);
@@ -502,16 +503,17 @@ static char *rewrite_subst_backrefs(cmd_rec *cmd, char *pattern,
         /* Substitute "%N" backreferences for RewriteCondition matches */
         snprintf(buf, sizeof(buf), "%%%u", i);
 
-      /* Make sure there's a backreference for this in the substitution
-       * pattern.  Otherwise, just continue on.
-       */
-      if (!strstr(pattern, buf))
-        continue;
-
       if (!new_pattern)
         new_pattern = pstrdup(cmd->pool, pattern);
 
-      tmp = (matches->match_string)[matches->match_groups[i].rm_eo] = '\0';
+      /* Make sure there's a backreference for this in the substitution
+       * pattern.  Otherwise, just continue on.
+       */
+      if (!strstr(new_pattern, buf))
+        continue;
+
+      tmp = (matches->match_string)[matches->match_groups[i].rm_eo];
+      (matches->match_string)[matches->match_groups[i].rm_eo] = '\0';
 
       rewrite_log("rewrite_subst_backrefs(): replacing backref '%s' with '%s'",
         buf, &(matches->match_string)[matches->match_groups[i].rm_so]);
@@ -1608,6 +1610,7 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
     /* First, make sure the given RewriteRule regex matches the command
      * argument.
      */
+    memset(&rewrite_rule_matches, '\0', sizeof(rewrite_rule_matches));
     rewrite_rule_matches.match_string = cmd->arg;
     if (!rewrite_regexec(cmd->arg, (regex_t *) c->argv[0],
         *((unsigned char *) c->argv[2]), &rewrite_rule_matches)) {
