@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.147 2004-05-19 02:32:36 castaglia Exp $
+ * $Id: dirtree.c,v 1.148 2004-05-26 18:54:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3477,6 +3477,11 @@ void init_config(void) {
   /* Default server port */
   main_server->ServerPort = pr_inet_getservport(main_server->pool,
     "ftp", "tcp");
+
+  /* Reset the sid counter. */
+  server_id = 0;
+
+  return;
 }
 
 /* These functions are used by modules to help parse configuration.
