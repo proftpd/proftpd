@@ -13307,7 +13307,8 @@ fi
 
 
 
-for ac_func in getaddrinfo getcwd gethostname getnameinfo
+
+for ac_func in getaddrinfo getcwd gethostbyname2 gethostname getnameinfo
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 echo "$as_me:$LINENO: checking for $ac_func" >&5
@@ -14673,10 +14674,15 @@ cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 
-    #if HAVE_NETINET_IN_SYSTM_H
-    # include <netinet/in_systm.h>
+    #if HAVE_SYS_TYPES_H
+    # include <sys/types.h>
     #endif
-    #include <netinet/in.h>
+    #if HAVE_SYS_SOCKET_H
+    # include <sys/socket.h>
+    #endif
+    #if HAVE_NETINET_IN_H
+    # include <netinet/in.h>
+    #endif
 
 
 int
@@ -14714,10 +14720,15 @@ cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 
-    #if HAVE_NETINET_IN_SYSTM_H
-    # include <netinet/in_systm.h>
+    #if HAVE_SYS_TYPES_H
+    # include <sys/types.h>
     #endif
-    #include <netinet/in.h>
+    #if HAVE_SYS_SOCKET_H
+    # include <sys/socket.h>
+    #endif
+    #if HAVE_NETINET_IN_H
+    # include <netinet/in.h>
+    #endif
 
 
 int
