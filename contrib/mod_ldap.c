@@ -18,7 +18,7 @@
  */
 
 /*
- * mod_ldap v2.8.4
+ * mod_ldap v2.8.5
  *
  * Thanks for patches go to (in alphabetical order):
  * 
@@ -39,7 +39,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  * 
- * $Id: mod_ldap.c,v 1.19 2002-05-15 12:55:13 jwm Exp $
+ * $Id: mod_ldap.c,v 1.20 2002-05-19 14:35:14 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -810,6 +810,9 @@ handle_ldap_getgroups(cmd_rec *cmd)
   LDAPMessage *result = NULL, *e;
   array_header *gids   = (array_header *)cmd->argv[1],
                *groups = (array_header *)cmd->argv[2];
+
+  if (! ldap_dogid)
+    return DECLINED(cmd);
 
   if (!gids || !groups)
     return DECLINED(cmd);
