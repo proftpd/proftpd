@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.245 2004-09-05 21:10:08 castaglia Exp $
+ * $Id: main.c,v 1.246 2004-09-05 21:36:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2465,8 +2465,9 @@ static void show_settings(void) {
   printf("    PR_TUNABLE_TIMEOUTLOGIN = %u\n", PR_TUNABLE_TIMEOUTLOGIN);
   printf("    PR_TUNABLE_TIMEOUTNOXFER = %u\n", PR_TUNABLE_TIMEOUTNOXFER);
   printf("    PR_TUNABLE_TIMEOUTSTALLED = %u\n", PR_TUNABLE_TIMEOUTSTALLED);
-  printf("    PR_TUNABLE_XFER_BUFFER_SIZE = %u\n\n",
-    PR_TUNABLE_XFER_BUFFER_SIZE);
+  printf("    PR_TUNABLE_XFER_BUFFER_SIZE = %u\n", PR_TUNABLE_XFER_BUFFER_SIZE);
+  printf("    PR_TUNABLE_XFER_SCOREBOARD_UPDATES = %u\n\n",
+    PR_TUNABLE_XFER_SCOREBOARD_UPDATES);
 }
 
 static struct option_help {
