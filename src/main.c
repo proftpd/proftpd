@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.217 2004-01-29 22:20:53 castaglia Exp $
+ * $Id: main.c,v 1.218 2004-01-30 16:42:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -135,15 +135,16 @@ static const char *PidPath = PID_FILE_PATH;
 /* From dirtree.c */
 extern array_header *server_defines;
 
-/* From mod_unixpw.c */
+/* From mod_auth_unix.c */
 extern unsigned char persistent_passwd;
 
-/* from response.c */
+/* From response.c */
 extern pr_response_t *resp_list, *resp_err_list;
 
 static int nodaemon  = 0;
 static int quiet     = 0;
 static int shutdownp = 0;
+static int syntax_check = 0;
 
 /* Signal handling */
 static RETSIGTYPE sig_disconnect(int);
@@ -343,13 +344,16 @@ static void end_login_noexit(void) {
     /* For standalone daemons, we only clear the scoreboard slot if we are
      * an exiting child process.
      */
-    if (!is_master && pr_scoreboard_del_entry(TRUE) < 0)
+    if (!is_master &&
+        pr_scoreboard_del_entry(TRUE) < 0 &&
+        errno != EINVAL)
       pr_log_debug(DEBUG1, "error deleting scoreboard entry: %s",
         strerror(errno));
 
   } else if (ServerType == SERVER_INETD) {
     /* For inetd-spawned daemons, we always clear the scoreboard slot. */
-    if (pr_scoreboard_del_entry(TRUE) < 0)
+    if (pr_scoreboard_del_entry(TRUE) < 0 &&
+        errno != EINVAL)
       pr_log_debug(DEBUG1, "error deleting scoreboard entry: %s",
         strerror(errno));
   }
@@ -382,7 +386,8 @@ static void end_login_noexit(void) {
   if (session.c)
     pr_inet_close(session.pool, session.c);
 
-  if (!is_master || ServerType == SERVER_INETD)
+  if (!is_master ||
+      (ServerType == SERVER_INETD && !syntax_check))
     pr_log_pri(PR_LOG_INFO, "FTP session closed.");
 
 }
@@ -2477,7 +2482,7 @@ static void show_usage(int exit_code) {
 }
 
 int main(int argc, char *argv[], char **envp) {
-  int optc, check_config_syntax = 0, show_version = 0;
+  int optc, show_version = 0;
   const char *cmdopts = "D:nqd:c:p:lhtv";
   mode_t *main_umask = NULL;
   socklen_t socketp;
@@ -2619,7 +2624,7 @@ int main(int argc, char *argv[], char **envp) {
       break;
 
     case 't':
-      check_config_syntax = 1;
+      syntax_check = 1;
       printf("Checking syntax of configuration file\n");
       fflush(stdout);
       break;
@@ -2716,7 +2721,7 @@ int main(int argc, char *argv[], char **envp) {
   module_remove_postparse_inits();
 
   /* We're only doing a syntax check of the configuration file. */
-  if (check_config_syntax) {
+  if (syntax_check) {
     printf("Syntax check complete.\n");
     end_login(0);
   }
