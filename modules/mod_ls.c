@@ -24,7 +24,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.52 2002-06-12 19:11:54 castaglia Exp $
+ * $Id: mod_ls.c,v 1.53 2002-06-21 00:40:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -47,7 +47,7 @@ static char *default_options;
 static int showsymlinks, showsymlinks_hold, timesgmt = 0;
 static int cmp(const void *a, const void *b);
 static char *fakeuser, *fakegroup;
-static umode_t fakemode;
+static mode_t fakemode;
 static int fakemodep;
 static int ls_errno = 0;
 static time_t ls_curtime = 0;
@@ -174,7 +174,7 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden)
 
   _fakemode = get_param_int(CURRENT_CONF,"DirFakeMode",FALSE);
   if(_fakemode != -1) {
-    fakemode = (umode_t)_fakemode;
+    fakemode = (mode_t)_fakemode;
     fakemodep = 1;
   } else
     fakemodep = 0;
@@ -213,7 +213,7 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path,int *hidden)
 
   _fakemode = get_param_int(CURRENT_CONF,"DirFakeMode",FALSE);
   if(_fakemode != -1) {
-    fakemode = (umode_t)_fakemode;
+    fakemode = (mode_t)_fakemode;
     fakemodep = 1;
   } else
     fakemodep = 0;
@@ -355,7 +355,7 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
       if(m[0] != ' ') {
         char nameline[MAXPATHLEN + MAXPATHLEN + 128] = {'\0'};
         char timeline[6] = {'\0'};
-        umode_t mode = st.st_mode;
+        mode_t mode = st.st_mode;
 
         if(fakemodep) {
           mode = fakemode;
@@ -1368,7 +1368,7 @@ MODRET genericlist(cmd_rec *cmd)
     opt_A = 0;
   
   if(_fakemode != -1) {
-    fakemode = (umode_t)_fakemode;
+    fakemode = (mode_t)_fakemode;
     fakemodep = 1;
   } else
     fakemodep = 0;
@@ -1440,7 +1440,7 @@ MODRET cmd_stat(cmd_rec *cmd)
   /* No need to check ShowDotFiles since we force opt_a below.
    */
   if(_fakemode != -1) {
-    fakemode = (umode_t)_fakemode;
+    fakemode = (mode_t)_fakemode;
     fakemodep = 1;
   } else
     fakemodep = 0;

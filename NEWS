@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.184 2002-06-11 17:09:42 castaglia Exp $
+$Id: NEWS,v 1.185 2002-06-21 00:40:38 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -11,6 +11,7 @@ CVS
 - Bug 1463 - Added reporting of dispatching to auth handlers at debug level 6
 - Bug 1258 - Added STOU command handler
 - Bug 1534 - Added LFS support
+- Bug 1647 - Changed unnecessary use of umode_t to mode_t in mod_ls.
 
 1.2.5 - Released 2002-06-08
 ---------------------------------
