@@ -26,7 +26,7 @@
 
 /* Scoreboard routines.
  *
- * $Id: utils.h,v 1.18 2003-10-21 01:44:47 castaglia Exp $
+ * $Id: utils.h,v 1.19 2004-01-18 19:01:53 castaglia Exp $
  */
 
 #ifndef UTIL_SCOREBOARD_H
@@ -43,7 +43,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <sys/types.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
