@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.264 2002-10-30 19:29:19 castaglia Exp $
+$Id: NEWS,v 1.265 2002-11-02 21:34:53 jwm Exp $
 
 CVS
 ---------------------------------
@@ -20,6 +20,8 @@ CVS
 - Bug 1800 - Proftpd child segfaults when using a PASS without no USER first.
   mod_wrap was making a bad assumption about the USER name being available.
   This assumption has been corrected.
+- Bug 1803 - Check for SIZEOF_UNSIGNED_LONG_LONG to determine LFS support
+  breaks some Linux installations
 
 1.2.7rc2 - Released 2002-10-22
 ---------------------------------

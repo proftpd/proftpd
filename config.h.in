@@ -156,8 +156,8 @@
 /* The number of bytes in a long long.  */
 #undef SIZEOF_LONG_LONG
 
-/* The number of bytes in a unsigned long long.  */
-#undef SIZEOF_UNSIGNED_LONG_LONG
+/* The number of bytes in an off_t.  */
+#undef SIZEOF_OFF_T
 
 /* Define if you have the bcopy function.  */
 #undef HAVE_BCOPY

@@ -499,7 +499,7 @@ if test "$pr_cv_header_timer_t" = "yes"; then
 fi
 
 AC_CHECK_SIZEOF(long long, 0)
-AC_CHECK_SIZEOF(unsigned long long, 0)
+AC_CHECK_SIZEOF(off_t, 0)
 AC_HEADER_TIME
 AC_STRUCT_TM
 
