@@ -1,7 +1,8 @@
-$Id: NEWS,v 1.119 2001-07-03 14:51:32 flood Exp $
+$Id: NEWS,v 1.120 2001-07-04 15:28:06 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+- Bug 1230 - Portability fix for Sol 8 (sparcv9)
 - Bug 1169 - Fix bug introduced by 1098, breaking DefaultRoot other
   than "~*"
 - Bug 1234 - ABOR now always returns 226 (as per RFC959)

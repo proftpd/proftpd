@@ -26,7 +26,7 @@
 /*
  * ProFTPD logging support.
  *
- * $Id: log.c,v 1.29 2001-06-18 17:12:45 flood Exp $
+ * $Id: log.c,v 1.30 2001-07-04 15:28:06 flood Exp $
  */
 
 /* History Log:
@@ -602,7 +602,12 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip)
 #if (defined(SVR4) || defined(__SVR4)) && \
     !(defined(LINUX) || defined(__hpux) || defined (_AIX))
   /* This "auxilliary" utmp doesn't exist under linux. */
+#ifdef __sparcv9
+  struct futmpx utx;
+  time_t t;
+#else
   struct utmpx utx;
+#endif
   static int fdx = -1;
 
   if(fdx < 0 && (fdx = open(WTMPX_FILE, O_WRONLY | O_APPEND, 0)) < 0) {
@@ -624,7 +629,12 @@ int log_wtmp(char *line, char *name, char *host, p_in_addr_t *ip)
     sstrncpy(utx.ut_host,host,sizeof(utx.ut_host));
     utx.ut_syslen = strlen(utx.ut_host)+1;
     utx.ut_pid = getpid();
+#ifdef __sparcv9
+    time(&t);
+    utx.ut_tv.tv_sec = (time32_t)t;
+#else
     time(&utx.ut_tv.tv_sec);
+#endif
     if(*name)
       utx.ut_type = USER_PROCESS;
     else
