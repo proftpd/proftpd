@@ -270,6 +270,9 @@
 /* Define if you have the socket function.  */
 #undef HAVE_SOCKET
 
+/* Define if you have the statfs function.  */
+#undef HAVE_STATFS
+
 /* Define if you have the strchr function.  */
 #undef HAVE_STRCHR
 

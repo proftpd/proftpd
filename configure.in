@@ -611,7 +611,7 @@ AC_FUNC_VPRINTF
 AC_CHECK_FUNCS(bcopy crypt fgetgrent fgetpwent flock getcwd gethostname)
 AC_CHECK_FUNCS(getopt getopt_long gettimeofday inet_aton)
 AC_CHECK_FUNCS(memcpy mempcpy mkdir mkstemp rmdir select setgroups socket)
-AC_CHECK_FUNCS(strchr strcoll strerror strsep strtol)
+AC_CHECK_FUNCS(statfs strchr strcoll strerror strsep strtol)
 AC_CHECK_FUNCS(setprotoent endprotoent)
 # __snprintf and __vsnprintf are only on solaris and _really_ broken there.
 AC_CHECK_FUNCS(vsnprintf snprintf)

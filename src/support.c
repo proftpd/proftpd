@@ -26,43 +26,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.40 2002-10-21 17:06:12 castaglia Exp $
- */
-
-/* History Log:
- * 10/29/97 current: 0.99.0pl9, next: 0.99.0pl10
- *   Added get_fs_size(), used to determine the amount of space
- *   available on a filesystem (if supported)
- *
- * 7/9/97 current: 0.99.0pl6, next: 0.99.0pl7
- *   Added exit handler chain, works identically to libc atexit(),
- *   however atexit() can't be used because proftpd often terminates
- *   with _exit() rather than exit().
- *
- * 5/12/97 current: 0.99.0pl1, next: 0.99.0pl2
- *   Added check_shutmsg function which checks for the existance
- *   of the shutdown file, and returns timing information
- *   about an impending shutdown.  Also added, str_interpolate,
- *   to interpolate custom "%x" metas.
- *
- * 4/30/97 current: 0.99.0pl1, next: 0.99.0pl2
- *   Fixed bug in dir_interpolate that was not 0-terminating
- *   all strings.
- *
- * 4/24/97 current: 0.99.0pl1, next: 0.99.0pl2
- *   Oops... forgot to check for empty username in dir_interpolate(),
- *   so commands like "cd ~" aren't working.
- *   Status: Fixed.
- *
- * 4/25/97 current: 0.99.0pl1, next: 0.99.0pl2
- *   Added schedule() and run_schedule() to allow async routines
- *   (called from an alarm or inside the _ioreq_service() to
- *   schedule a function to run after the next `n' loops)
- *   The function (run_schedule() is called from io.c) will
- *   run at an "undetermined" later time (async), when
- *   no I/O is in progress (basically, allowing the schedule
- *   of a "low priority" function.  The higher the loop count
- *   (via nloops), the later it will run.
+ * $Id: support.c,v 1.41 2002-10-28 22:30:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -73,6 +37,8 @@
 # include <sys/statvfs.h>
 #elif defined(HAVE_SYS_VFS_H)
 # include <sys/vfs.h>
+#elif defined(__FreeBSD__) && defined(HAVE_STATFS)
+# include <sys/mount.h>
 #endif
 
 #ifdef AIX3
@@ -839,7 +805,7 @@ char *sreplace(pool *p, char *s, ...)
   return pstrdup(p,buf);
 }
 
-#if defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
+#if defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H) || defined(HAVE_STATFS)
 /* Simple multiplication & division doesn't work with very large
  * filesystems (overflows 32 bits).  This code should handle it.
  */
@@ -862,26 +828,35 @@ static off_t _calc_fs(size_t blocks, size_t bsize) {
   return (res_lo >> 10) | (res_hi << 6);
 }
 
-# ifdef HAVE_SYS_STATVFS_H
+# if defined(__FreeBSD__) && defined(HAVE_STATFS)
 off_t get_fs_size(char *s) {
-  struct statvfs vfs;
+  struct statfs fs;
 
-  if(statvfs(s,&vfs) != 0)
+  if (statfs(s, &fs) != 0)
     return 0;
 
-  return _calc_fs(vfs.f_bavail,vfs.f_frsize);
+  return _calc_fs(fs.f_bavail, fs.f_bsize);
+}
+# elif defined(HAVE_SYS_STATVFS_H)
+off_t get_fs_size(char *s) {
+  struct statvfs fs;
+
+  if (statvfs(s, &fs) != 0)
+    return 0;
+
+  return _calc_fs(fs.f_bavail, fs.f_frsize);
 }
 # elif defined(HAVE_SYS_VFS_H)
 off_t get_fs_size(char *s) {
-  struct statfs vfs;
+  struct statfs fs;
 
-  if(statfs(s,&vfs) != 0)
+  if (statfs(s, &fs) != 0)
     return 0;
 
-  return _calc_fs(vfs.f_bavail,vfs.f_bsize);
+  return _calc_fs(fs.f_bavail, fs.f_bsize);
 }
-# endif /* no HAVE_SYS_STATVFS/HAVE_SYS_VFS */
-#endif /* no HAVE_SYS_STATVFS/HAVE_SYS_VFS */
+# endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
+#endif /* !HAVE_STATFS && !HAVE_SYS_STATVFS && !HAVE_SYS_VFS */
 
 /* "safe" strcat, saves room for \0 at end of dest, and refuses to copy
  * more than "n" bytes.

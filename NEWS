@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.258 2002-10-24 20:03:57 castaglia Exp $
+$Id: NEWS,v 1.259 2002-10-28 22:30:00 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -13,6 +13,7 @@ CVS
   be used when configuring proftpd for AIX.  The configure script has been
   updated to detect when these options are used on AIX, and to automatically
   disable them.
+- Bug 1722 - Can't work magic cookie %F on FreeBSD.
 
 1.2.7rc2 - Released 2002-10-22
 ---------------------------------

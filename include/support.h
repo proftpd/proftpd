@@ -25,7 +25,7 @@
  */
 
 /* Non-specific support functions.
- * $Id: support.h,v 1.11 2002-07-09 22:20:10 castaglia Exp $
+ * $Id: support.h,v 1.12 2002-10-28 22:30:02 castaglia Exp $
  */
 
 #ifndef __SUPPORT_H
@@ -96,7 +96,7 @@ char *sstrcat(char *, const char *, size_t);
 char *sstrncpy(char *, const char *, size_t);
 char *sreplace(pool *, char *, ...);
 
-#if defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
+#if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
 off_t get_fs_size(char *);
 #endif
 #endif /* __SUPPORT_H */

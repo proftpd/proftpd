@@ -26,7 +26,7 @@
 
 /*
  * Core FTPD module
- * $Id: mod_core.c,v 1.113 2002-10-21 17:06:09 castaglia Exp $
+ * $Id: mod_core.c,v 1.114 2002-10-28 22:30:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2440,7 +2440,7 @@ int core_display_file(const char *numeric, const char *fn, const char *fs)
   char mg_xfer_units[12] = {'\0'}, config_class_users[128] = {'\0'}, *user;
   short first = 1;
 
-#if defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
+#if defined(HAVE_STATFS) || defined(HAVE_SYS_STATVFS_H) || defined(HAVE_SYS_VFS_H)
   fs_size = get_fs_size((fs ? (char*)fs : (char*)fn));
   snprintf(mg_size, sizeof(mg_size), "%" PR_LU, fs_size);
 #endif
