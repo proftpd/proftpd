@@ -710,6 +710,7 @@ static int tls_pkey_cb(char *buf, int buflen, int rwflag, void *data) {
 }
 
 static void tls_scrub_pkeys(void) {
+#if !defined(PR_DEVEL_NO_DAEMON) && !defined(PR_DEVEL_NO_FORK)
   tls_pkey_t *k;
 
   /* Scrub and free all passphrases in memory. */
@@ -728,6 +729,7 @@ static void tls_scrub_pkeys(void) {
       free(k->dsa_pkey);
     }
   }
+#endif /* !PR_DEVEL_NO_DAEMON && !PR_DEVEL_NO_FORK) */
 }
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
@@ -1896,8 +1898,7 @@ static void tls_setup_environ(SSL *ssl) {
     X509_free(cert);
 
   } else
-    tls_log("unable to set server certificate environ variables: "
-      "no server certificate presented");
+    tls_log("unable to set server certificate environ variables");
 
   cert = SSL_get_peer_certificate(ssl);
   if (cert) {
@@ -1905,8 +1906,7 @@ static void tls_setup_environ(SSL *ssl) {
     X509_free(cert);
 
   } else
-    tls_log("unable to set client certificate environ variables: "
-      "no client certificate presented");
+    tls_log("unable to set client certificate environ variables");
 
   return;
 }
@@ -3347,6 +3347,7 @@ static void tls_sess_exit_cb(void) {
   if (tls_data_netio)
     destroy_pool(tls_data_netio->pool);
 
+#if !defined(PR_DEVEL_NO_DAEMON) && !defined(PR_DEVEL_NO_FORK)
   if (tls_pkey && (mpid != getpid())) {
 
     /* Scrub and free any passphrases.  We don't worry about unlocking the
@@ -3365,6 +3366,7 @@ static void tls_sess_exit_cb(void) {
       free(tls_pkey->dsa_pkey);
     }
   }
+#endif /* !PR_DEVEL_NO_DAEMON && !PR_DEVEL_NO_FORK */
 
   tls_closelog();
   return;
