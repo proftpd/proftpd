@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.555 2004-04-13 17:52:30 castaglia Exp $
+$Id: NEWS,v 1.556 2004-04-16 01:08:12 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -133,7 +133,7 @@ CVS
   not actually requested.
 - Bug 2371 - ftpasswd should have option to compare password against value
   in passwd file.  ftpasswd now supports a --not-previous-password option.
-- Added a `howto' directory under `doc', for mini-HOWTOs.
+- Added a `howto' directory under `doc/', for mini-HOWTOs.
 - Bug 2221 - proftpd on hp-ux 11.22.  The default data type of socklen_t
   on HP-UX 11 is problematic; many system calls expect an int, and the
   default type is a size_t.  This mismatch causes problems for 64-bit
@@ -142,6 +142,8 @@ CVS
 - Bug 2383 - mod_ctrls.c: ctrls_listen(): Invalid size in bind() argument.
   The size of struct sockaddr_un is not consistent across platforms.
 - Bug 2387 - PRIVS_USER macro should set effective GID to user's primary GID.
+- Added a `modules/' directory under `doc/', for core module documentation.
+  Currently there are HTML docs for mod_auth_file, mod_cap, and mod_ctrls.
 
 1.2.9 - Released 31-Oct-2003
 ---------------------------------
