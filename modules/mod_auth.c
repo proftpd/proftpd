@@ -20,7 +20,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.36 2000-07-21 18:44:30 macgyver Exp $
+ * $Id: mod_auth.c,v 1.37 2000-07-27 16:07:24 macgyver Exp $
  */
 
 #include "conf.h"
@@ -1104,6 +1104,7 @@ static void _do_user_counts()
   logrun_t *l;
   int cur = -1, ccur = -1;
   char config_class_users[128] = {'\0'};
+  xaset_t *conf = NULL;
   
   if(get_param_int(main_server->conf, "Classes", FALSE) != 1)
     return;
@@ -1124,18 +1125,20 @@ static void _do_user_counts()
         	ccur++;
       }
   PRIVS_RELINQUISH;
-
+  
+  /* This silliness is needed to get past the broken HP/UX 11.x compiler.
+   */
+  conf = CURRENT_CONF;
   remove_config(CURRENT_CONF, "CURRENT-CLIENTS", FALSE);
-  add_config_param_set(&(CURRENT_CONF), "CURRENT-CLIENTS", 1, (void *) cur);
+  add_config_param_set(&conf, "CURRENT-CLIENTS", 1, (void *) cur);
   
   remove_config(CURRENT_CONF,"CURRENT-CLASS",FALSE);
-  add_config_param_set(&(CURRENT_CONF), "CURRENT-CLASS", 1,
-		       session.class->name);
+  add_config_param_set(&conf, "CURRENT-CLASS", 1, session.class->name);
   
   snprintf(config_class_users, sizeof(config_class_users), "%s-%s",
 	   "CURRENT-CLIENTS-CLASS", session.class->name);
   remove_config(CURRENT_CONF, config_class_users, FALSE);
-  add_config_param_set(&(CURRENT_CONF), config_class_users, 1, ccur);
+  add_config_param_set(&conf, config_class_users, 1, ccur);
 }
 
 MODRET cmd_user(cmd_rec *cmd)
