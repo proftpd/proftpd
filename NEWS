@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.609 2004-09-28 01:25:54 jwm Exp $
+$Id: NEWS,v 1.610 2004-09-29 21:04:29 castaglia Exp $
 
 CVS
 --------------------------------
@@ -23,7 +23,17 @@ CVS
 - Bug 2485 - SQL backend modules close all open connections too early.
   This fixes a bug where a "signal 11" would be reported, when a session
   ends, if the "EXIT" SQLLog command was configured.
-- mod_ldap 2.8.13
+- New mod_ldap version 2.8.13
+- Bug 2490 - <Limit ALL> affects PORT command.  When the EPRT, EPSV, PASV,
+  and PORT commands became <Limit>able (see Bug #2086), they became
+  affected by <Limit ALL> as well, which breaks older configurations.
+  Using the following configuration:
+
+    <Limit PORT PASV>
+      AllowAll
+    </Limit>
+
+  is a way to workaround this bug in 1.2.10 installations.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------

@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.155 2004-07-01 02:00:45 castaglia Exp $
+ * $Id: dirtree.c,v 1.156 2004-09-29 21:04:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1904,20 +1904,19 @@ static int _check_limits(xaset_t *set, char *cmd, int hidden) {
   if (!set)
     return res;
 
-  for (lc = (config_rec*)set->xas_list;
-      lc && (res == 1); lc = lc->next) {
+  for (lc = (config_rec *) set->xas_list; lc && (res == 1); lc = lc->next) {
 
     if (lc->config_type == CONF_LIMIT) {
       register unsigned int i = 0;
 
       for (i = 0; i < lc->argc; i++) {
-        if (!strcasecmp(cmd, (char *) (lc->argv[i])))
+        if (strcasecmp(cmd, (char *) lc->argv[i]) == 0)
           break;
       }
 	
       if (i == lc->argc)
         continue;
-	
+
       /* Found a <Limit> directive associated with the current command.
        * ignore_hidden defaults to -1, if an explicit IgnoreHidden off is seen,
        * it is set to 0 and the check will not be done again up the chain.  If
@@ -2335,8 +2334,15 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
     if (res == 1 && group)
       res = dir_check_limits(c, group, op_hidden || regex_hidden);
 
-    /* if still == 1, no explicit allow so check lowest priority "ALL" group */
-    if (res == 1)
+    /* If still == 1, no explicit allow so check lowest priority "ALL" group.
+     * Note that certain commands are deliberately excluded from the
+     * ALL group (i.e. EPRT, EPSV, PASV, and PORT).
+     */
+    if (res == 1 &&
+        strcmp(cmd, C_EPRT) != 0 &&
+        strcmp(cmd, C_EPSV) != 0 &&
+        strcmp(cmd, C_PASV) != 0 &&
+        strcmp(cmd, C_PORT) != 0)
       res = dir_check_limits(c, "ALL", op_hidden || regex_hidden);
   }
 
@@ -2473,8 +2479,15 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
     if (res == 1 && group)
       res = dir_check_limits(c, group, op_hidden || regex_hidden);
 
-    /* if still == 1, no explicit allow so check lowest priority "ALL" group */
-    if (res == 1)
+    /* If still == 1, no explicit allow so check lowest priority "ALL" group.
+     * Note that certain commands are deliberately excluded from the
+     * ALL group (i.e. EPRT, EPSV, PASV, and PORT).
+     */
+    if (res == 1 &&
+        strcmp(cmd, C_EPRT) != 0 &&
+        strcmp(cmd, C_EPSV) != 0 &&
+        strcmp(cmd, C_PASV) != 0 &&
+        strcmp(cmd, C_PORT) != 0)
       res = dir_check_limits(c, "ALL", op_hidden || regex_hidden);
   }
 
