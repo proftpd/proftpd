@@ -20,7 +20,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.25 1999-12-23 06:04:59 macgyver Exp $
+ * $Id: mod_xfer.c,v 1.26 1999-12-27 02:43:29 macgyver Exp $
  */
 
 /* History Log:
@@ -716,6 +716,7 @@ MODRET cmd_retr(cmd_rec *cmd)
 	  
 	case EPIPE:
 	case ECONNRESET:
+	case ETIMEDOUT:
 	case EHOSTUNREACH:
 	  /* Other side broke the connection.
 	   */
@@ -867,12 +868,12 @@ int xfer_init_child()
 
 int xfer_init_parent()
 {
+#if defined(HAVE_SENDFILE) && defined(HAVE_LINUX_SENDFILE)
   /* Minor optimization so we're not testing EVERY time.
    */
   if(have_sendfile)
     return 0;
   
-#if defined(HAVE_SENDFILE) && defined(HAVE_LINUX_SENDFILE)
   if(!sendfile(1, 0, NULL, 0) || errno != ENOSYS) {
   	have_sendfile = 1;
   } else {
