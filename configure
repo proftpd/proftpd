@@ -23148,7 +23148,7 @@ cat >>conftest.$ac_ext <<_ACEOF
       #endif
       #include <sys/socket.h>
       int main(int argc, char *argv[]) {
-        int proto, sockfd, rcvbufsz, sndbufsz;
+        int proto, sockfd, rcvbufsz = 0, sndbufsz = 0;
         struct protoent *p;
         int len;
         FILE *fp;
