@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.17 2003-05-28 23:03:57 jwm Exp $
+# $Id: proftpd.spec,v 1.18 2003-08-28 00:32:12 jwm Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -21,7 +21,7 @@ Summary:	ProFTPD -- Professional FTP Server.
 Name:		proftpd
 Version:	1.2.9rc1
 Release:	1
-Copyright:	GPL
+License:	GPL
 Group:		System Environment/Daemons
 Packager:	John Morrissey <jwm@proftpd.org>
 Vendor:		The ProFTPD Group
@@ -101,8 +101,6 @@ This package is neccesary to setup ProFTPD to run from inetd/xinetd.
   install -m 644 contrib/dist/rpm/xinetd $RPM_BUILD_ROOT/etc/xinetd.d/proftpd
   # We don't want this dangling symlinks to make it into the RPM
   rm -f contrib/README.mod_sql
-  mkdir -p $RPM_BUILD_ROOT/%{_docdir}
-  install -m 644 COPYING CREDITS ChangeLog NEWS $RPM_BUILD_ROOT/%{_docdir}
 
 %pre
   if [ ! -f /etc/ftpusers ]; then
@@ -120,20 +118,18 @@ This package is neccesary to setup ProFTPD to run from inetd/xinetd.
     if [ -d /var/run/proftpd ]; then
 		rm -rf /var/run/proftpd/*
     fi
+    /sbin/chkconfig --del proftpd
   fi
 
 %post
   /sbin/chkconfig --add proftpd
-  # Force the "ServerType" directive for this operation type.
-  tmpfile=/tmp/proftpd-conf.$$
-  sed -e '/ServerType/c\' \
-	-e 'ServerType	standalone' \
-	/etc/proftpd.conf >$tmpfile
-  mv $tmpfile /etc/proftpd.conf
-
-%preun
-  if [ "$1" = 0 ]; then
-    /sbin/chkconfig --del proftpd
+  if [ $1 = 1 ]; then
+    # Force the "ServerType" directive for this operation type.
+    tmpfile=/tmp/proftpd-conf.$$
+    sed -e '/ServerType/c\' \
+      -e 'ServerType	standalone' \
+      /etc/proftpd.conf >$tmpfile
+    mv $tmpfile /etc/proftpd.conf
   fi
 
 %post inetd
