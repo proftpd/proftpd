@@ -1,4 +1,4 @@
-<!-- $Id: Directory.html,v 1.3 2004-04-10 18:01:18 castaglia Exp $ -->
+<!-- $Id: Directory.html,v 1.4 2004-04-10 18:33:29 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Directory.html,v $ -->
 
 <html>
@@ -51,6 +51,28 @@ applies the section's configuration directives only to the <i>contents</i>
 of <code>dir</code>, not to the directory itself.  This is a small
 distinction, but it can often cause misconfigurations.  In general, unless
 you know what you're doing, it's best not to use a <code>/*</code> suffix.
+
+<p>
+Also, a <code>*</code> within a path, such as:
+<pre>
+  &lt;Directory /path/to/*/dir&gt; 
+</pre>
+will only match that single directory level, and will not match multiple
+directory levels.  This means that the above <code>&lt;Directory&gt;</code>
+will match:
+<pre>
+  /path/to/<b>a/</b>dir
+  /path/to/<b>b/</b>dir
+</pre>
+because <code>*</code> will match the <code>a/</code> and <code>b/</code>,
+as they are on the same level in the path as <code>*</code>.  However, the
+following pathes <b>will not</b> match:
+<pre>
+  /path/to/<b>some/other/</b>dir
+  /path/to/<b>some/other/level/</b>dir
+</pre>
+since <code>*</code> does not expand to <code>some/other/</code> or
+<code>/some/other/level/</code>; they cover multiple levels.
 
 <p>
 There is another case about which the administrator should know: for the
@@ -109,7 +131,7 @@ in the 1.2.7rc1 release) will provide fine-grained control over when
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-04-10 18:01:18 $</i><br>
+Last Updated: <i>$Date: 2004-04-10 18:33:29 $</i><br>
 <hr>
 
 </body>
