@@ -1,3 +1,2083 @@
+2004-04-28 10:52  castaglia
+
+	* NEWS, include/version.h, contrib/dist/rpm/proftpd.spec: 
+	Preparing to roll 1.2.10rc1 tarball.
+
+2004-04-28 10:43  castaglia
+
+	* README, RELEASE_NOTES: 
+	Add a RELEASE_NOTES file (name may change in the future) that will
+	track the sort of comments usually mentioned in the release
+	announcement email, including new and deprecated configuration
+	directives, new and deprecated modules, upgrade notes, etc.
+	
+	Add a note about RELEASE_NOTES to the README.
+
+2004-04-27 13:49  castaglia
+
+	* contrib/mod_sql.html: 
+	Update mod_sql installation instructions.
+
+2004-04-27 09:58  castaglia
+
+	* modules/mod_xfer.c: 
+	Make the error message returned here consistent with the other
+	occurrences of 500 responses in mod_xfer.
+
+2004-04-26 16:33  castaglia
+
+	* include/dirtree.h, src/dirtree.c: 
+	Split the Boolean checking code into a public function, so that it
+	can be used for checking strings from sources other than cmd_recs.
+
+2004-04-23 18:17  castaglia
+
+	* modules/mod_auth.c: 
+	Do not warn about a successful root login until after root has
+	indeed successfully logged in.
+
+2004-04-23 18:13  castaglia
+
+	* doc/modules/mod_auth_pam.html: 
+	Add HTML docs for mod_auth_pam.
+
+2004-04-23 14:29  castaglia
+
+	* modules/mod_ls.c: 
+	The prior fix for Bug#2367 has some unintended (i.e. _bad_)
+	consequence, spotted by Michael.  This fixes it up properly
+	(hopefully for good).
+
+2004-04-23 13:46  castaglia
+
+	* src/netacl.c: 
+	The '{' character is also used in globs.
+
+2004-04-23 11:35  castaglia
+
+	* modules/mod_ls.c: 
+	Write a debug message, level 1, when NLST commands with options (as
+	from ncftp) are received.
+
+2004-04-22 18:32  castaglia
+
+	* contrib/mod_sql.c: 
+	Protect against a possible segfault that occurs when mod_sql
+	assumes that a query has data, by checking for a valid data pointed
+	in the returned modret_t object.
+
+2004-04-21 18:32  castaglia
+
+	* src/inet.c: 
+	Only set the TOS (Type Of Service) flags on IPv4 sockets; IPv6
+	sockets don't support TOS flags, as far as I know.  This should fix
+	the
+	
+	  error setting write fd IP_TOS: Option not supported by protocol
+	
+	errors seen on some platforms (e.g. Solaris).
+
+2004-04-21 14:29  castaglia
+
+	* doc/howto/: index.html, Classes.html: 
+	Add a howto for the new <Class> format.
+
+2004-04-20 18:23  castaglia
+
+	* src/main.c: 
+	Style cleanup.
+
+2004-04-20 18:15  castaglia
+
+	* src/main.c: 
+	Capture the actual errno value, rather than assuming that
+	intervening functions will not change errno.
+
+2004-04-20 16:26  castaglia
+
+	* doc/howto/Limit.html: 
+	Consistency of style is a Good Thing.
+
+2004-04-20 13:57  castaglia
+
+	* contrib/mod_ctrls_admin.c: 
+	If the 'dump classes' control action is requested, make sure that
+	the Class dump output includes the Satisfy setting.
+
+2004-04-19 19:05  castaglia
+
+	* src/log.c: 
+	Fix the logging of IP addresses in the utmp/wtmp log on Linux. 
+	Formatting cleanup.
+
+2004-04-19 16:59  castaglia
+
+	* include/class.h, modules/mod_core.c, src/class.c: 
+	Add a Satisfy directive.  Note that this directive does NOT
+	function like Apache's Satisfy directive.  This current
+	implementation is to be used when defining a class, to specify how
+	to evaluate all of the rules of the class: any, or all.
+	
+	Future work will overload this directive to work as users would
+	like (see Bug#1898) for the <Limit> context.
+
+2004-04-19 16:33  castaglia
+
+	* src/dirtree.c: 
+	Report line numbers when parsing .ftpaccess files, too.
+
+2004-04-18 10:00  castaglia
+
+	* src/dirtree.c: 
+	Have the fatal messages reported during configuration parsing
+	report the line number and configuration file, for easier fixing of
+	broken configs.
+
+2004-04-16 09:33  castaglia
+
+	* NEWS, include/privs.h: 
+	Bug#2317 - Wrong order of privs calls on HP generates "unable to
+	setregid()".  error.  The problem turned out to be a call to
+	setregid() before a call to setreuid(), but only in the HP privs
+	code (non-seteuid() case).  The fix was trivial: call setreuid()
+	first, to make sure the proper UIDs are set, then call setregid().
+
+2004-04-15 18:08  castaglia
+
+	* NEWS: 
+	Mention in NEWS the new doc/modules/ directory.
+
+2004-04-15 17:54  castaglia
+
+	* doc/modules/mod_ctrls.html: 
+	Updating mod_ctrls' installation instructions.
+
+2004-04-15 17:36  castaglia
+
+	* doc/modules/: mod_auth_file.html, mod_cap.html, mod_ctrls.html: 
+	Add a 'doc/modules/' directory, for core module documentation.	Add
+	the docs for mod_auth_file, mod_cap, and mod_ctrls.
+
+2004-04-15 17:19  castaglia
+
+	* contrib/: mod_ifsession.html, mod_quotatab.html, mod_radius.html,
+	mod_sql.html, mod_tls.html, mod_wrap.html: 
+	Formatting fixups.
+
+2004-04-15 16:16  castaglia
+
+	* include/ctrls.h: 
+	These changes should've been part of an earlier commit.
+
+2004-04-15 15:19  castaglia
+
+	* contrib/mod_rewrite.html: 
+	The features listed under "future work" have been implemented.
+
+2004-04-15 15:14  castaglia
+
+	* contrib/mod_tls.c: 
+	Much improved handling of OpenSSL's error queue, so that the TLSLog
+	can properly show all of the errors in the queue (rather than just
+	the top error, which is usually not too helpful in pinpointing the
+	actual problem).
+
+2004-04-15 14:31  castaglia
+
+	* contrib/mod_rewrite.html: 
+	Document the flags parameters for RewriteCondition, RewriteRule. 
+	Also document the possible pattern variants allowed for
+	RewriteCondition.  Add an example of using mod_rewrite to make all
+	uploaded files have uppercased filenames.
+
+2004-04-15 11:46  castaglia
+
+	* sample-configurations/basic.conf: 
+	The default configuration file should not allow use of SITE CHMOD.
+
+2004-04-15 10:33  castaglia
+
+	* contrib/mod_rewrite.html: 
+	Formatting typo.
+
+2004-04-14 19:47  castaglia
+
+	* src/main.c: 
+	Cleanup the error reported if the PidFile cannot be opened.
+
+2004-04-14 13:25  castaglia
+
+	* modules/mod_core.c: 
+	Michael suggested that this log message be at the INFO level.
+
+2004-04-14 11:11  castaglia
+
+	* contrib/mod_ctrls_admin.c, modules/mod_ctrls.c, src/ctrls.c: 
+	Remove the unused 'set' control action from mod_ctrls_admin.  Make
+	the 'lsctrl' control action list only enabled control actions. 
+	Initialize the ControlsSocketACL such that access to the socket is
+	allowed to everyone by default; access to individual control
+	actions still defaults to "deny" unless access is explicitly
+	granted via configuration.
+
+2004-04-13 13:19  castaglia
+
+	* doc/howto/Filters.html: 
+	Emphasize _not_ using both an Allow and a Deny Filter at the same
+	time.
+
+2004-04-13 10:55  castaglia
+
+	* include/privs.h: 
+	Revert part of my previous update to privs.h; it included a
+	possible fix for Bug#2317, but that fix is not ready to be
+	committed just yet.
+
+2004-04-13 10:52  castaglia
+
+	* NEWS, include/privs.h: 
+	Bug#2387 - PRIVS_USER macro should set effective GID to user's
+	primary GID.
+
+2004-04-13 09:48  castaglia
+
+	* include/dirtree.h, src/dirtree.c: 
+	Add a SID (Server ID) to every server_rec.  This SID is a unique ID
+	that is automatically assigned to each generated server_rec when
+	proftpd parses its configuration.  SIDs are useful for tracking
+	purposes, particularly for contrib modules that want to track which
+	vhost caused something to happen.
+	
+	Format/style cleanups, removed unused CLASS_USER #define.
+
+2004-04-13 09:46  castaglia
+
+	* contrib/mod_ctrls_admin.c: 
+	Update the proftpd version required by mod_ctrls_admin.
+
+2004-04-12 10:41  castaglia
+
+	* modules/mod_auth.c: 
+	Have AnonRejectPasswords generate an event.
+
+2004-04-12 10:35  castaglia
+
+	* modules/mod_ctrls.c: 
+	Consistent use of strcmp().  Use ANY_MODULE where appropriate,
+	rather than NULL.
+
+2004-04-12 10:14  castaglia
+
+	* src/fsio.c: 
+	Fix pr_fsio_getline() to handle the case where a config line,
+	broken across several lines in the config file using line
+	continuations, has one of the lines commented out, e.g.:
+	
+	   SomeDirective \
+	     foo \
+	   #  bar \
+	     baz
+	
+	Without this patch, pr_fsio_getline() would return the '#'
+	character, which is not what most people would think would happen.
+
+2004-04-12 10:09  castaglia
+
+	* src/dirtree.c: 
+	Be a little more strict when checking for "${env:...}" strings in
+	the config file.
+	
+	Format/style cleanup.
+
+2004-04-11 15:50  castaglia
+
+	* doc/howto/: BCP.html, Globbing.html, index.html: 
+	Add the Globbing and BCP howtos.
+
+2004-04-11 15:38  castaglia
+
+	* include/options.h: 
+	Updating outdated comments.
+
+2004-04-11 15:13  castaglia
+
+	* modules/mod_xfer.c: 
+	Typo.
+
+2004-04-11 15:03  castaglia
+
+	* modules/mod_xfer.c: 
+	Make the 'core.signal.USR2' event handler check for new
+	TransferRates when involved in any of the file data transfer
+	commands (APPE, RETR, STOR, STOU), not just RETR.  Update comments
+	as well.
+
+2004-04-11 13:42  castaglia
+
+	* NEWS, modules/mod_ctrls.c, src/ctrls.c: 
+	Bug#2383 - mod_ctrls.c: ctrls_listen(): Invalid size in bind()
+	argument.
+
+2004-04-11 13:35  castaglia
+
+	* modules/mod_xfer.c: 
+	Add a handler for the event 'core.signal.USR2' to mod_xfer.  The
+	handler causes mod_xfer, if and only if the RETR command is
+	currently being handled, to rescan the config tree for TransferRate
+	entries.
+	
+	The 'core.signal.USR2' event is only generated when Controls have
+	been enabled, so in most cases this won't change anything.  Its
+	purpose is mainly to help the mod_shaper module be able to change
+	the TransferRate for a session in mid-transfer.
+
+2004-04-11 13:27  castaglia
+
+	* include/dirtree.h, src/dirtree.c: 
+	Add a new merge flag, CF_SILENT.  Unlike the rest of the CF_ flags,
+	this flag is handled by fixup_dirs(); the other CF_ flags are
+	handled by the internal _reorder_dirs() function.  When
+	fixup_dirs() sees CF_SILENT, it will not print a debug
+	configuration dump, which is its default behavior.
+
+2004-04-11 13:22  castaglia
+
+	* src/event.c: 
+	Make sure that the order of event registration matches module load
+	order.	This helps when the same event may be handled by multiple
+	modules, and the order of handling is important.
+
+2004-04-11 13:12  castaglia
+
+	* modules/mod_core.c: 
+	This copy of copy_file() is no longer needed.
+
+2004-04-10 13:55  castaglia
+
+	* contrib/: ftpasswd.html, ftpquota.html, mod_ctrls_admin.html,
+	mod_ifsession.html, mod_quotatab.html, mod_quotatab_file.html,
+	mod_quotatab_ldap.html, mod_quotatab_sql.html, mod_radius.html,
+	mod_rewrite.html, mod_site_misc.html, mod_sql.html, mod_tls.html,
+	mod_wrap.html: 
+	Minor formatting change (removed extraneous <br>).
+
+2004-04-10 13:42  castaglia
+
+	* doc/howto/: FXP.html, index.html: 
+	Add FXP howto.
+
+2004-04-10 13:37  castaglia
+
+	* doc/howto/: NAT.html, index.html: 
+	Add NAT howto.
+
+2004-04-10 13:11  castaglia
+
+	* doc/howto/SQL.html: 
+	Update the SQL howto to mention using SQLLogFile.
+
+2004-04-10 12:02  castaglia
+
+	* doc/howto/index.html: 
+	Add an index page for these howtos.
+
+2004-04-10 11:44  castaglia
+
+	* doc/howto/Directory.html: 
+	Typo.
+
+2004-04-10 11:33  castaglia
+
+	* doc/howto/Directory.html: 
+	Add paragraph describing how the * glob within a path is matched
+	(i.e.  only for single directory level, not multiple directory
+	levels).
+
+2004-04-10 11:01  castaglia
+
+	* doc/howto/: Authentication.html, Chroot.html, ConfigFile.html,
+	Debugging.html, Directory.html, FTP.html, Filters.html, Limit.html,
+	SQL.html, ServerType.html, Stopping.html, TLS.html, Umask.html,
+	Vhost.html: 
+	Standardize on "Last Updated" in the footer.
+
+2004-04-10 10:59  castaglia
+
+	* doc/howto/Logging.html: 
+	Add Logging doc.
+
+2004-04-10 10:42  castaglia
+
+	* doc/howto/: Authentication.html, ConfigFile.html, Filters.html,
+	Limit.html, ServerType.html, Stopping.html, Vhost.html: 
+	Modifying links in docs to reference other docs in this area,
+	rather than the pages on www.castaglia.org.
+
+2004-04-10 10:29  castaglia
+
+	* doc/howto/Stopping.html: 
+	Add doc for starting/stopping proftpd.
+
+2004-04-10 10:23  castaglia
+
+	* doc/howto/FTP.html: 
+	Add doc covering FTP commands supported by proftpd.
+
+2004-04-10 10:16  castaglia
+
+	* doc/howto/ServerType.html: 
+	Adding ServerType doc.
+
+2004-04-09 19:30  castaglia
+
+	* modules/mod_auth_unix.c: 
+	When compiling on a HP-UX box which supports bigcrypt(), the
+	following warning is seen:
+	
+	  passing arg 1 of `bigcrypt' discards qualifiers from pointer
+	target type
+	
+	Quell this warning by explicitly casting the arguments to
+	bigcrypt() to be char *.
+
+2004-04-09 19:01  castaglia
+
+	* doc/howto/SSH.html: 
+	Add FTP-over-SSH mini-HOWTO.
+
+2004-04-09 17:34  castaglia
+
+	* doc/howto/: Authentication.html, Chroot.html, ConfigFile.html,
+	Debugging.html, Directory.html, Filters.html, Limit.html, SQL.html,
+	TLS.html, Umask.html, Vhost.html: 
+	Adjusting footers for consistency.
+
+2004-04-09 17:19  castaglia
+
+	* doc/howto/Umask.html: 
+	Add the Umask mini-HOWTO.
+
+2004-04-09 11:49  castaglia
+
+	* doc/howto/Filters.html: 
+	Add the Filters mini-HOWTO to the source distro.
+
+2004-04-09 10:19  castaglia
+
+	* contrib/: mod_ctrls_admin.c, mod_ctrls_admin.html: 
+	Add ability to kick entire Classes via the 'kick' action.
+
+2004-04-09 09:58  castaglia
+
+	* include/fsio.h, modules/mod_core.c, src/fsio.c, src/mkhome.c: 
+	The CreateHome code also included a static copy_file() function. 
+	This change refactors the code so that both CreateHome and the
+	rename-across-mount-points code both use the same function, added
+	to the FSIO code as pr_fs_copy_file().	Code reuse good.
+
+2004-04-09 09:54  castaglia
+
+	* contrib/mod_ifsession.c: 
+	Removing this HOOK, as it won't work as intended.  May re-add in
+	the future.
+
+2004-04-08 17:23  castaglia
+
+	* NEWS, modules/mod_core.c: 
+	Bug#2385 - Renames fail with error "Invalid cross-device link".  In
+	the case of EXDEV from rename(2), mod_core now manually copies the
+	file from the source to the destination location.  Any content
+	existing at the destination location is lost.
+
+2004-04-08 15:50  castaglia
+
+	* contrib/mod_ifsession.html: 
+	Add note about making sure that mod_ifsession is last in the
+	--with-modules list.
+
+2004-04-07 19:54  castaglia
+
+	* contrib/mod_ctrls_admin.html: 
+	Updating author, copyright info.
+
+2004-04-07 19:43  castaglia
+
+	* contrib/mod_ctrls_admin.html: 
+	Add mod_ctrls_admin docs for the 'kick' action.
+
+2004-04-07 19:39  castaglia
+
+	* contrib/mod_ctrls_admin.c: 
+	Add the 'kick' action to mod_ctrls_admin, for disconnecting clients
+	by user or host names.
+
+2004-04-07 13:12  castaglia
+
+	* doc/howto/Authentication.html: 
+	Add note about avoiding use of mod_auth.c and mod_auth_pam.c in
+	AuthOrder directives.
+
+2004-04-07 12:55  castaglia
+
+	* contrib/mod_quotatab.html: 
+	Add comment about per-session settings in mod_quotatab docs.
+
+2004-04-07 12:02  castaglia
+
+	* contrib/mod_quotatab.c: 
+	Add a QuotaLog message warning that when per_session is true, the
+	QuotaTallyTable will not be updated.
+
+2004-04-06 16:17  castaglia
+
+	* NEWS, config.h.in: 
+	Bug#2221 - proftpd on hp-ux 11.22.  Override the default socklen_t
+	detection on HP-UX 11 to be an int.  APR suffers from this same
+	problem (the bug is ultimately an HP-UX problem).
+
+2004-04-05 18:50  castaglia
+
+	* src/ctrls.c: 
+	Fix a format warning on Solaris.
+
+2004-04-05 16:01  castaglia
+
+	* contrib/mod_tls.c: 
+	Make sure and clear the relevant bits in tls_flags when the control
+	and data channels are closed.
+
+2004-04-05 11:01  castaglia
+
+	* src/ctrls.c: 
+	Remove a hardcoded maximum limit on the size of request strings
+	that can be sent using the Controls API.  Uncovered when trying to
+	send messages larger than 8 Kb via SysV message queues.
+
+2004-04-05 10:59  castaglia
+
+	* modules/mod_auth.c, src/scoreboard.c: 
+	Check for an error return value from pr_rewind_scoreboard().
+	
+	Keep track of the process which opened the cached scoreboard fd. 
+	It's possible to have the daemon process open the fd, and then
+	fork, which means the child will have that same fd.  However, the
+	child may fdopen() another file onto that fd (e.g. if the fd is 0),
+	thus losing the scoreboard fd.	This patch also prevents the
+	possibility of a file descriptor leak by having the same process
+	open the scoreboard multiple times (e.g. when multiple modules call
+	pr_open_scoreboard()).
+
+2004-04-05 10:54  castaglia
+
+	* NEWS: 
+	Mention the adding of mini-HOWTOs in NEWS.
+
+2004-03-25 11:22  castaglia
+
+	* configure: 
+	Updating configure.
+
+2004-03-25 11:16  castaglia
+
+	* configure.in: 
+	Remove checks for README.mod_sql from configure.
+
+2004-03-25 09:33  castaglia
+
+	* contrib/mod_tls.c: 
+	Report the version of OpenSSL used in server debugging output.
+
+2004-03-24 13:57  castaglia
+
+	* contrib/ftpasswd.html: 
+	Reflect Bug#2371's new --not-previous-passsword addition in the
+	ftpasswd HTML docs.
+
+2004-03-24 13:55  castaglia
+
+	* NEWS, contrib/ftpasswd: 
+	Bug#2371 - ftpasswd should have option to compare password against
+	value in passwd file.
+
+2004-03-23 15:29  castaglia
+
+	* contrib/mod_tls.c: 
+	Be more explicit about the expected return value from
+	SSL_CTX_load_verify_locations(3).  Handle the cases where the
+	pointers to the CA file or CA path may be NULL, as some libcs do
+	not handling printing of NULL pointers gracefully, unlike glibc.
+
+2004-03-23 10:40  castaglia
+
+	* modules/mod_ls.c: 
+	Add a comment explaining the fix for Bug#2367.
+
+2004-03-23 10:37  castaglia
+
+	* NEWS, modules/mod_ls.c: 
+	Bug#2367 - LIST *.* strange behaviour.
+
+2004-03-22 11:44  castaglia
+
+	* doc/howto/: Authentication.html, Chroot.html, ConfigFile.html,
+	Debugging.html, Directory.html, Limit.html, TLS.html, Vhost.html: 
+	Adding more howtos.
+
+2004-03-22 11:32  castaglia
+
+	* README.mod_sql: 
+	Removing this outdated README; see doc/howto/SQL.html for an
+	updated version.
+
+2004-03-22 11:31  castaglia
+
+	* doc/howto/SQL.html: 
+	Adding an HTML SQL howto to the doc/ area, to replace the
+	README.mod_sql (which is now terribly outdated).
+
+2004-03-19 12:22  castaglia
+
+	* NEWS, modules/mod_core.c: 
+	Bug#2369 - EPSV should not send network address when
+	MasqueradeAddress is used.  RFC 2428 is not very clear on this
+	point, for it introduces a discrepancy in the possible responses to
+	PASV versus EPSV.  Until this can be cleared up, do not honor
+	MasqueradeAddress when EPSV is used by the client.
+
+2004-03-17 10:48  castaglia
+
+	* contrib/mod_sql.html: 
+	Removed mention of "*" for the SQLAuthenticate directive.
+
+2004-03-16 13:46  castaglia
+
+	* contrib/mod_sql.c: 
+	Mark the SQLLog and SQLShowInfo config_recs as CF_MERGEDOWN_MULTI. 
+	This doesn't affect how mod_sql processes these directives, but it
+	does make them work properly within mod_ifsession blocks.
+
+2004-03-10 18:18  castaglia
+
+	* NEWS, modules/mod_xfer.c: 
+	Bug#2363 - ABOR response RFC 959 compliance.
+
+2004-03-10 18:02  castaglia
+
+	* NEWS, modules/mod_auth.c: 
+	Bug#2361 - Second USER command causes problems with chrooted
+	session.  The PRE_CMD handler for C_USER should check to see if a
+	user is already logged in before doing any processing.
+
+2004-03-10 16:13  castaglia
+
+	* NEWS: 
+	Typos.
+
+2004-03-09 17:31  castaglia
+
+	* include/privs.h: 
+	Typo.
+
+2004-03-08 16:53  castaglia
+
+	* src/netaddr.c: 
+	Add some debug logging, level 10, showing when a name is being
+	resolved to its IP addresses, including when DNS is used.
+	
+	At debug level 10, things are getting quite verbose; we should
+	start looking into debugging output masks.
+
+2004-03-08 12:32  castaglia
+
+	* README.controls: 
+	Clarify that using --enable-ctrls means not using
+	--with-modules=mod_ctrls.
+
+2004-03-05 10:48  castaglia
+
+	* modules/mod_core.c: 
+	On second thought, setting errno to ENOENT in these cases may not
+	be the best idea.
+
+2004-03-05 10:36  castaglia
+
+	* modules/mod_core.c: 
+	Make sure that errno has an appropriate value in the case where a
+	resolved path may actually be NULL.  Also, report on failed paths
+	using cmd->arg, rather than cmd->argv[1], to handle the case where
+	the client may have specified a path containing whitespace
+	characters.
+
+2004-03-05 10:22  castaglia
+
+	* NEWS, modules/mod_core.c: 
+	Bug#2321 - FTP permission checks inconsistent for DELE and RMD when
+	symlink in directory path.  For future reference, if
+	dir_canonical_path() is used to obtain a path, use
+	dir_check_canon() for checking <Limit> permissions on that returned
+	path, instead of using dir_check().  The dir_* namespace could use
+	some cleaning up, to make this sort of relationship a little
+	clearer.
+
+2004-03-04 19:24  castaglia
+
+	* NEWS, utils/ftptop.c: 
+	Bug#2357 - ftptop should use COLS for determining display width.
+
+2004-03-04 19:00  castaglia
+
+	* configure: 
+	Updating configure.
+
+2004-03-04 18:13  castaglia
+
+	* NEWS, config.h.in, configure.in, modules/mod_xfer.c: 
+	Bug#2353 - REST doesn't handle offsets greater than 2 GB.
+
+2004-03-04 13:13  castaglia
+
+	* modules/mod_core.c: 
+	Change handling of the SetEnv, UnsetEnv directives so that that
+	they can be set on a per-vhost basis.
+
+2004-03-03 17:41  castaglia
+
+	* contrib/mod_tls.c: 
+	Didn't mean to commit those debugging changes.	Oops.
+
+2004-03-03 17:33  castaglia
+
+	* contrib/mod_tls.c: 
+	No need to be that verbose.
+
+2004-03-03 13:21  castaglia
+
+	* contrib/mod_tls.c: 
+	Handle the case where mod_tls has been configured to set
+	environment variables but the client does not present a certificate
+	(e.g. when not verifying clients).  Previously, this would cause a
+	segfault.
+
+2004-03-02 16:24  castaglia
+
+	* NEWS, contrib/mod_tls.c: 
+	Bug#2355 - Send error message to client when 'TLSRequired both' is
+	in effect.
+
+2004-03-02 09:43  castaglia
+
+	* contrib/mod_tls.c: 
+	Typo.
+
+2004-03-01 08:55  castaglia
+
+	* include/conf.h: 
+	Doesn't help to check for <utime.h> if we don't include it.
+
+2004-03-01 08:54  castaglia
+
+	* contrib/mod_ctrls_admin.c: 
+	Typo.  Eventually, mod_ctrls_admin's dump control will handling
+	list of variables in the (as yet uncommitted) Variables API.
+
+2004-03-01 08:47  castaglia
+
+	* configure: 
+	Updating configure.
+
+2004-03-01 08:44  castaglia
+
+	* config.h.in, configure.in: 
+	Check for the <utime.h> system header.
+
+2004-03-01 08:43  castaglia
+
+	* contrib/mod_ctrls_admin.c, contrib/mod_ctrls_admin.html,
+	src/netacl.c: 
+	Complete the 'dump classes' control for mod_ctrls_admin.  Also adds
+	the missing pr_netacl_get_type() function.
+
+2004-03-01 08:42  castaglia
+
+	* src/event.c: 
+	Add some basic caching of the last valid event generated, as a
+	minor optimization.
+
+2004-02-27 16:17  castaglia
+
+	* contrib/mod_sql.html: 
+	Add HTML docs for mod_sql.
+
+2004-02-27 14:53  castaglia
+
+	* modules/mod_ls.c: 
+	STAT is an INFO command more than it is a DIRS command (for logging
+	purposes).
+
+2004-02-27 14:42  castaglia
+
+	* contrib/mod_sql.c: 
+	Add handling of the %L (local IP address) and %V (local DNS name)
+	tags.  Fix formatting.
+
+2004-02-27 11:44  castaglia
+
+	* modules/mod_cap.c: 
+	Bug#2348 prompted this addition of handling CAP_DAC_OVERRIDE and
+	CAP_DAC_READ_SEARCH, in addition to CAP_CHOWN.
+
+2004-02-27 11:27  castaglia
+
+	* NEWS, README.modules: 
+	Bug#2257 - Add SITE SYMLINK command to mod_site.  Added a new
+	contrib module, mod_site_misc, instead.
+
+2004-02-27 10:41  castaglia
+
+	* contrib/: mod_site_misc.c, mod_site_misc.html: 
+	New contrib module that implements miscellaneous SITE commands
+	(e.g. SITE SYMLINK, SITE UTIME, etc) that other ftpds may recognize
+	(e.g. ncftpd).
+
+2004-02-24 12:34  castaglia
+
+	* NEWS, modules/mod_ls.c: 
+	Bug#2339 - STAT command doesn't follow RFC959.
+
+2004-02-24 12:32  castaglia
+
+	* sample-configurations/basic.conf: 
+	It's a little more efficient to have AllowOverwrite in the server
+	config context, rather than in a <Directory> context that covers
+	the entire filesystem.
+
+2004-02-24 12:13  castaglia
+
+	* NEWS, modules/mod_auth.c: 
+	Bug#2311 - MaxClients counts unauthenticated users.
+
+2004-02-24 11:45  castaglia
+
+	* contrib/mod_sql.c: 
+	Oops.  My previous commit included my work-in-progress patch for
+	SQLShowInfo, which isn't ready yet.
+
+2004-02-24 11:39  castaglia
+
+	* contrib/mod_sql.c: 
+	Fixed a bug in mod_sql in the show_group() function, where a large
+	list of users that belonged to a single group could tickle a
+	segfault.  There was a hardcoded buffer size of 2K that was being
+	exceeded.  Better to use pstrcat() and build up the needed string.
+	
+	Also add some typecasts to unsigned longs for reporting IDs.
+
+2004-02-24 08:52  castaglia
+
+	* modules/mod_core.c: 
+	Typos.
+
+2004-02-23 16:44  castaglia
+
+	* modules/mod_xfer.c: 
+	Allow uploading to FIFOs.  Should we allow uploading to symlinks,
+	too?
+
+2004-02-23 15:27  castaglia
+
+	* modules/mod_site.c: 
+	mod_site no longer uses a configuration handler table.
+
+2004-02-23 11:30  castaglia
+
+	* src/dirtree.c: 
+	Quell a minor compiler warning on OSX.
+
+2004-02-23 10:34  castaglia
+
+	* README.modules: 
+	Adding mod_quotatab et al to the list of modules that accompany
+	proftpd.
+
+2004-02-20 10:34  castaglia
+
+	* NEWS, include/dirtree.h, modules/mod_core.c, src/dirtree.c,
+	src/main.c: 
+	Bug#1696 - Include directive should support directories.
+
+2004-02-20 09:10  castaglia
+
+	* contrib/ftpasswd: 
+	When the --not-system-password option is used, it's possible for
+	there to be no entry in the system password files for the user
+	being created, in which case $hash and $syspasswd will both be the
+	empty string -- and will match, making ftpasswd think that a
+	different password is needed.  Fix this by checking for the empty
+	strings.
+
+2004-02-19 10:22  castaglia
+
+	* README.IPv6: 
+	Updating the IPv6 notes.
+
+2004-02-19 10:13  castaglia
+
+	* contrib/mod_ifsession.c: 
+	Add a check for <Limit LOGIN> to mod_ifsession, after all the
+	configuration merging is done.	This allows for configurations
+	like:
+	
+	  <IfUser foo>
+	    <Limit LOGIN>
+	      DenyAll
+	    </Limit>
+	  </IfUser>
+
+2004-02-16 19:53  castaglia
+
+	* NEWS, modules/mod_auth_pam.c: 
+	Bug#2105 - Remove Authoritative directives.
+
+2004-02-16 19:09  castaglia
+
+	* contrib/ftpasswd.html: 
+	Documenting the new --delete-user and --delete-group options. 
+	Examples should be added at some point, too.
+
+2004-02-16 19:06  castaglia
+
+	* NEWS, contrib/ftpasswd: 
+	Bug#2171 - Add delete options to ftpasswd.
+
+2004-02-16 18:15  castaglia
+
+	* Make.rules.in, contrib/mod_tls.c, include/conf.h, include/help.h,
+	modules/mod_auth.c, modules/mod_core.c, modules/mod_ls.c,
+	modules/mod_site.c, modules/mod_xfer.c, src/help.c: 
+	Adding a new API so that modules can declare, for the HELP response
+	list, which FTP commands they support.	This makes it
+	easier/cleaner for contrib modules, e.g. mod_tls, to declare their
+	support for FTP commands that may not be handled by the core code.
+
+2004-02-16 15:05  castaglia
+
+	* NEWS, modules/mod_xfer.c: 
+	Bug#2237 - HiddenStores does not check for existing file in edge
+	case.
+
+2004-02-15 14:58  castaglia
+
+	* NEWS, contrib/mod_sql.c: 
+	Bug#2327 - SQLNegativeCache causes unnecessary errors in server
+	logging.
+
+2004-02-15 14:42  castaglia
+
+	* contrib/mod_sql.c: 
+	Note the directive name when warning of deprecated * usage.
+
+2004-02-15 14:05  castaglia
+
+	* contrib/mod_sql.c: 
+	Disable the "*" functionality in SQLAuthenticate, which was used to
+	configure mod_sql to be authoritative.	This conflicts with the
+	AuthOrder configuration directive, which should be used instead.
+
+2004-02-15 11:41  castaglia
+
+	* NEWS: 
+	Mention in the NEWS file that Class and Classes are now deprecated.
+
+2004-02-13 15:37  castaglia
+
+	* contrib/mod_quotatab.h: 
+	Update mod_quotatab's PROFTPD_VERSION_NUMBER check.
+
+2004-02-13 15:28  castaglia
+
+	* contrib/mod_ifsession.c: 
+	Update the PROFTPD_VERSION_NUMBER check.
+
+2004-02-13 14:47  castaglia
+
+	* contrib/mod_rewrite.c: 
+	Updating mod_rewrite for Class code changes.
+
+2004-02-13 14:45  castaglia
+
+	* contrib/mod_quotatab.c: 
+	Updating mod_quotatab for Class code changes.
+
+2004-02-13 14:44  castaglia
+
+	* contrib/mod_ifsession.c: 
+	Updating mod_ifsession to reflect Class changes.
+
+2004-02-12 15:46  castaglia
+
+	* NEWS, Makefile.in: 
+	Bug#2340 - Problem with parallel builds.
+
+2004-02-11 19:48  castaglia
+
+	* contrib/mod_radius.html: 
+	Update the mod_radius installation instructions.
+
+2004-02-11 19:47  castaglia
+
+	* contrib/mod_radius.html: 
+	Typo.
+
+2004-02-11 19:41  castaglia
+
+	* contrib/mod_radius.html: 
+	Update the mod_radius docs.
+
+2004-02-10 15:31  castaglia
+
+	* NEWS, contrib/mod_tls.c: 
+	Bug#2337 - TLSRenegotiate parameters not processed correctly.
+
+2004-02-09 20:07  castaglia
+
+	* contrib/mod_tls.c: 
+	When walking the server_list list, we need to start with
+	server_list->xas_list, not just server_list.  This is a subtle and
+	easy to miss bug, and was causing the list-walking code to attempt
+	to access inaccessible memories (not good).
+	
+	This highlights a need for a good list/set-iterating API, rather
+	than relying on details of the actual structures.
+
+2004-02-07 17:55  castaglia
+
+	* contrib/mod_readme.c: 
+	Update mod_readme to use the new pr_gmtime() function.
+
+2004-02-07 17:12  castaglia
+
+	* NEWS, utils/ftpcount.c: 
+	Bug#2306 - ftpcount output should handle case of no users.
+
+2004-02-07 16:40  castaglia
+
+	* NEWS, modules/mod_core.c: 
+	Bug#2324 - Directories whose names contain whitespace are
+	inaccessible.  The problem was that the dir_check() call was using
+	cmd->argv[0], rather than cmd->arg; the former is the first
+	parameter of the command (where the parameters are assumed to be
+	whitespace-separated) whereas the latter is the entire parameter
+	list as a single string.  The rest of the patch cleans up the
+	formatting in the chdir() handling code.
+
+2004-02-04 10:45  castaglia
+
+	* src/xferlog.5.in: 
+	Document in the xferlog(5) man page that any space or control
+	characters in a filename will be converted to an underscore in
+	TransferLogs.
+
+2004-02-03 15:57  castaglia
+
+	* NEWS, modules/mod_core.c, src/dirtree.c: 
+	Bug#2315 - Overlapping virtual server causes error.
+	
+	Also changes the collision check log messages to say "warning"
+	rather than "error".
+
+2004-02-01 12:51  castaglia
+
+	* NEWS, modules/mod_ls.c: 
+	Bug#2322 - NLST -a returns listing formatted for LIST -a.
+
+2004-01-30 16:08  castaglia
+
+	* src/log.c: 
+	Addition of PID was redundant.	Oops.
+
+2004-01-30 15:09  castaglia
+
+	* src/netaddr.c: 
+	"dup" is an already used global variable in some system headers. 
+	How annoying.
+
+2004-01-30 08:42  castaglia
+
+	* src/main.c: 
+	Remove an annoying "FTP session closed." message from being logged
+	when doing a simple syntax check of a proftpd.conf whose ServerType
+	is inetd.
+
+2004-01-29 19:37  castaglia
+
+	* NEWS, contrib/mod_tls.c: 
+	Bug#2295 - mod_tls returns multi-line response to AUTH commands.
+
+2004-01-29 19:09  castaglia
+
+	* README.classes: 
+	Explicitly mention that the Class and Classes directives are
+	deprecated.
+
+2004-01-29 14:20  castaglia
+
+	* Make.rules.in, NEWS, contrib/mod_sql.c, include/class.h,
+	include/conf.h, include/dirtree.h, include/netacl.h,
+	include/proftpd.h, modules/mod_auth.c, modules/mod_core.c,
+	modules/mod_log.c, src/class.c, src/dirtree.c, src/main.c,
+	src/netacl.c: 
+	Bug#1925 - Clean up of Class code.
+
+2004-01-28 19:37  castaglia
+
+	* src/log.c: 
+	If --enable-devel is used, add the PID to the server debugging
+	lines.	This might be useful enough to use all of the time, but for
+	now it'll be restricted to developer use.
+
+2004-01-28 19:19  castaglia
+
+	* include/netaddr.h, src/netaddr.c: 
+	Add a new function, pr_netaddr_dup(), for convenience.
+
+2004-01-28 17:03  castaglia
+
+	* contrib/mod_quotatab.c: 
+	The SITE QUOTA command should be marked as a CL_MISC class command,
+	so that ExtendedLogs that wish to log MISC commands record it.
+
+2004-01-20 16:35  cyberrobo
+
+	* .cvsignore: adding ftpdctl to the ignorelist
+
+2004-01-20 15:26  castaglia
+
+	* contrib/mod_quotatab_sql.html: 
+	Add FREEFORM INSERT query that is needed when talking to SQL
+	Server.
+
+2004-01-20 09:11  castaglia
+
+	* contrib/mod_radius.html: 
+	Grammar fix.
+
+2004-01-20 09:07  castaglia
+
+	* contrib/mod_radius.html: 
+	Make a note of some nonsensical RADIUS implementations not being
+	supported by mod_radius.
+
+2004-01-19 10:00  castaglia
+
+	* contrib/mod_ctrls_admin.c, modules/mod_ctrls.c: 
+	No need to re-register the controls themselves, just reallocate the
+	ACLs from the new module pools.
+
+2004-01-19 09:58  castaglia
+
+	* contrib/mod_ctrls_admin.c, modules/mod_ctrls.c: 
+	When handling the "core.restart" event, the module pools for both
+	mod_ctrls and mod_ctrls_admin are destroyed/recreated.	Since the
+	ACLs for the registered controls are allocated from these module
+	pools, the ACLs need to be recreated as well.
+	
+	Also, when building mod_ctrls_admin, make sure that Controls
+	support has been enabled.
+
+2004-01-19 09:42  castaglia
+
+	* src/log.c: 
+	Make pr_log_writefile() a little more robust, by checking whether
+	the given fd is valid before doing any work.
+
+2004-01-18 11:01  castaglia
+
+	* utils/: ftptop.c, utils.h: 
+	No need to include <sys/types.h> in these files, as it is already
+	included in config.h.
+
+2004-01-18 10:21  castaglia
+
+	* modules/mod_ctrls.c: 
+	Change the usage of PRIVS macros in some of mod_ctrls' config
+	handlers.  Michael found that this was causing problems when
+	restarting a proftpd with Controls enabled (see Bug#2242).
+
+2004-01-18 10:11  castaglia
+
+	* modules/mod_ctrls.c: 
+	No need to log the error using root privs.
+
+2004-01-17 22:07  cyberrobo
+
+	* src/.cvsignore: added ftpdctl manpage to ignore list
+
+2004-01-17 15:18  castaglia
+
+	* configure: 
+	Updating configure script.
+
+2004-01-17 15:16  castaglia
+
+	* NEWS, configure.in: 
+	Bug#2320 - autoconf check for socklen_t doesn't work on FreeBSD
+	4.8-RELEASE.
+
+2004-01-17 15:08  castaglia
+
+	* NEWS, Makefile.in: 
+	Bug#2319 - Build scripts have owner-only execute permission.
+
+2004-01-17 14:57  castaglia
+
+	* config.sub: 
+	No, that didn't work.
+
+2004-01-17 14:56  castaglia
+
+	* config.sub: 
+	Checking to see how to get permissions changed in CVS.	I think CVS
+	requires that the file itself (not just the mode) differ.
+
+2004-01-16 12:47  castaglia
+
+	* README.classes: 
+	First draft of a README describing the new <Class> syntax. 
+	Edits/additions welcome.
+
+2004-01-15 16:45  castaglia
+
+	* modules/mod_core.c: 
+	Have the emitted vhost collision message say "warning", rather than
+	"error".
+
+2004-01-15 16:29  castaglia
+
+	* modules/mod_auth.c: 
+	The current CreateHome description has the following examples:
+	
+	  CreateHome on skel /etc/ftpd/skel
+	  CreateHome on dirmode 755
+	  CreateHome on skel /etc/ftpd/skel dirmode 700
+	
+	However, the current CreateHome implementation assumes that the
+	parameter after the Boolean will always be the mode.  This change
+	makes the config handler check for any preceding 'skel' or
+	'dirmode' keywords before trying to process that parameter as the
+	mode.  Hopefully now the examples will work properly.
+
+2004-01-15 15:54  castaglia
+
+	* contrib/mod_quotatab.c: 
+	Christian Schulte <cs@schulte.it> noticed that the handling of
+	locks by mod_quotatab is not right.  The quotatab_write() function
+	would obtain a write-lock, then call quotatab_read() to refresh its
+	data, and quotatab_read() would degrade that write-lock to a
+	read-lock, then release it completely, leaving the actual write
+	operation unprotected by a lock.  This patch fixes the contention
+	in the locking routinese by having them check and set a static
+	variable.
+
+2004-01-15 13:51  castaglia
+
+	* README.controls: 
+	Updating/fixing this document.
+
+2004-01-14 12:57  castaglia
+
+	* README.controls: 
+	Add a README describing the new Controls code.	It's a work in
+	progress.
+
+2004-01-13 20:00  castaglia
+
+	* modules/mod_auth.c: 
+	Fix compiler warning.
+
+2004-01-13 15:47  castaglia
+
+	* NEWS: 
+	Add comment that bug 2183 is the same as bug 2165.
+
+2004-01-12 15:13  castaglia
+
+	* modules/mod_xfer.c: 
+	Consistency.
+
+2004-01-12 15:01  castaglia
+
+	* modules/mod_xfer.c: 
+	Report errors when closing a file that has been written.  Such
+	errors normally don't occur, but can happen with a disk is full.
+	
+	Fix a typo.
+
+2004-01-11 13:33  castaglia
+
+	* NEWS, contrib/mod_sql_mysql.c: 
+	Bug#2307 - MySQL 4.1.1 API change causes mod_sql_mysql compilation
+	failure.
+
+2004-01-08 20:41  castaglia
+
+	* src/pool.c: 
+	The logic for handling new_block()'s exact argument was
+	accidentally inverted.
+
+2004-01-08 20:23  castaglia
+
+	* include/pool.h, src/pool.c: 
+	Be consistent with the argument data types.  These probably should
+	be size_ts, but ints suffice.
+
+2004-01-08 20:15  castaglia
+
+	* include/pool.h, src/pool.c: 
+	Adding some new functions to the Pool API.  These new functions
+	allow for pools to be allocated for a specific size, rather than
+	always having the requested size be rounded up to the nearest
+	BLOCK_MINFREE (usu. 512 bytes).  These will be handy in cases where
+	pools smaller than 512 bytes can be used (e.g. stash pools).
+
+2004-01-02 07:27  jwm
+
+	* NEWS: 
+	- Bug 2267 - Broken IP subnet matching. Added new ACL
+	parsing/matching code.
+
+2003-12-30 15:17  castaglia
+
+	* contrib/mod_sql.c: 
+	Make mod_sql a little less noisy.  This "no SQLAuthTypes" message
+	would be logged for every connection to a vhost that has not been
+	configured for mod_sql (when mod_sql is present), which can be very
+	annoying for those configurations where only some vhosts, not all,
+	need to authenticate using SQL.
+
+2003-12-30 14:56  castaglia
+
+	* src/main.c: 
+	Style.
+
+2003-12-26 07:59  jwm
+
+	* NEWS, Makefile.in: Bug 2305 - Compile Problems since > 1.2.9 Link
+	ftpdctl against libsocket and libnsl to pick up dependency
+	functions
+
+2003-12-19 13:29  castaglia
+
+	* contrib/mod_quotatab.c: 
+	Don't subtract xfer bytes when deleting a directory.  Found and
+	fixed by Christian Schulte <cs@schulte.it>
+
+2003-12-16 09:43  castaglia
+
+	* NEWS, src/netio.c: 
+	Bug#2300 - poll() returns 1 and read returns 0, inifinite loop.
+
+2003-12-14 14:09  jwm
+
+	* contrib/dist/rpm/proftpd.spec: 
+	[Bug 2301] New: (s)rpms should require "/sbin/chkconfig" instead of
+	package "chkconfig"
+
+2003-12-11 12:30  castaglia
+
+	* contrib/mod_quotatab.h: 
+	Bump the mod_quotatab version, for clarity.
+
+2003-12-11 00:04  castaglia
+
+	* modules/mod_auth.c: 
+	Forgot to add strerror() to the DefaultRoot resolution debugging.
+
+2003-12-10 23:59  castaglia
+
+	* modules/mod_auth.c: 
+	Add some debugging to the function which determines the actual path
+	to use for DefaultRoot.
+
+2003-12-09 12:08  castaglia
+
+	* contrib/mod_quotatab.c: 
+	More minor quotatab bugs fixed by Christian Schulte
+	<cs@schulte.it>.
+
+2003-12-09 11:57  castaglia
+
+	* contrib/mod_quotatab_sql.c: 
+	Bug found by Christian Schulte <cs@schulte.it>: delta values are
+	signed, and can be negative.
+
+2003-12-02 23:43  castaglia
+
+	* contrib/: ftpquota.html, mod_quotatab.html,
+	mod_quotatab_file.html, mod_quotatab_ldap.html,
+	mod_quotatab_sql.html: 
+	Updating mod_quotatab docs to reflect the fact that the current
+	versions will now always be found in the source distribution,
+	rather than on castaglia.org/proftpd.
+
+2003-12-02 23:39  castaglia
+
+	* NEWS, contrib/ftpquota, contrib/ftpquota.html,
+	contrib/mod_quotatab.c, contrib/mod_quotatab.h,
+	contrib/mod_quotatab.html, contrib/mod_quotatab_file.c,
+	contrib/mod_quotatab_file.html, contrib/mod_quotatab_ldap.c,
+	contrib/mod_quotatab_ldap.html, contrib/mod_quotatab_sql.c,
+	contrib/mod_quotatab_sql.html: 
+	Adding mod_quotatab to the contrib area.
+
+2003-12-02 16:16  castaglia
+
+	* NEWS, src/netaddr.c: 
+	Bug#2288 - ServerFQDN set to 255.255.255.255 and not hostname. 
+	This was due to the bundled inet_ntop() implementation not
+	correctly handling the INADDR_NONE return value.
+
+2003-12-01 19:06  castaglia
+
+	* modules/mod_core.c: 
+	Adjust mod_core.c to use the pr_* wrappers for gmtime(),
+	localtime().
+
+2003-12-01 18:54  castaglia
+
+	* NEWS, include/support.h, modules/mod_ls.c, src/support.c: 
+	Bug#2290 - gmtime() static storage may be overwritten by modules. 
+	A portable solution is to use wrappers that memcpy() the gmtime()
+	and localtime() results.
+
+2003-11-19 12:57  castaglia
+
+	* include/inet.h, include/netaddr.h, src/inet.c, src/netaddr.c: 
+	Moving the declaration and definition of pr_get{addr,name}info,
+	pr_freeadrinfo, pr_inet_{ntop,pton} from inet to netaddr, as
+	netaddr is the file that uses those functions most.  Also, it
+	solves some linking problems on older systems that do not have the
+	get{addr,name}info(2) functions.
+
+2003-11-19 12:13  castaglia
+
+	* NEWS, Makefile.in: 
+	Bug#1635 - Older systems' chown(1) does not support -h option.
+
+2003-11-17 10:58  castaglia
+
+	* src/netaddr.c: 
+	Adding comments to clarify the purpose/usage of the get_v4inaddr()
+	function.
+
+2003-11-15 17:32  castaglia
+
+	* src/netacl.c: 
+	Forgot to change this function name.
+
+2003-11-15 17:25  castaglia
+
+	* src/netacl.c: 
+	Typo.
+
+2003-11-15 16:55  castaglia
+
+	* include/netacl.h, src/dirtree.c, src/netacl.c: 
+	Making the ACL type publically available via an accessor.
+
+2003-11-15 16:49  castaglia
+
+	* contrib/: mod_ctrls_admin.c, mod_ctrls_admin.html: 
+	Split the 'debug config|memory' stuff into a new control action,
+	'dump'.  In the future, the 'dump' action will also support dumping
+	of <Class> and <Directory> information.
+
+2003-11-15 15:49  castaglia
+
+	* Make.rules.in, include/conf.h, include/dirtree.h,
+	include/netacl.h, include/netaddr.h, modules/mod_core.c,
+	src/dirtree.c, src/netacl.c, src/netaddr.c: 
+	Adding new ACL parsing/matching code.  This is flexible enough to
+	handle IPv6 addresses, and will be used in the new <Class>
+	definition code (coming soon).	This should also fix the ACL
+	checking that was broken (Bug#2267) in 1.2.9's IPv6 changes.
+
+2003-11-15 12:41  castaglia
+
+	* modules/mod_core.c: 
+	Need to set the ServerAddress field of the main_server as well when
+	handling the DefaultAddress directive, because fixup_servers()
+	later checks that field.
+
+2003-11-15 12:30  castaglia
+
+	* src/dirtree.c: 
+	Bad grammar.
+
+2003-11-15 12:27  castaglia
+
+	* NEWS, src/dirtree.c: 
+	Bug#2048 - Add ability to get configuration file values from
+	environment.
+
+2003-11-15 11:52  castaglia
+
+	* NEWS, include/dirtree.h, src/dirtree.c: 
+	Bug#2274 - Default server only binds to one IP address of host if
+	--enable-ipv6 is used.
+
+2003-11-15 11:43  castaglia
+
+	* modules/mod_core.c: 
+	Handle IPv4 address Binds properly for DefaultAddress when IPv6 is
+	in use.
+
+2003-11-14 18:31  castaglia
+
+	* configure: 
+	Updating configure.
+
+2003-11-14 18:27  castaglia
+
+	* configure.in: 
+	When checking for the security and sec libs on Tru64 Unix, we need
+	to check for the libs before checking for the functions via
+	AC_CHECK_FUNC, not after.
+
+2003-11-12 23:25  castaglia
+
+	* src/netaddr.c: 
+	Should be using pcalloc() not palloc().
+
+2003-11-12 11:14  castaglia
+
+	* contrib/: mod_ctrls_admin.c, mod_ctrls_admin.html: 
+	Use '#' as the address/port delimiter, rather than '/'.
+
+2003-11-12 08:20  castaglia
+
+	* NEWS, src/inet.c: 
+	Updating code for Mac OS X 10.3 (Darwin 7).
+
+2003-11-10 13:38  castaglia
+
+	* configure: 
+	Updating configure.
+
+2003-11-10 13:33  castaglia
+
+	* config.h.in, configure.in: 
+	Add a check for the getenv(3) function.
+
+2003-11-09 19:56  castaglia
+
+	* contrib/mod_ctrls_admin.html: 
+	Document the 'config' option to the 'debug' action.
+
+2003-11-09 19:55  castaglia
+
+	* contrib/mod_ctrls_admin.c, include/dirtree.h, src/dirtree.c: 
+	Rearrange the config-dumping code a little and provide a public
+	function for it, so that mod_ctrls_admin can support a 'debug
+	config' action.
+
+2003-11-09 19:52  castaglia
+
+	* src/pool.c: 
+	Better name for this printf-like function pointer variable.
+
+2003-11-09 19:14  castaglia
+
+	* configure: 
+	Updating configure.
+
+2003-11-09 19:10  castaglia
+
+	* configure.in: 
+	Some systems (e.g. FreeBSD) declare getaddrinfo(2) in
+	<sys/socket.h>.
+
+2003-11-09 16:51  castaglia
+
+	* contrib/mod_ctrls_admin.c: 
+	Update mod_ctrls_admin to use events.
+
+2003-11-09 16:01  castaglia
+
+	* contrib/: mod_ctrls_admin.c, mod_ctrls_admin.html: 
+	Controls are useless without something implementing some control
+	actions; add the mod_ctrls_admin module (was mod_ctrls_common) to
+	contrib.
+
+2003-11-09 15:32  castaglia
+
+	* src/: auth.c, ctrls.c, data.c, dirtree.c, event.c, fsio.c,
+	ident.c, log.c, main.c, mkhome.c, netaddr.c, scoreboard.c,
+	support.c: 
+	Updating the source code to use pr_log_debug() rather than
+	log_debug().
+
+2003-11-09 15:10  castaglia
+
+	* modules/: mod_auth.c, mod_auth_file.c, mod_cap.c, mod_core.c,
+	mod_ctrls.c, mod_log.c, mod_ls.c, mod_site.c, mod_xfer.c: 
+	Updating modules to use pr_log_debug() rather than log_debug().
+
+2003-11-09 14:59  castaglia
+
+	* include/privs.h: 
+	Use pr_log_debug() rather than log_debug().
+
+2003-11-09 14:54  castaglia
+
+	* doc/mod_sample.c: 
+	Updating the sample module mod_sample.c to use pr_log_*() rather
+	than log_*().
+
+2003-11-09 14:51  castaglia
+
+	* modules/mod_core.c: 
+	unsetenv(3) returns void, not int.
+
+2003-11-09 14:48  castaglia
+
+	* src/main.c: 
+	Typo.
+
+2003-11-09 14:43  castaglia
+
+	* src/main.c: 
+	Forgot to cleanup one sig_debug() reference.
+
+2003-11-09 14:40  castaglia
+
+	* include/proftpd.h, src/main.c: 
+	Tweak the handling of SIGUSR2 a little.  If controls are not
+	enabled, keep the current behavior: the proftpd process will print
+	a memory dump.	If controls are enabled, generate a
+	"core.signal.USR2" event, which will allow modules to register
+	multiple handlers for this same event.	This way, mod_ctrls_common
+	can use SIGUSR2 to get other proftpd processes to print memory
+	dumps, and thus keeping the ability to get memory dumps from any
+	proftpd process.  Without this change, if controls are enabled, we
+	can only get a memory dump of the daemon process (and most of the
+	time, it is the session processes in which we are interested).
+
+2003-11-09 14:19  castaglia
+
+	* Make.rules.in, include/conf.h, include/log.h, include/support.h,
+	include/xferlog.h, modules/mod_auth.c, modules/mod_core.c,
+	modules/mod_xfer.c, src/log.c, src/main.c, src/support.c,
+	src/xferlog.c: 
+	Splitting the TransferLog routines into their own source file, and
+	moving the functions into a nonpublic xferlog_ namespace.
+
+2003-11-09 13:35  castaglia
+
+	* contrib/mod_ldap.c: 
+	Updating mod_ldap.c to use pr_log_*() rather than log_*().
+
+2003-11-09 13:29  castaglia
+
+	* contrib/mod_ratio.c: 
+	Updating mod_ratio.c to use pr_log_*() rather than log_*().
+
+2003-11-09 13:28  castaglia
+
+	* contrib/mod_wrap.c: 
+	Updating mod_wrap.c to use pr_log_*() rather than log_*().
+
+2003-11-09 13:26  castaglia
+
+	* contrib/mod_tls.c: 
+	Updating mod_tls.c to use pr_log_*() rather than log_*().
+
+2003-11-09 13:25  castaglia
+
+	* contrib/mod_sql_postgres.c: 
+	Updating mod_sql_postgres to use pr_log_*() rather than log_*().
+
+2003-11-09 13:24  castaglia
+
+	* modules/mod_core.c, src/main.c: 
+	The function is now pr_log_setdebuglevel(), not
+	log_setdebuglevel().
+
+2003-11-09 13:23  castaglia
+
+	* contrib/mod_sql_mysql.c: 
+	Updating mod_sql_mysql.c to use pr_log_*() rather than log_*().
+
+2003-11-09 13:22  castaglia
+
+	* contrib/mod_sql.c: 
+	Updating mod_sql.c to use pr_log_*() rather than log_*().
+
+2003-11-09 13:20  castaglia
+
+	* contrib/mod_rewrite.c: 
+	Updating mod_rewrite.c to use pr_log_*() rather than log_*().
+
+2003-11-09 13:19  castaglia
+
+	* contrib/mod_readme.c: 
+	Updating mod_readme to use pr_log_debug() rather than log_debug().
+
+2003-11-09 13:18  castaglia
+
+	* contrib/mod_radius.c: 
+	Updating mod_radius.c to use pr_log_pri() rather than log_pri().
+
+2003-11-09 13:16  castaglia
+
+	* contrib/mod_ifsession.c: 
+	Updating mod_ifsession to use pr_log_debug() rather than
+	log_debug().
+
+2003-11-09 13:11  castaglia
+
+	* include/privs.h: 
+	Updating privs.h to use the pr_log_* functions.  Also cleans up
+	some cruft related to checking of when session.login_uid is set.
+
+2003-11-09 13:09  castaglia
+
+	* include/bindings.h, include/log.h, lib/pwgrent.c,
+	modules/mod_auth.c, modules/mod_auth_file.c,
+	modules/mod_auth_pam.c, modules/mod_auth_unix.c, modules/mod_cap.c,
+	modules/mod_core.c, modules/mod_ctrls.c, modules/mod_log.c,
+	modules/mod_ls.c, modules/mod_xfer.c, src/auth.c, src/bindings.c,
+	src/ctrls.c, src/data.c, src/dirtree.c, src/fsio.c, src/inet.c,
+	src/log.c, src/main.c, src/mkhome.c, src/modules.c, src/netaddr.c,
+	src/pool.c, src/regexp.c, src/scoreboard.c, src/support.c: 
+	Moving the log_*() functions into the pr_ namespace.  Let the
+	terror and madness begin!  Actually, log.h includes some
+	transitional macros, so that the old symbols will be redefined
+	properly.
+
+2003-11-09 11:53  castaglia
+
+	* NEWS: 
+	Note the affect of the logging class change for RNFR and RNTO.
+
+2003-11-09 09:08  castaglia
+
+	* src/ftpdctl.8.in: 
+	Still not quite right.	Trying to get the action-parameters to be
+	properly shown as optional parameters to the action part of the
+	command.
+
+2003-11-09 09:04  castaglia
+
+	* src/ftpdctl.8.in: 
+	Tweak the ftpdctl man page a little.
+
+2003-11-09 00:02  castaglia
+
+	* configure: 
+	Updating configure.
+
+2003-11-09 00:00  castaglia
+
+	* Makefile.in, configure.in, src/ftpdctl.8.in: 
+	Adding ftpdctl man page.
+
+2003-11-08 23:47  castaglia
+
+	* src/ctrls.c: 
+	Tag pools allocated in the Controls API.  Style cleanup.
+
+2003-11-08 21:38  castaglia
+
+	* NEWS, modules/mod_core.c: 
+	Bug#2046 - Change RFNR and RNTO logging class to WRITE.
+
+2003-11-08 21:15  castaglia
+
+	* contrib/mod_wrap.c: 
+	Wrong function name.
+
+2003-11-08 21:11  castaglia
+
+	* modules/: mod_auth.c, mod_core.c, mod_xfer.c: 
+	Updating the rest of the core code to use the newer Expressions
+	API.
+
+2003-11-08 21:03  castaglia
+
+	* contrib/mod_wrap.c: 
+	Updating mod_wrap for the newer Expressions API.
+
+2003-11-08 20:53  castaglia
+
+	* contrib/mod_ifsession.c: 
+	Updating mod_ifsession to use the new Expressions API.	Fixed a
+	compiler warning issued under --enable-devel.
+
+2003-11-08 20:46  castaglia
+
+	* include/dirtree.h, src/dirtree.c: 
+	Cleaning up the API for evaluating user, group, and class
+	expressions.  This commit gives the API a consistent pr_expr_
+	prefix.  It also provides some transitional macros.
+
+2003-11-08 20:43  castaglia
+
+	* configure: 
+	Updating configure.
+
+2003-11-08 19:41  castaglia
+
+	* contrib/mod_ifsession.c: 
+	Adjust mod_ifsession to use the same expression indicator values as
+	the core code.
+
+2003-11-08 19:37  castaglia
+
+	* NEWS, include/dirtree.h, modules/mod_core.c, src/dirtree.c: 
+	Bug#2015 - Add AND, OR keywords to Allow/DenyUser directives.  This
+	affects the AllowGroup and DenyGroup directives as well.
+
+2003-11-08 18:34  castaglia
+
+	* modules/mod_ctrls.c: 
+	Register a handler for the "core.exit" event, rather than using
+	pr_exit_register_handler().  The latter function will be being
+	phased out.
+
+2003-11-08 18:29  castaglia
+
+	* modules/mod_auth.c: 
+	Generate events when the MaxClients* and MaxHostsPerUser limits are
+	hit.
+
+2003-11-08 18:17  castaglia
+
+	* include/event.h, src/event.c, src/main.c: 
+	Add generation of "core.exit" event.  Adjust the event
+	unregistration function to handle the needs of the core code when
+	doing exit handler processing.
+
+2003-11-08 18:08  castaglia
+
+	* modules/mod_ctrls.c: 
+	Modify mod_ctrls to use the new Event API (as all new modules
+	should).
+
+2003-11-08 17:55  castaglia
+
+	* Make.rules.in, Makefile.in, NEWS, config.h.in, configure.in,
+	include/bindings.h, include/conf.h, include/ctrls.h,
+	include/mod_ctrls.h, include/pool.h, modules/mod_ctrls.c,
+	src/Makefile.in, src/bindings.c, src/ctrls.c, src/ftpdctl.c,
+	src/main.c, src/modules.c, src/pool.c: 
+	Bug#2072 - Add Controls API.  Still to be done: a man page for
+	ftpdctl, better documentation for mod_ctrls.
+
+2003-11-08 16:52  castaglia
+
+	* src/bindings.c: 
+	Remove (now) unused variable.
+
+2003-11-08 15:34  castaglia
+
+	* NEWS, modules/mod_core.c, src/bindings.c: 
+	Bug#2272 - Address/port collision check needs to handle
+	DefaultAddress. The problem was that the address assigned by
+	DefaultAddress was being assigned _after_ the addr/port collision
+	check.
+
+2003-11-08 14:45  castaglia
+
+	* include/fsio.h, src/fsio.c: 
+	Cleanup the FSIO API a little:
+	
+	  + some of the directory operation flags were improperly
+	overloading file
+	    operation flags
+	  + change the prototype of the open/creat handlers to take a
+	pointer to
+	    a pr_fh_t (filehandle) rather than a pointer to a pr_fs_t
+	(filesystem),
+	    which allows the open/creat handlers to store file-specific
+	data in
+	    the handle (fh->fh_data), which was not possible when using the
+	    filesystem pointer.
+	  + added a new function, pr_remove_fs(), for removing a filesystem
+	from
+	    the map without explicitly destroying that filesystem object
+	(as
+	    pr_unregister_fs() will do automatically).
+	  + some internal function stylistic renaming, which does not
+	affect any
+	    code outside of this file.
+
+2003-11-08 14:34  castaglia
+
+	* modules/mod_auth.c, src/main.c: 
+	Using the new Event API, generate some events when key limits are
+	exceeded.  Modules that register handlers for these events can now
+	take appropriate action (such as blacklisting a client that has
+	exceeded the MaxLoginAttempts).
+
+2003-11-08 14:32  castaglia
+
+	* src/event.c: 
+	When unregistering an event handler, be sure to honor the module
+	argument, if any.
+
+2003-11-08 14:19  castaglia
+
+	* Make.rules.in, NEWS, include/conf.h, include/event.h,
+	modules/mod_core.c, src/event.c, src/main.c: 
+	Adding Event API.
+
+2003-11-08 12:40  castaglia
+
+	* NEWS, contrib/mod_radius.c: 
+	Bug#2255 - RADIUS Service-Type should reflect attribute
+	expectations.
+
+2003-11-08 12:30  castaglia
+
+	* configure: 
+	Updating configure.
+
+2003-11-08 12:26  castaglia
+
+	* NEWS, configure.in: 
+	Bug#2271 - Improper autoconf check for getaddrinfo() on Tru64 UNIX
+	5.1.
+
+2003-11-08 11:40  castaglia
+
+	* Make.rules.in: 
+	Bug#2270 - Linkers can be quite picky about the order in which
+	flags appear.
+
+2003-11-05 20:43  castaglia
+
+	* modules/mod_auth_file.c: 
+	The new group membership debugging found a bug: mod_auth_file, when
+	scanning an AuthGroupFile, would only add the group name if the ID
+	for the group was different from the user's primary GID.  For GID
+	stuff, this is fine; however, for group expressions in proftpd.conf
+	that may rely on those group names, it's a bug.
+	
+	This allows for an interesting situation: assign a user to multiple
+	groups with different names, but the same GID.	Thus you can
+	workaround the NGROUPS_MAX system limit using a long list of group
+	names; the operating system won't notice, and proftpd will happily
+	check the names.  Nice.
+
+2003-11-05 20:35  castaglia
+
+	* src/auth.c: 
+	Add debugging output for group name/ID retrieval.
+
+2003-11-05 18:53  castaglia
+
+	* src/auth.c: 
+	Add debugging that shows the group IDs that end up being set via
+	setgroups().
+
+2003-11-05 16:13  castaglia
+
+	* configure: 
+	Updating configure.
+
+2003-11-05 16:10  castaglia
+
+	* config.h.in, configure.in, modules/mod_core.c: 
+	Some platforms don't have setenv()/unsetenv().	Bummer.
+
+2003-11-04 12:44  castaglia
+
+	* src/scoreboard.c: 
+	When deleting the scoreboard file (usu. when a standalone proftpd
+	starts up), log a message if there is an existing scoreboard file
+	that is being unlinked.
+
+2003-11-02 16:42  jwm
+
+	* contrib/dist/rpm/proftpd.spec: 
+	- Bug 2265 - correct path to mysql headers   Submitted by:
+	ncroiset@vdldiffusion.com (Nicolas Croiset) - note in the
+	%changelog that it isn't updated often - use the CVS   revision
+	history
+
+2003-11-01 00:25  castaglia
+
+	* contrib/mod_tls.html: 
+	Update the mod_tls docs, now that Bug#2135's patch has been
+	committed.
+
+2003-11-01 00:14  castaglia
+
+	* Makefile.in: 
+	When preparing a distribution using the 'dist' target, be sure to
+	clean up the .bak files generated by the 'clean' target.
+
+2003-10-31 23:11  castaglia
+
+	* include/pool.h, modules/mod_core.c, modules/mod_log.c,
+	modules/mod_ls.c, src/auth.c, src/bindings.c, src/data.c,
+	src/dirtree.c, src/feat.c, src/fsio.c, src/inet.c, src/log.c,
+	src/main.c, src/modules.c, src/pool.c, src/regexp.c, src/support.c:
+	
+	Introduce a new function, pr_pool_tag().  This function is used to
+	"tag" a given pool with an arbitrary label (given as a string
+	constant).  The pool tags are shown in a pool dump (currently
+	triggered using SIGUSR2).
+
+2003-10-31 16:12  castaglia
+
+	* include/log.h: 
+	Add 10 as a debugging level.  I plan to use this level for
+	debugging output about DNS resolution and supplemental group
+	membership issues.
+
+2003-10-31 15:57  castaglia
+
+	* src/dirtree.c: 
+	Add to proftpd's debugging verbosity by showing the
+	dispatch/handling of configuration directives to the modules which
+	handle that directive.
+
+2003-10-31 11:50  castaglia
+
+	* NEWS, modules/mod_core.c: 
+	Bug#2098 - Add SetEnv, UnsetEnv directives.
+
+2003-10-31 11:41  castaglia
+
+	* NEWS, modules/mod_auth_unix.c: 
+	Bug#2174 - mod_auth_unix should not act authoritatively.
+
+2003-10-31 11:23  castaglia
+
+	* NEWS, modules/mod_core.c: 
+	Bug#2086 - Add <Limit> support for PORT, PASV, EPRT, EPSV.
+
+2003-10-31 10:55  castaglia
+
+	* NEWS, contrib/mod_tls.c: 
+	Bug#2135 - Add ability to handle passphrase-protected server keys.
+
+2003-10-31 10:46  castaglia
+
+	* src/: data.c, dirtree.c, fsio.c, main.c, netio.c: 
+	Silencing some valgrind complaints.  Style fixups.
+
+2003-10-31 01:14  castaglia
+
+	* include/version.h: 
+	Woohoo! The start of a new release cycle...
+
+2003-10-31 00:22  castaglia
+
+	* ChangeLog: 
+	Preparing for 1.2.9 release.
+
 2003-10-31 00:10  castaglia
 
 	* NEWS, include/version.h, contrib/dist/rpm/proftpd.spec: 
@@ -1499,7 +3579,7 @@
 2003-06-11 19:08  castaglia
 
 	* src/: inet.c, modules.c: 
-	Missing $Id: ChangeLog,v 1.119 2003-10-31 08:22:49 castaglia Exp $ keyword.
+	Missing $Id: ChangeLog,v 1.120 2004-04-28 17:54:32 castaglia Exp $ keyword.
 
 2003-06-11 15:45  castaglia
 
@@ -2670,7 +4750,7 @@
 
 	* contrib/: mod_sql.c, mod_sql.h, mod_sql_mysql.c,
 	mod_sql_postgres.c: 
-	Adding $Id: ChangeLog,v 1.119 2003-10-31 08:22:49 castaglia Exp $ tags to the mod_sql files.
+	Adding $Id: ChangeLog,v 1.120 2004-04-28 17:54:32 castaglia Exp $ tags to the mod_sql files.
 
 2003-03-14 07:54  castaglia
 
@@ -3187,12 +5267,12 @@
 
 	* src/netio.c, src/pool.c, src/sets.c, include/ident.h,
 	include/timers.h: 
-	Adding more $Id: ChangeLog,v 1.119 2003-10-31 08:22:49 castaglia Exp $ keywords.
+	Adding more $Id: ChangeLog,v 1.120 2004-04-28 17:54:32 castaglia Exp $ keywords.
 
 2003-02-11 23:34  castaglia
 
 	* src/feat.c: 
-	Added $Id: ChangeLog,v 1.119 2003-10-31 08:22:49 castaglia Exp $ keyword.
+	Added $Id: ChangeLog,v 1.120 2004-04-28 17:54:32 castaglia Exp $ keyword.
 
 2003-02-10 15:34  castaglia
 
