@@ -66,6 +66,7 @@ Known issues:
   + Classes are not yet IPv6 aware
 
   + system/platform dependencies (Linux version, BSD/KAME, etc)
+
     o example: on Darwin (MacOSX), one must two define two different
       vhosts, 0.0.0.0 and ::, in order to accept both IPv4 and IPv6
       connections.  However, on Solaris, binding to an IPv6 address will
@@ -75,6 +76,14 @@ Known issues:
 
     o Apache2 mentions the same problem here:
        http://httpd.apache.org/docs-2.0/bind.html#ipv6
+
+    o FreeBSD 4.8 users may need to use --enable-builtin-getnameinfo
+      even when not using --enable-ipv6.  The getnameinfo(3) function in
+      FreeBSD 4.8 has been reported to not work correctly, producing log
+      messages like:
+
+        server - getnameinfo error: Non-recoverable failure in name resolution
+        server - 1.2.3.4:21 masquerading as (null)
 
 TODO:
 
