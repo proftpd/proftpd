@@ -25,7 +25,7 @@
 
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
- * $Id: support.c,v 1.23 2001-06-18 17:35:06 flood Exp $
+ * $Id: support.c,v 1.24 2001-08-16 19:54:04 flood Exp $
  */
 
 /* History Log:
@@ -505,8 +505,10 @@ int access_check(char *path, int mode) {
   mode_t mask;
   struct stat buf;
   
-  if(stat(path, &buf) < 0)
+  if(stat(path, &buf) < 0) {
+    errno = ENOENT;
     return -1;
+  }
  
   /* If root, always return succeed. */
   if(session.uid == 0)
@@ -543,18 +545,24 @@ int access_check(char *path, int mode) {
   
   /* Perform requested access checks */
   if(mode & R_OK) {
-    if(!(mask & (S_IRUSR | S_IRGRP | S_IROTH)))
+    if (!(mask & (S_IRUSR | S_IRGRP | S_IROTH))) {
+      errno = EACCES;
       return -1;
+  }
   }
   
   if(mode & W_OK) {
-    if(!(mask & (S_IWUSR | S_IWGRP | S_IWOTH)))
+    if (!(mask & (S_IWUSR | S_IWGRP | S_IWOTH))) {
+      errno = EACCES;
       return -1;
+  }
   }
   
   if(mode & X_OK) {
-    if(!(mask & (S_IXUSR | S_IXGRP | S_IXOTH)))
+    if (!(mask & (S_IXUSR | S_IXGRP | S_IXOTH))) {
+      errno = EACCES;
       return -1;
+    }
   }
 
   /* F_OK already checked by checking the return value of stat */

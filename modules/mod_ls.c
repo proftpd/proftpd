@@ -24,7 +24,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.43 2001-08-01 15:17:07 flood Exp $
+ * $Id: mod_ls.c,v 1.44 2001-08-16 19:54:04 flood Exp $
  */
 
 #include "conf.h"
@@ -355,27 +355,41 @@ int listfile(cmd_rec *cmd, pool *p, const char *name)
         char timeline[6] = {'\0'};
         umode_t mode = st.st_mode;
 
-        if(fakemodep)
+        if(fakemodep) {
           mode = fakemode;
 
-        if(mode & 256)
-          m[1] = 'r';
-        if(mode & 128)
-          m[2] = 'w';
-        if(mode & 64 || (fakemodep && (mode & 256) && S_ISDIR(st.st_mode)))
-          m[3] = 'x';
-        if(mode & 32)
-          m[4] = 'r';
-        if(mode & 16)
-          m[5] = 'w';
-        if(mode & 8 || (fakemodep && (mode & 32) && S_ISDIR(st.st_mode)))
-          m[6] = 'x';
-        if(mode & 4)
-          m[7] = 'r';
-        if(mode & 2)
-          m[8] = 'w';
-        if(mode & 1 || (fakemodep && (mode & 4) && S_ISDIR(st.st_mode)))
-          m[9] = 'x';
+          if(S_ISDIR(st.st_mode)) {
+
+            if(mode & S_IROTH)
+              mode |= S_IXOTH;
+            if(mode & S_IRGRP)
+              mode |= S_IXGRP;
+            if(mode & S_IRUSR)
+              mode |= S_IXUSR;
+
+          }
+        }
+
+        /*
+         * The following lines were blatently ripped from stat.c, as shipped
+         * with the debian 'stat' package. Can't have anything thinking I know
+         * what I'm doing in here. :)
+         */
+        m[9] = (mode & S_IXOTH) 
+                ? ((mode & S_ISVTX) ? 't' : 'x') 
+                : ((mode & S_ISVTX) ? 'T' : '-');
+        m[8] = (mode & S_IWOTH) ? 'w' : '-';
+        m[7] = (mode & S_IROTH) ? 'r' : '-';
+        m[6] = (mode & S_IXGRP) 
+                ? ((mode & S_ISGID) ? 's' : 'x') 
+                : ((mode & S_ISGID) ? 'S' : '-');
+        m[5] = (mode & S_IWGRP) ? 'w' : '-';
+        m[4] = (mode & S_IRGRP) ? 'r' : '-';
+        m[3] = (mode & S_IXUSR) ? ((mode & S_ISUID) 
+                ? 's' : 'x') 
+                :  ((mode & S_ISUID) ? 'S' : '-');
+        m[2] = (mode & S_IWUSR) ? 'w' : '-';
+        m[1] = (mode & S_IRUSR) ? 'r' : '-';
 
         if(ls_curtime - mtime > 180 * 24 * 60 * 60)
           snprintf(timeline, sizeof(timeline), "%5d",t->tm_year+1900);
@@ -1311,14 +1325,14 @@ MODRET genericlist(cmd_rec *cmd)
 
   default_options = get_param_ptr(TOPLEVEL_CONF,"LsDefaultOptions",FALSE);
 
-  fakeuser = get_param_ptr(TOPLEVEL_CONF,"DirFakeUser",FALSE);
+  fakeuser = get_param_ptr(CURRENT_CONF,"DirFakeUser",FALSE);
 
   /* check for a configured "logged in user" DirFakeUser
    */
   if (fakeuser && !strcmp(fakeuser, "~"))
     fakeuser = session.user;
 
-  fakegroup = get_param_ptr(TOPLEVEL_CONF,"DirFakeGroup",FALSE);
+  fakegroup = get_param_ptr(CURRENT_CONF,"DirFakeGroup",FALSE);
 
   /* check for a configured "logged in user" DirFakeGroup
    */
@@ -1377,14 +1391,15 @@ MODRET cmd_stat(cmd_rec *cmd)
     showsymlinks = 1;
 
   default_options = get_param_ptr(TOPLEVEL_CONF,"LsDefaultOptions",FALSE);
-  fakeuser = get_param_ptr(TOPLEVEL_CONF,"DirFakeUser",FALSE);
+
+  fakeuser = get_param_ptr(CURRENT_CONF,"DirFakeUser",FALSE);
 
   /* check for a configured "logged in user" DirFakeUser
    */
   if (fakeuser && !strcmp(fakeuser, "~"))
     fakeuser = session.user;
 
-  fakegroup = get_param_ptr(TOPLEVEL_CONF,"DirFakeGroup",FALSE);
+  fakegroup = get_param_ptr(CURRENT_CONF,"DirFakeGroup",FALSE);
 
   /* check for a configured "logged in user" DirFakeGroup
    */
@@ -1586,8 +1601,10 @@ MODRET _sethide(cmd_rec *cmd, const char *param)
 {
   int bool;
   char *as = "ftp";
+  config_rec *c = NULL;
 
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL|
+    CONF_DIR|CONF_DYNDIR);
 
   if(cmd->argc < 2 || cmd->argc > 3)
     CONF_ERROR(cmd,pstrcat(cmd->tmp_pool,"syntax: ",
@@ -1598,9 +1615,11 @@ MODRET _sethide(cmd_rec *cmd, const char *param)
     if(cmd->argc > 2)
       as = cmd->argv[2];
 
-    add_config_param_str(param,1,as);
+    c = add_config_param_str(param,1,as);
   } else if(!bool)
-    add_config_param_str(param,0);
+    c = add_config_param_str(param,0);
+
+  c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);
 }

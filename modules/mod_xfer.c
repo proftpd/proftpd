@@ -25,7 +25,7 @@
 
 /*
  * Data transfer module for ProFTPD
- * $Id: mod_xfer.c,v 1.56 2001-08-01 15:03:11 flood Exp $
+ * $Id: mod_xfer.c,v 1.57 2001-08-16 19:54:04 flood Exp $
  */
 
 /* History Log:
@@ -606,8 +606,14 @@ MODRET cmd_stor(cmd_rec *cmd)
     stor_file = fs_open(p_hidden->value.str_val,
 	O_WRONLY|(session.restart_pos ? 0 : O_CREAT|O_EXCL),&stor_fd);
 
-  else if(session.xfer.xfer_type == STOR_APPEND)
-    stor_file = fs_open(dir, O_WRONLY|O_CREAT|O_APPEND,&stor_fd);
+  else if(session.xfer.xfer_type == STOR_APPEND) {
+    stor_file = fs_open(dir, O_CREAT|O_WRONLY,&stor_fd);
+    if (stor_file)
+      if (fs_lseek(stor_file,stor_fd,0,SEEK_END) == -1) {
+        fs_close(stor_file,stor_fd);
+        stor_file = NULL;
+      }
+  }
 
   else /* Normal session */
     stor_file = fs_open(dir,
