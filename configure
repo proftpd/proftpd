@@ -2965,20 +2965,6 @@ SBINDIR=`eval echo $sbindir`
 SYSCONFDIR=`eval echo $sysconfdir`
 
 
-echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wno-long-double" >&5
-echo $ECHO_N "checking whether ${CC-cc} accepts -Wno-long-double... $ECHO_C" >&6
-   echo 'void f(){}' > conftest.c
-   if test -z "`${CC-cc} -c -Wno-long-double conftest.c 2>&1`"; then
-     echo "$as_me:$LINENO: result: yes" >&5
-echo "${ECHO_T}yes" >&6
-     CFLAGS="$CFLAGS -Wno-long-double"
-   else
-     echo "$as_me:$LINENO: result: no" >&5
-echo "${ECHO_T}no" >&6
-   fi
-   rm -f conftest*
-
-
 
 
 
@@ -14909,7 +14895,7 @@ _ACEOF
 fi
 
 
-if test x"$ac_cv_header_curses_h" == xyes; then
+if test x"$ac_cv_header_curses_h" = xyes; then
   echo "$as_me:$LINENO: checking for initscr in -lcurses" >&5
 echo $ECHO_N "checking for initscr in -lcurses... $ECHO_C" >&6
 if test "${ac_cv_lib_curses_initscr+set}" = set; then
@@ -14976,7 +14962,7 @@ fi
 
 fi
 
-if test x"$ac_cv_header_ncurses_h" == xyes; then
+if test x"$ac_cv_header_ncurses_h" = xyes; then
   echo "$as_me:$LINENO: checking for initscr in -lncurses" >&5
 echo $ECHO_N "checking for initscr in -lncurses... $ECHO_C" >&6
 if test "${ac_cv_lib_ncurses_initscr+set}" = set; then
@@ -15853,6 +15839,20 @@ else
 
     INSTALL_STRIP="-s"
 fi
+
+echo "$as_me:$LINENO: checking whether ${CC-cc} accepts -Wno-long-double" >&5
+echo $ECHO_N "checking whether ${CC-cc} accepts -Wno-long-double... $ECHO_C" >&6
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -Wno-long-double conftest.c 2>&1`"; then
+     echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+     CFLAGS="$CFLAGS -Wno-long-double"
+   else
+     echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+   fi
+   rm -f conftest*
+
 
 
 
