@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.61 2003-04-08 18:47:08 castaglia Exp $
+ * $Id: data.c,v 1.62 2003-05-26 19:20:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -742,7 +742,7 @@ void pr_data_abort(int err, int quiet) {
 	msg = msgbuf;
     }
 
-    pr_response_add_err(respcode, fmt ? fmt : "Transfer aborted.  %s",
+    pr_response_add_err(respcode, fmt ? fmt : "Transfer aborted. %s",
       msg ? msg : "");
   }
 
