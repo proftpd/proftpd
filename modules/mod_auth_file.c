@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.10 2003-04-30 15:49:17 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.11 2003-04-30 16:12:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -877,10 +877,10 @@ MODRET authfile_auth(cmd_rec *cmd) {
      */
     return DECLINED(cmd);
 
+#if 0
     /* When the above is implemented, and if the user being checked was
      * provided by mod_auth_file, we'd return this.
      */
-#if 0
     return ERROR_INT(cmd, PR_AUTH_NOPWD);
 #endif
   }
