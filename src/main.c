@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.47 2001-01-29 00:23:21 flood Exp $
+ * $Id: main.c,v 1.48 2001-02-01 19:52:29 flood Exp $
  */
 
 /*
@@ -2385,6 +2385,22 @@ int main(int argc, char **argv, char **envp)
    */
 
   PRIVS_SETUP(daemon_uid,daemon_gid)
+
+  /* Test to make sure that our uid/gid is correct.  Try to do this in
+   * a portable fashion *gah!*
+   */
+
+  if(geteuid() != daemon_uid) {
+    log_pri(LOG_ERR,"unable to set uid to %d, current uid: %d",
+		    (int)daemon_uid,(int)geteuid());
+    exit(1);
+  }
+
+  if(getegid() != daemon_gid) {
+    log_pri(LOG_ERR,"unable to set gid to %d, current gid: %d",
+		    (int)daemon_gid,(int)getegid());
+    exit(1);
+  }
 
   /* Install a signal handlers/abort handler */
   install_signal_handlers();
