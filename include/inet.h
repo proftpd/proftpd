@@ -19,7 +19,7 @@
 
 /* BSD socket manipulation tools.
  *
- * $Id: inet.h,v 1.1 1998-10-18 02:24:41 flood Exp $
+ * $Id: inet.h,v 1.2 1999-09-17 03:56:55 macgyver Exp $
  */
 
 #ifndef __INET_H
@@ -74,6 +74,7 @@ void init_inet();
 void clear_inet_pool();
 int inet_reverse_dns(pool*,int);
 int inet_getservport(pool*,char *serv,char *proto);
+char *inet_validate(char *buf);
 char *inet_gethostname(pool*);
 char *inet_fqdn(pool*,const char*);
 p_in_addr_t *inet_getaddr(pool*,char*);

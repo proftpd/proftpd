@@ -112,6 +112,28 @@ int inet_getservport(pool *pool, char *serv, char *proto)
   return (servent ? ntohs(servent->s_port) : -1);
 }
 
+/* Validate anything returned from the 'outside', since it's untrusted
+ * information.
+ */
+char *inet_validate(char *buf) {
+  char *p;
+  
+  /* Validate anything returned from a DNS.
+   */
+  for(p = buf; p && *p; p++) {
+    /* Per RFC requirements, these are all that are valid from a DNS.
+     */
+    if(!isalnum(*p) && *p != '.' && *p != '-') {
+      /* We set it to _ because we know that's an invalid, yet safe, option
+       * for a DNS entry.
+       */
+      *p = '_';
+    }
+  }
+  
+  return buf;
+}
+
 /* Return the hostname (wrapper for gethostname(), except returns FQDN)
  */
 char *inet_gethostname(pool *pool)
@@ -122,9 +144,9 @@ char *inet_gethostname(pool *pool)
   if(gethostname(buf,255) != -1) {
     host = gethostbyname(buf);
     if(host)
-      return pstrdup(pool,host->h_name);
+      return inet_validate(pstrdup(pool,host->h_name));
 
-    return pstrdup(pool,buf);
+    return inet_validate(pstrdup(pool,buf));
   }
 
   return NULL;
@@ -138,7 +160,7 @@ char *inet_fqdn(pool *pool, const char *addr)
   struct hostent *host;
 
   if((host = gethostbyname(addr)) != NULL)
-    return pstrdup(pool,host->h_name);
+    return inet_validate(pstrdup(pool,host->h_name));
 
   return NULL;
 }
@@ -169,7 +191,7 @@ p_in_addr_t *inet_getaddr(pool *pool, char *name)
 
   host = gethostbyname(name);
   if(host) {
-    memcpy(res,host->h_addr_list[0],sizeof(p_in_addr_t));
+    memcpy(res,inet_validate(host->h_addr_list[0]),sizeof(p_in_addr_t));
     return res;
   }
     
@@ -200,12 +222,14 @@ char *inet_getname(pool *pool, p_in_addr_t *addr)
   if(reverse_dns)
     host = gethostbyaddr((const char *)addr, sizeof(p_in_addr_t), AF_INET);
   
-  if(host)
-    res = pstrdup(pool,host->h_name);
-  else
+  if(!host) {
     res = pstrdup(pool,inet_ntoa(*addr));
-
-  return res;
+    return NULL;
+  }
+  
+  res = pstrdup(pool,host->h_name);
+  
+  return inet_validate(res);
 }
 
 static void _conn_cleanup(void *cv) { 
