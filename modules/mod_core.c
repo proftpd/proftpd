@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.202 2003-11-09 03:37:28 castaglia Exp $
+ * $Id: mod_core.c,v 1.203 2003-11-09 05:11:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1862,7 +1862,7 @@ MODRET set_hidefiles(cmd_rec *cmd) {
     int argc = cmd->argc - 3;
     char **argv = cmd->argv + 2;
 
-    acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
+    acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
 
     c = add_config_param(cmd->argv[0], 0);
     c->argc = argc + 4;
@@ -2084,7 +2084,7 @@ MODRET set_allowoverride(cmd_rec *cmd) {
     int argc = cmd->argc - 3;
     char **argv = cmd->argv + 2;
 
-    acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
+    acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
 
     c = add_config_param(cmd->argv[0], 0);
     c->argc = argc + 3;
@@ -2339,7 +2339,7 @@ MODRET set_allowdenyusergroup(cmd_rec *cmd) {
     argv = cmd->argv;
   }
 
-  acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
+  acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
 
   c = add_config_param(cmd->argv[0], 0);
 

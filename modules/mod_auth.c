@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.168 2003-11-09 02:29:41 castaglia Exp $
+ * $Id: mod_auth.c,v 1.169 2003-11-09 05:11:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -250,7 +250,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
 
     if (c->argc == 3) {
       if (!strcmp(c->argv[1], "user")) {
-        if (pr_user_or_expression((char **) &c->argv[2])) {
+        if (pr_expr_eval_user_or((char **) &c->argv[2])) {
 
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
@@ -265,7 +265,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
         }
 
       } else if (!strcmp(c->argv[1], "group")) {
-        if (pr_group_and_expression((char **) &c->argv[2])) {
+        if (pr_expr_eval_group_and((char **) &c->argv[2])) {
 
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
@@ -403,33 +403,35 @@ static config_rec *_auth_group(pool *p, char *user, char **group,
   return c;
 }
 
-static config_rec *_auth_anonymous_group(pool *p, char *user)
-{
+static config_rec *_auth_anonymous_group(pool *p, char *user) {
   config_rec *c;
   int ret = 0;
 
-  /* retrieve the session group membership information, so that this check
-   * may work properly
+  /* Retrieve the session group membership information, so that this check
+   * may work properly.
    */
   if (!session.gids && !session.groups &&
       (ret = auth_getgroups(p, user, &session.gids, &session.groups)) < 1)
     log_debug(DEBUG2, "no supplemental groups found for user '%s'", user);
 
-  c = find_config(main_server->conf,CONF_PARAM,"AnonymousGroup",FALSE);
+  c = find_config(main_server->conf, CONF_PARAM, "AnonymousGroup", FALSE);
 
-  if (c) do {
-    ret = pr_group_and_expression((char**)c->argv);
-  } while (!ret && (c = find_config_next(c,c->next,CONF_PARAM,"AnonymousGroup",FALSE)) != NULL);
+  if (c)
+    do {
+      ret = pr_expr_eval_group_and((char **) c->argv);
+
+    } while (!ret &&
+      (c = find_config_next(c, c->next, CONF_PARAM, "AnonymousGroup",
+        FALSE)) != NULL);
 
   return ret ? c : NULL;
 }
 
-static config_rec *_auth_resolve_user(pool *p,char **user,
-                                      char **ournamep,
-                                      char **anonnamep)
-{
+static config_rec *_auth_resolve_user(pool *p, char **user, char **ournamep,
+    char **anonnamep) {
+
   config_rec *c = NULL, *topc = NULL;
-  char *ourname,*anonname = NULL;
+  char *ourname, *anonname = NULL;
   unsigned char is_alias = FALSE, force_anon = FALSE, *auth_alias_only = NULL;
 
   /* Precendence rules:
@@ -438,7 +440,7 @@ static config_rec *_auth_resolve_user(pool *p,char **user,
    *   3. Normal user login
    */
 
-  ourname = (char*)get_param_ptr(main_server->conf,"UserName",FALSE);
+  ourname = (char *) get_param_ptr(main_server->conf, "UserName", FALSE);
 
   if (ournamep && ourname)
     *ournamep = ourname;
@@ -630,21 +632,19 @@ static char *_get_default_chdir(pool *p, xaset_t *conf) {
       break;
     }
 
-    ret = pr_group_and_expression(((char**)c->argv)+1);
+    ret = pr_expr_eval_group_and(((char **) c->argv)+1);
 
     if (ret) {
       dir = c->argv[0];
       break;
     }
 
-    c = find_config_next(c,c->next,CONF_PARAM,"DefaultChdir",FALSE);
+    c = find_config_next(c, c->next, CONF_PARAM, "DefaultChdir", FALSE);
   }
 
-  /* if the directory is relative, concatenate w/ session.cwd
-   */
-
+  /* If the directory is relative, concatenate w/ session.cwd. */
   if (dir && *dir != '/' && *dir != '~')
-    dir = pdircat(p,session.cwd,dir,NULL);
+    dir = pdircat(p, session.cwd, dir, NULL);
 
   /* Check for any expandable variables. */
   if (dir)
@@ -653,8 +653,7 @@ static char *_get_default_chdir(pool *p, xaset_t *conf) {
   return dir;
 }
 
-/* Determine if the user (non-anon) needs a default root dir
- * other than /
+/* Determine if the user (non-anon) needs a default root dir other than /.
  */
 
 static char *_get_default_root(pool *p) {
@@ -671,7 +670,7 @@ static char *_get_default_root(pool *p) {
       break;
     }
 
-    ret = pr_group_and_expression(((char**)c->argv)+1);
+    ret = pr_expr_eval_group_and(((char **) c->argv)+1);
 
     if (ret) {
       dir = c->argv[0];
@@ -692,16 +691,14 @@ static char *_get_default_root(pool *p) {
     else {
       char *realdir;
 
-      /*
-      ** We need to be the final user here so that if the user has their home
-      ** directory with a mode the user proftpd is running (ie the User
-      ** directive) as can not traverse down, we can still have the default
-      ** root as ~/public_html/
-      */
+      /* We need to be the final user here so that if the user has their home
+       * directory with a mode the user proftpd is running (ie the User
+       * directive) as can not traverse down, we can still have the default
+       * root.
+       */
+
       PRIVS_USER
-
-      realdir = dir_realpath(p,dir);
-
+      realdir = dir_realpath(p, dir);
       PRIVS_RELINQUISH
 
       if (realdir)
@@ -2045,7 +2042,7 @@ MODRET add_anonymousgroup(cmd_rec *cmd) {
   argv = cmd->argv;
   argc = cmd->argc - 1;
 
-  acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
+  acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
 
   c = add_config_param(cmd->argv[0], 0);
   c->argc = argc;
@@ -2222,7 +2219,7 @@ MODRET add_defaultroot(cmd_rec *cmd) {
   if (*(dir + strlen(dir) - 1) != '/')
     dir = pstrcat(cmd->tmp_pool, dir, "/", NULL);
 
-  acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
+  acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
 
   c = add_config_param(cmd->argv[0], 0);
 
@@ -2264,7 +2261,7 @@ MODRET add_defaultchdir(cmd_rec *cmd) {
   if (*(dir + strlen(dir) - 1) != '/')
     dir = pstrcat(cmd->tmp_pool, dir, "/", NULL);
 
-  acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
+  acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
 
   c = add_config_param(cmd->argv[0], 0);
 
@@ -2632,7 +2629,7 @@ MODRET set_timeoutsession(cmd_rec *cmd) {
     int argc = cmd->argc - 3;
     char **argv = cmd->argv + 2;
 
-    acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
+    acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
 
     c = add_config_param(cmd->argv[0], 0);
     c->argc = argc + 2;

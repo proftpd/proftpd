@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.146 2003-07-15 02:57:36 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.147 2003-11-09 05:11:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -85,9 +85,9 @@ static unsigned long find_max_nbytes(char *directive) {
      */
 
     if (c->argc > 3) {
-      if (!strcmp(c->argv[2], "user")) {
+      if (strcmp(c->argv[2], "user") == 0) {
 
-        if (pr_user_or_expression((char **) &c->argv[3])) {
+        if (pr_expr_eval_user_or((char **) &c->argv[3])) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
             /* Set the context precedence */
@@ -100,9 +100,9 @@ static unsigned long find_max_nbytes(char *directive) {
           }
         }
 
-      } else if (!strcmp(c->argv[2], "group")) {
+      } else if (strcmp(c->argv[2], "group") == 0) {
 
-        if (pr_group_or_expression((char **) &c->argv[3])) {
+        if (pr_expr_eval_group_or((char **) &c->argv[3])) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
             /* Set the context precedence */
@@ -115,9 +115,9 @@ static unsigned long find_max_nbytes(char *directive) {
           }
         }
 
-      } else if (!strcmp(c->argv[2], "class")) {
+      } else if (strcmp(c->argv[2], "class") == 0) {
 
-        if (pr_class_or_expression((char **) &c->argv[3])) {
+        if (pr_expr_eval_class_or((char **) &c->argv[3])) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
             /* Set the context precedence */
@@ -344,9 +344,9 @@ static void xfer_rate_lookup(cmd_rec *cmd) {
     }
 
     if (c->argc > 4) {
-      if (!strcmp(c->argv[4], "user")) {
+      if (strcmp(c->argv[4], "user") == 0) {
 
-        if (pr_user_or_expression((char **) &c->argv[5]) &&
+        if (pr_expr_eval_user_or((char **) &c->argv[5]) &&
             *((unsigned int *) c->argv[3]) > precedence) {
 
           /* Set the precedence. */
@@ -359,9 +359,9 @@ static void xfer_rate_lookup(cmd_rec *cmd) {
           have_group_rate = have_class_rate = have_all_rate = FALSE;
         }
 
-      } else if (!strcmp(c->argv[4], "group")) {
+      } else if (strcmp(c->argv[4], "group") == 0) {
 
-        if (pr_group_and_expression((char **) &c->argv[5]) &&
+        if (pr_expr_eval_group_and((char **) &c->argv[5]) &&
             *((unsigned int *) c->argv[3]) > precedence) {
 
           /* Set the precedence. */
@@ -374,9 +374,9 @@ static void xfer_rate_lookup(cmd_rec *cmd) {
           have_user_rate = have_class_rate = have_all_rate = FALSE;
         }
 
-      } else if (!strcmp(c->argv[4], "class")) {
+      } else if (strcmp(c->argv[4], "class") == 0) {
 
-        if (pr_class_or_expression((char **) &c->argv[5]) &&
+        if (pr_expr_eval_class_or((char **) &c->argv[5]) &&
           *((unsigned int *) c->argv[3]) > precedence) {
 
           /* Set the precedence. */
@@ -2026,7 +2026,7 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
     int argc = cmd->argc - 4;
     char **argv = cmd->argv + 3;
 
-    acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
+    acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
 
     c = add_config_param(cmd->argv[0], 0);
     c->argc = argc + 3;
@@ -2223,14 +2223,14 @@ MODRET set_transferrate(cmd_rec *cmd) {
     int argc = cmd->argc - 4;
     char **argv = cmd->argv + 3;
 
-    acl = pr_parse_expression(cmd->tmp_pool, &argc, argv);
+    acl = pr_expr_create(cmd->tmp_pool, &argc, argv);
 
     c = add_config_param(cmd->argv[0], 0);
 
     /* Parse the command list. */
 
-    /* The five additional slots are for: cmd-list, bps, free-bytes, precedence,
-     * user/group/class.
+    /* The five additional slots are for: cmd-list, bps, free-bytes,
+     * precedence, user/group/class.
      */
     c->argc = argc + 5;
 
