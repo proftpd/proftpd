@@ -24,6 +24,8 @@ not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite
 
 #include <libsupp.h>
 
+#include <ctype.h>
+
 #if !defined(HAVE_VSNPRINTF) || !defined(HAVE_SNPRINTF)
 
 # if defined(HAVE_FCONVERT) || defined(HAVE_FCVT)
