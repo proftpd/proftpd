@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.4 2004-01-15 23:54:10 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.5 2004-01-29 01:03:40 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -2036,7 +2036,7 @@ static cmdtable quotatab_cmdtab[] = {
   { POST_CMD,		C_RMD,	G_NONE,	quotatab_post_rmd,	FALSE,	FALSE },
   { PRE_CMD,		C_RNTO,	G_NONE,	quotatab_pre_rnto,	FALSE,	FALSE },
   { POST_CMD,		C_RNTO,	G_NONE,	quotatab_post_rnto,	FALSE,	FALSE },
-  { CMD,		C_SITE,	G_NONE,	quotatab_site,		FALSE,	FALSE },
+  { CMD,		C_SITE,	G_NONE,	quotatab_site,		FALSE,	FALSE, CL_MISC },
   { PRE_CMD,		C_STOR,	G_NONE, quotatab_pre_stor,	FALSE,	FALSE },
   { POST_CMD,		C_STOR,	G_NONE,	quotatab_post_stor,	FALSE,	FALSE },
   { POST_CMD_ERR,	C_STOR,	G_NONE,	quotatab_post_stor_err,	FALSE,	FALSE },
