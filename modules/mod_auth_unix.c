@@ -26,7 +26,7 @@
 
 /*
  * Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.8 2003-04-30 19:32:14 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.9 2003-09-08 00:53:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -269,23 +269,21 @@ inline static int _compare_gid(idmap_t *m1, idmap_t *m2)
   return 0;
 }
 
-inline static int _compare_id(xaset_t **table, idauth_t id, idauth_t idcomp)
-{
+inline static int _compare_id(xaset_t **table, idauth_t id, idauth_t idcomp) {
   if (table == uid_table)
     return id.uid == idcomp.uid;
   else
     return id.gid == idcomp.gid;
 }
 
-static idmap_t *_auth_lookup_id(xaset_t **id_table, idauth_t id)
-{
+static idmap_t *_auth_lookup_id(xaset_t **id_table, idauth_t id) {
   int hash = ((id_table == uid_table) ? id.uid : id.gid) % HASH_TABLE_SIZE;
   idmap_t *m;
 
   if (!id_table[hash])
-    id_table[hash] = xaset_create(permanent_pool, (id_table == uid_table) ?
-                                  (XASET_COMPARE)_compare_uid :
-                                  (XASET_COMPARE)_compare_gid);
+    id_table[hash] = xaset_create(session.pool,
+      (id_table == uid_table) ? (XASET_COMPARE)_compare_uid :
+      (XASET_COMPARE)_compare_gid);
 
   for (m = (idmap_t *) id_table[hash]->xas_list; m; m = m->next) {
     if (_compare_id(id_table, m->id, id))
@@ -759,12 +757,13 @@ MODRET pw_uid_name(cmd_rec *cmd) {
       pw = getpwuid(id.uid);
 
     if (pw) {
-      m->name = pstrdup(permanent_pool, pw->pw_name);
+      m->name = pstrdup(session.pool, pw->pw_name);
+
     } else {
       char buf[10] = {'\0'};
 
       snprintf(buf, sizeof(buf), "%lu", (unsigned long) id.uid);
-      m->name = pstrdup(permanent_pool, buf);
+      m->name = pstrdup(session.pool, buf);
     }
   }
 
@@ -788,7 +787,8 @@ MODRET pw_gid_name(cmd_rec *cmd)
       gr = getgrgid(id.gid);
 
     if (gr)
-      m->name = pstrdup(permanent_pool, gr->gr_name);
+      m->name = pstrdup(session.pool, gr->gr_name);
+
     else {
       char buf[10] = {'\0'};
 
@@ -797,7 +797,7 @@ MODRET pw_gid_name(cmd_rec *cmd)
        * string modifier used for long long (is it %llu or %Lu, etc).
        */
       snprintf(buf, sizeof(buf), "%lu", (unsigned long) id.gid);
-      m->name = pstrdup(permanent_pool, buf);
+      m->name = pstrdup(session.pool, buf);
     }
   }
 
@@ -888,7 +888,7 @@ MODRET pw_getgroups(cmd_rec *cmd) {
     *((gid_t *) push_array(gids)) = pw->pw_gid;
 
   if (groups && (gr = my_getgrgid(pw->pw_gid)) != NULL)
-    *((char **) push_array(groups)) = pstrdup(permanent_pool, gr->gr_name);
+    *((char **) push_array(groups)) = pstrdup(session.pool, gr->gr_name);
 
   my_setgrent();
 
@@ -908,7 +908,7 @@ MODRET pw_getgroups(cmd_rec *cmd) {
           *((gid_t *) push_array(gids)) = gr->gr_gid;
 
         if (groups && pw->pw_gid != gr->gr_gid)
-          *((char **) push_array(groups)) = pstrdup(permanent_pool,
+          *((char **) push_array(groups)) = pstrdup(session.pool,
             gr->gr_name);
       }
     }
@@ -940,6 +940,11 @@ MODRET set_persistentpasswd(cmd_rec *cmd) {
 /* Initialization routines
  */
 
+static void auth_unix_sess_exit(void) {
+  auth_endpwent(session.pool);
+  auth_endgrent(session.pool);
+}
+
 static int auth_unix_init(void) {
   memset(uid_table, 0 ,sizeof(uid_table));
   memset(gid_table, 0, sizeof(gid_table));
@@ -970,6 +975,7 @@ static int auth_unix_sess_init(void) {
     p_setgrent();
   }
 
+  pr_exit_register_handler(auth_unix_sess_exit);
   return 0;
 }
 
