@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.108 2002-12-06 23:45:28 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.109 2002-12-07 21:21:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1385,7 +1385,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
   allow_restart = get_param_ptr(CURRENT_CONF, "AllowRetrieveRestart", FALSE);
 
   if (session.restart_pos &&
-     (!allow_restart || *allow_restart == FALSE)) {
+     (allow_restart && *allow_restart == FALSE)) {
     add_response_err(R_451, "%s: Restart not permitted, try again", cmd->arg);
     session.restart_pos = 0L;
     return ERROR(cmd);
