@@ -25,7 +25,7 @@
  
 /*
  * Data connection management functions
- * $Id: data.c,v 1.25 2001-06-18 17:12:45 flood Exp $
+ * $Id: data.c,v 1.26 2001-06-19 18:51:51 flood Exp $
  */
 
 #include "conf.h"
@@ -712,7 +712,7 @@ int data_xfer(char *cl_buf, int cl_size) {
 	if(TimeoutStalled)
 	  reset_timer(TIMER_STALLED, ANY_MODULE);
 	
-	total += wsize;
+	total += (wsize - adjlen);
 	size -= (wsize - adjlen);
 	if(size) {
 	  wb = buf + (wsize - adjlen);

@@ -1,7 +1,8 @@
-$Id: NEWS,v 1.111 2001-06-18 18:02:55 flood Exp $
+$Id: NEWS,v 1.112 2001-06-19 18:51:51 flood Exp $
 
 1.2.2 - CVS
 ---------------------------------
+- Bug 1210 - Possible silent truncation in net-ascii mode
 - Bug 1212 - special files (devices, etc) didn't show up in directory
   listings.
 - Bug 1189 - (again) <Directory> dups allowed in <Anonymous>
