@@ -1017,6 +1017,9 @@ conn_t *inet_associate(pool *pool, conn_t *c, p_in_addr_t *addr,
  * in, including the *destination* address.  Finally, if resolve is
  * non-ZERO, inet_openrw will attempt to reverse resolve the remote
  * address.  A new connection structure is created in the specified pool.
+ *
+ * Important, do not call any log_* functions from inside of inet_openrw()
+ * or any functions it calls, as the possibility for fd overwriting occurs.
  */
 conn_t *inet_openrw(pool *pool, conn_t *c, p_in_addr_t *addr, int fd,
                     int rfd,int wfd, int resolve)

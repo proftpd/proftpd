@@ -20,7 +20,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.44 2001-01-24 22:50:51 flood Exp $
+ * $Id: main.c,v 1.45 2001-01-26 21:51:25 flood Exp $
  */
 
 /*
@@ -1274,14 +1274,16 @@ void fork_server(int fd,conn_t *l,int nofork)
    * new pid.
    */
 
-  block_signals();
-  PRIVS_ROOT
+  /* Bug #398 - jss
+   * We have to delay calling log_opensyslog() until after inet_openrw()
+   * is called, otherwise the potential exists for the syslog FD to
+   * be overwritten and the user to see logging information.
+   *
+   * This isn't that big of a deal because the logging functions will
+   * just open it dynamically if they need to.
+   */
 
   log_closesyslog();
-  log_opensyslog(NULL);
-
-  PRIVS_RELINQUISH
-  unblock_signals();
 
   /* It's safe to call inet_openrw now (it might block),
    * because the parent is off answering new connections.
@@ -1295,6 +1297,17 @@ void fork_server(int fd,conn_t *l,int nofork)
                      STDIN_FILENO, STDOUT_FILENO, TRUE);
   inet_reverse_dns(permanent_pool, rev);
   
+  /* Now do the permanent syslog open
+   */
+ 
+  block_signals();
+  PRIVS_ROOT
+
+  log_opensyslog(NULL);
+
+  PRIVS_RELINQUISH
+  unblock_signals();
+
   if(!conn) {
     log_pri(LOG_ERR,"Fatal: unable to open incoming connection: %s",
                    strerror(errno));
