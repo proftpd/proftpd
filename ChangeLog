@@ -1,3 +1,10 @@
+2002-01-23 19:21  flood
+
+	* NEWS, src/data.c, src/dirtree.c, src/timers.c: #1318 sendfile()
+	semantics incorrect under Linux #1450 Timers removed
+	immediately/alarm() return no longer used for timing #1446
+	DefaultServer overrides SocketBindTight
+
 2001-12-18 11:21  flood
 
 	* NEWS, include/version.h: bumped version
