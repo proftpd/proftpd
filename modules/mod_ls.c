@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.109 2004-04-23 21:29:27 castaglia Exp $
+ * $Id: mod_ls.c,v 1.110 2004-04-29 01:55:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1059,8 +1059,7 @@ static void ls_terminate(void) {
   }
 }
 
-static void parse_list_opts(char **opt, int *glob_flags,
-    unsigned char handle_plus_opts) {
+static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
   while (isspace((int) **opt))
     (*opt)++;
 
@@ -1081,8 +1080,10 @@ static void parse_list_opts(char **opt, int *glob_flags,
           break;
 
         case 'C':
-          opt_l = 0;
-          opt_C = 1;
+          if (strcmp(session.curr_cmd, C_NLST) != 0) {
+            opt_l = 0;
+            opt_C = 1;
+          }
           break;
 
         case 'd':
@@ -1090,20 +1091,26 @@ static void parse_list_opts(char **opt, int *glob_flags,
           break;
 
         case 'F':
-          opt_F = 1;
+          if (strcmp(session.curr_cmd, C_NLST) != 0) {
+            opt_F = 1;
+          }
           break;
 
         case 'L':
-          opt_L++;
+          opt_L = 1;
           break;
 
         case 'l':
-          opt_l = 1;
-          opt_C = 0;
+          if (strcmp(session.curr_cmd, C_NLST) != 0) {
+            opt_l = 1;
+            opt_C = 0;
+          }
           break;
 
         case 'n':
-          opt_n = 1;
+          if (strcmp(session.curr_cmd, C_NLST) != 0) {
+            opt_n = 1;
+          }
           break;
 
         case 'R':
@@ -1654,15 +1661,16 @@ MODRET genericlist(cmd_rec *cmd) {
   mode_t *fake_mode = NULL;
   config_rec *c = NULL;
 
-  if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE)) != NULL)
+  tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE);
+  if (tmp != NULL)
     list_show_symlinks = *tmp;
 
   list_strict_opts = FALSE;
 
   list_nfiles.max = list_ndirs.max = list_ndepth.max = 0;
 
-  if ((c = find_config(CURRENT_CONF, CONF_PARAM, "ListOptions",
-      FALSE)) != NULL) {
+  c = find_config(CURRENT_CONF, CONF_PARAM, "ListOptions", FALSE);
+  if (c != NULL) {
     list_options = c->argv[0];
     list_strict_opts = *((unsigned char *) c->argv[1]);
 
@@ -1700,7 +1708,8 @@ MODRET genericlist(cmd_rec *cmd) {
   } else
     have_fake_mode = FALSE;
 
-  if ((tmp = get_param_ptr(TOPLEVEL_CONF, "TimesGMT", FALSE)) != NULL)
+  tmp = get_param_ptr(TOPLEVEL_CONF, "TimesGMT", FALSE);
+  if (tmp != NULL)
     list_times_gmt = *tmp;
 
   res = dolist(cmd, cmd->arg, TRUE);
@@ -1799,8 +1808,8 @@ MODRET ls_stat(cmd_rec *cmd) {
   list_strict_opts = FALSE;
   list_ndepth.max = list_nfiles.max = list_ndirs.max = 0;
 
-  if ((c = find_config(CURRENT_CONF, CONF_PARAM, "ListOptions",
-      FALSE)) != NULL) {
+  c = find_config(CURRENT_CONF, CONF_PARAM, "ListOptions", FALSE);
+  if (c != NULL) {
     list_options = c->argv[0];
     list_strict_opts = *((unsigned char *) c->argv[1]);
 
@@ -1844,8 +1853,8 @@ MODRET ls_stat(cmd_rec *cmd) {
   opt_C = opt_d = opt_F = opt_R = 0;
   opt_a = opt_l = opt_STAT = 1;
 
-  pr_response_add(R_211, "status of %s:", arg && *arg ? arg : ".");
-  dolist(cmd,cmd->arg, FALSE);
+  pr_response_add(R_211, "Status of %s:", arg && *arg ? arg : ".");
+  dolist(cmd, cmd->arg, FALSE);
   pr_response_add(R_211, "End of Status");
   return HANDLED(cmd);
 }
@@ -1865,27 +1874,71 @@ MODRET ls_list(cmd_rec *cmd) {
 
 MODRET ls_nlst(cmd_rec *cmd) {
   char *target,line[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
+  config_rec *c = NULL;
   int count = 0, res = 0, hidden = 0;
+  int glob_flags = GLOB_PERIOD;
   unsigned char *tmp = NULL;
 
   list_nfiles.curr = list_ndirs.curr = list_ndepth.curr = 0;
   list_nfiles.logged = list_ndirs.logged = list_ndepth.logged = FALSE;
 
-  /* In case the client used NLST instead of LIST. */
-  if (cmd->argc > 1 && cmd->argv[1][0] == '-') {
-    pr_log_debug(DEBUG1, "NLST %s: Options for this command are not supported",
-      cmd->argv[1]);
-    pr_response_add_err(R_501, "%s: Options not supported", cmd->argv[0]);
-    return ERROR(cmd);
-  }
-
-  if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE)) != NULL)
+  tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE);
+  if (tmp != NULL)
     list_show_symlinks = *tmp;
 
-  if (cmd->argc == 1)
-    target = ".";
-  else
-    target = cmd->arg;
+  target = cmd->argc == 1 ? "." : cmd->arg;
+
+  c = find_config(CURRENT_CONF, CONF_PARAM, "ListOptions", FALSE);
+  if (c != NULL) {
+    list_options = c->argv[0];
+    list_strict_opts = *((unsigned char *) c->argv[1]);
+
+    list_ndepth.max = *((unsigned char *) c->argv[2]);
+
+    /* We add one to the configured maxdepth in order to allow it to
+     * function properly: if one configures a maxdepth of 2, one should
+     * allowed to list the current directory, and all subdirectories one
+     * layer deeper.  For the checks to work, the maxdepth of 2 needs to
+     * handled internally as a maxdepth of 3.
+     */
+    if (list_ndepth.max)
+      list_ndepth.max += 1;
+
+    list_nfiles.max = *((unsigned char *) c->argv[3]);
+    list_ndirs.max = *((unsigned char *) c->argv[4]);
+  }
+
+  /* Clear the listing option flags. */
+  opt_a = opt_C = opt_d = opt_F = opt_n = opt_r = opt_R = opt_t = opt_STAT =
+    opt_L = 0;
+
+  if (!list_strict_opts) {
+    parse_list_opts(&target, &glob_flags, FALSE);
+
+  } else {
+
+    /* Even if the user-given options are ignored, they still need to
+     * "processed" (ie skip past options) in order to get to the paths.
+     */
+    while (*target && isspace((int) *target))
+      target++;
+
+    while (target && *target == '-') {
+
+      /* Advance to the next whitespace */
+      while (*target != '\0' && !isspace((int) *target))
+        target++;
+
+      while (isspace((int) *target))
+        target++;
+    }
+
+    while (isspace((int) *target))
+      target++;
+  }
+
+  if (list_options)
+    parse_list_opts(&list_options, &glob_flags, TRUE);
 
   /* If the target starts with '~' ... */
   if (*target == '~') {
