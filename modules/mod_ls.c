@@ -24,7 +24,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.58 2002-06-25 21:58:19 castaglia Exp $
+ * $Id: mod_ls.c,v 1.59 2002-08-12 17:30:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -820,10 +820,10 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name)
 
   dir = sreaddir(workp,".",TRUE);
 
-	/* search for relevant <Limit>'s to this LIST command.  If found,
-	 * check to see whether hidden files should be ignored
+  /* search for relevant <Limit>'s to this LIST command.  If found,
+   * check to see whether hidden files should be ignored
    */
-	if ((c = _find_ls_limit(cmd->argv[0])) != NULL &&
+  if ((c = _find_ls_limit(cmd->argv[0])) != NULL &&
       get_param_int(c->subset, "IgnoreHidden", FALSE) == TRUE)
     ignore_hidden = TRUE;
 
@@ -845,16 +845,15 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name)
     s = dir;
     while(*s) {
       if (**s == '.') {
-
-				if (!opt_a && (!opt_A || is_dotdir(*s))) {
-	d = 0;
+        if (!opt_a && (!opt_A || is_dotdir(*s))) {
+          d = 0;
 
         } else {
 
-					/* make sure IgnoreHidden is properly honored.  "." and
+          /* make sure IgnoreHidden is properly honored.  "." and
            * ".." are not to be treated as hidden files, though
-					 */
-					if (is_dotdir(*s) || !ignore_hidden)
+           */
+          if (is_dotdir(*s) || !ignore_hidden)
             d = listfile(cmd,workp,*s);
         }
 
@@ -862,35 +861,40 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name)
         d = listfile(cmd,workp,*s);
       }
 
-      if(!d)
+      if (!d)
 	*s = NULL;
 
       s++;
     }
 
-    if(outputfiles(cmd) < 0) {
-      if(dest_workp)
+    if (outputfiles(cmd) < 0) {
+      if (dest_workp)
         destroy_pool(workp);
       return -1;
     }
 
     r = dir;
-    while(opt_R && r != s) {
+    while (opt_R && r != s) {
       char cwd[MAXPATHLEN + 1] = {'\0'};
       int symhold;
 
-      if(*r && (strcmp(*r,".") == 0 || strcmp(*r,"..") == 0)) {
+      if (*r && (strcmp(*r, ".") == 0 || strcmp(*r, "..") == 0)) {
         r++;
         continue;
       }
-      
-      push_cwd(cwd,&symhold);
+
+      /* Add some signal processing to this while loop, as it can
+       * potentially recurse deeply.
+       */
+      handle_signals();      
+
+      push_cwd(cwd, &symhold);
      
-      if(*r && ls_perms_full(workp,cmd,(char*)*r,NULL) &&
-	       !fs_chdir_canon(*r, !opt_L && showsymlinks)) {
+      if (*r && ls_perms_full(workp,cmd,(char*)*r,NULL) &&
+          !fs_chdir_canon(*r, !opt_L && showsymlinks)) {
         char *subdir;
 
-	if(strcmp(name,".") == 0)
+	if (strcmp(name,".") == 0)
           subdir = *r;
         else
           subdir = pdircat(workp,name,*r,NULL);
@@ -899,18 +903,18 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name)
 	  add_response(R_211, "%s", "");
           add_response(R_211, "%s:", subdir);
 
-	} else if(sendline("\n%s:\n",subdir) < 0) {
-          pop_cwd(cwd,&symhold);
+	} else if( sendline("\n%s:\n", subdir) < 0) {
+          pop_cwd(cwd, &symhold);
 
-          if(dest_workp)
+          if (dest_workp)
             destroy_pool(workp);
           return -1;
         }
 
-        if(listdir(cmd,workp,subdir) < 0) {
-          pop_cwd(cwd,&symhold);
+        if (listdir(cmd, workp, subdir) < 0) {
+          pop_cwd(cwd, &symhold);
 
-          if(dest_workp)
+          if (dest_workp)
             destroy_pool(workp);
           return -1;
         }
@@ -921,15 +925,13 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name)
     }
   }
 
-  if(dest_workp)
+  if (dest_workp)
     destroy_pool(workp);
 
   return 0;
 }
 
-static
-void ls_terminate()
-{
+static void ls_terminate(void) {
   if(!opt_STAT) {
     discard_output();
     if(!XFER_ABORTED) {  /* an error has occured, other than client ABOR */
@@ -1266,21 +1268,21 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
 
   workp = make_sub_pool(cmd->tmp_pool);
   
-  if(!*dir || (*dir == '.' && !dir[1]) || strcmp(dir, "./") == 0) {
+  if (!*dir || (*dir == '.' && !dir[1]) || strcmp(dir, "./") == 0) {
     curdir = 1;
     dir = "";
   } else {
     push_cwd(cwd,&symhold);
   }
   
-  if(fs_chdir_canon(dir, !opt_L && showsymlinks)) {
+  if (fs_chdir_canon(dir, !opt_L && showsymlinks)) {
     destroy_pool(workp);
     return 0;
   }
   
-  if((list = sreaddir(workp,".",FALSE)) == NULL) {
-    if(!curdir)
-      pop_cwd(cwd,&symhold);
+  if ((list = sreaddir(workp, ".", FALSE)) == NULL) {
+    if (!curdir)
+      pop_cwd(cwd, &symhold);
     destroy_pool(workp);
     return 0;
   }
@@ -1291,11 +1293,10 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   if ((c = _find_ls_limit(cmd->argv[0])) != NULL)
     ignore_hidden = (get_param_int(c->subset, "IgnoreHidden", FALSE) == TRUE);
 
-  while(*list && count >= 0) {
+  while (*list && count >= 0) {
     p = *list; list++;
     
     if (*p == '.') {
-
       if (!opt_a && (!opt_A || is_dotdir(p)))
         continue;
 
@@ -1304,38 +1305,41 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
       else if (ignore_hidden)
       continue;
     }
-    
-    if((i = fs_readlink(p, file, sizeof(file))) > 0) {
+   
+    if ((i = fs_readlink(p, file, sizeof(file))) > 0) {
       file[i] = '\0';
       f = file;
+
     } else {
       f = p;
     }
     
-    if(ls_perms(workp,cmd,f,&hidden)) {
-      if(hidden)
+    if (ls_perms(workp, cmd, f, &hidden)) {
+      if (hidden)
         continue;
 
       /* If the data connection isn't open, open it now. */
       if((session.flags & SF_XFER) == 0) {
-	if(data_open(NULL,"file list",IO_WRITE,0) < 0) {
+	if(data_open(NULL, "file list", IO_WRITE, 0) < 0) {
 	  data_reset();
 	  count = -1;
 	  continue;
 	}
+
 	session.flags |= SF_ASCII_OVERRIDE;
       }
       
-      if((mode = file_mode(f)) == 0)
+      if ((mode = file_mode(f)) == 0)
 	continue;
       
-      if(!curdir) {
-	if(sendline("%s/%s\n",dir,p) < 0)
+      if (!curdir) {
+	if (sendline("%s/%s\n", dir, p) < 0)
 	  count = -1;
         else
           count++;
+
       } else {
-	if(sendline("%s\n",p) < 0)
+	if (sendline("%s\n", p) < 0)
 	  count = -1;
         else
           count++;
@@ -1343,8 +1347,8 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
     }
   }
   
-  if(!curdir)
-    pop_cwd(cwd,&symhold);
+  if (!curdir)
+    pop_cwd(cwd, &symhold);
   
   destroy_pool(workp);
   

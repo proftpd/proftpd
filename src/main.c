@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.93 2002-07-26 17:08:55 castaglia Exp $
+ * $Id: main.c,v 1.94 2002-08-12 17:30:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1558,6 +1558,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   }
 
   /* Inform all the modules that we are now a child */
+  log_debug(DEBUG7, "performing module session initializations");
+
   init_child_modules();
 
   log_debug(DEBUG4,"connected - local  : %s:%d",
@@ -1944,6 +1946,7 @@ static void handle_chld(void) {
 
   sigemptyset(&sigset);
   sigaddset(&sigset, SIGTERM);
+  sigaddset(&sigset, SIGCHLD);
 
   block_alarms();
   sigprocmask(SIG_BLOCK, &sigset, NULL);
