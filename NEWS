@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.303 2002-12-05 21:16:46 castaglia Exp $
+$Id: NEWS,v 1.304 2002-12-05 21:46:20 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -19,6 +19,7 @@ CVS
   uploaded and downloaded).
 - Bug 1653 - Complete the FS API abstraction implementation.  The Developer
   Guide will have the complete details on using this API.
+- Bug 1712 - TLS support.  mod_tls-2.0.5 has been added to the distribution.
 
 1.2.7 - Released 05-12-2002
 ---------------------------------
