@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.161 2003-08-09 16:37:23 castaglia Exp $
+ * $Id: mod_auth.c,v 1.162 2003-08-16 17:01:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1714,6 +1714,14 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
 MODRET auth_pre_user(cmd_rec *cmd) {
   auth_endpwent(cmd->tmp_pool);
   auth_endgrent(cmd->tmp_pool);
+
+  /* Check for a user name that exceeds PR_TUNABLE_LOGIN_MAX. */
+  if (strlen(cmd->arg) > PR_TUNABLE_LOGIN_MAX) {
+    log_pri(PR_LOG_NOTICE, "USER %s (Login failed): "
+      "maximum login length exceeded", cmd->arg);
+    pr_response_add_err(R_501, "Login incorrect.");
+    return ERROR(cmd);
+  }
 
   return DECLINED(cmd);
 }

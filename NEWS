@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.465 2003-08-15 01:33:22 castaglia Exp $
+$Id: NEWS,v 1.466 2003-08-16 17:01:57 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -58,6 +58,7 @@ CVS
 - Bug 2144 - Rework autoconf handling of --enable-sia option.
 - Bug 2147 - Segmentation fault processing file in ASCII mode.
 - Fixed mod_ifsession's handling of multiple configuration sets.
+- Bug 2148 - Enforce PR_TUNABLE_LOGIN_MAX.
 
 1.2.9rc1 - Released 15-May-2003
 ---------------------------------
