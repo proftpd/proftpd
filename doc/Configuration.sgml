@@ -3,7 +3,7 @@
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_auth
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -44,7 +44,7 @@ server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_auth
 </para> </listitem>
 </varlistentry>
 
@@ -93,7 +93,7 @@ For examples, see
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_auth
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -134,7 +134,7 @@ server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_auth
 </para> </listitem>
 </varlistentry>
 
@@ -850,12 +850,95 @@ For examples, see
 </refsect1>
 
 </refentry>
+<refentry id="AllowOverride">
+<?dbhtml filename="config_ref_AllowOverride.html">
+<refentryinfo>
+  <keywordset>
+    <keyword>mod_core</keyword>
+  </keywordset>
+</refentryinfo>
+<refmeta>
+<refentrytitle>
+<indexterm><primary>AllowOverride</primary></indexterm>
+AllowOverride
+</refentrytitle>
+</refmeta>
+<refnamediv>
+<refname>AllowOverride</refname>
+<refpurpose>Toggles handling of .ftpaccess files</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+<cmdsynopsis>
+<command>AllowOverride</command>
+<arg choice="opt">
+  <option>on|off ["user"|"group"|"class" expression]</option>
+</arg>
+<!--
+<arg choice="opt" rep="repeat">file</arg>
+-->
+</cmdsynopsis>
+ 
+<variablelist><title></title>
+<varlistentry><term><synopsis>Default</synopsis></term>
+<listitem> <para>
+on
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Context</synopsis></term>
+<listitem> <para>
+server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Module</synopsis></term>
+<listitem> <para>
+mod_core
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Compatibility</synopsis></term>
+<listitem> <para>
+1.2.7rc1 and later
+</para> </listitem>
+</varlistentry>
+</variablelist>
+
+<refsect1>
+<title>Description</title>
+<para>
+Normally, the server will look for and parse any files in the encountered
+directories called ".ftpaccess".  The files provide a functionality
+similar to Apache's .htaccess files -- mini-configuration files.  This
+directive controls when those .ftpaccess files will be parsed.
+</para>
+
+<para>
+The optional parameters are used to restrict the use of .ftpaccess files only
+to specific users.  If the "user" restriction is given, then expression is a
+user-expression specifying to which users the rule applies.  Similarly for the
+"group" restriction.  For the "class" restriction, the expression is simply
+the name of connection class for whom the rule will apply.
+</para>
+</refsect1>
+
+<refsect1>
+<title>See also</title>
+<para>
+<!--
+<link linkend=""></link>
+-->
+</para>
+</refsect1>
+</refentry>
+
 <refentry id="AllowOverwrite">
 <?dbhtml filename="config_ref_AllowOverwrite.html">
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_xfer
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -896,7 +979,7 @@ server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Directory&gt;, &lt;Gl
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_xfer
 </para> </listitem>
 </varlistentry>
 
@@ -1298,7 +1381,7 @@ For examples, see
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_auth
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -1339,7 +1422,7 @@ AnonRequirePassword off
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_auth
 </para> </listitem>
 </varlistentry>
 
@@ -1655,7 +1738,7 @@ For examples, see
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_auth
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -1696,7 +1779,7 @@ server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_auth
 </para> </listitem>
 </varlistentry>
 
@@ -2205,7 +2288,7 @@ For examples, see
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_auth
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -2246,7 +2329,7 @@ AuthUsingAlias off
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_auth
 </para> </listitem>
 </varlistentry>
 
@@ -2625,7 +2708,7 @@ None
 
 <varlistentry><term><synopsis>Context</synopsis></term>
 <listitem> <para>
-server config, &lt;VirtualHost&gt;
+server config
 </para> </listitem>
 </varlistentry>
 
@@ -2722,7 +2805,7 @@ Off
 
 <varlistentry><term><synopsis>Context</synopsis></term>
 <listitem> <para>
-server config, &lt;VirtualHost&gt;
+server config
 </para> </listitem>
 </varlistentry>
 
@@ -2938,6 +3021,93 @@ For examples, see
 </refsect1>
 
 </refentry>
+<refentry id="DefaultAddress">
+<?dbhtml filename="config_ref_DefaultAddress.html">
+<refentryinfo>
+  <keywordset>
+    <keyword>mod_core</keyword>
+  </keywordset>
+</refentryinfo>
+<refmeta>
+<refentrytitle>
+<indexterm><primary>DefaultAddress</primary></indexterm>
+DefaultAddress
+</refentrytitle>
+</refmeta>
+<refnamediv>
+<refname>DefaultAddress</refname>
+<refpurpose>Set the address for the server to listen on</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+<cmdsynopsis>
+<command>DefaultAddress</command>
+<arg choice="opt">
+  <option>"name" limit|regex|ip value</option>
+</arg>
+<!--
+<arg choice="opt" rep="repeat">file</arg>
+-->
+</cmdsynopsis>
+ 
+<variablelist><title></title>
+<varlistentry><term><synopsis>Default</synopsis></term>
+<listitem> <para>
+none
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Context</synopsis></term>
+<listitem> <para>
+server config
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Module</synopsis></term>
+<listitem> <para>
+mod_core
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Compatibility</synopsis></term>
+<listitem> <para>
+1.2.7rc1 and later
+</para> </listitem>
+</varlistentry>
+</variablelist>
+
+<refsect1>
+<title>Description</title>
+<para>
+This directive sets the the address the main server instance will bind
+to, the default behaviour is to select whatever IP the system reports
+as being the primary IP.
+</para>
+</refsect1>
+
+<refsect1>
+<title>See also</title>
+<para>
+<!--
+<link linkend=""></link>
+-->
+</para>
+</refsect1>
+
+<refsect1>
+<title>Examples</title>
+
+<literallayout>
+ServerName "Default FTP Server"
+Port 21
+
+# We want the main server instance to listen on a specific IP
+DefaultAddress 192.168.10.30
+</literallayout>
+
+</refsect1>
+</refentry>
+
 <refentry id="DefaultChdir">
 <?dbhtml filename="config_ref_DefaultChdir.html">
 <refentryinfo>
@@ -3024,95 +3194,6 @@ For examples, see
 </refsect1>
 
 </refentry>
-<refentry id="DefaultQuota">
-<?dbhtml filename="config_ref_DefaultQuota.html">
-<refentryinfo>
-  <keywordset>
-    <keyword>
-      mod_quota
-    </keyword>
-  </keywordset>
-</refentryinfo>
-<refmeta>
-<refentrytitle>
-<indexterm><primary>DefaultQuota</primary></indexterm>
-DefaultQuota
-</refentrytitle>
-</refmeta>
-<refnamediv>
-<refname>DefaultQuota</refname>
-<refpurpose>Sets the default quota</refpurpose>
-</refnamediv>
-
-<refsynopsisdiv>
-<cmdsynopsis>
-<command>DefaultQuota</command>
-<arg choice="opt">
-  <option>value in bytes</option>
-</arg>
-<!--
-<arg choice="opt" rep="repeat">file</arg>
--->
-</cmdsynopsis>
-
-<variablelist><title></title>
-<varlistentry><term><synopsis>Default</synopsis></term>
-<listitem> <para>
-0
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Context</synopsis></term>
-<listitem> <para>
-server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Module</synopsis></term>
-<listitem> <para>
-mod_quota
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Compatibility</synopsis></term>
-<listitem> <para>
-at least 1.2.0 and later
-</para> </listitem>
-</varlistentry>
-</variablelist>
-</refsynopsisdiv>
-
-<refsect1>
-<title>Description</title>
-<para>
-The DefaultQuota directive sets the default quota in bytes, this
-value is used if the .quota file does not exist.</para>
-</refsect1>
-
-<refsect1>
-<title>See also</title>
-<para>
-<link linkend="Quotas">Quotas</link>
-</para>
-</refsect1>
-
-<refsect1>
-<title>Examples</title>
-<programlisting>
-#
-# Set default to 1kb
-#
-DefaultQuota 1024 
-</programlisting>
-<para>
-<!--
-For examples, see 
-<link linkend="Class">Class</link>
--->
-</para>
-</refsect1>
-
-</refentry>
 <refentry id="DefaultRoot">
 <?dbhtml filename="config_ref_DefaultRoot.html">
 <refentryinfo>
@@ -3181,6 +3262,15 @@ authenticates. This can be used to effectively isolate the client from
 a portion of the host system filespace. The specified root directory
 must begin with a / or can be the magic character '~'; meaning that the
 client is chroot jailed into their home directory.
+</para>
+
+<para>
+When the specified chroot directory is a symlink this will be resolved
+to it's parent first before setting up the chroot.  This can have
+unwanted side effects.  For example if a chroot is to be configured
+within space to which a user as shell access, the chroot directory
+could be converted to a symlink pointing at '/'.  Thus the chroot
+would be to the root directory of the server.
 </para>
 
 <para>
@@ -3606,7 +3696,7 @@ IfDefine HighPerformanceSetup
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_xfer
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -3647,7 +3737,7 @@ server, &lt;VirtualHost&gt;, &lt;Directory&gt;, &lt;Anonymous&gt;, &lt;Global&gt
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_xfer
 </para> </listitem>
 </varlistentry>
 
@@ -4658,7 +4748,7 @@ DisplayFirstChdir
 </refmeta>
 <refnamediv>
 <refname>DisplayFirstChdir</refname>
-<refpurpose>FIXME FIXME</refpurpose>
+<refpurpose>Set the file to display when first entering a directory</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -4791,7 +4881,7 @@ DisplayGoAway
 </refmeta>
 <refnamediv>
 <refname>DisplayGoAway</refname>
-<refpurpose>FIXME FIXME</refpurpose>
+<refpurpose>Set the file to display to a rejected connection</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -4880,7 +4970,7 @@ DisplayLogin
 </refmeta>
 <refnamediv>
 <refname>DisplayLogin</refname>
-<refpurpose>FIXME FIXME</refpurpose>
+<refpurpose>Set the file to display on login</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -4973,7 +5063,7 @@ DisplayQuit
 </refmeta>
 <refnamediv>
 <refname>DisplayQuit</refname>
-<refpurpose>FIXME FIXME</refpurpose>
+<refpurpose>Set the file to display on quit</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -5066,7 +5156,7 @@ DisplayReadme
 </refmeta>
 <refnamediv>
 <refname>DisplayReadme</refname>
-<refpurpose>FIXME FIXME</refpurpose>
+<refpurpose>Enable display of file modification times on a file pattern</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -5374,7 +5464,7 @@ FooBarDirective
 </refmeta>
 <refnamediv>
 <refname>FooBarDirective</refname>
-<refpurpose>FIXME FIXME</refpurpose>
+<refpurpose>Dummy directive</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -5459,7 +5549,7 @@ Global
 </refmeta>
 <refnamediv>
 <refname>Global</refname>
-<refpurpose>FIXME FIXME</refpurpose>
+<refpurpose>Set some directives to apply across the entire daemon</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -5507,6 +5597,9 @@ The Global configuration block is used to create a set of configuration directiv
 which is applied universally to both the main server configuration and all VirtualHost 
 configurations. Most, but not all other directives can be used 
 inside a Global block.
+</para>
+
+<para>
 In addition, multiple &lt;Global&gt; blocks can be created. At runtime, all 
 Global blocks are merged together and finally into each server's configuration. 
 Global blocks are terminated by a matching &lt;/Global&gt; directive.</para>
@@ -5549,7 +5642,7 @@ Group
 </refmeta>
 <refnamediv>
 <refname>Group</refname>
-<refpurpose>FIXME FIXME</refpurpose>
+<refpurpose>Set the group the server normally runs as</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -5716,7 +5809,7 @@ For examples, see
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_auth
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -5757,7 +5850,7 @@ server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_auth
 </para> </listitem>
 </varlistentry>
 
@@ -5894,7 +5987,7 @@ For examples, see
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_xfer
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -5935,7 +6028,7 @@ HiddenStor off
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_xfer
 </para> </listitem>
 </varlistentry>
 
@@ -5983,6 +6076,204 @@ For examples, see
 </refsect1>
 
 </refentry>
+<refentry id="HiddenStores">
+<?dbhtml filename="config_ref_HiddenStores.html">
+<refentryinfo>
+  <keywordset>
+    <keyword>mod_xfer</keyword>
+  </keywordset>
+</refentryinfo>
+<refmeta>
+<refentrytitle>
+<indexterm><primary>HiddenStores</primary></indexterm>
+HiddenStores
+</refentrytitle>
+</refmeta>
+<refnamediv>
+<refname>HiddenStores</refname>
+<refpurpose>FIXFIXFIX</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+<cmdsynopsis>
+<command>HiddenStores</command>
+<arg choice="opt">
+  <option>"name" limit|regex|ip value</option>
+</arg>
+<!--
+<arg choice="opt" rep="repeat">file</arg>
+-->
+</cmdsynopsis>
+ 
+<variablelist><title></title>
+<varlistentry><term><synopsis>Default</synopsis></term>
+<listitem> <para>
+FIXFIXFIX
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Context</synopsis></term>
+<listitem> <para>
+server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;, .ftpaccess
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Module</synopsis></term>
+<listitem> <para>
+mod_xfer
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Compatibility</synopsis></term>
+<listitem> <para>
+1.2.7rc1 and later
+</para> </listitem>
+</varlistentry>
+</variablelist>
+
+<refsect1>
+<title>Description</title>
+<para>
+FIX FIX FIX
+</para>
+</refsect1>
+
+<refsect1>
+<title>See also</title>
+<para>
+<!--
+<link linkend=""></link>
+-->
+</para>
+</refsect1>
+
+<refsect1>
+<title>Examples</title>
+
+<literallayout>
+FIXFIXFIX
+</literallayout>
+
+<para>
+FIXFIX
+</para>
+
+</refsect1>
+</refentry>
+
+<refentry id="HideFiles">
+<?dbhtml filename="config_ref_HideFiles.html">
+<refentryinfo>
+  <keywordset>
+    <keyword>mod_core</keyword>
+  </keywordset>
+</refentryinfo>
+<refmeta>
+<refentrytitle>
+<indexterm><primary>HideFiles</primary></indexterm>
+HideFiles
+</refentrytitle>
+</refmeta>
+<refnamediv>
+<refname>HideFiles</refname>
+<refpurpose>Enable hiding of files based on regular expressions</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+<cmdsynopsis>
+<command>HideFiles</command>
+<arg choice="opt">
+  <option>[!]regexp|"none" ["user"|"group"|"class" expression]</option>
+</arg>
+<!--
+<arg choice="opt" rep="repeat">file</arg>
+-->
+</cmdsynopsis>
+ 
+<variablelist><title></title>
+<varlistentry><term><synopsis>Default</synopsis></term>
+<listitem> <para>
+None
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Context</synopsis></term>
+<listitem> <para>
+&lt;Directory&gt;, .ftpaccess
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Module</synopsis></term>
+<listitem> <para>
+mod_core
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Compatibility</synopsis></term>
+<listitem> <para>
+1.2.7rc1 and later
+</para> </listitem>
+</varlistentry>
+</variablelist>
+
+<refsect1>
+<title>Description</title>
+<para>
+The HideFiles directive configures a &lt;Directory&gt; section to hide all
+directory entries, e.g. its files and sub-directories, that match the given
+regular expression. These files can still be operated on by other FTP commands
+(DELE, RETR, etc), as constrained by any applicable &lt;Limit&gt;s, but this
+can be modified using the IgnoreHidden directive.  Note that this directive
+manipulates a file's "hidden-ness", but doesn't do any hiding by itself.  A
+&lt;Limit&gt; section, with IgnoreHidden enabled, does the actual hiding of the
+files from the &lt;Limit&gt;ed commands.
+</para>
+
+<para>
+As &lt;Directory&gt; configurations are inherited by sub-directories, the "none"
+parameter can be used to disable any inherited file hiding within a
+sub-directory, usually through the use of a .ftpaccess file.
+</para>
+
+<para>
+The optional parameters are used to restrict the rule for hiding files only
+to specific users.  If "user" restriction is given, then expression is a
+user-expression specifying to which users the rule applies.  Similarly for the
+"group" restriction.  For the "class" restriction, the expression is simply
+the name of connection class for whom the rule will apply.
+</para>
+
+<para>
+An unrestricted HideFiles directive and an unrestriected ShowFiles directive
+cannot be used simultaneously in the context.
+</para>
+
+<para>
+Example:
+
+  # Hide configuration and passwd files from view
+  HideFiles "(\\.conf|passwd)$"
+
+  # ...or the same regex, without the quotes
+  HideFiles (\.conf|passwd)$
+
+  # Hide those same files from everyone _except_ a special user
+  HideFiles (\.conf|passwd)$ user !tj
+
+  # Using the ! prefix to "invert" the regular expression matching,
+  # allow only .txt and .html files to be seen
+  HideFiles !(\.txt|\.html)$
+
+  # Only let users of the webmaster group see HTML files, but nothing else
+  HideFiles !(\.htm|\.html)$ group webmaster
+</para>
+
+<para>
+See Also: HideGroup, HideUser, HideNoAccess
+</para>
+</refsect1>
+</refentry>
+
 <refentry id="HideGroup">
 <?dbhtml filename="config_ref_HideGroup.html">
 <refentryinfo>
@@ -6000,7 +6291,7 @@ HideGroup
 </refmeta>
 <refnamediv>
 <refname>HideGroup</refname>
-<refpurpose>FIXME FIXME</refpurpose>
+<refpurpose>Enable hiding of files based on group owner</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -6539,8 +6830,8 @@ $ proftpd -DDoSomething
 --[ proftpd.conf ]--
 &lt;IfDefine DoSomething&gt;
 # do something here
+&lt;/IfDefine&gt;
 --[ end ]--
-</IfDefine>
 
 </literallayout>
 
@@ -7725,6 +8016,97 @@ mod_ldap
 	</refsect1>
 </refentry>
 <refentry id="LDAPHomedirOnDemand">
+  <?dbhtml filename="config_ref_LDAPForceHomedirOnDemand.html">
+  <refentryinfo>
+    <keywordset>
+      <keyword>
+        mod_ldap
+      </keyword>
+    </keywordset>
+  </refentryinfo>
+
+  <refmeta>
+    <refentrytitle>
+      <indexterm><primary>LDAPForceHomedirOnDemand</primary></indexterm>
+      LDAPForceHomedirOnDemand
+    </refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>LDAPForceHomedirOnDemand</refname>
+    <refpurpose>
+      Force all LDAP-authenticated users to use the default HomeDironDemand
+      prefix/suffix.
+    </refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>LDAPForceHomedirOnDemand</command>
+      <arg choice="opt">
+        <option>on</option>
+        <option>off</option>
+      </arg>
+
+      <arg choice="opt">
+        <option>directory-mode</option>
+      </arg>
+    </cmdsynopsis>
+
+  <variablelist>
+    <title></title>
+
+    <varlistentry>
+      <term><synopsis>Default</synopsis></term>
+      <listitem><para>
+        LDAPForceHomedirOnDemand off
+      </para></listitem>
+    </varlistentry>
+
+    <varlistentry>
+      <term><synopsis>Context</synopsis></term>
+      <listitem><para>
+        server config, &lt;VirtualHost&gt;, &lt;Global&gt;
+      </para></listitem>
+    </varlistentry>
+
+    <varlistentry>
+      <term><synopsis>Module</synopsis></term>
+      <listitem><para>mod_ldap</para></listitem>
+    </varlistentry>
+
+    <varlistentry>
+      <term><synopsis>Compatibility</synopsis></term>
+      <listitem><para>
+        mod_ldap v2.8.11 and later
+      </para></listitem>
+    </varlistentry>
+  </variablelist>
+</refsynopsisdiv>
+
+  <refsect1>
+    <title>Description</title>
+
+    <para>Even when a
+    <link linkend="LDAPHomeDironDemandPrefix">LDAPHomeDironDemandPrefix</link>
+    is configured, mod_ldap will allow individual users to have
+    homeDirectory attributes that will override the default. With
+    LDAPForceHomeDironDemand enabled, all LDAP-authenticated users are given
+    the default prefix and/or suffix; homedirs may not be overridden by LDAP
+    homeDirectory attributes.</para>
+  </refsect1>
+
+  <refsect1>
+    <title>See also</title>
+    <para></para>
+  </refsect1>
+
+  <refsect1>
+    <title>Examples</title>
+    <para></para>
+  </refsect1>
+</refentry>
+<refentry id="LDAPHomedirOnDemand">
 	<?dbhtml filename="config_ref_LDAPHomedirOnDemand.html">
 <refentryinfo>
   <keywordset>
@@ -8617,7 +8999,7 @@ Limit
 </refmeta>
 <refnamediv>
 <refname>Limit</refname>
-<refpurpose>FIXME FIXME</refpurpose>
+<refpurpose>Set the commands/actions to be controlled</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -8821,46 +9203,49 @@ use %%.</para>
 <para>
 The following meta sequences are available and are replaced as indicated 
 when logging.
+%a
+&nbsp;
+Remote client IP address
 %A
 &nbsp;
 Anonymous username (password given), or UNKNOWN if non-anonymous
 %b
 &nbsp;
 Bytes sent for request
+%{FOOBAR}e
+&nbsp;
+Contents of environment variable FOOBAR.  Note that the server does not set
+any environment variables itself.
 %f
 &nbsp;
 Filename stored or retrieved, absolute path (not chrooted)
 %F
 &nbsp;
 Filename stored or retrieved, as the client sees it
-%{FOOBAR}e
-&nbsp;
-Contents of environment variable FOOBAR.  Note that the server does not set
-any environment variables itself.
 %h
 &nbsp;
-Remote host name
-%a
-&nbsp;
-Remote IP address
+Remote client DNS name
 %l
 &nbsp;
 Remote username (from ident), or UNKNOWN if ident lookup failed
+%L
+&nbsp;
+Local server IP address
 %m
 &nbsp;
 Command (method) name received from client, e.g., RETR
 %p
 &nbsp;
 Local server port number
-%v
-&nbsp;
-Local server name
 %P
 &nbsp;
 Local server process id (pid)
 %r
 &nbsp;
 Full command line received from client
+%s
+&nbsp;
+Numeric FTP response code (status)
 %t
 &nbsp;
 Current local time
@@ -8870,12 +9255,15 @@ Current local time formatted (strftime(3) format)
 %T
 &nbsp;
 Time taken to transmit/receive file, in seconds 
-%s
-&nbsp;
-Numeric FTP response code (status)
 %u
 &nbsp;
 Local authenticated userid
+%v
+&nbsp;
+ServerName of server handling session
+%V
+&nbsp;
+DNS name of server handling session
 </para>
 </refsect1>
 
@@ -9170,7 +9558,7 @@ for the server.
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_auth
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -9211,7 +9599,7 @@ server config, &lt;Anonymous&gt;, &lt;VirtualHost&gt;, &lt;Global&gt;
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_auth
 </para> </listitem>
 </varlistentry>
 
@@ -9270,7 +9658,7 @@ For examples, see
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_auth
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -9311,7 +9699,7 @@ server config, &lt;Anonymous&gt;, &lt;VirtualHost&gt;, &lt;Global&gt;
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_auth
 </para> </listitem>
 </varlistentry>
 
@@ -9359,12 +9747,201 @@ For examples, see
 </refsect1>
 
 </refentry>
+<refentry id="MaxClientsPerUser">
+<?dbhtml filename="config_ref_MaxClientsPerUser.html">
+<refentryinfo>
+  <keywordset>
+    <keyword>
+      mod_auth
+    </keyword>
+  </keywordset>
+</refentryinfo>
+<refmeta>
+<refentrytitle>
+<indexterm><primary>MaxClientsPerUser</primary></indexterm>
+MaxClientsPerUser
+</refentrytitle>
+</refmeta>
+<refnamediv>
+<refname>MaxClientsPerUser</refname>
+<refpurpose>Limit the number of connections per userid</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+<cmdsynopsis>
+<command>MaxClientsPerUser</command>
+<arg choice="opt">
+  <option>MaxClientsPerUser number|none [message]</option>
+</arg>
+<!--
+<arg choice="opt" rep="repeat">file</arg>
+-->
+</cmdsynopsis>
+
+<variablelist><title></title>
+<varlistentry><term><synopsis>Default</synopsis></term>
+<listitem> <para>
+MaxClientsPerUser none
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Context</synopsis></term>
+<listitem> <para>
+server config, &lt;VirtualHost&gt;, &lt;Global&gt;, &lt;Anonymous&gt;
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Module</synopsis></term>
+<listitem> <para>
+mod_auth
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Compatibility</synopsis></term>
+<listitem> <para>
+1.2.7rc1 and later
+</para> </listitem>
+</varlistentry>
+</variablelist>
+</refsynopsisdiv>
+
+<refsect1>
+<title>Description</title>
+<para>
+The MaxClientsPerUser directive configures the maximum number of clients
+that may be connected at any given time using the same user name.  The
+optional argument message may be used which will be displayed to a client
+attempting to exceed the maximum value. If message is not supplied, a default
+message of "Sorry, the maximum number of clients (%m) for this user
+already connected."</para>
+</refsect1>
+
+<refsect1>
+<title>See also</title>
+<para>
+<link linkend="MaxClients">MaxClients</link>,
+<link linkend="MaxClientsPerHost">MaxClientsPerHost</link>
+<link linkend="MaxHostsPerUser">MaxHostsPerUser</link>
+<!--
+-->
+</para>
+</refsect1>
+
+<refsect1>
+<title>Examples</title>
+<programlisting>
+MaxClientsPerUser 1 &quot;Only one such user at a time.&quot;
+Results in: 530 Only one such user at a time.
+</programlisting>
+<para>
+<!--
+For examples, see 
+<link linkend="Class">Class</link>
+-->
+</para>
+</refsect1>
+
+</refentry>
+<refentry id="MaxConnectionRate">
+<?dbhtml filename="config_ref_MaxConnectionRate.html">
+<refentryinfo>
+  <keywordset>
+    <keyword>mod_core</keyword>
+  </keywordset>
+</refentryinfo>
+<refmeta>
+<refentrytitle>
+<indexterm><primary>MaxConnectionRate</primary></indexterm>
+MaxConnectionRate
+</refentrytitle>
+</refmeta>
+<refnamediv>
+<refname>MaxConnectionRate</refname>
+<refpurpose>Maximum TCP socket connection rate</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+<cmdsynopsis>
+<command>MaxConnectionRate</command>
+<arg choice="opt">
+  <option>connections per second</option>
+</arg>
+<!--
+<arg choice="opt" rep="repeat">file</arg>
+-->
+</cmdsynopsis>
+ 
+<variablelist><title></title>
+<varlistentry><term><synopsis>Default</synopsis></term>
+<listitem> <para>
+none
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Context</synopsis></term>
+<listitem> <para>
+server config
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Module</synopsis></term>
+<listitem> <para>
+mod_core
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Compatibility</synopsis></term>
+<listitem> <para>
+1.2.7rc1 and later
+</para> </listitem>
+</varlistentry>
+</variablelist>
+
+<refsect1>
+<title>Description</title>
+<para>
+Set the maxiumum rate at which new TCP connections are accepted, this
+applies to the entire server, therefore too low a value on a high
+traffic server can result in all VirtualHosts being made unavailable
+due to normal traffic levels.
+</para>
+
+<para>
+The value is the number of connections in a given second at which
+the block comes into effect, thus a value of "1" will result in all
+connections being blocked.
+</para>
+</refsect1>
+
+<refsect1>
+<title>See also</title>
+<para>
+<!--
+<link linkend=""></link>
+-->
+</para>
+</refsect1>
+
+<refsect1>
+<title>Examples</title>
+
+<literallayout>
+MaxConnectionRate	4
+</literallayout>
+
+<para>
+FIXFIX
+</para>
+
+</refsect1>
+</refentry>
+
 <refentry id="MaxHostsPerUser">
 <?dbhtml filename="config_ref_MaxHostsPerUser.html">
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_auth
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -9405,7 +9982,7 @@ server config, &lt;Anonymous&gt;, &lt;VirtualHost&gt;, &lt;Global&gt;
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_auth
 </para> </listitem>
 </varlistentry>
 
@@ -9421,9 +9998,9 @@ mod_core
 <title>Description</title>
 <para>
 The MaxHostsPerUser directive configures the maximum number of times
-any given login can connection at any given time.  The optional argument
-message may be used which will be displayed to a client attempting
-to exceed the maximum value. If message is not supplied, a default
+different hosts, using a given login, can connect at any given time.  The
+optional argument message may be used which will be displayed to a client
+attempting to exceed the maximum value. If message is not supplied, a default
 message of "Sorry, the maximum number of hosts (%m) for this user
 already connected."</para>
 </refsect1>
@@ -9552,7 +10129,7 @@ For examples, see
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_auth
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -9593,7 +10170,7 @@ server config, &lt;VirtualHost&gt;, &lt;Global&gt;
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_auth
 </para> </listitem>
 </varlistentry>
 
@@ -9634,6 +10211,234 @@ For examples, see
 </refsect1>
 
 </refentry>
+<refentry id="MaxRetrieveFileSize">
+<?dbhtml filename="config_ref_MaxRetrieveFileSize.html">
+<refentryinfo>
+  <keywordset>
+    <keyword>mod_xfer</keyword>
+  </keywordset>
+</refentryinfo>
+<refmeta>
+<refentrytitle>
+<indexterm><primary>MaxRetrieveFileSize</primary></indexterm>
+MaxRetrieveFileSize
+</refentrytitle>
+</refmeta>
+<refnamediv>
+<refname>MaxRetrieveFileSize</refname>
+<refpurpose>Restrict size of downloaded files</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+<cmdsynopsis>
+<command>MaxRetrieveFileSize</command>
+<arg choice="opt">
+  <option>number|"*" units ["user"|"group"|"class" expression]</option>
+</arg>
+<!--
+<arg choice="opt" rep="repeat">file</arg>
+-->
+</cmdsynopsis>
+ 
+<variablelist><title></title>
+<varlistentry><term><synopsis>Default</synopsis></term>
+<listitem> <para>
+None
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Context</synopsis></term>
+<listitem> <para>
+server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Directory&gt;, .ftpaccess
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Module</synopsis></term>
+<listitem> <para>
+mod_xfer
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Compatibility</synopsis></term>
+<listitem> <para>
+1.2.7rc1 and later
+</para> </listitem>
+</varlistentry>
+</variablelist>
+
+<refsect1>
+<title>Description</title>
+<para>
+When downloading files to clients (eg serving a RETR request), the
+server will check for any configured limit against the size of the file
+being requested, and abort any transfers if the requested file's size
+exceeds the configured limit.
+</para>
+
+<para>
+A single "*" argument configures unlimited file sizes, and is used
+primarily to override any inherited restrictions from higher contexts.
+The given number is the number of bytes for the limit, and is followed
+by a units specifier of (case-insensitive) "Gb" (Gigabytes),
+"Mb" (Megabytes), "Kb" (Kilobytes), or "B" (bytes).  The given number of
+bytes is multiplied by the appropriate factor.
+</para>
+
+<para> 
+The optional parameters are used to restrict the file size limits only
+to specific users.  If the "user" restriction is given, then expression is a
+user-expression specifying to which users the rule applies.  Similarly for the
+"group" restriction.  For the "class" restriction, the expression is simply
+the name of connection class for whom the rule will apply.  If no matching
+user, group, or class expression is found for the current user (in that
+order), then a limit with no expression (i.e. no "user", "group", or "class"
+identifier) is applied.
+</para>
+
+<para>
+See Also: MaxStoreFileSize
+</para>
+</refsect1>
+
+<refsect1>
+<title>See also</title>
+<para>
+<!--
+<link linkend=""></link>
+-->
+</para>
+</refsect1>
+
+<refsect1>
+<title>Examples</title>
+
+<literallayout>
+  # Restrict downloads to only 1 gigabyte
+  MaxRetrieveFileSize 1 Gb
+
+  # Restrict downloads for user fred, but allow unlimited download size for
+  # everyone else
+  MaxStoreFileSize 50 Kb user fred
+  MaxStoreFileSize *
+</literallayout>
+
+</refsect1>
+</refentry>
+
+<refentry id="MaxStoreFileSize">
+<?dbhtml filename="config_ref_MaxStoreFileSize.html">
+<refentryinfo>
+  <keywordset>
+    <keyword>mod_xfer</keyword>
+  </keywordset>
+</refentryinfo>
+<refmeta>
+<refentrytitle>
+<indexterm><primary>MaxStoreFileSize</primary></indexterm>
+MaxStoreFileSize
+</refentrytitle>
+</refmeta>
+<refnamediv>
+<refname>MaxStoreFileSize</refname>
+<refpurpose>Restrict size of uploaded files</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+<cmdsynopsis>
+<command>MaxStoreFileSize</command>
+<arg choice="opt">
+  <option>number|"*" units ["user"|"group"|"class" expression]</option>
+</arg>
+<!--
+<arg choice="opt" rep="repeat">file</arg>
+-->
+</cmdsynopsis>
+ 
+<variablelist><title></title>
+<varlistentry><term><synopsis>Default</synopsis></term>
+<listitem> <para>
+None
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Context</synopsis></term>
+<listitem> <para>
+server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Directory&gt;, .ftpaccess
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Module</synopsis></term>
+<listitem> <para>
+mod_xfer
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Compatibility</synopsis></term>
+<listitem> <para>
+1.2.7rc1 and later
+</para> </listitem>
+</varlistentry>
+</variablelist>
+
+<refsect1>
+<title>Description</title>
+<para>
+When uploading files from a client (eg serving a STOR request), the
+server will check for any configured limit against the size of the file
+being sent, and abort any transfers if/when the given file's size
+exceeds the configured limit.
+</para>
+
+<para>
+A single "*" argument configures unlimited file sizes, and is used
+primarily to override any inherited restrictions from higher contexts.
+The given number is the number of bytes for the limit, and is followed
+by a units specifier of (case-insensitive) "Gb" (Gigabytes),
+"Mb" (Megabytes), "Kb" (Kilobytes), or "B" (bytes).  The given number of
+bytes is multiplied by the appropriate factor.
+</para>
+
+<para>
+The optional parameters are used to restrict the file size limits only
+to specific users.  If the "user" restriction is given, then expression is a
+user-expression specifying to which users the rule applies.  Similarly for the
+"group" restriction.  For the "class" restriction, the expression is simply
+the name of connection class for whom the rule will apply.  If no matching
+user, group, or class expression is found for the current user (in that
+order), then a limit with no expression (ie no "user", "group", or "class"
+identifier) is applied.
+</para>
+
+<para>
+See Also: MaxRetrieveFileSize
+</para>
+</refsect1>
+
+<refsect1>
+<title>See also</title>
+<para>
+<!--
+<link linkend=""></link>
+-->
+</para>
+</refsect1>
+
+<refsect1>
+<title>Examples</title>
+
+<literallayout>
+  # Restrict upload to only 3 megabytes
+  MaxStoreFileSize 3 Mb
+
+  # Restrict anonymous uploads to 50k, but allow unlimited upload size for
+  # everyone else
+  MaxStoreFileSize 50 Kb user anonymous
+  MaxStoreFileSize *
+</literallayout>
+
+</refsect1>
+</refentry>
+
 <refentry id="MultilineRFC2228">
 <?dbhtml filename="config_ref_MultilineRFC2228.html">
 <refentryinfo>
@@ -9651,7 +10456,7 @@ MultilineRFC2228
 </refmeta>
 <refnamediv>
 <refname>MultilineRFC2228</refname>
-<refpurpose>FIXME FIXME</refpurpose>
+<refpurpose>Enable RFC2228 multiline response mode</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -10346,7 +11151,7 @@ PidFile
 </refmeta>
 <refnamediv>
 <refname>PidFile</refname>
-<refpurpose>FIXME FIXME</refpurpose>
+<refpurpose>Set the filepath to hold the pid of the master server</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -10438,7 +11243,7 @@ Port
 </refmeta>
 <refnamediv>
 <refname>Port</refname>
-<refpurpose>FIXME FIXME</refpurpose>
+<refpurpose>Set the port for the control socket</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -10714,530 +11519,6 @@ For examples, see
 </refsect1>
 
 </refentry>
-<refentry id="QuotaBlockName">
-<?dbhtml filename="config_ref_QuotaBlockName.html">
-<refentryinfo>
-  <keywordset>
-    <keyword>
-      mod_quota
-    </keyword>
-  </keywordset>
-</refentryinfo>
-<refmeta>
-<refentrytitle>
-<indexterm><primary>QuotaBlockName</primary></indexterm>
-QuotaBlockName
-</refentrytitle>
-</refmeta>
-<refnamediv>
-<refname>QuotaBlockName</refname>
-<refpurpose>FIXME FIXME</refpurpose>
-</refnamediv>
-
-<refsynopsisdiv>
-<cmdsynopsis>
-<command>QuotaBlockName</command>
-<arg choice="opt">
-  <option>QuotaBlockName name</option>
-</arg>
-<!--
-<arg choice="opt" rep="repeat">file</arg>
--->
-</cmdsynopsis>
-
-<variablelist><title></title>
-<varlistentry><term><synopsis>Default</synopsis></term>
-<listitem> <para>
-byte
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Context</synopsis></term>
-<listitem> <para>
-server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Module</synopsis></term>
-<listitem> <para>
-mod_quota
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Compatibility</synopsis></term>
-<listitem> <para>
-at least 1.2.0 and later
-</para> </listitem>
-</varlistentry>
-</variablelist>
-</refsynopsisdiv>
-
-<refsect1>
-<title>Description</title>
-<para>
-The QuotaBlockName directive is used in conjunction with the QuotaBlockSize directive to control user
-output from the module.  This directive specifies the name given to
-the values displayed (ie byte, kilobyte, kb etc etc).  
-Example:
-QuotaBlockName kb</para>
-</refsect1>
-
-<refsect1>
-<title>See also</title>
-<para>
-<!--
-<link linkend=""></link>
--->
-</para>
-</refsect1>
-
-<refsect1>
-<title>Examples</title>
-<para>
-<!--
-For examples, see 
-<link linkend="Class">Class</link>
--->
-</para>
-</refsect1>
-
-</refentry>
-<refentry id="QuotaBlockSize">
-<?dbhtml filename="config_ref_QuotaBlockSize.html">
-<refentryinfo>
-  <keywordset>
-    <keyword>
-      mod_quota
-    </keyword>
-  </keywordset>
-</refentryinfo>
-<refmeta>
-<refentrytitle>
-<indexterm><primary>QuotaBlockSize</primary></indexterm>
-QuotaBlockSize
-</refentrytitle>
-</refmeta>
-<refnamediv>
-<refname>QuotaBlockSize</refname>
-<refpurpose>FIXME FIXME</refpurpose>
-</refnamediv>
-
-<refsynopsisdiv>
-<cmdsynopsis>
-<command>QuotaBlockSize</command>
-<arg choice="opt">
-  <option>QuotaBlockSize number of bytes</option>
-</arg>
-<!--
-<arg choice="opt" rep="repeat">file</arg>
--->
-</cmdsynopsis>
-
-<variablelist><title></title>
-<varlistentry><term><synopsis>Default</synopsis></term>
-<listitem> <para>
-None
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Context</synopsis></term>
-<listitem> <para>
-server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Module</synopsis></term>
-<listitem> <para>
-mod_quota
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Compatibility</synopsis></term>
-<listitem> <para>
-at least 1.2.0 and later
-</para> </listitem>
-</varlistentry>
-</variablelist>
-</refsynopsisdiv>
-
-<refsect1>
-<title>Description</title>
-<para>
-The QuotaBlockSize directive is used in conjuntion with the QuotaBlockName directive to control how
-the user output is handled.  QuotaBlockSize specifies the factor by
-which the values in the user reports are divided before display.
-Example:
-QuotaBlockSize 1024</para>
-</refsect1>
-
-<refsect1>
-<title>See also</title>
-<para>
-<!--
-<link linkend=""></link>
--->
-</para>
-</refsect1>
-
-<refsect1>
-<title>Examples</title>
-<para>
-<!--
-For examples, see 
-<link linkend="Class">Class</link>
--->
-</para>
-</refsect1>
-
-</refentry>
-<refentry id="QuotaCalc">
-<?dbhtml filename="config_ref_QuotaCalc.html">
-<refentryinfo>
-  <keywordset>
-    <keyword>
-      mod_quota
-    </keyword>
-  </keywordset>
-</refentryinfo>
-<refmeta>
-<refentrytitle>
-<indexterm><primary>QuotaCalc</primary></indexterm>
-QuotaCalc
-</refentrytitle>
-</refmeta>
-<refnamediv>
-<refname>QuotaCalc</refname>
-<refpurpose>FIXME FIXME</refpurpose>
-</refnamediv>
-
-<refsynopsisdiv>
-<cmdsynopsis>
-<command>QuotaCalc</command>
-<arg choice="opt">
-  <option>QuotaCalc foo1 foo2 foo3</option>
-</arg>
-<!--
-<arg choice="opt" rep="repeat">file</arg>
--->
-</cmdsynopsis>
-
-<variablelist><title></title>
-<varlistentry><term><synopsis>Default</synopsis></term>
-<listitem> <para>
-None
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Context</synopsis></term>
-<listitem> <para>
-server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Module</synopsis></term>
-<listitem> <para>
-mod_quota
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Compatibility</synopsis></term>
-<listitem> <para>
-at least 1.2.0 and later
-</para> </listitem>
-</varlistentry>
-</variablelist>
-</refsynopsisdiv>
-
-<refsect1>
-<title>Description</title>
-<para>
-The QuotaCalc directive controls whether calculation is done on
-the fly.  If the directive is set to 'on' and either there is no
-.quota file or the quota would go negative then calculation is done
-on the fly rather than at the end of the session.</para>
-</refsect1>
-
-<refsect1>
-<title>See also</title>
-<para>
-<!--
-<link linkend=""></link>
--->
-</para>
-</refsect1>
-
-<refsect1>
-<title>Examples</title>
-<para>
-<!--
-For examples, see 
-<link linkend="Class">Class</link>
--->
-</para>
-</refsect1>
-
-</refentry>
-<refentry id="QuotaExempt">
-<?dbhtml filename="config_ref_QuotaExempt.html">
-<refentryinfo>
-  <keywordset>
-    <keyword>
-      mod_quota
-    </keyword>
-  </keywordset>
-</refentryinfo>
-<refmeta>
-<refentrytitle>
-<indexterm><primary>QuotaExempt</primary></indexterm>
-QuotaExempt
-</refentrytitle>
-</refmeta>
-<refnamediv>
-<refname>QuotaExempt</refname>
-<refpurpose>FIXME FIXME</refpurpose>
-</refnamediv>
-
-<refsynopsisdiv>
-<cmdsynopsis>
-<command>QuotaExempt</command>
-<arg choice="opt">
-  <option>QuotaExempt uid, uid, uid</option>
-</arg>
-<!--
-<arg choice="opt" rep="repeat">file</arg>
--->
-</cmdsynopsis>
-
-<variablelist><title></title>
-<varlistentry><term><synopsis>Default</synopsis></term>
-<listitem> <para>
-None
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Context</synopsis></term>
-<listitem> <para>
-server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Module</synopsis></term>
-<listitem> <para>
-mod_quota
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Compatibility</synopsis></term>
-<listitem> <para>
-at least 1.2.0 and later
-</para> </listitem>
-</varlistentry>
-</variablelist>
-</refsynopsisdiv>
-
-<refsect1>
-<title>Description</title>
-<para>
-The QuotaExempt directive lists the UIDs which are not subject to
-quota controls, using UIDs rather than symbolic user names speeds up
-the loading and resolution process.
-Example:
-QuotaExempt 3000,3401,500</para>
-</refsect1>
-
-<refsect1>
-<title>See also</title>
-<para>
-<!--
-<link linkend=""></link>
--->
-</para>
-</refsect1>
-
-<refsect1>
-<title>Examples</title>
-<para>
-<!--
-For examples, see 
-<link linkend="Class">Class</link>
--->
-</para>
-</refsect1>
-
-</refentry>
-<refentry id="QuotaType">
-<?dbhtml filename="config_ref_QuotaType.html">
-<refentryinfo>
-  <keywordset>
-    <keyword>
-      mod_quota
-    </keyword>
-  </keywordset>
-</refentryinfo>
-<refmeta>
-<refentrytitle>
-<indexterm><primary>QuotaType</primary></indexterm>
-QuotaType
-</refentrytitle>
-</refmeta>
-<refnamediv>
-<refname>QuotaType</refname>
-<refpurpose>FIXME FIXME</refpurpose>
-</refnamediv>
-
-<refsynopsisdiv>
-<cmdsynopsis>
-<command>QuotaType</command>
-<arg choice="opt">
-  <option>QuotaType soft|hard</option>
-</arg>
-<!--
-<arg choice="opt" rep="repeat">file</arg>
--->
-</cmdsynopsis>
-
-<variablelist><title></title>
-<varlistentry><term><synopsis>Default</synopsis></term>
-<listitem> <para>
-soft
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Context</synopsis></term>
-<listitem> <para>
-server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Module</synopsis></term>
-<listitem> <para>
-mod_quota
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Compatibility</synopsis></term>
-<listitem> <para>
-at least 1.2.0 and later
-</para> </listitem>
-</varlistentry>
-</variablelist>
-</refsynopsisdiv>
-
-<refsect1>
-<title>Description</title>
-<para>
-The QuotaType directive defines what happens to files which break 
-the quota limits as they are uploaded.  Setting the type to hard
-ensures that the file which violates the quota is deleted.
-uploaded.</para>
-</refsect1>
-
-<refsect1>
-<title>See also</title>
-<para>
-<!--
-<link linkend=""></link>
--->
-</para>
-</refsect1>
-
-<refsect1>
-<title>Examples</title>
-<para>
-<!--
-For examples, see 
-<link linkend="Class">Class</link>
--->
-</para>
-</refsect1>
-
-</refentry>
-<refentry id="Quotas">
-<?dbhtml filename="config_ref_Quotas.html">
-<refentryinfo>
-  <keywordset>
-    <keyword>
-      mod_quota
-    </keyword>
-  </keywordset>
-</refentryinfo>
-<refmeta>
-<refentrytitle>
-<indexterm><primary>Quotas</primary></indexterm>
-Quotas
-</refentrytitle>
-</refmeta>
-<refnamediv>
-<refname>Quotas</refname>
-<refpurpose>FIXME FIXME</refpurpose>
-</refnamediv>
-
-<refsynopsisdiv>
-<cmdsynopsis>
-<command>Quotas</command>
-<arg choice="opt">
-  <option>Quotas on|off</option>
-</arg>
-<!--
-<arg choice="opt" rep="repeat">file</arg>
--->
-</cmdsynopsis>
-
-<variablelist><title></title>
-<varlistentry><term><synopsis>Default</synopsis></term>
-<listitem> <para>
-none
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Context</synopsis></term>
-<listitem> <para>
-server, &lt;VirtualHost&gt;, &lt;Anonymous&gt;
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Module</synopsis></term>
-<listitem> <para>
-mod_quota
-</para> </listitem>
-</varlistentry>
-
-<varlistentry><term><synopsis>Compatibility</synopsis></term>
-<listitem> <para>
-at least 1.2.0 and later
-</para> </listitem>
-</varlistentry>
-</variablelist>
-</refsynopsisdiv>
-
-<refsect1>
-<title>Description</title>
-<para>
-The Quotas directive enables or disables Quota support.
-Example:
-Quotas on</para>
-</refsect1>
-
-<refsect1>
-<title>See also</title>
-<para>
-<!--
-<link linkend=""></link>
--->
-</para>
-</refsect1>
-
-<refsect1>
-<title>Examples</title>
-<para>
-<!--
-For examples, see 
-<link linkend="Class">Class</link>
--->
-</para>
-</refsect1>
-
-</refentry>
 <refentry id="RLimitCPU">
 <?dbhtml filename="config_ref_RLimitCPU.html">
 <refentryinfo>
@@ -11262,7 +11543,7 @@ RLimitCPU
 <cmdsynopsis>
 <command>RLimitCPU</command>
 <arg choice="opt">
-  <option>RLimitCPU soft-limit|"max" [hard-limit|"max"]</option>
+  <option>RLimitCPU ["daemon"|"session"|"none"] soft-limit|"max" [hard-limit|"max"]</option>
 </arg>
 <!--
 <arg choice="opt" rep="repeat">file</arg>
@@ -11302,11 +11583,17 @@ mod_core
 <refsect1>
 <title>Description</title>
 <para>
-RLimitCPU takes 1 or 2 parameters. The first parameter sets the soft resource
-limit for all proftpd processes. The optional second parameter sets the
-maximum resource limit. Either parameter can be a number, or max to
-indicate to the server that the limit should be set to the maximum allowed
-by the operating system configuration.
+RLimitCPU takes from one to three parameters. The first parameter may be one
+of "daemon" (applies the limit only to the daemon process), "session" (applies
+the limit only to child processes handling each FTP session), or "none"
+(disables any possibly inherited limits).  Note that if "daemon" is used, the
+directive may then only occur in the "server config" context.  If none of
+these keywords are used, the limit is assumed to apply to both daemon and
+session processes.  After any potential keyword, the resource limit must be
+set.  The next parameter is also optional, and sets the maximum resource
+limit. Either limit parameter can be a number, or "max" to indicate to the
+server that the limit should be set to the maximum allowed by the operating
+system.
 </para>
 
 <para>
@@ -11315,7 +11602,7 @@ CPU resource limits are expressed in seconds per process.
 </refsect1>
 
 <refsect1>
-<title>See also</title>
+<title>See Also:</title>
 <para>
 <link linkend="RLimitMemory">RLimitMemory</link>, 
 <link linkend="RLimitOpenFiles">RLimitOpenFiles</link>
@@ -11353,7 +11640,7 @@ RLimitMemory
 <cmdsynopsis>
 <command>RLimitMemory</command>
 <arg choice="opt">
-  <option>RLimitMemory soft-limit[units]|"max" [hard-limit[units]|"max"]</option>
+  <option>RLimitMemory ["daemon"|"session"|"none"] soft-limit[units]|"max" [hard-limit[units]|"max"]</option>
 </arg>
 <!--
 <arg choice="opt" rep="repeat">file</arg>
@@ -11391,11 +11678,17 @@ mod_core
 <refsect1>
 <title>Description</title>
 <para>
-RLimitMemory takes 1 or 2 parameters. The first parameter sets the soft resource
-limit for all proftpd processes. The optional second parameter sets the
-maximum resource limit. Either parameter can be a number, or max to
-indicate to the server that the limit should be set to the maximum allowed
-by the operating system configuration.
+RLimitMemory takes from one to three parameters. The first parameter may be one
+of "daemon" (applies the limit only to the daemon process), "session" (applies
+the limit only to child processes handling each FTP session), or "none"
+(disables any possibly inherited limits).  Note that if "daemon" is used, the
+directive may then only occur in the "server config" context.  If none of
+these keywords are used, the limit is assumed to apply to both daemon and
+session processes.  After any potential keyword, the resource limit must be
+set.  The next parameter is also optional, and sets the maximum resource
+limit. Either limit parameter can be a number, or "max" to indicate to the
+server that the limit should be set to the maximum allowed by the operating
+system.
 </para>
 
 <para>
@@ -11408,9 +11701,9 @@ factor.
 </refsect1>
 
 <refsect1>
-<title>See also</title>
+<title>See Also</title>
 <para>
-RLimitCPU, RLimitMaxProcesses, RLimitOpenFiles
+RLimitCPU, RLimitOpenFiles
 <!--
 <link linkend=""></link>
 -->
@@ -11443,7 +11736,7 @@ RLimitOpenFiles
 <cmdsynopsis>
 <command>RLimitOpenFiles</command>
 <arg choice="opt">
-  <option>RLimitOpenFiles soft-limit|"max" [hard-limit|"max"]</option>
+  <option>RLimitOpenFiles ["daemon"|"session"|"none"] soft-limit|"max" [hard-limit|"max"]</option>
 </arg>
 <!--
 <arg choice="opt" rep="repeat">file</arg>
@@ -11481,11 +11774,17 @@ mod_core
 <refsect1>
 <title>Description</title>
 <para>
-RLimitOpenFiles takes 1 or 2 parameters. The first parameter sets the soft
-resource limit for all proftpd processes. The optional second parameter sets
-the maximum resource limit. Either parameter can be a number, or max to
-indicate to the server that the limit should be set to the maximum allowed
-by the operating system configuration.
+RLimitOpenFiles takes from one to three parameters. The first parameter may be
+one of "daemon" (applies the limit only to the daemon process), "session"
+(applies the limit only to child processes handling each FTP session), or "none"
+(disables any possibly inherited limits).  Note that if "daemon" is used, the
+directive may then only occur in the "server config" context.  If none of
+these keywords are used, the limit is assumed to apply to both daemon and
+session processes.  After any potential keyword, the resource limit must be
+set.  The next parameter is also optional, and sets the maximum resource
+limit. Either limit parameter can be a number, or "max" to indicate to the
+server that the limit should be set to the maximum allowed by the operating
+system.
 </para>
 
 <para>
@@ -11494,15 +11793,579 @@ File resource limits are expressed in number of files per process.
 </refsect1>
 
 <refsect1>
-<title>See also</title>
+<title>See Also:</title>
 <para>
-RLimitCPU, RLimitMaxProcesses, RLimitMemory
+RLimitCPU, RLimitMemory
 <!--
 <link linkend=""></link>
 -->
 </para>
 </refsect1>
 
+</refentry>
+
+<refentry id="RadiusAcctServer">
+<?dbhtml filename="config_ref_RadiusAcctServer.html">
+<refentryinfo>
+  <keywordset>
+    <keyword>mod_radius</keyword>
+  </keywordset>
+</refentryinfo>
+<refmeta>
+<refentrytitle>
+<indexterm><primary>RadiusAcctServer</primary></indexterm>
+RadiusAcctServer
+</refentrytitle>
+</refmeta>
+<refnamediv>
+<refname>RadiusAcctServer</refname>
+<refpurpose>Setup RADIUS accounting details</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+<cmdsynopsis>
+<command>RadiusAcctServer</command>
+<arg choice="opt">
+  <option>server[:port] shared-secret [timeout]</option>
+</arg>
+<!--
+<arg choice="opt" rep="repeat">file</arg>
+-->
+</cmdsynopsis>
+ 
+<variablelist><title></title>
+<varlistentry><term><synopsis>Default</synopsis></term>
+<listitem> <para>
+none
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Context</synopsis></term>
+<listitem> <para>
+server config, &lt;Global&gt;, &lt;VirtualHost&gt;
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Module</synopsis></term>
+<listitem> <para>
+mod_radius
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Compatibility</synopsis></term>
+<listitem> <para>
+1.2.7rc1 and later
+</para> </listitem>
+</varlistentry>
+</variablelist>
+
+<refsect1>
+<title>Description</title>
+<para>
+The RadiusAcctServer is used to specify a RADIUS server to be used for accounting. The server parameter may be either an IP address or a DNS hostname. If not specified, the port used will be the IANA-registered 1813. The optional timeout parameter is used to tell mod_radius how long to wait for a response from the server; it defaults to 30 seconds.
+</para>
+
+<para>
+Multiple RadiusAcctServers may be configured; each will be tried, in order of appearance in the configuration file, until that server times out or mod_radius receives a response.
+</para>
+
+<para>
+If no RadiusAcctServers are configured, mod_radius will not use RADIUS for accounting.
+</para>
+</refsect1>
+
+<refsect1>
+<title>See also</title>
+<para>
+<link linkend="RadiusAuthServer">RadiusAuthServer</link>
+</para>
+</refsect1>
+
+<!--
+<refsect1>
+<title>Examples</title>
+
+<literallayout>
+FIXFIXFIX
+</literallayout>
+
+<para>
+FIXFIX
+</para>
+
+</refsect1>
+-->
+</refentry>
+
+<refentry id="RadiusAuthServer">
+<?dbhtml filename="config_ref_RadiusAuthServer.html">
+<refentryinfo>
+  <keywordset>
+    <keyword>mod_radius</keyword>
+  </keywordset>
+</refentryinfo>
+<refmeta>
+<refentrytitle>
+<indexterm><primary>RadiusAuthServer</primary></indexterm>
+RadiusAuthServer
+</refentrytitle>
+</refmeta>
+<refnamediv>
+<refname>RadiusAuthServer</refname>
+<refpurpose>Setup RADIUS authenticator details</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+<cmdsynopsis>
+<command>RadiusAuthServer</command>
+<arg choice="opt">
+  <option>server[:port] shared-secret [timeout]</option>
+</arg>
+<!--
+<arg choice="opt" rep="repeat">file</arg>
+-->
+</cmdsynopsis>
+ 
+<variablelist><title></title>
+<varlistentry><term><synopsis>Default</synopsis></term>
+<listitem> <para>
+none
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Context</synopsis></term>
+<listitem> <para>
+server config, &lt;Global&gt;, &lt;VirtualHost&gt;
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Module</synopsis></term>
+<listitem> <para>
+mod_radius
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Compatibility</synopsis></term>
+<listitem> <para>
+1.2.7rc1 and later
+</para> </listitem>
+</varlistentry>
+</variablelist>
+
+<refsect1>
+<title>Description</title>
+<para>
+The RadiusAcctServer is used to specify a RADIUS server to be used for accounting. The server parameter may be either an IP address or a DNS hostname. If not specified, the port used will be the IANA-registered 1813. The optional timeout parameter is used to tell mod_radius how long to wait for a response from the server; it defaults to 30 seconds.
+</para>
+
+<para>
+Multiple RadiusAcctServers may be configured; each will be tried, in order of appearance in the configuration file, until that server times out or mod_radius receives a response.
+</para>
+
+<para>
+If no RadiusAcctServers are configured, mod_radius will not use RADIUS for accounting.
+</para>
+</refsect1>
+
+<refsect1>
+<title>See also</title>
+<para>
+<link linkend="RadiusAuthServer">RadiusAuthServer</link>
+</para>
+</refsect1>
+
+<!--
+<refsect1>
+<title>Examples</title>
+
+<literallayout>
+FIXFIXFIX
+</literallayout>
+
+<para>
+FIXFIX
+</para>
+
+</refsect1>
+-->
+</refentry>
+
+<refentry id="RadiusEngine">
+<?dbhtml filename="config_ref_RadiusEngine.html">
+<refentryinfo>
+  <keywordset>
+    <keyword>mod_radius</keyword>
+  </keywordset>
+</refentryinfo>
+<refmeta>
+<refentrytitle>
+<indexterm><primary>RadiusEngine</primary></indexterm>
+RadiusEngine
+</refentrytitle>
+</refmeta>
+<refnamediv>
+<refname>RadiusEngine</refname>
+<refpurpose>Enable RADIUS support</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+<cmdsynopsis>
+<command>RadiusEngine</command>
+<arg choice="opt">
+  <option>on|off</option>
+</arg>
+<!--
+<arg choice="opt" rep="repeat">file</arg>
+-->
+</cmdsynopsis>
+ 
+<variablelist><title></title>
+<varlistentry><term><synopsis>Default</synopsis></term>
+<listitem> <para>
+off
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Context</synopsis></term>
+<listitem> <para>
+server config, &lt;Global&gt;, &lt;VirtualHost&gt;
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Module</synopsis></term>
+<listitem> <para>
+mod_radius
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Compatibility</synopsis></term>
+<listitem> <para>
+1.2.7rc1 and later
+</para> </listitem>
+</varlistentry>
+</variablelist>
+
+<refsect1>
+<title>Description</title>
+<para>
+The RadiusEngine directive enables or disables the module's runtime RADIUS engine. If it is set to off this module does no RADIUS authentication or accounting at all. Use this directive to disable the module instead of commenting out all mod_radius directives. 
+</para>
+</refsect1>
+
+<refsect1>
+<title>See also</title>
+<para>
+<!--
+<link linkend=""></link>
+-->
+</para>
+</refsect1>
+
+<!--
+<refsect1>
+<title>Examples</title>
+
+<literallayout>
+FIXFIXFIX
+</literallayout>
+
+<para>
+FIXFIX
+</para>
+
+</refsect1>
+-->
+</refentry>
+
+<refentry id="RadiusLog">
+<?dbhtml filename="config_ref_RadiusLog.html">
+<refentryinfo>
+  <keywordset>
+    <keyword>mod_radius</keyword>
+  </keywordset>
+</refentryinfo>
+<refmeta>
+<refentrytitle>
+<indexterm><primary>RadiusLog</primary></indexterm>
+RadiusLog
+</refentrytitle>
+</refmeta>
+<refnamediv>
+<refname>RadiusLog</refname>
+<refpurpose>Specify the logfile for reporting / debugging</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+<cmdsynopsis>
+<command>RadiusLog</command>
+<arg choice="opt">
+  <option>"file"|none</option>
+</arg>
+<!--
+<arg choice="opt" rep="repeat">file</arg>
+-->
+</cmdsynopsis>
+ 
+<variablelist><title></title>
+<varlistentry><term><synopsis>Default</synopsis></term>
+<listitem> <para>
+none
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Context</synopsis></term>
+<listitem> <para>
+server config, &lt;Global&gt;, &lt;VirtualHost&gt;
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Module</synopsis></term>
+<listitem> <para>
+mod_radius
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Compatibility</synopsis></term>
+<listitem> <para>
+1.2.7rc1 and later
+</para> </listitem>
+</varlistentry>
+</variablelist>
+
+<refsect1>
+<title>Description</title>
+<para>
+The RadiusLog directive is used to a specify a log file for mod_radius
+reporting and debugging, and can be done a per-server basis. The file
+parameter must be the full path to the file to use for logging. Note
+that this path must not be to a world-writeable directory and, unless
+AllowLogSymlinks is explicitly set to on (generally a bad idea), the
+path must not be a symbolic link.
+</para>
+
+<para>
+If file is "none", no logging will be done at all; this setting can be
+used to override a RadiusLog setting inherited from a &lt;Global&gt; context.
+</para>
+</refsect1>
+
+<refsect1>
+<title>See also</title>
+<para>
+<!--
+<link linkend=""></link>
+-->
+</para>
+</refsect1>
+
+<refsect1>
+<title>Examples</title>
+
+<literallayout>
+FIXFIXFIX
+</literallayout>
+
+<para>
+FIXFIX
+</para>
+
+</refsect1>
+</refentry>
+
+<refentry id="RadiusRealm">
+<?dbhtml filename="config_ref_RadiusRealm.html">
+<refentryinfo>
+  <keywordset>
+    <keyword>mod_radius</keyword>
+  </keywordset>
+</refentryinfo>
+<refmeta>
+<refentrytitle>
+<indexterm><primary>RadiusRealm</primary></indexterm>
+RadiusRealm
+</refentrytitle>
+</refmeta>
+<refnamediv>
+<refname>RadiusRealm</refname>
+<refpurpose>Setup the authentication realm</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+<cmdsynopsis>
+<command>RadiusRealm</command>
+<arg choice="opt">
+  <option>realm</option>
+</arg>
+<!--
+<arg choice="opt" rep="repeat">file</arg>
+-->
+</cmdsynopsis>
+ 
+<variablelist><title></title>
+<varlistentry><term><synopsis>Default</synopsis></term>
+<listitem> <para>
+none
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Context</synopsis></term>
+<listitem> <para>
+server config, &lt;Global&gt;, &lt;VirtualHost&gt;
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Module</synopsis></term>
+<listitem> <para>
+mod_radius
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Compatibility</synopsis></term>
+<listitem> <para>
+1.2.7rc1 and later
+</para> </listitem>
+</varlistentry>
+</variablelist>
+
+<refsect1>
+<title>Description</title>
+<para>
+The RadiusRealm directive configures a realm string that will be added to the username in the constructed RADIUS packets.
+</para>
+</refsect1>
+
+<refsect1>
+<title>See also</title>
+<para>
+<!--
+<link linkend=""></link>
+-->
+</para>
+</refsect1>
+
+<refsect1>
+<title>Examples</title>
+
+<literallayout>
+  RadiusRealm .castaglia.org
+</literallayout>
+
+<para>
+FIXFIX
+</para>
+
+</refsect1>
+</refentry>
+
+<refentry id="RadiusUserInfo">
+<?dbhtml filename="config_ref_RadiusUserInfo.html">
+<refentryinfo>
+  <keywordset>
+    <keyword>mod_radius</keyword>
+  </keywordset>
+</refentryinfo>
+<refmeta>
+<refentrytitle>
+<indexterm><primary>RadiusUserInfo</primary></indexterm>
+RadiusUserInfo
+</refentrytitle>
+</refmeta>
+<refnamediv>
+<refname>RadiusUserInfo</refname>
+<refpurpose>Configure login information via RADIUS</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+<cmdsynopsis>
+<command>RadiusUserInfo</command>
+<arg choice="opt">
+  <option>uid gid home shell [suppl-group-names suppl-group-ids]</option>
+</arg>
+<!--
+<arg choice="opt" rep="repeat">file</arg>
+-->
+</cmdsynopsis>
+ 
+<variablelist><title></title>
+<varlistentry><term><synopsis>Default</synopsis></term>
+<listitem> <para>
+none
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Context</synopsis></term>
+<listitem> <para>
+server config, &lt;Global&gt;, &lt;VirtualHost&gt;
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Module</synopsis></term>
+<listitem> <para>
+mod_radius
+</para> </listitem>
+</varlistentry>
+
+<varlistentry><term><synopsis>Compatibility</synopsis></term>
+<listitem> <para>
+1.2.7rc1 and later
+</para> </listitem>
+</varlistentry>
+</variablelist>
+
+<refsect1>
+<title>Description</title>
+<para>
+The RadiusUserInfo directive is used to configure login information used for every user authenticated via RADIUS. The optional suppl-group-names and suppl-group-ids parameters are used to specify supplemental group membership for each user; the number of names and IDs must match if these parameters are used.
+</para>
+
+<para>
+In order to support RADIUS servers that may use custom attributes in their Access-Accept response packets to supply user information back to the RADIUS client (mod_radius in this case), this directive allows the following syntax for some of its parameters:
+<para>
+
+<literallayout>
+  $(attribute-id:default-value)
+</literallayout>
+
+<para>
+where the enclosing $() signals that the parameter is to be supplied by
+the RADIUS server, attribute-id is the custom attribute ID for which to
+search in the response packet, and default-value is the value to use in
+case the requested attribute is not present in the response packet. This
+syntax is not supported for the suppl-group-names or suppl-group-ids
+parameters.
+</para>
+
+<para>
+If RadiusUserInfo is not used, mod_radius will perform pure "yes/no"
+authentication only, in the style of PAM. The information that would
+have been configured via this directive will be pulled from other sources
+(e.g. /etc/passwd, AuthUserFiles, MySQL tables, etc).
+</para>
+</refsect1>
+
+<refsect1>
+<title>See also</title>
+<para>
+<!--
+<link linkend=""></link>
+-->
+</para>
+</refsect1>
+
+<!--
+<refsect1>
+<title>Examples</title>
+
+<literallayout>
+FIXFIXFIX
+</literallayout>
+
+<para>
+FIXFIX
+</para>
+
+</refsect1>
+-->
 </refentry>
 
 <refentry id="RateReadBPS">
@@ -12301,7 +13164,7 @@ For examples, see
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_auth
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -12342,7 +13205,7 @@ server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_auth
 </para> </listitem>
 </varlistentry>
 
@@ -12872,7 +13735,7 @@ SQLAuthoritative
 </refmeta>
 <refnamediv>
 <refname>SQLAuthoritative</refname>
-<refpurpose>FIXFIXFIX</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -13299,7 +14162,7 @@ SQLDoAuth
 </refmeta>
 <refnamediv>
 <refname>SQLDoAuth</refname>
-<refpurpose>FIXME FIXME</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -13367,7 +14230,7 @@ SQLDoGroupAuth
 </refmeta>
 <refnamediv>
 <refname>SQLDoGroupAuth</refname>
-<refpurpose>FIXME FIXME</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -13629,7 +14492,7 @@ SQLGidField
 </refmeta>
 <refnamediv>
 <refname>SQLGidField</refname>
-<refpurpose>FIXFIXFIX</refpurpose>
+<refpurpose>Set the field holding gid information (deprecated)</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -13717,7 +14580,7 @@ SQLGroupGIDField
 </refmeta>
 <refnamediv>
 <refname>SQLGroupGIDField</refname>
-<refpurpose>FIXFIXFIX</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -13893,7 +14756,7 @@ SQLGroupMembersField
 </refmeta>
 <refnamediv>
 <refname>SQLGroupMembersField</refname>
-<refpurpose>FIXME FIXME</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -13961,7 +14824,7 @@ SQLGroupTable
 </refmeta>
 <refnamediv>
 <refname>SQLGroupTable</refname>
-<refpurpose>FIXME FIXME</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -14116,7 +14979,7 @@ SQLGroupnameField
 </refmeta>
 <refnamediv>
 <refname>SQLGroupnameField</refname>
-<refpurpose>FIXME FIXME</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -14183,7 +15046,7 @@ SQLHomedir
 </refmeta>
 <refnamediv>
 <refname>SQLHomedir</refname>
-<refpurpose>FIXFIXFIX</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -14271,7 +15134,7 @@ SQLHomedirField
 </refmeta>
 <refnamediv>
 <refname>SQLHomedirField</refname>
-<refpurpose>FIXFIXFIX</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -14515,7 +15378,7 @@ SQLLogDirs
 </refmeta>
 <refnamediv>
 <refname>SQLLogDirs</refname>
-<refpurpose>FIXFIXFIX</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -14603,7 +15466,7 @@ SQLLogHits
 </refmeta>
 <refnamediv>
 <refname>SQLLogHits</refname>
-<refpurpose>FIXFIXFIX</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -14691,7 +15554,7 @@ SQLLogHosts
 </refmeta>
 <refnamediv>
 <refname>SQLLogHosts</refname>
-<refpurpose>FIXFIXFIX</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -14779,7 +15642,7 @@ SQLLogStats
 </refmeta>
 <refnamediv>
 <refname>SQLLogStats</refname>
-<refpurpose>FIXFIXFIX</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -14867,7 +15730,7 @@ SQLLoginCountField
 </refmeta>
 <refnamediv>
 <refname>SQLLoginCountField</refname>
-<refpurpose>FIXFIXFIX</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -15272,6 +16135,94 @@ FIXFIX
 </refsect1>
 </refentry>
 
+<refentry id="SQLNegativeCache">
+	<?dbhtml filename="config_ref_SQLNegativeCache.html">
+<refentryinfo>
+  <keywordset>
+    <keyword>
+      mod_sql
+    </keyword>
+  </keywordset>
+</refentryinfo>
+	<refmeta>
+		<refentrytitle>
+			<indexterm><primary>SQLNegativeCache</primary></indexterm>
+			SQLNegativeCache
+		</refentrytitle>
+	</refmeta>
+
+	<refnamediv>
+		<refname>SQLNegativeCache</refname>
+		<refpurpose>Enable negative caching for SQL lookups</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>SQLNegativeCache</command>
+			<arg choice="opt">
+				<option>on</option>
+				<option>off</option>
+			</arg>
+		</cmdsynopsis>
+
+	<variablelist>
+		<title></title>
+
+		<varlistentry>
+			<term><synopsis>Default</synopsis></term>
+			<listitem><para>
+				SQLNegativeCache off
+			</para></listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><synopsis>Context</synopsis></term>
+			<listitem><para>
+				server config, &lt;VirtualHost&gt;, &lt;Global&gt;
+			</para></listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><synopsis>Module</synopsis></term>
+			<listitem><para>
+mod_sql
+			</para></listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><synopsis>Compatibility</synopsis></term>
+			<listitem><para>
+				mod_sql v4.10 and later
+			</para></listitem>
+		</varlistentry>
+	</variablelist>
+</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+
+		<para>SQLNegativeCache specifies whether or not to cache negative
+		responses from SQL lookups when using SQL for UID/GID lookups.
+		Depending on your SQL tables, there can be a significant delay
+                when a directory listing is performed as the UIDs not in the
+                SQL database are repeatedly looked up in an attempt to present
+                usernames instead of UIDs in directory listings. With
+                SQLNegativeCache set to on, negative ("not found") responses from
+		SQL queries will be cached and speed will improve on directory
+		listings that contain many users not present in the SQL
+		database.</para>
+	</refsect1>
+
+	<refsect1>
+		<title>See also</title>
+		<para></para>
+	</refsect1>
+
+	<refsect1>
+		<title>Examples</title>
+		<para></para>
+	</refsect1>
+</refentry>
 <refentry id="SQLPasswordField">
 <?dbhtml filename="config_ref_SQLPasswordField.html">
 <refentryinfo>
@@ -15289,7 +16240,7 @@ SQLPasswordField
 </refmeta>
 <refnamediv>
 <refname>SQLPasswordField</refname>
-<refpurpose>FIXFIXFIX</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -15377,7 +16328,7 @@ SQLProcessGrEnt
 </refmeta>
 <refnamediv>
 <refname>SQLProcessGrEnt</refname>
-<refpurpose>FIXFIXFIX</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -15465,7 +16416,7 @@ SQLProcessPwEnt
 </refmeta>
 <refnamediv>
 <refname>SQLProcessPwEnt</refname>
-<refpurpose>FIXFIXFIX</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -15880,7 +16831,7 @@ SQLShellField
 </refmeta>
 <refnamediv>
 <refname>SQLShellField</refname>
-<refpurpose>FIXME FIXME</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -16037,7 +16988,7 @@ SQLUidField
 </refmeta>
 <refnamediv>
 <refname>SQLUidField</refname>
-<refpurpose>FIXFIXFIX</refpurpose>
+<refpurpose>Set the field holding uid information (deprecated)</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -16213,7 +17164,7 @@ SQLUserTable
 </refmeta>
 <refnamediv>
 <refname>SQLUserTable</refname>
-<refpurpose>FIXFIXFIX</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -16389,7 +17340,7 @@ SQLUsernameField
 </refmeta>
 <refnamediv>
 <refname>SQLUsernameField</refname>
-<refpurpose>FIXFIXFIX</refpurpose>
+<refpurpose>Deprecated</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
@@ -16631,8 +17582,8 @@ For examples, see
 </refsect1>
 
 </refentry>
-<refentry id="ScoreboardPath">
-<?dbhtml filename="config_ref_ScoreboardPath.html">
+<refentry id="ScoreboardFile">
+<?dbhtml filename="config_ref_ScoreboardFile.html">
 <refentryinfo>
   <keywordset>
     <keyword>
@@ -16642,18 +17593,18 @@ For examples, see
 </refentryinfo>
 <refmeta>
 <refentrytitle>
-<indexterm><primary>ScoreboardPath</primary></indexterm>
-ScoreboardPath
+<indexterm><primary>ScoreboardFile</primary></indexterm>
+ScoreboardFile
 </refentrytitle>
 </refmeta>
 <refnamediv>
-<refname>ScoreboardPath</refname>
-<refpurpose>Sets the path to the scoreboard file</refpurpose>
+<refname>ScoreboardFile</refname>
+<refpurpose>Sets the name and path of the scoreboard file</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
 <cmdsynopsis>
-<command>ScoreboardPath</command>
+<command>ScoreboardFile</command>
 <arg choice="opt">
   <option>path</option>
 </arg>
@@ -16665,7 +17616,7 @@ ScoreboardPath
 <variablelist><title></title>
 <varlistentry><term><synopsis>Default</synopsis></term>
 <listitem> <para>
-ScoreboardPath /var/run
+ScoreboardFile /var/run/proftpd.scoreboard
 </para> </listitem>
 </varlistentry>
 
@@ -16683,7 +17634,7 @@ mod_core
 
 <varlistentry><term><synopsis>Compatibility</synopsis></term>
 <listitem> <para>
-1.1.6 and later
+1.2.7rc1 and later
 </para> </listitem>
 </varlistentry>
 </variablelist>
@@ -16692,9 +17643,14 @@ mod_core
 <refsect1>
 <title>Description</title>
 <para>
-The ScoreboardPath directive sets the directory where proftpd run-time scoreboard 
-files (proftpd-*) are kept. These file(s) are necessary for MaxClients 
-to work properly, as well as other utilities (such as ftpwho and ftpcount).</para> 
+The ScoreboardFile directive sets the path to the file where the daemon will
+store its run-time "scoreboard" session information.  This file is necessary
+for MaxClients to work properly, as well as other utilities (such as ftpwho and ftpcount).
+</para>
+
+<para>
+This directive deprecates ScoreboardPath.
+</para>
 </refsect1>
 
 <refsect1>
@@ -16709,6 +17665,7 @@ to work properly, as well as other utilities (such as ftpwho and ftpcount).</par
 <refsect1>
 <title>Examples</title>
 <para>
+ScoreboardFile /var/run/proftpd.scoreboard
 <!--
 For examples, see 
 <link linkend="Class">Class</link>
@@ -16837,7 +17794,7 @@ ServerIdent
 <variablelist><title></title>
 <varlistentry><term><synopsis>Default</synopsis></term>
 <listitem> <para>
-ServerIdent ProFTPD [version] Server (server name) [hostname]
+ServerIdent on "ProFTPD [version] Server (server name) [hostname]"
 </para> </listitem>
 </varlistentry>
 
@@ -17167,7 +18124,7 @@ For examples, see
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_ls
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -17208,7 +18165,7 @@ server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_ls
 </para> </listitem>
 </varlistentry>
 
@@ -17457,12 +18414,8 @@ in the prefix string.
 <title>Examples</title>
 
 <literallayout>
-FIXFIXFIX
+StoreUniquePrefix "Wibble"
 </literallayout>
-
-<para>
-FIXFIX
-</para>
 
 </refsect1>
 </refentry>
@@ -18331,7 +19284,7 @@ For examples, see
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_auth
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -18366,13 +19319,13 @@ TimeoutLogin 300
 
 <varlistentry><term><synopsis>Context</synopsis></term>
 <listitem> <para>
-server config
+server config, &lt;VirtualHost&gt;, &lt;Global&gt;
 </para> </listitem>
 </varlistentry>
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_auth
 </para> </listitem>
 </varlistentry>
 
@@ -18419,7 +19372,7 @@ For examples, see
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_xfer
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -18454,13 +19407,13 @@ TimeoutNoTransfer 300
 
 <varlistentry><term><synopsis>Context</synopsis></term>
 <listitem> <para>
-server config
+server config, &lt;VirtualHost&gt;, &lt;Global&gt;
 </para> </listitem>
 </varlistentry>
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_xfer
 </para> </listitem>
 </varlistentry>
 
@@ -18517,14 +19470,14 @@ TimeoutSession
 </refmeta>
 <refnamediv>
 <refname>TimeoutSession</refname>
-<refpurpose>FIXFIXFIX</refpurpose>
+<refpurpose>Sets a timeout for an entire session</refpurpose>
 </refnamediv>
 
 <refsynopsisdiv>
 <cmdsynopsis>
 <command>TimeoutSession</command>
 <arg choice="opt">
-  <option>"name" limit|regex|ip value</option>
+  <option>seconds ["user"|"group"|"class" expression]</option>
 </arg>
 <!--
 <arg choice="opt" rep="repeat">file</arg>
@@ -18534,13 +19487,13 @@ TimeoutSession
 <variablelist><title></title>
 <varlistentry><term><synopsis>Default</synopsis></term>
 <listitem> <para>
-FIXFIXFIX
+None
 </para> </listitem>
 </varlistentry>
 
 <varlistentry><term><synopsis>Context</synopsis></term>
 <listitem> <para>
-server config, &lt;Global&gt;, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Limit&gt;, .ftpaccess
+server config, &lt;VirtualHost&gt;, &lt;Global&gt;, &lt;Anonymous&gt;
 </para> </listitem>
 </varlistentry>
 
@@ -18560,7 +19513,30 @@ mod_auth
 <refsect1>
 <title>Description</title>
 <para>
-FIX FIX FIX
+The TimeoutSession directive sets the maximum number of seconds a control
+connection between the proftpd server and an FTP client can exist after the
+client has successfully authenticated.  If the seconds argument is set to 0,
+sessions are allowed to last indefinitely (the default).
+</para>
+
+<para>
+The optional parameters are used to restrict the session time limit only
+to specific users.  If "user" restriction is given, then expression is a
+user-expression specifying to which users the time limit applies.  Similarly
+for the "group" restriction.  For the "class" restriction, the expression is
+simply the name of connection class for whom the time limit will apply.
+Note that use of the "user" or "group" classifiers within an &lt;Anonymous&gt;
+context will not make much sense.
+</para>
+
+<para>
+Example:
+
+  # set a draconian session time limit
+  TimeoutSession 60
+
+  # set session time limits for everyone except a few privileged users
+  TimeoutSession 300 user !bob,!dave,!jenni
 </para>
 </refsect1>
 
@@ -18577,12 +19553,9 @@ FIX FIX FIX
 <title>Examples</title>
 
 <literallayout>
-FIXFIXFIX
+# Kick the user off after 60 minutes
+TimeoutSession 3600
 </literallayout>
-
-<para>
-FIXFIX
-</para>
 
 </refsect1>
 </refentry>
@@ -18592,7 +19565,7 @@ FIXFIX
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_xfer
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -18627,13 +19600,13 @@ TimeoutStalled 3600
 
 <varlistentry><term><synopsis>Context</synopsis></term>
 <listitem> <para>
-server config
+server config, &lt;VirtualHost&gt;, &lt;Global&gt;
 </para> </listitem>
 </varlistentry>
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_xfer
 </para> </listitem>
 </varlistentry>
 
@@ -18953,7 +19926,7 @@ For examples, see
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_auth
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -18994,7 +19967,7 @@ server config, &lt;Anonymous&gt;, &lt;VirtualHost&gt;, &lt;Global&gt;
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_auth
 </para> </listitem>
 </varlistentry>
 
@@ -19587,7 +20560,7 @@ For examples, see
 <refentryinfo>
   <keywordset>
     <keyword>
-      mod_core
+      mod_auth
     </keyword>
   </keywordset>
 </refentryinfo>
@@ -19628,7 +20601,7 @@ server config, &lt;VirtualHost&gt;, &lt;Anonymous&gt;, &lt;Global&gt;
 
 <varlistentry><term><synopsis>Module</synopsis></term>
 <listitem> <para>
-mod_core
+mod_auth
 </para> </listitem>
 </varlistentry>
 
