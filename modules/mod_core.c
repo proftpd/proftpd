@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.222 2004-03-05 18:22:03 castaglia Exp $
+ * $Id: mod_core.c,v 1.223 2004-03-05 18:36:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3793,6 +3793,10 @@ MODRET core_rmd(cmd_rec *cmd) {
   if (!dir ||
       !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL) ||
       pr_fsio_rmdir(dir) == -1) {
+
+    if (!dir)
+      errno = ENOENT;
+
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
 
@@ -3841,7 +3845,11 @@ MODRET core_mkd(cmd_rec *cmd) {
   if (!dir ||
       !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL) ||
       pr_fsio_mkdir(dir, 0777) == -1) {
-    pr_response_add_err(R_550, "%s: %s", cmd->argv[1], strerror(errno));
+
+    if (!dir)
+      errno = ENOENT;
+
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
 
@@ -3918,12 +3926,16 @@ MODRET core_mdtm(cmd_rec *cmd) {
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
-  path = dir_realpath(cmd->tmp_pool,cmd->arg);
+  path = dir_realpath(cmd->tmp_pool, cmd->arg);
 
   if (!path ||
       !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
       pr_fsio_stat(path, &sbuf) == -1) {
-    pr_response_add_err(R_550,"%s: %s",cmd->argv[1],strerror(errno));
+
+    if (!path)
+      errno = ENOENT;
+
+    pr_response_add_err(R_550,"%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
 
   } else {
@@ -3961,11 +3973,15 @@ MODRET core_size(cmd_rec *cmd) {
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
-  path = dir_realpath(cmd->tmp_pool,cmd->arg);
+  path = dir_realpath(cmd->tmp_pool, cmd->arg);
 
   if (!path ||
       !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
       pr_fsio_stat(path, &sbuf) == -1) {
+
+    if (!path)
+      errno = ENOENT;
+
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
 
@@ -4023,6 +4039,10 @@ MODRET core_dele(cmd_rec *cmd) {
   if (!path ||
       !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
       pr_fsio_unlink(path) == -1) {
+
+    if (!path)
+      errno = ENOENT;
+
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
@@ -4101,7 +4121,11 @@ MODRET core_rnto(cmd_rec *cmd) {
   if (!path ||
       !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
       pr_fsio_rename(session.xfer.path, path) == -1) {
-    pr_response_add_err(R_550, "Rename: %s", strerror(errno));
+
+    if (!path)
+      errno = ENOENT;
+
+    pr_response_add_err(R_550, "Rename %s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
 
@@ -4151,7 +4175,11 @@ MODRET core_rnfr(cmd_rec *cmd) {
   if (!path ||
       !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
       !exists(path)) {
-    pr_response_add_err(R_550, "%s: %s", cmd->argv[1], strerror(errno));
+
+    if (!path)
+      errno = ENOENT;
+
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
 
