@@ -23,7 +23,7 @@
  */
 
 /* Home-on-demand support
- * $Id: mkhome.c,v 1.5 2004-04-09 16:58:23 castaglia Exp $
+ * $Id: mkhome.c,v 1.6 2004-05-13 01:13:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -80,9 +80,11 @@ static int create_path(pool *p, const char *path, const char *user, uid_t uid,
   struct stat st;
 
   pr_fs_clear_cache();
-  if (pr_fsio_stat(path, &st) == 0)
+  if (pr_fsio_stat(path, &st) == 0) {
     /* Path already exists, nothing to be done. */
-    return 0;
+    errno = EEXIST;
+    return -1;
+  }
 
   pr_log_debug(DEBUG3, "creating home directory '%s' for user '%s'", path,
     user);
@@ -229,6 +231,7 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
  */
 int create_home(pool *p, const char *home, const char *user, uid_t uid,
     gid_t gid) {
+  int res;
   config_rec *c = find_config(main_server->conf, CONF_PARAM, "CreateHome",
     FALSE);
 
@@ -238,13 +241,15 @@ int create_home(pool *p, const char *home, const char *user, uid_t uid,
   PRIVS_ROOT
 
   /* Create the configured path. */
-  if (create_path(p, home, user, uid, gid, *((mode_t *) c->argv[2]),
-      *((mode_t *) c->argv[1])) < 0) {
+  res = create_path(p, home, user, uid, gid, *((mode_t *) c->argv[2]),
+    *((mode_t *) c->argv[1]));
+
+  if (res < 0 && errno != EEXIST) {
     PRIVS_RELINQUISH
     return -1;
   }
 
-  if (c->argv[3]) {
+  if (res == 0 && c->argv[3]) {
     char *skel_dir = c->argv[3];
 
     /* Populate the home directory with files from the configured

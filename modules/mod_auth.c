@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.184 2004-05-01 18:27:35 castaglia Exp $
+ * $Id: mod_auth.c,v 1.185 2004-05-13 01:13:56 castaglia Exp $
  */
 
 #include "conf.h"
@@ -42,7 +42,7 @@ extern pid_t mpid;
 
 module auth_module;
 
-static unsigned char auth_create_home = FALSE;
+static unsigned char mkhome = FALSE;
 static int TimeoutLogin = PR_TUNABLE_TIMEOUTLOGIN;
 static int logged_in = 0;
 static int auth_tries = 0;
@@ -113,7 +113,7 @@ static int auth_session_timeout_cb(CALLBACK_FRAME) {
 
 static int auth_sess_init(void) {
   config_rec *c = NULL;
-  unsigned char *mkhome = NULL;
+  unsigned char *tmp = NULL;
   int res = 0;
 
   /* Check for a server-specific TimeoutLogin */
@@ -168,11 +168,11 @@ static int auth_sess_init(void) {
     NULL);
 
   /* Should we create the home for a user, if they don't have one? */
-  if ((mkhome = get_param_ptr(main_server->conf, "CreateHome",
-      FALSE)) != NULL && *mkhome == TRUE)
-    auth_create_home = TRUE;
+  tmp = get_param_ptr(main_server->conf, "CreateHome", FALSE);
+  if (tmp != NULL && *tmp == TRUE)
+    mkhome = TRUE;
   else
-    auth_create_home = FALSE;
+    mkhome = FALSE;
 
   /* Scan the scoreboard now, in order to tally up certain values for
    * substituting in any of the Display* file variables.
@@ -1129,7 +1129,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
 
   /* Create the home directory, if need be. */
 
-  if (!c && auth_create_home) {
+  if (!c && mkhome) {
     if (create_home(p, session.cwd, origuser, pw->pw_uid, pw->pw_gid) < 0) {
 
       /* NOTE: should this cause the login to fail? */
