@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.97 2002-08-31 00:08:39 jwm Exp $
+ * $Id: main.c,v 1.98 2002-09-04 18:55:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -384,7 +384,16 @@ static void set_proc_title(char *fmt,...)
   /* On systems with setproctitle(), v*printf are used on the arguments.
    * Prevent any possible format attacks.
    */
+
+  /* Note: nasty portability hack to workaround FreeBSD's setproctitle()
+   * semantics.
+   */
+#if defined(FREEBSD4_2) || defined(FREEBSD4_3) || defined(FREEBSD4_3) || defined(FREEBSD4_4) || defined(FREEBSD4_5)
   setproctitle("%s", statbuf);
+#else
+  setproctitle("%s", statbuf);
+#endif
+
 #endif /* HAVE_SETPROCTITLE */
 
   va_end(msg);
@@ -437,6 +446,7 @@ void main_set_idle(void)
               main_server->ipaddr, (unsigned short) main_server->ServerPort,
               0, 0, "proftpd: %s - %s: IDLE",
 	      session.user,session.proc_prefix);
+
   set_proc_title("proftpd: %s - %s: IDLE", session.user, session.proc_prefix);
 }
 

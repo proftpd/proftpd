@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.14 2002-06-25 16:37:36 castaglia Exp $
+ * $Id: auth.c,v 1.15 2002-09-04 18:55:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -515,39 +515,61 @@ int set_groups(pool *p, gid_t primary_gid, array_header *suppl_gids) {
 #ifndef HAVE_SETGROUPS
   return 0;
 #else /* HAVE_SETGROUPS */
-  gid_t *process_gids = NULL, *group_ids = NULL;
-  size_t ngids = 0;
-  int i = 0, res = 0;
+  register unsigned int i = 0;
+  int res = 0;
+  gid_t *gids = NULL, *proc_gids = NULL;
+  size_t ngids = 0, nproc_gids = 0;
+  pool *tmp_pool = NULL;
 
   /* sanity check */
-  if (!suppl_gids)
+  if (!p || !suppl_gids)
     return 0;
 
+  tmp_pool = make_sub_pool(p);
+
   ngids = suppl_gids->nelts;
-  group_ids = suppl_gids->elts;
-  process_gids = palloc(p, sizeof(gid_t) * (ngids + 1));
+  gids = suppl_gids->elts;
+  proc_gids = pcalloc(tmp_pool, sizeof(gid_t) * (ngids));
 
-  /* From FreeBSD: /usr/src/lib/libc/gen/getgrouplist.c
-   *
-   * When installing primary group, duplicate it;
-   * the first element of groups is the effective gid
-   * and will be overwritten when a setgid file is executed.
+  /* Note: the list of supplemental GIDs may contain duplicates.  Sort
+   * through the list and keep only the unique IDs - this should help avoid
+   * running into the NGROUPS limit when possible.  This algorithm may slow
+   * things down some; optimize it if/when possible.
    */
-  process_gids[0] = primary_gid;
+  proc_gids[nproc_gids++] = gids[0];
 
-  for (i = 0; i < ngids; i++)
-    process_gids[i + 1] = group_ids[i];
+  for (i = 1; i < ngids; i++) {
+    register unsigned int j = 0;
+    unsigned char skip_gid = FALSE;
 
-  /* set the supplemental groups...
-   */
-  if ((res = setgroups(ngids + 1, process_gids)) < 0)
+    /* This duplicate ID search only needs to be done after the first GID
+     * in the given list is examined, as the first GID cannot be a duplicate.
+     */ 
+    for (j = 0; j < nproc_gids; j++) {
+      if (proc_gids[j] == gids[i]) {
+        skip_gid = TRUE;
+        break;
+      }
+    }
+
+    if (!skip_gid)
+      proc_gids[nproc_gids++] = gids[i];
+  }
+
+  /* Set the supplemental groups. */
+  if ((res = setgroups(nproc_gids, proc_gids)) < 0) {
+    destroy_pool(tmp_pool);
     return res;
+  }
 
-  /* ...and if that worked OK, set the primary GID of the process
+  /* If the above succeeded, set the primary GID of the process.
    */
-  if ((res = setgid(primary_gid)) < 0)
+  if ((res = setgid(primary_gid)) < 0) {
+    destroy_pool(tmp_pool);
     return res;
+  }
 
+  destroy_pool(tmp_pool);
   return res;
 #endif /* HAVE_SETGROUPS */
 }
