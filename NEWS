@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.413 2003-03-28 21:17:21 castaglia Exp $
+$Id: NEWS,v 1.414 2003-04-02 17:45:25 castaglia Exp $
 
 CVS
 ---------------------------------
@@ -92,6 +92,8 @@ CVS
 - Bug 1998 - Add ListOptions for setting limits on -R listings.  New
   keywords have been added to the ListOptions directive: maxdepth, maxdirs,
   and maxfiles.
+- Bug 2011 - No "FTP session closed." msgs written to logfile.  This affected
+  only inetd-run servers.
 
 1.2.8 - Released 04-Mar-2003
 ---------------------------------

@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.174 2003-03-28 07:34:05 castaglia Exp $
+ * $Id: main.c,v 1.175 2003-04-02 17:45:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -364,7 +364,7 @@ static void end_login_noexit(void) {
   if (session.c)
     inet_close(session.pool, session.c);
 
-  if (!is_master)
+  if (!is_master || ServerType == SERVER_INETD)
     log_pri(PR_LOG_INFO, "FTP session closed.");
 }
 
