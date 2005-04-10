@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.85 2004-11-04 22:48:17 castaglia Exp $
+ * $Id: data.c,v 1.86 2005-04-10 23:19:48 castaglia Exp $
  */
 
 #include "conf.h"
@@ -958,16 +958,22 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
      * times.  How annoying.
      */
 
-#if SIZEOF_SIZE_T == SIZEOF_INT
+#if defined(HAVE_LINUX_SENDFILE)
     if (count > INT_MAX)
       count = INT_MAX;
-#elif SIZEOF_SIZE_T == SIZEOF_LONG
+
+#elif defined(HAVE_SOLARIS_SENDFILE)
+# if SIZEOF_SIZE_T == SIZEOF_INT
+    if (count > INT_MAX)
+      count = INT_MAX;
+# elif SIZEOF_SIZE_T == SIZEOF_LONG
     if (count > LONG_MAX)
       count = LONG_MAX;
-#elif SIZEOF_SIZE_T == SIZEOF_LONG_LONG
+# elif SIZEOF_SIZE_T == SIZEOF_LONG_LONG
     if (count > LLONG_MAX)
       count = LLONG_MAX;
-#endif
+# endif
+#endif /* !HAVE_SOLARIS_SENDFILE */
 
     len = sendfile(PR_NETIO_FD(session.d->outstrm), retr_fd, offset, count);
 
