@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.9 2005-03-02 20:33:47 castaglia Exp $
+ * $Id: mod_delay.c,v 1.10 2005-04-10 23:15:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -180,7 +180,7 @@ static long delay_get_median(pool *p, unsigned int rownum, long interval) {
   /* Start at the end of the row and work backward, as values are
    * always added at the end of the row, shifting everything to the left.
    */
-  for (i = 1; i <= row->d_nvals; i++) {
+  for (i = 1; i < row->d_nvals; i++) {
     if (delay_max_interval < tab_vals[DELAY_NVALUES - i])
       delay_max_interval = tab_vals[DELAY_NVALUES - i];
 

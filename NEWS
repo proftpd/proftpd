@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.655 2005-04-04 20:40:59 castaglia Exp $
+$Id: NEWS,v 1.656 2005-04-10 23:15:48 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -126,6 +126,7 @@ $Id: NEWS,v 1.655 2005-04-04 20:40:59 castaglia Exp $
 - Bug 2576 - PWD command does not handle " character properly.
 - Bug 2493 - mod_tls should support CCC command.
 - Bug 2580 - ProFTPD on Tru64 with SIA allows login with blank password.
+- Bug 2554 - mod_delay gets segfault-signal on several logins.
 
 1.2.10 - Released 04-Sep-2004
 --------------------------------
