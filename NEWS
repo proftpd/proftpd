@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.656 2005-04-10 23:15:48 castaglia Exp $
+$Id: NEWS,v 1.657 2005-04-10 23:21:35 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -9,7 +9,7 @@ $Id: NEWS,v 1.656 2005-04-10 23:15:48 castaglia Exp $
   where `N' is the bug number.
 -----------------------------------------------------------------------------
 
-1.3.0rc1 - Released 26-Mar-2005
+1.3.0rc1 - Released 10-Apr-2005
 --------------------------------
 - Bug 2449 - ProFTPD silently ignores extra command-line parameters
 - Bug 2457 - Directory listing provides bad info when path ends with /.
