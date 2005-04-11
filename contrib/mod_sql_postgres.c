@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.26 2004-12-16 18:17:42 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.27 2005-04-11 17:02:33 castaglia Exp $
  */
 
 /*
@@ -1226,7 +1226,7 @@ static cmdtable sql_postgres_cmdtable[] = {
 };
 
 /* Event handlers
- *
+ */
 
 static void sql_postgres_mod_load_ev(const void *event_data,
     void *user_data) {
