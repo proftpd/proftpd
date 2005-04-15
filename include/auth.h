@@ -24,7 +24,7 @@
 
 /* ProFTPD Auth API
  *
- * $Id: auth.h,v 1.2 2004-12-05 05:50:28 castaglia Exp $
+ * $Id: auth.h,v 1.3 2005-04-15 05:55:05 castaglia Exp $
  */
 
 #ifndef PR_AUTH_H
@@ -71,25 +71,6 @@ const char *pr_auth_gid2name(pool *, gid_t);
 uid_t pr_auth_name2uid(pool *, const char *);
 gid_t pr_auth_name2gid(pool *, const char *);
 int pr_auth_getgroups(pool *, const char *, array_header **, array_header **);
-
-/* Legacy redefines, for compatibility (for now). */
-#define auth_setpwent		pr_auth_setpwent
-#define auth_endpwent		pr_auth_endpwent
-#define auth_setgrent		pr_auth_setgrent
-#define auth_endgrent		pr_auth_endgrent
-#define auth_getpwent		pr_auth_getpwent
-#define auth_getgrent		pr_auth_getgrent
-#define auth_getpwnam		pr_auth_getpwnam
-#define auth_getpwuid		pr_auth_getpwuid
-#define auth_getgrnam		pr_auth_getgrnam
-#define auth_getgrgid		pr_auth_getgrgid
-#define auth_authenticate	pr_auth_authenticate
-#define auth_check		pr_auth_check
-#define auth_uid2name		pr_auth_uid2name
-#define auth_gid2name		pr_auth_gid2name
-#define auth_name2uid		pr_auth_name2uid
-#define auth_name2gid		pr_auth_name2gid
-#define auth_getgroups		pr_auth_getgroups
 
 /* This is a convenience function used by mod_auth as part of the 
  * authentication process.  Given a user name, retrieve the <Anonymous>

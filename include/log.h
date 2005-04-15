@@ -27,7 +27,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.22 2003-11-09 22:19:45 castaglia Exp $
+ * $Id: log.h,v 1.23 2005-04-15 05:55:09 castaglia Exp $
  */
 
 #ifndef PR_LOG_H
@@ -108,11 +108,5 @@ void log_discard(void);
 void init_log(void);
 
 int log_str2sysloglevel(const char *);
-
-/* Transition macros */
-#define log_openfile	pr_log_openfile
-#define log_pri		pr_log_pri
-#define log_debug	pr_log_debug
-#define	log_auth	pr_log_auth
 
 #endif /* PR_LOG_H */
