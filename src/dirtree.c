@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.166 2005-02-26 17:28:58 castaglia Exp $
+ * $Id: dirtree.c,v 1.167 2005-04-15 21:18:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1812,11 +1812,11 @@ int dir_check_full(pool *pp, char *cmd, char *group, char *path, int *hidden) {
 
   if (isfile != -1) {
     /* Check to see if the current config "hides" the path or not. */
-    op_hidden = !dir_check_op(p, CURRENT_CONF, OP_HIDE, fullpath,
-      st.st_uid, st.st_gid, st.st_mode);
+    op_hidden = !dir_check_op(p, CURRENT_CONF, OP_HIDE,
+      session.chroot_path ? path : fullpath, st.st_uid, st.st_gid, st.st_mode);
 
-    res = dir_check_op(p, CURRENT_CONF, OP_COMMAND, fullpath,
-      st.st_uid, st.st_gid, st.st_mode);
+    res = dir_check_op(p, CURRENT_CONF, OP_COMMAND,
+      session.chroot_path ? path : fullpath, st.st_uid, st.st_gid, st.st_mode);
   }
 
   if (res) {
@@ -1956,11 +1956,11 @@ int dir_check(pool *pp, char *cmd, char *group, char *path, int *hidden) {
     /* If not already marked as hidden by its name, check to see if the path
      * is to be hidden by nature of its mode
      */
-    op_hidden = !dir_check_op(p, CURRENT_CONF, OP_HIDE, fullpath,
-      st.st_uid, st.st_gid, st.st_mode);
+    op_hidden = !dir_check_op(p, CURRENT_CONF, OP_HIDE,
+      session.chroot_path ? path : fullpath, st.st_uid, st.st_gid, st.st_mode);
 
-    res = dir_check_op(p, CURRENT_CONF, OP_COMMAND, fullpath,
-      st.st_uid, st.st_gid, st.st_mode);
+    res = dir_check_op(p, CURRENT_CONF, OP_COMMAND,
+      session.chroot_path ? path : fullpath, st.st_uid, st.st_gid, st.st_mode);
   }
 
   if (res) {
