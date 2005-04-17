@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.10 2005-04-10 23:15:51 castaglia Exp $
+ * $Id: mod_delay.c,v 1.11 2005-04-17 17:12:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -245,7 +245,7 @@ static void delay_delay(long interval) {
   tv.tv_usec = interval % 1000000;
 
   pr_log_debug(DEBUG0, MOD_DELAY_VERSION ": delaying for %ld usecs",
-    (tv.tv_sec * 1000000) + tv.tv_usec);
+    (long int) ((tv.tv_sec * 1000000) + tv.tv_usec));
 
   delay_signals_block();
   (void) select(0, NULL, NULL, NULL, &tv);

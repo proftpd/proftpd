@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.182 2004-12-12 00:14:42 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.183 2005-04-17 17:12:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2062,7 +2062,7 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
      */
     if ((nbytes = parse_max_nbytes(cmd->argv[1], cmd->argv[2])) == 0) {
       char ulong_max[80] = {'\0'};
-      sprintf(ulong_max, "%lu", ULONG_MAX);
+      sprintf(ulong_max, "%lu", (unsigned long) ULONG_MAX);
 
       if (xfer_errno == EINVAL)
         CONF_ERROR(cmd, "invalid parameters");
