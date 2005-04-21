@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.660 2005-04-17 17:12:14 castaglia Exp $
+$Id: NEWS,v 1.661 2005-04-21 17:58:32 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -15,6 +15,7 @@ CVS
 - Bug 2587 - HideNoAccess does not work for DefaultRoot/<Anonymous> logins.
 - Bug 2590 - AIX uses unsigned int for ULONG_MAX, causing printf format warning.
 - Bug 2591 - wrong argument type in call to pr_log_debug in mod_delay.c on AIX.
+- Bug 2593 - `make install-modules' does not honour DESTDIR enviroment variable.
 
 1.3.0rc1 - Released 10-Apr-2005
 --------------------------------
