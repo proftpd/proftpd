@@ -15,3 +15,5 @@ Make.modules
 stamp-h
 *.o
 *~
+.libs
+libtool
