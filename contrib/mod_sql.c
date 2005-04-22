@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.90 2004-12-23 19:55:32 castaglia Exp $
+ * $Id: mod_sql.c,v 1.91 2005-04-22 16:26:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1273,7 +1273,7 @@ static struct group *_sql_getgroup(cmd_rec *cmd, struct group *g) {
   /* check to see if the group already exists in one of the group caches */
   if (((grp = (struct group *) cache_findvalue(group_name_cache, g)) != NULL) ||
       ((grp = (struct group *) cache_findvalue(group_gid_cache, g)) != NULL)) {
-    sql_log(DEBUG_AUTH, "cache hit for group %s", grp->gr_name);
+    sql_log(DEBUG_AUTH, "cache hit for group '%s'", grp->gr_name);
 
     /* Check for negatively cached groups, which will have NULL gr_mem. */
     if (!grp->gr_mem) {
