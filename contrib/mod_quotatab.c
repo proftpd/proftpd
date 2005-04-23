@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.18 2005-04-23 16:13:38 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.19 2005-04-23 18:03:07 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -235,7 +235,7 @@ static char *quota_display_files(pool *p, unsigned int files_used,
 }
 
 static char *quota_display_site_bytes(pool *p, double bytes_used,
-    double bytes_avail) {
+    double bytes_avail, quota_xfer_t xfer_type) {
   double adj_used = 0.0, adj_avail = 0.0;
   char *display = (char *) pcalloc(p, 80);
 
@@ -255,7 +255,8 @@ static char *quota_display_site_bytes(pool *p, double bytes_used,
       adj_avail = (bytes_avail / 1024.0);
 
       if (adj_avail > 0.0)
-        sprintf(display, "Kb:\t\t%.2f/%.2f", adj_used, adj_avail);
+        sprintf(display, "Kb:\t%s%.2f/%.2f", xfer_type != IN ? "" : "\t",
+          adj_used, adj_avail);
       else
         sprintf(display, "Kb:\tunlimited");
       break;
@@ -266,7 +267,8 @@ static char *quota_display_site_bytes(pool *p, double bytes_used,
       adj_avail = (bytes_avail / (1024.0 * 1024.0));
 
       if (adj_avail > 0.0)
-        sprintf(display, "Mb:\t\t%.2f/%.2f", adj_used, adj_avail);
+        sprintf(display, "Mb:\t%s%.2f/%.2f", xfer_type != IN ? "" : "\t",
+          adj_used, adj_avail);
       else
         sprintf(display, "Mb:\tunlimited");
       break;
@@ -277,7 +279,8 @@ static char *quota_display_site_bytes(pool *p, double bytes_used,
       adj_avail = (bytes_avail / (1024.0 * 1024.0 * 1024.0));
 
       if (adj_avail > 0.0)
-        sprintf(display, "Gb:\t\t%.2f/%.2f", adj_used, adj_avail);
+        sprintf(display, "Gb:\t%s%.2f/%.2f", xfer_type != IN ? "" : "\t",
+          adj_used, adj_avail);
       else
         sprintf(display, "Gb:\tunlimited");
       break;
@@ -291,7 +294,7 @@ static char *quota_display_site_bytes(pool *p, double bytes_used,
 }
 
 static char *quota_display_site_files(pool *p, unsigned int files_used,
-    unsigned int files_avail) {
+    unsigned int files_avail, quota_xfer_t xfer_type) {
   char *display = (char *) pcalloc(p, 80);
 
   if (files_avail != 0)
@@ -2199,23 +2202,23 @@ MODRET quotatab_site(cmd_rec *cmd) {
 
     pr_response_add(R_DUP, "  Uploaded %s",
       quota_display_site_bytes(cmd->tmp_pool, quotatab_tally.bytes_in_used,
-      quotatab_limit.bytes_in_avail));
+      quotatab_limit.bytes_in_avail, IN));
     pr_response_add(R_DUP, "  Downloaded %s",
       quota_display_site_bytes(cmd->tmp_pool, quotatab_tally.bytes_out_used,
-      quotatab_limit.bytes_out_avail));
+      quotatab_limit.bytes_out_avail, OUT));
     pr_response_add(R_DUP, "  Transferred %s",
       quota_display_site_bytes(cmd->tmp_pool, quotatab_tally.bytes_xfer_used,
-      quotatab_limit.bytes_xfer_avail));
+      quotatab_limit.bytes_xfer_avail, XFER));
 
     pr_response_add(R_DUP, "  Uploaded %s",
       quota_display_site_files(cmd->tmp_pool, quotatab_tally.files_in_used,
-      quotatab_limit.files_in_avail));
+      quotatab_limit.files_in_avail, IN));
     pr_response_add(R_DUP, "  Downloaded %s",
       quota_display_site_files(cmd->tmp_pool, quotatab_tally.files_out_used,
-      quotatab_limit.files_out_avail));
+      quotatab_limit.files_out_avail, OUT));
     pr_response_add(R_DUP, "  Transferred %s",
       quota_display_site_files(cmd->tmp_pool, quotatab_tally.files_xfer_used,
-      quotatab_limit.files_xfer_avail));
+      quotatab_limit.files_xfer_avail, XFER));
 
     /* Add one final line to preserve the spacing. */
     pr_response_add(R_DUP,
