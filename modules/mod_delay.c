@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.11 2005-04-17 17:12:14 castaglia Exp $
+ * $Id: mod_delay.c,v 1.12 2005-04-23 22:54:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -238,8 +238,9 @@ static void delay_delay(long interval) {
    * maximum of half of the longest interval seen.
    */
   rand_usec = ((delay_max_interval / 2.0) * rand()) / (RAND_MAX);
-
   interval += rand_usec;
+  pr_log_debug(DEBUG10, MOD_DELAY_VERSION
+    ": additional random delay of %ld usecs added", (long int) rand_usec);
 
   tv.tv_sec = interval / 1000000;
   tv.tv_usec = interval % 1000000;
