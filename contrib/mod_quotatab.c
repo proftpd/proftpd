@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.17 2005-03-06 06:03:11 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.18 2005-04-23 16:13:38 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -255,7 +255,7 @@ static char *quota_display_site_bytes(pool *p, double bytes_used,
       adj_avail = (bytes_avail / 1024.0);
 
       if (adj_avail > 0.0)
-        sprintf(display, "Kb:\t%.2f/%.2f", adj_used, adj_avail);
+        sprintf(display, "Kb:\t\t%.2f/%.2f", adj_used, adj_avail);
       else
         sprintf(display, "Kb:\tunlimited");
       break;
@@ -266,7 +266,7 @@ static char *quota_display_site_bytes(pool *p, double bytes_used,
       adj_avail = (bytes_avail / (1024.0 * 1024.0));
 
       if (adj_avail > 0.0)
-        sprintf(display, "Mb:\t%.2f/%.2f", adj_used, adj_avail);
+        sprintf(display, "Mb:\t\t%.2f/%.2f", adj_used, adj_avail);
       else
         sprintf(display, "Mb:\tunlimited");
       break;
@@ -277,7 +277,7 @@ static char *quota_display_site_bytes(pool *p, double bytes_used,
       adj_avail = (bytes_avail / (1024.0 * 1024.0 * 1024.0));
 
       if (adj_avail > 0.0)
-        sprintf(display, "Gb:\t%.2f/%.2f", adj_used, adj_avail);
+        sprintf(display, "Gb:\t\t%.2f/%.2f", adj_used, adj_avail);
       else
         sprintf(display, "Gb:\tunlimited");
       break;
