@@ -720,7 +720,7 @@
 /* Define if IPv6 support is desired.  */
 #undef PR_USE_IPV6
 
-/* Define if largfile support is desired.  */
+/* Define if largefile support is desired.  */
 #undef PR_USE_LARGEFILES
 
 /* Define if the %llu format should be used.  */
