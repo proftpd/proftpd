@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.25 2005-01-06 18:55:03 castaglia Exp $
+ * $Id: bindings.c,v 1.26 2005-04-25 22:12:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -471,6 +471,12 @@ int pr_ipbind_listen(fd_set *readfds) {
     return -1;
 
   FD_ZERO(readfds);
+
+  if (!binding_pool) {
+    /* Initialize the working pool, if not present */
+    binding_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(binding_pool, "Bindings Pool");
+  }
 
   /* Reset the listener list. */
   if (!listener_list)
