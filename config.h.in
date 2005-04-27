@@ -693,6 +693,9 @@
 /* Define for large files, on AIX-style hosts. */
 #undef _LARGE_FILES
 
+/* Define for use of hstrerror on AIX-style hosts. */
+#undef _USE_IRS
+
 /* Define if auto-detection of shadow passwords is wanted.  */
 #undef PR_USE_AUTO_SHADOW
 

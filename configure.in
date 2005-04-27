@@ -843,6 +843,20 @@ AC_CHECK_HEADERS(sys/param.h sys/mount.h,,,
 
 AC_CHECK_HEADERS(netdb.h netinet/in.h)
 
+dnl On AIX, it seems that in order for hstrerror to be properly seen
+dnl from netdb.h, we need to define _USE_IRS.  And people wonder why
+dnl there's all this effort for compatibility, when "Unix is Unix,
+dnl right?"  Yeah, whatever.
+AC_MSG_CHECKING(whether netdb.h requires _USE_IRS)
+AC_EGREP_HEADER(_USE_IRS, netdb.h,
+  [
+    AC_DEFINE(_USE_IRS, 1, [if netdb.h requires _USE_IRS])
+    AC_MSG_RESULT(yes)
+  ],
+  [
+    AC_MSG_RESULT(no)
+  ])
+
 AC_CHECK_HEADERS(netinet/in_systm.h,,,
   [
     [

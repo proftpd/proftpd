@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.662 2005-04-23 15:53:50 castaglia Exp $
+$Id: NEWS,v 1.663 2005-04-27 21:01:14 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -17,6 +17,7 @@ CVS
 - Bug 2591 - wrong argument type in call to pr_log_debug in mod_delay.c on AIX.
 - Bug 2593 - `make install-modules' does not honour DESTDIR enviroment variable.
 - Bug 2596 - STAT command can cause segfault.
+- Bug 2588 - AIX requires _USE_IRS #define to use hstrerror().
 
 1.3.0rc1 - Released 10-Apr-2005
 --------------------------------
