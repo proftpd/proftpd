@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.22 2005-04-04 20:41:00 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.23 2005-04-29 16:26:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -421,6 +421,10 @@ static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
   char *cpw = NULL;
 
   PRIVS_ROOT
+#ifdef HAVE_SETSPENT
+  setspent();
+#endif /* HAVE_SETSPENT */
+
   sp = getspnam(u);
 
   if (sp) {
