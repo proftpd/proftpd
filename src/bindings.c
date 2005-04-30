@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.26 2005-04-25 22:12:47 castaglia Exp $
+ * $Id: bindings.c,v 1.27 2005-04-30 19:07:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -449,9 +449,13 @@ server_rec *pr_ipbind_get_server(pr_netaddr_t *addr, unsigned int port) {
   if (ipbind != NULL)
     return ipbind->ib_server;
 
-  /* Use the default server, if set */
-  if (ipbind_default_server && ipbind_default_server->ib_isactive)
+  /* Use the default server, if set. */
+  if (ipbind_default_server && ipbind_default_server->ib_isactive) {
+    pr_log_debug(DEBUG7, "no matching vhost found for %s#%u, using "
+      "DefaultServer '%s'", pr_netaddr_get_ipstr(addr), port,
+      ipbind_default_server->ib_server->ServerName);
     return ipbind_default_server->ib_server;
+  }
 
   /* Not found in binding list, and no DefaultServer, so see if it's the
    * loopback address
