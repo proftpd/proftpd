@@ -218,18 +218,6 @@ AC_ARG_WITH(shared,
 
 dnl --enable/--disable options.
 
-AC_ARG_ENABLE(auth-unix,
-  [AC_HELP_STRING(
-    [--disable-auth-unix],
-    [omit mod_auth_unix from core modules])
-  ],
-  [
-    if test "$enableval" = "no"; then
-      ac_core_modules=`echo "$ac_core_modules" | sed -e 's/mod_auth_unix\.o//'`
-      ac_build_core_modules=`echo "$ac_build_core_modules" | sed -e 's/modules\/mod_auth_unix\.o//'`
-    fi
-  ])
-
 AC_ARG_ENABLE(auth-file,
   [AC_HELP_STRING(
     [--disable-auth-file],
