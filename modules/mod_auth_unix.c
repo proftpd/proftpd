@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.23 2005-04-29 16:26:34 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.24 2005-04-30 18:03:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -678,13 +678,15 @@ MODRET pw_check(cmd_rec *cmd) {
   /* Use Tru64's C2 SIA subsystem for authenticating this user. */
   user = cmd->argv[1];
 
+  pr_log_auth(PR_LOG_NOTICE, "using SIA for user '%s'", user);
+
   info[0] = "ProFTPD";
   info[1] = NULL;
 
   /* Prepare the SIA subsystem. */
   PRIVS_ROOT
-  if ((res = sia_ses_init(&ent, 1, info, NULL, user, NULL, 0,
-      NULL)) != SIASUCCESS) {
+  res = sia_ses_init(&ent, 1, info, NULL, user, NULL, 0, NULL);
+  if (res != SIASUCCESS) {
     pr_log_auth(PR_LOG_NOTICE, "sia_ses_init() returned %d for user '%s'", res,
       user);
 
@@ -695,6 +697,14 @@ MODRET pw_check(cmd_rec *cmd) {
       sia_ses_release(&ent);
       PRIVS_RELINQUISH
       pr_log_auth(PR_LOG_NOTICE, "sia_ses_authent() returned %d for user '%s'",
+        res, user);
+      return ERROR(cmd);
+    }
+
+    res = sia_ses_estab(NULL, ent);
+    if (res != SIASUCCESS) {
+      PRIVS_RELINQUISH
+      pr_log_auth(PR_LOG_NOTICE, "sia_ses_estab() returned %d for user '%s'",
         res, user);
       return ERROR(cmd);
     }
