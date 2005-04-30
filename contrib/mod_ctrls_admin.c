@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ctrls_admin -- a module implementing admin control handlers
  *
- * Copyright (c) 2000-2003 TJ Saunders
+ * Copyright (c) 2000-2005 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,14 +25,14 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.22 2004-12-16 23:54:49 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.23 2005-04-30 19:59:27 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_ctrls.h"
 
-#define MOD_CTRLS_ADMIN_VERSION		"mod_ctrls_admin/0.9.2"
+#define MOD_CTRLS_ADMIN_VERSION		"mod_ctrls_admin/0.9.3"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001021001
@@ -54,6 +54,7 @@
 
 /* From src/dirtree.c */
 extern xaset_t *server_list;
+extern int ServerUseReverseDNS;
 
 module ctrls_admin_module;
 static ctrls_acttab_t ctrls_admin_acttab[];
@@ -144,6 +145,46 @@ static int ctrls_handle_debug(pr_ctrls_t *ctrl, int reqargc,
     pr_ctrls_add_response(ctrl, "unknown debug action: '%s'", reqargv[0]);
     return -1;
   }
+
+  return 0;
+}
+
+static int ctrls_handle_dns(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+  int bool;
+
+  /* Check the dns ACL */
+  if (!ctrls_check_acl(ctrl, ctrls_admin_acttab, "dns")) {
+
+    /* Access denied */
+    pr_ctrls_add_response(ctrl, "access denied");
+    return -1;
+  }
+
+  /* Sanity check */
+  if (reqargc == 0 || reqargv == NULL) {
+    pr_ctrls_add_response(ctrl, "dns: missing required parameters");
+    return -1;
+  }
+
+  if (reqargc != 1) {
+    pr_ctrls_add_response(ctrl, "dns: wrong number of parameters");
+    return -1;
+  }
+
+  bool = pr_is_boolean(reqargv[0]);
+  if (bool == -1) {
+    pr_ctrls_add_response(ctrl, "dns: error: expected Boolean parameter: '%s'",
+      reqargv[0]);
+    return -1;
+  }
+
+  ServerUseReverseDNS = bool;
+
+  ctrls_log(MOD_CTRLS_ADMIN_VERSION, "dns: UseReverseDNS set to '%s'",
+    bool ? "on" : "off");
+  pr_ctrls_add_response(ctrl, "dns: UseReverseDNS set to '%s'",
+    bool ? "on" : "off");
 
   return 0;
 }
@@ -1019,6 +1060,8 @@ static int ctrls_admin_init(void) {
 static ctrls_acttab_t ctrls_admin_acttab[] = {
   { "debug",    "set debugging level",		NULL,
     ctrls_handle_debug },
+  { "dns",	"set UseReverseDNS configuration",	NULL,
+    ctrls_handle_dns },
   { "down",     "disable an individual virtual server", NULL,
     ctrls_handle_down },
   { "get",      "list configuration data",	NULL,

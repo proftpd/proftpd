@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.664 2005-04-30 18:03:22 castaglia Exp $
+$Id: NEWS,v 1.665 2005-04-30 19:59:27 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -19,6 +19,9 @@ CVS
 - Bug 2596 - STAT command can cause segfault.
 - Bug 2588 - AIX requires _USE_IRS #define to use hstrerror().
 - Bug 2582 - ProFTPD on Tru64 with SIA does not call sia_ses_estab().
+- Added new 'dns' control to mod_ctrls_admin, for enabling/disabling
+  UseReverseDNS configuration at runtime.  See doc/contrib/mod_ctrls_admin.html
+  for details.
 
 1.3.0rc1 - Released 10-Apr-2005
 --------------------------------
