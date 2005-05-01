@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.45 2004-11-02 18:18:59 castaglia Exp $
+ * $Id: netaddr.c,v 1.46 2005-05-01 00:04:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -894,7 +894,10 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
         pr_log_debug(DEBUG1, "notice: unable to resolve '%s': %s", buf,
           hstrerror(errno));
     }
-  }
+
+  } else
+    pr_log_debug(DEBUG10,
+      "UseReverseDNS off, returning IP address instead of DNS name");
 
   if (!name)
     name = (char *) pr_netaddr_get_ipstr(na);
