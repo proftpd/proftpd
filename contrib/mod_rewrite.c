@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
  *
- * Copyright (c) 2001-2003 TJ Saunders
+ * Copyright (c) 2001-2005 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.22 2004-12-16 23:37:40 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.23 2005-05-06 05:24:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1010,9 +1010,10 @@ static char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
 static char *rewrite_subst_maps_int(cmd_rec *cmd, config_rec *c,
     rewrite_map_t *map) {
   char *value = NULL;
-  char *(*map_func)(pool *, char *) = c->argv[2];
+  char *(*map_func)(pool *, char *) = (char *(*)(pool *, char *)) c->argv[2];
    
-  if ((value = map_func(cmd->tmp_pool, map->map_lookup_key)) == NULL)
+  value = map_func(cmd->tmp_pool, map->map_lookup_key);
+  if (value == NULL)
     value = map->map_default_value;
 
   return value;
@@ -1423,7 +1424,9 @@ static char *rewrite_map_int_utf8trans(pool *map_pool, char *key) {
   memset(utf8_val, '\0', PR_TUNABLE_BUFFER_SIZE);
   memset(ucs4_longs, 0, PR_TUNABLE_BUFFER_SIZE);
 
-  if ((ucs4strlen = rewrite_utf8_to_ucs4(ucs4_longs, strlen(key), key)) < 0) {
+  ucs4strlen = rewrite_utf8_to_ucs4(ucs4_longs, strlen(key),
+    (unsigned char *) key);
+  if (ucs4strlen < 0) {
 
     /* The key is not a properly formatted UTF-8 string. */
     rewrite_log("rewrite_map_int_utf8trans(): not a proper UTF-8 string: '%s'",
@@ -1440,7 +1443,7 @@ static char *rewrite_map_int_utf8trans(pool *map_pool, char *key) {
     for (i = 0; i < ucs4strlen; i++)
       utf8_val[i] = (unsigned char) ucs4_longs[i];
 
-    return pstrdup(map_pool, utf8_val);
+    return pstrdup(map_pool, (const char *) utf8_val);
   }
 
   return NULL;
