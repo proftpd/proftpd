@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004 The ProFTPD Project team
+ * Copyright (c) 2004, 2005 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.4 2004-11-11 02:44:05 castaglia Exp $
+ * $Id: table.c,v 1.5 2005-05-06 05:53:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -891,9 +891,10 @@ int pr_table_ctl(pr_table_t *tab, int cmd, void *arg) {
   }
 
   switch (cmd) {
-
     case PR_TABLE_CTL_SET_KEY_HASH:
-      tab->keyhash = arg ? arg : key_hash;
+      tab->keyhash = arg ?
+        (unsigned int (*)(const void *, size_t)) arg :
+        (unsigned int (*)(const void *, size_t)) key_hash;
       return 0;
 
     case PR_TABLE_CTL_SET_FLAGS:
@@ -906,15 +907,21 @@ int pr_table_ctl(pr_table_t *tab, int cmd, void *arg) {
       return 0;
 
     case PR_TABLE_CTL_SET_KEY_CMP:
-      tab->keycmp = arg ? arg : key_cmp;
+      tab->keycmp = arg ?
+        (int (*)(const void *, size_t, const void *, size_t)) arg :
+        (int (*)(const void *, size_t, const void *, size_t)) key_cmp;
       return 0;
 
     case PR_TABLE_CTL_SET_ENT_INSERT:
-      tab->entinsert = arg ? arg : entry_insert;
+      tab->entinsert = arg ?
+        (void (*)(pr_table_entry_t **, pr_table_entry_t *)) arg :
+        (void (*)(pr_table_entry_t **, pr_table_entry_t *)) entry_insert;
       return 0;
 
     case PR_TABLE_CTL_SET_ENT_REMOVE:
-      tab->entremove = arg ? arg : entry_remove;
+      tab->entremove = arg ?
+        (void (*)(pr_table_entry_t **, pr_table_entry_t *)) arg :
+        (void (*)(pr_table_entry_t **, pr_table_entry_t *)) entry_remove;
       return 0;
 
     case PR_TABLE_CTL_SET_NCHAINS:

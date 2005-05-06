@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2005 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.268 2004-12-30 22:51:40 castaglia Exp $
+ * $Id: mod_core.c,v 1.269 2005-05-06 05:53:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4440,39 +4440,42 @@ static int core_sess_init(void) {
   /* Set some Variable entries for Display files. */
   if (pr_var_set(session.pool, "%{total_bytes_in}",
       "Number of bytes uploaded during a session", PR_VAR_TYPE_FUNC,
-      core_get_sess_bytes_str, &session.total_bytes_in, sizeof(off_t *)) < 0)
+      (void *) core_get_sess_bytes_str, &session.total_bytes_in,
+      sizeof(off_t *)) < 0)
     pr_log_debug(DEBUG6, "error setting %%{total_bytes_in} variable: %s",
       strerror(errno));
 
   if (pr_var_set(session.pool, "%{total_bytes_out}", 
       "Number of bytes downloaded during a session", PR_VAR_TYPE_FUNC,
-      core_get_sess_bytes_str, &session.total_bytes_out, sizeof(off_t *)) < 0)
+      (void *) core_get_sess_bytes_str, &session.total_bytes_out,
+      sizeof(off_t *)) < 0)
     pr_log_debug(DEBUG6, "error setting %%{total_bytes_out} variable: %s",
       strerror(errno));
 
   if (pr_var_set(session.pool, "%{total_bytes_xfer}", 
       "Number of bytes transfered during a session", PR_VAR_TYPE_FUNC,
-      core_get_sess_bytes_str, &session.total_bytes, sizeof(off_t *)) < 0)
+      (void *) core_get_sess_bytes_str, &session.total_bytes,
+      sizeof(off_t *)) < 0)
     pr_log_debug(DEBUG6, "error setting %%{total_bytes_fer} variable: %s",
       strerror(errno));
 
   if (pr_var_set(session.pool, "%{total_files_in}", 
       "Number of files uploaded during a session", PR_VAR_TYPE_FUNC,
-      core_get_sess_files_str, &session.total_files_in,
+      (void *) core_get_sess_files_str, &session.total_files_in,
       sizeof(unsigned int *)) < 0)
     pr_log_debug(DEBUG6, "error setting %%{total_files_in} variable: %s",
       strerror(errno));
 
   if (pr_var_set(session.pool, "%{total_files_out}", 
       "Number of files downloaded during a session", PR_VAR_TYPE_FUNC,
-      core_get_sess_files_str, &session.total_files_out,
+      (void *) core_get_sess_files_str, &session.total_files_out,
       sizeof(unsigned int *)) < 0)
     pr_log_debug(DEBUG6, "error setting %%{total_files_out} variable: %s",
       strerror(errno));
 
   if (pr_var_set(session.pool, "%{total_files_xfer}", 
       "Number of files transfered during a session", PR_VAR_TYPE_FUNC,
-      core_get_sess_files_str, &session.total_files_xfer,
+      (void *) core_get_sess_files_str, &session.total_files_xfer,
       sizeof(unsigned int *)) < 0)
     pr_log_debug(DEBUG6, "error setting %%{total_files_xfer} variable: %s",
       strerror(errno));

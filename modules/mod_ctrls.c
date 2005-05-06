@@ -3,7 +3,7 @@
  *          server, as well as several utility functions for other Controls
  *          modules
  *
- * Copyright (c) 2000-2004 TJ Saunders
+ * Copyright (c) 2000-2005 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.23 2004-12-12 05:59:27 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.24 2005-05-06 05:53:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -638,7 +638,8 @@ static void ctrls_del_cl(pr_ctrls_cl_t *cl) {
 /* Accept a client connection */
 static int ctrls_accept(int sockfd, uid_t *uid, gid_t *gid, pid_t *pid) {
   pid_t cl_pid = 0;
-  int cl_fd = -1, len = 0;
+  int cl_fd = -1;
+  size_t len = 0;
   char *tmp = NULL;
   time_t stale_time;
   struct sockaddr_un sock;
