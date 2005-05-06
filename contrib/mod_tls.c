@@ -446,7 +446,7 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
       switch (name->type) {
         case GEN_DNS:
           if (tls_opts & TLS_OPT_VERIFY_CERT_FQDN) {
-            const char *cert_dns_name = name->d.ia5->data;
+            const char *cert_dns_name = (const char *) name->d.ia5->data;
             have_dns_ext = TRUE;
 
             if (strcmp(cert_dns_name, conn->remote_name) != 0) {
@@ -468,7 +468,7 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
         case GEN_IPADD:
           if (tls_opts & TLS_OPT_VERIFY_CERT_IP_ADDR) {
             char cert_ipstr[INET_ADDRSTRLEN] = {'\0'};
-            const char *cert_ipaddr = name->d.ia5->data;
+            const char *cert_ipaddr = (const char *) name->d.ia5->data;
 
             /* Note: OpenSSL doesn't support IPv6 addresses in the
              * ipAddress name yet.
@@ -914,7 +914,7 @@ static int tls_init_ctxt(void) {
 
   /* Set up session caching. */
   SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
-  SSL_CTX_set_session_id_context(ssl_ctx, "1", 1);
+  SSL_CTX_set_session_id_context(ssl_ctx, (const unsigned char *) "1", 1);
 
   SSL_CTX_set_tmp_dh_callback(ssl_ctx, tls_dh_cb);
 
@@ -1881,67 +1881,67 @@ static void tls_setup_cert_dn_environ(const char *env_prefix, X509_NAME *name) {
     switch (nid) {
       case NID_countryName:
         putenv(pstrcat(main_server->pool, env_prefix, "C=",
-          pstrndup(main_server->pool, entry->value->data,
+          pstrndup(main_server->pool, (const char *) entry->value->data,
           entry->value->length), NULL));
         break;
 
       case NID_commonName:
         putenv(pstrcat(main_server->pool, env_prefix, "CN=",
-          pstrndup(main_server->pool, entry->value->data,
+          pstrndup(main_server->pool, (const char *) entry->value->data,
           entry->value->length), NULL));
         break;
 
       case NID_description:
         putenv(pstrcat(main_server->pool, env_prefix, "D=",
-          pstrndup(main_server->pool, entry->value->data,
+          pstrndup(main_server->pool, (const char *) entry->value->data,
           entry->value->length), NULL));
         break;
 
       case NID_givenName:
         putenv(pstrcat(main_server->pool, env_prefix, "G=",
-          pstrndup(main_server->pool, entry->value->data,
+          pstrndup(main_server->pool, (const char *) entry->value->data,
           entry->value->length), NULL));
         break;
 
       case NID_initials:
         putenv(pstrcat(main_server->pool, env_prefix, "I=",
-          pstrndup(main_server->pool, entry->value->data,
+          pstrndup(main_server->pool, (const char *) entry->value->data,
           entry->value->length), NULL));
         break;
 
       case NID_localityName:
         putenv(pstrcat(main_server->pool, env_prefix, "L=",
-          pstrndup(main_server->pool, entry->value->data,
+          pstrndup(main_server->pool, (const char *) entry->value->data,
           entry->value->length), NULL));
         break;
 
       case NID_organizationName:
         putenv(pstrcat(main_server->pool, env_prefix, "O=",
-          pstrndup(main_server->pool, entry->value->data,
+          pstrndup(main_server->pool, (const char *) entry->value->data,
           entry->value->length), NULL));
         break;
 
       case NID_organizationalUnitName:
         putenv(pstrcat(main_server->pool, env_prefix, "OU=",
-          pstrndup(main_server->pool, entry->value->data,
+          pstrndup(main_server->pool, (const char *) entry->value->data,
           entry->value->length), NULL));
         break;
 
       case NID_stateOrProvinceName:
         putenv(pstrcat(main_server->pool, env_prefix, "ST=",
-          pstrndup(main_server->pool, entry->value->data,
+          pstrndup(main_server->pool, (const char *) entry->value->data,
           entry->value->length), NULL));
         break;
 
       case NID_surname:
         putenv(pstrcat(main_server->pool, env_prefix, "S=",
-          pstrndup(main_server->pool, entry->value->data,
+          pstrndup(main_server->pool, (const char *) entry->value->data,
           entry->value->length), NULL));
         break;
 
       case NID_title:
         putenv(pstrcat(main_server->pool, env_prefix, "T=",
-          pstrndup(main_server->pool, entry->value->data,
+          pstrndup(main_server->pool, (const char *) entry->value->data,
           entry->value->length), NULL));
         break;
 
@@ -1951,13 +1951,13 @@ static void tls_setup_cert_dn_environ(const char *env_prefix, X509_NAME *name) {
       case NID_uniqueIdentifier:
 #endif
         putenv(pstrcat(main_server->pool, env_prefix, "UID=",
-          pstrndup(main_server->pool, entry->value->data,
+          pstrndup(main_server->pool, (const char *) entry->value->data,
           entry->value->length), NULL));
         break;
 
       case NID_pkcs9_emailAddress:
         putenv(pstrcat(main_server->pool, env_prefix, "Email=",
-          pstrndup(main_server->pool, entry->value->data,
+          pstrndup(main_server->pool, (const char *) entry->value->data,
           entry->value->length), NULL));
         break;
 
