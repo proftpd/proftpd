@@ -47,7 +47,7 @@ static: $(STATIC_MODULE_OBJS) module_glue.o
 	done
 
 install:
-	@test -z "$(SHARED_MODULE_OBJS)" || $(LIBTOOL) --mode=install $(INSTALL_BIN) $(SHARED_MODULE_OBJS) $(DESTDIR)$(LIBEXECDIR)
+	test -z "$(SHARED_MODULE_OBJS)" || $(LIBTOOL) --mode=install $(INSTALL_BIN) $(SHARED_MODULE_OBJS) $(DESTDIR)$(LIBEXECDIR)
 	@dirs="$(SHARED_MODULE_DIRS)"; \
 	for dir in $$dirs; do\
 		cd $(top_srcdir)/$$dir/ && $(MAKE) install; \
