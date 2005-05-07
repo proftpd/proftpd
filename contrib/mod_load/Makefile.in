@@ -4,6 +4,8 @@ srcdir=@srcdir@
 
 include $(top_srcdir)/Make.rules
 
+.SUFFIXES: .la
+
 SHARED_CFLAGS=-DPR_SHARED_MODULE
 SHARED_LDFLAGS=-avoid-version -export-dynamic -module
 VPATH=@srcdir@
@@ -15,12 +17,12 @@ INCLUDES=-I. -I../.. -I../../include
 CPPFLAGS= -DHAVE_CONFIG_H $(DEFAULT_PATHS) $(PLATFORM) $(INCLUDES)
 LDFLAGS=-L../../lib
 
-%.o: %.c
+.c.o:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
-%.la: %.c
-	$(LIBTOOL) --mode=compile $(CC) $(CPPFLAGS) $(CFLAGS) $(SHARED_CFLAGS) -c $(basename $@).c
-	$(LIBTOOL) --mode=link $(CC) -o $@ -rpath $(LIBEXECDIR) $(LDFLAGS) $(SHARED_LDFLAGS) $(basename $@).lo `cat $(basename $@).c | grep '$$Libraries:' | sed -e 's/^.*\$$Libraries: \(.*\)\\$$/\1/'`
+.c.la:
+	$(LIBTOOL) --mode=compile $(CC) $(CPPFLAGS) $(CFLAGS) $(SHARED_CFLAGS) -c $*.c
+	$(LIBTOOL) --mode=link $(CC) -o $@ -rpath $(LIBEXECDIR) $(LDFLAGS) $(SHARED_LDFLAGS) $*.lo `cat $*.c | grep '$$Libraries:' | sed -e 's/^.*\$$Libraries: \(.*\)\\$$/\1/'`
 
 shared: $(MODULE_NAME).la
 
