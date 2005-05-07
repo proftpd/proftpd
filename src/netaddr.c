@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003 The ProFTPD Project team
+ * Copyright (c) 2003-2005 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.46 2005-05-01 00:04:19 castaglia Exp $
+ * $Id: netaddr.c,v 1.47 2005-05-07 17:01:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -358,7 +358,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     gai_res = pr_getaddrinfo(name, NULL, &hints, &info);
     if (gai_res != 0) {
       pr_log_pri(PR_LOG_INFO, "getaddrinfo '%s' error: %s", name,
-        res != EAI_SYSTEM ? pr_gai_strerror(gai_res) : strerror(errno));
+        gai_res != EAI_SYSTEM ? pr_gai_strerror(gai_res) : strerror(errno));
       return NULL;
     }
 
