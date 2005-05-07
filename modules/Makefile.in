@@ -11,6 +11,8 @@ VPATH=@srcdir@
 
 include ../Make.rules
 
+.SUFFIXES: .la
+
 .PHONY: ""
 
 all:
@@ -20,12 +22,12 @@ all:
 Makefile: Makefile.in ../config.status
 	cd ../ && ./config.status
 
-%.o: %.c
+.c.o:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
-%.la: %.c
-	$(LIBTOOL) --mode=compile $(CC) $(CPPFLAGS) $(CFLAGS) $(SHARED_CFLAGS) -c $(basename $@).c
-	$(LIBTOOL) --mode=link $(CC) -o $@ -rpath $(LIBEXECDIR) $(LDFLAGS) $(SHARED_LDFLAGS) $(basename $@).lo `cat $(top_srcdir)/modules/$(basename $@).c | grep '$$Libraries:' | sed -e 's/^.*\$$Libraries: \(.*\)\\$$/\1/'`
+.c.la:
+	$(LIBTOOL) --mode=compile $(CC) $(CPPFLAGS) $(CFLAGS) $(SHARED_CFLAGS) -c $*.c
+	$(LIBTOOL) --mode=link $(CC) -o $@ -rpath $(LIBEXECDIR) $(LDFLAGS) $(SHARED_LDFLAGS) $*.lo `cat $(top_srcdir)/modules/$*.c | grep '$$Libraries:' | sed -e 's/^.*\$$Libraries: \(.*\)\\$$/\1/'`
 
 module_glue.c: module_glue.c.tmpl $(STATIC_MODULE_OBJS)
 	srcdir=$(srcdir) $(srcdir)/glue.sh $(GLUE_MODULE_OBJS)
