@@ -1135,7 +1135,7 @@ Optional Packages:
 
   --with-modules=LIST     add additional modules to proftpd. LIST is a
                           colon-separated list of modules to add e.g.
-                          --with-modules=mod_auth_pam:mod_readme
+                          --with-modules=mod_readme:mod_ifsession
 
   --with-shared=LIST      build DSO modules for proftpd. LIST is a
                           colon-separated list of modules to build as DSOs
@@ -19476,16 +19476,34 @@ fi;
 # Check whether --with-modules or --without-modules was given.
 if test "${with_modules+set}" = set; then
   withval="$with_modules"
-   ac_static_modules=`echo "$withval" | sed -e 's/:/.o /g'`.o ;
+
+    ac_static_modules=`echo "$withval" | sed -e 's/:/.o /g'`.o ;
     for amodule in $ac_static_modules; do
       ac_build_static_modules="modules/$amodule $ac_build_static_modules"
     done
+
 fi;
+
+ac_unshareable_modules="mod_auth mod_auth_unix mod_core mod_dso mod_ls mod_xfer mod_cap"
 
 
 # Check whether --with-shared or --without-shared was given.
 if test "${with_shared+set}" = set; then
   withval="$with_shared"
+
+    shared_modules=`echo "$withval" | sed -e 's/:/ /g'`;
+
+    # First double-check that the given list does not contain any
+    # unshareable modules
+    for amodule in $shared_modules; do
+      for smodule in $ac_unshareable_modules; do
+        if test x"$amodule" = x"$smodule"; then
+          { { echo "$as_me:$LINENO: error: cannot build $amodule as a shared module" >&5
+echo "$as_me: error: cannot build $amodule as a shared module" >&2;}
+   { (exit 1); exit 1; }; }
+        fi
+      done
+    done
 
     ac_shared_modules=`echo "$withval" | sed -e 's/:/.la /g'`.la ;
     for amodule in $ac_shared_modules; do
@@ -19534,12 +19552,21 @@ fi;
 # Check whether --enable-auth-pam or --disable-auth-pam was given.
 if test "${enable_auth_pam+set}" = set; then
   enableval="$enable_auth_pam"
-   if test "$enableval" = "no" && \
-       test `echo $ac_static_modules | grep -c mod_auth_pam` != "0"; then
-      { { echo "$as_me:$LINENO: error: You cannot run configure with --disable-auth-pam and include mod_auth_pam in --with-modules at the same time" >&5
+
+    if test "$enableval" = "no"; then
+      if test `echo $ac_static_modules | grep -c mod_auth_pam` != "0"; then
+        { { echo "$as_me:$LINENO: error: You cannot run configure with --disable-auth-pam and include mod_auth_pam in --with-modules at the same time" >&5
 echo "$as_me: error: You cannot run configure with --disable-auth-pam and include mod_auth_pam in --with-modules at the same time" >&2;}
    { (exit 1); exit 1; }; }
+      fi
+
+      if test `echo $ac_shared_modules | grep -c mod_auth_pam` != "0"; then
+        { { echo "$as_me:$LINENO: error: You cannot run configure with --disable-auth-pam and include mod_auth_pam in --with-shared at the same time" >&5
+echo "$as_me: error: You cannot run configure with --disable-auth-pam and include mod_auth_pam in --with-shared at the same time" >&2;}
+   { (exit 1); exit 1; }; }
+      fi
     fi
+
 fi;
 
 # Check whether --enable-builtin-getaddrinfo or --disable-builtin-getaddrinfo was given.
@@ -35146,7 +35173,42 @@ LIBS="-lsupp $LIBS"
 
 ac_shared_module_dirs=
 ac_static_module_dirs=
+
+for amodule in $ac_shared_modules; do
+  module=`echo "$amodule" | sed -e 's/.la//g'`.o;
+  ac_static_modules=`echo "$ac_static_modules" | sed -e "s/$module//g"`;
+  ac_build_static_modules=`echo "$ac_build_static_modules" | sed -e "s/$module//g"`;
+done
+
 GLUE_MODULE_OBJS="$ac_core_modules $ac_static_modules"
+
+my_core_modules=`echo "$ac_core_modules" | sed -e 's/\.o//g'`;
+my_static_modules=`echo "$ac_static_modules" | sed -e 's/\.o//g'`;
+my_shared_modules=`echo "$ac_shared_modules" | sed -e 's/\.la//g'`;
+all_modules="$my_core_modules $my_static_modules $my_shared_modules";
+
+echo "$as_me:$LINENO: checking checking for duplicate module requests" >&5
+echo $ECHO_N "checking checking for duplicate module requests... $ECHO_C" >&6
+for i in $all_modules; do
+  once=no;
+
+  for j in $all_modules; do
+    if test x"$i" = x"$j"; then
+      if test x"$once" = xno; then
+        once=yes;
+
+      else
+        echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+        { { echo "$as_me:$LINENO: error: duplicate build request for $j -- aborting" >&5
+echo "$as_me: error: duplicate build request for $j -- aborting" >&2;}
+   { (exit 1); exit 1; }; }
+      fi
+    fi
+  done
+done
+echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
 
 for module in $ac_shared_modules ; do
   moduledir=`echo "$module" | sed -e 's/\.la$//'`;
@@ -35200,8 +35262,9 @@ fi
 
 for module in $ac_shared_modules; do
   if test x"$enable_dso" != xyes ; then
-    echo "cannot build shared modules without DSO support -- aborting"
-    exit 1
+    { { echo "$as_me:$LINENO: error: cannot build shared modules without DSO support -- aborting" >&5
+echo "$as_me: error: cannot build shared modules without DSO support -- aborting" >&2;}
+   { (exit 1); exit 1; }; }
   fi
 
   moduledir=`echo "$module" | sed -e 's/\.la$//'`;
@@ -35227,8 +35290,9 @@ for module in $ac_shared_modules; do
     continue
 
   else
-    echo "source file '$srcdir/modules/$src' cannot be found -- aborting"
-    exit 1
+    { { echo "$as_me:$LINENO: error: source file '$srcdir/modules/$src' cannot be found -- aborting" >&5
+echo "$as_me: error: source file '$srcdir/modules/$src' cannot be found -- aborting" >&2;}
+   { (exit 1); exit 1; }; }
   fi
 done
 
@@ -35285,8 +35349,9 @@ for module in $ac_static_modules; do
     continue
 
   else
-    echo "source file '$srcdir/modules/$src' cannot be found -- aborting"
-    exit 1
+    { { echo "$as_me:$LINENO: error: source file '$srcdir/modules/$src' cannot be found -- aborting" >&5
+echo "$as_me: error: source file '$srcdir/modules/$src' cannot be found -- aborting" >&2;}
+   { (exit 1); exit 1; }; }
   fi
 done
 
