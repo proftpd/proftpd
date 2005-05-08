@@ -1,7 +1,7 @@
 dnl ProFTPD - FTP server daemon
 dnl Copyright (c) 1997, 1998 Public Flood Software
 dnl Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
-dnl Copyright (c) 2001, 2002, 2003, 2004 The ProFTPD Project team
+dnl Copyright (c) 2001-2005 The ProFTPD Project team
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -197,12 +197,17 @@ AC_ARG_WITH(libraries,
 AC_ARG_WITH(modules,
   [AC_HELP_STRING(
     [--with-modules=LIST],
-    [add additional modules to proftpd. LIST is a colon-separated list of modules to add e.g. --with-modules=mod_auth_pam:mod_readme])
+    [add additional modules to proftpd. LIST is a colon-separated list of modules to add e.g. --with-modules=mod_readme:mod_ifsession])
   ],
-  [ ac_static_modules=`echo "$withval" | sed -e 's/:/.o /g'`.o ;
+  [
+    ac_static_modules=`echo "$withval" | sed -e 's/:/.o /g'`.o ;
     for amodule in $ac_static_modules; do
       ac_build_static_modules="modules/$amodule $ac_build_static_modules"
-    done ])
+    done
+  ])
+
+dnl List of modules which are not allowed to be built as DSOs
+ac_unshareable_modules="mod_auth mod_auth_unix mod_core mod_dso mod_ls mod_xfer mod_cap"
 
 AC_ARG_WITH(shared,
   [AC_HELP_STRING(
@@ -210,6 +215,18 @@ AC_ARG_WITH(shared,
     [build DSO modules for proftpd. LIST is a colon-separated list of modules to build as DSOs e.g. --with-shared=mod_rewrite:mod_ifsession])
   ],
   [
+    shared_modules=`echo "$withval" | sed -e 's/:/ /g'`;
+
+    # First double-check that the given list does not contain any
+    # unshareable modules
+    for amodule in $shared_modules; do
+      for smodule in $ac_unshareable_modules; do
+        if test x"$amodule" = x"$smodule"; then
+          AC_MSG_ERROR([cannot build $amodule as a shared module])
+        fi
+      done
+    done
+
     ac_shared_modules=`echo "$withval" | sed -e 's/:/.la /g'`.la ;
     for amodule in $ac_shared_modules; do
       ac_build_shared_modules="modules/$amodule $ac_build_shared_modules"
@@ -257,10 +274,17 @@ AC_ARG_ENABLE(auth-pam,
     [--enable-auth-pam],
     [enable PAM support (default=yes)])
   ],
-  [ if test "$enableval" = "no" && \
-       test `echo $ac_static_modules | grep -c mod_auth_pam` != "0"; then
-      AC_MSG_ERROR([You cannot run configure with --disable-auth-pam and include mod_auth_pam in --with-modules at the same time])
-    fi ])
+  [
+    if test "$enableval" = "no"; then
+      if test `echo $ac_static_modules | grep -c mod_auth_pam` != "0"; then
+        AC_MSG_ERROR([You cannot run configure with --disable-auth-pam and include mod_auth_pam in --with-modules at the same time])
+      fi
+
+      if test `echo $ac_shared_modules | grep -c mod_auth_pam` != "0"; then
+        AC_MSG_ERROR([You cannot run configure with --disable-auth-pam and include mod_auth_pam in --with-shared at the same time])
+      fi
+    fi
+  ])
 
 dnl Optional workaround for broken getaddrinfo on some systems (e.g. HP-UX 11.x)
 AC_ARG_ENABLE(builtin-getaddrinfo,
@@ -1528,7 +1552,39 @@ LIBS="-lsupp $LIBS"
 dnl Module handling.
 ac_shared_module_dirs=
 ac_static_module_dirs=
+
+dnl Remove any modules in the shared module list from the static module list
+for amodule in $ac_shared_modules; do
+  module=`echo "$amodule" | sed -e 's/.la//g'`.o;
+  ac_static_modules=`echo "$ac_static_modules" | sed -e "s/$module//g"`;
+  ac_build_static_modules=`echo "$ac_build_static_modules" | sed -e "s/$module//g"`;
+done
+
 GLUE_MODULE_OBJS="$ac_core_modules $ac_static_modules"
+
+dnl Check for any duplicates
+my_core_modules=`echo "$ac_core_modules" | sed -e 's/\.o//g'`;
+my_static_modules=`echo "$ac_static_modules" | sed -e 's/\.o//g'`;
+my_shared_modules=`echo "$ac_shared_modules" | sed -e 's/\.la//g'`;
+all_modules="$my_core_modules $my_static_modules $my_shared_modules";
+
+AC_MSG_CHECKING([checking for duplicate module requests])
+for i in $all_modules; do
+  once=no;
+
+  for j in $all_modules; do
+    if test x"$i" = x"$j"; then
+      if test x"$once" = xno; then
+        once=yes;
+
+      else
+        AC_MSG_RESULT([yes])
+        AC_MSG_ERROR([duplicate build request for $j -- aborting])
+      fi
+    fi
+  done
+done
+AC_MSG_RESULT([no])
 
 for module in $ac_shared_modules ; do
   moduledir=`echo "$module" | sed -e 's/\.la$//'`;
@@ -1579,8 +1635,7 @@ fi
 
 for module in $ac_shared_modules; do
   if test x"$enable_dso" != xyes ; then
-    echo "cannot build shared modules without DSO support -- aborting"
-    exit 1
+    AC_MSG_ERROR([cannot build shared modules without DSO support -- aborting])
   fi
 
   moduledir=`echo "$module" | sed -e 's/\.la$//'`;
@@ -1606,8 +1661,7 @@ for module in $ac_shared_modules; do
     continue
 
   else
-    echo "source file '$srcdir/modules/$src' cannot be found -- aborting"
-    exit 1
+    AC_MSG_ERROR([source file '$srcdir/modules/$src' cannot be found -- aborting])
   fi
 done
 
@@ -1665,8 +1719,7 @@ for module in $ac_static_modules; do
     continue
 
   else
-    echo "source file '$srcdir/modules/$src' cannot be found -- aborting"
-    exit 1
+    AC_MSG_ERROR([source file '$srcdir/modules/$src' cannot be found -- aborting])
   fi
 done
 
