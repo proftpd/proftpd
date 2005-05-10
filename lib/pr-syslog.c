@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  */
 
-/* $Id: pr-syslog.c,v 1.16 2004-05-24 21:35:35 castaglia Exp $
+/* $Id: pr-syslog.c,v 1.17 2005-05-10 16:35:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -60,6 +60,9 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
 #ifdef HAVE_DEV_LOG_STREAMS
   struct strbuf ctl, dat;
   struct log_ctl lc;
+#else
+  char *timestr = NULL;
+  char *saved_tzname[2];
 #endif
 
   /* Clear the buffer */
@@ -79,6 +82,28 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
 
 #ifndef HAVE_DEV_LOG_STREAMS
   snprintf(logbuf, sizeof(logbuf), "<%d>", pri);
+  logbuf[sizeof(logbuf)-1] = '\0';
+  buflen = strlen(logbuf);
+
+  /* Preserve the old tzname setting. */
+  memcpy(saved_tzname, tzname, sizeof(tzname));
+
+  time(&now);
+  timestr = ctime(&now);
+
+  /* Restore the old tzname setting, to prevent ctime(3) from inadvertently
+   * affecting things, as when we're in a chroot, and ctime(3) loses the
+   * timezone info.
+   */
+  memcpy(tzname, saved_tzname, sizeof(tzname));
+
+  /* Remove the trailing newline from the time string returned by ctime(3). */
+  timestr[strlen(timestr)-1] = '\0';
+
+  /* Skip past the leading "day of week" prefix. */
+  timestr += 4;
+
+  snprintf(&(logbuf[buflen]), sizeof(logbuf) - buflen, "%.15s ", timestr);
   logbuf[sizeof(logbuf)-1] = '\0';
   buflen = strlen(logbuf);
 #endif
