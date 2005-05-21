@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.203 2005-03-17 07:12:17 castaglia Exp $
+ * $Id: mod_auth.c,v 1.204 2005-05-21 02:16:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -602,9 +602,17 @@ static char *_get_default_root(pool *p) {
       if (realdir)
         dir = realdir;
 
-      else
-        pr_log_pri(PR_LOG_NOTICE, "notice: unable to resolve '%s': %s", dir,
+      else {
+        /* Try to provide a more informative message. */
+        char interp_dir[PR_TUNABLE_PATH_MAX + 1];
+
+        memset(interp_dir, '\0', sizeof(interp_dir));
+        ret = pr_fs_interpolate(dir, interp_dir, sizeof(interp_dir)-1); 
+
+        pr_log_pri(PR_LOG_NOTICE,
+          "notice: unable to use '%s' [resolved to '%s']: %s", dir, interp_dir,
           strerror(xerrno));
+      }
     }
   }
 
