@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.670 2005-05-10 16:35:36 castaglia Exp $
+$Id: NEWS,v 1.671 2005-05-31 16:15:20 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -26,6 +26,7 @@ CVS
 - Bug 2589 - Makefile in modules/ directory is not portable.
 - Bug 2598 - Build system should check for duplicate module requests.
 - Bug 2585 - Proftpd does not write RFC 3164 compliant messages into /dev/log.
+- Bug 2601 - mod_delay sometimes delays for a long time.
 
 1.3.0rc1 - Released 10-Apr-2005
 --------------------------------

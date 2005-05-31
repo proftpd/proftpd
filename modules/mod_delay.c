@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.12 2005-04-23 22:54:20 castaglia Exp $
+ * $Id: mod_delay.c,v 1.13 2005-05-31 16:15:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -76,7 +76,6 @@ struct {
 } delay_tab;
 
 static unsigned int delay_engine = TRUE;
-static long delay_max_interval = 0;
 static unsigned int delay_nuser = 0;
 static unsigned int delay_npass = 0;
 static struct timeval delay_tv;
@@ -175,21 +174,13 @@ static long delay_get_median(pool *p, unsigned int rownum, long interval) {
 
   row = &((struct delay_rec *) delay_tab.dt_data)[rownum];
   tab_vals = row->d_vals;
-  delay_max_interval = 0;
 
   /* Start at the end of the row and work backward, as values are
    * always added at the end of the row, shifting everything to the left.
    */
-  for (i = 1; i < row->d_nvals; i++) {
-    if (delay_max_interval < tab_vals[DELAY_NVALUES - i])
-      delay_max_interval = tab_vals[DELAY_NVALUES - i];
-
+  for (i = 1; i < row->d_nvals; i++)
     *((long *) push_array(list)) = tab_vals[DELAY_NVALUES - i];
-  }
-
   *((long *) push_array(list)) = interval;
-  if (delay_max_interval < tab_vals[DELAY_NVALUES - i])
-    delay_max_interval = tab_vals[DELAY_NVALUES - i];
 
   pr_log_debug(DEBUG6, MOD_DELAY_VERSION
     ": selecting median interval from %d %s", list->nelts,
@@ -235,9 +226,9 @@ static void delay_delay(long interval) {
   long rand_usec;
 
   /* Add an additional delay of a random number of usecs, with a 
-   * maximum of half of the longest interval seen.
+   * maximum of half of the given interval.
    */
-  rand_usec = ((delay_max_interval / 2.0) * rand()) / (RAND_MAX);
+  rand_usec = ((interval / 2.0) * rand()) / RAND_MAX;
   interval += rand_usec;
   pr_log_debug(DEBUG10, MOD_DELAY_VERSION
     ": additional random delay of %ld usecs added", (long int) rand_usec);
