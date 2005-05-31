@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.13 2005-05-31 16:15:21 castaglia Exp $
+ * $Id: mod_delay.c,v 1.14 2005-05-31 23:40:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -90,6 +90,7 @@ static void delay_table_reset(void);
 static long delay_select_k(unsigned long k, array_header *values) {
   unsigned long l, ir, tmp = 0;
   long *elts = (long *) values->elts;
+  int nelts = values->nelts;
 
   /* This is from "Numeric Recipes in C", Ch. 8.5, as the select()
    * algorithm, an in-place sorting algorithm for finding the Kth
@@ -129,10 +130,10 @@ static long delay_select_k(unsigned long k, array_header *values) {
 
       while (TRUE) {
         do i++;
-          while (elts[i] < p);
+          while (i < nelts && elts[i] < p);
 
         do j--;
-          while (elts[j] > p);
+          while (j < nelts && elts[j] > p);
 
         if (j < i)
           break;
