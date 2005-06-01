@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.269 2005-05-06 05:53:43 castaglia Exp $
+ * $Id: mod_core.c,v 1.270 2005-06-01 23:21:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2959,6 +2959,7 @@ MODRET core_pasv(cmd_rec *cmd) {
    * 550 as a possible response.
    */
   if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.cwd, NULL)) {
+    pr_log_debug(DEBUG8, "PASV denied by <Limit> configuration");
     pr_response_add_err(R_501, "%s: %s", cmd->argv[0], strerror(EPERM));
     return ERROR(cmd);
   }
@@ -3057,6 +3058,7 @@ MODRET core_port(cmd_rec *cmd) {
    * 550 as a possible response.
    */
   if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.cwd, NULL)) {
+    pr_log_debug(DEBUG8, "PORT denied by <Limit> configuration");
     pr_response_add_err(R_501, "%s: %s", cmd->argv[0], strerror(EPERM));
     return ERROR(cmd);
   }
@@ -3065,8 +3067,10 @@ MODRET core_port(cmd_rec *cmd) {
    * and the server's port is below 1025 (binding to the data port in this
    * case would require root privs, which will have been dropped.
    */
-  if ((privsdrop = get_param_ptr(TOPLEVEL_CONF, "RootRevoke",
-      FALSE)) != NULL && *privsdrop == TRUE && session.c->local_port < 1025) {
+  privsdrop = get_param_ptr(TOPLEVEL_CONF, "RootRevoke", FALSE);
+  if (privsdrop != NULL &&
+      *privsdrop == TRUE &&
+      session.c->local_port < 1025) {
     pr_log_debug(DEBUG0, "RootRevoke in effect, unable to bind to local "
       "port %d for active transfer", session.c->local_port);
     pr_response_add_err(R_500, "Unable to service PORT commands");
@@ -3186,6 +3190,7 @@ MODRET core_eprt(cmd_rec *cmd) {
    * 550 as a possible response.
    */
   if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.cwd, NULL)) {
+    pr_log_debug(DEBUG8, "EPRT denied by <Limit> configuration");
     pr_response_add_err(R_501, "%s: %s", cmd->argv[0], strerror(EPERM));
     return ERROR(cmd);
   }
@@ -3197,8 +3202,10 @@ MODRET core_eprt(cmd_rec *cmd) {
    * and the server's port is below 1025 (binding to the data port in this
    * case would require root privs, which will have been dropped.
    */
-  if ((privsdrop = get_param_ptr(TOPLEVEL_CONF, "RootRevoke",
-      FALSE)) != NULL && *privsdrop == TRUE && session.c->local_port < 1025) {
+  privsdrop = get_param_ptr(TOPLEVEL_CONF, "RootRevoke", FALSE);
+  if (privsdrop != NULL &&
+      *privsdrop == TRUE &&
+      session.c->local_port < 1025) {
     pr_log_debug(DEBUG0, "RootRevoke in effect, unable to bind to local "
       "port %d for active transfer", session.c->local_port);
     pr_response_add_err(R_500, "Unable to service EPRT commands");
@@ -3377,6 +3384,7 @@ MODRET core_epsv(cmd_rec *cmd) {
    * 550 as a possible response.
    */
   if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.cwd, NULL)) {
+    pr_log_debug(DEBUG8, "EPSV denied by <Limit> configuration");
     pr_response_add_err(R_501, "%s: %s", cmd->argv[0], strerror(EPERM));
     return ERROR(cmd);
   }
