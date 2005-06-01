@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.26 2005-01-06 23:40:00 castaglia Exp $
+ * $Id: mod_radius.c,v 1.27 2005-06-01 20:50:14 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.8rc2"
@@ -2513,7 +2513,8 @@ MODRET set_radiusgroupinfo(cmd_rec *cmd) {
 
 /* usage: RadiusLog file|"none" */
 MODRET set_radiuslog(cmd_rec *cmd) {
-  CHECK_ARGS(cmd, 1);
+  if (cmd->argc-1 != 1)
+    CONF_ERROR(cmd, "wrong number of parameters");
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
