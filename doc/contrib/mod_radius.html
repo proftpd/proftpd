@@ -1,4 +1,4 @@
-<!-- $Id: mod_radius.html,v 1.1 2004-11-03 19:37:45 castaglia Exp $ -->
+<!-- $Id: mod_radius.html,v 1.2 2005-06-01 21:03:55 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_radius.html,v $ -->
 
 <html>
@@ -15,7 +15,7 @@
 <hr><br>
 
 This module is contained in the <code>mod_radius.c</code> file for
-ProFTPD 1.2, and is not compiled by default.  Installation instructions
+ProFTPD 1.2.<i>x</i>, and is not compiled by default.  Installation instructions
 are discussed <a href="#Installation">here</a>.
 
 <p>
@@ -42,14 +42,19 @@ some circumstances.
 <p>
 <i>2002-12-18</i>: Many thanks to Steffen Clausjuergens &lt;stcl <i>at</i> clausjuergens.de&gt; for helping to track down several bugs with accounting packets.
 
+<p>
+<i>2003-03-20</i>: Many thanks to Boris Kovalenko &lt;boris <i>at</i> tagnet.ru &gt; for testing many versions of the VSA code.
+
 <h2>Directives</h2>
 <ul>
   <li><a href="#RadiusAcctServer">RadiusAcctServer</a>
   <li><a href="#RadiusAuthServer">RadiusAuthServer</a>
   <li><a href="#RadiusEngine">RadiusEngine</a>
+  <li><a href="#RadiusGroupInfo">RadiusGroupInfo</a>
   <li><a href="#RadiusLog">RadiusLog</a>
   <li><a href="#RadiusRealm">RadiusRealm</a>
   <li><a href="#RadiusUserInfo">RadiusUserInfo</a>
+  <li><a href="#RadiusVendor">RadiusVendor</a>
 </ul>
 
 <hr>
@@ -100,8 +105,7 @@ server; it defaults to 30 seconds.
 <p>
 Multiple <code>RadiusAuthServer</code>s may be configured; each will be
 tried, in order of appearance in the configuration file, until
-that server times out or <code>mod_radius</code> receives a response,
-either &quot;accept&quot; or &quot;reject&quot;.
+that server times out or <code>mod_radius</code> receives a response.
 
 <p>
 If no <code>RadiusAuthServer</code>s are configured, <code>mod_radius</code>
@@ -124,6 +128,48 @@ The <code>RadiusEngine</code> directive enables or disables the module's
 runtime RADIUS engine.  If it is set to <em>off</em> this module does no
 RADIUS authentication or accounting at all. Use this directive to disable the
 module instead of commenting out all <code>mod_radius</code> directives.
+
+<p>
+<hr>
+<h2><a name="RadiusGroupInfo">RadiusGroupInfo</a></h2>
+<strong>Syntax:</strong> RadiusGroupInfo <em>primary-group-name suppl-group-names suppl-group-ids</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_radius<br>
+<strong>Compatibility:</strong> 1.2.9rc1 and later
+
+<p>
+The <code>RadiusGroupInfo</code> directive is used to configure group membership
+information used for every user authenticated via RADIUS.  The
+<em>primary-group-name</em> parameter is used to configure the name that
+matches the user's GID (which can be configured via the
+<code>RadiusUserInfo</code> directive).  The <em>suppl-group-names</em> and
+<em>suppl-group-ids</em> parameters are used to specify supplemental group
+membership for each user; the number of names and IDs must match if these
+parameters, each a comma-delimited list, are used.  As many of ProFTPD's
+directives can operate based on group names, these textual group names may
+be important.
+
+<p>
+In order to support RADIUS servers that may use custom attributes in their
+<code>Access-Accept</code> response packets to supply user information back
+to the RADIUS client (<code>mod_radius</code> in this case), this directive
+allows the following syntax for some of its parameters:
+<pre>
+  $(<i>attribute-id</i>:<i>default-value</i>)
+</pre>
+where the enclosing <code>$()</code> signals that the parameter is to
+be supplied by the RADIUS server, <code><i>attribute-id</i></code> is the
+Vendor Specific Attribute (VSA) ID for which to search in the response packet,
+and <code><i>default-value</i></code> is the value to use in case the requested
+attribute is not present in the response packet.  See the
+<code>RadiusVendor</code> directive description for more information about
+VSAs.
+
+<p>
+See Also:
+  <a href="#RadiusUserInfo"><code>RadiusUserInfo</code></a>,
+  <a href="#RadiusVendor"><code>RadiusVendor</code></a>
 
 <p>
 <hr>
@@ -170,7 +216,7 @@ Example:
 <p>
 <hr>
 <h2><a name="RadiusUserInfo">RadiusUserInfo</a></h2>
-<strong>Syntax:</strong> RadiusUserInfo <em>uid gid home shell [suppl-group-names suppl-group-ids]</em><br>
+<strong>Syntax:</strong> RadiusUserInfo <em>uid gid home shell</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_radius<br>
@@ -178,10 +224,9 @@ Example:
 
 <p>
 The <code>RadiusUserInfo</code> directive is used to configure login
-information used for every user authenticated via RADIUS.  The optional
-<em>suppl-group-names</em> and <em>suppl-group-ids</em> parameters are used
-to specify supplemental group membership for each user; the number of names
-and IDs must match if these parameters are used.
+information used for every user authenticated via RADIUS.  Group membership
+information can be configured by using the <code>RadiusGroupInfo</code>
+directive.
 
 <p>
 In order to support RADIUS servers that may use custom attributes in their
@@ -193,16 +238,11 @@ allows the following syntax for some of its parameters:
 </pre>
 where the enclosing <code>$()</code> signals that the parameter is to
 be supplied by the RADIUS server, <code><i>attribute-id</i></code> is the
-custom attribute ID for which to search in the response packet, and
-<code><i>default-value</i></code> is the value to use in case the requested
-attribute is not present in the response packet.  This syntax is not
-supported for the <em>suppl-group-names</em> or <em>suppl-group-ids</em>
-parameters.
-
-<p>
-Note that some RADIUS vendors may attempt to use attributes that violate
-RFC by attempting to use an attribute <code>type</code> that is larger
-than 255.  Such vendor implementations are not, and should not be, supported.
+Vendor Specific Attribute (VSA) ID for which to search in the response packet,
+and <code><i>default-value</i></code> is the value to use in case the requested
+attribute is not present in the response packet.  See the
+<code>RadiusVendor</code> directive description for more information about
+VSAs.
 
 <p>
 If <code>RadiusUserInfo</code> is not used, <code>mod_radius</code> will
@@ -210,6 +250,42 @@ perform pure &quot;yes/no&quot; authentication only, in the style of PAM.
 The information that would have been configured via this directive will
 be pulled from other sources (<i>e.g.</i> <code>/etc/passwd</code>,
 <code>AuthUserFile</code>s, MySQL tables, etc).
+
+<p>
+See Also:
+  <a href="#RadiusGroupInfo"><code>RadiusGroupInfo</code></a>,
+  <a href="#RadiusVendor"><code>RadiusVendor</code></a>
+
+<p>
+<hr>
+<h2><a name="RadiusVendor">RadiusVendor</a></h2>
+<strong>Syntax:</strong> RadiusVendor <em>name id</em><br>
+<strong>Default:</strong> RadiusVendor Unix 4<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_radius<br>
+<strong>Compatibility:</strong> 1.2.9rc1 and later
+
+<p>
+The <code>RadiusVendor</code> directive is used to configure the vendor name
+and ID for which <code>mod_radius</code> will search when it looks for
+vendor-specific attributes in RADIUS response packets.
+
+<p>
+Earlier versions of <code>mod_radius</code> could be configured to look up
+custom RADIUS attributes by normal RADIUS attribute type IDs.  However,
+those normal IDs can only be from 0 to 255, putting a limit on the number
+of such custom attributes.  Fortunately, the RADIUS RFCs define a specific
+attribute ID, 26, for vendor-specific attributes.  The values for such
+attributes contains an ID for the specific vendor, and then the vendor-specific
+attribute.  The vendor IDs come from the IANA's enterprise numbers hierarchy:
+<pre>
+  <a href="http://www.iana.org/assignments/enterprise-numbers">http://www.iana. org/assignments/enterprise-numbers</a>
+</pre>
+
+<p>
+By default, <code>mod_radius</code> will look for a vendor ID of 4 (Unix);
+this configuration directive is used to tell <code>mod_radius</code> to
+expect a different vendor.
 
 <p>
 <hr>
@@ -319,12 +395,12 @@ the normal steps for using third-party modules in proftpd:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2004-11-03 19:37:45 $</i><br>
+Last Updated: <i>$Date: 2005-06-01 21:03:55 $</i><br>
 
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2000-2002 TJ Saunders<br>
+&copy; Copyright 2000-2005 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
