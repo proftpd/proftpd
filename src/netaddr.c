@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.47 2005-05-07 17:01:07 castaglia Exp $
+ * $Id: netaddr.c,v 1.48 2005-06-01 17:21:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -309,10 +309,11 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     if (addrs)
       *addrs = NULL;
 
-    pr_log_debug(DEBUG10, "'%s' resolved to an IPv6 address", name);
+    pr_log_debug(DEBUG10, "'%s' resolved to IPv6 address %s", name,
+      pr_netaddr_get_ipstr(na));
     return na;
   }
-#endif
+#endif /* PR_USE_IPV6 */
 
   memset(&v4, 0, sizeof(v4));
   v4.sin_family = AF_INET;
@@ -328,7 +329,8 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     if (addrs)
       *addrs = NULL;
 
-    pr_log_debug(DEBUG10, "'%s' resolved to an IPv4 address", name);
+    pr_log_debug(DEBUG10, "'%s' resolved to IPv4 address %s", name,
+      pr_netaddr_get_ipstr(na));
     return na;
 
   } else if (res == 0) {
@@ -345,12 +347,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
 
     memset(&hints, 0, sizeof(hints));
 
-#ifdef PR_USE_IPV6
-    /* This looks up both IPv4 (as IPv6-mapped) and IPv6 addresses. */
-    hints.ai_family = AF_UNSPEC;
-#else
     hints.ai_family = AF_INET;
-#endif /* PR_USE_IPV6 */
     hints.ai_socktype = SOCK_STREAM;
 
     pr_log_debug(DEBUG10, "attempting to resolve '%s' via DNS", name);
@@ -363,33 +360,64 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     }
 
     if (info) {
-      pr_log_debug(DEBUG10, "resolved '%s' to an %s address", name,
-        info->ai_family == AF_INET ? "IPv4" : "IPv6");
-
       /* Copy the first returned addr into na, as the return value. */
       pr_netaddr_set_family(na, info->ai_family);
       pr_netaddr_set_sockaddr(na, info->ai_addr);
 
-      /* If the caller provided a pointer for any additional addresses,
-       * then we cycle through the rest of getaddrinfo(3)'s results and
-       * build a list to return to the caller.
-       */
-      if (addrs) {
-        struct addrinfo *ai;
-        *addrs = make_array(p, 0, sizeof(pr_netaddr_t *));
-
-        for (ai = info->ai_next; ai; ai = ai->ai_next) {
-          pr_netaddr_t **elt = push_array(*addrs);
-
-          *elt = pcalloc(p, sizeof(pr_netaddr_t));
-          pr_netaddr_set_family(*elt, ai->ai_family);
-          pr_netaddr_set_sockaddr(*elt, ai->ai_addr);
-        }
-      }
+      pr_log_debug(DEBUG10, "resolved '%s' to %s address %s", name,
+        info->ai_family == AF_INET ? "IPv4" : "IPv6",
+        pr_netaddr_get_ipstr(na));
 
       pr_freeaddrinfo(info);
-      return na;
     }
+
+#ifdef PR_USE_IPV6
+    if (addrs) {
+      /* Do the call again, this time for IPv6 addresses.
+       *
+       * We make two separate getaddrinfo(3) calls, rather than one
+       * with a hint of AF_UNSPEC, because of certain bugs where the use
+       * of AF_UNSPEC does not function as advertised.  (I suspect this
+       * bug was caused by proftpd's calling pattern, but as I could
+       * not track it down, and as there are reports of AF_UNSPEC not
+       * being as fast as AF_INET/AF_INET6, it just seemed easier to
+       * do it this way.)
+       */
+
+      gai_res = 0;
+
+      memset(&hints, 0, sizeof(hints));
+
+      hints.ai_family = AF_INET6;
+      hints.ai_socktype = SOCK_STREAM;
+
+      gai_res = pr_getaddrinfo(name, NULL, &hints, &info);
+      if (gai_res != 0) {
+        pr_log_pri(PR_LOG_INFO, "getaddrinfo '%s' error: %s", name,
+          gai_res != EAI_SYSTEM ? pr_gai_strerror(gai_res) : strerror(errno));
+        return na;
+      }
+
+      if (info) {
+        pr_netaddr_t **elt;
+
+        *addrs = make_array(p, 0, sizeof(pr_netaddr_t *));
+        elt = push_array(*addrs);
+
+        *elt = pcalloc(p, sizeof(pr_netaddr_t));
+        pr_netaddr_set_family(*elt, info->ai_family);
+        pr_netaddr_set_sockaddr(*elt, info->ai_addr);
+
+        pr_log_debug(DEBUG10, "resolved '%s' to %s address %s", name,
+          info->ai_family == AF_INET ? "IPv4" : "IPv6",
+          pr_netaddr_get_ipstr(*elt));
+
+        pr_freeaddrinfo(info);
+      }
+    }
+#endif /* PR_USE_IPV6 */
+
+    return na;
   }
 
   pr_log_debug(DEBUG10, "failed to resolve '%s' to an IP address", name);

@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.27 2005-04-30 19:07:59 castaglia Exp $
+ * $Id: bindings.c,v 1.28 2005-06-01 17:21:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -855,12 +855,15 @@ static void init_standalone_bindings(void) {
 
     /* If SocketBindTight is off, then pr_inet_create_connection() will
      * create and bind to a wildcard socket.  However, should it be an
-     * IPv4 or an IPv6 wildcard socket?  Check the main_server->addr's
-     * family, and use that.
+     * IPv4 or an IPv6 wildcard socket?
      */
     if (!SocketBindTight)
+#ifdef PR_USE_IPV6
+      pr_inet_set_default_family(NULL, AF_INET6);
+#else
       pr_inet_set_default_family(NULL,
         pr_netaddr_get_family(main_server->addr));
+#endif /* PR_USE_IPV6 */
 
     main_server->listen =
       pr_inet_create_connection(main_server->pool, server_list, -1,
@@ -892,8 +895,11 @@ static void init_standalone_bindings(void) {
 
       if (serv->ServerPort) {
         if (!SocketBindTight)
-          pr_inet_set_default_family(NULL,
-            pr_netaddr_get_family(serv->addr));
+#ifdef PR_USE_IPV6
+          pr_inet_set_default_family(NULL, AF_INET6);
+#else
+          pr_inet_set_default_family(NULL, pr_netaddr_get_family(serv->addr));
+#endif /* PR_USE_IPV6 */
 
         serv->listen = pr_inet_create_connection(serv->pool, server_list, -1,
           (SocketBindTight ? serv->addr : NULL), serv->ServerPort, FALSE);
