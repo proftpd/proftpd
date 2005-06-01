@@ -9,7 +9,7 @@ devices, including /dev/tcp, /dev/udp, /dev/zero and /dev/ticotsord.  This
 is most likely caused by the networking libraries, and is completely out
 of the control and/or scope of ProFTPD.
 
-Solaris 2.5.1 users wishing to use ProFTP will have to do something like
+Solaris 2.5.1 users wishing to use ProFTPD will have to do something like
 the following in their anonymous or otherwise chroot'ed directories:
 
 [ !!NOTE!!  Do not use the major/minor device numbers below verbatim.
