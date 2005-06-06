@@ -1,4 +1,4 @@
-<!-- $Id: mod_rewrite.html,v 1.1 2004-11-03 19:37:45 castaglia Exp $ -->
+<!-- $Id: mod_rewrite.html,v 1.2 2005-06-06 17:40:02 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_rewrite.html,v $ -->
 
 <html>
@@ -747,7 +747,7 @@ underscores:
     RewriteCondition %m STOR
 
     # Apply the map to the command parameters
-    RewriteRule ^(.*) ${replace:/$1/ /_/}
+    RewriteRule ^(.*) "${replace:/$1/ /_/}"
 
   &lt;/IfModule&gt;
 </pre>
@@ -767,7 +767,7 @@ third-party modules in proftpd:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2004-11-03 19:37:45 $</i><br>
+Last Updated: <i>$Date: 2005-06-06 17:40:02 $</i><br>
 
 <br><hr>
 
