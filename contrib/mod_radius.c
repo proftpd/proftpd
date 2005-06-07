@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.28 2005-06-02 15:25:40 castaglia Exp $
+ * $Id: mod_radius.c,v 1.29 2005-06-07 18:58:11 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.8"
@@ -1753,7 +1753,8 @@ static unsigned char radius_start_accting(void) {
   request = (radius_packet_t *) pcalloc(radius_pool, sizeof(radius_packet_t));
 
   /* Open a RADIUS socket */
-  if ((sockfd = radius_open_socket()) < 0) {
+  sockfd = radius_open_socket();
+  if (sockfd < 0) {
     radius_log("socket open failed");
     return FALSE;
   }
@@ -1865,7 +1866,8 @@ static unsigned char radius_stop_accting(void) {
   request = (radius_packet_t *) pcalloc(radius_pool, sizeof(radius_packet_t));
 
   /* Open a RADIUS socket */
-  if ((sockfd = radius_open_socket()) < 0) {
+  sockfd = radius_open_socket();
+  if (sockfd < 0) {
     radius_log("socket open failed");
     return FALSE;
   }
@@ -2208,7 +2210,8 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
     sizeof(radius_packet_t));
 
   /* Open a RADIUS socket */
-  if ((sockfd = radius_open_socket()) < 0) {
+  sockfd = radius_open_socket();
+  if (sockfd < 0) {
     radius_log("socket open failed");
     return DECLINED(cmd);
   }
