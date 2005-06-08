@@ -1,4 +1,4 @@
-<!-- $Id: SQL.html,v 1.4 2004-04-10 20:11:17 castaglia Exp $ -->
+<!-- $Id: SQL.html,v 1.5 2005-06-08 16:21:22 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/SQL.html,v $ -->
 
 <html>
@@ -414,6 +414,18 @@ which generates:
   {sha1}W6ph5Mm5Pz8GgiULbPgzG37mj9g=
 </pre>
 
+<p>
+There are a lot of PHP applications which might want to generate passwords
+suitable for use with <code>mod_sql</code>.  For example, to generate
+a base64-encoded MD5 password with PHP, which can then be read by
+<code>mod_sql</code>, use the following PHP code:
+<pre>
+  // $password contains the cleartext password before
+  $password = "{md5}.base64_encode(pack("H*", md5($password)));
+
+  // $password now contains the encrypted, encoded password
+</pre>
+
 <p><a name="SQLScoreboardError"</a>
 <font color=red>Question</font>: Why do I see &quot;error deleting scoreboard entry: Invalid argument&quot?<br>
 <font color=blue>Answer</font>: This log message almost always denotes use
@@ -424,7 +436,7 @@ configuration.  To debug the problem, define an <a href="http://www.castaglia.or
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-04-10 20:11:17 $</i><br>
+Last Updated: <i>$Date: 2005-06-08 16:21:22 $</i><br>
 <hr>
 
 </body>
