@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.29 2005-06-07 18:58:11 castaglia Exp $
+ * $Id: mod_radius.c,v 1.30 2005-06-08 18:34:00 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.8"
@@ -167,6 +167,8 @@ static char *radius_logname = NULL;
 static struct sockaddr radius_local_sock, radius_remote_sock;
 
 /* For tracking various values not stored in the session struct */
+static pr_netaddr_t *radius_local_addr = NULL;
+static pr_netaddr_t *radius_remote_addr = NULL;
 static char *radius_realm = NULL;
 static time_t radius_session_start = 0;
 static off_t radius_session_bytes_in = 0;
@@ -1572,8 +1574,8 @@ static void radius_build_packet(radius_packet_t *packet, const char *user,
 
 #ifndef PR_USE_IPV6
   /* Add a NAS IP address attribute. */
-  radius_add_attrib(packet, RADIUS_NAS_IP_ADDRESS, (unsigned char *) &((struct in_addr *) pr_netaddr_get_inaddr(session.c->local_addr))->s_addr,
-    sizeof(((struct in_addr *) pr_netaddr_get_inaddr(session.c->local_addr))->s_addr));
+  radius_add_attrib(packet, RADIUS_NAS_IP_ADDRESS, (unsigned char *) &((struct in_addr *) pr_netaddr_get_inaddr(radius_local_addr))->s_addr,
+    sizeof(((struct in_addr *) pr_netaddr_get_inaddr(radius_local_addr))->s_addr));
 #endif /* PR_USE_IPV6 */
 
   /* Add a NAS port attribute. */
@@ -1587,7 +1589,7 @@ static void radius_build_packet(radius_packet_t *packet, const char *user,
   /* Add the calling station ID attribute (this is the IP of the connecting
    * client).
    */
-  caller_id = (char *) pr_netaddr_get_ipstr(session.c->remote_addr); 
+  caller_id = (char *) pr_netaddr_get_ipstr(radius_remote_addr); 
 
   radius_add_attrib(packet, RADIUS_CALLING_STATION_ID, caller_id,
     strlen(caller_id));
@@ -2686,6 +2688,10 @@ static int radius_sess_init(void) {
   time(&radius_session_start);
   radius_session_bytes_in = 0;
   radius_session_bytes_out = 0;
+
+  /* Make a copy of netaddrs for later. */
+  radius_local_addr = pr_netaddr_dup(radius_pool, session.c->local_addr);
+  radius_remote_addr = pr_netaddr_dup(radius_pool, session.c->remote_addr);
 
   if ((c = find_config(main_server->conf, CONF_PARAM, "RadiusVendor",
       FALSE)) != NULL) {
