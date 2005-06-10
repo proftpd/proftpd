@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  */
 
-/* $Id: pr-syslog.c,v 1.17 2005-05-10 16:35:53 castaglia Exp $
+/* $Id: pr-syslog.c,v 1.18 2005-06-10 17:06:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -86,7 +86,7 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
   buflen = strlen(logbuf);
 
   /* Preserve the old tzname setting. */
-  memcpy(saved_tzname, tzname, sizeof(tzname));
+  memcpy(saved_tzname, tzname, sizeof(saved_tzname));
 
   time(&now);
   timestr = ctime(&now);
@@ -95,7 +95,7 @@ static void pr_vsyslog(int sockfd, int pri, register const char *fmt,
    * affecting things, as when we're in a chroot, and ctime(3) loses the
    * timezone info.
    */
-  memcpy(tzname, saved_tzname, sizeof(tzname));
+  memcpy(tzname, saved_tzname, sizeof(saved_tzname));
 
   /* Remove the trailing newline from the time string returned by ctime(3). */
   timestr[strlen(timestr)-1] = '\0';
