@@ -3,13 +3,13 @@
 
 <html>
 <head>
-<title>ProFTPD mini-HOWTO - Firewalls/NAT</title>
+<title>ProFTPD mini-HOWTO - Firewalls, Routers, and NAT</title>
 </head>
 
 <body bgcolor=white>
 
 <hr>
-<center><h2><b><i>Firewalls and NAT</i></b></h2></center>
+<center><h2><b><i>Firewalls, Routers, and NAT</i></b></h2></center>
 <hr>
 
 <p>
@@ -179,9 +179,25 @@ clients &quot;see&quot; the configuration with the
 <code>MasqueradeAddress</code>.
 
 <p>
+For those that need to see a concrete example configuration of this:
+<pre>
+  ServerName "Some Server Name"
+  MasqueradeAddress my.domain.com
+  PassivePorts 60000 65535
+
+  <font color=green># Note that your LAN address should be used here</font>
+  &lt;VirtualHost 192.168.0.10&gt;
+    ServerName "Some Other Server Name"
+
+    <font color=blue># Note that there is <b>no</b> MasqueradeAddress directive
+    # used in this section!</font>
+  &lt;/VirtualHost&gt;
+</pre>
+
+<p>
 <hr>
 Contributor: Tobias Ekbom &lt;tobias <i>at</i> vallcom <i>dot</i>com&gt;<br>
-Last Updated: <i>$Date: 2004-04-10 20:37:33 $</i>
+Last Updated: <i>$Date: 2005-06-10 16:25:39 $</i>
 <hr>
 
 <body>
