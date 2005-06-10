@@ -3909,8 +3909,9 @@ static cmdtable tls_cmdtab[] = {
 };
 
 static authtable tls_authtab[] = {
-  { 0, "auth",	tls_authenticate },
-  { 0, "check",	tls_auth_check   },
+  { 0, "auth",			tls_authenticate	},
+  { 0, "check",			tls_auth_check		},
+  { 0, "requires_pass",		tls_authenticate	},
   { 0, NULL }
 };
 

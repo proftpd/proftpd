@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.204 2005-05-21 02:16:58 castaglia Exp $
+ * $Id: mod_auth.c,v 1.205 2005-06-10 17:21:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -41,7 +41,7 @@ extern pid_t mpid;
 module auth_module;
 
 static unsigned char mkhome = FALSE;
-static unsigned char rfc2228_authenticated = FALSE;
+static unsigned char authenticated_without_pass = FALSE;
 static int TimeoutLogin = PR_TUNABLE_TIMEOUTLOGIN;
 static int logged_in = 0;
 static int auth_tries = 0;
@@ -820,11 +820,11 @@ static int _setup_environment(pool *p, char *user, char *pass) {
      * the handling of the USER command, as by an RFC2228 mechanism.  If
      * that had happened, we won't need to call _do_auth() here.
      */
-    if (!rfc2228_authenticated)
+    if (!authenticated_without_pass)
       auth_code = _do_auth(p, c ? c->subset : main_server->conf, user_name,
         pass);
     else
-      auth_code = PR_AUTH_RFC2228_OK;
+      auth_code = PR_AUTH_OK_NO_PASS;
 
     if (auth_code < 0) {
       /* Normal authentication has failed, see if group authentication
@@ -847,7 +847,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
       pr_memscrub(pass, strlen(pass));
 
     switch (auth_code) {
-      case PR_AUTH_RFC2228_OK:
+      case PR_AUTH_OK_NO_PASS:
         auth_pass_resp_code = R_232;
         break;
 
@@ -1801,11 +1801,10 @@ MODRET auth_user(cmd_rec *cmd) {
     pr_response_add(R_331, "Anonymous login ok, send your complete email "
       "address as your password.");
 
-  /* If an RFC2228 module is involved, see if it can possibly authenticate
-   * the user now, before we ask for a password.
+  /* Check to see if a password from the client is required.  In the
+   * vast majority of cases, a password will be required.
    */
-  } else if (session.rfc2228_mech &&
-      pr_auth_authenticate(cmd->tmp_pool, user, NULL) == PR_AUTH_RFC2228_OK) {
+  } else if (pr_auth_requires_pass(cmd->tmp_pool, user) == FALSE) {
 
     /* Act as if we received a PASS command from the client. */
     cmd_rec *fakecmd = pr_cmd_alloc(cmd->pool, 2, NULL);
@@ -1822,9 +1821,8 @@ MODRET auth_user(cmd_rec *cmd) {
     c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
     *((unsigned char *) c->argv[0]) = TRUE;
 
-    rfc2228_authenticated = TRUE;
-    pr_log_auth(PR_LOG_NOTICE, "USER %s: Authenticated by %s RFC2228 mechanism "
-      "without password", user, session.rfc2228_mech);
+    authenticated_without_pass = TRUE;
+    pr_log_auth(PR_LOG_NOTICE, "USER %s: Authenticated without password", user);
 
     pr_cmd_dispatch(fakecmd);
 

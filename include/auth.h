@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004 The ProFTPD Project team
+ * Copyright (c) 2004-2005 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /* ProFTPD Auth API
  *
- * $Id: auth.h,v 1.3 2005-04-15 05:55:05 castaglia Exp $
+ * $Id: auth.h,v 1.4 2005-06-10 17:21:10 castaglia Exp $
  */
 
 #ifndef PR_AUTH_H
@@ -32,6 +32,11 @@
 
 /* Possible return codes for auth handlers
  */
+
+/* Account authenticated by means other than PASS (e.g. RFC2228 modules).
+ * This value is more generic than PR_AUTH_RFC2228_OK.
+ */
+#define PR_AUTH_OK_NO_PASS		3
 
 /* Account authenticated by RFC2228 security data exchange */
 #define PR_AUTH_RFC2228_OK		2
@@ -71,6 +76,7 @@ const char *pr_auth_gid2name(pool *, gid_t);
 uid_t pr_auth_name2uid(pool *, const char *);
 gid_t pr_auth_name2gid(pool *, const char *);
 int pr_auth_getgroups(pool *, const char *, array_header **, array_header **);
+int pr_auth_requires_pass(pool *, const char *);
 
 /* This is a convenience function used by mod_auth as part of the 
  * authentication process.  Given a user name, retrieve the <Anonymous>

@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.42 2005-03-05 17:46:02 castaglia Exp $
+ * $Id: auth.c,v 1.43 2005-06-10 17:21:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -352,9 +352,6 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
   modret_t *mr = NULL;
   int res = PR_AUTH_NOPWD;
 
-  if (!pw)
-    pw = "";
-
   cmd = make_cmd(p, 2, name, pw);
   mr = dispatch_auth(cmd, "auth");
 
@@ -382,6 +379,28 @@ int pr_auth_check(pool *p, const char *cpw, const char *name, const char *pw) {
 
   if (MODRET_ISHANDLED(mr))
     res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
+
+  if (cmd->tmp_pool) {
+    destroy_pool(cmd->tmp_pool);
+    cmd->tmp_pool = NULL;
+  }
+
+  return res;
+}
+
+int pr_auth_requires_pass(pool *p, const char *name) {
+  cmd_rec *cmd;
+  modret_t *mr;
+  int res = TRUE;
+
+  cmd = make_cmd(p, 1, name);
+  mr = dispatch_auth(cmd, "requires_pass");
+
+  if (MODRET_ISHANDLED(mr))
+    res = FALSE;
+
+  else if (MODRET_ISERROR(mr))
+    res = MODRET_ERROR(mr);
 
   if (cmd->tmp_pool) {
     destroy_pool(cmd->tmp_pool);
