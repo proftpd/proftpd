@@ -935,14 +935,14 @@ static int tls_init_server(void) {
 #endif
   char *tls_ca_cert = NULL, *tls_ca_path = NULL;
 
-  if (!strcasecmp(tls_protocol, "SSLv23"))
+  if (strcasecmp(tls_protocol, "SSLv23") == 0)
     /* This is the default, so there is no need to do anything. */
     ;
 
-  else if (!strcasecmp(tls_protocol, "SSLv3"))
+  else if (strcasecmp(tls_protocol, "SSLv3") == 0)
     SSL_CTX_set_ssl_version(ssl_ctx, SSLv3_server_method());
 
-  else if (!strcasecmp(tls_protocol, "TLSv1"))
+  else if (strcasecmp(tls_protocol, "TLSv1") == 0)
     SSL_CTX_set_ssl_version(ssl_ctx, TLSv1_server_method());
 
   tls_ca_cert = get_param_ptr(main_server->conf, "TLSCACertificateFile", FALSE);
@@ -1246,7 +1246,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
         goto retry;
 
       case SSL_ERROR_ZERO_RETURN:
-        tls_log("%s: connection closed", msg);
+        tls_log("%s: TLS connection closed", msg);
         break;
 
       case SSL_ERROR_WANT_X509_LOOKUP:
@@ -1262,13 +1262,14 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
            * examine the SSL_accept() return value itself.
            */
 
-          if (res == 0)
+          if (res == 0) {
             /* EOF */
             tls_log("%s: received EOF that violates protocol", msg);
 
-          else if (res == -1)
+          } else if (res == -1) {
             /* Check errno */
             tls_log("%s: %s", msg, strerror(errno));
+          }
 
         } else
           tls_log("%s: %s", msg, tls_get_errors());
@@ -2720,7 +2721,7 @@ static int tls_openlog(void) {
       FALSE)) == NULL)
     return 0;
 
-  if (!strcasecmp(tls_logname, "none")) {
+  if (strcasecmp(tls_logname, "none") == 0) {
     tls_logname = NULL;
     return 0;
   }
@@ -2891,8 +2892,8 @@ MODRET tls_auth(cmd_rec *cmd) {
   for (i = 0; i < strlen(cmd->argv[1]); i++)
     (cmd->argv[1])[i] = toupper((cmd->argv[1])[i]);
 
-  if (!strcmp(cmd->argv[1], "TLS") ||
-      !strcmp(cmd->argv[1], "TLS-C")) {
+  if (strcmp(cmd->argv[1], "TLS") == 0 ||
+      strcmp(cmd->argv[1], "TLS-C") == 0) {
     pr_response_send(R_234, "AUTH %s successful", cmd->argv[1]);
 
     tls_log("%s", "TLS/TLS-C requested, starting TLS handshake");
@@ -2915,8 +2916,8 @@ MODRET tls_auth(cmd_rec *cmd) {
 
      tls_flags |= TLS_SESS_ON_CTRL;
 
-  } else if (!strcmp(cmd->argv[1], "SSL") ||
-     !strcmp(cmd->argv[1], "TLS-P")) {
+  } else if (strcmp(cmd->argv[1], "SSL") == 0 ||
+     strcmp(cmd->argv[1], "TLS-P") == 0) {
     pr_response_send(R_234, "AUTH %s successful", cmd->argv[1]);
 
     tls_log("%s", "SSL/TLS-P requested, starting TLS handshake");
@@ -3298,25 +3299,25 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
 
   for (i = 1; i < cmd->argc; i++) {
-    if (!strcmp(cmd->argv[i], "AllowDotLogin"))
+    if (strcmp(cmd->argv[i], "AllowDotLogin") == 0)
       opts |= TLS_OPT_ALLOW_DOT_LOGIN;
 
-    else if (!strcmp(cmd->argv[i], "AllowPerUser"))
+    else if (strcmp(cmd->argv[i], "AllowPerUser") == 0)
       opts |= TLS_OPT_ALLOW_PER_USER;
 
-    else if (!strcmp(cmd->argv[i], "ExportCertData"))
+    else if (strcmp(cmd->argv[i], "ExportCertData") == 0)
       opts |= TLS_OPT_EXPORT_CERT_DATA;
 
-    else if (!strcmp(cmd->argv[i], "NoCertRequest"))
+    else if (strcmp(cmd->argv[i], "NoCertRequest") == 0)
       opts |= TLS_OPT_NO_CERT_REQUEST;
 
-    else if (!strcmp(cmd->argv[i], "StdEnvVars"))
+    else if (strcmp(cmd->argv[i], "StdEnvVars") == 0)
       opts |= TLS_OPT_STD_ENV_VARS;
 
-    else if (!strcmp(cmd->argv[i], "dNSNameRequired"))
+    else if (strcmp(cmd->argv[i], "dNSNameRequired") == 0)
       opts |= TLS_OPT_VERIFY_CERT_FQDN;
  
-    else if (!strcmp(cmd->argv[i], "iPAddressRequired"))
+    else if (strcmp(cmd->argv[i], "iPAddressRequired") == 0)
       opts |= TLS_OPT_VERIFY_CERT_IP_ADDR;
 
     else
@@ -3459,15 +3460,16 @@ MODRET set_tlsrequired(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if ((bool = get_boolean(cmd, 1)) == -1) {
-
-    if (!strcmp(cmd->argv[1], "control") || !strcmp(cmd->argv[1], "ctrl"))
+  bool = get_boolean(cmd, 1);
+  if (bool == -1) {
+    if (strcmp(cmd->argv[1], "control") == 0 ||
+        strcmp(cmd->argv[1], "ctrl") == 0)
       on_ctrl = TRUE;
 
-    else if (!strcmp(cmd->argv[1], "data"))
+    else if (strcmp(cmd->argv[1], "data") == 0)
       on_data = TRUE;
 
-    else if (!strcmp(cmd->argv[1], "both")) {
+    else if (strcmp(cmd->argv[1], "both") == 0) {
       on_ctrl = TRUE;
       on_data = TRUE;
     
