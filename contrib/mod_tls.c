@@ -902,7 +902,7 @@ static int tls_init_ctxt(void) {
 #endif
 
   /* Make sure that SSLv2 communications are disabled entirely.  If using
-   * OpenSSL-0.9.7 or greater, revent session resumptions on renegotiations
+   * OpenSSL-0.9.7 or greater, prevent session resumptions on renegotiations
    * as well (more secure).
    */
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
