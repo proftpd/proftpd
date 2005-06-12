@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.126 2005-04-23 15:53:50 castaglia Exp $
+ * $Id: mod_ls.c,v 1.127 2005-06-12 04:42:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1860,6 +1860,7 @@ MODRET ls_err_nlst(cmd_rec *cmd) {
 }
 
 MODRET ls_stat(cmd_rec *cmd) {
+  int res;
   char *arg = cmd->arg;
   unsigned char *tmp = NULL;
   mode_t *fake_mode = NULL;
@@ -1978,9 +1979,9 @@ MODRET ls_stat(cmd_rec *cmd) {
   opt_a = opt_l = opt_STAT = 1;
 
   pr_response_add(R_211, "Status of %s:", arg && *arg ? arg : ".");
-  dolist(cmd, arg && *arg ? arg : ".", FALSE);
+  res = dolist(cmd, arg && *arg ? arg : ".", FALSE);
   pr_response_add(R_211, "End of Status");
-  return HANDLED(cmd);
+  return (res == -1 ? ERROR(cmd) : HANDLED(cmd));
 }
 
 MODRET ls_list(cmd_rec *cmd) {
