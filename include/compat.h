@@ -23,7 +23,7 @@
  */
 
 /* Compatibility
- * $Id: compat.h,v 1.1 2005-04-15 05:55:09 castaglia Exp $
+ * $Id: compat.h,v 1.2 2005-06-12 00:36:12 castaglia Exp $
  */
 
 #ifndef PR_COMPAT_H
@@ -58,9 +58,17 @@
 #define auth_name2gid           pr_auth_name2gid
 #define auth_getgroups          pr_auth_getgroups
 
-#define log_openfile    pr_log_openfile
-#define log_pri         pr_log_pri
-#define log_debug       pr_log_debug
-#define log_auth        pr_log_auth
+#define log_openfile            pr_log_openfile
+#define log_pri                 pr_log_pri
+#define log_debug               pr_log_debug
+#define log_auth                pr_log_auth
+
+#define pr_parse_expression     pr_expr_create
+#define pr_class_and_expression pr_expr_eval_class_and
+#define pr_class_or_expression  pr_expr_eval_class_or
+#define pr_group_and_expression pr_expr_eval_group_and
+#define pr_group_or_expression  pr_expr_eval_group_or
+#define pr_user_and_expression  pr_expr_eval_user_and
+#define pr_user_or_expression   pr_expr_eval_user_or
 
 #endif /* PR_COMPAT_H */

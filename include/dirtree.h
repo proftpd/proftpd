@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.59 2005-02-26 17:28:58 castaglia Exp $
+ * $Id: dirtree.h,v 1.60 2005-06-12 00:36:12 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -246,15 +246,6 @@ unsigned char pr_expr_eval_group_and(char **);
 unsigned char pr_expr_eval_group_or(char **);
 unsigned char pr_expr_eval_user_and(char **);
 unsigned char pr_expr_eval_user_or(char **);
-
-/* Redefines for legacy modules */
-#define pr_parse_expression	pr_expr_create
-#define pr_class_and_expression	pr_expr_eval_class_and
-#define pr_class_or_expression	pr_expr_eval_class_or
-#define pr_group_and_expression	pr_expr_eval_group_and
-#define pr_group_or_expression	pr_expr_eval_group_or
-#define pr_user_and_expression	pr_expr_eval_user_and
-#define pr_user_or_expression	pr_expr_eval_user_or
 
 long get_param_int(xaset_t *, const char *, int);
 long get_param_int_next(const char *, int);
