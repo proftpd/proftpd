@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.270 2005-06-01 23:21:18 castaglia Exp $
+ * $Id: mod_core.c,v 1.271 2005-06-13 22:01:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -679,7 +679,8 @@ MODRET set_sysloglevel(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if ((level = log_str2sysloglevel(cmd->argv[1])) < 0)
+  level = pr_log_str2sysloglevel(cmd->argv[1]);
+  if (level < 0)
     CONF_ERROR(cmd, "SyslogLevel requires level keyword: one of "
       "emerg/alert/crit/error/warn/notice/info/debug");
 

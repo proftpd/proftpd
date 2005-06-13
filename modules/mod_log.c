@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.67 2004-12-23 20:17:15 castaglia Exp $
+ * $Id: mod_log.c,v 1.68 2005-06-13 22:01:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -401,7 +401,7 @@ MODRET set_extendedlog(cmd_rec *cmd) {
   if (strncasecmp(cmd->argv[1], "syslog:", 7) == 0) {
     char *tmp = strchr(cmd->argv[1], ':');
 
-    if (log_str2sysloglevel(++tmp) < 0) {
+    if (pr_log_str2sysloglevel(++tmp) < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown syslog level: '",
         tmp, "'", NULL));
 
@@ -1173,7 +1173,7 @@ static int log_sess_init(void) {
       } else {
         char *tmp = strchr(lf->lf_filename, ':');
 
-        lf->lf_syslog_level = log_str2sysloglevel(++tmp);
+        lf->lf_syslog_level = pr_log_str2sysloglevel(++tmp);
         lf->lf_fd = EXTENDED_LOG_SYSLOG;
       }
     }

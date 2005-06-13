@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2005 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.71 2004-11-02 18:18:59 castaglia Exp $
+ * $Id: log.c,v 1.72 2005-06-13 22:01:20 castaglia Exp $
  */
 
 #include "conf.h"
@@ -551,7 +551,7 @@ int pr_log_setdebuglevel(int level) {
 /* Convert a string into the matching syslog level value.  Return -1
  * if no matching level is found.
  */
-int log_str2sysloglevel(const char *name) {
+int pr_log_str2sysloglevel(const char *name) {
 
   if (strcasecmp(name, "emerg") == 0)
     return PR_LOG_EMERG;
