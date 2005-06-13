@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.183 2005-04-17 17:12:14 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.184 2005-06-13 16:27:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1323,7 +1323,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   if (pr_data_open(cmd->arg, NULL, PR_NETIO_IO_RD, 0) < 0) {
     stor_abort();
     pr_data_abort(0, TRUE);
-    return HANDLED(cmd);
+    return ERROR(cmd);
   }
 
   /* Initialize the number of bytes stored */

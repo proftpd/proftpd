@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.86 2005-04-10 23:19:48 castaglia Exp $
+ * $Id: data.c,v 1.87 2005-06-13 16:28:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -481,11 +481,21 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
   if (res >= 0) {
     struct sigaction act;
 
-    if (pr_netio_postopen(session.d->instrm) < 0)
+    if (pr_netio_postopen(session.d->instrm) < 0) {
+      pr_response_add_err(R_425, "Unable to build data connection: %s",
+        strerror(session.d->xerrno));
+      destroy_pool(session.d->pool);
+      session.d = NULL;
       return -1;
+    }
 
-    if (pr_netio_postopen(session.d->outstrm) < 0)
+    if (pr_netio_postopen(session.d->outstrm) < 0) {
+      pr_response_add_err(R_425, "Unable to build data connection: %s",
+        strerror(session.d->xerrno));
+      destroy_pool(session.d->pool);
+      session.d = NULL;
       return -1;
+    }
 
     memset(&session.xfer.start_time, '\0', sizeof(session.xfer.start_time));
     gettimeofday(&session.xfer.start_time, NULL);
