@@ -25,7 +25,7 @@
  */
 
 /* Authentication front-end for ProFTPD
- * $Id: auth.c,v 1.43 2005-06-10 17:21:11 castaglia Exp $
+ * $Id: auth.c,v 1.44 2005-06-14 18:11:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -246,6 +246,8 @@ struct passwd *pr_auth_getpwnam(pool *p, const char *name) {
     return NULL;
   }
 
+  pr_log_debug(DEBUG10, "retrieved UID %lu for user '%s'",
+    (unsigned long) res->pw_uid, name);
   return res;
 }
 
@@ -267,7 +269,7 @@ struct passwd *pr_auth_getpwuid(pool *p, uid_t uid) {
 
   /* Sanity check */
   if (res == NULL) {
-    pr_log_pri(PR_LOG_NOTICE, "no such UID '%lu'", (unsigned long)uid);
+    pr_log_pri(PR_LOG_NOTICE, "no such UID %lu", (unsigned long) uid);
     return NULL;
   }
 
@@ -282,6 +284,8 @@ struct passwd *pr_auth_getpwuid(pool *p, uid_t uid) {
     return NULL;
   }
 
+  pr_log_debug(DEBUG10, "retrieved user '%s' for UID %lu",
+    res->pw_name, (unsigned long) uid);
   return res;
 }
 
@@ -313,6 +317,8 @@ struct group *pr_auth_getgrnam(pool *p, const char *name) {
     return NULL;
   }
 
+  pr_log_debug(DEBUG10, "retrieved GID %lu for group '%s'",
+    (unsigned long) res->gr_gid, name);
   return res;
 }
 
@@ -334,7 +340,7 @@ struct group *pr_auth_getgrgid(pool *p, gid_t gid) {
 
   /* Sanity check */
   if (res == NULL) {
-    pr_log_pri(PR_LOG_NOTICE, "no such GID '%lu'", (unsigned long)gid);
+    pr_log_pri(PR_LOG_NOTICE, "no such GID %lu", (unsigned long) gid);
     return NULL;
   }
 
@@ -344,6 +350,8 @@ struct group *pr_auth_getgrgid(pool *p, gid_t gid) {
     return NULL;
   }
 
+  pr_log_debug(DEBUG10, "retrieved group '%s' for GID %lu",
+    res->gr_name, (unsigned long) gid);
   return res;
 }
 
