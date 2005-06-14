@@ -27,7 +27,7 @@
 /* Logging, either to syslog or stderr, as well as debug logging
  * and debug levels.
  *
- * $Id: log.h,v 1.24 2005-06-13 22:01:19 castaglia Exp $
+ * $Id: log.h,v 1.25 2005-06-14 01:23:44 castaglia Exp $
  */
 
 #ifndef PR_LOG_H
@@ -58,12 +58,12 @@
 #define DEBUG0		0
 
 /* pr_log_openfile() return values */
-#define LOG_WRITEABLE_DIR	-2
-#define LOG_SYMLINK		-3
+#define PR_LOG_WRITABLE_DIR	-2
+#define PR_LOG_SYMLINK		-3
 
 /* Log file modes */
-#define LOG_SYSTEM_MODE         0640
-#define LOG_XFER_MODE           0644
+#define PR_LOG_SYSTEM_MODE	0640
+#define PR_LOG_XFER_MODE	0644
 
 int log_wtmp(char *, const char *, const char *, pr_netaddr_t *);
 

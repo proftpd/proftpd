@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.24 2005-05-06 05:53:43 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.25 2005-06-14 01:23:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -515,12 +515,12 @@ static int ctrls_openlog(void) {
       ": unable to open ControlsLog '%s': %s", ctrls_logname,
       strerror(errno));
 
-  } else if (res == LOG_WRITEABLE_DIR) {
+  } else if (res == PR_LOG_WRITABLE_DIR) {
     pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
       ": unable to open ControlsLog '%s': "
       "containing directory is world writeable", ctrls_logname);
 
-  } else if (res == LOG_SYMLINK) {
+  } else if (res == PR_LOG_SYMLINK) {
     pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
       ": unable to open ControlsLog '%s': %s is a symbolic link",
       ctrls_logname, ctrls_logname);

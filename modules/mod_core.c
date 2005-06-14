@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.271 2005-06-13 22:01:19 castaglia Exp $
+ * $Id: mod_core.c,v 1.272 2005-06-14 01:23:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1588,13 +1588,13 @@ MODRET set_syslogfacility(cmd_rec *cmd) {
             strerror(errno), NULL));
           break;
 
-        case LOG_WRITEABLE_DIR:
+        case PR_LOG_WRITABLE_DIR:
           pr_signals_unblock();
           CONF_ERROR(cmd,
             "you are attempting to log to a world writeable directory");
           break;
 
-        case LOG_SYMLINK:
+        case PR_LOG_SYMLINK:
           pr_signals_unblock();
           CONF_ERROR(cmd, "you are attempting to log to a symbolic link");
           break;

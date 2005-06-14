@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.68 2005-06-13 22:01:20 castaglia Exp $
+ * $Id: mod_log.c,v 1.69 2005-06-14 01:23:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -456,7 +456,7 @@ MODRET set_serverlog(cmd_rec *cmd) {
 /* Syntax: SystemLog <filename> */
 MODRET set_systemlog(cmd_rec *cmd) {
   char *syslogfn = NULL;
-  int ret;
+  int res;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
@@ -475,16 +475,17 @@ MODRET set_systemlog(cmd_rec *cmd) {
 
   pr_signals_block();
 
-  if ((ret = log_opensyslog(syslogfn)) < 0) {
+  res = log_opensyslog(syslogfn);
+  if (res < 0) {
     int xerrno = errno;
 
     pr_signals_unblock();
 
-    if (ret == LOG_WRITEABLE_DIR) {
+    if (res == PR_LOG_WRITABLE_DIR) {
       CONF_ERROR(cmd,
         "you are attempting to log to a world writeable directory");
 
-    } else if (ret == LOG_SYMLINK) {
+    } else if (res == PR_LOG_SYMLINK) {
       CONF_ERROR(cmd, "you are attempting to log to a symbolic link");
 
     } else {
@@ -1157,12 +1158,12 @@ static int log_sess_init(void) {
             lf->lf_filename, strerror(errno));
           continue;
 
-        } else if (res == LOG_WRITEABLE_DIR) {
+        } else if (res == PR_LOG_WRITABLE_DIR) {
           pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
             "containing directory is world writeable", lf->lf_filename);
           continue;
 
-        } else if (res == LOG_SYMLINK) {
+        } else if (res == PR_LOG_SYMLINK) {
           pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
             "%s is a symbolic link", lf->lf_filename, lf->lf_filename);
           close(lf->lf_fd);

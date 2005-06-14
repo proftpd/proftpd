@@ -23,7 +23,7 @@
  */
 
 /* Compatibility
- * $Id: compat.h,v 1.2 2005-06-12 00:36:12 castaglia Exp $
+ * $Id: compat.h,v 1.3 2005-06-14 01:23:44 castaglia Exp $
  */
 
 #ifndef PR_COMPAT_H
@@ -57,6 +57,9 @@
 #define auth_name2uid           pr_auth_name2uid
 #define auth_name2gid           pr_auth_name2gid
 #define auth_getgroups          pr_auth_getgroups
+
+#define LOG_WRITEABLE_DIR	PR_LOG_WRITABLE_DIR
+#define LOG_SYMLINK		PR_LOG_SYMLINK
 
 #define log_openfile            pr_log_openfile
 #define log_pri                 pr_log_pri

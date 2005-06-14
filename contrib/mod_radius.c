@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.30 2005-06-08 18:34:00 castaglia Exp $
+ * $Id: mod_radius.c,v 1.31 2005-06-14 01:23:44 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.8"
@@ -2660,11 +2660,11 @@ static int radius_sess_init(void) {
       pr_log_pri(PR_LOG_NOTICE, "notice: unable to open RadiusLog: %s",
         strerror(errno));
 
-    else if (res == LOG_WRITEABLE_DIR)
+    else if (res == PR_LOG_WRITABLE_DIR)
       pr_log_pri(PR_LOG_NOTICE, "notice: unable to open RadiusLog: "
           "parent directory is world writeable");
 
-    else if (res == LOG_SYMLINK)
+    else if (res == PR_LOG_SYMLINK)
       pr_log_pri(PR_LOG_NOTICE, "notice: unable to open RadiusLog: "
           "cannot log to a symbolic link");
   }

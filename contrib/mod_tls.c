@@ -3831,11 +3831,11 @@ static int tls_sess_init(void) {
       pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
         ": notice: unable to open TLSLog: %s", strerror(errno));
 
-    else if (res == LOG_WRITEABLE_DIR)
+    else if (res == PR_LOG_WRITABLE_DIR)
       pr_log_pri(PR_LOG_NOTICE, "notice: unable to open TLSLog: "
         "parent directory is world writeable");
 
-    else if (res == LOG_SYMLINK)
+    else if (res == PR_LOG_SYMLINK)
       pr_log_pri(PR_LOG_NOTICE, "notice: unable to open TLSLog: "
           "cannot log to a symbolic link");
   }

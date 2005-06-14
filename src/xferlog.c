@@ -23,7 +23,7 @@
  */
 
 /* ProFTPD xferlog(5) logging support.
- * $Id: xferlog.c,v 1.2 2004-09-14 17:49:43 castaglia Exp $
+ * $Id: xferlog.c,v 1.3 2005-06-14 01:23:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -50,7 +50,7 @@ int xferlog_open(const char *path) {
 
   if (xferlogfd == -1) {
     pr_log_debug(DEBUG6, "opening TransferLog '%s'", path);
-    pr_log_openfile(path, &xferlogfd, LOG_XFER_MODE);
+    pr_log_openfile(path, &xferlogfd, PR_LOG_XFER_MODE);
   }
 
   return xferlogfd;

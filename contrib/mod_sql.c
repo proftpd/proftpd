@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.91 2005-04-22 16:26:51 castaglia Exp $
+ * $Id: mod_sql.c,v 1.92 2005-06-14 01:23:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4153,11 +4153,11 @@ static int sql_sess_init(void) {
       pr_log_pri(PR_LOG_NOTICE, "notice: unable to open SQLLogFile: %s",
         strerror(errno));
 
-    else if (res == LOG_WRITEABLE_DIR)
+    else if (res == PR_LOG_WRITABLE_DIR)
       pr_log_pri(PR_LOG_NOTICE, "notice: unable to open SQLLogFile: "
           "parent directory is world writeable");
 
-    else if (res == LOG_SYMLINK)
+    else if (res == PR_LOG_SYMLINK)
       pr_log_pri(PR_LOG_NOTICE, "notice: unable to open SQLLogFile: "
           "cannot log to a symbolic link");
   }

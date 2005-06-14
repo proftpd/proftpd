@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.72 2005-06-13 22:01:20 castaglia Exp $
+ * $Id: log.c,v 1.73 2005-06-14 01:23:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -217,7 +217,7 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
   if (sbuf.st_mode & S_IWOTH) {
     pr_log_pri(PR_LOG_NOTICE, "error: %s is a world writeable directory", lf);
     destroy_pool(tmp_pool);
-    return LOG_WRITEABLE_DIR;
+    return PR_LOG_WRITABLE_DIR;
   }
 
   /* Restore the path separator so that checks on the file itself may be
@@ -265,12 +265,12 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
         switch (errno) {
 #ifdef ELOOP
           case ELOOP:
-            return LOG_SYMLINK;
+            return PR_LOG_SYMLINK;
 #endif /* ELOOP */
 
 #ifdef EMLINK
           case EMLINK:
-            return LOG_SYMLINK;
+            return PR_LOG_SYMLINK;
 #endif /* EMLINK */
         }
 
@@ -320,7 +320,7 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
       close(*log_fd);
       *log_fd = -1;
       destroy_pool(tmp_pool);
-      return LOG_SYMLINK;
+      return PR_LOG_SYMLINK;
     }
 
   } else {
@@ -393,7 +393,7 @@ int log_opensyslog(const char *fn) {
     systemlog_fd = -1;
 
   } else if ((res = pr_log_openfile(systemlog_fn, &systemlog_fd,
-      LOG_SYSTEM_MODE)) < 0) {
+      PR_LOG_SYSTEM_MODE)) < 0) {
     memset(systemlog_fn, '\0', sizeof(systemlog_fn));
     return res;
   }
