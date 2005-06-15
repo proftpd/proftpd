@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.184 2005-06-13 16:27:55 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.185 2005-06-15 17:38:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -961,7 +961,6 @@ static int get_hidden_store_path(cmd_rec *cmd, char *path) {
       strerror(errno));
 
   session.xfer.xfer_type = STOR_HIDDEN;
-
   return 0;
 }
 
@@ -1206,7 +1205,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
   xfer_rate_lookup(cmd);
 
   session.xfer.path = pr_table_get(cmd->notes, "mod_xfer.store-path", NULL);
-  session.xfer.path_hidden = NULL;
+  session.xfer.path_hidden = pr_table_get(cmd->notes,
+    "mod_xfer.store-hidden-path", NULL);
 
   dir = session.xfer.path;
 
@@ -1247,11 +1247,11 @@ MODRET xfer_stor(cmd_rec *cmd) {
 #endif /* REGEX */
 
   if (session.xfer.xfer_type == STOR_HIDDEN)
-    stor_fh = pr_fsio_open(dir,
+    stor_fh = pr_fsio_open(session.xfer.path_hidden,
       O_WRONLY|(session.restart_pos ? 0 : O_CREAT|O_EXCL));
 
   else if (session.xfer.xfer_type == STOR_APPEND) {
-    stor_fh = pr_fsio_open(dir, O_CREAT|O_WRONLY);
+    stor_fh = pr_fsio_open(session.xfer.path, O_CREAT|O_WRONLY);
 
     if (stor_fh)
       if (pr_fsio_lseek(stor_fh, 0, SEEK_END) == (off_t) -1) {
@@ -1302,18 +1302,6 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
   /* Perform the actual transfer now */
   pr_data_init(cmd->arg, PR_NETIO_IO_RD);
-
-  /* pr_data_init() creates the session.xfer.p pool, if not already
-   * present.  That is why we need to wait until after it is called
-   * before dup'ing the hidden path into session.xfer.path_hidden.
-   */
-  if (session.xfer.xfer_type == STOR_HIDDEN)
-    session.xfer.path_hidden = pstrdup(session.xfer.p,
-      pr_table_get(cmd->notes, "mod_xfer.store-hidden-path", NULL));
-
-  if (session.xfer.xfer_type == STOR_HIDDEN)
-    session.xfer.path_hidden = pstrdup(session.xfer.p,
-      pr_table_get(cmd->notes, "mod_xfer.store-hidden-path", NULL));
 
   session.xfer.file_size = curr_pos;
 
@@ -1428,14 +1416,14 @@ MODRET xfer_stor(cmd_rec *cmd) {
         pr_log_pri(PR_LOG_WARNING, "Rename of %s to %s failed: %s.",
           session.xfer.path_hidden, session.xfer.path, strerror(errno));
 
-        pr_response_add_err(R_550,"%s: rename of hidden file %s failed: %s",
+        pr_response_add_err(R_550, "%s: Rename of hidden file %s failed: %s",
           session.xfer.path, session.xfer.path_hidden, strerror(errno));
 
         pr_fsio_unlink(session.xfer.path_hidden);
-
         return ERROR(cmd);
       }
     }
+
     pr_data_close(FALSE);
   }
 
