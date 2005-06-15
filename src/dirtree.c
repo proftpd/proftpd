@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.167 2005-04-15 21:18:24 castaglia Exp $
+ * $Id: dirtree.c,v 1.168 2005-06-15 15:40:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3035,6 +3035,7 @@ int pr_is_boolean(const char *str) {
   if (strcasecmp(str, "0") == 0)
     return 0;
 
+  errno = EINVAL;
   return -1;
 }
 
