@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004 The ProFTPD Project team
+ * Copyright (c) 2004, 2005 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Table management
- * $Id: table.h,v 1.3 2004-11-11 02:44:04 castaglia Exp $
+ * $Id: table.h,v 1.4 2005-06-16 21:27:24 castaglia Exp $
  */
 
 #ifndef PR_TABLE_H
@@ -72,6 +72,7 @@ int pr_table_add_dup(pr_table_t *tab, const char *key_data, void *value_data,
  */
 pr_table_t *pr_table_alloc(pool *p, int flags);
 #define PR_TABLE_FL_MULTI_VALUE		0x0001
+#define PR_TABLE_FL_USE_CACHE		0x0002
 
 /* Returns the number of entries stored in the table.
  */

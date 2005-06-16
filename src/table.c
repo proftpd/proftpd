@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.6 2005-06-16 18:58:51 castaglia Exp $
+ * $Id: table.c,v 1.7 2005-06-16 21:27:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -51,7 +51,9 @@ struct table_rec {
    */
   pr_table_entry_t *val_iter_ent;
 
-  /* Cache of last looked-up entry. */
+  /* Cache of last looked-up entry.  Usage of this field can be enabled
+   * by using the PR_TABLE_FL_USE_CACHE flag.
+   */
   pr_table_entry_t *cache_ent;
 
   /* Table callbacks. */
@@ -371,13 +373,15 @@ int pr_table_kexists(pr_table_t *tab, const void *key_data, size_t key_datasz) {
     return -1;
   }
 
-  /* Has the caller already wanted to lookup this same key previously?
-   * If so, reuse that lookup if we can.  In this case, "same key" means
-   * the _exact same pointer_, not identical data.
-   */
-  if (tab->cache_ent &&
-      tab->cache_ent->key->key_data == key_data)
-    return tab->cache_ent->key->nents;
+  if (tab->flags & PR_TABLE_FL_USE_CACHE) {
+    /* Has the caller already wanted to lookup this same key previously?
+     * If so, reuse that lookup if we can.  In this case, "same key" means
+     * the _exact same pointer_, not identical data.
+     */
+    if (tab->cache_ent &&
+        tab->cache_ent->key->key_data == key_data)
+      return tab->cache_ent->key->nents;
+  }
 
   h = tab->keyhash(key_data, key_datasz);
   idx = h % tab->nchains;
@@ -396,7 +400,10 @@ int pr_table_kexists(pr_table_t *tab, const void *key_data, size_t key_datasz) {
     /* Matching hashes.  Now to see if the keys themselves match. */
     if (tab->keycmp(ent->key->key_data, ent->key->key_datasz,
         key_data, key_datasz) == 0) {
-      tab->cache_ent = ent;
+
+      if (tab->flags & PR_TABLE_FL_USE_CACHE)
+        tab->cache_ent = ent;
+
       return ent->key->nents;
     }
   }
@@ -444,7 +451,8 @@ void *pr_table_kget(pr_table_t *tab, const void *key_data, size_t key_datasz,
       tab->val_iter_ent->key->key_data == key_data) {
     head = tab->val_iter_ent->next;
 
-  } else if (tab->cache_ent &&
+  } else if ((tab->flags & PR_TABLE_FL_USE_CACHE) &&
+             tab->cache_ent &&
              tab->cache_ent->key->key_data == key_data) {
 
      /* If the cached lookup entry matches, we'll use it. */
@@ -472,7 +480,9 @@ void *pr_table_kget(pr_table_t *tab, const void *key_data, size_t key_datasz,
     if (tab->keycmp(ent->key->key_data, ent->key->key_datasz,
         key_data, key_datasz) == 0) {
 
-      tab->cache_ent = ent;
+      if (tab->flags & PR_TABLE_FL_USE_CACHE) 
+        tab->cache_ent = ent;
+
       tab->val_iter_ent = ent;
 
       if (value_datasz)
@@ -508,7 +518,8 @@ void *pr_table_kremove(pr_table_t *tab, const void *key_data,
    * If so, reuse that lookup if we can.  In this case, "same key" means
    * the _exact same pointer_, not identical data.
    */
-  if (tab->cache_ent &&
+  if ((tab->flags & PR_TABLE_FL_USE_CACHE) &&
+      tab->cache_ent &&
       tab->cache_ent->key->key_data == key_data) {
     void *value_data = tab->cache_ent->value_data;
 
@@ -587,7 +598,8 @@ int pr_table_kset(pr_table_t *tab, const void *key_data, size_t key_datasz,
       tab->val_iter_ent->key->key_data == key_data) {
     head = tab->val_iter_ent->next;
 
-  } else if (tab->cache_ent &&
+  } else if ((tab->flags & PR_TABLE_FL_USE_CACHE) &&
+             tab->cache_ent &&
              tab->cache_ent->key->key_data == key_data) {
 
      /* If the cached lookup entry matches, we'll use it. */
@@ -623,7 +635,9 @@ int pr_table_kset(pr_table_t *tab, const void *key_data, size_t key_datasz,
       ent->value_data = value_data;
       ent->value_datasz = value_datasz;
 
-      tab->cache_ent = ent;
+      if (tab->flags & PR_TABLE_FL_USE_CACHE)
+        tab->cache_ent = ent;
+
       tab->val_iter_ent = ent;
 
       return 0;
@@ -957,8 +971,17 @@ void pr_table_dump(void (*dumpf)(const char *fmt, ...), pr_table_t *tab) {
     dumpf("%s", "[table flags]: None");
 
   else {
-    if (tab->flags & PR_TABLE_FL_MULTI_VALUE)
-      dumpf("%s", "[table flags]: MultiValue");
+    if ((tab->flags & PR_TABLE_FL_MULTI_VALUE) &&
+        (tab->flags & PR_TABLE_FL_USE_CACHE)) {
+      dumpf("%s", "[table flags]: MultiValue, UseCache");
+
+    } else {
+      if (tab->flags & PR_TABLE_FL_MULTI_VALUE)
+        dumpf("%s", "[table flags]: MultiValue");
+
+      if (tab->flags & PR_TABLE_FL_USE_CACHE)
+        dumpf("%s", "[table flags]: UseCache");
+    }
   }
 
   if (tab->nents == 0) {
