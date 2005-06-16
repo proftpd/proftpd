@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.5 2005-05-06 05:53:43 castaglia Exp $
+ * $Id: table.c,v 1.6 2005-06-16 18:58:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -152,8 +152,10 @@ static void tab_key_free(pr_table_t *tab, pr_table_key_t *k) {
     pr_table_key_t *i = tab->free_keys;
 
     /* Scan to the end of the list. */
-    while (i->next != NULL)
+    while (i->next != NULL) {
+      pr_signals_handle();
       i = i->next;
+    }
 
     i->next = k;
 
@@ -191,8 +193,10 @@ static void tab_entry_free(pr_table_t *tab, pr_table_entry_t *e) {
     pr_table_entry_t *i = tab->free_ents;
 
     /* Scan to the end of the list. */
-    while (i->next != NULL)
+    while (i->next != NULL) {
+      pr_signals_handle();
       i = i->next;
+    }
 
     i->next = e;
  
@@ -969,6 +973,8 @@ void pr_table_dump(void (*dumpf)(const char *fmt, ...), pr_table_t *tab) {
     pr_table_entry_t *ent = tab->chains[i];
 
     while (ent) {
+      pr_signals_handle();
+
       dumpf("[chain %u#%u] '%s' => '%s'", i, j++, ent->key->key_data,
         ent->value_data);
       ent = ent->next;
