@@ -568,7 +568,12 @@ static int tls_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
     }
   }
 
+#if OPENSSL_VERSION_NUMBER < 0x00908001
   PEMerr(PEM_F_DEF_CALLBACK, PEM_R_PROBLEMS_GETTING_PASSWORD);
+#else
+  PEMerr(PEM_F_PEM_DEF_CALLBACK, PEM_R_PROBLEMS_GETTING_PASSWORD);
+#endif
+
   pr_memscrub(buf, buflen);
   return -1;
 }
