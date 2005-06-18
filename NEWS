@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.680 2005-06-15 17:38:55 castaglia Exp $
+$Id: NEWS,v 1.681 2005-06-18 18:16:13 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -37,6 +37,9 @@ CVS
 - Bug 2636 - Data connection failure when handling STOR does not trigger
   error response.
 - Bug 2639 - HiddenStores does not work.
+- Bug 2630 - Use of mmap in mod_delay may be problematic on HP-UX.  This
+  change adds locking of the DelayTable, which may (or may not) also
+  help on other platforms.
 
 1.3.0rc1 - Released 10-Apr-2005
 --------------------------------
