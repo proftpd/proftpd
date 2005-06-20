@@ -23,7 +23,7 @@
  */
 
 /* Home-on-demand support
- * $Id: mkhome.c,v 1.7 2004-09-26 17:57:37 castaglia Exp $
+ * $Id: mkhome.c,v 1.8 2005-06-20 05:41:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -31,7 +31,7 @@
 
 static int create_dir(const char *dir, uid_t uid, gid_t gid,
     mode_t mode) {
-  mode_t prevmask;
+  mode_t prev_mask;
   struct stat st;
   int res = -1;
 
@@ -51,21 +51,22 @@ static int create_dir(const char *dir, uid_t uid, gid_t gid,
   }
 
   /* The given mode is absolute, not subject to any Umask setting. */
-  prevmask = umask(0);
+  prev_mask = umask(0);
 
   if (pr_fsio_mkdir(dir, mode) < 0) {
+    umask(prev_mask);
     pr_log_pri(PR_LOG_WARNING, "error creating '%s': %s", dir,
       strerror(errno));
     return -1;
   }
+
+  umask(prev_mask);
 
   if (pr_fsio_chown(dir, uid, gid) < 0) {
     pr_log_pri(PR_LOG_WARNING, "error setting ownership of '%s': %s", dir,
       strerror(errno));
     return -1;
   }
-
-  umask(prevmask);
 
   pr_log_debug(DEBUG6, "CreateHome: directory '%s' created", dir);
   return 0;
