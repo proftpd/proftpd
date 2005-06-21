@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.28 2005-06-01 17:21:20 castaglia Exp $
+ * $Id: bindings.c,v 1.29 2005-06-21 17:02:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -56,6 +56,12 @@ static pr_ipbind_t *ipbind_table[PR_BINDINGS_TABLE_SIZE];
 static pool *binding_pool = NULL;
 static pr_ipbind_t *ipbind_default_server = NULL,
                    *ipbind_localhost_server = NULL;
+
+#ifdef PR_USE_IPV6
+static int ipv6_supported = TRUE;
+#else
+static int ipv6_supported = FALSE;
+#endif /* PR_USE_IPV6 */
 
 /* Server cleanup callback function */
 static void server_cleanup_cb(void *conn) {
@@ -857,13 +863,20 @@ static void init_standalone_bindings(void) {
      * create and bind to a wildcard socket.  However, should it be an
      * IPv4 or an IPv6 wildcard socket?
      */
-    if (!SocketBindTight)
+    if (!SocketBindTight) {
 #ifdef PR_USE_IPV6
-      pr_inet_set_default_family(NULL, AF_INET6);
+      if (ipv6_supported) {
+        pr_inet_set_default_family(NULL, AF_INET6);
+
+      } else {
+        pr_inet_set_default_family(NULL,
+          pr_netaddr_get_family(main_server->addr));
+      }
 #else
       pr_inet_set_default_family(NULL,
         pr_netaddr_get_family(main_server->addr));
 #endif /* PR_USE_IPV6 */
+    }
 
     main_server->listen =
       pr_inet_create_connection(main_server->pool, server_list, -1,
@@ -894,12 +907,18 @@ static void init_standalone_bindings(void) {
         is_default = TRUE;
 
       if (serv->ServerPort) {
-        if (!SocketBindTight)
+        if (!SocketBindTight) {
 #ifdef PR_USE_IPV6
-          pr_inet_set_default_family(NULL, AF_INET6);
+          if (ipv6_supported) {
+            pr_inet_set_default_family(NULL, AF_INET6);
+
+          } else {
+            pr_inet_set_default_family(NULL, pr_netaddr_get_family(serv->addr));
+          }
 #else
           pr_inet_set_default_family(NULL, pr_netaddr_get_family(serv->addr));
 #endif /* PR_USE_IPV6 */
+        }
 
         serv->listen = pr_inet_create_connection(serv->pool, server_list, -1,
           (SocketBindTight ? serv->addr : NULL), serv->ServerPort, FALSE);
@@ -949,6 +968,20 @@ static void init_standalone_bindings(void) {
 }
 
 void init_bindings(void) {
+
+#ifdef PR_USE_IPV6
+  int sock;
+
+  /* Check to see whether we can actually create an IPv6 socket. */
+  sock = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+  if (sock < 0) {
+    ipv6_supported = FALSE;
+
+  } else {
+    close(sock);
+  }
+#endif /* PR_USE_IPV6 */
+
   if (ServerType == SERVER_INETD)
     init_inetd_bindings();
 

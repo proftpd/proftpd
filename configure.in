@@ -394,6 +394,9 @@ AC_ARG_ENABLE(ipv6,
   [AC_HELP_STRING(
     [--enable-ipv6],
     [enable IPv6 support (default=no)])
+  ],
+  [
+    AC_DEFINE(PR_USE_IPV6, 1, [Define if using IPv6 support.])
   ])
 
 dnl Sendfile support.
@@ -1154,36 +1157,6 @@ PR_CHECK_STRUCT_ADDRINFO
 PR_CHECK_STRUCT_SS
 PR_CHECK_SS_FAMILY
 PR_CHECK_SS_LEN
-
-dnl IPv6 support check
-if test x"$enable_ipv6" = xyes ; then
-  AC_MSG_CHECKING(whether IPv6 is supported)
-
-  dnl Run a small test program
-  AC_TRY_RUN(
-    [ #include <stdio.h>
-      #if HAVE_SYS_TYPES_H
-      # include <sys/types.h>
-      #endif
-      #if HAVE_SYS_SOCKET_H
-      # include <sys/socket.h>
-      #endif
-      int main(int argc, char *argv[]) {
-        int sock = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-        if (sock < 0) {
-          close(sock);
-          return 1;
-        }
-
-        close(sock);
-        return 0;
-      }
-    ],
-    AC_MSG_RESULT(yes); AC_DEFINE(PR_USE_IPV6, 1, [Define if using IPv6 support.]), 
-    AC_MSG_RESULT(no), 
-    AC_MSG_RESULT(cross-compiling),
-  )
-fi
 
 dnl POSIX ACL checks.  Always perform these, in case the administrator
 dnl wants to use mod_facl.
