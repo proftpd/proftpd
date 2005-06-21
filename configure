@@ -19616,7 +19616,7 @@ fi;
 # Check whether --enable-ctrls or --disable-ctrls was given.
 if test "${enable_ctrls+set}" = set; then
   enableval="$enable_ctrls"
-   if test "$enableval" = "yes" ; then
+   if test x"$enableval" = xyes ; then
 
 cat >>confdefs.h <<\_ACEOF
 #define PR_USE_CTRLS 1
@@ -32491,8 +32491,8 @@ fi
 
 
 if test x"$enable_ctrls" = xyes; then
-  ac_core_modules="$ac_core_modules mod_ctrls.o"
-  ac_build_core_modules="$ac_build_core_modules modules/mod_ctrls.o"
+  ac_static_modules="$ac_static_modules mod_ctrls.o"
+  ac_build_static_modules="$ac_build_static_modules modules/mod_ctrls.o"
 fi
 
 echo "$as_me:$LINENO: checking for struct sockaddr_in.sin_len" >&5
