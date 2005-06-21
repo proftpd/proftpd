@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.681 2005-06-18 18:16:13 castaglia Exp $
+$Id: NEWS,v 1.682 2005-06-21 13:54:40 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -148,7 +148,11 @@ CVS
   less strict.
 - Bug 2331 - ProFTPD does not honor POSIX ACLs.  Please read the README.facl
   file for more information on POSIX ACL support in ProFTPD.
-- Bug 2573 - TLSProtocol directive in proftpd.conf is ignored.
+- Bug 2573 - TLSProtocol directive in proftpd.conf is ignored.  By fixing
+  this bug, sites may find that a mod_tls configuration which worked
+  prior to 1.3.0rc1 now does not work, failing with an error like
+  "wrong version number" appearing in the TLSLog.  To restore the previous
+  behavior, these sites can use "TLSProtocol SSLv23" in proftpd.conf.
 - Bug 2559 - IPv6 socket option should be set for ServerType inetd.
 - Bug 2164 - Support non-PASS response codes (i.e. 232).
 - Bug 2515 - mod_quotatab should enforce hard limits at the filesystem level.
