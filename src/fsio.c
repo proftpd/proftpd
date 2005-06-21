@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.41 2005-02-26 17:55:01 castaglia Exp $
+ * $Id: fsio.c,v 1.42 2005-06-21 23:11:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -778,9 +778,23 @@ int pr_insert_fs(pr_fs_t *fs, const char *path) {
   /* Clean the path, but only if it starts with a '/'.  Non-local-filesystem
    * paths may not want/need to be cleaned.
    */
-  if (*path == '/')
+  if (*path == '/') {
     pr_fs_clean_path(path, cleaned_path, sizeof(cleaned_path));
-  else
+
+    /* Cleaning the path may have removed a trailing slash, which the
+     * caller may actually have wanted.  Make sure one is present in
+     * the cleaned version, if it was present in the original version.
+     */
+    if (path[strlen(path)-1] == '/') {
+      size_t len = strlen(cleaned_path);
+
+      if (len < (PR_TUNABLE_PATH_MAX-2)) {
+        cleaned_path[len] = '/';
+        cleaned_path[len+1] = '\0';
+      }
+    }
+
+  } else
     sstrncpy(cleaned_path, path, sizeof(cleaned_path));
 
   if (!fs->fs_path)
