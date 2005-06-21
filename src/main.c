@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.271 2005-02-26 17:28:58 castaglia Exp $
+ * $Id: main.c,v 1.272 2005-06-21 18:27:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2408,6 +2408,10 @@ static void show_settings(void) {
   printf("      " PR_PID_FILE_PATH "\n");
   printf("    Scoreboard File:\n");
   printf("      " PR_RUN_DIR "/proftpd.scoreboard\n");
+#ifdef PR_USE_DSO
+  printf("    Shared Module Directory:\n");
+  printf("      " PR_LIBEXEC_DIR "\n");
+#endif /* PR_USE_DSO */
 
   /* Feature settings */
   printf("\n  Features:\n");
