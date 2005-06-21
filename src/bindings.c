@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.29 2005-06-21 17:02:45 castaglia Exp $
+ * $Id: bindings.c,v 1.30 2005-06-21 20:54:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -59,8 +59,6 @@ static pr_ipbind_t *ipbind_default_server = NULL,
 
 #ifdef PR_USE_IPV6
 static int ipv6_supported = TRUE;
-#else
-static int ipv6_supported = FALSE;
 #endif /* PR_USE_IPV6 */
 
 /* Server cleanup callback function */
