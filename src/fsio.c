@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.43 2005-06-22 01:58:04 castaglia Exp $
+ * $Id: fsio.c,v 1.44 2005-06-22 17:22:17 castaglia Exp $
  */
 
 #include "conf.h"
@@ -479,14 +479,26 @@ static pr_fs_t *lookup_file_fs(const char *path, char **deref, int op) {
 #else
     if (1) {
 #endif /* PR_FS_MATCH */
+      pr_fs_t *fs = fs_cwd;
       struct stat sbuf;
       int (*mystat)(pr_fs_t *, const char *, struct stat *) = NULL;
 
       /* Determine which function to use, stat() or lstat(). */
-      mystat = (op == FSIO_FILE_STAT) ? fs_cwd->stat : fs_cwd->lstat;
+      if (op == FSIO_FILE_STAT) {
+        while (fs && fs->fs_next && !fs->stat)
+          fs = fs->fs_next;
 
-      if (mystat(fs_cwd, path, &sbuf) == -1 || !S_ISLNK(sbuf.st_mode))
-        return fs_cwd;
+        mystat = fs->stat;
+
+      } else {
+        while (fs && fs->fs_next && !fs->lstat)
+          fs = fs->fs_next;
+
+        mystat = fs->lstat;
+      }
+
+      if (mystat(fs, path, &sbuf) == -1 || !S_ISLNK(sbuf.st_mode))
+        return fs;
 
     } else {
 
