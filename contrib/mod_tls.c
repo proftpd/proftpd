@@ -724,9 +724,12 @@ static void tls_scrub_pkeys(void) {
   tls_pkey_t *k;
 
   /* Scrub and free all passphrases in memory. */
-  if (tls_pkey_list)
+  if (tls_pkey_list) {
     pr_log_debug(DEBUG5, MOD_TLS_VERSION
       ": scrubbing all passphrases from memory");
+
+  } else
+    return;
 
   for (k = tls_pkey_list; k; k = k->next) {
     if (k->rsa_pkey) {
@@ -741,6 +744,8 @@ static void tls_scrub_pkeys(void) {
       k->dsa_pkey = k->dsa_pkey_ptr = NULL;
     }
   }
+
+  tls_pkey_list = NULL;
 }
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
@@ -3690,7 +3695,6 @@ static void tls_daemon_exit_ev(const void *event_data, void *user_data) {
 
 static void tls_restart_ev(const void *event_data, void *user_data) {
   tls_scrub_pkeys();
-  tls_pkey_list = NULL;
 
   /* Re-register the postparse callback, to handle the (possibly changed)
    * configuration and (re-)prompt for passphrases, if needed.
@@ -3780,6 +3784,7 @@ static int tls_sess_init(void) {
     /* No need for all the OpenSSL stuff in this process space, either.
      */
     tls_cleanup();
+    tls_scrub_pkeys();
 
     return 0;
   }
