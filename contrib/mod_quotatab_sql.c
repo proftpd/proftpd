@@ -22,7 +22,7 @@
  * with OpenSSL, and distribute the resulting executable, without including
  * the source code for OpenSSL in the source distribution.
  *
- * $Id: mod_quotatab_sql.c,v 1.6 2004-12-16 22:55:46 castaglia Exp $
+ * $Id: mod_quotatab_sql.c,v 1.7 2005-06-23 23:23:30 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -686,8 +686,7 @@ static quota_table_t *sqltab_open(pool *parent_pool, quota_tabtype_t tab_type,
       return NULL;
     }
 
-    tab->tab_data = pcalloc(tab->tab_pool, sizeof(char));
-    ((char *) tab->tab_data) = pstrdup(tab->tab_pool, select_query);
+    tab->tab_data = (void *) pstrdup(tab->tab_pool, select_query);
   }
 
   /* Set all the necessary function pointers. */
