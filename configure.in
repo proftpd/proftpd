@@ -922,15 +922,16 @@ if test "$pr_cv_header_timer_t" = "yes"; then
   AC_DEFINE(HAVE_TIMER_T)
 fi
 
+AC_HEADER_TIME
+AC_STRUCT_TM
+
 AC_CHECK_SIZEOF(short, 0)
 AC_CHECK_SIZEOF(int, 0)
 AC_CHECK_SIZEOF(long, 0)
 AC_CHECK_SIZEOF(long long, 0)
 AC_CHECK_SIZEOF(off_t, 0)
 AC_CHECK_SIZEOF(size_t, 0)
-
-AC_HEADER_TIME
-AC_STRUCT_TM
+AC_CHECK_SIZEOF(time_t, 0)
 
 dnl Check for generic typedefs
 AC_CHECK_TYPE(umode_t, mode_t)

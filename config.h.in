@@ -219,6 +219,9 @@
 /* The number of bytes in a size_t.  */
 #undef SIZEOF_SIZE_T
 
+/* The number of bytes in a time_t.  */
+#undef SIZEOF_TIME_T
+
 /* Define if you have the bcopy function.  */
 #undef HAVE_BCOPY
 
