@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.682 2005-06-21 13:54:40 castaglia Exp $
+$Id: NEWS,v 1.683 2005-06-27 20:40:43 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -40,6 +40,15 @@ CVS
 - Bug 2630 - Use of mmap in mod_delay may be problematic on HP-UX.  This
   change adds locking of the DelayTable, which may (or may not) also
   help on other platforms.
+- Bug 2644 - mod_sql_mysql should handle old MySQL password format more
+  gracefully.  Starting with MySQL 4.1.1, the format for passwords stored
+  using the MySQL PASSWORD() function changed.  This format change causes
+  issues for sites that have passwords stored in the older format.  Users
+  of mod_sql+mod_sql_mysql would see this as users being unable to login.
+  Now, if compiled against MySQL 4.1.1 or later, mod_sql_mysql will first
+  check the password using the current MySQL format; if that fails it
+  will fall back to checking the old format.  Note that this only affects
+  sites which have "SQLAuthTypes Backend" in their proftpd.conf.
 
 1.3.0rc1 - Released 10-Apr-2005
 --------------------------------

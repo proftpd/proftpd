@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sql_mysql -- Support for connecting to MySQL databases.
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004 TJ Saunders
+ * Copyright (c) 2004-2005 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.38 2005-02-25 02:01:24 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.39 2005-06-27 20:41:14 castaglia Exp $
  */
 
 /*
@@ -128,7 +128,7 @@
  * Internal define used for debug and logging.  All backends are encouraged
  * to use the same format.
  */
-#define MOD_SQL_MYSQL_VERSION		"mod_sql_mysql/4.04"
+#define MOD_SQL_MYSQL_VERSION		"mod_sql_mysql/4.05"
 
 #define _MYSQL_PORT "3306"
 
@@ -1288,8 +1288,26 @@ MODRET cmd_checkauth(cmd_rec * cmd) {
 #endif
 
   success = !strcmp(scrambled, c_hash); 
-  if (!success)
+
+  if (!success) {
+
+#if MYSQL_VERSION_ID >= 40101
+    /* Try to work around MySQL's stupid handling of password length
+     * changes in 4.1, and the stupidity and whining of admins who
+     * cannot deal with those changes.
+     */
+    memset(scrambled, '\0', sizeof(scrambled));
+    make_scrambled_password_323(scrambled, c_clear);
+
+    sql_log(DEBUG_FUNC, "%s",
+      "checking again using deprecated legacy MySQL password algorithm");
+    success = !strcmp(scrambled, c_hash);
+    if (!success)
+      sql_log(DEBUG_FUNC, "%s", "password mismatch");
+#else
     sql_log(DEBUG_FUNC, "%s", "password mismatch");
+#endif
+  }
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_checkauth");
 
