@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.61 2005-04-15 05:55:09 castaglia Exp $
+ * $Id: conf.h,v 1.62 2005-06-30 00:39:16 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -42,7 +42,7 @@
  * details on why, see:
  *  http://nagoya.apache.org/bugzilla/show_bug.cgi?id=16317
  */
-#if defined(HPUX11)
+#if defined(HPUX11) && !defined(_XOPEN_SOURCE_EXTENDED)
 # undef socklen_t
 # define socklen_t      int
 #endif
