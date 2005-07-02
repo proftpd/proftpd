@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.16 2005-06-18 18:16:13 castaglia Exp $
+ * $Id: mod_delay.c,v 1.17 2005-07-02 17:59:43 castaglia Exp $
  */
 
 #include "conf.h"
@@ -99,7 +99,7 @@ static long delay_select_k(unsigned long k, array_header *values) {
    */
 
   l = 1;
-  ir = values->nelts;
+  ir = values->nelts - 1;
 
   while (TRUE) {
     if (ir <= l+1) {
@@ -149,6 +149,10 @@ static long delay_select_k(unsigned long k, array_header *values) {
 
       if (p <= k)
         l = i;
+
+      if (l >= (nelts - 1) ||
+          ir >= nelts)
+        break;
     }
   }
 
