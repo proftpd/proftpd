@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.185 2005-06-15 17:38:55 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.186 2005-07-02 18:06:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1245,6 +1245,11 @@ MODRET xfer_stor(cmd_rec *cmd) {
     }
   }
 #endif /* REGEX */
+
+  /* Make sure the proper current working directory is set in the FSIO
+   * layer, so that the proper FS can be used for the open().
+   */
+  pr_fs_setcwd(pr_fs_getcwd());
 
   if (session.xfer.xfer_type == STOR_HIDDEN)
     stor_fh = pr_fsio_open(session.xfer.path_hidden,
