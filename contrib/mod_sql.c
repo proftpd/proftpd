@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql -- SQL frontend
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton.
- * Copyright (c) 2004 TJ Saunders
+ * Copyright (c) 2004-2005 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.92 2005-06-14 01:23:44 castaglia Exp $
+ * $Id: mod_sql.c,v 1.93 2005-07-02 18:41:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -111,6 +111,8 @@ MODRET cmd_setgrent(cmd_rec *);
 MODRET sql_lookup(cmd_rec *);
 
 static pool *sql_pool = NULL;
+static pr_netaddr_t *sql_local_addr = NULL;
+static pr_netaddr_t *sql_remote_addr = NULL;
 
 /*
  * cache typedefs
@@ -1576,7 +1578,7 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
 
   case 'a':
     argp = arg;
-    sstrncpy(argp, pr_netaddr_get_ipstr(session.c->remote_addr), sizeof(arg));
+    sstrncpy(argp, pr_netaddr_get_ipstr(sql_remote_addr), sizeof(arg));
     break;
 
   case 'b':
@@ -1705,7 +1707,7 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
 
   case 'L':
     argp = arg;
-    sstrncpy(argp, pr_netaddr_get_ipstr(session.c->local_addr), sizeof(arg));
+    sstrncpy(argp, pr_netaddr_get_ipstr(sql_local_addr), sizeof(arg));
     break;
 
   case 'l':
@@ -4524,6 +4526,10 @@ static int sql_sess_init(void) {
     sql_log(DEBUG_INFO, "sql_brate          : %s", cmap.sql_brate);
     sql_log(DEBUG_INFO, "sql_bcred          : %s", cmap.sql_bcred);
   }
+
+  /* Make a copy of netaddrs for later. */
+  sql_local_addr = pr_netaddr_dup(sql_pool, session.c->local_addr);
+  sql_remote_addr = pr_netaddr_dup(sql_pool, session.c->remote_addr);
 
   sql_log(DEBUG_FUNC, "%s", "<<< sql_sess_init");
 
