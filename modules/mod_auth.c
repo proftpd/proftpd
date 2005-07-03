@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.205 2005-06-10 17:21:11 castaglia Exp $
+ * $Id: mod_auth.c,v 1.206 2005-07-03 18:52:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -845,6 +845,10 @@ static int _setup_environment(pool *p, char *user, char *pass) {
 
     if (pass)
       pr_memscrub(pass, strlen(pass));
+
+    if (session.auth_mech)
+      pr_log_debug(DEBUG2, "user %s authenticated by %s", user,
+        session.auth_mech);
 
     switch (auth_code) {
       case PR_AUTH_OK_NO_PASS:

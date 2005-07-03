@@ -47,7 +47,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.38 2005-03-11 20:44:11 jwm Exp $
+ * $Id: mod_ldap.c,v 1.39 2005-07-03 18:52:00 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -1066,6 +1066,7 @@ handle_ldap_is_auth(cmd_rec *cmd)
     return ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
+  session.auth_mech = "mod_ldap.c";
   return HANDLED(cmd);
 }
 
@@ -1134,6 +1135,7 @@ handle_ldap_check(cmd_rec *cmd)
     }
 
     ldap_unbind(ld_auth);
+    session.auth_mech = "mod_ldap.c";
     return HANDLED(cmd);
   }
 
@@ -1203,6 +1205,7 @@ handle_ldap_check(cmd_rec *cmd)
     return DECLINED(cmd);
 #endif /* HAVE_OPENSSL */
 
+  session.auth_mech = "mod_ldap.c";
   return HANDLED(cmd);
 }
 

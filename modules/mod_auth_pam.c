@@ -35,7 +35,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.11 2004-11-03 16:53:35 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.12 2005-07-03 18:52:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -432,6 +432,7 @@ MODRET pam_auth(cmd_rec *cmd) {
     return pam_authoritative ? ERROR_INT(cmd, retval) : DECLINED(cmd);
 
   } else {
+    session.auth_mech = "mod_auth_pam.c";
     pr_event_register(&auth_pam_module, "core.exit", auth_pam_exit_ev, NULL);
     return HANDLED(cmd);
   }

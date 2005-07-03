@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.93 2005-07-02 18:41:06 castaglia Exp $
+ * $Id: mod_sql.c,v 1.94 2005-07-03 18:52:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2974,6 +2974,7 @@ MODRET cmd_auth(cmd_rec *cmd) {
   if ((pw = _sql_getpasswd(cmd, &lpw)) && 
       !auth_check(cmd->tmp_pool, pw->pw_passwd, cmd->argv[0], cmd->argv[1])) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_auth");
+    session.auth_mech = "mod_sql.c";
     return HANDLED(cmd);
 
   } else {
@@ -3060,6 +3061,7 @@ MODRET cmd_check(cmd_rec *cmd) {
 		    cmap.authpasswd->pw_gid);
     }
     
+    session.auth_mech = "mod_sql.c";
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_check");
     return HANDLED(cmd);
   }

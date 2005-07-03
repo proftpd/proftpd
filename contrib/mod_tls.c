@@ -2771,6 +2771,7 @@ MODRET tls_authenticate(cmd_rec *cmd) {
        cmd->argv[0]);
       pr_log_auth(PR_LOG_NOTICE, "USER %s: TLS/X509 .tlslogin authentication "
         "successful", cmd->argv[0]);
+      session.auth_mech = "mod_tls.c";
       return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
 
     } else
@@ -2782,8 +2783,7 @@ MODRET tls_authenticate(cmd_rec *cmd) {
 }
 
 /* This function is called only when UserPassword is involved, used to
- * override the configured password for a user.  I don't know if we really
- * when this happens, but we have to be prepared for this case:
+ * override the configured password for a user.
  *
  *  cmd->argv[0]: hashed password (from proftpd.conf)
  *  cmd->argv[1]: user name
@@ -2806,6 +2806,7 @@ MODRET tls_auth_check(cmd_rec *cmd) {
        cmd->argv[0]);
       pr_log_auth(PR_LOG_NOTICE, "USER %s: TLS/X509 .tlslogin authentication "
         "successful", cmd->argv[1]);
+      session.auth_mech = "mod_tls.c";
       return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
 
     } else

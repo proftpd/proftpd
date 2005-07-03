@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.31 2005-06-14 01:23:44 castaglia Exp $
+ * $Id: mod_radius.c,v 1.32 2005-07-03 18:52:01 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.8"
@@ -2039,8 +2039,10 @@ MODRET radius_auth(cmd_rec *cmd) {
   /* This authentication check has already been performed; I just need
    * to report the results of that check now.
    */
-  if (radius_auth_ok)
+  if (radius_auth_ok) {
+    session.auth_mech = "mod_radius.c";
     return HANDLED(cmd);
+  }
 
   else if (radius_auth_reject)
     return ERROR_INT(cmd, PR_AUTH_BADPWD);

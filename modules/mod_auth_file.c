@@ -2,7 +2,7 @@
  * ProFTPD: mod_auth_file - file-based authentication module that supports
  *                          restrictions on the file contents
  *
- * Copyright (c) 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2002-2005 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.24 2004-09-26 21:12:19 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.25 2005-07-03 18:52:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -915,6 +915,7 @@ MODRET authfile_auth(cmd_rec *cmd) {
   if (disable > 0 && now > disable)
     return ERROR_INT(cmd, PR_AUTH_DISABLEDPWD);
 
+  session.auth_mech = "mod_auth_file.c";
   return HANDLED(cmd);
 }
 
@@ -926,8 +927,10 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
   if (!af_handle_pw)
     return DECLINED(cmd);
 
-  if (!strcmp(crypt(cleartxt_pass, ciphertxt_pass), ciphertxt_pass))
+  if (strcmp(crypt(cleartxt_pass, ciphertxt_pass), ciphertxt_pass) == 0) {
+    session.auth_mech = "mod_auth_file.c";
     return HANDLED(cmd);
+  }  
 
   return DECLINED(cmd);
 }
