@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.168 2005-06-15 15:40:13 castaglia Exp $
+ * $Id: dirtree.c,v 1.169 2005-07-03 18:08:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1668,7 +1668,7 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
       }
     }
 
-    if (isfile != -1 && d &&
+    if (isfile != -1 && d && st.st_size > 0 &&
         st.st_mtime > (d->argv[0] ? *((time_t *) d->argv[0]) : 0)) {
 
       /* File has been modified or not loaded yet */
