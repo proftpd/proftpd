@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.686 2005-07-03 18:13:33 castaglia Exp $
+$Id: NEWS,v 1.687 2005-07-05 15:42:01 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -53,6 +53,7 @@ CVS
 - Fixed mod_sql bug where using SQLLog and SQLNamedQuery with the %L or
   %a variables, and logging the EXIT pseudo-command, would cause a segfault.
 - Bug 2375 - Slow directory listing with several blank .ftpaccess files.
+- Bug 2646 - ftpshut format string vulnerability.
 
 1.3.0rc1 - Released 10-Apr-2005
 --------------------------------
