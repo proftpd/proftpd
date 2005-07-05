@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.94 2005-07-03 18:52:01 castaglia Exp $
+ * $Id: mod_sql.c,v 1.95 2005-07-05 15:49:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2179,7 +2179,7 @@ MODRET info_master(cmd_rec *cmd) {
       *outsp++ = 0;
 
       /* add the response */
-      pr_response_add( c->argv[0], outs);
+      pr_response_add(c->argv[0], "%s", outs);
 
     } while((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 
@@ -2253,7 +2253,7 @@ MODRET info_master(cmd_rec *cmd) {
       *outsp++ = 0;
 
       /* add the response */
-      pr_response_add( c->argv[0], outs);
+      pr_response_add(c->argv[0], "%s", outs);
 
     } while((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 
@@ -2343,7 +2343,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
       *outsp++ = 0;
 
       /* add the response */
-      pr_response_add_err( c->argv[0], outs);
+      pr_response_add_err(c->argv[0], "%s", outs);
 
     } while((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 
@@ -2417,7 +2417,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
       *outsp++ = 0;
 
       /* add the response */
-      pr_response_add( c->argv[0], outs);
+      pr_response_add(c->argv[0], "%s", outs);
 
     } while((c = find_config_next(c, c->next, CONF_PARAM, name, FALSE)) != NULL);
 
