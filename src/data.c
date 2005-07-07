@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.87 2005-06-13 16:28:04 castaglia Exp $
+ * $Id: data.c,v 1.88 2005-07-07 14:45:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -765,12 +765,16 @@ void pr_data_abort(int err, int quiet) {
 #endif
     }
 
-    if ( msg == NULL && (msg = strerror(err)) == NULL ) {
-      if ( snprintf(msgbuf, sizeof msgbuf,
-		    "Unknown or out of range errno [%d].",
-		    err) > 0 )
+    if (msg == NULL &&
+        (msg = strerror(err)) == NULL ) {
+
+      if (snprintf(msgbuf, sizeof(msgbuf),
+          "Unknown or out of range errno [%d]", err) > 0)
 	msg = msgbuf;
     }
+
+    pr_log_pri(PR_LOG_NOTICE, "notice: user %s: aborting transfer: %s",
+      session.user, msg);
 
     /* If we are aborting, then a 426 response has already been sent,
      * and we don't want to add another to the error queue.
