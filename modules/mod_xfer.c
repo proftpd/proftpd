@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2005 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.186 2005-07-02 18:06:05 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.187 2005-07-08 15:26:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1332,7 +1332,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
     have_limit = TRUE;
 
   /* Check the MaxStoreFileSize, and abort now if zero. */
-  if (have_limit && nbytes_max_store == 0) {
+  if (have_limit &&
+      nbytes_max_store == 0) {
 
     pr_log_pri(PR_LOG_INFO, "MaxStoreFileSize (%" PR_LU " byte%s) reached: "
       "aborting transfer of '%s'", (pr_off_t) nbytes_max_store,
@@ -1341,8 +1342,14 @@ MODRET xfer_stor(cmd_rec *cmd) {
     /* Abort the transfer. */
     stor_abort();
 
-    /* Set errno to EPERM ("Operation not permitted") */
+    /* Set errno to EDQOUT (or the most appropriate alternative). */
+#if defined(EDQUOT)
+    pr_data_abort(EDQUOT, FALSE);
+#elif defined(EFBIG)
+    pr_data_abort(EFBIG, FALSE);
+#else
     pr_data_abort(EPERM, FALSE);
+#endif
     return ERROR(cmd);
   }
 
@@ -1361,7 +1368,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
     /* Double-check the current number of bytes stored against the
      * MaxStoreFileSize, if configured.
      */
-    if (have_limit && nbytes_stored > nbytes_max_store) {
+    if (have_limit &&
+        nbytes_stored > nbytes_max_store) {
 
       pr_log_pri(PR_LOG_INFO, "MaxStoreFileSize (%" PR_LU " bytes) reached: "
         "aborting transfer of '%s'", (pr_off_t) nbytes_max_store, dir);
@@ -1372,8 +1380,14 @@ MODRET xfer_stor(cmd_rec *cmd) {
       /* Abort the transfer. */
       stor_abort();
 
-      /* Set errno to EPERM ("Operation not permitted"). */
+    /* Set errno to EDQOUT (or the most appropriate alternative). */
+#if defined(EDQUOT)
+      pr_data_abort(EDQUOT, FALSE);
+#elif defined(EFBIG)
+      pr_data_abort(EFBIG, FALSE);
+#else
       pr_data_abort(EPERM, FALSE);
+#endif
       return ERROR(cmd);
     }
 

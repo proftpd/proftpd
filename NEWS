@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.689 2005-07-07 14:45:29 castaglia Exp $
+$Id: NEWS,v 1.690 2005-07-08 15:26:11 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -56,6 +56,8 @@ CVS
 - Bug 2646 - ftpshut format string vulnerability.
 - Bug 2645 - SQLShowInfo format string vulnerability.
 - Bug 2560 - Reporting errors when user filesystem quota is exceeded.
+- Bug 2653 - When MaxStoreFileSize is reached, error should be EDQUOT rather
+  than EPERM.
 
 1.3.0rc1 - Released 10-Apr-2005
 --------------------------------
