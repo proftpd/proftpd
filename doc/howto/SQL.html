@@ -1,4 +1,4 @@
-<!-- $Id: SQL.html,v 1.6 2005-06-09 13:14:11 castaglia Exp $ -->
+<!-- $Id: SQL.html,v 1.7 2005-07-19 00:30:03 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/SQL.html,v $ -->
 
 <html>
@@ -415,6 +415,11 @@ which generates:
 </pre>
 
 <p>
+<b>Note</b>: the <code>{digest}</code> prefix syntax is <b>only</b> needed for
+passwords that will be handled as OpenSSL-style passwords.  This prefix
+is <b>not</b> needed for any of the other <code>SQLAuthType</code> types.
+
+<p>
 There are a lot of PHP applications which might want to generate passwords
 suitable for use with <code>mod_sql</code>.  For example, to generate
 a base64-encoded MD5 password with PHP, which can then be read by
@@ -436,7 +441,7 @@ configuration.  To debug the problem, define an <a href="http://www.castaglia.or
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2005-06-09 13:14:11 $</i><br>
+Last Updated: <i>$Date: 2005-07-19 00:30:03 $</i><br>
 <hr>
 
 </body>

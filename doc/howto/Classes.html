@@ -1,4 +1,4 @@
-<!-- $Id: Classes.html,v 1.1 2004-04-21 21:29:25 castaglia Exp $ -->
+<!-- $Id: Classes.html,v 1.2 2005-07-19 00:30:02 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Classes.html,v $ -->
 
 <html>
@@ -50,6 +50,20 @@ A more complicated class might include matching DNS names as well:
 </pre>
 This &quot;test&quot; class will then be used for a client with any of the
 defined characteristics.
+
+<p>
+Note that if your class rules use only DNS names, and <code>proftpd</code>
+is unable to resolve the IP address of a client to a DNS name, that
+class may not be matched as you might expect.  This can be seen in
+the server debugging output, at level 10, as something like:
+<pre>
+  comparing DNS name '1.2.3.4' to pattern 'proxy.*.com'
+</pre>
+Here you see the 1.2.3.4 IP address, where a DNS name should be.  In order
+for DNS name based class rules to function properly, both a) DNS resolution
+is needed (<i>i.e.</i> <code>UseReverseDNS</code> must be <em>on</em>, which
+is the default), and b) the IP address of a connecting client must be
+resolvable to a DNS name.
 
 <p>
 What if there are multiple classes defined, and the classes overlap, <i>e.g.</i>
@@ -118,7 +132,7 @@ This allows clients from class &quot;internal&quot; to see an effective
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-04-21 21:29:25 $</i><br>
+Last Updated: <i>$Date: 2005-07-19 00:30:02 $</i><br>
 <hr>
 
 </body>
