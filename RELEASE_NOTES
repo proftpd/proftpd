@@ -205,10 +205,10 @@ files.
           </VirtualHost>
 
         The <VirtualHost> and DefaultAddress directives can now handle
-        multiple address, so that the above configuration becomes:
+        multiple addresses, so that the above configuration becomes:
 
           <VirtualHost host1.domain.com host2.domain.com>
             ...
           </VirtualHost>
 
-Last Updated: $Date: 2005-07-08 15:53:09 $
+Last Updated: $Date: 2005-07-21 22:00:31 $
