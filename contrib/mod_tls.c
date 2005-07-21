@@ -1473,14 +1473,17 @@ static const char *tls_get_errors(void) {
     bio = BIO_new(BIO_s_mem());
 
   while (e) {
+    pr_signals_handle();
     BIO_printf(bio, "\n  (%u) %s", ++count, ERR_error_string(e, NULL));
     e = ERR_get_error(); 
   }
 
   datalen = BIO_get_mem_data(bio, &data);
-  data[datalen] = '\0';
+  if (data) {
+    data[datalen] = '\0';
+    str = pstrdup(main_server->pool, data);
+  }
 
-  str = pstrdup(main_server->pool, data);
   BIO_free(bio);
 
   return str;
