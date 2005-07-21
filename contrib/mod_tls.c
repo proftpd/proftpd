@@ -1484,7 +1484,8 @@ static const char *tls_get_errors(void) {
     str = pstrdup(main_server->pool, data);
   }
 
-  BIO_free(bio);
+  if (bio)
+    BIO_free(bio);
 
   return str;
 }
