@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.32 2005-07-03 18:52:01 castaglia Exp $
+ * $Id: mod_radius.c,v 1.33 2005-07-24 18:08:12 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.8"
@@ -1344,7 +1344,7 @@ static void radius_add_passwd(radius_packet_t *packet, unsigned char type,
   MD5_CTX ctx, secret_ctx;
   radius_attrib_t *attrib = NULL;
   unsigned char calculated[RADIUS_VECTOR_LEN];
-  char pwhash[256 + RADIUS_PASSWD_LEN];
+  char pwhash[PR_TUNABLE_BUFFER_SIZE];
   size_t pwlen = strlen(passwd);
   char *digest = NULL;
   register unsigned int i = 0;
@@ -1362,7 +1362,7 @@ static void radius_add_passwd(radius_packet_t *packet, unsigned char type,
   }
 
   /* Clear the buffers. */
-  memset(pwhash, '\0', pwlen);
+  memset(pwhash, '\0', sizeof(pwhash));
   memcpy(pwhash, passwd, pwlen);
 
   /* Find the password attribute. */
