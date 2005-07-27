@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.37 2005-07-24 18:15:23 castaglia Exp $
+# $Id: proftpd.spec,v 1.38 2005-07-27 17:48:27 castaglia Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -16,6 +16,7 @@
 #   mod_sql_postgres
 #   mod_rewrite
 #   mod_ifsession
+#   mod_facl
 #   ipv6
 
 %define proftpd_version 1.3.0rc2
@@ -40,7 +41,7 @@ Version:		%{proftpd_version}
 %endif
 Prefix:			/usr
 BuildRoot:		%{_builddir}/%{name}-%{version}-root
-Requires:		pam >= 0.72, /sbin/chkconfig, %{?_with_mod_tls:openssl krb5-libs}
+Requires:		pam >= 0.72, /sbin/chkconfig, %{?_with_mod_tls:openssl krb5-libs}, %{?_with_mod_facl:libacl}
 BuildPreReq:	pam-devel %{?_with_mod_tls:openssl-devel krb5-devel}
 Provides:		ftpserver
 Prereq:			fileutils
@@ -57,7 +58,7 @@ The base proftpd package installs standalone support. You can install the
 proftpd-inetd package to enable inetd/xinetd support.
 
 %{?_with_ipv6: This package is IPv6 enabled.}
-Addtional modules enabled: mod_ratio mod_readme %{?_with_mod_tls: mod_tls}%{?_with_mod_radius: mod_radius}%{?_with_mod_ldap: mod_ldap}%{?_with_mod_wrap: mod_wrap}%{?_with_mod_sql: mod_sql}%{?_with_mod_sql_mysql: mod_sql_mysql}%{?_with_mod_sql_postgres: mod_sql_postgres}%{?_with_mod_rewrite: mod_rewrite}%{?_with_mod_ifsession: mod_ifsession}
+Addtional modules enabled: mod_ratio mod_readme %{?_with_mod_tls: mod_tls}%{?_with_mod_radius: mod_radius}%{?_with_mod_ldap: mod_ldap}%{?_with_mod_wrap: mod_wrap}%{?_with_mod_sql: mod_sql}%{?_with_mod_sql_mysql: mod_sql_mysql}%{?_with_mod_sql_postgres: mod_sql_postgres}%{?_with_mod_rewrite: mod_rewrite}%{?_with_mod_ifsession: mod_ifsession}%{?_with_mod_facl: mod_facl}
 
 %package inetd
 Summary:	ProFTPD -- Setup for inetd/xinetd operation.
@@ -84,6 +85,7 @@ This package is neccesary to setup ProFTPD to run from inetd/xinetd.
   MODULES="${MODULES}%{?_with_mod_sql_postgres::mod_sql_postgres}"
   MODULES="${MODULES}%{?_with_mod_rewrite::mod_rewrite}"
   MODULES="${MODULES}%{?_with_mod_ifsession::mod_ifsession}"
+  MODULES="${MODULES}%{?_with_mod_facl:mod_facl}"
   CFLAGS="$RPM_OPT_FLAGS" ./configure \
 	--prefix=%{prefix} \
 	--sysconfdir=/etc \
@@ -91,6 +93,7 @@ This package is neccesary to setup ProFTPD to run from inetd/xinetd.
 	--mandir=%_mandir \
 	%{?_with_mod_tls:--with-includes=/usr/kerberos/include} \
 	%{?_with_mod_sql_mysql:--with-includes=/usr/include/mysql} \
+	%{?_with_mod_facl:--enable-facl} \
 	%{?_with_ipv6:--enable-ipv6} \
 	--with-modules=${MODULES}
 
