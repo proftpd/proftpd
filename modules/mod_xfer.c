@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.187 2005-07-08 15:26:11 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.188 2005-07-27 18:45:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -699,6 +699,12 @@ static long transmit_data(off_t count, off_t *offset, char *buf, long bufsz) {
   socklen_t len = sizeof(int);
 #endif /* TCP_CORK */
 
+#ifdef SOL_TCP
+  int tcp_level = SOL_TCP;
+#else
+  int tcp_level = IPPROTO_TCP;
+#endif /* SOL_TCP */
+
 #ifdef HAVE_SENDFILE
   pr_sendfile_t retval;
 #endif /* HAVE_SENDFILE */
@@ -707,7 +713,7 @@ static long transmit_data(off_t count, off_t *offset, char *buf, long bufsz) {
   /* Note: TCP_CORK is a Linuxism, introduced with the 2.4 kernel.  It
    * has effects similar to BSD's TCP_NOPUSH option.
    */
-  if (setsockopt(PR_NETIO_FD(session.d->outstrm), SOL_TCP, TCP_CORK, &on,
+  if (setsockopt(PR_NETIO_FD(session.d->outstrm), tcp_level, TCP_CORK, &on,
       len) < 0)
     pr_log_pri(PR_LOG_NOTICE, "error setting TCP_CORK: %s", strerror(errno));
 #endif /* TCP_CORK */
@@ -723,7 +729,7 @@ static long transmit_data(off_t count, off_t *offset, char *buf, long bufsz) {
 
 #ifdef TCP_CORK
   on = 0;
-  if (setsockopt(PR_NETIO_FD(session.d->outstrm), SOL_TCP, TCP_CORK, &on,
+  if (setsockopt(PR_NETIO_FD(session.d->outstrm), tcp_level, TCP_CORK, &on,
       len) < 0)
     pr_log_pri(PR_LOG_NOTICE, "error setting TCP_CORK: %s", strerror(errno));
 #endif /* TCP_CORK */
