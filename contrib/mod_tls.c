@@ -47,7 +47,7 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.1"
+#define MOD_TLS_VERSION		"mod_tls/2.1.1"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001021001 
@@ -305,6 +305,7 @@ typedef struct tls_pkey_obj {
 #define TLS_PKEY_USE_DSA		0x0200
 
 static tls_pkey_t *tls_pkey_list = NULL;
+static unsigned int tls_npkeys = 0;
 
 #define TLS_DEFAULT_CIPHER_SUITE	"ALL:!ADH"
 #define TLS_DEFAULT_PROTOCOL		"SSLv23"
@@ -726,7 +727,8 @@ static void tls_scrub_pkeys(void) {
   /* Scrub and free all passphrases in memory. */
   if (tls_pkey_list) {
     pr_log_debug(DEBUG5, MOD_TLS_VERSION
-      ": scrubbing all passphrases from memory");
+      ": scrubbing %u %s from memory",
+      tls_npkeys, tls_npkeys != 1 ? "passphrases" : "passphrase");
 
   } else
     return;
@@ -746,6 +748,7 @@ static void tls_scrub_pkeys(void) {
   }
 
   tls_pkey_list = NULL;
+  tls_npkeys = 0;
 }
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
@@ -3642,7 +3645,7 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
     k->server = s;
 
     if (rsa) {
-      snprintf(buf, sizeof(buf)-1, "RSA key for the %s:%d (%s) server: ",
+      snprintf(buf, sizeof(buf)-1, "RSA key for the %s#%d (%s) server: ",
         pr_netaddr_get_ipstr(s->addr), s->ServerPort, s->ServerName);
       buf[sizeof(buf)-1] = '\0';
 
@@ -3663,7 +3666,7 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
     }
 
     if (dsa) {
-      snprintf(buf, sizeof(buf)-1, "DSA key for the %s:%d (%s) server: ",
+      snprintf(buf, sizeof(buf)-1, "DSA key for the %s#%d (%s) server: ",
         pr_netaddr_get_ipstr(s->addr), s->ServerPort, s->ServerName);
       buf[sizeof(buf)-1] = '\0';
 
@@ -3685,6 +3688,7 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
 
     k->next = tls_pkey_list;
     tls_pkey_list = k;
+    tls_npkeys++;
   }
 
   return;
@@ -3700,12 +3704,6 @@ static void tls_daemon_exit_ev(const void *event_data, void *user_data) {
 
 static void tls_restart_ev(const void *event_data, void *user_data) {
   tls_scrub_pkeys();
-
-  /* Re-register the postparse callback, to handle the (possibly changed)
-   * configuration and (re-)prompt for passphrases, if needed.
-   */
-  pr_event_register(&tls_module, "core.postparse", tls_postparse_ev, NULL);
-
   tls_closelog();
 }
 
