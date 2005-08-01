@@ -26,7 +26,7 @@
 
 /* ProFTPD Controls command-line client
  *
- * $Id: ftpdctl.c,v 1.2 2004-11-02 18:18:59 castaglia Exp $
+ * $Id: ftpdctl.c,v 1.3 2005-08-01 03:16:09 castaglia Exp $
  */
 
 #include "conf.h"
@@ -179,13 +179,15 @@ int main(int argc, char *argv[]) {
   /* Don't forget to NULL-terminate the array. */
   *((char **) push_array(reqargv)) = NULL;
 
-  /* Open a connection to the socket maintained by mod_ftpdctl. */
+  /* Open a connection to the socket maintained by mod_ctrls. */
   if (verbose)
-    fprintf(stdout, "%s: contacting server\n", program);
+    fprintf(stdout, "%s: contacting server using '%s'\n", program,
+      socket_file);
 
-  if ((sockfd = pr_ctrls_connect(socket_file)) < 0) {
-    fprintf(stderr, "%s: error contacting server: %s\n", program,
-      strerror(errno));
+  sockfd = pr_ctrls_connect(socket_file);
+  if (sockfd < 0) {
+    fprintf(stderr, "%s: error contacting server using '%s': %s\n", program,
+      socket_file, strerror(errno));
     exit(1);
   }
 
