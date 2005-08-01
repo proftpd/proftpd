@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.25 2005-06-14 01:23:44 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.26 2005-08-01 20:49:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1751,5 +1751,8 @@ module ctrls_module = {
   ctrls_init,
 
   /* Session initialization function */
-  ctrls_sess_init
+  ctrls_sess_init,
+
+  /* Module version */
+  MOD_CTRLS_VERSION
 };
