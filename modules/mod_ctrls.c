@@ -27,14 +27,14 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.26 2005-08-01 20:49:03 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.27 2005-08-02 15:53:01 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_ctrls.h"
 
-#define MOD_CTRLS_VERSION "mod_ctrls/0.9.2"
+#define MOD_CTRLS_VERSION "mod_ctrls/0.9.3"
 
 /* Master daemon in standalone mode? (from src/main.c) */
 extern unsigned char is_master;
@@ -958,8 +958,12 @@ static int ctrls_listen(const char *sock_file) {
   pr_signals_block();
 
   /* Create the Unix domain socket */
-  if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+  sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (sockfd < 0) {
+    int xerrno = errno;
+
     pr_signals_unblock();
+    errno = xerrno;
     ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to create local socket: %s", strerror(errno));
     return -1;
@@ -982,7 +986,10 @@ static int ctrls_listen(const char *sock_file) {
   pr_log_debug(DEBUG3, MOD_CTRLS_VERSION ": binding ctrls socket to '%s'",
     sock.sun_path);
   if (bind(sockfd, (struct sockaddr *) &sock, len) < 0) {
+    int xerrno = errno;
+
     pr_signals_unblock();
+    errno = xerrno;
     ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to bind to local socket: %s", strerror(errno));
     return -1;
@@ -990,7 +997,10 @@ static int ctrls_listen(const char *sock_file) {
 
   /* Start listening to the socket */
   if (listen(sockfd, 5) < 0) {
+    int xerrno = errno;
+
     pr_signals_unblock();
+    errno = xerrno;
     ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to listen on local socket: %s", strerror(errno));
     return -1;
@@ -998,7 +1008,10 @@ static int ctrls_listen(const char *sock_file) {
 
   /* Change the permissions on the socket, so that users can connect */
   if (chmod(sock.sun_path, (mode_t) PR_CTRLS_MODE) < 0) {
+    int xerrno = errno;
+
     pr_signals_unblock();
+    errno = xerrno;
     ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to chmod local socket: %s", strerror(errno));
     return -1;
@@ -1498,12 +1511,6 @@ MODRET set_ctrlssocket(cmd_rec *cmd) {
   if (strcmp(cmd->argv[1], ctrls_sock_file) != 0)
     ctrls_sock_file = pstrdup(ctrls_pool, cmd->argv[1]);
 
-  /* Open the socket. */
-  ctrls_sockfd = ctrls_listen(ctrls_sock_file);
-  if (ctrls_sockfd < 0)
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unable to listen to local "
-      "socket '", cmd->argv[1], "': ", strerror(errno), NULL));
-
   return HANDLED(cmd);
 }
 
@@ -1589,6 +1596,17 @@ static void ctrls_exit_ev(const void *event_data, void *user_data) {
   }
 
   return;
+}
+
+static void ctrls_postparse_ev(const void *event_data, void *user_data) {
+
+  /* Start listening on the ctrl socket */
+  PRIVS_ROOT
+  ctrls_sockfd = ctrls_listen(ctrls_sock_file);
+  PRIVS_RELINQUISH
+  if (ctrls_sockfd < 0)
+    pr_log_pri(PR_LOG_NOTICE, "notice: unable to listen to local socket: %s",
+      strerror(errno));
 }
 
 static void ctrls_restart_ev(const void *event_data, void *user_data) {
@@ -1683,6 +1701,7 @@ static int ctrls_init(void) {
       strerror(errno));
 
   pr_event_register(&ctrls_module, "core.exit", ctrls_exit_ev, NULL);
+  pr_event_register(&ctrls_module, "core.postparse", ctrls_postparse_ev, NULL);
   pr_event_register(&ctrls_module, "core.restart", ctrls_restart_ev, NULL);
   pr_event_register(&ctrls_module, "core.startup", ctrls_startup_ev, NULL);
 
@@ -1698,6 +1717,10 @@ static int ctrls_sess_init(void) {
   pr_event_unregister(&ctrls_module, "core.exit", ctrls_exit_ev);
   pr_event_unregister(&ctrls_module, "core.restart", ctrls_restart_ev);
 
+  /* Close the inherited socket */
+  close(ctrls_sockfd);
+  ctrls_sockfd = -1;
+ 
   return 0;
 }
 
