@@ -24,7 +24,7 @@
 
 /*
  * POSIX ACL checking code (aka POSIX.1e hell)
- * $Id: mod_facl.c,v 1.1 2005-02-26 17:28:58 castaglia Exp $
+ * $Id: mod_facl.c,v 1.2 2005-08-02 01:34:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -678,6 +678,7 @@ static int facl_init(void) {
       strerror(errno));
     return -1;
   }
+  pr_log_debug(DEBUG6, MOD_FACL_VERSION ": registered 'facl' fs");
 
   /* Ensure that our ACL-checking handlers are used. */
   fs->access = facl_fsio_access;
