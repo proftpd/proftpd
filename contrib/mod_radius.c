@@ -27,10 +27,10 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.33 2005-07-24 18:08:12 castaglia Exp $
+ * $Id: mod_radius.c,v 1.34 2005-08-03 17:06:59 castaglia Exp $
  */
 
-#define MOD_RADIUS_VERSION "mod_radius/0.8"
+#define MOD_RADIUS_VERSION "mod_radius/0.8.1"
 
 #include "conf.h"
 #include "privs.h"
@@ -2203,11 +2203,18 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
   radius_server_t *auth_server = NULL;
   unsigned char recvd_response = FALSE;
   unsigned long service;
-  char *user = (char *) get_param_ptr(cmd->server->conf, C_USER, FALSE);
+  char *user;
 
   /* Check to see whether RADIUS authentication should even be done. */
   if (!radius_engine || !radius_auth_server)
     return DECLINED(cmd);
+
+  user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
+  if (!user) {
+    radius_log("missing prerequisite USER command, declining to handle PASS");
+    pr_response_add_err(R_503, "Login with " C_USER " first");
+    return ERROR(cmd);
+  }
 
   /* Allocate a packet. */
   request = (radius_packet_t *) pcalloc(cmd->tmp_pool,
