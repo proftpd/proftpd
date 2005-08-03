@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.34 2005-08-03 17:06:59 castaglia Exp $
+ * $Id: mod_radius.c,v 1.35 2005-08-03 17:08:42 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.8.1"
@@ -63,6 +63,8 @@ typedef struct {
   unsigned short length;
   unsigned char digest[RADIUS_VECTOR_LEN];
   unsigned char data[2];
+
+  char _pad[PR_TUNABLE_BUFFER_SIZE];
 } radius_packet_t;
 
 #define RADIUS_HEADER_LEN	20
