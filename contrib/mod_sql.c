@@ -23,14 +23,14 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.95 2005-07-05 15:49:34 castaglia Exp $
+ * $Id: mod_sql.c,v 1.96 2005-08-04 21:06:21 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_sql.h"
 
-#define MOD_SQL_VERSION			"mod_sql/4.2"
+#define MOD_SQL_VERSION			"mod_sql/4.2.1"
 
 #if defined(HAVE_CRYPT_H) && !defined(AIX4) && !defined(AIX5)
 # include <crypt.h>
@@ -1413,7 +1413,7 @@ static int _sql_getgroups(cmd_rec *cmd) {
   sql_data_t *sd = NULL;
   modret_t *mr = NULL;
   array_header *gids = NULL, *groups = NULL;
-  char *name = cmd->argv[0];
+  char *name = cmd->argv[0], *username = NULL;
   int numrows = 0;
   register unsigned int i = 0;
 
@@ -1447,11 +1447,17 @@ static int _sql_getgroups(cmd_rec *cmd) {
    *    WHERE members LIKE '%,<user>,%' OR LIKE '<user>,%' OR LIKE '%,<user>';
    */
 
+  mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default",
+    pr_str_strip(cmd->tmp_pool, name)), "sql_escapestring");
+  _sql_check_response(mr);
+
+  username = (char *) mr->data;
+
   grpwhere = pstrcat(cmd->tmp_pool,
-    cmap.grpmembersfield, " = '", name, "' OR ",
-    cmap.grpmembersfield, " LIKE '", name, ",%' OR ",
-    cmap.grpmembersfield, " LIKE '%,", name, "' OR ",
-    cmap.grpmembersfield, " LIKE '%,", name, ",%'", NULL);
+    cmap.grpmembersfield, " = '", username, "' OR ",
+    cmap.grpmembersfield, " LIKE '", username, ",%' OR ",
+    cmap.grpmembersfield, " LIKE '%,", username, "' OR ",
+    cmap.grpmembersfield, " LIKE '%,", username, ",%'", NULL);
 
   where = _sql_where(cmd->tmp_pool, 2, grpwhere, cmap.groupwhere);
   
