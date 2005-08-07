@@ -1436,9 +1436,9 @@ static void tls_end_sess(SSL *ssl, int strms, int use_shutdown) {
           break;
 
         default:
-          tls_log("SSL_shutdown() error: %s", tls_get_errors());
+          tls_log("SSL_shutdown() error [%d]: %s", err, tls_get_errors());
           pr_log_debug(DEBUG0, MOD_TLS_VERSION
-            ": SSL_shutdown() error: %s", tls_get_errors());
+            ": SSL_shutdown() error [%d]: %s", err, tls_get_errors());
           break;
       }
     }
