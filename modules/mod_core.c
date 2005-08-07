@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.272 2005-06-14 01:23:44 castaglia Exp $
+ * $Id: mod_core.c,v 1.273 2005-08-07 16:35:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -236,13 +236,13 @@ MODRET start_ifdefine(cmd_rec *cmd) {
    * configuration lines.
    */
   if ((!not_define && defined) || (not_define && !defined)) {
-    pr_log_debug(DEBUG3, "%s: using '%s' section at line %u", cmd->argv[0],
-      cmd->argv[1], pr_parser_get_lineno());
+    pr_log_debug(DEBUG3, "%s: using '%s%s' section at line %u", cmd->argv[0],
+      not_define ? "!" : "", cmd->argv[1], pr_parser_get_lineno());
     return HANDLED(cmd);
 
   } else
-    pr_log_debug(DEBUG3, "%s: skipping '%s' section at line %u", cmd->argv[0],
-      cmd->argv[1], pr_parser_get_lineno());
+    pr_log_debug(DEBUG3, "%s: skipping '%s%s' section at line %u", cmd->argv[0],
+      not_define ? "!" : "", cmd->argv[1], pr_parser_get_lineno());
 
   /* Rather than communicating with parse_config_file() via some global
    * variable/flag the need to skip configuration lines, if the requested
@@ -294,13 +294,13 @@ MODRET start_ifmodule(cmd_rec *cmd) {
    * configuration lines.
    */
   if ((!not_module && found_module) || (not_module && !found_module)) {
-    pr_log_debug(DEBUG3, "%s: using '%s' section at line %u", cmd->argv[0],
-      cmd->argv[1], pr_parser_get_lineno());
+    pr_log_debug(DEBUG3, "%s: using '%s%s' section at line %u", cmd->argv[0],
+      not_module ? "!" : "", cmd->argv[1], pr_parser_get_lineno());
     return HANDLED(cmd);
 
   } else
-    pr_log_debug(DEBUG3, "%s: skipping '%s' section at line %u", cmd->argv[0],
-      cmd->argv[1], pr_parser_get_lineno());
+    pr_log_debug(DEBUG3, "%s: skipping '%s%s' section at line %u", cmd->argv[0],
+      not_module ? "!" : "", cmd->argv[1], pr_parser_get_lineno());
 
   /* Rather than communicating with parse_config_file() via some global
    * variable/flag the need to skip configuration lines, if the requested
