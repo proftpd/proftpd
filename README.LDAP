@@ -1,4 +1,4 @@
-mod_ldap v2.8.11
+mod_ldap v2.8.15
 ================
 
 mod_ldap is a module that allows proftpd to do user authentication and
@@ -73,8 +73,6 @@ Please see the CHANGES file.
 4. To Do
 ========
 
-* Multiple-group support. I've received patches; this should be released
-  soon.
 * Debugging information needs to be significantly improved. Currently, error
   messages (with the complete LDAP error message) are logged for any
   failures, but it would be nice to have extended debugging information.
