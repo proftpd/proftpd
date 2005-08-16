@@ -266,7 +266,7 @@ Installation Instructions
        server          = /usr/sbin/proftpd
        bind            = <the-ip-you-wish-to-bind-to>
        log_on_success  = HOST PID
-       log_on_failure  = HOST RECORD
+       log_on_failure  = HOST
     }
 
     More information can be found in the FAQ and Userguide and in the
