@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.169 2005-07-03 18:08:47 castaglia Exp $
+ * $Id: dirtree.c,v 1.170 2005-08-23 16:25:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2928,9 +2928,16 @@ void init_config(void) {
       s_next = s->next;
       destroy_pool(s->pool);
     }
+
     destroy_pool(server_list->pool);
+    server_list = NULL;
   }
 
+  /* Note: xaset_create() assigns the given pool to the 'pool' member
+   * of the created list, i.e. server_list->pool == conf_pool.  Hence
+   * why we create yet another subpool, reusing the conf_pool pointer.
+   * The pool creation below is not redundant.
+   */
   server_list = xaset_create(conf_pool, NULL);
 
   conf_pool = make_sub_pool(permanent_pool);
