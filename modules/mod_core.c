@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.273 2005-08-07 16:35:47 castaglia Exp $
+ * $Id: mod_core.c,v 1.274 2005-08-23 16:50:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2892,7 +2892,9 @@ MODRET core_quit(cmd_rec *cmd) {
 
   display = get_param_ptr(TOPLEVEL_CONF, "DisplayQuit", FALSE); 
   if (display) {
-    pr_display_file(display, NULL, R_221);
+    if (pr_display_file(display, NULL, R_221) < 0)
+      pr_log_debug(DEBUG6, "unable to display DisplayQuit file '%s': %s",
+        display, strerror(errno));
 
     /* Hack or feature, pr_display_file() always puts a hyphen on the
      * last line

@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.206 2005-07-03 18:52:02 castaglia Exp $
+ * $Id: mod_auth.c,v 1.207 2005-08-23 16:50:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -344,8 +344,11 @@ MODRET auth_post_pass(cmd_rec *cmd) {
 
   /* Handle a DisplayLogin file. */
   displaylogin = get_param_ptr(TOPLEVEL_CONF, "DisplayLogin", FALSE);
-  if (displaylogin)
-    pr_display_file(displaylogin, NULL, auth_pass_resp_code);
+  if (displaylogin) {
+    if (pr_display_file(displaylogin, NULL, auth_pass_resp_code) < 0)
+      pr_log_debug(DEBUG6, "unable to display DisplayLogin file '%s': %s",
+        displaylogin, strerror(errno));
+  }
 
   grantmsg = get_param_ptr(TOPLEVEL_CONF, "AccessGrantMsg", FALSE);
   if (!grantmsg) {

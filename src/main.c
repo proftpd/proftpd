@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.272 2005-06-21 18:27:51 castaglia Exp $
+ * $Id: main.c,v 1.273 2005-08-23 16:50:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -770,8 +770,11 @@ static void cmd_loop(server_rec *server, conn_t *c) {
   }
 
   display = get_param_ptr(server->conf, "DisplayConnect", FALSE);
-  if (display != NULL)
-    pr_display_file(display, NULL, R_220);
+  if (display != NULL) {
+    if (pr_display_file(display, NULL, R_220) < 0)
+      pr_log_debug(DEBUG6, "unable to display DisplayConnect file '%s': %s",
+        display, strerror(errno));
+  }
 
   if ((id = find_config(server->conf, CONF_PARAM, "ServerIdent",
       FALSE)) == NULL || *((unsigned char *) id->argv[0]) == FALSE) {
