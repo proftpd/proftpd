@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.127 2005-06-12 04:42:11 castaglia Exp $
+ * $Id: mod_ls.c,v 1.128 2005-08-24 16:10:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1797,7 +1797,7 @@ MODRET genericlist(cmd_rec *cmd) {
     list_options = c->argv[0];
     list_strict_opts = *((unsigned char *) c->argv[1]);
 
-    list_ndepth.max = *((unsigned char *) c->argv[2]);
+    list_ndepth.max = *((unsigned int *) c->argv[2]);
 
     /* We add one to the configured maxdepth in order to allow it to
      * function properly: if one configures a maxdepth of 2, one should
@@ -1808,8 +1808,8 @@ MODRET genericlist(cmd_rec *cmd) {
     if (list_ndepth.max)
       list_ndepth.max += 1;
 
-    list_nfiles.max = *((unsigned char *) c->argv[3]);
-    list_ndirs.max = *((unsigned char *) c->argv[4]);
+    list_nfiles.max = *((unsigned int *) c->argv[3]);
+    list_ndirs.max = *((unsigned int *) c->argv[4]);
   }
 
   fakeuser = get_param_ptr(CURRENT_CONF, "DirFakeUser", FALSE);
@@ -1938,7 +1938,7 @@ MODRET ls_stat(cmd_rec *cmd) {
     list_options = c->argv[0];
     list_strict_opts = *((unsigned char *) c->argv[1]);
 
-    list_ndepth.max = *((unsigned char *) c->argv[2]);
+    list_ndepth.max = *((unsigned int *) c->argv[2]);
 
     /* We add one to the configured maxdepth in order to allow it to
      * function properly: if one configures a maxdepth of 2, one should
@@ -1949,8 +1949,8 @@ MODRET ls_stat(cmd_rec *cmd) {
     if (list_ndepth.max)
       list_ndepth.max += 1;
 
-    list_nfiles.max = *((unsigned char *) c->argv[3]);
-    list_ndirs.max = *((unsigned char *) c->argv[4]);
+    list_nfiles.max = *((unsigned int *) c->argv[3]);
+    list_ndirs.max = *((unsigned int *) c->argv[4]);
   }
 
   fakeuser = get_param_ptr(CURRENT_CONF, "DirFakeUser", FALSE);
@@ -2018,7 +2018,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
     list_options = c->argv[0];
     list_strict_opts = *((unsigned char *) c->argv[1]);
 
-    list_ndepth.max = *((unsigned char *) c->argv[2]);
+    list_ndepth.max = *((unsigned int *) c->argv[2]);
 
     /* We add one to the configured maxdepth in order to allow it to
      * function properly: if one configures a maxdepth of 2, one should
@@ -2029,8 +2029,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
     if (list_ndepth.max)
       list_ndepth.max += 1;
 
-    list_nfiles.max = *((unsigned char *) c->argv[3]);
-    list_ndirs.max = *((unsigned char *) c->argv[4]);
+    list_nfiles.max = *((unsigned int *) c->argv[3]);
+    list_ndirs.max = *((unsigned int *) c->argv[4]);
   }
 
   /* Clear the listing option flags. */
