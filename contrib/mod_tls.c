@@ -3845,12 +3845,12 @@ static int tls_sess_init(void) {
         ": notice: unable to open TLSLog: %s", strerror(errno));
 
     else if (res == PR_LOG_WRITABLE_DIR)
-      pr_log_pri(PR_LOG_NOTICE, "notice: unable to open TLSLog: "
-        "parent directory is world writeable");
+      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+        ": notice: unable to open TLSLog: parent directory is world writable");
 
     else if (res == PR_LOG_SYMLINK)
-      pr_log_pri(PR_LOG_NOTICE, "notice: unable to open TLSLog: "
-          "cannot log to a symbolic link");
+      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+        ": notice: unable to open TLSLog: cannot log to a symbolic link");
   }
 
   /* If UseReverseDNS is set to off, disable TLS_OPT_VERIFY_CERT_FQDN. */
