@@ -102,9 +102,9 @@ files.
         ftptop will not show the transfer rate for downloads.  These tools
         work by reading the scoreboard, and the scoreboard is updated
         periodically during uploads and downloads.  However, when
-        sendfile() is used, scoreboard does not have a chance to be updated.
-        This is only true for downloads; the tools will continue to
-        show the transfer rate for uploads.
+        sendfile() is used, the scoreboard does not have a chance to be
+        updated.  This is only true for downloads; the tools will continue
+        to show the transfer rate for uploads.
 
   + Enhanced configuration directives:
 
@@ -211,4 +211,4 @@ files.
             ...
           </VirtualHost>
 
-Last Updated: $Date: 2005-07-21 22:00:31 $
+Last Updated: $Date: 2005-08-30 01:45:39 $
