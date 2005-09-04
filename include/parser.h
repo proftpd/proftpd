@@ -23,7 +23,7 @@
  */
 
 /* Configuration parser
- * $Id: parser.h,v 1.2 2004-10-31 22:26:18 castaglia Exp $
+ * $Id: parser.h,v 1.3 2005-09-04 23:57:02 castaglia Exp $
  */
 
 #ifndef PR_PARSER_H
@@ -39,7 +39,7 @@ int pr_parser_prepare(pool *p, xaset_t **parsed_servers);
 /* Clears any internal state of the parser.  This function should always
  * be called after any parsing.
  */
-void pr_parser_cleanup(void);
+int pr_parser_cleanup(void);
 
 /* Called to push an "end-of-context" configuration marker onto the
  * parser stack.  If the parser determines that the configuration

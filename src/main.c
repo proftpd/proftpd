@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.273 2005-08-23 16:50:26 castaglia Exp $
+ * $Id: main.c,v 1.274 2005-09-04 23:57:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -950,7 +950,11 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
       end_login(1);
     }
     PRIVS_RELINQUISH
-    pr_parser_cleanup();
+    if (pr_parser_cleanup() < 0) {
+      pr_log_pri(PR_LOG_ERR, "Fatal: error processing configuration file '%s': "
+       "unclosed configuration section", config_filename);
+      end_login(1);
+    }
 
     /* After configuration is complete, make sure that passwd, group
      * aren't held open (unnecessary fds for master daemon)
@@ -2821,7 +2825,11 @@ int main(int argc, char *argv[], char **envp) {
     exit(1);
   }
 
-  pr_parser_cleanup();
+  if (pr_parser_cleanup() < 0) {
+    pr_log_pri(PR_LOG_ERR, "Fatal: error processing configuration file '%s': "
+       "unclosed configuration section", config_filename);
+    exit(1);
+  }
 
   if (fixup_servers(server_list) < 0) {
     pr_log_pri(PR_LOG_ERR, "Fatal: error processing configuration file '%s'",

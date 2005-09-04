@@ -24,7 +24,7 @@
 
 /*
  * Configuration parser
- * $Id: parser.c,v 1.3 2004-10-31 22:26:18 castaglia Exp $
+ * $Id: parser.c,v 1.4 2005-09-04 23:57:02 castaglia Exp $
  */
 
 #include "conf.h"
@@ -138,8 +138,14 @@ static void remove_config_source(void) {
 /* Public API
  */
 
-void pr_parser_cleanup(void) {
+int pr_parser_cleanup(void) {
   if (parser_pool) {
+
+    if (parser_servstack->nelts > 1 ||
+        (parser_curr_config && *parser_curr_config)) {
+      return -1;
+    }
+
     destroy_pool(parser_pool);
     parser_pool = NULL;
 
@@ -153,7 +159,7 @@ void pr_parser_cleanup(void) {
   /* Reset the SID counter. */
   parser_sid = 0;
 
-  return;
+  return 0;
 }
 
 config_rec *pr_parser_config_ctxt_close(int *empty) {
