@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.49 2005-06-20 22:16:55 castaglia Exp $
+ * $Id: netaddr.c,v 1.50 2005-09-05 00:05:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -354,7 +354,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
       "attempting to resolve '%s' to IPv4 address via DNS", name);
     gai_res = pr_getaddrinfo(name, NULL, &hints, &info);
     if (gai_res != 0) {
-      pr_log_pri(PR_LOG_INFO, "getaddrinfo '%s' error: %s", name,
+      pr_log_pri(PR_LOG_INFO, "IPv4 getaddrinfo '%s' error: %s", name,
         gai_res != EAI_SYSTEM ? pr_gai_strerror(gai_res) : strerror(errno));
       return NULL;
     }
@@ -395,7 +395,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
         "attempting to resolve '%s' to IPv6 address via DNS", name);
       gai_res = pr_getaddrinfo(name, NULL, &hints, &info);
       if (gai_res != 0) {
-        pr_log_pri(PR_LOG_INFO, "getaddrinfo '%s' error: %s", name,
+        pr_log_pri(PR_LOG_INFO, "IPv6 getaddrinfo '%s' error: %s", name,
           gai_res != EAI_SYSTEM ? pr_gai_strerror(gai_res) : strerror(errno));
         return na;
       }
