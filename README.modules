@@ -75,7 +75,7 @@ Security/encryption modules:
 
     mod_tls
         SSL/TLS authentication/encryption
-        See contrib/mod_tls.html
+        See doc/contrib/mod_tls.html
         Originally by Peter Runestig
         Contributed by TJ Saunders <tj@castaglia.org>
 
@@ -90,13 +90,13 @@ Authentication modules:
         (formerly known as mod_sqlpw, mod_mysql, mod_pgsql)
         SQL (Structured Query Language) database authentication and
         other functions, with backends for MySQL and PostgreSQL.
-        See contrib/mod_sql.html
+        See doc/contrib/mod_sql.html
         Contributed by Johnie Ingram <johnie@netgod.net>.
         Maintained by Andrew Houghton <aah@acm.org>.
 
     mod_radius
        RADIUS (RFC2865) authentication and accounting
-       See contrib/mod_radius.html
+       See doc/contrib/mod_radius.html
        Contributed by TJ Saunders <tj@castaglia.org>.
 
 Feature modules:
