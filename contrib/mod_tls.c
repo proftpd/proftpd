@@ -2847,12 +2847,17 @@ MODRET tls_any(cmd_rec *cmd) {
   if (tls_required_on_ctrl && !(tls_flags & TLS_SESS_ON_CTRL)) {
 
     if (!(tls_opts & TLS_OPT_ALLOW_PER_USER)) {
+      tls_log("SSL/TLS required but absent on control channel, "
+        "denying %s command", cmd->argv[0]);
       pr_response_add_err(R_550, "SSL/TLS required on the control channel");
       return ERROR(cmd);
 
     } else {
 
-      if (tls_authenticated && *tls_authenticated == TRUE) {
+      if (tls_authenticated &&
+          *tls_authenticated == TRUE) {
+        tls_log("SSL/TLS required but absent on control channel, "
+          "denying %s command", cmd->argv[0]);
         pr_response_add_err(R_550, "SSL/TLS required on the control channel");
         return ERROR(cmd);
       }
@@ -2866,6 +2871,8 @@ MODRET tls_any(cmd_rec *cmd) {
         strcmp(cmd->argv[0], C_RETR) == 0 ||
         strcmp(cmd->argv[0], C_STOR) == 0 ||
         strcmp(cmd->argv[0], C_STOU) == 0) {
+      tls_log("SSL/TLS required but absent on data channel, "
+        "denying %s command", cmd->argv[0]);
       pr_response_add_err(R_550, "SSL/TLS required on the data channel");
       return ERROR(cmd);
     }
