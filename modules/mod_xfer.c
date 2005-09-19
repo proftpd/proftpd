@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.188 2005-07-27 18:45:13 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.189 2005-09-19 17:14:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1514,7 +1514,8 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 
   dir = dir_realpath(cmd->tmp_pool, cmd->arg);
 
-  if (!dir || !dir_check(cmd->tmp_pool,cmd->argv[0],cmd->group,dir,NULL)) {
+  if (!dir ||
+      !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL)) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
