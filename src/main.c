@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.274 2005-09-04 23:57:02 castaglia Exp $
+ * $Id: main.c,v 1.275 2005-09-19 21:35:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -380,8 +380,9 @@ static void end_login_noexit(void) {
   pr_event_generate("core.exit", NULL);
 
   if (!is_master ||
-      (ServerType == SERVER_INETD && !syntax_check))
+      (ServerType == SERVER_INETD && !syntax_check)) {
     pr_log_pri(PR_LOG_INFO, "FTP session closed.");
+  }
 
   log_closesyslog();
 }
@@ -1234,6 +1235,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   session.data_port = conn->remote_port - 1;
   session.sf_flags = 0;
   session.sp_flags = 0;
+
+  pr_netaddr_set_sess_addrs();
 
   /* Close the write side of the semaphore pipe to tell the parent
    * we are all grown up and have finished housekeeping (closing

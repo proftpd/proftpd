@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003 The ProFTPD Project team
+ * Copyright (c) 2003-2005 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.18 2004-11-02 18:18:58 castaglia Exp $
+ * $Id: netaddr.h,v 1.19 2005-09-19 21:35:38 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -351,5 +351,14 @@ int pr_netaddr_loopback(const pr_netaddr_t *);
  * return value of -1 is used to indicate an error.
  */
 int pr_netaddr_is_v4mappedv6(const pr_netaddr_t *);
+
+/* Return pointers to static memory which contains the local and remote
+ * netaddr information for the sesssion.  DO NOT MODIFY the pointed-to
+ * memory!  Returns NULL if no such session information exists.
+ */
+pr_netaddr_t *pr_netaddr_get_sess_local_addr(void);
+pr_netaddr_t *pr_netaddr_get_sess_remote_addr(void);
+const char *pr_netaddr_get_sess_remote_name(void);
+void pr_netaddr_set_sess_addrs(void);
 
 #endif /* PR_NETADDR_H */

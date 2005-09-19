@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.50 2005-09-05 00:05:44 castaglia Exp $
+ * $Id: netaddr.c,v 1.51 2005-09-19 21:35:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -32,6 +32,13 @@
 #undef IN_IS_ADDR_LOOPBACK
 #define IN_IS_ADDR_LOOPBACK(a) \
   ((((long int) (a)->s_addr) & 0xff000000) == 0x7f000000)
+
+static pr_netaddr_t sess_local_addr;
+static int have_sess_local_addr = FALSE;
+
+static pr_netaddr_t sess_remote_addr;
+static char sess_remote_name[PR_TUNABLE_BUFFER_SIZE];
+static int have_sess_remote_addr = FALSE;
 
 /* Do reverse DNS lookups? */
 static int reverse_dns = 1;
@@ -1068,3 +1075,46 @@ int pr_netaddr_is_v4mappedv6(const pr_netaddr_t *na) {
   return -1;
 }
 
+pr_netaddr_t *pr_netaddr_get_sess_local_addr(void) {
+  if (have_sess_local_addr) {
+    return &sess_local_addr;
+  }
+
+  errno = ENOENT;
+  return NULL;
+}
+
+pr_netaddr_t *pr_netaddr_get_sess_remote_addr(void) {
+  if (have_sess_remote_addr) {
+    return &sess_remote_addr;
+  }
+
+  errno = ENOENT;
+  return NULL;
+}
+
+const char *pr_netaddr_get_sess_remote_name(void) {
+  if (have_sess_remote_addr) {
+    return sess_remote_name;
+  }
+
+  errno = ENOENT;
+  return NULL;
+}
+
+void pr_netaddr_set_sess_addrs(void) {
+  pr_netaddr_set_family(&sess_local_addr,
+    pr_netaddr_get_family(session.c->local_addr));
+  pr_netaddr_set_sockaddr(&sess_local_addr,
+    pr_netaddr_get_sockaddr(session.c->local_addr));
+  have_sess_local_addr = TRUE;
+
+  pr_netaddr_set_family(&sess_remote_addr,
+    pr_netaddr_get_family(session.c->remote_addr));
+  pr_netaddr_set_sockaddr(&sess_remote_addr,
+    pr_netaddr_get_sockaddr(session.c->remote_addr));
+
+  memset(sess_remote_name, '\0', sizeof(sess_remote_name));
+  sstrncpy(sess_remote_name, session.c->remote_name, sizeof(sess_remote_name));
+  have_sess_remote_addr = TRUE;
+}

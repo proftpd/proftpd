@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.73 2005-06-14 01:23:45 castaglia Exp $
+ * $Id: log.c,v 1.74 2005-09-19 21:35:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -429,21 +429,25 @@ static void log_write(int priority, int f, char *s) {
 
   memset(serverinfo, '\0', sizeof(serverinfo));
 
-  if (main_server && main_server->ServerFQDN) {
+  if (main_server &&
+      main_server->ServerFQDN) {
+    pr_netaddr_t *remote_addr = pr_netaddr_get_sess_remote_addr();
+    const char *remote_name = pr_netaddr_get_sess_remote_name();
+
     snprintf(serverinfo, sizeof(serverinfo), "%s", main_server->ServerFQDN);
     serverinfo[sizeof(serverinfo)-1] = '\0';
 
-    if (session.c && session.c->remote_name) {
+    if (remote_addr && remote_name) {
       snprintf(serverinfo + strlen(serverinfo),
         sizeof(serverinfo) - strlen(serverinfo), " (%s[%s])",
-        session.c->remote_name,
-        pr_netaddr_get_ipstr(session.c->remote_addr));
+        remote_name, pr_netaddr_get_ipstr(remote_addr));
 
       serverinfo[sizeof(serverinfo)-1] = '\0';
     }
   }
 
-  if (logstderr || !main_server) {
+  if (logstderr ||
+      !main_server) {
     fprintf(stderr, "%s - %s\n", serverinfo, s);
     return;
   }
