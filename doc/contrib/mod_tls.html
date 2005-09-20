@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.2 2005-09-20 18:33:58 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.3 2005-09-20 22:45:11 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -99,7 +99,9 @@ appear in the <code>TLSLog</code>:
 </pre>
 This means that the <code>SSL_CERT_DIR</code> environment variable, if set,
 will be used to determine the location of a CA certificate directory, to be
-used when verifying clients.
+used when verifying clients.  Note, though, that this directive is only
+meaningful if <code>TLSVerifyClient</code> is set to <em>on</em>; otherwise,
+no client verification occurs.
 
 <p>
 See also: <a href="#TLSCACertificatePath"><code>TLSCACertificatePath</code></a>
@@ -800,10 +802,17 @@ Example:
 </pre>
 
 <p>
+Note that the <code>TLSRandomSeed</code> directive is <b>not</b> used to
+seed the entropy required by the OpenSSL library; that configuration
+is OpenSSL-specific.  Instead, the <code>TLSRandomSeed</code> file can
+be thought of a cache file for the unused entropy, to be used to help
+speed up entropy gathering when the daemon starts up again.
+
+<p>
 <hr>
 <h2><a name="TLSRenegotiate">TLSRenegotiate</a></h2>
 <strong>Syntax:</strong> TLSRenegotiate <em>[&quot;ctrl&quot; secs] [&quot;data&quot; Kbytes] [&quot;timeout&quot; secs]|[&quot;required&quot; on|off]|&quot;none&quot;</em><br>
-<strong>Default:</strong> ctrl 14400 data 25165824 required true<i>(for OpenSSL 0.9.7 or greater)</i><br>
+<strong>Default:</strong> ctrl 14400 data 25165824 required true <i>(for OpenSSL 0.9.7 or greater)</i><br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_tls<br>
 <strong>Compatibility:</strong> 1.2.7rc1 and later
@@ -1059,7 +1068,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2005-09-20 18:33:58 $</i><br>
+Last Updated: <i>$Date: 2005-09-20 22:45:11 $</i><br>
 
 <br><hr>
 
