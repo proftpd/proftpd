@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.274 2005-08-23 16:50:26 castaglia Exp $
+ * $Id: mod_core.c,v 1.275 2005-09-21 17:40:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1640,11 +1640,12 @@ MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR|
     CONF_DYNDIR);
 
-  pr_log_debug(DEBUG4, "Compiling %s regex '%s'.", type, cmd->argv[1]);
+  pr_log_debug(DEBUG4, "%s: compiling %s regex '%s'", cmd->argv[0], type,
+    cmd->argv[1]);
   preg = pr_regexp_alloc();
-  pr_log_debug(DEBUG4, "Allocated %s regex at location %p.", type, preg);
 
-  if ((res = regcomp(preg, cmd->argv[1], REG_EXTENDED|REG_NOSUB)) != 0) {
+  res = regcomp(preg, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
+  if (res != 0) {
     char errstr[200] = {'\0'};
 
     regerror(res, preg, errstr, sizeof(errstr));
