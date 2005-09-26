@@ -1382,6 +1382,7 @@ static void tls_cleanup(void) {
 
 static void tls_end_sess(SSL *ssl, int strms, int use_shutdown) {
   int res;
+  int shutdown;
 
   if (!ssl)
     return;
@@ -1407,8 +1408,15 @@ static void tls_end_sess(SSL *ssl, int strms, int use_shutdown) {
       }
     }
 
-    /* Now call SSL_shutdown again. */
-    res = SSL_shutdown(ssl);
+    shutdown = SSL_get_shutdown(ssl);
+
+    /* Now call SSL_shutdown() again, but only if we are not in the
+     * SSL_SENT_SHUTDOWN shutdown state.
+     */
+    res = 1;
+    if (!(shutdown & SSL_SENT_SHUTDOWN))
+      res = SSL_shutdown(ssl);
+
     if (res == 0) {
       int err = SSL_get_error(ssl, res);
 
@@ -1423,6 +1431,12 @@ static void tls_end_sess(SSL *ssl, int strms, int use_shutdown) {
           tls_log("SSL_shutdown() error: WANT_WRITE");
           pr_log_debug(DEBUG0, MOD_TLS_VERSION
             ": SSL_shutdown() error: WANT_WRITE");
+          break;
+
+        case SSL_ERROR_ZERO_RETURN:
+          tls_log("SSL_shutdown() error: ZERO_RETURN");
+          pr_log_debug(DEBUG0, MOD_TLS_VERSION
+            ": SSL_shutdown() error: ZERO_RETURN");
           break;
 
         case SSL_ERROR_SYSCALL:
