@@ -23,7 +23,7 @@
  */
 
 /* Command response routines
- * $Id: response.c,v 1.6 2005-09-27 16:11:20 castaglia Exp $
+ * $Id: response.c,v 1.7 2005-09-27 16:22:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -125,10 +125,10 @@ void pr_response_add_err(const char *numeric, const char *fmt, ...) {
   resp->msg = pstrdup(resp_pool, resp_buf);
   
   for (head = &resp_err_list;
-       *head
-       && (!numeric || !(*head)->num || strcmp((*head)->num, numeric) <= 0)
-       && !(numeric && !(*head)->num && head == &resp_list);
-       head = &(*head)->next);
+    *head &&
+    (!numeric || !(*head)->num || strcmp((*head)->num, numeric) <= 0) &&
+    !(numeric && !(*head)->num && head == &resp_list);
+  head = &(*head)->next);
 
   resp->next = *head;
   *head = resp;
@@ -149,10 +149,10 @@ void pr_response_add(const char *numeric, const char *fmt, ...) {
   resp->msg = pstrdup(resp_pool, resp_buf);
   
   for (head = &resp_list;
-       *head
-       && (!numeric || !(*head)->num || strcmp((*head)->num, numeric) <= 0)
-       && !(numeric && !(*head)->num && head == &resp_list);
-       head = &(*head)->next);
+    *head &&
+    (!numeric || !(*head)->num || strcmp((*head)->num, numeric) <= 0) &&
+    !(numeric && !(*head)->num && head == &resp_list);
+  head = &(*head)->next);
 
   resp->next = *head;
   *head = resp;
