@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.706 2005-09-27 16:08:30 castaglia Exp $
+$Id: NEWS,v 1.707 2005-09-27 16:11:20 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -23,6 +23,7 @@ CVS
 - Bug 2695 - Client IP/host is not logged when client exits.
 - Bug 2697 - Improper SSL session shutdown sequence used for some FTPS clients.
 - Bug 2682 - Signals can interrupt privilege switching.
+- Bug 2692 - R_DUP response messages can break the FTP protocol responses.
 
 1.3.0rc2 - Released 24-Jul-2005
 --------------------------------
