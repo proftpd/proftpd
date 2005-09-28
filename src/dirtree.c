@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.170 2005-08-23 16:25:02 castaglia Exp $
+ * $Id: dirtree.c,v 1.171 2005-09-28 02:06:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2251,24 +2251,25 @@ void resolve_anonymous_dirs(xaset_t *clist)
 /* Iterate through directory configuration items and resolve ~ references. */
 void resolve_deferred_dirs(server_rec *s) {
   config_rec *c;
-  char *realdir;
 
-  if (!s || !s->conf)
+  if (!s ||
+      !s->conf)
     return;
 
-  for (c = (config_rec*)s->conf->xas_list; c; c=c->next) {
-    if (c->config_type == CONF_DIR && (c->flags & CF_DEFER)) {
+  for (c = (config_rec *) s->conf->xas_list; c; c = c->next) {
+    if (c->config_type == CONF_DIR &&
+        (c->flags & CF_DEFER)) {
+      char *realdir;
 
       /* Check for any expandable variables. */
       c->name = path_subst_uservar(c->pool, &c->name);
 
-      realdir = dir_best_path(c->pool,c->name);
-
-      if (realdir)
+      realdir = dir_best_path(c->pool, c->name);
+      if (realdir) {
         c->name = realdir;
 
-      else {
-        realdir = dir_canonical_path(c->pool,c->name);
+      } else {
+        realdir = dir_canonical_path(c->pool, c->name);
         if (realdir)
           c->name = realdir;
       }

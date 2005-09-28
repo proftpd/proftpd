@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.77 2005-03-18 18:25:55 castaglia Exp $
+ * $Id: support.c,v 1.78 2005-09-28 02:06:26 castaglia Exp $
  */
 
 #include "conf.h"
@@ -215,7 +215,7 @@ char *dir_interpolate(pool *p, const char *path) {
 }
 
 /* dir_best_path() creates the "most" fully canonicalized path possible
- * (i.e. if path components at the end don't exist, they are ignored
+ * (i.e. if path components at the end don't exist, they are ignored).
  */
 char *dir_best_path(pool *p, const char *path) {
   char workpath[PR_TUNABLE_PATH_MAX + 1] = {'\0'};
