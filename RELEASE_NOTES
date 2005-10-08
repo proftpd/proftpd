@@ -21,6 +21,10 @@ files.
 
     Better handling of the SSL session shutdown sequence in mod_tls.
 
+  + New documentation:
+
+     doc/howto/Regex.html
+
 1.3.0rc2
 ---------
 
@@ -226,4 +230,4 @@ files.
             ...
           </VirtualHost>
 
-Last Updated: $Date: 2005-10-08 20:34:00 $
+Last Updated: $Date: 2005-10-08 20:51:54 $
