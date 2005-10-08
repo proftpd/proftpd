@@ -24950,7 +24950,8 @@ done
 
 
 
-for ac_header in sys/statvfs.h sys/vfs.h sys/select.h
+
+for ac_header in sys/statvfs.h sys/un.h sys/vfs.h sys/select.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if eval "test \"\${$as_ac_Header+set}\" = set"; then
@@ -35584,6 +35585,124 @@ rm -f core *.core gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftes
 fi
 fi
 
+echo "$as_me:$LINENO: checking whether Unix domain sockets are FIFOs or sockets" >&5
+echo $ECHO_N "checking whether Unix domain sockets are FIFOs or sockets... $ECHO_C" >&6;
+if test "$cross_compiling" = yes; then
+
+    echo "$as_me:$LINENO: result: cross-compiling" >&5
+echo "${ECHO_T}cross-compiling" >&6
+
+
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+    #include <errno.h>
+    #include <stdio.h>
+    #if HAVE_UNISTD_H
+    # include <unistd.h>
+    #endif
+    #if HAVE_SYS_TYPES_H
+    # include <sys/types.h>
+    #endif
+    #include <sys/socket.h>
+    #if HAVE_SYS_UN_H
+    # include <sys/un.h>
+    #endif
+    #if HAVE_SYS_STAT_H
+    # include <sys/stat.h>
+    #endif
+    #if HAVE_STRING_H
+    # include <string.h>
+    #endif
+    int main(int argc, char *argv[]) {
+      int res = 0, sockfd;
+      struct stat st;
+      struct sockaddr_un sun;
+      size_t len;
+      char *path = "conftest.sock";
+
+      sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+      if (sockfd < 0) {
+        perror("socket()");
+        return 0;
+      }
+
+      memset(&sun, 0, sizeof(sun));
+      sun.sun_family = AF_UNIX;
+      strncpy(sun.sun_path, path, strlen(path));
+      len = sizeof(struct sockaddr_un);
+
+      if (bind(sockfd, (struct sockaddr *) &sun, len) < 0) {
+        perror("bind()");
+        return 0;
+      }
+
+      if (stat(path, &st) < 0) {
+        perror("stat()");
+        return 0;
+      }
+
+#ifdef S_ISFIFO
+      if (S_ISFIFO(st.st_mode)) {
+        res = 1;
+      }
+#endif
+
+#ifdef S_ISSOCK
+      if (S_ISSOCK(st.st_mode)) {
+        res = 0;
+      }
+#endif
+
+      close(sockfd);
+      sockfd = -1;
+
+      unlink(path);
+      return res;
+    }
+
+_ACEOF
+rm -f conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && { ac_try='./conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+
+    echo "$as_me:$LINENO: result: socket" >&5
+echo "${ECHO_T}socket" >&6
+    cat >>confdefs.h <<_ACEOF
+#define PR_ISSOCK_UNIX S_ISSOCK
+_ACEOF
+
+
+else
+  echo "$as_me: program exited with status $ac_status" >&5
+echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+( exit $ac_status )
+
+    echo "$as_me:$LINENO: result: FIFO" >&5
+echo "${ECHO_T}FIFO" >&6
+    cat >>confdefs.h <<_ACEOF
+#define PR_ISSOCK_UNIX S_ISFIFO
+_ACEOF
+
+
+fi
+rm -f core *.core gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
+fi
 LIBS="-lsupp $LIBS"
 
 ac_shared_module_dirs=
