@@ -585,6 +585,9 @@
 /* Define if you have the <sys/uio.h> header file.  */
 #undef HAVE_SYS_UIO_H
 
+/* Define if you have the <sys/un.h> header file.  */
+#undef HAVE_SYS_UN_H
+
 /* Define if you have the <sys/vfs.h> header file.  */
 #undef HAVE_SYS_VFS_H
 
@@ -731,6 +734,9 @@
 
 /* Define if largefile support is desired.  */
 #undef PR_USE_LARGEFILES
+
+/* Define the proper macro for use on Unix domain sockets.  */
+#undef PR_ISSOCK_UNIX
 
 /* Define if the %llu format should be used.  */
 #undef HAVE_LLU
