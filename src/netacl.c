@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.9 2004-11-02 18:18:59 castaglia Exp $
+ * $Id: netacl.c,v 1.10 2005-10-10 17:58:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -187,8 +187,12 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
       default:
         break;
     }
-    
+
+#ifdef PR_USE_IPV6
   } else if (strspn(aclstr, "0123456789ABCDEFabcdef.:") != strlen(aclstr)) {
+#else
+  } else if (strspn(aclstr, "0123456789.") != strlen(aclstr)) {
+#endif /* PR_USE_IPV6 */
 
     /* Check if the given rule is negated. */
     if (*aclstr == '!') {
