@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.71 2005-10-18 18:30:06 castaglia Exp $
+ * $Id: mod_log.c,v 1.72 2005-10-18 23:27:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -605,12 +605,16 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
   case META_DIR_PATH:
     argp = arg;
 
-    if (!strcmp(cmd->argv[0], C_CDUP) || !strcmp(cmd->argv[0], C_MKD) ||
-        !strcmp(cmd->argv[0], C_RMD) || !strcmp(cmd->argv[0], C_XCUP) ||
-        !strcmp(cmd->argv[0], C_XMKD) || !strcmp(cmd->argv[0], C_XRMD)) {
+    if (strcmp(cmd->argv[0], C_CDUP) == 0 ||
+        strcmp(cmd->argv[0], C_MKD) == 0 ||
+        strcmp(cmd->argv[0], C_RMD) == 0 ||
+        strcmp(cmd->argv[0], C_XCUP) == 0 ||
+        strcmp(cmd->argv[0], C_XMKD) == 0 ||
+        strcmp(cmd->argv[0], C_XRMD) == 0) {
       sstrncpy(argp, dir_abs_path(p, cmd->arg, TRUE), sizeof(arg));
 
-    } else if (!strcmp(cmd->argv[0], C_CWD) || !strcmp(cmd->argv[0], C_XCWD)) {
+    } else if (strcmp(cmd->argv[0], C_CWD) == 0 ||
+               strcmp(cmd->argv[0], C_XCWD) == 0) {
 
       /* Note: by this point in the dispatch cycle, the current working
        * directory has already been changed.  For the CWD/XCWD commands,
@@ -640,7 +644,11 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
   case META_FILENAME:
     argp = arg;
 
-    if (session.xfer.p && session.xfer.path) {
+    if (strcmp(cmd->argv[0], C_RNTO) == 0) {
+      sstrncpy(argp, dir_abs_path(p, cmd->arg, TRUE), sizeof(arg));
+
+    } else if (session.xfer.p &&
+               session.xfer.path) {
       sstrncpy(argp, dir_abs_path(p, session.xfer.path, TRUE), sizeof(arg));
 
     } else {
@@ -649,9 +657,11 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
        * filenames that are not stored in the session.xfer structure; these
        * should be expanded properly as well.
        */
-      if (!strcmp(cmd->argv[0], C_DELE) || !strcmp(cmd->argv[0], C_MKD) ||
-          !strcmp(cmd->argv[0], C_RMD) || !strcmp(cmd->argv[0], C_XMKD) ||
-          !strcmp(cmd->argv[0], C_XRMD))
+      if (strcmp(cmd->argv[0], C_DELE) == 0 ||
+          strcmp(cmd->argv[0], C_MKD) == 0 ||
+          strcmp(cmd->argv[0], C_RMD) == 0 ||
+          strcmp(cmd->argv[0], C_XMKD) == 0 ||
+          strcmp(cmd->argv[0], C_XRMD) == 0)
         sstrncpy(arg, dir_abs_path(p, cmd->arg, TRUE), sizeof(arg));
 
       else
@@ -673,7 +683,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
        * stored in the session.xfer structure; these should be expanded
        * properly as well.
        */
-      if (!strcmp(cmd->argv[0], C_DELE))
+      if (strcmp(cmd->argv[0], C_DELE) == 0)
         sstrncpy(arg, cmd->arg, sizeof(arg));
 
       else
@@ -884,16 +894,18 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       argp = arg;
       r = (resp_list ? resp_list : resp_err_list);
 
-      for (; r && !r->num; r=r->next) ;
-      if (r && r->num)
-        sstrncpy(argp,r->num,sizeof(arg));
+      for (; r && !r->num; r = r->next) ;
+      if (r &&
+          r->num) {
+        sstrncpy(argp, r->num, sizeof(arg));
 
       /* Hack to add return code for proper logging of QUIT command. */
-      else if (!strcasecmp(cmd->argv[0], C_QUIT))
+      } else if (strcasecmp(cmd->argv[0], C_QUIT) == 0) {
         sstrncpy(argp, R_221, sizeof(arg));
 
-      else
-        sstrncpy(argp,"-",sizeof(arg));
+      } else {
+        sstrncpy(argp, "-", sizeof(arg));
+      }
     }
 
     m++;
@@ -1031,7 +1043,7 @@ static void find_extendedlogs(void) {
     if (logfmt_s) {
       /* search for the format-nickname */
       for (logfmt = formats; logfmt; logfmt = logfmt->next)
-        if (!strcmp(logfmt->lf_nickname, logfmt_s))
+        if (strcmp(logfmt->lf_nickname, logfmt_s) == 0)
           break;
 
       if (!logfmt) {
@@ -1106,8 +1118,10 @@ MODRET log_post_pass(cmd_rec *cmd) {
         logfile_t *lfi = NULL;
 
         for (lfi = logs; lfi; lfi = lfi->next) {
-          if (lfi->lf_fd != -1 && lfi->lf_fd != EXTENDED_LOG_SYSLOG &&
-              !lfi->lf_conf && !strcmp(lfi->lf_filename, lf->lf_filename)) {
+          if (lfi->lf_fd != -1 &&
+              lfi->lf_fd != EXTENDED_LOG_SYSLOG &&
+              !lfi->lf_conf &&
+              strcmp(lfi->lf_filename, lf->lf_filename) == 0) {
             pr_log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s'",
               lf->lf_filename);
             close(lfi->lf_fd);
@@ -1116,7 +1130,8 @@ MODRET log_post_pass(cmd_rec *cmd) {
         }
 
         /* Go ahead and close the log if it's CL_NONE */
-        if (lf->lf_fd != -1 && lf->lf_fd != EXTENDED_LOG_SYSLOG &&
+        if (lf->lf_fd != -1 &&
+            lf->lf_fd != EXTENDED_LOG_SYSLOG &&
             lf->lf_classes == CL_NONE) {
           pr_log_debug(DEBUG7, "mod_log: closing ExtendedLog '%s'",
             lf->lf_filename);
