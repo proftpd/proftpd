@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.70 2005-07-07 07:10:18 castaglia Exp $
+ * $Id: mod_log.c,v 1.71 2005-10-18 18:30:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -814,16 +814,27 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
   case META_COMMAND:
     argp = arg;
 
-    if (!strcasecmp(cmd->argv[0], C_PASS) && session.hide_password)
+    if (strcasecmp(cmd->argv[0], C_PASS) == 0 &&
+        session.hide_password) {
       sstrncpy(argp, "PASS (hidden)", sizeof(arg));
-    else
+
+    } else {
       sstrncpy(argp, get_full_cmd(cmd), sizeof(arg));
+    }
+
     m++;
     break;
 
   case META_CMD_PARAMS:
     argp = arg;
-    sstrncpy(argp, cmd->arg, sizeof(arg));
+    if (strcasecmp(cmd->argv[0], C_PASS) == 0 &&
+        session.hide_password) {
+      sstrncpy(argp, "(hidden)", sizeof(arg));
+
+    } else {
+      sstrncpy(argp, cmd->arg, sizeof(arg));
+    }
+
     m++;
     break;
 
