@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.10 2004-11-02 18:18:59 castaglia Exp $
+ * $Id: ctrls.c,v 1.11 2005-10-19 23:28:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -49,6 +49,8 @@ static ctrls_action_t *ctrls_action_list = NULL;
 
 static pr_ctrls_t *ctrls_active_list = NULL;
 static pr_ctrls_t *ctrls_free_list = NULL;
+
+static int ctrls_use_isfifo = FALSE;
 
 /* lookup/lookup_next indices */
 static ctrls_action_t *action_lookup_next = NULL;
@@ -931,6 +933,31 @@ int pr_ctrls_connect(const char *socket_file) {
   return sockfd;
 }
 
+int pr_ctrls_issock_unix(int sockfd) {
+  struct stat st;
+
+  if (fstat(sockfd, &st) < 0) {
+    return -1;
+  }
+
+  if (ctrls_use_isfifo) {
+#ifdef S_ISFIFO
+    if (S_ISFIFO(st.st_mode)) {
+      return 0;
+    }
+#endif /* S_ISFIFO */
+  } else {
+#ifdef S_ISSOCK
+    if (S_ISSOCK(st.st_mode)) {
+      return 0;
+    }
+#endif /* S_ISSOCK */
+  }
+
+  errno = ENOSYS;
+  return -1;
+}
+
 void pr_block_ctrls(void) {
   ctrls_blocked = TRUE;
 }
@@ -1061,6 +1088,12 @@ int pr_reset_ctrls(void) {
 }
 
 void init_ctrls(void) {
+  struct stat st;
+  int sockfd;
+  struct sockaddr_un sockun;
+  size_t socklen;
+  char *sockpath = PR_RUN_DIR "/test.sock";
+
   if (ctrls_pool)
     destroy_pool(ctrls_pool);
 
@@ -1077,6 +1110,66 @@ void init_ctrls(void) {
   action_lookup_action = NULL;
   action_lookup_module = NULL;
 
+  /* Run-time check to find out whether this platform identifies a
+   * Unix domain socket file descriptor via the S_ISFIFO macro, or
+   * the S_ISSOCK macro.
+   */
+
+  sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (sockfd < 0) {
+    pr_log_pri(PR_LOG_NOTICE, "notice: unable to create Unix domain socket: %s",
+      strerror(errno));
+    return;
+  }
+
+  memset(&sockun, 0, sizeof(sockun));
+  sockun.sun_family = AF_UNIX;
+  sstrncpy(sockun.sun_path, sockpath, strlen(sockpath));
+  socklen = sizeof(struct sockaddr_un);
+
+  if (bind(sockfd, (struct sockaddr *) &sockun, socklen) < 0) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "notice: unable to bind to Unix domain socket at '%s': %s",
+      sockpath, strerror(errno));
+    (void) close(sockfd);
+    (void) unlink(sockpath);
+    return;
+  }
+
+  if (fstat(sockfd, &st) < 0) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "notice: unable to stat Unix domain socket at '%s': %s",
+      sockpath, strerror(errno));
+    (void) close(sockfd);
+    (void) unlink(sockpath);
+    return;
+  }
+
+#ifdef S_ISFIFO
+  pr_log_debug(DEBUG10, "Controls: testing Unix domain socket using S_ISFIFO");
+  if (S_ISFIFO(st.st_mode)) {
+    ctrls_use_isfifo = TRUE;
+  }
+#else
+  pr_log_debug(DEBUG10, "Controls: cannot test Unix domain socket using "
+    "S_ISFIFO: macro undefined");
+#endif
+
+#ifdef S_ISSOCK
+  pr_log_debug(DEBUG10, "Controls: testing Unix domain socket using S_ISSOCK");
+  if (S_ISSOCK(st.st_mode)) {
+    ctrls_use_isfifo = FALSE;
+  }
+#else
+  pr_log_debug(DEBUG10, "Controls: cannot test Unix domain socket using "
+    "S_ISSOCK: macro undefined");
+#endif
+
+  pr_log_debug(DEBUG10, "Controls: using %s macro for Unix domain socket "
+    "detection", ctrls_use_isfifo ? "S_ISFIFO" : "S_ISSOCK");
+
+  (void) close(sockfd);
+  (void) unlink(sockpath);
   return;
 }
 

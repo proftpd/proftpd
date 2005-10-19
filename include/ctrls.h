@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2005 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Controls API definitions
- * $Id: ctrls.h,v 1.2 2004-04-15 23:16:00 castaglia Exp $
+ * $Id: ctrls.h,v 1.3 2005-10-19 23:28:30 castaglia Exp $
  */
 
 #ifndef PR_CTRLS_H
@@ -210,6 +210,11 @@ int pr_ctrls_recv_response(pool *resp_pool, int ctrls_sockfd, int *status,
  */
 int pr_ctrls_send_msg(int sockfd, int msgstatus, unsigned int msgargc,
   char **msgargv);
+
+/* Determine whether the given socket is a Unix domain socket.  Returns
+ * zero if true, -1 otherwise.
+ */
+int pr_ctrls_issock_unix(int sockfd);
 
 int pr_get_registered_actions(pr_ctrls_t *ctrl, int flags);
 

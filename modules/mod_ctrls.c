@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.28 2005-10-08 20:14:41 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.29 2005-10-19 23:28:30 castaglia Exp $
  */
 
 #include "conf.h"
@@ -680,7 +680,7 @@ static int ctrls_accept(int sockfd, uid_t *uid, gid_t *gid, pid_t *pid) {
   PRIVS_RELINQUISH
 
   /* Is it a socket? */
-  if (!PR_ISSOCK_UNIX(st.st_mode)) {
+  if (pr_ctrls_issock_unix(st.st_mode) < 0) {
     errno = ENOTSOCK;
     ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to accept connection: not a socket");
