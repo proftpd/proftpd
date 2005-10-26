@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004,2005 The ProFTPD Project team
+ * Copyright (c) 2004-2005 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,16 +24,16 @@
 
 /*
  * POSIX ACL checking code (aka POSIX.1e hell)
- * $Id: mod_facl.c,v 1.2 2005-08-02 01:34:27 castaglia Exp $
+ * $Id: mod_facl.c,v 1.3 2005-10-26 16:53:04 castaglia Exp $
  */
 
 #include "conf.h"
 
-#define MOD_FACL_VERSION		"mod_facl/0.1"
+#define MOD_FACL_VERSION		"mod_facl/0.2"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001030001
-# error "ProFTPD 1.3.0rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030003
+# error "ProFTPD 1.3.0rc3 or later required"
 #endif
 
 #ifdef HAVE_POSIX_ACL
@@ -94,28 +94,29 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
     }
 
     if (ae_type & ACL_USER_OBJ) {
-      acl_copy_entry(acl_user_entry, ae);
+      acl_user_entry = ae;
 
     } else if (ae_type & ACL_USER) {
       acl_entry_t *ae_dup = push_array(acl_users);
-      acl_copy_entry(*ae_dup, ae);
+      *ae_dup = ae;
 
     } else if (ae_type & ACL_GROUP_OBJ) {
-      acl_copy_entry(acl_group_entry, ae);
+      acl_group_entry = ae;
 
     } else if (ae_type & ACL_GROUP) {
       acl_entry_t *ae_dup = push_array(acl_groups);
-      acl_copy_entry(*ae_dup, ae);
+      *ae_dup = ae;
 
     } else if (ae_type & ACL_OTHER) {
-      acl_copy_entry(acl_other_entry, ae);
+      acl_other_entry = ae;
 
     } else if (ae_type & ACL_MASK) {
-      acl_copy_entry(acl_mask_entry, ae);
+      acl_mask_entry = ae;
     }
 
     res = acl_get_entry(facl, ACL_NEXT_ENTRY, &ae);
   }
+  ae = NULL;
 
   /* Select the ACL entry that determines access. */
   res = -1;
@@ -125,7 +126,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
    */
   if (uid == st->st_uid) {
     /* Check the acl_user_entry for access. */
-    acl_copy_entry(ae, acl_user_entry);
+    ae = acl_user_entry;
     ae_type = ACL_USER_OBJ;
     have_access_entry = TRUE;
   }
@@ -141,7 +142,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
       /* Check this entry for access. Note that it'll need to
        * be modified by the mask, if any, later.
        */
-      acl_copy_entry(ae, e);
+      ae = e;
       ae_type = ACL_USER;
       have_access_entry = TRUE;
       break;
@@ -166,7 +167,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 #  elif defined(HAVE_LINUX_POSIX_ACL)
     if (acl_get_perm(perms, mode) == 1) {
 #  endif
-      acl_copy_entry(ae, acl_group_entry);
+      ae = acl_group_entry;
       ae_type = ACL_GROUP_OBJ;
       have_access_entry = TRUE;
     }
@@ -188,7 +189,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 #  elif defined(HAVE_LINUX_POSIX_ACL)
         if (acl_get_perm(perms, mode) == 1) {
 #  endif
-          acl_copy_entry(ae, acl_group_entry);
+          ae = acl_group_entry;
           ae_type = ACL_GROUP_OBJ;
           have_access_entry = TRUE;
           break;
@@ -217,7 +218,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 #  elif defined(HAVE_LINUX_POSIX_ACL)
       if (acl_get_perm(perms, mode) == 1) {
 #  endif
-        acl_copy_entry(ae, e);
+        ae = e;
         ae_type = ACL_GROUP;
         have_access_entry = TRUE;
         break;
@@ -242,7 +243,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 #  elif defined(HAVE_LINUX_POSIX_ACL)
           if (acl_get_perm(perms, mode) == 1) {
 #  endif
-            acl_copy_entry(ae, e);
+            ae = e;
             ae_type = ACL_GROUP;
             have_access_entry = TRUE;
             break;
@@ -261,7 +262,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
   /* 7. If not matched above, the other entry determines access.
    */
   if (!have_access_entry) {
-    acl_copy_entry(ae, acl_other_entry);
+    ae = acl_other_entry;
     ae_type = ACL_OTHER;
     have_access_entry = TRUE;
   }
