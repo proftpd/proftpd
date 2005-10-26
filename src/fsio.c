@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (C) 2001, 2002, 2003, 2004, 2005 The ProFTPD Project
+ * Copyright (C) 2001-2005 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.45 2005-08-28 18:01:51 castaglia Exp $
+ * $Id: fsio.c,v 1.46 2005-10-26 16:19:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -511,11 +511,10 @@ static pr_fs_t *lookup_file_fs(const char *path, char **deref, int op) {
       /* Three characters are reserved at the end of linkbuf for some path
        * characters (and a trailing NUL).
        */
-      if (fs_cwd->readlink &&
-          (i = fs_cwd->readlink(fs_cwd, path, &linkbuf[2],
-           sizeof(linkbuf)-3)) != -1) {
+      i = fs_cwd->readlink(fs_cwd, path, &linkbuf[2], sizeof(linkbuf)-3);
+      if (i != -1) {
         linkbuf[i] = '\0';
-        if (!strchr(linkbuf, '/')) {
+        if (strchr(linkbuf, '/') == NULL) {
           if (i + 3 > PR_TUNABLE_PATH_MAX)
             i = PR_TUNABLE_PATH_MAX - 3;
 
@@ -795,7 +794,8 @@ int pr_insert_fs(pr_fs_t *fs, const char *path) {
 
     /* Cleaning the path may have removed a trailing slash, which the
      * caller may actually have wanted.  Make sure one is present in
-     * the cleaned version, if it was present in the original version.
+     * the cleaned version, if it was present in the original version and
+     * is not present in the cleaned version.
      */
     if (path[strlen(path)-1] == '/') {
       size_t len = strlen(cleaned_path);
@@ -1550,9 +1550,8 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
           return -1;
         }
 	
-        if (fs->readlink &&
-            (len = fs->readlink(fs, namebuf, linkpath,
-             sizeof(linkpath)-1)) <= 0) {
+        len = pr_fsio_readlink(fs, namebuf, linkpath, sizeof(linkpath)-1);
+        if (len <= 0) {
           errno = ENOENT;
           return -1;
         }
@@ -1706,9 +1705,8 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
           return -1;
         }
 
-        if (fs->readlink &&
-            (len = fs->readlink(fs, namebuf, linkpath,
-             sizeof(linkpath)-1)) <= 0) {
+        len = fs->readlink(fs, namebuf, linkpath, sizeof(linkpath)-1);
+        if (len <= 0) {
           errno = ENOENT;
           return -1;
         }
