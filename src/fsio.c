@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.46 2005-10-26 16:19:16 castaglia Exp $
+ * $Id: fsio.c,v 1.47 2005-10-26 16:34:29 castaglia Exp $
  */
 
 #include "conf.h"
@@ -801,7 +801,8 @@ int pr_insert_fs(pr_fs_t *fs, const char *path) {
       size_t len = strlen(cleaned_path);
 
       if (len > 1 &&
-          len < (PR_TUNABLE_PATH_MAX-3)) {
+          len < (PR_TUNABLE_PATH_MAX-3) &&
+          cleaned_path[len-1] != '/') {
         cleaned_path[len] = '/';
         cleaned_path[len+1] = '\0';
       }
