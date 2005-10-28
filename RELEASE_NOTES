@@ -21,6 +21,9 @@ files.
 
     Better handling of the SSL session shutdown sequence in mod_tls.
 
+    Miscellaneous tweaks to mod_facl and the FSIO API in order to
+    better handle POSIX ACLs.
+
   + New documentation:
 
      doc/howto/Regex.html
@@ -230,4 +233,4 @@ files.
             ...
           </VirtualHost>
 
-Last Updated: $Date: 2005-10-08 20:51:54 $
+Last Updated: $Date: 2005-10-28 15:54:12 $
