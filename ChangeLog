@@ -1,3 +1,379 @@
+2005-10-28 08:54  castaglia
+
+	* RELEASE_NOTES: 
+	Updating release notes.
+
+2005-10-26 16:36  castaglia
+
+	* src/fsio.c: 
+	Drat.  Forgot to replace all occurrences of ->readlink() with
+	pr_fsio_readlink().
+
+2005-10-26 09:53  castaglia
+
+	* modules/mod_facl.c: 
+	Use direct pointer assignment rather than acl_copy_entry(); the
+	latter is not needed.  Patch supplied by Patrick McHardy.
+
+2005-10-26 09:34  castaglia
+
+	* src/fsio.c: 
+	When cleaning the path in pr_insert_fs(), only add a trailing path
+	separator if the original path had one _and_ the current cleaned
+	path does _not_ have one.  Thanks to Patrick McHardy for pointing
+	this out.
+
+2005-10-26 09:19  castaglia
+
+	* src/fsio.c: 
+	Patrick McHardy pointed out that in a couple of places, the FSIO
+	API uses the readlink function pointer, registered for an fs_t,
+	directly.  However, it is not required for registered fs_ts to
+	provide any particular FSIO function.  Thus pr_fsio_readlink(),
+	which iterates through the fs layers in order to find the first
+	that does provide a readlink function, should be used.
+
+2005-10-23 14:50  castaglia
+
+	* contrib/mod_sql.c: 
+	Fix a segfault expanding the '%h' sequence for an SQLLog EXIT
+	command by using the proper API.  Related to Bug #2695.
+
+2005-10-20 08:33  castaglia
+
+	* doc/contrib/mod_tls.html: 
+	Fixed example installation instructions for mod_tls.
+
+2005-10-19 16:33  castaglia
+
+	* configure: 
+	Updating configure.
+
+2005-10-19 16:28  castaglia
+
+	* configure.in, config.h.in, include/ctrls.h, modules/mod_ctrls.c,
+	src/ctrls.c: 
+	Change the location of the logic used to determine whether the
+	platform prefers S_ISFIFO or S_ISSOCK for detecting Unix domain
+	sockets.  Rather than using a test program as part of the configure
+	script, move the check into the init_ctrls() code, so that it can
+	be done at run-time.
+
+2005-10-18 16:27  castaglia
+
+	* contrib/mod_sql.c, modules/mod_log.c: 
+	Fix handling of the %f log variable for the RNTO command.  Both
+	mod_log and mod_sql were using session.xfer.path for %f, when in
+	the case of RNTO, the %f that is desired is actually the argument
+	of the command, cmd->arg, not session.xfer.path.
+
+2005-10-18 11:30  castaglia
+
+	* contrib/mod_sql.c, modules/mod_log.c: 
+	When expanding the %J log variable (for command arguments), be sure
+	to hide the arguments for the PASS command.
+
+2005-10-10 10:58  castaglia
+
+	* README.IPv6, src/netacl.c: 
+	Only use the full range of characters which appear in an IPv6 (and
+	IPv4) address when IPv6 support is enabled.
+	
+	Also, document the case where, when IPv6 support *is* enabled,
+	certain DNS names are not handled as one would expect, due to the
+	heuristics used by the ACL parser.
+
+2005-10-08 13:51  castaglia
+
+	* RELEASE_NOTES, doc/howto/Filters.html, doc/howto/Regex.html,
+	doc/howto/index.html: 
+	Add the regular expression tutorial to the doc/howto/ area.
+
+2005-10-08 13:34  castaglia
+
+	* RELEASE_NOTES: 
+	Add some notes to the RELEASE_NOTES file for the upcoming 1.3.0rc3
+	release.
+
+2005-10-08 13:16  castaglia
+
+	* configure: 
+	Updating configure.
+
+2005-10-08 13:14  castaglia
+
+	* config.h.in, configure.in, modules/mod_ctrls.c: 
+	Add an autoconf check to see if the platform prefers S_ISFIFO or
+	S_ISSOCK for Unix domain sockets.  It seems that some systems (e.g.
+	UnixWare) prefer S_ISFIFO, even though the file is created/bound
+	using socket(2)/bind(2) rather than mknod(2).  Isn't portability
+	grand.
+	
+	The added test defines a PR_ISSOCK_UNIX macro, defined to the
+	appropriate S_IS* macro, for use in proftpd code.
+
+2005-09-28 11:50  castaglia
+
+	* doc/howto/Limit.html: 
+	Style.
+
+2005-09-27 19:06  castaglia
+
+	* src/: dirtree.c, support.c: 
+	Style.
+
+2005-09-27 09:22  castaglia
+
+	* src/response.c: 
+	Style.
+
+2005-09-27 09:11  castaglia
+
+	* NEWS, src/response.c: 
+	Bug#2692 - R_DUP response messages can break the FTP protocol
+	responses.
+
+2005-09-27 09:08  castaglia
+
+	* NEWS, include/privs.h: 
+	Bug#2682 - Signals can interrupt privilege switching.  To guard
+	against this, the PRIVS macros now all contain
+	pr_signals_block()/pr_signals_unblock() guards.
+
+2005-09-26 16:36  castaglia
+
+	* NEWS, contrib/mod_tls.c: 
+	Bug#2697 - Improper SSL session shutdown sequence used for some
+	FTPS clients.
+
+2005-09-21 10:40  castaglia
+
+	* modules/mod_core.c: 
+	Clean up the debug logging done when handling config directive
+	regexes.  No need to report on the memory location for the
+	allocated regex.
+
+2005-09-20 18:08  castaglia
+
+	* doc/contrib/mod_tls.html: 
+	Typo.
+
+2005-09-20 18:04  castaglia
+
+	* doc/contrib/mod_tls.html: 
+	Use of the StdEnvVars TLSOption does not necessarily increase the
+	process memory footprint; it depends on the various memory
+	allocator caching strategies involved.
+
+2005-09-20 15:45  castaglia
+
+	* doc/contrib/mod_tls.html: 
+	Enhancing the explanations of the TLSCACertificateFile and
+	TLSRandomSeed directives.
+
+2005-09-20 11:33  castaglia
+
+	* doc/contrib/mod_tls.html: 
+	Minor updates to mod_tls doc.
+
+2005-09-19 14:35  castaglia
+
+	* NEWS, contrib/mod_radius.c, contrib/mod_sql.c, include/netaddr.h,
+	src/log.c, src/main.c, src/netaddr.c: 
+	Bug#2695 - Client IP/host is not logged when client exits.
+
+2005-09-19 10:14  castaglia
+
+	* modules/mod_xfer.c: 
+	Style.
+
+2005-09-08 11:36  castaglia
+
+	* README.modules: 
+	Minor corrections to the location of contrib module documentation,
+	thanks to Sven Hoexter.
+
+2005-09-08 09:39  castaglia
+
+	* contrib/mod_tls.c: 
+	Log in the TLSLog when mod_tls denies FTP commands because of the
+	configured security policy.
+
+2005-09-04 17:05  castaglia
+
+	* src/netaddr.c: 
+	When reporting DNS resolution errors, report the type of address
+	requested, i.e. IPv4 or IPv6.
+
+2005-09-04 16:57  castaglia
+
+	* NEWS, include/parser.h, src/main.c, src/parser.c: 
+	Bug#2689 - Parser does not complain about unclosed configuration
+	sections.
+
+2005-08-29 18:45  castaglia
+
+	* RELEASE_NOTES: 
+	Fix typo.
+
+2005-08-28 11:01  castaglia
+
+	* src/fsio.c: 
+	After cleaning the path given to pr_insert_fs(), we make sure it
+	has a trailing '/' path separator character.  However, this is only
+	necessary if the path being inserted is not '/' itself.  Check for
+	that case, and make sure to not add the trailing '/' if it is not
+	needed.
+
+2005-08-25 10:53  castaglia
+
+	* contrib/mod_tls.c: 
+	The mod_tls version information was missing from a couple of log
+	messages.
+
+2005-08-24 09:10  castaglia
+
+	* NEWS, modules/mod_ls.c: 
+	Bug#2685 - ListOptions' max parameters cannot be set higher than
+	255.
+
+2005-08-23 09:50  castaglia
+
+	* modules/mod_auth.c, modules/mod_core.c, src/main.c: 
+	Log, at debug level 6, if there was an error displaying a Display
+	file.
+
+2005-08-23 09:25  castaglia
+
+	* src/dirtree.c: 
+	Add explanatory comment.  When researching a problem earlier, I was
+	a bit confused by the reuse of a pool variable; the comment is a
+	reminder of what is going on.
+
+2005-08-16 09:06  castaglia
+
+	* INSTALL: 
+	Update the section of the INSTALL doc that talks about xinetd
+	configuration; as of xinetd-2.3.11, the 'RECORD' logging option has
+	been deprecated.
+
+2005-08-10 09:08  jwm
+
+	* README.LDAP: update README.LDAP; oops, i've been forgetting about
+	this
+
+2005-08-07 09:35  castaglia
+
+	* modules/mod_core.c: 
+	When reporting on use or nonuse of <IfModule> and <IfDefine>
+	sections, correctly report the "!" character.  Otherwise, the
+	reporting is confusing.
+
+2005-08-07 09:01  castaglia
+
+	* contrib/mod_tls.c: 
+	When handling any error returned by SSL_shutdown(3) (after it has
+	been called the second time), and the error is not explicitly
+	handled by the switch statement, log the error code.  This will
+	help in debugging certain cases where tls_get_error() returns
+	"(unknown)", which possibly indicates no error occurred.
+
+2005-08-07 08:46  castaglia
+
+	* configure: 
+	Updating configure.
+
+2005-08-07 08:44  castaglia
+
+	* NEWS, configure.in: 
+	Bug#2676 - configure option --disable-ipv6 enables IPv6.
+
+2005-08-04 14:06  castaglia
+
+	* NEWS, contrib/mod_sql.c: 
+	Bug#2674 - mod_sql string escape problem during group lookups.
+
+2005-08-03 10:08  castaglia
+
+	* contrib/mod_radius.c: 
+	Pad the size of the radius_packet_t structure.
+
+2005-08-03 10:06  castaglia
+
+	* NEWS, contrib/mod_radius.c: 
+	Bug#2669 - mod_radius segfaults if PASS command sent with no USER
+	command.
+
+2005-08-02 16:38  castaglia
+
+	* doc/howto/ListOptions.html: 
+	Fix documentation for "-a" ListOption.
+
+2005-08-02 08:53  castaglia
+
+	* NEWS, modules/mod_ctrls.c: 
+	Bug#2668 - mod_ctrls fails to open socket during SIGHUP.
+
+2005-08-01 18:34  castaglia
+
+	* modules/mod_facl.c: 
+	Add debugging output, level 6, showing when mod_facl has
+	successfully registered its FS handler.
+
+2005-08-01 13:49  castaglia
+
+	* modules/mod_ctrls.c: 
+	Display the mod_ctrls version when using `proftpd -vv'.
+
+2005-07-31 20:16  castaglia
+
+	* src/ftpdctl.c: 
+	Display the name of the socket path being contacted when `ftpdctl
+	-v' is used.
+
+2005-07-31 20:15  castaglia
+
+	* NEWS: 
+	Bug#2667 - mod_tls handles SIGHUP badly.  Stop registering the
+	handler for the "core.postparse" event in the "core.restart" event
+	handler; such multiple registrations cause the "core.postparse"
+	event handler to be invoked multiple times.
+
+2005-07-30 18:25  castaglia
+
+	* contrib/mod_tls.c: 
+	The "core.restart" event handler for mod_tls was registering a
+	handler for the "core.postparse" event; however, one was already
+	being registered.  The duplicate "core.postparse" registrations
+	would cause the handler to be called repeatedly, leading to locking
+	of key passphrases into memory multiple times and other unintended
+	funniness.
+
+2005-07-27 11:45  castaglia
+
+	* NEWS, modules/mod_xfer.c: 
+	Bug#2662 - OpenSolaris/Solaris 11 has TCP_CORK but not SOL_TCP.
+
+2005-07-27 10:48  castaglia
+
+	* NEWS, contrib/dist/rpm/proftpd.spec: 
+	Bug#2660 - Add mod_facl in rpm spec file.
+
+2005-07-26 19:08  castaglia
+
+	* contrib/mod_tls.c: 
+	Explicitly mention that $SSL_CERT_DIR is an environment variable.
+
+2005-07-24 12:25  castaglia
+
+	* include/version.h: 
+	Updating version.
+
+2005-07-24 11:21  castaglia
+
+	* ChangeLog: 
+	Updating ChangeLog.
+
 2005-07-24 11:15  castaglia
 
 	* NEWS, contrib/dist/rpm/proftpd.spec, include/version.h: 
@@ -7533,7 +7909,7 @@
 2003-06-11 19:08  castaglia
 
 	* src/: inet.c, modules.c: 
-	Missing $Id: ChangeLog,v 1.126 2005-07-24 18:21:00 castaglia Exp $ keyword.
+	Missing $Id: ChangeLog,v 1.127 2005-10-31 17:32:04 castaglia Exp $ keyword.
 
 2003-06-11 15:45  castaglia
 
@@ -8704,7 +9080,7 @@
 
 	* contrib/: mod_sql.c, mod_sql.h, mod_sql_mysql.c,
 	mod_sql_postgres.c: 
-	Adding $Id: ChangeLog,v 1.126 2005-07-24 18:21:00 castaglia Exp $ tags to the mod_sql files.
+	Adding $Id: ChangeLog,v 1.127 2005-10-31 17:32:04 castaglia Exp $ tags to the mod_sql files.
 
 2003-03-14 07:54  castaglia
 
@@ -9221,12 +9597,12 @@
 
 	* src/netio.c, src/pool.c, src/sets.c, include/ident.h,
 	include/timers.h: 
-	Adding more $Id: ChangeLog,v 1.126 2005-07-24 18:21:00 castaglia Exp $ keywords.
+	Adding more $Id: ChangeLog,v 1.127 2005-10-31 17:32:04 castaglia Exp $ keywords.
 
 2003-02-11 23:34  castaglia
 
 	* src/feat.c: 
-	Added $Id: ChangeLog,v 1.126 2005-07-24 18:21:00 castaglia Exp $ keyword.
+	Added $Id: ChangeLog,v 1.127 2005-10-31 17:32:04 castaglia Exp $ keyword.
 
 2003-02-10 15:34  castaglia
 
