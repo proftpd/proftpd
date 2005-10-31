@@ -1,3 +1,18 @@
+2005-10-31 09:39  castaglia
+
+	* src/fsio.c: 
+	Correct usage of pr_fsio_readlink().
+
+2005-10-31 09:34  castaglia
+
+	* NEWS, include/version.h, contrib/dist/rpm/proftpd.spec: 
+	Preparing for 1.3.0rc3 roll.
+
+2005-10-31 09:32  castaglia
+
+	* ChangeLog: 
+	Updating ChangeLog.
+
 2005-10-28 08:54  castaglia
 
 	* RELEASE_NOTES: 
@@ -7909,7 +7924,7 @@
 2003-06-11 19:08  castaglia
 
 	* src/: inet.c, modules.c: 
-	Missing $Id: ChangeLog,v 1.127 2005-10-31 17:32:04 castaglia Exp $ keyword.
+	Missing $Id: ChangeLog,v 1.128 2005-10-31 17:45:50 castaglia Exp $ keyword.
 
 2003-06-11 15:45  castaglia
 
@@ -9080,7 +9095,7 @@
 
 	* contrib/: mod_sql.c, mod_sql.h, mod_sql_mysql.c,
 	mod_sql_postgres.c: 
-	Adding $Id: ChangeLog,v 1.127 2005-10-31 17:32:04 castaglia Exp $ tags to the mod_sql files.
+	Adding $Id: ChangeLog,v 1.128 2005-10-31 17:45:50 castaglia Exp $ tags to the mod_sql files.
 
 2003-03-14 07:54  castaglia
 
@@ -9597,12 +9612,12 @@
 
 	* src/netio.c, src/pool.c, src/sets.c, include/ident.h,
 	include/timers.h: 
-	Adding more $Id: ChangeLog,v 1.127 2005-10-31 17:32:04 castaglia Exp $ keywords.
+	Adding more $Id: ChangeLog,v 1.128 2005-10-31 17:45:50 castaglia Exp $ keywords.
 
 2003-02-11 23:34  castaglia
 
 	* src/feat.c: 
-	Added $Id: ChangeLog,v 1.127 2005-10-31 17:32:04 castaglia Exp $ keyword.
+	Added $Id: ChangeLog,v 1.128 2005-10-31 17:45:50 castaglia Exp $ keyword.
 
 2003-02-10 15:34  castaglia
 
