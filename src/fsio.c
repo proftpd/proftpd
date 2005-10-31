@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.48 2005-10-26 23:36:47 castaglia Exp $
+ * $Id: fsio.c,v 1.49 2005-10-31 17:39:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -511,7 +511,7 @@ static pr_fs_t *lookup_file_fs(const char *path, char **deref, int op) {
       /* Three characters are reserved at the end of linkbuf for some path
        * characters (and a trailing NUL).
        */
-      i = pr_fsio_readlink(fs_cwd, path, &linkbuf[2], sizeof(linkbuf)-3);
+      i = pr_fsio_readlink(path, &linkbuf[2], sizeof(linkbuf)-3);
       if (i != -1) {
         linkbuf[i] = '\0';
         if (strchr(linkbuf, '/') == NULL) {
@@ -1551,7 +1551,7 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
           return -1;
         }
 	
-        len = pr_fsio_readlink(fs, namebuf, linkpath, sizeof(linkpath)-1);
+        len = pr_fsio_readlink(namebuf, linkpath, sizeof(linkpath)-1);
         if (len <= 0) {
           errno = ENOENT;
           return -1;
@@ -1706,7 +1706,7 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
           return -1;
         }
 
-        len = pr_fsio_readlink(fs, namebuf, linkpath, sizeof(linkpath)-1);
+        len = pr_fsio_readlink(namebuf, linkpath, sizeof(linkpath)-1);
         if (len <= 0) {
           errno = ENOENT;
           return -1;
