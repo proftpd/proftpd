@@ -1,11 +1,11 @@
 #include "buildstamp.h"
 
 /* Application version (in various forms) */
-#define PROFTPD_VERSION_NUMBER		0x0001030003
-#define PROFTPD_VERSION_TEXT		"1.3.0rc3"
+#define PROFTPD_VERSION_NUMBER		0x0001030004
+#define PROFTPD_VERSION_TEXT		"1.3.0rc4"
 
 /* Module API version */
 #define PR_MODULE_API_VERSION		0x20
 
 /* PR_STATUS is reported by --version-status -- don't ask why */
-#define PR_STATUS          		"(devel)"
+#define PR_STATUS          		"(CVS)"
