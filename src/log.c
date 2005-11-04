@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.74 2005-09-19 21:35:38 castaglia Exp $
+ * $Id: log.c,v 1.75 2005-11-04 16:36:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -59,7 +59,8 @@ int log_wtmp(char *line, const char *name, const char *host,
   int res = 0;
   static int fd = -1;
 
-#if (defined(SVR4) || defined(__SVR4)) && \
+#if ((defined(SVR4) || defined(__SVR4)) || \
+    (defined(__NetBSD__) && defined(HAVE_UTMPX_H))) && \
     !(defined(LINUX) || defined(__hpux) || defined (_AIX))
   /* This "auxilliary" utmp doesn't exist under linux. */
 #ifdef __sparcv9
@@ -69,6 +70,10 @@ int log_wtmp(char *line, const char *name, const char *host,
   struct utmpx utx;
 #endif
   static int fdx = -1;
+
+#if !defined(WTMPX_FILE) && defined(_PATH_WTMPX)
+# define WTMPX_FILE _PATH_WTMPX
+#endif
 
   if (fdx < 0 &&
       (fdx = open(WTMPX_FILE, O_WRONLY|O_APPEND, 0)) < 0) {
@@ -89,14 +94,20 @@ int log_wtmp(char *line, const char *name, const char *host,
     sstrncpy(utx.ut_id, "ftp", sizeof(utx.ut_user));
     sstrncpy(utx.ut_line, line, sizeof(utx.ut_line));
     sstrncpy(utx.ut_host, host, sizeof(utx.ut_host));
-    utx.ut_syslen = strlen(utx.ut_host)+1;
     utx.ut_pid = getpid();
-#ifdef __sparcv9
+#if defined(__NetBSD__) && defined(HAVE_UTMPX_H)
+    memcpy(&utx.ut_ss, pr_netaddr_get_inaddr(ip), sizeof(utx.ut_ss));
+    gettimeofday(&utx.ut_tv, NULL);
+#else /* SVR4 */
+    utx.ut_syslen = strlen(utx.ut_host)+1;
+#  ifdef __sparcv9
     time(&t);
     utx.ut_tv.tv_sec = (time32_t)t;
-#else
+#  else
     time(&utx.ut_tv.tv_sec);
-#endif
+#  endif
+#endif /* SVR4 */
+
     if (*name)
       utx.ut_type = USER_PROCESS;
     else
