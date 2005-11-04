@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.189 2005-09-19 17:14:03 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.190 2005-11-04 16:34:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -861,11 +861,17 @@ static void stor_abort(void) {
   _log_transfer('i', 'i');
 }
 
-static void stor_complete(void) {
-  if (pr_fsio_close(stor_fh) != 0)
+static int stor_complete(void) {
+  int res = 0;
+
+  if (pr_fsio_close(stor_fh) != 0) {
     pr_log_pri(PR_LOG_NOTICE, "notice: error closing '%s': %s",
       stor_fh->fh_path, strerror(errno));
+    res = -1;
+  }
+
   stor_fh = NULL;
+  return res;
 }
 
 static int get_hidden_store_path(cmd_rec *cmd, char *path) {
@@ -1428,9 +1434,33 @@ MODRET xfer_stor(cmd_rec *cmd) {
     /* If no throttling is configured, this does nothing. */
     xfer_rate_throttle(nbytes_stored, TRUE);
 
-    stor_complete();
+    if (stor_complete() < 0) {
+      /* Check errno for EDQOUT (or the most appropriate alternative).
+       * (I hate the fact that FTP has a special response code just for
+       * this, and that clients actually expect it.  Special cases are
+       * stupid.)
+       */
+#if defined(EDQUOT)
+      if (errno == EDQUOT) {
+        pr_response_add_err(R_552, "%s: %s", session.xfer.path,
+          strerror(errno));
+        return ERROR(cmd);
+      }
+#elif defined(EFBIG)
+      if (errno == EFBIG) {
+        pr_response_add_err(R_552, "%s: %s", session.xfer.path,
+          strerror(errno));
+        return ERROR(cmd);
+      }
+#endif
 
-    if (session.xfer.path && session.xfer.path_hidden) {
+      pr_response_add_err(R_550, "%s: %s", session.xfer.path,
+        strerror(errno));
+      return ERROR(cmd);
+    }
+
+    if (session.xfer.path &&
+        session.xfer.path_hidden) {
       if (pr_fsio_rename(session.xfer.path_hidden, session.xfer.path) != 0) {
 
         /* This should only fail on a race condition with a chmod/chown
