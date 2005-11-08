@@ -2194,7 +2194,7 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
     X509 *cert = X509_STORE_CTX_get_current_cert(ctx);
     int depth = X509_STORE_CTX_get_error_depth(ctx);
 
-    tls_log("error: unable to verify certificate at depth: %d", depth);
+    tls_log("error: unable to verify certificate at depth %d", depth);
     tls_log("error: cert subject: %s", tls_x509_name_oneline(
       X509_get_subject_name(cert)));
     tls_log("error: cert issuer: %s", tls_x509_name_oneline(
@@ -2209,9 +2209,11 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
       case X509_V_ERR_CERT_HAS_EXPIRED:
       case X509_V_ERR_CERT_REVOKED:
       case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
+      case X509_V_ERR_INVALID_PURPOSE:
       case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY:
       case X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE:
-        tls_log("%s", X509_verify_cert_error_string(ctx->error));
+        tls_log("client certificate failed verification: %s",
+          X509_verify_cert_error_string(ctx->error));
         ok = 0;
         break;
 
@@ -2227,8 +2229,8 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
         break;
 
       default:
-        tls_log("unable to verify client's certificate: %s",
-            ERR_error_string(ctx->error, NULL));
+        tls_log("error verifying client certificate: [%d] %s",
+          ctx->error, X509_verify_cert_error_string(ctx->error));
         ok = 0;
         break;
     }
