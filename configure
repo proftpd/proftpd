@@ -19456,6 +19456,8 @@ if test "${with_includes+set}" = set; then
         ac_build_addl_includes="-I$ainclude $ac_build_addl_includes"
       fi
     done
+    CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
+
 fi;
 
 
@@ -19470,7 +19472,14 @@ if test "${with_libraries+set}" = set; then
         ac_build_addl_libdirs="-L$alibdir $ac_build_addl_libdirs"
       fi
     done
+    LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
+
 fi;
+
+{ echo "$as_me:$LINENO: using CPPFLAGS=$CPPFLAGS" >&5
+echo "$as_me: using CPPFLAGS=$CPPFLAGS" >&6;}
+{ echo "$as_me:$LINENO: using LDFLAGS=$LDFLAGS" >&5
+echo "$as_me: using LDFLAGS=$LDFLAGS" >&6;}
 
 
 # Check whether --with-modules or --without-modules was given.
