@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.710 2005-11-04 16:36:03 castaglia Exp $
+$Id: NEWS,v 1.711 2005-11-08 16:06:18 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -13,6 +13,10 @@ CVS
 --------------------------------
 - Bug 2703 - Disk quota exceeded for small files not being triggered.
 - Bug 2706 - utmp/wtmp logging on NetBSD needs some tweaks.
+- Bug 2708 - configure cannot detect some headers.  The configure
+  script now adds the directories mentioned via the --with-includes
+  and --with-libraries options to the CPPFLAGS and LDFLAGS environment
+  variables.
 
 1.3.0rc3 - Released 31-Oct-2005
 --------------------------------

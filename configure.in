@@ -178,7 +178,9 @@ AC_ARG_WITH(includes,
       else
         ac_build_addl_includes="-I$ainclude $ac_build_addl_includes"
       fi
-    done ])
+    done
+    CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
+  ])
 
 AC_ARG_WITH(libraries,
   [AC_HELP_STRING(
@@ -192,7 +194,12 @@ AC_ARG_WITH(libraries,
       else
         ac_build_addl_libdirs="-L$alibdir $ac_build_addl_libdirs"
       fi
-    done ])
+    done 
+    LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
+  ])
+
+AC_MSG_NOTICE([using CPPFLAGS=$CPPFLAGS])
+AC_MSG_NOTICE([using LDFLAGS=$LDFLAGS])
 
 AC_ARG_WITH(modules,
   [AC_HELP_STRING(
