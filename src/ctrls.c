@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.11 2005-10-19 23:28:30 castaglia Exp $
+ * $Id: ctrls.c,v 1.12 2005-11-10 19:14:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1124,7 +1124,7 @@ void init_ctrls(void) {
 
   memset(&sockun, 0, sizeof(sockun));
   sockun.sun_family = AF_UNIX;
-  sstrncpy(sockun.sun_path, sockpath, strlen(sockpath));
+  sstrncpy(sockun.sun_path, sockpath, strlen(sockpath) + 1);
   socklen = sizeof(struct sockaddr_un);
 
   if (bind(sockfd, (struct sockaddr *) &sockun, socklen) < 0) {
