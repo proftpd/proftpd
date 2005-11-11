@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.29 2005-10-19 23:28:30 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.30 2005-11-11 21:05:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -675,24 +675,25 @@ static int ctrls_accept(int sockfd, uid_t *uid, gid_t *gid, pid_t *pid) {
     PRIVS_RELINQUISH
     ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to stat %s: %s", sock.sun_path, strerror(errno));
+    (void) close(cl_fd);
     return -1;
   }
   PRIVS_RELINQUISH
 
   /* Is it a socket? */
   if (pr_ctrls_issock_unix(st.st_mode) < 0) {
+    (void) close(cl_fd);
     errno = ENOTSOCK;
-    ctrls_log(MOD_CTRLS_VERSION,
-      "error: unable to accept connection: not a socket");
     return -1;
   }
 
   /* Are the perms _not_ rwx------? */
   if (st.st_mode & (S_IRWXG|S_IRWXO) ||
       ((st.st_mode & S_IRWXU) != PR_CTRLS_CL_MODE)) {
-    errno = EPERM;
     ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to accept connection: incorrect mode");
+    (void) close(cl_fd);
+    errno = EPERM;
     return -1;
   }
 
@@ -989,6 +990,7 @@ static int ctrls_listen(const char *sock_file) {
     int xerrno = errno;
 
     pr_signals_unblock();
+    (void) close(sockfd);
     errno = xerrno;
     ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to bind to local socket: %s", strerror(errno));
@@ -1000,6 +1002,7 @@ static int ctrls_listen(const char *sock_file) {
     int xerrno = errno;
 
     pr_signals_unblock();
+    (void) close(sockfd);
     errno = xerrno;
     ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to listen on local socket: %s", strerror(errno));
@@ -1011,6 +1014,7 @@ static int ctrls_listen(const char *sock_file) {
     int xerrno = errno;
 
     pr_signals_unblock();
+    (void) close(sockfd);
     errno = xerrno;
     ctrls_log(MOD_CTRLS_VERSION,
       "error: unable to chmod local socket: %s", strerror(errno));

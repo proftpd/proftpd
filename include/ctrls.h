@@ -23,7 +23,7 @@
  */
 
 /* Controls API definitions
- * $Id: ctrls.h,v 1.3 2005-10-19 23:28:30 castaglia Exp $
+ * $Id: ctrls.h,v 1.4 2005-11-11 21:05:32 castaglia Exp $
  */
 
 #ifndef PR_CTRLS_H
@@ -211,10 +211,10 @@ int pr_ctrls_recv_response(pool *resp_pool, int ctrls_sockfd, int *status,
 int pr_ctrls_send_msg(int sockfd, int msgstatus, unsigned int msgargc,
   char **msgargv);
 
-/* Determine whether the given socket is a Unix domain socket.  Returns
- * zero if true, -1 otherwise.
+/* Determine whether the given socket mode is for a Unix domain socket.
+ * Returns zero if true, -1 otherwise.
  */
-int pr_ctrls_issock_unix(int sockfd);
+int pr_ctrls_issock_unix(mode_t sock_mode);
 
 int pr_get_registered_actions(pr_ctrls_t *ctrl, int flags);
 

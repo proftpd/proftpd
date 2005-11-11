@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.12 2005-11-10 19:14:03 castaglia Exp $
+ * $Id: ctrls.c,v 1.13 2005-11-11 21:05:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -933,22 +933,17 @@ int pr_ctrls_connect(const char *socket_file) {
   return sockfd;
 }
 
-int pr_ctrls_issock_unix(int sockfd) {
-  struct stat st;
-
-  if (fstat(sockfd, &st) < 0) {
-    return -1;
-  }
+int pr_ctrls_issock_unix(mode_t sock_mode) {
 
   if (ctrls_use_isfifo) {
 #ifdef S_ISFIFO
-    if (S_ISFIFO(st.st_mode)) {
+    if (S_ISFIFO(sock_mode)) {
       return 0;
     }
 #endif /* S_ISFIFO */
   } else {
 #ifdef S_ISSOCK
-    if (S_ISSOCK(st.st_mode)) {
+    if (S_ISSOCK(sock_mode)) {
       return 0;
     }
 #endif /* S_ISSOCK */
@@ -1094,8 +1089,9 @@ void init_ctrls(void) {
   size_t socklen;
   char *sockpath = PR_RUN_DIR "/test.sock";
 
-  if (ctrls_pool)
+  if (ctrls_pool) {
     destroy_pool(ctrls_pool);
+  }
 
   ctrls_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(ctrls_pool, "Controls Pool");
