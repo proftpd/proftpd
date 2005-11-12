@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.275 2005-09-21 17:40:35 castaglia Exp $
+ * $Id: mod_core.c,v 1.276 2005-11-12 18:25:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3645,21 +3645,25 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
     PR_SCORE_CWD, session.cwd,
     NULL);
 
-  if (session.dir_config)
+  if (session.dir_config) {
     display = get_param_ptr(session.dir_config->subset, "DisplayFirstChdir",
       FALSE);
+  }
 
-  if (!display && session.anon_config)
+  if (!display &&
+      session.anon_config) {
     display = get_param_ptr(session.anon_config->subset, "DisplayFirstChdir",
       FALSE);
+  }
 
-  if (!display)
+  if (!display) {
     display = get_param_ptr(cmd->server->conf, "DisplayFirstChdir", FALSE);
+  }
 
   if (display) {
     config_rec *c;
     time_t last;
-    struct stat sbuf;
+    struct stat st;
 
     c = find_config(cmd->server->conf, CONF_USERDATA, session.cwd, FALSE);
 
@@ -3669,17 +3673,23 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
       c->config_type = CONF_USERDATA;
       c->argc = 1;
       c->argv = pcalloc(c->pool, sizeof(void **) * 2);
-      c->argv[0] = (void*)last;
-      last = (time_t)0L;
+      c->argv[0] = (void *) last;
+      last = (time_t) 0L;
 
     } else {
-      last = (time_t)c->argv[0];
-      c->argv[0] = (void*)time(NULL);
+      last = (time_t) c->argv[0];
+      c->argv[0] = (void *) time(NULL);
     }
 
-    if (pr_fsio_stat(display, &sbuf) != -1 && !S_ISDIR(sbuf.st_mode) &&
-       sbuf.st_mtime > last)
-      pr_display_file(R_250, display, session.cwd);
+    if (pr_fsio_stat(display, &st) != -1 &&
+        !S_ISDIR(st.st_mode) &&
+        st.st_mtime > last) {
+
+      if (pr_display_file(display, session.cwd, R_250) < 0) {
+        pr_log_debug(DEBUG3, "error displaying '%s': %s", display,
+          strerror(errno));
+      }
+    }
   }
 
   pr_response_add(R_250, "%s command successful", cmd->argv[0]);
