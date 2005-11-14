@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.6 2005-10-20 15:33:28 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.7 2005-11-14 17:47:13 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -475,10 +475,10 @@ The currently implemented options are:
     in the user's home directory for a <code>.tlslogin</code> file, which
     should contain one or more PEM-encoded certificates.  If the certificate
     presented by the client, if any, matches a certificate in this
-    <code>.tlslogin</code> file, the user will be considered authenticated.
-    The server will still prompt for a password, and if the user's
+    <code>.tlslogin</code> file, the user will be considered authenticated
+    and the server will not prompt for a password.  If the user's
     <code>.tlslogin</code> does not exist, or does not contain the client's
-    certificate, then the server will fallback to using the password for
+    certificate, then the server will fallback to requesting a password for
     authentication.
 
   <p>
@@ -1068,7 +1068,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2005-10-20 15:33:28 $</i><br>
+Last Updated: <i>$Date: 2005-11-14 17:47:13 $</i><br>
 
 <br><hr>
 
