@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  */
 
-/* $Id: pr-syslog.c,v 1.18 2005-06-10 17:06:46 castaglia Exp $
+/* $Id: pr-syslog.c,v 1.19 2005-11-14 16:33:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -275,4 +275,14 @@ int pr_setlogmask(int new_mask) {
     log_mask = new_mask;
 
   return old_mask;
+}
+
+int pr_setlogfacility(int new_facility) {
+  int old_facility;
+
+  old_facility = log_facility;
+  if (new_facility > 0)
+    log_facility = new_facility;
+
+  return old_facility;
 }

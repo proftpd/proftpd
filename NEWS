@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.713 2005-11-12 18:25:40 castaglia Exp $
+$Id: NEWS,v 1.714 2005-11-14 16:33:05 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -19,6 +19,9 @@ CVS
   variables.
 - Bug 2711 - Controls socket detection broken.
 - Bug 2712 - DisplayFirstChdir directive does not work.
+- Bug 2705 - proftpd fails to log anything to syslog after dropping privs
+  on Solaris.  This happens because of the default permissions on /dev/log
+  on Solaris.
 
 1.3.0rc3 - Released 31-Oct-2005
 --------------------------------

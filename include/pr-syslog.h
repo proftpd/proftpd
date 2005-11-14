@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2005 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* ProFTPD internal implemenation of syslog(3) routines
  *
- * $Id: pr-syslog.h,v 1.4 2003-07-25 01:21:58 jwm Exp $
+ * $Id: pr-syslog.h,v 1.5 2005-11-14 16:33:06 castaglia Exp $
  */
 
 #include "conf.h"
@@ -82,6 +82,9 @@ int pr_openlog(const char *ident, int option, int facility);
 
 /* Set the log mask level.  */
 int pr_setlogmask(int mask);
+
+/* Set the facility of the system logger.  */
+int pr_setlogfacility(int facility);
 
 /* Generate a log message using the given format string and option arguments.
  */
