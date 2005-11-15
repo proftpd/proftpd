@@ -1,4 +1,4 @@
-<!-- $Id: mod_quotatab.html,v 1.5 2004-12-08 22:30:00 castaglia Exp $ -->
+<!-- $Id: mod_quotatab.html,v 1.6 2005-11-15 19:44:43 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_quotatab.html,v $ -->
 
 <html>
@@ -292,17 +292,18 @@ configured via the <a href="http://www.proftpd.org/docs/directives/linked/config
 To use <code>mod_quotatab</code>'s functionality, you must first define the
 tables that together contain the quota information.
 
-<p>
-There are two such quota tables: one table for providing quota information
-about the absolute byte/file limits for users, groups, and classes, and
-a separate table for maintaining the current tally, or number of bytes/files
-used, for those same users, groups, and classes.  This separation of
-information allows for a configuration such as using LDAP to efficiently
-distribute the limit information, and local SQL databases for efficiently
-storing the tally.  The limit table is considered a read-only table, and
-is only accessed at the start of session in order to determine what the
-session limits should be.  The tally table is accessed in read-write mode,
-and is updated after the relevant FTP commands have been processed.
+<p><a name="QuotaTables"></a>
+There are two such quota tables: one table, called the <b>limit table</b> for
+providing quota information about the absolute byte/file <i>limits</i> for
+users, groups, and classes, and a separate table, called the <b>tally table</b>
+for maintaining the current <i>tally</i>, or number of bytes/files used, for
+those same users, groups, and classes.  This separation of information allows
+for a configuration such as using LDAP to efficiently distribute the limit
+information, and local SQL databases for efficiently storing the tally.  The
+limit table is considered a read-only table, and is only accessed at the start
+of session in order to determine what the session limits should be.  The
+tally table is accessed in read-write mode, and is updated after the relevant
+FTP commands have been processed.
 
 <p>
 This module was not explicitly designed for easy interaction with other
@@ -403,7 +404,7 @@ If any developers wish to make use of <code>mod_quotatab</code>'s quota
 information, or to develop a new submodule, there is developer documentation
 available <a href="http://www.castaglia.org/proftpd/doc/devel-guide/advanced/Quotatab/">here</a>.
 
-<p>
+<p><a name="QuotaDisplay"></a>
 <b><code>Display</code> Variables</b><br>
 The following variables are provided by <code>mod_quotatab</code>, and
 can be used in any <code>Display</code> file (<i>e.g.</i>
@@ -478,7 +479,7 @@ for that module.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2004-12-08 22:30:00 $</i><br>
+Last Updated: <i>$Date: 2005-11-15 19:44:43 $</i><br>
 
 <br><hr>
 
