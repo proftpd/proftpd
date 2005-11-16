@@ -22,11 +22,12 @@
  */
 
 /*
- * mod_ldap v2.8.15
+ * mod_ldap v2.8.16
  *
  * Thanks for patches go to (in alphabetical order):
  *
  * Peter Fabian (fabian at staff dot matavnet dot hu) - LDAPAuthBinds
+ * Alexandre Francois (alexandre-francois at voila dot fr) - LDAPAliasDereference
  * Marek Gradzki (mgradzki at ost dot net dot pl) - LDAPProtocolVersion
  * Pierrick Hascoet (pierrick at alias dot fr) - OpenSSL password hash support
  * Florian Lohoff (flo at rfc822 dot org) - LDAPForceDefault[UG]ID code
@@ -47,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.39 2005-07-03 18:52:00 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.40 2005-11-16 16:04:51 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -73,7 +74,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_LDAP_VERSION	"mod_ldap/2.8.14"
+#define MOD_LDAP_VERSION	"mod_ldap/2.8.16"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001021002
 # error "mod_ldap " MOD_LDAP_VERSION " requires ProFTPD 1.2.10rc2 or later"
@@ -148,6 +149,7 @@ static int ldap_doauth = 0, ldap_douid = 0, ldap_dogid = 0, ldap_doquota = 0,
            ldap_querytimeout = 0, ldap_genhdir = 0, ldap_genhdir_prefix_nouname = 0,
            ldap_forcedefaultuid = 0, ldap_forcedefaultgid = 0,
            ldap_forcegenhdir = 0, ldap_protocol_version = 3,
+           ldap_dereference = LDAP_DEREF_NEVER,
            ldap_search_scope = LDAP_SCOPE_SUBTREE;
 static struct timeval ldap_querytimeout_tp;
 
@@ -186,6 +188,18 @@ pr_ldap_set_sizelimit(LDAP *limit_ld, int limit)
     pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_set_sizelimit(): ldap_set_option() unable to set query size limit to %d entries: %s", limit, ldap_err2string(ret));
 #else
   limit_ld->ld_sizelimit = limit;
+#endif
+}
+
+static void
+pr_ldap_set_dereference(LDAP *deref_ld, int derefopt)
+{
+#ifdef LDAP_OPT_DEREF
+  int ret;
+  if ((ret = ldap_set_option(ld, LDAP_OPT_DEREF, (void *)&derefopt)) != LDAP_OPT_SUCCESS)
+    pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_set_dereference(): ldap_set_option() unable to set dereference to %d: %s", derefopt, ldap_err2string(ret));
+#else
+  deref_ld->ld_deref = derefopt;
 #endif
 }
 
@@ -251,6 +265,7 @@ pr_ldap_connect(LDAP **conn_ld, int bind)
   }
 
   pr_ldap_set_sizelimit(*conn_ld, 2);
+  pr_ldap_set_dereference(*conn_ld, ldap_dereference);
 
   ldap_querytimeout_tp.tv_sec = (ldap_querytimeout > 0 ? ldap_querytimeout : 5);
   ldap_querytimeout_tp.tv_usec = 0;
@@ -266,6 +281,9 @@ pr_ldap_generate_filter(pool *p, char *template, const char *entity)
 
   pos = template;
   while ((pos = strstr(pos + 2, "%v")) != NULL)
+    ++num_escapes;
+  pos = template;
+  while ((pos = strstr(pos + 2, "%u")) != NULL)
     ++num_escapes;
 
   /* -2 for the %v, +1 for the NULL */
@@ -1370,6 +1388,29 @@ set_ldap_searchscope(cmd_rec *cmd)
 }
 
 MODRET
+set_ldap_dereference(cmd_rec *cmd)
+{
+  int value;
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (strcasecmp(cmd->argv[1], "never") == 0) {
+    value = LDAP_DEREF_NEVER;
+  } else if (strcasecmp(cmd->argv[1], "search") == 0) {
+    value = LDAP_DEREF_SEARCHING;
+  } else if (strcasecmp(cmd->argv[1], "find") == 0) {
+    value = LDAP_DEREF_FINDING;
+  } else if (strcasecmp(cmd->argv[1], "always") == 0) {
+    value = LDAP_DEREF_ALWAYS;
+  } else {
+    CONF_ERROR(cmd, "LDAPAliasDereference: expected a valid dereference (never, search, find, always).");
+  }
+
+  add_config_param("LDAPAliasDereference", 1, (void *)value);
+  return HANDLED(cmd);
+}
+
+MODRET
 set_ldap_doauth(cmd_rec *cmd)
 {
   int b;
@@ -1690,6 +1731,11 @@ ldap_getconf(void)
   if (scope && *scope)
     if (strcasecmp(scope, "onelevel") == 0)
       ldap_search_scope = LDAP_SCOPE_ONELEVEL;
+  
+  ldap_dereference = get_param_int(main_server->conf, "LDAPAliasDereference", FALSE);
+  if (ldap_dereference == -1) {
+    ldap_dereference = LDAP_DEREF_NEVER;
+  }
 
   if ((c = find_config(main_server->conf, CONF_PARAM, "LDAPDoAuth", FALSE)) != NULL) {
     if ( (int)c->argv[0] > 0) {
@@ -1818,6 +1864,7 @@ static conftable ldap_config[] = {
   { "LDAPAuthBinds",                       set_ldap_authbinds,            NULL },
   { "LDAPQueryTimeout",                    set_ldap_querytimeout,         NULL },
   { "LDAPSearchScope",                     set_ldap_searchscope,          NULL },
+  { "LDAPAliasDereference",                set_ldap_dereference,          NULL },
   { "LDAPNegativeCache",                   set_ldap_negcache,             NULL },
   { "LDAPDoAuth",                          set_ldap_doauth,               NULL },
   { "LDAPDoUIDLookups",                    set_ldap_douid,                NULL },
