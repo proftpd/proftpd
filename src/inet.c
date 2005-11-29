@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2005 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.93 2005-03-05 17:33:29 castaglia Exp $
+ * $Id: inet.c,v 1.94 2005-11-29 02:42:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -234,6 +234,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
 #if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
     defined(FREEBSD4) || defined(FREEBSD5) || defined(__OpenBSD__) || \
     defined(__NetBSD__) || defined(DARWIN6) || defined(DARWIN7) || \
+    defined(DARWIN8) || \
     defined(SCO3) || defined(CYGWIN) || defined(SYSV4_2MP) || \
     defined(SYSV5UNIXWARE7)
 # ifdef SOLARIS2
@@ -251,6 +252,7 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
 #if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
     defined(FREEBSD4) || defined(FREEBSD5) || defined(__OpenBSD__) || \
     defined(__NetBSD__) || defined(DARWIN6) || defined(DARWIN7) || \
+    defined(DARWIN8) || \
     defined(SCO3) || defined(CYGWIN) || defined(SYSV4_2MP) || \
     defined(SYSV5UNIXWARE7)
 # ifdef SOLARIS2
