@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.7 2005-11-14 17:47:13 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.8 2005-11-29 18:19:15 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -222,8 +222,11 @@ Authorities (CA) which form the certificate chain of the server certificate.
 This starts with the issuing CA certificate of the server certificate and can
 range up to the root CA certificate.  Such a file is simply the concatenation
 of the various PEM-encoded CA Certificate files in certificate chain order.
-This server certificate chain is sent to the client, in addition to the
-server's certificate.
+(<em>Certificate chain order</em> means that the list must be sorted starting
+with the subject's certificate (actual server certificate), followed by
+intermediate CA certificates if applicable, and ending at the highest level
+root CA.) This server certificate chain is sent to the client, in addition to
+the server's certificate.
 
 <p>
 If <code>TLSCertificateChainFile</code> is not used, and
@@ -1068,7 +1071,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2005-11-14 17:47:13 $</i><br>
+Last Updated: <i>$Date: 2005-11-29 18:19:15 $</i><br>
 
 <br><hr>
 
