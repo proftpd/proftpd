@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.41 2005-12-02 16:51:15 jwm Exp $
+ * $Id: mod_ldap.c,v 1.42 2005-12-02 17:04:00 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -1438,11 +1438,13 @@ set_ldap_doauth(cmd_rec *cmd)
   if (b == 1) { CHECK_ARGS(cmd, 2); }
   else        { CHECK_ARGS(cmd, 1); }
 
-  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+  c = add_config_param(cmd->argv[0], cmd->argc - 1, NULL, NULL, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = b;
-  c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
-  c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
+  if (cmd->argc > 2)
+    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
+  if (cmd->argc > 3)
+    c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
 
   return HANDLED(cmd);
 }
@@ -1461,11 +1463,13 @@ set_ldap_douid(cmd_rec *cmd)
   if (b == 1) { CHECK_ARGS(cmd, 2); }
   else        { CHECK_ARGS(cmd, 1); }
 
-  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+  c = add_config_param(cmd->argv[0], cmd->argc - 1, NULL, NULL, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = b;
-  c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
-  c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
+  if (cmd->argc > 2)
+    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
+  if (cmd->argc > 3)
+    c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
 
   return HANDLED(cmd);
 }
@@ -1530,6 +1534,7 @@ MODRET
 set_ldap_defaultuid(cmd_rec *cmd)
 {
   int i = 0;
+  char *endptr;
   config_rec *c;
 
   CHECK_ARGS(cmd, 1);
@@ -1543,7 +1548,9 @@ set_ldap_defaultuid(cmd_rec *cmd)
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(uid_t));
-  *((uid_t *) c->argv[0]) = strtoul(cmd->argv[1], (char **)NULL, 10);
+  *((uid_t *) c->argv[0]) = strtoul(cmd->argv[1], &endptr, 10);
+  if (*endptr != '\0')
+    CONF_ERROR(cmd, "LDAPDefaultUID: invalid UID specified.");
   return HANDLED(cmd);
 }
 
@@ -1551,6 +1558,7 @@ MODRET
 set_ldap_defaultgid(cmd_rec *cmd)
 {
   int i = 0;
+  char *endptr;
   config_rec *c;
 
   CHECK_ARGS(cmd, 1);
@@ -1564,7 +1572,9 @@ set_ldap_defaultgid(cmd_rec *cmd)
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(gid_t));
-  *((gid_t *) c->argv[0]) = strtoul(cmd->argv[1], (char **)NULL, 10);
+  *((gid_t *) c->argv[0]) = strtoul(cmd->argv[1], &endptr, 10);
+  if (*endptr != '\0')
+    CONF_ERROR(cmd, "LDAPDefaultGID: invalid GID specified.");
   return HANDLED(cmd);
 }
 
