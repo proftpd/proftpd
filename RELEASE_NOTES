@@ -6,6 +6,13 @@ This file contains a description of the major changes to ProFTPD for the
 More information on these changes can be found in the NEWS and ChangeLog
 files.
 
+1.3.0rc4
+--------
+
+  + New documentation:
+
+    doc/howto/Quotas.html
+
 1.3.0rc3
 ---------
 
@@ -233,4 +240,4 @@ files.
             ...
           </VirtualHost>
 
-Last Updated: $Date: 2005-10-28 15:54:12 $
+Last Updated: $Date: 2005-12-05 19:17:57 $
