@@ -2,6 +2,7 @@
  * ProFTPD: mod_auth_pam -- Support for PAM-style authentication.
  * Copyright (c) 1998, 1999, 2000 Habeeb J. Dihu aka
  *   MacGyver <macgyver@tos.net>, All Rights Reserved.
+ * Copyright 2000-2005 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,7 +36,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.12 2005-07-03 18:52:02 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.13 2005-12-07 22:15:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -62,6 +63,7 @@
 #endif /* HAVE_PAM_PAM_APPL_H */
 
 module auth_pam_module;
+static authtable auth_pam_authtab[];
 
 static pam_handle_t *	pamh			= NULL;
 static char *		pamconfig		= "ftp";
@@ -181,8 +183,7 @@ static void auth_pam_exit_ev(const void *event_data, void *user_data) {
 MODRET pam_auth(cmd_rec *cmd) {
   int pam_error = 0, retval = PR_AUTH_ERROR, success = 0;
   config_rec *c = NULL;
-  unsigned char *auth_pam = NULL, *auth_pam_authoritative = NULL,
-    pam_authoritative = FALSE;
+  unsigned char *auth_pam = NULL, pam_authoritative = FALSE;
 
 #ifdef SOLARIS2
   char ttyentry[32];
@@ -191,21 +192,22 @@ MODRET pam_auth(cmd_rec *cmd) {
   /* If we have been explicitly disabled, return now.  Otherwise,
    * the module is considered enabled.
    */
-  if ((auth_pam = get_param_ptr(main_server->conf, "AuthPAM",
-      FALSE)) != NULL && *auth_pam == FALSE)
+  auth_pam = get_param_ptr(main_server->conf, "AuthPAM", FALSE);
+  if (auth_pam != NULL &&
+      *auth_pam == FALSE) {
     return DECLINED(cmd);
+  }
 
   /* Figure out our default return style: whether or not PAM should allow
-   * other auth modules a shot at this user or not is controlled by the
-   * AuthPAMAuthoritative directive..  It defaults to "no", meaning that PAM
-   * is not authoritative, and allows other auth modules a chance at
+   * other auth modules a shot at this user or not is controlled by adding
+   * '*' to a module name in the AuthOrder directive.  By default, auth
+   * modules are not authoritative, and allow other auth modules a chance at
    * authenticating the user.  This is not the most secure configuration, but
    * it allows things like AuthUserFile to work "out of the box".
    */
-  if ((auth_pam_authoritative = get_param_ptr(main_server->conf,
-      "AuthPAMAuthoritative", FALSE)) != NULL &&
-      *auth_pam_authoritative == TRUE)
+  if (auth_pam_authtab[0].auth_flags & PR_AUTH_FL_REQUIRED) {
     pam_authoritative = TRUE;
+  }
 
   /* Just in case...
    */
@@ -469,13 +471,13 @@ MODRET set_authpamconfig(cmd_rec *cmd) {
 
 static authtable auth_pam_authtab[] = {
   { 0, "auth", pam_auth },
-  { 0, NULL, NULL}
+  { 0, NULL, NULL }
 };
 
 static conftable auth_pam_conftab[] = {
   { "AuthPAM",			set_authpam,			NULL },
   { "AuthPAMConfig",		set_authpamconfig,		NULL },
-  { NULL, NULL, NULL}
+  { NULL, NULL, NULL }
 };
 
 module auth_pam_module = {
