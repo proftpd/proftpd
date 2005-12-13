@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.100 2005-10-23 21:50:41 castaglia Exp $
+ * $Id: mod_sql.c,v 1.101 2005-12-13 17:54:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1051,7 +1051,7 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
   }
 
   if (p->pw_name != NULL) {
-    realname = pr_str_strip(cmd->tmp_pool, p->pw_name);
+    realname = p->pw_name;
 
     mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default", realname),
       "sql_escapestring" );
@@ -1426,7 +1426,8 @@ static int _sql_getgroups(cmd_rec *cmd) {
   lpw.pw_name = name;
   
   /* Retrieve the necessary info */
-  if (!name || !(pw = _sql_getpasswd(cmd, &lpw)))
+  if (!name ||
+      !(pw = _sql_getpasswd(cmd, &lpw)))
     return -1;
 
   /* Populate the first group ID and name */
@@ -1436,7 +1437,8 @@ static int _sql_getgroups(cmd_rec *cmd) {
   lgr.gr_gid = pw->pw_gid;
   lgr.gr_name = NULL;
 
-  if (groups && (grp = _sql_getgroup(cmd, &lgr)) != NULL)
+  if (groups &&
+      (grp = _sql_getgroup(cmd, &lgr)) != NULL)
     *((char **) push_array(groups)) = pstrdup(permanent_pool, grp->gr_name);
 
   /* Use a single SELECT:
@@ -1445,8 +1447,8 @@ static int _sql_getgroups(cmd_rec *cmd) {
    *    WHERE members LIKE '%,<user>,%' OR LIKE '<user>,%' OR LIKE '%,<user>';
    */
 
-  mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default",
-    pr_str_strip(cmd->tmp_pool, name)), "sql_escapestring");
+  mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default", name),
+    "sql_escapestring");
   _sql_check_response(mr);
 
   username = (char *) mr->data;
@@ -2975,8 +2977,7 @@ MODRET cmd_auth(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_auth");
 
-  /* fix up the username, removing leading and trailing whitespace */
-  user = pr_str_strip(cmd->tmp_pool, cmd->argv[0]);
+  user = cmd->argv[0];
 
   /* escape our username */
   mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default", user),

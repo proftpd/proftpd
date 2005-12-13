@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.716 2005-12-07 22:15:00 castaglia Exp $
+$Id: NEWS,v 1.717 2005-12-13 17:54:53 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -28,6 +28,8 @@ CVS
   directive.  As per Bug #2440, however, the AuthOrder directive should
   be used for configuring authoritativeness.  This fixes mod_auth_pam
   to behave properly using the new AuthOrder setting.
+- Bug 2709 - mod_sql improperly strips spaces from names, allowing for
+  confusing authentication.
 
 1.3.0rc3 - Released 31-Oct-2005
 --------------------------------
