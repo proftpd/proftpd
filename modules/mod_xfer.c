@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.190 2005-11-04 16:34:12 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.191 2005-12-19 18:59:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1495,14 +1495,6 @@ MODRET xfer_rest(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  /* Refuse the command if we're in ASCII mode. */
-  if (session.sf_flags & SF_ASCII) {
-    pr_log_debug(DEBUG5, "%s not allowed in ASCII mode", cmd->argv[0]);
-    pr_response_add_err(R_501,
-      "%s: Resuming transfers not allowed in ASCII mode", cmd->argv[0]);
-    return ERROR(cmd);
-  }
-
   /* If we're using HiddenStores, then REST won't work. */
   if ((hidden_stores = get_param_ptr(CURRENT_CONF, "HiddenStores",
       FALSE)) != NULL && *hidden_stores == TRUE) {
@@ -1516,12 +1508,31 @@ MODRET xfer_rest(cmd_rec *cmd) {
   pos = strtoul(cmd->argv[1], &endp, 10);
 #endif /* HAVE_STRTOULL */
 
-  if (endp && *endp) {
-    pr_response_add_err(R_501, "REST requires a value greater than or equal to 0");
+  if (endp &&
+      *endp) {
+    pr_response_add_err(R_501,
+      "REST requires a value greater than or equal to 0");
     return ERROR(cmd);
   }
 
   session.restart_pos = pos;
+
+  /* Refuse the command if we're in ASCII mode, and the restart position
+   * is anything other than zero.
+   *
+   * Ideally, we would refuse the REST command when in ASCII mode regardless
+   * of position.  However, some (IMHO, stupid) clients "test" the FTP
+   * server by sending "REST 0" to see if the server supports REST, without
+   * regard to the transfer type.  This, then, is a hack to handle such
+   * clients.
+   */
+  if ((session.sf_flags & SF_ASCII) &&
+      pos != 0) {
+    pr_log_debug(DEBUG5, "%s not allowed in ASCII mode", cmd->argv[0]);
+    pr_response_add_err(R_501,
+      "%s: Resuming transfers not allowed in ASCII mode", cmd->argv[0]);
+    return ERROR(cmd);
+  } 
 
   pr_response_add(R_350, "Restarting at %" PR_LU ". Send STORE or RETRIEVE to "
     "initiate transfer", (pr_off_t) pos);
