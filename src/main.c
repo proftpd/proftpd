@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.275 2005-09-19 21:35:38 castaglia Exp $
+ * $Id: main.c,v 1.276 2005-12-27 03:04:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1235,6 +1235,7 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   session.data_port = conn->remote_port - 1;
   session.sf_flags = 0;
   session.sp_flags = 0;
+  session.proc_prefix = "(connecting)";
 
   pr_netaddr_set_sess_addrs();
 
