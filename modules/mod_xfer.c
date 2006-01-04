@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.191 2005-12-19 18:59:22 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.192 2006-01-04 13:31:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -697,13 +697,13 @@ static long transmit_data(off_t count, off_t *offset, char *buf, long bufsz) {
 #ifdef TCP_CORK
   int on = 1;
   socklen_t len = sizeof(int);
-#endif /* TCP_CORK */
 
-#ifdef SOL_TCP
+# ifdef SOL_TCP
   int tcp_level = SOL_TCP;
-#else
+# else
   int tcp_level = IPPROTO_TCP;
-#endif /* SOL_TCP */
+# endif /* SOL_TCP */
+#endif /* TCP_CORK */
 
 #ifdef HAVE_SENDFILE
   pr_sendfile_t retval;
