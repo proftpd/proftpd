@@ -26,7 +26,7 @@
 
 /*
  * Data connection management functions
- * $Id: data.c,v 1.88 2005-07-07 14:45:41 castaglia Exp $
+ * $Id: data.c,v 1.89 2006-02-08 01:25:46 castaglia Exp $
  */
 
 #include "conf.h"
@@ -804,23 +804,30 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 
     if (session.d) {
       if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
-        int adjlen,buflen;
+        int adjlen, buflen;
+
 	do {
 	  buflen = session.xfer.buflen;        /* how much remains in buf */
 	  adjlen = 0;
-	
-	  if ((len = pr_netio_read(session.d->instrm, buf + buflen,
-		  session.xfer.bufsize - buflen, 1)) > 0) {
+
+          len = pr_netio_read(session.d->instrm, buf + buflen,
+            session.xfer.bufsize - buflen, 1);
+          if (len < 0)
+            return -1;
+
+          if (len > 0) {
 	    buflen += len;
 
 	    if (TimeoutStalled)
 	      pr_timer_reset(TIMER_STALLED, ANY_MODULE);
 	  }
 
-	  /* if buflen > 0, data remains in the buffer to be copied. */
-	  if (len >= 0 && buflen > 0) {
+	  /* If buflen > 0, data remains in the buffer to be copied. */
+	  if (len >= 0 &&
+              buflen > 0) {
 
 	    /* Perform translation:
+             *
 	     * buflen is returned as the modified buffer length after
 	     *        translation
 	     * adjlen is returned as the number of characters unprocessed in
@@ -834,27 +841,27 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
 	    if (len > 0 || buflen > 1)
 	      xfrm_ascii_read(buf, &buflen, &adjlen);
 	
-	    /* now copy everything we can into cl_buf */
+	    /* Now copy everything we can into cl_buf */
 	    if (buflen > cl_size) {
-	      /* because we have to cut our buffer short, make sure this
+	      /* Because we have to cut our buffer short, make sure this
 	       * is made up for later by increasing adjlen.
 	       */
 	      adjlen += (buflen - cl_size);
 	      buflen = cl_size;
 	    }
-  	    memcpy(cl_buf,buf,buflen);
+  	    memcpy(cl_buf, buf, buflen);
 	
-	    /* copy whatever remains at the end of session.xfer.buf to the
-	     * head of the buffer and adjust buf accordingly
+	    /* Copy whatever remains at the end of session.xfer.buf to the
+	     * head of the buffer and adjust buf accordingly.
 	     *
 	     * adjlen is now the total bytes still waiting in buf, if
-	     * anything remains, copy it to the start of the buffer
+	     * anything remains, copy it to the start of the buffer.
 	     */
 	
 	    if (adjlen > 0)
-	      memcpy(buf,buf+buflen,adjlen);
+	      memcpy(buf, buf+buflen, adjlen);
 
-	    /* store everything back in session.xfer */
+	    /* Store everything back in session.xfer. */
 	    session.xfer.buflen = adjlen;
 	    total += buflen;
 	  }
@@ -906,7 +913,7 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
       }
 
       if (pr_netio_write(session.d->outstrm, session.xfer.buf,
-          xferbuflen) == -1)
+          xferbuflen) < 0)
         return -1;
 
       if (TimeoutStalled)
@@ -920,7 +927,8 @@ int pr_data_xfer(char *cl_buf, int cl_size) {
     len = total;
   }
 
-  if (total && TimeoutIdle)
+  if (total &&
+      TimeoutIdle)
     pr_timer_reset(TIMER_IDLE, ANY_MODULE);
 
   session.xfer.total_bytes += total;
