@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.17 2005-07-02 17:59:43 castaglia Exp $
+ * $Id: mod_delay.c,v 1.18 2006-02-21 17:51:07 castaglia Exp $
  */
 
 #include "conf.h"
@@ -362,6 +362,9 @@ static int delay_table_init(void) {
 
   delay_tab.dt_fd = fh->fh_fd;
   delay_tab.dt_size = tab_size;
+
+  pr_log_debug(DEBUG10, MOD_DELAY_VERSION
+    ": mapping DelayTable '%s' into memory", fh->fh_path);
   delay_tab.dt_data = mmap(NULL, delay_tab.dt_size, PROT_READ|PROT_WRITE,
     MAP_SHARED, delay_tab.dt_fd, 0);
 
@@ -452,7 +455,18 @@ static int delay_table_init(void) {
   }
 
   /* Done */
-  munmap(delay_tab.dt_data, delay_tab.dt_size);
+  pr_log_debug(DEBUG10, MOD_DELAY_VERSION
+    ": unmapping DelayTable '%s' from memory", delay_tab.dt_path);
+  if (munmap(delay_tab.dt_data, delay_tab.dt_size) < 0) {
+    int xerrno = errno;
+    pr_fsio_close(fh);
+
+    errno = xerrno;
+    pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
+      ": error unmapping DelayTable '%s': %s", delay_tab.dt_path,
+      strerror(errno));
+    return -1;
+  }
 
   delay_tab.dt_data = NULL;
 
@@ -489,6 +503,8 @@ static int delay_table_load(int lock_table) {
   }
 
   if (!delay_tab.dt_data) {
+    pr_log_debug(DEBUG10, MOD_DELAY_VERSION
+      ": mapping DelayTable '%s' into memory", delay_tab.dt_path);
     delay_tab.dt_data = mmap(NULL, delay_tab.dt_size, PROT_READ|PROT_WRITE,
       MAP_SHARED, delay_tab.dt_fd, 0);
 
@@ -552,7 +568,15 @@ static int delay_table_wlock(unsigned int rownum) {
 static int delay_table_unload(int unlock_table) {
 
   if (delay_tab.dt_data) {
-    munmap(delay_tab.dt_data, delay_tab.dt_size);
+    pr_log_debug(DEBUG10, MOD_DELAY_VERSION
+      ": unmapping DelayTable '%s' from memory", delay_tab.dt_path);
+    if (munmap(delay_tab.dt_data, delay_tab.dt_size) < 0) {
+      pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
+        ": error unmapping DelayTable '%s': %s", delay_tab.dt_path,
+        strerror(errno));
+      return -1;
+    }
+
     delay_tab.dt_data = NULL;
   }
 
@@ -814,17 +838,21 @@ static void delay_exit_ev(const void *event_data, void *user_data) {
 
   /* Load the DelayTable into memory. */
   if (delay_table_load(TRUE) < 0) {
+    int xerrno = errno;
+    pr_fsio_close(fh);
+
+    errno = xerrno;
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       "warning: unable to load DelayTable '%s' into memory: %s",
       delay_tab.dt_path, strerror(errno));
-    pr_fsio_close(fh);
     return;
   }
 
-  if (pr_fsio_write(fh, delay_tab.dt_data, delay_tab.dt_size) < 0)
+  if (pr_fsio_write(fh, delay_tab.dt_data, delay_tab.dt_size) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       ": warning: error updating DelayTable '%s': %s", delay_tab.dt_path,
       strerror(errno));
+  }
 
   /* Unload the DelayTable from memory. */
   if (delay_table_unload(TRUE) < 0) {
@@ -833,10 +861,11 @@ static void delay_exit_ev(const void *event_data, void *user_data) {
       delay_tab.dt_path, strerror(errno));
   }
 
-  if (pr_fsio_close(fh) < 0)
+  if (pr_fsio_close(fh) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       ": warning: error writing DelayTable '%s': %s", delay_tab.dt_path,
       strerror(errno));
+  }
 
   return;
 }
