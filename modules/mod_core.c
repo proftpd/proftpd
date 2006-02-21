@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2005 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.276 2005-11-12 18:25:41 castaglia Exp $
+ * $Id: mod_core.c,v 1.277 2006-02-21 06:55:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4143,15 +4143,29 @@ MODRET core_feat(cmd_rec *cmd) {
   const char *feat = NULL;
   CHECK_CMD_ARGS(cmd, 1);
 
-  pr_response_add(R_211, "Features:");
-
   feat = pr_feat_get();
-  while (feat) {
-    pr_response_add(R_DUP, "%s", feat);
-    feat = pr_feat_get_next();
+  if (feat) {
+    feat = pstrcat(cmd->tmp_pool, "Features:\n ", feat, NULL);
+    while (TRUE) {
+      const char *next;
+
+      pr_signals_handle();
+
+      next = pr_feat_get_next();
+      if (next == NULL) {
+        break;
+      }
+
+      feat = pstrcat(cmd->tmp_pool, feat, "\n ", next, NULL);
+    }
+
+    pr_response_add(R_211, "%s", feat);
+    pr_response_add(R_DUP, "End");
+
+  } else {
+    pr_response_add(R_211, "No features supported");
   }
 
-  pr_response_add(R_DUP, "End");
   return HANDLED(cmd);
 }
 
