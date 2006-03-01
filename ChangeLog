@@ -1,3 +1,217 @@
+2006-02-23 15:01  castaglia
+
+	* doc/rfc/: draft-murray-auth-ftp-ssl-15.txt, rfc4217.txt: 
+	The old IETF Draft which defined FTPS was finally upgraded to a
+	full-fledged RFC in Nov 2005, as RFC4217.
+
+2006-02-23 14:42  castaglia
+
+	* doc/howto/SQL.html: 
+	Added FAQ about libz linker errors to SQL howto.
+
+2006-02-21 09:51  castaglia
+
+	* modules/mod_delay.c: 
+	Add more debug logging, level 10, for when mod_delay mmaps or
+	munmaps.  This is for tracking down Bug #2723.	Also handle the
+	case where munmap(2) fails.
+
+2006-02-20 22:55  castaglia
+
+	* NEWS, modules/mod_core.c: Bug#2752 - FEAT reply not RFC 2389
+	compliant.
+
+2006-02-07 17:25  castaglia
+
+	* NEWS, src/data.c: 
+	Bug#2746 - Data transfer function does not return error condition
+	in case of read errors.  Now the pr_data_xfer() loop will error out
+	if there is an error returned by pr_netio_read(), just as is
+	already done if there is an error returned by pr_netio_write().
+
+2006-01-11 05:55  castaglia
+
+	* doc/howto/: index.html, AuthFiles.html: 
+	Added the AuthFiles howto (it was referenced by the ConfigFile
+	howto).
+
+2006-01-04 05:31  castaglia
+
+	* modules/mod_xfer.c: 
+	Fix a warning about an unused variable.  The tcp_level variable is
+	really only used if TCP_CORK is defined; thus it should be declared
+	within an #ifdef TCP_CORK block.
+
+2005-12-27 10:29  castaglia
+
+	* RELEASE_NOTES: 
+	Mention the OSX tweaks in the Release Notes.
+
+2005-12-26 19:04  castaglia
+
+	* src/main.c: Initialise the session.proc_prefix string upon client
+	connection.  There was a strange edge case, involving
+	mod_wrap-2.0.x, where proftpd was calling set_proc_title() using a
+	NULL session.proc_prefix.  GNU libc handles printfs of NULLs
+	gracefully, but other libc implementations (e.g. Solaris) are not
+	as forgiving; this edge case was leading to segfaults on those
+	platforms.
+
+2005-12-19 10:59  castaglia
+
+	* NEWS, modules/mod_xfer.c: 
+	Bug#2735 - Allow REST 0 in ASCII mode.
+
+2005-12-13 09:54  castaglia
+
+	* NEWS, contrib/mod_sql.c: 
+	Bug#2709 - mod_sql improperly strips spaces from names, allowing
+	for confusing authentication.
+
+2005-12-07 14:15  castaglia
+
+	* NEWS, modules/mod_auth_pam.c: 
+	Bug#2729 - Authorative PAM authentication doesn't work.
+
+2005-12-05 11:17  castaglia
+
+	* RELEASE_NOTES, doc/howto/Quotas.html, doc/howto/index.html: 
+	Adding Quotas howto to doc/ area.
+
+2005-12-02 10:34  jwm
+
+	* contrib/mod_ldap.c: some overdue cleanup: - use braces
+	everywhere. honestly, i don't know why i wrote code this way.  -
+	now that we're using strtoul() sanity checking on default [UG]IDs,
+	we   don't need the isdigit() checking - use get_param_ptr for
+	single-argument directives instead of find_config() - if a
+	directive is present (get_param_ptr() returns non-NULL), assign its
+	  value to the config variable; we don't want to assume default
+	values	 in the variable initialization as well as the getconf
+	handler.
+
+2005-12-02 09:04  jwm
+
+	* contrib/mod_ldap.c: - complain about invalid default [UG]IDs -
+	only allocate enough arguments in the config_rec for LDAPDoAuth and
+	  LDAPDoUIDLookups to cover the arguments specified
+
+2005-12-02 08:51  jwm
+
+	* contrib/mod_ldap.c: - remove get_param_int() usage; store values
+	in an allocated pointer intsead - config handlers now take their
+	directive name from c->argv[0], saving	 a few bytes of static
+	strings
+
+2005-11-29 10:19  castaglia
+
+	* doc/contrib/mod_tls.html: 
+	Adding more specific instructions for what a
+	TLSCertificateChainFile should contain.
+
+2005-11-28 18:42  castaglia
+
+	* NEWS, src/inet.c: 
+	Bug#2374 revisited, for the sake of updated Mac OSX releases.  When
+	is a regression not a regression?  When it's the fault of the host
+	system, not the application code.  Sigh.
+
+2005-11-19 11:44  castaglia
+
+	* doc/howto/DSO.html: 
+	Adding more comments to the DSO howto, based on user
+	feedback/questions.
+
+2005-11-16 08:04  jwm
+
+	* contrib/mod_ldap.c: release 2.8.16
+
+2005-11-15 12:01  castaglia
+
+	* doc/contrib/mod_quotatab.html: 
+	Formatting changes.
+
+2005-11-15 11:44  castaglia
+
+	* doc/contrib/mod_quotatab.html: 
+	Improve the mod_quotatab doc, emphasizing the definitions of limit
+	and tally tables.  Also add HTML anchors, for easier referencing
+	from the upcoming Quotas howto.
+
+2005-11-14 09:47  castaglia
+
+	* doc/contrib/mod_tls.html: 
+	Update description of AllowDotLogin TLSOption, as proftpd now will
+	not prompt for a password if none is required.
+
+2005-11-14 08:33  castaglia
+
+	* NEWS, include/pr-syslog.h, lib/pr-syslog.c, src/log.c: 
+	Bug#2705 - proftpd fails to log anything to syslog after dropping
+	privs on Solaris.
+	
+	Since proftpd has custom syslog routines, we can simply add an
+	accessor function for setting the static log_facility variable. 
+	libc-based syslogging cannot do this; proftpd used libc syslog
+	routines in the past, hence the need to call openlog() again if the
+	facility changed.
+	
+	Thanks to Kostantinos Koukopoulos for the patch.
+
+2005-11-12 10:25  castaglia
+
+	* NEWS, modules/mod_core.c: 
+	Bug#2712 - DisplayFirstChdir directive does not work.
+
+2005-11-11 13:05  castaglia
+
+	* NEWS, include/ctrls.h, modules/mod_ctrls.c, src/ctrls.c: 
+	Bug#2711 - Controls socket detection broken.
+
+2005-11-10 11:14  castaglia
+
+	* src/ctrls.c: 
+	Copy the full length of the socket path, including the terminating
+	NUL.
+
+2005-11-08 09:59  castaglia
+
+	* contrib/mod_tls.c: 
+	Make the log messages generated during certificate verification a
+	little cleaner.  Also add explicit handling of the INVALID_PURPOSE
+	error case.
+
+2005-11-08 08:13  castaglia
+
+	* configure: 
+	Updating configure.
+
+2005-11-08 08:06  castaglia
+
+	* NEWS, configure.in: 
+	Bug#2708 - configure cannot detect some headers.
+
+2005-11-04 08:36  castaglia
+
+	* NEWS, src/log.c: 
+	Bug#2706 - utmp/wtmp logging on NetBSD needs some tweaks.
+
+2005-11-04 08:34  castaglia
+
+	* NEWS, modules/mod_xfer.c: 
+	Bug#2703 - Disk quota exceeded for small files not being triggered.
+
+2005-10-31 15:23  castaglia
+
+	* include/version.h: 
+	Bump version to 1.3.0rc4 (hopefully will turn out to be
+	1.3.0-stable).
+
+2005-10-31 09:45  castaglia
+
+	* ChangeLog: 
+	One more update.
+
 2005-10-31 09:39  castaglia
 
 	* src/fsio.c: 
@@ -7924,7 +8138,7 @@
 2003-06-11 19:08  castaglia
 
 	* src/: inet.c, modules.c: 
-	Missing $Id: ChangeLog,v 1.128 2005-10-31 17:45:50 castaglia Exp $ keyword.
+	Missing $Id: ChangeLog,v 1.129 2006-03-01 16:45:03 castaglia Exp $ keyword.
 
 2003-06-11 15:45  castaglia
 
@@ -9095,7 +9309,7 @@
 
 	* contrib/: mod_sql.c, mod_sql.h, mod_sql_mysql.c,
 	mod_sql_postgres.c: 
-	Adding $Id: ChangeLog,v 1.128 2005-10-31 17:45:50 castaglia Exp $ tags to the mod_sql files.
+	Adding $Id: ChangeLog,v 1.129 2006-03-01 16:45:03 castaglia Exp $ tags to the mod_sql files.
 
 2003-03-14 07:54  castaglia
 
@@ -9612,12 +9826,12 @@
 
 	* src/netio.c, src/pool.c, src/sets.c, include/ident.h,
 	include/timers.h: 
-	Adding more $Id: ChangeLog,v 1.128 2005-10-31 17:45:50 castaglia Exp $ keywords.
+	Adding more $Id: ChangeLog,v 1.129 2006-03-01 16:45:03 castaglia Exp $ keywords.
 
 2003-02-11 23:34  castaglia
 
 	* src/feat.c: 
-	Added $Id: ChangeLog,v 1.128 2005-10-31 17:45:50 castaglia Exp $ keyword.
+	Added $Id: ChangeLog,v 1.129 2006-03-01 16:45:03 castaglia Exp $ keyword.
 
 2003-02-10 15:34  castaglia
 
