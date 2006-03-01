@@ -13,8 +13,15 @@ files.
 
     Mac OSX portability tweak.
 
+    Fixed run-time detection of Unix domain sockets.
+
+    Updated mod_ldap module.
+
+    NetBSD and Solaris logging improvements.
+
   + New documentation:
 
+    doc/howto/AuthFiles.html
     doc/howto/Quotas.html
 
 1.3.0rc3
@@ -244,4 +251,4 @@ files.
             ...
           </VirtualHost>
 
-Last Updated: $Date: 2005-12-27 18:29:42 $
+Last Updated: $Date: 2006-03-01 17:00:40 $
