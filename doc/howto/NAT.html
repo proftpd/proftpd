@@ -67,6 +67,14 @@ will use for its passive data transfers:
 <pre>
   PassivePorts 60000 65535	# These ports should be safe...
 </pre>
+Note that if the configured range of ports is too small, connecting clients
+may experience delays or be completely unable to operate when they
+request passive data transfers.  When the daemon cannot use one of the
+ports in the configured range, it will fall back to using a kernel-assigned
+port, and log a message reporting the issue.  The clients' ability to
+use this non-configured port will then depend on any NAT, router, or firewall
+configuration.
+<p>
 Now start the FTP daemon and you should see something like:
 <pre>
   123.45.67.89 - Masquerading as '123.45.67.89' (123.45.67.89)
@@ -197,7 +205,7 @@ For those that need to see a concrete example configuration of this:
 <p>
 <hr>
 Contributor: Tobias Ekbom &lt;tobias <i>at</i> vallcom <i>dot</i>com&gt;<br>
-Last Updated: <i>$Date: 2005-06-10 16:25:39 $</i>
+Last Updated: <i>$Date: 2006-03-06 21:49:10 $</i>
 <hr>
 
 <body>
