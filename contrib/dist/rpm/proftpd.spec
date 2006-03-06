@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.40 2006-03-01 16:45:05 castaglia Exp $
+# $Id: proftpd.spec,v 1.41 2006-03-06 18:17:55 castaglia Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -17,6 +17,8 @@
 #   mod_rewrite
 #   mod_ifsession
 #   mod_facl
+#   mod_quotatab
+#   mod_quotatab_sql
 #   ipv6
 
 %define proftpd_version 1.3.0rc4
@@ -85,6 +87,8 @@ This package is neccesary to setup ProFTPD to run from inetd/xinetd.
   MODULES="${MODULES}%{?_with_mod_sql_postgres::mod_sql_postgres}"
   MODULES="${MODULES}%{?_with_mod_rewrite::mod_rewrite}"
   MODULES="${MODULES}%{?_with_mod_ifsession::mod_ifsession}"
+  MODULES="${MODULES}%{?_with_mod_quotatab::mod_quotatab}"
+  MODULES="${MODULES}%{?_with_mod_quotatab_sql::mod_quotatab_sql}"
   MODULES="${MODULES}%{?_with_mod_facl:mod_facl}"
   CFLAGS="$RPM_OPT_FLAGS" ./configure \
 	--prefix=%{prefix} \
@@ -233,6 +237,9 @@ rm -rf %{_builddir}/%{name}-%{version}
 %config(noreplace) /etc/xinetd.d/proftpd
 
 %changelog
+* Sun Mar 5 2006 Itamar Reis Peixoto <itamar@ispbrasil.com.br>
+- Added "--with mod_quotatab" and "--with mod_quotatab_sql" to enable Quota Support while building the RPM
+
 * Sun Nov  2 2003 John Morrissey <jwm@horde.net>
 - This changelog is not frequently updated - please check the CVS revision
   history at http://cvs.proftpd.org/ instead.
