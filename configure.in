@@ -179,6 +179,7 @@ AC_ARG_WITH(includes,
         ac_build_addl_includes="-I$ainclude $ac_build_addl_includes"
       fi
     done
+    ac_orig_cppflags="$CPPFLAGS"
     CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
   ])
 
@@ -195,6 +196,7 @@ AC_ARG_WITH(libraries,
         ac_build_addl_libdirs="-L$alibdir $ac_build_addl_libdirs"
       fi
     done 
+    ac_orig_ldflags="$LDFLAGS"
     LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
   ])
 
@@ -1738,6 +1740,10 @@ test "x$ac_addl_libs" = x || LIBS="$LIBS $ac_addl_libs"
 ac_addl_dirs=`echo "$ac_addl_dirs" | sed -e 's/ *\$//'`
 ac_addl_dirs=`echo "$ac_addl_dirs" | sed -e 's/^ *//'`
 ADDL_DIRS="$ac_addl_dirs"
+
+# Restore the original CPPFLAGS and LDFLAGS settings
+CPPFLAGS="$ac_orig_cppflags"
+LDFLAGS="$ac_orig_ldflags"
 
 INCLUDES="$ac_build_addl_includes"
 LIBDIRS="$ac_build_addl_libdirs"
