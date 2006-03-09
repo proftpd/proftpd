@@ -77,6 +77,10 @@ fi
 
 LDFLAGS="-L\$(top_srcdir)/lib $LDFLAGS"
 
+# Record the current CPPFLAGS and LDFLAGS here
+ac_orig_cppflags="$CPPFLAGS"
+ac_orig_ldflags="$LDFLAGS"
+
 if test $ac_cv_prog_gcc = yes; then
   if test x"$CFLAGS" = "x-g -O2"; then
     fullCFLAGS="-O2"
@@ -179,7 +183,6 @@ AC_ARG_WITH(includes,
         ac_build_addl_includes="-I$ainclude $ac_build_addl_includes"
       fi
     done
-    ac_orig_cppflags="$CPPFLAGS"
     CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
   ])
 
@@ -196,7 +199,6 @@ AC_ARG_WITH(libraries,
         ac_build_addl_libdirs="-L$alibdir $ac_build_addl_libdirs"
       fi
     done 
-    ac_orig_ldflags="$LDFLAGS"
     LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
   ])
 
