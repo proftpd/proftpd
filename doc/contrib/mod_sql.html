@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.2 2004-12-12 19:27:20 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.3 2006-03-09 18:50:34 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -16,9 +16,9 @@
 
 This module is contained in the <code>contrib/mod_sql.c</code>,
 <code>contrib/mod_sql.h</code>, <code>contrib/mod_sql_mysql.c</code>, and
-<code>contrib/mod_sql_postgres.c</code> files for ProFTPD 1.2, and is not
-compiled by default.  Installation instructions are discussed
-<a href="#Installation">here</a>.
+<code>contrib/mod_sql_postgres.c</code> files for ProFTPD
+1.2.<i>x</i>/1.3.<i>x</i>, and is not compiled by default.  Installation
+instructions are discussed <a href="#Installation">here</a>.
 
 <p>
 The <code>mod_sql</code> module is an authentication and logging module
@@ -48,6 +48,7 @@ The most current version of <code>mod_sql</code> is distributed with ProFTPD.
 <ul>
   <li><a href="#SQLAuthenticate">SQLAuthenticate</a>
   <li><a href="#SQLAuthTypes">SQLAuthTypes</a>
+  <li><a href="#SQLBackend">SQLBackend</a>
   <li><a href="#SQLConnectInfo">SQLConnectInfo</a>
   <li><a href="#SQLDefaultGID">SQLDefaultGID</a>
   <li><a href="#SQLDefaultHomedir">SQLDefaultHomedir</a>
@@ -310,6 +311,53 @@ password).  If all of the configured authentication methods fail,
   <li><code>SQLScrambledPasswords</code>
   <li><code>SQLSSLHashedPasswords</code>
 </ul>
+
+<p>
+<hr>
+<h2><a name="SQLBackend">SQLBackend</a></h2>
+<strong>Syntax:</strong> SQLBackend <em>backend</em><br>
+<strong>Default:</strong> Depends<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_sql<br>
+<strong>Compatibility:</strong> 1.3.0rc1 and later
+
+<p>
+In 1.3.0rc1, the <code>mod_sql</code> module gained the ability to be
+compiled with multiple backend modules supported, <i>e.g.</i> to have
+both <code>mod_sql_mysql</code> and <code>mod_sql_postgres</code>
+usable in the same <code>proftpd</code> daemon.   The <code>SQLBackend</code>
+directive configures which of these different database backends should
+be used.
+
+<p>
+If there is only one backend module compiled in, the <code>SQLBackend</code>
+directive is not needed.  If there are multiple backend modules compiled
+and no <code>SQLBackend</code> directive is specified, then
+<code>mod_sql</code> will default to using the first backend module listed.
+For instance, if you configured <code>proftpd</code> using a
+<code>configure</code> command such as:
+<pre>
+  ./configure --with-modules=mod_sql:mod_sql_postgres:mod_sql_mysql ...
+</pre>
+then <code>mod_sql</code> would default to using <code>mod_sql_postgres</code>
+as the backend module to use.
+
+<p>
+You might have multiple <code>&lt;VirtualHost&gt;</code> sections which use
+different SQL backends, <i>e.g.</i>:
+<pre>
+  &lt;VirtualHost 1.2.3.4&gt;
+    SQLBackend mysql
+    ...
+  &lt;/VirtualHost&gt;
+
+  &lt;VirtualHost 5.6.7.8&gt;
+    SQLBackend postgres
+    ...
+  &lt;/VirtualHost&gt;
+</pre>
+Use &quot;mysql&quot; for the <code>mod_sql_mysql</code> module, and
+&quot;postgres&quot; for the <code>mod_sql_postgres</code> module.
 
 <p>
 <hr>
@@ -1148,7 +1196,7 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2004-12-12 19:27:20 $</i><br>
+Last Updated: <i>$Date: 2006-03-09 18:50:34 $</i><br>
 
 <br><hr>
 
