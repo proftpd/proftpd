@@ -19075,6 +19075,10 @@ fi
 
 LDFLAGS="-L\$(top_srcdir)/lib $LDFLAGS"
 
+# Record the current CPPFLAGS and LDFLAGS here
+ac_orig_cppflags="$CPPFLAGS"
+ac_orig_ldflags="$LDFLAGS"
+
 if test $ac_cv_c_compiler_gnu = yes; then
   if test x"$CFLAGS" = "x-g -O2"; then
     fullCFLAGS="-O2"
@@ -19456,7 +19460,6 @@ if test "${with_includes+set}" = set; then
         ac_build_addl_includes="-I$ainclude $ac_build_addl_includes"
       fi
     done
-    ac_orig_cppflags="$CPPFLAGS"
     CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
 
 fi;
@@ -19473,7 +19476,6 @@ if test "${with_libraries+set}" = set; then
         ac_build_addl_libdirs="-L$alibdir $ac_build_addl_libdirs"
       fi
     done
-    ac_orig_ldflags="$LDFLAGS"
     LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
 
 fi;
