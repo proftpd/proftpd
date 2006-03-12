@@ -24,7 +24,7 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/* $Id: privs.h,v 1.30 2005-09-27 16:08:30 castaglia Exp $
+/* $Id: privs.h,v 1.31 2006-03-12 00:16:29 castaglia Exp $
  */
 
 #ifndef PR_PRIVS_H
@@ -136,9 +136,9 @@
   }
 
 #  define PRIVS_RELINQUISH  { \
-    pr_log_debug(DEBUG9, "RELINQUISH PRIVS at %s:%d", __FILE__, __LINE__); \
     pr_signals_block(); \
     if (!session.disable_id_switching) { \
+      pr_log_debug(DEBUG9, "RELINQUISH PRIVS at %s:%d", __FILE__, __LINE__); \
       if (geteuid() != PR_ROOT_UID) { \
         if (setreuid(session.uid, PR_ROOT_UID)) \
           pr_log_pri(PR_LOG_ERR, "PRIVS_RELINQUISH: unable to " \
@@ -263,14 +263,13 @@
 /* Relinquish privs granted by PRIVS_ROOT or PRIVS_USER.
  */
 #  define PRIVS_RELINQUISH { \
-    pr_log_debug(DEBUG9, "RELINQUISH PRIVS at %s:%d", __FILE__, __LINE__); \
     pr_signals_block(); \
     if (!session.disable_id_switching) { \
+      pr_log_debug(DEBUG9, "RELINQUISH PRIVS at %s:%d", __FILE__, __LINE__); \
       if (geteuid() != PR_ROOT_UID) { \
         if (seteuid(PR_ROOT_UID)) \
           pr_log_pri(PR_LOG_ERR, "PRIVS_RELINQUISH: unable to seteuid(PR_ROOT_UID): %s", strerror(errno)); \
       } \
-      pr_log_debug(DEBUG9, "RELINQUISH PRIVS at %s:%d", __FILE__, __LINE__); \
       if (setegid(session.gid)) \
         pr_log_pri(PR_LOG_ERR, "PRIVS_RELINQUISH: unable to setegid(session.gid): %s", strerror(errno)); \
       if (seteuid(session.uid)) \
