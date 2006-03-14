@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.192 2006-01-04 13:31:40 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.193 2006-03-14 03:18:59 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1372,6 +1372,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
   while ((len = pr_data_xfer(lbuf, bufsz)) > 0) {
     int res;
 
+    pr_signals_handle();
+
     if (XFER_ABORTED)
       break;
 
@@ -1496,9 +1498,19 @@ MODRET xfer_rest(cmd_rec *cmd) {
   }
 
   /* If we're using HiddenStores, then REST won't work. */
-  if ((hidden_stores = get_param_ptr(CURRENT_CONF, "HiddenStores",
-      FALSE)) != NULL && *hidden_stores == TRUE) {
+  hidden_stores = get_param_ptr(CURRENT_CONF, "HiddenStores", FALSE);
+  if (hidden_stores != NULL &&
+      *hidden_stores == TRUE) {
     pr_response_add_err(R_501, "REST not compatible with server configuration");
+    return ERROR(cmd);
+  }
+
+  /* Don't allow negative numbers.  strtoul()/strtoull() will silently
+   * handle them.
+   */
+  if (*cmd->argv[1] == '-') {
+    pr_response_add_err(R_501,
+      "REST requires a value greater than or equal to 0");
     return ERROR(cmd);
   }
 
@@ -1635,6 +1647,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
       pr_response_add_err(R_554, "%s: invalid REST argument", cmd->arg);
       pr_fsio_close(retr_fh);
       retr_fh = NULL;
+
       return ERROR(cmd);
     }
 
@@ -1644,6 +1657,11 @@ MODRET xfer_retr(cmd_rec *cmd) {
       pr_fsio_close(retr_fh);
       errno = xerrno;
       retr_fh = NULL;
+
+      pr_log_debug(DEBUG0, "error seeking to offset %" PR_LU
+        "for file %s: %s", session.restart_pos, dir, strerror(errno));
+      pr_response_add_err(R_554, "%s: invalid REST argument", cmd->arg);
+      return ERROR(cmd);
     }
 
     curr_pos = session.restart_pos;
@@ -1703,6 +1721,8 @@ MODRET xfer_retr(cmd_rec *cmd) {
     NULL);
 
   while (nbytes_sent != session.xfer.file_size) {
+    pr_signals_handle();
+
     if (XFER_ABORTED)
       break;
 
