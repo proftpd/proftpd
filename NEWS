@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.725 2006-03-15 02:09:47 castaglia Exp $
+$Id: NEWS,v 1.726 2006-03-15 02:47:20 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -21,7 +21,8 @@ CVS
   this behavior looks to be a glibc bug.  In the meantime, the workaround
   is to manually set the TZ environment variable, if it is not already
   set, before calling chroot().  This bug appears to be specific to
-  glibc, thus the workaround is only enabled on Linux platforms.
+  glibc, thus the workaround is only enabled on platforms using glibc-2.3
+  or later.
 
 1.3.0rc4 - Released 01-Mar-2006
 --------------------------------
