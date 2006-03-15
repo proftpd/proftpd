@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.209 2006-03-15 02:47:20 castaglia Exp $
+ * $Id: mod_auth.c,v 1.210 2006-03-15 02:49:49 castaglia Exp $
  */
 
 #include "conf.h"
@@ -67,7 +67,7 @@ static int lockdown(char *newroot) {
       pr_log_debug(DEBUG10, "set TZ environment variable to '%s'", tzname[0]);
     }
   }
-#endif /* !HAVE_SETENV */
+#endif
 
   pr_log_pri(PR_LOG_INFO, "Preparing to chroot to directory '%s'", newroot);
 
