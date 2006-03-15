@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.276 2005-12-27 03:04:10 castaglia Exp $
+ * $Id: main.c,v 1.277 2006-03-15 03:56:24 castaglia Exp $
  */
 
 #include "conf.h"
@@ -358,9 +358,8 @@ static void end_login_noexit(void) {
     sbuf[sizeof(sbuf) - 1] = '\0';
 
     if (session.wtmp_log)
-      log_wtmp(sbuf, "",
-        (session.c && session.c->remote_name ? session.c->remote_name : ""),
-        (session.c && session.c->remote_addr ? session.c->remote_addr : NULL));
+      log_wtmp(sbuf, "", pr_netaddr_get_sess_remote_name(),
+        pr_netaddr_get_sess_remote_addr());
   }
 
   /* These are necessary in order that cleanups associated with these pools

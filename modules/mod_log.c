@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.72 2005-10-18 23:27:31 castaglia Exp $
+ * $Id: mod_log.c,v 1.73 2006-03-15 03:56:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -708,13 +708,14 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
   case META_REMOTE_HOST:
     argp = arg;
-    sstrncpy(argp, session.c->remote_name, sizeof(arg));
+    sstrncpy(argp, pr_netaddr_get_sess_remote_name(), sizeof(arg));
     m++;
     break;
 
   case META_REMOTE_IP:
     argp = arg;
-    sstrncpy(argp, pr_netaddr_get_ipstr(session.c->remote_addr), sizeof(arg));
+    sstrncpy(argp, pr_netaddr_get_ipstr(pr_netaddr_get_sess_remote_addr()),
+      sizeof(arg));
     m++;
     break;
 
