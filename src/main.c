@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.277 2006-03-15 03:56:24 castaglia Exp $
+ * $Id: main.c,v 1.278 2006-03-15 19:41:01 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1236,15 +1236,13 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
   session.sp_flags = 0;
   session.proc_prefix = "(connecting)";
 
-  pr_netaddr_set_sess_addrs();
-
   /* Close the write side of the semaphore pipe to tell the parent
    * we are all grown up and have finished housekeeping (closing
    * former listen sockets).
    */
   close(semfds[1]);
 
-  /* Now perform reverse dns */
+  /* Now perform reverse DNS lookups. */
   if (ServerUseReverseDNS) {
     rev = pr_netaddr_set_reverse_dns(ServerUseReverseDNS);
 
@@ -1253,6 +1251,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
 
     pr_netaddr_set_reverse_dns(rev);
   }
+
+  pr_netaddr_set_sess_addrs();
 
   /* Check and see if we are shutdown */
   if (shutdownp) {
