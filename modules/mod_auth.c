@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.207 2005-08-23 16:50:23 castaglia Exp $
+ * $Id: mod_auth.c,v 1.208 2006-03-15 02:09:47 castaglia Exp $
  */
 
 #include "conf.h"
@@ -55,8 +55,20 @@ static void auth_count_scoreboard(cmd_rec *, char *);
  * particular directory.
  */
 static int lockdown(char *newroot) {
-  pr_log_debug(DEBUG1, "Preparing to chroot() the environment, path = '%s'",
-    newroot);
+#if defined(LINUX) && defined(HAVE_SETENY)
+  char *tz = getenv("TZ");
+  if (tz == NULL) {
+    if (setenv("TZ", pstrdup(permanent_pool, tzname[0]), 1) < 0) {
+      pr_log_debug(DEBUG0, "error setting TZ environment variable to "
+        "'%s': %s", tzname[0], strerror(errno));
+
+    } else {
+      pr_log_debug(DEBUG10, "set TZ environment variable to '%s'", tzname[0]);
+    }
+  }
+#endif /* !HAVE_SETENV */
+
+  pr_log_pri(PR_LOG_INFO, "Preparing to chroot to directory '%s'", newroot);
 
   PRIVS_ROOT
   if (pr_fsio_chroot(newroot) == -1) {
