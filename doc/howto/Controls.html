@@ -1,4 +1,4 @@
-<!-- $Id: Controls.html,v 1.2 2004-11-17 17:58:19 castaglia Exp $ -->
+<!-- $Id: Controls.html,v 1.3 2006-03-16 18:06:15 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Controls.html,v $ -->
 
 <html>
@@ -29,7 +29,11 @@ domain socket, using a simple text-based protocol.  A new program,
 <code>ftpdctl</code>, is distributed with ProFTPD; <code>ftpdctl</code> is a
 Controls client.  The server side of the Controls functionality is the
 <a href="http://www.castaglia.org/proftpd/modules/mod_ctrls.html"><code>mod_ctrls</code></a> module, which is compiled into a <code>proftpd</code> daemon when
-the <em>--enable-ctrls</em> configure option is used.
+the <em>--enable-ctrls</em> configure option is used.  Note, however, that
+the Controls functionality only works for <code>proftpd</code> daemons
+whose <code>ServerType</code> is <code>standalone</code>; <code>proftpd</code>
+daemons run via inetd/xinetd cannot support Controls and the
+<code>ftpdctl</code> program.
 
 <p>
 <b>Configuring <code>mod_ctrls</code></b><br>
@@ -304,7 +308,7 @@ If either allows access, the client can use that control action.
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-11-17 17:58:19 $</i><br>
+Last Updated: <i>$Date: 2006-03-16 18:06:15 $</i><br>
 <hr>
 
 </body>

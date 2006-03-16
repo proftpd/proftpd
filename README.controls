@@ -9,7 +9,10 @@ communicate directly with a running proftpd daemon, making it possible to do
 on-the-fly configuration changes and other capabilities.  This feature
 includes a program called `ftpdctl', for communicating with the daemon from
 the command line, and an API that third-party modules can use to extend the
-Control commands available to `ftpdctl'.
+Control commands available to `ftpdctl'.  Note, however, that this
+functionality is only available if proftpd is run in standalone mode
+(i.e. "ServerType standalone"); proftpd daemons run via inetd/xinetd cannot
+support this feature.
 
 To enable support for Controls, use the --enable-ctrls configure option:
 
