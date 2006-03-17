@@ -2,7 +2,7 @@
  * ProFTPD: mod_delay -- a module for adding arbitrary delays to the FTP
  *                       session lifecycle
  *
- * Copyright (c) 2004 TJ Saunders
+ * Copyright (c) 2004-2006 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.18 2006-02-21 17:51:07 castaglia Exp $
+ * $Id: mod_delay.c,v 1.19 2006-03-17 18:52:37 castaglia Exp $
  */
 
 #include "conf.h"
@@ -78,6 +78,7 @@ struct {
 static unsigned int delay_engine = TRUE;
 static unsigned int delay_nuser = 0;
 static unsigned int delay_npass = 0;
+static pool *delay_pool = NULL;
 static struct timeval delay_tv;
 
 static void delay_table_reset(void);
@@ -814,6 +815,8 @@ MODRET delay_pre_user(cmd_rec *cmd) {
 
 static void delay_exit_ev(const void *event_data, void *user_data) {
   pr_fh_t *fh;
+  char *data;
+  size_t datalen;
 
   if (!delay_engine)
     return;
@@ -836,7 +839,6 @@ static void delay_exit_ev(const void *event_data, void *user_data) {
   delay_tab.dt_fd = fh->fh_fd;
   delay_tab.dt_data = NULL;
 
-  /* Load the DelayTable into memory. */
   if (delay_table_load(TRUE) < 0) {
     int xerrno = errno;
     pr_fsio_close(fh);
@@ -848,17 +850,20 @@ static void delay_exit_ev(const void *event_data, void *user_data) {
     return;
   }
 
-  if (pr_fsio_write(fh, delay_tab.dt_data, delay_tab.dt_size) < 0) {
-    pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-      ": warning: error updating DelayTable '%s': %s", delay_tab.dt_path,
-      strerror(errno));
-  }
+  datalen = delay_tab.dt_size;
+  data = palloc(delay_pool, datalen);
+  memcpy(data, delay_tab.dt_data, datalen);
 
-  /* Unload the DelayTable from memory. */
   if (delay_table_unload(TRUE) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       ": warning: error unloading DelayTable '%s' from memory: %s",
       delay_tab.dt_path, strerror(errno));
+  }
+
+  if (pr_fsio_write(fh, data, datalen) < 0) {
+    pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
+      ": warning: error updating DelayTable '%s': %s", delay_tab.dt_path,
+      strerror(errno));
   }
 
   if (pr_fsio_close(fh) < 0) {
@@ -888,6 +893,16 @@ static void delay_postparse_ev(const void *event_data, void *user_data) {
   return;
 }
 
+static void delay_restart_ev(const void *event_data, void *user_data) {
+  if (delay_pool)
+    destroy_pool(delay_pool);
+
+  delay_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(delay_pool, MOD_DELAY_VERSION);
+
+  return;
+}
+
 /* Initialization functions
  */
 
@@ -897,6 +912,11 @@ static int delay_init(void) {
 
   pr_event_register(&delay_module, "core.exit", delay_exit_ev, NULL);
   pr_event_register(&delay_module, "core.postparse", delay_postparse_ev, NULL);
+  pr_event_register(&delay_module, "core.restart", delay_restart_ev, NULL);
+
+  delay_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(delay_pool, MOD_DELAY_VERSION);
+
   return 0;
 }
 

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.727 2006-03-15 03:56:23 castaglia Exp $
+$Id: NEWS,v 1.728 2006-03-17 18:52:34 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -24,6 +24,7 @@ CVS
   glibc, thus the workaround is only enabled on platforms using glibc-2.3
   or later.
 - Bug 2765 - Child process segfaults while handling a SIGTERM.
+- Bug 2723 - mod_delay causes process to hang on OS X when proftpd exits.
 
 1.3.0rc4 - Released 01-Mar-2006
 --------------------------------
