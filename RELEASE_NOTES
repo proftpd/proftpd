@@ -6,6 +6,19 @@ This file contains a description of the major changes to ProFTPD for the
 More information on these changes can be found in the NEWS and ChangeLog
 files.
 
+1.3.0rc5
+--------
+
+  + Bugfixes:
+
+    Fixed handling of CPPFLAGS and LDFLAGS settings with regards to
+    the --with-includes and --with-libraries configure options.
+
+    Fixed handling of REST commands using negative numbers.
+
+    Worked around glibc-2.3 issues with looking up timezone information
+    when the process has been chrooted.
+
 1.3.0rc4
 --------
 
@@ -251,4 +264,4 @@ files.
             ...
           </VirtualHost>
 
-Last Updated: $Date: 2006-03-01 17:00:40 $
+Last Updated: $Date: 2006-03-17 02:12:57 $
