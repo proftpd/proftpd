@@ -19,6 +19,8 @@ files.
     Worked around glibc-2.3 issues with looking up timezone information
     when the process has been chrooted.
 
+    Fixed hanging of daemon processes on Mac OS X when shutting down.
+
 1.3.0rc4
 --------
 
@@ -264,4 +266,4 @@ files.
             ...
           </VirtualHost>
 
-Last Updated: $Date: 2006-03-17 02:12:57 $
+Last Updated: $Date: 2006-03-18 20:13:49 $

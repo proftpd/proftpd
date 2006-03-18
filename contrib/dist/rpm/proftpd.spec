@@ -1,4 +1,4 @@
-# $Id: proftpd.spec,v 1.41 2006-03-06 18:17:55 castaglia Exp $
+# $Id: proftpd.spec,v 1.42 2006-03-18 20:13:50 castaglia Exp $
 
 # You can specify additional modules on the RPM build line by specifying
 # flags like:
@@ -21,7 +21,7 @@
 #   mod_quotatab_sql
 #   ipv6
 
-%define proftpd_version 1.3.0rc4
+%define proftpd_version 1.3.0rc5
 %define usecvsversion             0
 %define proftpd_cvs_version_main  1.2
 %define proftpd_cvs_version_date  20031009
