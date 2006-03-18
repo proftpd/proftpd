@@ -1,3 +1,120 @@
+2006-03-18 12:13  castaglia
+
+	* NEWS, RELEASE_NOTES, contrib/dist/rpm/proftpd.spec,
+	include/version.h: 
+	Rolling up RC5 release.
+
+2006-03-17 10:52  castaglia
+
+	* NEWS, modules/mod_delay.c: 
+	Bug#2723 - mod_delay causes process to hang on OS X when proftpd
+	exits.
+
+2006-03-16 18:12  castaglia
+
+	* RELEASE_NOTES: 
+	Updating the release notes for the RC5 release.
+
+2006-03-16 10:06  castaglia
+
+	* README.controls, doc/howto/Controls.html: 
+	Make notes about how Controls are affected by ServerType.
+
+2006-03-15 11:41  castaglia
+
+	* src/main.c: 
+	We need to copy the session addresses into memory after any reverse
+	DNS resolution is performed, not before.
+
+2006-03-14 19:56  castaglia
+
+	* NEWS, modules/mod_log.c, modules/mod_xfer.c, src/main.c: 
+	Bug#2765 - Child process segfaults while handling a SIGTERM.  A
+	field from a structure whose memory had been freed by the time the
+	field was referenced was tickling the segfault.
+
+2006-03-14 18:49  castaglia
+
+	* modules/mod_auth.c: 
+	Remove slightly misleading (and outdated) comment.
+
+2006-03-14 18:47  castaglia
+
+	* NEWS, modules/mod_auth.c: 
+	Make the workaround for Bug#2717 be specific to glibc-2.3 or
+	greater, not to Linux in general.
+
+2006-03-14 18:09  castaglia
+
+	* NEWS, modules/mod_auth.c: 
+	Bug#2717 - Wrong timestamp in logs for chrooted processes.
+
+2006-03-13 19:18  castaglia
+
+	* NEWS, modules/mod_xfer.c: 
+	Bug#2764 - REST command does not return an error for negative
+	numbers.
+
+2006-03-11 16:16  castaglia
+
+	* include/privs.h: 
+	Remove some duplicating logging in the PRIVS_RELINQUISH macro
+	definition.
+
+2006-03-11 09:27  castaglia
+
+	* include/version.h: 
+	Forgot to change the status back to "CVS", for now.
+
+2006-03-09 10:50  castaglia
+
+	* doc/contrib/mod_sql.html: 
+	Add description of the SQLBackend directive.
+
+2006-03-09 10:20  castaglia
+
+	* configure: 
+	Updating configure.
+
+2006-03-09 10:12  castaglia
+
+	* configure.in: 
+	Updating changes made for fixing Bug#2759 so that the libsupp
+	library can be found.
+
+2006-03-08 11:11  castaglia
+
+	* configure: 
+	Updating configure.
+
+2006-03-08 11:06  castaglia
+
+	* NEWS, configure.in: 
+	Bug#2759 - Adding --with-includes to configure can cause problems
+	when building with other packages.
+
+2006-03-06 13:49  castaglia
+
+	* doc/howto/NAT.html: 
+	Add a description of what can happen if the configured PassivePorts
+	range is too small.
+
+2006-03-06 10:17  castaglia
+
+	* NEWS, contrib/dist/rpm/proftpd.spec: 
+	Bug#2757 - Add support for quota modules to RPM spec.
+
+2006-03-01 09:00  castaglia
+
+	* RELEASE_NOTES: 
+	Updating release notes.
+
+2006-03-01 08:45  castaglia
+
+	* ChangeLog, NEWS, contrib/dist/rpm/proftpd.spec,
+	include/version.h: 
+	Preparing for release of 1.3.0rc4.
+
 2006-02-23 15:01  castaglia
 
 	* doc/rfc/: draft-murray-auth-ftp-ssl-15.txt, rfc4217.txt: 
@@ -8138,7 +8255,7 @@
 2003-06-11 19:08  castaglia
 
 	* src/: inet.c, modules.c: 
-	Missing $Id: ChangeLog,v 1.129 2006-03-01 16:45:03 castaglia Exp $ keyword.
+	Missing $Id: ChangeLog,v 1.130 2006-03-18 20:15:43 castaglia Exp $ keyword.
 
 2003-06-11 15:45  castaglia
 
@@ -9309,7 +9426,7 @@
 
 	* contrib/: mod_sql.c, mod_sql.h, mod_sql_mysql.c,
 	mod_sql_postgres.c: 
-	Adding $Id: ChangeLog,v 1.129 2006-03-01 16:45:03 castaglia Exp $ tags to the mod_sql files.
+	Adding $Id: ChangeLog,v 1.130 2006-03-18 20:15:43 castaglia Exp $ tags to the mod_sql files.
 
 2003-03-14 07:54  castaglia
 
@@ -9826,12 +9943,12 @@
 
 	* src/netio.c, src/pool.c, src/sets.c, include/ident.h,
 	include/timers.h: 
-	Adding more $Id: ChangeLog,v 1.129 2006-03-01 16:45:03 castaglia Exp $ keywords.
+	Adding more $Id: ChangeLog,v 1.130 2006-03-18 20:15:43 castaglia Exp $ keywords.
 
 2003-02-11 23:34  castaglia
 
 	* src/feat.c: 
-	Added $Id: ChangeLog,v 1.129 2006-03-01 16:45:03 castaglia Exp $ keyword.
+	Added $Id: ChangeLog,v 1.130 2006-03-18 20:15:43 castaglia Exp $ keyword.
 
 2003-02-10 15:34  castaglia
 
