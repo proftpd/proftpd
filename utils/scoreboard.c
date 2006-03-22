@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support (modified for use by external utilities).
  *
- * $Id: scoreboard.c,v 1.7 2004-11-02 18:18:59 castaglia Exp $
+ * $Id: scoreboard.c,v 1.8 2006-03-22 18:51:45 castaglia Exp $
  */
 
 #include "utils.h"
@@ -182,14 +182,14 @@ int util_set_scoreboard(const char *path) {
 
   util_sstrncpy(dir, path, sizeof(dir));
 
-  if ((tmp = strrchr(dir, '/')) == NULL) {
+  tmp = strrchr(dir, '/');
+  if (tmp == NULL) {
     errno = EINVAL;
     return -1;
   }
   *tmp = '\0';
 
-  /* Parent directory must not be world-writeable */
-
+  /* Parent directory must not be world-writable. */
   if (stat(dir, &st) < 0)
     return -1;
 
@@ -202,6 +202,12 @@ int util_set_scoreboard(const char *path) {
     errno = EPERM;
     return -1;
   }
+
+  *tmp = '/';
+
+  /* Make sure file exists. */
+  if (stat(dir, &st) < 0)
+    return -1;
 
   util_sstrncpy(util_scoreboard_file, path, sizeof(util_scoreboard_file));
   return 0;

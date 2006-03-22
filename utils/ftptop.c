@@ -1,7 +1,7 @@
 /*
  * ProFTPD - ftptop: a utility for monitoring proftpd sessions
  * Copyright (c) 2000-2002 TJ Saunders <tj@castaglia.org>
- * Copyright (c) 2003 The ProFTPD Project team
+ * Copyright (c) 2003-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 /* Shows who is online via proftpd, in a manner similar to top.  Uses the
  * scoreboard files.
  *
- * $Id: ftptop.c,v 1.31 2004-11-02 18:18:59 castaglia Exp $
+ * $Id: ftptop.c,v 1.32 2006-03-22 18:51:45 castaglia Exp $
  */
 
 #define FTPTOP_VERSION "ftptop/0.9"
@@ -202,8 +202,10 @@ static const char *show_ftpd_uptime(void) {
 
   updays = (int) uptime_secs / (60 * 60 * 24);
 
-  if (updays)
-    pos += sprintf(buf + pos, "%d day%s, ", updays, (updays != 1) ? "s" : "");
+  if (updays) {
+    pos += snprintf(buf + pos, sizeof(buf) - pos, "%d day%s, ", updays,
+      (updays != 1) ? "s" : "");
+  }
 
   upminutes = (int) uptime_secs / 60;
 
@@ -212,11 +214,13 @@ static const char *show_ftpd_uptime(void) {
 
   upminutes = upminutes % 60;
 
-  if (uphours)
-    pos += sprintf(buf + pos, "%2d hr%s %02d min", uphours,
+  if (uphours) {
+    pos += snprintf(buf + pos, sizeof(buf) - pos, "%2d hr%s %02d min", uphours,
       (uphours != 1) ? "s" : "", upminutes);
-  else
-    pos += sprintf(buf + pos, "%d min", upminutes);
+
+  } else {
+    pos += snprintf(buf + pos, sizeof(buf) - pos, "%d min", upminutes);
+  }
 
   return buf;
 }
@@ -319,7 +323,11 @@ static void process_opts(int argc, char *argv[]) {
         break;
 
       case 'f':
-        util_set_scoreboard(optarg);
+        if (util_set_scoreboard(optarg) < 0) {
+          fprintf(stderr, "%s: unable to use scoreboard '%s': %s\n",
+            program, optarg, strerror(errno));
+          exit(1);
+        }
         break;
 
       case 'h':
