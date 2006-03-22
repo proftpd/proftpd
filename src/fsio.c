@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (C) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (C) 2001-2005 The ProFTPD Project
+ * Copyright (C) 2001-2006 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.49 2005-10-31 17:39:59 castaglia Exp $
+ * $Id: fsio.c,v 1.50 2006-03-22 22:10:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3119,8 +3119,9 @@ static off_t calc_fs_size(size_t blocks, size_t bsize) {
 off_t pr_fs_getsize(char *path) {
 # if defined(HAVE_SYS_STATVFS_H)
 
-#  if _FILE_OFFSET_BITS == 64 && defined(SOLARIS2) && \
-   !defined(SOLARIS2_5_1) && !defined(SOLARIS2_6) && !defined(SOLARIS2_7)
+#  if defined(_FILE_OFFSET_BITS) && _FILE_OFFSET_BITS == 64 && \
+    defined(SOLARIS2) && !defined(SOLARIS2_5_1) && !defined(SOLARIS2_6) && \
+    !defined(SOLARIS2_7)
   /* Note: somewhere along the way, Sun decided that the prototype for
    * its statvfs64(2) function would include a statvfs64_t rather than
    * struct statvfs64.  In 2.6 and 2.7, it's struct statvfs64, and

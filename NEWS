@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.730 2006-03-22 21:45:56 castaglia Exp $
+$Id: NEWS,v 1.731 2006-03-22 22:10:33 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -12,6 +12,10 @@ $Id: NEWS,v 1.730 2006-03-22 21:45:56 castaglia Exp $
 CVS
 --------------------------------
 - Bug 2733 - libtool requires sh/bash.
+- Bug 2770 - FreeBSD compiler warning that "__GLIBC__" is not defined.
+- Bug 2771 - FreeBSD compiler warning about undeclared fgetpwent/fgetgrent
+  functions.
+- Bug 2772 - FreeBSD compiler warning that "_FILE_OFFSET_BITS" is not defined.
 
 1.3.0rc5 - Released 18-Mar-2006
 --------------------------------

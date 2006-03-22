@@ -22,6 +22,7 @@ not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite
 #define __PROFTPD_SUPPORT_LIBRARY
 
 #include <conf.h>
+#include "libsupp.h"
 
 /* From log.c/log.h */
 #define PR_LOG_ERR LOG_ERR
