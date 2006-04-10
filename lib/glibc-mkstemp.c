@@ -78,7 +78,7 @@ int mkstemp (char *tmpl) {
  */
 
 #ifdef _LARGEFILE_SOURCE
-      fd = open64 (tmp, O_RDWR | O_CREAT | O_EXCL, 0600);
+      fd = open64 (tmpl, O_RDWR | O_CREAT | O_EXCL, 0600);
 #else
       fd = open (tmpl, O_RDWR | O_CREAT | O_EXCL, 0600);
 #endif
