@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.25 2005-07-03 18:52:02 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.26 2006-04-16 22:39:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -986,24 +986,6 @@ static int auth_unix_init(void) {
 }
 
 static int auth_unix_sess_init(void) {
-  const char *file = NULL;
-
-  if ((file = get_param_ptr(main_server->conf, "AuthUserFile", FALSE))) {
-    endpwent();
-    persistent_passwdf = 1;		/* Force persistent mode */
-    pwdfname = file;
-    p_endpwent();
-    p_setpwent();
-  }
-
-  if ((file = get_param_ptr(main_server->conf, "AuthGroupFile", FALSE))) {
-    endgrent();
-    persistent_groupf = 1;
-    grpfname = file;
-    p_endgrent();
-    p_setgrent();
-  }
-
   pr_event_register(&auth_unix_module, "core.exit", auth_unix_exit_ev, NULL);
   return 0;
 }
