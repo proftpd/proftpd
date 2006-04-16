@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.26 2006-04-16 22:39:28 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.27 2006-04-16 22:41:53 castaglia Exp $
  */
 
 #include "conf.h"
@@ -669,8 +669,9 @@ MODRET pw_check(cmd_rec *cmd) {
 
 #ifdef COMSEC
   if (iscomsec()) {
-    if (strcmp(bigcrypt((char *) pw, (char *) cpw), cpw) != 0)
-      return ERROR(cmd);
+    if (strcmp(bigcrypt((char *) pw, (char *) cpw), cpw) != 0) {
+      return DECLINED(cmd);
+    }
 
   } else {
 #endif /* COMSEC */
@@ -719,8 +720,9 @@ MODRET pw_check(cmd_rec *cmd) {
   }
   PRIVS_RELINQUISH
 
-  if (res != SIASUCCESS)
-    return ERROR(cmd);
+  if (res != SIASUCCESS) {
+    return DECLINED(cmd);
+  }
 
 #else /* !PR_USE_SIA */
 
@@ -750,26 +752,29 @@ MODRET pw_check(cmd_rec *cmd) {
      * other than HANDLED at the moment.
      */
 
-    if (MODRET_ISHANDLED(mr) && MODRET_HASDATA(mr)) {
+    if (MODRET_ISHANDLED(mr) &&
+        MODRET_HASDATA(mr)) {
       pwent = mr->data;
 
-      if ((token = cygwin_logon_user((const struct passwd *) pwent,
-          pw)) == INVALID_HANDLE_VALUE) {
+      token = cygwin_logon_user((const struct passwd *) pwent, pw);
+      if (token == INVALID_HANDLE_VALUE) {
         pr_log_pri(PR_LOG_NOTICE, "error authenticating Cygwin user: %s",
           strerror(errno));
-        return ERROR(cmd);
+        return DECLINED(cmd);
       }
 
       cygwin_set_impersonation_token(token);
 
-    } else
+    } else {
       return DECLINED(cmd);
+    }
 
   } else
 # endif /* CYGWIN */
 
-  if (strcmp(crypt(pw, cpw), cpw) != 0)
-    return ERROR(cmd);
+  if (strcmp(crypt(pw, cpw), cpw) != 0) {
+    return DECLINED(cmd);
+  }
 #endif /* PR_USE_SIA */
 
 #ifdef COMSEC
