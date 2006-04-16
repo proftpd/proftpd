@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003, 2004 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.278 2006-03-15 19:41:01 castaglia Exp $
+ * $Id: main.c,v 1.279 2006-04-16 22:23:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -68,6 +68,14 @@
 #ifdef HAVE_REGEXP_H
 # include <regexp.h>
 #endif /* HAVE_REGEXP_H */
+
+#ifdef HAVE_EXECINFO_H
+# include <execinfo.h>
+#endif
+
+#ifdef HAVE_UCONTEXT_H
+# include <ucontext.h>
+#endif
 
 #include "privs.h"
 
@@ -116,8 +124,11 @@ static unsigned char have_dead_child = FALSE;
 
 static char sbuf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
 
+#ifndef PR_DEVEL_STACK_TRACE
 static char **Argv = NULL;
 static char *LastArgv = NULL;
+#endif /* PR_DEVEL_STACK_TRACE */
+
 static const char *PidPath = PR_PID_FILE_PATH;
 
 /* From dirtree.c */
@@ -137,6 +148,10 @@ static int syntax_check = 0;
 /* Signal handling */
 static RETSIGTYPE sig_disconnect(int);
 static RETSIGTYPE sig_evnt(int);
+static RETSIGTYPE sig_terminate(int);
+#ifdef PR_DEVEL_STACK_TRACE
+static void install_segv_handler(void);
+#endif /* PR_DEVEL_STACK_TRACE */
 
 volatile unsigned int recvd_signal_flags = 0;
 
@@ -147,6 +162,9 @@ static int term_signo = 0;
 static void handle_abort(void);
 static void handle_chld(void);
 static void handle_evnt(void);
+#ifdef PR_DEVEL_STACK_TRACE
+static void handle_segv(int, siginfo_t *, void *);
+#endif /* PR_DEVEL_STACK_TRACE */
 static void handle_xcpu(void);
 static void handle_terminate(void);
 static void handle_terminate_other(void);
@@ -178,6 +196,7 @@ extern char *__progname, *__progname_full;
 extern char **environ;
 
 static void init_proc_title(int argc, char *argv[], char *envp[]) {
+#ifndef PR_DEVEL_STACK_TRACE
   register int i, envpsize;
   char **p;
 
@@ -205,17 +224,19 @@ static void init_proc_title(int argc, char *argv[], char *envp[]) {
     if ((LastArgv + 1) == envp[i])
       LastArgv = envp[i] + strlen(envp[i]);
 
-#ifdef HAVE___PROGNAME
+# ifdef HAVE___PROGNAME
   /* Set the __progname and __progname_full variables so glibc and company
    * don't go nuts.
    */
   __progname = strdup("proftpd");
   __progname_full = strdup(argv[0]);
-#endif /* HAVE___PROGNAME */
+# endif /* HAVE___PROGNAME */
+#endif /* !PR_DEVEL_STACK_TRACE */
 }
 
 #ifdef PR_DEVEL
 static void free_proc_title(void) {
+# ifndef PR_DEVEL_STACK_TRACE
   if (environ) {
     register unsigned int i;
 
@@ -225,68 +246,70 @@ static void free_proc_title(void) {
     environ = NULL;
   }
 
-# ifdef HAVE___PROGNAME
+#  ifdef HAVE___PROGNAME
   free(__progname);
   __progname = NULL;
   free(__progname_full);
   __progname_full = NULL;
-# endif /* HAVE___PROGNAME */
+#  endif /* HAVE___PROGNAME */
+# endif /* !PR_DEVEL_STACK_TRACE */
 }
 #endif /* PR_DEVEL */
 
 static void set_proc_title(const char *fmt, ...) {
+#ifndef PR_DEVEL_STACK_TRACE
   va_list msg;
   static char statbuf[BUFSIZ];
 
-#ifndef HAVE_SETPROCTITLE
-#if PF_ARGV_TYPE == PF_ARGV_PSTAT
-   union pstun pst;
-#endif /* PF_ARGV_PSTAT */
+# ifndef HAVE_SETPROCTITLE
+#  if PF_ARGV_TYPE == PF_ARGV_PSTAT
+  union pstun pst;
+#  endif /* PF_ARGV_PSTAT */
   char *p;
   int i,maxlen = (LastArgv - Argv[0]) - 2;
-#endif /* HAVE_SETPROCTITLE */
+# endif /* HAVE_SETPROCTITLE */
 
   va_start(msg,fmt);
 
   memset(statbuf, 0, sizeof(statbuf));
 
-#ifdef HAVE_SETPROCTITLE
-# if __FreeBSD__ >= 4 && !defined(FREEBSD4_0) && !defined(FREEBSD4_1)
+# ifdef HAVE_SETPROCTITLE
+#  if __FreeBSD__ >= 4 && !defined(FREEBSD4_0) && !defined(FREEBSD4_1)
   /* FreeBSD's setproctitle() automatically prepends the process name. */
   vsnprintf(statbuf, sizeof(statbuf), fmt, msg);
 
-# else /* FREEBSD4 */
+#  else /* FREEBSD4 */
   /* Manually append the process name for non-FreeBSD platforms. */
   snprintf(statbuf, sizeof(statbuf), "%s", "proftpd: ");
   vsnprintf(statbuf + strlen(statbuf), sizeof(statbuf) - strlen(statbuf),
     fmt, msg);
 
-# endif /* FREEBSD4 */
+#  endif /* FREEBSD4 */
   setproctitle("%s", statbuf);
 
-#else /* HAVE_SETPROCTITLE */
+# else /* HAVE_SETPROCTITLE */
   /* Manually append the process name for non-setproctitle() platforms. */
   snprintf(statbuf, sizeof(statbuf), "%s", "proftpd: ");
   vsnprintf(statbuf + strlen(statbuf), sizeof(statbuf) - strlen(statbuf),
     fmt, msg);
 
-#endif /* HAVE_SETPROCTITLE */
+# endif /* HAVE_SETPROCTITLE */
 
   va_end(msg);
 
-#ifdef HAVE_SETPROCTITLE
+# ifdef HAVE_SETPROCTITLE
   return;
-#else
+# else
   i = strlen(statbuf);
 
-#if PF_ARGV_TYPE == PF_ARGV_NEW
+#  if PF_ARGV_TYPE == PF_ARGV_NEW
   /* We can just replace argv[] arguments.  Nice and easy.
    */
   Argv[0] = statbuf;
   Argv[1] = NULL;
-#endif /* PF_ARGV_NEW */
+#  endif /* PF_ARGV_NEW */
 
-#if PF_ARGV_TYPE == PF_ARGV_WRITEABLE
+#  if PF_ARGV_TYPE == PF_ARGV_WRITEABLE
   /* We can overwrite individual argv[] arguments.  Semi-nice.
    */
   snprintf(Argv[0], maxlen, "%s", statbuf);
@@ -295,19 +318,20 @@ static void set_proc_title(const char *fmt, ...) {
   while(p < LastArgv)
     *p++ = '\0';
   Argv[1] = NULL;
-#endif /* PF_ARGV_WRITEABLE */
+#  endif /* PF_ARGV_WRITEABLE */
 
-#if PF_ARGV_TYPE == PF_ARGV_PSTAT
+#  if PF_ARGV_TYPE == PF_ARGV_PSTAT
   pst.pst_command = statbuf;
   pstat(PSTAT_SETCMD, pst, i, 0, 0);
-#endif /* PF_ARGV_PSTAT */
+#  endif /* PF_ARGV_PSTAT */
 
-#if PF_ARGV_TYPE == PF_ARGV_PSSTRINGS
+#  if PF_ARGV_TYPE == PF_ARGV_PSSTRINGS
   PS_STRINGS->ps_nargvstr = 1;
   PS_STRINGS->ps_argvstr = statbuf;
-#endif /* PF_ARGV_PSSTRINGS */
+#  endif /* PF_ARGV_PSSTRINGS */
 
-#endif /* HAVE_SETPROCTITLE */
+# endif /* HAVE_SETPROCTITLE */
+#endif /* !PR_DEVEL_STACK_TRACE */
 }
 
 void session_set_idle(void) {
@@ -1758,6 +1782,37 @@ static void handle_abort(void) {
   abort();
 }
 
+#ifdef PR_DEVEL_STACK_TRACE
+static void handle_segv(int signo, siginfo_t *info, void *ptr) {
+  register unsigned i;
+  ucontext_t *uc = (ucontext_t *) ptr;
+  void *trace[PR_TUNABLE_CALLER_DEPTH];
+  char **strings;
+  size_t tracesz;
+
+  /* Call the "normal" SIGSEGV handler. */
+  sig_terminate(signo);
+
+  pr_log_pri(PR_LOG_ERR, "-----BEGIN STACK TRACE-----");
+
+  tracesz = backtrace(trace, PR_TUNABLE_CALLER_DEPTH);
+
+  /* Overwrite sigaction with caller's address */
+  trace[1] = (void *) uc->uc_mcontext.gregs[REG_EIP];
+
+  strings = backtrace_symbols(trace, tracesz);
+
+  /* Skip first stack frame; it just points here. */
+  for (i = 1; i < tracesz; ++i) {
+    pr_log_pri(PR_LOG_ERR, "[%u] %s", i-1, strings[i]);
+  }
+
+  pr_log_pri(PR_LOG_ERR, "-----END STACK TRACE-----");
+
+  exit(0);
+}
+#endif /* PR_DEVEL_STACK_TRACE */
+
 static RETSIGTYPE sig_terminate(int signo) {
 
   if (signo == SIGSEGV) {
@@ -1774,7 +1829,11 @@ static RETSIGTYPE sig_terminate(int signo) {
     pr_log_pri(PR_LOG_INFO, "FTP session closed.");
 
     /* Restore the default signal handler. */
+#ifdef PR_DEVEL_STACK_TRACE
+    install_segv_handler();
+#else
     signal(SIGSEGV, SIG_DFL);
+#endif /* PR_DEVEL_STACK_TRACE */
 
   } else if (signo == SIGTERM)
     recvd_signal_flags |= RECEIVED_SIG_TERMINATE;
@@ -1906,6 +1965,19 @@ static void finish_terminate(void) {
   end_login(1);
 }
 
+#ifdef PR_DEVEL_STACK_TRACE
+static void install_segv_handler(void) {
+  struct sigaction action;
+
+  memset(&action, 0, sizeof(action));
+  action.sa_sigaction = handle_segv;
+  action.sa_flags = SA_SIGINFO;
+
+  /* Ideally we would check the return value here. */
+  sigaction(SIGSEGV, &action, NULL);
+}
+#endif /* PR_DEVEL_STACK_TRACE */
+
 static void install_signal_handlers(void) {
   sigset_t sig_set;
 
@@ -1952,7 +2024,11 @@ static void install_signal_handlers(void) {
   signal(SIGILL, sig_terminate);
   signal(SIGABRT, sig_abort);
   signal(SIGFPE, sig_terminate);
+#ifdef PR_DEVEL_STACK_TRACE
+  install_segv_handler();
+#else
   signal(SIGSEGV, sig_terminate);
+#endif /* PR_DEVEL_STACK_TRACE */
   signal(SIGTERM, sig_terminate);
   signal(SIGXCPU, sig_terminate);
   signal(SIGURG, SIG_IGN);

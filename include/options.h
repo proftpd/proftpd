@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.21 2004-10-31 19:09:35 castaglia Exp $
+ * $Id: options.h,v 1.22 2006-04-16 22:23:33 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -175,31 +175,26 @@
 # define PR_TUNABLE_XFER_SCOREBOARD_UPDATES	10
 #endif
 
-/* Max number of recursion/directory levels to support when globbing.
- */
+#ifndef PR_TUNABLE_CALLER_DEPTH
+/* Max depth of call stack if stacktrace support is enabled. */
+# define PR_TUNABLE_CALLER_DEPTH	32
+#endif
 
 #ifndef PR_TUNABLE_GLOBBING_MAX	
+/* Max number of recursion/directory levels to support when globbing.
+ */
 # define PR_TUNABLE_GLOBBING_MAX	8
 #endif
 
-/* Maximum length of login name.
- */
-
 #ifndef PR_TUNABLE_LOGIN_MAX
-/* Ideally, we'd use _POSIX_LOGIN_NAME_MAX here, if it was defined.  However,
+/* Maximum length of login name.
+ *
+ * Ideally, we'd use _POSIX_LOGIN_NAME_MAX here, if it was defined.  However,
  * doing so would cause trouble for those sites that use databases for
  * storing user information; such sites often use email addresses as
  * login names.  Given that, let's use 256 as a login name size.
  */
 # define PR_TUNABLE_LOGIN_MAX		256
 #endif
-
-/* Loopback network, this should generally not need to be changed,
- * although you can set a specific address by setting it to say
- * "127.0.0.1" and the netmask to "255.255.255.255".
- */
-
-#define LOOPBACK_NET            "127.0.0.0"
-#define LOOPBACK_MASK           "255.255.255.0"
 
 #endif /* PR_OPTIONS_H */

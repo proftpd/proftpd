@@ -438,6 +438,9 @@
 /* Define if you have the <errno.h> header file.  */
 #undef HAVE_ERRNO_H
 
+/* Define if you have the <execinfo.h> header file.  */
+#undef HAVE_EXECINFO_H
+
 /* Define if you have the <fcntl.h> header file.  */
 #undef HAVE_FCNTL_H
 
@@ -593,6 +596,9 @@
 
 /* Define if you have <sys/wait.h> that is POSIX.1 compatible.  */
 #undef HAVE_SYS_WAIT_H
+
+/* Define if you have the <ucontext.h> header file.  */
+#undef HAVE_UCONTEXT_H
 
 /* Define if you have the <unistd.h> header file.  */
 #undef HAVE_UNISTD_H
