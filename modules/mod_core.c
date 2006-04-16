@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.277 2006-02-21 06:55:38 castaglia Exp $
+ * $Id: mod_core.c,v 1.278 2006-04-16 23:01:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4142,6 +4142,13 @@ MODRET core_noop(cmd_rec *cmd) {
 MODRET core_feat(cmd_rec *cmd) {
   const char *feat = NULL;
   CHECK_CMD_ARGS(cmd, 1);
+
+  if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.vwd, NULL)) {
+    pr_log_debug(DEBUG3, "%s command denied by <Limit> configuration",
+      cmd->argv[0]);
+    pr_response_add_err(R_550, "%s: %s", cmd->argv[0], strerror(EPERM));
+    return ERROR(cmd);
+  }
 
   feat = pr_feat_get();
   if (feat) {
