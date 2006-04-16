@@ -1,4 +1,4 @@
-<!-- $Id: Debugging.html,v 1.4 2004-11-29 00:26:41 castaglia Exp $ -->
+<!-- $Id: Debugging.html,v 1.5 2006-04-16 22:35:55 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Debugging.html,v $ -->
 
 <html>
@@ -145,6 +145,70 @@ server will log using a <code>syslog</code> facility of <code>daemon</code>
 authentication, messages are logged using the <code>authpriv</code> facility.
 
 <p>
+<b>Debugging Segfaults</b><br>
+If you see a message like the following in your logs:
+<pre>
+  golem.castaglia.org (127.0.0.1[127.0.0.1]) - ProFTPD terminating (signal 11)
+</pre>
+then you have most likely encountered a segfault.  This is a particular
+bad error, and can be hard to track down.
+
+<p>
+In version 1.3.1rc1, ProFTPD gained the ability to provide better logging
+to help track down these sorts of bugs.  To enable this ability, you will
+need to configure <code>proftpd</code> with something like:
+<pre>
+  ./configure --enable-devel=stacktrace ...
+</pre>
+and run your <code>proftpd</code> like normal.  If a segfault occurs, the logs
+should show something like this:
+<pre>
+  golem.castaglia.org (127.0.0.1[127.0.0.1]) - ProFTPD terminating (signal 11)
+  golem.castaglia.org (127.0.0.1[127.0.0.1]) - FTP session closed.
+  golem.castaglia.org (127.0.0.1[127.0.0.1]) - -----BEGIN STACK TRACE-----
+  golem.castaglia.org (127.0.0.1[127.0.0.1]) - [0] ./proftpd [0x809b1e1]
+  golem.castaglia.org (127.0.0.1[127.0.0.1]) - [1] ./proftpd(call_module+0x53) [0x8072c63]
+  golem.castaglia.org (127.0.0.1[127.0.0.1]) - [2] ./proftpd(strftime+0x14cf) [0x8051bef]
+  golem.castaglia.org (127.0.0.1[127.0.0.1]) - [3] ./proftpd(pr_cmd_dispatch+0x167) [0x8051f2f]
+  golem.castaglia.org (127.0.0.1[127.0.0.1]) - [4] ./proftpd(strftime+0x1fd3) [0x80526f3]
+  golem.castaglia.org (127.0.0.1[127.0.0.1]) - [5] ./proftpd [0x8053e12]
+  golem.castaglia.org (127.0.0.1[127.0.0.1]) - [6] ./proftpd [0x805484d]
+  golem.castaglia.org (127.0.0.1[127.0.0.1]) - [7] ./proftpd [0x8057975]
+  golem.castaglia.org (127.0.0.1[127.0.0.1]) - [8] ./proftpd(main+0x9d1) [0x8058625]
+  golem.castaglia.org (127.0.0.1[127.0.0.1]) - [9] /lib/i686/libc.so.6(__libc_start_main+0x93) [0x40076507]
+  golem.castaglia.org (127.0.0.1[127.0.0.1]) - [10] ./proftpd(strcpy+0x31) [0x8051001]
+  golem.castaglia.org (127.0.0.1[127.0.0.1]) - -----END STACK TRACE-----
+</pre>
+These stack symbols are generated automatically by glibc, and may or may
+not contain the function names.
+
+<p>
+The key here for tracking down the location of the segfault is that
+<code>[0]</code> frame, and the memory address: <code>0x809b1e1</code>.  Using
+that address and a very handy command called <code>addr2line</code>, you can
+determine the location of that address in the source code:
+<pre>
+  addrline -e ./proftpd 0x809b1e1
+</pre>
+In this example, I saw:
+<pre>
+  golem/tj>addr2line -e ./proftpd 0x809b1e1
+  /home/tj/proftpd/cvs/proftpd/modules/mod_auth.c:1723
+</pre>
+which is the location of test code added to trigger the segfault.
+
+<p>
+This feature is specific to glibc systems, so keep that in mind.  Other things
+to mention about this feature: it disables the changing of the process title
+that <code>proftpd</code> normally does.  The obtaining of the stack symbols
+that glibc does uses the process title, and if this feature did not disable
+that process title changing, the output would be much less legible.  Also, it
+does not work if the process which receives the <code>SIGSEGV</code> signal is
+chrooted.  (Blame glibc for its bad handling of being chrooted.)  To work
+around this, I would recommend using the <code>mod_vroot</code> module, just
+for a short period of time, in order to get a useful automatic stack trace.
+
+<p>
 <b>Common Problems</b><br>
 One common question is: &quot;I changed the configuration file, but the new
 configuration is not being seen!&quot; The solution depends on your
@@ -180,7 +244,7 @@ be answered:
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2004-11-29 00:26:41 $</i><br>
+Last Updated: <i>$Date: 2006-04-16 22:35:55 $</i><br>
 <hr>
 
 <hr>
