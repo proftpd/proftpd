@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.738 2006-04-16 23:01:28 castaglia Exp $
+$Id: NEWS,v 1.739 2006-04-16 23:08:19 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -18,6 +18,8 @@ CVS
   improve performance.
 - Bug 2753 - CCC not closing SSL/TLS connection correctly.
 - Bug 2654 - FEAT command should be subject to <Limit>.
+- Bug 2740 - TYPE command not allowed before USER/PASS, causes problem for
+  `ftp -n'.
 
 1.3.0 - Released 16-Apr-2006
 --------------------------------
