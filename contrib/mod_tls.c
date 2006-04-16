@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2005 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2006 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -1382,7 +1382,7 @@ static void tls_cleanup(void) {
 
 static void tls_end_sess(SSL *ssl, int strms, int use_shutdown) {
   int res;
-  int shutdown;
+  int shutdown_state;
 
   if (!ssl)
     return;
@@ -1408,14 +1408,13 @@ static void tls_end_sess(SSL *ssl, int strms, int use_shutdown) {
       }
     }
 
-    shutdown = SSL_get_shutdown(ssl);
+    shutdown_state = SSL_get_shutdown(ssl);
 
-    /* Now call SSL_shutdown() again, but only if we are not in the
-     * SSL_SENT_SHUTDOWN shutdown state.
-     */
+    /* Now call SSL_shutdown() again, but only if necessary. */
     res = 1;
-    if (!(shutdown & SSL_SENT_SHUTDOWN))
+    if (!(shutdown_state & SSL_RECEIVED_SHUTDOWN)) {
       res = SSL_shutdown(ssl);
+    }
 
     if (res == 0) {
       int err = SSL_get_error(ssl, res);
