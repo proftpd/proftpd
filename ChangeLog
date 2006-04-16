@@ -1,3 +1,47 @@
+2006-04-16 14:36  castaglia
+
+	* contrib/dist/rpm/proftpd.spec, include/version.h, NEWS: 
+	Preparing for release of 1.3.0-final.
+
+2006-04-10 09:41  castaglia
+
+	* lib/glibc-mkstemp.c: 
+	Fix typo in mkstemp() implementation, noted by Charles Seeger.
+
+2006-04-07 18:20  castaglia
+
+	* doc/howto/ConfigFile.html: 
+	Update the description of the User/Group directives to mention
+	effective versus real privs, and how some programs report on real
+	instead of effective privs.
+
+2006-03-22 14:10  castaglia
+
+	* NEWS, lib/glibc-glob.c, lib/pwgrent.c, src/fsio.c: 
+	Quell several compiler warnings:
+	
+	Bug#2770 - FreeBSD compiler warning that "__GLIBC__" is not
+	defined.  Bug#2771 - FreeBSD compiler warning about undeclared
+	fgetpwent/fgetgrent	       functions.  Bug#2772 - FreeBSD
+	compiler warning that "_FILE_OFFSET_BITS" is not defined.
+
+2006-03-22 13:45  castaglia
+
+	* Make.rules.in, NEWS: 
+	Bug#2733 - libtool requires sh/bash.
+
+2006-03-22 10:51  castaglia
+
+	* utils/: ftptop.c, scoreboard.c: 
+	Minor fixes to ftptop: use snprintf(3) rather than sprintf(3), and
+	make sure that any scoreboard path set via the -f command-line
+	option actually exists.
+
+2006-03-18 12:15  castaglia
+
+	* ChangeLog: 
+	Updated ChangeLog.
+
 2006-03-18 12:13  castaglia
 
 	* NEWS, RELEASE_NOTES, contrib/dist/rpm/proftpd.spec,
@@ -8255,7 +8299,7 @@
 2003-06-11 19:08  castaglia
 
 	* src/: inet.c, modules.c: 
-	Missing $Id: ChangeLog,v 1.130 2006-03-18 20:15:43 castaglia Exp $ keyword.
+	Missing $Id: ChangeLog,v 1.131 2006-04-16 21:39:01 castaglia Exp $ keyword.
 
 2003-06-11 15:45  castaglia
 
@@ -9426,7 +9470,7 @@
 
 	* contrib/: mod_sql.c, mod_sql.h, mod_sql_mysql.c,
 	mod_sql_postgres.c: 
-	Adding $Id: ChangeLog,v 1.130 2006-03-18 20:15:43 castaglia Exp $ tags to the mod_sql files.
+	Adding $Id: ChangeLog,v 1.131 2006-04-16 21:39:01 castaglia Exp $ tags to the mod_sql files.
 
 2003-03-14 07:54  castaglia
 
@@ -9943,12 +9987,12 @@
 
 	* src/netio.c, src/pool.c, src/sets.c, include/ident.h,
 	include/timers.h: 
-	Adding more $Id: ChangeLog,v 1.130 2006-03-18 20:15:43 castaglia Exp $ keywords.
+	Adding more $Id: ChangeLog,v 1.131 2006-04-16 21:39:01 castaglia Exp $ keywords.
 
 2003-02-11 23:34  castaglia
 
 	* src/feat.c: 
-	Added $Id: ChangeLog,v 1.130 2006-03-18 20:15:43 castaglia Exp $ keyword.
+	Added $Id: ChangeLog,v 1.131 2006-04-16 21:39:01 castaglia Exp $ keyword.
 
 2003-02-10 15:34  castaglia
 
