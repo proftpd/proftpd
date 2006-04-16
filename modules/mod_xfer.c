@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2005 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.195 2006-04-16 23:08:19 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.196 2006-04-16 23:18:50 castaglia Exp $
  */
 
 #include "conf.h"
@@ -50,6 +50,7 @@ static pr_fh_t *retr_fh = NULL;
 static pr_fh_t *stor_fh = NULL;
 
 static unsigned char have_prot = FALSE;
+static unsigned char have_zmode = FALSE;
 static unsigned char use_sendfile = TRUE;
 
 /* Transfer rate variables */
@@ -637,13 +638,14 @@ static int transmit_sendfile(off_t count, off_t *offset,
    * - We're using bandwidth throttling.
    * - We're transmitting an ASCII file.
    * - We're using RFC2228 data channel protection
+   * - We're using MODE Z compression
    * - There's no data left to transmit.
    * - UseSendfile is set to off.
    */
   if (have_xfer_rate ||
      !(session.xfer.file_size - count) ||
      (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) ||
-     have_prot ||
+     have_prot || have_zmode ||
      !use_sendfile)
     return 0;
 
@@ -983,6 +985,17 @@ MODRET xfer_post_prot(cmd_rec *cmd) {
     have_prot = TRUE;
   else
     have_prot = FALSE;
+
+  return DECLINED(cmd);
+}
+
+MODRET xfer_post_mode(cmd_rec *cmd) {
+  CHECK_CMD_ARGS(cmd, 2);
+
+  if (strcmp(cmd->argv[1], "Z") == 0)
+    have_zmode = TRUE;
+  else
+    have_zmode = FALSE;
 
   return DECLINED(cmd);
 }
@@ -2544,6 +2557,7 @@ static cmdtable xfer_cmdtab[] = {
   { CMD,     C_TYPE,	G_NONE,	 xfer_type,	FALSE,	FALSE, CL_MISC },
   { CMD,     C_STRU,	G_NONE,	 xfer_stru,	TRUE,	FALSE, CL_MISC },
   { CMD,     C_MODE,	G_NONE,	 xfer_mode,	TRUE,	FALSE, CL_MISC },
+  { POST_CMD,C_MODE,	G_NONE,  xfer_post_mode,FALSE,	FALSE },
   { CMD,     C_ALLO,	G_NONE,	 xfer_allo,	TRUE,	FALSE, CL_MISC },
   { CMD,     C_SMNT,	G_NONE,	 xfer_smnt,	TRUE,	FALSE, CL_MISC },
   { PRE_CMD, C_RETR,	G_READ,	 xfer_pre_retr,	TRUE,	FALSE },
@@ -2566,7 +2580,7 @@ static cmdtable xfer_cmdtab[] = {
   { CMD,     C_ABOR,	G_NONE,	 xfer_abor,	TRUE,	TRUE,  CL_MISC  },
   { CMD,     C_REST,	G_NONE,	 xfer_rest,	TRUE,	FALSE, CL_MISC  },
   { POST_CMD,C_PROT,	G_NONE,  xfer_post_prot,FALSE,	FALSE },
-  { 0,NULL }
+  { 0, NULL }
 };
 
 module xfer_module = {
