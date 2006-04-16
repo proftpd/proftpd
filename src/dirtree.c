@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003, 2004 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.171 2005-09-28 02:06:26 castaglia Exp $
+ * $Id: dirtree.c,v 1.172 2006-04-16 22:45:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -54,9 +54,9 @@ char MultilineRFC2228 = 0;
 extern pool *global_config_pool;
 
 /* Used by find_config_* */
-xaset_t *find_config_top = NULL;
+static xaset_t *find_config_top = NULL;
 
-static void _mergedown(xaset_t *, int);
+static void merge_down(xaset_t *, int);
 
 /* Used by get_param_int_next & get_param_ptr_next as "placeholders" */
 static config_rec *_last_param_int = NULL;
@@ -64,6 +64,10 @@ static config_rec *_last_param_ptr = NULL;
 static unsigned char _kludge_disable_umask = 0;
 
 array_header *server_defines = NULL;
+
+static pool *config_tab_pool = NULL;
+static pr_table_t *config_tab = NULL;
+static unsigned int config_id = 0;
 
 static int allow_dyn_config(void) {
   config_rec *c = NULL;
@@ -626,9 +630,13 @@ config_rec *add_config_set(xaset_t **set, const char *name) {
   c->pool = conf_pool;
   c->set = *set;
   c->parent = parent;
-  if (name)
+
+  if (name) {
     c->name = pstrdup(conf_pool, name);
-  xaset_insert_end(*set, (xasetmember_t*)c);
+    c->config_id = pr_config_set_id(name);
+  }
+
+  xaset_insert_end(*set, (xasetmember_t *) c);
 
   return c;
 }
@@ -1668,7 +1676,9 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
       }
     }
 
-    if (isfile != -1 && d && st.st_size > 0 &&
+    if (isfile != -1 &&
+        d &&
+        st.st_size > 0 &&
         st.st_mtime > (d->argv[0] ? *((time_t *) d->argv[0]) : 0)) {
 
       /* File has been modified or not loaded yet */
@@ -1686,12 +1696,15 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
       d->config_type = CONF_DIR;
       pr_parser_cleanup();
 
-      _mergedown(*set, TRUE);
+      merge_down(*set, TRUE);
     }
 
-    if (isfile == -1 && removed && d && set) {
+    if (isfile == -1 &&
+        removed &&
+        d &&
+        set) {
       pr_log_debug(DEBUG5, "dynamic configuration removed for %s", fullpath);
-      _mergedown(*set, FALSE);
+      merge_down(*set, FALSE);
     }
 
     if (!recurse)
@@ -1699,10 +1712,13 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
 
     cp = strrchr(path, '/');
 
-    if (cp && strcmp(path, "/") != 0)
+    if (cp &&
+        strcmp(path, "/") != 0) {
       *cp = '\0';
-    else
+
+    } else {
       path = NULL;
+    }
 
     if (path) {
       if (*path && *(path + strlen(path) - 1) == '*')
@@ -2170,73 +2186,79 @@ void pr_config_dump(void (*dumpf)(const char *, ...), xaset_t *s,
   }
 }
 
-static void _mergedown(xaset_t *s,int dynamic)
-{
-  config_rec *c,*dest,*newconf;
+static void merge_down(xaset_t *s, int dynamic) {
+  config_rec *c, *dst, *newconf;
   int argc;
-  void **argv,**sargv;
+  void **argv, **sargv;
 
-  if (!s || !s->xas_list)
+  if (!s ||
+      !s->xas_list)
     return;
 
-  for (c = (config_rec*)s->xas_list; c; c=c->next) {
+  for (c = (config_rec *) s->xas_list; c; c = c->next) {
     if ((c->flags & CF_MERGEDOWN) ||
         (c->flags & CF_MERGEDOWN_MULTI))
-      for (dest = (config_rec*)s->xas_list; dest; dest=dest->next) {
-        if (dest->config_type == CONF_ANON ||
-           dest->config_type == CONF_DIR) {
+      for (dst = (config_rec *) s->xas_list; dst; dst = dst->next) {
+        if (dst->config_type == CONF_ANON ||
+           dst->config_type == CONF_DIR) {
 
           /* If an option of the same name/type is found in the
            * next level down, it overrides, so we don't merge.
            */
           if ((c->flags & CF_MERGEDOWN) &&
-              find_config(dest->subset, c->config_type, c->name, FALSE))
+              find_config(dst->subset, c->config_type, c->name, FALSE))
             continue;
 
-          if (!dest->subset)
-            dest->subset = xaset_create(dest->pool,NULL);
+          if (!dst->subset)
+            dst->subset = xaset_create(dst->pool, NULL);
 
-          newconf = add_config_set(&dest->subset,c->name);
+          newconf = add_config_set(&dst->subset, c->name);
           newconf->config_type = c->config_type;
           newconf->flags = c->flags | (dynamic ? CF_DYNAMIC : 0);
           newconf->argc = c->argc;
-          newconf->argv = pcalloc(newconf->pool, (c->argc+1)*sizeof(void*));
-          argv = newconf->argv; sargv = c->argv;
+          newconf->argv = pcalloc(newconf->pool, (c->argc+1) * sizeof(void *));
+          argv = newconf->argv;
+          sargv = c->argv;
           argc = newconf->argc;
-          while (argc--)
+
+          while (argc--) {
             *argv++ = *sargv++;
+          }
+
           *argv++ = NULL;
         }
       }
   }
 
   /* Top level merged, recursively merge lower levels */
-  for (c = (config_rec*)s->xas_list; c; c=c->next)
-    if (c->subset && (c->config_type == CONF_ANON ||
-                     c->config_type == CONF_DIR))
-      _mergedown(c->subset,dynamic);
+  for (c = (config_rec *) s->xas_list; c; c = c->next) {
+    if (c->subset &&
+        (c->config_type == CONF_ANON ||
+         c->config_type == CONF_DIR)) {
+      merge_down(c->subset, dynamic);
+    }
+  }
 }
 
-/* iterate through <Directory> blocks inside of anonymous and
+/* Iterate through <Directory> blocks inside of anonymous and
  * resolve each one.
  */
-
-void resolve_anonymous_dirs(xaset_t *clist)
-{
+void resolve_anonymous_dirs(xaset_t *clist) {
   config_rec *c;
   char *realdir;
 
   if (!clist)
     return;
 
-  for (c = (config_rec*)clist->xas_list; c; c=c->next) {
+  for (c = (config_rec *) clist->xas_list; c; c = c->next) {
     if (c->config_type == CONF_DIR) {
       if (c->argv[1]) {
-        realdir = dir_best_path(c->pool,c->argv[1]);
-        if (realdir)
+        realdir = dir_best_path(c->pool, c->argv[1]);
+        if (realdir) {
           c->argv[1] = realdir;
-        else {
-          realdir = dir_canonical_path(c->pool,c->argv[1]);
+
+        } else {
+          realdir = dir_canonical_path(c->pool, c->argv[1]);
           if (realdir)
             c->argv[1] = realdir;
         }
@@ -2372,7 +2394,7 @@ void fixup_dirs(server_rec *s, int flags) {
   _reorder_dirs(s->conf, flags);
 
   /* Merge mergeable configuration items down. */
-  _mergedown(s->conf, FALSE);
+  merge_down(s->conf, FALSE);
 
   if (!(flags & CF_SILENT)) {
     pr_log_debug(DEBUG5, "%s", "");
@@ -2384,54 +2406,75 @@ void fixup_dirs(server_rec *s, int flags) {
 }
 
 config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
-                             const char *name, int recurse)
-{
+    const char *name, int recurse) {
   config_rec *top = c;
+  unsigned int cid = 0;
 
   /* We do two searches (if recursing) so that we find the "deepest"
    * level first.
    */
 
-  if (!c && !prev)
+  if (!c &&
+      !prev)
     return NULL;
 
   if (!prev)
     prev = top;
 
+  if (name)
+    cid = pr_config_get_id(name);
+
   if (recurse) {
     do {
       config_rec *res = NULL;
 
-      for (c = top; c; c=c->next) {
-        if (c->subset && c->subset->xas_list) {
+      for (c = top; c; c = c->next) {
+        if (c->subset &&
+            c->subset->xas_list) {
           config_rec *subc = NULL;
 
-          for (subc = (config_rec *) c->subset->xas_list; subc;
-              subc = subc->next) {
-            if ((res = find_config_next(NULL, subc, type, name, recurse+1)))
+          for (subc = (config_rec *) c->subset->xas_list;
+               subc;
+               subc = subc->next) {
+            res = find_config_next(NULL, subc, type, name, recurse + 1);
+            if (res)
               return res;
           }
         }
       }
 
-      /* If deep recursion yielded no match try the current subset */
-      /* NOTE: the string comparison here is specifically case sensitive.
+      /* If deep recursion yielded no match try the current subset.
+       *
+       * NOTE: the string comparison here is specifically case sensitive.
        * The config_rec names are supplied by the modules and intentionally
        * case sensitive (they shouldn't be verbatim from the config file)
        * Do NOT change this to strcasecmp(), no matter how tempted you are
        * to do so, it will break stuff. ;)
        */
-      for (c = top; c; c=c->next) {
-        if ((type == -1 || type == c->config_type) &&
-            (!name || !strcmp(name,c->name)))
-          return c;
+      for (c = top; c; c = c->next) {
+        if (type == -1 ||
+            type == c->config_type) {
+
+          if (!name)
+            return c;
+
+          if (cid != 0 &&
+              cid == c->config_id) {
+            return c;
+          }
+
+          if (strcmp(name, c->name) == 0)
+            return c;
+        }
       }
 
       /* Restart the search at the previous level if required */
-      if (prev->parent && recurse == 1 &&
-         prev->parent->next &&
-         prev->parent->set != find_config_top) {
-        prev = top = prev->parent->next; c = top;
+      if (prev->parent &&
+          recurse == 1 &&
+          prev->parent->next &&
+          prev->parent->set != find_config_top) {
+        prev = top = prev->parent->next;
+        c = top;
         continue;
       }
 
@@ -2439,33 +2482,47 @@ config_rec *find_config_next(config_rec *prev, config_rec *c, int type,
     } while (TRUE);
 
   } else {
-    for (c = top; c; c=c->next) {
-      if ((type == -1 || type == c->config_type) &&
-         (!name || !strcmp(name, c->name)))
-        return c;
+    for (c = top; c; c = c->next) {
+      if (type == -1 ||
+          type == c->config_type) {
+
+        if (!name)
+          return c;
+
+        if (cid != 0 &&
+            cid == c->config_id) {
+          return c;
+        }
+
+        if (strcmp(name, c->name) == 0)
+          return c;
+      }
     }
   }
 
   return NULL;
 }
 
-void find_config_set_top(config_rec *c)
-{
-  if (c && c->parent)
+void find_config_set_top(config_rec *c) {
+  if (c &&
+      c->parent) {
     find_config_top = c->parent->set;
-  else
+
+  } else {
     find_config_top = NULL;
+  }
 }
 
 
-config_rec *find_config(xaset_t *set, int type, const char *name, int recurse)
-{
-  if (!set || !set->xas_list)
+config_rec *find_config(xaset_t *set, int type, const char *name, int recurse) {
+  if (!set ||
+      !set->xas_list)
     return NULL;
 
-  find_config_set_top((config_rec*)set->xas_list);
+  find_config_set_top((config_rec *) set->xas_list);
 
-  return find_config_next(NULL, (config_rec*)set->xas_list,type,name,recurse);
+  return find_config_next(NULL, (config_rec *) set->xas_list, type, name,
+    recurse);
 }
 
 /* These next two functions return the first argument in a
@@ -2475,9 +2532,7 @@ config_rec *find_config(xaset_t *set, int type, const char *name, int recurse)
  * _int returns -1 if the config name is not found, _ptr returns
  * NULL.
  */
-
-long get_param_int(xaset_t *set,const char *name,int recurse)
-{
+long get_param_int(xaset_t *set, const char *name, int recurse) {
   config_rec *c;
 
   if (!set) {
@@ -2485,40 +2540,41 @@ long get_param_int(xaset_t *set,const char *name,int recurse)
     return -1;
   }
 
-  c = find_config(set,CONF_PARAM,name,recurse);
+  c = find_config(set, CONF_PARAM, name, recurse);
 
-  if (c && c->argc) {
+  if (c &&
+      c->argc) {
     _last_param_int = c;
-    return (long)c->argv[0];
+    return (long) c->argv[0];
   }
 
   _last_param_int = NULL;
   return -1;  /* Parameters aren't allowed to contain neg. integers anyway */
 }
 
-long get_param_int_next(const char *name,int recurse)
-{
+long get_param_int_next(const char *name, int recurse) {
   config_rec *c;
 
-  if (!_last_param_int || !_last_param_int->next) {
+  if (!_last_param_int ||
+      !_last_param_int->next) {
     _last_param_int = NULL;
     return -1;
   }
 
-  c = find_config_next(_last_param_int,_last_param_int->next,
-                       CONF_PARAM,name,recurse);
+  c = find_config_next(_last_param_int, _last_param_int->next, CONF_PARAM,
+    name, recurse);
 
-  if (c && c->argc) {
+  if (c &&
+      c->argc) {
     _last_param_int = c;
-    return (long)c->argv[0];
+    return (long) c->argv[0];
   }
 
   _last_param_int = NULL;
   return -1;
 }
 
-void *get_param_ptr(xaset_t *set,const char *name,int recurse)
-{
+void *get_param_ptr(xaset_t *set, const char *name, int recurse) {
   config_rec *c;
 
   if (!set) {
@@ -2526,9 +2582,10 @@ void *get_param_ptr(xaset_t *set,const char *name,int recurse)
     return NULL;
   }
 
-  c = find_config(set,CONF_PARAM,name,recurse);
+  c = find_config(set, CONF_PARAM, name, recurse);
 
-  if (c && c->argc) {
+  if (c &&
+      c->argc) {
     _last_param_ptr = c;
     return c->argv[0];
   }
@@ -2540,15 +2597,17 @@ void *get_param_ptr(xaset_t *set,const char *name,int recurse)
 void *get_param_ptr_next(const char *name,int recurse) {
   config_rec *c;
 
-  if (!_last_param_ptr || !_last_param_ptr->next) {
+  if (!_last_param_ptr ||
+      !_last_param_ptr->next) {
     _last_param_ptr = NULL;
     return NULL;
   }
 
-  c = find_config_next(_last_param_ptr,_last_param_ptr->next,
-                       CONF_PARAM,name,recurse);
+  c = find_config_next(_last_param_ptr, _last_param_ptr->next, CONF_PARAM,
+    name, recurse);
 
-  if (c && c->argv) {
+  if (c &&
+      c->argv) {
     _last_param_ptr = c;
     return c->argv[0];
   }
@@ -2921,6 +2980,35 @@ void init_config(void) {
     global_config_pool = NULL;
   }
 
+  if (config_tab) {
+    /* Clear the existing config ID table.  This needs to happen when proftpd
+     * is restarting.
+     */
+    if (pr_table_empty(config_tab) < 0) {
+      pr_log_debug(DEBUG0, "error emptying config ID table: %s",
+        strerror(errno));
+    }
+
+    if (pr_table_free(config_tab) < 0) {
+      pr_log_debug(DEBUG0, "error destroying config ID table: %s",
+        strerror(errno));
+    }
+
+    config_tab = pr_table_alloc(config_tab_pool, 0);
+
+    /* Reset the ID counter as well.  Otherwise, an exceedingly long-lived
+     * proftpd, restarted many times, has the possibility of overflowing
+     * the counter data type.
+     */
+    config_id = 0;
+
+  } else {
+
+    config_tab_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(config_tab_pool, "Config ID Table Pool");
+    config_tab = pr_table_alloc(config_tab_pool, 0);
+  }
+
   if (server_list) {
     server_rec *s, *s_next;
 
@@ -3074,4 +3162,56 @@ char *get_full_cmd(cmd_rec *cmd) {
     res = pstrdup(p, cmd->argv[0]);
 
   return res;
+}
+
+unsigned int pr_config_get_id(const char *name) {
+  void *ptr;
+
+  if (!name) {
+    errno = EINVAL;
+    return 0;
+  }
+
+  if (!config_tab) {
+    errno = EPERM;
+    return 0;
+  }
+
+  ptr = pr_table_get(config_tab, name, 0);
+  if (!ptr) {
+    errno = ENOENT;
+    return 0;
+  }
+
+  return *((unsigned int *) ptr);
+}
+
+unsigned int pr_config_set_id(const char *name) {
+  unsigned int *ptr;
+
+  if (!name) {
+    errno = EINVAL;
+    return 0;
+  }
+
+  if (!config_tab) {
+    errno = EPERM;
+    return 0;
+  }
+
+  ptr = pr_table_pcalloc(config_tab, sizeof(unsigned int));
+  *ptr = ++config_id;
+
+  if (pr_table_add(config_tab, name, ptr, sizeof(unsigned int *)) < 0) {
+    if (errno == EEXIST) {
+      return pr_config_get_id(name);
+
+    } else {
+      pr_log_debug(DEBUG0, "error adding '%s' to config ID table: %s",
+        name, strerror(errno));
+      return 0;
+    }
+  }
+
+  return *ptr;
 }

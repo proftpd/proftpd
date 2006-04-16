@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.60 2005-06-12 00:36:12 castaglia Exp $
+ * $Id: dirtree.h,v 1.61 2006-04-16 22:45:54 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -115,12 +115,14 @@ struct config_struc {
   struct config_struc *next,*prev;
 
   int config_type;
+  unsigned int config_id;
+
   pool *pool;			/* memory pool for this object */
   xaset_t *set;			/* The set we are stored in */
   char *name;
   int argc;
   void **argv;
-  long overrides;		/* Override classes */
+
   long flags;			/* Flags */
 
   server_rec *server;		/* Server this config element is attached to */
@@ -235,6 +237,21 @@ config_rec *find_config_next(config_rec *, config_rec *, int,
 config_rec *find_config(xaset_t *, int, const char *, int);
 void find_config_set_top(config_rec *);
 int remove_config(xaset_t *, const char *, int);
+
+/* Returns the assigned ID for the provided directive name, or zero
+ * if no ID mapping was found.
+ */
+unsigned int pr_config_get_id(const char *name);
+
+/* Assigns a unique ID for the given configuration directive.  The
+ * mapping of directive to ID is stored in a lookup table, so that
+ * searching of the config database by directive name can be done using
+ * ID comparisons rather than string comparisons.
+ *
+ * Returns the ID assigned for the given directive, or zero if there was an
+ * error.
+ */
+unsigned int pr_config_set_id(const char *name);
 
 cmd_rec *pr_cmd_alloc(pool *, int, ...);
 

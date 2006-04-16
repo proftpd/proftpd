@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.7 2005-06-16 21:27:27 castaglia Exp $
+ * $Id: table.c,v 1.8 2006-04-16 22:45:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -959,6 +959,16 @@ int pr_table_ctl(pr_table_t *tab, int cmd, void *arg) {
 
   errno = EACCES;
   return -1;
+}
+
+void *pr_table_pcalloc(pr_table_t *tab, size_t sz) {
+  if (!tab ||
+      sz == 0) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  return pcalloc(tab->pool, sz);
 }
 
 void pr_table_dump(void (*dumpf)(const char *fmt, ...), pr_table_t *tab) {

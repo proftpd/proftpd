@@ -23,7 +23,7 @@
  */
 
 /* Table management
- * $Id: table.h,v 1.4 2005-06-16 21:27:24 castaglia Exp $
+ * $Id: table.h,v 1.5 2006-04-16 22:45:54 castaglia Exp $
  */
 
 #ifndef PR_TABLE_H
@@ -265,5 +265,10 @@ int pr_table_kset(pr_table_t *tab, const void *key_data, size_t key_datasz,
  * be explicitly configured.
  */
 pr_table_t *pr_table_nalloc(pool *p, int flags, unsigned int nchains);
+
+/* Similar to pcalloc(), except that the requested memory is allocated
+ * from the table's pool.
+ */
+void *pr_table_pcalloc(pr_table_t *tab, size_t sz);
 
 #endif /* PR_TABLE_H */
