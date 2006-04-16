@@ -20285,6 +20285,10 @@ if test "${enable_devel+set}" = set; then
         pr_devel_libs="-pg $pr_devel_libs"
       fi
 
+      if test `echo $enableval | grep -c stacktrace` = "1"; then
+        pr_devel_cflags="-DPR_DEVEL_STACK_TRACE $pr_devel_cflags"
+      fi
+
     else
       devel="no"
     fi
@@ -23806,7 +23810,8 @@ fi
 
 
 
-for ac_header in ctype.h getopt.h crypt.h bstring.h iconv.h inttypes.h langinfo.h limits.h
+
+for ac_header in bstring.h crypt.h ctype.h execinfo.h getopt.h iconv.h inttypes.h langinfo.h limits.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if eval "test \"\${$as_ac_Header+set}\" = set"; then
@@ -25269,7 +25274,8 @@ done
 
 
 
-for ac_header in utime.h utmpx.h
+
+for ac_header in ucontext.h utime.h utmpx.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if eval "test \"\${$as_ac_Header+set}\" = set"; then
@@ -33632,9 +33638,9 @@ echo $ECHO_N "checking which POSIX ACL implementation to use... $ECHO_C" >&6
 if test "${pr_cv_func_facl+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 else
-  pr_cv_func_facl="None"
+  pr_cv_func_facl="none"
 
-    if test "$pr_cv_func_facl" = "None"; then
+    if test "$pr_cv_func_facl" = "none"; then
     cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
@@ -33688,7 +33694,7 @@ rm -f conftest.err conftest.$ac_objext \
       conftest$ac_exeext conftest.$ac_ext
   fi
 
-    if test "$pr_cv_func_facl" = "None"; then
+    if test "$pr_cv_func_facl" = "none"; then
     old_ldflags=$LDFLAGS
     LDFLAGS="-lacl $LDFLAGS"
     cat >conftest.$ac_ext <<_ACEOF
@@ -33745,7 +33751,7 @@ rm -f conftest.err conftest.$ac_objext \
     LDFLAGS=$old_ldflags
   fi
 
-    if test "$pr_cv_func_facl" = "None"; then
+    if test "$pr_cv_func_facl" = "none"; then
     old_ldflags=$LDFLAGS
     LDFLAGS="-lsec $LDFLAGS"
     cat >conftest.$ac_ext <<_ACEOF
@@ -33806,7 +33812,7 @@ fi
 echo "$as_me:$LINENO: result: $pr_cv_func_facl" >&5
 echo "${ECHO_T}$pr_cv_func_facl" >&6
 
-if test "$pr_cv_func_facl" != "None"; then
+if test "$pr_cv_func_facl" != "none"; then
   cat >>confdefs.h <<\_ACEOF
 #define HAVE_POSIX_ACL 1
 _ACEOF
@@ -33867,9 +33873,9 @@ echo $ECHO_N "checking which sendfile() implementation to use... $ECHO_C" >&6
 if test "${pr_cv_func_sendfile+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 else
-  pr_cv_func_sendfile="None"
+  pr_cv_func_sendfile="none"
 
-        if test "$pr_cv_func_sendfile" = "None"; then
+        if test "$pr_cv_func_sendfile" = "none"; then
       cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
@@ -33924,7 +33930,7 @@ rm -f conftest.err conftest.$ac_objext \
       conftest$ac_exeext conftest.$ac_ext
     fi
 
-        if test "$pr_cv_func_sendfile" = "None"; then
+        if test "$pr_cv_func_sendfile" = "none"; then
       cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
@@ -33980,7 +33986,7 @@ rm -f conftest.err conftest.$ac_objext \
       conftest$ac_exeext conftest.$ac_ext
     fi
 
-        if test "$pr_cv_func_sendfile" = "None"; then
+        if test "$pr_cv_func_sendfile" = "none"; then
       cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
@@ -34034,7 +34040,7 @@ rm -f conftest.err conftest.$ac_objext \
       conftest$ac_exeext conftest.$ac_ext
     fi
 
-        if test "$pr_cv_func_sendfile" = "None"; then
+        if test "$pr_cv_func_sendfile" = "none"; then
       old_ldflags=$LDFLAGS
       LDFLAGS="-lsendfile $LDFLAGS"
       cat >conftest.$ac_ext <<_ACEOF
@@ -34097,7 +34103,7 @@ echo "$as_me:$LINENO: result: $pr_cv_func_sendfile" >&5
 echo "${ECHO_T}$pr_cv_func_sendfile" >&6
 
 
-  if test "$pr_cv_func_sendfile" != "None"; then
+  if test "$pr_cv_func_sendfile" != "none"; then
     cat >>confdefs.h <<\_ACEOF
 #define HAVE_SENDFILE 1
 _ACEOF
@@ -35841,7 +35847,8 @@ prefix="$pr_saved_prefix"
 exec_prefix="$pr_saved_exec_prefix"
 
 if test x"$devel" = xyes ; then
-  cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define PR_USE_DEVEL 1
 _ACEOF
 
