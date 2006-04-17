@@ -116,7 +116,8 @@ Feature modules:
         See doc/contrib/mod_load.html
         Contributed by TJ Saunders <tj@castaglia.org>
 
-    mod_quotatab, mod_quotatab_file, mod_quotatab_ldap, mod_quotatab_sql
+    mod_quotatab, mod_quotatab_file, mod_quotatab_ldap, mod_quotatab_radius,
+      mod_quotatab_sql
         User/group/class quotas.
         See doc/contrib/mod_quotatab.html
         Contributed by TJ Saunders <tj@castaglia.org>

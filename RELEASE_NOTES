@@ -27,6 +27,8 @@ files.
  
   + New modules:
 
+      mod_quotatab_radius
+
   + New documentation:
 
       doc/howto/CreateHome.html
@@ -35,4 +37,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-04-17 22:20:55 $
+Last Updated: $Date: 2006-04-17 22:35:13 $

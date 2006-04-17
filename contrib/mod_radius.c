@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_radius -- a module for RADIUS authentication and accounting
  *
- * Copyright (c) 2001-2005 TJ Saunders
+ * Copyright (c) 2001-2006 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,10 +27,10 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.36 2005-09-19 21:35:38 castaglia Exp $
+ * $Id: mod_radius.c,v 1.37 2006-04-17 22:35:13 castaglia Exp $
  */
 
-#define MOD_RADIUS_VERSION "mod_radius/0.8.1"
+#define MOD_RADIUS_VERSION "mod_radius/0.9"
 
 #include "conf.h"
 #include "privs.h"
@@ -189,6 +189,17 @@ static char *radius_addl_group_names_str = NULL;
 static gid_t *radius_addl_group_ids = NULL;
 static char *radius_addl_group_ids_str = NULL;
 
+/* Quota info */
+static unsigned char radius_have_quota_info = FALSE;
+static char *radius_quota_per_sess = NULL;
+static char *radius_quota_limit_type = NULL;
+static char *radius_quota_bytes_in = NULL;
+static char *radius_quota_bytes_out = NULL;
+static char *radius_quota_bytes_xfer = NULL;
+static char *radius_quota_files_in = NULL;
+static char *radius_quota_files_out = NULL;
+static char *radius_quota_files_xfer = NULL;
+
 /* Other info */
 static unsigned char radius_have_other_info = FALSE;
 
@@ -210,6 +221,18 @@ static int radius_shell_attr_id = 0;
 static int radius_prime_group_name_attr_id = 0;
 static int radius_addl_group_names_attr_id = 0;
 static int radius_addl_group_ids_attr_id = 0;
+
+/* Custom VSA IDs that may be used for server-supplied QuotaLimitTable
+ * parameters.
+ */
+static int radius_quota_per_sess_attr_id = 0;
+static int radius_quota_limit_type_attr_id = 0;
+static int radius_quota_bytes_in_attr_id = 0;
+static int radius_quota_bytes_out_attr_id = 0;
+static int radius_quota_bytes_xfer_attr_id = 0;
+static int radius_quota_files_in_attr_id = 0;
+static int radius_quota_files_out_attr_id = 0;
+static int radius_quota_files_xfer_attr_id = 0;
 
 /* For tracking the ID of the last accounting packet (to prevent the
  * same ID from being reused).
@@ -246,6 +269,7 @@ static unsigned char radius_parse_groups_str(pool *, char *, char ***,
 static void radius_parse_var(char *, int *, char **);
 static void radius_process_accpt_packet(radius_packet_t *);
 static void radius_process_group_info(config_rec *);
+static void radius_process_quota_info(config_rec *);
 static void radius_process_user_info(config_rec *);
 static radius_packet_t *radius_recv_packet(int, unsigned int);
 static int radius_send_packet(int, radius_packet_t *, radius_server_t *);
@@ -425,7 +449,9 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
    * if RadiusUserInfo is indeed in effect.
    */
 
-  if (!radius_have_user_info && !radius_have_group_info)
+  if (!radius_have_user_info &&
+      !radius_have_group_info &&
+      !radius_have_quota_info)
     /* Return now if there's no reason for doing extra work. */
     return;
 
@@ -692,6 +718,202 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
       radius_log("server provided mismatched number of group names (%u) "
         "and group IDs (%u), ignoring them", ngroups, ngids);
   }
+
+  if (radius_quota_per_sess_attr_id ||
+      radius_quota_limit_type_attr_id ||
+      radius_quota_bytes_in_attr_id ||
+      radius_quota_bytes_out_attr_id ||
+      radius_quota_bytes_xfer_attr_id ||
+      radius_quota_files_in_attr_id ||
+      radius_quota_files_out_attr_id ||
+      radius_quota_files_xfer_attr_id) {
+
+    radius_log("parsing packet for RadiusQuotaInfo attributes");
+
+    if (radius_quota_per_sess_attr_id) {
+      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
+        radius_quota_per_sess_attr_id);
+
+      if (attrib) {
+        /* RADIUS strings are not NUL-terminated. */
+        char *per_sess = pcalloc(radius_pool, attrib->length + 1);
+
+        /* Dare we trust attrib->length? */
+        memcpy(per_sess, attrib->data, attrib->length);
+
+        radius_quota_per_sess = per_sess;
+
+        radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+          "quota per-session: '%s'", radius_vendor_name,
+          radius_quota_per_sess_attr_id, radius_quota_per_sess);
+
+      } else
+        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
+          "quota per-session: defaulting to '%s'", radius_vendor_name,
+          radius_quota_per_sess_attr_id, radius_quota_per_sess);
+    }
+
+    if (radius_quota_limit_type_attr_id) {
+      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
+        radius_quota_limit_type_attr_id);
+
+      if (attrib) {
+        /* RADIUS strings are not NUL-terminated. */
+        char *limit_type = pcalloc(radius_pool, attrib->length + 1);
+
+        /* Dare we trust attrib->length? */
+        memcpy(limit_type, attrib->data, attrib->length);
+
+        radius_quota_limit_type = limit_type;
+
+        radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+          "quota limit type: '%s'", radius_vendor_name,
+          radius_quota_limit_type_attr_id, radius_quota_limit_type);
+
+      } else
+        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
+          "quota limit type: defaulting to '%s'", radius_vendor_name,
+          radius_quota_limit_type_attr_id, radius_quota_limit_type);
+    }
+
+    if (radius_quota_bytes_in_attr_id) {
+      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
+        radius_quota_bytes_in_attr_id);
+
+      if (attrib) {
+        /* RADIUS strings are not NUL-terminated. */
+        char *bytes_in = pcalloc(radius_pool, attrib->length + 1);
+
+        /* Dare we trust attrib->length? */
+        memcpy(bytes_in, attrib->data, attrib->length);
+
+        radius_quota_bytes_in = bytes_in;
+
+        radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+          "quota bytes in available: '%s'", radius_vendor_name,
+          radius_quota_bytes_in_attr_id, radius_quota_bytes_in);
+
+      } else
+        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
+          "quota bytes in available: defaulting to '%s'", radius_vendor_name,
+          radius_quota_bytes_in_attr_id, radius_quota_bytes_in);
+    }
+
+    if (radius_quota_bytes_out_attr_id) {
+      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
+        radius_quota_bytes_out_attr_id);
+
+      if (attrib) {
+        /* RADIUS strings are not NUL-terminated. */
+        char *bytes_out = pcalloc(radius_pool, attrib->length + 1);
+
+        /* Dare we trust attrib->length? */
+        memcpy(bytes_out, attrib->data, attrib->length);
+
+        radius_quota_bytes_out = bytes_out;
+
+        radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+          "quota bytes out available: '%s'", radius_vendor_name,
+          radius_quota_bytes_out_attr_id, radius_quota_bytes_out);
+
+      } else
+        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
+          "quota bytes out available: defaulting to '%s'", radius_vendor_name,
+          radius_quota_bytes_out_attr_id, radius_quota_bytes_out);
+    }
+
+    if (radius_quota_bytes_xfer_attr_id) {
+      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
+        radius_quota_bytes_xfer_attr_id);
+
+      if (attrib) {
+        /* RADIUS strings are not NUL-terminated. */
+        char *bytes_xfer = pcalloc(radius_pool, attrib->length + 1);
+
+        /* Dare we trust attrib->length? */
+        memcpy(bytes_xfer, attrib->data, attrib->length);
+
+        radius_quota_bytes_xfer = bytes_xfer;
+
+        radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+          "quota bytes xfer available: '%s'", radius_vendor_name,
+          radius_quota_bytes_xfer_attr_id, radius_quota_bytes_xfer);
+
+      } else
+        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
+          "quota bytes xfer available: defaulting to '%s'", radius_vendor_name,
+          radius_quota_bytes_xfer_attr_id, radius_quota_bytes_xfer);
+    }
+
+    if (radius_quota_files_in_attr_id) {
+      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
+        radius_quota_files_in_attr_id);
+
+      if (attrib) {
+        /* RADIUS strings are not NUL-terminated. */
+        char *files_in = pcalloc(radius_pool, attrib->length + 1);
+
+        /* Dare we trust attrib->length? */
+        memcpy(files_in, attrib->data, attrib->length);
+
+        radius_quota_files_in = files_in;
+
+        radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+          "quota files in available: '%s'", radius_vendor_name,
+          radius_quota_files_in_attr_id, radius_quota_files_in);
+
+      } else
+        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
+          "quota files in available: defaulting to '%s'", radius_vendor_name,
+          radius_quota_files_in_attr_id, radius_quota_files_in);
+    }
+
+    if (radius_quota_files_out_attr_id) {
+      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
+        radius_quota_files_out_attr_id);
+
+      if (attrib) {
+        /* RADIUS strings are not NUL-terminated. */
+        char *files_out = pcalloc(radius_pool, attrib->length + 1);
+
+        /* Dare we trust attrib->length? */
+        memcpy(files_out, attrib->data, attrib->length);
+
+        radius_quota_files_out = files_out;
+
+        radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+          "quota files out available: '%s'", radius_vendor_name,
+          radius_quota_files_out_attr_id, radius_quota_files_out);
+
+      } else
+        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
+          "quota files out available: defaulting to '%s'", radius_vendor_name,
+          radius_quota_files_out_attr_id, radius_quota_files_out);
+    }
+
+    if (radius_quota_files_xfer_attr_id) {
+      radius_attrib_t *attrib = radius_get_vendor_attrib(packet,
+        radius_quota_files_xfer_attr_id);
+
+      if (attrib) {
+        /* RADIUS strings are not NUL-terminated. */
+        char *files_xfer = pcalloc(radius_pool, attrib->length + 1);
+
+        /* Dare we trust attrib->length? */
+        memcpy(files_xfer, attrib->data, attrib->length);
+
+        radius_quota_files_xfer = files_xfer;
+
+        radius_log("packet includes '%s' Vendor-Specific Attribute %d for "
+          "quota files xfer available: '%s'", radius_vendor_name,
+          radius_quota_files_xfer_attr_id, radius_quota_files_xfer);
+
+      } else
+        radius_log("packet lacks '%s' Vendor-Specific Attribute %d for "
+          "quota files xfer available: defaulting to '%s'", radius_vendor_name,
+          radius_quota_files_xfer_attr_id, radius_quota_files_xfer);
+    }
+  }
 }
 
 static void radius_process_group_info(config_rec *c) {
@@ -767,6 +989,183 @@ static void radius_process_group_info(config_rec *c) {
     radius_have_group_info = FALSE;
     radius_log("error with RadiusGroupInfo parameters, ignoring them");
   }
+}
+
+static void radius_process_quota_info(config_rec *c) {
+  char *param = NULL;
+  unsigned char have_illegal_value = FALSE;
+
+  /* Parse out any configured attribute/defaults here. The stored strings will
+   * already have been sanitized by the configuration handler, so I don't
+   * need to worry about that here.
+   */
+
+  param = (char *) c->argv[0];
+  if (RADIUS_IS_VAR(param)) {
+    radius_parse_var(param, &radius_quota_per_sess_attr_id,
+      &radius_quota_per_sess);
+
+  } else {
+    radius_quota_per_sess = param;
+
+    if (strcasecmp(param, "false") != 0 &&
+        strcasecmp(param, "true") != 0) {
+      radius_log("illegal RadiusQuotaInfo per-session value: '%s'", param);
+      have_illegal_value = TRUE;
+    }
+  }
+
+  param = (char *) c->argv[1];
+  if (RADIUS_IS_VAR(param)) {
+    radius_parse_var(param, &radius_quota_limit_type_attr_id,
+      &radius_quota_limit_type);
+
+  } else {
+    radius_quota_limit_type = param;
+
+    if (strcasecmp(param, "hard") != 0 &&
+        strcasecmp(param, "soft") != 0) {
+      radius_log("illegal RadiusQuotaInfo limit type value: '%s'", param);
+      have_illegal_value = TRUE;
+    }
+  }
+
+  param = (char *) c->argv[2];
+  if (RADIUS_IS_VAR(param)) {
+    radius_parse_var(param, &radius_quota_bytes_in_attr_id,
+      &radius_quota_bytes_in);
+
+  } else {
+    char *endp = NULL;
+
+    if (strtod(param, &endp) < 0) {
+      radius_log("illegal RadiusQuotaInfo bytes in value: negative number");
+      have_illegal_value = TRUE;
+    }
+
+    if (endp && *endp) {
+      radius_log("illegal RadiusQuotaInfo bytes in value: '%s' not a number",
+        param);
+      have_illegal_value = TRUE;
+    }
+
+    radius_quota_bytes_in = param;
+  }
+
+  param = (char *) c->argv[3];
+  if (RADIUS_IS_VAR(param)) {
+    radius_parse_var(param, &radius_quota_bytes_out_attr_id,
+      &radius_quota_bytes_out);
+
+  } else {
+    char *endp = NULL;
+
+    if (strtod(param, &endp) < 0) {
+      radius_log("illegal RadiusQuotaInfo bytes out value: negative number");
+      have_illegal_value = TRUE;
+    }
+
+    if (endp && *endp) {
+      radius_log("illegal RadiusQuotaInfo bytes out value: '%s' not a number",
+        param);
+      have_illegal_value = TRUE;
+    }
+
+    radius_quota_bytes_out = param;
+  }
+
+  param = (char *) c->argv[4];
+  if (RADIUS_IS_VAR(param)) {
+    radius_parse_var(param, &radius_quota_bytes_xfer_attr_id,
+      &radius_quota_bytes_xfer);
+
+  } else {
+    char *endp = NULL;
+
+    if (strtod(param, &endp) < 0) {
+      radius_log("illegal RadiusQuotaInfo bytes xfer value: negative number");
+      have_illegal_value = TRUE;
+    }
+
+    if (endp && *endp) {
+      radius_log("illegal RadiusQuotaInfo bytes xfer value: '%s' not a number",
+        param);
+      have_illegal_value = TRUE;
+    }
+
+    radius_quota_bytes_xfer = param;
+  }
+
+  param = (char *) c->argv[5];
+  if (RADIUS_IS_VAR(param)) {
+    radius_parse_var(param, &radius_quota_files_in_attr_id,
+      &radius_quota_files_in);
+
+  } else {
+    char *endp = NULL;
+
+    if (strtoul(param, &endp, 10) < 0) {
+      radius_log("illegal RadiusQuotaInfo files in value: negative number");
+      have_illegal_value = TRUE;
+    }
+
+    if (endp && *endp) {
+      radius_log("illegal RadiusQuotaInfo files in value: '%s' not a number",
+        param);
+      have_illegal_value = TRUE;
+    }
+
+    radius_quota_files_in = param;
+  }
+
+  param = (char *) c->argv[6];
+  if (RADIUS_IS_VAR(param)) {
+    radius_parse_var(param, &radius_quota_files_out_attr_id,
+      &radius_quota_files_out);
+
+  } else {
+    char *endp = NULL;
+
+    if (strtoul(param, &endp, 10) < 0) {
+      radius_log("illegal RadiusQuotaInfo files out value: negative number");
+      have_illegal_value = TRUE;
+    }
+    
+    if (endp && *endp) {
+      radius_log("illegal RadiusQuotaInfo files out value: '%s' not a number",
+        param);
+      have_illegal_value = TRUE;
+    }
+
+    radius_quota_files_out = param;
+  }
+
+  param = (char *) c->argv[7];
+  if (RADIUS_IS_VAR(param)) {
+    radius_parse_var(param, &radius_quota_files_xfer_attr_id,
+      &radius_quota_files_xfer);
+
+  } else {
+    char *endp = NULL;
+
+    if (strtoul(param, &endp, 10) < 0) {
+      radius_log("illegal RadiusQuotaInfo files xfer value: negative number");
+      have_illegal_value = TRUE;
+    }
+    
+    if (endp && *endp) {
+      radius_log("illegal RadiusQuotaInfo files xfer value: '%s' not a number",
+        param);
+      have_illegal_value = TRUE;
+    }
+
+    radius_quota_files_xfer = param;
+  }
+
+  if (!have_illegal_value)
+    radius_have_quota_info = TRUE;
+  else
+   radius_log("error with RadiusQuotaInfo parameters, ignoring them");
 }
 
 static void radius_process_user_info(config_rec *c) {
@@ -1297,11 +1696,12 @@ static int radius_openlog(void) {
   int res = 0;
 
   /* Sanity checks */
-  if ((radius_logname = (char *) get_param_ptr(main_server->conf,
-      "RadiusLog", FALSE)) == NULL)
+  radius_logname = (char *) get_param_ptr(main_server->conf, "RadiusLog",
+    FALSE);
+  if (radius_logname == NULL)
     return 0;
 
-  if (!strcasecmp(radius_logname, "none")) {
+  if (strcasecmp(radius_logname, "none") == 0) {
     radius_logname = NULL;
     return 0;
   }
@@ -1487,9 +1887,6 @@ static radius_attrib_t *radius_get_attrib(radius_packet_t *packet,
 
 /* Find a Vendor-Specific Attribute (VSA) in a RADIUS packet.  Note that
  * the packet length is always kept in network byte order.
- *
- * In this first cut, the looked-for vendor is hardcoded to be Unix
- * (Vendor-Id of 4).
  */
 static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *packet,
     unsigned char type) {
@@ -2148,7 +2545,7 @@ MODRET radius_getpwnam(cmd_rec *cmd) {
     if (!radius_passwd.pw_name)
       radius_passwd.pw_name = pstrdup(radius_pool, cmd->argv[0]);
 
-    if (!strcmp(cmd->argv[0], radius_passwd.pw_name))
+    if (strcmp(cmd->argv[0], radius_passwd.pw_name) == 0)
 
       /* Return the faked user information. */
       return mod_create_data(cmd, &radius_passwd);
@@ -2190,6 +2587,28 @@ MODRET radius_setpwent(cmd_rec *cmd) {
 /* Command handlers
  */
 
+/* Handle retrieval of quota-related VSAs from response packets.
+ */
+MODRET radius_quota_lookup(cmd_rec *cmd) {
+
+  if (radius_have_quota_info) {
+    array_header *quota = make_array(session.pool, 9, sizeof(char *));
+    *((char **) push_array(quota)) = cmd->argv[0];
+    *((char **) push_array(quota)) = radius_quota_per_sess;
+    *((char **) push_array(quota)) = radius_quota_limit_type;
+    *((char **) push_array(quota)) = radius_quota_bytes_in;
+    *((char **) push_array(quota)) = radius_quota_bytes_out;
+    *((char **) push_array(quota)) = radius_quota_bytes_xfer;
+    *((char **) push_array(quota)) = radius_quota_files_in;
+    *((char **) push_array(quota)) = radius_quota_files_out;
+    *((char **) push_array(quota)) = radius_quota_files_xfer;
+
+    return mod_create_data(cmd, quota);
+  }
+
+  return DECLINED(cmd);
+}
+
 /* Perform the check with the RADIUS auth server(s) now, prior to the
  * actual handling of the PASS command by mod_auth, so that any of the
  * RadiusUserInfo parameters can be supplied by the RADIUS server.
@@ -2206,7 +2625,8 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
   char *user;
 
   /* Check to see whether RADIUS authentication should even be done. */
-  if (!radius_engine || !radius_auth_server)
+  if (!radius_engine ||
+      !radius_auth_server)
     return DECLINED(cmd);
 
   user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
@@ -2236,6 +2656,7 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
    */
   if (radius_have_user_info ||
       radius_have_group_info ||
+      radius_have_quota_info ||
       radius_have_other_info)
     service = htonl(RADIUS_SVC_LOGIN);
 
@@ -2535,6 +2956,98 @@ MODRET set_radiuslog(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+/* usage: RadiusQuotaInfo per-sess limit-type bytes-in bytes-out bytes-xfer
+ *          files-in files-out files-xfer
+ */
+MODRET set_radiusquotainfo(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 8);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (!radius_chk_var(cmd->argv[1])) {
+    if (strcasecmp(cmd->argv[1], "false") != 0 &&
+        strcasecmp(cmd->argv[1], "true") != 0)
+      CONF_ERROR(cmd, "invalid per-session value");
+  }
+
+  if (!radius_chk_var(cmd->argv[2])) {
+    if (strcasecmp(cmd->argv[2], "hard") != 0 &&
+        strcasecmp(cmd->argv[2], "soft") != 0)
+      CONF_ERROR(cmd, "invalid limit type value");
+  }
+
+  if (!radius_chk_var(cmd->argv[3])) {
+    char *endp = NULL;
+
+    /* Make sure it's a number, at least. */
+    if (strtod(cmd->argv[3], &endp) < 0)
+      CONF_ERROR(cmd, "negative bytes value not allowed");
+
+    if (endp && *endp)
+      CONF_ERROR(cmd, "invalid bytes parameter: not a number");
+  }
+
+  if (!radius_chk_var(cmd->argv[4])) {
+    char *endp = NULL;
+
+    /* Make sure it's a number, at least. */
+    if (strtod(cmd->argv[4], &endp) < 0)
+      CONF_ERROR(cmd, "negative bytes value not allowed");
+
+    if (endp && *endp)
+      CONF_ERROR(cmd, "invalid bytes parameter: not a number");
+  }
+
+  if (!radius_chk_var(cmd->argv[5])) {
+    char *endp = NULL;
+
+    /* Make sure it's a number, at least. */
+    if (strtod(cmd->argv[5], &endp) < 0)
+      CONF_ERROR(cmd, "negative bytes value not allowed");
+
+    if (endp && *endp)
+      CONF_ERROR(cmd, "invalid bytes parameter: not a number");
+  }
+
+  if (!radius_chk_var(cmd->argv[6])) {
+    char *endp = NULL;
+
+    /* Make sure it's a number, at least. */
+    if (strtoul(cmd->argv[6], &endp, 10) < 0)
+      CONF_ERROR(cmd, "negative files value not allowed");
+
+    if (endp && *endp)
+      CONF_ERROR(cmd, "invalid files parameter: not a number");
+  }
+
+  if (!radius_chk_var(cmd->argv[7])) {
+    char *endp = NULL;
+
+    /* Make sure it's a number, at least. */
+    if (strtoul(cmd->argv[7], &endp, 10) < 0)
+      CONF_ERROR(cmd, "negative files value not allowed");
+
+    if (endp && *endp)
+      CONF_ERROR(cmd, "invalid files parameter: not a number");
+  }
+
+  if (!radius_chk_var(cmd->argv[8])) {
+    char *endp = NULL;
+
+    /* Make sure it's a number, at least. */
+    if (strtoul(cmd->argv[8], &endp, 10) < 0)
+      CONF_ERROR(cmd, "negative files value not allowed");
+
+    if (endp && *endp)
+      CONF_ERROR(cmd, "invalid files parameter: not a number");
+  }
+
+  add_config_param_str(cmd->argv[0], 8, cmd->argv[1], cmd->argv[2],
+    cmd->argv[3], cmd->argv[4], cmd->argv[5], cmd->argv[6],
+    cmd->argv[7], cmd->argv[8]);
+
+  return HANDLED(cmd);
+}
+
 /* usage: RadiusRealm string */
 MODRET set_radiusrealm(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
@@ -2680,9 +3193,8 @@ static int radius_sess_init(void) {
 
   /* Is RadiusEngine on? */
   radius_engine = FALSE;
-  if ((c = find_config(main_server->conf, CONF_PARAM, "RadiusEngine",
-      FALSE)) != NULL) {
-
+  c = find_config(main_server->conf, CONF_PARAM, "RadiusEngine", FALSE);
+  if (c) {
     if (*((int *) c->argv[0]) == TRUE)
       radius_engine = TRUE;
   }
@@ -2698,8 +3210,8 @@ static int radius_sess_init(void) {
   radius_session_bytes_in = 0;
   radius_session_bytes_out = 0;
 
-  if ((c = find_config(main_server->conf, CONF_PARAM, "RadiusVendor",
-      FALSE)) != NULL) {
+  c = find_config(main_server->conf, CONF_PARAM, "RadiusVendor", FALSE);
+  if (c) {
     radius_vendor_name = c->argv[0];
     radius_vendor_id = *((unsigned int *) c->argv[1]);
 
@@ -2739,8 +3251,8 @@ static int radius_sess_init(void) {
     radius_log("notice: no configured RadiusAuthServers, no authentication");
 
   /* Prepare any configured fake user information. */
-  if ((c = find_config(main_server->conf, CONF_PARAM, "RadiusUserInfo",
-      FALSE)) != NULL) {
+  c = find_config(main_server->conf, CONF_PARAM, "RadiusUserInfo", FALSE);
+  if (c) {
 
     /* Process the parameter string stored in the found config_rec. */
     radius_process_user_info(c);
@@ -2755,8 +3267,8 @@ static int radius_sess_init(void) {
   }
 
   /* Prepare any configured fake group information. */
-  if ((c = find_config(main_server->conf, CONF_PARAM, "RadiusGroupInfo",
-      FALSE)) != NULL) {
+  c = find_config(main_server->conf, CONF_PARAM, "RadiusGroupInfo", FALSE);
+  if (c) {
 
     /* Process the parameter string stored in the found config_rec. */
     radius_process_group_info(c);
@@ -2770,11 +3282,20 @@ static int radius_sess_init(void) {
       radius_have_group_info = FALSE;
   }
 
+  /* Prepare any configure quota information. */
+  c = find_config(main_server->conf, CONF_PARAM, "RadiusQuotaInfo", FALSE);
+  if (c) {
+    radius_process_quota_info(c);
+
+    if (!radius_auth_server)
+      radius_have_quota_info = FALSE;
+  }
+
   /* Check for a configured RadiusRealm.  If present, use username + realm
    * in RADIUS packets as the user name, else just use the username.
    */
-  if ((radius_realm = get_param_ptr(main_server->conf, "RadiusRealm",
-      FALSE)) != NULL)
+  radius_realm = get_param_ptr(main_server->conf, "RadiusRealm", FALSE);
+  if (radius_realm)
     radius_log("using RadiusRealm '%s'", radius_realm);
 
   pr_event_register(&radius_module, "core.exit", radius_exit_ev, NULL);
@@ -2807,6 +3328,7 @@ static conftable radius_conftab[] = {
   { "RadiusEngine",		set_radiusengine,	NULL },
   { "RadiusGroupInfo",		set_radiusgroupinfo,	NULL },
   { "RadiusLog",		set_radiuslog,		NULL },
+  { "RadiusQuotaInfo",		set_radiusquotainfo,	NULL },
   { "RadiusRealm",		set_radiusrealm,	NULL },
   { "RadiusUserInfo",		set_radiususerinfo,	NULL },
   { "RadiusVendor",		set_radiusvendor,	NULL },
@@ -2814,6 +3336,9 @@ static conftable radius_conftab[] = {
 };
 
 static cmdtable radius_cmdtab[] = {
+  { HOOK,		"radius_quota_lookup", G_NONE,
+      radius_quota_lookup, FALSE, FALSE },
+
   { POST_CMD,		C_APPE,	G_NONE,	radius_post_stor,	FALSE, FALSE },
   { POST_CMD_ERR,	C_APPE,	G_NONE,	radius_post_stor,	FALSE, FALSE },
   { PRE_CMD,		C_PASS, G_NONE, radius_pre_pass,	FALSE, FALSE, CL_AUTH },
