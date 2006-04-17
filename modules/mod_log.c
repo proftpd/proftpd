@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2005 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.73 2006-03-15 03:56:23 castaglia Exp $
+ * $Id: mod_log.c,v 1.74 2006-04-17 22:48:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -95,6 +95,7 @@ struct logfile_struc {
 #define META_DIR_NAME		23
 #define META_DIR_PATH		24
 #define META_CMD_PARAMS		25
+#define META_RESPONSE_STR	26
 
 static pool			*log_pool;
 static logformat_t		*formats = NULL;
@@ -121,6 +122,7 @@ static xaset_t			*log_set = NULL;
    %p			- Port of server serving request
    %r			- Full request (command)
    %s			- Response code (status)
+   %S                   - Response string
    %T			- Time taken to serve request, in seconds
    %t			- Time
    %{format}t		- Formatted time (strftime(3) format)
@@ -130,8 +132,7 @@ static xaset_t			*log_set = NULL;
    %v			- ServerName of server serving request
 */
 
-static void add_meta(unsigned char **s, unsigned char meta, int args,
-                     ...) {
+static void add_meta(unsigned char **s, unsigned char meta, int args, ...) {
   int arglen;
   char *arg;
 
@@ -158,28 +159,24 @@ static void add_meta(unsigned char **s, unsigned char meta, int args,
   }
 }
 
-static
-char *preparse_arg(char **s)
-{
+static char *preparse_arg(char **s) {
   char *ret = (*s) + 1;
 
   (*s) = (*s) + 1;
   while (**s && **s != '}')
     (*s) = (*s) + 1;
 
-  **s = 0;
+  **s = '\0';
   (*s) = (*s) + 1;
   return ret;
 }
 
-static
-void logformat(char *nickname, char *fmts)
-{
+static void logformat(char *nickname, char *fmts) {
   char *tmp, *arg;
   unsigned char format[4096] = {'\0'}, *outs;
   logformat_t *lf;
 
-  /* This function can cause potential problems.  Custom logformats
+  /* This function can cause potential problems.  Custom LogFormats
    * might overrun the format buffer.  Fixing this problem involves a
    * rewrite of most of this module.  This will happen post 1.2.0.
    */
@@ -270,6 +267,10 @@ void logformat(char *nickname, char *fmts)
           add_meta(&outs, META_RESPONSE_CODE, 0);
           break;
 
+        case 'S':
+          add_meta(&outs, META_RESPONSE_STR, 0);
+          break;
+
         case 't':
           add_meta(&outs, META_TIME, 0);
           if (arg)
@@ -308,7 +309,7 @@ void logformat(char *nickname, char *fmts)
     }
   }
 
-  *outs++ = 0;
+  *outs++ = '\0';
 
   lf = (logformat_t *) pcalloc(log_pool, sizeof(logformat_t));
   lf->lf_nickname = pstrdup(log_pool, nickname);
@@ -909,15 +910,33 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       }
     }
 
+  case META_RESPONSE_STR:
+    {
+      pr_response_t *r;
+
+      argp = arg;
+      r = (resp_list ? resp_list : resp_err_list);
+
+      for (; r && !r->msg; r = r->next) ;
+      if (r &&
+          r->msg) {
+        sstrncpy(argp, r->msg, sizeof(arg));
+
+      } else {
+        sstrncpy(argp, "-", sizeof(arg));
+      }
+    }
+
     m++;
     break;
   }
 
   *f = m;
-  if (argp)
+  if (argp) {
     return pstrdup(p, argp);
-  else
-    return NULL;
+  }
+
+  return NULL;
 }
 
 /* from src/log.c */

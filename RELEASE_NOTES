@@ -16,7 +16,9 @@ files.
 
       CreateHome uid gid
 
-      TLSRequired auth+data
+      LogFormat %S
+
+      TLSRequired auth, auth+data
 
   + New configure options:
 
@@ -37,4 +39,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-04-17 22:35:13 $
+Last Updated: $Date: 2006-04-17 22:48:36 $
