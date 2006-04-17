@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql -- SQL frontend
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton.
- * Copyright (c) 2004-2005 TJ Saunders
+ * Copyright (c) 2004-2006 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,14 +23,14 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.101 2005-12-13 17:54:53 castaglia Exp $
+ * $Id: mod_sql.c,v 1.102 2006-04-17 22:20:55 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_sql.h"
 
-#define MOD_SQL_VERSION			"mod_sql/4.2.1"
+#define MOD_SQL_VERSION			"mod_sql/4.2.2"
 
 #if defined(HAVE_CRYPT_H) && !defined(AIX4) && !defined(AIX5)
 # include <crypt.h>
@@ -3496,6 +3496,8 @@ MODRET set_sqldefaulthomedir(cmd_rec *cmd) {
 }
 
 MODRET set_sqlhomedirondemand(cmd_rec *cmd) {
+  pr_log_pri(PR_LOG_WARNING, "warning: the SQLHomedirOnDemand directive "
+    "is deprecated, and will be removed in the next release");
   return add_virtualbool("SQLHomedirOnDemand", cmd);
 }
 

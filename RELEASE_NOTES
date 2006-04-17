@@ -33,4 +33,6 @@ files.
 
   + Deprecated configuration directives:
 
-Last Updated: $Date: 2006-04-17 21:01:43 $
+      SQLHomedirOnDemand
+
+Last Updated: $Date: 2006-04-17 22:20:55 $
