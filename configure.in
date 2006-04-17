@@ -1,7 +1,7 @@
 dnl ProFTPD - FTP server daemon
 dnl Copyright (c) 1997, 1998 Public Flood Software
 dnl Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
-dnl Copyright (c) 2001-2005 The ProFTPD Project team
+dnl Copyright (c) 2001-2006 The ProFTPD Project team
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -802,7 +802,7 @@ fi
 dnl The pam test used to disable use_shadow, and I'm not sure why, libpam
 dnl really shouldn't have anything to do with force_shadow or use_shadow.
 if test x"$enable_auth_pam" != xno ; then
-  AC_CHECK_HEADERS(security/pam_appl.h pam/pam_appl.h,
+  AC_CHECK_HEADERS(security/pam_appl.h security/pam_modules.h pam/pam_appl.h,
     [ if test `echo $ac_static_modules | grep -c mod_auth_pam` = "0"; then
         ac_static_modules="mod_auth_pam.o $ac_static_modules"
         ac_build_static_modules="modules/mod_auth_pam.o $ac_build_static_modules"

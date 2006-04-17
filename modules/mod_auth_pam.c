@@ -2,7 +2,7 @@
  * ProFTPD: mod_auth_pam -- Support for PAM-style authentication.
  * Copyright (c) 1998, 1999, 2000 Habeeb J. Dihu aka
  *   MacGyver <macgyver@tos.net>, All Rights Reserved.
- * Copyright 2000-2005 The ProFTPD Project
+ * Copyright 2000-2006 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,13 +36,15 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.13 2005-12-07 22:15:00 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.14 2006-04-17 17:04:45 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 
 #ifdef HAVE_PAM
+
+#define MOD_AUTH_PAM_VERSION		"mod_auth_pam/1.0.1"
 
 #ifdef HAVE_SECURITY_PAM_APPL_H
 # ifdef HPUX11
@@ -52,6 +54,10 @@
 # endif /* HPUX11 */
 # include <security/pam_appl.h>
 #endif /* HAVE_SECURITY_PAM_APPL_H */
+
+#ifdef HAVE_SECURITY_PAM_MODULES_H
+# include <security/pam_modules.h>
+#endif /* HAVE_SECURITY_PAM_MODULES_H */
 
 /* Needed for the MAXLOGNAME restriction. */
 #ifdef HAVE_SYS_PARAM_H
@@ -275,6 +281,8 @@ MODRET pam_auth(cmd_rec *cmd) {
   pam_error = pam_start(pamconfig, pam_user, &pam_conv, &pamh);
   if (pam_error != PAM_SUCCESS)
     goto done;
+
+  pam_set_item(pamh, PAM_RUSER, pam_user);
 
   /* Set our host environment for PAM modules that check host information.
    */
@@ -502,7 +510,10 @@ module auth_pam_module = {
   NULL,
 
   /* Session initialization */
-  NULL
+  NULL,
+
+  /* Module version */
+  MOD_AUTH_PAM_VERSION
 };
 
 #endif /* HAVE_PAM */
