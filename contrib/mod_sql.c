@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.102 2006-04-17 22:20:55 castaglia Exp $
+ * $Id: mod_sql.c,v 1.103 2006-04-17 22:23:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4590,12 +4590,14 @@ static conftable sql_conftab[] = {
   { "SQLRatioStats", set_sqlratiostats, NULL },
 
   { "SQLDefaultHomedir", set_sqldefaulthomedir, NULL },
-  { "SQLHomedirOnDemand", set_sqlhomedirondemand, NULL },
 
   { "SQLLog", set_sqllog, NULL },
   { "SQLLogFile", set_sqllogfile, NULL },
   { "SQLNamedQuery", set_sqlnamedquery, NULL },
   { "SQLShowInfo", set_sqlshowinfo, NULL },
+
+  /* Deprecated. */
+  { "SQLHomedirOnDemand", set_sqlhomedirondemand, NULL },
 
   { NULL, NULL, NULL }
 };
