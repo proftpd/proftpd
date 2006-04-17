@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.8 2005-11-29 18:19:15 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.9 2006-04-17 18:39:45 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -50,6 +50,7 @@ is based.  His module can be found here:
   <li><a href="#TLSCARevocationPath">TLSCARevocationPath</a>
   <li><a href="#TLSCertificateChainFile">TLSCertificateChainFile</a>
   <li><a href="#TLSCipherSuite">TLSCipherSuite</a>
+  <li><a href="#TLSCryptoDevice">TLSCryptoDevice</a>
   <li><a href="#TLSDHParamFile">TLSDHParamFile</a>
   <li><a href="#TLSDSACertificateFile">TLSDSACertificateFile</a>
   <li><a href="#TLSDSACertificateKeyFile">TLSDSACertificateKeyFile</a>
@@ -344,6 +345,41 @@ The OpenSSL command
 </pre>
 may be used to list all of the ciphers and the order described by a specific
 <em>&lt;list of ciphers&gt;</em>.
+
+<p>
+<hr>
+<h2><a name="TLSCryptoDevice">TLSCryptoDevice</a></h2>
+<strong>Syntax:</strong> TLSCryptoDevice <em>driver|"all"|"none"</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_tls<br>
+<strong>Compatibility:</strong> 1.3.1rc1 and later
+
+<p>
+The <code>TLSCryptoDevice</code> directive is used to configure
+<code>mod_tls</code> to use an OpenSSL "engine", a cryptographic module
+that OpenSSL library can use for accelerated cryptographic support, or
+HSM keys, <i>etc</i>.
+
+<p>
+To use all of the engines compiled into OpenSSL, use:
+<pre>
+  TLSCryptoDevice all
+</pre>
+OpenSSL will find, from the list of supported engines, the first one
+usable, if any.  If no usable engines are found, OpenSSL will default to
+its normal software implementation.  If a specific engine is desired as
+the default engine to use, specify the engine name, <i>e.g.</i>:
+<pre>
+  TLSCryptoDevice chil
+</pre>
+
+<p>
+The OpenSSL command
+<pre>
+  openssl engine
+</pre>
+may be used to list all of the engine drivers supported by OpenSSL.
 
 <p>
 <hr>
@@ -1071,7 +1107,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2005-11-29 18:19:15 $</i><br>
+Last Updated: <i>$Date: 2006-04-17 18:39:45 $</i><br>
 
 <br><hr>
 

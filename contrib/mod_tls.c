@@ -42,6 +42,9 @@
 #include <openssl/x509v3.h>
 #include <openssl/err.h>
 #include <openssl/rand.h>
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
+# include <openssl/engine.h>
+#endif
 
 #ifdef HAVE_MLOCK
 # include <sys/mman.h>
@@ -311,6 +314,7 @@ static unsigned int tls_npkeys = 0;
 #define TLS_DEFAULT_PROTOCOL		"SSLv23"
 
 /* Module variables */
+static const char *tls_crypto_device = NULL;
 static unsigned char tls_engine = FALSE;
 static unsigned long tls_flags = 0UL, tls_opts = 0UL;
 static tls_pkey_t *tls_pkey = NULL;
@@ -903,9 +907,9 @@ static int tls_init_ctxt(void) {
    }
 #endif /* ZLIB */
 
-  if ((ssl_ctx = SSL_CTX_new(SSLv23_server_method())) == NULL) {
-    tls_log("error: SSL_CTX_new(): %s", ERR_error_string(ERR_get_error(),
-      NULL));
+  ssl_ctx = SSL_CTX_new(SSLv23_server_method());
+  if (ssl_ctx == NULL) {
+    tls_log("error: SSL_CTX_new(): %s", tls_get_errors());
     return -1;
   }
 
@@ -1174,11 +1178,9 @@ static int tls_init_server(void) {
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   /* Lookup/process any configured TLSRenegotiate parameters. */
-  if ((c = find_config(main_server->conf, CONF_PARAM, "TLSRenegotiate",
-      FALSE)) != NULL) {
-
+  c = find_config(main_server->conf, CONF_PARAM, "TLSRenegotiate", FALSE);
+  if (c) {
     if (c->argc == 0) {
-
       /* Disable all server-side requested renegotiations; clients can
        * still request renegotiations.
        */
@@ -1204,6 +1206,63 @@ static int tls_init_server(void) {
       /* Set any control channel renegotiation timers, if need be. */
       pr_timer_add(ctrl_timeout ? ctrl_timeout : tls_ctrl_renegotiate_timeout,
         0, &tls_module, tls_ctrl_renegotiate_cb);
+    }
+  }
+
+  /* Lookup and handle any requested crypto accelerators/drivers. */
+  c = find_config(main_server->conf, CONF_PARAM, "TLSCryptoDevice", FALSE);
+  if (c) {
+    if (strcasecmp((const char *) c->argv[0], "NONE") == 0) {
+      tls_crypto_device = NULL;
+
+    } else if (strcasecmp((const char *) c->argv[0], "ALL") == 0) {
+      /* Load all ENGINE implementations bundled with OpenSSL. */
+      ENGINE_load_builtin_engines();
+      ENGINE_register_all_complete();
+
+      tls_crypto_device = c->argv[0];
+      tls_log("enabled all builtin crypto devices");
+
+    } else {
+      ENGINE *e;
+
+      /* Load all ENGINE implementations bundled with OpenSSL. */
+      ENGINE_load_builtin_engines();
+
+      e = ENGINE_by_id(c->argv[0]);
+      if (!e) {
+        /* The requested driver is not available. */
+        tls_log("TLSCryptoDevice '%s' is not available",
+          (const char *) c->argv[0]);
+        return 0;
+      }
+
+      if (!ENGINE_init(e)) {
+        /* The requested driver could not be initialized. */
+        tls_log("unable to initialize TLSCryptoDevice '%s': %s",
+          (const char *) c->argv[0], tls_get_errors());
+
+        ENGINE_free(e);
+        return 0;
+      }
+
+      if (!ENGINE_set_default(e, ENGINE_METHOD_ALL)) {
+        /* The requested driver could not be used as the default for
+         * some odd reason.
+         */
+        tls_log("unable to register TLSCryptoDevice '%s' as the default: %s",
+          (const char *) c->argv[0], tls_get_errors());
+
+        ENGINE_finish(e);
+        ENGINE_free(e);
+        return 0;
+      }
+
+      ENGINE_finish(e);
+      ENGINE_free(e);
+
+      tls_crypto_device = c->argv[0];
+      tls_log("using TLSCryptoDevice '%s'", tls_crypto_device);
     }
   }
 #endif
@@ -1355,6 +1414,14 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 }
 
 static void tls_cleanup(void) {
+
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
+  if (tls_crypto_device) {
+    ENGINE_cleanup();
+    tls_crypto_device = NULL;
+  }
+#endif
+
   if (crl_store) {
     X509_STORE_free(crl_store);
     crl_store = NULL;
@@ -3250,6 +3317,22 @@ MODRET set_tlsciphersuite(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+/* usage: TLSCryptoDevice driver|"ALL"|"NONE" */
+MODRET set_tlscryptodevice(cmd_rec *cmd) {
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  return HANDLED(cmd);
+
+#else /* OpenSSL is too old for ENGINE support */
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
+    "directive cannot be used on the system, as the OpenSSL version is too old",
+    NULL));
+#endif
+}
+
 /* usage: TLSDHParamFile file */
 MODRET set_tlsdhparamfile(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
@@ -3917,6 +4000,7 @@ static conftable tls_conftab[] = {
   { "TLSCARevocationPath",      set_tlscacrlpath,       NULL }, 
   { "TLSCertificateChainFile",	set_tlscertchain,	NULL },
   { "TLSCipherSuite",		set_tlsciphersuite,	NULL },
+  { "TLSCryptoDevice",		set_tlscryptodevice,	NULL },
   { "TLSDHParamFile",		set_tlsdhparamfile,	NULL },
   { "TLSDSACertificateFile",	set_tlsdsacertfile,	NULL },
   { "TLSDSACertificateKeyFile",	set_tlsdsakeyfile,	NULL },
