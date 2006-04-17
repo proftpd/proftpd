@@ -1,4 +1,4 @@
-<!-- $Id: mod_quotatab.html,v 1.7 2005-11-15 20:01:36 castaglia Exp $ -->
+<!-- $Id: mod_quotatab.html,v 1.8 2006-04-17 22:38:32 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_quotatab.html,v $ -->
 
 <html>
@@ -16,8 +16,8 @@
 
 This module is contained in the <code>mod_quotatab.c</code>,
 <code>mod_quotatab.h</code>, and in its submodule source files, for
-ProFTPD 1.2.<i>x</i>, and is not compiled by default.  Installation
-instructions can be found <a href="#Installation">here</a>.
+ProFTPD 1.2.<i>x</i>/1.3.<i>x</i>, and is not compiled by default.
+Installation instructions can be found <a href="#Installation">here</a>.
 
 <p>
 This module is designed to impose quotas, both byte- and file-based, on
@@ -34,6 +34,7 @@ storage of quota table information in various formats:
 <ul>
   <li><a href="mod_quotatab_file.html"><code>mod_quotatab_file</code></a> for file-based quota tables<br>
   <li><a href="mod_quotatab_ldap.html"><code>mod_quotatab_ldap</code></a> for LDAP-based quota limit tables<br>
+  <li><a href="mod_quotatab_radius.html"><code>mod_quotatab_radius</code></a> for RADIUS-based quota tables<br>
   <li><a href="mod_quotatab_sql.html"><code>mod_quotatab_sql</code></a> for SQL-based quota tables<br>
 </ul>
 
@@ -479,7 +480,7 @@ for that module.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2005-11-15 20:01:36 $</i><br>
+Last Updated: <i>$Date: 2006-04-17 22:38:32 $</i><br>
 
 <br><hr>
 
