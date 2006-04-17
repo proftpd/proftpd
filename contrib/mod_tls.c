@@ -50,7 +50,7 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.1.1"
+#define MOD_TLS_VERSION		"mod_tls/2.1.2"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001021001 
@@ -321,6 +321,7 @@ static tls_pkey_t *tls_pkey = NULL;
 static int tls_logfd = -1;
 static char *tls_logname = NULL;
 static char *tls_protocol = TLS_DEFAULT_PROTOCOL;
+static unsigned char tls_required_on_auth = FALSE;
 static unsigned char tls_required_on_ctrl = FALSE;
 static unsigned char tls_required_on_data = FALSE;
 static unsigned char *tls_authenticated = NULL;
@@ -1702,7 +1703,9 @@ static unsigned char tls_dotlogin_allow(const char *user) {
   pool *tmp_pool = NULL;
   unsigned char allow_user = FALSE;
 
-  if (!(tls_flags & TLS_SESS_ON_CTRL) || !ctrl_ssl || !user)
+  if (!(tls_flags & TLS_SESS_ON_CTRL) ||
+      !ctrl_ssl ||
+      !user)
     return FALSE;
 
   tmp_pool = make_sub_pool(permanent_pool);
@@ -2611,7 +2614,8 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
       nstrm->strm_mode == PR_NETIO_IO_WR) {
 
     /* Enforce the "data" part of TLSRequired, if configured. */
-    if (tls_required_on_data || (tls_flags & TLS_SESS_NEED_DATA_PROT)) {
+    if (tls_required_on_data ||
+        (tls_flags & TLS_SESS_NEED_DATA_PROT)) {
       X509 *ctrl_cert = NULL, *data_cert = NULL;
 
       tls_log("%s", "starting TLS negotiation on data connection");
@@ -2853,7 +2857,8 @@ MODRET tls_authenticate(cmd_rec *cmd) {
    *  TLS handshake + .tlslogin (passwd ignored)
    */
 
-  if ((tls_flags & TLS_SESS_ON_CTRL) && (tls_opts & TLS_OPT_ALLOW_DOT_LOGIN)) {
+  if ((tls_flags & TLS_SESS_ON_CTRL) &&
+      (tls_opts & TLS_OPT_ALLOW_DOT_LOGIN)) {
 
     if (tls_dotlogin_allow(cmd->argv[0])) {
       tls_log("TLS/X509 .tlslogin check successful for user '%s'",
@@ -2888,7 +2893,8 @@ MODRET tls_auth_check(cmd_rec *cmd) {
    *  TLS handshake + .tlslogin (passwd ignored)
    */
 
-  if ((tls_flags & TLS_SESS_ON_CTRL) && (tls_opts & TLS_OPT_ALLOW_DOT_LOGIN)) {
+  if ((tls_flags & TLS_SESS_ON_CTRL) &&
+      (tls_opts & TLS_OPT_ALLOW_DOT_LOGIN)) {
 
     if (tls_dotlogin_allow(cmd->argv[1])) {
       tls_log("TLS/X509 .tlslogin check successful for user '%s'",
@@ -2926,7 +2932,18 @@ MODRET tls_any(cmd_rec *cmd) {
       strcmp(cmd->argv[0], C_QUIT) == 0)
     return DECLINED(cmd);
 
-  if (tls_required_on_ctrl && !(tls_flags & TLS_SESS_ON_CTRL)) {
+  if (tls_required_on_auth &&
+      !(tls_flags & TLS_SESS_ON_CTRL)) {
+    if (strcmp(cmd->argv[0], C_USER) == 0 ||
+        strcmp(cmd->argv[0], C_PASS) == 0 ||
+        strcmp(cmd->argv[0], C_ACCT) == 0) {
+      pr_response_add_err(R_550, "SSL/TLS required on the control channel");
+      return ERROR(cmd);
+    }
+  }
+
+  if (tls_required_on_ctrl &&
+      !(tls_flags & TLS_SESS_ON_CTRL)) {
 
     if (!(tls_opts & TLS_OPT_ALLOW_PER_USER)) {
       tls_log("SSL/TLS required but absent on control channel, "
@@ -2946,7 +2963,8 @@ MODRET tls_any(cmd_rec *cmd) {
     }
   }
 
-  if (tls_required_on_data && !(tls_flags & TLS_SESS_NEED_DATA_PROT)) {
+  if (tls_required_on_data &&
+      !(tls_flags & TLS_SESS_NEED_DATA_PROT)) {
     if (strcmp(cmd->argv[0], C_APPE) == 0 ||
         strcmp(cmd->argv[0], C_LIST) == 0 ||
         strcmp(cmd->argv[0], C_NLST) == 0 ||
@@ -2959,17 +2977,6 @@ MODRET tls_any(cmd_rec *cmd) {
       return ERROR(cmd);
     }
   }
-
-  /* NOTE: in order for mod_tls to get the proper response code to
-   * mod_auth's cmd_pass() (which cannot be circumvented, for it does the
-   * setting up of the environment), I'll need to hack the core a little.
-   * I'm thinking to have auth_authenticate handlers (and auth_check
-   * handlers, I suppose) have the option of, if returning HANDLED, putting
-   * the response code to use in the cmd_rec, and then having mod_auth
-   * check for such a value.  If not given, do what it normally does
-   * (this will allow mod_sql, mod_ldap, etc to continue to function without
-   * needing to be modified).
-   */
 
   return DECLINED(cmd);
 }
@@ -3574,10 +3581,10 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
 #endif
 }
 
-/* usage: TLSRequired on|off|both|ctrl|control|data */
+/* usage: TLSRequired on|off|both|ctrl|control|data|auth|auth+data */
 MODRET set_tlsrequired(cmd_rec *cmd) {
   int bool = -1;
-  unsigned char on_ctrl = FALSE, on_data = FALSE;
+  unsigned char on_auth = FALSE, on_ctrl = FALSE, on_data = FALSE;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
@@ -3586,31 +3593,45 @@ MODRET set_tlsrequired(cmd_rec *cmd) {
   bool = get_boolean(cmd, 1);
   if (bool == -1) {
     if (strcmp(cmd->argv[1], "control") == 0 ||
-        strcmp(cmd->argv[1], "ctrl") == 0)
+        strcmp(cmd->argv[1], "ctrl") == 0) {
+      on_auth = TRUE;
       on_ctrl = TRUE;
 
-    else if (strcmp(cmd->argv[1], "data") == 0)
+    } else if (strcmp(cmd->argv[1], "data") == 0) {
       on_data = TRUE;
 
-    else if (strcmp(cmd->argv[1], "both") == 0) {
+    } else if (strcmp(cmd->argv[1], "both") == 0 ||
+               strcmp(cmd->argv[1], "ctrl+data") == 0) {
+      on_auth = TRUE;
       on_ctrl = TRUE;
       on_data = TRUE;
-    
+
+    } else if (strcmp(cmd->argv[1], "auth") == 0) {
+      on_auth = TRUE;
+
+    } else if (strcmp(cmd->argv[1], "auth+data") == 0) {
+      on_auth = TRUE;
+      on_data = TRUE;
+
     } else
       CONF_ERROR(cmd, "bad parameter");
 
   } else {
     if (bool == TRUE) {
+      on_auth = TRUE;
       on_ctrl = TRUE;
       on_data = TRUE;
     }
   }
 
-  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = on_ctrl;
   c->argv[1] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[1]) = on_data;
+  c->argv[2] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[2]) = on_auth;
+
   c->flags |= CF_MERGEDOWN;
 
   return HANDLED(cmd);

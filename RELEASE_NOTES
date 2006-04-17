@@ -14,6 +14,10 @@ files.
 
   + Enhanced configuration directives:
 
+      CreateHome uid gid
+
+      TLSRequired auth+data
+
   + New configure options:
 
       --enable-devel=stacktrace
@@ -29,4 +33,4 @@ files.
 
   + Deprecated configuration directives:
 
-Last Updated: $Date: 2006-04-17 18:52:33 $
+Last Updated: $Date: 2006-04-17 21:01:43 $

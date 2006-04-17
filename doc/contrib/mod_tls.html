@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.9 2006-04-17 18:39:45 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.10 2006-04-17 21:01:43 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -545,6 +545,11 @@ The currently implemented options are:
     policy enforcement; please consider carefully if this tradeoff is
     acceptable for your site.
 
+    <p>
+    However, <code>TLSRequired auth</code> and
+    <code>TLSRequired auth+data</code> configurations will override the
+    <code>AllowPerUser</code> option.
+
   <p>
   <li><code>ExportCertData</code><br>
     <p>
@@ -913,7 +918,7 @@ Examples:
 <p>
 <hr>
 <h2><a name="TLSRequired">TLSRequired</a></h2>
-<strong>Syntax:</strong> TLSRequired <em>on|off|ctrl|data</em><br>
+<strong>Syntax:</strong> TLSRequired <em>on|off|ctrl|data|auth|auth+data</em><br>
 <strong>Default:</strong> off<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code>, <code>&lt;Anonymous&gt;</code><br>
 <strong>Module:</strong> mod_tls<br>
@@ -940,6 +945,28 @@ Example:
   # Require SSL/TLS on both channels.
   TLSRequired on
 </pre>
+
+The <em>auth</em> parameter requires that SSL/TLS be used on the control
+channel, but only for authentication.  To use this setting <i>and</i>
+require SSL/TLS for data transfers, use the <em>auth+data</em> parameter,
+<i>e.g.</i>:
+<pre>
+  # Allow the client to use the CCC command to remove SSL/TLS from the
+  # control channel, but only after authentication has been performed.
+  # Still enforce the policy of using SSL/TLS for data transfers.
+  #
+  # Note that if we did not need to protect data transfers, we would
+  # set 'TLSRequired auth' instead of using 'TLSRequired auth+data'.
+  TLSRequired auth+data
+</pre>
+This <em>auth+data</em> parameter allows a very specific security policy:
+authentication via the <code>USER</code>/<code>PASS</code> commands
+<b>must</b> be protected via SSL/TLS, as must the data channel, but after
+authenticating, the client can request that protection be removed from the
+control channel.  This policy allows clients to use the <code>CCC</code>
+(<b>C</b>lear <b>C</b>ommand <b>C</b>hannel) command, which in turn enables
+SSL/TLS protected data transfers that are operate better with firewalls that
+monitor the FTP control channel.
 
 <p>
 <hr>
@@ -1107,7 +1134,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2006-04-17 18:39:45 $</i><br>
+Last Updated: <i>$Date: 2006-04-17 21:01:43 $</i><br>
 
 <br><hr>
 
