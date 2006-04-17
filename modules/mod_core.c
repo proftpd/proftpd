@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.278 2006-04-16 23:01:28 castaglia Exp $
+ * $Id: mod_core.c,v 1.279 2006-04-17 22:22:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2586,43 +2586,6 @@ MODRET set_authorder(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
-MODRET set_bind(cmd_rec *cmd) {
-  pr_netaddr_t *addr = NULL;
-  array_header *addrs = NULL;
-  config_rec *c = NULL;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
-
-  /* It's possible for a server to have multiple IP addresses (e.g. a DNS
-   * name that has both A and AAAA records).  We need to handle that case
-   * here by looking up all of a server's addresses, and making sure there
-   * are server_recs for each one.
-   */
-
-  c = add_config_param("_bind", 1, NULL);
-
-  addr = pr_netaddr_get_addr(c->pool, cmd->argv[1], &addrs);
-  if (!addr)
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unable to resolve \"",
-      cmd->argv[1], "\"", NULL));
-
-  c->argv[0] = pstrdup(c->pool, pr_netaddr_get_ipstr(addr));
-
-  if (addrs) {
-    register unsigned int i;
-    pr_netaddr_t **elts = addrs->elts;
-
-    /* For every additional address, implicitly add a Bind record. */
-    for (i = 0; i < addrs->nelts; i++)
-      add_config_param_str("_bind", 1, pr_netaddr_get_ipstr(elts[i]));
-  }
-
-  pr_log_pri(PR_LOG_WARNING, "warning: the Bind directive is deprecated "
-    "and will be removed in the next release");
-  return HANDLED(cmd);
-}
-
 MODRET end_limit(cmd_rec *cmd) {
   int empty_ctxt = FALSE;
 
@@ -4620,9 +4583,6 @@ static conftable core_conftab[] = {
   { "WtmpLog",			set_wtmplog,			NULL },
   { "tcpBackLog",		set_tcpbacklog,			NULL },
   { "tcpNoDelay",		set_tcpnodelay,			NULL },
-
-  /* Deprecated */
-  { "Bind",			set_bind,			NULL },
 
   { NULL, NULL, NULL }
 };
