@@ -26,13 +26,13 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.19 2006-03-17 18:52:37 castaglia Exp $
+ * $Id: mod_delay.c,v 1.20 2006-04-17 16:48:52 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_DELAY_VERSION		"mod_delay/0.5"
+#define MOD_DELAY_VERSION		"mod_delay/0.6"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001021001
@@ -45,6 +45,10 @@
 # include <sys/mman.h>
 #endif
 
+#if defined(PR_USE_CTRLS)
+# include <mod_ctrls.h>
+#endif /* PR_USE_CTRLS */
+
 /* Number of values to keep in a row. */
 #ifndef DELAY_NVALUES
 # define DELAY_NVALUES			256
@@ -54,6 +58,10 @@
 #ifndef DELAY_SESS_NVALUES
 # define DELAY_SESS_NVALUES		16
 #endif
+
+#if defined(PR_USE_CTRLS)
+static ctrls_acttab_t delay_acttab[];
+#endif /* PR_USE_CTRLS */
 
 extern xaset_t *server_list;
 
@@ -627,8 +635,247 @@ static int delay_table_unlock(unsigned int rownum) {
   return 0;
 }
 
+#if defined(PR_USE_CTRLS)
+
+/* Control handlers
+ */
+
+static int delay_handle_info(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+  register server_rec *s;
+  pool *tmp_pool;
+  pr_fh_t *fh;
+  char *vals;
+
+  PRIVS_ROOT
+  fh = pr_fsio_open(delay_tab.dt_path, O_RDWR);
+  PRIVS_RELINQUISH
+
+  if (!fh) {
+    pr_ctrls_add_response(ctrl,
+      "warning: unable to open DelayTable '%s': %s", delay_tab.dt_path,
+      strerror(errno));
+    return -1;
+  }
+
+  delay_tab.dt_fd = fh->fh_fd;
+  delay_tab.dt_data = NULL;
+
+  if (delay_table_load(TRUE) < 0) {
+    pr_ctrls_add_response(ctrl,
+      "unable to load DelayTable '%s' into memory: %s",
+      delay_tab.dt_path, strerror(errno));
+
+    pr_fsio_close(fh);
+    delay_tab.dt_fd = -1;
+    delay_tab.dt_data = NULL;
+
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(delay_pool);
+
+  for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+    unsigned int r = s->sid - 1;
+    register unsigned int i;
+ 
+    /* Row for USER values */
+    struct delay_rec *row = &((struct delay_rec *) delay_tab.dt_data)[r];
+    pr_ctrls_add_response(ctrl, "Address %s#%u: %u USER values (usecs):",
+      row->d_addr, row->d_port, row->d_nvals);
+
+    /* Start at the end of the row and work backward, as values are
+     * always added at the end of the row, shifting everything to the left.
+     */
+    vals = "";
+    for (i = 1; i < row->d_nvals; i++) {
+      char buf[80];
+
+      memset(buf, '\0', sizeof(buf));
+      sprintf(buf, "%10ld", row->d_vals[DELAY_NVALUES - i]);
+
+      vals = pstrcat(tmp_pool, vals, " ", buf, NULL);
+
+      if (i != 0 &&
+          i % 4 == 0) {
+        pr_ctrls_add_response(ctrl, "  %s", vals);
+        vals = "";
+      }
+    }
+
+    if (strlen(vals) > 0)
+      pr_ctrls_add_response(ctrl, "  %s", vals);
+
+    pr_ctrls_add_response(ctrl, "%s", "");
+
+    /* Row for PASS values */
+    row = &((struct delay_rec *) delay_tab.dt_data)[r + 1];
+    pr_ctrls_add_response(ctrl, "Address %s#%u: %u PASS values (usecs):",
+      row->d_addr, row->d_port, row->d_nvals);
+
+    vals = "";
+    for (i = 1; i < row->d_nvals; i++) {
+      char buf[80];
+
+      memset(buf, '\0', sizeof(buf));
+      sprintf(buf, "%10ld", row->d_vals[DELAY_NVALUES - i]);
+
+      vals = pstrcat(tmp_pool, vals, " ", buf, NULL);
+
+      if (i != 0 &&
+          i % 4 == 0) {
+        pr_ctrls_add_response(ctrl, "  %s", vals);
+        vals = "";
+      }
+    }
+
+    if (strlen(vals) > 0)
+      pr_ctrls_add_response(ctrl, "  %s", vals);
+  }
+  pr_ctrls_add_response(ctrl, "%s", "");
+
+  if (delay_table_unload(TRUE) < 0) {
+    pr_ctrls_add_response(ctrl,
+      "unable to unload DelayTable '%s' from memory: %s",
+      delay_tab.dt_path, strerror(errno));
+  }
+
+  pr_fsio_close(fh);
+
+  delay_tab.dt_fd = -1;
+  delay_tab.dt_data = NULL;
+
+  destroy_pool(tmp_pool);
+  return 0;
+}
+
+static int delay_handle_reset(pr_ctrls_t *ctrl, int reqargc,
+    char **reqarg) {
+  struct flock lock;
+  pr_fh_t *fh;
+
+  PRIVS_ROOT
+  fh = pr_fsio_open(delay_tab.dt_path, O_RDWR);
+  PRIVS_RELINQUISH
+
+  if (!fh) {
+    pr_ctrls_add_response(ctrl,
+      "unable to open DelayTable '%s': %s", delay_tab.dt_path,
+      strerror(errno));
+    return -1;
+  }
+
+  lock.l_type = F_WRLCK;
+  lock.l_whence = 0;
+  lock.l_start = 0;
+  lock.l_len = 0;
+
+  while (fcntl(fh->fh_fd, F_SETLKW, &lock) < 0) {
+    if (errno == EINTR) {
+      pr_signals_handle();
+      continue;
+
+    } else {
+      pr_ctrls_add_response(ctrl,
+        "unable to obtain write lock on DelayTable '%s': %s",
+         fh->fh_path, strerror(errno));
+      pr_fsio_close(fh);
+      return -1;
+    }
+  }
+
+  if (pr_fsio_ftruncate(fh, 0) < 0) {
+    pr_ctrls_add_response(ctrl,
+      "error truncating DelayTable '%s': %s", fh->fh_path, strerror(errno));
+    pr_fsio_close(fh);
+    return -1;
+  }
+
+  lock.l_type = F_UNLCK;
+  fcntl(fh->fh_fd, F_SETLK, &lock);
+
+  if (pr_fsio_close(fh) < 0) {
+    pr_ctrls_add_response(ctrl,
+      "error closing DelayTable '%s': %s", delay_tab.dt_path,
+      strerror(errno));
+    return -1;
+  }
+
+  pr_ctrls_add_response(ctrl, "DelayTable '%s' reset", delay_tab.dt_path);
+  return 0;
+}
+
+static int delay_handle_delay(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+
+  if (reqargc == 0 ||
+      reqargv == NULL) {
+    pr_ctrls_add_response(ctrl, "delay: missing required parameters");
+    return -1;
+  }
+
+  if (strcmp(reqargv[0], "info") == 0) {
+
+    if (!ctrls_check_acl(ctrl, delay_acttab, "info")) {
+      pr_ctrls_add_response(ctrl, "access denied");
+      return -1;
+    }
+
+    return delay_handle_info(ctrl, --reqargc, ++reqargv);
+
+  } else if (strcmp(reqargv[0], "reset") == 0) {
+
+    if (!ctrls_check_acl(ctrl, delay_acttab, "reset")) {
+      pr_ctrls_add_response(ctrl, "access denied");
+      return -1;
+    }
+
+    return delay_handle_reset(ctrl, --reqargc, ++reqargv);
+
+  } else {
+    pr_ctrls_add_response(ctrl, "unknown delay action: '%s'", reqargv[0]);
+    return -1;
+  }
+
+  return 0;
+}
+
+#endif /* PR_USE_CTRLS */
+
 /* Configuration handlers
  */
+
+/* usage: DelayControlsACLs actions|all allow|deny user|group list */
+MODRET set_delayctrlsacls(cmd_rec *cmd) {
+#if defined(PR_USE_CTRLS)
+  char *bad_action = NULL, **actions = NULL;
+
+  CHECK_ARGS(cmd, 4);
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  actions = ctrls_parse_acl(cmd->tmp_pool, cmd->argv[1]);
+
+  /* Check the second parameter to make sure it is "allow" or "deny" */
+  if (strcmp(cmd->argv[2], "allow") != 0 &&
+      strcmp(cmd->argv[2], "deny") != 0)
+    CONF_ERROR(cmd, "second parameter must be 'allow' or 'deny'");
+
+  /* Check the third parameter to make sure it is "user" or "group" */
+  if (strcmp(cmd->argv[3], "user") != 0 &&
+      strcmp(cmd->argv[3], "group") != 0)
+    CONF_ERROR(cmd, "third parameter must be 'user' or 'group'");
+
+  bad_action = ctrls_set_module_acls(delay_acttab, delay_pool, actions,
+    cmd->argv[2], cmd->argv[3], cmd->argv[4]);
+  if (bad_action != NULL)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown delay action: '",
+      bad_action, "'", NULL));
+
+  return HANDLED(cmd);
+#else
+  CONF_ERROR(cmd, "requires Controls support (--enable-ctrls)")
+#endif /* PR_USE_CTRLS */
+}
 
 /* usage: DelayEngine on|off */
 MODRET set_delayengine(cmd_rec *cmd) {
@@ -917,6 +1164,22 @@ static int delay_init(void) {
   delay_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(delay_pool, MOD_DELAY_VERSION);
 
+#if defined(PR_USE_CTRLS)
+  if (pr_ctrls_register(&delay_module, "delay", "tune mod_delay settings",
+      delay_handle_delay) < 0) {
+    pr_log_pri(PR_LOG_INFO, MOD_DELAY_VERSION
+      ": error registering 'delay' control: %s", strerror(errno));
+
+  } else {
+    register unsigned int i;
+
+    for (i = 0; delay_acttab[i].act_action; i++) {
+      delay_acttab[i].act_acl = pcalloc(delay_pool, sizeof(ctrls_acl_t));
+      ctrls_init_acl(delay_acttab[i].act_acl);
+    }
+  }
+#endif /* PR_USE_CTRLS */
+
   return 0;
 }
 
@@ -966,7 +1229,16 @@ static int delay_sess_init(void) {
 /* Module API tables
  */
 
+#if defined(PR_USE_CTRLS)
+static ctrls_acttab_t delay_acttab[] = {
+  { "info",	NULL, NULL, NULL },
+  { "reset",	NULL, NULL, NULL },
+  { NULL,	NULL, NULL, NULL }
+};
+#endif /* PR_USE_CTRLS */
+
 static conftable delay_conftab[] = {
+  { "DelayControlsACLs",set_delayctrlsacls,	NULL },
   { "DelayEngine",	set_delayengine,	NULL },
   { "DelayTable",	set_delaytable,		NULL },
   { NULL }

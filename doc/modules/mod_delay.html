@@ -1,4 +1,4 @@
-<!-- $Id: mod_delay.html,v 1.2 2005-06-29 19:11:45 castaglia Exp $ -->
+<!-- $Id: mod_delay.html,v 1.3 2006-04-17 16:48:52 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/modules/mod_delay.html,v $ -->
 
 <html>
@@ -61,9 +61,39 @@ of the module as it was developed.
 
 <h2>Directives</h2>
 <ul>
+  <li><a href="#DelayControlsACLs">DelayControlsACLs</a>
   <li><a href="#DelayEngine">DelayEngine</a>
   <li><a href="#DelayTable">DelayTable</a>
 </ul>
+
+<h2>Control Actoins</h2>
+<ul>
+  <li><a href="#delay_info"><code>delay info</code></a>
+  <li><a href="#delay_reset"><code>delay reset</code></a>
+</ul>
+
+<hr>
+<h2><a name="DelayControlsACLs">DelayControlsACLs</a></h3>
+<strong>Syntax:</strong> DelayControlsACLs <em>actions|&quot;all&quot; &quot;allow&quot;|&quot;deny&quot; &quot;user&quot;|&quot;group&quot; list</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config<br>
+<strong>Module:</strong> mod_delay<br>
+<strong>Compatibility:</strong> 1.3.1rc1 and later
+
+<p>
+The <code>DelayControlsACLs</code> directive configures access lists of
+<em>users</em> or <em>groups</em> who are allowed (or denied) the ability to
+use the <em>actions</em> implemented by <code>mod_delay</code>. The default
+behavior is to deny everyone unless an ACL allowing access has been explicitly
+configured.
+
+<p>
+If &quot;allow&quot; is used, then <em>list</em>, a comma-delimited list
+of <em>users</em> or <em>groups</em>, can use the given <em>actions</em>; all
+others are denied.  If &quot;deny&quot; is used, then the <em>list</em> of
+<em>users</em> or <em>groups</em> cannot use <em>actions</em> all others are
+allowed.  Multiple <code>DelayControlsACLs</code> directives may be used to
+configure ACLs for different control actions, and for both users and groups.
 
 <hr>
 <h2><a name="DelayEngine">DelayEngine</a></h2>
@@ -86,7 +116,7 @@ Example:
   &lt;/IfModule&gt;
 </pre>
 
-<p>
+<hr>
 <h2><a name="DelayTable">DelayTable</a></h2>
 <strong>Syntax:</strong> DelayTable <em>path</em><br>
 <strong>Default:</strong> DelayTable var/proftpd/proftpd.delay<br>
@@ -109,6 +139,34 @@ stored data.
 
 <p>
 <hr>
+<h2>Control Actions</h2>
+
+<p>
+<hr>
+<h3><a name="delay_info"><code>delay info</code></a></h3>
+<strong>Syntax:</strong> ftpdctl delay info<br>
+<strong>Purpose:</strong> Display data from the DelayTable<br>
+
+<p>
+The <code>delay info</code> control action can be used to view the timing
+data currently stored in the <code>DelayTable</code> file.  This can help
+to determine why the <code>mod_delay</code> module might be adding
+longer-than-expected delays to the login sequence for FTP sessions.
+
+<p>
+<hr>
+<h3><a name="delay_reset"><code>delay reset</code></a></h3>
+<strong>Syntax:</strong> ftpdctl delay reset<br>
+<strong>Purpose:</strong> Reset the DelayTable, clearing all data<br>
+
+<p>
+The <code>delay reset</code> control action can be used to clear the
+<code>DelayTable</code> of all timing information, resetting the table.
+This can be used if the table starts to collect delays that are too long
+to be useful.
+
+<p>
+<hr>
 <h2><a name="Installation">Installation</a></h2>
 The <code>mod_delay</code> module is compiled by default.
 
@@ -116,7 +174,7 @@ The <code>mod_delay</code> module is compiled by default.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2005-06-29 19:11:45 $</i><br>
+Last Updated: <i>$Date: 2006-04-17 16:48:52 $</i><br>
 
 <br><hr>
 
