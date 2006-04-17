@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003 The ProFTPD Project team
+ * Copyright (c) 2003-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Home-on-demand support
- * $Id: mkhome.c,v 1.8 2005-06-20 05:41:31 castaglia Exp $
+ * $Id: mkhome.c,v 1.9 2006-04-17 18:52:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -75,8 +75,9 @@ static int create_dir(const char *dir, uid_t uid, gid_t gid,
 /* Walk along a path, making sure that all directories in that path exist,
  * creating them if necessary.
  */
-static int create_path(pool *p, const char *path, const char *user, uid_t uid,
-    gid_t gid, mode_t dir_mode, mode_t dst_mode) {
+static int create_path(pool *p, const char *path, const char *user,
+    uid_t dir_uid, gid_t dir_gid, mode_t dir_mode,
+    uid_t dst_uid, gid_t dst_gid, mode_t dst_mode) {
   char *currpath = NULL, *tmppath = NULL;
   struct stat st;
 
@@ -102,9 +103,9 @@ static int create_path(pool *p, const char *path, const char *user, uid_t uid,
      * use the configured mode, and chown it to the given UID and GID.
      */
     if ((tmppath == NULL) || (*tmppath == '\0'))
-      create_dir(currpath, uid, gid, dst_mode);
+      create_dir(currpath, dst_uid, dst_gid, dst_mode);
     else
-      create_dir(currpath, 0, 0, dir_mode);
+      create_dir(currpath, dir_uid, dir_gid, dir_mode);
 
     pr_signals_handle();
   }
@@ -238,21 +239,25 @@ int create_home(pool *p, const char *home, const char *user, uid_t uid,
   config_rec *c = find_config(main_server->conf, CONF_PARAM, "CreateHome",
     FALSE);
 
-  if (!c || (c && *((unsigned char *) c->argv[0]) == FALSE))
+  if (!c ||
+      (c && *((unsigned char *) c->argv[0]) == FALSE))
     return 0;
 
   PRIVS_ROOT
 
   /* Create the configured path. */
-  res = create_path(p, home, user, uid, gid, *((mode_t *) c->argv[2]),
-    *((mode_t *) c->argv[1]));
+  res = create_path(p, home, user,
+    *((uid_t *) c->argv[4]), *((gid_t *) c->argv[5]), *((mode_t *) c->argv[2]),
+    uid, gid, *((mode_t *) c->argv[1]));
 
-  if (res < 0 && errno != EEXIST) {
+  if (res < 0 &&
+      errno != EEXIST) {
     PRIVS_RELINQUISH
     return -1;
   }
 
-  if (res == 0 && c->argv[3]) {
+  if (res == 0 &&
+      c->argv[3]) {
     char *skel_dir = c->argv[3];
 
     /* Populate the home directory with files from the configured

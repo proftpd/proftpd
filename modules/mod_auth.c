@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.210 2006-03-15 02:49:49 castaglia Exp $
+ * $Id: mod_auth.c,v 1.211 2006-04-17 18:52:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2092,6 +2092,8 @@ MODRET set_createhome(cmd_rec *cmd) {
   mode_t mode = (mode_t) 0700, dirmode = (mode_t) 0711;
   char *skel_path = NULL;
   config_rec *c = NULL;
+  uid_t cuid = 0;
+  gid_t cgid = 0;
 
   if (cmd->argc-1 < 1)
     CONF_ERROR(cmd, "wrong number of parameters");
@@ -2152,10 +2154,10 @@ MODRET set_createhome(cmd_rec *cmd) {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", skel_path,
             "' is not a directory", NULL));
 
-        /* Must not be world-writeable. */
+        /* Must not be world-writable. */
         if (st.st_mode & S_IWOTH)
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", skel_path,
-            "' is world-writeable", NULL));
+            "' is world-writable", NULL));
 
         i++;
 
@@ -2170,13 +2172,34 @@ MODRET set_createhome(cmd_rec *cmd) {
 
         i++;
 
+      } else if (strcasecmp(cmd->argv[i], "uid") == 0) {
+        char *tmp = NULL;
+        uid_t uid;
+
+        uid = strtol(cmd->argv[++i], &tmp, 10);
+
+        if (tmp && *tmp)
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad UID parameter: '",
+            cmd->argv[i], "'", NULL));
+
+      } else if (strcasecmp(cmd->argv[i], "gid") == 0) {
+        char *tmp = NULL;
+        gid_t gid;
+
+        gid = strtol(cmd->argv[++i], &tmp, 10);
+
+        if (tmp && *tmp)
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad GID parameter: '",
+            cmd->argv[i], "'", NULL));
+
       } else
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown parameter: '",
           cmd->argv[i], "'", NULL));
     }
   }
 
-  c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
+  c = add_config_param(cmd->argv[0], 6, NULL, NULL, NULL, NULL,
+    NULL, NULL);
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = bool;
@@ -2188,6 +2211,11 @@ MODRET set_createhome(cmd_rec *cmd) {
   if (skel_path)
     c->argv[3] = pstrdup(c->pool, skel_path);
 
+  c->argv[4] = pcalloc(c->pool, sizeof(uid_t));
+  *((uid_t *) c->argv[4]) = cuid;
+  c->argv[5] = pcalloc(c->pool, sizeof(gid_t));
+  *((gid_t *) c->argv[5]) = cgid;
+ 
   return HANDLED(cmd);
 }
 

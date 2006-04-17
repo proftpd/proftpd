@@ -23,6 +23,10 @@ files.
  
   + New modules:
 
+  + New documentation:
+
+      doc/howto/CreateHome.html
+
   + Deprecated configuration directives:
 
-Last Updated: $Date: 2006-04-17 18:39:45 $
+Last Updated: $Date: 2006-04-17 18:52:33 $
