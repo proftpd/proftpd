@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.279 2006-04-16 22:23:33 castaglia Exp $
+ * $Id: main.c,v 1.280 2006-04-19 16:44:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2548,6 +2548,12 @@ static void show_settings(void) {
 #else
   printf("    - ncurses support\n");
 #endif /* PR_USE_NCURSES */
+
+#ifdef PR_USE_OPENSSL
+  printf("    + OpenSSL support\n");
+#else
+  printf("    - OpenSSL support\n");
+#endif /* PR_USE_OPENSSL */
 
 #ifdef PR_USE_FACL
   printf("    + POSIX ACL support\n");

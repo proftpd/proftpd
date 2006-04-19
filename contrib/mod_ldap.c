@@ -48,8 +48,12 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.43 2005-12-02 18:34:03 jwm Exp $
+ * $Id: mod_ldap.c,v 1.44 2006-04-19 16:44:23 castaglia Exp $
  * $Libraries: -lldap -llber$
+ */
+
+/* To verify non-crypt() password hashes locally with OpenSSL, build ProFTPD
+ * with the --enable-openssl argument to configure.
  */
 
 /* Uncomment this to use LDAP TLS. If enabled, we will try to enable TLS
@@ -57,14 +61,6 @@
  * connection will fail.
  */
 /* #define USE_LDAP_TLS */
-
-/* Uncomment this if you have OpenSSL and wish to verify non-crypt()
- * password hashes locally with OpenSSL. You'll also need to edit
- * ../Make.rules so the compiler will find OpenSSL's include files
- * (-I/path/to/include-dir) and link again OpenSSL's crypto library
- * (-L/path/to/lib-dir -lcrypto).
- */
-/* #define HAVE_OPENSSL */
 
 /*
  * If you have to edit anything below this line, it's a bug. Report it

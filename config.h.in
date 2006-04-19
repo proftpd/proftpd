@@ -753,6 +753,9 @@
 /* Define if ncurses support, if available, should be used.  */
 #undef PR_USE_NCURSES
 
+/* Define if OpenSSL support, if available, should be used.  */
+#undef PR_USE_OPENSSL
+
 /* Define if sendfile support, if available, should be used.  */
 #undef PR_USE_SENDFILE
 

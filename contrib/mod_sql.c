@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.103 2006-04-17 22:23:55 castaglia Exp $
+ * $Id: mod_sql.c,v 1.104 2006-04-19 16:44:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -36,12 +36,7 @@
 # include <crypt.h>
 #endif
 
-/* Uncomment the following define to allow OpenSSL hashed password checking;  
- * you'll also need to link with OpenSSL's crypto library ( -lcrypto ) 
- */
-/* #define HAVE_OPENSSL */
-
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
 # include <openssl/evp.h>
 #endif
 
