@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.95 2006-04-17 16:20:28 castaglia Exp $
+ * $Id: inet.c,v 1.96 2006-04-20 17:03:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -567,31 +567,27 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
   unsigned char *no_delay = get_param_ptr(main_server->conf, "tcpNoDelay",
     FALSE);
 
-  if (!no_delay || *no_delay == TRUE) {
-    if (c->wfd != -1)
-      if (setsockopt(c->wfd, tcp_level, TCP_NODELAY, (void *) &nodelay,
-          sizeof(nodelay)) < 0)
-        pr_log_pri(PR_LOG_NOTICE, "error setting write fd TCP_NODELAY: %s",
+  if (!no_delay ||
+      *no_delay == TRUE) {
+    if (c->listen_fd != -1) {
+      if (setsockopt(c->listen_fd, tcp_level, TCP_NODELAY, (void *) &nodelay,
+          sizeof(nodelay)) < 0) {
+        pr_log_pri(PR_LOG_NOTICE, "error setting listen fd TCP_NODELAY: %s",
           strerror(errno));
-
-    if (c->rfd != -1)
-      if (setsockopt(c->rfd, IPPROTO_TCP, TCP_NODELAY, (void *) &nodelay,
-          sizeof(nodelay)) < 0)
-        pr_log_pri(PR_LOG_NOTICE, "error setting read fd TCP_NODELAY: %s",
-          strerror(errno));
+      }
+    }
   }
 #endif /* TCP_NODELAY */
 
 #ifdef TCP_MAXSEG
-  if (c->wfd != -1 && mss)
-    if (setsockopt(c->wfd, tcp_level, TCP_MAXSEG, &mss, sizeof(mss)) < 0)
-      pr_log_pri(PR_LOG_NOTICE, "error setting write fd TCP_MAXSEG(%d): %s",
+  if (c->listen_fd != -1 &&
+      mss) {
+    if (setsockopt(c->listen_fd, tcp_level, TCP_MAXSEG, &mss,
+        sizeof(mss)) < 0) {
+      pr_log_pri(PR_LOG_NOTICE, "error setting listen fd TCP_MAXSEG(%d): %s",
         mss, strerror(errno));
-
-  if (c->rfd != -1 && mss)
-    if (setsockopt(c->wfd, tcp_level, TCP_MAXSEG, &mss, sizeof(mss)) < 0)
-      pr_log_pri(PR_LOG_NOTICE, "error setting read fd TCP_MAXSEG(%d): %s",
-        mss, strerror(errno));
+    }
+  }
 #endif /* TCP_MAXSEG */
 
 #ifdef IPTOS_LOWDELAY
@@ -610,31 +606,25 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
    * them.
    */
   if (pr_netaddr_get_family(c->local_addr) == AF_INET) {
-    if (c->wfd != -1)
-      if (setsockopt(c->wfd, ip_level, IP_TOS, (void *) &tos, sizeof(tos)) < 0)
-        pr_log_pri(PR_LOG_NOTICE, "error setting write fd IP_TOS: %s",
+    if (c->listen_fd != -1) {
+      if (setsockopt(c->listen_fd, ip_level, IP_TOS, (void *) &tos,
+          sizeof(tos)) < 0) {
+        pr_log_pri(PR_LOG_NOTICE, "error setting listen fd IP_TOS: %s",
           strerror(errno));
-
-    if (c->rfd != -1)
-      if (setsockopt(c->rfd, ip_level, IP_TOS, (void *) &tos, sizeof(tos)) < 0)
-        pr_log_pri(PR_LOG_NOTICE, "error setting read fd IP_TOS: %s",
-          strerror(errno));
+      }
+    }
   }
 #endif /* IP_TOS */
 
 #ifdef TCP_NOPUSH
   /* NOTE: TCP_NOPUSH is a BSDism. */
-  if (c->wfd != -1)
-    if (setsockopt(c->wfd, tcp_level, TCP_NOPUSH, (void *) &nopush,
-        sizeof(nopush)) < 0)
-      pr_log_pri(PR_LOG_NOTICE, "error setting write fd TCP_NOPUSH: %s",
+  if (c->listen_fd != -1) {
+    if (setsockopt(c->listen_fd, tcp_level, TCP_NOPUSH, (void *) &nopush,
+        sizeof(nopush)) < 0) {
+      pr_log_pri(PR_LOG_NOTICE, "error setting listen fd TCP_NOPUSH: %s",
         strerror(errno));
-
-  if (c->rfd != -1)
-    if (setsockopt(c->rfd, tcp_level, TCP_NOPUSH, (void *) &nopush,
-        sizeof(nopush)) < 0)
-      pr_log_pri(PR_LOG_NOTICE, "error setting read fd TCP_NOPUSH: %s",
-        strerror(errno));
+    }
+  }
 #endif /* TCP_NOPUSH */
 
   return 0;
@@ -642,9 +632,6 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
 
 /* Set socket options on a connection.  */
 int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf) {
-  int no_keep_alive = 0;
-  int crcvbuf, csndbuf;
-  socklen_t len;
 
   /* Linux and "most" newer networking OSes probably use a highly adaptive
    * window size system, which generally wouldn't require user-space
@@ -653,38 +640,39 @@ int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf) {
    * than their current size.
    */
 
-  if (c->wfd != -1) {
-    if (setsockopt(c->wfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &no_keep_alive,
-        sizeof(int)) < 0)
-      pr_log_pri(PR_LOG_NOTICE, "error setting write fd SO_KEEPALIVE: %s",
+  if (c->listen_fd != -1) {
+    int keepalive = 0;
+    int crcvbuf, csndbuf;
+    socklen_t len;
+
+    if (setsockopt(c->listen_fd, SOL_SOCKET, SO_KEEPALIVE, (void *)
+        &keepalive, sizeof(int)) < 0)
+      pr_log_pri(PR_LOG_NOTICE, "error setting listen fd SO_KEEPALIVE: %s",
         strerror(errno));
 
     len = sizeof(csndbuf);
-    getsockopt(c->wfd, SOL_SOCKET, SO_SNDBUF, (void *) &csndbuf, &len);
+    getsockopt(c->listen_fd, SOL_SOCKET, SO_SNDBUF, (void *) &csndbuf, &len);
 
-    if (sndbuf && sndbuf > csndbuf)
-      if (setsockopt(c->wfd, SOL_SOCKET, SO_SNDBUF, (void *) &sndbuf,
+    if (sndbuf &&
+        sndbuf > csndbuf) {
+      if (setsockopt(c->listen_fd, SOL_SOCKET, SO_SNDBUF, (void *) &sndbuf,
           sizeof(sndbuf)) < 0)
-        pr_log_pri(PR_LOG_NOTICE, "error setting SO_SNDBUF: %s",
+        pr_log_pri(PR_LOG_NOTICE, "error setting listen fd SO_SNDBUF: %s",
           strerror(errno));
+    }
 
     c->sndbuf = (sndbuf ? sndbuf : csndbuf);
-  }
-
-  if (c->rfd != -1) {
-    if (setsockopt(c->rfd, SOL_SOCKET, SO_KEEPALIVE, (void *) &no_keep_alive,
-        sizeof(int)) < 0)
-      pr_log_pri(PR_LOG_NOTICE, "error setting read fd SO_KEEPALIVE: %s",
-        strerror(errno));
 
     len = sizeof(crcvbuf);
-    getsockopt(c->rfd, SOL_SOCKET, SO_RCVBUF, (void *) &crcvbuf, &len);
+    getsockopt(c->listen_fd, SOL_SOCKET, SO_RCVBUF, (void *) &crcvbuf, &len);
 
-    if (rcvbuf && rcvbuf > crcvbuf)
-      if (setsockopt(c->rfd, SOL_SOCKET, SO_RCVBUF, (void *) &rcvbuf,
+    if (rcvbuf &&
+        rcvbuf > crcvbuf) {
+      if (setsockopt(c->listen_fd, SOL_SOCKET, SO_RCVBUF, (void *) &rcvbuf,
           sizeof(rcvbuf)) < 0)
-        pr_log_pri(PR_LOG_NOTICE, "error setting SO_RCVFBUF: %s",
+        pr_log_pri(PR_LOG_NOTICE, "error setting listen fd SO_RCVFBUF: %s",
           strerror(errno));
+    }
 
     c->rcvbuf = (rcvbuf ? rcvbuf : crcvbuf);
   }
