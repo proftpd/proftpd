@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004 The ProFTPD Project team
+ * Copyright (c) 2004-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /*
  * Configuration parser
- * $Id: parser.c,v 1.4 2005-09-04 23:57:02 castaglia Exp $
+ * $Id: parser.c,v 1.5 2006-04-20 02:28:52 castaglia Exp $
  */
 
 #include "conf.h"
@@ -212,6 +212,11 @@ config_rec *pr_parser_config_ctxt_open(const char *name) {
   pool *c_pool = NULL, *parent_pool = NULL;
   xaset_t **set = NULL;
 
+  if (!name) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   if (parent) {
     parent_pool = parent->pool;
     set = &parent->subset;
@@ -241,20 +246,15 @@ config_rec *pr_parser_config_ctxt_open(const char *name) {
   pr_pool_tag(c_pool, "sub-config pool");
 
   c = (config_rec *) pcalloc(c_pool, sizeof(config_rec));
-
-  if (!*set)
-    *set = xaset_create(parent_pool, NULL);
-
   xaset_insert(*set, (xasetmember_t *) c);
 
   c->pool = c_pool;
   c->set = *set;
   c->parent = parent;
+  c->name = pstrdup(c->pool, name);
 
-  if (name)
-    c->name = pstrdup(c->pool, name);
-
-  if (parent && (parent->config_type == CONF_DYNDIR))
+  if (parent &&
+      (parent->config_type == CONF_DYNDIR))
     c->flags |= CF_DYNAMIC;
 
   add_config_ctxt(c);
