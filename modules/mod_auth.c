@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.211 2006-04-17 18:52:34 castaglia Exp $
+ * $Id: mod_auth.c,v 1.212 2006-04-20 02:01:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -667,7 +667,7 @@ static void ensure_open_passwd(pool *p) {
 /* Next function (the biggie) handles all authentication, setting
  * up chroot() jail, etc.
  */
-static int _setup_environment(pool *p, char *user, char *pass) {
+static int setup_env(pool *p, char *user, char *pass) {
   struct passwd *pw;
   struct stat sbuf;
   config_rec *c, *tmpc;
@@ -810,24 +810,30 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     goto auth_failure;
   }
 
-  if (c)
+  if (c) {
     anon_require_passwd = get_param_ptr(c->subset, "AnonRequirePassword",
       FALSE);
+  }
 
-  if (!c || (anon_require_passwd && *anon_require_passwd == TRUE)) {
+  if (!c ||
+      (anon_require_passwd && *anon_require_passwd == TRUE)) {
     int auth_code;
     char *user_name = user;
 
-    if (c && origuser && strcasecmp(user, origuser)) {
+    if (c &&
+        origuser &&
+        strcasecmp(user, origuser) != 0) {
       unsigned char *auth_using_alias = get_param_ptr(c->subset,
         "AuthUsingAlias", FALSE);
 
       /* If 'AuthUsingAlias' set and we're logging in under an alias,
        * then auth using that alias.
        */
-      if (auth_using_alias && *auth_using_alias == TRUE) {
+      if (auth_using_alias &&
+          *auth_using_alias == TRUE) {
         user_name = origuser;
-        pr_log_auth(PR_LOG_NOTICE, "ANON AUTH: User %s, Auth Alias %s", user,
+        pr_log_auth(PR_LOG_NOTICE,
+          "ANON AUTH: User %s, authenticating using alias %s", user,
           user_name);
       }
     }
@@ -836,19 +842,21 @@ static int _setup_environment(pool *p, char *user, char *pass) {
      * the handling of the USER command, as by an RFC2228 mechanism.  If
      * that had happened, we won't need to call _do_auth() here.
      */
-    if (!authenticated_without_pass)
+    if (!authenticated_without_pass) {
       auth_code = _do_auth(p, c ? c->subset : main_server->conf, user_name,
         pass);
-    else
+
+    } else {
       auth_code = PR_AUTH_OK_NO_PASS;
+    }
 
     if (auth_code < 0) {
       /* Normal authentication has failed, see if group authentication
        * passes
        */
 
-      if ((c = _auth_group(p, user, &anongroup, &ourname, &anonname,
-          pass)) != NULL) {
+      c = _auth_group(p, user, &anongroup, &ourname, &anonname, pass);
+      if (c != NULL) {
         if (c->config_type != CONF_ANON) {
           c = NULL;
           ugroup = anongroup;
@@ -929,8 +937,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     unsigned char *add_userdir = NULL;
     char *u = get_param_ptr(main_server->conf, C_USER, FALSE);
 
-    add_userdir = get_param_ptr((c ? c->subset : main_server->conf),
-      "UserDirRoot", FALSE);
+    add_userdir = get_param_ptr(c->subset, "UserDirRoot", FALSE);
 
     /* If resolving an <Anonymous> user, make sure that user's groups
      * are set properly for the check of the home directory path (which
@@ -957,19 +964,24 @@ static int _setup_environment(pool *p, char *user, char *pass) {
 
     PRIVS_SETUP(pw->pw_uid, pw->pw_gid)
 
-    if ((add_userdir && *add_userdir == TRUE) && strcmp(u, user))
+    if ((add_userdir && *add_userdir == TRUE) &&
+        strcmp(u, user) != 0) {
       session.chroot_path = dir_realpath(p, pdircat(p, c->name, u, NULL));
-    else
+
+    } else {
       session.chroot_path = dir_realpath(p, c->name);
+    }
 
     if (session.chroot_path &&
         pr_fsio_access(session.chroot_path, X_OK, session.uid,
-          session.gid, session.gids) != 0)
+          session.gid, session.gids) != 0) {
       session.chroot_path = NULL;
-    else
-      session.chroot_path = pstrdup(session.pool, session.chroot_path);
 
-    /* return all privileges back to that of the daemon, for now */
+    } else {
+      session.chroot_path = pstrdup(session.pool, session.chroot_path);
+    }
+
+    /* Return all privileges back to that of the daemon, for now. */
     PRIVS_ROOT
     if ((res = set_groups(p, daemon_gid, daemon_gids)) < 0)
       pr_log_pri(PR_LOG_ERR, "error: unable to set groups: %s",
@@ -1003,10 +1015,13 @@ static int _setup_environment(pool *p, char *user, char *pass) {
     }
 #endif /* HAVE_GETEUID */
 
-    if (anon_require_passwd && *anon_require_passwd == TRUE)
+    if (anon_require_passwd &&
+        *anon_require_passwd == TRUE) {
       session.anon_user = pstrdup(session.pool, origuser);
-    else
+
+    } else {
       session.anon_user = pstrdup(session.pool, pass);
+    }
 
     if (!session.chroot_path) {
       pr_log_pri(PR_LOG_ERR, "%s: Directory %s is not accessible.",
@@ -1060,7 +1075,7 @@ static int _setup_environment(pool *p, char *user, char *pass) {
   }
 
   /* Get default chdir (if any) */
-  defchdir = _get_default_chdir(p,(c ? c->subset : main_server->conf));
+  defchdir = _get_default_chdir(p, (c ? c->subset : main_server->conf));
 
   if (defchdir)
     sstrncpy(session.cwd, defchdir, sizeof(session.cwd));
@@ -1876,7 +1891,8 @@ MODRET auth_pass(cmd_rec *cmd) {
     return ERROR_MSG(cmd, R_503, "Login with " C_USER " first");
   }
 
-  if ((res = _setup_environment(cmd->tmp_pool, user, cmd->arg)) == 1) {
+  res = setup_env(cmd->tmp_pool, user, cmd->arg);
+  if (res == 1) {
     config_rec *c = NULL;
 
     c = add_config_param_set(&cmd->server->conf, "authenticated", 1, NULL);
