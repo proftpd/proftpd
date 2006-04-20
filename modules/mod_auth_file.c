@@ -2,7 +2,7 @@
  * ProFTPD: mod_auth_file - file-based authentication module that supports
  *                          restrictions on the file contents
  *
- * Copyright (c) 2002-2005 The ProFTPD Project team
+ * Copyright (c) 2002-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.26 2006-04-16 22:39:28 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.27 2006-04-20 01:49:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -875,7 +875,6 @@ MODRET authfile_setgrent(cmd_rec *cmd) {
 }
 
 MODRET authfile_auth(cmd_rec *cmd) {
-  time_t now = time(NULL), lstchg = -1, max = -1, inact = -1, disable = -1;
   char *tmp = NULL, *cleartxt_pass = NULL;
   const char *name = cmd->argv[0];
 
@@ -887,7 +886,8 @@ MODRET authfile_auth(cmd_rec *cmd) {
     return DECLINED(cmd);
 
   /* Lookup the cleartxt password for this user. */
-  if ((tmp = af_getpwpass(af_current_user_file, name)) == NULL) {
+  tmp = af_getpwpass(af_current_user_file, name);
+  if (tmp == NULL) {
 
     /* For now, return DECLINED.  Ideally, we could stash an auth module
      * identifier in the session structure, so that all auth modules could
@@ -908,12 +908,6 @@ MODRET authfile_auth(cmd_rec *cmd) {
 
   if (pr_auth_check(cmd->tmp_pool, cleartxt_pass, name, cmd->argv[1]))
     return ERROR_INT(cmd, PR_AUTH_BADPWD);
-
-  if (lstchg > 0 && max > 0 && inact > 0 && now > (lstchg + max + inact))
-    return ERROR_INT(cmd, PR_AUTH_AGEPWD);
-
-  if (disable > 0 && now > disable)
-    return ERROR_INT(cmd, PR_AUTH_DISABLEDPWD);
 
   session.auth_mech = "mod_auth_file.c";
   return HANDLED(cmd);

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2004 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,8 @@
  * the source code for OpenSSL in the source distribution.
  */
 
-/*
- * Data connection management functions
- * $Id: data.c,v 1.89 2006-02-08 01:25:46 castaglia Exp $
+/* Data connection management functions
+ * $Id: data.c,v 1.90 2006-04-20 01:46:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -627,7 +626,6 @@ void pr_data_abort(int err, int quiet) {
 
   if (!quiet) {
     char	*respcode = R_426;
-    char	*fmt = NULL;
     char	*msg = NULL;
     char	msgbuf[64];
 
@@ -780,8 +778,7 @@ void pr_data_abort(int err, int quiet) {
      * and we don't want to add another to the error queue.
      */
     if (!true_abort)
-      pr_response_add_err(respcode, fmt ? fmt : "Transfer aborted. %s",
-        msg ? msg : "");
+      pr_response_add_err(respcode, "Transfer aborted. %s", msg ? msg : "");
   }
 
   if (true_abort)
