@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.197 2006-04-19 23:10:36 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.198 2006-04-20 02:06:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1698,7 +1698,8 @@ MODRET xfer_retr(cmd_rec *cmd) {
   }
 
   /* Retrieve the number of bytes to retrieve, maximum, if present */
-  if ((nbytes_max_retrieve = find_max_nbytes("MaxRetrieveFileSize")) == 0UL)
+  nbytes_max_retrieve = find_max_nbytes("MaxRetrieveFileSize");
+  if (nbytes_max_retrieve == 0UL)
     have_limit = FALSE;
   else
     have_limit = TRUE;
@@ -1745,7 +1746,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
     if (len < 0) {
       retr_abort();
-      pr_data_abort(PR_NETIO_ERRNO(session.d->outstrm), FALSE);
+      pr_data_abort(errno, FALSE);
       return ERROR(cmd);
     }
 
@@ -1770,16 +1771,10 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
   if (XFER_ABORTED) {
     retr_abort();
-    pr_data_abort(0, 0);
-    return ERROR(cmd);
-
-  } else if (len < 0) {
-    retr_abort();
-    pr_data_abort(errno, FALSE);
+    pr_data_abort(0, FALSE);
     return ERROR(cmd);
 
   } else {
-
     /* If no throttling is configured, this simply updates the scoreboard.
      * In this case, we want to use session.xfer.total_bytes, rather than
      * nbytes_sent, as the latter incorporates a REST position and the
