@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.74 2006-04-17 22:48:36 castaglia Exp $
+ * $Id: mod_log.c,v 1.75 2006-04-20 02:24:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -484,7 +484,7 @@ MODRET set_systemlog(cmd_rec *cmd) {
 
     if (res == PR_LOG_WRITABLE_DIR) {
       CONF_ERROR(cmd,
-        "you are attempting to log to a world writeable directory");
+        "you are attempting to log to a world writable directory");
 
     } else if (res == PR_LOG_SYMLINK) {
       CONF_ERROR(cmd, "you are attempting to log to a symbolic link");
@@ -1206,7 +1206,7 @@ static int log_sess_init(void) {
 
         } else if (res == PR_LOG_WRITABLE_DIR) {
           pr_log_pri(PR_LOG_NOTICE, "unable to open ExtendedLog '%s': "
-            "containing directory is world writeable", lf->lf_filename);
+            "containing directory is world writable", lf->lf_filename);
           continue;
 
         } else if (res == PR_LOG_SYMLINK) {
