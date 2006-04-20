@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.104 2006-04-19 16:44:23 castaglia Exp $
+ * $Id: mod_sql.c,v 1.105 2006-04-20 01:42:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3037,7 +3037,7 @@ MODRET cmd_check(cmd_rec *cmd) {
 
     for (cnt = 0; ah && cnt < ah->nelts; cnt++) {
       auth_entry = ((auth_type_entry **) ah->elts)[cnt];
-      sql_log(DEBUG_AUTH, "checking auth_type %s", auth_entry->name);
+      sql_log(DEBUG_AUTH, "checking SQLAuthType '%s'", auth_entry->name);
 
       mr = auth_entry->check_function(cmd, c_clear, c_hash);
       if (!MODRET_ISERROR(mr)) {
@@ -3050,12 +3050,12 @@ MODRET cmd_check(cmd_rec *cmd) {
   }
 
   if (success) {
-    /* this and the associated hack in cmd_uid2name are to support
-     * uid reuse in the database -- people (for whatever reason) are
-     * reusing uids/gids multiple times, and the displayed owner in a 
+    /* This and the associated hack in cmd_uid2name are to support
+     * UID reuse in the database -- people (for whatever reason) are
+     * reusing UIDs/GIDs multiple times, and the displayed owner in a 
      * LIST or NLST needs to match the current user if possible.  This
      * depends on the fact that if we get success, the user exists in the
-     * database ( -- is this always true? ).
+     * database (is this always true?).
      */
 
     lpw.pw_uid = -1;
@@ -3080,11 +3080,7 @@ MODRET cmd_check(cmd_rec *cmd) {
   }
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_check");
-
-  if (!success)
-    return DECLINED(cmd);
-
-  return mr;
+  return DECLINED(cmd);
 }
 
 MODRET cmd_uid2name(cmd_rec *cmd) {
