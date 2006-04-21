@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sql_mysql -- Support for connecting to MySQL databases.
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004-2005 TJ Saunders
+ * Copyright (c) 2004-2006 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.39 2005-06-27 20:41:14 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.40 2006-04-21 01:59:45 castaglia Exp $
  */
 
 /*
@@ -128,7 +128,7 @@
  * Internal define used for debug and logging.  All backends are encouraged
  * to use the same format.
  */
-#define MOD_SQL_MYSQL_VERSION		"mod_sql_mysql/4.05"
+#define MOD_SQL_MYSQL_VERSION		"mod_sql_mysql/4.06"
 
 #define _MYSQL_PORT "3306"
 
@@ -298,7 +298,7 @@ static modret_t *_build_error(cmd_rec *cmd, db_conn_t *conn) {
   if (!conn)
     return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
 
-  snprintf(num, 20, "%u", mysql_errno(conn->mysql) );
+  snprintf(num, 20, "%u", mysql_errno(conn->mysql));
 
   return ERROR_MSG(cmd, num, (char *) mysql_error(conn->mysql));
 }
@@ -328,9 +328,9 @@ static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
    * the number of rows returned we can't presize the data[] array.
    */
 
-  result = mysql_store_result( mysql );
+  result = mysql_store_result(mysql);
   if (!result) {
-    return _build_error( cmd, conn );
+    return _build_error(cmd, conn);
   }
   
   sd = (sql_data_t *) pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
@@ -338,9 +338,9 @@ static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
   sd->fnum = (unsigned long) mysql_num_fields(result);
   cnt = sd->rnum * sd->fnum;
 
-  data = (char **) pcalloc( cmd->tmp_pool, sizeof(char *) * (cnt + 1) );
+  data = (char **) pcalloc(cmd->tmp_pool, sizeof(char *) * (cnt + 1));
   
-  while ((row = mysql_fetch_row( result ))) {
+  while ((row = mysql_fetch_row(result))) {
     for (cnt = 0; cnt < sd->fnum; cnt++)
       data[i++] = pstrdup(cmd->tmp_pool, row[cnt]);
   }
@@ -348,9 +348,9 @@ static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
   /* at this point either we finished correctly or an error occurred in the
    * fetch.  Do the right thing.
    */
-  if ( mysql_errno( mysql ) ) {
-    mr = _build_error( cmd, conn );
-    mysql_free_result( result );
+  if (mysql_errno(mysql)) {
+    mr = _build_error(cmd, conn);
+    mysql_free_result(result);
     return mr;
   }
 
@@ -384,7 +384,7 @@ MODRET cmd_open(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_open");
 
-  _sql_check_cmd(cmd, "cmd_open" );
+  _sql_check_cmd(cmd, "cmd_open");
 
   if (cmd->argc < 1) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
@@ -750,7 +750,7 @@ MODRET cmd_select(cmd_rec *cmd) {
   }
 
   /* get the named connection */
-  entry = _sql_get_connection( cmd->argv[0] );
+  entry = _sql_get_connection(cmd->argv[0]);
   if (!entry) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_select");
     return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "unknown named connection");
@@ -767,41 +767,47 @@ MODRET cmd_select(cmd_rec *cmd) {
   /* construct the query string */
   if (cmd->argc == 2) {
     query = pstrcat(cmd->tmp_pool, "SELECT ", cmd->argv[1], NULL);
+
   } else {
-    query = pstrcat( cmd->tmp_pool, cmd->argv[2], " FROM ", 
-		     cmd->argv[1], NULL );
-    if ((cmd->argc > 3) && (cmd->argv[3]))
-      query = pstrcat( cmd->tmp_pool, query, " WHERE ", cmd->argv[3], NULL );
-    if ((cmd->argc > 4) && (cmd->argv[4]))
-      query = pstrcat( cmd->tmp_pool, query, " LIMIT ", cmd->argv[4], NULL );
+    query = pstrcat(cmd->tmp_pool, cmd->argv[2], " FROM ", cmd->argv[1], NULL);
+
+    if (cmd->argc > 3 &&
+        cmd->argv[3])
+      query = pstrcat(cmd->tmp_pool, query, " WHERE ", cmd->argv[3], NULL);
+
+    if (cmd->argc > 4 &&
+        cmd->argv[4])
+      query = pstrcat(cmd->tmp_pool, query, " LIMIT ", cmd->argv[4], NULL);
+
     if (cmd->argc > 5) {
 
-      /* handle the optional arguments -- they're rare, so in this case
+      /* Handle the optional arguments -- they're rare, so in this case
        * we'll play with the already constructed query string, but in 
        * general we should probably take optional arguments into account 
        * and put the query string together later once we know what they are.
        */
     
-      for (cnt=5; cnt < cmd->argc; cnt++) {
-	if ((cmd->argv[cnt]) && !strcasecmp("DISTINCT",cmd->argv[cnt])) {
-	  query = pstrcat( cmd->tmp_pool, "DISTINCT ", query, NULL);
+      for (cnt = 5; cnt < cmd->argc; cnt++) {
+	if (cmd->argv[cnt] &&
+            strcasecmp("DISTINCT", cmd->argv[cnt]) == 0) {
+	  query = pstrcat(cmd->tmp_pool, "DISTINCT ", query, NULL);
 	}
       }
     }
 
-    query = pstrcat( cmd->tmp_pool, "SELECT ", query, NULL);    
+    query = pstrcat(cmd->tmp_pool, "SELECT ", query, NULL);
   }
 
-  /* log the query string */
-  sql_log( DEBUG_INFO, "query \"%s\"", query);
+  /* Log the query string */
+  sql_log(DEBUG_INFO, "query \"%s\"", query);
 
-  /* perform the query.  if it doesn't work, log the error, close the
+  /* Perform the query.  if it doesn't work, log the error, close the
    * connection then return the error from the query processing.
    */
-  if ( mysql_real_query( conn->mysql, query, strlen(query) ) ) {
-    dmr = _build_error( cmd, conn );
+  if (mysql_real_query(conn->mysql, query, strlen(query))) {
+    dmr = _build_error(cmd, conn);
 
-    close_cmd = _sql_make_cmd( cmd->tmp_pool, 1, entry->name );
+    close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
     cmd_close(close_cmd);
     SQL_FREE_CMD(close_cmd);
 
@@ -809,14 +815,14 @@ MODRET cmd_select(cmd_rec *cmd) {
     return dmr;
   }
 
-  /* get the data. if it doesn't work, log the error, close the
+  /* Get the data. if it doesn't work, log the error, close the
    * connection then return the error from the data processing.
    */
-  dmr = _build_data( cmd, conn );
+  dmr = _build_data(cmd, conn);
   if (MODRET_ERROR(dmr)) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_select");
 
-    close_cmd = _sql_make_cmd( cmd->tmp_pool, 1, entry->name );
+    close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
     cmd_close(close_cmd);
     SQL_FREE_CMD(close_cmd);
 
@@ -824,10 +830,10 @@ MODRET cmd_select(cmd_rec *cmd) {
   }    
 
   /* close the connection, return the data. */
-  close_cmd = _sql_make_cmd( cmd->tmp_pool, 1, entry->name );
+  close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
   cmd_close(close_cmd);
   SQL_FREE_CMD(close_cmd);
-
+ 
   sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_select");
   return dmr;
 }
@@ -911,10 +917,10 @@ MODRET cmd_insert(cmd_rec *cmd) {
    * connection (and log any errors there, too) then return the error
    * from the query processing.
    */
-  if ( mysql_real_query( conn->mysql, query, strlen(query) ) ) {
-    dmr = _build_error( cmd, conn );
+  if (mysql_real_query(conn->mysql, query, strlen(query))) {
+    dmr = _build_error(cmd, conn);
 
-    close_cmd = _sql_make_cmd( cmd->tmp_pool, 1, entry->name );
+    close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
     cmd_close(close_cmd);
     SQL_FREE_CMD(close_cmd);
 
@@ -923,7 +929,7 @@ MODRET cmd_insert(cmd_rec *cmd) {
   }
 
   /* close the connection and return HANDLED. */
-  close_cmd = _sql_make_cmd( cmd->tmp_pool, 1, entry->name );
+  close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
   cmd_close(close_cmd);
   SQL_FREE_CMD(close_cmd);
 
@@ -1003,16 +1009,16 @@ MODRET cmd_update(cmd_rec *cmd) {
       query = pstrcat( cmd->tmp_pool, query, " WHERE ", cmd->argv[3], NULL );
   }
 
-  /* log the query string */
+  /* Log the query string */
   sql_log(DEBUG_INFO, "query \"%s\"", query);
 
-  /* perform the query.  if it doesn't work close the connection, then
+  /* Perform the query.  if it doesn't work close the connection, then
    * return the error from the query processing.
    */
-  if ( mysql_real_query( conn->mysql, query, strlen(query) ) ) {
-    dmr = _build_error( cmd, conn );
+  if (mysql_real_query(conn->mysql, query, strlen(query))) {
+    dmr = _build_error(cmd, conn);
 
-    close_cmd = _sql_make_cmd( cmd->tmp_pool, 1, entry->name );
+    close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
     cmd_close(close_cmd);
     SQL_FREE_CMD(close_cmd);
 
@@ -1020,8 +1026,8 @@ MODRET cmd_update(cmd_rec *cmd) {
     return dmr;
   }
 
-  /* close the connection, return HANDLED.  */
-  close_cmd = _sql_make_cmd( cmd->tmp_pool, 1, entry->name );
+  /* Close the connection, return HANDLED.  */
+  close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
   cmd_close(close_cmd);
   SQL_FREE_CMD(close_cmd);
 
@@ -1118,16 +1124,16 @@ MODRET cmd_query(cmd_rec *cmd) {
 
   query = pstrcat(cmd->tmp_pool, cmd->argv[1], NULL);
 
-  /* log the query string */
+  /* Log the query string */
   sql_log(DEBUG_INFO, "query \"%s\"", query);
 
-  /* perform the query.  if it doesn't work close the connection, then
+  /* Perform the query.  if it doesn't work close the connection, then
    * return the error from the query processing.
    */
-  if ( mysql_real_query( conn->mysql, query, strlen(query) ) ) {
-    dmr = _build_error( cmd, conn );
+  if (mysql_real_query(conn->mysql, query, strlen(query))) {
+    dmr = _build_error(cmd, conn);
     
-    close_cmd = _sql_make_cmd( cmd->tmp_pool, 1, entry->name );
+    close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
     cmd_close(close_cmd);
     SQL_FREE_CMD(close_cmd);
     
@@ -1135,21 +1141,22 @@ MODRET cmd_query(cmd_rec *cmd) {
     return dmr;
   }
 
-  /* get data if necessary. if it doesn't work, log the error, close the
+  /* Get data if necessary. if it doesn't work, log the error, close the
    * connection then return the error from the data processing.
    */
 
-  if ( mysql_field_count( conn->mysql ) ) {
-    dmr = _build_data( cmd, conn );
+  if (mysql_field_count(conn->mysql)) {
+    dmr = _build_data(cmd, conn);
     if (MODRET_ERROR(dmr)) {
       sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_query");
     }
+
   } else {
     dmr = HANDLED(cmd);
   }
   
   /* close the connection, return the data. */
-  close_cmd = _sql_make_cmd( cmd->tmp_pool, 1, entry->name );
+  close_cmd = _sql_make_cmd(cmd->tmp_pool, 1, entry->name);
   cmd_close(close_cmd);
   SQL_FREE_CMD(close_cmd);
 
@@ -1351,24 +1358,65 @@ MODRET cmd_identify(cmd_rec * cmd) {
   return mod_create_data(cmd, (void *) sd);
 }  
 
+/*
+ * cmd_prepare: prepares this mod_sql_mysql module for running.
+ *
+ * Inputs:
+ *  cmd->argv[0]:  A pool to be used for any necessary preparations.
+ *
+ * Returns:
+ *  Success.
+ */
+MODRET cmd_prepare(cmd_rec *cmd) {
+  if (cmd->argc != 1) {
+    return ERROR(cmd);
+  }
+
+  conn_pool = (pool *) cmd->argv[0];
+  conn_cache = make_array((pool *) cmd->argv[0], DEF_CONN_POOL_SIZE,
+    sizeof(conn_entry_t));
+
+  return mod_create_data(cmd, NULL);
+}
+
+/*
+ * cmd_cleanup: cleans up any initialisations made during module preparations
+ *  (see cmd_prepre).
+ *
+ * Inputs:
+ *  None.
+ *
+ * Returns:
+ *  Success.
+ */
+MODRET cmd_cleanup(cmd_rec *cmd) {
+  destroy_pool(conn_pool);
+  conn_pool = NULL;
+  conn_cache = NULL;
+
+  return mod_create_data(cmd, NULL);
+}
+
 /* SQL cmdtable: mod_sql requires each backend module to define a cmdtable
  *  with this exact name. ALL these functions must be defined; mod_sql checks
  *  that they all exist on startup and ProFTPD will refuse to start if they
  *  aren't defined.
  */
 static cmdtable sql_mysql_cmdtable[] = {
-  { CMD, "sql_open",             G_NONE, cmd_open,             FALSE, FALSE },
   { CMD, "sql_close",            G_NONE, cmd_close,            FALSE, FALSE },
+  { CMD, "sql_checkauth",        G_NONE, cmd_checkauth,        FALSE, FALSE },
+  { CMD, "sql_cleanup",          G_NONE, cmd_cleanup,          FALSE, FALSE },
   { CMD, "sql_defineconnection", G_NONE, cmd_defineconnection, FALSE, FALSE },
+  { CMD, "sql_escapestring",     G_NONE, cmd_escapestring,     FALSE, FALSE },
   { CMD, "sql_exit",             G_NONE, cmd_exit,             FALSE, FALSE },
-  { CMD, "sql_select",           G_NONE, cmd_select,           FALSE, FALSE },
+  { CMD, "sql_identify",         G_NONE, cmd_identify,         FALSE, FALSE },
   { CMD, "sql_insert",           G_NONE, cmd_insert,           FALSE, FALSE },
-  { CMD, "sql_update",           G_NONE, cmd_update,           FALSE, FALSE },
+  { CMD, "sql_open",             G_NONE, cmd_open,             FALSE, FALSE },
+  { CMD, "sql_prepare",          G_NONE, cmd_prepare,          FALSE, FALSE },
   { CMD, "sql_procedure",        G_NONE, cmd_procedure,        FALSE, FALSE },
   { CMD, "sql_query",            G_NONE, cmd_query,            FALSE, FALSE },
-  { CMD, "sql_escapestring",     G_NONE, cmd_escapestring,     FALSE, FALSE },
-  { CMD, "sql_checkauth",        G_NONE, cmd_checkauth,        FALSE, FALSE },
-  { CMD, "sql_identify",         G_NONE, cmd_identify,         FALSE, FALSE },
+  { CMD, "sql_select",           G_NONE, cmd_select,           FALSE, FALSE },
+  { CMD, "sql_update",           G_NONE, cmd_update,           FALSE, FALSE },
 
   { 0, NULL }
 };

@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql_postgres -- Support for connecting to Postgres databases.
  * Time-stamp: <1999-10-04 03:21:21 root>
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004 TJ Saunders
+ * Copyright (c) 2004-2006 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.27 2005-04-11 17:02:33 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.28 2006-04-21 01:59:45 castaglia Exp $
  */
 
 /*
@@ -34,7 +34,7 @@
  * Internal define used for debug and logging.  All backends are encouraged
  * to use the same format.
  */
-#define MOD_SQL_POSTGRES_VERSION	"mod_sql_postgres/4.02"
+#define MOD_SQL_POSTGRES_VERSION	"mod_sql_postgres/4.03"
 
 #define _POSTGRES_PORT "5432"
 
@@ -45,7 +45,7 @@
 /* 
  * timer-handling code adds the need for a couple of forward declarations
  */
-MODRET cmd_close( cmd_rec *cmd );
+MODRET cmd_close(cmd_rec *cmd);
 module sql_postgres_module;
 
 /* 
@@ -1203,24 +1203,46 @@ MODRET cmd_identify(cmd_rec * cmd) {
   return mod_create_data(cmd, (void *) sd);
 }  
 
+MODRET cmd_prepare(cmd_rec *cmd) {
+  if (cmd->argc != 1) {
+    return ERROR(cmd);
+  }
+
+  conn_pool = (pool *) cmd->argv[0];
+  conn_cache = make_array((pool *) cmd->argv[0], DEF_CONN_POOL_SIZE,
+    sizeof(conn_entry_t));
+
+  return mod_create_data(cmd, NULL);
+}
+
+MODRET cmd_cleanup(cmd_rec *cmd) {
+  destroy_pool(conn_pool);
+  conn_pool = NULL;
+  conn_cache = NULL;
+
+  return mod_create_data(cmd, NULL);
+}
+
 /* SQL cmdtable: mod_sql requires each backend module to define a cmdtable
  *  with this exact name. ALL these functions must be defined; mod_sql checks
  *  that they all exist on startup and ProFTPD will refuse to start if they
  *  aren't defined.
  */
 static cmdtable sql_postgres_cmdtable[] = {
-  { CMD, "sql_open",             G_NONE, cmd_open,             FALSE, FALSE },
+  { CMD, "sql_checkauth",        G_NONE, cmd_checkauth,        FALSE, FALSE },
+  { CMD, "sql_cleanup",          G_NONE, cmd_cleanup,          FALSE, FALSE },
   { CMD, "sql_close",            G_NONE, cmd_close,            FALSE, FALSE },
   { CMD, "sql_defineconnection", G_NONE, cmd_defineconnection, FALSE, FALSE },
+  { CMD, "sql_escapestring",     G_NONE, cmd_escapestring,     FALSE, FALSE },
   { CMD, "sql_exit",             G_NONE, cmd_exit,             FALSE, FALSE },
-  { CMD, "sql_select",           G_NONE, cmd_select,           FALSE, FALSE },
+  { CMD, "sql_identify",         G_NONE, cmd_identify,         FALSE, FALSE },
   { CMD, "sql_insert",           G_NONE, cmd_insert,           FALSE, FALSE },
-  { CMD, "sql_update",           G_NONE, cmd_update,           FALSE, FALSE },
+  { CMD, "sql_open",             G_NONE, cmd_open,             FALSE, FALSE },
+  { CMD, "sql_prepare",          G_NONE, cmd_prepare,          FALSE, FALSE },
   { CMD, "sql_procedure",        G_NONE, cmd_procedure,        FALSE, FALSE },
   { CMD, "sql_query",            G_NONE, cmd_query,            FALSE, FALSE },
-  { CMD, "sql_escapestring",     G_NONE, cmd_escapestring,     FALSE, FALSE },
-  { CMD, "sql_checkauth",        G_NONE, cmd_checkauth,        FALSE, FALSE },
-  { CMD, "sql_identify",         G_NONE, cmd_identify,         FALSE, FALSE },
+  { CMD, "sql_select",           G_NONE, cmd_select,           FALSE, FALSE },
+  { CMD, "sql_update",           G_NONE, cmd_update,           FALSE, FALSE },
 
   { 0, NULL }
 };

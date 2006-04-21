@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.105 2006-04-20 01:42:51 castaglia Exp $
+ * $Id: mod_sql.c,v 1.106 2006-04-21 01:59:45 castaglia Exp $
  */
 
 #include "conf.h"
@@ -103,6 +103,7 @@ module sql_module;
 static char *_sql_where(pool *p, int cnt, ...);
 MODRET cmd_getgrent(cmd_rec *);
 MODRET cmd_setgrent(cmd_rec *);
+
 MODRET sql_lookup(cmd_rec *);
 
 static pool *sql_pool = NULL;
@@ -488,6 +489,54 @@ int sql_unregister_backend(const char *backend) {
   /* NOTE: a counter should be kept of the number of unregistrations,
    * as the memory for a registration is not freed on unregistration.
    */
+
+  return 0;
+}
+
+/* Determine which backend to use.
+ *
+ * If there is only one registered backend to use, the decision is easy.
+ *
+ * If there are more than one backends, default to using the first
+ * entry in the linked list (last backend module registered).  Check
+ * for a given backend name argument, if any, to see if that backend
+ * is available.
+ */
+static int sql_set_backend(char *backend) {
+
+  if (sql_nbackends == 1) {
+    sql_log(DEBUG_INFO, "defaulting to '%s' backend", sql_backends->backend);
+    sql_cmdtable = sql_backends->cmdtab;
+
+  } else if (sql_nbackends > 1) {
+    if (backend) {
+      struct sql_backend *b;
+
+      for (b = sql_backends; b; b = b->next) {
+        if (strcasecmp(b->backend, backend) == 0) {
+          sql_log(DEBUG_INFO, "using SQLBackend '%s'", backend);
+          sql_cmdtable = b->cmdtab;
+          break;
+        }
+      }
+
+      /* If no match is found, default to using the first entry in
+       * the list.
+       */
+      if (!sql_cmdtable) {
+        sql_log(DEBUG_INFO,
+          "SQLBackend '%s' not found, defaulting to '%s' backend",
+          backend, sql_backends->backend);
+        sql_cmdtable = sql_backends->cmdtab;
+      }
+
+    } else {
+      /* Default to using the first entry in the list. */
+      sql_log(DEBUG_INFO, "defaulting to '%s' backend",
+        sql_backends->backend);
+      sql_cmdtable = sql_backends->cmdtab;
+    }
+  }
 
   return 0;
 }
@@ -2441,6 +2490,86 @@ MODRET errinfo_master(cmd_rec *cmd) {
   return DECLINED(cmd);
 }
 
+MODRET sql_cleanup(cmd_rec *cmd) {
+  modret_t *res;
+
+  sql_log(DEBUG_FUNC, "%s", ">>> sql_cleanup");
+
+  res = _sql_dispatch(cmd, "sql_cleanup");
+  _sql_check_response(res);
+
+  sql_log(DEBUG_FUNC, "%s", "<<< sql_cleanup");
+  return res;
+}
+
+MODRET sql_closeconn(cmd_rec *cmd) {
+  modret_t *res;
+
+  sql_log(DEBUG_FUNC, "%s", ">>> sql_closeconn");
+  res = _sql_dispatch(cmd, "sql_close");
+  sql_log(DEBUG_FUNC, "%s", "<<< sql_closeconn");
+
+  return res;
+}
+
+MODRET sql_defineconn(cmd_rec *cmd) {
+  modret_t *res;
+
+  sql_log(DEBUG_FUNC, "%s", ">>> sql_defineconn");
+  res = _sql_dispatch(cmd, "sql_defineconnection");
+  sql_log(DEBUG_FUNC, "%s", "<<< sql_defineconn");
+
+  return res;
+}
+
+MODRET sql_load_backend(cmd_rec *cmd) {
+  modret_t *res;
+
+  sql_log(DEBUG_FUNC, "%s", ">>> sql_load_backed");
+
+  if (cmd->argc == 1) {
+    sql_set_backend(cmd->argv[0]);
+
+  } else {
+    sql_set_backend(NULL);
+  }
+
+  res = mod_create_data(cmd, NULL);
+
+  sql_log(DEBUG_FUNC, "%s", "<<< sql_load_backend");
+  return res;
+}
+
+MODRET sql_openconn(cmd_rec *cmd) {
+  modret_t *res;
+
+  sql_log(DEBUG_FUNC, "%s", ">>> sql_openconn");
+  res = _sql_dispatch(cmd, "sql_open");
+  sql_log(DEBUG_FUNC, "%s", "<<< sql_openconn");
+
+  return res;
+}
+
+MODRET sql_prepare(cmd_rec *cmd) {
+  modret_t *res;
+
+  sql_log(DEBUG_FUNC, "%s", ">>> sql_prepare");
+  res = _sql_dispatch(cmd, "sql_prepare");
+  sql_log(DEBUG_FUNC, "%s", "<<< sql_prepare");
+
+  return res;
+}
+
+MODRET sql_select(cmd_rec *cmd) {
+  modret_t *res;
+
+  sql_log(DEBUG_FUNC, "%s", ">>> sql_select");
+  res = _sql_dispatch(cmd, "sql_select");
+  sql_log(DEBUG_FUNC, "%s", "<<< sql_select");
+
+  return res;
+}
+
 /* sql_lookup: used by third-party modules to get data via a SQL query.  
  * Third party module must pass a legitimate cmd_rec (including tmp_pool), 
  * and the cmd_rec must have only one argument: the name of a SQLNamedQuery.
@@ -4177,50 +4306,8 @@ static int sql_sess_init(void) {
           "cannot log to a symbolic link");
   }
 
-  /* Determine which backend to use.
-   *
-   * If there is only one registered backend to use, the decision is easy.
-   *
-   * If there are more than one backends, default to using the first
-   * entry in the linked list (last backend module registered).  Check
-   * for a configured SQLBackend directive, to see if a specific backend
-   * has been requested.
-   */
-  if (sql_nbackends == 1) {
-    sql_log(DEBUG_INFO, "defaulting to '%s' backend", sql_backends->backend);
-    sql_cmdtable = sql_backends->cmdtab;
-
-  } else if (sql_nbackends > 1) {
-    temp_ptr = get_param_ptr(main_server->conf, "SQLBackend", FALSE);
-    
-    if (temp_ptr) {
-      struct sql_backend *b;
-
-      for (b = sql_backends; b; b = b->next) {
-        if (strcasecmp(b->backend, (char *) temp_ptr) == 0) {
-          sql_log(DEBUG_INFO, "using SQLBackend '%s'", (char *) temp_ptr);
-          sql_cmdtable = b->cmdtab;
-          break;
-        }
-      }
-
-      /* If no match is found, default to using the first entry in
-       * the list.
-       */
-      if (!sql_cmdtable) {
-        sql_log(DEBUG_INFO,
-          "SQLBackend '%s' not found, defaulting to '%s' backend",
-          (char *) temp_ptr, sql_backends->backend);
-        sql_cmdtable = sql_backends->cmdtab;
-      }
-
-    } else {
-      /* Default to using the first entry in the list. */
-      sql_log(DEBUG_INFO, "defaulting to '%s' backend",
-        sql_backends->backend);
-      sql_cmdtable = sql_backends->cmdtab;
-    }
-  }
+  temp_ptr = get_param_ptr(main_server->conf, "SQLBackend", FALSE);
+  sql_set_backend(temp_ptr);    
  
   /* Get our backend info and toss it up */
   cmd = _sql_make_cmd(tmp_pool, 1, "foo");
@@ -4604,9 +4691,16 @@ static cmdtable sql_cmdtab[] = {
   { LOG_CMD_ERR,	C_ANY,	G_NONE,	err_master,	FALSE,	FALSE },
 
   /* Module hooks */
-  { HOOK,	"sql_change",	G_NONE,	sql_change,	FALSE, FALSE }, 
-  { HOOK,	"sql_escapestr",G_NONE,	sql_escapestr,	FALSE, FALSE },
-  { HOOK,	"sql_lookup",	G_NONE,	sql_lookup,	FALSE, FALSE },
+  { HOOK,	"sql_change",		G_NONE,	sql_change,	FALSE, FALSE }, 
+  { HOOK,	"sql_cleanup",		G_NONE, sql_cleanup,	FALSE, FALSE },
+  { HOOK,	"sql_close_conn",	G_NONE, sql_closeconn,	FALSE, FALSE },
+  { HOOK,	"sql_define_conn",	G_NONE, sql_defineconn,	FALSE, FALSE },
+  { HOOK,	"sql_escapestr",	G_NONE,	sql_escapestr,	FALSE, FALSE },
+  { HOOK,	"sql_load_backend",	G_NONE,	sql_load_backend,FALSE, FALSE },
+  { HOOK,	"sql_lookup",		G_NONE,	sql_lookup,	FALSE, FALSE },
+  { HOOK,	"sql_open_conn",	G_NONE,	sql_openconn,	FALSE, FALSE },
+  { HOOK,	"sql_prepare",		G_NONE, sql_prepare,	FALSE, FALSE },
+  { HOOK,	"sql_select",		G_NONE, sql_select,	FALSE, FALSE },
 
   { 0, NULL }
 };
