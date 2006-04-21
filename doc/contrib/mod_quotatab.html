@@ -1,4 +1,4 @@
-<!-- $Id: mod_quotatab.html,v 1.9 2006-04-21 16:26:30 castaglia Exp $ -->
+<!-- $Id: mod_quotatab.html,v 1.10 2006-04-21 16:37:29 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_quotatab.html,v $ -->
 
 <html>
@@ -66,6 +66,7 @@ for overwritten files.
   <li><a href="#QuotaDirectoryTally">QuotaDirectoryTally</a>
   <li><a href="#QuotaDisplayUnits">QuotaDisplayUnits</a>
   <li><a href="#QuotaEngine">QuotaEngine</a>
+  <li><a href="#QuotaExcludeFilter">QuotaExcludeFilter</a>
   <li><a href="#QuotaLimitTable">QuotaLimitTable</a>
   <li><a href="#QuotaLock">QuotaLock</a>
   <li><a href="#QuotaLog">QuotaLog</a>
@@ -136,10 +137,28 @@ commenting out all <code>mod_quotatab</code> directives.
 
 <p>
 <hr>
-<h2><a name="QuotaLimitTable">QuotaLimitTable </a></h2>
+<h2><a name="QuotaExcludeFilter">QuotaExcludeFilter</a></h2>
+<strong>Syntax:</strong>  QuotaExcludeFilter <em>regex|"none"</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_quotatab<br>
+<strong>Compatibility:</strong> 1.3.1rc1 and later</a>
+
+The <code>QuotaExcludeFilter</code> directive configures a regular expression
+filter that is applied to every file handled by <code>mod_quotatab</code>;
+this includes files that are scanned if:
+<pre>
+  QuotaOptions ScanOnLogin
+</pre>
+is in effect.  Any file which matches the configured regular expression is
+ignored by <code>mod_quotatab</code>, and will not affect the tally updates.
+
+<p>
+<hr>
+<h2><a name="QuotaLimitTable">QuotaLimitTable</a></h2>
 <strong>Syntax:</strong>  QuotaLimitTable <em>source-type:source-info</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> <br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_quotatab<br>
 <strong>Compatibility:</strong> 1.2.5rc2 and later</a>
 
@@ -512,7 +531,7 @@ for that module.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2006-04-21 16:26:30 $</i><br>
+Last Updated: <i>$Date: 2006-04-21 16:37:29 $</i><br>
 
 <br><hr>
 

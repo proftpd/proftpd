@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.20 2006-04-21 16:26:30 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.21 2006-04-21 16:37:29 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -461,6 +461,9 @@ static quota_regtab_t *quotatab_get_backend(const char *backend,
 
 /* Returns TRUE if the given path is to be ignored, FALSE otherwise. */
 static int quotatab_ignore_path(const char *path) {
+  if (!path)
+    return FALSE;
+
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   if (quota_exclude_re == NULL)
     return FALSE;
