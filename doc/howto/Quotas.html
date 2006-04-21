@@ -1,4 +1,4 @@
-<!-- $Id: Quotas.html,v 1.1 2005-12-05 19:17:57 castaglia Exp $ -->
+<!-- $Id: Quotas.html,v 1.2 2006-04-21 16:26:30 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Quotas.html,v $ -->
 
 <html>
@@ -120,9 +120,9 @@ have a shared directory that all users can use.  Somehow
 <code>mod_quotatab</code> would need to know to scan these shared directories.
 
 <p>
-This feature has been requested enough, though, that I am planning on
-adding the capability to <code>mod_quotatab</code> at some point in the
-future, as it is clearly useful for administrators.
+As of <code>proftpd-1.3.1rc1</code>, the <code>mod_quotatab</code> supports
+this feature via the <code>ScanOnLogin</code> parameter of the
+<code>QuotaOptions</code> directive.
 
 <p><a name="QuotasInitialization" title="#QuotasInitialization"></a>
 <font color=red>Question</font>: If <code>mod_quotatab</code> does not
@@ -245,7 +245,7 @@ to handle the specifics of storage formats.  Every backend module
 
 <p>
 <hr>
-<i>$Date: 2005-12-05 19:17:57 $</i><br>
+<i>$Date: 2006-04-21 16:26:30 $</i><br>
 
 </body>
 </html>

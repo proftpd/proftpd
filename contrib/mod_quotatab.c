@@ -2,7 +2,7 @@
  * ProFTPD: mod_quotatab -- a module for managing FTP byte/file quotas via
  *                          centralized tables
  *
- * Copyright (c) 2001-2005 TJ Saunders
+ * Copyright (c) 2001-2006 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.19 2005-04-23 18:03:07 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.20 2006-04-21 16:26:30 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -75,6 +75,11 @@ static unsigned char have_quota_entry = FALSE;
 static unsigned char have_quota_limit_table = FALSE;
 static unsigned char have_quota_tally_table = FALSE;
 static unsigned char have_quota_lock = FALSE;
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+static regex_t *quota_exclude_re = NULL;
+static const char *quota_exclude_filter = NULL;
+#endif
+
 static quota_units_t byte_units = BYTE;
 
 /* For transmitting number of bytes from PRE_CMD to POST_CMD handlers
@@ -127,6 +132,11 @@ static unsigned char have_err_response = FALSE;
 #define QUOTATAB_TALLY_WRITE(bi, bo, bx, fi, fo, fx) \
   if (quotatab_write((bi), (bo), (bx), (fi), (fo), (fx)) < 0) \
     quotatab_log("error: unable to write tally: %s", strerror(errno));
+
+static unsigned long quotatab_opts = 0UL;
+#define QUOTA_OPT_SCAN_ON_LOGIN		0x0001
+
+#define QUOTA_SCAN_FL_VERBOSE		0x0001
 
 /* necessary prototypes */
 MODRET quotatab_pre_stor(cmd_rec *);
@@ -447,6 +457,120 @@ static quota_regtab_t *quotatab_get_backend(const char *backend,
 
   errno = ENOENT;
   return NULL;
+}
+
+/* Returns TRUE if the given path is to be ignored, FALSE otherwise. */
+static int quotatab_ignore_path(const char *path) {
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+  if (quota_exclude_re == NULL)
+    return FALSE;
+
+  if (regexec(quota_exclude_re, path, 0, NULL, 0) == 0)
+    return TRUE;
+
+  return FALSE;
+#else
+  return FALSE;
+#endif
+}
+
+static int quotatab_scan_dir(pool *p, const char *path, uid_t uid,
+    gid_t gid, int flags, double *nbytes, unsigned int *nfiles) {
+  struct stat st;
+  DIR *dirh;
+  struct dirent *dent;
+
+  if (!nbytes ||
+      !nfiles) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (quotatab_ignore_path(path)) {
+    quotatab_log("path '%s' matches QuotaExcludeFilter '%s', ignoring",
+      path, quota_exclude_filter);
+    return 0;
+  }
+
+  if (pr_fsio_lstat(path, &st) < 0) {
+    return -1;
+  }
+
+  if (!S_ISDIR(st.st_mode)) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  dirh = pr_fsio_opendir(path);
+  if (dirh == NULL) {
+    return -1;
+  }
+
+  if (uid != (uid_t) -1 &&
+      st.st_uid == uid) {
+    *nbytes += st.st_size;
+    *nfiles += 1;
+
+  } else if (gid != (gid_t) -1 &&
+             st.st_gid == gid) {
+    *nbytes += st.st_size;
+    *nfiles += 1;
+  }
+
+  while ((dent = pr_fsio_readdir(dirh)) != NULL) {
+    char *file;
+
+    pr_signals_handle();
+
+    if (strcmp(dent->d_name, ".") == 0 ||
+        strcmp(dent->d_name, "..") == 0) {
+      continue;
+    }
+
+    file = pdircat(p, path, dent->d_name, NULL);
+
+    memset(&st, 0, sizeof(st));
+    if (pr_fsio_lstat(file, &st) < 0) {
+      quotatab_log("unable to lstat '%s': %s", file, strerror(errno));
+      continue;
+    }
+
+    if (S_ISREG(st.st_mode) ||
+        S_ISLNK(st.st_mode)) {
+
+      if (uid != (uid_t) -1 &&
+          st.st_uid == uid) {
+        *nbytes += st.st_size;
+        *nfiles += 1;
+  
+      } else if (gid != (gid_t) -1 &&
+                 st.st_gid == gid) {
+        *nbytes += st.st_size;
+        *nfiles += 1;
+      }
+
+    } else if (S_ISDIR(st.st_mode)) {
+      pool *sub_pool;
+
+      sub_pool = make_sub_pool(p);
+
+      if (quotatab_scan_dir(sub_pool, file, uid, gid, flags, nbytes,
+          nfiles) < 0) {
+        quotatab_log("error scanning '%s': %s", file, strerror(errno));
+      }
+
+      destroy_pool(sub_pool);
+
+    } else {
+      if (flags & QUOTA_SCAN_FL_VERBOSE) {
+        quotatab_log("file '%s' is not a file, symlink, or directory; skipping",
+          file);
+      }
+    }
+  }
+
+  pr_fsio_closedir(dirh); 
+  return 0;
 }
 
 static int quotatab_open(quota_tabtype_t tab_type) {
@@ -979,6 +1103,45 @@ MODRET set_quotaengine(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+/* usage: QuotaExcludeFilter regex|"none" */
+MODRET set_quotaexcludefilter(cmd_rec *cmd) {
+#if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
+  regex_t *re = NULL;
+  config_rec *c;
+  int res;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (strcasecmp(cmd->argv[1], "none") == 0) {
+    add_config_param(cmd->argv[0], 0);
+    return HANDLED(cmd);
+  }
+
+  re = pr_regexp_alloc();
+
+  res = regcomp(re, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
+  if (res != 0) {
+    char errstr[256] = {'\0'};
+
+    regerror(res, re, errstr, sizeof(errstr));
+    pr_regexp_free(re);
+
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1], "' failed regex "
+      "compilation: ", errstr, NULL));
+  }
+
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c->argv[1] = pstrdup(c->pool, cmd->argv[1]);
+  c->argv[2] = (void *) re;
+  return HANDLED(cmd);
+
+#else
+  CONF_ERROR(cmd, "The QuotaExcludeFilter directive cannot be used on this "
+    "system, as you do not have POSIX compliant regex support");
+#endif
+}
+
 /* usage: QuotaLock file */
 MODRET set_quotalock(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
@@ -999,6 +1162,35 @@ MODRET set_quotalog(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+
+  return HANDLED(cmd);
+}
+
+/* usage: QuotaOptions opt1 opt2 ... */
+MODRET set_quotaoptions(cmd_rec *cmd) {
+  config_rec *c;
+  register unsigned int i;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0)
+    CONF_ERROR(cmd, "wrong number of parameters");
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcmp(cmd->argv[i], "ScanOnLogin") == 0) {
+      opts |= QUOTA_OPT_SCAN_ON_LOGIN;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown QuotaOption: '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
 
   return HANDLED(cmd);
 }
@@ -1184,6 +1376,12 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
   if (!use_quotas)
     return DECLINED(cmd);
 
+  if (quotatab_ignore_path(cmd->arg)) {
+    quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
+      cmd->argv[0], cmd->arg, quota_exclude_filter);
+    return DECLINED(cmd);
+  }
+
   /* Check on the size of the appended-to file again, and use the difference
    * in file size as the increment.  Make sure that no caching effects 
    * mess with the stat.
@@ -1232,6 +1430,12 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
   /* sanity check */
   if (!use_quotas)
     return DECLINED(cmd);
+
+  if (quotatab_ignore_path(cmd->arg)) {
+    quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
+      cmd->argv[0], cmd->arg, quota_exclude_filter);
+    return DECLINED(cmd);
+  }
 
   /* Check on the size of the appended-to file again, and use the difference
    * in file size as the increment.  Make sure that no caching effects 
@@ -1300,6 +1504,12 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
   if (!use_quotas)
     return DECLINED(cmd); 
 
+  if (quotatab_ignore_path(cmd->arg)) {
+    quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
+      cmd->argv[0], cmd->arg, quota_exclude_filter);
+    return DECLINED(cmd);
+  }
+
   /* Write out an updated quota entry. */
   QUOTATAB_TALLY_WRITE(-quotatab_disk_bytes, 0, -quotatab_disk_bytes,
     -1, 0, -1)
@@ -1349,7 +1559,9 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
   have_quota_entry = FALSE;
 
   /* Be done now if there is no quota table */
-  if (!use_quotas || !have_quota_limit_table || !have_quota_tally_table) {
+  if (!use_quotas ||
+      !have_quota_limit_table ||
+      !have_quota_tally_table) {
     use_quotas = FALSE;
     quotatab_log("turning QuotaEngine off");
     return DECLINED(cmd);
@@ -1364,6 +1576,39 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
       quotatab_log("found tally entry for user '%s'", session.user);
       have_quota_entry = TRUE;
     }
+
+    if ((quotatab_opts & QUOTA_OPT_SCAN_ON_LOGIN) &&
+        (quotatab_limit.bytes_in_avail > 0 ||
+         quotatab_limit.files_in_avail > 0)) {
+      double byte_count = 0;
+      unsigned int file_count = 0;
+      time_t then;
+
+      quotatab_log("ScanOnLogin enabled, scanning current directory '%s' "
+        "for files owned by user '%s'", pr_fs_getcwd(), session.user);
+
+      time(&then);
+      if (quotatab_scan_dir(cmd->tmp_pool, pr_fs_getcwd(),
+          session.uid, -1, 0, &byte_count, &file_count) < 0) {
+        quotatab_log("unable to scan '%s': %s", pr_fs_getcwd(),
+          strerror(errno));
+
+      } else {
+        double bytes_diff = (double)
+          (byte_count - quotatab_tally.bytes_in_used);
+        int files_diff = file_count - quotatab_tally.files_in_used;
+
+        quotatab_log("found %0.2lf bytes in %u files for user '%s' "
+          "in %lu secs", byte_count, file_count, session.user,
+          time(NULL) - then);
+
+        quotatab_log("updating tally (%0.2lf bytes, %d files difference)",
+          bytes_diff, files_diff);
+
+        /* Write out an updated quota entry */
+        QUOTATAB_TALLY_WRITE(bytes_diff, 0, 0, files_diff, 0, 0);
+      }
+    }
   }
 
   /* Check for a limit and a tally entry for this group. */
@@ -1376,11 +1621,43 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
         quotatab_log("found tally entry for group '%s'", session.group);
         have_quota_entry = TRUE;
       }
+
+      if ((quotatab_opts & QUOTA_OPT_SCAN_ON_LOGIN) &&
+          (quotatab_limit.bytes_in_avail > 0 ||
+           quotatab_limit.files_in_avail > 0)) {
+        double byte_count = 0;
+        unsigned int file_count = 0;
+        time_t then;
+
+        quotatab_log("ScanOnLogin enabled, scanning current directory '%s' "
+          "for files owned by group '%s'", pr_fs_getcwd(), session.group);
+
+        time(&then);
+        if (quotatab_scan_dir(cmd->tmp_pool, pr_fs_getcwd(), -1,
+            session.gid, 0, &byte_count, &file_count) < 0) {
+          quotatab_log("unable to scan '%s': %s", pr_fs_getcwd(),
+            strerror(errno));
+
+        } else {
+          double bytes_diff = byte_count - quotatab_tally.bytes_in_used;
+          int files_diff = file_count - quotatab_tally.files_in_used;
+
+          quotatab_log("found %0.2lf bytes in %u files for group '%s'",
+            byte_count, file_count, session.group, time(NULL) - then);
+
+          quotatab_log("updating tally (%0.2lf bytes, %d files difference)",
+            bytes_diff, files_diff);
+
+          /* Write out an updated quota entry */
+          QUOTATAB_TALLY_WRITE(bytes_diff, 0, 0, files_diff, 0, 0);
+        }
+      }
     }
   }
 
   /* Check for a limit and a tally entry for this class. */
-  if (!have_limit_entry && session.class) {
+  if (!have_limit_entry &&
+      session.class) {
     if (quotatab_lookup(TYPE_LIMIT, session.class->cls_name, CLASS_QUOTA)) {
       quotatab_log("found limit entry for class '%s'", session.class->cls_name);
       have_limit_entry = TRUE;
@@ -1414,7 +1691,8 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
    * entry.
    */
 
-  if (have_limit_entry && !have_quota_entry) {
+  if (have_limit_entry &&
+      !have_quota_entry) {
     memset(quotatab_tally.name, '\0', sizeof(quotatab_tally.name));
     snprintf(quotatab_tally.name, sizeof(quotatab_tally.name), "%s",
       quotatab_limit.name);
@@ -1436,9 +1714,10 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
       quotatab_log("new tally entry successfully created");
       have_quota_entry = TRUE;
 
-    } else
+    } else {
       quotatab_log("error: unable to create tally entry: %s",
         strerror(errno));
+    }
   }
 
   if (have_quota_entry) {
@@ -1640,6 +1919,12 @@ MODRET quotatab_post_retr(cmd_rec *cmd) {
   if (!use_quotas)
     return DECLINED(cmd);
 
+  if (quotatab_ignore_path(cmd->arg)) {
+    quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
+      cmd->argv[0], cmd->arg, quota_exclude_filter);
+    return DECLINED(cmd);
+  }
+
   /* Write out an updated tally */
   QUOTATAB_TALLY_WRITE(0, session.xfer.total_bytes, session.xfer.total_bytes,
     0, 1, 1)
@@ -1696,6 +1981,12 @@ MODRET quotatab_post_retr_err(cmd_rec *cmd) {
   /* Sanity check */
   if (!use_quotas)
     return DECLINED(cmd);
+
+  if (quotatab_ignore_path(cmd->arg)) {
+    quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
+      cmd->argv[0], cmd->arg, quota_exclude_filter);
+    return DECLINED(cmd);
+  }
 
   /* Write out an updated tally */
   QUOTATAB_TALLY_WRITE(0, session.xfer.total_bytes, session.xfer.total_bytes,
@@ -1786,6 +2077,12 @@ MODRET quotatab_post_rmd(cmd_rec *cmd) {
   if (!use_quotas || !use_dirs)
     return DECLINED(cmd);
 
+  if (quotatab_ignore_path(cmd->arg)) {
+    quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
+      cmd->argv[0], cmd->arg, quota_exclude_filter);
+    return DECLINED(cmd);
+  }
+
   /* Write out an updated quota entry. */
   QUOTATAB_TALLY_WRITE(-quotatab_disk_bytes, 0, 0, -1, 0, -1)
 
@@ -1819,6 +2116,12 @@ MODRET quotatab_post_rnto(cmd_rec *cmd) {
   /* Sanity check */
   if (!use_quotas)
     return DECLINED(cmd);
+
+  if (quotatab_ignore_path(cmd->arg)) {
+    quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
+      cmd->argv[0], cmd->arg, quota_exclude_filter);
+    return DECLINED(cmd);
+  }
 
   /* Write out an updated quota entry. */
   QUOTATAB_TALLY_WRITE(-quotatab_disk_bytes, 0, -quotatab_disk_bytes,
@@ -1913,6 +2216,12 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
   /* Sanity check */
   if (!use_quotas)
     return DECLINED(cmd);
+
+  if (quotatab_ignore_path(cmd->arg)) {
+    quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
+      cmd->argv[0], cmd->arg, quota_exclude_filter);
+    return DECLINED(cmd);
+  }
 
   /* Check on the size of the stored file again, and use the difference
    * in file size as the increment.  Make sure that no caching effects
@@ -2028,6 +2337,12 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
   /* Sanity check */
   if (!use_quotas)
     return DECLINED(cmd);
+
+  if (quotatab_ignore_path(cmd->arg)) {
+    quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
+      cmd->argv[0], cmd->arg, quota_exclude_filter);
+    return DECLINED(cmd);
+  }
 
   /* Check on the size of the stored file again, and use the difference
    * in file size as the increment.  Make sure that no caching effects 
@@ -2295,13 +2610,15 @@ static int quotatab_init(void) {
 }
 
 static int quotatab_sess_init(void) {
+  config_rec *c;
   unsigned char *quotatab_engine = NULL, *quotatab_showquotas = NULL,
     *quotatab_usedirs = NULL;
   quota_units_t *units = NULL;
 
   /* Check to see if quotas are enabled for this server. */
-  if ((quotatab_engine = get_param_ptr(main_server->conf, "QuotaEngine",
-      FALSE)) != NULL && *quotatab_engine == TRUE) {
+  quotatab_engine = get_param_ptr(main_server->conf, "QuotaEngine", FALSE);
+  if (quotatab_engine != NULL &&
+      *quotatab_engine == TRUE) {
     use_quotas = TRUE;
 
   } else {
@@ -2310,12 +2627,15 @@ static int quotatab_sess_init(void) {
   }
 
   /* Check to see if SITE QUOTA enabled for this server. */
-  if ((quotatab_showquotas = get_param_ptr(main_server->conf, "QuotaShowQuotas",
-      FALSE)) != NULL && *quotatab_showquotas == FALSE)
+  quotatab_showquotas = get_param_ptr(main_server->conf, "QuotaShowQuotas",
+    FALSE);
+  if (quotatab_showquotas != NULL &&
+      *quotatab_showquotas == FALSE) {
     allow_site_quota = FALSE;
 
- else
+ } else {
     allow_site_quota = TRUE;
+  }
 
   quotatab_openlog();
 
@@ -2366,12 +2686,26 @@ static int quotatab_sess_init(void) {
   byte_units = units ? *units : BYTE;
 
   /* Check to see if directories are to be used for tallies for this server. */
-  if ((quotatab_usedirs = get_param_ptr(main_server->conf,
-      "QuotaDirectoryTally", FALSE)) != NULL && *quotatab_usedirs == TRUE)
+  quotatab_usedirs = get_param_ptr(main_server->conf, "QuotaDirectoryTally",
+    FALSE);
+  if (quotatab_usedirs != NULL &&
+      *quotatab_usedirs == TRUE) {
     use_dirs = TRUE;
 
- else
+  } else {
     use_dirs = FALSE;
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "QuotaExcludeFilter", FALSE);
+  if (c && c->argc == 3) {
+     quota_exclude_filter = c->argv[1];
+     quota_exclude_re = c->argv[2];
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "QuotaOptions", FALSE);
+  if (c) {
+    quotatab_opts = *((unsigned long *) c->argv[0]);
+  }
 
   return 0;
 }
@@ -2383,9 +2717,11 @@ static conftable quotatab_conftab[] = {
   { "QuotaDirectoryTally",	set_quotadirtally,	NULL },
   { "QuotaDisplayUnits",	set_quotadisplayunits,	NULL },
   { "QuotaEngine",		set_quotaengine,	NULL },
+  { "QuotaExcludeFilter",	set_quotaexcludefilter,	NULL },
   { "QuotaLimitTable",		set_quotatable,		NULL },
   { "QuotaLock",		set_quotalock,		NULL },
   { "QuotaLog",			set_quotalog,		NULL },
+  { "QuotaOptions",		set_quotaoptions,	NULL },
   { "QuotaShowQuotas",		set_quotashowquotas,	NULL },
   { "QuotaTallyTable",		set_quotatable,		NULL },
   { NULL }
@@ -2445,5 +2781,8 @@ module quotatab_module = {
   quotatab_init,
 
   /* Session initialization function */
-  quotatab_sess_init
+  quotatab_sess_init,
+
+  /* Module version */
+  MOD_QUOTATAB_VERSION
 };

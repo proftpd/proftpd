@@ -10,6 +10,9 @@ files.
 ---------
   + New configuration directives:
 
+      QuotaOptions
+        ScanOnLogin
+
       TLSCryptoDevice
 
   + Enhanced configuration directives:
@@ -44,4 +47,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-04-21 01:32:31 $
+Last Updated: $Date: 2006-04-21 16:26:30 $

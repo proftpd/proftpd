@@ -1,4 +1,4 @@
-<!-- $Id: mod_quotatab.html,v 1.8 2006-04-17 22:38:32 castaglia Exp $ -->
+<!-- $Id: mod_quotatab.html,v 1.9 2006-04-21 16:26:30 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_quotatab.html,v $ -->
 
 <html>
@@ -69,6 +69,7 @@ for overwritten files.
   <li><a href="#QuotaLimitTable">QuotaLimitTable</a>
   <li><a href="#QuotaLock">QuotaLock</a>
   <li><a href="#QuotaLog">QuotaLog</a>
+  <li><a href="#QuotaOptions">QuotaOptions</a>
   <li><a href="#QuotaShowQuotas">QuotaShowQuotas</a>
   <li><a href="#QuotaTallyTable">QuotaTallyTable</a>
 </ul>
@@ -197,6 +198,37 @@ link.
 If <em>file</em> is &quot;none&quot;, no logging will be done at all; this
 setting can be used to override a <code>QuotaLog</code> setting inherited from
 a <code>&lt;Global&gt;</code> context.
+
+<p>
+<hr>
+<h2><a name="QuotaOptions">QuotaOptions</a></h2>
+<strong>Syntax:</strong> QuotaOptions <em>opt1 ...</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_quotatab<br>
+<strong>Compatibility:</strong> 1.3.1rc1 and later
+
+<p>
+The <code>QuotaOptions</code> directive is used to configure various optional
+behavior of <code>mod_quotatab</code>.
+
+<p>
+Example:
+<pre>
+  QuotaOptions ScanOnLogin
+</pre>
+
+<p>
+The currently implemented options are:
+<ul>
+  <li><code>ScanOnLogin</code><br>
+    <p>
+    If configured, this causes <code>mod_quotatab</code> to recursively
+    scan the user's home directory when the user logs in, and to update
+    the tally entry for that user, if any, with the number of bytes and
+    files found.  <b>Note</b> that these scans <i>will</i> cause a longer
+    login time for the user, depending on the size of their home directory.
+</ul>
 
 <p>
 <hr>
@@ -480,7 +512,7 @@ for that module.
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2006-04-17 22:38:32 $</i><br>
+Last Updated: <i>$Date: 2006-04-21 16:26:30 $</i><br>
 
 <br><hr>
 
