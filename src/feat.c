@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,49 +24,73 @@
 
 /*
  * Feature management code
- * $Id: feat.c,v 1.6 2003-11-01 07:11:07 castaglia Exp $
+ * $Id: feat.c,v 1.7 2006-04-21 02:02:21 castaglia Exp $
  */
 
 #include "conf.h"
 
 static pool *feat_pool = NULL;
-static array_header *feat_list = NULL;
-static unsigned int feati = 0U;
+static pr_table_t *feat_tab = NULL;
 
-void pr_feat_add(const char *feat) {
+int pr_feat_add(const char *feat) {
+  if (!feat) {
+    errno = EINVAL;
+    return -1;
+  }
 
   /* If no feature-tracking list has been allocated, create one. */
   if (!feat_pool) {
     feat_pool = make_sub_pool(permanent_pool);
-    pr_pool_tag(feat_pool, "Feat Pool");
-    feat_list = make_array(feat_pool, 0, sizeof(char *));
+    pr_pool_tag(feat_pool, "Feat API");
+    feat_tab = pr_table_alloc(feat_pool, 0);
   }
 
   /* Make sure that the feature being added isn't already in the list. */
-  if (feat_list->nelts > 0) {
-    register unsigned int i = 0;
-    char **feats = (char **) feat_list->elts;
-
-    for (i = 0; i < feat_list->nelts; i++)
-      if (!strcmp(feats[i], feat))
-        return;
+  if (pr_table_exists(feat_tab, feat) > 0) {
+    errno = EEXIST;
+    return -1;
   }
 
-  *((char **) push_array(feat_list)) = pstrdup(feat_pool, feat);
+  return pr_table_add(feat_tab, pstrdup(feat_pool, feat), NULL, 0);
+}
+
+int pr_feat_remove(const char *feat) {
+  void *res;
+
+  if (!feat) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (!feat_tab) {
+    errno = EPERM;
+    return -1;
+  }
+
+  res = pr_table_remove(feat_tab, feat, NULL);
+
+  if (res)
+    return 0;
+
+  errno = ENOENT;
+  return -1;
 }
 
 const char *pr_feat_get(void) {
-  if (feat_list) {
-    feati = 0U;
-    return ((const char **) feat_list->elts)[feati++];
+  if (!feat_tab) {
+    errno = EPERM;
+    return NULL;
   }
 
-  return NULL;
+  (void) pr_table_rewind(feat_tab);
+  return pr_table_next(feat_tab);
 }
 
 const char *pr_feat_get_next(void) {
-  if (feat_list && feati < feat_list->nelts)
-    return ((const char **) feat_list->elts)[feati++];
+  if (!feat_tab) {
+    errno = EPERM;
+    return NULL;
+  }
 
-  return NULL;
+  return pr_table_next(feat_tab);
 }
