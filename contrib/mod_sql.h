@@ -3,6 +3,7 @@
  * Time-stamp: <1999-10-04 03:21:21 root>
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton
+ * Copyright (c) 2002-2006 The ProFTPD Project
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +24,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.h,v 1.6 2004-09-26 18:09:11 castaglia Exp $
+ * $Id: mod_sql.h,v 1.7 2006-04-21 02:04:19 castaglia Exp $
  */
 
 #ifndef MOD_SQL_H
@@ -73,7 +74,7 @@ typedef struct sql_data_struct sql_data_t;
  *  perform proper registration of the cmdtable.
  */
 
-#define MOD_SQL_API_V1 "mod_sql_api_v2"
+#define MOD_SQL_API_V1 "mod_sql_api_v1"
 
 /* MOD_SQL_API_V2: MOD_SQL_API_V1 && guarantees to correctly implement 
  *  cmd_procedure.
