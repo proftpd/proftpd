@@ -1,5 +1,5 @@
 
-                        ProFTPD 1.2 README.modules
+                        ProFTPD 1.3 README.modules
                         ==========================
 
 
@@ -100,6 +100,11 @@ Authentication modules:
        Contributed by TJ Saunders <tj@castaglia.org>.
 
 Feature modules:
+
+    mod_ban
+        Dynamic blacklisting.
+        See doc/contrib/mod_ban.html
+        Contributed by TJ Saunders <tj@castaglia.org>.
 
     mod_ctrls_admin
         Common administrative control actions

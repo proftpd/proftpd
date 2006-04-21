@@ -29,6 +29,8 @@ files.
  
   + New modules:
 
+      mod_ban
+
       mod_quotatab_radius
 
   + New documentation:
@@ -42,4 +44,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-04-19 23:10:36 $
+Last Updated: $Date: 2006-04-21 01:32:31 $
