@@ -1022,11 +1022,13 @@ static int tls_init_server(void) {
      * from all the certs in the TLSCACertificatePath.
      */
  
-    if ((tls_ca_chain = get_param_ptr(main_server->conf,
-        "TLSCertificateChainFile", FALSE))) {
-      if (SSL_CTX_use_certificate_chain_file(ssl_ctx, tls_ca_chain) < 0)
+    tls_ca_chain = get_param_ptr(main_server->conf, "TLSCertificateChainFile",
+      FALSE);
+    if (tls_ca_chain) {
+      if (SSL_CTX_use_certificate_chain_file(ssl_ctx, tls_ca_chain) != 1) {
         tls_log("unable to use certificate chain '%s': %s", tls_ca_chain,
-          ERR_error_string(ERR_get_error(), NULL));
+          tls_get_errors());
+      }
     } 
 
     if (tls_ca_cert) {
@@ -1039,20 +1041,26 @@ static int tls_init_server(void) {
       if (cacertf) {
         X509 *x509 = PEM_read_X509(cacertf, NULL, NULL, NULL);
 
-        if (x509)
-          SSL_CTX_add_client_CA(ssl_ctx, x509);
+        if (x509) {
+          if (SSL_CTX_add_client_CA(ssl_ctx, x509) != 1) {
+            tls_log("error adding '%s' to client CA list: %s", tls_ca_cert,
+              tls_get_errors());
+          }
 
-        else
-          tls_log("unable to add '%s' to client CA list: %s", tls_ca_cert,
-            ERR_error_string(ERR_get_error(), NULL));
+        } else {
+          tls_log("unable to read certificate in '%s': %s", tls_ca_cert,
+            tls_get_errors());
+        }
 
         fclose(cacertf);
 
-      } else
+      } else {
         tls_log("unable to open '%s': %s", tls_ca_cert, strerror(errno));
+      }
     }
 
-    if (tls_ca_path) {
+    if (!tls_ca_chain &&
+        tls_ca_path) {
       DIR *cacertdir = NULL;
 
       PRIVS_ROOT
@@ -1068,6 +1076,11 @@ static int tls_init_server(void) {
           char *cacertname = pdircat(tmp_pool, tls_ca_path, cadent->d_name,
              NULL);
 
+          /* Skip dot directories. */
+          if (is_dotdir(cacertname)) {
+            next;
+          }
+
           PRIVS_ROOT
           cacertf = fopen(cacertname, "r");
           PRIVS_RELINQUISH
@@ -1075,24 +1088,29 @@ static int tls_init_server(void) {
           if (cacertf) {
             X509 *x509 = PEM_read_X509(cacertf, NULL, NULL, NULL);
 
-            if (x509)
-              SSL_CTX_add_client_CA(ssl_ctx, x509);
+            if (x509) {
+              if (SSL_CTX_add_client_CA(ssl_ctx, x509) != 1) {
+                tls_log("error adding '%s' to client CA list: %s", cacertname,
+                  tls_get_errors());
+              }
 
-            else
-              tls_log("unable to add '%s' to client CA list: %s",
-                cacertname, ERR_error_string(ERR_get_error(), NULL));
+            } else {
+              tls_log("unable to read '%s': %s", cacertname, tls_get_errors());
+            }
 
             fclose(cacertf);
 
-          } else
+          } else {
             tls_log("unable to open '%s': %s", cacertname, strerror(errno));
+          }
         }
         destroy_pool(tmp_pool);
         closedir(cacertdir);
  
-      } else
+      } else {
         tls_log("unable to add CAs in '%s': %s", tls_ca_path,
           strerror(errno));
+      }
     }
   }
 
@@ -1489,37 +1507,37 @@ static void tls_end_sess(SSL *ssl, int strms, int use_shutdown) {
 
       switch (err) {
         case SSL_ERROR_WANT_READ:
-          tls_log("SSL_shutdown() error: WANT_READ");
+          tls_log("SSL_shutdown error: WANT_READ");
           pr_log_debug(DEBUG0, MOD_TLS_VERSION
-            ": SSL_shutdown() error: WANT_READ");
+            ": SSL_shutdown error: WANT_READ");
           break;
 
         case SSL_ERROR_WANT_WRITE:
-          tls_log("SSL_shutdown() error: WANT_WRITE");
+          tls_log("SSL_shutdown error: WANT_WRITE");
           pr_log_debug(DEBUG0, MOD_TLS_VERSION
-            ": SSL_shutdown() error: WANT_WRITE");
+            ": SSL_shutdown error: WANT_WRITE");
           break;
 
         case SSL_ERROR_ZERO_RETURN:
-          tls_log("SSL_shutdown() error: ZERO_RETURN");
+          tls_log("SSL_shutdown error: ZERO_RETURN");
           pr_log_debug(DEBUG0, MOD_TLS_VERSION
-            ": SSL_shutdown() error: ZERO_RETURN");
+            ": SSL_shutdown error: ZERO_RETURN");
           break;
 
         case SSL_ERROR_SYSCALL:
           if (errno != EOF &&
               errno != EBADF &&
               errno != EPIPE) {
-            tls_log("SSL_shutdown() syscall error: %s", strerror(errno));
+            tls_log("SSL_shutdown syscall error: %s", strerror(errno));
             pr_log_debug(DEBUG0, MOD_TLS_VERSION
-              ": SSL_shutdown() syscall error: %s", strerror(errno));
+              ": SSL_shutdown syscall error: %s", strerror(errno));
           }
           break;
 
         default:
-          tls_log("SSL_shutdown() error [%d]: %s", err, tls_get_errors());
+          tls_log("SSL_shutdown error [%d]: %s", err, tls_get_errors());
           pr_log_debug(DEBUG0, MOD_TLS_VERSION
-            ": SSL_shutdown() error [%d]: %s", err, tls_get_errors());
+            ": SSL_shutdown error [%d]: %s", err, tls_get_errors());
           break;
       }
     }
