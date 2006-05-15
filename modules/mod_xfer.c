@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.198 2006-04-20 02:06:32 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.199 2006-05-15 16:32:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1540,8 +1540,6 @@ MODRET xfer_rest(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  session.restart_pos = pos;
-
   /* Refuse the command if we're in ASCII mode, and the restart position
    * is anything other than zero.
    *
@@ -1558,6 +1556,8 @@ MODRET xfer_rest(cmd_rec *cmd) {
       "%s: Resuming transfers not allowed in ASCII mode", cmd->argv[0]);
     return ERROR(cmd);
   } 
+
+  session.restart_pos = pos;
 
   pr_response_add(R_350, "Restarting at %" PR_LU ". Send STORE or RETRIEVE to "
     "initiate transfer", (pr_off_t) pos);

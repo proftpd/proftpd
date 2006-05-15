@@ -74,6 +74,14 @@ Known issues:
       can be found here:
         http://docs.hp.com/hpux/onlinedocs/T1306-90004/T1306-90004.html
 
+  + Attempting to use a mask with an IPv6 address in an access rule, i.e.:
+
+      Allow from :ffff:10.0.0.24/24
+
+    will be rejected.  Too many administrators were mistakenly using
+    CIDR masks with IPv6 address rules and being surprised when the rule
+    worked exactly as configured (but not as the admins expected).
+
   + Certain DNS names may be handled improperly when IPv6 support is
     enabled, e.g.:
 

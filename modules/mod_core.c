@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.279 2006-04-17 22:22:14 castaglia Exp $
+ * $Id: mod_core.c,v 1.280 2006-05-15 16:32:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1025,10 +1025,15 @@ MODRET add_from(cmd_rec *cmd) {
     if (strcasecmp("all", *(cargv + 1)) == 0 ||
         strcasecmp("none", *(cargv + 1)) == 0) {
       pr_netacl_t *acl = pr_netacl_create(cmd->tmp_pool, *(cargv + 1));
+      if (!acl) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad ACL definition '",
+          *(cargv + 1), "': ", strerror(errno), NULL));
+      }
 
-      if (pr_class_add_acl(acl) < 0)
+      if (pr_class_add_acl(acl) < 0) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error adding rule '",
           *(cargv + 1), "': ", strerror(errno), NULL));
+      }
 
       cargc = 0;
     }
@@ -1043,18 +1048,24 @@ MODRET add_from(cmd_rec *cmd) {
 
     while ((ent = get_token(&str, ",")) != NULL) {
       if (*ent) {
-       pr_netacl_t *acl;
+        pr_netacl_t *acl;
 
-       if (strcasecmp(ent, "all") == 0 ||
-           strcasecmp(ent, "none") == 0) {
-          cargc = 0;
-          break;
+        if (strcasecmp(ent, "all") == 0 ||
+            strcasecmp(ent, "none") == 0) {
+           cargc = 0;
+           break;
+         }
+
+        acl = pr_netacl_create(cmd->tmp_pool, ent);
+        if (!acl) {
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad ACL definition '",
+            *(cargv + 1), "': ", strerror(errno), NULL));
         }
 
-       acl = pr_netacl_create(cmd->tmp_pool, ent);
-       if (pr_class_add_acl(acl) < 0)
-         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error adding rule '", ent,
-           "': ", strerror(errno), NULL));
+        if (pr_class_add_acl(acl) < 0) {
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error adding rule '", ent,
+            "': ", strerror(errno), NULL));
+        }
       }
     }
   }
@@ -2511,9 +2522,10 @@ MODRET set_allowdeny(cmd_rec *cmd) {
         }
 
         acl = pr_netacl_create(c->pool, ent);
-        if (!acl)
-          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad ACL definition: '",
+        if (!acl) {
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad ACL definition '",
             ent, "': ", strerror(errno), NULL));     
+        }
 
         *((pr_netacl_t **) push_array(list)) = acl;
       }
@@ -2629,6 +2641,34 @@ MODRET set_displaylogin(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+/* usage: DisplayChdir path [on|off] */
+MODRET set_displaychdir(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  int bool = FALSE;
+
+  if (cmd->argc-1 < 1 ||
+      cmd->argc-1 > 2)
+    CONF_ERROR(cmd, "wrong number of parameters");
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
+
+  if (cmd->argc-1 == 2) {
+    bool = get_boolean(cmd, 2);
+    if (bool < 0) {
+      CONF_ERROR(cmd, "expected Boolean parameter");
+    }
+  }
+
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+  c->argv[1] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[1]) = bool;
+
+  c->flags |= CF_MERGEDOWN;
+
+  return HANDLED(cmd);
+}
+
 MODRET set_displayconnect(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -2644,8 +2684,15 @@ MODRET set_displayfirstchdir(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
-  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  c = add_config_param("DisplayChdir", 2, NULL, NULL);
+  c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+  c->argv[1] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[1]) = TRUE;
   c->flags |= CF_MERGEDOWN;
+
+  pr_log_pri(PR_LOG_WARNING,
+    "warning: the DisplayFirstChdir directive is deprecated and will be "
+    "removed in a future release.  Please use the DisplayChdir directive.");
 
   return HANDLED(cmd);
 }
@@ -3522,16 +3569,15 @@ int core_chmod(cmd_rec *cmd, char *dir, mode_t mode) {
 }
 
 MODRET _chdir(cmd_rec *cmd, char *ndir) {
-  char *display = NULL;
   char *dir,*odir,*cdir;
-  config_rec *cdpath;
+  config_rec *c = NULL, *cdpath;
   unsigned char show_symlinks = TRUE, *tmp = NULL;
 
   odir = ndir;
   pr_fs_clear_cache();
 
-  if ((tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks",
-      FALSE)) != NULL)
+  tmp = get_param_ptr(TOPLEVEL_CONF, "ShowSymlinks", FALSE);
+  if (tmp != NULL)
     show_symlinks = *tmp;
 
   if (show_symlinks) {
@@ -3609,44 +3655,52 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
     NULL);
 
   if (session.dir_config) {
-    display = get_param_ptr(session.dir_config->subset, "DisplayFirstChdir",
+    c = find_config(session.dir_config->subset, CONF_PARAM, "DisplayChdir",
       FALSE);
   }
 
-  if (!display &&
+  if (!c &&
       session.anon_config) {
-    display = get_param_ptr(session.anon_config->subset, "DisplayFirstChdir",
+    c = find_config(session.anon_config->subset, CONF_PARAM, "DisplayChdir",
       FALSE);
   }
 
-  if (!display) {
-    display = get_param_ptr(cmd->server->conf, "DisplayFirstChdir", FALSE);
+  if (!c) {
+    c = find_config(cmd->server->conf, CONF_PARAM, "DisplayChdir", FALSE);
   }
 
-  if (display) {
-    config_rec *c;
-    time_t last;
+  if (c) {
     struct stat st;
+    time_t prev;
 
-    c = find_config(cmd->server->conf, CONF_USERDATA, session.cwd, FALSE);
+    char *display = c->argv[0];
+    int bool = *((int *) c->argv[1]);
 
-    if (!c) {
-      time(&last);
-      c = add_config_set(&cmd->server->conf, session.cwd);
-      c->config_type = CONF_USERDATA;
-      c->argc = 1;
-      c->argv = pcalloc(c->pool, sizeof(void **) * 2);
-      c->argv[0] = (void *) last;
-      last = (time_t) 0L;
+    if (bool) {
+   
+      /* XXX Get rid of this CONF_USERDATA instance; it's the only
+       * occurrence of it in the source.
+       */ 
+      c = find_config(cmd->server->conf, CONF_USERDATA, session.cwd, FALSE);
 
-    } else {
-      last = (time_t) c->argv[0];
-      c->argv[0] = (void *) time(NULL);
+      if (!c) {
+        time(&prev);
+        c = add_config_set(&cmd->server->conf, session.cwd);
+        c->config_type = CONF_USERDATA;
+        c->argc = 1;
+        c->argv = pcalloc(c->pool, sizeof(void **) * 2);
+        c->argv[0] = (void *) prev;
+        prev = (time_t) 0L;
+
+      } else {
+        prev = (time_t) c->argv[0];
+        c->argv[0] = (void *) time(NULL);
+      }
     }
 
     if (pr_fsio_stat(display, &st) != -1 &&
         !S_ISDIR(st.st_mode) &&
-        st.st_mtime > last) {
+        (bool ? st.st_mtime > prev : TRUE)) {
 
       if (pr_display_file(display, session.cwd, R_250) < 0) {
         pr_log_debug(DEBUG3, "error displaying '%s': %s", display,
@@ -4532,8 +4586,8 @@ static conftable core_conftab[] = {
   { "DenyFilter",		set_denyfilter,			NULL },
   { "DenyGroup",		set_allowdenyusergroupclass,	NULL },
   { "DenyUser",			set_allowdenyusergroupclass,	NULL },
+  { "DisplayChdir",		set_displaychdir,		NULL },
   { "DisplayConnect",		set_displayconnect,		NULL },
-  { "DisplayFirstChdir",	set_displayfirstchdir,		NULL },
   { "DisplayGoAway",		set_displaygoaway,		NULL },
   { "DisplayLogin",		set_displaylogin,		NULL },
   { "DisplayQuit",		set_displayquit,		NULL },
@@ -4583,6 +4637,9 @@ static conftable core_conftab[] = {
   { "WtmpLog",			set_wtmplog,			NULL },
   { "tcpBackLog",		set_tcpbacklog,			NULL },
   { "tcpNoDelay",		set_tcpnodelay,			NULL },
+
+  /* Deprecated */
+  { "DisplayFirstChdir",	set_displayfirstchdir,		NULL },
 
   { NULL, NULL, NULL }
 };

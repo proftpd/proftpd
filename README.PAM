@@ -24,9 +24,9 @@ FreeBSD
 To use PAM with ProFTPD, you must edit /etc/pam.conf and add the
 following lines (if they are not already present):
 
-ftpd auth    required    pam_unix.so         try_first_pass
-ftpd account required    pam_unix.so         try_first_pass
-ftpd session required    pam_permit.so
+  ftpd auth    required    pam_unix.so         try_first_pass
+  ftpd account required    pam_unix.so         try_first_pass
+  ftpd session required    pam_permit.so
 
 In your proftpd.conf, you'll need to set AuthPAMConfig to 'ftpd'.  PAM
 authentication should now work properly.
@@ -38,17 +38,17 @@ Linux
 To use PAM with ProFTPD, you must edit /etc/pam.d/ftp and add the
 following lines for RedHat installations:
 
-#%PAM-1.0
-auth       required     /lib/security/pam_pwdb.so shadow nullok
-account    required     /lib/security/pam_pwdb.so
-session    required     /lib/security/pam_pwdb.so
+  #%PAM-1.0
+  auth       required     /lib/security/pam_pwdb.so shadow nullok
+  account    required     /lib/security/pam_pwdb.so
+  session    required     /lib/security/pam_pwdb.so
 
 For SuSE:
 
-#%PAM-1.0
-auth       required     /lib/security/pam_unix.so shadow nullok
-account    required     /lib/security/pam_unix.so
-session    required     /lib/security/pam_unix.so
+  #%PAM-1.0
+  auth       required     /lib/security/pam_unix.so shadow nullok
+  account    required     /lib/security/pam_unix.so
+  session    required     /lib/security/pam_unix.so
 
 These settings are valid for RedHat and SuSE Linux systems.  Other Linux
 distributions may differ.
@@ -60,9 +60,24 @@ Mac OS X
 To use PAM with ProFTPD, you must edit /etc/pam.d/ftp and add the
 following lines:
 
-auth       required    pam_unix.so try_first_pass
-account    required    pam_unix.so try_first_pass
-session    required    pam_permit.so
+  auth       required    pam_unix.so try_first_pass
+  account    required    pam_unix.so try_first_pass
+  session    required    pam_permit.so
+
+Or, if you are running Mac OSX 10.3 or later, you should have an
+/etc/pam.d/ftpd file that contains the following:
+
+  auth       sufficient     pam_securityserver.so
+  auth       required       pam_deny.so
+  account    required       pam_permit.so
+  password   required       pam_deny.so
+  session    required       pam_permit.so
+
+Then, in your proftpd.conf, use:
+
+  <IfModule mod_auth_pam.c>
+    AuthPAMConfig ftpd
+  </IfModule.
 
 
 PAM Configuration Options
@@ -75,9 +90,9 @@ distribution, and you want to disable the builtin PAM authentication
 module.  The default is to enable PAM authentication.  You may disable
 it as follows:
 
-# This enables or disables the PAM authentication module.
-# The default is 'On'.
-AuthPAM				    On
+  # This enables or disables the PAM authentication module.
+  # The default is 'on'.
+  AuthPAM				    on
 
 2. AuthPAMConfig
 You may configure multiple authentication configurations using PAM
@@ -88,10 +103,10 @@ this document.  However, what is relevant is that ProFTPD allows you
 to use different PAM authentication schemes for different virtual
 servers.  You can do this by using the AuthPAMConfig directive:
 
-# This is the PAM configuration file that will be referenced when
-# authenticating.  It can be set globally and/or per VirtualHost.
-# The default is 'ftp'.
-AuthPAMConfig                       ftp
+  # This is the PAM configuration file that will be referenced when
+  # authenticating.  It can be set globally and/or per VirtualHost.
+  # The default is 'ftp'.
+  AuthPAMConfig                       ftp
 
 The default setting is 'ftp'.  However, if you set AuthPAMConfig to be
 'ftp.myhost', for example, ProFTPD will try to use the PAM
@@ -99,8 +114,8 @@ authentication settings for ftp.myhost, assuming you've set up your
 PAM configuration file(s) properly.  To use the above example with
 FreeBSD, you would need to add lines such as the following:
 
-ftp.myhost auth    required    pam_unix.so         try_first_pass
-ftp.myhost account required    pam_unix.so         try_first_pass
+  ftp.myhost auth    required    pam_unix.so         try_first_pass
+  ftp.myhost account required    pam_unix.so         try_first_pass
 
 to your /etc/pam.conf file.  Under Linux, or if you're using a
 directory like /etc/pam.d, you could simply copy the Linux
@@ -113,28 +128,16 @@ configuration directive is the service name.  If you're using
 /etc/pam.d/login happens to be the PAM configuration for the login
 program.
 
-3. AuthPAMAuthoritative
+3. Authoritative PAM module
 
-The directive AuthPAMAuthoritative refers to whether you want PAM to
-be the final arbitrator of what is and is not a valid ProFTPD user.
-It defaults to Off.  With this directive on, things like AuthUserFile
-directives will *NOT* work properly, since PAM will detect these as
-invalid users and inform ProFTPD not to attempt to process users
-through any other authentication mechanisms.  If you set
-AuthPAMAuthoritative to Off, then if PAM cannot authenticate a
-specified user, it allows ProFTPD to select other authentication
-mechanisms such as AuthUserFile and attempt to process them in that
-fashion.
+This refers to whether you wish PAM to be the final arbitrator of what is and
+is not a valid ProFTPD user.  It defaults to 'off'.  With this directive on,
+things like AuthUserFile directives will *NOT* work properly, since PAM will
+detect these as invalid users and inform ProFTPD not to attempt to process
+users through any other authentication mechanisms.
 
-# Setting this to 'on' makes PAM the final authority on what gets
-# authenticated.  Turning this off will tell PAM to allow other
-# authentication modules compiled into ProFTPD a chance at the user.
-AuthPAMAuthoritative            On
-
-Note that as of 1.2.10rc1, the AuthPAMAuthoritative directive has been
-deprecated.  In 1.2.10, the alternative way to make mod_auth_pam be
-an "authoritative" module is by using the AuthOrder directive.  For example:
-
+  # The following makes PAM the final authority on what gets
+  # authenticated.
   AuthOrder mod_auth_pam.c* mod_auth_unix.c
 
 Note the "*" suffix on the mod_auth_pam.c name, which indicates that that

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003 The ProFTPD Project team
+ * Copyright (c) 2003-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.10 2005-10-10 17:58:31 castaglia Exp $
+ * $Id: netacl.c,v 1.11 2006-05-15 16:32:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -172,15 +172,13 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
 
 #ifdef PR_USE_IPV6
       case AF_INET6: {
-        /* Make sure that the given number of bits is not more than supported
-         * for IPv6 addresses (128).
+        /* Masks should not be needed on IPv6 addresses.  In most cases,
+         * the admin may be trying to use IPv4-style masks on IPv6 addresses,
+         * which of course will not work as expected.  So, if the family
+         * is IPv6 and there's a mask, reject the ACL.
          */
-        if (acl->masklen > 128) {
-          errno = EINVAL;
-          return NULL;
-        }
-
-        break;
+         errno = EINVAL;
+         return NULL;
       }
 #endif /* PR_USE_IPV6 */
 

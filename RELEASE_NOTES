@@ -10,6 +10,8 @@ files.
 ---------
   + New configuration directives:
 
+      DisplayChdir
+
       QuotaOptions
         ScanOnLogin
 
@@ -42,9 +44,11 @@ files.
 
   + Deprecated configuration directives:
 
+      DisplayFirstChdir
+
       HiddenStor
         Use HiddenStores
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-04-21 16:26:30 $
+Last Updated: $Date: 2006-05-15 16:32:32 $
