@@ -1,4 +1,4 @@
-<!-- $Id: DSO.html,v 1.3 2005-11-19 19:44:21 castaglia Exp $ -->
+<!-- $Id: DSO.html,v 1.4 2006-05-15 21:42:35 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/DSO.html,v $ -->
 
 <html>
@@ -87,9 +87,30 @@ directives:
   &lt;/IfModule&gt;
 </pre>
 
+If a module fails to load properly, you might see messages like:
+<pre>
+  Fatal: unknown configuration directive 'SQLConnectInfo' on line 86 of '/usr/local/proftpd/etc/proftpd.conf'
+</pre>
+This can happen if you forget to use the <code>LoadModule</code> directive
+in your <code>proftpd.conf</code> prior to using directives from the
+module.  If you are using <code>LoadModule</code>, the error message may
+look like:
+<pre>
+  LoadModule: error loading module 'mod_sql_mysql.c': permission denied on line 65 of proftpd.conf
+</pre>
+Check the <code>libexec/</code> directory where you installed
+<code>proftpd</code>, to see if the appropriate <code>.la</code> and/or
+<code>.so</code> files are present.  Then check your dynamic loader
+configuration file (<i>e.g.</i> <code>/etc/ld.so.conf</code> on Linux) and
+make sure that the <code>libexec/</code> directory is configured, so that the
+dynamic loader knows to look in the correct locations.  Note that the
+<code>LD_LIBRARY_PATH</code> and/or <code>LD_RUN_PATH</code> environment
+variables may also be used to inform the dynamic loader of
+<code>proftpd</code>'s <code>libexec/</code> directory.
+
 <p>
-Using <code>ftpdctl insmod</code> is tricky, as the loading of a module
-directly into the running <code>proftpd</code>, without restarting the
+Using <code>ftpdctl insmod</code> to load modules is tricky, as the loading of
+a module directly into the running <code>proftpd</code>, without restarting the
 server, can cause unexpected behavior.  Many modules are not designed to
 handle being loaded directly, and may cause bugs or unexpected crashes.
 Support for this mode of loading modules will stabilize as the modules
@@ -213,7 +234,7 @@ Then restart <code>proftpd</code>, and your custom module will be in use.
 
 <p>
 <hr>
-<i>$Date: 2005-11-19 19:44:21 $</i><br>
+<i>$Date: 2006-05-15 21:42:35 $</i><br>
 
 </body>
 </html>
