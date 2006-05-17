@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2005 The ProFTPD Project team
+ * Copyright (c) 2003-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.51 2005-09-19 21:35:38 castaglia Exp $
+ * $Id: netaddr.c,v 1.52 2006-05-17 16:18:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -219,8 +219,7 @@ int pr_inet_pton(int af, const char *src, void *dst) {
 }
 #endif /* !HAVE_INET_PTON */
 
-#ifdef HAVE_GETHOSTBYNAME2
-static void *get_v4inaddr(pr_netaddr_t *na) {
+static void *get_v4inaddr(const pr_netaddr_t *na) {
 
   /* This function is specifically for IPv4 clients (when gethostbyname2(2) is
    * present) that have an IPv4-mapped IPv6 address, when performing reverse
@@ -234,7 +233,6 @@ static void *get_v4inaddr(pr_netaddr_t *na) {
 
   return (((char *) pr_netaddr_get_inaddr(na)) + 12);
 }
-#endif /* HAVE_GETHOSTBYNAME2 */
 
 int pr_netaddr_set_reverse_dns(int enable) {
   int old_enable = reverse_dns;
@@ -652,6 +650,10 @@ int pr_netaddr_set_port(pr_netaddr_t *na, unsigned int port) {
 }
 
 int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
+  pool *tmp_pool = NULL;
+  pr_netaddr_t *a, *b;
+  int res;
+
   if (na1 && !na2)
     return 1;
 
@@ -662,22 +664,76 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
     return 0;
 
   if (pr_netaddr_get_family(na1) != pr_netaddr_get_family(na2)) {
-    /* Cannot compare addresses from different families. */
-    errno = EINVAL;
-    return -1;
+
+    /* Cannot compare addresses from different families, unless one
+     * of the netaddrs has an AF_INET family, and the other has an
+     * AF_INET6 family AND is an IPv4-mapped IPv6 address.
+     */
+
+    if (pr_netaddr_is_v4mappedv6(na1) != TRUE &&
+        pr_netaddr_is_v4mappedv6(na2) != TRUE) {
+      errno = EINVAL;
+      return -1;
+    }
+
+    if (pr_netaddr_is_v4mappedv6(na1) == TRUE) {
+      tmp_pool = make_sub_pool(permanent_pool);
+
+      /* This case means that na1 is an IPv4-mapped IPv6 address, and
+       * na2 is an IPv4 address.
+       */
+      a = pr_netaddr_alloc(tmp_pool);
+      pr_netaddr_set_family(a, AF_INET);
+      pr_netaddr_set_port(a, pr_netaddr_get_port(na1));
+      memcpy(&a->na_addr.v4.sin_addr, get_v4inaddr(na1),
+        sizeof(struct in_addr));
+
+      b = (pr_netaddr_t *) na2;
+
+    } else if (pr_netaddr_is_v4mappedv6(na2) == TRUE) {
+      tmp_pool = make_sub_pool(permanent_pool);
+
+      /* This case means that na is an IPv4 address, and na2 is an
+       * IPv4-mapped IPv6 address.
+       */
+      a = (pr_netaddr_t *) na1;
+
+      b = pr_netaddr_alloc(tmp_pool);
+      pr_netaddr_set_family(b, AF_INET);
+      pr_netaddr_set_port(b, pr_netaddr_get_port(na2));
+      memcpy(&b->na_addr.v4.sin_addr, get_v4inaddr(na2),
+        sizeof(struct in_addr));
+
+    } else {
+      a = (pr_netaddr_t *) na1;
+      b = (pr_netaddr_t *) na2;
+    }
+
+  } else {
+    a = (pr_netaddr_t *) na1;
+    b = (pr_netaddr_t *) na2;
   }
 
-  switch (pr_netaddr_get_family(na1)) {
+  switch (pr_netaddr_get_family(a)) {
     case AF_INET:
-      return memcmp(&na1->na_addr.v4.sin_addr, &na2->na_addr.v4.sin_addr,
+      res = memcmp(&a->na_addr.v4.sin_addr, &b->na_addr.v4.sin_addr,
         sizeof(struct in_addr));
+      if (tmp_pool)
+        destroy_pool(tmp_pool);
+      return res;
 
 #ifdef PR_USE_IPV6
     case AF_INET6:
-      return memcmp(&na1->na_addr.v6.sin6_addr, &na2->na_addr.v6.sin6_addr,
+      res = memcmp(&a->na_addr.v6.sin6_addr, &b->na_addr.v6.sin6_addr,
         sizeof(struct in6_addr));
+      if (tmp_pool)
+        destroy_pool(tmp_pool);
+      return res;
 #endif /* PR_USE_IPV6 */
   }
+
+  if (tmp_pool)
+    destroy_pool(tmp_pool);
 
   errno = EPERM;
   return -1;
@@ -685,6 +741,8 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
 
 int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
     unsigned int bitlen) {
+  pool *tmp_pool = NULL;
+  pr_netaddr_t *a, *b;
   unsigned int nbytes, nbits;
   const unsigned char *in1, *in2;
 
@@ -698,12 +756,57 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
     return 0;
 
   if (pr_netaddr_get_family(na1) != pr_netaddr_get_family(na2)) {
-    /* Cannot compare addresses from different families. */
-    errno = EINVAL;
-    return -1;
+
+    /* Cannot compare addresses from different families, unless one
+     * of the netaddrs has an AF_INET family, and the other has an
+     * AF_INET6 family AND is an IPv4-mapped IPv6 address.
+     */
+
+    if (pr_netaddr_is_v4mappedv6(na1) != TRUE &&
+        pr_netaddr_is_v4mappedv6(na2) != TRUE) {
+      errno = EINVAL;
+      return -1;
+    }
+
+    if (pr_netaddr_is_v4mappedv6(na1) == TRUE) {
+      tmp_pool = make_sub_pool(permanent_pool);
+
+      /* This case means that na1 is an IPv4-mapped IPv6 address, and
+       * na2 is an IPv4 address.
+       */
+      a = pr_netaddr_alloc(tmp_pool);
+      pr_netaddr_set_family(a, AF_INET);
+      pr_netaddr_set_port(a, pr_netaddr_get_port(na1));
+      memcpy(&a->na_addr.v4.sin_addr, get_v4inaddr(na1),
+        sizeof(struct in_addr));
+
+      b = (pr_netaddr_t *) na2;
+
+    } else if (pr_netaddr_is_v4mappedv6(na2) == TRUE) {
+      tmp_pool = make_sub_pool(permanent_pool);
+
+      /* This case means that na is an IPv4 address, and na2 is an
+       * IPv4-mapped IPv6 address.
+       */
+      a = (pr_netaddr_t *) na1;
+
+      b = pr_netaddr_alloc(tmp_pool);
+      pr_netaddr_set_family(b, AF_INET);
+      pr_netaddr_set_port(b, pr_netaddr_get_port(na2));
+      memcpy(&b->na_addr.v4.sin_addr, get_v4inaddr(na2),
+        sizeof(struct in_addr));
+
+    } else {
+      a = (pr_netaddr_t *) na1;
+      b = (pr_netaddr_t *) na2;
+    }
+
+  } else {
+    a = (pr_netaddr_t *) na1;
+    b = (pr_netaddr_t *) na2;
   }
 
-  switch (pr_netaddr_get_family(na1)) {
+  switch (pr_netaddr_get_family(a)) {
     case AF_INET: {
       /* Make sure that the given number of bits is not more than supported
        * for IPv4 addresses (32).
@@ -736,8 +839,8 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
   }
 
   /* Retrieve pointers to the contained in_addrs. */
-  in1 = (const unsigned char *) pr_netaddr_get_inaddr(na1);
-  in2 = (const unsigned char *) pr_netaddr_get_inaddr(na2);
+  in1 = (const unsigned char *) pr_netaddr_get_inaddr(a);
+  in2 = (const unsigned char *) pr_netaddr_get_inaddr(b);
 
   /* Determine the number of bytes, and leftover bits, in the given
    * bit length.
@@ -750,8 +853,12 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
     int res = memcmp(in1, in2, nbytes);
 
     /* No need to continue comparing the addresses if they differ already. */
-    if (res != 0)
+    if (res != 0) {
+      if (tmp_pool)
+        destroy_pool(tmp_pool);
+
       return res;
+    }
   }
 
   /* Next, compare the remaining bits in the addresses. */
@@ -765,12 +872,23 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
     /* Build up a mask covering the bits left to be checked. */
     mask = (0xff << (8 - nbits)) & 0xff;
 
-    if ((in1byte & mask) > (in2byte & mask))
-      return 1;
+    if ((in1byte & mask) > (in2byte & mask)) {
+      if (tmp_pool)
+        destroy_pool(tmp_pool);
 
-    if ((in1byte & mask) < (in2byte & mask))
+      return 1;
+    }
+
+    if ((in1byte & mask) < (in2byte & mask)) {
+      if (tmp_pool)
+        destroy_pool(tmp_pool:
+
       return -1;
+    }
   }
+
+  if (tmp_pool)
+    destroy_pool(tmp_pool);
 
   /* If we've made it this far, the addresses match, for the given bit
    * length.

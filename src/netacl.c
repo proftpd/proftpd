@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.11 2006-05-15 16:32:32 castaglia Exp $
+ * $Id: netacl.c,v 1.12 2006-05-17 16:18:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -172,13 +172,19 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
 
 #ifdef PR_USE_IPV6
       case AF_INET6: {
-        /* Masks should not be needed on IPv6 addresses.  In most cases,
-         * the admin may be trying to use IPv4-style masks on IPv6 addresses,
-         * which of course will not work as expected.  So, if the family
-         * is IPv6 and there's a mask, reject the ACL.
-         */
-         errno = EINVAL;
-         return NULL;
+        if (acl->masklen > 128) {
+          errno = EINVAL;
+          return NULL;
+
+        } else if (pr_netaddr_is_v4mappedv6(acl->addr) == TRUE &&
+                   acl->masklen > 32) {
+          /* The admin may be trying to use IPv6-style masks on IPv4-mapped
+           * IPv6 addresses, which of course will not work as expected.
+           * If the mask is 32 bits or more, warn the admin.
+           */
+          pr_log_pri(PR_LOG_WARNING, "warning: possibly using IPv6-style netmask on IPv4-mapped IPv6 address, which will not work as expected");
+          break;
+        }
       }
 #endif /* PR_USE_IPV6 */
 
