@@ -765,6 +765,9 @@
 /* Define if using Tru64's C2 SIA authentication.  */
 #undef PR_USE_SIA
 
+/* Define if using trace support.  */
+#undef PR_USE_TRACE
+
 /* Tunable parameters */
 #undef PR_TUNABLE_BUFFER_SIZE
 #undef PR_TUNABLE_NEW_POOL_SIZE

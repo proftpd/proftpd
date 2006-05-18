@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2005 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Command response routines
- * $Id: response.c,v 1.7 2005-09-27 16:22:00 castaglia Exp $
+ * $Id: response.c,v 1.8 2006-05-18 15:38:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -38,6 +38,7 @@ static char resp_ml_numeric[4] = {'\0'};
 static char *(*resp_handler_cb)(pool *, const char *, ...) = NULL;
 
 #define RESPONSE_WRITE_NUM_STR(strm, fmt, numeric, msg) \
+  pr_trace_msg("response", 1, (fmt), (numeric), (msg)); \
   if (resp_handler_cb) \
     pr_netio_printf((strm), "%s", resp_handler_cb(resp_pool, (fmt), (numeric), \
       (msg))); \
@@ -45,12 +46,15 @@ static char *(*resp_handler_cb)(pool *, const char *, ...) = NULL;
     pr_netio_printf((strm), (fmt), (numeric), (msg));
 
 #define RESPONSE_WRITE_STR(strm, fmt, msg) \
+  pr_trace_msg("response", 1, (fmt), (msg)); \
   if (resp_handler_cb) \
     pr_netio_printf((strm), "%s", resp_handler_cb(resp_pool, (fmt), (msg))); \
   else \
     pr_netio_printf((strm), (fmt), (msg));
 
 #define RESPONSE_WRITE_STR_ASYNC(strm, fmt, msg) \
+  pr_trace_msg("response", 1, pstrcat(session.pool, "async: ", (fmt), NULL), \
+    (msg)); \
   if (resp_handler_cb) \
     pr_netio_printf_async((strm), "%s", resp_handler_cb(resp_pool, (fmt), \
       (msg))); \

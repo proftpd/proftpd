@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.280 2006-04-19 16:44:23 castaglia Exp $
+ * $Id: main.c,v 1.281 2006-05-18 15:38:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2572,6 +2572,12 @@ static void show_settings(void) {
 #else
   printf("    - Sendfile support\n");
 #endif /* PR_USE_SENDFILE */
+
+#ifdef PR_USE_TRACE
+  printf("    + Trace support\n");
+#else
+  printf("    - Trace support\n");
+#endif /* PR_USE_TRACE */
 
   /* Tunable settings */
   printf("\n  Tunable Options:\n");

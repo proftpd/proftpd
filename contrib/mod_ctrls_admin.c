@@ -25,18 +25,18 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.23 2005-04-30 19:59:27 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.24 2006-05-18 15:38:44 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_ctrls.h"
 
-#define MOD_CTRLS_ADMIN_VERSION		"mod_ctrls_admin/0.9.3"
+#define MOD_CTRLS_ADMIN_VERSION		"mod_ctrls_admin/0.9.4"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001021001
-# error "ProFTPD 1.2.10rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030001
+# error "ProFTPD 1.3.0rc1 or later required"
 #endif
 
 #ifndef PR_USE_CTRLS
@@ -61,8 +61,6 @@ static ctrls_acttab_t ctrls_admin_acttab[];
 
 /* Pool for this module's use */
 static pool *ctrls_admin_pool = NULL;
-
-/* For the 'dump' action */
 static pr_ctrls_t *ctrls_dump_ctrl = NULL;
 
 /* Support routines
@@ -757,6 +755,74 @@ static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
   return 0;
 }
 
+static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+#if PR_USE_TRACE
+
+  /* Check the trace ACL. */
+  if (!ctrls_check_acl(ctrl, ctrls_admin_acttab, "trace")) {
+
+    /* Access denied. */
+    pr_ctrls_add_response(ctrl, "access denied");
+    return -1;
+  }
+
+  /* Sanity check */
+  if (reqargc < 1 || reqargv == NULL) {
+    pr_ctrls_add_response(ctrl, "trace: missing required parameters");
+    return -1;
+  }
+
+  if (strcmp(reqargv[0], "info") != 0) {
+    register unsigned int i;
+
+    for (i = 0; i < reqargc; i++) {
+      char *channel, *tmp;
+      int level;
+
+      tmp = strchr(reqargv[i], ':');
+      if (!tmp) {
+        pr_ctrls_add_response(ctrl, "trace: badly formatted parameter: '%s'",
+          reqargv[i]);
+        return -1;
+      }
+
+      channel = reqargv[i];
+      *tmp = '\0';
+      level = atoi(++tmp);
+
+      if (pr_trace_set_level(channel, level) < 0) {
+        pr_ctrls_add_response(ctrl,
+          "trace: error setting channel '%s' to level %d: %s", channel, level,
+          strerror(errno));
+        return -1;
+
+      } else {
+        pr_ctrls_add_response(ctrl, "trace: set channel '%s' to level %d",
+          channel, level);
+      }
+    }
+ 
+  } else {
+    pr_table_t *trace_tab = pr_trace_get_table();
+
+    if (trace_tab) {
+      ctrls_dump_ctrl = ctrl;
+      pr_table_dump(ctrls_admin_printf, trace_tab);
+      ctrls_dump_ctrl = NULL;
+
+    } else {
+      pr_ctrls_add_response(ctrl, "trace: no info available");
+    }
+  }
+ 
+  return 0;
+#else
+  pr_ctrls_add_response(ctrl, "trace: requires trace support (--enable-trace");
+  return -1;
+#endif /* PR_USE_TRACE */
+}
+
 static int admin_addr_up(pr_ctrls_t *ctrl, pr_netaddr_t *addr,
     unsigned int port) {
   pr_ipbind_t *ipbind = NULL;
@@ -1074,6 +1140,8 @@ static ctrls_acttab_t ctrls_admin_acttab[] = {
     ctrls_handle_shutdown },
   { "status",	"display status of servers",		NULL,
     ctrls_handle_status },
+  { "trace",	"set trace levels",		NULL,
+    ctrls_handle_trace },
   { "up",       "enable a downed virtual server",       NULL,
     ctrls_handle_up },
   { NULL, NULL,	NULL, NULL }

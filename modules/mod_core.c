@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.280 2006-05-15 16:32:32 castaglia Exp $
+ * $Id: mod_core.c,v 1.281 2006-05-18 15:38:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1095,6 +1095,61 @@ MODRET set_group(cmd_rec *cmd) {
 
   add_config_param_str("GroupName", 1, cmd->argv[1]);
   return HANDLED(cmd);
+}
+
+/* usage: Trace channel1:level1 ... */
+MODRET set_trace(cmd_rec *cmd) {
+#ifdef PR_USE_TRACE
+  register unsigned int i;
+
+  if (cmd->argc-1 < 1)
+    CONF_ERROR(cmd, "wrong number of parameters");
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  for (i = 1; i < cmd->argc; i++) {
+    char *channel, *tmp;
+    int level;
+
+    tmp = strchr(cmd->argv[i], ':');
+    if (!tmp)
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "badly formatted parameter: '",
+        cmd->argv[i], "'", NULL));
+
+    channel = cmd->argv[i];
+    *tmp = '\0';
+    level = atoi(++tmp);
+
+    if (pr_trace_set_level(channel, level) < 0)
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error setting level ", tmp,
+        " for channel '", channel, "': ", strerror(errno), NULL));
+  }
+
+  return HANDLED(cmd);
+#else
+  CONF_ERROR(cmd,
+    "Use of the Trace directive requires trace support (--enable-trace)");
+#endif /* PR_USE_TRACE */
+}
+
+/* usage: TraceLog path */
+MODRET set_tracelog(cmd_rec *cmd) {
+#ifdef PR_USE_TRACE
+  if (cmd->argc-1 != 1)
+    CONF_ERROR(cmd, "wrong number of parameters");
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  if (pr_fs_valid_path(cmd->argv[1]) < 0)
+    CONF_ERROR(cmd, "must be an absolute path");
+
+  if (pr_trace_set_file(cmd->argv[1]) < 0)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error using TraceLog '",
+      cmd->argv[1], "'", NULL));
+
+  return HANDLED(cmd);
+#else
+  CONF_ERROR(cmd,
+    "Use of the TraceLog directive requires trace support (--enable-trace)");
+#endif /* PR_USE_TRACE */
 }
 
 MODRET set_umask(cmd_rec *cmd) {
@@ -4628,6 +4683,8 @@ static conftable core_conftab[] = {
   { "TimeoutIdle",		set_timeoutidle,		NULL },
   { "TimeoutLinger",		set_timeoutlinger,		NULL },
   { "TimesGMT",			set_timesgmt,			NULL },
+  { "Trace",			set_trace,			NULL },
+  { "TraceLog",			set_tracelog,			NULL },
   { "TransferLog",		add_transferlog,		NULL },
   { "Umask",			set_umask,			NULL },
   { "UnsetEnv",			set_unsetenv,			NULL },

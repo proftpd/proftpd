@@ -17,6 +17,10 @@ files.
 
       TLSCryptoDevice
 
+      Trace
+
+      TraceLog
+
   + Enhanced configuration directives:
 
       CreateHome uid gid
@@ -51,4 +55,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-05-15 16:32:32 $
+Last Updated: $Date: 2006-05-18 15:38:43 $
