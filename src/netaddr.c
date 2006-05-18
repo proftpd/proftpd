@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.52 2006-05-17 16:18:32 castaglia Exp $
+ * $Id: netaddr.c,v 1.53 2006-05-18 00:47:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -690,6 +690,10 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
 
       b = (pr_netaddr_t *) na2;
 
+      pr_log_debug(DEBUG10, "comparing IPv4 address '%s' against "
+        "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(na2),
+        pr_netaddr_get_ipstr(na1));
+
     } else if (pr_netaddr_is_v4mappedv6(na2) == TRUE) {
       tmp_pool = make_sub_pool(permanent_pool);
 
@@ -703,6 +707,10 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
       pr_netaddr_set_port(b, pr_netaddr_get_port(na2));
       memcpy(&b->na_addr.v4.sin_addr, get_v4inaddr(na2),
         sizeof(struct in_addr));
+
+      pr_log_debug(DEBUG10, "comparing IPv4 address '%s' against "
+        "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(na1),
+        pr_netaddr_get_ipstr(na2));
 
     } else {
       a = (pr_netaddr_t *) na1;
@@ -782,6 +790,10 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
 
       b = (pr_netaddr_t *) na2;
 
+      pr_log_debug(DEBUG10, "comparing IPv4 address '%s' against "
+        "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(na2),
+        pr_netaddr_get_ipstr(na1));
+
     } else if (pr_netaddr_is_v4mappedv6(na2) == TRUE) {
       tmp_pool = make_sub_pool(permanent_pool);
 
@@ -795,6 +807,10 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
       pr_netaddr_set_port(b, pr_netaddr_get_port(na2));
       memcpy(&b->na_addr.v4.sin_addr, get_v4inaddr(na2),
         sizeof(struct in_addr));
+
+      pr_log_debug(DEBUG10, "comparing IPv4 address '%s' against "
+        "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(na1),
+        pr_netaddr_get_ipstr(na2));
 
     } else {
       a = (pr_netaddr_t *) na1;
