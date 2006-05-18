@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.1 2006-05-18 15:38:44 castaglia Exp $
+ * $Id: trace.c,v 1.2 2006-05-18 16:45:10 castaglia Exp $
  */
 
 
@@ -266,6 +266,9 @@ int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
   }
 
   res = pr_trace_get_level(channel);
+  if (res < 0)
+    return -1;
+
   if (res < level)
     return 0;
 
