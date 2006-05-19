@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.53 2006-05-18 00:47:15 castaglia Exp $
+ * $Id: netaddr.c,v 1.54 2006-05-19 22:07:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -691,8 +691,8 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
       b = (pr_netaddr_t *) na2;
 
       pr_log_debug(DEBUG10, "comparing IPv4 address '%s' against "
-        "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(na2),
-        pr_netaddr_get_ipstr(na1));
+        "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(b),
+        pr_netaddr_get_ipstr(a));
 
     } else if (pr_netaddr_is_v4mappedv6(na2) == TRUE) {
       tmp_pool = make_sub_pool(permanent_pool);
@@ -709,8 +709,8 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
         sizeof(struct in_addr));
 
       pr_log_debug(DEBUG10, "comparing IPv4 address '%s' against "
-        "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(na1),
-        pr_netaddr_get_ipstr(na2));
+        "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(a),
+        pr_netaddr_get_ipstr(b));
 
     } else {
       a = (pr_netaddr_t *) na1;
@@ -791,8 +791,8 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
       b = (pr_netaddr_t *) na2;
 
       pr_log_debug(DEBUG10, "comparing IPv4 address '%s' against "
-        "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(na2),
-        pr_netaddr_get_ipstr(na1));
+        "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(b),
+        pr_netaddr_get_ipstr(a));
 
     } else if (pr_netaddr_is_v4mappedv6(na2) == TRUE) {
       tmp_pool = make_sub_pool(permanent_pool);
@@ -809,8 +809,8 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
         sizeof(struct in_addr));
 
       pr_log_debug(DEBUG10, "comparing IPv4 address '%s' against "
-        "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(na1),
-        pr_netaddr_get_ipstr(na2));
+        "IPv4-mapped IPv6 address '%s'", pr_netaddr_get_ipstr(a),
+        pr_netaddr_get_ipstr(b));
 
     } else {
       a = (pr_netaddr_t *) na1;
@@ -897,7 +897,7 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
 
     if ((in1byte & mask) < (in2byte & mask)) {
       if (tmp_pool)
-        destroy_pool(tmp_pool:
+        destroy_pool(tmp_pool);
 
       return -1;
     }
