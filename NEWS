@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.757 2006-05-18 15:38:43 castaglia Exp $
+$Id: NEWS,v 1.758 2006-05-22 16:22:53 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -57,6 +57,7 @@ CVS
 - Bug 2732 - Support for DisplayChdir, rather than DisplayFirstChdir.
 - Bug 2506 - Better ability to configure what sort of debug output to generate.
   This is done via the new Trace and TraceLog directives.
+- Bug 2514 - Trouble with mod_tls and DSA certificates.
 
 1.3.0 - Released 16-Apr-2006
 --------------------------------

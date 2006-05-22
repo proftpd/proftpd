@@ -819,7 +819,8 @@ static DH *tls_dh_cb(SSL *ssl, int is_export, int keylength) {
     return tls_tmp_dh;
 
   if (tls_dhparam_file) {
-    if ((fp = fopen(tls_dhparam_file, "r"))) {
+    fp = fopen(tls_dhparam_file, "r");
+    if (fp) {
       tls_tmp_dh = PEM_read_DHparams(fp, NULL, NULL, NULL);
       fclose(fp);
 
@@ -925,9 +926,9 @@ static int tls_init_ctxt(void) {
    */
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   SSL_CTX_set_options(ssl_ctx, SSL_OP_ALL|SSL_OP_NO_SSLv2|
-    SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
+    SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION|SSL_OP_SINGLE_DH_USE);
 #else
-  SSL_CTX_set_options(ssl_ctx, SSL_OP_ALL|SSL_OP_NO_SSLv2);
+  SSL_CTX_set_options(ssl_ctx, SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_SINGLE_DH_USE);
 #endif
 
   /* Set up session caching. */
