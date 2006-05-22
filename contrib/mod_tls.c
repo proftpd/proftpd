@@ -1077,9 +1077,11 @@ static int tls_init_server(void) {
           char *cacertname = pdircat(tmp_pool, tls_ca_path, cadent->d_name,
              NULL);
 
+          pr_signals_handle();
+
           /* Skip dot directories. */
           if (is_dotdir(cacertname)) {
-            next;
+            continue;
           }
 
           PRIVS_ROOT
