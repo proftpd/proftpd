@@ -372,7 +372,7 @@ AC_ARG_ENABLE(dso,
       ac_build_core_modules="$ac_build_core_modules modules/mod_dso.o"
       ac_build_addl_includes="$INCLTDL $ac_build_addl_includes"
 
-      MAIN_LDFLAGS="-L\$(top_srcdir)/lib/libltdl -dlopen self -export-dynamic -rpath \$(DESTDIR)\$(sbindir)"
+      MAIN_LDFLAGS="-L\$(top_srcdir)/lib/libltdl -dlopen self -export-dynamic"
       MAIN_LIBS="\$(LIBLTDL)"
 
       MODULE_LDFLAGS="-avoid-version -export-dynamic -module"
