@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.172 2006-04-16 22:45:54 castaglia Exp $
+ * $Id: dirtree.c,v 1.173 2006-05-23 17:31:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1596,18 +1596,22 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
 
   memcpy(&st, stp, sizeof(st));
 
-  if (S_ISDIR(st.st_mode))
+  if (S_ISDIR(st.st_mode)) {
     dynpath = pdircat(p, path, "/.ftpaccess", NULL);
-  else
+
+  } else
     dynpath = NULL;
 
   while (path) {
+    pr_signals_handle();
+
     if (session.chroot_path) {
       fullpath = pdircat(p, session.chroot_path, path, NULL);
 
       if (strcmp(fullpath, "/") &&
-          *(fullpath + strlen(fullpath) - 1) == '/')
+          *(fullpath + strlen(fullpath) - 1) == '/') {
         *(fullpath + strlen(fullpath) - 1) = '\0';
+      }
 
     } else
       fullpath = path;
@@ -1620,9 +1624,10 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
 
     d = dir_match_path(p, fullpath);
 
-    if (!d && isfile != -1) {
+    if (!d &&
+        isfile != -1) {
       set = (session.anon_config ? &session.anon_config->subset :
-             &main_server->conf);
+        &main_server->conf);
 
       d = add_config_set(set, fullpath);
       d->config_type = CONF_DIR;
@@ -1630,7 +1635,7 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
       d->argv = pcalloc(d->pool, 2 * sizeof (void *));
 
     } else if (d) {
-      config_rec *newd,*dnext;
+      config_rec *newd, *dnext;
 
       if (isfile != -1 &&
           strcmp(d->name, fullpath) != 0) {
@@ -1649,10 +1654,11 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
 
         set = (d->parent ? &d->parent->subset : &main_server->conf);
 
-	if (d->subset && d->subset->xas_list) {
+	if (d->subset &&
+            d->subset->xas_list) {
 
        	  /* Remove all old dynamic entries. */
-          for (newd = (config_rec *)d->subset->xas_list; newd; newd = dnext) {
+          for (newd = (config_rec *) d->subset->xas_list; newd; newd = dnext) {
 	    dnext = newd->next;
 
             if (newd->flags & CF_DYNAMIC) {
@@ -1662,7 +1668,8 @@ void build_dyn_config(pool *p, char *_path, struct stat *stp,
           }
 	}
 
-        if (d->subset && !d->subset->xas_list) {
+        if (d->subset &&
+            !d->subset->xas_list) {
           destroy_pool(d->subset->pool);
           d->subset = NULL;
           d->argv[0] = NULL;
