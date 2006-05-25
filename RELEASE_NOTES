@@ -12,6 +12,8 @@ files.
 
       DisplayChdir
 
+      DisplayFileTransfer
+
       QuotaOptions
         ScanOnLogin
 
@@ -55,4 +57,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-05-18 15:38:43 $
+Last Updated: $Date: 2006-05-25 15:44:14 $

@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.199 2006-05-15 16:32:32 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.200 2006-05-25 15:44:14 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1180,12 +1180,27 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+MODRET xfer_post_xfer(cmd_rec *cmd) {
+  char *display = get_param_ptr(main_server->conf, "DisplayFileTransfer",
+    FALSE);
+
+  if (display) {
+    if (pr_display_file(display, session.vwd, R_226) < 0) {
+      pr_log_debug(DEBUG3, "error displaying '%s': %s", display,
+        strerror(errno));
+    }
+  }
+
+  return DECLINED(cmd);
+}
+
 /* xfer_post_stou() is a POST_CMD handler that changes the mode of the
  * STOU file from 0600, which is what mkstemp() makes it, to 0666,
  * the default for files uploaded via STOR.  This is to prevent users
  * from being surprised.
  */
 MODRET xfer_post_stou(cmd_rec *cmd) {
+  char *display;
 
   /* This is the same mode as used in src/fs.c.  Should probably be
    * available as a macro.
@@ -1199,7 +1214,15 @@ MODRET xfer_post_stou(cmd_rec *cmd) {
       strerror(errno));
   }
 
-  return HANDLED(cmd);
+  display = get_param_ptr(main_server->conf, "DisplayFileTransfer", FALSE);
+  if (display) {
+    if (pr_display_file(display, session.vwd, R_226) < 0) {
+      pr_log_debug(DEBUG3, "error displaying '%s': %s", display,
+        strerror(errno));
+    }
+  }
+
+  return DECLINED(cmd);
 }
 
 /* xfer_pre_appe() is the PRE_CMD handler for the APPE command, which
@@ -2058,6 +2081,15 @@ MODRET set_deleteabortedstores(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+/* usage: DisplayFileTransfer path */
+MODRET set_displayfiletransfer(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  (void) add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  return HANDLED(cmd);
+}
+
 MODRET set_hiddenstores(cmd_rec *cmd) {
   int bool = -1;
   config_rec *c = NULL;
@@ -2543,6 +2575,7 @@ static conftable xfer_conftab[] = {
   { "AllowRetrieveRestart",	set_allowrestart,		NULL },
   { "AllowStoreRestart",	set_allowrestart,		NULL },
   { "DeleteAbortedStores",	set_deleteabortedstores,	NULL },
+  { "DisplayFileTransfer",	set_displayfiletransfer,	NULL },
   { "HiddenStores",		set_hiddenstores,		NULL },
   { "MaxRetrieveFileSize",	set_maxfilesize,		NULL },
   { "MaxStoreFileSize",		set_maxfilesize,		NULL },
@@ -2584,7 +2617,9 @@ static cmdtable xfer_cmdtab[] = {
   { LOG_CMD_ERR, C_APPE,G_NONE,  xfer_err_cleanup,  FALSE,  FALSE },
   { CMD,     C_ABOR,	G_NONE,	 xfer_abor,	TRUE,	TRUE,  CL_MISC  },
   { CMD,     C_REST,	G_NONE,	 xfer_rest,	TRUE,	FALSE, CL_MISC  },
-  { POST_CMD,C_PROT,	G_NONE,  xfer_post_prot,FALSE,	FALSE },
+  { POST_CMD,C_PROT,	G_NONE,  xfer_post_prot,	FALSE,	FALSE },
+  { POST_CMD,C_RETR,	G_NONE,	 xfer_post_xfer,	FALSE,	FALSE },
+  { POST_CMD,C_STOR,	G_NONE,	 xfer_post_xfer,	FALSE,	FALSE },
   { 0, NULL }
 };
 
