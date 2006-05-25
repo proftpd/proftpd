@@ -25,7 +25,7 @@
  */
 
 /* Data connection management functions
- * $Id: data.c,v 1.90 2006-04-20 01:46:38 castaglia Exp $
+ * $Id: data.c,v 1.91 2006-05-25 16:55:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -277,10 +277,10 @@ static int data_pasv_open(char *reason, off_t size) {
 
     if (session.xfer.xfer_type != STOR_UNIQUE) {
       if (size)
-        pr_response_send(R_150, "Opening %s mode data connection for %s "
-          "(%" PR_LU " bytes)", MODE_STRING, reason, (pr_off_t) size);
+        pr_response_send(R_150, _("Opening %s mode data connection for %s "
+          "(%" PR_LU " bytes)"), MODE_STRING, reason, (pr_off_t) size);
       else
-        pr_response_send(R_150, "Opening %s mode data connection for %s",
+        pr_response_send(R_150, _("Opening %s mode data connection for %s"),
           MODE_STRING, reason);
 
     } else {
@@ -315,7 +315,7 @@ static int data_pasv_open(char *reason, off_t size) {
     pr_log_pri(PR_LOG_ERR, "Error: unable to accept an incoming data "
       "connection (%s)", strerror(c->xerrno));
 
-  pr_response_add_err(R_425, "Unable to build data connection: %s",
+  pr_response_add_err(R_425, _("Unable to build data connection: %s"),
     strerror(session.d->xerrno));
   destroy_pool(session.d->pool);
   session.d = NULL;
@@ -357,7 +357,7 @@ static int data_active_open(char *reason, off_t size) {
 
   if (pr_inet_connect(session.d->pool, session.d, &session.data_addr,
       session.data_port) == -1) {
-    pr_response_add_err(R_425, "Unable to build data connection: %s",
+    pr_response_add_err(R_425, _("Unable to build data connection: %s"),
       strerror(session.d->xerrno));
     destroy_pool(session.d->pool);
     session.d = NULL;
@@ -377,10 +377,10 @@ static int data_active_open(char *reason, off_t size) {
 
     if (session.xfer.xfer_type != STOR_UNIQUE) {
       if (size)
-        pr_response_send(R_150, "Opening %s mode data connection for %s "
-          "(%" PR_LU " bytes)", MODE_STRING, reason, (pr_off_t) size);
+        pr_response_send(R_150, _("Opening %s mode data connection for %s "
+          "(%" PR_LU " bytes)"), MODE_STRING, reason, (pr_off_t) size);
       else
-        pr_response_send(R_150, "Opening %s mode data connection for %s",
+        pr_response_send(R_150, _("Opening %s mode data connection for %s"),
           MODE_STRING, reason);
 
     } else {
@@ -413,7 +413,7 @@ static int data_active_open(char *reason, off_t size) {
     return 0;
   }
 
-  pr_response_add_err(R_425, "Unable to build data connection: %s",
+  pr_response_add_err(R_425, _("Unable to build data connection: %s"),
     strerror(session.d->xerrno));
   destroy_pool(session.d->pool);
   session.d = NULL;
@@ -565,7 +565,7 @@ void pr_data_close(int quiet) {
   session_set_idle();
 
   if (!quiet)
-    pr_response_add(R_226, "Transfer complete.");
+    pr_response_add(R_226, _("Transfer complete"));
 }
 
 /* Note: true_abort may be false in real abort situations, because
@@ -633,13 +633,13 @@ void pr_data_abort(int err, int quiet) {
 
     case 0:
       respcode = R_426;
-      msg = "Data connection closed.";
+      msg = _("Data connection closed");
       break;
 
 #ifdef ENXIO
     case ENXIO:
       respcode = R_451;
-      msg = "Unexpected streams hangup.";
+      msg = _("Unexpected streams hangup");
       break;
 
 #endif
@@ -652,7 +652,7 @@ void pr_data_abort(int err, int quiet) {
 #endif
 #if defined(EAGAIN) || defined(ENOMEM)
       respcode = R_451;
-      msg = "Insufficient memory or file locked.";
+      msg = _("Insufficient memory or file locked");
       break;
 #endif
 
@@ -758,7 +758,7 @@ void pr_data_abort(int err, int quiet) {
 	|| defined(ENOLINK) || defined(ENOLCK) || defined(ENETRESET) \
 	|| defined(ECONNABORTED) || defined(ECONNRESET) || defined(ETIMEDOUT)
       respcode = R_450;
-      msg = "Link to file server lost.";
+      msg = _("Link to file server lost");
       break;
 #endif
     }
@@ -767,7 +767,7 @@ void pr_data_abort(int err, int quiet) {
         (msg = strerror(err)) == NULL ) {
 
       if (snprintf(msgbuf, sizeof(msgbuf),
-          "Unknown or out of range errno [%d]", err) > 0)
+          _("Unknown or out of range errno [%d]"), err) > 0)
 	msg = msgbuf;
     }
 
@@ -778,7 +778,7 @@ void pr_data_abort(int err, int quiet) {
      * and we don't want to add another to the error queue.
      */
     if (!true_abort)
-      pr_response_add_err(respcode, "Transfer aborted. %s", msg ? msg : "");
+      pr_response_add_err(respcode, _("Transfer aborted. %s"), msg ? msg : "");
   }
 
   if (true_abort)

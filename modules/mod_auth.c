@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.212 2006-04-20 02:01:14 castaglia Exp $
+ * $Id: mod_auth.c,v 1.213 2006-05-25 16:55:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -368,9 +368,9 @@ MODRET auth_post_pass(cmd_rec *cmd) {
     /* Append the final greeting lines. */
     if (session.sf_flags & SF_ANON)
       pr_response_add(auth_pass_resp_code,
-        "Anonymous access granted, restrictions apply.");
+        _("Anonymous access granted, restrictions apply"));
     else
-      pr_response_add(auth_pass_resp_code, "User %s logged in.", user);
+      pr_response_add(auth_pass_resp_code, _("User %s logged in"), user);
 
   } else {
      /* Handle any AccessGrantMsg directive. */
@@ -1833,8 +1833,8 @@ MODRET auth_user(cmd_rec *cmd) {
   session.group = NULL;
 
   if (nopass) {
-    pr_response_add(R_331, "Anonymous login ok, send your complete email "
-      "address as your password.");
+    pr_response_add(R_331, _("Anonymous login ok, send your complete email "
+      "address as your password"));
 
   /* Check to see if a password from the client is required.  In the
    * vast majority of cases, a password will be required.
@@ -1862,7 +1862,7 @@ MODRET auth_user(cmd_rec *cmd) {
     pr_cmd_dispatch(fakecmd);
 
   } else
-    pr_response_add(R_331, "Password required for %s.", cmd->argv[1]);
+    pr_response_add(R_331, _("Password required for %s"), cmd->argv[1]);
 
   return HANDLED(cmd);
 }
@@ -1952,12 +1952,12 @@ MODRET auth_pass(cmd_rec *cmd) {
 }
 
 MODRET auth_acct(cmd_rec *cmd) {
-  pr_response_add(R_502, "ACCT command not implemented.");
+  pr_response_add(R_502, _("ACCT command not implemented"));
   return HANDLED(cmd);
 }
 
 MODRET auth_rein(cmd_rec *cmd) {
-  pr_response_add(R_502, "REIN command not implemented.");
+  pr_response_add(R_502, _("REIN command not implemented"));
   return HANDLED(cmd);
 }
 

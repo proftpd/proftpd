@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.281 2006-05-18 15:38:44 castaglia Exp $
+ * $Id: main.c,v 1.282 2006-05-25 16:55:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -488,7 +488,7 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
 		   "%V", main_server->ServerName,
                    NULL );
 
-    pr_response_send_async(R_421, "FTP server shutting down - %s", msg);
+    pr_response_send_async(R_421, _("FTP server shutting down - %s"), msg);
 
     session_exit(PR_LOG_NOTICE, msg, 0, NULL);
   }
@@ -626,7 +626,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
   }
 
   if (!c && !success && validate) {
-    pr_response_add_err(R_500, "%s not understood", cmd->argv[0]);
+    pr_response_add_err(R_500, _("%s not understood"), cmd->argv[0]);
     success = -1;
   }
 
@@ -754,9 +754,9 @@ static int idle_timeout_cb(CALLBACK_FRAME) {
 
   pr_event_generate("core.timeout-idle", NULL);
 
-  pr_response_send_async(R_421, "Idle Timeout (%d seconds): closing control "
-    "connection.", TimeoutIdle);
-  session_exit(PR_LOG_INFO, "FTP session idle timeout, disconnected.", 0, NULL);
+  pr_response_send_async(R_421, _("Idle Timeout (%d seconds): closing control "
+    "connection"), TimeoutIdle);
+  session_exit(PR_LOG_INFO, "FTP session idle timeout, disconnected", 0, NULL);
 
   pr_timer_remove(TIMER_LOGIN, ANY_MODULE);
   pr_timer_remove(TIMER_NOXFER, ANY_MODULE);
@@ -892,7 +892,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
         destroy_pool(cmd->pool);
 
       } else
-	pr_response_send(R_500, "Invalid command: try being more creative");
+	pr_response_send(R_500, _("Invalid command: try being more creative"));
     }
 
     /* release any working memory allocated in inet */
@@ -954,6 +954,10 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
 
     free_bindings();
 
+#ifdef PR_USE_NLS
+    utf8_free();
+#endif /* PR_USE_NLS */
+
     /* Run through the list of registered rehash callbacks. */
     pr_event_generate("core.restart", NULL);
 
@@ -963,6 +967,11 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     init_log();
     init_class();
     init_config();
+
+#ifdef PR_USE_NLS
+    utf8_init();
+#endif /* PR_USE_NLS */
+
     pr_parser_prepare(NULL, NULL);
 
     PRIVS_ROOT
@@ -1316,8 +1325,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
                reason, session.c->remote_name,
                pr_netaddr_get_ipstr(session.c->remote_addr));
 
-      pr_response_send(R_500, "FTP server shut down (%s) -- please try again "
-        "later", reason);
+      pr_response_send(R_500, _("FTP server shut down (%s) -- please try again "
+        "later"), reason);
       exit(0);
     }
   }
@@ -1326,8 +1335,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
    * connected to, drop them.
    */
   if (!main_server) {
-    pr_response_send(R_500, "Sorry, no server available to handle request on "
-      "%s", pr_netaddr_get_dnsstr(conn->local_addr));
+    pr_response_send(R_500, _("Sorry, no server available to handle request on "
+      "%s"), pr_netaddr_get_dnsstr(conn->local_addr));
     exit(0);
   }
 
@@ -2543,6 +2552,12 @@ static void show_settings(void) {
   printf("    - Largefile support\n");
 #endif /* PR_USE_LARGEFILES */
 
+#ifdef PR_USE_NLS
+  printf("    + NLS support\n");
+#else
+  printf("    - NLS support\n");
+#endif /* PR_USE_NLS */
+
 #ifdef PR_USE_NCURSES
   printf("    + ncurses support\n");
 #else
@@ -2893,6 +2908,10 @@ int main(int argc, char *argv[], char **envp) {
 #ifdef PR_USE_CTRLS
   init_ctrls();
 #endif /* PR_USE_CTRLS */
+
+#ifdef PR_USE_NLS
+  utf8_init();
+#endif /* PR_USE_NLS */
 
   var_init();
   modules_init();

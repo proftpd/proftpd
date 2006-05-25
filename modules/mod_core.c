@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.281 2006-05-18 15:38:44 castaglia Exp $
+ * $Id: mod_core.c,v 1.282 2006-05-25 16:55:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2927,7 +2927,7 @@ MODRET regex_filters(cmd_rec *cmd) {
       regexec(allow_regex, cmd->arg, 0, NULL, 0) != 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by AllowFilter", cmd->argv[0],
       cmd->arg);
-    pr_response_add_err(R_550, "%s: Forbidden command argument", cmd->arg);
+    pr_response_add_err(R_550, _("%s: Forbidden command argument"), cmd->arg);
     return ERROR(cmd);
   }
 
@@ -2938,7 +2938,7 @@ MODRET regex_filters(cmd_rec *cmd) {
       regexec(deny_regex, cmd->arg, 0, NULL, 0) == 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by DenyFilter", cmd->argv[0],
       cmd->arg);
-    pr_response_add_err(R_550, "%s: Forbidden command argument", cmd->arg);
+    pr_response_add_err(R_550, _("%s: Forbidden command argument"), cmd->arg);
     return ERROR(cmd);
   }
 
@@ -3006,7 +3006,7 @@ MODRET core_pwd(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  pr_response_add(R_257,"\"%s\" is current directory.",
+  pr_response_add(R_257, _("\"%s\" is the current directory"),
     quote_dir(cmd, session.vwd));
 
   return HANDLED(cmd);
@@ -3018,7 +3018,7 @@ MODRET core_pasv(cmd_rec *cmd) {
   config_rec *c = NULL;
 
   if (session.sf_flags & SF_EPSV_ALL) {
-    pr_response_add_err(R_500, "Illegal PASV command, EPSV ALL in effect");
+    pr_response_add_err(R_500, _("Illegal PASV command, EPSV ALL in effect"));
     return ERROR(cmd);
   }
 
@@ -3063,8 +3063,8 @@ MODRET core_pasv(cmd_rec *cmd) {
       session.c->local_addr, INPORT_ANY, FALSE);
 
   if (!session.d) {
-    pr_response_add_err(R_425, "Unable to build data connection: "
-      "Internal error");
+    pr_response_add_err(R_425, _("Unable to build data connection: "
+      "Internal error"));
     return ERROR(cmd);
   }
 
@@ -3099,6 +3099,9 @@ MODRET core_pasv(cmd_rec *cmd) {
   pr_log_debug(DEBUG1, "Entering Passive Mode (%s,%u,%u).", addrstr,
     (port >> 8) & 255, port & 255);
 
+  /* Note: this response is specifically NOT localised because clients
+   * assume this particular text.  Nice, huh?
+   */
   pr_response_add(R_227, "Entering Passive Mode (%s,%u,%u).", addrstr,
     (port >> 8) & 255, port & 255);
  
@@ -3117,7 +3120,7 @@ MODRET core_port(cmd_rec *cmd) {
   unsigned char *allow_foreign_addr = NULL, *privsdrop = NULL;
 
   if (session.sf_flags & SF_EPSV_ALL) {
-    pr_response_add_err(R_500, "Illegal PORT command, EPSV ALL in effect");
+    pr_response_add_err(R_500, _("Illegal PORT command, EPSV ALL in effect"));
     return ERROR(cmd);
   }
 
@@ -3142,7 +3145,7 @@ MODRET core_port(cmd_rec *cmd) {
       session.c->local_port < 1025) {
     pr_log_debug(DEBUG0, "RootRevoke in effect, unable to bind to local "
       "port %d for active transfer", session.c->local_port);
-    pr_response_add_err(R_500, "Unable to service PORT commands");
+    pr_response_add_err(R_500, _("Unable to service PORT commands"));
     return ERROR(cmd);
   }
 
@@ -3150,14 +3153,14 @@ MODRET core_port(cmd_rec *cmd) {
   if (sscanf(cmd->argv[1], "%u,%u,%u,%u,%u,%u", &h1, &h2, &h3, &h4, &p1,
       &p2) != 6) {
     pr_log_debug(DEBUG2, "PORT '%s' is not syntactically valid", cmd->argv[1]);
-    pr_response_add_err(R_501, "Illegal PORT command");
+    pr_response_add_err(R_501, _("Illegal PORT command"));
     return ERROR(cmd);
   }
 
   if (h1 > 255 || h2 > 255 || h3 > 255 || h4 > 255 || p1 > 255 || p2 > 255 ||
       (h1|h2|h3|h4) == 0 || (p1|p2) == 0) {
     pr_log_debug(DEBUG2, "PORT '%s' has invalid value(s)", cmd->arg);
-    pr_response_add_err(R_501, "Illegal PORT command");
+    pr_response_add_err(R_501, _("Illegal PORT command"));
     return ERROR(cmd);
   }
   port = ((p1 << 8) | p2);
@@ -3174,7 +3177,7 @@ MODRET core_port(cmd_rec *cmd) {
   if (port_addr == NULL) {
     pr_log_debug(DEBUG1, "error getting sockaddr for '%s': %s", buf,
       strerror(errno)); 
-    pr_response_add_err(R_501, "Illegal PORT command");
+    pr_response_add_err(R_501, _("Illegal PORT command"));
     return ERROR(cmd);
   }
 
@@ -3199,7 +3202,7 @@ MODRET core_port(cmd_rec *cmd) {
         pr_netaddr_is_v4mappedv6(remote_addr) != TRUE) {
       pr_log_pri(PR_LOG_WARNING, "Refused PORT %s (IPv4/IPv6 address mismatch)",
         cmd->arg);
-      pr_response_add_err(R_500, "Illegal PORT command");
+      pr_response_add_err(R_500, _("Illegal PORT command"));
       return ERROR(cmd);
     }
 #endif /* PR_USE_IPV6 */
@@ -3207,7 +3210,7 @@ MODRET core_port(cmd_rec *cmd) {
     if (pr_netaddr_cmp(port_addr, remote_addr) != 0) {
       pr_log_pri(PR_LOG_WARNING, "Refused PORT %s (address mismatch)",
         cmd->arg);
-      pr_response_add_err(R_500, "Illegal PORT command");
+      pr_response_add_err(R_500, _("Illegal PORT command"));
       return ERROR(cmd);
     }
   }
@@ -3220,7 +3223,7 @@ MODRET core_port(cmd_rec *cmd) {
 
   if (port < 1024) {
     pr_log_pri(PR_LOG_WARNING, "Refused PORT %s (bounce attack)", cmd->arg);
-    pr_response_add_err(R_500, "Illegal PORT command");
+    pr_response_add_err(R_500, _("Illegal PORT command"));
     return ERROR(cmd);
   }
 
@@ -3235,7 +3238,7 @@ MODRET core_port(cmd_rec *cmd) {
   }
 
   session.sf_flags |= SF_PORT;
-  pr_response_add(R_200, "PORT command successful");
+  pr_response_add(R_200, _("PORT command successful"));
 
   return HANDLED(cmd);
 }
@@ -3249,7 +3252,7 @@ MODRET core_eprt(cmd_rec *cmd) {
   char *tmp = NULL;
 
   if (session.sf_flags & SF_EPSV_ALL) {
-    pr_response_add_err(R_500, "Illegal PORT command, EPSV ALL in effect");
+    pr_response_add_err(R_500, _("Illegal PORT command, EPSV ALL in effect"));
     return ERROR(cmd);
   }
 
@@ -3277,7 +3280,7 @@ MODRET core_eprt(cmd_rec *cmd) {
       session.c->local_port < 1025) {
     pr_log_debug(DEBUG0, "RootRevoke in effect, unable to bind to local "
       "port %d for active transfer", session.c->local_port);
-    pr_response_add_err(R_500, "Unable to service EPRT commands");
+    pr_response_add_err(R_500, _("Unable to service EPRT commands"));
     return ERROR(cmd);
   }
 
@@ -3302,9 +3305,9 @@ MODRET core_eprt(cmd_rec *cmd) {
 
     default:
 #ifdef PR_USE_IPV6
-      pr_response_add_err(R_522, "Network protocol not supported, use (1,2)");
+      pr_response_add_err(R_522, _("Network protocol not supported, use (1,2)"));
 #else
-      pr_response_add_err(R_522, "Network protocol not supported, use (1)");
+      pr_response_add_err(R_522, _("Network protocol not supported, use (1)"));
 #endif /* PR_USE_IPV6 */
       return ERROR(cmd);
   }
@@ -3320,13 +3323,13 @@ MODRET core_eprt(cmd_rec *cmd) {
     argstr++;
 
   else {
-    pr_response_add_err(R_501, "Illegal EPRT command");
+    pr_response_add_err(R_501, _("Illegal EPRT command"));
     return ERROR(cmd);
   }
 
   if ((tmp = strchr(argstr, delim)) == NULL) {
     pr_log_debug(DEBUG3, "badly formatted EPRT argument: '%s'", cmd->argv[1]);
-    pr_response_add_err(R_501, "Illegal EPRT command");
+    pr_response_add_err(R_501, _("Illegal EPRT command"));
     return ERROR(cmd);
   }
 
@@ -3347,7 +3350,7 @@ MODRET core_eprt(cmd_rec *cmd) {
       if (pr_inet_pton(AF_INET, argstr, pr_netaddr_get_inaddr(&na)) <= 0) {
         pr_log_debug(DEBUG2, "error converting IPv4 address '%s': %s",
           argstr, strerror(errno));
-        pr_response_add_err(R_501, "Illegal EPRT command");
+        pr_response_add_err(R_501, _("Illegal EPRT command"));
         return ERROR(cmd);
       }
       break;
@@ -3359,7 +3362,7 @@ MODRET core_eprt(cmd_rec *cmd) {
       if (pr_inet_pton(AF_INET6, argstr, pr_netaddr_get_inaddr(&na)) <= 0) {
         pr_log_debug(DEBUG2, "error converting IPv6 address '%s': %s",
           argstr, strerror(errno));
-        pr_response_add_err(R_501, "Illegal EPRT command");
+        pr_response_add_err(R_501, _("Illegal EPRT command"));
         return ERROR(cmd);
       }
       break;
@@ -3379,7 +3382,7 @@ MODRET core_eprt(cmd_rec *cmd) {
    */
   if (*argstr != delim) {
     pr_log_debug(DEBUG3, "badly formatted EPRT argument: '%s'", cmd->argv[1]);
-    pr_response_add_err(R_501, "Illegal EPRT command");
+    pr_response_add_err(R_501, _("Illegal EPRT command"));
     return ERROR(cmd);
   }
 
@@ -3394,7 +3397,7 @@ MODRET core_eprt(cmd_rec *cmd) {
     if (pr_netaddr_cmp(&na, session.c->remote_addr) != 0 || !port) {
       pr_log_pri(PR_LOG_WARNING, "Refused EPRT %s (address mismatch)",
         cmd->arg);
-      pr_response_add_err(R_500, "Illegal EPRT command");
+      pr_response_add_err(R_500, _("Illegal EPRT command"));
       return ERROR(cmd);
     }
   }
@@ -3407,7 +3410,7 @@ MODRET core_eprt(cmd_rec *cmd) {
 
   if (port < 1024) {
     pr_log_pri(PR_LOG_WARNING, "Refused EPRT %s (bounce attack)", cmd->arg);
-    pr_response_add_err(R_500, "Illegal EPRT command");
+    pr_response_add_err(R_500, _("Illegal EPRT command"));
     return ERROR(cmd);
   }
 
@@ -3436,7 +3439,7 @@ MODRET core_eprt(cmd_rec *cmd) {
   }
 
   session.sf_flags |= SF_PORT;
-  pr_response_add(R_200, "EPRT command successful");
+  pr_response_add(R_200, _("EPRT command successful"));
 
   return HANDLED(cmd);
 }
@@ -3463,7 +3466,7 @@ MODRET core_epsv(cmd_rec *cmd) {
 
   if (arg && strcasecmp(arg, "all") == 0) {
     session.sf_flags |= SF_EPSV_ALL;
-    pr_response_add(R_200, "EPSV ALL command successful");
+    pr_response_add(R_200, _("EPSV ALL command successful"));
     return HANDLED(cmd);
   }
 
@@ -3475,7 +3478,8 @@ MODRET core_epsv(cmd_rec *cmd) {
     family = strtol(arg, &endp, 10);
 
     if (endp && *endp) {
-      pr_response_add_err(R_501, "%s: unknown network protocol", cmd->argv[0]);
+      pr_response_add_err(R_501, _("%s: unknown network protocol"),
+        cmd->argv[0]);
       return ERROR(cmd);
     }
  
@@ -3509,9 +3513,9 @@ MODRET core_epsv(cmd_rec *cmd) {
 
     default:
 #ifdef PR_USE_IPV6
-      pr_response_add_err(R_522, "Network protocol not supported, use (1,2)");
+      pr_response_add_err(R_522, _("Network protocol not supported, use (1,2)"));
 #else
-      pr_response_add_err(R_522, "Network protocol not supported, use (1)");
+      pr_response_add_err(R_522, _("Network protocol not supported, use (1)"));
 #endif /* PR_USE_IPV6 */
       return ERROR(cmd);
   }
@@ -3541,7 +3545,7 @@ MODRET core_epsv(cmd_rec *cmd) {
 
   if (!session.d) {
     pr_response_add_err(R_425,
-      "Unable to build data connection: Internal error");
+      _("Unable to build data connection: Internal error"));
     return ERROR(cmd);
   }
 
@@ -3597,7 +3601,7 @@ MODRET core_help(cmd_rec *cmd) {
     if (pr_help_add_response(cmd, cmd->argv[1]) == 0)
       return HANDLED(cmd);
 
-    pr_response_add_err(R_502, "Unknown command '%s'.", cmd->argv[1]);
+    pr_response_add_err(R_502, _("Unknown command '%s'"), cmd->argv[1]);
     return ERROR(cmd);
   }
 
@@ -3764,7 +3768,7 @@ MODRET _chdir(cmd_rec *cmd, char *ndir) {
     }
   }
 
-  pr_response_add(R_250, "%s command successful", cmd->argv[0]);
+  pr_response_add(R_250, _("%s command successful"), cmd->argv[0]);
   return HANDLED(cmd);
 }
 
@@ -3782,7 +3786,7 @@ MODRET core_rmd(cmd_rec *cmd) {
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
-    pr_response_add_err(R_550,"%s: Forbidden filename",cmd->arg);
+    pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
 
@@ -3791,7 +3795,7 @@ MODRET core_rmd(cmd_rec *cmd) {
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
-    pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
+    pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
 #endif
@@ -3808,7 +3812,7 @@ MODRET core_rmd(cmd_rec *cmd) {
     return ERROR(cmd);
 
   } else
-    pr_response_add(R_250, "%s command successful", cmd->argv[0]);
+    pr_response_add(R_250, _("%s command successful"), cmd->argv[0]);
 
   return HANDLED(cmd);
 }
@@ -3823,7 +3827,7 @@ MODRET core_mkd(cmd_rec *cmd) {
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
   if (strchr(cmd->arg, '*')) {
-    pr_response_add_err(R_550, "%s: Invalid directory name", cmd->argv[1]);
+    pr_response_add_err(R_550, _("%s: Invalid directory name"), cmd->argv[1]);
     return ERROR(cmd);
   }
 
@@ -3833,7 +3837,7 @@ MODRET core_mkd(cmd_rec *cmd) {
     if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
       pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
         cmd->arg);
-      pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
+      pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
       return ERROR(cmd);
     }
 
@@ -3842,7 +3846,7 @@ MODRET core_mkd(cmd_rec *cmd) {
     if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
       pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
         cmd->arg);
-      pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
+      pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
       return ERROR(cmd);
     }
 #endif
@@ -3895,7 +3899,7 @@ MODRET core_mkd(cmd_rec *cmd) {
         (unsigned long) session.fsgid);
   }
 
-  pr_response_add(R_257, "\"%s\" - Directory successfully created",
+  pr_response_add(R_257, _("\"%s\" - Directory successfully created"),
     quote_dir(cmd, dir));
 
   return HANDLED(cmd);
@@ -3934,13 +3938,13 @@ MODRET core_mdtm(cmd_rec *cmd) {
   if (!path ||
       !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
       pr_fsio_stat(path, &sbuf) == -1) {
-    pr_response_add_err(R_550,"%s: %s", cmd->arg, strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
 
   } else {
 
     if (!S_ISREG(sbuf.st_mode)) {
-      pr_response_add_err(R_550,"%s: not a plain file.",cmd->argv[1]);
+      pr_response_add_err(R_550, _("%s: not a plain file"), cmd->argv[1]);
       return ERROR(cmd);
 
     } else {
@@ -3989,7 +3993,7 @@ MODRET core_size(cmd_rec *cmd) {
 
   } else {
     if (!S_ISREG(sbuf.st_mode)) {
-      pr_response_add_err(R_550, "%s: not a regular file", cmd->arg);
+      pr_response_add_err(R_550, _("%s: not a regular file"), cmd->arg);
       return ERROR(cmd);
 
     } else
@@ -4015,7 +4019,7 @@ MODRET core_dele(cmd_rec *cmd) {
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
-    pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
+    pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
 
@@ -4024,7 +4028,7 @@ MODRET core_dele(cmd_rec *cmd) {
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
-    pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
+    pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
 #endif
@@ -4057,7 +4061,7 @@ MODRET core_dele(cmd_rec *cmd) {
       (session.sf_flags & SF_ASCII ? 'a' : 'b'), 'd', 'r', session.user, 'c');
   }
 
-  pr_response_add(R_250, "%s command successful", cmd->argv[0]);
+  pr_response_add(R_250, _("%s command successful"), cmd->argv[0]);
   return HANDLED(cmd);
 }
 
@@ -4078,7 +4082,7 @@ MODRET core_rnto(cmd_rec *cmd) {
       memset(&session.xfer, '\0', sizeof(session.xfer));
     }
 
-    pr_response_add_err(R_503, "Bad sequence of commands");
+    pr_response_add_err(R_503, _("Bad sequence of commands"));
     return ERROR(cmd);
   }
 
@@ -4088,7 +4092,7 @@ MODRET core_rnto(cmd_rec *cmd) {
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
-    pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
+    pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
 
@@ -4097,7 +4101,7 @@ MODRET core_rnto(cmd_rec *cmd) {
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
-    pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
+    pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
 #endif
@@ -4113,7 +4117,7 @@ MODRET core_rnto(cmd_rec *cmd) {
   if ((!allow_overwrite || *allow_overwrite == FALSE) &&
       pr_fsio_stat(path, &st) == 0) {
     pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", path);
-    pr_response_add_err(R_550, "%s: Rename permission denied", cmd->arg);
+    pr_response_add_err(R_550, _("%s: Rename permission denied"), cmd->arg);
     return ERROR(cmd);
   }
 
@@ -4122,7 +4126,7 @@ MODRET core_rnto(cmd_rec *cmd) {
       pr_fsio_rename(session.xfer.path, path) == -1) {
 
     if (errno != EXDEV) {
-      pr_response_add_err(R_550, "Rename %s: %s", cmd->arg, strerror(errno));
+      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg, strerror(errno));
       return ERROR(cmd);
     }
 
@@ -4130,7 +4134,7 @@ MODRET core_rnto(cmd_rec *cmd) {
      * to the destination paths.
      */
     if (pr_fs_copy_file(session.xfer.path, path) < 0) {
-      pr_response_add_err(R_550, "Rename %s: %s", cmd->arg, strerror(errno));
+      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg, strerror(errno));
       return ERROR(cmd);
     }
 
@@ -4140,7 +4144,7 @@ MODRET core_rnto(cmd_rec *cmd) {
         strerror(errno));
   }
 
-  pr_response_add(R_250, "Rename successful");
+  pr_response_add(R_250, _("Rename successful"));
   return HANDLED(cmd);
 }
 
@@ -4166,7 +4170,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->arg);
-    pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
+    pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
 
@@ -4175,7 +4179,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
   if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->arg);
-    pr_response_add_err(R_550, "%s: Forbidden filename", cmd->arg);
+    pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
 #endif
@@ -4200,14 +4204,14 @@ MODRET core_rnfr(cmd_rec *cmd) {
   pr_pool_tag(session.xfer.p, "session xfer pool");
 
   session.xfer.path = pstrdup(session.xfer.p, path);
-  pr_response_add(R_350, "File or directory exists, ready for "
-    "destination name.");
+  pr_response_add(R_350, _("File or directory exists, ready for "
+    "destination name"));
 
   return HANDLED(cmd);
 }
 
 MODRET core_noop(cmd_rec *cmd) {
-  pr_response_add(R_200, "NOOP command successful");
+  pr_response_add(R_200, _("NOOP command successful"));
   return HANDLED(cmd);
 }
 
@@ -4224,7 +4228,7 @@ MODRET core_feat(cmd_rec *cmd) {
 
   feat = pr_feat_get();
   if (feat) {
-    feat = pstrcat(cmd->tmp_pool, "Features:\n ", feat, NULL);
+    feat = pstrcat(cmd->tmp_pool, _("Features:\n "), feat, NULL);
     while (TRUE) {
       const char *next;
 
@@ -4239,10 +4243,10 @@ MODRET core_feat(cmd_rec *cmd) {
     }
 
     pr_response_add(R_211, "%s", feat);
-    pr_response_add(R_DUP, "End");
+    pr_response_add(R_DUP, _("End"));
 
   } else {
-    pr_response_add(R_211, "No features supported");
+    pr_response_add(R_211, _("No features supported"));
   }
 
   return HANDLED(cmd);
@@ -4267,7 +4271,7 @@ MODRET core_opts(cmd_rec *cmd) {
     *cp = toupper(*cp);
 
   if (!command_exists(opts_cmd)) {
-    pr_response_add_err(R_501, "%s: %s not understood", cmd->argv[0],
+    pr_response_add_err(R_501, _("%s: %s not understood"), cmd->argv[0],
       cmd->argv[1]);
     return ERROR(cmd);
   }
@@ -4285,12 +4289,12 @@ MODRET core_opts(cmd_rec *cmd) {
    */
 
   if (cmd->argc == 3) {
-    pr_response_add_err(R_501, "%s: %s options '%s' not understood",
+    pr_response_add_err(R_501, _("%s: %s options '%s' not understood"),
       cmd->argv[0], cmd->argv[1], cmd->argv[2]);
     return ERROR(cmd);
   }
 
-  pr_response_add(R_200, "%s command successful", cmd->argv[0]);
+  pr_response_add(R_200, _("%s command successful"), cmd->argv[0]);
   return HANDLED(cmd);
 }
 
@@ -4412,6 +4416,9 @@ static int core_init(void) {
   pr_feat_add("MDTM");
   pr_feat_add("REST STREAM");
   pr_feat_add("SIZE");
+#ifdef PR_USE_NLS
+  pr_feat_add("UTF8");
+#endif /* PR_USE_NLS */
 
   /* Register a startup handler. */
   pr_event_register(&core_module, "core.startup", core_startup_ev, NULL);

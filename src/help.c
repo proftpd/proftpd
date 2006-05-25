@@ -24,7 +24,7 @@
 
 /*
  * HELP management code
- * $Id: help.c,v 1.1 2004-02-17 02:16:00 castaglia Exp $
+ * $Id: help.c,v 1.2 2006-05-25 16:55:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -85,7 +85,7 @@ int pr_help_add_response(cmd_rec *cmd, const char *target) {
 
     if (!target) {
       pr_response_add(R_214,
-        "The following commands are recognized (* =>'s unimplemented):");
+        _("The following commands are recognized (* =>'s unimplemented):"));
 
       memset(outa, '\0', sizeof(outa));
 
@@ -120,7 +120,7 @@ int pr_help_add_response(cmd_rec *cmd, const char *target) {
         }
       }
 
-      pr_response_add(R_DUP, "Direct comments to %s",
+      pr_response_add(R_DUP, _("Direct comments to %s"),
         cmd->server->ServerAdmin ? cmd->server->ServerAdmin : "ftp-admin");
 
     } else {

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2004 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.128 2005-08-24 16:10:30 castaglia Exp $
+ * $Id: mod_ls.c,v 1.129 2006-05-25 16:55:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -374,11 +374,6 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
       t = pr_gmtime(p, (time_t *) &mtime);
     else
       t = pr_localtime(p, (time_t *) &mtime);
-
-    if (!t) {
-      pr_response_add_err(R_421, "Fatal error (localtime() returned NULL?!?)");
-      return -1;
-    }
 
     if (opt_F) {
       if (S_ISLNK(st.st_mode))
@@ -953,15 +948,6 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
 
     int d = 0;
 
-#if 0
-    if (opt_l) {
-      if (opt_STAT)
-        pr_response_add(R_211, "total 0");
-      else if (sendline("total 0\n") < 0)
-        return -1;
-    }
-#endif
-
     s = dir;
     while (*s) {
       if (**s == '.') {
@@ -1134,7 +1120,7 @@ static void ls_terminate(void) {
     ls_errno = 0;
 
   } else if (ls_errno) {
-    pr_response_add(R_211, "ERROR: %s", strerror(ls_errno));
+    pr_response_add(R_211, _("ERROR: %s"), strerror(ls_errno));
     ls_errno = 0;
   }
 }
@@ -1523,13 +1509,13 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
     } else if (!skiparg) {
       if (a == GLOB_NOSPACE)
-        pr_response_add(R_226, "Out of memory during globbing of %s", arg);
+        pr_response_add(R_226, _("Out of memory during globbing of %s"), arg);
 
       else if (a == GLOB_ABORTED)
-        pr_response_add(R_226, "Read error during globbing of %s", arg);
+        pr_response_add(R_226, _("Read error during globbing of %s"), arg);
 
       else if (a != GLOB_NOMATCH)
-        pr_response_add(R_226, "Unknown error during globbing of %s", arg);
+        pr_response_add(R_226, _("Unknown error during globbing of %s"), arg);
     }
 
     if (!skiparg && use_globbing && globbed)
@@ -1878,25 +1864,24 @@ MODRET ls_stat(cmd_rec *cmd) {
       return ERROR(cmd);
     }
 
-    pr_response_add(R_211, "Status of '%s'", main_server->ServerName);
-    pr_response_add(R_DUP, "Connected from %s (%s)", session.c->remote_name,
+    pr_response_add(R_211, _("Status of '%s'"), main_server->ServerName);
+    pr_response_add(R_DUP, _("Connected from %s (%s)"), session.c->remote_name,
       pr_netaddr_get_ipstr(session.c->remote_addr));
-    pr_response_add(R_DUP, "Logged in as %s", session.user);
-    pr_response_add(R_DUP, "TYPE: %s, STRUcture: File, Mode: Stream",
+    pr_response_add(R_DUP, _("Logged in as %s"), session.user);
+    pr_response_add(R_DUP, _("TYPE: %s, STRUcture: File, Mode: Stream"),
       (session.sf_flags & SF_ASCII) ? "ASCII" : "BINARY");
 
     if (session.total_bytes)
-      pr_response_add(R_DUP, "Total bytes transferred for session: %" PR_LU,
+      pr_response_add(R_DUP, _("Total bytes transferred for session: %" PR_LU),
         (pr_off_t) session.total_bytes);
 
     if (session.sf_flags & SF_XFER) {
-
       /* Report on the data transfer attributes.
        */
 
-      pr_response_add(R_DUP, "%s from %s port %u",
+      pr_response_add(R_DUP, _("%s from %s port %u"),
         (session.sf_flags & SF_PASSIVE) ?
-          "Passive data transfer from" : "Active data transfer to",
+          _("Passive data transfer from") : _("Active data transfer to"),
         pr_netaddr_get_ipstr(session.d->remote_addr), session.d->remote_port);
 
       if (session.xfer.file_size)
@@ -1911,9 +1896,9 @@ MODRET ls_stat(cmd_rec *cmd) {
           session.xfer.path, (pr_off_t) session.xfer.total_bytes);
 
     } else
-      pr_response_add(R_DUP, "No data connection");
+      pr_response_add(R_DUP, _("No data connection"));
 
-    pr_response_add(R_DUP, "End of status");
+    pr_response_add(R_DUP, _("End of status"));
 
     return HANDLED(cmd);
   }
@@ -1978,9 +1963,9 @@ MODRET ls_stat(cmd_rec *cmd) {
   opt_C = opt_d = opt_F = opt_R = 0;
   opt_a = opt_l = opt_STAT = 1;
 
-  pr_response_add(R_211, "Status of %s:", arg && *arg ? arg : ".");
+  pr_response_add(R_211, _("Status of %s:"), arg && *arg ? arg : ".");
   res = dolist(cmd, arg && *arg ? arg : ".", FALSE);
-  pr_response_add(R_211, "End of Status");
+  pr_response_add(R_211, _("End of status"));
   return (res == -1 ? ERROR(cmd) : HANDLED(cmd));
 }
 
@@ -2126,7 +2111,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
     memset(&g, '\0', sizeof(glob_t));
 
     if (pr_fs_glob(target, GLOB_PERIOD, NULL, &g) != 0) {
-      pr_response_add_err(R_450, "No files found");
+      pr_response_add_err(R_450, _("No files found"));
       return ERROR(cmd);
     }
 
@@ -2214,7 +2199,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
       res = nlstdir(cmd, target);
 
     } else {
-      pr_response_add_err(R_450, "%s: Not a regular file", cmd->arg);
+      pr_response_add_err(R_450, _("%s: Not a regular file"), cmd->arg);
       return ERROR(cmd);
     }
 

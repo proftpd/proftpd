@@ -465,6 +465,9 @@
 /* Define if you have the <langinfo.h> header file.  */
 #undef HAVE_LANGINFO_H
 
+/* Define if you have the <libintl.h> header file.  */
+#undef HAVE_LIBINTL_H
+
 /* Define if you have the <libutil.h> header file.  */
 #undef HAVE_LIBUTIL_H
 
@@ -749,6 +752,9 @@
 
 /* Define if the %lu format should be used.  */
 #undef HAVE_LU
+
+/* Define if NLS support, if available, should be used. */
+#undef PR_USE_NLS
 
 /* Define if ncurses support, if available, should be used.  */
 #undef PR_USE_NCURSES

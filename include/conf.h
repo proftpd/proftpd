@@ -25,7 +25,7 @@
  */
 
 /* Generic configuration and standard header file includes.
- * $Id: conf.h,v 1.63 2006-05-18 15:38:44 castaglia Exp $
+ * $Id: conf.h,v 1.64 2006-05-25 16:55:34 castaglia Exp $
  */
 
 #ifndef PR_CONF_H
@@ -241,6 +241,17 @@ char *strchr(),*strrchr();
 # endif /* HAVE_SYS_TERMIO_H */
 #endif /* HAVE_SYS_TERMIOS_H */
 
+#ifdef PR_USE_NLS
+# ifdef HAVE_LIBINTL_H
+#  include <libintl.h>
+# endif
+# define _(str) gettext(str)
+#else
+# define _(str) (str)
+# define textdomain(dir)
+# define bindtextdomain(pkg, dir)
+#endif /* PR_USE_NLS */
+
 /* The tunable options header needs to be included after all the system headers,
  * so that limits are picked up properly.
  */
@@ -419,6 +430,7 @@ typedef struct {
 #include "event.h"
 #include "var.h"
 #include "trace.h"
+#include "utf8.h"
 #include "compat.h"
 #include "pr-syslog.h"
 
