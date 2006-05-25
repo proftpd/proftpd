@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.75 2006-04-20 02:24:05 castaglia Exp $
+ * $Id: mod_log.c,v 1.76 2006-05-25 15:46:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -96,6 +96,7 @@ struct logfile_struc {
 #define META_DIR_PATH		24
 #define META_CMD_PARAMS		25
 #define META_RESPONSE_STR	26
+#define META_VERSION		27
 
 static pool			*log_pool;
 static logformat_t		*formats = NULL;
@@ -130,6 +131,7 @@ static xaset_t			*log_set = NULL;
    %u			- Local user
    %V                   - DNS name of server serving request
    %v			- ServerName of server serving request
+   %{version}           - ProFTPD version
 */
 
 static void add_meta(unsigned char **s, unsigned char meta, int args, ...) {
@@ -187,123 +189,133 @@ static void logformat(char *nickname, char *fmts) {
       arg = NULL;
       tmp++;
       for (;;) {
-        switch (*tmp) {
-        case '{':
-          arg = preparse_arg(&tmp);
+
+        if (strncmp(tmp, "{version}", 9) == 0) {
+          add_meta(&outs, META_VERSION, 0);
+          tmp += 9;
+          *outs++ = *tmp;
           continue;
-
-        case 'a':
-          add_meta(&outs, META_REMOTE_IP, 0);
-          break;
-
-        case 'A':
-          add_meta(&outs, META_ANON_PASS, 0);
-          break;
-
-        case 'b':
-          add_meta(&outs, META_BYTES_SENT, 0);
-          break;
-
-        case 'c':
-          add_meta(&outs, META_CLASS, 0);
-          break;
-
-        case 'D':
-          add_meta(&outs, META_DIR_PATH, 0);
-          break;
-
-        case 'd':
-          add_meta(&outs, META_DIR_NAME, 0);
-          break;
-
-        case 'e':
-          if (arg) {
-            add_meta(&outs, META_ENV_VAR, 0);
-            add_meta(&outs, META_ARG, 1, (int) strlen(arg), arg);
-          }
-          break;
-
-        case 'f':
-          add_meta(&outs, META_FILENAME, 0);
-          break;
-
-        case 'F':
-          add_meta(&outs, META_XFER_PATH, 0);
-          break;
-
-        case 'h':
-          add_meta(&outs, META_REMOTE_HOST, 0);
-          break;
-
-        case 'J':
-          add_meta(&outs, META_CMD_PARAMS, 0);
-          break;
-
-        case 'l':
-          add_meta(&outs, META_IDENT_USER, 0);
-          break;
-
-        case 'L':
-          add_meta(&outs, META_LOCAL_IP, 0);
-          break;
-
-        case 'm':
-          add_meta(&outs, META_METHOD, 0);
-          break;
-
-        case 'p':
-          add_meta(&outs, META_LOCAL_PORT, 0);
-          break;
-
-        case 'P':
-          add_meta(&outs, META_PID, 0);
-          break;
-
-        case 'r':
-          add_meta(&outs, META_COMMAND, 0);
-          break;
-
-        case 's':
-          add_meta(&outs, META_RESPONSE_CODE, 0);
-          break;
-
-        case 'S':
-          add_meta(&outs, META_RESPONSE_STR, 0);
-          break;
-
-        case 't':
-          add_meta(&outs, META_TIME, 0);
-          if (arg)
-            add_meta(&outs, META_ARG, 1, (int) strlen(arg), arg);
-          break;
-
-        case 'T':
-          add_meta(&outs, META_SECONDS, 0);
-          break;
-
-        case 'u':
-          add_meta(&outs, META_USER, 0);
-          break;
-
-        case 'U':
-          add_meta(&outs, META_ORIGINAL_USER, 0);
-          break;
-
-        case 'v':
-          add_meta(&outs, META_LOCAL_NAME, 0);
-          break;
-
-        case 'V':
-          add_meta(&outs, META_LOCAL_FQDN, 0);
-          break;
-
-        case '%':
-          *outs++ = '%';
-          break;
         }
+
+        switch (*tmp) {
+          case '{':
+            arg = preparse_arg(&tmp);
+            continue;
+
+          case 'a':
+            add_meta(&outs, META_REMOTE_IP, 0);
+            break;
+
+          case 'A':
+            add_meta(&outs, META_ANON_PASS, 0);
+            break;
+
+          case 'b':
+            add_meta(&outs, META_BYTES_SENT, 0);
+            break;
+
+          case 'c':
+            add_meta(&outs, META_CLASS, 0);
+            break;
+
+          case 'D':
+            add_meta(&outs, META_DIR_PATH, 0);
+            break;
+
+          case 'd':
+            add_meta(&outs, META_DIR_NAME, 0);
+            break;
+
+          case 'e':
+            if (arg) {
+              add_meta(&outs, META_ENV_VAR, 0);
+              add_meta(&outs, META_ARG, 1, (int) strlen(arg), arg);
+            }
+            break;
+
+          case 'f':
+            add_meta(&outs, META_FILENAME, 0);
+            break;
+
+          case 'F':
+            add_meta(&outs, META_XFER_PATH, 0);
+            break;
+
+          case 'h':
+            add_meta(&outs, META_REMOTE_HOST, 0);
+            break;
+
+          case 'J':
+            add_meta(&outs, META_CMD_PARAMS, 0);
+            break;
+
+          case 'l':
+            add_meta(&outs, META_IDENT_USER, 0);
+            break;
+
+          case 'L':
+            add_meta(&outs, META_LOCAL_IP, 0);
+            break;
+
+          case 'm':
+            add_meta(&outs, META_METHOD, 0);
+            break;
+
+          case 'p':
+            add_meta(&outs, META_LOCAL_PORT, 0);
+            break;
+
+          case 'P':
+            add_meta(&outs, META_PID, 0);
+            break;
+
+          case 'r':
+            add_meta(&outs, META_COMMAND, 0);
+            break;
+
+          case 's':
+            add_meta(&outs, META_RESPONSE_CODE, 0);
+            break;
+
+          case 'S':
+            add_meta(&outs, META_RESPONSE_STR, 0);
+            break;
+
+          case 't':
+            add_meta(&outs, META_TIME, 0);
+            if (arg)
+              add_meta(&outs, META_ARG, 1, (int) strlen(arg), arg);
+            break;
+
+          case 'T':
+            add_meta(&outs, META_SECONDS, 0);
+            break;
+
+          case 'u':
+            add_meta(&outs, META_USER, 0);
+            break;
+
+          case 'U':
+            add_meta(&outs, META_ORIGINAL_USER, 0);
+            break;
+
+          case 'v':
+            add_meta(&outs, META_LOCAL_NAME, 0);
+            break;
+
+          case 'V':
+            add_meta(&outs, META_LOCAL_FQDN, 0);
+            break;
+
+          case '%':
+            *outs++ = '%';
+            break;
+        }
+
         tmp++;
         break;
       }
+
     } else {
       *outs++ = *tmp++;
     }
@@ -543,340 +555,341 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
 
   m = (*f) + 1;
   switch (*m) {
-  case META_ARG:
-    m++; argp = arg;
-    while (*m != META_ARG_END)
-      *argp++ = (char)*m++;
+    case META_ARG:
+      m++;
+      argp = arg;
+      while (*m != META_ARG_END)
+        *argp++ = (char) *m++;
 
-    *argp = 0; argp = arg;
-    m++;
-    break;
+      *argp = 0;
+      argp = arg;
+      m++;
+      break;
 
-  case META_ANON_PASS:
-    argp = arg;
+    case META_ANON_PASS:
+      argp = arg;
 
-    pass = get_param_ptr(cmd->server->conf, C_PASS, FALSE);
-    if (!pass)
-      pass = "UNKNOWN";
+      pass = get_param_ptr(cmd->server->conf, C_PASS, FALSE);
+      if (!pass)
+        pass = "UNKNOWN";
 
-    sstrncpy(argp, pass, sizeof(arg));
+      sstrncpy(argp, pass, sizeof(arg));
 
-    m++;
-    break;
+      m++;
+      break;
 
-  case META_BYTES_SENT:
-    argp = arg;
-    if (session.xfer.p)
-      snprintf(argp, sizeof(arg), "%" PR_LU,
-        (pr_off_t) session.xfer.total_bytes);
-    else
-      sstrncpy(argp, "-", sizeof(arg));
+    case META_BYTES_SENT:
+      argp = arg;
+      if (session.xfer.p)
+        snprintf(argp, sizeof(arg), "%" PR_LU,
+          (pr_off_t) session.xfer.total_bytes);
+      else
+        sstrncpy(argp, "-", sizeof(arg));
 
-    m++;
-    break;
+      m++;
+      break;
 
-  case META_CLASS:
-    argp = arg;
-    sstrncpy(argp, session.class ? session.class->cls_name : "-", sizeof(arg));
-    m++;
-    break;
+    case META_CLASS:
+      argp = arg;
+      sstrncpy(argp, session.class ? session.class->cls_name : "-",
+        sizeof(arg));
+      m++;
+      break;
 
-  case META_DIR_NAME:
-    argp = arg;
+    case META_DIR_NAME:
+      argp = arg;
 
-    if (strcmp(cmd->argv[0], C_CDUP) == 0 ||
-        strcmp(cmd->argv[0], C_CWD) == 0 ||
-        strcmp(cmd->argv[0], C_MKD) == 0 ||
-        strcmp(cmd->argv[0], C_RMD) == 0 ||
-        strcmp(cmd->argv[0], C_XCWD) == 0 ||
-        strcmp(cmd->argv[0], C_XCUP) == 0 ||
-        strcmp(cmd->argv[0], C_XMKD) == 0 ||
-        strcmp(cmd->argv[0], C_XRMD) == 0) {
-      char *tmp = strrchr(cmd->arg, '/');
-
-      sstrncpy(argp, tmp ? tmp : cmd->arg, sizeof(arg));
-
-    } else {
-      sstrncpy(argp, "", sizeof(arg));
-    }
-
-    m++;
-    break;
-
-  case META_DIR_PATH:
-    argp = arg;
-
-    if (strcmp(cmd->argv[0], C_CDUP) == 0 ||
-        strcmp(cmd->argv[0], C_MKD) == 0 ||
-        strcmp(cmd->argv[0], C_RMD) == 0 ||
-        strcmp(cmd->argv[0], C_XCUP) == 0 ||
-        strcmp(cmd->argv[0], C_XMKD) == 0 ||
-        strcmp(cmd->argv[0], C_XRMD) == 0) {
-      sstrncpy(argp, dir_abs_path(p, cmd->arg, TRUE), sizeof(arg));
-
-    } else if (strcmp(cmd->argv[0], C_CWD) == 0 ||
-               strcmp(cmd->argv[0], C_XCWD) == 0) {
-
-      /* Note: by this point in the dispatch cycle, the current working
-       * directory has already been changed.  For the CWD/XCWD commands,
-       * this means that dir_abs_path() may return an improper path,
-       * with the target directory being reported twice.  To deal with this,
-       * don't use dir_abs_path(), and use pr_fs_getvwd()/pr_fs_getcwd()
-       * instead.
-       */
-
-      if (session.chroot_path) { 
-        /* Chrooted session. */
-        sstrncpy(arg, strcmp(pr_fs_getvwd(), "/") ?
-          pdircat(p, session.chroot_path, pr_fs_getvwd(), NULL) :
-          session.chroot_path, sizeof(arg));
-
-      } else
-
-        /* Non-chrooted session. */
-        sstrncpy(arg, pr_fs_getcwd(), sizeof(arg));
-
-    } else
-      sstrncpy(argp, "", sizeof(arg));
-
-    m++;
-    break;
-
-  case META_FILENAME:
-    argp = arg;
-
-    if (strcmp(cmd->argv[0], C_RNTO) == 0) {
-      sstrncpy(argp, dir_abs_path(p, cmd->arg, TRUE), sizeof(arg));
-
-    } else if (session.xfer.p &&
-               session.xfer.path) {
-      sstrncpy(argp, dir_abs_path(p, session.xfer.path, TRUE), sizeof(arg));
-
-    } else {
-
-      /* Some commands (i.e. DELE, MKD, RMD, XMKD, and XRMD) have associated
-       * filenames that are not stored in the session.xfer structure; these
-       * should be expanded properly as well.
-       */
-      if (strcmp(cmd->argv[0], C_DELE) == 0 ||
+      if (strcmp(cmd->argv[0], C_CDUP) == 0 ||
+          strcmp(cmd->argv[0], C_CWD) == 0 ||
           strcmp(cmd->argv[0], C_MKD) == 0 ||
           strcmp(cmd->argv[0], C_RMD) == 0 ||
+          strcmp(cmd->argv[0], C_XCWD) == 0 ||
+          strcmp(cmd->argv[0], C_XCUP) == 0 ||
           strcmp(cmd->argv[0], C_XMKD) == 0 ||
-          strcmp(cmd->argv[0], C_XRMD) == 0)
-        sstrncpy(arg, dir_abs_path(p, cmd->arg, TRUE), sizeof(arg));
+          strcmp(cmd->argv[0], C_XRMD) == 0) {
+        char *tmp = strrchr(cmd->arg, '/');
 
-      else
-        /* All other situations get a "-".  */
-        sstrncpy(argp, "-", sizeof(arg));
-    }
+        sstrncpy(argp, tmp ? tmp : cmd->arg, sizeof(arg));
 
-    m++;
-    break;
-
-  case META_XFER_PATH:
-    argp = arg;
-    if (session.xfer.p && session.xfer.path) {
-      sstrncpy(argp, session.xfer.path, sizeof(arg));
-
-    } else {
-
-      /* Some commands (i.e. DELE) have associated filenames that are not
-       * stored in the session.xfer structure; these should be expanded
-       * properly as well.
-       */
-      if (strcmp(cmd->argv[0], C_DELE) == 0)
-        sstrncpy(arg, cmd->arg, sizeof(arg));
-
-      else
-        sstrncpy(argp, "-", sizeof(arg));
-    }
-
-    m++;
-    break;
-
-  case META_ENV_VAR:
-    argp = arg;
-    m++;
-
-    if (*m == META_START && *(m+1) == META_ARG) {
-      char *env;
-
-      env = getenv(get_next_meta(p,cmd,&m));
-      sstrncpy(argp, env, sizeof(arg));
-    }
-
-    break;
-
-  case META_REMOTE_HOST:
-    argp = arg;
-    sstrncpy(argp, pr_netaddr_get_sess_remote_name(), sizeof(arg));
-    m++;
-    break;
-
-  case META_REMOTE_IP:
-    argp = arg;
-    sstrncpy(argp, pr_netaddr_get_ipstr(pr_netaddr_get_sess_remote_addr()),
-      sizeof(arg));
-    m++;
-    break;
-
-  case META_IDENT_USER:
-    argp = arg;
-    sstrncpy(argp, session.ident_user, sizeof(arg));
-    m++;
-    break;
-
-  case META_METHOD:
-    argp = arg;
-    sstrncpy(argp, cmd->argv[0], sizeof(arg));
-    m++;
-    break;
-
-  case META_LOCAL_PORT:
-    argp = arg;
-    snprintf(argp, sizeof(arg), "%d", cmd->server->ServerPort);
-    m++;
-    break;
-
-  case META_LOCAL_IP:
-    argp = arg;
-    sstrncpy(argp, pr_netaddr_get_ipstr(session.c->local_addr), sizeof(arg));
-    m++;
-    break;
-
-  case META_LOCAL_FQDN:
-    argp = arg;
-    sstrncpy(argp, cmd->server->ServerFQDN, sizeof(arg));
-    m++;
-    break;
-
-  case META_PID:
-    argp = arg;
-    snprintf(argp, sizeof(arg), "%u",(unsigned int)getpid());
-    m++;
-    break;
-
-  case META_TIME:
-    {
-      char *time_fmt = "[%d/%b/%Y:%H:%M:%S ";
-      struct tm t;
-      int internal_fmt = 1;
-      int timz;
-      char sign;
-
-      argp = arg; m++;
-
-      if (*m == META_START && *(m+1) == META_ARG) {
-        time_fmt = get_next_meta(p, cmd, &m);
-        internal_fmt = 0;
+      } else {
+        sstrncpy(argp, "", sizeof(arg));
       }
 
-      t = *_get_gmtoff(&timz);
-      sign = (timz < 0 ? '-' : '+');
-      if (timz < 0)
-        timz = -timz;
+      m++;
+      break;
 
-      strftime(argp, 80, time_fmt, &t);
-      if (internal_fmt) {
-        if (strlen(argp) < sizeof(arg))
-          snprintf(argp + strlen(argp), sizeof(arg) - strlen(argp),
-            "%c%.2d%.2d]", sign, timz/60, timz%60);
+    case META_DIR_PATH:
+      argp = arg;
+
+      if (strcmp(cmd->argv[0], C_CDUP) == 0 ||
+          strcmp(cmd->argv[0], C_MKD) == 0 ||
+          strcmp(cmd->argv[0], C_RMD) == 0 ||
+          strcmp(cmd->argv[0], C_XCUP) == 0 ||
+          strcmp(cmd->argv[0], C_XMKD) == 0 ||
+          strcmp(cmd->argv[0], C_XRMD) == 0) {
+        sstrncpy(argp, dir_abs_path(p, cmd->arg, TRUE), sizeof(arg));
+
+      } else if (strcmp(cmd->argv[0], C_CWD) == 0 ||
+                 strcmp(cmd->argv[0], C_XCWD) == 0) {
+
+        /* Note: by this point in the dispatch cycle, the current working
+         * directory has already been changed.  For the CWD/XCWD commands,
+         * this means that dir_abs_path() may return an improper path,
+         * with the target directory being reported twice.  To deal with this,
+         * don't use dir_abs_path(), and use pr_fs_getvwd()/pr_fs_getcwd()
+         * instead.
+         */
+
+        if (session.chroot_path) { 
+          /* Chrooted session. */
+          sstrncpy(arg, strcmp(pr_fs_getvwd(), "/") ?
+            pdircat(p, session.chroot_path, pr_fs_getvwd(), NULL) :
+            session.chroot_path, sizeof(arg));
+
+        } else
+
+          /* Non-chrooted session. */
+          sstrncpy(arg, pr_fs_getcwd(), sizeof(arg));
+
+      } else
+        sstrncpy(argp, "", sizeof(arg));
+
+      m++;
+      break;
+
+    case META_FILENAME:
+      argp = arg;
+
+      if (strcmp(cmd->argv[0], C_RNTO) == 0) {
+        sstrncpy(argp, dir_abs_path(p, cmd->arg, TRUE), sizeof(arg));
+
+      } else if (session.xfer.p &&
+                 session.xfer.path) {
+        sstrncpy(argp, dir_abs_path(p, session.xfer.path, TRUE), sizeof(arg));
+
+      } else {
+        /* Some commands (i.e. DELE, MKD, RMD, XMKD, and XRMD) have associated
+         * filenames that are not stored in the session.xfer structure; these
+         * should be expanded properly as well.
+         */
+        if (strcmp(cmd->argv[0], C_DELE) == 0 ||
+            strcmp(cmd->argv[0], C_MKD) == 0 ||
+            strcmp(cmd->argv[0], C_RMD) == 0 ||
+            strcmp(cmd->argv[0], C_XMKD) == 0 ||
+            strcmp(cmd->argv[0], C_XRMD) == 0)
+          sstrncpy(arg, dir_abs_path(p, cmd->arg, TRUE), sizeof(arg));
+
         else
-          pr_log_pri(PR_LOG_NOTICE, "notice: %%t expansion yields excessive "
-            "string, ignoring");
+          /* All other situations get a "-".  */
+          sstrncpy(argp, "-", sizeof(arg));
       }
-    }
-    break;
 
-  case META_SECONDS:
-    argp = arg;
-    if (session.xfer.p) {
+      m++;
+      break;
 
-      /* Make sure that session.xfer.start_time actually has values (which
-       * is not always the case).
-       */
-      if (session.xfer.start_time.tv_sec != 0 ||
-          session.xfer.start_time.tv_usec != 0) {
-        struct timeval end_time;
+    case META_XFER_PATH:
+      argp = arg;
+      if (session.xfer.p &&
+          session.xfer.path) {
+        sstrncpy(argp, session.xfer.path, sizeof(arg));
 
-        gettimeofday(&end_time,NULL);
-        end_time.tv_sec -= session.xfer.start_time.tv_sec;
+      } else {
+        /* Some commands (i.e. DELE) have associated filenames that are not
+         * stored in the session.xfer structure; these should be expanded
+         * properly as well.
+         */
+        if (strcmp(cmd->argv[0], C_DELE) == 0)
+          sstrncpy(arg, cmd->arg, sizeof(arg));
 
-        if (end_time.tv_usec >= session.xfer.start_time.tv_usec)
-          end_time.tv_usec -= session.xfer.start_time.tv_usec;
+        else
+          sstrncpy(argp, "-", sizeof(arg));
+      }
 
-        else {
-          end_time.tv_usec = 1000000L - (session.xfer.start_time.tv_usec -
-            end_time.tv_usec);
-          end_time.tv_sec--;
+      m++;
+      break;
+
+    case META_ENV_VAR:
+      argp = arg;
+      m++;
+
+      if (*m == META_START &&
+          *(m+1) == META_ARG) {
+        char *env;
+
+        env = getenv(get_next_meta(p, cmd, &m));
+        sstrncpy(argp, env, sizeof(arg));
+      }
+
+      break;
+
+    case META_REMOTE_HOST:
+      argp = arg;
+      sstrncpy(argp, pr_netaddr_get_sess_remote_name(), sizeof(arg));
+      m++;
+      break;
+
+    case META_REMOTE_IP:
+      argp = arg;
+      sstrncpy(argp, pr_netaddr_get_ipstr(pr_netaddr_get_sess_remote_addr()),
+        sizeof(arg));
+      m++;
+      break;
+
+    case META_IDENT_USER:
+      argp = arg;
+      sstrncpy(argp, session.ident_user, sizeof(arg));
+      m++;
+      break;
+
+    case META_METHOD:
+      argp = arg;
+      sstrncpy(argp, cmd->argv[0], sizeof(arg));
+      m++;
+      break;
+
+    case META_LOCAL_PORT:
+      argp = arg;
+      snprintf(argp, sizeof(arg), "%d", cmd->server->ServerPort);
+      m++;
+      break;
+
+    case META_LOCAL_IP:
+      argp = arg;
+      sstrncpy(argp, pr_netaddr_get_ipstr(session.c->local_addr), sizeof(arg));
+      m++;
+      break;
+
+    case META_LOCAL_FQDN:
+      argp = arg;
+      sstrncpy(argp, cmd->server->ServerFQDN, sizeof(arg));
+      m++;
+      break;
+
+    case META_PID:
+      argp = arg;
+      snprintf(argp, sizeof(arg), "%u",(unsigned int)getpid());
+      m++;
+      break;
+
+    case META_TIME:
+      {
+        char *time_fmt = "[%d/%b/%Y:%H:%M:%S ";
+        struct tm t;
+        int internal_fmt = 1;
+        int timz;
+        char sign;
+
+        argp = arg;
+        m++;
+
+        if (*m == META_START &&
+            *(m+1) == META_ARG) {
+          time_fmt = get_next_meta(p, cmd, &m);
+          internal_fmt = 0;
         }
 
-        snprintf(argp, sizeof(arg), "%ld.%03ld", (long) end_time.tv_sec,
-          (long) (end_time.tv_usec / 1000));
+        t = *_get_gmtoff(&timz);
+        sign = (timz < 0 ? '-' : '+');
+        if (timz < 0)
+          timz = -timz;
+
+        strftime(argp, 80, time_fmt, &t);
+        if (internal_fmt) {
+          if (strlen(argp) < sizeof(arg))
+            snprintf(argp + strlen(argp), sizeof(arg) - strlen(argp),
+              "%c%.2d%.2d]", sign, timz/60, timz%60);
+          else
+            pr_log_pri(PR_LOG_NOTICE, "notice: %%t expansion yields excessive "
+              "string, ignoring");
+        }
+      }
+      break;
+
+    case META_SECONDS:
+      argp = arg;
+      if (session.xfer.p) {
+        /* Make sure that session.xfer.start_time actually has values (which
+         * is not always the case).
+         */
+        if (session.xfer.start_time.tv_sec != 0 ||
+            session.xfer.start_time.tv_usec != 0) {
+          struct timeval end_time;
+
+          gettimeofday(&end_time,NULL);
+          end_time.tv_sec -= session.xfer.start_time.tv_sec;
+
+          if (end_time.tv_usec >= session.xfer.start_time.tv_usec)
+            end_time.tv_usec -= session.xfer.start_time.tv_usec;
+
+          else {
+            end_time.tv_usec = 1000000L - (session.xfer.start_time.tv_usec -
+              end_time.tv_usec);
+            end_time.tv_sec--;
+          }
+
+          snprintf(argp, sizeof(arg), "%ld.%03ld", (long) end_time.tv_sec,
+            (long) (end_time.tv_usec / 1000));
+
+        } else
+          sstrncpy(argp, "-", sizeof(arg));
 
       } else
         sstrncpy(argp, "-", sizeof(arg));
 
-    } else
-      sstrncpy(argp, "-", sizeof(arg));
+      m++;
+      break;
 
-    m++;
-    break;
+    case META_COMMAND:
+      argp = arg;
 
-  case META_COMMAND:
-    argp = arg;
+      if (strcasecmp(cmd->argv[0], C_PASS) == 0 &&
+          session.hide_password) {
+        sstrncpy(argp, "PASS (hidden)", sizeof(arg));
 
-    if (strcasecmp(cmd->argv[0], C_PASS) == 0 &&
-        session.hide_password) {
-      sstrncpy(argp, "PASS (hidden)", sizeof(arg));
+      } else {
+        sstrncpy(argp, get_full_cmd(cmd), sizeof(arg));
+      }
 
-    } else {
-      sstrncpy(argp, get_full_cmd(cmd), sizeof(arg));
-    }
+      m++;
+      break;
 
-    m++;
-    break;
+    case META_CMD_PARAMS:
+      argp = arg;
+      if (strcasecmp(cmd->argv[0], C_PASS) == 0 &&
+          session.hide_password) {
+        sstrncpy(argp, "(hidden)", sizeof(arg));
 
-  case META_CMD_PARAMS:
-    argp = arg;
-    if (strcasecmp(cmd->argv[0], C_PASS) == 0 &&
-        session.hide_password) {
-      sstrncpy(argp, "(hidden)", sizeof(arg));
+      } else {
+        sstrncpy(argp, cmd->arg, sizeof(arg));
+      }
 
-    } else {
-      sstrncpy(argp, cmd->arg, sizeof(arg));
-    }
+      m++;
+      break;
 
-    m++;
-    break;
+    case META_LOCAL_NAME:
+      argp = arg;
+      sstrncpy(argp, cmd->server->ServerName, sizeof(arg));
+      m++;
+      break;
 
-  case META_LOCAL_NAME:
-    argp = arg;
+    case META_USER:
+      argp = arg;
 
-    sstrncpy(argp, cmd->server->ServerName, sizeof(arg));
-    m++;
-    break;
+      if (!session.user) {
+        char *u = get_param_ptr(cmd->server->conf,"UserName",FALSE);
+        if (!u)
+          u = "root";
 
-  case META_USER:
-    argp = arg;
+        sstrncpy(argp, u, sizeof(arg));
 
-    if (!session.user) {
-      char *u;
+      } else {
+        sstrncpy(argp, session.user, sizeof(arg));
+      }
 
-      u = get_param_ptr(cmd->server->conf,"UserName",FALSE);
-      if (!u)
-        u = "root";
+      m++;
+      break;
 
-      sstrncpy(argp, u, sizeof(arg));
-    } else {
-      sstrncpy(argp, session.user, sizeof(arg));
-    }
-
-    m++;
-    break;
-
-  case META_ORIGINAL_USER:
-    {
+    case META_ORIGINAL_USER: {
       char *login_user = get_param_ptr(main_server->conf, C_USER, FALSE);
       argp = arg;
 
@@ -889,8 +902,7 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       break;
     }
 
-  case META_RESPONSE_CODE:
-    {
+    case META_RESPONSE_CODE: {
       pr_response_t *r;
 
       argp = arg;
@@ -908,10 +920,12 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       } else {
         sstrncpy(argp, "-", sizeof(arg));
       }
+
+      m++;
+      break;
     }
 
-  case META_RESPONSE_STR:
-    {
+    case META_RESPONSE_STR: {
       pr_response_t *r;
 
       argp = arg;
@@ -925,12 +939,19 @@ static char *get_next_meta(pool *p, cmd_rec *cmd, unsigned char **f) {
       } else {
         sstrncpy(argp, "-", sizeof(arg));
       }
+
+      m++;
+      break;
     }
 
-    m++;
-    break;
-  }
+    case META_VERSION:
+      argp = arg;
+      sstrncpy(argp, PROFTPD_VERSION_TEXT, sizeof(arg));
+      m++;
+      break;
 
+  }
+ 
   *f = m;
   if (argp) {
     return pstrdup(p, argp);
@@ -989,14 +1010,18 @@ MODRET log_any(cmd_rec *cmd) {
   logfile_t *lf = NULL;
 
   /* If not in anon mode, only handle logs for main servers */
-  for (lf = logs; lf; lf = lf->next)
-    if (lf->lf_fd != -1 && (cmd->class & lf->lf_classes)) {
-      if (!session.anon_config && lf->lf_conf &&
+  for (lf = logs; lf; lf = lf->next) {
+    if (lf->lf_fd != -1 &&
+        (cmd->class & lf->lf_classes)) {
+
+      if (!session.anon_config &&
+          lf->lf_conf &&
           lf->lf_conf->config_type == CONF_ANON)
         continue;
 
       do_log(cmd, lf);
     }
+  }
 
   return DECLINED(cmd);
 }

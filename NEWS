@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.760 2006-05-25 15:44:14 castaglia Exp $
+$Id: NEWS,v 1.761 2006-05-25 15:46:42 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -61,6 +61,8 @@ CVS
 - Bug 2793 - ProFTPD fails after SIGHUP signal when Controls support is
   enabled.
 - Bug 2775 - Support for DisplayFileTransfer directive.
+- Bug 2793 - LogFormat variable for the ProFTPD version.  This adds a
+  "%{version}" variable to the LogFormat directive.
 
 1.3.0 - Released 16-Apr-2006
 --------------------------------

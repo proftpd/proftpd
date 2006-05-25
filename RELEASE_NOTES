@@ -13,6 +13,7 @@ files.
       DisplayChdir
 
       DisplayFileTransfer
+        (only works for successful transfers)
 
       QuotaOptions
         ScanOnLogin
@@ -27,7 +28,7 @@ files.
 
       CreateHome uid gid
 
-      LogFormat %S
+      LogFormat %S, %{version}
 
       TLSRequired auth, auth+data
 
@@ -57,4 +58,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-05-25 15:44:14 $
+Last Updated: $Date: 2006-05-25 15:46:42 $
