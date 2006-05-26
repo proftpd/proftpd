@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.21 2004-10-09 20:46:22 castaglia Exp $
+ * $Id: netio.c,v 1.22 2006-05-26 17:16:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -341,7 +341,7 @@ int pr_netio_lingering_abort(pr_netio_stream_t *nstrm, long linger) {
   }
 
   /* Send an appropriate response code down the stream asychronously. */
-  pr_response_send_async(R_426, "Transfer aborted. Data connection closed.");
+  pr_response_send_async(R_426, _("Transfer aborted. Data connection closed."));
 
   /* Now continue with a normal lingering close. */
   return netio_lingering_close(nstrm, linger,

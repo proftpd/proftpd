@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.45 2006-05-25 16:55:34 castaglia Exp $
+ * $Id: mod_site.c,v 1.46 2006-05-26 17:16:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -55,7 +55,7 @@ static char *_get_full_cmd(cmd_rec *cmd) {
   int i;
 
   for (i = 0; i < cmd->argc; i++)
-    res = pstrcat(cmd->tmp_pool,res,cmd->argv[i]," ",NULL);
+    res = pstrcat(cmd->tmp_pool, res, cmd->argv[i], " ", NULL);
 
   while (res[strlen(res)-1] == ' ')
     res[strlen(res)-1] = '\0';
@@ -81,24 +81,27 @@ MODRET site_chgrp(cmd_rec *cmd) {
    * the mode, separating them with spaces.
    */
   for (i = 2; i <= cmd->argc-1; i++)
-    arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "", cmd->argv[i], NULL);
+    arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "",
+      pr_fs_decode_path(cmd->tmp_pool, cmd->argv[i]), NULL);
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
-  if (preg && regexec(preg, arg, 0, NULL, 0) != 0) {
+  if (preg &&
+      regexec(preg, arg, 0, NULL, 0) != 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
-      cmd->arg);
-    pr_response_add_err(R_550, _("%s: Forbidden filename"), arg);
+      arg);
+    pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
 
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
-  if (preg && regexec(preg, arg, 0, NULL, 0) == 0) {
+  if (preg &&
+      regexec(preg, arg, 0, NULL, 0) == 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
-      cmd->arg);
-    pr_response_add_err(R_550, _("%s: Forbidden filename"), arg);
+      arg);
+    pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
 #endif
@@ -153,24 +156,27 @@ MODRET site_chmod(cmd_rec *cmd) {
    * the mode, separating them with spaces.
    */
   for (i = 2; i <= cmd->argc-1; i++)
-    arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "", cmd->argv[i], NULL);
+    arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "",
+      pr_fs_decode_path(cmd->tmp_pool, cmd->argv[i]), NULL);
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
-  if (preg && regexec(preg, arg, 0, NULL, 0) != 0) {
+  if (preg &&
+      regexec(preg, arg, 0, NULL, 0) != 0) {
     pr_log_debug(DEBUG2, "'%s %s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->argv[1], arg);
-    pr_response_add_err(R_550, _("%s: Forbidden filename"), arg);
+    pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
 
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
-  if (preg && regexec(preg, arg, 0, NULL, 0) == 0) {
+  if (preg &&
+      regexec(preg, arg, 0, NULL, 0) == 0) {
     pr_log_debug(DEBUG2, "'%s %s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->argv[1], arg);
-    pr_response_add_err(R_550, _("%s: Forbidden filename"), arg);
+    pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
 #endif
@@ -196,33 +202,38 @@ MODRET site_chmod(cmd_rec *cmd) {
   if (endp && *endp) {
     /* It's not an absolute number, try symbolic */
     char *cp = cmd->argv[1];
-    int mask = 0,mode_op = 0,curmode = 0,curumask = umask(0);
+    int mask = 0, mode_op = 0, curmode = 0, curumask = umask(0);
     int invalid = 0;
-    char *who,*how,*what;
-    struct stat sbuf;
+    char *who, *how, *what;
+    struct stat st;
 
     umask(curumask);
     mode = 0;
 
-    if (pr_fsio_stat(dir, &sbuf) != -1)
-      curmode = sbuf.st_mode;
+    if (pr_fsio_stat(dir, &st) != -1)
+      curmode = st.st_mode;
 
     while (TRUE) {
-      who = pstrdup(cmd->tmp_pool,cp);
-      if ((tmp = strpbrk(who,"+-=")) != NULL) {
-        how = pstrdup(cmd->tmp_pool,tmp);
+      who = pstrdup(cmd->tmp_pool, cp);
+
+      tmp = strpbrk(who, "+-=");
+      if (tmp != NULL) {
+        how = pstrdup(cmd->tmp_pool, tmp);
         if (*how != '=')
           mode = curmode;
 
         *tmp = '\0';
+
       } else {
         invalid++;
         break;
       }
 
-      if ((tmp = strpbrk(how,"rwxXstugo")) != NULL) {
-        what = pstrdup(cmd->tmp_pool,tmp);
+      tmp = strpbrk(how, "rwxXstugo");
+      if (tmp != NULL) {
+        what = pstrdup(cmd->tmp_pool, tmp);
         *tmp = '\0';
+
       } else {
         invalid++;
         break;
@@ -231,99 +242,121 @@ MODRET site_chmod(cmd_rec *cmd) {
       cp = what;
       while (cp) {
         switch (*who) {
-        case 'u':
-          mask = 0077;
-          break;
-        case 'g':
-          mask = 0707;
-          break;
-        case 'o':
-          mask = 0770;
-          break;
-        case 'a':
-          mask = 0000;
-          break;
-        case '\0':
-          mask = curumask;
-          break;
-        default:
-          invalid++;
-          break;
+          case 'u':
+            mask = 0077;
+            break;
+
+          case 'g':
+            mask = 0707;
+            break;
+
+          case 'o':
+            mask = 0770;
+            break;
+
+          case 'a':
+            mask = 0000;
+            break;
+
+          case '\0':
+            mask = curumask;
+            break;
+
+          default:
+            invalid++;
+            break;
         }
 
-        if (invalid) break;
+        if (invalid)
+          break;
 
         switch (*how) {
-        case '+':
-        case '-':
-        case '=':
-          break;
-        default:
-          invalid++;
+          case '+':
+          case '-':
+          case '=':
+            break;
+
+          default:
+            invalid++;
         }
 
-        if (invalid) break;
+        if (invalid)
+          break;
 
         switch (*cp) {
-        case 'r':
-          mode_op |= (S_IRUSR|S_IRGRP|S_IROTH);
-          break;
-        case 'w':
-          mode_op |= (S_IWUSR|S_IWGRP|S_IWOTH);
-          break;
-        case 'x':
-          mode_op |= (S_IXUSR|S_IXGRP|S_IXOTH);
-          break;
-        /* 'X' not implemented */
-        case 's':
-          /* setuid */
-          mode_op |= S_ISUID;
-          break;
-        case 't':
-          /* sticky */
-          mode_op |= S_ISVTX;
-          break;
-        case 'o':
-          mode_op |= curmode & S_IRWXO;
-          mode_op |= (curmode & S_IRWXO) << 3;
-          mode_op |= (curmode & S_IRWXO) << 6;
-          break;
-        case 'g':
-          mode_op |= (curmode & S_IRWXG) >> 3;
-          mode_op |= curmode & S_IRWXG;
-          mode_op |= (curmode & S_IRWXG) << 3;
-          break;
-        case 'u':
-          mode_op |= (curmode & S_IRWXO) >> 6;
-          mode_op |= (curmode & S_IRWXO) >> 3;
-          mode_op |= curmode & S_IRWXU;
-          break;
-        case '\0':
-          /* Apply the mode and move on */
-          switch (*how) {
-          case '+':
-          case '=':
-            mode |= (mode_op & ~mask);
+          case 'r':
+            mode_op |= (S_IRUSR|S_IRGRP|S_IROTH);
             break;
-          case '-':
-            mode &= ~(mode_op & ~mask);
-            break;
-          }
 
-          mode_op = 0;
-          if (*who && *(who+1)) {
-            who++;
-            cp = what;
-            continue;
-          } else
-            cp = NULL;
-          break;
-        default:
-          invalid++;
+          case 'w':
+            mode_op |= (S_IWUSR|S_IWGRP|S_IWOTH);
+            break;
+          case 'x':
+            mode_op |= (S_IXUSR|S_IXGRP|S_IXOTH);
+            break;
+
+          /* 'X' not implemented */
+          case 's':
+            /* setuid */
+            mode_op |= S_ISUID;
+            break;
+
+          case 't':
+            /* sticky */
+            mode_op |= S_ISVTX;
+            break;
+
+          case 'o':
+            mode_op |= curmode & S_IRWXO;
+            mode_op |= (curmode & S_IRWXO) << 3;
+            mode_op |= (curmode & S_IRWXO) << 6;
+            break;
+
+          case 'g':
+            mode_op |= (curmode & S_IRWXG) >> 3;
+            mode_op |= curmode & S_IRWXG;
+            mode_op |= (curmode & S_IRWXG) << 3;
+            break;
+
+          case 'u':
+            mode_op |= (curmode & S_IRWXO) >> 6;
+            mode_op |= (curmode & S_IRWXO) >> 3;
+            mode_op |= curmode & S_IRWXU;
+            break;
+
+          case '\0':
+            /* Apply the mode and move on */
+            switch (*how) {
+              case '+':
+              case '=':
+                mode |= (mode_op & ~mask);
+                break;
+
+              case '-':
+                mode &= ~(mode_op & ~mask);
+                break;
+            }
+
+            mode_op = 0;
+            if (*who && *(who+1)) {
+              who++;
+              cp = what;
+              continue;
+
+            } else
+              cp = NULL;
+
+            break;
+
+          default:
+            invalid++;
         }
 
-        if (invalid) break;
-        if (cp) cp++;
+        if (invalid)
+          break;
+
+        if (cp)
+          cp++;
       }
       break;
     }
@@ -335,7 +368,7 @@ MODRET site_chmod(cmd_rec *cmd) {
   }
 
   if (core_chmod(cmd, dir, mode) == -1) {
-    pr_response_add_err(R_550, "%s: %s", arg, strerror(errno));
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
 
   } else
@@ -353,10 +386,10 @@ MODRET site_help(cmd_rec *cmd) {
    */
 
   if (cmd->argc == 1 || (cmd->argc == 2 &&
-      ((!strcasecmp(cmd->argv[0], "SITE") &&
-        !strcasecmp(cmd->argv[1], "HELP")) ||
-       (!strcasecmp(cmd->argv[0], "HELP") &&
-        !strcasecmp(cmd->argv[1], "SITE"))))) {
+      ((strcasecmp(cmd->argv[0], "SITE") == 0 &&
+        strcasecmp(cmd->argv[1], "HELP") == 0) ||
+       (strcasecmp(cmd->argv[0], "HELP") == 0 &&
+        strcasecmp(cmd->argv[1], "SITE") == 0)))) {
 
     for (i = 0; _help[i].cmd; i++) {
       if (_help[i].implemented)
@@ -409,7 +442,7 @@ modret_t *site_dispatch(cmd_rec *cmd) {
     if (strcmp(cmd->argv[0], site_commands[i].command) == 0) {
       if (site_commands[i].requires_auth && cmd_auth_chk &&
           !cmd_auth_chk(cmd)) {
-        pr_response_send(R_530, _("Please login with " C_USER " and " C_PASS));
+        pr_response_send(R_530, _("Please login with USER PASS"));
         return ERROR(cmd);
 
       } else
@@ -441,9 +474,11 @@ MODRET site_cmd(cmd_rec *cmd) {
   tmpcmd->argc--;
   tmpcmd->argv++;
 
-  if (tmpcmd->argc)
-    for (cp = tmpcmd->argv[0]; *cp; cp++)
+  if (tmpcmd->argc) {
+    for (cp = tmpcmd->argv[0]; *cp; cp++) {
       *cp = toupper((int) *cp);
+    }
+  }
 
   tmpcmd->notes = cmd->notes;
 
@@ -455,6 +490,7 @@ MODRET site_post_cmd(cmd_rec *cmd) {
       strcasecmp(cmd->argv[1], "help") == 0)
     pr_response_add(R_214, _("Direct comments to %s"),
       (cmd->server->ServerAdmin ? cmd->server->ServerAdmin : "ftp-admin"));
+
   return DECLINED(cmd);
 }
 

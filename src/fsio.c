@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.50 2006-03-22 22:10:34 castaglia Exp $
+ * $Id: fsio.c,v 1.51 2006-05-26 17:16:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1844,6 +1844,44 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
     sstrncpy(workpath, "/", sizeof(workpath));
 
   sstrncpy(buf, workpath, buflen);
+}
+
+char *pr_fs_decode_path(pool *p, const char *path) {
+#ifdef PR_USE_NLS
+  size_t outlen;
+  char *res;
+
+  res = pr_utf8_decode(p, path, strlen(path) + 1, &outlen);
+  if (!res) {
+    pr_trace_msg("utf8", 0, "error UTF8 decoding path '%s': %s", path,
+      strerror(errno));
+    return (char *) path;
+  }
+
+  pr_trace_msg("utf8", 5, "UTF8-decoded '%s' into '%s'", path, res);
+  return res;
+#else
+  return (char *) path;
+#endif /* PR_USE_NLS */
+}
+
+char *pr_fs_encode_path(pool *p, const char *path) {
+#ifdef PR_USE_NLS
+  size_t outlen;
+  char *res;
+
+  res = pr_utf8_encode(p, path, strlen(path) + 1, &outlen);
+  if (!res) {
+    pr_trace_msg("utf8", 0, "error UTF8 encoding path '%s': %s", path,
+      strerror(errno));
+    return (char *) path;
+  }
+
+  pr_trace_msg("utf8", 5, "UTF8-encoded '%s' into '%s'", path, res);
+  return res;
+#else
+  return (char *) path;
+#endif /* PR_USE_NLS */
 }
 
 /* This function checks the given path's prefix against the paths that

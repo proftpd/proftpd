@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.282 2006-05-25 16:55:34 castaglia Exp $
+ * $Id: main.c,v 1.283 2006-05-26 17:16:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -489,7 +489,6 @@ static void shutdown_exit(void *d1, void *d2, void *d3, void *d4) {
                    NULL );
 
     pr_response_send_async(R_421, _("FTP server shutting down - %s"), msg);
-
     session_exit(PR_LOG_NOTICE, msg, 0, NULL);
   }
 
@@ -754,8 +753,8 @@ static int idle_timeout_cb(CALLBACK_FRAME) {
 
   pr_event_generate("core.timeout-idle", NULL);
 
-  pr_response_send_async(R_421, _("Idle Timeout (%d seconds): closing control "
-    "connection"), TimeoutIdle);
+  pr_response_send_async(R_421,
+    _("Idle timeout (%d seconds): closing control connection"), TimeoutIdle);
   session_exit(PR_LOG_INFO, "FTP session idle timeout, disconnected", 0, NULL);
 
   pr_timer_remove(TIMER_LOGIN, ANY_MODULE);
@@ -817,7 +816,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
         " Server (%s) [%s]", server->ServerName, serveraddress);
 
   } else
-    pr_response_send(R_220, "%s FTP server ready", serveraddress);
+    pr_response_send(R_220, _("%s FTP server ready"), serveraddress);
 
   pr_log_pri(PR_LOG_INFO, "FTP session opened.");
 
@@ -1325,8 +1324,8 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
                reason, session.c->remote_name,
                pr_netaddr_get_ipstr(session.c->remote_addr));
 
-      pr_response_send(R_500, _("FTP server shut down (%s) -- please try again "
-        "later"), reason);
+      pr_response_send(R_500,
+        _("FTP server shut down (%s) -- please try again later"), reason);
       exit(0);
     }
   }
@@ -1335,8 +1334,14 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
    * connected to, drop them.
    */
   if (!main_server) {
-    pr_response_send(R_500, _("Sorry, no server available to handle request on "
-      "%s"), pr_netaddr_get_dnsstr(conn->local_addr));
+    pr_log_debug(DEBUG2, "No server configuration found for IP address %s",
+      pr_netaddr_get_ipstr(conn->local_addr));
+    pr_log_debug(DEBUG2, "Use the DefaultServer directive to designate "
+      "a default server configuration to handle requests like this");
+
+    pr_response_send(R_500,
+      _("Sorry, no server available to handle request on %s"),
+      pr_netaddr_get_dnsstr(conn->local_addr));
     exit(0);
   }
 
@@ -1381,8 +1386,9 @@ static void fork_server(int fd, conn_t *l, unsigned char nofork) {
     end_login(1);
 
   /* Use the ident protocol (RFC1413) to try to get remote ident_user */
-  if ((ident_lookups = get_param_ptr(main_server->conf, "IdentLookups",
-     FALSE)) == NULL || *ident_lookups == TRUE) {
+  ident_lookups = get_param_ptr(main_server->conf, "IdentLookups", FALSE);
+  if (ident_lookups == NULL ||
+      *ident_lookups == TRUE) {
     pr_log_debug(DEBUG6, "performing ident lookup");
     session.ident_lookups = TRUE;
     session.ident_user = pr_ident_lookup(session.pool, conn);

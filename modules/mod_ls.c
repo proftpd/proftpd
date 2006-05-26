@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.129 2006-05-25 16:55:34 castaglia Exp $
+ * $Id: mod_ls.c,v 1.130 2006-05-26 17:16:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -468,7 +468,8 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
           snprintf(nameline, sizeof(nameline)-1,
             "%s %3d %-8s %-8s %s %s %2d %s %s", m, (int) st.st_nlink,
             MAP_UID(st.st_uid), MAP_GID(st.st_gid), s,
-            months[t->tm_mon], t->tm_mday, timeline, name);
+            months[t->tm_mon], t->tm_mday, timeline,
+            pr_fs_encode_path(cmd->tmp_pool, name));
 
         } else {
 
@@ -476,7 +477,8 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
           snprintf(nameline, sizeof(nameline)-1,
             "%s %3d %-8u %-8u %s %s %2d %s %s", m, (int) st.st_nlink,
             (unsigned) st.st_uid, (unsigned) st.st_gid, s,
-            months[t->tm_mon], t->tm_mday, timeline, name);
+            months[t->tm_mon], t->tm_mday, timeline,
+            pr_fs_encode_path(cmd->tmp_pool, name));
         }
 
         nameline[sizeof(nameline)-1] = '\0';
@@ -518,7 +520,8 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
       if (S_ISREG(st.st_mode) ||
           S_ISDIR(st.st_mode) ||
           S_ISLNK(st.st_mode))
-           addfile(cmd, name, suffix, mtime, st.st_size);
+           addfile(cmd, pr_fs_encode_path(cmd->tmp_pool, name), suffix,
+             mtime, st.st_size);
     }
   }
 
@@ -720,12 +723,6 @@ static int outputfiles(cmd_rec *cmd) {
     p = p->down;
   if (p && p->down)
     p->down = NULL;
-
-#if 0
-  if (opt_l)
-    if (sendline("total 0\n") < 0)
-      return -1;
-#endif
 
   p = head;
   while (p) {
@@ -1050,9 +1047,11 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *name) {
 
         if (opt_STAT) {
           pr_response_add(R_211, "%s", "");
-          pr_response_add(R_211, "%s:", subdir);
+          pr_response_add(R_211, "%s:",
+            pr_fs_encode_path(cmd->tmp_pool, subdir));
 
-        } else if (sendline("\n%s:\n", subdir) < 0 ||
+        } else if (sendline("\n%s:\n",
+                     pr_fs_encode_path(cmd->tmp_pool, subdir)) < 0 ||
             sendline(NULL) < 0) {
           pop_cwd(cwd_buf, &symhold);
 
@@ -1328,7 +1327,7 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
     glob_t g;
     int globbed = FALSE;
     int a;
-    char   pbuffer[PR_TUNABLE_PATH_MAX + 1] = "";
+    char pbuffer[PR_TUNABLE_PATH_MAX + 1] = "";
     char *target;
 
     /* Make sure the glob_t is initialized. */
@@ -1363,7 +1362,8 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
       pr_fs_clear_cache();
       if (pr_fsio_stat(target, &st) < 0) {
-        pr_response_add_err(R_450, "%s: %s", target, strerror(errno));
+        pr_response_add_err(R_450, "%s: %s",
+          pr_fs_encode_path(cmd->tmp_pool, target), strerror(errno));
         return -1;
       }
     }
@@ -1466,10 +1466,12 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
           if (!justone) {
             if (opt_STAT) {
               pr_response_add(R_211, "%s", "");
-              pr_response_add(R_211, "%s:", *path);
+              pr_response_add(R_211, "%s:",
+                pr_fs_encode_path(cmd->tmp_pool, *path));
 
             } else {
-              sendline("\n%s:\n", *path);
+              sendline("\n%s:\n",
+                pr_fs_encode_path(cmd->tmp_pool, *path));
               sendline(NULL);
             }
           }
@@ -1509,13 +1511,16 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 
     } else if (!skiparg) {
       if (a == GLOB_NOSPACE)
-        pr_response_add(R_226, _("Out of memory during globbing of %s"), arg);
+        pr_response_add(R_226, _("Out of memory during globbing of %s"),
+          pr_fs_encode_path(cmd->tmp_pool, arg));
 
       else if (a == GLOB_ABORTED)
-        pr_response_add(R_226, _("Read error during globbing of %s"), arg);
+        pr_response_add(R_226, _("Read error during globbing of %s"),
+          pr_fs_encode_path(cmd->tmp_pool, arg));
 
       else if (a != GLOB_NOMATCH)
-        pr_response_add(R_226, _("Unknown error during globbing of %s"), arg);
+        pr_response_add(R_226, _("Unknown error during globbing of %s"),
+          pr_fs_encode_path(cmd->tmp_pool, arg));
     }
 
     if (!skiparg && use_globbing && globbed)
@@ -1584,7 +1589,7 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
     return 1;
 
   /* Be sure to flush the output */
-  if ((res = sendline("%s\n", file)) < 0 ||
+  if ((res = sendline("%s\n", pr_fs_encode_path(cmd->tmp_pool, file))) < 0 ||
       (res = sendline(NULL)) < 0)
     return res;
 
@@ -1699,11 +1704,16 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
         session.sf_flags |= SF_ASCII_OVERRIDE;
       }
 
-      if ((mode = file_mode(f)) == 0)
+      mode = file_mode(f);
+      if (mode == 0)
         continue;
 
       if (!curdir) {
-        if (sendline("%s/%s\n", dir, p) < 0 || sendline(NULL) < 0)
+        char *str = pr_fs_encode_path(cmd->tmp_pool,
+          pdircat(cmd->tmp_pool, dir, p, NULL));
+
+        if (sendline("%s/%s\n", str) < 0 ||
+            sendline(NULL) < 0)
           count = -1;
 
         else {
@@ -1724,7 +1734,8 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
         }
 
       } else {
-        if (sendline("%s\n", p) < 0 || sendline(NULL) < 0)
+        if (sendline("%s\n", pr_fs_encode_path(cmd->tmp_pool, p)) < 0 ||
+            sendline(NULL) < 0)
           count = -1;
 
         else {
@@ -1821,7 +1832,7 @@ MODRET genericlist(cmd_rec *cmd) {
   if (tmp != NULL)
     list_times_gmt = *tmp;
 
-  res = dolist(cmd, cmd->arg, TRUE);
+  res = dolist(cmd, pr_fs_decode_path(cmd->tmp_pool, cmd->arg), TRUE);
 
   if (XFER_ABORTED) {
     pr_data_abort(0, 0);
@@ -1906,6 +1917,8 @@ MODRET ls_stat(cmd_rec *cmd) {
   list_nfiles.curr = list_ndirs.curr = list_ndepth.curr = 0;
   list_nfiles.logged = list_ndirs.logged = list_ndepth.logged = FALSE;
 
+  arg = pr_fs_decode_path(cmd->tmp_pool, arg);
+
   /* Get to the actual argument. */
   if (*arg == '-')
     while (arg && *arg && !isspace((int) *arg)) arg++;
@@ -1963,7 +1976,9 @@ MODRET ls_stat(cmd_rec *cmd) {
   opt_C = opt_d = opt_F = opt_R = 0;
   opt_a = opt_l = opt_STAT = 1;
 
-  pr_response_add(R_211, _("Status of %s:"), arg && *arg ? arg : ".");
+  pr_response_add(R_211, _("Status of %s:"), arg && *arg ?
+    pr_fs_encode_path(cmd->tmp_pool, arg) :
+    pr_fs_encode_path(cmd->tmp_pool, "."));
   res = dolist(cmd, arg && *arg ? arg : ".", FALSE);
   pr_response_add(R_211, _("End of status"));
   return (res == -1 ? ERROR(cmd) : HANDLED(cmd));
@@ -1996,7 +2011,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
   if (tmp != NULL)
     list_show_symlinks = *tmp;
 
-  target = cmd->argc == 1 ? "." : cmd->arg;
+  target = cmd->argc == 1 ? "." :
+    pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
 
   c = find_config(CURRENT_CONF, CONF_PARAM, "ListOptions", FALSE);
   if (c != NULL) {
@@ -2103,7 +2119,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
     target[strlen(target)-1] = '\0';
 
   /* If the target is a glob, get the listing of files/dirs to send. */
-  if (use_globbing && strpbrk(target, "{[*?") != NULL) {
+  if (use_globbing &&
+      strpbrk(target, "{[*?") != NULL) {
     glob_t g;
     char **path,*p;
 
@@ -2128,10 +2145,10 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
       if (pr_fsio_stat(p, &st) == 0) {
         /* If it's a directory, hand off to nlstdir */
-        if (S_ISDIR(st.st_mode))
+        if (S_ISDIR(st.st_mode)) {
           res = nlstdir(cmd, p);
 
-        else if (S_ISREG(st.st_mode) &&
+        } else if (S_ISREG(st.st_mode) &&
             ls_perms(cmd->tmp_pool, cmd, p, &hidden)) {
           /* Don't display hidden files */
           if (hidden)
@@ -2155,8 +2172,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
     struct stat st;
 
     if (!ls_perms_full(cmd->tmp_pool, cmd, target, &hidden)) {
-      pr_response_add_err(R_450, "%s: %s", *cmd->arg ? cmd->arg : session.vwd,
-        strerror(errno));
+      pr_response_add_err(R_450, "%s: %s", *cmd->arg ? cmd->arg :
+        pr_fs_encode_path(cmd->tmp_pool, session.vwd), strerror(errno));
       return ERROR(cmd);
     }
 
@@ -2168,10 +2185,14 @@ MODRET ls_nlst(cmd_rec *cmd) {
         unsigned char *ignore_hidden = get_param_ptr(c->subset,
           "IgnoreHidden", FALSE);
 
-        if (ignore_hidden && *ignore_hidden == TRUE)
-          pr_response_add_err(R_450, "%s: %s", target, strerror(ENOENT));
-        else
-          pr_response_add_err(R_450, "%s: %s", target, strerror(EACCES));
+        if (ignore_hidden && *ignore_hidden == TRUE) {
+          pr_response_add_err(R_450, "%s: %s",
+            pr_fs_encode_path(cmd->tmp_pool, target), strerror(ENOENT));
+
+        } else {
+          pr_response_add_err(R_450, "%s: %s",
+            pr_fs_encode_path(cmd->tmp_pool, target), strerror(EACCES));
+        }
 
         return ERROR(cmd);
       }
@@ -2186,10 +2207,10 @@ MODRET ls_nlst(cmd_rec *cmd) {
       return ERROR(cmd);
     }
 
-    if (S_ISREG(st.st_mode))
+    if (S_ISREG(st.st_mode)) {
       res = nlstfile(cmd, target);
 
-    else if (S_ISDIR(st.st_mode)) {
+    } else if (S_ISDIR(st.st_mode)) {
       if (pr_fsio_access(target, R_OK, session.uid, session.gid,
           session.gids) != 0) {
         pr_response_add_err(R_450, "%s: %s", cmd->arg, strerror(errno));
@@ -2227,8 +2248,9 @@ MODRET ls_nlst(cmd_rec *cmd) {
 MODRET ls_post_pass(cmd_rec *cmd) {
   unsigned char *globbing = NULL;
 
-  if ((globbing = get_param_ptr(TOPLEVEL_CONF, "UseGlobbing",
-      FALSE)) != NULL && *globbing == FALSE) {
+  globbing = get_param_ptr(TOPLEVEL_CONF, "UseGlobbing", FALSE);
+  if (globbing != NULL &&
+      *globbing == FALSE) {
     pr_log_debug(DEBUG3, "UseGlobbing: disabling globbing functionality");
     use_globbing = FALSE;
   }

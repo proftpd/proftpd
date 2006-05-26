@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.201 2006-05-25 16:55:34 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.202 2006-05-26 17:16:40 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1016,9 +1016,11 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  dir = dir_best_path(cmd->tmp_pool, cmd->arg);
+  dir = dir_best_path(cmd->tmp_pool,
+    pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
 
-  if (!dir || !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL)) {
+  if (!dir ||
+      !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL)) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
   }
@@ -1034,7 +1036,9 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  if (fmode && !S_ISREG(fmode) && !S_ISFIFO(fmode)) {
+  if (fmode &&
+      !S_ISREG(fmode) &&
+      !S_ISFIFO(fmode)) {
     pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
     return ERROR(cmd);
   }
@@ -1061,8 +1065,9 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_NOTICE, "notice: error adding 'mod_xfer.store-path': %s",
       strerror(errno));
 
-  if ((hidden_stores = get_param_ptr(CURRENT_CONF, "HiddenStores",
-      FALSE)) != NULL && *hidden_stores == TRUE) {
+  hidden_stores = get_param_ptr(CURRENT_CONF, "HiddenStores", FALSE);
+  if (hidden_stores!= NULL &&
+      *hidden_stores == TRUE) {
 
     if (get_hidden_store_path(cmd, dir) < 0)
       return ERROR(cmd);
@@ -1164,7 +1169,8 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
   }
 
   /* Not likely to _not_ be a regular file, but just to be certain... */
-  if (mode && !S_ISREG(mode)) {
+  if (mode &&
+      !S_ISREG(mode)) {
     (void) pr_fsio_unlink(cmd->arg);
     pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
     return ERROR(cmd);
@@ -1602,7 +1608,8 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  dir = dir_realpath(cmd->tmp_pool, cmd->arg);
+  dir = dir_realpath(cmd->tmp_pool,
+    pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
 
   if (!dir ||
       !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL)) {
@@ -1999,8 +2006,9 @@ static int noxfer_timeout_cb(CALLBACK_FRAME) {
     return 1;
 
   pr_event_generate("core.timeout-no-transfer", NULL);
-  pr_response_send_async(R_421, "No Transfer Timeout (%d seconds): closing "
-    "control connection.", TimeoutNoXfer);
+  pr_response_send_async(R_421,
+    _("No transfer timeout (%d seconds): closing control connection"),
+    TimeoutNoXfer);
 
   pr_timer_remove(TIMER_IDLE, ANY_MODULE);
   pr_timer_remove(TIMER_LOGIN, ANY_MODULE);
@@ -2033,7 +2041,8 @@ MODRET set_allowoverwrite(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
     CONF_DIR|CONF_DYNDIR);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -2052,7 +2061,8 @@ MODRET set_allowrestart(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
     CONF_DIR|CONF_DYNDIR);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -2071,7 +2081,8 @@ MODRET set_deleteabortedstores(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
     CONF_DIR|CONF_DYNDIR);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -2098,7 +2109,8 @@ MODRET set_hiddenstores(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param("HiddenStores", 1, NULL);
