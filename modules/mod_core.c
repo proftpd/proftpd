@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.282 2006-05-25 16:55:34 castaglia Exp $
+ * $Id: mod_core.c,v 1.283 2006-05-26 17:20:08 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2968,7 +2968,7 @@ MODRET core_quit(cmd_rec *cmd) {
     pr_response_send(R_221, "%s", "");
 
   } else
-    pr_response_send(R_221, "Goodbye.");
+    pr_response_send(R_221, _("Goodbye."));
 
   /* The LOG_CMD handler for QUIT is responsible for actually ending
    * the session.
@@ -2994,7 +2994,7 @@ MODRET core_log_quit(cmd_rec *cmd) {
  * the add'l quotes must be duplicated.
  */
 
-static char *quote_dir(cmd_rec *cmd, char *dir) {
+static const char *quote_dir(cmd_rec *cmd, char *dir) {
   return sreplace(cmd->tmp_pool, dir, "\"", "\"\"", NULL);
 }
 
@@ -3007,7 +3007,7 @@ MODRET core_pwd(cmd_rec *cmd) {
   }
 
   pr_response_add(R_257, _("\"%s\" is the current directory"),
-    quote_dir(cmd, session.vwd));
+    quote_dir(cmd, pr_fs_encode_path(cmd->tmp_pool, session.vwd)));
 
   return HANDLED(cmd);
 }
@@ -3780,21 +3780,25 @@ MODRET core_rmd(cmd_rec *cmd) {
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
+  dir = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
-  if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
+  if (preg &&
+      regexec(preg, dir, 0, NULL, 0) != 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
-      cmd->arg);
+      dir);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
 
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
-  if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
+  if (preg &&
+      regexec(preg, dir, 0, NULL, 0) == 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
-      cmd->arg);
+      dir);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
@@ -3803,7 +3807,7 @@ MODRET core_rmd(cmd_rec *cmd) {
   /* If told to rmdir a symlink to a directory, don't; you can't rmdir a
    * symlink, you delete it.
    */
-  dir = dir_canonical_path(cmd->tmp_pool, cmd->arg);
+  dir = dir_canonical_path(cmd->tmp_pool, dir);
 
   if (!dir ||
       !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL) ||
@@ -3831,27 +3835,31 @@ MODRET core_mkd(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
+  dir = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
     preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
-    if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
+    if (preg &&
+        regexec(preg, dir, 0, NULL, 0) != 0) {
       pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
-        cmd->arg);
+        dir);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
       return ERROR(cmd);
     }
 
     preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
-    if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
+    if (preg &&
+        regexec(preg, dir, 0, NULL, 0) == 0) {
       pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
-        cmd->arg);
+        dir);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
       return ERROR(cmd);
     }
 #endif
 
-  dir = dir_canonical_path(cmd->tmp_pool, cmd->arg);
+  dir = dir_canonical_path(cmd->tmp_pool, dir);
 
   if (!dir ||
       !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL) ||
@@ -3906,8 +3914,11 @@ MODRET core_mkd(cmd_rec *cmd) {
 }
 
 MODRET core_cwd(cmd_rec *cmd) {
+  char *dir;
   CHECK_CMD_MIN_ARGS(cmd, 2);
-  return _chdir(cmd, cmd->arg);
+
+  dir = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+  return _chdir(cmd, dir);
 }
 
 MODRET core_cdup(cmd_rec *cmd) {
@@ -3929,37 +3940,39 @@ MODRET core_mdtm(cmd_rec *cmd) {
   char *path;
   char buf[16] = {'\0'};
   struct tm *tm;
-  struct stat sbuf;
+  struct stat st;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
-  path = dir_realpath(cmd->tmp_pool, cmd->arg);
+  path = dir_realpath(cmd->tmp_pool,
+    pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
 
   if (!path ||
       !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
-      pr_fsio_stat(path, &sbuf) == -1) {
+      pr_fsio_stat(path, &st) == -1) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
 
   } else {
 
-    if (!S_ISREG(sbuf.st_mode)) {
-      pr_response_add_err(R_550, _("%s: not a plain file"), cmd->argv[1]);
+    if (!S_ISREG(st.st_mode)) {
+      pr_response_add_err(R_550, _("%s: not a plain file"), cmd->arg);
       return ERROR(cmd);
 
     } else {
       unsigned char *times_gmt = get_param_ptr(TOPLEVEL_CONF,
         "TimesGMT", FALSE);
 
-      if (!times_gmt || *times_gmt == TRUE)
-         tm = pr_gmtime(cmd->tmp_pool, &sbuf.st_mtime);
+      if (!times_gmt || 
+          *times_gmt == TRUE)
+         tm = pr_gmtime(cmd->tmp_pool, &st.st_mtime);
       else
-         tm = pr_localtime(cmd->tmp_pool, &sbuf.st_mtime);
+         tm = pr_localtime(cmd->tmp_pool, &st.st_mtime);
 
       if (tm)
         snprintf(buf, sizeof(buf), "%04d%02d%02d%02d%02d%02d",
-                tm->tm_year+1900,tm->tm_mon+1,tm->tm_mday,
-                tm->tm_hour,tm->tm_min,tm->tm_sec);
+          tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour,
+          tm->tm_min, tm->tm_sec);
       else
         snprintf(buf, sizeof(buf), "00000000000000");
 
@@ -3972,7 +3985,7 @@ MODRET core_mdtm(cmd_rec *cmd) {
 
 MODRET core_size(cmd_rec *cmd) {
   char *path;
-  struct stat sbuf;
+  struct stat st;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
@@ -3983,21 +3996,22 @@ MODRET core_size(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  path = dir_realpath(cmd->tmp_pool, cmd->arg);
+  path = dir_realpath(cmd->tmp_pool,
+    pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
 
   if (!path ||
       !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
-      pr_fsio_stat(path, &sbuf) == -1) {
+      pr_fsio_stat(path, &st) == -1) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     return ERROR(cmd);
 
   } else {
-    if (!S_ISREG(sbuf.st_mode)) {
+    if (!S_ISREG(st.st_mode)) {
       pr_response_add_err(R_550, _("%s: not a regular file"), cmd->arg);
       return ERROR(cmd);
 
     } else
-      pr_response_add(R_213, "%" PR_LU, (pr_off_t) sbuf.st_size);
+      pr_response_add(R_213, "%" PR_LU, (pr_off_t) st.st_size);
   }
 
   return HANDLED(cmd);
@@ -4013,28 +4027,32 @@ MODRET core_dele(cmd_rec *cmd) {
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
+  path = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
-  if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
+  if (preg &&
+      regexec(preg, path, 0, NULL, 0) != 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
-      cmd->arg);
+      path);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
 
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
-  if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
+  if (preg &&
+      regexec(preg, path, 0, NULL, 0) == 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
-      cmd->arg);
+      path);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
 #endif
 
   /* If told to delete a symlink, don't delete the file it points to!  */
-  path = dir_canonical_path(cmd->tmp_pool, cmd->arg);
+  path = dir_canonical_path(cmd->tmp_pool, path);
 
   /* Stat the path, before it is deleted, so that the size of the file
    * being deleted can be logged.
@@ -4049,7 +4067,7 @@ MODRET core_dele(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
-  fullpath = dir_abs_path(cmd->tmp_pool, cmd->arg, TRUE);
+  fullpath = dir_abs_path(cmd->tmp_pool, path, TRUE);
 
   if (session.sf_flags & SF_ANON) {
     xferlog_write(0, session.c->remote_name, st.st_size, fullpath,
@@ -4086,27 +4104,31 @@ MODRET core_rnto(cmd_rec *cmd) {
     return ERROR(cmd);
   }
 
+  path = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
-  if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
+  if (preg &&
+      regexec(preg, path, 0, NULL, 0) != 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
-      cmd->arg);
+      path);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
 
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
-  if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
+  if (preg &&
+      regexec(preg, path, 0, NULL, 0) == 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
-      cmd->arg);
+      path);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
 #endif
 
-  path = dir_canonical_path(cmd->tmp_pool, cmd->arg);
+  path = dir_canonical_path(cmd->tmp_pool, path);
 
   allow_overwrite = get_param_ptr(CURRENT_CONF, "AllowOverwrite", FALSE);
 
@@ -4164,28 +4186,32 @@ MODRET core_rnfr(cmd_rec *cmd) {
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
+  path = pr_fs_decode_path(cmd->tmp_pool, cmd->arg);
+
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
 
-  if (preg && regexec(preg, cmd->arg, 0, NULL, 0) != 0) {
+  if (preg &&
+      regexec(preg, path, 0, NULL, 0) != 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
-      cmd->arg);
+      path);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
 
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
 
-  if (preg && regexec(preg, cmd->arg, 0, NULL, 0) == 0) {
+  if (preg &&
+      regexec(preg, path, 0, NULL, 0) == 0) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
-      cmd->arg);
+      path);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
     return ERROR(cmd);
   }
 #endif
 
   /* Allow renaming a symlink, even a dangling one. */
-  path = dir_canonical_path(cmd->tmp_pool, cmd->arg);
+  path = dir_canonical_path(cmd->tmp_pool, path);
 
   if (!path ||
       !dir_check_canon(cmd->tmp_pool, cmd->argv[0], cmd->group, path, NULL) ||
