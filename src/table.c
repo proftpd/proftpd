@@ -23,7 +23,7 @@
  */
 
 /* Table API implementation
- * $Id: table.c,v 1.8 2006-04-16 22:45:54 castaglia Exp $
+ * $Id: table.c,v 1.9 2006-05-26 16:43:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1008,8 +1008,8 @@ void pr_table_dump(void (*dumpf)(const char *fmt, ...), pr_table_t *tab) {
     while (ent) {
       pr_signals_handle();
 
-      dumpf("[chain %u#%u] '%s' => '%s'", i, j++, ent->key->key_data,
-        ent->value_data);
+      dumpf("[chain %u#%u] '%s' => '%s' (%u)", i, j++, ent->key->key_data,
+        ent->value_data, ent->value_datasz);
       ent = ent->next;
     }
   }

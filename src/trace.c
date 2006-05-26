@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.2 2006-05-18 16:45:10 castaglia Exp $
+ * $Id: trace.c,v 1.3 2006-05-26 16:43:15 castaglia Exp $
  */
 
 
@@ -195,7 +195,8 @@ int pr_trace_set_level(const char *channel, int level) {
     return -1;
   }
 
-  if (!trace_tab && level < 0)
+  if (!trace_tab &&
+      level < 0)
     return 0;
 
   if (!trace_pool) {
@@ -216,11 +217,14 @@ int pr_trace_set_level(const char *channel, int level) {
       int count = pr_table_exists(trace_tab, channel);
 
       if (count <= 0) {
-        if (pr_table_add(trace_tab, channel, value, sizeof(int)) < 0)
+        if (pr_table_add(trace_tab, pstrdup(trace_pool, channel), value,
+            sizeof(int)) < 0) {
           return -1;
+        }
 
       } else {
-        if (pr_table_set(trace_tab, channel, value, sizeof(int)) < 0)
+        if (pr_table_set(trace_tab, pstrdup(trace_pool, channel), value,
+            sizeof(int)) < 0)
           return -1;
       }
 
