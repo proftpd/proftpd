@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.3 2006-05-26 16:43:15 castaglia Exp $
+ * $Id: trace.c,v 1.4 2006-05-26 16:59:21 castaglia Exp $
  */
 
 
@@ -77,28 +77,11 @@ static void trace_restart_ev(const void *event_data, void *user_data) {
 
 static int trace_write(const char *channel, int level, const char *msg) {
   char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
-  char serverinfo[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   time_t now;
   struct tm *t;
 
   if (trace_logfd < 0)
     return 0;
-
-  memset(serverinfo, '\0', sizeof(serverinfo));
-
-  if (main_server && main_server->ServerFQDN) {
-    snprintf(serverinfo, sizeof(serverinfo), "%s", main_server->ServerFQDN);
-    serverinfo[sizeof(serverinfo)-1] = '\0';
-
-    if (session.c && session.c->remote_name) {
-      snprintf(serverinfo + strlen(serverinfo),
-        sizeof(serverinfo) - strlen(serverinfo), " (%s[%s])",
-        session.c->remote_name,
-        pr_netaddr_get_ipstr(session.c->remote_addr));
-
-      serverinfo[sizeof(serverinfo)-1] = '\0';
-    }
-  }
 
   now = time(NULL);
   t = localtime(&now);
@@ -106,8 +89,7 @@ static int trace_write(const char *channel, int level, const char *msg) {
   buf[sizeof(buf) - 1] = '\0';
 
   snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-    " [%u]: %s: <%s:%d> %s\n", (unsigned int) getpid(),  serverinfo,
-    channel, level, msg);
+    " [%u] <%s:%d>: %s\n", (unsigned int) getpid(), channel, level, msg);
 
   buf[sizeof(buf) - 1] = '\0';
   return write(trace_logfd, buf, strlen(buf));
