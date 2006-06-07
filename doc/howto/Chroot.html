@@ -1,4 +1,4 @@
-<!-- $Id: Chroot.html,v 1.3 2004-04-10 18:01:18 castaglia Exp $ -->
+<!-- $Id: Chroot.html,v 1.4 2006-06-07 16:50:53 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Chroot.html,v $ -->
 
 <html>
@@ -180,9 +180,15 @@ these mounts added.  Consult your local <code>fstab(5)</code> (or
 <code>vfstab(4)</code> for Solaris) man pages for more information.
 
 <p>
+<b>Chroots and Remote Filesystems</b><br>
+If the chroot directories for your users happen to reside on an NFS
+partition, then you need to make sure that root privileges are <b>not</b>
+blocked (<i>e.g.</i> often referred to as "root squash") by the NFS
+mount.  Otherwise, the chroot will fail.
+
+<p>
 <hr>
-Contributor: Rod Whitworth &lt;rodw <i>at</i> witworx <i>dot</i> com&gt;<br>
-Last Updated: $Date: 2004-04-10 18:01:18 $<br>
+Last Updated: $Date: 2006-06-07 16:50:53 $<br>
 <hr>
 
 </body>
