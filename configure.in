@@ -536,7 +536,7 @@ AC_ARG_ENABLE(devel,
       fi
 
       if test `echo $enableval | grep -c profile` = "1" ; then
-        pr_devel_cflage="-p -pg $pr_devel_cflags"
+        pr_devel_cflags="-p -pg $pr_devel_cflags"
         pr_devel_libs="-pg $pr_devel_libs"
       fi
 
