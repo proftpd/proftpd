@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.107 2006-06-08 19:00:35 castaglia Exp $
+ * $Id: mod_sql.c,v 1.108 2006-06-08 19:07:51 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3660,7 +3660,17 @@ MODRET set_sqllog(cmd_rec *cmd) {
       c = add_config_param_str(name, 1, cmd->argv[2]);
     }
 
-    c->flags |= CF_MERGEDOWN;
+    if (pr_module_exists("mod_ifsession.c")) {
+      /* If the mod_ifsession module is in use, then we need to set the
+       * CF_MERGEDOWN_MULTI flag, so that SQLLog directives that appear
+       * in mod_ifsession's <IfClass>/<IfGroup>/<IfUser> sections work
+       * properly.
+       */
+      c->flags |= CF_MERGEDOWN_MULTI;
+
+    } else {
+      c->flags |= CF_MERGEDOWN;
+    }
   }
   
   return HANDLED(cmd);
@@ -3746,7 +3756,18 @@ MODRET set_sqlshowinfo(cmd_rec *cmd) {
     name = pstrcat(cmd->tmp_pool, "SQLShowInfo_", name, NULL);
     
     c = add_config_param_str(name, 2, cmd->argv[2], cmd->argv[3]);
-    c->flags |= CF_MERGEDOWN;
+
+    if (pr_module_exists("mod_ifsession.c")) {
+      /* If the mod_ifsession module is in use, then we need to set the
+       * CF_MERGEDOWN_MULTI flag, so that SQLShowInfo directives that appear
+       * in mod_ifsession's <IfClass>/<IfGroup>/<IfUser> sections work
+       * properly.
+       */
+      c->flags |= CF_MERGEDOWN_MULTI;
+
+    } else {
+      c->flags |= CF_MERGEDOWN;
+    }
   }
 
   return HANDLED(cmd);
