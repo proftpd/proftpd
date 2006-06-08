@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.106 2006-04-21 01:59:45 castaglia Exp $
+ * $Id: mod_sql.c,v 1.107 2006-06-08 19:00:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -3623,7 +3623,7 @@ MODRET set_sqlhomedirondemand(cmd_rec *cmd) {
 
 /* usage: SQLLog cmdlist query-name */
 MODRET set_sqllog(cmd_rec *cmd) {
-  config_rec * c;
+  config_rec *c;
   char *name, *namep;
   char *cmds;
   char *iterator;
@@ -3660,7 +3660,7 @@ MODRET set_sqllog(cmd_rec *cmd) {
       c = add_config_param_str(name, 1, cmd->argv[2]);
     }
 
-    c->flags |= CF_MERGEDOWN_MULTI;
+    c->flags |= CF_MERGEDOWN;
   }
   
   return HANDLED(cmd);
@@ -3680,7 +3680,7 @@ MODRET set_sqlnamedquery(cmd_rec *cmd) {
   config_rec *c = NULL;
   char *name = NULL;
 
-  CHECK_CONF(cmd, CONF_ROOT | CONF_GLOBAL | CONF_VIRTUAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
 
   if (cmd->argc < 3) {
     CONF_ERROR( cmd, "requires at least 2 arguments" );
@@ -3746,7 +3746,7 @@ MODRET set_sqlshowinfo(cmd_rec *cmd) {
     name = pstrcat(cmd->tmp_pool, "SQLShowInfo_", name, NULL);
     
     c = add_config_param_str(name, 2, cmd->argv[2], cmd->argv[3]);
-    c->flags |= CF_MERGEDOWN_MULTI;
+    c->flags |= CF_MERGEDOWN;
   }
 
   return HANDLED(cmd);
@@ -3918,11 +3918,11 @@ static int sql_openlog(void) {
   int res = 0;
 
   /* Sanity checks */
-  if ((sql_logfile = get_param_ptr(main_server->conf, "SQLLogFile",
-      FALSE)) == NULL)
+  sql_logfile = get_param_ptr(main_server->conf, "SQLLogFile", FALSE);
+  if (sql_logfile == NULL)
     return 0;
 
-  if (!strcasecmp(sql_logfile, "none")) {
+  if (strcasecmp(sql_logfile, "none") == 0) {
     sql_logfile = NULL;
     return 0;
   }
