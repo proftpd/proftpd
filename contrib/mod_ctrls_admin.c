@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ctrls_admin -- a module implementing admin control handlers
  *
- * Copyright (c) 2000-2005 TJ Saunders
+ * Copyright (c) 2000-2006 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,14 +25,14 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.24 2006-05-18 15:38:44 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.25 2006-06-09 17:21:22 castaglia Exp $
  */
 
 #include "conf.h"
 #include "privs.h"
 #include "mod_ctrls.h"
 
-#define MOD_CTRLS_ADMIN_VERSION		"mod_ctrls_admin/0.9.4"
+#define MOD_CTRLS_ADMIN_VERSION		"mod_ctrls_admin/0.9.5"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030001
@@ -555,6 +555,34 @@ static int ctrls_handle_restart(pr_ctrls_t *ctrl, int reqargc,
 
   pr_ctrls_add_response(ctrl, "restarted server");
   return 0;
+}
+
+static int ctrls_handle_scoreboard(pr_ctrls_t *ctrl, int reqargc,
+    char **reqargv) {
+
+  /* Check the scoreboard ACL. */
+  if (!ctrls_check_acl(ctrl, ctrls_admin_acttab, "scoreboard")) {
+
+    /* Access denied. */
+    pr_ctrls_add_response(ctrl, "access denied");
+    return -1;
+  }
+
+  if (reqargc != 1) {
+    pr_ctrls_add_response(ctrl, "bad number of arguments");
+    return -1;
+  }
+
+  if (strcmp(reqargv[0], "clean") == 0 ||
+      strcmp(reqargv[0], "scrub") == 0) {
+
+    pr_scoreboard_scrub();
+    pr_ctrls_add_response(ctrl, "scrubbed scoreboard");
+    return 0;
+  }
+
+  pr_ctrls_add_response(ctrl, "unknown scoreboard action '%s'", reqargv[0]);
+  return -1;
 }
 
 static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
@@ -1136,6 +1164,8 @@ static ctrls_acttab_t ctrls_admin_acttab[] = {
     ctrls_handle_kick },
   { "restart",  "restart the daemon (similar to using HUP)",	NULL,
     ctrls_handle_restart },
+  { "scoreboard", "clean the ScoreboardFile", NULL,
+    ctrls_handle_scoreboard },
   { "shutdown", "shutdown the daemon",	NULL,
     ctrls_handle_shutdown },
   { "status",	"display status of servers",		NULL,
@@ -1178,5 +1208,8 @@ module ctrls_admin_module = {
   ctrls_admin_init,
 
   /* Session initialization function */
-  NULL
+  NULL,
+
+  /* Module version */
+  MOD_CTRLS_ADMIN_VERSION
 };

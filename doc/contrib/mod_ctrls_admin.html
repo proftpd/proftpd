@@ -1,4 +1,4 @@
-<!-- $Id: mod_ctrls_admin.html,v 1.3 2005-04-30 19:59:28 castaglia Exp $ -->
+<!-- $Id: mod_ctrls_admin.html,v 1.4 2006-06-09 17:21:22 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_ctrls_admin.html,v $ -->
 
 <html>
@@ -15,8 +15,8 @@
 <hr><br>
 
 This module is contained in the <code>mod_ctrls_admin.c</code> file for
-ProFTPD 1.2, and is not compiled by default.  Installation instructions are
-discussed <a href="#Installation">here</a>.
+ProFTPD 1.2.<i>x</i>/1.3.<i>x</i>, and is not compiled by default.
+Installation instructions are discussed <a href="#Installation">here</a>.
 
 <p>
 This module implements administrative control actions for the
@@ -46,6 +46,7 @@ questions, concerns, or suggestions regarding this module.
   <li><a href="#get"><code>get</code></a>
   <li><a href="#kick"><code>kick</code></a>
   <li><a href="#restart"><code>restart</code></a>
+  <li><a href="#scoreboard"><code>scoreboard</code></a>
   <li><a href="#shutdown"><code>shutdown</code></a>
   <li><a href="#status"><code>status</code></a>
   <li><a href="#up"><code>up</code></a>
@@ -279,6 +280,23 @@ privileges, nor knowledge of the daemon's PID, to restart the daemon.
 
 <p>
 <hr>
+<h2><a name="scoreboard"><code>scoreboard</code></a></h2>
+<strong>Syntax:</strong> ftpdctl scoreboard scrub<br>
+<strong>Purpose:</strong> Scrubs the ScoreboardFile for dead processes
+
+<p>
+The <code>scoreboard</code> control action can be used to force the
+<code>ScoreboardFile</code> to be &quot;scrubbed&quot; for dead session
+processes which may not have exited cleanly.
+<pre>
+  ftpdctl scoreboard scrub
+
+  # The verb "clean" is synonymous with "scrub"
+  ftpdctl scoreboard clean
+</pre>
+
+<p>
+<hr>
 <h2><a name="shutdown"><code>shutdown</code></a></h2>
 <strong>Syntax:</strong> ftpdctl shutdown <em>[&quot;graceful&quot; seconds]</em><br>
 <strong>Purpose:</strong> Stop the daemon
@@ -348,7 +366,7 @@ steps for using third-party modules in ProFTPD:
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2005-04-30 19:59:28 $</i><br>
+Last Updated: <i>$Date: 2006-06-09 17:21:22 $</i><br>
 
 <br><hr>
 

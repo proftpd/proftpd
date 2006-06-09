@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.283 2006-05-26 17:20:08 castaglia Exp $
+ * $Id: mod_core.c,v 1.284 2006-06-09 17:21:22 castaglia Exp $
  */
 
 #include "conf.h"
@@ -117,103 +117,12 @@ static ssize_t get_num_bytes(char *nbytes_str) {
   return PR_BYTES_BAD_FORMAT;
 }
 
-static void scrub_scoreboard(void *data) {
-  int fd = -1;
-  off_t curr_offset = 0;
-  struct flock lock;
-  pr_scoreboard_entry_t entry;
-
-  pr_log_debug(DEBUG9, "scrubbing scoreboard");
-
-  /* Manually open the scoreboard.  It won't hurt if the process already
-   * has a descriptor opened on the scoreboard file.
-   */
-  PRIVS_ROOT
-  fd = open(pr_get_scoreboard(), O_RDWR);
-  PRIVS_RELINQUISH
-
-  if (fd < 0) {
-    pr_log_debug(DEBUG1, "unable to scrub ScoreboardFile '%s': %s",
-      pr_get_scoreboard(), strerror(errno));
-    return;
-  }
-
-  /* Lock the entire scoreboard. */
-  lock.l_type = F_WRLCK;
-  lock.l_whence = 0;
-  lock.l_start = 0;
-  lock.l_len = 0;
-
-  while (fcntl(fd, F_SETLKW, &lock) < 0) {
-    if (errno == EINTR) {
-      pr_signals_handle();
-      continue;
- 
-    } else
-      return;
-  }
-
-  /* Skip past the scoreboard header. */
-  curr_offset = lseek(fd, sizeof(pr_scoreboard_header_t), SEEK_SET);
-
-  memset(&entry, 0, sizeof(entry));
-
-  PRIVS_ROOT
-  while (read(fd, &entry, sizeof(entry)) == sizeof(entry)) {
-
-    /* Check to see if the PID in this entry is valid.  If not, erase
-     * the slot.
-     */
-    if (entry.sce_pid &&
-        kill(entry.sce_pid, 0) < 0 &&
-        errno == ESRCH) {
-
-      /* OK, the recorded PID is no longer valid. */
-      pr_log_debug(DEBUG9, "scrubbing scoreboard slot for PID %u",
-        (unsigned int) entry.sce_pid);
-   
-      /* Rewind to the start of this slot. */ 
-      lseek(fd, curr_offset, SEEK_SET); 
-
-      memset(&entry, 0, sizeof(entry));
-      while (write(fd, &entry, sizeof(entry)) != sizeof(entry)) {
-        if (errno == EINTR) {
-          pr_signals_handle();
-          continue;
-        } else
-          pr_log_debug(DEBUG0, "error scrubbing scoreboard: %s",
-            strerror(errno));
-      }
-    }
-
-    /* Mark the current offset. */
-    curr_offset = lseek(fd, 0, SEEK_CUR);
-  }
-  PRIVS_RELINQUISH
- 
-  /* Release the scoreboard. */
-  lock.l_type = F_UNLCK;
-  lock.l_whence = SEEK_SET;
-  lock.l_start = 0;
-  lock.l_len = 0;
-
-  while (fcntl(fd, F_SETLK, &lock) < 0) {
-    if (errno == EINTR) {
-      pr_signals_handle();
-      continue;
-    }
-  }
-
-  /* Don't need the descriptor anymore. */
-  close(fd);
-}
-
 static int core_scrub_scoreboard_cb(CALLBACK_FRAME) {
 
   /* Always return 1 when leaving this function, to make sure the timer
    * gets called again.
    */
-  scrub_scoreboard(NULL);
+  pr_scoreboard_scrub();
 
   return 1;
 }
@@ -4381,7 +4290,7 @@ static const char *core_get_sess_files_str(void *data, size_t datasz) {
  */
 
 static void core_restart_ev(const void *event_data, void *user_data) {
-  scrub_scoreboard(NULL);
+  pr_scoreboard_scrub();
 }
 
 static void core_startup_ev(const void *event_data, void *user_data) {
@@ -4583,7 +4492,7 @@ static int core_sess_init(void) {
    * things itself.
    */
   if (ServerType == SERVER_INETD)
-    scrub_scoreboard(NULL);
+    pr_scoreboard_scrub();
 
   /* Set some Variable entries for Display files. */
   if (pr_var_set(session.pool, "%{total_bytes_in}",
