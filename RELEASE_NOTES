@@ -49,6 +49,12 @@ files.
 
       doc/howto/CreateHome.html
 
+  + Module enhancements:
+
+     mod_ctrls_admin
+       New 'scoreboard' control action, for scrubbing the ScoreboardFile
+       on demand.
+
   + Deprecated configuration directives:
 
       DisplayFirstChdir
@@ -58,4 +64,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-05-25 15:46:42 $
+Last Updated: $Date: 2006-06-09 17:24:10 $
