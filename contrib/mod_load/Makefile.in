@@ -29,7 +29,7 @@ shared: $(MODULE_NAME).la
 static: $(MODULE_NAME).o
 
 install:
-	$(LIBTOOL) --mode=install $(INSTALL_BIN) $(MODULE_NAME).la $(LIBEXECDIR)
+	$(LIBTOOL) --mode=install $(INSTALL_BIN) $(MODULE_NAME).la $(DESTDIR)$(LIBEXECDIR)
 
 clean:
 	$(RM) *.o
