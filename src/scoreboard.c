@@ -25,7 +25,7 @@
 /*
  * ProFTPD scoreboard support.
  *
- * $Id: scoreboard.c,v 1.32 2006-06-09 17:21:22 castaglia Exp $
+ * $Id: scoreboard.c,v 1.33 2006-06-13 22:14:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -751,7 +751,7 @@ int pr_scoreboard_scrub(void) {
   int fd = -1;
   off_t curr_offset = 0;
   struct flock lock;
-  pr_scoreboard_entry_t entry;
+  pr_scoreboard_entry_t sce;
 
   pr_log_debug(DEBUG9, "scrubbing scoreboard");
 
@@ -786,27 +786,27 @@ int pr_scoreboard_scrub(void) {
   /* Skip past the scoreboard header. */
   curr_offset = lseek(fd, sizeof(pr_scoreboard_header_t), SEEK_SET);
 
-  memset(&entry, 0, sizeof(entry));
+  memset(&sce, 0, sizeof(sce));
 
   PRIVS_ROOT
-  while (read(fd, &entry, sizeof(entry)) == sizeof(entry)) {
+  while (read(fd, &sce, sizeof(sce)) == sizeof(sce)) {
 
     /* Check to see if the PID in this entry is valid.  If not, erase
      * the slot.
      */
-    if (entry.sce_pid &&
-        kill(entry.sce_pid, 0) < 0 &&
+    if (sce.sce_pid &&
+        kill(sce.sce_pid, 0) < 0 &&
         errno == ESRCH) {
 
       /* OK, the recorded PID is no longer valid. */
       pr_log_debug(DEBUG9, "scrubbing scoreboard slot for PID %u",
-        (unsigned int) entry.sce_pid);
+        (unsigned int) sce.sce_pid);
 
       /* Rewind to the start of this slot. */
       lseek(fd, curr_offset, SEEK_SET);
 
-      memset(&entry, 0, sizeof(entry));
-      while (write(fd, &entry, sizeof(entry)) != sizeof(entry)) {
+      memset(&sce, 0, sizeof(sce));
+      while (write(fd, &sce, sizeof(sce)) != sizeof(sce)) {
         if (errno == EINTR) {
           pr_signals_handle();
           continue;
