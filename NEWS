@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.764 2006-06-14 15:04:39 castaglia Exp $
+$Id: NEWS,v 1.765 2006-06-14 15:10:22 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -67,6 +67,7 @@ CVS
   be done using "ftpctl scoreboard scrub".
 - Bug 2800 - free_proc_title() in developer build tries to free strings from
   pool allocated by mod_tls.
+- Bug 2801 - Error compiling proftpd on NetBSD 3.0/sparc64.
 
 1.3.0 - Released 16-Apr-2006
 --------------------------------

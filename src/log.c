@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2005 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD logging support.
- * $Id: log.c,v 1.76 2005-11-14 16:33:06 castaglia Exp $
+ * $Id: log.c,v 1.77 2006-06-14 15:10:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -63,7 +63,7 @@ int log_wtmp(char *line, const char *name, const char *host,
     (defined(__NetBSD__) && defined(HAVE_UTMPX_H))) && \
     !(defined(LINUX) || defined(__hpux) || defined (_AIX))
   /* This "auxilliary" utmp doesn't exist under linux. */
-#ifdef __sparcv9
+#if defined(__sparcv9) && !defined(__NetBSD__)
   struct futmpx utx;
   time_t t;
 #else
