@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.763 2006-06-09 17:21:22 castaglia Exp $
+$Id: NEWS,v 1.764 2006-06-14 15:04:39 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -65,6 +65,8 @@ CVS
   "%{version}" variable to the LogFormat directive.
 - Bug 2797 - Add ability to force cleaning the scoreboard.  This can now
   be done using "ftpctl scoreboard scrub".
+- Bug 2800 - free_proc_title() in developer build tries to free strings from
+  pool allocated by mod_tls.
 
 1.3.0 - Released 16-Apr-2006
 --------------------------------
