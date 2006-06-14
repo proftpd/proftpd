@@ -23,7 +23,7 @@
  */
 
 /* UTF8 encoding/decoding
- * $Id: utf8.c,v 1.2 2006-06-14 20:42:41 castaglia Exp $
+ * $Id: utf8.c,v 1.3 2006-06-14 23:33:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -90,17 +90,26 @@ int utf8_free(void) {
 int utf8_init(void) {
   const char *local_charset;
 
+#ifdef HAVE_NL_LANGINFO
   /* Look up the current charset.  If there's a problem, default to
    * UCS-2.
    */
-#ifdef HAVE_NL_LANGINFO
   local_charset = nl_langinfo(CODESET);
-  if (!local_charset)
-    local_charset = "UCS-2";
-#endif /* HAVE_NL_LANGINFO */
+  if (!local_charset) {
+    local_charset = "C";
+    pr_trace_msg("utf8", 1,
+      "unable to determine locale, defaulting to 'C' for UTF8 conversion");
 
-  pr_trace_msg("utf8", 1, "converting UTF8 to local character set '%s'",
-    local_charset);
+  } else {
+    pr_trace_msg("utf8", 1, "converting UTF8 to local character set '%s'",
+      local_charset);
+  }
+#else
+  local_charset = "C";
+  pr_trace_msg("utf8", 1,
+    "nl_langinfo(3) not supported, defaulting to using 'C' for UTF8 "
+    "conversion");
+#endif /* HAVE_NL_LANGINFO */
 
 #ifdef HAVE_ICONV
   /* Get the iconv handles. */
