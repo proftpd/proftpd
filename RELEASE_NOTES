@@ -18,6 +18,10 @@ files.
       QuotaOptions
         ScanOnLogin
 
+      SQLOptions
+        noDisconnectOnError
+        useNormalizedGroupSchema
+
       TLSCryptoDevice
 
       Trace
@@ -64,4 +68,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-06-09 17:24:10 $
+Last Updated: $Date: 2006-06-14 23:50:45 $

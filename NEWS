@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.765 2006-06-14 15:10:22 castaglia Exp $
+$Id: NEWS,v 1.766 2006-06-14 23:50:45 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -68,6 +68,10 @@ CVS
 - Bug 2800 - free_proc_title() in developer build tries to free strings from
   pool allocated by mod_tls.
 - Bug 2801 - Error compiling proftpd on NetBSD 3.0/sparc64.
+- Bug 2687 - Support for more efficient group table schema.  A new
+  directive, SQLOption, has been added.  One possible parameter of this
+  directive is 'useNormalizedGroupSchema', in which case mod_sql will
+  process the group info table in a more efficient manner.
 
 1.3.0 - Released 16-Apr-2006
 --------------------------------
