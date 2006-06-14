@@ -23,7 +23,7 @@
  */
 
 /* UTF8 encoding/decoding
- * $Id: utf8.c,v 1.1 2006-05-25 16:55:34 castaglia Exp $
+ * $Id: utf8.c,v 1.2 2006-06-14 20:42:41 castaglia Exp $
  */
 
 #include "conf.h"
@@ -98,6 +98,9 @@ int utf8_init(void) {
   if (!local_charset)
     local_charset = "UCS-2";
 #endif /* HAVE_NL_LANGINFO */
+
+  pr_trace_msg("utf8", 1, "converting UTF8 to local character set '%s'",
+    local_charset);
 
 #ifdef HAVE_ICONV
   /* Get the iconv handles. */
