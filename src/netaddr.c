@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.54 2006-05-19 22:07:05 castaglia Exp $
+ * $Id: netaddr.c,v 1.55 2006-06-14 17:53:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -359,8 +359,16 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
       "attempting to resolve '%s' to IPv4 address via DNS", name);
     gai_res = pr_getaddrinfo(name, NULL, &hints, &info);
     if (gai_res != 0) {
-      pr_log_pri(PR_LOG_INFO, "IPv4 getaddrinfo '%s' error: %s", name,
-        gai_res != EAI_SYSTEM ? pr_gai_strerror(gai_res) : strerror(errno));
+      if (gai_res != EAI_SYSTEM) {
+        pr_log_pri(PR_LOG_INFO, "IPv4 getaddrinfo '%s' error: %s", name,
+          pr_gai_strerror(gai_res));
+
+      } else {
+        pr_log_pri(PR_LOG_INFO,
+          "IPv4 getaddrinfo '%s' system error: [%d] %s", name,
+          errno, strerror(errno));
+      }
+
       return NULL;
     }
 
@@ -400,8 +408,16 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
         "attempting to resolve '%s' to IPv6 address via DNS", name);
       gai_res = pr_getaddrinfo(name, NULL, &hints, &info);
       if (gai_res != 0) {
-        pr_log_pri(PR_LOG_INFO, "IPv6 getaddrinfo '%s' error: %s", name,
-          gai_res != EAI_SYSTEM ? pr_gai_strerror(gai_res) : strerror(errno));
+        if (gai_res != EAI_SYSTEM) {
+          pr_log_pri(PR_LOG_INFO, "IPv6 getaddrinfo '%s' error: %s", name,
+            pr_gai_strerror(gai_res));
+
+        } else {
+          pr_log_pri(PR_LOG_INFO,
+            "IPv6 getaddrinfo '%s' system error: [%d] %s", name,
+            errno, strerror(errno));
+        }
+
         return na;
       }
 
@@ -973,8 +989,14 @@ const char *pr_netaddr_get_ipstr(pr_netaddr_t *na) {
     pr_netaddr_get_sockaddr_len(na), buf, sizeof(buf), NULL, 0, NI_NUMERICHOST);
 
   if (res != 0) {
-    pr_log_pri(PR_LOG_NOTICE, "getnameinfo error: %s",
-      res != EAI_SYSTEM ? pr_gai_strerror(res) : strerror(errno));
+    if (res != EAI_SYSTEM) {
+      pr_log_pri(PR_LOG_INFO, "getnameinfo error: %s", pr_gai_strerror(res));
+
+    } else {
+      pr_log_pri(PR_LOG_INFO, "getnameinfo system error: [%d] %s",
+        errno, strerror(errno));
+    }
+
     return NULL;
   }
 
