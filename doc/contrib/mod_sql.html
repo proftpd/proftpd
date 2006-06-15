@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.4 2006-06-09 18:29:44 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.5 2006-06-15 01:43:18 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -69,44 +69,6 @@ The most current version of <code>mod_sql</code> is distributed with ProFTPD.
   <li><a href="#SQLShowInfo">SQLShowInfo</a>
   <li><a href="#SQLUserInfo">SQLUserInfo</a>
   <li><a href="#SQLUserWhereClause">SQLUserWhereClause</a>
-</ul>
-
-The following directives have been deprecated, and are no longer
-documented or supported:
-<ul>
-  <li>MySQLInfo (replaced with <a href="#SQLConnectInfo">SQLConnectInfo</a>)
-  <li>PostgresInfo (replaced with <a href="#SQLConnectInfo">SQLConnectInfo</a>)
-  <li>PostgresPort (replaced with <a href="#SQLConnectInfo">SQLConnectInfo</a>)
-  <li>SQLAuthoritative (replaced with <a href="#SQLAuthenticate">SQLAuthenticate</a>)
-  <li>SQLDoAuth (replaced with <a href="#SQLAuthenticate">SQLAuthenticate</a>)
-  <li>SQLDoGroupAuth (replaced with <a href="#SQLAuthenticate">SQLAuthenticate</a>)
-  <li>SQLEmptyPasswords (replaced with <a href="#SQLAuthTypes">SQLAuthTypes</a>)
-  <li>SQLEncryptedPasswords (replaced with <a href="#SQLAuthTypes">SQLAuthTypes</a>)
-  <li>SQLGidField (replaced with <a href="#SQLUserInfo">SQLUserInfo</a>)
-  <li>SQLGroupGIDField (replaced with <a href="#SQLGroupInfo">SQLGroupInfo</a>)
-  <li>SQLGroupnameField (replaced with <a href="#SQLGroupInfo">SQLGroupInfo</a>)
-  <li>SQLGroupMembersField (replaced with <a href="#SQLGroupInfo">SQLGroupInfo</a>)
-  <li>SQLGroupTable (replaced with <a href="#SQLGroupInfo">SQLGroupInfo</a>)
-  <li>SQLHomedir (replaced with <a href="#SQLDefaultHomedir">SQLDefaultHomedir</a>)
-  <li>SQLHomedirField (replaced with <a href="#SQLUserInfo">SQLUserInfo</a>)
-  <li>SQLKey (replaced with <a href="#SQLUserWhereClause">SQLUserWhereClause</a>)
-  <li>SQLKeyField (replaced with <a href="#SQLUserWhereClause">SQLUserWhereClause</a>)
-  <li>SQLLogDirs (replaced with <a href="#SQLLog">SQLLog</a>)
-  <li>SQLLogHits (replaced with <a href="#SQLLog">SQLLog</a>)
-  <li>SQLLogHosts (replaced with <a href="#SQLLog">SQLLog</a>)
-  <li>SQLLoginCountField (replaced with <a href="#SQLLog">SQLLog</a>)
-  <li>SQLLogStats (replaced with <a href="#SQLLog">SQLLog</a>)
-  <li>SQLPasswordField (replaced with <a href="#SQLUserInfo">SQLUserInfo</a>)
-  <li>SQLPlaintextPasswords (replaced with <a href="#SQLAuthTypes">SQLAuthTypes</a>)
-  <li>SQLProcessGrEnt (replaced with <a href="#SQLAuthenticate">SQLAuthenticate</a>)
-  <li>SQLProcessPwEnt (replaced with <a href="#SQLAuthenticate">SQLAuthenticate</a>)
-  <li>SQLSSLHashedPasswords (replaced with <a href="#SQLAuthTypes">SQLAuthTypes</a>)
-  <li>SQLScrambledPasswords (replaced with <a href="#SQLAuthTypes">SQLAuthTypes</a>)
-  <li>SQLShellField (replaced with <a href="#SQLUserInfo">SQLUserInfo</a>)
-  <li>SQLUidField (replaced with <a href="#SQLUserInfo">SQLUserInfo</a>)
-  <li>SQLUsernameTable (replaced with <a href="#SQLUserInfo">SQLUserInfo</a>)
-  <li>SQLUserTable (replaced with <a href="#SQLUserInfo">SQLUserInfo</a>)
-  <li>SQLWhereClause (replaced with <a href="#SQLUserWhereClause">SQLUserWhereClause</a>)
 </ul>
 
 <hr>
@@ -433,10 +395,14 @@ From the MySQL documentation:
   assumed. If the OS supports sockets (Unix) or named pipes (Windows), they are
   used instead of TCP/IP to connect to the server.
 </blockquote>
+(<i>Note</i>: In <code>proftpd-1.3.1rc1</code>, if <em>hostname</em> starts
+with a slash, it is interpreted as the Unix domain socket path by
+<code>mod_sql_mysql</code>, similar to how <code>mod_sql_postgres</code>
+handles the parameter.)
 
 From the PostgreSQL documentation:
 <blockquote>
-  If [the hostname] begins with a slash, it specifies Unix-domain communication
+  If [the hostname] begins with a slash, it specifies Unix domain communication
   rather than TCP/IP communication; the value is the name of the directory in
   which the socket file is stored. The default is to connect to a Unix-domain
   socket in <code>/tmp</code>.
@@ -1196,7 +1162,7 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2006-06-09 18:29:44 $</i><br>
+Last Updated: <i>$Date: 2006-06-15 01:43:18 $</i><br>
 
 <br><hr>
 
