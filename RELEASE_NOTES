@@ -38,6 +38,8 @@ files.
 
       LogFormat %S, %{version}
 
+      SQLConnectInfo MySQL Unix domain socket
+
       TLSRequired auth, auth+data
 
   + New configure options:
@@ -72,4 +74,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-06-15 00:26:25 $
+Last Updated: $Date: 2006-06-15 01:39:05 $

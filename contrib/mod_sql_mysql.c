@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.40 2006-04-21 01:59:45 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.41 2006-06-15 01:39:06 castaglia Exp $
  */
 
 /*
@@ -128,7 +128,7 @@
  * Internal define used for debug and logging.  All backends are encouraged
  * to use the same format.
  */
-#define MOD_SQL_MYSQL_VERSION		"mod_sql_mysql/4.06"
+#define MOD_SQL_MYSQL_VERSION		"mod_sql_mysql/4.0.7"
 
 #define _MYSQL_PORT "3306"
 
@@ -158,6 +158,7 @@ struct db_conn_struct {
   char *pass;
   char *db;
   char *port;
+  char *unix_sock;
 
   MYSQL *mysql;
 
@@ -431,8 +432,8 @@ MODRET cmd_open(cmd_rec *cmd) {
   mysql_options(conn->mysql, MYSQL_READ_DEFAULT_GROUP, "client");
 
   if (!mysql_real_connect(conn->mysql, conn->host, conn->user, conn->pass,
-      conn->db, (int) strtol(conn->port, (char **) NULL, 10), NULL,
-      CLIENT_INTERACTIVE)) {
+      conn->db, (int) strtol(conn->port, (char **) NULL, 10),
+      conn->unix_sock, CLIENT_INTERACTIVE)) {
 
     /* If it didn't work, return an error. */
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_open");
@@ -567,8 +568,7 @@ MODRET cmd_close(cmd_rec *cmd) {
  *  a number or ttl is negative, the connection will be assumed to have no
  *  associated timer.
  */
-MODRET cmd_defineconnection(cmd_rec *cmd)
-{
+MODRET cmd_defineconnection(cmd_rec *cmd) {
   char *info = NULL;
   char *name = NULL;
 
@@ -586,12 +586,14 @@ MODRET cmd_defineconnection(cmd_rec *cmd)
 
   _sql_check_cmd(cmd, "cmd_defineconnection");
 
-  if ((cmd->argc < 4) || (cmd->argc > 5) || (!cmd->argv[0])) {
+  if (cmd->argc < 4 ||
+      cmd->argc > 5 ||
+      !cmd->argv[0]) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_defineconnection");
     return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION, "badly formed request");
   }
 
-  conn = (db_conn_t *) palloc(conn_pool, sizeof(db_conn_t));
+  conn = (db_conn_t *) pcalloc(conn_pool, sizeof(db_conn_t));
 
   name = pstrdup(conn_pool, cmd->argv[0]);
   conn->user = pstrdup(conn_pool, cmd->argv[1]);
@@ -615,6 +617,7 @@ MODRET cmd_defineconnection(cmd_rec *cmd)
   if (haveport) {
     port = haveport + 1;
     *haveport = '\0';
+
   } else {
     port = _MYSQL_PORT;
   }
@@ -622,16 +625,28 @@ MODRET cmd_defineconnection(cmd_rec *cmd)
   if (havehost) {
     host = havehost + 1;
     *havehost = '\0';
+
   } else {
     host = "localhost";
   }
 
-  conn->host = pstrdup(conn_pool, host);
+  /* Hack to support ability to configure path to Unix domain socket
+   * for MySQL: if the host string starts with a '/', assume it's
+   * a path to the Unix domain socket to use.
+   */
+  if (*host == '/') {
+    conn->unix_sock = pstrdup(conn_pool, host);
+
+  } else {
+    conn->host = pstrdup(conn_pool, host);
+  }
+
   conn->db   = pstrdup(conn_pool, db);
   conn->port = pstrdup(conn_pool, port);
 
-  /* insert the new conn_info into the connection hash */
-  if (!(entry = _sql_add_connection(conn_pool, name, (void *) conn))) {
+  /* Insert the new conn_info into the connection hash */
+  entry = _sql_add_connection(conn_pool, name, (void *) conn);
+  if (!entry) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_defineconnection");
     return ERROR_MSG(cmd, MOD_SQL_MYSQL_VERSION,
       "named connection already exists");
@@ -645,12 +660,19 @@ MODRET cmd_defineconnection(cmd_rec *cmd)
   entry->timer = 0;
   entry->connections = 0;
 
-  sql_log(DEBUG_INFO, " name: '%s'", entry->name);
-  sql_log(DEBUG_INFO, " user: '%s'", conn->user);
-  sql_log(DEBUG_INFO, " host: '%s'", conn->host);
-  sql_log(DEBUG_INFO, "   db: '%s'", conn->db);
-  sql_log(DEBUG_INFO, " port: '%s'", conn->port);
-  sql_log(DEBUG_INFO, "  ttl: '%d'", entry->ttl);
+  sql_log(DEBUG_INFO, "  name: '%s'", entry->name);
+  sql_log(DEBUG_INFO, "  user: '%s'", conn->user);
+
+  if (conn->host) {
+    sql_log(DEBUG_INFO, "  host: '%s'", conn->host);
+
+  } else if (conn->unix_sock) {
+    sql_log(DEBUG_INFO, "socket: '%s'", conn->unix_sock);
+  }
+
+  sql_log(DEBUG_INFO, "    db: '%s'", conn->db);
+  sql_log(DEBUG_INFO, "  port: '%s'", conn->port);
+  sql_log(DEBUG_INFO, "   ttl: '%d'", entry->ttl);
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tmysql cmd_defineconnection");
   return HANDLED(cmd);
