@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.284 2006-06-09 17:21:22 castaglia Exp $
+ * $Id: mod_core.c,v 1.285 2006-06-15 00:26:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -372,7 +372,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
     }
   }
 
-  /* Handle multiple addresses in a DefaultAddres directive.  We do
+  /* Handle multiple addresses in a DefaultAddress directive.  We do
    * this by adding bind directives to the server_rec created for the
    * first address.
    */
@@ -3847,8 +3847,6 @@ MODRET core_cdup(cmd_rec *cmd) {
 
 MODRET core_mdtm(cmd_rec *cmd) {
   char *path;
-  char buf[16] = {'\0'};
-  struct tm *tm;
   struct stat st;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
@@ -3869,19 +3867,15 @@ MODRET core_mdtm(cmd_rec *cmd) {
       return ERROR(cmd);
 
     } else {
-      unsigned char *times_gmt = get_param_ptr(TOPLEVEL_CONF,
-        "TimesGMT", FALSE);
+      char buf[16] = {'\0'};
+      struct tm *tm;
 
-      if (!times_gmt || 
-          *times_gmt == TRUE)
-         tm = pr_gmtime(cmd->tmp_pool, &st.st_mtime);
-      else
-         tm = pr_localtime(cmd->tmp_pool, &st.st_mtime);
-
+      tm = pr_gmtime(cmd->tmp_pool, &st.st_mtime);
       if (tm)
         snprintf(buf, sizeof(buf), "%04d%02d%02d%02d%02d%02d",
           tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour,
           tm->tm_min, tm->tm_sec);
+
       else
         snprintf(buf, sizeof(buf), "00000000000000");
 
