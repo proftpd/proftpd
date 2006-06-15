@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.173 2006-05-23 17:31:10 castaglia Exp $
+ * $Id: dirtree.c,v 1.174 2006-06-15 02:39:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2351,19 +2351,20 @@ static void copy_global_to_all(xaset_t *set) {
       copy_recur(&s->conf, s->pool, c, NULL);
 }
 
-static void fixup_globals(void) {
+static void fixup_globals(xaset_t *list) {
   server_rec *s = NULL, *smain = NULL;
   config_rec *c = NULL, *cnext = NULL;
 
-  smain = (server_rec *) server_list->xas_list;
+  smain = (server_rec *) list->xas_list;
   for (s = smain; s; s = s->next) {
     /* Loop through each top level directive looking for a CONF_GLOBAL
      * context.
      */
-    if (!s->conf || !s->conf->xas_list)
+    if (!s->conf ||
+        !s->conf->xas_list)
       continue;
 
-    for (c = (config_rec * )s->conf->xas_list; c; c = cnext) {
+    for (c = (config_rec *) s->conf->xas_list; c; c = cnext) {
       cnext = c->next;
 
       if (c->config_type == CONF_GLOBAL &&
@@ -2371,7 +2372,8 @@ static void fixup_globals(void) {
         /* Copy the contents of the block to all other servers
          * (including this one), then pull the block "out of play".
          */
-        if (c->subset && c->subset->xas_list)
+        if (c->subset &&
+            c->subset->xas_list)
           copy_global_to_all(c->subset);
 
         xaset_remove(s->conf, (xasetmember_t *) c);
@@ -2870,7 +2872,7 @@ int fixup_servers(xaset_t *list) {
   config_rec *c = NULL;
   server_rec *s = NULL, *next_s = NULL;
 
-  fixup_globals();
+  fixup_globals(list);
 
   s = (server_rec *) list->xas_list;
   if (s && !s->ServerName)
