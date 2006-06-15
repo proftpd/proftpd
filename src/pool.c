@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.43 2005-03-08 17:06:39 castaglia Exp $
+ * $Id: pool.c,v 1.44 2006-06-15 01:54:25 castaglia Exp $
  */
 
 #include "conf.h"
@@ -91,30 +91,9 @@ static void *smalloc(size_t size) {
   return ret;
 }
 
-#if 0
-void *scalloc(size_t num, size_t size) {
-  void *ret;
-
-  ret = calloc(num,size);
-  if (ret == 0)
-    ret = null_alloc(num * size);
-  return ret;
-}
-
-void *srealloc(void *p, size_t size) {
-  if (p == 0)
-    return smalloc(size);
-  p = realloc(p,size);
-  if (p == 0)
-    p = null_alloc(size);
-  return p;
-}
-#endif
-
 /* Grab a completely new block from the system pool.  Relies on malloc()
  * to return truly aligned memory.
  */
-
 static union block_hdr *malloc_block(int size) {
   union block_hdr *blok =
     (union block_hdr *) smalloc(size + sizeof(union block_hdr));
@@ -525,8 +504,10 @@ char *pstrdup(struct pool *p, const char *s) {
   char *res;
   size_t len;
 
-  if (!s)
+  if (!p || !s) {
+    errno = EINVAL;
     return NULL;
+  }
 
   len = strlen(s) + 1;
 
@@ -538,8 +519,10 @@ char *pstrdup(struct pool *p, const char *s) {
 char *pstrndup(struct pool *p, const char *s, int n) {
   char *res;
 
-  if (!s)
+  if (!p || !s) {
+    errno = EINVAL;
     return NULL;
+  }
 
   res = palloc(p, n + 1);
   sstrncpy(res, s, n + 1);
@@ -649,8 +632,7 @@ void *push_array(array_header *arr) {
   return ((char *)arr->elts) + (arr->elt_size * (arr->nelts - 1));
 }
 
-void array_cat(array_header *dst, const array_header *src)
-{
+void array_cat(array_header *dst, const array_header *src) {
   int elt_size = dst->elt_size;
 
   if (dst->nelts + src->nelts > dst->nalloc) {
@@ -674,8 +656,7 @@ void array_cat(array_header *dst, const array_header *src)
   dst->nelts += src->nelts;
 }
 
-array_header *copy_array(pool *p, const array_header *arr)
-{
+array_header *copy_array(pool *p, const array_header *arr) {
   array_header *res = make_array(p,arr->nalloc,arr->elt_size);
 
   memcpy(res->elts, arr->elts, arr->elt_size * arr->nelts);
@@ -684,8 +665,7 @@ array_header *copy_array(pool *p, const array_header *arr)
 }
 
 /* copy an array that is assumed to consist solely of strings */
-array_header *copy_array_str(pool *p, const array_header *arr)
-{
+array_header *copy_array_str(pool *p, const array_header *arr) {
   array_header *res = copy_array(p,arr);
   int i;
 
@@ -695,8 +675,7 @@ array_header *copy_array_str(pool *p, const array_header *arr)
   return res;
 }
 
-array_header *copy_array_hdr(pool *p, const array_header *arr)
-{
+array_header *copy_array_hdr(pool *p, const array_header *arr) {
   array_header *res = (array_header *)palloc(p,sizeof(array_header));
 
   res->elts = arr->elts;
@@ -708,13 +687,11 @@ array_header *copy_array_hdr(pool *p, const array_header *arr)
   return res;
 }
 
-array_header *append_arrays(pool *p,
-                            const array_header *first,
-			    const array_header *second)
-{
-  array_header *res = copy_array_hdr(p,first);
+array_header *append_arrays(pool *p, const array_header *first,
+    const array_header *second) {
+  array_header *res = copy_array_hdr(p, first);
 
-  array_cat(res,second);
+  array_cat(res, second);
   return res;
 }
 
@@ -760,142 +737,9 @@ void unregister_cleanup(pool *p, void *data, void (*cleanup_cb)(void *)) {
   }
 }
 
-/* NOTE: unused. */
-#if 0
-void run_cleanup(pool *p, void *data, void (*cleanup_cb)(void *)) {
-  pr_alarms_block();
-
-  /* Run the given cleanup callback. */
-  (*cleanup_cb)(data);
-
-  /* Remove it. */
-  unregister_cleanup(p, data, cleanup_cb);
-
-  pr_alarms_unblock();
-}
-#endif
-
 static void run_cleanups(cleanup_t *c) {
   while (c) {
     (*c->plain_cleanup_cb)(c->data);
     c = c->next;
   }
-}
-
-/* NOTE: these cleanup routines are currently unused.
- * 2002-07-24
- */
-#if 0
-static void run_child_cleanups(cleanup_t *c) {
-  while (c) {
-    (*c->child_cleanup_cb)(c->data);
-    c = c ->next;
-  }
-}
-
-static void cleanup_pool_for_exec(pool *p) {
-  run_child_cleanups(p->cleanups);
-  p->cleanups = NULL;
-
-  for (p = p->sub_pools; p; p = p->sub_next)
-    cleanup_pool_for_exec(p);
-}
-
-void cleanup_for_exec(void) {
-  pr_alarms_block();
-  cleanup_pool_for_exec(permanent_pool);
-  pr_alarms_unblock();
-}
-#endif
-
-/*
- * Files and file descriptors
- */
-
-static void fd_cleanup_cb(void *fdv) {
-  close((int)fdv);
-}
-
-static void register_fd_cleanups(pool *p, int fd) {
-  register_cleanup(p, (void *)fd, fd_cleanup_cb, fd_cleanup_cb);
-}
-
-int popenf(pool *p, const char *name, int flags, int mode) {
-  int fd;
-
-  pr_alarms_block();
-  if ((fd = open(name, flags, mode)) >= 0)
-    register_fd_cleanups(p, fd);
-  pr_alarms_unblock();
-  return fd;
-}
-
-int pclosef(pool *p, int fd) {
-  int res;
-
-  pr_alarms_block();
-  res = close(fd);
-  unregister_cleanup(p, (void *)fd, fd_cleanup_cb);
-  pr_alarms_unblock();
-  return res;
-}
-
-/* Sep. plain and child cleanups for FILE *, since fclose() flushes
- * the stream
- */
-
-static void file_cleanup_cb(void *fpv) {
-  fclose((FILE *)fpv);
-}
-
-static void file_child_cleanup_cb(void *fpv) {
-  close(fileno((FILE *) fpv));
-}
-
-void register_file_cleanups(pool *p, FILE *fp) {
-  register_cleanup(p, (void *)fp, file_cleanup_cb, file_child_cleanup_cb);
-}
-
-FILE *pfopen(pool *p, const char *name, const char *mode) {
-  FILE *fd = NULL;
-  int base_flag, desc;
-
-  pr_alarms_block();
-
-  if (*mode == 'a') {
-    base_flag = (*(mode+1) == '+') ? O_RDWR : O_WRONLY;
-    desc = open(name, base_flag|O_APPEND|O_CREAT,
-       S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
-    if (desc >= 0)
-      fd = fdopen(desc, mode);
-
-  } else
-    fd = fopen(name, mode);
-
-  if (fd)
-    register_file_cleanups(p, fd);
-
-  pr_alarms_unblock();
-  return fd;
-}
-
-FILE *pfdopen(pool *p, int fd, const char *mode) {
-  FILE *f;
-
-  pr_alarms_block();
-  if ((f = fdopen(fd, mode)) != NULL)
-    register_file_cleanups(p, f);
-
-  pr_alarms_unblock();
-  return f;
-}
-
-int pfclose(pool *p, FILE *fd) {
-  int res;
-
-  pr_alarms_block();
-  res = fclose(fd);
-  unregister_cleanup(p, (void *) fd, file_cleanup_cb);
-  pr_alarms_unblock();
-  return res;
 }
