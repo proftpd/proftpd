@@ -465,6 +465,9 @@
 /* Define if you have the <langinfo.h> header file.  */
 #undef HAVE_LANGINFO_H
 
+/* Define if you have the <lastlog.h> header file.  */
+#undef HAVE_LASTLOG_H
+
 /* Define if you have the <libintl.h> header file.  */
 #undef HAVE_LIBINTL_H
 
@@ -473,6 +476,9 @@
 
 /* Define if you have the <limits.h> header file.  */
 #undef HAVE_LIMITS_H
+
+/* Define if you have the <login.h> header file.  */
+#undef HAVE_LOGIN_H
 
 /* Define if you have the <memory.h> header file.  */
 #undef HAVE_MEMORY_H
@@ -500,6 +506,9 @@
 
 /* Define if you have the <netinet/tcp.h> header file.  */
 #undef HAVE_NETINET_TCP_H
+
+/* Define if you have the <paths.h> header file.  */
+#undef HAVE_PATHS_H
 
 /* Define if you have the <prot.h> header file.  */
 #undef HAVE_PROT_H
@@ -709,6 +718,10 @@
 #undef PR_PID_FILE_PATH		
 #endif /* PR_PID_FILE_PATH */
 
+#ifndef PR_LASTLOG_PATH
+#undef PR_LASTLOG_PATH
+#endif /* PR_LASTLOG_PATH */
+
 /* Number of bits in a file offset, on hosts where this is settable. */
 #ifndef _FILE_OFFSET_BITS
 #undef _FILE_OFFSET_BITS
@@ -755,6 +768,9 @@
 
 /* Define if the %lu format should be used.  */
 #undef HAVE_LU
+
+/* Define if lastlog support is desired.  */
+#undef PR_USE_LASTLOG
 
 /* Define if NLS support, if available, should be used. */
 #undef PR_USE_NLS

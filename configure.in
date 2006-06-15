@@ -171,6 +171,93 @@ AC_ARG_WITH(getopt,
     AC_CHECK_HEADERS(getopt.h)
   ])
 
+dnl Lastlog support
+AC_ARG_WITH(lastlog,
+  [AC_HELP_STRING(
+    [--with-lastlog=PATH],
+    [specify lastlog location (Default: /var/adm/lastlog)],
+  )],
+  [
+    if test "x$withval" = "xno" ; then
+      # nothing to do
+      foo = bar
+
+    elif test -n "$withval" ; then
+      AC_DEFINE(PR_USE_LASTLOG, 1, [Define if enabling lastlog support.])
+      AC_CHECK_HEADERS(lastlog.h login.h paths.h)
+
+      if test "x${withval}" != "xyes" ; then
+        ac_lastlog_path = $withval
+
+      else
+        dnl Try to determine the correct lastlog location (be it file or
+        dnl directory) automagically.
+        AC_MSG_CHECKING([for LASTLOG_FILE])
+        AC_TRY_COMPILE([
+            #include <sys/types.h>
+            #include <utmp.h>
+            #ifdef HAVE_LASTLOG_H
+            #  include <lastlog.h>
+            #endif
+            #ifdef HAVE_PATHS_H
+            #  include <paths.h>
+            #endif
+            #ifdef HAVE_LOGIN_H
+            # include <login.h>
+            #endif
+          ],
+          [
+            char *lastlog = LASTLOG_FILE;
+          ],
+          [
+            AC_MSG_RESULT(yes)
+          ],
+          [
+            AC_MSG_RESULT(no)
+            AC_MSG_CHECKING([for _PATH_LASTLOG])
+            AC_TRY_COMPILE([
+                #include <sys/types.h>
+                #include <utmp.h>
+                #ifdef HAVE_LASTLOG_H
+                #  include <lastlog.h>
+                #endif
+                #ifdef HAVE_PATHS_H
+                #  include <paths.h>
+                #endif
+              ],
+              [
+                char *lastlog = _PATH_LASTLOG;
+              ],
+              [
+                AC_MSG_RESULT(yes)
+              ],
+              [
+                AC_MSG_RESULT(no)
+                found_lastlog_path=no
+              ])
+          ])
+
+         if test -z "$ac_lastlog_path" ; then
+           if test x"$found_lastlog_path" = x"no" ; then
+             for f in /var/log/lastlog /usr/adm/lastlog /var/adm/lastlog /etc/security/lastlog ; do
+               if (test -d "$f" || test -f "$f") ; then
+                 ac_lastlog_path = $f
+               fi
+             done
+
+             if test -z "$ac_lastlog_path" ; then
+               AC_MSG_WARN([** Cannot find lastlog **])
+             fi
+          fi
+        fi
+      fi
+
+      if test -n "$ac_lastlog_path" ; then
+        AC_DEFINE_UNQUOTED(PR_LASTLOG_PATH, "`eval echo "$ac_lastlog_path"`")
+      fi
+    fi
+  ])
+
 dnl Modules...'nuff said.
 AC_ARG_WITH(includes,
   [AC_HELP_STRING(
@@ -203,9 +290,6 @@ AC_ARG_WITH(libraries,
     done 
     LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
   ])
-
-AC_MSG_NOTICE([using CPPFLAGS=$CPPFLAGS])
-AC_MSG_NOTICE([using LDFLAGS=$LDFLAGS])
 
 AC_ARG_WITH(modules,
   [AC_HELP_STRING(

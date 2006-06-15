@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.768 2006-06-15 01:39:05 castaglia Exp $
+$Id: NEWS,v 1.769 2006-06-15 20:53:35 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -75,6 +75,8 @@ CVS
 - Bug 2798 - MDTM should return time in GMT.  MDTM responses now always
   use GMT.
 - Bug 2784 - Ability to specify MySQL Unix domain socket path.
+- Bug 2610 - Support for logging to /var/log/lastlog.  See the RELEASE_NOTES
+  for more details on how to use this feature.
 
 1.3.0 - Released 16-Apr-2006
 --------------------------------

@@ -32,6 +32,8 @@ files.
 
       TraceLog
 
+      UseLastlog
+
   + Enhanced configuration directives:
 
       CreateHome uid gid
@@ -48,6 +50,11 @@ files.
         This configure option enables logging of the call stack trace
         whenever a SIGSEGV signal is received.  Very very useful for
         tracking down the cause of a segfault.
+
+      --with-lastlog[=PATH]
+
+        Automatic determination
+        /var/adm/lastlog
  
   + New modules:
 
@@ -74,4 +81,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-06-15 01:39:05 $
+Last Updated: $Date: 2006-06-15 20:53:35 $

@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.283 2006-05-26 17:16:40 castaglia Exp $
+ * $Id: main.c,v 1.284 2006-06-15 20:53:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2557,6 +2557,18 @@ static void show_settings(void) {
 #else
   printf("    - Largefile support\n");
 #endif /* PR_USE_LARGEFILES */
+
+#ifdef PR_USE_NLS
+  printf("    + NLS support\n");
+#else
+  printf("    - NLS support\n");
+#endif /* PR_USE_NLS */
+
+#ifdef PR_USE_LASTLOG
+  printf("    + Lastlog support\n");
+#else
+  printf("    - Lastlog support\n");
+#endif /* PR_USE_LASTLOG */
 
 #ifdef PR_USE_NLS
   printf("    + NLS support\n");

@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.213 2006-05-25 16:55:34 castaglia Exp $
+ * $Id: mod_auth.c,v 1.214 2006-06-15 20:53:36 castaglia Exp $
  */
 
 #include "conf.h"
@@ -39,6 +39,10 @@
 extern pid_t mpid;
 
 module auth_module;
+
+#ifdef PR_USE_LASTLOG
+static unsigned char lastlog = FALSE;
+#endif /* PR_USE_LASTLOG */
 
 static unsigned char mkhome = FALSE;
 static unsigned char authenticated_without_pass = FALSE;
@@ -188,6 +192,16 @@ static int auth_sess_init(void) {
     mkhome = TRUE;
   else
     mkhome = FALSE;
+
+#ifdef PR_USE_LASTLOG
+  /* Use the lastlog file, if supported and requested. */
+  tmp = get_param_ptr(main_server->conf, "UseLastlog", FALSE);
+  if (tmp &&
+      *tmp == TRUE)
+    lastlog = TRUE;
+  else
+    lastlog = FALSE;
+#endif /* PR_USE_LASTLOG */
 
   /* Scan the scoreboard now, in order to tally up certain values for
    * substituting in any of the Display* file variables.  This function
@@ -1132,6 +1146,12 @@ static int setup_env(pool *p, char *user, char *pass) {
       session.c->remote_addr);
     session.wtmp_log = TRUE;
   }
+
+#ifdef PR_USE_LASTLOG
+  if (lastlog)
+    log_lastlog(pw->pw_uid, session.user, sess_ttyname,
+      session.c->remote_addr);
+#endif /* PR_USE_LASTLOG */
 
   /* Open any TransferLogs */
   if (!xferlog) {
@@ -2806,6 +2826,29 @@ MODRET set_useftpusers(cmd_rec *cmd) {
   return HANDLED(cmd);
 }
 
+/* usage: UseLastlog on|off */
+MODRET set_uselastlog(cmd_rec *cmd) {
+#ifdef PR_USE_LASTLOG
+  int bool;
+  config_rec *c;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = bool;
+
+  return HANDLED(cmd);
+#else
+  CONF_ERROR(cmd, "requires lastlog support (--enable-lastlog)");
+#endif /* PR_USE_LASTLOG */
+}
+
 /* usage: UserAlias alias real-user */
 MODRET set_useralias(cmd_rec *cmd) {
   config_rec *c = NULL;
@@ -2886,6 +2929,7 @@ static conftable auth_conftab[] = {
   { "TimeoutLogin",		set_timeoutlogin,		NULL },
   { "TimeoutSession",		set_timeoutsession,		NULL },
   { "UseFtpUsers",		set_useftpusers,		NULL },
+  { "UseLastlog",		set_uselastlog,			NULL },
   { "UserAlias",		set_useralias,			NULL },
   { "UserDirRoot",		set_userdirroot,		NULL },
   { "UserPassword",		set_userpassword,		NULL },
