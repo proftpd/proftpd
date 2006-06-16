@@ -27,7 +27,7 @@
 /*
  * Configuration structure, server, command and associated prototypes.
  *
- * $Id: dirtree.h,v 1.62 2006-05-25 16:55:34 castaglia Exp $
+ * $Id: dirtree.h,v 1.63 2006-06-16 00:48:05 castaglia Exp $
  */
 
 #ifndef PR_DIRTREE_H
@@ -183,7 +183,7 @@ extern int			TimeoutNoXfer;
 extern int			TimeoutStalled;
 
 /* These macros are used to help handle configuration in modules */
-#define CONF_ERROR(x, s)	return ERROR_MSG((x),NULL,pstrcat((x)->tmp_pool, \
+#define CONF_ERROR(x, s)	return PR_ERROR_MSG((x),NULL,pstrcat((x)->tmp_pool, \
 				(x)->argv[0],": ",(s),NULL));
 
 #define CHECK_ARGS(x, n)	if((x)->argc-1 < n) \
@@ -203,13 +203,13 @@ extern int			TimeoutStalled;
 #define CHECK_CMD_ARGS(x, n)	\
   if ((x)->argc != (n)) { \
     pr_response_add_err(R_501, _("Invalid number of arguments")); \
-    return ERROR((x)); \
+    return PR_ERROR((x)); \
   }
 
 #define CHECK_CMD_MIN_ARGS(x, n)	\
   if ((x)->argc < (n)) { \
     pr_response_add_err(R_501, _("Invalid number of arguments")); \
-    return ERROR((x)); \
+    return PR_ERROR((x)); \
   }
 
 /* Prototypes */

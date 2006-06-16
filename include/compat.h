@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2005 The ProFTPD Project team
+ * Copyright (c) 2005-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Compatibility
- * $Id: compat.h,v 1.3 2005-06-14 01:23:44 castaglia Exp $
+ * $Id: compat.h,v 1.4 2006-06-16 00:48:05 castaglia Exp $
  */
 
 #ifndef PR_COMPAT_H
@@ -40,24 +40,6 @@
 #define USE_IPV6		PR_USE_IPV6
 #define USE_LARGEFILES		PR_USE_LARGEFILES
 
-#define auth_setpwent           pr_auth_setpwent
-#define auth_endpwent           pr_auth_endpwent
-#define auth_setgrent           pr_auth_setgrent
-#define auth_endgrent           pr_auth_endgrent
-#define auth_getpwent           pr_auth_getpwent
-#define auth_getgrent           pr_auth_getgrent
-#define auth_getpwnam           pr_auth_getpwnam
-#define auth_getpwuid           pr_auth_getpwuid
-#define auth_getgrnam           pr_auth_getgrnam
-#define auth_getgrgid           pr_auth_getgrgid
-#define auth_authenticate       pr_auth_authenticate
-#define auth_check              pr_auth_check
-#define auth_uid2name           pr_auth_uid2name
-#define auth_gid2name           pr_auth_gid2name
-#define auth_name2uid           pr_auth_name2uid
-#define auth_name2gid           pr_auth_name2gid
-#define auth_getgroups          pr_auth_getgroups
-
 #define LOG_WRITEABLE_DIR	PR_LOG_WRITABLE_DIR
 #define LOG_SYMLINK		PR_LOG_SYMLINK
 
@@ -73,5 +55,11 @@
 #define pr_group_or_expression  pr_expr_eval_group_or
 #define pr_user_and_expression  pr_expr_eval_user_and
 #define pr_user_or_expression   pr_expr_eval_user_or
+
+#define DECLINED		PR_DECLINED
+#define	ERROR			PR_ERROR
+#define	ERROR_INT		PR_ERROR_INT
+#define	ERROR_MSG		PR_ERROR_MSG
+#define HANDLED			PR_HANDLED
 
 #endif /* PR_COMPAT_H */

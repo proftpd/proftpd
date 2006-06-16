@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.45 2004-11-10 18:19:57 castaglia Exp $
+ * $Id: modules.h,v 1.46 2006-06-16 00:48:05 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -48,14 +48,14 @@ struct modret_struc {
  */
 
 #define MODRET				static modret_t*
-#define HANDLED(cmd)			mod_create_ret((cmd),\
+#define PR_HANDLED(cmd)			mod_create_ret((cmd),\
 					0,NULL,NULL)
-#define DECLINED(cmd)			(modret_t*)NULL
-#define ERROR(cmd)			mod_create_ret((cmd),\
+#define PR_DECLINED(cmd)		(modret_t*)NULL
+#define PR_ERROR(cmd)			mod_create_ret((cmd),\
 					1,NULL,NULL)
-#define ERROR_MSG(cmd,n,m)		mod_create_ret((cmd),\
+#define PR_ERROR_MSG(cmd,n,m)		mod_create_ret((cmd),\
 					1,(n),(m))
-#define ERROR_INT(cmd,n)		mod_create_error((cmd),(n))
+#define PR_ERROR_INT(cmd,n)		mod_create_error((cmd),(n))
 
 #define MODRET_ISDECLINED(x)		((x) == NULL)
 #define MODRET_ISHANDLED(x)		((x) && !(x)->mr_error)
