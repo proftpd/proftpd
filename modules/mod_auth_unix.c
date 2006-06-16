@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.28 2006-06-16 01:40:15 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.29 2006-06-16 21:35:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -122,11 +122,6 @@ static FILE *pwdf = NULL;
 static FILE *grpf = NULL;
 
 extern unsigned char persistent_passwd;
-
-static int persistent_passwdf = 0, persistent_groupf = 0;
-
-#define PERSISTENT_PASSWD	(persistent_passwd || persistent_passwdf)
-#define PERSISTENT_GROUP	(persistent_passwd || persistent_groupf)
 
 #undef PASSWD
 #define PASSWD		pwdfname
@@ -305,8 +300,9 @@ static idmap_t *_auth_lookup_id(xaset_t **id_table, idauth_t id) {
 }
 
 MODRET pw_setpwent(cmd_rec *cmd) {
-  if (PERSISTENT_PASSWD)
+  if (persistent_passwd)
     p_setpwent();
+
   else
     setpwent();
 
@@ -314,8 +310,9 @@ MODRET pw_setpwent(cmd_rec *cmd) {
 }
 
 MODRET pw_endpwent(cmd_rec *cmd) {
-  if (PERSISTENT_PASSWD)
+  if (persistent_passwd)
     p_endpwent();
+
   else
     endpwent();
 
@@ -323,8 +320,9 @@ MODRET pw_endpwent(cmd_rec *cmd) {
 }
 
 MODRET pw_setgrent(cmd_rec *cmd) {
-  if (PERSISTENT_GROUP)
+  if (persistent_passwd)
     p_setgrent();
+
   else
     setgrent();
 
@@ -332,8 +330,9 @@ MODRET pw_setgrent(cmd_rec *cmd) {
 }
 
 MODRET pw_endgrent(cmd_rec *cmd) {
-  if (PERSISTENT_GROUP)
+  if (persistent_passwd)
     p_endgrent();
+
   else
     endgrent();
 
@@ -343,8 +342,9 @@ MODRET pw_endgrent(cmd_rec *cmd) {
 MODRET pw_getgrent(cmd_rec *cmd) {
   struct group *gr;
 
-  if (PERSISTENT_GROUP)
+  if (persistent_passwd)
     gr = p_getgrent();
+
   else
     gr = getgrent();
 
@@ -354,8 +354,9 @@ MODRET pw_getgrent(cmd_rec *cmd) {
 MODRET pw_getpwent(cmd_rec *cmd) {
   struct passwd *pw;
 
-  if (PERSISTENT_PASSWD)
+  if (persistent_passwd)
     pw = p_getpwent();
+
   else
     pw = getpwent();
 
@@ -367,8 +368,9 @@ MODRET pw_getpwuid(cmd_rec *cmd) {
   uid_t uid;
 
   uid = *((uid_t *) cmd->argv[0]);
-  if (PERSISTENT_PASSWD)
+  if (persistent_passwd)
     pw = p_getpwuid(uid);
+
   else
     pw = getpwuid(uid);
 
@@ -380,8 +382,9 @@ MODRET pw_getpwnam(cmd_rec *cmd) {
   const char *name;
 
   name = cmd->argv[0];
-  if (PERSISTENT_PASSWD)
+  if (persistent_passwd)
     pw = p_getpwnam(name);
+
   else
     pw = getpwnam(name);
 
@@ -393,8 +396,9 @@ MODRET pw_getgrnam(cmd_rec *cmd) {
   const char *name;
 
   name = cmd->argv[0];
-  if (PERSISTENT_GROUP)
+  if (persistent_passwd)
     gr = p_getgrnam(name);
+
   else
     gr = getgrnam(name);
 
@@ -406,8 +410,9 @@ MODRET pw_getgrgid(cmd_rec *cmd) {
   gid_t gid;
 
   gid = *((gid_t *) cmd->argv[0]);
-  if (PERSISTENT_GROUP)
+  if (persistent_passwd)
     gr = p_getgrgid(gid);
+
   else
     gr = getgrgid(gid);
 
@@ -624,7 +629,7 @@ MODRET pw_auth(cmd_rec *cmd) {
   name = cmd->argv[0];
   time(&now);
 
-  if (persistent_passwdf)
+  if (persistent_passwd)
     cpw = _get_ppw_info(cmd->tmp_pool, name);
   else
     cpw = _get_pw_info(cmd->tmp_pool, name, &lstchg, NULL, &max, NULL, &inact,
@@ -796,8 +801,9 @@ MODRET pw_uid2name(cmd_rec *cmd) {
   if (!m->name) {
     /* Wasn't cached, so perform a lookup */
 
-    if (PERSISTENT_PASSWD)
+    if (persistent_passwd)
       pw = p_getpwuid(id.uid);
+
     else
       pw = getpwuid(id.uid);
 
@@ -823,8 +829,9 @@ MODRET pw_gid2name(cmd_rec *cmd) {
   m = _auth_lookup_id(gid_table, id);
 
   if (!m->name) {
-    if (PERSISTENT_GROUP)
+    if (persistent_passwd)
       gr = p_getgrgid(id.gid);
+
     else
       gr = getgrgid(id.gid);
 
@@ -846,8 +853,9 @@ MODRET pw_name2uid(cmd_rec *cmd) {
 
   name = cmd->argv[0];
 
-  if (PERSISTENT_PASSWD)
+  if (persistent_passwd)
     pw = p_getpwnam(name);
+
   else
     pw = getpwnam(name);
 
@@ -860,8 +868,9 @@ MODRET pw_name2gid(cmd_rec *cmd) {
 
   name = cmd->argv[0];
 
-  if (PERSISTENT_GROUP)
+  if (persistent_passwd)
     gr = p_getgrnam(name);
+
   else
     gr = getgrnam(name);
 
@@ -886,7 +895,7 @@ MODRET pw_getgroups(cmd_rec *cmd) {
   RETSETGRENTTYPE (*my_setgrent)(void) = NULL;
 
   /* play function pointer games */
-  if (PERSISTENT_PASSWD) {
+  if (persistent_passwd) {
     my_getpwnam = p_getpwnam;
     my_getgrgid = p_getgrgid;
     my_getgrent = p_getgrent;
