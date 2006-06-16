@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.45 2006-06-16 02:22:05 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.46 2006-06-16 17:02:25 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -1099,7 +1099,7 @@ handle_ldap_is_auth(cmd_rec *cmd)
    * me right now) For now, we'll kludge around this by passing "*", which
    * mod_auth_unix will happily deny auth to.
    */
-  if (auth_check(cmd->tmp_pool, ldap_authbinds ? "*" : pw->pw_passwd,
+  if (pr_auth_check(cmd->tmp_pool, ldap_authbinds ? "*" : pw->pw_passwd,
                  username, cmd->argv[1]))
   {
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
