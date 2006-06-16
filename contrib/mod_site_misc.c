@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_site_misc -- a module implementing miscellaneous SITE commands
  *
- * Copyright (c) 2004 The ProFTPD Project
+ * Copyright (c) 2004-2006 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,12 +22,12 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_site_misc.c,v 1.2 2006-06-16 02:22:05 castaglia Exp $
+ * $Id: mod_site_misc.c,v 1.3 2006-06-16 02:33:43 castaglia Exp $
  */
 
 #include "conf.h"
 
-#define MOD_SITE_MISC_VERSION		"mod_site_misc/1.0"
+#define MOD_SITE_MISC_VERSION		"mod_site_misc/1.1"
 
 static int site_misc_check_filters(cmd_rec *cmd, const char *path) {
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
@@ -202,6 +202,8 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
     for (i = 2; i < cmd->argc; i++)
       path = pstrcat(cmd->tmp_pool, path, *path ? " " : "", cmd->argv[i], NULL);
 
+    path = pr_fs_decode_path(cmd->tmp_pool, path);
+
     if (site_misc_check_filters(cmd, path) < 0) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
       return PR_ERROR(cmd);
@@ -249,6 +251,8 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
     for (i = 2; i < cmd->argc; i++)
       path = pstrcat(cmd->tmp_pool, path, *path ? " " : "", cmd->argv[i], NULL);
 
+    path = pr_fs_decode_path(cmd->tmp_pool, path);
+
     if (!dir_check(cmd->tmp_pool, "SITE_RMDIR", G_WRITE, path, NULL)) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
       return PR_ERROR(cmd);
@@ -274,6 +278,7 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
 
   if (strcasecmp(cmd->argv[1], "SYMLINK") == 0) {
+    char *src, *dst;
     unsigned char *authenticated;
 
     if (cmd->argc < 4)
@@ -286,24 +291,26 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    if (!dir_check(cmd->tmp_pool, "SITE_SYMLINK", G_WRITE, cmd->argv[2],
-        NULL)) {
+    src = pr_fs_decode_path(cmd->tmp_pool, cmd->argv[2]);
+
+    if (!dir_check(cmd->tmp_pool, "SITE_SYMLINK", G_WRITE, src, NULL)) {
+      pr_response_add_err(R_550, "%s: %s", cmd->arg[2], strerror(EPERM));
+      return PR_ERROR(cmd);
+    }
+
+    dst = pr_fs_decode_path(cmd->tmp_pool, cmd->argv[3]);
+
+    if (!dir_check(cmd->tmp_pool, "SITE_SYMLINK", G_WRITE, dst, NULL)) {
+      pr_response_add_err(R_550, "%s: %s", cmd->arg[3], strerror(EPERM));
+      return PR_ERROR(cmd);
+    }
+
+    if (site_misc_check_filters(cmd, dst) < 0) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
       return PR_ERROR(cmd);
     }
 
-    if (!dir_check(cmd->tmp_pool, "SITE_SYMLINK", G_WRITE, cmd->argv[3],
-        NULL)) {
-      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
-      return PR_ERROR(cmd);
-    }
-
-    if (site_misc_check_filters(cmd, cmd->argv[3]) < 0) {
-      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
-      return PR_ERROR(cmd);
-    }
-
-    if (pr_fsio_symlink(cmd->argv[2], cmd->argv[3]) < 0) {
+    if (pr_fsio_symlink(src, dst) < 0) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
       return PR_ERROR(cmd);
     }
@@ -346,6 +353,8 @@ MODRET site_misc_utime(cmd_rec *cmd) {
 
     for (i = 3; i < cmd->argc; i++)
       path = pstrcat(cmd->tmp_pool, path, *path ? " " : "", cmd->argv[i], NULL);
+
+    path = pr_fs_decode_path(cmd->tmp_pool, path);
 
     if (!dir_check(cmd->tmp_pool, "SITE_UTIME", G_WRITE, path, NULL)) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
@@ -438,5 +447,8 @@ module site_misc_module = {
   NULL,
 
   /* Session initialization function */
-  NULL
+  NULL,
+
+  /* Module version */
+  MOD_SITE_MISC_VERSION
 };
