@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.21 2006-04-21 16:37:29 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.22 2006-06-16 02:22:05 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -1044,14 +1044,15 @@ MODRET set_quotadirtally(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected boolean argument");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = (unsigned char) bool;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: QuotaDisplayUnits <b|Kb|Mb|Gb> */
@@ -1085,7 +1086,7 @@ MODRET set_quotadisplayunits(cmd_rec *cmd) {
   c->argv[0] = palloc(c->pool, sizeof(quota_units_t));
   *((quota_units_t *) c->argv[0]) = units;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: QuotaEngine <on|off> */
@@ -1096,14 +1097,15 @@ MODRET set_quotaengine(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected boolean argument");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = (unsigned char) bool;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: QuotaExcludeFilter regex|"none" */
@@ -1118,7 +1120,7 @@ MODRET set_quotaexcludefilter(cmd_rec *cmd) {
 
   if (strcasecmp(cmd->argv[1], "none") == 0) {
     add_config_param(cmd->argv[0], 0);
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   }
 
   re = pr_regexp_alloc();
@@ -1137,7 +1139,7 @@ MODRET set_quotaexcludefilter(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 2, NULL, NULL);
   c->argv[1] = pstrdup(c->pool, cmd->argv[1]);
   c->argv[2] = (void *) re;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 
 #else
   CONF_ERROR(cmd, "The QuotaExcludeFilter directive cannot be used on this "
@@ -1156,7 +1158,7 @@ MODRET set_quotalock(cmd_rec *cmd) {
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: QuotaLog path|"none" */
@@ -1166,7 +1168,7 @@ MODRET set_quotalog(cmd_rec *cmd) {
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: QuotaOptions opt1 opt2 ... */
@@ -1195,7 +1197,7 @@ MODRET set_quotaoptions(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
   *((unsigned long *) c->argv[0]) = opts;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: QuotaShowQuotas <on|off> */
@@ -1206,14 +1208,15 @@ MODRET set_quotashowquotas(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected boolean argument");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = (unsigned char) bool;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: Quota{Limit,Tally}Table <source-type:source-info> */
@@ -1252,7 +1255,7 @@ MODRET set_quotatable(cmd_rec *cmd) {
 #endif /* PR_SHARED_MODULE */
 
   add_config_param_str(cmd->argv[0], 2, cmd->argv[1], tmp);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Variable handlers
@@ -1354,7 +1357,7 @@ MODRET quotatab_pre_appe(cmd_rec *cmd) {
 
   /* Sanity check */
   if (!use_quotas)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* Refresh the tally */
   QUOTATAB_TALLY_READ
@@ -1368,7 +1371,7 @@ MODRET quotatab_pre_appe(cmd_rec *cmd) {
   else
     quotatab_disk_bytes = sbuf.st_size;
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_post_appe(cmd_rec *cmd) {
@@ -1377,12 +1380,12 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
 
   /* sanity check */
   if (!use_quotas)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (quotatab_ignore_path(cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   /* Check on the size of the appended-to file again, and use the difference
@@ -1423,7 +1426,7 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
       DISPLAY_BYTES_XFER(cmd));
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_post_appe_err(cmd_rec *cmd) {
@@ -1432,12 +1435,12 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
 
   /* sanity check */
   if (!use_quotas)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (quotatab_ignore_path(cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   /* Check on the size of the appended-to file again, and use the difference
@@ -1478,7 +1481,7 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
       cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_pre_dele(cmd_rec *cmd) {
@@ -1486,7 +1489,7 @@ MODRET quotatab_pre_dele(cmd_rec *cmd) {
 
   /* sanity check */
   if (!use_quotas)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* Briefly cache the size (in bytes) of the file to be deleted, so that
    * if successful, the byte counts can be adjusted correctly.
@@ -1498,19 +1501,19 @@ MODRET quotatab_pre_dele(cmd_rec *cmd) {
   else
     quotatab_disk_bytes = sbuf.st_size;
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_post_dele(cmd_rec *cmd) {
 
   /* sanity check */
   if (!use_quotas)
-    return DECLINED(cmd); 
+    return PR_DECLINED(cmd); 
 
   if (quotatab_ignore_path(cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   /* Write out an updated quota entry. */
@@ -1524,14 +1527,14 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
   /* Clear the cached bytes. */
   quotatab_disk_bytes = 0;
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_pre_mkd(cmd_rec *cmd) {
 
   /* Sanity check. */
   if (!use_dirs)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* Use quotatab_pre_stor() for most of the work. */
   return quotatab_pre_stor(cmd);
@@ -1541,7 +1544,7 @@ MODRET quotatab_post_mkd(cmd_rec *cmd) {
 
   /* Sanity check. */
   if (!use_dirs)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* Use quotatab_post_stor() for most of the work. */
   return quotatab_post_stor(cmd);
@@ -1551,7 +1554,7 @@ MODRET quotatab_post_mkd_err(cmd_rec *cmd) {
 
   /* Sanity check. */
   if (!use_dirs)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* Use quotatab_post_stor_err() for most of the work. */
   return quotatab_post_stor_err(cmd);
@@ -1567,7 +1570,7 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
       !have_quota_tally_table) {
     use_quotas = FALSE;
     quotatab_log("turning QuotaEngine off");
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   /* Check for a limit and a tally entry for this user. */
@@ -1849,14 +1852,14 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
     quotatab_log("error setting %%{mod_quotatab.tally.files_xfer} variable: %s",
       strerror(errno));
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_pre_retr(cmd_rec *cmd) {
 
   /* Sanity check */
   if (!use_quotas)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* Refresh the tally */
   QUOTATAB_TALLY_READ
@@ -1873,7 +1876,7 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
     pr_response_add_err(R_451, "%s denied: quota exceeded: used %s",
       cmd->argv[0], DISPLAY_BYTES_OUT(cmd));
     have_err_response = TRUE;
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
 
   } else if (quotatab_limit.bytes_xfer_avail > 0.0 &&
       quotatab_tally.bytes_xfer_used >= quotatab_limit.bytes_xfer_avail) {
@@ -1884,7 +1887,7 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
     pr_response_add_err(R_451, "%s denied: quota exceeded: used %s",
       cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
     have_err_response = TRUE;
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* Check quotas to see if files download or total quota has been reached.
@@ -1899,7 +1902,7 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
     pr_response_add_err(R_451, "%s denied: quota exceeded: used %s",
       cmd->argv[0], DISPLAY_FILES_OUT(cmd));
     have_err_response = TRUE;
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
 
   } else if (quotatab_limit.files_xfer_avail != 0 &&
       quotatab_tally.files_xfer_used >= quotatab_limit.files_xfer_avail) {
@@ -1910,22 +1913,22 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
     pr_response_add(R_451, "%s denied: quota exceeded: used %s", cmd->argv[0],
       DISPLAY_FILES_XFER(cmd));
     have_err_response = TRUE;
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_post_retr(cmd_rec *cmd) {
 
   /* Sanity check */
   if (!use_quotas)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (quotatab_ignore_path(cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   /* Write out an updated tally */
@@ -1976,19 +1979,19 @@ MODRET quotatab_post_retr(cmd_rec *cmd) {
       DISPLAY_FILES_XFER(cmd));
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_post_retr_err(cmd_rec *cmd) {
 
   /* Sanity check */
   if (!use_quotas)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (quotatab_ignore_path(cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   /* Write out an updated tally */
@@ -2052,7 +2055,7 @@ MODRET quotatab_post_retr_err(cmd_rec *cmd) {
   }
 
   have_err_response = FALSE;
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_pre_rmd(cmd_rec *cmd) {
@@ -2060,7 +2063,7 @@ MODRET quotatab_pre_rmd(cmd_rec *cmd) {
 
   /* Sanity check. */
   if (!use_quotas || !use_dirs)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* Briefly cache the size (in bytes) of the directory to be deleted, so that
    * if successful, the byte counts can be adjusted correctly.
@@ -2071,19 +2074,19 @@ MODRET quotatab_pre_rmd(cmd_rec *cmd) {
   else
     quotatab_disk_bytes = sbuf.st_size;
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_post_rmd(cmd_rec *cmd) {
 
   /* Sanity check. */
   if (!use_quotas || !use_dirs)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (quotatab_ignore_path(cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   /* Write out an updated quota entry. */
@@ -2092,7 +2095,7 @@ MODRET quotatab_post_rmd(cmd_rec *cmd) {
   /* Clear the cached bytes. */
   quotatab_disk_bytes = 0;
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_pre_rnto(cmd_rec *cmd) {
@@ -2100,7 +2103,7 @@ MODRET quotatab_pre_rnto(cmd_rec *cmd) {
 
   /* Sanity check */
   if (!use_quotas)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* Briefly cache the size (in bytes) of the file being overwritten, so that
    * if successful, the byte counts can be adjusted correctly.
@@ -2111,19 +2114,19 @@ MODRET quotatab_pre_rnto(cmd_rec *cmd) {
   else
     quotatab_disk_bytes = sbuf.st_size;
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_post_rnto(cmd_rec *cmd) {
 
   /* Sanity check */
   if (!use_quotas)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (quotatab_ignore_path(cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   /* Write out an updated quota entry. */
@@ -2133,7 +2136,7 @@ MODRET quotatab_post_rnto(cmd_rec *cmd) {
   /* Clear the cached bytes. */
   quotatab_disk_bytes = 0;
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_pre_stor(cmd_rec *cmd) {
@@ -2141,7 +2144,7 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
  
   /* Sanity check */
   if (!use_quotas)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* Refresh the tally */
   QUOTATAB_TALLY_READ
@@ -2158,7 +2161,7 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
     pr_response_add_err(R_552, "%s denied: quota exceeded: used %s",
       cmd->argv[0], DISPLAY_BYTES_IN(cmd));
     have_err_response = TRUE;
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
 
   } else if (quotatab_limit.bytes_xfer_avail > 0.0 &&
       quotatab_tally.bytes_xfer_used >= quotatab_limit.bytes_xfer_avail) {
@@ -2169,7 +2172,7 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
     pr_response_add_err(R_552, "%s denied: quota exceeded: used %s",
       cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
     have_err_response = TRUE;
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* Check quotas to see if files upload or total quota has been reached.
@@ -2184,7 +2187,7 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
     pr_response_add_err(R_552, "%s denied: quota exceeded: used %s",
       cmd->argv[0], DISPLAY_FILES_IN(cmd));
     have_err_response = TRUE;
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
 
   } else if (quotatab_limit.files_xfer_avail != 0 &&
       quotatab_tally.files_xfer_used >= quotatab_limit.files_xfer_avail) {
@@ -2195,7 +2198,7 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
     pr_response_add_err(R_552, "%s denied: quota exceeded: used %s",
       cmd->argv[0], DISPLAY_FILES_XFER(cmd));
     have_err_response = TRUE;
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* Briefly cache the size (in bytes) of the file being appended to, so that
@@ -2209,7 +2212,7 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
   else
     quotatab_disk_bytes = sbuf.st_size;
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_post_stor(cmd_rec *cmd) {
@@ -2218,12 +2221,12 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
 
   /* Sanity check */
   if (!use_quotas)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (quotatab_ignore_path(cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   /* Check on the size of the stored file again, and use the difference
@@ -2330,7 +2333,7 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
       DISPLAY_FILES_XFER(cmd));
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_post_stor_err(cmd_rec *cmd) {
@@ -2339,12 +2342,12 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
 
   /* Sanity check */
   if (!use_quotas)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (quotatab_ignore_path(cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
       cmd->argv[0], cmd->arg, quota_exclude_filter);
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   /* Check on the size of the stored file again, and use the difference
@@ -2456,14 +2459,14 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
       cmd->argv[0], DISPLAY_FILES_XFER(cmd));
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_site(cmd_rec *cmd) {
 
   /* Make sure it's a valid SITE QUOTA command */
   if (cmd->argc < 2)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (strcasecmp(cmd->argv[1], "QUOTA") == 0) {
     unsigned char *authenticated = get_param_ptr(cmd->server->conf,
@@ -2472,19 +2475,19 @@ MODRET quotatab_site(cmd_rec *cmd) {
     /* The user is required to be authenticated/logged in, first */
     if (!authenticated || *authenticated == FALSE) {
       pr_response_send(R_530, "Please login with USER and PASS");
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     /* Is showing of the user's quota barred by configuration? */
     if (!allow_site_quota) {
       pr_response_add_err(R_500, "'SITE QUOTA' not understood.");
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     /* Check for <Limit> restrictions. */
     if (!dir_check(cmd->tmp_pool, "SITE_QUOTA", "NONE", session.cwd, NULL)) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     /* Log that the user requested their quota. */
@@ -2493,7 +2496,7 @@ MODRET quotatab_site(cmd_rec *cmd) {
     /* If quotas are not in use, no need to do anything. */
     if (!use_quotas || !have_quota_entry) {
       pr_response_add(R_202, "No quotas in effect");
-      return HANDLED(cmd);
+      return PR_HANDLED(cmd);
     }
 
     /* Refresh the tally. */
@@ -2543,7 +2546,7 @@ MODRET quotatab_site(cmd_rec *cmd) {
       "Please contact %s if these entries are inaccurate",
       cmd->server->ServerAdmin ? cmd->server->ServerAdmin : "ftp-admin");
 
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   }
 
   if (strcasecmp(cmd->argv[1], "HELP") == 0) {
@@ -2552,7 +2555,7 @@ MODRET quotatab_site(cmd_rec *cmd) {
     pr_response_add(R_214, "QUOTA");
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Event handlers

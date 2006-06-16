@@ -25,7 +25,7 @@
  * This is mod_controls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls_admin.c,v 1.25 2006-06-09 17:21:22 castaglia Exp $
+ * $Id: mod_ctrls_admin.c,v 1.26 2006-06-16 02:22:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -985,13 +985,13 @@ MODRET set_adminctrlsacls(cmd_rec *cmd) {
       strcmp(cmd->argv[3], "group") != 0)
     CONF_ERROR(cmd, "third parameter must be 'user' or 'group'");
 
-  if ((bad_action = ctrls_set_module_acls(ctrls_admin_acttab,
-      ctrls_admin_pool, actions, cmd->argv[2], cmd->argv[3],
-      cmd->argv[4])) != NULL)
+  bad_action = ctrls_set_module_acls(ctrls_admin_acttab, ctrls_admin_pool,
+    actions, cmd->argv[2], cmd->argv[3], cmd->argv[4]);
+  if (bad_action != NULL)
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown action: '",
       bad_action, "'", NULL));
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: AdminControlsEngine on|off|actions */
@@ -1028,13 +1028,14 @@ MODRET set_adminctrlsengine(cmd_rec *cmd) {
      */
     char **actions = ctrls_parse_acl(cmd->tmp_pool, cmd->argv[1]);
 
-    if ((bad_action = ctrls_unregister_module_actions(ctrls_admin_acttab,
-        actions, &ctrls_admin_module)) != NULL)   
+    bad_action = ctrls_unregister_module_actions(ctrls_admin_acttab, actions,
+      &ctrls_admin_module);
+    if (bad_action != NULL)
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown action: '",
           bad_action, "'", NULL));
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Event handlers

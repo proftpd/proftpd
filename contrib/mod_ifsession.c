@@ -2,7 +2,7 @@
  * ProFTPD: mod_ifsession -- a module supporting conditional
  *                            per-user/group/class configuration contexts.
  *
- * Copyright (c) 2002-2004 TJ Saunders
+ * Copyright (c) 2002-2006 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
  * This is mod_ifsession, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ifsession.c,v 1.18 2004-12-17 18:24:57 castaglia Exp $
+ * $Id: mod_ifsession.c,v 1.19 2006-06-16 02:22:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -192,7 +192,8 @@ MODRET start_ifctxt(cmd_rec *cmd) {
 
       preg = pr_regexp_alloc();
 
-      if ((res = regcomp(preg, cmd->argv[2], REG_EXTENDED|REG_NOSUB)) != 0) {
+      res = regcomp(preg, cmd->argv[2], REG_EXTENDED|REG_NOSUB);
+      if (res != 0) {
         char errstr[200] = {'\0'};
 
         regerror(res, preg, errstr, sizeof(errstr));
@@ -208,7 +209,7 @@ MODRET start_ifctxt(cmd_rec *cmd) {
       *((unsigned char *) c->argv[0]) = PR_EXPR_EVAL_REGEX;
       c->argv[1] = (void *) preg;
 
-      return HANDLED(cmd);
+      return PR_HANDLED(cmd);
 
 #else
       CONF_ERROR(cmd, "The 'regex' parameter cannot be used on this system, "
@@ -247,12 +248,12 @@ MODRET start_ifctxt(cmd_rec *cmd) {
 
   *argv = NULL;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET end_ifctxt(cmd_rec *cmd) {
   pr_parser_config_ctxt_close(NULL);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Command handlers
@@ -423,7 +424,7 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
     }
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Initialization routines

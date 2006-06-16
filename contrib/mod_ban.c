@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.1 2006-04-21 01:32:32 castaglia Exp $
+ * $Id: mod_ban.c,v 1.2 2006-06-16 02:22:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1354,10 +1354,10 @@ MODRET ban_pre_pass(cmd_rec *cmd) {
   char *user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
 
   if (!ban_engine)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (!user)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* Make sure the list is up-to-date. */
   ban_list_expire();
@@ -1367,10 +1367,10 @@ MODRET ban_pre_pass(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_INFO, MOD_BAN_VERSION
       ": Login denied: user '%s' banned", user);
     ban_send_mesg(cmd->tmp_pool, user);
-    return ERROR_MSG(cmd, R_530, "Login incorrect.");
+    return PR_ERROR_MSG(cmd, R_530, "Login incorrect.");
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Configuration handlers
@@ -1398,12 +1398,13 @@ MODRET set_banctrlsacls(cmd_rec *cmd) {
       strcmp(cmd->argv[3], "group") != 0)
     CONF_ERROR(cmd, "third parameter must be 'user' or 'group'");
 
-  if ((bad_action = ctrls_set_module_acls(ban_acttab,
-      ban_pool, actions, cmd->argv[2], cmd->argv[3], cmd->argv[4])) != NULL)
+  bad_action = ctrls_set_module_acls(ban_acttab, ban_pool, actions,
+    cmd->argv[2], cmd->argv[3], cmd->argv[4]);
+  if (bad_action != NULL)
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown action: '",
       bad_action, "'", NULL));
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: BanEngine on|off */
@@ -1418,7 +1419,7 @@ MODRET set_banengine(cmd_rec *cmd) {
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   ban_engine = bool;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: BanLog path|"none" */
@@ -1430,7 +1431,7 @@ MODRET set_banlog(cmd_rec *cmd) {
     CONF_ERROR(cmd, "must be an absolute path");
 
   ban_log = pstrdup(ban_pool, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: BanMessage mesg */
@@ -1439,7 +1440,7 @@ MODRET set_banmessage(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT);
 
   ban_mesg = pstrdup(ban_pool, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: BanOnEvent event freq duration */
@@ -1535,7 +1536,7 @@ MODRET set_banonevent(cmd_rec *cmd) {
       cmd->argv[1], "'", NULL));
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: BanTable path */
@@ -1547,7 +1548,7 @@ MODRET set_bantable(cmd_rec *cmd) {
     CONF_ERROR(cmd, "must be an absolute path");
 
   ban_table = pstrdup(ban_pool, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Timer handlers

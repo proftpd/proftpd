@@ -22,7 +22,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_site_misc.c,v 1.1 2004-02-27 18:41:55 castaglia Exp $
+ * $Id: mod_site_misc.c,v 1.2 2006-06-16 02:22:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -182,7 +182,7 @@ static time_t site_misc_mktime(unsigned int year, unsigned int month,
 
 MODRET site_misc_mkdir(cmd_rec *cmd) {
   if (cmd->argc < 2)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (strcasecmp(cmd->argv[1], "MKDIR") == 0) {
     register unsigned int i;
@@ -190,13 +190,13 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
     unsigned char *authenticated;
 
     if (cmd->argc < 3)
-      return DECLINED(cmd);
+      return PR_DECLINED(cmd);
 
     authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
 
     if (!authenticated || *authenticated == FALSE) {
       pr_response_add_err(R_530, "Please login with USER and PASS");
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     for (i = 2; i < cmd->argc; i++)
@@ -204,32 +204,32 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
 
     if (site_misc_check_filters(cmd, path) < 0) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     if (!dir_check(cmd->tmp_pool, "SITE_MKDIR", G_WRITE, path, NULL)) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     if (site_misc_create_path(cmd->tmp_pool, path) < 0) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     pr_response_add(R_200, "SITE %s command successful", cmd->argv[1]);
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   }
 
   if (strcasecmp(cmd->argv[1], "HELP") == 0)
     pr_response_add(R_214, "MKDIR <sp> path");
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET site_misc_rmdir(cmd_rec *cmd) {
   if (cmd->argc < 2)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (strcasecmp(cmd->argv[1], "RMDIR") == 0) {
     register unsigned int i;
@@ -237,13 +237,13 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
     unsigned char *authenticated;
 
     if (cmd->argc < 3)
-      return DECLINED(cmd);
+      return PR_DECLINED(cmd);
 
     authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
 
     if (!authenticated || *authenticated == FALSE) {
       pr_response_add_err(R_530, "Please login with USER and PASS");
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     for (i = 2; i < cmd->argc; i++)
@@ -251,76 +251,76 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
 
     if (!dir_check(cmd->tmp_pool, "SITE_RMDIR", G_WRITE, path, NULL)) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     if (site_misc_delete_path(cmd->tmp_pool, path) < 0) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     pr_response_add(R_200, "SITE %s command successful", cmd->argv[1]);
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   } 
 
   if (strcasecmp(cmd->argv[1], "HELP") == 0)
     pr_response_add(R_214, "RMDIR <sp> path");
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET site_misc_symlink(cmd_rec *cmd) {
   if (cmd->argc < 2)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (strcasecmp(cmd->argv[1], "SYMLINK") == 0) {
     unsigned char *authenticated;
 
     if (cmd->argc < 4)
-      return DECLINED(cmd);
+      return PR_DECLINED(cmd);
 
     authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
 
     if (!authenticated || *authenticated == FALSE) {
       pr_response_add_err(R_530, "Please login with USER and PASS");
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     if (!dir_check(cmd->tmp_pool, "SITE_SYMLINK", G_WRITE, cmd->argv[2],
         NULL)) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     if (!dir_check(cmd->tmp_pool, "SITE_SYMLINK", G_WRITE, cmd->argv[3],
         NULL)) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     if (site_misc_check_filters(cmd, cmd->argv[3]) < 0) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     if (pr_fsio_symlink(cmd->argv[2], cmd->argv[3]) < 0) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     pr_response_add(R_200, "SITE %s command successful", cmd->argv[1]);
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   } 
 
   if (strcasecmp(cmd->argv[1], "HELP") == 0)
     pr_response_add(R_214, "SYMLINK <sp> source <sp> destination");
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET site_misc_utime(cmd_rec *cmd) {
   if (cmd->argc < 2)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (strcasecmp(cmd->argv[1], "UTIME") == 0) {
     register unsigned int i;
@@ -330,18 +330,18 @@ MODRET site_misc_utime(cmd_rec *cmd) {
     unsigned char *authenticated;
 
     if (cmd->argc < 4)
-      return DECLINED(cmd);
+      return PR_DECLINED(cmd);
 
     authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
 
     if (!authenticated || *authenticated == FALSE) {
       pr_response_add_err(R_530, "Please login with USER and PASS");
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     if (strlen(cmd->argv[2]) != 12) {
       pr_response_add_err(R_500, "%s: %s", cmd->arg, strerror(EINVAL));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     for (i = 3; i < cmd->argc; i++)
@@ -349,12 +349,12 @@ MODRET site_misc_utime(cmd_rec *cmd) {
 
     if (!dir_check(cmd->tmp_pool, "SITE_UTIME", G_WRITE, path, NULL)) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     if (site_misc_check_filters(cmd, path) < 0) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EPERM));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     p = cmd->argv[2];
@@ -389,17 +389,17 @@ MODRET site_misc_utime(cmd_rec *cmd) {
 
     if (utime(path, &tmbuf) < 0) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
  
     pr_response_add(R_200, "SITE %s command successful", cmd->argv[1]);
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   }
 
   if (strcasecmp(cmd->argv[1], "HELP") == 0)
     pr_response_add(R_214, "UTIME <sp> YYYYMMDDhhmm <sp> path");
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Initialization functions

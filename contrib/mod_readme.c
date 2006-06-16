@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -105,11 +105,10 @@ MODRET show_readme(cmd_rec *cmd) {
   char *file;
   
   c = find_config(CURRENT_CONF, CONF_PARAM, "DisplayReadme", FALSE);
-  
-  while(c) {
+  while (c) {
     file = c->argv[0];
     
-    pr_log_debug(DEBUG5, "Checking for display pattern %s.", file);
+    pr_log_debug(DEBUG5, "Checking for display pattern %s", file);
     add_pattern_response(cmd->tmp_pool, file);
     
     c = find_config_next(c, c->next, CONF_PARAM, "DisplayReadme",FALSE);
@@ -118,24 +117,23 @@ MODRET show_readme(cmd_rec *cmd) {
   /* Originally this returned HANDLED, which was incorrect, and
    * could cause other POST_CMD handlers to not run
    */
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET readme_add_entry(cmd_rec *cmd) {
   config_rec *c;
   
-  CHECK_CONF(cmd,CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
   
   if (cmd->argc != 2) {
     CONF_ERROR(cmd, "syntax: DisplayReadme <filename-or-pattern>");
   }
   
-  c = add_config_param_str( "DisplayReadme", 1, (void *)cmd->argv[1]);
+  c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   c->flags |= CF_MERGEDOWN;
   
-  pr_log_debug(DEBUG5, "Added pattern %s to readme-list.", cmd->argv[1]);
-  
-  return HANDLED(cmd);
+  pr_log_debug(DEBUG5, "Added pattern %s to readme list", cmd->argv[1]);
+  return PR_HANDLED(cmd);
 }
 
 static conftable readme_config[] = {

@@ -3063,7 +3063,7 @@ static int tls_openlog(void) {
  */
 MODRET tls_authenticate(cmd_rec *cmd) {
   if (!tls_engine)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* Possible authentication combinations:
    *
@@ -3087,7 +3087,7 @@ MODRET tls_authenticate(cmd_rec *cmd) {
         cmd->argv[0]);
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* This function is called only when UserPassword is involved, used to
@@ -3099,7 +3099,7 @@ MODRET tls_authenticate(cmd_rec *cmd) {
  */
 MODRET tls_auth_check(cmd_rec *cmd) {
   if (!tls_engine)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* Possible authentication combinations:
    *
@@ -3123,7 +3123,7 @@ MODRET tls_auth_check(cmd_rec *cmd) {
         cmd->argv[1]);
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Command handlers
@@ -3131,7 +3131,7 @@ MODRET tls_auth_check(cmd_rec *cmd) {
 
 MODRET tls_any(cmd_rec *cmd) {
   if (!tls_engine)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* NOTE: possibly add checks of commands here in order to support the
    * ability of having TLSRequired in per-directory configurations.  This
@@ -3144,7 +3144,7 @@ MODRET tls_any(cmd_rec *cmd) {
   if (strcmp(cmd->argv[0], C_SYST) == 0 ||
       strcmp(cmd->argv[0], C_AUTH) == 0 ||
       strcmp(cmd->argv[0], C_QUIT) == 0)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (tls_required_on_auth &&
       !(tls_flags & TLS_SESS_ON_CTRL)) {
@@ -3152,7 +3152,7 @@ MODRET tls_any(cmd_rec *cmd) {
         strcmp(cmd->argv[0], C_PASS) == 0 ||
         strcmp(cmd->argv[0], C_ACCT) == 0) {
       pr_response_add_err(R_550, "SSL/TLS required on the control channel");
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
   }
 
@@ -3163,7 +3163,7 @@ MODRET tls_any(cmd_rec *cmd) {
       tls_log("SSL/TLS required but absent on control channel, "
         "denying %s command", cmd->argv[0]);
       pr_response_add_err(R_550, "SSL/TLS required on the control channel");
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
 
     } else {
 
@@ -3172,7 +3172,7 @@ MODRET tls_any(cmd_rec *cmd) {
         tls_log("SSL/TLS required but absent on control channel, "
           "denying %s command", cmd->argv[0]);
         pr_response_add_err(R_550, "SSL/TLS required on the control channel");
-        return ERROR(cmd);
+        return PR_ERROR(cmd);
       }
     }
   }
@@ -3188,18 +3188,18 @@ MODRET tls_any(cmd_rec *cmd) {
       tls_log("SSL/TLS required but absent on data channel, "
         "denying %s command", cmd->argv[0]);
       pr_response_add_err(R_550, "SSL/TLS required on the data channel");
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET tls_auth(cmd_rec *cmd) {
   register unsigned int i = 0;
 
   if (!tls_engine)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* NOTE: need to make sure that AUTH cannot be used after USER has been
    * issued/processed (not without a REIN, anyway).
@@ -3207,13 +3207,13 @@ MODRET tls_auth(cmd_rec *cmd) {
 
   if (cmd->argc < 2) {
     pr_response_add_err(R_504, "AUTH requires at least one argument");
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   if (tls_flags & TLS_SESS_HAVE_CCC) {
     tls_log("Unwilling to accept AUTH after CCC for this session");
     pr_response_add_err(R_534, "Unwilling to accept security parameters");
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* Convert the parameter to upper case */
@@ -3232,7 +3232,7 @@ MODRET tls_auth(cmd_rec *cmd) {
         end_login(1);
 
       pr_response_add_err(R_550, "TLS handshake failed");
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
 #if OPENSSL_VERSION_NUMBER < 0x0090702fL
@@ -3256,7 +3256,7 @@ MODRET tls_auth(cmd_rec *cmd) {
         end_login(1);
 
       pr_response_add_err(R_550, "TLS handshake failed");
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
 #if OPENSSL_VERSION_NUMBER < 0x0090702fL
@@ -3273,11 +3273,11 @@ MODRET tls_auth(cmd_rec *cmd) {
     tls_log("AUTH %s unsupported, declining", cmd->argv[1]);
 
     /* Allow other RFC2228 modules a chance a handling this command. */
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   session.rfc2228_mech = "TLS";
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET tls_ccc(cmd_rec *cmd) {
@@ -3285,19 +3285,19 @@ MODRET tls_ccc(cmd_rec *cmd) {
   if (!tls_engine ||
       !session.rfc2228_mech ||
       strcmp(session.rfc2228_mech, "TLS") != 0)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (!(tls_flags & TLS_SESS_ON_CTRL)) {
     pr_response_add_err(R_533,
       "CCC not allowed on insecure control connection");
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* Check for <Limit> restrictions. */
   if (!dir_check(cmd->tmp_pool, C_CCC, G_NONE, session.cwd, NULL)) {
     pr_response_add_err(R_534, "Unwilling to accept security parameters");
     tls_log("%s: unwilling to accept security parameters", cmd->argv[0]);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   tls_log("received CCC, clearing control channel protection");
@@ -3320,7 +3320,7 @@ MODRET tls_ccc(cmd_rec *cmd) {
   tls_flags &= ~TLS_SESS_ON_CTRL;
   tls_flags |= TLS_SESS_HAVE_CCC;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET tls_pbsz(cmd_rec *cmd) {
@@ -3328,14 +3328,14 @@ MODRET tls_pbsz(cmd_rec *cmd) {
   if (!tls_engine ||
       !session.rfc2228_mech ||
       strcmp(session.rfc2228_mech, "TLS") != 0)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   CHECK_CMD_ARGS(cmd, 2);
 
   if (!(tls_flags & TLS_SESS_ON_CTRL)) {
     pr_response_add_err(R_503,
       "PBSZ not allowed on insecure control connection");
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* We expect "PBSZ 0" */
@@ -3345,16 +3345,16 @@ MODRET tls_pbsz(cmd_rec *cmd) {
     pr_response_add(R_200, "PBSZ=0 successful");
 
   tls_flags |= TLS_SESS_PBSZ_OK;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET tls_post_pass(cmd_rec *cmd) {
 
   if (!tls_engine)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (!(tls_opts & TLS_OPT_ALLOW_PER_USER))
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   tls_authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
 
@@ -3374,7 +3374,7 @@ MODRET tls_post_pass(cmd_rec *cmd) {
     }
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET tls_prot(cmd_rec *cmd) {
@@ -3382,19 +3382,19 @@ MODRET tls_prot(cmd_rec *cmd) {
   if (!tls_engine ||
       !session.rfc2228_mech ||
       strcmp(session.rfc2228_mech, "TLS") != 0)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   CHECK_CMD_ARGS(cmd, 2);
 
   if (!(tls_flags & TLS_SESS_ON_CTRL)) {
     pr_response_add_err(R_503,
       "PROT not allowed on insecure control connection");
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   if (!(tls_flags & TLS_SESS_PBSZ_OK)) {
     pr_response_add_err(R_503, "You must issue the PBSZ command prior to PROT");
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* Only PROT C or PROT P is valid with respect to SSL/TLS. */
@@ -3416,7 +3416,7 @@ MODRET tls_prot(cmd_rec *cmd) {
         cmd->argv[0]);
       tls_log("%s: unwilling to accept security parameter (%s)", cmd->argv[0],
         cmd->argv[1]);
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
   } else if (strcmp(cmd->argv[1], "P") == 0) {
@@ -3438,14 +3438,14 @@ MODRET tls_prot(cmd_rec *cmd) {
      * is handling the security mechanism, and that this module does not
      * allow for the unsupported PROT levels.
      */
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
 
   } else {
     pr_response_add_err(R_504, "PROT %s unsupported", cmd->argv[1]);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Configuration handlers
@@ -3464,7 +3464,7 @@ MODRET set_tlscacertfile(cmd_rec *cmd) {
     CONF_ERROR(cmd, "parameter must be an absolute path");
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSCACertificatePath path */
@@ -3479,7 +3479,7 @@ MODRET set_tlscacertpath(cmd_rec *cmd) {
     CONF_ERROR(cmd, "parameter must be an absolute path");
  
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]); 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSCARevocationFile file */
@@ -3495,7 +3495,7 @@ MODRET set_tlscacrlfile(cmd_rec *cmd) {
     CONF_ERROR(cmd, "parameter must be an absolute path");
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSCARevocationPath path */
@@ -3510,7 +3510,7 @@ MODRET set_tlscacrlpath(cmd_rec *cmd) {
     CONF_ERROR(cmd, "parameter must be an absolute path");
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSCertificateChainFile file */
@@ -3526,7 +3526,7 @@ MODRET set_tlscertchain(cmd_rec *cmd) {
     CONF_ERROR(cmd, "parameter must be an absolute path");
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSCipherSuite string */
@@ -3535,7 +3535,7 @@ MODRET set_tlsciphersuite(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSCryptoDevice driver|"ALL"|"NONE" */
@@ -3545,7 +3545,7 @@ MODRET set_tlscryptodevice(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 
 #else /* OpenSSL is too old for ENGINE support */
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
@@ -3567,7 +3567,7 @@ MODRET set_tlsdhparamfile(cmd_rec *cmd) {
     CONF_ERROR(cmd, "parameter must be an absolute path");
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSDSACertificateFile file */
@@ -3583,7 +3583,7 @@ MODRET set_tlsdsacertfile(cmd_rec *cmd) {
     CONF_ERROR(cmd, "parameter must be an absolute path");
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSDSACertificateKeyFile file */
@@ -3599,7 +3599,7 @@ MODRET set_tlsdsakeyfile(cmd_rec *cmd) {
     CONF_ERROR(cmd, "parameter must be an absolute path");
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSEngine on|off */
@@ -3617,7 +3617,7 @@ MODRET set_tlsengine(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = bool;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSLog file */
@@ -3626,7 +3626,7 @@ MODRET set_tlslog(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSOptions opt1 opt2 ... */
@@ -3672,7 +3672,7 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
   *((unsigned long *) c->argv[0]) = opts;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSProtocol protocol */
@@ -3693,7 +3693,7 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown protocol: '",
       cmd->argv[1], "'", NULL));
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSRandomSeed file */
@@ -3703,7 +3703,7 @@ MODRET set_tlsrandseed(cmd_rec *cmd) {
 
   /* NOTE: not yet implemented/used */
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSRenegotiate [ctrl nsecs] [data nbytes] */
@@ -3719,7 +3719,7 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
 
   if (strcasecmp(cmd->argv[1], "none") == 0) {
     add_config_param(cmd->argv[0], 0);
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   }
 
   c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
@@ -3788,7 +3788,7 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
     }
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 #else
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, " requires OpenSSL-0.9.7 or greater",
     NULL));
@@ -3848,7 +3848,7 @@ MODRET set_tlsrequired(cmd_rec *cmd) {
 
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSRSACertificateFile file */
@@ -3864,7 +3864,7 @@ MODRET set_tlsrsacertfile(cmd_rec *cmd) {
     CONF_ERROR(cmd, "parameter must be an absolute path");
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSRSACertificateKeyFile file */
@@ -3880,7 +3880,7 @@ MODRET set_tlsrsakeyfile(cmd_rec *cmd) {
     CONF_ERROR(cmd, "parameter must be an absolute path");
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSTimeoutHandshake <secs> */
@@ -3901,7 +3901,7 @@ MODRET set_tlstimeouthandshake(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[0]) = timeout;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSVerifyClient on|off */
@@ -3919,7 +3919,7 @@ MODRET set_tlsverifyclient(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = bool;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TLSVerifyDepth depth */
@@ -3937,7 +3937,7 @@ MODRET set_tlsverifydepth(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = depth;
  
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Event handlers

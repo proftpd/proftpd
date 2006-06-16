@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
  *
- * Copyright (c) 2001-2005 TJ Saunders
+ * Copyright (c) 2001-2006 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
  * This is mod_rewrite, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_rewrite.c,v 1.23 2005-05-06 05:24:47 castaglia Exp $
+ * $Id: mod_rewrite.c,v 1.24 2006-06-16 02:22:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1684,7 +1684,7 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
    */
   *((config_rec **) push_array(rewrite_conds)) = c;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: RewriteEngine on|off */
@@ -1695,7 +1695,8 @@ MODRET set_rewriteengine(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expecting boolean argument");
 
   /* Check for duplicates */
@@ -1707,7 +1708,7 @@ MODRET set_rewriteengine(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = bool;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: RewriteLock file */
@@ -1721,7 +1722,7 @@ MODRET set_rewritelock(cmd_rec *cmd) {
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: RewriteLog file|"none" */
@@ -1736,7 +1737,7 @@ MODRET set_rewritelog(cmd_rec *cmd) {
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: RewriteMap map-name map-type:map-source */ 
@@ -1840,7 +1841,7 @@ MODRET set_rewritemap(cmd_rec *cmd) {
   c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
   c->argv[2] = map;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: RewriteRule pattern substitution [flags] */
@@ -1941,7 +1942,7 @@ MODRET set_rewriterule(cmd_rec *cmd) {
   *((unsigned int *) c->argv[5]) = rewrite_nrules++;
 
   c->flags |= CF_MERGEDOWN_MULTI;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Command handlers
@@ -1953,14 +1954,14 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
 
   /* Is RewriteEngine on? */
   if (!rewrite_engine)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* If this command has no argument(s), the module has nothing on which to
    * operate.
    */
   if (cmd->argc == 1) {
     rewrite_log("rewrite_fixup(): skipping %s (no arg)", cmd->argv[0]);
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   /* Create an array that will contain the IDs of the RewriteRules we've
@@ -2070,7 +2071,7 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
     c = find_config_next(c, c->next, CONF_PARAM, "RewriteRule", FALSE);
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Events handlers

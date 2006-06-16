@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.44 2006-04-19 16:44:23 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.45 2006-06-16 02:22:05 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -849,7 +849,7 @@ handle_ldap_quota_lookup(cmd_rec *cmd)
     if (pr_ldap_quota_lookup(cmd->tmp_pool, ldap_quota_filter,
                              cmd->argv[0], ldap_quota_basedn) == FALSE)
     {
-      return DECLINED(cmd);
+      return PR_DECLINED(cmd);
     }
   }
 
@@ -863,10 +863,10 @@ handle_ldap_setpwent(cmd_rec *cmd)
     if (!ld) {
       (void) pr_ldap_connect(&ld, TRUE);
     }
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET
@@ -876,31 +876,31 @@ handle_ldap_endpwent(cmd_rec *cmd)
     pr_ldap_unbind();
     pw = NULL;
     gr = NULL;
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET
 handle_ldap_getpwuid(cmd_rec *cmd)
 {
   if (!ldap_douid) {
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   if ((pw = pr_ldap_getpwuid(cmd->tmp_pool, (uid_t)cmd->argv[0]))) {
     return mod_create_data(cmd, pw);
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET
 handle_ldap_getpwnam(cmd_rec *cmd)
 {
   if (!ldap_doauth) {
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   if (pw && pw->pw_name && strcasecmp(pw->pw_name, cmd->argv[0]) == 0) {
@@ -911,14 +911,14 @@ handle_ldap_getpwnam(cmd_rec *cmd)
     return mod_create_data(cmd, pw);
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET
 handle_ldap_getgrnam(cmd_rec *cmd)
 {
   if (!ldap_dogid) {
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   if (gr && strcasecmp(gr->gr_name, cmd->argv[0]) == 0) {
@@ -928,14 +928,14 @@ handle_ldap_getgrnam(cmd_rec *cmd)
     return mod_create_data(cmd, gr);
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET
 handle_ldap_getgrgid(cmd_rec *cmd)
 {
   if (!ldap_dogid) {
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   if (gr && gr->gr_gid == (gid_t)cmd->argv[0]) {
@@ -945,7 +945,7 @@ handle_ldap_getgrgid(cmd_rec *cmd)
     return mod_create_data(cmd, gr);
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET
@@ -961,11 +961,11 @@ handle_ldap_getgroups(cmd_rec *cmd)
                *groups = (array_header *)cmd->argv[2];
 
   if (!ldap_dogid) {
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   if (!gids || !groups) {
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   if ((pw = pr_ldap_getpwnam(cmd->tmp_pool, cmd->argv[0]))) {
@@ -1045,7 +1045,7 @@ return_groups:
   if (gids->nelts > 0) {
     return mod_create_data(cmd, (void *) &gids->nelts);
   }
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 
@@ -1064,7 +1064,7 @@ handle_ldap_is_auth(cmd_rec *cmd)
   char *pass_attrs[] = {ldap_attr_userpassword, ldap_attr_homedirectory, NULL};
 
   if (!ldap_doauth) {
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   /* If anything here fails hard (IOW, we've found an LDAP entry for the
@@ -1084,11 +1084,11 @@ handle_ldap_is_auth(cmd_rec *cmd)
                                   ldap_authbinds ? pass_attrs + 1 : pass_attrs,
                                   ldap_authbinds ? &ldap_authbind_dn : NULL)) == NULL)
     {
-      return DECLINED(cmd); /* Can't find the user in the LDAP directory. */
+      return PR_DECLINED(cmd); /* Can't find the user in the LDAP directory. */
     }
 
   if (!ldap_authbinds && !pw->pw_passwd) {
-    return ERROR_INT(cmd, PR_AUTH_NOPWD);
+    return PR_ERROR_INT(cmd, PR_AUTH_NOPWD);
   }
 
   /* FIXME: If we pass a "" or NULL "crypted password" argument to
@@ -1102,11 +1102,11 @@ handle_ldap_is_auth(cmd_rec *cmd)
   if (auth_check(cmd->tmp_pool, ldap_authbinds ? "*" : pw->pw_passwd,
                  username, cmd->argv[1]))
   {
-    return ERROR_INT(cmd, PR_AUTH_BADPWD);
+    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
   session.auth_mech = "mod_ldap.c";
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* cmd->argv[0] = hashed password,
@@ -1131,7 +1131,7 @@ handle_ldap_check(cmd_rec *cmd)
 #endif /* HAVE_OPENSSL */
 
   if (!ldap_doauth) {
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   cryptpass = cmd->argv[0];
@@ -1154,17 +1154,17 @@ handle_ldap_check(cmd_rec *cmd)
     if ( (pass == NULL) || (strlen(pass) == 0) ||
          (ldap_authbind_dn == NULL) || (strlen(ldap_authbind_dn) == 0))
     {
-      return DECLINED(cmd);
+      return PR_DECLINED(cmd);
     }
     if (cryptpass != NULL && strlen(cryptpass) > 0 &&
         strcmp(cryptpass, "*") != 0)
     {
-      return DECLINED(cmd);
+      return PR_DECLINED(cmd);
     }
 
     if (pr_ldap_connect(&ld_auth, FALSE) == -1) {
       pr_log_pri(PR_LOG_ERR, "mod_ldap: handle_ldap_check(): pr_ldap_connect() failed");
-      return DECLINED(cmd);
+      return PR_DECLINED(cmd);
     }
 
     if ((ret = ldap_simple_bind_s(ld_auth, ldap_authbind_dn, cmd->argv[2])) != LDAP_SUCCESS) {
@@ -1172,12 +1172,12 @@ handle_ldap_check(cmd_rec *cmd)
         pr_log_pri(PR_LOG_ERR, "mod_ldap: handle_ldap_check(): pr_ldap_connect() failed: %s", ldap_err2string(ret));
       }
       ldap_unbind(ld_auth);
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     ldap_unbind(ld_auth);
     session.auth_mech = "mod_ldap.c";
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   }
 
   /* Get the length of "scheme" in the leading {scheme} so we can skip it
@@ -1191,20 +1191,20 @@ handle_ldap_check(cmd_rec *cmd)
   if (encname_len == strlen(cryptpass + 1)) { /* No leading {scheme} */
     if (ldap_defaultauthscheme && (strcasecmp(ldap_defaultauthscheme, "clear") == 0)) {
       if (strcmp(pass, cryptpass) != 0) {
-        return ERROR(cmd);
+        return PR_ERROR(cmd);
       }
     } else { /* else, assume crypt */
       if (strcmp(crypt(pass, cryptpass), cryptpass) != 0) {
-        return ERROR(cmd);
+        return PR_ERROR(cmd);
       }
     }
   } else if (strncasecmp(hash_method, "crypt", strlen(hash_method)) == 0) { /* {crypt} */
     if (strcmp(crypt(pass, cryptpass + encname_len + 2), cryptpass + encname_len + 2) != 0) {
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
   } else if (strncasecmp(hash_method, "clear", strlen(hash_method)) == 0) { /* {clear} */
     if (strcmp(pass, cryptpass + encname_len + 2) != 0) {
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
   }
 #ifdef HAVE_OPENSSL
@@ -1228,7 +1228,7 @@ handle_ldap_check(cmd_rec *cmd)
 
     if (!md) {
       pr_log_debug(DEBUG5, "mod_ldap: %s not supported by OpenSSL, declining auth request", hash_method);
-      return DECLINED(cmd); /* Some other module may support it. */
+      return PR_DECLINED(cmd); /* Some other module may support it. */
     }
 
     /* Make a digest of the user-supplied password. */
@@ -1241,17 +1241,17 @@ handle_ldap_check(cmd_rec *cmd)
     EVP_EncodeBlock(buff, md_value, md_len);
 
     if (strcmp(buff, cryptpass + encname_len + 2) != 0) {
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
   }
 #else /* HAVE_OPENSSL */
   else { /* Can't find a supported {scheme} */
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 #endif /* HAVE_OPENSSL */
 
   session.auth_mech = "mod_ldap.c";
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET
@@ -1261,7 +1261,7 @@ handle_ldap_uid_name(cmd_rec *cmd)
   pr_idauth_t id;
 
   if (!ldap_douid) {
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   id.uid = *((uid_t *) cmd->argv[0]);
@@ -1269,7 +1269,7 @@ handle_ldap_uid_name(cmd_rec *cmd)
 
   if (!m->name) {
     if (ldap_negcache && m->negative) {
-      return DECLINED(cmd);
+      return PR_DECLINED(cmd);
     }
 
     /* Wasn't cached and we've haven't seen this one, so perform a lookup.
@@ -1281,7 +1281,7 @@ handle_ldap_uid_name(cmd_rec *cmd)
         if (ldap_negcache) {
           m->negative = 1;
         }
-        return DECLINED(cmd); /* Can't find the user in the LDAP directory. */
+        return PR_DECLINED(cmd); /* Can't find the user in the LDAP directory. */
       }
     }
 
@@ -1298,7 +1298,7 @@ handle_ldap_gid_name(cmd_rec *cmd)
   pr_idauth_t id;
 
   if (!ldap_dogid) {
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   id.gid = *((gid_t *) cmd->argv[0]);
@@ -1306,7 +1306,7 @@ handle_ldap_gid_name(cmd_rec *cmd)
 
   if (!m->name) {
     if (ldap_negcache && m->negative) {
-      return DECLINED(cmd);
+      return PR_DECLINED(cmd);
     }
 
     /* Wasn't cached and we've haven't seen this one, so perform a lookup.
@@ -1318,7 +1318,7 @@ handle_ldap_gid_name(cmd_rec *cmd)
         if (ldap_negcache) {
           m->negative = 1;
         }
-        return DECLINED(cmd); /* Can't find the user in the LDAP directory. */
+        return PR_DECLINED(cmd); /* Can't find the user in the LDAP directory. */
       }
     }
 
@@ -1332,7 +1332,7 @@ MODRET
 handle_ldap_name_uid(cmd_rec *cmd)
 {
   if (!ldap_doauth) {
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   if (pw && pw->pw_name && strcasecmp(pw->pw_name, cmd->argv[0]) == 0) {
@@ -1342,14 +1342,14 @@ handle_ldap_name_uid(cmd_rec *cmd)
     return mod_create_data(cmd, (void *) &pw->pw_uid);
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET
 handle_ldap_name_gid(cmd_rec *cmd)
 {
   if (!ldap_dogid) {
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   if (gr && strcasecmp(gr->gr_name, cmd->argv[0]) == 0) {
@@ -1359,7 +1359,7 @@ handle_ldap_name_gid(cmd_rec *cmd)
     return mod_create_data(cmd, (void *) &gr->gr_gid);
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 
@@ -1374,7 +1374,7 @@ set_ldap_server(cmd_rec *cmd)
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET
@@ -1384,7 +1384,7 @@ set_ldap_dninfo(cmd_rec *cmd)
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET
@@ -1404,7 +1404,7 @@ set_ldap_authbinds(cmd_rec *cmd)
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = b;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET
@@ -1425,7 +1425,7 @@ set_ldap_querytimeout(cmd_rec *cmd)
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = timeout;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET
@@ -1435,7 +1435,7 @@ set_ldap_searchscope(cmd_rec *cmd)
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET
@@ -1462,7 +1462,7 @@ set_ldap_dereference(cmd_rec *cmd)
   c = add_config_param("LDAPAliasDereference", 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = value;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET
@@ -1490,7 +1490,7 @@ set_ldap_doauth(cmd_rec *cmd)
     c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET
@@ -1518,7 +1518,7 @@ set_ldap_douid(cmd_rec *cmd)
     c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET
@@ -1552,7 +1552,7 @@ set_ldap_dogid(cmd_rec *cmd)
     c->argv[4] = pstrdup(c->pool, cmd->argv[5]);
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET
@@ -1583,7 +1583,7 @@ set_ldap_doquota(cmd_rec *cmd)
     c->argv[3] = pstrdup(c->pool, cmd->argv[4]);
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET
@@ -1601,7 +1601,7 @@ set_ldap_defaultuid(cmd_rec *cmd)
   if (*endptr != '\0') {
     CONF_ERROR(cmd, "LDAPDefaultUID: UID argument must be numeric!");
   }
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET
@@ -1619,7 +1619,7 @@ set_ldap_defaultgid(cmd_rec *cmd)
   if (*endptr != '\0') {
     CONF_ERROR(cmd, "LDAPDefaultGID: GID argument must be numeric.");
   }
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_ldap_forcedefaultuid(cmd_rec *cmd)
@@ -1636,7 +1636,7 @@ MODRET set_ldap_forcedefaultuid(cmd_rec *cmd)
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = b;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_ldap_forcedefaultgid(cmd_rec *cmd)
@@ -1654,7 +1654,7 @@ MODRET set_ldap_forcedefaultgid(cmd_rec *cmd)
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = b;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET
@@ -1673,7 +1673,7 @@ set_ldap_negcache(cmd_rec *cmd)
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = b;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET
@@ -1692,7 +1692,7 @@ set_ldap_genhdir(cmd_rec *cmd)
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = b;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_ldap_forcegenhdir(cmd_rec *cmd)
@@ -1709,7 +1709,7 @@ MODRET set_ldap_forcegenhdir(cmd_rec *cmd)
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = b;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET
@@ -1719,7 +1719,7 @@ set_ldap_genhdirprefix(cmd_rec *cmd)
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET
@@ -1739,7 +1739,7 @@ set_ldap_genhdirprefixnouname(cmd_rec *cmd)
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = b;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET
@@ -1749,7 +1749,7 @@ set_ldap_defaultauthscheme(cmd_rec *cmd)
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET
@@ -1771,7 +1771,7 @@ set_ldap_usetls(cmd_rec *cmd)
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = b;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 #endif /* USE_LDAP_TLS */
 }
 
@@ -1794,7 +1794,7 @@ set_ldap_protoversion(cmd_rec *cmd)
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = atoi(cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET
@@ -1817,7 +1817,7 @@ set_ldap_attr(cmd_rec *cmd)
   }
 
   add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 static int

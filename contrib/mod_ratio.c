@@ -234,7 +234,7 @@ MODRET _calc_ratios (cmd_rec * cmd)
   char **data;
 
   if (!(g.enable = get_param_int (main_server->conf, "Ratios", FALSE) == TRUE))
-    return DECLINED (cmd);
+    return PR_DECLINED (cmd);
 
   mr = _dispatch (cmd, "getstats");
   if (MODRET_HASDATA (mr))
@@ -255,7 +255,7 @@ MODRET _calc_ratios (cmd_rec * cmd)
 		   g.user);
       _set_ratios (data[0], data[1], data[2], data[3]);
       g.rtype = "U";
-      return DECLINED (cmd);
+      return PR_DECLINED (cmd);
     }
 
   c = find_config (main_server->conf, CONF_PARAM, "HostRatio", TRUE);
@@ -281,7 +281,7 @@ MODRET _calc_ratios (cmd_rec * cmd)
 	{
 	  _set_ratios (c->argv[1], c->argv[2], c->argv[3], c->argv[4]);
 	  g.rtype = "h";
-	  return DECLINED (cmd);
+	  return PR_DECLINED (cmd);
 	}
       c = find_config_next (c, c->next, CONF_PARAM, "HostRatio", FALSE);
     }
@@ -294,7 +294,7 @@ MODRET _calc_ratios (cmd_rec * cmd)
 	{
 	  _set_ratios (c->argv[1], c->argv[2], c->argv[3], c->argv[4]);
 	  g.rtype = "a";
-	  return DECLINED (cmd);
+	  return PR_DECLINED (cmd);
 	}
       c = find_config_next (c, c->next, CONF_PARAM, "AnonRatio", FALSE);
     }
@@ -306,7 +306,7 @@ MODRET _calc_ratios (cmd_rec * cmd)
 	{
 	  _set_ratios (c->argv[1], c->argv[2], c->argv[3], c->argv[4]);
 	  g.rtype = "u";
-	  return DECLINED (cmd);
+	  return PR_DECLINED (cmd);
 	}
       c = find_config_next (c, c->next, CONF_PARAM, "UserRatio", FALSE);
     }
@@ -318,12 +318,12 @@ MODRET _calc_ratios (cmd_rec * cmd)
 	{
 	  _set_ratios (c->argv[1], c->argv[2], c->argv[3], c->argv[4]);
 	  g.rtype = "g";
-	  return DECLINED (cmd);
+	  return PR_DECLINED (cmd);
 	}
       c = find_config_next (c, c->next, CONF_PARAM, "GroupRatio", FALSE);
     }
 
-  return DECLINED (cmd);
+  return PR_DECLINED (cmd);
 }
 
 static void
@@ -392,11 +392,11 @@ pre_cmd_retr (cmd_rec * cmd)
 
   _calc_ratios (cmd);
   if (!g.enable)
-    return DECLINED (cmd);
+    return PR_DECLINED (cmd);
   _log_ratios (cmd);
 
   if (!RATIO_ENFORCE)
-    return DECLINED (cmd);
+    return PR_DECLINED (cmd);
 
   if (stats.frate && stats.files < 1)
     {
@@ -404,7 +404,7 @@ pre_cmd_retr (cmd_rec * cmd)
       pr_response_add_err (R_550,
 			"%s: FILE RATIO: %s  Down: %i  Up: only %i!",
 			cmd->arg, stats.ftext, stats.fretr, stats.fstor);
-      return ERROR (cmd);
+      return PR_ERROR (cmd);
     }
 
   if (stats.brate)
@@ -421,11 +421,11 @@ pre_cmd_retr (cmd_rec * cmd)
 	  pr_response_add_err (R_550,
 			    "%s: BYTE RATIO: %s  Down: %imb  Up: only %imb!",
 	cmd->arg, stats.btext, (stats.bretr / 1024), (stats.bstor / 1024));
-	  return ERROR (cmd);
+	  return PR_ERROR (cmd);
 	}
     }
 
-  return DECLINED (cmd);
+  return PR_DECLINED (cmd);
 }
 
 MODRET
@@ -443,7 +443,7 @@ log_cmd_pass (cmd_rec * cmd)
 	       session.group, session.c->remote_name,
 	       pr_netaddr_get_ipstr (session.c->remote_addr), buf);
     }
-  return DECLINED (cmd);
+  return PR_DECLINED (cmd);
 }
 
 MODRET
@@ -456,7 +456,7 @@ pre_cmd (cmd_rec * cmd)
 	_calc_ratios (cmd);
       _log_ratios (cmd);
     }
-  return DECLINED (cmd);
+  return PR_DECLINED (cmd);
 }
 
 MODRET
@@ -470,12 +470,12 @@ cmd_cwd (cmd_rec * cmd)
       while (dir && c)
 	{
 	  if (!*((char *) c->argv[0]))
-	    return DECLINED (cmd);
+	    return PR_DECLINED (cmd);
 	  pr_response_add (R_250, "%s", (char *)c->argv[0]);
 	  c = find_config_next (c, c->next, CONF_PARAM, "CwdRatioMsg", FALSE);
 	}
     }
-  return DECLINED (cmd);
+  return PR_DECLINED (cmd);
 }
 
 MODRET
@@ -587,7 +587,7 @@ ratio_cmd (cmd_rec * cmd)
       else
 	pr_response_add (r, "%s%s%s", sbuf1, g.leechmsg ? "  " : "", g.leechmsg);
     }
-  return DECLINED (cmd);
+  return PR_DECLINED (cmd);
 }
 
 MODRET
@@ -596,7 +596,7 @@ cmd_site (cmd_rec * cmd)
   char buf[128] = {'\0'};
   
   if(cmd->argc < 2)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   
   if(!strcasecmp(cmd->argv[1], "RATIO")) {
     _calc_ratios(cmd);
@@ -612,7 +612,7 @@ cmd_site (cmd_rec * cmd)
 		   "Bytes: %s  Down: %imb  Up: %imb  CR: %i Mbytes",
 		   stats.btext, (stats.bretr / 1024), (stats.bstor / 1024),
 		   (stats.bytes / 1024));
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   }
   
   if(!strcasecmp (cmd->argv[1], "HELP")) {
@@ -621,7 +621,7 @@ cmd_site (cmd_rec * cmd)
     pr_response_add(R_214, "RATIO " "-- show all ratios in effect");
   }
   
-  return DECLINED (cmd);
+  return PR_DECLINED (cmd);
 }
 
 /* FIXME: because of how ratio and sql interact, the status sent after
@@ -652,7 +652,7 @@ cmd_user (cmd_rec * cmd)
 {
   if (!g.user[0])
     sstrncpy (g.user, cmd->argv[1], ARBITRARY_MAX);
-  return DECLINED (cmd);
+  return PR_DECLINED (cmd);
 }
 
 static cmdtable ratio_cmdtab[] = {
@@ -694,7 +694,7 @@ add_ratiodata (cmd_rec * cmd)
   add_config_param_str (cmd->argv[0], 5, (void *) cmd->argv[1],
 			(void *) cmd->argv[2], (void *) cmd->argv[3],
 			(void *) cmd->argv[4], (void *) cmd->argv[5]);
-  return HANDLED (cmd);
+  return PR_HANDLED (cmd);
 }
 
 MODRET
@@ -711,7 +711,7 @@ add_ratios (cmd_rec * cmd)
     CONF_ERROR (cmd, "requires a boolean value");
   c = add_config_param ("Ratios", 1, (void *) b);
   c->flags |= CF_MERGEDOWN;
-  return HANDLED (cmd);
+  return PR_HANDLED (cmd);
 }
 
 MODRET
@@ -728,7 +728,7 @@ add_saveratios (cmd_rec * cmd)
     CONF_ERROR (cmd, "requires a boolean value");
   c = add_config_param ("SaveRatios", 1, (void *) b);
   c->flags |= CF_MERGEDOWN;
-  return HANDLED (cmd);
+  return PR_HANDLED (cmd);
 }
 
 MODRET
@@ -738,7 +738,7 @@ add_str (cmd_rec * cmd)
   CHECK_CONF (cmd, CONF_ROOT | CONF_VIRTUAL
 	      | CONF_ANON | CONF_DIR | CONF_GLOBAL);
   add_config_param_str (cmd->argv[0], 1, (void *) cmd->argv[1]);
-  return HANDLED (cmd);
+  return PR_HANDLED (cmd);
 }
 
 static conftable ratio_conftab[] = {

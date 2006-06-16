@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.37 2006-04-17 22:35:13 castaglia Exp $
+ * $Id: mod_radius.c,v 1.38 2006-06-16 02:22:05 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9"
@@ -2438,50 +2438,50 @@ MODRET radius_auth(cmd_rec *cmd) {
    */
   if (radius_auth_ok) {
     session.auth_mech = "mod_radius.c";
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   }
 
   else if (radius_auth_reject)
-    return ERROR_INT(cmd, PR_AUTH_BADPWD);
+    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
 
   /* Default return value. */
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET radius_check(cmd_rec *cmd) {
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET radius_name2uid(cmd_rec *cmd) {
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET radius_name2gid(cmd_rec *cmd) {
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET radius_uid2name(cmd_rec *cmd) {
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET radius_gid2name(cmd_rec *cmd) {
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET radius_endgrent(cmd_rec *cmd) {
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET radius_getgrnam(cmd_rec *cmd) {
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET radius_getgrent(cmd_rec *cmd) {
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET radius_getgrgid(cmd_rec *cmd) {
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET radius_getgroups(cmd_rec *cmd) {
@@ -2527,15 +2527,15 @@ MODRET radius_getgroups(cmd_rec *cmd) {
     return mod_create_data(cmd, (void *) &radius_addl_group_count);
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET radius_setgrent(cmd_rec *cmd) {
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET radius_endpwent(cmd_rec *cmd) {
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET radius_getpwnam(cmd_rec *cmd) {
@@ -2552,7 +2552,7 @@ MODRET radius_getpwnam(cmd_rec *cmd) {
   }
 
   /* Default response */
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET radius_getpwent(cmd_rec *cmd) {
@@ -2563,7 +2563,7 @@ MODRET radius_getpwent(cmd_rec *cmd) {
     return mod_create_data(cmd, &radius_passwd);
 
   /* Default response */
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET radius_getpwuid(cmd_rec *cmd) {
@@ -2577,11 +2577,11 @@ MODRET radius_getpwuid(cmd_rec *cmd) {
       return mod_create_data(cmd, &radius_passwd);
 
   /* Default response */
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET radius_setpwent(cmd_rec *cmd) {
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Command handlers
@@ -2606,7 +2606,7 @@ MODRET radius_quota_lookup(cmd_rec *cmd) {
     return mod_create_data(cmd, quota);
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Perform the check with the RADIUS auth server(s) now, prior to the
@@ -2627,13 +2627,13 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
   /* Check to see whether RADIUS authentication should even be done. */
   if (!radius_engine ||
       !radius_auth_server)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
   if (!user) {
     radius_log("missing prerequisite USER command, declining to handle PASS");
     pr_response_add_err(R_503, "Login with " C_USER " first");
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* Allocate a packet. */
@@ -2644,7 +2644,7 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
   sockfd = radius_open_socket();
   if (sockfd < 0) {
     radius_log("socket open failed");
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   /* Clear the OK flag. */
@@ -2713,7 +2713,7 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
     /* Verify the response. */
     radius_log("verifying packet");
     if (radius_verify_packet(request, response, auth_server->secret) < 0)
-      return DECLINED(cmd);
+      return PR_DECLINED(cmd);
 
     /* Handle the response */
     switch (response->code) {
@@ -2749,14 +2749,14 @@ MODRET radius_pre_pass(cmd_rec *cmd) {
   } else
     radius_log("error: no auth servers responded");
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET radius_post_pass(cmd_rec *cmd) {
 
   /* Check to see if RADIUS accounting should be done. */
   if (!radius_engine || !radius_acct_server)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* Fill in the username in the faked user info, if need be. */
   if (radius_have_user_info)
@@ -2765,17 +2765,17 @@ MODRET radius_post_pass(cmd_rec *cmd) {
   if (!radius_start_accting())
     radius_log("error: unable to start accounting");
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET radius_post_retr(cmd_rec *cmd) {
   radius_session_bytes_out += session.xfer.total_bytes;
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET radius_post_stor(cmd_rec *cmd) {
   radius_session_bytes_in += session.xfer.total_bytes;
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Configuration handlers
@@ -2824,7 +2824,7 @@ MODRET set_radiusacctserver(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(radius_server_t *));
   *((radius_server_t **) c->argv[0]) = radius_server;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: RadiusAuthServer server[:port] <shared-secret> [timeout] */
@@ -2870,7 +2870,7 @@ MODRET set_radiusauthserver(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(radius_server_t *));
   *((radius_server_t **) c->argv[0]) = radius_server;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: RadiusEngine on|off */
@@ -2881,14 +2881,15 @@ MODRET set_radiusengine(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = bool;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: RadiusGroupInfo primary-name addl-names add-ids */
@@ -2943,7 +2944,7 @@ MODRET set_radiusgroupinfo(cmd_rec *cmd) {
     c->argv[3] = (void *) gids;
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: RadiusLog file|"none" */
@@ -2953,7 +2954,7 @@ MODRET set_radiuslog(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: RadiusQuotaInfo per-sess limit-type bytes-in bytes-out bytes-xfer
@@ -3045,7 +3046,7 @@ MODRET set_radiusquotainfo(cmd_rec *cmd) {
     cmd->argv[3], cmd->argv[4], cmd->argv[5], cmd->argv[6],
     cmd->argv[7], cmd->argv[8]);
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: RadiusRealm string */
@@ -3054,7 +3055,7 @@ MODRET set_radiusrealm(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: RadiusUserInfo uid gid home shell */
@@ -3101,7 +3102,7 @@ MODRET set_radiususerinfo(cmd_rec *cmd) {
   add_config_param_str(cmd->argv[0], 4, cmd->argv[1], cmd->argv[2],
     cmd->argv[3], cmd->argv[4]);
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: RadiusVendor name id */
@@ -3128,7 +3129,7 @@ MODRET set_radiusvendor(cmd_rec *cmd) {
   c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[1]) = id;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Event handlers

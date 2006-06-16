@@ -24,7 +24,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lwrap -lnsl$
- * $Id: mod_wrap.c,v 1.14 2004-10-30 23:16:41 castaglia Exp $
+ * $Id: mod_wrap.c,v 1.15 2006-06-16 02:22:05 castaglia Exp $
  */
 
 #define MOD_WRAP_VERSION "mod_wrap/1.2.3"
@@ -77,7 +77,8 @@ static int wrap_eval_expression(char **config_expr,
     }
 
     for (index = 0; index < session_expr->nelts; index++) {
-      if (list[index] && !strcmp(list[index], elem)) {
+      if (list[index] &&
+          strcmp(list[index], elem) == 0) {
         found = !found;
         break;
       }
@@ -190,7 +191,8 @@ static config_rec *wrap_resolve_user(pool *pool, char **user) {
   conf = find_config(main_server->conf, CONF_PARAM, "UserAlias", TRUE);
 
   if (conf) do {
-    if (!strcmp(conf->argv[0], "*") || !strcmp(conf->argv[0], *user)) {
+    if (strcmp(conf->argv[0], "*") == 0 ||
+        strcmp(conf->argv[0], *user) == 0) {
       is_alias = TRUE;
       break;
     } 
@@ -208,7 +210,9 @@ static config_rec *wrap_resolve_user(pool *pool, char **user) {
     find_config_set_top(top_conf);
     conf = find_config_next(conf, conf->next, CONF_PARAM, "UserAlias", TRUE);
 
-    if (conf && (!strcmp(conf->argv[0], "*") || !strcmp(conf->argv[0], *user)))
+    if (conf &&
+        (strcmp(conf->argv[0], "*") == 0 ||
+         strcmp(conf->argv[0], *user) == 0))
       is_alias = TRUE;
   }
 
@@ -237,7 +241,8 @@ static config_rec *wrap_resolve_user(pool *pool, char **user) {
     if (!anonname)
       anonname = ourname;
 
-    if (anonname && !strcmp(anonname, *user)) {
+    if (anonname &&
+        strcmp(anonname, *user) == 0) {
        break;
     }
 
@@ -294,7 +299,7 @@ MODRET add_tcpaccessfiles(cmd_rec *cmd) {
 
     /* it's an absolute path, so the filename will be checked as is */
     if (!wrap_is_usable_file(allow_filename))
-      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
         cmd->argv[0], ": '", allow_filename, "' must be a usable file", NULL));
 
   } else if (allow_filename[0] == '~' && allow_filename[1] != '/') {
@@ -303,7 +308,7 @@ MODRET add_tcpaccessfiles(cmd_rec *cmd) {
     allow_real_file = dir_realpath(cmd->pool, allow_filename);
 
     if (allow_real_file == NULL || !wrap_is_usable_file(allow_real_file))
-      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
         cmd->argv[0], ": '", allow_filename, "' must be a usable file", NULL));
 
     allow_filename = allow_real_file;
@@ -311,7 +316,7 @@ MODRET add_tcpaccessfiles(cmd_rec *cmd) {
   } else if (allow_filename[0] != '~' && allow_filename[0] != '/') {
 
     /* no relative paths allowed */
-    return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+    return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
       cmd->argv[0], ": '", allow_filename, "' must start with \"/\" or \"~\"",
       NULL));
 
@@ -325,7 +330,7 @@ MODRET add_tcpaccessfiles(cmd_rec *cmd) {
 
     /* it's an absolute path, so the filename will be checked as is */
     if (!wrap_is_usable_file(deny_filename))
-      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
         cmd->argv[0], ": '", deny_filename, "' must be a usable file", NULL));
 
   } else if (deny_filename[0] == '~' && deny_filename[1] != '/') {
@@ -334,7 +339,7 @@ MODRET add_tcpaccessfiles(cmd_rec *cmd) {
     deny_real_file = dir_realpath(cmd->pool, deny_filename);
 
     if (deny_real_file == NULL || !wrap_is_usable_file(deny_real_file))
-      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
         cmd->argv[0], ": '", deny_filename, "' must be a usable file", NULL));
 
     deny_filename = deny_real_file;
@@ -342,7 +347,7 @@ MODRET add_tcpaccessfiles(cmd_rec *cmd) {
   } else if (deny_filename[0] != '~' && deny_filename[0] != '/') {
 
     /* no relative paths allowed */
-    return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+    return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
       cmd->argv[0], ": '", deny_filename, "' must start with \"/\" or \"~\"",
       NULL));
 
@@ -357,7 +362,7 @@ MODRET add_tcpaccessfiles(cmd_rec *cmd) {
   c->flags |= CF_MERGEDOWN;
 
   /* done */
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET add_tcpgroupaccessfiles(cmd_rec *cmd) {
@@ -389,7 +394,7 @@ MODRET add_tcpgroupaccessfiles(cmd_rec *cmd) {
 
     /* it's an absolute path, so the filename will be checked as is */
     if (!wrap_is_usable_file(allow_filename))
-      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
         cmd->argv[0], ": '", allow_filename, "' must be a usable file", NULL));
 
   } else if (allow_filename[0] == '~' && allow_filename[1] != '/') {
@@ -398,7 +403,7 @@ MODRET add_tcpgroupaccessfiles(cmd_rec *cmd) {
     allow_real_file = dir_realpath(cmd->pool, allow_filename);
 
     if (allow_real_file == NULL || !wrap_is_usable_file(allow_real_file))
-      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
         cmd->argv[0], ": '", allow_filename, "' must be a usable file", NULL));
 
     allow_filename = allow_real_file;
@@ -406,7 +411,7 @@ MODRET add_tcpgroupaccessfiles(cmd_rec *cmd) {
   } else if (allow_filename[0] != '~' && allow_filename[0] != '/') {
 
     /* no relative paths allowed */
-    return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+    return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
       cmd->argv[0], ": '", allow_filename, "' must start with \"/\" or \"~\"",
       NULL));
 
@@ -420,7 +425,7 @@ MODRET add_tcpgroupaccessfiles(cmd_rec *cmd) {
 
     /* it's an absolute path, so the filename will be checked as is */
     if (!wrap_is_usable_file(deny_filename))
-      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
         cmd->argv[0], ": '", deny_filename, "' must be a usable file", NULL));
 
   } else if (deny_filename[0] == '~' && deny_filename[1] != '/') {
@@ -429,7 +434,7 @@ MODRET add_tcpgroupaccessfiles(cmd_rec *cmd) {
     deny_real_file = dir_realpath(cmd->pool, deny_filename);
 
     if (deny_real_file == NULL || !wrap_is_usable_file(deny_real_file))
-      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
         cmd->argv[0], ": '", deny_filename, "' must be a usable file", NULL));
 
     deny_filename = deny_real_file;
@@ -437,7 +442,7 @@ MODRET add_tcpgroupaccessfiles(cmd_rec *cmd) {
   } else if (deny_filename[0] != '~' && deny_filename[0] != '/') {
 
     /* no relative paths allowed */
-    return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+    return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
       cmd->argv[0], ": '", deny_filename, "' must start with \"/\" or \"~\"",
       NULL));
 
@@ -473,7 +478,7 @@ MODRET add_tcpgroupaccessfiles(cmd_rec *cmd) {
   c->flags |= CF_MERGEDOWN;
 
   /* done */
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET add_tcpuseraccessfiles(cmd_rec *cmd) {
@@ -505,7 +510,7 @@ MODRET add_tcpuseraccessfiles(cmd_rec *cmd) {
 
     /* it's an absolute path, so the filename will be checked as is */
     if (!wrap_is_usable_file(allow_filename))
-      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
         cmd->argv[0], ": '", allow_filename, "' must be a usable file", NULL));
 
   } else if (allow_filename[0] == '~' && allow_filename[1] != '/') {
@@ -514,7 +519,7 @@ MODRET add_tcpuseraccessfiles(cmd_rec *cmd) {
     allow_real_file = dir_realpath(cmd->pool, allow_filename);
 
     if (allow_real_file == NULL || !wrap_is_usable_file(allow_real_file))
-      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
         cmd->argv[0], ": '", allow_filename, "' must be a usable file", NULL));
 
     allow_filename = allow_real_file;
@@ -522,7 +527,7 @@ MODRET add_tcpuseraccessfiles(cmd_rec *cmd) {
   } else if (allow_filename[0] != '~' && allow_filename[0] != '/') {
 
     /* no relative paths allowed */
-    return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+    return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
       cmd->argv[0], ": '", allow_filename, "' must start with \"/\" or \"~\"",
       NULL));
 
@@ -536,7 +541,7 @@ MODRET add_tcpuseraccessfiles(cmd_rec *cmd) {
 
     /* it's an absolute path, so the filename will be checked as is */
     if (!wrap_is_usable_file(deny_filename))
-      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
         cmd->argv[0], ": '", deny_filename, "' must be a usable file", NULL));
 
   } else if (deny_filename[0] == '~' && deny_filename[1] != '/') {
@@ -545,7 +550,7 @@ MODRET add_tcpuseraccessfiles(cmd_rec *cmd) {
     deny_real_file = dir_realpath(cmd->pool, deny_filename);
 
     if (deny_real_file == NULL || !wrap_is_usable_file(deny_real_file))
-      return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+      return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
         cmd->argv[0], ": '", deny_filename, "' must be a usable file", NULL));
 
     deny_filename = deny_real_file;
@@ -553,7 +558,7 @@ MODRET add_tcpuseraccessfiles(cmd_rec *cmd) {
   } else if (deny_filename[0] != '~' && deny_filename[0] != '/') {
 
     /* no relative paths allowed */
-    return ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
+    return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool,
       cmd->argv[0], ": '", deny_filename, "' must start with \"/\" or \"~\"",
       NULL));
 
@@ -589,7 +594,7 @@ MODRET add_tcpuseraccessfiles(cmd_rec *cmd) {
   c->flags |= CF_MERGEDOWN;
 
   /* done */
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* This function was copied, almost verbatim, from the set_sysloglevel()
@@ -603,28 +608,28 @@ MODRET set_tcpaccesssysloglevels(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_GLOBAL);
 
-  if (!strcasecmp(cmd->argv[1], "emerg")) {
+  if (strcasecmp(cmd->argv[1], "emerg") == 0) {
     allow_level = PR_LOG_EMERG;
 
-  } else if (!strcasecmp(cmd->argv[1], "alert")) {
+  } else if (strcasecmp(cmd->argv[1], "alert") == 0) {
     allow_level = PR_LOG_ALERT;
 
-  } else if (!strcasecmp(cmd->argv[1], "crit")) {
+  } else if (strcasecmp(cmd->argv[1], "crit") == 0) {
     allow_level = PR_LOG_CRIT;
 
-  } else if (!strcasecmp(cmd->argv[1], "error")) {
+  } else if (strcasecmp(cmd->argv[1], "error") == 0) {
     allow_level = PR_LOG_ERR;
 
-  } else if (!strcasecmp(cmd->argv[1], "warn")) {
+  } else if (strcasecmp(cmd->argv[1], "warn") == 0) {
     allow_level = PR_LOG_WARNING;
 
-  } else if (!strcasecmp(cmd->argv[1], "notice")) {
+  } else if (strcasecmp(cmd->argv[1], "notice") = 0) {
     allow_level = PR_LOG_NOTICE;
 
-  } else if (!strcasecmp(cmd->argv[1], "info")) {
+  } else if (strcasecmp(cmd->argv[1], "info") == 0) {
     allow_level = PR_LOG_INFO;
 
-  } else if (!strcasecmp(cmd->argv[1], "debug")) {
+  } else if (strcasecmp(cmd->argv[1], "debug") == 0) {
     allow_level = PR_LOG_DEBUG;
 
   } else {
@@ -632,28 +637,28 @@ MODRET set_tcpaccesssysloglevels(cmd_rec *cmd) {
       "one of emerg/alert/crit/error/warn/notice/info/debug");
   }
 
-  if (!strcasecmp(cmd->argv[2], "emerg")) {
+  if (strcasecmp(cmd->argv[2], "emerg") == 0) {
     deny_level = PR_LOG_EMERG;
 
-  } else if(!strcasecmp(cmd->argv[2], "alert")) {
+  } else if (strcasecmp(cmd->argv[2], "alert") == 0) {
     deny_level = PR_LOG_ALERT;
 
-  } else if(!strcasecmp(cmd->argv[2], "crit")) {
+  } else if (strcasecmp(cmd->argv[2], "crit") == 0) {
     deny_level = PR_LOG_CRIT;
 
-  } else if(!strcasecmp(cmd->argv[2], "error")) {
+  } else if (strcasecmp(cmd->argv[2], "error") == 0) {
     deny_level = PR_LOG_ERR;
 
-  } else if(!strcasecmp(cmd->argv[2], "warn")) {
+  } else if (strcasecmp(cmd->argv[2], "warn") == 0) {
     deny_level = PR_LOG_WARNING;
 
-  } else if(!strcasecmp(cmd->argv[2], "notice")) {
+  } else if (strcasecmp(cmd->argv[2], "notice") == 0) {
     deny_level = PR_LOG_NOTICE;
 
-  } else if(!strcasecmp(cmd->argv[2], "info")) {
+  } else if (strcasecmp(cmd->argv[2], "info") == 0) {
     deny_level = PR_LOG_INFO;
 
-  } else if(!strcasecmp(cmd->argv[2], "debug")) {
+  } else if (strcasecmp(cmd->argv[2], "debug") == 0 ) {
     deny_level = PR_LOG_DEBUG;
 
   } else {
@@ -665,7 +670,7 @@ MODRET set_tcpaccesssysloglevels(cmd_rec *cmd) {
     (void *) deny_level);
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TCPServiceName <name> */
@@ -674,7 +679,7 @@ MODRET set_tcpservicename(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Command handlers
@@ -704,7 +709,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
    * it manually.
    */
   if (!user)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* Use mod_auth's _auth_resolve_user() [imported for use here] to get the
    * right configuration set, since the user may be logging in anonymously,
@@ -843,7 +848,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_INFO, MOD_WRAP_VERSION ": no usable allow access file -- "
       "allowing connection");
 
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   } else if (hosts_allow_table != NULL && hosts_deny_table == NULL) {
 
@@ -851,14 +856,14 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_INFO, MOD_WRAP_VERSION ": no usable deny access file -- "
       "allowing connection");
 
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   } else {
 
     /* Neither set -- assume the admin hasn't configured these directives
      * at all.
      */
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   /* Log the names of the allow/deny files being used. */
@@ -901,9 +906,9 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
       denymsg = sreplace(cmd->tmp_pool, denymsg, "%u", user, NULL);
 
     if (denymsg)
-      return ERROR_MSG(cmd, R_530, denymsg);
+      return PR_ERROR_MSG(cmd, R_530, denymsg);
     else
-      return ERROR_MSG(cmd, R_530, "Access denied.");
+      return PR_ERROR_MSG(cmd, R_530, "Access denied.");
   }
 
   /* If request is allowable, return DECLINED (for engine to act as if this
@@ -912,7 +917,7 @@ MODRET wrap_handle_request(cmd_rec *cmd) {
    */
   wrap_log_request_allowed(allow_severity, &request);
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Initialization routines

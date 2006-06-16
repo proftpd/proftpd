@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.28 2006-04-21 01:59:45 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.29 2006-06-16 02:22:05 castaglia Exp $
  */
 
 /*
@@ -198,9 +198,9 @@ static int _sql_timer_callback(CALLBACK_FRAME) {
  */
 static modret_t *_build_error(cmd_rec *cmd, db_conn_t *conn) {
   if (!conn)
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
 
-  return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
+  return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
     PQerrorMessage(conn->postgres));
 }
 
@@ -219,7 +219,7 @@ static modret_t *_build_data(cmd_rec *cmd, db_conn_t *conn) {
   int row =0;
 
   if (!conn) 
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
 
   result = conn->result;
 
@@ -269,14 +269,15 @@ MODRET cmd_open(cmd_rec *cmd) {
 
   if (cmd->argc < 1) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
   }    
 
   /* get the named connection */
 
   if (!(entry = _sql_get_connection(cmd->argv[0]))) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "unknown named connection");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
+      "unknown named connection");
   } 
 
   conn = (db_conn_t *) entry->data;
@@ -293,7 +294,7 @@ MODRET cmd_open(cmd_rec *cmd) {
     sql_log(DEBUG_INFO, "connection '%s' count is now %d", entry->name,
       entry->connections);
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   }
 
   /* make sure we have a new conn struct */
@@ -328,7 +329,7 @@ MODRET cmd_open(cmd_rec *cmd) {
     entry->connections);
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /*
@@ -365,13 +366,14 @@ MODRET cmd_close(cmd_rec *cmd) {
 
   if ((cmd->argc < 1) || (cmd->argc > 2)) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_close");
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
   }
 
   /* get the named connection */
   if (!(entry = _sql_get_connection(cmd->argv[0]))) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_close");
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "unknown named connection");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
+      "unknown named connection");
   }
 
   conn = (db_conn_t *) entry->data;
@@ -382,7 +384,7 @@ MODRET cmd_close(cmd_rec *cmd) {
       entry->connections);
 
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_close");
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   }
 
   /* decrement connections. If our count is 0 or we received a second arg
@@ -407,7 +409,7 @@ MODRET cmd_close(cmd_rec *cmd) {
     entry->connections);
   sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_close");
   
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /*
@@ -454,7 +456,7 @@ MODRET cmd_defineconnection(cmd_rec *cmd) {
 
   if ((cmd->argc < 4) || (cmd->argc > 5) || (!cmd->argv[0])) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_defineconnection");
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
   }
 
   conn = (db_conn_t *) palloc(conn_pool, sizeof(db_conn_t));
@@ -506,7 +508,7 @@ MODRET cmd_defineconnection(cmd_rec *cmd) {
   /* insert the new conn_info into the connection hash */
   if (!(entry = _sql_add_connection(conn_pool, name, (void *) conn))) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_defineconnection");
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
       "named connection already exists");
   }
 
@@ -526,7 +528,7 @@ MODRET cmd_defineconnection(cmd_rec *cmd) {
   sql_log(DEBUG_INFO, "  ttl: '%d'", entry->ttl);
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_defineconnection");
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /*
@@ -555,7 +557,7 @@ static modret_t *cmd_exit(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_exit");
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /*
@@ -619,14 +621,15 @@ MODRET cmd_select(cmd_rec *cmd) {
 
   if (cmd->argc < 2) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_select");
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
   }
 
   /* get the named connection */
   entry = _sql_get_connection(cmd->argv[0]);
   if (!entry) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_select");
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "unknown named connection");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
+      "unknown named connection");
   }
   
   conn = (db_conn_t *) entry->data;
@@ -756,14 +759,15 @@ MODRET cmd_insert(cmd_rec *cmd) {
 
   if ((cmd->argc != 2) && (cmd->argc != 4)) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_insert");
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
   }
 
   /* get the named connection */
   entry = _sql_get_connection(cmd->argv[0]);
   if (!entry) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_insert");
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "unknown named connection");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
+      "unknown named connection");
   }
 
   conn = (db_conn_t *) entry->data;
@@ -811,7 +815,7 @@ MODRET cmd_insert(cmd_rec *cmd) {
   SQL_FREE_CMD(close_cmd);
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_insert");
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /*
@@ -858,14 +862,15 @@ MODRET cmd_update(cmd_rec *cmd) {
 
   if ((cmd->argc < 2) || (cmd->argc > 4)) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_update");
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
   }
 
   /* get the named connection */
   entry = _sql_get_connection(cmd->argv[0]);
   if (!entry) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_update");
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "unknown named connection");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
+      "unknown named connection");
   }
 
   conn = (db_conn_t *) entry->data;
@@ -914,7 +919,7 @@ MODRET cmd_update(cmd_rec *cmd) {
   SQL_FREE_CMD(close_cmd);
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_update");
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /*
@@ -942,14 +947,14 @@ MODRET cmd_procedure(cmd_rec *cmd) {
 
   if (cmd->argc != 3) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_procedure");
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
   }
 
   /* PostgreSQL supports procedures, but the backend doesn't. */
 
   sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_procedure");
 
-  return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
+  return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
     "backend does not support procedures");
 }
 
@@ -986,14 +991,15 @@ MODRET cmd_query(cmd_rec *cmd) {
 
   if (cmd->argc != 2) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_query");
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
   }
 
   /* get the named connection */
   entry = _sql_get_connection(cmd->argv[0]);
   if (!entry) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_query");
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "unknown named connection");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
+      "unknown named connection");
   }
 
   conn = (db_conn_t *) entry->data;
@@ -1040,7 +1046,7 @@ MODRET cmd_query(cmd_rec *cmd) {
       sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_query");
     }
   } else {
-    dmr = HANDLED(cmd);
+    dmr = PR_HANDLED(cmd);
   }
 
   /* close the connection, return the data. */
@@ -1090,14 +1096,15 @@ MODRET cmd_escapestring(cmd_rec * cmd) {
 
   if (cmd->argc != 2) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_escapestring");
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
   }
 
   /* get the named connection */
   entry = _sql_get_connection(cmd->argv[0]);
   if (!entry) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_escapestring");
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "unknown named connection");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
+      "unknown named connection");
   }
 
   conn = (db_conn_t *) entry->data;
@@ -1126,12 +1133,12 @@ MODRET cmd_escapestring(cmd_rec * cmd) {
  *  cmd->argv[2]: hashed string
  *
  * Returns:
- *  HANDLED(cmd)                        -- passwords match
- *  ERROR_INT(cmd, PR_AUTH_NOPWD)       -- missing password
- *  ERROR_INT(cmd, PR_AUTH_BADPWD)      -- passwords don't match
- *  ERROR_INT(cmd, PR_AUTH_DISABLEPWD)  -- password is disabled
- *  ERROR_INT(cmd, PR_AUTH_AGEPWD)      -- password is aged
- *  ERROR(cmd)                          -- unknown error
+ *  PR_HANDLED(cmd)                        -- passwords match
+ *  PR_ERROR_INT(cmd, PR_AUTH_NOPWD)       -- missing password
+ *  PR_ERROR_INT(cmd, PR_AUTH_BADPWD)      -- passwords don't match
+ *  PR_ERROR_INT(cmd, PR_AUTH_DISABLEPWD)  -- password is disabled
+ *  PR_ERROR_INT(cmd, PR_AUTH_AGEPWD)      -- password is aged
+ *  PR_ERROR(cmd)                          -- unknown error
  *
  * Notes:
  *  If this backend does not provide this functionality, this cmd *must*
@@ -1147,14 +1154,15 @@ MODRET cmd_checkauth(cmd_rec * cmd) {
 
   if (cmd->argc != 3) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_checkauth");
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "badly formed request");
   }
 
   /* get the named connection -- not used in this case, but for consistency */
   entry = _sql_get_connection(cmd->argv[0]);
   if (!entry) {
     sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_checkauth");
-    return ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION, "unknown named connection");
+    return PR_ERROR_MSG(cmd, MOD_SQL_POSTGRES_VERSION,
+      "unknown named connection");
   }
 
   conn = (db_conn_t *) entry->data;
@@ -1163,7 +1171,7 @@ MODRET cmd_checkauth(cmd_rec * cmd) {
 
   /* PostgreSQL doesn't provide this functionality */
 
-  return ERROR(cmd);
+  return PR_ERROR(cmd);
 }
 
 /*
@@ -1205,7 +1213,7 @@ MODRET cmd_identify(cmd_rec * cmd) {
 
 MODRET cmd_prepare(cmd_rec *cmd) {
   if (cmd->argc != 1) {
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   conn_pool = (pool *) cmd->argv[0];
