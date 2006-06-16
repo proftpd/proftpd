@@ -8,7 +8,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@
 
 /*
  * sample module for ProFTPD
- * $Id: mod_sample.c,v 1.9 2004-09-05 22:01:39 castaglia Exp $
+ * $Id: mod_sample.c,v 1.10 2006-06-16 01:11:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -43,19 +43,18 @@
  */
 
 /* Example of a PRE_CMD handler here, which simply logs all received
- * commands via pr_log_debug().  We are careful to return DECLINED, otherwise
- * other PRE_CMD handlers wouldn't get the request.  Note that in order
- * for this to work properly, this module would need to be loaded _last_,
- * or after any other modules which don't return DECLINED for all
- * their precmds.  In practice you should always return DECLINED unless
- * you plan on having your module actually handle the command (or
- * deny it).
+ * commands via pr_log_debug().  We are careful to return PR_DECLINED,
+ * otherwise other PRE_CMD handlers would not get the request.  Note that in
+ * order for this to work properly, this module would need to be loaded _last_,
+ * or after any other modules which don't return PR_DECLINED for all
+ * their precmds.  In practice you should always return PR_DECLINED unless
+ * you plan on having your module actually handle the command (or deny it).
  */
 MODRET sample_pre_any(cmd_rec *cmd) {
   pr_log_debug(DEBUG0, "RECEIVED: command '%s', arguments '%s'.",
     cmd->argv[0], cmd->arg);
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Next, an example of a LOG_CMD handler, which receives all commands
@@ -66,7 +65,7 @@ MODRET sample_log_any(cmd_rec *cmd) {
   pr_log_debug(DEBUG0, "SUCCESSFUL: command '%s', arguments '%s'.",
     cmd->argv[0], cmd->arg);
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Now, a _slightly_ more useful handler.  We define POST_CMD handlers
@@ -83,12 +82,12 @@ MODRET sample_post_retr(cmd_rec *cmd) {
    */
   total_tx += session.xfer.total_bytes;
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET sample_post_stor(cmd_rec *cmd) {
   total_rx += session.xfer.total_bytes;
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET sample_post_list(cmd_rec *cmd) {
@@ -108,18 +107,26 @@ MODRET sample_xfoo(cmd_rec *cmd) {
 
   if (cmd->argc < 2) {
     pr_response_add_err(R_500, "XFOO command needs at least one argument");
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
-  path = dir_realpath(cmd->tmp_pool, cmd->arg);
+  /* We call pr_fs_decode_path() on the argument here, assuming that the
+   * argument to this fictional XFOO command is indeed a path.  RFC2640
+   * states that clients can encode paths as UTF8 strings; the
+   * pr_fs_decode_path() function converts from UTF8 strings to the local
+   * character set.
+   */
+  path = dir_realpath(cmd->tmp_pool,
+    pr_fs_decode_path(cmd->tmp_pool, cmd->arg));
 
   if (!path) {
-    pr_response_add_err(R_500, "It appears that '%s' does not exist.", cmd->arg);
-    return ERROR(cmd);
+    pr_response_add_err(R_500, "It appears that '%s' does not exist",
+      cmd->arg);
+    return PR_ERROR(cmd);
   }
 
   pr_response_add_err(R_200, "XFOO command successful (yeah right!)");
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Configuration handlers 
@@ -208,7 +215,7 @@ MODRET set_foobardirective(cmd_rec *cmd) {
 
   /* Tell proftpd that we handled the request w/ no problems.
    */
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Initialization routines
