@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.284 2006-06-15 20:53:36 castaglia Exp $
+ * $Id: main.c,v 1.285 2006-06-16 00:32:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -897,16 +897,6 @@ static void cmd_loop(server_rec *server, conn_t *c) {
     /* release any working memory allocated in inet */
     pr_inet_clear();
   }
-}
-
-void pr_rehash_register_handler(void *data, void (*fp)(void*)) {
-  struct rehash *r = (struct rehash*)pcalloc(permanent_pool,
-		  				sizeof(struct rehash));
-
-  r->data = data;
-  r->rehash = fp;
-  r->next = rehash_list;
-  rehash_list = r;
 }
 
 static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
