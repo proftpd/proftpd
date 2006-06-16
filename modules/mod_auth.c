@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.214 2006-06-15 20:53:36 castaglia Exp $
+ * $Id: mod_auth.c,v 1.215 2006-06-16 00:53:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2845,7 +2845,7 @@ MODRET set_uselastlog(cmd_rec *cmd) {
 
   return HANDLED(cmd);
 #else
-  CONF_ERROR(cmd, "requires lastlog support (--enable-lastlog)");
+  CONF_ERROR(cmd, "requires lastlog support (--with-lastlog)");
 #endif /* PR_USE_LASTLOG */
 }
 
