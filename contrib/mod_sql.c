@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.110 2006-06-16 02:22:05 castaglia Exp $
+ * $Id: mod_sql.c,v 1.111 2006-06-16 17:00:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -227,8 +227,8 @@ static cmdtable *sql_cmdtable = NULL;
  * cache functions
  */
 
-typedef unsigned int ( * val_func ) ( const void * ); 
-typedef int ( * cmp_func ) ( const void *, const void * );
+typedef unsigned int (* val_func)(const void *); 
+typedef int (* cmp_func)(const void *, const void *);
 
 typedef struct {
   /* memory pool for this object */
@@ -253,15 +253,15 @@ cache_t *group_gid_cache;
 cache_t *passwd_name_cache;
 cache_t *passwd_uid_cache;
 
-static cache_t *make_cache( pool *p, val_func hash_val, cmp_func cmp )
-{
+static cache_t *make_cache(pool *p, val_func hash_val, cmp_func cmp) {
   cache_t *res;
 
-  if ( ( p == NULL ) || ( hash_val == NULL ) || 
-       ( cmp == NULL ) )
+  if (p == NULL ||
+      hash_val == NULL || 
+      cmp == NULL)
     return NULL;
 
-  res = ( cache_t * ) pcalloc( p, sizeof( cache_t ) );
+  res = (cache_t *) pcalloc(p, sizeof(cache_t));
 
   res->pool = p;
   res->hash_val = hash_val;
@@ -274,35 +274,36 @@ static cache_t *make_cache( pool *p, val_func hash_val, cmp_func cmp )
   return res;
 }
 
-static cache_entry_t *cache_addentry( cache_t *cache, void *data )
-{
+static cache_entry_t *cache_addentry(cache_t *cache, void *data) {
   cache_entry_t *entry;
   int hashval;
 
-  if ( ( cache == NULL ) || ( data == NULL ) )
+  if (cache == NULL ||
+      data == NULL)
     return NULL;
 
   /* create the entry */
-  entry = ( cache_entry_t * ) pcalloc( cache->pool, 
-				       sizeof( cache_entry_t ) );
+  entry = (cache_entry_t *) pcalloc(cache->pool, sizeof(cache_entry_t));
   entry->data = data;
 
   /* deal with the list */
 
-  if ( cache->head == NULL ) {
+  if (cache->head == NULL) {
     cache->head = entry;
+
   } else {
     entry->list_next = cache->head;
     cache->head = entry;
   }
 
   /* deal with the buckets */
-  hashval = cache->hash_val( data ) % CACHE_SIZE;
-  if ( cache->buckets[ hashval ] == NULL ) {
-    cache->buckets[ hashval ] = entry;
+  hashval = cache->hash_val(data) % CACHE_SIZE;
+  if (cache->buckets[hashval] == NULL) {
+    cache->buckets[hashval] = entry;
+
   } else {
-    entry->bucket_next = cache->buckets[ hashval ];
-    cache->buckets[ hashval ] = entry;
+    entry->bucket_next = cache->buckets[hashval];
+    cache->buckets[hashval] = entry;
   }
   
   cache->nelts++;
@@ -310,24 +311,25 @@ static cache_entry_t *cache_addentry( cache_t *cache, void *data )
   return entry;
 }
 
-static void *cache_findvalue( cache_t *cache, void *data )
-{
+static void *cache_findvalue(cache_t *cache, void *data) {
   cache_entry_t *entry;
   int hashval;
 
-  if ( ( cache == NULL ) || ( data == NULL ) ) return NULL;
+  if (cache == NULL ||
+      data == NULL)
+    return NULL;
   
-  hashval = cache->hash_val( data ) % CACHE_SIZE;
+  hashval = cache->hash_val(data) % CACHE_SIZE;
 
-  entry = cache->buckets[ hashval ];
-  while ( entry != NULL ) {
-    if ( cache->cmp( data, entry->data ) )
+  entry = cache->buckets[hashval];
+  while (entry != NULL) {
+    if (cache->cmp(data, entry->data))
       break;
     else
       entry = entry->bucket_next;
   }
 
-  return ( ( entry == NULL ) ? NULL : entry->data );
+  return (entry == NULL ? NULL : entry->data);
 }
 
 cmd_rec *_sql_make_cmd(pool *p, int argc, ...) {
@@ -939,12 +941,14 @@ static int build_homedir(cmd_rec *cmd, char *path, mode_t omode, uid_t uid,
     return -1;
   }
 
-  /* make our local copy of path, adding a '/' if necessary..
+  /* Make our local copy of path, adding a '/' if necessary..
    * after this call, we're *guaranteed* a terminating '/'.  We use
-   * this info later. */
+   * this info later.
+   */
 
-  if ( path[(strlen(path) - 1)] == '/' )
+  if (path[(strlen(path) - 1)] == '/')
     local_path = pstrdup(cmd->tmp_pool, path);
+
   else
     local_path = pstrcat(cmd->tmp_pool, path, "/", NULL);
 
@@ -956,40 +960,46 @@ static int build_homedir(cmd_rec *cmd, char *path, mode_t omode, uid_t uid,
   /* skip the leading '/' */
   local_ptr = local_path + 1;
 
-  while ( ( local_ptr = strchr( local_ptr, '/' ) ) != NULL ) {
+  while ((local_ptr = strchr(local_ptr, '/')) != NULL) {
     *local_ptr = '\0';
 
-    if ( *(local_ptr + 1) == '\0' )
+    if (*(local_ptr + 1) == '\0')
       userdir_flag = 1;
 
-    if ( pr_fsio_stat( local_path, &st ) ) {
+    if (pr_fsio_stat(local_path, &st)) {
       /* if the stat failed.. */
       if (errno == ENOENT) {
 	/* and it's 'cause the directory doesn't exist */
-	if ( !userdir_flag ) {
+	if (!userdir_flag) {
 	  /* if it's an intermediate dir */
-	  if ( pr_fsio_mkdir(local_path, S_IRWXU | S_IRWXG | S_IRWXO ) ) {
+	  if (pr_fsio_mkdir(local_path, S_IRWXU|S_IRWXG|S_IRWXO)) {
             PRIVS_RELINQUISH
 	    return -1;
+
 	  } else {
-	    pr_fsio_chown(local_path, p_uid, p_gid );
+	    pr_fsio_chown(local_path, p_uid, p_gid);
 	  }
+
 	} else {
 	  /* this is the user's homedir, and the final directory  */
 	  old_umask = umask(0);
-	  umask( old_umask & ~(S_IWUSR | S_IXUSR | S_IRUSR) );
-	  if ( pr_fsio_mkdir(local_path, omode) ) {
-	    umask( old_umask );
+	  umask(old_umask & ~(S_IWUSR|S_IXUSR|S_IRUSR));
+	  if (pr_fsio_mkdir(local_path, omode)) {
+	    umask(old_umask);
             PRIVS_RELINQUISH
 	    return -1;
+
 	  } else {
 	    pr_fsio_chown(local_path, uid, gid);
 	  }
-	  umask( old_umask );
+
+	  umask(old_umask);
 	}
+
       } else {
 	/* we failed for a reason other than no such
-	 * directory, so we return an error */
+	 * directory, so we return an error
+         */
         PRIVS_RELINQUISH
 	return -1;
       }
@@ -1024,8 +1034,8 @@ static struct passwd *_sql_addpasswd(cmd_rec *cmd, char *username,
   pwd->pw_name = username;
 
   /* check to make sure the entry doesn't exist in the cache */
-  if ( ((cached = (struct passwd *) 
-	 cache_findvalue(passwd_name_cache, pwd)) != NULL)) {
+  if (((cached = (struct passwd *) cache_findvalue(passwd_name_cache,
+      pwd))!= NULL)) {
     pwd = cached;
     sql_log(DEBUG_INFO, "cache hit for user '%s'", pwd->pw_name);
 
@@ -1105,7 +1115,7 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
     realname = p->pw_name;
 
     mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default", realname),
-      "sql_escapestring" );
+      "sql_escapestring");
     if (check_response(mr) < 0)
       return NULL;
 
@@ -1135,7 +1145,7 @@ static struct passwd *_sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
   }
 
   if (!cmap.usercustom) { 
-    where = _sql_where(cmd->tmp_pool, 2, usrwhere, cmap.userwhere );
+    where = _sql_where(cmd->tmp_pool, 2, usrwhere, cmap.userwhere);
 
     mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 5, "default",
       cmap.usrtable, cmap.usrfields, where, "1"), "sql_select");
@@ -1451,11 +1461,12 @@ static void _setstats(cmd_rec *cmd, int fstor, int fretr, int bstor,
            cmap.sql_bstor, cmap.sql_bstor, bstor,
 	   cmap.sql_bretr, cmap.sql_bretr, bretr);
 
-  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", _sql_realuser(cmd), "'", NULL);
-  where = _sql_where(cmd->tmp_pool, 2, usrwhere, cmap.userwhere );
+  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", _sql_realuser(cmd),
+    "'", NULL);
+  where = _sql_where(cmd->tmp_pool, 2, usrwhere, cmap.userwhere);
 
-  mr = _sql_dispatch( _sql_make_cmd( cmd->tmp_pool, 4, "default", cmap.usrtable,
-				query, where ), "sql_update" );
+  mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, "default", cmap.usrtable,
+    query, where), "sql_update");
   (void) check_response(mr);
 }
 
@@ -1650,7 +1661,7 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
       if (!pass)
 	pass = "UNKNOWN";
       
-      sstrncpy( argp, pass, sizeof(arg));
+      sstrncpy(argp, pass, sizeof(arg));
     }
     break;
 
@@ -1665,7 +1676,7 @@ static char *resolve_tag(cmd_rec *cmd, char tag) {
     if (session.xfer.p)
       snprintf(argp, sizeof(arg), "%" PR_LU, session.xfer.total_bytes);
     else
-      sstrncpy( argp, "0", sizeof(arg));
+      sstrncpy(argp, "0", sizeof(arg));
     break;
 
   case 'c':
@@ -2234,7 +2245,7 @@ MODRET info_master(cmd_rec *cmd) {
       outsp = outs;
 
       for (tmp = c->argv[1]; *tmp; ) {
-	if(*tmp == '%') {
+	if (*tmp == '%') {
 	  /* is the tag a named_query reference?  If so, process the 
 	   * named query, otherwise process it as a normal tag.. 
 	   */
@@ -2242,22 +2253,25 @@ MODRET info_master(cmd_rec *cmd) {
 	  if (*(++tmp) == '{') {
 	    char *query;
 
-	    if (*tmp!='\0') query = ++tmp;
+	    if (*tmp != '\0')
+              query = ++tmp;
 	    
 	    /* get the name of the query */
-	    while ( *tmp && *tmp!='}' ) tmp++;
+	    while (*tmp && *tmp != '}')
+              tmp++;
 	    
 	    query = pstrndup(cmd->tmp_pool, query, (tmp - query));
 
 	    /* make sure it's a SELECT query */
 	    
 	    type = _named_query_type(cmd, query);
-	    if (type && ((!strcasecmp(type, SQL_SELECT_C )) ||
-			 (!strcasecmp(type, SQL_FREEFORM_C )))) {
+	    if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
+			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
 	      mr = _process_named_query(cmd, query);
 	      
 	      if (MODRET_ISERROR(mr)) {
 		argp = "{null}";
+
 	      } else {
 		sd = (sql_data_t *) mr->data;
 		if ((sd->rnum == 0) || (!sd->data[0]))
@@ -2265,17 +2279,21 @@ MODRET info_master(cmd_rec *cmd) {
 		else
 		  argp = sd->data[0];
 	      }
+
 	    } else {
 	      argp = "{null}";
 	    }
+
 	  } else {
-	    argp=resolve_tag( cmd, *tmp);
+	    argp = resolve_tag(cmd, *tmp);
 	  }
 
 	  sstrcat(outs, argp, sizeof(outs));
 	  outsp += strlen(argp);
 
-	  if (*tmp!='\0') tmp++;
+	  if (*tmp != '\0')
+            tmp++;
+
 	} else {
 	  *outsp++ = *tmp++;
 	}
@@ -2308,7 +2326,7 @@ MODRET info_master(cmd_rec *cmd) {
       outsp = outs;
 
       for (tmp = c->argv[1]; *tmp; ) {
-	if(*tmp == '%') {
+	if (*tmp == '%') {
 	  /* is the tag a named_query reference?  If so, process the 
 	   * named query, otherwise process it as a normal tag.. 
 	   */
@@ -2316,22 +2334,25 @@ MODRET info_master(cmd_rec *cmd) {
 	  if (*(++tmp) == '{') {
 	    char *query;
 
-	    if (*tmp!='\0') query = ++tmp;
+	    if (*tmp != '\0')
+              query = ++tmp;
 	    
 	    /* get the name of the query */
-	    while ( *tmp && *tmp!='}' ) tmp++;
+	    while (*tmp && *tmp != '}')
+              tmp++;
 	    
 	    query = pstrndup(cmd->tmp_pool, query, (tmp - query));
 
 	    /* make sure it's a SELECT query */
 	    
 	    type = _named_query_type(cmd, query);
-	    if (type && ((!strcasecmp(type, SQL_SELECT_C )) ||
-			 (!strcasecmp(type, SQL_FREEFORM_C )))) {
+	    if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
+			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
 	      mr = _process_named_query(cmd, query);
 	      
 	      if (MODRET_ISERROR(mr)) {
 		argp = "{null}";
+
 	      } else {
 		sd = (sql_data_t *) mr->data;
 		if ((sd->rnum == 0) || (!sd->data[0]))
@@ -2342,14 +2363,17 @@ MODRET info_master(cmd_rec *cmd) {
 	    } else {
 	      argp = "{null}";
 	    }
+
 	  } else {
-	    argp=resolve_tag( cmd, *tmp);
+	    argp = resolve_tag(cmd, *tmp);
 	  }
 
 	  sstrcat(outs, argp, sizeof(outs));
 	  outsp += strlen(argp);
 
-	  if (*tmp!='\0') tmp++;
+	  if (*tmp != '\0')
+            tmp++;
+
 	} else {
 	  *outsp++ = *tmp++;
 	}
@@ -2398,7 +2422,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
       outsp = outs;
 
       for (tmp = c->argv[1]; *tmp; ) {
-	if(*tmp == '%') {
+	if (*tmp == '%') {
 	  /* is the tag a named_query reference?  If so, process the 
 	   * named query, otherwise process it as a normal tag.. 
 	   */
@@ -2406,22 +2430,25 @@ MODRET errinfo_master(cmd_rec *cmd) {
 	  if (*(++tmp) == '{') {
 	    char *query;
 
-	    if (*tmp!='\0') query = ++tmp;
+	    if (*tmp != '\0')
+              query = ++tmp;
 	    
 	    /* get the name of the query */
-	    while ( *tmp && *tmp!='}' ) tmp++;
+	    while (*tmp && *tmp != '}') 
+              tmp++;
 	    
 	    query = pstrndup(cmd->tmp_pool, query, (tmp - query));
 
 	    /* make sure it's a SELECT query */
 	    
 	    type = _named_query_type(cmd, query);
-	    if (type && ((!strcasecmp(type, SQL_SELECT_C )) ||
-			 (!strcasecmp(type, SQL_FREEFORM_C )))) {
+	    if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
+			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
 	      mr = _process_named_query(cmd, query);
 	      
 	      if (MODRET_ISERROR(mr)) {
 		argp = "{null}";
+
 	      } else {
 		sd = (sql_data_t *) mr->data;
 		if ((sd->rnum == 0) || (!sd->data[0]))
@@ -2432,14 +2459,17 @@ MODRET errinfo_master(cmd_rec *cmd) {
 	    } else {
 	      argp = "{null}";
 	    }
+
 	  } else {
-	    argp=resolve_tag( cmd, *tmp);
+	    argp = resolve_tag(cmd, *tmp);
 	  }
 
 	  sstrcat(outs, argp, sizeof(outs));
 	  outsp += strlen(argp);
 
-	  if (*tmp!='\0') tmp++;
+	  if (*tmp != '\0')
+            tmp++;
+
 	} else {
 	  *outsp++ = *tmp++;
 	}
@@ -2472,7 +2502,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
       outsp = outs;
 
       for (tmp = c->argv[1]; *tmp; ) {
-	if(*tmp == '%') {
+	if (*tmp == '%') {
 	  /* is the tag a named_query reference?  If so, process the 
 	   * named query, otherwise process it as a normal tag.. 
 	   */
@@ -2480,22 +2510,25 @@ MODRET errinfo_master(cmd_rec *cmd) {
 	  if (*(++tmp) == '{') {
 	    char *query;
 
-	    if (*tmp!='\0') query = ++tmp;
+	    if (*tmp != '\0')
+              query = ++tmp;
 	    
 	    /* get the name of the query */
-	    while ( *tmp && *tmp!='}' ) tmp++;
+	    while (*tmp && *tmp != '}')
+              tmp++;
 	    
 	    query = pstrndup(cmd->tmp_pool, query, (tmp - query));
 
 	    /* make sure it's a SELECT query */
 	    
 	    type = _named_query_type(cmd, query);
-	    if (type && ((!strcasecmp(type, SQL_SELECT_C )) ||
-			 (!strcasecmp(type, SQL_FREEFORM_C )))) {
+	    if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
+			 strcasecmp(type, SQL_FREEFORM_C) == 0)) {
 	      mr = _process_named_query(cmd, query);
 	      
 	      if (MODRET_ISERROR(mr)) {
 		argp = "{null}";
+
 	      } else {
 		sd = (sql_data_t *) mr->data;
 		if ((sd->rnum == 0) || (!sd->data[0]))
@@ -2506,14 +2539,17 @@ MODRET errinfo_master(cmd_rec *cmd) {
 	    } else {
 	      argp = "{null}";
 	    }
+
 	  } else {
-	    argp=resolve_tag( cmd, *tmp);
+	    argp = resolve_tag(cmd, *tmp);
 	  }
 
 	  sstrcat(outs, argp, sizeof(outs));
 	  outsp += strlen(argp);
 
-	  if (*tmp!='\0') tmp++;
+	  if (*tmp != '\0')
+            tmp++;
+
 	} else {
 	  *outsp++ = *tmp++;
 	}
@@ -2646,8 +2682,8 @@ MODRET sql_lookup(cmd_rec *cmd) {
     return PR_ERROR(cmd);
 
   type = _named_query_type(cmd, cmd->argv[1]);
-  if (type && ((!strcasecmp(type, SQL_SELECT_C )) ||
-	       (!strcasecmp(type, SQL_FREEFORM_C )))) {
+  if (type && (strcasecmp(type, SQL_SELECT_C) == 0 ||
+	       strcasecmp(type, SQL_FREEFORM_C) == 0)) {
     mr = _process_named_query(cmd, cmd->argv[1]);
     
     if (!MODRET_ISERROR(mr)) {
@@ -2656,12 +2692,14 @@ MODRET sql_lookup(cmd_rec *cmd) {
       ah = make_array(session.pool, (sd->rnum * sd->fnum) , sizeof(char *));
 
       /* the right way to do this is to preserve the abstraction of the array
-       * header so things don't blow up when it gets freed */
+       * header so things don't blow up when it gets freed
+       */
       for (cnt =0; cnt< (sd->rnum * sd->fnum); cnt++) {
 	*((char **) push_array(ah)) = sd->data[cnt];
       }
 
       mr = mod_create_data(cmd, (void *) ah);
+
     } else {
       /* We have an error.  Log it and die. */
       if (check_response(mr) < 0)
@@ -2750,7 +2788,7 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_setpwent");
 
   /* if we've already filled the passwd cache, just reset the curr_passwd */
-  if ( cmap.passwd_cache_filled ) {
+  if (cmap.passwd_cache_filled) {
     cmap.curr_passwd = passwd_name_cache->head;
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_setpwent");
     return PR_DECLINED(cmd);
@@ -2759,7 +2797,7 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
   /* single select or not? */
   if (SQL_FASTUSERS) {
     /* retrieve our list of passwds */
-    where = _sql_where(cmd->tmp_pool, 1, cmap.userwhere );
+    where = _sql_where(cmd->tmp_pool, 1, cmap.userwhere);
 
     mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, "default",
       cmap.usrtable, cmap.usrfields, where), "sql_select");
@@ -2822,7 +2860,7 @@ MODRET cmd_setpwent(cmd_rec *cmd) {
     } 
   } else {
     /* retrieve our list of passwds */
-    where = _sql_where(cmd->tmp_pool, 1, cmap.userwhere );
+    where = _sql_where(cmd->tmp_pool, 1, cmap.userwhere);
     
     mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, "default",
       cmap.usrtable, cmap.usrfield, where), "sql_select");
@@ -3166,7 +3204,8 @@ MODRET cmd_auth(cmd_rec *cmd) {
   lpw.pw_name = cmd->argv[0];
 
   if ((pw = _sql_getpasswd(cmd, &lpw)) && 
-      !auth_check(cmd->tmp_pool, pw->pw_passwd, cmd->argv[0], cmd->argv[1])) {
+      !pr_auth_check(cmd->tmp_pool, pw->pw_passwd, cmd->argv[0],
+        cmd->argv[1])) {
     sql_log(DEBUG_FUNC, "%s", "<<< cmd_auth");
     session.auth_mech = "mod_sql.c";
     return PR_HANDLED(cmd);
@@ -3434,12 +3473,13 @@ MODRET cmd_getstats(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", _sql_realuser(cmd), "'", NULL);
-  where = _sql_where(cmd->tmp_pool, 2, usrwhere, cmap.userwhere );
+  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", _sql_realuser(cmd),
+    "'", NULL);
+  where = _sql_where(cmd->tmp_pool, 2, usrwhere, cmap.userwhere);
   
   query = pstrcat(cmd->tmp_pool, cmap.sql_fstor, ", ",
 		  cmap.sql_fretr, ", ", cmap.sql_bstor, ", ",
-		  cmap.sql_bretr, NULL );
+		  cmap.sql_bretr, NULL);
   
   mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 4, "default", cmap.usrtable,
     query, where), "sql_select");
@@ -3777,7 +3817,7 @@ MODRET set_sqlnamedquery(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
 
   if (cmd->argc < 3) {
-    CONF_ERROR( cmd, "requires at least 2 arguments" );
+    CONF_ERROR(cmd, "requires at least 2 arguments");
   }
 
   name = pstrcat(cmd->tmp_pool, "SQLNamedQuery_", cmd->argv[1], NULL);
@@ -4324,7 +4364,7 @@ static void sql_exit_ev(const void *event_data, void *user_data) {
           strcasecmp(type, SQL_INSERT_C) == 0) {
 
         sql_log(DEBUG_FUNC, "running named query '%s' at exit", qname);
-        _process_named_query( cmd, qname );
+        _process_named_query(cmd, qname);
 
       } else {
         sql_log(DEBUG_WARN, "named query '%s' is not an INSERT, UPDATE, or "
