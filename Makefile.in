@@ -128,7 +128,6 @@ depend:
 
 clean:
 	cd src/     && $(MAKE) clean
-	cd include/ && $(MAKE) clean
 	cd modules/ && $(MAKE) clean
 	cd lib/     && $(MAKE) clean
 	cd utils/   && $(MAKE) clean
