@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.285 2006-06-16 00:32:04 castaglia Exp $
+ * $Id: main.c,v 1.286 2006-06-16 00:36:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -92,13 +92,6 @@ extern module *static_modules[];
 
 extern xaset_t *server_list;
 
-struct rehash {
-  struct rehash *next;
-
-  void *data;
-  void (*rehash)(void*);
-};
-
 unsigned long max_connects = 0UL;
 unsigned int max_connect_interval = 1;
 
@@ -111,7 +104,6 @@ static unsigned char is_standalone = FALSE;
 unsigned char is_master = TRUE;
 
 pid_t mpid = 0;				/* Master pid */
-struct rehash *rehash_list = NULL;	/* Pre-rehash callbacks */
 
 uid_t daemon_uid;
 gid_t daemon_gid;
@@ -899,14 +891,12 @@ static void cmd_loop(server_rec *server, conn_t *c) {
   }
 }
 
-static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
-  struct rehash *rh = NULL;
-
+static void core_restart_cb(void *d1, void *d2, void *d3, void *d4) {
   if (is_master && mpid) {
     int maxfd;
     fd_set childfds;
 
-    pr_log_pri(PR_LOG_NOTICE, "received SIGHUP -- master server rehashing "
+    pr_log_pri(PR_LOG_NOTICE, "received SIGHUP -- master server reparsing "
       "configuration file");
 
     /* Make sure none of our children haven't completed start up */
@@ -947,11 +937,8 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
     utf8_free();
 #endif /* PR_USE_NLS */
 
-    /* Run through the list of registered rehash callbacks. */
+    /* Run through the list of registered restart callbacks. */
     pr_event_generate("core.restart", NULL);
-
-    for (rh = rehash_list; rh; rh = rh->next)
-      rh->rehash(rh->data);
 
     init_log();
     init_class();
@@ -997,10 +984,11 @@ static void core_rehash_cb(void *d1, void *d2, void *d3, void *d4) {
      */
     init_bindings();
 
-  } else
+  } else {
 
-    /* Child process -- cannot rehash, log error */
-    pr_log_pri(PR_LOG_ERR, "received SIGHUP, cannot rehash child process");
+    /* Child process -- cannot restart, log error */
+    pr_log_pri(PR_LOG_ERR, "received SIGHUP, cannot restart child process");
+  }
 }
 
 #ifndef PR_DEVEL_NO_FORK
@@ -1666,7 +1654,7 @@ void pr_signals_handle(void) {
     if (recvd_signal_flags & RECEIVED_SIG_REHASH) {
 
       /* NOTE: should this be done here, rather than using a schedule? */
-      schedule(core_rehash_cb, 0, NULL, NULL, NULL, NULL);
+      schedule(core_restart_cb, 0, NULL, NULL, NULL, NULL);
 
       recvd_signal_flags &= ~RECEIVED_SIG_REHASH;
     }
@@ -1686,13 +1674,13 @@ void pr_signals_handle(void) {
   }
 }
 
-/* sig_rehash occurs in the master daemon when manually "kill -HUP"
+/* sig_restart occurs in the master daemon when manually "kill -HUP"
  * in order to re-read configuration files, and is sent to all
  * children by the master.
  */
-static RETSIGTYPE sig_rehash(int signo) {
-  recvd_signal_flags |= RECEIVED_SIG_REHASH;
-  signal(SIGHUP, sig_rehash);
+static RETSIGTYPE sig_restart(int signo) {
+  recvd_signal_flags |= RECEIVED_SIG_RESTART;
+  signal(SIGHUP, sig_restart);
 }
 
 static RETSIGTYPE sig_evnt(int signo) {
@@ -2023,7 +2011,7 @@ static void install_signal_handlers(void) {
 #endif /* SIGBUS */
 
   signal(SIGCHLD, sig_child);
-  signal(SIGHUP, sig_rehash);
+  signal(SIGHUP, sig_restart);
   signal(SIGINT, sig_terminate);
   signal(SIGQUIT, sig_terminate);
   signal(SIGILL, sig_terminate);

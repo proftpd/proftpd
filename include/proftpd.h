@@ -25,7 +25,7 @@
  */
 
 /* General options
- * $Id: proftpd.h,v 1.54 2006-06-16 00:32:04 castaglia Exp $
+ * $Id: proftpd.h,v 1.55 2006-06-16 00:36:05 castaglia Exp $
  */
 
 #ifndef PR_PROFTPD_H
@@ -226,7 +226,7 @@ extern const char	*pwdfname,*grpfname;
 #define SERVER_STANDALONE	1
 
 /* Signals */
-#define RECEIVED_SIG_REHASH	0x0001
+#define RECEIVED_SIG_RESTART	0x0001
 #define RECEIVED_SIG_EXIT	0x0002
 #define RECEIVED_SIG_SHUTDOWN	0x0004
 #define RECEIVED_SIG_SEGV	0x0008
