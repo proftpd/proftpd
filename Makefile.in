@@ -68,20 +68,24 @@ ftpwho$(EXEEXT): lib utils
 
 
 # BSD install -d doesn't work, so ...
-$(DESTDIR)$(libexecdir) $(DESTDIR)$(localstatedir) $(DESTDIR)$(sysconfdir) $(DESTDIR)$(rundir) $(DESTDIR)$(bindir) $(DESTDIR)$(sbindir) $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/man5 $(DESTDIR)$(mandir)/man8:
+$(DESTDIR)$(includedir)/proftpd $(DESTDIR)$(libexecdir) $(DESTDIR)$(localstatedir) $(DESTDIR)$(sysconfdir) $(DESTDIR)$(rundir) $(DESTDIR)$(bindir) $(DESTDIR)$(sbindir) $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/man5 $(DESTDIR)$(mandir)/man8:
 	@if [ ! -d $@ ]; then \
 		mkdir -p $@; \
 		chown $(INSTALL_USER):$(INSTALL_GROUP) $@; \
 		chmod 0755 $@; \
 	fi
 
-install-proftpd: proftpd $(DESTDIR)$(localstatedir) $(DESTDIR)$(sysconfdir) $(DESTDIR)$(rundir) $(DESTDIR)$(sbindir)
+install-proftpd: proftpd $(DESTDIR)$(includedir) $(DESTDIR)$(localstatedir) $(DESTDIR)$(sysconfdir) $(DESTDIR)$(rundir) $(DESTDIR)$(sbindir)
 	$(INSTALL_SBIN) proftpd $(DESTDIR)$(sbindir)/proftpd
 	if [ -f $(DESTDIR)$(sbindir)/in.proftpd ] ; then \
 		rm -f $(DESTDIR)$(sbindir)/in.proftpd ; \
 	fi
 	ln -s proftpd $(DESTDIR)$(sbindir)/in.proftpd
 	-chown -h $(INSTALL_USER):$(INSTALL_GROUP) $(DESTDIR)$(sbindir)/in.proftpd
+
+install-headers: $(DESTDIR)$(includedir)/proftpd
+	$(INSTALL_MAN) config.h $(DESTDIR)$(includedir)/proftpd/config.h
+	cd include/ && $(MAKE) install
 
 install-modules: $(DESTDIR)$(libexecdir)
 	test -z "$(SHARED_MODULE_OBJS)" -a -z "$(SHARED_MODULE_DIRS)" || (cd modules/ && $(MAKE) install)
@@ -112,7 +116,7 @@ install-man: $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/ma
 	$(INSTALL_MAN) $(top_srcdir)/utils/ftpwho.1   $(DESTDIR)$(mandir)/man1
 	$(INSTALL_MAN) $(top_srcdir)/src/xferlog.5    $(DESTDIR)$(mandir)/man5
 
-install-all: install-proftpd install-modules install-utils install-conf install-man $(INSTALL_DEPS)
+install-all: install-proftpd install-modules install-utils install-conf install-man install-headers $(INSTALL_DEPS)
 
 install: all install-all
 
@@ -124,6 +128,7 @@ depend:
 
 clean:
 	cd src/     && $(MAKE) clean
+	cd include/ && $(MAKE) clean
 	cd modules/ && $(MAKE) clean
 	cd lib/     && $(MAKE) clean
 	cd utils/   && $(MAKE) clean

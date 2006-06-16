@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.769 2006-06-15 20:53:35 castaglia Exp $
+$Id: NEWS,v 1.770 2006-06-16 00:26:35 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -77,6 +77,10 @@ CVS
 - Bug 2784 - Ability to specify MySQL Unix domain socket path.
 - Bug 2610 - Support for logging to /var/log/lastlog.  See the RELEASE_NOTES
   for more details on how to use this feature.
+- Bug 2710 - ProFTPD should install its header files into the installation
+  location.  The `make install' target now causes proftpd header files,
+  including config.h, to be installed into a include/proftpd/ directory
+  in the installation location.
 
 1.3.0 - Released 16-Apr-2006
 --------------------------------

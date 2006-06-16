@@ -3,6 +3,7 @@ exec_prefix=@exec_prefix@
 bindir=@bindir@
 sbindir=@sbindir@
 sysconfdir=@sysconfdir@
+includedir=@includedir@
 libexecdir=@libexecdir@
 localstatedir=@localstatedir@
 rundir=@localstatedir@/proftpd
