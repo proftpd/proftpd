@@ -13,6 +13,15 @@
 /* Define to be the build options. */
 #undef PR_BUILD_OPTS
 
+/* Define to be the build CFLAGS.  */
+#undef PR_BUILD_CFLAGS
+
+/* Define to be the build LDLAGS.  */
+#undef PR_BUILD_LDFLAGS
+
+/* Define to be the build LIBS.  */
+#undef PR_BUILD_LIBS
+
 /* Define to be the build platform. */
 #undef PR_PLATFORM
 

@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.287 2006-06-16 00:37:42 castaglia Exp $
+ * $Id: main.c,v 1.288 2006-06-16 02:52:34 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2478,7 +2478,11 @@ static void show_settings(void) {
   printf("Compile-time Settings:\n");
   printf("  Version: " PROFTPD_VERSION_TEXT "\n");
   printf("  Platform: " PR_PLATFORM "\n");
-  printf("  Built With:\n    configure " PR_BUILD_OPTS "\n");
+  printf("  Built With:\n    configure " PR_BUILD_OPTS "\n\n");
+
+  printf("  CFLAGS: " PR_BUILD_CFLAGS "\n");
+  printf("  LDFLAGS: " PR_BUILD_LDFLAGS "\n");
+  printf("  LIBS: " PR_BUILD_LIBS "\n");
 
   printf("\n  Files:\n");
   printf("    Configuration File:\n");

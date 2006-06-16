@@ -1948,6 +1948,13 @@ dnl CFLAGS environment variable (which may possible cause other autoconf
 dnl tests to fail).
 PR_CHECK_CC_OPT(Wno-long-double)
 
+my_cflags="\"$CFLAGS\""
+AC_DEFINE_UNQUOTED(PR_BUILD_CFLAGS, $my_cflags)
+my_ldflags="\"$LDFLAGS\""
+AC_DEFINE_UNQUOTED(PR_BUILD_LDFLAGS, $my_ldflags)
+my_libs="\"$LIBS\""
+AC_DEFINE_UNQUOTED(PR_BUILD_LIBS, $my_libs)
+
 dnl And finally, generate the appropriate Make* and config.h
 AC_SUBST(GLUE_MODULE_OBJS)
 AC_SUBST(INSTALL_STRIP)
