@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2003 The ProFTPD Project team
+ * Copyright (c) 2003-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -Llib/libcap -lcap$
  * $Directories: lib/libcap$
- * $Id: mod_cap.c,v 1.13 2004-05-30 21:50:58 castaglia Exp $
+ * $Id: mod_cap.c,v 1.14 2006-06-16 01:40:15 castaglia Exp $
  */
 
 #include <stdio.h>
@@ -184,7 +184,7 @@ MODRET set_caps(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[0]) = flags;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_capengine(cmd_rec *cmd) {
@@ -194,14 +194,15 @@ MODRET set_capengine(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expecting Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = bool;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Command handlers
@@ -215,7 +216,7 @@ MODRET cap_post_pass(cmd_rec *cmd) {
   int res;
 
   if (!use_capabilities)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   pr_signals_block();
 
@@ -227,7 +228,7 @@ MODRET cap_post_pass(cmd_rec *cmd) {
   if (setreuid(session.uid, 0) == -1) {
     pr_log_pri(PR_LOG_ERR, MOD_CAP_VERSION ": setreuid: %s", strerror(errno));
     pr_signals_unblock();
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 #endif /* PR_DEVEL_COREDUMP */
 
@@ -294,7 +295,7 @@ MODRET cap_post_pass(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_NOTICE, MOD_CAP_VERSION ": attempt to configure "
             "capabilities failed, reverting to normal operation");
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Initialization routines

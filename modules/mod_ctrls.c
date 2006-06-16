@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.31 2006-05-23 17:34:22 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.32 2006-06-16 01:40:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1403,12 +1403,13 @@ MODRET set_ctrlsacls(cmd_rec *cmd) {
       strcmp(cmd->argv[3], "group") != 0)
     CONF_ERROR(cmd, "third parameter must be 'user' or 'group'");
 
-  if ((bad_action = ctrls_set_module_acls(ctrls_acttab, ctrls_pool, actions,
-      cmd->argv[2], cmd->argv[3], cmd->argv[4])) != NULL)
+  bad_action = ctrls_set_module_acls(ctrls_acttab, ctrls_pool, actions,
+    cmd->argv[2], cmd->argv[3], cmd->argv[4]);
+  if (bad_action != NULL)
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown action: '",
       bad_action, "'", NULL));
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* default: 10 secs */
@@ -1424,7 +1425,7 @@ MODRET set_ctrlsauthfreshness(cmd_rec *cmd) {
 
   ctrls_cl_freshness = freshness;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_ctrlsengine(cmd_rec *cmd) {
@@ -1433,12 +1434,12 @@ MODRET set_ctrlsengine(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   ctrls_engine = bool;
-
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* default: 10 secs */
@@ -1457,7 +1458,7 @@ MODRET set_ctrlsinterval(cmd_rec *cmd) {
   pr_timer_remove(CTRLS_TIMER_ID, &ctrls_module);
   pr_timer_add(ctrls_interval, CTRLS_TIMER_ID, &ctrls_module, ctrls_timer_cb);
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_ctrlslog(cmd_rec *cmd) {
@@ -1479,7 +1480,7 @@ MODRET set_ctrlslog(cmd_rec *cmd) {
         "unable to log to a world-writable directory", NULL));
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Default: 5 max clients */
@@ -1489,12 +1490,12 @@ MODRET set_ctrlsmaxclients(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  if ((nclients = atoi(cmd->argv[1])) <= 0)
+  nclients = atoi(cmd->argv[1]);
+  if (nclients <= 0)
     CONF_ERROR(cmd, "must be a positive number");
 
   cl_maxlistlen = nclients;
-
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Default: var/run/proftpd.sock */
@@ -1517,7 +1518,7 @@ MODRET set_ctrlssocket(cmd_rec *cmd) {
   if (strcmp(cmd->argv[1], ctrls_sock_file) != 0)
     ctrls_sock_file = pstrdup(ctrls_pool, cmd->argv[1]);
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Default behavior is to deny everyone unless an ACL has been configured */
@@ -1544,7 +1545,7 @@ MODRET set_ctrlssocketacl(cmd_rec *cmd) {
   else
     CONF_ERROR(cmd, "second parameter must be either 'user' or 'group'");
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Default: root root */
@@ -1581,7 +1582,7 @@ MODRET set_ctrlssocketowner(cmd_rec *cmd) {
   } else
     ctrls_sock_gid = gid;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Event handlers

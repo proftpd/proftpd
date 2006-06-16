@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2005 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.27 2006-04-16 22:41:53 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.28 2006-06-16 01:40:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -310,7 +310,7 @@ MODRET pw_setpwent(cmd_rec *cmd) {
   else
     setpwent();
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET pw_endpwent(cmd_rec *cmd) {
@@ -319,7 +319,7 @@ MODRET pw_endpwent(cmd_rec *cmd) {
   else
     endpwent();
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET pw_setgrent(cmd_rec *cmd) {
@@ -328,7 +328,7 @@ MODRET pw_setgrent(cmd_rec *cmd) {
   else
     setgrent();
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET pw_endgrent(cmd_rec *cmd) {
@@ -337,7 +337,7 @@ MODRET pw_endgrent(cmd_rec *cmd) {
   else
     endgrent();
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET pw_getgrent(cmd_rec *cmd) {
@@ -348,7 +348,7 @@ MODRET pw_getgrent(cmd_rec *cmd) {
   else
     gr = getgrent();
 
-  return gr ? mod_create_data(cmd, gr) : DECLINED(cmd);
+  return gr ? mod_create_data(cmd, gr) : PR_DECLINED(cmd);
 }
 
 MODRET pw_getpwent(cmd_rec *cmd) {
@@ -359,7 +359,7 @@ MODRET pw_getpwent(cmd_rec *cmd) {
   else
     pw = getpwent();
 
-  return pw ? mod_create_data(cmd, pw) : DECLINED(cmd);
+  return pw ? mod_create_data(cmd, pw) : PR_DECLINED(cmd);
 }
 
 MODRET pw_getpwuid(cmd_rec *cmd) {
@@ -372,7 +372,7 @@ MODRET pw_getpwuid(cmd_rec *cmd) {
   else
     pw = getpwuid(uid);
 
-  return pw ? mod_create_data(cmd, pw) : DECLINED(cmd);
+  return pw ? mod_create_data(cmd, pw) : PR_DECLINED(cmd);
 }
 
 MODRET pw_getpwnam(cmd_rec *cmd) {
@@ -385,7 +385,7 @@ MODRET pw_getpwnam(cmd_rec *cmd) {
   else
     pw = getpwnam(name);
 
-  return pw ? mod_create_data(cmd, pw) : DECLINED(cmd);
+  return pw ? mod_create_data(cmd, pw) : PR_DECLINED(cmd);
 }
 
 MODRET pw_getgrnam(cmd_rec *cmd) {
@@ -398,7 +398,7 @@ MODRET pw_getgrnam(cmd_rec *cmd) {
   else
     gr = getgrnam(name);
 
-  return gr ? mod_create_data(cmd, gr) : DECLINED(cmd);
+  return gr ? mod_create_data(cmd, gr) : PR_DECLINED(cmd);
 }
 
 MODRET pw_getgrgid(cmd_rec *cmd) {
@@ -411,7 +411,7 @@ MODRET pw_getgrgid(cmd_rec *cmd) {
   else
     gr = getgrgid(gid);
 
-  return gr ? mod_create_data(cmd, gr) : DECLINED(cmd);
+  return gr ? mod_create_data(cmd, gr) : PR_DECLINED(cmd);
 }
 
 #ifdef PR_USE_SHADOW
@@ -631,23 +631,23 @@ MODRET pw_auth(cmd_rec *cmd) {
       &disable);
 
   if (!cpw)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (pr_auth_check(cmd->tmp_pool, cpw, cmd->argv[0], cmd->argv[1]))
-    return ERROR_INT(cmd, PR_AUTH_BADPWD);
+    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
 
   if (lstchg > (time_t) 0 &&
       max > (time_t) 0 &&
       inact > (time_t)0)
     if (now > lstchg + max + inact)
-      return ERROR_INT(cmd, PR_AUTH_AGEPWD);
+      return PR_ERROR_INT(cmd, PR_AUTH_AGEPWD);
 
   if (disable > (time_t) 0 &&
       now > disable)
-    return ERROR_INT(cmd, PR_AUTH_DISABLEDPWD);
+    return PR_ERROR_INT(cmd, PR_AUTH_DISABLEDPWD);
 
   session.auth_mech = "mod_auth_unix.c";
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* cmd->argv[0] = hashed password,
@@ -670,7 +670,7 @@ MODRET pw_check(cmd_rec *cmd) {
 #ifdef COMSEC
   if (iscomsec()) {
     if (strcmp(bigcrypt((char *) pw, (char *) cpw), cpw) != 0) {
-      return DECLINED(cmd);
+      return PR_DECLINED(cmd);
     }
 
   } else {
@@ -721,7 +721,7 @@ MODRET pw_check(cmd_rec *cmd) {
   PRIVS_RELINQUISH
 
   if (res != SIASUCCESS) {
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
 #else /* !PR_USE_SIA */
@@ -760,20 +760,20 @@ MODRET pw_check(cmd_rec *cmd) {
       if (token == INVALID_HANDLE_VALUE) {
         pr_log_pri(PR_LOG_NOTICE, "error authenticating Cygwin user: %s",
           strerror(errno));
-        return DECLINED(cmd);
+        return PR_DECLINED(cmd);
       }
 
       cygwin_set_impersonation_token(token);
 
     } else {
-      return DECLINED(cmd);
+      return PR_DECLINED(cmd);
     }
 
   } else
 # endif /* CYGWIN */
 
   if (strcmp(crypt(pw, cpw), cpw) != 0) {
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 #endif /* PR_USE_SIA */
 
@@ -782,7 +782,7 @@ MODRET pw_check(cmd_rec *cmd) {
 #endif /* COMSEC */
 
   session.auth_mech = "mod_auth_unix.c";
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET pw_uid2name(cmd_rec *cmd) {
@@ -807,7 +807,7 @@ MODRET pw_uid2name(cmd_rec *cmd) {
       return mod_create_data(cmd, m->name);
     }
 
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   return mod_create_data(cmd, m->name);
@@ -834,7 +834,7 @@ MODRET pw_gid2name(cmd_rec *cmd) {
       return mod_create_data(cmd, m->name);
     }
 
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   return mod_create_data(cmd, m->name);
@@ -851,7 +851,7 @@ MODRET pw_name2uid(cmd_rec *cmd) {
   else
     pw = getpwnam(name);
 
-  return pw ? mod_create_data(cmd, (void *) &pw->pw_uid) : DECLINED(cmd);
+  return pw ? mod_create_data(cmd, (void *) &pw->pw_uid) : PR_DECLINED(cmd);
 }
 
 MODRET pw_name2gid(cmd_rec *cmd) {
@@ -865,7 +865,7 @@ MODRET pw_name2gid(cmd_rec *cmd) {
   else
     gr = getgrnam(name);
 
-  return gr ? mod_create_data(cmd, (void *) &gr->gr_gid) : DECLINED(cmd);
+  return gr ? mod_create_data(cmd, (void *) &gr->gr_gid) : PR_DECLINED(cmd);
 }
 
 /* cmd->argv[0] = name
@@ -910,7 +910,7 @@ MODRET pw_getgroups(cmd_rec *cmd) {
 
   /* Retrieve the necessary info. */
   if (!name || !(pw = my_getpwnam(name)))
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* Populate the first group ID and name. */
   if (gids)
@@ -949,7 +949,7 @@ MODRET pw_getgroups(cmd_rec *cmd) {
   else if (groups && groups->nelts > 0)
     return mod_create_data(cmd, (void *) &groups->nelts);
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET set_persistentpasswd(cmd_rec *cmd) {
@@ -963,7 +963,7 @@ MODRET set_persistentpasswd(cmd_rec *cmd) {
 
   persistent_passwd = bool;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Events handlers

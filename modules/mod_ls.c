@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.130 2006-05-26 17:16:40 castaglia Exp $
+ * $Id: mod_ls.c,v 1.131 2006-06-16 01:40:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1843,17 +1843,17 @@ MODRET genericlist(cmd_rec *cmd) {
 
   opt_l = 0;
 
-  return (res == -1 ? ERROR(cmd) : HANDLED(cmd));
+  return (res == -1 ? PR_ERROR(cmd) : PR_HANDLED(cmd));
 }
 
 MODRET ls_log_nlst(cmd_rec *cmd) {
   pr_data_cleanup();
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET ls_err_nlst(cmd_rec *cmd) {
   pr_data_cleanup();
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET ls_stat(cmd_rec *cmd) {
@@ -1872,7 +1872,7 @@ MODRET ls_stat(cmd_rec *cmd) {
     if (!dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, session.cwd,
         NULL)) {
       pr_response_add_err(R_500, "%s: %s", cmd->argv[0], strerror(EPERM));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     pr_response_add(R_211, _("Status of '%s'"), main_server->ServerName);
@@ -1911,7 +1911,7 @@ MODRET ls_stat(cmd_rec *cmd) {
 
     pr_response_add(R_DUP, _("End of status"));
 
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   }
 
   list_nfiles.curr = list_ndirs.curr = list_ndepth.curr = 0;
@@ -1981,7 +1981,7 @@ MODRET ls_stat(cmd_rec *cmd) {
     pr_fs_encode_path(cmd->tmp_pool, "."));
   res = dolist(cmd, arg && *arg ? arg : ".", FALSE);
   pr_response_add(R_211, _("End of status"));
-  return (res == -1 ? ERROR(cmd) : HANDLED(cmd));
+  return (res == -1 ? PR_ERROR(cmd) : PR_HANDLED(cmd));
 }
 
 MODRET ls_list(cmd_rec *cmd) {
@@ -2129,7 +2129,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
     if (pr_fs_glob(target, GLOB_PERIOD, NULL, &g) != 0) {
       pr_response_add_err(R_450, _("No files found"));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     /* Iterate through each matching entry */
@@ -2174,7 +2174,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
     if (!ls_perms_full(cmd->tmp_pool, cmd, target, &hidden)) {
       pr_response_add_err(R_450, "%s: %s", *cmd->arg ? cmd->arg :
         pr_fs_encode_path(cmd->tmp_pool, session.vwd), strerror(errno));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     /* Don't display hidden files */
@@ -2194,7 +2194,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
             pr_fs_encode_path(cmd->tmp_pool, target), strerror(EACCES));
         }
 
-        return ERROR(cmd);
+        return PR_ERROR(cmd);
       }
     }
 
@@ -2204,7 +2204,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
     pr_fs_clear_cache();
     if (pr_fsio_stat(target, &st) < 0) {
       pr_response_add_err(R_450, "%s: %s", cmd->arg, strerror(errno));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     if (S_ISREG(st.st_mode)) {
@@ -2214,14 +2214,14 @@ MODRET ls_nlst(cmd_rec *cmd) {
       if (pr_fsio_access(target, R_OK, session.uid, session.gid,
           session.gids) != 0) {
         pr_response_add_err(R_450, "%s: %s", cmd->arg, strerror(errno));
-        return ERROR(cmd);
+        return PR_ERROR(cmd);
       }
 
       res = nlstdir(cmd, target);
 
     } else {
       pr_response_add_err(R_450, _("%s: Not a regular file"), cmd->arg);
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     if (res > 0)
@@ -2239,7 +2239,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
     ls_done(cmd);
   }
 
-  return (res < 0 ? ERROR(cmd) : HANDLED(cmd));
+  return (res < 0 ? PR_ERROR(cmd) : PR_HANDLED(cmd));
 }
 
 /* Check for the UseGlobbing setting, if any, after the PASS command has
@@ -2255,7 +2255,7 @@ MODRET ls_post_pass(cmd_rec *cmd) {
     use_globbing = FALSE;
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Configuration handlers
@@ -2290,7 +2290,7 @@ MODRET set_dirfakeusergroup(cmd_rec *cmd) {
 
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_dirfakemode(cmd_rec *cmd) {
@@ -2312,7 +2312,7 @@ MODRET set_dirfakemode(cmd_rec *cmd) {
   *((mode_t *) c->argv[0]) = fake_mode;
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_listoptions(cmd_rec *cmd) {
@@ -2391,7 +2391,7 @@ MODRET set_listoptions(cmd_rec *cmd) {
     }
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_showsymlinks(cmd_rec *cmd) {
@@ -2409,7 +2409,7 @@ MODRET set_showsymlinks(cmd_rec *cmd) {
   *((unsigned char *) c->argv[0]) = bool;
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_useglobbing(cmd_rec *cmd) {
@@ -2427,7 +2427,7 @@ MODRET set_useglobbing(cmd_rec *cmd) {
   *((unsigned char *) c->argv[0]) = bool;
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Initialization routines

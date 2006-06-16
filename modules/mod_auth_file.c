@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.27 2006-04-20 01:49:08 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.28 2006-06-16 01:40:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -584,11 +584,11 @@ MODRET authfile_endpwent(cmd_rec *cmd) {
 
   /* Do not handle *pw* requests unless we can do so. */
   if (!af_handle_pw)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   af_endpwent();
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET authfile_getpwent(cmd_rec *cmd) {
@@ -596,14 +596,14 @@ MODRET authfile_getpwent(cmd_rec *cmd) {
 
   /* Do not handle *pw* requests unless we can do so. */
   if (!af_handle_pw)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (!af_setpwent())
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   pwd = af_getpwent(af_current_user_file);
 
-  return pwd ? mod_create_data(cmd, pwd) : DECLINED(cmd);
+  return pwd ? mod_create_data(cmd, pwd) : PR_DECLINED(cmd);
 }
 
 MODRET authfile_getpwnam(cmd_rec *cmd) {
@@ -612,19 +612,21 @@ MODRET authfile_getpwnam(cmd_rec *cmd) {
 
   /* Do not handle *pw* requests unless we can do so. */
   if (!af_handle_pw)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (!af_setpwent())
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* Ugly -- we iterate through the file.  Time-consuming. */
-  while ((pwd = af_getpwent(af_current_user_file)) != NULL)
-    if (!strcmp(name, pwd->pw_name))
+  while ((pwd = af_getpwent(af_current_user_file)) != NULL) {
+    if (strcmp(name, pwd->pw_name) == 0) {
 
       /* Found the requested name */
       break;
+    }
+  }
 
-  return pwd ? mod_create_data(cmd, pwd) : DECLINED(cmd);
+  return pwd ? mod_create_data(cmd, pwd) : PR_DECLINED(cmd);
 }
 
 MODRET authfile_getpwuid(cmd_rec *cmd) {
@@ -633,14 +635,14 @@ MODRET authfile_getpwuid(cmd_rec *cmd) {
 
   /* Do not handle *pw* requests unless we can do so. */
   if (!af_handle_pw)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (!af_setpwent())
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   pwd = af_getpwuid(af_current_user_file, uid);
 
-  return pwd ? mod_create_data(cmd, pwd) : DECLINED(cmd);
+  return pwd ? mod_create_data(cmd, pwd) : PR_DECLINED(cmd);
 }
 
 MODRET authfile_name2uid(cmd_rec *cmd) {
@@ -648,29 +650,29 @@ MODRET authfile_name2uid(cmd_rec *cmd) {
 
   /* Do not handle *pw* requests unless we can do so. */
   if (!af_handle_pw)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (!af_setpwent())
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   pwd = af_getpwnam(af_current_user_file, cmd->argv[0]);
 
-  return pwd ? mod_create_data(cmd, (void *) &pwd->pw_uid) : DECLINED(cmd);
+  return pwd ? mod_create_data(cmd, (void *) &pwd->pw_uid) : PR_DECLINED(cmd);
 }
 
 MODRET authfile_setpwent(cmd_rec *cmd) {
 
   /* Do not handle *pw* requests unless we can do so. */
   if (!af_handle_pw)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (af_setpwent())
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   pr_log_debug(DEBUG2,
     MOD_AUTH_FILE_VERSION ": unable to find useable AuthUserFile");
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET authfile_uid2name(cmd_rec *cmd) {
@@ -678,25 +680,25 @@ MODRET authfile_uid2name(cmd_rec *cmd) {
 
   /* Do not handle *pw* requests unless we can do so. */
   if (!af_handle_pw)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (!af_setpwent())
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   pwd = af_getpwuid(af_current_user_file, *((uid_t *) cmd->argv[0]));
 
-  return pwd ? mod_create_data(cmd, pwd->pw_name) : DECLINED(cmd);
+  return pwd ? mod_create_data(cmd, pwd->pw_name) : PR_DECLINED(cmd);
 }
 
 MODRET authfile_endgrent(cmd_rec *cmd) {
 
   /* Do not handle *gr* requests unless we can do so. */
   if (!af_handle_gr)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   af_endgrent();
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET authfile_getgrent(cmd_rec *cmd) {
@@ -704,14 +706,14 @@ MODRET authfile_getgrent(cmd_rec *cmd) {
 
   /* Do not handle *gr* requests unless we can do so. */
   if (!af_handle_gr)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (!af_setgrent())
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   grp = af_getgrent(af_current_group_file);
 
-  return grp ? mod_create_data(cmd, grp) : DECLINED(cmd);
+  return grp ? mod_create_data(cmd, grp) : PR_DECLINED(cmd);
 }
 
 MODRET authfile_getgrgid(cmd_rec *cmd) {
@@ -720,14 +722,14 @@ MODRET authfile_getgrgid(cmd_rec *cmd) {
 
   /* Do not handle *gr* requests unless we can do so. */
   if (!af_handle_gr)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (!af_setgrent())
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   grp = af_getgrgid(af_current_group_file, gid);
 
-  return grp ? mod_create_data(cmd, grp) : DECLINED(cmd);
+  return grp ? mod_create_data(cmd, grp) : PR_DECLINED(cmd);
 }
 
 MODRET authfile_getgrnam(cmd_rec *cmd) {
@@ -736,18 +738,20 @@ MODRET authfile_getgrnam(cmd_rec *cmd) {
 
   /* Do not handle *gr* requests unless we can do so. */
   if (!af_handle_gr)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (!af_setgrent())
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
-  while ((grp = af_getgrent(af_current_group_file)) != NULL)
-    if (!strcmp(name, grp->gr_name))
+  while ((grp = af_getgrent(af_current_group_file)) != NULL) {
+    if (strcmp(name, grp->gr_name) == 0) {
 
       /* Found the name requested */
       break;
+    }
+  }
 
-  return grp ? mod_create_data(cmd, grp) : DECLINED(cmd);
+  return grp ? mod_create_data(cmd, grp) : PR_DECLINED(cmd);
 }
 
 MODRET authfile_getgroups(cmd_rec *cmd) {
@@ -758,13 +762,13 @@ MODRET authfile_getgroups(cmd_rec *cmd) {
 
   /* Do not handle *gr* requests unless we can do so. */
   if (!af_handle_gr)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (!af_setpwent())
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (!af_setgrent())
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* Check for NULLs */
   if (cmd->argv[1])
@@ -808,7 +812,7 @@ MODRET authfile_getgroups(cmd_rec *cmd) {
     for (gr_mems = grp->gr_mem; *gr_mems; gr_mems++) {
 
       /* If it matches the given username... */
-      if (!strcmp(*gr_mems, pwd->pw_name)) {
+      if (strcmp(*gr_mems, pwd->pw_name) == 0) {
 
         /* ...add the GID and name */
         if (gids)
@@ -826,7 +830,7 @@ MODRET authfile_getgroups(cmd_rec *cmd) {
   else if (groups && groups->nelts > 0)
     return mod_create_data(cmd, (void *) &groups->nelts);
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET authfile_gid2name(cmd_rec *cmd) {
@@ -834,14 +838,14 @@ MODRET authfile_gid2name(cmd_rec *cmd) {
 
   /* Do not handle *gr* requests unless we can do so. */
   if (!af_handle_gr)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (!af_setgrent())
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   grp = af_getgrgid(af_current_group_file, *((gid_t *) cmd->argv[0]));
 
-  return grp ? mod_create_data(cmd, grp->gr_name) : DECLINED(cmd);
+  return grp ? mod_create_data(cmd, grp->gr_name) : PR_DECLINED(cmd);
 }
 
 MODRET authfile_name2gid(cmd_rec *cmd) {
@@ -849,29 +853,29 @@ MODRET authfile_name2gid(cmd_rec *cmd) {
 
   /* Do not handle *gr* requests unless we can do so. */
   if (!af_handle_gr)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (!af_setgrent())
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   grp = af_getgrnam(af_current_group_file, cmd->argv[0]);
 
-  return grp ? mod_create_data(cmd, (void *) &grp->gr_gid) : DECLINED(cmd);
+  return grp ? mod_create_data(cmd, (void *) &grp->gr_gid) : PR_DECLINED(cmd);
 }
 
 MODRET authfile_setgrent(cmd_rec *cmd) {
 
   /* Do not handle *gr* requests unless we can do so. */
   if (!af_handle_gr)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (af_setgrent())
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   pr_log_debug(DEBUG2,
     MOD_AUTH_FILE_VERSION ": unable to find useable AuthGroupFile");
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET authfile_auth(cmd_rec *cmd) {
@@ -880,10 +884,10 @@ MODRET authfile_auth(cmd_rec *cmd) {
 
   /* Do not handle *pw* requests unless we can do so. */
   if (!af_handle_pw)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (!af_setpwent())
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* Lookup the cleartxt password for this user. */
   tmp = af_getpwpass(af_current_user_file, name);
@@ -894,23 +898,23 @@ MODRET authfile_auth(cmd_rec *cmd) {
      * coordinate/use their methods as long as they matched the auth module
      * used.
      */
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
 #if 0
     /* When the above is implemented, and if the user being checked was
      * provided by mod_auth_file, we'd return this.
      */
-    return ERROR_INT(cmd, PR_AUTH_NOPWD);
+    return PR_ERROR_INT(cmd, PR_AUTH_NOPWD);
 #endif
   }
 
   cleartxt_pass = pstrdup(cmd->tmp_pool, tmp);
 
   if (pr_auth_check(cmd->tmp_pool, cleartxt_pass, name, cmd->argv[1]))
-    return ERROR_INT(cmd, PR_AUTH_BADPWD);
+    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
 
   session.auth_mech = "mod_auth_file.c";
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET authfile_chkpass(cmd_rec *cmd) {
@@ -919,14 +923,14 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
 
   /* Do not handle *pw* requests unless we can do so. */
   if (!af_handle_pw)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   if (strcmp(crypt(cleartxt_pass, ciphertxt_pass), ciphertxt_pass) == 0) {
     session.auth_mech = "mod_auth_file.c";
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   }  
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Configuration handlers
@@ -969,7 +973,7 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
     register unsigned int i = 0;
 
     for (i = 2; i < cmd->argc; i++) {
-      if (!strcmp(cmd->argv[i], "id")) {
+      if (strcmp(cmd->argv[i], "id") == 0) {
         gid_t min, max;
         char *sep = NULL, *tmp = NULL;
 
@@ -977,7 +981,8 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
          * must be >= min.
          */
 
-        if ((sep = strchr(cmd->argv[++i], '-')) == NULL)
+        sep = strchr(cmd->argv[++i], '-');
+        if (sep == NULL)
           CONF_ERROR(cmd, "badly formatted ID restriction parameter");
 
         *sep = '\0';
@@ -1002,7 +1007,7 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
         file->af_restricted_ids = TRUE;
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-      } else if (!strcmp(cmd->argv[i], "name")) {
+      } else if (strcmp(cmd->argv[i], "name") == 0) {
         char *filter = cmd->argv[++i];
         regex_t *preg = NULL;
         int res = 0;
@@ -1015,7 +1020,8 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
           file->af_name_regex_inverted = TRUE;
         }
 
-        if ((res = regcomp(preg, filter, REG_EXTENDED|REG_NOSUB)) != 0) {
+        res = regcomp(preg, filter, REG_EXTENDED|REG_NOSUB);
+        if (res != 0) {
           char errstr[200] = {'\0'};
 
           regerror(res, preg, errstr, sizeof(errstr));
@@ -1037,7 +1043,7 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
     }
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: AuthUserFile path [home <regexp>] [id <min-max>] [name <regex>] */
@@ -1070,7 +1076,7 @@ MODRET set_authuserfile(cmd_rec *cmd) {
     register unsigned int i = 0;
 
     for (i = 2; i < cmd->argc; i++) {
-      if (!strcmp(cmd->argv[i], "id")) {
+      if (strcmp(cmd->argv[i], "id") == 0) {
         uid_t min, max;
         char *sep = NULL, *tmp = NULL;
 
@@ -1078,7 +1084,8 @@ MODRET set_authuserfile(cmd_rec *cmd) {
          * must be >= min.
          */
 
-        if ((sep = strchr(cmd->argv[++i], '-')) == NULL)
+        sep = strchr(cmd->argv[++i], '-');
+        if (sep == NULL)
           CONF_ERROR(cmd, "badly formatted ID restriction parameter");
 
         *sep = '\0';
@@ -1103,7 +1110,7 @@ MODRET set_authuserfile(cmd_rec *cmd) {
         file->af_restricted_ids = TRUE;
 
 #if defined(HAVE_REGEX_H) && defined(HAVE_REGCOMP)
-      } else if (!strcmp(cmd->argv[i], "home")) {
+      } else if (strcmp(cmd->argv[i], "home") == 0) {
         char *filter = cmd->argv[++i];
         regex_t *preg = NULL;
         int res = 0;
@@ -1116,7 +1123,8 @@ MODRET set_authuserfile(cmd_rec *cmd) {
           file->af_home_regex_inverted = TRUE;
         }
 
-        if ((res = regcomp(preg, filter, REG_EXTENDED|REG_NOSUB)) != 0) {
+        res = regcomp(preg, filter, REG_EXTENDED|REG_NOSUB);
+        if (res != 0) {
           char errstr[200] = {'\0'};
 
           regerror(res, preg, errstr, sizeof(errstr));
@@ -1130,7 +1138,7 @@ MODRET set_authuserfile(cmd_rec *cmd) {
         file->af_home_regex = preg;
         file->af_restricted_homes = TRUE;
 
-      } else if (!strcmp(cmd->argv[i], "name")) {
+      } else if (strcmp(cmd->argv[i], "name") == 0) {
         char *filter = cmd->argv[++i];
         regex_t *preg = NULL;
         int res = 0;
@@ -1143,7 +1151,8 @@ MODRET set_authuserfile(cmd_rec *cmd) {
           file->af_name_regex_inverted = TRUE;
         }
 
-        if ((res = regcomp(preg, filter, REG_EXTENDED|REG_NOSUB)) != 0) {
+        res = regcomp(preg, filter, REG_EXTENDED|REG_NOSUB);
+        if (res != 0) {
           char errstr[200] = {'\0'};
 
           regerror(res, preg, errstr, sizeof(errstr));
@@ -1165,7 +1174,7 @@ MODRET set_authuserfile(cmd_rec *cmd) {
     }
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Initialization routines

@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_dso -- support for loading/unloading modules at run-time
  *
- * Copyright (c) 2004 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2004-2006 TJ Saunders <tj@castaglia.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
  * This is mod_dso, contrib software for proftpd 1.2.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_dso.c,v 1.9 2004-12-17 21:56:00 castaglia Exp $
+ * $Id: mod_dso.c,v 1.10 2006-06-16 01:40:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -348,7 +348,7 @@ MODRET set_loadfile(cmd_rec *cmd) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error loading '", cmd->argv[1],
       "': ", strerror(errno), NULL));
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: LoadModule module */
@@ -361,7 +361,7 @@ MODRET set_loadmodule(cmd_rec *cmd) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error loading module '",
       cmd->argv[1], "': ", strerror(errno), NULL));
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: ModuleControlsACLs actions|all allow|deny user|group list */
@@ -382,12 +382,13 @@ MODRET set_modulectrlsacls(cmd_rec *cmd) {
       strcmp(cmd->argv[3], "group") != 0)
     CONF_ERROR(cmd, "third parameter must be 'user' or 'group'");
 
-  if ((bad_action = ctrls_set_module_acls(dso_acttab, dso_pool, actions,
-      cmd->argv[2], cmd->argv[3], cmd->argv[4])) != NULL)
+  bad_action = ctrls_set_module_acls(dso_acttab, dso_pool, actions,
+    cmd->argv[2], cmd->argv[3], cmd->argv[4]);
+  if (bad_action != NULL)
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown action: '",
       bad_action, "'", NULL));
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 #else
   CONF_ERROR(cmd, "requires Controls support (--enable-ctrls)");
 #endif
@@ -477,7 +478,7 @@ MODRET set_moduleorder(cmd_rec *cmd) {
   for (m = loaded_modules; m; m = m->next)
     pr_log_pri(PR_LOG_NOTICE, " mod_%s.c", m->name);
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: ModulePath path */
@@ -502,7 +503,7 @@ MODRET set_modulepath(cmd_rec *cmd) {
       NULL));
 
   if (st.st_mode & S_IWOTH)
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[1], " is world-writeable",
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[1], " is world-writable",
       NULL));
 
   if (lt_dlsetsearchpath(cmd->argv[1]) < 0)
@@ -510,7 +511,7 @@ MODRET set_modulepath(cmd_rec *cmd) {
       lt_dlerror(), NULL));
 
   dso_module_path = pstrdup(dso_pool, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Event handlers

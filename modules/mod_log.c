@@ -25,7 +25,7 @@
  */
 
 /* Flexible logging module for proftpd
- * $Id: mod_log.c,v 1.76 2006-05-25 15:46:42 castaglia Exp $
+ * $Id: mod_log.c,v 1.77 2006-06-16 01:40:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -341,7 +341,7 @@ MODRET set_logformat(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT);
 
   logformat(cmd->argv[1], cmd->argv[2]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 static int _parse_classes(char *s) {
@@ -435,7 +435,7 @@ MODRET set_extendedlog(cmd_rec *cmd) {
     c->argv[2] = pstrdup(log_pool, cmd->argv[3]);
 
   c->argc = argc-1;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Syntax: AllowLogSymlinks <on|off> */
@@ -446,14 +446,15 @@ MODRET set_allowlogsymlinks(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = bool;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Syntax: ServerLog <filename> */
@@ -463,7 +464,7 @@ MODRET set_serverlog(cmd_rec *cmd) {
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Syntax: SystemLog <filename> */
@@ -480,7 +481,7 @@ MODRET set_systemlog(cmd_rec *cmd) {
 
   if (strcasecmp(syslogfn, "NONE") == 0) {
     log_discard();
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   }
 
   if (*syslogfn != '/')
@@ -509,7 +510,7 @@ MODRET set_systemlog(cmd_rec *cmd) {
   }
 
   pr_signals_unblock();
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 #ifdef HAVE_GMTOFF
@@ -1023,7 +1024,7 @@ MODRET log_any(cmd_rec *cmd) {
     }
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 static void log_restart_ev(const void *event_data, void *user_data) {
@@ -1187,7 +1188,7 @@ MODRET log_post_pass(cmd_rec *cmd) {
     }
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Open all the log files */

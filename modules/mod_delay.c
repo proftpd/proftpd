@@ -26,7 +26,7 @@
  * This is mod_delay, contrib software for proftpd 1.2.10 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_delay.c,v 1.20 2006-04-17 16:48:52 castaglia Exp $
+ * $Id: mod_delay.c,v 1.21 2006-06-16 01:40:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -871,7 +871,7 @@ MODRET set_delayctrlsacls(cmd_rec *cmd) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown delay action: '",
       bad_action, "'", NULL));
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 #else
   CONF_ERROR(cmd, "requires Controls support (--enable-ctrls)")
 #endif /* PR_USE_CTRLS */
@@ -893,7 +893,7 @@ MODRET set_delayengine(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[0]) = bool;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: DelayTable path */
@@ -905,7 +905,7 @@ MODRET set_delaytable(cmd_rec *cmd) {
     CONF_ERROR(cmd, "must be an absolute path");
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Command handlers
@@ -917,7 +917,7 @@ MODRET delay_post_pass(cmd_rec *cmd) {
   long interval, median;
 
   if (!delay_engine)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* We use sid-1, since the sid is a server number, and the locking
    * routines want a row index.  However, PASS rows are always after
@@ -931,7 +931,7 @@ MODRET delay_post_pass(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       "warning: unable to load DelayTable '%s' into memory: %s",
       delay_tab.dt_path, strerror(errno));
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   delay_table_wlock(rownum);
@@ -974,15 +974,15 @@ MODRET delay_post_pass(cmd_rec *cmd) {
   if (interval < median)
     delay_delay(median - interval);
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET delay_pre_pass(cmd_rec *cmd) {
   if (!delay_engine)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   gettimeofday(&delay_tv, NULL);
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET delay_post_user(cmd_rec *cmd) {
@@ -991,7 +991,7 @@ MODRET delay_post_user(cmd_rec *cmd) {
   long interval, median;
 
   if (!delay_engine)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* We use sid-1, since the sid is a server number, and the locking
    * routines want a row index.
@@ -1003,7 +1003,7 @@ MODRET delay_post_user(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
       "warning: unable to load DelayTable '%s' into memory: %s",
       delay_tab.dt_path, strerror(errno));
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   delay_table_wlock(rownum);
@@ -1046,15 +1046,15 @@ MODRET delay_post_user(cmd_rec *cmd) {
   if (interval < median)
     delay_delay(median - interval);
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET delay_pre_user(cmd_rec *cmd) {
   if (!delay_engine)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   gettimeofday(&delay_tv, NULL);
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Event handlers

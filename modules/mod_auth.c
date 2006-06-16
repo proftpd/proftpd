@@ -26,7 +26,7 @@
 
 /*
  * Authentication module for ProFTPD
- * $Id: mod_auth.c,v 1.215 2006-06-16 00:53:27 castaglia Exp $
+ * $Id: mod_auth.c,v 1.216 2006-06-16 01:40:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -264,7 +264,7 @@ MODRET auth_err_pass(cmd_rec *cmd) {
    */
   remove_config(cmd->server->conf, C_USER, FALSE);
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET auth_post_pass(cmd_rec *cmd) {
@@ -413,7 +413,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
     pr_log_debug(DEBUG0, "RootRevoke in effect, dropped root privs");
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Handle group based authentication, only checked if pw
@@ -1741,7 +1741,7 @@ static void auth_count_scoreboard(cmd_rec *cmd, char *user) {
 MODRET auth_pre_user(cmd_rec *cmd) {
 
   if (logged_in)
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
 
   /* Close the passwd and group databases, because libc won't let us see new
    * entries to these files without this (only in PersistentPasswd mode).
@@ -1754,10 +1754,10 @@ MODRET auth_pre_user(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_NOTICE, "USER %s (Login failed): "
       "maximum login length exceeded", cmd->arg);
     pr_response_add_err(R_501, "Login incorrect.");
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET auth_user(cmd_rec *cmd) {
@@ -1768,10 +1768,10 @@ MODRET auth_user(cmd_rec *cmd) {
   unsigned char *anon_require_passwd = NULL, *login_passwd_prompt = NULL;
 
   if (logged_in)
-    return ERROR_MSG(cmd, R_503, "You are already logged in!");
+    return PR_ERROR_MSG(cmd, R_503, "You are already logged in!");
 
   if (cmd->argc < 2)
-    return ERROR_MSG(cmd, R_500, C_USER ": command requires a parameter.");
+    return PR_ERROR_MSG(cmd, R_500, C_USER ": command requires a parameter.");
 
   user = cmd->arg;
 
@@ -1884,7 +1884,7 @@ MODRET auth_user(cmd_rec *cmd) {
   } else
     pr_response_add(R_331, _("Password required for %s"), cmd->argv[1]);
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Close the passwd and group databases, similar to auth_pre_user(). */
@@ -1892,7 +1892,7 @@ MODRET auth_pre_pass(cmd_rec *cmd) {
   pr_auth_endpwent(cmd->tmp_pool);
   pr_auth_endgrent(cmd->tmp_pool);
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET auth_pass(cmd_rec *cmd) {
@@ -1900,7 +1900,7 @@ MODRET auth_pass(cmd_rec *cmd) {
   int res = 0;
 
   if (logged_in)
-    return ERROR_MSG(cmd, R_503, "You are already logged in!");
+    return PR_ERROR_MSG(cmd, R_503, "You are already logged in!");
 
   user = get_param_ptr(cmd->server->conf, C_USER, FALSE);
 
@@ -1908,7 +1908,7 @@ MODRET auth_pass(cmd_rec *cmd) {
     remove_config(cmd->server->conf, C_USER, FALSE);
     remove_config(cmd->server->conf, C_PASS, FALSE);
 
-    return ERROR_MSG(cmd, R_503, "Login with " C_USER " first");
+    return PR_ERROR_MSG(cmd, R_503, "Login with " C_USER " first");
   }
 
   res = setup_env(cmd->tmp_pool, user, cmd->arg);
@@ -1928,7 +1928,7 @@ MODRET auth_pass(cmd_rec *cmd) {
         pstrdup(cmd->server->pool, cmd->arg));
 
     logged_in = 1;
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   }
 
   remove_config(cmd->server->conf, C_PASS, FALSE);
@@ -1965,20 +1965,20 @@ MODRET auth_pass(cmd_rec *cmd) {
       end_login(0);
     }
 
-    return ERROR_MSG(cmd, R_530, denymsg ? denymsg : "Login incorrect.");
+    return PR_ERROR_MSG(cmd, R_530, denymsg ? denymsg : "Login incorrect.");
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET auth_acct(cmd_rec *cmd) {
   pr_response_add(R_502, _("ACCT command not implemented"));
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET auth_rein(cmd_rec *cmd) {
   pr_response_add(R_502, _("REIN command not implemented"));
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Configuration handlers
@@ -1993,7 +1993,7 @@ MODRET set_accessdenymsg(cmd_rec *cmd) {
   c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_accessgrantmsg(cmd_rec *cmd) {
@@ -2005,7 +2005,7 @@ MODRET set_accessgrantmsg(cmd_rec *cmd) {
   c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_anonrequirepassword(cmd_rec *cmd) {
@@ -2015,14 +2015,15 @@ MODRET set_anonrequirepassword(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ANON);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = bool;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_anonrejectpasswords(cmd_rec *cmd) {
@@ -2036,7 +2037,8 @@ MODRET set_anonrejectpasswords(cmd_rec *cmd) {
 
   preg = pr_regexp_alloc();
 
-  if ((res = regcomp(preg, cmd->argv[1], REG_EXTENDED|REG_NOSUB)) != 0) {
+  res = regcomp(preg, cmd->argv[1], REG_EXTENDED|REG_NOSUB);
+  if (res != 0) {
     char errstr[200] = {'\0'};
 
     regerror(res, preg, errstr, 200);
@@ -2047,7 +2049,7 @@ MODRET set_anonrejectpasswords(cmd_rec *cmd) {
   }
 
   c = add_config_param(cmd->argv[0], 1, (void *) preg);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 
 #else
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0], " directive "
@@ -2085,7 +2087,7 @@ MODRET add_anonymousgroup(cmd_rec *cmd) {
 
   *argv = NULL;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_authaliasonly(cmd_rec *cmd) {
@@ -2095,7 +2097,8 @@ MODRET set_authaliasonly(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -2103,7 +2106,7 @@ MODRET set_authaliasonly(cmd_rec *cmd) {
   *((unsigned char *) c->argv[0]) = bool;
 
   c->flags |= CF_MERGEDOWN;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_authusingalias(cmd_rec *cmd) {
@@ -2113,14 +2116,15 @@ MODRET set_authusingalias(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ANON);
 
-  if ((bool = get_boolean(cmd,1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = bool;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_createhome(cmd_rec *cmd) {
@@ -2146,7 +2150,7 @@ MODRET set_createhome(cmd_rec *cmd) {
     c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
     *((unsigned char *) c->argv[0]) = bool;
 
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   }
 
   /* Check the mode parameter, if present */
@@ -2252,7 +2256,7 @@ MODRET set_createhome(cmd_rec *cmd) {
   c->argv[5] = pcalloc(c->pool, sizeof(gid_t));
   *((gid_t *) c->argv[5]) = cgid;
  
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET add_defaultroot(cmd_rec *cmd) {
@@ -2261,7 +2265,7 @@ MODRET add_defaultroot(cmd_rec *cmd) {
   int argc;
   array_header *acl = NULL;
 
-  CHECK_CONF(cmd, CONF_ROOT | CONF_VIRTUAL | CONF_GLOBAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   if (cmd->argc < 2)
     CONF_ERROR(cmd,"syntax: DefaultRoot <directory> [<group-expression>]");
@@ -2300,7 +2304,7 @@ MODRET add_defaultroot(cmd_rec *cmd) {
     }
 
   *argv = NULL;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET add_defaultchdir(cmd_rec *cmd) {
@@ -2344,7 +2348,7 @@ MODRET add_defaultchdir(cmd_rec *cmd) {
   *argv = NULL;
 
   c->flags |= CF_MERGEDOWN;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_grouppassword(cmd_rec *cmd) {
@@ -2356,7 +2360,7 @@ MODRET set_grouppassword(cmd_rec *cmd) {
   c = add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_loginpasswordprompt(cmd_rec *cmd) {
@@ -2366,7 +2370,8 @@ MODRET set_loginpasswordprompt(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -2374,7 +2379,7 @@ MODRET set_loginpasswordprompt(cmd_rec *cmd) {
   *((unsigned char *) c->argv[0]) = bool;
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: MaxClientsPerClass class max|"none" ["message"] */
@@ -2410,7 +2415,7 @@ MODRET set_maxclientsclass(cmd_rec *cmd) {
     *((unsigned int *) c->argv[1]) = max;
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: MaxClients max|"none" ["message"] */
@@ -2449,7 +2454,7 @@ MODRET set_maxclients(cmd_rec *cmd) {
 
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: MaxClientsPerHost max|"none" ["message"] */
@@ -2488,7 +2493,7 @@ MODRET set_maxhostclients(cmd_rec *cmd) {
 
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 
@@ -2528,7 +2533,7 @@ MODRET set_maxuserclients(cmd_rec *cmd) {
 
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: MaxConnectionsPerHost max|"none" ["message"] */
@@ -2563,7 +2568,7 @@ MODRET set_maxconnectsperhost(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[0]) = max;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: MaxHostsPerUser max|"none" ["message"] */
@@ -2602,7 +2607,7 @@ MODRET set_maxhostsperuser(cmd_rec *cmd) {
 
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_maxloginattempts(cmd_rec *cmd) {
@@ -2627,7 +2632,7 @@ MODRET set_maxloginattempts(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[0]) = max;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_requirevalidshell(cmd_rec *cmd) {
@@ -2637,7 +2642,8 @@ MODRET set_requirevalidshell(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -2645,7 +2651,7 @@ MODRET set_requirevalidshell(cmd_rec *cmd) {
   *((unsigned char *) c->argv[0]) = bool;
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_rootlogin(cmd_rec *cmd) {
@@ -2655,7 +2661,8 @@ MODRET set_rootlogin(cmd_rec *cmd) {
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -2663,7 +2670,7 @@ MODRET set_rootlogin(cmd_rec *cmd) {
   *((unsigned char *) c->argv[0]) = (unsigned char) bool;
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_rootrevoke(cmd_rec *cmd) {
@@ -2673,7 +2680,8 @@ MODRET set_rootrevoke(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -2681,7 +2689,7 @@ MODRET set_rootrevoke(cmd_rec *cmd) {
   *((unsigned char *) c->argv[0]) = (unsigned char) bool;
 
   c->flags |= CF_MERGEDOWN;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_timeoutlogin(cmd_rec *cmd) {
@@ -2701,7 +2709,7 @@ MODRET set_timeoutlogin(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = timeout;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_timeoutsession(cmd_rec *cmd) {
@@ -2738,7 +2746,7 @@ MODRET set_timeoutsession(cmd_rec *cmd) {
   } else if (seconds == 0) {
 
     /* do nothing */
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   }
 
   if (cmd->argc-1 == 3) {
@@ -2805,7 +2813,7 @@ MODRET set_timeoutsession(cmd_rec *cmd) {
   }
 
   c->flags |= CF_MERGEDOWN_MULTI;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_useftpusers(cmd_rec *cmd) {
@@ -2815,7 +2823,8 @@ MODRET set_useftpusers(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -2823,7 +2832,7 @@ MODRET set_useftpusers(cmd_rec *cmd) {
   *((unsigned char *) c->argv[0]) = bool;
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: UseLastlog on|off */
@@ -2843,7 +2852,7 @@ MODRET set_uselastlog(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = bool;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 #else
   CONF_ERROR(cmd, "requires lastlog support (--with-lastlog)");
 #endif /* PR_USE_LASTLOG */
@@ -2868,7 +2877,7 @@ MODRET set_useralias(cmd_rec *cmd) {
   if (!check_context(cmd, CONF_ANON))
     c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_userdirroot(cmd_rec *cmd) {
@@ -2878,14 +2887,15 @@ MODRET set_userdirroot(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ANON);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = bool;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_userpassword(cmd_rec *cmd) {
@@ -2897,7 +2907,7 @@ MODRET set_userpassword(cmd_rec *cmd) {
   c = add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Module API tables

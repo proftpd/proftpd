@@ -36,7 +36,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.14 2006-04-17 17:04:45 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.15 2006-06-16 01:40:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -201,7 +201,7 @@ MODRET pam_auth(cmd_rec *cmd) {
   auth_pam = get_param_ptr(main_server->conf, "AuthPAM", FALSE);
   if (auth_pam != NULL &&
       *auth_pam == FALSE) {
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 
   /* Figure out our default return style: whether or not PAM should allow
@@ -218,7 +218,7 @@ MODRET pam_auth(cmd_rec *cmd) {
   /* Just in case...
    */
   if (cmd->argc != 2)
-    return pam_authoritative ? ERROR(cmd) : DECLINED(cmd);
+    return pam_authoritative ? PR_ERROR(cmd) : PR_DECLINED(cmd);
 
   /* Allocate our entries...we free these up at the end of the authentication.
    */
@@ -233,24 +233,26 @@ MODRET pam_auth(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_NOTICE,
       "PAM(%s): Name exceeds maximum login length (%u)", cmd->argv[0],
       MAXLOGNAME);
-    return DECLINED(cmd);
+    return PR_DECLINED(cmd);
   }
 #endif
-  if ((pam_user = malloc(pam_user_len)) == NULL)
-    return pam_authoritative ? ERROR(cmd) : DECLINED(cmd);
+  pam_user = malloc(pam_user_len);
+  if (pam_user == NULL)
+    return pam_authoritative ? PR_ERROR(cmd) : PR_DECLINED(cmd);
 
   sstrncpy(pam_user, cmd->argv[0], pam_user_len);
 
   if ((pam_pass_len = strlen(cmd->argv[1]) + 1) > (PAM_MAX_MSG_SIZE + 1))
     pam_pass_len = PAM_MAX_MSG_SIZE + 1;
  
-  if ((pam_pass = malloc(pam_pass_len)) == NULL) {
+  pam_pass = malloc(pam_pass_len);
+  if (pam_pass == NULL) {
     memset(pam_user, '\0', pam_user_len);
     free(pam_user);
     pam_user = NULL;
     pam_user_len = 0;
     pam_pass_len = 0;
-    return pam_authoritative ? ERROR(cmd) : DECLINED(cmd);
+    return pam_authoritative ? PR_ERROR(cmd) : PR_DECLINED(cmd);
   }
 
   sstrncpy(pam_pass, cmd->argv[1], pam_pass_len);
@@ -439,12 +441,12 @@ MODRET pam_auth(cmd_rec *cmd) {
       pam_user_len = 0;
     }
 
-    return pam_authoritative ? ERROR_INT(cmd, retval) : DECLINED(cmd);
+    return pam_authoritative ? PR_ERROR_INT(cmd, retval) : PR_DECLINED(cmd);
 
   } else {
     session.auth_mech = "mod_auth_pam.c";
     pr_event_register(&auth_pam_module, "core.exit", auth_pam_exit_ev, NULL);
-    return HANDLED(cmd);
+    return PR_HANDLED(cmd);
   }
 }
 
@@ -458,14 +460,15 @@ MODRET set_authpam(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = bool;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_authpamconfig(cmd_rec *cmd) {
@@ -474,7 +477,7 @@ MODRET set_authpamconfig(cmd_rec *cmd) {
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 static authtable auth_pam_authtab[] = {

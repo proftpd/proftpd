@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.202 2006-05-26 17:16:40 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.203 2006-06-16 01:40:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -986,7 +986,7 @@ MODRET xfer_post_prot(cmd_rec *cmd) {
   else
     have_prot = FALSE;
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET xfer_post_mode(cmd_rec *cmd) {
@@ -997,7 +997,7 @@ MODRET xfer_post_mode(cmd_rec *cmd) {
   else
     have_zmode = FALSE;
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* This is a PRE_CMD handler that checks security, etc, and places the full
@@ -1013,7 +1013,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
 
   if (cmd->argc < 2) {
     pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   dir = dir_best_path(cmd->tmp_pool,
@@ -1022,7 +1022,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   if (!dir ||
       !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL)) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   fmode = file_mode(dir);
@@ -1033,14 +1033,14 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       (!allow_overwrite || *allow_overwrite == FALSE)) {
     pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
     pr_response_add_err(R_550, _("%s: Overwrite permission denied"), cmd->arg);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   if (fmode &&
       !S_ISREG(fmode) &&
       !S_ISFIFO(fmode)) {
     pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* If restarting, check permissions on this directory, if
@@ -1056,7 +1056,7 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       cmd->arg);
     session.restart_pos = 0L;
     session.xfer.xfer_type = STOR_DEFAULT;
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* Otherwise everthing is good */
@@ -1070,10 +1070,10 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       *hidden_stores == TRUE) {
 
     if (get_hidden_store_path(cmd, dir) < 0)
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* xfer_pre_stou() is a PRE_CMD handler that changes the uploaded filename
@@ -1094,7 +1094,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
 
   if (cmd->argc > 2) {
     pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* Watch for STOU preceded by REST, which makes no sense.
@@ -1103,7 +1103,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
    */
   if (session.restart_pos) {
     pr_response_add_err(R_550, _("STOU incompatible with REST"));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* Generate the filename to be stored, depending on the configured
@@ -1126,7 +1126,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
     /* If we can't guarantee a unique filename, refuse the command. */
     pr_response_add_err(R_450, _("%s: unable to generate unique filename"),
       cmd->argv[0]);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
 
   } else {
     cmd->arg = filename;
@@ -1151,7 +1151,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
     (void) pr_fsio_unlink(cmd->arg);
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   mode = file_mode(filename);
@@ -1165,7 +1165,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
       (!allow_overwrite || *allow_overwrite == FALSE)) {
     pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
     pr_response_add_err(R_550, _("%s: Overwrite permission denied"), cmd->arg);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* Not likely to _not_ be a regular file, but just to be certain... */
@@ -1173,7 +1173,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
       !S_ISREG(mode)) {
     (void) pr_fsio_unlink(cmd->arg);
     pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* Otherwise everthing is good */
@@ -1183,7 +1183,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
       strerror(errno));
 
   session.xfer.xfer_type = STOR_UNIQUE;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET xfer_post_xfer(cmd_rec *cmd) {
@@ -1197,7 +1197,7 @@ MODRET xfer_post_xfer(cmd_rec *cmd) {
     }
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* xfer_post_stou() is a POST_CMD handler that changes the mode of the
@@ -1228,7 +1228,7 @@ MODRET xfer_post_stou(cmd_rec *cmd) {
     }
   }
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* xfer_pre_appe() is the PRE_CMD handler for the APPE command, which
@@ -1272,7 +1272,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     if (ret != 0) {
       pr_log_debug(DEBUG2, "'%s' denied by PathAllowFilter", cmd->arg);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
 
     } else {
       char errmsg[200];
@@ -1289,7 +1289,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     if (ret == 0) {
       pr_log_debug(DEBUG2, "'%s' denied by PathDenyFilter", cmd->arg);
       pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
 
     } else {
       char errmsg[200];
@@ -1345,7 +1345,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
       pr_response_add_err(R_554, _("%s: invalid REST argument"), cmd->arg);
       (void) pr_fsio_close(stor_fh);
       stor_fh = NULL;
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     curr_pos = session.restart_pos;
@@ -1356,7 +1356,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     pr_log_debug(DEBUG4, "unable to open '%s' for writing: %s", cmd->arg,
       strerror(errno));
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* Perform the actual transfer now */
@@ -1370,7 +1370,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   if (pr_data_open(cmd->arg, NULL, PR_NETIO_IO_RD, 0) < 0) {
     stor_abort();
     pr_data_abort(0, TRUE);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* Initialize the number of bytes stored */
@@ -1404,7 +1404,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
 #else
     pr_data_abort(EPERM, FALSE);
 #endif
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   bufsz = (main_server->tcp_rcvbuf_len > 0 ?  main_server->tcp_rcvbuf_len :
@@ -1444,7 +1444,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
 #else
       pr_data_abort(EPERM, FALSE);
 #endif
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     res = pr_fsio_write(stor_fh, lbuf, len);
@@ -1456,7 +1456,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
       stor_abort();
       pr_data_abort(xerrno, FALSE);
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     /* If no throttling is configured, this does nothing. */
@@ -1466,12 +1466,12 @@ MODRET xfer_stor(cmd_rec *cmd) {
   if (XFER_ABORTED) {
     stor_abort();
     pr_data_abort(0, 0);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
 
   } else if (len < 0) {
     stor_abort();
     pr_data_abort(PR_NETIO_ERRNO(session.d->instrm), FALSE);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
 
   } else {
 
@@ -1488,19 +1488,19 @@ MODRET xfer_stor(cmd_rec *cmd) {
       if (errno == EDQUOT) {
         pr_response_add_err(R_552, "%s: %s", session.xfer.path,
           strerror(errno));
-        return ERROR(cmd);
+        return PR_ERROR(cmd);
       }
 #elif defined(EFBIG)
       if (errno == EFBIG) {
         pr_response_add_err(R_552, "%s: %s", session.xfer.path,
           strerror(errno));
-        return ERROR(cmd);
+        return PR_ERROR(cmd);
       }
 #endif
 
       pr_response_add_err(R_550, "%s: %s", session.xfer.path,
         strerror(errno));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     if (session.xfer.path &&
@@ -1519,14 +1519,14 @@ MODRET xfer_stor(cmd_rec *cmd) {
           session.xfer.path, session.xfer.path_hidden, strerror(errno));
 
         pr_fsio_unlink(session.xfer.path_hidden);
-        return ERROR(cmd);
+        return PR_ERROR(cmd);
       }
     }
 
     pr_data_close(FALSE);
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET xfer_rest(cmd_rec *cmd) {
@@ -1536,7 +1536,7 @@ MODRET xfer_rest(cmd_rec *cmd) {
 
   if (cmd->argc != 2) {
     pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* If we're using HiddenStores, then REST won't work. */
@@ -1545,7 +1545,7 @@ MODRET xfer_rest(cmd_rec *cmd) {
       *hidden_stores == TRUE) {
     pr_response_add_err(R_501,
       _("REST not compatible with server configuration"));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* Don't allow negative numbers.  strtoul()/strtoull() will silently
@@ -1554,7 +1554,7 @@ MODRET xfer_rest(cmd_rec *cmd) {
   if (*cmd->argv[1] == '-') {
     pr_response_add_err(R_501,
       _("REST requires a value greater than or equal to 0"));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
 #ifdef HAVE_STRTOULL
@@ -1567,7 +1567,7 @@ MODRET xfer_rest(cmd_rec *cmd) {
       *endp) {
     pr_response_add_err(R_501,
       _("REST requires a value greater than or equal to 0"));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* Refuse the command if we're in ASCII mode, and the restart position
@@ -1584,14 +1584,14 @@ MODRET xfer_rest(cmd_rec *cmd) {
     pr_log_debug(DEBUG5, "%s not allowed in ASCII mode", cmd->argv[0]);
     pr_response_add_err(R_501,
       _("%s: Resuming transfers not allowed in ASCII mode"), cmd->argv[0]);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   } 
 
   session.restart_pos = pos;
 
   pr_response_add(R_350, _("Restarting at %" PR_LU
     ". Send STORE or RETRIEVE to initiate transfer"), (pr_off_t) pos);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* This is a PRE_CMD handler that checks security, etc, and places the full
@@ -1605,7 +1605,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 
   if (cmd->argc < 2) {
     pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   dir = dir_realpath(cmd->tmp_pool,
@@ -1614,7 +1614,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
   if (!dir ||
       !dir_check(cmd->tmp_pool, cmd->argv[0], cmd->group, dir, NULL)) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   fmode = file_mode(dir);
@@ -1624,7 +1624,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
     else
       pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* If restart is on, check to see if AllowRestartRetrieve is off, in
@@ -1637,7 +1637,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
     pr_response_add_err(R_451, _("%s: Restart not permitted, try again"),
       cmd->arg);
     session.restart_pos = 0L;
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* Otherwise everthing is good */
@@ -1646,7 +1646,7 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
     pr_log_pri(PR_LOG_NOTICE, "notice: error adding 'mod_xfer.retr-path': %s",
       strerror(errno));
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET xfer_retr(cmd_rec *cmd) {
@@ -1668,7 +1668,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   if (retr_fh == NULL) {
     /* Error opening the file. */
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   if (pr_fsio_stat(dir, &st) < 0) {
@@ -1679,7 +1679,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
     retr_fh = NULL;
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   if (session.restart_pos) {
@@ -1692,7 +1692,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
       pr_fsio_close(retr_fh);
       retr_fh = NULL;
 
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     if (pr_fsio_lseek(retr_fh, session.restart_pos,
@@ -1705,7 +1705,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
       pr_log_debug(DEBUG0, "error seeking to offset %" PR_LU
         "for file %s: %s", session.restart_pos, dir, strerror(errno));
       pr_response_add_err(R_554, _("%s: invalid REST argument"), cmd->arg);
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     curr_pos = session.restart_pos;
@@ -1725,7 +1725,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   if (pr_data_open(cmd->arg, NULL, PR_NETIO_IO_WR, st.st_size - curr_pos) < 0) {
     retr_abort();
     pr_data_abort(0, TRUE);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* Retrieve the number of bytes to retrieve, maximum, if present */
@@ -1751,7 +1751,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
     /* Set errno to EPERM ("Operation not permitted") */
     pr_data_abort(EPERM, FALSE);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   bufsz = (main_server->tcp_sndbuf_len > 0 ?  main_server->tcp_sndbuf_len :
@@ -1778,7 +1778,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
     if (len < 0) {
       retr_abort();
       pr_data_abort(errno, FALSE);
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
 
     nbytes_sent += len;
@@ -1803,7 +1803,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   if (XFER_ABORTED) {
     retr_abort();
     pr_data_abort(0, FALSE);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
 
   } else {
     /* If no throttling is configured, this simply updates the scoreboard.
@@ -1818,13 +1818,13 @@ MODRET xfer_retr(cmd_rec *cmd) {
     pr_data_close(FALSE);
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET xfer_abor(cmd_rec *cmd) {
   if (cmd->argc != 1) {
     pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   pr_data_abort(0, FALSE);
@@ -1832,13 +1832,13 @@ MODRET xfer_abor(cmd_rec *cmd) {
   pr_data_cleanup();
 
   pr_response_add(R_226, _("Abort successful"));
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET xfer_type(cmd_rec *cmd) {
   if (cmd->argc < 2 || cmd->argc > 3) {
     pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   cmd->argv[1][0] = toupper(cmd->argv[1][0]);
@@ -1859,17 +1859,17 @@ MODRET xfer_type(cmd_rec *cmd) {
 
   } else {
     pr_response_add_err(R_500, _("'%s' not understood"), get_full_cmd(cmd));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   pr_response_add(R_200, _("Type set to %s"), cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET xfer_stru(cmd_rec *cmd) {
   if (cmd->argc != 2) {
     pr_response_add_err(R_501, _("'%s' not understood"), get_full_cmd(cmd));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   cmd->argv[1][0] = toupper(cmd->argv[1][0]);
@@ -1878,7 +1878,7 @@ MODRET xfer_stru(cmd_rec *cmd) {
     case 'F':
       /* Should 202 be returned instead??? */
       pr_response_add(R_200, _("Structure set to F"));
-      return HANDLED(cmd);
+      return PR_HANDLED(cmd);
       break;
 
     case 'R':
@@ -1898,13 +1898,13 @@ MODRET xfer_stru(cmd_rec *cmd) {
       /* RFC-1123 recommends against implementing P. */
       pr_response_add_err(R_504, _("'%s' unsupported structure type"),
         get_full_cmd(cmd));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
       break;
 
     default:
       pr_response_add_err(R_501, _("'%s' unrecognized structure type"),
         get_full_cmd(cmd));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
       break;
   }
 }
@@ -1912,7 +1912,7 @@ MODRET xfer_stru(cmd_rec *cmd) {
 MODRET xfer_mode(cmd_rec *cmd) {
   if (cmd->argc != 2) {
     pr_response_add_err(R_501, _("'%s' not understood"), get_full_cmd(cmd));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   cmd->argv[1][0] = toupper(cmd->argv[1][0]);
@@ -1921,7 +1921,7 @@ MODRET xfer_mode(cmd_rec *cmd) {
     case 'S':
       /* Should 202 be returned instead??? */
       pr_response_add(R_200, _("Mode set to S"));
-      return HANDLED(cmd);
+      return PR_HANDLED(cmd);
       break;
 
     case 'B':
@@ -1930,25 +1930,25 @@ MODRET xfer_mode(cmd_rec *cmd) {
     case 'C':
       pr_response_add_err(R_504, _("'%s' unsupported transfer mode"),
         get_full_cmd(cmd));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
       break;
 
     default:
       pr_response_add_err(R_501, _("'%s' unrecognized transfer mode"),
         get_full_cmd(cmd));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
       break;
   }
 }
 
 MODRET xfer_allo(cmd_rec *cmd) {
   pr_response_add(R_202, _("No storage allocation necessary"));
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET xfer_smnt(cmd_rec *cmd) {
   pr_response_add(R_502, _("SMNT command not implemented"));
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET xfer_err_cleanup(cmd_rec *cmd) {
@@ -1960,7 +1960,7 @@ MODRET xfer_err_cleanup(cmd_rec *cmd) {
   /* Don't forget to clear any possible REST parameter as well. */
   session.restart_pos = 0;
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET xfer_log_stor(cmd_rec *cmd) {
@@ -1978,7 +1978,7 @@ MODRET xfer_log_stor(cmd_rec *cmd) {
   /* Don't forget to clear any possible REST parameter as well. */
   session.restart_pos = 0;
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET xfer_log_retr(cmd_rec *cmd) {
@@ -1997,7 +1997,7 @@ MODRET xfer_log_retr(cmd_rec *cmd) {
   /* Don't forget to clear any possible REST parameter as well. */
   session.restart_pos = 0;
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 static int noxfer_timeout_cb(CALLBACK_FRAME) {
@@ -2050,7 +2050,7 @@ MODRET set_allowoverwrite(cmd_rec *cmd) {
   *((unsigned char *) c->argv[0]) = (unsigned char) bool;
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_allowrestart(cmd_rec *cmd) {
@@ -2070,7 +2070,7 @@ MODRET set_allowrestart(cmd_rec *cmd) {
   *((unsigned char *) c->argv[0]) = bool;
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_deleteabortedstores(cmd_rec *cmd) {
@@ -2090,7 +2090,7 @@ MODRET set_deleteabortedstores(cmd_rec *cmd) {
   *((unsigned char *) c->argv[0]) = bool;
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: DisplayFileTransfer path */
@@ -2099,7 +2099,7 @@ MODRET set_displayfiletransfer(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   (void) add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_hiddenstores(cmd_rec *cmd) {
@@ -2118,7 +2118,7 @@ MODRET set_hiddenstores(cmd_rec *cmd) {
   *((unsigned char *) c->argv[0]) = bool;
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_hiddenstor(cmd_rec *cmd) {
@@ -2253,7 +2253,7 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
 
   c->flags |= CF_MERGEDOWN_MULTI;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_storeuniqueprefix(cmd_rec *cmd) {
@@ -2271,7 +2271,7 @@ MODRET set_storeuniqueprefix(cmd_rec *cmd) {
   c = add_config_param_str(cmd->argv[0], 1, (void *) cmd->argv[1]);
   c->flags |= CF_MERGEDOWN;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_timeoutnoxfer(cmd_rec *cmd) {
@@ -2291,7 +2291,7 @@ MODRET set_timeoutnoxfer(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = timeout;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET set_timeoutstalled(cmd_rec *cmd) {
@@ -2311,7 +2311,7 @@ MODRET set_timeoutstalled(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = timeout;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: TransferRate cmds kbps[:free-bytes] ["user"|"group"|"class"
@@ -2459,7 +2459,7 @@ MODRET set_transferrate(cmd_rec *cmd) {
   }
 
   c->flags |= CF_MERGEDOWN_MULTI;
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* usage: UseSendfile on|off */
@@ -2478,7 +2478,7 @@ MODRET set_usesendfile(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
   *((unsigned char *) c->argv[0]) = bool;
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* Event handlers

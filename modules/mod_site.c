@@ -25,7 +25,7 @@
 
 /*
  * "SITE" commands module for ProFTPD
- * $Id: mod_site.c,v 1.46 2006-05-26 17:16:40 castaglia Exp $
+ * $Id: mod_site.c,v 1.47 2006-06-16 01:40:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -92,7 +92,7 @@ MODRET site_chgrp(cmd_rec *cmd) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathAllowFilter", cmd->argv[0],
       arg);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
@@ -102,7 +102,7 @@ MODRET site_chgrp(cmd_rec *cmd) {
     pr_log_debug(DEBUG2, "'%s %s' denied by PathDenyFilter", cmd->argv[0],
       arg);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 #endif
 
@@ -110,7 +110,7 @@ MODRET site_chgrp(cmd_rec *cmd) {
 
   if (!path) {
     pr_response_add_err(R_550, "%s: %s", arg, strerror(errno));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* Map the given group argument, if a string, to a GID.  If already a
@@ -124,18 +124,18 @@ MODRET site_chgrp(cmd_rec *cmd) {
     gid = pr_auth_name2gid(cmd->tmp_pool, cmd->argv[1]);
     if (gid == (gid_t) -1) {
       pr_response_add_err(R_550, "%s: %s", arg, strerror(EINVAL));
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
   }
 
   if (core_chgrp(cmd, path, (uid_t) -1, gid) == -1) {
     pr_response_add_err(R_550, "%s: %s", arg, strerror(errno));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
 
   } else
     pr_response_add(R_200, _("SITE %s command successful"), cmd->argv[0]);
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET site_chmod(cmd_rec *cmd) {
@@ -167,7 +167,7 @@ MODRET site_chmod(cmd_rec *cmd) {
     pr_log_debug(DEBUG2, "'%s %s %s' denied by PathAllowFilter", cmd->argv[0],
       cmd->argv[1], arg);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   preg = (regex_t *) get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
@@ -177,7 +177,7 @@ MODRET site_chmod(cmd_rec *cmd) {
     pr_log_debug(DEBUG2, "'%s %s %s' denied by PathDenyFilter", cmd->argv[0],
       cmd->argv[1], arg);
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 #endif
 
@@ -185,7 +185,7 @@ MODRET site_chmod(cmd_rec *cmd) {
 
   if (!dir) {
     pr_response_add_err(R_550, "%s: %s", arg, strerror(errno));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   /* If the first character isn't '0', prepend it and attempt conversion.
@@ -363,18 +363,18 @@ MODRET site_chmod(cmd_rec *cmd) {
 
     if (invalid) {
       pr_response_add_err(R_550, _("'%s': invalid mode"), cmd->argv[1]);
-      return ERROR(cmd);
+      return PR_ERROR(cmd);
     }
   }
 
   if (core_chmod(cmd, dir, mode) == -1) {
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(errno));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
 
   } else
     pr_response_add(R_200, _("SITE %s command successful"), cmd->argv[0]);
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 MODRET site_help(cmd_rec *cmd) {
@@ -409,14 +409,14 @@ MODRET site_help(cmd_rec *cmd) {
       if (strcasecmp(cmd->argv[1], _help[i].cmd) == 0) {
         pr_response_add(R_214, _("Syntax: SITE %s %s"),
           cmd->argv[1], _help[i].syntax);
-        return HANDLED(cmd);
+        return PR_HANDLED(cmd);
       }
 
     pr_response_add_err(R_502, _("Unknown command 'SITE %s'"), cmd->arg);
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
-  return HANDLED(cmd);
+  return PR_HANDLED(cmd);
 }
 
 /* The site_commands table is local only, and not registered with our
@@ -435,7 +435,7 @@ modret_t *site_dispatch(cmd_rec *cmd) {
 
   if (!cmd->argc) {
     pr_response_add_err(R_500, _("'SITE' requires parameters"));
-    return ERROR(cmd);
+    return PR_ERROR(cmd);
   }
 
   for (i = 0; site_commands[i].command; i++)
@@ -443,14 +443,14 @@ modret_t *site_dispatch(cmd_rec *cmd) {
       if (site_commands[i].requires_auth && cmd_auth_chk &&
           !cmd_auth_chk(cmd)) {
         pr_response_send(R_530, _("Please login with USER PASS"));
-        return ERROR(cmd);
+        return PR_ERROR(cmd);
 
       } else
         return site_commands[i].handler(cmd);
     }
 
   pr_response_add_err(R_500, _("'SITE %s' not understood"), cmd->argv[0]);
-  return ERROR(cmd);
+  return PR_ERROR(cmd);
 }
 
 /* Command handlers
@@ -460,7 +460,7 @@ MODRET site_pre_cmd(cmd_rec *cmd) {
   if (cmd->argc > 1 && !strcasecmp(cmd->argv[1], "help"))
     pr_response_add(R_214,
       _("The following SITE commands are recognized (* =>'s unimplemented)"));
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 MODRET site_cmd(cmd_rec *cmd) {
@@ -491,7 +491,7 @@ MODRET site_post_cmd(cmd_rec *cmd) {
     pr_response_add(R_214, _("Direct comments to %s"),
       (cmd->server->ServerAdmin ? cmd->server->ServerAdmin : "ftp-admin"));
 
-  return DECLINED(cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* Initialization routines
