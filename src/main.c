@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.286 2006-06-16 00:36:05 castaglia Exp $
+ * $Id: main.c,v 1.287 2006-06-16 00:37:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1651,12 +1651,12 @@ void pr_signals_handle(void) {
       handle_abort();
     }
 
-    if (recvd_signal_flags & RECEIVED_SIG_REHASH) {
+    if (recvd_signal_flags & RECEIVED_SIG_RESTART) {
 
       /* NOTE: should this be done here, rather than using a schedule? */
       schedule(core_restart_cb, 0, NULL, NULL, NULL, NULL);
 
-      recvd_signal_flags &= ~RECEIVED_SIG_REHASH;
+      recvd_signal_flags &= ~RECEIVED_SIG_RESTART;
     }
 
     if (recvd_signal_flags & RECEIVED_SIG_EXIT) {
