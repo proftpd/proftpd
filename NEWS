@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.770 2006-06-16 00:26:35 castaglia Exp $
+$Id: NEWS,v 1.771 2006-06-16 02:30:58 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -81,6 +81,10 @@ CVS
   location.  The `make install' target now causes proftpd header files,
   including config.h, to be installed into a include/proftpd/ directory
   in the installation location.
+- Bug 2626 - ERROR macro collision can cause compiler errors on HP-UX.
+  The ERROR, DECLINED, and HANDLED macros have been renamed PR_ERROR,
+  PR_DECLINED, and PR_HANDLED, respectively.  Compatibility macros for
+  older contrib modules are available.
 
 1.3.0 - Released 16-Apr-2006
 --------------------------------
