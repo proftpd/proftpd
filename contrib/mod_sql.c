@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.111 2006-06-16 17:00:31 castaglia Exp $
+ * $Id: mod_sql.c,v 1.112 2006-06-20 16:54:38 castaglia Exp $
  */
 
 #include "conf.h"
@@ -4837,7 +4837,6 @@ static conftable sql_conftab[] = {
 };
 
 static cmdtable sql_cmdtab[] = {
-  { PRE_CMD,		C_QUIT,	G_NONE,	log_master,	FALSE,	FALSE },
   { PRE_CMD,		C_PASS,	G_NONE, sql_pre_pass,	FALSE, 	FALSE },
   { POST_CMD,		C_RETR,	G_NONE,	sql_post_retr,	FALSE,	FALSE },
   { POST_CMD,		C_STOR,	G_NONE,	sql_post_stor,	FALSE,	FALSE },
