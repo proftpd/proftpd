@@ -36,7 +36,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lpam$
- * $Id: mod_auth_pam.c,v 1.15 2006-06-16 01:40:15 castaglia Exp $
+ * $Id: mod_auth_pam.c,v 1.16 2006-06-22 16:08:57 castaglia Exp $
  */
 
 #include "conf.h"
@@ -69,7 +69,7 @@
 #endif /* HAVE_PAM_PAM_APPL_H */
 
 module auth_pam_module;
-static authtable auth_pam_authtab[];
+static authtable auth_pam_authtab[2];
 
 static pam_handle_t *	pamh			= NULL;
 static char *		pamconfig		= "ftp";
