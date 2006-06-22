@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.29 2006-06-16 21:35:58 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.30 2006-06-22 17:06:27 castaglia Exp $
  */
 
 #include "conf.h"
@@ -87,8 +87,8 @@ extern void cygwin_set_impersonation_token (const HANDLE);
 
 #include "privs.h"
 
-const char *pwdfname = "/etc/passwd";
-const char *grpfname = "/etc/group";
+static const char *pwdfname = "/etc/passwd";
+static const char *grpfname = "/etc/group";
 
 #ifdef HAVE__PW_STAYOPEN
 extern int _pw_stayopen;
