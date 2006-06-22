@@ -27,7 +27,7 @@
  * This is mod_ctrls, contrib software for proftpd 1.2 and above.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ctrls.c,v 1.32 2006-06-16 01:40:15 castaglia Exp $
+ * $Id: mod_ctrls.c,v 1.33 2006-06-22 19:48:35 jwm Exp $
  */
 
 #include "conf.h"
@@ -597,9 +597,9 @@ static pr_ctrls_cl_t *ctrls_add_cl(int cl_fd, uid_t cl_uid, gid_t cl_gid,
 
   cl->cl_fd = cl_fd;
   cl->cl_uid = cl_uid;
-  cl->cl_user = auth_uid2name(cl->cl_pool, cl->cl_uid);
+  cl->cl_user = pr_auth_uid2name(cl->cl_pool, cl->cl_uid);
   cl->cl_gid = cl_gid;
-  cl->cl_group = auth_gid2name(cl->cl_pool, cl->cl_gid);
+  cl->cl_group = pr_auth_gid2name(cl->cl_pool, cl->cl_gid);
   cl->cl_pid = cl_pid;
   cl->cl_flags = cl_flags;
 
