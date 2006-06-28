@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_postgres.c,v 1.29 2006-06-16 02:22:05 castaglia Exp $
+ * $Id: mod_sql_postgres.c,v 1.30 2006-06-28 16:32:47 castaglia Exp $
  */
 
 /*
@@ -38,9 +38,10 @@
 
 #define _POSTGRES_PORT "5432"
 
-#include <libpq-fe.h>
 #include "conf.h"
 #include "../contrib/mod_sql.h"
+
+#include <libpq-fe.h>
 
 /* 
  * timer-handling code adds the need for a couple of forward declarations

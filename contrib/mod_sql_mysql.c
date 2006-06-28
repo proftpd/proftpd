@@ -22,7 +22,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql_mysql.c,v 1.42 2006-06-16 02:22:05 castaglia Exp $
+ * $Id: mod_sql_mysql.c,v 1.43 2006-06-28 16:32:47 castaglia Exp $
  */
 
 /*
@@ -132,9 +132,10 @@
 
 #define _MYSQL_PORT "3306"
 
-#include <mysql.h>
 #include "conf.h"
 #include "../contrib/mod_sql.h"
+
+#include <mysql.h>
 
 /* 
  * timer-handling code adds the need for a couple of forward declarations
