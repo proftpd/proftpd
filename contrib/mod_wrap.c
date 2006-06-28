@@ -24,7 +24,7 @@
  *
  * -- DO NOT MODIFY THE TWO LINES BELOW --
  * $Libraries: -lwrap -lnsl$
- * $Id: mod_wrap.c,v 1.15 2006-06-16 02:22:05 castaglia Exp $
+ * $Id: mod_wrap.c,v 1.16 2006-06-28 16:10:05 castaglia Exp $
  */
 
 #define MOD_WRAP_VERSION "mod_wrap/1.2.3"
@@ -623,7 +623,7 @@ MODRET set_tcpaccesssysloglevels(cmd_rec *cmd) {
   } else if (strcasecmp(cmd->argv[1], "warn") == 0) {
     allow_level = PR_LOG_WARNING;
 
-  } else if (strcasecmp(cmd->argv[1], "notice") = 0) {
+  } else if (strcasecmp(cmd->argv[1], "notice") == 0) {
     allow_level = PR_LOG_NOTICE;
 
   } else if (strcasecmp(cmd->argv[1], "info") == 0) {
