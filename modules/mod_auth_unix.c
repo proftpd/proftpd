@@ -25,7 +25,7 @@
  */
 
 /* Unix authentication module for ProFTPD
- * $Id: mod_auth_unix.c,v 1.30 2006-06-22 17:06:27 castaglia Exp $
+ * $Id: mod_auth_unix.c,v 1.31 2006-06-29 17:16:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -602,17 +602,6 @@ static char *_get_pw_info(pool *p, const char *u, time_t *lstchg, time_t *min,
 
 #endif /* PR_USE_SHADOW */
 
-static char *_get_ppw_info(pool *p, const char *u) {
-  struct passwd *pw;
-  char *cpw = NULL;
-
-  pw = p_getpwnam(u);
-  if (pw)
-    cpw = pstrdup(p, pw->pw_passwd);
-
-  return cpw;
-}
-
 /* High-level auth handlers
  */
 
@@ -629,11 +618,8 @@ MODRET pw_auth(cmd_rec *cmd) {
   name = cmd->argv[0];
   time(&now);
 
-  if (persistent_passwd)
-    cpw = _get_ppw_info(cmd->tmp_pool, name);
-  else
-    cpw = _get_pw_info(cmd->tmp_pool, name, &lstchg, NULL, &max, NULL, &inact,
-      &disable);
+  cpw = _get_pw_info(cmd->tmp_pool, name, &lstchg, NULL, &max, NULL, &inact,
+    &disable);
 
   if (!cpw)
     return PR_DECLINED(cmd);
