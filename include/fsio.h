@@ -26,7 +26,7 @@
 
 /* ProFTPD virtual/modular filesystem support.
  *
- * $Id: fsio.h,v 1.13 2006-05-26 17:16:40 castaglia Exp $
+ * $Id: fsio.h,v 1.14 2006-07-20 02:15:28 castaglia Exp $
  */
 
 #ifndef PR_FSIO_H
@@ -280,6 +280,7 @@ int pr_fs_resolve_partial(const char *, char *, size_t, int);
 int pr_fs_resolve_path(const char *, char *, size_t, int);
 char *pr_fs_decode_path(pool *, const char *);
 char *pr_fs_encode_path(pool *, const char *);
+int pr_fs_use_utf8(int bool);
 int pr_fs_valid_path(const char *);
 void pr_fs_virtual_path(const char *, char *, size_t);
 void pr_fs_clean_path(const char *, char *, size_t);

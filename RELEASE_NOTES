@@ -34,6 +34,8 @@ files.
 
       UseLastlog
 
+      UseUTF8
+
   + Enhanced configuration directives:
 
       CreateHome uid gid
@@ -81,4 +83,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-06-15 20:53:35 $
+Last Updated: $Date: 2006-07-20 02:15:27 $

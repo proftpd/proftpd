@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.286 2006-06-16 01:40:15 castaglia Exp $
+ * $Id: mod_core.c,v 1.287 2006-07-20 02:15:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -523,6 +523,30 @@ MODRET set_usereversedns(cmd_rec *cmd) {
   ServerUseReverseDNS = bool;
 
   return PR_HANDLED(cmd);
+}
+
+/* usage: UseUTF8 on|off */
+MODRET set_useutf8(cmd_rec *cmd) {
+#ifdef PR_USE_NLS
+  int bool = -1;
+  config_rec *c;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = bool;
+
+  return PR_HANDLED(cmd);
+#else
+  CONF_ERROR(cmd,
+    "Use of the UseUTF8 directive requires NLS support (--enable-nls)");
+#endif /* PR_USE_NLS */
 }
 
 MODRET set_satisfy(cmd_rec *cmd) {
@@ -4420,6 +4444,12 @@ static int core_sess_init(void) {
   }
 #endif /* HAVE_UNSETENV */
 
+#ifdef PR_USE_NLS
+  c = find_config(main_server->conf, CONF_PARAM, "UseUTF8", FALSE);
+  if (c != NULL)
+    pr_fs_use_utf8(*((int *) c->argv[0]));
+#endif /* PR_USE_NLS */
+
   /* Check for a server-specific AuthOrder. */
   c = find_config(main_server->conf, CONF_PARAM, "AuthOrder", FALSE);
   if (c != NULL) {
@@ -4642,6 +4672,7 @@ static conftable core_conftab[] = {
   { "UseReverseDNS",		set_usereversedns,		NULL },
   { "User",			set_user,			NULL },
   { "UserOwner",		add_userowner,			NULL },
+  { "UseUTF8",			set_useutf8,			NULL },
   { "WtmpLog",			set_wtmplog,			NULL },
   { "tcpBackLog",		set_tcpbacklog,			NULL },
   { "tcpNoDelay",		set_tcpnodelay,			NULL },

@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.51 2006-05-26 17:16:40 castaglia Exp $
+ * $Id: fsio.c,v 1.52 2006-07-20 02:15:28 castaglia Exp $
  */
 
 #include "conf.h"
@@ -82,6 +82,9 @@ static unsigned char chk_fs_map = FALSE;
 /* Virtual working directory */
 static char vwd[PR_TUNABLE_PATH_MAX + 1] = "/";
 static char cwd[PR_TUNABLE_PATH_MAX + 1] = "/";
+
+/* Runtime enabling/disabling of UTF8 handling of paths. */
+static int use_utf8 = TRUE;
 
 /* The following static functions are simply wrappers for system functions
  */
@@ -1846,10 +1849,21 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
   sstrncpy(buf, workpath, buflen);
 }
 
+int pr_fs_use_utf8(int bool) {
+  int curr_setting = use_utf8;
+  use_utf8 = bool;
+
+  return curr_setting;
+}
+
 char *pr_fs_decode_path(pool *p, const char *path) {
 #ifdef PR_USE_NLS
   size_t outlen;
   char *res;
+
+  if (!use_utf8) {
+    return (char *) path;
+  }
 
   res = pr_utf8_decode(p, path, strlen(path) + 1, &outlen);
   if (!res) {
@@ -1869,6 +1883,10 @@ char *pr_fs_encode_path(pool *p, const char *path) {
 #ifdef PR_USE_NLS
   size_t outlen;
   char *res;
+
+  if (!use_utf8) {
+    return (char *) path;
+  }
 
   res = pr_utf8_encode(p, path, strlen(path) + 1, &outlen);
   if (!res) {
