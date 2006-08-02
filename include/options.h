@@ -26,7 +26,7 @@
 
 /* User configurable defaults and tunable parameters.
  *
- * $Id: options.h,v 1.22 2006-04-16 22:23:33 castaglia Exp $
+ * $Id: options.h,v 1.23 2006-08-02 18:26:16 castaglia Exp $
  */
 
 #ifndef PR_OPTIONS_H
@@ -195,6 +195,15 @@
  * login names.  Given that, let's use 256 as a login name size.
  */
 # define PR_TUNABLE_LOGIN_MAX		256
+#endif
+
+#ifndef PR_TUNABLE_EINTR_RETRY_INTERVAL
+/* Define the time to delay, in seconds, after a system call has been
+ * interrupted (errno is EINTR) before retrying that call.
+ *
+ * The default behavior is not to delay between retries.
+ */
+ # define PR_TUNABLE_EINTR_RETRY_INTERVAL      0
 #endif
 
 #endif /* PR_OPTIONS_H */

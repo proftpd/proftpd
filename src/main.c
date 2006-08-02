@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.288 2006-06-16 02:52:34 castaglia Exp $
+ * $Id: main.c,v 1.289 2006-08-02 18:26:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1608,6 +1608,23 @@ static void daemon_loop(void) {
  */
 
 void pr_signals_handle(void) {
+
+  if (errno == EINTR &&
+      PR_TUNABLE_EINTR_RETRY_INTERVAL > 0) {
+
+    struct timeval tv;
+
+    tv.tv_sec = PR_TUNABLE_EINTR_RETRY_INTERVAL;
+    tv.tv_usec = 0;
+
+    pr_log_debug(DEBUG10, "interrupted system call, delaying for %u sec%s",
+      PR_TUNABLE_EINTR_RETRY_INTERVAL,
+      PR_TUNABLE_EINTR_RETRY_INTERVAL != 1 ? "s" : "");
+
+    pr_signals_block();
+    (void) select(0, NULL, NULL, NULL, &tv);
+    pr_signals_unblock();
+  }
 
   while (recvd_signal_flags) {
 
