@@ -1,4 +1,4 @@
-<!-- $Id: Limit.html,v 1.10 2005-09-28 18:50:53 castaglia Exp $ -->
+<!-- $Id: Limit.html,v 1.11 2006-08-04 15:11:40 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/Limit.html,v $ -->
 
 <html>
@@ -247,6 +247,21 @@ Note that the same effect can be achieved by using the
 user-specific allow/deny files.
 
 <p>
+In Apache, it is possible to configure password-protected directories.
+Some sysadmins attempt to configure <code>proftpd</code> similarly, by
+unsuccessfully attempting something like this in the
+<code>proftpd.conf</code> file:
+<pre>
+  &lt;Directory /some/path&gt;
+    &lt;Limit LOGIN&gt;
+      DenyUser foo
+    &lt;/Limit&gt;
+  &lt;/Directory&gt;
+</pre>
+The above will <b>not</b> work.  FTP clients (unlike HTTP clients) login
+to the <i>server</i>, not into specific directories.
+
+<p>
 One situation that often arises is one where the administrator would like
 to give users the ability to upload and dowload files from a given directory,
 but not to be able to delete files from that directory.  This cannot be
@@ -293,7 +308,7 @@ Or, conversely, to block passive data transfers:
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2005-09-28 18:50:53 $</i><br>
+Last Updated: <i>$Date: 2006-08-04 15:11:40 $</i><br>
 <hr>
 
 </body>
