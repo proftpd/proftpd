@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.287 2006-07-20 02:15:28 castaglia Exp $
+ * $Id: mod_core.c,v 1.288 2006-08-09 15:39:55 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2284,10 +2284,11 @@ MODRET end_class(cmd_rec *cmd) {
 MODRET add_global(cmd_rec *cmd) {
   config_rec *c = NULL;
 
-  CHECK_ARGS(cmd, 0);
+  if (cmd->argc-1 != 0)
+    CONF_ERROR(cmd, "Too many parameters");
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
-  c = pr_parser_config_ctxt_open("<Global>");
+  c = pr_parser_config_ctxt_open(cmd->argv[0]);
   c->config_type = CONF_GLOBAL;
 
   return PR_HANDLED(cmd);
