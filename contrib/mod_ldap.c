@@ -22,7 +22,7 @@
  */
 
 /*
- * mod_ldap v2.8.17-20051202
+ * mod_ldap v2.8.17-20060816
  *
  * Thanks for patches go to (in alphabetical order):
  *
@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.46 2006-06-16 17:02:25 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.47 2006-08-16 18:42:33 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -406,7 +406,7 @@ pr_ldap_user_lookup(pool *p,
         } else {
           char **canon_username;
           if ((canon_username = ldap_get_values(ld, e, ldap_attr_uid)) == NULL) {
-            pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): couldn't get %s attr for canonical username for %s", (dn = ldap_get_dn(ld, e)), ldap_attr_uid);
+            pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): couldn't get %s attr for canonical username for %s", ldap_attr_uid, (dn = ldap_get_dn(ld, e)));
             free(dn);
             return NULL;
           }
@@ -472,7 +472,7 @@ pr_ldap_user_lookup(pool *p,
         } else {
           char **canon_username;
           if ((canon_username = ldap_get_values(ld, e, ldap_attr_uid)) == NULL) {
-            pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): couldn't get %s attr for canonical username for %s", (dn = ldap_get_dn(ld, e)), ldap_attr_uid);
+            pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): couldn't get %s attr for canonical username for %s", ldap_attr_uid, (dn = ldap_get_dn(ld, e)));
             free(dn);
             return NULL;
           }
