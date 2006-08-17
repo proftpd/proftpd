@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.131 2006-06-16 01:40:16 castaglia Exp $
+ * $Id: mod_ls.c,v 1.132 2006-08-17 16:05:32 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1575,14 +1575,10 @@ static int dolist(cmd_rec *cmd, const char *opt, int clearflags) {
 static int nlstfile(cmd_rec *cmd, const char *file) {
   int res = 0;
 
-  /* If the data connection isn't open, open it now. */
+  /* If the data connection isn't open, return an error */
   if ((session.sf_flags & SF_XFER) == 0) {
-    if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
-      pr_data_reset();
-      return -1;
-    }
-
-    session.sf_flags |= SF_ASCII_OVERRIDE;
+    errno = EPERM;
+    return -1;
   }
 
   if (dir_hide_file(file))
@@ -1661,7 +1657,8 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
   /* Search for relevant <Limit>'s to this NLST command.  If found,
    * check to see whether hidden files should be ignored.
    */
-  if ((c = _find_ls_limit(cmd->argv[0])) != NULL) {
+  c = _find_ls_limit(cmd->argv[0]);
+  if (c != NULL) {
     unsigned char *ignore = get_param_ptr(c->subset, "IgnoreHidden", FALSE);
 
     if (ignore && *ignore == TRUE)
@@ -1692,17 +1689,6 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
     if (ls_perms(workp, cmd, f, &hidden)) {
       if (hidden)
         continue;
-
-      /* If the data connection isn't open, open it now. */
-      if ((session.sf_flags & SF_XFER) == 0) {
-        if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
-          pr_data_reset();
-          count = -1;
-          continue;
-        }
-
-        session.sf_flags |= SF_ASCII_OVERRIDE;
-      }
 
       mode = file_mode(f);
       if (mode == 0)
@@ -2117,6 +2103,15 @@ MODRET ls_nlst(cmd_rec *cmd) {
   /* Remove any trailing separators. */
   while (target[strlen(target)-1] == '/')
     target[strlen(target)-1] = '\0';
+
+  /* If the data connection isn't open, open it now. */
+  if ((session.sf_flags & SF_XFER) == 0) {
+    if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
+      return PR_ERROR(cmd);
+    }
+
+    session.sf_flags |= SF_ASCII_OVERRIDE;
+  }
 
   /* If the target is a glob, get the listing of files/dirs to send. */
   if (use_globbing &&
