@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.112 2006-06-20 16:54:38 castaglia Exp $
+ * $Id: mod_sql.c,v 1.113 2006-08-24 02:29:12 castaglia Exp $
  */
 
 #include "conf.h"
@@ -323,6 +323,8 @@ static void *cache_findvalue(cache_t *cache, void *data) {
 
   entry = cache->buckets[hashval];
   while (entry != NULL) {
+    pr_signals_handle();
+
     if (cache->cmp(data, entry->data))
       break;
     else
@@ -528,21 +530,32 @@ static int sql_set_backend(char *backend) {
         }
       }
 
-      /* If no match is found, default to using the first entry in
-       * the list.
-       */
+      /* If no match is found, default to using the last entry in the list. */
       if (!sql_cmdtable) {
+        b = sql_backends;
+        while (b->next != NULL) {
+          pr_signals_handle();
+          b = b->next;
+        }
+
         sql_log(DEBUG_INFO,
           "SQLBackend '%s' not found, defaulting to '%s' backend",
-          backend, sql_backends->backend);
-        sql_cmdtable = sql_backends->cmdtab;
+          backend, b->backend);
+        sql_cmdtable = b->cmdtab;
       }
 
     } else {
-      /* Default to using the first entry in the list. */
+      /* Default to using the last entry in the list. */
+      struct sql_backend *b = sql_backends;
+
+      while (b->next != NULL) {
+        pr_signals_handle();
+        b = b->next;
+      }
+
       sql_log(DEBUG_INFO, "defaulting to '%s' backend",
-        sql_backends->backend);
-      sql_cmdtable = sql_backends->cmdtab;
+        b->backend);
+      sql_cmdtable = b->cmdtab;
     }
   }
 
@@ -697,6 +710,8 @@ static auth_type_entry *get_auth_entry(char *name) {
   auth_type_entry *ate = supported_auth_types;
 
   while (ate->name) {
+    pr_signals_handle();
+
     if (strcasecmp(ate->name, name) == 0)
       return ate;
     ate++;
@@ -878,6 +893,8 @@ static void show_group(pool *p, struct group *g) {
   member = g->gr_mem;
 
   while (*member != NULL) {
+    pr_signals_handle();
+
     members = pstrcat(p, members, *members ? ", " : "", *member, NULL);
     member++;
   } 
@@ -4351,6 +4368,8 @@ static void sql_exit_ev(const void *event_data, void *user_data) {
     char *qname = NULL, *type = NULL;
 
     qname = c->argv[0];
+
+    pr_signals_handle();
 
     /* Since we're exiting the process here (or soon, anyway), we can
      * get away with using the config_rec's pool.
