@@ -26,7 +26,7 @@
 
 /* ProFTPD module definitions.
  *
- * $Id: modules.h,v 1.46 2006-06-16 00:48:05 castaglia Exp $
+ * $Id: modules.h,v 1.47 2006-09-05 17:04:44 castaglia Exp $
  */
 
 #ifndef PR_MODULES_H
@@ -66,20 +66,6 @@ struct modret_struc {
 #define MODRET_ERRNUM(x)		((x) ? (x)->mr_numeric : NULL)
 #define MODRET_ERRMSG(x)		((x) ? (x)->mr_message : NULL)
 #define MODRET_HASDATA(x)		((x) ? ((x)->data ? TRUE : FALSE) : FALSE)
-
-/* private data structure returned by mod_priv* */
-
-struct privdata {
-  char *tag;
-  union {
-    void *ptr_val;
-    int int_val;
-    long long_val;
-    char *str_val;
-  } value;
-
-  module *m;
-};
 
 typedef struct {
   char *directive;
