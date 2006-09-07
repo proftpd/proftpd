@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.113 2006-08-24 02:29:12 castaglia Exp $
+ * $Id: mod_sql.c,v 1.114 2006-09-07 02:53:44 castaglia Exp $
  */
 
 #include "conf.h"
@@ -614,7 +614,7 @@ static modret_t *check_auth_backend(cmd_rec *cmd, const char *c_clear,
   return mr;
 }
 
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
 static modret_t *check_auth_openssl(cmd_rec *cmd, const char *c_clear,
     const char *c_hash) {
   /*
@@ -679,8 +679,8 @@ static modret_t *check_auth_openssl(cmd_rec *cmd, const char *c_clear,
 #define CRYPT_AUTH_FLAG         1<<1
 #define BACKEND_AUTH_FLAG       1<<2
 #define EMPTY_AUTH_FLAG         1<<3
-#ifdef HAVE_OPENSSL
-#define OPENSSL_AUTH_FLAG       1<<4
+#if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
+# define OPENSSL_AUTH_FLAG       1<<4
 #endif
 
 typedef modret_t *(*auth_func_ptr) (cmd_rec *, const char *, const char *);
@@ -697,7 +697,7 @@ static auth_type_entry supported_auth_types[] = {
   {"Crypt", check_auth_crypt, CRYPT_AUTH_FLAG},
   {"Backend", check_auth_backend, BACKEND_AUTH_FLAG},
   {"Empty", check_auth_empty, EMPTY_AUTH_FLAG},
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
   {"OpenSSL", check_auth_openssl, OPENSSL_AUTH_FLAG},
 #endif
   /*
