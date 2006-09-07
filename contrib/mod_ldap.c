@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.47 2006-08-16 18:42:33 jwm Exp $
+ * $Id: mod_ldap.c,v 1.48 2006-09-07 02:56:50 castaglia Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -95,7 +95,7 @@
 # define LDAP_OPT_SUCCESS LDAP_SUCCESS
 #endif
 
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
 # include <openssl/evp.h>
 #endif
 
@@ -1121,14 +1121,14 @@ handle_ldap_check(cmd_rec *cmd)
   int encname_len, ret;
   LDAP *ld_auth;
 
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
   EVP_MD_CTX EVP_Context;
   const EVP_MD *md;
   int md_len;
   unsigned char md_value[EVP_MAX_MD_SIZE];
   EVP_ENCODE_CTX EVP_Encode;
   char buff[EVP_MAX_KEY_LENGTH];
-#endif /* HAVE_OPENSSL */
+#endif /* !HAVE_OPENSSL and !PR_USE_OPENSSL */
 
   if (!ldap_doauth) {
     return PR_DECLINED(cmd);
@@ -1207,7 +1207,7 @@ handle_ldap_check(cmd_rec *cmd)
       return PR_ERROR(cmd);
     }
   }
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
   else { /* Try the cipher mode found */
     pr_log_debug(DEBUG5, "mod_ldap: %s-encrypted password found, trying to auth.", hash_method);
 
@@ -1244,11 +1244,11 @@ handle_ldap_check(cmd_rec *cmd)
       return PR_ERROR(cmd);
     }
   }
-#else /* HAVE_OPENSSL */
+#else
   else { /* Can't find a supported {scheme} */
     return PR_DECLINED(cmd);
   }
-#endif /* HAVE_OPENSSL */
+#endif /* !HAVE_OPENSSL and !PR_USE_OPENSSL */
 
   session.auth_mech = "mod_ldap.c";
   return PR_HANDLED(cmd);
