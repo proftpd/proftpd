@@ -6,7 +6,7 @@ This file contains a description of the major changes to ProFTPD for the
 More information on these changes can be found in the NEWS and ChangeLog
 files.
 
-1.3.0rc1
+1.3.1rc1
 ---------
   + Command changes:
 
@@ -85,4 +85,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-09-07 00:23:04 $
+Last Updated: $Date: 2006-09-07 16:04:10 $
