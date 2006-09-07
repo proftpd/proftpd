@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.38 2006-06-16 02:22:05 castaglia Exp $
+ * $Id: mod_radius.c,v 1.39 2006-09-07 02:47:19 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9"
@@ -1308,6 +1308,7 @@ static unsigned char *radius_xor(unsigned char *p, unsigned char *q,
   return tmp;
 }
 
+#if !defined(PR_USE_OPENSSL)
 /* Built-in MD5 */
 
 /* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991.
@@ -1345,9 +1346,9 @@ typedef struct {
   unsigned char buffer[64];
 } MD5_CTX;
 
-static void MD5Init(MD5_CTX *);
-static void MD5Update(MD5_CTX *, unsigned char *, unsigned int);
-static void MD5Final(unsigned char[16], MD5_CTX *);
+static void MD5_Init(MD5_CTX *);
+static void MD5_Update(MD5_CTX *, unsigned char *, unsigned int);
+static void MD5_Final(unsigned char[16], MD5_CTX *);
 
 /* Note: these MD5 routines are taken from RFC 1321 */
 
@@ -1428,7 +1429,7 @@ static unsigned char PADDING[64] = {
 
 /* MD5 initialization. Begins an MD5 operation, writing a new context.
  */
-static void MD5Init(MD5_CTX *context) {
+static void MD5_Init(MD5_CTX *context) {
   context->count[0] = context->count[1] = 0;
 
   /* Load magic initialization constants.
@@ -1443,7 +1444,7 @@ static void MD5Init(MD5_CTX *context) {
  * operation, processing another message block, and updating the
  * context.
  */
-static void MD5Update(MD5_CTX *context, unsigned char *input,
+static void MD5U_pdate(MD5_CTX *context, unsigned char *input,
     unsigned int inputLen) {
   unsigned int i, index, partLen;
 
@@ -1480,7 +1481,7 @@ static void MD5Update(MD5_CTX *context, unsigned char *input,
 /* MD5 finalization. Ends an MD5 message-digest operation, writing the
  * the message digest and zeroizing the context.
  */
-static void MD5Final(unsigned char digest[16], MD5_CTX *context) {
+static void MD5_Final(unsigned char digest[16], MD5_CTX *context) {
   unsigned char bits[8];
   unsigned int index, padLen;
 
@@ -1491,10 +1492,10 @@ static void MD5Final(unsigned char digest[16], MD5_CTX *context) {
    */
   index = (unsigned int) ((context->count[0] >> 3) & 0x3f);
   padLen = (index < 56) ? (56 - index) : (120 - index);
-  MD5Update(context, PADDING, padLen);
+  MD5_Update(context, PADDING, padLen);
 
   /* Append length (before padding) */
-  MD5Update(context, bits, 8);
+  MD5_Update(context, bits, 8);
 
   /* Store state in digest */
   Encode(digest, context->state, 16);
@@ -1642,6 +1643,10 @@ static void MD5_memset(unsigned char *output, int value, unsigned int len) {
 }
 #endif
 
+#else
+# include <openssl/md5.h>
+#endif /* !PR_USE_OPENSSL */
+
 /* Logging */
 
 static int radius_closelog(void) {
@@ -1775,16 +1780,16 @@ static void radius_add_passwd(radius_packet_t *packet, unsigned char type,
     digest = attrib->data;
 
   /* Encrypt the password.  Password: c[0] = p[0] ^ MD5(secret + digest) */
-  MD5Init(&secret_ctx);
-  MD5Update(&secret_ctx, secret, strlen(secret));
+  MD5_Init(&secret_ctx);
+  MD5_Update(&secret_ctx, secret, strlen(secret));
 
   /* Save this hash for later. */
   ctx = secret_ctx;
 
-  MD5Update(&ctx, digest, RADIUS_VECTOR_LEN);
+  MD5_Update(&ctx, digest, RADIUS_VECTOR_LEN);
 
   /* Set the calculated digest. */
-  MD5Final(calculated, &ctx);
+  MD5_Final(calculated, &ctx);
 
   /* XOR the results. */
   radius_xor(pwhash, calculated, RADIUS_PASSWD_LEN);
@@ -1795,10 +1800,10 @@ static void radius_add_passwd(radius_packet_t *packet, unsigned char type,
     /* Start with the old value of the MD5 sum. */
     ctx = secret_ctx;
 
-    MD5Update(&ctx, &pwhash[(i-1) * RADIUS_PASSWD_LEN], RADIUS_PASSWD_LEN);
+    MD5_Update(&ctx, &pwhash[(i-1) * RADIUS_PASSWD_LEN], RADIUS_PASSWD_LEN);
 
     /* Set the calculated digest. */
-    MD5Final(calculated, &ctx);
+    MD5_Final(calculated, &ctx);
 
     /* XOR the results. */
     radius_xor(&pwhash[i * RADIUS_PASSWD_LEN], calculated, RADIUS_PASSWD_LEN);
@@ -1822,16 +1827,16 @@ static void radius_get_acct_digest(radius_packet_t *packet, char *secret) {
   /* Clear the current digest (not needed yet for accounting packets) */
   memset(packet->digest, 0, RADIUS_VECTOR_LEN);
 
-  MD5Init(&ctx);
+  MD5_Init(&ctx);
 
   /* Add the packet data to the mix. */
-  MD5Update(&ctx, (unsigned char *) packet, ntohs(packet->length));
+  MD5_Update(&ctx, (unsigned char *) packet, ntohs(packet->length));
 
   /* Add the secret to the mix. */
-  MD5Update(&ctx, secret, strlen(secret));
+  MD5_Update(&ctx, secret, strlen(secret));
 
   /* Set the calculated digest in place in the packet. */
-  MD5Final(packet->digest, &ctx);
+  MD5_Final(packet->digest, &ctx);
 }
 
 /* Obtain a random digest. */
@@ -1851,12 +1856,12 @@ static void radius_get_rnd_digest(radius_packet_t *packet) {
   /* Use MD5 to obtain (hopefully) cryptographically strong pseudo-random
    * numbers
    */
-  MD5Init(&ctx);
-  MD5Update(&ctx, (unsigned char *) &tv, sizeof(tv));
-  MD5Update(&ctx, (unsigned char *) &tz, sizeof(tz));
+  MD5_Init(&ctx);
+  MD5_Update(&ctx, (unsigned char *) &tv, sizeof(tv));
+  MD5_Update(&ctx, (unsigned char *) &tz, sizeof(tz));
 
   /* Set the calculated digest in the space provided. */
-  MD5Final(packet->digest, &ctx);
+  MD5_Final(packet->digest, &ctx);
 }
 
 /* RADIUS packet manipulation functions.
@@ -2410,14 +2415,14 @@ static int radius_verify_packet(radius_packet_t *req_packet,
    * the provided response digest:
    *   MD5(response packet header + digest + response packet data + secret)
    */
-  MD5Init(&ctx);
-  MD5Update(&ctx, (unsigned char *) resp_packet, ntohs(resp_packet->length));
+  MD5_Init(&ctx);
+  MD5_Update(&ctx, (unsigned char *) resp_packet, ntohs(resp_packet->length));
 
   if (*secret)
-    MD5Update(&ctx, secret, strlen(secret));
+    MD5_Update(&ctx, secret, strlen(secret));
 
   /* Set the calculated digest. */
-  MD5Final(calculated, &ctx);
+  MD5_Final(calculated, &ctx);
 
   /* Do the digests match properly? */
   if (memcmp(calculated, replied, RADIUS_VECTOR_LEN) != 0) {
