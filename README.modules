@@ -151,6 +151,11 @@ Feature modules:
         See contrib/README.mod_wrap and doc/contrib/mod_wrap.html.
         Contributed by TJ Saunders <tj@castaglia.org>.
 
+    mod_wrap2, mod_wrap2_file, mod_wrap2_sql
+        TCP wrappers functionality, extended to include SQL tables
+        See doc/contrib/mod_wrap2.html
+        Contributed by TJ Saunders <tj@castaglia.org>.
+
 
 Other ProFTPD modules (not included in the source distribution)
 ---------------------------------------------------------------

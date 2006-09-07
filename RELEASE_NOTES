@@ -64,6 +64,8 @@ files.
 
       mod_quotatab_radius
 
+      mod_wrap2, mod_wrap2_file, mod_wrap2_sql
+
   + New documentation:
 
       doc/howto/CreateHome.html
@@ -83,4 +85,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-07-20 02:15:27 $
+Last Updated: $Date: 2006-09-07 00:23:04 $
