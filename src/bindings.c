@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.30 2005-06-21 20:54:23 castaglia Exp $
+ * $Id: bindings.c,v 1.31 2006-09-07 01:57:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -98,7 +98,6 @@ conn_t *pr_ipbind_accept_conn(fd_set *readfds, int *listenfd) {
   conn_t **listeners = listener_list->elts;
   register unsigned int i = 0;
 
-  /* sanity checks */
   if (!readfds) {
     errno = EINVAL;
     return NULL;
@@ -146,7 +145,6 @@ int pr_ipbind_add_binds(server_rec *serv) {
   conn_t *listen_conn = NULL;
   pr_netaddr_t *addr = NULL;
 
-  /* sanity check */
   if (!serv)
     return -1;
 
@@ -166,7 +164,8 @@ int pr_ipbind_add_binds(server_rec *serv) {
     /* If the SocketBindTight directive is in effect, create a separate
      * listen socket for this address, and add it to the binding list.
      */
-    if (SocketBindTight && serv->ServerPort) {
+    if (SocketBindTight &&
+        serv->ServerPort) {
       listen_conn = pr_inet_create_connection(serv->pool, server_list, -1, addr,
         serv->ServerPort, FALSE);
 
@@ -179,7 +178,6 @@ int pr_ipbind_add_binds(server_rec *serv) {
       PR_OPEN_IPBIND(addr, serv->ServerPort, serv->listen, FALSE, FALSE, TRUE);
     }
 
-    /* Move on to the next bind directive */
     c = find_config_next(c, c->next, CONF_PARAM, "_bind", FALSE);
   }
 
@@ -298,7 +296,6 @@ int pr_ipbind_close(pr_netaddr_t *addr, unsigned int port,
     }
   }
 
-  /* Done */
   return 0;
 }
 
@@ -307,7 +304,6 @@ int pr_ipbind_close_listeners(void) {
   conn_t **listeners;
   register unsigned int i = 0;
 
-  /* sanity checks */
   if (!listener_list ||
       listener_list->nelts == 0)
     return 0;
@@ -334,8 +330,8 @@ int pr_ipbind_create(server_rec *server, pr_netaddr_t *addr) {
   server_rec *s = NULL;
   register unsigned int i = 0;
 
-  /* Sanity checks */
-  if (!server || !addr) {
+  if (!server ||
+      !addr) {
     errno = EINVAL;
     return -1;
   }
@@ -358,7 +354,6 @@ int pr_ipbind_create(server_rec *server, pr_netaddr_t *addr) {
   }
 
   if (!binding_pool) {
-    /* Initialize the working pool, if not present */
     binding_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(binding_pool, "Bindings Pool");
   }
@@ -397,7 +392,8 @@ pr_ipbind_t *pr_ipbind_find(pr_netaddr_t *addr, unsigned int port,
 
   for (ipbind = ipbind_table[i]; ipbind; ipbind = ipbind->ib_next) {
 
-    if (skip_inactive && !ipbind->ib_isactive)
+    if (skip_inactive &&
+        !ipbind->ib_isactive)
       continue;
 
     if (pr_netaddr_cmp(ipbind->ib_addr, addr) == 0 &&
@@ -405,7 +401,6 @@ pr_ipbind_t *pr_ipbind_find(pr_netaddr_t *addr, unsigned int port,
       return ipbind;
   }
 
-  /* default return value */
   return NULL;
 }
 
@@ -454,7 +449,8 @@ server_rec *pr_ipbind_get_server(pr_netaddr_t *addr, unsigned int port) {
     return ipbind->ib_server;
 
   /* Use the default server, if set. */
-  if (ipbind_default_server && ipbind_default_server->ib_isactive) {
+  if (ipbind_default_server &&
+      ipbind_default_server->ib_isactive) {
     pr_log_debug(DEBUG7, "no matching vhost found for %s#%u, using "
       "DefaultServer '%s'", pr_netaddr_get_ipstr(addr), port,
       ipbind_default_server->ib_server->ServerName);
@@ -464,8 +460,9 @@ server_rec *pr_ipbind_get_server(pr_netaddr_t *addr, unsigned int port) {
   /* Not found in binding list, and no DefaultServer, so see if it's the
    * loopback address
    */
-  if (ipbind_localhost_server && pr_netaddr_loopback(addr))
-      return ipbind_localhost_server->ib_server;
+  if (ipbind_localhost_server &&
+      pr_netaddr_loopback(addr))
+    return ipbind_localhost_server->ib_server;
 
   return NULL;
 }
@@ -481,7 +478,6 @@ int pr_ipbind_listen(fd_set *readfds) {
   FD_ZERO(readfds);
 
   if (!binding_pool) {
-    /* Initialize the working pool, if not present */
     binding_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(binding_pool, "Bindings Pool");
   }
@@ -505,7 +501,8 @@ int pr_ipbind_listen(fd_set *readfds) {
     for (ipbind = ipbind_table[i]; ipbind; ipbind = ipbind->ib_next) {
 
       /* Skip inactive bindings, but only if SocketBindTight is in effect. */
-      if (SocketBindTight && !ipbind->ib_isactive)
+      if (SocketBindTight &&
+          !ipbind->ib_isactive)
         continue;
 
       if (ipbind->ib_listener) {
@@ -538,14 +535,14 @@ int pr_ipbind_open(pr_netaddr_t *addr, unsigned int port, conn_t *listen_conn,
   int res = 0;
   pr_ipbind_t *ipbind = NULL;
 
-  /* sanity checks */
   if (!addr) {
     errno = EINVAL;
     return -1;
   }
 
   /* Find the binding for this server/address */
-  if ((ipbind = pr_ipbind_find(addr, port, FALSE)) == NULL) {
+  ipbind = pr_ipbind_find(addr, port, FALSE);
+  if (ipbind == NULL) {
     errno = ENOENT;
     return -1;
   }
@@ -561,20 +558,21 @@ int pr_ipbind_open(pr_netaddr_t *addr, unsigned int port, conn_t *listen_conn,
   /* Stash a pointer to this ipbind, since it is designated as the
    * default server (via the DefaultServer directive), for use in the
    * lookup functions.
-   */
-
-  /* Stash pointers to this ipbind for use in the lookup functions if:
+   *
+   * Stash pointers to this ipbind for use in the lookup functions if:
    *
    * - It's the default server (specified via the DefaultServer directive)
    * - It handles connections to the loopback interface
    */
   if (isdefault)
     ipbind_default_server = ipbind;
+
   if (islocalhost)
     ipbind_localhost_server = ipbind;
 
   /* If requested, look for any namebinds for this ipbind, and open them. */
-  if (open_namebinds && ipbind->ib_namebinds) {
+  if (open_namebinds &&
+      ipbind->ib_namebinds) {
     register unsigned int i = 0;
     pr_namebind_t **namebinds = NULL;
 
@@ -601,22 +599,19 @@ int pr_namebind_close(const char *name, pr_netaddr_t *addr,
     unsigned int port) {
   pr_namebind_t *namebind = NULL;
 
-  /* sanity checks */
-  if (!name || !addr) {
+  if (!name ||
+      !addr) {
     errno = EINVAL;
     return -1;
   }
 
-  /* find the requested namebind */
-  if ((namebind = pr_namebind_find(name, addr, port, FALSE)) == NULL) {
+  namebind = pr_namebind_find(name, addr, port, FALSE);
+  if (namebind == NULL) {
     errno = ENOENT;
     return -1;
   }
 
-  /* Mark this binding as inactive */
   namebind->nb_isactive = FALSE;
-
-  /* default return value */
   return 0;
 }
 
@@ -625,8 +620,8 @@ int pr_namebind_create(server_rec *server, const char *name,
   pr_ipbind_t *ipbind = NULL;
   pr_namebind_t *namebind = NULL, **namebinds = NULL;
 
-  /* sanity checks */
-  if (!server || !name) {
+  if (!server ||
+      !name) {
     errno = EINVAL;
     return -1;
   }
@@ -656,9 +651,7 @@ int pr_namebind_create(server_rec *server, const char *name,
     }
   }
 
-  /* Allocate a new namebind */
   namebind = (pr_namebind_t *) pcalloc(server->pool, sizeof(pr_namebind_t));
-
   namebind->nb_name = name;
   namebind->nb_server = server;
   namebind->nb_isactive = FALSE;
@@ -697,10 +690,7 @@ int pr_namebind_create(server_rec *server, const char *name,
   namebind->nb_listener = (server->listen ? server->listen :
     main_server->listen);
 
-  /* Add this namebind to the ipbind's list */
   *((pr_namebind_t **) push_array(ipbind->ib_namebinds)) = namebind;
-
-  /* default return value */
   return 0;
 }
 
@@ -709,14 +699,15 @@ pr_namebind_t *pr_namebind_find(const char *name, pr_netaddr_t *addr,
   pr_ipbind_t *ipbind = NULL;
   pr_namebind_t *namebind = NULL;
 
-  /* sanity checks */
-  if (!name || !addr) {
+  if (!name ||
+      !addr) {
     errno = EINVAL;
     return NULL;
   }
 
-  /* first, find an active ipbind for the given addr/port */
-  if ((ipbind = pr_ipbind_find(addr, port, skip_inactive)) == NULL) {
+  /* First, find an active ipbind for the given addr/port */
+  ipbind = pr_ipbind_find(addr, port, skip_inactive);
+  if (ipbind == NULL) {
     errno = ENOENT;
     return NULL;
   }
@@ -731,8 +722,10 @@ pr_namebind_t *pr_namebind_find(const char *name, pr_netaddr_t *addr,
     for (i = 0; i < ipbind->ib_namebinds->nelts; i++) {
       namebind = namebinds[i];
 
-      /* skip inactive namebinds */
-      if (skip_inactive && namebind && !namebind->nb_isactive)
+      /* Skip inactive namebinds */
+      if (skip_inactive &&
+          namebind &&
+          !namebind->nb_isactive)
         continue;
 
       /* At present, this looks for an exactly matching name.  In the future,
@@ -741,12 +734,13 @@ pr_namebind_t *pr_namebind_find(const char *name, pr_netaddr_t *addr,
        * that scheme, however, is specific to DNS; should any other naming
        * scheme be desired, that sort of matching will be unnecessary.
        */
-      if (namebind && namebind->nb_name && !strcmp(namebind->nb_name, name))
+      if (namebind &&
+          namebind->nb_name &&
+          strcmp(namebind->nb_name, name) == 0)
         return namebind;
     }
   }
 
-  /* default return value */
   return NULL;
 }
 
@@ -755,7 +749,8 @@ server_rec *pr_namebind_get_server(const char *name, pr_netaddr_t *addr,
   pr_namebind_t *namebind = NULL;
 
   /* Basically, just a wrapper around pr_namebind_find() */
-  if ((namebind = pr_namebind_find(name, addr, port, TRUE)) == NULL)
+  namebind = pr_namebind_find(name, addr, port, TRUE);
+  if (namebind == NULL)
     return NULL;
 
   return namebind->nb_server;
@@ -764,22 +759,19 @@ server_rec *pr_namebind_get_server(const char *name, pr_netaddr_t *addr,
 int pr_namebind_open(const char *name, pr_netaddr_t *addr, unsigned int port) {
   pr_namebind_t *namebind = NULL;
 
-  /* sanity checks */
-  if (!name || !addr) {
+  if (!name ||
+      !addr) {
     errno = EINVAL;
     return -1;
   }
 
-  /* Find the requested namebind */
-  if ((namebind = pr_namebind_find(name, addr, port, FALSE)) == NULL) {
+  namebind = pr_namebind_find(name, addr, port, FALSE);
+  if (namebind == NULL) {
     errno = ENOENT;
     return -1;
   }
 
-  /* Mark this binding as active */
   namebind->nb_isactive = TRUE;
-
-  /* Default return value */
   return 0;
 }
 
@@ -811,8 +803,9 @@ static void init_inetd_bindings(void) {
     exit(1);
   }
 
-  if ((default_server = get_param_ptr(main_server->conf, "DefaultServer",
-      FALSE)) != NULL && *default_server == TRUE)
+  default_server = get_param_ptr(main_server->conf, "DefaultServer", FALSE);
+  if (default_server != NULL &&
+      *default_server == TRUE)
     is_default = TRUE;
 
   PR_CREATE_IPBIND(main_server, main_server->addr);
@@ -834,8 +827,9 @@ static void init_inetd_bindings(void) {
       server_cleanup_cb);
 
     is_default = FALSE;
-    if ((default_server = get_param_ptr(serv->conf, "DefaultServer",
-        FALSE)) != NULL && *default_server == TRUE)
+    default_server = get_param_ptr(serv->conf, "DefaultServer", FALSE);
+    if (default_server != NULL &&
+        *default_server == TRUE)
       is_default = TRUE;
 
     PR_CREATE_IPBIND(serv, serv->addr);
@@ -884,11 +878,13 @@ static void init_standalone_bindings(void) {
   } else
     main_server->listen = NULL;
 
-  if ((default_server = get_param_ptr(main_server->conf, "DefaultServer",
-      FALSE)) != NULL && *default_server == TRUE)
+  default_server = get_param_ptr(main_server->conf, "DefaultServer", FALSE);
+  if (default_server != NULL &&
+      *default_server == TRUE)
     is_default = TRUE;
 
-  if (main_server->ServerPort || is_default) {
+  if (main_server->ServerPort ||
+      is_default) {
     PR_CREATE_IPBIND(main_server, main_server->addr);
     PR_OPEN_IPBIND(main_server->addr, main_server->ServerPort,
       main_server->listen, is_default, TRUE, TRUE);
@@ -900,8 +896,9 @@ static void init_standalone_bindings(void) {
         !main_server->listen) {
       is_default = FALSE;
 
-      if ((default_server = get_param_ptr(serv->conf, "DefaultServer",
-          FALSE)) != NULL && *default_server == TRUE)
+      default_server = get_param_ptr(serv->conf, "DefaultServer", FALSE);
+      if (default_server != NULL &&
+          *default_server == TRUE)
         is_default = TRUE;
 
       if (serv->ServerPort) {
@@ -946,8 +943,9 @@ static void init_standalone_bindings(void) {
        */
 
       is_default = FALSE;
-      if ((default_server = get_param_ptr(serv->conf, "DefaultServer",
-          FALSE)) != NULL && *default_server == TRUE)
+      default_server = get_param_ptr(serv->conf, "DefaultServer", FALSE);
+      if (default_server != NULL &&
+          *default_server == TRUE)
         is_default = TRUE;
 
       serv->listen = main_server->listen;
