@@ -36381,6 +36381,14 @@ echo $ECHO_N "checking checking for duplicate module requests... $ECHO_C" >&6
 for i in $all_modules; do
   once=no;
 
+    if test x"$i" = x"mod_tls"; then
+
+cat >>confdefs.h <<\_ACEOF
+#define PR_USE_OPENSSL 1
+_ACEOF
+
+  fi
+
   for j in $all_modules; do
     if test x"$i" = x"$j"; then
       if test x"$once" = xno; then
