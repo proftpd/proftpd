@@ -1723,6 +1723,11 @@ AC_MSG_CHECKING([checking for duplicate module requests])
 for i in $all_modules; do
   once=no;
 
+  dnl Make sure the OpenSSL define is set if mod_tls is being used
+  if test x"$i" = x"mod_tls"; then
+      AC_DEFINE(PR_USE_OPENSSL, 1, [Define if using OpenSSL support.])
+  fi
+
   for j in $all_modules; do
     if test x"$i" = x"$j"; then
       if test x"$once" = xno; then
