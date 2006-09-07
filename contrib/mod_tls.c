@@ -389,7 +389,7 @@ static pr_netio_stream_t *tls_data_wr_nstrm = NULL;
 /* OpenSSL variables */
 static SSL *ctrl_ssl = NULL;
 static SSL_CTX *ssl_ctx = NULL;
-static X509_STORE *crl_store = NULL;
+static X509_STORE *tls_crl_store = NULL;
 static DH *tls_tmp_dh = NULL;
 static RSA *tls_tmp_rsa = NULL;
 
@@ -1193,8 +1193,31 @@ static int tls_init_server(void) {
   PRIVS_RELINQUISH
 
   /* Set up the CRL. */
-  if ((tls_crl_file || tls_crl_path) && (crl_store = X509_STORE_new()))
-    X509_STORE_load_locations(crl_store, tls_crl_file, tls_crl_path);
+  if (tls_crl_file || tls_crl_path) {
+    tls_crl_store = X509_STORE_new();
+    if (tls_crl_store == NULL) {
+      tls_log("error creating CRL store: %s", tls_get_errors());
+      return -1;
+    }
+
+    if (X509_STORE_load_locations(tls_crl_store, tls_crl_file,
+        tls_crl_path) == 0) {
+
+      if (tls_crl_file && !tls_crl_path) {
+        tls_log("error loading TLSCARevocationFile '%s': %s",
+          tls_crl_file, tls_get_errors());
+
+      } else if (!tls_crl_file && tls_crl_path) {
+        tls_log("error loading TLSCARevocationPath '%s': %s",
+          tls_crl_path, tls_get_errors());
+
+      } else {
+        tls_log("error loading TLSCARevocationFile '%s', "
+          "TLSCARevocationPath '%s': %s", tls_crl_file, tls_crl_path,
+          tls_get_errors());
+      }
+    }
+  }
 
   SSL_CTX_set_cipher_list(ssl_ctx, tls_cipher_suite);
 
@@ -1444,9 +1467,9 @@ static void tls_cleanup(void) {
   }
 #endif
 
-  if (crl_store) {
-    X509_STORE_free(crl_store);
-    crl_store = NULL;
+  if (tls_crl_store) {
+    X509_STORE_free(tls_crl_store);
+    tls_crl_store = NULL;
   }
 
   if (ssl_ctx) {
@@ -2538,8 +2561,10 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
   /* Unless a revocation store for CRLs was created we cannot do any
    * CRL-based verification, of course.
    */
-  if (!crl_store)
+  if (!tls_crl_store) {
+    tls_log("no CRL store present, assuming client is verified");
     return ok;
+  }
 
   /* Determine certificate ingredients in advance.
    */
@@ -2555,7 +2580,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
    * We come through this procedure for each certificate in the certificate
    * chain, starting with the root-CA's certificate. At each step we've to
    * both verify the signature on the CRL (to make sure it's a valid CRL)
-   * and it's revocation list (to make sure the current certificate isn't
+   * and its revocation list (to make sure the current certificate isn't
    * revoked).  But because to check the signature on the CRL we need the
    * public key of the issuing CA certificate (which was already processed
    * one round before), we've a little problem. But we can both solve it and
@@ -2581,27 +2606,59 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
    * the current certificate in order to verify its integrity.
    */
   memset(&obj, 0, sizeof(obj));
-  X509_STORE_CTX_init(&store_ctx, crl_store, NULL, NULL);
+  if (X509_STORE_CTX_init(&store_ctx, tls_crl_store, NULL, NULL) <= 0) {
+    tls_log("error initializing CRL store context: %s", tls_get_errors());
+    return ok;
+  }
+
   rc = X509_STORE_get_by_subject(&store_ctx, X509_LU_CRL, subject, &obj);
   X509_STORE_CTX_cleanup(&store_ctx);
   crl = obj.data.crl;
 
-  if (rc > 0 && crl != NULL) {
-    /* Verify the signature on this CRL
-     */
-    if (X509_CRL_verify(crl, X509_get_pubkey(xs)) <= 0) {
-      tls_log("%s", "invalid signature on CRL");
+  if (rc > 0 &&
+      crl != NULL) {
+    EVP_PKEY *pubkey;
+    char buf[512];
+    int len;
+    BIO *b = BIO_new(BIO_s_mem());
+
+    BIO_printf(b, "CA CRL: Issuer: ");
+    X509_NAME_print(b, issuer, 0);
+
+    BIO_printf(b, ", lastUpdate: ");
+    ASN1_UTCTIME_print(b, crl->crl->lastUpdate);
+
+    BIO_printf(b, ", nextUpdate: ");
+    ASN1_UTCTIME_print(b, crl->crl->nextUpdate);
+
+    len = BIO_read(b, buf, sizeof(buf) - 1);
+    buf[strlen(buf)-1] = '\0';
+    buf[len] = '\0';
+
+    BIO_free(b);
+
+    tls_log("%s", buf);
+
+    pubkey = X509_get_pubkey(xs);
+
+    /* Verify the signature on this CRL */
+    if (X509_CRL_verify(crl, pubkey) <= 0) {
+      tls_log("invalid signature on CRL: %s", tls_get_errors());
+      if (pubkey)
+        EVP_PKEY_free(pubkey);
+
       X509_STORE_CTX_set_error(ctx, X509_V_ERR_CRL_SIGNATURE_FAILURE);
       X509_OBJECT_free_contents(&obj);
       return 0;
     }
 
-    /* Check date of CRL to make sure it's not expired
-     */
-    i = X509_cmp_current_time(X509_CRL_get_nextUpdate(crl));
+    if (pubkey)
+      EVP_PKEY_free(pubkey);
 
+    /* Check date of CRL to make sure it's not expired */
+    i = X509_cmp_current_time(X509_CRL_get_nextUpdate(crl));
     if (i == 0) {
-      tls_log("%s", "CRL has invalid nextUpdate field");
+      tls_log("CRL has invalid nextUpdate field: %s", tls_get_errors());
       X509_STORE_CTX_set_error(ctx, X509_V_ERR_ERROR_IN_CRL_NEXT_UPDATE_FIELD);
       X509_OBJECT_free_contents(&obj);
       return 0;
@@ -2622,27 +2679,33 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
    * the current certificate in order to check for revocation.
    */
   memset(&obj, 0, sizeof(obj));
-  X509_STORE_CTX_init(&store_ctx, crl_store, NULL, NULL);
+  if (X509_STORE_CTX_init(&store_ctx, tls_crl_store, NULL, NULL) == 0) {
+    tls_log("error initializing CRL store context: %s", tls_get_errors());
+    return ok;
+  }
+
   rc = X509_STORE_get_by_subject(&store_ctx, X509_LU_CRL, issuer, &obj);
   X509_STORE_CTX_cleanup(&store_ctx);
   crl = obj.data.crl;
 
-  if (rc > 0 && crl != NULL) {
+  if (rc > 0 &&
+      crl != NULL) {
 
-    /* Check if the current certificate is revoked by this CRL
-     */
+    /* Check if the current certificate is revoked by this CRL */
     n = sk_X509_REVOKED_num(X509_CRL_get_REVOKED(crl));
 
     for (i = 0; i < n; i++) {
-      revoked = sk_X509_REVOKED_value(X509_CRL_get_REVOKED(crl), i);
+      ASN1_INTEGER *sn;
 
-      if (ASN1_INTEGER_cmp(revoked->serialNumber,
-          X509_get_serialNumber(xs)) == 0) {
-        long serial = ASN1_INTEGER_get(revoked->serialNumber);
+      revoked = sk_X509_REVOKED_value(X509_CRL_get_REVOKED(crl), i);
+      sn = revoked->serialNumber;
+
+      if (ASN1_INTEGER_cmp(sn, X509_get_serialNumber(xs)) == 0) {
+        long serial = ASN1_INTEGER_get(sn);
         char *cp = tls_x509_name_oneline(issuer);
 
         tls_log("certificate with serial %ld (0x%lX) revoked per CRL from "
-          "issuer %s", serial, serial, cp ? cp : "(ERROR)");
+          "issuer '%s'", serial, serial, cp ? cp : "(ERROR)");
 
         X509_STORE_CTX_set_error(ctx, X509_V_ERR_CERT_REVOKED);
         X509_OBJECT_free_contents(&obj);
@@ -4132,14 +4195,15 @@ static int tls_sess_init(void) {
     return 0;
   }
 
-  if ((tls_cipher_suite = get_param_ptr(main_server->conf,
-      "TLSCipherSuite", FALSE)) == NULL)
+  tls_cipher_suite = get_param_ptr(main_server->conf, "TLSCipherSuite",
+    FALSE);
+  if (tls_cipher_suite == NULL)
     tls_cipher_suite = TLS_DEFAULT_CIPHER_SUITE;
 
   tls_crl_file = get_param_ptr(main_server->conf,
-    "TLSRevocationFile", FALSE);
+    "TLSCARevocationFile", FALSE);
   tls_crl_path = get_param_ptr(main_server->conf, 
-    "TLSRevocationPath", FALSE);
+    "TLSCARevocationPath", FALSE);
 
   tls_dhparam_file = get_param_ptr(main_server->conf,
     "TLSDHParamFile", FALSE);
