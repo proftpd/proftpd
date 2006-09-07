@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.39 2006-09-07 02:47:19 castaglia Exp $
+ * $Id: mod_radius.c,v 1.40 2006-09-07 02:49:52 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9"
@@ -1308,7 +1308,9 @@ static unsigned char *radius_xor(unsigned char *p, unsigned char *q,
   return tmp;
 }
 
-#if !defined(PR_USE_OPENSSL)
+#if defined(PR_USE_OPENSSL)
+# include <openssl/md5.h>
+#else
 /* Built-in MD5 */
 
 /* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991.
@@ -1642,9 +1644,6 @@ static void MD5_memset(unsigned char *output, int value, unsigned int len) {
     ((char *)output)[i] = (char)value;
 }
 #endif
-
-#else
-# include <openssl/md5.h>
 #endif /* !PR_USE_OPENSSL */
 
 /* Logging */
