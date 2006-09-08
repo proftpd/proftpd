@@ -28,7 +28,7 @@
  * ftp://pooh.urbanrage.com/pub/c/.  This module, however, has been written
  * from scratch to implement quotas in a different way.
  *
- * $Id: mod_quotatab.c,v 1.22 2006-06-16 02:22:05 castaglia Exp $
+ * $Id: mod_quotatab.c,v 1.23 2006-09-08 15:46:20 castaglia Exp $
  */
 
 #include "mod_quotatab.h"
@@ -785,7 +785,8 @@ unsigned char quotatab_lookup(quota_tabtype_t tab_type, const char *name,
   if (tab_type == TYPE_TALLY) {
 
     /* Make sure the requested table can do lookups. */
-    if (!tally_tab || !tally_tab->tab_lookup) {
+    if (!tally_tab ||
+        !tally_tab->tab_lookup) {
       errno = EPERM;
       return FALSE;
     }
@@ -795,7 +796,8 @@ unsigned char quotatab_lookup(quota_tabtype_t tab_type, const char *name,
   } else if (tab_type == TYPE_LIMIT) {
 
     /* Make sure the requested table can do lookups. */
-    if (!limit_tab || !limit_tab->tab_lookup) {
+    if (!limit_tab ||
+        !limit_tab->tab_lookup) {
       errno = EPERM;
       return FALSE;
     }
@@ -803,7 +805,7 @@ unsigned char quotatab_lookup(quota_tabtype_t tab_type, const char *name,
     return limit_tab->tab_lookup(limit_tab, name, quota_type);
   }
 
-  /* default */
+  errno = ENOENT;
   return FALSE;
 }
 
@@ -1617,14 +1619,39 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
     }
   }
 
-  /* Check for a limit and a tally entry for this group. */
+  /* Check for a limit and a tally entry for these groups. */
   if (!have_limit_entry) {
-    if (quotatab_lookup(TYPE_LIMIT, session.group, GROUP_QUOTA)) {
-      quotatab_log("found limit entry for group '%s'", session.group);
+    char *group_name = session.group;
+    gid_t group_id = session.gid;
+
+    if (quotatab_lookup(TYPE_LIMIT, group_name, GROUP_QUOTA)) {
+      quotatab_log("found limit entry for group '%s'", group_name);
       have_limit_entry = TRUE;
 
-      if (quotatab_lookup(TYPE_TALLY, session.group, GROUP_QUOTA)) {
-        quotatab_log("found tally entry for group '%s'", session.group);
+    } else {
+      if (session.groups) {
+        register int i = 0;
+
+        char **group_names = session.groups->elts;
+        gid_t *group_ids = session.gids->elts;
+
+        /* Scan the list of supplemental group memberships for this user. */
+        for (i = 0; i < session.groups->nelts-1; i++) {
+          group_name = group_names[i];
+          group_id = group_ids[i];
+
+          if (quotatab_lookup(TYPE_LIMIT, group_name, GROUP_QUOTA)) {
+            quotatab_log("found limit entry for group '%s'", group_name);
+            have_limit_entry = TRUE;
+            break;
+          }
+        }
+      }
+    }
+
+    if (have_limit_entry) {
+      if (quotatab_lookup(TYPE_TALLY, group_name, GROUP_QUOTA)) {
+        quotatab_log("found tally entry for group '%s'", group_name);
         have_quota_entry = TRUE;
       }
 
@@ -1636,11 +1663,11 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
         time_t then;
 
         quotatab_log("ScanOnLogin enabled, scanning current directory '%s' "
-          "for files owned by group '%s'", pr_fs_getcwd(), session.group);
+          "for files owned by group '%s'", pr_fs_getcwd(), group_name);
 
         time(&then);
         if (quotatab_scan_dir(cmd->tmp_pool, pr_fs_getcwd(), -1,
-            session.gid, 0, &byte_count, &file_count) < 0) {
+            group_id, 0, &byte_count, &file_count) < 0) {
           quotatab_log("unable to scan '%s': %s", pr_fs_getcwd(),
             strerror(errno));
 
@@ -1649,7 +1676,7 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
           int files_diff = file_count - quotatab_tally.files_in_used;
 
           quotatab_log("found %0.2lf bytes in %u files for group '%s'",
-            byte_count, file_count, session.group, time(NULL) - then);
+            byte_count, file_count, group_name, time(NULL) - then);
 
           quotatab_log("updating tally (%0.2lf bytes, %d files difference)",
             bytes_diff, files_diff);
