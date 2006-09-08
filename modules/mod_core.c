@@ -25,7 +25,7 @@
  */
 
 /* Core FTPD module
- * $Id: mod_core.c,v 1.288 2006-08-09 15:39:55 castaglia Exp $
+ * $Id: mod_core.c,v 1.289 2006-09-08 16:41:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -48,9 +48,6 @@ extern unsigned int max_connect_interval;
 
 /* From modules/mod_site.c */
 extern modret_t *site_dispatch(cmd_rec*);
-
-/* From src/dirtree.c */
-extern array_header *server_defines;
 
 /* For bytes-retrieving directives */
 #define PR_BYTES_BAD_UNITS	-1
@@ -139,7 +136,7 @@ MODRET start_ifdefine(cmd_rec *cmd) {
     (cmd->argv[1])++;
   }
 
-  defined = define_exists(cmd->argv[1]);
+  defined = pr_define_exists(cmd->argv[1]);
 
   /* Return now if we don't need to consume the <IfDefine> section
    * configuration lines.
@@ -265,17 +262,7 @@ MODRET set_define(cmd_rec *cmd) {
    * CHECK_CONF macro.
    */
 
-  /* If this is the first such definition, allocate an array_header
-   * for the definitions.  Note that this uses the permanent_pool
-   * rather than the containing server's pool so that defined parameters
-   * are properly globally visible.
-   */
-  if (!server_defines)
-    server_defines = make_array(permanent_pool, 0, sizeof(char *));
-
-  *((char **) push_array(server_defines)) = pstrdup(permanent_pool,
-    cmd->argv[1]);
-
+  pr_define_add(cmd->argv[1]);
   return PR_HANDLED(cmd);
 }
 

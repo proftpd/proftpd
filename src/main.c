@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.289 2006-08-02 18:26:16 castaglia Exp $
+ * $Id: main.c,v 1.290 2006-09-08 16:41:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -122,9 +122,6 @@ static char *LastArgv = NULL;
 #endif /* PR_DEVEL_STACK_TRACE */
 
 static const char *PidPath = PR_PID_FILE_PATH;
-
-/* From dirtree.c */
-extern array_header *server_defines;
 
 /* From mod_auth_unix.c */
 extern unsigned char persistent_passwd;
@@ -2787,13 +2784,7 @@ int main(int argc, char *argv[], char **envp) {
         exit(1);
       }
 
-      /* If this is the first time through, allocate an array_header
-       * for these command-line definitions.
-       */
-      if (!server_defines)
-        server_defines = make_array(permanent_pool, 0, sizeof(char *));
-
-      *((char **) push_array(server_defines)) = pstrdup(permanent_pool, optarg);
+      pr_define_add(optarg);
       break;
 
     case 'V':

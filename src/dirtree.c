@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.174 2006-06-15 02:39:55 castaglia Exp $
+ * $Id: dirtree.c,v 1.175 2006-09-08 16:41:54 castaglia Exp $
  */
 
 #include "conf.h"
@@ -63,7 +63,8 @@ static config_rec *_last_param_int = NULL;
 static config_rec *_last_param_ptr = NULL;
 static unsigned char _kludge_disable_umask = 0;
 
-array_header *server_defines = NULL;
+static pool *defines_pool = NULL;
+static array_header *defines_list = NULL;
 
 static pool *config_tab_pool = NULL;
 static pr_table_t *config_tab = NULL;
@@ -491,21 +492,44 @@ unsigned char dir_hide_file(const char *path) {
   return FALSE;	
 }
 
-unsigned char define_exists(const char *definition) {
+static void define_restart_ev(const void *event_data, void *user_data) {
+  if (defines_pool) {
+    destroy_pool(defines_pool);
+    defines_pool = NULL;
+    defines_list = NULL;
+  }
 
-  /* Check the list of specified definitions, if present.
-   */
-  if (server_defines) {
-    char **defines = server_defines->elts;
+  pr_event_unregister(NULL, "core.restart", define_restart_ev);
+}
+
+int pr_define_add(const char *definition) {
+
+  if (!defines_list) {
+    defines_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(defines_pool, "Defines Pool");
+    defines_list = make_array(defines_pool, 0, sizeof(char *));
+
+    pr_event_register(NULL, "core.restart", define_restart_ev, NULL);
+  }
+
+  *((char **) push_array(defines_list)) = pstrdup(defines_pool, definition);
+  return 0;
+}
+
+unsigned char pr_define_exists(const char *definition) {
+
+  if (defines_list) {
+    char **defines = defines_list->elts;
     register unsigned int i = 0;
 
-    for (i = 0; i < server_defines->nelts; i++) {
-      if (defines[i] && !strcmp(defines[i], definition))
+    for (i = 0; i < defines_list->nelts; i++) {
+      if (defines[i] &&
+          strcmp(defines[i], definition) == 0)
         return TRUE;
     }
   }
 
-  /* default */
+  errno = ENOENT;
   return FALSE;
 }
 
