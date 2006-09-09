@@ -66,6 +66,9 @@ Modules included upon request:
     mod_facl
         Handles checking of POSIX ACLs (see README.facl)
 
+    mod_lang
+        Handles the LANG command (see README.NLS)
+
 Contributed ProFTPD Modules (contrib/ subdirectory)
 --------------------------------------------------
 
