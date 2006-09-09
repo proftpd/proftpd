@@ -53,6 +53,8 @@ files.
         whenever a SIGSEGV signal is received.  Very very useful for
         tracking down the cause of a segfault.
 
+      --enable-nls
+
       --with-lastlog[=PATH]
 
         Automatic determination
@@ -61,6 +63,8 @@ files.
   + New modules:
 
       mod_ban
+
+      mod_lang
 
       mod_quotatab_radius
 
@@ -85,4 +89,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-09-07 16:04:10 $
+Last Updated: $Date: 2006-09-09 00:48:27 $
