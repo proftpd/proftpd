@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.780 2006-09-08 16:41:54 castaglia Exp $
+$Id: NEWS,v 1.781 2006-09-11 18:30:05 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -100,6 +100,14 @@ CVS
 - Bug 2825 - SSL/TLS CRLs are not working properly.
 - Bug 2835 - Group quotas not honored for supplemental group membership.
 - Bug 2837 - Defines improperly persist across daemon restarts.
+- Bug 2839 - ProFTPD seems to re-read the file two times in RETR command.
+  The problem was one where sendfile() was being used, and the sendfile()
+  called failed for some reason.  In that case, proftpd would fall back
+  to transmitting the data via normal, non-sendfile() means.  If the
+  sendfile() call had actually sent data to the client already, this
+  fallback attempt would result in the client receiving too much data.
+  Now, if there was an error using sendfile(), proftpd logs the error
+  and considers it a failed transfer due to an I/O error.
 
 1.3.0 - Released 16-Apr-2006
 --------------------------------

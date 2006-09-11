@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.203 2006-06-16 01:40:16 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.204 2006-09-11 18:30:05 castaglia Exp $
  */
 
 #include "conf.h"
@@ -632,7 +632,7 @@ static int transmit_normal(char *buf, long bufsz) {
 
 #ifdef HAVE_SENDFILE
 static int transmit_sendfile(off_t count, off_t *offset,
-    pr_sendfile_t *retval) {
+    pr_sendfile_t *sentlen) {
 
   /* We don't use sendfile() if:
    * - We're using bandwidth throttling.
@@ -650,10 +650,10 @@ static int transmit_sendfile(off_t count, off_t *offset,
     return 0;
 
  retry:
-  *retval = pr_data_sendfile(PR_FH_FD(retr_fh), offset,
+  *sentlen = pr_data_sendfile(PR_FH_FD(retr_fh), offset,
     session.xfer.file_size - count);
 
-  if (*retval == -1) {
+  if (*sentlen == -1) {
     switch (errno) {
       case EAGAIN:
       case EINTR:
@@ -678,10 +678,9 @@ static int transmit_sendfile(off_t count, off_t *offset,
         break;
 
     default:
-      pr_log_pri(PR_LOG_ERR, "transmit_sendfile() error, "
-        "reverting to normal data transmission: [%d] %s", errno,
+      pr_log_pri(PR_LOG_ERR, "error using sendfile(): [%d] %s", errno,
         strerror(errno));
-      return 0;
+      return -1;
     }
   }
 
@@ -708,7 +707,8 @@ static long transmit_data(off_t count, off_t *offset, char *buf, long bufsz) {
 #endif /* TCP_CORK */
 
 #ifdef HAVE_SENDFILE
-  pr_sendfile_t retval;
+  pr_sendfile_t sentlen;
+  int ret;
 #endif /* HAVE_SENDFILE */
 
 #ifdef TCP_CORK
@@ -721,10 +721,24 @@ static long transmit_data(off_t count, off_t *offset, char *buf, long bufsz) {
 #endif /* TCP_CORK */
 
 #ifdef HAVE_SENDFILE
-  if (transmit_sendfile(count, offset, &retval) == 0)
+  ret = transmit_sendfile(count, offset, &sentlen);
+  if (ret > 0) {
+    /* sendfile() was used, so return the value of sentlen. */
+    res = (long) sentlen;
+
+  } else if (ret == 0) {
+    /* sendfile() should not be used for some reason, fallback to using
+     * normal data transmission methods.
+     */
     res = transmit_normal(buf, bufsz);
-  else
-    res = (long) retval;
+
+  } else {
+    /* There was an error with sendfile(); do NOT attempt to re-send the
+     * data using normal data transmission methods.
+     */
+    errno = EIO;
+    res = -1;
+  }
 #else
   res = transmit_normal(buf, bufsz);
 #endif /* HAVE_SENDFILE */
