@@ -46,6 +46,9 @@
 # include <openssl/engine.h>
 #endif
 
+#include <signal.h>
+#include <sys/resource.h>
+
 #ifdef HAVE_MLOCK
 # include <sys/mman.h>
 #endif
@@ -320,6 +323,12 @@ static unsigned long tls_flags = 0UL, tls_opts = 0UL;
 static tls_pkey_t *tls_pkey = NULL;
 static int tls_logfd = -1;
 static char *tls_logname = NULL;
+
+static char *tls_passphrase_provider = NULL;
+#define TLS_PASSPHRASE_TIMEOUT		10
+#define TLS_PASSPHRASE_FL_RSA_KEY	0x0001
+#define TLS_PASSPHRASE_FL_DSA_KEY	0x0002
+
 static char *tls_protocol = TLS_DEFAULT_PROTOCOL;
 static unsigned char tls_required_on_auth = FALSE;
 static unsigned char tls_required_on_ctrl = FALSE;
@@ -524,53 +533,378 @@ static unsigned char tls_check_client_cert(SSL *ssl, conn_t *conn) {
 }
 
 struct tls_pkey_data {
+  server_rec *s;
+  int flags;
   char *buf;
   size_t buflen;
   const char *prompt;
 };
 
-static int tls_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
-  static int need_banner = TRUE;
-  int pwlen = 0;
-  struct tls_pkey_data *pdata = d;
-  register unsigned int attempt;
+static void tls_prepare_provider_fds(int stdout_fd, int stderr_fd) {
+  unsigned long nfiles = 0;
+  register unsigned int i = 0;
+  struct rlimit rlim;
 
-  tls_log("requesting passphrase");
+  if (stdout_fd != STDOUT_FILENO) {
+    if (dup2(stdout_fd, STDOUT_FILENO) < 0)
+      tls_log("error duping fd %d to stdout: %s", stdout_fd, strerror(errno));
 
-  /* Similar to Apache's mod_ssl, we want to be nice, and display an
-   * informative message to the proftpd admin, telling them for what
-   * server they are being requested to provide a passphrase.  
-   */
-
-  if (need_banner) {
-    fprintf(stderr, "\nPlease provide passphrases for these encrypted certificate keys:\n");
-    need_banner = FALSE;
+    close(stdout_fd);
   }
 
-  /* You get three attempts at entering the passphrase correctly. */
-  for (attempt = 0; attempt < 3; attempt++) {
-    int res;
+  if (stderr_fd != STDERR_FILENO) {
+    if (dup2(stderr_fd, STDERR_FILENO) < 0)
+      tls_log("error duping fd %d to stderr: %s", stderr_fd, strerror(errno));
 
-    /* Always handle signals in a loop. */
-    pr_signals_handle();
+    close(stderr_fd);
+  }
 
-    res = EVP_read_pw_string(buf, buflen, pdata->prompt, TRUE);
+  /* Make sure not to pass on open file descriptors. For stdout and stderr,
+   * we dup some pipes, so that we can capture what the command may write
+   * to stdout or stderr.  The stderr output will be logged to the TLSLog.
+   *
+   * First, use getrlimit() to obtain the maximum number of open files
+   * for this process -- then close that number.
+   */
+#if defined(RLIMIT_NOFILE) || defined(RLIMIT_OFILE)
+# if defined(RLIMIT_NOFILE)
+  if (getrlimit(RLIMIT_NOFILE, &rlim) < 0) {
+# elif defined(RLIMIT_OFILE)
+  if (getrlimit(RLIMIT_OFILE, &rlim) < 0) {
+# endif
+    tls_log("getrlimit error: %s", strerror(errno));
 
-    /* A return value of zero from EVP_read_pw_string() means success; -1
-     * means a system error occurred, and 1 means user interaction problems.
+    /* Pick some arbitrary high number. */
+    nfiles = 1024;
+
+  } else
+    nfiles = rlim.rlim_max;
+#else /* no RLIMIT_NOFILE or RLIMIT_OFILE */
+   nfiles = 1024;
+#endif
+
+  /* Close the "non-standard" file descriptors. */
+  for (i = 3; i < nfiles; i++)
+    (void) close(i);
+
+  return;
+}
+
+static void tls_prepare_provider_pipes(int *stdout_pipe, int *stderr_pipe) {
+  if (pipe(stdout_pipe) < 0) {
+    tls_log("error opening stdout pipe: %s", strerror(errno));
+    stdout_pipe[0] = -1;
+    stdout_pipe[1] = STDOUT_FILENO;
+
+  } else {
+    if (fcntl(stdout_pipe[0], F_SETFD, FD_CLOEXEC) < 0)
+      tls_log("error setting close-on-exec flag on stdout pipe read fd: %s",
+        strerror(errno));
+
+    if (fcntl(stdout_pipe[1], F_SETFD, 0) < 0)
+      tls_log("error setting close-on-exec flag on stdout pipe write fd: %s",
+        strerror(errno));
+  }
+
+  if (pipe(stderr_pipe) < 0) {
+    tls_log("error opening stderr pipe: %s", strerror(errno));
+    stderr_pipe[0] = -1;
+    stderr_pipe[1] = STDERR_FILENO;
+
+  } else {
+    if (fcntl(stderr_pipe[0], F_SETFD, FD_CLOEXEC) < 0)
+      tls_log("error setting close-on-exec flag on stderr pipe read fd: %s",
+        strerror(errno));
+
+    if (fcntl(stderr_pipe[1], F_SETFD, 0) < 0)
+      tls_log("error setting close-on-exec flag on stderr pipe write fd: %s",
+        strerror(errno));
+  }
+}
+
+static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
+    int flags) {
+  pid_t pid;
+  int status;
+  int stdout_pipe[2], stderr_pipe[2];
+
+  struct sigaction sa_ignore, sa_intr, sa_quit;
+  sigset_t set_chldmask, set_save;
+
+  /* Prepare signal dispositions. */
+  sa_ignore.sa_handler = SIG_IGN;
+  sigemptyset(&sa_ignore.sa_mask);
+  sa_ignore.sa_flags = 0;
+
+  if (sigaction(SIGINT, &sa_ignore, &sa_intr) < 0)
+    return -1;
+
+  if (sigaction(SIGQUIT, &sa_ignore, &sa_quit) < 0)
+    return -1;
+
+  sigemptyset(&set_chldmask);
+  sigaddset(&set_chldmask, SIGCHLD);
+
+  if (sigprocmask(SIG_BLOCK, &set_chldmask, &set_save) < 0)
+    return -1;
+
+  tls_prepare_provider_pipes(stdout_pipe, stderr_pipe);
+
+  pid = fork();
+  if (pid < 0) {
+    pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": error: unable to fork: %s",
+      strerror(errno));
+    status = -1;
+
+  } else if (pid == 0) {
+    char buf[32] = {'\0'};
+    pool *tmp_pool;
+    char *stdin_argv[4];
+
+    /* Child process */
+
+    /* Note: there is no need to clean up this temporary pool, as we've
+     * forked.  If the exec call succeeds, this child process will exit
+     * normally, and its process space recovered by the OS.  If the exec
+     * call fails, we still exit, and the process space is recovered by
+     * the OS.  Either way, the memory will be cleaned up without need for
+     * us to do it explicitly (unless one wanted to be pedantic about it,
+     * of course).
      */
-    if (res != 0) {
-       fprintf(stderr, "\nPassphrases do not match.  Please try again.\n");
-       continue;
+    tmp_pool = make_sub_pool(s->pool);
+
+    /* Restore previous signal actions. */
+    sigaction(SIGINT, &sa_intr, NULL);
+    sigaction(SIGQUIT, &sa_quit, NULL);
+    sigprocmask(SIG_SETMASK, &set_save, NULL);
+
+    stdin_argv[0] = pstrdup(tmp_pool, tls_passphrase_provider);
+
+    snprintf(buf, sizeof(buf)-1, "%u", s->ServerPort);
+    buf[sizeof(buf)-1] = '\0';
+    stdin_argv[1] = pstrcat(tmp_pool, s->ServerName, ":", buf, NULL);
+
+    stdin_argv[2] = pstrdup(tmp_pool, flags & TLS_PASSPHRASE_FL_RSA_KEY ?
+      "RSA" : "DSA");
+    stdin_argv[3] = NULL;
+
+    PRIVS_ROOT
+
+    pr_log_debug(DEBUG6, MOD_TLS_VERSION
+      ": executing '%s' with uid %lu (euid %lu), gid %lu (egid %lu)",
+      tls_passphrase_provider,
+      (unsigned long) getuid(), (unsigned long) geteuid(),
+      (unsigned long) getgid(), (unsigned long) getegid());
+
+    /* Prepare the file descriptors that the process will inherit. */
+    tls_prepare_provider_fds(stdout_pipe[1], stderr_pipe[1]);
+
+    errno = 0;
+    execv(tls_passphrase_provider, stdin_argv);
+
+    /* Since all previous file descriptors (including those for log files)
+     * have been closed, and root privs have been revoked, there's little
+     * chance of directing a message of execv() failure to proftpd's log
+     * files.  execv() only returns if there's an error; the only way we
+     * can signal this to the waiting parent process is to exit with a
+     * non-zero value (the value of errno will do nicely).
+     */
+
+    exit(errno);
+
+  } else {
+    int res;
+    int maxfd, fds, send_sigterm = 1;
+    fd_set readfds;
+    time_t start_time = time(NULL);
+    struct timeval tv;
+
+    /* Parent process */
+
+    close(stdout_pipe[1]);
+    close(stderr_pipe[1]);
+
+    maxfd = (stderr_pipe[0] > stdout_pipe[0]) ?
+      stderr_pipe[0] : stdout_pipe[0];
+
+    res = waitpid(pid, &status, WNOHANG);
+    while (res <= 0) {
+      if (res < 0) {
+        if (errno != EINTR) {
+          pr_log_debug(DEBUG2, MOD_TLS_VERSION
+            ": passphrase provider error: unable to wait for pid %d: %s",
+            pid, strerror(errno));
+          status = -1;
+          break;
+
+        } else
+          pr_signals_handle();
+      }
+
+      /* Check the time elapsed since we started. */
+      if ((time(NULL) - start_time) > TLS_PASSPHRASE_TIMEOUT) {
+
+        /* Send TERM, the first time, to be polite. */
+        if (send_sigterm) {
+          send_sigterm = 0;
+          pr_log_debug(DEBUG6, MOD_TLS_VERSION
+            ": '%s' has exceeded the timeout (%lu seconds), sending "
+            "SIGTERM (signal %d)", tls_passphrase_provider,
+            (unsigned long) TLS_PASSPHRASE_TIMEOUT, SIGTERM);
+          kill(pid, SIGTERM);
+
+        } else {
+          /* The child is still around?  Terminate with extreme prejudice. */
+          pr_log_debug(DEBUG6, MOD_TLS_VERSION
+            ": '%s' has exceeded the timeout (%lu seconds), sending "
+            "SIGKILL (signal %d)", tls_passphrase_provider,
+            (unsigned long) TLS_PASSPHRASE_TIMEOUT, SIGKILL);
+          kill(pid, SIGKILL);
+        }
+      }
+
+      /* Select on the pipe read fds, to see if the child has anything
+       * to tell us.
+       */
+      FD_ZERO(&readfds);
+
+      FD_SET(stdout_pipe[0], &readfds);
+      FD_SET(stderr_pipe[0], &readfds);
+
+      /* Note: this delay should be configurable somehow. */
+      tv.tv_sec = 2L;
+      tv.tv_usec = 0L;
+
+      fds = select(maxfd + 1, &readfds, NULL, NULL, &tv);
+
+      if (fds == -1 &&
+          errno == EINTR)
+        pr_signals_handle();
+
+      if (fds > 0) {
+        /* The child sent us something.  How thoughtful. */
+
+        if (FD_ISSET(stdout_pipe[0], &readfds)) {
+          res = read(stdout_pipe[0], buf, buflen);
+          if (res > 0) {
+              while (res && (buf[res-1] == '\r' || buf[res-1] == '\n'))
+                res--;
+              buf[res] = '\0';
+
+          } else if (res < 0){
+            pr_log_debug(DEBUG2, MOD_TLS_VERSION
+              ": error reading stdout from '%s': %s",
+              tls_passphrase_provider, strerror(errno));
+          }
+        }
+
+        if (FD_ISSET(stderr_pipe[0], &readfds)) {
+          int stderrlen;
+          char stderrbuf[PIPE_BUF];
+
+          memset(stderrbuf, '\0', sizeof(stderrbuf));
+          stderrlen = read(stderr_pipe[0], stderrbuf, sizeof(stderrbuf)-1);
+          if (stderrlen > 0) {
+            while (stderrlen &&
+                   (stderrbuf[stderrlen-1] == '\r' ||
+                    stderrbuf[stderrlen-1] == '\n'))
+              stderrlen--;
+            stderrbuf[stderrlen] = '\0';
+
+            pr_log_debug(DEBUG5, MOD_TLS_VERSION
+              ": stderr from '%s': %s", tls_passphrase_provider,
+              stderrbuf);
+
+          } else if (res < 0) {
+            pr_log_debug(DEBUG2, MOD_TLS_VERSION
+              ": error reading stderr from '%s': %s",
+              tls_passphrase_provider, strerror(errno));
+          }
+        }
+      }
+
+      res = waitpid(pid, &status, WNOHANG);
+    }
+  }
+
+  /* Restore the previous signal actions. */
+  if (sigaction(SIGINT, &sa_intr, NULL) < 0)
+    return -1;
+
+  if (sigaction(SIGQUIT, &sa_quit, NULL) < 0)
+    return -1; 
+
+  if (sigprocmask(SIG_SETMASK, &set_save, NULL) < 0)
+    return -1;
+
+  if (WIFSIGNALED(status)) {
+    pr_log_debug(DEBUG2, MOD_TLS_VERSION
+      ": '%s' died from signal %d", tls_passphrase_provider,
+      WTERMSIG(status));
+    errno = EPERM;
+    return -1;
+  }
+
+  return 0;
+}
+
+static int tls_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
+  static int need_banner = TRUE;
+  struct tls_pkey_data *pdata = d;
+
+  if (!tls_passphrase_provider) {
+    register unsigned int attempt;
+    int pwlen = 0;
+
+    tls_log("requesting passphrase from admin");
+
+    /* Similar to Apache's mod_ssl, we want to be nice, and display an
+     * informative message to the proftpd admin, telling them for what
+     * server they are being requested to provide a passphrase.  
+     */
+
+    if (need_banner) {
+      fprintf(stderr, "\nPlease provide passphrases for these encrypted certificate keys:\n");
+      need_banner = FALSE;
     }
 
-    pwlen = strlen(buf);
-    if (pwlen < 1)
-      fprintf(stderr, "Error: passphrase must be at least one character\n");
+    /* You get three attempts at entering the passphrase correctly. */
+    for (attempt = 0; attempt < 3; attempt++) {
+      int res;
 
-    else {
+      /* Always handle signals in a loop. */
+      pr_signals_handle();
+
+      res = EVP_read_pw_string(buf, buflen, pdata->prompt, TRUE);
+
+      /* A return value of zero from EVP_read_pw_string() means success; -1
+       * means a system error occurred, and 1 means user interaction problems.
+       */
+      if (res != 0) {
+         fprintf(stderr, "\nPassphrases do not match.  Please try again.\n");
+         continue;
+      }
+
+      pwlen = strlen(buf);
+      if (pwlen < 1)
+        fprintf(stderr, "Error: passphrase must be at least one character\n");
+
+      else {
+        sstrncpy(pdata->buf, buf, pdata->buflen);
+        return pwlen;
+      }
+    }
+
+  } else {
+    tls_log("requesting passphrase from '%s'", tls_passphrase_provider);
+
+    if (tls_exec_passphrase_provider(pdata->s, buf, buflen, pdata->flags) < 0) {
+      tls_log("error obtaining passphrase from '%s': %s",
+        tls_passphrase_provider, strerror(errno));
+
+    } else {
       sstrncpy(pdata->buf, buf, pdata->buflen);
-      return pwlen;
+      return strlen(buf);
     }
   }
 
@@ -584,8 +918,8 @@ static int tls_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
   return -1;
 }
 
-static int tls_get_passphrase(const char *path, const char *prompt, char *buf,
-    size_t buflen) {
+static int tls_get_passphrase(server_rec *s, const char *path,
+    const char *prompt, char *buf, size_t buflen, int flags) {
   FILE *keyf;
   EVP_PKEY *pkey = NULL;
   int prompt_fd = -1;
@@ -602,6 +936,8 @@ static int tls_get_passphrase(const char *path, const char *prompt, char *buf,
     return -1;
   }
 
+  pdata.s = s;
+  pdata.flags = flags;
   pdata.buf = buf;
   pdata.buflen = buflen;
   pdata.prompt = prompt;
@@ -3738,6 +4074,29 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: TLSPassPhraseProvider path */
+MODRET set_tlspassphraseprovider(cmd_rec *cmd) {
+  struct stat st;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  if (*cmd->argv[1] != '/')
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "must be a full path: '",
+      cmd->argv[1], "'", NULL));
+
+  if (stat(cmd->argv[1], &st) < 0)
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error checking '",
+      cmd->argv[1], "': ", strerror(errno), NULL));
+
+  if (!S_ISREG(st.st_mode))
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '",
+      cmd->argv[1], ": Not a regular file", NULL));
+
+  tls_passphrase_provider = pstrdup(permanent_pool, cmd->argv[1]);
+  return PR_HANDLED(cmd);
+}
+
 /* usage: TLSProtocol protocol */
 MODRET set_tlsprotocol(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
@@ -4058,7 +4417,8 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
         exit(1);
       }
 
-      if (tls_get_passphrase(rsa->argv[0], buf, k->rsa_pkey, k->pkeysz) < 0) {
+      if (tls_get_passphrase(s, rsa->argv[0], buf, k->rsa_pkey, k->pkeysz,
+          TLS_PASSPHRASE_FL_RSA_KEY) < 0) {
         tls_log("error reading RSA passphrase: %s",
           ERR_error_string(ERR_get_error(), NULL));
 
@@ -4079,7 +4439,8 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
         exit(1);
       }
 
-      if (tls_get_passphrase(dsa->argv[0], buf, k->dsa_pkey, k->pkeysz) < 0) {
+      if (tls_get_passphrase(s, dsa->argv[0], buf, k->dsa_pkey, k->pkeysz,
+          TLS_PASSPHRASE_FL_DSA_KEY) < 0) {
         tls_log("error reading DSA passphrase: %s",
           ERR_error_string(ERR_get_error(), NULL));
 
@@ -4306,6 +4667,7 @@ static conftable tls_conftab[] = {
   { "TLSEngine",		set_tlsengine,		NULL },
   { "TLSLog",			set_tlslog,		NULL },
   { "TLSOptions",		set_tlsoptions,		NULL },
+  { "TLSPassPhraseProvider",	set_tlspassphraseprovider, NULL },
   { "TLSProtocol",		set_tlsprotocol,	NULL },
   { "TLSRandomSeed",		set_tlsrandseed,	NULL },
   { "TLSRenegotiate",		set_tlsrenegotiate,	NULL },

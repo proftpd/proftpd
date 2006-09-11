@@ -28,6 +28,8 @@ files.
 
       TLSCryptoDevice
 
+      TLSPassPhraseProvider
+
       Trace
 
       TraceLog
@@ -89,4 +91,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-09-09 00:48:27 $
+Last Updated: $Date: 2006-09-11 18:33:43 $

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.781 2006-09-11 18:30:05 castaglia Exp $
+$Id: NEWS,v 1.782 2006-09-11 18:33:43 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -108,6 +108,7 @@ CVS
   fallback attempt would result in the client receiving too much data.
   Now, if there was an error using sendfile(), proftpd logs the error
   and considers it a failed transfer due to an I/O error.
+- Bug 2756 - Support for TLSPassPhraseProvider.
 
 1.3.0 - Released 16-Apr-2006
 --------------------------------
