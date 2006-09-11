@@ -117,12 +117,15 @@ fi
 if test x$prefix = xNONE ; then
   prefix=/usr/local
   bindir=/usr/local/bin
+  datadir=/usr/locale/share
   libexecdir=/usr/local/libexec
   sbindir=/usr/local/sbin
 fi
 
 BINDIR=`eval echo $bindir`
 AC_SUBST(BINDIR)
+DATADIR=`eval echo $datadir`
+AC_SUBST(DATADIR)
 INCLUDEDIR=`eval echo $includedir`
 AC_SUBST(INCLUDEDIR)
 LIBEXECDIR=`eval echo $libexecdir`
@@ -1921,6 +1924,7 @@ test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
 
 AC_DEFINE_UNQUOTED(PR_CONFIG_DIR, "`eval echo "${sysconfdir}"`")
 AC_DEFINE_UNQUOTED(PR_LIBEXEC_DIR, "`eval echo "${libexecdir}"`")
+AC_DEFINE_UNQUOTED(PR_LOCALE_DIR, "`eval echo "${datadir}/locale"`")
 AC_DEFINE_UNQUOTED(PR_RUN_DIR, "`eval echo "${localstatedir}/proftpd"`")
 AC_DEFINE_UNQUOTED(PR_CONFIG_FILE_PATH, "`eval echo "${sysconfdir}/proftpd.conf"`")
 AC_DEFINE_UNQUOTED(PR_PID_FILE_PATH, "`eval echo "${localstatedir}/proftpd.pid"`")

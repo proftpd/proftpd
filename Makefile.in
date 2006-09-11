@@ -68,7 +68,7 @@ ftpwho$(EXEEXT): lib utils
 
 
 # BSD install -d doesn't work, so ...
-$(DESTDIR)$(includedir) $(DESTDIR)$(includedir)/proftpd $(DESTDIR)$(libexecdir) $(DESTDIR)$(localstatedir) $(DESTDIR)$(sysconfdir) $(DESTDIR)$(rundir) $(DESTDIR)$(bindir) $(DESTDIR)$(sbindir) $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/man5 $(DESTDIR)$(mandir)/man8:
+$(DESTDIR)$(datadir) $(DESTDIR)$(datadir)/locale $(DESTDIR)$(includedir) $(DESTDIR)$(includedir)/proftpd $(DESTDIR)$(libexecdir) $(DESTDIR)$(localstatedir) $(DESTDIR)$(sysconfdir) $(DESTDIR)$(rundir) $(DESTDIR)$(bindir) $(DESTDIR)$(sbindir) $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/man5 $(DESTDIR)$(mandir)/man8:
 	@if [ ! -d $@ ]; then \
 		mkdir -p $@; \
 		chown $(INSTALL_USER):$(INSTALL_GROUP) $@; \
@@ -86,6 +86,8 @@ install-proftpd: proftpd $(DESTDIR)$(includedir) $(DESTDIR)$(localstatedir) $(DE
 install-headers: $(DESTDIR)$(includedir)/proftpd
 	$(INSTALL_MAN) config.h $(DESTDIR)$(includedir)/proftpd/config.h
 	cd include/ && $(MAKE) install
+
+install-locales: $(DESTDIR)$(datadir) $(DESTDIR)$(datadir)/locale
 
 install-modules: $(DESTDIR)$(libexecdir)
 	test -z "$(SHARED_MODULE_OBJS)" -a -z "$(SHARED_MODULE_DIRS)" || (cd modules/ && $(MAKE) install)
@@ -116,7 +118,7 @@ install-man: $(DESTDIR)$(mandir) $(DESTDIR)$(mandir)/man1 $(DESTDIR)$(mandir)/ma
 	$(INSTALL_MAN) $(top_srcdir)/utils/ftpwho.1   $(DESTDIR)$(mandir)/man1
 	$(INSTALL_MAN) $(top_srcdir)/src/xferlog.5    $(DESTDIR)$(mandir)/man5
 
-install-all: install-proftpd install-modules install-utils install-conf install-man install-headers $(INSTALL_DEPS)
+install-all: install-proftpd install-modules install-utils install-conf install-man install-headers install-locales $(INSTALL_DEPS)
 
 install: all install-all
 

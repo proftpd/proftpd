@@ -715,6 +715,10 @@
 #undef PR_LIBEXEC_DIR
 #endif /* PR_LIBEXEC_DIR */
 
+#ifndef PR_LOCALE_DIR
+#undef PR_LOCALE_DIR
+#endif /* PR_LOCALE_DIR */
+
 #ifndef PR_RUN_DIR
 #undef PR_RUN_DIR
 #endif /* PR_RUN_DIR */
