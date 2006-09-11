@@ -466,7 +466,7 @@ ac_includes_default="\
 ac_subdirs_all="$ac_subdirs_all lib/libltdl"
 ac_subdirs_all="$ac_subdirs_all $ac_shared_module_dirs"
 ac_subdirs_all="$ac_subdirs_all $ac_static_module_dirs"
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os OSREL OSTYPE CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT SET_MAKE INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA EGREP LN_S ECHO AR ac_ct_AR RANLIB ac_ct_RANLIB STRIP ac_ct_STRIP CPP CXX CXXFLAGS ac_ct_CXX CXXCPP F77 FFLAGS ac_ct_F77 LIBTOOL BINDIR INCLUDEDIR LIBEXECDIR LOCALSTATEDIR PREFIX SBINDIR SYSCONFDIR subdirs install_user install_group ALLOCA GLUE_MODULE_OBJS INSTALL_STRIP INCLTDL INSTALL_DEPS LIB_DEPS LIB_OBJS LIBTOOL_DEPS LIBLTDL MAIN_LDFLAGS MAIN_LIBS MODULE_DEPS MODULE_LDFLAGS SHARED_MODULE_DIRS SHARED_MODULE_OBJS STATIC_MODULE_DIRS STATIC_MODULE_OBJS BUILD_SHARED_MODULE_OBJS BUILD_STATIC_MODULE_OBJS ADDL_DIRS INCLUDES LIBDIRS LIBRARIES CURSES_LIBS VERSION LIBOBJS LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os OSREL OSTYPE CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT SET_MAKE INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA EGREP LN_S ECHO AR ac_ct_AR RANLIB ac_ct_RANLIB STRIP ac_ct_STRIP CPP CXX CXXFLAGS ac_ct_CXX CXXCPP F77 FFLAGS ac_ct_F77 LIBTOOL BINDIR DATADIR INCLUDEDIR LIBEXECDIR LOCALSTATEDIR PREFIX SBINDIR SYSCONFDIR subdirs install_user install_group ALLOCA GLUE_MODULE_OBJS INSTALL_STRIP INCLTDL INSTALL_DEPS LIB_DEPS LIB_OBJS LIBTOOL_DEPS LIBLTDL MAIN_LDFLAGS MAIN_LIBS MODULE_DEPS MODULE_LDFLAGS SHARED_MODULE_DIRS SHARED_MODULE_OBJS STATIC_MODULE_DIRS STATIC_MODULE_OBJS BUILD_SHARED_MODULE_OBJS BUILD_STATIC_MODULE_OBJS ADDL_DIRS INCLUDES LIBDIRS LIBRARIES CURSES_LIBS VERSION LIBOBJS LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -19208,11 +19208,14 @@ fi
 if test x$prefix = xNONE ; then
   prefix=/usr/local
   bindir=/usr/local/bin
+  datadir=/usr/locale/share
   libexecdir=/usr/local/libexec
   sbindir=/usr/local/sbin
 fi
 
 BINDIR=`eval echo $bindir`
+
+DATADIR=`eval echo $datadir`
 
 INCLUDEDIR=`eval echo $includedir`
 
@@ -36598,6 +36601,10 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 cat >>confdefs.h <<_ACEOF
+#define PR_LOCALE_DIR "`eval echo "${datadir}/locale"`"
+_ACEOF
+
+cat >>confdefs.h <<_ACEOF
 #define PR_RUN_DIR "`eval echo "${localstatedir}/proftpd"`"
 _ACEOF
 
@@ -37380,6 +37387,7 @@ s,@FFLAGS@,$FFLAGS,;t t
 s,@ac_ct_F77@,$ac_ct_F77,;t t
 s,@LIBTOOL@,$LIBTOOL,;t t
 s,@BINDIR@,$BINDIR,;t t
+s,@DATADIR@,$DATADIR,;t t
 s,@INCLUDEDIR@,$INCLUDEDIR,;t t
 s,@LIBEXECDIR@,$LIBEXECDIR,;t t
 s,@LOCALSTATEDIR@,$LOCALSTATEDIR,;t t
