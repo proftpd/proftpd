@@ -1,4 +1,4 @@
-<!-- $Id: mod_tls.html,v 1.10 2006-04-17 21:01:43 castaglia Exp $ -->
+<!-- $Id: mod_tls.html,v 1.11 2006-09-11 18:42:38 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_tls.html,v $ -->
 
 <html>
@@ -57,6 +57,7 @@ is based.  His module can be found here:
   <li><a href="#TLSEngine">TLSEngine</a>
   <li><a href="#TLSLog">TLSLog</a>
   <li><a href="#TLSOptions">TLSOptions</a>
+  <li><a href="#TLSPassPhraseProvider">TLSPassPhraseProvider</a>
   <li><a href="#TLSProtocol">TLSProtocol</a>
   <li><a href="#TLSRandomSeed">TLSRandomSeed</a>
   <li><a href="#TLSRenegotiate">TLSRenegotiate</a>
@@ -778,6 +779,42 @@ The currently implemented options are:
 
 <p>
 <hr>
+<h2><a name="TLSPassPhraseProvider">TLSPassPhraseProvider</a></h2>
+<strong>Syntax:</strong> TLSPassPhraseProvider <em>path</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config<br>
+<strong>Module:</strong> mod_tls<br>
+<strong>Compatibility:</strong> 1.3.1rc1 and later
+
+<p>
+The <code>TLSPassPhraseProvider</code> directive is used to specify an
+external program which will be called, when <code>mod_tls</code> starts up,
+for each encrypted certificate key file.  The program will be invoked with
+two command-line arguments, passed on <code>stdin</code> to the program:
+<pre>
+  <em>servername</em>:<em>portnumber</em> "RSA"|"DSA"
+</pre>
+where <code><em>servername</em>:<em>portnumber</em></code> indicates the
+server using that encrypted certificate key, and <code>&quot;RSA&quot;</code>
+or <code>&quot;DSA&quot;</code> indicates the private key algorithm used
+for that key.  The program then must print the corresponding passphrase
+for the key to <code>stdout</code>.
+
+<p>
+The intent is that this external program can perform any security checks
+necessary, to make sure that the system is not compromised by an attacker,
+and only when these checks pass successfully will the passphrase be provided.
+These security checks, and the way the passphrase is determined, can be as
+complex as you like.
+
+<p>
+Example:
+<pre>
+  TLSPassPhraseProvider /etc/ftpd/tls/get-passphrase
+</pre>
+
+<p>
+<hr>
 <h2><a name="TLSProtocol">TLSProtocol</a></h2>
 <strong>Syntax:</strong> TLSProtocol <em>protocol</em><br>
 <strong>Default:</strong> SSLv23<br>
@@ -1134,7 +1171,7 @@ in your <code>configure</i> command, <i>e.g.</i>:
 <p>
 <hr><br>
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2006-04-17 21:01:43 $</i><br>
+Last Updated: <i>$Date: 2006-09-11 18:42:38 $</i><br>
 
 <br><hr>
 
