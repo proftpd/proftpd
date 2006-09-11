@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.5 2006-06-15 01:43:18 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.6 2006-09-11 21:58:22 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -818,8 +818,8 @@ the following <b><i>are not</i></b> accepted:
 <ul>
   <li><code>%{FOOBAR}e</code><br>
     For <code>LogFormat</code>, this logs the content of environment variable
-    &quot;FOOBAR&quot;.  This <b><i>is not</i></b> available in
-    <code>mod_sql</code>.<br>
+    &quot;FOOBAR&quot;.  In a <code>SQLNamedQuery</code> SQL statement,
+    however, environment variables can be referenced using <code>%{env:FOOBAR}</code>.
   </li>
   <br>
 
@@ -1162,7 +1162,7 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2006-06-15 01:43:18 $</i><br>
+Last Updated: <i>$Date: 2006-09-11 21:58:22 $</i><br>
 
 <br><hr>
 
