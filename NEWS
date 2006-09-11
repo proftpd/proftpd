@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.782 2006-09-11 18:33:43 castaglia Exp $
+$Id: NEWS,v 1.783 2006-09-11 21:52:00 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -109,6 +109,10 @@ CVS
   Now, if there was an error using sendfile(), proftpd logs the error
   and considers it a failed transfer due to an I/O error.
 - Bug 2756 - Support for TLSPassPhraseProvider.
+- Bug 2799 - SQLNamedQuery should support environment variables.  SQL
+  queries defined using the SQLNamedQuery directive can now use
+  "%{env:VAR}" to have the environment variable VAR substituted into the
+  query.
 
 1.3.0 - Released 16-Apr-2006
 --------------------------------

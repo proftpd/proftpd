@@ -23,7 +23,7 @@
  * the resulting executable, without including the source code for OpenSSL in
  * the source distribution.
  *
- * $Id: mod_sql.c,v 1.114 2006-09-07 02:53:44 castaglia Exp $
+ * $Id: mod_sql.c,v 1.115 2006-09-11 21:52:00 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1666,7 +1666,37 @@ MODRET sql_post_retr(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
-static char *resolve_tag(cmd_rec *cmd, char tag) {
+static char *resolve_long_tag(cmd_rec *cmd, char *tag) {
+
+#ifdef HAVE_GETENV
+  if (strlen(tag) > 5 &&
+      strncmp(tag, "env:", 4) == 0) {
+    char *env = getenv(tag + 4);
+    if (!env)
+      return NULL;
+
+    return pstrdup(cmd->tmp_pool, env);
+  }
+#endif /* HAVE_GETENV */
+
+  return NULL;
+}
+
+static int resolve_numeric_tag(cmd_rec *cmd, char *tag) {
+  int num;
+  char *endp = NULL;
+
+  num = strtol(tag, &endp, 10);
+  if (*endp != '\0')
+    return -1;
+
+  if (num < 0 || (cmd->argc - 3) < num)
+    return -1;
+
+  return num;
+}
+
+static char *resolve_short_tag(cmd_rec *cmd, char tag) {
   char arg[256] = {'\0'}, *argp;
 
   switch(tag) {
@@ -1968,8 +1998,6 @@ static modret_t *_process_named_query(cmd_rec *cmd, char *name) {
   char *esc_arg = NULL;
   modret_t *mr = NULL;
   int num = 0;
-  char *argc = 0;
-  char *endptr = NULL;
 
   sql_log(DEBUG_FUNC, "%s", ">>> _process_named_query");
 
@@ -1984,6 +2012,8 @@ static modret_t *_process_named_query(cmd_rec *cmd, char *name) {
     outsp = outs;
 
     for (tmp = c->argv[1]; *tmp; ) {
+      char *tag = 0;
+
       if (*tmp == '%') {
         if (*(++tmp) == '{') {
           char *tmp_query;
@@ -1991,19 +2021,45 @@ static modret_t *_process_named_query(cmd_rec *cmd, char *name) {
           if (*tmp != '\0')
             tmp_query = ++tmp;
 
-          /* Find the argument number to use */
+          /* Find the full tag to use */
           while (*tmp && *tmp != '}')
             tmp++;
 
-          argc = pstrndup(cmd->tmp_pool, tmp_query, (tmp - tmp_query));
-          if (argc) {
-            num = strtol(argc, &endptr, 10);
+          tag = pstrndup(cmd->tmp_pool, tmp_query, (tmp - tmp_query));
+          if (tag) {
+            register unsigned int i;
+            size_t taglen = strlen(tag);
+            unsigned char is_numeric_tag = TRUE;
 
-            if (*endptr != '\0' ||
-                num < 0 || 
-                (cmd->argc - 3) < num) {
-              return PR_ERROR_MSG(cmd, MOD_SQL_VERSION,
-                "reference out-of-bounds in query");
+            for (i = 0; i < taglen-1; i++) {
+              if (!isdigit((char) tag[i])) {
+                is_numeric_tag = FALSE;
+                break;
+              }
+            }
+
+            if (is_numeric_tag) {
+              num = resolve_numeric_tag(cmd, tag);
+              if (num < 0) {
+                return PR_ERROR_MSG(cmd, MOD_SQL_VERSION,
+                  "out-of-bounds numeric reference in query");
+              }
+
+              esc_arg = cmd->argv[num+2];
+
+            } else {
+              argp = resolve_long_tag(cmd, tag);
+              if (argp == NULL) {
+                return PR_ERROR_MSG(cmd, MOD_SQL_VERSION,
+                  "malformed reference %{?} in query");
+              }
+
+              mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default",
+                argp), "sql_escapestring");
+              if (check_response(mr) < 0)
+                return PR_ERROR_MSG(cmd, MOD_SQL_VERSION, "database error");
+
+              esc_arg = (char *) mr->data;
             }
 
           } else {
@@ -2011,10 +2067,8 @@ static modret_t *_process_named_query(cmd_rec *cmd, char *name) {
               "malformed reference %{?} in query");
           }
 
-          esc_arg = cmd->argv[num+2];
-
         } else {
-          argp = resolve_tag(cmd, *tmp);
+          argp = resolve_short_tag(cmd, *tmp);
           mr = _sql_dispatch(_sql_make_cmd(cmd->tmp_pool, 2, "default",
             argp), "sql_escapestring");
           if (check_response(mr) < 0)
@@ -2302,7 +2356,7 @@ MODRET info_master(cmd_rec *cmd) {
 	    }
 
 	  } else {
-	    argp = resolve_tag(cmd, *tmp);
+	    argp = resolve_short_tag(cmd, *tmp);
 	  }
 
 	  sstrcat(outs, argp, sizeof(outs));
@@ -2382,7 +2436,7 @@ MODRET info_master(cmd_rec *cmd) {
 	    }
 
 	  } else {
-	    argp = resolve_tag(cmd, *tmp);
+	    argp = resolve_short_tag(cmd, *tmp);
 	  }
 
 	  sstrcat(outs, argp, sizeof(outs));
@@ -2478,7 +2532,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
 	    }
 
 	  } else {
-	    argp = resolve_tag(cmd, *tmp);
+	    argp = resolve_short_tag(cmd, *tmp);
 	  }
 
 	  sstrcat(outs, argp, sizeof(outs));
@@ -2558,7 +2612,7 @@ MODRET errinfo_master(cmd_rec *cmd) {
 	    }
 
 	  } else {
-	    argp = resolve_tag(cmd, *tmp);
+	    argp = resolve_short_tag(cmd, *tmp);
 	  }
 
 	  sstrcat(outs, argp, sizeof(outs));

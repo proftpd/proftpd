@@ -46,6 +46,9 @@ files.
 
       SQLConnectInfo MySQL Unix domain socket
 
+      SQLNamedQuery
+        %{env:VAR}
+
       TLSRequired auth, auth+data
 
   + New configure options:
@@ -91,4 +94,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-09-11 18:33:43 $
+Last Updated: $Date: 2006-09-11 21:52:00 $
