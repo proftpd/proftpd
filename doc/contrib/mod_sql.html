@@ -1,4 +1,4 @@
-<!-- $Id: mod_sql.html,v 1.6 2006-09-11 21:58:22 castaglia Exp $ -->
+<!-- $Id: mod_sql.html,v 1.7 2006-09-12 01:31:59 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/contrib/mod_sql.html,v $ -->
 
 <html>
@@ -56,7 +56,6 @@ The most current version of <code>mod_sql</code> is distributed with ProFTPD.
   <li><a href="#SQLEngine">SQLEngine</a>
   <li><a href="#SQLGroupInfo">SQLGroupInfo</a>
   <li><a href="#SQLGroupWhereClause">SQLGroupWhereClause</a>
-  <li><a href="#SQLHomedirOnDemand">SQLHomedirOnDemand</a>
   <li><a href="#SQLLog">SQLLog</a>
   <li><a href="#SQLLogFile">SQLLogFile</a>
   <li><a href="#SQLMinID">SQLMinID</a>
@@ -609,20 +608,6 @@ would be appended to every group-related query as the string:
 
 <p>
 <hr>
-<h2><a name="SQLHomedirOnDemand">SQLHomedirOnDemand</a></h2>
-<strong>Syntax:</strong> SQLHomedirOnDemand <em>on|off</em><br>
-<strong>Default:</strong> off<br>
-<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
-<strong>Module:</strong> mod_sql<br>
-<strong>Compatibility:</strong> 1.2.0 and later
-
-<p>
-The <code>SQLHomedirOnDemand</code> directive configures <code>mod_sql</code>
-to automatically create a user's home directory if that directory does not
-exist during the login process.
-
-<p>
-<hr>
 <h2><a name="SQLLog">SQLLog</a></h2>
 <strong>Syntax:</strong> SQLLog <em>cmd-set query-name [&quot;IGNORE_ERRORS&quot;]</em><br>
 <strong>Default:</strong> None<br>
@@ -1162,7 +1147,7 @@ Complete the build with the following standard commands:
 <hr><br>
 
 Author: <i>$Author: castaglia $</i><br>
-Last Updated: <i>$Date: 2006-09-11 21:58:22 $</i><br>
+Last Updated: <i>$Date: 2006-09-12 01:31:59 $</i><br>
 
 <br><hr>
 
