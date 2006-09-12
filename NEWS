@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.783 2006-09-11 21:52:00 castaglia Exp $
+$Id: NEWS,v 1.784 2006-09-12 00:48:33 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -113,6 +113,10 @@ CVS
   queries defined using the SQLNamedQuery directive can now use
   "%{env:VAR}" to have the environment variable VAR substituted into the
   query.
+- Bug 2828 - Support variables in SQL Where directives.  Now the variables
+  supported for SQLNamedQuery statements, except for "%{n}" numeric
+  references, are also supported for the SQLWhereClause, SQLGroupWhereClause,
+  and SQLUserWhereClause directives.
 
 1.3.0 - Released 16-Apr-2006
 --------------------------------

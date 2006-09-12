@@ -49,6 +49,9 @@ files.
       SQLNamedQuery
         %{env:VAR}
 
+      SQLWhereClause, SQLGroupWhereClause, SQLUserWhereClause
+        variables except for %{n} numeric references supported
+
       TLSRequired auth, auth+data
 
   + New configure options:
@@ -94,4 +97,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-09-11 21:52:00 $
+Last Updated: $Date: 2006-09-12 00:48:34 $
