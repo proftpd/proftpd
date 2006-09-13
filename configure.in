@@ -2001,7 +2001,9 @@ AC_CONFIG_HEADER(config.h)
 AC_OUTPUT(include/Makefile
           lib/Makefile
           modules/Makefile
-          src/Makefile src/ftpdctl.8 src/proftpd.8 src/xferlog.5
+          po/Makefile
+          src/Makefile
+          src/ftpdctl.8 src/proftpd.8 src/xferlog.5
           utils/Makefile utils/ftpcount.1 utils/ftpshut.8 utils/ftptop.1
             utils/ftpwho.1
           Makefile Make.rules,
