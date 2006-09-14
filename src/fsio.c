@@ -25,7 +25,7 @@
  */
 
 /* ProFTPD virtual/modular file-system support
- * $Id: fsio.c,v 1.52 2006-07-20 02:15:28 castaglia Exp $
+ * $Id: fsio.c,v 1.53 2006-09-14 18:02:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -301,6 +301,7 @@ typedef struct {
   char sc_path[PR_TUNABLE_PATH_MAX+1];
   struct stat sc_stat;
   int sc_errno;
+  int sc_retval;
 
 } fs_statcache_t;
 
@@ -362,7 +363,7 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *sbuf,
     /* Use the cached errno as well */
     errno = statcache.sc_errno;
 
-    return 0;
+    return statcache.sc_retval;
   }
 
   res = mystat(fs, pathbuf, sbuf);
@@ -372,6 +373,7 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *sbuf,
   sstrncpy(statcache.sc_path, pathbuf, sizeof(statcache.sc_path));
   memcpy(&statcache.sc_stat, sbuf, sizeof(struct stat));
   statcache.sc_errno = errno;
+  statcache.sc_retval = res;
 
   return res;
 }

@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.785 2006-09-12 00:51:04 castaglia Exp $
+$Id: NEWS,v 1.786 2006-09-14 18:02:04 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -117,6 +117,8 @@ CVS
   supported for SQLNamedQuery statements, except for "%{n}" numeric
   references, are also supported for the SQLGroupWhereClause and
   SQLUserWhereClause directives.
+- Bug 2842 - Filesystem statcache is not correctly caching return value of
+  stat().
 
 1.3.0 - Released 16-Apr-2006
 --------------------------------
