@@ -41,8 +41,8 @@ modules: include/buildstamp.h dummy
 utils: include/buildstamp.h dummy
 	cd utils/ && $(MAKE) utils
 
-po: include/buildstamp.h dummy
-	cd po/ && $(MAKE) po
+locale: include/buildstamp.h dummy
+	cd locale/ && $(MAKE) locale
 
 dirs: include/buildstamp.h dummy
 	@dirs="$(DIRS)"; \
@@ -51,7 +51,7 @@ dirs: include/buildstamp.h dummy
 	done
 
 
-proftpd$(EXEEXT): lib src modules dirs po
+proftpd$(EXEEXT): lib src modules dirs locale
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(MAIN_LDFLAGS) -o $@ $(BUILD_PROFTPD_OBJS) $(LIBS) $(MAIN_LIBS)
 
 ftpcount$(EXEEXT): utils
@@ -91,7 +91,7 @@ install-headers: $(DESTDIR)$(includedir)/proftpd
 	cd include/ && $(MAKE) install
 
 install-locales: $(DESTDIR)$(datadir) $(DESTDIR)$(datadir)/locale
-	cd po/ && $(MAKE) install
+	cd locale/ && $(MAKE) install
 
 install-modules: $(DESTDIR)$(libexecdir)
 	test -z "$(SHARED_MODULE_OBJS)" -a -z "$(SHARED_MODULE_DIRS)" || (cd modules/ && $(MAKE) install)
@@ -137,7 +137,7 @@ clean:
 	cd modules/ && $(MAKE) clean
 	cd lib/     && $(MAKE) clean
 	cd utils/   && $(MAKE) clean
-	cd po/      && $(MAKE) clean
+	cd locale/  && $(MAKE) clean
 
 	@dirs="$(DIRS)"; \
 	for dir in $$dirs; do \

@@ -2000,8 +2000,8 @@ AC_CONFIG_HEADER(config.h)
 
 AC_OUTPUT(include/Makefile
           lib/Makefile
+          locale/Makefile
           modules/Makefile
-          po/Makefile
           src/Makefile
           src/ftpdctl.8 src/proftpd.8 src/xferlog.5
           utils/Makefile utils/ftpcount.1 utils/ftpshut.8 utils/ftptop.1
