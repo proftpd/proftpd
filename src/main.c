@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.290 2006-09-08 16:41:54 castaglia Exp $
+ * $Id: main.c,v 1.291 2006-09-27 15:58:19 castaglia Exp $
  */
 
 #include "conf.h"
@@ -1699,7 +1699,7 @@ static RETSIGTYPE sig_restart(int signo) {
 
 static RETSIGTYPE sig_evnt(int signo) {
   recvd_signal_flags |= RECEIVED_SIG_EVENT;
-  signal(SIGHUP, sig_evnt);
+  signal(SIGUSR2, sig_evnt);
 }
 
 /* sig_disconnect is called in children when the parent daemon
