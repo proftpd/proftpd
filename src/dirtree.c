@@ -25,7 +25,7 @@
  */
 
 /* Read configuration file(s), and manage server/configuration structures.
- * $Id: dirtree.c,v 1.175 2006-09-08 16:41:54 castaglia Exp $
+ * $Id: dirtree.c,v 1.176 2006-09-29 16:38:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2922,14 +2922,16 @@ int fixup_servers(xaset_t *list) {
           const char *ipstr = pr_netaddr_get_ipstr(elts[i]);
 
 #ifdef PR_USE_IPV6
-          char ipbuf[INET6_ADDRSTRLEN];
-          if (pr_netaddr_get_family(elts[i]) == AF_INET) {
+          if (pr_netaddr_use_ipv6()) {
+            char *ipbuf = pcalloc(s->pool, INET6_ADDRSTRLEN);
+            if (pr_netaddr_get_family(elts[i]) == AF_INET) {
 
-            /* Create the bind record using the IPv4-mapped IPv6 version of
-             * this address.
-             */
-            snprintf(ipbuf, sizeof(ipbuf), "::ffff:%s", ipstr);
-            ipstr = ipbuf;
+              /* Create the bind record using the IPv4-mapped IPv6 version of
+               * this address.
+               */
+              snprintf(ipbuf, sizeof(ipbuf), "::ffff:%s", ipstr);
+              ipstr = ipbuf;
+            }
           }
 #endif /* PR_USE_IPV6 */
 

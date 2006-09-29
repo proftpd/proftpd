@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.291 2006-09-27 15:58:19 castaglia Exp $
+ * $Id: main.c,v 1.292 2006-09-29 16:38:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -2661,6 +2661,10 @@ static struct option_help {
     "Print version number and exit" },
   { "--version-status", "-vv",
     "Print extended version information and exit" },
+  { "--ipv4", "-4",
+    "Support IPv4 connections only" },
+  { "--ipv6", "-6",
+    "Support IPv6 connections" },
   { NULL, NULL, NULL }
 };
 
@@ -2682,7 +2686,7 @@ static void show_usage(int exit_code) {
 
 int main(int argc, char *argv[], char **envp) {
   int optc, show_version = 0;
-  const char *cmdopts = "D:NVc:d:hlnp:qtv";
+  const char *cmdopts = "D:NVc:d:hlnp:qtv46";
   mode_t *main_umask = NULL;
   socklen_t peerlen;
   struct sockaddr peer;
@@ -2766,6 +2770,10 @@ int main(int argc, char *argv[], char **envp) {
    * --configtest
    * -v                 report version number
    * --version
+   * -4                 support IPv4 connections only
+   * --ipv4
+   * -6                 support IPv6 connections
+   * --ipv6
    */
 
   opterr = 0;
@@ -2856,6 +2864,12 @@ int main(int argc, char *argv[], char **envp) {
 
     case 'h':
       show_usage(0);
+
+    case 4:
+      pr_netaddr_disable_ipv6();
+
+    case 6:
+      pr_netaddr_enable_ipv6();
 
     case '?':
       pr_log_pri(PR_LOG_ERR, "unknown option: %c", (char)optopt);

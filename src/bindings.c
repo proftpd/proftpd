@@ -24,7 +24,7 @@
 
 /* Routines to work with ProFTPD bindings
  *
- * $Id: bindings.c,v 1.31 2006-09-07 01:57:23 castaglia Exp $
+ * $Id: bindings.c,v 1.32 2006-09-29 16:38:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -56,10 +56,6 @@ static pr_ipbind_t *ipbind_table[PR_BINDINGS_TABLE_SIZE];
 static pool *binding_pool = NULL;
 static pr_ipbind_t *ipbind_default_server = NULL,
                    *ipbind_localhost_server = NULL;
-
-#ifdef PR_USE_IPV6
-static int ipv6_supported = TRUE;
-#endif /* PR_USE_IPV6 */
 
 /* Server cleanup callback function */
 static void server_cleanup_cb(void *conn) {
@@ -461,7 +457,7 @@ server_rec *pr_ipbind_get_server(pr_netaddr_t *addr, unsigned int port) {
    * loopback address
    */
   if (ipbind_localhost_server &&
-      pr_netaddr_loopback(addr))
+      pr_netaddr_is_loopback(addr))
     return ipbind_localhost_server->ib_server;
 
   return NULL;
@@ -857,7 +853,7 @@ static void init_standalone_bindings(void) {
      */
     if (!SocketBindTight) {
 #ifdef PR_USE_IPV6
-      if (ipv6_supported) {
+      if (pr_netaddr_use_ipv6()) {
         pr_inet_set_default_family(NULL, AF_INET6);
 
       } else {
@@ -904,7 +900,7 @@ static void init_standalone_bindings(void) {
       if (serv->ServerPort) {
         if (!SocketBindTight) {
 #ifdef PR_USE_IPV6
-          if (ipv6_supported) {
+          if (pr_netaddr_use_ipv6()) {
             pr_inet_set_default_family(NULL, AF_INET6);
 
           } else {
@@ -971,7 +967,7 @@ void init_bindings(void) {
   /* Check to see whether we can actually create an IPv6 socket. */
   sock = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
   if (sock < 0) {
-    ipv6_supported = FALSE;
+    pr_netaddr_disable_ipv6();
 
   } else {
     close(sock);

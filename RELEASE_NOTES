@@ -34,6 +34,8 @@ files.
 
       TraceLog
 
+      UseIPv6
+
       UseLastlog
 
       UseUTF8
@@ -97,4 +99,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-09-12 00:51:04 $
+Last Updated: $Date: 2006-09-29 16:38:15 $

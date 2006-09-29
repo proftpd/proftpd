@@ -23,7 +23,7 @@
  */
 
 /* Network address routines
- * $Id: netaddr.c,v 1.55 2006-06-14 17:53:44 castaglia Exp $
+ * $Id: netaddr.c,v 1.56 2006-09-29 16:38:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -42,6 +42,13 @@ static int have_sess_remote_addr = FALSE;
 
 /* Do reverse DNS lookups? */
 static int reverse_dns = 1;
+
+/* Use IPv6? */
+#ifdef PR_USE_IPV6
+static int use_ipv6 = TRUE;
+#else
+static int use_ipv6 = FALSE;
+#endif /* PR_USE_IPV6 */
 
 /* Provide replacements for needed functions. */
 
@@ -276,9 +283,6 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     array_header **addrs) {
 
   struct sockaddr_in v4;
-#ifdef PR_USE_IPV6
-  struct sockaddr_in6 v6;
-#endif /* PR_USE_IPV6 */
   pr_netaddr_t *na = NULL;
   int res;
 
@@ -300,23 +304,26 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
   na = (pr_netaddr_t *) pcalloc(p, sizeof(pr_netaddr_t));
 
 #ifdef PR_USE_IPV6
-  memset(&v6, 0, sizeof(v6));
-  v6.sin6_family = AF_INET6;
+  if (use_ipv6) {
+    struct sockaddr_in6 v6;
+    memset(&v6, 0, sizeof(v6));
+    v6.sin6_family = AF_INET6;
 
 # ifdef SIN6_LEN
-  v6.sin6_len = sizeof(struct sockaddr_in6);
+    v6.sin6_len = sizeof(struct sockaddr_in6);
 # endif /* SIN6_LEN */
 
-  res = pr_inet_pton(AF_INET6, name, &v6.sin6_addr);
-  if (res > 0) {
-    pr_netaddr_set_family(na, AF_INET6);
-    pr_netaddr_set_sockaddr(na, (struct sockaddr *) &v6);
-    if (addrs)
-      *addrs = NULL;
+    res = pr_inet_pton(AF_INET6, name, &v6.sin6_addr);
+    if (res > 0) {
+      pr_netaddr_set_family(na, AF_INET6);
+      pr_netaddr_set_sockaddr(na, (struct sockaddr *) &v6);
+      if (addrs)
+        *addrs = NULL;
 
-    pr_log_debug(DEBUG10, "'%s' resolved to IPv6 address %s", name,
-      pr_netaddr_get_ipstr(na));
-    return na;
+      pr_log_debug(DEBUG10, "'%s' resolved to IPv6 address %s", name,
+        pr_netaddr_get_ipstr(na));
+      return na;
+    }
   }
 #endif /* PR_USE_IPV6 */
 
@@ -385,7 +392,7 @@ pr_netaddr_t *pr_netaddr_get_addr(pool *p, const char *name,
     }
 
 #ifdef PR_USE_IPV6
-    if (addrs) {
+    if (use_ipv6 && addrs) {
       /* Do the call again, this time for IPv6 addresses.
        *
        * We make two separate getaddrinfo(3) calls, rather than one
@@ -470,8 +477,10 @@ int pr_netaddr_set_family(pr_netaddr_t *na, int family) {
 
 #ifdef PR_USE_IPV6
     case AF_INET6:
-      na->na_addr.v6.sin6_family = AF_INET6;
-      break;
+      if (use_ipv6) {
+        na->na_addr.v6.sin6_family = AF_INET6;
+        break;
+      }
 #endif /* PR_USE_IPV6 */
 
     default:
@@ -499,7 +508,8 @@ size_t pr_netaddr_get_sockaddr_len(const pr_netaddr_t *na) {
  
 #ifdef PR_USE_IPV6
     case AF_INET6:
-      return sizeof(struct sockaddr_in6);
+      if (use_ipv6)
+        return sizeof(struct sockaddr_in6);
 #endif /* PR_USE_IPV6 */   
   }
 
@@ -519,7 +529,8 @@ size_t pr_netaddr_get_inaddr_len(const pr_netaddr_t *na) {
 
 #ifdef PR_USE_IPV6
     case AF_INET6:
-      return sizeof(struct in6_addr);
+      if (use_ipv6)
+        return sizeof(struct in6_addr);
 #endif /* PR_USE_IPV6 */
   }
 
@@ -539,7 +550,8 @@ struct sockaddr *pr_netaddr_get_sockaddr(const pr_netaddr_t *na) {
 
 #ifdef PR_USE_IPV6
     case AF_INET6:
-      return (struct sockaddr *) &na->na_addr.v6;
+      if (use_ipv6)
+        return (struct sockaddr *) &na->na_addr.v6;
 #endif /* PR_USE_IPV6 */
   }
 
@@ -561,8 +573,10 @@ int pr_netaddr_set_sockaddr(pr_netaddr_t *na, struct sockaddr *addr) {
 
 #ifdef PR_USE_IPV6
     case AF_INET6:
-      memcpy(&(na->na_addr.v6), addr, sizeof(struct sockaddr_in6));
-      return 0;
+      if (use_ipv6) {
+        memcpy(&(na->na_addr.v6), addr, sizeof(struct sockaddr_in6));
+        return 0;
+      }
 #endif /* PR_USE_IPV6 */
   }
 
@@ -590,12 +604,14 @@ int pr_netaddr_set_sockaddr_any(pr_netaddr_t *na) {
 
 #ifdef PR_USE_IPV6
     case AF_INET6:
-      na->na_addr.v6.sin6_family = AF_INET6;
+      if (use_ipv6) {
+        na->na_addr.v6.sin6_family = AF_INET6;
 #ifdef SIN6_LEN
-      na->na_addr.v6.sin6_len = sizeof(struct sockaddr_in6);
+        na->na_addr.v6.sin6_len = sizeof(struct sockaddr_in6);
 #endif /* SIN6_LEN */
-      memcpy(&na->na_addr.v6.sin6_addr, &in6addr_any, sizeof(struct in6_addr));
-      return 0;
+        memcpy(&na->na_addr.v6.sin6_addr, &in6addr_any, sizeof(struct in6_addr));
+        return 0;
+      }
 #endif /* PR_USE_IPV6 */
   }
 
@@ -615,7 +631,8 @@ void *pr_netaddr_get_inaddr(const pr_netaddr_t *na) {
 
 #ifdef PR_USE_IPV6
     case AF_INET6:
-      return (void *) &na->na_addr.v6.sin6_addr;
+      if (use_ipv6)
+        return (void *) &na->na_addr.v6.sin6_addr;
 #endif /* PR_USE_IPV6 */
   }
 
@@ -635,7 +652,8 @@ unsigned int pr_netaddr_get_port(const pr_netaddr_t *na) {
 
 #ifdef PR_USE_IPV6
     case AF_INET6:
-      return na->na_addr.v6.sin6_port;
+      if (use_ipv6)
+        return na->na_addr.v6.sin6_port;
 #endif /* PR_USE_IPV6 */
   }
 
@@ -656,8 +674,10 @@ int pr_netaddr_set_port(pr_netaddr_t *na, unsigned int port) {
 
 #ifdef PR_USE_IPV6
     case AF_INET6:
-      na->na_addr.v6.sin6_port = port;
-      return 0;
+      if (use_ipv6) {
+        na->na_addr.v6.sin6_port = port;
+        return 0;
+      }
 #endif /* PR_USE_IPV6 */
   }
 
@@ -748,11 +768,13 @@ int pr_netaddr_cmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2) {
 
 #ifdef PR_USE_IPV6
     case AF_INET6:
-      res = memcmp(&a->na_addr.v6.sin6_addr, &b->na_addr.v6.sin6_addr,
-        sizeof(struct in6_addr));
-      if (tmp_pool)
-        destroy_pool(tmp_pool);
-      return res;
+      if (use_ipv6) {
+        res = memcmp(&a->na_addr.v6.sin6_addr, &b->na_addr.v6.sin6_addr,
+          sizeof(struct in6_addr));
+        if (tmp_pool)
+          destroy_pool(tmp_pool);
+        return res;
+      }
 #endif /* PR_USE_IPV6 */
   }
 
@@ -853,15 +875,17 @@ int pr_netaddr_ncmp(const pr_netaddr_t *na1, const pr_netaddr_t *na2,
 
 #ifdef PR_USE_IPV6
     case AF_INET6: {
-      /* Make sure that the given number of bits is not more than supported
-       * for IPv6 addresses (128).
-       */
-      if (bitlen > 128) {
-        errno = EINVAL;
-        return -1;
-      }
+      if (use_ipv6) {
+        /* Make sure that the given number of bits is not more than supported
+         * for IPv6 addresses (128).
+         */
+        if (bitlen > 128) {
+          errno = EINVAL;
+          return -1;
+        }
 
-      break;
+        break;
+      }
     }
 #endif /* PR_USE_IPV6 */
 
@@ -1069,7 +1093,7 @@ const char *pr_netaddr_get_dnsstr(pr_netaddr_t *na) {
 
 #ifdef PR_USE_IPV6
           case AF_INET6:
-            if (family == AF_INET6) {
+            if (use_ipv6 && family == AF_INET6) {
               for (checkaddr = hent->h_addr_list; *checkaddr; ++checkaddr) {
                 if (memcmp(*checkaddr, inaddr, hent->h_length) == 0) {
                   ok = TRUE;
@@ -1130,7 +1154,7 @@ const char *pr_netaddr_get_localaddr_str(pool *p) {
   return NULL;
 }
 
-int pr_netaddr_loopback(const pr_netaddr_t *na) {
+int pr_netaddr_is_loopback(const pr_netaddr_t *na) {
   if (!na) {
     errno = EINVAL;
     return -1;
@@ -1143,7 +1167,6 @@ int pr_netaddr_loopback(const pr_netaddr_t *na) {
 
 #ifdef PR_USE_IPV6
     case AF_INET6:
-
       /* XXX *sigh* Different platforms implement the IN6_IS_ADDR macros
        * differently.  For example, on Linux, those macros expect to operate
        * on s6_addr32, while on Solaris, the macros operate on struct in6_addr.
@@ -1215,7 +1238,11 @@ int pr_netaddr_is_v4mappedv6(const pr_netaddr_t *na) {
       return -1;
 
 #ifdef PR_USE_IPV6
-    case AF_INET6:
+    case AF_INET6: {
+      if (!use_ipv6) {
+        errno = EINVAL;
+        return -1;
+      }
 
 # ifndef LINUX
       return IN6_IS_ADDR_V4MAPPED(
@@ -1224,6 +1251,7 @@ int pr_netaddr_is_v4mappedv6(const pr_netaddr_t *na) {
       return IN6_IS_ADDR_V4MAPPED(
         ((struct in6_addr *) pr_netaddr_get_inaddr(na))->s6_addr32);
 # endif
+    }
 #endif /* PR_USE_IPV6 */
   }
 
@@ -1273,4 +1301,23 @@ void pr_netaddr_set_sess_addrs(void) {
   memset(sess_remote_name, '\0', sizeof(sess_remote_name));
   sstrncpy(sess_remote_name, session.c->remote_name, sizeof(sess_remote_name));
   have_sess_remote_addr = TRUE;
+}
+
+unsigned char pr_netaddr_use_ipv6(void) {
+  if (use_ipv6)
+    return TRUE;
+
+  return FALSE;
+}
+
+void pr_netaddr_disable_ipv6(void) {
+#ifdef PR_USE_IPV6
+  use_ipv6 = 0;
+#endif /* PR_USE_IPV6 */
+}
+
+void pr_netaddr_enable_ipv6(void) {
+#ifdef PR_USE_IPV6
+  use_ipv6 = 1;
+#endif /* PR_USE_IPV6 */
 }

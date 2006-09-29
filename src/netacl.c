@@ -23,7 +23,7 @@
  */
 
 /* Network ACL routines
- * $Id: netacl.c,v 1.12 2006-05-17 16:18:32 castaglia Exp $
+ * $Id: netacl.c,v 1.13 2006-09-29 16:38:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -172,18 +172,20 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
 
 #ifdef PR_USE_IPV6
       case AF_INET6: {
-        if (acl->masklen > 128) {
-          errno = EINVAL;
-          return NULL;
+        if (pr_netaddr_use_ipv6()) {
+          if (acl->masklen > 128) {
+            errno = EINVAL;
+            return NULL;
 
-        } else if (pr_netaddr_is_v4mappedv6(acl->addr) == TRUE &&
-                   acl->masklen > 32) {
-          /* The admin may be trying to use IPv6-style masks on IPv4-mapped
-           * IPv6 addresses, which of course will not work as expected.
-           * If the mask is 32 bits or more, warn the admin.
-           */
-          pr_log_pri(PR_LOG_WARNING, "warning: possibly using IPv6-style netmask on IPv4-mapped IPv6 address, which will not work as expected");
-          break;
+          } else if (pr_netaddr_is_v4mappedv6(acl->addr) == TRUE &&
+                     acl->masklen > 32) {
+            /* The admin may be trying to use IPv6-style masks on IPv4-mapped
+             * IPv6 addresses, which of course will not work as expected.
+             * If the mask is 32 bits or more, warn the admin.
+             */
+            pr_log_pri(PR_LOG_WARNING, "warning: possibly using IPv6-style netmask on IPv4-mapped IPv6 address, which will not work as expected");
+            break;
+          }
         }
       }
 #endif /* PR_USE_IPV6 */
@@ -193,7 +195,7 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
     }
 
 #ifdef PR_USE_IPV6
-  } else if (strspn(aclstr, "0123456789ABCDEFabcdef.:") != strlen(aclstr)) {
+  } else if (pr_netaddr_use_ipv6() && strspn(aclstr, "0123456789ABCDEFabcdef.:") != strlen(aclstr)) {
 #else
   } else if (strspn(aclstr, "0123456789.") != strlen(aclstr)) {
 #endif /* PR_USE_IPV6 */

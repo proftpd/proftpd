@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2005 The ProFTPD Project team
+ * Copyright (c) 2003-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Network address API
- * $Id: netaddr.h,v 1.19 2005-09-19 21:35:38 castaglia Exp $
+ * $Id: netaddr.h,v 1.20 2006-09-29 16:38:15 castaglia Exp $
  */
 
 #ifndef PR_NETADDR_H
@@ -344,13 +344,22 @@ unsigned int pr_netaddr_get_addrno(const pr_netaddr_t *);
 /* Returns TRUE if the given pr_netaddr_t contains a loopback address,
  * FALSE otherwise.
  */
-int pr_netaddr_loopback(const pr_netaddr_t *);
+int pr_netaddr_is_loopback(const pr_netaddr_t *);
 
 /* Returns TRUE if the given pr_netaddr_t is of the AF_INET6 family and
  * contains an IPv4-mapped IPv6 address; otherwise FALSE is returned.  A
  * return value of -1 is used to indicate an error.
  */
 int pr_netaddr_is_v4mappedv6(const pr_netaddr_t *);
+
+/* Returns TRUE if IPv6 support is enabled, FALSE otherwise. */
+unsigned char pr_netaddr_use_ipv6(void);
+
+/* Disables runtime use of IPv6 functionality (assuming IPv6 is supported). */
+void pr_netaddr_disable_ipv6(void);
+
+/* Enables runtime use of IPv6 functionality (assuming IPv6 is supported). */
+void pr_netaddr_enable_ipv6(void);
 
 /* Return pointers to static memory which contains the local and remote
  * netaddr information for the sesssion.  DO NOT MODIFY the pointed-to

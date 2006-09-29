@@ -25,7 +25,7 @@
  */
 
 /* Inet support functions, many wrappers for netdb functions
- * $Id: inet.c,v 1.96 2006-04-20 17:03:32 castaglia Exp $
+ * $Id: inet.c,v 1.97 2006-09-29 16:38:16 castaglia Exp $
  */
 
 #include "conf.h"
@@ -209,7 +209,11 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
      * support is enabled), otherwise use IPv4.
      */
 #ifdef PR_USE_IPV6
-    addr_family = AF_INET6;
+    if (pr_netaddr_use_ipv6())
+      addr_family = AF_INET6;
+
+    else
+      addr_family = AF_INET;
 #else
     addr_family = AF_INET;
 #endif /* PR_USE_IPV6 */
@@ -292,7 +296,8 @@ static conn_t *inet_initialize_connection(pool *p, xaset_t *servers, int fd,
       pr_netaddr_set_sockaddr_any(&na);
 
 #if defined(PR_USE_IPV6) && defined(IPV6_V6ONLY)
-    if (addr_family == AF_INET6) {
+    if (pr_netaddr_use_ipv6() &&
+        addr_family == AF_INET6) {
       int on = 0;
 
 # ifdef SOL_IP
@@ -1007,7 +1012,11 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
   pr_netaddr_clear(&na);
 
 #ifdef PR_USE_IPV6
-  pr_netaddr_set_family(&na, AF_INET6);
+  if (pr_netaddr_use_ipv6())
+    pr_netaddr_set_family(&na, AF_INET6);
+
+  else
+    pr_netaddr_set_family(&na, AF_INET);
 #else
   pr_netaddr_set_family(&na, AF_INET);
 #endif /* PR_USE_IPV6 */
@@ -1032,7 +1041,11 @@ int pr_inet_get_conn_info(conn_t *c, int fd) {
 
   /* "Reset" the pr_netaddr_t struct for the getpeername(2) call. */
 #ifdef PR_USE_IPV6
-  pr_netaddr_set_family(&na, AF_INET6);
+  if (pr_netaddr_use_ipv6())
+    pr_netaddr_set_family(&na, AF_INET6);
+
+  else
+    pr_netaddr_set_family(&na, AF_INET);
 #else
   pr_netaddr_set_family(&na, AF_INET);
 #endif /* PR_USE_IPV6 */

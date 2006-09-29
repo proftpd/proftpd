@@ -86,6 +86,15 @@ the \fBPersistentPasswd\fP directive.
 .TP
 .BI \-l,\--list
 Lists all modules compiled into proftpd.
+.TP
+.BI \-4,\--ipv4
+Support IPv4 functionality \fBonly\fP, regardless of whether the
+\fB--enable-ipv6\fP configure option was used.
+.TP
+.BI \-6,\--ipv6
+Support IPv6 connections and lookup of IPv6 addresses for server DNS names.
+This is enabled by default, if the \fB--enable-ipv6\fP configure option is
+used.
 .SH FILES
 .PD 0
 .B @SBINDIR@/proftpd
