@@ -36,6 +36,23 @@ files.
 
       UseIPv6
 
+        To disable IPv6 support in a running proftpd, you can place:
+
+          UseIPv6 on|off
+
+        at the top of your proftpd.conf.
+
+        Alternatively, there are command-line options for controlling
+        this:
+
+          -4, --ipv4     Support IPv4 functionality only
+          -6, --ipv6     Support IPv6 functionality
+
+        Instead of using the UseIPv6 configuration directive, you can
+        invoke proftpd using the -4 command-line option:
+
+          proftpd -4 ...
+
       UseLastlog
 
       UseUTF8
@@ -99,4 +116,4 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-09-29 16:38:15 $
+Last Updated: $Date: 2006-09-29 16:41:00 $
