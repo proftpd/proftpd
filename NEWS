@@ -1,4 +1,4 @@
-$Id: NEWS,v 1.787 2006-09-29 16:38:15 castaglia Exp $
+$Id: NEWS,v 1.788 2006-10-04 21:06:42 castaglia Exp $
 
 -----------------------------------------------------------------------------
   More details on the bugs listed below can be found by using the bug number
@@ -122,6 +122,8 @@ CVS
 - Bug 2817 - Ability to disable IPv6 support at runtime.  You can now
   configure "UseIPv6 off" in your proftpd.conf to disable IPv6 support
   (assuming proftpd was compiled using --enable-ipv6).
+- Bug 2847 - HiddenStores files not properly removed if data transfer times
+  out.
 
 1.3.0 - Released 16-Apr-2006
 --------------------------------

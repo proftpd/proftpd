@@ -26,7 +26,7 @@
 
 /* Data transfer module for ProFTPD
  *
- * $Id: mod_xfer.c,v 1.204 2006-09-11 18:30:05 castaglia Exp $
+ * $Id: mod_xfer.c,v 1.205 2006-10-04 21:06:42 castaglia Exp $
  */
 
 #include "conf.h"
@@ -864,14 +864,26 @@ static void stor_abort(void) {
   }
 
   if (session.xfer.xfer_type == STOR_HIDDEN) {
-    /* If hidden stor aborted, remove only hidden file, not real one */
-    if (session.xfer.path_hidden)
-      pr_fsio_unlink(session.xfer.path_hidden);
+    delete_stores = get_param_ptr(CURRENT_CONF, "DeleteAbortedStores", FALSE);
+    if (delete_stores != NULL &&
+        *delete_stores == TRUE) {
+      /* If a hidden store was aborted, remove only hidden file, not real
+       * one.
+       */
+      if (session.xfer.path_hidden) {
+        pr_log_debug(DEBUG5, "removing aborted HiddenStores file '%s'",
+          session.xfer.path_hidden);
+        pr_fsio_unlink(session.xfer.path_hidden);
+      }
+    }
 
   } else if (session.xfer.path) {
-    if ((delete_stores = get_param_ptr(CURRENT_CONF, "DeleteAbortedStores",
-        FALSE)) != NULL && *delete_stores == TRUE)
+    delete_stores = get_param_ptr(CURRENT_CONF, "DeleteAbortedStores", FALSE);
+    if (delete_stores != NULL &&
+        *delete_stores == TRUE) {
+      pr_log_debug(DEBUG5, "removing aborted file '%s'", session.xfer.path);
       pr_fsio_unlink(session.xfer.path);
+    }
   }
 
   _log_transfer('i', 'i');
@@ -2528,14 +2540,35 @@ static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
 static void xfer_exit_ev(const void *event_data, void *user_data) {
 
   if (session.sf_flags & SF_XFER) {
-    if (session.xfer.direction == PR_NETIO_IO_RD)
+    if (session.xfer.direction == PR_NETIO_IO_RD) {
        /* An upload is occurring... */
       stor_abort();
 
-    else
+    } else {
       /* A download is occurring... */
       retr_abort();
+    }
   }
+
+  return;
+}
+
+static void xfer_xfer_stalled_ev(const void *event_data, void *user_data) {
+  if (!(session.sf_flags & SF_XFER)) {
+    if (session.xfer.direction == PR_NETIO_IO_RD) {
+      stor_abort();
+
+    } else {
+      retr_abort();
+    }
+  }
+
+  /* The "else" case, for a stalled transfer, will be handled by the
+   * 'core.exit' event handler above.  In that case, a data transfer
+   * _will_ have actually been in progress, whereas in the !SF_XFER
+   * case, the client requested a transfer, but never actually opened
+   * the data connection.
+   */
 
   return;
 }
@@ -2563,8 +2596,8 @@ static int xfer_sess_init(void) {
   config_rec *c = NULL;
 
   /* Check for a server-specific TimeoutNoTransfer */
-  if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutNoTransfer",
-      FALSE)) != NULL)
+  c = find_config(main_server->conf, CONF_PARAM, "TimeoutNoTransfer", FALSE);
+  if (c != NULL)
     TimeoutNoXfer = *((int *) c->argv[0]);
 
   /* Setup TimeoutNoXfer timer */
@@ -2572,8 +2605,8 @@ static int xfer_sess_init(void) {
     pr_timer_add(TimeoutNoXfer, TIMER_NOXFER, &xfer_module, noxfer_timeout_cb);
 
   /* Check for a server-specific TimeoutStalled */
-  if ((c = find_config(main_server->conf, CONF_PARAM, "TimeoutStalled",
-      FALSE)) != NULL)
+  c = find_config(main_server->conf, CONF_PARAM, "TimeoutStalled", FALSE);
+  if (c != NULL)
     TimeoutStalled = *((int *) c->argv[0]);
 
   /* Note: timers for handling TimeoutStalled timeouts are handled in the
@@ -2585,8 +2618,10 @@ static int xfer_sess_init(void) {
   if (c)
     use_sendfile = *((unsigned char *) c->argv[0]);
 
-  /* Exit handler for HiddenStores cleanup */
+  /* Exit handlers for HiddenStores cleanup */
   pr_event_register(&xfer_module, "core.exit", xfer_exit_ev, NULL);
+  pr_event_register(&xfer_module, "core.timeout-stalled",
+    xfer_xfer_stalled_ev, NULL);
 
   pr_event_register(&xfer_module, "core.signal.USR2", xfer_sigusr2_ev,
     NULL);
