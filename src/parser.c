@@ -24,7 +24,7 @@
 
 /*
  * Configuration parser
- * $Id: parser.c,v 1.6 2006-10-05 17:57:39 castaglia Exp $
+ * $Id: parser.c,v 1.7 2006-10-05 18:01:11 castaglia Exp $
  */
 
 #include "conf.h"
@@ -390,6 +390,8 @@ cmd_rec *pr_parser_parse_line(pool *p) {
   while (pr_parser_read_line(buf, sizeof(buf)-1) != NULL) {
     char *bufp = buf;
 
+    pr_signals_handle();
+
     /* Build a new pool for the command structure and array */
     sub_pool = make_sub_pool(p);
     pr_pool_tag(sub_pool, "parser cmd subpool");
@@ -521,7 +523,8 @@ char *pr_parser_read_line(char *buf, size_t bufsz) {
       buflen = strlen(buf);
     }
 
-    while (buflen && buf[buflen - 1] == '\r') {
+    while (buflen &&
+           buf[buflen - 1] == '\r') {
       pr_signals_handle();
 
       buf[buflen - 1] = '\0';
