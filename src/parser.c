@@ -24,7 +24,7 @@
 
 /*
  * Configuration parser
- * $Id: parser.c,v 1.5 2006-04-20 02:28:52 castaglia Exp $
+ * $Id: parser.c,v 1.6 2006-10-05 17:57:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -515,8 +515,18 @@ char *pr_parser_read_line(char *buf, size_t bufsz) {
     parser_curr_lineno = cs->cs_lineno;
 
     /* Trim off the trailing newline, if present. */
-    if (buflen && buf[buflen - 1] == '\n')
+    if (buflen &&
+        buf[buflen - 1] == '\n') {
       buf[buflen - 1] = '\0';
+      buflen = strlen(buf);
+    }
+
+    while (buflen && buf[buflen - 1] == '\r') {
+      pr_signals_handle();
+
+      buf[buflen - 1] = '\0';
+      buflen = strlen(buf);
+    }
 
     /* Advance past any leading whitespace. */
     for (bufp = buf; *bufp && isspace((int) *bufp); bufp++);
