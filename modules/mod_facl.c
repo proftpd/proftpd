@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2005 The ProFTPD Project team
+ * Copyright (c) 2004-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,17 +24,19 @@
 
 /*
  * POSIX ACL checking code (aka POSIX.1e hell)
- * $Id: mod_facl.c,v 1.3 2005-10-26 16:53:04 castaglia Exp $
+ * $Id: mod_facl.c,v 1.4 2006-10-11 16:37:09 castaglia Exp $
  */
 
 #include "conf.h"
 
-#define MOD_FACL_VERSION		"mod_facl/0.2"
+#define MOD_FACL_VERSION		"mod_facl/0.3"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030003
 # error "ProFTPD 1.3.0rc3 or later required"
 #endif
+
+static int facl_engine = TRUE;
 
 #ifdef HAVE_POSIX_ACL
 
@@ -68,14 +70,16 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
    */
   res = acl_get_entry(facl, ACL_FIRST_ENTRY, &ae);
   if (res < 0) {
-    pr_log_debug(DEBUG10, "FS: unable to retrieve first ACL entry for '%s': %s",
-      path, strerror(errno));
+    pr_log_debug(DEBUG10, MOD_FACL_VERSION
+      ": unable to retrieve first ACL entry for '%s': %s", path,
+      strerror(errno));
     errno = EACCES;
     return -1;
   }
 
   if (res == 0) {
-    pr_log_debug(DEBUG3, "FS: ill-formed ACL for '%s' has no entries!", path);
+    pr_log_debug(DEBUG3, MOD_FACL_VERSION
+      ": ill-formed ACL for '%s' has no entries!", path);
     errno = EACCES;
     return -1;
   }
@@ -86,8 +90,8 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 
   while (res > 0) {
     if (acl_get_tag_type(ae, &ae_type) < 0) {
-      pr_log_debug(DEBUG5,
-        "FS: error retrieving type of ACL entry for '%s': %s", path,
+      pr_log_debug(DEBUG5, MOD_FACL_VERSION
+        ": error retrieving type of ACL entry for '%s': %s", path,
         strerror(errno));
       res = acl_get_entry(facl, ACL_NEXT_ENTRY, &ae);
       continue;
@@ -344,50 +348,50 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
       break;
 
     case GRP_ERROR:
-      pr_log_debug(DEBUG3, "FS: ill-formed ACL for '%s': %s", path,
-        "too many GROUP entries");
+      pr_log_debug(DEBUG3, MOD_FACL_VERSION
+        ": ill-formed ACL for '%s': %s", path, "too many GROUP entries");
       errno = EACCES;
       return -1;
 
     case USER_ERROR:
-      pr_log_debug(DEBUG3, "FS: ill-formed ACL for '%s': %s", path,
-        "too many USER entries");
+      pr_log_debug(DEBUG3, MOD_FACL_VERSION
+        ": ill-formed ACL for '%s': %s", path, "too many USER entries");
       errno = EACCES;
       return -1;
 
     case OTHER_ERROR:
-      pr_log_debug(DEBUG3, "FS: ill-formed ACL for '%s': %s", path,
-        "too many OTHER entries");
+      pr_log_debug(DEBUG3, MOD_FACL_VERSION
+        ": ill-formed ACL for '%s': %s", path, "too many OTHER entries");
       errno = EACCES;
       return -1;
 
     case CLASS_ERROR:
-      pr_log_debug(DEBUG3, "FS: ill-formed ACL for '%s': %s", path,
-        "too many CLASS entries");
+      pr_log_debug(DEBUG3, MOD_FACL_VERSION
+        ": ill-formed ACL for '%s': %s", path, "too many CLASS entries");
       errno = EACCES;
       return -1;
 
     case DUPLICATE_ERROR:
-      pr_log_debug(DEBUG3, "FS: ill-formed ACL for '%s': %s", path,
-        "duplicate entries");
+      pr_log_debug(DEBUG3, MOD_FACL_VERSION
+        ": ill-formed ACL for '%s': %s", path, "duplicate entries");
       errno = EACCES;
       return -1;
 
     case MISS_ERROR:
-      pr_log_debug(DEBUG3, "FS: ill-formed ACL for '%s': %s", path,
-        "missing required entry");
+      pr_log_debug(DEBUG3, MOD_FACL_VERSION
+        ": ill-formed ACL for '%s': %s", path, "missing required entry");
       errno = EACCES;
       return -1;
 
     case MEM_ERROR:
-      pr_log_debug(DEBUG3, "FS: ill-formed ACL for '%s': %s", path,
-        "Out of memory!");
+      pr_log_debug(DEBUG3, MOD_FACL_VERSION
+        ": ill-formed ACL for '%s': %s", path, "Out of memory!");
       errno = EACCES;
       return -1;
 
     case ENTRY_ERROR:
-      pr_log_debug(DEBUG3, "FS: ill-formed ACL for '%s': %s", path,
-        "invalid entry type");
+      pr_log_debug(DEBUG3, MOD_FACL_VERSION
+        ": ill-formed ACL for '%s': %s", path, "invalid entry type");
       errno = EACCES;
       return -1;
   }
@@ -596,8 +600,8 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
   acls = acl_get_file(path, ACL_TYPE_ACCESS);
 
   if (!acls) {
-    pr_log_debug(DEBUG10, "FS: unable to retrieve ACL for '%s': %s",
-      path, strerror(errno));
+    pr_log_debug(DEBUG10, MOD_FACL_VERSION
+      ": unable to retrieve ACL for '%s': %s", path, strerror(errno));
     return -1;
   }
 
@@ -605,8 +609,8 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
 
   nents = acl(path, GETACLCNT, 0, NULL);
   if (nents < 0) {
-    pr_log_debug(DEBUG10, "FS: unable to retrieve ACL count for '%s': %s",
-      path, strerror(errno));
+    pr_log_debug(DEBUG10, MOD_FACL_VERSION
+      ": unable to retrieve ACL count for '%s': %s", path, strerror(errno));
     return -1;
   }
 
@@ -614,8 +618,8 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
 
   nents = acl(path, GETACL, nents, acls);
   if (nents < 0) {
-    pr_log_debug(DEBUG10, "FS: unable to retrieve ACL for '%s': %s",
-      path, strerror(errno));
+    pr_log_debug(DEBUG10, MOD_FACL_VERSION
+      ": unable to retrieve ACL for '%s': %s", path, strerror(errno));
     return -1;
   }
 # endif
@@ -639,8 +643,8 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
   acls = acl_get_fd(PR_FH_FD(fh));
 
   if (!acls) {
-    pr_log_debug(DEBUG10, "FS: unable to retrieve ACL for '%s': %s",
-      fh->fh_path, strerror(errno));
+    pr_log_debug(DEBUG10, MOD_FACL_VERSION
+      ": unable to retrieve ACL for '%s': %s", fh->fh_path, strerror(errno));
     return -1;
   }
 
@@ -648,8 +652,9 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
 
   nents = facl(PR_FH_FD(fh), GETACLCNT, 0, NULL);
   if (nents < 0) {
-    pr_log_debug(DEBUG10, "FS: unable to retrieve ACL count for '%s': %s",
-      fh->fh_path, strerror(errno));
+    pr_log_debug(DEBUG10, MOD_FACL_VERSION
+      ": unable to retrieve ACL count for '%s': %s", fh->fh_path,
+      strerror(errno));
     return -1;
   }
 
@@ -657,8 +662,8 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
 
   nents = facl(PR_FH_FD(fh), GETACL, nents, acls);
   if (nents < 0) {
-    pr_log_debug(DEBUG10, "FS: unable to retrieve ACL for '%s': %s",
-      fh->fh_path, strerror(errno));
+    pr_log_debug(DEBUG10, MOD_FACL_VERSION
+      ": unable to retrieve ACL for '%s': %s", fh->fh_path, strerror(errno));
     return -1;
   }
 # endif
@@ -673,7 +678,14 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
 
 static int facl_init(void) {
 #if defined(PR_USE_FACL) && defined(HAVE_POSIX_ACL)
-  pr_fs_t *fs = pr_register_fs(permanent_pool, "facl", "/");
+  pr_fs_t *fs;
+#endif /* PR_USE_FACL and HAVE_POSIX_ACL */
+
+  if (!facl_engine)
+    return 0;
+
+#if defined(PR_USE_FACL) && defined(HAVE_POSIX_ACL)
+  fs = pr_register_fs(permanent_pool, "facl", "/");
   if (!fs) {
     pr_log_pri(PR_LOG_ERR, MOD_FACL_VERSION ": error registering fs: %s",
       strerror(errno));
@@ -689,8 +701,31 @@ static int facl_init(void) {
   return 0;
 }
 
+/* Configuration handlers
+ */
+
+/* usage: FACLEngine on|off */
+MODRET set_faclengine(cmd_rec *cmd) {
+  int bool = -1;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT);
+
+  bool = get_boolean(cmd, 1);
+  if (bool == -1)
+    CONF_ERROR(cmd, "expected Boolean parameter");
+
+  facl_engine = bool;
+  return PR_HANDLED(cmd);
+}
+
 /* Module Tables
  */
+
+static conftable facl_conftab[] = {
+  { "FACLEngine",		set_faclengine,		NULL },
+  { NULL }
+};
 
 module facl_module = {
   /* Always NULL */
@@ -706,7 +741,7 @@ module facl_module = {
   NULL,
 
   /* Module command handlers */
-  NULL,
+  facl_conftab,
 
   /* Module authentication handlers */
   NULL,
