@@ -24,7 +24,7 @@
 
 /*
  * Configuration parser
- * $Id: parser.c,v 1.8 2006-10-13 14:51:58 castaglia Exp $
+ * $Id: parser.c,v 1.9 2006-10-13 14:53:18 castaglia Exp $
  */
 
 #include "conf.h"
@@ -520,7 +520,7 @@ char *pr_parser_read_line(char *buf, size_t bufsz) {
     /* Trim off the trailing newline, if present. */
     if (buflen &&
         buf[buflen - 1] == '\n') {
-      have_eol = TRUe;
+      have_eol = TRUE;
       buf[buflen - 1] = '\0';
       buflen = strlen(buf);
     }
