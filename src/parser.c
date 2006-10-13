@@ -24,7 +24,7 @@
 
 /*
  * Configuration parser
- * $Id: parser.c,v 1.7 2006-10-05 18:01:11 castaglia Exp $
+ * $Id: parser.c,v 1.8 2006-10-13 14:51:58 castaglia Exp $
  */
 
 #include "conf.h"
@@ -511,6 +511,7 @@ char *pr_parser_read_line(char *buf, size_t bufsz) {
   /* Check for error conditions. */
 
   while ((pr_fsio_getline(buf, bufsz, cs->cs_fh, &(cs->cs_lineno))) != NULL) {
+    int have_eol = FALSE;
     char *bufp = NULL;
     size_t buflen = strlen(buf);
 
@@ -519,6 +520,7 @@ char *pr_parser_read_line(char *buf, size_t bufsz) {
     /* Trim off the trailing newline, if present. */
     if (buflen &&
         buf[buflen - 1] == '\n') {
+      have_eol = TRUe;
       buf[buflen - 1] = '\0';
       buflen = strlen(buf);
     }
@@ -526,9 +528,15 @@ char *pr_parser_read_line(char *buf, size_t bufsz) {
     while (buflen &&
            buf[buflen - 1] == '\r') {
       pr_signals_handle();
-
+      have_eol = TRUE;
       buf[buflen - 1] = '\0';
       buflen = strlen(buf);
+    }
+
+    if (!have_eol) {
+      pr_log_pri(PR_LOG_WARNING,
+        "warning: handling possibly truncated configuration data at "
+        "line %u of '%s'", cs->cs_lineno, cs->cs_fh->fh_path);
     }
 
     /* Advance past any leading whitespace. */
