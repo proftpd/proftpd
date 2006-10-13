@@ -24,7 +24,7 @@
 
 /*
  * Configuration parser
- * $Id: parser.c,v 1.9 2006-10-13 14:53:18 castaglia Exp $
+ * $Id: parser.c,v 1.10 2006-10-13 15:00:10 castaglia Exp $
  */
 
 #include "conf.h"
@@ -528,7 +528,6 @@ char *pr_parser_read_line(char *buf, size_t bufsz) {
     while (buflen &&
            buf[buflen - 1] == '\r') {
       pr_signals_handle();
-      have_eol = TRUE;
       buf[buflen - 1] = '\0';
       buflen = strlen(buf);
     }
