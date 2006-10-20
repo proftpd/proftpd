@@ -1,6 +1,6 @@
 /*
  * mod_ldap - LDAP password lookup module for ProFTPD
- * Copyright (c) 1999, 2000-5, John Morrissey <jwm@horde.net>
+ * Copyright (c) 1999, 2000-6, John Morrissey <jwm@horde.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
  */
 
 /*
- * mod_ldap v2.8.17-20060816
+ * mod_ldap v2.8.17-20060915
  *
  * Thanks for patches go to (in alphabetical order):
  *
@@ -48,7 +48,7 @@
  *                                                   LDAPDefaultAuthScheme
  *
  *
- * $Id: mod_ldap.c,v 1.48 2006-09-07 02:56:50 castaglia Exp $
+ * $Id: mod_ldap.c,v 1.49 2006-10-20 02:18:07 jwm Exp $
  * $Libraries: -lldap -llber$
  */
 
@@ -101,6 +101,7 @@
 
 #define HASH_TABLE_SIZE 10
 
+/* FIXME: does proftpd proper have uesr/group caching? remove ours if so? */
 typedef union pr_idauth {
   uid_t uid;
   gid_t gid;
@@ -176,11 +177,13 @@ pr_ldap_set_sizelimit(LDAP *limit_ld, int limit)
 #ifdef LDAP_OPT_SIZELIMIT
   int ret;
   if ((ret = ldap_set_option(limit_ld, LDAP_OPT_SIZELIMIT, (void *)&limit)) != LDAP_OPT_SUCCESS) {
-    pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_set_sizelimit(): ldap_set_option() unable to set query size limit to %d entries: %s", limit, ldap_err2string(ret));
+    pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_set_sizelimit(): ldap_set_option() unable to set query size limit to %d entries: %s", limit, ldap_err2string(ret));
   }
 #else
   limit_ld->ld_sizelimit = limit;
 #endif
+
+  pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": set search size limit to %d", limit);
 }
 
 static void
@@ -189,11 +192,13 @@ pr_ldap_set_dereference(LDAP *deref_ld, int derefopt)
 #ifdef LDAP_OPT_DEREF
   int ret;
   if ((ret = ldap_set_option(ld, LDAP_OPT_DEREF, (void *)&derefopt)) != LDAP_OPT_SUCCESS) {
-    pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_set_dereference(): ldap_set_option() unable to set dereference to %d: %s", derefopt, ldap_err2string(ret));
+    pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_set_dereference(): ldap_set_option() unable to set dereference to %d: %s", derefopt, ldap_err2string(ret));
   }
 #else
   deref_ld->ld_deref = derefopt;
 #endif
+
+  pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": set dereferencing to %d", derefopt);
 }
 
 static void
@@ -202,12 +207,14 @@ pr_ldap_unbind(void)
   int ret;
 
   if (!ld) {
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": not unbinding to an already unbound connection.");
     return;
   }
 
   if ((ret = ldap_unbind_s(ld)) != LDAP_SUCCESS) {
-    pr_log_pri(PR_LOG_NOTICE, "mod_ldap: pr_ldap_unbind(): ldap_unbind() failed: %s", ldap_err2string(ret));
+    pr_log_pri(PR_LOG_NOTICE, MOD_LDAP_VERSION ": pr_ldap_unbind(): ldap_unbind() failed: %s", ldap_err2string(ret));
   }
+  pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": successfully unbound");
 
   ld = NULL;
 }
@@ -218,9 +225,10 @@ pr_ldap_connect(LDAP **conn_ld, int bind)
   int ret, version;
 
   if ((*conn_ld = ldap_init(ldap_server, LDAP_PORT)) == NULL) {
-    pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): ldap_init() to %s failed: %s", ldap_server, strerror(errno));
+    pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_connect(): ldap_init() to %s failed: %s", ldap_server, strerror(errno));
     return -1;
   }
+  pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": connected to %s:%d", ldap_server, LDAP_PORT);
 
   version = -1;
   switch (ldap_protocol_version) {
@@ -233,19 +241,18 @@ pr_ldap_connect(LDAP **conn_ld, int bind)
       break;
   }
 
-  if (version != -1) {
-    if ((ret = ldap_set_option(*conn_ld, LDAP_OPT_PROTOCOL_VERSION, &version)) != LDAP_OPT_SUCCESS) {
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): Setting LDAP version option failed: %s", ldap_err2string(ret));
-      pr_ldap_unbind();
-      return -1;
-    }
+  if ((ret = ldap_set_option(*conn_ld, LDAP_OPT_PROTOCOL_VERSION, &version)) != LDAP_OPT_SUCCESS) {
+    pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_connect(): Setting LDAP version option failed: %s", ldap_err2string(ret));
+    pr_ldap_unbind();
+    return -1;
   }
+  pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": set protocol version to %d", version);
 
 #ifdef USE_LDAP_TLS
   if (ldap_use_tls == 1) {
-    pr_log_debug(DEBUG2, "mod_ldap: Starting TLS for this connection.");
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": starting TLS for this connection.");
     if ((ret = ldap_start_tls_s(*conn_ld, NULL, NULL)) != LDAP_SUCCESS) {
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): Starting TLS failed: %s", ldap_err2string(ret));
+      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_connect(): Starting TLS failed: %s", ldap_err2string(ret));
       pr_ldap_unbind();
       return -1;
     }
@@ -254,9 +261,10 @@ pr_ldap_connect(LDAP **conn_ld, int bind)
 
   if (bind == TRUE) {
     if ((ret = ldap_simple_bind_s(*conn_ld, ldap_dn, ldap_dnpass)) != LDAP_SUCCESS) {
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_connect(): ldap_simple_bind() as %s failed: %s", ldap_dn, ldap_err2string(ret));
+      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_connect(): ldap_simple_bind() as %s failed: %s", ldap_dn, ldap_err2string(ret));
       return -1;
     }
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": successfully bound as %s with password %s", ldap_dn, ldap_dnpass);
   }
 
   pr_ldap_set_sizelimit(*conn_ld, 2);
@@ -264,6 +272,7 @@ pr_ldap_connect(LDAP **conn_ld, int bind)
 
   ldap_querytimeout_tp.tv_sec = (ldap_querytimeout > 0 ? ldap_querytimeout : 5);
   ldap_querytimeout_tp.tv_usec = 0;
+  pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": set query timeout to %ds", ldap_querytimeout);
 
   return 1;
 }
@@ -297,6 +306,7 @@ pr_ldap_generate_filter(pool *p, char *template, const char *entity)
     }
   }
 
+  pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": generated filter %s from template %s and value %s", filter, template, entity);
   return filter;
 }
 
@@ -311,7 +321,7 @@ pr_ldap_user_lookup(pool *p,
   LDAPMessage *result, *e;
 
   if (!basedn) {
-    pr_log_pri(PR_LOG_ERR, "mod_ldap: no LDAP base DN specified for auth/UID lookups, declining request.");
+    pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": no LDAP base DN specified for auth/UID lookups, declining request.");
     return NULL;
   }
 
@@ -329,33 +339,35 @@ pr_ldap_user_lookup(pool *p,
 
   if ((ret = ldap_search_st(ld, basedn, ldap_search_scope, filter, ldap_attrs, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
     if (ret == LDAP_SERVER_DOWN) {
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): LDAP server went away, trying to reconnect");
+      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): LDAP server went away, trying to reconnect");
 
       if (pr_ldap_connect(&ld, TRUE) == -1) {
-        pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): LDAP server went away, unable to reconnect");
+        pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): LDAP server went away, unable to reconnect");
         ld = NULL;
         return NULL;
       }
 
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): Reconnect to LDAP server successful, resuming normal operations");
+      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): Reconnect to LDAP server successful, resuming normal operations");
       if ((ret = ldap_search_st(ld, basedn, ldap_search_scope, filter, ldap_attrs, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
-        pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
+        pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
         return NULL;
       }
     } else {
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
+      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
       return NULL;
     }
   }
+  pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": searched using filter %s", filter);
 
   if (ldap_count_entries(ld, result) > 1) {
-    pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): LDAP search returned multiple entries, aborting query");
+    pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): LDAP search returned multiple entries, aborting query");
     ldap_msgfree(result);
     return NULL;
   }
 
   if ((e = ldap_first_entry(ld, result)) == NULL) {
     ldap_msgfree(result);
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": no entries for filter %s", filter);
     return NULL; /* No LDAP entries for this user */
   }
 
@@ -366,37 +378,43 @@ pr_ldap_user_lookup(pool *p,
   }
 
   while (ldap_attrs[i] != NULL) {
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": fetching value(s) for attr %s", ldap_attrs[i]);
+
     if ((values = ldap_get_values(ld, e, ldap_attrs[i])) == NULL) {
+      pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": no values for attribute %s, trying defaults...", ldap_attrs[i]);
+
       /* Try to fill in default values if there's no value for certain attrs. */
 
       /* If we can't find the [ug]idNumber attrs, just fill the passwd
          struct in with default values from the config file. */
       if (strcasecmp(ldap_attrs[i], ldap_attr_uidnumber) == 0) {
         if (ldap_defaultuid == -1) {
-          pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): no %s attr for DN %s and LDAPDefaultUID was not specified!", (dn = ldap_get_dn(ld, e)), ldap_attr_uidnumber);
+          pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): no %s attr for DN %s and LDAPDefaultUID was not specified!", (dn = ldap_get_dn(ld, e)), ldap_attr_uidnumber);
           free(dn);
           return NULL;
         }
 
         pw->pw_uid = ldap_defaultuid;
         ++i;
+        pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": using default UID %lu", pw->pw_uid);
         continue;
       }
       if (strcasecmp(ldap_attrs[i], ldap_attr_gidnumber) == 0) {
         if (ldap_defaultgid == -1) {
-          pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): no %s attr for DN %s and LDAPDefaultGID was not specified!", (dn = ldap_get_dn(ld, e)), ldap_attr_gidnumber);
+          pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): no %s attr for DN %s and LDAPDefaultGID was not specified!", (dn = ldap_get_dn(ld, e)), ldap_attr_gidnumber);
           free(dn);
           return NULL;
         }
 
         pw->pw_gid = ldap_defaultgid;
         ++i;
+        pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": using default GID %lu", pw->pw_gid);
         continue;
       }
 
       if (strcasecmp(ldap_attrs[i], ldap_attr_homedirectory) == 0) {
         if (!ldap_genhdir || !ldap_genhdir_prefix || !*ldap_genhdir_prefix) {
-          pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): no %s attr for DN %s and LDAPGenerateHomedirPrefix was not enabled!", (dn = ldap_get_dn(ld, e)), ldap_attr_homedirectory);
+          pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): no %s attr for DN %s and LDAPGenerateHomedirPrefix was not enabled!", (dn = ldap_get_dn(ld, e)), ldap_attr_homedirectory);
           free(dn);
           return NULL;
         }
@@ -406,7 +424,7 @@ pr_ldap_user_lookup(pool *p,
         } else {
           char **canon_username;
           if ((canon_username = ldap_get_values(ld, e, ldap_attr_uid)) == NULL) {
-            pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): couldn't get %s attr for canonical username for %s", ldap_attr_uid, (dn = ldap_get_dn(ld, e)));
+            pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): couldn't get %s attr for canonical username for %s", ldap_attr_uid, (dn = ldap_get_dn(ld, e)));
             free(dn);
             return NULL;
           }
@@ -416,6 +434,7 @@ pr_ldap_user_lookup(pool *p,
         }
 
         ++i;
+        pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": using default homedir %s", pw->pw_dir);
         continue;
       }
 
@@ -433,7 +452,7 @@ pr_ldap_user_lookup(pool *p,
        * the attr.
        */
 
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): ldap_get_values() failed on attr %s for DN %s, ignoring request (perhaps this DN's entry does not have the attr?)", ldap_attrs[i], (dn = ldap_get_dn(ld, e)));
+      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): ldap_get_values() failed on attr %s for DN %s, ignoring request (perhaps this DN's entry does not have the attr?)", ldap_attrs[i], (dn = ldap_get_dn(ld, e)));
       free(dn);
       ldap_msgfree(result);
       return NULL;
@@ -463,7 +482,7 @@ pr_ldap_user_lookup(pool *p,
     } else if (strcasecmp(ldap_attrs[i], ldap_attr_homedirectory) == 0) {
       if (ldap_forcegenhdir) {
         if (!ldap_genhdir || !ldap_genhdir_prefix || !*ldap_genhdir_prefix) {
-          pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): LDAPForceGeneratedHomedir is enabled, but LDAPGenerateHomedir is not.");
+          pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): LDAPForceGeneratedHomedir is enabled, but LDAPGenerateHomedir is not.");
           return NULL;
         }
 
@@ -472,7 +491,7 @@ pr_ldap_user_lookup(pool *p,
         } else {
           char **canon_username;
           if ((canon_username = ldap_get_values(ld, e, ldap_attr_uid)) == NULL) {
-            pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_user_lookup(): couldn't get %s attr for canonical username for %s", ldap_attr_uid, (dn = ldap_get_dn(ld, e)));
+            pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): couldn't get %s attr for canonical username for %s", ldap_attr_uid, (dn = ldap_get_dn(ld, e)));
             free(dn);
             return NULL;
           }
@@ -486,7 +505,7 @@ pr_ldap_user_lookup(pool *p,
     } else if (strcasecmp(ldap_attrs[i], ldap_attr_loginshell) == 0) {
       pw->pw_shell = pstrdup(session.pool, values[0]);
     } else {
-      pr_log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_user_lookup(): ldap_get_values() loop found unknown attr %s", ldap_attrs[i]);
+      pr_log_pri(PR_LOG_WARNING, MOD_LDAP_VERSION ": pr_ldap_user_lookup(): ldap_get_values() loop found unknown attr %s", ldap_attrs[i]);
     }
 
     ldap_value_free(values);
@@ -501,6 +520,9 @@ pr_ldap_user_lookup(pool *p,
   }
 
   ldap_msgfree(result);
+  pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": "
+    "user %s, uid %lu, gid %lu, homedir %s, shell %s",
+    pw->pw_name, pw->pw_uid, pw->pw_gid, pw->pw_dir, pw->pw_shell);
   return pw;
 }
 
@@ -514,7 +536,7 @@ pr_ldap_group_lookup(pool *p,
   LDAPMessage *result, *e;
 
   if (!ldap_gid_basedn) {
-    pr_log_pri(PR_LOG_ERR, "mod_ldap: no LDAP base DN specified for GID lookups");
+    pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": no LDAP base DN specified for GID lookups");
     return NULL;
   }
 
@@ -532,25 +554,27 @@ pr_ldap_group_lookup(pool *p,
 
   if ((ret = ldap_search_st(ld, ldap_gid_basedn, ldap_search_scope, filter, ldap_attrs, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
     if (ret == LDAP_SERVER_DOWN) {
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_group_lookup(): LDAP server went away, trying to reconnect");
+      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_group_lookup(): LDAP server went away, trying to reconnect");
 
       if (pr_ldap_connect(&ld, TRUE) != -1) {
         if ((ret = ldap_search_st(ld, ldap_gid_basedn, ldap_search_scope, filter, ldap_attrs, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
-          pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_group_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
+          pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_group_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
           return NULL;
         }
       } else { /* Still can't connect */
-        pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_group_lookup(): LDAP server went away, unable to reconnect");
+        pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_group_lookup(): LDAP server went away, unable to reconnect");
         return NULL;
       }
     } else {
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_group_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
+      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_group_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
       return NULL;
     }
   }
+  pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": searched using filter %s", filter);
 
   if ((e = ldap_first_entry(ld, result)) == NULL) {
     ldap_msgfree(result);
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": no entries for filter %s", filter);
     return NULL; /* No LDAP entries for this user */
   }
 
@@ -561,6 +585,8 @@ pr_ldap_group_lookup(pool *p,
   }
 
   while (ldap_attrs[i] != NULL) {
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": fetching value(s) for attr %s", ldap_attrs[i]);
+
     if ((values = ldap_get_values(ld, e, ldap_attrs[i])) == NULL) {
       if (strcasecmp(ldap_attrs[i], ldap_attr_memberuid) == 0) {
         gr->gr_mem = palloc(session.pool, 2 * sizeof(char *));
@@ -572,7 +598,7 @@ pr_ldap_group_lookup(pool *p,
       }
 
       ldap_msgfree(result);
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_group_lookup(): ldap_get_values() failed on attr %s for DN %s, ignoring request (perhaps that DN does not have that attr?)", ldap_attrs[i], (dn = ldap_get_dn(ld, e)));
+      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_group_lookup(): ldap_get_values() failed on attr %s for DN %s, ignoring request (perhaps that DN does not have that attr?)", ldap_attrs[i], (dn = ldap_get_dn(ld, e)));
       free(dn);
       return NULL;
     }
@@ -588,7 +614,7 @@ pr_ldap_group_lookup(pool *p,
       for (value_offset = 0; value_offset < value_count; ++value_offset)
         gr->gr_mem[value_offset] = pstrdup(session.pool, values[value_offset]);
     } else {
-      pr_log_pri(PR_LOG_WARNING, "mod_ldap: pr_ldap_group_lookup(): ldap_get_values() loop found unknown attr %s", ldap_attrs[i]);
+      pr_log_pri(PR_LOG_WARNING, MOD_LDAP_VERSION ": pr_ldap_group_lookup(): ldap_get_values() loop found unknown attr %s", ldap_attrs[i]);
     }
 
     ldap_value_free(values);
@@ -596,6 +622,9 @@ pr_ldap_group_lookup(pool *p,
   }
 
   ldap_msgfree(result);
+  /* FIXME: member logging. */
+  pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": "
+    "group %s, gid %lu", gr->gr_name, gr->gr_gid);
   return gr;
 }
 
@@ -614,6 +643,7 @@ parse_quota(pool *p, const char *replace, char *str)
   while ((token = strsep(&str, ","))) {
     *((char **)push_array(cached_quota)) = pstrdup(session.pool, token);
   }
+  pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": parsed quota %s", str);
 }
 
 static unsigned char
@@ -625,7 +655,7 @@ pr_ldap_quota_lookup(pool *p, char *filter_template, const char *replace,
   LDAPMessage *result, *e;
 
   if (!basedn) {
-    pr_log_pri(PR_LOG_ERR, "mod_ldap: no LDAP base DN specified for auth/UID lookups, declining request.");
+    pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": no LDAP base DN specified for auth/UID lookups, declining request.");
     return FALSE;
   }
 
@@ -643,27 +673,28 @@ pr_ldap_quota_lookup(pool *p, char *filter_template, const char *replace,
 
   if ((ret = ldap_search_st(ld, basedn, ldap_search_scope, filter, attrs, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
     if (ret == LDAP_SERVER_DOWN) {
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): LDAP server went away, trying to reconnect");
+      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_quota_lookup(): LDAP server went away, trying to reconnect");
 
       if (pr_ldap_connect(&ld, TRUE) == -1) {
-        pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): LDAP server went away, unable to reconnect");
+        pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_quota_lookup(): LDAP server went away, unable to reconnect");
         ld = NULL;
         return FALSE;
       }
 
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): Reconnect to LDAP server successful, resuming normal operations");
+      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_quota_lookup(): Reconnect to LDAP server successful, resuming normal operations");
       if ((ret = ldap_search_st(ld, basedn, ldap_search_scope, filter, attrs, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
-        pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
+        pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_quota_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
         return FALSE;
       }
     } else {
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
+      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_quota_lookup(): ldap_search_st() failed: %s", ldap_err2string(ret));
       return FALSE;
     }
   }
+  pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": searched using filter %s", filter);
 
   if (ldap_count_entries(ld, result) > 1) {
-    pr_log_pri(PR_LOG_ERR, "mod_ldap: pr_ldap_quota_lookup(): LDAP search returned multiple entries, aborting query");
+    pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": pr_ldap_quota_lookup(): LDAP search returned multiple entries, aborting query");
     ldap_msgfree(result);
     if (ldap_default_quota != NULL) {
       parse_quota(p, replace, pstrdup(p, ldap_default_quota));
@@ -675,8 +706,11 @@ pr_ldap_quota_lookup(pool *p, char *filter_template, const char *replace,
   if ((e = ldap_first_entry(ld, result)) == NULL) {
     ldap_msgfree(result);
     if (ldap_default_quota != NULL) {
+      pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": no entries for filter %s, using default quota %s", filter, ldap_default_quota);
       parse_quota(p, replace, pstrdup(p, ldap_default_quota));
       return TRUE;
+    } else {
+      pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": no entries for filter %s, and no default quota defined", filter);
     }
     return FALSE; /* No LDAP entries for this user. */
   }
@@ -684,8 +718,11 @@ pr_ldap_quota_lookup(pool *p, char *filter_template, const char *replace,
   if ((values = ldap_get_values(ld, e, attrs[0])) == NULL) {
     ldap_msgfree(result);
     if (ldap_default_quota != NULL) {
+      pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": no %s attribute, using default quota %s", attrs[0], ldap_default_quota);
       parse_quota(p, replace, pstrdup(p, ldap_default_quota));
       return TRUE;
+    } else {
+      pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": no %s attribute, and no default quota defined", attrs[0]);
     }
     return FALSE; /* No quota attr for this user. */
   }
@@ -851,6 +888,8 @@ handle_ldap_quota_lookup(cmd_rec *cmd)
     {
       return PR_DECLINED(cmd);
     }
+  } else {
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": returning cached quota for %s", cmd->argv[0]);
   }
 
   return mod_create_data(cmd, cached_quota);
@@ -904,6 +943,7 @@ handle_ldap_getpwnam(cmd_rec *cmd)
   }
 
   if (pw && pw->pw_name && strcasecmp(pw->pw_name, cmd->argv[0]) == 0) {
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": getpwnam: returning cached data for %s", pw->pw_name);
     return mod_create_data(cmd, pw);
   }
 
@@ -922,6 +962,7 @@ handle_ldap_getgrnam(cmd_rec *cmd)
   }
 
   if (gr && strcasecmp(gr->gr_name, cmd->argv[0]) == 0) {
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": getgrnam: returning cached data for %s", gr->gr_name);
     return mod_create_data(cmd, gr);
   }
   if ((gr = pr_ldap_getgrnam(cmd->tmp_pool, cmd->argv[0]))) {
@@ -939,6 +980,7 @@ handle_ldap_getgrgid(cmd_rec *cmd)
   }
 
   if (gr && gr->gr_gid == (gid_t)cmd->argv[0]) {
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": getgrgid: returning cached data for %lu", gr->gr_gid);
     return mod_create_data(cmd, gr);
   }
   if ((gr = pr_ldap_getgrgid(cmd->tmp_pool, (gid_t)cmd->argv[0]))) {
@@ -970,13 +1012,16 @@ handle_ldap_getgroups(cmd_rec *cmd)
 
   if ((pw = pr_ldap_getpwnam(cmd->tmp_pool, cmd->argv[0]))) {
     if ((gr = pr_ldap_getgrgid(cmd->tmp_pool, pw->pw_gid))) {
+      pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": adding user %s primary group %s/%lu", pw->pw_name, gr->gr_name, pw->pw_gid);
       *((gid_t *) push_array(gids))   = pw->pw_gid;
       *((char **) push_array(groups)) = pstrdup(session.pool, gr->gr_name);
+    } else {
+      pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": couldn't determine group name for user %s primary group %lu, skipping.", pw->pw_name, pw->pw_gid);
     }
   }
 
   if (!ldap_gid_basedn) {
-    pr_log_pri(PR_LOG_ERR, "mod_ldap: no LDAP base DN specified for GID lookups");
+    pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": no LDAP base DN specified for GID lookups");
     goto return_groups;
   }
 
@@ -996,41 +1041,44 @@ handle_ldap_getgroups(cmd_rec *cmd)
   pr_ldap_set_sizelimit(ld, 0);
   if ((ret = ldap_search_st(ld, ldap_gid_basedn, ldap_search_scope, filter, w, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
     if (ret == LDAP_SERVER_DOWN) {
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): LDAP server went away, trying to reconnect");
+      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": ldap_handle_getgroups(): LDAP server went away, trying to reconnect");
 
       if (pr_ldap_connect(&ld, TRUE) != -1) {
         if ((ret = ldap_search_st(ld, ldap_gid_basedn, ldap_search_scope, filter, w, 0, &ldap_querytimeout_tp, &result)) != LDAP_SUCCESS) {
-          pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): ldap_search_st() failed: %s", ldap_err2string(ret));
+          pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": ldap_handle_getgroups(): ldap_search_st() failed: %s", ldap_err2string(ret));
           goto return_groups;
         }
       } else {
-        pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): LDAP server went away, unable to reconnect");
+        pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": ldap_handle_getgroups(): LDAP server went away, unable to reconnect");
         goto return_groups;
       }
     } else {
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): ldap_search_st() failed: %s", ldap_err2string(ret));
+      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": ldap_handle_getgroups(): ldap_search_st() failed: %s", ldap_err2string(ret));
       goto return_groups;
     }
   }
+  pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": searched using filter %s", filter);
   pr_ldap_set_sizelimit(ld, 2);
 
   if (ldap_count_entries(ld, result) == 0) {
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": no entries for filter %s", filter);
     goto return_groups;
   }
 
   for (e = ldap_first_entry(ld, result); e; e = ldap_next_entry(ld, e)) {
     if (! (gidNumber = ldap_get_values(ld, e, w[0]))) {
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): ldap_get_values() on %s attr failed, skipping current group: %s", ldap_err2string(ret), ldap_attr_gidnumber);
+      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": ldap_handle_getgroups(): ldap_get_values() on %s attr failed, skipping current group: %s", ldap_err2string(ret), ldap_attr_gidnumber);
       continue;
     }
     if (! (cn = ldap_get_values(ld, e, w[1]))) {
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: ldap_handle_getgroups(): ldap_get_values() on %s attr failed, skipping current group: %s", ldap_err2string(ret), ldap_attr_cn);
+      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": ldap_handle_getgroups(): ldap_get_values() on %s attr failed, skipping current group: %s", ldap_err2string(ret), ldap_attr_cn);
       continue;
     }
 
     if (!pw || strtoul(gidNumber[0], (char **)NULL, 10) != pw->pw_gid) {
       *((gid_t *) push_array(gids))   = strtoul(gidNumber[0], (char **)NULL, 10);
       *((char **) push_array(groups)) = pstrdup(session.pool, cn[0]);
+      pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": added user %s secondary group %s/%s", pw->pw_name, cn[0], gidNumber[0]);
     }
 
     ldap_value_free(gidNumber);
@@ -1078,7 +1126,7 @@ handle_ldap_is_auth(cmd_rec *cmd)
   /* If we don't have a cached entry, or if the cached entry isn't for this
    * user, fetch the entry.
    */
-  if (!pw || (pw && pw->pw_name && strcasecmp(pw->pw_name, username) != 0))
+  if (!pw || (pw && pw->pw_name && strcasecmp(pw->pw_name, username) != 0)) {
     if ((pw = pr_ldap_user_lookup(cmd->tmp_pool, ldap_auth_filter, username,
                                   pr_ldap_generate_filter(cmd->tmp_pool, ldap_auth_basedn, username),
                                   ldap_authbinds ? pass_attrs + 1 : pass_attrs,
@@ -1086,8 +1134,12 @@ handle_ldap_is_auth(cmd_rec *cmd)
     {
       return PR_DECLINED(cmd); /* Can't find the user in the LDAP directory. */
     }
+  } else {
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": auth: using cached data for %s", pw->pw_name);
+  }
 
   if (!ldap_authbinds && !pw->pw_passwd) {
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": LDAPAuthBinds is not enabled, and couldn't fetch a password for %s", pw->pw_name);
     return PR_ERROR_INT(cmd, PR_AUTH_NOPWD);
   }
 
@@ -1100,8 +1152,9 @@ handle_ldap_is_auth(cmd_rec *cmd)
    * mod_auth_unix will happily deny auth to.
    */
   if (pr_auth_check(cmd->tmp_pool, ldap_authbinds ? "*" : pw->pw_passwd,
-                 username, cmd->argv[1]))
+                    username, cmd->argv[1]))
   {
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": bad password for %s", pw->pw_name);
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
@@ -1154,6 +1207,7 @@ handle_ldap_check(cmd_rec *cmd)
     if ( (pass == NULL) || (strlen(pass) == 0) ||
          (ldap_authbind_dn == NULL) || (strlen(ldap_authbind_dn) == 0))
     {
+      pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": check: LDAPAuthBinds is not enabled, and couldn't fetch a password for the current user");
       return PR_DECLINED(cmd);
     }
     if (cryptpass != NULL && strlen(cryptpass) > 0 &&
@@ -1163,14 +1217,15 @@ handle_ldap_check(cmd_rec *cmd)
     }
 
     if (pr_ldap_connect(&ld_auth, FALSE) == -1) {
-      pr_log_pri(PR_LOG_ERR, "mod_ldap: handle_ldap_check(): pr_ldap_connect() failed");
+      pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": handle_ldap_check(): pr_ldap_connect() failed");
       return PR_DECLINED(cmd);
     }
 
     if ((ret = ldap_simple_bind_s(ld_auth, ldap_authbind_dn, cmd->argv[2])) != LDAP_SUCCESS) {
       if (ret != LDAP_INVALID_CREDENTIALS) {
-        pr_log_pri(PR_LOG_ERR, "mod_ldap: handle_ldap_check(): pr_ldap_connect() failed: %s", ldap_err2string(ret));
+        pr_log_pri(PR_LOG_ERR, MOD_LDAP_VERSION ": handle_ldap_check(): pr_ldap_connect() failed: %s", ldap_err2string(ret));
       }
+      pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": invalid credentials for %s", ldap_authbind_dn);
       ldap_unbind(ld_auth);
       return PR_ERROR(cmd);
     }
@@ -1209,7 +1264,7 @@ handle_ldap_check(cmd_rec *cmd)
   }
 #if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
   else { /* Try the cipher mode found */
-    pr_log_debug(DEBUG5, "mod_ldap: %s-encrypted password found, trying to auth.", hash_method);
+    pr_log_debug(DEBUG5, MOD_LDAP_VERSION ": %s-encrypted password found, trying to auth.", hash_method);
 
     SSLeay_add_all_digests();
 
@@ -1227,7 +1282,7 @@ handle_ldap_check(cmd_rec *cmd)
     }
 
     if (!md) {
-      pr_log_debug(DEBUG5, "mod_ldap: %s not supported by OpenSSL, declining auth request", hash_method);
+      pr_log_debug(DEBUG5, MOD_LDAP_VERSION ": %s not supported by OpenSSL, declining auth request", hash_method);
       return PR_DECLINED(cmd); /* Some other module may support it. */
     }
 
@@ -1267,7 +1322,9 @@ handle_ldap_uid_name(cmd_rec *cmd)
   id.uid = *((uid_t *) cmd->argv[0]);
   m = _auth_lookup_id(uid_table, id);
 
-  if (!m->name) {
+  if (m->name) {
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": uid2name: returning cached data for %lu (%s)", id.uid, m->name);
+  } else {
     if (ldap_negcache && m->negative) {
       return PR_DECLINED(cmd);
     }
@@ -1304,7 +1361,9 @@ handle_ldap_gid_name(cmd_rec *cmd)
   id.gid = *((gid_t *) cmd->argv[0]);
   m = _auth_lookup_id(gid_table, id);
 
-  if (!m->name) {
+  if (m->name) {
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": uid2name: returning cached data for %lu (%s)", id.gid, m->name);
+  } else {
     if (ldap_negcache && m->negative) {
       return PR_DECLINED(cmd);
     }
@@ -1336,6 +1395,7 @@ handle_ldap_name_uid(cmd_rec *cmd)
   }
 
   if (pw && pw->pw_name && strcasecmp(pw->pw_name, cmd->argv[0]) == 0) {
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": name2uid: returning cached data for %s", pw->pw_name);
     return mod_create_data(cmd, (void *) &pw->pw_uid);
   }
   if ((pw = pr_ldap_getpwnam(cmd->tmp_pool, cmd->argv[0]))) {
@@ -1353,6 +1413,7 @@ handle_ldap_name_gid(cmd_rec *cmd)
   }
 
   if (gr && strcasecmp(gr->gr_name, cmd->argv[0]) == 0) {
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION ": name2gid: returning cached data for %s", gr->gr_name);
     return mod_create_data(cmd, (void *) &gr->gr_gid);
   }
   if ((gr = pr_ldap_getgrnam(cmd->tmp_pool, cmd->argv[0]))) {
