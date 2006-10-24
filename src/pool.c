@@ -26,7 +26,7 @@
 
 /*
  * Resource allocation code
- * $Id: pool.c,v 1.44 2006-06-15 01:54:25 castaglia Exp $
+ * $Id: pool.c,v 1.45 2006-10-24 16:43:39 castaglia Exp $
  */
 
 #include "conf.h"
@@ -342,7 +342,7 @@ struct pool *pr_pool_create_sz(struct pool *p, int sz) {
 
   pr_alarms_block();
 
-  blok = new_block(sz, TRUE);
+  blok = new_block(sz + POOL_HDR_BYTES, TRUE);
 
   new_pool = (pool *) blok->h.first_avail;
   blok->h.first_avail += POOL_HDR_BYTES;
