@@ -23,7 +23,7 @@
  */
 
 /* Trace functions
- * $Id: trace.c,v 1.4 2006-05-26 16:59:21 castaglia Exp $
+ * $Id: trace.c,v 1.5 2006-10-24 02:32:32 castaglia Exp $
  */
 
 
@@ -68,6 +68,7 @@ static void trace_restart_ev(const void *event_data, void *user_data) {
   if (trace_pool) {
     destroy_pool(trace_pool);
     trace_pool = NULL;
+    trace_tab = NULL;
 
     pr_event_unregister(NULL, "core.restart", trace_restart_ev);
   }
