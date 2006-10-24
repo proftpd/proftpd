@@ -25,7 +25,7 @@
  * This is mod_ban, contrib software for proftpd 1.2.x/1.3.x.
  * For more information contact TJ Saunders <tj@castaglia.org>.
  *
- * $Id: mod_ban.c,v 1.2 2006-06-16 02:22:05 castaglia Exp $
+ * $Id: mod_ban.c,v 1.3 2006-10-24 02:40:35 castaglia Exp $
  */
 
 #include "conf.h"
@@ -35,7 +35,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-#define MOD_BAN_VERSION			"mod_ban/0.5"
+#define MOD_BAN_VERSION			"mod_ban/0.5.1"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030001
@@ -1786,6 +1786,35 @@ static void ban_maxloginattempts_ev(const void *event_data, void *user_data) {
     tmpl);
 }
 
+#if defined(PR_SHARED_MODULE)
+static void ban_mod_unload_ev(const void *event_data, void *user_data) {
+  if (strcmp("mod_ban.c", (const char *) event_data) == 0) {
+    register unsigned int i;
+
+    for (i = 0; ban_acttab[i].act_action; i++) {
+      (void) pr_ctrls_unregister(&ban_module, ban_acttab[i].act_action);
+    }
+
+    pr_event_unregister(&ban_module, NULL, NULL);
+
+    if (ban_pool) {
+      destroy_pool(ban_pool);
+      ban_pool = NULL;
+    }
+
+    if (ban_tabfh) {
+      (void) pr_fsio_close(ban_tabfh);
+      ban_tabfh = NULL;
+    }
+
+    if (ban_logfd > 0) {
+      (void) close(ban_logfd);
+      ban_logfd = -1;
+    }
+  }
+}
+#endif /* PR_SHARED_MODULE */
+
 static void ban_postparse_ev(const void *event_data, void *user_data) {
   struct ban_data *lists;
 
@@ -1972,6 +2001,10 @@ static int ban_init(void) {
   }
 
   pr_event_register(&ban_module, "core.exit", ban_exit_ev, NULL);
+#if defined(PR_SHARED_MODULE)
+  pr_event_register(&ban_module, "core.module-unload", ban_mod_unload_ev,
+    NULL);
+#endif /* PR_SHARED_MODULE */
   pr_event_register(&ban_module, "core.postparse", ban_postparse_ev, NULL);
   pr_event_register(&ban_module, "core.restart", ban_restart_ev, NULL);
   pr_event_register(&ban_module, "core.startup", ban_startup_ev, NULL);
