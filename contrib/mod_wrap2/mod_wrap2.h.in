@@ -22,7 +22,7 @@
  * resulting executable, without including the source code for OpenSSL in the
  * source distribution.
  *
- * $Id: mod_wrap2.h.in,v 1.1 2006-09-06 23:11:47 castaglia Exp $
+ * $Id: mod_wrap2.h.in,v 1.2 2006-10-24 01:34:23 castaglia Exp $
  *
  * -- DO NOT MODIFY THE LINE BELOW --
  * $Libraries: @WRAP2_LIBS@$
@@ -34,11 +34,11 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_WRAP2_VERSION 	"mod_wrap2/2.0.4"
+#define MOD_WRAP2_VERSION 	"mod_wrap2/2.0.5"
 
 /* Make sure the version of proftpd is as necessary. */
-#if PROFTPD_VERSION_NUMBER < 0x0001021001
-# error "ProFTPD 1.2.10rc1 or later required"
+#if PROFTPD_VERSION_NUMBER < 0x0001030001
+# error "ProFTPD 1.3.0rc1 or later required"
 #endif
 
 /* Define if using tcpwrapper options.  */

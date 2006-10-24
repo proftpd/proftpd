@@ -1018,12 +1018,12 @@ static unsigned char wrap2_eval_and_expression(char **acl, array_header *creds) 
   return FALSE;
 }
 
-static config_rec *wrap2_resolve_user(pool *pool, char **user) {
+static config_rec *wrap2_resolve_user(pool *p, char **user) {
   config_rec *conf = NULL, *top_conf = NULL;
   char *ourname = NULL, *anonname = NULL;
   unsigned char is_alias = FALSE, force_anon = FALSE, *auth_alias_only = NULL;
 
-  /* Precendence rules:
+  /* Precedence rules:
    *   1. Search for UserAlias directive.
    *   2. Search for Anonymous directive.
    *   3. Normal user login
@@ -1608,6 +1608,21 @@ static void wrap2_exit_ev(const void *event_data, void *user_data) {
   return;
 }
 
+#if defined(PR_SHARED_MODULE)
+static void wrap2_mod_unload_ev(const void *event_data, void *user_data) {
+  if (strcmp("mod_wrap2.c", (const char *) event_data) == 0) {
+    /* Unregister ourselves from all events. */
+    pr_event_unregister(&wrap2_module, NULL, NULL);
+
+    if (wrap2_pool) {
+      destroy_pool(wrap2_pool);
+      wrap2_pool = NULL;
+    }
+  }
+}
+
+#endif /* PR_SHARED_MODULE */
+
 static void wrap2_restart_ev(const void *event_data, void *user_data) {
 
   /* Bounce the log file descriptor. */
@@ -1631,6 +1646,10 @@ static int wrap2_init(void) {
     pr_pool_tag(wrap2_pool, MOD_WRAP2_VERSION);
   }
 
+#if defined(PR_SHARED_MODULE)
+  pr_event_register(&wrap2_module, "core.module-unload", wrap2_mod_unload_ev,
+    NULL);
+#endif /* PR_SHARED_MODULE */
   pr_event_register(&wrap2_module, "core.restart", wrap2_restart_ev, NULL);
 
   /* Initialize the source object for type "builtin". */
