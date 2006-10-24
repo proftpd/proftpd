@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003 The ProFTPD Project team
+ * Copyright (c) 2003-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.11 2004-12-16 03:01:21 castaglia Exp $
+ * $Id: event.c,v 1.12 2006-10-24 16:13:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -64,9 +64,14 @@ int pr_event_register(module *m, const char *event,
     return -1;
   }
 
-  /* If no event pool has been allocated, create one. */
-  if (!event_pool)
+  if (!event_pool) {
     event_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(event_pool, "Event Pool");
+  }
+
+  pr_trace_msg("event", 3,
+    "module '%s' registering handler for event '%s' (at %p)",
+    m ? m->name : "(none)", event, cb);
 
   evh = pcalloc(event_pool, sizeof(struct event_handler));
 
@@ -124,6 +129,9 @@ int pr_event_unregister(module *m, const char *event,
 
   if (!events)
     return 0;
+
+  pr_trace_msg("event", 3, "module '%s' unregistering handler for event '%s'",
+    m ? m->name : "(none)", event ? event : "(all)");
 
   /* For now, simply remove the event_handler entry for this callback.  In
    * the future, add a static counter, and churn the event pool after a

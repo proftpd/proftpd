@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 /* Controls API routines
  *
- * $Id: ctrls.c,v 1.13 2005-11-11 21:05:32 castaglia Exp $
+ * $Id: ctrls.c,v 1.14 2006-10-24 16:13:31 castaglia Exp $
  */
 
 #include "conf.h"
@@ -224,6 +224,10 @@ int pr_ctrls_register(const module *mod, const char *action,
     return -1;
   }
 
+  pr_trace_msg("ctrls", 3,
+    "module '%s' registering handler for ctrl action '%s' (at %p)",
+    mod ? mod->name : "(none)", action, cb);
+
   /* Block ctrls while we're doing this */
   pr_block_ctrls();
 
@@ -277,6 +281,10 @@ int pr_ctrls_unregister(module *mod, const char *action) {
     errno = EINVAL;
     return -1;
   }
+
+  pr_trace_msg("ctrls", 3,
+    "module '%s' unregistering handler for ctrl action '%s'",
+    mod ? mod->name : "(none)", action);
 
   /* Make sure that ctrls are blocked while we're doing this */
   pr_block_ctrls();
