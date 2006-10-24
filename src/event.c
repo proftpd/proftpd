@@ -23,7 +23,7 @@
  */
 
 /* Event management code
- * $Id: event.c,v 1.12 2006-10-24 16:13:31 castaglia Exp $
+ * $Id: event.c,v 1.13 2006-10-24 17:47:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -52,6 +52,8 @@ static struct event_list *events = NULL;
 
 static const char *curr_event = NULL;
 static struct event_list *curr_evl = NULL;
+
+#define EVENT_POOL_SZ	256
 
 int pr_event_register(module *m, const char *event,
     void (*cb)(const void *, void *), void *user_data) {
@@ -105,7 +107,7 @@ int pr_event_register(module *m, const char *event,
     }
   }
 
-  evl_pool = pr_pool_create_sz(event_pool, 64);
+  evl_pool = pr_pool_create_sz(event_pool, EVENT_POOL_SZ);
   pr_pool_tag(evl_pool, "Event listener list pool");
 
   evl = pcalloc(evl_pool, sizeof(struct event_list));
