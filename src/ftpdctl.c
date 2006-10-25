@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 /* ProFTPD Controls command-line client
  *
- * $Id: ftpdctl.c,v 1.3 2005-08-01 03:16:09 castaglia Exp $
+ * $Id: ftpdctl.c,v 1.4 2006-10-25 16:05:21 castaglia Exp $
  */
 
 #include "conf.h"
@@ -62,6 +62,9 @@ void pr_signals_block(void) {
 }
 
 void pr_signals_unblock(void) {
+}
+
+int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
 }
 
 char *sstrcat(char *dest, const char *src, size_t n) {
