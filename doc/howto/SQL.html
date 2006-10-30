@@ -1,4 +1,4 @@
-<!-- $Id: SQL.html,v 1.8 2006-02-23 22:42:03 castaglia Exp $ -->
+<!-- $Id: SQL.html,v 1.9 2006-10-30 22:07:15 castaglia Exp $ -->
 <!-- $Source: /home/proftpd-core/backup/proftp-cvsroot/proftpd/doc/howto/SQL.html,v $ -->
 
 <html>
@@ -430,6 +430,10 @@ a base64-encoded MD5 password with PHP, which can then be read by
 
   // $password now contains the encrypted, encoded password
 </pre>
+Or if you're using Python, you might try the following:
+<pre>
+  password = "{md5}" + base64.b64encode(md5.new("password").digest())
+</pre>
 
 <p><a name="SQLScoreboardError"></a>
 <font color=red>Question</font>: Why do I see &quot;error deleting scoreboard entry: Invalid argument&quot?<br>
@@ -453,7 +457,7 @@ The <code>libz</code> library is required by the MySQL client libraries.
 
 <p>
 <hr>
-Last Updated: <i>$Date: 2006-02-23 22:42:03 $</i><br>
+Last Updated: <i>$Date: 2006-10-30 22:07:15 $</i><br>
 <hr>
 
 </body>
