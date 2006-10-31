@@ -26,7 +26,7 @@
 
 /*
  * House initialization and main program loop
- * $Id: main.c,v 1.292 2006-09-29 16:38:16 castaglia Exp $
+ * $Id: main.c,v 1.293 2006-10-31 22:49:03 castaglia Exp $
  */
 
 #include "conf.h"
@@ -115,6 +115,8 @@ static char shutmsg[81] = {'\0'};
 static unsigned char have_dead_child = FALSE;
 
 static char sbuf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+
+#define PR_DEFAULT_CMD_BUFSZ	512
 
 #ifndef PR_DEVEL_STACK_TRACE
 static char **Argv = NULL;
@@ -832,16 +834,25 @@ static void cmd_loop(server_rec *server, conn_t *c) {
       pr_timer_reset(TIMER_IDLE, NULL);
 
     if (cmd_buf_size == -1) {
-      long *buf_size = get_param_ptr(main_server->conf,
-        "CommandBufferSize", FALSE);
+      int *bufsz = get_param_ptr(main_server->conf, "CommandBufferSize",
+        FALSE);
 
-      if (buf_size == NULL || *buf_size <= 0)
-        cmd_buf_size = 512;
+      if (bufsz == NULL ||
+          *bufsz <= 0) {
+	pr_log_pri(PR_LOG_WARNING, "invalid CommandBufferSize size (%d) "
+          "given, resetting to default buffer size (%u)",
+          *bufsz, (unsigned int) PR_DEFAULT_CMD_BUFSZ);
+        cmd_buf_size = PR_DEFAULT_CMD_BUFSZ;
 
-      else if (*buf_size + 1 > sizeof(buf)) {
-	pr_log_pri(PR_LOG_WARNING, "Invalid CommandBufferSize size given. "
-          "Resetting to 512.");
-	cmd_buf_size = 512;
+      } else if (*bufsz + 1 > sizeof(buf)) {
+	pr_log_pri(PR_LOG_WARNING, "invalid CommandBufferSize size (%d) "
+          "given, resetting to default buffer size (%u)",
+          *bufsz, (unsigned int) PR_DEFAULT_CMD_BUFSZ);
+	cmd_buf_size = PR_DEFAULT_CMD_BUFSZ;
+
+      } else {
+        pr_log_debug(DEBUG1, "setting CommandBufferSize to %d", *bufsz);
+        cmd_buf_size = (long) *bufsz;
       }
     }
 
