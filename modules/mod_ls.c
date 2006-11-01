@@ -25,7 +25,7 @@
  */
 
 /* Directory listing module for ProFTPD.
- * $Id: mod_ls.c,v 1.132 2006-08-17 16:05:32 castaglia Exp $
+ * $Id: mod_ls.c,v 1.133 2006-11-01 02:36:23 castaglia Exp $
  */
 
 #include "conf.h"
@@ -335,7 +335,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
       if (pr_fsio_stat(name, &l_st) != -1) {
         memcpy(&st, &l_st, sizeof(struct stat));
 
-        len = pr_fsio_readlink(name, m, sizeof(m));
+        len = pr_fsio_readlink(name, m, sizeof(m) - 1);
         if (len < 0)
           return 0;
 
@@ -348,7 +348,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *name) {
         return 0;
 
     } else if (S_ISLNK(st.st_mode)) {
-      len = pr_fsio_readlink(name, l, sizeof(l));
+      len = pr_fsio_readlink(name, l, sizeof(l) - 1);
       if (len < 0)
         return 0;
 
@@ -1678,7 +1678,8 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
         continue;
     }
 
-    if ((i = pr_fsio_readlink(p, file, sizeof(file))) > 0) {
+    i = pr_fsio_readlink(p, file, sizeof(file) - 1);
+    if (i > 0) {
       file[i] = '\0';
       f = file;
 
