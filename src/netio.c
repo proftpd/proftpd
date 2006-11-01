@@ -23,7 +23,7 @@
  */
 
 /* NetIO routines
- * $Id: netio.c,v 1.22 2006-05-26 17:16:40 castaglia Exp $
+ * $Id: netio.c,v 1.23 2006-11-01 02:35:13 castaglia Exp $
  */
 
 #include "conf.h"
@@ -800,6 +800,12 @@ char *pr_netio_gets(char *buf, size_t buflen, pr_netio_stream_t *nstrm) {
   char *bp = buf;
   int toread;
   pr_buffer_t *pbuf = NULL;
+
+  if (buflen == 0) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   buflen--;
 
   if (nstrm->strm_buf)
@@ -866,6 +872,12 @@ char *pr_netio_telnet_gets(char *buf, size_t buflen,
   static unsigned char mode = 0;
   int toread;
   pr_buffer_t *pbuf = NULL;
+
+  if (buflen == 0) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   buflen--;
 
   if (in_nstrm->strm_buf)
