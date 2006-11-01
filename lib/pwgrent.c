@@ -137,7 +137,8 @@ static char *fgetbufline(char **buf, int *buflen, FILE *fp) {
     {
       char *new_buf;
 
-      if ((new_buf = realloc(*buf, *buflen)) == NULL)
+      new_buf = realloc(*buf, *buflen);
+      if (new_buf == NULL)
         break;
 
       *buf = new_buf;
@@ -176,10 +177,18 @@ static struct group *supp_getgrent(const char *buf) {
 
   i = strlen(buf) + 1;
 
-  if (!grpbuf)
+  if (!grpbuf) {
     grpbuf = malloc(i);
-  else
-    grpbuf = realloc(grpbuf, i);
+
+  } else {
+    char *new_buf;
+
+    new_buf = realloc(grpbuf, i);
+    if (new_buf == NULL)
+      return NULL;
+
+    grpbuf = new_buf;
+  }
 
   if (!grpbuf)
     return NULL;

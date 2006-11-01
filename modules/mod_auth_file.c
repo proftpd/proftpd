@@ -23,7 +23,7 @@
  * distribute the resulting executable, without including the source code for
  * OpenSSL in the source distribution.
  *
- * $Id: mod_auth_file.c,v 1.29 2006-06-28 16:16:43 castaglia Exp $
+ * $Id: mod_auth_file.c,v 1.30 2006-11-01 02:34:15 castaglia Exp $
  */
 
 #include "conf.h"
@@ -210,10 +210,18 @@ static struct group *af_getgrp(const char *buf) {
 
   i = strlen(buf) + 1;
 
-  if (!grpbuf)
+  if (!grpbuf) {
     grpbuf = malloc(i);
-  else
-    grpbuf = realloc(grpbuf, i);
+
+  } else {
+    char *new_buf;
+
+    new_buf = realloc(grpbuf, i);
+    if (new_buf == NULL)
+      return NULL;
+
+    grpbuf = new_buf;
+  }
 
   if (!grpbuf)
     return NULL;
