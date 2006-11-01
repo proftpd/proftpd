@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001, 2002, 2003 The ProFTPD Project team
+ * Copyright (c) 2001-2006 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 
 /* Utility module linked to utilities to provide functions normally
  * present in full src tree.
- * $Id: misc.c,v 1.5 2003-08-06 22:03:32 castaglia Exp $
+ * $Id: misc.c,v 1.6 2006-11-01 03:11:04 castaglia Exp $
  */
 
 #include "conf.h"
@@ -36,6 +36,9 @@
 
 char *sstrcat(char *dest, const char *src, size_t n) {
   register char *d;
+
+  if (n == 0)
+    return NULL;
 
   for (d = dest; *d && n > 1; d++, n--)
     ;
@@ -54,6 +57,9 @@ char *sstrncpy(char *dest, const char *src, size_t n) {
   register char *d = dest;
 
   if (!dest)
+    return NULL;
+
+  if (n == 0)
     return NULL;
 
   if (src && *src) {
