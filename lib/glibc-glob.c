@@ -895,12 +895,15 @@ glob_limited (unsigned int depth, const char *pattern, int flags,
 	       : (__stat64 (dirname, &st64) == 0 && S_ISDIR (st64.st_mode)))))
 	{
 	  int newcount = pglob->gl_pathc + pglob->gl_offs;
+          char **new_buf;
 
-	  pglob->gl_pathv
+	  new_buf
 	    = (char **) realloc (pglob->gl_pathv,
 				 (newcount + 1 + 1) * sizeof (char *));
-	  if (pglob->gl_pathv == NULL)
+	  if (new_buf == NULL)
 	    return GLOB_NOSPACE;
+
+	  pglob->gl_pathv = new_buf;
 
 #if defined HAVE_STRDUP || defined _LIBC
 	   pglob->gl_pathv[newcount] = strdup (dirname);
@@ -1013,7 +1016,7 @@ glob_limited (unsigned int depth, const char *pattern, int flags,
 	  if (flags & GLOB_NOCHECK)
 	    {
 	      size_t filename_len = strlen (filename) + 1;
-	      char **new_pathv;
+	      char **new_pathv, **new_buf;
 	      int newcount = pglob->gl_pathc + pglob->gl_offs;
 	      struct stat st;
 #ifdef HAVE_STAT64
@@ -1021,15 +1024,17 @@ glob_limited (unsigned int depth, const char *pattern, int flags,
 #endif
 
 	      /* This is an pessimistic guess about the size.  */
-	      pglob->gl_pathv
+	      new_buf
 		= (char **) realloc (pglob->gl_pathv,
 				     (newcount + dirs.gl_pathc + 1)
 				     * sizeof (char *));
-	      if (pglob->gl_pathv == NULL)
+	      if (new_buf == NULL)
 		{
 		  globfree (&dirs);
 		  return GLOB_NOSPACE;
 		}
+
+	      pglob->gl_pathv = new_buf;
 
 	      for (i = 0; i < dirs.gl_pathc; ++i)
 		{
@@ -1483,12 +1488,16 @@ glob_in_dir (const char *pattern, const char *directory, int flags,
 
   if (nfound != 0)
     {
-      pglob->gl_pathv
+      char **new_buf;
+
+      new_buf
 	= (char **) realloc (pglob->gl_pathv,
 			     (pglob->gl_pathc + pglob->gl_offs + nfound + 1)
 			     * sizeof (char *));
-      if (pglob->gl_pathv == NULL)
+      if (new_buf == NULL)
 	goto memory_error;
+
+      pglob->gl_pathv = new_buf;
 
       for (; names != NULL; names = names->next)
 	pglob->gl_pathv[pglob->gl_offs + pglob->gl_pathc++] = names->name;
