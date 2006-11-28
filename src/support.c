@@ -27,7 +27,7 @@
 /* Various basic support routines for ProFTPD, used by all modules
  * and not specific to one or another.
  *
- * $Id: support.c,v 1.80 2006-11-27 14:49:47 jwm Exp $
+ * $Id: support.c,v 1.81 2006-11-28 19:37:29 jwm Exp $
  */
 
 #include "conf.h"
@@ -660,9 +660,9 @@ char *sreplace(pool *p, char *s, ...) {
     while (tmp) {
       pr_signals_handle();
       count++;
-      if (count < 0) {
-        /* Integer overflow. In order to overflow integer range with a count
-         * of escapes, somebody must be doing something very strange.
+      if (count > 8) {
+        /* More than eight instances of the same escape on the same line?
+         * Give me a break.
          */
         return s;
       }
@@ -683,7 +683,10 @@ char *sreplace(pool *p, char *s, ...) {
       blen += count * (strlen(r) - strlen(m));
       if (blen < 0) {
         /* Integer overflow. In order to overflow this, somebody must be
-         * doing something very strange.
+         * doing something very strange. The possibility still exists that
+         * we might not catch this overflow in extreme corner cases, but
+         * massive amounts of data (gigabytes) would need to be in s to
+         * trigger this, easily larger than any buffer we might use.
          */
         return s;
       }
