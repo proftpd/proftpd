@@ -1470,8 +1470,8 @@ static int tls_init_server(void) {
     if (res <= 0) {
       PRIVS_RELINQUISH
 
-      tls_log("error: '%s': %s", tls_rsa_cert_file,
-        ERR_error_string(ERR_get_error(), NULL));
+      tls_log("error loading TLSRSACertificateFile '%s': %s", tls_rsa_cert_file,
+        tls_get_errors());
       return -1;
     }
 
@@ -1481,8 +1481,10 @@ static int tls_init_server(void) {
   if (tls_rsa_key_file) {
     int res;
 
-    tls_pkey->flags |= TLS_PKEY_USE_RSA;
-    tls_pkey->flags &= ~TLS_PKEY_USE_DSA;
+    if (tls_pkey) {
+      tls_pkey->flags |= TLS_PKEY_USE_RSA;
+      tls_pkey->flags &= ~TLS_PKEY_USE_DSA;
+    }
 
     res = SSL_CTX_use_PrivateKey_file(ssl_ctx, tls_rsa_key_file,
       X509_FILETYPE_PEM);
@@ -1490,8 +1492,8 @@ static int tls_init_server(void) {
     if (res <= 0) {
       PRIVS_RELINQUISH
 
-      tls_log("error: '%s': %s", tls_rsa_key_file,
-        ERR_error_string(ERR_get_error(), NULL));
+      tls_log("error loading TLSRSACertificateKeyFile '%s': %s",
+        tls_rsa_key_file, tls_get_errors());
       return -1;
     }
   }
@@ -1503,8 +1505,8 @@ static int tls_init_server(void) {
     if (res <= 0) {
       PRIVS_RELINQUISH
 
-      tls_log("error: '%s' %s", tls_dsa_cert_file,
-        ERR_error_string(ERR_get_error(), NULL));
+      tls_log("error loading TLSDSACertificateFile '%s' %s", tls_dsa_cert_file,
+        tls_get_errors());
       return -1;
     }
   }
@@ -1512,8 +1514,10 @@ static int tls_init_server(void) {
   if (tls_dsa_key_file) {
     int res;
 
-    tls_pkey->flags &= ~TLS_PKEY_USE_RSA;
-    tls_pkey->flags |= TLS_PKEY_USE_DSA;
+    if (tls_pkey) {
+      tls_pkey->flags &= ~TLS_PKEY_USE_RSA;
+      tls_pkey->flags |= TLS_PKEY_USE_DSA;
+    }
 
     res = SSL_CTX_use_PrivateKey_file(ssl_ctx, tls_dsa_key_file,
       X509_FILETYPE_PEM);
@@ -1521,8 +1525,8 @@ static int tls_init_server(void) {
     if (res <= 0) {
       PRIVS_RELINQUISH
 
-      tls_log("error: '%s': %s", tls_dsa_key_file,
-        ERR_error_string(ERR_get_error(), NULL));
+      tls_log("error loading TLSDSACertificateKeyFile '%s': %s",
+        tls_dsa_key_file, tls_get_errors());
       return -1;
     }
   }
@@ -3974,9 +3978,13 @@ MODRET set_tlsdsacertfile(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (!file_exists(cmd->argv[1]))
+  PRIVS_ROOT
+  if (!file_exists(cmd->argv[1])) {
+    PRIVS_RELINQUISH
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
       "' does not exist", NULL));
+  }
+  PRIVS_RELINQUISH
 
   if (*cmd->argv[1] != '/')
     CONF_ERROR(cmd, "parameter must be an absolute path");
@@ -3990,9 +3998,13 @@ MODRET set_tlsdsakeyfile(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (!file_exists(cmd->argv[1]))
+  PRIVS_ROOT
+  if (!file_exists(cmd->argv[1])) {
+    PRIVS_RELINQUISH
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
       "' does not exist", NULL));
+  }
+  PRIVS_RELINQUISH
 
   if (*cmd->argv[1] != '/')
     CONF_ERROR(cmd, "parameter must be an absolute path");
@@ -4278,9 +4290,13 @@ MODRET set_tlsrsacertfile(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (!file_exists(cmd->argv[1]))
+  PRIVS_ROOT
+  if (!file_exists(cmd->argv[1])) {
+    PRIVS_RELINQUISH
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
       "' does not exist", NULL));
+  }
+  PRIVS_RELINQUISH
 
   if (*cmd->argv[1] != '/')
     CONF_ERROR(cmd, "parameter must be an absolute path");
@@ -4294,9 +4310,13 @@ MODRET set_tlsrsakeyfile(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (!file_exists(cmd->argv[1]))
+  PRIVS_ROOT
+  if (!file_exists(cmd->argv[1])) {
+    PRIVS_RELINQUISH
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
       "' does not exist", NULL));
+  }
+  PRIVS_RELINQUISH
 
   if (*cmd->argv[1] != '/')
     CONF_ERROR(cmd, "parameter must be an absolute path");
