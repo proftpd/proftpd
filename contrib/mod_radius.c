@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.40 2006-09-07 02:49:52 castaglia Exp $
+ * $Id: mod_radius.c,v 1.41 2006-11-29 03:29:29 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9"
@@ -1446,7 +1446,7 @@ static void MD5_Init(MD5_CTX *context) {
  * operation, processing another message block, and updating the
  * context.
  */
-static void MD5U_pdate(MD5_CTX *context, unsigned char *input,
+static void MD5_Update(MD5_CTX *context, unsigned char *input,
     unsigned int inputLen) {
   unsigned int i, index, partLen;
 
@@ -1901,8 +1901,12 @@ static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *packet,
     unsigned int vendor_id = 0;
     radius_attrib_t *vsa = NULL;
 
-    if (attrib->length <= 0)
+    if (attrib->length <= 0 ||
+        attrib->length > UCHAR_MAX) {
+      radius_log("packet includes invalid length (%u) for attribute type %u, "
+        " rejecting", attrib->length);
       return NULL;
+    }
 
     if (attrib->type != RADIUS_VENDOR_SPECIFIC) {
       len -= attrib->length;
