@@ -3103,17 +3103,25 @@ static char *tls_x509_name_oneline(X509_NAME *x509_name) {
   long datalen = 0;
   int ok;
    
-  if ((ok = X509_NAME_print_ex(mem, x509_name, 0, XN_FLAG_ONELINE)))
-     datalen = BIO_get_mem_data(mem, &data);
+  ok = X509_NAME_print_ex(mem, x509_name, 0, XN_FLAG_ONELINE);
+  if (ok) {
+    datalen = BIO_get_mem_data(mem, &data);
 
-  if (data) {
-    memset(&buf, '\0', sizeof(buf));
-    memcpy(buf, data, datalen);
-    buf[datalen] = '\0';
-    buf[sizeof(buf)-1] = '\0';
+    if (data) {
+      memset(&buf, '\0', sizeof(buf));
 
-    BIO_free(mem);
-    return buf;
+      if (datalen >= sizeof(buf)) {
+        datalen = sizeof(buf)-1;
+      }
+
+      memcpy(buf, data, datalen);
+
+      buf[datalen] = '\0';
+      buf[sizeof(buf)-1] = '\0';
+
+      BIO_free(mem);
+      return buf;
+    }
   }
 
   BIO_free(mem);
