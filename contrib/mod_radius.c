@@ -27,7 +27,7 @@
  * This module is based in part on code in Alan DeKok's (aland@freeradius.org)
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  *
- * $Id: mod_radius.c,v 1.41 2006-11-29 03:29:29 castaglia Exp $
+ * $Id: mod_radius.c,v 1.42 2006-11-29 17:08:09 castaglia Exp $
  */
 
 #define MOD_RADIUS_VERSION "mod_radius/0.9"
@@ -476,7 +476,12 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
          * (ie non-negative).
          */
 
-        /* Dare we trust attrib->length? */
+        if (attrib->length > sizeof(uid)) {
+          radius_log("invalid attribute length (%u) for user ID, truncating",
+            attrib->length);
+          attrib->length = sizeof(uid);
+        }
+
         memcpy(&uid, attrib->data, attrib->length);
         uid = ntohl(uid);
 
@@ -511,7 +516,12 @@ static void radius_process_accpt_packet(radius_packet_t *packet) {
          * (ie non-negative).
          */
 
-        /* Dare we trust attrib->length? */
+        if (attrib->length > sizeof(gid)) {
+          radius_log("invalid attribute length (%u) for group ID, truncating",
+            attrib->length);
+          attrib->length = sizeof(gid);
+        }
+
         memcpy(&gid, attrib->data, attrib->length);
         gid = ntohl(gid);
 
