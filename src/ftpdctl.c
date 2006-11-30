@@ -26,7 +26,7 @@
 
 /* ProFTPD Controls command-line client
  *
- * $Id: ftpdctl.c,v 1.4 2006-10-25 16:05:21 castaglia Exp $
+ * $Id: ftpdctl.c,v 1.5 2006-11-30 18:06:33 castaglia Exp $
  */
 
 #include "conf.h"
@@ -65,6 +65,8 @@ void pr_signals_unblock(void) {
 }
 
 int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
+  errno = ENOSYS;
+  return -1;
 }
 
 char *sstrcat(char *dest, const char *src, size_t n) {
