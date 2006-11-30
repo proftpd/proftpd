@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # -------------------------------------------------------------------------
-# Copyright (C) 2000-2002 TJ Saunders <tj@castaglia.org>
+# Copyright (C) 2000-2006 TJ Saunders <tj@castaglia.org>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
 #
-#  $Id: ftpquota,v 1.1 2003-12-03 07:39:36 castaglia Exp $
+#  $Id: ftpquota,v 1.2 2006-11-30 22:31:05 castaglia Exp $
 #
 # -------------------------------------------------------------------------
 
@@ -439,11 +439,14 @@ sub open_table {
 
     print STDOUT "$program: opening table '$table'\n" if $verbose;
 
-    # NOTE: BUG -- this should NOT be +<.  Open using <, for reading the
-    # magic, then re-open in append mode if need be.
+    if (defined($opts{'show-records'})) {
+      open(TABLE, "< $table") or
+        die "$program: unable to open $table: $!\n";
 
-    open(TABLE, "+< $table") or
-      die "$program: unable to open $table: $!\n";
+    } else {
+      open(TABLE, "+< $table") or
+        die "$program: unable to open $table: $!\n";
+    }
 
     check_table();
   }
