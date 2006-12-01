@@ -477,6 +477,7 @@ AC_ARG_ENABLE(dso,
   ])
 
 dnl NLS support
+ENABLE_NLS="\"\""
 AC_ARG_ENABLE(nls,
   [AC_HELP_STRING(
     [--enable-nls],
@@ -497,6 +498,7 @@ AC_ARG_ENABLE(nls,
       )
 
       AC_DEFINE(PR_USE_NLS, 1, [Define if using NLS support.])
+      ENABLE_NLS="1"
     fi
   ])
 
@@ -1971,6 +1973,7 @@ my_libs="\"$LIBS\""
 AC_DEFINE_UNQUOTED(PR_BUILD_LIBS, $my_libs)
 
 dnl And finally, generate the appropriate Make* and config.h
+AC_SUBST(ENABLE_NLS)
 AC_SUBST(GLUE_MODULE_OBJS)
 AC_SUBST(INSTALL_STRIP)
 AC_SUBST(INCLTDL)

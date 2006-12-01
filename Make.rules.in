@@ -28,6 +28,8 @@ INSTALL_MAN=$(INSTALL) -o $(INSTALL_USER) -g $(INSTALL_GROUP) -m 0644
 RM=rm -f
 SHELL=/bin/sh
 
+ENABLE_NLS=@ENABLE_NLS@
+
 # Directory include paths.
 #
 INCLUDES=-I.. -I$(top_srcdir)/include @INCLUDES@
