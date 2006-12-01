@@ -21,6 +21,15 @@ files.
 
       FACLEngine
 
+        The mod_facl module is used to support POSIX ACLs, and is built
+        into proftpd if the --enable-facl configure option is used.
+        To disable POSIX ACL support at runtime, use this new directive
+        in your proftpd.conf:
+
+          <IfModule mod_facl.c>
+            FACLEngine off
+          </IfModule>
+
       QuotaOptions
         ScanOnLogin
 
@@ -57,7 +66,13 @@ files.
 
       UseLastlog
 
+        Enables use of logging to lastlog files.
+
       UseUTF8
+
+        Disables use of UTF8 encoding for file paths.  If the --enable-nls
+        configure option is used, then UTF8 encoding support will be
+        enabled by default.
 
   + Enhanced configuration directives:
 
@@ -118,4 +133,9 @@ files.
 
       SQLHomedirOnDemand
 
-Last Updated: $Date: 2006-10-11 16:37:09 $
+        The CreateHome directive would be used instead.  For more
+        information on CreateHome, see:
+
+          doc/howto/CreateHome.html
+
+Last Updated: $Date: 2006-12-01 23:42:33 $
