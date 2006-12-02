@@ -24,6 +24,7 @@ LANGS=en
 
 # gettext utilities.  Note that this assumes gettext is installed and
 # available on the system.
+MSGFMT=msgfmt
 MSGINIT=msginit
 XGETTEXT=xgettext
 
@@ -51,3 +52,4 @@ clean:
 # Specific languages
 en:
 	-$(MSGINIT) --no-translator -i $(PACKAGE).pot -o $@.po -l $@
+	-$(MSGFMT) $@.po -o $@.mo
