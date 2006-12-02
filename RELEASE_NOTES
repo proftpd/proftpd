@@ -16,8 +16,21 @@ files.
 
       DisplayChdir
 
+        This directive replaces the old DisplayFirstChdir directive,
+        and will cause the configured file to be displayed whenever the
+        client changes into the directory in question, rather than only
+        once.
+
+        To get the previous behavior, use:
+
+          DisplayChdir path true
+
+        which says to display the given path only once.
+
       DisplayFileTransfer
-        (only works for successful transfers)
+
+        Whenever a file has been successfully uploaded/downloaded, the
+        configured file will be displayed to the client.
 
       FACLEngine
 
@@ -39,11 +52,19 @@ files.
 
       TLSCryptoDevice
 
+        With this directive, the mod_tls module can now make use of
+        OpenSSL's support for cryptographic accelerator cards, known
+        as "engines" in the OpenSSL documentation.
+
       TLSPassPhraseProvider
 
-      Trace
+        The mod_tls module now has support for obtaining passphrases
+        for certificate keys via an external program.  This directive
+        is similiar to the Apache mod_ssl module's SSLPassPhraseDialog
+        directive (but not *quite* the same; see the documentation for
+        details.)
 
-      TraceLog
+      Trace, TraceLog
 
       UseIPv6
 
@@ -93,6 +114,7 @@ files.
   + New configure options:
 
       --enable-devel=stacktrace
+
         This configure option enables logging of the call stack trace
         whenever a SIGSEGV signal is received.  Very very useful for
         tracking down the cause of a segfault.
@@ -108,11 +130,35 @@ files.
 
       mod_ban
 
+        This module supports dynamic "blacklists" based on configurable
+        rules.  See the documentation for more details:
+
+          doc/contrib/mod_ban.html
+
       mod_lang
+
+        This module is part of the internationalization/RFC2640 support,
+        handling the LANG command.  More information can be found at:
+
+          doc/modules/mod_lang.html
 
       mod_quotatab_radius
 
+        This new module provides support for obtaining quota limits via
+        RADIUS, and is part of the mod_quotatab family.  More details
+        are available in:
+
+          doc/contrib/mod_quotatab_radius.html
+
       mod_wrap2, mod_wrap2_file, mod_wrap2_sql
+
+        These modules are intended to replace mod_wrap, and provides ways
+        of maintaining tcpwrapper-like rules in both existing files *and*
+        SQL tables.  The documentation for these are:
+
+          doc/contrib/mod_wrap2.html
+          doc/contrib/mod_wrap2_file.html
+          doc/contrib/mod_wrap2_sql.html
 
   + New documentation:
 
@@ -121,6 +167,7 @@ files.
   + Module enhancements:
 
      mod_ctrls_admin
+
        New 'scoreboard' control action, for scrubbing the ScoreboardFile
        on demand.
 
@@ -128,8 +175,14 @@ files.
 
       DisplayFirstChdir
 
+        This directive is deprecated in favor the new DisplayChdir
+        directive.  Support for this will be removed in future
+        releases.
+
       HiddenStor
-        Use HiddenStores
+
+        Use the HiddenStores instead; support for the HiddenStor directive
+        will be removed in future releases.
 
       SQLHomedirOnDemand
 
@@ -138,4 +191,4 @@ files.
 
           doc/howto/CreateHome.html
 
-Last Updated: $Date: 2006-12-01 23:42:33 $
+Last Updated: $Date: 2006-12-02 01:08:58 $
